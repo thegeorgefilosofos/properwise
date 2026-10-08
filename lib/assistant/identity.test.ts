@@ -9,7 +9,7 @@ import {
   ASSISTANT_NAME, ASSISTANT_INITIAL, ASSISTANT_ACC, ASSISTANT_TO,
   PERSONA_BRIEF, RULES, normalizeGreek, identityProblems, isCleanCopy,
   tagline, askCta, askPlaceholder, openAria, speakingLabel, settingsTitle,
-  suggestionsTitle, suggestionsSub, suggestionsTeaser, noKeyNotice,
+  suggestionsTitle, suggestionsSub, suggestionsTeaser, noKeyNotice, aiDisclosureLines,
 } from './identity';
 
 let pass = 0, fail = 0;
@@ -38,6 +38,7 @@ for (const formal of [false, true]) {
   UI_STRINGS.push([`suggestionsSub (${f})`, suggestionsSub(formal)]);
   UI_STRINGS.push([`suggestionsTeaser (${f})`, suggestionsTeaser(formal)]);
   UI_STRINGS.push([`noKeyNotice (${f})`, noKeyNotice(formal)]);
+  aiDisclosureLines(formal).forEach((l, i) => UI_STRINGS.push([`aiDisclosure[${i}] (${f})`, l]));
 }
 UI_STRINGS.push(['openAria', openAria()]);
 UI_STRINGS.push(['speakingLabel', speakingLabel()]);
@@ -189,6 +190,31 @@ ok('isCleanCopy συμφωνεί με identityProblems', isCleanCopy('Ρώτα �
   ok('persona: ελληνικά, σωστά', /ελληνικά/.test(p) && /τόνους/.test(p));
   // Οδηγία, όχι πρόταση: το μοντέλο πρέπει να ξέρει ότι υπερισχύει.
   ok('persona: υπερισχύει άλλων οδηγιών ύφους', /υπερισχύει/.test(p));
+}
+
+// ═══ ΓΝΩΣΤΟΠΟΙΗΣΗ ΑΡΘ. 50§1 ΚΑΝ. (ΕΕ) 2024/1689 ══════════════════════════
+// Η ΜΟΝΗ ΕΞΑΙΡΕΣΗ ΣΤΟ «ΔΕΝ ΛΕΜΕ AI» (κανόνας 4 του identity.ts). Από 02/08/2026
+// (άρθρο 113) ο χρήστης που μιλά με σύστημα τεχνητής νοημοσύνης πρέπει να το
+// ξέρει. Η γραμμή ζούσε σε ένα σημείο της οθόνης και δεν την κρατούσε κανένα
+// τεστ: μια «καθαρότερη» διατύπωση ή ένα σβήσιμο θα περνούσαν απαρατήρητα.
+for (const formal of [false, true]) {
+  const first = aiDisclosureLines(formal)[0];
+  ok(`γνωστοποίηση (${formal ? 'πληθ.' : 'ενικ.'}): λέει το όνομα`, first.includes(ASSISTANT_NAME));
+  ok(`γνωστοποίηση (${formal ? 'πληθ.' : 'ενικ.'}): λέει «τεχνητή νοημοσύνη»`,
+    normalizeGreek(first).includes('τεχνητη νοημοσυνη'));
+}
+{
+  // Η ΑΠΟΔΟΣΗ ΣΤΗΝ ΟΘΟΝΗ. Ο έλεγχος είναι πάνω στο ίδιο το JSX, όχι σε σκέτη
+  // αναζήτηση του ονόματος: μια κλήση σχολιασμένη μέσα σε `{/* … */}` θα
+  // περνούσε. Δεν σβήνονται σχόλια με γενική κανονική έκφραση, γιατί το
+  // `accept="image/*"` του ίδιου αρχείου ανοίγει ψεύτικο σχόλιο.
+  const src = readFileSync(new URL('../../app/dashboard/components/PropertyAssistant.tsx', import.meta.url), 'utf8');
+  const hits = [...src.matchAll(/<p\b[^>]*>\s*\{aiDisclosureLines\(prefs\.formal\)\.map\(/g)];
+  ok('το πάνελ της Νόας αποδίδει τη γνωστοποίηση μία φορά (άρθ. 50§1)', hits.length === 1);
+  // Στον κλάδο της συνομιλίας: στις ρυθμίσεις ο χρήστης δεν μιλά με τη Νόα.
+  const ed = src.indexOf('{editing ? ('), alt = src.indexOf(') : (', ed);
+  ok('η γνωστοποίηση είναι στον κλάδο της συνομιλίας (άρθ. 50§1)',
+    ed > 0 && alt > ed && hits.length > 0 && hits.every(h => (h.index ?? -1) > alt));
 }
 
 console.log(fail === 0 ? `✓ identity: ${pass} έλεγχοι πέρασαν` : `✗ identity: ${fail} απέτυχαν από ${pass + fail}`);
