@@ -201,24 +201,73 @@ ok('isCleanCopy συμφωνεί με identityProblems', isCleanCopy('Ρώτα �
 // (άρθρο 113) ο χρήστης που μιλά με σύστημα τεχνητής νοημοσύνης πρέπει να το
 // ξέρει. Η γραμμή ζούσε σε ένα σημείο της οθόνης και δεν την κρατούσε κανένα
 // τεστ: μια «καθαρότερη» διατύπωση ή ένα σβήσιμο θα περνούσαν απαρατήρητα.
+// Η ΔΙΑΤΥΠΩΣΗ ΚΛΕΙΔΩΝΕΙ ΟΛΟΚΛΗΡΗ. Με έλεγχο υποσυμβολοσειρών περνούσε και το
+// «δεν είναι τεχνητή νοημοσύνη». Περνούσε και μια κενή δεύτερη γραμμή χωρίς το
+// «ενδεικτικά». Αλλαγή εδώ είναι απόφαση για το κείμενο του νόμου, όχι ύφος.
+const DISCLOSURE = [
+  `Η ${ASSISTANT_NAME} είναι τεχνητή νοημοσύνη και μπορεί να κάνει λάθος.`,
+  'Τα ποσά για φόρους και δάνεια είναι ενδεικτικά.',
+];
 for (const formal of [false, true]) {
-  const first = aiDisclosureLines(formal)[0];
-  ok(`γνωστοποίηση (${formal ? 'πληθ.' : 'ενικ.'}): λέει το όνομα`, first.includes(ASSISTANT_NAME));
-  ok(`γνωστοποίηση (${formal ? 'πληθ.' : 'ενικ.'}): λέει «τεχνητή νοημοσύνη»`,
-    normalizeGreek(first).includes('τεχνητη νοημοσυνη'));
+  eq(`γνωστοποίηση (${formal ? 'πληθ.' : 'ενικ.'}): ακριβώς οι δύο γραμμές`, aiDisclosureLines(formal), DISCLOSURE);
+}
+
+// Η ΑΠΟΔΟΣΗ ΣΤΗΝ ΟΘΟΝΗ. Ο έλεγχος είναι πάνω στο ίδιο το JSX, όχι σε σκέτη
+// αναζήτηση του ονόματος.
+//
+// ΤΑ ΣΧΟΛΙΑ ΤΟΥ JSX ΣΒΗΝΟΝΤΑΙ ΠΡΩΤΑ. Ως τώρα η κανονική έκφραση έτρεχε στο ωμό
+// κείμενο, οπότε ολόκληρο το <p> μέσα σε `{/* … */}` περνούσε: η γραμμή έφευγε
+// από την οθόνη και το τεστ έμενε πράσινο. Σβήνεται μόνο η μορφή `{/* … */}`,
+// με `{` πριν από το `/*` και `}` μετά το `*/`: το `accept="image/*"` του ίδιου
+// αρχείου δεν έχει άγκιστρο, οπότε δεν ανοίγει ψεύτικο σχόλιο.
+//
+// ΚΑΙ ΜΕΣΑ ΣΤΑ ΟΡΙΑ ΤΟΥ ΚΛΑΔΟΥ. Ο κλάδος της συνομιλίας είναι το fragment
+// `<>…</>` μετά το `) : (` του `{editing ? (`. Πριν ελεγχόταν μόνο ότι η γραμμή
+// είναι ΜΕΤΑ το `) : (`, οπότε περνούσε και μέσα στο παράθυρο αξιολόγησης, που
+// ανοίγει μόνο όταν βαθμολογεί ο χρήστης.
+const stripJsxComments = (src: string) => src.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+function chatBranch(src: string): [number, number] | null {
+  const ed = src.indexOf('{editing ? (');
+  const alt = ed < 0 ? -1 : src.indexOf(') : (', ed);
+  const open = alt < 0 ? -1 : src.indexOf('<>', alt);
+  if (open < 0 || src.slice(alt + 5, open).trim() !== '') return null;
+  let depth = 0;
+  for (const m of src.slice(open).matchAll(/<\/?>/g)) {
+    depth += m[0] === '<>' ? 1 : -1;
+    if (depth === 0) return [open, open + (m.index ?? 0)];
+  }
+  return null;
+}
+function disclosureCheck(raw: string) {
+  const src = stripJsxComments(raw);
+  const hits = [...src.matchAll(/<p\b[^>]*>\s*\{aiDisclosureLines\(prefs\.formal\)\.map\(/g)];
+  const branch = chatBranch(src);
+  return {
+    once: hits.length === 1,
+    inChat: !!branch && hits.length > 0 && hits.every(h => (h.index ?? -1) > branch[0] && (h.index ?? -1) < branch[1]),
+  };
 }
 {
-  // Η ΑΠΟΔΟΣΗ ΣΤΗΝ ΟΘΟΝΗ. Ο έλεγχος είναι πάνω στο ίδιο το JSX, όχι σε σκέτη
-  // αναζήτηση του ονόματος: μια κλήση σχολιασμένη μέσα σε `{/* … */}` θα
-  // περνούσε. Δεν σβήνονται σχόλια με γενική κανονική έκφραση, γιατί το
-  // `accept="image/*"` του ίδιου αρχείου ανοίγει ψεύτικο σχόλιο.
   const src = readFileSync(new URL('../../app/dashboard/components/PropertyAssistant.tsx', import.meta.url), 'utf8');
-  const hits = [...src.matchAll(/<p\b[^>]*>\s*\{aiDisclosureLines\(prefs\.formal\)\.map\(/g)];
-  ok('το πάνελ της Νόας αποδίδει τη γνωστοποίηση μία φορά (άρθ. 50§1)', hits.length === 1);
+  const real = disclosureCheck(src);
+  ok('το πάνελ της Νόας αποδίδει τη γνωστοποίηση μία φορά (άρθ. 50§1)', real.once);
   // Στον κλάδο της συνομιλίας: στις ρυθμίσεις ο χρήστης δεν μιλά με τη Νόα.
-  const ed = src.indexOf('{editing ? ('), alt = src.indexOf(') : (', ed);
-  ok('η γνωστοποίηση είναι στον κλάδο της συνομιλίας (άρθ. 50§1)',
-    ed > 0 && alt > ed && hits.length > 0 && hits.every(h => (h.index ?? -1) > alt));
+  ok('η γνωστοποίηση είναι στον κλάδο της συνομιλίας (άρθ. 50§1)', real.inChat);
+
+  // Ο ΙΔΙΟΣ Ο ΕΛΕΓΧΟΣ ΚΟΚΚΙΝΙΖΕΙ ΣΤΙΣ ΔΥΟ ΑΛΛΑΓΕΣ ΠΟΥ ΥΠΟΣΧΕΤΑΙ ΝΑ ΠΙΑΝΕΙ.
+  const block = src.match(/<p\b[^>]*>\s*\{aiDisclosureLines\(prefs\.formal\)\.map\([\s\S]*?<\/p>/)?.[0] ?? '';
+  ok('βρέθηκε το μπλοκ της γνωστοποίησης', block.length > 0);
+  const commented = src.replace(block, `{/* ${block} */}`);
+  ok('σχολιασμένη μέσα στο JSX: κοκκινίζει', commented !== src && !disclosureCheck(commented).once);
+  const branch = chatBranch(stripJsxComments(src));
+  ok('βρέθηκαν τα όρια του κλάδου της συνομιλίας', !!branch);
+  const end = src.indexOf('</>', src.indexOf(block) + block.length);
+  const moved = src.replace(block, '').slice(0, end - block.length + 3) + block + src.slice(end + 3);
+  ok('μετακινημένη έξω από τον κλάδο: κοκκινίζει',
+    moved.includes(block) && disclosureCheck(moved).once && !disclosureCheck(moved).inChat);
+  // Το `accept="image/*"` δεν ανοίγει σχόλιο: μένει μετά το σβήσιμο.
+  ok('το σβήσιμο σχολίων αφήνει το accept="image/*"',
+    !src.includes('accept="image/*"') || stripJsxComments(src).includes('accept="image/*"'));
 }
 
 console.log(fail === 0 ? `✓ identity: ${pass} έλεγχοι πέρασαν` : `✗ identity: ${fail} απέτυχαν από ${pass + fail}`);
