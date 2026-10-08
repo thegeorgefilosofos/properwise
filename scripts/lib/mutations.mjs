@@ -204,6 +204,8 @@ export const MUTATIONS = {
     { add: 'components/__mut__.tsx', content: tsx('    <div>Ο βοηθός σου προτείνει τρεις κινήσεις</div>') },
     { add: 'components/__mut__.tsx', content: tsx('    <div>Ο ψηφιακός βοηθός Νόα ξέρει τα ακίνητά σου</div>') },
     { add: 'components/__mut__.tsx', content: tsx('    <div>Η Νόα είναι δωρεάν για όλους</div>') },
+    // Και το lib/ φτιάχνει ορατά μηνύματα (assistantLockedMessage, aiLimits.ts).
+    { add: 'lib/__mut__.ts', content: "export const LOCKED = 'Ο βοηθός σου είναι κλειδωμένος'\n" },
   ] },
 
   // ── Βάση δεδομένων και ασφάλεια ───────────────────────────────────────

@@ -2,10 +2,13 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // GUARD: μία ταυτότητα, «Νόα» — και μόνο αυτή στο ορατό κείμενο.
 // ─────────────────────────────────────────────────────────────────────────
-// Σαρώνει app/, components/ και supabase/functions/ (τα κείμενα των email ζουν
-// εκεί) και κόβει τα ονόματα-ανταγωνιστές: «Βοηθός AI»,
+// Σαρώνει app/, components/, supabase/functions/ (τα κείμενα των email ζουν
+// εκεί) και lib/ (εκεί φτιάχνονται ορατά μηνύματα, όπως το assistantLockedMessage
+// του lib/billing/aiLimits.ts) και κόβει τα ονόματα-ανταγωνιστές: «Βοηθός AI»,
 // «AI Assistant», «Έξυπνες Προτάσεις», «ο/η βοηθός», καθώς και κάθε ετικέτα
 // κολλημένη στο όνομα: «βοηθός Νόα», «Νόα, ο βοηθός σου», «δωρεάν Νόα».
+// Από το lib/ μένουν έξω τα τεστ (lib/**/*.test.*) και το lib/assistant/identity.ts,
+// που ορίζει τους κανόνες· ο λόγος γράφεται στο RULE_SOURCES πιο κάτω.
 //
 // ΤΟ ΑΡΘΡΟ ΣΤΟ ΟΝΟΜΑ ΕΠΙΤΡΕΠΕΤΑΙ (απόφαση κατόχου, 07/10/2026). Ως τότε ο
 // κανόνας «gendered-noa» έκοβε κάθε «η Νόα» / «της Νόα» για να μη δοθεί γένος
@@ -54,7 +57,21 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
-const ROOTS = ['app', 'components', 'supabase/functions']
+const ROOTS = ['app', 'components', 'supabase/functions', 'lib']
+
+// ── ΠΗΓΕΣ ΤΩΝ ΚΑΝΟΝΩΝ: ΑΝΑΦΕΡΟΥΝ ΕΠΙΤΗΔΕΣ ΤΙΣ ΑΠΑΓΟΡΕΥΜΕΝΕΣ ΛΕΞΕΙΣ ──────────
+// Το lib/assistant/identity.ts ορίζει τους RULES και το PERSONA_BRIEF, οπότε
+// γράφει τις απαγορευμένες διατυπώσεις για να τις απαγορεύσει. Τα ορατά του
+// κείμενα (tagline, askCta, noKeyNotice και τα υπόλοιπα) τα ελέγχει το
+// identity.test.ts με το identityProblems, ένα προς ένα (UI_STRINGS). ΠΡΟΣΟΧΗ:
+// νέο ορατό κείμενο εκεί πρέπει να μπει και στο UI_STRINGS, αλλιώς δεν το
+// ελέγχει κανείς από τους δύο.
+//
+// Τα τεστ του lib/ παραλείπονται για τον ίδιο λόγο: δοκιμάζουν τους κανόνες με
+// τις απαγορευμένες φράσεις. Τα τεστ σε app/, components/ και supabase/functions/
+// σαρώνονταν πάντα και συνεχίζουν να σαρώνονται.
+const RULE_SOURCES = new Set(['lib/assistant/identity.ts'])
+const isLibTest = rel => rel.startsWith('lib/') && /\.test\.m?[jt]sx?$/.test(rel)
 const EXT = ['.ts', '.tsx', '.js', '.jsx', '.mjs']
 
 // ── ALLOWLIST: αρχεία ελεγμένα με το χέρι, με τον λόγο τους ─────────────────
@@ -245,8 +262,10 @@ files.sort()
 const failures = []   // παραβιάσεις που ρίχνουν το build
 const pending = []    // παραβιάσεις σε αρχεία του ALLOWLIST
 
+let skipped = 0
 for (const file of files) {
   const rel = file.split('\\').join('/')
+  if (RULE_SOURCES.has(rel) || isLibTest(rel)) { skipped++; continue }
   const src = readFileSync(file, 'utf8')
   const code = stripComments(src)
   // Αν σπάσει αυτό, οι αριθμοί γραμμής ψεύδονται — προτιμότερο να σκάσει τώρα.
@@ -292,5 +311,5 @@ if (failures.length) {
   process.exit(1)
 }
 
-console.log(`✓ Νόα: ${files.length} αρχεία σε ${ROOTS.join('/ και ')}/ — καμία παραβίαση ταυτότητας.`)
+console.log(`✓ Νόα: ${files.length - skipped} αρχεία σε ${ROOTS.join('/ και ')}/ — καμία παραβίαση ταυτότητας.`)
 if (pending.length) console.log(`${DIM}  (${pending.length} εκκρεμότητες σε ${new Set(pending.map(p => p.file)).size} αρχεία του allowlist)${RESET}`)

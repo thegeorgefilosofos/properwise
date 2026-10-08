@@ -168,6 +168,10 @@ ok('isCleanCopy συμφωνεί με identityProblems', isCleanCopy('Ρώτα �
   ok('υπάρχει το scripts/guard-assistant-name.mjs', guard.length > 0);
   for (const r of RULES) ok(`ο guard ξέρει τον κανόνα «${r.id}»`, guard.includes(r.id));
   ok('ο guard σαρώνει app/ και components/', guard.includes('app') && guard.includes('components'));
+  // Και το lib/, όπου φτιάχνονται ορατά μηνύματα (assistantLockedMessage). Ο
+  // έλεγχος κοιτά την ίδια τη γραμμή ROOTS: ένα «lib» σε σχόλιο ή στο
+  // RULE_SOURCES δεν θα σήμαινε ότι το lib/ σαρώνεται.
+  ok('ο guard σαρώνει και το lib/', /const ROOTS = \[[^\]]*'lib'[^\]]*\]/.test(guard));
 }
 
 // ═══ Η ΠΕΡΙΓΡΑΦΗ ΧΑΡΑΚΤΗΡΑ ΛΕΕΙ ΤΑ ΤΕΣΣΕΡΑ ΠΟΥ ΠΡΕΠΕΙ ════════════════════
