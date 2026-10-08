@@ -2,9 +2,9 @@
 //
 // Ο ΚΑΤΑΛΟΓΟΣ ΤΗΣ ΒΡΑΧΥΧΡΟΝΙΑΣ ΚΑΙ ΤΟ ΠΡΟΤΥΠΟ ΠΟΥ ΤΟΝ ΚΟΥΒΑΛΑ. Κρίνονται τρία:
 // ότι κανένας αριθμός ή νόμος δεν φτάνει στην οθόνη γραμμένος με το χέρι, ότι
-// μόνο τα έγγραφα κουβαλούν σημείωση λήξης και ότι το πρότυπο είναι ΑΚΡΙΒΩΣ ο
-// κατάλογος. Το «εννέα» στηρίζεται σε δευτερογενείς πηγές: αν η εγκύκλιος πει
-// άλλα, αλλάζουν μαζί ο κατάλογος και αυτή η δοκιμή.
+// μόνο τα έγγραφα κουβαλούν σημείωση λήξης, ότι κάθε περίπτωση του άρθρου 3
+// ν.5170/2025 έχει γραμμή και ότι το πρότυπο είναι ΑΚΡΙΒΩΣ ο κατάλογος. Η πρώτη
+// εκδοχή είχε εννέα γραμμές και της έλειπαν τέσσερις υποχρεώσεις του άρθρου.
 import { STR_SPECS } from './strSpecs'
 import { TEMPLATES } from '@/app/dashboard/components/checklist/model'
 import type { FieldContext } from '@/lib/property/fields'
@@ -12,7 +12,6 @@ import type { FieldContext } from '@/lib/property/fields'
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
 
-ok('εννέα στοιχεία', STR_SPECS.length === 9)
 ok('μοναδικά αναγνωριστικά', new Set(STR_SPECS.map(s => s.id)).size === STR_SPECS.length)
 const texts = STR_SPECS.flatMap(s => [s.label, s.note ?? ''])
 ok('κανένα ψηφίο ή € σε ετικέτα ή σημείωση', texts.every(t => !/[0-9€]/.test(t)))
@@ -24,8 +23,19 @@ ok('σημείωση έχουν ακριβώς τα τρία έγγραφα',
 ok('η σημείωση λέει «αν γράφει λήξη», δεν την υποθέτει', docs.every(s => /^Αν το έγγραφο γράφει/.test(s.note ?? '')))
 ok('ετήσιο μόνο το ασφαλιστήριο',
   STR_SPECS.filter(s => s.recurring === 'yearly').map(s => s.id).join() === 'insurance')
-ok('τα τέσσερα του άρθρου 3 ν.5170/2025 είναι στον κατάλογο',
-  ['extinguisher', 'smoke_detector', 'first_aid', 'escape_signage'].every(id => STR_SPECS.some(s => s.id === id)))
+// Οι περιπτώσεις (α) έως (δ) του άρθρου 3 ν.5170/2025, μία γραμμή για καθεμία
+// υποχρέωση. Αν λείψει έστω μία, η λίστα λέει «εντάξει» σε όποιον δεν είναι.
+const ARTICLE_3: Record<string, string[]> = {
+  'α': ['main_use', 'natural_light', 'ventilation', 'air_conditioning'],
+  'β': ['insurance'],
+  'γ': ['electrician', 'extinguisher', 'smoke_detector', 'rcd_relay', 'escape_signage'],
+  'δ': ['pest_control', 'first_aid', 'emergency_phones'],
+}
+for (const [letter, ids] of Object.entries(ARTICLE_3)) {
+  const missing = ids.filter(id => !STR_SPECS.some(s => s.id === id))
+  ok(`περίπτωση (${letter}) του άρθρου 3: λείπουν ${missing.join(', ') || 'κανένα'}`, missing.length === 0)
+}
+ok('καμία γραμμή εκτός άρθρου 3', STR_SPECS.every(s => Object.values(ARTICLE_3).some(ids => ids.includes(s.id))))
 
 const tpl = TEMPLATES.str_specs
 ok('υπάρχει το πρότυπο', !!tpl)
