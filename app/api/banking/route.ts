@@ -16,6 +16,7 @@ import { requireSecondStep } from '@/lib/auth/secondStep';
 import { available } from '@/lib/billing/addons';
 import { aisConfigError } from '@/lib/banking/provider';
 import * as connections from '@/lib/data/bankConnections';
+import { reportRoute, codeOf } from '@/lib/observability/route';
 
 export async function GET() {
   const supabase = await createClient();
@@ -35,6 +36,7 @@ export async function GET() {
 
   const { connections: cs, error } = await connections.ofUser(supabase, user.id);
   if (error) {
+    void reportRoute('api/banking', 'connections not read', { status: 502, code: codeOf(error) });
     return NextResponse.json({ error: 'Οι τραπεζικές συνδέσεις δεν διαβάστηκαν.' }, { status: 502 });
   }
 

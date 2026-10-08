@@ -33,6 +33,7 @@ import { isEntitled, isMorStatus } from '@/lib/billing/subscription';
 import { billingWords } from '@/lib/legal/billingWords';
 import { SITE } from '@/lib/core/site';
 import * as billing from '@/lib/data/billing';
+import { reportRoute } from '@/lib/observability/route';
 
 /** Ο σύνδεσμος πληρωμής δεν ζει για πάντα σε ένα ιστορικό περιηγητή. */
 const LINK_MINUTES = 30;
@@ -132,6 +133,8 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     console.info(`[${mor.id}] το ταμείο δεν άνοιξε:`, error);
+    // Το `error` του εμπόρου είναι ελεύθερο κείμενο: ταξιδεύει μόνο το όνομά του.
+    void reportRoute('api/billing/checkout', `${mor.id} checkout not opened`, { status: 502 });
     return NextResponse.json({ error: 'Το ταμείο δεν άνοιξε.' }, { status: 502 });
   }
   return NextResponse.json({ available: !!url, url, note: billingWords().chargingToday });

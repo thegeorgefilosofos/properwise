@@ -12,6 +12,7 @@ import { requireFeature, featureDenialResponse } from '@/lib/billing/requireFeat
 import { createClient } from '@/lib/supabase/server';
 import { loadE2Rows, buildE2Workbook } from '@/app/dashboard/components/e2Export';
 import { workbookBytes } from '@/app/dashboard/components/xlsxStyle';
+import { reportRoute, codeOf } from '@/lib/observability/route';
 
 export const runtime = 'nodejs';
 
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
     loaded = await loadE2Rows(supabase, gate.userId, year);
   } catch (e) {
     console.error('[api/e2/export] ανάγνωση:', e);
+    void reportRoute('api/e2/export', 'rows not read', { status: 503, code: codeOf(e) });
     return NextResponse.json({ error: 'Τα στοιχεία του Ε2 δεν διαβάστηκαν. Δοκίμασε ξανά σε λίγο.' }, { status: 503 });
   }
   const wb = buildE2Workbook(loaded, year);

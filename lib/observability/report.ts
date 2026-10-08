@@ -117,17 +117,22 @@ export function makeThrottle(maxSame = MAX_SAME, maxFingerprints = MAX_FINGERPRI
 /** Το ένα φρένο της εφαρμογής. */
 const allowSend = makeThrottle()
 
-// Αναφέρει πιασμένο σφάλμα. Δεν πετάει ποτέ. Στέλνει και ξεχνά.
-export function captureError(err: unknown, extra?: Extra): void {
+/** Η απάντηση κάθε πρόωρης εξόδου: ήδη επιλυμένη, ώστε το `await` να μη στέκεται. */
+const DONE: Promise<void> = Promise.resolve()
+
+// Αναφέρει πιασμένο σφάλμα. Δεν πετάει ποτέ ΚΑΙ η υπόσχεση δεν απορρίπτεται ποτέ.
+// Ο πελάτης την αγνοεί. Ο διακομιστής την περιμένει (`after`, `onRequestError`):
+// μια serverless συνάρτηση που τελειώνει πριν φύγει ο φάκελος τον χάνει.
+export function captureError(err: unknown, extra?: Extra): Promise<void> {
   try {
     if (err) console.error('[captureError]', err, extra ?? '')
     const dsn = getDsn()
-    if (!dsn) return
+    if (!dsn) return DONE
     const parsed = parseDsn(dsn)
-    if (!parsed) return
+    if (!parsed) return DONE
 
     const e = err instanceof Error ? err : new Error(typeof err === 'string' ? err : safeString(err))
-    if (!allowSend(e)) return
+    if (!allowSend(e)) return DONE
     const id = eventId()
     const sentAt = new Date().toISOString()
     const event = {
@@ -150,14 +155,15 @@ export function captureError(err: unknown, extra?: Extra): void {
       JSON.stringify({ type: 'event' }) + '\n' +
       JSON.stringify(event) + '\n'
 
-    void fetch(`${parsed.endpoint}?sentry_key=${parsed.key}&sentry_version=7`, {
+    return fetch(`${parsed.endpoint}?sentry_key=${parsed.key}&sentry_version=7`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-sentry-envelope' },
       body: envelope,
       keepalive: true,
-    }).catch(() => {})
+    }).then(() => undefined, () => undefined)
   } catch {
     /* the reporter must never break the caller */
+    return DONE
   }
 }
 

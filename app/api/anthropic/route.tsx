@@ -17,6 +17,7 @@ import { meterKind, fileHash, newRequestId, takeUnit, refundUnit } from '@/lib/b
 import { alertOutOfCredit } from '@/lib/assistant/creditAlert';
 import { SCAN_SHAPE } from '@/lib/assistant/scanShape';
 import { noaSystemBlocks } from '@/app/dashboard/components/assistantPersona';
+import { reportRoute } from '@/lib/observability/route';
 
 // Rate limiting: simple in-memory store (για production χρησιμοποίησε Redis)
 // ΣΗΜ.: σε serverless/πολλαπλά instances αυτό είναι ανά-instance. Είναι φράγμα
@@ -192,6 +193,7 @@ export async function POST(req: NextRequest) {
   const u = await takeUnit(scan ? 'scan' : 'ai', user.id, requestId, scan ? fileHash(body) : null);
   // Ένας μετρητής κόστους που ανοίγει όταν χαλάσει δεν είναι μετρητής.
   if (u == null) {
+    void reportRoute('api/anthropic', 'metering unavailable', { status: 503, code: scan ? 'scan' : 'ai' });
     return NextResponse.json(
       { error: scan
           ? 'Η σάρωση δεν είναι διαθέσιμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.'
@@ -267,6 +269,7 @@ export async function POST(req: NextRequest) {
   // ── Anthropic API call ───────────────────────────────────────
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
+    void reportRoute('api/anthropic', 'api key missing', { status: 500 });
     await giveBack(true);
     return NextResponse.json(
       { error: 'Η υπηρεσία δεν είναι διαθέσιμη αυτή τη στιγμή.' },
@@ -368,6 +371,8 @@ export async function POST(req: NextRequest) {
       const timedOut = (err as { name?: string } | null)?.name === 'TimeoutError';
       const f = timedOut ? TIMEOUT_FAILURE : NETWORK_FAILURE;
       console.error('Anthropic fetch:', timedOut ? 'timeout' : err);
+      // Το αντικείμενο του σφάλματος δεν ταξιδεύει: μόνο το είδος της αποτυχίας.
+      void reportRoute('api/anthropic', 'upstream unreachable', { status: f.status, code: timedOut ? 'timeout' : 'network' });
       await giveBack(f.pool);
       return NextResponse.json({ error: f.message }, { status: f.status, headers: quotaHeaders(quota) });
     }
@@ -390,6 +395,14 @@ export async function POST(req: NextRequest) {
       const upstream = (data as { error?: { message?: string } } | null)?.error?.message;
       console.error('Anthropic API error:', response.status, upstream ?? text.slice(0, 300));
       const f = upstreamFailure(response.status, upstream);
+      // ΟΧΙ 429 ΚΑΙ 529: όριο ρυθμού και υπερφόρτωση είναι λειτουργικά, όχι
+      // σφάλματα. Το τέλος του υπολοίπου στέλνει ήδη email. Ταξιδεύει μόνο ο
+      // τύπος του σφάλματος του παρόχου, ποτέ το μήνυμα ή το σώμα.
+      if (response.status !== 429 && response.status !== 529) {
+        const t = (data as { error?: { type?: unknown } } | null)?.error?.type;
+        const code = typeof t === 'string' ? t.slice(0, 60) : null;
+        void reportRoute('api/anthropic', `upstream ${response.status}`, { status: f.status, code });
+      }
       await giveBack(f.pool);
       // Το τέλος του υπολοίπου δεν διορθώνεται από τον πελάτη: το μαθαίνει
       // αμέσως ο ιδιοκτήτης (lib/assistant/creditAlert.ts).
@@ -401,6 +414,7 @@ export async function POST(req: NextRequest) {
     // πήρε τίποτα. Το πακέτο γυρίζει, η δεξαμενή όχι.
     if (data === null) {
       console.error('Anthropic API: μη αναγνώσιμο σώμα', response.status, text.slice(0, 300));
+      void reportRoute('api/anthropic', 'upstream body unreadable', { status: UNREADABLE_FAILURE.status });
       await giveBack(UNREADABLE_FAILURE.pool);
       return NextResponse.json(
         { error: UNREADABLE_FAILURE.message },
@@ -414,6 +428,8 @@ export async function POST(req: NextRequest) {
     // απρόβλεπτη εξαίρεση. Ο πάροχος δεν παρήγαγε τίποτα, οπότε γυρίζει και η
     // μονάδα της δεξαμενής.
     console.error('Route error:', err);
+    // Μόνο τύπος και πλαίσια στοίβας: το μήνυμα μπορεί να κουβαλά κείμενο του χρήστη.
+    void reportRoute('api/anthropic', 'unhandled', { status: 500, cause: err });
     await giveBack(true);
     return NextResponse.json(
       { error: `${ASSISTANT_NAME}: το αίτημα δεν ολοκληρώθηκε. Δοκίμασε ξανά σε λίγο.` },

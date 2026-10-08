@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireSecondStep } from '@/lib/auth/secondStep';
 import { parseEprelRef, readEprel, eprelApiUrl, eprelPageUrl } from '@/lib/property/eprel';
+import { reportRoute } from '@/lib/observability/route';
 
 /** Το μητρώο απαντά σε κλάσματα του δευτερολέπτου· πάνω από αυτό κάτι τρέχει. */
 const TIMEOUT_MS = 8000;
@@ -45,6 +46,8 @@ export async function GET(req: NextRequest) {
       cache: 'no-store',
     });
   } catch {
+    // Ούτε ο αριθμός μητρώου ούτε το σφάλμα του fetch ταξιδεύουν: μόνο το γεγονός.
+    void reportRoute('api/eprel', 'registry unreachable', { status: 502 });
     return NextResponse.json({ error: 'Το μητρώο δεν απάντησε. Δοκίμασε ξανά σε λίγο.' }, { status: 502 });
   }
 
@@ -52,6 +55,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Η καταχώρηση δεν βρέθηκε στο μητρώο.' }, { status: 404 });
   }
   if (!res.ok) {
+    void reportRoute('api/eprel', 'registry error', { status: 502, code: `upstream ${res.status}` });
     return NextResponse.json({ error: 'Το μητρώο απάντησε με σφάλμα.' }, { status: 502 });
   }
 
@@ -59,6 +63,7 @@ export async function GET(req: NextRequest) {
   try {
     json = await res.json();
   } catch {
+    void reportRoute('api/eprel', 'registry response unreadable', { status: 502 });
     return NextResponse.json({ error: 'Η απάντηση του μητρώου δεν διαβάζεται.' }, { status: 502 });
   }
 

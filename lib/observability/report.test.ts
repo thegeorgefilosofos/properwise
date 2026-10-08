@@ -181,5 +181,64 @@ const event = (body: string) => JSON.parse(body.split('\n')[2]) as Record<string
   ok('αληθινό σφάλμα ταξιδεύει', worthReporting(new Error('Cannot read properties of undefined')))
 }
 
-console.log(`observability/report.test.ts: ${passed} passed, ${failed} failed`)
-if (failed > 0) process.exit(1)
+// ═══ Η ΥΠΟΣΧΕΣΗ ΤΗΣ ΑΠΟΣΤΟΛΗΣ ═════════════════════════════════════════════
+// Στον διακομιστή η συνάρτηση τελειώνει μόλις απαντήσει η διαδρομή. Ενας
+// φάκελος που δεν περιμένει κανείς χάνεται. Γι' αυτό ο αναφορέας επιστρέφει
+// υπόσχεση που ΔΕΝ απορρίπτεται ποτέ: το `await` της δεν μπορεί να ρίξει τίποτα.
+async function asyncChecks() {
+  const isThenable = (v: unknown) => !!v && typeof (v as { then?: unknown }).then === 'function'
+  {
+    let a: unknown, b: unknown, c: unknown
+    withCapture(DSN, () => { a = captureError(new Error('υπόσχεση με DSN')) })
+    withCapture(undefined, () => { b = captureError(new Error('υπόσχεση χωρίς DSN')) })
+    withCapture('όχι-έγκυρο-dsn', () => { c = captureError(new Error('υπόσχεση με άκυρο DSN')) })
+    ok('επιστρέφει υπόσχεση με DSN, χωρίς DSN και με άκυρο DSN', isThenable(a) && isThenable(b) && isThenable(c))
+    await Promise.all([a, b, c])
+  }
+
+  /** Ο αναφορέας με δικό μας fetch, για όσο κρατά το `fn`. */
+  async function withFetch(stub: typeof fetch, fn: () => Promise<void>) {
+    const realFetch = globalThis.fetch
+    const realDsn = process.env.NEXT_PUBLIC_SENTRY_DSN
+    const realLog = console.error
+    process.env.NEXT_PUBLIC_SENTRY_DSN = DSN
+    globalThis.fetch = stub
+    console.error = () => {}
+    try { await fn() } finally {
+      globalThis.fetch = realFetch
+      console.error = realLog
+      if (realDsn === undefined) delete process.env.NEXT_PUBLIC_SENTRY_DSN
+      else process.env.NEXT_PUBLIC_SENTRY_DSN = realDsn
+    }
+  }
+
+  let rejectedOk = false
+  await withFetch((() => Promise.reject(new Error('δίκτυο'))) as unknown as typeof fetch, async () => {
+    try { await captureError(new Error('fetch που απορρίπτει')); rejectedOk = true } catch { rejectedOk = false }
+  })
+  ok('fetch που απορρίπτει: το await επιλύεται', rejectedOk)
+
+  let syncOk = false
+  await withFetch((() => { throw new Error('σύγχρονο') }) as unknown as typeof fetch, async () => {
+    try { await captureError(new Error('fetch που πετάει σύγχρονα')); syncOk = true } catch { syncOk = false }
+  })
+  ok('fetch που πετάει σύγχρονα: ούτε εξαίρεση ούτε απόρριψη', syncOk)
+
+  // Η ΣΕΙΡΑ: το `await` περιμένει να φύγει ο φάκελος, όχι λιγότερο.
+  let release: () => void = () => {}
+  const pending = new Promise<Response>(res => { release = () => res(new Response('')) })
+  let settled = false
+  await withFetch((() => pending) as unknown as typeof fetch, async () => {
+    const p = captureError(new Error('η σειρά της αποστολής')).then(() => { settled = true })
+    await new Promise(r => setTimeout(r, 5))
+    ok('το await δεν επιλύεται πριν φύγει ο φάκελος', !settled)
+    release()
+    await p
+    ok('…και επιλύεται μόλις φύγει', settled)
+  })
+}
+
+asyncChecks().then(() => {
+  console.log(`observability/report.test.ts: ${passed} passed, ${failed} failed`)
+  if (failed > 0) process.exit(1)
+})

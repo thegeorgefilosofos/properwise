@@ -40,6 +40,7 @@ import { dailyPush, alreadySentToday, HORIZON_DAYS } from '@/lib/push/message';
 import { sendPush, vapidKeys } from '@/lib/push/send';
 import { endpointHost } from '@/lib/push/subscription';
 import { athensToday, athensDatePlus } from '@/lib/core/time';
+import { reportRoute, codeOf } from '@/lib/observability/route';
 
 /**
  * Πόσο πίσω κοιτά η ειδοποίηση.
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
   const missing = serviceClientError(process.env);
   if (missing) {
     log(SERVICE_CLIENT_LOG, missing);
+    void reportRoute('api/push', 'service client missing', { status: 503 });
     return NextResponse.json({ error: 'not_configured' }, { status: 503 });
   }
   const db = createServiceClient();
@@ -79,6 +81,7 @@ export async function POST(request: Request) {
   const { rows, error } = await devices.all(db);
   if (error) {
     log('οι συνδρομές δεν διαβάστηκαν:', error.message);
+    void reportRoute('api/push', 'subscriptions not read', { status: 502, code: codeOf(error) });
     return NextResponse.json({ error: 'read_failed' }, { status: 502 });
   }
 

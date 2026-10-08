@@ -40,6 +40,7 @@ import { cycleFromParam, activeHold } from '@/lib/billing/entitlements';
 import { merchant } from '@/lib/billing/merchant';
 import { classifyChange, planDrops } from '@/lib/billing/subscription';
 import * as billing from '@/lib/data/billing';
+import { reportRoute, codeOf } from '@/lib/observability/route';
 
 /** Οι καταστάσεις στις οποίες μια συνδρομή δέχεται αλλαγή πακέτου. */
 const CHANGEABLE = new Set(['on_trial', 'active', 'past_due']);
@@ -74,6 +75,7 @@ export async function POST(request: Request) {
   let db;
   try { db = createServiceClient(); } catch (e) {
     console.info('[plan] πελάτης υπηρεσίας:', e instanceof Error ? e.message : e);
+    void reportRoute('api/billing/plan', 'service client', { status: 500, cause: e });
     return NextResponse.json({ error: 'Η αλλαγή δεν ολοκληρώθηκε.' }, { status: 500 });
   }
 
@@ -82,6 +84,7 @@ export async function POST(request: Request) {
   const { state: profile, error: readError } = await billing.planContext(db, user.id);
   if (readError) {
     console.info('[plan] το προφίλ δεν διαβάστηκε:', readError.message);
+    void reportRoute('api/billing/plan', 'profile not read', { status: 502, code: codeOf(readError) });
     return NextResponse.json({ error: 'Η αλλαγή δεν ολοκληρώθηκε.' }, { status: 502 });
   }
 
@@ -92,6 +95,7 @@ export async function POST(request: Request) {
     });
     if (error) {
       console.info('[plan] η αλλαγή δοκιμαστή δεν γράφτηκε:', error.message);
+      void reportRoute('api/billing/plan', 'tester change not written', { status: 502, code: codeOf(error) });
       return NextResponse.json({ error: 'Η αλλαγή δεν ολοκληρώθηκε.' }, { status: 502 });
     }
     console.info(`[plan] δοκιμαστής: ${target}/${cycle}`);
@@ -117,6 +121,7 @@ export async function POST(request: Request) {
   const { after: before, error: readErr } = await mor.subscriptionState(subscriptionId, process.env);
   if (readErr || !before) {
     console.info('[plan] η συνδρομή δεν διαβάστηκε:', readErr);
+    void reportRoute('api/billing/plan', 'subscription state not read', { status: 502 });
     return NextResponse.json({ error: 'Η αλλαγή δεν ολοκληρώθηκε.' }, { status: 502 });
   }
   if (!before.status || !CHANGEABLE.has(before.status)) {
@@ -172,6 +177,7 @@ export async function POST(request: Request) {
   );
   if (error || !after) {
     console.info('[plan] ο έμπορος δεν δέχτηκε την αλλαγή:', error);
+    void reportRoute('api/billing/plan', 'merchant rejected change', { status: 502 });
     return NextResponse.json({ error: 'Η αλλαγή δεν ολοκληρώθηκε.' }, { status: 502 });
   }
 
@@ -195,6 +201,8 @@ export async function POST(request: Request) {
     // γράψει το πακέτο, αλλά ΟΧΙ την κράτηση — και ο πελάτης που υποβαθμίστηκε
     // θα χάσει σήμερα ό,τι πλήρωσε για τον μήνα.
     console.info('[plan] ο έμπορος άλλαξε αλλά το προφίλ δεν γράφτηκε:', writeError.message);
+    // Η πιο σοβαρή: ο πελάτης πλήρωσε κάτι που η βάση δεν ξέρει.
+    void reportRoute('api/billing/plan', 'merchant changed, profile not written', { status: 502, code: codeOf(writeError) });
     return NextResponse.json({ error: 'Η αλλαγή έγινε, αλλά δεν καταγράφηκε. Επικοινώνησε μαζί μας.' }, { status: 502 });
   }
 
