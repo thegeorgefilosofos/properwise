@@ -567,6 +567,25 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     }
     if (err) { setSaving(false); setError(failed('Το ακίνητο δεν αποθηκεύτηκε', err)); return; }
 
+    // ── ΤΟ ΣΚΑΛΙ ΤΗΣ ΑΞΙΑΣ ─────────────────────────────────────────────────
+    // Το πρώτο ακίνητο είναι η στιγμή που η εφαρμογή αρχίζει να χρησιμεύει, το
+    // δεύτερο είναι το πιο δυνατό σημάδι ότι κάποιος έμεινε. Τα δύο μετρώνται
+    // χωριστά, γιατί απαντούν σε διαφορετική ερώτηση. Καταγράφεται ΜΟΝΟ σε νέο
+    // ακίνητο: η επεξεργασία υπάρχοντος δεν είναι σκαλί.
+    //
+    // ΑΜΕΣΩΣ ΜΕΤΑ ΤΗ ΔΗΜΙΟΥΡΓΙΑ, ΟΧΙ ΣΤΟ ΤΕΛΟΣ. Αν έσκαγαν οι «Ρυθμίσεις» πιο
+    // κάτω και ο χρήστης έκλεινε τον οδηγό, το ακίνητο υπήρχε και το γεγονός
+    // όχι. Χωρίς αναμονή, για να μην προστεθεί γύρος πριν από τις Ρυθμίσεις·
+    // το count() δεν πετάει.
+    //
+    // Πλήθος και μόνο, κανένα όνομα, καμία διεύθυνση, κανένα αναγνωριστικό.
+    if (!savedId && propertyId) {
+      void (async () => {
+        const n = await properties.count(supabase, userId);
+        void track(supabase, n >= 2 ? PRODUCT_EVENTS.second_property_added : PRODUCT_EVENTS.property_added, { count: n });
+      })();
+    }
+
     // property_settings: αποθήκευση μόνο αν έχει συμπληρωθεί κάτι (αποφυγή κενής γραμμής)
     if (propertyId && Object.values(settings).some(v => (v ?? '').toString().trim() !== '')) {
       const { error: sErr } = await supabase.from('property_settings')
@@ -574,18 +593,6 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
       // Το ακίνητο έχει ήδη αποθηκευτεί — λέμε ρητά τι έμεινε πίσω, ώστε το
       // «δοκίμασε ξανά» να μη διαβάζεται ως «ξαναφτιάξ' το από την αρχή».
       if (sErr) { setSaving(false); setError(failed('Το ακίνητο αποθηκεύτηκε, αλλά οι επαφές και οι σημειώσεις του δεν καταχωρήθηκαν', sErr)); return; }
-    }
-
-    // ── ΤΟ ΣΚΑΛΙ ΤΗΣ ΑΞΙΑΣ ─────────────────────────────────────────────────
-    // Το πρώτο ακίνητο είναι η στιγμή που η εφαρμογή αρχίζει να χρησιμεύει, το
-    // δεύτερο είναι το πιο δυνατό σημάδι ότι κάποιος έμεινε. Τα δύο μετρώνται
-    // χωριστά, γιατί απαντούν σε διαφορετική ερώτηση. Καταγράφεται ΜΟΝΟ σε νέο
-    // ακίνητο: η επεξεργασία υπάρχοντος δεν είναι σκαλί.
-    //
-    // Πλήθος και μόνο, κανένα όνομα, καμία διεύθυνση, κανένα αναγνωριστικό.
-    if (!existing) {
-      const n = await properties.count(supabase, userId);
-      void track(supabase, n >= 2 ? PRODUCT_EVENTS.second_property_added : PRODUCT_EVENTS.property_added, { count: n });
     }
 
     setSaving(false);
