@@ -96,6 +96,33 @@ async function trackTests() {
 
   const fine = await logged({ error: null });
   ok('η επιτυχία δεν αναφέρει τίποτα', fine.reports.length === 0);
+
+  // ── Ο ΔΙΑΚΟΜΙΣΤΗΣ ΠΕΡΙΜΕΝΕΙ ΝΑ ΦΥΓΕΙ Η ΑΝΑΦΟΡΑ ──────────────────────────
+  // Το app/auth/callback/route.ts κάνει `await track(...)` και αμέσως μετά
+  // redirect. Αν η `track` γύριζε πριν τελειώσει το fetch του captureError, η
+  // serverless συνάρτηση θα πάγωνε με τον φάκελο στον δρόμο και η αποτυχία
+  // της εγγραφής θα έμενε μόνο στην κονσόλα (lib/observability/report.ts).
+  {
+    process.env.SENTRY_DSN = 'https://k@sentry.invalid/1';
+    const origFetch = globalThis.fetch;
+    const origErr = console.error;
+    console.error = () => {};
+    let release: () => void = () => {};
+    let posted = 0;
+    globalThis.fetch = (() => { posted++; return new Promise<Response>(r => { release = () => r(new Response(null)); }); }) as typeof fetch;
+    let settled = false;
+    const run = track({ rpc: () => Promise.resolve({ error: { code: '42501' } }) } as never, PRODUCT_EVENTS.signed_up)
+      .then(() => { settled = true; });
+    for (let i = 0; i < 20; i++) await Promise.resolve();
+    ok('η αναφορά στάλθηκε', posted === 1);
+    ok('η track δεν τελειώνει πριν φύγει η αναφορά', !settled);
+    release();
+    await run;
+    ok('και τελειώνει μόλις φύγει', settled);
+    globalThis.fetch = origFetch;
+    console.error = origErr;
+    delete process.env.SENTRY_DSN;
+  }
 }
 
 // ── ΤΙ ΔΕΝ ΕΠΙΤΡΕΠΕΤΑΙ ΝΑ ΜΠΕΙ ΣΤΟ ΦΟΡΤΙΟ ───────────────────────────────

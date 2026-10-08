@@ -54,8 +54,10 @@ export type ProductEvent = typeof PRODUCT_EVENTS[keyof typeof PRODUCT_EVENTS];
 export type EventProps = Record<string, string | number | boolean>;
 
 /**
- * Καταγράφει ένα σκαλί. ΠΟΤΕ δεν πετάει και ΠΟΤΕ δεν μπλοκάρει: η μέτρηση
- * είναι δευτερεύουσα και δεν επιτρέπεται να χαλάσει την πράξη που μετρά.
+ * Καταγράφει ένα σκαλί. ΠΟΤΕ δεν πετάει και ΠΟΤΕ δεν μπλοκάρει την πράξη: η
+ * μέτρηση είναι δευτερεύουσα και δεν επιτρέπεται να χαλάσει την πράξη που
+ * μετρά. Ο πελάτης την καλεί με `void`. Η υπόσχεση τελειώνει όταν φύγει και η
+ * αναφορά σφάλματος, ώστε ο διακομιστής που την περιμένει να μην τη χάνει.
  *
  * Σφάλμα που ΕΠΙΣΤΡΕΦΕΙ η βάση (λείπει η συνάρτηση, αφαιρέθηκε το δικαίωμα,
  * απορρίφθηκε το όνομα) αναφέρεται στο captureError, δεν πετιέται. Ως τώρα
@@ -73,6 +75,9 @@ export async function track(
   try {
     const res = await supabase.rpc('log_event', { p_event: event, p_props: props });
     const code = res?.error?.code;
-    if (code) captureError(new Error(`log_event ${event}: ${code}`), { event, code });
+    // ΠΕΡΙΜΕΝΕΙ ΤΗΝ ΑΝΑΦΟΡΑ. Στον διακομιστή (app/auth/callback) μια συνάρτηση
+    // που απαντά πριν φύγει ο φάκελος τον χάνει. Το captureError δεν
+    // απορρίπτεται ποτέ και οι κλήσεις του πελάτη είναι `void track(...)`.
+    if (code) await captureError(new Error(`log_event ${event}: ${code}`), { event, code });
   } catch { /* σιωπηλά, όπως και το logActivity */ }
 }
