@@ -143,7 +143,7 @@ ok('η συνάρτηση κλειδώνει το search_path', /set search_path
 // ορίσματα. Τώρα ο μετρητής βγαίνει από το ίδιο το σώμα (`meterKind`: αρχείο
 // στο σχήμα της σάρωσης → σάρωση, αλλιώς Νόα) και τα όρια τα ξέρει η βάση.
 const CODE = SRC.split('\n').filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*')).join('\n')
-ok('ο μετρητής βγαίνει από το σώμα με meterKind', /const scan = meterKind\(body\) === 'scan';/.test(SRC))
+ok('ο μετρητής βγαίνει από το σώμα με meterKind', /const scan = !noa && meterKind\(body\) === 'scan';/.test(SRC))
 ok('το `kind` του πελάτη δεν διαβάζεται', !/body\??\.kind/.test(CODE))
 ok('κανένα όριο δεν στέλνεται στη βάση', !/p_(day|month|pool|max_min|trial_|tester_)/.test(CODE))
 ok('καμία κλήση στις παλιές bump_*', !/bump_(ai|scan)_usage/.test(CODE))
@@ -168,6 +168,41 @@ for (const sig of ['take_ai_unit(uuid, uuid)', 'take_scan_unit(uuid, uuid, text)
 ok('οι νέες συναρτήσεις δεν παίρνουν όρια ως ορίσματα',
   /function public\.take_ai_unit\(p_uid uuid, p_request_id uuid\)/.test(UNITS)
   && /function public\.take_scan_unit\(p_uid uuid, p_request_id uuid, p_file_hash text\)/.test(UNITS))
+
+// ── 12. Η ΓΝΩΣΗ ΤΗΣ ΝΟΑΣ ΑΠΟ ΤΟΝ ΔΙΑΚΟΜΙΣΤΗ (08.10.2026) ─────────────────
+// Ο πελάτης στέλνει `persona: 'noa'` και μόνο το προσωπικό κείμενο. Χωρίς
+// `system` ένα σώμα Νόας με μία εικόνα θα περνούσε για σάρωση (στα
+// πληρωμένα χωρίς μηνιαίο όριο) και η γνώση θα κολλούσε ΜΕΤΑ την απόφαση
+// του μετρητή. Η Νόα κρίνεται λοιπόν πριν από τον μετρητή και πριν από το
+// κόψιμο των μηνυμάτων, που αλλάζει το θέμα.
+{
+  const iNoa = SRC.indexOf("const noa = body?.persona === 'noa';")
+  const iReject = SRC.indexOf('if (noa && !noaBlocks)')
+  const iBlocks = SRC.indexOf('noaSystemBlocks(body.messages, body.personal)')
+  const iMeter = SRC.indexOf('meterKind(')
+  const iTrim = SRC.indexOf('slice(-MAX_MESSAGES)')
+  ok('η Νόα αναγνωρίζεται από το `persona`', iNoa > 0)
+  ok('η Νόα κρίνεται πριν από τον μετρητή', iNoa > 0 && iNoa < iMeter && iBlocks < iMeter)
+  ok('η απόρριψη έρχεται πριν από τον μετρητή και τη χρέωση',
+    iReject > iBlocks && iReject < iMeter && iReject < iBump)
+  ok('η απόρριψη είναι 400 χωρίς χρέωση',
+    /if \(noa && !noaBlocks\) \{\s*return NextResponse\.json\([^)]*\{ status: 400 \}\);/.test(SRC.slice(iReject)))
+  ok('ερώτηση της Νόας δεν πέφτει ποτέ στον μετρητή σαρώσεων', /const scan = !noa && meterKind\(body\)/.test(SRC))
+  ok('τα μπλοκ φτιάχνονται πριν από το κόψιμο των μηνυμάτων', iBlocks > 0 && iTrim > iBlocks)
+  const branch = SRC.slice(SRC.indexOf('if (noa) {'), SRC.indexOf('} else if (typeof body.system'))
+  ok('ο κλάδος της Νόας στέλνει τα μπλοκ του διακομιστή', /safeBody\.system = noaBlocks;/.test(branch))
+  ok('ο κλάδος της Νόας δεν διαβάζει το `system` του πελάτη', branch.length > 0 && !/body\.system/.test(branch))
+  // Οι άλλοι καλούντες και οι καρτέλες που άνοιξαν πριν από την αλλαγή.
+  ok('ο παλιός δρόμος μένει ίδιος', SRC.includes(`} else if (typeof body.system === 'string' && body.system.length > 0) {
+      safeBody.system = [{ type: 'text', text: body.system, cache_control: { type: 'ephemeral' } }];
+    } else if (Array.isArray(body.system)) {
+      const blocks = body.system.map(asBlock).filter(Boolean) as { type: 'text'; text: string }[];
+      if (blocks.length) {
+        safeBody.system = blocks.map((b, i) =>
+          i === 0 ? { ...b, cache_control: { type: 'ephemeral' } } : b);
+      }
+    }`))
+}
 
 console.log(fail === 0 ? `✓ anthropic route: ${pass} έλεγχοι πέρασαν` : `✗ anthropic route: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

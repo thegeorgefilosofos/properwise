@@ -16,6 +16,7 @@ import {
 import { meterKind, fileHash, newRequestId, takeUnit, refundUnit } from '@/lib/billing/aiUnits';
 import { alertOutOfCredit } from '@/lib/assistant/creditAlert';
 import { SCAN_SHAPE } from '@/lib/assistant/scanShape';
+import { noaSystemBlocks } from '@/app/dashboard/components/assistantPersona';
 
 // Rate limiting: simple in-memory store (για production χρησιμοποίησε Redis)
 // ΣΗΜ.: σε serverless/πολλαπλά instances αυτό είναι ανά-instance. Είναι φράγμα
@@ -155,12 +156,24 @@ export async function POST(req: NextRequest) {
   if (!Array.isArray(body?.messages) || body.messages.length === 0) {
     return NextResponse.json({ error: 'Λείπουν μηνύματα.' }, { status: 400 });
   }
+  // ── Η ΓΝΩΣΗ ΤΗΣ ΝΟΑΣ ΤΗ ΒΑΖΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ ─────────────────────
+  // Με `persona: 'noa'` ο πελάτης στέλνει μόνο το προσωπικό κείμενο και το
+  // πρώτο μπλοκ φτιάχνεται εδώ. Κρίνεται ΠΡΙΝ από τον μετρητή και ΠΡΙΝ από το
+  // κόψιμο στα MAX_MESSAGES, ώστε το θέμα να βγαίνει όπως το έβγαζε ο πελάτης.
+  // Σώμα Νόας με αρχείο ή χωρίς προσωπικό κείμενο απορρίπτεται χωρίς χρέωση:
+  // χωρίς `system` από τον πελάτη θα περνούσε για σάρωση (scanShape.ts) και
+  // θα έπαιρνε τη γνώση στον μετρητή που στα πληρωμένα δεν έχει όριο.
+  const noa = body?.persona === 'noa';
+  const noaBlocks = noa ? noaSystemBlocks(body.messages, body.personal) : null;
+  if (noa && !noaBlocks) {
+    return NextResponse.json({ error: 'Το αίτημα δεν διαβάστηκε.' }, { status: 400 });
+  }
   // ── ΠΟΙΟΣ ΜΕΤΡΗΤΗΣ: ΤΟ ΚΡΙΝΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ ΑΠΟ ΤΟ ΣΩΜΑ ───────
   // Απόφαση CEO 05.10.2026 (lib/billing/aiUnits.ts `meterKind`). Σάρωση μόνο
   // όταν υπάρχει πραγματικό αρχείο στο σχήμα της σάρωσης· αλλιώς ερώτηση. Το
   // `kind` του πελάτη δεν διαβάζεται: ως εδώ μια ερώτηση με `kind: 'scan'` και
   // ένα αρχείο έπεφτε στον μετρητή σαρώσεων, που στα πληρωμένα δεν έχει όριο.
-  const scan = meterKind(body) === 'scan';
+  const scan = !noa && meterKind(body) === 'scan';
 
   // ── Η ΜΟΝΑΔΑ ΧΡΕΩΝΕΤΑΙ ΠΡΙΝ ΤΟΝ ΠΑΡΟΧΟ, ΑΠΟ ΤΗ ΒΑΣΗ ──────────
   // Οι χάρτες στη μνήμη από πάνω ζουν ΑΝΑ ΣΤΙΓΜΙΟΤΥΠΟ. Το πραγματικό φράγμα
@@ -292,11 +305,13 @@ export async function POST(req: NextRequest) {
     // αυτούσιο σε ΚΑΘΕ μήνυμα. Το caching είναι αντιστοίχιση ΠΡΟΘΕΜΑΤΟΣ και
     // κοστίζει write 1,25× · read 0,10×.
     //
-    // Ο βοηθός στέλνει πλέον ΔΥΟ μπλοκ (assistantPersona.buildSystemBlocks):
-    // πρώτα το σταθερό (γνώση, κανόνες, πλάνα — ίδιο για κάθε χρήστη, το 97,5%
-    // του κειμένου) και μετά το προσωπικό. Έτσι η cache είναι ΚΟΙΝΗ για όλους
-    // τους χρήστες του ίδιου κλειδιού. Το κόστος πέφτει από ~0,130 $ σε
-    // ~0,052 $ ανά ερώτηση, χωρίς να αλλάξει λέξη στο prompt.
+    // Η Νόα έχει ΔΥΟ μπλοκ (assistantPersona.noaSystemBlocks): πρώτα το
+    // σταθερό (γνώση, κανόνες, πλάνα — ίδιο για κάθε χρήστη, το 97,5% του
+    // κειμένου, το φτιάχνει πλέον ο διακομιστής) και μετά το προσωπικό, που
+    // το στέλνει ο πελάτης. Έτσι η cache είναι ΚΟΙΝΗ για όλους τους χρήστες του
+    // ίδιου κλειδιού. Το κόστος πέφτει από ~0,130 $ σε ~0,052 $ ανά ερώτηση,
+    // χωρίς να αλλάξει λέξη στο prompt. Οι άλλοι καλούντες (σαρώσεις, σύνταξη,
+    // καρτέλες που άνοιξαν πριν από την αλλαγή) στέλνουν ακόμη δικό τους `system`.
     //
     // Το TTL των 5 λεπτών ανανεώνεται ΔΩΡΕΑΝ σε κάθε hit, άρα η κίνηση κρατά
     // την cache ζεστή χωρίς δεύτερη χρέωση write. Γι' αυτό δεν χρησιμοποιούμε
@@ -310,7 +325,9 @@ export async function POST(req: NextRequest) {
       b && typeof b === 'object' && typeof (b as { text?: unknown }).text === 'string'
         ? { type: 'text' as const, text: (b as { text: string }).text }
         : null;
-    if (typeof body.system === 'string' && body.system.length > 0) {
+    if (noa) {
+      safeBody.system = noaBlocks;
+    } else if (typeof body.system === 'string' && body.system.length > 0) {
       safeBody.system = [{ type: 'text', text: body.system, cache_control: { type: 'ephemeral' } }];
     } else if (Array.isArray(body.system)) {
       const blocks = body.system.map(asBlock).filter(Boolean) as { type: 'text'; text: string }[];

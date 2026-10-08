@@ -16,7 +16,8 @@
 //   · πραγματικό αρχείο χωρίς `kind` → σάρωση, με το αποτύπωμα του αρχείου·
 //   · κανένα όριο και κανένας χρήστης από το σώμα δεν φτάνει στη βάση·
 //   · αποτυχία παρόχου → ΜΙΑ επιστροφή, με το κλειδί της χρέωσης·
-//   · βάση που δεν απαντά → 503 και καμία κλήση στον πάροχο.
+//   · βάση που δεν απαντά → 503 και καμία κλήση στον πάροχο·
+//   · `persona: 'noa'`: η γνώση από τον διακομιστή, ποτέ μετρητής σαρώσεων.
 // ═══════════════════════════════════════════════════════════════════════════
 import Module from 'node:module'
 import { createHash } from 'node:crypto'
@@ -89,8 +90,10 @@ const db = {
 // ── Ο ΨΕΥΤΙΚΟΣ ΠΑΡΟΧΟΣ ─────────────────────────────────────────────────────
 let providerCalls = 0
 let providerStatus = 200
-globalThis.fetch = (async () => {
+let providerBody: { system?: { text: string; cache_control?: unknown }[] } | null = null
+globalThis.fetch = (async (_url: unknown, init?: { body?: unknown }) => {
   providerCalls++
+  providerBody = JSON.parse(String(init?.body ?? 'null'))
   return new Response(JSON.stringify(providerStatus === 200
     ? { content: [{ type: 'text', text: 'εντάξει' }] }
     : { error: { type: 'api_error', message: 'boom' } }), { status: providerStatus, headers: { 'content-type': 'application/json' } })
@@ -101,6 +104,7 @@ async function main() {
 const { NextRequest } = await import('next/server')
 const { SITE_HOST } = await import('@/lib/core/site')
 const { POST } = await import('./route')
+const { knowledgeFor } = await import('@/app/dashboard/components/assistantPersona')
 
 let seq = 0
 function fresh(limit = Infinity) {
@@ -192,6 +196,28 @@ state.down = true
 const r1 = await send(ask()), r2 = await send(scanBody())
 ok('βάση κάτω: 503 στην ερώτηση και στη σάρωση', r1.status === 503 && r2.status === 503, `${r1.status}/${r2.status}`)
 ok('βάση κάτω: καμία κλήση στον πάροχο', providerCalls === 0)
+
+// ── 7. Η ΝΟΑ: Η ΓΝΩΣΗ ΑΠΟ ΤΟΝ ΔΙΑΚΟΜΙΣΤΗ, ΠΟΤΕ ΣΤΟΝ ΜΕΤΡΗΤΗ ΣΑΡΩΣΕΩΝ ──────
+// Χωρίς `system`, το σώμα της Νόας με μία εικόνα έχει το σχήμα της σάρωσης.
+// Αν περνούσε, θα χρεωνόταν στον μετρητή που στα πληρωμένα δεν έχει όριο.
+fresh()
+const noaImg = await send(scanBody({ persona: 'noa', personal: 'προσωπικό' }))
+ok('Νόα με εικόνα: 400', noaImg.status === 400, String(noaImg.status))
+ok('Νόα με εικόνα: καμία χρέωση, καμία κλήση στον πάροχο', takes().length === 0 && providerCalls === 0)
+fresh()
+const noaBare = await send(ask({ persona: 'noa' }))
+ok('Νόα χωρίς προσωπικό κείμενο: 400 χωρίς χρέωση', noaBare.status === 400 && takes().length === 0, String(noaBare.status))
+fresh()
+const noaOk = await send({
+  persona: 'noa', personal: 'ΤΟ ΠΡΟΣΩΠΙΚΟ', system: 'ΚΕΙΜΕΝΟ ΤΟΥ ΠΕΛΑΤΗ ΠΟΥ ΑΓΝΟΕΙΤΑΙ',
+  messages: [{ role: 'user', content: 'Τι δάνειο να πάρω;' }],
+})
+const sys = providerBody?.system ?? []
+ok('Νόα: 200 και χρέωση στη Νόα', noaOk.status === 200 && takes().map(c => c.fn).join() === 'take_ai_unit', String(noaOk.status))
+ok('Νόα: το πρώτο μπλοκ είναι η γνώση του θέματος', sys[0]?.text === knowledgeFor('Τι δάνειο να πάρω;'))
+ok('Νόα: το δεύτερο μπλοκ είναι το προσωπικό κείμενο', sys[1]?.text === 'ΤΟ ΠΡΟΣΩΠΙΚΟ' && sys.length === 2)
+ok('Νόα: ένα cache_control, στο πρώτο μπλοκ', sys.filter(b => b.cache_control).length === 1 && !!sys[0]?.cache_control)
+ok('Νόα: το `system` του πελάτη δεν φτάνει στον πάροχο', !JSON.stringify(sys).includes('ΑΓΝΟΕΙΤΑΙ'))
 
 console.log(fail === 0 ? `✓ anthropic meter: ${pass} έλεγχοι πέρασαν` : `✗ anthropic meter: ${fail} απέτυχαν από ${pass + fail}`)
 process.exit(fail ? 1 : 0)
