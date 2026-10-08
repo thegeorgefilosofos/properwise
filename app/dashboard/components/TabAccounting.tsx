@@ -293,7 +293,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               {/* `seg` και όχι `chip`: η ράγα από πάνω έχει ήδη δικό της περίγραμμα. */}
               {([['personal','Ενοίκια ιδιώτη'],['business','Μέσω επιχείρησης']] as [typeof elp,string][]).map(([e,label])=>(
                 <ChipToggle key={e} on={elp===e} shape="seg" onClick={()=>setElp(e)}
-                  title={e==='personal'?'Άρθρο 40: δική του κλίμακα, με τεκμαρτή έκπτωση 5%':'Άρθρο 15 ή εταιρικός συντελεστής, όταν το ακίνητο ανήκει στην επιχείρηση'}>
+                  title={e==='personal'?`Άρθρο 40: δική του κλίμακα, με τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)}`:'Άρθρο 15 ή εταιρικός συντελεστής, όταν το ακίνητο ανήκει στην επιχείρηση'}>
                   {label}
                 </ChipToggle>
               ))}
@@ -487,7 +487,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                 <div>
                   <div style={{ display:'flex', alignItems:'center', gap: 8, flexWrap:'wrap' }}>
                     <Check checked={rentsBank} onChange={v=>setRentsBankOverride(v===collection.viaBank?null:v)} label={<span style={{ fontSize:12, color:'var(--text-secondary)' }}>Τα ενοίκια εισπράττονται <strong style={{ color:'var(--text-primary)' }}>μέσω τράπεζας</strong>.</span>}/>
-                    <InfoHint>Από {grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν.5222/2025, άρθρο 210· έναρξη με την απόφαση ΑΑΔΕ Α.1187/2026) τα μισθώματα κατοικίας θα πρέπει να εισπράττονται με τραπεζικό ή ηλεκτρονικό μέσο (κατάθεση, IRIS, έμβασμα). Με μετρητά θα χάνεται η τεκμαρτή έκπτωση 5% και θα φορολογείσαι στο 100% του ενοικίου. Για τις χρήσεις 2025-2026 η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης.</InfoHint>
+                    <InfoHint>Από {grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν.5222/2025, άρθρο 210· έναρξη με την απόφαση ΑΑΔΕ Α.1187/2026) τα μισθώματα κατοικίας θα πρέπει να εισπράττονται με τραπεζικό ή ηλεκτρονικό μέσο (κατάθεση, IRIS, έμβασμα). Με μετρητά θα χάνεται η τεκμαρτή έκπτωση {fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} και θα φορολογείσαι στο 100% του ενοικίου. Για τις χρήσεις 2025-2026 η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης.</InfoHint>
                   </div>
                   {/* ΑΠΟ ΠΟΥ ΤΟ ΞΕΡΕΙ. Χωρίς αυτή τη γραμμή, ο χρήστης βλέπει ένα
                       τσεκαρισμένο κουτάκι και δεν έχει λόγο να το ελέγξει — που
@@ -620,7 +620,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                   style={{ width:74, height:T.h.lg, padding:'10px 16px', borderRadius:10, border:'1px solid var(--border-control)', background:'var(--bg-elevated)', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right', outline:'none', transition:'border-color 0.14s' }}/>
                 <span style={{ color:'var(--text-tertiary)', fontSize:14 }}>%</span>
               </div>
-              <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans }}>Το μέρισμα φορολογείται επιπλέον με 5%.</span>
+              <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans }}>Το μέρισμα φορολογείται επιπλέον με {fpRate(DIVIDEND_WITHHOLDING_RATE*100)}.</span>
             </div>
           )}
           <div style={{ display:'flex', flexDirection:'column', gap:6, justifyContent:'center', paddingLeft:14, borderLeft:'1px solid var(--border-subtle)', minWidth:220 }}>
@@ -812,10 +812,10 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                   κι οι γραμμές γίνονται τέσσερις. Στοίχιση πέρα πέρα με μαλακά
                   ενωτικά από κάτω: χωριστά, η μία τεντώνει τα κενά κι ο άλλος
                   δεν έχει τι να κλείσει. */}
-              <p className="po-just" style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'7px 0 0', fontFamily: T.font.sans, lineHeight:1.6, maxWidth:560 }}>{hy(<>Σταθερός φόρος <strong style={{ color:'var(--text-primary)' }}>22%</strong> επί των καθαρών κερδών, ανεξαρτήτως ύψους εισοδήματος (ΑΕ, ΕΠΕ, ΙΚΕ, ΟΕ, ΕΕ). Στη διανομή μερίσματος προστίθεται φόρος 5% και ισχύει προκαταβολή φόρου για το επόμενο έτος.</>)}</p>
+              <p className="po-just" style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'7px 0 0', fontFamily: T.font.sans, lineHeight:1.6, maxWidth:560 }}>{hy(<>Σταθερός φόρος <strong style={{ color:'var(--text-primary)' }}>{fpRate(CORPORATE_TAX_RATE_2026*100)}</strong> επί των καθαρών κερδών, ανεξαρτήτως ύψους εισοδήματος (ΑΕ, ΕΠΕ, ΙΚΕ, ΟΕ, ΕΕ). Στη διανομή μερίσματος προστίθεται φόρος {fpRate(DIVIDEND_WITHHOLDING_RATE*100)} και ισχύει προκαταβολή φόρου για το επόμενο έτος.</>)}</p>
             </div>
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:104, height:76, borderRadius: T.radius.popup, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', flexShrink:0 }}>
-              <span style={{ fontSize:28, fontWeight:700, color:'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', lineHeight:1 }}>22%</span>
+              <span style={{ fontSize:28, fontWeight:700, color:'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', lineHeight:1 }}>{fpRate(CORPORATE_TAX_RATE_2026*100)}</span>
               <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', letterSpacing:'0.5px', textTransform:'uppercase', fontFamily: T.font.sans, marginTop: 4 }}>Συντελεστής</span>
             </div>
           </div>

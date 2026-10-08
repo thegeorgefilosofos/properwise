@@ -165,6 +165,14 @@ export const MUTATIONS = {
   // κατήγγειλε «η μετάλλαξη δεν εφαρμόστηκε», δηλαδή ο φύλακας έμεινε χωρίς
   // απόδειξη ακριβώς επειδή κάποιος τον βελτίωσε. Ενα νέο ποσοστό χωρίς
   // μορφοποιητή κοκκινίζει όποιο κι αν είναι το όριο.
+  // Ο ΦΜΑ γραμμένος με το χέρι σε νέα οθόνη· ο φόρος μερίσματος με το θέμα σε
+  // άλλη κλίση από το λήμμα (ο τόνος μετακινείται: μέρισμα → μερίσματος)· και
+  // συντελεστής που άλλαξε στη σταθερά χωρίς να ενημερωθεί το `expect`.
+  'tax-literals': { every: [
+    { add: 'app/__mut_tax__.tsx', content: tsx('    <p>Φόρος μεταβίβασης 3,09% επί της αξίας</p>') },
+    { add: 'app/__mut_tax2__.tsx', content: tsx('    <p>Στη διανομή κερδών ο φόρος μερίσματος 5% παρακρατείται</p>') },
+    { file: 'lib/accounting/transfer.ts', from: 'export const TRANSFER_TAX_RATE = 0.0309', to: 'export const TRANSFER_TAX_RATE = 0.031' },
+  ] },
   'percent-formatter': { add: 'components/__mut__.tsx', content: tsx('    <div>{`Πληρότητα ${occ.pct}%`}</div>') },
   'number-font': { add: 'components/__mut__.tsx', content: tsx("    <p style={{ fontFamily: T.font.mono }}>Μια ολόκληρη πρόταση γραμμένη σε γραμματοσειρά στηλών</p>") },
 

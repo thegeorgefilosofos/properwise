@@ -12,7 +12,8 @@ import { cardStyle } from '../../LoanShared'
 import { T, fixedCols } from '@/components/Theme'
 import { BORROWER_PROFILES, fmtEur, fmtPct, loanTaxNote, type LoanType, type RateType, type BorrowerType, type MarketRates } from '../../TabLoanData'
 import { greekDay, MONTH_MEAN } from '@/lib/market/ecb'
-import { NEW_BUILD_VAT_SUSPENDED_UNTIL } from '@/lib/accounting/transfer'
+import { NEW_BUILD_VAT_SUSPENDED_UNTIL, NEW_BUILD_VAT_RATE, TRANSFER_TAX_RATE } from '@/lib/accounting/transfer'
+import { fpRate } from '@/lib/core/format'
 import { PROP_TYPE_OPTIONS, AREA_OPTIONS, LOAN_TYPE_OPTIONS, RATE_TYPE_OPTIONS, FIXED_PERIOD_OPTIONS, euriborPeriod } from './model'
 import { SectionLabel, ReadStat, type SetState } from './Bits'
 
@@ -54,8 +55,8 @@ export function PropertyCard({
           {hasAgent&&<NumberInput label="Ποσοστό μεσίτη" value={agentPct} onChange={setAgentPct} suffix="%"/>}
           {hasAgent&&<ReadStat label="Αμοιβή μεσίτη" value={fmtEur(AGNT)}/>}
         </div>
-        {isNewBuilding&&<div style={{padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p title="ΦΠΑ: Φόρος Προστιθέμενης Αξίας · ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Νεόδμητο: ο ΦΠΑ 24% ({fmtEur(vatOwed)}) είναι σε αναστολή έως {NEW_BUILD_VAT_SUSPENDED_UNTIL}, οπότε ο υπολογισμός κρατά ΦΜΑ 3,09%</p></div>}
-        {isCommercial&&<div style={{padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p title="ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου (3% συν 3% υπέρ δήμων επί του φόρου)" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Επαγγελματικό: ΦΜΑ 3,09% + Ψηφιακό Τέλος Συναλλαγής 3,6% αν εκμισθωθεί</p></div>}
+        {isNewBuilding&&<div style={{padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p title="ΦΠΑ: Φόρος Προστιθέμενης Αξίας · ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Νεόδμητο: ο ΦΠΑ {fpRate(NEW_BUILD_VAT_RATE*100)} ({fmtEur(vatOwed)}) είναι σε αναστολή έως {NEW_BUILD_VAT_SUSPENDED_UNTIL}, οπότε ο υπολογισμός κρατά ΦΜΑ {fpRate(TRANSFER_TAX_RATE*100)}</p></div>}
+        {isCommercial&&<div style={{padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p title="ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου (3% συν 3% υπέρ δήμων επί του φόρου)" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Επαγγελματικό: ΦΜΑ {fpRate(TRANSFER_TAX_RATE*100)} + Ψηφιακό Τέλος Συναλλαγής 3,6% αν εκμισθωθεί</p></div>}
       </div>
     </div>
   );

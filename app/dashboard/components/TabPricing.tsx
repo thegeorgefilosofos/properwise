@@ -43,6 +43,8 @@ import { isIndividualTaxpayer, businessFormOf } from '@/lib/accounting/taxProfil
 import { incomeStatement } from '@/lib/accounting/statement';
 import { consolidateRentTax, taxShareOf } from '@/lib/billing/consolidate';
 import { rentalBracketsForYear } from '@/lib/billing/greekTax';
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
+import { fpRate } from '@/lib/core/format';
 import { isLet, readStatus, type StatusRow } from '@/lib/property/status';
 import type { LegalForm } from '@/lib/accounting/dossier';
 import { shortTermCashflow } from '@/lib/tax/shortTermCashflow';
@@ -106,6 +108,9 @@ const CAL_GAP = 4         // το κενό ανάμεσα στα κελιά
 const CAL_PAD = 16        // το γέμισμα της κάρτας, ανά πλευρά
 const CAL_MONTH_MIN = 7 * CAL_CELL_MIN + 6 * CAL_GAP + 2 * CAL_PAD
 const todayIso = () => athensToday();
+// Η βάση του φόρου και η τεκμαρτή έκπτωση, από τη σταθερά που τις υπολογίζει.
+const DEDUCTION_PCT = fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100);
+const TAX_BASE_PCT = fpRate((1 - PRESUMPTIVE_DEDUCTION_RATE) * 100);
 const addDaysIso = (d: string, n: number) => { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
 
 // ΓΙΑΤΙ ΕΞΩ ΑΠΟ ΤΟ COMPONENT. Γραμμένο μέσα στο σώμα του TabPricing, το
@@ -830,7 +835,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
 
               <MoneySteps scale="lead" steps={cashflow.steps.map(st => ({
                 ...st,
-                ...(st.key === 'tax' ? { label: tax.label, note: tax.note ?? 'Υπολογίζεται στο 95% των ακαθάριστων (τεκμαρτή έκπτωση 5%), όχι στο υπόλοιπο μετά τα έξοδα.' } : null),
+                ...(st.key === 'tax' ? { label: tax.label, note: tax.note ?? `Υπολογίζεται στο ${TAX_BASE_PCT} των ακαθάριστων (τεκμαρτή έκπτωση ${DEDUCTION_PCT}), όχι στο υπόλοιπο μετά τα έξοδα.` } : null),
                 negative: st.kind === 'total' && cashflow.net < 0,
               }))} />
 
@@ -844,7 +849,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                   χωρίς Δήλωση Βραχυχρόνιας είναι εκκρεμότητα, όχι λογιστικό λάθος. */}
               <div style={{ marginTop: 14, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.65 }}>
                 {tax.onGross
-                  ? 'Ο φόρος υπολογίζεται στο 95% των ακαθάριστων (τεκμαρτή έκπτωση 5%) με την κλίμακα ενοικίων, όχι στο υπόλοιπο μετά τα έξοδα.'
+                  ? `Ο φόρος υπολογίζεται στο ${TAX_BASE_PCT} των ακαθάριστων (τεκμαρτή έκπτωση ${DEDUCTION_PCT}) με την κλίμακα ενοικίων, όχι στο υπόλοιπο μετά τα έξοδα.`
                   : 'Ο φόρος υπολογίζεται στα καθαρά κέρδη, μετά τα έξοδα.'} Δεν περιλαμβάνονται ο ΕΝΦΙΑ και οι δόσεις δανείου: τα αφαιρεί η Κατάσταση αποτελεσμάτων στη {navLabel('accounting')}.
                 {taxSummary.unresolvedCount > 0 && ` ${taxSummary.unresolvedCount === 1 ? 'Μία διαμονή' : `${fn(taxSummary.unresolvedCount)} διαμονές`} χωρίς ανάλυση ποσού σε ακαθάριστο, προμήθεια και τέλος: τα ακαθάριστα είναι εκτίμηση ώσπου να συμπληρώσεις την ανάλυση.`}
               </div>

@@ -18,7 +18,8 @@ import { PublicFooter, PublicNav, JsonLd } from './PublicChrome';
 import { T } from '@/components/tokens';
 import { hy } from '@/components/Hyphen';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
-import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
+import { FIRST_YEAR_NEW_BRACKETS, RENTAL_TAX_BRACKETS_2026 } from '@/lib/billing/greekTax';
+import { ratePct } from '@/app/odigos/taxText';
 import { athensParts } from '@/lib/core/time';
 import { ACCENT, PANEL, TEXT, MUTED, FAINT, LINE, GAP, CARD_GAP, wrap, ic, check } from './landingKit'
 import {
@@ -122,12 +123,16 @@ export const metadata = {
 //
 // ΚΑΙ ΚΑΘΕ ΛΕΖΑΝΤΑ ΛΕΕΙ ΑΠΟ ΠΟΥ. Το «με πρόσφατο έλεγχο» δεν έλεγε πότε, ενώ
 // η οθόνη των παρόχων τυπώνει τον μήνα (data/price-sources.json)· η κλίμακα
-// παίρνει τον νόμο της. Η πρώτη λεζάντα ήταν η μόνη τρίστιχη στα 1440.
+// παίρνει τον νόμο της. Η πρώτη λεζάντα ήταν η μόνη τρίστιχη στα 1440. Τα
+// άκρα της κλίμακας βγαίνουν από τα κλιμάκια που υπολογίζουν· το πλήθος το
+// ελέγχει απέναντί τους το guard-landing-stats.
+const SCALE_LOW = ratePct(RENTAL_TAX_BRACKETS_2026[0].rate);
+const SCALE_HIGH = ratePct(RENTAL_TAX_BRACKETS_2026[RENTAL_TAX_BRACKETS_2026.length - 1].rate);
 const STATS = [
   { n: '7',  u: 'είδη εγγράφων',           l: 'Λογαριασμοί, μισθωτήρια, κρατικά έγγραφα.' },
   { n: '13', u: 'πάροχοι ρεύματος',        l: 'Τα τιμολόγιά τους, με τον μήνα του τελευταίου ελέγχου.' },
   { n: '16', u: 'ασφαλιστικές',            l: 'Κατοικία και επαγγελματική στέγη, σύγκριση ανά κάλυψη.' },
-  { n: '4',  u: 'κλιμάκια φόρου',          l: 'Στα ενοίκια, 15% ως 45% (ν. 5246/2025).' },
+  { n: '4',  u: 'κλιμάκια φόρου',          l: `Στα ενοίκια, ${SCALE_LOW} ως ${SCALE_HIGH} (ν. 5246/2025).` },
 ];
 
 export default async function Landing() {
