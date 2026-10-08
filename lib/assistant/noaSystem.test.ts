@@ -15,7 +15,7 @@
 //     που ξεκίνησε ο διακομιστής.
 // ═══════════════════════════════════════════════════════════════════════════
 import {
-  STABLE_KNOWLEDGE, knowledgeFor, packsFor, noaTopic, noaSystemBlocks,
+  STABLE_KNOWLEDGE, knowledgeFor, packsFor, noaTopic, noaSystemBlocks, NOA_TOPIC_TAIL, KNOWLEDGE_PACK_IDS,
 } from '../../app/dashboard/components/assistantPersona';
 import { energyProgramStates, EXOIKONOMO_2025 } from '../loans/energyPrograms';
 import { spitiMouOpen } from '../loans/recommend';
@@ -107,6 +107,38 @@ ok('μηνύματα που δεν είναι πίνακας: κενό θέμα'
   ok('ολόκληρη ιστορία: φορτώνονται τα δάνεια', packsFor(noaTopic(full)).join(',') === 'loans');
   ok('μετά το κόψιμο θα ήταν άλλη γνώση: γι\' αυτό μετράει η σειρά',
     knowledgeFor(noaTopic(trimmed)) !== blocks?.[0].text);
+}
+
+// ── 3β. ΤΟ ΘΕΜΑ ΔΙΑΒΑΖΕΙ ΟΥΡΕΣ, ΟΧΙ ΟΛΟ ΤΟ ΣΩΜΑ ───────────────────────────
+// Το θέμα βγαίνει ΠΡΙΝ από τη χρέωση και τον έλεγχο του πακέτου. Χωρίς όριο,
+// έξι ερωτήσεις των ~2 MB έκαναν τον διακομιστή να ψάχνει ~90 λέξεις σε ~11 MB
+// για κάθε αίτημα. Το ίδιο και για χρήστη που θα έπαιρνε 403.
+{
+  const huge = 'καλημέρα '.repeat(220_000) + 'Τι δάνειο να πάρω;';
+  ok('η μεγάλη ερώτηση είναι πάνω από 1 MB', huge.length > 1_000_000);
+  const big: Turn[] = [];
+  for (let i = 0; i < 6; i++) big.push({ role: 'user', text: huge }, { role: 'assistant', text: 'ας δούμε' });
+  const topic = noaTopic(wire(big));
+  ok('έξι τεράστιες ερωτήσεις: το θέμα μένει μέσα στο όριο', topic.length <= 6 * NOA_TOPIC_TAIL + 5);
+  ok('η λέξη στο τέλος της τεράστιας ερώτησης μετράει ακόμη', packsFor(topic).join(',') === 'loans');
+  const t0 = Date.now();
+  const blocks = noaSystemBlocks(wire(big), P);
+  ok(`η γνώση για τεράστιο σώμα βγαίνει γρήγορα (${Date.now() - t0} ms)`,
+    blocks !== null && Date.now() - t0 < 500);
+
+  // Ερώτηση στο όριο: ίδια με πριν, byte προς byte.
+  const edge = 'α'.repeat(NOA_TOPIC_TAIL - 7) + ' δάνειο';
+  ok('ερώτηση ως το όριο: αυτούσια', edge.length === NOA_TOPIC_TAIL
+    && noaTopic([{ role: 'user', content: edge }]) === edge);
+
+  // Η ουρά δεν ξεκινά με μισή λέξη: η «απόδοση» κομμένη θα έλεγε «δοση» (δάνεια).
+  const cut = 'απο' + 'δοση' + ' χ'.repeat((NOA_TOPIC_TAIL - 4) / 2);
+  ok('η ουρά της κομμένης ερώτησης ξεκινά με το «δοση»', cut.slice(-NOA_TOPIC_TAIL).startsWith('δοση'));
+  ok('μισή λέξη στην αρχή της ουράς δεν φορτώνει άσχετο πακέτο',
+    packsFor(noaTopic([{ role: 'user', content: cut }])).length === KNOWLEDGE_PACK_IDS.length);
+  // Ενώ λέξη που ξεκινά ακριβώς στην αρχή της ουράς μένει.
+  const whole = 'απο ' + 'δοση' + ' χ'.repeat((NOA_TOPIC_TAIL - 4) / 2);
+  ok('ολόκληρη λέξη στην αρχή της ουράς μετράει', packsFor(noaTopic([{ role: 'user', content: whole }])).join(',') === 'loans');
 }
 
 // ── 4. Η ΜΕΡΑ ΤΗΣ ΕΡΩΤΗΣΗΣ, ΟΧΙ Η ΜΕΡΑ ΤΗΣ ΦΟΡΤΩΣΗΣ ───────────────────────
