@@ -5,7 +5,7 @@
 // είναι ΑΚΡΙΒΩΣ οι κατάλογοι της βάσης. Βήμα που λείπει από τη βάση δεν
 // μετριέται ποτέ και κανείς δεν το βλέπει, γιατί η συνάρτηση σωπαίνει.
 import { readFileSync, readdirSync } from 'node:fs'
-import { SIGNUP_STEPS, SIGNUP_SOURCES, signupSource, isMobileUa } from './signupFunnel'
+import { SIGNUP_STEPS, SIGNUP_SOURCES, signupSource, isMobileUa, landingQuery } from './signupFunnel'
 
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
@@ -33,6 +33,52 @@ ok('άγνωστος τομέας: other', signupSource(DESKTOP, '', 'https://ex
 ok('η πηγή είναι πάντα λέξη του καταλόγου', [IG, LI, SAFARI, DESKTOP].every(ua =>
   ['', '?utm_source=x', '?utm_source=facebook'].every(q =>
     (SIGNUP_SOURCES as readonly string[]).includes(signupSource(ua, q, 'https://t.co/abc', HOST)))))
+
+// ── Η ΠΡΩΤΗ ΕΠΑΦΗ ΤΗΣ ΦΟΡΤΩΣΗΣ ─────────────────────────────────────────────
+// Ο σύνδεσμος του Short οδηγεί σε σελίδα εργαλείου, που οδηγεί στο /signup με
+// ήπια πλοήγηση: εκεί η διεύθυνση δεν έχει utm και ο referrer μπορεί να λείπει.
+ok('το utm της άφιξης, με κομμένο referrer', signupSource(SAFARI, '', '', HOST, '?utm_source=youtube&utm_medium=short&utm_campaign=x') === 'youtube')
+ok('το utm της άφιξης, από υπολογιστή', signupSource(DESKTOP, '', '', HOST, '?utm_source=instagram') === 'instagram')
+ok('το utm της τρέχουσας διεύθυνσης κερδίζει της άφιξης', signupSource(SAFARI, '?utm_source=linkedin', '', HOST, '?utm_source=youtube') === 'linkedin')
+ok('το utm της άφιξης κερδίζει τον referrer', signupSource(DESKTOP, '', 'https://www.google.com/', HOST, '?utm_source=youtube') === 'youtube')
+ok('η εφαρμογή κερδίζει και το utm της άφιξης', signupSource(IG, '', '', HOST, '?utm_source=youtube') === 'instagram')
+ok('άγνωστο utm άφιξης: other, όχι ελεύθερο κείμενο', signupSource(SAFARI, '', '', HOST, '?utm_source=kati-allo') === 'other')
+ok('κενή άφιξη: όλα όπως πριν', [IG, LI, SAFARI, DESKTOP].every(ua =>
+  ['', '?utm_source=x', '?utm_source=youtube'].every(q =>
+    ['', 'https://www.google.com/', 'https://properwise.gr/', 'όχι διεύθυνση'].every(r =>
+      signupSource(ua, q, r, HOST, '') === signupSource(ua, q, r, HOST)))))
+ok('με άφιξη, η πηγή είναι πάντα λέξη του καταλόγου', [IG, LI, SAFARI, DESKTOP].every(ua =>
+  ['', '?utm_source=x', '?utm_source=%E2%9C%93', '?utm_source=youtube'].every(l =>
+    (SIGNUP_SOURCES as readonly string[]).includes(signupSource(ua, '', 'https://t.co/abc', HOST, l)))))
+
+// Η διεύθυνση άφιξης από την καταγραφή πλοήγησης. Οτιδήποτε λείπει ή σπάει: ''.
+const perf = (entries: unknown) => ({ getEntriesByType: () => entries as PerformanceEntryList })
+ok('η άφιξη από την καταγραφή πλοήγησης',
+  landingQuery(perf([{ name: 'https://properwise.gr/kathari-apodosi?utm_source=youtube&utm_campaign=c' }])).includes('utm_source=youtube'))
+ok('χωρίς καταγραφή: κενό', landingQuery(perf([])) === '')
+ok('χωρίς performance: κενό', landingQuery(undefined) === '')
+ok('αν σπάσει: κενό', landingQuery({ getEntriesByType: () => { throw new Error('όχι') } }) === '')
+ok('κενό όνομα: κενό', landingQuery(perf([{ name: '' }])) === '')
+
+// ΤΟ ΟΡΙΟ ΤΗΣ ΙΔΙΩΤΙΚΟΤΗΤΑΣ (/privacy: «κανένας αριθμός δεν μπορεί να
+// συνδεθεί με πρόσωπο»). Η πηγή δεν κουβαλά καμπάνια και δεν αποθηκεύεται.
+const funnelSrc = readFileSync('lib/analytics/signupFunnel.ts', 'utf8')
+ok('το χωνί δεν διαβάζει καμπάνια ούτε αποθηκεύει στη συσκευή',
+  !['utm_campaign', 'localStorage', 'sessionStorage', 'document.cookie'].some(w => funnelSrc.includes(w)))
+
+// ── Η ΕΓΓΡΑΦΗ ΜΕ GOOGLE ΜΕΤΡΑ ΣΤΟΝ ΠΑΡΟΝΟΜΑΣΤΗ ────────────────────────────
+// Η Google γυρίζει στο /signup, όχι στο /auth/callback: εκεί πρέπει να γραφτεί.
+const page = readFileSync('app/signup/page.tsx', 'utf8')
+const helper = /const countSignup = [\s\S]*?\n\]\)/.exec(page)?.[0] ?? ''
+ok('το signed_up γράφεται από τη σελίδα εγγραφής', /PRODUCT_EVENTS\.signed_up\s*\)/.test(helper))
+ok('χωρίς φορτίο: ούτε πηγή ούτε καμπάνια', !/signed_up\s*,/.test(page))
+ok('με όριο χρόνου, ώστε να μην καθυστερεί την άφιξη', /Promise\.race/.test(helper) && /setTimeout/.test(helper))
+const oauth1 = page.slice(page.indexOf("if (oauth === '1')"), page.indexOf('async function acceptOauthConsent'))
+const accept = page.slice(page.indexOf('async function acceptOauthConsent'), page.indexOf('async function declineOauthConsent'))
+const gated = (block: string, who: string) => new RegExp(`if \\(${who}[^\n]*created_at[^\n]*FRESH_MS\\) await countSignup\\(`).test(block)
+ok('μετρά στον κλάδο oauth=1, μόνο για νέο λογαριασμό', gated(oauth1, 'u\\.created_at'))
+ok('μετρά μετά την αποδοχή, από το created_at και όχι από το freshAccount',
+  gated(accept, 'data\\.user\\?\\.created_at') && !/freshAccount[^\n]*countSignup/.test(accept))
 
 ok('κινητό iPhone', isMobileUa(SAFARI))
 ok('κινητό Android', isMobileUa(LI))
