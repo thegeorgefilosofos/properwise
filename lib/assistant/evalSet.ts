@@ -202,6 +202,62 @@ export function scoreAnswer(c: NoaEvalCase, answer: string): EvalScore {
   };
 }
 
+/** Μια γραμμή του τρεξίματος: η απάντηση και η βαθμολογία της, ή το σφάλμα της κλήσης. */
+export interface EvalRow {
+  id: string;
+  category: NoaEvalCase['category'];
+  verdict: EvalScore['verdict'] | 'error';
+  expected: number;
+  found: number[];
+  identity: string[];
+  /** Η απάντηση της Νόας, ή το μήνυμα σφάλματος όταν `verdict` είναι 'error'. */
+  answer: string;
+}
+
+/**
+ * Ρωτά κάθε ερώτηση με τη σειρά και κρατά ΚΑΘΕ αποτέλεσμα.
+ *
+ * ΕΝΑ 429 ΔΕΝ ΣΒΗΝΕΙ ΤΟ ΤΡΕΞΙΜΟ. Ως τώρα το σφάλμα μιας κλήσης (429, 529,
+ * λήξη χρόνου) έβγαινε από τον βρόχο: οι απαντήσεις που είχαν ήδη πληρωθεί
+ * δεν έμπαιναν στο ποσοστό ούτε στο αρχείο --out. Τώρα η ερώτηση γράφεται ως
+ * 'error' και το τρέξιμο συνεχίζει.
+ */
+export async function runEval(
+  cases: readonly NoaEvalCase[],
+  ask: (c: NoaEvalCase) => Promise<string>,
+  onRow: (row: EvalRow) => void = () => {},
+): Promise<EvalRow[]> {
+  const rows: EvalRow[] = [];
+  for (const c of cases) {
+    let row: EvalRow;
+    try {
+      const answer = await ask(c);
+      const s = scoreAnswer(c, answer);
+      row = { id: c.id, category: c.category, verdict: s.verdict, expected: c.expected, found: s.found, identity: s.identity, answer };
+    } catch (err) {
+      const answer = err instanceof Error ? err.message : String(err);
+      row = { id: c.id, category: c.category, verdict: 'error', expected: c.expected, found: [], identity: [], answer };
+    }
+    rows.push(row);
+    onRow(row);
+  }
+  return rows;
+}
+
+/**
+ * Το ποσοστό: μόνο οι ερωτήσεις με μέθοδο μέσα στο prompt που ΑΠΑΝΤΗΘΗΚΑΝ.
+ * Ένα σφάλμα του παρόχου δεν είναι λάθος της Νόας, οπότε δεν μετρά ούτε ως
+ * αποτυχία· μετριέται χωριστά.
+ */
+export function evalSummary(rows: readonly EvalRow[]) {
+  const head = rows.filter(r => r.category === 'in-prompt-method' && r.verdict !== 'error');
+  return {
+    passed: head.filter(r => r.verdict === 'pass').length,
+    answered: head.length,
+    errors: rows.filter(r => r.verdict === 'error').length,
+  };
+}
+
 type Block = { type: 'text'; text: string };
 
 /**

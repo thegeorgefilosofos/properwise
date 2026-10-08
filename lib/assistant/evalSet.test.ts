@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs';
 import {
-  NOA_EVAL_CASES, EVAL_CONTEXT, extractAmounts, scoreAnswer, evalRequestBody,
+  NOA_EVAL_CASES, EVAL_CONTEXT, extractAmounts, scoreAnswer, evalRequestBody, runEval, evalSummary,
 } from './evalSet';
 import {
   noaSystemBlocks, buildPersonalPrompt, packsFor, DEFAULT_PREFS,
@@ -154,5 +154,30 @@ const slices = (taxable: number, brackets: readonly TaxBracket[]) => brackets
   }
 }
 
-console.log(fail === 0 ? `✓ evalSet: ${pass} έλεγχοι πέρασαν` : `✗ evalSet: ${fail} απέτυχαν από ${pass + fail}`);
-if (fail > 0) process.exit(1);
+// ── 6. ΕΝΑ ΣΦΑΛΜΑ ΤΟΥ ΠΑΡΟΧΟΥ ΔΕΝ ΣΒΗΝΕΙ ΤΟ ΤΡΕΞΙΜΟ ───────────────────────
+// Το scripts/noa-eval.ts περίμενε κάθε κλήση χωρίς try/catch: ένα 529 στην
+// προτελευταία ερώτηση έβγαζε το script με 1, χωρίς ποσοστό και χωρίς --out,
+// ενώ οι προηγούμενες απαντήσεις είχαν ήδη πληρωθεί.
+async function providerErrors() {
+  const head = NOA_EVAL_CASES.filter(c => c.category === 'in-prompt-method');
+  const failAt = head[head.length - 2].id;
+  const seen: string[] = [];
+  const rows = await runEval(NOA_EVAL_CASES, async c => {
+    if (c.id === failAt) throw new Error('ο πάροχος απάντησε 529');
+    return `Ο φόρος είναι ${fn(c.expected, 2)}€.`;
+  }, r => seen.push(r.id));
+  ok('όλες οι ερωτήσεις έχουν γραμμή, ακόμη και μετά το σφάλμα', rows.length === NOA_EVAL_CASES.length);
+  ok('κάθε γραμμή αναφέρθηκε τη στιγμή που βγήκε', seen.join() === NOA_EVAL_CASES.map(c => c.id).join());
+  const bad = rows.find(r => r.id === failAt);
+  ok('η αποτυχημένη κλήση γράφεται ως σφάλμα με το μήνυμά της',
+    bad?.verdict === 'error' && bad.answer === 'ο πάροχος απάντησε 529' && bad.found.length === 0);
+  ok('οι υπόλοιπες βαθμολογούνται', rows.filter(r => r.id !== failAt).every(r => r.verdict === 'pass'));
+  const sum = evalSummary(rows);
+  ok('το σφάλμα δεν μετρά ως αποτυχία της Νόας',
+    sum.errors === 1 && sum.answered === head.length - 1 && sum.passed === head.length - 1);
+}
+
+providerErrors().catch(err => { fail++; console.error('✗ runEval έριξε σφάλμα:', err) }).finally(() => {
+  console.log(fail === 0 ? `✓ evalSet: ${pass} έλεγχοι πέρασαν` : `✗ evalSet: ${fail} απέτυχαν από ${pass + fail}`);
+  if (fail > 0) process.exit(1);
+});

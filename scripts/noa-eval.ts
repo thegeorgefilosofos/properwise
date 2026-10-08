@@ -17,7 +17,8 @@
 //
 // ΧΡΗΣΗ:  npx tsx scripts/noa-eval.ts --dry
 //         ANTHROPIC_API_KEY=… npx tsx scripts/noa-eval.ts [--model ID] [--only ID] [--out αρχείο.json]
-// ΕΞΟΔΟΣ: 0 όταν τελείωσε, 2 χωρίς κλειδί (εκτός από --dry), 1 σε σφάλμα.
+// ΕΞΟΔΟΣ: 0 όταν τελείωσε, 2 χωρίς κλειδί (εκτός από --dry), 1 σε σφάλμα
+//         (και όταν έστω μία κλήση απέτυχε· τα υπόλοιπα γράφονται κανονικά).
 // Το κλειδί διαβάζεται μόνο από το περιβάλλον και δεν τυπώνεται ποτέ. Το
 // --out γράφεται πάντα στον προσωρινό κατάλογο του συστήματος.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -25,7 +26,7 @@ import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import {
-  NOA_EVAL_CASES, EVAL_CONTEXT, scoreAnswer, extractAmounts, evalRequestBody,
+  NOA_EVAL_CASES, EVAL_CONTEXT, extractAmounts, evalRequestBody, runEval, evalSummary, type EvalRow,
 } from '../lib/assistant/evalSet';
 import { MODEL_DEEP, MODEL_FAST } from '../lib/assistant/model';
 import { athensNowLabel, athensToday } from '../lib/core/time';
@@ -80,19 +81,20 @@ async function ask(body: ReturnType<typeof evalRequestBody>): Promise<string> {
 }
 
 async function main() {
-  const rows: { id: string; category: string; verdict: string; expected: number; found: number[]; identity: string[]; answer: string }[] = [];
-  for (const c of cases) {
+  // ΚΑΘΕ ΕΡΩΤΗΣΗ ΚΡΑΤΙΕΤΑΙ: ένα 429/529 ή λήξη χρόνου γράφεται ως 'error' και
+  // το τρέξιμο συνεχίζει (runEval), ώστε οι απαντήσεις που πληρώθηκαν να
+  // μπαίνουν στο ποσοστό και στο --out.
+  const rows: EvalRow[] = await runEval(cases, c => {
     const system = noaSystemBlocks([{ role: 'user', content: c.question }], personal);
     if (!system) throw new Error(`${c.id}: δεν φτιάχτηκε system`);
-    const answer = await ask(evalRequestBody(c, system, model));
-    const s = scoreAnswer(c, answer);
-    rows.push({ id: c.id, category: c.category, verdict: s.verdict, expected: c.expected, found: s.found, identity: s.identity, answer });
-    console.log(`${s.verdict.padEnd(9)} ${c.id}  σωστό ${money(c.expected)}  βρέθηκαν ${extractAmounts(answer).map(money).join(', ') || 'κανένα'}`);
-  }
-  const head = rows.filter(r => r.category === 'in-prompt-method');
-  const passed = head.filter(r => r.verdict === 'pass').length;
-  console.log(`\nΜΕ ΜΕΘΟΔΟ ΣΤΟ PROMPT: ${passed}/${head.length} σωστά (${fn(head.length ? (passed / head.length) * 100 : 0, 1)}%)`);
-  const extra = rows.filter(r => r.category !== 'in-prompt-method');
+    return ask(evalRequestBody(c, system, model));
+  }, r => console.log(r.verdict === 'error'
+    ? `${r.verdict.padEnd(9)} ${r.id}  ${r.answer}`
+    : `${r.verdict.padEnd(9)} ${r.id}  σωστό ${money(r.expected)}  βρέθηκαν ${extractAmounts(r.answer).map(money).join(', ') || 'κανένα'}`));
+  const { passed, answered, errors } = evalSummary(rows);
+  console.log(`\nΜΕ ΜΕΘΟΔΟ ΣΤΟ PROMPT: ${passed}/${answered} σωστά (${fn(answered ? (passed / answered) * 100 : 0, 1)}%)`);
+  if (errors) console.log(`ΣΦΑΛΜΑΤΑ ΚΛΗΣΗΣ (δεν μετρούν): ${errors}. Ξανατρέξε τες με --only.`);
+  const extra = rows.filter(r => r.category !== 'in-prompt-method' && r.verdict !== 'error');
   if (extra.length) console.log(`ΕΚΤΟΣ PROMPT (δεν μετρά): ${extra.filter(r => r.verdict === 'pass').length}/${extra.length} σωστά`);
   const ident = rows.filter(r => r.identity.length);
   if (ident.length) console.log(`ΤΑΥΤΟΤΗΤΑ: ${ident.map(r => `${r.id} (${r.identity.join(', ')})`).join(' · ')}`);
@@ -104,6 +106,7 @@ async function main() {
     writeFileSync(file, JSON.stringify({ today, model: model ?? 'modelFor', rows }, null, 2));
     console.log(`\nΑποτελέσματα: ${file}`);
   }
+  if (errors) process.exitCode = 1;
 }
 
 main().catch(err => { console.error(err instanceof Error ? err.message : err); process.exit(1); });
