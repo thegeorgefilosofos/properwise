@@ -37,7 +37,7 @@ import {
 import { PRESUMPTIVE_DEDUCTION_RATE, presumptiveDeductionRateForYear } from '../../lib/billing/presumptive';
 import { fe, fn, fpRate } from '../../lib/core/format';
 import { monthNom, monthAcc, monthShort } from '../../lib/core/months';
-import { svlInput, OCC_STEPS } from './seiresData';
+import { svlInput } from './seiresData';
 import { yearAhead } from './rentFacts';
 import { fact, type Fact, type Facts } from './shorts/kit';
 import { validTo } from './shorts/facts';
@@ -217,7 +217,6 @@ export function dyoDromoiFacts(date: string): Facts {
   // Οι γραμμές του πλέγματος: οι συντελεστές που φτάνει ο μέσος φόρος μέσα στον χρόνο (το τρίτο κλιμάκιο λέγεται στο τείχος του).
   const gridRates = B.map(b => b.rate).filter(r => r <= Math.max(...effCurve) + 1e-9 || r === margShort);
   geo('series.brackets', gridRates, SRC_TAX);
-  geo('series.occSteps', OCC_STEPS, 'scripts/marketing/seiresData.ts (OCC_STEPS): οι υποδιαιρέσεις του άξονα');
   geo('series.exNights', nights, `${SRC_SVL}: θέση του παραδείγματος στον άξονα (ποτέ τυπωμένη)`);
   geo('series.yearNights', NIGHTS_PER_YEAR, 'lib/tools/shortVsLong.ts (NIGHTS_PER_YEAR): το πλάτος του άξονα');
   geo('series.highNightsByMonth', summerNights, 'lib/tools/shortVsLong.ts (spreadNights, «κυρίως καλοκαίρι»)');
@@ -285,13 +284,18 @@ export function dyoDromoiFacts(date: string): Facts {
 
 // ═══ ΧΩΡΙΣ ΕΠΑΝΑΛΗΨΗ ΤΟΥ ΧΘΕΣΙΝΟΥ ══════════════════════════════════════════
 /**
- * Τα κείμενα των γεγονότων των δύο shorts της 07/10/2026. Μόνο οι είσοδοι του
- * παραδείγματος (τιμή νύχτας, ενοίκιο) ξαναφαίνονται· τα άλλα ενοίκια της
- * Ελένης ΜΟΝΟ ως πεδίο του υπολογιστή. Ο συντελεστής του πρώτου κλιμακίου και οι
- * μήνες του υπολογιστή επιτρέπονται ως ετικέτα άξονα και πεδίο: δεν
- * ξαναλένε τη γωνία «φόρος στα έσοδα», είναι η βάση από την οποία λυγίζει η καμπύλη.
+ * Τα κείμενα των γεγονότων των δύο shorts της 07/10/2026. Μόνο οι ΕΙΣΟΔΟΙ του
+ * παραδείγματος ξαναφαίνονται: τιμή νύχτας, ενοίκιο, μήνες του υπολογιστή και τα
+ * άλλα ενοίκια της Ελένης. Ο συντελεστής του πρώτου κλιμακίου επιτρέπεται μόνο ως
+ * ετικέτα άξονα (η βάση από την οποία λυγίζει η καμπύλη), ΟΧΙ ως πρόταση.
+ *
+ * ΓΙΑΤΙ ΤΑ ΑΛΛΑ ΕΝΟΙΚΙΑ ΕΠΙΤΡΕΠΟΝΤΑΙ (έλεγχος της 08/10/2026). Το 56%, η διαφορά
+ * και τα κλιμάκια της σκηνής «με άλλα ενοίκια» ισχύουν ΜΟΝΟ για αυτό το ποσό· χωρίς
+ * αυτό διαβάζονται ως κανόνας για κάθε ιδιοκτήτη. Ένα άλλο ποσό θα ήθελε άλλη πηγή
+ * από τον κώδικα (ή ψηφίο γραμμένο με το χέρι). Γράφεται ως είσοδος («με άλλα ενοίκια
+ * Χ»), ποτέ με τη χθεσινή γωνία «μένουν Υ από Χ»: τα καθαρά της Ελένης μένουν απαγορευμένα.
  */
-const ALLOWED_ALWAYS = ['nightPrice', 'rent', 'margLong', 'calc.months'];
+const ALLOWED_ALWAYS = ['nightPrice', 'rent', 'margLong', 'calc.months', 'withEleni.otherGross'];
 let YESTERDAY: { id: string; text: string }[] | null = null;
 function yesterday() {
   if (YESTERDAY) return YESTERDAY;

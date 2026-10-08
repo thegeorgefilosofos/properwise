@@ -45,7 +45,7 @@ const mk = (inner: string, a: string, cls = '') => `<div class="mk ${cls}"><div 
  * ΚΙΝΗΤΙΚΗ ΕΜΦΑΣΗ ΣΤΗ ΛΕΞΗ-ΚΛΕΙΔΙ. Η λέξη με τόνο (`**…**`) κάθε γραμμής, μόλις
  * βγει η γραμμή από τη μάσκα, πετάγεται λίγο και κάθεται (το `kick` της μηχανής).
  */
-const kick = (h: string, t: number) => h.replace(/<span class="(a|neg|ok|kwd)">/g, `<span class="$1 kw" ${A('kick', +t.toFixed(3), .6)}>`);
+const kick = (h: string, t: number) => h.replace(/<span class="(a|neg|ok|kwd|kb)">/g, `<span class="$1 kw" ${A('kick', +t.toFixed(3), .6)}>`);
 
 /** Μάτι και τίτλος. Ο τίτλος μπαίνει γραμμή γραμμή από μάσκα. */
 function head(c: SceneCtx, t: number, eb: Txt, lines: Txt[], size = 88, end = true) {
@@ -720,7 +720,6 @@ export const calcCard = def<CalcP>('calcCard', (p, c) => {
 // πράσινο ο ενοικιαστής, σομόν ο φόρος (το μόνο ζεστό), μπλε της μάρκας οι δείκτες.
 const val = (c: SceneCtx, id: string) => Number(F(c, id).value);
 function ser<T>(c: SceneCtx, id: string): T { return JSON.parse(String(F(c, id).value)) as T; }
-const MON1 = (i: number) => monthShort(i).slice(0, 1);
 /** Μέγεθος τίτλου που χωρά στη στήλη: Inter 800 με αραίωση −0,035em, περίπου 0,56em ανά γράμμα. */
 const headSize = (c: SceneCtx, lines: Txt[], max = 84) => Math.min(max, ...lines.map(l => Math.floor(CW / ([...fillPlain(l, c.f)].length * .56))));
 /** Γραμμή (path) από σημεία. */
@@ -748,6 +747,10 @@ export interface TrackOpts {
   wall?: { at: string; label: Txt };
   /** Μια σημείωση στη σειρά κάτω από τον δείκτη, στο δεξί άκρο (σομόν με `noteNeg`). */
   note?: Txt; noteNeg?: boolean;
+  /**
+   * Άλλη κλίμακα από τον δείκτη του χρόνου (π.χ. μόνο οι καλοκαιρινές νύχτες): η μπάρα
+   * γίνεται κελιά, ώστε να μη διαβάζεται ως η ίδια κλίμακα με τους διπλανούς δείκτες.
+   */ cells?: number;
   /** Πότε εμφανίζεται· χωρίς χρόνο ο δείκτης είναι στατικός (stories). */ t?: number;
 }
 export const TRACK_H = 168;
@@ -766,12 +769,12 @@ export function occTrack(o: TrackOpts): string {
   const wl = o.wall, xw = wl ? X(wl.at) : 0;
   return `<div class="otk" id="${o.id}" style="width:${W}px;height:${TRACK_H}px" ${an(A('fade', o.t ?? 0, .4))}>
     <span class="ote l">${tx(o.ends[0])}</span><span class="ote r">${tx(o.ends[1])}</span>
-    <i class="otb"></i>
+    ${o.cells ? `<div class="otc" style="grid-template-columns:repeat(${o.cells},1fr)">${'<i></i>'.repeat(o.cells)}</div>` : '<i class="otb"></i>'}
     ${o.ghost ? `<i class="otg" style="left:${(X(o.ghost) - 2).toFixed(1)}px"></i>` : ''}
     ${wl ? `<i class="otw" style="left:${(xw - 2).toFixed(1)}px"></i><span class="otl r" style="left:${(xw - 2).toFixed(1)}px">${tx(wl.label)}</span>` : ''}
     ${br ? `<i class="otr" style="left:${xa.toFixed(1)}px;width:${(xb - xa).toFixed(1)}px" ${an(A('grow', tb, .6))}></i>
-      <span class="otl l" style="right:${(W - xa).toFixed(1)}px" ${an(A('fade', tb + .5, .4))}>${tx(br.left)}</span>
-      <span class="otl r" style="left:${xb.toFixed(1)}px" ${an(A('fade', tb + .65, .4))}>${tx(br.right)}</span>` : ''}
+      ${br.left ? `<span class="otl l" style="right:${(W - xa).toFixed(1)}px" ${an(A('fade', tb + .5, .4))}>${tx(br.left)}</span>` : ''}
+      ${br.right ? `<span class="otl r" style="left:${xb.toFixed(1)}px" ${an(A('fade', tb + .65, .4))}>${tx(br.right)}</span>` : ''}` : ''}
     ${o.note ? `<span class="otl n${o.noteNeg ? ' neg' : ''}" style="right:0">${tx(o.note)}</span>` : ''}
     ${marks}
   </div>`;
@@ -782,6 +785,8 @@ export const TRACK_CSS = `
   .ote{top:0;height:40px;font-family:'Roboto Mono',monospace;font-size:26px;line-height:40px;color:${K.faint};letter-spacing:.06em;white-space:nowrap}
   .ote.l{left:0}.ote.r{right:0}
   .otb{left:0;right:0;top:56px;height:16px;border-radius:8px;background:linear-gradient(90deg,${K.ink}0f,${K.ink}24)}
+  .otc{left:0;right:0;top:52px;height:24px;display:grid;gap:4px}
+  .otc i{display:block;border-radius:5px;background:${K.other}2e;box-shadow:inset 0 0 0 1.5px ${K.other}4d}
   .otg{top:40px;width:4px;height:48px;border-radius:2px;background:${K.ink}4d}
   .otw{top:36px;width:4px;height:56px;border-radius:2px;background:${K.tax}}
   .otr{top:96px;height:6px;border-radius:3px;background:${K.accent};transform-origin:0 50%;box-shadow:0 0 18px ${K.accent}88}
@@ -803,6 +808,7 @@ export const TRACK_CSS = `
 // ζευγάρι ξαναστήνεται στις θέσεις του καρέ 0 (βρόχος χωρίς ραφή).
 export interface PairSide { label: Txt; value: string; note: Txt; weights?: string; months?: boolean }
 export interface HookPairP extends Base { eyebrow: Txt; night: PairSide; day: PairSide; line: Txt[];
+  /** Η υποσημείωση κάτω από το ζευγάρι (λήξη, συνθήκη του παραδείγματος): ίδια στο καρέ 0 και στον βρόχο. */ footer?: Txt;
   end?: { at: number; text: Txt[]; path: string; save: Txt; send: Txt } }
 export const hookPair = def<HookPairP>('hookPair', (p, c) => {
   const end = p.end, tIn = end ? c.t0 + end.at : T0(c), beat = c.beat;
@@ -825,24 +831,27 @@ export const hookPair = def<HookPairP>('hookPair', (p, c) => {
     html: `${end ? `<div class="pend" ${A('up', c.t0 - .1, .5, 'out', tIn - .55, .45)}>
         <div class="pmk">${mark(150, C.ink)}</div>
         <div class="hd" style="font-size:72px;margin-top:48px;white-space:normal;text-align:center">${end.text.map((l, k) => mk(kick(H(c, l), c.t0 + .6 + k * .1), A('mask', c.t0 + .1 + k * .1, .6))).join('')}</div>
-        <div class="row" style="margin-top:48px;justify-content:center" ${A('up', c.t0 + .9, .5)}><span class="url" data-icon><span class="li">${glyph(ICON.link, c.s.accent, 34, 2.2)}</span><span>properwise.gr<em>${esc(end.path)}</em></span></span></div>
-        <div class="ctas" style="margin-top:32px;justify-content:center" ${A('up', c.t0 + 1.2, .5)}><span class="cta">${glyph(ICON.save, K.ink, 36, 2)}${H(c, end.save)}</span><span class="cta">${glyph(ICON.send, K.ink, 36, 2)}${H(c, end.send)}</span></div>
+        <div class="row" style="margin-top:48px;justify-content:center" ${A('up', c.t0 + 2 * beat, .45)}><span class="url" data-icon><span class="li">${glyph(ICON.link, c.s.accent, 34, 2.2)}</span><span>properwise.gr<em>${esc(end.path)}</em></span></span></div>
+        <div class="ctas" style="margin-top:32px;justify-content:center" ${A('up', c.t0 + 3 * beat, .45)}><span class="cta">${glyph(ICON.save, K.ink, 36, 2)}${H(c, end.save)}</span><span class="cta">${glyph(ICON.send, K.ink, 36, 2)}${H(c, end.send)}</span></div>
       </div>` : ''}${blk(`<div class="eb mono" data-col="L" ${A('left', tIn, .5)}><i></i>${esc(UP(fill(p.eyebrow, c.f)))}</div>
       <div class="hp gh" data-hero data-col="LR">${side(night, 'n', K.other, 0)}<i class="hpd" ${A('grow', tIn + .2, .5)}></i>${side(p.day, 'd', K.ok, 1)}</div>
-      <div class="hd" style="font-size:72px;margin-top:48px" data-col="L">${p.line.map((l, k) => mk(kick(H(c, l), tLine + .45 + k * .12), A('mask', tLine + k * .12, .55))).join('')}</div>`)}`,
+      <div class="hd" style="font-size:72px;margin-top:48px" data-col="L">${p.line.map((l, k) => mk(kick(H(c, l), tLine + .45 + k * .12), A('mask', tLine + k * .12, .55))).join('')}</div>
+      ${p.footer ? `<div class="srcl" style="margin-top:24px" data-col="L" ${A('fade', tIn + .35, .4)}>${H(c, p.footer)}</div>` : ''}`)}`,
     css: `
       .hpr{display:flex;flex-direction:column}
       .hpl{font-size:44px;line-height:52px;font-weight:750;letter-spacing:-.02em;color:${K.ink}}
       .hpv{display:flex;align-items:center;margin-top:8px}
       .hpv b{font-weight:850;letter-spacing:-.05em;line-height:1;white-space:nowrap}
-      .hpx{margin-top:16px}
+      /* Το € κολλητά στο ποσό (κανόνας του σπιτιού) και η ουρά του κόμματος μακριά από την κορδέλα. */
+      .hpv .eu{margin-left:0;letter-spacing:0}
+      .hpx{margin-top:36px}
       .rib{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;height:40px}
       .rib i{position:relative;border-radius:8px;background:${K.ink}0d;box-shadow:inset 0 0 0 1.5px ${K.ink}1f;overflow:hidden}
       .rib b{position:absolute;inset:0;display:block;transform-origin:0 50%}
       .rib u{position:absolute;inset:0;display:block}
-      .rmo{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin-top:8px;font-family:'Roboto Mono',monospace;font-size:26px;line-height:32px;color:${K.faint};text-align:center;letter-spacing:0}
+      .rmo{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin-top:8px;font-size:26px;line-height:32px;font-weight:500;color:${K.faint};text-align:center;letter-spacing:-.02em}
       .hpc{margin-top:8px;font-family:'Roboto Mono',monospace;font-size:26px;line-height:32px;color:${K.muted};letter-spacing:.02em;white-space:nowrap}
-      .hpd{display:block;height:2px;margin:40px 0;background:linear-gradient(90deg,${K.other}66,${K.ink}33,${K.ok}66);transform-origin:0 50%}
+      .hpd{display:block;height:2px;margin:24px 0;background:linear-gradient(90deg,${K.other}66,${K.ink}33,${K.ok}66);transform-origin:0 50%}
       .pend{position:absolute;left:${COL.L}px;width:${CW}px;top:${COL.top}px;height:${COL.bottom - COL.top}px;display:flex;flex-direction:column;align-items:center;justify-content:center}
       .pend .row{display:flex;width:${CW}px}
       .pend .url{display:inline-flex;align-items:center;gap:14px;height:88px;padding:0 32px 0 24px;border-radius:999px;background:${c.s.accent}1f;border:2px solid ${c.s.accent}88;font-size:34px;font-weight:700;color:${C.ink};white-space:nowrap}
@@ -851,6 +860,7 @@ export const hookPair = def<HookPairP>('hookPair', (p, c) => {
       .pend .ctas{display:flex;gap:16px;width:${CW}px}
       .pend .cta{display:inline-flex;align-items:center;gap:14px;height:80px;padding:0 30px 0 24px;border-radius:999px;font-size:32px;font-weight:700;background:${K.accent}24;border:1.5px solid ${K.accent}73}`,
     hits: end ? [tIn + .3] : [c.t0 + .6],
+    loopExact: !!end,
     sfx: m => {
       if (end) { m.whoosh(tIn - .3, .5, .05, true); m.boom(tIn + .3, .2); return; }
       // Η πράσινη κορδέλα: ένα τικ σε κάθε μήνα. Η λιλά: αρπίσματα μόνο στους γεμάτους μήνες, σιωπή στα κενά.
@@ -868,42 +878,50 @@ export const hookPair = def<HookPairP>('hookPair', (p, c) => {
 // στην πηγή: αλλιώς η σκηνή δεν χτίζεται.
 export interface FlowPart { label: Txt; value: string; color: string; hero?: boolean }
 export interface FlowP extends Base { eyebrow: Txt; title: Txt[]; source: Txt; sourceValue: string; parts: FlowPart[];
-  other: { title: Txt; gross: string; net: string; sliver: string; label: Txt; color: string }; footer: Txt }
-const FLOW = { nx: 20, rx: 300, h: 440, gap: 20 } as const;
+  /** Η μέρα του ενοικιαστή ως δεύτερη ροή στην ίδια κλίμακα: πηγή το ενοίκιο της μέρας, ρεύματα ο φόρος και τα καθαρά. */
+  other: { title: Txt; gross: string; net: string; sliver: string; label: Txt; taxLabel: Txt; color: string }; footer: Txt }
+/** Η ροή πιάνει όλη τη στήλη: κόμβοι στο 0 και στο `rx`, ετικέτες σε δεξιά στήλη (08/10: οι σύνδεσμοι ως τα 300px άφηναν νεκρή ζώνη). */
+const FLOW = { nx: 20, rx: 400, h: 440, gap: 22 } as const;
 export const flow = def<FlowP>('flow', (p, c) => {
   const t = B0(c), beat = c.beat, src = val(c, p.sourceValue), vs = p.parts.map(x => val(c, x.value));
   if (Math.abs(vs.reduce((a, b) => a + b, 0) - src) > .011) throw new Error('Τα ρεύματα της ροής δεν αθροίζουν στην πηγή.');
   const k = FLOW.h / src, hs = vs.map(v => v * k), Hr = FLOW.h + FLOW.gap * (vs.length - 1), lt = (Hr - FLOW.h) / 2, mid = (FLOW.nx + FLOW.rx) / 2;
   let ys = lt, yt = 0;
-  const at = (i: number) => t + .9 + i * beat;
+  // Το πρώτο ρεύμα ξεκινά 0,25″ μετά το κόψιμο: δεδομένα σε κίνηση αμέσως μετά το πέρασμα.
+  const at = (i: number) => t + .55 + i * beat;
   const links = p.parts.map((x, i) => {
     const a = ys + hs[i] / 2, b = yt + hs[i] / 2; const r = { a, b, top: yt };
     ys += hs[i]; yt += hs[i] + FLOW.gap; return r;
   });
   const LX = FLOW.rx + FLOW.nx + 24;
+  const link = (y0: number, y1: number, w: number, color: string, a: number, cls = '') => `<path class="${cls}" d="M${FLOW.nx} ${y0.toFixed(1)} C${mid} ${y0.toFixed(1)} ${mid} ${y1.toFixed(1)} ${FLOW.rx} ${y1.toFixed(1)}" stroke="${color}" stroke-width="${w.toFixed(1)}" fill="none" ${drawAttr(a, a + .5)}/>`;
   const svg = `<svg class="flw" width="${CW}" height="${Hr}" viewBox="0 0 ${CW} ${Hr}">
-      <rect x="0" y="${lt}" width="${FLOW.nx}" height="${FLOW.h}" rx="4" fill="${K.ink}" ${A('growy', t + .6, .4)} style="transform-origin:0 ${lt + FLOW.h}px"/>
-      ${links.map((l, i) => `<path class="${p.parts[i].hero ? 'hero' : ''}" d="M${FLOW.nx} ${l.a.toFixed(1)} C${mid} ${l.a.toFixed(1)} ${mid} ${l.b.toFixed(1)} ${FLOW.rx} ${l.b.toFixed(1)}" stroke="${p.parts[i].color}" stroke-width="${hs[i].toFixed(1)}" fill="none" ${drawAttr(at(i), at(i) + .5)}/>
-        <rect${p.parts[i].hero ? ` id="fln${c.k}"` : ''} x="${FLOW.rx}" y="${l.top.toFixed(1)}" width="${FLOW.nx}" height="${hs[i].toFixed(1)}" rx="4" fill="${p.parts[i].color}" ${A('fade', at(i) + .4, .3)}/>`).join('')}
+      <rect x="0" y="${lt}" width="${FLOW.nx}" height="${FLOW.h}" rx="4" fill="${K.ink}" ${A('growy', t + .3, .35)} style="transform-origin:0 ${lt + FLOW.h}px"/>
+      ${links.map((l, i) => `${link(l.a, l.b, hs[i], p.parts[i].color, at(i), p.parts[i].hero ? 'hero' : '')}
+        <rect${p.parts[i].hero ? ` id="fln${c.k}"` : ''} x="${FLOW.rx}" y="${l.top.toFixed(1)}" width="${FLOW.nx}" height="${hs[i].toFixed(1)}" rx="4" fill="${p.parts[i].color}" ${A('fade', p.parts[i].hero ? c.t0 : at(i) + .4, p.parts[i].hero ? .25 : .3)}/>`).join('')}
     </svg>`;
   const labels = links.map((l, i) => `<div class="fll" style="left:${LX}px;top:${(l.b - 22).toFixed(1)}px;width:${CW - LX}px" ${A('right', at(i) + .4, .4)}><span>${H(c, p.parts[i].label)}</span><b class="num" data-rx="fl${c.k}" style="color:${p.parts[i].hero ? p.parts[i].color : K.ink}">${esc(F(c, p.parts[i].value).text)}</b></div>`).join('');
-  // Η μέρα του ενοικιαστή: ένα ρεύμα στην ίδια κλίμακα, με μια λεπτή σομόν λωρίδα (ο φόρος) που φεύγει χωρίς ετικέτα.
-  const o = p.other, g = val(c, o.gross) * k, nH = val(c, o.net) * k, sl = val(c, o.sliver) * k, top = 8, Ht = Math.ceil(g + 2 * top);
-  const to = t + .9 + p.parts.length * beat + .2;
+  // Η μέρα του ενοικιαστή: ΙΔΙΑ λογική με τη νύχτα. Πηγή το ενοίκιο της μέρας, δύο ρεύματα στην ίδια κλίμακα (€/px).
+  const o = p.other, g = val(c, o.gross) * k, nH = val(c, o.net) * k, sl = val(c, o.sliver) * k;
+  if (Math.abs(val(c, o.net) + val(c, o.sliver) - val(c, o.gross)) > .011) throw new Error('Τα ρεύματα της μέρας δεν αθροίζουν στο ενοίκιο της μέρας.');
+  const Ht = Math.ceil(g + FLOW.gap), s0 = (Ht - g) / 2, nTop = sl + FLOW.gap;
+  const to = at(p.parts.length - 1) + .9;
   const svg2 = `<svg class="flw" width="${CW}" height="${Ht}" viewBox="0 0 ${CW} ${Ht}">
-      <rect x="0" y="${top}" width="${FLOW.nx}" height="${g.toFixed(1)}" rx="4" fill="${K.ink}" ${A('growy', to - .3, .3)} style="transform-origin:0 ${top + g}px"/>
-      <path d="M${FLOW.nx} ${(top + sl / 2).toFixed(1)} C${mid * .7} ${(top + sl / 2).toFixed(1)} ${mid * .8} ${(top + sl / 2 - 2).toFixed(1)} ${mid} ${(top + sl / 2 - 2).toFixed(1)}" stroke="${K.tax}" stroke-width="${sl.toFixed(1)}" stroke-linecap="round" fill="none" ${drawAttr(to + .25, to + .6)}/>
-      <path d="M${FLOW.nx} ${(top + sl + nH / 2).toFixed(1)} L${FLOW.rx} ${(top + sl + nH / 2).toFixed(1)}" stroke="${o.color}" stroke-width="${nH.toFixed(1)}" fill="none" ${drawAttr(to, to + .6)}/>
-      <rect x="${FLOW.rx}" y="${(top + sl).toFixed(1)}" width="${FLOW.nx}" height="${nH.toFixed(1)}" rx="4" fill="${o.color}" ${A('fade', to + .5, .3)}/>
+      <rect x="0" y="${s0.toFixed(1)}" width="${FLOW.nx}" height="${g.toFixed(1)}" rx="4" fill="${K.ink}" ${A('growy', to - .3, .3)} style="transform-origin:0 ${(s0 + g).toFixed(1)}px"/>
+      ${link(s0 + sl / 2, sl / 2, sl, K.tax, to + .1)}
+      <rect x="${FLOW.rx}" y="0" width="${FLOW.nx}" height="${sl.toFixed(1)}" rx="4" fill="${K.tax}" ${A('fade', to + .5, .3)}/>
+      ${link(s0 + sl + nH / 2, nTop + nH / 2, nH, o.color, to)}
+      <rect x="${FLOW.rx}" y="${nTop.toFixed(1)}" width="${FLOW.nx}" height="${nH.toFixed(1)}" rx="4" fill="${o.color}" ${A('fade', to + .4, .3)}/>
     </svg>
-    <div class="fll" style="left:${LX}px;top:${(top + sl + nH / 2 - 22).toFixed(1)}px;width:${CW - LX}px" ${A('right', to + .55, .4)}><span>${H(c, o.label)}</span><b class="num" data-rx="fl${c.k}" style="color:${o.color}">${esc(F(c, o.net).text)}</b></div>`;
+    <div class="fll" style="left:${LX}px;top:${(sl / 2 - 22).toFixed(1)}px;width:${CW - LX}px" ${A('right', to + .5, .4)}><span style="color:${K.tax}">${H(c, o.taxLabel)}</span></div>
+    <div class="fll" style="left:${LX}px;top:${(nTop + nH / 2 - 22).toFixed(1)}px;width:${CW - LX}px" ${A('right', to + .55, .4)}><span>${H(c, o.label)}</span><b class="num" data-rx="fl${c.k}" style="color:${o.color}">${esc(F(c, o.net).text)}</b></div>`;
   return {
     html: blk(`${head(c, t, p.eyebrow, p.title, headSize(c, p.title))}
-      <div class="fls gh" data-col="L" ${A('fade', t + .5, .4)}>${H(c, p.source)}</div>
+      <div class="fls gh" data-col="L" ${A('fade', t + .3, .4)}>${H(c, p.source)}</div>
       <div class="flc" data-hero style="height:${Hr}px;margin-top:16px">${svg}${labels}</div>
-      <div class="tagl" style="margin-top:40px" data-col="L" ${A('up', to - .4, .5)}>${H(c, o.title)}</div>
+      <div class="tagl" style="margin-top:24px" data-col="L" ${A('up', to - .4, .5)}>${H(c, o.title)}</div>
       <div class="flc" style="height:${Ht}px;margin-top:16px">${svg2}</div>
-      <div class="srcl" style="margin-top:24px" data-col="L" ${A('fade', to + .9, .4)}>${H(c, p.footer)}</div>`),
+      <div class="srcl" style="margin-top:16px" data-col="L" ${A('fade', to + .9, .4)}>${H(c, p.footer)}</div>`),
     css: `
       .flc{position:relative}
       .flc>*{position:absolute;left:0;top:0}
@@ -921,16 +939,18 @@ export const flow = def<FlowP>('flow', (p, c) => {
 });
 
 // ═══ 18 · Κατώφλι: ο μέσος φόρος του Airbnb λυγίζει, του ενοικιαστή μένει ίσιος ═══
-// Οριζόντιος άξονας οι νύχτες του χρόνου (υποδιαιρέσεις από το OCC_STEPS), κάθετος
-// ο φόρος ως ποσοστό του φορολογητέου. Η λιλά καμπύλη έχει ένα σημείο σε κάθε
+// Οριζόντιος άξονας οι νύχτες του χρόνου (χωρίς υποδιαιρέσεις: τα άκρα έχουν λέξεις), κάθετος
+// ο ΜΕΣΟΣ φόρος ως ποσοστό του φορολογητέου· τα τείχη λένε τον ΟΡΙΑΚΟ. Η λιλά καμπύλη έχει ένα σημείο σε κάθε
 // νύχτα. Τα δύο τείχη κατεβαίνουν όταν η καμπύλη τα φτάνει.
-export interface ThresholdP extends Base { eyebrow: Txt; title: Txt[]; curve: string; nightsAxis: string; steps: string; grid: string;
+export interface ThresholdP extends Base { eyebrow: Txt; title: Txt[]; curve: string; nightsAxis: string; grid: string;
   /** Τα γεγονότα με τις ετικέτες των γραμμών του πλέγματος, χωρισμένα με κόμμα, με τη σειρά του `grid`. */ gridLabelsFact: string;
-  flat: { value: string; label: Txt }; curveLabel: Txt; walls: { nightsFact: string; label: Txt }[];
+  /** Τι μετρά ο κάθετος άξονας (π.χ. «μέσος φόρος»): ώστε το «25%» του άξονα να μη διαβάζεται ως το «25%» του τείχους. */ yTitle: Txt;
+  flat: { value: string; label: Txt }; curveLabel: Txt;
+  /** Κάθε τείχος: η κύρια γραμμή (ο ΟΡΙΑΚΟΣ συντελεστής) και η δεύτερη (από ποια νύχτα). */ walls: { nightsFact: string; label: Txt; sub: Txt }[];
   dot: { nights: string; label: Txt; value: string }; ends: [Txt, Txt]; caption: Txt; footer: Txt }
-const TH = { x0: 96, top: 112, bottom: 528, h: 592 } as const;
+const TH = { x0: 96, top: 176, bottom: 560, h: 624 } as const;
 export const threshold = def<ThresholdP>('threshold', (p, c) => {
-  const t = B0(c), curve = ser<number[]>(c, p.curve), N = ser<number>(c, p.nightsAxis), steps = ser<number[]>(c, p.steps), grid = ser<number[]>(c, p.grid);
+  const t = B0(c), curve = ser<number[]>(c, p.curve), N = ser<number>(c, p.nightsAxis), grid = ser<number[]>(c, p.grid);
   const lo = Math.min(...grid) - .03, hi = Math.max(...grid, ...curve) + .02, X1 = CW;
   const x = (n: number) => TH.x0 + n / N * (X1 - TH.x0), y = (r: number) => TH.bottom - (r - lo) / (hi - lo) * (TH.bottom - TH.top);
   const flat = val(c, p.flat.value);
@@ -939,17 +959,17 @@ export const threshold = def<ThresholdP>('threshold', (p, c) => {
   const walls = p.walls.map((w, i) => ({ ...w, n: val(c, w.nightsFact), i }));
   const dn = ser<number>(c, p.dot.nights), dv = val(c, p.dot.value), dx = x(dn), dy = y(dv);
   return {
-    html: blk(`${head(c, t, p.eyebrow, p.title, headSize(c, p.title))}
+    html: blk(`${head(c, t, p.eyebrow, p.title, headSize(c, p.title, 76))}
       <div class="thc gh" data-hero style="height:${TH.h}px">
         <div class="thg" ${A('fade', t + .5, .5)}>
+          <span class="thyt" style="left:0;top:${(y(Math.max(...grid)) - 72).toFixed(1)}px">${H(c, p.yTitle)}</span>
           ${grid.map((r, i) => `<i class="thl" style="top:${y(r).toFixed(1)}px;left:${TH.x0}px;right:0"></i><span class="thy num" style="top:${(y(r) - 20).toFixed(1)}px;width:${TH.x0 - 16}px">${esc(F(c, p.gridLabelsFact.split(',')[i]).text)}</span>`).join('')}
           <i class="thax" style="top:${TH.bottom}px;left:${TH.x0}px;right:0"></i>
-          ${steps.map(s => `<i class="thk" style="left:${(TH.x0 + s / 100 * (X1 - TH.x0) - 1).toFixed(1)}px;top:${TH.bottom}px"></i>`).join('')}
           <span class="the" style="left:${TH.x0}px;top:${TH.bottom + 20}px">${H(c, p.ends[0])}</span><span class="the" style="right:0;top:${TH.bottom + 20}px">${H(c, p.ends[1])}</span>
         </div>
         ${walls.map(w => `<i class="thb" style="left:${x(w.n).toFixed(1)}px;top:${TH.top - 8}px;height:${TH.bottom - TH.top + 8}px;width:${(X1 - x(w.n)).toFixed(1)}px" data-wipedown="${at(w.n).toFixed(3)},.5"></i>
           <i class="thw" style="left:${(x(w.n) - 2).toFixed(1)}px;top:${TH.top - 8}px;height:${TH.bottom - TH.top + 8}px" data-wipedown="${at(w.n).toFixed(3)},.5"></i>
-          <span class="thwl ${w.i % 2 ? 'r' : 'l'}" style="${w.i % 2 ? `right:${(X1 - x(w.n)).toFixed(1)}px;top:56px` : `left:${x(w.n).toFixed(1)}px;top:8px`}" ${A('fade', at(w.n) + .1, .35)}>${H(c, w.label)}</span>`).join('')}
+          <span class="thwl ${w.i % 2 ? 'r' : 'l'}" style="${w.i % 2 ? `right:${(X1 - x(w.n)).toFixed(1)}px;top:${TH.top - 92}px` : `left:${x(w.n).toFixed(1)}px;top:0`}" ${A('fade', at(w.n) + .1, .35)}><b>${H(c, w.label)}</b><em>${H(c, w.sub)}</em></span>`).join('')}
         <svg class="ths" width="${CW}" height="${TH.h}" viewBox="0 0 ${CW} ${TH.h}">
           <path d="M${TH.x0} ${y(flat).toFixed(1)} L${X1} ${y(flat).toFixed(1)}" stroke="${K.ok}" stroke-width="10" stroke-linecap="round" fill="none" ${drawAttr(t + .8, t + 1.4)}/>
           <path class="hero" d="${pathOf(pts)}" stroke="${K.other}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none" ${drawAttr(tc, tc + dc)}/>
@@ -960,20 +980,23 @@ export const threshold = def<ThresholdP>('threshold', (p, c) => {
         <i class="thd" id="thd${c.k}" style="left:${(dx - 16).toFixed(1)}px;top:${(dy - 16).toFixed(1)}px" ${A('pop', tc + dc + .15, .45)}></i>
         <div class="thcl" style="left:${TH.x0 + 16}px;top:${(dy - 150).toFixed(1)}px" ${A('up', tc + dc + .35, .45)}><span>${H(c, p.dot.label)}</span><b class="num">${esc(F(c, p.dot.value).text)}</b></div>
       </div>
-      <div class="sub2" style="margin-top:32px" data-col="L" ${A('up', tc + dc + .8, .5)}>${kick(H(c, p.caption), tc + dc + 1.2)}</div>
-      <div class="srcl" style="margin-top:24px" data-col="L" ${A('fade', tc + dc + 1.1, .4)}>${H(c, p.footer)}</div>`),
+      <div class="sub2" style="margin-top:24px" data-col="L" ${A('up', tc + dc + .8, .5)}>${kick(H(c, p.caption), tc + dc + 1.2)}</div>
+      <div class="srcl" style="margin-top:16px" data-col="L" ${A('fade', tc + dc + 1.1, .4)}>${H(c, p.footer)}</div>`),
     css: `
       .thc{position:relative}
       .thc>*,.thg>*{position:absolute}
       .thg{inset:0}
       .thl{height:0;border-top:2px dashed ${K.ink}26}
       .thax{height:2px;background:${K.ink}4d}
-      .thk{width:2px;height:14px;background:${K.ink}4d}
+      .thyt{height:36px;font-family:'Roboto Mono',monospace;font-size:26px;line-height:36px;color:${K.muted};letter-spacing:.04em;white-space:nowrap}
       .thy{left:0;text-align:right;font-family:'Roboto Mono',monospace;font-size:28px;line-height:40px;color:${K.muted}}
       .the{font-family:'Roboto Mono',monospace;font-size:26px;line-height:36px;color:${K.faint};letter-spacing:.04em}
       .thb{background:${K.tax}12}
       .thw{width:0;border-left:4px dashed ${K.tax}}
-      .thwl{height:40px;font-size:30px;line-height:40px;font-weight:700;color:${K.ink};white-space:nowrap}
+      .thwl{display:flex;flex-direction:column;white-space:nowrap}
+      .thwl b{height:40px;font-size:30px;line-height:40px;font-weight:700;color:${K.ink}}
+      .thwl em{height:36px;font-style:normal;font-family:'Roboto Mono',monospace;font-size:26px;line-height:36px;color:${K.muted};letter-spacing:.02em}
+      .thwl.r{align-items:flex-end}
       .thwl.l{padding-left:16px;border-left:4px solid ${K.tax}}
       .thwl.r{padding-right:16px;border-right:4px solid ${K.tax}}
       .ths{left:0;top:0}
@@ -1000,35 +1023,38 @@ export const threshold = def<ThresholdP>('threshold', (p, c) => {
 // ενοίκια, ένα αδειάζει· ο δείκτης πληρότητας γλιστρά στο νέο όριο.
 interface CumLine { series: string; color: string; dash?: boolean; label: Txt }
 export interface Months12P extends Base { eyebrow: Txt; title: Txt[]; footer: Txt;
-  flow?: { bars: string; band: { from: string; to: string; label: Txt }; peak: string; low: Txt; lines: CumLine[]; cross: { a: string; b: string };
+  flow?: { bars: string; band: { from: string; to: string; label: Txt }; peak: string; low: Txt; lines: CumLine[];
+    /** Η διασταύρωση και η ετικέτα της, γραμμένη δίπλα στην τελεία (π.χ. «περνά μπροστά: {cumCross.month}»). */ cross: { a: string; b: string; label: Txt };
     ends: { value: string; color: string }[]; captions: [Txt, Txt] };
   vacancy?: { bars: string; month: number; loss: Txt; line: Txt; sub: Txt; track: Omit<TrackOpts, 'f' | 'id' | 'width' | 't'>; after: Txt };
 }
 const M12 = { h: 560, y0: 472, bar: 300, cum: 380 } as const;
 export const months12 = def<Months12P>('months12', (p, c) => {
   const t = B0(c), pitch = CW / 12, mx = (i: number) => (i + .5) * pitch;
-  const monthsRow = (y: number, hi = -1, tHi = 0) => Array.from({ length: 12 }, (_, i) => `<span class="m12m${i === hi ? ' hi' : ''}" style="left:${(mx(i) - 24).toFixed(1)}px;top:${y}px"${i === hi ? ` data-hi="${tHi.toFixed(3)}"` : ''}>${esc(MON1(i))}</span>`).join('');
+  // Τρία γράμματα, όπως στην κορδέλα του αγκιστριού: με ένα γράμμα το «Ι» ήταν Ιανουάριος, Ιούνιος ή Ιούλιος.
+  const monthsRow = (y: number, hi = -1, tHi = 0) => Array.from({ length: 12 }, (_, i) => `<span class="m12m${i === hi ? ' hi' : ''}" style="left:${(i * pitch + 3).toFixed(1)}px;width:${(pitch - 6).toFixed(1)}px;top:${y}px"${i === hi ? ` data-hi="${tHi.toFixed(3)}"` : ''}>${esc(monthShort(i))}</span>`).join('');
   if (p.flow) {
     const f = p.flow, bars = ser<number[]>(c, f.bars), peak = Math.max(...bars), bk = M12.bar / peak;
     const lines = f.lines.map(l => ({ ...l, v: ser<number[]>(c, l.series) })), cmax = Math.max(...lines.flatMap(l => l.v)), ck = M12.cum / cmax;
     const ly = (v: number) => M12.y0 - v * ck, b0 = val(c, f.band.from), b1 = val(c, f.band.to);
     const ca = ser<number[]>(c, f.cross.a), cb = ser<number[]>(c, f.cross.b), cross = ca.findIndex((v, i) => v > cb[i]);
-    const tB = (i: number) => t + .7 + i * .11, tF = t + 3.4, tl = (i: number) => tF + .1 + i * .3, dl = 1.1;
+    const tB = (i: number) => t + .35 + i * .11, tF = t + 3.4, tl = (i: number) => tF + .1 + i * .3, dl = 1.1;
     const peakI = bars.lastIndexOf(peak);
     const tX = tl(f.lines.findIndex(l => l.series === f.cross.a)) + dl * (cross + 1) / 12;
     return {
       html: blk(`${head(c, t, p.eyebrow, p.title, headSize(c, p.title))}
         <div class="m12 gh" data-hero style="height:${M12.h}px">
-          <i class="m12b" style="left:${(b0 * pitch).toFixed(1)}px;width:${((b1 - b0 + 1) * pitch).toFixed(1)}px;top:40px;height:${M12.y0 - 40}px" ${A('fade', t + .5, .5)}></i>
-          <span class="m12bl" style="left:${(b0 * pitch + 12).toFixed(1)}px;top:0" ${A('fade', t + .6, .5)}>${H(c, f.band.label)}</span>
+          <i class="m12b" style="left:${(b0 * pitch).toFixed(1)}px;width:${((b1 - b0 + 1) * pitch).toFixed(1)}px;top:40px;height:${M12.y0 - 40}px" ${A('fade', t + .3, .4)}></i>
+          <span class="m12bl" style="left:${(b0 * pitch + 12).toFixed(1)}px;top:0" ${A('fade', t + .4, .4)}>${H(c, f.band.label)}</span>
           <i class="m12z" style="top:${M12.y0}px"></i>
           <div class="m12bars" ${A('out', tF, .5)}>${bars.map((v, i) => `<i class="${v < 0 ? 'neg' : ''}" style="left:${(mx(i) - 20).toFixed(1)}px;top:${(v < 0 ? M12.y0 + 2 : M12.y0 - v * bk).toFixed(1)}px;height:${Math.max(4, Math.abs(v) * bk).toFixed(1)}px" ${A('growy', tB(i), .4)}></i>`).join('')}
             <span class="m12v" style="left:${(mx(peakI) - 100).toFixed(1)}px;top:${(M12.y0 - M12.bar - 48).toFixed(1)}px" ${A('fade', t + 2, .4)}>${esc(F(c, f.peak).text)}</span>
             <span class="m12w" style="left:0;top:${M12.y0 + 10}px" ${A('fade', t + 2.2, .4)}>${H(c, f.low)}</span></div>
-          ${lines.map((l, i) => `<svg class="m12l" width="${CW}" height="${M12.h}" viewBox="0 0 ${CW} ${M12.h}" ${A('wipe', tl(i), dl)}><path${i === 1 ? ' class="hero"' : ''} d="${pathOf([[0, M12.y0], ...l.v.map((v, j) => [(j + 1) * pitch, ly(v)] as [number, number])])}" stroke="${l.color}" stroke-width="${l.dash ? 5 : 7}"${l.dash ? ' stroke-dasharray="14 10"' : ''} stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`).join('')}
-          <i class="m12x" style="left:${((cross + 1) * pitch - 1).toFixed(1)}px;top:${ly(ca[cross]).toFixed(1)}px;height:${(M12.y0 - ly(ca[cross])).toFixed(1)}px" ${A('growy', tX, .35)}></i>
-          <i class="m12d" style="left:${((cross + 1) * pitch - 16).toFixed(1)}px;top:${(ly(ca[cross]) - 16).toFixed(1)}px" ${A('pop', tX, .45)}></i>
-          ${f.ends.map((e, i) => `<span class="m12e" style="right:0;top:${(ly(val(c, e.value)) + (i ? 16 : -56)).toFixed(1)}px;color:${e.color}" ${A('fade', tl(lines.length - 1) + dl + .1 + i * .15, .4)}>${i ? '' : '<em></em>'}${esc(F(c, e.value).text)}</span>`).join('')}
+          ${lines.map((l, i) => `<svg class="m12l" width="${CW}" height="${M12.h}" viewBox="0 0 ${CW} ${M12.h}" ${A('wipe', tl(i), dl)}><path${i === 1 ? ' class="hero"' : ''} d="${pathOf([[0, M12.y0], ...l.v.map((v, j) => [mx(j), ly(v)] as [number, number])])}" stroke="${l.color}" stroke-width="${l.dash ? 5 : 7}"${l.dash ? ' stroke-dasharray="14 10"' : ''} stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`).join('')}
+          <i class="m12x" style="left:${(mx(cross) - 1).toFixed(1)}px;top:${ly(ca[cross]).toFixed(1)}px;height:${(M12.y0 + 48 - ly(ca[cross])).toFixed(1)}px" ${A('growy', tX, .35)}></i>
+          <i class="m12d" style="left:${(mx(cross) - 16).toFixed(1)}px;top:${(ly(ca[cross]) - 16).toFixed(1)}px" ${A('pop', tX, .45)}></i>
+          <span class="m12c" style="left:${(mx(cross) + 28).toFixed(1)}px;top:${(ly(ca[cross]) + 24).toFixed(1)}px" ${A('fade', tX + .15, .35)}>${H(c, f.cross.label)}</span>
+          ${f.ends.map((e, i) => `<span class="m12e" style="right:0;top:${(ly(val(c, e.value)) + (i ? 16 : -64)).toFixed(1)}px;color:${e.color}" ${A('fade', tl(lines.length - 1) + dl + .1 + i * .15, .4)}>${esc(F(c, e.value).text)}</span>`).join('')}
           ${monthsRow(M12.y0 + 48, cross, tX)}
         </div>
         <div class="m12k" data-col="L" ${A('fade', tF + .2, .5)}>${lines.map(l => `<span><i style="border-top-color:${l.color};border-top-style:${l.dash ? 'dashed' : 'solid'}"></i>${H(c, l.label)}</span>`).join('')}</div>
@@ -1047,7 +1073,7 @@ export const months12 = def<Months12P>('months12', (p, c) => {
   }
   const v = p.vacancy;
   if (!v) throw new Error('Η σκηνή months12 θέλει flow ή vacancy.');
-  const bars = ser<number[]>(c, v.bars), bh = 220, y0 = 268, tE = t + 1.6, tT = t + 2.8;
+  const bars = ser<number[]>(c, v.bars), bh = 220, y0 = 268, tE = t + 1.4, tT = t + 2.4;
   const tr = occTrack({ ...v.track, f: c.f, id: `otk${c.k}`, width: CW, t: tT, marks: v.track.marks.map(m => ({ ...m, t0: m.t0 ?? tT + .4, t1: m.t1 ?? tT + 1.2 })) });
   return {
     html: blk(`${head(c, t, p.eyebrow, p.title, headSize(c, p.title))}
@@ -1060,7 +1086,7 @@ export const months12 = def<Months12P>('months12', (p, c) => {
       <div class="sub2" style="margin-top:32px" data-col="L" ${A('up', tE + .5, .5)}>${kick(H(c, v.line, 'neg'), tE + .9)}</div>
       <div class="srcl" style="margin-top:8px" data-col="L" ${A('fade', tE + .8, .4)}>${H(c, v.sub)}</div>
       <div style="margin-top:40px" data-col="LR">${tr}</div>
-      <div class="sub2" style="margin-top:32px" data-col="L" ${A('up', tT + 1.3, .5)}>${kick(H(c, v.after), tT + 1.7)}</div>
+      <div class="sub2" style="margin-top:32px" data-col="L" ${A('up', tT + 1.2, .45)}>${kick(H(c, v.after), tT + 1.5)}</div>
       <div class="srcl" style="margin-top:24px" data-col="L" ${A('fade', tT + 1.6, .4)}>${H(c, p.footer)}</div>`),
     css: M12_CSS + TRACK_CSS,
     js: MOTION2(c.k),
@@ -1074,8 +1100,11 @@ const M12_CSS = `
   .m12{position:relative}
   .m12>*,.m12bars>*{position:absolute}
   .m12bars{inset:0}
-  .m12b{border-radius:16px;background:${K.enfia}14;box-shadow:inset 0 0 0 1.5px ${K.enfia}2e}
-  .m12bl{height:36px;font-family:'Roboto Mono',monospace;font-size:26px;line-height:36px;color:${K.enfia};letter-spacing:.06em;white-space:nowrap}
+  .m12b{border-radius:16px;background:${K.ink}0a;box-shadow:inset 0 0 0 1.5px ${K.ink}1f}
+  .m12bl{height:36px;font-family:'Roboto Mono',monospace;font-size:26px;line-height:36px;color:${K.muted};letter-spacing:.06em;white-space:nowrap}
+  .m12c{height:44px;padding:0 14px;border-radius:12px;background:${K.ground}d9;border:1.5px solid ${K.accent}66;font-size:30px;line-height:41px;font-weight:700;color:${K.ink};white-space:nowrap}
+  .m12c .kb{color:${K.accent}}
+  .srcl,.sub2{text-wrap:balance}
   .m12z{left:0;right:0;height:2px;background:${K.ink}4d}
   .m12bars i{width:40px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,${K.other},${K.other}b3);transform-origin:50% 100%}
   .m12bars i.neg{border-radius:3px 3px 8px 8px;background:${K.tax};transform-origin:50% 0}
@@ -1086,9 +1115,8 @@ const M12_CSS = `
   .m12l path.hero{filter:drop-shadow(0 0 14px ${K.other}99)}
   .m12x{width:2px;background:${K.accent}99;transform-origin:50% 100%}
   .m12d{width:32px;height:32px;border-radius:50%;background:${K.accent};border:5px solid ${K.ground};box-shadow:0 0 0 2px ${K.accent},0 0 24px ${K.accent}}
-  .m12e{display:flex;align-items:center;gap:12px;height:40px;font-size:36px;line-height:40px;font-weight:850;white-space:nowrap}
-  .m12e em{display:block;width:24px;height:4px;border-radius:2px;background:currentColor}
-  .m12m{width:48px;height:32px;text-align:center;font-family:'Roboto Mono',monospace;font-size:26px;line-height:32px;color:${K.faint};border-radius:8px}
+  .m12e{height:40px;font-size:36px;line-height:40px;font-weight:850;white-space:nowrap}
+  .m12m{height:32px;text-align:center;font-size:26px;line-height:32px;font-weight:500;letter-spacing:-.02em;color:${K.faint};border-radius:8px}
   .m12m.hi.on{background:${K.accent};color:${K.onAccent};font-weight:700}
   .m12k{display:flex;gap:32px;margin-top:24px;height:40px;align-items:center}
   .m12k span{display:flex;align-items:center;gap:12px;font-size:28px;line-height:36px;font-weight:600;color:${K.muted};white-space:nowrap}
@@ -1099,37 +1127,55 @@ const M12_CSS = `
 
 // ═══ 20 · Dumbbell: η απόσταση των δύο δρόμων μικραίνει· το όριο γίνεται ζώνη ═══
 // Πάνω μια αχνή σειρά χωρίς ετικέτες (μόνο το διαμέρισμα) και από κάτω η ίδια
-// σύγκριση με ένα ενοίκιο ήδη: οι τελείες ξεκινούν από τις θέσεις της σκιάς και
-// γλιστρούν στις νέες. Μετά ο δείκτης πληρότητας με τα δύο άκρα της ζώνης.
+// σύγκριση με άλλα ενοίκια: οι τελείες ξεκινούν από τις θέσεις της σκιάς και
+// γλιστρούν στις νέες. Μετά ο δείκτης πληρότητας και, από κάτω, ΜΕΓΕΘΥΝΣΗ της
+// ζώνης: στον δείκτη 0–100% η ζώνη είναι λίγα pixel, στη μεγέθυνση πιάνει τη στήλη.
 export interface DumbbellP extends Base { eyebrow: Txt; title: Txt[];
   ghost: { label: Txt; a: string; b: string }; row: { label: Txt; a: string; b: string; chips: [Txt, Txt] }; diff: { label: Txt; value: string };
-  limit: Txt; track: Omit<TrackOpts, 'f' | 'id' | 'width' | 't'>; zone: Txt[]; small: Txt }
-const DB = { h: 336, gy: 72, ry: 200 } as const;
+  track: Omit<TrackOpts, 'f' | 'id' | 'width' | 't' | 'bracket'> & { bracket: { aFact: string; bFact: string; left: Txt; right: Txt; aLabelFact: string; bLabelFact: string } };
+  zone: Txt[]; small: Txt }
+const DB = { h: 336, gy: 72, ry: 200, zh: 216, zi: 60 } as const;
 export const dumbbell = def<DumbbellP>('dumbbell', (p, c) => {
   const t = B0(c), vs = [p.ghost.a, p.ghost.b, p.row.a, p.row.b].map(id => val(c, id));
   const lo0 = Math.min(...vs), hi0 = Math.max(...vs), pad = (hi0 - lo0) * .35, lo = lo0 - pad, hi = hi0 + pad * .3;
   const x = (v: number) => (v - lo) / (hi - lo) * CW;
-  const [ga, gb, ra, rb] = vs.map(x), ts = t + 1, te = t + 1.9, tT = t + 3.2;
+  const [ga, gb, ra, rb] = vs.map(x), ts = t + 1, te = t + 1.9, tT = t + 3.2, tZ = tT + 1.8;
   const dot = (cls: string, x0: number, x1: number, slide: boolean) => `<i class="dbd ${cls}" style="left:${(slide ? x0 : x1) - 18}px;top:${DB.ry - 18}px"${slide ? ` data-slide="${(x0 - 18).toFixed(1)},${(x1 - 18).toFixed(1)},${ts},${te}"` : ''} ${A('pop', t + .8, .4)}></i>`;
+  const br = p.track.bracket;
   const tr = occTrack({ ...p.track, f: c.f, id: `otk${c.k}`, width: CW, t: tT, marks: p.track.marks.map((m, i) => ({ ...m, t0: m.t0 ?? (i ? tT + .4 : tT), t1: m.t1 ?? (i ? tT + 1.4 : tT + .2) })),
-    bracket: p.track.bracket ? { ...p.track.bracket, t: tT + 1.6 } : undefined });
+    bracket: { aFact: br.aFact, bFact: br.bFact, left: '', right: '', t: tT + 1.6 } });
+  // Η μεγέθυνση: η αγκύλη του δείκτη (xa…xb) ανοίγει σε μια ζώνη από zi ως CW − zi.
+  const pos = (id: string) => Math.max(0, Math.min(1, val(c, id) / 100)) * CW;
+  const xa = pos(br.aFact), xb = pos(br.bFact), ia = DB.zi, ib = CW - DB.zi;
+  const ghost = p.track.ghost ? ia + (pos(p.track.ghost) - xa) / (xb - xa) * (ib - ia) : null;
+  const zoom = `<div class="dbz" data-col="LR" style="height:${DB.zh}px">
+      <svg class="dbzs" width="${CW}" height="${DB.zh}" viewBox="0 0 ${CW} ${DB.zh}" ${A('fade', tZ, .4)}>
+        <path d="M${xa.toFixed(1)} 0 L${xb.toFixed(1)} 0 L${ib} 64 L${ia} 64 Z" fill="${K.accent}14" stroke="${K.accent}4d" stroke-width="1.5"/>
+      </svg>
+      <i class="dbzb" style="left:${ia}px;width:${ib - ia}px;top:64px" ${A('grow', tZ + .1, .5)}></i>
+      ${ghost != null ? `<i class="dbzg" style="left:${(ghost - 2).toFixed(1)}px;top:52px" ${A('fade', tZ + .4, .3)}></i>` : ''}
+      <i class="dbzd" style="left:${ia - 18}px;top:54px" ${A('pop', tZ + .2, .4)}></i><i class="dbzd" style="left:${ib - 18}px;top:54px" ${A('pop', tZ + .3, .4)}></i>
+      <div class="dbzl" style="left:${ia - 18}px;top:104px" ${A('up', tZ + .35, .4)}><b class="num">${esc(F(c, br.aLabelFact).text)}</b><span>${H(c, br.left)}</span></div>
+      <div class="dbzl r" style="right:${CW - ib - 18}px;top:104px" ${A('up', tZ + .5, .4)}><b class="num">${esc(F(c, br.bLabelFact).text)}</b><span>${H(c, br.right)}</span></div>
+    </div>`;
+  const tZone = tZ + 1.2;
   return {
     html: blk(`${head(c, t, p.eyebrow, p.title, headSize(c, p.title))}
       <div class="db gh" data-hero style="height:${DB.h}px">
         <span class="dbl g" style="top:8px" ${A('fade', t + .5, .4)}>${H(c, p.ghost.label)}</span>
         <i class="dbr g" style="left:${ga}px;width:${gb - ga}px;top:${DB.gy - 3}px" ${A('fade', t + .5, .4)}></i>
         <i class="dbd g ok" style="left:${ga - 14}px;top:${DB.gy - 14}px" ${A('fade', t + .5, .4)}></i><i class="dbd g oth" style="left:${gb - 14}px;top:${DB.gy - 14}px" ${A('fade', t + .5, .4)}></i>
-        <span class="dbl" style="top:104px" ${A('fade', t + .7, .4)}>${kick(H(c, p.row.label), t + 1.1)}</span>
+        <span class="dbl" style="top:104px" ${A('fade', t + .7, .4)}>${H(c, p.row.label)}</span>
         <i class="dbr" style="left:${ga}px;width:${gb - ga}px;top:${DB.ry - 4}px" data-span="${ga.toFixed(1)},${gb.toFixed(1)},${ra.toFixed(1)},${rb.toFixed(1)},${ts},${te}" ${A('fade', t + .8, .4)}></i>
         ${dot('ok', ga, ra, true)}${dot('oth', gb, rb, true)}
         <div class="dbv ok" style="right:${(CW - ra - 20).toFixed(1)}px;top:240px" ${A('fade', te + .1, .4)}><b class="num">${esc(F(c, p.row.a).text)}</b><span>${H(c, p.row.chips[0])}</span></div>
         <div class="dbv oth l" style="left:${(rb - 20).toFixed(1)}px;top:240px" ${A('fade', te + .2, .4)}><b class="num">${esc(F(c, p.row.b).text)}</b><span>${H(c, p.row.chips[1])}</span></div>
-        <div class="dbx" style="right:0;top:136px" ${A('up', te + .4, .45)}><span>${H(c, p.diff.label)}</span><b class="num acc-g" id="dbx${c.k}">${esc(F(c, p.diff.value).text)}</b></div>
+        <div class="dbx" style="right:0;top:156px" ${A('up', te + .4, .45)}><span>${H(c, p.diff.label)}</span><b class="num acc-g" id="dbx${c.k}">${esc(F(c, p.diff.value).text)}</b></div>
       </div>
-      <div class="sub2" style="margin-top:32px" data-col="L" ${A('up', tT + 1.3, .45)}>${kick(H(c, p.limit), tT + 1.6)}</div>
-      <div style="margin-top:16px" data-col="LR">${tr}</div>
-      <div class="hd" style="font-size:56px;margin-top:32px" data-col="L">${p.zone.map((l, i) => mk(kick(H(c, l), tT + 2.9 + i * .1), A('mask', tT + 2.5 + i * .1, .55))).join('')}</div>
-      <div class="srcl" style="margin-top:16px" data-col="L" ${A('fade', tT + 3, .4)}>${H(c, p.small)}</div>`),
+      <div style="margin-top:24px" data-col="LR">${tr}</div>
+      ${zoom}
+      <div class="hd" style="font-size:56px;margin-top:24px" data-col="L">${p.zone.map((l, i) => mk(kick(H(c, l), tZone + .4 + i * .1), A('mask', tZone + i * .1, .55))).join('')}</div>
+      <div class="srcl" style="margin-top:16px" data-col="L" ${A('fade', tZone + .5, .4)}>${H(c, p.small)}</div>`),
     css: `
       .db{position:relative}
       .db>*{position:absolute}
@@ -1148,11 +1194,22 @@ export const dumbbell = def<DumbbellP>('dumbbell', (p, c) => {
       .dbx{display:flex;flex-direction:column;align-items:flex-end}
       .dbx span{font-family:'Roboto Mono',monospace;font-size:26px;line-height:32px;color:${K.muted};letter-spacing:.04em}
       .dbx b{font-size:64px;line-height:72px;font-weight:900;letter-spacing:-.03em}
+      .dbz{position:relative;margin-top:-64px}
+      .dbz>*{position:absolute}
+      .dbzs{left:0;top:0}
+      .dbzb{height:12px;border-radius:6px;background:${K.accent};box-shadow:0 0 22px ${K.accent}88;transform-origin:50% 50%}
+      .dbzg{width:4px;height:36px;border-radius:2px;background:${K.ink}66}
+      .dbzd{width:36px;height:36px;border-radius:50%;background:${K.accent};border:5px solid ${K.ground};box-shadow:0 0 0 2px ${K.accent}}
+      .dbzl{display:flex;flex-direction:column;white-space:nowrap}
+      .dbzl.r{align-items:flex-end}
+      .dbzl b{height:56px;font-size:52px;line-height:56px;font-weight:850;color:${K.accent};letter-spacing:-.02em}
+      .dbzl span{height:40px;font-size:30px;line-height:40px;font-weight:650;color:${K.ink}}
       ${TRACK_CSS}`,
     js: MOTION2(c.k),
-    hits: [te + .45],
+    hits: [te + .45, tZ + .2],
     sfx: m => { m.whoosh(ts, .9, .05, false); m.boom(te + .45, .3); m.kick(te + .45, .8); m.whoosh(tT + .4, 1, .04, true); m.click(tT + 1.4, 900, .08);
-      ['A3', 'E4', 'A4', 'C5', 'E5'].forEach((x, i) => m.bell(tT + 2.5 + i * .05, note(x), .028, (i - 2) * .2)); },
+      m.sweep(tZ - .2, .5, 500, 1400, .012); m.pluck(tZ + .2, note('A4'), .04, -.3); m.pluck(tZ + .3, note('E5'), .04, .3);
+      ['A3', 'E4', 'A4', 'C5', 'E5'].forEach((x, i) => m.bell(tZone + .4 + i * .05, note(x), .028, (i - 2) * .2)); },
   };
 });
 
@@ -1166,7 +1223,7 @@ export const SCENE_CSS = (s: Series) => `
   .hd{font-weight:800;letter-spacing:-.035em;line-height:1.02;white-space:nowrap}
   .hd .a,.acc-g{background-image:linear-gradient(100deg,${s.accent} 0%,${K.ink} 45%,${s.accent} 60%,${K.ink} 100%);background-size:220% 100%;background-position:30% 0;-webkit-background-clip:text;background-clip:text;color:transparent}
   .acc-g{text-shadow:none;filter:drop-shadow(0 18px 60px ${s.accent}55)}
-  .neg{color:${SEG.tax}}.ok{color:${C.ok}}.acc{color:${s.accent}}
+  .neg{color:${SEG.tax}}.ok{color:${C.ok}}.acc{color:${s.accent}}.kb{color:${K.accent}}
   .num{font-variant-numeric:tabular-nums}
   .eu{margin-left:.13em;letter-spacing:0;font-size:.74em}
   .mk{overflow:hidden;padding:.12em 0 .24em;margin:-.12em 0 -.24em}

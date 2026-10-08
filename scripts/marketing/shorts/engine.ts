@@ -104,7 +104,7 @@ export function page(b: Built): Page {
   // Το JSON μπαίνει ωμό μέσα σε <script>: κάθε «<» γίνεται \u003c, ώστε κανένα κείμενο
   // να μην κλείσει νωρίς τη σελίδα. Στον περιηγητή διαβάζεται ξανά ως «<».
   const D = {
-    S: at, END: dur, beat, trs, hits, measure, shine, loop, accent: s.accent,
+    S: at, END: dur, beat, trs, hits, measure, shine, loop, accent: s.accent, exact: !!outs[n - 1].loopExact,
     note: outs.map((_, k) => !!(SC[k].params as { note?: boolean })?.note),
     spot: outs.map((_, k) => [[540, 860], [380, 900], [700, 980], [540, 1100]][k % 4]),
   };
@@ -199,7 +199,8 @@ const ENGINE_JS = `
       const k = cl((t - t0) / d), e = eo(k);
       if (type === 'up') { tr += 'translateY(' + (1 - e) * 70 + 'px)'; o *= cl(k * 2.2); }
       else if (type === 'down') { tr += 'translateY(' + -(1 - e) * 70 + 'px)'; o *= cl(k * 2.2); }
-      else if (type === 'mask') { tr += 'translateY(' + (1 - e) * 112 + '%)'; o *= k > 0 ? 1 : 0; }
+      // Η μάσκα ανεβάζει τη γραμμή· οι τόνοι μπαίνουν πρώτοι στο κουτί, γι' αυτό η γραμμή ανάβει και σε διαφάνεια (07/10: «΄ ΄» που αιωρούνταν).
+      else if (type === 'mask') { tr += 'translateY(' + (1 - e) * 112 + '%)'; o *= k > 0 ? cl(k * 3) : 0; }
       else if (type === 'slam') { usesFx = true; tr += 'scale(' + (1.7 - .7 * spring(k * 1.1)) + ')'; if (k < .4) fx += 'blur(' + ((1 - k / .4) * 14).toFixed(1) + 'px)'; o *= cl(k * 4); }
       else if (type === 'left') { tr += 'translateX(' + -(1 - e) * 120 + 'px)'; o *= cl(k * 2); }
       else if (type === 'right') { tr += 'translateX(' + (1 - e) * 120 + 'px)'; o *= cl(k * 2); }
@@ -218,8 +219,9 @@ const ENGINE_JS = `
       else if (type === 'wipey') clip = 'inset(calc(' + Math.round((1 - e) * 1e4) / 1e4 + ' * 100%) 0 0 0)';
       else if (type === 'strike') { el.style.setProperty('--k', e.toFixed(4)); }
       else if (type === 'scan') tr += 'translateY(' + eio(k) * 100 + '%)';
-      // Η λέξη-κλειδί: πετάγεται και κάθεται, χωρίς να αλλάξει πλάτος γραμμής.
-      else if (type === 'kick') { const b = Math.sin(Math.PI * k) * (1 - .35 * k); tr += 'translateY(' + (-10 * b).toFixed(2) + 'px) scale(' + (1 + .1 * b).toFixed(4) + ')'; }
+      // Η λέξη-κλειδί: πετάγεται και κάθεται. ΜΟΝΟ κάθετα: με κλίμακα η λέξη φούσκωνε πλάγια
+      // και έτρωγε το κενό πριν από αυτήν («πάγιαπερνούν», reel της 08/10/2026).
+      else if (type === 'kick') { const b = Math.sin(Math.PI * k) * (1 - .35 * k); tr += 'translateY(' + (-12 * b).toFixed(2) + 'px)'; }
     }
     el.style.opacity = o; if (tr) el.style.transform = tr; if (usesFx) el.style.filter = fx || 'none'; if (clip) el.style.clipPath = clip;
   };
@@ -243,13 +245,14 @@ const ENGINE_JS = `
     const inLoop = LOOP > 0 && t >= D.END - LOOP, lq = inLoop ? p(t, D.END - LOOP, D.END) : 0;
     const tOf = si => (si === 0 && inLoop ? t - D.END : t);
     // 1 · Οι καταστάσεις των σκηνών: ήπια ώθηση της κάμερας σε όλη τη σκηνή.
-    const st = secEls.map((_, k) => ({ x: 0, y: 0, s: 1 + .014 * p(t, S[k], ENDS[k]), rx: 0, ry: 0, o: 1, blur: 0, bx: 0, by: 0, bright: 1, clip: '', z: '', ox: 540, oy: 920, vis: 1, bg: 0, card: false }));
+    const st = secEls.map((_, k) => ({ x: 0, y: 0, s: D.exact && k === N - 1 ? 1 : 1 + .014 * p(t, S[k], ENDS[k]), rx: 0, ry: 0, o: 1, blur: 0, bx: 0, by: 0, bright: 1, clip: '', z: '', ox: 540, oy: 920, vis: 1, bg: 0, card: false }));
     secEls.forEach((_, k) => { live[k] = t >= win[k][0] && t < win[k][1]; });
     if (inLoop) live[0] = true;
     // Ορατές ΠΡΙΝ από τον κώδικα των σκηνών: ό,τι μετρά γεωμετρία (offsetLeft) θέλει διάταξη.
     secEls.forEach((el, k) => { const d = live[k] ? 'block' : 'none'; if (el.style.display !== d) el.style.display = d; });
     if (inLoop) { const L = st[0], Z = st[N - 1], e = eio(lq);
-      L.o = e; L.blur = 10 * Math.pow(1 - e, 2); L.s = 1.05 - .05 * e; Z.o = 1 - e; Z.blur = 10 * e; Z.s = 1 + .04 * e; }
+      if (D.exact) { L.o = e; L.s = 1; Z.o = 1 - e; }
+      else { L.o = e; L.blur = 10 * Math.pow(1 - e, 2); L.s = 1.05 - .05 * e; Z.o = 1 - e; Z.blur = 10 * e; Z.s = 1 + .04 * e; } }
     // 2 · Τα περάσματα.
     for (const tr of D.trs) if (t >= tr.B - tr.pre && t < tr.B + tr.post) TRF[tr.name](t, tr, st[tr.k - 1], st[tr.k], X);
     for (const id of ['streak', 'zfill', 'ring', 'morph', 'seam', 'stack', 'leak', 'flash', 'slamBg', 'slam']) {
@@ -314,7 +317,9 @@ const ENGINE_JS = `
       const A2 = D.spot[k], B2 = D.spot[k + 1 < N ? k + 1 : 0], w = eio(p(t, ENDS[k] - (k + 1 < N ? .4 : LOOP), ENDS[k] + (k + 1 < N ? .2 : 0)));
       tf($('spot'), 'translate(' + (lerp(A2[0], B2[0], w) - 600) + 'px,' + (lerp(A2[1], B2[1], w) - 600) + 'px)');
       if ($('note')) op($('note'), D.note[k] ? (1 - (trOut(k) && t > ENDS[k] - .25 && !D.note[k + 1] ? p(t, ENDS[k] - .25, ENDS[k]) : 0)) * (k && !D.note[k - 1] ? p(t, S[k], S[k] + .4) : 1) : 0); }
-    S.forEach((s, k) => tf($('pb' + k), 'scaleX(' + (p(t, s, ENDS[k]) * (1 - eio(lq))).toFixed(4) + ')'));
+    // Με ακριβή βρόχο η πρόοδος σβήνει στην αρχή του παραθύρου και μένει άδεια, όπως στο καρέ 0.
+    if (D.exact) { const fo = 1 - p(t, D.END - LOOP, D.END - LOOP + .2); S.forEach((s, k) => { const el = $('pb' + k); tf(el, 'scaleX(' + (fo > 0 ? p(t, s, ENDS[k]) : 0).toFixed(4) + ')'); op(el, fo); }); }
+    else S.forEach((s, k) => tf($('pb' + k), 'scaleX(' + (p(t, s, ENDS[k]) * (1 - eio(lq))).toFixed(4) + ')'));
     // 7 · Ευανάγνωστο; Μία σκηνή καθαρή ή μια λέξη του περάσματος καθαρή. Κάλυψη κάτω από 0,6.
     let ok = X.leg;
     if (!ok && X.cover < .6) for (let k = 0; k < N; k++) {

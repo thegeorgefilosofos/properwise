@@ -51,13 +51,12 @@ async function main() {
   const t0 = Date.now();
   mkdirSync(OUT, { recursive: true }); mkdirSync(DOC, { recursive: true });
   const b = build(SPEC), pg = page(b), f = b.f, tx = renderTexts(b);
-  const calcK = b.scenes.findIndex(s => s.kind === 'calcCard');
   console.log(`■ ${SPEC.id} · ${b.dur.toFixed(1)}″ · ${b.scenes.length} σκηνές · ${pg.trs.map(x => x.name).join(' → ')}`);
 
   // ── 1 · Ψηφία μόνο από γεγονότα και καμία επανάληψη του χθεσινού ──────────
   pg.outs.forEach((o, k) => {
     assertDigitsFromFacts(`σκηνή ${k + 1}`, o.html, f);
-    assertNoRepeat(`σκηνή ${k + 1}`, textOf(o.html), f, k === calcK ? ['withEleni.otherGross'] : []);
+    assertNoRepeat(`σκηνή ${k + 1}`, textOf(o.html), f);
   });
   const ST: Story[] = stories(f);
   ST.forEach(s => assertNoRepeat(`story ${s.n}`, textOf(s.html) + ' ' + s.alt + ' ' + JSON.stringify(s.sticker), f));
@@ -86,7 +85,7 @@ async function main() {
       console.log(`  ✓ στιγμιότυπα στο ${sd}`);
     }
     const r = await browserGates(p, b, pg, f, { pop: !flag('fast') });
-    post = r.gates;
+    post = [...r.gates, await kickGaps(p, pg.html)];
     console.log(report(post).join('\n'));
     await p.close();
 
@@ -149,6 +148,38 @@ async function main() {
   console.log(`✓ ${OUT}\n✓ ${DOC}\n  σε ${fn((Date.now() - t0) / 60000, 1)}′`);
 }
 
+/**
+ * ΚΕΝΟ ΓΥΡΩ ΑΠΟ ΤΗ ΛΕΞΗ-ΚΛΕΙΔΙ, ΣΕ ΚΑΘΕ ΚΑΡΕ ΤΗΣ ΚΙΝΗΣΗΣ ΤΗΣ. Η πρώτη έκδοση (08/10/2026)
+ * φούσκωνε τη λέξη πλάγια και έτρωγε το κενό («πάγιαπερνούν»)· ο έλεγχος στοίχισης
+ * έβλεπε μόνο καρέ όπου όλα έχουν κάτσει. Εδώ: πέντε καρέ μέσα σε κάθε `kick` και
+ * σε καθένα το κενό ως τον προηγούμενο και τον επόμενο χαρακτήρα της ίδιας γραμμής ≥ 0,2em.
+ */
+async function kickGaps(p: import('playwright-core').Page, html: string): Promise<Gate> {
+  const g: Gate = { name: 'Λέξη-κλειδί: κενό ≥ 0,2em δεξιά και αριστερά σε κάθε καρέ της κίνησης', fails: [] };
+  const ks = [...html.matchAll(/kick,([\d.]+),([\d.]+)/g)].map(m => [Number(m[1]), Number(m[2])] as const);
+  for (const [t0, d] of ks) for (const q of [.1, .3, .5, .7, .9]) {
+    const t = t0 + d * q;
+    await p.evaluate((x: number) => (window as unknown as { render: (t: number) => void }).render(x), t);
+    const bad = (await p.evaluate(`(() => {
+      const out = [], rg = document.createRange();
+      const charRect = (node, i) => { rg.setStart(node, i); rg.setEnd(node, i + 1); return rg.getBoundingClientRect(); };
+      for (const el of document.querySelectorAll('section .kw')) {
+        const sec = el.closest('section'); if (!sec || sec.style.display === 'none' || Number(sec.style.opacity || 1) < .5) continue;
+        const r = el.getBoundingClientRect(); if (!r.width) continue;
+        const em = parseFloat(getComputedStyle(el).fontSize), same = q => Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top) > .5 * Math.min(r.height, q.height);
+        const prev = el.previousSibling, next = el.nextSibling;
+        if (prev && prev.nodeType === 3) { const s = prev.textContent; let i = s.length - 1; while (i >= 0 && /\\s/.test(s[i])) i--; if (i >= 0 && i < s.length - 1) { const c = charRect(prev, i); if (same(c) && r.left - c.right < .2 * em) out.push('«' + s.slice(Math.max(0, i - 8), i + 1) + '|' + el.textContent.slice(0, 12) + '» ' + (r.left - c.right).toFixed(1) + 'px'); } }
+        if (next && next.nodeType === 3) { const s = next.textContent; let i = 0; while (i < s.length && /\\s/.test(s[i])) i++; if (i < s.length && i > 0) { const c = charRect(next, i); if (same(c) && c.left - r.right < .2 * em) out.push('«' + el.textContent.slice(-12) + '|' + s.slice(i, i + 8) + '» ' + (c.left - r.right).toFixed(1) + 'px'); } }
+      }
+      return out;
+    })()`)) as string[];
+    g.fails.push(...bad.map(x => `${t.toFixed(2)}″: ${x}`));
+  }
+  g.fails = [...new Set(g.fails)];
+  g.info = `${ks.length} λέξεις × 5 καρέ`;
+  return g;
+}
+
 /** Το φύλλο των stories: τίτλος, αυτοκόλλητο με τα κείμενά του, θέση, εναλλακτικό. */
 function storySheet(ST: Story[]): string {
   return ST.map(s => [
@@ -194,7 +225,7 @@ function textsMd(b: ReturnType<typeof build>, pg: ReturnType<typeof page>, tx: R
     '',
     `Εναλλακτικό κείμενο: ${tx.alt}`,
     '',
-    `Σύνδεσμος στο προφίλ: ${utmUrl(SPEC.cta.path, SPEC.utm.campaign, 'instagram')}`,
+    `Σύνδεσμος στο προφίλ: ${utmUrl(SPEC.cta.path, SPEC.utm.campaign, 'instagram', SPEC.utm.medium)}`,
     '',
     '## Stories',
     '',
@@ -206,6 +237,8 @@ function textsMd(b: ReturnType<typeof build>, pg: ReturnType<typeof page>, tx: R
     '## Από πού βγαίνει κάθε αριθμός',
     '',
     'Η πλευρά Airbnb με άλλα ενοίκια υπολογίζεται με τις ίδιες συναρτήσεις· ο υπολογιστής βραχυχρόνιας δεν έχει ακόμα πεδίο άλλων ενοικίων.',
+    '',
+    `Τα άλλα ενοίκια (${f['withEleni.otherGross'].text}) είναι τα ενοίκια του ακινήτου επίδειξης (rentFacts.yearAhead), το ίδιο ποσό με το short της 07/10 21:30. Μπαίνουν ΜΟΝΟ ως είσοδος («με άλλα ενοίκια …»), δίπλα σε κάθε αριθμό που εξαρτάται από αυτά (διαφορά, κλιμάκια, όριο ${f['withEleni.be'].text}), ώστε να μη διαβάζονται ως κανόνας για όλους. Τα καθαρά της Ελένης του χθεσινού short δεν ξαναγράφονται (assertNoRepeat).`,
     '',
     '| γεγονός | κείμενο | πηγή | λήγει |',
     '|---|---|---|---|',
@@ -232,7 +265,7 @@ function readme(b: ReturnType<typeof build>): string {
     '',
     'Βίντεο, stories και φύλλα ελέγχου βγαίνουν στο `docs/marketing/reels/ig-dyo-dromoi/`, έξω από το git. Εδώ μένουν η λεζάντα (`caption.md`), το φύλλο των stories (`stories.md`) και το εξώφυλλο (`cover.jpg`, χωρίς αριθμούς).',
     '',
-    `Σύνδεσμος: ${utmUrl(SPEC.cta.path, SPEC.utm.campaign, 'instagram')}`,
+    `Σύνδεσμος: ${utmUrl(SPEC.cta.path, SPEC.utm.campaign, 'instagram', SPEC.utm.medium)}`,
     '',
     'Κάθε αριθμός από το `scripts/marketing/dyoDromoiFacts.ts` (lib/tools/shortVsLong, lib/tools/apodosi, lib/billing/greekTax).',
     '',
