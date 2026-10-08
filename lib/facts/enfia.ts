@@ -44,7 +44,14 @@ export type EnfiaSettings = typeof ENFIA_DEFAULTS;
 export interface EnfiaFacts {
   /** Το «ΕΝΦΙΑ που πληρώνεις» της καρτέλας του ακινήτου, ήδη στο μερίδιο. */
   stored?: number | null;
+  /** Η εμπορική αξία· μόνο όταν λείπει η αντικειμενική. */
   value?: number | null;
+  /**
+   * Η αντικειμενική αξία ΟΛΟΚΛΗΡΟΥ του ακινήτου, όχι του μεριδίου· το μερίδιο
+   * το δίνει το `ownershipPct`. Από αυτήν βγαίνει ο ΕΝΦΙΑ (η πηγή του νόμου
+   * είναι στο lib/billing/enfia.ts), γι' αυτό προηγείται της εμπορικής.
+   */
+  objValue?: number | string | null;
   sqm?: number | null;
   yearBuilt?: number | string | null;
   floor?: string | number | null;
@@ -67,6 +74,11 @@ export interface EnfiaNow {
   estimate: number;
   /** Από πού βγαίνει η εκτίμηση. */
   estimateFrom: 'form' | 'facts' | null;
+  /**
+   * Με ποια αξία βγήκε η εκτίμηση από τα στοιχεία της καρτέλας· `null` όταν δεν
+   * βγήκε από αυτά (φόρμα ή καμία εκτίμηση).
+   */
+  estimateBasis: 'objective' | 'market' | null;
   /** Ηπειρωτική Αττική από τον ΤΚ· `null` όταν δεν ξέρουμε. */
   atticaMainland: boolean | null;
 }
@@ -96,8 +108,17 @@ export function enfiaForYear(s: EnfiaSettings, year: number, facts: EnfiaFacts =
     atticaMainland,
     year,
   });
+  // Η ΑΝΤΙΚΕΙΜΕΝΙΚΗ ΠΡΙΝ ΑΠΟ ΤΗΝ ΕΜΠΟΡΙΚΗ. Η μηχανή βγάζει την τιμή ζώνης ως
+  // αξία ÷ τ.μ. και τα όρια (μείωση, Ενότητα Γ) τα κρίνει ο νόμος στην
+  // αντικειμενική. Η εκτίμηση έπαιρνε την εμπορική και αγνοούσε την αντικειμενική
+  // που έγραψε ο χρήστης· σε διαμέρισμα 90 τ.μ. με 180.000€ εμπορική και
+  // 96.000€ αντικειμενική έβγαζε άλλο κλιμάκιο μείωσης. Και όποιος είχε μόνο
+  // αντικειμενική (το κύριο πεδίο του οδηγού) δεν έπαιρνε εκτίμηση καθόλου.
+  // Μηδέν, αρνητικό ή μη αριθμός → εμπορική.
+  const obj = Number(facts.objValue) > 0 ? Number(facts.objValue) : 0;
+  const mkt = Number(facts.value) > 0 ? Number(facts.value) : 0;
   const fromFacts = detailed ? null : estimateENFIAFromFacts({
-    value: facts.value, sqm: facts.sqm, yearBuilt: facts.yearBuilt, floor: facts.floor,
+    value: obj || mkt, sqm: facts.sqm, yearBuilt: facts.yearBuilt, floor: facts.floor,
     taxYear: year, propType: facts.propType, ownershipPct: facts.ownershipPct,
   });
   const estimate = detailed?.annual ?? fromFacts?.annual ?? 0;
@@ -118,6 +139,7 @@ export function enfiaForYear(s: EnfiaSettings, year: number, facts: EnfiaFacts =
     detailed,
     estimate,
     estimateFrom: detailed ? 'form' : fromFacts ? 'facts' : null,
+    estimateBasis: fromFacts ? (obj ? 'objective' : 'market') : null,
     atticaMainland,
   };
 }
@@ -143,7 +165,9 @@ export function enfiaYear(s: EnfiaSettings, year: number, facts: EnfiaFacts = {}
   const now = enfiaForYear(s, year, facts);
   const annual = now.inUse.annual;
   const src = now.inUse.source;
-  const label = ENFIA_LABELS[src];
+  // Η εκτίμηση από την εμπορική το λέει στην ετικέτα: είναι η πιο χοντρή.
+  const label = src === 'estimate' && now.estimateFrom === 'facts' && now.estimateBasis === 'market'
+    ? ENFIA_LABELS.estimateMarket : ENFIA_LABELS[src];
   // ΟΙ ΗΜΕΡΟΜΗΝΙΕΣ ΕΙΝΑΙ ΤΟΥ ΦΟΡΟΛΟΓΙΚΟΥ ΗΜΕΡΟΛΟΓΙΟΥ, τα ποσά του προγράμματος
   // δόσεων. Το πρόγραμμα έβγαζε πάντα Μάρτιο ως Φεβρουάριο· το ημερολόγιο ξέρει
   // τον μήνα έκδοσης κάθε εκκαθαριστικού. Όπου το ημερολόγιο δεν έχει ημερομηνία

@@ -125,8 +125,17 @@ const SOURCE_NOTE = {
 
 /** Το δηλωμένο ποσό που ήρθε από την καρτέλα του ακινήτου, όχι από εδώ. */
 const PROPERTY_NOTE = 'Το ποσό που έγραψες στην καρτέλα του ακινήτου. Αν έχει βγει το φετινό εκκαθαριστικό, γράψε το εδώ.';
-/** Η εκτίμηση που βγήκε από την καρτέλα του ακινήτου, πριν συμπληρωθεί η φόρμα. */
-const FACTS_NOTE = 'Εκτίμηση από την αξία και τα τετραγωνικά του ακινήτου. Με ζώνη και εμβαδόν από το Ε9 βγαίνει ακριβέστερη.';
+/**
+ * Η εκτίμηση που βγήκε από την καρτέλα του ακινήτου, πριν συμπληρωθεί η φόρμα,
+ * ανά αξία που τη στήριξε. Η αντικειμενική γράφεται στο συμβόλαιο, όχι στο Ε9:
+ * το Ε9 έχει εμβαδόν, όροφο και έτος, όχι αξία.
+ */
+const FACTS_NOTE = {
+  objective: 'Εκτίμηση από την αντικειμενική αξία και τα τετραγωνικά του ακινήτου. Με ζώνη και εμβαδόν βγαίνει ακριβέστερη.',
+  market: 'Εκτίμηση από την εμπορική αξία, γιατί δεν έχεις γράψει αντικειμενική. Η αντικειμενική από το συμβόλαιο δίνει ακριβέστερη εκτίμηση.',
+} as const;
+/** Η ίδια βάση στην πρόταση κάτω από τη φόρμα. */
+const FACTS_BASIS = { objective: 'την αντικειμενική αξία', market: 'την εμπορική αξία' } as const;
 
 const SOURCE_LABEL = {
   declared: 'Φετινό εκκαθαριστικό',
@@ -257,7 +266,7 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
   // Η πρόταση κάτω από το ποσό λέει ΑΚΡΙΒΩΣ από πού ήρθε: το δηλωμένο μπορεί να
   // είναι της καρτέλας του ακινήτου και η εκτίμηση από την αξία του.
   const sourceNote = inUse.source === 'declared' && now.declaredFrom === 'property' ? PROPERTY_NOTE
-    : inUse.source === 'estimate' && now.estimateFrom === 'facts' ? FACTS_NOTE
+    : inUse.source === 'estimate' && now.estimateFrom === 'facts' ? FACTS_NOTE[now.estimateBasis ?? 'market']
     : SOURCE_NOTE[inUse.source];
 
   const toggleReduction = (key: string) => {
@@ -527,7 +536,7 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
             <div style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: T.sp.lg, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
               Χρειάζονται εμβαδόν και τιμή ζώνης. Το εμβαδόν το βρίσκεις στο Ε9 σου, την τιμή ζώνης στον χάρτη αντικειμενικών αξιών.
               {now.estimateFrom === 'facts' && now.estimate > 0 && (
-                <> Ως τότε η εκτίμηση βγαίνει από την αξία και τα τετραγωνικά του ακινήτου: {fe(now.estimate)}.</>
+                <> Ως τότε η εκτίμηση βγαίνει από {FACTS_BASIS[now.estimateBasis ?? 'market']} και τα τετραγωνικά του ακινήτου: {fe(now.estimate)}.</>
               )}
             </div>
           )}

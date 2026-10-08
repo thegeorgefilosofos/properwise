@@ -306,7 +306,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // (2ος όροφος, 10-20 ετών) και έβγαινε 16,15% ψηλότερα από την ουδέτερη βάση.
   // Και ο `prop_type`: χωρίς αυτόν η εκτίμηση χρέωνε αποθήκη 20 τ.μ. με τον
   // πίνακα των κατοικιών (39,20€ τον χρόνο) και οικόπεδο 400 τ.μ. με 600,00€.
-  type PropRow     = Pick<UserPropertiesRow, 'id'|'name'|'address'|'rental_mode'|'status_detail'|'enfia'|'sqm'|'value'|'year_built'|'floor'|'purchase_price'|'purchase_date'|'prop_type'|'ownership'|'postal_code'>
+  type PropRow     = Pick<UserPropertiesRow, 'id'|'name'|'address'|'rental_mode'|'status_detail'|'enfia'|'sqm'|'value'|'obj_value'|'year_built'|'floor'|'purchase_price'|'purchase_date'|'prop_type'|'ownership'|'postal_code'>
   type PropListRow = Pick<UserPropertiesRow, 'id'|'name'|'rental_mode'|'status_detail'|'enfia'|'sqm'|'ownership'|'prop_type'|'client_id'|'atak'|'ama'>
   type InventoryRow = Pick<InventoryItemsRow, 'name'|'purchase_value'|'category'|'purchase_date'>
 
@@ -354,7 +354,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
         rentStore.ofPropertyWithError<RentRow>(supabase,propertyId,`${rentStore.LEDGER_COLUMNS},base_rent,services_charge,method`,userId),
         stayStore.ofPropertyWithError<StayRow>(supabase,propertyId,`id,${stayStore.ACCOUNTING_COLUMNS}`,userId),
         loanStore.ofPropertyWithError(supabase,propertyId,userId),
-        properties.oneWithError<PropRow>(supabase, propertyId, 'id,name,address,rental_mode,status_detail,enfia,sqm,value,year_built,floor,purchase_price,purchase_date,prop_type,ownership,postal_code', userId),
+        properties.oneWithError<PropRow>(supabase, propertyId, 'id,name,address,rental_mode,status_detail,enfia,sqm,value,obj_value,year_built,floor,purchase_price,purchase_date,prop_type,ownership,postal_code', userId),
         properties.listWithError<PropListRow>(supabase, userId, { columns: 'id,name,rental_mode,status_detail,enfia,sqm,ownership,prop_type,client_id,atak,ama' }),
         rentStore.ofUserWithError<PortfolioRentRow>(supabase,userId,`property_id,${rentStore.LEDGER_COLUMNS},base_rent,services_charge`),
         stayStore.ofUserWithError<PortfolioStayRow>(supabase,userId,`property_id,${stayStore.ACCOUNTING_COLUMNS}`),
@@ -449,7 +449,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // γιατί ο ΕΝΦΙΑ έχει κατώφλια (400.000€, 500.000€, κλιμακωτή μείωση).
   const [enfiaSettings, updateEnfia, enfiaLoading] = useEnfiaSettings(propertyId, userId)
   const enfiaNow = useMemo(()=>enfiaForYear(enfiaSettings, year, {
-    stored: prop?.enfia, value: prop?.value, sqm: prop?.sqm,
+    stored: prop?.enfia, value: prop?.value, objValue: prop?.obj_value, sqm: prop?.sqm,
     yearBuilt: prop?.year_built, floor: prop?.floor, propType: prop?.prop_type,
     ownershipPct: prop?.ownership == null ? null : Number(prop.ownership),
     postalCode: prop?.postal_code,

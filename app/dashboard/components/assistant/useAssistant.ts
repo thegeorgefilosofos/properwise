@@ -441,10 +441,13 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
     const hostingLine = host.stays
       ? `${HOSTING_LABELS.payout} ${year} ως σήμερα: ${eur(host.payout)}. ${HOSTING_LABELS.declarable}: ${eur(host.declarable)}. Από ${host.stays} διαμονές, ${host.nights} διανυκτερεύσεις (πηγή: ${navLabel('clients')}).`
       : '';
-    // Ο ΕΝΦΙΑ ΤΟΥ ΕΤΟΥΣ: η Νόα δεν τον ήξερε καθόλου.
+    // Ο ΕΝΦΙΑ ΤΟΥ ΕΤΟΥΣ: η Νόα δεν τον ήξερε καθόλου. Ο τύπος περνά όπως στην
+    // Επισκόπηση και τη Λογιστική: χωρίς αυτόν η Νόα έλεγε δόση ΕΝΦΙΑ για
+    // οικόπεδο και χρέωνε την αποθήκη με τον πίνακα των κατοικιών.
     const ef = enfiaYear(enfiaSettings, year, {
-      stored: propContext.enfia, value: propContext.value, sqm: propContext.sqm, yearBuilt: propContext.yearBuilt,
-      floor: propContext.floor, ownershipPct: propContext.ownership ?? null, postalCode: propContext.postalCode,
+      stored: propContext.enfia, value: propContext.value, objValue: propContext.objValue, sqm: propContext.sqm,
+      yearBuilt: propContext.yearBuilt, floor: propContext.floor, propType: propContext.propType,
+      ownershipPct: propContext.ownership ?? null, postalCode: propContext.postalCode,
     });
     // Η ΕΠΟΜΕΝΗ ΔΟΣΗ ΑΠΟ ΤΟ ΦΟΡΟΛΟΓΙΚΟ ΗΜΕΡΟΛΟΓΙΟ, όχι από το έτος του ρολογιού:
     // τον Ιανουάριο είναι η 11η του περσινού εκκαθαριστικού (lib/facts/deadlines).
@@ -453,8 +456,9 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
     const closedTax = closedTaxRefs(cal || [], []);
     const due = nextEnfiaDue(todayStr, closedTax);
     const dueEf = due && due.year !== year ? enfiaYear(enfiaSettings, due.year, {
-      stored: propContext.enfia, value: propContext.value, sqm: propContext.sqm, yearBuilt: propContext.yearBuilt,
-      floor: propContext.floor, ownershipPct: propContext.ownership ?? null, postalCode: propContext.postalCode,
+      stored: propContext.enfia, value: propContext.value, objValue: propContext.objValue, sqm: propContext.sqm,
+      yearBuilt: propContext.yearBuilt, floor: propContext.floor, propType: propContext.propType,
+      ownershipPct: propContext.ownership ?? null, postalCode: propContext.postalCode,
     }) : ef;
     const dueAmount = due ? dueEf.instalments.find(i => i.no === due.no)?.amount ?? 0 : 0;
     const enfiaLine = ef.annual > 0
