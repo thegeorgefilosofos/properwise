@@ -9,6 +9,10 @@ function ok(name: string, cond: boolean) {
 }
 
 const [bank, market] = FEEDS
+// Η ΣΕΙΡΑ ΜΕΤΡΑ: οι έλεγχοι παρακάτω διαβάζουν τις δύο πρώτες κατά θέση.
+ok('πρώτη η τροφοδοσία τραπεζών, δεύτερη της αγοράς', FEEDS[0].path === 'feed:bank' && FEEDS[1].path === 'feed:market')
+const reference = FEEDS.find(f => f.path === 'feed:reference')
+ok('τα δεδομένα αναφοράς παρακολουθούνται', !!reference && reference.rpc === 'reference_data_health')
 const NO_CREDIT = 'το τελευταίο πέρασμα απέτυχε: anthropic 400: Your credit balance is too low to access the Anthropic API.'
 
 // ── Η γραμμή από το RPC ──────────────────────────────────────────────────────
@@ -44,7 +48,20 @@ ok('άλλη αιτία: χωρίς οδηγία για υπόλοιπο', !(oth
 const healed = feedAlert(new Map([['feed:bank', false]]), [up(bank)])
 ok('σπασμένη → υγιής: στέλνει', /δουλεύει ξανά/.test(healed?.subject ?? ''))
 
-const all = [broke, other, healed].flatMap(a => a ? [a.subject, ...a.lines] : []).join('\n')
+// ── Τα δεδομένα αναφοράς: δική τους φράση, όχι των τιμών ─────────────────────
+const LAST = /τελευταίες επιβεβαιωμένες τιμές/
+const refAlert = reference ? feedAlert(new Map(), [down(reference, 'ζωντανά προγράμματα χωρίς προθεσμία ή επαλήθευση 60 ημερών: x')]) : null
+ok('αναφορά σπασμένη: στέλνει', refAlert !== null)
+ok('το θέμα ονομάζει την καρτέλα Δάνεια', /Προγράμματα της καρτέλας Δάνεια/.test(refAlert?.subject ?? ''))
+ok('λέει πώς κλείνει η γραμμή', (refAlert?.lines ?? []).some(l => l.includes('status = ended')))
+ok('δεν λέει ότι δείχνονται «επιβεβαιωμένες τιμές»', !(refAlert?.lines ?? []).some(l => LAST.test(l)))
+
+const both = feedAlert(new Map(), [down(bank, 'σιωπή'), down(market, 'σιωπή')])
+ok('τράπεζες και αγορά σπασμένες: η φράση μία φορά', (both?.lines ?? []).filter(l => LAST.test(l)).length === 1)
+const bankOnly = feedAlert(new Map(), [down(bank, 'σιωπή')])
+ok('μόνο τράπεζες σπασμένες: η φράση μία φορά', (bankOnly?.lines ?? []).filter(l => LAST.test(l)).length === 1)
+
+const all = [broke, other, healed, refAlert].flatMap(a => a ? [a.subject, ...a.lines] : []).join('\n')
 ok('κανένα κόμμα πριν από «και»', !/, κ(αι|ι) /.test(all))
 
 console.log(`\nfeedAlert: ${passed} passed, ${failed} failed`)
