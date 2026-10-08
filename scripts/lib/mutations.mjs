@@ -514,6 +514,13 @@ export const MUTATIONS = {
     { file: 'app/odigos/plafon-3-emporikes-misthoseis-2026/page.tsx', from: 'Αν εκμισθώνεις επαγγελματικό ακίνητο', to: 'Αν εκμισθώνεις ένα επαγγελματικό ακίνητο' },
     { file: 'app/odigos/guideStamps.json', from: '"/odigos/plafon-3-emporikes-misthoseis-2026"', to: '"/odigos/__mut__"' },
   ] },
+  // Δύο κανόνες, δύο αποδείξεις. Μία νέα σίγαση με κανόνα ανεβάζει τη μέτρηση
+  // πάνω από το όριο. Και μία σίγαση για όλο το αρχείο χωρίς κανόνα, που με
+  // μέτρηση οδηγιών θα ΚΑΤΕΒΑΖΕ τον αριθμό ενώ σιγεί τα πάντα.
+  'lint-disable': { every: [
+    { add: 'lib/core/__mut__.ts', content: '// eslint-disable-next-line @typescript-eslint/no-explicit-any\nexport const probe: any = 1\n' },
+    { add: 'lib/core/__mut__.ts', content: '/* eslint-disable */\nexport const probe = 1\n' },
+  ] },
   'js-hover': { add: 'components/__mut__.tsx', content: 'export function P() {\n  return <div onMouseEnter={() => {}} onMouseLeave={() => {}}>Α</div>\n}\n' },
   // Μισό εικονοστοιχείο εκτός κλίμακας: το παλιό μοτίβο `(\d+)\b` το διάβαζε
   // «12» και το άφηνε να περάσει. Αν ο φύλακας ξαναχάσει τα δεκαδικά, πρασινίζει.
