@@ -24,7 +24,7 @@
 // Ο εκτελεστής είναι το scripts/noa-eval.ts. Δεν τρέχει στο CI: χρειάζεται
 // κλειδί και το μοντέλο δεν απαντά ίδια κάθε φορά.
 // ═══════════════════════════════════════════════════════════════════════════
-import { rentalIncomeTax, rentalBracketsForYear } from '../billing/greekTax';
+import { rentalIncomeTax, rentalBracketsForYear, art15BracketsForAge, type TaxBracket } from '../billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE, presumptiveDeductionRateForYear } from '../billing/presumptive';
 import { incomeStatement } from '../accounting/statement';
 import { feWhole } from '../core/format';
@@ -49,6 +49,13 @@ export interface NoaEvalCase {
   category: 'in-prompt-method' | 'not-in-prompt';
   /** Γνωστά λάθος ποσά: αν εμφανιστούν μαζί με το σωστό, η απάντηση είναι διφορούμενη. */
   wrong?: number[];
+  /**
+   * Η λάθος μέθοδος που ψάχνει η ερώτηση: φορολογητέο και κλίμακα. Η Νόα δείχνει
+   * ΠΑΝΤΑ την ανάλυση κλιμακίων, οπότε αν ένα κλιμάκιο της λάθος μεθόδου ήταν
+   * ίσο με το σωστό ποσό, η λάθος απάντηση θα περνούσε (το evalSet.test.ts
+   * το απαγορεύει).
+   */
+  wrongMethod?: { taxable: number; brackets: readonly TaxBracket[] };
   /** Τα ποσά της ερώτησης (ευρώ). Ούτε αυτά επιτρέπεται να υπάρχουν στο prompt. */
   inputs: number[];
 }
@@ -74,6 +81,7 @@ function rentCase(year: number, gross: number, bank: boolean): NoaEvalCase {
   const full = rentalIncomeTax(gross, rentalBracketsForYear(year));
   const kept = rentalIncomeTax(gross * (1 - PRESUMPTIVE_DEDUCTION_RATE), rentalBracketsForYear(year));
   const wrong = bank ? null : Math.abs(full - expected) > TOLERANCE ? full : kept;
+  const wrongTaxable = wrong === full ? gross : gross * (1 - PRESUMPTIVE_DEDUCTION_RATE);
   return {
     id: `rent-${year}-${bank ? 'bank' : 'cash'}-${gross}`,
     question: `Είμαι ιδιώτης και νοικιάζω ένα διαμέρισμα με μακροχρόνια μίσθωση κατοικίας. Το ακίνητο είναι εξ ολοκλήρου δικό μου και δεν έχω άλλο εισόδημα. Για το φορολογικό έτος ${year} εισέπραξα ${feWhole(gross)} ενοίκια ${how}. Πόσο φόρο εισοδήματος θα πληρώσω για αυτά;`,
@@ -81,7 +89,7 @@ function rentCase(year: number, gross: number, bank: boolean): NoaEvalCase {
     tolerance: TOLERANCE,
     source: `rentalIncomeTax · presumptiveDeductionRateForYear(${year}, ${bank}) · rentalBracketsForYear(${year})`,
     category: 'in-prompt-method',
-    ...(wrong != null ? { wrong: [wrong] } : {}),
+    ...(wrong != null ? { wrong: [wrong], wrongMethod: { taxable: wrongTaxable, brackets: rentalBracketsForYear(year) } } : {}),
     inputs: [gross],
   };
 }
@@ -96,6 +104,11 @@ function soleCase(profit: number, opts: { age?: number; advance?: boolean; first
     ? 'Πόση προκαταβολή φόρου θα βεβαιωθεί για τον επόμενο χρόνο;'
     : 'Πόσο φόρο εισοδήματος θα πληρώσω;';
   const tag = opts.advance ? 'advance' : opts.age ? `age${opts.age}` : opts.firstThreeYears ? 'first3' : 'tax';
+  // ΤΟ ΛΑΘΟΣ ΠΟΥ ΨΑΧΝΟΥΜΕ ΣΤΟΥΣ ΝΕΟΥΣ: η κανονική κλίμακα, σαν να μην υπήρχε η ηλικία.
+  const noAge = opts.age && !opts.advance
+    ? incomeStatement({ regime: 'business', businessForm: 'sole', grossIncome: profit, itemizedExpenses: 0 })
+    : null;
+  const youthWrong = noAge && Math.abs(noAge.incomeTax - s.incomeTax) > TOLERANCE ? noAge.incomeTax : null;
   return {
     id: `sole-2026-${tag}-${profit}`,
     question: `${who} ατομική επιχείρηση. Το καθαρό κέρδος μου για το φορολογικό έτος 2026 ήταν ${feWhole(profit)} και δεν έχω άλλο εισόδημα. ${ask}`,
@@ -104,6 +117,7 @@ function soleCase(profit: number, opts: { age?: number; advance?: boolean; first
     source: `incomeStatement({ regime: 'business', businessForm: 'sole' })${opts.advance ? '.advanceTax' : '.incomeTax'}`,
     // Η κλίμακα της πρώτης τριετίας δεν είναι στη γνώση της Νόας.
     category: opts.firstThreeYears ? 'not-in-prompt' : 'in-prompt-method',
+    ...(youthWrong != null ? { wrong: [youthWrong], wrongMethod: { taxable: profit, brackets: art15BracketsForAge() } } : {}),
     inputs: [profit],
   };
 }
@@ -145,8 +159,10 @@ export const NOA_EVAL_CASES: readonly NoaEvalCase[] = [
   soleCase(45000, { advance: true }),
   soleCase(70000),
   companyCase(80000),
-  // Νέοι έως 30: η μειωμένη κλίμακα, που είναι στη γνώση της Νόας.
-  soleCase(22000, { age: 24 }),
+  // Νέοι έως 30: η μειωμένη κλίμακα, που είναι στη γνώση της Νόας. Κέρδος πάνω
+  // από το κλιμάκιο του 26%: ως εκεί ο φόρος του νέου έως 25 είναι ίσος με το
+  // κλιμάκιο 26% της κανονικής κλίμακας και η λάθος ανάλυση θα περνούσε.
+  soleCase(34000, { age: 24 }),
   soleCase(23000, { age: 28 }),
   // Εκτός prompt: μετριέται χωριστά, δεν μπαίνει στο ποσοστό.
   soleCase(15000, { firstThreeYears: true }),

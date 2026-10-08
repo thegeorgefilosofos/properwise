@@ -17,6 +17,7 @@ import {
   noaSystemBlocks, buildPersonalPrompt, packsFor, DEFAULT_PREFS,
 } from '../../app/dashboard/components/assistantPersona';
 import { incomeStatement } from '../accounting/statement';
+import type { TaxBracket } from '../billing/greekTax';
 import { fn } from '../core/format';
 import { roundHalfUp } from '../core/money';
 import { athensNowLabel, athensToday } from '../core/time';
@@ -85,6 +86,36 @@ for (const c of NOA_EVAL_CASES.filter(x => /^rent-2026-bank-/.test(x.id))) {
     && y27.wrong[0] > y27.expected && /ισόποσα κάθε μήνα/.test(y27.question));
   ok('κάθε λάθος ποσό απέχει από το σωστό', NOA_EVAL_CASES.every(c =>
     (c.wrong ?? []).every(w => Math.abs(w - c.expected) > c.tolerance)));
+}
+
+// ── 3β. Η ΛΑΘΟΣ ΑΝΑΛΥΣΗ ΔΕΝ ΠΕΡΙΕΧΕΙ ΤΟ ΣΩΣΤΟ ΠΟΣΟ ─────────────────────────
+// Η Νόα δείχνει ΠΑΝΤΑ την ανάλυση κλιμακίων και ο βαθμολογητής δέχεται το σωστό
+// ποσό όπου κι αν βρεθεί. Στους 24 ετών με 22.000 κέρδος το σωστό ποσό ήταν
+// ίσο με το κλιμάκιο 26% της κανονικής κλίμακας: η απάντηση που αγνοούσε την
+// ηλικία περνούσε ως σωστή. Κανένα κλιμάκιο και κανένα σύνολο της λάθος
+// μεθόδου δεν επιτρέπεται να πέφτει πάνω στο σωστό.
+const slices = (taxable: number, brackets: readonly TaxBracket[]) => brackets
+  .map(b => ({ b, amt: Math.max(0, Math.min(taxable, b.to) - b.from) }))
+  .filter(x => x.amt > 0)
+  .map(x => ({ ...x, tax: x.amt * x.b.rate }));
+{
+  const youth = NOA_EVAL_CASES.filter(c => /^sole-2026-age\d+-/.test(c.id));
+  ok('υπάρχουν ερωτήσεις νέων', youth.length >= 2);
+  for (const c of youth) ok(`${c.id}: έχει λάθος μέθοδο την κανονική κλίμακα`, !!c.wrongMethod && !!c.wrong?.length);
+  for (const c of NOA_EVAL_CASES.filter(x => x.wrong?.length)) {
+    ok(`${c.id}: έχει λάθος μέθοδο`, !!c.wrongMethod);
+    if (!c.wrongMethod) continue;
+    const sl = slices(c.wrongMethod.taxable, c.wrongMethod.brackets);
+    const total = sl.reduce((a, x) => a + x.tax, 0);
+    ok(`${c.id}: το σύνολο της λάθος μεθόδου είναι το λάθος ποσό`,
+      c.wrong!.some(w => Math.abs(w - total) < 0.005));
+    const hit = [...sl.map(x => x.tax), total].filter(t => Math.abs(t - c.expected) <= c.tolerance);
+    ok(`${c.id}: κανένα κλιμάκιο της λάθος μεθόδου δεν είναι το σωστό (${hit.join(', ')})`, hit.length === 0);
+    // Η πλήρης λάθος ανάλυση, όπως θα την έγραφε η Νόα, δεν περνά.
+    const text = sl.map(x => `${fn(x.amt, 0)}×${fn(x.b.rate * 100, 0)}%=${fn(x.tax, 2)}€`).join(', ')
+      + `, σύνολο ${fn(total, 2)}€.`;
+    ok(`${c.id}: η λάθος ανάλυση δεν περνά (${text})`, scoreAnswer(c, text).verdict !== 'pass');
+  }
 }
 
 // ── 4. Ο ΒΑΘΜΟΛΟΓΗΤΗΣ ───────────────────────────────────────────────────────
