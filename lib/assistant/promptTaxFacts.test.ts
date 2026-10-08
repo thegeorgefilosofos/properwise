@@ -18,9 +18,9 @@ import { incomeStatement } from '../accounting/statement';
 import {
   RENTAL_TAX_BRACKETS_2026, RENTAL_TAX_BRACKETS_2025, BUSINESS_INCOME_BRACKETS_2026, CORPORATE_TAX_RATE_2026,
   ADVANCE_TAX_RATE_SOLE, ADVANCE_TAX_RATE_COMPANY, YOUTH_UP_TO_25_BRACKETS_2026, YOUTH_26_30_BRACKETS_2026,
-  FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT,
+  FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, rentalIncomeTax, rentalBracketsForYear,
 } from '../billing/greekTax';
-import { PRESUMPTIVE_DEDUCTION_RATE } from '../billing/presumptive';
+import { PRESUMPTIVE_DEDUCTION_RATE, presumptiveDeductionRateForYear } from '../billing/presumptive';
 import { fn, feWhole, grDateOf } from '../core/format';
 import { roundHalfUp } from '../core/money';
 
@@ -38,8 +38,14 @@ for (const g of [6000, 12000, 18000, 24000, 30000, 48000]) {
   ok(`ενοίκιο ${R(g)} → ${R(t)}`, p.includes(`${R(g)} → ${R(t)}`));
 }
 {
-  const cash = incomeStatement({ regime: 'individual_longterm', grossIncome: 20000, rentsPaidViaBank: false });
-  ok('μετρητά: φορολογητέο και φόρος', p.includes(`φορολογητέο ${R(cash.taxableIncome)} → ${R(cash.incomeTax)}`));
+  // Τα μετρητά από το έτος μετά την έναρξη της κύρωσης, όλο το έτος μετά από
+  // αυτήν. ΟΧΙ το incomeStatement: δεν ξέρει το έτος και μηδενίζει την
+  // έκπτωση όποτε rentsPaidViaBank είναι false (lib/assistant/evalSet.ts).
+  const cashYear = FIRST_YEAR_BANK_RECEIPT + 1;
+  const cashTaxable = 20000 * (1 - presumptiveDeductionRateForYear(cashYear, false));
+  const cashTax = rentalIncomeTax(cashTaxable, rentalBracketsForYear(cashYear));
+  ok(`μετρητά ${cashYear}: χωρίς έκπτωση`, cashTaxable === 20000);
+  ok('μετρητά: φορολογητέο και φόρος', p.includes(`φορολογητέο ${R(cashTaxable)} → ${R(cashTax)}`));
   const sole = incomeStatement({ regime: 'business', businessForm: 'sole', grossIncome: 30000, itemizedExpenses: 0 });
   ok('ατομική: φόρος και προκαταβολή',
     p.includes(`κέρδος ${R(30000)} → φόρος ${R(sole.incomeTax)} (κλίμακα άρθρου 15) + προκαταβολή ${pc(ADVANCE_TAX_RATE_SOLE)}% (${R(sole.advanceTax)})`));
@@ -89,6 +95,17 @@ for (const q of [
   ok(`η μεθοδολογία λέει από πότε μετράει ο τρόπος είσπραξης (${from})`, method.includes(from));
   ok('η μεθοδολογία δεν λέει πια «με μετρητά φορολογείται το 100%» χωρίς ημερομηνία',
     !/ΜΟΝΟ αν εισπράττεται μέσω τράπεζας· με μετρητά φορολογείται το 100%/.test(p));
+
+  // ΟΧΙ ΜΟΝΟ Η ΜΕΘΟΔΟΛΟΓΙΑ. Δύο προτάσεις πιο κάτω, στο ίδιο σημείο, έμενε το
+  // «Με ΜΕΤΡΗΤΑ (χωρίς …): φορολογητέο … → …» χωρίς ημερομηνία: για μετρητά
+  // του 2026 οδηγούσε σε φόρο χωρίς την έκπτωση, που ισχύει ακόμη. Κάθε
+  // πρόταση όλου του πακέτου που λέει ότι τα μετρητά χάνουν την έκπτωση πρέπει
+  // να λέει μέσα της και από πότε.
+  const flat = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const loses = (t: string) => /μετρητ/.test(t) && /(100%|χωρις (την εκπτωση|\d)|χανεται)/.test(t);
+  const sentences = p.split(/(?<=[.·;])\s+/).filter(x => loses(flat(x)));
+  ok('βρέθηκαν οι προτάσεις για τα μετρητά', sentences.length >= 2);
+  for (const x of sentences) ok(`μετρητά με ημερομηνία: «${x.slice(0, 90)}…»`, x.includes(from));
 }
 
 console.log(fail === 0 ? `✓ promptTaxFacts: ${pass} έλεγχοι πέρασαν` : `✗ promptTaxFacts: ${fail} απέτυχαν από ${pass + fail}`);
