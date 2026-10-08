@@ -67,8 +67,13 @@ const FIGURES = [
     subject: /τελος συναλλαγης|χαρτοσημ/u },
   { name: 'MUNICIPAL_ACCOM_TAX_RATE', file: 'lib/billing/greekTax.ts', expect: '0,5%', was: [],
     subject: /παρεπιδημ/u },
+  // Το «νομικ» δένεται στην αρχή λέξης: αλλιώς το «οικονομικά» (οικο-νομικ)
+  // έκανε κάθε «22%» δίπλα του φόρο εταιρειών και ο φύλακας συμβούλευε να
+  // γραφτεί μια πληρότητα από το CORPORATE_TAX_RATE_2026.
   { name: 'CORPORATE_TAX_RATE_2026', file: 'lib/billing/greekTax.ts', expect: '22%', was: [],
-    subject: /εταιρ|νομικ|(?<![\p{L}\p{N}])ικε(?![\p{L}\p{N}])/u },
+    subject: /εταιρ|(?<![\p{L}\p{N}])νομικ|(?<![\p{L}\p{N}])ικε(?![\p{L}\p{N}])/u,
+    hits: ['Νομικό πρόσωπο (ΙΚΕ): σταθερός φόρος', 'η εταιρεία φορολογείται'],
+    misses: ['Τα οικονομικά του μήνα: πληρότητα', 'οικονομική κατάσταση'] },
   { name: 'DIVIDEND_WITHHOLDING_RATE', file: 'lib/billing/greekTax.ts', expect: '5%', was: [],
     subject: /μερισμ/u },
   { name: 'PRESUMPTIVE_DEDUCTION_RATE', file: 'lib/billing/presumptive.ts', expect: '5%', was: [],
@@ -91,6 +96,18 @@ for (const f of FIGURES) {
   const m = readFileSync(f.file, 'utf8').match(new RegExp(`export const ${f.name}\\s*=\\s*([0-9.]+)`))
   const shown = m ? pct((f.derive ?? (v => v))(Number(m[1]))) : null
   if (shown !== f.expect) changed.push(`  ${f.label ?? f.name} (${f.file}) γράφεται ${shown ?? 'δεν βρέθηκε'}, το expect λέει ${f.expect}`)
+}
+// Το θέμα πιάνει ό,τι πρέπει και αφήνει ό,τι δεν είναι φόρος (`hits`/`misses`).
+const subjectWrong = []
+for (const f of FIGURES) {
+  for (const h of f.hits ?? []) if (!f.subject.test(flat(h))) subjectWrong.push(`  ${f.name}: δεν πιάνει «${h}»`)
+  for (const m of f.misses ?? []) if (f.subject.test(flat(m))) subjectWrong.push(`  ${f.name}: πιάνει «${m}», που δεν είναι φόρος`)
+}
+if (subjectWrong.length) {
+  console.error('✗ το θέμα ενός συντελεστή διαβάζει λάθος κείμενο:\n')
+  for (const w of subjectWrong) console.error(w)
+  console.error('\n  ΤΙ ΝΑ ΚΑΝΕΙΣ: διόρθωσε το `subject` στο scripts/guard-tax-literals.mjs.')
+  process.exit(1)
 }
 if (changed.length) {
   console.error('✗ ο συντελεστής άλλαξε ή η σταθερά μετακόμισε:\n')

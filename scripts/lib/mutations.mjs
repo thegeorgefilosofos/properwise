@@ -171,6 +171,8 @@ export const MUTATIONS = {
   'tax-literals': { every: [
     { add: 'app/__mut_tax__.tsx', content: tsx('    <p>Φόρος μεταβίβασης 3,09% επί της αξίας</p>') },
     { add: 'app/__mut_tax2__.tsx', content: tsx('    <p>Στη διανομή κερδών ο φόρος μερίσματος 5% παρακρατείται</p>') },
+    // Το «νομικ» είναι δεμένο στην αρχή λέξης· το νομικό πρόσωπο πιάνεται ακόμη.
+    { add: 'app/__mut_tax3__.tsx', content: tsx('    <p>Ως νομικό πρόσωπο πληρώνεις φόρο 22% στα κέρδη</p>') },
     { file: 'lib/accounting/transfer.ts', from: 'export const TRANSFER_TAX_RATE = 0.0309', to: 'export const TRANSFER_TAX_RATE = 0.031' },
   ] },
   'percent-formatter': { add: 'components/__mut__.tsx', content: tsx('    <div>{`Πληρότητα ${occ.pct}%`}</div>') },
