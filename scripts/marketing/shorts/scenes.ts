@@ -16,10 +16,11 @@
 import { ASSISTANT_INITIAL, ASSISTANT_NAME } from '../../../lib/assistant/identity';
 import { mark } from '../igKit';
 import { fn } from '../../../lib/core/format';
+import { monthShort } from '../../../lib/core/months';
 import { SEG } from '../rentFacts';
 import { n as note } from '../synth';
 import {
-  A, C, amt, CW, ICON, K, UP, counter, drawn, esc, fill, glyph, html, seg, tw,
+  A, C, COL, amt, CW, ICON, K, UP, counter, drawn, esc, fill, glyph, html, seg, tw,
   type Facts, type Series, type Txt,
 } from './kit';
 import type { Arc, SceneCtx, SceneOut, SceneSpec } from './spec';
@@ -682,7 +683,8 @@ export const slab = def<SlabP>('slab', (p, c) => {
   };
 });
 
-export interface CalcP extends Base { eyebrow: Txt; title: Txt[]; name: Txt; fields: { label: Txt; value: string }[]; result: { label: Txt; value: string }; path: string }
+export interface CalcP extends Base { eyebrow: Txt; title: Txt[]; name: Txt; fields: { label: Txt; value: string }[]; result: { label: Txt; value: string }; path: string;
+  /** Μία γραμμή κάτω από τον σύνδεσμο: τι ΔΕΝ κάνει ακόμα ο υπολογιστής. */ aside?: Txt }
 export const calcCard = def<CalcP>('calcCard', (p, c) => {
   const t = B0(c);
   return {
@@ -692,7 +694,8 @@ export const calcCard = def<CalcP>('calcCard', (p, c) => {
         <div class="cf">${p.fields.map((x, i) => `<div class="fld"><span class="lb">${H(c, x.label)}</span><div class="in">${tw(F(c, x.value).text, t + .9 + i * .4, 18)}</div></div>`).join('')}</div>
         <div class="cr"><span>${H(c, p.result.label)}</span><b class="num acc-g" ${A('slam', t + .9 + p.fields.length * .4 + .3, .5)}>${esc(F(c, p.result.value).text)}</b></div>
       </div>
-      <div class="row" style="margin-top:24px" data-col="LR" ${A('up', t + 2.6, .5)}><span class="url" data-icon><span class="li">${glyph(ICON.link, c.s.accent, 30, 2.2)}</span><span>properwise.gr<em>${esc(p.path)}</em></span></span></div>`),
+      <div class="row" style="margin-top:24px" data-col="LR" ${A('up', t + 2.6, .5)}><span class="url" data-icon><span class="li">${glyph(ICON.link, c.s.accent, 30, 2.2)}</span><span>properwise.gr<em>${esc(p.path)}</em></span></span></div>
+      ${p.aside ? `<div class="srcl" style="margin-top:24px" data-col="L" ${A('fade', t + 2.9, .5)}>${H(c, p.aside)}</div>` : ''}`),
     css: `
             .calc .ch{display:flex;align-items:center;gap:16px;height:48px}
       .calc .ci{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:${K.accent}24;border:1px solid ${K.accent}4c}
@@ -705,6 +708,451 @@ export const calcCard = def<CalcP>('calcCard', (p, c) => {
       .url{display:inline-flex;align-items:center;gap:12px;height:64px;padding:0 24px 0 18px;border-radius:999px;background:${c.s.accent}1f;border:2px solid ${c.s.accent}88;font-size:30px;font-weight:700;white-space:nowrap}
       .url em{font-style:normal;color:${c.s.accent}}
       .url .li{display:flex;align-items:center}`,
+  };
+});
+
+// ═══ «ΙΔΙΟ ΔΙΑΜΕΡΙΣΜΑ, ΔΥΟ ΔΡΟΜΟΙ»: ΖΕΥΓΑΡΙ, ΡΟΗ, ΚΑΤΩΦΛΙ, ΜΗΝΕΣ, DUMBBELL ═══
+// Πέντε σκηνές-γραφήματα για το reel του Instagram (scripts/marketing/reelDyoDromoi.ts)
+// και ο δείκτης πληρότητας (`occTrack`) που μοιράζονται με τα stories. Τα ποσά
+// διαβάζονται ΜΟΝΟ με F(c, id). Οι σειρές (καμπύλη φόρου, μήνες, νύχτες ανά μήνα)
+// είναι γεγονότα με ΚΕΝΟ κείμενο και τιμή JSON: κρατούν τη γεωμετρία ενός
+// γραφήματος χωρίς να μπορούν να τυπωθούν. Χρώματα μόνο από το K: λιλά το Airbnb,
+// πράσινο ο ενοικιαστής, σομόν ο φόρος (το μόνο ζεστό), μπλε της μάρκας οι δείκτες.
+const val = (c: SceneCtx, id: string) => Number(F(c, id).value);
+function ser<T>(c: SceneCtx, id: string): T { return JSON.parse(String(F(c, id).value)) as T; }
+const MON1 = (i: number) => monthShort(i).slice(0, 1);
+/** Μέγεθος τίτλου που χωρά στη στήλη: Inter 800 με αραίωση −0,035em, περίπου 0,56em ανά γράμμα. */
+const headSize = (c: SceneCtx, lines: Txt[], max = 84) => Math.min(max, ...lines.map(l => Math.floor(CW / ([...fillPlain(l, c.f)].length * .56))));
+/** Γραμμή (path) από σημεία. */
+const pathOf = (pts: [number, number][]) => pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+const drawAttr = (a: number, b: number) => `pathLength="1" stroke-dasharray="1" style="stroke-dashoffset:1" data-draw="${a.toFixed(3)},${b.toFixed(3)}"`;
+/** Κάθε καρέ: δείκτες που γλιστρούν (`data-slide`) και τείχη που κατεβαίνουν (`data-wipedown`). */
+const MOTION2 = (k: number) => `
+      document.querySelectorAll('#s${k} [data-slide]').forEach(e => { const v = e.dataset.slide.split(',').map(Number); e.style.left = lerp(v[0], v[1], eio(p(t, v[2], v[3]))).toFixed(1) + 'px'; });
+      document.querySelectorAll('#s${k} [data-wipedown]').forEach(e => { const v = e.dataset.wipedown.split(',').map(Number); e.style.clipPath = 'inset(0 0 calc(' + Math.round((1 - eio(p(t, v[0], v[0] + v[1]))) * 1e4) / 1e4 + ' * 100%) 0)'; });
+      document.querySelectorAll('#s${k} [data-span]').forEach(e => { const v = e.dataset.span.split(',').map(Number), q = eio(p(t, v[4], v[5])); e.style.left = lerp(v[0], v[2], q).toFixed(1) + 'px'; e.style.width = (lerp(v[1], v[3], q) - lerp(v[0], v[2], q)).toFixed(1) + 'px'; });`;
+
+// ── Ο δείκτης πληρότητας: από «άδειο» ως «γεμάτο», με αχνή γραμμή για το βασικό όριο ──
+export interface TrackMark {
+  /** Γεγονός με τη θέση (ποσοστό του χρόνου, 0 ως 100). */ at: string;
+  /** Γεγονός με το κείμενο της ετικέτας (κενό: χωρίς ετικέτα). */ labelFact?: string;
+  /** Η ετικέτα δεξιά, αριστερά ή στο κέντρο του δείκτη. */ side?: 'l' | 'r' | 'c';
+  /** Από πού ξεκινά να γλιστρά (γεγονός) και πότε. */ from?: string; t0?: number; t1?: number;
+  /** Ο δείκτης βγαίνει έξω από το «γεμάτο»: δεν υπάρχει όριο. */ off?: boolean;
+}
+export interface TrackOpts {
+  f: Facts; id: string; width: number; ends: [Txt, Txt];
+  ghost?: string; marks: TrackMark[];
+  bracket?: { aFact: string; bFact: string; left: Txt; right: Txt; t?: number };
+  /** Ένα τείχος πάνω στον δείκτη (π.χ. το τέλος του καλοκαιριού) με ετικέτα από κάτω. */
+  wall?: { at: string; label: Txt };
+  /** Μια σημείωση στη σειρά κάτω από τον δείκτη, στο δεξί άκρο (σομόν με `noteNeg`). */
+  note?: Txt; noteNeg?: boolean;
+  /** Πότε εμφανίζεται· χωρίς χρόνο ο δείκτης είναι στατικός (stories). */ t?: number;
+}
+export const TRACK_H = 168;
+export function occTrack(o: TrackOpts): string {
+  const W = o.width, Fv = (id: string) => { const x = o.f[id]; if (!x) throw new Error(`Ο δείκτης ζητά γεγονός «${id}».`); return x; };
+  const X = (id: string) => Math.max(0, Math.min(1, Number(Fv(id).value) / 100)) * W;
+  const an = (s: string) => (o.t == null ? '' : s);
+  const tx = (s: Txt) => esc(fill(s, o.f)).replace(/\*\*(.+?)\*\*/g, '<span class="a">$1</span>');
+  const marks = o.marks.map(m => {
+    const x = m.off ? W : X(m.at), x0 = m.from != null && o.t != null ? X(m.from) : x;
+    const lab = m.labelFact ? Fv(m.labelFact).text : '';
+    return `<div class="otm${m.off ? ' off' : ''}" style="left:${(o.t != null && m.from ? x0 : x).toFixed(1)}px"${an(m.from && m.t0 != null && m.t1 != null ? ` data-slide="${x0.toFixed(1)},${x.toFixed(1)},${m.t0.toFixed(3)},${m.t1.toFixed(3)}"` : '')}>
+      <i ${an(A('pop', (m.t0 ?? o.t ?? 0) - .1, .45))}></i>${lab ? `<b class="num ${m.side ?? 'c'}" ${an(A('fade', m.t1 ?? (o.t ?? 0) + .2, .35))}>${esc(lab)}</b>` : ''}</div>`;
+  }).join('');
+  const br = o.bracket, xa = br ? X(br.aFact) : 0, xb = br ? X(br.bFact) : 0, tb = br?.t ?? 0;
+  const wl = o.wall, xw = wl ? X(wl.at) : 0;
+  return `<div class="otk" id="${o.id}" style="width:${W}px;height:${TRACK_H}px" ${an(A('fade', o.t ?? 0, .4))}>
+    <span class="ote l">${tx(o.ends[0])}</span><span class="ote r">${tx(o.ends[1])}</span>
+    <i class="otb"></i>
+    ${o.ghost ? `<i class="otg" style="left:${(X(o.ghost) - 2).toFixed(1)}px"></i>` : ''}
+    ${wl ? `<i class="otw" style="left:${(xw - 2).toFixed(1)}px"></i><span class="otl r" style="left:${(xw - 2).toFixed(1)}px">${tx(wl.label)}</span>` : ''}
+    ${br ? `<i class="otr" style="left:${xa.toFixed(1)}px;width:${(xb - xa).toFixed(1)}px" ${an(A('grow', tb, .6))}></i>
+      <span class="otl l" style="right:${(W - xa).toFixed(1)}px" ${an(A('fade', tb + .5, .4))}>${tx(br.left)}</span>
+      <span class="otl r" style="left:${xb.toFixed(1)}px" ${an(A('fade', tb + .65, .4))}>${tx(br.right)}</span>` : ''}
+    ${o.note ? `<span class="otl n${o.noteNeg ? ' neg' : ''}" style="right:0">${tx(o.note)}</span>` : ''}
+    ${marks}
+  </div>`;
+}
+export const TRACK_CSS = `
+  .otk{position:relative;flex:none}
+  .otk>*{position:absolute}
+  .ote{top:0;height:40px;font-family:'Roboto Mono',monospace;font-size:26px;line-height:40px;color:${K.faint};letter-spacing:.06em;white-space:nowrap}
+  .ote.l{left:0}.ote.r{right:0}
+  .otb{left:0;right:0;top:56px;height:16px;border-radius:8px;background:linear-gradient(90deg,${K.ink}0f,${K.ink}24)}
+  .otg{top:40px;width:4px;height:48px;border-radius:2px;background:${K.ink}4d}
+  .otw{top:36px;width:4px;height:56px;border-radius:2px;background:${K.tax}}
+  .otr{top:96px;height:6px;border-radius:3px;background:${K.accent};transform-origin:0 50%;box-shadow:0 0 18px ${K.accent}88}
+  .otr::before,.otr::after{content:'';position:absolute;top:-11px;width:4px;height:28px;border-radius:2px;background:${K.accent}}
+  .otr::before{left:-2px}.otr::after{right:-2px}
+  .otl{top:120px;height:40px;font-size:30px;line-height:40px;font-weight:650;color:${K.ink};white-space:nowrap}
+  .otl.l{padding-right:12px}.otl.r{padding-left:12px}.otl.n{color:${K.muted}}.otl.n.neg{color:${K.tax}}
+  .otm{top:0;width:0;height:${TRACK_H}px}
+  .otm i{position:absolute;left:-16px;top:48px;width:32px;height:32px;border-radius:50%;background:${K.accent};border:4px solid ${K.ground};box-shadow:0 0 0 2px ${K.accent},0 0 24px ${K.accent}aa}
+  .otm.off i{background:${K.ground};box-shadow:0 0 0 3px ${K.tax}}
+  .otm b{position:absolute;top:0;height:40px;font-family:'Roboto Mono',monospace;font-size:36px;line-height:40px;font-weight:700;color:${K.accent};white-space:nowrap}
+  .otm b.c{transform:translateX(-50%)}.otm b.l{right:8px}.otm b.r{left:8px}
+  .otm.off b{color:${K.tax}}`;
+
+// ═══ 16 · Αγκίστρι-ζευγάρι: μία νύχτα, μία μέρα, δύο κορδέλες του χρόνου ═══
+// Στο καρέ 0 είναι ήδη στη θέση του. Η πράσινη κορδέλα γεμίζει μήνα μήνα, η λιλά
+// μόνο εκεί που γεμίζουν οι νύχτες (διαφάνεια = νύχτες του μήνα / οι περισσότερες).
+// Με `end` η ίδια σκηνή κλείνει το reel: πρώτα η γραμμή ειλικρίνειας, μετά το
+// ζευγάρι ξαναστήνεται στις θέσεις του καρέ 0 (βρόχος χωρίς ραφή).
+export interface PairSide { label: Txt; value: string; note: Txt; weights?: string; months?: boolean }
+export interface HookPairP extends Base { eyebrow: Txt; night: PairSide; day: PairSide; line: Txt[];
+  end?: { at: number; text: Txt[]; path: string; save: Txt; send: Txt } }
+export const hookPair = def<HookPairP>('hookPair', (p, c) => {
+  const end = p.end, tIn = end ? c.t0 + end.at : T0(c), beat = c.beat;
+  const tLine = end ? 1e4 : c.t0 + .6, tFill = (i: number) => c.t0 + .25 + i * beat / 2;
+  const side = (s: PairSide, cls: 'n' | 'd', color: string, k: number) => {
+    const v = F(c, s.value), w = s.weights ? ser<number[]>(c, s.weights) : Array.from({ length: 12 }, () => 1), mx = Math.max(...w);
+    const size = Math.min(184, fit(v.text, 184, CW - 24));
+    return `<div class="hpr ${cls}">
+      <div class="hpl" ${A('fade', tIn + .05 + k * .1, .4)}>${kick(H(c, s.label, cls === 'n' ? 'a' : 'ok'), tIn + .5 + k * .1)}</div>
+      <div class="hpv" style="height:${Math.round(size * .86)}px"><b class="num" ${k ? '' : `id="hpn${c.k}"`} style="font-size:${size}px;color:${color}" ${A('slam', tIn + .15 + k * .1, .5)}>${amt(v.text)}</b></div>
+      <div class="hpx" ${A('fade', tIn + .3 + k * .1, .4)}>
+        <div class="rib">${w.map((x, i) => `<i><b style="${end ? 'transform:scaleX(0)' : ''}" ${end ? '' : A('grow', tFill(i), beat / 2)}><u style="opacity:${(x / mx).toFixed(3)};background:${color}"></u></b></i>`).join('')}</div>
+        ${s.months ? `<div class="rmo">${w.map((_, i) => `<span>${esc(monthShort(i))}</span>`).join('')}</div>` : ''}
+        <div class="hpc">${H(c, s.note)}</div>
+      </div></div>`;
+  };
+  const night = p.night, nw = night.weights ? ser<number[]>(c, night.weights) : [];
+  const lit = nw.map((x, i) => [x / Math.max(...nw), i] as const).filter(([x]) => x > .5).map(([, i]) => i);
+  return {
+    html: `${end ? `<div class="pend" ${A('up', c.t0 - .1, .5, 'out', tIn - .55, .45)}>
+        <div class="pmk">${mark(150, C.ink)}</div>
+        <div class="hd" style="font-size:72px;margin-top:48px;white-space:normal;text-align:center">${end.text.map((l, k) => mk(kick(H(c, l), c.t0 + .6 + k * .1), A('mask', c.t0 + .1 + k * .1, .6))).join('')}</div>
+        <div class="row" style="margin-top:48px;justify-content:center" ${A('up', c.t0 + .9, .5)}><span class="url" data-icon><span class="li">${glyph(ICON.link, c.s.accent, 34, 2.2)}</span><span>properwise.gr<em>${esc(end.path)}</em></span></span></div>
+        <div class="ctas" style="margin-top:32px;justify-content:center" ${A('up', c.t0 + 1.2, .5)}><span class="cta">${glyph(ICON.save, K.ink, 36, 2)}${H(c, end.save)}</span><span class="cta">${glyph(ICON.send, K.ink, 36, 2)}${H(c, end.send)}</span></div>
+      </div>` : ''}${blk(`<div class="eb mono" data-col="L" ${A('left', tIn, .5)}><i></i>${esc(UP(fill(p.eyebrow, c.f)))}</div>
+      <div class="hp gh" data-hero data-col="LR">${side(night, 'n', K.other, 0)}<i class="hpd" ${A('grow', tIn + .2, .5)}></i>${side(p.day, 'd', K.ok, 1)}</div>
+      <div class="hd" style="font-size:72px;margin-top:48px" data-col="L">${p.line.map((l, k) => mk(kick(H(c, l), tLine + .45 + k * .12), A('mask', tLine + k * .12, .55))).join('')}</div>`)}`,
+    css: `
+      .hpr{display:flex;flex-direction:column}
+      .hpl{font-size:44px;line-height:52px;font-weight:750;letter-spacing:-.02em;color:${K.ink}}
+      .hpv{display:flex;align-items:center;margin-top:8px}
+      .hpv b{font-weight:850;letter-spacing:-.05em;line-height:1;white-space:nowrap}
+      .hpx{margin-top:16px}
+      .rib{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;height:40px}
+      .rib i{position:relative;border-radius:8px;background:${K.ink}0d;box-shadow:inset 0 0 0 1.5px ${K.ink}1f;overflow:hidden}
+      .rib b{position:absolute;inset:0;display:block;transform-origin:0 50%}
+      .rib u{position:absolute;inset:0;display:block}
+      .rmo{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin-top:8px;font-family:'Roboto Mono',monospace;font-size:26px;line-height:32px;color:${K.faint};text-align:center;letter-spacing:0}
+      .hpc{margin-top:8px;font-family:'Roboto Mono',monospace;font-size:26px;line-height:32px;color:${K.muted};letter-spacing:.02em;white-space:nowrap}
+      .hpd{display:block;height:2px;margin:40px 0;background:linear-gradient(90deg,${K.other}66,${K.ink}33,${K.ok}66);transform-origin:0 50%}
+      .pend{position:absolute;left:${COL.L}px;width:${CW}px;top:${COL.top}px;height:${COL.bottom - COL.top}px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+      .pend .row{display:flex;width:${CW}px}
+      .pend .url{display:inline-flex;align-items:center;gap:14px;height:88px;padding:0 32px 0 24px;border-radius:999px;background:${c.s.accent}1f;border:2px solid ${c.s.accent}88;font-size:34px;font-weight:700;color:${C.ink};white-space:nowrap}
+      .pend .url em{font-style:normal;color:${c.s.accent}}
+      .pend .url .li{display:flex;align-items:center}
+      .pend .ctas{display:flex;gap:16px;width:${CW}px}
+      .pend .cta{display:inline-flex;align-items:center;gap:14px;height:80px;padding:0 30px 0 24px;border-radius:999px;font-size:32px;font-weight:700;background:${K.accent}24;border:1.5px solid ${K.accent}73}`,
+    hits: end ? [tIn + .3] : [c.t0 + .6],
+    sfx: m => {
+      if (end) { m.whoosh(tIn - .3, .5, .05, true); m.boom(tIn + .3, .2); return; }
+      // Η πράσινη κορδέλα: ένα τικ σε κάθε μήνα. Η λιλά: αρπίσματα μόνο στους γεμάτους μήνες, σιωπή στα κενά.
+      for (let i = 0; i < 12; i++) m.click(tFill(i), 1500 + i * 30, .025, -.3);
+      const sc = ['A4', 'C5', 'E5', 'G5', 'A5', 'C6', 'E6'];
+      lit.forEach((i, j) => m.pluck(tFill(i), note(sc[j % sc.length]), .04, .3));
+      m.boom(c.t0 + .6, .22); m.kick(c.t0 + .6, .9);
+    },
+  };
+});
+
+// ═══ 17 · Ροή (Sankey): πού πάει μία νύχτα· από κάτω η μέρα του ενοικιαστή στην ίδια κλίμακα ═══
+// Κάθε ρεύμα είναι καμπύλη με πάχος ίσο με το ποσό του (όπως το d3-sankey) και
+// χαράζεται από τα αριστερά, ένα σε κάθε χτύπο. Τα κομμάτια ΠΡΕΠΕΙ να αθροίζουν
+// στην πηγή: αλλιώς η σκηνή δεν χτίζεται.
+export interface FlowPart { label: Txt; value: string; color: string; hero?: boolean }
+export interface FlowP extends Base { eyebrow: Txt; title: Txt[]; source: Txt; sourceValue: string; parts: FlowPart[];
+  other: { title: Txt; gross: string; net: string; sliver: string; label: Txt; color: string }; footer: Txt }
+const FLOW = { nx: 20, rx: 300, h: 440, gap: 20 } as const;
+export const flow = def<FlowP>('flow', (p, c) => {
+  const t = B0(c), beat = c.beat, src = val(c, p.sourceValue), vs = p.parts.map(x => val(c, x.value));
+  if (Math.abs(vs.reduce((a, b) => a + b, 0) - src) > .011) throw new Error('Τα ρεύματα της ροής δεν αθροίζουν στην πηγή.');
+  const k = FLOW.h / src, hs = vs.map(v => v * k), Hr = FLOW.h + FLOW.gap * (vs.length - 1), lt = (Hr - FLOW.h) / 2, mid = (FLOW.nx + FLOW.rx) / 2;
+  let ys = lt, yt = 0;
+  const at = (i: number) => t + .9 + i * beat;
+  const links = p.parts.map((x, i) => {
+    const a = ys + hs[i] / 2, b = yt + hs[i] / 2; const r = { a, b, top: yt };
+    ys += hs[i]; yt += hs[i] + FLOW.gap; return r;
+  });
+  const LX = FLOW.rx + FLOW.nx + 24;
+  const svg = `<svg class="flw" width="${CW}" height="${Hr}" viewBox="0 0 ${CW} ${Hr}">
+      <rect x="0" y="${lt}" width="${FLOW.nx}" height="${FLOW.h}" rx="4" fill="${K.ink}" ${A('growy', t + .6, .4)} style="transform-origin:0 ${lt + FLOW.h}px"/>
+      ${links.map((l, i) => `<path class="${p.parts[i].hero ? 'hero' : ''}" d="M${FLOW.nx} ${l.a.toFixed(1)} C${mid} ${l.a.toFixed(1)} ${mid} ${l.b.toFixed(1)} ${FLOW.rx} ${l.b.toFixed(1)}" stroke="${p.parts[i].color}" stroke-width="${hs[i].toFixed(1)}" fill="none" ${drawAttr(at(i), at(i) + .5)}/>
+        <rect${p.parts[i].hero ? ` id="fln${c.k}"` : ''} x="${FLOW.rx}" y="${l.top.toFixed(1)}" width="${FLOW.nx}" height="${hs[i].toFixed(1)}" rx="4" fill="${p.parts[i].color}" ${A('fade', at(i) + .4, .3)}/>`).join('')}
+    </svg>`;
+  const labels = links.map((l, i) => `<div class="fll" style="left:${LX}px;top:${(l.b - 22).toFixed(1)}px;width:${CW - LX}px" ${A('right', at(i) + .4, .4)}><span>${H(c, p.parts[i].label)}</span><b class="num" data-rx="fl${c.k}" style="color:${p.parts[i].hero ? p.parts[i].color : K.ink}">${esc(F(c, p.parts[i].value).text)}</b></div>`).join('');
+  // Η μέρα του ενοικιαστή: ένα ρεύμα στην ίδια κλίμακα, με μια λεπτή σομόν λωρίδα (ο φόρος) που φεύγει χωρίς ετικέτα.
+  const o = p.other, g = val(c, o.gross) * k, nH = val(c, o.net) * k, sl = val(c, o.sliver) * k, top = 8, Ht = Math.ceil(g + 2 * top);
+  const to = t + .9 + p.parts.length * beat + .2;
+  const svg2 = `<svg class="flw" width="${CW}" height="${Ht}" viewBox="0 0 ${CW} ${Ht}">
+      <rect x="0" y="${top}" width="${FLOW.nx}" height="${g.toFixed(1)}" rx="4" fill="${K.ink}" ${A('growy', to - .3, .3)} style="transform-origin:0 ${top + g}px"/>
+      <path d="M${FLOW.nx} ${(top + sl / 2).toFixed(1)} C${mid * .7} ${(top + sl / 2).toFixed(1)} ${mid * .8} ${(top + sl / 2 - 2).toFixed(1)} ${mid} ${(top + sl / 2 - 2).toFixed(1)}" stroke="${K.tax}" stroke-width="${sl.toFixed(1)}" stroke-linecap="round" fill="none" ${drawAttr(to + .25, to + .6)}/>
+      <path d="M${FLOW.nx} ${(top + sl + nH / 2).toFixed(1)} L${FLOW.rx} ${(top + sl + nH / 2).toFixed(1)}" stroke="${o.color}" stroke-width="${nH.toFixed(1)}" fill="none" ${drawAttr(to, to + .6)}/>
+      <rect x="${FLOW.rx}" y="${(top + sl).toFixed(1)}" width="${FLOW.nx}" height="${nH.toFixed(1)}" rx="4" fill="${o.color}" ${A('fade', to + .5, .3)}/>
+    </svg>
+    <div class="fll" style="left:${LX}px;top:${(top + sl + nH / 2 - 22).toFixed(1)}px;width:${CW - LX}px" ${A('right', to + .55, .4)}><span>${H(c, o.label)}</span><b class="num" data-rx="fl${c.k}" style="color:${o.color}">${esc(F(c, o.net).text)}</b></div>`;
+  return {
+    html: blk(`${head(c, t, p.eyebrow, p.title, headSize(c, p.title))}
+      <div class="fls gh" data-col="L" ${A('fade', t + .5, .4)}>${H(c, p.source)}</div>
+      <div class="flc" data-hero style="height:${Hr}px;margin-top:16px">${svg}${labels}</div>
+      <div class="tagl" style="margin-top:40px" data-col="L" ${A('up', to - .4, .5)}>${H(c, o.title)}</div>
+      <div class="flc" style="height:${Ht}px;margin-top:16px">${svg2}</div>
+      <div class="srcl" style="margin-top:24px" data-col="L" ${A('fade', to + .9, .4)}>${H(c, p.footer)}</div>`),
+    css: `
+      .flc{position:relative}
+      .flc>*{position:absolute;left:0;top:0}
+      .flw path.hero{filter:drop-shadow(0 0 18px ${K.other}88)}
+      .fls{font-family:'Roboto Mono',monospace;font-size:30px;line-height:40px;letter-spacing:.04em;color:${K.ink}}
+      .fll{display:flex;justify-content:space-between;align-items:center;height:44px;gap:16px}
+      .fll span{font-size:30px;line-height:36px;font-weight:600;color:${K.muted};white-space:nowrap}
+      .fll b{font-size:38px;line-height:44px;font-weight:800;letter-spacing:-.01em;white-space:nowrap}`,
+    hits: [at(p.parts.length - 1) + .45],
+    sfx: m => {
+      p.parts.forEach((x, i) => { m.whoosh(at(i), .45, .045, false); m.pluck(at(i) + .4, x.color === K.tax ? note('A3') : note('E5') - i * 2, .04, (i - 2) * .15); });
+      m.whoosh(to, .6, .04, true); m.pluck(to + .55, note('A4'), .045, .2);
+    },
+  };
+});
+
+// ═══ 18 · Κατώφλι: ο μέσος φόρος του Airbnb λυγίζει, του ενοικιαστή μένει ίσιος ═══
+// Οριζόντιος άξονας οι νύχτες του χρόνου (υποδιαιρέσεις από το OCC_STEPS), κάθετος
+// ο φόρος ως ποσοστό του φορολογητέου. Η λιλά καμπύλη έχει ένα σημείο σε κάθε
+// νύχτα. Τα δύο τείχη κατεβαίνουν όταν η καμπύλη τα φτάνει.
+export interface ThresholdP extends Base { eyebrow: Txt; title: Txt[]; curve: string; nightsAxis: string; steps: string; grid: string;
+  /** Τα γεγονότα με τις ετικέτες των γραμμών του πλέγματος, χωρισμένα με κόμμα, με τη σειρά του `grid`. */ gridLabelsFact: string;
+  flat: { value: string; label: Txt }; curveLabel: Txt; walls: { nightsFact: string; label: Txt }[];
+  dot: { nights: string; label: Txt; value: string }; ends: [Txt, Txt]; caption: Txt; footer: Txt }
+const TH = { x0: 96, top: 112, bottom: 528, h: 592 } as const;
+export const threshold = def<ThresholdP>('threshold', (p, c) => {
+  const t = B0(c), curve = ser<number[]>(c, p.curve), N = ser<number>(c, p.nightsAxis), steps = ser<number[]>(c, p.steps), grid = ser<number[]>(c, p.grid);
+  const lo = Math.min(...grid) - .03, hi = Math.max(...grid, ...curve) + .02, X1 = CW;
+  const x = (n: number) => TH.x0 + n / N * (X1 - TH.x0), y = (r: number) => TH.bottom - (r - lo) / (hi - lo) * (TH.bottom - TH.top);
+  const flat = val(c, p.flat.value);
+  const tc = t + 1.3, dc = 2.2, at = (n: number) => tc + dc * n / N;
+  const pts: [number, number][] = [[x(0), y(curve[0])], ...curve.map((r, i) => [x(i + 1), y(r)] as [number, number])];
+  const walls = p.walls.map((w, i) => ({ ...w, n: val(c, w.nightsFact), i }));
+  const dn = ser<number>(c, p.dot.nights), dv = val(c, p.dot.value), dx = x(dn), dy = y(dv);
+  return {
+    html: blk(`${head(c, t, p.eyebrow, p.title, headSize(c, p.title))}
+      <div class="thc gh" data-hero style="height:${TH.h}px">
+        <div class="thg" ${A('fade', t + .5, .5)}>
+          ${grid.map((r, i) => `<i class="thl" style="top:${y(r).toFixed(1)}px;left:${TH.x0}px;right:0"></i><span class="thy num" style="top:${(y(r) - 20).toFixed(1)}px;width:${TH.x0 - 16}px">${esc(F(c, p.gridLabelsFact.split(',')[i]).text)}</span>`).join('')}
+          <i class="thax" style="top:${TH.bottom}px;left:${TH.x0}px;right:0"></i>
+          ${steps.map(s => `<i class="thk" style="left:${(TH.x0 + s / 100 * (X1 - TH.x0) - 1).toFixed(1)}px;top:${TH.bottom}px"></i>`).join('')}
+          <span class="the" style="left:${TH.x0}px;top:${TH.bottom + 20}px">${H(c, p.ends[0])}</span><span class="the" style="right:0;top:${TH.bottom + 20}px">${H(c, p.ends[1])}</span>
+        </div>
+        ${walls.map(w => `<i class="thb" style="left:${x(w.n).toFixed(1)}px;top:${TH.top - 8}px;height:${TH.bottom - TH.top + 8}px;width:${(X1 - x(w.n)).toFixed(1)}px" data-wipedown="${at(w.n).toFixed(3)},.5"></i>
+          <i class="thw" style="left:${(x(w.n) - 2).toFixed(1)}px;top:${TH.top - 8}px;height:${TH.bottom - TH.top + 8}px" data-wipedown="${at(w.n).toFixed(3)},.5"></i>
+          <span class="thwl ${w.i % 2 ? 'r' : 'l'}" style="${w.i % 2 ? `right:${(X1 - x(w.n)).toFixed(1)}px;top:56px` : `left:${x(w.n).toFixed(1)}px;top:8px`}" ${A('fade', at(w.n) + .1, .35)}>${H(c, w.label)}</span>`).join('')}
+        <svg class="ths" width="${CW}" height="${TH.h}" viewBox="0 0 ${CW} ${TH.h}">
+          <path d="M${TH.x0} ${y(flat).toFixed(1)} L${X1} ${y(flat).toFixed(1)}" stroke="${K.ok}" stroke-width="10" stroke-linecap="round" fill="none" ${drawAttr(t + .8, t + 1.4)}/>
+          <path class="hero" d="${pathOf(pts)}" stroke="${K.other}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none" ${drawAttr(tc, tc + dc)}/>
+          <path d="M${(TH.x0 + 240).toFixed(1)} ${(dy - 70).toFixed(1)} L${(dx - 18).toFixed(1)} ${(dy - 8).toFixed(1)}" stroke="${K.ink}66" stroke-width="2" fill="none" ${drawAttr(tc + dc + .35, tc + dc + .6)}/>
+        </svg>
+        <span class="thp" style="right:${(X1 - x(N)).toFixed(1)}px;top:${(y(curve[curve.length - 1]) - 60).toFixed(1)}px" ${A('fade', tc + dc - .1, .4)}>${H(c, p.curveLabel)}</span>
+        <span class="thp ok" style="right:0;top:${(y(flat) + 14).toFixed(1)}px" ${A('fade', t + 1.3, .4)}>${H(c, p.flat.label)}</span>
+        <i class="thd" id="thd${c.k}" style="left:${(dx - 16).toFixed(1)}px;top:${(dy - 16).toFixed(1)}px" ${A('pop', tc + dc + .15, .45)}></i>
+        <div class="thcl" style="left:${TH.x0 + 16}px;top:${(dy - 150).toFixed(1)}px" ${A('up', tc + dc + .35, .45)}><span>${H(c, p.dot.label)}</span><b class="num">${esc(F(c, p.dot.value).text)}</b></div>
+      </div>
+      <div class="sub2" style="margin-top:32px" data-col="L" ${A('up', tc + dc + .8, .5)}>${kick(H(c, p.caption), tc + dc + 1.2)}</div>
+      <div class="srcl" style="margin-top:24px" data-col="L" ${A('fade', tc + dc + 1.1, .4)}>${H(c, p.footer)}</div>`),
+    css: `
+      .thc{position:relative}
+      .thc>*,.thg>*{position:absolute}
+      .thg{inset:0}
+      .thl{height:0;border-top:2px dashed ${K.ink}26}
+      .thax{height:2px;background:${K.ink}4d}
+      .thk{width:2px;height:14px;background:${K.ink}4d}
+      .thy{left:0;text-align:right;font-family:'Roboto Mono',monospace;font-size:28px;line-height:40px;color:${K.muted}}
+      .the{font-family:'Roboto Mono',monospace;font-size:26px;line-height:36px;color:${K.faint};letter-spacing:.04em}
+      .thb{background:${K.tax}12}
+      .thw{width:0;border-left:4px dashed ${K.tax}}
+      .thwl{height:40px;font-size:30px;line-height:40px;font-weight:700;color:${K.ink};white-space:nowrap}
+      .thwl.l{padding-left:16px;border-left:4px solid ${K.tax}}
+      .thwl.r{padding-right:16px;border-right:4px solid ${K.tax}}
+      .ths{left:0;top:0}
+      .ths path.hero{filter:drop-shadow(0 0 16px ${K.other}aa)}
+      .thp{height:40px;padding:0 10px;border-radius:10px;background:${K.ground}cc;font-size:30px;line-height:40px;font-weight:700;color:${K.other};white-space:nowrap}
+      .thp.ok{color:${K.ok}}
+      .thd{width:32px;height:32px;border-radius:50%;background:${K.other};border:5px solid ${K.ground};box-shadow:0 0 0 3px ${K.other},0 0 30px ${K.other}}
+      .thcl{display:flex;flex-direction:column;padding:16px 24px;border-radius:20px;background:${K.panel}e6;border:1.5px solid ${K.other}66}
+      .thcl span{font-family:'Roboto Mono',monospace;font-size:26px;line-height:32px;color:${K.muted};letter-spacing:.04em}
+      .thcl b{font-size:56px;line-height:64px;font-weight:850;color:${K.other};letter-spacing:-.02em}`,
+    js: MOTION2(c.k),
+    hits: walls.map(w => at(w.n) + .05),
+    sfx: m => {
+      m.sweep(tc, dc, 260, 1400, .016);
+      walls.forEach(w => { m.boom(at(w.n) + .05, .2); m.click(at(w.n) + .05, 380, .1); });
+      m.pluck(tc + dc + .15, note('E5'), .05, .2);
+    },
+  };
+});
+
+// ═══ 19 · Δώδεκα μήνες: πότε έρχονται τα λεφτά· ο άδειος μήνας ═════════════
+// Τρόπος «flow»: μπάρες ταμείου ανά μήνα (καλοκαίρι πάνω, χειμώνας λίγο κάτω από
+// το μηδέν) που διπλώνουν σε τρεις αθροιστικές γραμμές. Τρόπος «vacancy»: δώδεκα
+// ενοίκια, ένα αδειάζει· ο δείκτης πληρότητας γλιστρά στο νέο όριο.
+interface CumLine { series: string; color: string; dash?: boolean; label: Txt }
+export interface Months12P extends Base { eyebrow: Txt; title: Txt[]; footer: Txt;
+  flow?: { bars: string; band: { from: string; to: string; label: Txt }; peak: string; low: Txt; lines: CumLine[]; cross: { a: string; b: string };
+    ends: { value: string; color: string }[]; captions: [Txt, Txt] };
+  vacancy?: { bars: string; month: number; loss: Txt; line: Txt; sub: Txt; track: Omit<TrackOpts, 'f' | 'id' | 'width' | 't'>; after: Txt };
+}
+const M12 = { h: 560, y0: 472, bar: 300, cum: 380 } as const;
+export const months12 = def<Months12P>('months12', (p, c) => {
+  const t = B0(c), pitch = CW / 12, mx = (i: number) => (i + .5) * pitch;
+  const monthsRow = (y: number, hi = -1, tHi = 0) => Array.from({ length: 12 }, (_, i) => `<span class="m12m${i === hi ? ' hi' : ''}" style="left:${(mx(i) - 24).toFixed(1)}px;top:${y}px"${i === hi ? ` data-hi="${tHi.toFixed(3)}"` : ''}>${esc(MON1(i))}</span>`).join('');
+  if (p.flow) {
+    const f = p.flow, bars = ser<number[]>(c, f.bars), peak = Math.max(...bars), bk = M12.bar / peak;
+    const lines = f.lines.map(l => ({ ...l, v: ser<number[]>(c, l.series) })), cmax = Math.max(...lines.flatMap(l => l.v)), ck = M12.cum / cmax;
+    const ly = (v: number) => M12.y0 - v * ck, b0 = val(c, f.band.from), b1 = val(c, f.band.to);
+    const ca = ser<number[]>(c, f.cross.a), cb = ser<number[]>(c, f.cross.b), cross = ca.findIndex((v, i) => v > cb[i]);
+    const tB = (i: number) => t + .7 + i * .11, tF = t + 3.4, tl = (i: number) => tF + .1 + i * .3, dl = 1.1;
+    const peakI = bars.lastIndexOf(peak);
+    const tX = tl(f.lines.findIndex(l => l.series === f.cross.a)) + dl * (cross + 1) / 12;
+    return {
+      html: blk(`${head(c, t, p.eyebrow, p.title, headSize(c, p.title))}
+        <div class="m12 gh" data-hero style="height:${M12.h}px">
+          <i class="m12b" style="left:${(b0 * pitch).toFixed(1)}px;width:${((b1 - b0 + 1) * pitch).toFixed(1)}px;top:40px;height:${M12.y0 - 40}px" ${A('fade', t + .5, .5)}></i>
+          <span class="m12bl" style="left:${(b0 * pitch + 12).toFixed(1)}px;top:0" ${A('fade', t + .6, .5)}>${H(c, f.band.label)}</span>
+          <i class="m12z" style="top:${M12.y0}px"></i>
+          <div class="m12bars" ${A('out', tF, .5)}>${bars.map((v, i) => `<i class="${v < 0 ? 'neg' : ''}" style="left:${(mx(i) - 20).toFixed(1)}px;top:${(v < 0 ? M12.y0 + 2 : M12.y0 - v * bk).toFixed(1)}px;height:${Math.max(4, Math.abs(v) * bk).toFixed(1)}px" ${A('growy', tB(i), .4)}></i>`).join('')}
+            <span class="m12v" style="left:${(mx(peakI) - 100).toFixed(1)}px;top:${(M12.y0 - M12.bar - 48).toFixed(1)}px" ${A('fade', t + 2, .4)}>${esc(F(c, f.peak).text)}</span>
+            <span class="m12w" style="left:0;top:${M12.y0 + 10}px" ${A('fade', t + 2.2, .4)}>${H(c, f.low)}</span></div>
+          ${lines.map((l, i) => `<svg class="m12l" width="${CW}" height="${M12.h}" viewBox="0 0 ${CW} ${M12.h}" ${A('wipe', tl(i), dl)}><path${i === 1 ? ' class="hero"' : ''} d="${pathOf([[0, M12.y0], ...l.v.map((v, j) => [(j + 1) * pitch, ly(v)] as [number, number])])}" stroke="${l.color}" stroke-width="${l.dash ? 5 : 7}"${l.dash ? ' stroke-dasharray="14 10"' : ''} stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`).join('')}
+          <i class="m12x" style="left:${((cross + 1) * pitch - 1).toFixed(1)}px;top:${ly(ca[cross]).toFixed(1)}px;height:${(M12.y0 - ly(ca[cross])).toFixed(1)}px" ${A('growy', tX, .35)}></i>
+          <i class="m12d" style="left:${((cross + 1) * pitch - 16).toFixed(1)}px;top:${(ly(ca[cross]) - 16).toFixed(1)}px" ${A('pop', tX, .45)}></i>
+          ${f.ends.map((e, i) => `<span class="m12e" style="right:0;top:${(ly(val(c, e.value)) + (i ? 16 : -56)).toFixed(1)}px;color:${e.color}" ${A('fade', tl(lines.length - 1) + dl + .1 + i * .15, .4)}>${i ? '' : '<em></em>'}${esc(F(c, e.value).text)}</span>`).join('')}
+          ${monthsRow(M12.y0 + 48, cross, tX)}
+        </div>
+        <div class="m12k" data-col="L" ${A('fade', tF + .2, .5)}>${lines.map(l => `<span><i style="border-top-color:${l.color};border-top-style:${l.dash ? 'dashed' : 'solid'}"></i>${H(c, l.label)}</span>`).join('')}</div>
+        <div class="sub2" style="margin-top:32px" data-col="L" ${A('up', t + 2.4, .5)}>${kick(H(c, f.captions[0], 'neg'), t + 2.8)}</div>
+        <div class="sub2" style="margin-top:8px" data-col="L" ${A('up', tl(lines.length - 1) + dl + .3, .5)}>${kick(H(c, f.captions[1]), tl(lines.length - 1) + dl + .7)}</div>
+        <div class="srcl" style="margin-top:24px" data-col="L" ${A('fade', tl(lines.length - 1) + dl + .6, .4)}>${H(c, p.footer)}</div>`),
+      css: M12_CSS,
+      js: `document.querySelectorAll('#s${c.k} [data-hi]').forEach(e => e.classList.toggle('on', t >= +e.dataset.hi));`,
+      hits: [tX],
+      sfx: m => {
+        bars.forEach((v, i) => { m.click(tB(i), 1700, .03, (i - 6) * .05); if (v > 0) m.pluck(tB(i), note('A4') + [0, 3, 7, 10, 12, 15, 19][i % 7], .03, (i - 6) * .05); });
+        lines.forEach((_, i) => m.whoosh(tl(i), dl, .03, true));
+        m.sweep(tX - .6, .8, 300, 1500, .014); m.bell(tX, note('E6'), .04); m.boom(tX, .16);
+      },
+    };
+  }
+  const v = p.vacancy;
+  if (!v) throw new Error('Η σκηνή months12 θέλει flow ή vacancy.');
+  const bars = ser<number[]>(c, v.bars), bh = 220, y0 = 268, tE = t + 1.6, tT = t + 2.8;
+  const tr = occTrack({ ...v.track, f: c.f, id: `otk${c.k}`, width: CW, t: tT, marks: v.track.marks.map(m => ({ ...m, t0: m.t0 ?? tT + .4, t1: m.t1 ?? tT + 1.2 })) });
+  return {
+    html: blk(`${head(c, t, p.eyebrow, p.title, headSize(c, p.title))}
+      <div class="m12 gh" data-hero style="height:${y0 + 88}px">
+        <i class="m12z" style="top:${y0}px"></i>
+        ${bars.map((_, i) => `<i class="m12t${i === v.month ? ' gone' : ''}" style="left:${(mx(i) - 22).toFixed(1)}px;top:${y0 - bh}px;height:${bh}px" ${A('growy', t + .5 + i * .06, .4)}>${i === v.month ? `<b ${A('out', tE, .5)}></b><em ${A('fade', tE + .2, .4)}></em>` : '<b></b>'}</i>`).join('')}
+        <span class="m12v neg" style="left:${(mx(v.month) - 120).toFixed(1)}px;width:240px;top:${y0 - bh - 52}px" ${A('pop', tE + .3, .45)}>${H(c, v.loss)}</span>
+        ${monthsRow(y0 + 40)}
+      </div>
+      <div class="sub2" style="margin-top:32px" data-col="L" ${A('up', tE + .5, .5)}>${kick(H(c, v.line, 'neg'), tE + .9)}</div>
+      <div class="srcl" style="margin-top:8px" data-col="L" ${A('fade', tE + .8, .4)}>${H(c, v.sub)}</div>
+      <div style="margin-top:40px" data-col="LR">${tr}</div>
+      <div class="sub2" style="margin-top:32px" data-col="L" ${A('up', tT + 1.3, .5)}>${kick(H(c, v.after), tT + 1.7)}</div>
+      <div class="srcl" style="margin-top:24px" data-col="L" ${A('fade', tT + 1.6, .4)}>${H(c, p.footer)}</div>`),
+    css: M12_CSS + TRACK_CSS,
+    js: MOTION2(c.k),
+    hits: [tE + .3, tT + 1.2],
+    // Ο άδειος μήνας: η μουσική πέφτει στο χαλί για ένα μέτρο και ξαναμπαίνει.
+    hush: [[tE - .1, tE - .1 + 4 * c.beat]],
+    sfx: m => { bars.forEach((_, i) => m.click(t + .5 + i * .06, 1400, .025)); m.sweep(tE, .5, 1200, 400, .012); m.bell(tE + .3, note('A4'), .04); m.whoosh(tT + .4, .8, .04, false); m.pluck(tT + 1.2, note('E5'), .045); },
+  };
+});
+const M12_CSS = `
+  .m12{position:relative}
+  .m12>*,.m12bars>*{position:absolute}
+  .m12bars{inset:0}
+  .m12b{border-radius:16px;background:${K.enfia}14;box-shadow:inset 0 0 0 1.5px ${K.enfia}2e}
+  .m12bl{height:36px;font-family:'Roboto Mono',monospace;font-size:26px;line-height:36px;color:${K.enfia};letter-spacing:.06em;white-space:nowrap}
+  .m12z{left:0;right:0;height:2px;background:${K.ink}4d}
+  .m12bars i{width:40px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,${K.other},${K.other}b3);transform-origin:50% 100%}
+  .m12bars i.neg{border-radius:3px 3px 8px 8px;background:${K.tax};transform-origin:50% 0}
+  .m12v{width:200px;height:40px;text-align:center;font-size:34px;line-height:40px;font-weight:800;color:${K.other};white-space:nowrap}
+  .m12v.neg{color:${K.tax}}
+  .m12w{height:36px;font-size:28px;line-height:36px;font-weight:750;color:${K.tax};white-space:nowrap}
+  .m12l{left:0;top:0;overflow:visible}
+  .m12l path.hero{filter:drop-shadow(0 0 14px ${K.other}99)}
+  .m12x{width:2px;background:${K.accent}99;transform-origin:50% 100%}
+  .m12d{width:32px;height:32px;border-radius:50%;background:${K.accent};border:5px solid ${K.ground};box-shadow:0 0 0 2px ${K.accent},0 0 24px ${K.accent}}
+  .m12e{display:flex;align-items:center;gap:12px;height:40px;font-size:36px;line-height:40px;font-weight:850;white-space:nowrap}
+  .m12e em{display:block;width:24px;height:4px;border-radius:2px;background:currentColor}
+  .m12m{width:48px;height:32px;text-align:center;font-family:'Roboto Mono',monospace;font-size:26px;line-height:32px;color:${K.faint};border-radius:8px}
+  .m12m.hi.on{background:${K.accent};color:${K.onAccent};font-weight:700}
+  .m12k{display:flex;gap:32px;margin-top:24px;height:40px;align-items:center}
+  .m12k span{display:flex;align-items:center;gap:12px;font-size:28px;line-height:36px;font-weight:600;color:${K.muted};white-space:nowrap}
+  .m12k i{display:block;width:40px;height:0;border-top-width:5px}
+  .m12t{width:44px;border-radius:8px 8px 3px 3px;transform-origin:50% 100%}
+  .m12t b{position:absolute;inset:0;border-radius:inherit;background:linear-gradient(180deg,${K.ok},${K.ok}b3)}
+  .m12t em{position:absolute;inset:0;border-radius:inherit;border:3px dashed ${K.tax}}`;
+
+// ═══ 20 · Dumbbell: η απόσταση των δύο δρόμων μικραίνει· το όριο γίνεται ζώνη ═══
+// Πάνω μια αχνή σειρά χωρίς ετικέτες (μόνο το διαμέρισμα) και από κάτω η ίδια
+// σύγκριση με ένα ενοίκιο ήδη: οι τελείες ξεκινούν από τις θέσεις της σκιάς και
+// γλιστρούν στις νέες. Μετά ο δείκτης πληρότητας με τα δύο άκρα της ζώνης.
+export interface DumbbellP extends Base { eyebrow: Txt; title: Txt[];
+  ghost: { label: Txt; a: string; b: string }; row: { label: Txt; a: string; b: string; chips: [Txt, Txt] }; diff: { label: Txt; value: string };
+  limit: Txt; track: Omit<TrackOpts, 'f' | 'id' | 'width' | 't'>; zone: Txt[]; small: Txt }
+const DB = { h: 336, gy: 72, ry: 200 } as const;
+export const dumbbell = def<DumbbellP>('dumbbell', (p, c) => {
+  const t = B0(c), vs = [p.ghost.a, p.ghost.b, p.row.a, p.row.b].map(id => val(c, id));
+  const lo0 = Math.min(...vs), hi0 = Math.max(...vs), pad = (hi0 - lo0) * .35, lo = lo0 - pad, hi = hi0 + pad * .3;
+  const x = (v: number) => (v - lo) / (hi - lo) * CW;
+  const [ga, gb, ra, rb] = vs.map(x), ts = t + 1, te = t + 1.9, tT = t + 3.2;
+  const dot = (cls: string, x0: number, x1: number, slide: boolean) => `<i class="dbd ${cls}" style="left:${(slide ? x0 : x1) - 18}px;top:${DB.ry - 18}px"${slide ? ` data-slide="${(x0 - 18).toFixed(1)},${(x1 - 18).toFixed(1)},${ts},${te}"` : ''} ${A('pop', t + .8, .4)}></i>`;
+  const tr = occTrack({ ...p.track, f: c.f, id: `otk${c.k}`, width: CW, t: tT, marks: p.track.marks.map((m, i) => ({ ...m, t0: m.t0 ?? (i ? tT + .4 : tT), t1: m.t1 ?? (i ? tT + 1.4 : tT + .2) })),
+    bracket: p.track.bracket ? { ...p.track.bracket, t: tT + 1.6 } : undefined });
+  return {
+    html: blk(`${head(c, t, p.eyebrow, p.title, headSize(c, p.title))}
+      <div class="db gh" data-hero style="height:${DB.h}px">
+        <span class="dbl g" style="top:8px" ${A('fade', t + .5, .4)}>${H(c, p.ghost.label)}</span>
+        <i class="dbr g" style="left:${ga}px;width:${gb - ga}px;top:${DB.gy - 3}px" ${A('fade', t + .5, .4)}></i>
+        <i class="dbd g ok" style="left:${ga - 14}px;top:${DB.gy - 14}px" ${A('fade', t + .5, .4)}></i><i class="dbd g oth" style="left:${gb - 14}px;top:${DB.gy - 14}px" ${A('fade', t + .5, .4)}></i>
+        <span class="dbl" style="top:104px" ${A('fade', t + .7, .4)}>${kick(H(c, p.row.label), t + 1.1)}</span>
+        <i class="dbr" style="left:${ga}px;width:${gb - ga}px;top:${DB.ry - 4}px" data-span="${ga.toFixed(1)},${gb.toFixed(1)},${ra.toFixed(1)},${rb.toFixed(1)},${ts},${te}" ${A('fade', t + .8, .4)}></i>
+        ${dot('ok', ga, ra, true)}${dot('oth', gb, rb, true)}
+        <div class="dbv ok" style="right:${(CW - ra - 20).toFixed(1)}px;top:240px" ${A('fade', te + .1, .4)}><b class="num">${esc(F(c, p.row.a).text)}</b><span>${H(c, p.row.chips[0])}</span></div>
+        <div class="dbv oth l" style="left:${(rb - 20).toFixed(1)}px;top:240px" ${A('fade', te + .2, .4)}><b class="num">${esc(F(c, p.row.b).text)}</b><span>${H(c, p.row.chips[1])}</span></div>
+        <div class="dbx" style="right:0;top:136px" ${A('up', te + .4, .45)}><span>${H(c, p.diff.label)}</span><b class="num acc-g" id="dbx${c.k}">${esc(F(c, p.diff.value).text)}</b></div>
+      </div>
+      <div class="sub2" style="margin-top:32px" data-col="L" ${A('up', tT + 1.3, .45)}>${kick(H(c, p.limit), tT + 1.6)}</div>
+      <div style="margin-top:16px" data-col="LR">${tr}</div>
+      <div class="hd" style="font-size:56px;margin-top:32px" data-col="L">${p.zone.map((l, i) => mk(kick(H(c, l), tT + 2.9 + i * .1), A('mask', tT + 2.5 + i * .1, .55))).join('')}</div>
+      <div class="srcl" style="margin-top:16px" data-col="L" ${A('fade', tT + 3, .4)}>${H(c, p.small)}</div>`),
+    css: `
+      .db{position:relative}
+      .db>*{position:absolute}
+      .dbl{left:0;height:40px;font-size:32px;line-height:40px;font-weight:750;color:${K.ink};white-space:nowrap}
+      .dbl.g{font-family:'Roboto Mono',monospace;font-size:26px;font-weight:500;color:${K.faint};letter-spacing:.04em}
+      .dbr{height:8px;border-radius:4px;background:linear-gradient(90deg,${K.ok},${K.other})}
+      .dbr.g{height:6px;background:${K.ink}1f}
+      .dbd{width:36px;height:36px;border-radius:50%;border:5px solid ${K.ground}}
+      .dbd.ok{background:${K.ok};box-shadow:0 0 0 2px ${K.ok}}.dbd.oth{background:${K.other};box-shadow:0 0 0 2px ${K.other}}
+      .dbd.g{width:28px;height:28px;border:3px solid ${K.ink}4d;background:${K.ground};box-shadow:none}
+      .dbv{display:flex;flex-direction:column;align-items:flex-end;white-space:nowrap}
+      .dbv.l{align-items:flex-start}
+      .dbv b{height:44px;font-size:36px;line-height:44px;font-weight:800}
+      .dbv span{font-family:'Roboto Mono',monospace;font-size:26px;line-height:36px;color:${K.muted};letter-spacing:.02em}
+      .dbv.ok b{color:${K.ok}}.dbv.oth b{color:${K.other}}
+      .dbx{display:flex;flex-direction:column;align-items:flex-end}
+      .dbx span{font-family:'Roboto Mono',monospace;font-size:26px;line-height:32px;color:${K.muted};letter-spacing:.04em}
+      .dbx b{font-size:64px;line-height:72px;font-weight:900;letter-spacing:-.03em}
+      ${TRACK_CSS}`,
+    js: MOTION2(c.k),
+    hits: [te + .45],
+    sfx: m => { m.whoosh(ts, .9, .05, false); m.boom(te + .45, .3); m.kick(te + .45, .8); m.whoosh(tT + .4, 1, .04, true); m.click(tT + 1.4, 900, .08);
+      ['A3', 'E4', 'A4', 'C5', 'E5'].forEach((x, i) => m.bell(tT + 2.5 + i * .05, note(x), .028, (i - 2) * .2)); },
   };
 });
 
