@@ -18,7 +18,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { AssistantMark } from './AssistantMark';
-import { T, TT, Modal, Btn, IconBtn, LinkBtn, fe } from '@/components/Theme';
+import { T, TT, Modal, Btn, IconBtn, LinkBtn, fe, ABOVE_ASSISTANT_Z } from '@/components/Theme';
 import Feedback from './Feedback';
 import {
   savePrefs,
@@ -555,7 +555,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
           ήδη το δικό του δύο γραμμές πιο κάτω. Ούτε footer: τα κουμπιά
           («Αποστολή», «Άλλη φορά», «Κλείσιμο») τα δίνει το ίδιο το Feedback. */}
       {feedbackOpen && (
-        <div style={{ position: 'relative', zIndex: 1400 }}>
+        <div style={{ position: 'relative', zIndex: ABOVE_ASSISTANT_Z }}>
           <Modal open onClose={() => setFeedbackOpen(false)} title="Η γνώμη σου" size="sm">
             <Feedback target="assistant" embedded onDone={() => setFeedbackOpen(false)} />
           </Modal>

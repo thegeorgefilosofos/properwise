@@ -427,6 +427,9 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   // Ανέβασμα εγγράφου φόρμας (ταυτοποίηση ή μισθωτήριο) — ίδιο μοτίβο με το
   // property-files/property_documents που χρησιμοποιείται στη σάρωση/αρχειοθέτηση.
   const uploadFormDoc=async(file:File,tag:'id'|'lease')=>{
+    // Νέος ενοικιαστής: η ταυτότητα ανέβαινε πριν ζητηθεί η σύμβαση στο save()
+    // και έμενε στο Αρχείο ακόμη κι αν ο χρήστης έλεγε «Όχι τώρα».
+    if(!editId && !(await ensureDpa(supabase))){setError('Το έγγραφο δεν ανέβηκε: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.');return;}
     setDocBusy(true); setError(null);
     try{
       const safe=file.name.replace(/[^\w.\-]+/g,'_');

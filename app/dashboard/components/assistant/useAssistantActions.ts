@@ -29,6 +29,7 @@ import { commitScannedDoc, type ReconcileQuestion } from '../scanDoc'
 import { athensToday, isoMonth } from '@/lib/core/time'
 import { MONTHS_GEN } from '@/lib/core/months'
 import * as checkinLink from '@/lib/data/checkinLink'
+import { ensureDpa } from '@/lib/legal/dpa'
 import {
   type Props, type Action, type ClientLite, type ContactLite, eur, reconcilePrompt, navLabel,
   onlyDigits, CH_HUMAN,
@@ -266,6 +267,7 @@ export function useAssistantActions({
   const makeCheckinLink = async (who: string) => {
     const c = findClient(who);
     if (!c) { setMsgs(m => [...m, { role: 'assistant', text: `Δεν βρήκα ξεκάθαρα τον πελάτη «${who}». Πες μου ακριβές όνομα ή τηλέφωνο, ή άνοιξε τους ${navLabel('clients')}.`, action: { type: 'go', tab: 'clients' } }]); return; }
+    if (!(await ensureDpa(supabase))) { setMsgs(m => [...m, { role: 'assistant', text: 'Δεν έφτιαξα τον σύνδεσμο: για στοιχεία τρίτων χρειάζεται πρώτα η αποδοχή της σύμβασης επεξεργασίας. Ζήτα μου ξανά τον σύνδεσμο και πάτησε «Αποδέχομαι».' }]); return; }
     try {
       // Το ίδιο ζευγάρι σφαλμάτων ήταν κι εδώ, αντιγραμμένο από την καρτέλα
       // Πελατών: διεύθυνση από τον περιηγητή κι κουπόνι που δεν ανανεωνόταν. Ο
@@ -361,6 +363,9 @@ export function useAssistantActions({
   const registerClient = async (a: { name: string; phone?: string; afm?: string; ctype?: string }) => {
     const raw = (a.ctype || '').toLowerCase();
     const ctype: ClientType = /owner|ιδιοκτ/.test(raw) ? 'owner' : /client|πελατ/.test(raw) ? 'client' : 'lead';
+    // Στοιχεία τρίτου (όνομα, τηλέφωνο, ΑΦΜ): πρώτα η σύμβαση επεξεργασίας. Το
+    // παράθυρο αποδοχής ανοίγει πάνω από τη συνομιλία (ABOVE_ASSISTANT_Z).
+    if (!(await ensureDpa(supabase))) { setMsgs(m => [...m, { role: 'assistant', text: 'Δεν το καταχώρησα: για στοιχεία τρίτων χρειάζεται πρώτα η αποδοχή της σύμβασης επεξεργασίας. Ζήτα μου ξανά την καταχώρηση και πάτησε «Αποδέχομαι» στο παράθυρο που θα ανοίξει.' }]); return; }
     try {
       await must(supabase.from('clients').insert({
         user_id: userId, full_name: a.name, type: ctype,

@@ -594,4 +594,13 @@ export const MUTATIONS = {
     { add: 'app/__mut_spiti__.tsx', content: tsx('    <p>Για πρώτη κατοικία, το «Σπίτι μου ΙΙ» μειώνει δραστικά το κόστος (50% άτοκο).</p>') },
     { file: 'app/dashboard/components/loan/LoanAdvisor.tsx', from: 'badges={spitiMouOpen(today) ? <span', to: 'badges={true ? <span' },
   ] },
+  // Τρεις κανόνες, τρεις αποδείξεις. Επισκέπτης γραμμένος χωρίς αποδοχή της
+  // σύμβασης επεξεργασίας: ακριβώς η τρύπα στο save() των Πελατών και στην
+  // καταχώρηση από τη Νόα (08/10/2026). Και οι άλλες δύο πόρτες: ενοικιαστής
+  // από το lib/data/tenants και σύνδεσμος προ-άφιξης από το lib/data/checkinLink.
+  'dpa-third-party': { every: [
+    { add: 'app/__mut_dpa__.tsx', content: "export async function probe(supabase: any) {\n  await supabase.from('clients').insert({ full_name: 'x' })\n}\n" },
+    { add: 'app/__mut_dpa__.tsx', content: "import * as t from '@/lib/data/tenants'\nexport async function probe(supabase: any) {\n  await t.addReturning(supabase, 'p', 'u', {})\n}\n" },
+    { add: 'app/__mut_dpa__.tsx', content: "import * as ck from '@/lib/data/checkinLink'\nexport async function probe(supabase: any) {\n  await ck.issue(supabase, 'u', 'c', null, new Date())\n}\n" },
+  ] },
 }

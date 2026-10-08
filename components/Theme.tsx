@@ -174,6 +174,9 @@ const overlayStack: symbol[] = [];
 const overlayWatchers = new Set<() => void>();
 const notifyOverlays = () => overlayWatchers.forEach(fn => fn());
 export const OVERLAY_BASE_Z = 1000;
+/** Παράθυρο που ανοίγει πάνω από τη Νόα: πάνω από τον πίνακα και το κουμπί της
+ *  (1200/1201), κάτω από το Toast (2000) και το ConfirmDialog (10000). */
+export const ABOVE_ASSISTANT_Z = 1400;
 
 /**
  * Υπάρχει ανοιχτό παράθυρο ή ντοσιέ αυτή τη στιγμή;
