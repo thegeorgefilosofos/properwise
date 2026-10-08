@@ -17,7 +17,7 @@ import { ATAK_SOURCE, atakDigits } from '@/lib/property/atak';
 import { STATUSES, BY_KEY, readStatus, writeStatus, type PropertyStatus } from '@/lib/property/status';
 import { PROPERTY_TYPES, propertyTypeLabel } from '@/lib/property/types';
 import { fillOnlyEmpty, firstFilled } from '@/lib/core/prefill';
-import { fieldPlacement, PROPERTY_FIELDS, type FieldContext, type Placement } from '@/lib/property/fields';
+import { fieldPlacement, PROPERTY_FIELDS, OBJ_VALUE_WHOLE, type FieldContext, type Placement } from '@/lib/property/fields';
 import { failed } from '@/lib/core/dbError';
 
 // Ενεργειακή κλάση (ΠΕΑ) & τύποι θέρμανσης — κοινά για wizard και Ρυθμίσεις.
@@ -935,8 +935,14 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
         <StepBody
           place={place}
           rows={[
-            row('prop.obj_value', 'auto',
-              <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={objValue} onChange={e => setObjValue(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'Αντικειμενική αξία (€)'),
+            row('prop.obj_value', 'auto', <>
+              <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={objValue} onChange={e => setObjValue(e.target.value)} onFocus={onFocus} onBlur={onBlur} />
+              {/* Ο ΕΝΦΙΑ κόβει μόνος του το ποσοστό ιδιοκτησίας: η αξία του
+                  μεριδίου εδώ θα το έκοβε δεύτερη φορά. */}
+              <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.6 }}>
+                {OBJ_VALUE_WHOLE}
+              </div>
+            </>, 'Αντικειμενική αξία (€)'),
             row('prop.rent', airbnb ? 'full' : 'auto', <>
               <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={rent} onChange={e => setRent(e.target.value)} placeholder={airbnb ? '1400' : '820'} onFocus={onFocus} onBlur={onBlur} />
               {airbnb && (
