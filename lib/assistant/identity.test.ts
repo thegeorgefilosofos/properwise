@@ -9,8 +9,9 @@ import {
   ASSISTANT_NAME, ASSISTANT_INITIAL, ASSISTANT_ACC, ASSISTANT_TO,
   PERSONA_BRIEF, RULES, normalizeGreek, identityProblems, isCleanCopy,
   tagline, askCta, askPlaceholder, openAria, speakingLabel, settingsTitle,
-  suggestionsTitle, suggestionsSub, suggestionsTeaser, noKeyNotice, aiDisclosureLines,
+  suggestionsTitle, suggestionsSub, suggestionsTeaser, noKeyNotice, aiDisclosureLines, openersLabel,
 } from './identity';
+import * as IDENTITY from './identity';
 
 let pass = 0, fail = 0;
 function ok(name: string, cond: boolean) { if (cond) { pass++; } else { fail++; console.error(`✗ ${name}`); } }
@@ -38,12 +39,33 @@ for (const formal of [false, true]) {
   UI_STRINGS.push([`suggestionsSub (${f})`, suggestionsSub(formal)]);
   UI_STRINGS.push([`suggestionsTeaser (${f})`, suggestionsTeaser(formal)]);
   UI_STRINGS.push([`noKeyNotice (${f})`, noKeyNotice(formal)]);
-  aiDisclosureLines(formal).forEach((l, i) => UI_STRINGS.push([`aiDisclosure[${i}] (${f})`, l]));
+  aiDisclosureLines(formal).forEach((l, i) => UI_STRINGS.push([`aiDisclosureLines[${i}] (${f})`, l]));
 }
 UI_STRINGS.push(['openAria', openAria()]);
 UI_STRINGS.push(['speakingLabel', speakingLabel()]);
 UI_STRINGS.push(['settingsTitle', settingsTitle()]);
 UI_STRINGS.push(['suggestionsTitle', suggestionsTitle()]);
+UI_STRINGS.push(['openersLabel', openersLabel()]);
+
+// ΚΑΜΙΑ ΕΞΑΓΩΓΗ ΚΕΙΜΕΝΟΥ ΕΚΤΟΣ UI_STRINGS. Το scripts/guard-assistant-name.mjs
+// δεν διαβάζει το identity.ts (γράφει επίτηδες τις απαγορευμένες φράσεις) και
+// στηρίζεται σε αυτή τη λίστα. Το `openersLabel` φαινόταν στον πίνακα ελέγχου
+// και έλειπε: ένα «Ερωτήσεις για τον βοηθό σου» θα περνούσε και από τους δύο.
+// Κάθε νέα εξαγόμενη συνάρτηση κοκκινίζει εδώ μέχρι να μπει στη λίστα.
+{
+  const RULE_HELPERS = new Set(['normalizeGreek', 'identityProblems', 'isCleanCopy']);
+  // Σταθερές που δεν είναι κείμενο οθόνης ή καρφώνονται αλλού: το όνομα και οι
+  // πτώσεις του (με eq πιο πάνω), οι κανόνες και το κείμενο ταυτότητας του prompt.
+  const NOT_UI = new Set(['ASSISTANT_NAME', 'ASSISTANT_INITIAL', 'ASSISTANT_ACC', 'ASSISTANT_TO', 'PERSONA_BRIEF', 'RULES']);
+  const covered = new Set(UI_STRINGS.map(([label]) => label.split(/[ [(]/)[0]));
+  for (const [name, value] of Object.entries(IDENTITY)) {
+    if (typeof value === 'function') {
+      if (!RULE_HELPERS.has(name)) ok(`${name}: ελέγχεται στο UI_STRINGS`, covered.has(name));
+    } else {
+      ok(`${name}: γνωστή σταθερά που δεν είναι κείμενο οθόνης`, NOT_UI.has(name));
+    }
+  }
+}
 
 for (const [label, text] of UI_STRINGS) {
   const problems = identityProblems(text);
