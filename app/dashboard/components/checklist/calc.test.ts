@@ -14,6 +14,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import type { ChecklistItemsRow } from '@/lib/supabase/tables'
 import type { ChecklistItem } from './model'
+import { STR_SPECS } from '@/lib/accounting/strSpecs'
 import {
   parseItem, serializeNote, nextDueDate, nextOccurrence, carryOver, mkEmpty,
   isOverdue, asPriority, asStatus, asRecurring, getCat, getPri, getStatusMeta, checklistStats,
@@ -54,6 +55,17 @@ const row = (o: Partial<ChecklistItemsRow> = {}): ChecklistItemsRow => ({
   // ΤΟ ΠΙΟ ΚΡΙΣΙΜΟ: χωρίς παραστατικό το πραγματικό κόστος είναι ανεπιβεβαίωτο.
   ok('το παραστατικό επιβιώνει ακέραιο',
      back._receipt?.amount === 84.5 && back._receipt?.path === 'x/y.pdf' && back._receipt?.name === 'τιμολόγιο.pdf')
+}
+
+// ── Η ΣΗΜΕΙΩΣΗ ΤΟΥ ΠΡΟΤΥΠΟΥ ΦΤΑΝΕΙ ΣΤΗ ΓΡΑΜΜΗ ─────────────────────────────
+// Το loadTemplate γράφει τη σημείωση του στοιχείου (π.χ. πώς μπαίνει η λήξη
+// της ΥΔΕ στο ημερολόγιο). Αν χανόταν στον δρόμο, η γραμμή θα έμενε σκέτη.
+{
+  const spec = STR_SPECS.find(s => s.note)!
+  const back = parseItem(row({ template_id: 'str_specs', category: 'legal', description: spec.label,
+    note: serializeNote({ note: spec.note!, subtasks: [], comments: [], tags: [] }) }))
+  ok('η σημείωση του προτύπου επιβιώνει', back.note === spec.note)
+  ok('και η γραμμή μένει νομική εργασία', back.category === 'legal')
 }
 
 // ── ΟΙ ΓΡΑΜΜΕΣ ΠΟΥ ΔΕΝ ΓΡΑΦΤΗΚΑΝ ΑΠΟ ΤΗΝ ΟΘΟΝΗ ────────────────────────────

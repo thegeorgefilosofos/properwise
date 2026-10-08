@@ -532,7 +532,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
     const rows = tpl.items.map((tItem, i) => ({
       property_id: propertyId, user_id: userId, description: tItem.description, category: tItem.category,
       priority: tItem.priority, recurring: tItem.recurring || 'none', status: 'pending', completed: false,
-      note: serializeNote({ note: '', subtasks: [], comments: [], tags: [] }),
+      note: serializeNote({ note: tItem.note || '', subtasks: [], comments: [], tags: [] }),
       estimated_cost: 0, actual_cost: 0, sort_order: i, template_id: key, depends_on: null,
     }))
     const inserted = await savedData<{ id: string; sort_order: number }[]>('Το πρότυπο δεν φορτώθηκε',
