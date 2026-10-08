@@ -27,6 +27,14 @@
 const LAST_CONFIRMED = 'Ως τότε η εφαρμογή δείχνει τις τελευταίες επιβεβαιωμένες τιμές.'
 
 /**
+ * Όταν το RPC δεν διαβάστηκε δεν ξέρουμε τι λένε τα δεδομένα. Η οδηγία μιας
+ * τροφοδοσίας («γράψε μετανάστευση που κλείνει τη γραμμή») θα έστελνε τον
+ * χειριστή να αλλάξει δεδομένα που ίσως είναι σωστά, ενώ συνήθως λείπει η
+ * συνάρτηση: οι συναρτήσεις άκρου ανεβαίνουν πριν από το `supabase db push`.
+ */
+const UNREAD = 'Η κατάσταση δεν διαβάστηκε, οπότε δεν ξέρουμε αν κάτι στα δεδομένα είναι λάθος. Τι κάνεις: έλεγξε ότι εφαρμόστηκε η μετανάστευση της συνάρτησης ελέγχου (supabase db push) και ότι η βάση απαντά.'
+
+/**
  * Οι τροφοδοσίες που παρακολουθούνται, με το RPC που κρίνει την καθεμία και τη
  * φράση «ως τότε» της καθεμίας. Νέα τροφοδοσία μπαίνει ΤΕΛΕΥΤΑΙΑ: οι δοκιμές
  * διαβάζουν τις δύο πρώτες κατά θέση.
@@ -51,7 +59,7 @@ const clip = (s, n = 300) => {
  * είναι υγιής.
  */
 export function feedEntry(feed, row, error) {
-  if (error || !row) return { path: feed.path, ok: false, why: clip(`δεν διαβάστηκε η κατάσταση: ${error?.message ?? 'κενή απάντηση'}`) }
+  if (error || !row) return { path: feed.path, ok: false, unread: true, why: clip(`δεν διαβάστηκε η κατάσταση: ${error?.message ?? 'κενή απάντηση'}`) }
   return { path: feed.path, ok: Boolean(row.ok), why: clip(row.reason || (row.ok ? 'εντάξει' : 'χωρίς αιτία')) }
 }
 
@@ -89,7 +97,13 @@ export function feedAlert(prev, entries) {
   }
   // Μία φορά κάθε φράση: δύο σπασμένες τροφοδοσίες τιμών δεν τη λένε δύο φορές.
   // Διαδρομή χωρίς γραμμή στο FEEDS κρατά την παλιά φράση, όπως πριν.
-  const after = new Set(broke.map(e => FEEDS.find(f => f.path === e.path)?.after ?? LAST_CONFIRMED))
+  // Αποτυχία ανάγνωσης παίρνει το UNREAD αντί για την οδηγία της τροφοδοσίας.
+  // Το LAST_CONFIRMED μένει, γιατί ισχύει όπως κι αν έσπασε η τροφοδοσία τιμών.
+  const after = new Set(broke.flatMap(e => {
+    const a = FEEDS.find(f => f.path === e.path)?.after ?? LAST_CONFIRMED
+    if (!e.unread) return [a]
+    return a === LAST_CONFIRMED ? [a, UNREAD] : [UNREAD]
+  }))
   for (const a of after) lines.push(a)
   return { subject, lines }
 }

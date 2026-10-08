@@ -61,7 +61,22 @@ ok('τράπεζες και αγορά σπασμένες: η φράση μία 
 const bankOnly = feedAlert(new Map(), [down(bank, 'σιωπή')])
 ok('μόνο τράπεζες σπασμένες: η φράση μία φορά', (bankOnly?.lines ?? []).filter(l => LAST.test(l)).length === 1)
 
-const all = [broke, other, healed, refAlert].flatMap(a => a ? [a.subject, ...a.lines] : []).join('\n')
+// ── Αποτυχία ανάγνωσης: δεν στέλνει τον χειριστή να αλλάξει δεδομένα ────────
+// Οι συναρτήσεις άκρου ανεβαίνουν πριν από το `supabase db push`· αν αυτό
+// αργήσει ή αποτύχει, το RPC λείπει και κανένα πρόγραμμα δεν έχει λήξει.
+const MISSING = { message: 'Could not find the function public.reference_data_health without parameters in the schema cache' }
+const refUnread = reference ? feedAlert(new Map(), [feedEntry(reference, null, MISSING)]) : null
+ok('αναφορά αδιάβαστη: στέλνει', refUnread !== null)
+ok('αδιάβαστη: δεν λέει να κλείσει γραμμή', !(refUnread?.lines ?? []).some(l => l.includes('status = ended')))
+ok('αδιάβαστη: δεν λέει ότι το πρόγραμμα φαίνεται ενεργό', !(refUnread?.lines ?? []).some(l => /ως ενεργό/.test(l)))
+ok('αδιάβαστη: λέει να ελεγχθεί η μετανάστευση', (refUnread?.lines ?? []).some(l => /supabase db push/.test(l)))
+const bankUnread = feedAlert(new Map(), [feedEntry(bank, null, { message: 'permission denied' })])
+ok('τράπεζες αδιάβαστες: κρατά τις επιβεβαιωμένες τιμές', (bankUnread?.lines ?? []).some(l => LAST.test(l)))
+ok('και λέει να ελεγχθεί η μετανάστευση', (bankUnread?.lines ?? []).some(l => /supabase db push/.test(l)))
+const emptyRow = reference ? feedAlert(new Map(), [feedEntry(reference, null, null)]) : null
+ok('κενή απάντηση: ίδια μεταχείριση', !(emptyRow?.lines ?? []).some(l => l.includes('status = ended')))
+
+const all = [broke, other, healed, refAlert, refUnread, bankUnread].flatMap(a => a ? [a.subject, ...a.lines] : []).join('\n')
 ok('κανένα κόμμα πριν από «και»', !/, κ(αι|ι) /.test(all))
 
 console.log(`\nfeedAlert: ${passed} passed, ${failed} failed`)
