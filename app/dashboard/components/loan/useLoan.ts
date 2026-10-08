@@ -24,7 +24,7 @@ import {
   useMarketRates, useBankRates, useLoanPrograms, useIsAdmin, useMarketFeedHealth,
 } from '../../../hooks/useMarketData'
 import {
-  BANKS_NORM, PROGRAMS_NORM, mergeBanks, mergePrograms, BANKS_VERIFIED, type ComparisonBank,
+  BANKS_NORM, PROGRAMS_NORM, mergeBanks, programsWithLive, BANKS_VERIFIED, type ComparisonBank,
   type ComparisonProgram, LOAN_TYPES, calcMonthly, fmtEur, LoanType, RateType, SavedLoan,
   MARKET_FALLBACK, rateTypeLabel,
 } from '../TabLoanData'
@@ -118,7 +118,7 @@ export function useLoan({ propertyId, userId, propertyValue, profileType='indivi
   // Σταθερή ταυτότητα: ο Υπολογιστής παράγει από αυτή τη λίστα προεπιλογές και
   // περιθώρια αναφοράς και δεν χρειάζεται να τα ξαναφτιάχνει σε κάθε απόδοση.
   const BANKS: ComparisonBank[]       = useMemo(()=>liveBanks.length ? mergeBanks(liveBanks) : BANKS_NORM,[liveBanks])
-  const PROGRAMS: ComparisonProgram[] = livePrograms.length ? mergePrograms(livePrograms) : PROGRAMS_NORM
+  const PROGRAMS: ComparisonProgram[] = useMemo(()=>livePrograms.length ? programsWithLive(livePrograms) : PROGRAMS_NORM,[livePrograms])
 
   const [calcState,setCalcState] = useState<CalcState>({
     loanType:'purchase',borrowerType:'individual',loanAmount:initAmount,
@@ -275,8 +275,12 @@ export function useLoan({ propertyId, userId, propertyValue, profileType='indivi
   const today = useMemo(()=>new Date(),[])
   const progStatus = useMemo(()=>{
     const m = new Map<string, ReturnType<typeof programStatus>>()
-    for(const p of PROGRAMS) m.set(p.id, programStatus(
-      { applicationDeadline: p.applicationDeadline, deadline: p.deadline, status: p.status }, today))
+    for(const p of PROGRAMS) {
+      const s = programStatus({ applicationDeadline: p.applicationDeadline, deadline: p.deadline, status: p.status }, today)
+      // Το δικό του σημείωμα κλεισίματος, όπου το γενικό θα παραπλανούσε: το
+      // διαβάζουν ΚΑΙ η κάρτα των προγραμμάτων ΚΑΙ ο σύμβουλος, από ένα σημείο.
+      m.set(p.id, !s.acceptsApplications && s.state !== 'upcoming' && p.closedNote ? { ...s, note: p.closedNote } : s)
+    }
     return m
   },[PROGRAMS, today])
   const stateOf = (p:ComparisonProgram) => progStatus.get(p.id) ?? programStatus({ status: p.status }, today)

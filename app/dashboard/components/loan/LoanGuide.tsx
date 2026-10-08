@@ -15,6 +15,7 @@ import { InfoDot, InfoChip } from '../UIComponents'
 import { labelStyle } from '../LoanShared'
 import { LensPanel, MiniSection, CatRow, InlineLink, LinkCard, EuriborArea } from './Bits'
 import type { LoanProps, LoanState } from './useLoan'
+import { ANAK_HREF } from '@/lib/accounting/anakainisi2026'
 
 export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanProps & LoanState, 'advType' | 'openCalcDocs' | 'market' | 'profile'>) {
   // Οι δύο γραμμές των ειδικών κατηγοριών έλεγαν «το μισό δάνειο άτοκο» και
@@ -265,7 +266,7 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
               {label:'Σπίτι μου ΙΙ · επίσημη σελίδα',sub:'Κριτήρια και όροι του προγράμματος',url:'https://greece20.gov.gr/home-loans/'},
               {label:'Αναβαθμίζω το Σπίτι μου',sub:'Ελληνική Αναπτυξιακή Τράπεζα, επίσημη πλατφόρμα',url:'https://hdb.gr/anavathmizo-to-spiti-mou/'},
               {label:'Εξοικονομώ 2025',sub:'Επιδότηση ενεργειακής αναβάθμισης',url:'https://exoikonomo2025.gov.gr/'},
-              {label:'Ανακαινίζω και Νοικιάζω · ΟΠΕΚΑ',sub:'40% επιδότηση και εγγυημένο ενοίκιο',url:'https://www.opeka.gr'},
+              {label:'Ανακαινίζω 2026 · Ανακαίνιση Κατοικίας',sub:'Επιδότηση ανακαίνισης παλιών κατοικιών',url:ANAK_HREF},
               {label:'Γέφυρα 3 · κάλυψη αύξησης δόσης',sub:'Πρωτοβουλία τραπεζών για ευάλωτους οφειλέτες',url:'https://gefyra3.gr'},
             ]},
             {category:'Τράπεζες και επιτόκια',links:[

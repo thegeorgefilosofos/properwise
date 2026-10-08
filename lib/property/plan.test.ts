@@ -245,7 +245,7 @@ for (const s of PLAN_STATUSES) {
   // ΚΡΑΤΙΚΑ ΠΡΟΓΡΑΜΜΑΤΑ ΚΑΙ ΔΑΝΕΙΑ ΕΠΙΣΚΕΥΗΣ.
   const fids = p.funding.map(f => f.id);
   ok('Εξοικονομώ', fids.includes('exoikonomo'));
-  ok('Ανακαινίζω–Νοικιάζω', fids.includes('anakainizo'));
+  ok('Ανακαινίζω 2026', fids.includes('anakainizo'));
   ok('έκπτωση φόρου', fids.includes('tax-credit'));
   // Ο ΚΑΝΟΝΑΣ ΤΟΥ 39Β ΕΙΝΑΙ Ο ΣΗΜΕΡΙΝΟΣ: μείωση ίση με τη δαπάνη, έως 16.000€ σε
   // πέντε έτη (ν.5073/2023 · ΚΥΑ Α.1153/2025), όχι «μέρος της δαπάνης».

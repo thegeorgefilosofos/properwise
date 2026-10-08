@@ -84,3 +84,11 @@ scripts/.tmp-*
 
 # Τα βίντεο των σειρών ξαναβγαίνουν από το scripts/marketing/seires.ts --video
 docs/marketing/instagram/seires/**/*.mp4
+
+# Τα shorts (scripts/marketing/shorts/render.ts): στο git ΜΟΝΟ το texts.md και το
+# cover.jpg κάθε short. Βίντεο, ήχος, καρέ, στιγμιότυπα και φύλλα ελέγχου
+# ξαναβγαίνουν από την εντολή, όπως τα reels του docs/marketing/reels/.
+docs/marketing/shorts/out/**/*
+!docs/marketing/shorts/out/**/
+!docs/marketing/shorts/out/*/texts.md
+!docs/marketing/shorts/out/*/cover.jpg

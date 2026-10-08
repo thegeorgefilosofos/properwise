@@ -33,7 +33,7 @@ export const SIGNUP_STEPS = {
 export type SignupStep = typeof SIGNUP_STEPS[keyof typeof SIGNUP_STEPS];
 
 export const SIGNUP_SOURCES = [
-  'instagram', 'facebook', 'linkedin', 'tiktok', 'x', 'google', 'search', 'internal', 'direct', 'other',
+  'instagram', 'facebook', 'linkedin', 'tiktok', 'youtube', 'x', 'google', 'search', 'internal', 'direct', 'other',
 ] as const;
 export type SignupSource = typeof SIGNUP_SOURCES[number];
 
@@ -57,6 +57,7 @@ export function signupSource(ua: string, search: string, referrer: string, host:
     : /facebook|^fb$|messenger/.test(s) ? 'facebook'
     : /linkedin|lnkd/.test(s) ? 'linkedin'
     : /tiktok/.test(s) ? 'tiktok'
+    : /youtube|youtu\.be|^yt$/.test(s) ? 'youtube'
     : /(^|\.)x\.com$|twitter|^t\.co$/.test(s) ? 'x'
     : /google/.test(s) ? 'google'
     : /bing|duckduckgo|yahoo|ecosia|brave|yandex/.test(s) ? 'search'

@@ -7,11 +7,10 @@ import { authClient } from '@/lib/supabase/lazy';
 import { secondStepPending, MFA_SAY } from '@/lib/auth/mfa';
 import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
-import AuthAside, { AuthMobileBrand } from '../AuthAside'
+import { AuthMobileBrand } from '../AuthMobileBrand'
 import PasswordEye from '../PasswordEye'
 import GoogleButton, { useEmailFirst } from '../GoogleButton'
 import { BackLink } from '../BackLink'
-import { failed } from '@/lib/core/dbError';
 import { IDENTITY } from '@/lib/legal/identity';
 import { continuation, carried } from '@/lib/auth/continuation';
 
@@ -32,6 +31,23 @@ const readSearch = () => window.location.search
 // Σύνδεση, στα χρώματα του app (design tokens, theme-aware light/dark).
 // Δύο στήλες σε desktop· σε κινητό το marketing panel κρύβεται (auth-* classes).
 // ═══════════════════════════════════════════════════════════════════════════
+
+// ═══ ΤΟ ΚΕΙΜΕΝΟ ΤΟΥ ΣΦΑΛΜΑΤΟΣ ΦΤΑΝΕΙ ΜΕΤΑ ΤΗΝ ΕΝΥΔΑΤΩΣΗ ══════════════════════
+// ΜΕΤΡΗΜΕΝΟ (07.10.2026, scripts/perf-budget.mjs). Το lib/core/dbError.ts μαζί
+// με τους κανόνες κωδικού του lib/auth/password.ts κατέβαιναν στο αρχικό JS
+// της σύνδεσης για τρία μηνύματα που γράφονται μόνο ΑΦΟΥ αποτύχει κάτι. Η
+// σελίδα είχε 2,8 KB περιθώριο ως το όριο· με αυτό και με το πάνελ στο
+// layout.tsx έχει 6,2 (173,7 → 170,3 KB). Το αρχείο ζητιέται μόλις ενυδατωθεί
+// η σελίδα (βλ. το πρώτο effect), οπότε είναι ήδη εκεί όταν χρειαστεί· το
+// μήνυμα είναι το ίδιο, από την ίδια `failed`.
+//
+// ΑΝ ΔΕΝ ΦΤΑΣΕΙ ΠΟΤΕ, Η ΦΟΡΜΑ ΔΕΝ ΚΟΛΛΑ. Χωρίς δίκτυο και για το ίδιο το αρχείο,
+// το «τι δεν έγινε» λέγεται μόνο του, αντί να μείνει το κουμπί σε «Σύνδεση…».
+const dbError = () => import('@/lib/core/dbError')
+async function failed(what: string, e: unknown): Promise<string> {
+  try { return (await dbError()).failed(what, e) }
+  catch { return `${what}.` }
+}
 
 /** Η ανταλλαγή του διακριτικού απέτυχε και μας έστειλε εδώ. */
 const failedConfirm = () => {
@@ -123,6 +139,7 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
+    void dbError().catch(() => {})
     // Ο πελάτης φορτώνεται μετά το πρώτο σχεδίασμα, οπότε το effect ξετυλίγεται
     // μέσα σε ασύγχρονη συνάρτηση: το ίδιο το effect ΔΕΝ επιτρέπεται να
     // επιστρέψει υπόσχεση, γιατί η React διαβάζει την επιστροφή ως καθαρισμό.
@@ -184,7 +201,8 @@ export default function LoginPage() {
     const supabase = await authClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      setError(failed('Η σύνδεση δεν έγινε', error))
+      const message = await failed('Η σύνδεση δεν έγινε', error)
+      setError(message)
       setUnconfirmed(error.code === 'email_not_confirmed')
       setLoading(false); return
     }
@@ -228,7 +246,7 @@ export default function LoginPage() {
     back.set('oauth', 'login')
     const supabase = await authClient()
     const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/signup?${back.toString()}` } })
-    if (error) setError(failed('Η σύνδεση δεν έγινε', error))
+    if (error) setError(await failed('Η σύνδεση δεν έγινε', error))
   }
 
   /** Νέος σύνδεσμος επιβεβαίωσης, με την ίδια επιστροφή που δίνει η εγγραφή. */
@@ -243,7 +261,7 @@ export default function LoginPage() {
       type: 'signup', email: email.trim(),
       options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(afterSignIn())}` },
     })
-    if (error) { setError(failed('Το email δεν ξαναστάλθηκε', error)); return }
+    if (error) { setError(await failed('Το email δεν ξαναστάλθηκε', error)); return }
     setError(''); setResent(true)
   }
 
@@ -260,185 +278,180 @@ export default function LoginPage() {
     fontFamily: 'inherit', transition: 'border-color .15s',
   }
 
+  // Το περίγραμμα των δύο στηλών, ο σύνδεσμος παράκαμψης και το πάνελ
+  // (AuthAside) ζουν στο layout.tsx, στον διακομιστή. Εδώ μένει μόνο ό,τι έχει
+  // κατάσταση: η στήλη της φόρμας.
+  //
+  // ── ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ΕΙΝΑΙ <main> ΚΑΙ ΛΕΓΕΤΑΙ ─────────────────────────────
+  // Μετρημένο: `document.querySelectorAll('main').length === 0` και καμία
+  // περιοχή στο προσβάσιμο δέντρο. Ο χρήστης αναγνώστη οθόνης δεν είχε τρόπο
+  // να πηδήξει στο κύριο μέρος — έπρεπε να διασχίσει ολόκληρη τη στήλη
+  // παρουσίασης κάθε φορά.
   return (
-    <div data-mode="dark" className="auth-split" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
+    <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
+      <div className="auth-form">
+        <AuthMobileBrand />
+        {/* ── ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΜΙΑ ΦΟΡΜΑ ─────────────────────────────────
+            ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ΔΕΝ ΠΗΡΕ ΔΙΚΗ ΤΟΥ ΦΟΡΜΑ, ΕΠΙΤΗΔΕΣ. Μια δεύτερη θα
+            σήμαινε δεύτερο κουμπί υποβολής ζωγραφισμένο στο χέρι, δηλαδή
+            δεύτερη όψη για την ίδια ενέργεια — και ο φύλακας των κουμπιών
+            μετρά ακριβώς αυτό. Εδώ αλλάζουν τα πεδία, όχι το κουμπί.
 
-      <a href="#main" className="skip-link">Μετάβαση στη φόρμα</a>
-
-      {/* LEFT, κοινό marketing panel (AuthAside) */}
-      <AuthAside />
-
-      {/* ── ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ΕΙΝΑΙ <main> ΚΑΙ ΛΕΓΕΤΑΙ ─────────────────────────
-          Μετρημένο: `document.querySelectorAll('main').length === 0` και καμία
-          περιοχή στο προσβάσιμο δέντρο. Ο χρήστης αναγνώστη οθόνης δεν είχε
-          τρόπο να πηδήξει στο κύριο μέρος — έπρεπε να διασχίσει ολόκληρη τη
-          στήλη παρουσίασης κάθε φορά. */}
-      {/* RIGHT, form */}
-      <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
-        <div className="auth-form">
-          <AuthMobileBrand />
-          {/* ── ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΜΙΑ ΦΟΡΜΑ ─────────────────────────────────
-              ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ΔΕΝ ΠΗΡΕ ΔΙΚΗ ΤΟΥ ΦΟΡΜΑ, ΕΠΙΤΗΔΕΣ. Μια δεύτερη θα
-              σήμαινε δεύτερο κουμπί υποβολής ζωγραφισμένο στο χέρι, δηλαδή
-              δεύτερη όψη για την ίδια ενέργεια — και ο φύλακας των κουμπιών
-              μετρά ακριβώς αυτό. Εδώ αλλάζουν τα πεδία, όχι το κουμπί.
-
-              ΚΑΙ Η «ΗΔΗ ΣΥΝΔΕΔΕΜΕΝΟΣ» ΥΠΟΧΩΡΕΙ ΟΣΟ ΕΚΚΡΕΜΕΙ ΤΟ ΒΗΜΑ: αλλιώς
-              όποιον στέλνει εδώ ο διαμεσολαβητής θα έβλεπε «μετάβαση στον
-              πίνακα» και θα γύριζε αμέσως πίσω. Κλειστός βρόχος. */}
-          {sessionEmail && !factorId ? (
-            <AlreadySignedIn email={sessionEmail} onSignOut={signOut} signingOut={signingOut} mode="login" next={continuation(query)} />
-          ) : (<>
-          {/* ΣΕ ΚΙΝΗΤΟ ΔΕΝ ΥΠΗΡΧΕ ΚΑΝΕΝΑΣ ΔΡΟΜΟΣ ΠΙΣΩ. Το λογότυπο ζει στο
-              αριστερό πάνελ, που κρύβεται κάτω από τις 900 και δεν ήταν καν
-              σύνδεσμος. Όποιος άνοιγε τη Σύνδεση από την αρχική έμενε εκεί. */}
-          <BackLink home />
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 6px' }}>
-            {factorId ? 'Επαλήθευση δύο βημάτων' : 'Καλώς όρισες ξανά'}
-          </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px', lineHeight: 1.5 }}>
-            {factorId ? MFA_SAY.ask : (<>
-              Δεν έχεις λογαριασμό;{' '}
-              <Link href={`/signup${carry}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Δημιούργησε λογαριασμό</Link>
-            </>)}
-          </p>
-
-          {/* Ο πάροχος ταυτότητας ΞΕΚΙΝΑΕΙ σύνδεση. Στο δεύτερο βήμα η σύνδεση
-              έχει ήδη ξεκινήσει: ένα κουμπί που την ξαναρχίζει θα ήταν δρόμος
-              γύρω από την πρόκληση, όχι επιλογή. */}
-          {!factorId && !emailFirst && (<>
-          {/* `field` γιατί ο πάροχος κρατά όλο το πλάτος της στήλης, όπως πριν.
-              Το `.auth-hov` έφυγε μαζί με το στυλ: την αιώρηση τη δίνει πλέον το
-              `.po-btn[data-variant=secondary]`, που ξέρει και εστίαση με πληκτρολόγιο. */}
-          <GoogleButton onClick={signInWithGoogle} />
-          <OrDivider />
+            ΚΑΙ Η «ΗΔΗ ΣΥΝΔΕΔΕΜΕΝΟΣ» ΥΠΟΧΩΡΕΙ ΟΣΟ ΕΚΚΡΕΜΕΙ ΤΟ ΒΗΜΑ: αλλιώς
+            όποιον στέλνει εδώ ο διαμεσολαβητής θα έβλεπε «μετάβαση στον
+            πίνακα» και θα γύριζε αμέσως πίσω. Κλειστός βρόχος. */}
+        {sessionEmail && !factorId ? (
+          <AlreadySignedIn email={sessionEmail} onSignOut={signOut} signingOut={signingOut} mode="login" next={continuation(query)} />
+        ) : (<>
+        {/* ΣΕ ΚΙΝΗΤΟ ΔΕΝ ΥΠΗΡΧΕ ΚΑΝΕΝΑΣ ΔΡΟΜΟΣ ΠΙΣΩ. Το λογότυπο ζει στο
+            αριστερό πάνελ, που κρύβεται κάτω από τις 900 και δεν ήταν καν
+            σύνδεσμος. Όποιος άνοιγε τη Σύνδεση από την αρχική έμενε εκεί. */}
+        <BackLink home />
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 6px' }}>
+          {factorId ? 'Επαλήθευση δύο βημάτων' : 'Καλώς όρισες ξανά'}
+        </h1>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px', lineHeight: 1.5 }}>
+          {factorId ? MFA_SAY.ask : (<>
+            Δεν έχεις λογαριασμό;{' '}
+            <Link href={`/signup${carry}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Δημιούργησε λογαριασμό</Link>
           </>)}
+        </p>
 
-          <form onSubmit={factorId ? verifySecondStep : handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {factorId ? (
-              <div>
-                <label htmlFor="login-mfa-code" className="po-field-label">Εξαψήφιος κωδικός</label>
-                <input id="login-mfa-code" name="one-time-code" inputMode="numeric" maxLength={6} autoComplete="one-time-code"
-                  value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="123456"
-                  style={{ ...field, maxWidth: 200, fontFamily: T.font.mono, letterSpacing: '0.3em' }}
-                  onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
-                {/* ── Ο ΔΡΟΜΟΣ ΓΙΑ ΟΠΟΙΟΝ ΑΛΛΑΞΕ ΤΗΛΕΦΩΝΟ ─────────────────────
-                    Κωδικοί ανάκτησης δεν υπάρχουν, οπότε όποιος έχασε τη
-                    συσκευή με την εφαρμογή επαλήθευσης έβλεπε μόνο την
-                    «Έξοδο»: κλειδωμένος, χωρίς να ξέρει σε ποιον να γράψει. Το
-                    email του λογαριασμού είναι το πρώτο στοιχείο ταυτότητας
-                    που μπορεί να ελεγχθεί. */}
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '12px 0 0' }}>
-                  Δεν έχεις πρόσβαση στην εφαρμογή επαλήθευσης;{' '}
-                  <a href={`mailto:${IDENTITY.supportEmail}?subject=${encodeURIComponent('Επαναφορά δεύτερου βήματος')}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Γράψε μας από το email του λογαριασμού σου</a>.
-                </p>
-              </div>
-            ) : (<>
+        {/* Ο πάροχος ταυτότητας ΞΕΚΙΝΑΕΙ σύνδεση. Στο δεύτερο βήμα η σύνδεση
+            έχει ήδη ξεκινήσει: ένα κουμπί που την ξαναρχίζει θα ήταν δρόμος
+            γύρω από την πρόκληση, όχι επιλογή. */}
+        {!factorId && !emailFirst && (<>
+        {/* `field` γιατί ο πάροχος κρατά όλο το πλάτος της στήλης, όπως πριν.
+            Το `.auth-hov` έφυγε μαζί με το στυλ: την αιώρηση τη δίνει πλέον το
+            `.po-btn[data-variant=secondary]`, που ξέρει και εστίαση με πληκτρολόγιο. */}
+        <GoogleButton onClick={signInWithGoogle} />
+        <OrDivider />
+        </>)}
+
+        <form onSubmit={factorId ? verifySecondStep : handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {factorId ? (
             <div>
-              <label htmlFor="login-email" className="po-field-label">Ηλεκτρονικό ταχυδρομείο</label>
-              <input id="login-email" name="email" autoComplete="email" type="email" value={email} required onChange={e => setEmail(e.target.value)} placeholder="onoma@email.com" style={field}
+              <label htmlFor="login-mfa-code" className="po-field-label">Εξαψήφιος κωδικός</label>
+              <input id="login-mfa-code" name="one-time-code" inputMode="numeric" maxLength={6} autoComplete="one-time-code"
+                value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="123456"
+                style={{ ...field, maxWidth: 200, fontFamily: T.font.mono, letterSpacing: '0.3em' }}
                 onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
-            </div>
-            <div>
-              {/* Η ΣΕΙΡΑ ΤΗΣ ΕΤΙΚΕΤΑΣ ΚΡΑΤΑ ΤΟ ΥΨΟΣ ΤΗΣ ΕΤΙΚΕΤΑΣ (01.10.2026). Το
-                  «Ξέχασες τον κωδικό;» έχει στόχο αφής 44 και φούσκωνε ολόκληρη τη
-                  σειρά: στο τηλέφωνο η ετικέτα «Κωδικός» απείχε 30 από το πεδίο
-                  της, ενώ η «Ηλεκτρονικό ταχυδρομείο» από πάνω 12. Ο στόχος
-                  μένει 44 (`po-tap-inline`, ψευδοστοιχείο γύρω από το λεκτικό) και
-                  η σειρά έχει το ύψος του κειμένου, ίδιο με κάθε άλλη ετικέτα.
-                  Ύψος γραμμής ακέραιο (18, όχι 1,4 × 13 = 18,2): με το δεκαδικό ο
-                  στόχος έβγαινε 43,99 και ο σαρωτής αφής τον έκοβε. */}
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
-                <label htmlFor="login-password" className="po-field-label" style={{ marginBottom: 0 }}>Κωδικός</label>
-                <Link href="/reset-password" className="lp-link po-tap-inline" style={{ fontSize: 13, lineHeight: '18px', color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Ξέχασες τον κωδικό;</Link>
-              </div>
-              <div style={{ position: 'relative' }}>
-                <input id="login-password" name="password" autoComplete="current-password" type={show ? 'text' : 'password'} value={password} required onChange={e => setPassword(e.target.value)} placeholder="Ο κωδικός σου" style={{ ...field, paddingRight: 48 }}
-                  onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
-                <PasswordEye show={show} onToggle={() => setShow(s => !s)} />
-              </div>
-            </div>
-            </>)}
-
-            {error && (
-              <div role="alert" style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--negative)' }}>
-                {error}
-              </div>
-            )}
-            {!factorId && unconfirmed && !resent && (
-              <Btn variant="secondary" field onClick={resendConfirmation}>Ξαναστείλε το email επιβεβαίωσης</Btn>
-            )}
-            {!factorId && resent && (
-              <p role="status" style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-                Σου στείλαμε νέο σύνδεσμο επιβεβαίωσης στο <strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{email.trim()}</strong>. Δες και τον φάκελο ανεπιθύμητων.
+              {/* ── Ο ΔΡΟΜΟΣ ΓΙΑ ΟΠΟΙΟΝ ΑΛΛΑΞΕ ΤΗΛΕΦΩΝΟ ─────────────────────
+                  Κωδικοί ανάκτησης δεν υπάρχουν, οπότε όποιος έχασε τη
+                  συσκευή με την εφαρμογή επαλήθευσης έβλεπε μόνο την
+                  «Έξοδο»: κλειδωμένος, χωρίς να ξέρει σε ποιον να γράψει. Το
+                  email του λογαριασμού είναι το πρώτο στοιχείο ταυτότητας
+                  που μπορεί να ελεγχθεί. */}
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '12px 0 0' }}>
+                Δεν έχεις πρόσβαση στην εφαρμογή επαλήθευσης;{' '}
+                <a href={`mailto:${IDENTITY.supportEmail}?subject=${encodeURIComponent('Επαναφορά δεύτερου βήματος')}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Γράψε μας από το email του λογαριασμού σου</a>.
               </p>
-            )}
-
-            <Btn variant="primary" type="submit" field disabled={busy}>
-              {factorId
-                ? (verifying ? 'Επαλήθευση…' : 'Επαλήθευση')
-                : (loading ? 'Σύνδεση…' : 'Σύνδεση')}
-            </Btn>
-          </form>
-
-          {!factorId && emailFirst && (<>
-            <OrDivider />
-            <GoogleButton onClick={signInWithGoogle} />
-          </>)}
-
-          {/* ── Ο ΔΡΟΜΟΣ ΓΙΑ ΟΠΟΙΟΝ ΕΧΑΣΕ ΤΟ ΤΗΛΕΦΩΝΟ ΤΟΥ ────────────────────
-              ΧΩΡΙΣ ΑΥΤΟ, Η ΟΘΟΝΗ ΕΙΝΑΙ ΑΔΙΕΞΟΔΟ: η συνεδρία «aal1» ζει, ο
-              διαμεσολαβητής τον γυρίζει εδώ από κάθε σελίδα και δεν υπάρχει
-              κουμπί να την κλείσει. Η έξοδος δεν παρακάμπτει τίποτα — σβήνει
-              τη μισή συνεδρία αντί να την αφήσει ζωντανή. */}
-          {factorId ? (
-            <div style={{ marginTop: 24, textAlign: 'center' }}>
-              <Btn variant="ghost" onClick={signOut} disabled={signingOut}>
-                {signingOut ? 'Αποσύνδεση…' : 'Αποσύνδεση'}
-              </Btn>
             </div>
-          ) : (
-          /* ═══ Η ΓΡΑΜΜΗ ΤΩΝ ΟΡΩΝ ΕΣΠΑΓΕ ΓΙΑ ΕΝΑ ΚΟΜΜΑ ΚΑΙ ΜΙΑ ΤΕΛΕΙΑ ═════════
-              ΜΕΤΡΗΜΕΝΟ ΣΕ CHROMIUM, 1440: η πρόταση θέλει 401,7 εικονοστοιχεία
-              σε μία γραμμή και η στήλη της φόρμας δίνει 400. Επεφτε έξω κατά
-              ΕΝΑ ΚΑΙ ΕΦΤΑ, οπότε το «απορρήτου.» κατέβαινε μόνο του σε δεύτερη
-              σειρά — ορφανή λέξη κάτω από μια γεμάτη γραμμή, στην τελευταία
-              εικόνα πριν από τη σύνδεση.
-
-              ΤΙ ΔΕΝ ΕΚΑΝΑ. Δεν έκοψα λέξεις: «Συνεχίζοντας» είναι η πράξη που
-              ενεργοποιεί τη συναίνεση και «Όρους χρήσης» είναι το όνομα του
-              εγγράφου, ίδιο σε υποσέλιδο, εγγραφή και ρυθμίσεις. Χωρίς κόμμα
-              βγαίνει 398,8 και χωρίς τελεία 398,7: χωράει με ΕΝΑ εικονοστοιχείο
-              περιθώριο, δηλαδή σπάει ξανά με την πρώτη εφεδρική γραμματοσειρά.
-
-              Η ΥΠΟΣΗΜΕΙΩΣΗ ΔΕΝ ΕΙΝΑΙ ΠΕΔΙΟ ΤΗΣ ΦΟΡΜΑΣ. Παίρνει δέκα
-              εικονοστοιχεία παραπάνω από κάθε πλευρά — 420 συνολικά, με 18
-              περιθώριο — και τα δανείζεται από το γέμισμα των 40 του <main>,
-              που υπάρχει σε κάθε πλάτος. Σε τηλέφωνο το «calc» συρρικνώνεται
-              μαζί με τη στήλη, οπότε τίποτα δεν βγαίνει από την οθόνη· εκεί
-              τυλίγει — και το «balance» μοιράζει τις δύο σειρές αντί να αφήσει
-             πάλι μία λέξη μόνη της. Οι δύο σύνδεσμοι δεν σπάνε ΜΕΣΑ τους: στα
-             390 το «Όρους χρήσης» χωριζόταν σε δύο σειρές.
-             ΚΑΙ ΣΕ ΜΙΑ ΓΡΑΜΜΗ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (27.09.2026): «Όρους» αντί για
-             «Όρους χρήσης», όπως στην εγγραφή· ο σύνδεσμος οδηγεί εκεί. */
-          /* ΑΡΙΣΤΕΡΑ, ΟΠΩΣ ΚΑΘΕ ΑΛΛΟ ΣΤΟΙΧΕΙΟ ΤΗΣ ΦΟΡΜΑΣ (01.10.2026). Ηταν το
-             μόνο κεντραρισμένο στοιχείο της στήλης και, φαρδύτερο κατά 20, το
-             μόνο που ξέφευγε από τις ευθείες των πεδίων. Ιδια θέση και ίδιο
-             μέγεθος με τη συναίνεση της εγγραφής.
-             Η ΠΟΛΙΤΙΚΗ ΑΠΟΡΡΗΤΟΥ ΔΕΝ ΓΙΝΕΤΑΙ ΑΠΟΔΕΚΤΗ. Είναι ενημέρωση (άρθρα 13
-             και 14 ΓΚΠΔ), όχι σύμβαση: «αποδέχεσαι» λέγεται μόνο για τους Όρους. */
-          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 20, marginBottom: 0, lineHeight: 1.6, textWrap: 'pretty' }}>
-            Συνεχίζοντας, αποδέχεσαι τους{' '}
-            <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Όρους</Link>. Δες και την{' '}
-            <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>.
-          </p>
-          )}
+          ) : (<>
+          <div>
+            <label htmlFor="login-email" className="po-field-label">Ηλεκτρονικό ταχυδρομείο</label>
+            <input id="login-email" name="email" autoComplete="email" type="email" value={email} required onChange={e => setEmail(e.target.value)} placeholder="onoma@email.com" style={field}
+              onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+              onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+          </div>
+          <div>
+            {/* Η ΣΕΙΡΑ ΤΗΣ ΕΤΙΚΕΤΑΣ ΚΡΑΤΑ ΤΟ ΥΨΟΣ ΤΗΣ ΕΤΙΚΕΤΑΣ (01.10.2026). Το
+                «Ξέχασες τον κωδικό;» έχει στόχο αφής 44 και φούσκωνε ολόκληρη τη
+                σειρά: στο τηλέφωνο η ετικέτα «Κωδικός» απείχε 30 από το πεδίο
+                της, ενώ η «Ηλεκτρονικό ταχυδρομείο» από πάνω 12. Ο στόχος
+                μένει 44 (`po-tap-inline`, ψευδοστοιχείο γύρω από το λεκτικό) και
+                η σειρά έχει το ύψος του κειμένου, ίδιο με κάθε άλλη ετικέτα.
+                Ύψος γραμμής ακέραιο (18, όχι 1,4 × 13 = 18,2): με το δεκαδικό ο
+                στόχος έβγαινε 43,99 και ο σαρωτής αφής τον έκοβε. */}
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+              <label htmlFor="login-password" className="po-field-label" style={{ marginBottom: 0 }}>Κωδικός</label>
+              <Link href="/reset-password" className="lp-link po-tap-inline" style={{ fontSize: 13, lineHeight: '18px', color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Ξέχασες τον κωδικό;</Link>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <input id="login-password" name="password" autoComplete="current-password" type={show ? 'text' : 'password'} value={password} required onChange={e => setPassword(e.target.value)} placeholder="Ο κωδικός σου" style={{ ...field, paddingRight: 48 }}
+                onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+                onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+              <PasswordEye show={show} onToggle={() => setShow(s => !s)} />
+            </div>
+          </div>
           </>)}
-        </div>
-      </main>
-    </div>
+
+          {error && (
+            <div role="alert" style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--negative)' }}>
+              {error}
+            </div>
+          )}
+          {!factorId && unconfirmed && !resent && (
+            <Btn variant="secondary" field onClick={resendConfirmation}>Ξαναστείλε το email επιβεβαίωσης</Btn>
+          )}
+          {!factorId && resent && (
+            <p role="status" style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+              Σου στείλαμε νέο σύνδεσμο επιβεβαίωσης στο <strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{email.trim()}</strong>. Δες και τον φάκελο ανεπιθύμητων.
+            </p>
+          )}
+
+          <Btn variant="primary" type="submit" field disabled={busy}>
+            {factorId
+              ? (verifying ? 'Επαλήθευση…' : 'Επαλήθευση')
+              : (loading ? 'Σύνδεση…' : 'Σύνδεση')}
+          </Btn>
+        </form>
+
+        {!factorId && emailFirst && (<>
+          <OrDivider />
+          <GoogleButton onClick={signInWithGoogle} />
+        </>)}
+
+        {/* ── Ο ΔΡΟΜΟΣ ΓΙΑ ΟΠΟΙΟΝ ΕΧΑΣΕ ΤΟ ΤΗΛΕΦΩΝΟ ΤΟΥ ────────────────────
+            ΧΩΡΙΣ ΑΥΤΟ, Η ΟΘΟΝΗ ΕΙΝΑΙ ΑΔΙΕΞΟΔΟ: η συνεδρία «aal1» ζει, ο
+            διαμεσολαβητής τον γυρίζει εδώ από κάθε σελίδα και δεν υπάρχει
+            κουμπί να την κλείσει. Η έξοδος δεν παρακάμπτει τίποτα — σβήνει
+            τη μισή συνεδρία αντί να την αφήσει ζωντανή. */}
+        {factorId ? (
+          <div style={{ marginTop: 24, textAlign: 'center' }}>
+            <Btn variant="ghost" onClick={signOut} disabled={signingOut}>
+              {signingOut ? 'Αποσύνδεση…' : 'Αποσύνδεση'}
+            </Btn>
+          </div>
+        ) : (
+        /* ═══ Η ΓΡΑΜΜΗ ΤΩΝ ΟΡΩΝ ΕΣΠΑΓΕ ΓΙΑ ΕΝΑ ΚΟΜΜΑ ΚΑΙ ΜΙΑ ΤΕΛΕΙΑ ═════════
+            ΜΕΤΡΗΜΕΝΟ ΣΕ CHROMIUM, 1440: η πρόταση θέλει 401,7 εικονοστοιχεία
+            σε μία γραμμή και η στήλη της φόρμας δίνει 400. Επεφτε έξω κατά
+            ΕΝΑ ΚΑΙ ΕΦΤΑ, οπότε το «απορρήτου.» κατέβαινε μόνο του σε δεύτερη
+            σειρά — ορφανή λέξη κάτω από μια γεμάτη γραμμή, στην τελευταία
+            εικόνα πριν από τη σύνδεση.
+
+            ΤΙ ΔΕΝ ΕΚΑΝΑ. Δεν έκοψα λέξεις: «Συνεχίζοντας» είναι η πράξη που
+            ενεργοποιεί τη συναίνεση και «Όρους χρήσης» είναι το όνομα του
+            εγγράφου, ίδιο σε υποσέλιδο, εγγραφή και ρυθμίσεις. Χωρίς κόμμα
+            βγαίνει 398,8 και χωρίς τελεία 398,7: χωράει με ΕΝΑ εικονοστοιχείο
+            περιθώριο, δηλαδή σπάει ξανά με την πρώτη εφεδρική γραμματοσειρά.
+
+            Η ΥΠΟΣΗΜΕΙΩΣΗ ΔΕΝ ΕΙΝΑΙ ΠΕΔΙΟ ΤΗΣ ΦΟΡΜΑΣ. Παίρνει δέκα
+            εικονοστοιχεία παραπάνω από κάθε πλευρά — 420 συνολικά, με 18
+            περιθώριο — και τα δανείζεται από το γέμισμα των 40 του <main>,
+            που υπάρχει σε κάθε πλάτος. Σε τηλέφωνο το «calc» συρρικνώνεται
+            μαζί με τη στήλη, οπότε τίποτα δεν βγαίνει από την οθόνη· εκεί
+            τυλίγει — και το «balance» μοιράζει τις δύο σειρές αντί να αφήσει
+           πάλι μία λέξη μόνη της. Οι δύο σύνδεσμοι δεν σπάνε ΜΕΣΑ τους: στα
+           390 το «Όρους χρήσης» χωριζόταν σε δύο σειρές.
+           ΚΑΙ ΣΕ ΜΙΑ ΓΡΑΜΜΗ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (27.09.2026): «Όρους» αντί για
+           «Όρους χρήσης», όπως στην εγγραφή· ο σύνδεσμος οδηγεί εκεί. */
+        /* ΑΡΙΣΤΕΡΑ, ΟΠΩΣ ΚΑΘΕ ΑΛΛΟ ΣΤΟΙΧΕΙΟ ΤΗΣ ΦΟΡΜΑΣ (01.10.2026). Ηταν το
+           μόνο κεντραρισμένο στοιχείο της στήλης και, φαρδύτερο κατά 20, το
+           μόνο που ξέφευγε από τις ευθείες των πεδίων. Ιδια θέση και ίδιο
+           μέγεθος με τη συναίνεση της εγγραφής.
+           Η ΠΟΛΙΤΙΚΗ ΑΠΟΡΡΗΤΟΥ ΔΕΝ ΓΙΝΕΤΑΙ ΑΠΟΔΕΚΤΗ. Είναι ενημέρωση (άρθρα 13
+           και 14 ΓΚΠΔ), όχι σύμβαση: «αποδέχεσαι» λέγεται μόνο για τους Όρους. */
+        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 20, marginBottom: 0, lineHeight: 1.6, textWrap: 'pretty' }}>
+          Συνεχίζοντας, αποδέχεσαι τους{' '}
+          <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Όρους</Link>. Δες και την{' '}
+          <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>.
+        </p>
+        )}
+        </>)}
+      </div>
+    </main>
   )
 }

@@ -179,7 +179,7 @@ export const REGULATED: readonly Regulated[] = [
     validTo: null,
     source: `${AADE_HOME}/polites/enfia`,
     checkedAt: '2026-10-07',
-    recheck: 'Τα 9.000€ και 12.000€ οικογενειακού εισοδήματος, η προσαύξηση 1.000€ ανά μέλος και τα 150 τ.μ. κτισμάτων (incomeLimit, maxBuildingSqm στο ENFIA_REDUCTIONS). Δες αν τα άλλαξε τροποποίηση του Κώδικα Φορολογίας Περιουσίας.',
+    recheck: 'Τα 9.000€ και 12.000€ οικογενειακού εισοδήματος, η προσαύξηση 1.000€ ανά μέλος, τα 150 τ.μ. κτισμάτων και τα όρια αξίας περιουσίας της μείωσης 50% (85.000€, 150.000€ και 200.000€ ανά τύπο οικογένειας) (incomeLimit, maxBuildingSqm, valueLimits στο ENFIA_REDUCTIONS). Δες αν τα άλλαξε τροποποίηση του Κώδικα Φορολογίας Περιουσίας.',
   },
   {
     id: 'enfia-instalments',
@@ -265,7 +265,7 @@ export const REGULATED: readonly Regulated[] = [
     validTo: '2026-12-31',
     source: 'https://www.gov.gr/ipiresies/periousia-kai-phorologia',
     checkedAt: '2026-08-26',
-    recheck: 'Σπίτι μου, Ανακαινίζω Ενοικιάζω, Εξοικονομώ: αν άνοιξε νέος κύκλος, αν άλλαξαν εισοδηματικά όρια ή αν έκλεισε το πρόγραμμα.',
+    recheck: 'Σπίτι μου, Ανακαίνιση Κατοικίας (Ανακαινίζω 2026, lib/accounting/anakainisi2026.ts), Εξοικονομώ: αν άνοιξε νέος κύκλος, αν άλλαξαν εισοδηματικά όρια ή αν έκλεισε το πρόγραμμα.',
   },
   {
     id: 'transfer-tax',

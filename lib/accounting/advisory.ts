@@ -29,6 +29,7 @@ function renoYearLine(incomeTax: number | undefined): string {
 import { MYAADE } from '@/lib/tax/aade';
 import { athensToday } from '@/lib/core/time';
 import { spitiMouOpen, spitiMouClosedSentence } from '@/lib/loans/recommend';
+import { ANAK_HREF } from './anakainisi2026';
 
 const upd = (id: string) => REGULATORY_UPDATES_2026.find(u => u.id === id)
 
@@ -86,7 +87,7 @@ const SRC = {
   aadeRentals: MYAADE,
   aadeIncome: MYAADE,
   spitiMou: 'https://stegasi.gov.gr/programs/spiti-mou-ii/',
-  anakainizo: 'https://www.gov.gr/el/services/1001507/anakainizo-noikiazo',
+  anakainizo: ANAK_HREF,
   exoikonomo: 'https://www.gov.gr/ipiresies/periousia-kai-phorologia/diakheirise-akinetes-periousias/exoikonomo-2025',
   business: 'https://www.gov.gr/ipiresies/epikheirematike-drasterioteta/enarxe-kai-luse-epikheireses/enarxe-atomikes-epikheireses',
 }
@@ -161,14 +162,14 @@ export function buildAdvisory(input: AdvisoryInput, limit = 6): AdvisoryItem[] {
     items.push({
       id: 'loan-idea', tone: 'insight',
       title: 'Χρηματοδότηση: «Σπίτι μου ΙΙ» και επισκευαστικά',
-      body: `Για αγορά πρώτης κατοικίας (νέοι/νέα ζευγάρια) το «Σπίτι μου ΙΙ» δίνει άτοκο ή χαμηλότοκο τμήμα δανείου με κριτήρια. Για ανακαίνιση υπάρχουν επισκευαστικά/«Ανακαινίζω-Νοικιάζω». Στο εργαλείο Δάνεια βλέπεις επιλεξιμότητα και σύγκριση δόσης πριν πας στην τράπεζα.`,
+      body: `Για αγορά πρώτης κατοικίας (νέοι/νέα ζευγάρια) το «Σπίτι μου ΙΙ» δίνει άτοκο ή χαμηλότοκο τμήμα δανείου με κριτήρια. Για ανακαίνιση υπάρχουν επισκευαστικά δάνεια· το «Ανακαινίζω 2026» αφορά πλέον μόνο όσους έχουν ήδη βεβαίωση επιλεξιμότητας. Στο εργαλείο Δάνεια βλέπεις επιλεξιμότητα και σύγκριση δόσης πριν πας στην τράπεζα.`,
       refer: 'bank', linkLabel: 'Σπίτι μου ΙΙ (gov.gr)', linkHref: SRC.spitiMou,
     })
   } else if (!input.hasLoan) {
     items.push({
       id: 'loan-idea', tone: 'insight',
       title: 'Χρηματοδότηση: σύγκριση τραπεζών και επισκευαστικά',
-      body: `Για αγορά πρώτης κατοικίας σύγκρινε τις τράπεζες με βάση το συνολικό κόστος του δανείου, όχι μόνο το επιτόκιο. ${spitiMouClosedSentence(today)} Για ανακαίνιση υπάρχουν επισκευαστικά/«Ανακαινίζω-Νοικιάζω». Στο εργαλείο Δάνεια βλέπεις σύγκριση δόσης πριν πας στην τράπεζα.`,
+      body: `Για αγορά πρώτης κατοικίας σύγκρινε τις τράπεζες με βάση το συνολικό κόστος του δανείου, όχι μόνο το επιτόκιο. ${spitiMouClosedSentence(today)} Για ανακαίνιση υπάρχουν επισκευαστικά δάνεια· το «Ανακαινίζω 2026» αφορά πλέον μόνο όσους έχουν ήδη βεβαίωση επιλεξιμότητας. Στο εργαλείο Δάνεια βλέπεις σύγκριση δόσης πριν πας στην τράπεζα.`,
       refer: 'bank',
     })
   } else if ((input.loanInterestYear ?? 0) > 0 && !business) {

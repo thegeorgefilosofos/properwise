@@ -347,7 +347,7 @@ export function LoanAdvisor({
                 id: prog.id, l: prog.name, when, url: prog.url,
                 el: open && advType==='renovation',
                 reason: shut ?? (advType==='renovation'
-                  ? 'Επιδότηση ανακαίνισης και εγγυημένο ενοίκιο από τον ΟΠΕΚΑ'
+                  ? 'Επιδότηση ανακαίνισης παλιάς κατοικίας, μόνο με βεβαίωση επιλεξιμότητας'
                   : 'Επίλεξε «Ανακαίνιση» στον υπολογιστή'),
                 badge: null,
               }
