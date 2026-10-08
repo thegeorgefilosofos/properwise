@@ -18,7 +18,9 @@ import { STR_SPECS } from '@/lib/accounting/strSpecs'
 import {
   parseItem, serializeNote, nextDueDate, nextOccurrence, carryOver, mkEmpty,
   isOverdue, asPriority, asStatus, asRecurring, getCat, getPri, getStatusMeta, checklistStats,
+  templateRows,
 } from './calc'
+import { TEMPLATES } from './model'
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }
@@ -58,14 +60,20 @@ const row = (o: Partial<ChecklistItemsRow> = {}): ChecklistItemsRow => ({
 }
 
 // ── Η ΣΗΜΕΙΩΣΗ ΤΟΥ ΠΡΟΤΥΠΟΥ ΦΤΑΝΕΙ ΣΤΗ ΓΡΑΜΜΗ ─────────────────────────────
-// Το loadTemplate γράφει τη σημείωση του στοιχείου (π.χ. πώς μπαίνει η λήξη
-// της ΥΔΕ στο ημερολόγιο). Αν χανόταν στον δρόμο, η γραμμή θα έμενε σκέτη.
+// Το loadTemplate γράφει τις γραμμές με το `templateRows` (π.χ. πώς μπαίνει η
+// λήξη της ΥΔΕ στο ημερολόγιο). Η πρώτη δοκιμή έχτιζε τη γραμμή μόνη της και
+// έμενε πράσινη ακόμη κι αν το loadTemplate έγραφε `note: ''`.
 {
-  const spec = STR_SPECS.find(s => s.note)!
-  const back = parseItem(row({ template_id: 'str_specs', category: 'legal', description: spec.label,
-    note: serializeNote({ note: spec.note!, subtasks: [], comments: [], tags: [] }) }))
-  ok('η σημείωση του προτύπου επιβιώνει', back.note === spec.note)
-  ok('και η γραμμή μένει νομική εργασία', back.category === 'legal')
+  const rows = templateRows(TEMPLATES.str_specs, 'str_specs', 'p', 'u')
+  ok('μία γραμμή για κάθε προδιαγραφή', rows.length === STR_SPECS.length)
+  const back = rows.map(r => parseItem(row(r as unknown as Partial<ChecklistItemsRow>)))
+  ok('κάθε γραμμή κρατά τη σημείωση της προδιαγραφής της',
+    back.every((b, i) => b.note === (STR_SPECS[i].note ?? null)))
+  ok('τουλάχιστον μία προδιαγραφή έχει σημείωση', back.some(b => !!b.note))
+  ok('και οι γραμμές μένουν νομικές εργασίες', back.every(b => b.category === 'legal'))
+  ok('η σειρά είναι ο δείκτης του προτύπου', rows.every((r, i) => r.sort_order === i && r.template_id === 'str_specs'))
+  ok('χωρίς επινοημένο κόστος', rows.every(r => r.estimated_cost === 0 && r.depends_on === null))
+  ok('ακίνητο και χρήστης περνούν', rows.every(r => r.property_id === 'p' && r.user_id === 'u'))
 }
 
 // ── ΟΙ ΓΡΑΜΜΕΣ ΠΟΥ ΔΕΝ ΓΡΑΦΤΗΚΑΝ ΑΠΟ ΤΗΝ ΟΘΟΝΗ ────────────────────────────
