@@ -1,7 +1,7 @@
 'use client'
 import { track, PRODUCT_EVENTS } from '@/lib/analytics/events';
 import { collectionModeReason } from '@/lib/tax/rentCollectionMode';
-import { T, Btn, IconBtn, ChipToggle, LinkBtn, Skeleton, SkeletonKPIs, fn } from '@/components/Theme'
+import { T, Btn, IconBtn, ChipToggle, LinkBtn, Skeleton, SkeletonKPIs, InfoBanner, fn } from '@/components/Theme'
 import { hy } from '@/components/Hyphen'
 import { ActionMenu } from '@/components/ActionMenu'
 import { ChevronLeft, ChevronRight, Download, ArrowUpRight } from 'lucide-react'
@@ -9,7 +9,7 @@ import { InfoHint } from './InfoHint'
 import BankImport from './BankImport'
 import E2ReconcileCard from './E2ReconcileCard'
 import { Landmark, Lock, Unlock } from 'lucide-react'
-import { bracketsLabelForYear, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, BUSINESS_INCOME_BRACKETS_2026, CORPORATE_TAX_RATE_2026, ADVANCE_TAX_RATE_SOLE, ADVANCE_TAX_RATE_COMPANY, DIVIDEND_WITHHOLDING_RATE } from '@/lib/billing/greekTax'
+import { bracketsLabelForYear, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, BUSINESS_INCOME_BRACKETS_2026, CORPORATE_TAX_RATE_2026, ADVANCE_TAX_RATE_SOLE, ADVANCE_TAX_RATE_COMPANY, DIVIDEND_WITHHOLDING_RATE, STR_INDIVIDUAL_MAX_PROPERTIES } from '@/lib/billing/greekTax'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement'
 import { FEATURE_MIN_PLAN, isTabPurchasable, planAtLeast, requiredPlanForTab } from '@/lib/billing/entitlements'
 import { PLANS } from '@/lib/billing/plans'
@@ -70,7 +70,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
     cash, book, recentLedger, trial, jTotals, recon, rs, maxCash, dossierProps, dossier,
     doubleEntry, dossierExport, closing, lockErr, closingErr, printCertificate,
     officialRentCertificate, drift, lockYear, unlockYear, shareWithAccountant, revokeAccountantLink,
-    exportBundle,
+    exportBundle, strNotice, strNoticeSeen, setStrNoticeSeen,
   } = useAccounting({ propertyId, userId, profileType, legalForm, plan, status, onNavigate })
 
   // Το σκαλί της εξόδου: ο χρήστης πήρε κάτι που δίνεται σε τρίτον. Μετριέται
@@ -391,6 +391,16 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
       <AccountantDossier userId={userId} onEditProperty={onEditProperty} state={dossier} year={year} properties={dossierProps} exportSource={dossierExport} actions={accountantActions}
         compact={!hasActivity} yearData={yearData} />
 
+      {/* ΤΟ ΚΑΘΕΣΤΩΣ ΠΡΙΝ ΑΠΟ ΤΟΝ ΑΡΙΘΜΟ. Με περισσότερα βραχυχρόνια από το όριο
+          ο φόρος από κάτω δεν είναι αυτός που θα δηλώσει· το λέμε πάνω από το
+          ποσό, όχι μέσα σε υποσημείωση. Κλείνει ανά ακίνητο, για όποιον έχει
+          ήδη κάνει έναρξη. */}
+      {strNotice && !strNoticeSeen && (
+        <InfoBanner tone="warning">
+          <strong>{strNotice.title}</strong> {strNotice.body} <LinkBtn onClick={()=>setStrNoticeSeen(true)}>Το έχω ήδη τακτοποιήσει</LinkBtn>
+        </InfoBanner>
+      )}
+
       {hasActivity && (<>
       {/* ═══════════════════════════════════════════════════════════════════
           ΕΝΑΣ ΑΡΙΘΜΟΣ ΣΤΗΝ ΚΟΡΥΦΗ· ΕΙΝΑΙ Ο ΜΟΝΟΣ ΠΟΥ ΔΕΝ ΛΕΕΙ Η ΚΑΤΑΣΤΑΣΗ
@@ -547,7 +557,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             <InfoHint>
               {businessMode
                 ? (elpForm==='company' ? `Νομικό πρόσωπο: ${fpRate(CORPORATE_TAX_RATE_2026*100)} επί των καθαρών κερδών (μετά από εκπιπτόμενα έξοδα, αποσβέσεις κτιρίου και εξοπλισμού, καθώς και τόκους), συν προκαταβολή φόρου ${fpRate(ADVANCE_TAX_RATE_COMPANY*100)} και ${fpRate(DIVIDEND_WITHHOLDING_RATE*100)} φόρος στη διανομή μερίσματος.` : `Ατομική επιχείρηση: κλίμακα άρθρου 15 (${fpRate(BUSINESS_INCOME_BRACKETS_2026[0].rate*100)} έως ${fpRate(BUSINESS_INCOME_BRACKETS_2026[BUSINESS_INCOME_BRACKETS_2026.length-1].rate*100)}) επί των καθαρών κερδών, μετά από εκπιπτόμενα έξοδα, ΕΦΚΑ, αποσβέσεις και τόκους, με τεκμαρτό ελάχιστο καθαρό εισόδημα ${eur(minNetIncome.amount)}${minNetIncome.sourceYear!==year?` (ποσό ${minNetIncome.sourceYear}: για το ${year} δεν έχει ανακοινωθεί κατώτατος μισθός)`:''} και προκαταβολή φόρου ${fpRate(ADVANCE_TAX_RATE_SOLE*100)}.`)
-                : (regime==='individual_longterm' ? `Μακροχρόνια μίσθωση φυσικού προσώπου: το εισόδημα φορολογείται κατά το άρθρο 40, με τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} για επισκευές και συντήρηση. Οι λοιπές δαπάνες, ο ΕΝΦΙΑ και οι τόκοι δανείου δεν εκπίπτουν.` : `Βραχυχρόνια μίσθωση φυσικού προσώπου: εισόδημα ακινήτων, με τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} στα μεικτά (άρθρο 39 ΚΦΕ). Οι πραγματικές δαπάνες δεν εκπίπτουν. Επιπλέον το τέλος ανθεκτικότητας ανά διανυκτέρευση και το τέλος παρεπιδημούντων όπου ισχύει.`)}
+                : (regime==='individual_longterm' ? `Μακροχρόνια μίσθωση φυσικού προσώπου: το εισόδημα φορολογείται κατά το άρθρο 40, με τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} για επισκευές και συντήρηση. Οι λοιπές δαπάνες, ο ΕΝΦΙΑ και οι τόκοι δανείου δεν εκπίπτουν.` : `Βραχυχρόνια μίσθωση φυσικού προσώπου: εισόδημα ακινήτων, με τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} στα μεικτά (άρθρο 39 ΚΦΕ). Οι πραγματικές δαπάνες δεν εκπίπτουν. Επιπλέον το τέλος ανθεκτικότητας ανά διανυκτέρευση και το τέλος παρεπιδημούντων όπου ισχύει.${strNotice?` Με περισσότερα από ${fn(STR_INDIVIDUAL_MAX_PROPERTIES)} ακίνητα σε βραχυχρόνια ισχύουν οι κανόνες του επιχειρηματικού εισοδήματος και ο φόρος εδώ δεν τους ακολουθεί.`:''}`)}
               {/* Η πρόταση απαριθμούσε ΔΥΟ στοιχεία («αξία και τ.μ.»)
                   ενώ η εκτίμηση διαβάζει πλέον ΤΕΣΣΕΡΑ. Ο ιδιοκτήτης που
                   συμπλήρωσε έτος κατασκευής ή όροφο έβλεπε το νούμερο να

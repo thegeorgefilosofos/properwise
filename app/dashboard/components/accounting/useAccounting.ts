@@ -79,6 +79,7 @@ import { fetchDossierPapers } from '../dossierPapers'
 import { defaultBookkeeping, statusesForYear, type LegalForm } from '@/lib/accounting/dossier'
 import type { CompletenessProperty } from '@/lib/facts/completeness'
 import { readStatus, type PropertyStatus, type StatusRow } from '@/lib/property/status'
+import { strBusinessNotice } from '@/lib/property/ama'
 import { printRentCertificate, downloadOfficialRentCertificate } from '../rentCertificate'
 import { notifyError } from '@/components/Toast'
 import { MONTHS_NOM, MONTHS_SHORT } from '@/lib/core/months'
@@ -556,6 +557,16 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   const loanInterestYear = useMemo(()=>loans.reduce((s,l)=>s+loanYear(l).interest,0),[loans,loanYear])
 
   const businessMode = mode==='professional' && elp==='business'
+  // ── ΤΡΙΑ ΒΡΑΧΥΧΡΟΝΙΑ ΣΤΟ ΙΔΙΟ ΑΦΜ: ΧΡΕΙΑΖΕΤΑΙ ΕΝΑΡΞΗ ─────────────────────
+  // Το `propCount` χρέωνε ήδη το τέλος παρεπιδημούντων σαν επιχείρηση, ενώ η
+  // καρτέλα σιωπούσε για την έναρξη. Μόνο στον ιδιώτη: στον επαγγελματία το ΑΦΜ
+  // είναι του ιδιοκτήτη και το «σου» θα μιλούσε στον λάθος άνθρωπο. Ο ιδιώτης
+  // που έχει ήδη κάνει έναρξη δεν έχει διακόπτη εδώ, γι' αυτό η ειδοποίηση
+  // κλείνει ανά ακίνητο και το θυμάται μόνο ο περιηγητής.
+  const strNotice = useMemo(()=> (isShort && mode==='individual')
+    ? strBusinessNotice({ shortTermCount:propCount, individual:individualPerson, filesAsBusiness:businessMode, year })
+    : null, [isShort, mode, propCount, individualPerson, businessMode, year])
+  const [strNoticeSeen, setStrNoticeSeen] = useRememberedFlag(`acc_str3_${propertyId}`)
 
   // ── ΤΟ ΜΗΤΡΩΟ ΠΑΓΙΩΝ ΚΑΙ ΓΙΑΤΙ ΕΙΝΑΙ ΑΥΤΟ ΠΟΥ ΔΙΝΕΙ ΤΗΝ ΑΠΟΣΒΕΣΗ ──────────
   // Η απόσβεση κτιρίου υπολογιζόταν εδώ με μια γραμμή: αξία × 60% × 4%, ίδια
@@ -1090,7 +1101,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     cash, book, recentLedger, trial, jTotals, recon, rs, maxCash, dossierProps, dossier,
     doubleEntry, dossierExport, closing, lockErr, closingErr, printCertificate,
     officialRentCertificate, drift, lockYear, unlockYear, shareWithAccountant, revokeAccountantLink,
-    exportBundle,
+    exportBundle, strNotice, strNoticeSeen, setStrNoticeSeen,
   }
 }
 

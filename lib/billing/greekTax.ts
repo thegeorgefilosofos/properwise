@@ -446,12 +446,23 @@ export function climateLevyForNights(nightsByMonth: number[], sqm?: number | nul
 // τύπο του ακινήτου. Πηγές: ΑΑΔΕ / δήμοι, ν.5073/2023. Επιβεβαίωσε με τον δήμο/λογιστή.
 export const MUNICIPAL_ACCOM_TAX_RATE = 0.005; // 0,5%
 
+/**
+ * Το όριο ακινήτων βραχυχρόνιας του φυσικού προσώπου χωρίς έναρξη εργασιών
+ * (άρθρο 39Α ΚΦΕ όπως αντικαταστάθηκε με τον ν.5073/2023). Ένα νούμερο για δύο
+ * χρήσεις: την εξαίρεση από το τέλος παρεπιδημούντων εδώ και την ειδοποίηση
+ * «χρειάζεται έναρξη» της Λογιστικής (lib/property/ama.ts). Με το όριο
+ * γραμμένο ξεχωριστά στο καθένα, μια αλλαγή του νόμου θα άλλαζε το ένα μόνο.
+ */
+export const STR_INDIVIDUAL_MAX_PROPERTIES = 2;
+/** Το πρώτο φορολογικό έτος του κανόνα: το αντικατεστημένο άρθρο 39Α ισχύει από 01/01 εκείνου του έτους. */
+export const STR_BUSINESS_RULE_FROM_YEAR = 2024;
+
 /** Είναι το ακίνητο εξαιρεμένο από το τέλος παρεπιδημούντων; Κριτήριο: ιδιότητα
  * (φυσικό πρόσωπο) και αριθμός ακινήτων (≤2), όχι μέγεθος/τύπος. */
 export function isMunicipalTaxExempt(opts: { sqm?: number | null; isHouse?: boolean; propertyCount?: number; individual?: boolean }): boolean {
   const individual = opts.individual ?? true;
   const count = opts.propertyCount ?? 1;
-  return individual && count <= 2;
+  return individual && count <= STR_INDIVIDUAL_MAX_PROPERTIES;
 }
 
 /** Τέλος παρεπιδημούντων: 0,5% επί των μεικτών, ή 0€ αν ισχύει η εξαίρεση. */

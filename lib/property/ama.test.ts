@@ -1,8 +1,10 @@
 // Δοκιμές συμμόρφωσης ΑΜΑ. Τρέξε: npx tsx lib/property/ama.test.ts
 import {
   amaState, amaRequired, amaNeedsAttention, amaSummary, isValidAmaFormat,
-  amaLengthLooksUnusual, cleanAma, AMA_COPY,
+  amaLengthLooksUnusual, cleanAma, AMA_COPY, strBusinessNotice,
 } from './ama';
+import { STR_INDIVIDUAL_MAX_PROPERTIES, STR_BUSINESS_RULE_FROM_YEAR, isMunicipalTaxExempt } from '@/lib/billing/greekTax';
+import { fn } from '@/lib/core/format';
 import { writeStatus, STATUSES } from './status';
 
 let passed = 0, failed = 0; const fails: string[] = [];
@@ -74,6 +76,31 @@ ok('κείμενο για τις τρεις καταστάσεις', (['missing'
 ok('το missing αναφέρει το πραγματικό μέγεθος (12.145)', AMA_COPY.missing.body.includes('12.145'));
 ok('το unconfirmed μιλά για την ΑΓΓΕΛΙΑ', AMA_COPY.unconfirmed.body.includes('καταχώρηση') || AMA_COPY.unconfirmed.body.includes('αγγελία'));
 ok('τόνοι σημασιολογικοί', AMA_COPY.missing.tone === 'negative' && AMA_COPY.unconfirmed.tone === 'warning' && AMA_COPY.ok.tone === 'positive');
+
+// ═══ ΠΟΛΛΑ ΒΡΑΧΥΧΡΟΝΙΑ ΣΤΟ ΙΔΙΟ ΑΦΜ: ΧΡΕΙΑΖΕΤΑΙ ΕΝΑΡΞΗ ═══════════════════════
+const STR = (n: number, o: Partial<{ individual: boolean; filesAsBusiness: boolean; year: number }> = {}) =>
+  strBusinessNotice({ shortTermCount: n, individual: true, filesAsBusiness: false, year: 2026, ...o });
+ok('έναρξη: 2 βραχυχρόνια → καμία ειδοποίηση', STR(2) === null);
+ok('έναρξη: 3 βραχυχρόνια → ειδοποίηση', STR(3) !== null);
+ok('έναρξη: νομικό πρόσωπο → καμία', STR(5, { individual: false }) === null);
+ok('έναρξη: δηλωμένη επιχείρηση → καμία', STR(5, { filesAsBusiness: true }) === null);
+ok('έναρξη: έτος πριν από τον κανόνα → καμία', STR(5, { year: STR_BUSINESS_RULE_FROM_YEAR - 1 }) === null);
+ok('έναρξη: πρώτο έτος του κανόνα → ειδοποίηση', STR(5, { year: STR_BUSINESS_RULE_FROM_YEAR }) !== null);
+ok('έναρξη: όριο δεμένο στη σταθερά', STR(STR_INDIVIDUAL_MAX_PROPERTIES + 1) !== null && STR(STR_INDIVIDUAL_MAX_PROPERTIES) === null);
+// Ένας κανόνας, δύο χρήσεις: ειδοποίηση και εξαίρεση από το τέλος δεν χωρίζουν.
+ok('έναρξη: ίδιο όριο με την εξαίρεση του τέλους παρεπιδημούντων',
+  [1, 2, 3, 4, 5, 6].every(n => (STR(n) !== null) === !isMunicipalTaxExempt({ propertyCount: n, individual: true })));
+for (const n of [3, 7]) {
+  const c = STR(n)!;
+  const txt = `${c.title} ${c.body}`;
+  ok(`έναρξη ${n}: χωρίς κόμμα πριν από «και»`, !/,\s*και(?![\p{L}\p{N}])/u.test(txt));
+  ok(`έναρξη ${n}: χωρίς «βοηθός»/«δωρεάν»/ποσοστό`, !/βοηθός|δωρεάν|%/.test(txt));
+  ok(`έναρξη ${n}: χωρίς «από το πρώτο» ή «Ε.20»`, !txt.includes('από το πρώτο') && !txt.includes('Ε.20'));
+  const digits = txt.match(/\d+(?:[./]\d+)*/g) || [];
+  const allowed = new Set([fn(n), fn(STR_INDIVIDUAL_MAX_PROPERTIES), '39', '5073/2023']);
+  ok(`έναρξη ${n}: κάθε ψηφίο από τον κώδικα`, digits.every(d => allowed.has(d)));
+  ok(`έναρξη ${n}: ο αριθμός στον τίτλο`, c.title.includes(fn(n)));
+}
 
 console.log(`\nama — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`);
 if (failed) { console.log('FAILED:\n' + fails.map(f => '  ✗ ' + f).join('\n')); process.exit(1); }
