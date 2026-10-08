@@ -35,7 +35,7 @@ import { T } from '@/components/tokens';
 import { siteUrl, PRODUCT_NAME } from '@/lib/core/site';
 import { REGULATORY_UPDATES_2026 } from '@/lib/accounting/updates2026';
 import { feWhole } from '@/lib/core/format';
-import { ANAK_NAME, ANAK_KYA, ANAK_KYA_AMEND, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_SCOPE_TEXT, ANAK_STATUS_TEXT } from '@/lib/accounting/anakainisi2026';
+import { ANAK_NAME, ANAK_KYA, ANAK_KYA_AMEND, ANAK_KYA_AMEND2, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_OTHER_TEXT, ANAK_SCOPE_TEXT, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT } from '@/lib/accounting/anakainisi2026';
 import {
   renovationCredit, RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO,
   RENO_39B_LAW, RENO_39B_KYA, RENO_39B_OLD_RATE,
@@ -103,7 +103,7 @@ const FAQ: GuideFaqItem[] = [
   {
     q: 'Είναι το ίδιο με το «Ανακαινίζω 2026»;',
     a: `Όχι. Το «Ανακαινίζω 2026» (δράση ${ANAK_NAME}) είναι επιχορήγηση ${ANAK_RATES_TEXT}, `
-     + `${ANAK_CAP_TEXT}. Η έκπτωση του άρθρου 39Β μειώνει τον φόρο εισοδήματος.`,
+     + `${ANAK_CAP_TEXT}. ${ANAK_STATUS_TEXT}. Η έκπτωση του άρθρου 39Β μειώνει τον φόρο εισοδήματος.`,
   },
 ];
 
@@ -111,7 +111,7 @@ const FAQ: GuideFaqItem[] = [
 const SOURCES: string[] = [
   `Έκπτωση φόρου δαπανών ανακαίνισης: ${RENO_39B_LAW}, ισχύς από ${RENO_39B_FROM} · μείωση φόρου ίση με την επιλέξιμη δαπάνη · ανώτατο ${CAP} για όλα τα έτη, ισόποσα σε ${RENO_39B_YEARS} έτη · υλικά έως το 1/3 της αξίας των υπηρεσιών · ηλεκτρονική πληρωμή και παραστατικά στο ΑΦΜ του ιδιοκτήτη.`,
   `${RENO_39B_KYA}: εφαρμογή της διάταξης για δαπάνες από ${RENO_39B_FROM} έως ${RENO_39B_TO}, προϋποθέσεις παρόχων και παραστατικών, αποκλεισμός της ίδιας δαπάνης ως επιχειρηματικής.`,
-  `${ANAK_NAME} («Ανακαινίζω 2026»): ${ANAK_KYA}, όπως τροποποιήθηκε με την ${ANAK_KYA_AMEND} · επιχορήγηση ${ANAK_RATES_TEXT} · ${ANAK_CAP_TEXT}.`,
+  `${ANAK_NAME} («Ανακαινίζω 2026»): ${ANAK_KYA}, όπως τροποποιήθηκε με την ${ANAK_KYA_AMEND} και την ${ANAK_KYA_AMEND2} · επιχορήγηση ${ANAK_RATES_TEXT} · η επιχορήγηση φτάνει ${ANAK_CAP_TEXT}, ${ANAK_OTHER_TEXT}.`,
 ];
 
 // Οι ενότητες τροφοδοτούν ΚΑΙ τις κεφαλίδες ΚΑΙ τα περιεχόμενα: μία πηγή.
@@ -220,10 +220,10 @@ export default function Page() {
         {/* 6. Ανακαινίζω */}
         <H2 {...S.grant} />
         <p className="lg-p">
-          {`Το «Ανακαινίζω 2026», δηλαδή η δράση ${ANAK_NAME}, είναι επιδότηση, όχι μείωση φόρου. Καλύπτει ${ANAK_SCOPE_TEXT}. Η επιχορήγηση είναι ${ANAK_RATES_TEXT}. Ο επιλέξιμος προϋπολογισμός φτάνει ${ANAK_CAP_TEXT}.`}
+          {`Το «Ανακαινίζω 2026», δηλαδή η δράση ${ANAK_NAME}, είναι επιδότηση, όχι μείωση φόρου. Καλύπτει ${ANAK_SCOPE_TEXT}. Η επιχορήγηση είναι ${ANAK_RATES_TEXT}. Φτάνει ${ANAK_CAP_TEXT}, ${ANAK_OTHER_TEXT}. ${ANAK_OBLIGATION_TEXT}.`}
         </p>
         <p className="lg-p">
-          {`${ANAK_STATUS_TEXT}. Στα επιδοτούμενα προγράμματα οι δαπάνες πριν από την ένταξη συνήθως δεν είναι επιλέξιμες, οπότε πρώτα η έγκριση και μετά η εργασία. Τους όρους και την πορεία του κύκλου τους βρίσκεις στη `}
+          {`${ANAK_STATUS_TEXT}. Στα επιδοτούμενα προγράμματα οι δαπάνες πριν από την ένταξη συνήθως δεν είναι επιλέξιμες, οπότε πρώτα η έγκριση και μετά η εργασία. Οι όροι μετρούν όπως τους γράφουν τα ΦΕΚ της ενότητας 7· τις ανακοινώσεις για το δεύτερο στάδιο τις βλέπεις στη `}
           <a href={ANAKAINIZO_HREF} target="_blank" rel="noopener noreferrer" className="lp-link" style={LINK_STYLE}>{'σελίδα της δράσης στο stegasi.gov.gr'}</a>
           {'.'}
         </p>

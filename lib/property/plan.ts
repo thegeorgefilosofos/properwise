@@ -21,8 +21,9 @@
 // είναι το ποσό· είναι η αίσθηση ότι κάτι τρέχει και δεν το ξέρει.
 //
 // ΤΙ ΑΡΝΕΙΤΑΙ ΝΑ ΚΑΝΕΙ ΑΥΤΟ ΤΟ ΑΡΧΕΙΟ
-// Δεν εφευρίσκει νομικά στοιχεία. Δεν γράφει ποσοστά επιδότησης, εισοδηματικά
-// όρια, ημερομηνίες κύκλων ή αριθμούς νόμων που δεν είναι σταθεροί. Τα
+// Δεν εφευρίσκει νομικά στοιχεία. Δεν γράφει με το χέρι ποσοστά επιδότησης,
+// εισοδηματικά όρια, ημερομηνίες κύκλων ή αριθμούς νόμων: όσα γράφει τα
+// διαβάζει από σταθερές του lib/accounting/ με ΦΕΚ (π.χ. anakainisi2026.ts). Τα
 // προγράμματα («Εξοικονομώ», «Ανακαινίζω 2026», «Σπίτι μου ΙΙ») υπάρχουν
 // και αναφέρονται ονομαστικά· οι ΟΡΟΙ τους αλλάζουν σε κάθε κύκλο και γι' αυτό
 // μπαίνουν ΡΗΤΑ στη λίστα «προς επιβεβαίωση», με το πού ελέγχονται και γιατί
@@ -42,7 +43,7 @@ import { athensToday } from '@/lib/core/time';
 import { feWhole } from '@/lib/core/format';
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO, RENO_39B_KYA } from '@/lib/accounting/renovation39b';
 import { transferCosts } from '@/lib/accounting/transfer';
-import { ANAK_KYA, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_SCOPE_TEXT, ANAK_STATUS_TEXT, ANAK_HREF } from '@/lib/accounting/anakainisi2026';
+import { ANAK_KYA, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_SCOPE_TEXT, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT, ANAK_HREF } from '@/lib/accounting/anakainisi2026';
 import type { PropertyStatus } from './status';
 import { roundHalfUp } from '../core/money';
 
@@ -143,7 +144,7 @@ export interface Funding {
   id: string;
   kind: FundingKind;
   title: string;
-  /** Τι κάνει, σε επίπεδο μηχανισμού. Χωρίς ποσοστά που αλλάζουν. */
+  /** Τι κάνει, σε επίπεδο μηχανισμού. Χωρίς ποσοστά γραμμένα με το χέρι· όσα γράφονται έρχονται από σταθερές του lib/accounting με ΦΕΚ. */
   what: string;
   /** Τι ΠΡΕΠΕΙ να επιβεβαιωθεί πριν μπει σε προϋπολογισμό. Υποχρεωτικό. */
   confirm: string;
@@ -265,7 +266,7 @@ const VACANT_OPTIONS: Option[] = [
     effort: 'high', risk: 'mid',
     speed: 'Μήνες πριν το πρώτο ευρώ',
     fits: 'Αν δεν νοικιάζεται όπως είναι, ή νοικιάζεται πολύ κάτω από την περιοχή του.',
-    cost: 'Πραγματικά λεφτά μπροστά και ο προϋπολογισμός σχεδόν πάντα ξεπερνιέται. Υπάρχουν κρατικά προγράμματα για κενές κατοικίες που βγαίνουν σε μακροχρόνια μίσθωση, με όρους που αλλάζουν ανά κύκλο.',
+    cost: 'Πραγματικά λεφτά μπροστά και ο προϋπολογισμός σχεδόν πάντα ξεπερνιέται. Κρατική επιδότηση υπάρχει μόνο σε ανοιχτό κύκλο, με όρους που αλλάζουν κάθε φορά.',
   },
   {
     id: 'family_use',
@@ -325,7 +326,7 @@ const VACANT_VERIFY: Verify[] = [
     id: 'v-vacant-anakainizo',
     what: 'Αν έχεις βεβαίωση επιλεξιμότητας για το «Ανακαινίζω 2026» ή αν ανακοινώθηκε νέος κύκλος.',
     where: 'stegasi.gov.gr, στη σελίδα της δράσης «Ανακαίνιση Κατοικίας».',
-    why: `Το ποσοστό επιδότησης, το ανώτατο ποσό, τα όρια εμβαδού, αξίας και εισοδήματος και η υποχρεωτική διάρκεια μίσθωσης ορίζονται σε κάθε πρόσκληση χωριστά. Ο κύκλος του 2026: ${ANAK_KYA}.`,
+    why: `Το ποσοστό επιδότησης, το ανώτατο ποσό, τα όρια εμβαδού και εισοδήματος και οι δεσμεύσεις χρήσης ορίζονται σε κάθε πρόσκληση χωριστά. Ο κύκλος του 2026: ${ANAK_KYA}. ${ANAK_OBLIGATION_TEXT}.`,
   },
   {
     id: 'v-vacant-free-use',
@@ -997,8 +998,8 @@ const RENO_FUNDING: Funding[] = [
     id: 'anakainizo',
     kind: 'grant',
     title: '«Ανακαινίζω 2026» · επιδότηση ανακαίνισης παλιών κατοικιών',
-    what: `Επιχορήγηση ${ANAK_RATES_TEXT}, ${ANAK_CAP_TEXT}, για ${ANAK_SCOPE_TEXT} (${ANAK_KYA}).`,
-    confirm: `${ANAK_STATUS_TEXT}. Αν δεν έχεις βεβαίωση, μη σχεδιάσεις γύρω της πριν ανακοινωθεί νέος κύκλος.`,
+    what: `Επιχορήγηση ${ANAK_RATES_TEXT}, ${ANAK_CAP_TEXT}. Αφορά ${ANAK_SCOPE_TEXT}· ${ANAK_KYA}.`,
+    confirm: `${ANAK_STATUS_TEXT}. Αν δεν έχεις βεβαίωση, μη σχεδιάσεις την ανακαίνιση γύρω από την επιδότηση πριν ανακοινωθεί νέος κύκλος.`,
     href: ANAK_HREF,
   },
   {

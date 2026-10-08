@@ -990,8 +990,8 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
           διαβάζονται οι όροι τους. */}
       {plan.funding.length > 0 && (
         <Panel label="Ποιος μπορεί να πληρώσει τι"
-          info={<InfoHint label="Γιατί δεν γράφεται κανένα ποσοστό">
-            Οι όροι κάθε προγράμματος αλλάζουν σε κάθε κύκλο, γι’ αυτό δεν γράφεται εδώ κανένα ποσοστό.
+          info={<InfoHint label="Πότε γράφεται ποσοστό">
+            Ποσοστό γράφεται μόνο για τον κύκλο που έχει ΦΕΚ. Για τα υπόλοιπα προγράμματα οι όροι αλλάζουν σε κάθε κύκλο, γι’ αυτό τους διαβάζεις στην επίσημη σελίδα.
           </InfoHint>}>
           {plan.funding.map((f, i) => (
             <div key={f.id} className="plan-row plan-row-fund" style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>

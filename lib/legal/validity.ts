@@ -265,7 +265,7 @@ export const REGULATED: readonly Regulated[] = [
     validTo: '2026-12-31',
     source: 'https://www.gov.gr/ipiresies/periousia-kai-phorologia',
     checkedAt: '2026-08-26',
-    recheck: 'Σπίτι μου, Ανακαινίζω Ενοικιάζω, Εξοικονομώ: αν άνοιξε νέος κύκλος, αν άλλαξαν εισοδηματικά όρια ή αν έκλεισε το πρόγραμμα.',
+    recheck: 'Σπίτι μου, Ανακαίνιση Κατοικίας (Ανακαινίζω 2026, lib/accounting/anakainisi2026.ts), Εξοικονομώ: αν άνοιξε νέος κύκλος, αν άλλαξαν εισοδηματικά όρια ή αν έκλεισε το πρόγραμμα.',
   },
   {
     id: 'transfer-tax',

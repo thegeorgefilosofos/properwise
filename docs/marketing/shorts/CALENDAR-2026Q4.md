@@ -1187,11 +1187,11 @@
   5. 37″–48″ Η πηγή στο gov.gr · μετάβαση: κοπή στον χτύπο
   6. 48″–55″ Κάρτα «properwise.gr/odigos/ekptosi-forou-anakainisis» σε γραμμή γραφομηχανής. Το κλειδί γυρίζει στην πόρτα του πρώτου καρέ. · βρόχος στο καρέ 1
 - **Γεγονότα (κώδικας):**
-  - `ANAK_PCT_I`, `ANAK_PCT_II`, `ANAK_PCT_I_MAX`, `ANAK_PCT_II_MAX`, `ANAK_CAP`, `ANAK_PER_SQM`, `ANAK_MAX_SQM`, `ANAK_PERMIT_BY`, `ANAK_YEARS`, `ANAK_ELIGIBILITY_*` από lib/accounting/anakainisi2026 (ΚΥΑ 86272/ΕΞ2026)
+  - `ANAK_PCT_I`, `ANAK_PCT_II`, `ANAK_PCT_I_MAX`, `ANAK_PCT_II_MAX`, `ANAK_CAP` (όριο της επιχορήγησης), `ANAK_OTHER_COSTS`, `ANAK_PER_SQM`, `ANAK_MAX_SQM`, `ANAK_PERMIT_BY`, `ANAK_YEARS`, `ANAK_ELIGIBILITY_*` από lib/accounting/anakainisi2026 (ΚΥΑ 86272/ΕΞ2026)
 - **CTA:** `https://properwise.gr/odigos/ekptosi-forou-anakainisis?utm_source=<πλατφόρμα>&utm_medium=short&utm_campaign=makro-e05&utm_content=0111a`
-- **Λήγει:** βεβαίωση έκλεισε 30/09/2026· αίτηση χρηματοδότησης χωρίς ημερομηνία σε ΦΕΚ
+- **Λήγει:** βεβαίωση έκλεισε 31/07/2026 (ανοικτές) και 30/09/2026 (κλειστές)· αίτηση χρηματοδότησης χωρίς ημερομηνία σε ΦΕΚ
 - **Υλικό:** νέο, από τη μηχανή reel (scripts/marketing/reelKit.ts) με γεγονότα από τον κώδικα
-- **Είδηση, πηγή:** ΚΥΑ 86272/ΕΞ2026 (ΦΕΚ Β΄ 3058/02.06.2026) · ΚΥΑ 116171/ΕΞ2026 (ΦΕΚ Β΄ 4372/16.07.2026)
+- **Είδηση, πηγή:** ΚΥΑ 86272/ΕΞ2026 (ΦΕΚ Β΄ 3058/02.06.2026) · ΚΥΑ 116171/ΕΞ2026 (ΦΕΚ Β΄ 4372/16.07.2026) · ΚΥΑ 137219/ΕΞ2026 (ΦΕΚ Β΄ 5347/31.08.2026)
 
 #### 01/11/2026 · Κυριακή · B (20:00) · Λάθη ιδιοκτήτη #06
 
@@ -1244,11 +1244,11 @@
   5. 37″–48″ Πού κάνεις αίτηση · μετάβαση: κοπή στον χτύπο
   6. 48″–55″ Κάρτα «properwise.gr/odigos/ekptosi-forou-anakainisis» σε γραμμή γραφομηχανής. Η κάρτα «Πηγή» με τη διεύθυνση της ανακοίνωσης και πίσω στον τίτλο. · βρόχος στο καρέ 1
 - **Γεγονότα (κώδικας):**
-  - `ANAK_PCT_I`, `ANAK_PCT_II`, `ANAK_PCT_I_MAX`, `ANAK_PCT_II_MAX`, `ANAK_CAP`, `ANAK_PER_SQM`, `ANAK_MAX_SQM`, `ANAK_PERMIT_BY`, `ANAK_YEARS`, `ANAK_ELIGIBILITY_*` από lib/accounting/anakainisi2026 (ΚΥΑ 86272/ΕΞ2026)
+  - `ANAK_PCT_I`, `ANAK_PCT_II`, `ANAK_PCT_I_MAX`, `ANAK_PCT_II_MAX`, `ANAK_CAP` (όριο της επιχορήγησης), `ANAK_OTHER_COSTS`, `ANAK_PER_SQM`, `ANAK_MAX_SQM`, `ANAK_PERMIT_BY`, `ANAK_YEARS`, `ANAK_ELIGIBILITY_*` από lib/accounting/anakainisi2026 (ΚΥΑ 86272/ΕΞ2026)
 - **CTA:** `https://properwise.gr/odigos/ekptosi-forou-anakainisis?utm_source=<πλατφόρμα>&utm_medium=short&utm_campaign=nea-e05&utm_content=0211b`
-- **Λήγει:** βεβαίωση έκλεισε 30/09/2026· αίτηση χρηματοδότησης χωρίς ημερομηνία σε ΦΕΚ
+- **Λήγει:** βεβαίωση έκλεισε 31/07/2026 (ανοικτές) και 30/09/2026 (κλειστές)· αίτηση χρηματοδότησης χωρίς ημερομηνία σε ΦΕΚ
 - **Υλικό:** νέο, από τη μηχανή reel (scripts/marketing/reelKit.ts) με γεγονότα από τον κώδικα
-- **Είδηση, πηγή:** ΚΥΑ 86272/ΕΞ2026 (ΦΕΚ Β΄ 3058/02.06.2026) · ΚΥΑ 116171/ΕΞ2026 (ΦΕΚ Β΄ 4372/16.07.2026)
+- **Είδηση, πηγή:** ΚΥΑ 86272/ΕΞ2026 (ΦΕΚ Β΄ 3058/02.06.2026) · ΚΥΑ 116171/ΕΞ2026 (ΦΕΚ Β΄ 4372/16.07.2026) · ΚΥΑ 137219/ΕΞ2026 (ΦΕΚ Β΄ 5347/31.08.2026)
 
 #### 03/11/2026 · Τρίτη · A (13:00) · Ερώτηση θεατή #07
 

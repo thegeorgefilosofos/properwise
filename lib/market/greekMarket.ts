@@ -14,7 +14,7 @@
 import { MYAADE } from '../tax/aade'
 import { fe, grDate } from '../core/format'
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO } from '../accounting/renovation39b'
-import { ANAK_CAP, ANAK_CAP_TEXT, ANAK_RATES_TEXT, ANAK_SCOPE_TEXT, ANAK_STATUS_TEXT, ANAK_YEARS, ANAK_HREF } from '../accounting/anakainisi2026'
+import { ANAK_CAP, ANAK_CAP_TEXT, ANAK_OTHER_TEXT, ANAK_RATES_TEXT, ANAK_SCOPE_TEXT, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT, ANAK_HREF } from '../accounting/anakainisi2026'
 
 // ΟΙ ΠΗΓΕΣ ΟΝΟΜΑΖΟΝΤΑΝ ΔΥΟ ΦΟΡΕΣ, ΤΗ ΜΙΑ ΑΚΡΙΒΩΣ ΠΑΝΩ ΑΠΟ ΤΗΝ ΑΛΛΗ: μέσα σε
 // αυτή την παρένθεση και αμέσως από κάτω ως σύνδεσμοι. Η επανάληψη δεν ήταν
@@ -383,10 +383,13 @@ export const YIELD_LEVERS: YieldLever[] = [
     // Έγραφε «60%, έως 8.100,00€» για το παλιό «Ανακαινίζω–Νοικιάζω». Τα
     // στοιχεία του κύκλου 2026: lib/accounting/anakainisi2026.ts.
     key: 'anakainizo', title: 'Ανακαινίζω 2026, επιδότηση ανακαίνισης παλιών κατοικιών',
+    // Τα 36.000€ είναι το όριο της ΙΔΙΑΣ της επιχορήγησης (όχι του προϋπολογισμού)·
+    // η πρόταση από κάτω δεν το ξαναλέει. Η κατάσταση του κύκλου στέκεται
+    // ορατή, όχι μόνο στη σημείωση, με τις δύο ημερομηνίες της βεβαίωσης.
     gain: `έως ${fe(ANAK_CAP)}`,
-    impact: `Επιχορήγηση ${ANAK_RATES_TEXT}, ${ANAK_CAP_TEXT}.`,
-    detail: `Καλύπτει ${ANAK_SCOPE_TEXT}. ${ANAK_STATUS_TEXT}.`,
-    risk: `Κλειστή κατοικία που ανακαινίζεται δεσμεύεται για ${ANAK_YEARS} έτη ως κύρια κατοικία, χωρίς βραχυχρόνια μίσθωση. Τα εισοδηματικά όρια ορίζουν την κατηγορία και άρα το ποσοστό.`,
+    impact: `Επιχορήγηση ${ANAK_RATES_TEXT}. ${ANAK_STATUS_TEXT}.`,
+    detail: `Καλύπτει ${ANAK_SCOPE_TEXT}. Η επιχορήγηση φτάνει ${ANAK_CAP_TEXT}, ${ANAK_OTHER_TEXT}.`,
+    risk: `${ANAK_OBLIGATION_TEXT}. Τα εισοδηματικά όρια ορίζουν την κατηγορία και άρα το ποσοστό.`,
     audience: 'all', href: ANAK_HREF,
   },
   {

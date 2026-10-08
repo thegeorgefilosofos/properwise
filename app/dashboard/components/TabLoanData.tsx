@@ -10,7 +10,7 @@ import { EXOIKONOMO_2025, ANAVATHMIZO, openEnergyPrograms, joinGreek } from '@/l
 import { athensToday, athensParts } from '@/lib/core/time'
 import { feWhole, fpRate, grDateOf } from '@/lib/core/format'
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/renovation39b'
-import { ANAK_NAME, ANAK_KYA, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_CAP, ANAK_MAX_SQM, ANAK_PERMIT_BY, ANAK_YEARS, ANAK_PCT_I, ANAK_ELIGIBILITY_CLOSED_TO, ANAK_ELIGIBILITY_OPEN_TO, ANAK_HREF } from '@/lib/accounting/anakainisi2026'
+import { ANAK_NAME, ANAK_FUND, ANAK_KYA, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_CAP, ANAK_MAX_SQM, ANAK_MAX_SQM_LARGE_FAMILY, ANAK_PERMIT_BY, ANAK_ENERGY_CLASS, ANAK_YEARS, ANAK_PCT_I, ANAK_ELIGIBILITY_CLOSED_TO, ANAK_ELIGIBILITY_OPEN_TO, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT, ANAK_HREF } from '@/lib/accounting/anakainisi2026'
 
 export type LoanType = 'purchase'|'first_home'|'renovation'|'energy'|'investment'|'auction'|'construction'|'commercial'|'land'|'refinance'
 export type RateType = 'fixed'|'variable'|'mixed'
@@ -241,8 +241,14 @@ export const STATE_PROGRAMS = [
   // παλιό «Ανακαινίζω–Νοικιάζω», με κατάσταση που δεν έληγε ποτέ. Ο κύκλος του
   // 2026 και οι προθεσμίες του: lib/accounting/anakainisi2026.ts. Το id μένει
   // ίδιο, γιατί το διαβάζει ο σύμβουλος του LoanAdvisor.
-  { id:'anakainizo_noikazo', name:'Ανακαινίζω 2026', type:`Επιδότηση ανακαίνισης, δράση ${ANAK_NAME}`, desc:`Επιχορήγηση ${ANAK_RATES_TEXT}, ${ANAK_CAP_TEXT}`, max_amount:ANAK_CAP, max_prop_value:null, max_ltv:null, max_sqm:ANAK_MAX_SQM, age_min:18, age_max:null, duration:`${ANAK_YEARS} έτη ως κύρια κατοικία`, application_deadline:ANAK_ELIGIBILITY_CLOSED_TO, deadline:null, verified_at:'2026-10-07', total_budget:'ΕΣΠΑ 2021–2027', criteria:[`Έως ${ANAK_MAX_SQM} τ.μ.`,`Άδεια έως ${ANAK_PERMIT_BY}`,'Εισοδηματική κατηγορία Ι ή ΙΙ','Βεβαίωση επιλεξιμότητας'], how_it_works:`Πρώτα βεβαίωση επιλεξιμότητας, μετά αίτηση χρηματοδότησης. Η βεβαίωση έκλεισε ${ANAK_ELIGIBILITY_OPEN_TO} για τις κατοικίες που κατοικούνται και ${ANAK_ELIGIBILITY_CLOSED_TO} για τις κλειστές`, extra:`Η κλειστή κατοικία κατοικείται ή νοικιάζεται μακροχρόνια ως κύρια κατοικία για ${ANAK_YEARS} έτη, χωρίς βραχυχρόνια μίσθωση. ${ANAK_KYA}`, savings_example:`Στην κατηγορία Ι το Δημόσιο πληρώνει το ${fpRate(ANAK_PCT_I)} της επιλέξιμης δαπάνης`, url:ANAK_HREF, banks:['Δεν απαιτείται τράπεζα'] },
-  { id:'gefyra_3', name:'Γέφυρα 3',  type:'Πρωτοβουλία τραπεζών, ευάλωτοι δανειολήπτες', desc:'Κάλυψη του 50% της αύξησης της δόσης που προήλθε από την άνοδο των επιτοκίων της ΕΚΤ. Δεν είναι κρατική επιδότηση: είναι εθελοντική πρωτοβουλία των τραπεζών-μελών της Ελληνικής Ένωσης Τραπεζών (ανακοίνωση 15/12/2022)', max_amount:null, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:18, age_max:null, duration:'12 μήνες', deadline:'Χωρίς ανακοινωμένη λήξη',  total_budget:'Χρηματοδοτείται από τις ίδιες τις τράπεζες', criteria:['Βεβαίωση ευάλωτου οφειλέτη','Κυμαινόμενο δάνειο','Εξασφάλιση πρώτης κατοικίας'], how_it_works:'Καλύπτει το 50% της αύξησης της μηνιαίας δόσης έναντι της 30/06/2022, για δώδεκα μήνες, σε δάνεια κυμαινόμενου επιτοκίου με εξασφάλιση σε πρώτη κατοικία', extra:'Για ανέργους, χαμηλά εισοδήματα, συνταξιούχους', savings_example:'Αύξηση 80€/μήνα, επιδότηση 40€ × 12 = 480€/χρόνο', url:'https://dovaluegreece.gr/programma-epidotisis-dosis-logo-ayxisis-epitokion-gefyra-3', banks:['Όλες οι τράπεζες'] },
+  { id:'anakainizo_noikazo', name:'Ανακαινίζω 2026', type:`Επιδότηση ανακαίνισης, δράση ${ANAK_NAME} (${ANAK_FUND})`, desc:`Επιχορήγηση ${ANAK_RATES_TEXT}, ${ANAK_CAP_TEXT}`, max_amount:ANAK_CAP, max_prop_value:null, max_ltv:null, max_sqm:ANAK_MAX_SQM, age_min:18, age_max:null, duration:`${ANAK_YEARS} έτη ως κύρια κατοικία`, application_deadline:ANAK_ELIGIBILITY_CLOSED_TO, deadline:null, closed_note:`${ANAK_STATUS_TEXT}.`, verified_at:'2026-10-08', criteria:[`Κύριοι χώροι έως ${ANAK_MAX_SQM} τ.μ. (${ANAK_MAX_SQM_LARGE_FAMILY} τ.μ. για τρίτεκνες και πολύτεκνες οικογένειες, μόνο για ιδιοκατοίκηση)`,`Άδεια έως ${ANAK_PERMIT_BY}`,`Ενεργειακή κατηγορία ${ANAK_ENERGY_CLASS} ή χαμηλότερη`,'Εισοδηματική κατηγορία Ι ή ΙΙ','Βεβαίωση επιλεξιμότητας'], how_it_works:`Πρώτα βεβαίωση επιλεξιμότητας, μετά αίτηση χρηματοδότησης. Η βεβαίωση έκλεισε ${ANAK_ELIGIBILITY_OPEN_TO} για τις κατοικίες που ιδιοκατοικούνται και ${ANAK_ELIGIBILITY_CLOSED_TO} για τις κλειστές`, extra:`${ANAK_OBLIGATION_TEXT}. ${ANAK_KYA}`, savings_example:`Στην κατηγορία Ι η επιχορήγηση είναι το ${fpRate(ANAK_PCT_I)} της επιλέξιμης δαπάνης, ${ANAK_CAP_TEXT}`, url:ANAK_HREF, banks:['Δεν απαιτείται τράπεζα'] },
+  // Εγραφε «Χωρίς ανακοινωμένη λήξη» και η μηχανή το έκρινε «Ενεργό». Στην
+  // παραγωγή δεν φαινόταν, γιατί μία παλιά γραμμή της βάσης έκρυβε όλο τον
+  // κατάλογο· με την ένωση (`programsWithLive`) θα φαινόταν ανοιχτό τρία χρόνια
+  // μετά. Οι αιτήσεις έκλεισαν 31/07/2023: ΥΑ 60269 ΕΞ 2023 (ΦΕΚ Β΄ 2601/21.04.2023)
+  // και ανακοίνωση του υπουργείου «Έως 31.07 η υποβολή αιτήσεων» (taxheaven 63212).
+  // Παράταση δεν βρέθηκε στις 08/10/2026.
+  { id:'gefyra_3', name:'Γέφυρα 3',  type:'Πρωτοβουλία τραπεζών, ευάλωτοι δανειολήπτες', desc:'Κάλυψη του 50% της αύξησης της δόσης που προήλθε από την άνοδο των επιτοκίων της ΕΚΤ. Δεν είναι κρατική επιδότηση: είναι εθελοντική πρωτοβουλία των τραπεζών-μελών της Ελληνικής Ένωσης Τραπεζών (ανακοίνωση 15/12/2022)', max_amount:null, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:18, age_max:null, duration:'12 μήνες', application_deadline:'31/07/2023', deadline:null, verified_at:'2026-10-08',  total_budget:'Χρηματοδοτείται από τις ίδιες τις τράπεζες', criteria:['Βεβαίωση ευάλωτου οφειλέτη','Κυμαινόμενο δάνειο','Εξασφάλιση πρώτης κατοικίας'], how_it_works:'Καλύπτει το 50% της αύξησης της μηνιαίας δόσης έναντι της 30/06/2022, για δώδεκα μήνες, σε δάνεια κυμαινόμενου επιτοκίου με εξασφάλιση σε πρώτη κατοικία', extra:'Για ανέργους, χαμηλά εισοδήματα, συνταξιούχους', savings_example:'Αύξηση 80€/μήνα, επιδότηση 40€ × 12 = 480€/χρόνο', url:'https://dovaluegreece.gr/programma-epidotisis-dosis-logo-ayxisis-epitokion-gefyra-3', banks:['Όλες οι τράπεζες'] },
 ]
 
 // ── ΕΝΑ ΣΧΗΜΑ ΠΡΟΓΡΑΜΜΑΤΟΣ, ΟΧΙ ΔΥΟ ──────────────────────────────────────
@@ -282,6 +288,13 @@ export interface ComparisonProgram {
    */
   applicationDeadline: string;
   deadline: string;
+  /**
+   * Τι λέει η κάρτα όταν το πρόγραμμα έχει κλείσει, αν το γενικό «Τυχόν νέος
+   * κύκλος ανακοινώνεται από τον φορέα» θα παραπλανούσε. Το «Ανακαινίζω 2026»
+   * είναι κλειστό για νέους αλλά όχι για όσους έχουν ήδη βεβαίωση· το γενικό
+   * σημείωμα τους έλεγε ότι δεν τους μένει τίποτα· και έδινε μία μόνο ημερομηνία.
+   */
+  closedNote: string;
   totalBudget: string;
   criteria: string[];
   banks: string[];
@@ -300,6 +313,7 @@ export interface RawProgram {
   age_min?: number | null; age_max?: number | null;
   duration?: string; duration_label?: string;
   application_deadline?: string | null;
+  closed_note?: string | null;
   deadline?: string | null; deadline_label?: string;
   total_budget?: string;
   criteria?: string[];
@@ -329,6 +343,7 @@ export function normProgram(p: RawProgram): ComparisonProgram {
     ageMax: p.age_max ?? null,
     duration: txt(p.duration ?? p.duration_label),
     applicationDeadline: txt(p.application_deadline),
+    closedNote: txt(p.closed_note),
     deadline: txt(p.deadline ?? p.deadline_label),
     totalBudget: txt(p.total_budget),
     criteria: p.criteria ?? [],
@@ -376,6 +391,20 @@ const BANK_FALLBACK = new Map(BANKS_NORM.map(b => [b.id, b]));
 /** Ζωντανά προγράμματα, με ό,τι λείπει συμπληρωμένο από τον κατάλογο. */
 export const mergePrograms = (live: RawProgram[]): ComparisonProgram[] =>
   live.map(normProgram).map(p => mergeKnown(p, PROGRAM_FALLBACK.get(p.id)));
+
+// ══ ΚΑΙ Η ΛΙΣΤΑ ΕΙΝΑΙ ΕΝΩΣΗ, ΟΧΙ ΜΟΝΟ ΤΑ ΠΕΔΙΑ ═══════════════════════════════
+// Στις 08/10/2026 η όψη `active_loan_programs` της παραγωγής γύριζε ΜΙΑ γραμμή:
+// το παλιό «Ανακαινίζω και Νοικιάζω · 40% ΟΠΕΚΑ», ενεργό από τις 08/07. Επειδή
+// η λίστα ήταν «ζωντανά ή κατάλογος», αυτή η μία γραμμή έκρυβε όλα τα άλλα
+// προγράμματα του καταλόγου και η διορθωμένη κάρτα του κώδικα δεν έφτανε
+// ποτέ στην οθόνη. Τώρα ό,τι ξέρει η βάση μπαίνει πρώτο και ό,τι δεν ξέρει
+// έρχεται από τον κατάλογο, με την κατάσταση που του δίνουν οι ημερομηνίες του.
+/** Ο κατάλογος με τις ζωντανές γραμμές από πάνω: καμία γραμμή βάσης δεν σβήνει πρόγραμμα. */
+export const programsWithLive = (live: RawProgram[]): ComparisonProgram[] => {
+  const merged = mergePrograms(live);
+  const known = new Set(merged.map(p => p.id));
+  return [...merged, ...PROGRAMS_NORM.filter(p => !known.has(p.id))];
+};
 
 /** Ζωντανές τράπεζες, με ό,τι λείπει συμπληρωμένο από τον κατάλογο. */
 export const mergeBanks = (live: RawBank[]): ComparisonBank[] =>

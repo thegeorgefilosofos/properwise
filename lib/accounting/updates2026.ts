@@ -10,7 +10,7 @@ import { MYAADE, GOV_SHORT_TERM } from '@/lib/tax/aade';
 import { feWhole, fpRate, grDateOf } from '@/lib/core/format';
 import { FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
-import { ANAK_NAME, ANAK_KYA, ANAK_KYA_AMEND, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_SCOPE_TEXT, ANAK_STATUS_TEXT, ANAK_HREF } from './anakainisi2026';
+import { ANAK_NAME, ANAK_KYA, ANAK_KYA_AMEND, ANAK_KYA_AMEND2, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_OTHER_TEXT, ANAK_SCOPE_TEXT, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT, ANAK_HREF } from './anakainisi2026';
 import {
   RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO, RENO_39B_LAW, RENO_39B_KYA,
 } from './renovation39b';
@@ -122,8 +122,8 @@ export const REGULATORY_UPDATES_2026: RegulatoryUpdate[] = [
     area: 'loans_programs', audiences: ['long_term', 'buyer'],
     // Τα ποσοστά, τα όρια και οι ημερομηνίες: lib/accounting/anakainisi2026.ts.
     title: `Ανακαινίζω 2026: η δράση ${ANAK_NAME}`,
-    summary: `Επιχορήγηση ανακαίνισης ${ANAK_RATES_TEXT}. Επιλέξιμος προϋπολογισμός ${ANAK_CAP_TEXT}. Καλύπτει ${ANAK_SCOPE_TEXT}. ${ANAK_STATUS_TEXT}.`,
-    effective: '2026', legalBasis: `${ANAK_KYA} · ${ANAK_KYA_AMEND}`,
+    summary: `Επιχορήγηση ανακαίνισης ${ANAK_RATES_TEXT}. Η επιχορήγηση φτάνει ${ANAK_CAP_TEXT}, ${ANAK_OTHER_TEXT}. Καλύπτει ${ANAK_SCOPE_TEXT}. ${ANAK_OBLIGATION_TEXT}. ${ANAK_STATUS_TEXT}.`,
+    effective: '2026', legalBasis: `${ANAK_KYA} · ${ANAK_KYA_AMEND} · ${ANAK_KYA_AMEND2}`,
     sourceLabel: 'Ανακαίνιση Κατοικίας (stegasi.gov.gr)', sourceHref: SRC.anakainizo, severity: 'info',
   },
   {

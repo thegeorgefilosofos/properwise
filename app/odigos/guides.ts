@@ -121,7 +121,7 @@ export const GUIDES: readonly Guide[] = [
     desc: `Η μείωση φόρου ισούται με τη δαπάνη, έως ${feWhole(RENO_39B_CAP)} σε ${RENO_39B_YEARS} έτη, `
         + `για δαπάνες έως ${RENO_39B_TO}. Προϋποθέσεις, πληρωμή, υλικά και παράδειγμα.`,
     published: '2026-09-27',
-    updated: '2026-10-01',
+    updated: '2026-10-08',
     tools: ['/ypologismos-forou-enoikion', '/kathari-apodosi'],
   },
   {
