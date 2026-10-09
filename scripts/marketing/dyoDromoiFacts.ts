@@ -57,6 +57,13 @@ const eur2 = (x: number) => fe(x);
 const pctCeil = (x: number) => `${fn(Math.ceil(x))}%`;
 const rate = (r: number) => fpRate(r * 100);
 const cents = (x: number) => Math.round(x * 100) / 100;
+/**
+ * Η ανοχή για k στρογγυλεύσεις σε λεπτά: k × 0,005€ συν ελάχιστο περιθώριο για την αριθμητική
+ * κινητής υποδιαστολής. Ανοχή ίση με τη στρογγύλευση (0,005€ για μία) σταματούσε την
+ * παραγωγή στο 0,005000000000109 (τιμή νύχτας 70€)· ανοχή 0,02€ για δώδεκα μήνες
+ * σταματούσε με προμήθεια 3% (έλεγχος της 09/10/2026).
+ */
+const ROUNDING = (k: number) => k * .005 + 1e-9;
 /** Τυπογραφικό μείον, σφιχτό (lib/core/format: feSigned). */
 const MINUS = '−';
 
@@ -67,15 +74,16 @@ export const BOOKED = ['be2025', 'diff2025', 'tax25Short', 'tax25Long', 'levyHig
 export function series<T>(f: Facts, id: string): T { return JSON.parse(String(f[id]?.value ?? 'null')) as T; }
 
 /**
- * `otherGross`: άλλο ποσό άλλων ενοικίων από της Ελένης, ΜΟΝΟ για να δοκιμάζονται οι
- * αυτοέλεγχοι (scripts/marketing/dyoDromoi.test.ts). Η παραγωγή καλεί χωρίς αυτό.
+ * `otherGross` (άλλο ποσό άλλων ενοικίων από της Ελένης) και `input` (άλλο διαμέρισμα από
+ * τις προεπιλογές του υπολογιστή): ΜΟΝΟ για να δοκιμάζονται οι αυτοέλεγχοι
+ * (scripts/marketing/dyoDromoi.test.ts). Η παραγωγή καλεί χωρίς αυτά.
  */
-export function dyoDromoiFacts(date: string, opts: { otherGross?: number } = {}): Facts {
+export function dyoDromoiFacts(date: string, opts: { otherGross?: number; input?: ShortVsLongInput } = {}): Facts {
   const out: Facts = {};
   const put = (x: Fact) => { if (out[x.id]) throw new Error(`Διπλό γεγονός «${x.id}».`); out[x.id] = x; };
   const geo = (id: string, v: unknown, source: string) => put(fact(id, JSON.stringify(v), '', source, { kind: 'text' }));
   const year = Number(date.slice(0, 4));
-  const I: ShortVsLongInput = svlInput;
+  const I: ShortVsLongInput = opts.input ?? svlInput;
 
   // ── Η κλίμακα της χρονιάς πρέπει να είναι αυτή που χρησιμοποιεί ο υπολογιστής ──
   if (rentalBracketsForYear(year) !== RENTAL_TAX_BRACKETS_2026) throw new Error(`Το ${year} έχει άλλη κλίμακα από το lib/tools/shortVsLong· η ιστορία θέλει νέα γωνία.`);
@@ -97,7 +105,7 @@ export function dyoDromoiFacts(date: string, opts: { otherGross?: number } = {})
 
   // ── 2 · Η μέρα: τι αφήνει ο ενοικιαστής ─────────────────────────────────
   const tenantPerDay = cents(L.net / NIGHTS_PER_YEAR), tenantTaxDay = cents(L.tax / NIGHTS_PER_YEAR), tenantGrossDay = cents(L.gross / NIGHTS_PER_YEAR);
-  if (Math.abs(tenantPerDay + tenantTaxDay - tenantGrossDay) > .01) throw new Error('Ο φόρος της μέρας και τα καθαρά της δεν κάνουν το ενοίκιο της μέρας.');
+  if (Math.abs(tenantPerDay + tenantTaxDay - tenantGrossDay) > ROUNDING(3)) throw new Error('Ο φόρος της μέρας και τα καθαρά της δεν κάνουν το ενοίκιο της μέρας.');
   if (!(nightNet > tenantPerDay)) throw new Error('Η νύχτα δεν αφήνει πια περισσότερα από τη μέρα· το αγκίστρι δεν στέκει.');
 
   // ── 3 · Ο φόρος που λυγίζει: οριακός, μέσος, τα δύο τείχη ────────────────
@@ -114,16 +122,26 @@ export function dyoDromoiFacts(date: string, opts: { otherGross?: number } = {})
   const margCurve = Array.from({ length: NIGHTS_PER_YEAR }, (_, i) => marginalRate(taxableAt(i + 1)));
 
   // ── 4 · Ο χρόνος: πότε έρχονται τα λεφτά (ταμείο πριν τον φόρο) ──────────
+  // ΤΟ ΑΘΡΟΙΣΜΑ ΕΛΕΓΧΕΤΑΙ ΣΤΑ ΑΚΡΙΒΗ ΠΟΣΑ. Η πρώτη έκδοση στρογγύλευε κάθε μήνα σε λεπτά
+  // και σύγκρινε το άθροισμα με ανοχή 0,02€· δώδεκα στρογγυλεύσεις φτάνουν τα 0,06€, οπότε
+  // μια προμήθεια 3% ή 17% σταματούσε την παραγωγή με λάθος διάγνωση («οι μήνες δεν
+  // αθροίζουν») ενώ οι μήνες αθροίζουν ακριβώς. Εδώ: (α) οι ακριβείς μήνες κάνουν ακριβώς το
+  // ακριβές ταμείο της χρονιάς (όλες οι νύχτες μοιράστηκαν)· (β) το ταμείο της
+  // shortTermSide διαφέρει από αυτό μόνο κατά τις στρογγυλεύσεις του (τζίρος, προμήθεια,
+  // λειτουργικά, διαφορά). Οι στρογγυλεμένοι μήνες είναι μόνο για εμφάνιση και γεωμετρία.
   const perNightCash = I.nightlyPrice * (1 - I.platformFeePct / 100) - clean;
-  const monthCash = (season: 'high' | 'even') => spreadNights(nights, season).map(n => cents(n * perNightCash - I.fixedPerMonth));
-  const summerNights = spreadNights(nights, 'high');
-  const summer = monthCash('high'), even = monthCash('even'), tenant = Array.from({ length: 12 }, () => I.monthlyRent);
-  const sum = (xs: number[]) => cents(xs.reduce((a, b) => a + b, 0));
+  const rawMonths = (season: 'high' | 'even') => spreadNights(nights, season).map(n => n * perNightCash - I.fixedPerMonth);
+  const total = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+  const rawSummer = rawMonths('high'), rawEven = rawMonths('even'), decExact = nights * perNightCash - fixedYear;
+  if (Math.abs(total(rawSummer) - decExact) > 1e-6 || Math.abs(total(rawEven) - decExact) > 1e-6) throw new Error('Οι μήνες δεν αθροίζουν στο ταμείο της χρονιάς.');
   const decShort = cents(S.gross - S.platformFee - S.running);
-  if (Math.abs(sum(summer) - decShort) > .02 || Math.abs(sum(even) - decShort) > .02) throw new Error('Οι μήνες δεν αθροίζουν στο ταμείο της χρονιάς.');
+  if (Math.abs(decShort - decExact) > ROUNDING(4)) throw new Error('Το ταμείο της shortTermSide δεν είναι τιμή μείον προμήθεια και καθαριότητα ανά νύχτα και πάγια.');
+  const summerNights = spreadNights(nights, 'high');
+  const summer = rawSummer.map(cents), even = rawEven.map(cents), tenant = Array.from({ length: 12 }, () => I.monthlyRent);
+  const sum = (xs: number[]) => cents(total(xs));
   const cum = (xs: number[]) => xs.reduce<number[]>((a, x) => [...a, cents((a[a.length - 1] ?? 0) + x)], []);
   const cS = cum(summer), cE = cum(even), cT = cum(tenant);
-  if (Math.abs(cS[11] - sum(summer)) > .02 || Math.abs(cS[11] - cE[11]) > .02) throw new Error('Ο Δεκέμβριος του αθροιστικού δεν είναι το άθροισμα των μηνών.');
+  if (Math.abs(cS[11] - sum(summer)) > ROUNDING(1) || Math.abs(cE[11] - sum(even)) > ROUNDING(1)) throw new Error('Ο Δεκέμβριος του αθροιστικού δεν είναι το άθροισμα των μηνών.');
   if (cT[11] !== L.gross) throw new Error('Το αθροιστικό του ενοικιαστή δεν φτάνει το ενοίκιο της χρονιάς.');
   const cross = cS.findIndex((x, i) => x > cT[i]);
   if (cross < 1 || cS.slice(0, cross).some((x, i) => x > cT[i])) throw new Error('Το «κυρίως καλοκαίρι» δεν ξεκινά πίσω από τον ενοικιαστή.');
@@ -165,7 +183,7 @@ export function dyoDromoiFacts(date: string, opts: { otherGross?: number } = {})
   };
   if (!climbs(L.taxable, extraLong) || !climbs(S.taxable, extraShort)) throw new Error('Το νέο ενοίκιο δεν ανεβαίνει κλιμάκιο πάνω από τα άλλα· η λεζάντα «ξεκινά από το κλιμάκιο όπου σταματούν εκείνα και ανεβαίνει» δεν στέκει.');
   const shortNetE = cents(S.gross - S.platformFee - S.running - extraShort);
-  if (Math.abs(shortNetWith(I.occupancyPct) - shortNetE) > .005) throw new Error('Η πλευρά Airbnb της Ελένης δεν είναι τζίρος μείον προμήθεια, λειτουργικά και ο επιπλέον φόρος.');
+  if (Math.abs(shortNetWith(I.occupancyPct) - shortNetE) > ROUNDING(1)) throw new Error('Η πλευρά Airbnb της Ελένης δεν είναι τζίρος μείον προμήθεια, λειτουργικά και ο επιπλέον φόρος.');
   const diffE = cents(shortNetE - longNetE);
   if (!(diffE > 0 && diffE < cmp.difference)) throw new Error('Με ένα ενοίκιο ήδη η διαφορά δεν μικραίνει· η σκηνή δεν στέκει.');
   const bisect = (f: (x: number) => number, target: number) => {

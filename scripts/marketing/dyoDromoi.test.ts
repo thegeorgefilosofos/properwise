@@ -85,5 +85,24 @@ const t = (id: string) => { const x = f[id]; if (!x) throw new Error(`λείπε
   ok('ημερομηνία γεγονότος με τελεία στο τέλος περνά', gate('<p>Λήγει 31/12/2026.</p>'));
 }
 
+// ═══ 4 · Η ΑΝΟΧΗ ΤΩΝ ΑΥΤΟΕΛΕΓΧΩΝ ΚΑΛΥΠΤΕΙ ΤΙΣ ΣΤΡΟΓΓΥΛΕΥΣΕΙΣ ΠΟΥ ΣΥΓΚΡΙΝΕΙ ═══════════
+// Δώδεκα μήνες στρογγυλεμένοι σε λεπτά απέχουν ως 0,06€ από το σύνολο· η ανοχή ήταν
+// 0,02€ και μια προμήθεια 3% ή 17% (όλα τα άλλα όπως στον υπολογιστή) σταματούσε την
+// παραγωγή με «Οι μήνες δεν αθροίζουν», ενώ αθροίζουν ακριβώς. Και ένα ποσό
+// στρογγυλεμένο σε λεπτά απέναντι στο ακριβές του έπεφτε στο 0,005000000000109 με τιμή
+// νύχτας 70€: η παραγωγή σταματούσε με λάθος διάγνωση πριν φτάσει στον αληθινό έλεγχο.
+{
+  const facts = (o: Partial<typeof svlInput>) => () => dyoDromoiFacts(DATE, { input: { ...svlInput, ...o } });
+  const passes = (fn: () => unknown) => { try { fn(); return true; } catch (e) { console.error(`   ${e instanceof Error ? e.message : e}`); return false; } };
+  for (const fee of [3, 17]) {
+    ok(`προμήθεια ${fee}%: οι αυτοέλεγχοι περνούν`, passes(facts({ platformFeePct: fee })));
+    const g = (() => { try { return facts({ platformFeePct: fee })(); } catch { return null; } })();
+    const S = compareShortVsLong({ ...svlInput, platformFeePct: fee }).short;
+    ok(`προμήθεια ${fee}%: το σύνολο της χρονιάς είναι της shortTermSide`, !!g && Number(g['cumCross.decShort'].value) === Math.round((S.gross - S.platformFee - S.running) * 100) / 100);
+  }
+  ok('τιμή νύχτας 70€: σταματά στον αληθινό έλεγχο, όχι στη στρογγύλευση',
+    throwsWith(facts({ nightlyPrice: 70 }), /δεν μικραίνει/u));
+}
+
 console.log(`dyoDromoi: ${pass} πέρασαν, ${fail} απέτυχαν`);
 if (fail) process.exit(1);
