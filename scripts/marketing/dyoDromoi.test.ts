@@ -7,8 +7,12 @@ import { dyoDromoiFacts } from './dyoDromoiFacts';
 import { build } from './shorts/engine';
 import { renderTexts } from './shorts/texts';
 import { DYO_DROMOI } from './shorts/specs/ig-dyo-dromoi';
-import { marginalRate, RENTAL_TAX_BRACKETS_2026 as B } from '../../lib/billing/greekTax';
+import { stories } from './storiesDyoDromoi';
+import { svlInput } from './seiresData';
+import { marginalRate, municipalAccommodationTax, isMunicipalTaxExempt, RENTAL_TAX_BRACKETS_2026 as B } from '../../lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE as PRES } from '../../lib/billing/presumptive';
+import { compareShortVsLong } from '../../lib/tools/shortVsLong';
+import { fe } from '../../lib/core/format';
 
 let pass = 0, fail = 0;
 function ok(name: string, cond: boolean) { if (cond) { pass++; } else { fail++; console.error(`✗ ${name}`); } }
@@ -37,6 +41,26 @@ const t = (id: string) => { const x = f[id]; if (!x) throw new Error(`λείπε
   const inSecond = (B[1].from + 1) / (1 - PRES);
   ok('ο αυτοέλεγχος σταματά όταν το νέο ενοίκιο δεν ανεβαίνει κλιμάκιο',
     throwsWith(() => dyoDromoiFacts(DATE, { otherGross: inSecond }), /δεν ανεβαίνει κλιμάκιο/u));
+}
+
+// ═══ 2 · ΤΟ ΟΡΙΟ ΤΩΝ ΑΚΙΝΗΤΩΝ ΕΙΝΑΙ ΑΛΛΑΓΗ ΚΑΘΕΣΤΩΤΟΣ, ΟΧΙ ΕΝΑ ΤΕΛΟΣ ═══════════════
+// Η κάρτα αποθήκευσης έγραφε το τέλος παρεπιδημούντων στον τζίρο του παραδείγματος
+// «από το 3ο ακίνητο», με χρώμα κόστους. Η εφαρμογή λέει «Αλλάζει το καθεστώς, όχι μόνο
+// ο συντελεστής»: έναρξη εργασιών για όλη τη δραστηριότητα, ΦΠΑ, χωρίς τεκμαρτή έκπτωση.
+{
+  const b = build(DYO_DROMOI);
+  const s6 = stories(b.f).find(s => s.n === 6);
+  const n = Number(f['mun3.from'].value);
+  const fee = municipalAccommodationTax(compareShortVsLong(svlInput).short.gross, { individual: true, propertyCount: n });
+  const txt = s6 ? `${s6.html} ${s6.alt}` : '';
+  ok('η κάρτα έχει story 6', !!s6);
+  ok('το όριο είναι το πλήθος του isMunicipalTaxExempt', isMunicipalTaxExempt({ individual: true, propertyCount: n - 1 }) && !isMunicipalTaxExempt({ individual: true, propertyCount: n }));
+  ok('η κάρτα δεν γράφει το τέλος ως κόστος του ορίου', fee > 0 && !txt.includes(fe(fee)));
+  ok('κανένα γεγονός με το ποσό του τέλους', !f['mun3.amount']);
+  ok('η κάρτα λέει «έναρξη εργασιών»', /έναρξη εργασιών/iu.test(s6?.html ?? '') && /έναρξη εργασιών/iu.test(s6?.alt ?? ''));
+  ok('η κάρτα λέει ΦΠΑ και τεκμαρτή έκπτωση', /ΦΠΑ/u.test(txt) && /χωρίς τεκμαρτή έκπτωση/u.test(txt));
+  ok('η κάρτα λέει ποιον βαραίνει το τέλος', /το βαραίνει ο επισκέπτης/u.test(txt));
+  ok('η πηγή του ορίου δεν το λέει «πρώτο ακίνητο»', !/πρώτο ακίνητο/u.test(f['mun3.from'].source));
 }
 
 console.log(`dyoDromoi: ${pass} πέρασαν, ${fail} απέτυχαν`);

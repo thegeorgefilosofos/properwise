@@ -32,7 +32,7 @@ import {
 import { marginalTaxOn, propertyYield } from '../../lib/tools/apodosi';
 import {
   RENTAL_TAX_BRACKETS_2026, rentalBracketsForYear, marginalRate, effectiveRentalRate,
-  municipalAccommodationTax, MUNICIPAL_ACCOM_TAX_RATE, isHighSeasonMonth,
+  municipalAccommodationTax, MUNICIPAL_ACCOM_TAX_RATE, isMunicipalTaxExempt, isHighSeasonMonth,
 } from '../../lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE, presumptiveDeductionRateForYear } from '../../lib/billing/presumptive';
 import { fe, fn, fpRate } from '../../lib/core/format';
@@ -190,9 +190,20 @@ export function dyoDromoiFacts(date: string, opts: { otherGross?: number } = {})
   const rentNever = hi;
   if (beAt(rentNever - 1) == null || beAt(rentNever + 1) != null) throw new Error('Το ενοίκιο-όριο δεν χωρίζει «υπάρχει όριο» από «δεν υπάρχει».');
 
-  // ── 8 · Από ποιο ακίνητο πληρώνεται τέλος παρεπιδημούντων ───────────────
+  // ── 8 · Από πόσα ακίνητα βραχυχρόνιας αλλάζει το καθεστώς ──────────────────
+  // ΑΛΛΑΖΕΙ ΤΟ ΚΑΘΕΣΤΩΣ, ΟΧΙ ΜΟΝΟ Ο ΣΥΝΤΕΛΕΣΤΗΣ (η συχνή ερώτηση για τα πολλά ακίνητα στο
+  // app/vraxyxronia-i-makroxronia/page.tsx). Η πρώτη κάρτα αποθήκευσης (08/10/2026) έγραφε
+  // το ποσό του τέλους παρεπιδημούντων στον τζίρο του παραδείγματος «από το Νο ακίνητο»:
+  // έκανε το όριο ένα τέλος πάνω στο νέο ακίνητο, με χρώμα κόστους. Το όριο είναι ΠΛΗΘΟΣ: με τόσα ακίνητα το φυσικό πρόσωπο κάνει έναρξη εργασιών
+  // για ΟΛΗ τη δραστηριότητα (ΦΠΑ, χωρίς τεκμαρτή έκπτωση, τέλος που βαραίνει τον επισκέπτη,
+  // app/odigos/airbnb-takk-2026). Σε αυτό το κλαδί ο κώδικας κρατά το όριο μόνο στο
+  // isMunicipalTaxExempt («έως τόσα ακίνητα χωρίς έναρξη εργασιών»)· από εκεί βγαίνει.
+  const exempt = (n: number) => isMunicipalTaxExempt({ individual: true, propertyCount: n });
   let mFrom = 1;
-  while (!municipalAccommodationTax(S.gross, { individual: true, propertyCount: mFrom })) { mFrom++; if (mFrom > 50) throw new Error('Το τέλος παρεπιδημούντων δεν ξεκινά ποτέ.'); }
+  while (exempt(mFrom)) { mFrom++; if (mFrom > 50) throw new Error('Το φυσικό πρόσωπο δεν χάνει ποτέ την εξαίρεση· η γραμμή «από τόσα ακίνητα» δεν στέκει.'); }
+  if (mFrom < 2) throw new Error('Ούτε ένα ακίνητο δεν εξαιρείται· η γραμμή «από τόσα ακίνητα» δεν στέκει.');
+  // Ένα πλήθος για όλη τη δραστηριότητα: κάτω από αυτό εξαιρείται κάθε πλήθος, από αυτό και πάνω κανένα.
+  if (!Array.from({ length: mFrom - 1 }, (_, i) => i + 1).every(exempt) || [mFrom, mFrom + 1, mFrom + 2].some(exempt)) throw new Error('Η εξαίρεση δεν κόβεται σε ένα πλήθος ακινήτων.');
   const munAmount = municipalAccommodationTax(S.gross, { individual: true, propertyCount: mFrom });
   if (Math.abs(munAmount - cents(S.gross * MUNICIPAL_ACCOM_TAX_RATE)) > .005) throw new Error('Το τέλος παρεπιδημούντων δεν είναι ο συντελεστής επί του τζίρου.');
 
@@ -285,9 +296,9 @@ export function dyoDromoiFacts(date: string, opts: { otherGross?: number } = {})
   put(fact('calc.zero', 0, eur(0), 'app/kathari-apodosi/ApodosiCalculator.tsx (SPEC: ΕΝΦΙΑ και δαπάνες στο μηδέν)', { kind: 'money' }));
 
   put(fact('rentNever', rentNever, eur(rentNever), `${SRC_SVL}: το μικρότερο ενοίκιο χωρίς όριο πληρότητας (διχοτόμηση στο ενοίκιο)`, { ...VR, kind: 'money' }));
-  put(fact('mun3.from', mFrom, `${fn(mFrom)}ο`, 'lib/billing/greekTax.ts (isMunicipalTaxExempt): το πρώτο ακίνητο που δεν εξαιρείται', VM));
+  // Ποτέ ως ποσό: το τέλος δεν είναι το κόστος του ορίου (το βαραίνει ο επισκέπτης) και αλλάζει όλο το καθεστώς.
+  put(fact('mun3.from', mFrom, `${fn(mFrom)}+`, 'lib/billing/greekTax.ts (isMunicipalTaxExempt): το πλήθος ακινήτων βραχυχρόνιας από το οποίο το φυσικό πρόσωπο χάνει την εξαίρεση και κάνει έναρξη εργασιών· μετρά όλη τη δραστηριότητα, όχι μόνο το νέο ακίνητο', VM));
   put(fact('mun3.rate', MUNICIPAL_ACCOM_TAX_RATE, rate(MUNICIPAL_ACCOM_TAX_RATE), 'lib/billing/greekTax.ts (MUNICIPAL_ACCOM_TAX_RATE)', VM));
-  put(fact('mun3.amount', munAmount, eur(munAmount), 'lib/billing/greekTax.ts (municipalAccommodationTax) στον τζίρο του παραδείγματος', { ...VM, kind: 'money' }));
 
   const q1 = [I.nightlyPrice * (1 - I.platformFeePct / 100), I.nightlyPrice * (1 - I.platformFeePct / 100) - clean, nightNet];
   q1.forEach((x, i) => put(fact(`quiz1.${i}`, x, eur2(x), i < 2 ? `${SRC_IN}: τιμή μείον ${i ? 'προμήθεια και καθαριότητα' : 'προμήθεια'}` : 'ίδιο με nightNet', { kind: 'money' })));

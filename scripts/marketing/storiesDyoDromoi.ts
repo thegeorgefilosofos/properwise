@@ -322,15 +322,17 @@ export function stories(f: Facts): Story[] {
   }
 
   // ── 6 · Η κάρτα για αποθήκευση: τα όρια ΤΟΥ ΠΑΡΑΔΕΙΓΜΑΤΟΣ ──────────────────
-  // Κάθε γραμμή λέει τη συνθήκη της (πόσο τη νύχτα, με τι άλλα ενοίκια, σε ποιον τζίρο).
-  // Χρώματα με κανόνα: σομόν φόρος και κόστος, μπλε όριο πληρότητας, πράσινο ενοίκιο.
+  // Κάθε γραμμή λέει τη συνθήκη της (πόσο τη νύχτα, με τι άλλα ενοίκια, με πόσα ακίνητα).
+  // Χρώματα με κανόνα: σομόν φόρος και κόστος, μπλε όριο πληρότητας, πράσινο ενοίκιο, λευκό όριο ακινήτων.
+  // Το όριο των ακινήτων είναι αλλαγή καθεστώτος (έναρξη εργασιών για όλη τη δραστηριότητα), όχι
+  // ένα τέλος πάνω στο νέο ακίνητο: γράφεται με τις λέξεις του app/vraxyxronia-i-makroxronia (FAQ).
   {
     const rungs: [string, string, string][] = [
       ['margShort', 'σε κάθε νέο ευρώ από τη νύχτα {occ25.nights}, χωρίς άλλα ενοίκια', K.tax],
       ['occ35.marg', 'σε κάθε νέο ευρώ από τη νύχτα {occ35.nights}', K.tax],
       ['be11.ceil', 'όριο πληρότητας αν λείψει ένας μήνας ενοικίου', K.accent],
       ['withEleni.be', 'όριο πληρότητας με άλλα ενοίκια {withEleni.otherGross} τον χρόνο', K.accent],
-      ['mun3.amount', 'τέλος παρεπιδημούντων από το {mun3.from} ακίνητο, στον τζίρο του παραδείγματος', K.tax],
+      ['mun3.from', 'ακίνητα βραχυχρόνιας αλλάζουν το καθεστώς: έναρξη εργασιών, ΦΠΑ, χωρίς τεκμαρτή έκπτωση, τέλος {mun3.rate} που το βαραίνει ο επισκέπτης', K.ink],
       ['rentNever', 'μηνιαίο ενοίκιο που το Airbnb των {nightPrice} δεν φτάνει ούτε γεμάτο', K.ok],
     ];
     // Μία λήξη για όλη την κάρτα, από το lib/legal/validity.ts· δύο μόνο αν διαφέρουν.
@@ -345,12 +347,12 @@ export function stories(f: Facts): Story[] {
     out.push({ n: 6, title: 'Τα όρια που περνάς χωρίς να το δεις',
       html: frame(f, 6, N, body, `
         .s6{flex:none;display:flex;flex-direction:column;gap:8px}
-        .s6r{display:grid;grid-template-columns:180px 1fr;column-gap:24px;align-items:center;padding:16px 28px;border-radius:20px;background:${K.lift}e6;border:1.5px solid ${K.rule}}
+        .s6r{display:grid;grid-template-columns:180px 1fr;column-gap:24px;align-items:center;padding:12px 28px;border-radius:20px;background:${K.lift}e6;border:1.5px solid ${K.rule}}
         .s6r b{font-size:44px;line-height:52px;font-weight:850;letter-spacing:-.02em;white-space:nowrap}
         .s6r span{font-size:28px;line-height:34px;font-weight:600;color:${K.ink}}
         .s6d{flex:none;margin-top:16px;font-family:'Roboto Mono',monospace;font-size:26px;line-height:32px;color:${K.muted};letter-spacing:.02em}`, footer(f, SRC.all)),
       sticker: { kind: 'Σύνδεσμος', text: 'Βάλε τους μήνες σου', url: 'https://properwise.gr/vraxyxronia-i-makroxronia?utm_source=instagram&utm_medium=story&utm_campaign=ig-dyo-dromoi', where: 'κάτω από τη γραμμή ειλικρίνειας' },
-      alt: P(f, `Κάρτα για αποθήκευση, παράδειγμα με {nightPrice} τη νύχτα και {rent} τον μήνα. Κάθε νέο ευρώ με {margShort} από τη νύχτα {occ25.nights} χωρίς άλλα ενοίκια και με {occ35.marg} από τη νύχτα {occ35.nights}. Όριο πληρότητας {be11.ceil} αν λείψει ένας μήνας, {withEleni.be} με άλλα ενοίκια {withEleni.otherGross}. Τέλος παρεπιδημούντων {mun3.rate} από το {mun3.from} ακίνητο, {mun3.amount} στον τζίρο του παραδείγματος. Μηνιαίο ενοίκιο {rentNever} που το Airbnb δεν φτάνει ούτε γεμάτο. ${ends}.`) });
+      alt: P(f, `Κάρτα για αποθήκευση, παράδειγμα με {nightPrice} τη νύχτα και {rent} τον μήνα. Κάθε νέο ευρώ με {margShort} από τη νύχτα {occ25.nights} χωρίς άλλα ενοίκια και με {occ35.marg} από τη νύχτα {occ35.nights}. Όριο πληρότητας {be11.ceil} αν λείψει ένας μήνας, {withEleni.be} με άλλα ενοίκια {withEleni.otherGross}. Με {mun3.from} ακίνητα σε βραχυχρόνια αλλάζει το καθεστώς: έναρξη εργασιών, ΦΠΑ, χωρίς τεκμαρτή έκπτωση, τέλος παρεπιδημούντων {mun3.rate} που το βαραίνει ο επισκέπτης. Μηνιαίο ενοίκιο {rentNever} που το Airbnb δεν φτάνει ούτε γεμάτο. ${ends}.`) });
   }
   return out;
 }
