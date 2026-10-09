@@ -63,12 +63,23 @@ export function feedEntry(feed, row, error) {
   return { path: feed.path, ok: Boolean(row.ok), why: clip(row.reason || (row.ok ? 'εντάξει' : 'χωρίς αιτία')) }
 }
 
-/** Η προηγούμενη κατάσταση κάθε τροφοδοσίας, από το `details` της τελευταίας γραμμής. */
+/**
+ * ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΟΧΙ ΔΥΟ (09.10.2026). Η μνήμη κρατούσε μόνο το `ok`, οπότε
+ * η αδιάβαστη τροφοδοσία θυμόταν ως «σπασμένη». Το email της έλεγε «δεν ξέρουμε
+ * αν κάτι στα δεδομένα είναι λάθος». Οταν μετά τη μετανάστευση το RPC
+ * διαβαζόταν και έβρισκε πρόγραμμα ληγμένο, το πέρασμα έβλεπε «σπασμένη →
+ * σπασμένη» και σώπαινε: η οδηγία «κλείσε τη γραμμή» δεν έφτανε ποτέ. Το ίδιο
+ * και ανάποδα: σπασμένη που γινόταν αδιάβαστη δεν έλεγε ότι χάθηκε ο έλεγχος.
+ * Γραμμές από πριν από το `unread` διαβάζονται ως «broken», όπως ως τώρα.
+ */
+const stateOf = (e) => (e.ok ? 'ok' : e.unread ? 'unread' : 'broken')
+
+/** Η προηγούμενη κατάσταση κάθε τροφοδοσίας ('ok', 'broken' ή 'unread'), από το `details` της τελευταίας γραμμής. */
 export function previousFeeds(details) {
   const prev = new Map()
   if (!Array.isArray(details)) return prev
   for (const d of details) {
-    if (d && typeof d.path === 'string' && d.path.startsWith('feed:')) prev.set(d.path, Boolean(d.ok))
+    if (d && typeof d.path === 'string' && d.path.startsWith('feed:')) prev.set(d.path, stateOf(d))
   }
   return prev
 }
@@ -76,12 +87,13 @@ export function previousFeeds(details) {
 /**
  * Το μήνυμα για όσες τροφοδοσίες άλλαξαν κατάσταση, ή `null`.
  *
- * Σπάει: ήταν υγιής ή δεν ξέραμε. Τώρα δεν είναι.
- * Ξαναστήνεται: ήταν σπασμένη. Τώρα είναι υγιής.
+ * Σπάει: ήταν υγιής, δεν ξέραμε ή ήταν χαλασμένη με τον άλλο τρόπο
+ * (αδιάβαστη ↔ σπασμένη). Τώρα δεν είναι υγιής.
+ * Ξαναστήνεται: ήταν σπασμένη ή αδιάβαστη. Τώρα είναι υγιής.
  */
 export function feedAlert(prev, entries) {
-  const broke = entries.filter(e => !e.ok && prev.get(e.path) !== false)
-  const healed = entries.filter(e => e.ok && prev.get(e.path) === false)
+  const broke = entries.filter(e => !e.ok && prev.get(e.path) !== stateOf(e))
+  const healed = entries.filter(e => e.ok && (prev.get(e.path) === 'broken' || prev.get(e.path) === 'unread'))
   if (!broke.length && !healed.length) return null
 
   const name = (e) => FEEDS.find(f => f.path === e.path)?.name ?? e.path

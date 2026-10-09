@@ -24,7 +24,9 @@ ok('μεγάλη αιτία κόβεται', feedEntry(bank, { ok: false, reason
 
 // ── Η προηγούμενη κατάσταση ─────────────────────────────────────────────────
 const prev = previousFeeds([{ path: '/', ok: true }, { path: 'feed:bank', ok: false }, { path: 'feed:market', ok: true }])
-ok('διαβάζει μόνο τις τροφοδοσίες', prev.size === 2 && prev.get('feed:bank') === false && prev.get('feed:market') === true)
+ok('διαβάζει μόνο τις τροφοδοσίες', prev.size === 2 && prev.get('feed:bank') === 'broken' && prev.get('feed:market') === 'ok')
+ok('θυμάται την αδιάβαστη χωριστά από τη σπασμένη',
+  previousFeeds([{ path: 'feed:reference', ok: false, unread: true }]).get('feed:reference') === 'unread')
 ok('παλιά γραμμή χωρίς τροφοδοσίες: τίποτα γνωστό', previousFeeds([{ path: '/', ok: true }]).size === 0)
 ok('details που δεν είναι πίνακας: τίποτα γνωστό', previousFeeds(null).size === 0)
 
@@ -34,18 +36,18 @@ const down = (f: typeof bank, why = NO_CREDIT) => ({ path: f.path, ok: false, wh
 
 ok('όλα υγιή, πρώτη φορά: σιωπή', feedAlert(new Map(), [up(bank), up(market)]) === null)
 ok('σπασμένη στην πρώτη μέτρηση: στέλνει', feedAlert(new Map(), [down(bank), up(market)]) !== null)
-ok('έμεινε σπασμένη: σιωπή', feedAlert(new Map([['feed:bank', false]]), [down(bank)]) === null)
-ok('έμεινε υγιής: σιωπή', feedAlert(new Map([['feed:bank', true]]), [up(bank)]) === null)
+ok('έμεινε σπασμένη: σιωπή', feedAlert(new Map([['feed:bank', 'broken']]), [down(bank)]) === null)
+ok('έμεινε υγιής: σιωπή', feedAlert(new Map([['feed:bank', 'ok']]), [up(bank)]) === null)
 
-const broke = feedAlert(new Map([['feed:bank', true], ['feed:market', true]]), [down(bank), up(market)])
+const broke = feedAlert(new Map([['feed:bank', 'ok'], ['feed:market', 'ok']]), [down(bank), up(market)])
 ok('υγιής → σπασμένη: στέλνει', broke !== null)
 ok('το θέμα ονομάζει την τροφοδοσία', /Επιτόκια τραπεζών/.test(broke?.subject ?? ''))
 ok('χωρίς υπόλοιπο: λέει τι να κάνει', (broke?.lines ?? []).some(l => /Billing/.test(l)))
 
-const other = feedAlert(new Map([['feed:market', true]]), [down(market, 'σιωπή 40 ωρών')])
+const other = feedAlert(new Map([['feed:market', 'ok']]), [down(market, 'σιωπή 40 ωρών')])
 ok('άλλη αιτία: χωρίς οδηγία για υπόλοιπο', !(other?.lines ?? []).some(l => /Billing/.test(l)))
 
-const healed = feedAlert(new Map([['feed:bank', false]]), [up(bank)])
+const healed = feedAlert(new Map([['feed:bank', 'broken']]), [up(bank)])
 ok('σπασμένη → υγιής: στέλνει', /δουλεύει ξανά/.test(healed?.subject ?? ''))
 
 // ── Τα δεδομένα αναφοράς: δική τους φράση, όχι των τιμών ─────────────────────
@@ -76,7 +78,29 @@ ok('και λέει να ελεγχθεί η μετανάστευση', (bankUnr
 const emptyRow = reference ? feedAlert(new Map(), [feedEntry(reference, null, null)]) : null
 ok('κενή απάντηση: ίδια μεταχείριση', !(emptyRow?.lines ?? []).some(l => l.includes('status = ended')))
 
-const all = [broke, other, healed, refAlert, refUnread, bankUnread].flatMap(a => a ? [a.subject, ...a.lines] : []).join('\n')
+// ── Αδιάβαστη ↔ σπασμένη: κάθε αλλαγή λέγεται μία φορά ─────────────────────
+// Το σενάριο: οι συναρτήσεις άκρου ανεβαίνουν, το RPC λείπει και φεύγει το
+// «δεν ξέρουμε». Μπαίνει η μετανάστευση, το RPC διαβάζεται και βρίσκει
+// πρόγραμμα ληγμένο. Η μνήμη περνά από το `details`, όπως στο health-check.
+const roundTrip = (entries: object[]) => previousFeeds(JSON.parse(JSON.stringify(entries)))
+const unreadRef = reference ? feedEntry(reference, null, MISSING) : null
+const staleRef = reference ? feedEntry(reference, { ok: false, reason: 'ζωντανά προγράμματα χωρίς προθεσμία ή επαλήθευση 60 ημερών: x' }, null) : null
+const toStale = unreadRef && staleRef ? feedAlert(roundTrip([unreadRef]), [staleRef]) : null
+ok('αδιάβαστη → ληγμένο πρόγραμμα: στέλνει', toStale !== null)
+ok('αδιάβαστη → ληγμένο: λέει πώς κλείνει η γραμμή', (toStale?.lines ?? []).some(l => l.includes('status = ended')))
+ok('αδιάβαστη → ληγμένο: δεν ξαναλέει «δεν διαβάστηκε»', !(toStale?.lines ?? []).some(l => /supabase db push/.test(l)))
+ok('έμεινε ληγμένο: σιωπή', staleRef ? feedAlert(roundTrip([staleRef]), [staleRef]) === null : false)
+const toUnread = unreadRef && staleRef ? feedAlert(roundTrip([staleRef]), [unreadRef]) : null
+ok('ληγμένο → αδιάβαστη: στέλνει', toUnread !== null)
+ok('ληγμένο → αδιάβαστη: λέει να ελεγχθεί η μετανάστευση', (toUnread?.lines ?? []).some(l => /supabase db push/.test(l)))
+ok('ληγμένο → αδιάβαστη: δεν λέει να κλείσει γραμμή', !(toUnread?.lines ?? []).some(l => l.includes('status = ended')))
+ok('έμεινε αδιάβαστη: σιωπή', unreadRef ? feedAlert(roundTrip([unreadRef]), [unreadRef]) === null : false)
+ok('αδιάβαστη → υγιής: στέλνει «δουλεύει ξανά»',
+  unreadRef && reference ? /δουλεύει ξανά/.test(feedAlert(roundTrip([unreadRef]), [up(reference)])?.subject ?? '') : false)
+ok('παλιά γραμμή χωρίς `unread` → αδιάβαστη: στέλνει',
+  feedAlert(previousFeeds([{ path: 'feed:bank', ok: false, why: 'x' }]), [feedEntry(bank, null, { message: 'permission denied' })]) !== null)
+
+const all = [broke, other, healed, refAlert, refUnread, bankUnread, toStale, toUnread].flatMap(a => a ? [a.subject, ...a.lines] : []).join('\n')
 ok('κανένα κόμμα πριν από «και»', !/, κ(αι|ι) /.test(all))
 
 console.log(`\nfeedAlert: ${passed} passed, ${failed} failed`)
