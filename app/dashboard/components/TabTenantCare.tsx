@@ -33,7 +33,7 @@ import {
 } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { failed } from '@/lib/core/dbError';
-import { grDateOf } from '@/lib/core/format';
+import { grDateOf, fpRate } from '@/lib/core/format';
 import { navLabel } from '@/lib/nav/labels';
 import { confirmDialog } from '@/components/ConfirmDialog';
 import { roleLabel } from '@/lib/contacts/roles';
@@ -398,7 +398,7 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
   const kpis:KPIItem[]=[
     { label:'Ετήσιο Ακαθάριστο Ενοίκιο', value:fe(annualRent), tone:'accent' },
     { label:'Φόρος για αυτό το ακίνητο', value:fe(tax), tone:'warning', sub:annualRent>0?`πραγματικός συντελεστής ${fp((effRate*100))} επί των ακαθάριστων`:undefined },
-    ...(isCommercial?[{ label:'Ψηφιακό Τέλος Συναλλαγής (3,6%)', value:fe(stampDuty), tone:'warning' as const }]:[]),
+    ...(isCommercial?[{ label:`Ψηφιακό Τέλος Συναλλαγής (${fpRate(COMMERCIAL_STAMP_DUTY*100)})`, value:fe(stampDuty), tone:'warning' as const }]:[]),
     // ΤΟ ΟΝΟΜΑ ΛΕΕΙ ΤΙ ΑΦΑΙΡΕΘΗΚΕ ΚΑΙ ΤΙΠΟΤΑ ΠΑΡΑΠΑΝΩ. Σε μίσθωση κατοικίας
     // δεν υπάρχει κανένα τέλος: το «και Τέλη» ήταν λέξη για ποσό που δεν
     // αφαιρέθηκε ποτέ. Και στην επαγγελματική, το τέλος αφαιρείται ΟΛΟΚΛΗΡΟ,

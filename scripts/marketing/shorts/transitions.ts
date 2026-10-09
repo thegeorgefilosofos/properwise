@@ -144,6 +144,18 @@ export const TRANSITIONS_JS = `
     matchCut(t, tr, O, I, X) {
       const A = G[tr.opts.from], Z = G[tr.opts.to]; if (!A || !Z) return;
       const q = eio(p(t, tr.B - .16, tr.B + .3)), m = X.morph;
+      if (tr.opts.rect) {
+        // ΟΡΘΟΓΩΝΙΟ ΠΟΥ ΓΙΝΕΤΑΙ ΚΟΜΒΟΣ: το κουτί του αριθμού (γωνίες 0) πηγαίνει ευθεία στο
+        // ορθογώνιο του κόμβου (γωνίες του κόμβου), χωρίς τόξο και λάμψη. Τα ψηφία σβήνουν
+        // στο πρώτο 40% της διαδρομής ενώ το κουτί ανάβει (08/10: η «κάψουλα με ουρά»).
+        const k = p(t, tr.B - tr.pre, tr.B + .3), r = eio(cl(k));
+        m.style.left = lerp(A.x, Z.x, r) + 'px'; m.style.top = lerp(A.y, Z.y, r) + 'px'; m.style.width = lerp(A.w, Z.w, r) + 'px'; m.style.height = lerp(A.h, Z.h, r) + 'px';
+        m.style.borderRadius = lerp(0, Z.r, r) + 'px'; m.style.background = tr.opts.color || D.accent; m.style.boxShadow = 'none';
+        op(m, cl(k / .4) * (1 - eio(cl((k - .8) / .2))));
+        // Η επόμενη σκηνή ανάβει πριν σβήσει τελείως η προηγούμενη: το πολύ δύο καρέ χωρίς ευανάγνωστο κείμενο.
+        if (t < tr.B) { O.o = 1 - cl((k - .15) / .3); I.o = cl((k - .3) / .15); } else { O.o = 0; I.o = 1; }
+        return;
+      }
       const x = lerp(A.x, Z.x, q), y = lerp(A.y, Z.y, q) - 140 * Math.sin(Math.PI * q), w = lerp(A.w, Z.w, q), h = lerp(A.h, Z.h, q);
       m.style.left = x + 'px'; m.style.top = y + 'px'; m.style.width = w + 'px'; m.style.height = h + 'px';
       m.style.borderRadius = lerp(A.r, Z.r, q) + 'px'; m.style.background = tr.opts.color || D.accent;

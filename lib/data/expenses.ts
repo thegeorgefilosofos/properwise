@@ -227,18 +227,30 @@ export async function ledgerOfUser<T = LedgerRowWithProperty>(
   return readRows<T>(scoped(db, columns).eq('user_id', userId).gte('date', from));
 }
 
-/** Δαπάνες πολλών ακινήτων μέσα σε διάστημα — αναφορές, ημερολόγιο λογιστή. */
-export async function inRange(
+/**
+ * Δαπάνες πολλών ακινήτων μέσα σε διάστημα, με το σφάλμα ορατό — αναφορές,
+ * ημερολόγιο λογιστή. Δεν υπάρχει σιωπηλή εκδοχή: εκεί το [] γίνεται «μηδέν
+ * δαπάνες» σε παραστατικό και σε λογιστικές εγγραφές.
+ */
+export async function inRangeWithError(
   db: Db, propertyIds: string[], from: string, to: string, columns = REPORT_COLUMNS,
-): Promise<Partial<ExpensesRow>[]> {
-  return readRows<Partial<ExpensesRow>>(scoped(db, columns).in('property_id', propertyIds).gte('date', from).lte('date', to));
+): Promise<ReadResult<Partial<ExpensesRow>>> {
+  return read<Partial<ExpensesRow>>(scoped(db, columns).in('property_id', propertyIds).gte('date', from).lte('date', to));
 }
 
 /** Οι δαπάνες ενός ακινήτου μέσα σε διάστημα. */
 export async function inRangeOfProperty(
   db: Db, propertyId: string, from: string, to: string, columns = 'amount,date',
 ): Promise<Partial<ExpensesRow>[]> {
-  return readRows<Partial<ExpensesRow>>(scoped(db, columns).eq('property_id', propertyId).gte('date', from).lte('date', to));
+  // ΕΝΑ ΜΟΝΟΠΑΤΙ: η απλή εκδοχή είναι η ίδια ανάγνωση, χωρίς το σφάλμα της.
+  return (await inRangeOfPropertyWithError(db, propertyId, from, to, columns)).rows;
+}
+
+/** Οι ίδιες δαπάνες, με το σφάλμα ορατό: η κατάσταση κατανομής τις κάνει ποσό. */
+export async function inRangeOfPropertyWithError(
+  db: Db, propertyId: string, from: string, to: string, columns = 'amount,date',
+): Promise<ReadResult<Partial<ExpensesRow>>> {
+  return read<Partial<ExpensesRow>>(scoped(db, columns).eq('property_id', propertyId).gte('date', from).lte('date', to));
 }
 
 /** Υπάρχει ήδη δαπάνη δεμένη σε αυτόν τον λογαριασμό; */

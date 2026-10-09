@@ -14,10 +14,14 @@ import { BORROWER_PROFILES, fmtEur, fmtPct, fmtPct1, taxableRental, type LoanTyp
 import { rentalRowsForYear } from '@/lib/billing/greekTax'
 import { athensParts } from '@/lib/core/time'
 import { PRESUMPTIVE_RULE } from '@/lib/billing/consolidate'
-import { transferTaxOn } from '@/lib/accounting/transfer'
+import { transferTaxOn, TRANSFER_TAX_RATE } from '@/lib/accounting/transfer'
 import { MARITAL_OPTIONS, CHILDREN_OPTIONS } from './model'
 import { Section, labelStyle, type SetState } from './Bits'
 import { StressBars } from './charts'
+import { fpRate } from '@/lib/core/format'
+
+// Ο ΦΜΑ στο κείμενο βγαίνει από τη σταθερά που τον υπολογίζει, όχι γραμμένος δίπλα της.
+const FMA_PCT = fpRate(TRANSFER_TAX_RATE * 100)
 
 export function TaxLens({
   isCommercial, marital, setMarital, childrenCount: children, setChildren, fmaOwed, fmaEx, PV, loanType, renInc,
@@ -41,7 +45,7 @@ export function TaxLens({
       <Section title="Φορολογική ανάλυση" sub="ΦΜΑ, απαλλαγές, ενοίκια, ΑΑΔΕ 2026" defaultOpen>
         <div style={{display:'flex',flexDirection:'column',gap:14}}>
           <div style={{padding:'12px 14px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
-            <p title="ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου · ΦΠΑ: Φόρος Προστιθέμενης Αξίας" style={{...labelStyle,marginBottom:4}}>{isCommercial?'ΦΜΑ 3,09% + Ψηφιακό Τέλος':'ΦΜΑ 3,09%'}</p>
+            <p title="ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου · ΦΠΑ: Φόρος Προστιθέμενης Αξίας" style={{...labelStyle,marginBottom:4}}>{isCommercial?`ΦΜΑ ${FMA_PCT} + Ψηφιακό Τέλος`:`ΦΜΑ ${FMA_PCT}`}</p>
             <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginBottom:12,lineHeight:1.5,fontFamily: T.font.sans}}>{isCommercial?'Φόρος Μεταβίβασης Ακινήτου και Ψηφιακό Τέλος Συναλλαγής μίσθωσης':'Φόρος Μεταβίβασης Ακινήτου'}</p>
             {!isCommercial&&(
               /* ══ ΤΑ ΠΕΔΙΑ ΣΤΟΙΧΙΖΟΝΤΑΙ ΜΕ ΤΑ ΠΛΑΚΙΔΙΑ ΠΟΥ ΥΠΟΛΟΓΙΖΟΥΝ ═══════
@@ -62,7 +66,7 @@ export function TaxLens({
             {/* Τρία πλακίδια, ο ίδιος κανόνας με τη Δανειοληπτική ικανότητα. */}
             {(()=>{ const a=isCommercial?fmtEur(fmaOwed):fmtEur(fmaEx), b=fmaOwed===0?'Απαλλαγή':fmtEur(fmaOwed), c=fmtEur(PV), w=widestOf(a,b,c); return (
             <div {...fixedCols(3, 10, 'end', '', 3)} style={{...fixedCols(3, 10, 'end', '', 3).style, marginBottom:10}}>
-              <Tile label={isCommercial?'ΦΜΑ 3,09%':'Όριο απαλλαγής ΦΜΑ'} value={a} chars={w}/>
+              <Tile label={isCommercial?`ΦΜΑ ${FMA_PCT}`:'Όριο απαλλαγής ΦΜΑ'} value={a} chars={w}/>
               <Tile label="ΦΜΑ που αναλογεί" value={b} chars={w}/>
               <Tile label="Αξία ακινήτου" value={c} chars={w}/>
             </div>) })()}

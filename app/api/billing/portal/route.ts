@@ -26,6 +26,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireSecondStep } from '@/lib/auth/secondStep';
 import { merchant } from '@/lib/billing/merchant';
 import * as billing from '@/lib/data/billing';
+import { reportRoute } from '@/lib/observability/route';
 
 export async function GET() {
   const supabase = await createClient();
@@ -51,6 +52,7 @@ export async function GET() {
   const { url, error } = await mor.portalUrl(subscriptionId, process.env);
   if (error) {
     console.info(`[${mor.id}] η πύλη δεν άνοιξε:`, error);
+    void reportRoute('api/billing/portal', `${mor.id} portal not opened`, { status: 502 });
     return NextResponse.json({ error: 'Η διαχείριση συνδρομής δεν άνοιξε.' }, { status: 502 });
   }
   return NextResponse.json({ available: !!url, url });

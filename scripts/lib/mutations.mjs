@@ -165,6 +165,18 @@ export const MUTATIONS = {
   // κατήγγειλε «η μετάλλαξη δεν εφαρμόστηκε», δηλαδή ο φύλακας έμεινε χωρίς
   // απόδειξη ακριβώς επειδή κάποιος τον βελτίωσε. Ενα νέο ποσοστό χωρίς
   // μορφοποιητή κοκκινίζει όποιο κι αν είναι το όριο.
+  // Ο ΦΜΑ γραμμένος με το χέρι σε νέα οθόνη· ο φόρος μερίσματος με το θέμα σε
+  // άλλη κλίση από το λήμμα (ο τόνος μετακινείται: μέρισμα → μερίσματος)· και
+  // συντελεστής που άλλαξε στη σταθερά χωρίς να ενημερωθεί το `expect`.
+  'tax-literals': { every: [
+    { add: 'app/__mut_tax__.tsx', content: tsx('    <p>Φόρος μεταβίβασης 3,09% επί της αξίας</p>') },
+    { add: 'app/__mut_tax2__.tsx', content: tsx('    <p>Στη διανομή κερδών ο φόρος μερίσματος 5% παρακρατείται</p>') },
+    // Το «νομικ» είναι δεμένο στην αρχή λέξης· το νομικό πρόσωπο πιάνεται ακόμη.
+    { add: 'app/__mut_tax3__.tsx', content: tsx('    <p>Ως νομικό πρόσωπο πληρώνεις φόρο 22% στα κέρδη</p>') },
+    // Η «εταιρ» θέλει πια και λέξη φόρου στη γραμμή· η εταιρεία που φορολογείται πιάνεται ακόμη.
+    { add: 'app/__mut_tax4__.tsx', content: tsx('    <p>Η εταιρεία φορολογείται με 22%</p>') },
+    { file: 'lib/accounting/transfer.ts', from: 'export const TRANSFER_TAX_RATE = 0.0309', to: 'export const TRANSFER_TAX_RATE = 0.031' },
+  ] },
   'percent-formatter': { add: 'components/__mut__.tsx', content: tsx('    <div>{`Πληρότητα ${occ.pct}%`}</div>') },
   'number-font': { add: 'components/__mut__.tsx', content: tsx("    <p style={{ fontFamily: T.font.mono }}>Μια ολόκληρη πρόταση γραμμένη σε γραμματοσειρά στηλών</p>") },
 
@@ -204,6 +216,8 @@ export const MUTATIONS = {
     { add: 'components/__mut__.tsx', content: tsx('    <div>Ο βοηθός σου προτείνει τρεις κινήσεις</div>') },
     { add: 'components/__mut__.tsx', content: tsx('    <div>Ο ψηφιακός βοηθός Νόα ξέρει τα ακίνητά σου</div>') },
     { add: 'components/__mut__.tsx', content: tsx('    <div>Η Νόα είναι δωρεάν για όλους</div>') },
+    // Και το lib/ φτιάχνει ορατά μηνύματα (assistantLockedMessage, aiLimits.ts).
+    { add: 'lib/__mut__.ts', content: "export const LOCKED = 'Ο βοηθός σου είναι κλειδωμένος'\n" },
   ] },
 
   // ── Βάση δεδομένων και ασφάλεια ───────────────────────────────────────
@@ -496,6 +510,21 @@ export const MUTATIONS = {
   'z-layers': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ zIndex: 12345 }}>Α</div>") },
   'hand-buttons': { add: 'components/__mut__.tsx', content: tsx("    <button style={{ padding: 4 }}>Α</button>") },
   'surface-scale': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ height: 33, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>Α</div>") },
+  // Δύο κανόνες, δύο αποδείξεις. Μία λέξη στο κείμενο του οδηγού χωρίς
+  // απόφαση για την ημερομηνία: ακριβώς οι τρεις οδηγοί του 257d87c, που
+  // άλλαξαν δεκάδες γραμμές με την ίδια «Τελευταία ενημέρωση». Και σφραγίδα
+  // που δείχνει σε οδηγό που δεν υπάρχει, με τον πραγματικό να μένει χωρίς.
+  'guide-updated': { every: [
+    { file: 'app/odigos/plafon-3-emporikes-misthoseis-2026/page.tsx', from: 'Αν εκμισθώνεις επαγγελματικό ακίνητο', to: 'Αν εκμισθώνεις ένα επαγγελματικό ακίνητο' },
+    { file: 'app/odigos/guideStamps.json', from: '"/odigos/plafon-3-emporikes-misthoseis-2026"', to: '"/odigos/__mut__"' },
+  ] },
+  // Δύο κανόνες, δύο αποδείξεις. Μία νέα σίγαση με κανόνα ανεβάζει τη μέτρηση
+  // πάνω από το όριο. Και μία σίγαση για όλο το αρχείο χωρίς κανόνα, που με
+  // μέτρηση οδηγιών θα ΚΑΤΕΒΑΖΕ τον αριθμό ενώ σιγεί τα πάντα.
+  'lint-disable': { every: [
+    { add: 'lib/core/__mut__.ts', content: '// eslint-disable-next-line @typescript-eslint/no-explicit-any\nexport const probe: any = 1\n' },
+    { add: 'lib/core/__mut__.ts', content: '/* eslint-disable */\nexport const probe = 1\n' },
+  ] },
   'js-hover': { add: 'components/__mut__.tsx', content: 'export function P() {\n  return <div onMouseEnter={() => {}} onMouseLeave={() => {}}>Α</div>\n}\n' },
   // Μισό εικονοστοιχείο εκτός κλίμακας: το παλιό μοτίβο `(\d+)\b` το διάβαζε
   // «12» και το άφηνε να περάσει. Αν ο φύλακας ξαναχάσει τα δεκαδικά, πρασινίζει.
@@ -583,5 +612,20 @@ export const MUTATIONS = {
   'spiti-closed': { every: [
     { add: 'app/__mut_spiti__.tsx', content: tsx('    <p>Για πρώτη κατοικία, το «Σπίτι μου ΙΙ» μειώνει δραστικά το κόστος (50% άτοκο).</p>') },
     { file: 'app/dashboard/components/loan/LoanAdvisor.tsx', from: 'badges={spitiMouOpen(today) ? <span', to: 'badges={true ? <span' },
+  ] },
+  // Τρεις κανόνες, τρεις αποδείξεις. Επισκέπτης γραμμένος χωρίς αποδοχή της
+  // σύμβασης επεξεργασίας: ακριβώς η τρύπα στο save() των Πελατών και στην
+  // καταχώρηση από τη Νόα (08/10/2026). Και οι άλλες δύο πόρτες: ενοικιαστής
+  // από το lib/data/tenants και σύνδεσμος προ-άφιξης από το lib/data/checkinLink.
+  'dpa-third-party': { every: [
+    { add: 'app/__mut_dpa__.tsx', content: "export async function probe(supabase: any) {\n  await supabase.from('clients').insert({ full_name: 'x' })\n}\n" },
+    { add: 'app/__mut_dpa__.tsx', content: "import * as t from '@/lib/data/tenants'\nexport async function probe(supabase: any) {\n  await t.addReturning(supabase, 'p', 'u', {})\n}\n" },
+    { add: 'app/__mut_dpa__.tsx', content: "import * as ck from '@/lib/data/checkinLink'\nexport async function probe(supabase: any) {\n  await ck.issue(supabase, 'u', 'c', null, new Date())\n}\n" },
+    // Οι επαφές (συνεργάτες στους Όρους): από το store και κατευθείαν στον πίνακα.
+    { add: 'app/__mut_dpa__.tsx', content: "import * as c from '@/lib/data/contacts'\nexport async function probe(supabase: any) {\n  await c.add(supabase, 'p', 'u', { full_name: 'x', phone: '6900000000' })\n}\n" },
+    { add: 'app/__mut_dpa__.tsx', content: "export async function probe(supabase: any) {\n  await supabase.from('contacts').insert({ full_name: 'x' })\n}\n" },
+    // Το registerContact της Νόας: εγγραφή χωρίς έλεγχο, λίγες γραμμές κάτω από
+    // το `ensureDpa(` ΑΛΛΗΣ συνάρτησης. Μέσα στις 40 γραμμές, έξω από τη συνάρτησή της.
+    { add: 'app/__mut_dpa__.tsx', content: "import { ensureDpa } from '@/lib/legal/dpa'\nimport { addReturningId } from '@/lib/data/contacts'\nexport function useProbe(supabase: any) {\n  const gated = async () => {\n    if (!(await ensureDpa(supabase))) return\n  }\n  const register = async (name: string) => {\n    await addReturningId(supabase, 'p', 'u', { full_name: name })\n  }\n  return { gated, register }\n}\n" },
   ] },
 }

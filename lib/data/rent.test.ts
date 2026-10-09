@@ -6,7 +6,7 @@
 // που υπογράφει ο ιδιοκτήτης.
 import {
   daysLate, dueDateOf, paidFields, unpaidFields, PERIOD_KEY, bookDate, collectedIn,
-  ofProperty, chronological, ofProperties, ofUser, latestAmount,
+  ofProperty, chronological, ofPropertiesWithError, ofUser, latestAmount,
   markPaid, markUnpaid, upsertPeriod,
 } from './rent';
 
@@ -106,11 +106,11 @@ async function asyncChecks() {
   }
   {
     ok('κενή λίστα ακινήτων δεν ρωτά καθόλου τη βάση',
-      (await ofProperties(fakeDb().db, [], 'amount', 'u1')).length === 0);
+      (await ofPropertiesWithError(fakeDb().db, [], 'amount', 'u1')).rows.length === 0);
   }
   {
     const { db, calls } = fakeDb();
-    await ofProperties(db, ['p1'], 'amount', 'u1', { year: 2026, month: 0 });
+    await ofPropertiesWithError(db, ['p1'], 'amount', 'u1', { year: 2026, month: 0 });
     ok('μήνας μηδέν σημαίνει «όλο το έτος», όχι μήνας μηδέν',
       !calls[0].eq.some(([c]) => c === 'period_month'));
   }

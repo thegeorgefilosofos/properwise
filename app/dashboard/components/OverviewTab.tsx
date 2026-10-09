@@ -380,7 +380,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // το ποσό ήταν του εκκαθαριστικού. Η ετικέτα λέει πλέον από πού βγήκε.
   const [enfiaSettings] = useEnfiaSettings(prop.id, userId);
   const enfiaNow = enfiaYear(enfiaSettings, year, {
-    stored: prop.enfia, value: prop.value, sqm: prop.sqm, yearBuilt: prop.year_built, floor: prop.floor,
+    stored: prop.enfia, value: prop.value, objValue: prop.obj_value == null ? null : Number(prop.obj_value),
+    sqm: prop.sqm, yearBuilt: prop.year_built, floor: prop.floor,
     propType: prop.prop_type, ownershipPct: prop.ownership == null ? null : Number(prop.ownership), postalCode: prop.postal_code,
   });
   const totalExpYear = yExp.total;

@@ -16,6 +16,8 @@ import {
 import { meterKind, fileHash, newRequestId, takeUnit, refundUnit } from '@/lib/billing/aiUnits';
 import { alertOutOfCredit } from '@/lib/assistant/creditAlert';
 import { SCAN_SHAPE } from '@/lib/assistant/scanShape';
+import { noaSystemBlocks } from '@/app/dashboard/components/assistantPersona';
+import { reportRoute } from '@/lib/observability/route';
 
 // Rate limiting: simple in-memory store (για production χρησιμοποίησε Redis)
 // ΣΗΜ.: σε serverless/πολλαπλά instances αυτό είναι ανά-instance. Είναι φράγμα
@@ -155,12 +157,24 @@ export async function POST(req: NextRequest) {
   if (!Array.isArray(body?.messages) || body.messages.length === 0) {
     return NextResponse.json({ error: 'Λείπουν μηνύματα.' }, { status: 400 });
   }
+  // ── Η ΓΝΩΣΗ ΤΗΣ ΝΟΑΣ ΤΗ ΒΑΖΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ ─────────────────────
+  // Με `persona: 'noa'` ο πελάτης στέλνει μόνο το προσωπικό κείμενο και το
+  // πρώτο μπλοκ φτιάχνεται εδώ. Κρίνεται ΠΡΙΝ από τον μετρητή και ΠΡΙΝ από το
+  // κόψιμο στα MAX_MESSAGES, ώστε το θέμα να βγαίνει όπως το έβγαζε ο πελάτης.
+  // Σώμα Νόας με αρχείο ή χωρίς προσωπικό κείμενο απορρίπτεται χωρίς χρέωση:
+  // χωρίς `system` από τον πελάτη θα περνούσε για σάρωση (scanShape.ts) και
+  // θα έπαιρνε τη γνώση στον μετρητή που στα πληρωμένα δεν έχει όριο.
+  const noa = body?.persona === 'noa';
+  const noaBlocks = noa ? noaSystemBlocks(body.messages, body.personal) : null;
+  if (noa && !noaBlocks) {
+    return NextResponse.json({ error: 'Το αίτημα δεν διαβάστηκε.' }, { status: 400 });
+  }
   // ── ΠΟΙΟΣ ΜΕΤΡΗΤΗΣ: ΤΟ ΚΡΙΝΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ ΑΠΟ ΤΟ ΣΩΜΑ ───────
   // Απόφαση CEO 05.10.2026 (lib/billing/aiUnits.ts `meterKind`). Σάρωση μόνο
   // όταν υπάρχει πραγματικό αρχείο στο σχήμα της σάρωσης· αλλιώς ερώτηση. Το
   // `kind` του πελάτη δεν διαβάζεται: ως εδώ μια ερώτηση με `kind: 'scan'` και
   // ένα αρχείο έπεφτε στον μετρητή σαρώσεων, που στα πληρωμένα δεν έχει όριο.
-  const scan = meterKind(body) === 'scan';
+  const scan = !noa && meterKind(body) === 'scan';
 
   // ── Η ΜΟΝΑΔΑ ΧΡΕΩΝΕΤΑΙ ΠΡΙΝ ΤΟΝ ΠΑΡΟΧΟ, ΑΠΟ ΤΗ ΒΑΣΗ ──────────
   // Οι χάρτες στη μνήμη από πάνω ζουν ΑΝΑ ΣΤΙΓΜΙΟΤΥΠΟ. Το πραγματικό φράγμα
@@ -179,6 +193,7 @@ export async function POST(req: NextRequest) {
   const u = await takeUnit(scan ? 'scan' : 'ai', user.id, requestId, scan ? fileHash(body) : null);
   // Ένας μετρητής κόστους που ανοίγει όταν χαλάσει δεν είναι μετρητής.
   if (u == null) {
+    void reportRoute('api/anthropic', 'metering unavailable', { status: 503, code: scan ? 'scan' : 'ai' });
     return NextResponse.json(
       { error: scan
           ? 'Η σάρωση δεν είναι διαθέσιμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.'
@@ -254,6 +269,7 @@ export async function POST(req: NextRequest) {
   // ── Anthropic API call ───────────────────────────────────────
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
+    void reportRoute('api/anthropic', 'api key missing', { status: 500 });
     await giveBack(true);
     return NextResponse.json(
       { error: 'Η υπηρεσία δεν είναι διαθέσιμη αυτή τη στιγμή.' },
@@ -292,11 +308,13 @@ export async function POST(req: NextRequest) {
     // αυτούσιο σε ΚΑΘΕ μήνυμα. Το caching είναι αντιστοίχιση ΠΡΟΘΕΜΑΤΟΣ και
     // κοστίζει write 1,25× · read 0,10×.
     //
-    // Ο βοηθός στέλνει πλέον ΔΥΟ μπλοκ (assistantPersona.buildSystemBlocks):
-    // πρώτα το σταθερό (γνώση, κανόνες, πλάνα — ίδιο για κάθε χρήστη, το 97,5%
-    // του κειμένου) και μετά το προσωπικό. Έτσι η cache είναι ΚΟΙΝΗ για όλους
-    // τους χρήστες του ίδιου κλειδιού. Το κόστος πέφτει από ~0,130 $ σε
-    // ~0,052 $ ανά ερώτηση, χωρίς να αλλάξει λέξη στο prompt.
+    // Η Νόα έχει ΔΥΟ μπλοκ (assistantPersona.noaSystemBlocks): πρώτα το
+    // σταθερό (γνώση, κανόνες, πλάνα — ίδιο για κάθε χρήστη, το 97,5% του
+    // κειμένου, το φτιάχνει πλέον ο διακομιστής) και μετά το προσωπικό, που
+    // το στέλνει ο πελάτης. Έτσι η cache είναι ΚΟΙΝΗ για όλους τους χρήστες του
+    // ίδιου κλειδιού. Το κόστος πέφτει από ~0,130 $ σε ~0,052 $ ανά ερώτηση,
+    // χωρίς να αλλάξει λέξη στο prompt. Οι άλλοι καλούντες (σαρώσεις, σύνταξη,
+    // καρτέλες που άνοιξαν πριν από την αλλαγή) στέλνουν ακόμη δικό τους `system`.
     //
     // Το TTL των 5 λεπτών ανανεώνεται ΔΩΡΕΑΝ σε κάθε hit, άρα η κίνηση κρατά
     // την cache ζεστή χωρίς δεύτερη χρέωση write. Γι' αυτό δεν χρησιμοποιούμε
@@ -310,7 +328,9 @@ export async function POST(req: NextRequest) {
       b && typeof b === 'object' && typeof (b as { text?: unknown }).text === 'string'
         ? { type: 'text' as const, text: (b as { text: string }).text }
         : null;
-    if (typeof body.system === 'string' && body.system.length > 0) {
+    if (noa) {
+      safeBody.system = noaBlocks;
+    } else if (typeof body.system === 'string' && body.system.length > 0) {
       safeBody.system = [{ type: 'text', text: body.system, cache_control: { type: 'ephemeral' } }];
     } else if (Array.isArray(body.system)) {
       const blocks = body.system.map(asBlock).filter(Boolean) as { type: 'text'; text: string }[];
@@ -351,6 +371,8 @@ export async function POST(req: NextRequest) {
       const timedOut = (err as { name?: string } | null)?.name === 'TimeoutError';
       const f = timedOut ? TIMEOUT_FAILURE : NETWORK_FAILURE;
       console.error('Anthropic fetch:', timedOut ? 'timeout' : err);
+      // Το αντικείμενο του σφάλματος δεν ταξιδεύει: μόνο το είδος της αποτυχίας.
+      void reportRoute('api/anthropic', 'upstream unreachable', { status: f.status, code: timedOut ? 'timeout' : 'network' });
       await giveBack(f.pool);
       return NextResponse.json({ error: f.message }, { status: f.status, headers: quotaHeaders(quota) });
     }
@@ -373,6 +395,14 @@ export async function POST(req: NextRequest) {
       const upstream = (data as { error?: { message?: string } } | null)?.error?.message;
       console.error('Anthropic API error:', response.status, upstream ?? text.slice(0, 300));
       const f = upstreamFailure(response.status, upstream);
+      // ΟΧΙ 429 ΚΑΙ 529: όριο ρυθμού και υπερφόρτωση είναι λειτουργικά, όχι
+      // σφάλματα. Το τέλος του υπολοίπου στέλνει ήδη email. Ταξιδεύει μόνο ο
+      // τύπος του σφάλματος του παρόχου, ποτέ το μήνυμα ή το σώμα.
+      if (response.status !== 429 && response.status !== 529) {
+        const t = (data as { error?: { type?: unknown } } | null)?.error?.type;
+        const code = typeof t === 'string' ? t.slice(0, 60) : null;
+        void reportRoute('api/anthropic', `upstream ${response.status}`, { status: f.status, code });
+      }
       await giveBack(f.pool);
       // Το τέλος του υπολοίπου δεν διορθώνεται από τον πελάτη: το μαθαίνει
       // αμέσως ο ιδιοκτήτης (lib/assistant/creditAlert.ts).
@@ -384,6 +414,7 @@ export async function POST(req: NextRequest) {
     // πήρε τίποτα. Το πακέτο γυρίζει, η δεξαμενή όχι.
     if (data === null) {
       console.error('Anthropic API: μη αναγνώσιμο σώμα', response.status, text.slice(0, 300));
+      void reportRoute('api/anthropic', 'upstream body unreadable', { status: UNREADABLE_FAILURE.status });
       await giveBack(UNREADABLE_FAILURE.pool);
       return NextResponse.json(
         { error: UNREADABLE_FAILURE.message },
@@ -397,6 +428,8 @@ export async function POST(req: NextRequest) {
     // απρόβλεπτη εξαίρεση. Ο πάροχος δεν παρήγαγε τίποτα, οπότε γυρίζει και η
     // μονάδα της δεξαμενής.
     console.error('Route error:', err);
+    // Μόνο τύπος και πλαίσια στοίβας: το μήνυμα μπορεί να κουβαλά κείμενο του χρήστη.
+    void reportRoute('api/anthropic', 'unhandled', { status: 500, cause: err });
     await giveBack(true);
     return NextResponse.json(
       { error: `${ASSISTANT_NAME}: το αίτημα δεν ολοκληρώθηκε. Δοκίμασε ξανά σε λίγο.` },

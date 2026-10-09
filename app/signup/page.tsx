@@ -101,6 +101,23 @@ type Strength = (props: Parameters<typeof import('@/components/PasswordStrength'
 const FRESH_MS = 15 * 60 * 1000
 
 /**
+ * Ο ΠΑΡΟΝΟΜΑΣΤΗΣ ΤΟΥ ΧΩΝΙΟΥ ΚΑΙ ΓΙΑ ΤΗΝ GOOGLE. Το signed_up γραφόταν μόνο στο
+ * app/auth/callback/route.ts (η δίδυμη διαδρομή του email)· η Google επιστρέφει
+ * εδώ και δεν περνά από εκεί, οπότε καμία εγγραφή Google δεν μετρούσε. Το «μία
+ * φορά ανά χρήστη» το εγγυάται το product_events_signup_once_idx
+ * (scripts/db/product-events.sql), όχι ο κώδικας.
+ *
+ * Με όριο 1,5 δευτερολέπτου: η μέτρηση δεν καθυστερεί ποτέ την άφιξη. Ούτε
+ * σκέτο `void`, γιατί το location.replace που ακολουθεί θα έκοβε την κλήση.
+ * Χωρίς φορτίο: ούτε πηγή ούτε καμπάνια δένονται με τον λογαριασμό. Η εισαγωγή
+ * κατ' απαίτηση κρατά το βάρος της σελίδας ίδιο.
+ */
+const countSignup = (supabase: Awaited<ReturnType<typeof authClient>>) => Promise.race([
+  import('@/lib/analytics/events').then(m => m.track(supabase, m.PRODUCT_EVENTS.signed_up)),
+  new Promise<void>(r => setTimeout(r, 1500)),
+]).catch(() => {})
+
+/**
  * Ό,τι λείπει από το προφίλ μετά την επιστροφή από την Google: η απόδειξη
  * συγκατάθεσης, η πρόσκληση και το πακέτο. Συμπληρώνει ΜΟΝΟ ό,τι λείπει: η
  * απόδειξη που μετράει είναι η ΠΡΩΤΗ, όχι η σημερινή.
@@ -281,6 +298,7 @@ export default function SignupPage() {
           setNeedsConsent(u.email ?? '')
           return
         }
+        if (u.created_at && Date.now() - Date.parse(u.created_at) < FRESH_MS) await countSignup(supabase)
         await land(supabase, window.location.search)
         return
       }
@@ -313,6 +331,9 @@ export default function SignupPage() {
     if (error) { setError(failed('Η αποδοχή δεν καταχωρήθηκε', error)); return }
     const newsError = patch.marketing_opt_out && data.user ? await newsOffNow(supabase, data.user.id) : null
     if (newsError) { setError(failed('Η άρνηση των ενημερωτικών δεν καταχωρήθηκε', newsError)); return }
+    // Από το created_at και όχι από το freshAccount: ο κλάδος του oauth=1 με
+    // σφάλμα στα ενημερωτικά φέρνει εδώ νέο λογαριασμό χωρίς να το ορίσει.
+    if (data.user?.created_at && Date.now() - Date.parse(data.user.created_at) < FRESH_MS) await countSignup(supabase)
     await land(supabase, window.location.search)
   }
 

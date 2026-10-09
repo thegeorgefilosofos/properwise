@@ -248,9 +248,11 @@ export function leasesInYear<T extends LeaseDates & { created_at?: string | null
  */
 export async function inYearByProperty<T extends LeaseDates & { property_id?: string | null }>(
   db: Db, userId: string, year: number, columns: string,
-): Promise<{ inYear: Map<string, T[]>; known: Set<string> }> {
+): Promise<{ inYear: Map<string, T[]>; known: Set<string>; error: DbError | null }> {
   const cols = withStatus(columns.includes('property_id') ? columns : `property_id,${columns}`);
-  const rows = await ofUser<T>(db, userId, [...new Set([...cols.split(','), 'id', 'lease_end'])].join(','));
+  // Το σφάλμα επιστρέφεται: ο καλών είναι το Ε2, όπου «καμία μίσθωση» είναι
+  // μηδενικό εισόδημα, όχι κενό ακίνητο.
+  const { rows, error } = await ofUserWithError<T>(db, userId, [...new Set([...cols.split(','), 'id', 'lease_end'])].join(','));
   const byProperty = new Map<string, T[]>();
   for (const r of rows) {
     const pid = String(r.property_id || '');
@@ -263,7 +265,7 @@ export async function inYearByProperty<T extends LeaseDates & { property_id?: st
     const leases = leasesInYear(list as (T & { created_at?: string | null })[], year);
     if (leases.length) inYear.set(pid, leases);
   }
-  return { inYear, known: new Set(byProperty.keys()) };
+  return { inYear, known: new Set(byProperty.keys()), error };
 }
 
 // ── ΕΓΓΡΑΦΗ ────────────────────────────────────────────────────────────────

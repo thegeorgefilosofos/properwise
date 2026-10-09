@@ -18,6 +18,7 @@ import { isOverdue as overdueOn } from '@/lib/facts/deadlines'
 import {
   CATEGORIES, PRIORITIES, STATUSES,
   type ChecklistItem, type Comment, type ItemReceipt, type Priority, type Recurring, type Status, type SubTask,
+  type Template,
 } from './model'
 import type { Who } from '@/lib/accounting/dossier'
 
@@ -198,6 +199,25 @@ export function parseItem(row: ChecklistItemsRow): ChecklistItem {
 }
 export function serializeNote(d: NotePayload) {
   return JSON.stringify({ __cv: 2, ...d })
+}
+/**
+ * ΟΙ ΓΡΑΜΜΕΣ ΠΟΥ ΓΡΑΦΕΙ ΕΝΑ ΠΡΟΤΥΠΟ, ΠΡΙΝ ΔΕΘΟΥΝ ΟΙ ΕΞΑΡΤΗΣΕΙΣ.
+ *
+ * Ζούσε μέσα στο `loadTemplate` της οθόνης, όπου καμία δοκιμή δεν έφτανε. Η
+ * σημείωση του προτύπου (π.χ. πώς μπαίνει η λήξη της ΥΔΕ στο ημερολόγιο)
+ * μπορούσε να ξαναγίνει κενή και όλα θα έμεναν πράσινα.
+ *
+ * `estimated_cost: 0` και όχι σταθερά προτύπου: τα 24 επινοημένα κόστη
+ * σβήστηκαν. Ό,τι κόστος μπει, το βάζει ο χρήστης ή το τιμολόγιο. Το
+ * `depends_on` γράφεται μετά, όταν η βάση δώσει αναγνωριστικά.
+ */
+export function templateRows(tpl: Template, key: string, propertyId: string, userId: string) {
+  return tpl.items.map((tItem, i) => ({
+    property_id: propertyId, user_id: userId, description: tItem.description, category: tItem.category,
+    priority: tItem.priority, recurring: tItem.recurring || 'none', status: 'pending', completed: false,
+    note: serializeNote({ note: tItem.note || '', subtasks: [], comments: [], tags: [] }),
+    estimated_cost: 0, actual_cost: 0, sort_order: i, template_id: key, depends_on: null,
+  }))
 }
 /**
  * Η ΕΠΟΜΕΝΗ ΕΜΦΑΝΙΣΗ ΜΙΑΣ ΕΠΑΝΑΛΑΜΒΑΝΟΜΕΝΗΣ ΕΡΓΑΣΙΑΣ.

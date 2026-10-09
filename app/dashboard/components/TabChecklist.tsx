@@ -50,7 +50,7 @@ import {
 } from './checklist/model'
 import {
   fmtDate, isOverdue, checklistStats, obligationsCta, firstDueLine,
-  nextDueDate, nextOccurrence, parseItem, serializeNote, mkEmpty, carryOver,
+  nextDueDate, nextOccurrence, parseItem, serializeNote, mkEmpty, carryOver, templateRows,
 } from './checklist/calc'
 import { FilterSelect, ExportMenu, iStyle } from './checklist/Bits'
 import { ItemRow } from './checklist/ItemRow'
@@ -527,14 +527,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
   // της γεννιέται από τη βάση. Πρώτα μπαίνουν όλες, μετά δένονται οι κρίκοι.
   const loadTemplate = async (key: string) => {
     const tpl = TEMPLATES[key]; if (!tpl) return
-    // `estimated_cost: 0` και όχι σταθερά προτύπου: τα 24 επινοημένα κόστη
-    // σβήστηκαν. Ό,τι κόστος μπει, το βάζει ο χρήστης ή το τιμολόγιο.
-    const rows = tpl.items.map((tItem, i) => ({
-      property_id: propertyId, user_id: userId, description: tItem.description, category: tItem.category,
-      priority: tItem.priority, recurring: tItem.recurring || 'none', status: 'pending', completed: false,
-      note: serializeNote({ note: '', subtasks: [], comments: [], tags: [] }),
-      estimated_cost: 0, actual_cost: 0, sort_order: i, template_id: key, depends_on: null,
-    }))
+    const rows = templateRows(tpl, key, propertyId, userId)
     const inserted = await savedData<{ id: string; sort_order: number }[]>('Το πρότυπο δεν φορτώθηκε',
       checklist.addManyReturning(supabase, rows))
     if (!inserted) { fetchAll(); return }

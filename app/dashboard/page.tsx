@@ -816,6 +816,7 @@ export default function Dashboard() {
             name: selected.name,
             propType: propertyTypeLabel(selected.prop_type)||undefined,
             address: selected.address||undefined, value: selected.value||undefined,
+            objValue: selected.obj_value!=null ? Number(selected.obj_value) : undefined,
             sqm: selected.sqm||undefined, status: statusLabelOf(selected),
             targetRent: selected.target_rent||undefined,
             statusKey: readStatus(selected),

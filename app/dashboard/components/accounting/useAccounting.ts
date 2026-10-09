@@ -79,6 +79,7 @@ import { fetchDossierPapers } from '../dossierPapers'
 import { defaultBookkeeping, statusesForYear, type LegalForm } from '@/lib/accounting/dossier'
 import type { CompletenessProperty } from '@/lib/facts/completeness'
 import { readStatus, type PropertyStatus, type StatusRow } from '@/lib/property/status'
+import { strBusinessNotice } from '@/lib/property/ama'
 import { printRentCertificate, downloadOfficialRentCertificate } from '../rentCertificate'
 import { notifyError } from '@/components/Toast'
 import { MONTHS_NOM, MONTHS_SHORT } from '@/lib/core/months'
@@ -306,7 +307,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // (2ος όροφος, 10-20 ετών) και έβγαινε 16,15% ψηλότερα από την ουδέτερη βάση.
   // Και ο `prop_type`: χωρίς αυτόν η εκτίμηση χρέωνε αποθήκη 20 τ.μ. με τον
   // πίνακα των κατοικιών (39,20€ τον χρόνο) και οικόπεδο 400 τ.μ. με 600,00€.
-  type PropRow     = Pick<UserPropertiesRow, 'id'|'name'|'address'|'rental_mode'|'status_detail'|'enfia'|'sqm'|'value'|'year_built'|'floor'|'purchase_price'|'purchase_date'|'prop_type'|'ownership'|'postal_code'>
+  type PropRow     = Pick<UserPropertiesRow, 'id'|'name'|'address'|'rental_mode'|'status_detail'|'enfia'|'sqm'|'value'|'obj_value'|'year_built'|'floor'|'purchase_price'|'purchase_date'|'prop_type'|'ownership'|'postal_code'>
   type PropListRow = Pick<UserPropertiesRow, 'id'|'name'|'rental_mode'|'status_detail'|'enfia'|'sqm'|'ownership'|'prop_type'|'client_id'|'atak'|'ama'>
   type InventoryRow = Pick<InventoryItemsRow, 'name'|'purchase_value'|'category'|'purchase_date'>
 
@@ -354,7 +355,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
         rentStore.ofPropertyWithError<RentRow>(supabase,propertyId,`${rentStore.LEDGER_COLUMNS},base_rent,services_charge,method`,userId),
         stayStore.ofPropertyWithError<StayRow>(supabase,propertyId,`id,${stayStore.ACCOUNTING_COLUMNS}`,userId),
         loanStore.ofPropertyWithError(supabase,propertyId,userId),
-        properties.oneWithError<PropRow>(supabase, propertyId, 'id,name,address,rental_mode,status_detail,enfia,sqm,value,year_built,floor,purchase_price,purchase_date,prop_type,ownership,postal_code', userId),
+        properties.oneWithError<PropRow>(supabase, propertyId, 'id,name,address,rental_mode,status_detail,enfia,sqm,value,obj_value,year_built,floor,purchase_price,purchase_date,prop_type,ownership,postal_code', userId),
         properties.listWithError<PropListRow>(supabase, userId, { columns: 'id,name,rental_mode,status_detail,enfia,sqm,ownership,prop_type,client_id,atak,ama' }),
         rentStore.ofUserWithError<PortfolioRentRow>(supabase,userId,`property_id,${rentStore.LEDGER_COLUMNS},base_rent,services_charge`),
         stayStore.ofUserWithError<PortfolioStayRow>(supabase,userId,`property_id,${stayStore.ACCOUNTING_COLUMNS}`),
@@ -449,7 +450,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   // γιατί ο ΕΝΦΙΑ έχει κατώφλια (400.000€, 500.000€, κλιμακωτή μείωση).
   const [enfiaSettings, updateEnfia, enfiaLoading] = useEnfiaSettings(propertyId, userId)
   const enfiaNow = useMemo(()=>enfiaForYear(enfiaSettings, year, {
-    stored: prop?.enfia, value: prop?.value, sqm: prop?.sqm,
+    stored: prop?.enfia, value: prop?.value, objValue: prop?.obj_value, sqm: prop?.sqm,
     yearBuilt: prop?.year_built, floor: prop?.floor, propType: prop?.prop_type,
     ownershipPct: prop?.ownership == null ? null : Number(prop.ownership),
     postalCode: prop?.postal_code,
@@ -556,6 +557,16 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
   const loanInterestYear = useMemo(()=>loans.reduce((s,l)=>s+loanYear(l).interest,0),[loans,loanYear])
 
   const businessMode = mode==='professional' && elp==='business'
+  // ── ΤΡΙΑ ΒΡΑΧΥΧΡΟΝΙΑ ΣΤΟ ΙΔΙΟ ΑΦΜ: ΧΡΕΙΑΖΕΤΑΙ ΕΝΑΡΞΗ ─────────────────────
+  // Το `propCount` χρέωνε ήδη το τέλος παρεπιδημούντων σαν επιχείρηση, ενώ η
+  // καρτέλα σιωπούσε για την έναρξη. Μόνο στον ιδιώτη: στον επαγγελματία το ΑΦΜ
+  // είναι του ιδιοκτήτη και το «σου» θα μιλούσε στον λάθος άνθρωπο. Ο ιδιώτης
+  // που έχει ήδη κάνει έναρξη δεν έχει διακόπτη εδώ, γι' αυτό η ειδοποίηση
+  // κλείνει ανά ακίνητο και το θυμάται μόνο ο περιηγητής.
+  const strNotice = useMemo(()=> (isShort && mode==='individual')
+    ? strBusinessNotice({ shortTermCount:propCount, individual:individualPerson, filesAsBusiness:businessMode, year })
+    : null, [isShort, mode, propCount, individualPerson, businessMode, year])
+  const [strNoticeSeen, setStrNoticeSeen] = useRememberedFlag(`acc_str3_${propertyId}`)
 
   // ── ΤΟ ΜΗΤΡΩΟ ΠΑΓΙΩΝ ΚΑΙ ΓΙΑΤΙ ΕΙΝΑΙ ΑΥΤΟ ΠΟΥ ΔΙΝΕΙ ΤΗΝ ΑΠΟΣΒΕΣΗ ──────────
   // Η απόσβεση κτιρίου υπολογιζόταν εδώ με μια γραμμή: αξία × 60% × 4%, ίδια
@@ -1090,7 +1101,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     cash, book, recentLedger, trial, jTotals, recon, rs, maxCash, dossierProps, dossier,
     doubleEntry, dossierExport, closing, lockErr, closingErr, printCertificate,
     officialRentCertificate, drift, lockYear, unlockYear, shareWithAccountant, revokeAccountantLink,
-    exportBundle,
+    exportBundle, strNotice, strNoticeSeen, setStrNoticeSeen,
   }
 }
 

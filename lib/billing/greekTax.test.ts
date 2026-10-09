@@ -7,7 +7,7 @@ import {
   bracketRows, BUSINESS_INCOME_ROWS_2026, BUSINESS_INCOME_BRACKETS_2026, taxRateLabel,
   selfEmployedMinNetIncome, SELF_EMPLOYED_MIN_NET_INCOME, LAST_KNOWN_MIN_INCOME_YEAR,
   climateLevyForNights, isHighSeasonMonth, shortTermNet, CLIMATE_LEVY_FROM_2025,
-  DEPOSIT_INTEREST_WITHHOLDING_RATE,
+  DEPOSIT_INTEREST_WITHHOLDING_RATE, isMunicipalTaxExempt,
 } from './greekTax';
 
 let passed = 0, failed = 0;
@@ -166,6 +166,15 @@ ok('levy rates', CLIMATE_LEVY_FROM_2025.small.high === 8 && CLIMATE_LEVY_FROM_20
 {
   ok('παρακράτηση στους τόκους καταθέσεων 15%', DEPOSIT_INTEREST_WITHHOLDING_RATE === 0.15);
   ok('2% μεικτό γίνεται 1,70% καθαρό', fp(0.02 * (1 - DEPOSIT_INTEREST_WITHHOLDING_RATE) * 100) === '1,70%');
+}
+
+// ── ΕΞΑΙΡΕΣΗ ΤΕΛΟΥΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ: ΤΟ ΟΡΙΟ ΕΧΕΙ ΟΝΟΜΑ ────────────────────
+// Το όριο έγινε σταθερά για να το μοιραστεί η ειδοποίηση έναρξης· η συμπεριφορά
+// μένει ίδια. Ως τώρα την κάλυπτε μόνο έμμεσα το shortTermTax.test.ts.
+{
+  ok('φυσικό πρόσωπο με 2 βραχυχρόνια: εξαίρεση', isMunicipalTaxExempt({ propertyCount: 2 }) === true);
+  ok('φυσικό πρόσωπο με 3 βραχυχρόνια: χωρίς εξαίρεση', isMunicipalTaxExempt({ propertyCount: 3 }) === false);
+  ok('νομικό πρόσωπο με 1: χωρίς εξαίρεση', isMunicipalTaxExempt({ propertyCount: 1, individual: false }) === false);
 }
 
 // ── report ───────────────────────────────────────────────────────────────────

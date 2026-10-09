@@ -25,6 +25,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { FEEDS } from '../_shared/feedAlert.mjs'
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean) {
@@ -111,6 +112,23 @@ ok('το issue διακοπής ανοίγει ΜΟΝΟ όταν υπήρχε δ
 const CI = readFileSync(join(ROOT, '.github', 'workflows', 'ci.yml'), 'utf8')
 ok('το ci.yml ελέγχει αδυναμίες εξαρτήσεων στο PR', /npm audit/.test(CI))
 ok('ο έλεγχος του PR κρίνει τα πακέτα παραγωγής', /npm audit[^\n]*--omit=dev/.test(CI))
+
+// ── 7. Κάθε τροφοδοσία που ρωτά ο έλεγχος υπάρχει στη βάση, κλειστή ─────────
+// Το `feedEntry` μετρά το «η συνάρτηση δεν υπάρχει» ως σπασμένη τροφοδοσία,
+// σωστά. Αλλά μια γραμμή FEEDS χωρίς μετανάστευση θα έστελνε email σε κάθε
+// ανάπτυξη, όχι μία φορά. Και η συνάρτηση δεν ανοίγει σε ανώνυμο.
+const ALL_SQL = SQLS.join('\n').toLowerCase()
+for (const f of FEEDS) {
+  ok(`η ${f.rpc} ορίζεται σε μετανάστευση`, ALL_SQL.includes(`create or replace function public.${f.rpc}()`))
+  ok(`η ${f.rpc} κλείνει σε public και anon`, ALL_SQL.includes(`revoke all on function public.${f.rpc}() from public, anon`))
+}
+{
+  const ref = lastBody('reference_data_health').toLowerCase()
+  ok('η reference_data_health κλείνει και στον authenticated',
+    /revoke all on function public\.reference_data_health\(\) from public, anon, authenticated/.test(ref))
+  ok('η reference_data_health ως security definer θα ήθελε κλειδωμένο search_path',
+    !/security definer/.test(ref) || /set search_path/.test(ref))
+}
 
 console.log(`\nhealth-check: ✓ ${passed} · ✗ ${failed}`)
 if (failed) process.exit(1)

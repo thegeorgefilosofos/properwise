@@ -1,0 +1,4 @@
+{
+  "max": 84,
+  "σημείωση": "Μόνο προς τα κάτω. Μετράει ζεύγη (οδηγία σίγασης, κανόνας). Αρχική μέτρηση 84 στις 08/10/2026: 59 react-hooks/exhaustive-deps, 21 @typescript-eslint/no-explicit-any, 4 @next/next/no-img-element. Οδηγία χωρίς κανόνα, σε μπλοκ για όλο το αρχείο ή ρύθμιση κανόνα μέσα σε σχόλιο απαγορεύονται εντελώς. Τις αχρησιμοποίητες οδηγίες τις πιάνει ήδη το ESLint 9 (reportUnusedDisableDirectives: warn) μέσα από το maxWarnings 0 του scripts/lint-ratchet.mjs."
+}

@@ -25,8 +25,10 @@ import {
   RECONCILE_NONE_LABEL, RECONCILE_NONE_HINT, type ReconcileQuestion,
 } from './scanDoc';
 import { inferRole } from '@/lib/contacts/roles';
+import { ensureDpa } from '@/lib/legal/dpa';
 import { hy } from '@/components/Hyphen';
 import { SAY } from '@/lib/core/dbError';
+import { OBJ_VALUE_WHOLE } from '@/lib/property/fields';
 
 // Το prompt ζει στο scanDoc.ts (μαζί με όλη τη μηχανή σάρωσης). Επανεξάγεται εδώ
 // επειδή οθόνες που δεν ανήκουν σε αυτή τη ροή (Ενοικιαστής, Αρχείο) το εισάγουν
@@ -73,7 +75,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 // Ποια πεδία δείχνει η φόρμα ανά τύπο εγγράφου.
-type FieldDef = { key: keyof ScannedDoc; label: string; type?: 'number' | 'date' };
+type FieldDef = { key: keyof ScannedDoc; label: string; type?: 'number' | 'date'; hint?: string };
 // ΤΑ ΠΕΝΤΕ ΠΕΔΙΑ ΤΑΙΡΙΑΣΜΑΤΟΣ είναι ΟΡΑΤΑ και διορθώσιμα για λογαριασμό/απόδειξη:
 // πάροχος, ΑΦΜ παρόχου, ποσό, ημερομηνία έκδοσης, περίοδος από–έως. Πριν, το ΑΦΜ
 // υπήρχε μόνο στο μπλοκ μισθωτηρίου και η περίοδος ήταν ελεύθερο κείμενο — δηλαδή
@@ -115,7 +117,8 @@ const TYPE_FIELDS: Record<DocType, FieldDef[]> = {
     { key: 'provider', label: 'Συμβολαιογράφος / Πηγή' },
     { key: 'purchase_price', label: 'Τίμημα αγοράς (€)', type: 'number' },
     { key: 'purchase_date', label: 'Ημερομηνία αγοράς', type: 'date' },
-    { key: 'obj_value', label: 'Αντικειμενική αξία (€)', type: 'number' },
+    // Η αξία ολόκληρου του ακινήτου: ο ΕΝΦΙΑ κόβει μόνος του το μερίδιο.
+    { key: 'obj_value', label: 'Αντικειμενική αξία (€)', type: 'number', hint: OBJ_VALUE_WHOLE },
     { key: 'atak', label: 'ΑΤΑΚ' },
     { key: 'year_built', label: 'Έτος κατασκευής', type: 'number' },
     { key: 'sqm', label: 'Τετραγωνικά (m²)', type: 'number' },
@@ -229,7 +232,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   // Πρόταση αποθήκευσης του εκδότη (προμηθευτή/επαγγελματία) στις Επαφές, μετά τη
   // σάρωση λογαριασμού/απόδειξης. Ποτέ αυτόματα — μόνο με ρητή επιβεβαίωση χρήστη.
   const [contactState, setContactState] =
-    useState<'cta' | 'saving' | 'saved' | 'exists' | 'error' | 'dismissed'>('cta');
+    useState<'cta' | 'saving' | 'saved' | 'exists' | 'error' | 'dpa' | 'dismissed'>('cta');
 
   const setF = (key: keyof ScannedDoc, raw: string) =>
     setEdited(p => {
@@ -329,6 +332,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
       // με το χέρι, ενώ ήταν τυπωμένα μπροστά του.
       const phone = (edited.provider_phone || '').trim() || null;
       const email = (edited.provider_email || '').trim() || null;
+      // Ο εκδότης μπαίνει στις Επαφές με όνομα, ΑΦΜ και τηλέφωνο: πρώτα η
+      // σύμβαση επεξεργασίας, όπως σε κάθε στοιχείο τρίτου (lib/legal/dpa.ts).
+      if (!(await ensureDpa(supabase))) { setContactState('dpa'); return; }
       const { error: insErr } = await contacts.add(supabase, propertyId, userId, {
         role, full_name: fullName, phone, email,
         notes: contacts.encodeNotes(extra, ''),
@@ -404,6 +410,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
               </div>
               {contactState === 'error' && (
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--warning)', marginBottom: 10 }}>Δεν αποθηκεύτηκε. Δοκίμασε ξανά.</div>
+              )}
+              {contactState === 'dpa' && (
+                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--warning)', marginBottom: 10 }}>Δεν αποθηκεύτηκε: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.</div>
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-start' }}>
                 <Btn variant="primary" onClick={saveContact} disabled={saving}>
@@ -635,7 +644,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                       || (k === 'period_to' && v.recommended.includes('period_from'))}
                     bad={v.invalid.includes(k) || (k === 'period_to' && v.invalid.includes('period_from'))}
                     // Ό,τι έγραφε το χαρτί για την περίοδο, ορατό δίπλα στις ημερομηνίες.
-                    hint={k === 'period_from' && edited.period ? `Στο χαρτί: ${edited.period}` : undefined}
+                    hint={k === 'period_from' && edited.period ? `Στο χαρτί: ${edited.period}` : f.hint}
                     onChange={val => setF(f.key, val)} />
                 );
               })}

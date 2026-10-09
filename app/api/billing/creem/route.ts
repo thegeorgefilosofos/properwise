@@ -14,6 +14,10 @@
 import { NextResponse } from 'next/server';
 import { merchant } from '@/lib/billing/merchant';
 import { applyMerchantEvent } from '@/lib/billing/morWebhook';
+import { reportRoute } from '@/lib/observability/route';
+
+/** Οι κωδικοί 5xx της κρίσης. Ο,τι άλλο δεν ταξιδεύει, γιατί δεν το ξέρουμε. */
+const KNOWN_5XX = new Set(['not_configured', 'lookup_failed', 'write_failed']);
 
 export async function POST(request: Request) {
   const raw = await request.text();
@@ -23,5 +27,14 @@ export async function POST(request: Request) {
     console.info(`[${merchant().id}]`, 'υπογραφή που δεν επαληθεύεται');
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
-  return applyMerchantEvent(raw);
+  // ΓΕΓΟΝΟΣ ΠΟΥ ΔΕΝ ΓΡΑΦΤΗΚΕ ΕΙΝΑΙ ΠΛΗΡΩΜΗ ΧΩΡΙΣ ΠΑΚΕΤΟ. Ο έμπορος θα
+  // ξαναδοκιμάσει, αλλά κάποιος πρέπει να το μάθει πριν από τον πελάτη. Η
+  // υπογραφή ελέγχθηκε από πάνω, οπότε κανένας άγνωστος δεν φτάνει ως εδώ.
+  const res = await applyMerchantEvent(raw);
+  if (res.status >= 500) {
+    const body = await res.clone().json().catch(() => null) as { error?: unknown } | null;
+    const code = typeof body?.error === 'string' && KNOWN_5XX.has(body.error) ? body.error : null;
+    void reportRoute('api/billing/creem', 'webhook not applied', { status: res.status, code });
+  }
+  return res;
 }

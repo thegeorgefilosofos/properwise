@@ -118,12 +118,19 @@ export function fill(s: Txt, f: Facts): string {
     return x.text;
   });
 }
-/** Ως HTML: διαφυγή και γεγονότα. Το `**…**` γίνεται τόνος. */
+/**
+ * ΤΟΝΟΙ ΠΟΥ ΔΕΝ ΕΙΝΑΙ ΣΕΙΡΑ. Το `**…**` παίρνει το χρώμα της σειράς· όπου η σειρά
+ * είναι και σειρά δεδομένων (το λιλά = Airbnb στα γραφήματα), ο τόνος σε έννοια της
+ * άλλης πλευράς διαβάζεται λάθος. `__…__` = πράσινο (ενοικιαστής), `~~…~~` = το μπλε
+ * της μάρκας (ουδέτερο: όρια, πληρότητα, διαφορά).
+ */
+const MARKS: [RegExp, string][] = [[/__(.+?)__/g, 'ok'], [/~~(.+?)~~/g, 'kb']];
+/** Ως HTML: διαφυγή και γεγονότα. Το `**…**` γίνεται τόνος (και τα MARKS). */
 export function html(s: Txt, f: Facts, cls = 'a'): string {
-  return esc(fill(s, f)).replace(/\*\*(.+?)\*\*/g, `<span class="${cls}">$1</span>`);
+  return MARKS.reduce((h, [re, c]) => h.replace(re, `<span class="${c}">$1</span>`), esc(fill(s, f)).replace(/\*\*(.+?)\*\*/g, `<span class="${cls}">$1</span>`));
 }
 /** Χωρίς σήμανση: για εναλλακτικό κείμενο, λεζάντες και ελέγχους. */
-export const plain = (s: Txt, f: Facts) => fill(s, f).replace(/\*\*(.+?)\*\*/g, '$1');
+export const plain = (s: Txt, f: Facts) => MARKS.reduce((h, [re]) => h.replace(re, '$1'), fill(s, f).replace(/\*\*(.+?)\*\*/g, '$1'));
 
 /** Κεφαλαία χωρίς τόνους, όπως γράφονται στα ελληνικά. */
 export const UP = (t: string) => t.toLocaleUpperCase('el').normalize('NFD').replace(/[́̈]/g, '').normalize('NFC');

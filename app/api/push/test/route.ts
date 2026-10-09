@@ -20,6 +20,7 @@ import * as devices from '@/lib/data/pushSubscriptions';
 import { sendPush, vapidKeys } from '@/lib/push/send';
 import { PUSH_URL } from '@/lib/push/message';
 import { endpointHost } from '@/lib/push/subscription';
+import { reportRoute, codeOf } from '@/lib/observability/route';
 
 export async function POST(request: Request) {
   if (!sameOrigin(request.headers)) {
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
   const { row: sub, error } = endpoint ? await devices.ownByEndpoint(supabase, endpoint) : { row: null, error: null };
   if (error) {
     console.info('[push/test] η συνδρομή δεν διαβάστηκε:', error.message);
+    void reportRoute('api/push/test', 'subscription not read', { status: 502, code: codeOf(error) });
     return NextResponse.json({ error: 'Η συσκευή δεν διαβάστηκε. Δοκίμασε ξανά σε λίγο.' }, { status: 502 });
   }
   if (!sub) return NextResponse.json({ error: 'Η συσκευή δεν είναι γραμμένη. Σβήσε και άναψε ξανά τον διακόπτη.' }, { status: 404 });

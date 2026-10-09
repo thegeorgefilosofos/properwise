@@ -22,6 +22,7 @@ import {
   taxpayerScope, sameTaxpayer,
 } from './index';
 import { computeYields } from '@/lib/billing/propertyFacts';
+import { estimateENFIAFromFacts } from '@/lib/billing/enfia';
 import { yields } from '@/lib/market/returns';
 import type { LedgerExpense } from '@/lib/expenses/ledger';
 import type { IncomeRent } from '@/lib/income/propertyIncome';
@@ -140,7 +141,38 @@ ok('Παγκράτι: ΕΝΦΙΑ του εκκαθαριστικού 340,00€',
 ok('δώδεκα δόσεις που αθροίζουν στο ετήσιο', ef.instalments.length === 12 && Math.round(ef.instalments.reduce((s, x) => s + x.amount, 0) * 100) / 100 === 340);
 ok('πρώτη δόση τέλος Μαρτίου, τελευταία Φεβρουάριο του επόμενου', ef.instalments[0].date.startsWith('2026-03') && ef.instalments[11].date.startsWith('2027-02'));
 const efEst = enfiaYear(ENFIA_DEFAULTS, YEAR, { value: 150000, sqm: 78, yearBuilt: 1998 });
-ok('χωρίς ποσό εκκαθαριστικού: «εκτίμηση» στην ετικέτα', efEst.label === ENFIA_LABELS.estimate || efEst.label === ENFIA_LABELS.none);
+ok('χωρίς ποσό εκκαθαριστικού: «εκτίμηση» στην ετικέτα', efEst.label === ENFIA_LABELS.estimateMarket || efEst.label === ENFIA_LABELS.none);
+
+// ── Η ΑΝΤΙΚΕΙΜΕΝΙΚΗ ΠΡΙΝ ΑΠΟ ΤΗΝ ΕΜΠΟΡΙΚΗ ─────────────────────────────────────
+// Η εκτίμηση έπαιρνε την εμπορική και αγνοούσε την αντικειμενική που έγραψε ο
+// χρήστης. Οι αναμενόμενες τιμές βγαίνουν από τη μηχανή, όχι γραμμένες με το χέρι.
+const engine = (f: Parameters<typeof estimateENFIAFromFacts>[0]) => estimateENFIAFromFacts({ taxYear: YEAR, ...f })!.annual;
+const BOTH = { value: 180000, objValue: 96000, sqm: 90, yearBuilt: 2000, floor: '2ος', propType: 'apartment' };
+const efObj = enfiaYear(ENFIA_DEFAULTS, YEAR, BOTH);
+ok('με αντικειμενική: η εκτίμηση βγαίνει από αυτήν', efObj.estimate === engine({ ...BOTH, value: 96000 }), `${efObj.estimate} ≠ ${engine({ ...BOTH, value: 96000 })}`);
+ok('με αντικειμενική: βάση «objective», ετικέτα «εκτίμηση»', efObj.estimateBasis === 'objective' && efObj.label === ENFIA_LABELS.estimate, `${efObj.estimateBasis} ${efObj.label}`);
+const efMkt = enfiaYear(ENFIA_DEFAULTS, YEAR, { value: 180000, sqm: 90 });
+ok('μόνο εμπορική: βάση «market» και η ετικέτα το λέει', efMkt.estimate > 0 && efMkt.estimateBasis === 'market' && efMkt.label === ENFIA_LABELS.estimateMarket, `${efMkt.estimateBasis} ${efMkt.label}`);
+for (const bad of [0, null, -96000, 'abc'] as const) {
+  const e = enfiaYear(ENFIA_DEFAULTS, YEAR, { value: 180000, objValue: bad, sqm: 90 });
+  ok(`αντικειμενική ${String(bad)}: πίσω στην εμπορική`, e.estimate === efMkt.estimate && e.estimateBasis === 'market', `${e.estimate} ${e.estimateBasis}`);
+}
+const efObjOnly = enfiaYear(ENFIA_DEFAULTS, YEAR, { value: null, objValue: 96000, sqm: 90 });
+ok('μόνο αντικειμενική: εκτίμηση εκεί που πριν δεν υπήρχε ποσό', efObjOnly.estimate > 0 && efObjOnly.estimate === engine({ value: 96000, sqm: 90 }) && efObjOnly.estimateBasis === 'objective' && efObjOnly.label === ENFIA_LABELS.estimate, `${efObjOnly.estimate} ${efObjOnly.label}`);
+const efDecl = enfiaYear(ENFIA_DEFAULTS, YEAR, { stored: 340, value: 180000, objValue: 96000, sqm: 90 });
+ok('το εκκαθαριστικό προηγείται της εκτίμησης', efDecl.annual === 340 && efDecl.label === ENFIA_LABELS.declared);
+const efLast = enfiaYear({ ...ENFIA_DEFAULTS, enfiaLastAnnual: '300' }, YEAR, { value: 180000, objValue: 96000, sqm: 90 });
+ok('το περσινό προηγείται της εκτίμησης', efLast.annual === 300 && efLast.label === ENFIA_LABELS.lastYear, `${efLast.annual} ${efLast.label}`);
+ok('χωρίς στοιχεία: καμία βάση', enfiaYear(ENFIA_DEFAULTS, YEAR, {}).estimateBasis === null);
+const efForm = enfiaYear({ ...ENFIA_DEFAULTS, enfiaSqm: '90', enfiaZone: '1501_2500' }, YEAR, { value: 180000, objValue: 96000, sqm: 90 });
+ok('εκτίμηση της φόρμας: καμία βάση από την καρτέλα', efForm.estimateFrom === 'form' && efForm.estimateBasis === null && efForm.label === ENFIA_LABELS.estimate, `${efForm.estimateFrom} ${efForm.estimateBasis}`);
+// Η αντικειμενική είναι ΟΛΟΚΛΗΡΟΥ του ακινήτου· το μερίδιο μπαίνει μία φορά, στη μηχανή.
+const efCo = enfiaYear(ENFIA_DEFAULTS, YEAR, { objValue: 450000, value: 900000, sqm: 200, ownershipPct: 50 });
+ok('συνιδιοκτησία: ολόκληρη αντικειμενική, μερίδιο στη μηχανή', efCo.estimate === engine({ value: 450000, sqm: 200, ownershipPct: 50 }), `${efCo.estimate}`);
+// Ο τύπος περνά και από τη Νόα, με τις ελληνικές ετικέτες της καρτέλας.
+ok('οικόπεδο με αντικειμενική: καμία εκτίμηση', enfiaYear(ENFIA_DEFAULTS, YEAR, { objValue: 96000, sqm: 400, propType: 'Οικόπεδο' }).estimate === 0);
+const efAux = enfiaYear(ENFIA_DEFAULTS, YEAR, { objValue: 20000, sqm: 20, propType: 'Αποθήκη πολυκατοικίας' });
+ok('αποθήκη πολυκατοικίας: ο βοηθητικός δρόμος της μηχανής', efAux.estimate > 0 && efAux.estimate === engine({ value: 20000, sqm: 20, propType: 'Αποθήκη πολυκατοικίας' }) && efAux.estimate !== engine({ value: 20000, sqm: 20 }), `${efAux.estimate}`);
 
 // ═══ 7. ΦΟΡΟΛΟΓΟΥΜΕΝΟΣ ══════════════════════════════════════════════════════
 const props = [{ id: 'a', client_id: null }, { id: 'b', client_id: null }];

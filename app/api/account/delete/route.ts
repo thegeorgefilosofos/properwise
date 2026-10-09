@@ -44,6 +44,7 @@ import { merchant } from '@/lib/billing/merchant';
 import * as billing from '@/lib/data/billing';
 import { SAY } from '@/lib/core/dbError';
 import { sessionNeedsSecondStep, MFA_SAY } from '@/lib/auth/mfa';
+import { reportRoute, codeOf } from '@/lib/observability/route';
 
 export async function POST(request: Request) {
   // ── ΠΡΩΤΑ: ΑΠΟ ΠΟΥ ΗΡΘΕ ΤΟ ΑΙΤΗΜΑ ──────────────────────
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
   const { state, error: readError } = await billing.planContext(supabase, user.id);
   if (readError) {
     console.info('[delete] το προφίλ χρέωσης δεν διαβάστηκε:', readError.message);
+    void reportRoute('api/account/delete', 'billing profile not read', { status: 502, code: codeOf(readError) });
     return NextResponse.json({ error: 'Η διαγραφή δεν ολοκληρώθηκε. Δοκίμασε ξανά σε λίγο.' }, { status: 502 });
   }
 
@@ -92,12 +94,15 @@ export async function POST(request: Request) {
     const { after, error } = await mor.subscriptionState(subscriptionId, process.env);
     if (error || !after) {
       console.info('[delete] η συνδρομή δεν διαβάστηκε:', error);
+      // Το `error` του εμπόρου είναι ελεύθερο κείμενο: μένει στο console.
+      void reportRoute('api/account/delete', 'subscription state not read', { status: 502 });
       return NextResponse.json({ error: 'Δεν μπορέσαμε να ελέγξουμε τη συνδρομή σου, οπότε δεν προχωρήσαμε: δεν θέλουμε να χρεώνεται κάρτα λογαριασμού που δεν υπάρχει. Δοκίμασε ξανά σε λίγο.' }, { status: 502 });
     }
     if (mor.needsCancelling(after.status)) {
       const out = await mor.cancel(subscriptionId, process.env);
       if (out.error) {
         console.info('[delete] η ακύρωση της συνδρομής απέτυχε:', out.error);
+        void reportRoute('api/account/delete', 'subscription not cancelled', { status: 502 });
         return NextResponse.json({ error: 'Η συνδρομή σου δεν ακυρώθηκε, οπότε δεν προχωρήσαμε στη διαγραφή: δεν θέλουμε να συνεχίσει να χρεώνεται η κάρτα σου. Ακύρωσε πρώτα τη συνδρομή από τη διαχείριση συνδρομής, ή δοκίμασε ξανά σε λίγο.' }, { status: 502 });
       }
       cancelled = true;
@@ -125,6 +130,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: MFA_SAY.ask }, { status: 403 });
     }
     console.info('[delete] η διαγραφή δεν ολοκληρώθηκε:', error.message);
+    void reportRoute('api/account/delete', 'delete_my_account failed', { status: 502, code: codeOf(error) });
     // Η ακύρωση δεν γυρίζει πίσω· ο άνθρωπος πρέπει να ξέρει ότι έγινε.
     const say = cancelled
       ? 'Η συνδρομή σου ακυρώθηκε, αλλά ο λογαριασμός δεν διαγράφηκε. Τα δεδομένα και τα αρχεία σου είναι ακόμη εδώ. Δοκίμασε ξανά σε λίγο.'

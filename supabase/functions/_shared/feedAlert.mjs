@@ -17,12 +17,35 @@
 //
 // ΚΑΘΑΡΟ .mjs ΧΩΡΙΣ Deno, όπως το probe.mjs: το φορτώνει η συνάρτηση άκρου και
 // το δοκιμάζει το Node.
+//
+// ΤΑ ΔΕΔΟΜΕΝΑ ΑΝΑΦΟΡΑΣ ΜΠΑΙΝΟΥΝ ΣΤΟΝ ΙΔΙΟ ΚΑΝΟΝΑ (08.10.2026). Ενα πρόγραμμα
+// δανείου έμεινε ζωντανό τρεις μήνες μετά τον κύκλο του και το βρήκε άνθρωπος,
+// τυχαία. Η `reference_data_health()` το κρίνει και ακολουθεί την ίδια μετάβαση.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Οι τροφοδοσίες που παρακολουθούνται, με το RPC που κρίνει την καθεμία. */
+/** Τι ισχύει ως τότε για τις τιμές τροφοδοσίας: η οθόνη κρατά τις τελευταίες. */
+const LAST_CONFIRMED = 'Ως τότε η εφαρμογή δείχνει τις τελευταίες επιβεβαιωμένες τιμές.'
+
+/**
+ * Όταν το RPC δεν διαβάστηκε δεν ξέρουμε τι λένε τα δεδομένα. Η οδηγία μιας
+ * τροφοδοσίας («γράψε μετανάστευση που κλείνει τη γραμμή») θα έστελνε τον
+ * χειριστή να αλλάξει δεδομένα που ίσως είναι σωστά, ενώ συνήθως λείπει η
+ * συνάρτηση: οι συναρτήσεις άκρου ανεβαίνουν πριν από το `supabase db push`.
+ */
+const UNREAD = 'Η κατάσταση δεν διαβάστηκε, οπότε δεν ξέρουμε αν κάτι στα δεδομένα είναι λάθος. Τι κάνεις: έλεγξε ότι εφαρμόστηκε η μετανάστευση της συνάρτησης ελέγχου (supabase db push) και ότι η βάση απαντά.'
+
+/**
+ * Οι τροφοδοσίες που παρακολουθούνται, με το RPC που κρίνει την καθεμία και τη
+ * φράση «ως τότε» της καθεμίας. Νέα τροφοδοσία μπαίνει ΤΕΛΕΥΤΑΙΑ: οι δοκιμές
+ * διαβάζουν τις δύο πρώτες κατά θέση.
+ */
 export const FEEDS = [
-  { path: 'feed:bank', rpc: 'bank_feed_health', name: 'Επιτόκια τραπεζών' },
-  { path: 'feed:market', rpc: 'market_feed_health', name: 'Δείκτες αγοράς (ΕΚΤ, Euribor)' },
+  { path: 'feed:bank', rpc: 'bank_feed_health', name: 'Επιτόκια τραπεζών', after: LAST_CONFIRMED },
+  { path: 'feed:market', rpc: 'market_feed_health', name: 'Δείκτες αγοράς (ΕΚΤ, Euribor)', after: LAST_CONFIRMED },
+  {
+    path: 'feed:reference', rpc: 'reference_data_health', name: 'Προγράμματα της καρτέλας Δάνεια',
+    after: 'Ως τότε η καρτέλα Δάνεια δείχνει το πρόγραμμα ως ενεργό. Τι κάνεις: έλεγξε τον φορέα και γράψε μετανάστευση που ενημερώνει το verified_at και την προθεσμία ή κλείνει τη γραμμή με status = ended.',
+  },
 ]
 
 const clip = (s, n = 300) => {
@@ -36,16 +59,27 @@ const clip = (s, n = 300) => {
  * είναι υγιής.
  */
 export function feedEntry(feed, row, error) {
-  if (error || !row) return { path: feed.path, ok: false, why: clip(`δεν διαβάστηκε η κατάσταση: ${error?.message ?? 'κενή απάντηση'}`) }
+  if (error || !row) return { path: feed.path, ok: false, unread: true, why: clip(`δεν διαβάστηκε η κατάσταση: ${error?.message ?? 'κενή απάντηση'}`) }
   return { path: feed.path, ok: Boolean(row.ok), why: clip(row.reason || (row.ok ? 'εντάξει' : 'χωρίς αιτία')) }
 }
 
-/** Η προηγούμενη κατάσταση κάθε τροφοδοσίας, από το `details` της τελευταίας γραμμής. */
+/**
+ * ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΟΧΙ ΔΥΟ (09.10.2026). Η μνήμη κρατούσε μόνο το `ok`, οπότε
+ * η αδιάβαστη τροφοδοσία θυμόταν ως «σπασμένη». Το email της έλεγε «δεν ξέρουμε
+ * αν κάτι στα δεδομένα είναι λάθος». Οταν μετά τη μετανάστευση το RPC
+ * διαβαζόταν και έβρισκε πρόγραμμα ληγμένο, το πέρασμα έβλεπε «σπασμένη →
+ * σπασμένη» και σώπαινε: η οδηγία «κλείσε τη γραμμή» δεν έφτανε ποτέ. Το ίδιο
+ * και ανάποδα: σπασμένη που γινόταν αδιάβαστη δεν έλεγε ότι χάθηκε ο έλεγχος.
+ * Γραμμές από πριν από το `unread` διαβάζονται ως «broken», όπως ως τώρα.
+ */
+const stateOf = (e) => (e.ok ? 'ok' : e.unread ? 'unread' : 'broken')
+
+/** Η προηγούμενη κατάσταση κάθε τροφοδοσίας ('ok', 'broken' ή 'unread'), από το `details` της τελευταίας γραμμής. */
 export function previousFeeds(details) {
   const prev = new Map()
   if (!Array.isArray(details)) return prev
   for (const d of details) {
-    if (d && typeof d.path === 'string' && d.path.startsWith('feed:')) prev.set(d.path, Boolean(d.ok))
+    if (d && typeof d.path === 'string' && d.path.startsWith('feed:')) prev.set(d.path, stateOf(d))
   }
   return prev
 }
@@ -53,12 +87,13 @@ export function previousFeeds(details) {
 /**
  * Το μήνυμα για όσες τροφοδοσίες άλλαξαν κατάσταση, ή `null`.
  *
- * Σπάει: ήταν υγιής ή δεν ξέραμε. Τώρα δεν είναι.
- * Ξαναστήνεται: ήταν σπασμένη. Τώρα είναι υγιής.
+ * Σπάει: ήταν υγιής, δεν ξέραμε ή ήταν χαλασμένη με τον άλλο τρόπο
+ * (αδιάβαστη ↔ σπασμένη). Τώρα δεν είναι υγιής.
+ * Ξαναστήνεται: ήταν σπασμένη ή αδιάβαστη. Τώρα είναι υγιής.
  */
 export function feedAlert(prev, entries) {
-  const broke = entries.filter(e => !e.ok && prev.get(e.path) !== false)
-  const healed = entries.filter(e => e.ok && prev.get(e.path) === false)
+  const broke = entries.filter(e => !e.ok && prev.get(e.path) !== stateOf(e))
+  const healed = entries.filter(e => e.ok && (prev.get(e.path) === 'broken' || prev.get(e.path) === 'unread'))
   if (!broke.length && !healed.length) return null
 
   const name = (e) => FEEDS.find(f => f.path === e.path)?.name ?? e.path
@@ -72,6 +107,15 @@ export function feedAlert(prev, entries) {
     lines.push('Τελείωσε το υπόλοιπο στον πάροχο AI. Σταματούν οι απαντήσεις της Νόας και η σάρωση εγγράφων.',
       'Τι κάνεις: console.anthropic.com · Billing · αγορά υπολοίπου και αυτόματη αναπλήρωση.', '')
   }
-  if (broke.length) lines.push('Ως τότε η εφαρμογή δείχνει τις τελευταίες επιβεβαιωμένες τιμές.')
+  // Μία φορά κάθε φράση: δύο σπασμένες τροφοδοσίες τιμών δεν τη λένε δύο φορές.
+  // Διαδρομή χωρίς γραμμή στο FEEDS κρατά την παλιά φράση, όπως πριν.
+  // Αποτυχία ανάγνωσης παίρνει το UNREAD αντί για την οδηγία της τροφοδοσίας.
+  // Το LAST_CONFIRMED μένει, γιατί ισχύει όπως κι αν έσπασε η τροφοδοσία τιμών.
+  const after = new Set(broke.flatMap(e => {
+    const a = FEEDS.find(f => f.path === e.path)?.after ?? LAST_CONFIRMED
+    if (!e.unread) return [a]
+    return a === LAST_CONFIRMED ? [a, UNREAD] : [UNREAD]
+  }))
+  for (const a of after) lines.push(a)
   return { subject, lines }
 }
