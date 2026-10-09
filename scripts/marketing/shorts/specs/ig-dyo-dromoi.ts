@@ -129,7 +129,7 @@ export const DYO_DROMOI: ShortSpec = {
       cue: 'Whoosh, βαθύ χτύπημα στη διαφορά, ανοδικό σάρωμα στη μεγέθυνση, ζεστή συγχορδία στη «ζώνη».',
       eyebrow: 'Όπως η Ελένη, το παράδειγμα της εφαρμογής', title: ['Με άλλα ενοίκια ήδη,', 'η διαφορά ~~μικραίνει~~'],
       ghost: { label: 'μόνο αυτό το διαμέρισμα', a: 'ghost.long', b: 'ghost.short' },
-      row: { label: 'Με άλλα ενοίκια {withEleni.otherGross} τον χρόνο', a: 'withEleni.long', b: 'withEleni.short', chips: ['κλιμάκιο {withEleni.margLong}', 'κλιμάκιο {withEleni.margShort}'] },
+      row: { label: 'Με άλλα ενοίκια {withEleni.otherGross} τον χρόνο', a: 'withEleni.long', b: 'withEleni.short', chips: ['ενοικιαστής', 'Airbnb'] },
       diff: { label: 'διαφορά τον χρόνο', value: 'withEleni.diff' },
       track: {
         ends: TRACK_ENDS, ghost: 'be.base',
@@ -180,7 +180,7 @@ export const DYO_DROMOI: ShortSpec = {
         '',
         'Και η μέρα έχει τον άδειο της μήνα. Ένας μήνας χωρίς ενοικιαστή σού στερεί {vacancy1} και τότε το Airbnb κερδίζει από {be11.ceil} πληρότητα.',
         '',
-        'Αν τα άλλα σου ενοίκια σε έχουν ήδη ανεβάσει κλιμάκιο, το νέο εισόδημα φορολογείται ψηλότερα. Με άλλα ενοίκια {withEleni.otherGross} τον χρόνο, κάθε νέο ευρώ του ενοικιαστή πάει στο {withEleni.margLong} και του Airbnb στο {withEleni.margShort}. Η διαφορά πέφτει στα {withEleni.diff} τον χρόνο και το όριο ανεβαίνει στο {withEleni.be}. Με μικρότερα άλλα ενοίκια τα νούμερα αλλάζουν.',
+        'Αν έχεις ήδη άλλα ενοίκια, το νέο εισόδημα μπαίνει πάνω τους: ξεκινά από το κλιμάκιο όπου σταματούν εκείνα και ανεβαίνει. Με άλλα ενοίκια {withEleni.otherGross} τον χρόνο ο ενοικιαστής φέρνει {withEleni.extra.long} φόρο και φτάνει ως το {withEleni.margLong}. Το Airbnb φέρνει {withEleni.extra.short} και φτάνει ως το {withEleni.margShort}. Η διαφορά πέφτει στα {withEleni.diff} τον χρόνο και το όριο ανεβαίνει στο {withEleni.be}. Με μικρότερα άλλα ενοίκια τα νούμερα αλλάζουν.',
         '',
         'Το όριο κινείται από {be11.ceil} ως {withEleni.be}.',
         '',

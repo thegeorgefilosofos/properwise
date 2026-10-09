@@ -66,7 +66,11 @@ export const BOOKED = ['be2025', 'diff2025', 'tax25Short', 'tax25Long', 'levyHig
 /** Οι σειρές που τρέφουν γραφήματα: τιμή JSON, κείμενο κενό (δεν τυπώνονται ποτέ ως έχουν). */
 export function series<T>(f: Facts, id: string): T { return JSON.parse(String(f[id]?.value ?? 'null')) as T; }
 
-export function dyoDromoiFacts(date: string): Facts {
+/**
+ * `otherGross`: άλλο ποσό άλλων ενοικίων από της Ελένης, ΜΟΝΟ για να δοκιμάζονται οι
+ * αυτοέλεγχοι (scripts/marketing/dyoDromoi.test.ts). Η παραγωγή καλεί χωρίς αυτό.
+ */
+export function dyoDromoiFacts(date: string, opts: { otherGross?: number } = {}): Facts {
   const out: Facts = {};
   const put = (x: Fact) => { if (out[x.id]) throw new Error(`Διπλό γεγονός «${x.id}».`); out[x.id] = x; };
   const geo = (id: string, v: unknown, source: string) => put(fact(id, JSON.stringify(v), '', source, { kind: 'text' }));
@@ -137,7 +141,7 @@ export function dyoDromoiFacts(date: string): Facts {
 
   // ── 6 · Με ένα ενοίκιο ήδη: η Ελένη του χθεσινού short ───────────────────
   const Y = yearAhead();
-  const otherGross = Y.gross, otherTaxable = otherGross * (1 - PRES);
+  const otherGross = opts.otherGross ?? Y.gross, otherTaxable = otherGross * (1 - PRES);
   if (municipalAccommodationTax(S.gross, { individual: true, propertyCount: 2 })) throw new Error('Με δύο ακίνητα πληρώνεται τέλος παρεπιδημούντων· η πλευρά Airbnb της Ελένης θέλει και αυτό.');
   const calcMonths = L.gross / I.monthlyRent;
   if (!Number.isInteger(calcMonths)) throw new Error('Η μακροχρόνια δεν είναι ακέραιοι μήνες.');
@@ -147,6 +151,19 @@ export function dyoDromoiFacts(date: string): Facts {
   if (Math.abs(pyLong.net - longNetE) > .005) throw new Error(`Ο υπολογιστής καθαρής απόδοσης βγάζει ${pyLong.net}, η σύγκριση ${longNetE}.`);
   const shortNetWith = (occ: number) => { const s = shortTermSide(I, occ); return s.gross - s.platformFee - s.running - marginalTaxOn(s.taxable, otherTaxable, year); };
   const extraShort = marginalTaxOn(S.taxable, otherTaxable, year);
+  // ΤΟ ΝΕΟ ΕΝΟΙΚΙΟ ΜΠΑΙΝΕΙ ΠΑΝΩ ΣΤΑ ΑΛΛΑ. Η λεζάντα λέει ότι ξεκινά από το κλιμάκιο όπου
+  // σταματούν τα άλλα ενοίκια και ανεβαίνει ως τον οριακό που γράφει, με τον φόρο που
+  // πραγματικά φέρνει. Η πρώτη έκδοση (08/10/2026) έγραφε «σε έχουν ήδη ανεβάσει κλιμάκιο…
+  // κάθε νέο ευρώ πάει στο 25%», ενώ τα άλλα ενοίκια μόνα τους έμεναν στο πρώτο κλιμάκιο·
+  // ο έλεγχος κοίταζε μόνο τον τελικό οριακό και δεν το έπιανε. Εδώ: ο οριακός των άλλων
+  // είναι ΧΑΜΗΛΟΤΕΡΟΣ από τον τελικό και ο φόρος του νέου πέφτει ΑΝΑΜΕΣΑ στα δύο ποσοστά
+  // (όχι όλος στον τελικό, όχι όλος στον αρχικό).
+  const margOther = marginalRate(otherTaxable);
+  const climbs = (taxable: number, extra: number) => {
+    const top = marginalRate(otherTaxable + taxable);
+    return top > margOther && extra > margOther * taxable && extra < top * taxable;
+  };
+  if (!climbs(L.taxable, extraLong) || !climbs(S.taxable, extraShort)) throw new Error('Το νέο ενοίκιο δεν ανεβαίνει κλιμάκιο πάνω από τα άλλα· η λεζάντα «ξεκινά από το κλιμάκιο όπου σταματούν εκείνα και ανεβαίνει» δεν στέκει.');
   const shortNetE = cents(S.gross - S.platformFee - S.running - extraShort);
   if (Math.abs(shortNetWith(I.occupancyPct) - shortNetE) > .005) throw new Error('Η πλευρά Airbnb της Ελένης δεν είναι τζίρος μείον προμήθεια, λειτουργικά και ο επιπλέον φόρος.');
   const diffE = cents(shortNetE - longNetE);
@@ -290,7 +307,7 @@ export function dyoDromoiFacts(date: string): Facts {
  * ετικέτα άξονα (η βάση από την οποία λυγίζει η καμπύλη), ΟΧΙ ως πρόταση.
  *
  * ΓΙΑΤΙ ΤΑ ΑΛΛΑ ΕΝΟΙΚΙΑ ΕΠΙΤΡΕΠΟΝΤΑΙ (έλεγχος της 08/10/2026). Το 56%, η διαφορά
- * και τα κλιμάκια της σκηνής «με άλλα ενοίκια» ισχύουν ΜΟΝΟ για αυτό το ποσό· χωρίς
+ * ο φόρος και τα κλιμάκια του «με άλλα ενοίκια» ισχύουν ΜΟΝΟ για αυτό το ποσό· χωρίς
  * αυτό διαβάζονται ως κανόνας για κάθε ιδιοκτήτη. Ένα άλλο ποσό θα ήθελε άλλη πηγή
  * από τον κώδικα (ή ψηφίο γραμμένο με το χέρι). Γράφεται ως είσοδος («με άλλα ενοίκια
  * Χ»), ποτέ με τη χθεσινή γωνία «μένουν Υ από Χ»: τα καθαρά της Ελένης μένουν απαγορευμένα.

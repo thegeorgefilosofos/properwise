@@ -283,11 +283,11 @@ export function stories(f: Facts): Story[] {
         <i class="s5bar g" style="left:${ga}px;width:${gb - ga}px;top:66px"></i><i class="s5o g" style="left:${ga - 14}px;top:55px"></i><i class="s5o g" style="left:${gb - 14}px;top:55px"></i>
         <span class="s5h">${T(f, 'Με άλλα ενοίκια {withEleni.otherGross} τον χρόνο')}</span>
         <i class="s5bar" style="left:${ra}px;width:${rb - ra}px;top:186px"></i><i class="s5o ok" style="left:${ra - 18}px;top:172px"></i><i class="s5o oth" style="left:${rb - 18}px;top:172px"></i>
-        <div class="s5v ok" style="left:${vl.toFixed(1)}px;width:${VW}px"><b class="num">${esc(V(f, 'withEleni.long').text)}</b><span>${T(f, 'ενοικιαστής · {withEleni.margLong}')}</span></div>
-        <div class="s5v oth l" style="left:${(rb - 20).toFixed(1)}px"><b class="num">${esc(V(f, 'withEleni.short').text)}</b><span>${T(f, 'Airbnb · {withEleni.margShort}')}</span></div>
+        <div class="s5v ok" style="left:${vl.toFixed(1)}px;width:${VW}px"><b class="num">${esc(V(f, 'withEleni.long').text)}</b><span>ενοικιαστής</span></div>
+        <div class="s5v oth l" style="left:${(rb - 20).toFixed(1)}px"><b class="num">${esc(V(f, 'withEleni.short').text)}</b><span>Airbnb</span></div>
         <div class="s5x"><span>διαφορά τον χρόνο</span><b class="num">${esc(V(f, 'withEleni.diff').text)}</b></div>
       </div>
-      <div class="s5e card" data-box style="margin-top:24px"><div class="s5et">Ο φόρος που φέρνει το νέο ενοίκιο</div>
+      <div class="s5e card" data-box style="margin-top:24px"><div class="s5et">Ο φόρος που φέρνει το νέο ενοίκιο πάνω στα άλλα</div>
         ${[['ενοικιαστής', 'withEleni.extra.long'], ['Airbnb', 'withEleni.extra.short']].map(([l, id], i) => `<div class="s5r"><span>${esc(l)}</span><i><b style="transform:scaleX(${(ex[i] / em).toFixed(4)})"></b></i><em class="num">${esc(V(f, id).text)}</em></div>`).join('')}
       </div>
       <div class="lead" style="margin-top:24px;font-size:30px">${T(f, 'Η Ελένη, ιδιοκτήτρια του ακινήτου επίδειξης της εφαρμογής, το νοικιάζει ήδη όλο τον χρόνο. Παράδειγμα, όχι υπαρκτό πρόσωπο. Με μικρότερα άλλα ενοίκια τα νούμερα αλλάζουν.')}</div>
@@ -318,7 +318,7 @@ export function stories(f: Facts): Story[] {
         .s5r i b{display:block;height:100%;border-radius:10px;background:${K.tax};transform-origin:0 50%}
         .s5r em{flex:none;width:190px;text-align:right;font-style:normal;font-size:34px;font-weight:800;color:${K.tax}}`, footer(f, SRC.apo)),
       sticker: { kind: 'Σύνδεσμος', text: 'Βάλε και τα άλλα ενοίκια', url: 'https://properwise.gr/kathari-apodosi?utm_source=instagram&utm_medium=story&utm_campaign=ig-dyo-dromoi', where: 'στο κάτω μέρος, πάνω από την πηγή' },
-      alt: P(f, 'Dumbbell: μόνο αυτό το διαμέρισμα (αχνό) και με άλλα ενοίκια {withEleni.otherGross} τον χρόνο: ενοικιαστής {withEleni.long}, Airbnb {withEleni.short}, διαφορά {withEleni.diff}. Ο φόρος που φέρνει το νέο ενοίκιο: {withEleni.extra.long} με ενοικιαστή, {withEleni.extra.short} με Airbnb.') });
+      alt: P(f, 'Dumbbell: μόνο αυτό το διαμέρισμα (αχνό) και με άλλα ενοίκια {withEleni.otherGross} τον χρόνο: ενοικιαστής {withEleni.long}, Airbnb {withEleni.short}, διαφορά {withEleni.diff}. Ο φόρος που φέρνει το νέο ενοίκιο πάνω στα άλλα: {withEleni.extra.long} με ενοικιαστή, {withEleni.extra.short} με Airbnb.') });
   }
 
   // ── 6 · Η κάρτα για αποθήκευση: τα όρια ΤΟΥ ΠΑΡΑΔΕΙΓΜΑΤΟΣ ──────────────────
