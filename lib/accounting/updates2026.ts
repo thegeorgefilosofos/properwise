@@ -10,6 +10,7 @@ import { MYAADE, GOV_SHORT_TERM } from '@/lib/tax/aade';
 import { feWhole, fpRate, grDateOf } from '@/lib/core/format';
 import { FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
+import { STR_SPECS_TEXT } from './strSpecs';
 import { ANAK_NAME, ANAK_KYA, ANAK_KYA_AMEND, ANAK_KYA_AMEND2, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_OTHER_TEXT, ANAK_SCOPE_TEXT, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT, ANAK_HREF } from './anakainisi2026';
 import {
   RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO, RENO_39B_LAW, RENO_39B_KYA,
@@ -98,7 +99,9 @@ export const REGULATORY_UPDATES_2026: RegulatoryUpdate[] = [
     id: 'str-technical-specs',
     area: 'short_term', audiences: ['short_term'],
     title: 'Βραχυχρόνια: προδιαγραφές καταλληλότητας και πρόστιμα',
-    summary: 'Από το 2026 τα ακίνητα βραχυχρόνιας πρέπει να πληρούν προδιαγραφές: ασφαλιστήριο αστικής ευθύνης, πυρασφάλεια (πυροσβεστήρες, ανιχνευτές καπνού, σήμανση διαφυγής), φυσικό φωτισμό/αερισμό, κλιματισμό στα υπνοδωμάτια, υπεύθυνη δήλωση ηλεκτρολόγου με ρελέ διαρροής, μυοκτονία/απεντόμωση, φαρμακείο, οδηγό με τηλέφωνα πρώτης ανάγκης. Μη εγγραφή/μη ανάρτηση ΑΜΑ επισύρει πρόστιμο 50% των ακαθάριστων εσόδων της χρονιάς, τουλάχιστον 5.000€ (διπλάσιο σε υποτροπή εντός έτους), ενώ οι παραβάσεις προδιαγραφών ξεκινούν από 5.000€ (έως ×4 σε υποτροπή).',
+    // Ο κατάλογος έρχεται από το lib/accounting/strSpecs.ts, το ίδιο με το
+    // πρότυπο εκκρεμοτήτων: εδώ έλειπαν οι χώροι κύριας χρήσης.
+    summary: `Από το 2026 τα ακίνητα βραχυχρόνιας πρέπει να πληρούν προδιαγραφές: ${STR_SPECS_TEXT}. Μη εγγραφή/μη ανάρτηση ΑΜΑ επισύρει πρόστιμο 50% των ακαθάριστων εσόδων της χρονιάς, τουλάχιστον 5.000€ (διπλάσιο σε υποτροπή εντός έτους), ενώ οι παραβάσεις προδιαγραφών ξεκινούν από 5.000€ (έως ×4 σε υποτροπή).`,
     effective: '2026', legalBasis: 'ν.5073/2023 και εφαρμοστικές αποφάσεις',
     sourceLabel: 'Βραχυχρόνια μίσθωση (gov.gr)', sourceHref: SRC.shortTerm, severity: 'action',
   },
@@ -231,7 +234,11 @@ export const UPDATE_ACTIONS: Readonly<Record<string, UpdateAction>> = {
   'str-technical-specs': {
     action: 'Συγκέντρωσε τα δικαιολογητικά καταλληλότητας βραχυχρόνιας',
     who: 'owner',
-    cost: 'Ασφαλιστήριο αστικής ευθύνης, πυρασφάλεια, δήλωση ηλεκτρολόγου, μυοκτονία, φαρμακείο. Πρόστιμα από 5.000€.',
+    // Γίνεται η σημείωση της εργασίας που φτιάχνει το obligationTasks.ts. Ελεγε
+    // πέντε στοιχεία, χωρίς κλιματισμό, ρελέ διαρροής, οδηγό τηλεφώνων και
+    // χώρους κύριας χρήσης: όποιος τα μάζευε και τσέκαρε την εργασία έμενε
+    // εκτεθειμένος. Ο κατάλογος έρχεται από το lib/accounting/strSpecs.ts.
+    cost: `${STR_SPECS_TEXT.charAt(0).toLocaleUpperCase('el')}${STR_SPECS_TEXT.slice(1)}. Πρόστιμα από 5.000€.`,
   },
 }
 

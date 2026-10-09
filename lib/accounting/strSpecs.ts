@@ -70,3 +70,22 @@ export const STR_SPECS: readonly StrSpec[] = [
   { id: 'first_aid', label: 'Φαρμακείο πρώτων βοηθειών', kind: 'equipment', priority: 'critical', recurring: 'none' },
   { id: 'emergency_phones', label: 'Οδηγός με τηλέφωνα πρώτης ανάγκης', kind: 'equipment', priority: 'high', recurring: 'none' },
 ];
+
+/**
+ * Ο ΚΑΤΑΛΟΓΟΣ ΣΕ ΜΙΑ ΠΡΟΤΑΣΗ, για τα κείμενα που τον λένε αντί να τον
+ * τσεκάρουν: η περίληψη και η σημείωση της εργασίας του `str-technical-specs`
+ * (lib/accounting/updates2026.ts· την εργασία τη φτιάχνει το
+ * lib/checklist/obligationTasks.ts) και η γνώση της Νόας (assistantPersona.ts).
+ *
+ * ΗΤΑΝ ΤΡΕΙΣ ΚΑΤΑΛΟΓΟΙ ΓΡΑΜΜΕΝΟΙ ΜΕ ΤΟ ΧΕΡΙ. Οταν το πρότυπο πήρε τις τέσσερις
+ * υποχρεώσεις που έλειπαν, η εργασία που εμφανίζεται μόνη της και η Νόα έλεγαν
+ * ακόμη «ασφαλιστήριο, πυρασφάλεια, δήλωση ηλεκτρολόγου, μυοκτονία,
+ * φαρμακείο». Οποιος μάζευε αυτά και τσέκαρε την εργασία έμενε χωρίς
+ * κλιματισμό, ρελέ, οδηγό τηλεφώνων και χώρους κύριας χρήσης.
+ *
+ * Πεζό το πρώτο γράμμα κάθε γραμμής και «·» ανάμεσα: η ετικέτα «Χώροι κύριας
+ * χρήσης, όχι βοηθητικοί» έχει δικό της κόμμα.
+ */
+export const STR_SPECS_TEXT: string = STR_SPECS
+  .map(s => s.label.charAt(0).toLocaleLowerCase('el') + s.label.slice(1))
+  .join('· ');

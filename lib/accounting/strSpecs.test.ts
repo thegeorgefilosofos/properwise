@@ -1,11 +1,14 @@
 // npx tsx lib/accounting/strSpecs.test.ts
 //
-// Ο ΚΑΤΑΛΟΓΟΣ ΤΗΣ ΒΡΑΧΥΧΡΟΝΙΑΣ ΚΑΙ ΤΟ ΠΡΟΤΥΠΟ ΠΟΥ ΤΟΝ ΚΟΥΒΑΛΑ. Κρίνονται τρία:
+// Ο ΚΑΤΑΛΟΓΟΣ ΤΗΣ ΒΡΑΧΥΧΡΟΝΙΑΣ ΚΑΙ ΤΟ ΠΡΟΤΥΠΟ ΠΟΥ ΤΟΝ ΚΟΥΒΑΛΑ. Κρίνονται πέντε:
 // ότι κανένας αριθμός ή νόμος δεν φτάνει στην οθόνη γραμμένος με το χέρι, ότι
 // μόνο τα έγγραφα κουβαλούν σημείωση λήξης, ότι κάθε περίπτωση του άρθρου 3
-// ν.5170/2025 έχει γραμμή και ότι το πρότυπο είναι ΑΚΡΙΒΩΣ ο κατάλογος. Η πρώτη
-// εκδοχή είχε εννέα γραμμές και της έλειπαν τέσσερις υποχρεώσεις του άρθρου.
+// ν.5170/2025 έχει γραμμή, ότι το πρότυπο είναι ΑΚΡΙΒΩΣ ο κατάλογος και ότι η
+// εργασία, η περίληψη και η Νόα λένε κάθε γραμμή του. Η πρώτη εκδοχή είχε
+// εννέα γραμμές και της έλειπαν τέσσερις υποχρεώσεις του άρθρου.
 import { STR_SPECS } from './strSpecs'
+import { UPDATE_ACTIONS, REGULATORY_UPDATES_2026 } from './updates2026'
+import { KNOWLEDGE_PACKS } from '@/app/dashboard/components/assistantPersona'
 import { TEMPLATES } from '@/app/dashboard/components/checklist/model'
 import type { FieldContext } from '@/lib/property/fields'
 
@@ -36,6 +39,30 @@ for (const [letter, ids] of Object.entries(ARTICLE_3)) {
   ok(`περίπτωση (${letter}) του άρθρου 3: λείπουν ${missing.join(', ') || 'κανένα'}`, missing.length === 0)
 }
 ok('καμία γραμμή εκτός άρθρου 3', STR_SPECS.every(s => Object.values(ARTICLE_3).some(ids => ids.includes(s.id))))
+
+// ΤΑ ΚΕΙΜΕΝΑ ΠΟΥ ΛΕΝΕ ΤΟΝ ΚΑΤΑΛΟΓΟ, ΟΧΙ ΜΟΝΟ ΤΟ ΠΡΟΤΥΠΟ. Η σημείωση της εργασίας
+// που φτιάχνεται μόνη της για κάθε ακίνητο βραχυχρόνιας (UPDATE_ACTIONS, μέσω
+// του obligationTasks.ts), η περίληψη του ίδιου κανόνα και η γνώση της Νόας
+// έλεγαν ακόμη τον παλιό κατάλογο: χωρίς κλιματισμό, ρελέ διαρροής, οδηγό
+// τηλεφώνων και χώρους κύριας χρήσης. Κάθε υποχρέωση του άρθρου 3 πρέπει να
+// είναι σε καθένα από τα τρία, με τη διατύπωση της ετικέτας της.
+{
+  const low = (t: string) => t.toLocaleLowerCase('el')
+  const tax = KNOWLEDGE_PACKS.tax
+  const at = tax.indexOf('ΠΡΟΔΙΑΓΡΑΦΕΣ ΒΡΑΧΥΧΡΟΝΙΑΣ:')
+  const texts: [string, string][] = [
+    ['η σημείωση της εργασίας', UPDATE_ACTIONS['str-technical-specs']?.cost ?? ''],
+    ['η περίληψη του κανόνα', REGULATORY_UPDATES_2026.find(u => u.id === 'str-technical-specs')?.summary ?? ''],
+    ['η γνώση της Νόας', at < 0 ? '' : tax.slice(at, tax.indexOf('\n', at))],
+  ]
+  for (const [where, text] of texts) {
+    ok(`${where}: βρέθηκε`, text.length > 0)
+    const missing = Object.values(ARTICLE_3).flat()
+      .map(id => STR_SPECS.find(s => s.id === id)?.label ?? id)
+      .filter(label => !low(text).includes(low(label)))
+    ok(`${where}: λείπουν ${missing.join(', ') || 'κανένα'}`, missing.length === 0)
+  }
+}
 
 const tpl = TEMPLATES.str_specs
 ok('υπάρχει το πρότυπο', !!tpl)
