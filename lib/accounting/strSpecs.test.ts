@@ -10,7 +10,7 @@
 // έγραφε όλες τις περιπτώσεις α΄ έως δ΄ αλλά χρέωνε μόνο τέσσερα στοιχεία στο
 // άρθρο 3 από 01/10/2025 και τα υπόλοιπα στον ν.5073/2023.
 import { readFileSync } from 'node:fs'
-import { STR_SPECS } from './strSpecs'
+import { STR_SPECS, STR_SPECS_LAW, STR_SPECS_FEK, STR_SPECS_FROM } from './strSpecs'
 import { UPDATE_ACTIONS, REGULATORY_UPDATES_2026 } from './updates2026'
 import { KNOWLEDGE_PACKS } from '@/app/dashboard/components/assistantPersona'
 import { TEMPLATES } from '@/app/dashboard/components/checklist/model'
@@ -83,7 +83,15 @@ ok('η ετικέτα δεν γράφει νόμο ούτε αριθμό', !/ν\
 // Η σελίδα δεν εξάγει τις πηγές της (το page.tsx του Next δέχεται μόνο
 // συγκεκριμένα exports), οπότε διαβάζεται ως κείμενο.
 {
+  // Οι σταθερές της πράξης και της ημερομηνίας μπαίνουν με τις τιμές τους,
+  // ώστε ο έλεγχος να κρίνει αυτό που διαβάζει ο επισκέπτης.
+  const slot = (name: string) => '$' + '{' + name + '}'
   const page = readFileSync('app/odigos/vraxyxronia-ama-prodiagrafes-2026/page.tsx', 'utf8')
+    .replaceAll(slot('STR_SPECS_LAW'), STR_SPECS_LAW)
+    .replaceAll(slot('STR_SPECS_FEK'), STR_SPECS_FEK)
+    .replaceAll(slot('STR_SPECS_FROM'), STR_SPECS_FROM)
+  ok('η ημερομηνία ισχύος είναι η 01/10/2025 του άρθρου', STR_SPECS_FROM === '01/10/2025')
+  ok('η πράξη είναι το άρθρο 3 ν.5170/2025', STR_SPECS_LAW === 'άρθρο 3 ν.5170/2025')
   const from = page.indexOf('const SOURCES')
   const sources = [...page.slice(from, page.indexOf('];', from)).matchAll(/^\s*['`](.*)['`],\s*$/gm)].map(m => m[1])
   const specs = sources.filter(x => /^Προδιαγραφ/.test(x))
@@ -93,10 +101,25 @@ ok('η ετικέτα δεν γράφει νόμο ούτε αριθμό', !/ν\
     src.includes('άρθρο 3 ν.5170/2025') && src.includes('α΄ έως δ΄') && src.includes('01/10/2025'))
   ok('η πηγή των προδιαγραφών δεν τις χρεώνει στον ν.5073/2023', !src.includes('5073/2023'))
   ok('οι πηγές του οδηγού γράφουν την εγκύκλιο 19567/25.09.2025', sources.some(x => x.includes('19567/25.09.2025')))
+  const fines = sources.filter(x => /^Πρόστιμα για παραβάσεις των προδιαγραφών/.test(x))
+  ok('το πρόστιμο των προδιαγραφών χρεώνεται στο άρθρο 3 ν.5170/2025, όχι στον ν.5073/2023',
+    fines.length === 1 && fines[0].includes('άρθρο 3 ν.5170/2025') && !fines[0].includes('5073/2023'))
   const body = page.slice(page.indexOf('<H2 {...S.specs} />'), page.indexOf('<H2 {...S.fines} />'))
   ok('το κείμενο δίνει την ημερομηνία ισχύος σε όλες τις περιπτώσεις α΄ έως δ΄',
     body.includes('01/10/2025') && body.includes('α΄ έως δ΄'))
   ok('το κείμενο δεν τοποθετεί την αρχή των προδιαγραφών στο 2026', !/Το 2026 κάθε ακίνητο/.test(body))
+  ok('η εισαγωγή δεν λέει ότι οι προδιαγραφές είναι αλλαγή του 2026', !page.includes('Το 2026 ισχύουν δύο αλλαγές'))
+}
+
+// ── Ο κανόνας στην εφαρμογή: ίδια πράξη και ίδια ημερομηνία ────────────────
+// Η εργασία νόμου τυπώνει «Ισχύς: … Βάση: …». Ως τις 09/10/2026 έγραφε «2026»
+// και «ν.5073/2023» πάνω από τον κατάλογο του άρθρου 3 ν.5170/2025.
+{
+  const rule = REGULATORY_UPDATES_2026.find(u => u.id === 'str-technical-specs')
+  ok('ο κανόνας ισχύει από την ημερομηνία του άρθρου', rule?.effective === STR_SPECS_FROM)
+  ok('η βάση του κανόνα είναι το άρθρο 3 ν.5170/2025', !!rule?.legalBasis.includes(STR_SPECS_LAW))
+  ok('η βάση του κανόνα δεν είναι ο ν.5073/2023', !rule?.legalBasis.includes('5073/2023'))
+  ok('η περίληψη δεν λέει «Από το 2026»', !rule?.summary.startsWith('Από το 2026'))
 }
 
 console.log(`${fail ? '✗' : '✓'} προδιαγραφές βραχυχρόνιας: ${pass} περνούν${fail ? `, ${fail} αποτυγχάνουν` : ''}`)

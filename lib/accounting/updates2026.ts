@@ -10,7 +10,7 @@ import { MYAADE, GOV_SHORT_TERM } from '@/lib/tax/aade';
 import { feWhole, fpRate, grDateOf } from '@/lib/core/format';
 import { FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
-import { STR_SPECS_TEXT } from './strSpecs';
+import { STR_SPECS_TEXT, STR_SPECS_LAW, STR_SPECS_FEK, STR_SPECS_FROM } from './strSpecs';
 import { ANAK_NAME, ANAK_KYA, ANAK_KYA_AMEND, ANAK_KYA_AMEND2, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_OTHER_TEXT, ANAK_SCOPE_TEXT, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT, ANAK_HREF } from './anakainisi2026';
 import {
   RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO, RENO_39B_LAW, RENO_39B_KYA,
@@ -101,8 +101,8 @@ export const REGULATORY_UPDATES_2026: RegulatoryUpdate[] = [
     title: 'Βραχυχρόνια: προδιαγραφές καταλληλότητας και πρόστιμα',
     // Ο κατάλογος έρχεται από το lib/accounting/strSpecs.ts, το ίδιο με το
     // πρότυπο εκκρεμοτήτων: εδώ έλειπαν οι χώροι κύριας χρήσης.
-    summary: `Από το 2026 τα ακίνητα βραχυχρόνιας πρέπει να πληρούν προδιαγραφές: ${STR_SPECS_TEXT}. Μη εγγραφή/μη ανάρτηση ΑΜΑ επισύρει πρόστιμο 50% των ακαθάριστων εσόδων της χρονιάς, τουλάχιστον 5.000€ (διπλάσιο σε υποτροπή εντός έτους), ενώ οι παραβάσεις προδιαγραφών ξεκινούν από 5.000€ (έως ×4 σε υποτροπή).`,
-    effective: '2026', legalBasis: 'ν.5073/2023 και εφαρμοστικές αποφάσεις',
+    summary: `Από ${STR_SPECS_FROM} τα ακίνητα βραχυχρόνιας πρέπει να πληρούν προδιαγραφές: ${STR_SPECS_TEXT}. Μη εγγραφή/μη ανάρτηση ΑΜΑ επισύρει πρόστιμο 50% των ακαθάριστων εσόδων της χρονιάς, τουλάχιστον 5.000€ (διπλάσιο σε υποτροπή εντός έτους), ενώ οι παραβάσεις προδιαγραφών ξεκινούν από 5.000€ (έως ×4 σε υποτροπή).`,
+    effective: STR_SPECS_FROM, legalBasis: `${STR_SPECS_LAW} (${STR_SPECS_FEK}), προδιαγραφές και πρόστιμό τους · άρθρο 111 παρ. 5 ν.4446/2016, πρόστιμο ΑΜΑ`,
     sourceLabel: 'Βραχυχρόνια μίσθωση (gov.gr)', sourceHref: SRC.shortTerm, severity: 'action',
   },
   {
