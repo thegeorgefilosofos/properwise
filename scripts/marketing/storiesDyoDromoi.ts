@@ -38,14 +38,31 @@ const W = 900;
 
 // ═══ ΚΑΘΕ ΨΗΦΙΟ ΑΠΟ ΓΕΓΟΝΟΣ ═════════════════════════════════════════════════
 /**
+ * Οι αριθμοί ενός κειμένου ως ΟΛΟΚΛΗΡΑ κομμάτια: ψηφία με τελείες, κόμματα και
+ * κάθετες, μαζί με ό,τι κολλά από πίσω (€, % ή γράμματα, όπως στο «3ο»).
+ */
+const NUM = /[\d.,/]*\d[\d.,/]*(?:[€%]|\p{L}+)?/gu;
+const numTokens = (s: string) => (s.match(NUM) ?? []).map(g => g.replace(/^[.,/]+|[.,/]+$/g, ''));
+/**
+ * Ο αριθμός είναι ολόκληρο κομμάτι κειμένου γεγονότος. Γυμνός (χωρίς €, % ή γράμμα)
+ * δέχεται και το ίδιο κομμάτι με € ή %: το «37,55» και το «€» μπαίνουν σε χωριστά
+ * στοιχεία της σκηνής. ΠΟΤΕ υποσυμβολοσειρά: το «8€» δεν βγαίνει από το «1.318€».
+ */
+const knownNum = (t: string, toks: Set<string>) => toks.has(t) || (!/[€%\p{L}]$/u.test(t) && (toks.has(`${t}€`) || toks.has(`${t}%`)));
+
+/**
  * Διαβάζει τη σελίδα ως κείμενο (χωρίς <style>, <script> και ιδιότητες) και
- * σταματά σε κάθε ομάδα ψηφίων που δεν βρίσκεται μέσα σε κείμενο γεγονότος. Ό,τι
+ * σταματά σε κάθε αριθμό που δεν είναι ολόκληρο κομμάτι κειμένου γεγονότος. Ό,τι
  * βρίσκεται μέσα σε `data-of="<γεγονός>"` πρέπει να ανήκει σε ΑΥΤΟ το γεγονός·
  * ό,τι μέσα σε `data-date` είναι μέρα ημερολογίου.
+ *
+ * ΟΛΟΚΛΗΡΟ ΚΟΜΜΑΤΙ, ΟΧΙ ΥΠΟΣΥΜΒΟΛΟΣΕΙΡΑ (έλεγχος της 09/10/2026). Η πρώτη έκδοση
+ * ρωτούσε `includes`: το «ΤΑΚΚ 8€ τη νύχτα» περνούσε επειδή υπήρχε γεγονός «1.318€»,
+ * το «έκπτωση 5%» επειδή υπήρχε «25%», το «από 3 ακίνητα» επειδή υπήρχε «3ο».
  */
 export function assertDigitsFromFacts(where: string, html: string, f: Facts) {
   const body = html.replace(/<style[\s\S]*?<\/style>/g, '').replace(/<script[\s\S]*?<\/script>/g, '');
-  const texts = Object.values(f).map(x => x.text).filter(Boolean);
+  const toks = new Set(Object.values(f).flatMap(x => numTokens(x.text)));
   const VOID = /^(br|img|input|meta|link|hr|col|source|path|rect|circle|line|polyline|polygon|ellipse|stop|feGaussianBlur|feTurbulence|feColorMatrix)$/i;
   const stack: { tag: string; of?: string; date?: boolean }[] = [];
   const bad: string[] = [];
@@ -54,11 +71,10 @@ export function assertDigitsFromFacts(where: string, html: string, f: Facts) {
       const txt = m[5].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ');
       if (!/\d/.test(txt)) continue;
       const of = [...stack].reverse().find(s => s.of)?.of, date = stack.some(s => s.date);
-      for (const g of txt.match(/[\d.,/]*\d[\d.,/]*(?:€|%)?/g) ?? []) {
-        const t = g.replace(/[.,]$/, '');
+      for (const t of numTokens(txt)) {
         if (date) continue;
-        if (of) { const x = f[of]; if (!x || !x.text.includes(t)) bad.push(`«${t}» μέσα στο data-of="${of}"`); continue; }
-        if (!texts.some(x => x.includes(t))) bad.push(`«${t}» στο «${txt.trim().slice(0, 40)}»`);
+        if (of) { const x = f[of]; if (!x || !knownNum(t, new Set(numTokens(x.text)))) bad.push(`«${t}» μέσα στο data-of="${of}"`); continue; }
+        if (!knownNum(t, toks)) bad.push(`«${t}» στο «${txt.trim().slice(0, 40)}»`);
       }
       continue;
     }

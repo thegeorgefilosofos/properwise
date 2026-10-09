@@ -7,7 +7,8 @@ import { dyoDromoiFacts } from './dyoDromoiFacts';
 import { build } from './shorts/engine';
 import { renderTexts } from './shorts/texts';
 import { DYO_DROMOI } from './shorts/specs/ig-dyo-dromoi';
-import { stories } from './storiesDyoDromoi';
+import { stories, assertDigitsFromFacts } from './storiesDyoDromoi';
+import { fact, type Facts } from './shorts/kit';
 import { svlInput } from './seiresData';
 import { marginalRate, municipalAccommodationTax, isMunicipalTaxExempt, RENTAL_TAX_BRACKETS_2026 as B } from '../../lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE as PRES } from '../../lib/billing/presumptive';
@@ -61,6 +62,27 @@ const t = (id: string) => { const x = f[id]; if (!x) throw new Error(`λείπε
   ok('η κάρτα λέει ΦΠΑ και τεκμαρτή έκπτωση', /ΦΠΑ/u.test(txt) && /χωρίς τεκμαρτή έκπτωση/u.test(txt));
   ok('η κάρτα λέει ποιον βαραίνει το τέλος', /το βαραίνει ο επισκέπτης/u.test(txt));
   ok('η πηγή του ορίου δεν το λέει «πρώτο ακίνητο»', !/πρώτο ακίνητο/u.test(f['mun3.from'].source));
+}
+
+// ═══ 3 · ΚΑΘΕ ΑΡΙΘΜΟΣ ΕΙΝΑΙ ΟΛΟΚΛΗΡΟ ΚΟΜΜΑΤΙ ΓΕΓΟΝΟΤΟΣ, ΟΧΙ ΥΠΟΣΥΜΒΟΛΟΣΕΙΡΑ ════════
+// Η πύλη ρωτούσε `includes`: ένα «8€» γραμμένο με το χέρι περνούσε επειδή υπήρχε το
+// γεγονός «1.318€». Τα γεγονότα εδώ είναι μικρά και πλαστά· οι αληθινές σελίδες
+// περνούν από την ίδια πύλη μέσα στο stories() της ενότητας 2.
+{
+  const F: Facts = Object.fromEntries(([['a', '1.318€'], ['b', '25%'], ['c', '3ο'], ['d', '600,25€'], ['e', '37,55€'], ['g', '31/12/2026']] as const)
+    .map(([id, text]) => [id, fact(id, text, text, 'δοκιμή')]));
+  const gate = (html: string) => { try { assertDigitsFromFacts('δοκιμή', html, F); return true; } catch { return false; } };
+  ok('«8€» δεν περνά επειδή υπάρχει «1.318€»', !gate('<p>ΤΑΚΚ 8€ τη νύχτα</p>'));
+  ok('«1.31» δεν περνά επειδή υπάρχει «1.318€»', !gate('<p>1.31 τη νύχτα</p>'));
+  ok('«5%» δεν περνά επειδή υπάρχει «25%»', !gate('<p>τεκμαρτή έκπτωση 5%</p>'));
+  ok('«3» δεν περνά επειδή υπάρχει «3ο»', !gate('<p>από 3 ακίνητα</p>'));
+  ok('«60» δεν περνά επειδή υπάρχει «600,25€»', !gate('<p>έως 60 ημέρες</p>'));
+  ok('«0€» δεν περνά μέσα σε data-of άλλου ποσού', !gate('<p><b data-of="e">0€</b></p>'));
+  ok('«7,55€» δεν περνά μέσα σε data-of του «37,55€»', !gate('<p><b data-of="e">7,55€</b></p>'));
+  ok('ολόκληρο ποσό περνά', gate('<p>1.318€ και 25% και το 3ο</p>'));
+  ok('ποσό χωρισμένο από το € σε δύο στοιχεία περνά', gate('<p><b>37,55</b><small>€</small></p>'));
+  ok('ολόκληρο ποσό μέσα στο δικό του data-of περνά', gate('<p><b data-of="e">37,55€</b></p>'));
+  ok('ημερομηνία γεγονότος με τελεία στο τέλος περνά', gate('<p>Λήγει 31/12/2026.</p>'));
 }
 
 console.log(`dyoDromoi: ${pass} πέρασαν, ${fail} απέτυχαν`);
