@@ -5,7 +5,10 @@
 // σταθερά «3%» χωρίς πηγή, αλλά προκύπτει από τον δείκτη τιμών κατοικιών της
 // Τράπεζας της Ελλάδος. Αν κάποιος αλλάξει τον δείκτη, ο έλεγχος πρέπει να δείξει
 // ότι άλλαξε και η προεπιλογή — και όχι να το μάθει ο χρήστης στην οθόνη.
-import { HISTORY_INDEX, HISTORY_ANCHORS, historyPriceCagr, BENCHMARKS, REGIONS } from './greekMarket';
+import { HISTORY_INDEX, HISTORY_ANCHORS, historyPriceCagr, BENCHMARKS, REGIONS, YIELD_LEVERS } from './greekMarket';
+import { FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '../billing/greekTax';
+import { PRESUMPTIVE_DEDUCTION_RATE, presumptiveDeductionRateForYear } from '../billing/presumptive';
+import { fpRate, grDateOf } from '../core/format';
 
 let pass = 0, fail = 0;
 function ok(name: string, cond: boolean) { if (cond) { pass++; } else { fail++; console.error(`✗ ${name}`); } }
@@ -64,6 +67,34 @@ ok('όλες οι εναλλακτικές έχουν και 10ετία και 2
 ok('κάθε περιοχή έχει μεικτή απόδοση σε λογικό εύρος', REGIONS.every(r => r.grossYield >= 2.5 && r.grossYield <= 8));
 ok('κάθε περιοχή έχει note', REGIONS.every(r => r.note.trim().length > 10));
 ok('τα κλειδιά περιοχών είναι μοναδικά', new Set(REGIONS.map(r => r.key)).size === REGIONS.length);
+
+// ═══ Ο ΜΟΧΛΟΣ ΤΗΣ ΤΡΑΠΕΖΑΣ ΛΕΕΙ ΤΗΝ ΗΜΕΡΟΜΗΝΙΑ ΤΗΣ ΜΗΧΑΝΗΣ ═════════════════
+// Έγραφε «Από την 1η Απριλίου 2026 … με μετρητά η έκπτωση του 5% χάνεται» και
+// «Αυξάνει αμέσως την καθαρή απόδοση», ενώ η μηχανή δίνει την έκπτωση στα
+// μετρητά ως την έναρξη της κύρωσης. Κάθε ημερομηνία και κάθε ποσοστό της
+// κάρτας πρέπει να είναι αυτά που υπολογίζουν τον φόρο.
+{
+  const bank = YIELD_LEVERS.find(l => l.key === 'bank_rent');
+  ok('υπάρχει ο μοχλός της τράπεζας', !!bank);
+  const from = grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT);
+  const deduction = fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100);
+  const kept = fpRate((1 - PRESUMPTIVE_DEDUCTION_RATE) * 100);
+  const text = bank ? [bank.gain, bank.impact, bank.detail, bank.risk].join(' ') : '';
+  ok(`η κάρτα λέει από πότε μετράει η τράπεζα (${from})`, !!bank && bank.impact.includes(from) && bank.detail.includes(from));
+  const dates = text.match(/\d{2}\/\d{2}\/\d{4}/g) ?? [];
+  ok(`καμία άλλη ημερομηνία από την έναρξη της κύρωσης: ${dates.join(', ')}`, dates.length > 0 && dates.every(d => d === from));
+  ok('καμία ημερομηνία γραμμένη ολογράφως («1η Απριλίου 2026»)', !/\d+η\s+\p{L}+\s+\d{4}/u.test(text));
+  ok('η απόφαση της ΑΑΔΕ που ορίζει την έναρξη', !!bank && bank.detail.includes('Α.1187/2026'));
+  ok(`το μέγεθος: φόρος στο ${kept}`, bank?.gain === `φόρος στο ${kept}`);
+  ok(`η έκπτωση ${deduction} στην πρόταση`, !!bank && bank.impact.includes(deduction));
+  const pcts = text.match(/\d+(,\d+)?%/g) ?? [];
+  ok(`κάθε ποσοστό της κάρτας από τη σταθερά: ${pcts.join(', ')}`, pcts.every(x => x === deduction || x === kept));
+  // Η μηχανή: πριν από την έναρξη η έκπτωση δίνεται και με μετρητά. Η κάρτα δεν
+  // λέει πια ότι η τράπεζα ανεβάζει «αμέσως» την απόδοση.
+  ok('η μηχανή δίνει την έκπτωση στα μετρητά πριν από την έναρξη',
+    presumptiveDeductionRateForYear(FIRST_YEAR_BANK_RECEIPT - 1, false) === PRESUMPTIVE_DEDUCTION_RATE);
+  ok('η κάρτα δεν υπόσχεται άμεση άνοδο της απόδοσης', !/αμέσως/.test(text));
+}
 
 console.log(fail === 0 ? `✓ greekMarket: ${pass} έλεγχοι πέρασαν` : `✗ greekMarket: ${fail} απέτυχαν από ${pass + fail}`);
 if (fail > 0) process.exit(1);
