@@ -32,20 +32,38 @@ const R = (n: number) => fn(roundHalfUp(n, 0));
 const pc = (r: number) => fn(roundHalfUp(r * 100, 2));
 const k = (n: number) => `${n / 1000}k`;
 
+// Οι προτάσεις του πακέτου που μιλούν για μετρητά και ποιες από αυτές λένε ότι
+// τα μετρητά χάνουν την έκπτωση. Χωρίς τόνους και πεζά: «χάνεται», «ΧΑΝΕΤΑΙ».
+const flat = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const sentencesOf = (pack: string) => pack.split(/(?<=[.·;])\s+/);
+const cashSentences = (pack: string) => sentencesOf(pack).filter(x => /μετρητ/.test(flat(x)));
+const loses = (t: string) =>
+  /(100%|χωρις( την)?( τεκμαρτη)? εκπτωσ|χωρις \d|χαν(ετ|ει|ουν)|δεν (της )?δινεται|σε ολο το)/.test(t);
+
 // ── 1. ΤΑ ΕΠΕΞΕΡΓΑΣΜΕΝΑ ΠΑΡΑΔΕΙΓΜΑΤΑ ────────────────────────────────────────
 for (const g of [6000, 12000, 18000, 24000, 30000, 48000]) {
   const t = incomeStatement({ regime: 'individual_longterm', grossIncome: g, rentsPaidViaBank: true }).incomeTax;
   ok(`ενοίκιο ${R(g)} → ${R(t)}`, p.includes(`${R(g)} → ${R(t)}`));
 }
+// Τα μετρητά από το έτος μετά την έναρξη της κύρωσης, όλο το έτος μετά από
+// αυτήν. ΟΧΙ το incomeStatement: δεν ξέρει το έτος και μηδενίζει την
+// έκπτωση όποτε rentsPaidViaBank είναι false (lib/assistant/evalSet.ts).
+const cashYear = FIRST_YEAR_BANK_RECEIPT + 1;
+const cashTaxable = 20000 * (1 - presumptiveDeductionRateForYear(cashYear, false));
+const cashTax = rentalIncomeTax(cashTaxable, rentalBracketsForYear(cashYear));
+const cashExample = `φορολογητέο ${R(cashTaxable)} → ${R(cashTax)}`;
+// Ό,τι λείπει από τις προτάσεις των μετρητών: το παράδειγμα (βρίσκεται από τα
+// νούμερα της μηχανής) και κάθε πρόταση που λέει ότι τα μετρητά χάνουν την
+// έκπτωση πρέπει να γράφουν την ημερομηνία της κύρωσης.
+const cashUndated = (pack: string, from: string): string[] => {
+  const example = sentencesOf(pack).filter(x => x.includes(cashExample));
+  const undated = [...new Set([...example, ...cashSentences(pack).filter(x => loses(flat(x)))])]
+    .filter(x => !x.includes(from)).map(x => `«${x.slice(0, 90)}…»`);
+  return example.length ? undated : [`δεν βρέθηκε η πρόταση με «${cashExample}»`, ...undated];
+};
 {
-  // Τα μετρητά από το έτος μετά την έναρξη της κύρωσης, όλο το έτος μετά από
-  // αυτήν. ΟΧΙ το incomeStatement: δεν ξέρει το έτος και μηδενίζει την
-  // έκπτωση όποτε rentsPaidViaBank είναι false (lib/assistant/evalSet.ts).
-  const cashYear = FIRST_YEAR_BANK_RECEIPT + 1;
-  const cashTaxable = 20000 * (1 - presumptiveDeductionRateForYear(cashYear, false));
-  const cashTax = rentalIncomeTax(cashTaxable, rentalBracketsForYear(cashYear));
   ok(`μετρητά ${cashYear}: χωρίς έκπτωση`, cashTaxable === 20000);
-  ok('μετρητά: φορολογητέο και φόρος', p.includes(`φορολογητέο ${R(cashTaxable)} → ${R(cashTax)}`));
+  ok('μετρητά: φορολογητέο και φόρος', p.includes(cashExample));
   const sole = incomeStatement({ regime: 'business', businessForm: 'sole', grossIncome: 30000, itemizedExpenses: 0 });
   ok('ατομική: φόρος και προκαταβολή',
     p.includes(`κέρδος ${R(30000)} → φόρος ${R(sole.incomeTax)} (κλίμακα άρθρου 15) + προκαταβολή ${pc(ADVANCE_TAX_RATE_SOLE)}% (${R(sole.advanceTax)})`));
@@ -101,11 +119,42 @@ for (const q of [
   // του 2026 οδηγούσε σε φόρο χωρίς την έκπτωση, που ισχύει ακόμη. Κάθε
   // πρόταση όλου του πακέτου που λέει ότι τα μετρητά χάνουν την έκπτωση πρέπει
   // να λέει μέσα της και από πότε.
-  const flat = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  const loses = (t: string) => /μετρητ/.test(t) && /(100%|χωρις (την εκπτωση|\d)|χανεται)/.test(t);
-  const sentences = p.split(/(?<=[.·;])\s+/).filter(x => loses(flat(x)));
-  ok('βρέθηκαν οι προτάσεις για τα μετρητά', sentences.length >= 2);
-  for (const x of sentences) ok(`μετρητά με ημερομηνία: «${x.slice(0, 90)}…»`, x.includes(from));
+  //
+  // ΠΡΩΤΑ ΤΑ ΝΟΥΜΕΡΑ, ΜΕΤΑ Η ΔΙΑΤΥΠΩΣΗ. Η πρώτη εκδοχή έβρισκε την πρόταση
+  // μόνο από τη διατύπωση («100%», «χωρίς την έκπτωση», «χωρίς 5», «χάνεται»).
+  // Το «Με ΜΕΤΡΗΤΑ (χωρίς έκπτωση): φορολογητέο …» χωρίς ημερομηνία, ή απλώς
+  // «Με ΜΕΤΡΗΤΑ: φορολογητέο …», έμενε πράσινο. Τώρα η πρόταση με το
+  // παράδειγμα των μετρητών βρίσκεται από το φορολογητέο και τον φόρο που
+  // βγάζει η μηχανή, όπως κι αν είναι γραμμένη. Οι υπόλοιπες βρίσκονται από ένα
+  // πλατύτερο ταίριασμα. Ο ίδιος έλεγχος τρέχει πιο κάτω πάνω σε πειραγμένα
+  // αντίγραφα του πακέτου, ώστε να φαίνεται ότι πιάνει τις αναδιατυπώσεις.
+  const problems = cashUndated(p, from);
+  ok(`όλες οι προτάσεις για τα μετρητά λένε από πότε${problems.length ? `: ${problems.join(' | ')}` : ''}`,
+    problems.length === 0);
+  ok('βρέθηκαν οι τρεις προτάσεις που λένε ότι τα μετρητά χάνουν την έκπτωση',
+    cashSentences(p).filter(x => loses(flat(x))).length >= 3);
+
+  // Η πρόταση του παραδείγματος, ξαναγραμμένη χωρίς ημερομηνία με τους
+  // τρόπους που περνούσαν την πρώτη εκδοχή του ελέγχου μαζί με την αρχική
+  // διατύπωση του λάθους. Τα νούμερα έρχονται από τη μηχανή.
+  const example = sentencesOf(p).find(x => x.includes(cashExample)) ?? '';
+  ok('βρέθηκε η πρόταση του παραδείγματος των μετρητών', example.length > 0);
+  for (const undated of [
+    `Με ΜΕΤΡΗΤΑ (χωρίς ${pc(PRESUMPTIVE_DEDUCTION_RATE)}%): ${cashExample} (= δημοσιευμένο παράδειγμα)·`,
+    `Με ΜΕΤΡΗΤΑ (χωρίς έκπτωση): ${cashExample} (= δημοσιευμένο παράδειγμα)·`,
+    `Με ΜΕΤΡΗΤΑ (χωρίς τεκμαρτή έκπτωση): ${cashExample} (= δημοσιευμένο παράδειγμα)·`,
+    `Με ΜΕΤΡΗΤΑ: ${cashExample} (= δημοσιευμένο παράδειγμα)·`,
+  ]) {
+    ok(`πιάνεται χωρίς ημερομηνία: «${undated.slice(0, 50)}…»`, cashUndated(p.replace(example, undated), from).length > 0);
+  }
+  // Και οι άλλες δύο, χωρίς ημερομηνία και με άλλα λόγια.
+  for (const undated of [
+    'Με μετρητά δεν δίνεται η τεκμαρτή έκπτωση.',
+    'Με μετρητά χάνεις την έκπτωση και πληρώνεις φόρο σε όλο το ενοίκιο.',
+    'Όποιος εισπράττει μετρητά φορολογείται χωρίς την τεκμαρτή έκπτωση.',
+  ]) {
+    ok(`πιάνεται χωρίς ημερομηνία: «${undated}»`, cashUndated(`${p}. ${undated}`, from).length > 0);
+  }
 }
 
 console.log(fail === 0 ? `✓ promptTaxFacts: ${pass} έλεγχοι πέρασαν` : `✗ promptTaxFacts: ${fail} απέτυχαν από ${pass + fail}`);
