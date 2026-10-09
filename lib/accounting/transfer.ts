@@ -101,13 +101,25 @@ export interface TransferResult {
   netProceeds?: number
 }
 
-function firstHomeExemption(input: TransferInput): number {
+/** Απαλλαγή πρώτης κατοικίας για την οικογενειακή κατάσταση: το ποσό της αξίας που δεν φορολογείται. */
+export function firstHomeExemption(input: Pick<TransferInput, 'married' | 'children'>): number {
   const base = input.married ? FIRST_HOME_EXEMPTION_MARRIED : FIRST_HOME_EXEMPTION_SINGLE
   const kids = Math.max(0, Math.floor(input.children ?? 0))
   // +25.000€ για καθένα από τα δύο πρώτα τέκνα, +30.000€ για το τρίτο και κάθε επόμενο.
   const firstTwo = Math.min(kids, 2) * FIRST_HOME_EXEMPTION_CHILD_FIRST_TWO
   const rest = Math.max(0, kids - 2) * FIRST_HOME_EXEMPTION_CHILD_THIRD_PLUS
   return base + firstTwo + rest
+}
+
+/**
+ * Φόρος μεταβίβασης ΜΟΝΟ επί του υπερβάλλοντος της απαλλαγής. Η απαλλαγή
+ * πρώτης κατοικίας αφαιρεί ποσό από τη βάση, δεν είναι κατώφλι «όλα ή τίποτα»:
+ * ο άγαμος που αγοράζει 220.000€ φορολογείται για τις 20.000€ πάνω από το όριο.
+ * Η καρτέλα Δάνειο το είχε γραμμένο αλλιώς, με δικό της αντίγραφο του πίνακα,
+ * και χρέωνε όλη την τιμή μόλις περνούσε το όριο (6.798€ αντί για 618€).
+ */
+export function transferTaxOn(value: number, exemption = 0): number {
+  return centsOr0(Math.max(0, pos(value) - pos(exemption)) * TRANSFER_TAX_RATE)
 }
 
 /** Δομημένη εκτίμηση κόστους αγοράς ή πώλησης. */
@@ -123,8 +135,7 @@ export function transferCosts(input: TransferInput): TransferResult {
       lines.push({ key: 'vat', label: 'ΦΠΑ νεόδμητου (24%)', amount: centsOr0(taxBase * NEW_BUILD_VAT_RATE), note: 'Αντί φόρου μεταβίβασης, για νεόδμητα από κατασκευαστή.' })
     } else {
       const exemption = input.firstHome ? firstHomeExemption(input) : 0
-      const taxable = Math.max(0, taxBase - exemption)
-      lines.push({ key: 'transferTax', label: 'Φόρος μεταβίβασης (3,09%)', amount: centsOr0(taxable * TRANSFER_TAX_RATE),
+      lines.push({ key: 'transferTax', label: 'Φόρος μεταβίβασης (3,09%)', amount: transferTaxOn(taxBase, exemption),
         note: input.firstHome ? `Μετά απαλλαγή πρώτης κατοικίας έως ${fe(Math.round(exemption))}.` : 'Επί της μεγαλύτερης μεταξύ τιμήματος και αντικειμενικής.' })
     }
     // Συμβολαιογραφικά (κλιμακωτά ~0,8% + ΦΠΑ), δικηγόρος, μεσίτης, Κτηματολόγιο, πιστοποιητικά.

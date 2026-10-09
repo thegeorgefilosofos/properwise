@@ -30,9 +30,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TenantsRow } from '@/lib/supabase/tables';
-// ΤΟ `rows` ΠΑΙΡΝΕΙ ΨΕΥΔΩΝΥΜΟ: το αρχείο έχει ήδη παραμέτρους και τοπικές
-// μεταβλητές με αυτό το όνομα (`sortCurrentFirst(rows)`, `const rows = …`).
-import { read, rows as readRows } from './read';
+import { read, type ReadResult } from './read';
 import type { DbError } from '@/lib/supabase/writeResult';
 
 const TABLE = 'tenants';
@@ -121,24 +119,50 @@ export async function currentWithError<T = Partial<TenantsRow>>(
 export async function currentAll<T = Partial<TenantsRow>>(
   db: Db, propertyId: string, columns: string, userId?: string,
 ): Promise<T[]> {
-  const rows = await ofProperty<T>(db, propertyId, withStatus(columns), userId);
-  return sortCurrentFirst(rows as (T & TenantStatus & { lease_start?: string | null; created_at?: string | null })[]) as T[];
+  // ΕΝΑ ΜΟΝΟΠΑΤΙ: η απλή εκδοχή είναι η ίδια ανάγνωση, χωρίς το σφάλμα της.
+  return (await currentAllWithError<T>(db, propertyId, columns, userId)).rows;
+}
+
+/**
+ * Οι τωρινοί μισθωτές, με το σφάλμα ορατό. Η Επισκόπηση βγάζει από εδώ το
+ * ενοίκιο του Ταμείου: αποτυχία διαβαζόταν ως «κανένας μισθωτής» και το ποσό
+ * έπεφτε σιωπηλά στον στόχο ενοικίου ή στο μηδέν.
+ */
+export async function currentAllWithError<T = Partial<TenantsRow>>(
+  db: Db, propertyId: string, columns: string, userId?: string,
+): Promise<ReadResult<T>> {
+  const { rows, error } = await ofPropertyWithError<T>(db, propertyId, withStatus(columns), userId);
+  return { rows: sortCurrentFirst(rows as (T & TenantStatus & { lease_start?: string | null; created_at?: string | null })[]) as T[], error };
 }
 
 /** Κάθε μισθωτής του ακινήτου, παρελθόντες μαζί, νεότερη καταχώρηση πρώτη. */
 export async function ofProperty<T = Partial<TenantsRow>>(
   db: Db, propertyId: string, columns: string, userId?: string,
 ): Promise<T[]> {
+  return (await ofPropertyWithError<T>(db, propertyId, columns, userId)).rows;
+}
+
+/** Κάθε μισθωτής του ακινήτου, με το σφάλμα ορατό. */
+export async function ofPropertyWithError<T = Partial<TenantsRow>>(
+  db: Db, propertyId: string, columns: string, userId?: string,
+): Promise<ReadResult<T>> {
   let q = db.from(TABLE).select(columns).eq('property_id', propertyId);
   if (userId) q = q.eq('user_id', userId);
-  return readRows<T>(q.order('created_at', { ascending: false }));
+  return read<T>(q.order('created_at', { ascending: false }));
 }
 
 /** Οι μισθωτές όλου του χαρτοφυλακίου ενός χρήστη. */
 export async function ofUser<T = Partial<TenantsRow>>(
   db: Db, userId: string, columns: string,
 ): Promise<T[]> {
-  return readRows<T>(db.from(TABLE).select(columns).eq('user_id', userId)
+  return (await ofUserWithError<T>(db, userId, columns)).rows;
+}
+
+/** Οι μισθωτές όλου του χαρτοφυλακίου, με το σφάλμα ορατό: από αυτούς βγαίνει ο φόρος του Ε1. */
+export async function ofUserWithError<T = Partial<TenantsRow>>(
+  db: Db, userId: string, columns: string,
+): Promise<ReadResult<T>> {
+  return read<T>(db.from(TABLE).select(columns).eq('user_id', userId)
     .order('created_at', { ascending: false }));
 }
 

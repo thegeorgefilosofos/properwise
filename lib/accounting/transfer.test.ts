@@ -1,5 +1,5 @@
 // Τεστ για το κόστος αγοράς/πώλησης ακινήτου (lib/accounting/transfer.ts).
-import { transferCosts, TRANSFER_TAX_RATE, CADASTRE_RATE, CADASTRE_FIXED } from './transfer'
+import { transferCosts, transferTaxOn, firstHomeExemption, TRANSFER_TAX_RATE, CADASTRE_RATE, CADASTRE_FIXED } from './transfer'
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }
@@ -77,6 +77,20 @@ const near = (a: number, b: number, eps = 0.5) => Math.abs(a - b) <= eps
 {
   const r = transferCosts({ side: 'buy', price: NaN as never })
   ok('NaN price → 0 costs safe', r.price === 0 && r.totalCosts >= 0)
+}
+
+// ── Η απαλλαγή αφαιρεί ποσό, δεν είναι κατώφλι «όλα ή τίποτα» ──────────────
+// Η καρτέλα Δάνειο χρέωνε όλη την τιμή μόλις περνούσε το όριο: 6.798€ αντί για
+// 618€ στα 220.000€ για άγαμο. Ο κανόνας ζει πλέον μόνο εδώ.
+{
+  const single = firstHomeExemption({ married: false, children: 0 })
+  ok('exemption: άγαμος 200.000€', single === 200000)
+  ok('exemption: έγγαμος με 3 τέκνα 330.000€', firstHomeExemption({ married: true, children: 3 }) === 330000)
+  ok('transferTaxOn: 220.000€ με απαλλαγή 200.000€ → 618€', transferTaxOn(220000, single) === 618)
+  ok('transferTaxOn: κάτω από το όριο → 0', transferTaxOn(180000, single) === 0)
+  ok('transferTaxOn: χωρίς απαλλαγή → 3,09% όλης της αξίας', transferTaxOn(220000) === 6798)
+  const fh = transferCosts({ side: 'buy', price: 220000, firstHome: true })
+  ok('transferCosts και transferTaxOn συμφωνούν', fh.lines.find(l => l.key === 'transferTax')!.amount === transferTaxOn(220000, single))
 }
 
 console.log(`transfer.ts — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)

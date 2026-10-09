@@ -42,11 +42,16 @@
 import { T } from '@/components/Theme';
 import { itemDue, overdueCount, type AgendaItem } from '@/lib/home/agenda';
 
-export default function AgendaPanel({ items, total, onNavigate }: {
+export default function AgendaPanel({ items, total, onNavigate, incomplete = false }: {
   items: AgendaItem[];
   /** Πόσα υπάρχουν συνολικά — η λίστα δείχνει τα πρώτα. */
   total: number;
   onNavigate: (tab: string) => void;
+  /**
+   * Δεν διαβάστηκαν όλες οι πηγές. Τότε το κενό δεν είναι «τίποτα»: είναι
+   * «δεν ξέρουμε». Ως τις 08/10/2026 η αποτυχία έγραφε «Δεν εκκρεμεί τίποτα».
+   */
+  incomplete?: boolean;
 }) {
   const late = overdueCount(items);
   // «Σε σειρά προθεσμίας» μόνο όταν υπάρχουν προθεσμίες· αλλιώς το πλήθος.
@@ -79,7 +84,9 @@ export default function AgendaPanel({ items, total, onNavigate }: {
 
           Ο τίτλος μόνος του είναι η πληροφορία. Μία γραμμή, στη ροή της κάρτας. */}
       {items.length === 0 ? (
-        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)', margin: '4px 0 8px' }}>Δεν εκκρεμεί τίποτα.</p>
+        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)', margin: '4px 0 8px' }}>
+          {incomplete ? 'Δεν φορτώθηκαν όλες οι εκκρεμότητες.' : 'Δεν εκκρεμεί τίποτα.'}
+        </p>
       ) : (
         <ul className="agenda-list">
           {items.map(it => {
@@ -121,6 +128,9 @@ export default function AgendaPanel({ items, total, onNavigate }: {
             );
           })}
         </ul>
+      )}
+      {incomplete && items.length > 0 && (
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-tertiary)', margin: '4px 0 8px' }}>Η λίστα μπορεί να μην είναι πλήρης.</p>
       )}
 
       {/* Το υπόλοιπο της λίστας ΔΕΝ ξαναγράφεται εδώ: ζει στις «Εκκρεμότητες»,

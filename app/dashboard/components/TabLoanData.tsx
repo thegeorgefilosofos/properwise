@@ -10,6 +10,7 @@ import { EXOIKONOMO_2025, ANAVATHMIZO, openEnergyPrograms, joinGreek } from '@/l
 import { athensToday, athensParts } from '@/lib/core/time'
 import { feWhole, fpRate, grDateOf } from '@/lib/core/format'
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/renovation39b'
+import { firstHomeExemption, transferTaxOn } from '@/lib/accounting/transfer'
 import { ANAK_NAME, ANAK_FUND, ANAK_KYA, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_CAP, ANAK_MAX_SQM, ANAK_MAX_SQM_LARGE_FAMILY, ANAK_PERMIT_BY, ANAK_ENERGY_CLASS, ANAK_YEARS, ANAK_PCT_I, ANAK_ELIGIBILITY_CLOSED_TO, ANAK_ELIGIBILITY_OPEN_TO, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT, ANAK_HREF } from '@/lib/accounting/anakainisi2026'
 
 export type LoanType = 'purchase'|'first_home'|'renovation'|'energy'|'investment'|'auction'|'construction'|'commercial'|'land'|'refinance'
@@ -417,18 +418,11 @@ export const mergeBanks = (live: RawBank[]): ComparisonBank[] =>
 // ο πίνακας θα έδειχνε τα παλιά κλιμάκια και το ποσό δίπλα του τα νέα — σιωπηλά,
 // χωρίς κανένα σφάλμα. Η κλίμακα για εμφάνιση ζει στο RENTAL_TAX_ROWS_2026 και η
 // έκπτωση στο presumptiveDeductionRateForYear (lib/billing/consolidate).
-// ΚΑΙ ΤΟ `fma_rate:0.03` ΕΦΥΓΕ, ΓΙΑΤΙ ΗΤΑΝ ΔΕΥΤΕΡΟ ΚΑΙ ΛΑΘΟΣ ΑΝΤΙΓΡΑΦΟ.
-// Ο φόρος μεταβίβασης είναι 3,09% (3% συν 3% υπέρ ΟΤΑ επί του φόρου) και ζει
-// στο `TRANSFER_TAX_RATE` του lib/accounting/transfer.ts, που τον υπολογίζει
-// σωστά. Εδώ καθόταν ένα 0,03 που δεν το διάβαζε κανείς: την ημέρα που θα το
-// διάβαζε κάποιος, θα έβγαζε φόρο μικρότερο κατά 3%.
-//
-// Μαζί έφυγαν ο ΦΠΑ νεόδμητων, η σημείωση αναστολής και τα δύο πεδία για την
-// έκπτωση τόκων: γραμμένα, εξαγόμενα, ποτέ διαβασμένα. Μένει η απαλλαγή
-// πρώτης κατοικίας, που τη διαβάζει η συνάρτηση από κάτω.
-export const TAX_DATA = {
-  fma_exemption:{single:200000,married:250000,child1:25000,child2:25000,child3:30000,max_sqm:120},
-}
+// ΚΑΙ ΤΟ `TAX_DATA` ΕΦΥΓΕ, ΕΝΑ ΑΝΤΙΓΡΑΦΟ ΑΡΓΟΤΕΡΑ. Το `fma_rate:0.03` είχε
+// φύγει ως δεύτερο και λάθος αντίγραφο του 3,09%· έμενε ο πίνακας απαλλαγής
+// πρώτης κατοικίας, ίδιος με τον lib/accounting/transfer.ts αλλά με ΑΛΛΟΝ
+// κανόνα δίπλα του: η καρτέλα φορολογούσε όλη την τιμή μόλις περνούσε το
+// όριο. Τώρα όριο και φόρος έρχονται από το transfer.ts.
 
 export type LoanDoc = { name: string; where?: string }
 
@@ -629,11 +623,12 @@ export function calcAmortization(amount:number,annualRate:number,years:number):A
 }
 
 export function calcFmaExemption(maritalStatus:'single'|'married',children:number):number {
-  let limit=maritalStatus==='single'?TAX_DATA.fma_exemption.single:TAX_DATA.fma_exemption.married
-  if(children>=1)limit+=TAX_DATA.fma_exemption.child1
-  if(children>=2)limit+=TAX_DATA.fma_exemption.child2
-  if(children>=3)limit+=TAX_DATA.fma_exemption.child3*(children-2)
-  return limit
+  return firstHomeExemption({ married: maritalStatus==='married', children })
+}
+
+/** Ο φόρος μεταβίβασης της καρτέλας Δάνειο: στην πρώτη κατοικία μόνο το ποσό πάνω από την απαλλαγή. */
+export function loanTransferTax(value:number, firstHome:boolean, maritalStatus:'single'|'married', children:number):number {
+  return transferTaxOn(value, firstHome ? calcFmaExemption(maritalStatus, children) : 0)
 }
 
 // Κοινή πηγή αλήθειας (lib/billing/greekTax), ώστε ο φόρος να μη διαφέρει ανά καρτέλα.
