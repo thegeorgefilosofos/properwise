@@ -292,6 +292,9 @@ export function useAssistantActions({
   // Προσθήκη επαφής (τεχνικός/πάροχος) στην καρτέλα Επαφές, με αυτόματο ρόλο.
   const registerContact = async (name: string, phone?: string, role?: string) => {
     const roleValue = inferRole(role || name);
+    // Όνομα και τηλέφωνο συνεργάτη: στοιχεία τρίτου, όπως στο registerClient.
+    // Οι Όροι ονομάζουν «τους συνεργάτες σου» και χωρίς αποδοχή δεν αποθηκεύονται.
+    if (!(await ensureDpa(supabase))) { setMsgs(m => [...m, { role: 'assistant', text: 'Δεν την καταχώρησα: για στοιχεία τρίτων χρειάζεται πρώτα η αποδοχή της σύμβασης επεξεργασίας. Ζήτα μου ξανά την καταχώρηση και πάτησε «Αποδέχομαι» στο παράθυρο που θα ανοίξει.' }]); return; }
     try {
       const { error } = await contactStore.add(supabase, propertyId, userId, {
         full_name: name.slice(0, 120), role: roleValue,

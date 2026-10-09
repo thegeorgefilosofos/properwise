@@ -11,14 +11,28 @@
 // σύνδεσμος check-in. Η υπόσχεση ζούσε σε κείμενο· τώρα ζει εδώ.
 //
 // ΤΙ ΕΛΕΓΧΕΤΑΙ. Στα app/** και components/** (.ts/.tsx, όχι δοκιμές):
-//   1. `.from('clients' | 'tenants').insert(` ή `.upsert(`
+//   1. `.from('clients' | 'tenants' | 'contacts').insert(` ή `.upsert(`
 //   2. `<tenants>.add(` ή `<tenants>.addReturning(`, για όποιο όνομα πήρε στο
 //      import το '@/lib/data/tenants'
 //   3. `<checkinLink>.issue(`, για όποιο όνομα πήρε το '@/lib/data/checkinLink'
+//   4. `<contacts>.add(`, `.addReturning(` ή `.addReturningId(`, για όποιο όνομα
+//      πήρε το '@/lib/data/contacts'
 // Κάθε τέτοια γραμμή περνά αν το `ensureDpa(` γράφεται ΣΕ ΚΩΔΙΚΑ μέσα στις 40
-// γραμμές πάνω της (τα σχόλια σβήνονται πρώτα, για να μη φτάνει ένα σχόλιο),
-// ή αν μία από τις 3 γραμμές πάνω της λέει `dpa-exempt:` με αιτιολογία τουλάχιστον
-// 10 χαρακτήρων (π.χ. ο συγκεντρωτικός επισκέπτης καναλιού, χωρίς πρόσωπο).
+// γραμμές πάνω της ΚΑΙ μέσα στην ίδια συνάρτηση (τα σχόλια σβήνονται πρώτα, για
+// να μη φτάνει ένα σχόλιο), ή αν μία από τις 3 γραμμές πάνω της λέει
+// `dpa-exempt:` με αιτιολογία τουλάχιστον 10 χαρακτήρων (π.χ. ο συγκεντρωτικός
+// επισκέπτης καναλιού, χωρίς πρόσωπο).
+//
+// ΟΙ ΕΠΑΦΕΣ (09/10/2026). Οι Όροι ονομάζουν «τους ενοικιαστές και τους
+// συνεργάτες σου» και μια επαφή μπορεί να έχει ρόλο ενοικιαστή. Τρία σημεία
+// έγραφαν επαφή χωρίς να ρωτήσουν: η Νόα (registerContact), η καρτέλα Επαφές
+// και η σάρωση εγγράφου. Ο φύλακας δεν τα κοίταζε και έλεγε «όλες πίσω από τη
+// σύμβαση».
+//
+// Η ΙΔΙΑ ΣΥΝΑΡΤΗΣΗ. Η αναζήτηση προς τα πάνω σταματά στη γραμμή που ανοίγει
+// συνάρτηση (`function …`, `const x = async (`, `const x = useCallback(`). Το
+// registerContact της Νόας περνούσε χωρίς δικό του έλεγχο, γιατί 26 γραμμές πιο
+// πάνω, μέσα στο makeCheckinLink, υπήρχε το `ensureDpa(` ενός άλλου κουμπιού.
 //
 // ΤΙ ΔΕΝ ΒΛΕΠΕΙ. Τα ανεβάσματα εγγράφων (ταυτότητα, μισθωτήριο) περνούν από
 // τον χώρο αποθήκευσης και δεν έχουν ένα σχήμα που να πιάνεται με ασφάλεια·
@@ -30,6 +44,18 @@ import { projectFiles } from './lib/git-files.mjs'
 
 const WINDOW = 40
 const EXEMPT = /dpa-exempt:\s*(.{10,})/
+/**
+ * Γραμμή που ανοίγει συνάρτηση με σώμα σε επόμενες γραμμές: εκεί σταματά η
+ * αναζήτηση του `ensureDpa(`. Τρεις μορφές: `function x(`, `const x = async
+ * (…) => {` στο τέλος της γραμμής και `const x = async (` με τις παραμέτρους
+ * από κάτω. Το `const n = (v) => v * 2` μιας γραμμής δεν μετρά, ούτε το
+ * `const id = (a || b)`: δεν περιέχουν την εγγραφή.
+ */
+const FN_START = new RegExp([
+  String.raw`^\s*(?:export\s+)?(?:default\s+)?(?:async\s+)?function\b`,
+  String.raw`^\s*(?:export\s+)?(?:const|let)\s+\w+\s*=\s*(?:useCallback\(\s*)?(?:async\s*)?(?:\([^()]*\)|\w+)\s*(?::[^=]+)?=>\s*\{\s*$`,
+  String.raw`^\s*(?:export\s+)?(?:const|let)\s+\w+\s*=\s*(?:useCallback\(\s*)?(?:async\s*)?\(\s*$`,
+].join('|'))
 
 /**
  * Σβήνει σχόλια κρατώντας τις αλλαγές γραμμής, ώστε οι αριθμοί γραμμών να
@@ -102,8 +128,13 @@ for (const arxeio of files) {
   const codeLines = code.split('\n')
 
   const patterns = [
-    { re: /\.from\(\s*['"](clients|tenants)['"]\s*\)\s*\.(insert|upsert)\(/g, ti: (m) => `.from('${m[1]}').${m[2]}(` },
+    { re: /\.from\(\s*['"](clients|tenants|contacts)['"]\s*\)\s*\.(insert|upsert)\(/g, ti: (m) => `.from('${m[1]}').${m[2]}(` },
   ]
+  const co = aliasesOf(code, 'contacts')
+  for (const a of co.ns) patterns.push({ re: new RegExp(String.raw`\b${esc(a)}\.(add|addReturning|addReturningId)\(`, 'g'), ti: (m) => `${a}.${m[1]}(` })
+  for (const a of co.named.filter(x => ['add', 'addReturning', 'addReturningId'].includes(x.orig))) {
+    patterns.push({ re: new RegExp(String.raw`(?<![.\w])${esc(a.name)}\(`, 'g'), ti: () => `${a.name}(` })
+  }
   const ten = aliasesOf(code, 'tenants')
   for (const a of ten.ns) patterns.push({ re: new RegExp(String.raw`\b${esc(a)}\.(add|addReturning)\(`, 'g'), ti: (m) => `${a}.${m[1]}(` })
   for (const a of ten.named.filter(x => x.orig === 'add' || x.orig === 'addReturning')) {
@@ -119,8 +150,13 @@ for (const arxeio of files) {
     for (const m of code.matchAll(re)) {
       elegxthikan++
       const line = code.slice(0, m.index).split('\n').length // 1-based
-      const from = Math.max(0, line - 1 - WINDOW)
-      const gated = codeLines.slice(from, line).some(l => l.includes('ensureDpa('))
+      // Από τη γραμμή της εγγραφής προς τα πάνω, ως 40 γραμμές ή ως την αρχή
+      // της συνάρτησης που την περιέχει (η γραμμή της αρχής μετρά).
+      let gated = false
+      for (let k = line - 1; k >= Math.max(0, line - 1 - WINDOW); k--) {
+        if (codeLines[k].includes('ensureDpa(')) { gated = true; break }
+        if (FN_START.test(codeLines[k])) break
+      }
       const exempt = rawLines.slice(Math.max(0, line - 1 - 3), line).some(l => EXEMPT.test(l))
       if (!gated && !exempt) provlimata.push({ arxeio, grammi: line, ti: ti(m) })
     }

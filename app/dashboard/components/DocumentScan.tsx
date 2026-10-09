@@ -25,6 +25,7 @@ import {
   RECONCILE_NONE_LABEL, RECONCILE_NONE_HINT, type ReconcileQuestion,
 } from './scanDoc';
 import { inferRole } from '@/lib/contacts/roles';
+import { ensureDpa } from '@/lib/legal/dpa';
 import { hy } from '@/components/Hyphen';
 import { SAY } from '@/lib/core/dbError';
 import { OBJ_VALUE_WHOLE } from '@/lib/property/fields';
@@ -231,7 +232,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   // Πρόταση αποθήκευσης του εκδότη (προμηθευτή/επαγγελματία) στις Επαφές, μετά τη
   // σάρωση λογαριασμού/απόδειξης. Ποτέ αυτόματα — μόνο με ρητή επιβεβαίωση χρήστη.
   const [contactState, setContactState] =
-    useState<'cta' | 'saving' | 'saved' | 'exists' | 'error' | 'dismissed'>('cta');
+    useState<'cta' | 'saving' | 'saved' | 'exists' | 'error' | 'dpa' | 'dismissed'>('cta');
 
   const setF = (key: keyof ScannedDoc, raw: string) =>
     setEdited(p => {
@@ -331,6 +332,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
       // με το χέρι, ενώ ήταν τυπωμένα μπροστά του.
       const phone = (edited.provider_phone || '').trim() || null;
       const email = (edited.provider_email || '').trim() || null;
+      // Ο εκδότης μπαίνει στις Επαφές με όνομα, ΑΦΜ και τηλέφωνο: πρώτα η
+      // σύμβαση επεξεργασίας, όπως σε κάθε στοιχείο τρίτου (lib/legal/dpa.ts).
+      if (!(await ensureDpa(supabase))) { setContactState('dpa'); return; }
       const { error: insErr } = await contacts.add(supabase, propertyId, userId, {
         role, full_name: fullName, phone, email,
         notes: contacts.encodeNotes(extra, ''),
@@ -406,6 +410,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
               </div>
               {contactState === 'error' && (
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--warning)', marginBottom: 10 }}>Δεν αποθηκεύτηκε. Δοκίμασε ξανά.</div>
+              )}
+              {contactState === 'dpa' && (
+                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--warning)', marginBottom: 10 }}>Δεν αποθηκεύτηκε: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.</div>
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-start' }}>
                 <Btn variant="primary" onClick={saveContact} disabled={saving}>

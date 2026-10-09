@@ -621,5 +621,11 @@ export const MUTATIONS = {
     { add: 'app/__mut_dpa__.tsx', content: "export async function probe(supabase: any) {\n  await supabase.from('clients').insert({ full_name: 'x' })\n}\n" },
     { add: 'app/__mut_dpa__.tsx', content: "import * as t from '@/lib/data/tenants'\nexport async function probe(supabase: any) {\n  await t.addReturning(supabase, 'p', 'u', {})\n}\n" },
     { add: 'app/__mut_dpa__.tsx', content: "import * as ck from '@/lib/data/checkinLink'\nexport async function probe(supabase: any) {\n  await ck.issue(supabase, 'u', 'c', null, new Date())\n}\n" },
+    // Οι επαφές (συνεργάτες στους Όρους): από το store και κατευθείαν στον πίνακα.
+    { add: 'app/__mut_dpa__.tsx', content: "import * as c from '@/lib/data/contacts'\nexport async function probe(supabase: any) {\n  await c.add(supabase, 'p', 'u', { full_name: 'x', phone: '6900000000' })\n}\n" },
+    { add: 'app/__mut_dpa__.tsx', content: "export async function probe(supabase: any) {\n  await supabase.from('contacts').insert({ full_name: 'x' })\n}\n" },
+    // Το registerContact της Νόας: εγγραφή χωρίς έλεγχο, λίγες γραμμές κάτω από
+    // το `ensureDpa(` ΑΛΛΗΣ συνάρτησης. Μέσα στις 40 γραμμές, έξω από τη συνάρτησή της.
+    { add: 'app/__mut_dpa__.tsx', content: "import { ensureDpa } from '@/lib/legal/dpa'\nimport { addReturningId } from '@/lib/data/contacts'\nexport function useProbe(supabase: any) {\n  const gated = async () => {\n    if (!(await ensureDpa(supabase))) return\n  }\n  const register = async (name: string) => {\n    await addReturningId(supabase, 'p', 'u', { full_name: name })\n  }\n  return { gated, register }\n}\n" },
   ] },
 }
