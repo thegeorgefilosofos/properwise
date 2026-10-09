@@ -367,7 +367,7 @@ export function stories(f: Facts): Story[] {
         .s6r b{font-size:44px;line-height:52px;font-weight:850;letter-spacing:-.02em;white-space:nowrap}
         .s6r span{font-size:28px;line-height:34px;font-weight:600;color:${K.ink}}
         .s6d{flex:none;margin-top:16px;font-family:'Roboto Mono',monospace;font-size:26px;line-height:32px;color:${K.muted};letter-spacing:.02em}`, footer(f, SRC.all)),
-      sticker: { kind: 'Σύνδεσμος', text: 'Βάλε τους μήνες σου', url: 'https://properwise.gr/vraxyxronia-i-makroxronia?utm_source=instagram&utm_medium=story&utm_campaign=ig-dyo-dromoi', where: 'κάτω από τη γραμμή ειλικρίνειας' },
+      sticker: { kind: 'Σύνδεσμος', text: 'Βρες το δικό σου όριο', url: 'https://properwise.gr/vraxyxronia-i-makroxronia?utm_source=instagram&utm_medium=story&utm_campaign=ig-dyo-dromoi', where: 'κάτω από τη γραμμή ειλικρίνειας' },
       alt: P(f, `Κάρτα για αποθήκευση, παράδειγμα με {nightPrice} τη νύχτα και {rent} τον μήνα. Κάθε νέο ευρώ με {margShort} από τη νύχτα {occ25.nights} χωρίς άλλα ενοίκια και με {occ35.marg} από τη νύχτα {occ35.nights}. Όριο πληρότητας {be11.ceil} αν λείψει ένας μήνας, {withEleni.be} με άλλα ενοίκια {withEleni.otherGross}. Με {mun3.from} ακίνητα σε βραχυχρόνια αλλάζει το καθεστώς: έναρξη εργασιών, ΦΠΑ, χωρίς τεκμαρτή έκπτωση, τέλος παρεπιδημούντων {mun3.rate} που το βαραίνει ο επισκέπτης. Μηνιαίο ενοίκιο {rentNever} που το Airbnb δεν φτάνει ούτε γεμάτο. ${ends}.`) });
   }
   return out;

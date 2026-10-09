@@ -14,6 +14,7 @@ import { marginalRate, municipalAccommodationTax, isMunicipalTaxExempt, RENTAL_T
 import { PRESUMPTIVE_DEDUCTION_RATE as PRES } from '../../lib/billing/presumptive';
 import { compareShortVsLong } from '../../lib/tools/shortVsLong';
 import { fe } from '../../lib/core/format';
+import { SPEC as SVL_FIELDS } from '../../app/vraxyxronia-i-makroxronia/spec';
 
 let pass = 0, fail = 0;
 function ok(name: string, cond: boolean) { if (cond) { pass++; } else { fail++; console.error(`✗ ${name}`); } }
@@ -102,6 +103,24 @@ const t = (id: string) => { const x = f[id]; if (!x) throw new Error(`λείπε
   }
   ok('τιμή νύχτας 70€: σταματά στον αληθινό έλεγχο, όχι στη στρογγύλευση',
     throwsWith(facts({ nightlyPrice: 70 }), /δεν μικραίνει/u));
+}
+
+// ═══ 5 · Η ΥΠΟΣΧΕΣΗ ΤΟΥ ΣΥΝΔΕΣΜΟΥ ΛΕΕΙ ΜΟΝΟ Ο,ΤΙ ΔΕΧΕΤΑΙ Ο ΥΠΟΛΟΓΙΣΤΗΣ ═════════════
+// Το «Βάλε τους μήνες σου» οδηγούσε στο /vraxyxronia-i-makroxronia, που δεν έχει πεδίο
+// μηνών (τα πεδία του είναι το SPEC του app/vraxyxronia-i-makroxronia/spec.ts).
+{
+  const path = '/vraxyxronia-i-makroxronia';
+  const monthsField = Object.keys(SVL_FIELDS).some(k => /^(mines|mhnes|months)$/u.test(k));
+  const b = build(DYO_DROMOI), tx = renderTexts(b);
+  const stickers = stories(b.f).filter(s => s.sticker.url?.includes(path)).map(s => [`αυτοκόλλητο story ${s.n}`, s.sticker.text] as const);
+  const surfaces: (readonly [string, string])[] = [
+    ...(DYO_DROMOI.cta.path === path ? [['ετικέτα του cta', DYO_DROMOI.cta.label] as const] : []),
+    ...(tx.pinned.includes(path) ? [['καρφιτσωμένο', tx.pinned] as const] : []),
+    ...stickers,
+  ];
+  ok('ο υπολογιστής «Βραχυχρόνια ή μακροχρόνια» δεν έχει πεδίο μηνών', !monthsField);
+  ok('υπάρχουν σύνδεσμοι προς τον υπολογιστή για να ελεγχθούν', stickers.length > 0 && surfaces.length >= 3);
+  for (const [w, text] of surfaces) ok(`${w}: δεν υπόσχεται μήνες`, monthsField || !/μήνες|μήνα/u.test(text));
 }
 
 console.log(`dyoDromoi: ${pass} πέρασαν, ${fail} απέτυχαν`);
