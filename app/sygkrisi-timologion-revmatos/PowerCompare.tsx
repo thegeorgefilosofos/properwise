@@ -23,6 +23,7 @@ import { athensToday } from '@/lib/core/time';
 import { comparePower, POWER_COLOURS, UNRANKED_WHY, type PowerColour, type PowerRow } from '@/lib/tools/revma';
 import { PROVIDERS, TARIFFS_VERIFIED, CATALOGUE_MONTH_GEN, BADGE_MEANING, PRICES_SOURCE, PRICES_UPDATED_LINE, priceMonthNote, conditionNote } from '@/lib/energy/catalogue';
 import { ETMEAR } from '@/lib/energy/tariff';
+import { fixedChargeText } from '@/lib/energy/fixedCharge';
 import { RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy/freshness';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { ToolNumField, ToolFields, ToolHero, ToolSeg } from '@/app/ToolParts';
@@ -40,7 +41,7 @@ const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 const noSubscribe = () => () => {};
 
 /** Τα μικρά γεγονότα κάτω από το όνομα: τιμή, μήνας της τιμής, πάγιο, δέσμευση. */
-function facts(t: PowerRow['t'], ebill: boolean): string[] {
+export function facts(t: PowerRow['t'], ebill: boolean): string[] {
   const out: string[] = [];
   if (t.type === 'fixed_monthly') {
     out.push(t.flat_annual_kwh ? `Πακέτο ${fn(t.flat_annual_kwh)} κιλοβατώρες τον χρόνο` : 'Χωρίς δημοσιευμένο όριο κιλοβατωρών');
@@ -51,7 +52,12 @@ function facts(t: PowerRow['t'], ebill: boolean): string[] {
       : t.kwh_day > 0 ? `${feRate(t.kwh_day)} βασική τιμή, κλείνει αναδρομικά`
       : 'Η τιμή του μήνα ανακοινώνεται τον επόμενο');
     if (t.kwh_night) out.push(`Νυχτερινή ${feRate(t.kwh_night)}`);
-    out.push(t.no_fixed ? 'Χωρίς πάγιο' : `Πάγιο ${fe(ebill && t.fixed_ebill != null ? t.fixed_ebill : t.fixed)}`);
+    // ΤΟ ΠΑΓΙΟ ΓΡΑΦΟΤΑΝ ΜΟΝΟ ΜΕ ΤΗΝ ΚΑΤΩ ΚΛΙΜΑΚΑ (12/10/2026). Όπου το πάγιο
+    // ανεβαίνει πάνω από ένα όριο κιλοβατωρών, το ποσό του μήνα (`monthlyCost`)
+    // το χρεώνει· η σελίδα έγραφε μόνο το κάτω. Η πρόταση βγαίνει από το
+    // lib/energy/fixedCharge.ts, που λέει και ποια τιμολόγια είναι, την ίδια με
+    // της καρτέλας «Ρεύμα».
+    out.push(t.no_fixed ? 'Χωρίς πάγιο' : `Πάγιο ${fixedChargeText(t, ebill)}`);
   }
   // Κάθε τιμή λέει τον μήνα της: τα «πράσινα» αλλάζουν την πρώτη κάθε μήνα.
   out.push(priceMonthNote(t));
