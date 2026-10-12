@@ -15,6 +15,7 @@ import { MYAADE } from '../tax/aade'
 import { fe, fpRate, grDate, grDateOf } from '../core/format'
 import { FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '../billing/greekTax'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '../billing/presumptive'
+import { ENFIA_REDUCTIONS } from '../billing/enfia'
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO } from '../accounting/renovation39b'
 import { ANAK_CAP, ANAK_CAP_TEXT, ANAK_OTHER_TEXT, ANAK_RATES_TEXT, ANAK_SCOPE_TEXT, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT, ANAK_HREF } from '../accounting/anakainisi2026'
 
@@ -354,6 +355,12 @@ export interface YieldLever {
 const BANK_FROM = grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)
 const BANK_DEDUCTION = fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)
 const BANK_KEPT = fpRate((1 - PRESUMPTIVE_DEDUCTION_RATE) * 100)
+// ΤΑ ΝΟΥΜΕΡΑ ΤΗΣ ΑΣΦΑΛΙΣΜΕΝΗΣ ΚΑΤΟΙΚΙΑΣ ΗΤΑΝ ΓΡΑΜΜΕΝΑ ΜΕ ΤΟ ΧΕΡΙ (12/10/2026):
+// «20%», «500.000,00€» και «10%», δίπλα στον πίνακα που υπολογίζει τη μείωση.
+// Βγαίνουν πλέον από το ENFIA_REDUCTIONS (lib/billing/enfia.ts) και το
+// lib/market/greekMarket.test.ts κοκκινίζει αν κείμενο και σταθερά διαφωνήσουν.
+const ENFIA_INS = ENFIA_REDUCTIONS.find(r => r.key === 'insurance')!
+const ENFIA_INS_OVER = ENFIA_INS.pctOver!
 
 export const YIELD_LEVERS: YieldLever[] = [
   {
@@ -401,10 +408,23 @@ export const YIELD_LEVERS: YieldLever[] = [
     audience: 'all', href: ANAK_HREF,
   },
   {
+    // Η ΑΙΤΗΣΗ ΔΕΝ ΓΙΝΕΤΑΙ ΣΚΕΤΑ «ΣΤΟ myAADE» (12/10/2026): γίνεται στην εφαρμογή
+    // myPROPERTY της ΑΑΔΕ (Α.1005/2026· Συχνές ερωτήσεις ΑΑΔΕ 14/01/2026,
+    // https://www.aade.gr/sites/default/files/2026-01/FAQs_asfalismenwn_katoik2026.pdf).
+    // Γράφεται όπως στον οδηγό ΕΝΦΙΑ, όχι ως διαδρομή μενού με «·»: τέτοια
+    // διαδρομή θέλει εγγραφή στο AADE_DESTINATIONS από τις Συχνές ερωτήσεις.
+    //
+    // ΕΛΕΓΕ «ΤΟΥΛΑΧΙΣΤΟΝ ΤΡΕΙΣ ΜΗΝΕΣ» ΔΙΠΛΑ ΣΕ ΟΛΟΚΛΗΡΟ ΤΟ ΠΟΣΟΣΤΟ (12/10/2026):
+    // δηλαδή ότι τρεις μήνες δίνουν όλη τη μείωση, χωρίς να λέει ποιο έτος
+    // μετρά. Η ίδια πηγή λέει ότι μετρά η ασφάλιση του προηγούμενου έτους και
+    // ότι για λιγότερο από ολόκληρο το έτος η μείωση δίνεται αναλογικά. Γι' αυτό
+    // και το «έως» στο gain. Οι
+    // προϋποθέσεις μένουν σε λέξεις, γιατί ο πίνακας του ΕΝΦΙΑ δεν έχει
+    // σταθερές για διάρκεια, κεφάλαιο ή προθεσμία.
     key: 'enfia_insurance', title: 'Έκπτωση ΕΝΦΙΑ με ασφάλιση',
-    gain: '20% λιγότερος ΕΝΦΙΑ',
-    impact: 'Για ακίνητα αξίας έως 500.000,00€· για μεγαλύτερη αξία η μείωση είναι 10%. Χρειάζεται ένα φθηνό ασφαλιστήριο τριών κινδύνων.',
-    detail: 'Χρειάζεται κάλυψη σεισμού, πυρκαγιάς και πλημμύρας για τουλάχιστον τρεις μήνες, στην πλήρη αξία, από εγγεγραμμένο ασφαλιστή. Η αίτηση γίνεται στο myAADE, με προθεσμία γύρω στα μέσα Φεβρουαρίου.',
+    gain: `έως ${fpRate(ENFIA_INS.pct)} λιγότερος ΕΝΦΙΑ`,
+    impact: `Για ακίνητα αξίας έως ${fe(ENFIA_INS_OVER.above)}· για μεγαλύτερη αξία η μείωση είναι ${fpRate(ENFIA_INS_OVER.pct)}. Χρειάζεται ένα φθηνό ασφαλιστήριο τριών κινδύνων.`,
+    detail: 'Χρειάζεται κάλυψη σεισμού, πυρκαγιάς και πλημμύρας για τουλάχιστον τρεις μήνες του προηγούμενου έτους· για λιγότερο από ολόκληρο το έτος η μείωση δίνεται αναλογικά. Θέλει κεφάλαιο τουλάχιστον όσο η αξία ανακατασκευής και ασφαλιστική εγγεγραμμένη στο μητρώο της Τράπεζας της Ελλάδος. Η αίτηση γίνεται στο myPROPERTY της ΑΑΔΕ, με προθεσμία γύρω στα μέσα Φεβρουαρίου.',
     risk: 'Απαιτεί πλήρη κάλυψη και των τριών κινδύνων και εμπρόθεσμη δήλωση. Αλλιώς η μείωση χάνεται για ολόκληρη τη χρονιά.',
     audience: 'all', href: MYAADE,
   },

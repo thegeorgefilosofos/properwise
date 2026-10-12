@@ -5,10 +5,11 @@
 // σταθερά «3%» χωρίς πηγή, αλλά προκύπτει από τον δείκτη τιμών κατοικιών της
 // Τράπεζας της Ελλάδος. Αν κάποιος αλλάξει τον δείκτη, ο έλεγχος πρέπει να δείξει
 // ότι άλλαξε και η προεπιλογή — και όχι να το μάθει ο χρήστης στην οθόνη.
-import { HISTORY_INDEX, HISTORY_ANCHORS, historyPriceCagr, BENCHMARKS, REGIONS, YIELD_LEVERS } from './greekMarket';
+import { HISTORY_INDEX, HISTORY_ANCHORS, historyPriceCagr, BENCHMARKS, REGIONS, YIELD_LEVERS, type YieldLever } from './greekMarket';
 import { FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '../billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE, presumptiveDeductionRateForYear } from '../billing/presumptive';
-import { fpRate, grDateOf } from '../core/format';
+import { ENFIA_REDUCTIONS } from '../billing/enfia';
+import { fe, fpRate, grDateOf } from '../core/format';
 
 let pass = 0, fail = 0;
 function ok(name: string, cond: boolean) { if (cond) { pass++; } else { fail++; console.error(`✗ ${name}`); } }
@@ -94,6 +95,84 @@ ok('τα κλειδιά περιοχών είναι μοναδικά', new Set(R
   ok('η μηχανή δίνει την έκπτωση στα μετρητά πριν από την έναρξη',
     presumptiveDeductionRateForYear(FIRST_YEAR_BANK_RECEIPT - 1, false) === PRESUMPTIVE_DEDUCTION_RATE);
   ok('η κάρτα δεν υπόσχεται άμεση άνοδο της απόδοσης', !/αμέσως/.test(text));
+}
+
+// ═══ Η ΕΚΠΤΩΣΗ ΕΝΦΙΑ ΜΕ ΑΣΦΑΛΙΣΗ ΛΕΕΙ ΤΑ ΝΟΥΜΕΡΑ ΤΟΥ ΠΙΝΑΚΑ ΤΟΥ ΕΝΦΙΑ ════════
+// ΤΑ ΕΓΡΑΦΕ ΜΕ ΤΟ ΧΕΡΙ (12/10/2026): «20% λιγότερος ΕΝΦΙΑ», «έως 500.000,00€»,
+// «η μείωση είναι 10%», δίπλα στο ENFIA_REDUCTIONS που υπολογίζει τη μείωση.
+// Και έστελνε την αίτηση «στο myAADE», ενώ γίνεται στο myPROPERTY (Α.1005/2026·
+// Συχνές ερωτήσεις ΑΑΔΕ 14/01/2026,
+// https://www.aade.gr/sites/default/files/2026-01/FAQs_asfalismenwn_katoik2026.pdf).
+// Το `leverDrift` λέει τι διαφωνεί· ελέγχεται και ο ίδιος, με το παλιό κείμενο
+// και με σταθερά που άλλαξε, ώστε να μην περνά πράσινος χωρίς να βλέπει.
+{
+  type Reduction = (typeof ENFIA_REDUCTIONS)[number];
+  type Card = Pick<YieldLever, 'gain' | 'impact' | 'detail' | 'risk'>;
+  const leverDrift = (l: Card | undefined, rd: Reduction | undefined): string[] => {
+    if (!l) return ['λείπει ο μοχλός enfia_insurance'];
+    if (!rd?.pctOver) return ['λείπει η μείωση insurance ή το κατώφλι της'];
+    const pct = fpRate(rd.pct), over = fpRate(rd.pctOver.pct), above = fe(rd.pctOver.above);
+    const text = [l.gain, l.impact, l.detail, l.risk].join(' ');
+    const out: string[] = [];
+    // «έως»: για λιγότερο από ολόκληρο το έτος η μείωση δίνεται αναλογικά.
+    if (l.gain !== `έως ${pct} λιγότερος ΕΝΦΙΑ`) out.push(`gain «${l.gain}», η σταθερά λέει έως ${pct}`);
+    if (!l.impact.includes(above)) out.push(`το κατώφλι ${above} λείπει από το impact`);
+    if (!l.impact.includes(over)) out.push(`το ${over} πάνω από το κατώφλι λείπει από το impact`);
+    const pcts = text.match(/\d+(,\d+)?%/g) ?? [];
+    const stray = pcts.filter(x => x !== pct && x !== over);
+    if (stray.length) out.push(`ποσοστά που δεν βγαίνουν από τη σταθερά: ${stray.join(', ')}`);
+    const amounts = text.match(/\d{1,3}(?:\.\d{3})*(?:,\d+)?€/g) ?? [];
+    const strayAmt = amounts.filter(x => x !== above);
+    if (strayAmt.length) out.push(`ποσά που δεν βγαίνουν από τη σταθερά: ${strayAmt.join(', ')}`);
+    if (!text.includes('myPROPERTY')) out.push('η αίτηση δεν λέει myPROPERTY');
+    if (!/σεισμ/u.test(l.detail) || !/πυρκαγι/u.test(l.detail) || !/πλημμ[υύ]ρ/u.test(l.detail)) out.push('το detail δεν λέει και τους τρεις κινδύνους');
+    // Μετρά η ασφάλιση του προηγούμενου έτους, αναλογικά κάτω από ολόκληρο το
+    // έτος (ίδια πηγή· και ο οδηγός app/odigos/pos-ypologizetai-o-enfia).
+    if (!/προηγούμεν/u.test(l.detail)) out.push('το detail δεν λέει ότι μετρά το προηγούμενο έτος');
+    if (!/αναλογικ/u.test(l.detail)) out.push('το detail δεν λέει ότι κάτω από ολόκληρο το έτος η μείωση είναι αναλογική');
+    // Όχι διαδρομή μενού με «·»: δεν υπάρχει εγγραφή στο AADE_DESTINATIONS.
+    if (/myAADE\s*·/u.test(text)) out.push('διαδρομή μενού «myAADE · …» χωρίς εγγραφή στο AADE_DESTINATIONS');
+    return out;
+  };
+
+  const lever = YIELD_LEVERS.find(l => l.key === 'enfia_insurance');
+  const rd = ENFIA_REDUCTIONS.find(r => r.key === 'insurance');
+  const drift = leverDrift(lever, rd);
+  ok(`η κάρτα της ασφάλισης συμφωνεί με το ENFIA_REDUCTIONS: ${drift.join(' | ')}`, drift.length === 0);
+
+  // Ο έλεγχος βλέπει: το κείμενο ως τις 12/10/2026 δεν περνά.
+  const OLD: Card = {
+    gain: '20% λιγότερος ΕΝΦΙΑ',
+    impact: 'Για ακίνητα αξίας έως 500.000,00€· για μεγαλύτερη αξία η μείωση είναι 10%. Χρειάζεται ένα φθηνό ασφαλιστήριο τριών κινδύνων.',
+    detail: 'Χρειάζεται κάλυψη σεισμού, πυρκαγιάς και πλημμύρας για τουλάχιστον τρεις μήνες, στην πλήρη αξία, από εγγεγραμμένο ασφαλιστή. Η αίτηση γίνεται στο myAADE, με προθεσμία γύρω στα μέσα Φεβρουαρίου.',
+    risk: 'Απαιτεί πλήρη κάλυψη και των τριών κινδύνων και εμπρόθεσμη δήλωση. Αλλιώς η μείωση χάνεται για ολόκληρη τη χρονιά.',
+  };
+  {
+    const oldDrift = leverDrift(OLD, rd);
+    ok('το παλιό κείμενο δεν περνά (myAADE χωρίς myPROPERTY)', oldDrift.includes('η αίτηση δεν λέει myPROPERTY'));
+    ok('το παλιό κείμενο δεν περνά (χωρίς προηγούμενο έτος)', oldDrift.some(x => x.includes('προηγούμενο έτος')));
+    ok('το παλιό κείμενο δεν περνά (χωρίς αναλογική μείωση)', oldDrift.some(x => x.includes('αναλογική')));
+    ok('το παλιό κείμενο δεν περνά (gain χωρίς «έως»)', oldDrift.some(x => x.startsWith('gain ')));
+  }
+  // Ο έλεγχος βλέπει: ένα πρόχειρο που απορρίφθηκε πριν μπει στον κώδικα
+  // (12/10/2026), με «μέσα στο έτος» και «myAADE · myPROPERTY». Δεν κυκλοφόρησε
+  // ποτέ· μένει ως παράδειγμα δύο λαθών που ο έλεγχος πρέπει να πιάνει.
+  if (lever) {
+    const REJECTED: Card = { ...lever,
+      detail: 'Χρειάζεται κάλυψη σεισμού, πυρκαγιάς και πλημμύρας για τουλάχιστον τρεις μήνες μέσα στο έτος, με κεφάλαιο τουλάχιστον όσο η αξία ανακατασκευής, από ασφαλιστική εγγεγραμμένη στο μητρώο της Τράπεζας της Ελλάδος. Η αίτηση γίνεται στο myAADE · myPROPERTY, με προθεσμία γύρω στα μέσα Φεβρουαρίου.' };
+    const d = leverDrift(REJECTED, rd);
+    ok('το απορριφθέν πρόχειρο δεν περνά (μέσα στο έτος, χωρίς αναλογικά)', d.some(x => x.includes('προηγούμενο έτος')) && d.some(x => x.includes('αναλογική')));
+    ok('το απορριφθέν πρόχειρο δεν περνά (διαδρομή μενού χωρίς πηγή)', d.some(x => x.includes('AADE_DESTINATIONS')));
+  }
+  // Ο έλεγχος βλέπει: αν άλλαζε ο νόμος και μόνο η σταθερά, κάθε κομμάτι κοκκινίζει.
+  if (rd?.pctOver) {
+    ok('νέο ποσοστό στη σταθερά, παλιό στο κείμενο: κόκκινο',
+      leverDrift(lever, { ...rd, pct: rd.pct + 5 }).length > 0);
+    ok('νέο ποσοστό πάνω από το κατώφλι: κόκκινο',
+      leverDrift(lever, { ...rd, pctOver: { ...rd.pctOver, pct: rd.pctOver.pct + 5 } }).length > 0);
+    ok('νέο κατώφλι: κόκκινο',
+      leverDrift(lever, { ...rd, pctOver: { ...rd.pctOver, above: rd.pctOver.above + 100_000 } }).length > 0);
+  }
 }
 
 console.log(fail === 0 ? `✓ greekMarket: ${pass} έλεγχοι πέρασαν` : `✗ greekMarket: ${fail} απέτυχαν από ${pass + fail}`);
