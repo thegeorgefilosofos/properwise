@@ -21,6 +21,7 @@ import { occTrack, TRACK_CSS, TRACK_H } from './shorts/scenes';
 import { K, UP, esc, fill, fact, type Facts } from './shorts/kit';
 import { series as S } from './dyoDromoiFacts';
 import { monthShort } from '../../lib/core/months';
+import { withoutRawBlocks, decodeEntities } from './shorts/htmlText';
 
 type Pg = import('playwright-core').Page;
 
@@ -61,19 +62,19 @@ const knownNum = (t: string, toks: Set<string>) => toks.has(t) || (!/[€%\p{L}]
  * το «έκπτωση 5%» επειδή υπήρχε «25%», το «από 3 ακίνητα» επειδή υπήρχε «3ο».
  */
 export function assertDigitsFromFacts(where: string, html: string, f: Facts) {
-  const body = html.replace(/<style[\s\S]*?<\/style>/g, '').replace(/<script[\s\S]*?<\/script>/g, '');
+  const body = withoutRawBlocks(html);
   const toks = new Set(Object.values(f).flatMap(x => numTokens(x.text)));
   const VOID = /^(br|img|input|meta|link|hr|col|source|path|rect|circle|line|polyline|polygon|ellipse|stop|feGaussianBlur|feTurbulence|feColorMatrix)$/i;
   const stack: { tag: string; of?: string; date?: boolean }[] = [];
   const bad: string[] = [];
   for (const m of body.matchAll(/<(\/?)([a-zA-Z][\w:-]*)([^>]*?)(\/?)>|([^<]+)/g)) {
     if (m[5] != null) {
-      const txt = m[5].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ');
+      const txt = decodeEntities(m[5]);
       if (!/\d/.test(txt)) continue;
       const of = [...stack].reverse().find(s => s.of)?.of, date = stack.some(s => s.date);
       for (const t of numTokens(txt)) {
         if (date) continue;
-        if (of) { const x = f[of]; if (!x || !knownNum(t, new Set(numTokens(x.text)))) bad.push(`«${t}» μέσα στο data-of="${of}"`); continue; }
+        if (of) { const x = f[of]; if (!x || !knownNum(t, new Set(numTokens(x.text)))) bad.push(`«${t}» μέσα στο γεγονός «${of}» (data-of)`); continue; }
         if (!knownNum(t, toks)) bad.push(`«${t}» στο «${txt.trim().slice(0, 40)}»`);
       }
       continue;

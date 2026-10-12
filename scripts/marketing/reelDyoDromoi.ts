@@ -35,6 +35,7 @@ import { DYO_DROMOI as SPEC } from './shorts/specs/ig-dyo-dromoi';
 import { assertNoRepeat } from './dyoDromoiFacts';
 import { stories, coverHtml, assertDigitsFromFacts, pageQa, type Story } from './storiesDyoDromoi';
 import { fn } from '../../lib/core/format';
+import { visibleText } from './shorts/htmlText';
 
 const ROOT = process.cwd();
 const args = process.argv.slice(2);
@@ -44,7 +45,7 @@ const OUT = opt('out') ?? join(ROOT, 'docs/marketing/reels/ig-dyo-dromoi');
 const DOC = join(ROOT, 'docs/marketing/instagram/reel-dyo-dromoi');
 const ff = (a: string[], what: string) => { const r = spawnSync(FF(), ['-y', '-hide_banner', '-loglevel', 'error', ...a], { stdio: 'inherit' }); if (r.status !== 0) throw new Error(`Το ffmpeg απέτυχε: ${what}.`); };
 /** Το κείμενο μιας σελίδας χωρίς ετικέτες, στυλ και σενάρια: ό,τι διαβάζει ο θεατής. */
-const textOf = (html: string) => html.replace(/<style[\s\S]*?<\/style>/g, ' ').replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ');
+const textOf = visibleText;
 const dmy = (iso: string) => iso.split('-').reverse().join('/');
 
 async function main() {

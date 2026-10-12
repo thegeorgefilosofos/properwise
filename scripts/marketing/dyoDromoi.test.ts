@@ -10,6 +10,7 @@ import { DYO_DROMOI } from './shorts/specs/ig-dyo-dromoi';
 import { stories, assertDigitsFromFacts } from './storiesDyoDromoi';
 import { fact, type Facts } from './shorts/kit';
 import { svlInput } from './seiresData';
+import { visibleText, withoutRawBlocks, decodeEntities } from './shorts/htmlText';
 import { marginalRate, municipalAccommodationTax, isMunicipalTaxExempt, RENTAL_TAX_BRACKETS_2026 as B } from '../../lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE as PRES } from '../../lib/billing/presumptive';
 import { compareShortVsLong } from '../../lib/tools/shortVsLong';
@@ -121,6 +122,21 @@ const t = (id: string) => { const x = f[id]; if (!x) throw new Error(`λείπε
   ok('ο υπολογιστής «Βραχυχρόνια ή μακροχρόνια» δεν έχει πεδίο μηνών', !monthsField);
   ok('υπάρχουν σύνδεσμοι προς τον υπολογιστή για να ελεγχθούν', stickers.length > 0 && surfaces.length >= 3);
   for (const [w, text] of surfaces) ok(`${w}: δεν υπόσχεται μήνες`, monthsField || !/μήνες|μήνα/u.test(text));
+}
+
+// ── Το ορατό κείμενο που κρίνουν οι πύλες (CodeQL του #392) ───────────────
+// Η παλιά αφαίρεση με κανονική έκφραση άφηνε «<SCRIPT>», «</style >» και τη
+// φωλιασμένη μορφή και αποκωδικοποιούσε το «&amp;lt;» σε «<».
+{
+  const t = (name: string, c: boolean) => ok(name, c);
+  t('κεφαλαία <SCRIPT> και κενό πριν το >', visibleText('α<SCRIPT>var x=1</SCRIPT >β') === 'α β' || visibleText('α<SCRIPT>var x=1</SCRIPT >β') === 'αβ');
+  t('το στυλ δεν διαβάζεται ως κείμενο', !visibleText('<style>.a{color:red}</style><p>12€</p>').includes('color'));
+  t('η φωλιασμένη μορφή δεν αφήνει «<script»', !withoutRawBlocks('<scr<script></script>ipt>alert(1)</script>').toLowerCase().includes('<script'));
+  t('το «<styles>» δεν είναι στυλ', withoutRawBlocks('<styles>κείμενο</styles>') === '<styles>κείμενο</styles>');
+  t('ανοιχτό σενάριο χωρίς κλείσιμο κόβεται ως το τέλος', withoutRawBlocks('α<script>βγ') === 'α');
+  t('ένα πέρασμα: το &amp;lt; μένει &lt;', decodeEntities('&amp;lt;') === '&lt;');
+  t('οι οντότητες της μηχανής', decodeEntities('1&nbsp;€ &quot;α&quot; &#39;β&#39; &gt; &amp;') === "1 € \"α\" 'β' > &");
+  t('οι ετικέτες γίνονται κενό', visibleText('<p>37,55€</p><p>19,73€</p>').trim() === '37,55€ 19,73€');
 }
 
 console.log(`dyoDromoi: ${pass} πέρασαν, ${fail} απέτυχαν`);
