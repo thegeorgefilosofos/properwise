@@ -274,6 +274,10 @@ const simple: Tariff = {
     all.filter(t => t.kwh_tier2 != null && !(t.tier2_threshold! > 0)).map(t => t.id), []);
   eq('και κάθε κατώφλι έχει και κλίμακα',
     all.filter(t => t.tier2_threshold != null && t.kwh_tier2 == null).map(t => t.id), []);
+  // Ο τύπος της ωριαίας τιμής ανήκει μόνο σε δυναμικό: σε τιμολόγιο με τιμή
+  // ανά κιλοβατώρα θα ήταν δεύτερη τιμή που ο υπολογισμός δεν βλέπει.
+  eq('τύπος ωριαίας τιμής μόνο σε δυναμικά',
+    all.filter(t => t.hourlyFormula && t.type !== 'dynamic').map(t => t.id), []);
 
   // ΠΑΚΕΤΟ ΜΕ ΣΤΑΘΕΡΟ ΜΗΝΙΑΙΟ ΧΩΡΙΣ ΟΡΙΟ ΔΕΝ ΜΠΟΡΕΙ ΝΑ ΠΡΟΕΙΔΟΠΟΙΗΣΕΙ ΠΟΤΕ ΓΙΑ
   // ΥΠΕΡΒΑΣΗ — ο χρήστης χρεώνεται και δεν το μαθαίνει. Ο παλιός φρουρός δεν
@@ -392,7 +396,9 @@ const simple: Tariff = {
     for (const m of d.matchAll(/πάγιο[^0-9]{0,12}([0-9]+,[0-9]{2})\s*€/gi))
       if (!fixedFields.some(f => near(f, num(m[1])))) clashes.push(`${t.id}: πάγιο ${m[1]}`);
 
-    const rateFields = [t.kwh_day, t.kwh_night, t.kwh_tier2, t.flat_overage_rate]
+    // Η προσαύξηση του δυναμικού (`hourlyFormula.adder`) είναι κι αυτή ευρώ ανά
+    // κιλοβατώρα που τυπώνεται: η κάρτα του δυναμικού δεν δείχνει άλλη τιμή.
+    const rateFields = [t.kwh_day, t.kwh_night, t.kwh_tier2, t.flat_overage_rate, t.hourlyFormula?.adder]
       .filter((x): x is number => x != null && x > 0);
     for (const m of d.matchAll(/([0-9],[0-9]{3,5})\s*€/g)) {
       const v = num(m[1]);

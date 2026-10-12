@@ -21,7 +21,7 @@ import { ASSISTANT_ACC, ASSISTANT_NAME, ASSISTANT_INITIAL } from '../../lib/assi
 import { DEMO_PROPERTY, demoExpenses } from '../../lib/demo/sample';
 import { DOC_TYPES } from '../../lib/billing/documents';
 import { PROVIDERS, CATALOGUE_MONTH_GEN, TARIFFS_LABEL } from '../../lib/energy/catalogue';
-import { INSURANCE_COMPANIES } from '../../app/dashboard/components/insurance/catalog';
+import { READ_INSURERS } from '../../app/dashboard/components/insurance/catalog';
 import { greekPropertyTaxObligations, type TaxObligationKind } from '../../lib/tax/greekTaxCalendar';
 import { WHO_LABEL } from '../../lib/accounting/dossier';
 import { athensToday } from '../../lib/core/time';
@@ -38,7 +38,11 @@ const TAGLINE = 'Βάλε το ακίνητό σου σε τάξη.';
 // ── Τα γεγονότα ──────────────────────────────────────────────────────────
 const DOCS = DOC_TYPES.filter(d => d.id !== 'other').map(d => d.label);
 if (DOCS.length !== 7) throw new Error(`Το χάος έχει επτά χαρτιά· η σάρωση ξέρει ${DOCS.length} είδη.`);
-const N_INSURERS = INSURANCE_COMPANIES.filter(i => /^https:\/\//.test(i.url || '')).length;
+// Μετρούσε κάθε εταιρεία του καταλόγου με διεύθυνση (16): το Anytime και τη
+// Magenta δίπλα στην Interamerican και τη Hellas Direct και έξι εταιρείες που η
+// σελίδα τους δεν διαβάστηκε, χωρίς κανένα πρόγραμμα να διαλέξεις. Ίδιο πλήθος
+// με την αρχική (`READ_INSURERS`).
+const N_INSURERS = READ_INSURERS;
 const today = athensToday();
 // Τρεις προθεσμίες του επόμενου δωδεκαμήνου, τρία διαφορετικά είδη και τρεις
 // διαφορετικές μέρες: δύο γραμμές με την ίδια ημερομηνία μοιάζουν με λάθος.

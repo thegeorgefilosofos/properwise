@@ -11,6 +11,13 @@ import { T, fe, fn, feRate, Skeleton, histInputStyle, ABSENT_SHORT, fixedCols, B
 import { CONTRACT_LABEL } from '@/lib/contracts/overview';
 import { monthlyCost, compareTariffs, estimateUsage, exceedsFlatAllowance, type Tariff, type Usage } from '@/lib/energy/tariff';
 import { PROVIDERS, COMPARABLE_TARIFFS, FLAT_WITHOUT_ALLOWANCE, BADGE_MEANING, TARIFFS_VERIFIED, TARIFFS_MAX_AGE_DAYS, CATALOGUE_MONTH_GEN, PRICES_SOURCE, PRICES_UPDATED_LINE, priceMonthNote, conditionNote } from '@/lib/energy/catalogue';
+// ΤΟ ΠΑΓΙΟ ΓΡΑΦΟΤΑΝ ΜΕ ΤΗΝ ΚΑΤΩ ΚΛΙΜΑΚΑ ΣΕ ΚΑΘΕ ΚΑΤΑΝΑΛΩΣΗ (12/10/2026). Το
+// `monthlyCost` χρεώνει `fixed_tier2` πάνω από το `fixed_tier2_threshold`· η
+// κάρτα και η κατάταξη έγραφαν μόνο το κάτω πάγιο. Ποια τιμολόγια το έχουν
+// (γραμμές 51 και 219 οικιακού και 49 και 167 επαγγελματικού του πίνακα της
+// ΡΑΑΕΥ της 05/10/2026, συν δύο τιμές Αυγούστου του παρόχου) και ο κανόνας
+// ζουν στο lib/energy/fixedCharge.ts, κοινά με τη δημόσια σύγκριση.
+import { fixedChargeText, fixedTier2 } from '@/lib/energy/fixedCharge';
 import { canRecommend, freshness, RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy/freshness';
 import { MONTHS_SHORT } from '@/lib/core/months';
 import { AsOfNote } from '@/components/AsOfNote';
@@ -555,7 +562,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                     φορά — και μάλιστα χωρίς τη μονάδα που έχουν τα υπόλοιπα. */}
                 {!tariff.no_fixed && (
                   <span style={FACT}>
-                    Πάγιο:{' '}<strong style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fe((useEbill && tariff.fixed_ebill != null) ? tariff.fixed_ebill : tariff.fixed)} / μήνα</strong>
+                    Πάγιο:{' '}<strong style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fixedChargeText(tariff, useEbill)}{fixedTier2(tariff, useEbill) ? '' : ' / μήνα'}</strong>
                   </span>
                 )}
               </div>
@@ -725,18 +732,21 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
             {shownTariffs.map(({ t, rank }, i) => {
               const isCur  = t.isCurrent;
               const isBest = rank === 1 && t.priced && t.thisMonth;
-              // Το πάγιο ακολουθεί τον διακόπτη e-bill του χρήστη, όπως και ο
-              // υπολογισμός του μήνα. Πριν, οι δύο στήλες υπάκουαν σε
-              // διαφορετικό κανόνα και δεν έβγαιναν μεταξύ τους.
-              const fixedNow = useEbill && t.fixed_ebill != null ? t.fixed_ebill : t.fixed;
 
               const facts: string[] = [];
+              // ΤΑ ΣΤΑΘΕΡΑ ΜΗΝΙΑΙΑ ΚΑΙ ΤΟ VNM ΔΕΝ ΕΛΕΓΑΝ ΤΟΝ ΜΗΝΑ ΤΗΣ ΤΙΜΗΣ (12/10/2026).
+              // Η στήλη του ποσού έγραφε «Τιμή άλλου μήνα, εκτός σειράς» χωρίς να
+              // λέει ποιου μήνα: τα πακέτα σταθερού μηνιαίου του καταλόγου είναι
+              // τιμές Αυγούστου (`priceMonth`, lib/energy/catalogue.ts). Ο ίδιος
+              // `priceMonthNote` με τον κλάδο από κάτω.
               if (t.type === 'fixed_monthly') {
                 facts.push(t.flat_annual_kwh
                   ? `${fn(t.flat_annual_kwh)} κιλοβατώρες τον χρόνο`
                   : 'Χωρίς δημοσιευμένο όριο κιλοβατωρών');
+                facts.push(priceMonthNote(t));
               } else if (t.type === 'vnm') {
                 facts.push('Συμψηφισμός με φωτοβολταϊκό');
+                facts.push(priceMonthNote(t));
               } else {
                 // Μηδενική τιμή σε τιμολόγιο που κλείνει αναδρομικά σημαίνει ότι
                 // η ΡΑΑΕΥ δεν έχει ακόμη τιμή γι' αυτόν τον μήνα, όχι δωρεάν ρεύμα.
@@ -754,7 +764,10 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                 facts.push(priceMonthNote(t));
                 const cond = conditionNote(t);
                 if (cond) facts.push(cond);
-                facts.push(t.no_fixed ? 'Χωρίς πάγιο' : `Πάγιο ${fe(fixedNow)}`);
+                // Το πάγιο ακολουθεί τον διακόπτη e-bill του χρήστη, όπως και ο
+                // υπολογισμός του μήνα. Πριν, οι δύο στήλες υπάκουαν σε
+                // διαφορετικό κανόνα και δεν έβγαιναν μεταξύ τους.
+                facts.push(t.no_fixed ? 'Χωρίς πάγιο' : `Πάγιο ${fixedChargeText(t, useEbill)}`);
               }
               facts.push(t.contract_months ? `Δέσμευση ${t.contract_months} μήνες` : 'Χωρίς δέσμευση');
 

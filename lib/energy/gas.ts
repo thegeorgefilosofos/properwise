@@ -53,8 +53,9 @@
 // τιμή Αυγούστου: ο πίνακας του Οκτωβρίου δεν δίνει σύνολο στις 100 kWh, η
 // μεταγραφή του ελέγχεται κελί προς κελί από το raaey.test.ts.
 
-import { addRaaeyGas, RAAEY_MONTH_GEN } from './raaeyCatalogue';
-import { PRICE_FACTS } from '@/lib/facts/prices';
+import { addRaaeyGas, RAAEY_MONTH_GEN, RAAEY_READ_AT } from './raaeyCatalogue';
+import { PRICE_FACTS, asOfDate } from '@/lib/facts/prices';
+import { joinGreek } from '@/lib/loans/energyPrograms';
 
 /** Ο μήνας του πίνακα της ΡΑΑΕΥ σε γενική. Μόνο τιμές αυτού του μήνα κατατάσσονται. */
 export const GAS_MONTH_GEN = RAAEY_MONTH_GEN;
@@ -75,7 +76,8 @@ export interface GasTariff {
   segment: 'residential' | 'business';
   /**
    * Χρέωση προμήθειας €/kWh, όπως τη δημοσιεύει η ΡΑΑΕΥ, με την έκπτωση της
-   * προϋπόθεσης όπου υπάρχει. `null`: «Η τιμή δεν είναι ακόμα γνωστή».
+   * προϋπόθεσης όπου υπάρχει. `null`: «Η τιμή δεν είναι ακόμα γνωστή». Όπου
+   * υπάρχει `providerPrice`, η τιμή είναι του εγγράφου του παρόχου.
    */
   kwh: number | null;
   /** Μηνιαίο πάγιο €, με την έκπτωση της προϋπόθεσης όπου υπάρχει. */
@@ -94,8 +96,30 @@ export interface GasTariff {
   raaey?: string;
   /** Η ΡΑΑΕΥ το γράφει «μη εμπορικά διαθέσιμο»: δεν προτείνεται. */
   notAvailable?: boolean;
-  /** Η ΡΑΑΕΥ δεν έχει ακόμη τιμή για τον μήνα του πίνακα: μένει η προηγούμενη, με τον μήνα της. */
+  /**
+   * Η ΡΑΑΕΥ δεν έχει ακόμη τιμή για τον μήνα του πίνακα. Μένει η προηγούμενη,
+   * με τον μήνα της, εκτός αν υπάρχει `providerPrice`: τότε η τιμή είναι του
+   * μήνα του πίνακα, από τον τιμοκατάλογο του παρόχου.
+   */
   raaeyUnknown?: boolean;
+  /**
+   * Η ΤΙΜΗ ΕΙΝΑΙ ΤΟΥ ΠΑΡΟΧΟΥ, ΟΧΙ ΤΗΣ ΡΑΑΕΥ: το έγγραφο, η ημέρα ανάγνωσης
+   * και το κελί από το οποίο αντιγράφηκε.
+   *
+   * Μόνο σε γραμμή με `raaeyUnknown`: η ΡΑΑΕΥ δεν έχει ακόμη τιμή για τον
+   * μήνα του πίνακα και ο πάροχος τη γράφει σε δικό του τιμοκατάλογο. Ως τις
+   * 12/10/2026 κάθε τιμή του καταλόγου ήταν της ΡΑΑΕΥ και η οθόνη το έλεγε για
+   * όλα μαζί («Και τα N τιμολόγια είναι όπως τα δημοσιεύει η ΡΑΑΕΥ», με την
+   * ημέρα του πίνακα). Μια τιμή παρόχου χωρίς σήμανση θα έκανε την πρόταση
+   * ψευδή. Με το πεδίο η οθόνη μετρά πόσα είναι και γράφει την πηγή τους
+   * στην κεφαλίδα, στη γραμμή ενημέρωσης και στη γραμμή του καθενός.
+   *
+   * `cell` και `category` είναι το κελί και η κατηγορία όπως τα γράφει το
+   * έγγραφο. Δεν υπάρχει γραμμή της ΡΑΑΕΥ να ξαναβγάλει την τιμή, οπότε το
+   * gas.test.ts ελέγχει ότι το `kwh` είναι ο αριθμός του κελιού και ότι η
+   * σημείωση λέει την ίδια κατηγορία.
+   */
+  providerPrice?: { url: string; readAt: string; category: string; cell: string };
   /**
    * Η σημείωση της ΡΑΑΕΥ για το τιμολόγιο, αυτούσια.
    *
@@ -123,6 +147,22 @@ export const NETWORK_OPERATORS = [
   { value: 'deda',        label: 'ΔΕΔΑ',        region: 'Λοιπή Ελλάδα', url: 'https://deda.gr' },
 ];
 
+/**
+ * Ο τιμοκατάλογος ιδιωτών της ΦΑΕ για τον Οκτώβριο 2026 («Τιμές Ιδιώτες
+ * Οκτώβριος 2026», PDF του παρόχου), όπως τον διάβασε η ομάδα αγοράς στις
+ * 12/10/2026 (χάρτης αγοράς 12/10/2026, ενότητα «Φυσικό αέριο»). Το `month`
+ * είναι ο μήνας του εγγράφου σε γενική: το gas.test.ts θέλει να είναι ο μήνας
+ * του πίνακα της ΡΑΑΕΥ, ώστε ο επόμενος πίνακας να ζητήσει νέα ανάγνωση.
+ */
+export const FAE_PRICES_2026_10 = {
+  url: 'https://fysikoaerioellados.gr/sites/default/files/2026-10/%CE%A4%CE%B9%CE%BC%CE%B5%CC%81%CF%82_%CE%99%CE%B4%CE%B9%CF%89%CC%81%CF%84%CE%B5%CF%82_%CE%9F%CE%BA%CF%84%CF%8E%CE%B2%CF%81%CE%B9%CE%BF%CF%82_2026_Updated%20%281%29.pdf',
+  readAt: '2026-10-12',
+  month: 'Οκτωβρίου 2026',
+} as const;
+/** Μια τιμή του ίδιου εγγράφου: η κατηγορία και το κελί της στήλης «Προμήθεια», αυτούσια. */
+const faePrice = (category: string, cell: string) =>
+  ({ url: FAE_PRICES_2026_10.url, readAt: FAE_PRICES_2026_10.readAt, category, cell });
+
 export const GAS_PROVIDERS: GasProvider[] = addRaaeyGas([
   {
     value: 'nrg', label: 'nrg (Motor Oil)', url: 'https://www.nrg.gr',
@@ -138,16 +178,34 @@ export const GAS_PROVIDERS: GasProvider[] = addRaaeyGas([
   {
     value: 'zenith', label: 'ZeniΘ', url: 'https://zenith.gr/el/for-the-home/gas/',
     tariffs: [
-      { id: 'zen_central_easy', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:91', raaeyUnknown: true, name: 'Gas Central Easy', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential', kwh: 0.06928, fixed: 0, contract_months: 24, raaey100: 6.93, desc: 'Κεντρική θέρμανση πολυκατοικίας. Χωρίς πάγιο.' },
-      { id: 'zen_central_save', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:92', raaeyUnknown: true, name: 'Gas Central Save', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential', kwh: 0.0798, fixed: 0, contract_months: 12, raaey100: 7.98, desc: 'Κεντρική θέρμανση πολυκατοικίας. Χωρίς πάγιο.' },
-      { id: 'zen_home_now', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:87', raaeyUnknown: true, name: 'Gas Home Now', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential', kwh: 0.06872, fixed: 4, contract_months: 12, raaey100: 10.87, desc: 'Πάγιο 4,00€ με Dual Energy.' },
-      { id: 'zen_home_pulse', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:100', raaeyUnknown: true, name: 'Gas Home Pulse', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential', kwh: 0.07315, fixed: 4.5, contract_months: 12, raaey100: 11.82, desc: 'Αυτόνομη θέρμανση.' },
-      { id: 'zen_home_save', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:86', raaeyUnknown: true, name: 'Gas Home Save', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential', kwh: 0.0798, fixed: 4.5, contract_months: 12, raaey100: 12.48, desc: 'Αυτόνομη θέρμανση.' },
+      // ══ ΟΚΤΩ ΓΡΑΜΜΕΣ ΗΤΑΝ ΜΠΛΕ ΕΝΩ Η ΡΑΑΕΥ ΤΙΣ ΓΡΑΦΕΙ ΚΙΤΡΙΝΕΣ ══════════════
+      // Έλεγχος 12/10/2026. Στον πίνακα του Οκτωβρίου (lib/energy/raaeyData.json,
+      // ανάγνωση 05/10/2026 από https://energycost.gr/) οι γραμμές
+      // gas-residential 86, 87, 91, 92, 100 και gas-business 42, 43, 45 έχουν
+      // `colour` «yellow», δηλαδή κυμαινόμενη τιμή (RAAEY_BADGE στο raaey.ts),
+      // και καμία τιμή ακόμη. Ο κατάλογος τις κρατούσε ΜΠΛΕ από τον Αύγουστο,
+      // που σημαίνει «Σταθερή τιμή για όλη τη διάρκεια της σύμβασης»
+      // (BADGE_MEANING στο catalogue.ts, σχόλιο του `badge` πιο πάνω): ο
+      // ιδιοκτήτης θα δεσμευόταν 12 ή 24 μήνες νομίζοντας ότι κλείδωσε τιμή.
+      // Ίδιο χρώμα έχει και η gas-business:44 «Gas Business Save»: δεν
+      // συνδέεται για την τιμή της (RAAEY_REJECTED στο raaeyCatalogue.ts), το
+      // χρώμα της όμως είναι της ΡΑΑΕΥ, οπότε ΚΙΤΡΙΝΟ γίνεται και το
+      // `zen_biz_save`. Τιμή και μήνας μένουν του Αυγούστου, εκτός σειράς.
+      // Ποιος διαβάζει το σήμα και τον τύπο: η στήλη «Τύπος» και ο επιλογέας
+      // του BillsGas.tsx, η συμβουλή για σταθερό τιμολόγιο πάνω από 800 kWh
+      // (τώρα δείχνεται σωστά και σε αυτά) και το gas.test.ts. Η σειρά και τα
+      // φίλτρα δεν τα κοιτούν: μετρούν μήνα τιμής, ποσό και τμήμα. Το χρώμα
+      // κάθε συνδεδεμένης γραμμής το ελέγχει πλέον το raaey.test.ts.
+      { id: 'zen_central_easy', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:91', raaeyUnknown: true, name: 'Gas Central Easy', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.06928, fixed: 0, contract_months: 24, raaey100: 6.93, desc: 'Κεντρική θέρμανση πολυκατοικίας. Χωρίς πάγιο.' },
+      { id: 'zen_central_save', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:92', raaeyUnknown: true, name: 'Gas Central Save', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.0798, fixed: 0, contract_months: 12, raaey100: 7.98, desc: 'Κεντρική θέρμανση πολυκατοικίας. Χωρίς πάγιο.' },
+      { id: 'zen_home_now', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:87', raaeyUnknown: true, name: 'Gas Home Now', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.06872, fixed: 4, contract_months: 12, raaey100: 10.87, desc: 'Πάγιο 4,00€ με Dual Energy.' },
+      { id: 'zen_home_pulse', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:100', raaeyUnknown: true, name: 'Gas Home Pulse', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.07315, fixed: 4.5, contract_months: 12, raaey100: 11.82, desc: 'Αυτόνομη θέρμανση.' },
+      { id: 'zen_home_save', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:86', raaeyUnknown: true, name: 'Gas Home Save', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.0798, fixed: 4.5, contract_months: 12, raaey100: 12.48, desc: 'Αυτόνομη θέρμανση.' },
       { id: 'zen_home_pair', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:85', name: 'Gas Home Pair', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential', kwh: 0.049, fixed: 9.9, undiscounted: { kwh: 0.055, fixed: 9.9 }, conditions: { price: 'Έκπτωση Dual Energy (Παράλληλη σύνδεση Ηλεκτρικής Ενέργειας)' }, contract_months: 12, desc: '+ Δώρο 3 Πάγια (9,9 *3 = 29,7 σε ένα έτος)' },
-      { id: 'zen_biz_easy2', priceMonth: 'Αυγούστου 2026', raaey: 'gas-business:43', raaeyUnknown: true, name: 'Gas Business Easy 2', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'business', kwh: 0.06928, fixed: 0, contract_months: 24, raaey100: 6.93, desc: 'Χωρίς πάγιο.' },
-      { id: 'zen_biz_save_p', priceMonth: 'Αυγούστου 2026', raaey: 'gas-business:45', raaeyUnknown: true, name: 'Gas Business Save +', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'business', kwh: 0.0798, fixed: 0, contract_months: 12, raaey100: 7.98, desc: 'Χωρίς πάγιο.' },
-      { id: 'zen_biz_easy1', priceMonth: 'Αυγούστου 2026', raaey: 'gas-business:42', raaeyUnknown: true, name: 'Gas Business Easy 1', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'business', kwh: 0.06676, fixed: 5, contract_months: 24, raaey100: 11.68 },
-      { id: 'zen_biz_save', priceMonth: 'Αυγούστου 2026', name: 'Gas Business Save', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'business',
+      { id: 'zen_biz_easy2', priceMonth: 'Αυγούστου 2026', raaey: 'gas-business:43', raaeyUnknown: true, name: 'Gas Business Easy 2', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.06928, fixed: 0, contract_months: 24, raaey100: 6.93, desc: 'Χωρίς πάγιο.' },
+      { id: 'zen_biz_save_p', priceMonth: 'Αυγούστου 2026', raaey: 'gas-business:45', raaeyUnknown: true, name: 'Gas Business Save +', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.0798, fixed: 0, contract_months: 12, raaey100: 7.98, desc: 'Χωρίς πάγιο.' },
+      { id: 'zen_biz_easy1', priceMonth: 'Αυγούστου 2026', raaey: 'gas-business:42', raaeyUnknown: true, name: 'Gas Business Easy 1', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.06676, fixed: 5, contract_months: 24, raaey100: 11.68 },
+      { id: 'zen_biz_save', priceMonth: 'Αυγούστου 2026', name: 'Gas Business Save', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business',
         kwh: 0.0798, fixed: 4.5, contract_months: 12, raaey100: 12.48 },
     ],
   },
@@ -165,10 +223,48 @@ export const GAS_PROVIDERS: GasProvider[] = addRaaeyGas([
   {
     value: 'fysiko_aerio', label: 'Φυσικό αέριο ΕΕΕ (ΔΕΠΑ)', url: 'https://fysikoaerioellados.gr',
     tariffs: [
-      { id: 'fae_pliris', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:114', raaeyUnknown: true, name: 'Αέριο Οικιακό Πλήρες', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential', kwh: 0.06879, fixed: 0, contract_months: 12, raaey100: 6.88, desc: 'Χωρίς πάγιο.' },
-      { id: 'fae_kouzina', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:115', raaeyUnknown: true, name: 'Αέριο Οικιακό Κουζίνα', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential', kwh: 0.06879, fixed: 0, contract_months: 12, raaey100: 6.88, desc: 'Χωρίς πάγιο. Για χρήση κουζίνας και ζεστού νερού.' },
-      { id: 'fae_extra', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:113', raaeyUnknown: true, name: 'Αέριο Οικιακό Πλήρες Extra', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential', kwh: 0.06279, fixed: 4.5, contract_months: 24, raaey100: 10.78, desc: 'Πολιτική ορθής χρήσης: έως 13 MWh ανά δωδεκάμηνο.' },
-      { id: 'fae_biz', priceMonth: 'Αυγούστου 2026', raaey: 'gas-business:48', raaeyUnknown: true, name: 'Αέριο Επαγγελματικό', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'business', kwh: 0.06579, fixed: 0, contract_months: 12, raaey100: 6.58, desc: 'Χωρίς πάγιο.' },
+      // ══ Η ΤΙΜΗ ΗΤΑΝ ΤΟΥ ΑΥΓΟΥΣΤΟΥ ΕΝΩ Ο ΠΑΡΟΧΟΣ ΓΡΑΦΕΙ ΗΔΗ ΤΗΝ ΤΙΜΗ ΤΟΥ ΟΚΤΩΒΡΙΟΥ ══
+      // Η ΡΑΑΕΥ γράφει «Η τιμή δεν είναι ακόμα γνωστή» στις τέσσερις γραμμές
+      // της ΦΑΕ (gas-residential 113 έως 115 και gas-business 48, πίνακας της
+      // 05/10/2026) και ο κατάλογος κρατούσε 0,06879 του Αυγούστου. Ο
+      // τιμοκατάλογος του ίδιου του παρόχου για τον Οκτώβριο 2026 γράφει στη
+      // στήλη «Προμήθεια» 0,087280 για το «Οικιακό με χρήση θέρμανσης»
+      // (Πλήρες) και για το «Οικιακό άλλων χρήσεων» (Κουζίνα), όπως τα
+      // αντιστοιχίζει ο χάρτης αγοράς 12/10/2026 (σημεία 4 και 5). Πηγή,
+      // ανάγνωση 12/10/2026: `FAE_PRICES_2026_10` πιο πάνω.
+      //
+      // ΕΙΝΑΙ ΤΟ ΙΔΙΟ ΜΕΓΕΘΟΣ ΜΕ ΤΗΣ ΡΑΑΕΥ. Το ίδιο έγγραφο δίνει για τον
+      // Αύγουστο προμήθεια 0,068790, ακριβώς το 0,06879 της ΡΑΑΕΥ που κρατούσε
+      // ο κατάλογος: η στήλη είναι η χρέωση προμήθειας χωρίς μεταφορά, διανομή,
+      // φόρους και ΦΠΑ, όπως μετρά όλη η σύγκριση.
+      //
+      // ΜΠΑΙΝΕΙ ΣΤΗ ΣΕΙΡΑ ΜΕ ΤΗΝ ΠΗΓΗ ΓΡΑΜΜΕΝΗ. Η οθόνη έλεγε ότι και τα N
+      // τιμολόγια είναι «όπως τα δημοσιεύει η ΡΑΑΕΥ», με την ημέρα του
+      // πίνακα· με τιμή παρόχου χωρίς σήμανση η πρόταση θα ήταν ψευδής. Γι'
+      // αυτό το `providerPrice` κρατά το έγγραφο, την ημέρα, την κατηγορία και
+      // το κελί· το BillsGas.tsx μετρά πόσα είναι και τα γράφει στην κεφαλίδα,
+      // στη γραμμή ενημέρωσης και στο κελί του μήνα τους. Το `raaeyUnknown`
+      // μένει, γιατί η ΡΑΑΕΥ εξακολουθεί να μην έχει τιμή. Το `raaey100` φεύγει
+      // από τις δύο: ήταν σύνολο Αυγούστου της ΡΑΑΕΥ.
+      //
+      // ΗΤΑΝ ΜΠΛΕ («ΣΤΑΘΕΡΗ ΤΙΜΗ ΓΙΑ ΟΛΗ ΤΗ ΔΙΑΡΚΕΙΑ») ΕΝΩ Η ΤΙΜΗ ΑΛΛΑΖΕΙ ΚΑΘΕ
+      // ΜΗΝΑ. Η ΡΑΑΕΥ χρωματίζει κίτρινες και τις τέσσερις γραμμές στον πίνακα
+      // του Οκτωβρίου (lib/energy/raaeyData.json, `colour` «yellow») και το
+      // έγγραφο του παρόχου δίνει άλλη προμήθεια κάθε μήνα: 0,068790 τον
+      // Αύγουστο, 0,075110 τον Σεπτέμβριο, 0,087280 τον Οκτώβριο. Οι αναγνώστες
+      // του σήματος είναι οι ίδιοι με της ZeniΘ πιο πάνω.
+      //
+      // ΤΟ «ΠΛΗΡΕΣ EXTRA» ΚΑΙ ΤΟ ΕΠΑΓΓΕΛΜΑΤΙΚΟ ΜΕΝΟΥΝ ΣΤΟΝ ΑΥΓΟΥΣΤΟ, ΕΚΤΟΣ ΣΕΙΡΑΣ.
+      // Για το Extra ο χάρτης δεν βρήκε τιμή Οκτωβρίου στο ίδιο έγγραφο (μη
+      // επαληθευμένο). Το έγγραφο είναι τιμοκατάλογος ιδιωτών και δεν δίνει
+      // το επαγγελματικό. Ο μήνας και η ημέρα της σημείωσης του Extra
+      // βγαίνουν από το `FAE_PRICES_2026_10` και το gas.test.ts θέλει τον μήνα
+      // του εγγράφου ίσο με τον μήνα του πίνακα: με πίνακα άλλου μήνα ο
+      // έλεγχος ζητά νέα ανάγνωση, αντί η σημείωση να μιλά για παλιό μήνα.
+      { id: 'fae_pliris', priceMonth: FAE_PRICES_2026_10.month, raaey: 'gas-residential:114', raaeyUnknown: true, providerPrice: faePrice('Οικιακό με χρήση θέρμανσης', '0,087280'), name: 'Αέριο Οικιακό Πλήρες', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.08728, fixed: 0, contract_months: 12, desc: 'Χωρίς πάγιο. Η τιμή είναι από τον τιμοκατάλογο του παρόχου («Οικιακό με χρήση θέρμανσης»), ανάγνωση 12/10/2026.' },
+      { id: 'fae_kouzina', priceMonth: FAE_PRICES_2026_10.month, raaey: 'gas-residential:115', raaeyUnknown: true, providerPrice: faePrice('Οικιακό άλλων χρήσεων', '0,087280'), name: 'Αέριο Οικιακό Κουζίνα', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.08728, fixed: 0, contract_months: 12, desc: 'Χωρίς πάγιο. Για χρήση κουζίνας και ζεστού νερού. Η τιμή είναι από τον τιμοκατάλογο του παρόχου («Οικιακό άλλων χρήσεων»), ανάγνωση 12/10/2026.' },
+      { id: 'fae_extra', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:113', raaeyUnknown: true, name: 'Αέριο Οικιακό Πλήρες Extra', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.06279, fixed: 4.5, contract_months: 24, raaey100: 10.78, desc: `Πολιτική ορθής χρήσης: έως 13 MWh ανά δωδεκάμηνο. Στον τιμοκατάλογο ${FAE_PRICES_2026_10.month} του παρόχου (ανάγνωση ${asOfDate(FAE_PRICES_2026_10.readAt)}) δεν βρέθηκε τιμή γι’ αυτό: τιμή μη επαληθευμένη.` },
+      { id: 'fae_biz', priceMonth: 'Αυγούστου 2026', raaey: 'gas-business:48', raaeyUnknown: true, name: 'Αέριο Επαγγελματικό', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.06579, fixed: 0, contract_months: 12, raaey100: 6.58, desc: 'Χωρίς πάγιο.' },
     ],
   },
   {
@@ -235,3 +331,56 @@ export const GAS_PROVIDERS: GasProvider[] = addRaaeyGas([
     ],
   },
 ]);
+
+// ══ ΠΟΙΕΣ ΤΙΜΕΣ ΔΕΝ ΕΙΝΑΙ ΤΗΣ ΡΑΑΕΥ, ΜΕΤΡΗΜΕΝΕΣ ═════════════════════════
+// Η οθόνη έγραφε «Και τα N τιμολόγια είναι όπως τα δημοσιεύει η ΡΑΑΕΥ» και
+// «Τελευταία ενημέρωση» με την ημέρα του πίνακα (05/10/2026). Με τιμή
+// παρόχου στον κατάλογο και οι δύο προτάσεις γίνονται ψευδείς (έλεγχος
+// 12/10/2026). Το πλήθος, το έγγραφο και η ημέρα βγαίνουν από εδώ, από τα
+// ίδια τα πεδία `providerPrice`: δεν γράφονται με το χέρι σε κείμενο.
+
+/** Τα τιμολόγια με τιμή του παρόχου, ανά έγγραφο του παρόχου. */
+export interface GasProviderSource {
+  /** Το όνομα του παρόχου, όπως στον επιλογέα. */
+  provider: string;
+  url: string;
+  readAt: string;
+  ids: string[];
+  names: string[];
+}
+
+export const GAS_PROVIDER_SOURCES: GasProviderSource[] = (() => {
+  const out: GasProviderSource[] = [];
+  for (const p of GAS_PROVIDERS) {
+    for (const t of p.tariffs) {
+      if (!t.providerPrice) continue;
+      const { url, readAt } = t.providerPrice;
+      let g = out.find(x => x.url === url && x.readAt === readAt && x.provider === p.label);
+      if (!g) { g = { provider: p.label, url, readAt, ids: [], names: [] }; out.push(g); }
+      g.ids.push(t.id);
+      g.names.push(t.name);
+    }
+  }
+  return out;
+})();
+
+/**
+ * «Τελευταία ενημέρωση: … Πηγή: …» για τα τιμολόγια που δείχνει ένα σημείο
+ * της οθόνης. Χωρίς τιμή παρόχου είναι η γραμμή του πίνακα της ΡΑΑΕΥ, ίδια
+ * με του ρεύματος. Μόνο με τιμές παρόχου γράφει την ημέρα του τιμοκαταλόγου.
+ *
+ * ΣΤΟ ΜΕΙΓΜΑ ΠΡΩΤΗ ΜΠΑΙΝΕΙ Η ΗΜΕΡΑ ΤΗΣ ΡΑΑΕΥ, ΜΕ ΤΟ ΟΝΟΜΑ ΤΗΣ (12/10/2026).
+ * Μόνο δύο τιμολόγια της ΦΑΕ έχουν τιμή παρόχου, διαβασμένη 12/10/2026· όλα
+ * τα άλλα είναι του πίνακα της 05/10/2026, από την οποία μετρά και η πύλη
+ * παλαιότητας (`GAS_VERIFIED`). Μια γραμμή που θα άρχιζε με «Τελευταία
+ * ενημέρωση: 12/10/2026» θα έλεγε για όλο τον κατάλογο κάτι που ισχύει για
+ * δύο γραμμές. Η ημέρα του παρόχου λέγεται μετά, μαζί με το πλήθος.
+ */
+export function gasSourceLine(rows: readonly Pick<GasTariff, 'providerPrice'>[]): string {
+  const own = rows.flatMap(t => (t.providerPrice ? [t.providerPrice] : []));
+  if (own.length === 0) return `Τελευταία ενημέρωση: ${asOfDate(RAAEY_READ_AT)}. Πηγή: ${PRICE_FACTS.gas.source}`;
+  const days = [...new Set(own.map(p => p.readAt))].sort();
+  if (own.length === rows.length) return `Τελευταία ενημέρωση: ${asOfDate(days[days.length - 1])}. Πηγή: τιμοκατάλογος του παρόχου`;
+  return `Τελευταία ενημέρωση ΡΑΑΕΥ: ${asOfDate(RAAEY_READ_AT)}. Πηγή: ${PRICE_FACTS.gas.source}· `
+    + `για ${own.length} από τα ${rows.length} τιμολόγια τιμοκατάλογος του παρόχου, ανάγνωση ${joinGreek(days.map(asOfDate))}`;
+}

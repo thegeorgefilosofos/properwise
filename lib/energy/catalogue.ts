@@ -135,6 +135,17 @@ export interface LocalTariff extends Tariff {
   promo_kwh_day?: number;
 
   /**
+   * Ο ΤΥΠΟΣ ΤΗΣ ΩΡΙΑΙΑΣ ΤΙΜΗΣ ΕΝΟΣ ΔΥΝΑΜΙΚΟΥ, ΟΠΩΣ ΤΟΝ ΓΡΑΦΕΙ Ο ΠΑΡΟΧΟΣ. Μόνο για την οθόνη.
+   *
+   * `factor × ΤΕΑ της ώρας + adder` ανά κιλοβατώρα. Ο υπολογισμός δεν τον
+   * χρησιμοποιεί: η ΤΕΑ αλλάζει κάθε ώρα και ένα ποσό από μέσο όρο θα ήταν
+   * μαντεψιά με ύφος υπολογισμού (βλ. `monthlyCost`). Ζει σε πεδίο και όχι
+   * μόνο μέσα στην περιγραφή για τον ίδιο λόγο με το `undiscounted`: ο
+   * έλεγχος του καταλόγου ξέρει κάθε ευρώ που τυπώνεται.
+   */
+  hourlyFormula?: { factor: number; adder: number };
+
+  /**
    * ΓΙΑ ΠΟΙΟΝ ΜΗΝΑ ΙΣΧΥΕΙ Η ΤΙΜΗ, ΣΕ ΓΕΝΙΚΗ: «Οκτωβρίου 2026».
    *
    * Τα «πράσινα» αλλάζουν κάθε 1η του μήνα. Χωρίς μήνα δίπλα της, μια τιμή που
@@ -304,7 +315,22 @@ export const PROVIDERS: ProviderGroup[] = [
       // του καταλόγου με «έκπτωση συνέπειας».
       { id: 'dei_prasino', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', raaey: 'power-residential:136', name: 'Γ1 Πράσινο', badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.15913, kwh_night: null, kwh_tier2: 0.21997, tier2_threshold: 200, tier2_scope: 'all', fixed: 5, fixed_ebill: null, undiscounted: { day: 0.17363, tier2: 0.23717, fixed: 5 }, conditions: { price: 'Εμπρόθεσμη Εξόφληση και myΔΕΗ' }, contract_months: 0, no_fixed: false, vat: 6, segment: 'residential', desc: 'Ειδικό τιμολόγιο, η τιμή ανακοινώνεται κάθε 1η του μήνα. Αορίστου διάρκειας.' },
       { id: 'dei_prasino_n', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', raaey: 'power-residential:136', name: 'Γ1Ν Πράσινο Νυχτερινό', badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.15913, kwh_night: 0.1559, kwh_tier2: 0.21997, tier2_threshold: 200, tier2_scope: 'all', fixed: 5, fixed_ebill: null, undiscounted: { day: 0.17363, tier2: 0.23717, night: 0.1688, fixed: 5 }, conditions: { price: 'Εμπρόθεσμη Εξόφληση και myΔΕΗ' }, contract_months: 0, no_fixed: false, vat: 6, segment: 'residential', desc: 'Ειδικό τιμολόγιο, η τιμή ανακοινώνεται κάθε 1η του μήνα. Αορίστου διάρκειας.' },
-      { id: 'dei_dynamic', priceMonth: 'Αυγούστου 2026',      name: 'myHome Dynamic',         badge: 'ΔΥΝΑΜΙΚΟ',type: 'dynamic',       kwh_day: 0, kwh_night: null, fixed: 5.00, smart_meter: true, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ωριαία τιμολόγηση βάσει χονδρεμπορικής (HEnEx). Απαιτεί έξυπνο μετρητή ΔΕΔΔΗΕ.' },
+      // ══ ΤΟ ΠΑΓΙΟ ΗΤΑΝ 5,00€ ΚΑΙ Η ΔΕΗ ΓΡΑΦΕΙ 9,00€ ═════════════════════════
+      // Ο κατάλογος κρατούσε το πάγιο του Αυγούστου και καμία τιμή: η περιγραφή
+      // έλεγε μόνο «βάσει χονδρεμπορικής». Η σελίδα της ΔΕΗ γράφει πάγιο 9,00€
+      // τον μήνα και ωριαία τιμή 1,19 × ΤΕΑ της ώρας + 0,04400€/kWh.
+      // Πηγή: https://www.dei.gr/el/gia-to-spiti/revma/myhome-dynamic/
+      // (αναλυτικό: https://www.dei.gr/media/emlhrymy/myhome-dynamic.pdf),
+      // ανάγνωση της ομάδας αγοράς στις 12/10/2026 (χάρτης αγοράς 12/10/2026).
+      //
+      // Ο ΜΗΝΑΣ ΤΟΥ ΠΙΝΑΚΑ ΔΕΝ ΤΟ ΦΕΡΝΕΙ ΣΤΗ ΣΕΙΡΑ. Το `compareTariffs` αφήνει
+      // έξω κάθε δυναμικό πριν την κατάταξη (lib/energy/tariff.ts), το
+      // `monthlyCost` μετρά μόνο ό,τι δηλώσει ο χρήστης από τον λογαριασμό του
+      // και τα reels φιλτράρουν `type !== 'dynamic'`. Η κάρτα του τιμολογίου
+      // δεν τυπώνει ούτε τιμή ούτε πάγιο ούτε μήνα για δυναμικό: γι' αυτό ο
+      // τύπος, το πάγιο και ο μήνας γράφονται στην περιγραφή και ο έλεγχος του
+      // καταλόγου τα βρίσκει στα πεδία `fixed` και `hourlyFormula`.
+      { id: 'dei_dynamic', priceMonth: 'Οκτωβρίου 2026', name: 'myHome Dynamic', badge: 'ΔΥΝΑΜΙΚΟ', type: 'dynamic', kwh_day: 0, kwh_night: null, fixed: 9, hourlyFormula: { factor: 1.19, adder: 0.044 }, smart_meter: true, contract_months: 0, vat: 6, segment: 'residential', desc: 'Ωριαία τιμή 1,19 × ΤΕΑ της ώρας + 0,04400€/kWh (ΤΕΑ: Τιμή Εκκαθάρισης Αγοράς στο Χρηματιστήριο Ενέργειας). Πάγιο 9,00€ τον μήνα. Τύπος και πάγιο Οκτωβρίου 2026, όπως τα γράφει η ΔΕΗ. Απαιτεί έξυπνο μετρητή ΔΕΔΔΗΕ.' },
       // ── Επαγγελματικά (Γ21/Γ22) ────────────────────────────────────────
       { id: 'dei_biz_4all', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', raaey: 'power-business:122', name: 'MyBussiness4ALL', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', kwh_day: 0.25476, kwh_night: null, flat_monthly: null, fixed: 4.9, fixed_ebill: null, undiscounted: { day: 0.2581, fixed: 5 }, conditions: { price: 'Πάγια Εντολή', fixed: 'Πάγια Εντολή' }, contract_months: 12, no_fixed: false, vat: 6, segment: 'business', desc: 'Κυμαινόμενη τιμή. Σύμβαση 12 μηνών.' },
       { id: 'dei_biz_g21', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', raaey: 'power-business:118', name: 'Ειδικό Γ21', badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.25437, kwh_night: null, flat_monthly: null, fixed: 5, fixed_ebill: null, undiscounted: { day: 0.25437, fixed: 5 }, contract_months: 0, no_fixed: false, vat: 6, segment: 'business', desc: 'Ειδικό τιμολόγιο, η τιμή ανακοινώνεται κάθε 1η του μήνα. Αορίστου διάρκειας.' },
@@ -314,7 +340,20 @@ export const PROVIDERS: ProviderGroup[] = [
     value: 'heron', label: 'Ήρων', url: 'https://www.heron.gr',
     tariffs: [
       // ── Σταθερά (Μπλε) ────────────────────────────────────────────────────
-      { id: 'heron_blue_smart', priceMonth: 'Αυγούστου 2026', priceStatus: 'verified',   name: 'Blue Smart Home',              badge: 'ΜΠΛΕ',    type: 'fixed',    kwh_day: 0.1380, kwh_night: null, flat_monthly: null, fixed: 7.95,  fixed_ebill: 7.95, contract_months: 12, no_fixed: false, vat: 6, segment: 'residential', desc: 'Πάγιο 7,95€ έως τις 150 kWh / 15,90€ πάνω από τις 150 kWh. Έκπτωση Συνέπειας.' },
+      // ══ Η ΠΕΡΙΓΡΑΦΗ ΕΛΕΓΕ 15,90€ ΠΑΝΩ ΑΠΟ ΤΙΣ 150 kWh ΚΑΙ Ο ΥΠΟΛΟΓΙΣΜΟΣ ΕΤΡΕΧΕ 7,95€ ══
+      // Το δεύτερο πάγιο ζούσε μόνο μέσα στην πρόταση: όποιος το είχε ως τρέχον
+      // και καίει πάνω από 150 kWh έβλεπε κόστος μικρότερο κατά 7,95€ τον μήνα
+      // πριν τον ΦΠΑ. Το ίδιο όριο και τα ίδια δύο πάγια γράφει η ΡΑΑΕΥ για το
+      // «Blue Smart HOME 2» (https://energycost.gr/, ανάγνωση 05/10/2026, ίδια
+      // γραμμή στο lib/energy/raaeyData.json, power-residential:219), με την
+      // ίδια τιμή 0,138 και 12μηνη σύμβαση.
+      //
+      // ΓΙΑΤΙ ΔΕΝ ΣΥΝΔΕΕΤΑΙ ΜΕ ΤΗ ΓΡΑΜΜΗ 219. Με `raaey` εδώ, το addRaaeyPower
+      // παύει να προσθέτει τη γραμμή και το `rx_pr_219`, που υπάρχει από
+      // 05/10/2026 και μπορεί να είναι αποθηκευμένο στις ρυθμίσεις χρήστη, θα
+      // χανόταν. Μένει με τον μήνα του και εκτός σειράς ώσπου να αποφασιστεί
+      // πώς ενώνονται τα δύο `id` (έλεγχος 12/10/2026, χάρτης αγοράς σημείο 9).
+      { id: 'heron_blue_smart', priceMonth: 'Αυγούστου 2026', priceStatus: 'verified',   name: 'Blue Smart Home',              badge: 'ΜΠΛΕ',    type: 'fixed',    kwh_day: 0.1380, kwh_night: null, flat_monthly: null, fixed: 7.95,  fixed_ebill: 7.95, fixed_tier2: 15.9, fixed_tier2_threshold: 150, contract_months: 12, no_fixed: false, vat: 6, segment: 'residential', desc: 'Πάγιο 7,95€ έως τις 150 kWh / 15,90€ πάνω από τις 150 kWh. Έκπτωση Συνέπειας. Τον Οκτώβριο 2026 η ΡΑΑΕΥ γράφει με τις ίδιες τιμές το «Blue Smart HOME 2», σε δική του γραμμή.' },
       { id: 'heron_blue_gen_max', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', raaey: 'power-residential:210', name: 'Blue Generous Max Home', badge: 'ΜΠΛΕ', type: 'fixed', kwh_day: 0.0945, kwh_night: null, flat_monthly: null, fixed: 9.9, fixed_ebill: null, undiscounted: { day: 0.189, fixed: 9.9 }, conditions: { price: 'Πληρωμή με συνέπεια' }, contract_months: 18, no_fixed: false, vat: 6, segment: 'residential', desc: 'Σταθερή τιμή. Σύμβαση 18 μηνών.' },
       { id: 'heron_blue_gen', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', raaey: 'power-residential:208', name: 'Blue Generous Home', badge: 'ΜΠΛΕ', type: 'fixed', kwh_day: 0.0936, kwh_night: null, flat_monthly: null, fixed: 9.5, fixed_ebill: null, undiscounted: { day: 0.117, fixed: 9.5 }, conditions: { price: 'Συνέπεια' }, contract_months: 6, no_fixed: false, vat: 6, segment: 'residential', desc: 'Σταθερή τιμή. Σύμβαση 6 μηνών.' },
       { id: 'heron_blue_simple', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', raaey: 'power-residential:220', name: 'Blue Simple Home', badge: 'ΜΠΛΕ', type: 'fixed', kwh_day: 0.158, kwh_night: null, flat_monthly: null, fixed: 15.9, fixed_ebill: null, undiscounted: { day: 0.158, fixed: 15.9 }, contract_months: 12, no_fixed: false, vat: 6, segment: 'residential', desc: 'Σταθερή τιμή. Σύμβαση 12 μηνών.' },
@@ -455,7 +494,18 @@ export const PROVIDERS: ProviderGroup[] = [
     tariffs: [
       // ── Οικιακά ────────────────────────────────────────────────────────
       { id: 'enrw_saver', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', raaey: 'power-residential:28', name: 'Reward Saver', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', kwh_day: 0.219, kwh_night: null, flat_monthly: null, fixed: 7.9, fixed_ebill: null, undiscounted: { day: 0.289, fixed: 7.9 }, conditions: { price: 'Έκπτωση Συνέπειας 0.070€/kWh' }, contract_months: 12, no_fixed: false, vat: 6, segment: 'residential', desc: 'Κυμαινόμενη τιμή. Σύμβαση 12 μηνών.' },
-      { id: 'enrw_stable_max', priceMonth: 'Αυγούστου 2026',  name: 'Reward Stable Max',      badge: 'ΜΠΛΕ',    type: 'fixed',    kwh_day: 0.1390, kwh_night: null, flat_monthly: null, fixed: 12.90, fixed_ebill: null, contract_months: 12, no_fixed: false, vat: 6, segment: 'residential', desc: 'Φθηνότερο σταθερό 12 μηνών.' },
+      // ══ Η ΠΕΡΙΓΡΑΦΗ ΤΟ ΕΛΕΓΕ «ΦΘΗΝΟΤΕΡΟ» ΜΕ ΤΙΜΗ ΑΥΓΟΥΣΤΟΥ ══════════════════
+      // Τον Οκτώβριο η ΡΑΑΕΥ γράφει το «Reward Stable Max 12M» με πάγιο 13,90€
+      // και την ίδια τιμή 0,139 (https://energycost.gr/, ανάγνωση 05/10/2026,
+      // ίδια γραμμή στο lib/energy/raaeyData.json, power-residential:16· ο
+      // χάρτης τη γράφει 15). Ο χάρτης αγοράς της 12/10/2026 (σημείο 11) ζητά
+      // 12,90 → 13,90 εδώ. ΔΕΝ ΣΥΝΔΕΕΤΑΙ: με `raaey` σε αυτή τη γραμμή το
+      // addRaaeyPower παύει να προσθέτει τη 16 και το `rx_pr_16`, που υπάρχει
+      // από 05/10/2026 και μπορεί να είναι αποθηκευμένο στις ρυθμίσεις χρήστη,
+      // θα χανόταν. Νέο πάγιο χωρίς σύνδεση θα έβγαζε δύο ίδια τιμολόγια στη
+      // σειρά. Μένει με τον μήνα του, εκτός σειράς και η περιγραφή στέλνει
+      // στη γραμμή του Οκτωβρίου.
+      { id: 'enrw_stable_max', priceMonth: 'Αυγούστου 2026',  name: 'Reward Stable Max',      badge: 'ΜΠΛΕ',    type: 'fixed',    kwh_day: 0.1390, kwh_night: null, flat_monthly: null, fixed: 12.90, fixed_ebill: null, contract_months: 12, no_fixed: false, vat: 6, segment: 'residential', desc: 'Σταθερή τιμή. Σύμβαση 12 μηνών. Τιμή μη επαληθευμένη στον έλεγχο της 12/10/2026: τον Οκτώβριο 2026 η ΡΑΑΕΥ γράφει το «Reward Stable Max 12M» με την ίδια τιμή ανά kWh και άλλο πάγιο, σε δική του γραμμή.' },
       { id: 'enrw_stable', priceMonth: 'Αυγούστου 2026',      name: 'Reward Stable',          badge: 'ΜΠΛΕ',    type: 'fixed',    kwh_day: 0.1690, kwh_night: null, flat_monthly: null, fixed: 12.90, fixed_ebill: null, contract_months: 18, no_fixed: false, vat: 6, segment: 'residential', desc: 'Σταθερό 18 μηνών.' },
       { id: 'enrw_stable_zero', priceStatus: 'verified', priceMonth: 'Οκτωβρίου 2026', raaey: 'power-residential:17', name: 'Reward Stable Zero 12M', badge: 'ΜΠΛΕ', type: 'fixed', kwh_day: 0.189, kwh_night: null, flat_monthly: null, fixed: 0, fixed_ebill: null, undiscounted: { day: 0.26, fixed: 0 }, conditions: { price: 'Έκπτωση συνέπειας 0.071€/kWh' }, contract_months: 12, no_fixed: true, vat: 6, segment: 'residential', desc: 'Σταθερή τιμή. Σύμβαση 12 μηνών.' },
       { id: 'enrw_smart', priceMonth: 'Αυγούστου 2026', raaey: 'power-residential:20', raaeyUnknown: true, name: 'Smart', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', kwh_day: 0.14504, kwh_night: null, flat_monthly: null, fixed: 5, fixed_ebill: null, priceText: 'Η τιμή δεν είναι ακόμη γνωστή', contract_months: 0, no_fixed: false, vat: 6, segment: 'residential', desc: 'Κυμαινόμενο smart πρόγραμμα.' },
@@ -505,7 +555,19 @@ export const PROVIDERS: ProviderGroup[] = [
   {
     value: 'fysiko_aerio', label: 'Φυσικό αέριο Ελλάδος', url: 'https://www.fysikoaerioellados.gr',
     tariffs: [
-      { id: 'fa_oikia', priceMonth: 'Αυγούστου 2026',         name: 'Oikia Green',            badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.14265, kwh_night: null, fixed: 5.00, contract_months: 0, vat: 6, segment: 'residential', desc: 'Κυμαινόμενο. Ανακοινώνεται κάθε 1η μήνα.' },
+      // ══ ΤΟ «OIKIA GREEN» ΔΕΝ ΥΠΑΡΧΕΙ ΣΤΟΝ ΠΙΝΑΚΑ ΤΟΥ ΟΚΤΩΒΡΙΟΥ ══════════════
+      // Ο πίνακας της ΡΑΑΕΥ (lib/energy/raaeyData.json, ανάγνωση 05/10/2026) δεν
+      // έχει τιμολόγιο με αυτό το όνομα· το πράσινο της ΦΑΕ εκεί λέγεται
+      // «Ειδικό» (power-residential:236) και μπαίνει ήδη από το addRaaeyPower
+      // ως `rx_pr_236`. Η σελίδα ρεύματος του παρόχου γύρισε 404 στον έλεγχο
+      // (χάρτης αγοράς 12/10/2026, πίνακας ρεύματος, γραμμή «Φυσικό Αέριο
+      // Ελλάδος (ρεύμα)»)· σελίδα ειδικά για το «Oikia Green» δεν ελέγχθηκε.
+      // Το `id` μένει για όποιον το έχει αποθηκευμένο·
+      // η τιμή μένει του Αυγούστου, εκτός σειράς και η περιγραφή το λέει.
+      // ΔΕΝ ΣΥΝΔΕΕΤΑΙ με τη 236: δεν είναι βέβαιο ότι είναι το ίδιο προϊόν και
+      // η σύνδεση θα έσβηνε το `rx_pr_236`. ΟΥΤΕ `notAvailable`: εκείνο σημαίνει
+      // ότι η ΡΑΑΕΥ γράφει «μη εμπορικά διαθέσιμο», ενώ εδώ απλώς δεν το γράφει.
+      { id: 'fa_oikia', priceMonth: 'Αυγούστου 2026',         name: 'Oikia Green',            badge: 'ΠΡΑΣΙΝΟ', type: 'variable', kwh_day: 0.14265, kwh_night: null, fixed: 5.00, contract_months: 0, vat: 6, segment: 'residential', desc: 'Κυμαινόμενο. Ανακοινώνεται κάθε 1η μήνα. Δεν υπάρχει στον πίνακα τιμολογίων της ΡΑΑΕΥ του Οκτωβρίου 2026 και η σελίδα ρεύματος του παρόχου δεν βρέθηκε: τιμή μη επαληθευμένη στον έλεγχο της 12/10/2026. Το ειδικό τιμολόγιο του παρόχου στον πίνακα του Οκτωβρίου λέγεται «Ειδικό».' },
     ],
   },
   // Δύο πάροχοι που υπάρχουν μόνο στον πίνακα της ΡΑΑΕΥ (Οκτώβριος 2026). Τα

@@ -32,13 +32,15 @@ import { assessNeeds, matchPlans, explain, NEED_LABEL, type PropertyRisk } from 
 import {
   INSURANCE_VERIFIED, INSURANCE_MAX_AGE_DAYS, distinctInsurers, INSURANCE_COMPANIES,
   type OtherSub, QUOTE_FILTERS, type QuoteFilter, type LiveQuote, computeLiveQuotes,
-  deriveCoverages,
+  deriveCoverages, INSURANCE_PRICE_CAVEAT, countInsurers, planOptionLabel, pickablePlans,
+  coverBasis, COVER_BASIS_NOTE, showsEnfiaPerils, insuranceMonthly, insuranceTotalNote,
+  CONTENTS_ONLY_NOTE, coverWarning, companyChange,
 } from './insurance/catalog'
 import { SubscriptionSection } from './insurance/SubscriptionSection'
 import { navLabel } from '@/lib/nav/labels'
 import { propertyStatus, isLease, type StatusRow } from '@/lib/facts/status';
 import { AsOfNote } from '@/components/AsOfNote';
-import { PRICE_FACTS } from '@/lib/facts/prices';
+import { PRICE_FACTS, asOfLine } from '@/lib/facts/prices';
 import { ENFIA_REDUCTIONS } from '@/lib/billing/enfia';
 import { fpRate } from '@/lib/core/format';
 
@@ -265,7 +267,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
     // ο υπολογισμός γινόταν τοπικά. Το ψεύτικο περίμενε είναι ψέμα στην οθόνη.
     quotesTimer.current = setTimeout(() => {
       const quotes = computeLiveQuotes(sqm, pVal, cVal, effectiveFloor, effectiveAge);
-      const currentMonthly = parseFloat(insCustomPrice) || (insCompany?.plans ?? []).find(p => p.id === insPlanId)?.monthly || 0;
+      const currentMonthly = insuranceMonthly(insCustomPrice, (insCompany?.plans ?? []).find(p => p.id === insPlanId));
       const withSavings = quotes.map(q => ({ ...q, savings: currentMonthly > 0 ? currentMonthly - q.monthlyEstimate : undefined }));
       setQuoted({ key: quotesKey, rows: withSavings });
     }, 250);
@@ -279,13 +281,14 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
   }, [effectiveSqm, insPropValue, insContentValue, effectiveFloor, effectiveAge, insCustomPrice, insPlanId, insCompany?.plans, quotesKey]);
 
   const insPlan    = (insCompany?.plans ?? []).find(p => p.id === insPlanId);
-  const insCost    = parseFloat(insCustomPrice) || insPlan?.monthly || 0;
+  const insCost    = insuranceMonthly(insCustomPrice, insPlan);
   /** Ξέρουμε ασφάλιστρο; Χωρίς αυτό, το «0,00€» θα σήμαινε «δεν πληρώνω». */
 
   const effectiveCovers     = insEditCovers && insCustomCovers ? insCustomCovers.split(',').map(s => s.trim()).filter(Boolean) : (insPlan?.covers || []);
   const effectiveEarthquake = insEditCovers ? insCustomEarthquake : (insPlan?.earthquake || false);
   const effectiveFloodState = insEditCovers ? insCustomFlood      : (insPlan?.flood      || false);
   const effectiveNatural    = insEditCovers ? insCustomNatural    : (insPlan?.natural    || false);
+  const basis               = coverBasis(insPlan, !!insEditCovers);
 
   // ── ΟΙ ΟΜΑΔΕΣ ΣΥΝΔΡΟΜΩΝ, ΜΕ ΤΑ ΔΙΚΑ ΤΟΥΣ ΣΥΝΟΛΑ ΚΑΙ ΧΕΙΡΙΣΜΟΥΣ ───────────
   // Ο υπολογισμός του κόστους ήταν γραμμένος δύο φορές, δίπλα δίπλα και ήδη
@@ -351,10 +354,24 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
   //
   // Και η περισπωμένη έφυγε: το «περίπου» το λέει ήδη το πεδίο δίπλα, που ζητά
   // ρητά το ΠΡΑΓΜΑΤΙΚΟ κόστος τον μήνα. Δύο φορές το ίδιο, με σύμβολο.
-  const insPlanOptions = (insCompany?.plans ?? []).map(p => ({
-    value: p.id,
-    label: p.monthly > 0 ? `${p.name} · ${fe(p.monthly)}` : `${p.name} · Χειροκίνητο`,
-  }));
+  //
+  // ΤΟ ΠΟΣΟ ΗΤΑΝ ΠΑΝΤΑ «ΤΟΝ ΜΗΝΑ» ΚΑΙ ΤΟ ΚΕΝΟ «ΧΕΙΡΟΚΙΝΗΤΟ». Η επιλογή έγραφε το
+  // `monthly` του καταλόγου, ποσό που κατά την ανάγνωση της 12/10/2026 δεν
+  // δημοσίευε καμία εταιρεία εκτός από την Εθνική, ή «Χειροκίνητο» όπου έλειπε,
+  // σαν να ήταν δουλειά του χρήστη να βρει την τιμή. Η Magenta όμως δημοσιεύει
+  // ετήσιες τιμές (https://www.magentainsurance.gr/home), που ένα πεδίο «τον
+  // μήνα» θα τις έκρυβε ή θα τις διαιρούσε. Η επιλογή γράφει τώρα την τιμή στη
+  // μονάδα της εταιρείας ή «τιμή μόνο με προσφορά» (`planOptionLabel`).
+  //
+  // ΠΡΟΣΦΕΡΕ ΚΑΙ ΠΡΟΓΡΑΜΜΑΤΑ ΠΟΥ ΔΕΝ ΥΠΑΡΧΟΥΝ. «MeinHaus», «myZen», «HomeSecure»
+  // και τα υπόλοιπα που η ίδια ανάγνωση δεν βρήκε στις σελίδες των εταιρειών,
+  // μαζί με τα προγράμματα έξι εταιρειών που η σελίδα τους δεν διαβάστηκε.
+  // Μένουν μόνο για όποιον τα έχει ήδη αποθηκευμένα (`pickablePlans`), για να
+  // μη χαθεί η επιλογή του.
+  const pickable       = pickablePlans(insCompany, insPlanId);
+  const insPlanOptions = pickable.map(p => ({ value: p.id, label: planOptionLabel(p) }));
+  /** Εταιρεία χωρίς κανένα πρόγραμμα που να διαβάστηκε (π.χ. η ΑΧΑ). */
+  const noPlanToPick   = !!insCompany && insPlanOptions.length === 0;
 
   // ── Sync-back στο ακίνητο: μία πηγή αλήθειας για το υπόλοιπο app ──────────
   // Η κάρτα ακινήτου διαβάζει insurance_company / insurance_amount /
@@ -442,7 +459,10 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
         category: 'insurance_renewal',
         event_date: insRenewalDate,
         amount: insCost > 0 ? insCost : null,
-        notes: `Πρόγραμμα: ${(insCompany?.plans ?? []).find(p => p.id === insPlanId)?.name ?? ''}. Σύγκρινε εναλλακτικές πριν ανανεώσεις.`,
+        // Το όνομα του προϊόντος, χωρίς τη σήμανση του καταλόγου («καλύψεις δεν
+        // καταγράφηκαν, 12/10/2026»): η σημείωση μένει στο ημερολόγιο και όταν
+        // ο κατάλογος ξαναδιαβαστεί.
+        notes: `Πρόγραμμα: ${(insCompany?.plans ?? []).find(p => p.id === insPlanId)?.productName ?? ''}. Σύγκρινε εναλλακτικές πριν ανανεώσεις.`,
       })]);
       if (!error) setCalendarSynced(true);
     })();
@@ -683,10 +703,14 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
       )}
 
       {/* ── Auto-detected property type banner ──────────────────────────── */}
+      {/* ΕΠΙΧΕΙΡΗΣΕΙΣ, ΟΧΙ ΕΠΙΛΟΓΕΣ ΤΟΥ ΜΕΝΟΥ. Το πλήθος ήταν το `insOptions.length`:
+          μετρούσε το «Άλλη Ασφαλιστική» (δεν είναι εταιρεία) και τις μάρκες
+          Anytime και Magenta δίπλα στην Interamerican και τη Hellas Direct
+          (βλ. `countInsurers`). */}
       {detectedPropertyType && (
         <div style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--fs-xs)', fontFamily: T.font.sans }}>
           <span style={{ color: 'var(--text-secondary)' }}>
-            Ανιχνεύθηκε τύπος ακινήτου: <strong style={{ color: 'var(--accent)' }}>{detectedPropertyType}</strong>, εμφανίζονται {insOptions.length} σχετικές ασφαλιστικές εταιρείες.
+            Ανιχνεύθηκε τύπος ακινήτου: <strong style={{ color: 'var(--accent)' }}>{detectedPropertyType}</strong>, εμφανίζονται {countInsurers(relevantCompanies)} σχετικές ασφαλιστικές εταιρείες.
           </span>
         </div>
       )}
@@ -702,17 +726,21 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
           τις συνδρομές, όπου το διαβάζει όποιος τις κοιτάζει. */}
 
       {show('insurance') && (<>
+        {/* «ΔΕΝ ΚΑΛΥΠΤΕΙ» ΜΟΝΟ ΟΤΑΝ ΕΙΝΑΙ ΓΕΓΟΝΟΣ. Η ειδοποίηση έβγαινε για κάθε
+            εταιρεία χωρίς σεισμό ή πλημμύρα στις σημαίες, μαζί και για πρόγραμμα
+            που δεν είχε καμία καταγεγραμμένη κάλυψη (όπως τα Full Home της Εθνικής,
+            με κενές καλύψεις) ή για το «Προσαρμοσμένο» πριν πατηθεί τίποτα. Τώρα
+            μόνο με καλύψεις του καταλόγου που έχουν πηγή ή με όσες πάτησες εσύ
+            (`coverBasis`)· αλλιώς τα πλακίδια λένε ότι δεν είναι γνωστές. Και
+            κίνδυνος που το IPID γράφει προαιρετικό δεν λέγεται «δεν καλύπτει»
+            (`coverWarning`). */}
         {insCompany && (() => {
-          const hasEq = effectiveEarthquake;
-          const hasFl = effectiveFloodState;
-          if (hasEq && hasFl) return null;
+          const warning = coverWarning(insPlan, basis, effectiveEarthquake, effectiveFloodState);
+          if (!warning) return null;
           return (
             <div style={{ background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: T.radius.inner, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--fs-xs)', fontFamily: T.font.sans }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--warning)', flexShrink: 0 }}/>
-              <span style={{ color: 'var(--text-secondary)' }}>
-                {!hasEq && !hasFl ? 'Το πρόγραμμά σου δεν καλύπτει σεισμό ούτε πλημμύρα.' : !hasEq ? 'Το πρόγραμμά σου δεν καλύπτει σεισμό.' : 'Το πρόγραμμά σου δεν καλύπτει πλημμύρα.'}
-                {' '}Σκέψου αναβάθμιση της κάλυψης.
-              </span>
+              <span style={{ color: 'var(--text-secondary)' }}>{warning}</span>
             </div>
           );
         })()}
@@ -766,14 +794,45 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
               κανόνας που έκοβε την κάρτα στα δύο πριν αρχίσει. */}
           <div>
             <div className="kpi-row" style={g3}>
+              {/* Με αλλαγή εταιρείας επιλέγεται το πρώτο πρόγραμμα του επιλογέα,
+                  ποτέ πρόγραμμα με σήμανση· εταιρεία χωρίς κανένα μένει χωρίς. Η
+                  ίδια εταιρεία ξανά δεν αλλάζει τίποτα (`companyChange`). */}
               <CustomSelect label="Ασφαλιστική εταιρεία" value={insProvider}
-                onChange={v => { u({ insProvider: v, insEditCovers: false }); const c = INSURANCE_COMPANIES.find(x => x.value === v); if (c) u({ insPlanId: c.plans[0].id }); }}
+                onChange={v => { const patch = companyChange(insProvider, v); if (patch) u(patch); }}
                 options={insOptions}/>
               <CustomSelect label="Πρόγραμμα ασφάλισης" value={insPlanId}
                 onChange={v => u({ insPlanId: v, insEditCovers: false })}
-                options={insPlanOptions}/>
+                options={insPlanOptions} disabled={noPlanToPick}
+                placeholder={noPlanToPick ? 'Κανένα επαληθευμένο πρόγραμμα' : undefined}/>
               <NumberInput label="Πραγματικό κόστος τον μήνα" value={insCustomPrice} onChange={v => u({ insCustomPrice: v })} suffix="€"/>
             </div>
+            {/* Η ΤΙΜΗ ΤΟΥ ΠΡΟΓΡΑΜΜΑΤΟΣ ΔΕΝ ΕΛΕΓΕ ΑΠΟ ΠΟΥ ΕΡΧΕΤΑΙ. Ο επιλογέας έγραφε
+                ποσό δίπλα σε κάθε πρόγραμμα χωρίς σενάριο, ημερομηνία ή πηγή. Κατά
+                την ανάγνωση της 12/10/2026 τιμή δημοσιεύουν η Εθνική για το Full
+                Home Advance (https://www.ethnikiasfalistiki.gr/home-property), η
+                Magenta ανά έτος (https://www.magentainsurance.gr/home) και η
+                Anytime για το περιεχόμενο με την Κωτσόβολος· η ERGO και η Magenta
+                δίνουν και τιμή «από» χωρίς πρόγραμμα. Η γραμμή γράφει την τιμή του
+                προγράμματος στη μονάδα της εταιρείας, ποτέ διαιρεμένη με το δώδεκα,
+                με σενάριο, ημερομηνία και σύνδεσμο στην πηγή· χωρίς δική του τιμή,
+                το «από» της εταιρείας. Από τον κατάλογο (insurance/catalog.ts). */}
+            {(() => {
+              const shown = insPlan?.priceFact ?? insCompany?.fromFact;
+              return shown && (
+                <div style={{ margin: '-4px 0 14px' }}>
+                  <p style={{ ...TT.caption, color: 'var(--text-tertiary)', margin: 0, lineHeight: 1.55 }}>{shown.label}</p>
+                  <AsOfNote fact={shown} style={{ margin: '2px 0 0' }} />
+                </div>
+              );
+            })()}
+            {/* ΤΟ «ΜΟΝΟ ΠΕΡΙΕΧΟΜΕΝΟ» ΔΕΝ ΤΟ ΕΛΕΓΕ ΚΑΝΕΙΣ. Το «Περιεχόμενο» της Hellas
+                Direct καθόταν στον ίδιο επιλογέα με τα προγράμματα κτιρίου, με τα
+                ίδια πλακίδια, χωρίς λέξη ότι το κτίριο μένει ανασφάλιστο. */}
+            {insPlan?.kind === 'contents' && (
+              <p style={{ ...TT.caption, color: 'var(--text-tertiary)', margin: '-4px 0 14px', lineHeight: 1.55 }}>
+                {CONTENTS_ONLY_NOTE}
+              </p>
+            )}
             <div style={g4}>
               <TextInput   label={insCompany?.agent_label || 'Ασφαλιστής'} value={insAgentName}    onChange={v => u({ insAgentName: v })}    placeholder="Ονοματεπώνυμο"/>
               <TextInput   label="Τηλέφωνο ασφαλιστή"                      value={insAgentPhone}   onChange={v => u({ insAgentPhone: v })}   placeholder="69xxxxxxxx"/>
@@ -789,8 +848,10 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
             </div>
 
             {/* Το `containerType` δίνει στα σπασίματα του `.tile-grid` κάτι να
-                μετρήσουν: το πλάτος ΑΥΤΟΥ του κουτιού, όχι του παραθύρου. */}
-            {insPlan && (
+                μετρήσουν: το πλάτος ΑΥΤΟΥ του κουτιού, όχι του παραθύρου.
+                Και εταιρεία χωρίς πρόγραμμα στον επιλογέα παίρνει τα πλακίδια,
+                ώστε να πατήσεις όσα γράφει το συμβόλαιό σου. */}
+            {(insPlan || noPlanToPick) && (
               <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: 14, border: '1px solid var(--border-subtle)', marginTop: 4, containerType: 'inline-size' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontFamily: T.font.sans }}>Καλύψεις προγράμματος</div>
@@ -858,7 +919,26 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                     από πάνω αν διαφέρει από την τιμή του προγράμματος.
                   </p>
                 )}
-                {effectiveEarthquake && effectiveFloodState && (
+                {/* ΤΑ «ΟΧΙ» ΧΩΡΙΣ ΠΗΓΗ ΔΙΑΒΑΖΟΝΤΑΝ ΩΣ ΓΕΓΟΝΟΣ. Τα πλακίδια έδειχναν
+                    «Όχι» και για πρόγραμμα χωρίς καμία καταγεγραμμένη κάλυψη. Η
+                    γραμμή λέει από πού έρχονται, όταν δεν είναι από πηγή ή από σένα. */}
+                {COVER_BASIS_NOTE[basis] && (
+                  <p style={{ ...TT.caption, color: 'var(--text-tertiary)', margin: '10px 0 0', lineHeight: 1.55 }}>
+                    {COVER_BASIS_NOTE[basis]}
+                  </p>
+                )}
+                {/* Η ΜΕΙΩΣΗ ΕΝΦΙΑ ΑΝΑΒΕ ΜΕ ΣΕΙΣΜΟ ΚΑΙ ΠΛΗΜΜΥΡΑ, ΧΩΡΙΣ ΠΥΡΚΑΓΙΑ. Ο
+                    κανόνας θέλει και τους τρεις κινδύνους μαζί (Α.1005/2026· Συχνές
+                    ερωτήσεις ΑΑΔΕ 14/01/2026, με τη διεύθυνση στο EnfiaPanel.tsx).
+                    Η γραμμή έβγαινε με δύο πατημένα πλακίδια χωρίς πυρκαγιά και για
+                    προγράμματα του καταλόγου με σεισμό και πλημμύρα από καλύψεις που
+                    δεν έγραφε κανένα IPID, π.χ. το ανύπαρκτο «MeinHaus Plus». Τώρα:
+                    για πρόγραμμα του καταλόγου το `enfiaRisks`, για τις δικές σου
+                    καλύψεις και οι τρεις, ποτέ για μόνο περιεχόμενο
+                    (`showsEnfiaPerils`, ίδιος κανόνας με το EnfiaPanel.tsx). */}
+                {showsEnfiaPerils(insPlan, insEditCovers
+                  ? { covers: effectiveCovers, earthquake: effectiveEarthquake, flood: effectiveFloodState, natural: effectiveNatural }
+                  : null) && (
                   <div title="ΕΝΦΙΑ: Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων" style={{ marginTop: 10, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.badge, padding: '8px 14px', fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontFamily: T.font.sans }}>
                     {`Μπορεί να δικαιούσαι μείωση ΕΝΦΙΑ ${fpRate(INS_REDUCTION.pct)} για κατοικία αξίας έως ${feWhole(INS_REDUCTION_OVER.above)} ή ${fpRate(INS_REDUCTION_OVER.pct)} πάνω από αυτήν, βάσει Α.1005/2026. Δήλωσέ την στη ${navLabel('accounting')}, στον Υπολογισμό ΕΝΦΙΑ.`}
                   </div>
@@ -927,7 +1007,15 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
               </div>
               {/* ΚΑΙ ΠΟΤΕ, ΑΠΟ ΠΟΥ (lib/facts/prices). Η ημερομηνία ζούσε μόνο στην
                   πύλη φρεσκάδας και δεν τη διάβαζε κανείς. */}
-              <AsOfNote fact={PRICE_FACTS.insurance} style={{ margin: '-6px 0 12px' }} />
+              <AsOfNote fact={PRICE_FACTS.insurance} style={{ margin: '-6px 0 4px' }} />
+              {/* ΤΟ «ΕΝΔΕΙΚΤΙΚΕΣ» ΔΕΝ ΕΛΕΓΕ ΟΤΙ ΔΕΝ ΕΠΑΛΗΘΕΥΟΝΤΑΙ. Μία γραμμή για όλα τα
+                  προγράμματα, ακριβώς πάνω από τις τιμές· όποιο έχει δημόσια πηγή
+                  τη γράφει στη δική του κάρτα και γραμμή. Χάρτης αγοράς 12/10/2026:
+                  δημόσια ΜΗΝΙΑΙΑ τιμή κατοικίας για συγκεκριμένο πρόγραμμα μόνο στη
+                  https://www.ethnikiasfalistiki.gr/home-property. */}
+              <p style={{ ...TT.caption, color: 'var(--text-tertiary)', margin: '0 0 12px', lineHeight: 1.55 }}>
+                {INSURANCE_PRICE_CAVEAT}
+              </p>
 
               {/* ── ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΑΥΤΟ ΤΟ ΑΚΙΝΗΤΟ ────────────────────────────
                   Πριν από κάθε τιμή. Η κατάταξη βγαίνει από εδώ και ο χρήστης
@@ -990,7 +1078,10 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                         {isBest && !isCurrent && <div style={{ position: 'absolute', top: 8, right: 8, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-soft)', padding: '2px 6px', borderRadius: T.radius.pill, fontFamily: T.font.sans }}>ΚΑΤΑΛΛΗΛΟΤΕΡΟ</div>}
                         {isCurrent && <div style={{ position: 'absolute', top: 8, right: 8, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-soft)', padding: '2px 6px', borderRadius: T.radius.pill, fontFamily: T.font.sans }}>ΤΡΕΧΟΝ</div>}
                         <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: 2 }}>{q.companyLabel}</div>
-                        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, marginBottom: 8 }}>{q.planLabel}</div>
+                        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, marginBottom: 8 }}>
+                          {q.planLabel}
+                          {q.priceFact && <div style={{ color: 'var(--text-tertiary)', marginTop: 2 }}>{asOfLine(q.priceFact)}</div>}
+                        </div>
                         <div style={{ fontSize: 18, fontWeight: 700, color: isCurrent ? 'var(--accent)' : isBest ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{fe(q.monthlyEstimate)}</div>
                         <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 2 }}>εκτίμηση / μήνα</div>
                         {q.savings !== undefined && q.savings > 0 && (
@@ -1039,7 +1130,10 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                             className={isCur ? 'is-on' : undefined}
                             style={{ cursor: 'pointer', transition: 'background 0.15s' }}>
                             <td style={{ fontWeight: isCur ? 700 : 400, color: isCur ? 'var(--accent)' : 'var(--text-primary)' }}>{q.companyLabel}{isCur ? ' ✓' : ''}</td>
-                            <td>{q.planLabel}</td>
+                            <td>
+                              {q.planLabel}
+                              {q.priceFact && <div style={{ color: 'var(--text-tertiary)', marginTop: 2 }}>{asOfLine(q.priceFact)}</div>}
+                            </td>
                             <td style={{ color: q.earthquake ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.earthquake ? 'Ναι' : 'Όχι'}</td>
                             <td style={{ color: q.flood     ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.flood     ? 'Ναι' : 'Όχι'}</td>
                             <td style={{ color: q.natural   ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'center' as const, fontWeight: 700 }}>{q.natural   ? 'Ναι' : 'Όχι'}</td>
@@ -1213,6 +1307,15 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                     otherCost > 0 && `Άλλα ${fe(otherCost)}`,
                   ].filter(Boolean).join(' + ')}
                 </div>
+                {/* Η ΑΣΦΑΛΕΙΑ ΕΦΕΥΓΕ ΑΠΟ ΤΟ ΣΥΝΟΛΟ ΧΩΡΙΣ ΛΕΞΗ. Πρόγραμμα χωρίς μηνιαίο
+                    ποσό (το «Χειροκίνητο» του επιλογέα) έλειπε από την ανάλυση και το
+                    σύνολο έμοιαζε πλήρες. Ετήσια τιμή δεν διαιρείται για να μπει εδώ
+                    (`insuranceMonthly`)· λέγεται ότι λείπει. */}
+                {insuranceTotalNote(!!insCompany, insCost) && (
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 2 }}>
+                    {insuranceTotalNote(!!insCompany, insCost)}
+                  </div>
+                )}
               </div>
               <div style={{ textAlign: 'right' as const }}>
                 <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{fe(total)} / μήνα</div>

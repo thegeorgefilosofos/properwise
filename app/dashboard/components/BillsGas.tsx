@@ -14,8 +14,10 @@ import { canRecommend, freshness, RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy
 // Ο κατάλογος είναι δεδομένα και ζει στο lib, όπως και του ρεύματος. Η οθόνη
 // τον διαβάζει, δεν τον φιλοξενεί: 130 γραμμές τιμών μέσα σε React component
 // σήμαιναν ότι κάθε διόρθωση τιμής έδειχνε αλλαγή σε οθόνη.
-import { GAS_PROVIDERS, NETWORK_OPERATORS, GAS_LABEL, GAS_VERIFIED, GAS_MAX_AGE_DAYS, GAS_MONTH_GEN } from '@/lib/energy/gas';
-import { PRICES_SOURCE, PRICES_UPDATED_LINE, conditionNote } from '@/lib/energy/catalogue';
+import { GAS_PROVIDERS, NETWORK_OPERATORS, GAS_LABEL, GAS_VERIFIED, GAS_MAX_AGE_DAYS, GAS_MONTH_GEN, GAS_PROVIDER_SOURCES, gasSourceLine } from '@/lib/energy/gas';
+import { conditionNote } from '@/lib/energy/catalogue';
+import { asOfDate } from '@/lib/facts/prices';
+import { joinGreek } from '@/lib/loans/energyPrograms';
 import { saved } from '@/components/dbWrite';
 import { athensToday } from '@/lib/core/time';
 
@@ -49,6 +51,18 @@ const badgeStyle = { background: 'var(--bg-elevated)', border: '1px solid var(--
 // Το πλήθος μετριέται, δεν γράφεται. Αριθμός καρφωμένος σε πρόταση γερνά με την
 // πρώτη προσθήκη τιμολογίου και κανένας έλεγχος δεν τον πιάνει.
 const TARIFF_COUNT = GAS_PROVIDERS.reduce((n, p) => n + p.tariffs.length, 0);
+const ALL_GAS_TARIFFS = GAS_PROVIDERS.flatMap(p => p.tariffs);
+
+// ══ «ΚΑΙ ΤΑ N ΤΙΜΟΛΟΓΙΑ ΕΙΝΑΙ ΟΠΩΣ ΤΑ ΔΗΜΟΣΙΕΥΕΙ Η ΡΑΑΕΥ» ΔΕΝ ΙΣΧΥΕ ΠΙΑ ══════
+// Η κεφαλίδα, ο τίτλος του πίνακα και η γραμμή ενημέρωσης έλεγαν «ΡΑΑΕΥ» για
+// όλα τα τιμολόγια, με την ημέρα του πίνακα (05/10/2026). Ίσχυε όσο κάθε τιμή
+// του καταλόγου ήταν της ΡΑΑΕΥ. Από 12/10/2026 δύο τιμολόγια της ΦΑΕ έχουν
+// τιμή Οκτωβρίου από τον τιμοκατάλογο του παρόχου, γιατί η ΡΑΑΕΥ δεν την έχει
+// ακόμη (lib/energy/gas.ts, `providerPrice`): οι ίδιες προτάσεις θα ήταν
+// ψευδείς. Γι' αυτό και τα τρία μετρούν τις τιμές του παρόχου από τον
+// κατάλογο και γράφουν πόσες είναι, από πού και πότε· η γραμμή του καθενός το
+// γράφει στο κελί του μήνα.
+const PROVIDER_PRICED = GAS_PROVIDER_SOURCES.flatMap(src => src.ids).length;
 
 interface Props { propertyId: string; userId?: string; }
 
@@ -173,6 +187,8 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
   }, [kwh, s.gasTariffId, segmentFilter]);
 
   const bestRow     = allTariffs.find(t => t.monthly != null && t.thisMonth);
+  // Πόσα από τα τιμολόγια του τμήματος έχουν τιμή του παρόχου και όχι της ΡΑΑΕΥ.
+  const ownInView   = allTariffs.filter(t => t.providerPrice).length;
   const bestMonthly = bestRow?.monthly ?? 0;
   // ═══ ΤΑ ΔΥΟ ΝΟΥΜΕΡΑ ΔΕΝ ΕΙΝΑΙ ΤΟΥ ΙΔΙΟΥ ΕΙΔΟΥΣ ══════════════════════════
   // Η εξοικονόμηση υπολογιζόταν ως `effective − bestMonthly`. Το `effective`
@@ -200,13 +216,23 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
 
       {/* ── Διαφάνεια τιμών, τι ακριβώς βλέπεις ── */}
       <div style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '12px 16px', marginBottom: 14, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.6 }}>
-        <strong style={{ color: 'var(--text-primary)' }}>Διαφάνεια τιμών:</strong> {PRICES_UPDATED_LINE}. Πηγή: <span title={RAAEY_NAME}>{PRICES_SOURCE}</span>. Και τα {TARIFF_COUNT} τιμολόγια είναι όπως τα δημοσιεύει η ΡΑΑΕΥ· κάθε τιμή γράφει τον μήνα της και μόνο οι τιμές {GAS_MONTH_GEN} μπαίνουν στη σειρά.
+        <strong style={{ color: 'var(--text-primary)' }}>Διαφάνεια τιμών:</strong> {gasSourceLine(ALL_GAS_TARIFFS)}.{' '}
+        {GAS_PROVIDER_SOURCES.map(src => {
+          const one = src.names.length === 1;
+          return (
+            <span key={`${src.url}|${src.readAt}`}>
+              {one ? 'Το τιμολόγιο' : `Τα ${src.names.length} τιμολόγια`} {joinGreek(src.names.map(n => `«${n}»`))} του παρόχου «{src.provider}» δεν {one ? 'έχει' : 'έχουν'} ακόμη τιμή {GAS_MONTH_GEN} στη <span title={RAAEY_NAME}>ΡΑΑΕΥ</span>: η τιμή {one ? 'του' : 'τους'} είναι από τον{' '}
+              <a href={src.url} target="_blank" rel="noopener noreferrer" className="tap-link" style={{ color: 'var(--accent)' }}>τιμοκατάλογο του παρόχου</a>, ανάγνωση {asOfDate(src.readAt)}· το γράφει και η γραμμή {one ? 'του' : 'τους'}.{' '}
+            </span>
+          );
+        })}
+        {PROVIDER_PRICED === 0 ? `Και τα ${TARIFF_COUNT}` : `Τα άλλα ${TARIFF_COUNT - PROVIDER_PRICED}`} τιμολόγια είναι όπως τα δημοσιεύει η <span title={RAAEY_NAME}>ΡΑΑΕΥ</span>· κάθε τιμή γράφει τον μήνα της και μόνο οι τιμές {GAS_MONTH_GEN} μπαίνουν στη σειρά.
         Αφορούν μόνο τη <strong>χρέωση προμήθειας</strong> (ανταγωνιστικό σκέλος): χωρίς ρυθμιζόμενες χρεώσεις δικτύου, χωρίς <span title="Ειδικός Φόρος Κατανάλωσης">ΕΦΚ</span> και χωρίς <span title="Φόρος Προστιθέμενης Αξίας">ΦΠΑ</span> 6%, οπότε ο λογαριασμός σου βγαίνει υψηλότερος. Τα κυμαινόμενα (ΚΙΤΡΙΝΟ) αναθεωρούνται κάθε μήνα.
       </div>
 
       {/* ── Επισκόπηση κόστους ── */}
       <div style={card}>
-        {secHdr('Τρέχον κόστος', `${PRICES_UPDATED_LINE}. Πηγή: ${PRICES_SOURCE}, ${GAS_LABEL}`)}
+        {secHdr('Τρέχον κόστος', `${gasSourceLine(tariff ? [tariff] : [])}, ${GAS_LABEL}`)}
         {/* Τρία πλακίδια: το ρευστό πλέγμα έβγαζε 2+1 στα 430. Ιδια κλάση και
             ίδιοι κανόνες με τους δείκτες του KPIGrid. */}
         <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 12, '--kpi-lg': 3, '--kpi-md': 3, '--kpi-sm': 1 } as React.CSSProperties}>
@@ -297,7 +323,9 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
             </div>
             {tariff.desc && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{tariff.desc}</div>}
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: 4 }}>
-              {tariff.kwh == null ? `Η τιμή ${GAS_MONTH_GEN} δεν είναι ακόμη γνωστή.` : tariff.raaeyUnknown ? `Τιμή ${tariff.priceMonth}. Η ΡΑΑΕΥ δεν έχει ακόμη τιμή ${GAS_MONTH_GEN}.` : `Τιμή ${tariff.priceMonth}.`}
+              {tariff.kwh == null ? `Η τιμή ${GAS_MONTH_GEN} δεν είναι ακόμη γνωστή.`
+                : tariff.providerPrice ? <>Τιμή {tariff.priceMonth}. Η ΡΑΑΕΥ δεν έχει ακόμη τιμή {GAS_MONTH_GEN}. Πηγή: <a href={tariff.providerPrice.url} target="_blank" rel="noopener noreferrer" className="tap-link" style={{ color: 'var(--accent)' }}>τιμοκατάλογος του παρόχου</a>, ανάγνωση {asOfDate(tariff.providerPrice.readAt)}.</>
+                : tariff.raaeyUnknown ? `Τιμή ${tariff.priceMonth}. Η ΡΑΑΕΥ δεν έχει ακόμη τιμή ${GAS_MONTH_GEN}.` : `Τιμή ${tariff.priceMonth}.`}
               {tariff.notAvailable && ' Η ΡΑΑΕΥ το γράφει μη εμπορικά διαθέσιμο.'}
               {conditionNote(tariff) && ` ${conditionNote(tariff)}, όπως τη γράφει η ΡΑΑΕΥ.`}
               {tariff.undiscounted && tariff.undiscounted.kwh != null && (tariff.undiscounted.kwh !== tariff.kwh || tariff.undiscounted.fixed !== tariff.fixed) && ` Χωρίς την προϋπόθεση: ${fk(tariff.undiscounted.kwh)} / kWh, πάγιο ${fe(tariff.undiscounted.fixed)}.`}
@@ -317,7 +345,9 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
       {kwh > 0 && (
         <div style={card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, flexWrap: 'wrap' as const, gap: 10 }}>
-            {secHdr('Σύγκριση παρόχων', `${allTariffs.length} τιμολόγια της ΡΑΑΕΥ σε ${kwh} kWh τον μήνα, χρέωση προμήθειας`)}
+            {secHdr('Σύγκριση παρόχων', ownInView === 0
+              ? `${allTariffs.length} τιμολόγια της ΡΑΑΕΥ σε ${kwh} kWh τον μήνα, χρέωση προμήθειας`
+              : `${allTariffs.length} τιμολόγια σε ${kwh} kWh τον μήνα, χρέωση προμήθειας: ${allTariffs.length - ownInView} της ΡΑΑΕΥ και ${ownInView} με τιμή από τον τιμοκατάλογο του παρόχου`)}
             <div style={{ display: 'flex', background: 'var(--bg-base)', borderRadius: T.radius.pill, padding: 4, border: '1px solid var(--border-default)' }}>
               {/* shape="seg" και όχι "chip": η ράγα από πάνω έχει ήδη δικό της περίγραμμα. */}
               {(['residential', 'business'] as const).map(seg => (
@@ -384,7 +414,17 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
                       <td className="num">{t.contract_months != null ? `${t.contract_months} μήνες` : 'Χωρίς'}</td>
                       <td className="num">{t.kwh != null ? fk(t.kwh) : 'άγνωστη'}</td>
                       <td className="num">{fe(t.fixed)}</td>
-                      <td style={{ whiteSpace: 'nowrap' as const, color: t.thisMonth ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>{t.kwh == null ? 'άγνωστη' : t.notAvailable ? 'εκτός αγοράς' : t.priceMonth}</td>
+                      <td style={{ whiteSpace: 'nowrap' as const, color: t.thisMonth ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>
+                        {t.kwh == null ? 'άγνωστη' : t.notAvailable ? 'εκτός αγοράς' : t.priceMonth}
+                        {/* Η τιμή δεν είναι της ΡΑΑΕΥ: η γραμμή το λέει η ίδια, με το έγγραφο. */}
+                        {t.providerPrice && (
+                          <a href={t.providerPrice.url} target="_blank" rel="noopener noreferrer" className="tap-link"
+                            title={`Η ΡΑΑΕΥ δεν έχει ακόμη τιμή ${GAS_MONTH_GEN}. Τιμή από τον τιμοκατάλογο του παρόχου, ανάγνωση ${asOfDate(t.providerPrice.readAt)}.`}
+                            style={{ display: 'block', color: 'var(--accent)' }}>
+                            τιμή παρόχου, {asOfDate(t.providerPrice.readAt)}
+                          </a>
+                        )}
+                      </td>
                       <td className="num" style={{ fontWeight: 700, color: 'var(--accent)' }}>{t.monthly != null ? fe(t.monthly) : 'Χωρίς τιμή'}</td>
                       <td className="num" style={{ color: 'var(--text-tertiary)' }}>{t.monthly != null ? fe(t.monthly * 12) : ''}</td>
                       {/* Ο πίνακας είναι ήδη ταξινομημένος από το φθηνότερο: η
@@ -402,7 +442,7 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
            </div>
           </div>
           <div style={{ marginTop: 8, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, background: 'var(--bg-elevated)', padding: '6px 12px', borderRadius: T.radius.badge, lineHeight: 1.5 }}>
-            * Χρέωση προμήθειας χωρίς δίκτυο, ΕΦΚ και ΦΠΑ. {PRICES_UPDATED_LINE}. Πηγή: {PRICES_SOURCE}. Μόνο τιμές {GAS_MONTH_GEN} μπαίνουν στη σειρά. Οι εκπτώσεις συνέπειας και συνδυασμού που περιγράφονται είναι ήδη μέσα στην τιμή· χάνονται με μία εκπρόθεσμη πληρωμή.
+            * Χρέωση προμήθειας χωρίς δίκτυο, ΕΦΚ και ΦΠΑ. {gasSourceLine(allTariffs)}. Μόνο τιμές {GAS_MONTH_GEN} μπαίνουν στη σειρά. Οι εκπτώσεις συνέπειας και συνδυασμού που περιγράφονται είναι ήδη μέσα στην τιμή· χάνονται με μία εκπρόθεσμη πληρωμή.
           </div>
         </div>
       )}
