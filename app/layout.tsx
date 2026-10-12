@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import "./globals.css";
 import { ThemeProvider } from "./ThemeProvider";
 import CookieConsent from "./CookieConsent";
+import { cookieNoticeInitScript } from "./cookieNotice";
 import PwaProvider from "./PwaProvider";
 import VercelAnalytics from "./VercelAnalytics";
 import { ToastHost } from "@/components/Toast";
@@ -187,6 +188,9 @@ export default async function RootLayout({
         {/* Καμία εξωτερική γραμματοσειρά: όλα self-hosted (Inter/Roboto Mono) + inline SVG εικονίδια. */}
         {/* Αρχικοποίηση θέματος: πρέπει να τρέξει πριν τη ζωγραφική, αλλιώς αναβοσβήνει */}
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        {/* Το πλαίσιο cookies έρχεται από τον διακομιστή· όποιος το έχει δει το
+            βρίσκει κρυμμένο πριν τη ζωγραφική (βλ. app/cookieNotice.ts). */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: cookieNoticeInitScript }} />
         {/* Ο συλλαβισμός μένει στη σελίδα· δεν φεύγει στο πρόχειρο. Πριν τη ζωγραφική,
             ώστε να ισχύει κι για όποιον αντιγράψει προτού ενυδατωθεί η σελίδα. */}
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: copyPlainScript }} />
