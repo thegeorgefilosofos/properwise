@@ -295,7 +295,7 @@ export function ShortVsLongCalculator({ today, cta }: {
           </table>
          </div>
         </div>
-        <p className="po-prose" style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+        <p className="po-prose" style={{ margin: '10px 0 0', fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)' }}>
           Στη βραχυχρόνια οι εισπράξεις περιλαμβάνουν το τέλος ανθεκτικότητας που πληρώνει ο
           επισκέπτης και αποδίδεις εσύ, γι’ αυτό αφαιρείται στην επόμενη γραμμή.
         </p>
@@ -366,7 +366,7 @@ export function ShortVsLongCalculator({ today, cta }: {
         marginTop: T.sp.xl, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+        <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
           {/* Το κουτί ξεκινά με όσα ΥΠΟΘΕΤΕΙ, οπότε ο τίτλος το λέει (όπως στην καθαρή απόδοση). */}
           <strong style={{ color: 'var(--text-primary)' }}>Τι υποθέτει και τι όχι.</strong>{' '}
           Υποθέτει <strong>φυσικό πρόσωπο με έως δύο ακίνητα</strong>, χωρίς υπηρεσίες πέρα από

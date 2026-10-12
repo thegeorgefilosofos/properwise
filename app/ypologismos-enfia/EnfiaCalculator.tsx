@@ -277,7 +277,7 @@ export function EnfiaCalculator({ year, today, cta }: {
         marginTop: T.sp.xl, padding: '14px 16px', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
+        <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.65, color: 'var(--text-secondary)' }}>
           <strong style={{ color: 'var(--text-primary)' }}>Τι δεν περιλαμβάνει.</strong>{' '}
           Η εκτίμηση αφορά <strong>ένα κτίσμα</strong> και θεωρεί τη συνολική σου
           ακίνητη περιουσία <strong>ίση με αυτό</strong>. Αν έχεις κι άλλα ακίνητα, οικόπεδα
@@ -380,7 +380,7 @@ function Instalments({ annual, year, today }: { annual: number; year: number; to
           όπως πουθενά στην εφαρμογή — δοκιμάστηκε ταβάνι πλάτους και άφηνε τη
           μισή κάρτα λευκή. Παίρνει το 1,7 της `.po-prose`, που το γράφει μία
           φορά για κάθε τέτοια παράγραφο του προϊόντος. */}
-      <p className="po-prose" style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+      <p className="po-prose" style={{ margin: '10px 0 0', fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)' }}>
         Οι ημερομηνίες είναι οι τυπικές των τελευταίων ετών, δηλαδή η τελευταία εργάσιμη
         κάθε μήνα· ανακοινώνονται κάθε χρόνο με απόφαση. Ο ΕΝΦΙΑ πληρώνεται εφάπαξ ή σε
         δόσεις. Η τελευταία δόση φέρει τη διαφορά της στρογγυλοποίησης, ώστε οι δώδεκα να

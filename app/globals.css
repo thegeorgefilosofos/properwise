@@ -6676,7 +6676,7 @@ tr.po-row-more { display: none; }
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   background: var(--bg-surface);
-  font-size: 12.5px;
+  font-size: var(--fs-base);
   line-height: 1.55;
   color: var(--text-tertiary);
 }

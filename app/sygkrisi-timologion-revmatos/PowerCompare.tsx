@@ -282,7 +282,7 @@ export function PowerCompare({ serverToday, cta }: {
         marginTop: T.sp.xl, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+        <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
           <strong style={{ color: 'var(--text-primary)' }}>Τι περιλαμβάνει και τι όχι.</strong>{' '}
           Το ποσό είναι η χρέωση του προμηθευτή (πάγιο και ενέργεια) μαζί με το ΕΤΜΕΑΡ
           ({feRate(ETMEAR)} ανά κιλοβατώρα) και ΦΠΑ 6% και στα δύο. Στα πακέτα σταθερού ποσού

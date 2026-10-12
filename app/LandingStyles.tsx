@@ -401,7 +401,7 @@ export function LandingStyles() {
           margin: clamp(22px, 2.4vw, 28px) 0 0;
           padding-top: clamp(18px, 2vw, 22px);
           border-top: 1px solid var(--border-subtle);
-          font-size: 13px; line-height: 1.6; color: var(--text-tertiary);
+          font-size: var(--fs-base); line-height: 1.6; color: var(--text-tertiary);
         }
         ${/* ΣΕ ΣΤΕΝΗ ΟΘΟΝΗ ΟΙ ΤΕΣΣΕΡΙΣ ΜΠΑΙΝΟΥΝ ΣΕ ΜΙΑ ΣΤΗΛΗ ΚΑΙ Η ΣΕΙΡΑ ΤΟΥΣ
            ΓΙΝΕΤΑΙ ΞΑΝΑ Η ΣΕΙΡΑ ΤΟΥ ΕΓΓΡΑΦΟΥ. Με ροή κατά στήλη σε μία στήλη το

@@ -390,7 +390,7 @@ export function RentTaxCalculator({ today, cta }: {
         marginTop: T.sp.xxl, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+        <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
           <strong style={{ color: 'var(--text-primary)' }}>Τι δεν περιλαμβάνει.</strong>{' '}
           Ο υπολογισμός αφορά <strong>μόνο</strong> το εισόδημα από ενοίκια, με την τεκμαρτή
           έκπτωση {ratePct(PRESUMPTIVE_DEDUCTION_RATE)} που δίνει ο νόμος χωρίς δικαιολογητικά. Δεν περιλαμβάνει άλλα

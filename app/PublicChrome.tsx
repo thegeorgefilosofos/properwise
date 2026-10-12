@@ -477,7 +477,7 @@ export function ToolCta({ title, body }: { title: string; body: ReactNode }) {
         <p className="po-just" style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)' }}>{hy(<>
           {body}
         </>)}</p>
-        <p style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--text-tertiary)' }}>
+        <p style={{ margin: '8px 0 0', fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)' }}>
           {TRIAL_LINE}
         </p>
       </div>
