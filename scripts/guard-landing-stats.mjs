@@ -46,8 +46,37 @@ const providers = catBlock ? [...catBlock[1].matchAll(/^ {4}value: '/gm)].length
 
 // 3. Ασφαλιστικές: όσες έχουν πραγματική διεύθυνση. Το «Άλλη Ασφαλιστική» είναι
 //    πεδίο εισαγωγής, όχι εταιρεία και γι' αυτό έχει κενό url.
+//
+//    ΜΕΤΡΟΥΣΕ ΜΑΡΚΕΣ ΚΑΙ Η ΑΡΧΙΚΗ ΕΓΡΑΦΕ 16. Το Anytime είναι το ψηφιακό κανάλι
+//    της Interamerican και η Magenta πουλά τα προγράμματα της Hellas Direct
+//    (https://www.magentainsurance.gr/home, ανάγνωση 12/10/2026). Ο κατάλογος
+//    τις μετρά στη μητρική τους με το `BRAND_PARENT` (`countInsurers`)· εδώ ο
+//    ίδιος κανόνας, διαβασμένος από το ίδιο αρχείο.
+//
+//    ΚΑΙ ΜΕΤΡΟΥΣΕ ΕΤΑΙΡΕΙΕΣ ΠΟΥ Η ΣΕΛΙΔΑ ΤΟΥΣ ΔΕΝ ΔΙΑΒΑΣΤΗΚΕ. Έξι εταιρείες του
+//    καταλόγου έχουν `checkedAt: null` από την ανάγνωση της 12/10/2026: κανένα
+//    πρόγραμμά τους δεν προσφέρεται και οι καλύψεις τους δεν έχουν πηγή, ενώ η
+//    λεζάντα λέει «σύγκριση ανά κάλυψη». Μετρούν μόνο όσες διαβάστηκαν
+//    (`READ_INSURERS`). Μπλοκ εταιρείας χωρίς `checkedAt` που να διαβάζεται
+//    σημαίνει ότι η γραφή άλλαξε και κοκκινίζει, αντί να μετρηθεί σιωπηλά.
 const ins = read('app/dashboard/components/insurance/catalog.ts');
-const insurers = [...ins.matchAll(/^ {2}\{ value: '[a-z_]+',\s+label: '[^']+',\s+url: 'https:\/\//gm)].length;
+const starts = [...ins.matchAll(/^ {2}\{ value: '([a-z_]+)',\s+label: '[^']+',\s+url: '(https:\/\/)?/gm)];
+const companies = starts.map((m, i) => {
+  const body = ins.slice(m.index, starts[i + 1]?.index ?? ins.length);
+  return { value: m[1], hasUrl: !!m[2], checkedAt: /^\s*checkedAt:\s*(null|REVIEWED_AT|'\d{4}-\d{2}-\d{2}'),/m.exec(body)?.[1] };
+});
+const unread = companies.filter(c => c.checkedAt === undefined).map(c => c.value);
+if (unread.length) fail(`«ασφαλιστικές»: δεν διαβάστηκε το \`checkedAt\` των ${unread.join(', ')} (app/dashboard/components/insurance/catalog.ts). Ο φρουρός θα μετρούσε και εταιρείες χωρίς ανάγνωση.`);
+const brands = companies.filter(c => c.hasUrl).map(c => c.value);
+const readBrands = companies.filter(c => c.hasUrl && c.checkedAt !== undefined && c.checkedAt !== 'null').map(c => c.value);
+const parentBlock = ins.match(/const BRAND_PARENT: Record<string, string> = \{([\s\S]*?)\n\};/);
+const parent = Object.fromEntries([...(parentBlock?.[1] ?? '').matchAll(/^\s*([a-z_]+):\s*'([a-z_]+)',/gm)].map(m => [m[1], m[2]]));
+// Μητρική που διαβάστηκε μηδέν φορές, ή μάρκα/μητρική που δεν είναι εταιρεία
+// του καταλόγου, σημαίνει ότι η γραφή άλλαξε και ο κανόνας δεν εφαρμόζεται.
+const parentOk = Object.keys(parent).length > 0
+  && Object.entries(parent).every(([b, p]) => brands.includes(b) && brands.includes(p));
+if (!parentOk) fail('«ασφαλιστικές»: το BRAND_PARENT δεν διαβάστηκε ή δείχνει εταιρεία που δεν υπάρχει (app/dashboard/components/insurance/catalog.ts). Ο φρουρός θα μετρούσε μάρκες.');
+const insurers = parentOk && !unread.length ? new Set(readBrands.map(b => parent[b] ?? b)).size : 0;
 
 // 4. Κλιμάκια της κλίμακας ενοικίων που ισχύει από το 2026.
 const tax = read('lib/billing/greekTax.ts');
@@ -57,7 +86,7 @@ const brackets = taxBlock ? [...taxBlock[1].matchAll(/\{\s*from:/g)].length : 0;
 const checks = [
   ['είδη εγγράφων',     docKinds,  'DOC_TYPES χωρίς το «other» (lib/billing/documents.ts)'],
   ['πάροχοι ρεύματος',  providers, 'PROVIDERS (lib/energy/catalogue.ts)'],
-  ['ασφαλιστικές',      insurers,  'INSURERS με διεύθυνση (app/dashboard/components/insurance/catalog.ts)'],
+  ['ασφαλιστικές',      insurers,  'εταιρείες με διεύθυνση και διαβασμένη σελίδα, η μάρκα στη μητρική της (READ_INSURERS, app/dashboard/components/insurance/catalog.ts)'],
   ['κλιμάκια φόρου',     brackets,  'RENTAL_TAX_BRACKETS_2026 (lib/billing/greekTax.ts)'],
 ];
 

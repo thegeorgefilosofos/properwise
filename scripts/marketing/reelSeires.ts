@@ -47,7 +47,7 @@ import { ASSISTANT_ACC, ASSISTANT_INITIAL, ASSISTANT_NAME } from '../../lib/assi
 import { billingWords } from '../../lib/legal/billingWords';
 import { DOC_TYPES } from '../../lib/billing/documents';
 import { PROVIDERS, CATALOGUE_MONTH_GEN, TARIFFS_LABEL } from '../../lib/energy/catalogue';
-import { INSURANCE_COMPANIES } from '../../app/dashboard/components/insurance/catalog';
+import { READ_INSURERS } from '../../app/dashboard/components/insurance/catalog';
 import { greekPropertyTaxObligations, type TaxObligationKind } from '../../lib/tax/greekTaxCalendar';
 import { WHO_LABEL } from '../../lib/accounting/dossier';
 import { DEMO_PROPERTY, demoExpenses } from '../../lib/demo/sample';
@@ -1193,7 +1193,11 @@ function protoReel(): Reel {
     .map(x => x.kwh_day as number))).filter(Number.isFinite).sort((a, b) => a - b);
   const NPROV = TARIFFS.length;
   if (NPROV < 5) throw new Error(`Μόνο ${NPROV} πάροχοι με τιμή ${CATALOGUE_MONTH_GEN}.`);
-  const NINS = INSURANCE_COMPANIES.filter(i => /^https:\/\//.test(i.url || '')).length;
+  // Μετρούσε κάθε εταιρεία του καταλόγου με διεύθυνση (16): το Anytime και τη
+  // Magenta δίπλα στην Interamerican και τη Hellas Direct και έξι εταιρείες που η
+  // σελίδα τους δεν διαβάστηκε, χωρίς κανένα πρόγραμμα να διαλέξεις. Ίδιο πλήθος
+  // με την αρχική (`READ_INSURERS`).
+  const NINS = READ_INSURERS;
   const TAG = 'Βάλε το ακίνητό σου σε τάξη.';
   // Η αρχή: τα επτά έγγραφα της σάρωσης, σκόρπια σε τρεις διαστάσεις, κουμπώνουν σε λίστα.
   const CHAOS = chaosParts(['Λογαριασμοί.', 'Μισθωτήρια.', 'ΕΝΦΙΑ.', 'Προθεσμίες.', 'Σκόρπια παντού.'], 'ΙΔΙΟΚΤΗΤΗΣ ΑΚΙΝΗΤΟΥ;');
