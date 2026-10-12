@@ -61,6 +61,7 @@ import { monthAcc, monthNom } from '@/lib/core/months';
 export const RENT_INDEX: Readonly<Record<string, number>> = {
   '2026-01': 2.6, '2026-02': 2.5, '2026-03': 2.7, '2026-04': 3.9,
   '2026-05': 5.4, '2026-06': 5.2, '2026-07': 4.4, '2026-08': 3.4,
+  '2026-09': 3.8,
 };
 
 /**
@@ -131,7 +132,7 @@ const CPI_ANNUAL_LEGACY: Readonly<Record<number, number>> = {
 export const CPI_SOURCE = 'ΕΛΣΤΑΤ, μεταβολή Δείκτη Τιμών Καταναλωτή';
 export const CPI_SOURCE_URL = 'https://www.statistics.gr/el/statistics/-/publication/DKT87/-';
 /** Πότε επιβεβαιώθηκε τελευταία ο πίνακας από την πηγή (ISO). */
-export const CPI_CONFIRMED_AT = '2026-08-13';
+export const CPI_CONFIRMED_AT = '2026-10-12';
 
 /**
  * ΜΙΑ ΠΗΓΗ ΓΙΑ ΤΗ ΜΕΣΗ ΕΤΗΣΙΑ ΜΕΤΑΒΟΛΗ ΚΑΙ ΕΙΝΑΙ Ο ΜΗΝΙΑΙΟΣ ΠΙΝΑΚΑΣ.

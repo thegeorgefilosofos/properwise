@@ -12,20 +12,27 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
 import { withIndexRow } from './cpiTable'
-import { RENT_INDEX } from './cpi'
+import { RENT_INDEX, RENT_INDEX_LATEST } from './cpi'
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }
 
 const SRC = readFileSync(new URL('./cpi.ts', import.meta.url), 'utf8')
 
+// Ο μήνας που προστίθεται είναι ο επόμενος του πίνακα, όχι γραμμένος με το
+// χέρι: ως τις 12/10/2026 ήταν ο «2026-09» και το τεστ έσπασε μόλις ο
+// Σεπτέμβριος μπήκε στ' αλήθεια, γιατί η προσθήκη αρνείται διπλό μήνα.
+const [ly, lm] = RENT_INDEX_LATEST.split('-').map(Number)
+const NEXT = lm === 12 ? `${ly + 1}-01` : `${ly}-${String(lm + 1).padStart(2, '0')}`
+const STAMP = `${NEXT}-08`
+
 // ── Η ΠΡΟΣΘΗΚΗ ────────────────────────────────────────────────────────────
 {
-  const r = withIndexRow(SRC, '2026-09', 3.1, '2026-09-08')
+  const r = withIndexRow(SRC, NEXT, 3.1, STAMP)
   ok('η γραμμή προστίθεται', r.ok)
   if (r.ok) {
-    ok('με τον μήνα και το ποσοστό της', r.source.includes("'2026-09': 3.1"))
-    ok('η ημερομηνία ελέγχου ανανεώνεται', r.source.includes("CPI_CONFIRMED_AT = '2026-09-08'"))
+    ok('με τον μήνα και το ποσοστό της', r.source.includes(`'${NEXT}': 3.1`))
+    ok('η ημερομηνία ελέγχου ανανεώνεται', r.source.includes(`CPI_CONFIRMED_AT = '${STAMP}'`))
 
     // Καμία παλιά γραμμή δεν χάνεται και καμία τιμή δεν αλλάζει.
     const after = [...r.source.matchAll(/'(\d{4}-\d{2})':\s*(-?[\d.]+)/g)]
@@ -47,20 +54,22 @@ const SRC = readFileSync(new URL('./cpi.ts', import.meta.url), 'utf8')
 {
   const r = withIndexRow(SRC, '2027-01', 2.2, '2027-01-09')
   ok('ο Ιανουάριος της επόμενης χρονιάς μπαίνει τελευταίος',
-     r.ok && r.source.indexOf("'2027-01'") > r.source.indexOf("'2026-08'"))
+     r.ok && r.source.indexOf("'2027-01'") > r.source.indexOf(`'${RENT_INDEX_LATEST}'`))
 }
 
 // ── ΠΟΤΕ ΑΡΝΕΙΤΑΙ ─────────────────────────────────────────────────────────
 // Καμία από αυτές δεν είναι θεωρητική: κάθε μία θα άφηνε αλλοιωμένο αρχείο.
+// Με τον ΕΠΟΜΕΝΟ μήνα, ώστε η άρνηση να έρχεται από το λάθος που ελέγχεται και
+// όχι από το ότι ο μήνας υπάρχει ήδη.
 {
   ok('μήνας που υπάρχει ήδη, άρνηση', !withIndexRow(SRC, '2026-08', 3.4, '2026-08-13').ok)
   ok('άκυρος μήνας, άρνηση', !withIndexRow(SRC, '2026-8', 3.4, '2026-08-13').ok)
-  ok('άκυρη ημερομηνία, άρνηση', !withIndexRow(SRC, '2026-09', 3.4, '13/08/2026').ok)
-  ok('ποσοστό που δεν είναι αριθμός, άρνηση', !withIndexRow(SRC, '2026-09', NaN, '2026-09-08').ok)
-  ok('αρχείο χωρίς πίνακα, άρνηση', !withIndexRow('const x = 1', '2026-09', 3.4, '2026-09-08').ok)
+  ok('άκυρη ημερομηνία, άρνηση', !withIndexRow(SRC, NEXT, 3.4, '13/08/2026').ok)
+  ok('ποσοστό που δεν είναι αριθμός, άρνηση', !withIndexRow(SRC, NEXT, NaN, STAMP).ok)
+  ok('αρχείο χωρίς πίνακα, άρνηση', !withIndexRow('const x = 1', NEXT, 3.4, STAMP).ok)
 
   const noStamp = SRC.replace(/CPI_CONFIRMED_AT = '[\d-]+'/, 'CPI_CONFIRMED_AT = kati')
-  ok('αρχείο χωρίς ημερομηνία ελέγχου, άρνηση', !withIndexRow(noStamp, '2026-09', 3.4, '2026-09-08').ok)
+  ok('αρχείο χωρίς ημερομηνία ελέγχου, άρνηση', !withIndexRow(noStamp, NEXT, 3.4, STAMP).ok)
 }
 
 console.log(`market/cpiTable.test.ts: ${passed} passed, ${failed} failed`)
