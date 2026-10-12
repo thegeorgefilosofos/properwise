@@ -91,6 +91,16 @@ const nextConfig: NextConfig = {
       { source: "/calculators", destination: "/ypologismos-forou-enoikion", statusCode: 301 },
       { source: "/pricing", destination: "/paketa", statusCode: 301 },
       { source: "/cookies", destination: "/privacy#cookies-kai-synafeis-technologies", statusCode: 301 },
+      // ΚΑΙ ΤΑ ΕΛΛΗΝΙΚΑ ΣΥΝΤΟΜΑ (12.10.2026). Ο έλεγχος αγοράς της ημέρας
+      // δοκίμασε πέντε διευθύνσεις που μοιάζουν φυσικές και πήρε «δεν βρέθηκε»
+      // σε όλες. Δεν υπήρξαν ποτέ ως σελίδες· οδηγούν στον υπολογιστή του θέματος.
+      { source: "/revma", destination: "/sygkrisi-timologion-revmatos", statusCode: 301 },
+      { source: "/energeia", destination: "/sygkrisi-timologion-revmatos", statusCode: 301 },
+      { source: "/odigos/timologia-revmatos", destination: "/sygkrisi-timologion-revmatos", statusCode: 301 },
+      { source: "/stegastiko", destination: "/ypologismos-stegastikou-daneiou", statusCode: 301 },
+      { source: "/ypologismos-daneiou", destination: "/ypologismos-stegastikou-daneiou", statusCode: 301 },
+      // Ο κόμβος είναι ενικός· ο πληθυντικός είναι αυτό που πληκτρολογεί κανείς.
+      { source: "/odigoi", destination: "/odigos", statusCode: 301 },
     ];
   },
   async headers() {
