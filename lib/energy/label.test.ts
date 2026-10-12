@@ -29,7 +29,7 @@ const sources = JSON.parse(readFileSync('data/price-sources.json', 'utf8')) as {
   electricity: { label: string; checkedAt: string; maxAgeDays: number; sources: { name: string; url: string }[] };
   gas: { label: string; checkedAt: string; maxAgeDays: number; sources: { name: string; url: string }[] };
   insurance: { label: string; checkedAt: string; maxAgeDays: number; registryVerifiedAt: string | null };
-  telecom: { providers: { name: string; url: string; checkedAt: string }[] };
+  telecom: { providers: { name: string; key?: string; url: string; checkedAt: string }[] };
 };
 
 // ΟΙ ΗΜΕΡΟΜΗΝΙΕΣ ΖΟΥΝ ΣΤΟΝ ΚΑΤΑΛΟΓΟ ΤΙΜΩΝ (lib/facts/prices.ts, 05.10.2026) ΚΑΙ ΟΙ
@@ -52,10 +52,13 @@ eq('αέριο: η ετικέτα με το label', GAS_LABEL, sources.gas.label
 eq('αέριο: το κατώφλι με το maxAgeDays', GAS_MAX_AGE_DAYS, sources.gas.maxAgeDays);
 
 // ΤΟ INTERNET ΕΛΕΓΧΕΤΑΙ ΑΝΑ ΠΑΡΟΧΟ: ίδιοι πάροχοι, ίδιες ημέρες, ίδιες σελίδες.
+// Το `key` είναι η τιμή που αποθηκεύεται στις ρυθμίσεις του χρήστη, όταν
+// διαφέρει από το όνομα: η Telekom είναι ακόμη `cosmote` από πριν τη μετονομασία.
 const telecom = sources.telecom.providers;
-eq('internet: ίδιοι πάροχοι με ημερομηνία', Object.keys(TELECOM_FACTS).sort(), telecom.map(p => p.name.toLowerCase()).sort());
+const keyOf = (p: { name: string; key?: string }) => p.key ?? p.name.toLowerCase();
+eq('internet: ίδιοι πάροχοι με ημερομηνία', Object.keys(TELECOM_FACTS).sort(), telecom.map(keyOf).sort());
 for (const p of telecom) {
-  const f = TELECOM_FACTS[p.name.toLowerCase()];
+  const f = TELECOM_FACTS[keyOf(p)];
   eq(`internet ${p.name}: ημερομηνία`, f?.checkedAt, p.checkedAt);
   eq(`internet ${p.name}: σελίδα`, f?.url, p.url);
 }

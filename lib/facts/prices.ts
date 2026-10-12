@@ -50,9 +50,17 @@ export const PRICE_FACTS = {
     source: 'ΡΑΑΕΥ, energycost.gr', url: 'https://energycost.gr/',
   },
   // Ενδεικτικά, όχι προσφορές: η πραγματική τιμή βγαίνει από την ασφαλιστική.
+  //
+  // ΤΟ «ΙΟΥΛΙΟΣ 2026» ΣΤΕΚΟΤΑΝ ΠΑΝΩ ΑΠΟ ΣΑΡΑΝΤΑ ΠΟΣΑ ΠΟΥ ΔΕΝ ΔΗΜΟΣΙΕΥΕ ΚΑΜΙΑ
+  // ΕΤΑΙΡΕΙΑ και η πηγή ήταν «ο κατάλογος της εφαρμογής», δηλαδή εμείς. Από
+  // την ανάγνωση της ομάδας στις 12/10/2026 ο κατάλογος κρατά μόνο τιμές που
+  // δημοσιεύει η εταιρεία, η καθεμιά με σενάριο, πηγή και δική της ημερομηνία
+  // (app/dashboard/components/insurance/catalog.ts). Η ημερομηνία εδώ είναι η
+  // παλαιότερη από αυτές και η πηγή λέει ότι αφορά μόνο όσα προγράμματα έχουν
+  // δική τους πηγή, όχι όλο τον κατάλογο.
   insurance: {
-    label: 'Ενδεικτικά ασφάλιστρα κατοικίας', checkedAt: '2026-07-29', period: 'Ιούλιος 2026', maxAgeDays: 120,
-    source: 'κατάλογος ενδεικτικών ασφαλίστρων της εφαρμογής',
+    label: 'Δημοσιευμένες τιμές ασφάλισης κατοικίας', checkedAt: '2026-10-12', period: 'Οκτώβριος 2026', maxAgeDays: 120,
+    source: 'σελίδες των ασφαλιστικών, μόνο για όσα προγράμματα γράφουν δίπλα τους πηγή',
   },
 } as const satisfies Record<string, AsOf>;
 
@@ -62,9 +70,24 @@ export const PRICE_FACTS = {
  * λέει αντί να του δανείσει την ημερομηνία κάποιου άλλου.
  */
 export const TELECOM_FACTS: Readonly<Record<string, AsOf>> = {
+  // Η Telekom (πρώην Cosmote) κρατά το κλειδί `cosmote`: είναι αποθηκευμένο στις
+  // ρυθμίσεις των χρηστών. Ο κατάλογος μένει στη διεύθυνση cosmote.gr.
+  // Ξαναδιαβάστηκε 12/10/2026· ό,τι δεν επιβεβαιώθηκε εκείνη τη μέρα (5G,
+  // συνδυασμοί με τηλεόραση, δορυφορικά) το γράφει η σημείωση της γραμμής του.
+  cosmote: {
+    label: 'Προγράμματα Telekom', checkedAt: '2026-10-12',
+    source: 'Telekom, κατάλογος προσφορών οικιακών',
+    url: 'https://www.cosmote.gr/static/uploads/programmata_prosfores_2_2_2026_out.pdf',
+  },
   nova: {
-    label: 'Προγράμματα Nova', checkedAt: '2026-09-28',
+    label: 'Προγράμματα Nova', checkedAt: '2026-10-12',
     source: 'nova.gr', url: 'https://nova.gr/statheri-tilefonia/programmata/stathero-internet',
+  },
+  // Η INALAN ΔΕΝ ΕΙΧΕ ΗΜΕΡΟΜΗΝΙΑ ΕΛΕΓΧΟΥ. Η σελίδα της διαβάστηκε 12/10/2026 και
+  // τρία ποσά του καταλόγου διορθώθηκαν από αυτήν (app/dashboard/components/BillsProviders.tsx).
+  inalan: {
+    label: 'Προγράμματα Inalan', checkedAt: '2026-10-12',
+    source: 'inalan.gr', url: 'https://www.inalan.gr/internet/',
   },
   vodafone: {
     label: 'Προγράμματα Vodafone', checkedAt: '2026-10-04',
