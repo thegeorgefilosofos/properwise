@@ -4735,6 +4735,18 @@ html.a11y-large-text { zoom: 1.08; }
    `--float-bottom` και στο κινητό καθόταν πάνω σε κουμπιά και νούμερα. Τώρα
    πιάνει τη δική του λωρίδα· στο ταμπλό απλώνεται στο πλάτος του περιεχομένου. */
 .app-content .po-cookie { width: 100%; margin: 0 0 16px; max-width: none; }
+/* ΚΡΥΜΜΕΝΟ ΠΡΙΝ ΤΗ ΖΩΓΡΑΦΙΚΗ (12.10.2026). Ο διακομιστής το αποδίδει πάντα
+   ώστε να μη σπρώχνει τη σελίδα όταν εμφανιστεί· το `data-cookie-ok` το βάζει
+   το σενάριο του <head> σε όποιον έχει ήδη πατήσει «Το κατάλαβα»
+   (app/cookieNotice.ts). */
+html[data-cookie-ok] .po-cookie { display: none; }
+/* ΤΟ ΠΕΡΙΘΩΡΙΟ ΤΟΥ ΠΛΑΙΣΙΟΥ ΔΕΝ ΒΓΑΙΝΕΙ ΕΞΩ ΑΠΟ ΤΟ BODY (12.10.2026). Η σελίδα
+   έρχεται ροή-ροή· όταν ο περιηγητής ζωγράφιζε πριν φτάσει το πλαίσιο, το
+   πάνω του 10 «περνούσε» έξω από το άδειο body και το body κατέβαινε 10:
+   CLS 0,0078 σε 2 από 8 φορτώσεις του /ypologismos-enfia στα 1280. Με
+   `flow-root` το body κρατά τα περιθώρια των παιδιών του μέσα του. Οπτικά
+   ίδιο: το φόντο του body βάφει όλη την οθόνη. */
+body { display: flow-root; }
 
 /* ── ΣΤΗΝ ΑΡΧΙΚΗ ΤΟ ΜΗΝΥΜΑ ΜΙΛΑ ΤΗΝ ΠΑΛΕΤΑ ΤΗΣ ΒΙΤΡΙΝΑΣ ──────────────────
    Το πλαίσιο ζει στο layout, έξω από το `.lp-root`, οπότε διάβαζε τα tokens
@@ -5112,15 +5124,33 @@ body:has(.po-tool-page) .po-cookie {
 .pub-menu-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pub-menu-sheet {
   position: absolute; top: calc(100% + 10px); right: 0; z-index: 60;
-  min-width: 200px; max-width: calc(100vw - 2 * var(--pub-gutter));
-  margin: 0; padding: 6px; list-style: none;
+  width: max-content; min-width: 200px; max-width: calc(100vw - 2 * var(--pub-gutter));
+  margin: 0; padding: 6px;
   background: var(--bg-surface); border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-lg);
 }
+/* ΔΕΚΑ ΣΥΝΔΕΣΜΟΙ ΔΕΝ ΧΩΡΟΥΝ ΠΑΝΤΑ ΣΤΗΝ ΟΘΟΝΗ (ζήτημα 289). Η κεφαλίδα της αρχικής
+   είναι κολλητή: φύλλο ψηλότερο από το παράθυρο θα έκρυβε τους τελευταίους
+   χωρίς τρόπο να φτάσεις εκεί, γιατί η σελίδα κυλά από κάτω του. Το φύλλο
+   ξεκινά 64 από την κορυφή και σταματά 26 πάνω από το κάτω άκρο, οπότε όσα
+   δεν χωρούν κυλούν μέσα στο ίδιο το φύλλο. Η κύλιση ΣΥΝΕΧΙΖΕΙ στη σελίδα
+   όταν τελειώσει το φύλλο, επίτηδες: στην πρώτη επίσκεψη το πλαίσιο cookies
+   στέκεται πάνω από την κεφαλίδα και στα 568 ύψος το φύλλο ξεκινά 101 πιο
+   χαμηλά. Η σελίδα κυλά, η κεφαλίδα κολλά στην κορυφή και φαίνεται όλο. */
+.pub-menu-sheet { max-height: calc(100vh - 90px); max-height: calc(100dvh - 90px); overflow-y: auto; }
+.pub-menu-sheet ul { margin: 0; padding: 0; list-style: none; }
+.pub-menu-group + .pub-menu-group { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-subtle); }
+.pub-menu-label {
+  margin: 0; padding: 8px 14px 4px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+/* Το «Σύγκριση τιμολογίων ρεύματος» στα 320 θέλει όλο το πλάτος του φύλλου:
+   σπάει σε δύο γραμμές αντί να βγει έξω από αυτό. */
 .pub-menu-link {
-  display: flex; align-items: center; min-height: 44px; padding: 0 14px;
+  display: flex; align-items: center; min-height: 44px; padding: 6px 14px;
   border-radius: 8px; color: var(--text-primary); text-decoration: none;
-  font-size: 15px; font-weight: 600; white-space: nowrap;
+  font-size: 15px; font-weight: 600; line-height: 1.3;
 }
 .pub-menu-link:hover { background: var(--bg-hover); }
 .pub-menu-link[aria-current="page"] { color: var(--accent); }
@@ -6658,7 +6688,7 @@ tr.po-row-more { display: none; }
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   background: var(--bg-surface);
-  font-size: 12.5px;
+  font-size: var(--fs-base);
   line-height: 1.55;
   color: var(--text-tertiary);
 }

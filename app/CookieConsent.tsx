@@ -13,8 +13,7 @@ import { Btn } from '@/components/Theme';
 // γραμμένο με το χέρι, ενώ η Πολιτική είχε ήδη αλλάξει στις ενότητες για τα
 // cookies: όποιος είχε δει την παλιά ενημέρωση δεν έβλεπε ποτέ τη νέα.
 import { POLICY_VERSION } from '@/lib/legal/identity';
-
-const KEY = 'pos-cookie-consent';
+import { COOKIE_NOTICE_KEY as KEY, acknowledged } from './cookieNotice';
 
 /** Οι φόρμες όπου το πλαίσιο δεν εμφανίζεται· το κουτάκι των Όρων προηγείται. */
 const AUTH_PATHS = new Set(['/signup', '/login', '/reset-password']);
@@ -27,20 +26,17 @@ const AUTH_PATHS = new Set(['/signup', '/login', '/reset-password']);
 // κάθε φόρτωση —μία με το πλαίσιο κρυμμένο και μία με αυτό ορατό— και ο
 // μεταγλωττιστής της React το σημειώνει ως σφάλμα ακριβώς γι' αυτό.
 //
-// Εδώ ο διακομιστής απαντά «μην το δείξεις» και ο περιηγητής απαντά με την
-// αλήθεια, σε ΜΙΑ απόδοση και χωρίς ασυμφωνία ενυδάτωσης. Και επειδή το
+// Εδώ ο διακομιστής απαντά «δείξ' το» και ο περιηγητής απαντά με την αλήθεια,
+// σε ΜΙΑ απόδοση και χωρίς ασυμφωνία ενυδάτωσης. Οποιος το έχει ήδη δει δεν το
+// βλέπει ούτε για ένα καρέ: το κρύβει το σενάριο του <head> πριν τη ζωγραφική
+// (app/cookieNotice.ts, όπου και το γιατί: CLS 0,119 στο τηλέφωνο). Και επειδή το
 // `subscribe` ακούει το γεγονός `storage`, αν ο χρήστης το αποδεχτεί σε άλλη
 // καρτέλα, το πλαίσιο κλείνει και εδώ.
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Άκυρη ή παλιότερης έκδοσης εγγραφή σημαίνει ότι ζητάμε ξανά αναγνώριση. */
 function needsNotice(): boolean {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return true;
-    const rec = JSON.parse(raw);
-    return !rec || rec.v !== POLICY_VERSION;
-  } catch { return true; }
+  try { return !acknowledged(localStorage.getItem(KEY)); } catch { return true; }
 }
 
 const listeners = new Set<() => void>();
@@ -56,7 +52,7 @@ function subscribe(l: () => void) {
 // δικό του χώρο: στις δημόσιες σελίδες στο τέλος του layout, στο ταμπλό στην
 // κορυφή του περιεχομένου (`inline`), ώστε να φαίνεται χωρίς να σκεπάζει.
 export default function CookieConsent({ inline = false }: { inline?: boolean }) {
-  const pending = useSyncExternalStore(subscribe, needsNotice, () => false);
+  const pending = useSyncExternalStore(subscribe, needsNotice, () => true);
   // ΟΧΙ ΣΤΙΣ ΦΟΡΜΕΣ ΕΙΣΟΔΟΥ (28.09.2026). Στα 390 εικονοστοιχεία το πλαίσιο
   // καθόταν πάνω στο κουτάκι των Όρων της εγγραφής και στο κάτω μέρος της
   // σύνδεσης: ο χώρος του `--cookie-h` επέτρεπε να κυλήσεις από κάτω του, αλλά

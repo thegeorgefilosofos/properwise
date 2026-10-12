@@ -274,7 +274,7 @@ export function ApodosiCalculator({ year, today, cta }: {
         marginTop: T.sp.xl, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+        <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
           {/* ΤΟ ΚΟΥΤΙ ΛΕΓΟΤΑΝ «Τι δεν περιλαμβάνει» ΚΑΙ ΞΕΚΙΝΟΥΣΕ ΜΕ ΟΣΑ ΠΕΡΙΛΑΜΒΑΝΕΙ.
               Ο αναγνώστης καταλάβαινε ότι η κλίμακα και το 5% ΔΕΝ εφαρμόζονται.
               Δύο προτάσεις, με τη σειρά που τις ρωτά. */}

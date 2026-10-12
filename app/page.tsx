@@ -661,7 +661,7 @@ export default async function Landing() {
             η τρίτη έσπαγε μόνη της σε δεύτερη σειρά, οπότε τα ψιλά γράμματα
             διαβάζονταν κάτω κάτω αντί για πέρα πέρα. Μένουν οι ίδιες τρεις
             προτάσεις (η δοκιμή με το όριό της, ο ΦΠΑ, η εγγύηση), στη σειρά. */}
-        <p className="fineprint po-just" style={{ fontSize: 13, lineHeight: 1.6, color: FAINT, margin: '22px 0 0' }}>
+        <p className="fineprint po-just" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: FAINT, margin: '22px 0 0' }}>
           {TRIAL_OFFER}{billingLive && <> {billingWords().firstCharge}</>}
           {' '}{PRICES_VAT} {NO_COMMITMENT}
           {' '}{billingWords().moneyBack}
@@ -708,7 +708,7 @@ export default async function Landing() {
             μετά δύο στήλες και ήταν χειρότερο: μία παράγραφος κομμένη στη μέση
             της οθόνης, με το μάτι να γυρίζει πάνω. Η επιφύλαξη διαβάζεται μία
             φορά και από πάνω προς τα κάτω, όπως κάθε άλλο κείμενο εδώ. */}
-        <p className="fineprint po-just" style={{ fontSize: 13, color: FAINT, margin: '22px 0 0' }}>
+        <p className="fineprint po-just" style={{ fontSize: 'var(--fs-base)', color: FAINT, margin: '22px 0 0' }}>
           {/* ΤΟ ΔΩΡΟ ΤΟΥ ΣΥΝΕΡΓΑΤΗ ΔΕΝ ΕΙΝΑΙ ΕΝΑ ΠΑΚΕΤΟ, ΕΙΝΑΙ ΕΝΑ ΣΚΑΛΙ ΠΑΝΩ.
               Γραφόταν σταθερά «Επαγγελματίας+», μετά διορθώθηκε σε ό,τι έδινε
               το PARTNER_WELCOME και ήταν πάλι λάθος: σταθερό δώρο σημαίνει ότι

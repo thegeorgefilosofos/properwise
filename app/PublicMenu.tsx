@@ -22,10 +22,22 @@ import { T } from '@/components/tokens'
 // είναι κουμπί για το πληκτρολόγιο (Enter, Space) και τον αναγνώστη οθόνης,
 // με κατάσταση ανοιχτό/κλειστό. Κάθε σελίδα φτιάχνει τη δική της κεφαλίδα,
 // οπότε μετά από πλοήγηση το μενού ξεκινά πάντα κλειστό.
+//
+// ΚΑΙ ΟΙ ΥΠΟΛΟΓΙΣΜΟΙ ΜΕΣΑ (ζήτημα 289, 12/10/2026). Το φύλλο κρατούσε Οδηγοί, Τιμές
+// και Σύνδεση: οι έξι δωρεάν υπολογιστές και το «Ποιοι είμαστε» ζούσαν μόνο
+// στο υποσέλιδο, δηλαδή στο τηλέφωνο τους έβρισκε μόνο όποιος κυλούσε ως το
+// τέλος. Δύο ομάδες τώρα: πρώτα οι σελίδες με τη σειρά του υπολογιστή, μετά οι
+// υπολογισμοί από τη μία λίστα `PUBLIC_TOOLS` που διαβάζει και το υποσέλιδο.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export default function PublicMenu({ links, current }: {
+export interface MenuGroup {
+  /** Ορατή κεφαλίδα της ομάδας· η πρώτη ομάδα δεν χρειάζεται. */
+  label?: string
   links: readonly (readonly [string, string])[]
+}
+
+export default function PublicMenu({ groups, current }: {
+  groups: readonly MenuGroup[]
   current?: string
 }) {
   return (
@@ -38,14 +50,21 @@ export default function PublicMenu({ links, current }: {
           <path d="M6 6l12 12M18 6 6 18" />
         </svg>
       </summary>
-      <ul className="pub-menu-sheet" style={{ borderRadius: T.radius.popup }}>
-        {links.map(([href, label]) => (
-          <li key={href}>
-            <Link href={href} className="lp-link pub-menu-link"
-              aria-current={current && href === `/${current}` ? 'page' : undefined}>{label}</Link>
-          </li>
+      <div className="pub-menu-sheet" style={{ borderRadius: T.radius.popup }}>
+        {groups.map((g, i) => (
+          <div key={g.label ?? i} className="pub-menu-group">
+            {g.label && <p id={`pub-menu-g${i}`} className="pub-menu-label">{g.label}</p>}
+            <ul aria-labelledby={g.label ? `pub-menu-g${i}` : undefined}>
+              {g.links.map(([href, label]) => (
+                <li key={href}>
+                  <Link href={href} className="lp-link pub-menu-link"
+                    aria-current={current && href === `/${current}` ? 'page' : undefined}>{label}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
-      </ul>
+      </div>
     </details>
   )
 }
