@@ -18,9 +18,11 @@
 // μια συνάρτηση που λέγεται `WithError` και γυρίζει πάντα `null` είναι
 // χειρότερη από καμία: δίνει την εντύπωση ότι κάποιος ελέγχει.
 // ═══════════════════════════════════════════════════════════════════════════
-import { ledgerWithError } from './expenses';
-import { ofPropertyWithError as rentWithError } from './rent';
-import { ofPropertyWithError as staysWithError } from './stays';
+import { ledgerWithError, inRangeWithError, inRangeOfPropertyWithError } from './expenses';
+import { ofPropertyWithError as rentWithError, ofPropertiesWithError as rentManyWithError } from './rent';
+import { ofPropertyWithError as staysWithError, ofPropertiesWithError as staysManyWithError } from './stays';
+import { ofUserWithError as loansOfUserWithError } from './loans';
+import { inYearByProperty } from './tenants';
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } };
@@ -71,6 +73,52 @@ async function run() {
   ok('η αποτυχία των διαμονών επιστρέφεται', bad.error?.code === 'PGRST301');
   const empty = await staysWithError(fakeDb(EMPTY), 'p1', 'id', 'u1');
   ok('η άδεια διαμονή δεν είναι σφάλμα', empty.error === null);
+}
+
+
+// ── ΟΙ ΑΝΑΓΝΩΣΕΙΣ ΠΟΥ ΤΟ ΜΑΝΤΑΛΟ ΔΕΝ ΒΛΕΠΕΙ ───────────────────────────────
+// Το `guard-silent-reads` πιάνει μόνο το `const { data } = await`. Οι πιο κάτω
+// έκρυβαν το σφάλμα μέσα στο στρώμα (`rows(…)`) και τροφοδοτούσαν Ε2, ημερολόγιο
+// λογιστή, αναφορά περιόδου και κατάσταση κατανομής: εκεί το [] γίνεται ποσό.
+{
+  const bad = await rentManyWithError(fakeDb(FAIL), ['p1'], 'amount', 'u1');
+  ok('ενοίκια πολλών ακινήτων: η αποτυχία επιστρέφεται', bad.error?.code === 'PGRST301' && bad.rows.length === 0);
+  const empty = await rentManyWithError(fakeDb(EMPTY), ['p1'], 'amount', 'u1');
+  ok('ενοίκια πολλών ακινήτων: το άδειο δεν είναι σφάλμα', empty.error === null && empty.rows.length === 0);
+  const none = await rentManyWithError(fakeDb(FAIL), [], 'amount', 'u1');
+  ok('ενοίκια χωρίς ακίνητα: δεν ρωτά τη βάση, άρα ούτε σφάλμα', none.error === null && none.rows.length === 0);
+}
+{
+  const bad = await staysManyWithError(fakeDb(FAIL), ['p1'], 'id', 'u1');
+  ok('διαμονές πολλών ακινήτων: η αποτυχία επιστρέφεται', bad.error?.code === 'PGRST301');
+  const empty = await staysManyWithError(fakeDb(EMPTY), ['p1'], 'id', 'u1');
+  ok('διαμονές πολλών ακινήτων: το άδειο δεν είναι σφάλμα', empty.error === null);
+  const none = await staysManyWithError(fakeDb(FAIL), [], 'id', 'u1');
+  ok('διαμονές χωρίς ακίνητα: κανένα σφάλμα', none.error === null && none.rows.length === 0);
+}
+{
+  const bad = await inRangeWithError(fakeDb(FAIL), ['p1'], '2026-01-01', '2026-12-31');
+  ok('δαπάνες διαστήματος: η αποτυχία επιστρέφεται', bad.error?.code === 'PGRST301');
+  const empty = await inRangeWithError(fakeDb(EMPTY), ['p1'], '2026-01-01', '2026-12-31');
+  ok('δαπάνες διαστήματος: το άδειο δεν είναι σφάλμα', empty.error === null);
+}
+{
+  const bad = await inRangeOfPropertyWithError(fakeDb(FAIL), 'p1', '2026-01-01', '2026-12-31');
+  ok('δαπάνες ακινήτου σε διάστημα: η αποτυχία επιστρέφεται', bad.error?.code === 'PGRST301');
+  const empty = await inRangeOfPropertyWithError(fakeDb(EMPTY), 'p1', '2026-01-01', '2026-12-31');
+  ok('δαπάνες ακινήτου σε διάστημα: το άδειο δεν είναι σφάλμα', empty.error === null);
+}
+{
+  const bad = await loansOfUserWithError(fakeDb(FAIL), 'u1');
+  ok('δάνεια χαρτοφυλακίου: η αποτυχία επιστρέφεται', bad.error?.code === 'PGRST301' && bad.views.length === 0);
+  const empty = await loansOfUserWithError(fakeDb(EMPTY), 'u1');
+  ok('δάνεια χαρτοφυλακίου: το άδειο δεν είναι σφάλμα', empty.error === null);
+}
+{
+  const bad = await inYearByProperty(fakeDb(FAIL), 'u1', 2025, 'afm');
+  ok('μισθώσεις του έτους: η αποτυχία επιστρέφεται', bad.error?.code === 'PGRST301' && bad.inYear.size === 0);
+  const empty = await inYearByProperty(fakeDb(EMPTY), 'u1', 2025, 'afm');
+  ok('μισθώσεις του έτους: το άδειο δεν είναι σφάλμα', empty.error === null);
 }
 
 }

@@ -25,6 +25,7 @@
     "tax-year": "node scripts/guard-tax-year.mjs",
     "validity": "node scripts/guard-validity.mjs",
     "katalogos": "node scripts/gen-message-catalog.mjs",
+    "guides:stamp": "node scripts/stamp-guides.mjs",
     "indexnow": "node scripts/indexnow.mjs",
     "pg-schema": "node scripts/pg-sandbox.mjs",
     "single-source": "node scripts/guard-single-source.mjs",

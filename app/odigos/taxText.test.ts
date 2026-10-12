@@ -9,7 +9,12 @@
 import { readFileSync } from 'node:fs';
 import {
   RENTAL_TAX_BRACKETS_2026, RENTAL_TAX_BRACKETS_2025, rentalIncomeTax, type TaxBracket,
+  rentalBracketsForYear, CORPORATE_TAX_RATE_2026, DIVIDEND_WITHHOLDING_RATE, MUNICIPAL_ACCOM_TAX_RATE,
 } from '@/lib/billing/greekTax';
+import { TRANSFER_TAX_RATE, NEW_BUILD_VAT_RATE } from '@/lib/accounting/transfer';
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
+import { COMMERCIAL_STAMP_DUTY } from '@/app/dashboard/components/TabTenantHelpers';
+import { fpRate } from '@/lib/core/format';
 import { ratePct, rateScale, rateScaleEach, rateSeries, topBracketFrom, bracketSlices } from './taxText';
 
 let pass = 0, fail = 0;
@@ -40,6 +45,22 @@ ok('ratePct(0.05) → «5%»', ratePct(0.05) === '5%');
   ok('παράδειγμα 2: 8.520 με 25% = 2.130', Math.abs(high.width - 8_520) < 1e-9 && high.rate === 0.25 && Math.abs(high.tax - 2_130) < 1e-9);
 }
 
+// ── Οι συντελεστές από τη σταθερά: ίδιο κείμενο με το χειρόγραφο (08/10/2026) ──
+// Το Δάνειο, η Λογιστική, η Τιμολόγηση και η Κατάσταση έγραφαν αυτά τα ποσοστά
+// με το χέρι (scripts/guard-tax-literals.mjs). Τώρα τα γράφει η σταθερά· για
+// τις σημερινές τιμές ο αναγνώστης διαβάζει ακριβώς ό,τι διάβαζε.
+ok('κλίμακα έτους 2025: «15 / 35 / 45%»', rateScale(rentalBracketsForYear(2025)) === '15 / 35 / 45%');
+ok('κλίμακα έτους 2026: «15 / 25 / 35 / 45%»', rateScale(rentalBracketsForYear(2026)) === '15 / 25 / 35 / 45%');
+ok('ΦΜΑ «3,09%»', fpRate(TRANSFER_TAX_RATE * 100) === '3,09%');
+ok('ΦΠΑ νεόδμητων «24%»', fpRate(NEW_BUILD_VAT_RATE * 100) === '24%');
+ok('Ψηφιακό Τέλος Συναλλαγής «3,6%»', fpRate(COMMERCIAL_STAMP_DUTY * 100) === '3,6%');
+ok('νομικά πρόσωπα «22%»', fpRate(CORPORATE_TAX_RATE_2026 * 100) === '22%');
+ok('μέρισμα «5%»', fpRate(DIVIDEND_WITHHOLDING_RATE * 100) === '5%');
+ok('τέλος παρεπιδημούντων «0,5%»', fpRate(MUNICIPAL_ACCOM_TAX_RATE * 100) === '0,5%');
+ok('τεκμαρτή έκπτωση «5%»', fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100) === '5%');
+ok('βάση του φόρου «95%»', fpRate((1 - PRESUMPTIVE_DEDUCTION_RATE) * 100) === '95%');
+ok('αρχική: «15% ως 45%»', ratePct(RENTAL_TAX_BRACKETS_2026[0].rate) === '15%' && ratePct(RENTAL_TAX_BRACKETS_2026[RENTAL_TAX_BRACKETS_2026.length - 1].rate) === '45%' && RENTAL_TAX_BRACKETS_2026.length === 4);
+
 // ── Κανένας οδηγός δεν ξαναγράφει την κλίμακα με το χέρι ─────────────────
 const FILES = [
   'app/odigos/forologia-enoikion-2026/page.tsx',
@@ -47,6 +68,7 @@ const FILES = [
   'app/odigos/kathari-apodosi-akinitou/page.tsx',
   'app/ypologismos-forou-enoikion/page.tsx',
   'app/ypologismos-forou-enoikion/RentTaxCalculator.tsx',
+  'app/kathari-apodosi/ApodosiCalculator.tsx',
 ];
 const HAND = [/15 \/ 25 \/ 35 \/ 45%/, /15 \/ 35 \/ 45%/, /15% \/ 25%/, /36\.000€/, /1\.197€/, /5\.903€/, /01\/07\/2027/];
 for (const f of FILES) {

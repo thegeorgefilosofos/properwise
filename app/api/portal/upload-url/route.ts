@@ -16,6 +16,7 @@ import { NextResponse } from 'next/server';
 import { sameOrigin, ORIGIN_DENIED } from '@/lib/api/origin';
 import { createServiceClient, serviceClientError, SERVICE_CLIENT_LOG } from '@/lib/supabase/service';
 import { grantPortalUpload, readUploadAsk, type SlotClient } from '@/lib/portal/uploadSlot';
+import { reportRoute } from '@/lib/observability/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,10 +34,13 @@ export async function POST(request: Request) {
   const missing = serviceClientError(process.env);
   if (missing) {
     console.info('[portal/upload-url]', SERVICE_CLIENT_LOG, missing);
+    void reportRoute('api/portal/upload-url', 'service client missing', { status: 503 });
     return NextResponse.json({ error: 'Η αποστολή φωτογραφιών δεν είναι διαθέσιμη αυτή τη στιγμή.' }, { status: 503, headers: NO_STORE });
   }
   const service: SlotClient = createServiceClient();
 
   const reply = await grantPortalUpload(service, ask, Date.now(), crypto.randomUUID().slice(0, 8));
+  // Ούτε το κουπόνι ούτε ο κωδικός της πύλης ταξιδεύουν: μόνο ο κωδικός HTTP.
+  if (reply.status >= 500) void reportRoute('api/portal/upload-url', 'upload slot not granted', { status: reply.status });
   return NextResponse.json(reply.body, { status: reply.status, headers: NO_STORE });
 }

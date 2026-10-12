@@ -20,7 +20,7 @@ shim.localStorage = {
 };
 
 import {
-  parseAction, cleanForSpeech, buildSystemBlocks, NAV_MAP,
+  parseAction, cleanForSpeech, knowledgeFor, buildPersonalPrompt, NAV_MAP,
   DEFAULT_PREFS, type AssistantPrefs, type AssistantAction,
   loadMemories, addMemory, removeMemory, clearMemories,
   normalizeBookTime, resolveBookDate, KNOWLEDGE_PACKS, packsFor,
@@ -33,14 +33,16 @@ import { ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { NAV_LABELS } from '@/lib/nav/labels';
 
 // Ο,ΤΙ ΦΤΑΝΕΙ ΣΤΟ ΜΟΝΤΕΛΟ, ΣΕ ΕΝΑ ΚΕΙΜΕΝΟ. Η παραγωγή στέλνει δύο μπλοκ και
-// τα κρατάει χωριστά για το cache. Οι έλεγχοι από κάτω ρωτούν «περιέχεται
-// αυτή η φράση;», που είναι η ίδια ερώτηση πάνω στα ενωμένα μπλοκ. Το ένωμα
-// γίνεται εδώ, ώστε η παραγωγή να μη χρειάζεται δεύτερη εξαγωγή γι' αυτό.
-const buildSystemPrompt = (
+// τα κρατάει χωριστά για το cache: τη γνώση τη βάζει ο διακομιστής
+// (`noaSystemBlocks`), το προσωπικό ο πελάτης. Οι έλεγχοι από κάτω ρωτούν
+// «περιέχεται αυτή η φράση;», που είναι η ίδια ερώτηση πάνω στα ενωμένα μπλοκ.
+// Χωρίς θέμα η γνώση είναι ολόκληρη, όπως στην πρώτη ερώτηση χωρίς λέξη-κλειδί.
+const systemTexts = (
   prefs: AssistantPrefs, propertyContext: string,
-  allPropsContext?: string, extras?: Parameters<typeof buildSystemBlocks>[3],
-): string =>
-  buildSystemBlocks(prefs, propertyContext, allPropsContext, extras).map(b => b.text).join('\n\n');
+  allPropsContext?: string, extras?: Parameters<typeof buildPersonalPrompt>[3],
+): string[] =>
+  [knowledgeFor(''), buildPersonalPrompt(prefs, propertyContext, allPropsContext, extras)];
+const buildSystemPrompt = (...a: Parameters<typeof systemTexts>): string => systemTexts(...a).join('\n\n');
 
 let passed = 0, failed = 0;
 const fails: string[] = [];
@@ -307,11 +309,11 @@ for (const prefs of [id(), id({ formal: true }), id({ memory: false }), id({ com
 // Το ΣΤΑΘΕΡΟ μπλοκ πρέπει να είναι ίδιο byte-προς-byte για κάθε χρήστη: εκεί
 // στηρίζεται όλο το prompt caching. Η ταυτότητα ανήκει σε αυτό, οι προτιμήσεις όχι.
 {
-  const a = buildSystemBlocks(id(), 'Ακίνητο Α');
-  const b = buildSystemBlocks(id({ formal: true }), 'Ακίνητο Β');
-  ok('cache: το σταθερό μπλοκ είναι κοινό', a[0].text === b[0].text);
-  ok('cache: η ταυτότητα είναι στο σταθερό μπλοκ', a[0].text.includes(ASSISTANT_NAME) && a[0].text.includes('ΔΕΝ ΕΧΕΙΣ ΦΥΛΟ'));
-  ok('cache: το προσωπικό μπλοκ διαφέρει', a[1].text !== b[1].text);
+  const a = systemTexts(id(), 'Ακίνητο Α');
+  const b = systemTexts(id({ formal: true }), 'Ακίνητο Β');
+  ok('cache: το σταθερό μπλοκ είναι κοινό', a[0] === b[0]);
+  ok('cache: η ταυτότητα είναι στο σταθερό μπλοκ', a[0].includes(ASSISTANT_NAME) && a[0].includes('ΔΕΝ ΕΧΕΙΣ ΦΥΛΟ'));
+  ok('cache: το προσωπικό μπλοκ διαφέρει', a[1] !== b[1]);
 }
 // τρόπος προσφώνησης: ενικός vs πληθυντικός
 {

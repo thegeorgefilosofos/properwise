@@ -5,6 +5,7 @@ import * as calendar from '@/lib/data/calendar'
 // Οι επαφές έχουν ένα σπίτι: lib/data/contacts.
 import * as contactStore from '@/lib/data/contacts';
 import { inferRole } from '@/lib/contacts/roles'
+import { ensureDpa } from '@/lib/legal/dpa'
 import { alphaBucket, buildAlphaIndex, compareNames, initialsOf } from '@/lib/contacts/alpha'
 import { Phone, Mail, X, Search, Globe, FileText, Users, Building2, Trash2, UserPlus, Camera, SearchX } from 'lucide-react'
 import { DatePicker, CustomSelect, Toggle } from './UIComponents'
@@ -204,6 +205,9 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
       await syncContactReminder(editContact.id, name)
       setSaving(false); closeModal(); fetchContacts(); notifyOk('Επαφή ενημερώθηκε'); return
     }
+    // Νέα επαφή: πρώτα η σύμβαση επεξεργασίας (lib/legal/dpa.ts). Οι Όροι
+    // ονομάζουν «τους συνεργάτες σου». Η φόρμα μένει ανοιχτή με ό,τι γράφτηκε.
+    if (!(await ensureDpa(supabase))) { setError('Η επαφή δεν αποθηκεύτηκε: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.'); setSaving(false); return }
     const { data: ins, error: e } = await contactStore.addReturningId(supabase, propertyId, userId, payload)
     if (e) { setError(failed('Η επαφή δεν αποθηκεύτηκε', e)); setSaving(false); return }
     if (ins?.id) await syncContactReminder(ins.id, name)

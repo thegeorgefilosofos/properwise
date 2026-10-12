@@ -5,9 +5,11 @@
 import {
   TENANT_FIELDS, CLIENT_FIELDS, INVENTORY_FIELDS, CONTACT_FIELDS, ACCOUNTING_FIELDS, ALL_FIELDS,
   fieldPlacement, fieldDecision, formFields, missingCritical, hiddenFieldCount,
-  PROPERTY_FIELDS,
+  PROPERTY_FIELDS, OBJ_VALUE_WHOLE,
   type FieldContext,
 } from './fields';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 let pass = 0, fail = 0;
 function eq(name: string, got: unknown, want: unknown) {
@@ -290,6 +292,26 @@ const ctx = (o: Partial<FieldContext> = {}): FieldContext => ({
   const most = new Set(['tenant.lease_category', 'tenant.lease_start', 'tenant.rent', 'tenant.rent_iban']);
   eq('με μόνο το ΑΦΜ να λείπει, λείπει ένα', missingCritical(TENANT_FIELDS, c, most).length, 1);
   eq('και είναι το ΑΦΜ', missingCritical(TENANT_FIELDS, c, most)[0].id, 'tenant.afm');
+}
+
+// ═══ Η ΑΝΤΙΚΕΙΜΕΝΙΚΗ ΑΞΙΑ ΛΕΕΙ ΤΙ ΓΡΑΦΕΤΑΙ ΕΚΕΙ ΠΟΥ ΓΡΑΦΕΤΑΙ ══════════════
+// Ο ΕΝΦΙΑ κόβει μόνος του το ποσοστό ιδιοκτησίας. Ένας συνιδιοκτήτης στο 50%
+// που γράφει την αξία του μεριδίου του παίρνει εκτίμηση κομμένη δύο φορές.
+// Η οδηγία ζούσε μόνο στο `why` ενός πεδίου `selfEvident` που δεν τυπώνει
+// καμία οθόνη. Εδώ ελέγχεται ότι φτάνει στον οδηγό και στη σάρωση τίτλου.
+{
+  const rule = PROPERTY_FIELDS.find(f => f.id === 'prop.obj_value')!;
+  ok('η αντικειμενική αξία δεν είναι αυτονόητη', !rule.selfEvident);
+  ok('το γιατί της κλείνει με την οδηγία', rule.why.endsWith(OBJ_VALUE_WHOLE));
+  const read = (...p: string[]) => readFileSync(join(process.cwd(), ...p), 'utf8');
+  const wiz = read('app', 'dashboard', 'components', 'AddPropertyWizard.tsx');
+  const at = wiz.indexOf("row('prop.obj_value'");
+  const cell = at < 0 ? '' : wiz.slice(at, wiz.indexOf("row('", at + 1));
+  ok('ο οδηγός τυπώνει την οδηγία κάτω από το πεδίο', cell.includes('{OBJ_VALUE_WHOLE}'));
+  const scan = read('app', 'dashboard', 'components', 'DocumentScan.tsx');
+  ok('η σάρωση τίτλου δίνει την οδηγία στο πεδίο',
+    /key: 'obj_value'[^\n]*hint: OBJ_VALUE_WHOLE/.test(scan));
+  ok('και η φόρμα της σάρωσης τυπώνει το hint του πεδίου', /hint=\{[^\n]*\bf\.hint\}/.test(scan));
 }
 
 console.log(fail === 0 ? `✓ fields: ${pass} έλεγχοι πέρασαν` : `✗ fields: ${fail} απέτυχαν από ${pass + fail}`);

@@ -12,6 +12,8 @@ import type { PropertyStatus } from '@/lib/facts/status';
 
 interface PropContext {
   name: string; propType?: string; address?: string; value?: number; sqm?: number; status?: string; targetRent?: number;
+  /** Η αντικειμενική αξία ολόκληρου του ακινήτου· από αυτήν βγαίνει η εκτίμηση ΕΝΦΙΑ. */
+  objValue?: number;
   /** Η κατάσταση ως κλειδί (lib/facts/status.ts): κρίνει αν υπάρχουν έσοδα ενοικίου και απόδοση. */
   statusKey?: PropertyStatus;
   /** Για τον ΕΝΦΙΑ του έτους (lib/facts/enfia.ts), ο ίδιος με την Επισκόπηση και τη Λογιστική. */

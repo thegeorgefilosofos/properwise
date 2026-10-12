@@ -81,8 +81,17 @@ export async function ofPropertyWithError(
 
 /** Τα δάνεια όλου του χαρτοφυλακίου, για αναφορές και ημερολόγιο λογιστή. */
 export async function ofUser(db: Db, userId: string, columns = LOAN_COLUMNS): Promise<LoanView[]> {
-  return toLoanViews(await readRows<LoanRow>(db.from(TABLE).select(columns).eq('user_id', userId)
-    .order('created_at', { ascending: false })));
+  // ΕΝΑ ΜΟΝΟΠΑΤΙ: η απλή εκδοχή είναι η ίδια ανάγνωση, χωρίς το σφάλμα της.
+  return (await ofUserWithError(db, userId, columns)).views;
+}
+
+/** Τα ίδια δάνεια, με το σφάλμα ορατό: το ημερολόγιο λογιστή γράφει τους τόκους τους. */
+export async function ofUserWithError(
+  db: Db, userId: string, columns = LOAN_COLUMNS,
+): Promise<{ views: LoanView[]; error: DbError | null }> {
+  const { rows, error } = await read<LoanRow>(db.from(TABLE).select(columns).eq('user_id', userId)
+    .order('created_at', { ascending: false }));
+  return { views: toLoanViews(rows), error };
 }
 
 /**

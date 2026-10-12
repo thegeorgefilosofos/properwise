@@ -9,6 +9,7 @@ import { TASK_CATEGORIES, TASK_PRIORITIES, TASK_STATUSES } from '@/lib/checklist
 import type { FieldContext } from '@/lib/property/fields'
 import type { Who } from '@/lib/accounting/dossier'
 import { statusPill, type StatusKind } from '@/lib/core/status'
+import { STR_SPECS } from '@/lib/accounting/strSpecs'
 
 export type Priority = 'critical' | 'high' | 'normal' | 'low'
 export type Status   = 'pending' | 'in_progress' | 'done' | 'skipped'
@@ -121,7 +122,7 @@ export const ITEM_TAGS = ['Εγγύηση', 'Ασφάλεια', 'Εξωτερι�
 // «ανάλογα με το τι θα επιλέξεις βλέπεις και τα αντίστοιχα πεδία, όχι παντού τα
 // πάντα». Ο ιδιοκτήτης κενού ακινήτου δεν χρειάζεται λίστα αποχώρησης ενοικιαστή.
 // ═══════════════════════════════════════════════════════════════════════════
-export interface TemplateItem { description: string; category: string; priority: Priority; recurring?: Recurring; depends_on_idx?: number }
+export interface TemplateItem { description: string; category: string; priority: Priority; recurring?: Recurring; depends_on_idx?: number; note?: string }
 export interface Template { label: string; items: TemplateItem[]; when?: (c: FieldContext) => boolean; why?: string }
 
 export const TEMPLATES: Record<string, Template> = {
@@ -197,6 +198,12 @@ export const TEMPLATES: Record<string, Template> = {
     { description: 'Ανεφοδιασμός (σαπούνια, χαρτί και άλλα)', category: 'airbnb', priority: 'normal', recurring: 'monthly' },
     { description: 'Τσεκ κλιματισμού πριν κάθε σεζόν', category: 'airbnb', priority: 'high', recurring: 'quarterly' },
   ]},
+  // Ό,τι ζητά ο νόμος από το ίδιο το ακίνητο, ένα ανά γραμμή (lib/accounting/strSpecs.ts).
+  // ΧΩΡΙΣ ΑΡΙΘΜΟ ΝΟΜΟΥ ΣΤΗΝ ΕΤΙΚΕΤΑ: η εργασία νόμου στην ίδια οθόνη γράφει άλλη
+  // βάση (updates2026.ts) και οι δύο δεν έχουν ακόμη συμφιλιωθεί με την εγκύκλιο.
+  str_specs: { label: 'Προδιαγραφές βραχυχρόνιας', when: c => c.status === 'rent_short', why: 'Βραχυχρόνια μίσθωση', items: STR_SPECS.map(s => ({
+    description: s.label, category: 'legal', priority: s.priority, recurring: s.recurring, ...(s.note ? { note: s.note } : {}),
+  }))},
   purchase: { label: 'Αγορά ακινήτου', when: c => c.propertyCount >= 3 || c.status === 'for_sale', why: 'Χαρτοφυλάκιο σε κίνηση', items: [
     { description: 'Νομικός έλεγχος τίτλων ιδιοκτησίας', category: 'purchase', priority: 'critical' },
     { description: 'Τεχνικός έλεγχος ακινήτου από μηχανικό', category: 'purchase', priority: 'critical' },

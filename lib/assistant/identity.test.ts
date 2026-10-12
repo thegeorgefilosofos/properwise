@@ -9,8 +9,9 @@ import {
   ASSISTANT_NAME, ASSISTANT_INITIAL, ASSISTANT_ACC, ASSISTANT_TO,
   PERSONA_BRIEF, RULES, normalizeGreek, identityProblems, isCleanCopy,
   tagline, askCta, askPlaceholder, openAria, speakingLabel, settingsTitle,
-  suggestionsTitle, suggestionsSub, suggestionsTeaser, noKeyNotice,
+  suggestionsTitle, suggestionsSub, suggestionsTeaser, noKeyNotice, aiDisclosureLines, openersLabel,
 } from './identity';
+import * as IDENTITY from './identity';
 
 let pass = 0, fail = 0;
 function ok(name: string, cond: boolean) { if (cond) { pass++; } else { fail++; console.error(`✗ ${name}`); } }
@@ -38,11 +39,33 @@ for (const formal of [false, true]) {
   UI_STRINGS.push([`suggestionsSub (${f})`, suggestionsSub(formal)]);
   UI_STRINGS.push([`suggestionsTeaser (${f})`, suggestionsTeaser(formal)]);
   UI_STRINGS.push([`noKeyNotice (${f})`, noKeyNotice(formal)]);
+  aiDisclosureLines(formal).forEach((l, i) => UI_STRINGS.push([`aiDisclosureLines[${i}] (${f})`, l]));
 }
 UI_STRINGS.push(['openAria', openAria()]);
 UI_STRINGS.push(['speakingLabel', speakingLabel()]);
 UI_STRINGS.push(['settingsTitle', settingsTitle()]);
 UI_STRINGS.push(['suggestionsTitle', suggestionsTitle()]);
+UI_STRINGS.push(['openersLabel', openersLabel()]);
+
+// ΚΑΜΙΑ ΕΞΑΓΩΓΗ ΚΕΙΜΕΝΟΥ ΕΚΤΟΣ UI_STRINGS. Το scripts/guard-assistant-name.mjs
+// δεν διαβάζει το identity.ts (γράφει επίτηδες τις απαγορευμένες φράσεις) και
+// στηρίζεται σε αυτή τη λίστα. Το `openersLabel` φαινόταν στον πίνακα ελέγχου
+// και έλειπε: ένα «Ερωτήσεις για τον βοηθό σου» θα περνούσε και από τους δύο.
+// Κάθε νέα εξαγόμενη συνάρτηση κοκκινίζει εδώ μέχρι να μπει στη λίστα.
+{
+  const RULE_HELPERS = new Set(['normalizeGreek', 'identityProblems', 'isCleanCopy']);
+  // Σταθερές που δεν είναι κείμενο οθόνης ή καρφώνονται αλλού: το όνομα και οι
+  // πτώσεις του (με eq πιο πάνω), οι κανόνες και το κείμενο ταυτότητας του prompt.
+  const NOT_UI = new Set(['ASSISTANT_NAME', 'ASSISTANT_INITIAL', 'ASSISTANT_ACC', 'ASSISTANT_TO', 'PERSONA_BRIEF', 'RULES']);
+  const covered = new Set(UI_STRINGS.map(([label]) => label.split(/[ [(]/)[0]));
+  for (const [name, value] of Object.entries(IDENTITY)) {
+    if (typeof value === 'function') {
+      if (!RULE_HELPERS.has(name)) ok(`${name}: ελέγχεται στο UI_STRINGS`, covered.has(name));
+    } else {
+      ok(`${name}: γνωστή σταθερά που δεν είναι κείμενο οθόνης`, NOT_UI.has(name));
+    }
+  }
+}
 
 for (const [label, text] of UI_STRINGS) {
   const problems = identityProblems(text);
@@ -167,6 +190,10 @@ ok('isCleanCopy συμφωνεί με identityProblems', isCleanCopy('Ρώτα �
   ok('υπάρχει το scripts/guard-assistant-name.mjs', guard.length > 0);
   for (const r of RULES) ok(`ο guard ξέρει τον κανόνα «${r.id}»`, guard.includes(r.id));
   ok('ο guard σαρώνει app/ και components/', guard.includes('app') && guard.includes('components'));
+  // Και το lib/, όπου φτιάχνονται ορατά μηνύματα (assistantLockedMessage). Ο
+  // έλεγχος κοιτά την ίδια τη γραμμή ROOTS: ένα «lib» σε σχόλιο ή στο
+  // RULE_SOURCES δεν θα σήμαινε ότι το lib/ σαρώνεται.
+  ok('ο guard σαρώνει και το lib/', /const ROOTS = \[[^\]]*'lib'[^\]]*\]/.test(guard));
 }
 
 // ═══ Η ΠΕΡΙΓΡΑΦΗ ΧΑΡΑΚΤΗΡΑ ΛΕΕΙ ΤΑ ΤΕΣΣΕΡΑ ΠΟΥ ΠΡΕΠΕΙ ════════════════════
@@ -189,6 +216,80 @@ ok('isCleanCopy συμφωνεί με identityProblems', isCleanCopy('Ρώτα �
   ok('persona: ελληνικά, σωστά', /ελληνικά/.test(p) && /τόνους/.test(p));
   // Οδηγία, όχι πρόταση: το μοντέλο πρέπει να ξέρει ότι υπερισχύει.
   ok('persona: υπερισχύει άλλων οδηγιών ύφους', /υπερισχύει/.test(p));
+}
+
+// ═══ ΓΝΩΣΤΟΠΟΙΗΣΗ ΑΡΘ. 50§1 ΚΑΝ. (ΕΕ) 2024/1689 ══════════════════════════
+// Η ΜΟΝΗ ΕΞΑΙΡΕΣΗ ΣΤΟ «ΔΕΝ ΛΕΜΕ AI» (κανόνας 4 του identity.ts). Από 02/08/2026
+// (άρθρο 113) ο χρήστης που μιλά με σύστημα τεχνητής νοημοσύνης πρέπει να το
+// ξέρει. Η γραμμή ζούσε σε ένα σημείο της οθόνης και δεν την κρατούσε κανένα
+// τεστ: μια «καθαρότερη» διατύπωση ή ένα σβήσιμο θα περνούσαν απαρατήρητα.
+// Η ΔΙΑΤΥΠΩΣΗ ΚΛΕΙΔΩΝΕΙ ΟΛΟΚΛΗΡΗ. Με έλεγχο υποσυμβολοσειρών περνούσε και το
+// «δεν είναι τεχνητή νοημοσύνη». Περνούσε και μια κενή δεύτερη γραμμή χωρίς το
+// «ενδεικτικά». Αλλαγή εδώ είναι απόφαση για το κείμενο του νόμου, όχι ύφος.
+const DISCLOSURE = [
+  `Η ${ASSISTANT_NAME} είναι τεχνητή νοημοσύνη και μπορεί να κάνει λάθος.`,
+  'Τα ποσά για φόρους και δάνεια είναι ενδεικτικά.',
+];
+for (const formal of [false, true]) {
+  eq(`γνωστοποίηση (${formal ? 'πληθ.' : 'ενικ.'}): ακριβώς οι δύο γραμμές`, aiDisclosureLines(formal), DISCLOSURE);
+}
+
+// Η ΑΠΟΔΟΣΗ ΣΤΗΝ ΟΘΟΝΗ. Ο έλεγχος είναι πάνω στο ίδιο το JSX, όχι σε σκέτη
+// αναζήτηση του ονόματος.
+//
+// ΤΑ ΣΧΟΛΙΑ ΤΟΥ JSX ΣΒΗΝΟΝΤΑΙ ΠΡΩΤΑ. Ως τώρα η κανονική έκφραση έτρεχε στο ωμό
+// κείμενο, οπότε ολόκληρο το <p> μέσα σε `{/* … */}` περνούσε: η γραμμή έφευγε
+// από την οθόνη και το τεστ έμενε πράσινο. Σβήνεται μόνο η μορφή `{/* … */}`,
+// με `{` πριν από το `/*` και `}` μετά το `*/`: το `accept="image/*"` του ίδιου
+// αρχείου δεν έχει άγκιστρο, οπότε δεν ανοίγει ψεύτικο σχόλιο.
+//
+// ΚΑΙ ΜΕΣΑ ΣΤΑ ΟΡΙΑ ΤΟΥ ΚΛΑΔΟΥ. Ο κλάδος της συνομιλίας είναι το fragment
+// `<>…</>` μετά το `) : (` του `{editing ? (`. Πριν ελεγχόταν μόνο ότι η γραμμή
+// είναι ΜΕΤΑ το `) : (`, οπότε περνούσε και μέσα στο παράθυρο αξιολόγησης, που
+// ανοίγει μόνο όταν βαθμολογεί ο χρήστης.
+const stripJsxComments = (src: string) => src.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+function chatBranch(src: string): [number, number] | null {
+  const ed = src.indexOf('{editing ? (');
+  const alt = ed < 0 ? -1 : src.indexOf(') : (', ed);
+  const open = alt < 0 ? -1 : src.indexOf('<>', alt);
+  if (open < 0 || src.slice(alt + 5, open).trim() !== '') return null;
+  let depth = 0;
+  for (const m of src.slice(open).matchAll(/<\/?>/g)) {
+    depth += m[0] === '<>' ? 1 : -1;
+    if (depth === 0) return [open, open + (m.index ?? 0)];
+  }
+  return null;
+}
+function disclosureCheck(raw: string) {
+  const src = stripJsxComments(raw);
+  const hits = [...src.matchAll(/<p\b[^>]*>\s*\{aiDisclosureLines\(prefs\.formal\)\.map\(/g)];
+  const branch = chatBranch(src);
+  return {
+    once: hits.length === 1,
+    inChat: !!branch && hits.length > 0 && hits.every(h => (h.index ?? -1) > branch[0] && (h.index ?? -1) < branch[1]),
+  };
+}
+{
+  const src = readFileSync(new URL('../../app/dashboard/components/PropertyAssistant.tsx', import.meta.url), 'utf8');
+  const real = disclosureCheck(src);
+  ok('το πάνελ της Νόας αποδίδει τη γνωστοποίηση μία φορά (άρθ. 50§1)', real.once);
+  // Στον κλάδο της συνομιλίας: στις ρυθμίσεις ο χρήστης δεν μιλά με τη Νόα.
+  ok('η γνωστοποίηση είναι στον κλάδο της συνομιλίας (άρθ. 50§1)', real.inChat);
+
+  // Ο ΙΔΙΟΣ Ο ΕΛΕΓΧΟΣ ΚΟΚΚΙΝΙΖΕΙ ΣΤΙΣ ΔΥΟ ΑΛΛΑΓΕΣ ΠΟΥ ΥΠΟΣΧΕΤΑΙ ΝΑ ΠΙΑΝΕΙ.
+  const block = src.match(/<p\b[^>]*>\s*\{aiDisclosureLines\(prefs\.formal\)\.map\([\s\S]*?<\/p>/)?.[0] ?? '';
+  ok('βρέθηκε το μπλοκ της γνωστοποίησης', block.length > 0);
+  const commented = src.replace(block, `{/* ${block} */}`);
+  ok('σχολιασμένη μέσα στο JSX: κοκκινίζει', commented !== src && !disclosureCheck(commented).once);
+  const branch = chatBranch(stripJsxComments(src));
+  ok('βρέθηκαν τα όρια του κλάδου της συνομιλίας', !!branch);
+  const end = src.indexOf('</>', src.indexOf(block) + block.length);
+  const moved = src.replace(block, '').slice(0, end - block.length + 3) + block + src.slice(end + 3);
+  ok('μετακινημένη έξω από τον κλάδο: κοκκινίζει',
+    moved.includes(block) && disclosureCheck(moved).once && !disclosureCheck(moved).inChat);
+  // Το `accept="image/*"` δεν ανοίγει σχόλιο: μένει μετά το σβήσιμο.
+  ok('το σβήσιμο σχολίων αφήνει το accept="image/*"',
+    !src.includes('accept="image/*"') || stripJsxComments(src).includes('accept="image/*"'));
 }
 
 console.log(fail === 0 ? `✓ identity: ${pass} έλεγχοι πέρασαν` : `✗ identity: ${fail} απέτυχαν από ${pass + fail}`);

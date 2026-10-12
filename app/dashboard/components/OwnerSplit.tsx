@@ -184,14 +184,14 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
         // Το ερώτημα δεν φιλτράρει πια περίοδο: μια δόση που εισπράχθηκε φέτος
         // μπορεί να ανήκει σε περσινό μήνα και θα έλειπε. Το φιλτράρισμα το
         // κάνει η `collectedIn` πάνω στην ημερομηνία βιβλίου.
-        const [rAll, e, sts] = await Promise.all([
-          rentStore.ofProperties<rentStore.BookableRent>(
+        const [rRes, eRes, sts] = await Promise.all([
+          rentStore.ofPropertiesWithError<rentStore.BookableRent>(
             supabase, [propId], rentStore.LEDGER_COLUMNS, userId, { paid: true }),
           // ── ΤΟ `paid_by` ΖΗΤΕΙΤΑΙ ΡΗΤΑ, ΓΙΑΤΙ ΧΩΡΙΣ ΑΥΤΟ Η ΣΤΗΛΗ ΔΕΝ ΥΠΑΡΧΕΙ ────
           // Η προεπιλογή της `inRangeOfProperty` είναι `amount,date`. Χωρίς το
           // `paid_by` κάθε γραμμή έμοιαζε πληρωμένη από τον ιδιοκτήτη κι ο
           // κανόνας του `ownersExpenseTotal` δεν είχε τι να κρίνει.
-          expenses.inRangeOfProperty(supabase, propId, from, to, 'amount,paid_by'),
+          expenses.inRangeOfPropertyWithError(supabase, propId, from, to, 'amount,paid_by'),
           // ── ΚΑΙ ΟΙ ΔΙΑΜΟΝΕΣ ───────────────────────────────────────────────
           // Το βραχυχρόνιο ακίνητο δεν έχει δόσεις: η κατάσταση έβγαινε με
           // έσοδα 0,00€ και καθαρό ίσο με μείον τις δαπάνες, με αριθμό εγγράφου
@@ -199,7 +199,8 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
           // ξεκίνησαν μέσα στην περίοδο και ως σήμερα.
           stayStore.ofPropertyWithError<StayAmountLike & { check_in: string | null }>(supabase, propId, stayStore.DECLARABLE_COLUMNS, userId),
         ]);
-        const r = rentStore.collectedIn((rAll || []) as rentStore.BookableRent[], year, month);
+        const r = rentStore.collectedIn(rRes.rows, year, month);
+        const e = eRes.rows;
         // Και τα δύο ερωτήματα ζητούν `amount`: αυτό είναι ό,τι χρειάζεται εδώ και
         // αυτό δηλώνεται. Το `any` έκρυβε ότι ένα λάθος όνομα στήλης θα έδινε μηδέν.
         const sumAmount = (rows: { amount?: number | string | null }[] | null) =>
@@ -210,6 +211,10 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
         // Αποτυχημένη ανάγνωση διαμονών = έσοδα που λείπουν από επίσημο χαρτί:
         // πέφτει στο ίδιο `catch` με τα άλλα ερωτήματα.
         if (sts.error) throw sts.error;
+        // Το ίδιο για δόσεις και δαπάνες: πριν από αυτό, η αποτυχία τους έδινε
+        // 0,00€ έσοδα ή δαπάνες και το κουμπί έκδοσης έμενε ενεργό.
+        if (rRes.error) throw rRes.error;
+        if (eRes.error) throw eRes.error;
         const today = athensToday();
         const stayCash = (sts.rows as (StayAmountLike & { check_in: string | null })[])
           .filter(st => { const d = (st.check_in || '').slice(0, 10); return d >= from && d <= to && d <= today; })

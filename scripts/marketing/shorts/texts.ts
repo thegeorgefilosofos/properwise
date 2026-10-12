@@ -15,11 +15,12 @@ import { fn, fpRate } from '../../../lib/core/format';
 import type { Page } from './engine';
 
 export type Platform = 'youtube' | 'instagram' | 'facebook' | 'tiktok';
-export const utmUrl = (path: string, campaign: string, src: Platform) =>
-  `https://properwise.gr${path}?utm_source=${src}&utm_medium=short&utm_campaign=${campaign}`;
+/** `medium`: «short» για τα Shorts της ημέρας, «reel» για ένα reel του Instagram (χωριστή απόδοση). */
+export const utmUrl = (path: string, campaign: string, src: Platform, medium = 'short') =>
+  `https://properwise.gr${path}?utm_source=${src}&utm_medium=${medium}&utm_campaign=${campaign}`;
 
 /** Τα γεγονότα συν τον σύνδεσμο της πλατφόρμας, για να γεμίσει το `{ctaUrl}`. */
-const withUrl = (b: Built, src: Platform): Facts => ({ ...b.f, ctaUrl: fact('ctaUrl', src, utmUrl(b.spec.cta.path, b.spec.utm.campaign, src), 'spec.cta + spec.utm', { kind: 'text' }) });
+const withUrl = (b: Built, src: Platform): Facts => ({ ...b.f, ctaUrl: fact('ctaUrl', src, utmUrl(b.spec.cta.path, b.spec.utm.campaign, src, b.spec.utm.medium), 'spec.cta + spec.utm', { kind: 'text' }) });
 const tagOf = (s: string) => `#${s.replace(/\s+/g, '')}`;
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
@@ -40,7 +41,7 @@ export function renderTexts(b: Built): Rendered {
     igCaption: `${plain(T.instagram.caption, ig)}\n\n${igTags.join(' ')}`,
     igTags,
     alt: plain(T.instagram.alt, ig),
-    fbCaption: plain(T.facebook?.caption ?? T.instagram.caption, fb).replace(/σύνδεσμος στο bio\.?/, utmUrl(b.spec.cta.path, b.spec.utm.campaign, 'facebook')),
+    fbCaption: plain(T.facebook?.caption ?? T.instagram.caption, fb).replace(/σύνδεσμος στο bio\.?/, utmUrl(b.spec.cta.path, b.spec.utm.campaign, 'facebook', b.spec.utm.medium)),
     ttCaption: `${plain(T.tiktok.caption, tt)} ${ttTags.join(' ')}`,
     ttTags,
     pinned: plain(T.pinned, yt),
@@ -119,7 +120,7 @@ export function textsMd(b: Built, pg: Page, r: Rendered, extra: { files?: string
     '',
     `**Εναλλακτικό κείμενο:** ${r.alt}`,
     '',
-    `Σύνδεσμος για το bio ή το αυτοκόλλητο: ${utmUrl(spec.cta.path, spec.utm.campaign, 'instagram')}`,
+    `Σύνδεσμος για το bio ή το αυτοκόλλητο: ${utmUrl(spec.cta.path, spec.utm.campaign, 'instagram', spec.utm.medium)}`,
     '',
     '## Facebook Reels',
     '',
@@ -131,7 +132,7 @@ export function textsMd(b: Built, pg: Page, r: Rendered, extra: { files?: string
     '',
     `**Λεζάντα:** ${r.ttCaption}`,
     '',
-    `Σύνδεσμος για το bio: ${utmUrl(spec.cta.path, spec.utm.campaign, 'tiktok')}`,
+    `Σύνδεσμος για το bio: ${utmUrl(spec.cta.path, spec.utm.campaign, 'tiktok', spec.utm.medium)}`,
     '',
     '## Καρφιτσωμένο σχόλιο',
     '',

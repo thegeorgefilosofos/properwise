@@ -15,6 +15,7 @@ import { notifyError } from '@/components/Toast'
 import { saved } from '@/components/dbWrite'
 import { uploadUserScoped } from '@/lib/storage/scopedUpload'
 import { uploadPath } from '@/lib/core/uploadPath'
+import { ensureDpa } from '@/lib/legal/dpa'
 import { CONTACT_BUCKET, removeFiles, linkFor, type ContactFile } from '@/lib/storage/contactFiles'
 import { athensToday, isoDate } from '@/lib/core/time'
 import { supabase, type Contact, fmtDate, digitsOf, fetchSupplierDocs, type SupplierDoc } from './model'
@@ -30,7 +31,12 @@ export function FileUploader({ files, onChange, contactId }: { files: ContactFil
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return; setUploading(true)
+    const file = e.target.files?.[0]; if (!file) return
+    // Νέα επαφή: το αρχείο ανέβαινε πριν ζητηθεί η σύμβαση στην αποθήκευση και
+    // έμενε στον κάδο ακόμη κι αν ο χρήστης έλεγε «Όχι τώρα». Το πεδίο αδειάζει,
+    // ώστε το ίδιο αρχείο να ξαναδιαλέγεται μετά την αποδοχή.
+    if (!contactId && !(await ensureDpa(supabase))) { notifyError('Το αρχείο δεν ανέβηκε: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.'); if (fileRef.current) fileRef.current.value = ''; return }
+    setUploading(true)
     // ΙΔΙΩΤΙΚΟΣ ΚΑΔΟΣ ΚΑΙ ΑΠΟΘΗΚΕΥΕΤΑΙ ΤΟ ΜΟΝΟΠΑΤΙ ΑΝΤΙ ΓΙΑ ΤΗ ΔΙΕΥΘΥΝΣΗ. Ο
     // «avatars» είναι δηλωμένος δημόσιος: το μισθωτήριο και το τιμολόγιο με το
     // ΑΦΜ κατέβαιναν από οποιονδήποτε ήξερε τη διεύθυνση.

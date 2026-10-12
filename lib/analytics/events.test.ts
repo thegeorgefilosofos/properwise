@@ -2,9 +2,10 @@
 // ΟΙ ΔΟΚΙΜΕΣ ΤΗΣ ΜΕΤΡΗΣΗΣ
 // ─────────────────────────────────────────────────────────────────────────
 // ΤΙ ΔΙΑΚΥΒΕΥΕΤΑΙ. Αυτά τα ονόματα γίνονται στήλες σε ερώτημα SQL που θα
-// διαβάσει αγοραστής. Ενα όνομα που δεν περνά τον έλεγχο της βάσης πετάει
-// εξαίρεση την οποία η `track` καταπίνει σιωπηλά: το γεγονός χάνεται και
-// κανείς δεν το μαθαίνει ποτέ. Ο έλεγχος γίνεται λοιπόν ΕΔΩ, όπου φαίνεται.
+// διαβάσει αγοραστής. Ενα όνομα που δεν περνά τον έλεγχο της βάσης γυρίζει
+// ως σφάλμα στο `{ error }` της κλήσης: το γεγονός χάνεται και η `track` το
+// αναφέρει πλέον στο captureError, αλλά μετά το ανέβασμα. Ο έλεγχος γίνεται
+// λοιπόν ΚΑΙ ΕΔΩ, όπου φαίνεται πριν.
 // ═══════════════════════════════════════════════════════════════════════════
 import { PRODUCT_EVENTS, track, type ProductEvent } from './events';
 
@@ -61,6 +62,67 @@ async function trackTests() {
   let threw2 = false;
   try { await track(sync as never, PRODUCT_EVENTS.signed_up) } catch { threw2 = true }
   ok('ούτε σύγχρονο σφάλμα', !threw2);
+
+  // ── ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΕΠΙΣΤΡΕΦΕΙ Η ΒΑΣΗ ΔΕΝ ΧΑΝΕΤΑΙ ΠΙΑ ───────────────────
+  // Το supabase δεν πετάει: γυρίζει `{ error }`. Χωρίς DSN, το captureError
+  // γράφει μόνο στην κονσόλα, οπότε η κονσόλα είναι ο μάρτυρας.
+  delete process.env.NEXT_PUBLIC_SENTRY_DSN;
+  delete process.env.SENTRY_DSN;
+  const logged = async (result: unknown, props: Record<string, string | number> = {}) => {
+    const lines: unknown[][] = [];
+    const orig = console.error;
+    console.error = (...args: unknown[]) => { lines.push(args); };
+    let threw = false;
+    try {
+      await track({ rpc: () => Promise.resolve(result) } as never, PRODUCT_EVENTS.property_added, props);
+    } catch { threw = true } finally { console.error = orig; }
+    return { threw, reports: lines.filter(a => a[0] === '[captureError]') };
+  };
+
+  const missing = await logged({ error: { code: 'PGRST202', message: 'Could not find the function public.log_event' } }, { count: 1, plan: 'solo' });
+  ok('επιστρεφόμενο σφάλμα δεν πετάει', !missing.threw);
+  ok('επιστρεφόμενο σφάλμα αναφέρεται μία φορά', missing.reports.length === 1);
+  const msg = String(missing.reports[0]?.[1] ?? '');
+  ok('η αναφορά λέει γεγονός και κωδικό', msg.includes('property_added') && msg.includes('PGRST202'));
+  const extra = missing.reports[0]?.[2];
+  ok('η αναφορά κρατά μόνο γεγονός και κωδικό',
+    JSON.stringify(extra) === JSON.stringify({ event: 'property_added', code: 'PGRST202' }));
+  const whole = JSON.stringify(missing.reports[0]?.slice(2)) + msg;
+  ok('η αναφορά δεν κουβαλά φορτίο, ταυτότητα ή μήνυμα',
+    !whole.includes('plan') && !whole.includes('solo') && !whole.includes('user_id') && !whole.includes('Could not find'));
+
+  const offline = await logged({ error: { code: '', message: 'TypeError: Failed to fetch' } });
+  ok('αποτυχία δικτύου χωρίς κωδικό δεν αναφέρεται', offline.reports.length === 0 && !offline.threw);
+
+  const fine = await logged({ error: null });
+  ok('η επιτυχία δεν αναφέρει τίποτα', fine.reports.length === 0);
+
+  // ── Ο ΔΙΑΚΟΜΙΣΤΗΣ ΠΕΡΙΜΕΝΕΙ ΝΑ ΦΥΓΕΙ Η ΑΝΑΦΟΡΑ ──────────────────────────
+  // Το app/auth/callback/route.ts κάνει `await track(...)` και αμέσως μετά
+  // redirect. Αν η `track` γύριζε πριν τελειώσει το fetch του captureError, η
+  // serverless συνάρτηση θα πάγωνε με τον φάκελο στον δρόμο και η αποτυχία
+  // της εγγραφής θα έμενε μόνο στην κονσόλα (lib/observability/report.ts).
+  {
+    process.env.SENTRY_DSN = 'https://k@sentry.invalid/1';
+    const origFetch = globalThis.fetch;
+    const origErr = console.error;
+    console.error = () => {};
+    let release: () => void = () => {};
+    let posted = 0;
+    globalThis.fetch = (() => { posted++; return new Promise<Response>(r => { release = () => r(new Response(null)); }); }) as typeof fetch;
+    let settled = false;
+    const run = track({ rpc: () => Promise.resolve({ error: { code: '42501' } }) } as never, PRODUCT_EVENTS.signed_up)
+      .then(() => { settled = true; });
+    for (let i = 0; i < 20; i++) await Promise.resolve();
+    ok('η αναφορά στάλθηκε', posted === 1);
+    ok('η track δεν τελειώνει πριν φύγει η αναφορά', !settled);
+    release();
+    await run;
+    ok('και τελειώνει μόλις φύγει', settled);
+    globalThis.fetch = origFetch;
+    console.error = origErr;
+    delete process.env.SENTRY_DSN;
+  }
 }
 
 // ── ΤΙ ΔΕΝ ΕΠΙΤΡΕΠΕΤΑΙ ΝΑ ΜΠΕΙ ΣΤΟ ΦΟΡΤΙΟ ───────────────────────────────

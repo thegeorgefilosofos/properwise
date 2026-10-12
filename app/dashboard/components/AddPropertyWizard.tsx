@@ -17,7 +17,7 @@ import { ATAK_SOURCE, atakDigits } from '@/lib/property/atak';
 import { STATUSES, BY_KEY, readStatus, writeStatus, type PropertyStatus } from '@/lib/property/status';
 import { PROPERTY_TYPES, propertyTypeLabel } from '@/lib/property/types';
 import { fillOnlyEmpty, firstFilled } from '@/lib/core/prefill';
-import { fieldPlacement, PROPERTY_FIELDS, type FieldContext, type Placement } from '@/lib/property/fields';
+import { fieldPlacement, PROPERTY_FIELDS, OBJ_VALUE_WHOLE, type FieldContext, type Placement } from '@/lib/property/fields';
 import { failed } from '@/lib/core/dbError';
 
 // Ενεργειακή κλάση (ΠΕΑ) & τύποι θέρμανσης — κοινά για wizard και Ρυθμίσεις.
@@ -567,6 +567,25 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     }
     if (err) { setSaving(false); setError(failed('Το ακίνητο δεν αποθηκεύτηκε', err)); return; }
 
+    // ── ΤΟ ΣΚΑΛΙ ΤΗΣ ΑΞΙΑΣ ─────────────────────────────────────────────────
+    // Το πρώτο ακίνητο είναι η στιγμή που η εφαρμογή αρχίζει να χρησιμεύει, το
+    // δεύτερο είναι το πιο δυνατό σημάδι ότι κάποιος έμεινε. Τα δύο μετρώνται
+    // χωριστά, γιατί απαντούν σε διαφορετική ερώτηση. Καταγράφεται ΜΟΝΟ σε νέο
+    // ακίνητο: η επεξεργασία υπάρχοντος δεν είναι σκαλί.
+    //
+    // ΑΜΕΣΩΣ ΜΕΤΑ ΤΗ ΔΗΜΙΟΥΡΓΙΑ, ΟΧΙ ΣΤΟ ΤΕΛΟΣ. Αν έσκαγαν οι «Ρυθμίσεις» πιο
+    // κάτω και ο χρήστης έκλεινε τον οδηγό, το ακίνητο υπήρχε και το γεγονός
+    // όχι. Χωρίς αναμονή, για να μην προστεθεί γύρος πριν από τις Ρυθμίσεις·
+    // το count() δεν πετάει.
+    //
+    // Πλήθος και μόνο, κανένα όνομα, καμία διεύθυνση, κανένα αναγνωριστικό.
+    if (!savedId && propertyId) {
+      void (async () => {
+        const n = await properties.count(supabase, userId);
+        void track(supabase, n >= 2 ? PRODUCT_EVENTS.second_property_added : PRODUCT_EVENTS.property_added, { count: n });
+      })();
+    }
+
     // property_settings: αποθήκευση μόνο αν έχει συμπληρωθεί κάτι (αποφυγή κενής γραμμής)
     if (propertyId && Object.values(settings).some(v => (v ?? '').toString().trim() !== '')) {
       const { error: sErr } = await supabase.from('property_settings')
@@ -574,18 +593,6 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
       // Το ακίνητο έχει ήδη αποθηκευτεί — λέμε ρητά τι έμεινε πίσω, ώστε το
       // «δοκίμασε ξανά» να μη διαβάζεται ως «ξαναφτιάξ' το από την αρχή».
       if (sErr) { setSaving(false); setError(failed('Το ακίνητο αποθηκεύτηκε, αλλά οι επαφές και οι σημειώσεις του δεν καταχωρήθηκαν', sErr)); return; }
-    }
-
-    // ── ΤΟ ΣΚΑΛΙ ΤΗΣ ΑΞΙΑΣ ─────────────────────────────────────────────────
-    // Το πρώτο ακίνητο είναι η στιγμή που η εφαρμογή αρχίζει να χρησιμεύει, το
-    // δεύτερο είναι το πιο δυνατό σημάδι ότι κάποιος έμεινε. Τα δύο μετρώνται
-    // χωριστά, γιατί απαντούν σε διαφορετική ερώτηση. Καταγράφεται ΜΟΝΟ σε νέο
-    // ακίνητο: η επεξεργασία υπάρχοντος δεν είναι σκαλί.
-    //
-    // Πλήθος και μόνο, κανένα όνομα, καμία διεύθυνση, κανένα αναγνωριστικό.
-    if (!existing) {
-      const n = await properties.count(supabase, userId);
-      void track(supabase, n >= 2 ? PRODUCT_EVENTS.second_property_added : PRODUCT_EVENTS.property_added, { count: n });
     }
 
     setSaving(false);
@@ -928,8 +935,14 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
         <StepBody
           place={place}
           rows={[
-            row('prop.obj_value', 'auto',
-              <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={objValue} onChange={e => setObjValue(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'Αντικειμενική αξία (€)'),
+            row('prop.obj_value', 'auto', <>
+              <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={objValue} onChange={e => setObjValue(e.target.value)} onFocus={onFocus} onBlur={onBlur} />
+              {/* Ο ΕΝΦΙΑ κόβει μόνος του το ποσοστό ιδιοκτησίας: η αξία του
+                  μεριδίου εδώ θα το έκοβε δεύτερη φορά. */}
+              <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.6 }}>
+                {OBJ_VALUE_WHOLE}
+              </div>
+            </>, 'Αντικειμενική αξία (€)'),
             row('prop.rent', airbnb ? 'full' : 'auto', <>
               <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={rent} onChange={e => setRent(e.target.value)} placeholder={airbnb ? '1400' : '820'} onFocus={onFocus} onBlur={onBlur} />
               {airbnb && (

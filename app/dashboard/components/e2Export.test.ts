@@ -29,14 +29,19 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.er
 const YEAR = 2025
 const PID = '11111111-1111-1111-1111-111111111111'
 
-/** Πλαστός πελάτης: κάθε φίλτρο επιστρέφει τον εαυτό του, το await δίνει τα δεδομένα. */
-function clientWith(data: Record<string, unknown[]>) {
+/**
+ * Πλαστός πελάτης: κάθε φίλτρο επιστρέφει τον εαυτό του, το await δίνει τα δεδομένα.
+ * Οι πίνακες του `failing` απαντούν όπως το PostgREST όταν πέσει η σύνδεση.
+ */
+function clientWith(data: Record<string, unknown[]>, failing = new Set<string>()) {
   return {
     from(table: string) {
       const rows = data[table] ?? []
       const chain: Record<string, unknown> = {}
       for (const m of ['select', 'eq', 'in', 'is', 'order', 'not', 'limit', 'gte', 'lte']) chain[m] = () => chain
-      ;(chain as { then: unknown }).then = (res: (v: unknown) => void) => res({ data: rows, error: null })
+      ;(chain as { then: unknown }).then = (res: (v: unknown) => void) => res(failing.has(table)
+        ? { data: null, error: { message: 'x', code: 'PGRST301' } }
+        : { data: rows, error: null })
       return chain
     },
   } as never
@@ -193,6 +198,22 @@ async function main() {
     const flat = co5.flat()
     ok('συνιδιοκτήτης: το μερίδιό του, 4.800 στο 50%', flat.includes(4800) && flat.includes(50))
   }
+
+  // ── ΑΠΟΤΥΧΗΜΕΝΗ ΑΝΑΓΝΩΣΗ = ΚΑΝΕΝΑ Ε2, ΟΧΙ Ε2 ΜΕ ΜΗΔΕΝΙΚΑ (08.10.2026) ────
+  // Πριν: πεσμένα ενοίκια έδιναν Ε2 με μηδέν εισόδημα, πεσμένα ΑΦΜ ιδιοκτήτη
+  // σβήνονταν σιωπηλά και πεσμένα ακίνητα γίνονταν «δεν υπάρχει ακίνητο».
+  const rejects = async (tables: string[]) => {
+    try { await loadE2Rows(clientWith(LONG_TERM, new Set(tables)), 'user-1', YEAR); return false }
+    catch { return true }
+  }
+  ok('αποτυχία ακινήτων: απόρριψη, όχι «κανένα ακίνητο»', await rejects(['user_properties']))
+  ok('αποτυχία μισθώσεων: απόρριψη', await rejects(['tenants']))
+  ok('αποτυχία δόσεων: απόρριψη, όχι μηδέν ενοίκια', await rejects(['rent_payments']))
+  ok('αποτυχία ΑΦΜ ιδιοκτήτη: απόρριψη, όχι σιωπηλή απώλεια', await rejects(['property_settings']))
+  ok('αποτυχία διαμονών: απόρριψη, όχι μηδέν βραχυχρόνιο', await rejects(['client_stays']))
+  // Τα προαιρετικά μένουν προαιρετικά: αριθμός δήλωσης και λογιστής.
+  ok('αποτυχία ιστορικού (αριθμός δήλωσης): το Ε2 βγαίνει κανονικά', !(await rejects(['activity_log'])))
+  ok('χωρίς rpc λογιστή: το Ε2 βγαίνει κανονικά', !(await rejects([])))
 
   console.log(fail === 0 ? `✓ e2Export: ${pass} έλεγχοι πέρασαν` : `✗ e2Export: ${fail} απέτυχαν από ${pass + fail}`)
   if (fail > 0) process.exit(1)

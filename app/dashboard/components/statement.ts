@@ -13,9 +13,9 @@
 // ταυτότητας του ακινήτου.
 // ═══════════════════════════════════════════════════════════════════════════
 import { type ReportBranding } from '@/lib/reportBranding';
-import { incomeStatement } from '@/lib/accounting/statement';
+import { incomeStatement, PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
 import { rentalBracketsForYear } from '@/lib/billing/greekTax';
-import { ABSENT } from '@/lib/core/format';
+import { ABSENT, fpRate } from '@/lib/core/format';
 import { INK, INK_MUTED, PAPER_ALT } from '@/lib/print/ink';
 import {
   reportHead, reportHeader, reportSection, reportRow, reportKpi, reportDisclaimer,
@@ -128,7 +128,7 @@ export function printPropertyStatement(c: StatementCtx): void {
   const subtitle = [c.propType, c.sqm ? `${c.sqm} τ.μ.` : '', leaseType, c.status].filter(Boolean).map(x => rEsc(String(x))).join(' · ');
   const ownerShare = own != null && own < 100
     ? `<div class="note"><span class="muted">Αναλογία ιδιοκτήτη (${rEsc(rPct(own))}):</span> έσοδα <strong class="tnum">${rEsc(rEur(c.annualRent * own / 100))}</strong> · καθαρό αποτέλεσμα <strong class="tnum">${rEsc(rSigned(net * own / 100))}</strong></div>` : '';
-  const disclaimer = `Η παρούσα αναφορά έχει ενημερωτικό χαρακτήρα και δεν αποτελεί επίσημο φορολογικό ή λογιστικό έγγραφο. Ο εκτιμώμενος φόρος υπολογίζεται με την προοδευτική κλίμακα ενοικίων ${c.year} και την τεκμαρτή έκπτωση δαπανών 5% (μακροχρόνια μίσθωση φυσικού προσώπου)${c.shortTerm ? ', ενώ στη βραχυχρόνια προστίθενται κατά περίπτωση τέλος ανθεκτικότητας κλιματικής κρίσης και τέλος παρεπιδημούντων' : ''}. Πριν από κάθε υποβολή, επιβεβαίωσε τα ποσά με τον λογιστή σου ή την ΑΑΔΕ.`;
+  const disclaimer = `Η παρούσα αναφορά έχει ενημερωτικό χαρακτήρα και δεν αποτελεί επίσημο φορολογικό ή λογιστικό έγγραφο. Ο εκτιμώμενος φόρος υπολογίζεται με την προοδευτική κλίμακα ενοικίων ${c.year} και την τεκμαρτή έκπτωση δαπανών ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)} (μακροχρόνια μίσθωση φυσικού προσώπου)${c.shortTerm ? ', ενώ στη βραχυχρόνια προστίθενται κατά περίπτωση τέλος ανθεκτικότητας κλιματικής κρίσης και τέλος παρεπιδημούντων' : ''}. Πριν από κάθε υποβολή, επιβεβαίωσε τα ποσά με τον λογιστή σου ή την ΑΑΔΕ.`;
 
   const html = reportHead(`Αναφορά ακινήτου · ${c.propName}`, IDENTITY_CSS)
     + `<body><div class="page">`
@@ -164,7 +164,7 @@ export function printPropertyStatement(c: StatementCtx): void {
   ${reportSection(`Φορολογική εικόνα ${c.year}`)}
   <table><tbody>
     ${reportRow('Ακαθάριστο εισόδημα ενοικίων', rEur(st.grossIncome))}
-    ${reportRow('Τεκμαρτή έκπτωση δαπανών (5%)', `−${rEur(st.presumptiveDeduction)}`)}
+    ${reportRow(`Τεκμαρτή έκπτωση δαπανών (${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)})`, `−${rEur(st.presumptiveDeduction)}`)}
     ${reportRow('Φορολογητέο εισόδημα', rEur(st.taxableIncome), 'sub')}
     ${reportRow(c.taxShare?.ofPortfolio ? `Φόρος εισοδήματος, μερίδιο ακινήτου (κλίμακα ${c.year})` : `Φόρος εισοδήματος (κλίμακα ${c.year})`, rEur(tax))}
     ${reportRow('Πραγματικός συντελεστής φόρου', rPct(effRate))}

@@ -197,6 +197,9 @@ function buildSupplementarySheet(
  * Το `rows` είναι ΕΝΑ ανά ακίνητο, στη σειρά του `properties` (ο έλεγχος του
  * προσυμπληρωμένου τα ζευγαρώνει κατά θέση). Οι γραμμές του εντύπου, μία ανά
  * μίσθωση, ζουν μέσα σε κάθε `rows[i].lines`.
+ *
+ * ΠΕΤΑΕΙ το σφάλμα της βάσης όταν αποτύχει ανάγνωση ακινήτων, μισθώσεων,
+ * δόσεων, ΑΦΜ ιδιοκτήτη ή διαμονών. Ο λογιστής μένει προαιρετικός.
  */
 export async function loadE2Rows(
   supabase: SupabaseClient, userId: string, year: number,
@@ -204,15 +207,19 @@ export async function loadE2Rows(
             leasesByProp: Map<string, E2Tenant[]>; paymentsByProp: Map<string, E2Payment[]>;
             afmByProp: Map<string, string>; staysByProp: Map<string, E2Stay[]>;
             nameByAfm: Map<string, string>; accountant: string; leaseHistory?: Set<string> }> {
-  const properties = await propertyStore.list<E2Property>(supabase, userId, {
+  // Ε2 με μηδέν ενοίκια είναι χειρότερο από κανένα Ε2: ο λογιστής το καταθέτει.
+  // Γι' αυτό κάθε ανάγνωση που γίνεται ποσό ή ΑΦΜ ΠΕΤΑΕΙ, πριν από την πρόωρη
+  // επιστροφή για «κανένα ακίνητο», που αλλιώς θα έλεγε ότι δεν έχεις ακίνητα.
+  const { rows: properties, error: propsError } = await propertyStore.listWithError<E2Property>(supabase, userId, {
     columns: 'id, name, ama, atak, address, postal_code, ownership, prop_type, status_detail, rental_mode, target_rent, sqm, floor, power_supply_no, co_owners, purchase_date',
     orderBy: 'created_at',
   });
+  if (propsError) throw propsError;
   if (!properties.length) {
     return { properties: [], rows: [], leasesByProp: new Map(), paymentsByProp: new Map(), afmByProp: new Map(), staysByProp: new Map(), nameByAfm: new Map(), accountant: '' };
   }
   const ids = properties.map(p => p.id);
-  const [tenants, payments, { data: settings }, stays, accountants] = await Promise.all([
+  const [tenants, payRes, settingsRes, stayRes, accountants] = await Promise.all([
     // ΟΙ ΜΙΣΘΩΣΕΙΣ ΤΟΥ ΕΤΟΥΣ, ΟΧΙ Ο ΣΗΜΕΡΙΝΟΣ ΜΙΣΘΩΤΗΣ. Με το `currentByProperty`
     // το Ε2 του 2025, βγαλμένο αφού ξεκίνησε νέα μίσθωση το 2026, έγραφε όνομα
     // και ΑΦΜ του νέου μισθωτή δίπλα στο ενοίκιο του παλιού.
@@ -221,17 +228,22 @@ export async function loadE2Rows(
     // Το `paid` χωρίζει οφειλόμενο από εισπραγμένο (ανείσπρακτα του έτους). Το
     // `tenant_id` δένει τη δόση με τη μίσθωσή της. Τα `base_rent` και
     // `services_charge` χωρίζουν το μίσθωμα από τις υπηρεσίες της ίδιας δόσης.
-    rentStore.ofProperties<E2Payment>(supabase, ids, 'property_id,tenant_id,amount,base_rent,services_charge,period_year,period_month,paid', userId, { year }),
+    rentStore.ofPropertiesWithError<E2Payment>(supabase, ids, 'property_id,tenant_id,amount,base_rent,services_charge,period_year,period_month,paid', userId, { year }),
     supabase.from('property_settings').select('property_id, owner_afm, owner_name').in('property_id', ids).eq('user_id', userId),
     // ΟΙ ΔΙΑΜΟΝΕΣ ΕΙΝΑΙ ΤΟ ΠΡΑΓΜΑΤΙΚΟ ΕΣΟΔΟ ΤΗΣ ΒΡΑΧΥΧΡΟΝΙΑΣ. Φιλτράρονται με
     // `in('property_id', ids)` και ομαδοποιούνται ΑΝΑ ΑΚΙΝΗΤΟ ακριβώς όπως
     // πληρωμές και μισθωτές: αν περνιόνταν ενιαία, κάθε ακίνητο θα δήλωνε τα
     // έσοδα ΟΛΟΥ του χαρτοφυλακίου.
-    stayStore.ofProperties<E2Stay & { property_id: string }>(supabase, ids, `${stayStore.PORTFOLIO_COLUMNS},declared_at`, userId),
+    stayStore.ofPropertiesWithError<E2Stay & { property_id: string }>(supabase, ids, `${stayStore.PORTFOLIO_COLUMNS},declared_at`, userId),
     // «Στοιχεία λογιστή» της κεφαλίδας: ο λογιστής με ζωντανή σύνδεση, αν
     // υπάρχει. Αποτυχία εδώ αφήνει απλώς το πεδίο κενό, όπως στο έντυπο.
     myAccountants(supabase).catch(() => []),
   ]);
+  const bad = tenants.error ?? payRes.error ?? settingsRes.error ?? stayRes.error;
+  if (bad) throw bad;
+  const payments = payRes.rows;
+  const stays = stayRes.rows;
+  const settings = settingsRes.data;
   const leasesByProp = tenants.inYear;
   const paymentsByProp = new Map<string, E2Payment[]>();
   (payments || []).forEach((p: E2Payment) => { const a = paymentsByProp.get(p.property_id) || []; a.push(p); paymentsByProp.set(p.property_id, a); });

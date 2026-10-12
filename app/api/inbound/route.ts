@@ -40,6 +40,7 @@ import * as inbound from '@/lib/data/inbound';
 import * as hintStore from '@/lib/data/categoryHints';
 import { categoryWithHints } from '@/lib/expenses/hints';
 import { classifyExpense } from '@/lib/expenses/classify';
+import { reportRoute, codeOf } from '@/lib/observability/route';
 
 const log = (...parts: unknown[]) => console.info('[inbound]', ...parts);
 
@@ -117,6 +118,7 @@ export async function POST(request: Request) {
   const { row: box, error: boxError } = await inbound.mailboxOfToken(db, token);
   if (boxError) {
     log('η αναζήτηση της διεύθυνσης απέτυχε:', boxError.message);
+    void reportRoute('api/inbound', 'mailbox lookup failed', { status: 500, code: codeOf(boxError) });
     return NextResponse.json({ error: 'read_failed' }, { status: 500 });
   }
   if (!box || !box.active) {
@@ -131,6 +133,8 @@ export async function POST(request: Request) {
     // 502 ΚΑΙ ΟΧΙ 200: χωρίς κείμενο δεν υπάρχει πρόταση δαπάνης. Ο πάροχος
     // ξαναδοκιμάζει και η αποτυχία φαίνεται στον πίνακά του.
     log('το σώμα δεν ήρθε:', body.reason);
+    // Ούτε αποστολέας, ούτε θέμα, ούτε ο λόγος: μόνο το γεγονός.
+    void reportRoute('api/inbound', 'body unavailable', { status: 502 });
     return NextResponse.json({ error: 'body_unavailable' }, { status: 502 });
   }
 
@@ -175,6 +179,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, stored: false });
     }
     log('η εγγραφή του εισερχομένου απέτυχε:', error.message);
+    void reportRoute('api/inbound', 'write failed', { status: 502, code: codeOf(error) });
     return NextResponse.json({ error: 'write_failed' }, { status: 502 });
   }
 

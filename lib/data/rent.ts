@@ -161,17 +161,22 @@ export async function chronological<T = Partial<RentPaymentsRow>>(
     .order('period_year').order('period_month'));
 }
 
-/** Οι δόσεις πολλών ακινήτων μαζί: αναφορές, ημερολόγιο λογιστή, Ε2. */
-export async function ofProperties<T = Partial<RentPaymentsRow>>(
+/**
+ * Οι δόσεις πολλών ακινήτων μαζί, με το σφάλμα ορατό: αναφορές, ημερολόγιο
+ * λογιστή, Ε2, κατάσταση κατανομής. ΔΕΝ υπάρχει σιωπηλή εκδοχή: όλοι οι καλούντες
+ * κάνουν το [] ΠΟΣΟ: μια αποτυχημένη ανάγνωση θα έβγαζε μηδενικά ενοίκια σε
+ * αρχείο, παραστατικό ή φάκελο λογιστή.
+ */
+export async function ofPropertiesWithError<T = Partial<RentPaymentsRow>>(
   db: Db, propertyIds: string[], columns: string, userId: string,
   opts: { year?: number; month?: number; paid?: boolean } = {},
-): Promise<T[]> {
-  if (!propertyIds.length) return [];
+): Promise<ReadResult<T>> {
+  if (!propertyIds.length) return { rows: [], error: null };
   let q = db.from(TABLE).select(columns).in('property_id', propertyIds).eq('user_id', userId);
   if (opts.year !== undefined) q = q.eq('period_year', opts.year);
   if (opts.month !== undefined && opts.month > 0) q = q.eq('period_month', opts.month);
   if (opts.paid !== undefined) q = q.eq('paid', opts.paid);
-  return readRows<T>(q);
+  return read<T>(q);
 }
 
 /** Τα φίλτρα της ανάγνωσης του χαρτοφυλακίου. */

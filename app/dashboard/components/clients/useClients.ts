@@ -16,6 +16,7 @@ import { fe } from '@/components/Theme'
 import { confirmDialog } from '@/components/confirmBus'
 import { downloadTableXlsx } from '../exportCsv'
 import * as checkinLink from '@/lib/data/checkinLink'
+import { ensureDpa } from '@/lib/legal/dpa'
 import { notifyError } from '@/components/Toast'
 import { saved, savedData } from '@/components/dbWrite'
 import { failed } from '@/lib/core/dbError'
@@ -328,6 +329,12 @@ export function useClients({ userId }: ClientsProps) {
       }
     }
     setSaving(true);
+    // Νέος επισκέπτης: πρώτα η σύμβαση επεξεργασίας (lib/legal/dpa.ts). Οι Όροι
+    // λένε «χωρίς αποδοχή τα στοιχεία δεν αποθηκεύονται» και εδώ αποθηκεύονταν.
+    // Η σύμβαση των Όρων δεν ονομάζει ακόμη τους επισκέπτες στις κατηγορίες
+    // υποκειμένων: η πύλη μένει, η επέκταση της σύμβασης είναι απόφαση του
+    // ιδιοκτήτη του έργου (βλ. DpaModal.tsx).
+    if (!editing && !(await ensureDpa(supabase))) { setSaving(false); notifyError('Η καταχώρηση δεν αποθηκεύτηκε: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.'); return; }
     const payload = {
       user_id: userId, type: 'client', full_name: f.full_name.trim(),
       phone: f.phone.trim() || null, email: f.email.trim() || null,
@@ -377,6 +384,8 @@ export function useClients({ userId }: ClientsProps) {
   // είχε το ΙΔΙΟ ζευγάρι σφαλμάτων, αντιγραμμένο. Το γιατί είναι εκεί.
   const copyCheckinLink = async () => {
     if (!openId) return;
+    // Ο σύνδεσμος ζητά από τον επισκέπτη αριθμό ταυτότητας και ημερομηνία γέννησης.
+    if (!(await ensureDpa(supabase))) { notifyError('Ο σύνδεσμος προ-άφιξης δεν δημιουργήθηκε: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.'); return; }
     const propId = (propsByClient.get(openId) || [])[0]?.id || null;
     const data = await savedData<{ token: string }>('Ο σύνδεσμος προ-άφιξης δεν δημιουργήθηκε',
       checkinLink.issue(supabase, userId, openId, propId, new Date()));
@@ -454,6 +463,7 @@ export function useClients({ userId }: ClientsProps) {
     const name = emailDraft.name.trim();
     let clientId = clients.find(c => c.full_name.trim().toLowerCase() === name.toLowerCase())?.id || null;
     if (!clientId) {
+      if (!(await ensureDpa(supabase))) { setEmailErr('Η κράτηση δεν αποθηκεύτηκε: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.'); setEmailBusy(false); return; }
       const data = await savedData<{ id?: string }>('Ο επισκέπτης δεν δημιουργήθηκε',
         supabase.from('clients').insert({ user_id: userId, type: 'client', full_name: name }).select('id').maybeSingle());
       clientId = data?.id || null;
@@ -598,6 +608,10 @@ export function useClients({ userId }: ClientsProps) {
   // ── Έγγραφα πελάτη ────────────────────────────────────────────────────────
   const onDocFile = async (file: File | null | undefined) => {
     if (!file || !openId) return;
+    // Ταυτότητα ή διαβατήριο επισκέπτη: στοιχεία τρίτου, άρα πρώτα η σύμβαση. Το
+    // πεδίο αρχείου αδειάζει, ώστε το ίδιο αρχείο να ξαναδιαλέγεται μετά το «Όχι τώρα».
+    const cid = openId;
+    if (!(await ensureDpa(supabase))) { setDocMsgOf({ clientId: cid, msg: { text: 'Το έγγραφο δεν ανέβηκε: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.', error: true } }); if (docFileRef.current) docFileRef.current.value = ''; return; }
     setDocBusy(true); setDocMsgOf(null);
     const safe = file.name.replace(/[^\w.\-]+/g, '_');
     const path = `${userId}/clients/${openId}/${Date.now()}_${safe}`;
@@ -702,6 +716,7 @@ export function useClients({ userId }: ClientsProps) {
     const name = channel === 'airbnb' ? 'Κρατήσεις Airbnb' : channel === 'booking' ? 'Κρατήσεις Booking' : 'Κρατήσεις καναλιού';
     const existing = clients.find(c => c.full_name === name && c.type === 'client');
     if (existing) return existing.id;
+    // dpa-exempt: συγκεντρωτικός επισκέπτης καναλιού, χωρίς στοιχεία προσώπου
     const { data, error } = await supabase.from('clients').insert({
       user_id: userId, type: 'client', full_name: name,
       notes: 'Συγκεντρωτικός επισκέπτης για κρατήσεις που εισάγονται από iCal (χωρίς στοιχεία επισκέπτη).',

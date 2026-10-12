@@ -24,6 +24,7 @@ import { sameOrigin, ORIGIN_DENIED } from '@/lib/api/origin';
 import { createServiceClient } from '@/lib/supabase/service';
 import { testerCodeMatches, testerCodeIsSet, TESTER_CODE_ENV } from '@/lib/billing/testerCode';
 import * as billing from '@/lib/data/billing';
+import { reportRoute, codeOf } from '@/lib/observability/route';
 
 const WRONG = { error: 'Ο κωδικός δεν αναγνωρίζεται.' };
 
@@ -91,6 +92,7 @@ export async function POST(request: Request) {
   let db;
   try { db = createServiceClient(); } catch (e) {
     console.info('[tester] πελάτης υπηρεσίας:', e instanceof Error ? e.message : e);
+    void reportRoute('api/billing/tester', 'service client', { status: 500, cause: e });
     return NextResponse.json({ error: 'Η εξαργύρωση δεν ολοκληρώθηκε.' }, { status: 500 });
   }
 
@@ -103,6 +105,7 @@ export async function POST(request: Request) {
   const { state, error: readError } = await billing.planContext(db, user.id);
   if (readError) {
     console.info('[tester] το προφίλ δεν διαβάστηκε:', readError.message);
+    void reportRoute('api/billing/tester', 'profile not read', { status: 502, code: codeOf(readError) });
     return NextResponse.json({ error: 'Η εξαργύρωση δεν ολοκληρώθηκε.' }, { status: 502 });
   }
   const since = state.testerSince ?? now;
@@ -110,6 +113,7 @@ export async function POST(request: Request) {
   const { error } = await billing.markTester(db, user.id, since);
   if (error) {
     console.info('[tester] η ιδιότητα δεν γράφτηκε:', error.message);
+    void reportRoute('api/billing/tester', 'tester flag not written', { status: 502, code: codeOf(error) });
     return NextResponse.json({ error: 'Η εξαργύρωση δεν ολοκληρώθηκε.' }, { status: 502 });
   }
 

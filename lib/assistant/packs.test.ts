@@ -7,7 +7,7 @@
 // ότι ο επιλογέας, όταν αμφιβάλλει, τα φορτώνει ΟΛΑ.
 import {
   STABLE_KNOWLEDGE, KNOWLEDGE_PACKS, KNOWLEDGE_PACK_IDS,
-  packsFor, knowledgeFor, buildSystemBlocks, DEFAULT_PREFS,
+  packsFor, knowledgeFor, noaSystemBlocks,
 } from '../../app/dashboard/components/assistantPersona';
 
 let pass = 0, fail = 0;
@@ -88,13 +88,18 @@ for (const q of ['Τι επιτόκιο;', 'Πόσο ΕΝΦΙΑ;', 'Καλημέ
 }
 
 // ── ΤΟ ΠΡΩΤΟ ΜΠΛΟΚ ΕΙΝΑΙ ΑΥΤΟ ΠΟΥ ΜΠΑΙΝΕΙ ΣΕ CACHE ───────────────────────
+// Τα μπλοκ τα φτιάχνει πλέον ο διακομιστής (`noaSystemBlocks`) από τα μηνύματα
+// και το προσωπικό κείμενο του πελάτη.
 {
-  const blocks = buildSystemBlocks(DEFAULT_PREFS, 'Ακίνητο δοκιμής', undefined, { topic: 'τι επιτόκιο;' });
-  ok('δύο μπλοκ, σταθερό και προσωπικό', blocks.length === 2);
+  const blocks = noaSystemBlocks([{ role: 'user', content: 'τι επιτόκιο;' }], 'Ακίνητο δοκιμής')!;
+  ok('δύο μπλοκ, σταθερό και προσωπικό', blocks?.length === 2);
   ok('το πρώτο μπλοκ είναι η γνώση του θέματος', blocks[0].text === knowledgeFor('τι επιτόκιο;'));
   ok('το πρώτο μπλοκ ΔΕΝ περιέχει τίποτα προσωπικό', !blocks[0].text.includes('Ακίνητο δοκιμής'));
-  // Χωρίς θέμα, το πρώτο μπλοκ είναι ό,τι ήταν πάντα: η ίδια cache συνεχίζει.
-  const plainBlocks = buildSystemBlocks(DEFAULT_PREFS, 'Ακίνητο δοκιμής');
+  ok('το δεύτερο μπλοκ είναι αυτούσιο το προσωπικό κείμενο', blocks[1].text === 'Ακίνητο δοκιμής');
+  ok('μόνο το πρώτο μπλοκ έχει cache_control',
+    blocks[0].cache_control?.type === 'ephemeral' && !('cache_control' in blocks[1]));
+  // Χωρίς κείμενο χρήστη, το πρώτο μπλοκ είναι ό,τι ήταν πάντα: η ίδια cache συνεχίζει.
+  const plainBlocks = noaSystemBlocks([{ role: 'user', content: '' }], 'Ακίνητο δοκιμής')!;
   ok('χωρίς θέμα, το πρώτο μπλοκ μένει το πλήρες κείμενο', plainBlocks[0].text === STABLE_KNOWLEDGE);
 }
 

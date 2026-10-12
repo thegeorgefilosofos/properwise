@@ -8,7 +8,7 @@
 import { declarableGrossOrTotal } from '../clients/stayAmounts';
 import {
   DECLARABLE_COLUMNS, PORTFOLIO_COLUMNS, ACCOUNTING_COLUMNS,
-  ofProperty, ofProperties, ofUser, withClientName, addBatched, update, remove,
+  ofProperty, ofPropertiesWithError, ofUser, withClientName, addBatched, update, remove,
 } from './stays';
 
 let pass = 0, fail = 0;
@@ -82,7 +82,7 @@ async function asyncChecks() {
   }
   {
     ok('κενή λίστα ακινήτων δεν ρωτά καθόλου τη βάση',
-      (await ofProperties(fakeDb().db, [], 'total', 'u1')).length === 0);
+      (await ofPropertiesWithError(fakeDb().db, [], 'total', 'u1')).rows.length === 0);
   }
   {
     const { db, calls } = fakeDb();

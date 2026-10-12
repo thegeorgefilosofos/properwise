@@ -12,7 +12,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { MYAADE } from '../tax/aade'
-import { fe, grDate } from '../core/format'
+import { fe, fpRate, grDate, grDateOf } from '../core/format'
+import { FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '../billing/greekTax'
+import { PRESUMPTIVE_DEDUCTION_RATE } from '../billing/presumptive'
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO } from '../accounting/renovation39b'
 import { ANAK_CAP, ANAK_CAP_TEXT, ANAK_OTHER_TEXT, ANAK_RATES_TEXT, ANAK_SCOPE_TEXT, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT, ANAK_HREF } from '../accounting/anakainisi2026'
 
@@ -347,6 +349,12 @@ export interface YieldLever {
   impact: string; detail: string; risk: string
   audience: 'all' | 'pro'; href?: string
 }
+// Ο μοχλός της τραπεζικής είσπραξης: από πότε μετράει ο τρόπος είσπραξης και
+// πόσο του ενοικίου φορολογείται με την έκπτωση.
+const BANK_FROM = grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)
+const BANK_DEDUCTION = fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)
+const BANK_KEPT = fpRate((1 - PRESUMPTIVE_DEDUCTION_RATE) * 100)
+
 export const YIELD_LEVERS: YieldLever[] = [
   {
     key: 'auction', title: 'Αγορά κάτω από την αγορά (ηλεκτρονικός πλειστηριασμός)',
@@ -401,10 +409,17 @@ export const YIELD_LEVERS: YieldLever[] = [
     audience: 'all', href: MYAADE,
   },
   {
+    // ΕΓΡΑΦΕ «Από την 1η Απριλίου 2026 … με μετρητά η έκπτωση του 5% χάνεται»
+    // και «Αυξάνει αμέσως την καθαρή απόδοση», με ημερομηνία και ποσοστά
+    // γραμμένα με το χέρι. Η έναρξη μετατέθηκε δύο φορές και ισχύει από
+    // 1.7.2027 (απόφαση ΑΑΔΕ Α.1187/2026, ΦΕΚ Β΄ 5590/17.09.2026): ο ιδιοκτήτης
+    // που εισέπραττε μετρητά το 2026 διάβαζε ότι ήδη φορολογείται στο 100%.
+    // Ημερομηνία και ποσοστά έρχονται από τις σταθερές που υπολογίζουν τον φόρο
+    // (lib/billing/greekTax.ts, lib/billing/presumptive.ts).
     key: 'bank_rent', title: 'Είσπραξη ενοικίων μέσω τράπεζας',
-    gain: 'φόρος στο 95%',
-    impact: 'Διατηρεί την τεκμαρτή έκπτωση του 5%: ο φόρος υπολογίζεται στο 95% του ενοικίου αντί για το 100%. Αυξάνει αμέσως την καθαρή απόδοση.',
-    detail: 'Από την 1η Απριλίου 2026 τα ενοίκια κατοικίας πρέπει να εισπράττονται τραπεζικά. Με μετρητά η έκπτωση του 5% χάνεται.',
+    gain: `φόρος στο ${BANK_KEPT}`,
+    impact: `Από ${BANK_FROM} η τεκμαρτή έκπτωση ${BANK_DEDUCTION} δίνεται μόνο σε ενοίκιο που εισπράττεται μέσω τράπεζας· με μετρητά χάνεται. Ως τότε δίνεται όπως κι αν εισπράττεις.`,
+    detail: `Αφορά τα μισθώματα κατοικίας (ν.5222/2025, άρθρο 210). Η έναρξη ορίστηκε στην ${BANK_FROM} με την απόφαση ΑΑΔΕ Α.1187/2026 (ΦΕΚ Β΄ 5590/17.09.2026). Το ενοίκιο πρέπει να φτάνει με τραπεζικό ή ηλεκτρονικό μέσο: κατάθεση, IRIS ή έμβασμα.`,
     risk: 'Απλή συμμόρφωση: ζήτα από τον ενοικιαστή κατάθεση ή πληρωμή μέσω IRIS.',
     audience: 'all',
   },

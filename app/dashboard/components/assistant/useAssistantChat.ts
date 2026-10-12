@@ -15,7 +15,7 @@ import {
   speechRecognizer, speechSupported, type SpeechEvent, type SpeechErrorEvent, type SpeechRecognizer,
 } from '@/lib/core/speech'
 import { fe } from '@/components/Theme'
-import { NAV_MAP, buildSystemBlocks, parseAction, cleanForSpeech, addMemory } from '../assistantPersona'
+import { NAV_MAP, buildPersonalPrompt, parseAction, cleanForSpeech, addMemory } from '../assistantPersona'
 import { assistantLockedMessage } from '@/lib/billing/aiLimits'
 import { modelFor } from '@/lib/assistant/model'
 import { numberMatchLine } from '@/lib/assistant/roster'
@@ -152,12 +152,10 @@ export function useAssistantChat({
     void track(supabase, PRODUCT_EVENTS.assistant_asked, { source: viaVoice ? 'voice' : 'typed' });
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const system = buildSystemBlocks(prefs, ctxStr || 'Τα δεδομένα φορτώνονται.', allPropsContext, {
-        // ΤΙ ΓΝΩΣΗ ΝΑ ΦΟΡΤΩΘΕΙ. Οι τελευταίες έξι ερωτήσεις του χρήστη, όχι μόνο
-        // η τωρινή: το «και πόσο θα πληρώνω;» δεν λέει από μόνο του ότι μιλάμε
-        // για δάνειο. Έξι φτάνουν για να κρατηθεί το θέμα όσο διαρκεί η κουβέντα
-        // και λίγες για να μη σέρνεται ένα θέμα που τελείωσε πριν από ώρα.
-        topic: history.filter(m => m.role === 'user').slice(-6).map(m => m.text).join(' '),
+      // ΜΟΝΟ ΤΟ ΠΡΟΣΩΠΙΚΟ ΚΕΙΜΕΝΟ ΦΕΥΓΕΙ ΑΠΟ ΕΔΩ. Τη γνώση (το πρώτο, κοινό μπλοκ)
+      // τη φτιάχνει ο διακομιστής από τα ίδια μηνύματα (`noaSystemBlocks`), οπότε
+      // δεν ταξιδεύουν πια ~145 KB από το κινητό σε κάθε ερώτηση.
+      const personal = buildPersonalPrompt(prefs, ctxStr || 'Τα δεδομένα φορτώνονται.', allPropsContext, {
         insights: insightsStr || undefined,
         market: marketStr || undefined,
         clients: clientsStr || undefined,
@@ -199,7 +197,7 @@ export function useAssistantChat({
         // πήγαινε στο ακριβό μοντέλο, από το «καλημέρα» ως τον υπολογισμό ΣΕΠΠΕ,
         // και επειδή το πακέτο ερωτήσεων κάθε συνδρομής βγαίνει από διαίρεση,
         // αυτό σήμαινε λιγότερες ερωτήσεις για τον συνδρομητή (βλ. lib/assistant/model.ts).
-        body: JSON.stringify({ model: modelFor(q), max_tokens: 1800, system, messages: history.map(m => ({ role: m.role, content: m.text })) }),
+        body: JSON.stringify({ persona: 'noa', personal, model: modelFor(q), max_tokens: 1800, messages: history.map(m => ({ role: m.role, content: m.text })) }),
       });
       readQuota(res);
       const data = await res.json();

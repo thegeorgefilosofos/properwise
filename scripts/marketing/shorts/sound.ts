@@ -29,7 +29,9 @@ export function score(b: Built, pg: Page): Mix {
   m.pad(chords, .02);
   m.bass(chords, 0, dur, .05);
   const cuts = pg.trs.map(x => x.B);
-  const quiet = (t: number) => cuts.some(B => t >= B - beat - .01 && t < B - .01);
+  // Σιωπή πριν από κάθε κόψιμο και όπου μια σκηνή ζητά να μείνει μόνο το χαλί (`hush`).
+  const hush = pg.outs.flatMap(o => o.hush ?? []);
+  const quiet = (t: number) => cuts.some(B => t >= B - beat - .01 && t < B - .01) || hush.some(([a, z]) => t >= a - .01 && t < z - .01);
   const kicks: number[] = [];
   // Ο σφυγμός: από το καρέ 0, για να μη χαθεί το πρώτο δευτερόλεπτο.
   for (let t = 0, i = 0; t < dur - .05; t += beat, i++) {

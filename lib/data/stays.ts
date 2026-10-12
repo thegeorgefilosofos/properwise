@@ -102,12 +102,16 @@ export async function ofPropertyWithError<T = Partial<ClientStaysRow>>(
   return read<T>(ofPropertyQuery(db, propertyId, columns, userId, opts));
 }
 
-/** Οι διαμονές πολλών ακινήτων μαζί. Το κείμενο του κλειδιού γίνεται εδώ. */
-export async function ofProperties<T = Partial<ClientStaysRow>>(
+/**
+ * Οι διαμονές πολλών ακινήτων μαζί, με το σφάλμα ορατό. Το κείμενο του κλειδιού
+ * γίνεται εδώ. Ο μόνος καλών είναι το Ε2: εκεί το [] είναι μηδέν βραχυχρόνιο
+ * εισόδημα, γι' αυτό δεν υπάρχει σιωπηλή εκδοχή.
+ */
+export async function ofPropertiesWithError<T = Partial<ClientStaysRow>>(
   db: Db, propertyIds: string[], columns: string, userId: string,
-): Promise<T[]> {
-  if (!propertyIds.length) return [];
-  return readRows<T>(active(db.from(TABLE).select(columns)
+): Promise<ReadResult<T>> {
+  if (!propertyIds.length) return { rows: [], error: null };
+  return read<T>(active(db.from(TABLE).select(columns)
     .in('property_id', propertyIds.map(String)).eq('user_id', userId)));
 }
 
