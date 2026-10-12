@@ -7,9 +7,10 @@
 //   2. το αντίγραφο της εφαρμογής (raaeyData.json) λέει ό,τι η μεταγραφή στο data/
 //   3. κάθε τιμολόγιο του καταλόγου με `raaey` έχει ΑΚΡΙΒΩΣ τις τιμές της
 //      γραμμής του, ή, όταν η ΡΑΑΕΥ δεν έχει ακόμη τιμή, κρατά την παλιά με
-//      τον δικό της μήνα και δεν λέει ότι είναι του νέου
+//      τον δικό της μήνα και δεν λέει ότι είναι του νέου, εκτός αν φέρει
+//      τιμή του παρόχου με το έγγραφό της (`providerPrice`, μόνο στο αέριο)
 import { readFileSync } from 'node:fs';
-import { parseRaaeyPrice, parseRaaeyFixed, parseRaaeyDuration, raaeyText, type RaaeyRow, type RaaeySheet } from './raaey';
+import { RAAEY_BADGE, parseRaaeyPrice, parseRaaeyFixed, parseRaaeyDuration, raaeyText, type RaaeyRow, type RaaeySheet } from './raaey';
 import { RAAEY_COLUMNS, RAAEY_MONTH, RAAEY_READ_AT, RAAEY_ROWS } from './raaeyCatalogue';
 import { RAAEY_MONTH_GEN, RAAEY_REJECTED, raaeyGasPrices, raaeyPrices, raaeyRows, type RaaeyCells } from './raaeyCatalogue';
 import { PROVIDERS, ALL_TARIFFS, COMPARABLE_TARIFFS } from './catalogue';
@@ -164,12 +165,29 @@ const gas = GAS_PROVIDERS.flatMap(p => p.tariffs);
     if (!t.raaey) continue;
     const r = raaeyRow(t.raaey);
     ok(`${t.id}: φύλλο αερίου ίδιου τμήματος`, r.sheet === `gas-${t.segment}`);
+    // ΤΟ ΧΡΩΜΑ ΕΙΝΑΙ ΤΗΣ ΡΑΑΕΥ ΑΚΟΜΗ ΚΙ ΟΤΑΝ ΔΕΝ ΕΧΕΙ ΤΙΜΗ. Δώδεκα γραμμές ήταν
+    // ΜΠΛΕ («σταθερή τιμή για όλη τη διάρκεια») ενώ ο πίνακας του Οκτωβρίου
+    // τις γράφει «yellow» (έλεγχος 12/10/2026): ο έλεγχος κοιτούσε μόνο τιμές.
+    eq(`${t.id}: χρώμα και τύπος της ΡΑΑΕΥ`, [t.badge, t.type], [RAAEY_BADGE[r.colour]?.badge, RAAEY_BADGE[r.colour]?.type]);
     const p = raaeyGasPrices(r);
     if (t.raaeyUnknown) {
       ok(`${t.id}: άγνωστη στη ΡΑΑΕΥ`, !p.known);
+      if (t.providerPrice) {
+        // Η ΤΙΜΗ ΤΟΥ ΠΑΡΟΧΟΥ ΓΙΑ ΤΟΝ ΜΗΝΑ ΤΟΥ ΠΙΝΑΚΑ: γράφει τον νέο μήνα, έχει
+        // διαβαστεί όχι πριν από τον πίνακα και ό,τι γράφει η ΡΑΑΕΥ (πάγιο,
+        // διάρκεια) μένει όπως το γράφει. Η ΤΙΜΗ ΔΕΝ ΣΥΓΚΡΙΝΕΤΑΙ ΕΔΩ: η γραμμή
+        // της ΡΑΑΕΥ δεν έχει τιμή. Την ελέγχει το gas.test.ts απέναντι στο
+        // κελί του εγγράφου (`providerPrice.cell`), μαζί με την πηγή.
+        ok(`${t.id}: τιμή παρόχου του μήνα του πίνακα`, t.priceMonth === RAAEY_MONTH_GEN);
+        ok(`${t.id}: διαβάστηκε όχι πριν από τον πίνακα`, t.providerPrice.readAt >= RAAEY_READ_AT);
+        eq(`${t.id}: πάγιο της ΡΑΑΕΥ`, t.fixed, p.fixed);
+        eq(`${t.id}: διάρκεια της ΡΑΑΕΥ`, t.contract_months, parseRaaeyDuration(r.duration));
+        continue;
+      }
       ok(`${t.id}: η παλιά τιμή με τον δικό της μήνα`, !!t.priceMonth && t.priceMonth !== RAAEY_MONTH_GEN);
       continue;
     }
+    ok(`${t.id}: τιμή παρόχου μόνο όπου η ΡΑΑΕΥ δεν έχει τιμή`, !t.providerPrice);
     eq(`${t.id}: τιμή`, t.kwh, p.kwh);
     eq(`${t.id}: πάγιο`, t.fixed, p.fixed);
     eq(`${t.id}: χωρίς έκπτωση`, t.undiscounted, p.undiscounted);
@@ -191,6 +209,11 @@ const gas = GAS_PROVIDERS.flatMap(p => p.tariffs);
   for (const ref of Object.keys(RAAEY_REJECTED)) {
     ok(`${ref}: δεν είναι στον κατάλογο`, ![...power, ...gas].some(t => t.raaey === ref));
   }
+  // Η γραμμή της ZeniΘ απορρίφθηκε για την τιμή, όχι για το χρώμα: το
+  // `zen_biz_save` κρατά το χρώμα της (έλεγχος 12/10/2026).
+  const zs = raaeyRow('gas-business:44'), zt = gas.find(t => t.id === 'zen_biz_save');
+  eq('zen_biz_save: όνομα, χρώμα και τύπος της gas-business:44',
+    [zt?.name, zt?.badge, zt?.type], [zs.name, RAAEY_BADGE[zs.colour]?.badge, RAAEY_BADGE[zs.colour]?.type]);
 }
 
 console.log(`${fail ? '✗' : '✓'} ΡΑΑΕΥ: ${pass} έλεγχοι πέρασαν${fail ? `, ${fail} απέτυχαν` : ''}`);
