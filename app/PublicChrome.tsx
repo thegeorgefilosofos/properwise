@@ -31,7 +31,7 @@ import { T } from '@/components/tokens';
 import { TRIAL_DAYS } from '@/lib/billing/plans';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { hy } from '@/components/Hyphen';
-import PublicMenu from './PublicMenu';
+import PublicMenu, { type MenuGroup } from './PublicMenu';
 import { asOfDate } from '@/lib/facts/prices';
 
 /**
@@ -85,6 +85,8 @@ export const READING = 720;
  * «σήμα · Ξεκίνα · μενού» και το φύλλο του μενού κρατά Οδηγοί, Τιμές, Σύνδεση
  * με τη σειρά του υπολογιστή. Ετσι ο επιστρέφων χρήστης έχει την είσοδο ένα
  * πάτημα μακριά, ο νέος βλέπει τις τιμές χωρίς να κυλήσει ως το υποσέλιδο.
+ * Από 12.10.2026 (ζήτημα 289) και το «Ποιοι είμαστε» και, σε δική τους ομάδα, οι
+ * υπολογισμοί του υποσέλιδου.
  *
  * Ο ΣΥΝΔΕΔΕΜΕΝΟΣ ΧΡΗΣΤΗΣ ΠΕΡΝΙΕΤΑΙ ΩΣ ΣΤΟΙΧΕΙΟ, ΟΧΙ ΩΣ ΣΗΜΑΙΑ. Ό,τι συνδέει
  * αυτό το αρχείο το ελέγχει ο guard-public-routes ως δημόσια διαδρομή· ο
@@ -92,8 +94,12 @@ export const READING = 720;
  */
 export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current?: 'paketa' | 'odigos' }) {
   const link = { color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '8px 10px', whiteSpace: 'nowrap' } as const;
-  const menu: [string, string][] = [['/odigos', 'Οδηγοί'], ['/paketa', 'Τιμές']];
-  if (!signedIn) menu.push(['/login', 'Σύνδεση']);
+  const pages: [string, string][] = [['/odigos', 'Οδηγοί'], ['/paketa', 'Τιμές'], ['/trust', 'Ποιοι είμαστε']];
+  if (!signedIn) pages.push(['/login', 'Σύνδεση']);
+  const menu: MenuGroup[] = [
+    { links: pages },
+    { label: 'Υπολογισμοί', links: PUBLIC_TOOLS.map(t => [t.href, t.label] as const) },
+  ];
   return (
     <div className="lp-nav-row" style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm }}>
       {/* Η ΣΕΛΙΔΑ ΠΟΥ ΔΙΑΒΑΖΕΙΣ ΦΑΙΝΕΤΑΙ ΣΤΗΝ ΚΕΦΑΛΙΔΑ (01.10.2026). Το
@@ -122,7 +128,7 @@ export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current
       {/* ΟΔΗΓΟΙ ΚΑΙ ΤΙΜΕΣ ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ (06/10/2026). Κάτω από τα 640 οι τρεις
           σύνδεσμοι κείμενου φεύγουν από τη σειρά και μπαίνουν, ίδιοι και με την
           ίδια σειρά, στο φύλλο ενός κουμπιού 44 (app/PublicMenu.tsx). */}
-      <PublicMenu current={current} links={menu} />
+      <PublicMenu current={current} groups={menu} />
     </div>
   );
 }

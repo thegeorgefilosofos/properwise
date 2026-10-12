@@ -29,6 +29,7 @@ try { pkg = require('playwright-core') }
 catch { console.error('Λείπει το playwright-core. Τρέξε: npm i -D playwright-core'); process.exit(2) }
 const { chromium } = pkg
 import { applyMode, MODE } from './lib/bench-mode.mjs'
+import { SEED_CONSENT } from './lib/consent.mjs'
 
 const BASE = process.env.E2E_BASE || 'http://localhost:3100'
 const EXE = process.env.CHROME || chromePath()
@@ -414,6 +415,45 @@ for (const w of [1280, 1440, 1920]) {
     return { bad, count: document.querySelectorAll('.lp-works-t').length + document.querySelectorAll('.lp-feat-d').length }
   })
   ok(`τίτλοι σε μία γραμμή, λεζάντες σε δύο, στα ${w}`, lines.count >= 14 && lines.bad.length === 0, lines.bad.join(' · ') || `${lines.count} στοιχεία`)
+  await p.close()
+}
+
+// ═══ ΤΟ ΜΕΝΟΥ ΤΟΥ ΤΗΛΕΦΩΝΟΥ ΦΤΑΝΕΙ ΣΤΟΥΣ ΥΠΟΛΟΓΙΣΜΟΥΣ (#289, 12.10.2026) ════
+// Το φύλλο κρατούσε Οδηγοί, Τιμές και Σύνδεση· οι υπολογιστές και το «Ποιοι
+// είμαστε» ζούσαν μόνο στο υποσέλιδο. Η λίστα δεν γράφεται εδώ: συγκρίνεται
+// με τη στήλη «Υπολογισμοί» του υποσέλιδου της ίδιας σελίδας. Η αρχική έχει
+// κολλητή κεφαλίδα, οπότε το φύλλο πρέπει να χωρά στην οθόνη και να κυλά μόνο
+// του· ο υπολογιστής έχει κεφαλίδα στη ροή. Στα 320 κρίνεται και το πλάτος.
+// Με το πλαίσιο cookies ήδη αναγνωρισμένο: η κεφαλίδα στην κορυφή, όπως τη
+// βλέπει όποιος επιστρέφει (για την πρώτη επίσκεψη βλ. globals.css, .pub-menu-sheet).
+for (const path of ['/', '/ypologismos-enfia']) for (const [w, h] of [[320, 568], [390, 844]]) {
+  const p = await newPage({ viewport: { width: w, height: h }, isMobile: true, hasTouch: true })
+  await p.addInitScript(SEED_CONSENT)
+  await p.goto(BASE + path, { waitUntil: 'networkidle' })
+  await p.locator('.pub-menu-btn').first().click()
+  await p.waitForTimeout(250)
+  const m = await p.evaluate(() => {
+    const sheet = document.querySelector('.pub-menu[open] .pub-menu-sheet')
+    if (!sheet) return null
+    const hrefs = [...sheet.querySelectorAll('a')].map(a => a.getAttribute('href'))
+    const col = [...document.querySelectorAll('footer .lp-footcol')].find(c => /Υπολογισμοί/.test(c.firstElementChild?.textContent || ''))
+    const tools = col ? [...col.querySelectorAll('a')].map(a => a.getAttribute('href')) : []
+    const r = sheet.getBoundingClientRect()
+    sheet.scrollTop = sheet.scrollHeight
+    const last = sheet.querySelector('li:last-child a').getBoundingClientRect()
+    const cut = [...sheet.querySelectorAll('a')].filter(a => a.scrollWidth > a.clientWidth + 1).map(a => a.textContent)
+    return { hrefs, tools, left: r.left, right: r.right, bottom: r.bottom, vw: innerWidth, vh: innerHeight,
+      lastIn: last.bottom <= r.bottom + 1 && last.top >= r.top - 1, cut, page: document.documentElement.scrollWidth }
+  })
+  const at = `${path} στα ${w}×${h}`
+  ok(`μενού ανοίγει: ${at}`, !!m)
+  if (!m) { await p.close(); continue }
+  ok(`κάθε υπολογισμός του υποσέλιδου στο μενού: ${at}`, m.tools.length >= 4 && m.tools.every(t => m.hrefs.includes(t)), `λείπουν ${m.tools.filter(t => !m.hrefs.includes(t)).join(', ')}`)
+  ok(`«Ποιοι είμαστε» στο μενού: ${at}`, m.hrefs.includes('/trust'))
+  ok(`φύλλο μέσα στην οθόνη: ${at}`, m.left >= 0 && m.right <= m.vw && m.bottom <= m.vh, `${Math.round(m.left)}–${Math.round(m.right)} × ως ${Math.round(m.bottom)} σε ${m.vw}×${m.vh}`)
+  ok(`ο τελευταίος σύνδεσμος φτάνεται με κύλιση: ${at}`, m.lastIn)
+  ok(`κανένας σύνδεσμος κομμένος: ${at}`, m.cut.length === 0, m.cut.join(' · '))
+  ok(`χωρίς οριζόντια κύλιση με ανοιχτό μενού: ${at}`, m.page <= m.vw, `${m.page} > ${m.vw}`)
   await p.close()
 }
 

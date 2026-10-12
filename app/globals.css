@@ -5112,15 +5112,33 @@ body:has(.po-tool-page) .po-cookie {
 .pub-menu-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pub-menu-sheet {
   position: absolute; top: calc(100% + 10px); right: 0; z-index: 60;
-  min-width: 200px; max-width: calc(100vw - 2 * var(--pub-gutter));
-  margin: 0; padding: 6px; list-style: none;
+  width: max-content; min-width: 200px; max-width: calc(100vw - 2 * var(--pub-gutter));
+  margin: 0; padding: 6px;
   background: var(--bg-surface); border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-lg);
 }
+/* ΔΕΚΑ ΣΥΝΔΕΣΜΟΙ ΔΕΝ ΧΩΡΟΥΝ ΠΑΝΤΑ ΣΤΗΝ ΟΘΟΝΗ (ζήτημα 289). Η κεφαλίδα της αρχικής
+   είναι κολλητή: φύλλο ψηλότερο από το παράθυρο θα έκρυβε τους τελευταίους
+   χωρίς τρόπο να φτάσεις εκεί, γιατί η σελίδα κυλά από κάτω του. Το φύλλο
+   ξεκινά 64 από την κορυφή και σταματά 26 πάνω από το κάτω άκρο, οπότε όσα
+   δεν χωρούν κυλούν μέσα στο ίδιο το φύλλο. Η κύλιση ΣΥΝΕΧΙΖΕΙ στη σελίδα
+   όταν τελειώσει το φύλλο, επίτηδες: στην πρώτη επίσκεψη το πλαίσιο cookies
+   στέκεται πάνω από την κεφαλίδα και στα 568 ύψος το φύλλο ξεκινά 101 πιο
+   χαμηλά. Η σελίδα κυλά, η κεφαλίδα κολλά στην κορυφή και φαίνεται όλο. */
+.pub-menu-sheet { max-height: calc(100vh - 90px); max-height: calc(100dvh - 90px); overflow-y: auto; }
+.pub-menu-sheet ul { margin: 0; padding: 0; list-style: none; }
+.pub-menu-group + .pub-menu-group { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-subtle); }
+.pub-menu-label {
+  margin: 0; padding: 8px 14px 4px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+/* Το «Σύγκριση τιμολογίων ρεύματος» στα 320 θέλει όλο το πλάτος του φύλλου:
+   σπάει σε δύο γραμμές αντί να βγει έξω από αυτό. */
 .pub-menu-link {
-  display: flex; align-items: center; min-height: 44px; padding: 0 14px;
+  display: flex; align-items: center; min-height: 44px; padding: 6px 14px;
   border-radius: 8px; color: var(--text-primary); text-decoration: none;
-  font-size: 15px; font-weight: 600; white-space: nowrap;
+  font-size: 15px; font-weight: 600; line-height: 1.3;
 }
 .pub-menu-link:hover { background: var(--bg-hover); }
 .pub-menu-link[aria-current="page"] { color: var(--accent); }
