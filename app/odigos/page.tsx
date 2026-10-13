@@ -19,16 +19,18 @@ import { PublicHeader, PublicFooter, JsonLd, WRAP, WRAP_PAD } from '../PublicChr
 import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
-import { GUIDES } from './guides';
+import { LISTED_GUIDES } from './guides';
 
 const TITLE = 'Οδηγοί φορολογίας ακινήτων';
 // ΕΛΕΓΕ ΤΕΣΣΕΡΑ ΘΕΜΑΤΑ ΕΝΩ ΟΙ ΟΔΗΓΟΙ ΕΙΝΑΙ ΠΕΡΙΣΣΟΤΕΡΟΙ. Η περιγραφή γράφτηκε
 // για τους πρώτους τέσσερις και έμεινε ίδια όσο ο κατάλογος μεγάλωνε· στα
 // αποτελέσματα αναζήτησης ο κόμβος έκρυβε τους μισούς. Το πλήθος έρχεται από
-// το GUIDES και τα θέματα λέγονται ως οικογένειες, όχι ως λίστα τίτλων που
-// θα ξέφευγε από το μήκος της περιγραφής.
+// τον κατάλογο και τα θέματα λέγονται ως οικογένειες, όχι ως λίστα τίτλων που
+// θα ξέφευγε από το μήκος της περιγραφής. Μετρά όσους δείχνει ο κόμβος
+// (`LISTED_GUIDES`): ο οδηγός εκτός καταλόγου (`unlisted`, guides.ts) δεν
+// μπαίνει ούτε στις κάρτες ούτε στο ItemList.
 const DESC =
-  `${GUIDES.length} οδηγοί για ιδιοκτήτες: φόροι ενοικίων και ΕΝΦΙΑ, βραχυχρόνια μίσθωση, `
+  `${LISTED_GUIDES.length} οδηγοί για ιδιοκτήτες: φόροι ενοικίων και ΕΝΦΙΑ, βραχυχρόνια μίσθωση, `
   + 'προθεσμίες, μισθώσεις, ανακαίνιση και απόδοση. Με παραδείγματα σε ευρώ και πηγές.';
 const URL = siteUrl('/odigos');
 
@@ -42,7 +44,7 @@ const jsonLd = {
   url: URL,
   mainEntity: {
     '@type': 'ItemList',
-    itemListElement: GUIDES.map((g, i) => ({
+    itemListElement: LISTED_GUIDES.map((g, i) => ({
       '@type': 'ListItem',
       position: i + 1,
       url: siteUrl(g.href),
@@ -88,9 +90,9 @@ export default function Page() {
               άδεια στο τέλος του καταλόγου. Η πρώτη γίνεται προβεβλημένη, σε όλο
               το πλάτος· οι υπόλοιπες οκτώ κλείνουν σε τέσσερις γεμάτες σειρές.
               Ο κανόνας ισχύει μόνο όσο το πλήθος είναι μονό. */}
-          {GUIDES.map((g, i) => {
+          {LISTED_GUIDES.map((g, i) => {
             const id = `odigos-${g.href.split('/').at(-1)}`;
-            const featured = i === 0 && GUIDES.length % 2 === 1;
+            const featured = i === 0 && LISTED_GUIDES.length % 2 === 1;
             return (
               <Link key={g.href} href={g.href} aria-labelledby={id} className={featured ? 'og-card og-featured lp-link' : 'og-card lp-link'}
                 style={{ padding: featured ? '26px 26px 22px' : '22px 22px 20px', borderRadius: T.radius.modal,

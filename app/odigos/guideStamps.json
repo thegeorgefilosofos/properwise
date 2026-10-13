@@ -2,7 +2,7 @@
   "σημείωση": "Παράγεται από το npm run guides:stamp. Μην το γράφεις με το χέρι. Το φυλάει ο scripts/guard-guide-updated.mjs.",
   "guides": {
     "/odigos/airbnb-takk-2026": {
-      "hash": "371039be0f54a3b0",
+      "hash": "04f630a82d136783",
       "updated": "2026-10-05"
     },
     "/odigos/ekptosi-forou-anakainisis": {

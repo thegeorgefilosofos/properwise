@@ -1,7 +1,7 @@
 // npx tsx lib/seo/llms.test.ts
 import { llmsText } from './llms'
 import { PUBLIC_TOOLS } from '../core/publicTools'
-import { GUIDES } from '../../app/odigos/guides'
+import { GUIDES, LISTED_GUIDES } from '../../app/odigos/guides'
 import { PLANS, PLAN_ORDER } from '../billing/plans'
 import { siteUrl } from '../core/site'
 
@@ -12,7 +12,9 @@ const t = llmsText()
 ok('αρχίζει με τον τίτλο της σύμβασης', t.startsWith('# PROPERWISE\n'))
 ok('έχει περίληψη σε blockquote', /\n> .+\n/.test(t))
 for (const tool of PUBLIC_TOOLS) ok(`εργαλείο ${tool.href}`, t.includes(`(${siteUrl(tool.href)})`))
-for (const g of GUIDES) ok(`οδηγός ${g.href}`, t.includes(`[${g.title}](${siteUrl(g.href)})`))
+for (const g of LISTED_GUIDES) ok(`οδηγός ${g.href}`, t.includes(`[${g.title}](${siteUrl(g.href)})`))
+// Ο οδηγός εκτός καταλόγου (`unlisted`, app/odigos/guides.ts) δεν παίρνει σύνδεσμο ούτε εδώ.
+for (const g of GUIDES.filter(x => x.unlisted)) ok(`χωρίς τον οδηγό εκτός καταλόγου ${g.href}`, !t.includes(siteUrl(g.href)))
 for (const id of PLAN_ORDER) ok(`πακέτο ${id}`, t.includes(`- ${PLANS[id].name}:`))
 ok('η σελίδα των λογιστών', t.includes(siteUrl('/logistes')))
 ok('χωρίς «βοηθό» για τη Νόα', !/βοηθ/i.test(t))

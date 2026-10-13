@@ -20,7 +20,7 @@ import { LINK_STYLE } from '../linkStyle';
 import { BackLink } from '../BackLink';
 import { TocSpy } from '../TocSpy';
 import { hy } from '@/components/Hyphen';
-import { GUIDES, guideShareImageUrl, relatedGuides, type Guide } from './guides';
+import { LISTED_GUIDES, guideShareImageUrl, relatedGuides, type Guide } from './guides';
 
 const HUB = { href: '/odigos', label: 'Οδηγοί' } as const;
 
@@ -328,7 +328,7 @@ export function RelatedGuides({ current, exclude }: { current: Guide; exclude?: 
         ))}
       </ul>
       <p className="lg-p" style={{ marginTop: 12 }}>
-        <Link href={HUB.href} className="lp-link po-tap" style={LINK_STYLE}>{`Όλοι οι οδηγοί (${GUIDES.length})`}</Link>
+        <Link href={HUB.href} className="lp-link po-tap" style={LINK_STYLE}>{`Όλοι οι οδηγοί (${LISTED_GUIDES.length})`}</Link>
       </p>
     </section>
   );

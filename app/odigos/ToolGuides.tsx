@@ -9,7 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import Link from 'next/link';
 import { SectionHead } from '../PublicChrome';
-import { GUIDES, guidesForTool } from './guides';
+import { LISTED_GUIDES, guidesForTool } from './guides';
 
 export function ToolGuides({ tool }: { tool: string }) {
   const guides = guidesForTool(tool);
@@ -29,7 +29,7 @@ export function ToolGuides({ tool }: { tool: string }) {
         ))}
       </ul>
       <p className="lg-p" style={{ marginTop: 12 }}>
-        <Link href="/odigos" className="lp-link po-tap" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{`Όλοι οι οδηγοί (${GUIDES.length})`}</Link>
+        <Link href="/odigos" className="lp-link po-tap" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{`Όλοι οι οδηγοί (${LISTED_GUIDES.length})`}</Link>
       </p>
     </section>
   );

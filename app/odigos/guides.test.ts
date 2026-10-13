@@ -5,7 +5,7 @@
 // έλεγχος κρατά ότι κάθε εργαλείο δείχνει τους οδηγούς του και ότι οι «Σχετικοί
 // οδηγοί» μοιράζουν τους συνδέσμους, ώστε κανένας οδηγός να μη μένει ορφανός.
 import { readFileSync } from 'node:fs';
-import { GUIDES, guidesForTool, relatedGuides } from './guides';
+import { GUIDES, LISTED_GUIDES, guidesForTool, relatedGuides } from './guides';
 import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
 
 let pass = 0, fail = 0;
@@ -34,21 +34,34 @@ for (const g of GUIDES) {
 }
 // ── Το `exclude` ─────────────────────────────────────────────────────────
 // Ο μηχανισμός μένει για την επόμενη φορά που ένας οδηγός θα πρέπει να
-// σταματήσει να προτείνεται. Η πρώτη χρήση του (Airbnb → ΑΜΑ, 05.10.2026)
-// έκλεισε στις 07/10/2026 μαζί με το P0 του οδηγού ΑΜΑ: η σελίδα Airbnb δεν
-// περνά πια `exclude`, οπότε οι εισερχόμενοι μετριούνται χωρίς εξαίρεση.
+// σταματήσει να προτείνεται από ΜΙΑ σελίδα. Η πρώτη χρήση του (Airbnb → ΑΜΑ,
+// 05.10.2026) έκλεισε στις 07/10/2026 και από 13/10/2026 ο ΑΜΑ είναι εκτός
+// καταλόγου για όλο το site, οπότε η δοκιμή εξαιρεί τον πρώτο σχετικό του
+// Airbnb, όποιος κι αν είναι.
 {
-  const AIRBNB = '/odigos/airbnb-takk-2026', AMA = '/odigos/vraxyxronia-ama-prodiagrafes-2026';
+  const AIRBNB = '/odigos/airbnb-takk-2026';
   const airbnb = GUIDES.find(g => g.href === AIRBNB)!;
-  ok('χωρίς exclude ο οδηγός Airbnb θα έδειχνε τον ΑΜΑ (αλλιώς η εξαίρεση δεν κάνει τίποτα)',
-    relatedGuides(airbnb, 4).some(x => x.href === AMA));
-  const r = relatedGuides(airbnb, 4, [AMA]);
-  ok('exclude: ο ΑΜΑ λείπει', r.every(x => x.href !== AMA));
+  const first = relatedGuides(airbnb, 4)[0].href;
+  const r = relatedGuides(airbnb, 4, [first]);
+  ok(`exclude: ο ${first} λείπει`, r.every(x => x.href !== first));
   ok('exclude: πάλι τέσσερις', r.length === 4);
   ok('exclude: χωρίς διπλούς και όχι ο εαυτός του', new Set(r.map(x => x.href)).size === 4 && r.every(x => x.href !== AIRBNB));
 }
-const least = Math.min(...inbound.values());
-ok(`κανένας οδηγός δεν παίρνει λιγότερους από 3 συνδέσμους από άλλους οδηγούς (ελάχιστο ${least})`, least >= 3);
+// ── Ο οδηγός εκτός καταλόγου (`unlisted`) ────────────────────────────────
+// Ο ΑΜΑ περιμένει την υπογραφή της Legal (13/10/2026): η σελίδα του μένει
+// δημοσιευμένη, αλλά καμία άλλη δεν τον δείχνει. Οταν υπογραφεί, φεύγει το
+// `unlisted` από τον κατάλογο και ο πρώτος έλεγχος εδώ μαζί του.
+{
+  const AMA = '/odigos/vraxyxronia-ama-prodiagrafes-2026';
+  const hidden = GUIDES.filter(g => g.unlisted).map(g => g.href);
+  ok('ο οδηγός ΑΜΑ είναι εκτός καταλόγου ώσπου να τον υπογράψει η Legal', hidden.includes(AMA));
+  ok('ο κόμβος και το /llms.txt δεν τους έχουν', LISTED_GUIDES.every(g => !hidden.includes(g.href)));
+  ok('ο κόμβος έχει όλους τους υπόλοιπους', LISTED_GUIDES.length === GUIDES.length - hidden.length);
+  for (const t of TOOLS) ok(`${t}: δεν δείχνει οδηγό εκτός καταλόγου`, guidesForTool(t).every(g => !hidden.includes(g.href)));
+  for (const h of hidden) ok(`${h}: κανένας οδηγός δεν τον προτείνει`, inbound.get(h) === 0);
+}
+const least = Math.min(...LISTED_GUIDES.map(g => inbound.get(g.href)!));
+ok(`κανένας οδηγός του καταλόγου δεν παίρνει λιγότερους από 3 συνδέσμους από άλλους οδηγούς (ελάχιστο ${least})`, least >= 3);
 
 // ── Κεφαλίδα και υποσέλιδο ───────────────────────────────────────────────
 const chrome = readFileSync('app/PublicChrome.tsx', 'utf8');
