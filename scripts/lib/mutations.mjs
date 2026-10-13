@@ -523,6 +523,55 @@ export const MUTATIONS = {
     { file: 'app/odigos/plafon-3-emporikes-misthoseis-2026/page.tsx', from: 'Αν εκμισθώνεις επαγγελματικό ακίνητο', to: 'Αν εκμισθώνεις ένα επαγγελματικό ακίνητο' },
     { file: 'app/odigos/guideStamps.json', from: '"/odigos/plafon-3-emporikes-misthoseis-2026"', to: '"/odigos/__mut__"' },
   ] },
+  // Ένα βήμα για κάθε δρόμο που ο φύλακας μαθαίνει να βλέπει. Σημαδεύεται ο
+  // οδηγός πλαφόν και όχι ο ΑΜΑ, ώστε η απόδειξη να μη χαθεί όταν ο ΑΜΑ
+  // ξαναμπεί στον κατάλογο· η σημαία μόνη της αφήνει τον φύλακα πράσινο.
+  // (α) <Link> προς οδηγό εκτός καταλόγου: οι επτά σελίδες του live ελέγχου
+  // 13/10/2026 προς τον ΑΜΑ. Μετά η ίδια διαδρομή σε .json του lib/ και σε .mjs
+  // του supabase/functions/, που η πρώτη εκδοχή δεν σάρωνε.
+  // (β) Νέα σελίδα που απαριθμεί όλο το `GUIDES`, όπως ο κόμβος ως τότε. Μετά
+  // το ίδιο μέσα από επανεξαγωγή σε άλλο αρχείο, το `export *` και αναγνώστης
+  // του πλήρους καταλόγου που τον ξαναδίνει.
+  // (γ) Ο κύκλος των «Σχετικών οδηγών» χωρίς το `listed`. Μετά arrow function,
+  // συνάρτηση χωρίς δηλωμένο τύπο, βοηθητική μη εξαγόμενη με `export { }`,
+  // εξαγωγή με άλλο όνομα, `export default` και συνάρτηση με τύπο `Guide[]`.
+  'unlisted-guides': { every: [
+    { steps: [
+      { file: 'app/odigos/guides.ts', from: "href: '/odigos/plafon-3-emporikes-misthoseis-2026',", to: "href: '/odigos/plafon-3-emporikes-misthoseis-2026',\n    unlisted: 'μετάλλαξη'," },
+      { add: 'app/__mut_unlisted__.tsx', content: "import Link from 'next/link'\nexport default function MutationProbe() {\n  return <Link href=\"/odigos/plafon-3-emporikes-misthoseis-2026\">Πλαφόν</Link>\n}\n" },
+    ] },
+    { steps: [
+      { file: 'app/odigos/guides.ts', from: "href: '/odigos/plafon-3-emporikes-misthoseis-2026',", to: "href: '/odigos/plafon-3-emporikes-misthoseis-2026',\n    unlisted: 'μετάλλαξη'," },
+      { add: 'lib/__mut_unlisted__.json', content: '{\n  "href": "/odigos/plafon-3-emporikes-misthoseis-2026"\n}\n' },
+    ] },
+    { steps: [
+      { file: 'app/odigos/guides.ts', from: "href: '/odigos/plafon-3-emporikes-misthoseis-2026',", to: "href: '/odigos/plafon-3-emporikes-misthoseis-2026',\n    unlisted: 'μετάλλαξη'," },
+      { add: 'supabase/functions/_shared/__mut_unlisted__.mjs', content: "export const GUIDE_URL = 'https://properwise.gr/odigos/plafon-3-emporikes-misthoseis-2026'\n" },
+    ] },
+    { add: 'app/__mut_unlisted__.tsx', content: "import Link from 'next/link'\nimport { GUIDES } from './odigos/guides'\nexport default function MutationProbe() {\n  return <ul>{GUIDES.map(g => <li key={g.href}><Link href={g.href}>{g.title}</Link></li>)}</ul>\n}\n" },
+    { steps: [
+      { add: 'lib/__mut_unlisted__.ts', content: "export { GUIDES } from '@/app/odigos/guides'\n" },
+      { add: 'app/__mut_unlisted__.tsx', content: "import Link from 'next/link'\nimport { GUIDES } from '@/lib/__mut_unlisted__'\nexport default function MutationProbe() {\n  return <ul>{GUIDES.map(g => <li key={g.href}><Link href={g.href}>{g.title}</Link></li>)}</ul>\n}\n" },
+    ] },
+    { add: 'lib/__mut_unlisted__.ts', content: "export * from '@/app/odigos/guides'\n" },
+    { file: 'app/og/share.ts', from: "import { GUIDES, guideSlug } from '../odigos/guides';", to: "import { GUIDES, guideSlug } from '../odigos/guides';\nexport { GUIDES as SHARE_GUIDES };" },
+    { file: 'app/odigos/guides.ts', from: '.filter(g => listed(g) && g.href !== current.href', to: '.filter(g => g.href !== current.href' },
+    { file: 'app/odigos/guides.ts', from: 'export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);', to: 'export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);\nexport const allOfTool = (t: string): Guide[] => GUIDES.filter(g => g.tools.includes(t));' },
+    { file: 'app/odigos/guides.ts', from: 'export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);', to: 'export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);\nexport function guidesOf(tool: string) {\n  return GUIDES.filter(g => g.tools.includes(tool));\n}' },
+    { file: 'app/odigos/guides.ts', from: 'export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);', to: 'export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);\nconst ALL = GUIDES;\nfunction everyGuide() {\n  return ALL;\n}\nexport { everyGuide };' },
+    { file: 'app/odigos/guides.ts', from: 'export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);', to: 'export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);\nexport { GUIDES as ALL_GUIDES };' },
+    { file: 'app/odigos/guides.ts', from: 'export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);', to: 'export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);\nexport default GUIDES;' },
+    { file: 'app/odigos/guides.ts', from: 'export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);', to: "export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);\nexport function pinnedGuides(): Guide[] {\n  return [guideAt('/odigos/airbnb-takk-2026')];\n}" },
+    // Η διαδρομή του κρυφού οδηγού μέσα στον ίδιο τον κατάλογο, σε συνάρτηση
+    // χωρίς δηλωμένο τύπο: μόνο η σάρωση του καταλόγου από το (α) την πιάνει.
+    { steps: [
+      { file: 'app/odigos/guides.ts', from: "href: '/odigos/plafon-3-emporikes-misthoseis-2026',", to: "href: '/odigos/plafon-3-emporikes-misthoseis-2026',\n    unlisted: 'μετάλλαξη'," },
+      { file: 'app/odigos/guides.ts', from: 'export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);', to: "export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);\nexport function pinnedGuides() {\n  return [guideAt('/odigos/plafon-3-emporikes-misthoseis-2026')];\n}" },
+    ] },
+    // Ο αναγνώστης του πλήρους καταλόγου τον ξαναδίνει με δήλωση.
+    { file: 'app/og/share.ts', from: "import { GUIDES, guideSlug } from '../odigos/guides';", to: "import { GUIDES, guideSlug } from '../odigos/guides';\nexport const SHARE_GUIDES = GUIDES;" },
+    { file: 'app/og/share.ts', from: "import { GUIDES, guideSlug } from '../odigos/guides';", to: "import { GUIDES, guideSlug } from '../odigos/guides';\nexport function allGuides() {\n  return GUIDES;\n}" },
+  ] },
   // Δύο κανόνες, δύο αποδείξεις. Μία νέα σίγαση με κανόνα ανεβάζει τη μέτρηση
   // πάνω από το όριο. Και μία σίγαση για όλο το αρχείο χωρίς κανόνα, που με
   // μέτρηση οδηγιών θα ΚΑΤΕΒΑΖΕ τον αριθμό ενώ σιγεί τα πάντα.

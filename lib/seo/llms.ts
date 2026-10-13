@@ -8,11 +8,12 @@
 // οδηγοί από το app/odigos/guides, πακέτα και τιμές από τα PLANS, η επιφύλαξη
 // του τιμοκαταλόγου από το billingWords(): ό,τι λέει αυτή η σελίδα το λέει
 // την ίδια στιγμή και το site. Ένα στατικό αρχείο θα έμενε πίσω στην πρώτη
-// αλλαγή τιμής ή οδηγού.
+// αλλαγή τιμής ή οδηγού. Οι οδηγοί είναι όσοι δείχνει ο κόμβος /odigos: ο
+// οδηγός εκτός καταλόγου (`unlisted`) δεν παίρνει σύνδεσμο ούτε εδώ.
 // ═══════════════════════════════════════════════════════════════════════════
 import { siteUrl } from '@/lib/core/site';
 import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
-import { GUIDES } from '@/app/odigos/guides';
+import { LISTED_GUIDES } from '@/app/odigos/guides';
 import { PLANS, PLAN_ORDER, TRIAL_DAYS } from '@/lib/billing/plans';
 import { fe } from '@/lib/core/format';
 import { billingWords } from '@/lib/legal/billingWords';
@@ -41,7 +42,7 @@ export function llmsText(): string {
     '',
     '## Οδηγοί',
     '',
-    ...GUIDES.map(g => `- [${g.title}](${siteUrl(g.href)}): ${g.desc}`),
+    ...LISTED_GUIDES.map(g => `- [${g.title}](${siteUrl(g.href)}): ${g.desc}`),
     '',
     '## Πακέτα',
     '',

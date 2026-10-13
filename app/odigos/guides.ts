@@ -42,6 +42,15 @@ export type Guide = {
    * εργαλείο. Το guides.test.ts ελέγχει ότι κάθε εργαλείο έχει οδηγό.
    */
   tools: readonly string[];
+  /**
+   * ΟΔΗΓΟΣ ΕΚΤΟΣ ΚΑΤΑΛΟΓΟΥ, με την αιτία του. Η σελίδα του μένει δημοσιευμένη,
+   * στον χάρτη ιστότοπου και στο ευρετήριο, αλλά καμία άλλη σελίδα δεν τον
+   * δείχνει: ούτε ο κόμβος /odigos, ούτε οι «Σχετικοί οδηγοί», ούτε το εργαλείο
+   * του, ούτε το /llms.txt. Από εδώ περνούν όλα μέσα από το `LISTED_GUIDES`
+   * και το `listed`· το guard-unlisted-guides κοκκινίζει σε σύνδεσμο προς αυτόν
+   * από οποιαδήποτε άλλη σελίδα.
+   */
+  unlisted?: string;
 };
 
 export const GUIDES: readonly Guide[] = [
@@ -139,6 +148,11 @@ export const GUIDES: readonly Guide[] = [
     published: '2026-09-27',
     updated: '2026-10-12',
     tools: ['/vraxyxronia-i-makroxronia'],
+    // ΧΩΡΙΣ ΕΣΩΤΕΡΙΚΟΥΣ ΣΥΝΔΕΣΜΟΥΣ ΑΠΟ 13/10/2026. Ο οδηγός θέλει την υπογραφή
+    // της Legal πριν ξαναπάρει σύνδεσμο από άλλη σελίδα (πλάνο SEO, έως 16/10).
+    // Η σελίδα μένει δημοσιευμένη και στον χάρτη. Με την υπογραφή σβήνει αυτή
+    // η γραμμή και ο οδηγός ξαναμπαίνει παντού μόνος του.
+    unlisted: 'Περιμένει την υπογραφή της Legal (13/10/2026)',
   },
   // ── Τρίτο κύμα (03.10.2026). Από τα ερωτήματα αναζήτησης: ο κόσμος ψάχνει τι
   // ΚΑΝΕΙ με τον ΕΝΦΙΑ (πληρωμή, πιστοποιητικό, οριστικοποίηση), όχι πώς
@@ -155,13 +169,23 @@ export const GUIDES: readonly Guide[] = [
   },
 ];
 
+/** Ο οδηγός μπαίνει σε κόμβο, σχετικούς και εργαλεία (δες `unlisted`). */
+const listed = (g: Guide): boolean => !g.unlisted;
+
+/**
+ * ΟΙ ΟΔΗΓΟΙ ΠΟΥ ΔΕΙΧΝΟΥΝ ΟΙ ΑΛΛΕΣ ΣΕΛΙΔΕΣ: ο κόμβος /odigos, το πλήθος του
+ * «Όλοι οι οδηγοί» και το /llms.txt. Το πλήρες `GUIDES` το διαβάζουν μόνο ο
+ * χάρτης ιστότοπου και οι κάρτες κοινοποίησης, που δεν είναι σύνδεσμοι.
+ */
+export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);
+
 /**
  * ΟΙ ΟΔΗΓΟΙ ΕΝΟΣ ΕΡΓΑΛΕΙΟΥ, με τη σειρά του καταλόγου. Μέχρι τις 05/10/2026
  * κάθε εργαλείο έγραφε με το χέρι έναν σύνδεσμο το πολύ και δύο κανέναν· οι
  * έξι από τους δέκα οδηγούς είχαν ένα ως τρία εσωτερικά λινκ.
  */
 export function guidesForTool(tool: string): Guide[] {
-  return GUIDES.filter(g => g.tools.includes(tool));
+  return LISTED_GUIDES.filter(g => g.tools.includes(tool));
 }
 
 /**
@@ -173,12 +197,13 @@ export function guidesForTool(tool: string): Guide[] {
  * (05.10.2026). Πρώτη χρήση: ο οδηγός Airbnb δεν έδειχνε τον οδηγό ΑΜΑ όσο
  * εκείνος είχε ανοιχτό P0· έκλεισε στις 07/10/2026 και η εξαίρεση έφυγε. Η
  * θέση που αδειάζει γεμίζει από τον επόμενο του κύκλου, οπότε η κάρτα δεν
- * λείπει. Η σελίδα που εξαιρεί το γράφει με την αιτία της.
+ * λείπει. Η σελίδα που εξαιρεί το γράφει με την αιτία της. Ο οδηγός εκτός
+ * καταλόγου (`unlisted`) μένει έξω από ΚΑΘΕ σελίδα, χωρίς `exclude`.
  */
 export function relatedGuides(current: Guide, max: number, exclude: readonly string[] = []): Guide[] {
   const i = GUIDES.findIndex(g => g.href === current.href);
   const ring = [...GUIDES.slice(i + 1), ...GUIDES.slice(0, Math.max(0, i))]
-    .filter(g => g.href !== current.href && !exclude.includes(g.href));
+    .filter(g => listed(g) && g.href !== current.href && !exclude.includes(g.href));
   // Δύο το πολύ από το ίδιο εργαλείο: με όλους, ο οδηγός με τρία εργαλεία
   // έπαιρνε οκτώ συνδέσμους και δύο άλλοι από δύο.
   const near = ring.filter(g => g.tools.some(t => current.tools.includes(t)) || g.kicker === current.kicker).slice(0, 2);
