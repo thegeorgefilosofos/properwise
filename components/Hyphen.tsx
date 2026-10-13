@@ -81,15 +81,32 @@ const hasWord = (n: ReactNode): boolean =>
  * προεπιλογή είναι «ναι»· μέσα στο δέντρο το παίρνει μόνο το τελευταίο παιδί.
  */
 export function hy(node: ReactNode, tail = true): ReactNode {
-  return walk(node, tail, undefined);
+  return walk(node, tail, undefined, true);
 }
 
-function walk(node: ReactNode, tail: boolean, minWord: number | undefined): ReactNode {
-  if (typeof node === 'string') return hyphenate(bindRefs(node), { keepLast: tail, minWord });
+/**
+ * ΜΟΝΟ ΟΙ ΑΔΙΑΣΠΑΣΤΕΣ ΠΑΡΑΠΟΜΠΕΣ, ΧΩΡΙΣ ΜΑΛΑΚΑ ΕΝΩΤΙΚΑ (13.10.2026).
+ *
+ * ΤΙ ΒΡΕΘΗΚΕ. Οι οδηγοί στοιχίζονται αριστερά με `hyphens: none` από τις
+ * 07.10.2026, οπότε τα μαλακά ενωτικά του `hy()` δεν έκοβαν πια καμία λέξη.
+ * Εμεναν όμως ΜΕΣΑ στο κείμενο: 285 ως 1.080 ανά οδηγό στο HTML. Οποιος
+ * αντέγραφε «ανθεκτικότητας» έπαιρνε «αν\u00ADθε\u00ADκτι\u00ADκό\u00ADτη\u00ADτας» και η αναζήτηση φράσης
+ * (στη σελίδα, σε μηχανή, σε σημειώσεις) δεν έβρισκε τη λέξη που έβλεπε.
+ *
+ * Ίδια διάσχιση με το `hy()`, ίδιες εξαιρέσεις, ίδιο `bindRefs` («ν. 4172/2013»
+ * δεν σπάει στη γραμμή)· λείπει μόνο το `hyphenate`. Το φυλάει το
+ * app/odigos/softHyphens.test.ts.
+ */
+export function refsOnly(node: ReactNode): ReactNode {
+  return walk(node, true, undefined, false);
+}
+
+function walk(node: ReactNode, tail: boolean, minWord: number | undefined, shy: boolean): ReactNode {
+  if (typeof node === 'string') return shy ? hyphenate(bindRefs(node), { keepLast: tail, minWord }) : bindRefs(node);
   if (Array.isArray(node)) {
     let lastWord = -1;
     node.forEach((n, i) => { if (hasWord(n)) lastWord = i; });
-    return node.map((n, i) => <Fragment key={i}>{walk(n, tail && i === lastWord, minWord)}</Fragment>);
+    return node.map((n, i) => <Fragment key={i}>{walk(n, tail && i === lastWord, minWord, shy)}</Fragment>);
   }
   if (isValidElement(node)) {
     if (typeof node.type === 'string' && NO_HY.has(node.type)) return node;
@@ -103,7 +120,7 @@ function walk(node: ReactNode, tail: boolean, minWord: number | undefined): Reac
     const kids = (node.props as { children?: ReactNode }).children;
     const block = typeof node.type === 'string' && BLOCK.has(node.type);
     const bold = typeof node.type === 'string' && BOLD.has(node.type);
-    return kids === undefined ? node : cloneElement(node, undefined, walk(kids, block || tail, bold ? BOLD_MIN_WORD : minWord));
+    return kids === undefined ? node : cloneElement(node, undefined, walk(kids, block || tail, bold ? BOLD_MIN_WORD : minWord, shy));
   }
   return node;
 }
