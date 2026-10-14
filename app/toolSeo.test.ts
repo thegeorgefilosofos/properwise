@@ -50,9 +50,13 @@ const MORTGAGE = '/ypologismos-stegastikou-daneiou';
 const AMA = '/odigos/vraxyxronia-ama';
 
 // Ο συλλαβιστής βάζει μαλακά ενωτικά και ενωτήρες λέξεων· η σύγκριση κειμένου τα αγνοεί.
-const plain = (s: string) => s.replace(/[­⁠]/g, '');
-const unescape = (s: string) => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-const text = (html: string) => unescape(plain(html.replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' '))).replace(/\s+/g, ' ');
+const plain = (s: string) => s.replace(/[\u00AD\u2060]/g, '');
+// ΣΕ ΕΝΑ ΠΕΡΑΣΜΑ: με αλυσίδα από replace το «&amp;lt;» γινόταν «<» αντί για «&lt;»
+// (CodeQL στο #401). Το ίδιο και για το <script>: με κάθε γραφή του, όχι μόνο πεζά.
+const ENTITY: Record<string, string> = { amp: '&', quot: '"', '#x27': "'", lt: '<', gt: '>' };
+const unescape = (s: string) => s.replace(/&(amp|quot|#x27|lt|gt);/g, (_, e: string) => ENTITY[e]);
+const text = (html: string) =>
+  unescape(plain(html.split(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/i).join(' ').split(/<[^>]+>/).join(' '))).replace(/\s+/g, ' ');
 const amount = (s: string) => Math.max(0, parseAmount(s) ?? 0);
 // Ο κώδικας χωρίς σχόλια: ένα ποσό σε σχόλιο τεκμηριώνει, στο κείμενο θα ήταν γραμμένο με το χέρι.
 const code = (file: string) => !existsSync(file) ? '' : readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
@@ -97,7 +101,7 @@ function common(name: string, page: Rendered, path: string, meta: Meta) {
 
 /** Τα παραδείγματα μιας σελίδας: ο σύνδεσμος του καθενός και το κείμενο που τον προηγείται. */
 function examples(html: string, path: string): { href: string; before: string }[] {
-  const re = new RegExp(`<a[^>]*href="(${path.replace(/[/-]/g, '\\$&')}\\?[^"]*)"[^>]*>([\\s\\S]*?)</a>`, 'g');
+  const re = new RegExp(`<a[^>]*href="(${path.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&')}\\?[^"]*)"[^>]*>([\\s\\S]*?)</a>`, 'g');
   const out: { href: string; before: string }[] = [];
   let last = 0;
   for (const m of html.matchAll(re)) {

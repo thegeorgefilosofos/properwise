@@ -108,7 +108,7 @@ async function shots(p, view, slug) {
 /** Οι γραμμές μιας ανάλυσης (`ToolLedger`): ετικέτα, ποσό, υποσημείωση. */
 const ledger = dl => dl.evaluate(el => [...el.querySelectorAll(':scope > div')].map(d => {
   const dd = d.querySelectorAll('dd');
-  const t = x => (x?.innerText ?? '').replace(/­/g, '').replace(/\s+/g, ' ').trim();
+  const t = x => (x?.innerText ?? '').replace(/\u00AD/g, '').replace(/\s+/g, ' ').trim();
   return { k: t(d.querySelector('dt')), v: t(dd[0]), sub: t(dd[1]) };
 }));
 const row = (rows, start) => rows.find(r => r.k.startsWith(start));
@@ -119,7 +119,7 @@ async function hero(p) {
   await h.waitFor({ timeout: 10_000 }).catch(() => {});
   if (!(await h.count())) return { primary: null, secondary: [] };
   return h.evaluate(el => {
-    const t = x => (x?.innerText ?? '').replace(/­/g, '').replace(/\s+/g, ' ').trim();
+    const t = x => (x?.innerText ?? '').replace(/\u00AD/g, '').replace(/\s+/g, ' ').trim();
     const figs = [...el.children].map(c => ({ label: t(c.firstElementChild), value: t(c.querySelector('.po-fig')) }));
     return { primary: figs[0], secondary: figs.slice(1) };
   });
@@ -216,7 +216,7 @@ async function rent(ctx, view) {
     await box.click(); await box.fill(String(num(monthly))); await box.press('Enter');
     await home.waitForTimeout(300);
     const stat = await home.evaluate(() => {
-      const t = x => (x?.textContent ?? '').replace(/­/g, '').trim();
+      const t = x => (x?.textContent ?? '').replace(/\u00AD/g, '').trim();
       const lab = [...document.querySelectorAll('span')].find(s => t(s) === 'Φόρος τον χρόνο');
       const taxable = [...document.querySelectorAll('span')].map(t).find(s => /^φορολογητέο /.test(s));
       return { tax: t(lab?.nextElementSibling), taxable: taxable?.replace(/^φορολογητέο /, '') };
@@ -262,7 +262,7 @@ async function rent(ctx, view) {
   ok(`${view}: ${T}: ο οδηγός λέει την κλίμακα των παραδειγμάτων του`, !!gYear);
   // `textContent` και όχι `innerText`: η λεζάντα και οι κεφαλίδες είναι κεφαλαία με CSS.
   const tables = await g.evaluate(() => [...document.querySelectorAll('table')].map(tb => {
-    const t = x => (x?.textContent ?? '').replace(/­/g, '').replace(/\s+/g, ' ').trim();
+    const t = x => (x?.textContent ?? '').replace(/\u00AD/g, '').replace(/\s+/g, ' ').trim();
     return {
       caption: t(tb.querySelector('caption')),
       head: [...tb.querySelectorAll('thead th')].map(t),
@@ -422,7 +422,7 @@ async function mortgage(ctx, view) {
   const p = await open(ctx, MORTGAGE);
   await shots(p, view, 'stegastiko');
   const seen = await p.evaluate(() => {
-    const t = x => (x ?? '').replace(/­/g, '').replace(/\s+/g, ' ').trim();
+    const t = x => (x ?? '').replace(/\u00AD/g, '').replace(/\s+/g, ' ').trim();
     const meta = sel => t(document.querySelector(sel)?.getAttribute('content'));
     const graph = [...document.querySelectorAll('script[type="application/ld+json"]')]
       .flatMap(s => { try { const j = JSON.parse(s.textContent); return j['@graph'] ?? [j]; } catch { return []; } });
