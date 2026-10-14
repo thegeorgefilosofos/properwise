@@ -6,7 +6,7 @@
 // και η ανάγνωση καλύψεων από το κείμενο του συμβολαίου. Τίποτα εδώ δεν
 // αποδίδει: τα διαβάζουν η οθόνη της ασφάλειας και η ειδοποίηση εξόδων.
 // ═══════════════════════════════════════════════════════════════════════════
-import { normalizeEnfiaAgeKey } from '@/lib/billing/enfia'
+import { normalizeEnfiaAgeKey, ENFIA_AGE_BANDS } from '@/lib/billing/enfia'
 import { roundHalfUp } from '@/lib/core/money';
 import { fe, feWhole } from '@/lib/core/format';
 import { PRICE_FACTS, asOfDate, type AsOf } from '@/lib/facts/prices';
@@ -46,6 +46,13 @@ export const INSURANCE_MAX_AGE_DAYS = PRICE_FACTS.insurance.maxAgeDays;
 const AGE_RISK: Record<string, number> = {
   y0_4: 0.90, y5_9: 0.95, y10_14: 1.00, y15_19: 1.05, y20_25: 1.10, y26_plus: 1.20,
 };
+// ΤΑ ΔΥΟ ΚΛΕΙΔΙΑ ΤΩΝ ΠΑΛΙΩΝ ΚΤΙΡΙΩΝ (13.10.2026). Ο ΕΝΦΙΑ χωρίζει πλέον από το
+// «26 έτη και άνω» όσα ανεγέρθηκαν πριν από το 1930 και όσα έχουν πάνω από 100
+// χρόνια (lib/billing/enfia.ts). Χωρίς εγγραφή εδώ, το `?? 1.0` θα έριχνε
+// σιωπηλά τον κίνδυνο ενός κτιρίου του 1925 από 1,20 σε 1,00, δηλαδή στο
+// επίπεδο κτιρίου 10 ετών. Για την ασφάλιση δεν υπάρχει πηγή που να τα χωρίζει,
+// οπότε κρατούν τον κίνδυνο του κλιμακίου από το οποίο βγήκαν.
+for (const b of ENFIA_AGE_BANDS) if (b.maxYears == null) AGE_RISK[b.key] = AGE_RISK.y26_plus;
 
 
 /**

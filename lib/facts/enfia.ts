@@ -14,13 +14,14 @@
 // (lib/tools/enfiaSchedule.ts). Τα ποσά τα υπολογίζει το lib/billing/enfia.ts.
 // ═══════════════════════════════════════════════════════════════════════════
 import {
-  estimateENFIA, estimateENFIAFromFacts, atticaMainlandFromPostcode, enfiaInUse, enfiaLastYearAnnual,
+  estimateENFIAFromFacts, atticaMainlandFromPostcode, enfiaInUse, enfiaLastYearAnnual,
   type ENFIAResult, type EnfiaInUse,
 } from '@/lib/billing/enfia';
 import { resolveEnfia } from '@/lib/billing/propertyFacts';
 import { enfiaInstalments, grDateLong, type EnfiaInstalment } from '@/lib/tools/enfiaSchedule';
 import { enfiaDueDates } from './deadlines';
 import { ENFIA_LABELS } from './labels';
+import { enfiaFromSettings } from './enfiaForm';
 
 // Το «Δεν γνωρίζω» ΔΕΝ είναι απουσία επιλογής: είναι η ουδέτερη επιλογή, με
 // συντελεστή 1,00. Ο χρήστης πρέπει να μπορεί να τη διαλέξει ρητά και να
@@ -83,8 +84,6 @@ export interface EnfiaNow {
   atticaMainland: boolean | null;
 }
 
-const num = (v: string): number => parseFloat(v) || 0;
-
 /**
  * Ο ΕΝΦΙΑ ενός ακινήτου για ένα έτος. Καθαρή συνάρτηση: ό,τι γράφει η φόρμα του
  * πίνακα και ό,τι ξέρει η καρτέλα του ακινήτου, μία απάντηση.
@@ -93,21 +92,8 @@ export function enfiaForYear(s: EnfiaSettings, year: number, facts: EnfiaFacts =
   const lastYear = enfiaLastYearAnnual({
     annual: s.enfiaLastAnnual, instalment: s.enfiaLastInstalment, instalments: s.enfiaLastCount,
   });
-  // Ο όροφος και η παλαιότητα περνούν ΟΠΩΣ ΕΙΝΑΙ: κενό σημαίνει άγνωστο και η
-  // μηχανή το μεταφράζει σε 1,00. Καμία προεπιλογή που να σπρώχνει προς τα πάνω.
   const atticaMainland = atticaMainlandFromPostcode(facts.postalCode);
-  const detailed = estimateENFIA({
-    sqm: num(s.enfiaSqm),
-    zone: s.enfiaZone,
-    floor: s.enfiaFloor || undefined,
-    age: s.enfiaAge || undefined,
-    ownership: num(s.enfiaOwnership) || 100,
-    totalValue: num(s.enfiaTotalVal),
-    propertyValue: num(s.enfiaPropVal),
-    reductions: s.enfiaReductions || [],
-    atticaMainland,
-    year,
-  });
+  const detailed = enfiaFromSettings(s, year, atticaMainland);
   // Η ΑΝΤΙΚΕΙΜΕΝΙΚΗ ΠΡΙΝ ΑΠΟ ΤΗΝ ΕΜΠΟΡΙΚΗ. Η μηχανή βγάζει την τιμή ζώνης ως
   // αξία ÷ τ.μ. και τα όρια (μείωση, Ενότητα Γ) τα κρίνει ο νόμος στην
   // αντικειμενική. Η εκτίμηση έπαιρνε την εμπορική και αγνοούσε την αντικειμενική

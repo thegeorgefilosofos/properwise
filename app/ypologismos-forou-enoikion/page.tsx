@@ -32,10 +32,14 @@ import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { RentTaxCalculator } from './RentTaxCalculator';
 import { PAGE_UPDATED } from '../pageUpdated';
-import { fn, feWhole, fpRate, grDateOf } from '@/lib/core/format';
+import { ToolLedger } from '../ToolParts';
+import { fe, fn, feWhole, fpRate, feSigned, grDateOf } from '@/lib/core/format';
 import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
-import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
-import { ratePct, rateScaleEach } from '../odigos/taxText';
+import { PRESUMPTIVE_DEDUCTION_RATE, bankReceiptMatters } from '@/lib/billing/presumptive';
+import { AADE_DESTINATIONS } from '@/lib/tax/aade';
+import { ratePct } from '../odigos/taxText';
+import { toolJsonLd, ToolByline, ToolOnwardLinks } from '../toolSeo';
+import { rentPageYear, rentH1, rentTitle, rentDesc, rentExample } from './seo';
 
 // ΟΙ ΑΡΙΘΜΟΙ ΤΟΥ ΚΕΙΜΕΝΟΥ ΑΠΟ ΤΙΣ ΣΤΑΘΕΡΕΣ ΠΟΥ ΥΠΟΛΟΓΙΖΟΥΝ (07/10/2026). Η κλίμακα,
 // το 5%, το 95% και η «01/07/2027» ήταν γραμμένα με το χέρι σε επτά σημεία, δίπλα
@@ -52,14 +56,26 @@ const SCALE_WORDS = (() => {
   return `${parts.slice(0, -1).join(', ')} και ${parts[parts.length - 1]}`;
 })();
 
-const TITLE = 'Υπολογισμός φόρου ενοικίων 2026 με τα δικά σου δεδομένα';
-const DESC =
-  'Υπολόγισε πόσο φόρο θα πληρώσεις για τα ενοίκιά σου με την κλίμακα του 2026 '
-  + `(${rateScaleEach(SCALE_2026)}) και την τεκμαρτή έκπτωση ${DEDUCTION}. Δωρεάν, χωρίς εγγραφή.`;
 const URL = siteUrl('/ypologismos-forou-enoikion');
 
+// Ο ΝΟΜΟΣ ΤΗΣ ΤΡΑΠΕΖΙΚΗΣ ΕΙΣΠΡΑΞΗΣ, ΣΕ ΣΥΝΔΕΣΜΟ (13.10.2026). Η ίδια διεύθυνση με
+// τον οδηγό Airbnb (app/odigos/airbnb-takk-2026/page.tsx). Το ΦΕΚ Α΄ 134/2025
+// είναι ο ν.5222/2025: επαληθεύτηκε στο κείμενο του ΦΕΚ (legalize-dev/legalize-gr,
+// gr/FEK-A-134-2025.md, «ΝΟΜΟΣ ΥΠ’ ΑΡΙΘΜ. 5222»). Ο ν.5246/2025 της κλίμακας
+// (ΦΕΚ Α΄ 198/2025) δεν έχει διεύθυνση στο αποθετήριο και ο διακομιστής δεν
+// άφησε να ανοιχτεί καμία: γράφεται χωρίς σύνδεσμο ώσπου να επαληθευτεί.
+const LAW_5222_PDF = 'https://api.et.gr/apiFEK/1/2025/134/pdf';
+const LINK = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 } as const;
+const PROSE = { fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0 } as const;
+
 // Ο τίτλος είναι απόλυτος και η εικόνα κοινοποίησης μπαίνει πάντα (publicMetadata).
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, image: shareImage('ypologismos-forou-enoikion') });
+// Η ΧΡΟΝΙΑ ΤΟΥ ΤΙΤΛΟΥ ΚΑΙ ΤΗΣ ΠΕΡΙΓΡΑΦΗΣ ΑΠΟ ΤΟΝ ΚΩΔΙΚΑ (13.10.2026): ήταν «2026»
+// με το χέρι. Είναι η χρονιά που ανοίγει ο υπολογιστής (seo.ts), όπως και η
+// επικεφαλίδα.
+export function generateMetadata(): Metadata {
+  const year = rentPageYear(athensToday());
+  return publicMetadata({ title: rentTitle(year), description: rentDesc(year), url: URL, image: shareImage('ypologismos-forou-enoikion') });
+}
 
 // Οι ερωτήσεις που κάνει πραγματικά ο ιδιοκτήτης, με απαντήσεις που στέκουν.
 // Το ίδιο περιεχόμενο τροφοδοτεί και το δομημένο σχήμα παρακάτω — μία πηγή, ώστε
@@ -101,30 +117,17 @@ const FAQ: { q: string; a: string }[] = [
   TOOL_PRIVACY_FAQ,
 ];
 
+// Η ΔΗΛΩΣΗ ΣΤΟ myAADE, ΑΠΟ ΤΟ ΜΗΤΡΩΟ (lib/tax/aade.ts). Πύλη και διαδρομή σε
+// λέξεις, ποτέ βαθύς σύνδεσμος γραμμένος εδώ (guard-official-links).
+const INCOME = AADE_DESTINATIONS.income;
+
 export default function Page() {
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'WebApplication',
-        name: 'Υπολογισμός φόρου ενοικίων 2026',
-        url: URL,
-        applicationCategory: 'FinanceApplication',
-        operatingSystem: 'Web',
-        inLanguage: 'el',
-        description: DESC,
-        offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
-      },
-      {
-        '@type': 'FAQPage',
-        mainEntity: FAQ.map(f => ({
-          '@type': 'Question',
-          name: f.q,
-          acceptedAnswer: { '@type': 'Answer', text: f.a },
-        })),
-      },
-    ],
-  };
+  const today = athensToday();
+  const year = rentPageYear(today);
+  const ex = rentExample(year);
+  // Μία πηγή για σελίδα και σχήμα: το `FAQPage` είναι ο ίδιος πίνακας που
+  // αποδίδουν οι «Συχνές ερωτήσεις» από κάτω (app/toolSeo.tsx).
+  const jsonLd = toolJsonLd({ name: `Υπολογισμός φόρου ενοικίων ${year}`, url: URL, description: rentDesc(year), faq: FAQ });
 
   return (
     <div className="po-tool-page" data-mode="dark" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
@@ -142,9 +145,12 @@ export default function Page() {
       <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
         <BackLink />
         <div className="lp-eyebrow">Υπολογιστής</div>
+        {/* Η ΕΠΙΚΕΦΑΛΙΔΑ ΛΕΕΙ ΤΗ ΦΡΑΣΗ ΠΟΥ ΨΑΧΝΕΙ Ο ΙΔΙΟΚΤΗΤΗΣ (13.10.2026): «φόρος
+            ενοικίων {χρονιά} υπολογισμός». Η χρονιά είναι αυτή που ανοίγει η
+            φόρμα από κάτω (seo.ts), άρα δεν διαψεύδει τον επιλογέα της. */}
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
-          Πόσο φόρο θα πληρώσεις για τα ενοίκιά σου
+          {rentH1(year)}
         </h1>
         {/* ═══ ΔΥΟ ΣΕΙΡΕΣ ΚΑΙ Η ΥΠΟΣΗΜΕΙΩΣΗ ΣΤΟ ΤΕΛΟΣ ΤΗΣ ΔΕΥΤΕΡΗΣ ═══════════
             Η εισαγωγή ήταν στο `lg-lede`, δηλαδή σε πλέγμα με δεξιά στήλη 250
@@ -173,7 +179,7 @@ export default function Page() {
             Η εφεδρεία έχει το ΙΔΙΟ ύψος με τη φόρμα, ώστε το κείμενο από κάτω
             να μην αναπηδήσει μόλις φορτώσει. */}
         <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
-          <RentTaxCalculator today={athensToday()} cta={
+          <RentTaxCalculator today={today} cta={
             <ToolCta
               title="Θέλεις να μη χρειάζεται να το ξαναϋπολογίσεις;"
               body="Το PROPERWISE διατηρεί οργανωμένα ενοίκια, λογαριασμούς και δαπάνες όλη τη χρονιά και εξάγει με ένα κλικ όσα ζητά ο λογιστής σου."
@@ -182,6 +188,69 @@ export default function Page() {
         </Suspense>
 
         <ToolSources kind="rent" checked={PAGE_UPDATED['/ypologismos-forou-enoikion']} />
+
+        {/* ── ΛΥΜΕΝΟ ΠΑΡΑΔΕΙΓΜΑ (13.10.2026) ───────────────────────────────────
+            Ο ιδιοκτήτης ζήτησε 12.000€ ενοίκιο τον χρόνο, από τον υπολογιστή.
+            Τα ποσά βγαίνουν από τη μηχανή του (seo.ts) και γράφονται με τους
+            ίδιους μορφοποιητές και την ίδια ανάλυση (`ToolLedger`): ο φόρος που
+            διαβάζεται εδώ είναι ο φόρος που δείχνει η φόρμα όταν ανοίξει το
+            παράδειγμα. */}
+        <section className="po-tool-more" style={{ marginTop: 'clamp(44px,6vw,72px)' }}>
+          <SectionHead over={`Λυμένο παράδειγμα ${year}`} title={`${fe(ex.gross)} ενοίκιο τον χρόνο, ${fe(ex.tax)} φόρος`} />
+          <p className="po-just" style={{ ...PROSE, marginBottom: 16 }}>{hy(
+            `Μηνιαίο ενοίκιο ${fe(ex.monthly)} για ${fn(ex.months)} μήνες, εισόδημα του ${year}, με την κλίμακα της χρονιάς και την τεκμαρτή έκπτωση ${ratePct(ex.rate)}.`)}</p>
+          <ToolLedger rows={[
+            { k: 'Ετήσιο ενοίκιο', v: fe(ex.gross) },
+            { k: `Τεκμαρτή έκπτωση ${ratePct(ex.rate)}`, v: feSigned(-ex.deduction) },
+            { k: 'Φορολογητέο', v: fe(ex.taxable) },
+            ...ex.slices.map(s => ({
+              k: `${fe(s.width)} με ${ratePct(s.rate)}${s.to === Infinity ? '' : ` (κλιμάκιο έως ${feWhole(s.to)})`}`,
+              v: fe(s.tax), kind: 'param' as const,
+            })),
+            { k: 'Φόρος εισοδήματος', v: fe(ex.tax), kind: 'total' },
+          ]}/>
+          {/* Η ΠΗΓΗ ΚΑΘΕ ΜΙΣΟΥ ΤΗΣ ΠΡΟΤΑΣΗΣ ΣΤΗ ΘΕΣΗ ΤΟΥ. Η προϋπόθεση της
+              τράπεζας είναι το άρθρο 210 του ν.5222/2025· η ημερομηνία από την
+              οποία κόβει είναι της απόφασης Α.1187/2026, όπως στις συχνές
+              ερωτήσεις από κάτω. */}
+          <p className="po-just" style={{ ...PROSE, marginTop: 16 }}>{hy(<>
+            Σου μένουν {fe(ex.net)} τον χρόνο.{' '}
+            {bankReceiptMatters(year)
+              ? 'Το παράδειγμα υποθέτει είσπραξη μέσω τράπεζας. '
+              : `Για τα ενοίκια του ${year} η έκπτωση δίνεται όπως κι αν εισπράττεται το ενοίκιο. `}
+            Η προϋπόθεση της τράπεζας (άρθρο 210{' '}
+            <a href={LAW_5222_PDF} target="_blank" rel="noopener noreferrer" className="lp-link" style={LINK}>ν.5222/2025, ΦΕΚ Α΄ 134/28.07.2025</a>
+            ) ισχύει από {BANK_FROM} (απόφαση ΑΑΔΕ Α.1187/2026){bankReceiptMatters(year) ? ': με μετρητά η τεκμαρτή έκπτωση χάνεται.' : '.'}{' '}
+            <Link href={ex.href} className="lp-link" style={LINK}>Άνοιξε το παράδειγμα στον υπολογιστή</Link>.
+          </>)}</p>
+        </section>
+
+        {/* ── ΠΩΣ ΔΗΛΩΝΕΤΑΙ ΣΤΟ Ε2 (13.10.2026) ────────────────────────────────
+            Μόνο ό,τι τεκμηριώνει ήδη ο κώδικας: η διαδρομή του myAADE από το
+            lib/tax/aade.ts· το προσυμπληρωμένο Ε2 από τις δηλώσεις μίσθωσης και
+            τις πλατφόρμες (lib/tax/aadeE2.ts, οδηγός προθεσμιών)· μία γραμμή ανά
+            μίσθωση και μόνο το ποσοστό κάθε συνιδιοκτήτη (lib/billing/e2.ts)·
+            τα ενοίκια μιας χρονιάς δηλώνονται την επόμενη (οδηγός φορολογίας
+            ενοικίων). Καμία προθεσμία δεν γράφεται εδώ: ζουν στο
+            lib/tax/greekTaxCalendar.ts και τις τυπώνει ο οδηγός προθεσμιών. */}
+        <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
+          <SectionHead over="Η δήλωση" title="Πώς δηλώνεται στο Ε2" />
+          <p className="po-just" style={{ ...PROSE, marginBottom: 12 }}>{hy(
+            `Το ενοίκιο δηλώνεται στο έντυπο Ε2, που συμπληρώνεται μέσα από τη δήλωση φορολογίας εισοδήματος (Ε1) της επόμενης χρονιάς: τα ενοίκια του ${year} δηλώνονται το ${year + 1}.`)}</p>
+          <ol className="lg-ul">
+            <li>{hy(<>
+              Στο{' '}
+              <a href={INCOME.url} target="_blank" rel="noopener noreferrer" className="lp-link" style={LINK}>{INCOME.portal}</a>
+              {INCOME.login ? ', με τους κωδικούς TAXISnet' : ''}: {INCOME.steps.join(' · ')}.
+            </>)}</li>
+            <li>{hy('Ο πίνακας των μισθώσεων του Ε2 έρχεται προσυμπληρωμένος από τις δηλώσεις μίσθωσης και τα στοιχεία των πλατφορμών. Έλεγξε κάθε γραμμή: διεύθυνση, μισθωτή, μήνες, μηνιαίο μίσθωμα και ακαθάριστο.')}</li>
+            <li>{hy('Κάθε μίσθωση της χρονιάς είναι μία γραμμή. Σε συνιδιόκτητο ακίνητο ο καθένας δηλώνει στο δικό του Ε2 μόνο το ποσοστό του: το ακαθάριστο είναι το μίσθωμα επί το ποσοστό.')}</li>
+          </ol>
+          <p className="po-just" style={{ ...PROSE, marginTop: 12 }}>{hy(<>
+            Οι προθεσμίες της δήλωσης και της αυτόματης οριστικοποίησης είναι στον οδηγό{' '}
+            <Link href="/odigos/forologikes-prothesmies-idioktiton#dilosi" className="lp-link" style={LINK}>φορολογικές προθεσμίες ιδιοκτήτη</Link>.
+          </>)}</p>
+        </section>
 
         {/* ── Συχνές ερωτήσεις ──────────────────────────────────────────────
                ΗΤΑΝ ΠΕΝΤΕ ΚΟΥΤΙΑ ΜΕ ΠΕΡΙΓΡΑΜΜΑ ΚΑΙ ΤΟ ΒΕΛΑΚΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ. Η
@@ -241,7 +310,9 @@ export default function Page() {
               καθαρή απόδοση
             </Link>.
           </>)}</p>
+          <ToolOnwardLinks />
         </section>
+        <ToolByline />
         <ToolGuides tool="/ypologismos-forou-enoikion" />
       </main>
 

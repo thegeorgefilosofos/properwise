@@ -74,6 +74,21 @@ const cents = (n: number) => Math.round(n * 100)
   ok(`με βοηθητικούς κανένα λεπτό δεν περισσεύει (βρέθηκαν ${broken})`, broken === 0)
 }
 
+// ── ΤΑ ΠΑΛΙΑ ΚΤΙΡΙΑ ΣΤΟ ΧΑΡΤΙ (13.10.2026) ────────────────────────────────
+// Κτίριο άνω των 100 ετών (0,60, άρθρο 11 ν.5219/2025), 80 τ.μ., ισόγειο,
+// τιμή ζώνης 700€: κύριος φόρος 96,00€, μείωση 28,80€, ετήσιο 67,20€. Οι
+// γραμμές του χαρτιού κλείνουν στο λεπτό, όπως και στα κλιμάκια ετών.
+{
+  const value = 80 * 700
+  const r = estimateENFIA({ sqm: 80, zone: zoneKeyFromPricePerSqm(700)!, floor: 'ground', age: 'over100', totalValue: value, propertyValue: value })!
+  const l = enfiaLedger(r)
+  ok('άνω των 100 ετών: 96,00 − 28,80 = 67,20', l.basic === 96 && l.reduction === 28.8 && r.annual === 67.2)
+  const p = estimateENFIA({ sqm: 90, zone: zoneKeyFromPricePerSqm(1000)!, floor: 'second', age: 'pre1930', totalValue: 90_000, propertyValue: 90_000 })!
+  const lp = enfiaLedger(p)
+  ok('πριν από το 1930, 90 τ.μ., 2ος, ζώνη 1.000€: οι γραμμές κλείνουν στο 142,53',
+     p.annual === 142.53 && cents(lp.basic) - cents(lp.reduction) === cents(p.annual))
+}
+
 // ── ΤΟ ΟΡΙΟ ΤΟΥ ΚΛΙΜΑΚΙΟΥ ΤΗΣ ΑΥΤΟΜΑΤΗΣ ΜΕΙΩΣΗΣ ────────────────────────────
 ok('119.000€ πέφτουν στο κλιμάκιο έως 150.000€', enfiaWealthBracketLimit(119_000) === 150_000)
 ok('ακριβώς 100.000€ μένουν στο πρώτο κλιμάκιο', enfiaWealthBracketLimit(100_000) === 100_000)

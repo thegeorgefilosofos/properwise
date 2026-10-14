@@ -34,7 +34,7 @@ import { fe, feWhole, fp, fpRate } from '../../lib/core/format';
 import { compareShortVsLong, netByOccupancy } from '../../lib/tools/shortVsLong';
 import { SPEC as RENT } from '../../app/ypologismos-forou-enoikion/spec';
 import { SPEC as ENFIA } from '../../app/ypologismos-enfia/spec';
-import { ENFIA_FLOOR_LABEL } from '../../lib/billing/enfiaFloors';
+import { ENFIA_FLOOR_SHORT } from '../../lib/billing/enfiaFloors';
 import { ico } from './igKit';
 import {
   rentalIncomeTax, RENTAL_TAX_BRACKETS_2025, RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_NEW_BRACKETS,
@@ -501,7 +501,7 @@ function foroi01(): Episode {
         <p class="lead" style="margin-top:28px">Ο υπολογιστής βγάζει τον ΕΝΦΙΑ με τα στοιχεία του ακινήτου σου και τις μειώσεις του νόμου.</p>
         ${calcCard(s, '/ypologismos-enfia', [
           ['Τετραγωνικά', `${ENFIA.tm} τ.μ.`], ['Τιμή ζώνης', `${feWhole(Number(ENFIA.zoni))}/τ.μ.`],
-          ['Όροφος', ENFIA_FLOOR_LABEL[ENFIA.orofos]], ['Παλαιότητα', ENFIA_AGE_BANDS.find(b => b.key === ENFIA.palaiotita)!.label],
+          ['Όροφος', ENFIA_FLOOR_SHORT[ENFIA.orofos]], ['Παλαιότητα', ENFIA_AGE_BANDS.find(b => b.key === ENFIA.palaiotita)!.label],
         ], null)}
         ${slot(f, 130, 'LINK')}
         <div style="margin-top:auto;display:flex;flex-direction:column;gap:18px">

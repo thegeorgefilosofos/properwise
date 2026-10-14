@@ -25,8 +25,8 @@ import { useMemo, useId, useState, type ReactNode } from 'react';
 import { T, feAuto } from '@/components/tokens';
 import { fe, fn, fpRate, feRate, feSigned, feWhole } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
-import { estimateENFIA, zoneKeyFromPricePerSqm, enfiaFloorCoef, enfiaAgeCoef, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS, ENFIA_AUX_COEF } from '@/lib/billing/enfia';
-import { ENFIA_FLOOR_LABEL } from '@/lib/billing/enfiaFloors';
+import { estimateENFIA, zoneKeyFromPricePerSqm, enfiaFloorCoef, enfiaAgeCoef, enfiaAgeChoices, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS, ENFIA_AUX_COEF, ENFIA_PRE_YEAR } from '@/lib/billing/enfia';
+import { ENFIA_FLOOR_LABEL, ENFIA_FLOOR_SHORT } from '@/lib/billing/enfiaFloors';
 import { enfiaInstalments, ENFIA_INSTALMENTS } from '@/lib/tools/enfiaSchedule';
 import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
 import { enfiaLedger, enfiaWealthBracketLimit } from '@/lib/tools/enfiaLedger';
@@ -50,7 +50,15 @@ const FLOORS: { key: keyof typeof ENFIA_FLOOR_COEF; label: string }[] =
 // Τα κλιμάκια παλαιότητας ΔΕΝ ξαναγράφονται εδώ: έρχονται από το enfia.ts, μαζί
 // με τις ετικέτες τους. Πριν, οι δύο οθόνες είχαν διαφορετικά λεκτικά για το
 // ίδιο κλειδί — και καμία δεν είχε το κλιμάκιο 15-19 ετών.
-const AGES = ENFIA_AGE_BANDS;
+//
+// ΚΑΙ ΜΕ ΤΑ ΕΤΗ ΤΩΝ ΠΑΛΙΩΝ ΚΤΙΡΙΩΝ ΓΡΑΜΜΕΝΑ ΣΤΗΝ ΕΠΙΛΟΓΗ (13.10.2026). Ο νόμος
+// δίνει 0,8 σε όσα ανεγέρθηκαν πριν από το 1930 και 0,60 σε όσα έχουν πάνω από
+// 100 χρόνια (άρθρο 11 ν.5219/2025, πηγή στο lib/billing/enfia.ts). Η επιλογή
+// λέει ποια έτη πιάνει κάθε κανόνας για τη χρονιά της σελίδας, ώστε ο
+// ιδιοκτήτης κτιρίου του 1925 να μη χρειάζεται να κάνει αφαίρεση για να βρει
+// ότι το δικό του είναι το «Άνω των 100 ετών» και όχι το «26 έτη και άνω».
+const ageLabel = (choices: { key: string; label: string }[], key: string): string =>
+  choices.find(a => a.key === key)?.label ?? ENFIA_AGE_BANDS.find(a => a.key === key)?.label ?? key;
 
 export function EnfiaCalculator({ year, today, cta }: {
   year: number; today: string;
@@ -65,6 +73,7 @@ export function EnfiaCalculator({ year, today, cta }: {
   // χαρτί και η σημείωση που λέει ότι η τιμή του πεδίου δεν πέρασε ως έχει.
   const own = Math.min(100, Math.max(1, amount(ownership) || 100));
   const smallRelief = smallSettlementRelief(year, true);
+  const ages = useMemo(() => enfiaAgeChoices(year), [year]);
 
   const r = useMemo(() => {
     const m = amount(sqm);
@@ -96,6 +105,12 @@ export function EnfiaCalculator({ year, today, cta }: {
     //
     // Με ιδιοκτησία 100% τα δύο μονοπάτια είναι ταυτόσημα: καμία αλλαγή για τη
     // συντριπτική πλειοψηφία όσων ανοίγουν τη σελίδα.
+    //
+    // ΕΚΚΡΕΜΕΙ (13.10.2026): ΠΟΙΑ ΑΞΙΑ ΚΡΙΝΕΙ ΤΟ ΚΛΙΜΑΚΙΟ ΤΗΣ ΜΕΙΩΣΗΣ. Εδώ είναι
+    // τ.μ. × τιμή ζώνης. Η φορολογητέα αξία του άρθρου 6 ν.5219/2025 έχει και
+    // Σ. Ορόφου, Σ. Επιφάνειας και Σ. Παλαιότητας (0,60 στα 26+ έτη) και πέφτει
+    // συχνά σε χαμηλότερο κλιμάκιο, με μεγαλύτερη μείωση. Ο υπολογισμός και τα
+    // δύο ποσά είναι στο lib/billing/enfia.test.ts· δεν αλλάζει χωρίς απόφαση.
     const value = m * price;
     const share = value * (own / 100);
     // ΟΙ ΒΟΗΘΗΤΙΚΟΙ ΧΩΡΟΙ ΜΠΑΙΝΟΥΝ ΣΤΟΝ ΦΟΡΟ, ΟΧΙ ΣΤΗΝ ΑΞΙΑ. Η αξία εδώ είναι
@@ -163,7 +178,8 @@ export function EnfiaCalculator({ year, today, cta }: {
         <ToolSelect label="Όροφος" value={floor} onChange={x => set('orofos', x)}
           options={FLOORS.map(f => ({ value: f.key, label: f.label }))}/>
         <ToolSelect label="Παλαιότητα" value={age} onChange={x => set('palaiotita', x)}
-          options={AGES.map(a => ({ value: a.key, label: a.label }))}/>
+          options={ages.map(a => ({ value: a.key, label: a.label }))}
+          hint={`Τα έτη μετρούν από τη νεότερη οικοδομική άδεια (χωρίς άδεια, από την κατασκευή)· το «πριν από το ${ENFIA_PRE_YEAR}» κρίνεται από το έτος ανέγερσης.`}/>
         <ToolNumField id={ids.own} label="Ποσοστό ιδιοκτησίας" value={ownership} onChange={x => set('pososto', x)}
           unit="%" mode="numeric" hint="Αν το ακίνητο είναι μοιρασμένο."/>
         <ToolNumField id={ids.aux} label="Βοηθητικοί χώροι" value={auxSqm} onChange={x => set('voith', x)}
@@ -179,8 +195,10 @@ export function EnfiaCalculator({ year, today, cta }: {
         // Τετραγωνικά, όχι ποσό: «85», όχι «85,00». Δεκαδικά μόνο όταν υπάρχουν.
         { k: 'Τετραγωνικά', v: fn(amount(sqm), Number.isInteger(amount(sqm)) ? 0 : 2) },
         { k: 'Τιμή ζώνης', v: `${feAuto(amount(zonePrice))}/τ.μ.` },
-        { k: 'Όροφος', v: FLOORS.find(f => f.key === floor)?.label ?? floor },
-        { k: 'Παλαιότητα', v: AGES.find(a => a.key === age)?.label ?? age },
+        // «Όροφος 2ος», όχι «Όροφος 2ος όροφος» (#398): δίπλα στο κλειδί η σύντομη
+        // ετικέτα, από το ίδιο αρχείο με τις ετικέτες του μενού.
+        { k: 'Όροφος', v: ENFIA_FLOOR_SHORT[floor as keyof typeof ENFIA_FLOOR_SHORT] ?? floor },
+        { k: 'Παλαιότητα', v: ageLabel(ages, age) },
         { k: 'Ποσοστό ιδιοκτησίας', v: fpRate(own) },
         ...(r.aux > 0 ? [{ k: 'Βοηθητικοί χώροι', v: `${fn(r.aux, Number.isInteger(r.aux) ? 0 : 2)} τ.μ.` }] : []),
       ]}/>}

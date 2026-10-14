@@ -38,7 +38,8 @@ import { mergeLedger, type LedgerBill, type LedgerExpense, type LedgerEntry } fr
 import { budgetBucket } from '@/lib/expenses/taxonomy'
 import { subscriptionsMonthly } from '@/lib/expenses/subscriptions'
 // Ο ΕΝΦΙΑ διαβάζεται από την ίδια απόφαση με την καρτέλα Υπηρεσίες.
-import { enfiaInUse, estimateENFIA, atticaMainlandFromPostcode } from '@/lib/billing/enfia'
+import { enfiaInUse, atticaMainlandFromPostcode } from '@/lib/billing/enfia'
+import { enfiaFromSettings } from '@/lib/facts/enfiaForm'
 import { climateLevyRates, isHighSeasonMonth } from '@/lib/billing/greekTax'
 import { isHouseType } from '@/lib/tax/shortTermTax'
 import { useLoad } from '@/app/hooks/useLoad'
@@ -386,22 +387,14 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
         // ξεχωριστά το ετήσιο, έβλεπε δεκάδες ευρώ τον μήνα στις Υπηρεσίες και
         // 0€ εδώ — για το ίδιο ακίνητο, την ίδια στιγμή. Ο κανόνας «το δηλωμένο
         // νικά την εκτίμηση» ζει τώρα σε ένα σημείο, στο lib/billing/enfia.ts.
+        // ΙΔΙΑ ΑΝΑΓΝΩΣΗ ΤΗΣ ΦΟΡΜΑΣ ΜΕ ΤΗ ΛΟΓΙΣΤΙΚΗ (13.10.2026). Εδώ υπήρχε δική
+        // της κλήση στη μηχανή, που έβαζε «2ος όροφος» όταν ο όροφος έλειπε:
+        // 254,52€ τον χρόνο εδώ, 252,00€ στη Λογιστική για το ίδιο σπίτι. Έτος
+        // και θέση, όπως εκεί: χωρίς έτος η μείωση του μικρού οικισμού δεν
+        // δινόταν ποτέ· ο ΤΚ κρίνει την εξαίρεση της Αττικής.
         const enfia = enfiaInUse(
           svc.enfiaAnnual, svc.enfiaMonthly,
-          estimateENFIA({
-            sqm: parseFloat(String(svc.enfiaSqm)) || 0,
-            zone: String(svc.enfiaZone || ''),
-            floor: String(svc.enfiaFloor || 'second'),
-            age: String(svc.enfiaAge || ''),
-            ownership: parseFloat(String(svc.enfiaOwnership)) || 100,
-            totalValue: parseFloat(String(svc.enfiaTotalVal)) || 0,
-            propertyValue: parseFloat(String(svc.enfiaPropVal)) || 0,
-            reductions: Array.isArray(svc.enfiaReductions) ? svc.enfiaReductions as string[] : [],
-            // Έτος και θέση, όπως στη Λογιστική: χωρίς έτος η μείωση του μικρού
-            // οικισμού δεν δινόταν ποτέ· ο ΤΚ κρίνει την εξαίρεση της Αττικής.
-            year: y,
-            atticaMainland: atticaMainlandFromPostcode(propRes?.postal_code as string | null | undefined),
-          })?.annual,
+          enfiaFromSettings(svc, y, atticaMainlandFromPostcode(propRes?.postal_code as string | null | undefined))?.annual,
         ).monthly;
         const hist  = Array.isArray(svc.dimotikaHistory) ? svc.dimotikaHistory as string[] : [];
         const valid = hist.filter(v => parseFloat(v) > 0);

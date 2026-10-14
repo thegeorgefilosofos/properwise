@@ -58,7 +58,7 @@ import { AadePill } from '@/components/AadeLink';
 import { AsOfNote } from '@/components/AsOfNote';
 import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 import {
-  ENFIA_REDUCTIONS, ENFIA_AGE_BANDS, ENFIA_FLOOR_COEF, enfiaReductionInForce, enfiaReductionRate,
+  ENFIA_REDUCTIONS, ENFIA_FLOOR_COEF, enfiaReductionInForce, enfiaReductionRate, enfiaAgeChoices,
 } from '@/lib/billing/enfia';
 import { ENFIA_FLOOR_LABEL } from '@/lib/billing/enfiaFloors';
 import { ENFIA_UNKNOWN as UNKNOWN, type EnfiaState } from './useEnfia';
@@ -82,9 +82,12 @@ const FLOOR_OPTIONS = [
   { value: UNKNOWN, label: 'Δεν γνωρίζω' },
   ...(Object.keys(ENFIA_FLOOR_COEF) as (keyof typeof ENFIA_FLOOR_COEF)[]).map(k => ({ value: k, label: ENFIA_FLOOR_LABEL[k] })),
 ];
-const AGE_OPTIONS = [
+// ΜΕ ΤΑ ΕΤΗ ΤΩΝ ΠΑΛΙΩΝ ΚΤΙΡΙΩΝ ΓΙΑ ΤΟ ΕΤΟΣ ΤΗΣ ΛΟΓΙΣΤΙΚΗΣ (13.10.2026): το «πριν
+// από το 1930» (0,8) και το «άνω των 100 ετών» (0,60) λένε ποια έτη πιάνουν,
+// ίδιες επιλογές με τον δημόσιο υπολογιστή (lib/billing/enfia.ts).
+const ageOptions = (year: number) => [
   { value: UNKNOWN, label: 'Δεν γνωρίζω' },
-  ...ENFIA_AGE_BANDS.map(b => ({ value: b.key, label: b.label })),
+  ...enfiaAgeChoices(year).map(b => ({ value: b.key, label: b.label })),
 ];
 
 // ═══ ΤΟ ΠΛΗΘΟΣ ΤΩΝ ΔΟΣΕΩΝ ΔΕΝ ΕΧΕΙ ΠΡΟΕΠΙΛΟΓΗ ══════════════════════════════
@@ -546,7 +549,7 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
             <CustomSelect label="Όροφος" value={s.enfiaFloor} onChange={v => upd({ enfiaFloor: v })} options={FLOOR_OPTIONS}/>
           </div>
           <div {...fixedCols(3, 14)} style={{ ...fixedCols(3, 14).style, marginTop: 14 }}>
-            <CustomSelect label="Παλαιότητα" value={s.enfiaAge} onChange={v => upd({ enfiaAge: v })} options={AGE_OPTIONS}/>
+            <CustomSelect label="Παλαιότητα" value={s.enfiaAge} onChange={v => upd({ enfiaAge: v })} options={ageOptions(enfiaYear)}/>
             <NumberInput label="Συνολική αξία όλων των ακινήτων" value={s.enfiaTotalVal} onChange={v => upd({ enfiaTotalVal: v })} suffix="€"
               labelInfo="Από αυτήν εξαρτάται η αυτόματη μείωση και η προσαύξηση πάνω από τις 500.000€."/>
             <NumberInput label="Αντικειμενική αξία αυτού του ακινήτου" value={s.enfiaPropVal} onChange={v => upd({ enfiaPropVal: v })} suffix="€"

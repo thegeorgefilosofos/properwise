@@ -23,8 +23,8 @@ export interface LiveMarketRates {
   euribor_12m: number
   ecb_rate: number
   ecb_dfl: number
-  bog_housing_new: number   // ΤτΕ average new mortgage rate
-  bog_housing_stock: number // ΤτΕ average outstanding mortgage rate
+  bog_housing_new: number   // μέσο επιτόκιο νέων στεγαστικών, MIR A2C.A (από 13/10/2026· πριν, A2C.F)
+  bog_housing_stock: number // ΟΧΙ υπόλοιπα: νέα στεγαστικά με σταθερό >1 και ≤5 έτη, MIR A2C.I…N· το όνομα είναι της στήλης
   updated_at: string
   source_euribor: string
   source_bog: string
@@ -129,6 +129,12 @@ export interface LiveProgram {
 // (νέα στεγαστικά 3,39, MIR.M.GR.B.A2C.F.R.A.2250.EUR.N· υπόλοιπα 2,90), ίδια
 // με τη βάση. Εγραφαν τον Αύγουστο για το Euribor και τα νέα στεγαστικά 3,56
 // του Ιουνίου. Μηνιαίοι μέσοι, όχι τιμή ημέρας.
+//
+// TODO (P0 στεγαστικό, 13/10/2026): από αυτή την αλλαγή η στήλη `bog_housing_new`
+// γράφει τη σειρά A2C.A, τον μέσο όρο. Το 3,39 εδώ είναι ακόμη η τιμή της A2C.F
+// (κυμαινόμενο ή σταθερό έως 1 έτος) και μένει ώσπου η βάση δώσει μετρημένη
+// τιμή A: νούμερο χωρίς πηγή δεν μπαίνει. Και το «υπόλοιπα 2,90» είναι η A2C.I
+// με N: νέες χορηγήσεις με σταθερό πάνω από 1 και έως 5 έτη, όχι υπόλοιπα.
 const FALLBACK_AS_OF = '2026-09-01T00:00:00Z';
 
 const RATES_FALLBACK: LiveMarketRates = {
