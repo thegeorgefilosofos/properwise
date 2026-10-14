@@ -26,6 +26,7 @@ import * as contactStore from '@/lib/data/contacts'
 import { inferRole, roleLabel } from '@/lib/contacts/roles'
 import { matchesNumber } from '@/lib/assistant/roster'
 import { commitScannedDoc, type ReconcileQuestion } from '../scanDoc'
+import { kindOf } from '@/lib/billing/documents'
 import { athensToday, isoMonth } from '@/lib/core/time'
 import { MONTHS_GEN } from '@/lib/core/months'
 import * as checkinLink from '@/lib/data/checkinLink'
@@ -182,7 +183,15 @@ export function useAssistantActions({
       // κεφαλίδα, κουμπί «πίσω» και κανένα σώμα — καμία συνθήκη απόδοσης δεν
       // ταιριάζει με ανύπαρκτο κωδικό. Δύο απαντήσεις της Νόα, κάθε φορά που
       // κατέγραφε δαπάνη.
-      setMsgs(m => [...m, { role: 'assistant', text: `Έγινε. Ενημερώθηκαν: ${r.saved.join(', ')}.`, action: { type: 'go', tab: 'finances' } }]);
+      // Ο ΕΝΦΙΑ ΧΩΡΙΣ ΠΟΣΟ ΑΚΙΝΗΤΟΥ ΔΕΝ ΓΙΝΕΤΑΙ ΔΑΠΑΝΗ και το λέμε. Πριν
+      // γραφόταν πάντα δαπάνη με το σύνολο· τώρα μόνο με το ποσό αυτού του
+      // ακινήτου, γιατί το εκκαθαριστικό αφορά όλα τα ακίνητα του ΑΦΜ. Χωρίς
+      // αυτή την πρόταση ο χρήστης θα έψαχνε στις Δαπάνες κάτι που δεν μπήκε.
+      const enfiaNoExpense = kindOf(pending.doc)?.value === 'enfia' && !pending.doc.property_amount;
+      const why = enfiaNoExpense
+        ? ` Δαπάνη δεν γράφτηκε: το εκκαθαριστικό ΕΝΦΙΑ αφορά όλα τα ακίνητα του ΑΦΜ. Πρόσθεσε στις ${navLabel('finances')} το ποσό που αναλογεί σε αυτό το ακίνητο.`
+        : '';
+      setMsgs(m => [...m, { role: 'assistant', text: `Έγινε. Ενημερώθηκαν: ${r.saved.join(', ')}.${why}`, action: { type: 'go', tab: 'finances' } }]);
     } catch {
       setMsgs(m => [...m, { role: 'assistant', text: 'Δεν μπόρεσα να το καταχωρήσω τώρα. Δοκίμασε ξανά.' }]);
     } finally { setBusy(false); }

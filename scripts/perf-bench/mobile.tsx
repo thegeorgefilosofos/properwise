@@ -12,7 +12,7 @@ import type React from 'react';
 //     το δεύτερο, αλλά ο διπλός που πράγματι χρησιμοποιεί ο κώδικας φτιάχνεται
 //     μέσα στο fakeClient.ts και ρωτά ΜΟΝΟ το `window.__respond`.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import Typesetter from '@/components/Typesetter';
 import JustifyPolish from '@/components/JustifyPolish';
@@ -285,6 +285,65 @@ const OVERVIEW_PROPERTY = {
   status_detail: 'rented', created_at: '2019-04-18T00:00:00Z',
 };
 
+// ═══ ΤΟ ΒΗΜΑ ΕΛΕΓΧΟΥ ΤΗΣ ΣΑΡΩΣΗΣ ΔΕΝ ΤΟ ΕΙΧΕ ΔΕΙ ΚΑΝΕΝΑΣ ΣΑΡΩΤΗΣ ════════════
+// Η σκηνή «scan» αποδίδει μόνο τα πλακίδια: το βήμα ελέγχου εμφανίζεται ΑΦΟΥ
+// ανέβει αρχείο και απαντήσει η ανάγνωση, οπότε κανένας από τους σαρωτές
+// διάταξης και προσβασιμότητας δεν το είχε μετρήσει ποτέ. Εκεί ακριβώς ήταν η
+// οριζόντια υπερχείλιση, τα τρία ύψη πεδίων και το «0,00€» που φωτογράφισε ο
+// ιδιοκτήτης.
+//
+// Η σκηνή κάνει ό,τι ο χρήστης: ζωγραφίζει μια σελίδα, την περνά στο κρυφό
+// πεδίο αρχείου και απαντά στην ανάγνωση με έτοιμο έγγραφο (`?doc=`), χωρίς
+// δίκτυο. Η προεπιλογή είναι ο λογαριασμός ρεύματος: έχει τα περισσότερα πεδία.
+const SCAN_REVIEW_DOCS: Record<string, Record<string, unknown>> = {
+  bill: {
+    doc_type: 'bill', title: 'Λογαριασμός ρεύματος', provider: 'Πάροχος Ενέργειας Α.Ε.', provider_afm: '090000045',
+    category: 'electricity', amount: 84.5, issue_date: '2026-09-20', due_date: '2026-10-10',
+    period: 'Αύγουστος 2026', kwh: 312, account_num: '123456789',
+    notes: 'Λογαριασμός έναντι, περιλαμβάνει ΕΡΤ και δημοτικά τέλη.', confidence: 92,
+  },
+  lease: { doc_type: 'lease', title: 'Μισθωτήριο κατοικίας', tenant_name: 'Γ. Παραδειγματίδης', lease_start: '2026-10-01', lease_end: '2029-09-30', deposit: 1300, confidence: 88 },
+  enfia: { doc_type: 'tax', subtype: 'enfia', title: 'Εκκαθαριστικό ΕΝΦΙΑ', provider: 'ΑΑΔΕ', tax_year: 2026, confidence: 84 },
+  e2: { doc_type: 'tax', subtype: 'e2', title: 'Αναλυτική κατάσταση μισθωμάτων (Ε2)', tax_year: 2025, issue_date: '2026-06-12', confidence: 90 },
+  payment: { doc_type: 'payment', title: 'Απόδειξη πληρωμής', provider: 'Πάροχος Ενέργειας Α.Ε.', category: 'electricity', amount: 84.5, issue_date: '2026-10-02', confidence: 86 },
+};
+
+function ScanReviewScene() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const doc = SCAN_REVIEW_DOCS[params.get('doc') || 'bill'] || SCAN_REVIEW_DOCS.bill;
+    const orig = window.fetch.bind(window);
+    window.fetch = async (url, init) => (String(url).includes('/api/anthropic')
+      ? new Response(JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(doc) }] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      : orig(url, init));
+    // Μια σελίδα εγγράφου, σε καμβά: λευκό χαρτί, επικεφαλίδα, γραμμές χρεώσεων.
+    const c = document.createElement('canvas');
+    c.width = 620; c.height = 860;
+    const g = c.getContext('2d');
+    if (!g) return;
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = '#111111'; g.font = 'bold 26px sans-serif'; g.fillText('Λογαριασμός', 40, 70);
+    g.font = '16px sans-serif';
+    for (let i = 0; i < 14; i++) g.fillRect(40, 120 + i * 44, 300 + (i * 37) % 200, 10);
+    c.toBlob(b => {
+      const input = [...(ref.current?.querySelectorAll<HTMLInputElement>('input[type=file]') || [])].pop();
+      if (!b || !input) return;
+      const dt = new DataTransfer();
+      dt.items.add(new File([b], 'logariasmos-revmatos-avgoustos-2026.png', { type: 'image/png' }));
+      input.files = dt.files;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }, 'image/png');
+    return () => { window.fetch = orig; };
+  }, []);
+  return (
+    <div ref={ref}>
+      <Modal open onClose={() => {}} size="lg" title="Σάρωση εγγράφου">
+        <DocumentScan propertyId="p0" userId="u1" properties={BENCH_PROPS} onSaved={async () => {}} onBusyChange={() => {}} onManual={() => {}} />
+      </Modal>
+    </div>
+  );
+}
+
 const VIEWS: Record<string, () => React.ReactElement> = {
   overview: () => <OverviewTab prop={OVERVIEW_PROPERTY as never} properties={[OVERVIEW_PROPERTY] as never} userId="u1" onNavigate={() => {}} tabVisible={() => true} />,
   portfolio: () => <PortfolioTab properties={bench.properties} userId="u1" onSelectProperty={() => {}} />,
@@ -333,9 +392,10 @@ const VIEWS: Record<string, () => React.ReactElement> = {
   tenant: () => <TabTenant propertyId="p1" userId="u1" onStartHandover={() => {}} />,
   scan: () => (
     <Modal open onClose={() => {}} size="lg" title="Σάρωση εγγράφου">
-      <DocumentScan propertyId="p0" userId="u1" onSaved={async () => {}} onBusyChange={() => {}} onManual={() => {}} />
+      <DocumentScan propertyId="p0" userId="u1" properties={BENCH_PROPS} onSaved={async () => {}} onBusyChange={() => {}} onManual={() => {}} />
     </Modal>
   ),
+  scanReview: () => <ScanReviewScene />,
   inventory: () => <TabInventory propertyId="p0" userId="u1" />,
   // ═══ ΟΙ ΡΥΘΜΙΣΕΙΣ ΔΕΝ ΕΙΧΑΝ ΔΕΙ ΠΟΤΕ ΣΑΡΩΤΗ ══════════════════════════════
   // Καμία από τις πέντε σαρώσεις δεν τις απέδιδε, γιατί δεν υπήρχαν εδώ. Είναι

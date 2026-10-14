@@ -8,27 +8,28 @@
 // πίνακες. Ο χρήστης μπορεί να διορθώσει τύπο/πεδία και να προσθέσει δικά του.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useId, Fragment, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
 // Οι επαφές έχουν ένα σπίτι: lib/data/contacts.
 import * as contacts from '@/lib/data/contacts';
 import { BankLinkTile } from './BankLink';
 import { bankLinkState } from '@/lib/bank/link';
-import { T, fe, formGrid, RuntimeImg, Btn, IconBtn, ChipToggle } from '@/components/Theme';
-import { CustomSelect, DatePicker } from './UIComponents';
+import { T, TT, fe, fn, fixedCols, RuntimeImg, Btn, IconBtn, InfoBanner, Skeleton } from '@/components/Theme';
+import { CustomSelect, DatePicker, TextInput, NumberInput, Textarea, LabelDot } from './UIComponents';
 import {
-  validateDoc, docSummaryLine,
-  DOC_TYPES, DOC_FIELD_LABELS, type ScannedDoc, type DocType,
+  validateDoc, docSummaryLine, kindOf, applyKind, docForm, docTargets, fieldOptions, fieldValue, withField,
+  withPropertyLine, isDocumentary, billCategoryLabel, archiveOptions, archiveCategoryFor, folderOf, compactRow,
+  lineUnset, LINE_NONE, KIND_OPTIONS, DOC_FIELD_LABELS, type ScannedDoc, type DocField, type Choice,
 } from '@/lib/billing/documents';
+import { navLabel } from '@/lib/nav/labels';
+import { athensToday } from '@/lib/core/time';
 import {
   scanDocument, commitScannedDoc, MAX_SCAN_MB, SYSTEM_PROMPT as SCAN_SYSTEM_PROMPT,
   RECONCILE_NONE_LABEL, RECONCILE_NONE_HINT, type ReconcileQuestion,
 } from './scanDoc';
 import { inferRole } from '@/lib/contacts/roles';
 import { ensureDpa } from '@/lib/legal/dpa';
-import { hy } from '@/components/Hyphen';
 import { SAY } from '@/lib/core/dbError';
-import { OBJ_VALUE_WHOLE } from '@/lib/property/fields';
 
 // Το prompt ζει στο scanDoc.ts (μαζί με όλη τη μηχανή σάρωσης). Επανεξάγεται εδώ
 // επειδή οθόνες που δεν ανήκουν σε αυτή τη ροή (Ενοικιαστής, Αρχείο) το εισάγουν
@@ -37,6 +38,12 @@ export const SYSTEM_PROMPT = SCAN_SYSTEM_PROMPT;
 
 interface Props {
   propertyId: string; userId?: string; onSaved?: () => void;
+  /**
+   * Τα ακίνητα του χρήστη. Από εδώ το παράθυρο δείχνει τον επιλογέα «Ακίνητο»
+   * (όταν είναι περισσότερα από ένα), ξέρει τον ΑΤΑΚ του ακινήτου και διαλέγει
+   * μόνο του τη γραμμή του σε Ε9 ή ΕΝΦΙΑ με πολλά ακίνητα.
+   */
+  properties?: { id: string; name: string; address?: string | null; atak?: string | null }[];
   /**
    * Ο ΤΕΤΑΡΤΟΣ ΔΡΟΜΟΣ: ΧΩΡΙΣ ΧΑΡΤΙ.
    *
@@ -63,137 +70,114 @@ interface Props {
    * κλείσιμο» ανήκει σε αυτόν που το φιλοξενεί. Του λέμε μόνο αν δουλεύει.
    */
   onBusyChange?: (busy: boolean) => void;
+  /**
+   * Ανοίγει τη Λογιστική. Το Ε2 αρχειοθετείται εδώ, αλλά η σύγκρισή του με τα
+   * μισθώματα ζει εκεί: η οθόνη επιτυχίας του Ε2 δίνει τον δρόμο με ένα
+   * πάτημα αντί να τον περιγράφει.
+   */
+  onOpenAccounting?: () => void;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  electricity: 'Ρεύμα', water: 'Νερό', gas: 'Φυσικό αέριο', internet: 'Internet',
-  insurance: 'Ασφάλεια', streaming: 'Streaming & Συνδρομές', taxes: 'ΕΝΦΙΑ & Φόροι',
-  municipal: 'Δημοτικά Τέλη', security: 'Security / Συναγερμός', common: 'Κοινόχρηστα',
-  maintenance: 'Συντήρηση', elevator: 'Συντήρηση Ασανσέρ', pool: 'Καθαρισμός Πισίνας',
-  gardener: 'Κηπουρός', cleaner: 'Καθαριότητα', plumber: 'Υδραυλικός', electrician: 'Ηλεκτρολόγος',
-  other: 'Άλλο',
+// ΚΑΤΩ ΑΠΟ ΑΥΤΟ Η ΣΑΡΩΣΗ ΔΕΝ ΕΙΝΑΙ ΣΙΓΟΥΡΗ ΓΙΑ ΤΟΝ ΤΥΠΟ. Η βεβαιότητα είναι
+// αυτοαξιολόγηση του μοντέλου για τον τύπο και τον υποτύπο, χωρίς βαθμονόμηση:
+// αξίζει ως κατώφλι, όχι ως ποσοστό στην οθόνη. Σταθερά της οθόνης, όχι κανόνας.
+const TYPE_UNSURE_BELOW = 60;
+
+// ΤΑ ΠΕΔΙΑ ΑΝΑ ΤΥΠΟ ΔΕΝ ΖΟΥΝ ΕΔΩ. Η φόρμα, ο έλεγχος, η αποθήκευση και η
+// ανάγνωση διαβάζουν το ΙΔΙΟ σχήμα (lib/billing/documents.ts: DOC_KINDS και
+// docForm). Ένας δεύτερος κατάλογος εδώ είχε ήδη αποκλίνει: ζητούσε «Κάλυψη»
+// που κατέληγε μόνο σε σημείωση και δεν είχε καθόλου Ε9, Ε1 ή ΠΕΑ.
+
+// ═══ ΔΥΟ ΕΝΔΕΙΞΕΙΣ, ΜΕΣΑ ΣΤΗΝ ΕΤΙΚΕΤΑ ═══════════════════════════════════════
+// «λείπει» μόνο σε υποχρεωτικό πεδίο που είναι κενό· «άκυρο» σε τιμή που
+// διαβάστηκε αλλά δεν περνά τον έλεγχό της (ΑΦΜ, ΑΤΑΚ, ΑΜΑ, ανάποδη περίοδος).
+// Πριν, κάθε προαιρετικό πεδίο του μισθωτηρίου έγραφε «• ΛΕΙΠΕΙ» σε κίτρινα
+// ΚΕΦΑΛΑΙΑ και τα πέντε πεδία φαίνονταν σφάλματα ενώ απαιτούνταν τα δύο. Η
+// λέξη μπαίνει ΜΕΣΑ στο `<label>`, οπότε ο αναγνώστης οθόνης την ακούει μαζί με
+// το όνομα του πεδίου· τα περιγράμματα δεν βάφονται.
+type Flag = 'missing' | 'invalid';
+const FLAG: Record<Flag, { word: string; color: string }> = {
+  missing: { word: 'λείπει', color: 'var(--warning)' },
+  invalid: { word: 'άκυρο', color: 'var(--negative)' },
 };
 
-// Ποια πεδία δείχνει η φόρμα ανά τύπο εγγράφου.
-type FieldDef = { key: keyof ScannedDoc; label: string; type?: 'number' | 'date'; hint?: string };
-// ΤΑ ΠΕΝΤΕ ΠΕΔΙΑ ΤΑΙΡΙΑΣΜΑΤΟΣ είναι ΟΡΑΤΑ και διορθώσιμα για λογαριασμό/απόδειξη:
-// πάροχος, ΑΦΜ παρόχου, ποσό, ημερομηνία έκδοσης, περίοδος από–έως. Πριν, το ΑΦΜ
-// υπήρχε μόνο στο μπλοκ μισθωτηρίου και η περίοδος ήταν ελεύθερο κείμενο — δηλαδή
-// δύο από τα πέντε δεν έφταναν ποτέ στη βάση.
-const TYPE_FIELDS: Record<DocType, FieldDef[]> = {
-  bill: [
-    { key: 'provider', label: 'Πάροχος' },
-    { key: 'provider_afm', label: 'ΑΦΜ παρόχου' },
-    { key: 'amount', label: 'Ποσό (€)', type: 'number' },
-    { key: 'issue_date', label: 'Ημερομηνία έκδοσης', type: 'date' },
-    { key: 'due_date', label: 'Ημερομηνία λήξης', type: 'date' },
-    { key: 'period_from', label: 'Περίοδος από', type: 'date' },
-    { key: 'period_to', label: 'Περίοδος έως', type: 'date' },
-  ],
-  payment: [
-    { key: 'provider', label: 'Δικαιούχος / Πάροχος' },
-    { key: 'provider_afm', label: 'ΑΦΜ παρόχου' },
-    { key: 'amount', label: 'Ποσό (€)', type: 'number' },
-    { key: 'issue_date', label: 'Ημερομηνία πληρωμής', type: 'date' },
-    { key: 'period_from', label: 'Αφορά περίοδο από', type: 'date' },
-    { key: 'period_to', label: 'Αφορά περίοδο έως', type: 'date' },
-  ],
-  lease: [
-    { key: 'tenant_name', label: 'Ονοματεπώνυμο ενοικιαστή' },
-    { key: 'monthly_rent', label: 'Μηνιαίο ενοίκιο (€)', type: 'number' },
-    { key: 'lease_start', label: 'Έναρξη μίσθωσης', type: 'date' },
-    { key: 'lease_end', label: 'Λήξη μίσθωσης', type: 'date' },
-    { key: 'deposit', label: 'Εγγύηση (€)', type: 'number' },
-    { key: 'afm', label: 'ΑΦΜ ενοικιαστή' },
-  ],
-  insurance: [
-    { key: 'provider', label: 'Ασφαλιστική εταιρεία' },
-    { key: 'premium', label: 'Ασφάλιστρο (€)', type: 'number' },
-    { key: 'coverage', label: 'Κάλυψη (€)', type: 'number' },
-    { key: 'policy_number', label: 'Αριθμός συμβολαίου' },
-    { key: 'expiry_date', label: 'Λήξη ασφάλισης', type: 'date' },
-  ],
-  deed: [
-    { key: 'provider', label: 'Συμβολαιογράφος / Πηγή' },
-    { key: 'purchase_price', label: 'Τίμημα αγοράς (€)', type: 'number' },
-    { key: 'purchase_date', label: 'Ημερομηνία αγοράς', type: 'date' },
-    // Η αξία ολόκληρου του ακινήτου: ο ΕΝΦΙΑ κόβει μόνος του το μερίδιο.
-    { key: 'obj_value', label: 'Αντικειμενική αξία (€)', type: 'number', hint: OBJ_VALUE_WHOLE },
-    { key: 'atak', label: 'ΑΤΑΚ' },
-    { key: 'year_built', label: 'Έτος κατασκευής', type: 'number' },
-    { key: 'sqm', label: 'Τετραγωνικά (m²)', type: 'number' },
-  ],
-  tax: [
-    { key: 'provider', label: 'Φορέας (π.χ. ΑΑΔΕ)' },
-    // Το Ε9 φέρνει τον ΑΤΑΚ. Χωρίς πεδίο εδώ, ο χρήστης δεν μπορούσε ούτε να
-    // τον δει ούτε να διορθώσει λάθος ανάγνωση πριν γραφτεί στο ακίνητο.
-    { key: 'atak', label: 'ΑΤΑΚ' },
-    { key: 'amount', label: 'Ποσό (€)', type: 'number' },
-    { key: 'tax_year', label: 'Έτος', type: 'number' },
-    { key: 'due_date', label: 'Ημερομηνία λήξης πληρωμής', type: 'date' },
-  ],
-  government: [
-    { key: 'title', label: 'Τίτλος εγγράφου' },
-    { key: 'provider', label: 'Φορέας / Υπηρεσία' },
-    { key: 'issue_date', label: 'Ημερομηνία', type: 'date' },
-  ],
-  other: [
-    { key: 'title', label: 'Τίτλος' },
-    { key: 'provider', label: 'Σχετικό με' },
-    { key: 'issue_date', label: 'Ημερομηνία', type: 'date' },
-  ],
+const FlagWord = ({ flag }: { flag: Flag }) => (
+  <span style={{ ...TT.caption, lineHeight: 1, color: FLAG[flag].color, letterSpacing: 0 }}>{FLAG[flag].word}</span>
+);
+
+/**
+ * ΕΝΑ ΠΕΔΙΟ ΤΟΥ ΣΧΗΜΑΤΟΣ, ΜΕ ΤΟ ΧΕΙΡΙΣΤΗΡΙΟ ΤΗΣ ΕΦΑΡΜΟΓΗΣ.
+ *
+ * Δεν έχει δικό του στυλ: διαλέγει ανάμεσα στα πέντε κοινά πεδία (CustomSelect,
+ * DatePicker, NumberInput, TextInput) ώστε όλα να έχουν ένα ύψος, μία γωνία,
+ * ένα φόντο και το δαχτυλίδι εστίασης. Το τοπικό `Field` που αντικαθιστά έγραφε
+ * ωμό `<input>` με άλλο φόντο, γωνία 6, τρία ύψη και `outline: none`.
+ */
+function ScanField({ f, doc, today, flag, hint, onChange, options }: {
+  f: DocField; doc: ScannedDoc; today: string; flag?: Flag; hint?: string;
+  onChange: (v: string) => void; options?: Choice[];
+}) {
+  const info: ReactNode = flag || hint ? (
+    <>
+      {/* Υψος γραμμής 1: η λεζάντα των 11 με το δικό της 1,45 ψήλωνε τη γραμμή
+          της ετικέτας και την ανέβαζε δύο εικονοστοιχεία πάνω από τη διπλανή.
+          Το κενό είναι ΧΑΡΑΚΤΗΡΑΣ, όχι περιθώριο: με περιθώριο ο αναγνώστης
+          οθόνης διάβαζε «Τύπος εγγράφουλείπει», μία λέξη. */}
+      {flag && <>{' '}<FlagWord flag={flag} /></>}
+      {hint && <LabelDot text={hint} />}
+    </>
+  ) : undefined;
+  const value = fieldValue(doc, f);
+  switch (f.input) {
+    case 'select':
+      // Χωρίς δικό του placeholder: το «Επιλογή…» του επιλογέα, μία διατύπωση
+      // για την κενή τιμή σε λίστες και ημερομηνίες. Ο επιλογέας γραμμής λέει τι
+      // ζητά, γιατί εκεί το κενό είναι ερώτηση που περιμένει απάντηση.
+      return <CustomSelect label={f.label} labelInfo={info} value={value}
+        placeholder={f.options === 'line' ? 'Διάλεξε γραμμή' : undefined}
+        onChange={onChange} options={options ?? fieldOptions(f, doc, today)} />;
+    case 'date':
+      // Το ημερολόγιο ονομάζεται από το `ariaLabel`, όχι από την ορατή ετικέτα:
+      // η ένδειξη μπαίνει και εκεί, αλλιώς ο αναγνώστης οθόνης δεν θα την άκουγε.
+      return <DatePicker label={f.label} labelInfo={info} ariaLabel={flag ? `${f.label}, ${FLAG[flag].word}` : undefined}
+        value={value} onChange={onChange} />;
+    case 'money':
+    case 'number':
+      // ΧΩΡΙΣ `min`: το NumberInput γράφει το κάτω όριο όταν αδειάζει το
+      // πεδίο, οπότε η «Ημέρα πληρωμής» θα γινόταν 1 μόλις τη σβήσεις. Το όριο
+      // το κόβει το σχήμα (withField) και το μηδέν σβήνει το κλειδί.
+      return <NumberInput label={f.label} labelInfo={info} value={value} onChange={onChange} suffix={f.suffix} max={f.max} />;
+    default:
+      return <TextInput label={f.label} labelInfo={info} value={value} onChange={onChange}
+        mono={f.input === 'code'} inputMode={f.numeric ? 'numeric' : undefined} />;
+  }
+}
+
+// ΤΑ ΑΠΟΣΙΩΠΗΤΙΚΑ ΘΕΛΟΥΝ ΜΙΑ ΓΡΑΜΜΗ. Το `TT.bodySm` και το `TT.caption` φέρνουν
+// `textWrap: pretty`, που ως ενσωματωμένο στυλ νικά το `nowrap` της `.po-elide`:
+// το όνομα αρχείου και η σύνοψη της μπάρας τύλιγαν αντί να κόβονται.
+const ELIDE = { textWrap: 'nowrap' } as const;
+// Το οριζόντιο γέμισμα του Btn (Theme.tsx, `--btn-pad`). Το κουμπί-κείμενο
+// στοιχίζεται οπτικά με την άκρη της στήλης, όχι με το αόρατο κουτί του.
+const GHOST_INSET = 18;
+
+/** Το μέγεθος του αρχείου, όπως το λέει ο άνθρωπος. */
+const sizeLabel = (b: number) => (b >= 1048576 ? `${fn(b / 1048576, 1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
+/** Τελεία στο τέλος της πρότασης, όταν δεν την έχει ήδη. */
+const sentence = (s: string) => (/[.!;·…]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
+
+// Τι λέει το InfoBanner για κάθε τιμή που δεν περνά τον έλεγχό της.
+const INVALID_SAY: Record<string, string> = {
+  afm: 'Το ΑΦΜ δεν περνά τον έλεγχο.', provider_afm: 'Το ΑΦΜ δεν περνά τον έλεγχο.',
+  atak: 'Ο ΑΤΑΚ δεν περνά τον έλεγχο.', ama: 'Ο ΑΜΑ δεν περνά τον έλεγχο.',
+  period_from: 'Η περίοδος είναι ανάποδη: το «από» είναι μετά το «έως».',
 };
 
-// Πεδίο εισόδου. Τρεις καταστάσεις, όχι δύο: εντάξει · «λείπει» (η OCR δεν το
-// διάβασε και το ζητάμε) · «δεν είναι έγκυρο» (το διαβάσαμε αλλά δεν βγάζει
-// νόημα — π.χ. ΑΦΜ που δεν περνά το checksum της ΑΑΔΕ). Η διάκριση μετράει:
-// «λείπει» είναι δουλειά του χρήστη, «άκυρο» είναι λάθος ανάγνωση.
-const Field = ({ label, value, onChange, type = 'text', invalid = false, bad = false, hint }: {
-  label: string; value: string | number; onChange: (v: string) => void;
-  type?: string; invalid?: boolean; bad?: boolean; hint?: string;
-}) => {
-  const tone = bad ? 'var(--negative)' : invalid ? 'var(--warning)' : '';
-  return (
-    <div>
-      <label style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: tone || 'var(--text-tertiary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', display: 'block', marginBottom: 4, fontFamily: T.font.sans }}>
-        {label}{bad ? ' • δεν είναι έγκυρο' : invalid ? ' • λείπει' : ''}
-      </label>
-      {/* ══════════════════════════════════════════════════════════════════════
-          ΜΙΑ ΗΜΕΡΟΜΗΝΙΑ ΔΕΝ ΓΡΑΦΕΤΑΙ ΜΕ NATIVE INPUT
+const DocIcon = ({ size }: { size: number }) => (
+  <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
+);
 
-          Το `type` είναι ΜΕΤΑΒΛΗΤΗ και για δεκατέσσερα πεδία αυτού του αρχείου
-          είναι 'date'. Ενα native `<input type="date">` δείχνει τη σειρά της
-          γλώσσας του ΠΕΡΙΗΓΗΤΗ, όχι της σελίδας: σε browser στα αγγλικά ο
-          Ελληνας ιδιοκτήτης βλέπει mm/dd/yyyy και γράφει 5 Δεκεμβρίου εκεί που
-          εννοούσε 12 Μαΐου. Σε λήξη μισθωτηρίου, σε λήξη ασφαλιστηρίου και σε
-          ημερομηνία αγοράς, η σιωπηλή αντιστροφή ημέρας και μήνα δεν φαίνεται
-          πουθενά μέχρι να χρειαστεί.
-
-          Ο DatePicker του έργου γράφει πάντα ελληνική σειρά, ανοίγει στον σωστό
-          μήνα και τον πατά και το πληκτρολόγιο. Είναι το ιδίωμα κάθε άλλης
-          οθόνης· εδώ έλειπε.
-          ══════════════════════════════════════════════════════════════════════ */}
-      {type === 'date' ? (
-        <DatePicker ariaLabel={label} value={String(value ?? '')} onChange={onChange} />
-      ) : (
-        <input
-          type={type}
-          aria-label={label}
-          value={String(value ?? '')}
-          onChange={e => onChange(e.target.value)}
-          style={{ width: '100%', background: 'var(--bg-base)', border: `1px solid ${tone || 'var(--border-default)'}`, borderRadius: T.radius.xs, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, fontFamily: type === 'number' ? T.font.mono : T.font.sans, outline: 'none', boxSizing: 'border-box' as const, transition: 'border-color 0.15s' }}
-          onFocus={e => (e.target.style.borderColor = 'var(--accent)')}
-          onBlur={e => (e.target.style.borderColor = tone || 'var(--border-default)')}
-        />
-      )}
-      {hint && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4, fontFamily: T.font.sans }}>{hint}</div>}
-    </div>
-  );
-};
-
-const NUM_KEYS = new Set<keyof ScannedDoc>(['amount', 'monthly_rent', 'deposit', 'premium', 'coverage', 'purchase_price', 'obj_value', 'year_built', 'sqm', 'tax_year', 'kwh', 'cubic_meters', 'millesimi', 'vat_rate']);
-
-export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyChange, onManual }: Props) {
+export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyChange, onManual, onOpenAccounting, properties }: Props) {
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -207,8 +191,19 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   const bankOpen = bankLinkState() === 'open';
   const openFilePicker = useCallback(() => fileRef.current?.click(), []);
 
+  // ΤΟ ΑΚΙΝΗΤΟ ΕΙΝΑΙ ΕΠΙΛΟΓΗ, ΟΧΙ ΥΠΟΘΕΣΗ. Ηταν σιωπηλά το ακίνητο που ήταν
+  // ανοιχτό στο ταμπλό και δεν φαινόταν πουθενά στο παράθυρο: ο λογαριασμός
+  // της Κυψέλης έμπαινε στο Κουκάκι επειδή εκεί ήταν ο χρήστης όταν πάτησε.
+  const [targetId, setTargetId] = useState(propertyId);
+  const atakOf = (id: string) => properties?.find(p => p.id === id)?.atak ?? null;
+  const propertyAtak = atakOf(targetId);
+  const targetName = properties?.find(p => p.id === targetId)?.name || '';
+
   const [file, setFile] = useState<File | null>(null);
-  const [image, setImage] = useState('');
+  // Ο σύνδεσμος του αρχείου στη μνήμη του περιηγητή: δείχνει την εικόνα και
+  // ανοίγει το πρωτότυπο σε νέα καρτέλα (ένα `data:` δεν ανοίγει πια εκεί).
+  const [fileUrl, setFileUrl] = useState('');
+  useEffect(() => () => { if (fileUrl) URL.revokeObjectURL(fileUrl); }, [fileUrl]);
   const [scanning, setScanning] = useState(false);
   const [edited, setEdited] = useState<ScannedDoc | null>(null);
   const [saving, setSaving] = useState(false);
@@ -216,7 +211,18 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   const [error, setError] = useState('');
   const [errorText, setErrorText] = useState('');
   const [savedInfo, setSavedInfo] = useState<string[]>([]);
-  const [newField, setNewField] = useState({ label: '', value: '' });
+  // Ο χρήστης άλλαξε τον τύπο: η αβεβαιότητα της σάρωσης δεν τον αφορά πια.
+  const [typeTouched, setTypeTouched] = useState(false);
+  // Το ράφι του Φακέλου. `null` = ακολουθεί την προεπιλογή του τύπου, ώσπου να
+  // το αλλάξει ο χρήστης· μια νέα αλλαγή τύπου το επαναφέρει στην προεπιλογή.
+  const [archiveCat, setArchiveCat] = useState<string | null>(null);
+
+  const uid = useId();
+  const reasonId = `${uid}-reason`;
+  const formRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  // Η σειρά «δικό σου πεδίο» που μόλις προστέθηκε παίρνει την εστίαση.
+  const focusCustom = useRef<number | null>(null);
 
   // Μία γραμμή, δύο καταστάσεις: όσο διαβάζεται το έγγραφο ή όσο γράφεται στη
   // βάση, το παράθυρο από πάνω δεν επιτρέπεται να κλείσει και να σβήσει το
@@ -234,16 +240,28 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   const [contactState, setContactState] =
     useState<'cta' | 'saving' | 'saved' | 'exists' | 'error' | 'dpa' | 'dismissed'>('cta');
 
-  const setF = (key: keyof ScannedDoc, raw: string) =>
-    setEdited(p => {
-      if (!p) return p;
-      const next: ScannedDoc = { ...p, [key]: NUM_KEYS.has(key) ? (parseFloat(raw) || undefined) : raw };
-      // Όταν ο χρήστης διορθώνει τις ημερομηνίες της περιόδου, το ελεύθερο κείμενο
-      // («Ιούνιος 2026») που είχε διαβάσει η OCR παύει να ισχύει — δεν το κρατάμε
-      // για να μη γραφτεί ένα όνομα λογαριασμού που λέει άλλο μήνα από τις στήλες.
-      if (key === 'period_from' || key === 'period_to') next.period = undefined;
-      return next;
-    });
+  // ΟΙ ΚΑΡΤΕΣ ΕΡΩΤΗΣΗΣ ΕΜΦΑΝΙΖΟΝΤΑΙ ΚΑΤΩ ΑΠΟ ΤΗ ΦΟΡΜΑ, όπου ο χρήστης που μόλις
+  // πάτησε «Καταχώρηση» δεν κοιτάζει. Ερχονται στο οπτικό πεδίο και η εστίαση
+  // πάει στην πρώτη επιλογή, ώστε η απάντηση να είναι ένα πάτημα μακριά.
+  useEffect(() => {
+    if (!ask && !duplicate) return;
+    const el = cardRef.current;
+    if (!el) return;
+    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    el.querySelector<HTMLButtonElement>('button:not([disabled])')?.focus({ preventScroll: true });
+  }, [ask, duplicate]);
+
+  const customCount = edited?.custom?.length ?? 0;
+  useEffect(() => {
+    const i = focusCustom.current;
+    if (i == null) return;
+    focusCustom.current = null;
+    document.getElementById(`${uid}-cf-${i}`)?.focus();
+  }, [customCount, uid]);
+
+  // Η αλλαγή πεδίου περνά από το σχήμα: εκεί καθαρίζουν οι κωδικοί, γίνονται
+  // αριθμοί τα ποσά και σβήνει το «Στο χαρτί» όταν αλλάζει η περίοδος.
+  const setF = (f: DocField, raw: string) => setEdited(p => (p ? withField(p, f, raw) : p));
 
   const loadFile = useCallback(async (f: File) => {
     if (!f.type.startsWith('image/') && f.type !== 'application/pdf' && !f.name.match(/\.(csv|xlsx|xls|txt)$/i)) {
@@ -254,22 +272,48 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
     if (f.size > MAX_SCAN_MB * 1024 * 1024) {
       setError(`Το αρχείο είναι πολύ μεγάλο (${(f.size / 1048576).toFixed(1)}MB). Όριο ${MAX_SCAN_MB}MB.`); return;
     }
-    setFile(f); setEdited(null); setError(''); setAsk(null); setDuplicate(''); setStep('review');
-    // Προεπισκόπηση (μόνο για να βλέπει ο χρήστης τι σάρωσε).
-    const reader = new FileReader();
-    reader.onload = e => setImage(String(e.target?.result || ''));
-    reader.readAsDataURL(f);
+    // προεπισκόπηση-blob: δείχνει το αρχείο και το ανοίγει σε νέα καρτέλα, δεν κατεβάζει.
+    setFile(f); setFileUrl(URL.createObjectURL(f)); setEdited(null); setError(''); setAsk(null); setDuplicate('');
+    setTypeTouched(false); setArchiveCat(null); setStep('review');
     // Η ΑΝΑΓΝΩΣΗ γίνεται από τη ΜΙΑ μηχανή σάρωσης (scanDoc.ts) — καμία δεύτερη
     // υλοποίηση prompt/parse εδώ. Ό,τι διορθώσουμε εκεί, διορθώνεται παντού.
     setScanning(true);
     const r = await scanDocument(f);
     setScanning(false);
-    if (r.doc) setEdited(r.doc);
-    else { setError(r.error || 'unreadable'); setErrorText(r.errorText || ''); setEdited({ doc_type: 'other', confidence: 0 }); }
-  }, []);
+    // Χωρίς στοιχεία εγγράφου ο τύπος μένει κενός και τον διαλέγει ο χρήστης.
+    // Σε Ε9 ή ΕΝΦΙΑ με πολλά ακίνητα, προεπιλογή η γραμμή με τον ΑΤΑΚ αυτού.
+    // Οτι δεν είναι έγγραφο δεν κρατά ΚΑΝΕΝΑ κλειδί: η σημείωση «η εικόνα δεν
+    // περιέχει…» θα γραφόταν στον Φάκελο μόλις ο χρήστης διάλεγε τύπο.
+    if (r.doc) setEdited(isDocumentary(r.doc) ? withPropertyLine(r.doc, propertyAtak) : { doc_type: 'other', is_document: false });
+    else { setError(r.error || 'unreadable'); setErrorText(r.errorText || ''); setEdited({ doc_type: 'other', is_document: false }); }
+  }, [propertyAtak]);
 
   // Στρίψιμο null/undefined από payload (χρησιμοποιείται στις Επαφές παρακάτω).
   const nrm = (s?: string) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+  const kind = edited ? kindOf(edited) : null;
+  const form = edited ? docForm(edited) : null;
+  const fields = (form?.groups || []).flatMap(g => g.rows.flat());
+  const shown = new Set<string>(fields.map(f => String(f.key)));
+  const today = athensToday();
+  // Με το σημερινό, όπως θα τρέξει η καταχώρηση: η λίστα είναι το ίδιο σχέδιο.
+  const targets = edited ? docTargets(edited, !!file, today) : [];
+  const v = edited ? validateDoc(edited) : { blocking: [], recommended: [], invalid: [] };
+  // Μόνο ό,τι φαίνεται στη φόρμα: ένα άκυρο κλειδί χωρίς πεδίο δεν διορθώνεται.
+  const invalid = v.invalid.filter(k => shown.has(k));
+  const folder = archiveCat ?? (edited ? archiveCategoryFor(edited) : '');
+  // Η ετικέτα όπως τη βλέπει ο χρήστης στη φόρμα, αλλιώς η γενική.
+  const label = (k: string) => fields.find(f => f.key === k)?.label || DOC_FIELD_LABELS[k] || k;
+  // Η γραμμή του Ε9 ή του ΕΝΦΙΑ που δεν διαλέχτηκε λέει «λείπει» χωρίς να
+  // κρατά την καταχώρηση: το «Κανένα από αυτά» είναι κι αυτό απάντηση.
+  const flagOf = (k: string): Flag | undefined =>
+    invalid.includes(k) || (k === 'period_to' && invalid.includes('period_from')) ? 'invalid'
+    : v.blocking.includes(k) || (k === 'line' && !!edited && lineUnset(edited)) ? 'missing' : undefined;
+  const pending = !!ask || !!duplicate;
+  const canSave = v.blocking.length === 0 && !pending;
+  const reason = pending ? 'Απάντησε στην ερώτηση παραπάνω'
+    : v.blocking.length ? `${v.blocking.length > 1 ? 'Λείπουν' : 'Λείπει'}: ${v.blocking.map(label).join(', ')}`
+    : '';
 
   // Η ΚΑΤΑΧΩΡΗΣΗ. Όλη η εγγραφή (8 πίνακες + αρχειοθέτηση + συμφωνία) ζει στο
   // scanDoc.ts ώστε να είναι ΙΔΙΑ από κάθε οθόνη. Εδώ μένει μόνο η οθόνη.
@@ -280,7 +324,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
     if (!edited) return;
     setSaving(true); setError('');
     const r = await commitScannedDoc({
-      doc: edited, file, propertyId, userId,
+      doc: edited, file, propertyId: targetId, userId,
+      // Το ράφι που ΒΛΕΠΕΙ ο χρήστης στο «Φάκελος», όχι ένα δεύτερο συμπέρασμα.
+      ...(folder ? { archiveCategory: folder } : {}),
       ...(choice !== undefined ? { reconcileChoice: choice } : {}),
       ...(allowDuplicate ? { allowDuplicate: true } : {}),
     });
@@ -296,6 +342,19 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
     setSavedInfo(r.saved);
     setStep('done');
     onSaved?.();
+  };
+
+  // ΤΟ ΚΟΥΜΠΙ ΔΕΝ ΣΙΩΠΑ ΟΤΑΝ ΛΕΙΠΕΙ ΚΑΤΙ. Μένει πατήσιμο με σβηστή όψη και λέει
+  // τον λόγο (`describedBy`)· το πάτημα πηγαίνει στο πρώτο πεδίο που λείπει.
+  const submit = () => {
+    if (saving) return;
+    if (canSave) { void save(); return; }
+    const k = pending ? null : v.blocking[0];
+    const root = formRef.current;
+    if (!k || !root) { cardRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return; }
+    const el = root.querySelector<HTMLElement>(`[data-scan-field="${k}"] input, [data-scan-field="${k}"] [role="combobox"]`);
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el?.focus({ preventScroll: true });
   };
 
   // Κράτα μόνο ψηφία (για ΑΦΜ/τηλέφωνο) ώστε η σύγκριση/αποθήκευση να είναι καθαρή.
@@ -315,7 +374,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
       // DEDUP: φέρνουμε τις επαφές του ακινήτου/χρήστη και ελέγχουμε στη JS (το
       // ΑΦΜ βρίσκεται μέσα στο JSON του notes, δεν κάνει εύκολα query).
       const existing = await contacts.ofProperty<{ full_name: string; notes: string | null }>(
-        supabase, propertyId, 'id,full_name,phone,notes', userId);
+        supabase, targetId, 'id,full_name,phone,notes', userId);
       const dup = existing.some(c => {
         const storedAfm = digits(String(contacts.decodeNotes(c.notes).extra.afm ?? ''));
         if (afm && storedAfm && afm === storedAfm) return true;
@@ -326,7 +385,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
       // Σχηματισμός γραμμής επαφής (ίδιο schema με την καρτέλα Επαφές).
       const extra: Record<string, string> = {};
       if (afm) extra.afm = afm;
-      const role = inferRole(`${fullName} ${CATEGORY_LABELS[edited.category || ''] || ''}`) || 'other';
+      const role = inferRole(`${fullName} ${billCategoryLabel(edited.category)}`) || 'other';
       // Τηλέφωνο και email από το ΙΔΙΟ χαρτί. Πριν έμπαιναν null και έβγαινε
       // επαφή που δεν μπορείς να καλέσεις — ο χρήστης έπρεπε να τα ξαναγράψει
       // με το χέρι, ενώ ήταν τυπωμένα μπροστά του.
@@ -335,7 +394,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
       // Ο εκδότης μπαίνει στις Επαφές με όνομα, ΑΦΜ και τηλέφωνο: πρώτα η
       // σύμβαση επεξεργασίας, όπως σε κάθε στοιχείο τρίτου (lib/legal/dpa.ts).
       if (!(await ensureDpa(supabase))) { setContactState('dpa'); return; }
-      const { error: insErr } = await contacts.add(supabase, propertyId, userId, {
+      const { error: insErr } = await contacts.add(supabase, targetId, userId, {
         role, full_name: fullName, phone, email,
         notes: contacts.encodeNotes(extra, ''),
       });
@@ -345,9 +404,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   };
 
   const reset = () => {
-    setStep('upload'); setFile(null); setImage(''); setEdited(null);
-    setSaving(false); setError(''); setSavedInfo([]); setNewField({ label: '', value: '' });
-    setContactState('cta'); setAsk(null);
+    setStep('upload'); setFile(null); setFileUrl(''); setEdited(null);
+    setSaving(false); setError(''); setSavedInfo([]); setArchiveCat(null);
+    setContactState('cta'); setAsk(null); setDuplicate(''); setTypeTouched(false);
   };
 
   // ── Οθόνη επιτυχίας ─────────────────────────────────────────────────────────
@@ -358,7 +417,10 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
           <svg aria-hidden="true" width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="var(--positive)" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
         </div>
         <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, letterSpacing: '-0.01em' }}>Καταχωρήθηκε</div>
-        <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginBottom: T.sp.xl }}>{docSummaryLine(edited)}</div>
+        {/* Και ΠΟΥ: με περισσότερα ακίνητα, το όνομα του ακινήτου που διάλεξε. */}
+        <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginBottom: T.sp.xl }}>
+          {docSummaryLine(edited)}{targetName && (properties?.length ?? 0) > 1 ? ` · ${targetName}` : ''}
+        </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
           {savedInfo.map(s => (
             <span key={s} style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--positive)', background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: T.radius.pill, padding: '4px 12px', fontFamily: T.font.sans }}>{s}</span>
@@ -426,329 +488,466 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
           );
         })()}
 
-        <Btn variant="primary" onClick={reset}>Σάρωσε νέο έγγραφο</Btn>
+        {/* ΤΟ Ε2 ΣΥΝΕΧΙΖΕΙ ΣΤΗ ΛΟΓΙΣΤΙΚΗ. Η σύγκριση με τα μισθώματα ζει εκεί·
+            η οθόνη έλεγε «ανέβασέ το και εκεί» χωρίς δρόμο. Τώρα ο δρόμος είναι
+            η κύρια ενέργεια και η νέα σάρωση η δεύτερη. */}
+        {kindOf(edited)?.value === 'e2' && onOpenAccounting ? (
+          <div className="act-center" style={{ display: 'flex', gap: T.sp.sm, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Btn variant="secondary" onClick={reset}>Σάρωσε νέο έγγραφο</Btn>
+            <Btn variant="primary" onClick={onOpenAccounting}>Άνοιγμα στη {navLabel('accounting')}</Btn>
+          </div>
+        ) : (
+          <Btn variant="primary" onClick={reset}>Σάρωσε νέο έγγραφο</Btn>
+        )}
       </div>
     );
   }
 
-  const typeMeta = edited ? DOC_TYPES.find(t => t.id === edited.doc_type) : null;
-  const v = edited ? validateDoc(edited) : { blocking: [], recommended: [], invalid: [] };
-  const canSave = v.blocking.length === 0;
-  const label = (f: string) => DOC_FIELD_LABELS[f] || f;
-
-  return (
-    <div style={{ fontFamily: T.font.sans, color: 'var(--text-primary)' }}>
-      {/* ΤΟΝ ΤΙΤΛΟ ΤΟΝ ΔΙΝΕΙ ΤΟ ΠΑΡΑΘΥΡΟ. Εδώ γραφόταν δεύτερος, «Πρόσθεσε ένα
-          έγγραφο», κάτω από το «Σάρωση εγγράφου» του κελύφους — και έμενε
-          ορατός ΚΑΙ πάνω από την οθόνη επιτυχίας «Καταχωρήθηκε», όπου δεν
-          σαρώνει πια τίποτα. Η εξήγηση για το τι δέχεται μένει: είναι
-          πληροφορία, όχι επικεφαλίδα και είναι χρήσιμη ακριβώς πριν το
-          πρώτο άγγιγμα. */}
-      {step === 'upload' && (
+  // ── Βήμα 1: πώς μπαίνει το έγγραφο ─────────────────────────────────────────
+  if (step === 'upload') {
+    return (
+      <div style={{ fontFamily: T.font.sans, color: 'var(--text-primary)' }}>
+        {/* ΤΟΝ ΤΙΤΛΟ ΤΟΝ ΔΙΝΕΙ ΤΟ ΠΑΡΑΘΥΡΟ. Εδώ γραφόταν δεύτερος, «Πρόσθεσε ένα
+            έγγραφο», κάτω από το «Σάρωση εγγράφου» του κελύφους — και έμενε
+            ορατός ΚΑΙ πάνω από την οθόνη επιτυχίας «Καταχωρήθηκε», όπου δεν
+            σαρώνει πια τίποτα. Η εξήγηση για το τι δέχεται μένει: είναι
+            πληροφορία, όχι επικεφαλίδα και είναι χρήσιμη ακριβώς πριν το
+            πρώτο άγγιγμα. */}
         <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: 20 }}>
           {/* ΥΠΟΣΧΟΤΑΝ «ΟΤΙΔΗΠΟΤΕ» ΚΑΙ ΚΑΤΑΧΩΡΙΣΗ ΧΩΡΙΣ ΤΟΝ ΧΡΗΣΤΗ. Η ροή όμως
               περνά πάντα από το βήμα ελέγχου, όπου ο χρήστης επιβεβαιώνει ή
               διορθώνει: η πρόταση λέει αυτό που γίνεται. */}
           Φωτογράφισε ή ανέβασε λογαριασμό, απόδειξη, μισθωτήριο, τίτλο, ασφάλεια ή <span title="Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων">ΕΝΦΙΑ</span>. Προτείνουμε πού μπαίνει και το επιβεβαιώνεις εσύ.
         </div>
-      )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: step === 'review' && image ? 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))' : '1fr', gap: 20 }}>
-        {/* Αριστερά: upload ή προεπισκόπηση */}
-        <div>
-          {step === 'upload' ? (
-            /* ΜΙΑ ΣΕΙΡΑ, ΟΣΑ ΚΙ ΑΝ ΕΙΝΑΙ. Το `auto-fit` με ελάχιστο 190 έβγαζε
-               τρία πλακίδια πάνω και ένα μόνο του από κάτω: η τέταρτη επιλογή
-               διαβαζόταν ως υποσημείωση των τριών, ενώ είναι ισότιμη απάντηση
-               στην ίδια ερώτηση. Το πλήθος το ξέρει το ίδιο το component, οπότε
-               το λέει ρητά στο πλέγμα αντί να το αφήνει στο πλάτος. */
-            <>
-            <div className="scan-tiles" data-tiles={2 + (onManual ? 1 : 0) + (bankOpen ? 1 : 0)}>
-              {/* ΓΡΑΜΜΕΝΟ ΡΗΤΑ, ΟΧΙ ΜΕ ΤΟΝ ΒΟΗΘΟ `pressable` ΚΑΙ ΕΧΕΙ ΛΟΓΟ.
-                  Το JSX spread κρύβει τις ιδιότητες από τη στατική ανάλυση: με
-                  `{...pressable(…)}` ο μεταγλωττιστής του React παύει να βλέπει τι
-                  δέχεται το στοιχείο και αρχίζει να αναφέρει τις μεταλλάξεις
-                  `currentTarget.style` των διπλανών χειριστών. Δοκιμάστηκε και
-                  μετρήθηκε: με spread +2 σφάλματα, χωρίς 0. Δύο ιδιότητες
-                  παραπάνω είναι φθηνότερες από έναν φύλακα που χαλαρώνει. */}
-              <div role="button" tabIndex={0} onClick={openCamera} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openCamera()}}}
-                className="pick-tile" style={{ border: '1px solid var(--border-default)', borderRadius: T.radius.card, minHeight: 172, cursor: 'pointer', background: 'var(--bg-elevated)', transition: 'background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s, opacity 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-dim)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}>
-                <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
-                {/* Τρία πλακίδια, τρεις προστακτικές: «Φωτογράφισε», «Ανέβασε
-                    αρχείο», «Γράψε το χειροκίνητα». Ηταν ουσιαστικό, προστακτική
-                    και επίρρημα για τρεις απαντήσεις στην ίδια ερώτηση. */}
-                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Φωτογράφισε</div>
-                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Με την κάμερα της συσκευής</div>
-              </div>
-              <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && loadFile(e.target.files[0])} />
+        {/* ΜΙΑ ΣΕΙΡΑ, ΟΣΑ ΚΙ ΑΝ ΕΙΝΑΙ. Το `auto-fit` με ελάχιστο 190 έβγαζε
+            τρία πλακίδια πάνω και ένα μόνο του από κάτω: η τέταρτη επιλογή
+            διαβαζόταν ως υποσημείωση των τριών, ενώ είναι ισότιμη απάντηση
+            στην ίδια ερώτηση. Το πλήθος το ξέρει το ίδιο το component, οπότε
+            το λέει ρητά στο πλέγμα αντί να το αφήνει στο πλάτος. */}
+        <div className="scan-tiles" data-tiles={2 + (onManual ? 1 : 0) + (bankOpen ? 1 : 0)}>
+          {/* ΓΡΑΜΜΕΝΟ ΡΗΤΑ, ΟΧΙ ΜΕ ΤΟΝ ΒΟΗΘΟ `pressable` ΚΑΙ ΕΧΕΙ ΛΟΓΟ.
+              Το JSX spread κρύβει τις ιδιότητες από τη στατική ανάλυση: με
+              `{...pressable(…)}` ο μεταγλωττιστής του React παύει να βλέπει τι
+              δέχεται το στοιχείο και αρχίζει να αναφέρει τις μεταλλάξεις
+              `currentTarget.style` των διπλανών χειριστών. Δοκιμάστηκε και
+              μετρήθηκε: με spread +2 σφάλματα, χωρίς 0. Δύο ιδιότητες
+              παραπάνω είναι φθηνότερες από έναν φύλακα που χαλαρώνει. */}
+          <div role="button" tabIndex={0} onClick={openCamera} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openCamera()}}}
+            className="pick-tile" style={{ border: '1px solid var(--border-default)', borderRadius: T.radius.card, minHeight: 172, cursor: 'pointer', background: 'var(--bg-elevated)', transition: 'background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s, opacity 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-dim)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}>
+            <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
+            {/* Τρία πλακίδια, τρεις προστακτικές: «Φωτογράφισε», «Ανέβασε
+                αρχείο», «Γράψε το χειροκίνητα». Ηταν ουσιαστικό, προστακτική
+                και επίρρημα για τρεις απαντήσεις στην ίδια ερώτηση. */}
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Φωτογράφισε</div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Με την κάμερα της συσκευής</div>
+          </div>
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && loadFile(e.target.files[0])} />
 
-              <div role="button" tabIndex={0} onClick={openFilePicker} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openFilePicker()}}}
-                className="pick-tile" style={{ border: '1px solid var(--border-default)', borderRadius: T.radius.card, minHeight: 172, cursor: 'pointer', background: 'var(--bg-elevated)', transition: 'background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s, opacity 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-dim)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}>
-                <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
-                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Ανέβασε αρχείο</div>
-                {/* Το πεδίο δέχεται και λογιστικά φύλλα (.xlsx, .xls, .ods, .csv). */}
-                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>JPG · PNG · PDF · Excel</div>
-              </div>
-              <input ref={fileRef} type="file" accept="image/*,.pdf,.csv,.txt,.xlsx,.xls,.ods" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && loadFile(e.target.files[0])} />
+          <div role="button" tabIndex={0} onClick={openFilePicker} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openFilePicker()}}}
+            className="pick-tile" style={{ border: '1px solid var(--border-default)', borderRadius: T.radius.card, minHeight: 172, cursor: 'pointer', background: 'var(--bg-elevated)', transition: 'background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s, opacity 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-dim)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}>
+            <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Ανέβασε αρχείο</div>
+            {/* Το πεδίο δέχεται και λογιστικά φύλλα (.xlsx, .xls, .ods, .csv). */}
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>JPG · PNG · PDF · Excel</div>
+          </div>
+          <input ref={fileRef} type="file" accept="image/*,.pdf,.csv,.txt,.xlsx,.xls,.ods" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && loadFile(e.target.files[0])} />
 
-              {/* ΤΡΙΤΗ ΑΠΑΝΤΗΣΗ: ΔΕΝ ΕΧΩ ΧΑΡΤΙ. Οι δύο πρώτες υποθέτουν ότι
-                  υπάρχει παραστατικό. Χωρίς αυτό το πλακίδιο, ο χρήστης που
-                  θυμήθηκε μια δαπάνη έπρεπε να κλείσει το παράθυρο και να ψάξει
-                  κουμπί που δεν υπάρχει πια στην κενή λίστα. Ιδιο σχήμα και ίδιο
-                  ύψος με τα άλλα: τέσσερα πλακίδια, μία απόφαση. */}
-              {onManual && (
-                <div role="button" tabIndex={0} onClick={onManual} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onManual()}}}
-                  className="pick-tile" style={{ border: '1px solid var(--border-default)', borderRadius: T.radius.card, minHeight: 172, cursor: 'pointer', background: 'var(--bg-elevated)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 16, transition: 'border-color .15s, background .15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-dim)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}>
-                  {/* Ιδια κάθετη διάταξη με τα διπλανά: 12 κάτω από το εικονίδιο, 4 κάτω από τον τίτλο. Το `gap: 10` πρόσθετε κενό πάνω στο 4 και το πλακίδιο κατέβαινε. */}
-                  <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Γράψε το χειροκίνητα</div>
-                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Χωρίς παραστατικό</div>
-                </div>
-              )}
-
-              {/* ΜΟΝΟ ΟΤΑΝ ΔΟΥΛΕΥΕΙ. Ενα «Σύντομα διαθέσιμο» μέσα στον διάλογο
-                  της σάρωσης ήταν υπόσχεση λειτουργίας εκεί όπου ο χρήστης
-                  διαλέγει τι θα κάνει ΤΩΡΑ. Οσο ετοιμάζεται, η τράπεζα λέγεται
-                  μόνο στη γραμμή των Δαπανών, με την εξήγησή της. Οταν ανοίξει,
-                  έρχεται τελευταία: οι άλλες τρεις είναι οι συνηθισμένες. */}
-              {bankOpen && <BankLinkTile minHeight={172} />}
-            </div>
-            {/* ΤΟ AI ΛΕΓΟΤΑΝ ΜΟΝΟ ΑΦΟΥ ΕΙΧΕ ΦΥΓΕΙ ΤΟ ΕΓΓΡΑΦΟ. Το «Claude AI
-                αναγνωρίζει» εμφανιζόταν στη μέση της σάρωσης· πριν από το
-                ανέβασμα ο χρήστης δεν μάθαινε ότι ένα μισθωτήριο με ονόματα και
-                ΑΦΜ διαβάζεται από πάροχο AI. Η δέσμευση για την εκπαίδευση είναι
-                η ίδια που γράφει η Πολιτική απορρήτου. */}
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.55, margin: '12px 0 0' }}>
-              Η ανάγνωση γίνεται με AI, σύμφωνα με την <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>πολιτική απορρήτου</a>· ο πάροχος AI δεσμεύεται με σύμβαση να μην εκπαιδεύει μοντέλα με τα έγγραφά σου.
-            </p>
-            </>
-          ) : (
-            <div>
-              {file?.type === 'application/pdf' ? (
-                <div style={{ borderRadius: T.radius.card, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', padding: 28, textAlign: 'center' }}>
-                  <svg aria-hidden="true" width={40} height={40} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 10px' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', wordBreak: 'break-all' }}>{file.name}</div>
-                </div>
-              ) : (
-                <RuntimeImg src={image} alt="Έγγραφο" style={{ width: '100%', borderRadius: T.radius.card, border: '1px solid var(--border-subtle)', maxHeight: 480, objectFit: 'contain', background: 'var(--bg-base)' }} />
-              )}
-              {scanning && (
-                <div style={{ marginTop: 12, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)' }} />
-                  <div role="status" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Διαβάζω το έγγραφο…</div>
-                </div>
-              )}
-              {/* Το περιθώριο ζει στο περιτύλιγμα: το Btn κρατά μόνο τη γεωμετρία του κουμπιού. */}
-              <div style={{ marginTop: 10 }}>
-                <Btn variant="secondary" onClick={reset}>Νέα σάρωση</Btn>
-              </div>
-
-              {error && (() => {
-                const title = error === 'unreadable' ? 'Δεν διάβασα καθαρά το έγγραφο'
-                  : error === 'quota' ? 'Οι σαρώσεις του μήνα τελείωσαν'
-                  : error === 'key_missing' ? 'Η αυτόματη ανάγνωση δεν είναι ενεργή ακόμη'
-                  : error === 'save' ? 'Κάτι πήγε στραβά στην αποθήκευση'
-                  : 'Η υπηρεσία ανάγνωσης δεν είναι διαθέσιμη τώρα';
-                const tips = error === 'unreadable'
-                  ? ['Τράβα τη φωτογραφία με καλό φως, ίσια, να χωράει όλο το έγγραφο', 'Αν έχεις PDF από τον πάροχο/φορέα, ανέβασέ το, διαβάζεται καλύτερα']
-                  // Ρύθμιση «κλειδί AI» δεν υπάρχει στον λογαριασμό: την ανάγνωση την ενεργοποιούμε εμείς.
-                  : error === 'key_missing' ? ['Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά', 'Η αυτόματη ανάγνωση ενεργοποιείται από εμάς· δεν χρειάζεται καμία ρύθμιση από εσένα']
-                  : error === 'save' ? ['Δοκίμασε ξανά, τα στοιχεία σου διατηρούνται']
-                  : error === 'quota' ? [errorText || SAY.scanQuotaSpent, 'Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά']
-                  : ['Δοκίμασε ξανά σε λίγο', 'Συμπλήρωσε τα πεδία χειροκίνητα'];
-                return (
-                  <div style={{ marginTop: 12, background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: T.radius.inner, padding: '12px 16px' }}>
-                    <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--warning)', marginBottom: 8 }}>{title}</div>
-                    <ul style={{ margin: 0, paddingLeft: T.sp.lg, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {tips.map((t, i) => <li key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{t}</li>)}
-                    </ul>
-                  </div>
-                );
-              })()}
+          {/* ΤΡΙΤΗ ΑΠΑΝΤΗΣΗ: ΔΕΝ ΕΧΩ ΧΑΡΤΙ. Οι δύο πρώτες υποθέτουν ότι
+              υπάρχει παραστατικό. Χωρίς αυτό το πλακίδιο, ο χρήστης που
+              θυμήθηκε μια δαπάνη έπρεπε να κλείσει το παράθυρο και να ψάξει
+              κουμπί που δεν υπάρχει πια στην κενή λίστα. Ιδιο σχήμα και ίδιο
+              ύψος με τα άλλα: τέσσερα πλακίδια, μία απόφαση. */}
+          {onManual && (
+            <div role="button" tabIndex={0} onClick={onManual} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onManual()}}}
+              className="pick-tile" style={{ border: '1px solid var(--border-default)', borderRadius: T.radius.card, minHeight: 172, cursor: 'pointer', background: 'var(--bg-elevated)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 16, transition: 'border-color .15s, background .15s' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-dim)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}>
+              {/* Ιδια κάθετη διάταξη με τα διπλανά: 12 κάτω από το εικονίδιο, 4 κάτω από τον τίτλο. Το `gap: 10` πρόσθετε κενό πάνω στο 4 και το πλακίδιο κατέβαινε. */}
+              <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Γράψε το χειροκίνητα</div>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Χωρίς παραστατικό</div>
             </div>
           )}
+
+          {/* ΜΟΝΟ ΟΤΑΝ ΔΟΥΛΕΥΕΙ. Ενα «Σύντομα διαθέσιμο» μέσα στον διάλογο
+              της σάρωσης ήταν υπόσχεση λειτουργίας εκεί όπου ο χρήστης
+              διαλέγει τι θα κάνει ΤΩΡΑ. Οσο ετοιμάζεται, η τράπεζα λέγεται
+              μόνο στη γραμμή των Δαπανών, με την εξήγησή της. Οταν ανοίξει,
+              έρχεται τελευταία: οι άλλες τρεις είναι οι συνηθισμένες. */}
+          {bankOpen && <BankLinkTile minHeight={172} />}
         </div>
+        {/* Ενα αρχείο που δεν περνά (τύπος, μέγεθος) λέγεται εδώ, πριν φύγει τίποτα. */}
+        {error && <div style={{ marginTop: T.sp.md }}><InfoBanner tone="warning">{error}</InfoBanner></div>}
+        {/* ΤΟ AI ΛΕΓΟΤΑΝ ΜΟΝΟ ΑΦΟΥ ΕΙΧΕ ΦΥΓΕΙ ΤΟ ΕΓΓΡΑΦΟ. Το «Claude AI
+            αναγνωρίζει» εμφανιζόταν στη μέση της σάρωσης· πριν από το
+            ανέβασμα ο χρήστης δεν μάθαινε ότι ένα μισθωτήριο με ονόματα και
+            ΑΦΜ διαβάζεται από πάροχο AI. Η δέσμευση για την εκπαίδευση είναι
+            η ίδια που γράφει η Πολιτική απορρήτου. */}
+        <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.55, margin: '12px 0 0' }}>
+          Η ανάγνωση γίνεται με AI, σύμφωνα με την <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>πολιτική απορρήτου</a>· ο πάροχος AI δεσμεύεται με σύμβαση να μην εκπαιδεύει μοντέλα με τα έγγραφά σου.
+        </p>
+      </div>
+    );
+  }
 
-        {/* Δεξιά: αναγνώριση + επεξεργασία */}
-        {step === 'review' && edited && !scanning && (
-          <div>
-            {/* Τύπος εγγράφου, chips για διόρθωση */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Τύπος εγγράφου {edited.confidence ? `· ${edited.confidence}% βεβαιότητα` : ''}</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {DOC_TYPES.map(dt => {
-                  const active = edited.doc_type === dt.id;
-                  return (
-                    <ChipToggle key={dt.id} on={active} onClick={() => setEdited(p => p ? { ...p, doc_type: dt.id } : p)} title={dt.hint}>
-                      {dt.label}
-                    </ChipToggle>
-                  );
-                })}
+  // ── Βήμα 2: έλεγχος ─────────────────────────────────────────────────────────
+  const isPdf = file?.type === 'application/pdf';
+  const isImage = !!file?.type.startsWith('image/');
+  const fileName = file?.name || 'Έγγραφο';
+  const fileMeta = file ? `${sizeLabel(file.size)}${isPdf ? ' · PDF' : ''}` : '';
+
+  // ΕΝΑ ΜΗΝΥΜΑ, ΤΟ ΣΗΜΑΝΤΙΚΟΤΕΡΟ. Ηταν ως τρία πλαίσια στη σειρά, χειρόγραφα,
+  // με το «Χρειάζονται τα βασικά» να επαναλαμβάνει ό,τι λένε ήδη οι ετικέτες
+  // και η μπάρα. Τώρα: άκυρη τιμή, μετά σφάλμα ανάγνωσης, μετά «δεν είναι
+  // έγγραφο», μετά «δεν είναι σίγουρη για τον τύπο», μετά η οδηγία του είδους.
+  const banner: { tone: 'negative' | 'warning' | 'info'; body: ReactNode } | null = (() => {
+    if (invalid.length) {
+      const said = [...new Set(invalid.map(k => INVALID_SAY[k]).filter(Boolean))];
+      const many = said.length > 1;
+      return { tone: 'negative', body: `${said.join(' ')} ${many ? 'Διόρθωσέ τα ή άφησέ τα κενά· δεν θα αποθηκευτούν.' : 'Διόρθωσέ το ή άφησέ το κενό· δεν θα αποθηκευτεί.'}` };
+    }
+    if (error) {
+      const title = error === 'unreadable' ? 'Δεν διάβασα καθαρά το έγγραφο'
+        : error === 'quota' ? 'Οι σαρώσεις του μήνα τελείωσαν'
+        : error === 'key_missing' ? 'Η αυτόματη ανάγνωση δεν είναι ενεργή ακόμη'
+        : error === 'save' ? 'Κάτι πήγε στραβά στην αποθήκευση'
+        : 'Η υπηρεσία ανάγνωσης δεν είναι διαθέσιμη τώρα';
+      const tips = error === 'unreadable'
+        ? ['Τράβα τη φωτογραφία με καλό φως, ίσια, να χωράει όλο το έγγραφο', 'Αν έχεις PDF από τον πάροχο/φορέα, ανέβασέ το, διαβάζεται καλύτερα']
+        // Ρύθμιση «κλειδί AI» δεν υπάρχει στον λογαριασμό: την ανάγνωση την ενεργοποιούμε εμείς.
+        : error === 'key_missing' ? ['Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά', 'Η αυτόματη ανάγνωση ενεργοποιείται από εμάς· δεν χρειάζεται καμία ρύθμιση από εσένα']
+        : error === 'save' ? ['Δοκίμασε ξανά, τα στοιχεία σου διατηρούνται']
+        : error === 'quota' ? [errorText || SAY.scanQuotaSpent, 'Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά']
+        : ['Δοκίμασε ξανά σε λίγο', 'Συμπλήρωσε τα πεδία χειροκίνητα'];
+      return { tone: 'warning', body: <><strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{title}.</strong> {tips.map(sentence).join(' ')}</> };
+    }
+    if (!kind) return { tone: 'info', body: 'Δεν βρέθηκαν στοιχεία εγγράφου σε αυτή την εικόνα. Διάλεξε τύπο για να το καταχωρήσεις ή ανέβασε άλλο αρχείο.' };
+    if (!typeTouched && edited?.confidence != null && edited.confidence < TYPE_UNSURE_BELOW) {
+      return { tone: 'warning', body: 'Η σάρωση δεν είναι σίγουρη για τον τύπο. Έλεγξέ τον.' };
+    }
+    if (form?.info) return { tone: 'info', body: form.info };
+    return null;
+  })();
+
+  // Η σύνοψη της μπάρας: «Λογαριασμός · 84,50€ · Κυψέλη». Το ποσό ΜΟΝΟ όταν
+  // υπάρχει: η παλιά κάρτα έγραφε «Μισθωτήριο 0,00€» που δεν είπε κανείς.
+  const amountKey = kind?.amountKey;
+  const amountVal = amountKey && edited ? edited[amountKey] : undefined;
+  const amountText = typeof amountVal === 'number' && amountVal > 0
+    ? `${fe(amountVal)}${amountKey === 'monthly_rent' ? '/μήνα' : ''}` : '';
+  const shortName = kind ? `${kind.short}${kind.doc_type === 'tax' && edited?.tax_year ? ` ${edited.tax_year}` : ''}` : 'Διάλεξε τύπο';
+
+  const fileThumb = (
+    <a href={fileUrl || undefined} target="_blank" rel="noopener noreferrer" aria-label="Άνοιγμα εγγράφου"
+      // Μικρογραφία, όχι χειριστήριο: τετράγωνο 48 από την αναλογία, όχι από ύψος της κλίμακας πεδίων.
+      style={{ width: 48, aspectRatio: '1', flexShrink: 0, borderRadius: T.radius.inner, overflow: 'hidden', border: '1px solid var(--border-subtle)', background: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {isImage && fileUrl
+        ? <RuntimeImg src={fileUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        : <DocIcon size={22} />}
+    </a>
+  );
+
+  return (
+    <div style={{ fontFamily: T.font.sans, color: 'var(--text-primary)' }}>
+      <div className="scan-review" data-preview={isImage && fileUrl ? '' : undefined}>
+        {/* ── Αριστερά (≥821, μόνο εικόνα): το έγγραφο, όσο ψηλό χωράει ── */}
+        {isImage && fileUrl && (
+          <aside className="scan-preview" aria-label="Το έγγραφο">
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" aria-label="Άνοιγμα εγγράφου"
+              style={{ display: 'block', borderRadius: T.radius.card, overflow: 'hidden', border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
+              {/* Το ύψος του παραθύρου (92dvh) μείον κεφαλίδα, μπάρα και γέμισμα. */}
+              <RuntimeImg src={fileUrl} alt="" style={{ display: 'block', width: '100%', maxHeight: 'calc(92dvh - 190px)', objectFit: 'contain', objectPosition: 'top' }} />
+            </a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm, minWidth: 0 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="po-elide" style={{ ...TT.bodySm, ...ELIDE }}>{fileName}</div>
+                <div style={{ ...TT.caption }}>{fileMeta}</div>
               </div>
-              {typeMeta && (
-                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 8, lineHeight: 1.5 }}>
-                  Θα ενημερώσει: <strong style={{ color: 'var(--text-secondary)' }}>{typeMeta.targets.join(' · ')}</strong>
-                </div>
-              )}
-            </div>
-
-            {/* Τι δεν διάβασα και τι δεν βγάζει νόημα — ξεχωριστά και τα δύο ειλικρινά. */}
-            {/* ΤΑ ΔΥΟ ΠΛΑΙΣΙΑ ΣΤΟΙΧΙΖΟΝΤΑΙ ΜΑΖΙ, ΓΙΑΤΙ ΕΜΦΑΝΙΖΟΝΤΑΙ ΜΑΖΙ. Στο
-                παράθυρο `lg` (760) η δεξιά στήλη του πλέγματος βγαίνει 345 και
-                μετά το γέμισμα των 14 στο κείμενο μένουν 318. Το πρώτο μήνυμα
-                πιάνει τρεις γραμμές εκεί μέσα, το δεύτερο στη συνηθισμένη του
-                μορφή («Δεν διάβασα…») επίσης τρεις. Στοιβάζονται το ένα πάνω
-                στο άλλο: αν στοιχιζόταν μόνο το ένα, ο χρήστης θα έβλεπε δύο
-                γειτονικά πλαίσια με διαφορετική δεξιά άκρη — γι' αυτό παίρνουν
-                και τα δύο `po-just` + `hy()`, ακόμη κι όταν η σύντομη παραλλαγή
-                «Χρειάζονται τα βασικά» μένει στις δύο γραμμές. */}
-            {v.invalid.length > 0 && (
-              <div style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: T.radius.inner, padding: '10px 14px', marginBottom: 10 }}>
-                <div className="po-just" style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                  {hy(<>
-                  Διάβασα <strong>{v.invalid.map(label).join(', ')}</strong> αλλά δεν είναι έγκυρο{v.invalid.length > 1 ? 'α' : ''}
-                  {v.invalid.includes('provider_afm') || v.invalid.includes('afm') ? ' (το ΑΦΜ δεν περνά τον έλεγχο της ΑΑΔΕ)' : ''}. Διόρθωσέ το ή άφησέ το κενό: δεν το αποθηκεύω για σωστό.
-                  </>)}
-                </div>
+              <div style={{ marginRight: -GHOST_INSET }}>
+                <Btn variant="ghost" onClick={reset} disabled={busy}>Άλλο αρχείο</Btn>
               </div>
-            )}
-            {(v.blocking.length > 0 || v.recommended.length > 0) && (
-              <div style={{ background: v.blocking.length ? 'var(--warning-soft)' : 'var(--bg-elevated)', border: `1px solid ${v.blocking.length ? 'var(--warning-border)' : 'var(--border-subtle)'}`, borderRadius: T.radius.inner, padding: '10px 14px', marginBottom: 14 }}>
-                <div className="po-just" style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                  {hy(v.blocking.length
-                    ? <>Χρειάζονται τα βασικά: <strong>{v.blocking.map(label).join(', ')}</strong>. Συμπλήρωσέ τα για να αποθηκεύσω σωστά.</>
-                    : <>Δεν διάβασα: <strong>{v.recommended.map(label).join(', ')}</strong>. Μπορείς να αποθηκεύσεις έτσι, αλλά με αυτά ο έλεγχος «πληρώθηκε» γίνεται σίγουρος.</>)}
-                </div>
+            </div>
+          </aside>
+        )}
+
+        {/* ── Η φόρμα ── */}
+        <div ref={formRef} style={{ display: 'flex', flexDirection: 'column', gap: T.sp.lg, minWidth: 0 }}>
+          {/* Κινητό και PDF: μία γραμμή αρχείου αντί για εικόνα 425 εικονοστοιχείων. */}
+          <div className="scan-filebar">
+            {fileThumb}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="po-elide" style={{ ...TT.bodySm, ...ELIDE, color: 'var(--text-primary)' }}>{fileName}</div>
+              <div style={{ ...TT.caption }}>{fileMeta}</div>
+            </div>
+            <Btn variant="secondary" onClick={reset} disabled={busy}>Άλλο αρχείο</Btn>
+          </div>
+
+          {/* ΖΩΝΤΑΝΟ ΚΑΙ ΜΕ ΤΟ ΣΧΗΜΑ ΤΟΥ ΑΠΟΤΕΛΕΣΜΑΤΟΣ. Μια ακίνητη κουκκίδα με το
+              «Διαβάζω…» έμοιαζε παγωμένη και το παράθυρο πηδούσε από 515 σε 828
+              όταν ερχόταν η φόρμα. Ο παλμός (`live-dot`) και ο σκελετός σβήνουν
+              μόνοι τους με τη μειωμένη κίνηση, του συστήματος ή της εφαρμογής. */}
+          {scanning && (
+            <>
+              <div role="status" style={{ ...TT.bodySm, display: 'flex', alignItems: 'center', gap: T.sp.md, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '12px 16px' }}>
+                <span aria-hidden="true" className="live-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
+                Διαβάζω το έγγραφο…
               </div>
-            )}
-
-            {/* Πεδία ανά τύπο */}
-            <div style={{ ...formGrid(190, 257), gap: 10 }}>
-              {(edited.doc_type === 'bill' || edited.doc_type === 'payment') && (
-                <CustomSelect label="Κατηγορία" value={edited.category || 'other'}
-                  onChange={v => setEdited(p => p ? { ...p, category: v } : p)}
-                  options={Object.entries(CATEGORY_LABELS).map(([val, l]) => ({ value: val, label: l as string }))} />
-              )}
-              {TYPE_FIELDS[edited.doc_type].map(f => {
-                const k = String(f.key);
-                return (
-                  <Field key={k} label={f.label} type={f.type}
-                    value={(edited[f.key] as string | number) ?? ''}
-                    invalid={v.blocking.includes(k) || v.recommended.includes(k)
-                      || (k === 'period_to' && v.recommended.includes('period_from'))}
-                    bad={v.invalid.includes(k) || (k === 'period_to' && v.invalid.includes('period_from'))}
-                    // Ό,τι έγραφε το χαρτί για την περίοδο, ορατό δίπλα στις ημερομηνίες.
-                    hint={k === 'period_from' && edited.period ? `Στο χαρτί: ${edited.period}` : f.hint}
-                    onChange={val => setF(f.key, val)} />
-                );
-              })}
-            </div>
-
-            {/* Σημειώσεις + προσθήκη δικού σου πεδίου */}
-            <div style={{ marginTop: 12 }}>
-              <Field label="Σημειώσεις" value={edited.notes || ''} onChange={val => setEdited(p => p ? { ...p, notes: val } : p)} />
-            </div>
-
-            {(edited.custom || []).length > 0 && (
-              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {(edited.custom || []).map((c, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input aria-label="Όνομα πεδίου" value={c.label} placeholder="Πεδίο" onChange={e => setEdited(p => { if (!p) return p; const cs = [...(p.custom || [])]; cs[i] = { ...cs[i], label: e.target.value }; return { ...p, custom: cs }; })}
-                      style={{ flex: '0 0 38%', background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
-                    <input aria-label="Τιμή πεδίου" value={c.value} placeholder="Τιμή" onChange={e => setEdited(p => { if (!p) return p; const cs = [...(p.custom || [])]; cs[i] = { ...cs[i], value: e.target.value }; return { ...p, custom: cs }; })}
-                      style={{ flex: 1, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
-                    <IconBtn label="Αφαίρεση" title="Αφαίρεση" onClick={() => setEdited(p => p ? { ...p, custom: (p.custom || []).filter((_, j) => j !== i) } : p)}>×</IconBtn>
+              <div aria-hidden="true" style={{ display: 'flex', flexDirection: 'column', gap: T.sp.md }}>
+                {[96, 64, 120].map(w => (
+                  <div key={w}>
+                    <Skeleton w={w} h={10} r={T.radius.hair} style={{ marginBottom: 10 }} />
+                    <Skeleton h={T.h.lg} r={T.radius.inner} />
                   </div>
                 ))}
               </div>
-            )}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
-              <input aria-label="Όνομα νέου πεδίου" value={newField.label} placeholder="Νέο πεδίο (π.χ. Αριθμός πρωτοκόλλου)" onChange={e => setNewField(f => ({ ...f, label: e.target.value }))}
-                style={{ flex: '0 0 38%', background: 'var(--bg-base)', border: '1px dashed var(--border-default)', borderRadius: T.radius.xs, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
-              <input aria-label="Τιμή νέου πεδίου" value={newField.value} placeholder="Τιμή" onChange={e => setNewField(f => ({ ...f, value: e.target.value }))}
-                onKeyDown={e => { if (e.key === 'Enter' && newField.label.trim()) { setEdited(p => p ? { ...p, custom: [...(p.custom || []), { ...newField }] } : p); setNewField({ label: '', value: '' }); } }}
-                style={{ flex: 1, background: 'var(--bg-base)', border: '1px dashed var(--border-default)', borderRadius: T.radius.xs, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans }} />
-              <IconBtn label="Προσθήκη πεδίου" title="Προσθήκη πεδίου" tone="accent"
-                onClick={() => { if (newField.label.trim()) { setEdited(p => p ? { ...p, custom: [...(p.custom || []), { ...newField }] } : p); setNewField({ label: '', value: '' }); } }}>
-                <span style={{ fontSize: 18, lineHeight: 1 }}>+</span>
-              </IconBtn>
-            </div>
+            </>
+          )}
 
-            {/* Ερώτηση συμφωνίας. Εμφανίζεται ΠΡΙΝ γραφτεί οτιδήποτε: η μηχανή βρήκε
-                υποψηφίους αλλά δεν έχει αρκετή απόδειξη. Δίνουμε τους λόγους κάθε
-                υποψηφίου, ώστε η επιλογή του χρήστη να είναι τεκμηριωμένη. */}
-            {/* ══════════════════════════════════════════════════════════════
-                ΠΙΘΑΝΗ ΔΙΠΛΟΕΓΓΡΑΦΗ
-                ────────────────────────────────────────────────────────────
-                Χωρίς κόκκινο και χωρίς θαυμαστικό: δεν είναι σφάλμα του
-                χρήστη, είναι πληροφορία που δεν είχε τη στιγμή που σάρωσε.
-                Και χωρίς αυτόματη διαγραφή: δύο λογαριασμοί ρεύματος του
-                ίδιου ποσού την ίδια εβδομάδα ΥΠΑΡΧΟΥΝ (δύο ακίνητα, δύο
-                παροχές, μια δόση και μια εξόφληση).
-                ══════════════════════════════════════════════════════════════ */}
-            {duplicate && (
-              <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '14px 16px', marginTop: 16 }}>
-                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 6 }}>Μήπως το έχεις ήδη καταχωρήσει;</div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>{duplicate}</div>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  {/* size="lg" γιατί και τα δύο ήταν καρφωμένα στο T.h.lg. */}
-                  <Btn variant="primary" size="lg" onClick={() => save(undefined, true)} disabled={saving}>
-                    Καταχώρησέ το ούτως ή άλλως
-                  </Btn>
-                  <Btn variant="secondary" size="lg" onClick={() => { setDuplicate(''); setStep('upload'); }}>
-                    Άκυρο
-                  </Btn>
-                </div>
+          {edited && !scanning && (
+            <>
+              {/* ── Α. Τι είναι και πού μπαίνει ── */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.md }}>
+                {(properties?.length ?? 0) > 1 && (
+                  <CustomSelect label="Ακίνητο" value={targetId}
+                    onChange={id => {
+                      setTargetId(id);
+                      // ΟΙ ΕΡΩΤΗΣΕΙΣ ΑΦΟΡΟΥΣΑΝ ΤΟ ΑΛΛΟ ΑΚΙΝΗΤΟ. Η ερώτηση συμφωνίας
+                      // έδειχνε λογαριασμούς του Α και η απάντηση θα εξοφλούσε
+                      // λογαριασμό του Α με δαπάνη στο Β· το «ούτως ή άλλως» θα
+                      // παρέκαμπτε τον έλεγχο διπλοεγγραφής του Β, που δεν έγινε
+                      // ποτέ. Ο νέος έλεγχος γίνεται στο επόμενο «Καταχώρηση».
+                      setAsk(null); setDuplicate('');
+                      // Αλλο ακίνητο, άλλη γραμμή στο Ε9 ή στον ΕΝΦΙΑ με πολλά ακίνητα.
+                      setEdited(p => (p && (p.lines?.length ?? 0) > 1 ? withPropertyLine({ ...p, line: undefined }, atakOf(id)) : p));
+                    }}
+                    options={(properties || []).map(p => ({ value: p.id, label: p.name, ...(p.address ? { description: p.address } : {}) }))} />
+                )}
+                {/* ΤΥΠΟΣ ΚΑΙ ΦΑΚΕΛΟΣ, ΔΥΟ ΕΠΙΛΟΓΕΙΣ ΠΟΥ ΦΑΙΝΟΝΤΑΙ ΠΑΝΤΑ. Ο ιδιοκτήτης
+                    ζήτησε τον φάκελο ως επιλογέα (13/10/2026). Μια γραμμή «Φάκελος:
+                    … · Αλλαγή» τον έκρυβε πίσω από ένα πάτημα. Το ράφι ξεκινά από τον
+                    τύπο ή από την Κατηγορία του λογαριασμού και αλλάζει με μία
+                    επιλογή. Δίπλα στον Τύπο όπου η φόρμα είναι μία φαρδιά στήλη·
+                    δίπλα στην εικόνα και κάτω από τα 700 ο καθένας κρατά όλο το
+                    πλάτος, γιατί εκεί το ζεύγος έκοβε το «Εκκαθαριστικό φόρου
+                    εισοδήματος» (`.scan-head`). */}
+                {(() => {
+                  const typeField = (
+                    <div data-scan-field="kind" style={{ minWidth: 0 }}>
+                      <CustomSelect label="Τύπος εγγράφου" value={kind?.value ?? ''} placeholder="Διάλεξε τύπο"
+                        labelInfo={v.blocking.includes('kind') ? <>{' '}<FlagWord flag="missing" /></> : undefined}
+                        onChange={val => {
+                          setTypeTouched(true); setArchiveCat(null);
+                          setEdited(p => (p ? withPropertyLine(applyKind(p, val), propertyAtak) : p));
+                        }}
+                        options={KIND_OPTIONS} />
+                    </div>
+                  );
+                  if (!kind) return typeField;
+                  return (
+                    <div {...fixedCols(2, 12, 'end', 'scan-head')}>
+                      {typeField}
+                      <div style={{ minWidth: 0 }}>
+                        {/* Ο φάκελος στην ετικέτα, το ράφι στο κουμπί: η διαδρομή
+                            ολόκληρη κοβόταν στο τηλέφωνο («Συμβόλαια › Μισθωτήριο ή σ…»). */}
+                        <CustomSelect label="Φάκελος" value={folder} onChange={setArchiveCat} options={archiveOptions()}
+                          labelInfo={folder ? <span style={{ color: 'var(--text-tertiary)' }}>{' · '}{folderOf(folder)}</span> : undefined} />
+                      </div>
+                    </div>
+                  );
+                })()}
+                {targets.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.xs, marginTop: -T.sp.xs }}>
+                    {/* Από το ΙΔΙΟ σχέδιο που θα εκτελεστεί, όχι από στατική λίστα
+                        ανά τύπο. Κάθε προορισμός σε ένα κομμάτι που δεν σπάει και
+                        η τελεία κολλά στον προηγούμενο: στα 320 έπεφτε στην αρχή
+                        της γραμμής και το «(μόνο κενά)» τυλιγόταν μόνο του. */}
+                    {targets.length > 0 && (
+                      <div aria-live="polite" style={{ ...TT.caption }}>
+                        Θα ενημερωθούν:{' '}
+                        <span style={{ color: 'var(--text-secondary)' }}>
+                          {targets.map((t, i) => (
+                            <Fragment key={t}>{i > 0 && '\u00a0· '}<span style={{ whiteSpace: 'nowrap' }}>{t}</span></Fragment>
+                          ))}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+                {/* Το InfoBanner φέρνει δικό του κάτω περιθώριο· σε στήλη με κενά θα
+                    το διπλασίαζε πάνω από τη διαχωριστική γραμμή. */}
+                {banner && <div style={{ marginBottom: -10 }}><InfoBanner tone={banner.tone}>{banner.body}</InfoBanner></div>}
               </div>
-            )}
 
-            {ask && (
-              <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--accent-border)', borderRadius: T.radius.card, padding: '14px 16px', marginTop: 16 }}>
-                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>{ask.question}</div>
-                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>
-                  Δεν διαλέγω μόνος μου: αν εξοφλήσω τον λάθος, θα δεις πληρωμένο κάτι που χρωστάς.
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {ask.options.map(o => (
-                    <button key={o.id} onClick={() => save(o.id)} disabled={saving}
-                      style={{ textAlign: 'left', background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: '10px 14px', cursor: saving ? 'default' : 'pointer', fontFamily: T.font.sans }}>
-                      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>{o.label}</div>
-                      {o.reasons.length > 0 && (
-                        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.45 }}>{o.reasons.join(' · ')}</div>
-                      )}
-                    </button>
+              {/* ── Β. Τα πεδία του τύπου ── */}
+              {form && (
+                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: T.sp.lg, display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
+                  {/* ΡΥΘΜΟΣ ΟΜΑΔΩΝ: 24 πάνω από τον υπότιτλο, 12 από κάτω. Με 16 και 12
+                      το «ΧΡΕΩΣΗ» αιωρούνταν ανάμεσα σε σειρές αντί να ανοίγει ενότητα. */}
+                  {form.groups.map((g, gi) => (
+                    <div key={gi} style={{ display: 'flex', flexDirection: 'column', gap: T.sp.md, ...(gi > 0 && g.title ? { marginTop: T.sp.xxl - T.sp.lg } : {}) }}>
+                      {g.title && <h3 style={{ ...TT.label, margin: 0 }}>{g.title}</h3>}
+                      {g.rows.map((row, ri) => {
+                        const cells = row.map(f => {
+                          const k = String(f.key);
+                          // Ο επιλογέας γραμμής Ε9/ΕΝΦΙΑ έχει και «κανένα»: το ακίνητο μπορεί να μην είναι στη λίστα.
+                          const options = f.options === 'line' ? [...fieldOptions(f, edited, today), LINE_NONE] : undefined;
+                          return (
+                            <div key={k} data-scan-field={k} style={{ minWidth: 0 }}>
+                              <ScanField f={f} doc={edited} today={today} flag={flagOf(k)} options={options}
+                                hint={f.hint} onChange={val => setF(f, val)} />
+                            </div>
+                          );
+                        });
+                        // Δύο στήλες στο τηλέφωνο ΜΟΝΟ για σύντομες τιμές (documents.ts,
+                        // `compactRow`): ποσό, αριθμός παροχής ή συμβολαίου κόβονταν.
+                        const line = row.length > 1
+                          ? <div {...fixedCols(row.length, 12, 'end', compactRow(row) ? 'fc-xs-2 fc-xxs-1' : '')}>{cells}</div>
+                          : cells[0];
+                        // Ό,τι έγραφε το χαρτί για την περίοδο, κάτω από το ζεύγος των ημερομηνιών.
+                        const paper = edited.period && row.some(f => f.key === 'period_from');
+                        return paper ? (
+                          <div key={ri} style={{ display: 'flex', flexDirection: 'column', gap: T.sp.xs }}>
+                            {line}
+                            <div style={{ ...TT.caption }}>Στο χαρτί: {edited.period}</div>
+                          </div>
+                        ) : <Fragment key={ri}>{line}</Fragment>;
+                      })}
+                    </div>
                   ))}
-                  <button onClick={() => save(null)} disabled={saving}
-                    style={{ textAlign: 'left', background: 'transparent', border: '1px dashed var(--border-default)', borderRadius: T.radius.inner, padding: '10px 14px', cursor: saving ? 'default' : 'pointer', fontFamily: T.font.sans }}>
-                    <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)' }}>{RECONCILE_NONE_LABEL}</div>
-                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>{RECONCILE_NONE_HINT}</div>
-                  </button>
-                </div>
-              </div>
-            )}
+                  {form.note && <div style={{ ...TT.caption, marginTop: -T.sp.sm }}>{form.note}</div>}
 
-            {/* Αποθήκευση */}
-            <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: '14px 16px', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, gap: 12 }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{typeMeta?.label}</div>
-                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-                  {edited.amount ? fe(edited.amount) : edited.monthly_rent ? `${fe(edited.monthly_rent)}/μήνα` : edited.premium ? fe(edited.premium) : fe(0)}
+                  {/* ── Γ. Σημειώσεις ── */}
+                  <Textarea label="Σημειώσεις" autoGrow rows={2} placeholder="Ό,τι άλλο γράφει το έγγραφο"
+                    value={edited.notes || ''} onChange={val => setEdited(p => (p ? { ...p, notes: val } : p))} />
+
+                  {/* ── Δ. Δικά σου πεδία: γράφονται στη σημείωση του Φακέλου ως «Όνομα: Τιμή» ── */}
+                  {customCount > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.md }}>
+                      {(edited.custom || []).map((c, i) => (
+                        <div key={i} className="scan-custom">
+                          <div style={{ gridArea: 'name', minWidth: 0 }}>
+                            <TextInput id={`${uid}-cf-${i}`} ariaLabel="Όνομα πεδίου" placeholder="π.χ. Αρ. πρωτοκόλλου" value={c.label}
+                              onChange={val => setEdited(p => { if (!p) return p; const cs = [...(p.custom || [])]; cs[i] = { ...cs[i], label: val }; return { ...p, custom: cs }; })} />
+                          </div>
+                          <div style={{ gridArea: 'value', minWidth: 0 }}>
+                            <TextInput ariaLabel="Τιμή" value={c.value}
+                              onChange={val => setEdited(p => { if (!p) return p; const cs = [...(p.custom || [])]; cs[i] = { ...cs[i], value: val }; return { ...p, custom: cs }; })} />
+                          </div>
+                          <IconBtn label="Αφαίρεση πεδίου" title="Αφαίρεση πεδίου" style={{ gridArea: 'rm' }}
+                            onClick={() => setEdited(p => (p ? { ...p, custom: (p.custom || []).filter((_, j) => j !== i) } : p))}>
+                            <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                          </IconBtn>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ marginTop: -T.sp.sm, marginLeft: -GHOST_INSET, alignSelf: 'flex-start' }}>
+                    <Btn variant="ghost" onClick={() => {
+                      focusCustom.current = customCount;
+                      setEdited(p => (p ? { ...p, custom: [...(p.custom || []), { label: '', value: '' }] } : p));
+                    }}>
+                      <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                      Πρόσθεσε πεδίο
+                    </Btn>
+                  </div>
                 </div>
-              </div>
-              {/* Η σβηστή όψη έρχεται από το disabled του .po-btn, δεν γράφεται πια με χρώματα. */}
-              <Btn variant="primary" onClick={() => save()} disabled={saving || !canSave || !!ask}>
-                {saving ? 'Αποθήκευση…' : ask ? 'Διάλεξε παραπάνω' : !canSave ? 'Συμπλήρωσε τα βασικά' : 'Καταχώρηση'}
-              </Btn>
-            </div>
-          </div>
-        )}
+              )}
+
+              {/* ── Ε. Ερωτήσεις πριν από την εγγραφή ── */}
+              {/* Ερώτηση συμφωνίας. Εμφανίζεται ΠΡΙΝ γραφτεί οτιδήποτε: η μηχανή βρήκε
+                  υποψηφίους αλλά δεν έχει αρκετή απόδειξη. Δίνουμε τους λόγους κάθε
+                  υποψηφίου, ώστε η επιλογή του χρήστη να είναι τεκμηριωμένη. */}
+              {/* ══════════════════════════════════════════════════════════════
+                  ΠΙΘΑΝΗ ΔΙΠΛΟΕΓΓΡΑΦΗ
+                  ────────────────────────────────────────────────────────────
+                  Χωρίς κόκκινο και χωρίς θαυμαστικό: δεν είναι σφάλμα του
+                  χρήστη, είναι πληροφορία που δεν είχε τη στιγμή που σάρωσε.
+                  Και χωρίς αυτόματη διαγραφή: δύο λογαριασμοί ρεύματος του
+                  ίδιου ποσού την ίδια εβδομάδα ΥΠΑΡΧΟΥΝ (δύο ακίνητα, δύο
+                  παροχές, μια δόση και μια εξόφληση).
+                  ══════════════════════════════════════════════════════════════ */}
+              {pending && (
+                <div ref={cardRef} style={{ scrollMarginBottom: 120 }}>
+                  {duplicate && (
+                    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '14px 16px' }}>
+                      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 6 }}>Μήπως το έχεις ήδη καταχωρήσει;</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>{duplicate}</div>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        {/* size="lg" γιατί και τα δύο ήταν καρφωμένα στο T.h.lg. */}
+                        <Btn variant="primary" size="lg" onClick={() => save(undefined, true)} disabled={saving}>
+                          Καταχώρησέ το ούτως ή άλλως
+                        </Btn>
+                        <Btn variant="secondary" size="lg" onClick={() => { setDuplicate(''); setStep('upload'); }}>
+                          Άκυρο
+                        </Btn>
+                      </div>
+                    </div>
+                  )}
+
+                  {ask && (
+                    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--accent-border)', borderRadius: T.radius.card, padding: '14px 16px' }}>
+                      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>{ask.question}</div>
+                      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>
+                        Δεν επιλέγεται αυτόματα: αν εξοφληθεί ο λάθος, θα δεις πληρωμένο κάτι που χρωστάς.
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {ask.options.map(o => (
+                          <button key={o.id} onClick={() => save(o.id)} disabled={saving}
+                            style={{ textAlign: 'left', background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: '10px 14px', cursor: saving ? 'default' : 'pointer', fontFamily: T.font.sans }}>
+                            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>{o.label}</div>
+                            {o.reasons.length > 0 && (
+                              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.45 }}>{o.reasons.join(' · ')}</div>
+                            )}
+                          </button>
+                        ))}
+                        <button onClick={() => save(null)} disabled={saving}
+                          style={{ textAlign: 'left', background: 'transparent', border: '1px dashed var(--border-default)', borderRadius: T.radius.inner, padding: '10px 14px', cursor: saving ? 'default' : 'pointer', fontFamily: T.font.sans }}>
+                          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)' }}>{RECONCILE_NONE_LABEL}</div>
+                          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>{RECONCILE_NONE_HINT}</div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
+
+      {/* ══ ΣΤ. Η ΜΠΑΡΑ ΕΝΕΡΓΕΙΩΝ, ΠΑΝΤΑ ΟΡΑΤΗ ═══════════════════════════════════
+          Ιδια γεωμετρία με το υποσέλιδο του Modal (γέμισμα 14/24, γραμμή από
+          πάνω, φόντο επιφάνειας): κολλά στο κάτω άκρο του παραθύρου όσο κυλά η
+          φόρμα. Η παλιά κάτω κάρτα ήταν στο τέλος της κύλισης και έγραφε
+          «Μισθωτήριο 0,00€» για ποσό που δεν είπε κανείς. */}
+      {edited && !scanning && (
+        <div className="scan-bar" data-reason={reason ? '' : undefined}>
+          <div className="scan-bar-text" style={{ flex: '1 1 240px', minWidth: 0 }}>
+            <div className="po-elide scan-bar-sum" style={{ ...TT.bodySm, ...ELIDE }}>
+              {shortName}
+              {amountText && <> · <span style={{ ...TT.figure, fontWeight: 600 }}>{amountText}</span></>}
+              {targetName && ` · ${targetName}`}
+            </div>
+            {reason && <div id={reasonId} style={{ ...TT.caption, color: 'var(--warning)' }}>{reason}</div>}
+          </div>
+          <div className="scan-bar-act">
+            {/* ΔΕΥΤΕΡΕΥΟΝ ΟΣΟ ΛΕΙΠΕΙ ΚΑΤΙ, ΚΥΡΙΟ ΟΤΑΝ ΕΙΝΑΙ ΕΤΟΙΜΟ. Η σβηστή όψη
+                (`dimmed`, διαφάνεια 0,5) έδινε λευκό σε ανοιχτό μπλε, περίπου 2,4:1,
+                σε κουμπί που ΔΕΝ είναι ανενεργό: μένει στη σειρά του Tab, λέει
+                γιατί (`describedBy`) και το πάτημα πηγαίνει στο πρώτο πεδίο που
+                λείπει. Το δευτερεύον έχει πλήρη αντίθεση και λέει «όχι ακόμη». */}
+            <Btn variant={canSave ? 'primary' : 'secondary'} onClick={submit} disabled={saving}
+              describedBy={reason ? reasonId : undefined}>
+              {saving ? 'Καταχώρηση…' : 'Καταχώρηση'}
+            </Btn>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
