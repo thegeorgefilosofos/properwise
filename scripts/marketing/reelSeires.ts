@@ -941,7 +941,7 @@ function foroiReel(): Reel {
     },
     calcScene(3, 'Πόσος είναι', 'ο δικός σου;', path, 'Υπολογισμός ΕΝΦΙΑ', [
       ['Τετραγωνικά', `${fn(E.sqm)} τ.μ.`], ['Τιμή ζώνης', `${feWhole(E.price)}/τ.μ.`],
-      ['Όροφος', E.floorLabel], ['Παλαιότητα', E.ageLabel],
+      ['Όροφος', E.floorShort], ['Παλαιότητα', E.ageLabel],
     ], { label: 'ΕΝΦΙΑ τον χρόνο', to: E.r.annual, fmt: fe, dec: 2 }),
     sumScene(3, `ΕΝΦΙΑ ${F.year}`, [
       ['Η επόμενη δόση', `${F.dd}/${F.mm}`, `${weekday}, η ${F.next + 1}η από τις ${F.run.length}`],
