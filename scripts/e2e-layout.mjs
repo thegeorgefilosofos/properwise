@@ -278,6 +278,16 @@ const PROBE = () => {
     if (/^(checkbox|radio|file|range|color|hidden|submit|button|image)$/.test(el.type || '')) continue
     const v = el.value
     if (!v || !el.checkVisibility?.()) continue
+    // ── ΚΑΙ Η ΤΙΜΗ ΤΟΥ `textarea` ΤΥΛΙΓΕΤΑΙ, ΟΠΩΣ ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΤΟΥ ──────────
+    // Οταν η σάρωση εγγράφου απέκτησε σκηνή για το βήμα ελέγχου, ο έλεγχος
+    // έβγαλε δεκαέξι ευρήματα «452 σε 208» για τις Σημειώσεις. Το πεδίο όμως
+    // ψηλώνει με το κείμενό του: επαληθεύτηκε με στιγμιότυπο στα 320, τρεις
+    // γραμμές ολόκληρες μέσα στο κουτί. Το πλάτος μιας γραμμής δεν λέει τίποτα
+    // εκεί· κομμένη είναι η τιμή που θέλει ΠΕΡΙΣΣΟΤΕΡΟ ΥΨΟΣ από όσο δείχνει.
+    if (el.tagName === 'TEXTAREA') {
+      if (el.scrollHeight > el.clientHeight + 1) add('ΚΟΜΜΕΝΗ ΤΙΜΗ ΠΕΔΙΟΥ', v, `${el.scrollHeight} ύψος σε ${el.clientHeight} · ${who(el)}`)
+      continue
+    }
     const cs = getComputedStyle(el)
     cv.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
     const room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)

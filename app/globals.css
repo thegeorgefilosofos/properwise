@@ -1260,6 +1260,118 @@ body {
 @media (min-width: 880px) {
   .scan-tiles[data-tiles="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+/* ΚΑΙ ΟΙ ΤΙΜΕΣ ΤΩΝ ΕΠΙΛΟΓΕΩΝ ΠΟΥ ΔΕΝ ΕΙΝΑΙ <input>. Στην αφή κάθε <input>
+   γράφει 16 (κανόνας του Safari, πιο κάτω), ενώ ο επιλογέας λίστας και ο
+   επιλογέας ημερομηνίας γράφουν την τιμή τους σε <span> των 14: στο ίδιο ζεύγος
+   το ΑΦΜ φαινόταν 16 και η ημερομηνία δίπλα του 14, στην ίδια στήλη ο πάροχος
+   16 και η κατηγορία 14. Ιδια συνθήκη δείκτη, ίδιο μέγεθος.
+   ΟΧΙ ΚΑΤΩ ΑΠΟ ΤΑ 341: εκεί κάθε σειρά πεδίων είναι μία στήλη (`fc-xxs-1`),
+   οπότε δεν υπάρχει ζεύγος να διαφωνεί. Και στα 16 το «Λογαριασμός ή
+   τιμολόγιο» (201) δεν χωρούσε στο κουτί των 180 του Τύπου. */
+@media (pointer: coarse) and (min-width: 341px) {
+  .po-field-value { font-size: 16px !important; }
+}
+
+/* ΤΟ PLACEHOLDER ΕΧΕΙ ΤΟ ΧΡΩΜΑ ΤΟΥ ΘΕΜΑΤΟΣ, ΟΧΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ. Τα <input> και
+   <textarea> έδειχναν το προεπιλεγμένο rgb(117,117,117) και στα δύο θέματα,
+   ενώ ο επιλογέας λίστας και ο επιλογέας ημερομηνίας γράφουν το κενό τους σε
+   `--text-tertiary`: το «Ό,τι άλλο γράφει το έγγραφο» ήταν σκουρότερο από το
+   «Επιλογή…» λίγα εικονοστοιχεία πιο πάνω. Το `opacity: 1` γιατί ο Firefox
+   σβήνει το placeholder με διαφάνεια από πάνω. */
+input::placeholder, textarea::placeholder { color: var(--text-tertiary); opacity: 1; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ΤΟ ΒΗΜΑ ΕΛΕΓΧΟΥ ΤΗΣ ΣΑΡΩΣΗΣ: ΕΙΚΟΝΑ ΑΡΙΣΤΕΡΑ, ΦΟΡΜΑ ΔΕΞΙΑ
+
+   Ηταν `auto-fit` με ελάχιστο 300 μέσα στο παράθυρο των 760: δύο ίσες στήλες
+   των 345, με την αριστερή να κρατά μόνο την εικόνα (110 από 920 ύψος στην
+   περίπτωση του ιδιοκτήτη) και τη φόρμα στριμωγμένη σε μία στήλη δεξιά.
+
+   Τώρα οι στήλες είναι ΔΗΛΩΜΕΝΕΣ: 260 για την εικόνα, ό,τι μένει για τη φόρμα
+   (περίπου 430, δηλαδή ζεύγη πεδίων των 209). Κανένα `auto-fit` και κάθε κελί
+   `minmax(0, 1fr)`, οπότε τίποτα δεν σπρώχνει το πλάτος.
+
+   ΣΕ PDF ΚΑΙ ΣΕ ΚΙΝΗΤΟ ΜΙΑ ΣΤΗΛΗ. Το PDF δεν έχει προεπισκόπηση να δείξει και
+   στο κινητό η μεγάλη εικόνα έπιανε 425 εικονοστοιχεία πριν από το πρώτο πεδίο:
+   εκεί μπαίνει η γραμμή αρχείου, μικρογραφία 48 με όνομα και μέγεθος.
+   ══════════════════════════════════════════════════════════════════════════ */
+.scan-review { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.scan-preview { display: none; }
+.scan-filebar { display: flex; align-items: center; gap: 12px; min-width: 0; }
+@media (min-width: 821px) {
+  .scan-review[data-preview] { grid-template-columns: 260px minmax(0, 1fr); }
+  .scan-review[data-preview] > .scan-preview {
+    display: flex; flex-direction: column; gap: 8px; min-width: 0;
+    position: sticky; top: 0; align-self: start;
+  }
+  .scan-review[data-preview] .scan-filebar { display: none; }
+}
+/* ΔΙΚΟ ΣΟΥ ΠΕΔΙΟ: όνομα, τιμή και «×» σε μία σειρά. Στο τηλέφωνο η σειρά των
+   τριών άφηνε στο όνομα κουτί 84 εικονοστοιχείων και το «Αρ. πρωτοκόλλου»
+   φαινόταν «Αρ. πρωτ»: εκεί το όνομα κρατά τη σειρά του με το «×» και η τιμή
+   πιάνει όλο το πλάτος από κάτω. */
+.scan-custom {
+  display: grid; gap: 12px; align-items: center;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
+  grid-template-areas: "name value rm";
+}
+@media (max-width: 480px) {
+  .scan-custom { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name rm" "value value"; }
+}
+/* ΤΟ ΠΕΔΙΟ ΣΗΜΕΙΩΣΕΩΝ ΨΗΛΩΝΕΙ ΜΕ ΤΟ ΚΕΙΜΕΝΟ ΤΟΥ (Textarea `autoGrow`), ως 200
+   και μετά κυλά. Οπου ο περιηγητής δεν ξέρει το `field-sizing`, μένει το ύψος
+   των `rows` με λαβή αλλαγής ύψους· όπου το ξέρει, η λαβή περισσεύει. */
+.po-autogrow { field-sizing: content; max-height: 200px; overflow-y: auto; resize: vertical; }
+@supports (field-sizing: content) { .po-autogrow { resize: none; } }
+/* Η ΜΠΑΡΑ ΕΝΕΡΓΕΙΩΝ ΚΟΛΛΑ ΣΤΟ ΚΑΤΩ ΑΚΡΟ ΤΟΥ ΠΑΡΑΘΥΡΟΥ, με τη γεωμετρία του
+   υποσέλιδου του Modal: γέμισμα 14, γραμμή από πάνω, φόντο επιφάνειας ως τις
+   δύο άκρες. Το `bottom` και το κάτω περιθώριο τρώνε το γέμισμα 24 του σώματος.
+   Το φόντο και η γραμμή απλώνονται στις άκρες με ψευδοστοιχείο: το ίδιο το
+   κουτί μένει μέσα στη στήλη, οπότε ο έλεγχος υπερχείλισης δεν βλέπει τίποτα να
+   ξεπερνά το περιεχόμενο. */
+.scan-bar {
+  position: sticky; bottom: -24px; z-index: 1;
+  margin: 20px 0 -24px; padding: 14px 0;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: var(--bg-surface);
+}
+.scan-bar::before {
+  content: ''; position: absolute; inset: 0 -24px; z-index: -1;
+  background: var(--bg-surface); border-top: 1px solid var(--border-subtle);
+}
+.scan-bar-act { margin-left: auto; }
+/* ΣΤΟ ΤΗΛΕΦΩΝΟ Η ΜΠΑΡΑ ΕΙΝΑΙ ΜΙΑ ΣΕΙΡΑ. Η σύνοψη και το κουμπί πλήρους πλάτους
+   έμπαιναν το ένα κάτω από το άλλο: 105 ως 119 εικονοστοιχεία, δηλαδή το 15%
+   του σώματος των 705, για μια σύνοψη που επαναλάμβανε τον Τύπο και το Ακίνητο
+   από πάνω και ήταν κομμένη. Εδώ η σύνοψη φεύγει· ο λόγος, όταν υπάρχει,
+   κάθεται αριστερά και το κουμπί δεξιά στο πλάτος του. Χωρίς λόγο το κουμπί
+   πιάνει τη σειρά: η καταχώρηση είναι έτοιμη και είναι η μόνη ενέργεια. */
+@media (max-width: 480px) {
+  .scan-bar { flex-wrap: nowrap; }
+  .scan-bar-sum { display: none; }
+  .scan-bar:not([data-reason]) .scan-bar-text { display: none; }
+  .scan-bar:not([data-reason]) .scan-bar-act { flex: 1 1 auto; margin-left: 0; }
+  .scan-bar:not([data-reason]) .scan-bar-act > button { width: 100%; }
+}
+/* ΤΟ ΠΕΔΙΟ ΜΕ ΤΗΝ ΕΣΤΙΑΣΗ ΔΕΝ ΚΡΥΒΕΤΑΙ ΠΙΣΩ ΑΠΟ ΤΗ ΜΠΑΡΑ. Με Tab η εστίαση
+   έπεφτε σε πεδία που η κολλημένη μπάρα σκέπαζε ολόκληρα («Ποσό» στα 1280,
+   «Κατανάλωση» στα 390) και ο χρήστης πληκτρολογίου έγραφε σε πεδίο που δεν
+   έβλεπε (WCAG 2.2, 2.4.11). Το ορατό κομμάτι του σώματος του παραθύρου
+   τελειώνει πάνω από τη μπάρα (64, 72 στην αφή) με 24 περιθώριο.
+   ΣΤΟ ΣΩΜΑ ΠΟΥ ΚΥΛΑ, ΟΧΙ ΣΤΑ ΠΕΔΙΑ. Δοκιμάστηκε και μετρήθηκε: με
+   `scroll-margin` στα πεδία ο Chromium δεν κυλούσε καθόλου, γιατί το πεδίο ήταν
+   ήδη μέσα στο σώμα, απλώς κάτω από τη μπάρα· το `scroll-padding` στενεύει το
+   ίδιο το «ορατό» και η εστίαση κυλά όσο χρειάζεται. */
+div:has(> div > .scan-review) { scroll-padding-bottom: 88px; }
+@media (pointer: coarse), (max-width: 480px) { div:has(> div > .scan-review) { scroll-padding-bottom: 96px; } }
+/* ΤΥΠΟΣ ΚΑΙ ΦΑΚΕΛΟΣ: ΖΕΥΓΟΣ ΜΟΝΟ ΟΠΟΥ Η ΦΟΡΜΑ ΕΙΝΑΙ ΜΙΑ ΦΑΡΔΙΑ ΣΤΗΛΗ. Σε PDF
+   και στα 820 τα δύο πεδία είχαν 710 πλάτος το καθένα για τιμή «Ε2». Δίπλα
+   στην εικόνα (≥821) η στήλη της φόρμας είναι 430 και το ζεύγος έκοβε το
+   «Λογαριασμός ή τιμολόγιο»· κάτω από τα 700 το «Εκκαθαριστικό φόρου
+   εισοδήματος» (242) δεν χωρά σε στήλη των 253. Εκεί μένει μία στήλη. */
+@media (max-width: 699px) { .fixed-cols.scan-head { grid-template-columns: minmax(0, 1fr); } }
+@media (min-width: 821px) { .scan-review[data-preview] .fixed-cols.scan-head { grid-template-columns: minmax(0, 1fr); } }
 .record-card-act { opacity: 0; transition: opacity .15s ease; }
 /* Οι ενέργειες του γεγονότος στο Ημερολόγιο, με τον ίδιο κανόνα: αιώρηση,
    εστίαση πληκτρολογίου μέσα στη γραμμή, ανοιχτό μενού, πάντα ορατές στην αφή. */

@@ -30,9 +30,12 @@ import * as calendar from '@/lib/data/calendar';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
 import {
-  classifyDocType, planDocSave, normalizeScannedDoc, archiveCategoryFor,
-  type ScannedDoc, type ArchivePlan,
+  classifyDocType, planDocSave, normalizeScannedDoc, archiveCategoryFor, isDocumentary,
+  SCAN_NUM_KEYS, SCAN_MAX_LINES, PROPERTY_TARGET,
+  type ScannedDoc, type ArchivePlan, type DocLine,
 } from '@/lib/billing/documents';
+import { SYSTEM_PROMPT, PHOTO_CATEGORIES, PHOTO_AI_CATEGORIES } from '@/lib/billing/scanPrompt';
+import { atakDigits } from '@/lib/property/atak';
 import { fillOnlyEmpty, stripEmpty } from '@/lib/core/prefill';
 import { athensToday } from '@/lib/core/time';
 import { saved, savedData } from '@/components/dbWrite';
@@ -48,71 +51,16 @@ import {
 import { MSG } from '@/lib/core/dbError';
 
 // ── Το prompt αναγνώρισης (ΕΝΑ, κοινό) ─────────────────────────────────────
-// Ζητά ΡΗΤΑ τα πέντε πεδία ταιριάσματος: πάροχο, ΑΦΜ παρόχου, ποσό, ημερομηνία
-// έκδοσης και περίοδο δαπάνης ΑΠΟ–ΕΩΣ ως δύο ημερομηνίες (όχι κείμενο).
-export const SYSTEM_PROMPT = `Είσαι ο κορυφαίος βοηθός διαχείρισης ακινήτων στον κόσμο. Ο χρήστης ανεβάζει ΟΠΟΙΟΔΗΠΟΤΕ έγγραφο σχετικό με το ακίνητό του. Αναγνώρισε ΤΙ ΕΙΝΑΙ και εξήγαγε τα σωστά στοιχεία. Επέστρεψε ΜΟΝΟ valid JSON, χωρίς markdown:
-{
-  "doc_type": "bill|payment|lease|deed|insurance|tax|government|other",
-  "title": "σύντομος περιγραφικός τίτλος",
-  "provider": "πάροχος/αντισυμβαλλόμενος/ασφαλιστική/φορέας/συμβολαιογράφος",
-  "provider_afm": "ΑΦΜ του ΕΚΔΟΤΗ του παραστατικού, 9 ψηφία χωρίς κενά, ή null",
-  "provider_vat": "αριθμός ΦΠΑ του ΕΚΔΟΤΗ με το πρόθεμα κράτους μέλους όπως τυπώνεται (IE6388047V, NL857927374B01, EL094014201), ή null",
-  "provider_country": "κωδικός χώρας ΕΔΡΑΣ του εκδότη, δύο κεφαλαία γράμματα ISO (GR, IE, NL, US), ή null",
-  "customer_afm": "ΑΦΜ του ΛΗΠΤΗ/πελάτη, δηλαδή του χρήστη, 9 ψηφία ή null",
-  "plan_name": "όνομα προγράμματος/πακέτου όπως γράφεται (Premium 4K, Full Fiber 300, Pro), ή null",
-  "billing_period": "κάθε πότε επαναλαμβάνεται η χρέωση: monthly, bimonthly, quarterly, semiannual, yearly, once, ή null",
-  "net_amount": καθαρή αξία προ ΦΠΑ σε ευρώ ή null,
-  "vat_amount": ποσό ΦΠΑ σε ευρώ ή null,
-  "vat_rate": συντελεστής ΦΠΑ ως ακέραιος (0, 6, 13, 24) ή null,
-  "provider_phone": "τηλέφωνο του ΕΚΔΟΤΗ όπως τυπώνεται στο παραστατικό, ή null",
-  "provider_email": "email του ΕΚΔΟΤΗ όπως τυπώνεται στο παραστατικό, ή null",
-  "category": "(μόνο για bill/payment) electricity|water|gas|internet|insurance|streaming|taxes|municipal|security|common|maintenance|elevator|pool|gardener|cleaner|plumber|electrician|other",
-  "amount": συνολικό πληρωτέο ποσό σε ευρώ ή null,
-  "due_date": "YYYY-MM-DD (λήξη πληρωμής) ή null",
-  "issue_date": "YYYY-MM-DD (ημερομηνία έκδοσης του παραστατικού) ή null",
-  "period_from": "YYYY-MM-DD αρχή της περιόδου κατανάλωσης/δαπάνης ή null",
-  "period_to": "YYYY-MM-DD τέλος της περιόδου κατανάλωσης/δαπάνης ή null",
-  "period": "η περίοδος όπως γράφεται στο χαρτί (π.χ. «Ιούνιος 2026») ή null",
-  "tenant_name": "(μισθωτήριο) ονοματεπώνυμο ενοικιαστή/μισθωτή ή null",
-  "landlord_name": "(μισθωτήριο) ονοματεπώνυμο εκμισθωτή/ιδιοκτήτη ή null",
-  "owners": "(τίτλος/συμβόλαιο/μισθωτήριο) πίνακας συνιδιοκτητών: [{\"name\":\"ονοματεπώνυμο\",\"afm\":\"ΑΦΜ ή null\",\"pct\":ποσοστό ιδιοκτησίας 0-100 ή null}] ή null",
-  "monthly_rent": "(μισθωτήριο) μηνιαίο ενοίκιο € ή null",
-  "lease_start": "(μισθωτήριο) YYYY-MM-DD ή null",
-  "lease_end": "(μισθωτήριο) YYYY-MM-DD ή null",
-  "deposit": "(μισθωτήριο) εγγύηση € ή null",
-  "afm": "ΑΦΜ του αντισυμβαλλόμενου (π.χ. ενοικιαστή) ή null",
-  "purchase_price": "(τίτλος/συμβόλαιο) τίμημα αγοράς € ή null",
-  "purchase_date": "(τίτλος) YYYY-MM-DD ή null",
-  "obj_value": "(τίτλος) αντικειμενική αξία ολόκληρου του ακινήτου € ή null· null αν το έγγραφο δίνει μόνο την αξία του μεριδίου που μεταβιβάζεται",
-  "atak": "(τίτλος) ΑΤΑΚ ακινήτου ή null",
-  "year_built": "έτος κατασκευής ή null",
-  "sqm": "τ.μ. ή null",
-  "policy_number": "(ασφαλιστήριο) αριθμός συμβολαίου ή null",
-  "premium": "(ασφαλιστήριο) ασφάλιστρο € ή null",
-  "coverage": "(ασφαλιστήριο) ποσό κάλυψης € ή null",
-  "expiry_date": "(ασφαλιστήριο) YYYY-MM-DD λήξη ή null",
-  "tax_year": "(φορολογικό) έτος ή null",
-  "kwh": "(ρεύμα) κιλοβατώρες ή null",
-  "cubic_meters": "(νερό/αέριο) m³ ή null",
-  "millesimi": "(κοινόχρηστα) χιλιοστά ή null",
-  "vat_rate": "ΦΠΑ % ή null",
-  "account_num": "αριθμός παροχής/λογαριασμού ή null",
-  "notes": "οτιδήποτε άλλο σημαντικό",
-  "confidence": 0-100
-}
-ΚΑΝΟΝΕΣ ΑΝΑΓΝΩΡΙΣΗΣ: μισθωτήριο/συμφωνητικό μίσθωσης→"lease". Ασφαλιστήριο/ασφάλεια ακινήτου→"insurance". ΕΝΦΙΑ/Ε9/εκκαθαριστικό/φόρος→"tax". Τίτλος ιδιοκτησίας/συμβόλαιο αγοραπωλησίας→"deed". ΑΜΑ/πολεοδομία/βεβαίωση/δημόσιο έγγραφο→"government". Απόδειξη/βεβαίωση πληρωμής→"payment". Λογαριασμός ΔΕΗ/ΕΥΔΑΠ/αερίου/internet/κοινοχρήστων→"bill". Ημερομηνίες πάντα YYYY-MM-DD. Τελεία για δεκαδικά. Ό,τι δεν υπάρχει→null.
-ΠΡΟΣΟΧΗ ΣΤΑ ΠΕΝΤΕ: πάροχος, ΑΦΜ εκδότη, ποσό, ημερομηνία έκδοσης, περίοδος από–έως. Αυτά τα πέντε επιτρέπουν στο app να διαπιστώσει ότι ένας λογαριασμός πληρώθηκε. Το ΑΦΜ του εκδότη βρίσκεται συνήθως στην κεφαλίδα ή στο υποσέλιδο. Η περίοδος γράφεται συχνά ως «Περίοδος κατανάλωσης» ή «από … έως …». ΜΗΝ μαντεύεις: ό,τι δεν φαίνεται καθαρά, βάλ' το null.
-ΚΑΙ ΣΤΑ ΤΕΣΣΕΡΑ ΤΟΥ ΦΠΑ: αριθμός ΦΠΑ εκδότη, χώρα έδρας, καθαρή αξία, ποσό και συντελεστής ΦΠΑ. Από αυτά κρίνεται αν η δαπάνη είναι εγχώρια, ενδοκοινοτική λήψη ή λήψη από τρίτη χώρα, δηλαδή αν ο λήπτης αποδίδει ο ίδιος τον φόρο. Ο αριθμός ΦΠΑ γράφεται «VAT», «VAT ID», «ΑΦΜ/VAT» ή «Tax ID». Ένα ξένο τιμολόγιο συχνά γράφει «reverse charge» ή «VAT 0%»: τότε ο συντελεστής είναι 0, ΟΧΙ null.
-Η ΧΩΡΑ ΕΙΝΑΙ Η ΕΔΡΑ ΤΟΥ ΕΚΔΟΤΗ, όχι η χώρα του χρήστη και όχι το νόμισμα. Αν το τιμολόγιο γράφει διεύθυνση στο Δουβλίνο, η χώρα είναι IE ακόμη κι αν όλα τα ποσά είναι σε ευρώ και το κείμενο ελληνικό.
-Η ΠΕΡΙΟΔΟΣ ΧΡΕΩΣΗΣ βγαίνει από φράσεις όπως «μηνιαία συνδρομή», «ετήσια ανανέωση», «12 μήνες», «ανά δίμηνο». Αν το παραστατικό είναι εφάπαξ αγορά, γράψε "once". ΜΗΝ τη συμπεραίνεις από το ποσό.`;
+// Ζει στο lib/billing/scanPrompt.ts, χτισμένο από το ίδιο λεξιλόγιο με τη φόρμα
+// (είδη, υποτύποι, κατηγορίες). Επανεξάγεται εδώ για τους ιστορικούς αναγνώστες.
+export { SYSTEM_PROMPT };
 
 // ── Φωτογραφία ακινήτου (vision) — δεν είναι έγγραφο, είναι τεκμηρίωση χώρου ──
-export const PHOTO_CATEGORIES = [
-  'Κατάσταση Ακινήτου', 'Πριν την Παράδοση', 'Μετά την Παράδοση',
-  'Ζημιά / Φθορά', 'Ανακαίνιση', 'Εξωτερικοί Χώροι', 'Άλλο',
-];
+// Οι κατηγορίες ζουν δίπλα στο prompt της ανάγνωσης (lib/billing/scanPrompt.ts),
+// που τις ζητά πλέον κι αυτό· επανεξάγονται για τους αναγνώστες τους.
+export { PHOTO_CATEGORIES };
 export const PHOTO_SYSTEM_PROMPT = `Είσαι σύστημα ταξινόμησης φωτογραφιών ακινήτου. Εξέτασε τη φωτογραφία και επίστρεψε ΑΥΣΤΗΡΑ ΜΟΝΟ JSON, χωρίς άλλο κείμενο:
-{"category":"<μία από: Κατάσταση Ακινήτου | Ζημιά / Φθορά | Ανακαίνιση | Εξωτερικοί Χώροι | Άλλο>","title":"<σύντομη ελληνική περιγραφή χώρου/θέματος, π.χ. Σαλόνι, Κουζίνα, Μπάνιο, Υπνοδωμάτιο, Μπαλκόνι>"}
+{"category":"<μία από: ${PHOTO_AI_CATEGORIES.join(' | ')}>","title":"<σύντομη ελληνική περιγραφή χώρου/θέματος, π.χ. Σαλόνι, Κουζίνα, Μπάνιο, Υπνοδωμάτιο, Μπαλκόνι>"}
 Κανόνες κατηγορίας:
 - Εμφανής φθορά/ζημιά/υγρασία/ρωγμή/σπασμένο → "Ζημιά / Φθορά".
 - Εργασίες/ανακαίνιση σε εξέλιξη (μπάζα, εργαλεία, γυμνοί τοίχοι) → "Ανακαίνιση".
@@ -129,16 +77,13 @@ export const PHOTO_SYSTEM_PROMPT = `Είσαι σύστημα ταξινόμησ
 // μεγάλο. Ξαναδοκίμαζε το ίδιο αρχείο, στο άπειρο.
 export const MAX_SCAN_MB = 8;
 
-// ΤΑ ΚΛΕΙΔΙΑ ΔΕΝ ΕΙΝΑΙ ΠΙΑ ΣΚΕΤΑ ΚΕΙΜΕΝΑ. Ήταν `string[]` και η εξομάλυνση
-// έγραφε με `doc as unknown as Record<string, unknown>` — δηλαδή ένα κλειδί με
-// τυπογραφικό («amout») δεν θα σκάλωνε πουθενά: ο αριθμός θα έμενε κείμενο, το
-// ποσό θα έμπαινε στη βάση ως «1.200,50» και η πρόσθεση θα έδινε NaN. Με τον
-// τύπο δεμένο στο ίδιο το ScannedDoc, ένα λάθος όνομα σκάει στη μεταγλώττιση.
-type NumKey = Extract<{
-  [K in keyof ScannedDoc]-?: NonNullable<ScannedDoc[K]> extends number ? K : never
-}[keyof ScannedDoc], string>;
+// Τα αριθμητικά κλειδιά ζουν δίπλα στο σχήμα (lib/billing/documents.ts:
+// SCAN_NUM_KEYS), δεμένα στον τύπο του ScannedDoc: ένα λάθος όνομα σκάει στη
+// μεταγλώττιση και το τεστ ελέγχει ότι περιέχουν κάθε αριθμό της φόρμας.
 
-const NUM_KEYS: readonly NumKey[] = ['amount', 'monthly_rent', 'deposit', 'premium', 'coverage', 'purchase_price', 'obj_value', 'year_built', 'sqm', 'tax_year', 'kwh', 'cubic_meters', 'millesimi', 'vat_rate', 'net_amount', 'vat_amount'];
+/** Η ημερομηνία του χαρτιού είναι παλαιότερη από ό,τι έχει ήδη η βάση. */
+const isOlder = (next: string, cur: unknown): boolean =>
+  typeof cur === 'string' && /^\d{4}-\d{2}-\d{2}/.test(cur) && next < cur.slice(0, 10);
 
 // Ανθεκτική μετατροπή αριθμού (χειρίζεται «1.200,50», «1,234.56», «€», κενά).
 const numify = (v: unknown): number | undefined => {
@@ -256,11 +201,28 @@ export async function scanDocument(file: File): Promise<ScanFailure & { doc?: Sc
   // `undefined` — ίδιο αποτέλεσμα στην εκτέλεση, αλλά γραμμένο σαν να ήταν
   // αριθμός. Ένα αριθμητικό πεδίο που κρατά ακατέργαστο κείμενο είναι χειρότερο
   // από ένα που λείπει: το πρώτο μπαίνει στη βάση και δίνει NaN στην πρόσθεση.
-  NUM_KEYS.forEach(k => {
+  SCAN_NUM_KEYS.forEach(k => {
     if (doc[k] == null) return;
     const n = numify(doc[k]);
     if (n === undefined) delete doc[k]; else doc[k] = n;
   });
+  // Οι γραμμές του Ε9 και του ΕΝΦΙΑ: ίδια εξομάλυνση αριθμών, ΑΤΑΚ μόνο ψηφία,
+  // το πολύ όσες ζητά το prompt.
+  if (Array.isArray(doc.lines)) {
+    doc.lines = doc.lines.filter(l => l && typeof l === 'object').slice(0, SCAN_MAX_LINES).map((l): DocLine => {
+      const out: DocLine = {};
+      if (l.atak) out.atak = atakDigits(String(l.atak)) || undefined;
+      if (l.address) out.address = String(l.address).trim() || undefined;
+      if (l.floor != null) out.floor = String(l.floor).trim() || undefined;
+      for (const k of ['sqm', 'storage_sqm', 'year_built', 'amount'] as const) {
+        const n = numify(l[k]);
+        if (n !== undefined) out[k] = n;
+      }
+      return out;
+    });
+  } else if (doc.lines != null) {
+    delete doc.lines;
+  }
   if (Array.isArray(doc.owners)) {
     doc.owners = doc.owners.map(o => ({
       name: o?.name || undefined,
@@ -274,7 +236,9 @@ export async function scanDocument(file: File): Promise<ScanFailure & { doc?: Sc
   // με δύο ψηφία, χωρίς μετρητή από πίσω. Το ίδιο έσβηνε και πραγματική
   // απάντηση σε κείμενο («85») — έμπαινε 70 στη θέση του 85. Τώρα: ο αριθμός
   // όταν δόθηκε, στο 0-100· τίποτα όταν δεν δόθηκε. Η οθόνη σωπαίνει αντί να
-  // μαντεύει (DocumentScan.tsx:489, ReceiptScanModal.tsx:221).
+  // μαντεύει. Μετρά τη βεβαιότητα για τον ΤΥΠΟ, όχι την ευκρίνεια της
+  // ανάγνωσης: τη διαβάζει μόνο η ένδειξη «δεν είναι σίγουρη για τον τύπο»
+  // του DocumentScan.
   const conf = numify(doc.confidence);
   if (conf === undefined) delete doc.confidence;
   else doc.confidence = Math.max(0, Math.min(100, Math.round(conf)));
@@ -324,9 +288,14 @@ export async function scanFile(file: File): Promise<ScanFileResult> {
   const r = await scanDocument(file);
   if (r.doc) {
     const d = r.doc;
-    const documentary = !!(d.provider || d.amount || d.title || d.due_date || d.issue_date
-      || d.tenant_name || d.monthly_rent || d.premium || d.policy_number || d.atak || d.purchase_price);
-    if (documentary || !isImage) return { kind: 'document', doc: d };
+    if (isDocumentary(d) || !isImage) return { kind: 'document', doc: d };
+    // ΜΙΑ ΚΛΗΣΗ, ΟΧΙ ΔΥΟ. Η ανάγνωση εγγράφου που είπε «δεν είναι έγγραφο»
+    // δίνει και την κατηγορία της φωτογραφίας. Η δεύτερη κλήση πιο κάτω
+    // μετρούσε δεύτερη σάρωση για την ίδια εικόνα· μένει μόνο ως εφεδρεία,
+    // όταν η πρώτη απάντηση δεν έφερε έγκυρη κατηγορία.
+    if (d.is_document === false && d.photo_category && PHOTO_AI_CATEGORIES.includes(d.photo_category)) {
+      return { kind: 'photo', photo: { category: d.photo_category, title: (d.title || '').trim() || null } };
+    }
   } else if (!isImage) {
     return { kind: 'document', error: r.error, errorText: r.errorText };
   }
@@ -637,7 +606,7 @@ export async function commitScannedDoc(input: CommitInput): Promise<CommitResult
         ? tenantStore.updateReturning(supabase, cur!.id, stripEmpty(plan.tenant))
         : tenantStore.addReturning(supabase, propertyId, userId, stripEmpty(plan.tenant)));
       if (!tErr) {
-        add('Ενοικιαστής');
+        add(navLabel('tenant'));
         if (tRow) {
           const { requested } = await syncInstalments(supabase, tRow as unknown as Tenant, propertyId, userId);
           if (requested) add('Δόσεις ενοικίου');
@@ -654,11 +623,29 @@ export async function commitScannedDoc(input: CommitInput): Promise<CommitResult
       const patch = fillOnlyEmpty(plan.property, curProp as Record<string, unknown> | null);
       if (Object.keys(patch).length) {
         const { error: pErr } = await properties.update(supabase, propertyId, patch, userId);
-        if (!pErr) add('Στοιχεία ακινήτου');
+        if (!pErr) add(PROPERTY_TARGET);
+      }
+    }
+    // ── 5β) Ό,τι ΑΝΑΝΕΩΝΕΤΑΙ (ασφάλιση, κατηγορία ΠΕΑ) γράφεται με αντικατάσταση:
+    // η νέα λήξη πρέπει να περάσει, η μη αναγνωρισμένη να μη σβήσει την παλιά.
+    // ΚΑΙ ΜΟΝΟ ΑΝ ΤΟ ΧΑΡΤΙ ΕΙΝΑΙ ΝΕΟΤΕΡΟ (`replaceIfNewer`): η αρχειοθέτηση του
+    // περσινού ασφαλιστηρίου δεν γυρίζει πίσω τη λήξη που διαβάζουν οι
+    // προθεσμίες, η Νόα και τα email λήξης.
+    const guard = plan.replaceIfNewer;
+    if (plan.propertyReplace) {
+      const patch = stripEmpty(plan.propertyReplace);
+      // Χωρίς ανάγνωση δεν ξέρουμε αν το χαρτί είναι νεότερο: δεν αντικαθιστούμε.
+      const cur = guard && Object.keys(patch).length
+        ? await properties.oneWithError<Record<string, unknown>>(supabase, propertyId, guard.column, userId)
+        : null;
+      const stale = !!guard && !!cur && (!!cur.error || isOlder(guard.value, cur.row?.[guard.column]));
+      if (Object.keys(patch).length && !stale) {
+        const { error: pErr } = await properties.update(supabase, propertyId, patch, userId);
+        if (!pErr) add(PROPERTY_TARGET);
       }
     }
 
-    // ── 6) Ασφάλεια → property_settings.
+    // ── 6) Ασφάλεια και πάροχοι → property_settings.
     //
     // ══ Η ΣΑΡΩΣΗ ΕΓΡΑΦΕ `null` ΠΑΝΩ ΑΠΟ ΟΣΑ ΕΙΧΕ ΓΡΑΨΕΙ Ο ΙΔΙΟΚΤΗΤΗΣ ══════════
     // ΤΟ ΣΦΑΛΜΑ. Το `plan.settings` της ασφάλισης έχει ΠΑΝΤΑ κι τα τρία κλειδιά
@@ -677,13 +664,28 @@ export async function commitScannedDoc(input: CommitInput): Promise<CommitResult
     // περνούσε ποτέ. Ο κανόνας που θέλει αυτό το βήμα είναι «γράψε ό,τι ΔΙΑΒΑΣΕΣ,
     // μη σβήνεις ό,τι δεν διάβασες» — ακριβώς ό,τι κάνει το `stripEmpty`, όπως
     // ήδη στη διαδρομή του ενοικιαστή δύο βήματα πιο πάνω.
-    if (plan.settings) {
-      const patch = stripEmpty(plan.settings);
-      if (Object.keys(patch).length) {
-        const { error: sErr } = await supabase.from('property_settings')
-          .upsert({ property_id: propertyId, user_id: userId, ...patch }, { onConflict: 'property_id' });
-        if (!sErr) add('Ασφάλεια');
-      }
+    // ΚΑΙ ΟΙ ΠΑΡΟΧΟΙ ΓΡΑΦΟΥΝ ΕΔΩ, ΜΕ ΤΟΝ ΑΝΤΙΘΕΤΟ ΚΑΝΟΝΑ. Ο πάροχος ρεύματος
+    // συμπληρώνεται από τον πρώτο λογαριασμό (`settingsFill`, μόνο κενά): ένας
+    // παλιός λογαριασμός δεν ξαναγράφει πάροχο που ο ιδιοκτήτης άλλαξε. Γι' αυτό
+    // και η ετικέτα έρχεται από το σχέδιο· ήταν πάντα «Ασφάλεια».
+    let settingsPatch: Record<string, unknown> = plan.settings ? stripEmpty(plan.settings) : {};
+    if (guard && Object.keys(settingsPatch).length) {
+      const { data: curIns, error: gErr } = await supabase.from('property_settings')
+        .select(guard.column).eq('property_id', propertyId).maybeSingle();
+      // Χωρίς ανάγνωση δεν ξέρουμε αν το χαρτί είναι νεότερο: δεν αντικαθιστούμε.
+      if (gErr || isOlder(guard.value, (curIns as unknown as Record<string, unknown> | null)?.[guard.column])) settingsPatch = {};
+    }
+    if (plan.settingsFill) {
+      const cols = Object.keys(plan.settingsFill);
+      const { data: curSet, error: rErr } = await supabase.from('property_settings')
+        .select(cols.join(',')).eq('property_id', propertyId).maybeSingle();
+      // Χωρίς ανάγνωση δεν ξέρουμε τι υπάρχει, άρα «μόνο τα κενά» σημαίνει τίποτα.
+      if (!rErr) Object.assign(settingsPatch, fillOnlyEmpty(plan.settingsFill, curSet as unknown as Record<string, unknown> | null));
+    }
+    if (Object.keys(settingsPatch).length) {
+      const { error: sErr } = await supabase.from('property_settings')
+        .upsert({ property_id: propertyId, user_id: userId, ...settingsPatch }, { onConflict: 'property_id' });
+      if (!sErr) add(plan.settingsLabel || PROPERTY_TARGET);
     }
 
     // ── 7) Κοινόχρηστα → bills_settings section 'common'.
@@ -702,7 +704,7 @@ export async function commitScannedDoc(input: CommitInput): Promise<CommitResult
         ? { ...plan.archive, category: input.archiveCategory }
         : plan.archive;
       const r = await archiveScannedFile(
-        archiveInputFrom(archivePlan, file, propertyId, userId, doc.title || doc.provider));
+        archiveInputFrom(archivePlan, file, propertyId, userId, archivePlan.title || doc.provider));
       if (r.ok) add(navLabel('documents'));
     }
 
