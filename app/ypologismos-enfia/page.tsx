@@ -25,8 +25,14 @@ import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { EnfiaCalculator } from './EnfiaCalculator';
+import { ToolLedger } from '../ToolParts';
 import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
 import { PAGE_UPDATED } from '../pageUpdated';
+import { ENFIA_AGE_BANDS, ENFIA_PRE_YEAR, ENFIA_CENTURY_YEARS, enfiaOldBuildingYears } from '@/lib/billing/enfia';
+import { fe, fn, fpRate, feRate, feSigned, feWhole } from '@/lib/core/format';
+import { AADE_DESTINATIONS } from '@/lib/tax/aade';
+import { toolJsonLd, ToolByline, ToolOnwardLinks } from '../toolSeo';
+import { enfiaH1, enfiaExamples } from './seo';
 
 // ΤΟ ΕΤΟΣ ΤΟΥ ΤΙΤΛΟΥ ΕΙΝΑΙ ΤΟ ΕΤΟΣ ΤΟΥ ΥΠΟΛΟΓΙΣΜΟΥ. Ήταν γραμμένο «2026» με το
 // χέρι, ενώ ο υπολογιστής και ο πίνακας των δόσεων ακολουθούν το τρέχον έτος:
@@ -57,6 +63,9 @@ export function generateMetadata(): Metadata {
   return publicMetadata({ title: titleFor(athensParts().year), description: DESC, url: URL, image: shareImage('ypologismos-enfia') });
 }
 
+const ageBand = (key: string) => ENFIA_AGE_BANDS.find(b => b.key === key)!;
+const AGE_NEW = ageBand('y0_4'), AGE_25 = ageBand('y20_25'), AGE_26 = ageBand('y26_plus'), AGE_PRE = ageBand('pre1930'), AGE_OVER = ageBand('over100');
+
 // ΟΙ ΕΡΩΤΗΣΕΙΣ ΘΕΛΟΥΝ ΤΗ ΧΡΟΝΙΑ. Η μείωση του μικρού οικισμού ισχύει μόνο για
 // τον ΕΝΦΙΑ του 2026· η απάντηση για τις απαλλαγές την αναφέρει όσο ισχύει και
 // σωπαίνει μόνη της μετά.
@@ -76,10 +85,22 @@ function faqFor(year: number): { q: string; a: string }[] {
        + 'Είναι η τιμή σε ευρώ ανά τετραγωνικό μέτρο για την περιοχή του ακινήτου.',
     },
     {
+      // ΟΙ ΣΥΝΤΕΛΕΣΤΕΣ ΑΠΟ ΤΗ ΜΗΧΑΝΗ, ΟΧΙ ΑΠΟ ΤΟ ΧΕΡΙ (13.10.2026). Η απάντηση
+      // έγραφε «1,25» και «1,00» ως κείμενο και σταματούσε στα 26 έτη, ενώ ο
+      // νόμος έχει και 0,8 πριν από το 1930 και 0,60 άνω των 100 ετών (άρθρο 11
+      // ν.5219/2025, πηγή στο lib/billing/enfia.ts). Το «έως 25% περισσότερο από
+      // ένα παλιό» έπαυε να ισχύει μαζί.
       q: 'Γιατί τα νεότερα κτίρια επιβαρύνονται περισσότερο;',
-      a: 'Ο συντελεστής παλαιότητας μειώνεται όσο περνούν τα χρόνια: κτίσμα έως 4 ετών έχει '
-       + 'συντελεστή 1,25 ενώ κτίσμα 26 ετών και άνω έχει 1,00. Ένα καινούργιο διαμέρισμα '
-       + 'πληρώνει έτσι έως 25% περισσότερο από ένα παλιό ίδιων τετραγωνικών και ζώνης.',
+      a: `Ο συντελεστής παλαιότητας μειώνεται όσο περνούν τα χρόνια: κτίσμα έως ${AGE_NEW.maxYears} ετών έχει `
+       + `συντελεστή ${fn(AGE_NEW.coef, 2)} ενώ κτίσμα ${(AGE_25.maxYears ?? 0) + 1} ετών και άνω έχει ${fn(AGE_26.coef, 2)}. `
+       + `Για τα παλιά κτίρια ο νόμος έχει δύο ακόμη: ${fn(AGE_PRE.coef, 2)} για όσα ανεγέρθηκαν πριν από `
+       + `το ${ENFIA_PRE_YEAR} και ${fn(AGE_OVER.coef, 2)} για όσα έχουν πάνω από ${ENFIA_CENTURY_YEARS} χρόνια. `
+       // ΔΥΟ ΑΦΕΤΗΡΙΕΣ (13.10.2026). Τα χρόνια μετρούν από τη νεότερη οικοδομική
+       // άδεια (άρθρο 11 Ενότητα Α΄ παρ. 1 περ. ε΄ ν.5219/2025)· το «πριν από το
+       // 1930» ο νόμος το κρίνει με το έτος ανέγερσης («ανεγέρθηκαν»).
+       + `Τα χρόνια μετρούν από το έτος της νεότερης οικοδομικής άδειας ή, χωρίς άδεια, από το έτος κατασκευής `
+       + `(για τον ΕΝΦΙΑ ${year}, πάνω από ${ENFIA_CENTURY_YEARS} χρόνια σημαίνει έως το ${enfiaOldBuildingYears(year).over100.to}). `
+       + `Το «πριν από το ${ENFIA_PRE_YEAR}» κρίνεται από το έτος ανέγερσης, ακόμη κι αν υπάρχει νεότερη άδεια.`,
     },
     {
       q: 'Υπάρχουν απαλλαγές;',
@@ -101,31 +122,18 @@ function faqFor(year: number): { q: string; a: string }[] {
   ];
 }
 
+// Ο ΕΝΦΙΑ ΣΤΟ myAADE, ΑΠΟ ΤΟ ΜΗΤΡΩΟ (lib/tax/aade.ts): πύλη και διαδρομή σε λέξεις.
+const ENFIA_AADE = AADE_DESTINATIONS.enfia;
+const LINK = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 } as const;
+const PROSE = { fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0 } as const;
+
 export default function Page() {
   const { year } = athensParts();
   const FAQ = faqFor(year);
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'WebApplication',
-        name: `Υπολογισμός ΕΝΦΙΑ ${year}`,
-        url: URL,
-        applicationCategory: 'FinanceApplication',
-        operatingSystem: 'Web',
-        inLanguage: 'el',
-        description: DESC,
-        offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
-      },
-      {
-        '@type': 'FAQPage',
-        mainEntity: FAQ.map(f => ({
-          '@type': 'Question', name: f.q,
-          acceptedAnswer: { '@type': 'Answer', text: f.a },
-        })),
-      },
-    ],
-  };
+  const examples = enfiaExamples(year);
+  // Μία πηγή για σελίδα και σχήμα: το `FAQPage` είναι ο ίδιος πίνακας που
+  // αποδίδουν οι «Συχνές ερωτήσεις» από κάτω (app/toolSeo.tsx).
+  const jsonLd = toolJsonLd({ name: `Υπολογισμός ΕΝΦΙΑ ${year}`, url: URL, description: DESC, faq: FAQ });
 
   return (
     <div className="po-tool-page" data-mode="dark" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
@@ -136,9 +144,11 @@ export default function Page() {
       <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
         <BackLink />
         <div className="lp-eyebrow">Υπολογιστής</div>
+        {/* Η ΕΠΙΚΕΦΑΛΙΔΑ ΛΕΕΙ ΤΗ ΦΡΑΣΗ ΠΟΥ ΨΑΧΝΕΙ Ο ΙΔΙΟΚΤΗΤΗΣ (13.10.2026): «ΕΝΦΙΑ
+            {έτος} υπολογισμός», με το έτος του υπολογισμού, όπως ο τίτλος. */}
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
-          Υπολόγισε τον ΕΝΦΙΑ του ακινήτου σου
+          {enfiaH1(year)}
         </h1>
         {/* Ίδια δομή με τον υπολογιστή φόρου ενοικίων και για τον ίδιο λόγο:
             η υπόσχεση κλείνει με την άνω τελεία της, η εγγύηση απορρήτου πιάνει
@@ -164,6 +174,48 @@ export default function Page() {
         </Suspense>
 
         <ToolSources kind="enfia" checked={PAGE_UPDATED['/ypologismos-enfia']} />
+
+        {/* ── ΔΥΟ ΠΑΡΑΔΕΙΓΜΑΤΑ ΑΠΟ ΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (13.10.2026) ──────────────────
+            Τα ποσά βγαίνουν από την ίδια κλήση της μηχανής με τη φόρμα (seo.ts)
+            και γράφονται με την ίδια ανάλυση (`ToolLedger`), με τις ίδιες
+            ετικέτες και τους ίδιους μορφοποιητές: ο σύνδεσμος κάτω από κάθε
+            παράδειγμα ανοίγει τη φόρμα με τα ίδια στοιχεία και το ίδιο ποσό. Το
+            δεύτερο είναι το κτίριο του 1925 του Μέρους 2, με τον συντελεστή
+            0,60 των κτιρίων άνω των 100 ετών. */}
+        <section className="po-tool-more" style={{ marginTop: 'clamp(44px,6vw,72px)' }}>
+          <SectionHead over={`Παραδείγματα ΕΝΦΙΑ ${year}`} title="Δύο ακίνητα, βήμα βήμα" />
+          <p className="po-just" style={PROSE}>{hy(
+            'Με πλήρη ιδιοκτησία και χωρίς βοηθητικούς χώρους. Η αξία είναι εκτίμηση, τετραγωνικά επί την τιμή ζώνης, όπως στον υπολογιστή.')}</p>
+          {examples.map((e, i) => (
+            <div key={e.built}>
+              <h3 style={EG}>{`Παράδειγμα ${i + 1}: ${e.name} του ${e.built}`}</h3>
+              <ToolLedger rows={[
+                { k: 'Τετραγωνικά', v: `${fn(e.sqm)} τ.μ.`, kind: 'param' },
+                { k: 'Τιμή ζώνης', v: `${fe(e.zonePrice)}/τ.μ.`, kind: 'param' },
+                { k: 'Όροφος', v: e.floorLabel, kind: 'param' },
+                { k: 'Παλαιότητα', v: e.ageLabel, kind: 'param' },
+                { k: 'Αντικειμενική αξία ακινήτου (εκτίμηση)', v: fe(e.value) },
+                { k: 'Βασικός φόρος ζώνης', v: `${feRate(e.zoneTax)}/τ.μ.`, kind: 'param' },
+                { k: 'Συντελεστής ορόφου', v: fn(e.floorCoef, 2), kind: 'param' },
+                { k: 'Συντελεστής παλαιότητας', v: fn(e.ageCoef, 2), kind: 'param' },
+                { k: 'Κύριος φόρος κτίσματος', v: fe(e.ledger.basic) },
+                e.reductionPct > 0 && {
+                  k: `Αυτόματη μείωση ${fpRate(e.reductionPct)}${e.bracket ? ` (περιουσία έως ${feWhole(e.bracket)})` : ''}`,
+                  v: feSigned(-e.ledger.reduction),
+                },
+                { k: 'ΕΝΦΙΑ ετησίως', v: fe(e.annual), kind: 'total' },
+              ]}/>
+              <p style={{ margin: '10px 0 0', fontSize: 14 }}>
+                <Link href={e.href} className="lp-link" style={LINK}>{`Άνοιξε το παράδειγμα ${i + 1} στον υπολογιστή`}</Link>
+              </p>
+            </div>
+          ))}
+          <p className="po-just" style={{ ...PROSE, marginTop: 20 }}>{hy(<>
+            Το επίσημο ποσό είναι στο εκκαθαριστικό της ΑΑΔΕ. Στο{' '}
+            <a href={ENFIA_AADE.url} target="_blank" rel="noopener noreferrer" className="lp-link" style={LINK}>{ENFIA_AADE.portal}</a>
+            {ENFIA_AADE.login ? ', με τους κωδικούς TAXISnet' : ''}: {ENFIA_AADE.steps.join(' · ')}.
+          </>)}</p>
+        </section>
 
         {/* ── Συχνές ερωτήσεις ──────────────────────────────────────────────
                ΗΤΑΝ ΠΕΝΤΕ ΚΟΥΤΙΑ ΜΕ ΠΕΡΙΓΡΑΜΜΑ ΚΑΙ ΤΟ ΒΕΛΑΚΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ, ενώ ο
@@ -223,7 +275,9 @@ export default function Page() {
               καθαρή απόδοση
             </Link>{' '}βάζει τον φόρο, τον ΕΝΦΙΑ και τις δαπάνες στην ίδια σελίδα.
           </>)}</p>
+          <ToolOnwardLinks />
         </section>
+        <ToolByline />
         <ToolGuides tool="/ypologismos-enfia" />
       </main>
 
@@ -231,3 +285,9 @@ export default function Page() {
     </div>
   );
 }
+
+// Ο τίτλος κάθε παραδείγματος, όπως στους οδηγούς (app/odigos/forologia-enoikion-2026).
+const EG = {
+  fontSize: 16, fontWeight: 680, letterSpacing: '-0.01em', color: 'var(--text-primary)',
+  margin: '22px 0 10px',
+} as const;
