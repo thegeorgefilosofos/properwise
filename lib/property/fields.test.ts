@@ -308,9 +308,12 @@ const ctx = (o: Partial<FieldContext> = {}): FieldContext => ({
   const at = wiz.indexOf("row('prop.obj_value'");
   const cell = at < 0 ? '' : wiz.slice(at, wiz.indexOf("row('", at + 1));
   ok('ο οδηγός τυπώνει την οδηγία κάτω από το πεδίο', cell.includes('{OBJ_VALUE_WHOLE}'));
+  // Τα πεδία της σάρωσης ζουν στο σχήμα (lib/billing/documents.ts), που το
+  // διαβάζουν και η φόρμα και η ανάγνωση· η οθόνη τυπώνει ό,τι λέει το σχήμα.
+  const schema = read('lib', 'billing', 'documents.ts');
   const scan = read('app', 'dashboard', 'components', 'DocumentScan.tsx');
   ok('η σάρωση τίτλου δίνει την οδηγία στο πεδίο',
-    /key: 'obj_value'[^\n]*hint: OBJ_VALUE_WHOLE/.test(scan));
+    /key: 'obj_value'[^\n]*hint: OBJ_VALUE_WHOLE/.test(schema));
   ok('και η φόρμα της σάρωσης τυπώνει το hint του πεδίου', /hint=\{[^\n]*\bf\.hint\}/.test(scan));
 }
 

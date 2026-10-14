@@ -19,9 +19,10 @@ import { PROPERTY_TYPES, propertyTypeLabel } from '@/lib/property/types';
 import { fillOnlyEmpty, firstFilled } from '@/lib/core/prefill';
 import { fieldPlacement, PROPERTY_FIELDS, OBJ_VALUE_WHOLE, type FieldContext, type Placement } from '@/lib/property/fields';
 import { failed } from '@/lib/core/dbError';
+import { PEA_CLASSES } from '@/lib/property/pea';
 
-// Ενεργειακή κλάση (ΠΕΑ) & τύποι θέρμανσης — κοινά για wizard και Ρυθμίσεις.
-const PEA_CLASSES = ['A+', 'A', 'B+', 'B', 'Γ', 'Δ', 'Ε', 'Ζ', 'Η'];
+// Η ενεργειακή κλάση (ΠΕΑ) ζει στο lib/property/pea.ts: τη γράφει και η σάρωση
+// του πιστοποιητικού, με το ίδιο λεξιλόγιο.
 
 // ── Domain constants (kept in sync με το dashboard/page.tsx) ────────────────
 const STATUS_COLORS: Record<string, string> = {

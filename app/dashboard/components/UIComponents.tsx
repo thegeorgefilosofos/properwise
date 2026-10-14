@@ -51,7 +51,7 @@ export function ToggleField({ label, labelInfo, on, onChange }: { label: string;
           όποιος διακόπτης χρειαζόταν εξήγηση δεν μπορούσε να τη δώσει μέσα από
           αυτό το component: η φόρμα ενοικιαστή έστηνε τέσσερις φορές τον
           διακόπτη με το χέρι, με ΚΕΦΑΛΑΙΑ ετικέτα, δίπλα σε πεδία με πεζή. */}
-      <label style={fieldLabelStyle}><span>{label}{infoNode(labelInfo)}</span></label>
+      <label style={fieldLabelStyle}><span>{labelWithInfo(label, labelInfo)}</span></label>
       {/* ΧΩΡΙΣ ΚΟΥΤΙ. Το πλαίσιο ενός πεδίου σημαίνει «εδώ γράφεις»· γύρω από
           διακόπτη είναι άδειο περίγραμμα που περικλείει ένα αντικείμενο μισού
           πλάτους και το κάνει να μοιάζει με πεδίο που δεν γέμισε κανείς. Μένει
@@ -262,7 +262,33 @@ export function InfoChip({ label, detail, icon, tone = 'default' }: {
 // Η διόρθωση δεν είναι να θυμάται ο καλών να τυλίγει: είναι να μη ΜΠΟΡΕΙ να
 // ξεχάσει. Κείμενο σημαίνει επεξήγηση και η επεξήγηση ζει πίσω από την κουκκίδα.
 const infoNode = (info: ReactNode): ReactNode =>
-  typeof info === 'string' ? <InfoDot text={info} /> : info;
+  typeof info === 'string' ? <LabelDot text={info} /> : info;
+
+// ── Η ΚΟΥΚΚΙΔΑ ΤΗΣ ΕΤΙΚΕΤΑΣ ΔΕΝ ΨΗΛΩΝΕΙ ΤΗ ΓΡΑΜΜΗ ───────────────────────────
+// Το κουμπί της κουκκίδας είναι 32 (44 στην αφή) με περιθώρια −8, δηλαδή
+// κουτί 16 ή 28 μέσα σε γραμμή 15,6. Η ετικέτα με κουκκίδα ψήλωνε και το
+// κείμενό της καθόταν 1,1 εικονοστοιχείο χαμηλότερα από τη διπλανή στο
+// ποντίκι, πολύ περισσότερο στην αφή. Μέσα σε θήκη μηδενικού ύψους, στη μέση
+// της γραμμής, το κουμπί κρατά ολόκληρο τον στόχο του αλλά η γραμμή μένει όση
+// είναι το κείμενο.
+const DOT_SLOT: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', height: 0, verticalAlign: 'middle' };
+/** Η κουκκίδα επεξήγησης μέσα σε ετικέτα πεδίου. */
+export function LabelDot({ text }: { text: string }) {
+  return <span style={DOT_SLOT}><InfoDot text={text} /></span>;
+}
+
+// ── ΚΑΙ ΔΕΝ ΜΕΝΕΙ ΜΟΝΗ ΤΗΣ ΣΤΗ ΓΡΑΜΜΗ ──────────────────────────────────────
+// Στα 390 το «ⓘ» της «Αντικειμενικής αξίας» έπεφτε σε δική του γραμμή και η
+// ετικέτα έπιανε 44 εικονοστοιχεία αντί για 20. Η ένδειξη (κουκκίδα, «λείπει»)
+// κολλά στην τελευταία λέξη. Ανεπαίσθητο κουτί, όχι flex: το κενό πριν από το
+// «λείπει» είναι χαρακτήρας και ένα flex θα το έσβηνε.
+const LABEL_TAIL: React.CSSProperties = { whiteSpace: 'nowrap' };
+function labelWithInfo(label: string | undefined, info: ReactNode): ReactNode {
+  const node = infoNode(info);
+  if (!label || node == null || node === false) return <>{label}{node}</>;
+  const cut = label.lastIndexOf(' ') + 1;
+  return <>{label.slice(0, cut)}<span style={LABEL_TAIL}>{label.slice(cut)}{node}</span></>;
+}
 
 // ─── Number Input ─────────────────────────────────────────────────────────────
 interface NumberInputProps {
@@ -456,7 +482,7 @@ export function NumberInput({
 
   return (
     <div className={className}>
-      {label && <label htmlFor={inputId} style={fieldLabelStyle}><span>{label}{infoNode(labelInfo)}</span></label>}
+      {label && <label htmlFor={inputId} style={fieldLabelStyle}><span>{labelWithInfo(label, labelInfo)}</span></label>}
       <div style={{
         width: '100%',
         background: 'var(--bg-surface)',
@@ -647,7 +673,7 @@ export function CustomSelect({
   // Το μενού ζωγραφίζεται σε portal (fixed) ώστε να μην «κόβεται» ποτέ από modal ή
   // scroll container. Ανοίγει προς τα κάτω· γυρίζει προς τα πάνω μόνο αν πραγματικά
   // δεν χωράει, με ύψος που προσαρμόζεται στον διαθέσιμο χώρο (εσωτερικό scroll).
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number; minWidth: number; maxH: number; up: boolean }>({ top: 0, left: 0, minWidth: 0, maxH: 264, up: false });
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; minWidth: number; maxW: number; maxH: number; up: boolean }>({ top: 0, left: 0, minWidth: 0, maxW: 340, maxH: 264, up: false });
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -701,9 +727,23 @@ export function CustomSelect({
     //
     // Το ΠΡΑΓΜΑΤΙΚΟ πλάτος είναι το μεγαλύτερο από τα δύο, γιατί στο CSS το
     // `min-width` κερδίζει το `max-width`. Ο περιορισμός γράφεται με αυτό.
-    const panelW = Math.max(r.width, Math.min(340, window.innerWidth * 0.86));
-    const left = Math.max(8, Math.min(r.left, document.documentElement.clientWidth - panelW - 8));
-    setMenuPos({ top: up ? r.top - GAP : r.bottom + GAP, left, minWidth: r.width, maxH, up });
+    //
+    // ΜΕΣΑ ΣΕ ΠΑΡΑΘΥΡΟ, ΤΟ ΠΑΡΑΘΥΡΟ ΕΙΝΑΙ ΤΟ ΟΡΙΟ. Στα 390 η λίστα του «Τύπου»
+    // άνοιγε 335 πλατιά κάτω από κουμπί 308: ξεπερνούσε το περίγραμμα του
+    // παραθύρου και η δεξιά της άκρη δεν στοιχιζόταν με τίποτα. Το ταβάνι είναι
+    // πλέον και το πλάτος περιεχομένου της κάρτας (χωρίς το γέμισμα του
+    // σώματός της), οπότε κουμπί που πιάνει όλο το πλάτος ανοίγει λίστα ίδιου
+    // πλάτους, στοιχισμένη και στις δύο άκρες.
+    const vw = document.documentElement.clientWidth;
+    const frameEl = el.closest('[role="dialog"] > div');
+    const frame = frameEl?.getBoundingClientRect();
+    const lo = frame ? frame.left + MARGIN : MARGIN;
+    const hi = frame ? frame.right - MARGIN : vw - MARGIN;
+    // `clientWidth`: χωρίς το περίγραμμα της κάρτας, όπως το πλάτος των πεδίων της.
+    const room = frameEl ? frameEl.clientWidth - 2 * T.sp.xxl : window.innerWidth * 0.86;
+    const maxW = Math.max(r.width, Math.min(340, window.innerWidth * 0.86, room));
+    const left = Math.max(lo, Math.min(r.left, hi - maxW));
+    setMenuPos({ top: up ? r.top - GAP : r.bottom + GAP, left, minWidth: r.width, maxW, maxH, up });
   };
   useEffect(() => {
     if (!open) return;
@@ -766,7 +806,7 @@ export function CustomSelect({
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      {label && <label style={fieldLabelStyle} id={labelId}><span>{label}{infoNode(labelInfo)}</span></label>}
+      {label && <label style={fieldLabelStyle} id={labelId}><span>{labelWithInfo(label, labelInfo)}</span></label>}
       <div
         ref={triggerRef}
         role="combobox"
@@ -802,7 +842,8 @@ export function CustomSelect({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
           {selected?.dot && <div style={{ width: 8, height: 8, borderRadius: '50%', background: selected.dot, flexShrink: 0 }}/>}
           {selected?.color && <div style={{ width: 10, height: 10, borderRadius: 3, background: selected.color, flexShrink: 0 }}/>}
-          <span className="po-elide" style={{
+          {/* `po-field-value`: 16 στην αφή, όπως κάθε <input> δίπλα του (globals.css). */}
+          <span className="po-elide po-field-value" style={{
             fontFamily: T.font.sans,
             fontSize: 14,
             letterSpacing: '0.25px',
@@ -825,7 +866,7 @@ export function CustomSelect({
           // Πλάτος στο περιεχόμενο, ποτέ στενότερο από το πεδίο, με ανώτατο όριο.
           minWidth: menuPos.minWidth,
           width: 'max-content',
-          maxWidth: 'min(340px, 86vw)',
+          maxWidth: menuPos.maxW,
           background: 'var(--bg-surface)',
           borderRadius: T.radius.inner,
           zIndex: 2000,
@@ -1014,7 +1055,7 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      {label && <label style={fieldLabelStyle}><span>{label}{infoNode(labelInfo)}</span></label>}
+      {label && <label style={fieldLabelStyle}><span>{labelWithInfo(label, labelInfo)}</span></label>}
       <div
         role="button"
         tabIndex={disabled ? -1 : 0}
@@ -1045,7 +1086,7 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
           userSelect: 'none',
         }}
       >
-        <span style={{ fontFamily: T.font.sans, fontSize: 14, letterSpacing: 0, color: value ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
+        <span className="po-field-value" style={{ fontFamily: T.font.sans, fontSize: 14, letterSpacing: 0, color: value ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
           {value ? fmtDisplay(value) : placeholder}
         </span>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--text-secondary)" aria-hidden="true">
@@ -1401,15 +1442,23 @@ interface TextInputProps {
   prefix?: ReactNode;
   suffix?: ReactNode;
   onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
+  /**
+   * ΚΩΔΙΚΟΣ ΠΟΥ ΔΙΑΒΑΖΕΤΑΙ ΧΑΡΑΚΤΗΡΑ ΧΑΡΑΚΤΗΡΑ: ΑΦΜ, ΑΤΑΚ, ΑΜΑ, αριθμός
+   * παροχής ή συμβολαίου. Η ίδια γραμματοσειρά με το `TT.mono`, ποτέ για ποσά:
+   * τα ποσά γράφονται στο NumberInput, σε Inter με ψηφία ίσου πλάτους.
+   */
+  mono?: boolean;
+  /** Το πληκτρολόγιο της αφής: «numeric» για κωδικούς που είναι μόνο ψηφία. */
+  inputMode?: 'text' | 'numeric' | 'decimal' | 'tel' | 'email' | 'url' | 'search';
 }
 
-export function TextInput({ label, labelInfo, ariaLabel, id, value, onChange, placeholder, type='text', disabled, prefix, suffix, onKeyDown }: TextInputProps) {
+export function TextInput({ label, labelInfo, ariaLabel, id, value, onChange, placeholder, type='text', disabled, prefix, suffix, onKeyDown, mono, inputMode }: TextInputProps) {
   const [focused, setFocused] = useState(false);
   const autoId = useId();
   const inputId = id ?? autoId;
   return (
     <div>
-      {label && <label htmlFor={inputId} style={fieldLabelStyle}><span>{label}{infoNode(labelInfo)}</span></label>}
+      {label && <label htmlFor={inputId} style={fieldLabelStyle}><span>{labelWithInfo(label, labelInfo)}</span></label>}
       <div style={{
         display: 'flex', alignItems: 'center',
         background: 'var(--bg-surface)',
@@ -1441,6 +1490,7 @@ export function TextInput({ label, labelInfo, ariaLabel, id, value, onChange, pl
           id={inputId}
           aria-label={label ? undefined : ariaLabel}
           type={type}
+          inputMode={inputMode}
           value={value}
           onChange={e => onChange(e.target.value)}
           onKeyDown={onKeyDown}
@@ -1455,7 +1505,7 @@ export function TextInput({ label, labelInfo, ariaLabel, id, value, onChange, pl
             outline: 'none',
             padding: '10px 14px',
             color: 'var(--text-primary)',
-            fontFamily: T.font.sans,
+            fontFamily: mono ? T.font.mono : T.font.sans,
             fontSize: 14,
             letterSpacing: 0,
             minWidth: 0,
@@ -1472,22 +1522,40 @@ export function TextInput({ label, labelInfo, ariaLabel, id, value, onChange, pl
 }
 
 // ─── Textarea ─────────────────────────────────────────────────────────────────
+// Ενα ύψος γραμμής κειμένου του πεδίου· από εδώ βγαίνει και το ελάχιστο ύψος
+// της αυτόματης ανάπτυξης, ώστε «δύο γραμμές» να σημαίνει δύο γραμμές.
+const TEXTAREA_LINE = 20;
+const TEXTAREA_CHROME = 22; // γέμισμα 10+10 και περίγραμμα 1+1
+
 export function Textarea({
-  label, labelInfo, value, onChange, placeholder, rows = 3,
+  label, labelInfo, value, onChange, placeholder, rows = 3, autoGrow,
 }: {
   label?: string; labelInfo?: ReactNode; value: string; onChange: (v: string) => void; placeholder?: string; rows?: number;
+  /**
+   * ΤΟ ΠΕΔΙΟ ΜΕΓΑΛΩΝΕΙ ΜΕ ΤΟ ΚΕΙΜΕΝΟ ΤΟΥ. Ξεκινά από `rows` γραμμές και
+   * ψηλώνει ως 200, μετά κυλά. Μια σημείωση που διάβασε η σάρωση φαίνεται
+   * ολόκληρη αντί να κόβεται σε μονόγραμμο πεδίο. Οπου ο περιηγητής δεν ξέρει
+   * το `field-sizing`, μένει το σταθερό ύψος των `rows` με λαβή αλλαγής ύψους.
+   */
+  autoGrow?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   const inputId = useId();
+  // Η ανάπτυξη ζει στην κλάση `.po-autogrow` (globals.css), γιατί μόνο εκεί
+  // υπάρχει `@supports`: η λαβή αλλαγής ύψους μένει μόνο όπου δεν ψηλώνει μόνο του.
+  const grow: React.CSSProperties = autoGrow
+    ? { minHeight: rows * TEXTAREA_LINE + TEXTAREA_CHROME }
+    : { minHeight: 80, resize: 'vertical' };
   return (
     <div>
-      {label && <label htmlFor={inputId} style={fieldLabelStyle}><span>{label}{infoNode(labelInfo)}</span></label>}
+      {label && <label htmlFor={inputId} style={fieldLabelStyle}><span>{labelWithInfo(label, labelInfo)}</span></label>}
       <textarea
         id={inputId}
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
+        className={autoGrow ? 'po-autogrow' : undefined}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={{
@@ -1503,10 +1571,9 @@ export function Textarea({
           letterSpacing: 0,
           boxSizing: 'border-box',
           outline: 'none',
-          resize: 'vertical',
-          minHeight: 80,
+          ...grow,
           transition: 'border-color 0.15s, box-shadow 0.15s',
-          lineHeight: '20px',
+          lineHeight: `${TEXTAREA_LINE}px`,
         }}
       />
     </div>

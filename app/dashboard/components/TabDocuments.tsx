@@ -26,7 +26,7 @@ import * as documents from '@/lib/data/documents';
 // Η ΜΙΑ μηχανή σάρωσης/καταχώρησης. Το Αρχείο δεν έχει δική του λογική OCR, δικό
 // του prompt, ούτε δική του απόφαση για το ράφι: όλα ζουν στο scanDoc.ts και στο
 // lib/billing (δοκιμασμένα). Ό,τι φαίνεται εδώ είναι μόνο οθόνη.
-import { ARCHIVE_CATEGORIES, validateDoc, DOC_FIELD_LABELS, DOC_TYPE_LABELS, type ScannedDoc } from '@/lib/billing/documents';
+import { ARCHIVE_CATEGORIES, validateDoc, DOC_FIELD_LABELS, DOC_TYPE_LABELS, FOLDERS, folderForDoc, archiveOptions, docForm, fieldOptions, fieldValue, kindOf, shelfPath, type FolderKey, type ScannedDoc } from '@/lib/billing/documents';
 import {
   scanFile, commitScannedDoc, archiveScannedFile, archiveCategoryFor,
   PHOTO_CATEGORIES, MAX_SCAN_MB, RECONCILE_NONE_LABEL, RECONCILE_NONE_HINT,
@@ -39,6 +39,7 @@ import { applyFilters, facetOptions, toggleValue, clearAll, groupByMonth, sumVal
 import { SAY } from '@/lib/core/dbError';
 import { useLoad } from '@/app/hooks/useLoad';
 import { toggleIn } from '@/lib/core/toggleSet';
+import { athensToday } from '@/lib/core/time';
 
 /* ════════════════════════════════════════════════════════════════════════
    ΑΡΧΕΙΟ — μία επίπεδη λίστα με όψεις, ΧΩΡΙΣ φακέλους.
@@ -68,48 +69,11 @@ interface DocRow {
   signedUrl?: string;
 }
 
-// Οι κατηγορίες-φάκελοι έρχονται από το lib/billing/documents.ts — ΕΝΑ σημείο για
-// όλες τις διαδρομές (σάρωση, μαζικό ανέβασμα, διόρθωση αναγνώρισης).
-const DOC_CATEGORIES: string[] = [...ARCHIVE_CATEGORIES];
-
-/* ── Ταξινόμηση φακέλων ─────────────────────────────────────────────────── */
-type FolderKey =
-  | 'contracts' | 'property' | 'taxes' | 'bills' | 'providers'
-  | 'warranties' | 'invoices' | 'bank' | 'photos' | 'other';
-
-const FOLDERS: { key: FolderKey; label: string }[] = [
-  { key: 'contracts',  label: 'Συμβόλαια' },
-  { key: 'property',   label: 'Έγγραφα ακινήτου' },
-  { key: 'taxes',      label: 'Φόροι και ΕΝΦΙΑ' },
-  { key: 'bills',      label: 'Λογαριασμοί' },
-  { key: 'providers',  label: 'Πάροχοι' },
-  { key: 'warranties', label: 'Εγγυήσεις' },
-  { key: 'invoices',   label: 'Τιμολόγια' },
-  { key: 'bank',       label: 'Τραπεζικά' },
-  { key: 'photos',     label: 'Φωτογραφίες' },
-  { key: 'other',      label: 'Λοιπά' },
-];
+// Η ΤΑΞΙΝΟΜΙΑ ΤΟΥ ΑΡΧΕΙΟΥ ΖΕΙ ΣΤΟ lib/billing/documents.ts: τα ράφια, οι
+// φάκελοι και ποιο ράφι κάθεται σε ποιον φάκελο. Τα χρειάζεται και η σάρωση,
+// που δείχνει την ίδια λίστα ραφιών· εδώ μένουν μόνο οι αντιστοιχίσεις που
+// αφορούν τις δαπάνες και τους λογαριασμούς της καρτέλας.
 const FOLDER_LABEL: Record<FolderKey, string> = FOLDERS.reduce((a, f) => { a[f.key] = f.label; return a; }, {} as Record<FolderKey, string>);
-
-// Ακριβής αντιστοίχιση κατηγορίας property_documents → φάκελος
-const DOC_CAT_FOLDER: Record<string, FolderKey> = {
-  'Μισθωτήριο / Συμβόλαιο': 'contracts', 'Ασφαλιστήριο Συμβόλαιο': 'contracts',
-  'ΕΝΦΙΑ / Φορολογικά': 'taxes', 'Τεχνική Έκθεση': 'property', 'Άλλο Έγγραφο': 'property',
-  'Λογαριασμός Ρεύματος': 'bills', 'Λογαριασμός Φυσικού Αερίου': 'bills', 'Λογαριασμός Νερού': 'bills',
-  'Τηλέφωνο / Internet': 'bills', 'Κοινόχρηστα': 'bills',
-  'Απεντόμωση / Μυοκτονία': 'providers', 'Τιμολόγιο Καθαρισμού': 'providers',
-  'Συντήρηση Πισίνας': 'providers', 'Συντήρηση Ανελκυστήρα': 'providers', 'Εταιρεία Ασφαλείας': 'providers',
-};
-const folderForDoc = (cat: string | null): FolderKey => {
-  if (!cat) return 'property';
-  if (DOC_CAT_FOLDER[cat]) return DOC_CAT_FOLDER[cat];
-  const c = cat.toLowerCase();
-  if (/ασφαλ|συμβόλαιο|μισθωτ/.test(c)) return 'contracts';
-  if (/ενφια|φόρο|φορολ/.test(c)) return 'taxes';
-  if (/λογαριασμ|ρεύμα|νερ|αέριο|internet|τηλέφων|κοινόχρηστ/.test(c)) return 'bills';
-  if (/καθαρ|πισίν|ανελκυστ|απεντόμ|security|ασφαλεία/.test(c)) return 'providers';
-  return 'property';
-};
 // Κατηγορία εξόδου (ελεύθερο ελληνικό string) → φάκελος
 const folderForExpense = (cat: string | null): FolderKey => {
   const c = (cat || '').toLowerCase();
@@ -1296,14 +1260,25 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onCommit, onRemove }: {
   onRemove: () => void;
 }) {
   const doc = d.doc;
-  const v = doc ? validateDoc(doc) : { blocking: [], recommended: [], invalid: [] };
+  const raw = doc ? validateDoc(doc) : { blocking: [], recommended: [], invalid: [] };
+  // ΤΟΝ ΤΥΠΟ ΔΕΝ ΤΟΝ ΔΙΑΛΕΓΕΙΣ ΕΔΩ. Σε PDF που η ανάγνωση βρήκε «όχι έγγραφο»
+  // ο έλεγχος ζητά Τύπο, η κάρτα όμως δεν έχει επιλογέα τύπου (εκεί είναι η
+  // σάρωση ενός εγγράφου) και η καταχώρηση δεν μπλοκάρεται: το «Χρειάζεται:
+  // Τύπος εγγράφου» ζητούσε κάτι αδύνατο. Αρχειοθετείται στο ράφι που φαίνεται.
+  const v = { ...raw, blocking: raw.blocking.filter(k => k !== 'kind') };
   const miss = (k: string) => v.blocking.includes(k) || v.recommended.includes(k)
     || (k === 'period_to' && v.recommended.includes('period_from'));
   const bad = (k: string) => v.invalid.includes(k) || (k === 'period_to' && v.invalid.includes('period_from'));
   const mark = (labelText: string, k: string) => `${labelText}${bad(k) ? ' • άκυρο' : miss(k) ? ' • λείπει' : ''}`;
-  const amountKey: 'amount' | 'premium' = doc?.doc_type === 'insurance' ? 'premium' : 'amount';
+  // ΣΤΟΝ ΕΝΦΙΑ ΤΟ ΠΟΣΟ ΠΟΥ ΓΙΝΕΤΑΙ ΔΑΠΑΝΗ ΕΙΝΑΙ ΑΥΤΟΥ ΤΟΥ ΑΚΙΝΗΤΟΥ. Η κάρτα
+  // διόρθωνε το σύνολο του εκκαθαριστικού, που δεν γράφεται ποτέ ως δαπάνη· ο
+  // ΕΝΦΙΑ χωρίς ποσό ακινήτου έμενε μόνο στον Φάκελο χωρίς καμία εξήγηση.
+  const amountKey: 'amount' | 'premium' | 'property_amount' = doc?.doc_type === 'insurance' ? 'premium'
+    : doc && kindOf(doc)?.value === 'enfia' ? 'property_amount' : 'amount';
+  const amountLabel = amountKey === 'property_amount' ? DOC_FIELD_LABELS.property_amount : 'Ποσό';
+  const formInfo = doc ? docForm(doc)?.info : undefined;
   const busyRow = d.status === 'scanning' || d.status === 'saving' || d.status === 'pending';
-  const folder = d.kind === 'photo' ? FOLDER_LABEL.photos : FOLDER_LABEL[folderForDoc(d.category)];
+  const yearField = doc ? (docForm(doc)?.groups || []).flatMap(g => g.rows.flat()).find(f => f.key === 'tax_year') : undefined;
 
   return (
     <div style={{ border: `1px solid ${d.status === 'saved' ? 'var(--positive-border)' : d.status === 'failed' || d.status === 'error' ? 'var(--warning-border)' : 'var(--border-subtle)'}`, borderRadius: T.radius.inner, background: 'var(--bg-elevated)', padding: '10px 12px' }}>
@@ -1321,7 +1296,7 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onCommit, onRemove }: {
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>
             {STAGE_TEXT[d.status] || (d.kind === 'photo'
               ? `Φωτογραφία χώρου · ${d.category}`
-              : `${DOC_TYPE_LABELS[doc?.doc_type || 'other']} · ${d.category} · ${folder}`)}
+              : `${DOC_TYPE_LABELS[doc?.doc_type || 'other']} · ${shelfPath(d.category)}`)}
           </div>
         </div>
         {d.status === 'saved' && (d.saved || []).map(t => (
@@ -1393,7 +1368,7 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onCommit, onRemove }: {
             )}
             <div style={g2x}>
               <CustomSelect label="Κατηγορία (φάκελος)" value={d.category} onChange={c => onPatch({ category: c })}
-                options={DOC_CATEGORIES.map(c => ({ value: c, label: `${c} · ${FOLDER_LABEL[folderForDoc(c)]}` }))}/>
+                options={archiveOptions()}/>
               <TextInput label="Τίτλος" value={doc.title || ''} onChange={t => onPatchDoc({ title: t })} placeholder="Σύντομη περιγραφή"/>
             </div>
             <div style={g2x}>
@@ -1404,7 +1379,7 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onCommit, onRemove }: {
             </div>
             {hasMoney(doc.doc_type) && (
               <div style={g2x}>
-                <NumberInput label={mark('Ποσό (€)', amountKey)} value={doc[amountKey] != null ? String(doc[amountKey]) : ''}
+                <NumberInput label={mark(`${amountLabel} (€)`, amountKey)} value={doc[amountKey] != null ? String(doc[amountKey]) : ''}
                   onChange={t => onPatchDoc({ [amountKey]: t.trim() ? parseFloat(t.replace(',', '.')) || undefined : undefined } as Partial<ScannedDoc>)} placeholder=""/>
                 <DatePicker label={mark('Ημερομηνία έκδοσης', 'issue_date')} value={doc.issue_date || ''} onChange={t => onPatchDoc({ issue_date: t })}/>
               </div>
@@ -1412,6 +1387,12 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onCommit, onRemove }: {
             {(doc.doc_type === 'bill' || doc.doc_type === 'tax') && (
               <div style={g2x}>
                 <DatePicker label={mark('Ημερομηνία λήξης πληρωμής', 'due_date')} value={doc.due_date || ''} onChange={t => onPatchDoc({ due_date: t })}/>
+                {/* Το έτος είναι υποχρεωτικό σε κάθε φορολογικό (σχήμα του είδους):
+                    χωρίς πεδίο εδώ, το «Χρειάζεται: Έτος» δεν θα είχε πού να γραφτεί. */}
+                {yearField && (
+                  <CustomSelect label={mark(yearField.label, 'tax_year')} value={fieldValue(doc, yearField)}
+                    onChange={t => onPatchDoc({ tax_year: Number(t) || undefined })} options={fieldOptions(yearField, doc, athensToday())}/>
+                )}
               </div>
             )}
             {hasMoney(doc.doc_type) && (
@@ -1428,6 +1409,7 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onCommit, onRemove }: {
                 <DatePicker label="Ημερομηνία" value={doc.issue_date || ''} onChange={t => onPatchDoc({ issue_date: t })}/>
               </div>
             )}
+            {formInfo && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{formInfo}</div>}
             <Textarea label="Σημειώσεις" value={doc.notes || ''} onChange={t => onPatchDoc({ notes: t })} placeholder="Προαιρετικά"/>
           </>) : null}
         </div>
@@ -1471,7 +1453,7 @@ function RenameModal({ initial, onCancel, onSave }: { initial: string; onCancel:
  */
 function FixModal({ items, onCancel, onSave }: { items: Item[]; onCancel: () => void; onSave: (p: Record<string, unknown>) => void }) {
   const one = items.length === 1 ? items[0].raw : null;
-  const [cat, setCat] = useState(one?.category && DOC_CATEGORIES.includes(one.category) ? one.category : DOC_CATEGORIES[0]);
+  const [cat, setCat] = useState<string>(one?.category && (ARCHIVE_CATEGORIES as readonly string[]).includes(one.category) ? one.category : ARCHIVE_CATEGORIES[0]);
   const [supplier, setSupplier] = useState(one?.supplier || '');
   const [afm, setAfm] = useState(one?.provider_afm || '');
   const [amount, setAmount] = useState(one?.amount != null ? String(numOrNull(one.amount) ?? '') : '');
@@ -1506,7 +1488,7 @@ function FixModal({ items, onCancel, onSave }: { items: Item[]; onCancel: () => 
       </>}>
       {/* Χωρίς δικό μας flex wrapper: το Modal βάζει ήδη τα παιδιά σε στήλη με κενό. */}
       <CustomSelect label="Κατηγορία" value={cat} onChange={setCat}
-        options={DOC_CATEGORIES.map(c => ({ value: c, label: `${c} · ${FOLDER_LABEL[folderForDoc(c)]}` }))}/>
+        options={archiveOptions()}/>
       {one && (<>
         <div style={g2x}>
           <TextInput label="Πάροχος ή εκδότης" value={supplier} onChange={setSupplier} placeholder="Όπως γράφεται στο παραστατικό"/>

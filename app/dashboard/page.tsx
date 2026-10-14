@@ -865,8 +865,9 @@ export default function Dashboard() {
           παράθυρο δεν είχε κανένα. */}
       <Modal open={!!(quickAddOpen&&user&&selected)} onClose={()=>{ if(!scanBusy) closeQuickAdd(); }} size="lg"
         title="Σάρωση εγγράφου">
-        {user&&selected&&<DocumentScan propertyId={selected.id} userId={user.id} onBusyChange={setScanBusy}
+        {user&&selected&&<DocumentScan propertyId={selected.id} userId={user.id} properties={properties} onBusyChange={setScanBusy}
           onManual={()=>{ closeQuickAdd(); setNav('finances'); setManualExpense(n=>n+1); }}
+          onOpenAccounting={()=>{ closeQuickAdd(); setNav('accounting'); }}
           onSaved={async()=>{await fetchProperties(user.id);}}/>}
       </Modal>
 
