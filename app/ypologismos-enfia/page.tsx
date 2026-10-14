@@ -206,7 +206,9 @@ export default function Page() {
                 { k: 'ΕΝΦΙΑ ετησίως', v: fe(e.annual), kind: 'total' },
               ]}/>
               <p style={{ margin: '10px 0 0', fontSize: 14 }}>
-                <Link href={e.href} className="lp-link" style={LINK}>{`Άνοιξε το παράδειγμα ${i + 1} στον υπολογιστή`}</Link>
+                {/* Αυτοτελής σύνδεσμος, όχι λέξη σε πρόταση: 44 στην αφή (`.po-tap`).
+                    Το e2e:rendered τον έπιασε στα 17 (#401). */}
+                <Link href={e.href} className="lp-link po-tap" style={LINK}>{`Άνοιξε το παράδειγμα ${i + 1} στον υπολογιστή`}</Link>
               </p>
             </div>
           ))}
