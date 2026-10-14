@@ -207,7 +207,7 @@ export default function Page() {
               ]}/>
               <p style={{ margin: '10px 0 0', fontSize: 14 }}>
                 {/* Αυτοτελής σύνδεσμος, όχι λέξη σε πρόταση: 44 στην αφή (`.po-tap`).
-                    Το e2e:rendered τον έπιασε στα 17 (#401). */}
+                    Το e2e:rendered του PR 401 τον έπιασε στα 17. */}
                 <Link href={e.href} className="lp-link po-tap" style={LINK}>{`Άνοιξε το παράδειγμα ${i + 1} στον υπολογιστή`}</Link>
               </p>
             </div>

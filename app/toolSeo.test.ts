@@ -52,7 +52,7 @@ const AMA = '/odigos/vraxyxronia-ama';
 // Ο συλλαβιστής βάζει μαλακά ενωτικά και ενωτήρες λέξεων· η σύγκριση κειμένου τα αγνοεί.
 const plain = (s: string) => s.replace(/[\u00AD\u2060]/g, '');
 // ΣΕ ΕΝΑ ΠΕΡΑΣΜΑ: με αλυσίδα από replace το «&amp;lt;» γινόταν «<» αντί για «&lt;»
-// (CodeQL στο #401). Το ίδιο και για το <script>: με κάθε γραφή του, όχι μόνο πεζά.
+// (CodeQL στο PR 401). Το ίδιο και για το <script>: με κάθε γραφή του, όχι μόνο πεζά.
 const ENTITY: Record<string, string> = { amp: '&', quot: '"', '#x27': "'", lt: '<', gt: '>' };
 const unescape = (s: string) => s.replace(/&(amp|quot|#x27|lt|gt);/g, (_, e: string) => ENTITY[e]);
 const text = (html: string) =>
