@@ -19,7 +19,7 @@ import { SectionHead, WRAP, WRAP_PAD } from '../PublicChrome';
 import { LINK_STYLE } from '../linkStyle';
 import { BackLink } from '../BackLink';
 import { TocSpy } from '../TocSpy';
-import { hy } from '@/components/Hyphen';
+import { refsOnly } from '@/components/Hyphen';
 import { LISTED_GUIDES, guideShareImageUrl, relatedGuides, type Guide } from './guides';
 
 const HUB = { href: '/odigos', label: 'Οδηγοί' } as const;
@@ -39,18 +39,24 @@ export { LINK_STYLE };
  */
 export function GuideMain({ children, rail }: { children: ReactNode; rail?: GuideRailProps }) {
   return (
-    <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
+    // ΚΑΝΕΝΑ ΜΑΛΑΚΟ ΕΝΩΤΙΚΟ ΣΤΟ ΚΕΙΜΕΝΟ ΤΟΥ ΟΔΗΓΟΥ, ΟΥΤΕ ΣΤΟΝ ΠΕΡΙΗΓΗΤΗ (13.10.2026).
+    // Το `data-nohy` κρατά έξω τον στοιχειοθέτη της σελίδας (lib/ui/typeset.ts,
+    // από το components/JustifyPolish.tsx), που αλλιώς τα ξανάβαζε στο DOM μετά
+    // τη φόρτωση. Τον συλλαβισμό, όπου υπάρχει λεξικό, τον κάνει ο περιηγητής
+    // (globals.css, «ΟΙ ΟΔΗΓΟΙ ΣΤΟΙΧΙΖΟΝΤΑΙ ΑΡΙΣΤΕΡΑ»).
+    <main data-nohy="" style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
       <div className="gd-layout">
         {rail && <GuideRail {...rail} />}
         <div className="gd">
           <BackLink parent={HUB} />
-          {/* ΟΛΟ ΤΟ ΣΩΜΑ ΠΕΡΝΑ ΑΠΟ ΤΟ `hy()` ΕΔΩ, ΜΙΑ ΦΟΡΑ. Από 07.10.2026 οι
-              παράγραφοι του οδηγού στοιχίζονται αριστερά σε κάθε πλάτος με
-              `hyphens: none` (globals.css, «ΟΙ ΟΔΗΓΟΙ ΣΤΟΙΧΙΖΟΝΤΑΙ ΑΡΙΣΤΕΡΑ»),
-              οπότε τα μαλακά ενωτικά δεν κόβουν λέξη· το `hy()` μένει για τις
-              αδιάσπαστες παραπομπές (`bindRefs`). Επικεφαλίδες, κουμπιά και
-              πίνακες μένουν ακέραια (components/Hyphen.tsx, NO_HY). */}
-          {hy(children)}
+          {/* ΟΛΟ ΤΟ ΣΩΜΑ ΠΕΡΝΑ ΑΠΟ ΤΟ `refsOnly()` ΕΔΩ, ΜΙΑ ΦΟΡΑ: κρατά τις
+              παραπομπές αδιάσπαστες (`bindRefs`) και ΔΕΝ βάζει μαλακά ενωτικά.
+              Ως 13.10.2026 εδώ ήταν το `hy()`· με την αριστερή στοίχιση και το
+              `hyphens: none` (07.10.2026) τα ενωτικά του δεν έκοβαν τίποτα,
+              αλλά έμεναν στο κείμενο και χάλαγαν την αντιγραφή και την
+              αναζήτηση. Επικεφαλίδες, κουμπιά και πίνακες μένουν ακέραια
+              (components/Hyphen.tsx, NO_HY). */}
+          {refsOnly(children)}
         </div>
       </div>
     </main>
@@ -190,7 +196,7 @@ export function GuideSources({ over, sources }: { over: string; sources: ReactNo
       <GuideH2 id={SOURCES_SECTION.id} over={over} title={SOURCES_SECTION.title} />
       <div className="po-tool-sources" aria-label={SOURCES_SECTION.title} style={{ display: 'block' }}>
         <ul className="lg-ul">
-          {sources.map((s, i) => <li key={i}>{hy(s)}</li>)}
+          {sources.map((s, i) => <li key={i}>{refsOnly(s)}</li>)}
         </ul>
       </div>
     </>

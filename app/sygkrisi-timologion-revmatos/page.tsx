@@ -29,7 +29,7 @@ import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { PowerCompare } from './PowerCompare';
-import { PRICE_FACTS } from '@/lib/facts/prices';
+import { PAGE_UPDATED } from '../pageUpdated';
 
 // Τίτλος ως 60 και περιγραφή ως 155 χαρακτήρες, όσα δείχνει η αναζήτηση.
 // Η ΦΡΑΣΗ ΠΟΥ ΓΡΑΦΕΙ Ο ΚΟΣΜΟΣ (Bing, 03.10.2026): «σύγκριση τιμολογίων
@@ -134,7 +134,7 @@ export default function Page() {
           }/>
         </Suspense>
 
-        <ToolSources kind="power" checked={PRICE_FACTS.electricity.checkedAt} />
+        <ToolSources kind="power" checked={PAGE_UPDATED['/sygkrisi-timologion-revmatos']} />
 
         <section className="po-tool-more" style={{ marginTop: 'clamp(44px,6vw,72px)' }}>
           <SectionHead over="Συχνές ερωτήσεις" title="Ό,τι ρωτούν πριν αλλάξουν πάροχο" />

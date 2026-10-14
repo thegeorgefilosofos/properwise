@@ -144,14 +144,21 @@ const themeInitScript = `
 // με nonce στο `<head>`, που τρέχει πριν από κάθε ζωγραφική. Το `document`
 // υπάρχει ήδη όταν τρέχει ένα σενάριο στο head — ο ακροατής μπαίνει στο
 // `document`, όχι σε κόμβο που δεν έχει φτιαχτεί.
+//
+// ΤΟ ΕΝΩΤΙΚΟ ΓΡΑΦΕΤΑΙ ΩΣ ΔΙΑΦΥΓΗ ΚΑΙ ΣΤΟ HTML (13.10.2026). Με `\u00AD` μέσα
+// στο template literal η συμβολοσειρά κουβαλούσε τον ίδιο τον χαρακτήρα, οπότε
+// κάθε σελίδα είχε δύο U+00AD στο σενάριο και δύο στο ωφέλιμο φορτίο του RSC,
+// ακόμη και οι οδηγοί που δεν έχουν κανένα στο κείμενο. Με `\\u00AD` φτάνει
+// στον περιηγητή η διαφυγή και ο έλεγχος «κανένα U+00AD στο HTML» μετρά μόνο
+// κείμενο.
 const copyPlainScript = `
 (function() {
   try {
-    var SHY = /\u00AD/g;
+    var SHY = /\\u00AD/g;
     document.addEventListener('copy', function (e) {
       var sel = window.getSelection();
       var text = sel ? sel.toString() : '';
-      if (!text || text.indexOf('\u00AD') === -1) return;
+      if (!text || text.indexOf('\\u00AD') === -1) return;
       var data = e.clipboardData;
       if (!data) return;
       var html = '';

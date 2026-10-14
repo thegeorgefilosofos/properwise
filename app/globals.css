@@ -5727,12 +5727,28 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    τα κενά. Το `hyphens: auto` δεν είναι λύση για τα ελληνικά (βλ.
    components/Hyphen.tsx: ίδια νούμερα με και χωρίς). Άρα ριγμένη δεξιά άκρη σε
    κάθε πλάτος, χωρίς κοψίματα (`none`, ώστε να μην τιμώνται τα μαλακά
-   ενωτικά του `hy()`). Οι νομικές σελίδες (`.lg-body`) δεν αλλάζουν εδώ. */
+   ενωτικά του `hy()`). Οι νομικές σελίδες (`.lg-body`) δεν αλλάζουν εδώ.
+
+   13.10.2026: ΚΑΝΕΝΑ ΜΑΛΑΚΟ ΕΝΩΤΙΚΟ ΣΤΟ ΚΕΙΜΕΝΟ, ΣΥΛΛΑΒΙΣΜΟΣ ΑΠΟ ΤΟΝ ΠΕΡΙΗΓΗΤΗ.
+   Το `none` έκρυβε τα ενωτικά του `hy()` από το μάτι, όχι από το κείμενο:
+   285 ως 1.080 ανά οδηγό, που έσπαγαν την αντιγραφή («αν\u00ADθε\u00ADκτι\u00ADκό\u00ADτη\u00ADτας») και
+   την αναζήτηση φράσης. Ο οδηγός περνά πλέον από το `refsOnly()` (μόνο
+   αδιάσπαστες παραπομπές) και ο στοιχειοθέτης μένει έξω (`data-nohy` στο
+   `main`). Στη θέση τους `hyphens: auto` με `lang="el"` (app/layout.tsx):
+   ελληνικό λεξικό συλλαβισμού έχουν οι Chrome και Edge από την 112· οι
+   Firefox και Safari όχι, οπότε εκεί η δεξιά άκρη μένει ριγμένη χωρίς
+   κοψίματα (MDN browser-compat-data, css/properties/hyphens.json,
+   `language_modern_greek`). Η στοίχιση μένει αριστερά: πέρα πέρα χωρίς
+   λεξικό ανοίγει τα ποτάμια που μέτρησε το components/Hyphen.tsx. Το
+   `hyphenate-limit-chars` είναι οι κανόνες του lib/core/hyphenate.ts: λέξη
+   από έξι γράμματα (MIN_WORD), δύο τουλάχιστον πριν από την τομή (MIN_LEFT)
+   και τρία μετά (MIN_RIGHT). Στο κινητό ο κανόνας
+   «ΣΤΟ ΚΙΝΗΤΟ ΑΡΙΣΤΕΡΑ ΚΑΙ ΧΩΡΙΣ ΚΟΨΙΜΑΤΑ» πιο κάτω κρατά το `none`. */
 .gd .lg-p, .gd .lg-ul li {
-  font-size: 16px; line-height: 1.65; text-align: start; hyphens: none;
+  font-size: 16px; line-height: 1.65; text-align: start; hyphens: auto; hyphenate-limit-chars: 6 2 3;
   color: color-mix(in srgb, var(--text-primary) 90%, transparent);
 }
-.gd .lg-note { text-align: start; hyphens: none; }
+.gd .lg-note { text-align: start; hyphens: auto; hyphenate-limit-chars: 6 2 3; }
 /* Ο ΤΥΠΟΣ ΤΟΥ ΕΝΦΙΑ: ΑΡΙΣΤΕΡΑ, ΧΩΡΙΣ ΕΝΩΤΙΚΑ, ΣΠΑΕΙ ΜΟΝΟ ΠΡΙΝ ΑΠΟ ΤΟ «×».
    Οι όροι έχουν αδιάσπαστα κενά (app/odigos/pos-ypologizetai-o-enfia). Πέρα
    πέρα έκοβε το «συ-ντελεστής» και τέντωνε τα κενά γύρω από τα «×». */

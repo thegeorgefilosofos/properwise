@@ -26,7 +26,7 @@ import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { EnfiaCalculator } from './EnfiaCalculator';
 import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
-import { taxLimitAsOf } from '@/lib/facts/taxLimits';
+import { PAGE_UPDATED } from '../pageUpdated';
 
 // ΤΟ ΕΤΟΣ ΤΟΥ ΤΙΤΛΟΥ ΕΙΝΑΙ ΤΟ ΕΤΟΣ ΤΟΥ ΥΠΟΛΟΓΙΣΜΟΥ. Ήταν γραμμένο «2026» με το
 // χέρι, ενώ ο υπολογιστής και ο πίνακας των δόσεων ακολουθούν το τρέχον έτος:
@@ -163,7 +163,7 @@ export default function Page() {
           }/>
         </Suspense>
 
-        <ToolSources kind="enfia" checked={taxLimitAsOf('enfia').checkedAt} />
+        <ToolSources kind="enfia" checked={PAGE_UPDATED['/ypologismos-enfia']} />
 
         {/* ── Συχνές ερωτήσεις ──────────────────────────────────────────────
                ΗΤΑΝ ΠΕΝΤΕ ΚΟΥΤΙΑ ΜΕ ΠΕΡΙΓΡΑΜΜΑ ΚΑΙ ΤΟ ΒΕΛΑΚΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ, ενώ ο

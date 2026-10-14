@@ -31,7 +31,7 @@ import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { RentTaxCalculator } from './RentTaxCalculator';
-import { taxLimitAsOf } from '@/lib/facts/taxLimits';
+import { PAGE_UPDATED } from '../pageUpdated';
 import { fn, feWhole, fpRate, grDateOf } from '@/lib/core/format';
 import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
@@ -181,7 +181,7 @@ export default function Page() {
           }/>
         </Suspense>
 
-        <ToolSources kind="rent" checked={taxLimitAsOf('rent').checkedAt} />
+        <ToolSources kind="rent" checked={PAGE_UPDATED['/ypologismos-forou-enoikion']} />
 
         {/* ── Συχνές ερωτήσεις ──────────────────────────────────────────────
                ΗΤΑΝ ΠΕΝΤΕ ΚΟΥΤΙΑ ΜΕ ΠΕΡΙΓΡΑΜΜΑ ΚΑΙ ΤΟ ΒΕΛΑΚΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ. Η
