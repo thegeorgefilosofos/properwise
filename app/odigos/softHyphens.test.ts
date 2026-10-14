@@ -35,7 +35,7 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.er
 /** Πού βρίσκεται το πρώτο ενωτικό, για να λέει η αποτυχία τι να ψάξεις. */
 function around(html: string): string {
   const i = html.indexOf(SHY);
-  return i < 0 ? '' : ` — «${html.slice(Math.max(0, i - 40), i + 20).replace(/<[^>]+>/g, ' ').replace(SHY, '[U+00AD]')}»`;
+  return i < 0 ? '' : ` — «${html.slice(Math.max(0, i - 40), i + 20).split(/<[^>]+>/).join(' ').replace(SHY, '[U+00AD]')}»`;
 }
 
 async function main() {

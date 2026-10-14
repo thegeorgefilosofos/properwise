@@ -71,7 +71,10 @@ function shown(iso: string): string[] {
  * γιατί η λέξη μπορεί να βρεθεί και μέσα σε κείμενο, μπροστά από μήνα.
  */
 function visibleDates(html: string): string[] {
-  const text = html.replace(/<[^>]+>/g, '').replace(/\u00A0/g, ' ');
+  // Το κείμενο ανάμεσα στις ετικέτες. Με split και όχι με replace: το CodeQL
+  // διαβάζει το replace ως ελλιπή απολύμανση HTML (#400), ενώ εδώ το κείμενο
+  // μόνο ελέγχεται και δεν τυπώνεται πουθενά.
+  const text = html.split(/<[^>]+>/).join('').replace(/\u00A0/g, ' ');
   const out: string[] = [];
   const MONTH = '[Α-ΩΆ-Ώα-ωά-ώϊϋΐΰ]+';
   const DATE = `(\\d{2}/\\d{2}/\\d{4}|\\d{1,2} ${MONTH} \\d{4}|${MONTH} \\d{4})`;
