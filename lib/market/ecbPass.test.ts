@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Δύο συμπεριφορές που δεν φαίνονται με το μάτι και κοστίζουν όταν λείπουν:
 // η σειρά των υποψηφίων (ημερήσιο πρώτα, μηνιαίο δεύτερο) και η απομόνωση —
-// μία σειρά που σκάει δεν παίρνει μαζί της τις άλλες επτά.
+// μία σειρά που σκάει δεν παίρνει μαζί της τις υπόλοιπες.
 // ═══════════════════════════════════════════════════════════════════════════
 import { fetchLatest, ECB_SERIES } from '@/lib/market/ecb';
 
@@ -43,7 +43,7 @@ async function main() {
   const oneBroken = async (url: string) =>
     url.includes('EURIBOR3MD_') ? (() => { throw new Error('δίκτυο') })() : ok(2.15, '2026-08-31');
   const r2 = await fetchLatest(NOW, oneBroken as never);
-  eq('οι υπόλοιπες επτά ήρθαν', Object.keys(r2.fresh).length, ECB_SERIES.length - 1);
+  eq('όλες οι υπόλοιπες ήρθαν', Object.keys(r2.fresh).length, ECB_SERIES.length - 1);
   eq('η σπασμένη λείπει',       r2.fresh.euribor_3m, undefined);
   eq('και αναφέρεται με το όνομά της', r2.problems.length, 1);
   eq('με λόγο, όχι σιωπή', /Euribor τριμήνου/.test(r2.problems[0]) && /δίκτυο/.test(r2.problems[0]), true);

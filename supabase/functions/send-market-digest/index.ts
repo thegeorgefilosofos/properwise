@@ -16,6 +16,9 @@ import { APP_URL } from '../_shared/site.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { pct } from '../_shared/format.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
+// Ο ΙΔΙΟΣ ΚΑΝΟΝΑΣ ΣΕΙΡΑΣ ΜΕ ΤΗΝ ΤΡΟΦΟΔΟΣΙΑ: το lib/market/ecb.ts φορτώνεται και
+// από το Deno (όπως στη market-data-updater), χωρίς σχετικές εισαγωγές.
+import { sameSeries, type MarketKey, type Provenance } from '../../../lib/market/ecb.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -34,7 +37,7 @@ async function authorized(req: Request): Promise<CronAuth> {
   return authorizeCron(req, { serviceKey: SERVICE_KEY, envSecret: CRON_SECRET, supabase })
 }
 
-const METRICS: { key: string; label: string }[] = [
+const METRICS: { key: MarketKey; label: string }[] = [
   { key: 'euribor_3m', label: 'Euribor 3 μηνών' },
   { key: 'euribor_6m', label: 'Euribor 6 μηνών' },
   { key: 'euribor_12m', label: 'Euribor 12 μηνών' },
@@ -91,7 +94,7 @@ Deno.serve(async (req) => {
   if (!RESEND_API_KEY) return json({ error: 'no_resend_key' }, 500)
 
   const { data: rows, error: rowsErr } = await supabase.from('market_rates')
-    .select('euribor_3m,euribor_6m,euribor_12m,ecb_rate,bog_housing_new,updated_at')
+    .select('euribor_3m,euribor_6m,euribor_12m,ecb_rate,bog_housing_new,provenance,updated_at')
     .order('updated_at', { ascending: false }).limit(2)
   if (rowsErr) {
     console.error('[send-market-digest] τα επιτόκια δεν διαβάστηκαν:', rowsErr)
@@ -99,7 +102,16 @@ Deno.serve(async (req) => {
   }
   if (!rows?.length) return json({ message: 'no_data' })
   const cur = rows[0] as Record<string, number | null>
-  const prev = (rows[1] || {}) as Record<string, number | null>
+  const prevRow = (rows[1] || {}) as Record<string, number | null>
+  // ΜΕΤΑΒΟΛΗ ΜΟΝΟ ΜΕΣΑ ΣΤΗΝ ΙΔΙΑ ΣΕΙΡΑ (13.10.2026). Η στήλη bog_housing_new
+  // πέρασε από τη σειρά F της ΕΚΤ στην A· την ημέρα της αλλαγής η διαφορά των
+  // δύο γραμμών είναι αλλαγή ορισμού, όχι κίνηση του επιτοκίου· το email θα
+  // την έστελνε ως «▼». Οταν η ταυτότητα (`provenance`) δείχνει άλλη σειρά, η
+  // προηγούμενη τιμή δεν μετρά: «Χωρίς σύγκριση» και κανένα έναυσμα αποστολής.
+  const curProv = (rows[0] as { provenance?: Provenance | null }).provenance
+  const prevProv = (rows[1] as { provenance?: Provenance | null } | undefined)?.provenance
+  const prev: Record<string, number | null> = Object.fromEntries(METRICS.map(m =>
+    [m.key, rows[1] && sameSeries(curProv, prevProv, m.key) ? prevRow[m.key] ?? null : null]))
 
   // Στείλε μόνο αν υπάρχει ουσιαστική μεταβολή σε κάποιο μέγεθος.
   const changed = METRICS.some(m => cur[m.key] != null && prev[m.key] != null && Math.abs((cur[m.key] as number) - (prev[m.key] as number)) >= 0.001)

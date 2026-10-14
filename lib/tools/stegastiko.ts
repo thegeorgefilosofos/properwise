@@ -22,9 +22,9 @@
 import { monthlyPayment, loanCalendarYear } from '@/lib/loans/progress'
 import { effectiveRate } from '@/lib/loans/shape'
 import { affordability, type AffordabilityResult } from '@/lib/loans/affordability'
-import { ECB_SERIES, isStale, type MarketKey, type Provenance } from '@/lib/market/ecb'
-import { monthGen } from '@/lib/core/months'
-import { fn } from '@/lib/core/format'
+import { ECB_SERIES, isStale, seriesPage, type MarketKey, type Provenance } from '@/lib/market/ecb'
+import { monthGen, monthNom } from '@/lib/core/months'
+import { fn, fp } from '@/lib/core/format'
 
 /** Πάνω από αυτό δεν είναι στεγαστικό επιτόκιο, είναι λάθος πληκτρολόγησης. */
 export const RATE_CAP = 20
@@ -155,6 +155,10 @@ export interface MarketFact {
   asOf: string
   /** «Ιουνίου 2026» για μηνιαία σειρά, αλλιώς «31/08/2026». */
   period: string
+  /** Το ίδιο στην ονομαστική: «Ιούνιος 2026», όπως γράφεται σε παρένθεση. */
+  month: string
+  /** Πώς λέγεται η σειρά, από τον κατάλογο `ECB_SERIES`: ποτέ γραμμένο στην οθόνη. */
+  label: string
   /** Τι μετρά: «μέσος όρος μήνα», «νέες χορηγήσεις». */
   basis: string
   source: string
@@ -163,35 +167,140 @@ export interface MarketFact {
   stale: boolean
 }
 
-/** Η σειρά της ΕΚΤ είναι μηνιαία; Βγαίνει από τον κατάλογο, όχι από το χέρι. */
-const monthlySeries = (key: MarketKey): boolean =>
-  !!ECB_SERIES.find(s => s.key === key)?.candidates.every(c => c.series.startsWith('M.'))
-
-/** Η τιμή ενός κλειδιού με την ταυτότητά της, ή `null` όταν λείπει κάτι. */
+/**
+ * Η τιμή ενός κλειδιού με την ταυτότητά της, ή `null` όταν λείπει κάτι.
+ *
+ * ΤΙΜΗ ΑΛΛΗΣ ΣΕΙΡΑΣ ΔΕΝ ΠΕΡΝΑ ΜΕ ΑΥΤΟ ΤΟ ΟΝΟΜΑ. Η ταυτότητα στη βάση γράφεται
+ * από την τροφοδοσία και ό,τι δεν ξανάρθε μένει όπως ήταν. Οταν ένα κλειδί
+ * αλλάζει σειρά, η παλιά τιμή μένει κάτω από το ίδιο όνομα ως την πρώτη
+ * επιτυχημένη κλήση της νέας. Ετσι η βάση της 13/10/2026 έχει κάτω από το
+ * `bog_housing_new` την τιμή της σειράς F, που η σελίδα θα έγραφε ως μέσο όρο.
+ * Ο σύνδεσμος της ταυτότητας λέει από ποια σειρά ήρθε η τιμή: αν δεν είναι
+ * σειρά του τρέχοντος καταλόγου για αυτό το κλειδί, η τιμή δεν δίνεται.
+ */
 export function marketFact(p: Provenance | null | undefined, key: MarketKey, today: string): MarketFact | null {
+  const spec = ECB_SERIES.find(s => s.key === key)
   const v = p?.[key]
-  if (!v || typeof v.value !== 'number' || !Number.isFinite(v.value)) return null
+  if (!spec || !v || typeof v.value !== 'number' || !Number.isFinite(v.value)) return null
+  if (!spec.candidates.some(c => seriesPage(c) === v.url)) return null
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.asOf || '')
   if (!m || !v.source) return null
-  const period = monthlySeries(key) ? `${monthGen(Number(m[2]) - 1)} ${m[1]}` : `${m[3]}/${m[2]}/${m[1]}`
+  // Η σειρά είναι μηνιαία; Βγαίνει από τον κατάλογο, όχι από το χέρι.
+  const monthly = spec.candidates.every(c => c.series.startsWith('M.'))
+  const day = `${m[3]}/${m[2]}/${m[1]}`
   return {
-    value: v.value, asOf: v.asOf, period, basis: v.basis || '', source: v.source,
-    url: v.url || '', stale: isStale(key, v.asOf, today),
+    value: v.value, asOf: v.asOf,
+    period: monthly ? `${monthGen(Number(m[2]) - 1)} ${m[1]}` : day,
+    month: monthly ? `${monthNom(Number(m[2]) - 1)} ${m[1]}` : day,
+    label: spec.label, basis: v.basis || '', source: v.source,
+    url: v.url, stale: isStale(key, v.asOf, today),
   }
 }
 
-/** Οι δύο τιμές που χρειάζεται η σελίδα. Κενές όταν η βάση δεν απάντησε. */
+/** Οι τιμές που χρειάζεται η σελίδα. Κενές όταν η βάση δεν απάντησε. */
 export interface MortgageMarket {
-  /** Μέσο επιτόκιο νέων στεγαστικών στην Ελλάδα (ΕΚΤ, στοιχεία ΤτΕ). */
+  /** Μέσο επιτόκιο νέων στεγαστικών στην Ελλάδα: σειρά MIR A2C.A. */
   housing: MarketFact | null
+  /** Κυμαινόμενο ή σταθερό έως 1 έτος: σειρά MIR A2C.F. */
+  floating: MarketFact | null
+  /** Σταθερό πάνω από 1 έτος: σειρά MIR A2C.K. Η αφετηρία του «Σταθερό επιτόκιο». */
+  fixed: MarketFact | null
   /** Euribor τριμήνου, μέσος όρος μήνα. */
   euribor: MarketFact | null
 }
 
-export const NO_MARKET: MortgageMarket = { housing: null, euribor: null }
+export const NO_MARKET: MortgageMarket = { housing: null, floating: null, fixed: null, euribor: null }
 
 export function mortgageMarket(p: Provenance | null | undefined, today: string): MortgageMarket {
-  return { housing: marketFact(p, 'bog_housing_new', today), euribor: marketFact(p, 'euribor_3m', today) }
+  return {
+    housing: marketFact(p, 'bog_housing_new', today),
+    floating: marketFact(p, 'bog_housing_floating', today),
+    fixed: marketFact(p, 'bog_housing_fixed', today),
+    euribor: marketFact(p, 'euribor_3m', today),
+  }
+}
+
+/** Η τιμή μόνο όσο είναι φρέσκια: παλιά τιμή γράφεται για αναφορά, δεν προτείνεται. */
+export const freshFact = (f: MarketFact | null): MarketFact | null => (f && !f.stale ? f : null)
+
+/**
+ * Από πού ξεκινούν τα πεδία επιτοκίου του υπολογιστή.
+ *
+ * Το «Σταθερό επιτόκιο» ξεκινά ΜΟΝΟ από τη σειρά του σταθερού πάνω από 1 έτος.
+ * Χωρίς αυτήν (ή με παλιά τιμή) μένει κενό και η σελίδα ζητά το επιτόκιο της
+ * προσφοράς. Ποτέ από τον μέσο όρο ή από το κυμαινόμενο: αυτό ήταν το P0.
+ */
+export function startRates(m: MortgageMarket): { fixed: string; euribor: string } {
+  const field = (f: MarketFact | null): string => { const x = freshFact(f); return x ? rateField(x.value) : '' }
+  return { fixed: field(m.fixed), euribor: field(m.euribor) }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΤΟ ΚΕΙΜΕΝΟ ΤΗΣ ΑΓΟΡΑΣ: ΜΙΑ ΠΗΓΗ ΓΙΑ ΤΗ ΣΕΛΙΔΑ ΚΑΙ ΓΙΑ ΤΗ ΜΗΧΑΝΗ ΑΝΑΖΗΤΗΣΗΣ
+// ─────────────────────────────────────────────────────────────────────────
+// Η μορφή είναι του ιδιοκτήτη (αίτημα P0, 13/10/2026):
+//   «Μέσο επιτόκιο νέων στεγαστικών στην Ελλάδα: Α% (Μήνας Έτος, ΕΚΤ).
+//    Κυμαινόμενο ή σταθερό έως 1 έτος Β% · σταθερό πάνω από 1 έτος Γ%.»
+// Οι ετικέτες είναι του καταλόγου `ECB_SERIES` και τα νούμερα και ο μήνας είναι
+// της κάθε σειράς. Η σελίδα (με συνδέσμους) και η περιγραφή της (απλό κείμενο)
+// χτίζονται από τα ίδια κομμάτια, ώστε να μη μπορούν να διαφωνήσουν.
+//
+// Κοινός μήνας γράφεται μία φορά μόνο όταν οι τιμές έχουν την ίδια ημερομηνία.
+// Τιμή άλλου μήνα γράφει τον δικό της δίπλα της. Τιμή που λείπει δεν γράφεται.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Ένα κομμάτι του κειμένου: απλό, έντονο (η τιμή) ή σύνδεσμος στη σειρά της. */
+export interface NoteSeg { text: string; strong?: boolean; href?: string }
+
+const STALE_NOTE = 'η πηγή δεν έχει δώσει νεότερη τιμή'
+const lowerFirst = (s: string): string => s.charAt(0).toLocaleLowerCase('el') + s.slice(1)
+
+export function housingNote(m: MortgageMarket): NoteSeg[] {
+  const avg = m.housing
+  const rest = [m.floating, m.fixed].filter((f): f is MarketFact => !!f)
+  if (!avg && !rest.length) return []
+  // Η πρώτη τιμή της παραγράφου κουβαλά τον μήνα και την πηγή· οι άλλες μόνο
+  // αν είναι άλλου μήνα. Η ΕΚΤ της πρώτης είναι σύνδεσμος στη σειρά της και οι
+  // τιμές των άλλων είναι σύνδεσμοι στη δική τους.
+  const anchor = avg ?? rest[0]
+  const out: NoteSeg[] = []
+  const value = (f: MarketFact) => out.push(f === anchor
+    ? { text: fp(f.value), strong: true }
+    : { text: fp(f.value), strong: true, href: f.url })
+  const after = (f: MarketFact) => {
+    if (f === anchor) {
+      out.push({ text: ` (${f.month}, ` }, { text: 'ΕΚΤ', href: f.url }, { text: `)${f.stale ? `, ${STALE_NOTE}` : ''}` })
+    } else if (f.asOf !== anchor.asOf) {
+      out.push({ text: ` (${f.month}${f.stale ? `, ${STALE_NOTE}` : ''})` })
+    }
+  }
+
+  if (avg) {
+    out.push({ text: `${avg.label} στην Ελλάδα: ` })
+    value(avg); after(avg)
+    out.push({ text: '.' })
+  }
+  if (rest.length) {
+    out.push({ text: avg ? ' ' : 'Νέα στεγαστικά στην Ελλάδα: ' })
+    rest.forEach((f, i) => {
+      out.push({ text: `${i ? ' · ' : ''}${i === 0 && avg ? f.label : lowerFirst(f.label)} ` })
+      value(f); after(f)
+    })
+    out.push({ text: '.' })
+  }
+  return out
+}
+
+/** Το ίδιο κείμενο χωρίς συνδέσμους. Κενό όταν δεν υπάρχει καμία τιμή. */
+export const housingText = (m: MortgageMarket): string => housingNote(m).map(x => x.text).join('')
+
+/**
+ * Η περιγραφή της σελίδας για τη μηχανή αναζήτησης: πρώτα οι τιμές της αγοράς
+ * από τις σειρές, μετά η στατική περιγραφή. Χωρίς τιμές, μόνο η στατική.
+ */
+export function marketDescription(m: MortgageMarket, base: string): string {
+  const t = housingText(m)
+  return t ? `${t} ${base}` : base
 }
 
 /**

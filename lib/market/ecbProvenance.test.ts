@@ -6,8 +6,9 @@
 // Η οθόνη έλεγε «σήμερα» για νούμερα εβδομάδων και ο δείκτης παλαιότητας δεν
 // μπορούσε να χτυπήσει ποτέ.
 // ═══════════════════════════════════════════════════════════════════════════
-import { nextProvenance, valuesOf, ageDays, isStale, staleKeys, greekDay, greekWhen,
+import { nextProvenance, valuesOf, ageDays, isStale, staleKeys, greekDay, greekWhen, sameSeries,
   type Provenance, type RateProvenance } from '@/lib/market/ecb';
+import { readFileSync } from 'node:fs';
 
 let pass = 0; const fail: string[] = [];
 const eq = (what: string, got: unknown, want: unknown) => {
@@ -75,6 +76,25 @@ eq('ημερήσια τιμή κρατά την ημέρα της', greekWhen('2
 
 eq('η ημερομηνία γράφεται ελληνικά', greekDay('2026-08-31'), '31/08/2026');
 eq('σκουπίδι δεν γίνεται ημερομηνία', greekDay('2026-8-3'), '');
+
+// ══ ΜΕΤΑΒΟΛΗ ΜΟΝΟ ΜΕΣΑ ΣΤΗΝ ΙΔΙΑ ΣΕΙΡΑ (13.10.2026) ══════════════════════════
+// Η στήλη bog_housing_new πέρασε από τη σειρά F στην A. Η διαφορά των δύο
+// γραμμών την ημέρα της αλλαγής είναι αλλαγή ορισμού, όχι κίνηση επιτοκίου·
+// το εβδομαδιαίο email δεν πρέπει να τη στείλει ως μεταβολή.
+{
+  const page = (code: string) => `https://data.ecb.europa.eu/data/datasets/MIR/MIR.M.GR.B.A2C.${code}.R.A.2250.EUR.N`;
+  const at = (url: string): Provenance => ({ bog_housing_new: { ...p(3.3, '2026-08-01'), url } });
+  eq('ίδια σειρά: συγκρίνεται', sameSeries(at(page('A')), at(page('A')), 'bog_housing_new'), true);
+  eq('F → A: ΔΕΝ συγκρίνεται', sameSeries(at(page('A')), at(page('F')), 'bog_housing_new'), false);
+  eq('ταυτότητα στη μία γραμμή μόνο: δεν συγκρίνεται', sameSeries(at(page('A')), {}, 'bog_housing_new'), false);
+  eq('παλιές γραμμές χωρίς ταυτότητα: όπως πριν', sameSeries(null, undefined, 'bog_housing_new'), true);
+  eq('η αλλαγή σειράς του ενός κλειδιού δεν κόβει τη σύγκριση των άλλων',
+    sameSeries({ ...previous, ...at(page('A')) }, { ...previous, ...at(page('F')) }, 'euribor_3m'), true);
+  // Το email διαβάζει την ταυτότητα και ρωτά τον ίδιο κανόνα πριν συγκρίνει.
+  const digest = readFileSync('supabase/functions/send-market-digest/index.ts', 'utf8');
+  eq('το email ζητά την ταυτότητα από τη βάση', /\.select\('[^']*\bprovenance\b/.test(digest), true);
+  eq('και συγκρίνει μόνο μέσα στην ίδια σειρά', /sameSeries\(curProv, prevProv, m\.key\)/.test(digest), true);
+}
 
 if (fail.length) { console.error(`\n✗ ecb ταυτότητα: ${fail.length} αποτυχίες\n`); for (const f of fail) console.error('  ' + f); process.exit(1); }
 console.log(`✓ ecb ταυτότητα: ${pass} έλεγχοι πέρασαν`);

@@ -13,10 +13,17 @@
 // ρωτιέται σε κάθε επίσκεψη. Όταν η βάση δεν απαντά, η σελίδα το λέει και ζητά
 // το επιτόκιο της προσφοράς.
 //
+// ΤΡΕΙΣ ΣΕΙΡΕΣ, ΟΧΙ ΜΙΑ (P0, 13/10/2026). Η σελίδα έγραφε «Νέα στεγαστικά» με
+// την τιμή της σειράς A2C.F (κυμαινόμενο ή σταθερό έως 1 έτος) και την ίδια
+// τιμή έβαζε στο «Σταθερό επιτόκιο». Τώρα γράφει τον μέσο όρο (A2C.A),
+// το κυμαινόμενο ή έως 1 έτος (A2C.F) και το σταθερό πάνω από 1 έτος (A2C.K),
+// με τις ετικέτες του καταλόγου lib/market/ecb.ts. Το ίδιο κείμενο μπαίνει στην
+// περιγραφή της σελίδας για τη μηχανή αναζήτησης (`generateMetadata`).
+//
 // ΟΧΙ ΥΠΟΣΧΕΣΗ ΕΓΚΡΙΣΗΣ. Το «πόσο δάνειο» είναι το ταβάνι του δείκτη δόσης
 // προς εισόδημα και τίποτε άλλο· η σελίδα το γράφει δίπλα στο νούμερο.
 // ═══════════════════════════════════════════════════════════════════════════
-import { Suspense } from 'react';
+import { Fragment, Suspense } from 'react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
@@ -26,7 +33,9 @@ import { fe, feWhole, fp, fpRate } from '@/lib/core/format';
 import { DSTI_LIMIT } from '@/lib/loans/affordability';
 import { spitiMouOpen, spitiMouClosedSentence, SPITI_MOU } from '@/lib/loans/recommend';
 import { programDateLabel } from '@/lib/loans/programStatus';
-import { mortgagePlan, borrowingCapacity, type MarketFact, type MortgageMarket } from '@/lib/tools/stegastiko';
+import {
+  mortgagePlan, borrowingCapacity, housingNote, marketDescription, type MarketFact, type MortgageMarket,
+} from '@/lib/tools/stegastiko';
 import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, ToolCta, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { ToolGuides } from '../odigos/ToolGuides';
 import { hy } from '@/components/Hyphen';
@@ -50,7 +59,17 @@ const DESC =
   + 'και πόσο δάνειο μπορείς να πάρεις με το εισόδημά σου. Δωρεάν, χωρίς εγγραφή.';
 const URL = siteUrl('/ypologismos-stegastikou-daneiou');
 
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, image: shareImage('ypologismos-stegastikou-daneiou') });
+// Η ΠΕΡΙΓΡΑΦΗ ΞΕΚΙΝΑ ΜΕ ΤΙΣ ΤΙΜΕΣ ΤΗΣ ΑΓΟΡΑΣ, ΑΠΟ ΤΙΣ ΣΕΙΡΕΣ. Ήταν στατική και η
+// μηχανή αναζήτησης έπαιρνε το απόσπασμα από τη σημείωση της σελίδας, που έγραφε
+// το κυμαινόμενο ως μέσο όρο. Η ανάγνωση της βάσης είναι η ίδια με της σελίδας
+// (`readMortgageMarket`, μία φορά ανά αίτημα). Χωρίς τιμές, μένει η στατική.
+export async function generateMetadata(): Promise<Metadata> {
+  const market = await readMortgageMarket(athensToday());
+  return publicMetadata({
+    title: TITLE, description: marketDescription(market, DESC), url: URL,
+    image: shareImage('ypologismos-stegastikou-daneiou'),
+  });
+}
 
 // ΤΑ ΠΑΡΑΔΕΙΓΜΑΤΑ ΤΩΝ ΑΠΑΝΤΗΣΕΩΝ ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΗ ΜΗΧΑΝΗ. Το επιτόκιο τους είναι
 // παράδειγμα και το λένε· δεν παρουσιάζεται ως τρέχον.
@@ -114,20 +133,32 @@ function Fact({ label, f }: { label: string; f: MarketFact }) {
   );
 }
 
+const SRC_LINK = { color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2 } as const;
+const NUM = { color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' } as const;
+
 /**
  * ΤΟ ΜΕΣΟ ΕΠΙΤΟΚΙΟ ΤΗΣ ΑΓΟΡΑΣ, ΠΑΝΩ ΑΠΟ ΤΗ ΦΟΡΜΑ. Στο HTML της σελίδας, ώστε να
  * το διαβάζει και η μηχανή αναζήτησης. Χωρίς τιμή, η ίδια θέση λέει ότι δεν
  * υπάρχει και τι να κάνει ο επισκέπτης.
+ *
+ * Τα στεγαστικά γράφονται από τα κομμάτια της `housingNote`, τα ίδια που δίνουν
+ * και την περιγραφή της σελίδας: εδώ μόνο γίνονται έντονα και σύνδεσμοι.
  */
 function MarketNote({ market }: { market: MortgageMarket }) {
-  const { housing, euribor } = market;
+  const { euribor } = market;
+  const housing = housingNote(market);
   return (
     <aside className="po-tool-sources" aria-label="Μέσο επιτόκιο αγοράς" style={{ margin: '0 0 clamp(20px,3vw,28px)' }}>
       <span className="po-src-badge">Μέσο επιτόκιο αγοράς</span>
       <span className="po-src-txt">
-        {housing || euribor ? <>
-          {housing && <Fact label="Νέα στεγαστικά στην Ελλάδα:" f={housing}/>}
-          {housing && euribor && ' '}
+        {housing.length || euribor ? <>
+          {housing.map((x, i) => {
+            const text = x.strong ? <strong style={NUM}>{x.text}</strong> : x.text;
+            return x.href
+              ? <a key={i} href={x.href} rel="noopener noreferrer" className="lp-link" style={SRC_LINK}>{text}</a>
+              : <Fragment key={i}>{text}</Fragment>;
+          })}
+          {housing.length > 0 && euribor && ' '}
           {euribor && <Fact label="Euribor τριμήνου:" f={euribor}/>}
           {' '}Η προσφορά της τράπεζάς σου μπορεί να διαφέρει.
         </> : (
@@ -157,7 +188,7 @@ export default async function Page() {
         applicationCategory: 'FinanceApplication',
         operatingSystem: 'Web',
         inLanguage: 'el',
-        description: DESC,
+        description: marketDescription(market, DESC),
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
       },
       {

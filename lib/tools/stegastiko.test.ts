@@ -8,9 +8,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import {
   parseRate, loanRate, mortgagePlan, borrowingCapacity, marketFact, mortgageMarket, rateField,
+  housingNote, housingText, marketDescription, startRates, NO_MARKET,
 } from './stegastiko'
 import { totalInterest, interestForYear } from '@/lib/loans/recommend'
-import type { Provenance } from '@/lib/market/ecb'
+import { ECB_SERIES, seriesPage, type MarketKey, type Provenance, type RateProvenance } from '@/lib/market/ecb'
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }
@@ -95,12 +96,14 @@ ok('Β. σταθερό χωρίς επιτόκιο : null', loanRate({ kind: 'fi
 }
 
 // ═══ ΣΤ. Η ΤΙΜΗ ΑΓΟΡΑΣ ΜΕ ΤΗΝ ΤΑΥΤΟΤΗΤΑ ΤΗΣ ═════════════════════════════════
+/** Η σελίδα της σειράς που ο κατάλογος δίνει σε αυτό το κλειδί. */
+const pageOf = (key: MarketKey): string => seriesPage(ECB_SERIES.find(s => s.key === key)!.candidates[0])
 {
   const prov: Provenance = {
     bog_housing_new: { value: 3.56, asOf: '2026-06-01', source: 'ΕΚΤ, στοιχεία Τράπεζας της Ελλάδος',
-      basis: 'νέες χορηγήσεις', url: 'https://data.ecb.europa.eu/x', fetchedAt: '2026-09-02T05:00:00Z' },
+      basis: 'νέες χορηγήσεις', url: pageOf('bog_housing_new'), fetchedAt: '2026-09-02T05:00:00Z' },
     euribor_3m: { value: 2.513, asOf: '2026-08-01', source: 'Ευρωπαϊκή Κεντρική Τράπεζα',
-      basis: 'μέσος όρος μήνα', url: 'https://data.ecb.europa.eu/y', fetchedAt: '2026-09-02T05:00:00Z' },
+      basis: 'μέσος όρος μήνα', url: pageOf('euribor_3m'), fetchedAt: '2026-09-02T05:00:00Z' },
   }
   const m = mortgageMarket(prov, '2026-09-15')
   ok('ΣΤ. μέσο επιτόκιο με την τιμή του', m.housing?.value === 3.56)
@@ -123,6 +126,78 @@ ok('Β. σταθερό χωρίς επιτόκιο : null', loanRate({ kind: 'fi
 ok('Ζ. δύο δεκαδικά με κόμμα', rateField(3.56) === '3,56')
 ok('Ζ. το Euribor στρογγυλεύει στα δύο', rateField(2.513) === '2,51')
 ok('Ζ. η τιμή του πεδίου ξαναδιαβάζεται ίδια', parseRate(rateField(3.56)) === 3.56)
+
+// ═══ Η. ΤΡΕΙΣ ΣΕΙΡΕΣ, ΤΡΕΙΣ ΕΤΙΚΕΤΕΣ, ΜΙΑ ΑΦΕΤΗΡΙΑ ΓΙΑ ΤΟ «ΣΤΑΘΕΡΟ» ═════════
+// Το P0 της 13/10/2026: το πεδίο «Σταθερό επιτόκιο» ξεκινούσε από τη σειρά F
+// (κυμαινόμενο ή σταθερό έως 1 έτος) και η σελίδα την έγραφε ως μέσο όρο. Οι
+// τιμές εδώ είναι ΣΥΝΘΕΤΙΚΕΣ και διαφορετικές μεταξύ τους, ώστε μια λάθος
+// αντιστοίχιση να φαίνεται στο νούμερο· δεν είναι οι τιμές της ΕΚΤ.
+{
+  const BOG = 'ΕΚΤ, στοιχεία Τράπεζας της Ελλάδος'
+  const at = (key: MarketKey, value: number, asOf = '2026-08-01'): RateProvenance => ({
+    value, asOf, source: BOG, basis: 'νέες χορηγήσεις', url: pageOf(key), fetchedAt: '2026-10-13T08:00:00Z',
+  })
+  const three: Provenance = {
+    bog_housing_new: at('bog_housing_new', 3.21),
+    bog_housing_floating: at('bog_housing_floating', 3.42),
+    bog_housing_fixed: at('bog_housing_fixed', 3.05),
+  }
+  const m = mortgageMarket(three, '2026-10-13')
+  ok('Η. μέσος όρος: η τιμή της σειράς A', m.housing?.value === 3.21 && m.housing.url.endsWith('MIR.M.GR.B.A2C.A.R.A.2250.EUR.N'))
+  ok('Η. κυμαινόμενο ή έως 1 έτος: η τιμή της σειράς F', m.floating?.value === 3.42 && m.floating.url.endsWith('MIR.M.GR.B.A2C.F.R.A.2250.EUR.N'))
+  ok('Η. σταθερό πάνω από 1 έτος: η τιμή της σειράς K', m.fixed?.value === 3.05 && m.fixed.url.endsWith('MIR.M.GR.B.A2C.K.R.A.2250.EUR.N'))
+  ok('Η. οι ετικέτες έρχονται από τον κατάλογο',
+    m.housing?.label === 'Μέσο επιτόκιο νέων στεγαστικών'
+    && m.floating?.label === 'Κυμαινόμενο ή σταθερό έως 1 έτος'
+    && m.fixed?.label === 'Σταθερό πάνω από 1 έτος')
+  ok('Η. ο μήνας στην ονομαστική: «Αύγουστος 2026»', m.housing?.month === 'Αύγουστος 2026')
+
+  // ── ΤΟ ΚΕΙΜΕΝΟ ΤΟΥ ΙΔΙΟΚΤΗΤΗ, ΜΕ ΤΑ ΝΟΥΜΕΡΑ ΚΑΙ ΤΟΝ ΜΗΝΑ ΑΠΟ ΤΙΣ ΣΕΙΡΕΣ ───
+  ok('Η. το κείμενο της σελίδας', housingText(m) ===
+    'Μέσο επιτόκιο νέων στεγαστικών στην Ελλάδα: 3,21% (Αύγουστος 2026, ΕΚΤ). '
+    + 'Κυμαινόμενο ή σταθερό έως 1 έτος 3,42% · σταθερό πάνω από 1 έτος 3,05%.')
+  // Κάθε νούμερο επαληθεύεται στη ΔΙΚΗ του σειρά: η ΕΚΤ του μέσου όρου στην A,
+  // οι τιμές των άλλων δύο στις F και K.
+  const segs = housingNote(m)
+  ok('Η. η «ΕΚΤ» δείχνει στη σειρά του μέσου όρου', segs.filter(x => x.text === 'ΕΚΤ').map(x => x.href).join() === pageOf('bog_housing_new'))
+  ok('Η. οι άλλες δύο τιμές δείχνουν στη δική τους σειρά',
+    segs.filter(x => x.strong && x.href).map(x => x.href).join() === [pageOf('bog_housing_floating'), pageOf('bog_housing_fixed')].join())
+  ok('Η. η σελίδα και η περιγραφή έχουν το ίδιο κείμενο', segs.map(x => x.text).join('') === housingText(m))
+  ok('Η. η περιγραφή για τη μηχανή αναζήτησης ξεκινά με το ίδιο κείμενο',
+    marketDescription(m, 'Βάση.') === `${housingText(m)} Βάση.`)
+  ok('Η. χωρίς τιμές, η περιγραφή μένει η στατική', marketDescription(NO_MARKET, 'Βάση.') === 'Βάση.')
+  ok('Η. χωρίς τιμές, κανένα κείμενο', housingText(NO_MARKET) === '')
+
+  // Άλλος μήνας σε μία σειρά: γράφεται δίπλα της, ώστε να μη δανείζεται τον μήνα του μέσου όρου.
+  const july = mortgageMarket({ ...three, bog_housing_fixed: at('bog_housing_fixed', 3.05, '2026-07-01') }, '2026-10-13')
+  ok('Η. άλλος μήνας γράφεται δίπλα στην τιμή', housingText(july) ===
+    'Μέσο επιτόκιο νέων στεγαστικών στην Ελλάδα: 3,21% (Αύγουστος 2026, ΕΚΤ). '
+    + 'Κυμαινόμενο ή σταθερό έως 1 έτος 3,42% · σταθερό πάνω από 1 έτος 3,05% (Ιούλιος 2026).')
+  // Χωρίς μέσο όρο: τα άλλα δύο με τον δικό τους μήνα και πηγή, όχι ως μέσος όρος.
+  const noAvg = mortgageMarket({ bog_housing_floating: three.bog_housing_floating, bog_housing_fixed: three.bog_housing_fixed }, '2026-10-13')
+  ok('Η. χωρίς μέσο όρο δεν γράφεται «μέσο»', housingText(noAvg) ===
+    'Νέα στεγαστικά στην Ελλάδα: κυμαινόμενο ή σταθερό έως 1 έτος 3,42% (Αύγουστος 2026, ΕΚΤ) · σταθερό πάνω από 1 έτος 3,05%.')
+  // Παλιές τιμές: γράφονται για αναφορά και το λένε.
+  ok('Η. παλιά τιμή το λέει', housingText(mortgageMarket(three, '2027-01-15')) ===
+    'Μέσο επιτόκιο νέων στεγαστικών στην Ελλάδα: 3,21% (Αύγουστος 2026, ΕΚΤ), η πηγή δεν έχει δώσει νεότερη τιμή. '
+    + 'Κυμαινόμενο ή σταθερό έως 1 έτος 3,42% · σταθερό πάνω από 1 έτος 3,05%.')
+
+  // ── Η ΑΦΕΤΗΡΙΑ ΤΟΥ «ΣΤΑΘΕΡΟ ΕΠΙΤΟΚΙΟ» ─────────────────────────────────────
+  ok('Η. το «Σταθερό επιτόκιο» ξεκινά από το σταθερό πάνω από 1 έτος', startRates(m).fixed === '3,05')
+  const noFixed = mortgageMarket({ bog_housing_new: three.bog_housing_new, bog_housing_floating: three.bog_housing_floating }, '2026-10-13')
+  ok('Η. χωρίς σταθερό, το πεδίο μένει κενό: ποτέ ο μέσος όρος ή το κυμαινόμενο', startRates(noFixed).fixed === '')
+  ok('Η. παλιό σταθερό δεν προτείνεται', startRates(mortgageMarket(three, '2027-01-15')).fixed === '')
+
+  // ── ΤΙΜΗ ΑΛΛΗΣ ΣΕΙΡΑΣ ΔΕΝ ΠΕΡΝΑ ΜΕ ΑΥΤΟ ΤΟ ΟΝΟΜΑ ───────────────────────────
+  // Η βάση την 13/10/2026 έχει κάτω από το `bog_housing_new` την τιμή της F με
+  // σύνδεσμο A2C.F. Ως την πρώτη πρωινή εκτέλεση μετά την αλλαγή (ή όσο η ΕΚΤ
+  // δεν δίνει την A) αυτή η γραμμή μένει· δεν επιτρέπεται να γραφτεί ως μέσος όρος.
+  const legacy: Provenance = { bog_housing_new: { ...at('bog_housing_new', 3.42), url: pageOf('bog_housing_floating') } }
+  ok('Η. η τιμή της F κάτω από το όνομα του μέσου όρου απορρίπτεται', marketFact(legacy, 'bog_housing_new', '2026-10-13') === null)
+  ok('Η. …και δεν γράφεται στη σελίδα', housingText(mortgageMarket(legacy, '2026-10-13')) === '')
+  ok('Η. σύνδεσμος σε άγνωστη σειρά απορρίπτεται',
+    marketFact({ euribor_3m: { ...at('euribor_3m', 2.5), url: 'https://data.ecb.europa.eu/x' } }, 'euribor_3m', '2026-10-13') === null)
+}
 
 console.log(failed === 0 ? `✓ stegastiko: ${passed} έλεγχοι πέρασαν` : `✗ stegastiko: ${failed} απέτυχαν από ${passed + failed}`)
 if (failed > 0) process.exit(1)
