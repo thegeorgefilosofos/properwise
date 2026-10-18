@@ -15,13 +15,16 @@ import {
 import { Sparkline, MonthBars, Donut } from './budget/charts'
 import { InlineNumber, InlineText } from './budget/Bits'
 import { useBudget } from './budget/useBudget'
+import { STR_INDIVIDUAL_MAX_PROPERTIES } from '@/lib/billing/greekTax'
 
 /**
  * Από πόσα βραχυχρόνια ακίνητα και πάνω η εκμίσθωση φυσικού προσώπου θεωρείται
- * επιχειρηματική δραστηριότητα. Ο ίδιος αριθμός κρίνει πότε εμφανίζεται η
- * προειδοποίηση και τι γράφει: δεν γράφεται δεύτερη φορά με το χέρι.
+ * επιχειρηματική δραστηριότητα. Βγαίνει από το ίδιο όριο του 39Α ΚΦΕ που κρίνει
+ * την ειδοποίηση «χρειάζεται έναρξη» της Λογιστικής (lib/property/ama.ts): με
+ * τον αριθμό γραμμένο εδώ ξεχωριστά, μια αλλαγή του νόμου θα άλλαζε μόνο τη μία
+ * οθόνη.
  */
-const STR_BUSINESS_FROM = 3
+const STR_BUSINESS_FROM = STR_INDIVIDUAL_MAX_PROPERTIES + 1
 
 export default function BillsBudget({ propertyId, userId = '', profileType = 'individual' }: Props) {
   const {
