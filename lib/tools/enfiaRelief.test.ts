@@ -20,6 +20,11 @@ ok('με τα ίδια όρια', !!in2027 && in2027.includes('400.000€'))
 ok('στην αιτιατική αλλάζει και το άρθρο', smallSettlementRelief(2027, true)!.startsWith('την πλήρη απαλλαγή')
   && smallSettlementRelief(2026, true)!.startsWith('τη μείωση 50%'))
 ok('το 2025 δεν αναφέρεται', smallSettlementRelief(2025) === null)
+// «ΕΩΣ» 1.500 ΚΑΙ 1.700 ΣΤΑ ΣΥΝΟΡΑ (ν.5246/2025 άρθρο 10, ΦΕΚ Α΄ 198/11.11.2025).
+// Η φράση έγραφε με το χέρι «κάτω των 1.500 κατοίκων» και δεν είχε το 1.700.
+ok('ο πληθυσμός με «έως»', !!in2026 && in2026.includes('έως 1.500 κατοίκους') && !in2026.includes('κάτω των'))
+ok('και το όριο των 1.700 στα σύνορα', !!in2026 && in2026.includes('έως 1.700') && in2026.includes('Έβρου'))
+ok('ίδια όρια και στην πλήρη απαλλαγή', !!in2027 && in2027.includes('έως 1.500 κατοίκους') && in2027.includes('έως 1.700'))
 
 console.log(`tools/enfiaRelief.test.ts: ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

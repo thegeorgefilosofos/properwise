@@ -25,8 +25,10 @@ import {
   ENFIA_ZONE_TAX, ENFIA_AGE_BANDS, ENFIA_FLOOR_COEF, ENFIA_WEALTH_REDUCTION, ENFIA_REDUCTIONS,
   ENFIA_SURCHARGE_THRESHOLD, ENFIA_SURCHARGE_BRACKETS,
   ENFIA_EXTRA_TAX_FREE, ENFIA_EXTRA_WEALTH_THRESHOLD, ENFIA_EXTRA_BRACKETS, enfiaExtraPropertyTax,
-  estimateENFIA, zoneKeyFromPricePerSqm, enfiaAgeKeyFromYears, enfiaAgeCoef,
+  estimateENFIA, zoneKeyFromPricePerSqm, enfiaAgeKeyFromYears, enfiaAgeCoef, settlementPopulationCriteria,
+  ENFIA_PRE_YEAR, ENFIA_CENTURY_YEARS, enfiaOldBuildingYears,
 } from '@/lib/billing/enfia';
+import { athensParts } from '@/lib/core/time';
 import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
 import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
@@ -121,6 +123,9 @@ const zoneRange = (key: string): string => {
 const ZONE = Object.entries(ENFIA_ZONE_TAX).map(([k, tax]) => [zoneRange(k), feRate(tax)] as const);
 
 const AGE = ENFIA_AGE_BANDS.map(b => [b.label, fn(b.coef, 2)] as const);
+// Οι δύο κανόνες των παλιών κτιρίων (άρθρο 11 ν.5219/2025), από τη μηχανή.
+const PRE = ENFIA_AGE_BANDS.find(b => b.key === 'pre1930')!;
+const OVER = ENFIA_AGE_BANDS.find(b => b.key === 'over100')!;
 
 // ── ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗ ΜΗΧΑΝΗ, ΟΧΙ ΑΠΟ ΤΟ ΧΕΡΙ ───────────────────────
 // Ηταν γραμμένο ως κείμενο: «περίπου 386,78€» (το «περίπου» δίπλα σε λεπτά) και
@@ -162,6 +167,7 @@ const EXTRA_LAST = rate(ENFIA_EXTRA_BRACKETS.at(-1)!.rate);
 const SOURCES: string[] = [
   'Ο ΕΝΦΙΑ ρυθμίζεται από τον Κώδικα Φορολογίας Περιουσίας (ν.5219/2025, ΦΕΚ Α΄ 130/18.07.2025), που κωδικοποίησε τα άρθρα 1 έως 8 του ν.4223/2013. Οι παραπομπές που ακολουθούν δείχνουν τα άρθρα του ν.4223/2013 όπως κωδικοποιήθηκαν εκεί.',
   'Κύριος φόρος (τιμή ζώνης, συντελεστές παλαιότητας και ορόφου): άρθρο 4 ν.4223/2013, όπως ισχύει με τον ν.4916/2022.',
+  `Συντελεστές ${fn(PRE.coef, 2)} για κτίρια πριν από το ${ENFIA_PRE_YEAR} και ${fn(OVER.coef, 2)} για κτίρια άνω των ${ENFIA_CENTURY_YEARS} ετών: άρθρο 11, Ενότητα Α΄, παρ. 2, περ. β΄ του Κώδικα Φορολογίας Περιουσίας (ν.5219/2025, ΦΕΚ Α΄ 130/18.07.2025), ίδιο κείμενο με το άρθρο 4 ν.4223/2013.`,
   'Τιμές ζώνης: πίνακες αντικειμενικών αξιών της ΑΑΔΕ.',
   'Αυτόματη μείωση ανά συνολική αξία και προσαύξηση μεγάλης περιουσίας: άρθρα 7 και 4 (Ενότητα Ε΄) ν.4223/2013, όπως ισχύει με τον ν.4916/2022.',
   `Πρόσθετος φόρος ακινήτων αξίας άνω των ${feWhole(ENFIA_EXTRA_TAX_FREE)}: άρθρο 4 (Ενότητα Γ΄) ν.4223/2013, όπως ισχύει με τον ν.4916/2022.`,
@@ -183,6 +189,9 @@ const S = {
 } as const;
 
 export default function Page() {
+  // Τα έτη ανέγερσης κάθε κανόνα των παλιών κτιρίων αλλάζουν κάθε χρόνο.
+  const { year } = athensParts();
+  const old = enfiaOldBuildingYears(year);
   const jsonLd = guideJsonLd({
     guide: GUIDE, headline: H1, description: DESC, faq: FAQ,
     about: 'Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων (ΕΝΦΙΑ) και ο υπολογισμός του',
@@ -235,9 +244,18 @@ export default function Page() {
         <p className="lg-p gd-lead">{'Ο βασικός φόρος, ανάλογα με την τιμή ζώνης της περιοχής:'}</p>
         <GuideTable caption="Βασικός φόρος ανά τ.μ."
           head={['Τιμή ζώνης', '€ ανά τ.μ.']} min="280px" rows={ZONE} />
-        <p className="lg-p gd-lead">{'Ο συντελεστής παλαιότητας, από το έτος κατασκευής:'}</p>
+        {/* ΑΠΟ ΤΟ ΕΤΟΣ ΤΗΣ ΑΔΕΙΑΣ, ΟΧΙ ΣΚΕΤΟ «ΤΟ ΕΤΟΣ ΚΑΤΑΣΚΕΥΗΣ» (13.10.2026). Ο νόμος
+            μετρά από το έτος της νεότερης οικοδομικής άδειας και μόνο χωρίς
+            άδεια από το έτος κατασκευής (άρθρο 11 Ενότητα Α΄ παρ. 1 περ. ε΄
+            ν.5219/2025). Ο πίνακας έχει πλέον και τους δύο κανόνες των παλιών
+            κτιρίων, που έλειπαν και από τη μηχανή. Το 0,8 είναι η εξαίρεση: ο
+            νόμος το κρίνει με το έτος ανέγερσης («ανεγέρθηκαν προ του 1930»). */}
+        <p className="lg-p gd-lead">{'Ο συντελεστής παλαιότητας, από το έτος της νεότερης οικοδομικής άδειας (χωρίς άδεια, από το έτος κατασκευής):'}</p>
         <GuideTable caption="Συντελεστής παλαιότητας κτίσματος"
           head={['Παλαιότητα', 'Συντελεστής']} min="260px" rows={AGE} />
+        <p className="lg-p">
+          {`Οι δύο τελευταίες γραμμές είναι για τα παλιά κτίρια: όσα ανεγέρθηκαν πριν από το ${ENFIA_PRE_YEAR} έχουν συντελεστή ${fn(PRE.coef, 2)} και όσα έχουν παλαιότητα άνω των ${ENFIA_CENTURY_YEARS} ετών ${fn(OVER.coef, 2)}. Για τον ΕΝΦΙΑ ${year}, ο ${fn(OVER.coef, 2)} πιάνει τα κτίρια με νεότερη οικοδομική άδεια (ή, χωρίς άδεια, κατασκευή) έως το ${old.over100.to} και ο ${fn(PRE.coef, 2)} τα υπόλοιπα που ανεγέρθηκαν πριν από το ${ENFIA_PRE_YEAR}, με το έτος ανέγερσης ακόμη κι αν υπάρχει νεότερη άδεια. Ο νόμος δεν λέει ποιος μετρά όταν ισχύουν και τα δύο. Ο υπολογισμός εφαρμόζει τον ${fn(OVER.coef, 2)}, γιατί αλλιώς ο κανόνας των ${ENFIA_CENTURY_YEARS} ετών δεν θα έβρισκε κανένα κτίριο πριν από τον ΕΝΦΙΑ ${ENFIA_PRE_YEAR + ENFIA_CENTURY_YEARS + 1}.`}
+        </p>
         <p className="lg-p gd-lead">{'Και ο συντελεστής ορόφου:'}</p>
         <GuideTable caption="Συντελεστής ορόφου"
           head={['Όροφος', 'Συντελεστής']} min="260px" rows={FLOOR} />
@@ -275,7 +293,7 @@ export default function Page() {
               ο ΕΝΦΙΑ, χωρίς τη μείωση χαμηλού εισοδήματος. Το ποσοστό έρχεται από
               το ENFIA_REDUCTIONS, τα όρια από τα πεδία της ίδιας γραμμής. */}
           <li><strong style={{ color: 'var(--text-primary)' }}>{`Χαμηλό εισόδημα (κύρια κατοικία):`}</strong>{` μείωση ${pct(LOW_INCOME.pct)} με εισοδηματικά και περιουσιακά κριτήρια: εισόδημα έως ${feWhole(LOW_INCOME_LIMIT.base)} (προσαυξημένο ανά μέλος) και κτίσματα έως ${LOW_INCOME_SQM} τ.μ. Τα κριτήρια ελέγχονται από την ΑΑΔΕ.`}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{`Κύρια κατοικία μικρού οικισμού:`}</strong>{` μείωση ${pct(SMALL.pct)} για οικισμούς με λιγότερους από 1.500 κατοίκους, με αξία κατοικίας έως ${feWhole(SMALL.maxHomeValue!)}. Δεν ισχύει στην Περιφέρεια Αττικής, εκτός από την Περιφερειακή Ενότητα Νήσων. Ισχύει για τον ΕΝΦΙΑ ${SMALL.sinceYear}· από τον ΕΝΦΙΑ ${SMALL.pctFrom!.year} η κύρια κατοικία εκεί απαλλάσσεται πλήρως, με τα ίδια όρια.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{`Κύρια κατοικία μικρού οικισμού:`}</strong>{` μείωση ${pct(SMALL.pct)} για οικισμούς ${settlementPopulationCriteria(SMALL.population!)}, με αξία κατοικίας έως ${feWhole(SMALL.maxHomeValue!)}. Δεν ισχύει στην Περιφέρεια Αττικής, εκτός από την Περιφερειακή Ενότητα Νήσων. Ισχύει για τον ΕΝΦΙΑ ${SMALL.sinceYear}· από τον ΕΝΦΙΑ ${SMALL.pctFrom!.year} η κύρια κατοικία εκεί απαλλάσσεται πλήρως, με τα ίδια όρια.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{`Τρίτεκνοι, πολύτεκνοι και αναπηρία ≥80%:`}</strong>{` πλήρης απαλλαγή (${pct(LARGE_FAMILY.pct)}) με εισοδηματικά και περιουσιακά κριτήρια.`}</li>
         </ul>
         <p className="lg-p">

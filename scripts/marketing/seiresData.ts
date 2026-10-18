@@ -13,7 +13,7 @@ import { SPEC as RENT } from '../../app/ypologismos-forou-enoikion/spec';
 import { rentalIncomeTax, RENTAL_TAX_BRACKETS_2025, RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_NEW_BRACKETS } from '../../lib/billing/greekTax';
 import { presumptiveDeductionRateForYear } from '../../lib/billing/presumptive';
 import { ENFIA_ZONE_TAX, ENFIA_AGE_BANDS, estimateENFIA, enfiaAgeCoef, enfiaFloorCoef, zoneKeyFromPricePerSqm } from '../../lib/billing/enfia';
-import { ENFIA_FLOOR_LABEL } from '../../lib/billing/enfiaFloors';
+import { ENFIA_FLOOR_LABEL, ENFIA_FLOOR_SHORT } from '../../lib/billing/enfiaFloors';
 import { enfiaWealthBracketLimit } from '../../lib/tools/enfiaLedger';
 import { SPEC as ENFIA } from '../../app/ypologismos-enfia/spec';
 import { greekPropertyTaxObligations } from '../../lib/tax/greekTaxCalendar';
@@ -131,6 +131,9 @@ export function enfiaExample() {
   if (!age) throw new Error('Άγνωστη παλαιότητα στο παράδειγμα.');
   return {
     sqm, price, zone, zt, fc, ac, r, limit: enfiaWealthBracketLimit(share),
-    floorLabel: ENFIA_FLOOR_LABEL[ENFIA.orofos as keyof typeof ENFIA_FLOOR_LABEL], ageLabel: age.label,
+    // Η πλήρης ετικέτα κάθεται μόνη της κάτω από τον συντελεστή του τύπου· η
+    // σύντομη πάει δίπλα στο κλειδί «Όροφος» (#398).
+    floorLabel: ENFIA_FLOOR_LABEL[ENFIA.orofos as keyof typeof ENFIA_FLOOR_LABEL],
+    floorShort: ENFIA_FLOOR_SHORT[ENFIA.orofos as keyof typeof ENFIA_FLOOR_SHORT], ageLabel: age.label,
   };
 }

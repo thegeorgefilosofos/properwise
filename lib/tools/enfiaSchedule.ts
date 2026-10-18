@@ -39,7 +39,13 @@ import { lastWorkingDayOfMonth } from '@/lib/tax/greekTaxCalendar'
 import { monthGen } from '@/lib/core/months'
 import { roundHalfUp } from '../core/money';
 
-/** Πόσες δόσεις: Μάρτιος έως Φεβρουάριο του επόμενου έτους. */
+/**
+ * Πόσες δόσεις: Μάρτιος έως Φεβρουάριο του επόμενου έτους.
+ *
+ * ΕΚΚΡΕΜΕΙ (13.10.2026): ΟΙ ΔΟΣΕΙΣ ΤΟΥ ΕΝΦΙΑ 2026 ΜΕΝΟΥΝ ΩΣ ΕΧΟΥΝ ώσπου να
+ * επιβεβαιωθεί επίσημη πηγή (απόφαση ΑΑΔΕ ή ΦΕΚ) για το πλήθος τους. Εντολή του
+ * ιδιοκτήτη: καμία αλλαγή χωρίς αυτήν.
+ */
 export const ENFIA_INSTALMENTS = 12
 /** Ο μήνας της πρώτης δόσης, με αρίθμηση του JavaScript (0 = Ιανουάριος). */
 const FIRST_MONTH = 2

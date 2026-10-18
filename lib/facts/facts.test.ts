@@ -23,6 +23,8 @@ import {
 } from './index';
 import { computeYields } from '@/lib/billing/propertyFacts';
 import { estimateENFIAFromFacts } from '@/lib/billing/enfia';
+import { enfiaFromSettings } from './enfiaForm';
+import { readFileSync } from 'node:fs';
 import { yields } from '@/lib/market/returns';
 import type { LedgerExpense } from '@/lib/expenses/ledger';
 import type { IncomeRent } from '@/lib/income/propertyIncome';
@@ -173,6 +175,41 @@ ok('συνιδιοκτησία: ολόκληρη αντικειμενική, μ�
 ok('οικόπεδο με αντικειμενική: καμία εκτίμηση', enfiaYear(ENFIA_DEFAULTS, YEAR, { objValue: 96000, sqm: 400, propType: 'Οικόπεδο' }).estimate === 0);
 const efAux = enfiaYear(ENFIA_DEFAULTS, YEAR, { objValue: 20000, sqm: 20, propType: 'Αποθήκη πολυκατοικίας' });
 ok('αποθήκη πολυκατοικίας: ο βοηθητικός δρόμος της μηχανής', efAux.estimate > 0 && efAux.estimate === engine({ value: 20000, sqm: 20, propType: 'Αποθήκη πολυκατοικίας' }) && efAux.estimate !== engine({ value: 20000, sqm: 20 }), `${efAux.estimate}`);
+
+// ── ΤΟ ΕΤΟΣ ΚΑΤΑΣΚΕΥΗΣ ΤΗΣ ΚΑΡΤΕΛΑΣ ΚΡΙΝΕΙ ΚΑΙ ΤΑ ΠΑΛΙΑ ΚΤΙΡΙΑ (13.10.2026) ──
+// Κτίριο του 1925 (άνω των 100 ετών το 2026) με αντικειμενική 56.000€ για 80
+// τ.μ. στο ισόγειο. Η Λογιστική, η Επισκόπηση και η Νόα διαβάζουν αυτό το ποσό
+// από εδώ.
+//
+// ΕΙΝΑΙ ΕΚΤΙΜΗΣΗ ΚΑΙ ΥΠΟΕΚΤΙΜΑ ΤΑ ΠΑΛΙΑ ΚΤΙΡΙΑ. Η καρτέλα δεν ξέρει την τιμή
+// ζώνης· τη βγάζει ως αντικειμενική ÷ τ.μ. (lib/billing/enfia.ts). Η
+// αντικειμενική του άρθρου 6 παρ. 8.1 ν.5219/2025 έχει όμως ήδη μέσα της Σ.
+// Παλαιότητας 0,60 για 26+ έτη και Σ. Ορόφου ισογείου 0,90 έως 1,30, οπότε
+// εδώ η τιμή ζώνης βγαίνει 700€ (συντελεστής 2,00) ενώ η πραγματική είναι
+// 56.000 / (80 × Σ.Ο. × 0,60) = 897€ έως 1.296€ (συντελεστής 2,80). Κατά τον
+// νόμο: 80 × 2,80 × 0,60 × 0,70 = 94,08€ για το 1925 και 125,44€ για το 1927.
+// Η καρτέλα δίνει 67,20€ και 89,60€. Πριν από το 0,60 έδινε 112,00€ για το
+// 1925. Μέρος του ανοιχτού σημείου της τιμής ζώνης (lib/billing/enfia.test.ts):
+// οι γραμμές από κάτω κλειδώνουν την τρέχουσα εκτίμηση, όχι το ποσό του νόμου.
+const OLD_CARD = { objValue: 56000, sqm: 80, floor: 'Ισόγειο', propType: 'apartment' };
+ok('καρτέλα του 1925, εκτίμηση με τιμή ζώνης από αντικειμενική ÷ τ.μ.: 67,20€', enfiaYear(ENFIA_DEFAULTS, YEAR, { ...OLD_CARD, yearBuilt: 1925 }).estimate === 67.2,
+  `${enfiaYear(ENFIA_DEFAULTS, YEAR, { ...OLD_CARD, yearBuilt: 1925 }).estimate}`);
+ok('καρτέλα του 1927, ίδια εκτίμηση με 0,8: 89,60€', enfiaYear(ENFIA_DEFAULTS, YEAR, { ...OLD_CARD, yearBuilt: 1927 }).estimate === 89.6);
+ok('καρτέλα χωρίς έτος: ουδέτερο 1,00 → 112,00€', enfiaYear(ENFIA_DEFAULTS, YEAR, OLD_CARD).estimate === 112);
+
+// ── ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ ΚΑΙ ΛΟΓΙΣΤΙΚΗ ΔΙΑΒΑΖΟΥΝ ΤΗ ΦΟΡΜΑ ΜΕ ΤΗΝ ΙΔΙΑ ΣΥΝΑΡΤΗΣΗ ──
+// Ο Προϋπολογισμός έβαζε «2ος όροφος» όταν ο όροφος έλειπε: 90 τ.μ., ζώνη
+// 751 έως 1.500, 26+ ετών, χωρίς όροφο, έβγαινε 254,52€ εκεί και 252,00€ στη
+// Λογιστική. Το άγνωστο είναι 1,00 (lib/billing/enfia.ts).
+const FORM_NO_FLOOR = { ...ENFIA_DEFAULTS, enfiaSqm: '90', enfiaZone: '751_1500', enfiaAge: 'y26_plus' };
+ok('φόρμα χωρίς όροφο: 252,00€, όχι 254,52€', enfiaFromSettings(FORM_NO_FLOOR, YEAR, null)?.annual === 252);
+ok('ίδιο ποσό με τη Λογιστική', enfiaYear(FORM_NO_FLOOR, YEAR, {}).annual === enfiaFromSettings(FORM_NO_FLOOR, YEAR, null)?.annual);
+ok('κατεστραμμένες μειώσεις δεν ρίχνουν την οθόνη', enfiaFromSettings({ ...FORM_NO_FLOOR, enfiaReductions: 'insurance' }, YEAR, null)?.annual === 252);
+{
+  const budget = readFileSync('app/dashboard/components/budget/useBudget.ts', 'utf8');
+  ok('ο Προϋπολογισμός δεν έχει δική του κλήση στη μηχανή', !/estimateENFIA\(/.test(budget) && budget.includes('enfiaFromSettings('));
+  ok('ούτε προεπιλογή ορόφου', !/enfiaFloor\s*\|\|\s*'second'/.test(budget));
+}
 
 // ═══ 7. ΦΟΡΟΛΟΓΟΥΜΕΝΟΣ ══════════════════════════════════════════════════════
 const props = [{ id: 'a', client_id: null }, { id: 'b', client_id: null }];

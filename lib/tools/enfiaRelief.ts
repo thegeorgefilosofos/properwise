@@ -10,7 +10,7 @@
 // αξία διαβάζονται από εκεί, ώστε η φράση να σβήνει μόνη της τη χρονιά που το
 // μέτρο παύει και να μη λέει ποτέ άλλο νούμερο από τη μηχανή του προϊόντος.
 // ═══════════════════════════════════════════════════════════════════════════
-import { ENFIA_REDUCTIONS, enfiaReductionInForce, enfiaReductionRate } from '@/lib/billing/enfia';
+import { ENFIA_REDUCTIONS, enfiaReductionInForce, enfiaReductionRate, settlementPopulationCriteria } from '@/lib/billing/enfia';
 import { feWhole, fn } from '@/lib/core/format';
 
 const KEY = 'small_settlement_2026';
@@ -25,12 +25,14 @@ const KEY = 'small_settlement_2026';
 export function smallSettlementRelief(year: number, accusative = false): string | null {
   const rd = ENFIA_REDUCTIONS.find(r => r.key === KEY);
   if (!rd || !enfiaReductionInForce(KEY, year)) return null;
-  // Ο πληθυσμός του οικισμού δεν είναι πεδίο της μηχανής· ζει στη σημείωση του
-  // μέτρου (≤1.500 κατ.) και γράφεται εδώ όπως εκεί.
-  const cap = rd.maxHomeValue != null ? ` με αξία έως ${feWhole(rd.maxHomeValue)}` : '';
+  // Ο ΠΛΗΘΥΣΜΟΣ ΕΡΧΕΤΑΙ ΑΠΟ ΤΟ ΠΕΔΙΟ ΤΟΥ ΜΕΤΡΟΥ. Ήταν γραμμένος εδώ με το χέρι
+  // και έλεγε «κάτω των» εκεί που ο κανόνας λέει «έως», χωρίς το δεύτερο όριο
+  // για τις περιοχές στα σύνορα. Η πηγή είναι στο lib/billing/enfia.ts.
+  const pop = rd.population ? ` ${settlementPopulationCriteria(rd.population)}` : '';
+  const cap = rd.maxHomeValue != null ? ` αξίας έως ${feWhole(rd.maxHomeValue)}` : '';
   const rate = enfiaReductionRate(KEY, year);
   const what = rate >= 100
     ? (accusative ? 'την πλήρη απαλλαγή' : 'πλήρης απαλλαγή')
     : `${accusative ? 'τη ' : ''}μείωση ${fn(rate)}%`;
-  return `${what} του ${year} για κύρια κατοικία σε οικισμό κάτω των 1.500 κατοίκων${cap}, εκτός Περιφέρειας Αττικής (πλην Π.Ε. Νήσων)`;
+  return `${what} του ${year} για κύρια κατοικία${cap} σε οικισμό${pop}, εκτός Περιφέρειας Αττικής (πλην Π.Ε. Νήσων)`;
 }

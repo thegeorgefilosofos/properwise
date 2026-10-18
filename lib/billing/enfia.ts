@@ -7,7 +7,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { athensToday } from '@/lib/core/time'
 import { cents } from '../core/money'
-import { feWhole } from '../core/format'
+import { feWhole, fn } from '../core/format'
 
 // Πίνακας Συντελεστή Βασικού Φόρου (ΣΒΦ) κτισμάτων ανά Τιμή Ζώνης (€/τ.μ.).
 // Άρθρο 43 ν.4916/2022 (Ενότητα Α΄, παρ. 2, περ. α΄).
@@ -53,7 +53,60 @@ export const ENFIA_FLOOR_COEF: Record<string, number> = {
 // ετικέτα. Χωρίς αυτό, όποιος ήθελε να βγάλει κλιμάκιο από έτος κατασκευής
 // έπρεπε να ξαναγράψει τα όρια — δεύτερο αντίγραφο του ίδιου πίνακα, που θα
 // ξέμενε πίσω την επόμενη φορά που ο νόμος αλλάξει κλιμάκιο.
-export interface EnfiaAgeBand { key: string; label: string; coef: number; maxYears: number }
+//
+// ═══ ΤΑ ΠΑΛΙΑ ΚΤΙΡΙΑ: 0,8 ΠΡΙΝ ΑΠΟ ΤΟ 1930 ΚΑΙ 0,60 ΑΝΩ ΤΩΝ 100 ΕΤΩΝ ════════
+// ΤΟ ΣΦΑΛΜΑ, ΟΠΩΣ ΗΤΑΝ (13.10.2026). Κάτω από τον πίνακα των έξι κλιμακίων ο
+// νόμος έχει μία ακόμη πρόταση, που εδώ έλειπε:
+//
+//   «Για τα [κτίρια] που ανεγέρθηκαν προ του 1930 εφαρμόζεται συντελεστής
+//   παλαιότητας μηδέν κόμμα οκτώ (0,8), ενώ για τα [κτίρια] με παλαιότητα άνω
+//   των εκατό (100) ετών εφαρμόζεται συντελεστής παλαιότητας μηδέν κόμμα
+//   εξήντα (0,60).»
+//
+// (Στις αγκύλες η μόνη επέμβαση: το ΦΕΚ γράφει τη λέξη με ήτα, την παλιότερη
+// γραφή που η εφαρμογή δεν χρησιμοποιεί, scripts/guard-terminology.mjs.)
+//
+// Η μηχανή έδινε 1,00 σε κάθε κτίσμα 26 ετών και άνω. Κτίριο του 1925, 80 τ.μ.,
+// ισόγειο, τιμή ζώνης έως 750€/τ.μ., ΕΝΦΙΑ 2026: 112,00€ αντί για 67,20€.
+//
+// ΠΗΓΗ. ν.5219/2025 (Κώδικας Φορολογίας Περιουσίας, ΦΕΚ Α΄ 130/18.07.2025),
+// άρθρο 11, Ενότητα Α΄, παρ. 2, περ. β΄. Το ίδιο κείμενο υπάρχει στο άρθρο 4
+// ν.4223/2013 από το αρχικό ΦΕΚ Α΄ 287/31.12.2013· το άρθρο 43 ν.4916/2022
+// αντικατέστησε μόνο τον πίνακα της περ. α΄. Διαβάστηκε 13.10.2026 στο κείμενο
+// του ΦΕΚ όπως εξήχθη από το PDF του et.gr (αποθετήριο legalize-dev/legalize-gr,
+// gr/FEK-A-130-2025.md και gr/FEK-A-287-2013.md).
+//
+// Η ΗΛΙΚΙΑ, κατά την περ. ε΄ της παρ. 1 της ίδιας Ενότητας: έτος φορολογίας
+// μείον έτος έκδοσης της νεότερης οικοδομικής άδειας· χωρίς άδεια, το έτος
+// κατασκευής από δημόσιο έγγραφο. Το «άνω των εκατό» αποκλείει τα 100 ακριβώς,
+// όπως το «26 έτη και άνω» του πίνακα τα περιλαμβάνει. Για τον ΕΝΦΙΑ 2026:
+// έως το 1925 → 0,60· 1926 έως 1929 → 0,8· από το 1930 → ο πίνακας.
+//
+// ΟΤΑΝ ΙΣΧΥΟΥΝ ΚΑΙ ΤΑ ΔΥΟ, 0,60. ΕΙΝΑΙ ΕΡΜΗΝΕΙΑ, ΟΧΙ ΚΕΙΜΕΝΟ ΤΟΥ ΝΟΜΟΥ. Ως τον
+// ΕΝΦΙΑ 2030 κάθε κτίριο άνω των 100 ετών είναι και «προ του 1930». Αν
+// υπερίσχυε το 0,8, το 0,60 δεν θα εφαρμοζόταν σε κανένα κτίριο πριν από τον
+// ΕΝΦΙΑ 2031. Η μόνη ανάγνωση που δίνει περιεχόμενο και στις δύο φράσεις («ενώ»)
+// είναι: άνω των 100 ετών → 0,60· αλλιώς ανέγερση πριν από το 1930 → 0,8·
+// αλλιώς ο πίνακας. Απόφαση ή εγκύκλιος της ΑΑΔΕ που να το λέει ρητά δεν βρέθηκε.
+//
+// ΔΕΝ ΕΙΝΑΙ ΚΛΙΜΑΚΙΑ ΕΤΩΝ. Κρίνονται από το ΕΤΟΣ ανέγερσης και το έτος
+// φορολογίας (`enfiaOldBuildingKey`), γι' αυτό έχουν `maxYears: null` και η
+// αναζήτηση του πίνακα δεν τα βλέπει. Μπαίνουν όμως στον ίδιο κατάλογο, ώστε
+// κάθε οθόνη που τυπώνει τις επιλογές να τα δείχνει χωρίς δεύτερο αντίγραφο.
+
+/** Το έτος του νόμου: κτίρια που «ανεγέρθηκαν προ του 1930» (άρθρο 11 ν.5219/2025). */
+export const ENFIA_PRE_YEAR = 1930
+/** «Παλαιότητα άνω των εκατό (100) ετών» (ίδια περίπτωση). Τα 100 ακριβώς δεν είναι «άνω». */
+export const ENFIA_CENTURY_YEARS = 100
+/** Οι δύο συντελεστές των παλιών κτιρίων, αυτολεξεί από τον νόμο: «0,8» και «0,60». */
+const ENFIA_PRE_YEAR_COEF = 0.8
+const ENFIA_CENTURY_COEF = 0.60
+
+export interface EnfiaAgeBand {
+  key: string; label: string; coef: number
+  /** Άνω όριο ετών στον πίνακα του νόμου· `null` στους δύο κανόνες των παλιών κτιρίων. */
+  maxYears: number | null
+}
 
 export const ENFIA_AGE_BANDS: readonly EnfiaAgeBand[] = [
   { key: 'y0_4',     label: 'Έως 4 έτη',      coef: 1.25, maxYears: 4 },
@@ -62,7 +115,53 @@ export const ENFIA_AGE_BANDS: readonly EnfiaAgeBand[] = [
   { key: 'y15_19',   label: '15 – 19 έτη',    coef: 1.10, maxYears: 19 },
   { key: 'y20_25',   label: '20 – 25 έτη',    coef: 1.05, maxYears: 25 },
   { key: 'y26_plus', label: '26 έτη και άνω', coef: 1.00, maxYears: Infinity },
+  { key: 'pre1930',  label: `Ανέγερση πριν από το ${ENFIA_PRE_YEAR}`, coef: ENFIA_PRE_YEAR_COEF, maxYears: null },
+  { key: 'over100',  label: `Άνω των ${ENFIA_CENTURY_YEARS} ετών`, coef: ENFIA_CENTURY_COEF, maxYears: null },
 ] as const
+
+/**
+ * Ο κανόνας των παλιών κτιρίων για ένα έτος ανέγερσης, ή `null` όταν ισχύει ο
+ * πίνακας. Η σειρά είναι η ερμηνεία που γράφεται πιο πάνω: πρώτα τα 100 έτη.
+ */
+export function enfiaOldBuildingKey(yearBuilt: number, taxYear: number): 'over100' | 'pre1930' | null {
+  if (taxYear - yearBuilt > ENFIA_CENTURY_YEARS) return 'over100'
+  if (yearBuilt < ENFIA_PRE_YEAR) return 'pre1930'
+  return null
+}
+
+/**
+ * Τα έτη ανέγερσης που πιάνει κάθε κανόνας των παλιών κτιρίων τον ΕΝΦΙΑ ενός
+ * έτους. Το «πριν από το 1930» στενεύει κάθε χρόνο και από τον ΕΝΦΙΑ 2030 δεν
+ * έχει κανένα έτος: όλα τα κτίρια πριν από το 1930 είναι πια άνω των 100 ετών.
+ */
+export function enfiaOldBuildingYears(taxYear: number): { over100: { to: number }; pre1930: { from: number; to: number } | null } {
+  const over100To = taxYear - ENFIA_CENTURY_YEARS - 1
+  const preFrom = over100To + 1, preTo = ENFIA_PRE_YEAR - 1
+  return { over100: { to: over100To }, pre1930: preFrom <= preTo ? { from: preFrom, to: preTo } : null }
+}
+
+/**
+ * Οι επιλογές παλαιότητας για τον ΕΝΦΙΑ ενός έτους, με τα έτη ανέγερσης γραμμένα
+ * δίπλα στους δύο κανόνες των παλιών κτιρίων. Χωρίς αυτά, ο ιδιοκτήτης κτιρίου
+ * του 1925 έβλεπε και το «26 έτη και άνω» και το «Ανέγερση πριν από το 1930»
+ * να του ταιριάζουν και κανένα δεν του έλεγε ότι το δικό του είναι το 0,60.
+ * Ο κανόνας που δεν πιάνει κανένα έτος φεύγει από τη λίστα.
+ */
+export function enfiaAgeChoices(taxYear: number): { key: string; label: string; coef: number }[] {
+  const yrs = enfiaOldBuildingYears(taxYear)
+  const out: { key: string; label: string; coef: number }[] = []
+  for (const b of ENFIA_AGE_BANDS) {
+    let label = b.label
+    if (b.key === 'over100') label = `${b.label} (έως το ${yrs.over100.to})`
+    else if (b.key === 'pre1930') {
+      const p = yrs.pre1930
+      if (!p) continue
+      label = `${b.label} (${p.from === p.to ? p.to : `${p.from} έως ${p.to}`})`
+    }
+    out.push({ key: b.key, label, coef: b.coef })
+  }
+  return out
+}
 
 // Τα παλιά κλειδιά είναι ΗΔΗ αποθηκευμένα σε ρυθμίσεις χρηστών. Αν έπαυαν να
 // αναγνωρίζονται, ο συντελεστής θα γινόταν `undefined` και ο ΕΝΦΙΑ `NaN` — μια
@@ -120,8 +219,15 @@ export function enfiaFloorCoef(key: string | null | undefined): number {
 /** Το τρέχον έτος στην Ελλάδα — το έτος για το οποίο βεβαιώνεται ο ΕΝΦΙΑ. */
 const currentEnfiaYear = (): number => Number(athensToday().slice(0, 4))
 
-/** Κλιμάκιο παλαιότητας από ΕΤΗ. Τα όρια έρχονται από τα ίδια τα ENFIA_AGE_BANDS. */
-export function enfiaAgeKeyFromYears(years: number): string | null {
+/**
+ * Κλιμάκιο παλαιότητας από ΕΤΗ. Τα όρια έρχονται από τα ίδια τα ENFIA_AGE_BANDS.
+ *
+ * ΤΟ ΕΤΟΣ ΦΟΡΟΛΟΓΙΑΣ ΧΡΕΙΑΖΕΤΑΙ ΓΙΑ ΤΟ 1930. Τα «άνω των 100 ετών» βγαίνουν από
+ * τα έτη· το «πριν από το 1930» θέλει το ημερολογιακό έτος ανέγερσης, δηλαδή
+ * έτος φορολογίας μείον έτη. Χωρίς `calcYear` μετρά το τρέχον έτος Ελλάδας,
+ * όπως η `enfiaAgeKeyFromYearBuilt`.
+ */
+export function enfiaAgeKeyFromYears(years: number, calcYear?: number | null): string | null {
   const y = Math.floor(Number(years) || 0)
   // ΑΡΝΗΤΙΚΑ ΕΤΗ → ΟΥΔΕΤΕΡΟ, ΟΧΙ «ΝΕΟΔΜΗΤΟ».
   // Χωρίς αυτόν τον έλεγχο, το -3 περνούσε το `y <= 4` και έπαιρνε το κλιμάκιο
@@ -130,8 +236,12 @@ export function enfiaAgeKeyFromYears(years: number): string | null {
   // Ο σημερινός καλών φράζει ήδη το μελλοντικό έτος, αλλά η αρχή ισχύει για
   // κάθε επόμενο: άγνωστο ή αδύνατο σημαίνει ΟΥΔΕΤΕΡΟ, ποτέ ακριβότερο.
   if (y < 0) return null
-  const band = ENFIA_AGE_BANDS.find(b => y <= b.maxYears)
-  return (band ?? ENFIA_AGE_BANDS[ENFIA_AGE_BANDS.length - 1]).key
+  const cy = Math.floor(Number(calcYear) || 0) || currentEnfiaYear()
+  const old = enfiaOldBuildingKey(cy - y, cy)
+  if (old) return old
+  const table = ENFIA_AGE_BANDS.filter(b => b.maxYears != null)
+  const band = table.find(b => y <= (b.maxYears as number))
+  return (band ?? table[table.length - 1]).key
 }
 
 /**
@@ -141,6 +251,10 @@ export function enfiaAgeKeyFromYears(years: number): string | null {
  * Το μελλοντικό έτος ΔΕΝ στρογγυλοποιείται σε «νεόδμητο»: το κλιμάκιο «έως 4 έτη»
  * έχει τον ΥΨΗΛΟΤΕΡΟ συντελεστή (1,25) και μια πληκτρολόγηση («2062» αντί «2006»)
  * θα φούσκωνε τον φόρο κατά 25%. Άγνωστο → ουδέτερο, ποτέ ακριβότερο.
+ *
+ * ΤΟ ΚΑΤΩ ΟΡΙΟ ΤΟΥ 1800 ΜΕΝΕΙ ΚΑΙ ΜΕ ΤΟ 0,60. Ένα «1200» ή ένα «200» είναι
+ * πληκτρολόγηση, όχι κτίριο· με τον κανόνα των 100 ετών θα έκοβε τον φόρο κατά
+ * 40%. Το ουδέτερο 1,00 δεν μαντεύει ούτε προς τα πάνω ούτε προς τα κάτω.
  */
 export function enfiaAgeKeyFromYearBuilt(
   yearBuilt: number | string | null | undefined,
@@ -149,7 +263,7 @@ export function enfiaAgeKeyFromYearBuilt(
   const y = Math.floor(Number(yearBuilt) || 0)
   const cy = Math.floor(Number(calcYear) || 0) || currentEnfiaYear()
   if (y < 1800 || y > cy) return null
-  return enfiaAgeKeyFromYears(cy - y)
+  return enfiaAgeKeyFromYears(cy - y, cy)
 }
 
 /**
@@ -239,6 +353,44 @@ const reliefCriteria = (limit: { base: number; perMember: number }, sqm: number)
 const valueCriteria = (v: { single: number; couple: number; family: number }): string =>
   `περιουσία ≤${feWhole(v.single)} (άγαμος), ≤${feWhole(v.couple)} (έγγαμοι χωρίς τέκνα ή μονογονεϊκή οικογένεια με ένα τέκνο) `
   + `ή ≤${feWhole(v.family)} (έγγαμοι με τέκνα ή μονογονεϊκή οικογένεια με δύο τέκνα)`
+
+// ── Ο ΠΛΗΘΥΣΜΟΣ ΤΟΥ ΜΙΚΡΟΥ ΟΙΚΙΣΜΟΥ: «ΕΩΣ» 1.500 ΚΑΙ 1.700 ΣΤΑ ΣΥΝΟΡΑ ───────────
+// ΤΟ ΣΦΑΛΜΑ, ΟΠΩΣ ΗΤΑΝ (13.10.2026). Η σημείωση έγραφε «οικισμούς κάτω των
+// 1.500 κατ.» και το ίδιο έγραφαν με το χέρι η φράση του δημόσιου υπολογιστή,
+// ο οδηγός και η Νόα. Δύο λάθη: ο οικισμός με ακριβώς 1.500 κατοίκους έμενε
+// έξω, ενώ ο νόμος λέει «έως»· και έλειπε το όριο των 1.700 για τις
+// περιοχές στα σύνορα.
+//
+// ΠΗΓΗ. ν.5246/2025 άρθρο 10 παρ. 2 (ΦΕΚ Α΄ 198/11.11.2025), που πρόσθεσε την
+// παρ. 3 στο άρθρο 17 του Κώδικα Φορολογίας Περιουσίας· η παρ. 1 του ίδιου
+// άρθρου πρόσθεσε την περ. ια΄ στην παρ. 1 του άρθρου 10 (απαλλαγή από το
+// 2027) με τα ίδια όρια. Αυτολεξεί: «σε οικισμούς με πληθυσμό έως χίλιους
+// πεντακόσιους (1.500) κατοίκους … Ειδικά για την Περιφέρεια Δυτικής
+// Μακεδονίας, την Περιφερειακή Ενότητα Έβρου και τους Δήμους της Περιφέρειας
+// Κεντρικής Μακεδονίας, της Περιφέρειας Ανατολικής Μακεδονίας και Θράκης και
+// της Περιφέρειας Ηπείρου που εφάπτονται με τα σύνορα της χώρας, το όριο της
+// παρούσας παραγράφου ορίζεται σε χίλιους επτακόσιους (1.700) κατοίκους».
+// Διαβάστηκε 13.10.2026 στο κείμενο του ΦΕΚ όπως εξήχθη από το PDF του et.gr
+// (legalize-dev/legalize-gr, gr/FEK-A-198-2025.md). Η απόφαση ΑΑΔΕ Α.1063/2026
+// που εφαρμόζει το μέτρο δεν διαβάστηκε.
+//
+// Η μηχανή δεν κρίνει πληθυσμό: τον βεβαιώνει ο ιδιοκτήτης τσεκάροντας το
+// κουτί, όπως το εισόδημα. Το πεδίο υπάρχει για να τυπώνουν η σημείωση, η
+// σελίδα, ο οδηγός και η Νόα τον ίδιο αριθμό του νόμου.
+const SMALL_SETTLEMENT_POPULATION = {
+  base: 1_500,
+  border: 1_700,
+  borderAreas: 'στη Δυτική Μακεδονία, στην Π.Ε. Έβρου και στους δήμους της Κεντρικής Μακεδονίας, '
+    + 'της Ανατολικής Μακεδονίας και Θράκης και της Ηπείρου που εφάπτονται με τα σύνορα',
+} as const
+
+/**
+ * «με πληθυσμό έως 1.500 κατοίκους (έως 1.700 στη Δυτική Μακεδονία, …)»: το
+ * κριτήριο πληθυσμού με τα λόγια του νόμου, από τα πεδία. Το διαβάζουν η
+ * σημείωση εδώ, η φράση του δημόσιου υπολογιστή, ο οδηγός και η Νόα.
+ */
+export const settlementPopulationCriteria = (p: { base: number; border: number; borderAreas: string }): string =>
+  `με πληθυσμό έως ${fn(p.base)} κατοίκους (έως ${fn(p.border)} ${p.borderAreas})`
 
 // Εκπτώσεις/απαλλαγές κύριου φόρου (άρθρο 7 ν.4223/2013), ΕΠΙΠΛΕΟΝ της αυτόματης
 // μείωσης ανά συνολική αξία. Ο χρήστης επιλέγει όσες πληροί (με κριτήρια, βλ. note).
@@ -338,10 +490,16 @@ export const ENFIA_REDUCTIONS: {
    * (δεν ξέρει την οικογενειακή κατάσταση), η σημείωση το τυπώνει από εδώ.
    */
   valueLimits?: { single: number; couple: number; family: number }
+  /**
+   * ΟΡΙΟ ΠΛΗΘΥΣΜΟΥ ΤΟΥ ΟΙΚΙΣΜΟΥ: «έως» `base` κατοίκους, «έως» `border` στις
+   * περιοχές του `borderAreas`. Ίδια σημείωση με το `incomeLimit`: η μηχανή
+   * δεν το κρίνει, η σημείωση και οι οδηγοί το τυπώνουν από εδώ.
+   */
+  population?: { base: number; border: number; borderAreas: string }
 }[] = [
   { key: 'low_income', label: 'Χαμηλό εισόδημα (κύρια κατοικία)', pct: 50, incomeLimit: LOW_INCOME_LIMIT, maxBuildingSqm: RELIEF_MAX_BUILDING_SQM, valueLimits: LOW_INCOME_VALUE_LIMITS, note: `Μείωση 50% με κριτήρια: ${reliefCriteria(LOW_INCOME_LIMIT, RELIEF_MAX_BUILDING_SQM)}, ${valueCriteria(LOW_INCOME_VALUE_LIMITS)}` },
   // Το κλειδί κρατά το «2026» επειδή είναι αποθηκευμένο στις επιλογές των χρηστών.
-  { key: 'small_settlement_2026', label: 'Κύρια κατοικία μικρού οικισμού', pct: 50, sinceYear: 2026, pctFrom: { year: 2027, pct: 100 }, maxHomeValue: 400_000, excludesAtticaMainland: true, note: 'Αυτόματη μείωση 50% το 2026 και πλήρης απαλλαγή από το 2027, για οικισμούς κάτω των 1.500 κατ., αξία κατοικίας ≤400.000€. Δεν ισχύει στην Περιφέρεια Αττικής, εκτός από την Π.Ε. Νήσων.' },
+  { key: 'small_settlement_2026', label: 'Κύρια κατοικία μικρού οικισμού', pct: 50, sinceYear: 2026, pctFrom: { year: 2027, pct: 100 }, maxHomeValue: 400_000, excludesAtticaMainland: true, population: SMALL_SETTLEMENT_POPULATION, note: `Αυτόματη μείωση 50% το 2026 και πλήρης απαλλαγή από το 2027, για οικισμούς ${settlementPopulationCriteria(SMALL_SETTLEMENT_POPULATION)}, αξία κατοικίας ≤400.000€. Δεν ισχύει στην Περιφέρεια Αττικής, εκτός από την Π.Ε. Νήσων.` },
   { key: 'large_family', label: 'Τρίτεκνοι / Πολύτεκνοι', pct: 100, incomeLimit: FULL_RELIEF_INCOME_LIMIT, maxBuildingSqm: RELIEF_MAX_BUILDING_SQM, note: `100% απαλλαγή με κριτήρια: ${reliefCriteria(FULL_RELIEF_INCOME_LIMIT, RELIEF_MAX_BUILDING_SQM)}` },
   { key: 'disability', label: 'Αναπηρία ≥80%', pct: 100, note: '100% απαλλαγή με τα ίδια εισοδηματικά/περιουσιακά κριτήρια' },
   { key: 'insurance', label: 'Ασφαλισμένη κατοικία', pct: 20, pctOver: { above: 500_000, pct: 10 }, note: '20% (αξία ≤500.000€) ή 10% (>500.000€), κάλυψη σεισμού+πυρκαγιάς+πλημμύρας ≥3 μήνες' },

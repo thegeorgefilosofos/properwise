@@ -13,6 +13,7 @@
 // σελίδα ζητά από τον επισκέπτη το επιτόκιο της προσφοράς του. Η αποτυχία
 // γράφεται στο αρχείο καταγραφής: δεν μοιάζει με «δεν υπάρχει τιμή».
 // ═══════════════════════════════════════════════════════════════════════════
+import { cache } from 'react'
 import { mortgageMarket, NO_MARKET, type MortgageMarket } from '@/lib/tools/stegastiko'
 import type { Provenance } from '@/lib/market/ecb'
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase/env'
@@ -20,7 +21,14 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase/env'
 /** Μία μέρα: όσο κρατά και η σελίδα. */
 const DAY = 86400
 
-export async function readMortgageMarket(today: string): Promise<MortgageMarket> {
+/**
+ * ΜΙΑ ΑΝΑΓΝΩΣΗ ΑΝΑ ΑΙΤΗΜΑ. Τη ζητούν η περιγραφή (`generateMetadata`) και η
+ * σελίδα. Το `fetch` με `signal` δεν ενοποιείται αυτόματα από τον Next
+ * (dedupe-fetch: «If we're passed a signal… opts out»), οπότε η `cache` του
+ * React κρατά την απάντηση για το ίδιο αίτημα: δύο αναγνώσεις θα μπορούσαν να
+ * δώσουν στην περιγραφή άλλο νούμερο από τη σελίδα.
+ */
+export const readMortgageMarket = cache(async (today: string): Promise<MortgageMarket> => {
   const base = SUPABASE_URL
   const key = SUPABASE_ANON_KEY
   if (!base || !key) return NO_MARKET
@@ -43,4 +51,4 @@ export async function readMortgageMarket(today: string): Promise<MortgageMarket>
     console.error('[stegastiko] τα επιτόκια αγοράς δεν διαβάστηκαν:', e)
     return NO_MARKET
   }
-}
+})

@@ -8,10 +8,15 @@
 // δεν τα γράφει δύο φορές και τα δύο νούμερα δεν μπορούν να διαφωνήσουν.
 //
 // ΤΟ ΕΠΙΤΟΚΙΟ ΔΕΝ ΓΡΑΦΕΤΑΙ ΑΠΟ ΤΟ ΧΕΡΙ ΜΑΣ. Αν ο διακομιστής διάβασε το μέσο
-// επιτόκιο νέων στεγαστικών (ΕΚΤ, στοιχεία ΤτΕ), το πεδίο ξεκινά από εκεί και
-// η βοήθεια από κάτω λέει από ποιον μήνα είναι. Αλλιώς ξεκινά άδειο και η
-// σελίδα ζητά το επιτόκιο της προσφοράς. Ένα «3,50%» γραμμένο στον κώδικα θα
-// ήταν τρέχον μόνο τη μέρα που γράφτηκε.
+// σταθερό πάνω από 1 έτος των νέων στεγαστικών (ΕΚΤ, στοιχεία ΤτΕ, σειρά MIR
+// A2C.K), το πεδίο «Σταθερό επιτόκιο» ξεκινά από εκεί και η βοήθεια από κάτω
+// λέει ποια τιμή είναι και από ποιον μήνα. Αλλιώς ξεκινά άδειο και η σελίδα
+// ζητά το επιτόκιο της προσφοράς. Ένα «3,50%» γραμμένο στον κώδικα θα ήταν
+// τρέχον μόνο τη μέρα που γράφτηκε.
+//
+// ΠΟΤΕ ΑΠΟ ΤΟΝ ΜΕΣΟ ΟΡΟ Ή ΑΠΟ ΤΟ ΚΥΜΑΙΝΟΜΕΝΟ. Ως τις 13/10/2026 το πεδίο ξεκινούσε
+// από τη σειρά A2C.F, δηλαδή από το κυμαινόμενο ή σταθερό έως 1 έτος. Η
+// αφετηρία ζει πλέον στην `startRates` και ελέγχεται στο stegastiko.test.ts.
 //
 // ΜΙΑ ΠΗΓΗ ΓΙΑ ΤΗΝ ΑΡΙΘΜΗΤΙΚΗ: lib/tools/stegastiko.ts, που καλεί τις ίδιες
 // συναρτήσεις δανείου με τον πίνακα ελέγχου. Η οθόνη δεν κάνει πράξεις.
@@ -23,7 +28,7 @@ import { fe, fn, fp, fpRate } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { DSTI_LIMIT } from '@/lib/loans/affordability';
 import {
-  parseRate, loanRate, mortgagePlan, borrowingCapacity, rateField, RATE_CAP, YEARS_CAP,
+  parseRate, loanRate, mortgagePlan, borrowingCapacity, rateField, freshFact, startRates, RATE_CAP, YEARS_CAP,
   type MortgageMarket, type RateKind,
 } from '@/lib/tools/stegastiko';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
@@ -81,12 +86,13 @@ export function MortgageCalculator({ market, today, cta }: {
   // Η ΤΙΜΗ ΑΓΟΡΑΣ ΜΠΑΙΝΕΙ ΜΟΝΟ ΑΝ ΕΙΝΑΙ ΦΡΕΣΚΙΑ ΚΑΙ ΜΟΝΟ ΑΝ Η ΔΙΕΥΘΥΝΣΗ ΔΕΝ ΕΙΠΕ
   // ΑΛΛΗ. Παλιά τιμή δεν προτείνεται ως αφετηρία· γράφεται από κάτω με τη
   // δική της ημερομηνία, για αναφορά.
-  const housing = market.housing && !market.housing.stale ? market.housing : null;
-  const euribor = market.euribor && !market.euribor.stale ? market.euribor : null;
+  const fixed = freshFact(market.fixed);
+  const euribor = freshFact(market.euribor);
+  const start = startRates(market);
   const [v, set] = useToolState(SPEC, PATH, x => ({
     ...x,
-    epitokio: x.epitokio || (housing ? rateField(housing.value) : ''),
-    euribor: x.euribor || (euribor ? rateField(euribor.value) : ''),
+    epitokio: x.epitokio || start.fixed,
+    euribor: x.euribor || start.euribor,
   }));
   const ids = {
     poso: useId(), eti: useId(), epitokio: useId(), euribor: useId(), perithorio: useId(),
@@ -120,7 +126,7 @@ export function MortgageCalculator({ market, today, cta }: {
   const over = cap ? burden - cap.maxMonthly : 0;
 
   const hasLoan = loan > 0 && years > 0;
-  const rateHint = (typed: string, fact: typeof housing, label: string) => fact && typed === rateField(fact.value)
+  const rateHint = (typed: string, fact: typeof fixed, label: string) => fact && typed === rateField(fact.value)
     ? `${label} ${fact.period}, ${fact.source}. Γράψε της προσφοράς σου.`
     : null;
 
@@ -142,7 +148,7 @@ export function MortgageCalculator({ market, today, cta }: {
             {kind === 'fixed' ? (
               <ToolNumField id={ids.epitokio} label="Σταθερό επιτόκιο" value={v.epitokio}
                 onChange={x => set('epitokio', x)} unit="%" span={2}
-                hint={rateHint(v.epitokio, housing, 'Μέσο επιτόκιο νέων στεγαστικών,')
+                hint={rateHint(v.epitokio, fixed, `${fixed?.label ?? ''}, μέσος όρος νέων στεγαστικών`)
                   ?? 'Το ονομαστικό επιτόκιο που γράφει η προσφορά της τράπεζας.'}/>
             ) : (<>
               <ToolNumField id={ids.euribor} label="Euribor" value={v.euribor}
