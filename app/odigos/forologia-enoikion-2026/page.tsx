@@ -15,7 +15,7 @@
 // Server Component για SEO/ταχύτητα. Καμία εξάρτηση από 'use client'.
 // ═══════════════════════════════════════════════════════════════════════════
 import Link from 'next/link';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
@@ -32,6 +32,7 @@ import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
 import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
+import { LAW_5246_PDF } from '../fek';
 import {
   GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideTable, GuideSources, GuideCta, GuideFaq,
   RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
@@ -139,9 +140,14 @@ const SCALE = RENTAL_TAX_BRACKETS_2026.map(b => [
   fpRate(b.rate * 100),
 ] as const);
 
-// Οι πηγές/νομική βάση, ορατές όπως στα εργαλεία (E-E-A-T).
-const SOURCES: string[] = [
-  `Κλίμακα ενοικίων 2026 (${NEW_SCALE}, όριο ${feWhole(THRESHOLD)}): άρθρο 8 ν.5246/2025 (ΦΕΚ Α΄ 198/11.11.2025) · έναρξη ισχύος άρθρο 47 παρ. 3.`,
+// Οι πηγές/νομική βάση, ορατές όπως στα εργαλεία (E-E-A-T). Ο νόμος της
+// κλίμακας γίνεται σύνδεσμος στο ΦΕΚ του (app/odigos/fek.ts).
+const SOURCES: ReactNode[] = [
+  <>
+    {`Κλίμακα ενοικίων 2026 (${NEW_SCALE}, όριο ${feWhole(THRESHOLD)}): άρθρο 8 `}
+    <a href={LAW_5246_PDF} target="_blank" rel="noopener noreferrer" className="lp-link" style={LINK_STYLE}>ν.5246/2025 (ΦΕΚ Α΄ 198/11.11.2025)</a>
+    {' · έναρξη ισχύος άρθρο 47 παρ. 3.'}
+  </>,
   `Τεκμαρτή έκπτωση ${DEDUCTION}: άρθρο 39 παρ. 3 περ. α΄ ν.4172/2013 (ΚΦΕ).`,
   `Τραπεζική είσπραξη μισθωμάτων: άρθρο 210 ν.5222/2025 (ΦΕΚ Α΄ 134/28.07.2025), που προσθέτει παρ. 5 στο άρθρο 39 ΚΦΕ · η έναρξη ορίστηκε στην 01/04/2026 με το άρθρο 129 παρ. 1 ν.5264/2025 (ΦΕΚ Α΄ 239/19.12.2025), μετατέθηκε στην 01/10/2026 με το άρθρο 48 ν.5294/2026 (ΦΕΚ Α΄ 58/08.04.2026) και στην ${BANK_FROM} με την απόφαση ΑΑΔΕ Α.1187/2026 (ΦΕΚ Β΄ 5590/17.09.2026).`,
 ];
