@@ -31,7 +31,7 @@ import { siteUrl } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
 import { fe, feWhole, fp, fpRate } from '@/lib/core/format';
 import { DSTI_LIMIT } from '@/lib/loans/affordability';
-import { spitiMouOpen, spitiMouClosedSentence, SPITI_MOU } from '@/lib/loans/recommend';
+import { spitiMouOpen, spitiMouClosedSentence, SPITI_MOU, SPITI_MOU_3, spitiMou3Line } from '@/lib/loans/recommend';
 import { programDateLabel } from '@/lib/loans/programStatus';
 import {
   mortgagePlan, borrowingCapacity, housingNote, marketDescription, type MarketFact, type MortgageMarket,
@@ -116,6 +116,15 @@ function faq(today: string): { q: string; a: string }[] {
           + 'φορέα του. Ο υπολογιστής λογαριάζει το δάνειο της τράπεζας όπως είναι, χωρίς το πρόγραμμα.'
         : `${spitiMouClosedSentence(today)} Ο υπολογιστής λογαριάζει το δάνειο της τράπεζας όπως είναι, `
           + 'χωρίς κρατικό πρόγραμμα.',
+    },
+    // Ο ΚΟΣΜΟΣ ΨΑΧΝΕΙ «ΣΠΙΤΙ ΜΟΥ 3». Η σελίδα απαντούσε μόνο για το ΙΙ, οπότε η
+    // απάντηση ερχόταν από τον Τύπο, με όρια σαν να ήταν κλειδωμένα. Η πρόταση
+    // είναι η ίδια με του καταλόγου και της Νόας (`spitiMou3Line`) και περνά και
+    // στο FAQPage από κάτω.
+    {
+      q: `Πότε ανοίγει το «${SPITI_MOU_3.name}»;`,
+      a: `${spitiMou3Line()} Όρια εισοδήματος, αξίας ή δανείου που κυκλοφορούν σε δημοσιεύματα `
+        + 'δεν είναι όροι του προγράμματος. Ο υπολογιστής λογαριάζει το δάνειο της τράπεζας όπως είναι.',
     },
     TOOL_PRIVACY_FAQ,
   ];
