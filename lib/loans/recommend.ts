@@ -198,7 +198,7 @@ export const SPITI_MOU_3 = {
 export function spitiMou3Line(): string {
   const d = programDateLabel(SPITI_MOU_3.announcedOn)
   return `Ανακοινώθηκε στη ΔΕΘ (${d}). Δεν έχει βγει ακόμη επίσημο κείμενο με τους όρους `
-    + `και δεν γίνονται αιτήσεις. Κατά την ${SPITI_MOU_3.channel} ξεκινά ${SPITI_MOU_3.startLabel}.`
+    + `και δεν γίνονται αιτήσεις. Κατά την ${SPITI_MOU_3.channel} ξεκινά στις ${SPITI_MOU_3.startLabel}.`
 }
 
 // ═══ «ΣΠΙΤΙ ΜΟΥ ΙΙΙ»: ΤΙ ΕΧΕΙ ΕΙΠΩΘΕΙ, ΧΩΡΙΣ ΝΑ ΕΙΝΑΙ ΟΡΟΣ ═════════════════
