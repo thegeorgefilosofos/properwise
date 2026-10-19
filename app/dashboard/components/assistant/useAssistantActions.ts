@@ -25,7 +25,7 @@ import { failed } from '@/lib/core/dbError'
 import * as contactStore from '@/lib/data/contacts'
 import { inferRole, roleLabel } from '@/lib/contacts/roles'
 import { matchesNumber } from '@/lib/assistant/roster'
-import { commitScannedDoc, withAnswer, failedNotice, type ReconcileQuestion, type CommitAnswers } from '../scanDoc'
+import { commitScannedDoc, pendingAnswers, failedNotice, type ReconcileQuestion } from '../scanDoc'
 import { kindOf } from '@/lib/billing/documents'
 import { athensToday, isoMonth } from '@/lib/core/time'
 import { MONTHS_GEN } from '@/lib/core/months'
@@ -38,11 +38,11 @@ import {
 
 export function useAssistantActions({
   onScan, onNavigate, setFeedbackOpen, setOpen, clientsLite, contactsLite, setMsgs, pendingDoc,
-  busy, setBusy, propertyId, userId, reconcile, setReconcile, setPendingDoc, setCtxStr, loadContext, supabase,
+  busy, setBusy, propertyId, userId, setReconcile, setPendingDoc, setCtxStr, loadContext, supabase,
   openBills, openRent, setClientsStr,
 }: Pick<Props & AssistantCore,
   'onScan' | 'onNavigate' | 'setFeedbackOpen' | 'setOpen' | 'clientsLite' | 'contactsLite' |
-  'setMsgs' | 'pendingDoc' | 'busy' | 'setBusy' | 'propertyId' | 'userId' | 'reconcile' | 'setReconcile' |
+  'setMsgs' | 'pendingDoc' | 'busy' | 'setBusy' | 'propertyId' | 'userId' | 'setReconcile' |
   'setPendingDoc' | 'setCtxStr' | 'loadContext' | 'supabase' | 'openBills' | 'openRent' |
   'setClientsStr'
 >) {
@@ -152,17 +152,16 @@ export function useAssistantActions({
   // συνάρτηση που καλεί και η οθόνη σάρωσης της εφαρμογής. Ο βοηθός μόνο ρωτά
   // και ανακοινώνει — και ανακοινώνει ΟΣΑ ΕΓΙΝΑΝ ΠΡΑΓΜΑΤΙΚΑ, γιατί το
   // αποτέλεσμα επιστρέφει τη λίστα των καρτελών που ενημερώθηκαν.
-  // `choice`: απάντηση στην ερώτηση που είναι ανοιχτή (λογαριασμός ή
-  // ενοικιαστής)· `allowDuplicate`: «ούτως ή άλλως» στην πιθανή διπλοεγγραφή.
+  // `choice`: απάντηση στην ερώτηση του παραστατικού (λογαριασμός, ενοικιαστής,
+  // όροι)· `allowDuplicate`: «ούτως ή άλλως» στην πιθανή διπλοεγγραφή του.
   const commitPendingDoc = async (choice?: string | null, allowDuplicate = false) => {
     const pending = pendingDoc;
     if (!pending || busy) return;
     setBusy(true);
     // Οι απαντήσεις ως τώρα, μαζί με τη νέα. Καμία δεν χάνεται: χωρίς αυτό, η
-    // απάντηση στη δεύτερη ερώτηση ξανάνοιγε την πρώτη.
-    let answers: CommitAnswers = pending.answers || {};
-    if (choice !== undefined && reconcile) answers = withAnswer(answers, reconcile, choice);
-    if (allowDuplicate) answers = withAnswer(answers, 'duplicate');
+    // απάντηση στη δεύτερη ερώτηση ξανάνοιγε την πρώτη. Και καμία δεν πάει σε
+    // άλλο χαρτί: μετρά μόνο για την ερώτηση που έκανε ΑΥΤΟ (scanDoc: pendingAnswers).
+    const answers = pendingAnswers(pending, choice, allowDuplicate);
     try {
       const r = await commitScannedDoc({
         doc: pending.doc, file: pending.file, propertyId, userId, ...answers,
@@ -172,13 +171,13 @@ export function useAssistantActions({
       // επιστρέφει την ερώτηση αντί να μαντέψει ποιον λογαριασμό εξοφλεί η
       // απόδειξη. Μια λάθος εικασία εδώ σημαίνει λογαριασμός σημειωμένος
       // πληρωμένος που δεν πληρώθηκε.
-      if (r.ask) { setPendingDoc({ ...pending, answers }); setMsgs(m => [...m, { role: 'assistant', text: reconcilePrompt(r.ask as ReconcileQuestion) }]); setReconcile(r.ask); setBusy(false); return; }
+      if (r.ask) { setPendingDoc({ ...pending, answers, ask: r.ask, duplicate: false }); setMsgs(m => [...m, { role: 'assistant', text: reconcilePrompt(r.ask as ReconcileQuestion) }]); setReconcile(r.ask); setBusy(false); return; }
 
       // ΠΑΡΟΜΟΙΑ ΔΑΠΑΝΗ: ΔΕΝ ΕΙΝΑΙ ΑΠΟΤΥΧΙΑ. Ελεγε «Δεν μπόρεσα να το
       // καταχωρήσω τώρα», δηλαδή λάθος αιτία. Κάθε νέα προσπάθεια έβγαζε το
       // ίδιο. Τώρα λέει τι βρήκε και ρωτά.
       if (r.duplicate) {
-        setPendingDoc({ ...pending, answers }); setReconcile(null);
+        setPendingDoc({ ...pending, answers, ask: undefined, duplicate: true }); setReconcile(null);
         setMsgs(m => [...m, { role: 'assistant',
           text: `Δεν το καταχώρησα ακόμη. ${r.duplicate} Αν είναι άλλη δαπάνη, πάτησε «Καταχώρησέ το ούτως ή άλλως».`,
           action: { type: 'commit-doc', label: pending.doc.title || pending.doc.provider || 'παραστατικό', allowDuplicate: true } }]);

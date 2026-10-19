@@ -20,7 +20,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   commitScannedDoc, withAnswer, scanDocument, scanMime, folderMime, notForFolder, unreadableFormat, SCAN_ACCEPT,
-  openQuestion, failedNotice,
+  openQuestion, failedNotice, pendingAnswers,
   type CommitInput, type CommitAnswers, type ReconcileQuestion,
 } from './scanDoc';
 import type { ScannedDoc } from '@/lib/billing/documents';
@@ -194,6 +194,14 @@ const commit = (doc: Partial<ScannedDoc>, extra: Partial<CommitInput> = {}) =>
     ok(`APP-3: καμία δόση από την παλιά έναρξη (γράφτηκαν ${table('rent_payments').length})`, table('rent_payments').length === 0);
     ok('APP-3: η αναφορά λέει ότι ισχύει νεότερο', r.saved.some(s => /νεότερο μισθωτήριο/.test(s)));
     ok('APP-3: οι σημειώσεις του ιδιοκτήτη δεν σβήνουν', t.notes === 'κλειδιά: 2');
+  }
+  {
+    // Μίσθωση αορίστου: το παλιό χαρτί δεν «συμπληρώνει» λήξη στο παρελθόν.
+    reset({ tenants: [{ ...tenantNow, lease_end: null, rent_due_day: null }] });
+    await commit({ doc_type: 'lease', title: 'Μισθωτήριο κατοικίας', tenant_name: 'Γιώργος Παπαδόπουλος', afm: '094014201', monthly_rent: 500, lease_start: '2023-01-01', lease_end: '2025-12-31', rent_due_day: 3 });
+    const t = table('tenants')[0];
+    ok(`APP-3: η μίσθωση αορίστου μένει χωρίς λήξη (πήρα ${t.lease_end})`, t.lease_end === null && t.rent_due_day === null);
+    ok('APP-3: το ΑΦΜ που έλειπε συμπληρώνεται', t.afm === '094014201');
   }
   {
     // Η ανανέωση: νεότερο χαρτί, νέοι όροι. Το όνομα μένει όπως το γράφει η εφαρμογή.
@@ -377,6 +385,36 @@ const commit = (doc: Partial<ScannedDoc>, extra: Partial<CommitInput> = {}) =>
     ok('APP-5: το Αρχείο σταματά ό,τι δεν χωρά πριν από την ανάγνωση', /notForFolder\(d\.file\)[\s\S]{0,400}scanFile\(d\.file\)/.test(tab));
   }
 
+  // ══ Νόα · Η απάντηση ανήκει στο χαρτί που ρωτήθηκε ══════════════════════
+  // Στη συνομιλία η κάρτα της ερώτησης και τα κουμπιά των παλιών μηνυμάτων
+  // μένουν όταν φτάνει νέα φωτογραφία. Οι απαντήσεις χτίζονταν από την ανοιχτή
+  // ερώτηση, όποιο χαρτί κι αν περίμενε.
+  {
+    reset({ tenants: [tenantNow] });
+    const first = { doc_type: 'lease', tenant_name: 'Γιώργος Παπαδόπουλος', monthly_rent: 600, lease_start: '2029-01-01', lease_end: '2031-12-31' } as const;
+    const qa = await commit(first);
+    ok('Νόα: το πρώτο μισθωτήριο ρωτά για τους όρους', qa.ask?.about === 'lease');
+    // Νέα φωτογραφία πριν από την απάντηση: άλλο μισθωτήριο, άλλο ενοίκιο.
+    const second = { ...first, monthly_rent: 700 };
+    const pendingSecond = { doc: second, answers: undefined };
+    // Ο χρήστης πατά «Ναι, ισχύουν οι όροι» στην κάρτα του ΠΡΩΤΟΥ χαρτιού.
+    const r = await commit(second, pendingAnswers(pendingSecond, 'update'));
+    ok(`Νόα: το «ναι» για το πρώτο δεν αλλάζει το ενοίκιο με το δεύτερο (πήρα ${table('tenants')[0].monthly_rent})`, table('tenants')[0].monthly_rent === 550);
+    ok('Νόα: το δεύτερο χαρτί κάνει τη δική του ερώτηση', r.ask?.about === 'lease'
+      && JSON.stringify(r.ask.options[0]?.reasons).includes('700,00€'));
+    ok('Νόα: η απάντηση στο ίδιο χαρτί μετρά', pendingAnswers({ ask: r.ask }, 'update').leaseChoice === 'update');
+  }
+  {
+    // Το «ούτως ή άλλως» ενός παλιού μηνύματος δεν παρακάμπτει τον έλεγχο νέου χαρτιού.
+    reset({ expenses: [{ id: 'm1', property_id: P, user_id: U, description: 'Ρεύμα — ΔΕΗ', amount: 84.5, category: 'Ρεύμα', date: '2026-10-18', store_vendor: 'ΔΕΗ', bill_id: null, paid: true }] });
+    const doc = { doc_type: 'payment', category: 'electricity', provider: 'ΔΕΗ', amount: 84.5, issue_date: '2026-10-18' } as const;
+    const r = await commit(doc, pendingAnswers({ answers: undefined }, undefined, true));
+    ok('Νόα: παλιό «ούτως ή άλλως» σε νέο χαρτί: ο έλεγχος διπλοεγγραφής τρέχει', !!r.duplicate && table('expenses').length === 1);
+    const again = await commit(doc, pendingAnswers({ answers: undefined, duplicate: true }, undefined, true));
+    ok('Νόα: «ούτως ή άλλως» στο χαρτί με την παρόμοια δαπάνη: περνά τον έλεγχο', !again.duplicate && !again.ask && again.saved.length > 0);
+    ok('Νόα: οι προηγούμενες απαντήσεις κρατιούνται', pendingAnswers({ answers: { allowDuplicate: true }, ask: { about: 'bill', question: '', note: '', options: [], none: { label: '', hint: '' } } }, 'b20').allowDuplicate === true);
+  }
+
   // ══ Οι τρεις οθόνες: ίδιες απαντήσεις, μία κάρτα κάθε φορά ═════════════
   {
     const q: ReconcileQuestion = { about: 'bill', question: 'Ποιον;', note: '', options: [], none: { label: 'Κανέναν από αυτούς', hint: '' } };
@@ -390,6 +428,8 @@ const commit = (doc: Partial<ScannedDoc>, extra: Partial<CommitInput> = {}) =>
     ok('APP-1: η σάρωση κρατά μία κάρτα κάθε φορά', scan.includes('openQuestion(r)'));
     ok('APP-2: το Αρχείο ξεχωρίζει τη διπλοεγγραφή από την αποτυχία', archive.includes('openQuestion(r)') && archive.includes('Καταχώρησέ το ούτως ή άλλως'));
     ok('APP-2: η Νόα λέει ότι βρέθηκε παρόμοια δαπάνη και ρωτά', noa.includes('r.duplicate') && noa.includes('allowDuplicate: true'));
+    ok('Νόα: οι απαντήσεις χτίζονται από το χαρτί που περιμένει', noa.includes('pendingAnswers(pending, choice, allowDuplicate)') && !/withAnswer\(answers, reconcile/.test(noa));
+    ok('Νόα: η κάρτα δείχνει μόνο την ερώτηση του χαρτιού που περιμένει', read('PropertyAssistant.tsx').includes('pendingDoc?.ask === reconcile'));
     ok('APP-7: η οθόνη επιτυχίας λέει τι δεν γράφτηκε', scan.includes('failedNotice(failedInfo)'));
   }
 

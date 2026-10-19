@@ -128,8 +128,13 @@ export interface LeaseUpdate {
  * τρέχοντες, εκτός αν ο ιδιοκτήτης είπε να μείνουν (`keepTerms`). Κάθε άλλο
  * πεδίο —όνομα, ΑΦΜ, σημειώσεις— συμπληρώνεται μόνο αν λείπει: η εφαρμογή
  * γράφει το όνομα όπως το θέλει ο ιδιοκτήτης και οι σημειώσεις του δεν σβήνουν
- * από μια σάρωση. Παλαιότερο ή ίδιο: μόνο τα κενά. Οτι δεν αλλάζει τιμή δεν
- * γράφεται.
+ * από μια σάρωση. Ίδιο: μόνο τα κενά. Οτι δεν αλλάζει τιμή δεν γράφεται.
+ *
+ * ΤΟ ΠΑΛΑΙΟΤΕΡΟ ΔΕΝ ΣΥΜΠΛΗΡΩΝΕΙ ΟΡΟΥΣ. Οι όροι του είναι μιας σύμβασης που
+ * έληξε. Η τρέχουσα μίσθωση αορίστου (έναρξη 01/01/2026, χωρίς λήξη) έπαιρνε
+ * από το αρχειοθετημένο μισθωτήριο 2023–2025 λήξη 31/12/2025: ο ενοικιαστής
+ * έβγαινε από το Ε2 του 2026 και οι δόσεις σταματούσαν πριν από την έναρξή
+ * τους. Από το παλαιότερο συμπληρώνονται μόνο όνομα, ΑΦΜ και σημειώσεις.
  */
 export function leaseUpdate(
   paper: Record<string, unknown>, cur: Record<string, unknown>, opts: { keepTerms?: boolean } = {},
@@ -137,6 +142,7 @@ export function leaseUpdate(
   const read = stripEmpty(paper) as Record<string, unknown>;
   const age = leasePaperAge(read, cur);
   const patch: Record<string, unknown> = { ...fillOnlyEmpty(read, cur) };
+  if (age === 'older') for (const k of LEASE_TERMS) delete patch[k];
   if (age === 'newer' && !opts.keepTerms) {
     for (const k of LEASE_TERMS) if (k in read) patch[k] = read[k];
   }

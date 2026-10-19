@@ -530,6 +530,28 @@ export function withAnswer(prev: CommitAnswers, q: ReconcileQuestion | 'duplicat
   return { ...prev, reconcileChoice: choice };
 }
 
+/**
+ * Οι απαντήσεις της Νόας για το παραστατικό που περιμένει καταχώρηση.
+ *
+ * Η ΑΠΑΝΤΗΣΗ ΑΝΗΚΕΙ ΣΤΟ ΧΑΡΤΙ ΠΟΥ ΡΩΤΗΘΗΚΕ. Στη συνομιλία η κάρτα της ερώτησης
+ * και τα κουμπιά των παλιών μηνυμάτων μένουν όταν φτάνει νέα φωτογραφία. Η
+ * επιλογή «ισχύουν οι όροι του νέου μισθωτηρίου» για το πρώτο χαρτί άλλαζε
+ * σιωπηλά το ενοίκιο με τους όρους του δεύτερου, που ο χρήστης δεν είδε ποτέ.
+ * Και το «ούτως ή άλλως» ενός παλιού μηνύματος παρέκαμπτε τον έλεγχο
+ * διπλοεγγραφής ενός χαρτιού που δεν είχε ελεγχθεί. Μετρούν μόνο όταν το ίδιο
+ * το χαρτί έχει την ερώτηση (`ask`) ή την παρόμοια δαπάνη (`duplicate`).
+ */
+export function pendingAnswers(
+  p: { answers?: CommitAnswers; ask?: ReconcileQuestion; duplicate?: boolean },
+  choice?: string | null,
+  allowDuplicate = false,
+): CommitAnswers {
+  let a: CommitAnswers = p.answers || {};
+  if (choice !== undefined && p.ask) a = withAnswer(a, p.ask, choice);
+  if (allowDuplicate && p.duplicate) a = withAnswer(a, 'duplicate');
+  return a;
+}
+
 export interface CommitResult {
   /** Τι ενημερώθηκε ΠΡΑΓΜΑΤΙΚΑ (ονόματα καρτελών, για ειλικρινή αναφορά). */
   saved: string[];

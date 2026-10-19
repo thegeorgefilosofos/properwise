@@ -191,8 +191,11 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   // ξεχωρίζει χειριστή από απόδοση όταν η συνάρτηση ζει στο σώμα, οπότε
   // κατήγγελλε ολόκληρο τον πίνακα.
   // Μαζί του οι απαντήσεις που έχει ήδη δώσει ο χρήστης (scanDoc: withAnswer),
-  // ώστε η επόμενη ερώτηση να μη σβήνει την προηγούμενη.
-  const [pendingDoc, setPendingDoc] = useState<{ doc: ScannedDoc; file: File; answers?: CommitAnswers } | null>(null);
+  // ώστε η επόμενη ερώτηση να μη σβήνει την προηγούμενη. Και η ερώτηση ή η
+  // παρόμοια δαπάνη που βρέθηκε για ΑΥΤΟ το χαρτί: μια απάντηση μετρά μόνο εκεί.
+  const [pendingDoc, setPendingDoc] = useState<{
+    doc: ScannedDoc; file: File; answers?: CommitAnswers; ask?: ReconcileQuestion; duplicate?: boolean;
+  } | null>(null);
   // Το `ask` ορίζεται πολύ πιο κάτω και κλείνει πάνω σε κατάσταση που αλλάζει.
   // Ο ακροατής του `pos:ask` γράφεται μία φορά (deps []), οπότε τον φτάνει μέσω
   // ref — αλλιώς θα κρατούσε για πάντα το πρώτο, άδειο, στιγμιότυπο.

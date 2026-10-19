@@ -59,7 +59,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     runAction, findContact, buildReachLink, commitPendingDoc,
   } = useAssistantActions({
     onScan, onNavigate, setFeedbackOpen, setOpen, clientsLite, contactsLite, setMsgs, pendingDoc,
-    busy, setBusy, propertyId, userId, reconcile, setReconcile, setPendingDoc, setCtxStr, loadContext,
+    busy, setBusy, propertyId, userId, setReconcile, setPendingDoc, setCtxStr, loadContext,
     supabase, openBills, openRent, setClientsStr,
   })
   const {
@@ -455,7 +455,9 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                     «Κανέναν από αυτούς» τελευταίο. Δεν χρωματίζεται καμία: η μηχανή έχει
                     ήδη πει ότι ΔΕΝ είναι σίγουρη και ένα τονισμένο κουμπί θα
                     ήταν ακριβώς η εικασία που απέφυγε. */}
-                {reconcile && !busy && (
+                {/* Μόνο η ερώτηση του χαρτιού που περιμένει: μετά από νέα φωτογραφία
+                    οι επιλογές της παλιάς θα απαντούσαν για το καινούργιο. */}
+                {reconcile && !busy && pendingDoc?.ask === reconcile && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
                     {reconcile.options.map(o => (
                       <button key={o.id} type="button" onClick={() => commitPendingDoc(o.id)}

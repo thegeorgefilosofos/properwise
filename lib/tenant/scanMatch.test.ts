@@ -2,6 +2,7 @@
 // APP-3 και APP-4). Τρέξε: npx tsx lib/tenant/scanMatch.test.ts
 import { nameKey, sameName, matchScannedTenant, leasePaperAge, leaseUpdate, changedTerms, type TenantOnFile } from './scanMatch';
 import { instalmentRows } from '@/app/dashboard/components/rentInstalments';
+import { leasesInYear } from '@/lib/data/tenants';
 import type { Tenant } from '@/app/dashboard/components/TabTenantTypes';
 
 let pass = 0, fail = 0;
@@ -44,6 +45,14 @@ ok('παλιό χαρτί: συμπληρώνει ό,τι λείπει (ΑΦΜ)'
 ok('οι σημειώσεις του ιδιοκτήτη δεν σβήνουν', !('notes' in older.patch));
 const rows = (t: object) => instalmentRows({ ...before, ...t } as unknown as Tenant, 'p', 'u');
 ok(`οι δόσεις δεν γεννιούνται πριν από την έναρξη που ισχύει (${rows({}).length} → ${rows(older.patch).length})`, rows(older.patch).length === rows({}).length);
+// Μίσθωση αορίστου (χωρίς λήξη): το αρχειοθετημένο μισθωτήριο 2023–2025 της
+// έδινε λήξη 31/12/2025 και ο ενοικιαστής έβγαινε από το Ε2 του 2026.
+const openEnded = { ...before, lease_end: null, rent_due_day: null };
+const fromOld = leaseUpdate(oldPaper, openEnded);
+ok(`παλιό χαρτί σε μίσθωση χωρίς λήξη: κανένας όρος (πήρα ${JSON.stringify(fromOld.patch)})`,
+  !('lease_end' in fromOld.patch) && !('rent_due_day' in fromOld.patch) && fromOld.age === 'older');
+ok('ο ενοικιαστής μένει στο Ε2 του 2026', leasesInYear([{ ...openEnded, ...fromOld.patch }], 2026).length === 1);
+ok('παλιό χαρτί σε μίσθωση χωρίς λήξη: το ΑΦΜ συμπληρώνεται', fromOld.patch.afm === '094014201');
 const newer = leaseUpdate({ ...oldPaper, full_name: 'ΠΑΠΑΔΟΠΟΥΛΟΣ ΓΙΩΡΓΟΣ', monthly_rent: 600, lease_start: '2029-01-01', lease_end: '2031-12-31' }, before);
 ok('νεότερο χαρτί: νέοι όροι', newer.patch.monthly_rent === 600 && newer.patch.lease_start === '2029-01-01' && newer.patch.lease_end === '2031-12-31');
 ok('νεότερο χαρτί: το όνομα μένει όπως το γράφει η εφαρμογή', !('full_name' in newer.patch));
