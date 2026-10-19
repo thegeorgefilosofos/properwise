@@ -394,7 +394,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
         // δινόταν ποτέ· ο ΤΚ κρίνει την εξαίρεση της Αττικής.
         const enfia = enfiaInUse(
           svc.enfiaAnnual, svc.enfiaMonthly,
-          enfiaFromSettings(svc, y, atticaMainlandFromPostcode(propRes?.postal_code as string | null | undefined))?.annual,
+          enfiaFromSettings(svc, y, atticaMainlandFromPostcode(propRes?.postal_code as string | null | undefined), propRes?.year_built as number | string | null | undefined)?.annual,
         ).monthly;
         const hist  = Array.isArray(svc.dimotikaHistory) ? svc.dimotikaHistory as string[] : [];
         const valid = hist.filter(v => parseFloat(v) > 0);

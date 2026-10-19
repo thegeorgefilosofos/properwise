@@ -8,6 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { NAV_LABELS, navLabel } from '@/lib/nav/labels'
 import { readLaunchShortcut } from '@/lib/nav/history'
+import type { EnfiaCarry } from '@/lib/tools/enfiaCarry'
 import { CORE_TABS } from '@/lib/nav/disclosure'
 
 // Η ΣΕΙΡΑ ΕΙΝΑΙ ΤΟΥ ΜΕΝΟΥ, ΤΑ ΟΝΟΜΑΤΑ ΟΧΙ. Τα ονόματα ζουν στο lib/nav/labels.ts
@@ -36,14 +37,18 @@ export const NAV_LABEL = NAV_LABELS;
 // Η καρτέλα ζει στο hash (useNavHistory), γι' αυτό το `tab` ΜΕΤΑΦΡΑΖΕΤΑΙ σε hash
 // αντί να διαβάζεται παράλληλα. Το `action` ανοίγει τη γρήγορη προσθήκη, που
 // ούτως ή άλλως περιμένει επιλεγμένο ακίνητο.
-function takeLaunchShortcut(): { scan: boolean } {
-  if (typeof window === 'undefined') return { scan: false };
+//
+// Το `action=enfia` φέρνει την εκτίμηση του δημόσιου υπολογιστή ΕΝΦΙΑ από την
+// εγγραφή (lib/tools/enfiaCarry.ts): ο πίνακας ανοίγει τον οδηγό με αυτά τα
+// πεδία στο πρώτο ακίνητο (useDashboard).
+function takeLaunchShortcut(): { scan: boolean; enfia: EnfiaCarry | null } {
+  if (typeof window === 'undefined') return { scan: false, enfia: null };
   const s = readLaunchShortcut(window.location.search, window.location.hash, NAV_ORDER);
-  if (!s.consumed) return { scan: false };
+  if (!s.consumed) return { scan: false, enfia: null };
   // Η διεύθυνση καθαρίζεται με replaceState: αλλιώς κάθε ανανέωση θα ξανάνοιγε
   // το παράθυρο σάρωσης και το «πίσω» θα κολλούσε στην ίδια συντόμευση.
   window.history.replaceState(null, '', window.location.pathname + s.search + (s.hash ?? window.location.hash));
-  return { scan: s.scan };
+  return { scan: s.scan, enfia: s.enfia };
 }
 export const LAUNCH = takeLaunchShortcut();
 

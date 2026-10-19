@@ -25,6 +25,8 @@
 // τοποθεσία: `#finances/8f3a…`.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { readEnfiaCarry, ENFIA_ACTION, ENFIA_KEYS, type EnfiaCarry } from '@/lib/tools/enfiaCarry';
+
 export interface NavLocation {
   tab: string;
   /** `null` όταν ο σύνδεσμος δεν ορίζει ακίνητο (μένει το τρέχον). */
@@ -79,6 +81,12 @@ export interface LaunchShortcut {
   hash: string | null;
   /** Ζητήθηκε η γρήγορη προσθήκη με σάρωση. */
   scan: boolean;
+  /**
+   * Η εκτίμηση του δημόσιου υπολογιστή ΕΝΦΙΑ (`?action=enfia&…`), ελεγμένη
+   * απέναντι στο SPEC του (lib/tools/enfiaCarry.ts)· `null` όταν δεν ζητήθηκε
+   * ή όταν κάποια τιμή δεν περνά τον έλεγχο.
+   */
+  enfia: EnfiaCarry | null;
   /** Το ερώτημα που ΜΕΝΕΙ, με τα καταναλωμένα κλειδιά αφαιρεμένα. */
   search: string;
   /** Καταναλώθηκε κάτι· αλλιώς η διεύθυνση δεν αγγίζεται καθόλου. */
@@ -105,6 +113,11 @@ export function readLaunchShortcut(
   const tab = q.get('tab');
   const action = q.get('action');
   const consumed = tab !== null || action !== null;
+  // Η ΕΚΤΙΜΗΣΗ ΕΝΦΙΑ ΔΙΑΒΑΖΕΤΑΙ ΠΡΙΝ ΣΒΗΣΤΟΥΝ ΤΑ ΚΛΕΙΔΙΑ ΤΗΣ. Μόνο τα κλειδιά
+  // του SPEC και μόνο με το `action=enfia`: χωρίς αυτό, ένα «tm» άλλου νοήματος
+  // στη διεύθυνση μένει όπως ήταν.
+  const enfia = action === ENFIA_ACTION ? readEnfiaCarry(q) : null;
+  if (action === ENFIA_ACTION) for (const k of ENFIA_KEYS) q.delete(k);
   q.delete('tab');
   q.delete('action');
   const rest = q.toString();
@@ -112,5 +125,5 @@ export function readLaunchShortcut(
   const next = tab && known.includes(tab)
     ? formatNavHash({ tab, propertyId: parseNavHash(hash, '').propertyId })
     : '';
-  return { hash: next || null, scan: action === 'scan', search: rest ? `?${rest}` : '', consumed };
+  return { hash: next || null, scan: action === 'scan', enfia, search: rest ? `?${rest}` : '', consumed };
 }

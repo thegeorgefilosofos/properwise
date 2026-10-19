@@ -25,6 +25,7 @@ import {
   loadMemories, addMemory, removeMemory, clearMemories,
   normalizeBookTime, resolveBookDate, KNOWLEDGE_PACKS, packsFor,
   ACTION_TAB, actionReachable, planBriefing,
+  actionAllowed, SETUP_ACTIONS, SETUP_REFUSAL, SETUP_CONTEXT, historyId,
 } from './assistantPersona';
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
 import { aiLimitsFor, TRIAL_LIMITS } from '@/lib/billing/aiLimits';
@@ -729,6 +730,7 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
     { type: 'reach', name: 'Νίκος', channel: 'whatsapp' },
     { type: 'commit-doc', label: 'ΔΕΗ' },
     { type: 'feedback' },
+    { type: 'add-property' },
   ];
   // Ο χάρτης καλύπτει ΚΑΘΕ είδος ενέργειας: αν αύριο προστεθεί ένα ακόμη, ο
   // μεταγλωττιστής το απαιτεί (Record<AssistantAction['type'], …>) και εδώ
@@ -744,8 +746,8 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   // Ολα κλειδωμένα: περνούν μόνο όσα δεν προσγειώνονται σε καρτέλα.
   const none = () => false;
   const passing = ALL.filter(a => actionReachable(a, none)).map(a => a.type).sort();
-  ok('με όλες τις καρτέλες κλειστές περνούν μόνο η σάρωση και η αξιολόγηση',
-     passing.join(',') === 'feedback,scan');
+  ok('με όλες τις καρτέλες κλειστές περνούν μόνο η προσθήκη ακινήτου, η σάρωση και η αξιολόγηση',
+     passing.join(',') === 'add-property,feedback,scan');
 
   // Το ΣΥΓΚΕΚΡΙΜΕΝΟ σενάριο: κλειδωμένο μόνο το «Πελατολόγιο».
   const noClients = (t: string) => t !== 'clients';
@@ -771,6 +773,98 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
      !/Χωρίς συνδρομή» χωρίς/.test(planBriefing('free', 'free')));
   ok('τελευταία ημέρα δοκιμής δεν γράφει «0 ημέρες»',
      /τελευταία ημέρα/.test(planBriefing('owner', null, 0)));
+}
+
+// ── ΧΩΡΙΣ ΑΚΙΝΗΤΟ, ΚΑΜΙΑ ΕΓΓΡΑΦΗ ─────────────────────────────────────────────
+// Η Νόα ανοίγει και πριν από το πρώτο ακίνητο. Ό,τι κι αν γράψει το μοντέλο,
+// χωρίς ακίνητο δεν βγαίνει κουμπί που γράφει: η δαπάνη, η εκκρεμότητα και το
+// «πληρωμένο» θα γράφονταν χωρίς `property_id`, σε γραμμή που δεν τη δείχνει
+// καμία οθόνη, αφού ο χρήστης θα είχε ήδη διαβάσει «το κατέγραψα».
+{
+  const WRITES: [AssistantAction['type'], string][] = [
+    ['expense', 'Το κρατάω. [[expense: Υδραυλικός | 80 | 2026-10-05]]'],
+    ['task', '[[task: Αλλαγή κλειδαριάς | συντήρηση | 2026-11-01 | 60 | υψηλή]]'],
+    ['paid', '[[paid: ΔΕΗ | 120]]'],
+    ['client', '[[client: Γιάννης Παπαδόπουλος | 6912345678]]'],
+    ['contact', '[[contact: Κώστας | 6912345678 | υδραυλικός]]'],
+    ['book', '[[book: Επίσκεψη τεχνικού | 2026-11-03 | 10:00]]'],
+    ['inventory', '[[inventory: Πλυντήριο | Ηλεκτρικές Συσκευές | 450]]'],
+    ['checkin', '[[checkin: Γιάννης]]'],
+    ['reach', '[[reach: υδραυλικός | whatsapp | Καλησπέρα]]'],
+  ];
+  for (const [kind, text] of WRITES) {
+    // Με ακίνητο, όπως πάντα: το δείγμα είναι έγκυρο, άρα ο έλεγχος από κάτω
+    // δεν περνά επειδή χάλασε το δείγμα.
+    ok(`με ακίνητο το ${kind} βγαίνει`, parseAction(text, 'prop-1').action?.type === kind);
+    ok(`χωρίς δεύτερο όρισμα το ${kind} βγαίνει όπως πριν`, parseAction(text).action?.type === kind);
+    const r = parseAction(text, null);
+    ok(`χωρίς ακίνητο (null) το ${kind} ΠΕΤΙΕΤΑΙ`, r.action === undefined);
+    ok(`χωρίς ακίνητο (κενό) το ${kind} ΠΕΤΙΕΤΑΙ`, parseAction(text, '').action === undefined);
+    ok(`χωρίς ακίνητο το ${kind} δεν αφήνει [[…]] στο κείμενο`, !/\[\[/.test(r.clean));
+  }
+  // Ο ορισμός του σφάλματος, όπως τον έγραψε ο έλεγχος: expense, task, paid.
+  ok('null → καμία δαπάνη', parseAction('[[expense: ΔΕΗ | 120]]', null).action === undefined);
+  ok('null → καμία εκκρεμότητα', parseAction('[[task: Πληρωμή ΕΝΦΙΑ]]', null).action === undefined);
+  ok('null → κανένα «πληρωμένο»', parseAction('[[paid: ενοίκιο Οκτωβρίου | 650]]', null).action === undefined);
+
+  // Η πλοήγηση γίνεται «Πρόσθεσε το ακίνητό σου»: χωρίς ακίνητο κάθε καρτέλα
+  // δείχνει την ίδια κενή οθόνη.
+  for (const navId of NAV_IDS) {
+    ok(`null + [[go:${navId}]] → προσθήκη ακινήτου`, parseAction(`Πάμε. [[go:${navId}]]`, null).action?.type === 'add-property');
+  }
+  ok('null + άκυρο [[go:]] → τίποτα', parseAction('[[go:xyz]]', null).action === undefined);
+  ok('null + [[scan]] → σάρωση', parseAction('[[scan]]', null).action?.type === 'scan');
+  ok('null + [[feedback]] → αξιολόγηση', parseAction('[[feedback]]', null).action?.type === 'feedback');
+  ok('null + δαπάνη ΚΑΙ go → μόνο η προσθήκη ακινήτου',
+     parseAction('[[expense: ΔΕΗ | 120]] [[go:finances]]', null).action?.type === 'add-property');
+  ok('null + δαπάνη ΚΑΙ scan → μόνο η σάρωση',
+     parseAction('[[expense: ΔΕΗ | 120]] [[scan]]', null).action?.type === 'scan');
+  ok('null → η μνήμη του χρήστη μένει', parseAction('[[remember: κληρονόμησα διαμέρισμα]]', null).remember === 'κληρονόμησα διαμέρισμα');
+  ok('με ακίνητο το [[go:]] μένει πλοήγηση', act(parseAction('[[go:finances]]', 'prop-1').action, 'go')?.tab === 'finances');
+
+  // Ο ίδιος φράχτης στην εκτέλεση (useAssistantActions.runAction).
+  const SAMPLE: AssistantAction[] = [
+    { type: 'go', tab: 'finances' }, { type: 'scan' }, { type: 'feedback' }, { type: 'add-property' },
+    { type: 'book', title: 'Τεχνικός', date: '2026-11-03' }, { type: 'client', name: 'Γιάννης' },
+    { type: 'expense', description: 'ΔΕΗ', amount: 120 }, { type: 'checkin', who: 'Γιάννης' },
+    { type: 'contact', name: 'Κώστας' }, { type: 'task', description: 'Κλειδαριά' },
+    { type: 'paid', description: 'ΔΕΗ' }, { type: 'inventory', name: 'Πλυντήριο' },
+    { type: 'reach', name: 'Κώστας', channel: 'call' }, { type: 'commit-doc', label: 'ΔΕΗ' },
+  ];
+  ok('το δείγμα καλύπτει κάθε τύπο ενέργειας',
+     Object.keys(ACTION_TAB).every(k => SAMPLE.some(a => a.type === k)));
+  for (const a of SAMPLE) {
+    ok(`με ακίνητο επιτρέπεται: ${a.type}`, actionAllowed(a, 'prop-1'));
+    ok(`χωρίς ακίνητο: ${a.type} ${SETUP_ACTIONS.has(a.type) ? 'επιτρέπεται' : 'κόβεται'}`,
+       actionAllowed(a, null) === SETUP_ACTIONS.has(a.type) && actionAllowed(a, '') === SETUP_ACTIONS.has(a.type));
+  }
+  ok('χωρίς ακίνητο: μόνο προσθήκη, σάρωση, αξιολόγηση',
+     [...SETUP_ACTIONS].sort().join(',') === ['add-property', 'feedback', 'scan'].join(','));
+  // Καμία ενέργεια του πρώτου βήματος δεν προσγειώνεται σε καρτέλα: εκεί θα
+  // υπήρχε κάτι γραμμένο σε ακίνητο.
+  ok('καμία ενέργεια του πρώτου βήματος δεν καταλήγει σε καρτέλα',
+     [...SETUP_ACTIONS].every(t => ACTION_TAB[t] === null));
+  ok('η άρνηση λέει τι να κάνει', /Πρόσθεσε πρώτα το ακίνητό σου/.test(SETUP_REFUSAL) && !/,\sκαι\s/.test(SETUP_REFUSAL));
+
+  // Το ιστορικό του πρώτου βήματος είναι του χρήστη, όχι κοινό της συσκευής.
+  ok('με ακίνητο το κλειδί είναι το ακίνητο', historyId('prop-1', 'u1') === 'prop-1');
+  ok('χωρίς ακίνητο το κλειδί είναι του χρήστη', historyId(null, 'u1') === 'setup-u1');
+  ok('δύο χρήστες χωρίς ακίνητο δεν μοιράζονται ιστορικό', historyId(null, 'u1') !== historyId(null, 'u2'));
+  ok('το κλειδί του πρώτου βήματος δεν συμπίπτει με ακίνητο', historyId(null, 'u1') !== historyId('u1', 'u1'));
+
+  // Τι διαβάζει το μοντέλο χωρίς ακίνητο: κανένα νούμερο, καμία εντολή εγγραφής.
+  ok('πλαίσιο πρώτου βήματος: κανένα νούμερο', !/\d/.test(SETUP_CONTEXT));
+  ok('πλαίσιο πρώτου βήματος: λέει ότι δεν υπάρχει ακίνητο', /δεν έχει προσθέσει ακόμη κανένα ακίνητο/.test(SETUP_CONTEXT));
+  ok('πλαίσιο πρώτου βήματος: ΕΝΦΙΑ με κεφαλαία', !/Ενφια|ενφια/.test(SETUP_CONTEXT));
+  // Οι εντολές που ΑΝΑΦΕΡΕΙ για να τις απαγορεύσει δεν γίνονται κουμπί.
+  const own = parseAction(SETUP_CONTEXT, null).action;
+  ok('πλαίσιο πρώτου βήματος: ό,τι προτείνει είναι ενέργεια πρώτου βήματος', !!own && SETUP_ACTIONS.has(own.type));
+  ok('πλαίσιο πρώτου βήματος: το [[go:]] που προτείνει είναι υπαρκτή καρτέλα',
+     [...SETUP_CONTEXT.matchAll(/\[\[go:([a-z]+)\]\]/g)].every(m => NAV_IDS.includes(m[1])) && /\[\[go:[a-z]+\]\]/.test(SETUP_CONTEXT));
+  ok('πλαίσιο πρώτου βήματος: χωρίς το [[scan]] βγάζει την προσθήκη ακινήτου',
+     parseAction(SETUP_CONTEXT.replace('[[scan]]', ''), null).action?.type === 'add-property');
+  ok('πλαίσιο πρώτου βήματος: φτάνει στο μοντέλο',
+     buildPersonalPrompt(DEFAULT_PREFS, SETUP_CONTEXT).includes(SETUP_CONTEXT));
 }
 
 console.log(`\nassistantPersona.ts, ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`);

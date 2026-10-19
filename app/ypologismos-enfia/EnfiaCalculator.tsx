@@ -25,7 +25,7 @@ import { useMemo, useId, useState, type ReactNode } from 'react';
 import { T, feAuto } from '@/components/tokens';
 import { fe, fn, fpRate, feRate, feSigned, feWhole } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
-import { estimateENFIA, zoneKeyFromPricePerSqm, enfiaFloorCoef, enfiaAgeCoef, enfiaAgeChoices, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS, ENFIA_AUX_COEF, ENFIA_PRE_YEAR } from '@/lib/billing/enfia';
+import { enfiaFloorCoef, enfiaAgeCoef, enfiaAgeChoices, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS, ENFIA_AUX_COEF, ENFIA_PRE_YEAR } from '@/lib/billing/enfia';
 import { ENFIA_FLOOR_LABEL, ENFIA_FLOOR_SHORT } from '@/lib/billing/enfiaFloors';
 import { enfiaInstalments, ENFIA_INSTALMENTS } from '@/lib/tools/enfiaSchedule';
 import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
@@ -40,6 +40,8 @@ import LiveResult from '@/components/LiveResult';
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
 import { SPEC } from './spec';
+import { enfiaInputs, enfiaPublicEstimate, enfiaSignupHref } from '@/lib/tools/enfiaCarry';
+import { ToolCtaHref } from '@/app/ToolCtaLink';
 const PATH = '/ypologismos-enfia';
 
 // Οι ετικέτες αντλούνται από τα ΚΛΕΙΔΙΑ του lib, ώστε αν προστεθεί συντελεστής
@@ -75,11 +77,13 @@ export function EnfiaCalculator({ year, today, cta }: {
   const smallRelief = smallSettlementRelief(year, true);
   const ages = useMemo(() => enfiaAgeChoices(year), [year]);
 
+  // ΤΑ ΠΕΔΙΑ ΔΙΑΒΑΖΟΝΤΑΙ ΣΤΟ lib/tools/enfiaCarry.ts (`enfiaInputs`), κοινά με τη
+  // συνέχεια της εγγραφής: το πρώτο ακίνητο στον πίνακα παίρνει τις ίδιες
+  // εισόδους και τον ΙΔΙΟ ΕΝΦΙΑ με αυτόν που βλέπει εδώ ο επισκέπτης. Οι
+  // σημειώσεις από κάτω εξηγούν τι κάνει εκείνη η ανάγνωση και γιατί.
   const r = useMemo(() => {
-    const m = amount(sqm);
-    const price = amount(zonePrice);
-    const zone = zoneKeyFromPricePerSqm(price);
-    if (!m || !zone) return null;
+    const i = enfiaInputs(v);
+    if (!i) return null;
     // Αντικειμενική αξία κατά προσέγγιση. Δεν είναι ο επίσημος τύπος (που έχει και
     // συντελεστές οικοπέδου/προσόψεων) — είναι η βάση που χρειάζεται ο υπολογισμός
     // για τη μείωση και την προσαύξηση και το λέμε στην οθόνη.
@@ -111,20 +115,15 @@ export function EnfiaCalculator({ year, today, cta }: {
     // Σ. Ορόφου, Σ. Επιφάνειας και Σ. Παλαιότητας (0,60 στα 26+ έτη) και πέφτει
     // συχνά σε χαμηλότερο κλιμάκιο, με μεγαλύτερη μείωση. Ο υπολογισμός και τα
     // δύο ποσά είναι στο lib/billing/enfia.test.ts· δεν αλλάζει χωρίς απόφαση.
-    const value = m * price;
-    const share = value * (own / 100);
+    //
     // ΟΙ ΒΟΗΘΗΤΙΚΟΙ ΧΩΡΟΙ ΜΠΑΙΝΟΥΝ ΣΤΟΝ ΦΟΡΟ, ΟΧΙ ΣΤΗΝ ΑΞΙΑ. Η αξία εδώ είναι
     // προσέγγιση τ.μ. του κτίσματος × τιμή ζώνης και δεν μετρούσε ποτέ αποθήκη
     // ή θέση στάθμευσης· για να μένει ίδια η βάση της μείωσης και της
     // προσαύξησης, ο βοηθητικός χώρος δεν προστίθεται ούτε τώρα. Ο φόρος του
     // είναι χωριστή γραμμή (lib/billing/enfia.ts, συντελεστής 0,10 χωρίς όροφο).
-    const aux = amount(auxSqm);
-    const res = estimateENFIA({
-      sqm: m, auxSqm: aux, zone, floor, age, ownership: own,
-      totalValue: share, propertyValue: value,
-    });
-    return res ? { ...res, value, share, own, zone, aux } : null;
-  }, [sqm, zonePrice, floor, age, own, auxSqm]);
+    const res = enfiaPublicEstimate(i);
+    return res ? { ...res, value: i.value, share: i.share, own: i.own, zone: i.zone, aux: i.aux } : null;
+  }, [v]);
 
   // Ο ΚΥΡΙΟΣ ΦΟΡΟΣ, Η ΜΕΙΩΣΗ ΚΑΙ ΤΟ ΕΤΗΣΙΟ ΑΘΡΟΙΖΟΥΝ ΣΤΟ ΛΕΠΤΟ (lib/tools/enfiaLedger.ts).
   const ledger = r ? enfiaLedger(r) : null;
@@ -310,7 +309,11 @@ export function EnfiaCalculator({ year, today, cta }: {
 
       <ToolPaperFoot path={PATH} spec={SPEC} values={v}/>
 
-      {cta}
+      {/* ΤΟ «ΞΕΚΙΝΑ» ΚΟΥΒΑΛΑ ΤΗΝ ΕΚΤΙΜΗΣΗ. Ηταν σκέτο «/signup»: ο επισκέπτης
+          έγραφε πέντε πεδία, έφτιαχνε λογαριασμό και ο οδηγός τα ρωτούσε από
+          την αρχή. Τώρα ο σύνδεσμος γράφει τα πεδία όπως είναι στη διεύθυνση
+          (lib/tools/enfiaCarry.ts) και το πρώτο ακίνητο ανοίγει με αυτά. */}
+      <ToolCtaHref.Provider value={enfiaSignupHref(v)}>{cta}</ToolCtaHref.Provider>
     </div>
   );
 }

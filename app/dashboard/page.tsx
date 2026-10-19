@@ -47,6 +47,7 @@ import FeatureLock, { LockBadge } from './components/FeatureLock';
 import { PLANS } from '@/lib/billing/plans';
 import { isTabAllowed, isTabPurchasable, canAddProperty, hasFeature, planAtLeast, paidPlanForProfile, requiredPlanForFeature } from '@/lib/billing/entitlements';
 import { hasAssistant } from '@/lib/billing/aiLimits';
+import { enfiaCarryWizard } from '@/lib/tools/enfiaCarry';
 import { isTabVisible, hiddenTabCount } from '@/lib/nav/disclosure';
 import { askAssistant } from './components/AssistantStrip';
 import {
@@ -69,8 +70,8 @@ export default function Dashboard() {
     scanAfterAdd, setScanAfterAdd, plan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
-    setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, updateStatus, deleteProperty,
-    scanBusy, setScanBusy, closeQuickAdd, signOut,
+    setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, openWizard, updateStatus, deleteProperty,
+    scanBusy, setScanBusy, closeQuickAdd, signOut, enfiaCarry, dropEnfiaCarry, commitEnfiaCarry,
   } = useDashboard()
 
   // Ο χειροποίητος κύκλος είχε ΔΙΚΟ ΤΟΥ inline <style> με @keyframes spin — ακριβές
@@ -565,7 +566,7 @@ export default function Dashboard() {
               {/* Η ΜΟΝΑΔΙΚΗ ΧΡΗΣΗ ΤΟΥ ΠΑΛΙΟΥ `.btn`. Είχε δικό της ύψος, ακτίνα και
                   μέγεθος γραμματοσειράς, δηλαδή έμοιαζε με κουμπί άλλης
                   εφαρμογής δίπλα σε κάθε άλλο κουμπί της ίδιας οθόνης. */}
-              <Btn variant="primary" onClick={() => tryAddProperty()}>Πρόσθεσε το ακίνητό σου</Btn>
+              <Btn variant="primary" onClick={() => tryAddProperty('empty')}>Πρόσθεσε το ακίνητό σου</Btn>
             </div>
           </div>
         ) : (
@@ -846,6 +847,26 @@ export default function Dashboard() {
         />
       )}
 
+      {/* Η ΝΟΑ ΠΡΙΝ ΑΠΟ ΤΟ ΠΡΩΤΟ ΑΚΙΝΗΤΟ. Ηταν μόνο `selected&&…`: ο νέος
+          λογαριασμός, με τη δοκιμή που του δίνει τη Νόα, δεν την έβλεπε ώσπου να
+          φτιάξει ακίνητο — και οι περισσότεροι νέοι λογαριασμοί δεν έφτιαχναν.
+          Η διαδρομή του διακομιστή δεν θέλει ακίνητο (ελέγχει χρήστη και όριο),
+          οπότε εδώ η Νόα απαντά γενικά και οι ενέργειές της είναι μόνο η
+          προσθήκη ακινήτου και η σάρωση, που περνά πρώτα από τον οδηγό. Καμία
+          ενέργεια που γράφει (assistantPersona.ts, SETUP_ACTIONS). Ο λογαριασμός
+          χωρίς Νόα δεν τη βλέπει ούτε εδώ: η κάρτα του πακέτου θα τον έστελνε στις
+          Ρυθμίσεις, που χωρίς ακίνητο δείχνουν την ίδια κενή οθόνη. */}
+      {!selected&&!loadError&&properties.length===0&&user&&hasAssistant(effPlan)&&(
+        <PropertyAssistant
+          propertyId={null} userId={user.id}
+          // Χωρίς ακίνητο κάθε καρτέλα οδηγεί στο ίδιο βήμα: την προσθήκη.
+          onNavigate={()=>tryAddProperty()}
+          onAddProperty={()=>tryAddProperty()}
+          onScan={()=>{ setScanAfterAdd(true); tryAddProperty(); }}
+          planBrief={planBriefing(effPlan, plan, trial.active ? trial.daysLeft : undefined)}
+        />
+      )}
+
       <CommandPalette open={cmdkOpen} onClose={()=>setCmdkOpen(false)} items={cmdItems} />
 
       {/* Η ΣΑΡΩΣΗ ΗΤΑΝ ΤΟ ΤΕΛΕΥΤΑΙΟ ΧΕΙΡΟΓΡΑΦΟ ΠΑΡΑΘΥΡΟ ΤΗΣ ΣΕΛΙΔΑΣ.
@@ -872,7 +893,7 @@ export default function Dashboard() {
       </Modal>
 
       {showWelcome&&user&&<WelcomeOnboarding userId={user.id}
-        onAddProperty={()=>{ setShowWelcome(false); setShowAddModal(true); }}
+        onAddProperty={()=>{ setShowWelcome(false); openWizard('welcome'); }}
         // ═══ Η ΣΑΡΩΣΗ ΠΕΡΝΑΕΙ ΑΠΟ ΤΟΝ ΟΔΗΓΟ ═════════════════════════════════
         // Εδώ δημιουργούνταν σιωπηλά «Νέο ακίνητο», διαμέρισμα, με κατάσταση
         // «Κενό», χωρίς καμία ερώτηση. Ο οδηγός όμως δεν έχει προεπιλογή
@@ -880,15 +901,23 @@ export default function Dashboard() {
         // νοικιασμένο διαμέρισμα γραφόταν ως κενό. Τώρα ανοίγει ο οδηγός (τύπος,
         // κατάσταση, όνομα· «Αποθήκευση τώρα» υπάρχει από το δεύτερο βήμα) και η
         // σάρωση ξεκινά πάνω στο ακίνητο που αποθηκεύτηκε.
-        onScanCreate={()=>{ setShowWelcome(false); setScanAfterAdd(true); setShowAddModal(true); }}
+        onScanCreate={()=>{ setShowWelcome(false); setScanAfterAdd(true); openWizard('scan'); }}
         onProfile={setProfileType}
         onClose={()=>setShowWelcome(false)} />}
       {/* ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΔΕΝ ΓΡΑΦΕΙ ΤΙΠΟΤΑ. Ήταν ακίνητο μέσα στον λογαριασμό, με
           κουμπί καθαρισμού που έψαχνε λάθος όνομα και δεν εμφανιζόταν ποτέ. */}
       <DemoPreview open={showPreview} onClose={()=>setShowPreview(false)}
         onAddProperty={()=>{ setShowPreview(false); tryAddProperty(); }} />
-      {showAddModal&&user&&<AddPropertyWizard userId={user.id} onClose={()=>{setShowAddModal(false);setScanAfterAdd(false);}} onSaved={async(id)=>{
+      {/* Ο ΟΔΗΓΟΣ ΑΝΟΙΓΕΙ ΜΕ ΟΣΑ ΕΓΡΑΨΕ Ο ΕΠΙΣΚΕΠΤΗΣ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ ΕΝΦΙΑ.
+          Τετραγωνικά, ποσοστό, όροφος (όπου η αντιστοίχιση είναι μία) και
+          βοηθητικοί χώροι. Η εκτίμηση γράφεται στις ρυθμίσεις ΕΝΦΙΑ του νέου
+          ακινήτου ΠΡΙΝ το επιλέξει η λίστα, ώστε η Επισκόπηση να ανοίξει με το
+          ίδιο ποσό (useDashboard, commitEnfiaCarry). */}
+      {showAddModal&&user&&<AddPropertyWizard userId={user.id}
+        initial={enfiaCarry ? enfiaCarryWizard(enfiaCarry.inputs) : undefined}
+        onClose={()=>{setShowAddModal(false);setScanAfterAdd(false);dropEnfiaCarry();}} onSaved={async(id)=>{
         setShowAddModal(false);
+        await commitEnfiaCarry(id);
         const list = await fetchProperties(user.id);
         const added = scanAfterAdd && id ? list?.find(p => p.id === id) : undefined;
         setScanAfterAdd(false);

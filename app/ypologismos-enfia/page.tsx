@@ -27,12 +27,14 @@ import { publicMetadata } from '../publicMetadata';
 import { EnfiaCalculator } from './EnfiaCalculator';
 import { ToolLedger } from '../ToolParts';
 import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
-import { PAGE_UPDATED } from '../pageUpdated';
+import { PAGE_UPDATED, limitsChecked } from '../pageUpdated';
 import { ENFIA_AGE_BANDS, ENFIA_PRE_YEAR, ENFIA_CENTURY_YEARS, enfiaOldBuildingYears } from '@/lib/billing/enfia';
 import { fe, fn, fpRate, feRate, feSigned, feWhole } from '@/lib/core/format';
 import { AADE_DESTINATIONS } from '@/lib/tax/aade';
 import { toolJsonLd, ToolByline, ToolOnwardLinks } from '../toolSeo';
 import { enfiaH1, enfiaExamples } from './seo';
+import { enfiaSignupHref } from '@/lib/tools/enfiaCarry';
+import { SPEC } from './spec';
 
 // ΤΟ ΕΤΟΣ ΤΟΥ ΤΙΤΛΟΥ ΕΙΝΑΙ ΤΟ ΕΤΟΣ ΤΟΥ ΥΠΟΛΟΓΙΣΜΟΥ. Ήταν γραμμένο «2026» με το
 // χέρι, ενώ ο υπολογιστής και ο πίνακας των δόσεων ακολουθούν το τρέχον έτος:
@@ -167,13 +169,17 @@ export default function Page() {
         <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
           <EnfiaCalculator year={year} today={athensToday()} cta={
             <ToolCta
+              // Με τις προεπιλογές σκέτη εγγραφή: το παράδειγμα δεν είναι ακίνητο
+              // κανενός. Από πάνω γράφει ο υπολογιστής τα πεδία που άλλαξε ο
+              // επισκέπτης (ToolCtaHref) και τότε ο πίνακας ανοίγει τον οδηγό.
+              href={enfiaSignupHref(SPEC)}
               title="Έχεις περισσότερα από ένα ακίνητα;"
               body="Το PROPERWISE εκτιμά τον ΕΝΦΙΑ για όλα σου τα ακίνητα μαζί, με τη μείωση που αντιστοιχεί στη συνολική περιουσία και σου θυμίζει κάθε δόση πριν λήξει."
             />
           }/>
         </Suspense>
 
-        <ToolSources kind="enfia" checked={PAGE_UPDATED['/ypologismos-enfia']} />
+        <ToolSources kind="enfia" checked={limitsChecked('/ypologismos-enfia')} updated={PAGE_UPDATED['/ypologismos-enfia']} />
 
         {/* ── ΔΥΟ ΠΑΡΑΔΕΙΓΜΑΤΑ ΑΠΟ ΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (13.10.2026) ──────────────────
             Τα ποσά βγαίνουν από την ίδια κλήση της μηχανής με τη φόρμα (seo.ts)

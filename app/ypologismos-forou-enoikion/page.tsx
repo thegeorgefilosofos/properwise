@@ -31,7 +31,7 @@ import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { RentTaxCalculator } from './RentTaxCalculator';
-import { PAGE_UPDATED } from '../pageUpdated';
+import { PAGE_UPDATED, limitsChecked } from '../pageUpdated';
 import { ToolLedger } from '../ToolParts';
 import { fe, fn, feWhole, fpRate, feSigned, grDateOf } from '@/lib/core/format';
 import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
@@ -185,7 +185,7 @@ export default function Page() {
           }/>
         </Suspense>
 
-        <ToolSources kind="rent" checked={PAGE_UPDATED['/ypologismos-forou-enoikion']} />
+        <ToolSources kind="rent" checked={limitsChecked('/ypologismos-forou-enoikion')} updated={PAGE_UPDATED['/ypologismos-forou-enoikion']} />
 
         {/* ── ΛΥΜΕΝΟ ΠΑΡΑΔΕΙΓΜΑ (13.10.2026) ───────────────────────────────────
             Ο ιδιοκτήτης ζήτησε 12.000€ ενοίκιο τον χρόνο, από τον υπολογιστή.

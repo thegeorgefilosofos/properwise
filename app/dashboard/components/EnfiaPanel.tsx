@@ -549,7 +549,7 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
             <CustomSelect label="Όροφος" value={s.enfiaFloor} onChange={v => upd({ enfiaFloor: v })} options={FLOOR_OPTIONS}/>
           </div>
           <div {...fixedCols(3, 14)} style={{ ...fixedCols(3, 14).style, marginTop: 14 }}>
-            <CustomSelect label="Παλαιότητα" value={s.enfiaAge} onChange={v => upd({ enfiaAge: v })} options={ageOptions(enfiaYear)}/>
+            <CustomSelect label="Παλαιότητα" value={now.ageKey} onChange={v => upd({ enfiaAge: v })} options={ageOptions(enfiaYear)}/>
             <NumberInput label="Συνολική αξία όλων των ακινήτων" value={s.enfiaTotalVal} onChange={v => upd({ enfiaTotalVal: v })} suffix="€"
               labelInfo="Από αυτήν εξαρτάται η αυτόματη μείωση και η προσαύξηση πάνω από τις 500.000€."/>
             <NumberInput label="Αντικειμενική αξία αυτού του ακινήτου" value={s.enfiaPropVal} onChange={v => upd({ enfiaPropVal: v })} suffix="€"

@@ -14,33 +14,28 @@
 // ── ΤΟ beforeSend ΕΙΝΑΙ ΑΜΥΝΑ, ΟΧΙ ΔΙΑΚΟΣΜΗΣΗ ─────────────────────────────
 // Δύο πράγματα δεν φεύγουν ΠΟΤΕ προς τα έξω:
 //
-//   1) Το query string. Μπορεί να κουβαλά token επαναφοράς, κωδικό OAuth ή
-//      άλλο προσωπικό στοιχείο. Στέλνουμε μόνο origin + μονοπάτι.
+//   1) Το query string, εκτός από τα πέντε κλειδιά utm. Μπορεί να κουβαλά
+//      token επαναφοράς, κωδικό OAuth ή άλλο προσωπικό στοιχείο. Τα utm
+//      περνούν για να συνδέεται μια ανάρτηση με την επίσκεψη· όλα τα άλλα
+//      κόβονται (λίστα επιτρεπόμενων στο lib/analytics/pageUrl.ts).
 //
 //   2) Οι σελίδες που έχουν ΜΥΣΤΙΚΟ μέσα στη διαδρομή: σύνδεσμοι ενοικιαστή
 //      (portal), λογιστή (accountant), προ-άφιξης (checkin), επαλήθευσης
 //      εγγράφου (verify), συνδρομής ημερολογίου, απεγγραφής, επαναφοράς
 //      κωδικού, επιβεβαίωσης email και επιστροφής OAuth. Εκεί η ίδια η
 //      διαδρομή ΕΙΝΑΙ το κλειδί· το γεγονός απορρίπτεται ολόκληρο (null).
+//      Το ίδιο και όταν η διεύθυνση δεν διαβάζεται: πριν έφευγε όπως ήταν.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { Analytics } from '@vercel/analytics/next';
-
-/** Διαδρομές όπου το μονοπάτι κουβαλά μυστικό· δεν μετρώνται καθόλου. */
-const SECRET_PATH =
-  /^\/(portal|accountant|checkin|verify|imerologio|unsubscribe|reset-password|epivevaiosi-email|auth)\//;
+import { analyticsUrl } from '@/lib/analytics/pageUrl';
 
 export default function VercelAnalytics() {
   return (
     <Analytics
       beforeSend={(event) => {
-        try {
-          const u = new URL(event.url);
-          if (SECRET_PATH.test(u.pathname)) return null;
-          return { ...event, url: u.origin + u.pathname };
-        } catch {
-          return event;
-        }
+        const url = analyticsUrl(event.url);
+        return url ? { ...event, url } : null;
       }}
     />
   );

@@ -31,17 +31,18 @@ import { athensToday, isoMonth } from '@/lib/core/time'
 import { MONTHS_GEN } from '@/lib/core/months'
 import * as checkinLink from '@/lib/data/checkinLink'
 import { ensureDpa } from '@/lib/legal/dpa'
+import { actionAllowed, SETUP_REFUSAL } from '../assistantPersona'
 import {
   type Props, type Action, type ClientLite, type ContactLite, eur, reconcilePrompt, navLabel,
   onlyDigits, CH_HUMAN,
 } from './model'
 
 export function useAssistantActions({
-  onScan, onNavigate, setFeedbackOpen, setOpen, clientsLite, contactsLite, setMsgs, pendingDoc,
+  onScan, onNavigate, onAddProperty, setFeedbackOpen, setOpen, clientsLite, contactsLite, setMsgs, pendingDoc,
   busy, setBusy, propertyId, userId, setReconcile, setPendingDoc, setCtxStr, loadContext, supabase,
   openBills, openRent, setClientsStr,
 }: Pick<Props & AssistantCore,
-  'onScan' | 'onNavigate' | 'setFeedbackOpen' | 'setOpen' | 'clientsLite' | 'contactsLite' |
+  'onScan' | 'onNavigate' | 'onAddProperty' | 'setFeedbackOpen' | 'setOpen' | 'clientsLite' | 'contactsLite' |
   'setMsgs' | 'pendingDoc' | 'busy' | 'setBusy' | 'propertyId' | 'userId' | 'setReconcile' |
   'setPendingDoc' | 'setCtxStr' | 'loadContext' | 'supabase' | 'openBills' | 'openRent' |
   'setClientsStr'
@@ -49,7 +50,16 @@ export function useAssistantActions({
 
   const runAction = (a?: Action, keepOpen = false) => {
     if (!a) return;
-    if (a.type === 'scan') onScan();
+    // ΧΩΡΙΣ ΑΚΙΝΗΤΟ, ΚΑΜΙΑ ΕΓΓΡΑΦΗ — ο τελευταίος φράχτης. Το parseAction δεν
+    // βγάζει τέτοια ενέργεια χωρίς ακίνητο· εδώ φτάνει ό,τι ήρθε από αλλού (η
+    // φωνή, ένα παλιό κουμπί, μια μελλοντική διαδρομή) και σταματά πριν από
+    // οποιοδήποτε ερώτημα στη βάση.
+    if (!actionAllowed(a, propertyId)) {
+      setMsgs(m => [...m, { role: 'assistant', text: SETUP_REFUSAL, action: { type: 'add-property' } }]);
+      return;
+    }
+    if (a.type === 'add-property') onAddProperty?.();
+    else if (a.type === 'scan') onScan();
     else if (a.type === 'go') onNavigate(a.tab);
     else if (a.type === 'book') { bookAppointment(a.title, a.date, a.time); return; } // κρατά ανοιχτό το πάνελ για την επιβεβαίωση
     else if (a.type === 'client') { registerClient(a); return; }
@@ -155,6 +165,7 @@ export function useAssistantActions({
   // `choice`: απάντηση στην ερώτηση του παραστατικού (λογαριασμός, ενοικιαστής,
   // όροι)· `allowDuplicate`: «ούτως ή άλλως» στην πιθανή διπλοεγγραφή του.
   const commitPendingDoc = async (choice?: string | null, allowDuplicate = false) => {
+    if (!propertyId) return; // χωρίς ακίνητο δεν γράφεται τίποτα (βλ. runAction)
     const pending = pendingDoc;
     if (!pending || busy) return;
     setBusy(true);
@@ -215,6 +226,7 @@ export function useAssistantActions({
   };
 
   const registerExpense = async (description: string, amount: number, date?: string) => {
+    if (!propertyId) return; // χωρίς ακίνητο δεν γράφεται τίποτα (βλ. runAction)
     const { group, category, deductible } = classifyExpense(description);
     const today = athensToday();
     // Έγκυρη ISO ημερομηνία (καθορίζει τον ΜΗΝΑ στον προϋπολογισμό)· αλλιώς σήμερα.
@@ -244,6 +256,7 @@ export function useAssistantActions({
   // Σήμανση ΥΠΑΡΧΟΝΤΟΣ ανοιχτού στοιχείου (λογαριασμός ή δόση ενοικίου) ως πληρωμένου.
   // Ασφαλές: αν δεν υπάρχει ΜΟΝΑΔΙΚΗ σαφής αντιστοίχιση, ΔΕΝ μαντεύει — ζητά διευκρίνιση.
   const markPaid = async (description: string, amount?: number) => {
+    if (!propertyId) return; // χωρίς ακίνητο δεν γράφεται τίποτα (βλ. runAction)
     const q = (description || '').trim().toLowerCase();
     const norm = (s: string) => s.toLowerCase();
     const amtOk = (a: number) => amount == null || (a > 0 && Math.abs(a - amount) / a <= 0.01);
@@ -291,6 +304,7 @@ export function useAssistantActions({
 
   // Δημιουργία/αντιγραφή συνδέσμου pre-check-in για πελάτη.
   const makeCheckinLink = async (who: string) => {
+    if (!propertyId) return; // χωρίς ακίνητο δεν γράφεται τίποτα (βλ. runAction)
     const c = findClient(who);
     if (!c) { setMsgs(m => [...m, { role: 'assistant', text: `Δεν βρήκα ξεκάθαρα τον πελάτη «${who}». Πες μου ακριβές όνομα ή τηλέφωνο, ή άνοιξε τους ${navLabel('clients')}.`, action: { type: 'go', tab: 'clients' } }]); return; }
     if (!(await ensureDpa(supabase))) { setMsgs(m => [...m, { role: 'assistant', text: 'Δεν έφτιαξα τον σύνδεσμο: για στοιχεία τρίτων χρειάζεται πρώτα η αποδοχή της σύμβασης επεξεργασίας. Ζήτα μου ξανά τον σύνδεσμο και πάτησε «Αποδέχομαι».' }]); return; }
@@ -317,6 +331,7 @@ export function useAssistantActions({
 
   // Προσθήκη επαφής (τεχνικός/πάροχος) στην καρτέλα Επαφές, με αυτόματο ρόλο.
   const registerContact = async (name: string, phone?: string, role?: string) => {
+    if (!propertyId) return; // χωρίς ακίνητο δεν γράφεται τίποτα (βλ. runAction)
     const roleValue = inferRole(role || name);
     // Όνομα και τηλέφωνο συνεργάτη: στοιχεία τρίτου, όπως στο registerClient.
     // Οι Όροι ονομάζουν «τους συνεργάτες σου» και χωρίς αποδοχή δεν αποθηκεύονται.
@@ -335,6 +350,7 @@ export function useAssistantActions({
 
   // Καταχώρηση αντικειμένου στην Απογραφή (από τη συνομιλία, με φωνή/κείμενο ή φωτο).
   const registerInventory = async (a: { name: string; category?: string; value?: number; brand?: string; model?: string; room?: string }) => {
+    if (!propertyId) return; // χωρίς ακίνητο δεν γράφεται τίποτα (βλ. runAction)
     try {
       const { error } = await inventory.add(supabase, propertyId, userId, [{
         name: a.name.slice(0, 120), category: a.category || 'Λοιπά',
@@ -351,6 +367,7 @@ export function useAssistantActions({
 
   // Προσθήκη νέας εκκρεμότητας — με προθεσμία/κόστος/προτεραιότητα & αυτόματο κύκλωμα.
   const addTask = async (a: { description: string; category?: string; due_date?: string; est_cost?: number; priority?: string }) => {
+    if (!propertyId) return; // χωρίς ακίνητο δεν γράφεται τίποτα (βλ. runAction)
     const d = a.description.slice(0, 200);
     const category = a.category || (/φόρο|ενφια|ε2|ε1|δήλωσ|ααδε|μισθωτήρι|ασφαλιστ/i.test(d) ? 'legal'
       : /υδραυλικ|ηλεκτρολ|επισκευ|συντήρησ|βλάβη|βαφ|καθαρι|μάστορ/i.test(d) ? 'maintenance'
@@ -411,6 +428,7 @@ export function useAssistantActions({
   // Κράτηση ραντεβού: γράφει γεγονός στο Ημερολόγιο. Η υπάρχουσα ροή υπενθυμίσεων
   // (send-reminders) στέλνει email 3 & 1 ημέρα πριν, αν ο χρήστης έχει ενεργές ειδοποιήσεις.
   const bookAppointment = async (title: string, date: string, time?: string) => {
+    if (!propertyId) return; // χωρίς ακίνητο δεν γράφεται τίποτα (βλ. runAction)
     // Κατηγορία από τον τίτλο (ώστε π.χ. «check κλιματιστικό» να πάει σε Συντήρηση, όχι Οικονομικά).
     const t = (title || '').toLowerCase();
     const category = /service|συντήρησ|καθαρισ|κλιματ|κλίμα|clima|air ?cond|λέβητ|καυστήρ|θερμοσίφ|βλάβ|επισκευ|υδραυλ|ηλεκτρολ|ψυκτ|μάστορ|συνεργ|έλεγχ|check/.test(t) ? 'maintenance'

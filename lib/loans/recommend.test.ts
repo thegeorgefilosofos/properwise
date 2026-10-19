@@ -3,7 +3,7 @@ import {
   annuityMonthly, totalInterest, interestForYear, spitiMouIncomeLimit, spitiMouEligibility,
   spitiMouPayment, rankLoans, fixedRateForTerm, type UserLoanNeeds, type BankInput,
   spitiMouStatus, spitiMouOpen, spitiMouClosedLine, spitiMouEstimate,
-  SPITI_MOU_3, spitiMou3Line,
+  SPITI_MOU_3, spitiMou3Line, SPITI_MOU_3_REPORTED, spitiMou3ReportedLines, spitiMou3ReportedCaveat,
 } from './recommend'
 
 let passed = 0, failed = 0
@@ -182,6 +182,17 @@ ok('green class lowers Cheap nominal rate', greenRanked.find(r => r.bankId === '
   const keys = Object.keys(SPITI_MOU_3)
   ok('ΙΙΙ: κανένα όριο δανείου/αξίας/εισοδήματος', !keys.some(k => /amount|value|income|ltv|sqm|year/i.test(k)))
   ok('ΙΙΙ: κάθε πηγή είναι επίσημος τομέας', Object.values(SPITI_MOU_3.sources).every(u => /^https:\/\/(www\.)?(primeminister\.gr|hdb\.gr|government\.gov\.gr)\//.test(u)))
+}
+
+// ── «Σπίτι μου ΙΙΙ»: όσα έχουν ειπωθεί μένουν χωριστά και με την πηγή τους ──
+{
+  const lines = spitiMou3ReportedLines().join(' ')
+  ok('ΙΙΙ-τύπος: τα όρια λέγονται', lines.includes('230.000€') && lines.includes('300.000€'))
+  ok('ΙΙΙ-τύπος: η επιφύλαξη λέει ότι δεν είναι όροι και ποια η πηγή',
+    /Δεν είναι ακόμη όροι/.test(spitiMou3ReportedCaveat()) && spitiMou3ReportedCaveat().includes(SPITI_MOU_3_REPORTED.source.label))
+  ok('ΙΙΙ-τύπος: κανένα όριο δεν πέρασε στα επίσημα του SPITI_MOU_3',
+    !Object.keys(SPITI_MOU_3).some(k => /amount|value|income|ltv|sqm|benefic/i.test(k)))
+  ok('ΙΙΙ-τύπος: η πηγή έχει διεύθυνση', /^https:\/\//.test(SPITI_MOU_3_REPORTED.source.url))
 }
 
 console.log(`\nrecommend.test: ${passed} passed, ${failed} failed`)

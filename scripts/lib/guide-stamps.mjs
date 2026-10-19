@@ -175,3 +175,13 @@ export function readLedger() {
   if (!existsSync(LEDGER)) return {}
   return JSON.parse(readFileSync(LEDGER, 'utf8')).guides ?? {}
 }
+
+/**
+ * Τα σύμβολα ενός αρχείου, χωρίς σχόλια και εσοχές: η ίδια ανάγνωση με το
+ * αποτύπωμα των οδηγών, για όποιον σφραγίζει άλλες σελίδες
+ * (scripts/lib/tool-stamps.mjs).
+ */
+export function sourceLeaves(file) {
+  const sf = parse(file, readFileSync(file, 'utf8'))
+  return leaves(sf, sf)
+}

@@ -153,6 +153,26 @@ if [ "$healed" -gt 0 ]; then
   exit 1
 fi
 
+# ── ΦΤΑΝΟΥΝ ΟΙ ΕΠΙΣΤΟΛΕΣ ΕΝΕΡΓΟΠΟΙΗΣΗΣ; ΛΥΝΕΤΑΙ ΤΟ ΚΛΕΙΔΩΜΑ ΤΗΣ ΟΥΡΑΣ; ───────
+# Στην παραγωγή το «Πρόσθεσε το πρώτο σου ακίνητο» δεν έφτασε ποτέ σε κανέναν:
+# έμπαινε μέσα στο τριήμερο του welcome και η ουρά το έκοβε για πάντα. Και το
+# κλείδωμα του προγραμματισμού δεν λυνόταν, γιατί το PostgREST το έπαιρνε σε
+# μία σύνδεση και το «άφηνε» σε άλλη. Το σενάριο τρέχει τις ΠΡΑΓΜΑΤΙΚΕΣ
+# lifecycle_enqueue και drain_email_outbox μέρα με τη μέρα. Τρέχει σε κλώνο,
+# γιατί ανοίγει τον διακόπτη emails_live και γράφει ουρά. Και ΠΡΙΝ από το
+# rls-probe, που δίνει σκόπιμα GRANT σε όλους τους πίνακες: εδώ ελέγχεται ότι
+# το job_leases δεν έχει κανένα δικαίωμα για ρόλο πελάτη, όπως το αφήνει η
+# μετανάστευση.
+$PSQL -c "drop database if exists emailprobe" >/dev/null
+$PSQL -c "create database emailprobe template posdb" >/dev/null
+if ! eout=$($PSQL -d emailprobe -f "$ROOT/scripts/db/email-activation-probe.sql" 2>&1); then
+  echo "🔴 Οι επιστολές ενεργοποίησης ή η μίσθωση της ουράς δεν κρατούν:"
+  echo "$eout" | grep -m3 -E 'ERROR' | sed 's/^/    /'
+  exit 1
+fi
+$PSQL -c "drop database if exists emailprobe" >/dev/null
+eprobes=$(echo "$eout" | grep -c 'probe:' || true)
+
 # ── ΒΛΕΠΕΙ Ο Α ΤΑ ΔΕΔΟΜΕΝΑ ΤΟΥ Β; ───────────────────────────────────────────
 # Ο μόνος έλεγχος του αποθετηρίου που ρωτά το ίδιο το Postgres. Κάθε αποτυχία
 # μέσα στο αρχείο σηκώνει exception, οπότε το ON_ERROR_STOP το κάνει κόκκινο.
@@ -161,7 +181,7 @@ if ! out=$($PSQL -d posdb -f "$ROOT/scripts/db/rls-probe.sql" 2>&1); then
   echo "$out" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΕΚΘΕΣΗ' | sed 's/^/    /'
   exit 1
 fi
-probes=$(echo "$out" | grep -c 'probe:' || true)
+probes=$(( $(echo "$out" | grep -c 'probe:' || true) + eprobes ))
 
 # ── ΤΙ ΜΠΟΡΕΙ ΝΑ ΚΑΛΕΣΕΙ ΚΑΠΟΙΟΣ ΧΩΡΙΣ ΛΟΓΑΡΙΑΣΜΟ ──────────────────────────
 # Κάθε SECURITY DEFINER παρακάμπτει την RLS. Όσες φτάνουν στον ανώνυμο πρέπει

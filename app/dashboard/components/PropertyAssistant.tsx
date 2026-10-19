@@ -23,7 +23,7 @@ import Feedback from './Feedback';
 import {
   savePrefs,
   loadHistory, clearHistory,
-  removeMemory, clearMemories, actionReachable,
+  removeMemory, clearMemories, actionReachable, actionAllowed, historyId,
 } from './assistantPersona';
 import {
   ASSISTANT_NAME, ASSISTANT_ACC, tagline, askCta, askPlaceholder, openAria, aiDisclosureLines, openersLabel,
@@ -45,7 +45,7 @@ import { useAssistant } from './assistant/useAssistant'
 import { useAssistantActions } from './assistant/useAssistantActions'
 import { useAssistantChat } from './assistant/useAssistantChat'
 
-export default function PropertyAssistant({ propertyId, userId, propContext, allProperties = [], onNavigate, onScan, canNavigate, planBrief, assistantLocked = false }: Props) {
+export default function PropertyAssistant({ propertyId, userId, propContext, allProperties = [], onNavigate, onScan, onAddProperty, canNavigate, planBrief, assistantLocked = false }: Props) {
   const {
     supabase, open, setOpen, fabPos, setFabPos, dragging, setDragging, scrolled, prefs, setPrefs,
     reconcile, setReconcile, editing, setEditing, msgs, setMsgs, input, setInput, busy, setBusy,
@@ -54,11 +54,11 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     setCtxStr, insightsStr, marketStr, clientsStr, setClientsStr, pricingStr, openerCtx, techStr,
     setMemories, memories, scrollRef, listeningRef, clientsLite, contactsLite, openBills, openRent,
     pendingDoc, setPendingDoc, askRef, allPropsContext, loadContext,
-  } = useAssistant({ propertyId, userId, propContext, allProperties, onNavigate, onScan, canNavigate, planBrief, assistantLocked })
+  } = useAssistant({ propertyId, userId, propContext, allProperties, onNavigate, onScan, onAddProperty, canNavigate, planBrief, assistantLocked })
   const {
     runAction, findContact, buildReachLink, commitPendingDoc,
   } = useAssistantActions({
-    onScan, onNavigate, setFeedbackOpen, setOpen, clientsLite, contactsLite, setMsgs, pendingDoc,
+    onScan, onNavigate, onAddProperty, setFeedbackOpen, setOpen, clientsLite, contactsLite, setMsgs, pendingDoc,
     busy, setBusy, propertyId, userId, setReconcile, setPendingDoc, setCtxStr, loadContext,
     supabase, openBills, openRent, setClientsStr,
   })
@@ -70,7 +70,10 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     assistantLocked, setMsgs, msgs, setBusy, supabase, prefs, ctxStr, allPropsContext, insightsStr,
     marketStr, clientsStr, techStr, clientsLite, contactsLite, pricingStr, memories, planBrief,
     canNavigate, setMemories, userId, runAction, answeredRef, nudgedRef, setPendingDoc, askRef,
+    propertyId,
   })
+  // Πριν από το πρώτο ακίνητο το ιστορικό είναι του χρήστη (assistantPersona.ts).
+  const histId = historyId(propertyId, userId);
 
   // Ο χαιρετισμός λέει ΤΙ ΒΛΕΠΕΙ, όχι τι είναι. Το «ρώτησέ με οτιδήποτε» δεν λέει
   // τίποτα· το «βλέπω τα ενοίκια και τις δαπάνες του Χ» λέει τα πάντα και είναι
@@ -339,15 +342,15 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
           {editing ? (
             <AssistantSettings
               draft={prefs}
-              hasMemory={msgs.length > 0 || loadHistory(propertyId).length > 0}
+              hasMemory={msgs.length > 0 || loadHistory(histId).length > 0}
               facts={memories}
               onForgetFact={(id) => setMemories(removeMemory(userId, id))}
               onForgetAllFacts={() => { clearMemories(userId); setMemories(NO_MEMORIES); }}
               onCancel={() => setEditing(false)}
-              onClearMemory={() => { clearHistory(propertyId); setMsgs([]); }}
+              onClearMemory={() => { clearHistory(histId); setMsgs([]); }}
               onSave={(next) => {
                 // Αν έκλεισε τη μνήμη, σβήσε ό,τι έχει αποθηκευτεί (σεβασμός στην επιλογή).
-                if (prefs.memory && !next.memory) { clearHistory(propertyId); clearMemories(userId); setMemories(NO_MEMORIES); }
+                if (prefs.memory && !next.memory) { clearHistory(histId); clearMemories(userId); setMemories(NO_MEMORIES); }
                 setPrefs(next); savePrefs(next); setEditing(false);
               }}
             />
@@ -411,7 +414,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                         ακίνητο ή αυτό το πακέτο, το κουμπί δεν γράφεται καθόλου —
                         αντί να γκριζάρει, ή χειρότερα, να γράψει τα δεδομένα σε
                         οθόνη που ο χρήστης δεν πρόκειται να δει. */}
-                    {m.action && actionReachable(m.action, canNavigate) && (m.action.type === 'reach' ? (() => {
+                    {m.action && actionAllowed(m.action, propertyId) && actionReachable(m.action, canNavigate) && (m.action.type === 'reach' ? (() => {
                       // Κουμπί/σύνδεσμος επικοινωνίας: ανοίγει το μέσο ΜΟΝΟ με το άγγιγμα
                       // του χρήστη (ποτέ αυτόματα). Για tel:/mailto: ρεαλιστικό <a>, για
                       // WhatsApp/Viber άνοιγμα σε νέα καρτέλα.
@@ -432,7 +435,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                       const used = consumedActions.has(i);
                       return (
                       <Btn variant="secondary" disabled={used} onClick={() => { if (used) return; setConsumedActions(s => new Set(s).add(i)); runAction(m.action); }}>
-                        {m.action.type === 'scan' ? 'Σάρωσε έγγραφο'
+                        {m.action.type === 'add-property' ? 'Πρόσθεσε το ακίνητό σου'
+                          : m.action.type === 'scan' ? 'Σάρωσε έγγραφο'
                           : m.action.type === 'book' ? `Κλείσε ραντεβού: ${new Date(m.action.date).toLocaleDateString('el-GR')}`
                           : m.action.type === 'client' ? `Καταχώρησε: ${m.action.name}`
                           : m.action.type === 'expense' ? `Κατέγραψε δαπάνη: ${eur(m.action.amount)}`
@@ -494,7 +498,12 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
               {/* Είσοδος */}
               <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderTop: '1px solid var(--border-subtle)', alignItems: 'center' }}>
                 <input ref={imgRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) askImage(f); e.currentTarget.value = ''; }} />
-                <button onClick={() => { if (!busy) imgRef.current?.click(); }} disabled={busy} aria-label="Φωτογραφία απόδειξης, λογαριασμού ή αντικειμένου" title={`Φωτογράφισε απόδειξη ή λογαριασμό (καταχωρείται στις Δαπάνες) ή αντικείμενο (μπαίνει στα «${navLabel('inventory')}»)`}
+                <button onClick={() => {
+                  if (busy) return;
+                  // Χωρίς ακίνητο η φωτογραφία δεν έχει πού να πάει: ίδια ροή με το
+                  // [[scan]], πρώτα ο οδηγός και η σάρωση πάνω στο νέο ακίνητο.
+                  if (!propertyId) runAction({ type: 'scan' }); else imgRef.current?.click();
+                }} disabled={busy} aria-label="Φωτογραφία απόδειξης, λογαριασμού ή αντικειμένου" title={propertyId ? `Φωτογράφισε απόδειξη ή λογαριασμό (καταχωρείται στις Δαπάνες) ή αντικείμενο (μπαίνει στα «${navLabel('inventory')}»)` : 'Φωτογράφισε ένα έγγραφο: πρώτα προσθέτεις το ακίνητο και μετά διαβάζεται'}
                   style={{ width: 42, height: 42, flexShrink: 0, borderRadius: '50%', border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', cursor: busy ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg aria-hidden="true" width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z" /><circle cx="12" cy="13" r="3.2" /></svg>
                 </button>

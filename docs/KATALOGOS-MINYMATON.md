@@ -42,10 +42,10 @@ npm run katalogos
 | `welcome_free` | Καλωσόρισες στο PROPERWISE | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` (+1) |
 | `welcome_individual` | Τα ακίνητά σου, τακτοποιημένα | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260819130000_o_kyklos_zois_diavazei_to_sosto_pedio.sql` |
 | `welcome_professional` | Το χαρτοφυλάκιό σου σε μία οθόνη | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260819130000_o_kyklos_zois_diavazei_to_sosto_pedio.sql` |
-| `add_first_property` | Πρόσθεσε το πρώτο σου ακίνητο | `supabase/migrations/20260723091000_lifecycle_enqueue.sql`, `supabase/migrations/20260723092000_email_activation_fixes.sql` (+2) |
-| `first_property_success` | c.propertyName ? `Το «${c.propertyName}» είναι έτοιμο` : 'Το ακίνητό σου είναι έτοιμο' | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+3) |
+| `add_first_property` | Πρόσθεσε το πρώτο σου ακίνητο | `supabase/migrations/20260723091000_lifecycle_enqueue.sql`, `supabase/migrations/20260723092000_email_activation_fixes.sql` (+4) |
+| `first_property_success` | c.propertyName ? `Το «${c.propertyName}» είναι έτοιμο` : 'Το ακίνητό σου είναι έτοιμο' | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+5) |
 | `connect_bank` | Άσε τη λογιστική να γίνεται μόνη της | **με το χέρι** · Η σύνδεση τράπεζας δεν έχει ανοίξει: λείπει προσαρμογέας παρόχου. Θα υποσχόταν κουμπί που δεν υπάρχει. |
-| `connect_calendar` | Συγχρόνισε Airbnb και Booking | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `scripts/db/rls-probe.sql` |
+| `connect_calendar` | Συγχρόνισε Airbnb και Booking | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `supabase/migrations/20261018164100_to_proto_akinito_den_skontaftei_sto_kalosorisma.sql` (+1) |
 | `tip_assistant` | Η Νόα ξέρει τα ακίνητά σου | `supabase/functions/_shared/emailPolicy.ts` |
 | `voice_entry` | Πες το και καταχωρείται | `supabase/functions/_shared/emailPolicy.ts` |
 | `tip_reports` | Επίσημη αναφορά με ένα κλικ | `supabase/functions/_shared/emailPolicy.ts` |
@@ -61,11 +61,11 @@ npm run katalogos
 | `monthly_statement` | Η μηνιαία σου κατάσταση | `supabase/functions/_shared/verify-policy.ts`, `supabase/functions/send-monthly-statements/index.ts` |
 | `market_digest` | Τα επιτόκια αυτή την εβδομάδα | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `product_update` | Τι νέο έχει το PROPERWISE | `supabase/functions/_shared/verify-policy.ts` |
-| `quarterly_review` | Το τρίμηνό σου σε μία ματιά | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `scripts/db/rls-probe.sql` |
+| `quarterly_review` | Το τρίμηνό σου σε μία ματιά | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `supabase/migrations/20261018164100_to_proto_akinito_den_skontaftei_sto_kalosorisma.sql` (+1) |
 | `tax_e2` | Πλησιάζει η φορολογική δήλωση | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `tax_enfia` | ΕΝΦΙΑ: εκτίμηση και προθεσμίες | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `tax_installment` | Υπενθύμιση: δόση φόρου αυτόν τον μήνα | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
-| `year_end` | Κλείσε τη χρονιά με τα βιβλία σου σε τάξη | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `scripts/db/rls-probe.sql` |
+| `year_end` | Κλείσε τη χρονιά με τα βιβλία σου σε τάξη | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `supabase/migrations/20261018164100_to_proto_akinito_den_skontaftei_sto_kalosorisma.sql` (+1) |
 | `rent_pending` | Εκκρεμεί μια είσπραξη ενοικίου | `supabase/functions/_shared/emailPolicy.ts` |
 | `dunning_1` | Υπενθύμιση: ληξιπρόθεσμο ενοίκιο | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `dunning_2` | Δεύτερη υπενθύμιση: το ενοίκιο εκκρεμεί ακόμη | `supabase/functions/_shared/emailPolicy.ts` |
@@ -80,7 +80,7 @@ npm run katalogos
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
 | `free_month_upgrade` | Άλλος ένας μήνας. Μήπως ήρθε η ώρα; | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` (+1) |
-| `upsell_to_individual` | Δώσε στα ακίνητά σου το πλήρες PROPERWISE | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` (+4) |
+| `upsell_to_individual` | Δώσε στα ακίνητά σου το πλήρες PROPERWISE | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` (+5) |
 | `upsell_to_professional` | Το χαρτοφυλάκιό σου μεγαλώνει | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
 | `limit_reached` | Έφτασες στο όριο των ακινήτων σου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` (+1) |
 | `value_left` | Αφήνεις αξία αναξιοποίητη | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
@@ -96,12 +96,12 @@ npm run katalogos
 
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
-| `black_friday` | Black Friday: ${o.pct}% στο PROPERWISE | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/send-lifecycle-email/index.ts` (+4) |
+| `black_friday` | Black Friday: ${o.pct}% στο PROPERWISE | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/send-lifecycle-email/index.ts` (+5) |
 | `cyber_monday` | Cyber Monday: ${o.pct}% στο PROPERWISE | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
-| `christmas` | Κλείσε τη χρονιά με τα ακίνητά σου σε τάξη | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/send-lifecycle-email/index.ts` (+4) |
+| `christmas` | Κλείσε τη χρονιά με τα ακίνητά σου σε τάξη | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/send-lifecycle-email/index.ts` (+5) |
 | `new_year` | Νέα χρονιά, καθαρά βιβλία | `supabase/functions/_shared/emailTemplates.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
-| `tax_season` | Μπες στη φορολογική σεζόν χωρίς άγχος | `supabase/migrations/20260723091000_lifecycle_enqueue.sql`, `supabase/migrations/20260723092000_email_activation_fixes.sql` (+2) |
-| `summer_str` | Η σεζόν των βραχυχρόνιων ξεκινά | `supabase/functions/send-lifecycle-email/index.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+3) |
+| `tax_season` | Μπες στη φορολογική σεζόν χωρίς άγχος | `supabase/migrations/20260723091000_lifecycle_enqueue.sql`, `supabase/migrations/20260723092000_email_activation_fixes.sql` (+3) |
+| `summer_str` | Η σεζόν των βραχυχρόνιων ξεκινά | `supabase/functions/send-lifecycle-email/index.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+4) |
 
 ## REFERRAL
 
@@ -110,7 +110,7 @@ npm run katalogos
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
 | `referral_invite` | Σύστησε το PROPERWISE σε έναν ιδιοκτήτη | `supabase/functions/send-lifecycle-email/index.ts` |
-| `referral_reminder` | Ο σύνδεσμος πρόσκλησής σου περιμένει | `supabase/functions/_shared/verify-policy.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+3) |
+| `referral_reminder` | Ο σύνδεσμος πρόσκλησής σου περιμένει | `supabase/functions/_shared/verify-policy.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+4) |
 | `referral_reward` | Η ανταμοιβή σου είναι έτοιμη | `supabase/functions/_shared/emailPolicy.ts` |
 | `referral_friend_activated` | Η σύστασή σου μόλις ενεργοποιήθηκε | `supabase/functions/_shared/emailPolicy.ts` |
 
@@ -135,8 +135,8 @@ npm run katalogos
 
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
-| `inactive_30` | Πάει καιρός. Όλα σε περιμένουν | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `scripts/db/rls-probe.sql` |
-| `inactive_60` | Να κρατήσουμε τα δεδομένα σου ασφαλή; | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql` |
+| `inactive_30` | Πάει καιρός. Όλα σε περιμένουν | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `supabase/migrations/20261018164100_to_proto_akinito_den_skontaftei_sto_kalosorisma.sql` (+1) |
+| `inactive_60` | Να κρατήσουμε τα δεδομένα σου ασφαλή; | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `supabase/migrations/20261018164100_to_proto_akinito_den_skontaftei_sto_kalosorisma.sql` |
 | `winback_offer` | Μια αφορμή για να γυρίσεις: ${o.pct}% έκπτωση | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
 | `churn_survey` | Ένα λεπτό, για να γίνουμε καλύτεροι | `supabase/functions/_shared/emailPolicy.ts` |
 | `data_retention_notice` | Κράτησε τον λογαριασμό σου ενεργό | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
@@ -147,10 +147,10 @@ npm run katalogos
 
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
-| `lease_ending` | c.propertyName ? `Λήγει η μίσθωση του «${esc(c.propertyName)}»` : 'Πλησιάζει λήξη μίσθωσης', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` (+4) |
+| `lease_ending` | c.propertyName ? `Λήγει η μίσθωση του «${esc(c.propertyName)}»` : 'Πλησιάζει λήξη μίσθωσης', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` (+5) |
 | `lease_renewal_prompt` | Ώρα για ανανέωση μίσθωσης; | `supabase/functions/_shared/emailPolicy.ts` |
 | `deposit_reminder` | Η εγγύηση θέλει τακτοποίηση | `supabase/functions/_shared/emailPolicy.ts` |
-| `insurance_expiring` | Λήγει η ασφάλεια του ακινήτου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` (+4) |
+| `insurance_expiring` | Λήγει η ασφάλεια του ακινήτου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` (+5) |
 | `certificate_expiring` | Λήγει πιστοποιητικό${named} | `supabase/functions/_shared/emailPolicy.ts` |
 | `appointment_reminder` | Υπενθύμιση: ${title} | `supabase/functions/_shared/emailPolicy.ts` |
 | `maintenance_scheduled` | Προγραμματισμένη συντήρηση | `supabase/functions/_shared/emailPolicy.ts` |
@@ -185,7 +185,7 @@ npm run katalogos
 | `assistant_showcase` | Η Νόα κάνει τη δουλειά | `supabase/functions/_shared/emailPolicy.ts` |
 | `changelog_monthly` | Τι φτιάξαμε αυτόν τον μήνα | **με το χέρι** · Μηνιαία σύνοψη αλλαγών, γραμμένη με το χέρι. |
 | `roadmap_preview` | Τι ετοιμάζουμε στη συνέχεια | `supabase/functions/_shared/emailPolicy.ts` |
-| `anniversary` | (has(c.anniversaryYears) && c.anniversaryYears > 1) ? `Κλείνουμε ${c.anniversaryYears} χρόνια μαζί` : 'Κλείνουμε έναν χρόνο μαζί', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` (+4) |
+| `anniversary` | (has(c.anniversaryYears) && c.anniversaryYears > 1) ? `Κλείνουμε ${c.anniversaryYears} χρόνια μαζί` : 'Κλείνουμε έναν χρόνο μαζί', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` (+5) |
 | `milestone_reached` | Ένα ορόσημο που αξίζει αναγνώριση | **με το χέρι** · Το ορόσημο δεν είναι ορισμένο πουθενά. Ενα κατώφλι εδώ θα ήταν αυθαίρετο. |
 | `nps_survey` | Θα μας πρότεινες σε έναν φίλο; | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `feedback_lottery` | Ένα λεπτό για τη γνώμη σου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
@@ -201,7 +201,7 @@ npm run katalogos
 | `roi_proof` | Πόσο σου απέδωσε το PROPERWISE | `supabase/functions/_shared/emailPolicy.ts` |
 | `plan_comparison` | Ποιο πακέτο συμφέρει για τη δική σου χρήση | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
 | `social_proof` | Τι κάνει το PROPERWISE για τα ακίνητά σου | `supabase/functions/_shared/emailPolicy.ts` |
-| `rent_benchmark_alert` | Το ενοίκιό σου σε σχέση με την αγορά | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+2) |
+| `rent_benchmark_alert` | Το ενοίκιό σου σε σχέση με την αγορά | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+3) |
 
 ## COMPLIANCE
 
@@ -230,7 +230,7 @@ npm run katalogos
 
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
-| `tenant_welcome` | Καλωσόρισες στο νέο σου σπίτι | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `scripts/db/rls-probe.sql` |
+| `tenant_welcome` | Καλωσόρισες στο νέο σου σπίτι | `supabase/migrations/20260824130000_ta_email_pou_den_estelne_kaneis.sql`, `supabase/migrations/20261018164100_to_proto_akinito_den_skontaftei_sto_kalosorisma.sql` (+1) |
 | `tenant_rent_receipt` | c.period ? `Απόδειξη ενοικίου ${esc(c.period)}` : 'Η απόδειξη του ενοικίου σου', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts` |
 | `coowner_statement` | Η κατάσταση της συνιδιοκτησίας σου | **με το χέρι** · Απαιτεί διεύθυνση συνιδιοκτήτη, που δεν κρατάμε. |
 

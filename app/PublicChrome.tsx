@@ -32,6 +32,7 @@ import { TRIAL_DAYS } from '@/lib/billing/plans';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { hy } from '@/components/Hyphen';
 import PublicMenu, { type MenuGroup } from './PublicMenu';
+import { ToolCtaLink } from './ToolCtaLink';
 import { asOfDate } from '@/lib/facts/prices';
 
 /**
@@ -446,13 +447,24 @@ const SOURCE_BADGE: Partial<Record<keyof typeof TOOL_SOURCES, string>> = { power
 // περιηγητή και το μητρώο θα έμπαινε στο πακέτο τους. Υποχρεωτικό πεδίο: κάθε
 // σελίδα αποφασίζει. Το δάνειο δίνει ρητά `null`, γιατί οι τιμές αγοράς του
 // γράφουν δική τους ημερομηνία δίπλα στο πεδίο.
-export function ToolSources({ kind, checked }: { kind: keyof typeof TOOL_SOURCES; checked: string | null }) {
+//
+// ΚΑΙ ΠΟΤΕ ΑΛΛΑΞΕ Η ΣΕΛΙΔΑ (19/10/2026). Το `checked` ήταν μόνο ο έλεγχος των
+// ορίων: η σελίδα ΕΝΦΙΑ έγραφε «Τελευταία ενημέρωση 26/08/2026» δίπλα σε
+// παράδειγμα με συντελεστή που μπήκε στις 13/10. Με `updated` (η νεότερη από
+// έλεγχο και αλλαγή περιεχομένου, app/pageUpdated.ts) το πλαίσιο γράφει και
+// τις δύο όταν διαφέρουν: «Έλεγχος ορίων … · Τελευταία ενημέρωση …». Η
+// «Τελευταία ενημέρωση» είναι πάντα η ημερομηνία του χάρτη.
+export function ToolSources({ kind, checked, updated }: {
+  kind: keyof typeof TOOL_SOURCES; checked: string | null; updated?: string | null;
+}) {
+  const last = updated ?? checked;
   return (
     <aside className="po-tool-sources po-noprint" aria-label="Νομική βάση και πηγές">
       <span className="po-src-badge">{SOURCE_BADGE[kind] ?? 'Νομική βάση'}</span>
       <span className="po-src-txt po-just">
         {hy(TOOL_SOURCES[kind])}
-        {checked && <> · Τελευταία ενημέρωση {asOfDate(checked)}</>}
+        {checked && last && last !== checked && <> · Έλεγχος ορίων {asOfDate(checked)}</>}
+        {last && <> · Τελευταία ενημέρωση {asOfDate(last)}</>}
       </span>
     </aside>
   );
@@ -463,7 +475,12 @@ export function ToolSources({ kind, checked }: { kind: keyof typeof TOOL_SOURCES
 // έφερνε στο πακέτο τους αυτό το αρχείο μαζί με όσα θέλει η `TRIAL_LINE` στην
 // αρχικοποίησή της (ταυτότητα βοηθού, πακέτα χρέωσης) και το λογότυπο. Από τη
 // σελίδα ο περιηγητής παίρνει μόνο το HTML της, στην ίδια θέση.
-export function ToolCta({ title, body }: { title: string; body: ReactNode }) {
+/**
+ * @param href Πού πηγαίνει το «Ξεκίνα δωρεάν». Προεπιλογή η εγγραφή· ο
+ *   υπολογιστής που τυλίγει το `ToolCta` μπορεί να τη γράψει από πάνω με τα
+ *   πεδία του (`ToolCtaHref`, app/ToolCtaLink.tsx).
+ */
+export function ToolCta({ title, body, href = '/signup' }: { title: string; body: ReactNode; href?: string }) {
   return (
     <div className="po-noprint" style={{
       marginTop: 20, padding: 'clamp(16px, 4vw, 22px)', borderRadius: T.radius.card,
@@ -481,13 +498,13 @@ export function ToolCta({ title, body }: { title: string; body: ReactNode }) {
           {TRIAL_LINE}
         </p>
       </div>
-      <Link href="/signup" className="lp-cta lp-primary" style={{
+      <ToolCtaLink href={href} className="lp-cta lp-primary" style={{
         display: 'inline-flex', alignItems: 'center', height: T.h.lg, padding: '0 24px',
         borderRadius: T.radius.pill, fontSize: 14, fontWeight: 700,
         textDecoration: 'none', whiteSpace: 'nowrap',
       }}>
         Ξεκίνα δωρεάν
-      </Link>
+      </ToolCtaLink>
     </div>
   );
 }

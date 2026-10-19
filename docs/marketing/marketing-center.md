@@ -29,8 +29,8 @@ adapter (email/push/Viber/WhatsApp) το αποδίδει με τους περι
 |---|---|
 | `welcome_free` / `welcome_individual` / `welcome_professional` | Αμέσως με τη δημιουργία/ενεργοποίηση πλάνου |
 | `verify_email` | Αμέσως με την εγγραφή (T+0) |
-| `add_first_property` | Ημέρα 1, αν δεν έχει προστεθεί ακίνητο |
-| `first_property_success` | Αμέσως με την προσθήκη πρώτου ακινήτου |
+| `add_first_property` | Ημέρες 2 ώς 8, μόνο χωρίς ακίνητο στο `user_properties` και μόλις λήξει το τριήμερο από το προηγούμενο εμπορικό (στην πράξη ημέρα 4 ή 5 μετά το welcome) |
+| `first_property_success` | Ώς 6 ημέρες από το πρώτο ακίνητο, μόλις λήξει το τριήμερο από το προηγούμενο εμπορικό |
 | `connect_bank` | Ημέρα 3 · `connect_calendar` Ημέρα 4 (STR) |
 | `tip_assistant` Ημέρα 5 · `voice_entry` Ημέρα 6 · `tip_reports` Ημέρα 7 | |
 | `feedback_week1` Ημέρα 8 · `recap_week2` Ημέρα 14 | |

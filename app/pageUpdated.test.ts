@@ -35,16 +35,28 @@ import { monthGen, monthYearLabel } from '@/lib/core/months';
 import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 import { PRICE_FACTS } from '@/lib/facts/prices';
 import { POLICY_VERSION } from '@/lib/legal/identity';
+import { renderToStaticMarkup as html } from 'react-dom/server';
+import { ToolSources } from './PublicChrome';
+
+// ── ΟΙ ΥΠΟΛΟΓΙΣΤΕΣ: Η ΝΕΟΤΕΡΗ ΑΠΟ ΕΛΕΓΧΟ ΟΡΙΩΝ ΚΑΙ ΑΛΛΑΓΗ ΠΕΡΙΕΧΟΜΕΝΟΥ ──────
+// Το #401 (18/10/2026) άλλαξε H1, παραδείγματα και FAQ στις σελίδες ΕΝΦΙΑ και
+// φόρου ενοικίων· ο χάρτης έγραφε 2026-08-26, τον έλεγχο των ορίων. Η σφραγίδα
+// διαβάζεται εδώ ξανά από το JSON, ανεξάρτητα από το pageUpdated.ts.
+const STAMPS = (JSON.parse(readFileSync('app/toolStamps.json', 'utf8')) as { tools: Record<string, { updated: string | null }> }).tools;
+const newest = (path: string, limit: string | null) => {
+  const c = STAMPS[path]?.updated ?? null;
+  return limit && c ? (c > limit ? c : limit) : (c ?? limit);
+};
 
 /**
  * Οι γραμμές του app/pageUpdated.ts που διαβάζουν μητρώο, με την πηγή τους
  * διαβασμένη εδώ ξανά, ανεξάρτητα από το pageUpdated.ts.
  */
 const SOURCED: Partial<Record<DatedPage, { from: string; iso: string | null }>> = {
-  '/ypologismos-forou-enoikion': { from: "taxLimitAsOf('rent').checkedAt", iso: taxLimitAsOf('rent').checkedAt },
-  '/ypologismos-enfia': { from: "taxLimitAsOf('enfia').checkedAt", iso: taxLimitAsOf('enfia').checkedAt },
-  '/vraxyxronia-i-makroxronia': { from: "taxLimitAsOf('short').checkedAt", iso: taxLimitAsOf('short').checkedAt },
-  '/kathari-apodosi': { from: "taxLimitAsOf('yield').checkedAt", iso: taxLimitAsOf('yield').checkedAt },
+  '/ypologismos-forou-enoikion': { from: "toolDate('/ypologismos-forou-enoikion')", iso: newest('/ypologismos-forou-enoikion', taxLimitAsOf('rent').checkedAt) },
+  '/ypologismos-enfia': { from: "toolDate('/ypologismos-enfia')", iso: newest('/ypologismos-enfia', taxLimitAsOf('enfia').checkedAt) },
+  '/vraxyxronia-i-makroxronia': { from: "toolDate('/vraxyxronia-i-makroxronia')", iso: newest('/vraxyxronia-i-makroxronia', taxLimitAsOf('short').checkedAt) },
+  '/kathari-apodosi': { from: "toolDate('/kathari-apodosi')", iso: newest('/kathari-apodosi', taxLimitAsOf('yield').checkedAt) },
   '/sygkrisi-timologion-revmatos': { from: 'PRICE_FACTS.electricity.checkedAt', iso: PRICE_FACTS.electricity.checkedAt },
   '/trust': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
   '/privacy': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
@@ -160,6 +172,27 @@ async function main() {
   // πηγών και οι τρεις νομικές σελίδες γράφουν ημερομηνία· αν η εξαγωγή
   // σταματήσει να τις βρίσκει, το (3) περνά χωρίς να έχει κοιτάξει τίποτα.
   ok(`βρέθηκε ορατή ημερομηνία σε ${withDate} σελίδες (τουλάχιστον ${GUIDES.length + 8})`, withDate >= GUIDES.length + 8);
+
+  // ── 5. ΤΟ ΠΕΡΙΣΤΑΤΙΚΟ ΤΟΥ 18/10 ──────────────────────────────────────────
+  // Χάρτης και σελίδα ΕΝΦΙΑ και φόρου ενοικίων δεν γράφουν πια τον έλεγχο των
+  // ορίων (26/08) όταν το περιεχόμενο άλλαξε μετά.
+  for (const p of ['/ypologismos-enfia', '/ypologismos-forou-enoikion'] as const) {
+    const lm = map.find(r => r.url === SITE + p)?.lastModified;
+    ok(`${p}: lastmod ${lm} όχι παλαιότερο από την αλλαγή περιεχομένου ${STAMPS[p]?.updated}`, typeof lm === 'string' && !!STAMPS[p]?.updated && lm >= (STAMPS[p].updated as string));
+    ok(`${p}: lastmod ${lm} όχι παλαιότερο από τον έλεγχο ορίων`, typeof lm === 'string' && lm >= (SOURCED[p]?.iso ?? '') );
+  }
+
+  // ── 6. ΤΟ ΠΛΑΙΣΙΟ ΓΡΑΦΕΙ ΚΑΙ ΤΙΣ ΔΥΟ ΟΤΑΝ ΔΙΑΦΕΡΟΥΝ ──────────────────────────
+  {
+    const both = html(createElement(ToolSources, { kind: 'enfia', checked: '2026-08-26', updated: '2026-10-18' }));
+    ok('έλεγχος ορίων και τελευταία ενημέρωση, με τη σειρά', /Έλεγχος ορίων 26\/08\/2026 · Τελευταία ενημέρωση 18\/10\/2026/.test(both));
+    const same = html(createElement(ToolSources, { kind: 'enfia', checked: '2026-08-26', updated: '2026-08-26' }));
+    ok('ίδια ημερομηνία: μία φορά', !same.includes('Έλεγχος ορίων') && same.includes('Τελευταία ενημέρωση 26/08/2026'));
+    const old = html(createElement(ToolSources, { kind: 'power', checked: '2026-10-12' }));
+    ok('χωρίς updated: όπως πριν', !old.includes('Έλεγχος ορίων') && old.includes('Τελευταία ενημέρωση 12/10/2026'));
+    const none = html(createElement(ToolSources, { kind: 'loan', checked: null }));
+    ok('δάνειο χωρίς ημερομηνία: καμία', !none.includes('Τελευταία ενημέρωση'));
+  }
 
   console.log(fail ? `✗ pageUpdated: ${fail} απέτυχαν, ${pass} πέρασαν` : `✓ pageUpdated: ${pass} έλεγχοι πέρασαν`);
   if (fail) process.exit(1);

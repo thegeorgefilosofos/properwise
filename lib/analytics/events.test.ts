@@ -7,7 +7,8 @@
 // αναφέρει πλέον στο captureError, αλλά μετά το ανέβασμα. Ο έλεγχος γίνεται
 // λοιπόν ΚΑΙ ΕΔΩ, όπου φαίνεται πριν.
 // ═══════════════════════════════════════════════════════════════════════════
-import { PRODUCT_EVENTS, track, type ProductEvent } from './events';
+import { PRODUCT_EVENTS, WIZARD_FROM, onboardingProps, track, trackOnboarding, type ProductEvent, type OnboardingStep } from './events';
+import { readFileSync } from 'node:fs';
 
 let passed = 0, failed = 0;
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }
@@ -22,7 +23,7 @@ const NAME_RULE = /^[a-z][a-z0-9_]{2,47}$/;
   ok('κάθε όνομα περνά τον έλεγχο της βάσης', names.every(n => NAME_RULE.test(n)));
   ok('το κλειδί είναι ίδιο με την τιμή', Object.entries(PRODUCT_EVENTS).every(([k, v]) => k === v));
   ok('κανένα διπλότυπο', new Set(names).size === names.length);
-  ok('εννέα σκαλιά', names.length === 9);
+  ok('εννέα σκαλιά της αξίας και τέσσερα της υποδοχής', names.length === 13);
 }
 
 // ── ΤΟ ΧΩΝΙ ΕΧΕΙ ΣΕΙΡΑ ΚΑΙ Η ΣΕΙΡΑ ΕΧΕΙ ΝΟΗΜΑ ───────────────────────────
@@ -35,6 +36,49 @@ const NAME_RULE = /^[a-z][a-z0-9_]{2,47}$/;
     idx(PRODUCT_EVENTS.second_property_added) > idx(PRODUCT_EVENTS.property_added));
   ok('η δοκιμή έρχεται πριν από τη συνδρομή',
     idx(PRODUCT_EVENTS.trial_started) < idx(PRODUCT_EVENTS.subscription_started));
+  ok('τα σκαλιά της υποδοχής είναι ανάμεσα στην εγγραφή και στο πρώτο ακίνητο',
+    ([PRODUCT_EVENTS.welcome_later, PRODUCT_EVENTS.wizard_opened, PRODUCT_EVENTS.wizard_closed, PRODUCT_EVENTS.scan_opened] as ProductEvent[])
+      .every(e => idx(e) > idx(PRODUCT_EVENTS.signed_up) && idx(e) < idx(PRODUCT_EVENTS.property_added)));
+}
+
+// ── ΤΑ ΣΚΑΛΙΑ ΤΗΣ ΥΠΟΔΟΧΗΣ ΔΕΝ ΚΟΥΒΑΛΟΥΝ ΕΛΕΥΘΕΡΟ ΚΕΙΜΕΝΟ ─────────────────
+// Μόνο αριθμός κάρτας ή βήματος και μια λέξη του WIZARD_FROM. Κείμενο που
+// περνά με `as` (όνομα, διεύθυνση) δεν φτάνει ποτέ στη βάση.
+{
+  const onlyFixed = (p: Record<string, unknown>) => Object.values(p).every(v =>
+    typeof v === 'number' || (typeof v === 'string' && (WIZARD_FROM as readonly string[]).includes(v)));
+  ok('οι αφετηρίες είναι σταθερές πεζές λέξεις', WIZARD_FROM.every(w => /^[a-z]+$/.test(w)));
+  ok('«Αργότερα» στην κάρτα 2: { card: 2 }', JSON.stringify(onboardingProps({ event: 'welcome_later', card: 2 })) === '{"card":2}');
+  ok('οδηγός από την υποδοχή', JSON.stringify(onboardingProps({ event: 'wizard_opened', from: 'welcome' })) === '{"from":"welcome"}');
+  ok('κλείσιμο στο βήμα 2', JSON.stringify(onboardingProps({ event: 'wizard_closed', step: 2 })) === '{"step":2}');
+  ok('η σάρωση χωρίς φορτίο', JSON.stringify(onboardingProps({ event: 'scan_opened' })) === '{}');
+  const sneaky = [
+    { event: 'wizard_opened', from: 'Οδός Αθηνάς 12' },
+    { event: 'welcome_later', card: 'george@example.com' },
+    { event: 'wizard_closed', step: 2.7 },
+    { event: 'wizard_closed', step: -1 },
+    { event: 'welcome_later', card: 1e9 },
+  ] as unknown as OnboardingStep[];
+  const out = sneaky.map(onboardingProps);
+  ok('κείμενο στην αφετηρία γίνεται «other»', out[0].from === 'other');
+  ok('κείμενο στην κάρτα γίνεται 0', out[1].card === 0);
+  ok('δεκαδικό βήμα κόβεται σε ακέραιο', out[2].step === 2);
+  ok('αρνητικό ή τεράστιο γίνεται 0', out[3].step === 0 && out[4].card === 0);
+  ok('κανένα φορτίο δεν έχει ελεύθερο κείμενο', out.every(onlyFixed));
+}
+
+// ── ΚΑΙ ΚΑΘΕ ΣΚΑΛΙ ΤΗΣ ΥΠΟΔΟΧΗΣ ΚΑΛΕΙΤΑΙ ΚΑΠΟΥ ───────────────────────────
+// Σκαλί που δεν το γράφει κανείς δείχνει μηδέν και διαβάζεται ως «κανείς δεν
+// έφτασε εδώ». Κάθε όνομα πρέπει να εμφανίζεται σε κλήση `trackOnboarding`.
+{
+  const src = ['app/dashboard/components/WelcomeOnboarding.tsx', 'app/dashboard/components/AddPropertyWizard.tsx',
+    'app/dashboard/components/shell/useDashboard.ts', 'app/dashboard/components/DocumentScan.tsx']
+    .map(f => readFileSync(f, 'utf8')).join('\n');
+  for (const e of ['welcome_later', 'wizard_opened', 'wizard_closed', 'scan_opened'])
+    ok(`το ${e} καλείται`, new RegExp(`trackOnboarding\\([^;]*PRODUCT_EVENTS\\.${e}\\b`).test(src));
+  const page = readFileSync('app/dashboard/page.tsx', 'utf8');
+  ok('η υποδοχή ανοίγει τον οδηγό με αφετηρία', page.includes("openWizard('welcome')") && page.includes("openWizard('scan')"));
+  ok('ο άδειος πίνακας ανοίγει τον οδηγό με αφετηρία', page.includes("tryAddProperty('empty')"));
 }
 
 // ── Η ΜΕΤΡΗΣΗ ΔΕΝ ΣΠΑΕΙ ΠΟΤΕ ΤΗΝ ΠΡΑΞΗ ΠΟΥ ΜΕΤΡΑΕΙ ───────────────────────
@@ -52,6 +96,10 @@ async function trackTests() {
   // ορίζεται ΜΟΝΟ από τη βάση, αλλιώς γράφει ο καθένας στο όνομα του άλλου.
   ok('δεν στέλνει ποτέ ταυτότητα χρήστη',
     !JSON.stringify(calls[0].args).includes('user_id'));
+
+  await trackOnboarding(fake as never, { event: PRODUCT_EVENTS.wizard_closed, step: 3 });
+  ok('η trackOnboarding περνά από τη log_event με το καθαρό φορτίο',
+    calls.length === 2 && JSON.stringify(calls[1].args) === JSON.stringify({ p_event: 'wizard_closed', p_props: { step: 3 } }));
 
   const boom = { rpc: () => Promise.reject(new Error('η βάση έπεσε')) };
   let threw = false;
@@ -133,7 +181,7 @@ async function trackTests() {
   const used = new Set<string>();
   // Τα κλειδιά που ΟΝΤΩΣ χρησιμοποιεί η εφαρμογή, γραμμένα ρητά εδώ ώστε ο
   // κατάλογος να είναι ορατός και ελέγξιμος με μια ματιά.
-  ['plan', 'count', 'source', 'kind', 'cycle'].forEach(k => used.add(k));
+  ['plan', 'count', 'source', 'kind', 'cycle', 'card', 'from', 'step'].forEach(k => used.add(k));
   ok('κανένα κλειδί φορτίου δεν είναι προσωπικό δεδομένο',
     [...used].every(k => !forbidden.includes(k)));
 }

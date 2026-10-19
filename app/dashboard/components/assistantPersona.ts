@@ -32,7 +32,7 @@ import { athensToday } from '@/lib/core/time';
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO } from '@/lib/accounting/renovation39b';
 import { ANAK_NAME, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_SCOPE_TEXT, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT } from '@/lib/accounting/anakainisi2026';
 import { STR_SPECS_TEXT } from '@/lib/accounting/strSpecs';
-import { SPITI_MOU, SPITI_MOU_3, spitiMouOpen, spitiMouClosedLine, spitiMouClosedSentence, spitiMou3Line } from '@/lib/loans/recommend';
+import { SPITI_MOU, SPITI_MOU_3, spitiMouOpen, spitiMouClosedLine, spitiMouClosedSentence, spitiMou3Line, spitiMou3ReportedLines, spitiMou3ReportedCaveat } from '@/lib/loans/recommend';
 import { programDateLabel } from '@/lib/loans/programStatus';
 import { energyProgramStates } from '@/lib/loans/energyPrograms';
 import { roundHalfUp } from '@/lib/core/money';
@@ -419,8 +419,8 @@ const SPITI_LOANS = spitiMouOpen(day)
 // κατάλογος και το δημόσιο FAQ. Η εντολή λέει ρητά τι ΔΕΝ λέγεται.
 const SPITI_3 = `${SPITI_MOU_3.name}: ${spitiMou3Line()} Το ύψος του, κατά την ίδια τράπεζα, είναι ${fn(SPITI_MOU_3.budgetEur / 1e9)} δισ. ευρώ. `
   + `Κατά την κυβερνητική εξειδίκευση των μέτρων της ΔΕΘ, η ανώτατη ηλικία είναι ${SPITI_MOU_3.ageMax}. Μόνο αυτά είναι επίσημα. `
-  + 'ΔΕΝ κρίνεις επιλεξιμότητα, ΔΕΝ υπολογίζεις δόση ή όφελος από το πρόγραμμα και ΔΕΝ δίνεις όρια δανείου, αξίας ή εισοδήματος '
-  + 'ούτε αριθμό δικαιούχων που κυκλοφορούν σε δηλώσεις και δημοσιεύματα: δεν είναι όροι του προγράμματος. '
+  + `Αν σε ρωτήσουν για όρια, λες ΜΟΝΟ ως «τι έχει ειπωθεί, όχι ακόμη επίσημο»: ${spitiMou3ReportedLines().join(' ')} ${spitiMou3ReportedCaveat()} `
+  + 'ΔΕΝ κρίνεις επιλεξιμότητα με αυτά, ΔΕΝ υπολογίζεις δόση ή όφελος από το πρόγραμμα και ΔΕΝ τα παρουσιάζεις ως όρους. '
   + `Για τους όρους παραπέμπεις στην ${SPITI_MOU_3.channel} (${new URL(SPITI_MOU_3.sources.hdb).hostname}).`;
 // ══ ΤΑ ΕΝΕΡΓΕΙΑΚΑ ΠΡΟΓΡΑΜΜΑΤΑ, ΜΕ ΤΟΝ ΙΔΙΟ ΤΡΟΠΟ ══════════════════════════
 // Το prompt πρότεινε «Εξοικονομώ» και «Αναβαθμίζω» ως διαθέσιμα σε τέσσερα
@@ -862,7 +862,10 @@ export type AssistantAction =
   // `allowDuplicate`: η απάντηση «ούτως ή άλλως» στην πιθανή διπλοεγγραφή.
   // Τη γεννά μόνο ο βοηθός μετά από ερώτηση, ποτέ το κείμενο του μοντέλου.
   | { type: 'commit-doc'; label: string; allowDuplicate?: boolean }
-  | { type: 'feedback' };
+  | { type: 'feedback' }
+  // Πριν από το πρώτο ακίνητο κάθε καρτέλα δείχνει την ίδια κενή οθόνη, οπότε
+  // το [[go:x]] δεν έχει πού να πάει: γίνεται «Πρόσθεσε το ακίνητό σου».
+  | { type: 'add-property' };
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΚΑΘΕ ΕΝΕΡΓΕΙΑ ΠΡΟΣΓΕΙΩΝΕΤΑΙ ΚΑΠΟΥ ΚΑΙ ΤΟ «ΚΑΠΟΥ» ΜΠΟΡΕΙ ΝΑ ΕΙΝΑΙ ΚΛΕΙΣΤΟ
@@ -897,7 +900,61 @@ export const ACTION_TAB: Record<AssistantAction['type'], string | null> = {
   reach: 'contacts',
   'commit-doc': 'documents',
   feedback: null,      // παράθυρο αξιολόγησης, δεν είναι καρτέλα
+  'add-property': null, // ανοίγει τον οδηγό προσθήκης, δεν είναι καρτέλα
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΧΩΡΙΣ ΑΚΙΝΗΤΟ, ΚΑΜΙΑ ΕΓΓΡΑΦΗ
+// ─────────────────────────────────────────────────────────────────────────
+// Η Νόα ανοίγει και πριν από το πρώτο ακίνητο (app/dashboard/page.tsx). Οι
+// ενέργειές της όμως γράφουν σχεδόν όλες με `property_id`: δαπάνη,
+// εκκρεμότητα, «πληρωμένο», ραντεβού, επαφή, απογραφή, σύνδεσμος άφιξης,
+// καταχώρηση σαρωμένου εγγράφου. Χωρίς ακίνητο ή θα έγραφαν γραμμή χωρίς
+// ακίνητο, που δεν τη βλέπει καμία οθόνη, ή θα αποτύγχαναν αφού ο χρήστης
+// είχε ήδη διαβάσει «το καταχώρησα».
+//
+// Ο κατάλογος είναι ΕΠΙΤΡΕΠΤΩΝ, όχι απαγορευμένων: μια ενέργεια που θα
+// προστεθεί αύριο μένει κλειστή χωρίς ακίνητο ώσπου κάποιος να την ανοίξει
+// ρητά εδώ.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Οι μόνες ενέργειες χωρίς ακίνητο: καμία δεν γράφει σε ακίνητο. */
+export const SETUP_ACTIONS: ReadonlySet<AssistantAction['type']> = new Set<AssistantAction['type']>([
+  'add-property', // ανοίγει τον οδηγό
+  'scan',         // ανοίγει τον οδηγό και η σάρωση ακολουθεί πάνω στο νέο ακίνητο
+  'feedback',     // η αξιολόγηση είναι του χρήστη, όχι ακινήτου
+]);
+
+/** Επιτρέπεται η ενέργεια; Χωρίς ακίνητο (null ή κενό) μόνο τα `SETUP_ACTIONS`. */
+export function actionAllowed(action: AssistantAction, propertyId: string | null | undefined): boolean {
+  return propertyId ? true : SETUP_ACTIONS.has(action.type);
+}
+
+/** Η απάντηση όταν ζητηθεί καταχώρηση πριν από το πρώτο ακίνητο. */
+export const SETUP_REFUSAL = 'Χωρίς ακίνητο δεν έχω πού να το καταχωρήσω. Πρόσθεσε πρώτα το ακίνητό σου και μετά το γράφω εκεί.';
+
+/**
+ * Τι ξέρει η Νόα πριν από το πρώτο ακίνητο: τίποτα δικό του.
+ *
+ * ΚΑΝΕΝΑ ΝΟΥΜΕΡΟ ΕΔΩ. Η Νόα με ακίνητο παίρνει δεκάδες γραμμές με ποσά· χωρίς
+ * ακίνητο, το κενό πλαίσιο θα το γέμιζε το μοντέλο με «τυπικές» τιμές, που ο
+ * χρήστης θα διάβαζε σαν δικές του.
+ */
+export const SETUP_CONTEXT = [
+  'Ο χρήστης δεν έχει προσθέσει ακόμη κανένα ακίνητο. Δεν βλέπεις κανένα δικό του στοιχείο: ούτε ποσό, ούτε ενοίκιο, ούτε ΕΝΦΙΑ. Μην αναφέρεις νούμερα σαν να είναι δικά του.',
+  'Απάντησε γενικά και πρακτικά: τι κάνει πρώτα, ποια έγγραφα χρειάζεται, τι του λείπει για να ξεκινήσει.',
+  'Χωρίς ακίνητο δεν καταχωρείται τίποτα: μη γράφεις [[expense:…]], [[task:…]], [[paid:…]], [[book:…]], [[client:…]], [[contact:…]], [[inventory:…]], [[checkin:…]] ή [[reach:…]] και μην πεις ότι καταχώρησες κάτι.',
+  'Για να ξεκινήσει, πρότεινε [[go:overview]] (ανοίγει την προσθήκη ακινήτου) ή [[scan]] (φωτογραφίζει ένα έγγραφο· πρώτα προστίθεται το ακίνητο).',
+].join('\n');
+
+/**
+ * Το κλειδί του ιστορικού συνομιλίας: το ακίνητο ή, πριν από το πρώτο, ο
+ * χρήστης. ΟΧΙ σκέτο «setup»: τα κλειδιά του ακινήτου είναι ήδη ανά χρήστη (το
+ * αναγνωριστικό του ακινήτου είναι δικό του), ένα κοινό «setup» θα έδειχνε τη
+ * συζήτηση ενός λογαριασμού στον επόμενο που μπαίνει από την ίδια συσκευή.
+ */
+export const historyId = (propertyId: string | null | undefined, userId: string): string =>
+  propertyId || `setup-${userId || 'anon'}`;
 
 /**
  * Μπορεί ο χρήστης να δει το αποτέλεσμα αυτής της ενέργειας;
@@ -940,7 +997,13 @@ export function normalizeBookTime(raw: string): string | undefined {
   return undefined;
 }
 
-export function parseAction(text: string): { clean: string; action?: AssistantAction; remember?: string } {
+/**
+ * @param propertyId Το ακίνητο της συνομιλίας. `null` (ή κενό) = πριν από το
+ *   πρώτο ακίνητο: κάθε ενέργεια που γράφει πετιέται και το [[go:x]] γίνεται
+ *   «Πρόσθεσε το ακίνητό σου» (`SETUP_ACTIONS`). Χωρίς δεύτερο όρισμα, όπως πριν.
+ */
+export function parseAction(text: string, propertyId?: string | null): { clean: string; action?: AssistantAction; remember?: string } {
+  const setup = propertyId !== undefined && !propertyId;
   const go = text.match(/\[\[go:([a-z]+)\]\]/i);
   const scan = /\[\[scan\]\]/i.test(text);
   // Άνοιγμα φόρμας αξιολόγησης/feedback: [[feedback]].
@@ -1091,6 +1154,15 @@ export function parseAction(text: string): { clean: string; action?: AssistantAc
   // Καθάρισε ΚΑΘΕ [[...]] υπόλειμμα (ακόμη και άκυρο, π.χ. [[go:]] ή [[go:123]]).
   const clean = text.replace(/\[\[[^\]]*\]\]/g, '').replace(/\s{2,}/g, ' ').trim();
   const base = remember ? { clean, remember } : { clean };
+  const goOk = !!go && NAV_MAP.some(n => n.id === go[1].toLowerCase());
+  // ΠΡΙΝ ΑΠΟ ΤΟ ΠΡΩΤΟ ΑΚΙΝΗΤΟ: καμία ενέργεια που γράφει, όσο κι αν τη ζήτησε
+  // το μοντέλο. Το κείμενο μένει, το κουμπί όχι.
+  if (setup) {
+    if (scan) return { ...base, action: { type: 'scan' } };
+    if (goOk) return { ...base, action: { type: 'add-property' } };
+    if (feedback) return { ...base, action: { type: 'feedback' } };
+    return base;
+  }
   if (inventory) return { ...base, action: inventory };
   if (reach) return { ...base, action: reach };
   if (expense) return { ...base, action: expense };
@@ -1100,7 +1172,7 @@ export function parseAction(text: string): { clean: string; action?: AssistantAc
   if (task) return { ...base, action: task };
   if (book) return { ...base, action: book };
   if (client) return { ...base, action: client };
-  if (go && NAV_MAP.some(n => n.id === go[1].toLowerCase())) return { ...base, action: { type: 'go', tab: go[1].toLowerCase() } };
+  if (go && goOk) return { ...base, action: { type: 'go', tab: go[1].toLowerCase() } };
   if (scan) return { ...base, action: { type: 'scan' } };
   if (feedback) return { ...base, action: { type: 'feedback' } };
   return base;

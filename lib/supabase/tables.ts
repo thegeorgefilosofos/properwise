@@ -882,6 +882,12 @@ export interface IssuedDocumentsRow {
   issuer: string;
 }
 
+export interface JobLeasesRow {
+  name: string;
+  expires_at: string;
+  taken_at: string;
+}
+
 export interface LoanProgramsRow {
   program_id: string;
   name: string;
@@ -1551,6 +1557,7 @@ export interface Tables {
   invoice_counters: InvoiceCountersRow;
   invoices: InvoicesRow;
   issued_documents: IssuedDocumentsRow;
+  job_leases: JobLeasesRow;
   loan_programs: LoanProgramsRow;
   loans: LoansRow;
   maintenance_requests: MaintenanceRequestsRow;

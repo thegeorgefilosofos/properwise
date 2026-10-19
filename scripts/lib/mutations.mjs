@@ -376,7 +376,13 @@ export const MUTATIONS = {
 
   // ── Πηγές αλήθειας και μονά σημεία ────────────────────────────────────
   'data-layer': { add: 'components/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('bills').select('*')\n" },
-  'service-only-tables': { add: 'components/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('cron_secrets').select('*')\n" },
+  // ΔΥΟ ΑΠΟΔΕΙΞΕΙΣ. Η πρώτη ήταν πάντα εδώ (cron_secrets). Η δεύτερη είναι ο
+  // νεότερος πίνακας της λίστας (20261018164200): αν η εγγραφή του λείπει, ο
+  // πελάτης θα μπορούσε να ρωτήσει τη μίσθωση του προγραμματισμού.
+  'service-only-tables': { every: [
+    { add: 'components/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('cron_secrets').select('*')\n" },
+    { add: 'components/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('job_leases').select('*')\n" },
+  ] },
   // ΔΥΟ ΑΠΟΔΕΙΞΕΙΣ, ΓΙΑΤΙ Ο ΦΥΛΑΚΑΣ ΕΧΕΙ ΔΥΟ ΚΑΝΟΝΕΣ. Η πρώτη ήταν πάντα εδώ:
   // μία ΕΒΔΟΜΗ σιωπηλή ανάγνωση, που την έπιανε και ο παλιός μετρητής. Η δεύτερη
   // είναι η ΑΝΤΑΛΛΑΓΗ, και μόνο αυτή αποδεικνύει τον ονομαστικό κατάλογο: μια
@@ -527,6 +533,13 @@ export const MUTATIONS = {
   'z-layers': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ zIndex: 12345 }}>Α</div>") },
   'hand-buttons': { add: 'components/__mut__.tsx', content: tsx("    <button style={{ padding: 4 }}>Α</button>") },
   'surface-scale': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ height: 33, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>Α</div>") },
+  // Νέο αρχείο στη σελίδα ΕΝΦΙΑ χωρίς σφραγίδα: ακριβώς η αλλαγή του #401, που
+  // άφησε τον χάρτη στον έλεγχο ορίων της 26/08. Και σφραγίδα για σελίδα που
+  // δεν είναι υπολογιστής: ο φύλακας πρέπει να βλέπει και τις δύο κατευθύνσεις.
+  'tool-updated': { every: [
+    { add: 'app/ypologismos-enfia/__mut__.ts', content: "export const MUT_EXAMPLE = 'Συντελεστής παλαιότητας 0,60'\n" },
+    { file: 'app/toolStamps.json', from: '"/kathari-apodosi"', to: '"/__mut__"' },
+  ] },
   // Δύο κανόνες, δύο αποδείξεις. Μία λέξη στο κείμενο του οδηγού χωρίς
   // απόφαση για την ημερομηνία: ακριβώς οι τρεις οδηγοί του 257d87c, που
   // άλλαξαν δεκάδες γραμμές με την ίδια «Τελευταία ενημέρωση». Και σφραγίδα

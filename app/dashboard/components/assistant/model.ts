@@ -21,8 +21,17 @@ interface PropContext {
 }
 interface PropSummary { name: string; propType?: string; value?: number; targetRent?: number; sqm?: number; status?: string; }
 export interface Props {
-  propertyId: string; userId: string; propContext: PropContext; allProperties?: PropSummary[];
+  /**
+   * `null` = πριν από το πρώτο ακίνητο (λειτουργία πρώτου βήματος): η Νόα
+   * απαντά γενικά, δεν φορτώνει τίποτα από τη βάση και δεν τρέχει καμία
+   * ενέργεια που γράφει (`SETUP_ACTIONS` στο assistantPersona.ts).
+   */
+  propertyId: string | null; userId: string;
+  /** Λείπει μόνο όταν λείπει και το ακίνητο. */
+  propContext?: PropContext; allProperties?: PropSummary[];
   onNavigate: (tab: string) => void; onScan: () => void;
+  /** Ανοίγει την προσθήκη ακινήτου· η ενέργεια `add-property` του πρώτου βήματος. */
+  onAddProperty?: () => void;
   /**
    * Αν η καρτέλα είναι ΟΝΤΩΣ προσβάσιμη για αυτό το ακίνητο.
    *
