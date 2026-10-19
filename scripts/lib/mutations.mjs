@@ -376,7 +376,13 @@ export const MUTATIONS = {
 
   // ── Πηγές αλήθειας και μονά σημεία ────────────────────────────────────
   'data-layer': { add: 'components/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('bills').select('*')\n" },
-  'service-only-tables': { add: 'components/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('cron_secrets').select('*')\n" },
+  // ΔΥΟ ΑΠΟΔΕΙΞΕΙΣ. Η πρώτη ήταν πάντα εδώ (cron_secrets). Η δεύτερη είναι ο
+  // νεότερος πίνακας της λίστας (20261018164200): αν η εγγραφή του λείπει, ο
+  // πελάτης θα μπορούσε να ρωτήσει τη μίσθωση του προγραμματισμού.
+  'service-only-tables': { every: [
+    { add: 'components/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('cron_secrets').select('*')\n" },
+    { add: 'components/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('job_leases').select('*')\n" },
+  ] },
   // ΔΥΟ ΑΠΟΔΕΙΞΕΙΣ, ΓΙΑΤΙ Ο ΦΥΛΑΚΑΣ ΕΧΕΙ ΔΥΟ ΚΑΝΟΝΕΣ. Η πρώτη ήταν πάντα εδώ:
   // μία ΕΒΔΟΜΗ σιωπηλή ανάγνωση, που την έπιανε και ο παλιός μετρητής. Η δεύτερη
   // είναι η ΑΝΤΑΛΛΑΓΗ, και μόνο αυτή αποδεικνύει τον ονομαστικό κατάλογο: μια

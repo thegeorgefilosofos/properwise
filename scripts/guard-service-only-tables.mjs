@@ -40,6 +40,9 @@ const SERVICE_ONLY = [
   'email_outbox',
   'feedback_campaign_winners',
   'invoice_counters',
+  // Μισθώσεις «ένα τρέξιμο τη φορά» (20261018164200). Τις γράφουν μόνο οι
+  // try/release_email_schedule_lock, από την edge function με SERVICE_KEY.
+  'job_leases',
   'portal_pin_attempts',
   // Μέτρηση προϊόντος. Γράφεται ΜΟΝΟ μέσω της RPC log_event, που ορίζει τον
   // χρήστη από το auth.uid(). Ο περιηγητής δεν το αγγίζει ποτέ απευθείας.

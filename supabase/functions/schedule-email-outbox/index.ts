@@ -69,8 +69,12 @@ Deno.serve(async (req) => {
   const auth = await authorized(req)
   if (!auth.ok) return json(...cronDenial(auth))
 
-  // Single-flight: if another run holds the advisory lock, exit cleanly so two
+  // Single-flight: if another run holds the lease, exit cleanly so two
   // overlapping cron ticks never plan the same rows.
+  // ΜΙΣΘΩΣΗ ΣΕ ΓΡΑΜΜΗ, ΟΧΙ ADVISORY LOCK (20261018164200). Κάθε RPC πηγαίνει σε
+  // όποια σύνδεση του pool είναι ελεύθερη: ένα κλείδωμα συνεδρίας το έπαιρνε
+  // μία σύνδεση και το «άφηνε» άλλη, όπου δεν υπήρχε. Η μίσθωση ζει στο
+  // `job_leases`, τη βλέπουν όλες οι συνδέσεις και λήγει μόνη της σε 7 λεπτά.
   // ΤΟ `=== false` ΑΦΗΝΕ ΤΗΝ ΑΠΟΤΥΧΙΑ ΝΑ ΠΕΡΑΣΕΙ. Χωρίς το `error`, μια αποτυχία
   // της RPC γύριζε `undefined` — και το `undefined === false` είναι ΨΕΥΔΕΣ,
   // οπότε η εργασία συνέχιζε ΧΩΡΙΣ να κρατά το κλείδωμα. Δύο επικαλυπτόμενα
