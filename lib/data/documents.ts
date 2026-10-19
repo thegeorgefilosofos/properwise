@@ -26,6 +26,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PropertyDocumentsRow } from '@/lib/supabase/tables';
 import { read, rows as readRows } from './read';
+import type { DbError } from '@/lib/supabase/writeResult';
+import { INCOME_TAX_TITLE, incomeTaxYearOf } from '@/lib/billing/documents';
 
 const TABLE = 'property_documents';
 
@@ -99,6 +101,28 @@ export async function ofSupplier<T = Partial<PropertyDocumentsRow>>(
   if (userId) q = q.eq('user_id', userId);
   const { rows, error } = await read<T>(q);
   return error ? [] : rows;
+}
+
+/**
+ * Τα σαρωμένα εκκαθαριστικά φόρου εισοδήματος του ακινήτου: έτος και ποσό.
+ *
+ * Για τις δόσεις του φόρου στους επόμενους 12 μήνες. Με το σφάλμα ορατό: η
+ * αποτυχία δεν επιτρέπεται να διαβαστεί «δεν υπάρχει εκκαθαριστικό». Το νεότερο
+ * έγγραφο κάθε έτους κερδίζει, όπως και στο Αρχείο.
+ */
+export async function incomeTaxStatementsWithError(
+  db: Db, propertyId: string, userId: string,
+): Promise<{ statements: { taxYear: number; amount: number }[]; error: DbError | null }> {
+  const q = db.from(TABLE).select('title,amount,created_at').eq('property_id', propertyId).eq('user_id', userId)
+    .ilike('title', `${INCOME_TAX_TITLE} %`).order('created_at', { ascending: false });
+  const { rows, error } = await read<{ title: string | null; amount: number | null }>(q);
+  const byYear = new Map<number, number>();
+  for (const r of rows) {
+    const y = incomeTaxYearOf(r.title);
+    const a = Number(r.amount);
+    if (y && Number.isFinite(a) && a > 0 && !byYear.has(y)) byYear.set(y, a);
+  }
+  return { statements: [...byYear].map(([taxYear, amount]) => ({ taxYear, amount })), error };
 }
 
 /** Πόσα έγγραφα έχει αυτό το ακίνητο. Χωρίς να κατεβεί καμία γραμμή. */

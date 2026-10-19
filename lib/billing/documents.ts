@@ -325,6 +325,22 @@ export const DOC_KINDS: DocKind[] = [
 
 const KIND_BY_ID = DOC_KINDS.reduce((a, k) => { a[k.value] = k; return a; }, {} as Record<DocKindId, DocKind>);
 
+// ── ΤΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ ΞΑΝΑΔΙΑΒΑΖΕΤΑΙ ΑΠΟ ΤΟΝ ΤΙΤΛΟ ΤΟΥ ──────
+// Το Αρχείο δεν έχει ακόμη στήλη υποτύπου ούτε έτους: η σάρωση τα γράφει στον
+// τίτλο («Φόρος εισοδήματος 2025», βλ. `savePlan`). Οι επόμενοι 12 μήνες
+// (lib/home/forecast12.ts) θέλουν το ποσό του για τις δόσεις, οπότε ο ίδιος
+// κανόνας διαβάζεται και ανάποδα, από το ίδιο `short`, όχι από αντίγραφο.
+/** Η αρχή του τίτλου που δίνει η σάρωση στο εκκαθαριστικό φόρου εισοδήματος. */
+export const INCOME_TAX_TITLE = KIND_BY_ID.income_tax.short;
+
+/** Το φορολογικό έτος ενός εκκαθαριστικού φόρου εισοδήματος, από τον τίτλο του· αλλιώς `null`. */
+export function incomeTaxYearOf(title: string | null | undefined): number | null {
+  const t = (title || '').trim();
+  if (!t.startsWith(`${INCOME_TAX_TITLE} `)) return null;
+  const m = /^(\d{4})$/.exec(t.slice(INCOME_TAX_TITLE.length + 1).trim());
+  return m ? Number(m[1]) : null;
+}
+
 /** Οι επιλογές του «Τύπος εγγράφου»: με την εξήγηση κάθε είδους και επικεφαλίδα ανά ομάδα. */
 export const KIND_OPTIONS: Choice[] = DOC_KINDS.map((k, i) => ({
   value: k.value, label: k.label,

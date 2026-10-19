@@ -14,6 +14,7 @@ import * as checklist from '@/lib/data/checklist'
 import * as calendar from '@/lib/data/calendar'
 import * as tenantStore from '@/lib/data/tenants'
 import * as expenseStore from '@/lib/data/expenses'
+import * as documentStore from '@/lib/data/documents'
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventory from '@/lib/data/inventory'
 import { readStatus, statusLabel as statusLabelOf, isShortTerm, isLet } from '@/lib/property/status'
@@ -50,6 +51,8 @@ import CashHero from './CashHero'
 import RentReceived, { receivableLines } from './RentReceived'
 import AgendaPanel from './AgendaPanel'
 import AssistantStrip from './AssistantStrip'
+import ForecastCard from './ForecastCard'
+import { forecast12, type IncomeTaxStatement } from '@/lib/home/forecast12'
 import { cashPosition } from '@/lib/home/cash'
 import { buildAgenda, type SetupLike as SetupStep } from '@/lib/home/agenda'
 import {
@@ -166,6 +169,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   /** Πότε καταγράφηκε η υποβολή της δήλωσης μίσθωσης· κλείνει την υποχρέωση. */
   const [leaseDeclaredAt, setLeaseDeclaredAt] = useState<string|null>(null);
   const [closedTax, setClosedTax] = useState<ReadonlySet<string>>(() => new Set());
+  /** Τα σαρωμένα εκκαθαριστικά φόρου εισοδήματος: το ποσό των δόσεων στους 12 μήνες. */
+  const [incomeTaxDocs, setIncomeTaxDocs] = useState<IncomeTaxStatement[]>([]);
   const [tenantFull, setTenantFull] = useState<TenantFull | null>(null);
   /** Οι μισθωτές αυτού του ακινήτου που έφυγαν: η πρόωρη λύση δηλώνεται στην ΑΑΔΕ. */
   const [leavers, setLeavers] = useState<OblTenant[]>([]);
@@ -211,7 +216,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     // τίποτα» στην ατζέντα, στην πρώτη οθόνη που βλέπει ο ιδιοκτήτης. Βρέθηκε
     // στην αξιολόγηση της 08/10/2026. Τώρα κάθε αποτυχία έχει όνομα και η οθόνη
     // λέει τι δεν διάβασε, αντί να το παρουσιάζει ως μηδέν.
-    const [exp,bil,tsk,ten,ci,iv,ln,hs,allExp,allTen,allRc,rp,mnt,decl,yr,allYearRents,allStays,ownerRows,taxEvents,doneTasks] = await Promise.all([
+    const [exp,bil,tsk,ten,ci,iv,ln,hs,allExp,allTen,allRc,rp,mnt,decl,yr,allYearRents,allStays,ownerRows,taxEvents,doneTasks,itx] = await Promise.all([
       expenseStore.ledgerWithError(supabase,prop.id,{ userId, from:`${year}-01-01`, columns:'*' }),
       billStore.ofPropertyWithError<Bill>(supabase,prop.id,'*',userId),
       // Δεν είναι πια πέντε για μια χωριστή κάρτα: τροφοδοτούν την ΕΝΙΑΙΑ
@@ -253,6 +258,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       // στις Εκκρεμότητες δεν ξαναεμφανίζεται εδώ (lib/facts/deadlines).
       calendar.sourceStatesWithError(supabase,prop.id,{ prefix:'tax:' }),
       checklist.closedWithError<{ note:string|null; status:string|null }>(supabase,prop.id,'note,status',userId),
+      // ΟΙ ΔΟΣΕΙΣ ΤΟΥ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ ΘΕΛΟΥΝ ΤΟ ΧΑΡΤΙ. Χωρίς σαρωμένο
+      // εκκαθαριστικό οι 12 μήνες γράφουν «λείπει», όχι ποσό που μαντέψαμε.
+      documentStore.incomeTaxStatementsWithError(supabase,prop.id,userId),
     ]);
     // Νεότερη φόρτωση ξεκίνησε στο μεταξύ (ριπή ζωντανών συμβάντων, αλλαγή
     // ακινήτου ή έτους): η παλιά απάντηση δεν γράφει πάνω στη νέα.
@@ -266,6 +274,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       ['Εκκρεμότητες', tsk.error], ['Εκκρεμότητες', ci.error], [LEASE_DECL_AREA, decl.error],
       [TAX_DEADLINES_AREA, taxEvents.error], [TAX_DEADLINES_AREA, doneTasks.error],
       ['Εξοπλισμός', iv.error], ['Εξοπλισμός', mnt.error],
+      ['Φορολογικά έγγραφα', itx.error],
     ]);
     if (failures.length) captureError(new Error('overview: αποτυχημένες αναγνώσεις'), { failed: failures.join(',') });
     setFailedReads(failures);
@@ -275,6 +284,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       if (!failures.length) headingRef.current?.focus();
     }
     setClosedTax(closedTaxRefs(taxEvents.rows, doneTasks.rows));
+    setIncomeTaxDocs(itx.statements);
     setExpenses((exp.rows||[]) as Expense[]); setBills(bil.rows); setTasks(tsk.data||[]); setTenant(ten.rows?.[0]||null);
     setRentPeriods(rp.rows); setMaint((mnt.data||[]) as OblMaint[]); setTenantFull(ten.rows?.[0]||null);
     setLeaseDeclaredAt((decl.data?.[0]?.created_at as string|undefined) ?? null);
@@ -617,6 +627,41 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // ενέργεια που δεν έχει τι να γράψει είναι ψεύτικη υπόσχεση.
   const receivableRent = useMemo(() => receivableLines(cash.owedToMe.lines), [cash]);
 
+  // ── ΟΙ ΕΠΟΜΕΝΟΙ 12 ΜΗΝΕΣ (lib/home/forecast12.ts) ─────────────────────
+  // ΚΑΘΕ ΠΟΣΟ ΑΠΟ ΜΗΧΑΝΗ ΠΟΥ ΔΟΥΛΕΥΕΙ ΗΔΗ ΣΕ ΑΥΤΗ ΤΗΝ ΟΘΟΝΗ: ο ΕΝΦΙΑ με τα ίδια
+  // στοιχεία με τα «Στοιχεία ακινήτου», η δόση με το πλακίδιο «Δόση δανείου»,
+  // ο φόρος ενοικίων με το «Μερίδιο φόρου», οι λογαριασμοί από το ίδιο
+  // ημερολόγιο. Ξεχωριστή κάρτα, όχι μέσα στο Ταμείο: εκείνο δεν προβλέπει.
+  // Οι δόσεις του φόρου εισοδήματος μόνο για φυσικό πρόσωπο με έσοδο από το
+  // ακίνητο· σε επιχείρηση οι κανόνες δόσεων είναι άλλοι.
+  const longLet = isLet(prop) && !isShortTerm(prop);
+  const personTax = profileType === 'individual' && legalForm === 'individual' && isLet(prop);
+  // ΑΝΤΙΓΡΑΦΑ, ΟΧΙ ΟΙ ΙΔΙΟΙ ΠΙΝΑΚΕΣ. Ο μεταγλωττιστής της React βλέπει τιμή που
+  // είναι εξάρτηση ενός useMemo (Ταμείο, υποχρεώσεις) να περνά σε απλή κλήση,
+  // υποθέτει ότι μπορεί να αλλαχτεί και παραιτείται από την απομνημόνευση όλου
+  // του component. Η πρόβλεψη δεν αλλάζει τίποτα· τα αντίγραφα το λένε ρητά.
+  const forecast = forecast12({
+    today: todayIso,
+    lease: longLet && tenant ? { monthlyRent: tenant.monthly_rent, start: tenantFull?.lease_start ?? null, end: tenantFull?.lease_end ?? tenant.lease_end } : null,
+    // Οι δόσεις του έτους (πληρωμένες και μη) και οι απλήρωτες των άλλων ετών.
+    rentPeriods: longLet ? [...yearRents, ...rentPeriods.filter(r => r.period_year !== year)] : [],
+    stays: isShortTerm(prop) ? [...hostStays] : [],
+    enfia: { settings: { ...enfiaSettings }, closedRefs: new Set(closedTax), facts: {
+      stored: prop.enfia, value: prop.value, objValue: prop.obj_value == null ? null : Number(prop.obj_value),
+      sqm: prop.sqm, yearBuilt: prop.year_built, floor: prop.floor,
+      propType: prop.prop_type, ownershipPct: prop.ownership == null ? null : Number(prop.ownership), postalCode: prop.postal_code,
+    } },
+    incomeTax: personTax ? { statements: incomeTaxDocs, estimate: estTax > 0 ? { taxYear: year, amount: estTax } : null } : null,
+    loans: [...loans],
+    insurance: { expiry: prop.insurance_expiry, amount: prop.insurance_amount },
+    ledger: [...ledger.entries],
+  });
+  const forecastNotes = [
+    ...(ownershipPctOf(prop) < 100 ? ['Το ακίνητο είναι συνιδιόκτητο: ενοίκια, δόσεις και λογαριασμοί για όλο το ακίνητο, ο ΕΝΦΙΑ για το μερίδιό σου.'] : []),
+    ...(isShortTerm(prop) ? ['Από τη βραχυχρόνια μετρούν μόνο οι κρατήσεις που υπάρχουν ήδη.'] : []),
+    ...(isLet(prop) && !personTax ? ['Ο φόρος εισοδήματος δεν μπαίνει εδώ: σε επιχείρηση οι δόσεις ακολουθούν άλλους κανόνες.'] : []),
+  ];
+
   // ── ΤΑ ΝΟΥΜΕΡΑ ΠΟΥ ΔΙΝΟΥΜΕ ΣΤΗ ΝΟΑ ───────────────────────────────────────
   // Ίδια δομή με αυτήν που φτιάχνει ο ίδιος ο βοηθός (PropertyAssistant), γιατί
   // την παράγει η ίδια μηχανή (lib/assistant/openers.ts) και ο κανόνας της είναι
@@ -909,6 +954,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       {/* Μία λίστα «τι χρειάζεται τώρα», στη θέση των τεσσάρων που έλεγαν εν
           μέρει τα ίδια πράγματα. Η συγχώνευση γίνεται στο lib/home/agenda.ts. */}
       <AgendaPanel items={agenda} total={agendaAll.length} onNavigate={onNavigate} incomplete={failedReads.length > 0} />
+
+      {/* ΤΙ ΕΡΧΕΤΑΙ, ΜΕΤΑ ΑΠΟ ΤΟ ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΤΩΡΑ. Με έστω μία ανάγνωση πεσμένη
+          η κάρτα δεν αποδίδεται: μισή πρόβλεψη θα έδειχνε λάθος «σφιχτό μήνα». */}
+      {failedReads.length === 0 && (
+        <ForecastCard key={prop.id} forecast={forecast} propertyId={prop.id} onNavigate={onNavigate}
+                      tabVisible={tabVisible} supabase={supabase} notes={forecastNotes} />
+      )}
 
       {/* ═══ ΤΟ ΖΕΥΓΟΣ ΓΡΑΦΗΜΑΤΩΝ ΕΦΥΓΕ ΑΠΟ ΕΔΩ ══════════════════════════
           Οι ίδιες δύο εικόνες — δαπάνες ανά μήνα και κατανομή ανά κατηγορία —

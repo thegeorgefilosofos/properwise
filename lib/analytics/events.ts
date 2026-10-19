@@ -56,6 +56,13 @@ export const PRODUCT_EVENTS = {
   expense_added: 'expense_added',
   /** Πρώτο ενοίκιο καταχωρημένο. */
   rent_recorded: 'rent_recorded',
+  /**
+   * Είδε τους επόμενους 12 μήνες (lib/home/forecast12.ts) στην Επισκόπηση. Μία
+   * φορά ανά ακίνητο και άνοιγμα της οθόνης, όταν η κάρτα μπει στο οπτικό
+   * πεδίο. Ρωτά αν η πρόβλεψη ξαναφέρνει τον χρήστη: πόσοι την ανοίγουν δύο
+   * φορές σε τριάντα ημέρες. Φορτίο: `forecastProps`, τίποτε άλλο.
+   */
+  forecast_viewed: 'forecast_viewed',
   /** Εβγαλε αναφορά, δηλαδή πήρε κάτι που δίνεται σε τρίτον. */
   report_generated: 'report_generated',
   /** Ρώτησε τη βοηθό. Δείχνει ότι εμπιστεύτηκε το προϊόν με ερώτηση. */
@@ -82,6 +89,10 @@ export type OnboardingStep =
   | { event: typeof PRODUCT_EVENTS.wizard_closed; step: number }
   | { event: typeof PRODUCT_EVENTS.scan_opened };
 
+/** Οι καταστάσεις της κάρτας των 12 μηνών: χωρίς τίποτα ή με γραμμές. */
+export const FORECAST_STATES = ['empty', 'filled'] as const;
+export type ForecastState = typeof FORECAST_STATES[number];
+
 /** Θετικός ακέραιος ως 99· οτιδήποτε άλλο γίνεται 0. Δεν χωρά κείμενο. */
 const ordinal = (n: unknown): number => {
   const v = Math.floor(Number(n));
@@ -100,6 +111,21 @@ export function onboardingProps(s: OnboardingStep): EventProps {
     case 'wizard_closed': return { step: ordinal(s.step) };
     default: return {};
   }
+}
+
+/**
+ * Το φορτίο του `forecast_viewed`: ΜΟΝΟ πόσοι μήνες έχουν γραμμή (0 ως 12),
+ * πόσα «κενό;» ή «λείπει» (0 ως 99) και μία λέξη του `FORECAST_STATES`. Κανένα
+ * ποσό, κανένας μήνας με όνομα: ο πιο σφιχτός μήνας του χρήστη δεν είναι
+ * μέτρηση προϊόντος, είναι δική του υπόθεση.
+ */
+export function forecastProps(p: { months: number; gaps: number; state: ForecastState }): EventProps {
+  const months = ordinal(p.months);
+  return {
+    months: months <= 12 ? months : 0,
+    gaps: ordinal(p.gaps),
+    state: (FORECAST_STATES as readonly string[]).includes(p.state) ? p.state : 'empty',
+  };
 }
 
 /** Καταγράφει ένα σκαλί της υποδοχής. Όπως η `track`: δεν πετάει, καλείται με `void`. */
