@@ -11,8 +11,10 @@
 // αλλάζει το SPITI_MOU_3 και ο οδηγός ακολουθεί· εδώ αλλάζει μόνο το `updated`
 // στο guides.ts.
 //
-// Η σελίδα ξαναχτίζεται μία φορά την ημέρα (`revalidate`), ώστε η γραμμή για
-// την κατάσταση του ΙΙ να ακολουθεί το ημερολόγιο.
+// ΣΤΑΤΙΚΗ ΣΕΛΙΔΑ, ΧΩΡΙΣ `revalidate`. Το ΙΙ έχει κλείσει οριστικά (υπογραφές ως
+// 31/08/2026) και η κατάσταση του ΙΙΙ αλλάζει μόνο με αλλαγή στο SPITI_MOU_3, που
+// ξαναχτίζει τη σελίδα. Με `revalidate` θα γινόταν μία ακόμη συνάρτηση διακομιστή
+// και το βάρος ανά ανάπτυξη θα περνούσε το όριο του docs/perf/server.json.
 // ═══════════════════════════════════════════════════════════════════════════
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
@@ -35,8 +37,6 @@ import {
   RelatedGuides, guideJsonLd, LINK_STYLE,
 } from '../GuideParts';
 import { COMPARISON, NAME_2, PROGRAM_NAMES, checkedLine, dstiLine, faq, incomeChangeLine, type Cell } from './content';
-
-export const revalidate = 86400;
 
 const GUIDE = guideAt('/odigos/spiti-mou-3-ti-allazei');
 const H1 = `${SPITI_MOU_3.name}: τι ίσχυε στα προηγούμενα και τι αλλάζει`;
