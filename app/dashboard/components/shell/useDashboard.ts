@@ -408,7 +408,7 @@ export function useDashboard() {
         // μόλις έγραψε τα στοιχεία του ακινήτου του· το καλωσόρισμα θα τον ρωτούσε
         // «από πού ξεκινάς» για κάτι που έχει ήδη ξεκινήσει. Μόνο σε λογαριασμό
         // χωρίς ακίνητα: όποιος έχει ήδη, δεν ανοίγει οδηγό που δεν ζήτησε.
-        if (LAUNCH.enfia && !countErr && count === 0) openWizard('other');
+        if (LAUNCH.enfia && !countErr && count === 0) { setShowAddModal(true); void trackOnboarding(supabase, { event: PRODUCT_EVENTS.wizard_opened, from: 'other' }); }
         else {
           setEnfiaCarry(null);
           if (!obErr && !countErr && !ob?.welcomed && count === 0) setShowWelcome(true);
