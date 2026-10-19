@@ -1,8 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────
 // send-market-digest — εβδομαδιαίο ενημερωτικό για τα δεδομένα αγοράς (Euribor,
 // επιτόκιο ΕΚΤ, επιτόκια στεγαστικών ΤτΕ) στους χρήστες που το θέλουν
-// (email_marketing_prefs.market_news). Διαβάζει τις 2 πιο πρόσφατες εγγραφές του
-// market_rates και στέλνει τις μεταβολές· αν δεν υπάρχει μεταβολή, δεν στέλνει.
+// (email_marketing_prefs.market_news). Συγκρίνει την τελευταία γραμμή του
+// market_rates με την τελευταία μιας εβδομάδας πίσω και στέλνει τις μεταβολές·
+// αν δεν υπάρχει μεταβολή, δεν στέλνει.
 //
 // Ενεργοποίηση: κανένα χειροκίνητο μυστικό — το pg_cron καλεί με το service-role
 // key (Authorization: Bearer, από το vault) και η authorized() το δέχεται.
@@ -18,7 +19,7 @@ import { pct } from '../_shared/format.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 // Ο ΙΔΙΟΣ ΚΑΝΟΝΑΣ ΣΕΙΡΑΣ ΜΕ ΤΗΝ ΤΡΟΦΟΔΟΣΙΑ: το lib/market/ecb.ts φορτώνεται και
 // από το Deno (όπως στη market-data-updater), χωρίς σχετικές εισαγωγές.
-import { sameSeries, type MarketKey, type Provenance } from '../../../lib/market/ecb.ts'
+import { digestCutoff, weeklyDigest, type MarketKey, type RatesRow } from '../../../lib/market/ecb.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -93,29 +94,38 @@ Deno.serve(async (req) => {
   if (!auth.ok) return json(...cronDenial(auth))
   if (!RESEND_API_KEY) return json({ error: 'no_resend_key' }, 500)
 
-  const { data: rows, error: rowsErr } = await supabase.from('market_rates')
-    .select('euribor_3m,euribor_6m,euribor_12m,ecb_rate,bog_housing_new,provenance,updated_at')
-    .order('updated_at', { ascending: false }).limit(2)
-  if (rowsErr) {
-    console.error('[send-market-digest] τα επιτόκια δεν διαβάστηκαν:', rowsErr)
-    return json({ error: 'market_rates unreadable', detail: rowsErr.message }, 500)
+  // ── Η ΕΒΔΟΜΑΔΑ, ΟΧΙ Η ΧΘΕΣΙΝΗ ΜΕΡΑ (19.10.2026) ────────────────────────────
+  // Εδώ ήταν `.limit(2)`: οι δύο τελευταίες ημερήσιες γραμμές. Με το
+  // χρονοδιάγραμμα της Δευτέρας 07:00 UTC, μία ώρα πριν από την τροφοδοσία,
+  // αυτές ήταν η Κυριακή και το Σάββατο· μεταβολή άλλης μέρας δεν έφτανε ποτέ.
+  // Η γραμμή σύγκρισης είναι πλέον η τελευταία με `updated_at` επτά ημέρες
+  // πίσω (`digestCutoff`) και ο κανόνας ζει στο lib/market/ecb.ts.
+  const nowIso = new Date().toISOString()
+  const { data: curRow, error: curErr } = await supabase.from('market_rates')
+    .select('provenance,updated_at')
+    .order('updated_at', { ascending: false }).limit(1).maybeSingle()
+  if (curErr) {
+    console.error('[send-market-digest] τα επιτόκια δεν διαβάστηκαν:', curErr)
+    return json({ error: 'market_rates unreadable', detail: curErr.message }, 500)
   }
-  if (!rows?.length) return json({ message: 'no_data' })
-  const cur = rows[0] as Record<string, number | null>
-  const prevRow = (rows[1] || {}) as Record<string, number | null>
-  // ΜΕΤΑΒΟΛΗ ΜΟΝΟ ΜΕΣΑ ΣΤΗΝ ΙΔΙΑ ΣΕΙΡΑ (13.10.2026). Η στήλη bog_housing_new
-  // πέρασε από τη σειρά F της ΕΚΤ στην A· την ημέρα της αλλαγής η διαφορά των
-  // δύο γραμμών είναι αλλαγή ορισμού, όχι κίνηση του επιτοκίου· το email θα
-  // την έστελνε ως «▼». Οταν η ταυτότητα (`provenance`) δείχνει άλλη σειρά, η
-  // προηγούμενη τιμή δεν μετρά: «Χωρίς σύγκριση» και κανένα έναυσμα αποστολής.
-  const curProv = (rows[0] as { provenance?: Provenance | null }).provenance
-  const prevProv = (rows[1] as { provenance?: Provenance | null } | undefined)?.provenance
-  const prev: Record<string, number | null> = Object.fromEntries(METRICS.map(m =>
-    [m.key, rows[1] && sameSeries(curProv, prevProv, m.key) ? prevRow[m.key] ?? null : null]))
+  if (!curRow) return json({ message: 'no_data' })
+  const { data: baseRow, error: baseErr } = await supabase.from('market_rates')
+    .select('provenance,updated_at')
+    .lte('updated_at', digestCutoff(nowIso))
+    .order('updated_at', { ascending: false }).limit(1).maybeSingle()
+  if (baseErr) {
+    console.error('[send-market-digest] η γραμμή σύγκρισης δεν διαβάστηκε:', baseErr)
+    return json({ error: 'market_rates unreadable', detail: baseErr.message }, 500)
+  }
+  // ΜΕΤΑΒΟΛΗ ΜΟΝΟ ΜΕΣΑ ΣΤΗΝ ΙΔΙΑ ΣΕΙΡΑ (13.10.2026) και τιμή μόνο από σειρά του
+  // καταλόγου: η `weeklyDigest` ρωτά τη `sameSeries` και την ταυτότητα. Τιμή της
+  // F κάτω από το `bog_housing_new` δεν γράφεται ως «Επιτόκιο νέων στεγαστικών».
+  const digest = weeklyDigest(curRow as RatesRow, baseRow as RatesRow | null, METRICS.map(m => m.key))
+  const cur: Record<string, number | null> = Object.fromEntries(digest.lines.map(l => [l.key, l.cur]))
+  const prev: Record<string, number | null> = Object.fromEntries(digest.lines.map(l => [l.key, l.prev]))
 
   // Στείλε μόνο αν υπάρχει ουσιαστική μεταβολή σε κάποιο μέγεθος.
-  const changed = METRICS.some(m => cur[m.key] != null && prev[m.key] != null && Math.abs((cur[m.key] as number) - (prev[m.key] as number)) >= 0.001)
-  if (!changed) return json({ message: 'no_change' })
+  if (!digest.changed) return json({ message: 'no_change' })
 
   const users = await listUsers()
   if (!users.length) return json({ message: 'no_users' })

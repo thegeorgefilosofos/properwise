@@ -22,7 +22,7 @@
 import { monthlyPayment, loanCalendarYear } from '@/lib/loans/progress'
 import { effectiveRate } from '@/lib/loans/shape'
 import { affordability, type AffordabilityResult } from '@/lib/loans/affordability'
-import { ECB_SERIES, isStale, seriesPage, type MarketKey, type Provenance } from '@/lib/market/ecb'
+import { ECB_SERIES, isStale, catalogEntry, type MarketKey, type Provenance } from '@/lib/market/ecb'
 import { monthGen, monthNom } from '@/lib/core/months'
 import { fn, fp } from '@/lib/core/format'
 
@@ -180,9 +180,10 @@ export interface MarketFact {
  */
 export function marketFact(p: Provenance | null | undefined, key: MarketKey, today: string): MarketFact | null {
   const spec = ECB_SERIES.find(s => s.key === key)
-  const v = p?.[key]
-  if (!spec || !v || typeof v.value !== 'number' || !Number.isFinite(v.value)) return null
-  if (!spec.candidates.some(c => seriesPage(c) === v.url)) return null
+  // Ο κανόνας της σειράς ζει στο lib/market/ecb.ts: τον ρωτούν και η Νόα, η
+  // καρτέλα Δάνειο και ο εβδομαδιαίος απολογισμός.
+  const v = catalogEntry(p, key)
+  if (!spec || !v) return null
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.asOf || '')
   if (!m || !v.source) return null
   // Η σειρά είναι μηνιαία; Βγαίνει από τον κατάλογο, όχι από το χέρι.

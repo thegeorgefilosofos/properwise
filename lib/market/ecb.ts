@@ -188,6 +188,20 @@ export function seriesPage(c: SeriesCandidate): string {
   return `https://data.ecb.europa.eu/data/datasets/${c.flow}/${c.flow}.${c.series}`;
 }
 
+/**
+ * Είναι αυτή η διεύθυνση σειρά του τρέχοντος καταλόγου για αυτό το κλειδί;
+ *
+ * Η ΤΑΥΤΟΤΗΤΑ ΛΕΕΙ ΑΠΟ ΠΟΙΑ ΣΕΙΡΑ ΗΡΘΕ Η ΤΙΜΗ (18/10/2026). Η γραμμή του
+ * market_rates εκείνης της μέρας είχε κάτω από το `bog_housing_new` τη σειρά F
+ * (κυμαινόμενο ή σταθερό έως 1 έτος). Η δημόσια σελίδα την απέρριπτε, αλλά η
+ * Νόα την έλεγε «μέσο επιτόκιο νέου στεγαστικού» και η καρτέλα Δάνειο «ΤτΕ
+ * μέσο». Ο έλεγχος ζει εδώ ώστε όλοι να ρωτούν τον ίδιο κανόνα.
+ */
+function inCatalog(key: MarketKey, url: string | null | undefined): boolean {
+  const spec = ECB_SERIES.find(s => s.key === key);
+  return !!spec && !!url && spec.candidates.some(c => seriesPage(c) === url);
+}
+
 
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -330,12 +344,63 @@ export type Provenance = Partial<Record<MarketKey, RateProvenance>>;
  * ΚΑΝΟΝΑΣ: ό,τι ήρθε φρέσκο γράφεται· ό,τι δεν ήρθε μένει ΑΘΙΚΤΟ, με την παλιά
  * του ημερομηνία. Δεν υπάρχει τρίτη περίπτωση, ώστε καμία διαδρομή να μη
  * μπορεί να ανανεώσει σφραγίδα χωρίς νέα παρατήρηση.
+ *
+ * ΕΚΤΟΣ ΑΝ Η ΠΑΛΙΑ ΤΙΜΗ ΕΙΝΑΙ ΑΛΛΗΣ ΣΕΙΡΑΣ. Οταν ο κατάλογος αλλάζει τη σειρά
+ * ενός κλειδιού, η προηγούμενη εγγραφή δεν είναι «η τελευταία γνωστή τιμή»
+ * αυτού του κλειδιού: είναι άλλο νούμερο με το ίδιο όνομα. Αν η νέα σειρά δεν
+ * απαντήσει ποτέ, θα έμενε για πάντα. Ετσι το `bog_housing_new` κρατούσε τη
+ * σειρά F μετά τη μετάβαση στην A. Τέτοια εγγραφή φεύγει και το κλειδί μένει
+ * κενό ώσπου να απαντήσει η σειρά του.
  */
 export function nextProvenance(previous: Provenance, fresh: Provenance): Provenance {
-  const out: Provenance = { ...previous };
+  const out: Provenance = {};
+  for (const k of Object.keys(previous) as MarketKey[]) {
+    const p = previous[k];
+    if (p && inCatalog(k, p.url)) out[k] = p;
+  }
   for (const k of Object.keys(fresh) as MarketKey[]) {
     const p = fresh[k];
     if (p) out[k] = p;
+  }
+  return out;
+}
+
+/** Η ταυτότητα ενός κλειδιού, ΜΟΝΟ όταν ήρθε από σειρά του καταλόγου του. */
+export function catalogEntry(p: Provenance | null | undefined, key: MarketKey): RateProvenance | null {
+  const v = p?.[key];
+  if (!v || typeof v.value !== 'number' || !Number.isFinite(v.value)) return null;
+  return inCatalog(key, v.url) ? v : null;
+}
+
+/**
+ * Οι στήλες του πίνακα που γράφει η τροφοδοσία. Τις διαβάζουν η Νόα, η καρτέλα
+ * Δάνειο και ο εβδομαδιαίος απολογισμός.
+ */
+const RATE_COLUMNS = [
+  'euribor_1m', 'euribor_3m', 'euribor_6m', 'euribor_12m',
+  'ecb_rate', 'ecb_dfl', 'bog_housing_new', 'bog_housing_stock',
+] as const satisfies readonly MarketKey[];
+
+/**
+ * Η τιμή κάθε στήλης μετά από ένα πέρασμα.
+ *
+ * Η ΤΙΜΗ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗΝ ΤΑΥΤΟΤΗΤΑ. Η προηγούμενη στήλη μπαίνει μόνο για
+ * κλειδί που δεν είχε ΠΟΤΕ ταυτότητα (γραμμές από πριν από την τροφοδοσία της
+ * ΕΚΤ). Αν είχε και η ταυτότητα έφυγε επειδή ήταν άλλης σειράς, η στήλη μένει
+ * κενή: αλλιώς το `?? προηγούμενη στήλη` θα ξανάγραφε κάθε πρωί την τιμή της F
+ * που μόλις πετάχτηκε.
+ */
+export function rateColumns(
+  previous: Provenance, next: Provenance, lastRow: Record<string, unknown> | null | undefined,
+): Record<(typeof RATE_COLUMNS)[number], number | null> {
+  const out = {} as Record<(typeof RATE_COLUMNS)[number], number | null>;
+  for (const k of RATE_COLUMNS) {
+    const v = next[k]?.value;
+    const raw = lastRow?.[k];
+    const old = raw === null || raw === undefined || raw === '' ? NaN : Number(raw);
+    out[k] = typeof v === 'number' ? v
+      : previous[k] ? null
+      : Number.isFinite(old) ? old : null;
   }
   return out;
 }
@@ -353,18 +418,49 @@ export function nextProvenance(previous: Provenance, fresh: Provenance): Provena
  * Χωρίς ταυτότητα και στις δύο γραμμές (παλιές γραμμές) η σύγκριση μένει όπως
  * ήταν. Με ταυτότητα στη μία μόνο, δεν ξέρουμε αν είναι η ίδια σειρά: όχι.
  */
-export function sameSeries(a: Provenance | null | undefined, b: Provenance | null | undefined, key: MarketKey): boolean {
+function sameSeries(a: Provenance | null | undefined, b: Provenance | null | undefined, key: MarketKey): boolean {
   return a?.[key]?.url === b?.[key]?.url;
 }
 
-/** Οι τιμές, χωρίς την ταυτότητά τους, όπως τις θέλουν οι στήλες του πίνακα. */
-export function valuesOf(p: Provenance): Partial<Record<MarketKey, number>> {
-  const out: Partial<Record<MarketKey, number>> = {};
-  for (const k of Object.keys(p) as MarketKey[]) {
-    const v = p[k];
-    if (v) out[k] = v.value;
-  }
-  return out;
+/** Πόσες ημέρες πίσω κοιτά ο εβδομαδιαίος απολογισμός. */
+const DIGEST_DAYS = 7;
+
+/**
+ * Ως ποια στιγμή ψάχνεται η γραμμή σύγκρισης του εβδομαδιαίου email: η
+ * τελευταία γραμμή με `updated_at` ως εδώ.
+ *
+ * Η ΕΒΔΟΜΑΔΑ, ΟΧΙ Η ΧΘΕΣΙΝΗ ΜΕΡΑ (18/10/2026). Το email σύγκρινε τις δύο
+ * τελευταίες γραμμές του πίνακα. Τρέχει Δευτέρα 07:00 UTC, πριν από την
+ * τροφοδοσία των 08:00, οπότε σύγκρινε την Κυριακή με το Σάββατο. Από 01/09/2026
+ * καμία μεταβολή δεν έπεσε Κυριακή: ούτε η απόφαση της ΕΚΤ που ίσχυσε στις
+ * 16/09 ούτε ο νέος μέσος όρος του Euribor έφτασαν ποτέ ως email. Με αφετηρία
+ * επτά ημέρες πίσω, κάθε Δευτέρα συγκρίνει Κυριακή με Κυριακή και οι εβδομάδες
+ * κολλούν η μία στην άλλη χωρίς κενό.
+ */
+export function digestCutoff(nowIso: string): string {
+  return new Date(Date.parse(nowIso) - DIGEST_DAYS * 86400000).toISOString();
+}
+
+/** Μία γραμμή του market_rates, όσο τη χρειάζεται η σύγκριση. */
+export interface RatesRow { provenance?: Provenance | null }
+
+export interface DigestLine { key: MarketKey; cur: number | null; prev: number | null }
+
+/**
+ * Τι γράφει ο απολογισμός για κάθε κλειδί και αν αξίζει να σταλεί.
+ *
+ * Η τρέχουσα τιμή μπαίνει μόνο από σειρά του καταλόγου (τιμή της F δεν
+ * γράφεται ως «επιτόκιο νέων στεγαστικών»). Η προηγούμενη μόνο της ίδιας
+ * σειράς. Στέλνεται όταν κινήθηκε έστω ένα μέγεθος.
+ */
+export function weeklyDigest(cur: RatesRow, base: RatesRow | null | undefined, keys: readonly MarketKey[]): { lines: DigestLine[]; changed: boolean } {
+  const lines = keys.map(key => {
+    const now = catalogEntry(cur.provenance, key);
+    const then = base && now && sameSeries(cur.provenance, base.provenance, key) ? catalogEntry(base.provenance, key) : null;
+    return { key, cur: now ? now.value : null, prev: then ? then.value : null };
+  });
+  const changed = lines.some(l => l.cur !== null && l.prev !== null && Math.abs(l.cur - l.prev) >= 0.001);
+  return { lines, changed };
 }
 
 /** Πόσες ημέρες πέρασαν από την παρατήρηση ως σήμερα. Και οι δύο σε ISO. */
@@ -377,19 +473,26 @@ export function ageDays(asOf: string, today: string): number {
 /**
  * Το όριο πέρα από το οποίο μια τιμή λέγεται παλιά, ανά είδος.
  *
- * ΔΕΝ ΕΙΝΑΙ ΕΝΑ ΝΟΥΜΕΡΟ ΓΙΑ ΟΛΑ. Το Euribor δημοσιεύεται κάθε εργάσιμη, άρα
- * τέσσερις ημέρες σιωπής είναι πρόβλημα. Τα επιτόκια πολιτικής αλλάζουν λίγες
- * φορές τον χρόνο και μια ημερομηνία μηνών πίσω είναι το ΣΩΣΤΟ: σημαίνει «δεν
- * άλλαξε», όχι «ξεχάστηκε». Τα ελληνικά μέσα επιτόκια βγαίνουν μηνιαία, με
+ * ΔΕΝ ΕΙΝΑΙ ΕΝΑ ΝΟΥΜΕΡΟ ΓΙΑ ΟΛΑ. Το Euribor της ΕΚΤ είναι μέσος όρος μήνα που
+ * βγαίνει μόλις κλείσει ο μήνας: ένας μήνας που αργεί είναι πρόβλημα. Τα
+ * επιτόκια πολιτικής αλλάζουν λίγες φορές τον χρόνο και μια ημερομηνία μηνών
+ * πίσω είναι το ΣΩΣΤΟ: σημαίνει «δεν άλλαξε», όχι «ξεχάστηκε». Τα ελληνικά μέσα επιτόκια βγαίνουν μηνιαία, με
  * καθυστέρηση περίπου έξι εβδομάδων. Ενα κοινό όριο θα φώναζε ψέματα στα δύο
  * και θα σιωπούσε λάθος στο τρίτο.
  */
 export const STALE_AFTER_DAYS: Record<MarketKey, number> = {
   // ΜΕΤΡΗΜΕΝΟ ΣΤΗΝ ΠΗΓΗ, ΟΧΙ ΕΙΚΑΣΜΕΝΟ. Την 01/09/2026 η σειρά έδινε
   // 05, 06, 07 και 08/2026: ο μήνας κλείνει και μέσα σε μία ημέρα υπάρχει ο
-  // μέσος όρος του. Ο χειρότερος κανονικός χρόνος είναι λίγο πάνω από έναν
-  // μήνα, όταν ο νέος μήνας αργήσει λίγες μέρες. Τα 45 αφήνουν αυτό το
-  // περιθώριο και χτυπούν όταν λείπει ΔΕΥΤΕΡΟΣ μήνας.
+  // μέσος όρος του. Η ηλικία ενός μέσου όρου μήνα μετρά από το ΤΕΛΟΣ του μήνα
+  // (δες `ageFrom`): ο κανονικός χρόνος είναι ως έναν μήνα, ώσπου να κλείσει ο
+  // επόμενος. Τα 45 αφήνουν δύο εβδομάδες για τον νέο μήνα που αργεί.
+  //
+  // ΜΕΤΡΟΥΣΑΝ ΑΠΟ ΤΗΝ ΑΡΧΗ ΤΟΥ ΜΗΝΑ ΩΣ ΤΙΣ 18/10/2026. Ο μέσος όρος
+  // Σεπτεμβρίου αποθηκεύεται «2026-09-01» και βγαίνει την 01/10· στις 16/10
+  // είχε ήδη 45 ημέρες. Από τη 16η ως το τέλος ΚΑΘΕ μήνα το Euribor λεγόταν
+  // παλιό ενώ η τροφοδοσία δούλευε: το πεδίο του κυμαινόμενου στον δημόσιο
+  // υπολογιστή ξεκινούσε κενό και η τροφοδοσία έγραφε τέσσερις προειδοποιήσεις
+  // κάθε πρωί.
   //
   // ΤΟ ΠΡΟΗΓΟΥΜΕΝΟ ΟΡΙΟ ΗΤΑΝ ΠΕΝΤΕ ΗΜΕΡΕΣ, γραμμένο όταν νόμιζα ότι υπάρχει
   // ημερήσια σειρά. Με μηνιαία τιμή, ΚΑΘΕ φυσιολογική τιμή θα σημαδευόταν ως
@@ -404,9 +507,26 @@ export const STALE_AFTER_DAYS: Record<MarketKey, number> = {
   bog_housing_new: 135, bog_housing_floating: 135, bog_housing_fixed: 135, bog_housing_stock: 135,
 };
 
+/**
+ * Από ποια ημέρα μετρά η ηλικία μιας τιμής.
+ *
+ * Ο ΜΕΣΟΣ ΟΡΟΣ ΜΗΝΑ ΔΕΝ ΥΠΑΡΧΕΙ ΠΡΙΝ ΚΛΕΙΣΕΙ Ο ΜΗΝΑΣ. Ο Σεπτέμβριος
+ * αποθηκεύεται «2026-09-01» γιατί κάπου πρέπει να καθίσει, αλλά η
+ * παρατήρηση ολοκληρώνεται την 01/10. Η ηλικία του μετρά από εκεί. Οι
+ * υπόλοιπες σειρές μετρούν από την ημερομηνία τους: το όριό τους είναι
+ * μετρημένο έτσι.
+ */
+function ageFrom(key: MarketKey, asOf: string): string {
+  const spec = ECB_SERIES.find(s => s.key === key);
+  const m = /^(\d{4})-(\d{2})-\d{2}$/.exec(asOf || '');
+  if (!m || !spec || !spec.candidates.every(c => c.basis === MONTH_MEAN)) return asOf;
+  const y = Number(m[1]), mo = Number(m[2]);
+  return mo === 12 ? `${y + 1}-01-01` : `${m[1]}-${String(mo + 1).padStart(2, '0')}-01`;
+}
+
 /** Είναι παλιά αυτή η τιμή για το είδος της; */
 export function isStale(key: MarketKey, asOf: string, today: string): boolean {
-  return ageDays(asOf, today) > STALE_AFTER_DAYS[key];
+  return ageDays(ageFrom(key, asOf), today) > STALE_AFTER_DAYS[key];
 }
 
 /** Τα κλειδιά που έχουν παλιώσει, με τη σειρά του καταλόγου. */

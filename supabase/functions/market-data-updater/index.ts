@@ -10,7 +10,7 @@ import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 // σχετική εισαγωγή ακριβώς για να φορτώνεται και από το Deno εδώ και από την
 // εφαρμογή· η ροή ανάπτυξης παρακολουθεί τον φάκελο lib/market, ώστε μια αλλαγή
 // του να ξανανεβάζει και αυτή τη συνάρτηση.
-import { fetchLatest, nextProvenance, valuesOf, staleKeys, greekDay,
+import { fetchLatest, nextProvenance, rateColumns, staleKeys, greekDay, ECB_SERIES,
   type Provenance } from '../../../lib/market/ecb.ts'
 
 const supabase = createClient(
@@ -91,14 +91,12 @@ Deno.serve(async (req: Request) => {
   }
 
   const previous: Provenance = (last?.provenance ?? {}) as Provenance
-  const fb: Record<string, number> = (last as Record<string, number>) ?? {}
 
   // ── 2. Ενα πέρασμα πάνω από όλες τις σειρές ────────────────────────────────
   const { fresh, problems } = await fetchLatest(now.toISOString())
   for (const p of problems) console.warn('δεν ήρθε:', p)
 
   const provenance = nextProvenance(previous, fresh)
-  const values = valuesOf(provenance)
   const stale = staleKeys(provenance, today)
   for (const k of stale) console.warn(`παλιό: ${k} από ${greekDay(provenance[k]!.asOf)}`)
 
@@ -111,15 +109,13 @@ Deno.serve(async (req: Request) => {
   // κάθε γραμμή με `?? 2.18`, δηλαδή έγραφε στη βάση χειρόγραφο επιτόκιο του
   // 2026 σαν να ήταν μέτρηση, με σημερινή σφραγίδα και πηγή «fallback». Οταν
   // δεν ξέρουμε, η στήλη μένει κενή και η οθόνη το λέει.
+  //
+  // Η ΠΡΟΗΓΟΥΜΕΝΗ ΣΤΗΛΗ ΔΕΝ ΕΙΝΑΙ ΕΦΕΔΡΕΙΑ ΓΙΑ ΤΙΜΗ ΠΟΥ ΠΕΤΑΧΤΗΚΕ. Εδώ ήταν
+  // `values.x ?? fb.x`: μόλις η ταυτότητα της F έφευγε από το `bog_housing_new`,
+  // η στήλη θα ξανάπαιρνε το 3,39 της F από τη χθεσινή γραμμή. Ο κανόνας ζει
+  // στη `rateColumns` και δοκιμάζεται στο lib/market/ecbProvenance.test.ts.
   const rateRow: Record<string, unknown> = {
-    euribor_1m:        values.euribor_1m        ?? fb.euribor_1m        ?? null,
-    euribor_3m:        values.euribor_3m        ?? fb.euribor_3m        ?? null,
-    euribor_6m:        values.euribor_6m        ?? fb.euribor_6m        ?? null,
-    euribor_12m:       values.euribor_12m       ?? fb.euribor_12m       ?? null,
-    ecb_rate:          values.ecb_rate          ?? fb.ecb_rate          ?? null,
-    ecb_dfl:           values.ecb_dfl           ?? fb.ecb_dfl           ?? null,
-    bog_housing_new:   values.bog_housing_new   ?? fb.bog_housing_new   ?? null,
-    bog_housing_stock: values.bog_housing_stock ?? fb.bog_housing_stock ?? null,
+    ...rateColumns(previous, provenance, last as Record<string, unknown> | null),
     provenance,
     // Οι δύο παλιές στήλες πηγής κρατούν πλέον την ΗΜΕΡΟΜΗΝΙΑ ΠΑΡΑΤΗΡΗΣΗΣ, όχι
     // τη λέξη «live» ή «fallback». Οποιος τις διαβάζει μαθαίνει κάτι αληθινό.
@@ -176,7 +172,9 @@ Deno.serve(async (req: Request) => {
     timestamp: now.toISOString(),
     month,
     fetched: Object.keys(fresh).length,
-    expected: Object.keys(provenance).length,
+    // Ο ΚΑΤΑΛΟΓΟΣ, ΟΧΙ Η ΤΑΥΤΟΤΗΤΑ. Η ταυτότητα κρατά και ό,τι δεν ήρθε σήμερα,
+    // οπότε «8 από 8» έβγαινε και όταν ο κατάλογος είχε δέκα σειρές.
+    expected: ECB_SERIES.length,
     problems,
     stale: stale.map(k => `${k}: ${greekDay(provenance[k]!.asOf)}`),
     significantChange: rateRow.rate_changed,
