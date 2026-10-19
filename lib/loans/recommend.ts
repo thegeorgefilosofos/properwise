@@ -106,8 +106,15 @@ export const SPITI_MOU = {
   maxYearBuilt: 2007,
   minYears: 3,
   maxYears: 30,
-  // Εισοδηματικά όρια (ΚΥΑ Νοεμβρίου 2025): άγαμος 25.000· έγγαμοι 35.000 +5.000/τέκνο·
-  // μονογονεϊκές 39.000. Ελάχιστο εισόδημα ~10.000 (δυνατότητα εξυπηρέτησης). Ενδεικτικά.
+  // Εισοδηματικά όρια της ΚΥΑ 200108 ΕΞ 2025 (ΦΕΚ Β΄ 6214/20.11.2025), που
+  // τροποποίησε την ΚΥΑ 189973 ΕΞ 2024 (ΦΕΚ Β΄ 6894/16.12.2024): άγαμος 25.000·
+  // έγγαμοι 35.000 +5.000/τέκνο· μονογονεϊκές 39.000 +5.000/τέκνο πέραν του
+  // πρώτου· ελάχιστο 10.000 για όλους. Ελέγχθηκε 19/10/2026 με την ανακοίνωση των
+  // υπουργείων (19/11/2025) και την Πύλη Στεγαστικής Πολιτικής: SPITI_MOU_LEGAL.
+  // Τα 20.000/28.000/31.000 των δημοσιευμάτων είναι τα όρια ΠΡΙΝ από αυτή την
+  // τροποποίηση (SPITI_MOU_INCOME_BEFORE_2025_11). Η «Α.1153/2025, ΦΕΚ Β΄
+  // 5933/05.11.2025» ΔΕΝ αφορά το πρόγραμμα: τροποποιεί προηγούμενη κοινή απόφαση
+  // για τις δαπάνες αναβάθμισης κτιρίων του άρθρου 39Β ΚΦΕ.
   incomeSingle: 25000,
   incomeMarriedBase: 35000,
   incomePerChild: 5000,
@@ -117,6 +124,87 @@ export const SPITI_MOU = {
   applicationDeadline: '2026-05-31',
   contractDeadline: '2026-08-31',
 }
+
+/**
+ * Πώς χρηματοδοτούνταν το δάνειο του «Σπίτι μου ΙΙ». Ήταν γραμμένο ως `0.5` μέσα
+ * στην `spitiMouEligibility`, οπότε ο οδηγός θα έπρεπε να το ξαναγράψει με το
+ * χέρι. Το διαβάζουν και τα δύο από εδώ.
+ */
+export const SPITI_MOU_FUNDING = {
+  /** Το μέρος του κεφαλαίου χωρίς τόκο (πόροι Ταμείου Ανάκαμψης), για όλους. */
+  interestFreeShare: 0.5,
+  /** Από πόσα παιδιά ισχύει η επιπλέον μείωση στο επιτόκιο του τραπεζικού μέρους. */
+  largeFamilyChildren: 3,
+  /** Πόσο μειώνεται το επιτόκιο του τραπεζικού μέρους για τρίτεκνους και πολύτεκνους. */
+  largeFamilyRateCut: 0.5,
+} as const
+
+/** Η νομική βάση του «Σπίτι μου ΙΙ» και οι επίσημες σελίδες του. Ελέγχθηκαν 19/10/2026. */
+export const SPITI_MOU_LEGAL = {
+  kya: 'ΚΥΑ 189973 ΕΞ 2024 (ΦΕΚ Β΄ 6894/16.12.2024)',
+  incomeAmendment: 'ΚΥΑ 200108 ΕΞ 2025 (ΦΕΚ Β΄ 6214/20.11.2025)',
+  sources: {
+    portal: 'https://stegasi.gov.gr/programs/spiti-mou-ii/',
+    kya: 'https://hdb.gr/wp-content/uploads/2025/01/%CE%9A%CE%A5%CE%91-%CE%A3%CE%A0%CE%99%CE%A4%CE%99-%CE%9C%CE%9F%CE%A5-%CE%99%CE%99-%CE%91%CE%A1%CE%99%CE%98.-189973_16-12-2024-%CE%92-6894.pdf',
+    incomeAmendment: 'https://ypen.gov.gr/nea-dievrynsi-ton-eisodimatikon-kritirion-kai-paratasi-gia-tin-ypagogi-sto-spiti-mou-ii/',
+    certificate: 'https://www.gov.gr/arxes/oloi-foreis/oikonomikon/bebaiose-epileximotetas-sto-programma-spiti-mou-ii',
+  },
+  checkedAt: '2026-10-19',
+} as const
+
+/**
+ * Τα εισοδηματικά όρια του «Σπίτι μου ΙΙ» ΠΡΙΝ από την ΚΥΑ 200108 ΕΞ 2025. Μόνο
+ * για ιστορικό («τι άλλαξε»): καμία κρίση επιλεξιμότητας δεν τα διαβάζει. Πηγή:
+ * η ανακοίνωση των υπουργείων (SPITI_MOU_LEGAL.sources.incomeAmendment), που
+ * γράφει κάθε νέο όριο με το παλιό σε παρένθεση.
+ */
+export const SPITI_MOU_INCOME_BEFORE_2025_11 = {
+  incomeSingle: 20_000,
+  incomeMarriedBase: 28_000,
+  incomePerChild: 4_000,
+  incomeSingleParentBase: 31_000,
+} as const
+
+// ═══ «ΣΠΙΤΙ ΜΟΥ» (Ι): ΤΟ ΠΡΩΤΟ ΠΡΟΓΡΑΜΜΑ, ΚΛΕΙΣΤΟ ΑΠΟ ΤΟ 2023 ════════════════
+// Μόνο για ιστορικό και σύγκριση (οδηγός «τι ίσχυε, τι αλλάζει»). Καμία
+// συνάρτηση επιλεξιμότητας ή δόσης δεν το διαβάζει. Ελέγχθηκε 19/10/2026 από το
+// ευρετήριο αναζήτησης· οι σελίδες δεν άνοιγαν από το περιβάλλον ελέγχου.
+export const SPITI_MOU_1 = {
+  name: 'Σπίτι μου Ι',
+  agency: 'ΔΥΠΑ',
+  legalBasis: 'άρθρο 3 του νόμου 5006/2022 και ΚΥΑ 189/2023 (ΦΕΚ Β΄ 1180/01.03.2023)',
+  ageMin: 25,
+  ageMax: 39,
+  incomeMin: 10_000,
+  incomeSingle: 16_000,
+  incomeMarriedBase: 24_000,
+  incomePerChild: 3_000,
+  maxPropertyValue: 200_000,
+  maxSqm: 150,
+  /** Το ακίνητο έπρεπε να έχει τουλάχιστον τόσα χρόνια ζωής. */
+  minBuildingAgeYears: 15,
+  maxAmount: 150_000,
+  maxLtv: 90,
+  maxYears: 30,
+  /** Το μέρος του δανείου από τη ΔΥΠΑ, χωρίς τόκο. Το υπόλοιπο από την τράπεζα. */
+  interestFreeShare: 0.75,
+  applicationsFrom: '2023-04-03',
+  applicationsTo: '2023-09-29',
+  sources: {
+    /** Ηλικία, εισόδημα, αξία, εμβαδόν, παλαιότητα. */
+    portal: 'https://stegasi.gov.gr/programs/spiti-mou-i/',
+    /** Ερωτήσεις και απαντήσεις της ΕΑΤ: ποσό έως 150.000, έως 90% της αξίας. */
+    qa: 'https://hdb.gr/wp-content/uploads/2024/02/Q-A_-6.2.2024.pdf',
+    /** Ανακοίνωση της κυβέρνησης: αιτήσεις από Δευτέρα 03/04/2023. */
+    opening: 'https://www.government.gov.gr/spiti-mou-apo-tin-deftera-3-apriliou-etisis-gia-epidotoumena-stegastika-dania-se-neous-ke-nea-zevgaria/',
+    /** Ανακοίνωση της ΔΥΠΑ: τα 3/4 από τη ΔΥΠΑ χωρίς τόκο, ολόκληρο χωρίς τόκο για τρίτεκνους και πολύτεκνους. */
+    terms: 'https://www.dypa.gov.gr/en/spiti-moy-apo-tin-erkhomeni-deftera-oi-aitiseis-ghia-epidotoumena-steghastika-daneia-se-neoys-kai-nea-zefgharia',
+    /** Ανακοίνωση της ΔΥΠΑ: αιτήσεις έως Παρασκευή 29/09/2023. */
+    closing: 'https://www.dypa.gov.gr/en/mekhri-tin-paraskefi-oi-aitiseis-ghia-to-spiti-moy-tis-dypa',
+    program: 'https://www.dypa.gov.gr/en/proghramma-spiti-moy',
+  },
+  checkedAt: '2026-10-19',
+} as const
 
 // ═══ Η ΚΑΤΑΣΤΑΣΗ ΤΟΥ «ΣΠΙΤΙ ΜΟΥ ΙΙ» ΒΓΑΙΝΕΙ ΑΠΟ ΕΔΩ ΚΑΙ ΜΟΝΟ ΑΠΟ ΕΔΩ ═══════
 // ΤΟ ΣΦΑΛΜΑ, ΜΕΤΡΗΜΕΝΟ ΣΤΙΣ 28/09/2026. Τέσσερις μήνες μετά το κλείσιμο των
@@ -365,8 +453,8 @@ export function spitiMouEligibility(n: UserLoanNeeds, today: string): SpitiMouRe
 
   // Το άτοκο σκέλος είναι 50% για ΟΛΟΥΣ. Οι τρίτεκνοι/πολύτεκνοι λαμβάνουν επιπλέον
   // επιδότηση 50% στο επιτόκιο του τραπεζικού σκέλους (ΟΧΙ μεγαλύτερο άτοκο κεφάλαιο).
-  const interestFreeShare = 0.5
-  const rateSubsidyShare = (n.children ?? 0) >= 3 ? 0.5 : 0
+  const interestFreeShare = SPITI_MOU_FUNDING.interestFreeShare
+  const rateSubsidyShare = (n.children ?? 0) >= SPITI_MOU_FUNDING.largeFamilyChildren ? SPITI_MOU_FUNDING.largeFamilyRateCut : 0
   return { eligible, interestFreeShare, rateSubsidyShare, reasons }
 }
 

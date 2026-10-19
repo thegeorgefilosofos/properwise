@@ -237,7 +237,7 @@ export const STATE_PROGRAMS = [
   // τους και θα έλεγε σε κάποιον «δικαιούσαι» με όρους που δεν υπέγραψε
   // κανείς. Ακόμη και η ανώτατη ηλικία της εξειδίκευσης των μέτρων μπαίνει
   // μόνο ως κείμενο κριτηρίου, ώσπου να βγει ΚΥΑ.
-  { id:'spiti_mou_3', name:SPITI_MOU_3.name, status:'upcoming', type:'Ανακοινώθηκε, χωρίς επίσημους όρους', desc:spitiMou3Line(), max_amount:null, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:null, age_max:null, duration:'Δεν έχει οριστεί', deadline:`Έναρξη ${SPITI_MOU_3.startLabel}, κατά την ΕΑΤ`, verified_at:SPITI_MOU_3.checkedAt, total_budget:`${fn(SPITI_MOU_3.budgetEur / 1e9)} δισ. ευρώ, κατά την ΕΑΤ`, criteria:[`Ανώτατη ηλικία ${SPITI_MOU_3.ageMax} ετών, κατά την κυβερνητική εξειδίκευση των μέτρων της ΔΕΘ`,'Τα υπόλοιπα κριτήρια δεν έχουν δημοσιευτεί σε επίσημο κείμενο','Δεν έχει οριστεί ποια ακίνητα είναι επιλέξιμα','Καμία τράπεζα δεν συμμετέχει ακόμη'], how_it_works:'Θα γίνει γνωστό μόνο με την ΚΥΑ και τον οδηγό του προγράμματος. Όρια εισοδήματος, αξίας ή δανείου που διαβάζεις σε δημοσιεύματα δεν είναι όροι του προγράμματος.', extra:`Τι έχει ειπωθεί, όχι ακόμη επίσημο: ${spitiMou3ReportedLines().join(' ')} ${spitiMou3ReportedCaveat()} Το προηγούμενο πρόγραμμα έκλεισε για νέες αιτήσεις στις ${programDateLabel(SPITI_MOU.applicationDeadline)}. Μη στηρίξεις απόφαση αγοράς σε όρους του νέου πριν δημοσιευτούν.`, savings_example:'Δεν υπάρχει παράδειγμα: οι όροι δεν έχουν ανακοινωθεί', url:SPITI_MOU_3.sources.hdb, banks:['Δεν έχουν οριστεί'] },
+  { id:'spiti_mou_3', name:SPITI_MOU_3.name, status:'upcoming', type:'Ανακοινώθηκε, χωρίς επίσημους όρους', desc:spitiMou3Line(), max_amount:null, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:null, age_max:null, duration:'Δεν έχει οριστεί', deadline:`Έναρξη ${SPITI_MOU_3.startLabel}, κατά την ΕΑΤ`, verified_at:SPITI_MOU_3.checkedAt, total_budget:`${fn(SPITI_MOU_3.budgetEur / 1e9)} δισ. ευρώ, κατά την ΕΑΤ`, criteria:[`Ανώτατη ηλικία ${SPITI_MOU_3.ageMax} ετών, κατά την κυβερνητική εξειδίκευση των μέτρων της ΔΕΘ`,'Τα υπόλοιπα κριτήρια δεν έχουν δημοσιευτεί σε επίσημο κείμενο','Δεν έχει οριστεί ποια ακίνητα είναι επιλέξιμα','Καμία τράπεζα δεν συμμετέχει ακόμη'], how_it_works:'Θα γίνει γνωστό μόνο με την ΚΥΑ και τον οδηγό του προγράμματος. Όρια εισοδήματος, αξίας ή δανείου που διαβάζεις σε δημοσιεύματα δεν είναι όροι του προγράμματος.', extra:`Τι έχει ειπωθεί, όχι ακόμη επίσημο: ${spitiMou3ReportedLines().join(' ')} ${spitiMou3ReportedCaveat()} Το προηγούμενο πρόγραμμα έκλεισε για νέες αιτήσεις στις ${programDateLabel(SPITI_MOU.applicationDeadline)}. Μη στηρίξεις απόφαση αγοράς σε όρους του νέου πριν δημοσιευτούν.`, savings_example:'Δεν υπάρχει παράδειγμα: οι όροι δεν έχουν ανακοινωθεί', url:SPITI_MOU_3.sources.hdb, guide:'/odigos/spiti-mou-3-ti-allazei', banks:['Δεν έχουν οριστεί'] },
   { id:'anavathmizo', name:'Αναβαθμίζω το Σπίτι μου',  type:'Κρατικό, Δάνειο ενεργειακής αναβάθμισης', desc:'Δάνειο 5.000€ έως 25.000€, άτοκο για τον δανειολήπτη: το 75% από το Ταμείο Ανάκαμψης χωρίς τόκο και το 25% από την τράπεζα με πλήρη επιδότηση των τόκων από το Δημόσιο', max_amount:25000, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:18, age_max:null, duration:'3–7 χρόνια', application_deadline:programDateLabel(ANAVATHMIZO.applicationDeadline), deadline:programDateLabel(ANAVATHMIZO.deadline),  total_budget:'80 εκ. ευρώ', criteria:['ΠΕΑ πριν και μετά','Αναβάθμιση ≥3 ενεργειακές κατηγορίες','Εξοικονόμηση >30%'], how_it_works:'Δάνειο για ενεργειακές παρεμβάσεις, ένα ακίνητο ανά ΑΦΜ, χωρίς εισοδηματικά κριτήρια', extra:'Αυξημένη επιδότηση για ΑμεΑ, τρίτεκνους και πολύτεκνους. Οι αιτήσεις υπαγωγής έκλεισαν στις 31/05/2026· η 31/08/2026 αφορά μόνο την υπογραφή σύμβασης για όσους έχουν ήδη έγκριση', savings_example:'Μηδενικό κόστος δανεισμού και χαμηλότεροι λογαριασμοί ενέργειας', url:'https://greece20.gov.gr/home-loans/', banks:['Εθνική','Alpha','Eurobank','Πειραιώς','CrediaBank'] },
   { id:'exoikonomo_2025', name:'Εξοικονομώ 2025',  type:'Επιδότηση ενεργειακής αναβάθμισης', desc:'Δεν δέχεται νέες αιτήσεις. Οι παρατάσεις που ανακοίνωσε το υπουργείο αφορούν την ολοκλήρωση των έργων όσων έχουν ήδη ενταχθεί, όχι νέες αιτήσεις· επιβεβαίωσε στο exoikonomo2025.gov.gr', max_amount:null, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:18, age_max:null, duration:'Εφάπαξ', deadline:`Έληξε ${programDateLabel(EXOIKONOMO_2025.deadline)}`,  verified_at:'2026-07-08', total_budget:'Ταμείο Ανάκαμψης ΕΕ', criteria:['Εξοικονόμηση >30%','Αναβάθμιση ≥3 κατηγορίες','ΠΕΑ πριν και μετά'], how_it_works:'Επιδότηση κουφωμάτων, μόνωσης, θέρμανσης, φωτοβολταϊκών', extra:'Ειδικά κίνητρα για ΑμεΑ, τρίτεκνους, πολύτεκνους, νέους', savings_example:'Μείωση λογαριασμών + επιδότηση κόστους', url:'https://exoikonomo2025.gov.gr/', banks:['Εθνική','Alpha','Eurobank','Πειραιώς'] },
   { id:'exoikonomo_2026', name:'Εξοικονομώ 2026', status:'upcoming', type:'Επερχόμενο, χωρίς επίσημο οδηγό', desc:'Νέος κύκλος ενεργειακής αναβάθμισης που έχει αναφερθεί δημόσια. Δεν έχει δημοσιευτεί οδηγός ούτε ημερομηνία αιτήσεων.', max_amount:null, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:null, age_max:null, duration:'Δεν έχει οριστεί', deadline:'Χωρίς ημερομηνία έναρξης', total_budget:'Δεν έχει δημοσιευτεί', criteria:['Δεν έχουν δημοσιευτεί κριτήρια'], how_it_works:'Θα γίνει γνωστό μόνο με τον επίσημο οδηγό του προγράμματος. Ποσοστά επιδότησης και προϋπολογισμοί που κυκλοφορούν δεν είναι όροι του προγράμματος.', extra:'Μη δεσμευτείς ακόμη. Τους όρους τους ανακοινώνει το Υπουργείο Περιβάλλοντος και Ενέργειας.', savings_example:'Δεν υπάρχει παράδειγμα: οι όροι δεν έχουν ανακοινωθεί', url:'https://ypen.gov.gr/', banks:['Δεν έχουν οριστεί'] },
@@ -303,6 +303,12 @@ export interface ComparisonProgram {
   criteria: string[];
   banks: string[];
   url: string;
+  /**
+   * Ο δημόσιος οδηγός μας για το πρόγραμμα, όπου υπάρχει. Μόνο ο στατικός
+   * κατάλογος τον ξέρει· η βάση δεν έχει τέτοιο πεδίο, οπότε η ένωση
+   * (`mergeKnown`) τον φέρνει από εδώ.
+   */
+  guide: string;
 }
 
 /** Ό,τι μπορεί να δώσει είτε ο στατικός πίνακας είτε η βάση. */
@@ -323,6 +329,7 @@ export interface RawProgram {
   criteria?: string[];
   banks?: string[]; participating_banks?: string[];
   url?: string;
+  guide?: string;
 }
 
 // Το «null» ως ΚΕΙΜΕΝΟ έφτανε από τη βάση σε πεδία που δεν συμπληρώθηκαν και
@@ -353,6 +360,7 @@ export function normProgram(p: RawProgram): ComparisonProgram {
     criteria: p.criteria ?? [],
     banks: p.participating_banks ?? p.banks ?? [],
     url: p.url ?? '',
+    guide: p.guide ?? '',
   }
 }
 export const PROGRAMS_NORM: ComparisonProgram[] = STATE_PROGRAMS.map(normProgram)

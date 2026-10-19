@@ -76,7 +76,10 @@ const nextConfig: NextConfig = {
   // Ο,τι δεν καλείται, δεν ταξιδεύει. Το `@img/**` είναι οι δυαδικοί του sharp
   // (libvips, wasm, ο εγγενής x64) κι το `sharp/**` ο περιτυλιγμένος κώδικας.
   outputFileTracingExcludes: {
-    '**/*': ['node_modules/@img/**', 'node_modules/sharp/**'],
+    // Το react.development.js (49 KB) ανέβαινε σε ΚΑΘΕ συνάρτηση, 70 φορές: 3,4 MB
+    // ανά ανάπτυξη. Το node_modules/react/index.js το φορτώνει μόνο όταν
+    // NODE_ENV !== 'production'· στο Vercel είναι πάντα production.
+    '**/*': ['node_modules/@img/**', 'node_modules/sharp/**', 'node_modules/react/cjs/react.development.js'],
   },
   // ── ΟΙ ΔΙΕΥΘΥΝΣΕΙΣ ΠΟΥ ΠΛΗΚΤΡΟΛΟΓΕΙ Ο ΚΟΣΜΟΣ ─────────────────────────────
   // Τα αγγλικά ονόματα που δοκιμάζει όποιος ψάχνει τιμές, εργαλεία ή cookies.
