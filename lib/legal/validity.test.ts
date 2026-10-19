@@ -11,7 +11,7 @@
 // Κάθε νέα εγγραφή ελέγχεται απέναντι στη σταθερά που περιγράφει: μητρώο και
 // κώδικας δεν επιτρέπεται να διαφωνούν για την ημερομηνία.
 // ═══════════════════════════════════════════════════════════════════════════
-import { REGULATED, statusOf } from './validity';
+import { REGULATED, WARN_DAYS, statusOf } from './validity';
 import { THESS_STR_FREEZE } from '@/lib/market/greekMarket';
 import { RENO_39B_FROM, RENO_39B_TO } from '@/lib/accounting/renovation39b';
 import { SPITI_MOU_3 } from '@/lib/loans/recommend';
@@ -64,14 +64,23 @@ const gr = (d: string) => d.split('-').reverse().join('/');
   ok('...με την πηγή της σταθεράς', r?.source === SPITI_MOU_3.sources.hdb);
   ok('...και τον ίδιο έλεγχο', r?.checkedAt === SPITI_MOU_3.checkedAt);
   ok('...ανακοινωμένο από τη ΔΕΘ', r?.validFrom === SPITI_MOU_3.announcedOn);
-  ok('...με λήξη πριν από την έναρξη που δίνει η ΕΑΤ', !!r?.validTo && r.validTo < '2027-01-01');
+  // Η ημερομηνία της ίδιας της λήξης ΔΕΝ γράφεται εδώ: η εγγραφή λέει «αν δεν
+  // βγήκε ΚΥΑ, μετάθεσε το validTo» και μια δοκιμή με ημερομηνία θα έκοβε
+  // ακριβώς αυτή τη σωστή κίνηση. Μετρά να υπάρχει λήξη μετά τον έλεγχο.
+  ok('...με λήξη μετά τον έλεγχο, ώστε ο φύλακας να ζητήσει επανέλεγχο', !!r?.validTo && r.validTo > r.checkedAt);
 }
 
 // ── Κοκκινίζουν πριν λήξουν, όχι μετά ──
+// Μετρημένα από τη ΔΙΚΗ ΤΟΥΣ λήξη, όχι από ημερομηνία γραμμένη εδώ. Με
+// «προειδοποιεί στις 20/11/2026» η δοκιμή κοκκίνιζε τη μέρα που το ΦΕΚ θα
+// παρέτεινε ένα παράθυρο ως 31/12/2027 και κάποιος θα έγραφε σωστά το validTo.
+/** «2026-12-31», ±ημέρες. */
+const shift = (d: string, days: number) => new Date(Date.parse(`${d}T12:00:00Z`) + days * 864e5).toISOString().slice(0, 10);
 for (const id of ['str-freeze', 'vacant-rental-exemption', 'renovation-39b', 'spiti-mou-3']) {
   const r = entry(id);
   ok(`${id}: σε ισχύ σήμερα`, !!r && statusOf(r, '2026-10-18') === 'ok');
-  ok(`${id}: ο φύλακας προειδοποιεί στα μέσα Νοεμβρίου`, !!r && statusOf(r, '2026-11-20') === 'expiring');
+  ok(`${id}: ο φύλακας προειδοποιεί πριν από τη λήξη`, !!r?.validTo && statusOf(r, shift(r.validTo, -(WARN_DAYS - 1))) === 'expiring');
+  ok(`${id}: ...και κόβει την επομένη της`, !!r?.validTo && statusOf(r, shift(r.validTo, 1)) === 'expired');
   ok(`${id}: πηγή με σύνδεσμο https`, !!r && /^https:\/\//.test(r.source));
 }
 
