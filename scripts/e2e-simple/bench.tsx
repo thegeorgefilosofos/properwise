@@ -14,6 +14,7 @@
 import { createRoot } from 'react-dom/client';
 import { useState } from 'react';
 import AddPropertyWizard from '@/app/dashboard/components/AddPropertyWizard';
+import { ConfirmHost } from '@/components/ConfirmDialog';
 import { writeStatus, type PropertyStatus } from '@/lib/property/status';
 
 /**
@@ -66,4 +67,4 @@ function Bench() {
   );
 }
 
-createRoot(document.body.appendChild(document.createElement('div'))).render(<Bench />);
+createRoot(document.body.appendChild(document.createElement('div'))).render(<><Bench /><ConfirmHost /></>);
