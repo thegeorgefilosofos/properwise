@@ -13,6 +13,9 @@ import { createClient } from '@/lib/supabase/client'
 import { hardNavigate } from '@/lib/core/navigate'
 import * as propertyStore from '@/lib/data/properties'
 import * as calendarStore from '@/lib/data/calendar'
+import * as settingsStore from '@/lib/data/settings'
+import { enfiaCarrySettings, type EnfiaCarry } from '@/lib/tools/enfiaCarry'
+import { athensToday } from '@/lib/core/time'
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing'
 import * as pushDevices from '@/lib/data/pushSubscriptions'
@@ -128,6 +131,9 @@ export function useDashboard() {
   const [startCollapsed, setStartCollapsed] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [scanAfterAdd, setScanAfterAdd] = useState(false);// «Σάρωση εγγράφου» της υποδοχής: σάρωση μόλις αποθηκευτεί το ακίνητο
+  // Η εκτίμηση του δημόσιου υπολογιστή ΕΝΦΙΑ που ήρθε μαζί με την εγγραφή
+  // (lib/tools/enfiaCarry.ts). Ζει ώσπου να αποθηκευτεί ή να κλείσει ο οδηγός.
+  const [enfiaCarry, setEnfiaCarry] = useState<EnfiaCarry | null>(LAUNCH.enfia);
   const [plan, setPlan] = useState<string>('free');       // τρέχον πακέτο συνδρομής (billing_profiles)
   const [compPlan, setCompPlan] = useState<string|null>(null);   // δωρεάν πρόσβαση: επίπεδο (π.χ. από referral)
   const [compUntil, setCompUntil] = useState<string|null>(null); // δωρεάν πρόσβαση: λήξη (ISO)
@@ -397,7 +403,16 @@ export function useDashboard() {
         // και το `|| 0` έδειχνε το καλωσόρισμα πρώτης χρήσης σε ιδιοκτήτη με
         // ακίνητα. Ούτε το «δεν το έχει δει» το ξέρουμε όταν η πρόοδος δεν
         // διαβάστηκε. Μόνο μετρημένο μηδέν το ανοίγει.
-        if (!obErr && !countErr && !ob?.welcomed && count === 0) setShowWelcome(true);
+        //
+        // ΜΕ ΤΗΝ ΕΚΤΙΜΗΣΗ ΤΟΥ ΥΠΟΛΟΓΙΣΤΗ Ο ΟΔΗΓΟΣ ΑΝΟΙΓΕΙ ΚΑΤΕΥΘΕΙΑΝ. Ο επισκέπτης
+        // μόλις έγραψε τα στοιχεία του ακινήτου του· το καλωσόρισμα θα τον ρωτούσε
+        // «από πού ξεκινάς» για κάτι που έχει ήδη ξεκινήσει. Μόνο σε λογαριασμό
+        // χωρίς ακίνητα: όποιος έχει ήδη, δεν ανοίγει οδηγό που δεν ζήτησε.
+        if (LAUNCH.enfia && !countErr && count === 0) openWizard('other');
+        else {
+          setEnfiaCarry(null);
+          if (!obErr && !countErr && !ob?.welcomed && count === 0) setShowWelcome(true);
+        }
         // Σταδιακή αποκάλυψη: τι έχει ήδη ανοίξει + τι δικαιολογούν τα δεδομένα.
         //
         // ΚΡΙΣΙΜΟ: το supabase-js ΔΕΝ πετά εξαίρεση σε σφάλμα ερωτήματος — γυρίζει
@@ -456,6 +471,31 @@ export function useDashboard() {
   const tryAddProperty = (from: WizardFrom = 'other') => {
     if (canAddProperty(ent, properties.length)) openWizard(from);
     else setShowUpgrade(true);
+  };
+
+  // ── Η ΕΚΤΙΜΗΣΗ ΤΟΥ ΥΠΟΛΟΓΙΣΤΗ ΓΙΝΕΤΑΙ ΡΥΘΜΙΣΕΙΣ ΕΝΦΙΑ ΤΟΥ ΝΕΟΥ ΑΚΙΝΗΤΟΥ ──
+  // Καλείται ΠΡΙΝ από τη φόρτωση της λίστας που επιλέγει το νέο ακίνητο: η
+  // Επισκόπηση διαβάζει τις ρυθμίσεις μία φορά, μόλις ανοίξει· αν τις έβρισκε
+  // άδειες θα έδειχνε «χωρίς ΕΝΦΙΑ» ως την επόμενη φόρτωση. Τι γράφεται και πότε
+  // ΔΕΝ γράφεται τίποτα το κρίνει το `enfiaCarrySettings`: μόνο ό,τι ξαναβγάζει
+  // ακριβώς το ποσό που είδε ο επισκέπτης.
+  const dropEnfiaCarry = () => setEnfiaCarry(null);
+  const commitEnfiaCarry = async (propertyId: string | null) => {
+    const carry = enfiaCarry;
+    setEnfiaCarry(null);
+    if (!carry || !propertyId || !user) return;
+    // Τα τετραγωνικά και το ποσοστό ΟΠΩΣ ΑΠΟΘΗΚΕΥΤΗΚΑΝ: αν τα άλλαξε στον οδηγό,
+    // η εκτίμηση περιγράφει άλλο ακίνητο και δεν γράφεται. Αποτυχία ανάγνωσης
+    // δεν σταματά τη ροή: το ακίνητο υπάρχει, απλώς χωρίς την εκτίμηση.
+    let facts: { sqm: number | null; ownership: number | null } | null = null;
+    try {
+      facts = await propertyStore.one<{ sqm: number | null; ownership: number | null }>(supabase, propertyId, 'sqm,ownership', user.id);
+    } catch { return; }
+    if (!facts) return;
+    const data = enfiaCarrySettings(carry.inputs, facts, Number(athensToday().slice(0, 4)));
+    if (!data) return;
+    await saved('Η εκτίμηση ΕΝΦΙΑ του υπολογιστή δεν αποθηκεύτηκε στο ακίνητο',
+      settingsStore.put(supabase, propertyId, user.id, 'services', data));
   };
 
   const updateStatus = async (status: PropertyStatus) => {
@@ -588,6 +628,6 @@ export function useDashboard() {
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
     setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, openWizard, updateStatus, deleteProperty,
-    scanBusy, setScanBusy, closeQuickAdd, signOut,
+    scanBusy, setScanBusy, closeQuickAdd, signOut, enfiaCarry, dropEnfiaCarry, commitEnfiaCarry,
   }
 }

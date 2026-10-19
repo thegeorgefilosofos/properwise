@@ -94,5 +94,36 @@ ok('αφαίρεση ακινήτου → εγγραφή', shouldPush(L('a', 'p'
   ok('άγνωστη ενέργεια δεν ανοίγει παράθυρο', !s7.scan && s7.consumed)
 }
 
+// ── Η ΕΚΤΙΜΗΣΗ ΤΟΥ ΥΠΟΛΟΓΙΣΤΗ ΕΝΦΙΑ ΑΠΟ ΤΗΝ ΕΓΓΡΑΦΗ ──────────────────────────
+// Το «Ξεκίνα δωρεάν» του /ypologismos-enfia γράφει «/dashboard?action=enfia&…».
+// Ο πίνακας κρατά ΜΟΝΟ τα κλειδιά του υπολογιστή, ΜΟΝΟ με έγκυρες τιμές και
+// καθαρίζει τη διεύθυνση από αυτά, ώστε η ανανέωση να μην ξανανοίγει τον οδηγό.
+{
+  const KNOWN = ['overview', 'finances']
+  const e1 = readLaunchShortcut('?action=enfia&tm=120&zoni=2100&orofos=third&palaiotita=y10_14&pososto=50', '', KNOWN)
+  ok('η εκτίμηση φτάνει', !!e1.enfia && e1.enfia.inputs.sqm === 120 && e1.enfia.inputs.zone === '1501_2500'
+     && e1.enfia.values.orofos === 'third' && e1.enfia.inputs.own === 50)
+  ok('…και η διεύθυνση καθαρίζει από τα κλειδιά της', e1.consumed && e1.search === '' && !e1.scan && e1.hash === null)
+
+  const e2 = readLaunchShortcut('?action=enfia', '', KNOWN)
+  ok('χωρίς πεδία → οι προεπιλογές του υπολογιστή', e2.enfia?.inputs.sqm === 85 && e2.enfia?.inputs.zone === '751_1500')
+
+  const e3 = readLaunchShortcut('?utm_source=x&action=enfia&tm=90&next=%2F%2Fkako.gr&plan=pro', '', KNOWN)
+  ok('ξένα κλειδιά δεν μπαίνουν στο φορτίο', !!e3.enfia && Object.keys(e3.enfia.values).join() === 'tm,zoni,orofos,palaiotita,pososto,voith')
+  ok('…και μένουν στη διεύθυνση όπως κάθε ξένο κλειδί', e3.search === '?utm_source=x&next=%2F%2Fkako.gr&plan=pro')
+
+  for (const bad of ['tm=%2F%2Fkako.gr', 'tm=https%3A%2F%2Fkako.gr', 'tm=javascript%3Aalert(1)', 'orofos=constructor',
+    'palaiotita=__proto__', 'pososto=150', 'zoni=abc', 'tm=-5']) {
+    const e = readLaunchShortcut(`?action=enfia&${bad}`, '', KNOWN)
+    ok(`άκυρη τιμή (${bad}) → καμία εκτίμηση`, e.enfia === null)
+    ok(`…αλλά η διεύθυνση καθαρίζει (${bad})`, e.consumed && e.search === '')
+  }
+
+  const e4 = readLaunchShortcut('?action=scan&tm=90', '', KNOWN)
+  ok('χωρίς action=enfia τα πεδία δεν διαβάζονται', e4.enfia === null && e4.scan && e4.search === '?tm=90')
+  ok('κεφαλαία δεν είναι η ενέργεια', readLaunchShortcut('?action=ENFIA&tm=90', '', KNOWN).enfia === null)
+  ok('συντόμευση χωρίς ενέργεια ΕΝΦΙΑ: καμία εκτίμηση', readLaunchShortcut('?tab=finances', '', KNOWN).enfia === null)
+}
+
 console.log(fail === 0 ? `✓ navHistory: ${pass} έλεγχοι πέρασαν` : `✗ navHistory: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

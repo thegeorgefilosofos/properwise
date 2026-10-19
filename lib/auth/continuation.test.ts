@@ -131,3 +131,26 @@ test('ο διαμεσολαβητής στέλνει στη σύνδεση με 
   // Ο γύρος κλείνει: η σύνδεση διαβάζει ακριβώς τη σελίδα που ζητήθηκε.
   assert.equal(continuation(loginSearch('/accountant/workspace', '')), '/accountant/workspace');
 });
+
+test('η εκτίμηση του υπολογιστή ΕΝΦΙΑ περνά, μόνο με τα κλειδιά του', () => {
+  // Το «Ξεκίνα δωρεάν» του /ypologismos-enfia (lib/tools/enfiaCarry.ts).
+  const path = '/dashboard?action=enfia&tm=120&zoni=2100&orofos=third&palaiotita=y10_14&pososto=50&voith=6';
+  assert.equal(continuation(q(`next=${encodeURIComponent(path)}`)), path);
+  assert.equal(carried(q(`next=${encodeURIComponent(path)}`)), `?next=${encodeURIComponent(path)}`);
+  // Ο διαμεσολαβητής κρατά τα πεδία του υπολογιστή και τίποτα άλλο.
+  assert.equal(
+    loginSearch('/dashboard', '?action=enfia&tm=120&zoni=2100&code=SECRET&next=%2F%2Fkako.gr&evil=1'),
+    `?next=${encodeURIComponent('/dashboard?action=enfia&tm=120&zoni=2100')}`,
+  );
+  assert.equal(continuation(loginSearch('/dashboard', '?action=enfia&tm=120')), '/dashboard?action=enfia&tm=120');
+});
+
+test('ξένος τόπος με όψη εκτίμησης ΕΝΦΙΑ γυρίζει στον πίνακα', () => {
+  const tail = '/dashboard?action=enfia&tm=90';
+  for (const bad of [
+    `//kako.gr${tail}`, `https://kako.gr${tail}`, `javascript:alert(1)//${tail}`, `/\\kako.gr${tail}`,
+    `/.//kako.gr${tail}`, `%2F%2Fkako.gr${tail}`, `/%2F%2Fkako.gr${tail}`,
+  ]) {
+    assert.equal(continuation(q(`next=${encodeURIComponent(bad)}`)), HOME, bad);
+  }
+});

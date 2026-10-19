@@ -47,6 +47,7 @@ import FeatureLock, { LockBadge } from './components/FeatureLock';
 import { PLANS } from '@/lib/billing/plans';
 import { isTabAllowed, isTabPurchasable, canAddProperty, hasFeature, planAtLeast, paidPlanForProfile, requiredPlanForFeature } from '@/lib/billing/entitlements';
 import { hasAssistant } from '@/lib/billing/aiLimits';
+import { enfiaCarryWizard } from '@/lib/tools/enfiaCarry';
 import { isTabVisible, hiddenTabCount } from '@/lib/nav/disclosure';
 import { askAssistant } from './components/AssistantStrip';
 import {
@@ -70,7 +71,7 @@ export default function Dashboard() {
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
     setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, openWizard, updateStatus, deleteProperty,
-    scanBusy, setScanBusy, closeQuickAdd, signOut,
+    scanBusy, setScanBusy, closeQuickAdd, signOut, enfiaCarry, dropEnfiaCarry, commitEnfiaCarry,
   } = useDashboard()
 
   // Ο χειροποίητος κύκλος είχε ΔΙΚΟ ΤΟΥ inline <style> με @keyframes spin — ακριβές
@@ -907,8 +908,16 @@ export default function Dashboard() {
           κουμπί καθαρισμού που έψαχνε λάθος όνομα και δεν εμφανιζόταν ποτέ. */}
       <DemoPreview open={showPreview} onClose={()=>setShowPreview(false)}
         onAddProperty={()=>{ setShowPreview(false); tryAddProperty(); }} />
-      {showAddModal&&user&&<AddPropertyWizard userId={user.id} onClose={()=>{setShowAddModal(false);setScanAfterAdd(false);}} onSaved={async(id)=>{
+      {/* Ο ΟΔΗΓΟΣ ΑΝΟΙΓΕΙ ΜΕ ΟΣΑ ΕΓΡΑΨΕ Ο ΕΠΙΣΚΕΠΤΗΣ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ ΕΝΦΙΑ.
+          Τετραγωνικά, ποσοστό, όροφος (όπου η αντιστοίχιση είναι μία) και
+          βοηθητικοί χώροι. Η εκτίμηση γράφεται στις ρυθμίσεις ΕΝΦΙΑ του νέου
+          ακινήτου ΠΡΙΝ το επιλέξει η λίστα, ώστε η Επισκόπηση να ανοίξει με το
+          ίδιο ποσό (useDashboard, commitEnfiaCarry). */}
+      {showAddModal&&user&&<AddPropertyWizard userId={user.id}
+        initial={enfiaCarry ? enfiaCarryWizard(enfiaCarry.inputs) : undefined}
+        onClose={()=>{setShowAddModal(false);setScanAfterAdd(false);dropEnfiaCarry();}} onSaved={async(id)=>{
         setShowAddModal(false);
+        await commitEnfiaCarry(id);
         const list = await fetchProperties(user.id);
         const added = scanAfterAdd && id ? list?.find(p => p.id === id) : undefined;
         setScanAfterAdd(false);

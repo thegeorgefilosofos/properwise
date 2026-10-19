@@ -20,6 +20,7 @@ import { fillOnlyEmpty, firstFilled } from '@/lib/core/prefill';
 import { fieldPlacement, PROPERTY_FIELDS, OBJ_VALUE_WHOLE, type FieldContext, type Placement } from '@/lib/property/fields';
 import { failed } from '@/lib/core/dbError';
 import { PEA_CLASSES } from '@/lib/property/pea';
+import type { EnfiaWizardInitial } from '@/lib/tools/enfiaCarry';
 
 // Η ενεργειακή κλάση (ΠΕΑ) ζει στο lib/property/pea.ts: τη γράφει και η σάρωση
 // του πιστοποιητικού, με το ίδιο λεξιλόγιο.
@@ -308,8 +309,15 @@ function StepBody({ rows, place, after }: {
   );
 }
 
-export default function AddPropertyWizard({ userId, onClose, onSaved, existing, focus }: {
+export default function AddPropertyWizard({ userId, onClose, onSaved, existing, focus, initial }: {
   userId: string; onClose: () => void; onSaved: (propertyId: string | null) => void; existing?: ExistingProperty | null;
+  /**
+   * Ο,ΤΙ ΕΓΡΑΨΕ ΗΔΗ Ο ΕΠΙΣΚΕΠΤΗΣ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ ΕΝΦΙΑ (lib/tools/enfiaCarry.ts):
+   * τετραγωνικά, ποσοστό, όροφος, βοηθητικοί χώροι. Μόνο σε νέο ακίνητο· στην
+   * επεξεργασία μιλά το ίδιο το ακίνητο. Ο όροφος περνά μόνο αν είναι μία από
+   * τις επιλογές του οδηγού.
+   */
+  initial?: EnfiaWizardInitial;
   /**
    * ΑΠΟ ΠΟΥ ΑΝΟΙΓΕΙ Ο ΟΔΗΓΟΣ. Η Λογιστική ζητά το ΑΦΜ του ιδιοκτήτη· με
    * `owner_afm` ο οδηγός ανοίγει στο βήμα «Επαφές» με τον κέρσορα εκεί, αντί
@@ -319,6 +327,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
 }) {
   const supabase = createClient();
   const isEdit = !!existing?.id;
+  const seed = existing ? undefined : initial;
   const focusAfm = isEdit && focus === 'owner_afm';
   const [step, setStep] = useState(focusAfm ? STEPS.indexOf('Επαφές') : 0); // 0..3
   const [saving, setSaving] = useState(false);
@@ -351,8 +360,8 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   const [address, setAddress] = useState(existing?.address || '');
   const [postalCode, setPostalCode] = useState(existing?.postal_code || '');
   const [atak, setAtak] = useState(existing?.atak || '');
-  const [sqm, setSqm] = useState(s(existing?.sqm));
-  const [floor, setFloor] = useState(s(existing?.floor));
+  const [sqm, setSqm] = useState(s(existing?.sqm) || seed?.sqm || '');
+  const [floor, setFloor] = useState(s(existing?.floor) || (seed?.floor && FLOOR_OPTS.includes(seed.floor) ? seed.floor : ''));
   const [yearBuilt, setYearBuilt] = useState(s(existing?.year_built));
 
   const [value, setValue] = useState(s(existing?.value));
@@ -368,7 +377,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   const [rent, setRent] = useState(() =>
     s(existing?.target_rent)
   );
-  const [ownership, setOwnership] = useState(s(existing?.ownership) || '100');
+  const [ownership, setOwnership] = useState(s(existing?.ownership) || seed?.ownership || '100');
   // Συνιδιοκτήτες: όταν το ποσοστό < 100%, ζητάμε πλήθος (1–99) και ονόματα.
   // Η στήλη κρατά αντικείμενα {name, afm, pct, address}· ο οδηγός αλλάζει μόνο
   // ονόματα και τα υπόλοιπα (από την Κατανομή σε συνιδιοκτήτες) ξαναδένονται
@@ -389,7 +398,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   const [peaClass, setPeaClass] = useState(existing?.pea_class || '');
   const [heating, setHeating] = useState(normalizeHeating(existing?.heating));
   const [parking, setParking] = useState(s(existing?.parking_spaces));
-  const [storageSqm, setStorageSqm] = useState(s(existing?.storage_sqm));
+  const [storageSqm, setStorageSqm] = useState(s(existing?.storage_sqm) || seed?.storageSqm || '');
   // Ε2 στήλη 18: ο αριθμός παροχής ρεύματος, όπως τον γράφει ο χρήστης.
   const [powerSupply, setPowerSupply] = useState(existing?.power_supply_no || '');
   const powerCheck = cleanDigits(powerSupply);

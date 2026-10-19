@@ -128,6 +128,16 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   const half = await read()
   ok('50% ιδιοκτησία μειώνει το ποσό', half < 1026)
 
+  // ΤΟ «ΞΕΚΙΝΑ» ΚΟΥΒΑΛΑ ΤΗΝ ΕΚΤΙΜΗΣΗ (lib/tools/enfiaCarry.ts). Ηταν σκέτο
+  // «/signup»: ο επισκέπτης έφτιαχνε λογαριασμό και ο οδηγός ρωτούσε από την
+  // αρχή όσα μόλις είχε γράψει εδώ.
+  const cta = await p.locator('a[href^="/signup?next="]').first().getAttribute('href').catch(() => null)
+  const next = cta ? new URL(cta, B).searchParams.get('next') || '' : ''
+  const carried = new URLSearchParams(next.split('?')[1] || '')
+  ok('το «Ξεκίνα» συνεχίζει στον πίνακα με την εκτίμηση', next.startsWith('/dashboard?action=enfia'))
+  ok('…με τα πεδία όπως είναι τώρα', carried.get('tm') === '120' && carried.get('zoni') === '3200'
+     && carried.get('orofos') === 'ground' && carried.get('palaiotita') === 'y0_4' && carried.get('pososto') === '50')
+
   await inputs.nth(1).fill('0'); await p.waitForTimeout(300)
   const txt = await p.locator('body').innerText().then(plain)
   ok('χωρίς τιμή ζώνης δεν δείχνει ψεύτικο αποτέλεσμα', txt.includes('Συμπλήρωσε'))

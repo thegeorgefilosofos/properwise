@@ -1,6 +1,6 @@
 /**
- * Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. Ζουν σε
- * δικό τους αρχείο ώστε να τα διαβάζουν και οι εικόνες του Instagram
- * (scripts/marketing/seires.ts): το παράδειγμα είναι αυτό που ανοίγει ο σύνδεσμος.
+ * Τα πεδία του υπολογιστή, όπως ταξιδεύουν στη διεύθυνση. Η μία πηγή τους είναι
+ * το lib/tools/enfiaSpec.ts: τα διαβάζουν και οι εικόνες του Instagram
+ * (scripts/marketing/seires.ts) και η συνέχεια της εγγραφής προς τον πίνακα.
  */
-export const SPEC = { tm: '85', zoni: '1400', orofos: 'second', palaiotita: 'y26_plus', pososto: '100', voith: '' } as const;
+export { SPEC } from '@/lib/tools/enfiaSpec';

@@ -32,6 +32,7 @@ import { TRIAL_DAYS } from '@/lib/billing/plans';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { hy } from '@/components/Hyphen';
 import PublicMenu, { type MenuGroup } from './PublicMenu';
+import { ToolCtaLink } from './ToolCtaLink';
 import { asOfDate } from '@/lib/facts/prices';
 
 /**
@@ -474,7 +475,12 @@ export function ToolSources({ kind, checked, updated }: {
 // έφερνε στο πακέτο τους αυτό το αρχείο μαζί με όσα θέλει η `TRIAL_LINE` στην
 // αρχικοποίησή της (ταυτότητα βοηθού, πακέτα χρέωσης) και το λογότυπο. Από τη
 // σελίδα ο περιηγητής παίρνει μόνο το HTML της, στην ίδια θέση.
-export function ToolCta({ title, body }: { title: string; body: ReactNode }) {
+/**
+ * @param href Πού πηγαίνει το «Ξεκίνα δωρεάν». Προεπιλογή η εγγραφή· ο
+ *   υπολογιστής που τυλίγει το `ToolCta` μπορεί να τη γράψει από πάνω με τα
+ *   πεδία του (`ToolCtaHref`, app/ToolCtaLink.tsx).
+ */
+export function ToolCta({ title, body, href = '/signup' }: { title: string; body: ReactNode; href?: string }) {
   return (
     <div className="po-noprint" style={{
       marginTop: 20, padding: 'clamp(16px, 4vw, 22px)', borderRadius: T.radius.card,
@@ -492,13 +498,13 @@ export function ToolCta({ title, body }: { title: string; body: ReactNode }) {
           {TRIAL_LINE}
         </p>
       </div>
-      <Link href="/signup" className="lp-cta lp-primary" style={{
+      <ToolCtaLink href={href} className="lp-cta lp-primary" style={{
         display: 'inline-flex', alignItems: 'center', height: T.h.lg, padding: '0 24px',
         borderRadius: T.radius.pill, fontSize: 14, fontWeight: 700,
         textDecoration: 'none', whiteSpace: 'nowrap',
       }}>
         Ξεκίνα δωρεάν
-      </Link>
+      </ToolCtaLink>
     </div>
   );
 }

@@ -30,6 +30,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { safeNext, HOME } from './redirect'
 import { planFromParam, cycleFromParam, checkoutLanding } from '../billing/entitlements'
+import { SPEC as ENFIA_SPEC } from '../tools/enfiaSpec'
 
 type Source = URLSearchParams | string
 
@@ -93,12 +94,15 @@ export function carried(src: Source): string {
  * ΟΙ ΜΟΝΕΣ ΠΑΡΑΜΕΤΡΟΙ ΠΟΥ ΤΑΞΙΔΕΥΟΥΝ ΜΕΣΑ ΣΕ «next». Επιτρεπτές, όχι
  * απαγορευμένες: ένας κατάλογος απαγορεύσεων ξεχνά πάντα το επόμενο όνομα
  * διακριτικού («state», «session_id», «jwt», «sig»…). Ο πίνακας διαβάζει από
- * τη διεύθυνση μόνο «tab» και «action» (lib/nav/history.ts readLaunchShortcut)
- * και αυτές είναι οι παράμετροι των πραγματικών συνδέσμων: το ημερολόγιο, ο
- * χώρος του λογιστή και οι συντομεύσεις του manifest. Το «checkout=ok» μένει
+ * τη διεύθυνση «tab» και «action» (lib/nav/history.ts readLaunchShortcut) και
+ * με το «action=enfia» τα πεδία του δημόσιου υπολογιστή ΕΝΦΙΑ, ΜΟΝΟ τα κλειδιά
+ * του SPEC του (lib/tools/enfiaSpec.ts· οι τιμές ελέγχονται εκεί που
+ * διαβάζονται, lib/tools/enfiaCarry.ts). Αυτές είναι οι παράμετροι των
+ * πραγματικών συνδέσμων: το ημερολόγιο, ο χώρος του λογιστή, οι συντομεύσεις
+ * του manifest και το «Ξεκίνα» του υπολογιστή ΕΝΦΙΑ. Το «checkout=ok» μένει
  * έξω: δεν το διαβάζει κανείς και μια πληρωμή δεν «ξαναγίνεται» μετά τη σύνδεση.
  */
-const CARRIED_KEYS = ['tab', 'action']
+const CARRIED_KEYS = ['tab', 'action', ...Object.keys(ENFIA_SPEC)]
 
 /**
  * Η ΔΙΕΥΘΥΝΣΗ ΤΗΣ ΣΥΝΔΕΣΗΣ ΟΤΑΝ Ο ΔΙΑΜΕΣΟΛΑΒΗΤΗΣ ΚΛΕΙΝΕΙ ΤΗΝ ΠΟΡΤΑ.
