@@ -25,7 +25,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { T, Btn, IconBtn, LinkBtn, EmptyState, fe } from '@/components/Theme';
 import { feSigned, grDate } from '@/lib/core/format';
 import { monthNom, monthShort, monthAcc } from '@/lib/core/months';
-import type { Forecast, ForecastLine, ForecastMonth } from '@/lib/home/forecast12';
+import type { Forecast, ForecastGap, ForecastLine, ForecastMonth } from '@/lib/home/forecast12';
 import { track, PRODUCT_EVENTS, forecastProps } from '@/lib/analytics/events';
 import type { createClient } from '@/lib/supabase/client';
 
@@ -33,6 +33,9 @@ type SupaClient = ReturnType<typeof createClient>;
 
 const monthTitle = (m: ForecastMonth) => `${monthNom(m.month - 1)} ${m.year}`;
 const signed = (l: Pick<ForecastLine, 'amount' | 'dir'>) => (l.dir === 'in' ? `+${fe(l.amount)}` : feSigned(-l.amount));
+
+/** Η λέξη στη θέση του ποσού, για ό,τι δεν ξέρουμε. Ποτέ μηδέν. */
+const GAP_WORD: Record<ForecastGap['kind'], string> = { vacancy: 'κενό;', missing: 'λείπει', unrecorded: 'άγνωστο', owed: 'οφείλεται' };
 
 // Οι ροές που θέλουν μήνυμα όταν η πρόβλεψη είναι κενή: πού γράφεται καθεμία.
 const EMPTY_STEPS: { tab: string; label: string }[] = [
@@ -89,9 +92,11 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   // Το ύψος της εισροής και της εκροής μετριέται με τον ίδιο χάρακα: η πάνω
   // ζώνη παίρνει όσο ύψος χρειάζεται ο μεγαλύτερος μήνας εισροών, η κάτω όσο ο
   // μεγαλύτερος μήνας εκροών. Το «κενό;» μετράει με το ενοίκιο που λείπει.
+  // Το ύψος του άδειου πλαισίου είναι ΕΝΑ μίσθωμα (`level` από τη μηχανή), όχι η
+  // μεγαλύτερη γραμμή ενοικίου: μια τριμηνιαία δόση θα το έκανε τριπλάσιο.
   const vacancyOf = (m: ForecastMonth) => m.gaps.find(g => g.kind === 'vacancy');
-  const rentLevel = Math.max(0, ...months.flatMap(m => m.lines.filter(l => l.kind === 'rent').map(l => l.amount)));
-  const maxUp = Math.max(0, ...months.map(m => Math.max(m.inActual + m.inExpected, vacancyOf(m) ? rentLevel : 0)));
+  const vacLevel = (m: ForecastMonth) => vacancyOf(m)?.level ?? 0;
+  const maxUp = Math.max(0, ...months.map(m => Math.max(m.inActual + m.inExpected, vacLevel(m))));
   const maxDown = Math.max(0, ...months.map(m => m.outActual + m.outExpected));
   const span = maxUp + maxDown || 1;
   // ΚΛΑΣΜΑ, ΟΧΙ ΠΟΣΟΣΤΟ ΣΕ ΚΕΙΜΕΝΟ. Το ύψος περνά ως μεταβλητή (`--fc-share`, 0 ως 1) και
@@ -114,7 +119,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
       <div className="fc-body">
         <EmptyState title="Καμία προγραμματισμένη χρέωση ακόμη"
           hint="Με τη μίσθωση, το δάνειο και τον ΕΝΦΙΑ, εδώ φαίνεται από τώρα ποιος μήνας θα είναι ο πιο σφιχτός και γιατί."
-          action={steps.length > 0 ? <>{steps.map(s => <Btn key={s.tab} onClick={() => onNavigate(s.tab)}>{s.label}</Btn>)}</> : undefined} />
+          action={steps.length > 0 ? <div className="fc-empty-acts">{steps.map(s => <Btn key={s.tab} onClick={() => onNavigate(s.tab)}>{s.label}</Btn>)}</div> : undefined} />
       </div>
       ) : (
       <div className="fc-body">
@@ -150,6 +155,9 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
             <li><span className="sw sw-out" aria-hidden />Εκροές</li>
             <li><span className="sw sw-exp" aria-hidden />Αναμενόμενο</li>
             {months.some(x => vacancyOf(x)) && <li><span className="sw sw-vac" aria-hidden />κενό; μετά τη λήξη</li>}
+            {/* Το σημάδι του «λείπει» κάτω από τις εκροές μοιάζει με αναμενόμενο ποσό·
+                χωρίς δική του γραμμή στο υπόμνημα διαβαζόταν ως τέτοιο. */}
+            {months.some(x => x.gaps.some(g => g.kind === 'missing' && g.flow !== 'rent')) && <li><span className="sw sw-miss" aria-hidden />λείπει ποσό</li>}
           </ul>
         </div>
 
@@ -159,14 +167,14 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
             <span className="fc-axis" style={frac(maxUp, span)} aria-hidden />
             {months.map((x, i) => {
               const vac = vacancyOf(x);
-              const missing = x.gaps.some(g => g.kind === 'missing');
+              const missing = x.gaps.some(g => g.kind === 'missing' && g.flow !== 'rent');
               return (
                 <div key={x.ym} className="fc-col" data-sel={i === sel ? '' : undefined} data-tight={tightest?.index === i ? '' : undefined}
                   title={`${monthTitle(x)}: εισροές ${fe(x.inActual + x.inExpected)}, εκροές ${fe(x.outActual + x.outExpected)}`}>
                   <div className="fc-up" style={frac(maxUp, span)}>
                     {x.inActual > 0 && <span className="fc-bar in" style={frac(x.inActual, maxUp)} />}
                     {x.inExpected > 0 && <span className="fc-bar in exp" style={frac(x.inExpected, maxUp)} />}
-                    {vac && x.inActual + x.inExpected === 0 && <span className="fc-vac" style={frac(rentLevel, maxUp)} />}
+                    {vac && x.inActual + x.inExpected === 0 && <span className="fc-vac" style={frac(vacLevel(x), maxUp)} />}
                   </div>
                   <div className="fc-down" style={frac(maxDown, span)}>
                     {x.outActual > 0 && <span className="fc-bar out" style={frac(x.outActual, maxDown)} />}
@@ -179,8 +187,8 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
           </div>
           <div className="fc-labels" aria-hidden>
             {months.map((x, i) => (
-              <span key={x.ym} className="fc-lab" data-sel={i === sel ? '' : undefined}>
-                {monthShort(x.month - 1)}
+              <span key={x.ym} className="fc-lab" data-sel={i === sel ? '' : undefined} data-odd={i % 2 ? '' : undefined}>
+                <span className="fc-lab-m">{monthShort(x.month - 1)}</span>
                 {(i === 0 || x.month === 1) && <span className="fc-year">{x.year}</span>}
               </span>
             ))}
@@ -223,7 +231,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
                   <span className="fc-line-label">{g.label}</span>
                   <span className="fc-line-src">{g.hint}</span>
                 </span>
-                <span className="fc-line-amt fc-line-word">{g.kind === 'vacancy' ? 'κενό;' : 'λείπει'}</span>
+                <span className="fc-line-amt fc-line-word">{GAP_WORD[g.kind]}</span>
               </li>
             ))}
           </ul>
@@ -256,7 +264,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
                 ))}
               </tbody>
             </table>
-            {forecast.gapCount > 0 && <p className="fc-note">* Μήνας με «κενό;» ή ποσό που λείπει.</p>}
+            {forecast.gapCount > 0 && <p className="fc-note">* Μήνας με «κενό;», ποσό που λείπει ή ενοίκιο που δεν έχει μπει ακόμη.</p>}
           </div>
         )}
       </div>
@@ -284,6 +292,8 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   }
   .fc-sub { font-family: ${T.font.sans}; font-size: 12px; color: var(--text-tertiary); min-width: 0; }
   .fc-body { padding: 16px 18px 12px; }
+  /* Η συμπαγής EmptyState βάζει τη δράση σε σκέτο div: τρία κουμπιά κολλούσαν. */
+  .fc-empty-acts { display: flex; flex-wrap: wrap; gap: 8px; }
 
   .fc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; }
   .fc-lead { min-width: 0; flex: 1 1 320px; }
@@ -317,6 +327,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   .sw-out { background: var(--series-out); }
   .sw-exp { background: color-mix(in srgb, var(--text-tertiary) 14%, transparent); border: 1px dashed var(--text-secondary); }
   .sw-vac { background: transparent; border: 1px dashed var(--text-tertiary); }
+  .sw-miss { background: transparent; border: 1px dashed var(--text-tertiary); border-top: none; border-radius: 0 0 ${T.radius.hair}px ${T.radius.hair}px; }
   .sw-in.sw-exp-of { background: color-mix(in srgb, var(--series-in) 22%, transparent); border: 1px dashed var(--series-in); }
   .sw-out.sw-exp-of { background: color-mix(in srgb, var(--series-out) 22%, transparent); border: 1px dashed var(--series-out); }
 
@@ -414,9 +425,16 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
     .fc-plot { height: 148px; column-gap: 2px; }
     .fc-labels { column-gap: 2px; }
     .fc-month, .fc-net { font-size: 18px; }
-    .fc-why-amt { font-family: ${T.font.num}; font-weight: 600; color: var(--text-primary); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .fc-legend { justify-content: flex-start; gap: 4px 12px; }
+    .fc-legend { justify-content: flex-start; gap: 4px 12px; }
     .fc-col[data-tight]::after { inset: -4px -1px; }
+  }
+  /* ΣΤΑ 320 ΔΩΔΕΚΑ ΕΤΙΚΕΤΕΣ ΔΕΝ ΧΩΡΑΝΕ. Κάθε στήλη είναι 20 εικονοστοιχεία και
+     «Μαΐ Ιουν Ιουλ» κολλούσαν σε μία λέξη. Μένει κάθε δεύτερος μήνας, ο
+     επιλεγμένος πάντα (με κρυμμένους τους γείτονές του, γιατί είναι έντονος) και
+     το έτος όπου αλλάζει. */
+  @media (max-width: 360px) {
+    .fc-lab[data-odd]:not([data-sel]) .fc-lab-m { visibility: hidden; }
+    .fc-lab[data-sel] + .fc-lab .fc-lab-m, .fc-lab:has(+ .fc-lab[data-sel]) .fc-lab-m { visibility: hidden; }
   }
       `}</style>
     </section>

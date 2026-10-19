@@ -12,6 +12,7 @@ import { INCOME_TAX_INSTALMENTS } from '../tax/greekTaxCalendar'
 import { loanInstalment, type LoanRow } from '../loans/shape'
 import { hostPayout } from '../clients/stayAmounts'
 import type { LedgerEntry } from '../expenses/ledger'
+import { instalmentPeriods } from '../rent/frequency'
 
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
@@ -242,6 +243,58 @@ const entry = (o: Partial<LedgerEntry>): LedgerEntry => ({
   // Ισοπαλία: ο νωρίτερος.
   const f = forecast12({ ...base, loans: [fixedLoan] })
   ok('στην ισοπαλία ο νωρίτερος', f.tightest!.index === 1)
+}
+
+// ── ΑΝΤΙΠΑΛΟΣ ΕΛΕΓΧΟΣ 19/10/2026 ─────────────────────────────────────────
+// Κάθε μπλοκ εδώ ήταν λάθος ποσό ή λάθος «πιο σφιχτός μήνας» πριν διορθωθεί.
+{
+  // Τριμηνιαία: η δόση είναι τρία μισθώματα στον πρώτο μήνα της, οι άλλοι δύο
+  // δεν παίρνουν δεύτερο ενοίκιο. Οι περίοδοι από τη γεννήτρια του rent_payments.
+  const f = forecast12({ ...base,
+    lease: { monthlyRent: 500, start: '2025-01-15', end: '2027-05-31', freq: 'quarterly', dueDay: 5 },
+    rentPeriods: [{ amount: 1500, due_date: '2026-10-25', paid: false, period_year: 2026, period_month: 10 }] })
+  const periods = instalmentPeriods({ startISO: '2025-01-15', lastYear: 2027, lastMonth: 5, freq: 'quarterly', dueDay: 5 })
+  const inWindow = periods.filter(p => p.due_date >= TODAY && p.due_date <= '2027-05-31' && !(p.year === 2026 && p.month === 10))
+  const rent = ofKind(f, 'rent')
+  ok('τριμηνιαία: Νοέμβριος και Δεκέμβριος χωρίς δεύτερο ενοίκιο', !f.months[1].lines.length && !f.months[2].lines.length)
+  ok('τριμηνιαία: οι δόσεις στις ημερομηνίες της γεννήτριας',
+    inWindow.every(p => rent.some(l => l.date === p.due_date)))
+  ok('τριμηνιαία: τρία μισθώματα ανά δόση', rent.some(l => l.date === '2027-01-05' && l.amount === 1500))
+  ok('η δόση που περνά τη λήξη μετρά μόνο τους μήνες της μίσθωσης', rent.some(l => l.date === '2027-04-05' && l.amount === 1000))
+  ok('σύνολο ενοικίου = μισθώματα ως τη λήξη', eq(sum(rent.map(l => l.amount)), 500 * 8))
+  ok('«κενό;» με το ύψος ενός μισθώματος, όχι της δόσης',
+    f.months.filter(m => m.gaps.some(g => g.kind === 'vacancy')).every(m => m.gaps[0].level === 500))
+}
+{
+  // Η δόση του τρέχοντος μήνα έληξε χωρίς γραμμή: δεν ξέρουμε, άρα ούτε ποσό
+  // ούτε «πιο σφιχτός μήνας» από έλλειψη καταγραφής.
+  const late: LoanRow = { ...fixedLoan, start_date: '2022-03-28' } // δόση στις 28/10, μετά από σήμερα
+  const f = forecast12({ ...base, lease: { monthlyRent: 650, start: '2024-04-01', end: null, dueDay: 5 }, loans: [late] })
+  ok('ο Οκτώβριος έχει εκροή, άρα θα μπορούσε να κριθεί', f.months[0].outActual > 0)
+  ok('άγνωστη είσπραξη του μήνα: γράφεται ως τέτοια', f.months[0].gaps.some(g => g.kind === 'unrecorded' && g.flow === 'rent'))
+  ok('ο μήνας χωρίς καταγραφή δεν κρίνεται σφιχτός', f.tightest !== null && f.tightest.index !== 0)
+  const g = forecast12({ ...base, lease: { monthlyRent: 650, start: '2024-04-01', end: null, dueDay: 25 } })
+  ok('δόση του μήνα που λήγει αργότερα: μπαίνει με την ημερομηνία της', g.months[0].lines.some(l => l.kind === 'rent' && l.date === '2026-10-25'))
+  const h = forecast12({ ...base, lease: { monthlyRent: 650, start: '1950-01-01', end: null } })
+  ok('πολύ παλιά έναρξη: οι δόσεις φτάνουν ως το τέλος του παραθύρου', h.months[11].lines.some(l => l.kind === 'rent'))
+  const o = forecast12({ ...base, lease: { monthlyRent: 650, start: '2024-04-01', end: null }, loans: [late],
+    rentPeriods: [{ amount: 650, due_date: '2026-10-05', paid: false, period_year: 2026, period_month: 10 }] })
+  ok('ληξιπρόθεσμη του μήνα: «οφείλεται», όχι σφιχτός μήνας', o.months[0].gaps.some(g => g.kind === 'owed') && o.tightest!.index !== 0)
+}
+{
+  // Εκκαθαριστικό με μηδέν ή επιστροφή: σαρωμένο, χωρίς δόσεις, ΟΧΙ «λείπει».
+  const f = forecast12({ ...base, incomeTax: { statements: [{ taxYear: 2025, amount: 0 }], estimate: null } })
+  ok('μηδενικό εκκαθαριστικό: ούτε δόσεις ούτε «λείπει» για το έτος του',
+    !f.months.some(m => m.gaps.some(g => g.label.startsWith('Φόρος εισοδήματος') && g.hint.includes('2025'))) && ofKind(f, 'income_tax').length === 0)
+  ok('το εκκαθαριστικό του τρέχοντος έτους δεν ζητείται πριν εκδοθεί',
+    f.months.flatMap(m => m.gaps).filter(g => g.hint.includes('2026')).every(g => !g.hint.includes('Σάρωσέ')))
+}
+{
+  // Λογαριασμός Οκτωβρίου που λήγει τον Νοέμβριο: ο Νοέμβριος δεν παίρνει και προβολή.
+  const L = (date: string, paid: boolean, due: string | null = null): LedgerEntry => ({ key: date, billId: null, expenseId: date, date, due, title: 'ΔΕΗ', amount: 80, paid, category: 'Ρεύμα', group: null, recurring: true, vendor: 'ΔΕΗ' })
+  const f = forecast12({ ...base, ledger: [L('2026-07-05', true), L('2026-08-05', true), L('2026-09-05', true), L('2026-10-05', false, '2026-11-03')] })
+  ok('μία ΔΕΗ τον Νοέμβριο, όχι δύο', f.months[1].lines.length === 1 && f.months[1].lines[0].date === '2026-11-03')
+  ok('η σειρά συνεχίζει από τον Δεκέμβριο', f.months[2].lines.length === 1 && f.months[2].lines[0].kind === 'recurring')
 }
 
 console.log(fail === 0 ? `✓ forecast12: ${pass} έλεγχοι πέρασαν` : `✗ forecast12: ${fail} απέτυχαν από ${pass + fail}`)

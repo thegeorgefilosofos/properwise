@@ -119,8 +119,11 @@ export async function incomeTaxStatementsWithError(
   const byYear = new Map<number, number>();
   for (const r of rows) {
     const y = incomeTaxYearOf(r.title);
+    // Κενό ποσό σημαίνει «η σάρωση δεν το βρήκε», όχι μηδέν. Μηδέν ή αρνητικό
+    // (επιστροφή) είναι εκκαθαριστικό χωρίς δόσεις και περνά ως τέτοιο.
+    if (r.amount == null || String(r.amount).trim() === '') continue;
     const a = Number(r.amount);
-    if (y && Number.isFinite(a) && a > 0 && !byYear.has(y)) byYear.set(y, a);
+    if (y && Number.isFinite(a) && !byYear.has(y)) byYear.set(y, Math.max(0, a));
   }
   return { statements: [...byYear].map(([taxYear, amount]) => ({ taxYear, amount })), error };
 }

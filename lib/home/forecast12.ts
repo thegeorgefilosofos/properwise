@@ -49,6 +49,7 @@ import { hostPayout, type StayAmountLike } from '@/lib/clients/stayAmounts';
 import { stayTotal } from '@/lib/clients/clients';
 import { roundHalfUp } from '../core/money';
 import { grDate } from '../core/format';
+import { instalmentPeriods, monthsPerInstalment, type PaymentFreq } from '@/lib/rent/frequency';
 
 /** Πόσοι μήνες. Ο τρέχων και οι έντεκα επόμενοι. */
 export const FORECAST_MONTHS = 12;
@@ -78,13 +79,20 @@ export interface ForecastLine {
 
 /**
  * Ό,τι ΔΕΝ ξέρουμε, στη θέση του. `vacancy` = μετά τη λήξη μίσθωσης («κενό;»),
- * `missing` = υπάρχει χρέωση, λείπει το ποσό.
+ * `missing` = υπάρχει χρέωση, λείπει το ποσό, `unrecorded` = η δόση ενοικίου
+ * του τρέχοντος μήνα έληξε και δεν έχει σημειωθεί αν μπήκε, `owed` = έληξε
+ * απλήρωτη και είναι ήδη στο Ταμείο.
  */
 export interface ForecastGap {
-  kind: 'vacancy' | 'missing';
+  kind: 'vacancy' | 'missing' | 'unrecorded' | 'owed';
   flow: FlowKind;
   label: string;
   hint: string;
+  /**
+   * ΜΟΝΟ για το σχέδιο: το μηνιαίο μίσθωμα που θα έλειπε, ώστε το άδειο πλαίσιο
+   * του «κενό;» να έχει το ύψος ενός μήνα. Δεν μπαίνει σε κανένα άθροισμα.
+   */
+  level?: number;
 }
 
 export interface ForecastMonth {
@@ -136,8 +144,14 @@ export interface IncomeTaxStatement {
 export interface ForecastInput {
   /** Σήμερα, Αθήνα, «YYYY-MM-DD». */
   today: string;
-  /** Ο τρέχων μισθωτής. `null` χωρίς μίσθωση. */
-  lease: { monthlyRent: number | null; start: string | null; end: string | null } | null;
+  /**
+   * Ο τρέχων μισθωτής. `null` χωρίς μίσθωση. `freq` και `dueDay` όπως στην
+   * καρτέλα του: μια τριμηνιαία δόση είναι τρία μισθώματα στον πρώτο μήνα της.
+   */
+  lease: {
+    monthlyRent: number | null; start: string | null; end: string | null;
+    freq?: PaymentFreq | string | null; dueDay?: number | null;
+  } | null;
   /** Περίοδοι ενοικίου, πληρωμένες και απλήρωτες. */
   rentPeriods?: readonly RentPeriodLike[];
   /** Διαμονές βραχυχρόνιας. Μετρούν μόνο όσες έχουν άφιξη μέσα στο παράθυρο. */
@@ -227,7 +241,13 @@ export function forecast12(input: ForecastInput): Forecast {
   // ── ΕΝΟΙΚΙΟ ΜΑΚΡΟΧΡΟΝΙΑΣ ──────────────────────────────────────────────
   // Ο ΜΗΝΑΣ ΜΕ ΚΑΤΑΓΡΑΦΗ ΛΕΕΙ ΤΗΝ ΑΛΗΘΕΙΑ ΤΟΥ. Πληρωμένη περίοδος δεν είναι
   // μελλοντικό χρήμα· απλήρωτη μπαίνει με το ποσό και την προθεσμία της. Μήνας
-  // χωρίς καταγραφή παίρνει το μίσθωμα του μισθωτηρίου, μέσα στη διάρκειά του.
+  // χωρίς καταγραφή παίρνει τη δόση του μισθωτηρίου, μέσα στη διάρκειά του.
+  //
+  // ΟΙ ΔΟΣΕΙΣ ΑΠΟ ΤΗ ΓΕΝΝΗΤΡΙΑ ΤΟΥ `rent_payments`, ΟΧΙ ΜΗΝΑ-ΜΗΝΑ. Με μίσθωμα
+  // κάθε μήνα, η τριμηνιαία δόση του Οκτωβρίου (τρία μισθώματα) έπαιρνε δίπλα
+  // της και Νοέμβριο και Δεκέμβριο: δύο μισθώματα που δεν θα έρθουν ποτέ. Το
+  // `instalmentPeriods` (lib/rent/frequency.ts) είναι ο κανόνας που γράφει και
+  // τις δόσεις στη βάση· εδώ απλώς συνεχίζει ως το τέλος του παραθύρου.
   const byMonth = new Map<number, RentPeriodLike[]>();
   for (const p of input.rentPeriods ?? []) {
     if (!p.period_year || !p.period_month) continue;
@@ -239,25 +259,62 @@ export function forecast12(input: ForecastInput): Forecast {
   const monthly = pos(lease?.monthlyRent);
   const leaseStart = isoDay(lease?.start);
   const leaseEnd = isoDay(lease?.end);
+  const freq = (lease?.freq ?? null) as PaymentFreq | null;
+  const step = monthsPerInstalment(freq);
+  // Χωρίς έναρξη, οι δόσεις μετρούν από τον τρέχοντα μήνα. Με έναρξη πολύ πίσω,
+  // η αφετηρία έρχεται κοντά στο παράθυρο με ακέραια βήματα, ώστε η φάση της
+  // τριμηνιαίας να μένει ίδια και ο φρουρός των 600 δόσεων να μην την κόβει.
+  const startIdx = leaseStart ? idxOf(leaseStart) : first;
+  const anchor = `${ymOf(startIdx + Math.max(0, Math.floor((first - startIdx) / step) * step))}-01`;
+  const periods = new Map<number, { months: number; due: string }>();
+  if (lease && monthly) {
+    for (const p of instalmentPeriods({
+      startISO: anchor, lastYear: Math.floor(last / 12), lastMonth: (last % 12) + 1,
+      freq, dueDay: lease.dueDay ?? 1,
+    })) periods.set(p.year * 12 + (p.month - 1), { months: p.months, due: p.due_date });
+  }
+  const endIdx = leaseEnd ? idxOf(leaseEnd) : Infinity;
   for (let idx = first; idx <= last; idx++) {
     const recs = byMonth.get(idx);
     if (recs && recs.length) {
       for (const r of recs) {
         if (r.paid) continue;
         const due = isoDay(r.due_date);
+        if (due && due < today) {
+          // Ληξιπρόθεσμη του τρέχοντος μήνα: τη μετρά το Ταμείο, όχι εδώ. Λέγεται
+          // όμως στη θέση της, ώστε ο μήνας να μη φαίνεται φτωχότερος απ' ό,τι είναι.
+          gapAt(idx, { kind: 'owed', flow: 'rent', label: 'Ενοίκιο', hint: `Έληγε ${grDate(due)}. Φαίνεται στο Ταμείο, πιο πάνω.` });
+          continue;
+        }
         put(idx, { kind: 'rent', label: 'Ενοίκιο', source: 'δόση ενοικίου', amount: pos(r.amount), dir: 'in', certainty: 'actual', date: due });
       }
       continue;
     }
     if (!lease || !monthly) continue;
     if (leaseStart && idx < idxOf(leaseStart)) continue;
-    if (leaseEnd && idx > idxOf(leaseEnd)) {
+    if (idx > endIdx) {
       // Ο μήνας της λήξης εισπράττεται· από τον επόμενο, «κενό;». Μία φορά ανά
       // μήνα, ποτέ ως μηδενικό ενοίκιο.
-      gapAt(idx, { kind: 'vacancy', flow: 'rent', label: 'Ενοίκιο', hint: `Η μίσθωση λήγει ${grDate(leaseEnd)}.` });
+      gapAt(idx, { kind: 'vacancy', flow: 'rent', label: 'Ενοίκιο', hint: `Η μίσθωση λήγει ${grDate(leaseEnd)}.`, level: monthly });
       continue;
     }
-    put(idx, { kind: 'rent', label: 'Ενοίκιο', source: 'μισθωτήριο', amount: monthly, dir: 'in', certainty: 'actual', date: null });
+    const p = periods.get(idx);
+    // Μήνας μέσα σε δόση που ξεκίνησε νωρίτερα (διμηνιαία, τριμηνιαία): ήδη μετρημένος.
+    if (!p) continue;
+    if (idx === first && p.due < today) {
+      // Η ΔΟΣΗ ΤΟΥ ΜΗΝΑ ΕΛΗΞΕ ΚΑΙ ΔΕΝ ΕΧΕΙ ΓΡΑΜΜΗ. Δεν ξέρουμε αν μπήκε: ούτε
+      // ποσό ούτε μηδέν. Χωρίς αυτό, ο τρέχων μήνας έβγαινε «ο πιο σφιχτός»
+      // μόνο επειδή δεν είχε σημειωθεί η είσπραξη.
+      gapAt(idx, { kind: 'unrecorded', flow: 'rent', label: 'Ενοίκιο',
+        hint: `Η δόση έληγε ${grDate(p.due)} και δεν έχει σημειωθεί αν μπήκε. Σημείωσέ τη στον Ενοικιαστή.` });
+      continue;
+    }
+    // Η τελευταία δόση πριν από τη λήξη δεν μετρά μήνες μετά από αυτήν.
+    const months = Math.min(p.months, endIdx - idx + 1);
+    put(idx, {
+      kind: 'rent', label: 'Ενοίκιο', source: step > 1 ? `μισθωτήριο, δόση ${months} μηνών` : 'μισθωτήριο',
+      amount: monthly * months, dir: 'in', certainty: 'actual', date: p.due,
+    });
   }
 
   // ── ΒΡΑΧΥΧΡΟΝΙΑ: ΜΟΝΟ ΚΡΑΤΗΣΕΙΣ ΠΟΥ ΥΠΑΡΧΟΥΝ ────────────────────────────
@@ -308,8 +365,11 @@ export function forecast12(input: ForecastInput): Forecast {
   if (input.incomeTax) {
     const year = +today.slice(0, 4);
     for (const T of [year - 2, year - 1, year]) {
-      const st = input.incomeTax.statements.find(s => s.taxYear === T && s.amount > 0);
+      // ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΜΕ ΜΗΔΕΝ Η ΕΠΙΣΤΡΟΦΗ ΕΙΝΑΙ ΕΚΚΑΘΑΡΙΣΤΙΚΟ. Δεν έχει δόσεις
+      // και δεν «λείπει»· αλλιώς η κάρτα θα ζητούσε να σαρωθεί ξανά.
+      const st = input.incomeTax.statements.find(s => s.taxYear === T && Number.isFinite(s.amount));
       const est = !st && input.incomeTax.estimate?.taxYear === T && input.incomeTax.estimate.amount > 0 ? input.incomeTax.estimate : null;
+      if (st && !(st.amount > 0)) continue;
       if (st || est) {
         const base = (st ?? est) as IncomeTaxStatement;
         for (const i of incomeTaxInstalments(base.amount, T)) {
@@ -326,7 +386,9 @@ export function forecast12(input: ForecastInput): Forecast {
           const date = lastWorkingDayOfMonth(T + 1 + Math.floor(m / 12), m % 12);
           if (date < today) continue;
           gapAt(idxOf(date), { kind: 'missing', flow: 'income_tax', label: `Φόρος εισοδήματος ${i + 1}/${INCOME_TAX_INSTALMENTS}`,
-            hint: `Λείπει το εκκαθαριστικό ${T}. Σάρωσέ το για να μπει το ποσό.` });
+            // Το εκκαθαριστικό του τρέχοντος έτους δεν έχει εκδοθεί ακόμη: δεν
+            // ζητάμε να σαρωθεί χαρτί που δεν υπάρχει.
+            hint: T >= year ? `Το ποσό θα το δώσει το εκκαθαριστικό ${T}, όταν εκδοθεί.` : `Λείπει το εκκαθαριστικό ${T}. Σάρωσέ το για να μπει το ποσό.` });
         }
       }
     }
@@ -380,9 +442,13 @@ export function forecast12(input: ForecastInput): Forecast {
   const seen = new Set<string>();
   for (const e of ledger) {
     const d = isoDay(e.date);
-    if (d) seen.add(`${seriesKey(e)}@${d.slice(0, 7)}`);
-    if (e.paid || covered(e.category)) continue;
     const when = isoDay(e.due) ?? d;
+    // Ο ΜΗΝΑΣ ΤΗΣ ΛΗΞΗΣ ΕΙΝΑΙ ΚΑΙ ΑΥΤΟΣ ΚΑΤΕΙΛΗΜΜΕΝΟΣ. Ο λογαριασμός του
+    // Οκτωβρίου που λήγει τον Νοέμβριο μπαίνει τον Νοέμβριο· χωρίς αυτό, ο
+    // Νοέμβριος έπαιρνε και την προβολή της σειράς και έβγαινε με δύο ΔΕΗ.
+    if (d) seen.add(`${seriesKey(e)}@${d.slice(0, 7)}`);
+    if (when && !e.paid) seen.add(`${seriesKey(e)}@${when.slice(0, 7)}`);
+    if (e.paid || covered(e.category)) continue;
     if (!when) continue;
     putDated({ kind: 'bill', label: entryName(e), source: 'καταχώρηση', amount: e.amount, dir: 'out', certainty: 'actual', date: when });
   }
@@ -422,6 +488,9 @@ export function forecast12(input: ForecastInput): Forecast {
   for (let index = 0; index < months.length; index++) {
     const m = months[index];
     if (m.outActual + m.outExpected <= 0) continue;
+    // Μήνας με ενοίκιο που δεν ξέρουμε αν μπήκε δεν κρίνεται: το καθαρό του
+    // είναι χαμηλό από έλλειψη καταγραφής, όχι από τις χρεώσεις του.
+    if (m.gaps.some(g => g.kind === 'unrecorded' || g.kind === 'owed')) continue;
     if (tightest === null || m.net < tightest.net) {
       tightest = { index, net: m.net, drivers: m.lines.filter(l => l.dir === 'out').slice(0, 3) };
     }

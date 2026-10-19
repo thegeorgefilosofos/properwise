@@ -222,7 +222,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       // Δεν είναι πια πέντε για μια χωριστή κάρτα: τροφοδοτούν την ΕΝΙΑΙΑ
       // ατζέντα, που τις ταξινομεί μαζί με όλα τα υπόλοιπα κατά προθεσμία.
       supabase.from('maintenance_tasks').select('*').eq('property_id',prop.id).eq('user_id',userId).eq('completed',false).order('due_date').limit(60),
-      tenantStore.currentAllWithError<Tenant & TenantFull>(supabase,prop.id,'id,monthly_rent,lease_start,lease_end,e_payment',userId),
+      // Η συχνότητα και η ημέρα λήξης: οι επόμενοι 12 μήνες βάζουν την τριμηνιαία
+      // δόση στον μήνα της, όχι ένα μίσθωμα κάθε μήνα.
+      tenantStore.currentAllWithError<Tenant & TenantFull>(supabase,prop.id,'id,monthly_rent,lease_start,lease_end,e_payment,payment_frequency,rent_due_day',userId),
       checklist.openWithError<{ due_date:string|null; status:string; priority:string }>(supabase,prop.id,checklist.AGENDA_COLUMNS,userId),
       inventory.ofPropertyWithError<{ name?:string|null; warranty_expiry:string|null; condition:string|null }>(supabase,prop.id,'name,warranty_expiry,condition',userId),
       loanStore.ofPropertyWithError(supabase,prop.id,userId),
@@ -642,7 +644,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // του component. Η πρόβλεψη δεν αλλάζει τίποτα· τα αντίγραφα το λένε ρητά.
   const forecast = forecast12({
     today: todayIso,
-    lease: longLet && tenant ? { monthlyRent: tenant.monthly_rent, start: tenantFull?.lease_start ?? null, end: tenantFull?.lease_end ?? tenant.lease_end } : null,
+    lease: longLet && tenant ? {
+      monthlyRent: tenant.monthly_rent, start: tenantFull?.lease_start ?? null, end: tenantFull?.lease_end ?? tenant.lease_end,
+      freq: tenantFull?.payment_frequency ?? null, dueDay: tenantFull?.rent_due_day ?? null,
+    } : null,
     // Οι δόσεις του έτους (πληρωμένες και μη) και οι απλήρωτες των άλλων ετών.
     rentPeriods: longLet ? [...yearRents, ...rentPeriods.filter(r => r.period_year !== year)] : [],
     stays: isShortTerm(prop) ? [...hostStays] : [],
@@ -657,7 +662,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     ledger: [...ledger.entries],
   });
   const forecastNotes = [
-    ...(ownershipPctOf(prop) < 100 ? ['Το ακίνητο είναι συνιδιόκτητο: ενοίκια, δόσεις και λογαριασμοί για όλο το ακίνητο, ο ΕΝΦΙΑ για το μερίδιό σου.'] : []),
+    ...(ownershipPctOf(prop) < 100 ? ['Το ακίνητο είναι συνιδιόκτητο: ενοίκια, δόσεις, λογαριασμοί και εκτίμηση φόρου ενοικίων για όλο το ακίνητο. Ο ΕΝΦΙΑ και το σαρωμένο εκκαθαριστικό φόρου είναι τα δικά σου.'] : []),
     ...(isShortTerm(prop) ? ['Από τη βραχυχρόνια μετρούν μόνο οι κρατήσεις που υπάρχουν ήδη.'] : []),
     ...(isLet(prop) && !personTax ? ['Ο φόρος εισοδήματος δεν μπαίνει εδώ: σε επιχείρηση οι δόσεις ακολουθούν άλλους κανόνες.'] : []),
   ];
