@@ -104,6 +104,10 @@ const nextConfig: NextConfig = {
       { source: "/ypologismos-daneiou", destination: "/ypologismos-stegastikou-daneiou", statusCode: 301 },
       // Ο κόμβος είναι ενικός· ο πληθυντικός είναι αυτό που πληκτρολογεί κανείς.
       { source: "/odigoi", destination: "/odigos", statusCode: 301 },
+      // ΣΥΝΤΟΜΗ ΔΙΕΥΘΥΝΣΗ ΓΙΑ ΤΑ SOCIAL (19.10.2026), χωρίς ψηφία ώστε να χωρά σε
+      // λεζάντα (guard-post-numbers). Προσωρινή (307): δείχνει πάντα τον οδηγό του
+      // τρέχοντος «Σπίτι μου» και θα αλλάξει προορισμό με το επόμενο πρόγραμμα.
+      { source: "/spiti-mou", destination: "/odigos/spiti-mou-3-ti-allazei", permanent: false },
     ];
   },
   async headers() {

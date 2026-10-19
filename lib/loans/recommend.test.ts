@@ -193,6 +193,11 @@ ok('green class lowers Cheap nominal rate', greenRanked.find(r => r.bankId === '
   ok('ΙΙΙ-τύπος: κανένα όριο δεν πέρασε στα επίσημα του SPITI_MOU_3',
     !Object.keys(SPITI_MOU_3).some(k => /amount|value|income|ltv|sqm|benefic/i.test(k)))
   ok('ΙΙΙ-τύπος: η πηγή έχει διεύθυνση', /^https:\/\//.test(SPITI_MOU_3_REPORTED.source.url))
+  const f = SPITI_MOU_3_REPORTED.funding
+  ok('ΙΙΙ-τύπος: Ταμείο Ανάκαμψης + ΕΑΤ + τράπεζες = ο επίσημος προϋπολογισμός',
+    f.recoveryFundEur + f.hdbEur + f.banksEur === SPITI_MOU_3.budgetEur)
+  ok('ΙΙΙ-τύπος: η χρηματοδότηση δεν λέει ποσοστό χωρίς τόκο ούτε επιτόκιο',
+    !Object.keys(f).some(k => /share|rate|free|pct/i.test(k)))
 }
 
 console.log(`\nrecommend.test: ${passed} passed, ${failed} failed`)
