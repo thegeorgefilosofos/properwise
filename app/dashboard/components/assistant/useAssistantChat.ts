@@ -30,13 +30,14 @@ export function useAssistantChat({
   assistantLocked, setMsgs, msgs, setBusy, supabase, prefs, ctxStr, allPropsContext, insightsStr,
   marketStr, clientsStr, techStr, clientsLite, contactsLite, pricingStr, memories, planBrief,
   canNavigate, setMemories, userId, runAction, answeredRef, nudgedRef, setPendingDoc, askRef,
+  propertyId,
 }: Pick<Props & AssistantCore & AssistantActions,
   'listeningRef' | 'setInput' | 'setOpen' | 'setQuota' | 'busy' | 'setErr' | 'setErrDetail' |
   'setLimitMsg' | 'assistantLocked' | 'setMsgs' | 'msgs' | 'setBusy' | 'supabase' | 'prefs' |
   'ctxStr' | 'allPropsContext' | 'insightsStr' | 'marketStr' | 'clientsStr' | 'techStr' |
   'clientsLite' | 'contactsLite' | 'pricingStr' | 'memories' | 'planBrief' | 'canNavigate' |
   'setMemories' | 'userId' | 'runAction' | 'answeredRef' | 'nudgedRef' | 'setPendingDoc' |
-  'askRef'
+  'askRef' | 'propertyId'
 >) {
 
   // ── Φωνή: ομιλία στα ελληνικά (hands-free) ─────────────────────────────────
@@ -215,7 +216,8 @@ export function useAssistantChat({
         return;
       }
       const raw: string = data?.content?.find((c: { type: string }) => c.type === 'text')?.text || 'Δεν έχω απάντηση αυτή τη στιγμή.';
-      const { clean, action, remember } = parseAction(raw);
+      // Χωρίς ακίνητο το parseAction δεν βγάζει ενέργεια που γράφει.
+      const { clean, action, remember } = parseAction(raw, propertyId);
       // Μόνιμη μνήμη: κράτησε το γεγονός που ζητήθηκε (μόνο αν το επιτρέπει η ρύθμιση).
       if (remember && prefs.memory) setMemories(addMemory(userId, remember));
       // Η «επικοινωνία με επαφή» δεν εμφανίζεται ως κουμπί στο πρώτο μήνυμα· την
@@ -268,7 +270,9 @@ export function useAssistantChat({
   // δεν βρει ΚΑΝΕΝΑ στοιχείο παραστατικού, δεν είναι χαρτί. Τότε — και μόνο
   // τότε — τρέχει η αναγνώριση συσκευής, που η μηχανή του Αρχείου δεν κάνει.
   const askImage = async (file: File) => {
-    if (!file.type.startsWith('image/') || busy) return;
+    // Χωρίς ακίνητο η φωτογραφία δεν έχει πού να καταχωρηθεί, ούτε αξίζει να
+    // ξοδέψει σάρωση: το κουμπί ανοίγει την προσθήκη ακινήτου (PropertyAssistant).
+    if (!propertyId || !file.type.startsWith('image/') || busy) return;
     // Το όριο της σάρωσης, όχι ένα δεύτερο γραμμένο με το χέρι (ήταν 10 MB, η σάρωση κόβει στο MAX_SCAN_MB).
     if (file.size > MAX_SCAN_MB * 1024 * 1024) { setMsgs(m => [...m, { role: 'assistant', text: `Η φωτογραφία είναι πάνω από ${MAX_SCAN_MB} MB. Δοκίμασε μικρότερη.` }]); return; }
     setErr('');

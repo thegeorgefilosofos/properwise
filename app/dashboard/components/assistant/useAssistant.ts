@@ -45,7 +45,7 @@ import { clientStats, CLIENT_TYPE_LABELS, type ClientType } from '@/lib/clients/
 import { suggestBase, realizedAdr, indicativeMonthly } from '@/lib/pricing/dynamicPricing'
 import {
   type AssistantPrefs, type Memory, DEFAULT_PREFS, loadPrefs, PREFS_KEY, readPrefs, memKey,
-  loadHistory, saveHistory,
+  loadHistory, saveHistory, historyId, SETUP_CONTEXT,
 } from '../assistantPersona'
 // Οι επαφές έχουν ένα σπίτι: lib/data/contacts.
 import * as contactStore from '@/lib/data/contacts'
@@ -108,7 +108,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   const [msgs, setMsgs] = useState<Msg[]>(() => {
     if (typeof window === 'undefined') return [];
     if (loadPrefs()?.memory === false) return [];
-    return loadHistory(propertyId).map(m => ({ role: m.role, text: m.text }));
+    return loadHistory(historyId(propertyId, userId)).map(m => ({ role: m.role, text: m.text }));
   });
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -147,7 +147,8 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   // `null` = «δεν έχουν φορτώσει ακόμη» και είναι ΔΙΑΦΟΡΕΤΙΚΟ από `{}` = «δεν
   // υπάρχουν δεδομένα». Με κενό αντικείμενο, ο χρήστης με τρία χρόνια δαπάνες
   // διάβαζε «μόλις καταχωρήσεις τα πρώτα στοιχεία…» για όσο κρατούσε το ερώτημα.
-  const [openerCtx, setOpenerCtx] = useState<OpenerContext | null>(null);
+  // Χωρίς ακίνητο δεν υπάρχει τίποτα να φορτώσει: το πρώτο βήμα ισχύει από την αρχή.
+  const [openerCtx, setOpenerCtx] = useState<OpenerContext | null>(() => propertyId ? null : { setup: true });
   const [techStr, setTechStr] = useState('');   // επαφές τεχνικών/παρόχων (καρτέλα Επαφές)
   // Η ΜΟΝΙΜΗ ΜΝΗΜΗ ΕΠΙΣΗΣ. Οι `addMemory`/`removeMemory` γράφουν ήδη στον
   // localStorage και επιστρέφουν τη νέα λίστα· περνώντας την από τον setter
@@ -280,7 +281,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   if (propertyId !== histPid) {
     setHistPid(propertyId);
     const mem = loadPrefs()?.memory !== false;
-    setMsgs(mem ? loadHistory(propertyId).map(m => ({ role: m.role, text: m.text })) : []);
+    setMsgs(mem ? loadHistory(historyId(propertyId, userId)).map(m => ({ role: m.role, text: m.text })) : []);
   }
 
   // Ό,τι απλώς καθαρίζεται μένει σε effect: κανένα από αυτά δεν διαβάζεται από
@@ -304,8 +305,8 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
 
   // Αποθήκευση συζήτησης όταν η μνήμη είναι ενεργή.
   useEffect(() => {
-    if (prefs.memory && msgs.length) saveHistory(propertyId, msgs.map(({ role, text }) => ({ role, text })));
-  }, [msgs, prefs.memory, propertyId]);
+    if (prefs.memory && msgs.length) saveHistory(historyId(propertyId, userId), msgs.map(({ role, text }) => ({ role, text })));
+  }, [msgs, prefs.memory, propertyId, userId]);
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [msgs, busy, editing]);
 
@@ -322,10 +323,22 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
     : undefined;
 
   // Ο ΕΝΦΙΑ του έτους, από τις ίδιες ρυθμίσεις με την Επισκόπηση και τη Λογιστική.
-  const [enfiaSettings] = useEnfiaSettings(propertyId, userId);
+  // Χωρίς ακίνητο το κλειδί είναι κενό: το useBillsSettings δεν διαβάζει και
+  // δεν γράφει τίποτα, μένουν οι προεπιλογές.
+  const [enfiaSettings] = useEnfiaSettings(propertyId ?? '', userId);
 
   // Φόρτωση δεδομένων ακινήτου (μία φορά όταν ανοίξει), για συγκεκριμένες απαντήσεις.
   const loadContext = useCallback(async () => {
+    // ΠΡΙΝ ΑΠΟ ΤΟ ΠΡΩΤΟ ΑΚΙΝΗΤΟ ΔΕΝ ΦΟΡΤΩΝΕΤΑΙ ΤΙΠΟΤΑ ΑΠΟ ΤΗ ΒΑΣΗ. Κάθε ερώτημα
+    // από κάτω ζητά `property_id`· με κενό θα επέστρεφαν όλα άδεια και η Νόα θα
+    // διάβαζε «0,00€ δαπάνες» σαν γεγονός. Μένουν οι σταθερές περιλήψεις του
+    // φόρου, που δεν εξαρτώνται από κανένα ακίνητο.
+    if (!propertyId || !propContext) {
+      setCtxStr(SETUP_CONTEXT);
+      setMarketStr([RENTAL_TAX_SUMMARY_2026, CLIMATE_LEVY_SUMMARY_2025, MUNICIPAL_ACCOM_SUMMARY].join('\n'));
+      setOpenerCtx({ setup: true });
+      return;
+    }
     const now = new Date();
     // Το «σήμερα» της εφαρμογής είναι ώρα Ελλάδας, όχι UTC: αλλιώς για δύο ως
     // τρεις ώρες κάθε νύχτα η Νόα νόμιζε ότι είναι χθες. Και το ΕΤΟΣ βγαίνει από

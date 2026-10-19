@@ -846,6 +846,26 @@ export default function Dashboard() {
         />
       )}
 
+      {/* Η ΝΟΑ ΠΡΙΝ ΑΠΟ ΤΟ ΠΡΩΤΟ ΑΚΙΝΗΤΟ. Ηταν μόνο `selected&&…`: ο νέος
+          λογαριασμός, με τη δοκιμή που του δίνει τη Νόα, δεν την έβλεπε ώσπου να
+          φτιάξει ακίνητο — και οι περισσότεροι νέοι λογαριασμοί δεν έφτιαχναν.
+          Η διαδρομή του διακομιστή δεν θέλει ακίνητο (ελέγχει χρήστη και όριο),
+          οπότε εδώ η Νόα απαντά γενικά και οι ενέργειές της είναι μόνο η
+          προσθήκη ακινήτου και η σάρωση, που περνά πρώτα από τον οδηγό. Καμία
+          ενέργεια που γράφει (assistantPersona.ts, SETUP_ACTIONS). Ο λογαριασμός
+          χωρίς Νόα δεν τη βλέπει ούτε εδώ: η κάρτα του πακέτου θα τον έστελνε στις
+          Ρυθμίσεις, που χωρίς ακίνητο δείχνουν την ίδια κενή οθόνη. */}
+      {!selected&&!loadError&&properties.length===0&&user&&hasAssistant(effPlan)&&(
+        <PropertyAssistant
+          propertyId={null} userId={user.id}
+          // Χωρίς ακίνητο κάθε καρτέλα οδηγεί στο ίδιο βήμα: την προσθήκη.
+          onNavigate={()=>tryAddProperty()}
+          onAddProperty={()=>tryAddProperty()}
+          onScan={()=>{ setScanAfterAdd(true); tryAddProperty(); }}
+          planBrief={planBriefing(effPlan, plan, trial.active ? trial.daysLeft : undefined)}
+        />
+      )}
+
       <CommandPalette open={cmdkOpen} onClose={()=>setCmdkOpen(false)} items={cmdItems} />
 
       {/* Η ΣΑΡΩΣΗ ΗΤΑΝ ΤΟ ΤΕΛΕΥΤΑΙΟ ΧΕΙΡΟΓΡΑΦΟ ΠΑΡΑΘΥΡΟ ΤΗΣ ΣΕΛΙΔΑΣ.

@@ -49,6 +49,11 @@ export interface OpenerContext {
   isShortTerm?: boolean;
   /** Πλήθος ακινήτων του χρήστη. */
   propertyCount?: number;
+  /**
+   * Δεν υπάρχει ακόμη ακίνητο (λειτουργία πρώτου βήματος). Διαφέρει από το
+   * άδειο ακίνητο: εκεί λείπουν στοιχεία, εδώ λείπει το ίδιο το ακίνητο.
+   */
+  setup?: boolean;
 }
 
 const MAX = 4;
@@ -75,6 +80,18 @@ const LOADING_OPENERS = [
 ];
 
 /**
+ * Πριν από το πρώτο ακίνητο. Ο αναγνώστης είναι, π.χ., ο εικοσιπεντάχρονος που
+ * μόλις κληρονόμησε ένα διαμέρισμα και δεν ξέρει από πού να πιάσει: τι κάνει
+ * πρώτα, τι του λείπει. Κανένα νούμερο: δεν υπάρχει ακόμη κανένα δικό του.
+ */
+export const SETUP_OPENERS = [
+  'Κληρονόμησα ένα ακίνητο· τι πρέπει να κάνω πρώτα;',
+  'Ποια χαρτιά χρειάζομαι και τι μου λείπει;',
+  'Πώς βγαίνει ο ΕΝΦΙΑ ενός ακινήτου;',
+  'Θέλω να το νοικιάσω· από πού ξεκινάω;',
+] as const;
+
+/**
  * Οι προτάσεις εκκίνησης για τον συγκεκριμένο χρήστη και ακίνητο.
  *
  * Επιστρέφει το πολύ MAX ερωτήσεις, με σειρά προτεραιότητας. Κάθε ερώτηση που
@@ -84,6 +101,7 @@ const LOADING_OPENERS = [
  */
 export function suggestedOpeners(ctx: OpenerContext | null = {}): string[] {
   if (ctx === null) return [...LOADING_OPENERS];
+  if (ctx.setup) return SETUP_OPENERS.slice(0, MAX);
   const out: string[] = [];
   const name = (ctx.propertyName || '').trim();
   const forProp = name ? ` στο ακίνητο «${name}»` : '';
@@ -167,6 +185,14 @@ export function greeting(assistantName: string = ASSISTANT_NAME, ctx: OpenerCont
   // Δεν έχουν φορτώσει ακόμη τα δεδομένα: δεν λέμε ούτε «βλέπω», ούτε «δεν έχεις».
   if (ctx === null) {
     return `${hi}. Είμαι η ${assistantName}. Κοιτάζω τα στοιχεία ${your}…`;
+  }
+
+  // Χωρίς ακίνητο δεν λέμε «βλέπω» για τίποτα: λέμε ότι η απάντηση είναι γενική
+  // και πότε θα γίνει δική του.
+  if (ctx.setup) {
+    const added = formal ? 'Δεν έχετε προσθέσει' : 'Δεν έχεις προσθέσει';
+    const add = formal ? 'το προσθέσετε' : 'το προσθέσεις';
+    return `${hi}. Είμαι η ${assistantName}. ${added} ακόμη ακίνητο, οπότε απαντώ γενικά. Μόλις ${add}, θα απαντώ με τα δικά ${your} νούμερα.`;
   }
 
   const name = (ctx.propertyName || '').trim();
