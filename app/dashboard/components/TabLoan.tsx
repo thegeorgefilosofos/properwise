@@ -545,7 +545,11 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                 {prog.banks.map(b=><span key={b} style={{fontSize: 'var(--fs-xs)',padding:'3px 9px',borderRadius: T.radius.chip,background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',color:'var(--text-secondary)',fontFamily: T.font.sans}}>{b}</span>)}
               </div>
               </>)}
-              <SourceLinkPill href={prog.url}>Επίσημη σελίδα προγράμματος</SourceLinkPill>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                <SourceLinkPill href={prog.url}>Επίσημη σελίδα προγράμματος</SourceLinkPill>
+                {/* Ο οδηγός «τι ίσχυε, τι αλλάζει», όπου υπάρχει (σήμερα μόνο για το ΙΙΙ). */}
+                {prog.guide&&<SourceLinkPill href={prog.guide}>Τι ίσχυε και τι αλλάζει</SourceLinkPill>}
+              </div>
             </MiniSection>
             )
           })}

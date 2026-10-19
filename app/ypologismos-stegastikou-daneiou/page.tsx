@@ -50,6 +50,9 @@ import { readMortgageMarket } from './marketRates';
 // μου ΙΙ» στις Συχνές ερωτήσεις κρίνεται με την ημερομηνία της απόδοσης.
 export const revalidate = 86400;
 
+/** Ο οδηγός «τι ίσχυε, τι αλλάζει» για τα προγράμματα «Σπίτι μου», κάτω από την ερώτηση για το ΙΙΙ. */
+const SPITI_GUIDE = guideAt('/odigos/spiti-mou-3-ti-allazei');
+
 // Η ΦΡΑΣΗ ΠΟΥ ΓΡΑΦΕΙ Ο ΚΟΣΜΟΣ (Bing, 03.10.2026): στο σκέτο «στεγαστικό δάνειο»
 // την πρώτη δεκάδα την έχουν οι τράπεζες. Οι ουδέτεροι υπολογιστές μπαίνουν με
 // τη μακρύτερη αναζήτηση: δόση, τόκοι, πόσο δάνειο.
@@ -83,7 +86,10 @@ const FIRST = fpRate(DSTI_LIMIT.firstTimeBuyer * 100);
 const OTHER = fpRate(DSTI_LIMIT.other * 100);
 
 /** Οι ερωτήσεις, με την κατάσταση του προγράμματος όπως είναι σήμερα. */
-function faq(today: string): { q: string; a: string }[] {
+/** Μια ερώτηση με προαιρετικό σύνδεσμο κάτω από την απάντηση (όχι στο FAQPage). */
+type FaqItem = { q: string; a: string; link?: { href: string; label: string } };
+
+function faq(today: string): FaqItem[] {
   return [
     {
       q: 'Πώς υπολογίζεται η μηνιαία δόση στεγαστικού;',
@@ -125,6 +131,8 @@ function faq(today: string): { q: string; a: string }[] {
       q: `Πότε ανοίγει το «${SPITI_MOU_3.name}»;`,
       a: `${spitiMou3Line()} Όρια εισοδήματος, αξίας ή δανείου που κυκλοφορούν σε δημοσιεύματα `
         + 'δεν είναι όροι του προγράμματος. Ο υπολογιστής λογαριάζει το δάνειο της τράπεζας όπως είναι.',
+      // Ο οδηγός βάζει δίπλα δίπλα τα όρια του Ι και του ΙΙ και τα επίσημα του ΙΙΙ.
+      link: { href: SPITI_GUIDE.href, label: `Οδηγός: ${SPITI_GUIDE.title}` },
     },
     TOOL_PRIVACY_FAQ,
   ];
@@ -254,6 +262,11 @@ export default async function Page() {
                 <p className="po-just" style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
                   {hy(f.a)}
                 </p>
+                {f.link && (
+                  <p style={{ margin: '-6px 0 16px', fontSize: 14 }}>
+                    <Link href={f.link.href} className="lp-link" style={LINK}>{f.link.label}</Link>
+                  </p>
+                )}
               </details>
             ))}
           </div>
