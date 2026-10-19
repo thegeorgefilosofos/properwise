@@ -34,7 +34,6 @@ import { PLANS } from '@/lib/billing/plans';
 
 import { suggestedOpeners, greeting as buildGreeting } from '@/lib/assistant/openers';
 import { hy } from '@/components/Hyphen';
-import { RECONCILE_NONE_LABEL, RECONCILE_NONE_HINT } from './scanDoc';
 import { remainingLine } from '@/lib/billing/aiLimits';
 import {
   type Props,
@@ -442,7 +441,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                           : m.action.type === 'paid' ? `Σήμανση πληρωμένο: ${m.action.description}`
                           : m.action.type === 'task' ? `Νέα εκκρεμότητα`
                           : m.action.type === 'inventory' ? `Κατέγραψε: ${m.action.name}`
-                          : m.action.type === 'commit-doc' ? `Καταχώρησε: ${m.action.label}`
+                          : m.action.type === 'commit-doc' ? (m.action.allowDuplicate ? 'Καταχώρησέ το ούτως ή άλλως' : `Καταχώρησε: ${m.action.label}`)
                           : m.action.type === 'feedback' ? 'Γράψε την αξιολόγησή σου'
                           : `Πήγαινε: ${navLabel(m.action.tab)}`}
                         <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
@@ -456,7 +455,9 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                     «Κανέναν από αυτούς» τελευταίο. Δεν χρωματίζεται καμία: η μηχανή έχει
                     ήδη πει ότι ΔΕΝ είναι σίγουρη και ένα τονισμένο κουμπί θα
                     ήταν ακριβώς η εικασία που απέφυγε. */}
-                {reconcile && !busy && (
+                {/* Μόνο η ερώτηση του χαρτιού που περιμένει: μετά από νέα φωτογραφία
+                    οι επιλογές της παλιάς θα απαντούσαν για το καινούργιο. */}
+                {reconcile && !busy && pendingDoc?.ask === reconcile && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
                     {reconcile.options.map(o => (
                       <button key={o.id} type="button" onClick={() => commitPendingDoc(o.id)}
@@ -467,8 +468,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                     ))}
                     <button type="button" onClick={() => commitPendingDoc(null)}
                       style={{ textAlign: 'left', padding: '10px 13px', borderRadius: T.radius.inner, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 'var(--fs-base)', cursor: 'pointer', minHeight: T.h.md }}>
-                      <span style={{ fontWeight: 600 }}>{RECONCILE_NONE_LABEL}</span>
-                      <span style={{ display: 'block', marginTop: 4, color: 'var(--text-tertiary)', fontSize: 12 }}>{RECONCILE_NONE_HINT}</span>
+                      <span style={{ fontWeight: 600 }}>{reconcile.none.label}</span>
+                      <span style={{ display: 'block', marginTop: 4, color: 'var(--text-tertiary)', fontSize: 12 }}>{reconcile.none.hint}</span>
                     </button>
                   </div>
                 )}

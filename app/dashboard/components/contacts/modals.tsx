@@ -15,6 +15,7 @@ import { notifyError } from '@/components/Toast'
 import { saved } from '@/components/dbWrite'
 import { uploadUserScoped } from '@/lib/storage/scopedUpload'
 import { uploadPath } from '@/lib/core/uploadPath'
+import { fmtBytes } from '@/lib/core/bytes'
 import { ensureDpa } from '@/lib/legal/dpa'
 import { CONTACT_BUCKET, removeFiles, linkFor, type ContactFile } from '@/lib/storage/contactFiles'
 import { athensToday, isoDate } from '@/lib/core/time'
@@ -50,7 +51,7 @@ export function FileUploader({ files, onChange, contactId }: { files: ContactFil
     // «μισθωτήριο.pdf» και όχι «1757386421.pdf».
     const { path, error } = await uploadUserScoped(supabase, CONTACT_BUCKET, uploadPath(file.name, `contact-files/${contactId || 'new'}`), file, { upsert: true, contentType: file.type || undefined })
     if (error) notifyError('Το αρχείο δεν ανέβηκε')
-    else onChange([...files, { name: file.name, url: '', path, size: file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${(file.size / 1024).toFixed(0)} KB`, uploaded: new Date().toISOString() }])
+    else onChange([...files, { name: file.name, url: '', path, size: fmtBytes(file.size), uploaded: new Date().toISOString() }])
     setUploading(false); if (fileRef.current) fileRef.current.value = ''
   }
 

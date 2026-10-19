@@ -26,7 +26,8 @@
 //    έχει δηλώσει ποτέ τίποτε ο ιδιοκτήτης. Οι οκτώ ενότητες είναι πλέον τύπος.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { rows as readRows, row as readRow } from './read';
+import { rows as readRows, row as readRow, readOne } from './read';
+import type { DbError } from '@/lib/supabase/writeResult';
 
 const TABLE = 'bills_settings';
 
@@ -59,6 +60,24 @@ export async function section<T = SettingsData>(
   if (userId) q = q.eq('user_id', userId);
   const found = await readRow<{ data: T }>(q.maybeSingle());
   return (found?.data as T | undefined) ?? null;
+}
+
+/**
+ * Η ίδια ενότητα, με το σφάλμα ορατό.
+ *
+ * ΤΗ ΧΡΕΙΑΖΕΤΑΙ ΟΠΟΙΟΣ ΔΙΑΒΑΖΕΙ ΓΙΑ ΝΑ ΞΑΝΑΓΡΑΨΕΙ. Η σάρωση κοινοχρήστων
+ * διαβάζει το Ιστορικό, αλλάζει έναν μήνα και γράφει πίσω όλη την ενότητα. Με
+ * το `section`, μια αποτυχημένη ανάγνωση έμοιαζε με «δεν υπάρχει ενότητα» και
+ * η εγγραφή που ακολουθούσε έσβηνε τους άλλους έντεκα μήνες.
+ */
+export async function sectionWithError<T = SettingsData>(
+  db: Db, propertyId: string, name: Section, userId?: string,
+): Promise<{ data: T | null; error: DbError | null }> {
+  if (!propertyId) return { data: null, error: null };
+  let q = db.from(TABLE).select('data').eq('property_id', propertyId).eq('section', name);
+  if (userId) q = q.eq('user_id', userId);
+  const { row, error } = await readOne<{ data: T }>(q.maybeSingle());
+  return { data: (row?.data as T | undefined) ?? null, error };
 }
 
 /**

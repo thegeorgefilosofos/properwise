@@ -10,6 +10,7 @@ import {
   DOC_KINDS, KIND_OPTIONS, kindOf, applyKind, docForm, docTargets, fieldOptions, fieldValue, withField,
   selectLine, withPropertyLine, archiveOptions, folderForDoc, FOLDERS, BILL_CATEGORIES,
   SCAN_NUM_KEYS, SCAN_MAX_LINES, PROPERTY_TARGET, compactRow, shelfPath, lineUnset, LINE_NONE,
+  commonMonthOf, PEA_EXPIRY_TITLE,
   type ScannedDoc, type DocType, type DocKindId, type DocField,
 } from './documents';
 import { SYSTEM_PROMPT, SCAN_KEYS } from './scanPrompt';
@@ -83,10 +84,32 @@ eq('validate payment: amount blocking', validateDoc(doc({ doc_type: 'payment' })
 }
 // common bill → κοινόχρηστα signals
 {
-  const p = planDocSave(doc({ doc_type: 'bill', category: 'common', provider: 'Διαχείριση', amount: 45, millesimi: 12 }), TODAY);
+  const p = planDocSave(doc({ doc_type: 'bill', category: 'common', provider: 'Διαχείριση', amount: 45, millesimi: 12, issue_date: '2026-07-02' }), TODAY);
   eq('common: commonMonthAmount', p.commonMonthAmount, 45);
   eq('common: commonMillesimi', p.commonMillesimi, 12);
   check('common: targets include Κοινόχρηστα', p.targets.includes('Κοινόχρηστα'));
+}
+// ── Ο ΜΗΝΑΣ ΤΩΝ ΚΟΙΝΟΧΡΗΣΤΩΝ ΕΙΝΑΙ ΤΟΥ ΧΑΡΤΙΟΥ (έλεγχος 18/10/2026, APP-6) ──
+{
+  const sep = planDocSave(doc({ doc_type: 'bill', category: 'common', provider: 'Διαχείριση', amount: 120, issue_date: '2026-10-05', period_from: '2026-09-01', period_to: '2026-09-30' }), '2026-10-18');
+  eq('κοινόχρηστα Σεπτεμβρίου που σαρώνονται τον Οκτώβριο: θέση 8', sep.commonMonthIndex, 8);
+  const byIssue = planDocSave(doc({ doc_type: 'bill', category: 'common', provider: 'Διαχείριση', amount: 120, issue_date: '2026-03-04' }), '2026-10-18');
+  eq('χωρίς περίοδο: ο μήνας της έκδοσης', byIssue.commonMonthIndex, 2);
+  const lastYear = planDocSave(doc({ doc_type: 'bill', category: 'common', provider: 'Διαχείριση', amount: 140, period_from: '2025-12-01', period_to: '2025-12-31' }), '2026-01-10');
+  check('Δεκέμβριος που σαρώνεται τον Ιανουάριο: όχι στο Ιστορικό του νέου έτους', lastYear.commonMonthAmount === undefined && lastYear.commonMonthIndex === undefined);
+  check('και η φόρμα δεν υπόσχεται Κοινόχρηστα', !lastYear.targets.includes('Κοινόχρηστα'));
+  const noDate = planDocSave(doc({ doc_type: 'bill', category: 'common', provider: 'Διαχείριση', amount: 120 }), '2026-10-18');
+  check('χωρίς ημερομηνία δεν μαντεύουμε μήνα', noDate.commonMonthIndex === undefined && noDate.commonMonthAmount === undefined);
+  eq('commonMonthOf: πρώτη έγκυρη ημερομηνία', commonMonthOf(['', '2026-05-31'], '2026-10-18'), 4);
+  eq('commonMonthOf: άλλο έτος', commonMonthOf(['2025-05-31'], '2026-10-18'), null);
+}
+// ── ΤΟ ΠΑΛΑΙΟΤΕΡΟ ΠΕΑ ΔΕΝ ΓΥΡΙΖΕΙ ΠΙΣΩ ΤΗΝ ΚΑΤΗΓΟΡΙΑ (PR #402) ─────────────
+{
+  const pea = planDocSave(doc({ doc_type: 'government', subtype: 'pea', pea_class: 'Δ', expiry_date: '2030-01-01' }), '2026-10-18');
+  eq('ΠΕΑ σε ισχύ: φρουρός από το γεγονός λήξης', JSON.stringify(pea.replaceIfNewerEvent), JSON.stringify({ title: PEA_EXPIRY_TITLE, value: '2030-01-01' }));
+  eq('ΠΕΑ: το γεγονός λήξης έχει τον ίδιο τίτλο με τον φρουρό', pea.calendar?.[0]?.title, PEA_EXPIRY_TITLE);
+  const expired = planDocSave(doc({ doc_type: 'government', subtype: 'pea', pea_class: 'Δ', expiry_date: '2020-01-01' }), '2026-10-18');
+  check('ληγμένο ΠΕΑ: μόνο συμπλήρωση, χωρίς φρουρό', !expired.propertyReplace && !expired.replaceIfNewerEvent && !!expired.property);
 }
 // unknown category coerced to 'other'
 {

@@ -17,7 +17,7 @@ import * as expenses from '@/lib/data/expenses'
 import * as documents from '@/lib/data/documents'
 import * as calendar from '@/lib/data/calendar'
 import * as checklist from '@/lib/data/checklist'
-import { scanDocument } from '../scanDoc'
+import { scanDocument, MAX_SCAN_MB, SCAN_ACCEPT } from '../scanDoc'
 import { normalizeScannedDoc, planDocSave, type ScannedDoc } from '@/lib/billing/documents'
 import { expenseFromReceipt, type ReceiptEntry, type ReceiptEvidence } from '@/lib/checklist/obligationTasks'
 import { athensToday } from '@/lib/core/time'
@@ -72,7 +72,10 @@ export function ReceiptScanModal({ item, propertyId, userId, onClose, onSaved }:
     const r = await scanDocument(f)
     if (!r.doc) {
       setStage('pick')
-      setErr(r.error === 'big' ? 'Πολύ μεγάλο αρχείο, το όριο είναι 10MB.'
+      // ΤΟ ΟΡΙΟ ΕΡΧΕΤΑΙ ΑΠΟ ΤΗ ΣΑΡΩΣΗ. Εδώ γραφόταν «10MB» με το χέρι, ενώ η
+      // σάρωση κόβει στα 8: ένα αρχείο 9 MB απορριπτόταν με υπόσχεση ότι χωράει.
+      setErr(r.error === 'big' ? `Πολύ μεγάλο αρχείο, το όριο είναι ${MAX_SCAN_MB} MB.`
+        : r.error === 'format' ? (r.errorText || 'Αυτός ο τύπος αρχείου δεν διαβάζεται.')
         : r.error === 'quota' ? (r.errorText || SAY.scanQuotaSpent)
         : r.error === 'key_missing' ? 'Η αυτόματη ανάγνωση δεν είναι ενεργή σε αυτόν τον λογαριασμό.'
         : 'Δεν διάβασα καθαρά το έγγραφο. Δοκίμασε καθαρότερη φωτογραφία ή PDF.')
@@ -238,7 +241,7 @@ export function ReceiptScanModal({ item, propertyId, userId, onClose, onSaved }:
 
       {err && <p style={{ fontSize: 12, color: 'var(--negative)', fontFamily: T.font.sans, margin: 0, lineHeight: 1.5 }}>{err}</p>}
 
-      <input ref={fileRef} type="file" accept="image/*,.pdf" capture="environment" style={{ display: 'none' }}
+      <input ref={fileRef} type="file" accept={SCAN_ACCEPT} capture="environment" style={{ display: 'none' }}
         onChange={e => { const f = e.target.files?.[0]; if (f) read(f); e.currentTarget.value = '' }} />
     </Modal>
   )

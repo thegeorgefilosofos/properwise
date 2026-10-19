@@ -52,6 +52,14 @@ const ALLOWED = [
 // Ένας φύλακας που ξέρει μία γραφή του ίδιου πράγματος δεν φυλάει τίποτα.
 const MONEY_LOCALE = /(?:toLocaleString\([^)]*|Intl\.NumberFormat\([^)]*)(?:FractionDigits|currency)/i
 const FIXED_UNIT = /toFixed\(\s*\d+\s*\)[^\n]{0,40}(?:%|€|(?<![\p{L}\p{N}])ευρώ(?![\p{L}\p{N}]))/u
+// ΚΑΙ ΤΟ ΜΕΓΕΘΟΣ ΑΡΧΕΙΟΥ. Ο έλεγχος της 18/10/2026 βρήκε τέσσερα σημεία με
+// `toFixed(1)` μπροστά σε «MB»: «Το αρχείο είναι πολύ μεγάλο (9.5MB)», με τελεία,
+// στην ίδια οθόνη που δύο γραμμές πιο πάνω έγραφε «9,5 MB». Ο φύλακας της
+// υποδιαστολής κοιτάζει μόνο ποσά με ευρώ, οπότε δεν τα έβλεπε. Μόνο ό,τι
+// διαβάζει ο χρήστης (app, components, lib): τα εργαλεία του `scripts/`
+// γράφουν αναφορές για εμάς.
+const FIXED_BYTES = /toFixed\(\s*[1-9]\s*\)[^\n]{0,12}?(?<![\p{L}\p{N}])[KMGT]i?B(?![\p{L}\p{N}])/u
+const USER_FACING = /^(app|components|lib)\//
 
 const files = findSources().filter(f => !f.includes('.test.') && !ALLOWED.includes(f))
 const findings = []
@@ -61,7 +69,7 @@ for (const f of files) {
     if (t.startsWith('//') || t.startsWith('*')) return
     // Έξοδος προγραμματιστή στα αρχεία καταγραφής: δεν τη διαβάζει χρήστης.
     if (/console\.(log|warn|error|info)/.test(line)) return
-    if (MONEY_LOCALE.test(line) || FIXED_UNIT.test(line)) {
+    if (MONEY_LOCALE.test(line) || FIXED_UNIT.test(line) || (USER_FACING.test(f) && FIXED_BYTES.test(line))) {
       findings.push({ f, n: i + 1, code: t.slice(0, 100) })
     }
   })
@@ -72,6 +80,7 @@ if (findings.length) {
   for (const x of findings) console.error(`  ${x.f}:${x.n}\n    ${x.code}`)
   console.error('\n  Χρησιμοποίησε fe (ποσό), fp (ποσοστό), feRate (μοναδιαία τιμή),')
   console.error('  feSigned (με πρόσημο) από το lib/core/format.ts. Δύο δεκαδικά, παντού.')
+  console.error('  Για μέγεθος αρχείου: fmtBytes από το lib/core/bytes.ts («9,5 MB»).')
   console.error('  Αν πρόκειται για εξαγωγή αρχείου, πρόσθεσε το αρχείο στη λίστα ALLOWED.')
   process.exit(1)
 }

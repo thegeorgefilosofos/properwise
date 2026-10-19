@@ -26,11 +26,12 @@ import * as documents from '@/lib/data/documents';
 // Η ΜΙΑ μηχανή σάρωσης/καταχώρησης. Το Αρχείο δεν έχει δική του λογική OCR, δικό
 // του prompt, ούτε δική του απόφαση για το ράφι: όλα ζουν στο scanDoc.ts και στο
 // lib/billing (δοκιμασμένα). Ό,τι φαίνεται εδώ είναι μόνο οθόνη.
-import { ARCHIVE_CATEGORIES, validateDoc, DOC_FIELD_LABELS, DOC_TYPE_LABELS, FOLDERS, folderForDoc, archiveOptions, docForm, fieldOptions, fieldValue, kindOf, shelfPath, type FolderKey, type ScannedDoc } from '@/lib/billing/documents';
+import { ARCHIVE_CATEGORIES, validateDoc, DOC_FIELD_LABELS, DOC_TYPE_LABELS, FOLDERS, folderForDoc, archiveOptions, docForm, fieldOptions, fieldValue, kindOf, shelfPath, planDocSave, type FolderKey, type ScannedDoc } from '@/lib/billing/documents';
 import {
-  scanFile, commitScannedDoc, archiveScannedFile, archiveCategoryFor,
-  PHOTO_CATEGORIES, MAX_SCAN_MB, RECONCILE_NONE_LABEL, RECONCILE_NONE_HINT,
-  type ScanError, type ReconcileQuestion,
+  scanFile, commitScannedDoc, archiveScannedFile, archiveCategoryFor, archiveInputFrom,
+  withAnswer, failedNotice, openQuestion, notForFolder, FOLDER_ACCEPT,
+  PHOTO_CATEGORIES, MAX_SCAN_MB,
+  type ScanError, type ReconcileQuestion, type CommitAnswers,
 } from './scanDoc';
 import { isValidAfm } from '@/lib/billing/parse';
 import { navLabel } from '@/lib/nav/labels';
@@ -158,10 +159,20 @@ interface Draft {
   scanError?: ScanError;
   /** Το κείμενο που έγραψε ο διακομιστής για το σφάλμα, όταν ξέρει περισσότερα. */
   scanErrorText?: string;
-  /** Ερώτηση συμφωνίας: ποιον εκκρεμή λογαριασμό εξοφλεί αυτή η απόδειξη. */
+  /** Ερώτηση: ποιον λογαριασμό εξοφλεί η απόδειξη ή ποιον ενοικιαστή αφορά το μισθωτήριο. */
   ask?: ReconcileQuestion;
+  /**
+   * Πιθανή διπλοεγγραφή, με το κείμενο της μηχανής. Διαβαζόταν ως αποτυχία:
+   * «Δεν αποθηκεύτηκε. Δοκίμασε ξανά.» σε κάθε προσπάθεια, χωρίς τρόπο να πει
+   * ο χρήστης «ούτως ή άλλως» και χωρίς να αρχειοθετηθεί ούτε το πρωτότυπο.
+   */
+  duplicate?: string;
+  /** Οι απαντήσεις ως τώρα: η επόμενη ερώτηση δεν σβήνει την προηγούμενη. */
+  answers?: CommitAnswers;
   /** Τι ενημερώθηκε πραγματικά (ειλικρινής αναφορά, όχι υπόσχεση). */
   saved?: string[];
+  /** Τι ΔΕΝ γράφτηκε, ενώ τα υπόλοιπα γράφτηκαν. */
+  failed?: string[];
   errorText?: string;
   open: boolean;
 }
@@ -447,10 +458,24 @@ export default function TabDocuments({
         patch(d.id, { status: 'failed', scanError: 'big' });
         continue;
       }
+      // Ο,ΤΙ ΔΕΝ ΧΩΡΑΕΙ ΣΤΟΝ ΦΑΚΕΛΟ ΣΤΑΜΑΤΑ ΕΔΩ, πριν από ανάγνωση που μετρά
+      // σάρωση και πριν από ανέβασμα που ο κάδος θα απέρριπτε (Word, Excel,
+      // CSV, όταν φτάνουν με μεταφορά και όχι από το πεδίο).
+      const noFolder = notForFolder(d.file);
+      if (noFolder) {
+        patch(d.id, { status: 'failed', scanError: 'format', scanErrorText: noFolder });
+        continue;
+      }
       patch(d.id, { status: 'scanning' });
       const r = await scanFile(d.file);
       if (r.kind === 'photo' && r.photo) {
         patch(d.id, { status: 'ready', kind: 'photo', category: r.photo.category, photoTitle: r.photo.title || '', open: !r.photo.title });
+      } else if (r.error === 'format') {
+        // ΤΟ ΑΡΧΕΙΟ ΚΡΑΤΑ ΚΑΙ Ο,ΤΙ ΔΕΝ ΔΙΑΒΑΖΕΤΑΙ. Η φωτογραφία HEIC έφευγε
+        // προς ανάγνωση, γύριζε «η υπηρεσία δεν απάντησε» και δεν
+        // αρχειοθετούνταν ποτέ, ενώ ο κάδος τη δέχεται. Μπαίνει στον Φάκελο,
+        // στο ράφι που θα διαλέξει ο χρήστης, χωρίς ανάγνωση.
+        patch(d.id, { status: 'ready', kind: 'document', doc: undefined, scanError: 'format', scanErrorText: r.errorText, open: false });
       } else if (r.doc) {
         const cat = archiveCategoryFor(r.doc);
         const v = validateDoc(r.doc);
@@ -464,31 +489,42 @@ export default function TabDocuments({
     setBusy(false);
   };
 
+  // Μόνο το πρωτότυπο, στον Φάκελο. Για ό,τι δεν διαβάζεται αλλά αποθηκεύεται
+  // (HEIC) και για την απόδειξη που ο χρήστης κρίνει ότι υπάρχει ήδη: το χαρτί
+  // μένει, η δεύτερη δαπάνη όχι. Με τα στοιχεία της ανάγνωσης όταν υπάρχουν.
+  const archiveOnly = async (d: Draft) => {
+    patch(d.id, { status: 'saving', errorText: undefined });
+    const plan = d.doc ? planDocSave(d.doc, athensToday()).archive : undefined;
+    const r = await archiveScannedFile(plan
+      ? archiveInputFrom({ ...plan, category: d.category }, d.file, propertyId, userId, plan.title || d.doc?.provider)
+      : { file: d.file, propertyId, userId, kind: d.kind, category: d.category, title: (d.photoTitle || '').trim() || d.file.name });
+    patch(d.id, r.ok
+      ? { status: 'saved', saved: [navLabel('documents')], open: false, ask: undefined, duplicate: undefined }
+      : { status: 'error', errorText: 'Δεν αποθηκεύτηκε. Δοκίμασε ξανά.' });
+    return r.ok;
+  };
+
   // Καταχώρηση ενός σχεδίου. Για παραστατικό περνά από τη ΜΙΑ μηχανή (γράφει
   // Αρχείο + Λογαριασμούς + Δαπάνες + Ημερολόγιο…). Για φωτογραφία, μόνο Αρχείο.
-  const commitDraft = async (d: Draft, choice?: string | null) => {
+  // `next`: οι απαντήσεις ως τώρα· κενό σε νέα καταχώρηση.
+  const commitDraft = async (d: Draft, next: CommitAnswers = {}) => {
+    if (d.kind === 'photo' || !d.doc) return archiveOnly(d);
     patch(d.id, { status: 'saving', errorText: undefined });
-    if (d.kind === 'photo') {
-      const r = await archiveScannedFile({
-        file: d.file, propertyId, userId, kind: 'photo',
-        category: d.category, title: (d.photoTitle || '').trim() || d.file.name,
-      });
-      patch(d.id, r.ok
-        ? { status: 'saved', saved: [navLabel('documents')], open: false, ask: undefined }
-        : { status: 'error', errorText: 'Δεν αποθηκεύτηκε. Δοκίμασε ξανά.' });
-      return r.ok;
-    }
-    if (!d.doc) return false;
     const r = await commitScannedDoc({
-      doc: d.doc, file: d.file, propertyId, userId, archiveCategory: d.category,
-      ...(choice !== undefined ? { reconcileChoice: choice } : {}),
+      doc: d.doc, file: d.file, propertyId, userId, archiveCategory: d.category, ...next,
     });
-    if (r.ask) { patch(d.id, { status: 'ready', ask: r.ask, open: true }); return false; }
+    // Ερώτηση ή πιθανή διπλοεγγραφή: τίποτα δεν γράφτηκε, ρωτάμε. ΔΕΝ είναι
+    // αποτυχία και δεν λέγεται «δοκίμασε ξανά».
+    const q = openQuestion(r);
+    if (q.ask || q.duplicate) {
+      patch(d.id, { status: 'ready', ask: q.ask ?? undefined, duplicate: q.duplicate || undefined, answers: next, open: true });
+      return false;
+    }
     if (r.error || !r.saved.length) {
       patch(d.id, { status: 'error', errorText: 'Δεν αποθηκεύτηκε. Δοκίμασε ξανά.' });
       return false;
     }
-    patch(d.id, { status: 'saved', saved: r.saved, open: false, ask: undefined });
+    patch(d.id, { status: 'saved', saved: r.saved, failed: r.failed, open: false, ask: undefined, duplicate: undefined });
     return true;
   };
 
@@ -500,7 +536,7 @@ export default function TabDocuments({
       if (d.status === 'saved' || d.status === 'failed') continue;
       // Όσα περιμένουν απάντηση συμφωνίας ΔΕΝ τα κρίνουμε εμείς εκ νέου: ο χρήστης
       // ρωτήθηκε και δεν έχει απαντήσει. Το «καταχώρηση όλων» δεν απαντά για αυτόν.
-      if (d.ask) { pending++; continue; }
+      if (d.ask || d.duplicate) { pending++; continue; }
       const done = await commitDraft(d);
       if (done) ok++; else pending++;
     }
@@ -742,7 +778,9 @@ export default function TabDocuments({
                   {dragOver ? 'Άφησέ τα εδώ' : 'Μεταφορά αρχείων ή επιλογή από τη συσκευή'}
                 </div>
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.5 }}>
-                  Φωτογραφία, PDF, Word ή Excel · πολλαπλά αρχεία · έως {MAX_SCAN_MB}MB ανά αρχείο
+                  {/* Ο,ΤΙ ΚΡΑΤΑ Ο ΚΑΔΟΣ (scanDoc.ts: FOLDER_TYPES). Υποσχόταν «Word ή
+                      Excel» που η αποθήκευση απέρριπτε σε κάθε προσπάθεια. */}
+                  Φωτογραφία ή PDF · πολλαπλά αρχεία · έως {MAX_SCAN_MB} MB ανά αρχείο
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
@@ -756,7 +794,7 @@ export default function TabDocuments({
           )}
           <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
             onChange={e => { if (e.target.files?.length) handleFiles(e.target.files); e.target.value = ''; }}/>
-          <input ref={fileRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" style={{ display: 'none' }}
+          <input ref={fileRef} type="file" multiple accept={FOLDER_ACCEPT} style={{ display: 'none' }}
             onChange={e => { if (e.target.files?.length) handleFiles(e.target.files); e.target.value = ''; }}/>
 
           {/* Οθόνη επιβεβαίωσης: ένα σχέδιο ανά αρχείο, προσυμπληρωμένο. */}
@@ -767,7 +805,8 @@ export default function TabDocuments({
                   onToggle={() => patch(d.id, { open: !d.open })}
                   onPatch={p => patch(d.id, p)}
                   onPatchDoc={p => patchDoc(d.id, p)}
-                  onCommit={choice => { commitDraft(d, choice).then(ok => { if (ok) fetchAll(); }); }}
+                  onAnswer={(q, choice) => { commitDraft(d, withAnswer(d.answers || {}, q, choice)).then(ok => { if (ok) fetchAll(); }); }}
+                  onArchiveOnly={() => { archiveOnly(d).then(ok => { if (ok) fetchAll(); }); }}
                   onRemove={() => setDrafts(ds => ds.filter(x => x.id !== d.id))}/>
               ))}
 
@@ -1238,10 +1277,12 @@ const STAGE_TEXT: Record<DraftStatus, string> = {
 };
 
 const SCAN_ERROR_TEXT: Record<ScanError, string> = {
-  big: `Πολύ μεγάλο αρχείο (όριο ${MAX_SCAN_MB}MB).`,
+  big: `Πολύ μεγάλο αρχείο (όριο ${MAX_SCAN_MB} MB).`,
   service: 'Η υπηρεσία ανάγνωσης δεν απάντησε. Δοκίμασε ξανά σε λίγο.',
   unreadable: 'Το έγγραφο δεν διαβάστηκε καθαρά. Φωτογράφισέ το με καλό φως, ίσια και ολόκληρο, ή ανέβασε το PDF του παρόχου.',
   key_missing: 'Η αυτόματη ανάγνωση δεν είναι ενεργή ακόμη σε αυτόν τον λογαριασμό.',
+  // Το κείμενο έρχεται από το scanDoc.ts (unreadableFormat), που ξέρει αν είναι HEIC.
+  format: 'Αυτός ο τύπος αρχείου δεν διαβάζεται αυτόματα.',
   // Εφεδρεία: κανονικά το κείμενο έρχεται από τον διακομιστή, που ξέρει ποιο
   // όριο χτύπησε και ποιο πακέτο έχει ο χρήστης (scanDoc.ts).
   quota: SAY.scanQuotaSpent,
@@ -1251,12 +1292,14 @@ const SCAN_ERROR_TEXT: Record<ScanError, string> = {
 // για ό,τι έχει ποσό (λογαριασμός, απόδειξη, φόρος, ασφαλιστήριο).
 const hasMoney = (t?: string) => t === 'bill' || t === 'payment' || t === 'tax' || t === 'insurance';
 
-function DraftCard({ d, onToggle, onPatch, onPatchDoc, onCommit, onRemove }: {
+function DraftCard({ d, onToggle, onPatch, onPatchDoc, onAnswer, onArchiveOnly, onRemove }: {
   d: Draft;
   onToggle: () => void;
   onPatch: (p: Partial<Draft>) => void;
   onPatchDoc: (p: Partial<ScannedDoc>) => void;
-  onCommit: (choice?: string | null) => void;
+  /** Απάντηση σε ερώτηση: επιλογή υποψηφίου, «κανέναν» (null) ή «ούτως ή άλλως». */
+  onAnswer: (q: ReconcileQuestion | 'duplicate', choice?: string | null) => void;
+  onArchiveOnly: () => void;
   onRemove: () => void;
 }) {
   const doc = d.doc;
@@ -1327,23 +1370,46 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onCommit, onRemove }: {
       {d.status === 'error' && d.errorText && (
         <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--warning)', marginTop: 8 }}>{d.errorText}</div>
       )}
+      {/* Καταχωρήθηκε, αλλά όχι παντού: λέμε πού λείπει. */}
+      {d.status === 'saved' && (d.failed?.length ?? 0) > 0 && (
+        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--warning)', marginTop: 8 }}>{failedNotice(d.failed)}</div>
+      )}
+      {/* Δεν διαβάζεται: λέμε γιατί και ότι μπαίνει μόνο στον Φάκελο. */}
+      {d.status === 'ready' && d.scanError === 'format' && (
+        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: 8 }}>
+          {d.scanErrorText || SCAN_ERROR_TEXT.format} Θα μπει μόνο στον Φάκελο.
+        </div>
+      )}
+
+      {/* Πιθανή διπλοεγγραφή — πριν γραφτεί οτιδήποτε. Ιδια κάρτα με τη σάρωση. */}
+      {d.duplicate && (
+        <div style={{ marginTop: 10, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '10px 12px' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Μήπως το έχεις ήδη καταχωρήσει;</div>
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 8 }}>{d.duplicate}</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Btn variant="primary" onClick={() => onAnswer('duplicate')}>Καταχώρησέ το ούτως ή άλλως</Btn>
+            <Btn variant="secondary" onClick={onArchiveOnly}>Μόνο στον Φάκελο</Btn>
+          </div>
+        </div>
+      )}
 
       {/* Ερώτηση συμφωνίας — πριν γραφτεί οτιδήποτε. */}
       {d.ask && (
         <div style={{ marginTop: 10, background: 'var(--bg-base)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '10px 12px' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>{d.ask.question}</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{d.ask.question}</div>
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 8 }}>{d.ask.note}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {d.ask.options.map(o => (
-              <button key={o.id} onClick={() => onCommit(o.id)}
+              <button key={o.id} onClick={() => onAnswer(d.ask!, o.id)}
                 style={{ textAlign: 'left', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: T.radius.badge, padding: '8px 11px', cursor: 'pointer', fontFamily: T.font.sans }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{o.label}</div>
                 {o.reasons.length > 0 && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>{o.reasons.join(' · ')}</div>}
               </button>
             ))}
-            <button onClick={() => onCommit(null)}
+            <button onClick={() => onAnswer(d.ask!, null)}
               style={{ textAlign: 'left', background: 'transparent', border: '1px dashed var(--border-default)', borderRadius: T.radius.badge, padding: '8px 11px', cursor: 'pointer', fontFamily: T.font.sans }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>{RECONCILE_NONE_LABEL}</div>
-              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>{RECONCILE_NONE_HINT}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>{d.ask.none.label}</div>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>{d.ask.none.hint}</div>
             </button>
           </div>
         </div>
@@ -1411,7 +1477,11 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onCommit, onRemove }: {
             )}
             {formInfo && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{formInfo}</div>}
             <Textarea label="Σημειώσεις" value={doc.notes || ''} onChange={t => onPatchDoc({ notes: t })} placeholder="Προαιρετικά"/>
-          </>) : null}
+          </>) : (
+            // Χωρίς ανάγνωση μένει μία επιλογή: σε ποιο ράφι του Φακέλου μπαίνει.
+            <CustomSelect label="Κατηγορία (φάκελος)" value={d.category} onChange={c => onPatch({ category: c })}
+              options={archiveOptions()}/>
+          )}
         </div>
       )}
     </div>
