@@ -81,7 +81,7 @@ export function notaryFee(value: number): number {
 
 const pct = (r: number): string => `${fn(r * 100, Number.isInteger(r * 1000) ? 1 : 2)}%`
 /** Η σημείωση της γραμμής, από τις ίδιες σταθερές: κανένα ποσοστό γραμμένο με το χέρι. */
-export const NOTARY_NOTE = `Εκτίμηση: κλιμακωτή αμοιβή ${pct(NOTARY_FEE_BANDS[0].rate)} έως ${pct(NOTARY_FEE_BANDS[NOTARY_FEE_BANDS.length - 1].rate)} συν ΦΠΑ ${fn(VAT * 100)}%. Η κλίμακα δεν επαληθεύτηκε στο ΦΕΚ.`
+export const NOTARY_NOTE = `Εκτίμηση: κλιμακωτή αμοιβή ${pct(NOTARY_FEE_BANDS[0].rate)} έως ${pct(NOTARY_FEE_BANDS[NOTARY_FEE_BANDS.length - 1].rate)} συν ΦΠΑ ${fn(VAT * 100)}%. Το τελικό ποσό το δίνει ο συμβολαιογράφος.`
 
 /** Ο ΦΠΑ των υπηρεσιών της αγοράς (συμβολαιογράφος, μεσίτης, δικηγόρος). */
 export const SERVICES_VAT_RATE = VAT
