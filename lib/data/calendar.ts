@@ -277,6 +277,16 @@ export async function sourceStatesWithError(
   return { rows: rows.map(r => ({ source: String(r.source || ''), status: r.status ?? null })), error };
 }
 
+/**
+ * Οι ημέρες όσων γεγονότων ταιριάζουν, με το σφάλμα ορατό. Τη διαβάζει ο
+ * φρουρός «νεότερο χαρτί» της σάρωσης: αποτυχία εδώ δεν σημαίνει «δεν υπάρχει
+ * τίποτα», σημαίνει «δεν ξέρουμε», άρα δεν αντικαθιστούμε.
+ */
+export async function datesWithError(db: Db, propertyId: string, match: EventMatch): Promise<ReadResult<string>> {
+  const { rows, error } = await read<{ event_date: string | null }>(applyMatch(scoped(db, propertyId, 'event_date'), match));
+  return { rows: rows.map(r => String(r.event_date || '')).filter(Boolean), error };
+}
+
 /** Οι τίτλοι όσων γεγονότων ταιριάζουν. */
 export async function titles(db: Db, propertyId: string, match: EventMatch): Promise<string[]> {
   return (await readRows<{ title: string }>(applyMatch(scoped(db, propertyId, 'title'), match)))

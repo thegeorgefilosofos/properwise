@@ -12,7 +12,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useLoad } from '@/app/hooks/useLoad';
-import { staleKeys, type Provenance, type MarketKey } from '@/lib/market/ecb'
+import { staleKeys, catalogEntry, ECB_SERIES, type Provenance, type MarketKey } from '@/lib/market/ecb'
 import { athensToday } from '@/lib/core/time'
 import { failed } from '@/lib/core/dbError'
 
@@ -23,7 +23,13 @@ export interface LiveMarketRates {
   euribor_12m: number
   ecb_rate: number
   ecb_dfl: number
-  bog_housing_new: number   // μέσο επιτόκιο νέων στεγαστικών, MIR A2C.A (από 13/10/2026· πριν, A2C.F)
+  /**
+   * Μέσο επιτόκιο νέων στεγαστικών, ΜΟΝΟ από τη σειρά MIR A2C.A του καταλόγου.
+   * `null` όσο η βάση δεν έχει μετρημένη A: η στήλη κρατούσε ως τις 18/10/2026
+   * την τιμή της F (κυμαινόμενο ή σταθερό έως 1 έτος) και η λωρίδα την έγραφε
+   * «ΤτΕ μέσο».
+   */
+  bog_housing_new: number | null
   bog_housing_stock: number // ΟΧΙ υπόλοιπα: νέα στεγαστικά με σταθερό >1 και ≤5 έτη, MIR A2C.I…N· το όνομα είναι της στήλης
   updated_at: string
   source_euribor: string
@@ -130,16 +136,18 @@ export interface LiveProgram {
 // με τη βάση. Εγραφαν τον Αύγουστο για το Euribor και τα νέα στεγαστικά 3,56
 // του Ιουνίου. Μηνιαίοι μέσοι, όχι τιμή ημέρας.
 //
-// TODO (P0 στεγαστικό, 13/10/2026): από αυτή την αλλαγή η στήλη `bog_housing_new`
-// γράφει τη σειρά A2C.A, τον μέσο όρο. Το 3,39 εδώ είναι ακόμη η τιμή της A2C.F
-// (κυμαινόμενο ή σταθερό έως 1 έτος) και μένει ώσπου η βάση δώσει μετρημένη
-// τιμή A: νούμερο χωρίς πηγή δεν μπαίνει. Και το «υπόλοιπα 2,90» είναι η A2C.I
-// με N: νέες χορηγήσεις με σταθερό πάνω από 1 και έως 5 έτη, όχι υπόλοιπα.
+// ΤΟ ΜΕΣΟ ΝΕΩΝ ΣΤΕΓΑΣΤΙΚΩΝ ΔΕΝ ΕΧΕΙ ΕΦΕΔΡΕΙΑ (19/10/2026). Από τις 13/10/2026 η
+// στήλη `bog_housing_new` σημαίνει τη σειρά A2C.A, τον μέσο όρο. Το 3,39 που
+// καθόταν εδώ ήταν της A2C.F (κυμαινόμενο ή σταθερό έως 1 έτος) και η καρτέλα
+// Δάνειο το έγραφε «ΤτΕ μέσο». Μετρημένη τιμή A δεν υπάρχει ακόμη και νούμερο
+// χωρίς πηγή δεν μπαίνει: `null`, οπότε η λωρίδα δεν το δείχνει. Και το
+// «υπόλοιπα 2,90» είναι η A2C.I με N: νέες χορηγήσεις με σταθερό πάνω από 1 και
+// έως 5 έτη, όχι υπόλοιπα.
 const FALLBACK_AS_OF = '2026-09-01T00:00:00Z';
 
 const RATES_FALLBACK: LiveMarketRates = {
   euribor_3m: 2.635, euribor_1m: 2.414, euribor_6m: 2.922, euribor_12m: 3.247,
-  ecb_rate: 2.65, ecb_dfl: 2.50, bog_housing_new: 3.39, bog_housing_stock: 2.90,
+  ecb_rate: 2.65, ecb_dfl: 2.50, bog_housing_new: null, bog_housing_stock: 2.90,
   updated_at: FALLBACK_AS_OF, source_euribor: 'fallback', source_bog: 'fallback',
   rate_changed: false, isLoading: true, provenance: {}, stale: [], isStale: false,
 }
@@ -177,7 +185,8 @@ export function useMarketRates() {
             euribor_12m:       row.euribor_12m       ?? RATES_FALLBACK.euribor_12m,
             ecb_rate:          row.ecb_rate          ?? RATES_FALLBACK.ecb_rate,
             ecb_dfl:           row.ecb_dfl           ?? RATES_FALLBACK.ecb_dfl,
-            bog_housing_new:   row.bog_housing_new   ?? RATES_FALLBACK.bog_housing_new,
+            // Η ΣΕΙΡΑ ΚΡΙΝΕΙ, ΟΧΙ Η ΣΤΗΛΗ: τιμή άλλης σειράς δεν περνά με αυτό το όνομα.
+            bog_housing_new:   catalogEntry(provenance, 'bog_housing_new')?.value ?? null,
             bog_housing_stock: row.bog_housing_stock ?? RATES_FALLBACK.bog_housing_stock,
             updated_at:        row.updated_at,
             source_euribor:    row.source_euribor    ?? 'fallback',
@@ -233,7 +242,7 @@ export interface FeedHealth {
 
 export function useMarketFeedHealth(enabled: boolean) {
   const [health, setHealth] = useState<FeedHealth>({
-    ok: true, reason: '', hoursSilent: null, valuesPresent: 0, valuesExpected: 8, checked: false,
+    ok: true, reason: '', hoursSilent: null, valuesPresent: 0, valuesExpected: ECB_SERIES.length, checked: false,
   })
   const supabase = createClient()
 
@@ -258,7 +267,7 @@ export function useMarketFeedHealth(enabled: boolean) {
           reason: row.reason ?? '',
           hoursSilent: row.hours_silent == null ? null : Number(row.hours_silent),
           valuesPresent: row.values_present ?? 0,
-          valuesExpected: row.values_expected ?? 8,
+          valuesExpected: row.values_expected ?? ECB_SERIES.length,
           checked: true,
         })
       } catch { /* σιωπή: μια αποτυχία ελέγχου δεν είναι αποτυχία τροφοδοσίας */ }

@@ -111,7 +111,7 @@ const pageOf = (key: MarketKey): string => seriesPage(ECB_SERIES.find(s => s.key
   ok('ΣΤ. Euribor: μήνας', m.euribor?.period === 'Αυγούστου 2026')
   ok('ΣΤ. με πηγή', m.housing?.source === 'ΕΚΤ, στοιχεία Τράπεζας της Ελλάδος')
   ok('ΣΤ. φρέσκια τιμή δεν σημαδεύεται παλιά', m.housing?.stale === false && m.euribor?.stale === false)
-  // Euribor: όριο 45 ημερών· 01/08 ως 15/11 είναι 106.
+  // Euribor: όριο 45 ημερών από το τέλος του μήνα· ο Αύγουστος κλείνει 01/09 και ως 15/11 είναι 75.
   ok('ΣΤ. παλιά τιμή σημαδεύεται', marketFact(prov, 'euribor_3m', '2026-11-15')?.stale === true)
   ok('ΣΤ. χωρίς ταυτότητα, καμία τιμή', mortgageMarket(null, '2026-09-15').housing === null)
   ok('ΣΤ. χωρίς ημερομηνία, καμία τιμή',
@@ -197,6 +197,21 @@ ok('Ζ. η τιμή του πεδίου ξαναδιαβάζεται ίδια', 
   ok('Η. …και δεν γράφεται στη σελίδα', housingText(mortgageMarket(legacy, '2026-10-13')) === '')
   ok('Η. σύνδεσμος σε άγνωστη σειρά απορρίπτεται',
     marketFact({ euribor_3m: { ...at('euribor_3m', 2.5), url: 'https://data.ecb.europa.eu/x' } }, 'euribor_3m', '2026-10-13') === null)
+}
+
+// ═══ Θ. ΤΟ EURIBOR ΤΗΣ ΠΑΡΑΓΩΓΗΣ ΣΤΙΣ 18/10/2026 ═════════════════════════════
+// Ο μέσος όρος Σεπτεμβρίου (asOf 2026-09-01, 2,6350455) λεγόταν παλιός από τις
+// 16/10, γιατί η ηλικία μετρούσε από την αρχή του μήνα. Το πεδίο «Euribor» του
+// δημόσιου υπολογιστή ξεκινούσε κενό και η σελίδα έγραφε «η πηγή δεν έχει δώσει
+// νεότερη τιμή», ενώ η τροφοδοσία δούλευε.
+{
+  const prodEur: Provenance = { euribor_3m: { value: 2.6350455, asOf: '2026-09-01', source: 'Ευρωπαϊκή Κεντρική Τράπεζα',
+    basis: 'μέσος όρος μήνα', url: pageOf('euribor_3m'), fetchedAt: '2026-10-18T08:00:01.894Z' } }
+  const m18 = mortgageMarket(prodEur, '2026-10-18')
+  ok('Θ. ο Σεπτέμβριος στις 18/10 δεν είναι παλιός', m18.euribor?.stale === false)
+  ok('Θ. το πεδίο Euribor ξεκινά από αυτόν', startRates(m18).euribor === '2,64')
+  ok('Θ. και την τελευταία μέρα του Οκτωβρίου', startRates(mortgageMarket(prodEur, '2026-10-31')).euribor === '2,64')
+  ok('Θ. αν ο Οκτώβριος δεν έρθει ως τις 16/11, παλιό', startRates(mortgageMarket(prodEur, '2026-11-16')).euribor === '')
 }
 
 console.log(failed === 0 ? `✓ stegastiko: ${passed} έλεγχοι πέρασαν` : `✗ stegastiko: ${failed} απέτυχαν από ${passed + failed}`)

@@ -173,6 +173,18 @@ if ! sout=$($PSQL -d posdb -f "$ROOT/scripts/db/anon-surface.sql" 2>&1); then
 fi
 probes=$((probes + $(echo "$sout" | grep -c 'probe:' || true)))
 
+# ── ΞΕΡΕΙ Η ΥΓΕΙΑ ΤΗΣ ΤΡΟΦΟΔΟΣΙΑΣ ΤΙ ΔΕΝ ΗΡΘΕ; ──────────────────────────────
+# Η `market_feed_health()` έλεγε «εντάξει, 8 από 8» στις 18/10/2026 πάνω σε
+# γραμμή χωρίς δύο σειρές του καταλόγου. Το scripts/db/market-feed-probe.sql τη
+# ρωτά πάνω σε γραμμές με το σχήμα της παραγωγής, μέσα σε συναλλαγή που
+# ακυρώνεται: τα επόμενα βήματα βρίσκουν τη βάση όπως ήταν.
+if ! fout=$($PSQL -d posdb -f "$ROOT/scripts/db/market-feed-probe.sql" 2>&1); then
+  echo "🔴 Η υγεία της τροφοδοσίας επιτοκίων δεν κρίνει όπως ορίζει η μετανάστευσή της:"
+  echo "$fout" | grep -m3 -E 'ERROR|market_feed_health' | sed 's/^/    /'
+  exit 1
+fi
+feeds=$(echo "$fout" | grep -c 'market-feed:' || true)
+
 # ── ΤΡΕΧΕΙ ΑΚΟΜΗ ΤΟ ΣΕΝΑΡΙΟ ΤΟΥ STAGING; ────────────────────────────────────
 # Το scripts/db/staging-demo.sql γεμίζει λογαριασμό δοκιμών με μια ολόκληρη
 # χρονιά. Γράφτηκε μία φορά και θα σάπιζε στην πρώτη μετονομασία στήλης — όπως
@@ -242,6 +254,7 @@ drift=0
 
 echo "✅ $count μεταναστεύσεις τρέχουν σε πραγματικό Postgres, $probes έλεγχοι απομόνωσης"
 echo "   κρατούν, οι $rechecked αντέχουν δεύτερη εκτέλεση όσο υπόσχεται το baseline,"
+echo "   η υγεία της τροφοδοσίας επιτοκίων κρίνει σωστά $feeds σενάρια,"
 echo "   το σενάριο του staging γεμίζει λογαριασμό και οι στόχοι του"
 echo "   Προγράμματος Πρόσκλησης συμφωνούν με το"
 echo "   lib/referral/referral.ts ($TS_VOL, $TS_PRO) και η δοκιμή είναι $TS_TRIAL"

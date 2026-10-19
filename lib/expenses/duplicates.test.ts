@@ -1,4 +1,4 @@
-import { findDuplicates, duplicateNotice, type ExpenseLike } from './duplicates';
+import { findDuplicates, duplicateNotice, withoutOpenBillDebts, type ExpenseLike } from './duplicates';
 
 let fails = 0;
 const ok = (cond: boolean, msg: string) => {
@@ -103,6 +103,21 @@ console.log('\nΣειρά και μήνυμα');
 eq('χωρίς ευρήματα, καμία πρόταση', duplicateNotice([]), '');
 ok(duplicateNotice(findDuplicates(e({ id: undefined, date: '2026-08-14' }), existing)).startsWith('Μοιάζει με'),
   'η πιθανή δεν παριστάνει τη βεβαιότητα');
+
+console.log('Το χρέος δεν είναι διπλότυπο της πληρωμής του (έλεγχος 18/10/2026, APP-1)');
+{
+  // Ο λογαριασμός ΔΕΗ 84,50€ σαρώθηκε και έγραψε απλήρωτη δαπάνη δεμένη σε αυτόν.
+  const debt = e({ id: 'd', description: 'Ρεύμα — ΔΕΗ (Σεπτέμβριος 2026)', amount: 84.5, date: '2026-10-20', bill_id: 'b1', paid: false });
+  const paidOne = e({ id: 'p', description: 'Ρεύμα — ΔΕΗ', amount: 84.5, date: '2026-10-18', bill_id: 'b0', paid: true });
+  const legacy = e({ id: 'l', amount: 84.5, date: '2026-10-19', bill_id: 'b1', paid: null });
+  const receipt = e({ id: undefined, description: 'Ρεύμα — ΔΕΗ', amount: 84.5, date: '2026-10-20' });
+  ok(findDuplicates(receipt, [debt]).length === 1, 'χωρίς το φίλτρο, το χρέος μοιάζει με την πληρωμή του (το σφάλμα)');
+  const pool = withoutOpenBillDebts([debt, paidOne, legacy], ['b1']);
+  ok(!pool.some(r => r.id === 'd'), 'η απλήρωτη δαπάνη εκκρεμούς λογαριασμού βγαίνει');
+  ok(pool.some(r => r.id === 'p'), 'η πληρωμένη μένει: εκεί η δεύτερη σάρωση ΕΙΝΑΙ διπλοεγγραφή');
+  ok(pool.some(r => r.id === 'l'), 'χωρίς ρητό «απλήρωτη» δεν βγαίνει τίποτα');
+  ok(withoutOpenBillDebts([debt], ['άλλος']).length === 1, 'χρέος λογαριασμού που δεν εκκρεμεί μένει');
+}
 
 console.log(`\nduplicates: ${fails === 0 ? "✓ όλα" : `✗ ${fails}`}`);
 if (fails) process.exit(1);

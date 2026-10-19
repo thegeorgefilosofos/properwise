@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { fp, fpRate } from '@/lib/core/format'
 import { CORPORATE_TAX_RATE_2026 } from '@/lib/billing/greekTax'
-import { programDateLabel } from '@/lib/loans/programStatus'
+import { programDateLabel, parseProgramDate } from '@/lib/loans/programStatus'
 import { T, Btn } from '@/components/Theme'
 import { RATES_DISCLAIMER, calcMonthly, fmtEur, fmtPct, MARKET_FALLBACK, rateTypeLabel } from '../TabLoanData'
 import { ENERGY_PROGRAM_IDS, joinGreek } from '@/lib/loans/energyPrograms'
@@ -319,8 +319,15 @@ export function LoanAdvisor({
               const st = stateOf(prog)
               const open = st.acceptsApplications
               // Η ημερομηνία που μετράει για τον χρήστη, όπως και στον φακό.
-              const when = programDateLabel(open ? (prog.applicationDeadline || prog.deadline) : prog.deadline)
-              const shut = open ? null : (st.note || 'Οι αιτήσεις έκλεισαν')
+              // Πρόγραμμα που δεν άνοιξε ακόμη («Σπίτι μου ΙΙΙ») δεν έχει ημερομηνία
+              // αλλά κείμενο («Έναρξη αρχές Ιανουαρίου 2027, κατά την ΕΑΤ»). Στον
+              // τίτλο χωρά μόνο ημερομηνία: στα 320 το κείμενο ξέφευγε από τη γραμμή.
+              // Πάει στην εξήγηση από κάτω, που αναδιπλώνεται.
+              const rawWhen = open ? (prog.applicationDeadline || prog.deadline) : prog.deadline
+              const when = parseProgramDate(rawWhen) ? programDateLabel(rawWhen) : ''
+              const whenText = !when && rawWhen ? String(rawWhen).trim() : ''
+              const shutBase = open ? null : (st.note || 'Οι αιτήσεις έκλεισαν')
+              const shut = shutBase && whenText ? `${shutBase.replace(/\.?$/, '.')} ${whenText}.` : shutBase
               if (prog.id==='spiti_mou_2') return {
                 id: prog.id, l: prog.name, when, url: prog.url,
                 el: open && spiti.eligible && advType==='first_home',

@@ -267,10 +267,17 @@ export const MUTATIONS = {
   // προστίθεται αρχείο — αλλοιώνεται το ΥΠΑΡΧΟΝ PLAN_LABEL, γιατί αυτό είναι
   // το σημείο που μπορεί πραγματικά να χαλάσει.
   // Δύο διαδρομές: η καρφωτή διαδρομή σε σενάριο και η έκδοση του CI που
-  // ξεκολλά από το playwright-core.
+  // ξεκολλά από το playwright-core. Η τρίτη μετάλλαξη αφήνει πίσω ΜΟΝΟ το
+  // τελευταίο job (webkit): ο φύλακας κοίταζε μόνο το πρώτο pin και την άφηνε
+  // να περάσει πράσινη (19/10/2026). Η τέταρτη και η πέμπτη σβήνουν την έκδοση
+  // ή τη γράφουν «latest»: η κανονική έκφραση ζητούσε ψηφίο μετά το «@» και
+  // δεν τις μετρούσε καν ως εγκατάσταση (19/10/2026).
   'chromium-path': { every: [
     { add: 'scripts/__mut__.mjs', content: "import { chromium } from 'playwright-core';\nawait chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });\n" },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.63.0 install', to: 'playwright@1.40.0 install' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.0 install', to: 'playwright@1.40.0 install' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.0 install --with-deps webkit', to: 'playwright@1.63.0 install --with-deps webkit' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.0 install --with-deps webkit', to: 'playwright install --with-deps webkit' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.0 install --with-deps webkit', to: 'playwright@latest install --with-deps webkit' },
   ] },
   'email-audience': {
     file: 'supabase/functions/_shared/emailTemplates.ts',
@@ -443,7 +450,12 @@ export const MUTATIONS = {
 
   'presumptive-rate': { add: 'lib/core/__mut__.ts', content: 'export const taxable = (gross: number) => gross * 0.95\n' },
   'stay-gross': { add: 'lib/core/__mut__.ts', content: 'export const income = (stay: { total: number }) => { const amount = stay.total; return amount }\n' },
-  'local-formatters': { add: 'lib/core/__mut__.ts', content: "export const eur = (n: number) => `${n.toLocaleString('el-GR', { minimumFractionDigits: 2 })} €`\n" },
+  // Δύο κανόνες, δύο αποδείξεις: ποσό με δικό του μορφοποιητή και μέγεθος
+  // αρχείου με τελεία («9.5MB», έλεγχος 18/10/2026).
+  'local-formatters': { every: [
+    { add: 'lib/core/__mut__.ts', content: "export const eur = (n: number) => `${n.toLocaleString('el-GR', { minimumFractionDigits: 2 })} €`\n" },
+    { add: 'lib/core/__mut__.ts', content: "export const tooBig = (b: number) => `Το αρχείο είναι πολύ μεγάλο (${(b / 1048576).toFixed(1)}MB).`\n" },
+  ] },
   'dashes': { add: 'components/__mut__.tsx', content: tsx('    <td>—</td>') },
   // Το χύσιμο σε αντικείμενο στυλ: ο μεταγλωττιστής το δέχεται, η οθόνη το
   // πληρώνει. Δύο μορφές, μία για κάθε βοηθό διάταξης.
@@ -666,6 +678,12 @@ export const MUTATIONS = {
   'spiti-closed': { every: [
     { add: 'app/__mut_spiti__.tsx', content: tsx('    <p>Για πρώτη κατοικία, το «Σπίτι μου ΙΙ» μειώνει δραστικά το κόστος (50% άτοκο).</p>') },
     { file: 'app/dashboard/components/loan/LoanAdvisor.tsx', from: 'badges={spitiMouOpen(today) ? <span', to: 'badges={true ? <span' },
+    // Και το ΙΙΙ (18/10/2026): όφελος για πρόγραμμα χωρίς ΚΥΑ, με τις τρεις
+    // γραφές του ονόματος. Η τελευταία κρύβεται πίσω από τον έλεγχο του ΙΙ,
+    // που λέει αν δέχεται αιτήσεις το ΙΙ, όχι το ΙΙΙ.
+    { add: 'app/__mut_spiti__.tsx', content: tsx('    <p>Το «Σπίτι μου ΙΙΙ» θα δίνει το μισό δάνειο άτοκο.</p>') },
+    { add: 'app/__mut_spiti__.tsx', content: tsx('    <p>Σπίτι μου 3: επιδότηση επιτοκίου για νέους έως 55 ετών.</p>') },
+    { add: 'lib/__mut_spiti__.ts', content: "import { spitiMouOpen } from '@/lib/loans/recommend'\nexport const probe = (d: string) => spitiMouOpen(d) ? '' : 'Σπίτι μου III: 50% άτοκο'\n" },
   ] },
   // Τρεις κανόνες, τρεις αποδείξεις. Επισκέπτης γραμμένος χωρίς αποδοχή της
   // σύμβασης επεξεργασίας: ακριβώς η τρύπα στο save() των Πελατών και στην

@@ -58,12 +58,9 @@ export interface Checkin {
 // Είδη εγγράφων πελάτη (ταυτότητα, συμβόλαιο, απόδειξη, άλλο).
 export const DOC_KINDS = ['id', 'contract', 'receipt', 'other'] as const;
 export const DOC_KIND_LABELS: Record<string, string> = { id: 'Ταυτότητα / Διαβατήριο', contract: 'Συμβόλαιο', receipt: 'Απόδειξη', other: 'Άλλο' };
-export const fmtBytes = (n?: number | null) => {
-  if (!n || n <= 0) return '';
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-};
+// Το μέγεθος αρχείου έχει ένα σπίτι (lib/core/bytes.ts). Εδώ ζούσε δεύτερο
+// αντίγραφο με τελεία στην υποδιαστολή: «9.5 MB» δίπλα σε «9,5 MB».
+export { fmtBytes } from '@/lib/core/bytes';
 
 export const todayStr = () => athensToday();
 /** «1 αδήλωτη διαμονή» / «3 αδήλωτες διαμονές»: το σήμα λέει τι μετρά. */

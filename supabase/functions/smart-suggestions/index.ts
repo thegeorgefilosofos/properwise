@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.117.2'
+import { createClient } from 'npm:@supabase/supabase-js@2.117.3'
 import { reportEdgeError } from '../_shared/report.ts'
 
 const ANTHROPIC_KEY = Deno.env.get('ANTHROPIC_API_KEY')!

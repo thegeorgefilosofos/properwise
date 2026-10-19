@@ -494,10 +494,14 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               badges={<>
                 <span style={{fontSize: 'var(--fs-xs)',padding:'2px 8px',borderRadius: T.radius.chip,background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',color:closed?'var(--text-tertiary)':'var(--text-primary)',fontWeight:closed?500:600,fontFamily: T.font.sans}}>{st.badge}</span>
               </>}
-              meta={deadStr?<span style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{deadIsDate?`${st.acceptsApplications?'Αιτήσεις έως':'Υπογραφές έως'} ${deadStr}`:deadStr}</span>:undefined}
+              meta={deadStr&&deadIsDate?<span style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{`${st.acceptsApplications?'Αιτήσεις έως':'Υπογραφές έως'} ${deadStr}`}</span>:undefined}
             >
               {/* Η ΠΡΟΤΑΣΗ ΠΟΥ ΕΛΕΙΠΕ. Χωρίς αυτήν, δύο ημερομηνίες κάθονταν
                   δίπλα-δίπλα και ο χρήστης μάντευε ποια τον αφορά. */}
+              {/* Κείμενο αντί για ημερομηνία («Έναρξη αρχές Ιανουαρίου 2027, κατά την
+                  ΕΑΤ») δεν χωρά στη γραμμή της κεφαλίδας: στα 320 ξέφευγε 7px.
+                  Μπαίνει εδώ, όπου αναδιπλώνεται. */}
+              {deadStr&&!deadIsDate&&<p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,margin:'0 0 8px'}}>{deadStr}</p>}
               {st.note&&<p className="po-prose po-just" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,marginBottom:12,padding:'9px 12px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:10}}>{hy(<>{st.note}</>)}</p>}
               {/* ΚΛΕΙΣΤΟ ΠΡΟΓΡΑΜΜΑ: Η ΚΑΤΑΣΤΑΣΗ ΚΑΙ Η ΠΗΓΗ, ΟΧΙ ΟΙ ΟΡΟΙ. Η κάρτα
                   έγραφε σήμα «Έκλεισε» και από κάτω «άτοκο 50%», κριτήρια,

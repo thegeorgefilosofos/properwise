@@ -3,6 +3,7 @@ import {
   annuityMonthly, totalInterest, interestForYear, spitiMouIncomeLimit, spitiMouEligibility,
   spitiMouPayment, rankLoans, fixedRateForTerm, type UserLoanNeeds, type BankInput,
   spitiMouStatus, spitiMouOpen, spitiMouClosedLine, spitiMouEstimate,
+  SPITI_MOU_3, spitiMou3Line,
 } from './recommend'
 
 let passed = 0, failed = 0
@@ -168,6 +169,19 @@ ok('green class lowers Cheap nominal rate', greenRanked.find(r => r.bankId === '
   const today = rankLoans(baseNeeds, banks, 2.324, TODAY)
   ok('28/09/2026: καμία τράπεζα με «Σπίτι μου ΙΙ»', today.every(r => !r.spitiMouApplied))
   ok('...και καμία εξήγηση με «άτοκο»', today.every(r => !/άτοκ/.test(r.why)))
+}
+
+// ── «Σπίτι μου ΙΙΙ»: μόνο τα επίσημα, κανένα όριο από τον Τύπο ──
+{
+  const line = spitiMou3Line()
+  ok('ΙΙΙ: η γραμμή λέει πότε ανακοινώθηκε', line.includes('05/09/2026'))
+  ok('ΙΙΙ: ...ότι δεν γίνονται αιτήσεις', /δεν γίνονται αιτήσεις/.test(line))
+  ok('ΙΙΙ: ...και την έναρξη όπως τη λέει η ΕΑΤ', line.includes(SPITI_MOU_3.startLabel))
+  ok('ΙΙΙ: χωρίς ποσό, ποσοστό ή όφελος', !/€|%|άτοκ|επιδότ|\d{3}\.\d{3}/.test(line))
+  // Όρια δανείου, αξίας ή εισοδήματος δεν υπάρχουν πριν από επίσημο κείμενο.
+  const keys = Object.keys(SPITI_MOU_3)
+  ok('ΙΙΙ: κανένα όριο δανείου/αξίας/εισοδήματος', !keys.some(k => /amount|value|income|ltv|sqm|year/i.test(k)))
+  ok('ΙΙΙ: κάθε πηγή είναι επίσημος τομέας', Object.values(SPITI_MOU_3.sources).every(u => /^https:\/\/(www\.)?(primeminister\.gr|hdb\.gr|government\.gov\.gr)\//.test(u)))
 }
 
 console.log(`\nrecommend.test: ${passed} passed, ${failed} failed`)

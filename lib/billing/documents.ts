@@ -1232,6 +1232,15 @@ export interface SavePlan {
    * πραγματικής λήξης χανόταν.
    */
   replaceIfNewer?: { column: string; value: string };
+  /**
+   * Ο ΙΔΙΟΣ ΦΡΟΥΡΟΣ, ΟΤΑΝ Η ΗΜΕΡΟΜΗΝΙΑ ΔΕΝ ΕΧΕΙ ΣΤΗΛΗ. Το ακίνητο κρατά μόνο
+   * την κατηγορία του ΠΕΑ, χωρίς έκδοση ή λήξη: το νεότερο σαρωμένο ΠΕΑ (Β, λήξη
+   * 2036) γύριζε σε Δ μόλις αρχειοθετούνταν ένα παλαιότερο που ισχύει ακόμη (λήξη
+   * 2030). Η λήξη που ξέρει ήδη η εφαρμογή είναι το γεγονός του ημερολογίου με
+   * αυτόν τον τίτλο: αντικατάσταση μόνο όταν η νέα λήξη είναι ίση ή μεταγενέστερη.
+   * Παλαιότερο χαρτί: ούτε κατηγορία ούτε δεύτερη υπενθύμιση λήξης.
+   */
+  replaceIfNewerEvent?: { title: string; value: string };
   /** Στο property_settings με αντικατάσταση (ασφάλιση). */
   settings?: Record<string, unknown>;
   /** Στο property_settings, ΜΟΝΟ τα κενά (πάροχοι). */
@@ -1241,8 +1250,31 @@ export interface SavePlan {
   archive?:  ArchivePlan;                    // → property_documents (το αρχείο πρωτότυπο)
   reconcile?: boolean;                       // payment: προσπάθησε συμφωνία με εκκρεμή λογαριασμό
   commonMonthAmount?: number;                // κοινόχρηστα: ποσό μήνα για ιστορικό
+  /** Η θέση του ποσού στο Ιστορικό (0 = Ιανουάριος): ο μήνας του ΧΑΡΤΙΟΥ, όχι της σάρωσης. */
+  commonMonthIndex?: number;
   commonMillesimi?:   number;                // κοινόχρηστα: χιλιοστά
 }
+
+/**
+ * ΣΕ ΠΟΙΟΝ ΜΗΝΑ ΤΟΥ ΙΣΤΟΡΙΚΟΥ ΜΠΑΙΝΕΙ ΕΝΑ ΦΥΛΛΟ ΚΟΙΝΟΧΡΗΣΤΩΝ.
+ *
+ * Γραφόταν στον μήνα της ΣΑΡΩΣΗΣ, από το ρολόι της συσκευής: τα κοινόχρηστα
+ * Σεπτεμβρίου που σαρώνονταν στις 18/10 έμπαιναν στο «Οκτ» και πατούσαν ό,τι
+ * υπήρχε εκεί. Ο Δεκέμβριος που σαρωνόταν τον Ιανουάριο έμπαινε στον Ιανουάριο.
+ * Χαλούσαν ο μέσος όρος και ο «ακριβότερος μήνας».
+ *
+ * Τώρα: ο μήνας της περιόδου του χαρτιού, αλλιώς της έκδοσης. Το Ιστορικό είναι
+ * δώδεκα θέσεις ΧΩΡΙΣ έτος και δείχνει το τρέχον έτος, άρα χαρτί άλλης χρονιάς
+ * δεν γράφεται εκεί (μένει στον Φάκελο). Χωρίς καμία ημερομηνία δεν μαντεύουμε.
+ */
+export function commonMonthOf(dates: (string | undefined)[], today: string): number | null {
+  const d = dates.map(x => iso(x)).find(Boolean);
+  if (!d || d.slice(0, 4) !== today.slice(0, 4)) return null;
+  return Number(d.slice(5, 7)) - 1;
+}
+
+/** Ο τίτλος του γεγονότος λήξης ΠΕΑ: από αυτόν το βρίσκει και ο φρουρός. */
+export const PEA_EXPIRY_TITLE = 'Λήξη ΠΕΑ';
 
 // Ο κανόνας «συμπληρώνουμε κενά, δεν διορθώνουμε γεμάτα» ζει στο lib/core/prefill.ts,
 // γιατί τον χρειάζεται και ο οδηγός προσθήκης ακινήτου — όχι μόνο η σάρωση.
@@ -1408,9 +1440,10 @@ export function planDocSave(doc: ScannedDoc, today: string): SavePlan {
       if (!plan.targets.includes(CALENDAR)) plan.targets.push(CALENDAR);
     }
     if (cat === 'common') {
-      if (doc.amount) plan.commonMonthAmount = doc.amount;
+      const month = commonMonthOf([pFrom, pTo, doc.issue_date], today);
+      if (doc.amount && month != null) { plan.commonMonthAmount = doc.amount; plan.commonMonthIndex = month; }
       if (doc.millesimi) plan.commonMillesimi = doc.millesimi;
-      plan.targets.push(COMMON);
+      if (plan.commonMonthAmount != null || plan.commonMillesimi != null) plan.targets.push(COMMON);
     }
     // ΜΟΝΟ Ο ΛΟΓΑΡΙΑΣΜΟΣ ΓΡΑΦΕΙ ΣΤΟ ΑΚΙΝΗΤΟ. Στην απόδειξη πληρωμής ο
     // «πάροχος» είναι ο δικαιούχος ή η τράπεζα («Eurobank») και ο αριθμός είναι
@@ -1556,12 +1589,16 @@ export function planDocSave(doc: ScannedDoc, today: string): SavePlan {
     const cls = peaClassOf(doc.pea_class);
     if (cls) {
       const current = !!iso(doc.expiry_date) && iso(doc.expiry_date) >= today;
-      if (current) plan.propertyReplace = { pea_class: cls }; else plan.property = { pea_class: cls };
+      if (current) {
+        plan.propertyReplace = { pea_class: cls };
+        // Ισχύον ΠΕΑ δεν σημαίνει νεότερο: κρίνεται από τη λήξη που ήδη ξέρουμε.
+        plan.replaceIfNewerEvent = { title: PEA_EXPIRY_TITLE, value: iso(doc.expiry_date) };
+      } else plan.property = { pea_class: cls };
       plan.targets.unshift(PROPERTY_TARGET);
     }
     if (iso(doc.expiry_date)) {
       plan.calendar = [{
-        title: 'Λήξη ΠΕΑ', category: 'contract', event_date: iso(doc.expiry_date), amount: null,
+        title: PEA_EXPIRY_TITLE, category: 'contract', event_date: iso(doc.expiry_date), amount: null,
         notes: ['Από σάρωση πιστοποιητικού ενεργειακής απόδοσης', baseNote].filter(Boolean).join(' · '),
       }];
       plan.targets.splice(plan.targets.length - 1, 0, CALENDAR);

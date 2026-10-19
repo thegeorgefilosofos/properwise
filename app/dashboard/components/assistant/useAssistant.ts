@@ -24,7 +24,8 @@ import type {
   RentPaymentsRow, UserPropertiesRow,
 } from '@/lib/supabase/tables'
 import { fp } from '@/components/Theme'
-import { greekWhen, MONTH_MEAN } from '@/lib/market/ecb'
+import { greekWhen, MONTH_MEAN, type Provenance } from '@/lib/market/ecb'
+import { housingLines } from '@/lib/market/housingLines'
 import { resolveRent, resolveValue, computeYields } from '@/lib/billing/propertyFacts'
 import { mergeLedger, ledgerTotal, ledgerUnpaid } from '@/lib/expenses/ledger'
 import {
@@ -52,7 +53,7 @@ import { roleLabel } from '@/lib/contacts/roles'
 import { upcomingHolidays, holidayName, isWeekend } from '@/lib/calendar/greekHolidays'
 import type { OpenerContext } from '@/lib/assistant/openers'
 import { contactFlags } from '@/lib/assistant/roster'
-import type { ReconcileQuestion } from '../scanDoc'
+import type { ReconcileQuestion, CommitAnswers } from '../scanDoc'
 import type { ScannedDoc } from '@/lib/billing/documents'
 import type { QuotaSnapshot } from '@/lib/billing/aiLimits'
 import { athensToday, daysUntil } from '@/lib/core/time'
@@ -190,7 +191,12 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   // κουμπιού «Καταχώρησε» μέσα στον πίνακα μηνυμάτων. Ο μεταγλωττιστής δεν
   // ξεχωρίζει χειριστή από απόδοση όταν η συνάρτηση ζει στο σώμα, οπότε
   // κατήγγελλε ολόκληρο τον πίνακα.
-  const [pendingDoc, setPendingDoc] = useState<{ doc: ScannedDoc; file: File } | null>(null);
+  // Μαζί του οι απαντήσεις που έχει ήδη δώσει ο χρήστης (scanDoc: withAnswer),
+  // ώστε η επόμενη ερώτηση να μη σβήνει την προηγούμενη. Και η ερώτηση ή η
+  // παρόμοια δαπάνη που βρέθηκε για ΑΥΤΟ το χαρτί: μια απάντηση μετρά μόνο εκεί.
+  const [pendingDoc, setPendingDoc] = useState<{
+    doc: ScannedDoc; file: File; answers?: CommitAnswers; ask?: ReconcileQuestion; duplicate?: boolean;
+  } | null>(null);
   // Το `ask` ορίζεται πολύ πιο κάτω και κλείνει πάνω σε κατάσταση που αλλάζει.
   // Ο ακροατής του `pos:ask` γράφεται μία φορά (deps []), οπότε τον φτάνει μέσω
   // ref — αλλιώς θα κρατούσε για πάντα το πρώτο, άδειο, στιγμιότυπο.
@@ -337,7 +343,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       // ολόκληρο, οπότε ο βοηθός δεν ήξερε ΠΟΤΕ για ασφάλιση.
       properties.one<{ insurance_company: string | null; insurance_expiry: string | null; insurance_amount: number | null }>(supabase, propertyId, 'insurance_company,insurance_expiry,insurance_amount', userId),
       calendar.upcoming(supabase, { propertyId, userId }, todayStr, 10, 'title,event_date,amount,status,source'),
-      supabase.from('market_rates').select('euribor_3m,bog_housing_new,updated_at,provenance').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('market_rates').select('euribor_3m,updated_at,provenance').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
       loanStore.ofProperty(supabase, propertyId, userId),
       supabase.from('clients').select('id,type,full_name,afm,phone,email,rating,do_not_rent,tags,budget,needs').eq('user_id', userId).order('created_at', { ascending: false }).limit(80),
       stayStore.ofUser<ClientStaysRow>(supabase, userId, `client_id,rating,damages,damage_cost,notes,${stayStore.PORTFOLIO_COLUMNS}`),
@@ -652,7 +658,9 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       ? `, ${eurM && eur3.basis === MONTH_MEAN ? `μέσος όρος ${monthGen(Number(eurM[2]) - 1)} ${eurM[1]}` : `${eur3.basis} ${greekWhen(eur3.asOf, eur3.basis)}`}, πηγή ${eur3.source ?? 'ΕΚΤ'}`
       : '';
     if (rates?.euribor_3m != null) mLines.push(`Euribor 3 μηνών: ${fp(Number(rates.euribor_3m))}${eurWhen} (ο δείκτης πάνω στον οποίο πατούν τα κυμαινόμενα επιτόκια στεγαστικών· η τράπεζα εφαρμόζει την τιμή της ημέρας αναπροσαρμογής, όχι τον μέσο όρο του μήνα).`);
-    if (rates?.bog_housing_new != null) mLines.push(`Μέσο επιτόκιο νέου στεγαστικού δανείου (στοιχεία Τράπεζας της Ελλάδος): περίπου ${fp(Number(rates.bog_housing_new))}.`);
+    // ΤΑ ΣΤΕΓΑΣΤΙΚΑ ΑΠΟ ΤΗΝ ΤΑΥΤΟΤΗΤΑ, ΟΧΙ ΑΠΟ ΤΗ ΣΤΗΛΗ. Η στήλη `bog_housing_new`
+    // κρατούσε την τιμή της σειράς F και η Νόα την έλεγε μέσο όρο.
+    mLines.push(...housingLines((rates as { provenance?: Provenance | null } | null)?.provenance, todayStr));
     // ΤΟ ΕΥΡΟΣ ΤΙΜΩΝ ΡΕΥΜΑΤΟΣ ΕΦΥΓΕ ΚΑΙ ΕΙΝΑΙ ΚΕΡΔΟΣ.
     //
     // Διαβαζόταν από τον πίνακα `energy_tariffs`, που γέμιζε από χειρόγραφη
