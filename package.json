@@ -26,6 +26,7 @@
     "validity": "node scripts/guard-validity.mjs",
     "katalogos": "node scripts/gen-message-catalog.mjs",
     "guides:stamp": "node scripts/stamp-guides.mjs",
+    "tools:stamp": "node scripts/stamp-tools.mjs",
     "indexnow": "node scripts/indexnow.mjs",
     "pg-schema": "node scripts/pg-sandbox.mjs",
     "single-source": "node scripts/guard-single-source.mjs",

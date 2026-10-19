@@ -21,7 +21,7 @@ import { resolveEnfia } from '@/lib/billing/propertyFacts';
 import { enfiaInstalments, grDateLong, type EnfiaInstalment } from '@/lib/tools/enfiaSchedule';
 import { enfiaDueDates } from './deadlines';
 import { ENFIA_LABELS } from './labels';
-import { enfiaFromSettings } from './enfiaForm';
+import { enfiaFromSettings, effectiveEnfiaAge } from './enfiaForm';
 
 // Το «Δεν γνωρίζω» ΔΕΝ είναι απουσία επιλογής: είναι η ουδέτερη επιλογή, με
 // συντελεστή 1,00. Ο χρήστης πρέπει να μπορεί να τη διαλέξει ρητά και να
@@ -82,6 +82,12 @@ export interface EnfiaNow {
   estimateBasis: 'objective' | 'market' | null;
   /** Ηπειρωτική Αττική από τον ΤΚ· `null` όταν δεν ξέρουμε. */
   atticaMainland: boolean | null;
+  /**
+   * Το κλειδί παλαιότητας που μπαίνει στη μηχανή: το αποθηκευμένο, εκτός από τα
+   * δύο των παλιών κτιρίων, που βγαίνουν από το έτος κατασκευής της καρτέλας
+   * (`effectiveEnfiaAge`). Αυτό δείχνει και ο επιλογέας του πίνακα.
+   */
+  ageKey: string;
 }
 
 /**
@@ -93,7 +99,7 @@ export function enfiaForYear(s: EnfiaSettings, year: number, facts: EnfiaFacts =
     annual: s.enfiaLastAnnual, instalment: s.enfiaLastInstalment, instalments: s.enfiaLastCount,
   });
   const atticaMainland = atticaMainlandFromPostcode(facts.postalCode);
-  const detailed = enfiaFromSettings(s, year, atticaMainland);
+  const detailed = enfiaFromSettings(s, year, atticaMainland, facts.yearBuilt);
   // Η ΑΝΤΙΚΕΙΜΕΝΙΚΗ ΠΡΙΝ ΑΠΟ ΤΗΝ ΕΜΠΟΡΙΚΗ. Η μηχανή βγάζει την τιμή ζώνης ως
   // αξία ÷ τ.μ. και τα όρια (μείωση, Ενότητα Γ) τα κρίνει ο νόμος στην
   // αντικειμενική. Η εκτίμηση έπαιρνε την εμπορική και αγνοούσε την αντικειμενική
@@ -127,6 +133,7 @@ export function enfiaForYear(s: EnfiaSettings, year: number, facts: EnfiaFacts =
     estimateFrom: detailed ? 'form' : fromFacts ? 'facts' : null,
     estimateBasis: fromFacts ? (obj ? 'objective' : 'market') : null,
     atticaMainland,
+    ageKey: effectiveEnfiaAge(s.enfiaAge, facts.yearBuilt, year),
   };
 }
 

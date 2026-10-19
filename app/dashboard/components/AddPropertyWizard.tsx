@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useId, cloneElement, isValidElement, Children, Fragment } from 'react';
-import { track, PRODUCT_EVENTS } from '@/lib/analytics/events';
+import { track, trackOnboarding, PRODUCT_EVENTS } from '@/lib/analytics/events';
 import { HEATING_TYPES, heatingLabel, normalizeHeating } from '@/lib/property/heating';
 import { createClient } from '@/lib/supabase/client';
 import * as properties from '@/lib/data/properties';
@@ -635,7 +635,15 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // ενημερώσει — ακριβώς το διπλό insert που ο κώδικας της `save()` μπήκε στον
   // κόπο να αποτρέψει. Και το μήνυμα «αποθηκεύτηκε το ακίνητο, όχι οι ρυθμίσεις»
   // δεν προλαβαίνει να διαβαστεί. Όσο γράφει, το παράθυρο μένει.
-  const requestClose = () => { if (!saving) onClose(); };
+  //
+  // ΤΟ ΒΗΜΑ ΟΠΟΥ ΕΚΛΕΙΣΕ. Νέο ακίνητο που δεν αποθηκεύτηκε ποτέ: το σκαλί
+  // `wizard_closed` λέει σε ποιο από τα πέντε βήματα σταμάτησε. Η επεξεργασία
+  // υπάρχοντος, ή ο οδηγός που έχει ήδη γράψει το ακίνητο, δεν μετρά.
+  const requestClose = () => {
+    if (saving) return;
+    if (!isEdit && !createdId) void trackOnboarding(supabase, { event: PRODUCT_EVENTS.wizard_closed, step: step + 1 });
+    onClose();
+  };
 
   return (
     // ΠΟΛΥΒΗΜΑΤΙΚΟ, ΑΛΛΑ ΠΑΡΑΘΥΡΟ — ΟΧΙ ΟΛΟΣΕΛΙΔΗ ΕΜΠΕΙΡΙΑ.

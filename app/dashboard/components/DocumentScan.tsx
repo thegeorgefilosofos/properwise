@@ -10,6 +10,7 @@
 
 import { useState, useRef, useCallback, useEffect, useId, Fragment, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { trackOnboarding, PRODUCT_EVENTS } from '@/lib/analytics/events';
 // Οι επαφές έχουν ένα σπίτι: lib/data/contacts.
 import * as contacts from '@/lib/data/contacts';
 import { BankLinkTile } from './BankLink';
@@ -235,6 +236,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   const busy = scanning || saving;
   useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
   useEffect(() => () => { onBusyChange?.(false); }, [onBusyChange]);
+  // ΤΟ ΣΚΑΛΙ `scan_opened`: μία φορά ανά άνοιγμα του παραθύρου, χωρίς τίποτα
+  // από το έγγραφο. Το παράθυρο φτιάχνει τη σάρωση από την αρχή κάθε φορά.
+  useEffect(() => { void trackOnboarding(createClient(), { event: PRODUCT_EVENTS.scan_opened }); }, []);
   // Ερώτηση συμφωνίας: όταν η βεβαιότητα ταιριάσματος με εκκρεμή λογαριασμό είναι
   // χαμηλή, ΔΕΝ εξοφλούμε σιωπηλά — ρωτάμε ποιον (ή κανέναν).
   const [ask, setAsk] = useState<ReconcileQuestion | null>(null);

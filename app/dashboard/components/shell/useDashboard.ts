@@ -32,6 +32,7 @@ import { reveal, sanitizeRevealed, coreTabs, type DisclosureSignals } from '@/li
 import { startPanel } from '@/lib/home/start'
 import { saved } from '@/components/dbWrite'
 import { logActivity } from '@/lib/activity'
+import { trackOnboarding, PRODUCT_EVENTS, type WizardFrom } from '@/lib/analytics/events'
 import type { Property } from './model'
 import { NAV_ITEMS, LAUNCH } from './nav'
 import { useInventoryAlerts, useChecklistAlerts } from './alerts'
@@ -445,8 +446,15 @@ export function useDashboard() {
   }, []);
 
   // Προσθήκη ακινήτου με έλεγχο ορίου πλάνου: αν έφτασες το όριο, δείξε αναβάθμιση.
-  const tryAddProperty = () => {
-    if (canAddProperty(ent, properties.length)) setShowAddModal(true);
+  // ΑΠΟ ΠΟΥ ΑΝΟΙΞΕ Ο ΟΔΗΓΟΣ. Το σκαλί `wizard_opened` γράφεται εδώ, τη στιγμή
+  // που ο οδηγός πράγματι ανοίγει: όταν το πακέτο δεν επιτρέπει άλλο ακίνητο
+  // ανοίγει η αναβάθμιση και δεν μετρά.
+  const openWizard = (from: WizardFrom) => {
+    setShowAddModal(true);
+    void trackOnboarding(supabase, { event: PRODUCT_EVENTS.wizard_opened, from });
+  };
+  const tryAddProperty = (from: WizardFrom = 'other') => {
+    if (canAddProperty(ent, properties.length)) openWizard(from);
     else setShowUpgrade(true);
   };
 
@@ -512,7 +520,7 @@ export function useDashboard() {
     try { clearAssistantHistory(pid); } catch {}
     if (selected?.id === pid) setSelected(null);
     await fetchProperties(user.id);
-    if (wasLast) { setNav('overview'); setShowAddModal(true); }
+    if (wasLast) { setNav('overview'); openWizard('empty'); }
   };
   const deleteProperty = () => { if (selected) deletePropertyById(selected.id, selected.name); };
 
@@ -579,7 +587,7 @@ export function useDashboard() {
     scanAfterAdd, setScanAfterAdd, plan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
-    setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, updateStatus, deleteProperty,
+    setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, openWizard, updateStatus, deleteProperty,
     scanBusy, setScanBusy, closeQuickAdd, signOut,
   }
 }

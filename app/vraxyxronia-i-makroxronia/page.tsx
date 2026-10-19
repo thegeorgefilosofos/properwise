@@ -29,7 +29,7 @@ import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { ShortVsLongCalculator } from './ShortVsLongCalculator';
-import { PAGE_UPDATED } from '../pageUpdated';
+import { PAGE_UPDATED, limitsChecked } from '../pageUpdated';
 
 // Τίτλος ≤60 και περιγραφή ≤160 χαρακτήρες: ό,τι περισσεύει κόβεται στα
 // αποτελέσματα αναζήτησης (ήταν 63 και 263).
@@ -155,7 +155,7 @@ export default function Page() {
           }/>
         </Suspense>
 
-        <ToolSources kind="short" checked={PAGE_UPDATED['/vraxyxronia-i-makroxronia']} />
+        <ToolSources kind="short" checked={limitsChecked('/vraxyxronia-i-makroxronia')} updated={PAGE_UPDATED['/vraxyxronia-i-makroxronia']} />
 
         <section className="po-tool-more" style={{ marginTop: 'clamp(44px,6vw,72px)' }}>
           <SectionHead over="Συχνές ερωτήσεις" title="Ό,τι ρωτούν πριν αποφασίσουν" />

@@ -11,6 +11,7 @@ import * as properties from '@/lib/data/properties';
 import { MONTHS_SHORT } from '@/lib/core/months';
 import { averageMonthly, feeOriginNote, feeShare, monthlyFees, TYPICAL_SHARE, type FeeSourceRow } from '@/lib/expenses/municipalFees';
 import { athensParts } from '@/lib/core/time';
+import { effectiveEnfiaAge } from '@/lib/facts/enfiaForm';
 
 
 
@@ -111,23 +112,29 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
   // μηχανή δεν δίνει κανένα μέτρο με ημερομηνία έναρξης: η μείωση του μικρού
   // οικισμού (από τον ΕΝΦΙΑ 2026) δεν εφαρμοζόταν ΠΟΤΕ εδώ, ενώ η Λογιστική
   // την εφάρμοζε. Ο ΤΚ κρίνει την εξαίρεση της ηπειρωτικής Αττικής.
+  //
+  // ΚΑΙ ΤΟ ΕΤΟΣ ΚΑΤΑΣΚΕΥΗΣ: το «πριν από το 1930» και το «άνω των 100 ετών»
+  // κρίνονται από αυτό και το έτος του ΕΝΦΙΑ, όχι από το κλειδί που
+  // αποθηκεύτηκε κάποτε (lib/facts/enfiaForm.ts, `effectiveEnfiaAge`).
   const [postalCode, setPostalCode] = useState<string | null>(null);
+  const [yearBuilt, setYearBuilt] = useState<number | null>(null);
   useEffect(() => {
     let stop = false;
     (async () => {
-      if (!propertyId) { if (!stop) setPostalCode(null); return; }
-      const row = await properties.one<{ postal_code: string | null }>(createClient(), propertyId, 'postal_code', userId || undefined);
-      if (!stop) setPostalCode(row?.postal_code ?? null);
+      if (!propertyId) { if (!stop) { setPostalCode(null); setYearBuilt(null); } return; }
+      const row = await properties.one<{ postal_code: string | null; year_built: number | null }>(createClient(), propertyId, 'postal_code,year_built', userId || undefined);
+      if (!stop) { setPostalCode(row?.postal_code ?? null); setYearBuilt(row?.year_built ?? null); }
     })();
     return () => { stop = true; };
   }, [propertyId, userId]);
   const atticaMainland = atticaMainlandFromPostcode(postalCode);
+  const enfiaAge = effectiveEnfiaAge(s.enfiaAge, yearBuilt, feeYear);
 
   const enfiaResult = useMemo(() => calcENFIA(
-    parseFloat(s.enfiaSqm) || 0, s.enfiaZone, s.enfiaFloor, s.enfiaAge,
+    parseFloat(s.enfiaSqm) || 0, s.enfiaZone, s.enfiaFloor, enfiaAge,
     parseFloat(s.enfiaOwnership) || 100, parseFloat(s.enfiaTotalVal) || 0,
     parseFloat(s.enfiaPropVal) || 0, s.enfiaReductions || [], feeYear, atticaMainland,
-  ), [s.enfiaSqm, s.enfiaZone, s.enfiaFloor, s.enfiaAge, s.enfiaOwnership, s.enfiaTotalVal, s.enfiaPropVal, s.enfiaReductions, feeYear, atticaMainland]);
+  ), [s.enfiaSqm, s.enfiaZone, s.enfiaFloor, enfiaAge, s.enfiaOwnership, s.enfiaTotalVal, s.enfiaPropVal, s.enfiaReductions, feeYear, atticaMainland]);
 
   // ΤΟ ΔΗΛΩΜΕΝΟ ΠΟΣΟ ΝΙΚΑ ΤΗΝ ΕΚΤΙΜΗΣΗ. Η απόφαση ζει στο lib/billing/enfia.ts,
   // γιατί τη χρειάζεται και ο Προϋπολογισμός — και εκεί διάβαζε ΜΟΝΟ το δηλωμένο,

@@ -21,6 +21,16 @@
 // δεμένο με το περιεχόμενό του (guideStamps.json, guard-guide-updated). Ο
 // κόμβος /odigos παίρνει τη νεότερη από αυτές.
 //
+// ΟΙ ΦΟΡΟΛΟΓΙΚΟΙ ΥΠΟΛΟΓΙΣΤΕΣ ΕΧΟΥΝ ΔΥΟ ΗΜΕΡΟΜΗΝΙΕΣ (19/10/2026). Η σελίδα τους
+// έπαιρνε μόνο τον έλεγχο των ορίων (`taxLimitAsOf(...).checkedAt`), οπότε ο
+// χάρτης έδινε 2026-08-26 για το /ypologismos-enfia και το
+// /ypologismos-forou-enoikion αφού το #401 (18/10) είχε αλλάξει H1, λυμένα
+// παραδείγματα και FAQ. Τώρα: «έλεγχος ορίων» από το μητρώο ισχύος, όπως ήταν,
+// και «τελευταία αλλαγή περιεχομένου» από τη σφραγίδα σελίδας και μηχανής
+// (app/toolStamps.json, scripts/guard-tool-updated.mjs). Ο χάρτης και η
+// «Τελευταία ενημέρωση» παίρνουν τη νεότερη από τις δύο. Το checkedAt του
+// lib/legal/validity.ts δεν αγγίζεται.
+//
 // ΤΟ ΦΥΛΑΕΙ το app/pageUpdated.test.ts: αποδίδει κάθε σελίδα του χάρτη και
 // βάζει την ορατή ημερομηνία δίπλα στο `lastModified`.
 //
@@ -30,11 +40,35 @@
 import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 import { PRICE_FACTS } from '@/lib/facts/prices';
 import { POLICY_VERSION } from '@/lib/legal/identity';
+import TOOL_STAMPS from './toolStamps.json';
 
 /** Μητρώο χωρίς ημερομηνία ελέγχου σπάει το χτίσιμο, δεν γίνεται σιωπηλά «καμία». */
 function checked(iso: string | null, what: string): string {
   if (!iso) throw new Error(`${what}: η πηγή της ημερομηνίας δεν έχει ημερομηνία ελέγχου`);
   return iso;
+}
+
+/** Οι υπολογιστές με σφραγίδα περιεχομένου και το κλειδί των ορίων τους. */
+// Σε μία γραμμή επίτηδες: το app/pageUpdated.test.ts διαβάζει τις γραμμές
+// «'/διαδρομή': …» του PAGE_UPDATED και μια δεύτερη τέτοια γραμμή εδώ θα τη μπέρδευε.
+const TOOL_LIMIT = { '/ypologismos-forou-enoikion': 'rent', '/ypologismos-enfia': 'enfia', '/vraxyxronia-i-makroxronia': 'short', '/kathari-apodosi': 'yield' } as const;
+export type StampedTool = keyof typeof TOOL_LIMIT;
+
+/** Ο έλεγχος των ορίων ενός υπολογιστή: η «Νομική βάση» ελέγχθηκε τότε. */
+export function limitsChecked(path: StampedTool): string {
+  const k = TOOL_LIMIT[path];
+  return checked(taxLimitAsOf(k).checkedAt, k);
+}
+
+/** Η τελευταία αλλαγή περιεχομένου (σελίδα ή μηχανή), ή `null` όταν δεν έχει οριστεί. */
+export function contentUpdated(path: StampedTool): string | null {
+  return (TOOL_STAMPS.tools as Record<string, { updated: string | null } | undefined>)[path]?.updated ?? null;
+}
+
+/** Η ημερομηνία της σελίδας: η νεότερη από τον έλεγχο των ορίων και την αλλαγή περιεχομένου. */
+function toolDate(path: StampedTool): string {
+  const c = contentUpdated(path), l = limitsChecked(path);
+  return c && c > l ? c : l;
 }
 
 export const PAGE_UPDATED = {
@@ -49,12 +83,13 @@ export const PAGE_UPDATED = {
   // δίπλα στο πεδίο, γι' αυτό το πλαίσιο των πηγών του δεν γράφει άλλη.
   '/ypologismos-stegastikou-daneiou': '2026-10-03',
 
-  // ── ΟΙ ΦΟΡΟΛΟΓΙΚΟΙ ΥΠΟΛΟΓΙΣΤΕΣ: Ο ΠΑΛΑΙΟΤΕΡΟΣ ΕΛΕΓΧΟΣ ΤΩΝ ΟΡΙΩΝ ΤΟΥΣ ─────────
-  // Η «Τελευταία ενημέρωση» του πλαισίου «Νομική βάση» (`ToolSources`).
-  '/ypologismos-forou-enoikion': checked(taxLimitAsOf('rent').checkedAt, 'rent'),
-  '/ypologismos-enfia': checked(taxLimitAsOf('enfia').checkedAt, 'enfia'),
-  '/vraxyxronia-i-makroxronia': checked(taxLimitAsOf('short').checkedAt, 'short'),
-  '/kathari-apodosi': checked(taxLimitAsOf('yield').checkedAt, 'yield'),
+  // ── ΟΙ ΦΟΡΟΛΟΓΙΚΟΙ ΥΠΟΛΟΓΙΣΤΕΣ: ΕΛΕΓΧΟΣ ΟΡΙΩΝ Ή ΑΛΛΑΓΗ ΠΕΡΙΕΧΟΜΕΝΟΥ ─────────
+  // Η «Τελευταία ενημέρωση» του πλαισίου «Νομική βάση» (`ToolSources`): η
+  // νεότερη από τον παλαιότερο έλεγχο των ορίων και τη σφραγίδα περιεχομένου.
+  '/ypologismos-forou-enoikion': toolDate('/ypologismos-forou-enoikion'),
+  '/ypologismos-enfia': toolDate('/ypologismos-enfia'),
+  '/vraxyxronia-i-makroxronia': toolDate('/vraxyxronia-i-makroxronia'),
+  '/kathari-apodosi': toolDate('/kathari-apodosi'),
 
   // ── Η ΣΥΓΚΡΙΣΗ ΡΕΥΜΑΤΟΣ: Ο ΕΛΕΓΧΟΣ ΤΟΥ ΚΑΤΑΛΟΓΟΥ ΤΙΜΟΛΟΓΙΩΝ ─────────────────
   // Αλλάζει με τον κατάλογο, όχι με τον νόμο (lib/facts/prices, data/price-sources.json).

@@ -27,7 +27,7 @@ import { publicMetadata } from '../publicMetadata';
 import { EnfiaCalculator } from './EnfiaCalculator';
 import { ToolLedger } from '../ToolParts';
 import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
-import { PAGE_UPDATED } from '../pageUpdated';
+import { PAGE_UPDATED, limitsChecked } from '../pageUpdated';
 import { ENFIA_AGE_BANDS, ENFIA_PRE_YEAR, ENFIA_CENTURY_YEARS, enfiaOldBuildingYears } from '@/lib/billing/enfia';
 import { fe, fn, fpRate, feRate, feSigned, feWhole } from '@/lib/core/format';
 import { AADE_DESTINATIONS } from '@/lib/tax/aade';
@@ -173,7 +173,7 @@ export default function Page() {
           }/>
         </Suspense>
 
-        <ToolSources kind="enfia" checked={PAGE_UPDATED['/ypologismos-enfia']} />
+        <ToolSources kind="enfia" checked={limitsChecked('/ypologismos-enfia')} updated={PAGE_UPDATED['/ypologismos-enfia']} />
 
         {/* ── ΔΥΟ ΠΑΡΑΔΕΙΓΜΑΤΑ ΑΠΟ ΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (13.10.2026) ──────────────────
             Τα ποσά βγαίνουν από την ίδια κλήση της μηχανής με τη φόρμα (seo.ts)

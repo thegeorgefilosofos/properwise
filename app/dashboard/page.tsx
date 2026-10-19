@@ -69,7 +69,7 @@ export default function Dashboard() {
     scanAfterAdd, setScanAfterAdd, plan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
-    setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, updateStatus, deleteProperty,
+    setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, openWizard, updateStatus, deleteProperty,
     scanBusy, setScanBusy, closeQuickAdd, signOut,
   } = useDashboard()
 
@@ -565,7 +565,7 @@ export default function Dashboard() {
               {/* Η ΜΟΝΑΔΙΚΗ ΧΡΗΣΗ ΤΟΥ ΠΑΛΙΟΥ `.btn`. Είχε δικό της ύψος, ακτίνα και
                   μέγεθος γραμματοσειράς, δηλαδή έμοιαζε με κουμπί άλλης
                   εφαρμογής δίπλα σε κάθε άλλο κουμπί της ίδιας οθόνης. */}
-              <Btn variant="primary" onClick={() => tryAddProperty()}>Πρόσθεσε το ακίνητό σου</Btn>
+              <Btn variant="primary" onClick={() => tryAddProperty('empty')}>Πρόσθεσε το ακίνητό σου</Btn>
             </div>
           </div>
         ) : (
@@ -872,7 +872,7 @@ export default function Dashboard() {
       </Modal>
 
       {showWelcome&&user&&<WelcomeOnboarding userId={user.id}
-        onAddProperty={()=>{ setShowWelcome(false); setShowAddModal(true); }}
+        onAddProperty={()=>{ setShowWelcome(false); openWizard('welcome'); }}
         // ═══ Η ΣΑΡΩΣΗ ΠΕΡΝΑΕΙ ΑΠΟ ΤΟΝ ΟΔΗΓΟ ═════════════════════════════════
         // Εδώ δημιουργούνταν σιωπηλά «Νέο ακίνητο», διαμέρισμα, με κατάσταση
         // «Κενό», χωρίς καμία ερώτηση. Ο οδηγός όμως δεν έχει προεπιλογή
@@ -880,7 +880,7 @@ export default function Dashboard() {
         // νοικιασμένο διαμέρισμα γραφόταν ως κενό. Τώρα ανοίγει ο οδηγός (τύπος,
         // κατάσταση, όνομα· «Αποθήκευση τώρα» υπάρχει από το δεύτερο βήμα) και η
         // σάρωση ξεκινά πάνω στο ακίνητο που αποθηκεύτηκε.
-        onScanCreate={()=>{ setShowWelcome(false); setScanAfterAdd(true); setShowAddModal(true); }}
+        onScanCreate={()=>{ setShowWelcome(false); setScanAfterAdd(true); openWizard('scan'); }}
         onProfile={setProfileType}
         onClose={()=>setShowWelcome(false)} />}
       {/* ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΔΕΝ ΓΡΑΦΕΙ ΤΙΠΟΤΑ. Ήταν ακίνητο μέσα στον λογαριασμό, με

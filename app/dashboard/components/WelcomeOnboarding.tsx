@@ -48,6 +48,7 @@ import { demoSummary, demoLedger, demoExpenses } from '@/lib/demo/sample';
 import { expenseAccount } from '@/lib/accounting/journal';
 import { categoryLabel } from '@/lib/expenses/taxonomy';
 import { upcomingTaxObligations } from '@/lib/facts/deadlines';
+import { trackOnboarding, PRODUCT_EVENTS } from '@/lib/analytics/events';
 
 interface Props {
   userId: string;
@@ -186,7 +187,12 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
 
   const addProperty = async () => { await mark(); onAddProperty(); };
   const scanCreate = async () => { await mark(); onScanCreate(); };
-  const later = async () => { await mark(); onClose(); };
+  // Η ΚΑΡΤΑ ΤΟΥ «ΑΡΓΟΤΕΡΑ». Όλοι οι νέοι χωρίς ακίνητο είχαν `welcomed=true` και
+  // κανείς δεν ήξερε σε ποια κάρτα έφυγαν. Μόνο ο αριθμός της κάρτας.
+  const later = async () => {
+    void trackOnboarding(supabase, { event: PRODUCT_EVENTS.welcome_later, card: step + 1 });
+    await mark(); onClose();
+  };
 
   const c = cards[step];
   const last = step === cards.length - 1;
