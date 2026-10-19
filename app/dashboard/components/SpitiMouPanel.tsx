@@ -7,6 +7,7 @@ import {
 import { T } from '@/components/tokens'
 import { Bar, LinkBtn, fixedCols } from '@/components/Theme'
 import { athensToday } from '@/lib/core/time'
+import { feWhole } from '@/lib/core/format'
 
 // ── «Σπίτι μου ΙΙ — για σένα» ────────────────────────────────────────────────
 // Συγκεντρώνει σε μία εικόνα: το 50/50 σκέλος (άτοκο/τραπεζικό), την πραγματική
@@ -50,14 +51,18 @@ export default function SpitiMouPanel({
   const incomeLimit = spitiMouIncomeLimit(needs.maritalStatus, needs.children)
 
   // Κριτήρια ένα-ένα: όσα ξέρουμε ελέγχονται, τα υπόλοιπα «προς επιβεβαίωση».
+  // ΟΙ ΕΤΙΚΕΤΕΣ ΑΠΟ ΤΟ `SPITI_MOU`, ΟΧΙ ΑΠΟ ΤΟ ΧΕΡΙ. Έγραφαν «έως 250.000€»,
+  // «190.000€», «150 τ.μ.», «2007» και «30 έτη» δίπλα στον έλεγχο που διάβαζε
+  // ήδη τα ίδια όρια από τη σταθερά: με νέα όρια σε επόμενο κύκλο, η ετικέτα θα
+  // έλεγε τον παλιό αριθμό και το ναι/όχι θα έκρινε με τον νέο.
   const crit: Crit[] = [
     { label: 'Πρώτη και κύρια κατοικία', status: 'unknown', detail: 'Προς επιβεβαίωση' },
-    { label: 'Ηλικία 25–50 ετών', status: 'unknown', detail: 'Προς επιβεβαίωση' },
-    { label: 'Αξία ακινήτου έως 250.000€', status: propertyValue > 0 ? (propertyValue <= SPITI_MOU.maxPropertyValue ? 'pass' : 'fail') : 'unknown', detail: propertyValue > 0 ? fmtEur(propertyValue) : 'Προς επιβεβαίωση' },
-    { label: 'Ποσό δανείου έως 190.000€', status: amount > 0 ? (amount <= SPITI_MOU.maxAmount ? 'pass' : 'fail') : 'unknown', detail: amount > 0 ? fmtEur(amount) : 'Προς επιβεβαίωση' },
-    { label: 'Εμβαδόν έως 150 τ.μ.', status: sqm && sqm > 0 ? (sqm <= SPITI_MOU.maxSqm ? 'pass' : 'fail') : 'unknown', detail: sqm && sqm > 0 ? `${sqm} τ.μ.` : 'Προς επιβεβαίωση' },
-    { label: 'Έτος κατασκευής έως 2007', status: yearBuilt && yearBuilt > 0 ? (yearBuilt <= SPITI_MOU.maxYearBuilt ? 'pass' : 'fail') : 'unknown', detail: yearBuilt && yearBuilt > 0 ? String(yearBuilt) : 'Προς επιβεβαίωση' },
-    { label: 'Διάρκεια έως 30 έτη', status: years > 0 ? (years <= SPITI_MOU.maxYears ? 'pass' : 'fail') : 'unknown', detail: `${years} έτη` },
+    { label: `Ηλικία ${SPITI_MOU.ageMin}–${SPITI_MOU.ageMax} ετών`, status: 'unknown', detail: 'Προς επιβεβαίωση' },
+    { label: `Αξία ακινήτου έως ${feWhole(SPITI_MOU.maxPropertyValue)}`, status: propertyValue > 0 ? (propertyValue <= SPITI_MOU.maxPropertyValue ? 'pass' : 'fail') : 'unknown', detail: propertyValue > 0 ? fmtEur(propertyValue) : 'Προς επιβεβαίωση' },
+    { label: `Ποσό δανείου έως ${feWhole(SPITI_MOU.maxAmount)}`, status: amount > 0 ? (amount <= SPITI_MOU.maxAmount ? 'pass' : 'fail') : 'unknown', detail: amount > 0 ? fmtEur(amount) : 'Προς επιβεβαίωση' },
+    { label: `Εμβαδόν έως ${SPITI_MOU.maxSqm} τ.μ.`, status: sqm && sqm > 0 ? (sqm <= SPITI_MOU.maxSqm ? 'pass' : 'fail') : 'unknown', detail: sqm && sqm > 0 ? `${sqm} τ.μ.` : 'Προς επιβεβαίωση' },
+    { label: `Έτος κατασκευής έως ${SPITI_MOU.maxYearBuilt}`, status: yearBuilt && yearBuilt > 0 ? (yearBuilt <= SPITI_MOU.maxYearBuilt ? 'pass' : 'fail') : 'unknown', detail: yearBuilt && yearBuilt > 0 ? String(yearBuilt) : 'Προς επιβεβαίωση' },
+    { label: `Διάρκεια έως ${SPITI_MOU.maxYears} έτη`, status: years > 0 ? (years <= SPITI_MOU.maxYears ? 'pass' : 'fail') : 'unknown', detail: `${years} έτη` },
     { label: `Εισόδημα έως ${fmtEur(incomeLimit)}`, status: incomeAnnual ? (incomeAnnual <= incomeLimit && incomeAnnual >= SPITI_MOU.incomeMin ? 'pass' : 'fail') : 'unknown', detail: incomeAnnual ? `${fmtEur(incomeAnnual)} τον χρόνο` : 'Προς επιβεβαίωση' },
   ]
   const hardFail = crit.some(c => c.status === 'fail')

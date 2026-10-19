@@ -42,6 +42,7 @@ import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
 import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
+import { LAW_5222_PDF } from '../fek';
 import {
   GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideTable, GuideSources, GuideCta, GuideFaq,
   RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
@@ -196,7 +197,6 @@ const FAQ: GuideFaqItem[] = [
 // στον προορισμό του τέλους στο lib/tax/aade.ts (η πύλη myAADE), που είναι ο
 // μόνος επιτρεπτός δρόμος προς την ΑΑΔΕ.
 const EXT = { target: '_blank', rel: 'noopener noreferrer', className: 'lp-link', style: LINK_STYLE } as const;
-const LAW_5222_PDF = 'https://api.et.gr/apiFEK/1/2025/134/pdf';
 // Το Μητρώο Ακινήτων Βραχυχρόνιας Διαμονής: η πύλη και η διαδρομή σε λέξεις,
 // όπως τα κρατά το μητρώο των προορισμών. Κανένας βαθύς σύνδεσμος.
 const REGISTRY = AADE_DESTINATIONS['str-registry'];

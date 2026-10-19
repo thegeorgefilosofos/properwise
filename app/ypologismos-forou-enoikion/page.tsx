@@ -34,10 +34,11 @@ import { RentTaxCalculator } from './RentTaxCalculator';
 import { PAGE_UPDATED } from '../pageUpdated';
 import { ToolLedger } from '../ToolParts';
 import { fe, fn, feWhole, fpRate, feSigned, grDateOf } from '@/lib/core/format';
-import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
+import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE, bankReceiptMatters } from '@/lib/billing/presumptive';
 import { AADE_DESTINATIONS } from '@/lib/tax/aade';
 import { ratePct } from '../odigos/taxText';
+import { LAW_5222_PDF, LAW_5246_PDF } from '../odigos/fek';
 import { toolJsonLd, ToolByline, ToolOnwardLinks } from '../toolSeo';
 import { rentPageYear, rentH1, rentTitle, rentDesc, rentExample } from './seo';
 
@@ -58,13 +59,10 @@ const SCALE_WORDS = (() => {
 
 const URL = siteUrl('/ypologismos-forou-enoikion');
 
-// Ο ΝΟΜΟΣ ΤΗΣ ΤΡΑΠΕΖΙΚΗΣ ΕΙΣΠΡΑΞΗΣ, ΣΕ ΣΥΝΔΕΣΜΟ (13.10.2026). Η ίδια διεύθυνση με
-// τον οδηγό Airbnb (app/odigos/airbnb-takk-2026/page.tsx). Το ΦΕΚ Α΄ 134/2025
-// είναι ο ν.5222/2025: επαληθεύτηκε στο κείμενο του ΦΕΚ (legalize-dev/legalize-gr,
-// gr/FEK-A-134-2025.md, «ΝΟΜΟΣ ΥΠ’ ΑΡΙΘΜ. 5222»). Ο ν.5246/2025 της κλίμακας
-// (ΦΕΚ Α΄ 198/2025) δεν έχει διεύθυνση στο αποθετήριο και ο διακομιστής δεν
-// άφησε να ανοιχτεί καμία: γράφεται χωρίς σύνδεσμο ώσπου να επαληθευτεί.
-const LAW_5222_PDF = 'https://api.et.gr/apiFEK/1/2025/134/pdf';
+// ΟΙ ΔΥΟ ΝΟΜΟΙ ΤΗΣ ΣΕΛΙΔΑΣ, ΣΕ ΣΥΝΔΕΣΜΟ. Ο ν.5222/2025 (ΦΕΚ Α΄ 134/2025) της
+// τραπεζικής είσπραξης από 13.10.2026. Ο ν.5246/2025 της κλίμακας (ΦΕΚ Α΄
+// 198/2025) έμενε χωρίς σύνδεσμο ώσπου να επαληθευτεί· επαληθεύτηκε 18.10.2026
+// στο κείμενο του ΦΕΚ. Οι διευθύνσεις και η επαλήθευσή τους: app/odigos/fek.ts.
 const LINK = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 } as const;
 const PROSE = { fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0 } as const;
 
@@ -288,6 +286,8 @@ export default function Page() {
             <Link href="/odigos/forologia-enoikion-2026" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               φορολογία ενοικίων 2026
             </Link>{' '}εξηγεί την κλίμακα, την τεκμαρτή έκπτωση {DEDUCTION}, τον κανόνα της τραπεζικής είσπραξης (από {BANK_FROM}) και τις εξαιρέσεις, με παραδείγματα σε ευρώ.
+            {' '}Η κλίμακα από το φορολογικό έτος {FIRST_YEAR_NEW_BRACKETS} είναι του άρθρου 8 του{' '}
+            <a href={LAW_5246_PDF} target="_blank" rel="noopener noreferrer" className="lp-link" style={LINK}>ν.5246/2025, ΦΕΚ Α΄ 198/2025</a>.
           </>)}</p>
         </section>
 

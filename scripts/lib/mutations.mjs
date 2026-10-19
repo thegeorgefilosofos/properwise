@@ -666,6 +666,12 @@ export const MUTATIONS = {
   'spiti-closed': { every: [
     { add: 'app/__mut_spiti__.tsx', content: tsx('    <p>Για πρώτη κατοικία, το «Σπίτι μου ΙΙ» μειώνει δραστικά το κόστος (50% άτοκο).</p>') },
     { file: 'app/dashboard/components/loan/LoanAdvisor.tsx', from: 'badges={spitiMouOpen(today) ? <span', to: 'badges={true ? <span' },
+    // Και το ΙΙΙ (18/10/2026): όφελος για πρόγραμμα χωρίς ΚΥΑ, με τις τρεις
+    // γραφές του ονόματος. Η τελευταία κρύβεται πίσω από τον έλεγχο του ΙΙ,
+    // που λέει αν δέχεται αιτήσεις το ΙΙ, όχι το ΙΙΙ.
+    { add: 'app/__mut_spiti__.tsx', content: tsx('    <p>Το «Σπίτι μου ΙΙΙ» θα δίνει το μισό δάνειο άτοκο.</p>') },
+    { add: 'app/__mut_spiti__.tsx', content: tsx('    <p>Σπίτι μου 3: επιδότηση επιτοκίου για νέους έως 55 ετών.</p>') },
+    { add: 'lib/__mut_spiti__.ts', content: "import { spitiMouOpen } from '@/lib/loans/recommend'\nexport const probe = (d: string) => spitiMouOpen(d) ? '' : 'Σπίτι μου III: 50% άτοκο'\n" },
   ] },
   // Τρεις κανόνες, τρεις αποδείξεις. Επισκέπτης γραμμένος χωρίς αποδοχή της
   // σύμβασης επεξεργασίας: ακριβώς η τρύπα στο save() των Πελατών και στην
