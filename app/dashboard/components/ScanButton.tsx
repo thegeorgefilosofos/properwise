@@ -8,7 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useRef, useState } from 'react';
 import { T, Btn } from '@/components/Theme';
-import { scanDocument } from './scanDoc';
+import { scanDocument, MAX_SCAN_MB, SCAN_ACCEPT } from './scanDoc';
 import { SAY } from '@/lib/core/dbError';
 import type { ScannedDoc } from '@/lib/billing/documents';
 
@@ -41,7 +41,9 @@ export default function ScanButton({ label = SCAN_LABEL, hint = SCAN_HINT, onExt
     const r = await scanDocument(f);
     setBusy(false);
     if (r.doc) onExtract(r.doc);
-    else setErr(r.error === 'big' ? 'Πολύ μεγάλο αρχείο (όριο 10MB).' : r.error === 'quota' ? (r.errorText || SAY.scanQuotaSpent) : r.error === 'key_missing' ? 'Η αυτόματη ανάγνωση δεν είναι ενεργή.' : 'Δεν διάβασα καθαρά το έγγραφο. Δοκίμασε καθαρότερη φωτό ή PDF.');
+    // Το όριο από τη σάρωση (ήταν «10MB» με το χέρι, η σάρωση κόβει στα 8) και
+    // ο λόγος όταν ο τύπος δεν διαβάζεται, όχι «δεν διάβασα καθαρά».
+    else setErr(r.error === 'big' ? `Πολύ μεγάλο αρχείο (όριο ${MAX_SCAN_MB} MB).` : r.error === 'format' ? (r.errorText || 'Αυτός ο τύπος αρχείου δεν διαβάζεται.') : r.error === 'quota' ? (r.errorText || SAY.scanQuotaSpent) : r.error === 'key_missing' ? 'Η αυτόματη ανάγνωση δεν είναι ενεργή.' : 'Δεν διάβασα καθαρά το έγγραφο. Δοκίμασε καθαρότερη φωτό ή PDF.');
   };
 
   return (
@@ -57,7 +59,7 @@ export default function ScanButton({ label = SCAN_LABEL, hint = SCAN_HINT, onExt
       </Btn>
       {hint && !busy && !err && <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.4 }}>{hint}</span>}
       {err && <span style={{ fontSize: 12, color: 'var(--negative)', fontFamily: T.font.sans }}>{err}</span>}
-      <input ref={ref} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handle(f); e.currentTarget.value = ''; }} />
+      <input ref={ref} type="file" accept={SCAN_ACCEPT} style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handle(f); e.currentTarget.value = ''; }} />
     </div>
   );
 }

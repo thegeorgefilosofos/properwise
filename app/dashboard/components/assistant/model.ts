@@ -7,7 +7,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { feAuto, feOr } from '@/components/Theme'
 import { type Memory, type AssistantAction, NAV_MAP } from '../assistantPersona'
-import { RECONCILE_NONE_LABEL } from '../scanDoc'
+import type { ReconcileQuestion } from '../scanDoc'
 import type { PropertyStatus } from '@/lib/facts/status';
 
 interface PropContext {
@@ -69,8 +69,14 @@ export type ContactLite = { name: string; role: string; phone: string; email: st
 export const eur = (n?: number | null) => n == null ? feOr(null) : feAuto(n);
 // Η ερώτηση συμφωνίας σε μία πρόταση. Οι ίδιοι λόγοι που δείχνει και η οθόνη
 // σάρωσης — δεν εφευρίσκεται δεύτερη διατύπωση για την ίδια απόφαση.
-export const reconcilePrompt = (q: { question: string; options: { label: string; reasons: string[] }[] }): string =>
-  `${q.question} Βρήκα ${q.options.length === 1 ? 'έναν λογαριασμό που ταιριάζει' : `${q.options.length} λογαριασμούς που ταιριάζουν`}. Διάλεξε παρακάτω, ή «${RECONCILE_NONE_LABEL}» για νέα εγγραφή.`;
+// Η ερώτηση του μισθωτηρίου δεν μετρά «λογαριασμούς»: ρωτά για άνθρωπο ή για
+// τους όρους της μίσθωσης, με τις αλλαγές που θα γίνουν.
+export const reconcilePrompt = (q: Pick<ReconcileQuestion, 'about' | 'question' | 'options' | 'none'>): string =>
+  q.about === 'tenant'
+    ? `${q.question} Διάλεξε παρακάτω, ή «${q.none.label}» αν είναι άλλος άνθρωπος.`
+    : q.about === 'lease'
+    ? `${q.question} ${(q.options[0]?.reasons || []).map(r => `${r}.`).join(' ')} Διάλεξε παρακάτω.`.replace(/\s+/g, ' ')
+    : `${q.question} Βρήκα ${q.options.length === 1 ? 'έναν λογαριασμό που ταιριάζει' : `${q.options.length} λογαριασμούς που ταιριάζουν`}. Διάλεξε παρακάτω, ή «${q.none.label}» για νέα εγγραφή.`;
 export const navLabel = (id: string) => NAV_MAP.find(n => n.id === id)?.label || id;
 export const onlyDigits = (p: string) => (p || '').replace(/\D/g, '');
 // Ετικέτα κουμπιού επικοινωνίας ανά κανάλι (χωρίς emoji, ελληνικά).

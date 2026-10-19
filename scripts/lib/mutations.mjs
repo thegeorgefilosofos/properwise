@@ -443,7 +443,12 @@ export const MUTATIONS = {
 
   'presumptive-rate': { add: 'lib/core/__mut__.ts', content: 'export const taxable = (gross: number) => gross * 0.95\n' },
   'stay-gross': { add: 'lib/core/__mut__.ts', content: 'export const income = (stay: { total: number }) => { const amount = stay.total; return amount }\n' },
-  'local-formatters': { add: 'lib/core/__mut__.ts', content: "export const eur = (n: number) => `${n.toLocaleString('el-GR', { minimumFractionDigits: 2 })} €`\n" },
+  // Δύο κανόνες, δύο αποδείξεις: ποσό με δικό του μορφοποιητή και μέγεθος
+  // αρχείου με τελεία («9.5MB», έλεγχος 18/10/2026).
+  'local-formatters': { every: [
+    { add: 'lib/core/__mut__.ts', content: "export const eur = (n: number) => `${n.toLocaleString('el-GR', { minimumFractionDigits: 2 })} €`\n" },
+    { add: 'lib/core/__mut__.ts', content: "export const tooBig = (b: number) => `Το αρχείο είναι πολύ μεγάλο (${(b / 1048576).toFixed(1)}MB).`\n" },
+  ] },
   'dashes': { add: 'components/__mut__.tsx', content: tsx('    <td>—</td>') },
   // Το χύσιμο σε αντικείμενο στυλ: ο μεταγλωττιστής το δέχεται, η οθόνη το
   // πληρώνει. Δύο μορφές, μία για κάθε βοηθό διάταξης.

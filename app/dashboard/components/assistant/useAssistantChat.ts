@@ -19,7 +19,7 @@ import { NAV_MAP, buildPersonalPrompt, parseAction, cleanForSpeech, addMemory } 
 import { assistantLockedMessage } from '@/lib/billing/aiLimits'
 import { modelFor } from '@/lib/assistant/model'
 import { numberMatchLine } from '@/lib/assistant/roster'
-import { scanFile } from '../scanDoc'
+import { scanFile, MAX_SCAN_MB } from '../scanDoc'
 import { DOC_TYPE_LABELS } from '@/lib/billing/documents'
 import { parseAmount } from '@/lib/core/greek'
 import { athensToday, athensNowLabel } from '@/lib/core/time'
@@ -269,7 +269,8 @@ export function useAssistantChat({
   // τότε — τρέχει η αναγνώριση συσκευής, που η μηχανή του Αρχείου δεν κάνει.
   const askImage = async (file: File) => {
     if (!file.type.startsWith('image/') || busy) return;
-    if (file.size > 10 * 1024 * 1024) { setMsgs(m => [...m, { role: 'assistant', text: 'Η φωτογραφία είναι πάνω από 10 MB. Δοκίμασε μικρότερη.' }]); return; }
+    // Το όριο της σάρωσης, όχι ένα δεύτερο γραμμένο με το χέρι (ήταν 10 MB, η σάρωση κόβει στο MAX_SCAN_MB).
+    if (file.size > MAX_SCAN_MB * 1024 * 1024) { setMsgs(m => [...m, { role: 'assistant', text: `Η φωτογραφία είναι πάνω από ${MAX_SCAN_MB} MB. Δοκίμασε μικρότερη.` }]); return; }
     setErr('');
     setMsgs(m => [...m, { role: 'user', text: 'Φωτογραφία για ανάγνωση' }]);
     setBusy(true);
@@ -289,6 +290,11 @@ export function useAssistantChat({
       // Το όριο των σαρώσεων δεν λύνεται με δεύτερη κλήση: λέγεται και σταματά εδώ.
       if (scan.error === 'quota') {
         setMsgs(m => [...m, { role: 'assistant', text: scan.errorText || SAY.scanQuotaSpent }]);
+        setBusy(false); return;
+      }
+      // Ούτε η αναγνώριση αντικειμένου διαβάζει HEIC: λέγεται τι να γίνει, χωρίς δεύτερη κλήση.
+      if (scan.error === 'format') {
+        setMsgs(m => [...m, { role: 'assistant', text: scan.errorText || 'Αυτός ο τύπος αρχείου δεν διαβάζεται.' }]);
         setBusy(false); return;
       }
     } catch { /* πέφτουμε στην αναγνώριση αντικειμένου παρακάτω */ }

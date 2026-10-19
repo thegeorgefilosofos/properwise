@@ -25,7 +25,8 @@ import { navLabel } from '@/lib/nav/labels';
 import { athensToday } from '@/lib/core/time';
 import {
   scanDocument, commitScannedDoc, MAX_SCAN_MB, SYSTEM_PROMPT as SCAN_SYSTEM_PROMPT,
-  RECONCILE_NONE_LABEL, RECONCILE_NONE_HINT, type ReconcileQuestion,
+  SCAN_ACCEPT, unreadableFormat, withAnswer, failedNotice, openQuestion,
+  type ReconcileQuestion, type CommitAnswers,
 } from './scanDoc';
 import { inferRole } from '@/lib/contacts/roles';
 import { ensureDpa } from '@/lib/legal/dpa';
@@ -211,6 +212,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   const [error, setError] = useState('');
   const [errorText, setErrorText] = useState('');
   const [savedInfo, setSavedInfo] = useState<string[]>([]);
+  // Ό,τι ΔΕΝ γράφτηκε. Η οθόνη επιτυχίας το λέει αντί να γράφει «ενημερώθηκαν
+  // αυτόματα οι σχετικές καρτέλες» πάνω από ένα μισό αποτέλεσμα.
+  const [failedInfo, setFailedInfo] = useState<string[]>([]);
   // Ο χρήστης άλλαξε τον τύπο: η αβεβαιότητα της σάρωσης δεν τον αφορά πια.
   const [typeTouched, setTypeTouched] = useState(false);
   // Το ράφι του Φακέλου. `null` = ακολουθεί την προεπιλογή του τύπου, ώσπου να
@@ -235,6 +239,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   // χαμηλή, ΔΕΝ εξοφλούμε σιωπηλά — ρωτάμε ποιον (ή κανέναν).
   const [ask, setAsk] = useState<ReconcileQuestion | null>(null);
   const [duplicate, setDuplicate] = useState('');
+  // Οι απαντήσεις ως τώρα. Η επόμενη ερώτηση ΔΕΝ σβήνει την προηγούμενη
+  // απάντηση: «ούτως ή άλλως» και μετά «αυτόν τον λογαριασμό» στέλνονται μαζί.
+  const [answers, setAnswers] = useState<CommitAnswers>({});
   // Πρόταση αποθήκευσης του εκδότη (προμηθευτή/επαγγελματία) στις Επαφές, μετά τη
   // σάρωση λογαριασμού/απόδειξης. Ποτέ αυτόματα — μόνο με ρητή επιβεβαίωση χρήστη.
   const [contactState, setContactState] =
@@ -264,16 +271,18 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   const setF = (f: DocField, raw: string) => setEdited(p => (p ? withField(p, f, raw) : p));
 
   const loadFile = useCallback(async (f: File) => {
-    if (!f.type.startsWith('image/') && f.type !== 'application/pdf' && !f.name.match(/\.(csv|xlsx|xls|txt)$/i)) {
-      setError('Υποστηριζόμενα: JPG, PNG, HEIC, PDF, CSV, Excel'); return;
-    }
+    // Η ΙΔΙΑ ΛΙΣΤΑ ΜΕ ΤΟ `accept` (scanDoc.ts: SCAN_TYPES). Εδώ περνούσαν CSV και
+    // Excel που ο πάροχος δεν διαβάζει και γύριζαν «η υπηρεσία δεν απαντά».
+    const unreadable = unreadableFormat(f);
+    if (unreadable) { setError(unreadable); return; }
     // Όριο μεγέθους: προστατεύει και την αποθήκευση και την πληρωμένη κλήση AI από
     // τεράστια αρχεία (το base64 φουσκώνει ~33%, οπότε 10MB ≈ 13MB payload).
     if (f.size > MAX_SCAN_MB * 1024 * 1024) {
-      setError(`Το αρχείο είναι πολύ μεγάλο (${(f.size / 1048576).toFixed(1)}MB). Όριο ${MAX_SCAN_MB}MB.`); return;
+      // Ο ίδιος μορφοποιητής με τη γραμμή του αρχείου: «9,5 MB», όχι «9.5MB».
+      setError(`Το αρχείο είναι πολύ μεγάλο (${sizeLabel(f.size)}). Όριο ${MAX_SCAN_MB} MB.`); return;
     }
     // προεπισκόπηση-blob: δείχνει το αρχείο και το ανοίγει σε νέα καρτέλα, δεν κατεβάζει.
-    setFile(f); setFileUrl(URL.createObjectURL(f)); setEdited(null); setError(''); setAsk(null); setDuplicate('');
+    setFile(f); setFileUrl(URL.createObjectURL(f)); setEdited(null); setError(''); setAsk(null); setDuplicate(''); setAnswers({});
     setTypeTouched(false); setArchiveCat(null); setStep('review');
     // Η ΑΝΑΓΝΩΣΗ γίνεται από τη ΜΙΑ μηχανή σάρωσης (scanDoc.ts) — καμία δεύτερη
     // υλοποίηση prompt/parse εδώ. Ό,τι διορθώσουμε εκεί, διορθώνεται παντού.
@@ -317,29 +326,27 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
 
   // Η ΚΑΤΑΧΩΡΗΣΗ. Όλη η εγγραφή (8 πίνακες + αρχειοθέτηση + συμφωνία) ζει στο
   // scanDoc.ts ώστε να είναι ΙΔΙΑ από κάθε οθόνη. Εδώ μένει μόνο η οθόνη.
-  // `choice`: undefined → άσε τη μηχανή να κρίνει (και να ρωτήσει αν δεν ξέρει)·
-  //           string    → ο χρήστης διάλεξε ποιον λογαριασμό εξοφλεί·
-  //           null      → ο χρήστης είπε «κανέναν».
-  const save = async (choice?: string | null, allowDuplicate = false) => {
+  // `next`: οι απαντήσεις ως τώρα (κενό στο πρώτο «Καταχώρηση»), που η
+  // μηχανή διαβάζει αντί να ξαναρωτήσει.
+  const save = async (next: CommitAnswers = {}) => {
     if (!edited) return;
     setSaving(true); setError('');
     const r = await commitScannedDoc({
       doc: edited, file, propertyId: targetId, userId,
       // Το ράφι που ΒΛΕΠΕΙ ο χρήστης στο «Φάκελος», όχι ένα δεύτερο συμπέρασμα.
       ...(folder ? { archiveCategory: folder } : {}),
-      ...(choice !== undefined ? { reconcileChoice: choice } : {}),
-      ...(allowDuplicate ? { allowDuplicate: true } : {}),
+      ...next,
     });
     setSaving(false);
-    // Χαμηλή βεβαιότητα ταιριάσματος: ΤΙΠΟΤΑ δεν γράφτηκε, ρωτάμε τον χρήστη.
-    if (r.ask) { setAsk(r.ask); return; }
-    // Πιθανή διπλοεγγραφή: ΤΙΠΟΤΑ δεν γράφτηκε. Η απόφαση είναι του χρήστη —
-    // μόνο εκείνος ξέρει αν πρόκειται για δύο παροχές ή για την ίδια απόδειξη.
-    if (r.duplicate) { setDuplicate(r.duplicate); return; }
-    setDuplicate('');
+    setAnswers(next);
+    // Ερώτηση (συμφωνία, ενοικιαστής) ή πιθανή διπλοεγγραφή: ΤΙΠΟΤΑ δεν
+    // γράφτηκε. Μία κάρτα κάθε φορά, η απόφαση είναι του χρήστη.
+    const q = openQuestion(r);
+    setAsk(q.ask); setDuplicate(q.duplicate);
+    if (q.ask || q.duplicate) return;
     if (r.error || !r.saved.length) { setError('save'); return; }
-    setAsk(null);
     setSavedInfo(r.saved);
+    setFailedInfo(r.failed || []);
     setStep('done');
     onSaved?.();
   };
@@ -405,8 +412,8 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
 
   const reset = () => {
     setStep('upload'); setFile(null); setFileUrl(''); setEdited(null);
-    setSaving(false); setError(''); setSavedInfo([]); setArchiveCat(null);
-    setContactState('cta'); setAsk(null); setDuplicate(''); setTypeTouched(false);
+    setSaving(false); setError(''); setSavedInfo([]); setFailedInfo([]); setArchiveCat(null);
+    setContactState('cta'); setAsk(null); setDuplicate(''); setAnswers({}); setTypeTouched(false);
   };
 
   // ── Οθόνη επιτυχίας ─────────────────────────────────────────────────────────
@@ -426,7 +433,16 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             <span key={s} style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--positive)', background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: T.radius.pill, padding: '4px 12px', fontFamily: T.font.sans }}>{s}</span>
           ))}
         </div>
-        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: T.sp.xxl }}>Ενημερώθηκαν αυτόματα οι σχετικές καρτέλες.</div>
+        {/* ΧΩΡΙΣ «ΟΛΑ ΚΑΛΑ» ΠΑΝΩ ΑΠΟ ΜΙΣΟ ΑΠΟΤΕΛΕΣΜΑ. Αρκούσε να πετύχει ένα
+            βήμα για να γραφτεί αυτή η πρόταση, ενώ ο Φάκελος ή οι δόσεις
+            μπορεί να είχαν αποτύχει χωρίς λέξη. */}
+        {failedInfo.length > 0 ? (
+          <div style={{ maxWidth: 420, margin: `0 auto ${T.sp.xxl}px`, textAlign: 'left' }}>
+            <InfoBanner tone="warning">{failedNotice(failedInfo)}</InfoBanner>
+          </div>
+        ) : (
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: T.sp.xxl }}>Ενημερώθηκαν αυτόματα οι σχετικές καρτέλες.</div>
+        )}
 
         {/* Πρόταση αποθήκευσης εκδότη στις Επαφές (μόνο για λογαριασμό/απόδειξη με όνομα
             προμηθευτή και εφόσον ξέρουμε ποιος χρήστης — αλλιώς σιωπηλά παραλείπεται). */}
@@ -552,10 +568,12 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)'; }}>
             <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
             <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Ανέβασε αρχείο</div>
-            {/* Το πεδίο δέχεται και λογιστικά φύλλα (.xlsx, .xls, .ods, .csv). */}
-            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>JPG · PNG · PDF · Excel</div>
+            {/* ΜΟΝΟ Ο,ΤΙ ΔΙΑΒΑΖΕΤΑΙ. Υποσχόταν «Excel» και δεχόταν .csv/.xlsx/.ods
+                που η ανάγνωση δεν διαβάζει: ο χρήστης έπαιρνε «η υπηρεσία δεν
+                απαντά». Το `accept` έρχεται από την ίδια λίστα με τον έλεγχο. */}
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>JPG · PNG · PDF</div>
           </div>
-          <input ref={fileRef} type="file" accept="image/*,.pdf,.csv,.txt,.xlsx,.xls,.ods" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && loadFile(e.target.files[0])} />
+          <input ref={fileRef} type="file" accept={SCAN_ACCEPT} style={{ display: 'none' }} onChange={e => e.target.files?.[0] && loadFile(e.target.files[0])} />
 
           {/* ΤΡΙΤΗ ΑΠΑΝΤΗΣΗ: ΔΕΝ ΕΧΩ ΧΑΡΤΙ. Οι δύο πρώτες υποθέτουν ότι
               υπάρχει παραστατικό. Χωρίς αυτό το πλακίδιο, ο χρήστης που
@@ -616,6 +634,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
         : error === 'quota' ? 'Οι σαρώσεις του μήνα τελείωσαν'
         : error === 'key_missing' ? 'Η αυτόματη ανάγνωση δεν είναι ενεργή ακόμη'
         : error === 'save' ? 'Κάτι πήγε στραβά στην αποθήκευση'
+        : error === 'format' ? 'Αυτός ο τύπος αρχείου δεν διαβάζεται'
         : 'Η υπηρεσία ανάγνωσης δεν είναι διαθέσιμη τώρα';
       const tips = error === 'unreadable'
         ? ['Τράβα τη φωτογραφία με καλό φως, ίσια, να χωράει όλο το έγγραφο', 'Αν έχεις PDF από τον πάροχο/φορέα, ανέβασέ το, διαβάζεται καλύτερα']
@@ -623,6 +642,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
         : error === 'key_missing' ? ['Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά', 'Η αυτόματη ανάγνωση ενεργοποιείται από εμάς· δεν χρειάζεται καμία ρύθμιση από εσένα']
         : error === 'save' ? ['Δοκίμασε ξανά, τα στοιχεία σου διατηρούνται']
         : error === 'quota' ? [errorText || SAY.scanQuotaSpent, 'Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά']
+        : error === 'format' ? [errorText || 'Διαβάζονται φωτογραφίες και αρχεία PDF', 'Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά']
         : ['Δοκίμασε ξανά σε λίγο', 'Συμπλήρωσε τα πεδία χειροκίνητα'];
       return { tone: 'warning', body: <><strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{title}.</strong> {tips.map(sentence).join(' ')}</> };
     }
@@ -721,7 +741,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                       // λογαριασμό του Α με δαπάνη στο Β· το «ούτως ή άλλως» θα
                       // παρέκαμπτε τον έλεγχο διπλοεγγραφής του Β, που δεν έγινε
                       // ποτέ. Ο νέος έλεγχος γίνεται στο επόμενο «Καταχώρηση».
-                      setAsk(null); setDuplicate('');
+                      setAsk(null); setDuplicate(''); setAnswers({});
                       // Αλλο ακίνητο, άλλη γραμμή στο Ε9 ή στον ΕΝΦΙΑ με πολλά ακίνητα.
                       setEdited(p => (p && (p.lines?.length ?? 0) > 1 ? withPropertyLine({ ...p, line: undefined }, atakOf(id)) : p));
                     }}
@@ -879,7 +899,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>{duplicate}</div>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         {/* size="lg" γιατί και τα δύο ήταν καρφωμένα στο T.h.lg. */}
-                        <Btn variant="primary" size="lg" onClick={() => save(undefined, true)} disabled={saving}>
+                        <Btn variant="primary" size="lg" onClick={() => save(withAnswer(answers, 'duplicate'))} disabled={saving}>
                           Καταχώρησέ το ούτως ή άλλως
                         </Btn>
                         <Btn variant="secondary" size="lg" onClick={() => { setDuplicate(''); setStep('upload'); }}>
@@ -893,11 +913,11 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                     <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--accent-border)', borderRadius: T.radius.card, padding: '14px 16px' }}>
                       <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>{ask.question}</div>
                       <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>
-                        Δεν επιλέγεται αυτόματα: αν εξοφληθεί ο λάθος, θα δεις πληρωμένο κάτι που χρωστάς.
+                        {ask.note}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {ask.options.map(o => (
-                          <button key={o.id} onClick={() => save(o.id)} disabled={saving}
+                          <button key={o.id} onClick={() => save(withAnswer(answers, ask, o.id))} disabled={saving}
                             style={{ textAlign: 'left', background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: '10px 14px', cursor: saving ? 'default' : 'pointer', fontFamily: T.font.sans }}>
                             <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>{o.label}</div>
                             {o.reasons.length > 0 && (
@@ -905,10 +925,10 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                             )}
                           </button>
                         ))}
-                        <button onClick={() => save(null)} disabled={saving}
+                        <button onClick={() => save(withAnswer(answers, ask, null))} disabled={saving}
                           style={{ textAlign: 'left', background: 'transparent', border: '1px dashed var(--border-default)', borderRadius: T.radius.inner, padding: '10px 14px', cursor: saving ? 'default' : 'pointer', fontFamily: T.font.sans }}>
-                          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)' }}>{RECONCILE_NONE_LABEL}</div>
-                          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>{RECONCILE_NONE_HINT}</div>
+                          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)' }}>{ask.none.label}</div>
+                          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>{ask.none.hint}</div>
                         </button>
                       </div>
                     </div>

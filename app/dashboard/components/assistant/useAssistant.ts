@@ -52,7 +52,7 @@ import { roleLabel } from '@/lib/contacts/roles'
 import { upcomingHolidays, holidayName, isWeekend } from '@/lib/calendar/greekHolidays'
 import type { OpenerContext } from '@/lib/assistant/openers'
 import { contactFlags } from '@/lib/assistant/roster'
-import type { ReconcileQuestion } from '../scanDoc'
+import type { ReconcileQuestion, CommitAnswers } from '../scanDoc'
 import type { ScannedDoc } from '@/lib/billing/documents'
 import type { QuotaSnapshot } from '@/lib/billing/aiLimits'
 import { athensToday, daysUntil } from '@/lib/core/time'
@@ -190,7 +190,9 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   // κουμπιού «Καταχώρησε» μέσα στον πίνακα μηνυμάτων. Ο μεταγλωττιστής δεν
   // ξεχωρίζει χειριστή από απόδοση όταν η συνάρτηση ζει στο σώμα, οπότε
   // κατήγγελλε ολόκληρο τον πίνακα.
-  const [pendingDoc, setPendingDoc] = useState<{ doc: ScannedDoc; file: File } | null>(null);
+  // Μαζί του οι απαντήσεις που έχει ήδη δώσει ο χρήστης (scanDoc: withAnswer),
+  // ώστε η επόμενη ερώτηση να μη σβήνει την προηγούμενη.
+  const [pendingDoc, setPendingDoc] = useState<{ doc: ScannedDoc; file: File; answers?: CommitAnswers } | null>(null);
   // Το `ask` ορίζεται πολύ πιο κάτω και κλείνει πάνω σε κατάσταση που αλλάζει.
   // Ο ακροατής του `pos:ask` γράφεται μία φορά (deps []), οπότε τον φτάνει μέσω
   // ref — αλλιώς θα κρατούσε για πάντα το πρώτο, άδειο, στιγμιότυπο.
