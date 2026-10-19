@@ -73,6 +73,11 @@ interface Props {
    */
   onBusyChange?: (busy: boolean) => void;
   /**
+   * Υπάρχει σάρωση στο βήμα ελέγχου που δεν καταχωρήθηκε. Ο γονέας ρωτά πριν
+   * κλείσει (`confirmDiscard`): η σάρωση έχει ήδη μετρήσει στο όριο του μήνα.
+   */
+  onDirtyChange?: (dirty: boolean) => void;
+  /**
    * Ανοίγει τη Λογιστική. Το Ε2 αρχειοθετείται εδώ, αλλά η σύγκρισή του με τα
    * μισθώματα ζει εκεί: η οθόνη επιτυχίας του Ε2 δίνει τον δρόμο με ένα
    * πάτημα αντί να τον περιγράφει.
@@ -179,7 +184,7 @@ const DocIcon = ({ size }: { size: number }) => (
   <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
 );
 
-export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyChange, onManual, onOpenAccounting, properties }: Props) {
+export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyChange, onDirtyChange, onManual, onOpenAccounting, properties }: Props) {
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -236,6 +241,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   const busy = scanning || saving;
   useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
   useEffect(() => () => { onBusyChange?.(false); }, [onBusyChange]);
+  const dirty = step === 'review';
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
+  useEffect(() => () => { onDirtyChange?.(false); }, [onDirtyChange]);
   // ΤΟ ΣΚΑΛΙ `scan_opened`: μία φορά ανά άνοιγμα του παραθύρου, χωρίς τίποτα
   // από το έγγραφο. Το παράθυρο φτιάχνει τη σάρωση από την αρχή κάθε φορά.
   useEffect(() => { void trackOnboarding(createClient(), { event: PRODUCT_EVENTS.scan_opened }); }, []);

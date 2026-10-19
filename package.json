@@ -107,6 +107,8 @@
     "surface-scale": "node scripts/guard-surface-scale.mjs",
     "e2e:landing": "node scripts/e2e-landing.mjs",
     "guards:verify": "node scripts/verify-guards.mjs",
+    "edge:expected": "node scripts/edge-drift.mjs --expected",
+    "edge:drift": "node scripts/edge-drift.mjs",
     "e2e:keyboard": "node scripts/e2e-keyboard/build.mjs && node scripts/e2e-keyboard.mjs",
     "e2e:touch": "node scripts/e2e-touch/build.mjs && node scripts/e2e-touch.mjs",
     "e2e:layout": "node scripts/perf-bench/build-mobile.mjs && node scripts/e2e-layout.mjs",

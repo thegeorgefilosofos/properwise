@@ -93,7 +93,9 @@ export const lastDayNextMonth = (iso:string) => {
 export interface CommLog { id:string; tenant_id:string; type:'call'|'email'|'sms'|'meeting'|'note'; summary:string; date:string; outcome:string|null; }
 import type { PlanId } from '@/lib/billing/plans';
 
-export interface TabTenantProps { propertyId:string; userId:string; onStartHandover?:(tenantName:string,tenantPhone:string,type:'check_in'|'check_out')=>void; plan?:PlanId; }
+export interface TabTenantProps { propertyId:string; userId:string; onStartHandover?:(tenantName:string,tenantPhone:string,type:'check_in'|'check_out')=>void; plan?:PlanId;
+  /** Ο τύπος λογαριασμού: κρίνει ποιος είναι ο φορολογούμενος στον φόρο ενοικίων (`taxpayerScope`). */
+  profileType?:'individual'|'professional'; }
 
 
 // ─── Τύπος επίπλωσης ───────────────────────────────────────────────────────────

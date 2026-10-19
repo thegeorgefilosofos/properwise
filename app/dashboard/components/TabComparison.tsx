@@ -8,9 +8,11 @@ import * as tenantStore from '@/lib/data/tenants';
 import * as loanStore from '@/lib/data/loans';
 import * as rentStore from '@/lib/data/rent';
 import * as stayStore from '@/lib/data/stays';
-import { propertyIncome, type IncomeRent } from '@/lib/income/propertyIncome';
-import { taxpayerRentSources, ownershipPctOf, wholePropertyTax, type OtherPropertyIncome } from '@/lib/accounting/taxpayerIncome';
+import { type IncomeRent } from '@/lib/income/propertyIncome';
+import { ownershipPctOf, type OtherPropertyIncome } from '@/lib/accounting/taxpayerIncome';
 import { taxpayerScope } from '@/lib/facts/taxpayer';
+import { taxIncomeOf, targetMonthlyOf } from '@/lib/facts/taxIncome';
+import { propertyRentTax } from '@/lib/facts/rentTax';
 import type { StayAmountLike } from '@/lib/clients/stayAmounts';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
@@ -22,7 +24,7 @@ import { propertyTypePlural } from '@/lib/property/types';
 import { statusLabel, readStatus, type StatusRow } from '@/lib/property/status';
 import { downloadTableXlsx } from './exportCsv';
 import { money } from './sheetFormat';
-import { consolidateRentTax, taxShareOf, CONSOLIDATION_NOTE } from '@/lib/billing/consolidate';
+import { consolidateRentTax, CONSOLIDATION_NOTE } from '@/lib/billing/consolidate';
 import { resolveValue } from '@/lib/billing/propertyFacts';
 import { mergeLedger, ledgerTotal, recurringMonthly, monthlyAverage } from '@/lib/expenses/ledger';
 import { loanInstalment } from '@/lib/loans/shape';
@@ -59,8 +61,6 @@ interface Agg {
   monthlyRent: number;
   /** Ο ενοικιαστής εισπράττεται μέσω τράπεζας; Χωρίς δήλωση, ναι. */
   viaBank: boolean;
-  /** Μηνιαίο από τις δόσεις ή τις διαμονές του έτους· `null` χωρίς καμία καταγραφή. */
-  recordedMonthly: number | null;
   budgetMonthly: number;
 }
 
@@ -173,7 +173,7 @@ export default function TabComparison({ properties, userId, onNavigate, profileT
     const year = Number(today.slice(0, 4));
     // Τα πεδία είναι αυτά που ζητά ο κοινός πυρήνας (lib/expenses/ledger.ts): ο
     // λογαριασμός δίνει πρόγραμμα και προθεσμία, η δαπάνη το γεγονός και το ποσό.
-    const [exp, bil, currentTenants, bud, loans, yrRents, allStays, ownerRes] = await Promise.all([
+    const [exp, bil, currentTenants, bud, loans, yrRents, allStays, ownerRes, rcRes] = await Promise.all([
       expenses.ledgerOfProperties(supabase, ids, userId, `${year}-01-01`),
       billStore.ofProperties(supabase, ids, billStore.PORTFOLIO_COLUMNS, userId),
       // ΠΟΙΟΣ ΕΝΟΙΚΟΣ ΜΕΤΡΑ, ΟΤΑΝ ΕΙΝΑΙ ΠΕΡΙΣΣΟΤΕΡΟΙ ΑΠΟ ΕΝΑΣ.
@@ -204,6 +204,9 @@ export default function TabComparison({ properties, userId, onNavigate, profileT
       rentStore.ofUser<IncomeRent & { property_id: string }>(supabase, userId, `property_id,${rentStore.INCOME_COLUMNS}`, { year }),
       stayStore.ofUser<StayAmountLike & { property_id: string }>(supabase, userId, stayStore.PORTFOLIO_COLUMNS),
       supabase.from('clients').select('id').eq('user_id', userId).eq('type', 'owner'),
+      // Ο ΣΤΟΧΟΣ ΤΗΣ ΕΚΤΙΜΗΣΗΣ, ΙΔΙΟΣ ΜΕ ΤΗΝ ΕΠΙΣΚΟΠΗΣΗ (`targetMonthlyOf`): χωρίς
+      // αυτόν, ακίνητο χωρίς ενοικιαστή έμενε έξω από την ενοποίηση εδώ και μέσα εκεί.
+      supabase.from('rent_config').select('property_id,actual_rent,target_rent').eq('user_id', userId),
     ]);
 
     // ΚΑΘΕ ΕΥΡΩ ΜΙΑ ΦΟΡΑ, ΑΝΑ ΑΚΙΝΗΤΟ.
@@ -249,7 +252,6 @@ export default function TabComparison({ properties, userId, onNavigate, profileT
         recurringMonthly: recurringMonthly(ofYear).perMonth ?? 0,
         monthlyRent: 0,
         viaBank: true,
-        recordedMonthly: null,
         budgetMonthly: 0,
       };
     });
@@ -259,13 +261,21 @@ export default function TabComparison({ properties, userId, onNavigate, profileT
     for (const [id, t] of currentTenants) {
       if (m[id]) { m[id].monthlyRent = Number(t.monthly_rent) || 0; m[id].viaBank = t.e_payment !== false; }
     }
+    // ΤΑ ΕΣΟΔΑ ΤΟΥ ΦΟΡΟΥ ΚΑΙ ΤΗΣ ΑΠΟΔΟΣΗΣ, ΜΕ ΤΗ ΒΑΣΗ ΤΗΣ ΕΠΙΣΚΟΠΗΣΗΣ (19/10/2026).
+    // Εδώ μετρούσαν οι δόσεις σε ετήσιο ρυθμό (`propertyIncome`), εκεί το
+    // μίσθωμα × 12: ίδιο ακίνητο, 1.515,20€ φόρος εδώ, 1.811,71€ εκεί. Η βάση
+    // είναι πλέον η `annualIncomeForTax` (lib/facts/taxIncome.ts) και για τα δύο.
+    const rcById = new Map(((rcRes.data || []) as { property_id: string | null; actual_rent: number | null; target_rent: number | null }[])
+      .filter(r => !!r.property_id).map(r => [r.property_id as string, r]));
     const income = new Map<string, OtherPropertyIncome>();
-    for (const id of ids) {
-      const rents = yrRents.filter(r => r.property_id === id);
-      const stays = allStays.filter(st => st.property_id === id);
-      const inc = propertyIncome({ rents, stays, year, today });
-      if (inc.source === 'rent' || inc.source === 'stays') m[id].recordedMonthly = inc.annualized / 12;
-      income.set(id, { rents, stays, estimateMonthly: m[id].monthlyRent, viaBank: m[id].viaBank });
+    for (const p of properties) {
+      income.set(p.id, {
+        rents: yrRents.filter(r => r.property_id === p.id),
+        stays: allStays.filter(st => st.property_id === p.id),
+        leaseMonthly: m[p.id].monthlyRent || null,
+        targetMonthly: targetMonthlyOf(rcById.get(p.id), p.target_rent),
+        viaBank: m[p.id].viaBank,
+      });
     }
     setTaxIn({ income, owners: new Set(((ownerRes.data || []) as { id: string }[]).map(r => r.id)) });
     // Το `data` είναι jsonb: έρχεται απ' έξω, χωρίς σχήμα. Φύλακας πριν τη χρήση.
@@ -290,27 +300,24 @@ export default function TabComparison({ properties, userId, onNavigate, profileT
   // γίνεται πάνω σε ΟΛΑ τα ακίνητα του χρήστη, όχι μόνο σε αυτά της ομάδας που
   // κοιτάζει — αλλιώς ο φόρος θα άλλαζε κάθε φορά που πατά άλλη καρτέλα ομάδας.
   //
-  // Το μηνιαίο κάθε ακινήτου: ό,τι καταγράφηκε, αλλιώς ενοικιαστής ή στόχος.
-  const rentOf = useCallback((p: Property) => {
-    const a = agg[p.id];
-    return a?.recordedMonthly ?? (a?.monthlyRent || p.target_rent || 0);
-  }, [agg]);
+  // Το μηνιαίο κάθε ακινήτου: το ετήσιο της `annualIncomeForTax` διά 12, η ίδια
+  // βάση με τον φόρο της διπλανής γραμμής και με την απόδοση της Επισκόπησης.
   const taxYear = Number(athensToday().slice(0, 4));
+  const rentOf = useCallback((p: Property) =>
+    taxIncomeOf(readStatus(p), taxIn.income.get(p.id), taxYear, athensToday()).annual / 12, [taxIn, taxYear]);
   // ΑΝΑ ΦΟΡΟΛΟΓΟΥΜΕΝΟ, ΣΤΟ ΠΟΣΟΣΤΟ ΤΟΥ. Ο επαγγελματίας με δύο ιδιοκτήτες
   // έβλεπε έναν φορολογούμενο με τα ενοίκια και των δύο· ο συνιδιοκτήτης του
   // 50% φορολογούνταν στο 100%. Ίδιος υπολογισμός με την Επισκόπηση.
   const taxOf = useMemo(() => {
     const out = new Map<string, number>();
     for (const p of properties) {
-      const res = consolidateRentTax(taxpayerRentSources({
-        props: properties,
-        current: { id: p.id, annualRent: rentOf(p) * 12, shortTerm: readStatus(p) === 'rent_short', rentsPaidViaBank: agg[p.id]?.viaBank ?? true },
-        ownerClientIds: taxpayerScope(profileType, taxIn.owners), income: taxIn.income, year: taxYear, today: athensToday(),
-      }), undefined, taxYear);
-      out.set(p.id, wholePropertyTax(taxShareOf(res, p.id), ownershipPctOf(p)));
+      out.set(p.id, propertyRentTax({
+        props: properties, propertyId: p.id, ownerClientIds: taxpayerScope(profileType, taxIn.owners),
+        income: taxIn.income, year: taxYear, today: athensToday(),
+      }).tax);
     }
     return out;
-  }, [properties, rentOf, agg, taxIn, taxYear, profileType]);
+  }, [properties, taxIn, taxYear, profileType]);
   // Το σύνολο του λογαριασμού, για τη σημείωση της εξαγωγής. Με ιδιοκτήτες
   // πελάτες δεν υπάρχει ένα σύνολο: η σημείωση το λέει χωρίς ποσό.
   const oneTaxpayer = taxpayerScope(profileType, taxIn.owners) === null;
@@ -345,7 +352,7 @@ export default function TabComparison({ properties, userId, onNavigate, profileT
 
   // Μετρικές ανά ακίνητο (μόνο της ομάδας που κοιτάζει ο χρήστης)
   const rowsData = inGroup.map(p => {
-    const a = agg[p.id] || { expensesYTD: 0, expensesMonthly: null, recurringMonthly: 0, loanMonthly: 0, monthlyRent: 0, viaBank: true, recordedMonthly: null, budgetMonthly: 0 };
+    const a = agg[p.id] || { expensesYTD: 0, expensesMonthly: null, recurringMonthly: 0, loanMonthly: 0, monthlyRent: 0, viaBank: true, budgetMonthly: 0 };
     // ΙΔΙΑ ΠΗΓΗ ΑΛΗΘΕΙΑΣ ΜΕ ΤΗΝ ΕΠΙΣΚΟΨΗ. Πριν ήταν `p.value || 0`: ο
     // ιδιοκτήτης που είχε συμπληρώσει μόνο αντικειμενική αξία (η συνηθέστερη
     // περίπτωση — τη βρίσκει στο Ε9) έβλεπε «4,2%» στην Επισκόπηση και «0,0%» εδώ.

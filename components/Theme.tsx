@@ -16,7 +16,7 @@
 // --negative, --bg-*, --text-*, --border-*).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { ReactNode, CSSProperties, type MouseEvent, type Ref, useState, useEffect, useRef, useSyncExternalStore, useId } from 'react';
+import { ReactNode, CSSProperties, type MouseEvent, type PointerEvent, type Ref, useState, useEffect, useRef, useSyncExternalStore, useId } from 'react';
 
 // Τα tokens ζουν σε module ΧΩΡΙΣ React (components/tokens.ts) ώστε να μπορεί να
 // τα εισάγει και Server Component. Εδώ ξανα-εξάγονται αυτούσια, ώστε τα ~600
@@ -25,6 +25,7 @@ export { T, TT, formGrid, fieldRow, fixedCols, tileGrid, tileRow, fe, feAuto, fe
 export type { Tone } from './tokens';
 import { T, TT, isBlankMetric, type Tone } from './tokens';
 import { hy } from './Hyphen';
+import { backdropDismiss } from '@/lib/ui/dismiss';
 
 // ═══ RuntimeImg, η εικόνα που ΔΕΝ υπάρχει τη στιγμή του build ════════════
 //
@@ -206,6 +207,17 @@ export function useOverlayShell(open: boolean, onClose: () => void) {
   // απόδοση για να βγει το βάθος από τη στοίβα.
   const [id] = useState(() => Symbol('overlay'));
 
+  // ── ΤΟ ΦΟΝΤΟ ΚΛΕΙΝΕΙ ΜΟΝΟ ΑΝ ΤΟ ΠΑΤΗΜΑ ΞΕΚΙΝΗΣΕ ΕΚΕΙ ─────────────────────
+  // Πάτημα μέσα σε πεδίο, σύρσιμο επιλογής κειμένου έξω από το πλαίσιο, άφημα:
+  // το `click` πέφτει στον κοινό πρόγονο, δηλαδή στο φόντο και το παράθυρο
+  // έκλεινε με ό,τι είχε γραφτεί (έλεγχος 19/10/2026, αναπαραγμένο στο
+  // Chromium). Ο κανόνας ζει στο lib/ui/dismiss.ts και δοκιμάζεται εκεί.
+  const [guard] = useState(backdropDismiss);
+  const backdrop = {
+    onPointerDown: (e: PointerEvent<HTMLDivElement>) => guard.down(e),
+    onClick: (e: MouseEvent<HTMLDivElement>) => { if (guard.click(e)) onClose(); },
+  };
+
   // Το βάθος ΔΙΑΒΑΖΕΤΑΙ από τη στοίβα, δεν αντιγράφεται σε state. Ένα
   // `setDepth` μέσα σε effect θα προκαλούσε δεύτερη απόδοση όλου του
   // παραθύρου σε κάθε άνοιγμα — και η στοίβα είναι εξωτερικό σύστημα, οπότε
@@ -299,7 +311,7 @@ export function useOverlayShell(open: boolean, onClose: () => void) {
     return () => { targets.forEach((el, i) => { el.style.overflow = prev[i]; }); };
   }, [open]);
 
-  return { panelRef, z: OVERLAY_BASE_Z + depth * 10 };
+  return { panelRef, z: OVERLAY_BASE_Z + depth * 10, backdrop };
 }
 
 // ═══ SideSheet, ΜΙΑ επιφάνεια για κάθε ντοσιέ ═════════════════════════════
@@ -399,10 +411,10 @@ export function SideSheet({ open, onClose, ariaLabel, size = 'md', header, foote
   footer?: ReactNode;
   children: ReactNode;
 }) {
-  const { panelRef, z } = useOverlayShell(open, onClose);
+  const { panelRef, z, backdrop } = useOverlayShell(open, onClose);
   if (!open) return null;
   return (
-    <div onClick={onClose} role="dialog" aria-modal="true" aria-label={ariaLabel}
+    <div {...backdrop} role="dialog" aria-modal="true" aria-label={ariaLabel}
       style={{ position: 'fixed', inset: 0, background: T.scrim, backdropFilter: 'blur(2px)', display: 'flex', justifyContent: 'flex-end', zIndex: z, overscrollBehavior: 'contain' }}>
       <div ref={panelRef} tabIndex={-1} onClick={e => e.stopPropagation()}
         style={{ width: `min(${MODAL_WIDTH[size]}px, 100%)`, height: '100%', background: 'var(--bg-surface)', borderLeft: '1px solid var(--border-subtle)', boxShadow: 'var(--elev-3)', display: 'flex', flexDirection: 'column', overflow: 'hidden', outline: 'none', overscrollBehavior: 'contain', animation: 'sheetIn 0.22s cubic-bezier(0.2,0,0,1) both' }}>
@@ -433,7 +445,9 @@ export function SideSheet({ open, onClose, ariaLabel, size = 'md', header, foote
 // διαφάνειες και 8 διαφορετικά radius, οπότε το app έμοιαζε με πολλά apps.
 // Εδώ ορίζεται μία φορά: ίδιο scrim, ίδιο radius, ίδια κεφαλίδα (εικονίδιο +
 // τίτλος + υπότιτλος + ×), ίδιο padding, ίδιο υποσέλιδο ενεργειών.
-// Κλείνει με κλικ στο φόντο ή Escape· το περιεχόμενο κυλά, header/footer όχι.
+// Κλείνει με Escape ή με πάτημα που ΞΕΚΙΝΗΣΕ και ΤΕΛΕΙΩΣΕ στο φόντο (βλ.
+// `useOverlayShell`). Οποιος έχει αλλαγές ρωτά πρώτα με `confirmDiscard`.
+// Το περιεχόμενο κυλά, header/footer όχι.
 // ══════════════════════════════════════════════════════════════════════════
 export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 'md', children, footer, footerInfo }: {
   open: boolean; onClose: () => void;
@@ -441,7 +455,7 @@ export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 
   title: ReactNode; ariaLabel?: string; subtitle?: ReactNode; icon?: ReactNode;
   size?: ModalSize; children: ReactNode; footer?: ReactNode; footerInfo?: ReactNode;
 }) {
-  const { panelRef, z } = useOverlayShell(open, onClose);
+  const { panelRef, z, backdrop } = useOverlayShell(open, onClose);
   // Ο ΤΙΤΛΟΣ ΟΝΟΜΑΖΕΙ ΤΟ ΠΑΡΑΘΥΡΟ, ΟΠΟΙΑ ΜΟΡΦΗ ΚΙ ΑΝ ΕΧΕΙ. Το όνομα έβγαινε
   // από `typeof title === 'string'`, οπότε κάθε τίτλος με JSX (π.χ. με
   // <InfoHint>) άφηνε το dialog ανώνυμο και ο τίτλος δεν ήταν καν επικεφαλίδα.
@@ -449,7 +463,7 @@ export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 
   const subId = useId();
   if (!open) return null;
   return (
-    <div onClick={onClose} role="dialog" aria-modal="true" aria-label={ariaLabel}
+    <div {...backdrop} role="dialog" aria-modal="true" aria-label={ariaLabel}
       aria-labelledby={ariaLabel ? undefined : titleId} aria-describedby={subtitle ? subId : undefined}
       style={{ position: 'fixed', inset: 0, background: T.scrim, backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: z, padding: T.sp.lg, overscrollBehavior: 'contain' }}>
       <div ref={panelRef} tabIndex={-1} onClick={e => e.stopPropagation()}

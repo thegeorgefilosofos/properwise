@@ -8,14 +8,16 @@
 // της γραμμής ή του πλακιδίου που εξετάζεις (`hoverRow`, `hoverCost`) μένει
 // στην καρτέλα, ώστε να μη χάνεται όταν ο φακός κλείνει και ξανανοίγει.
 // ═══════════════════════════════════════════════════════════════════════════
-import { fe } from '@/lib/core/format'
+import { fe, fn } from '@/lib/core/format'
 import { cardStyle } from '../../LoanShared'
 import DocChecklist from '../../DocChecklist'
 import { T, fixedCols, Btn } from '@/components/Theme'
 import { AADE_HOME } from '@/lib/tax/aade'
 import { ShieldCheck } from 'lucide-react'
 import { LOAN_TYPES, BORROWER_PROFILES, fmtEur, type AmortRow, type LoanType, type BorrowerType } from '../../TabLoanData'
-import type { calcNotaryFees } from './model'
+import type { LoanPurchaseCosts } from './model'
+import { CADASTRE_RATE, CADASTRE_FIXED } from '@/lib/accounting/transfer'
+import { loanInsuranceYearly } from '@/lib/loans/mortgageCosts'
 import { Section, SectionLabel, labelStyle, type SetState } from './Bits'
 import { AmortDonut, AmortArea } from './charts'
 
@@ -60,8 +62,9 @@ export function TableLens({
   fmaSub: string;
   totalCosts: { tax: number; notary: number; landReg: number; legal: number; agent: number; other: number; total: number; downpayment: number; totalCash: number };
   hasAgent: boolean; AGNT: number; agentPct: string; hoverCost: number | null; setHoverCost: SetState<number | null>;
-  notaryCosts: ReturnType<typeof calcNotaryFees>; LA: number;
+  notaryCosts: LoanPurchaseCosts; LA: number;
 }) {
+  const insurance = loanInsuranceYearly(LA);
   return (
     <>
       <Section title="Πίνακας αποπληρωμής" sub={`${Y*12} δόσεις αναλυτικά`} defaultOpen>
@@ -216,11 +219,14 @@ export function TableLens({
         <div {...fixedCols(3, 8, 'stretch')} style={{...fixedCols(3, 8, 'stretch').style,marginBottom:12}}>
           {[
             {label:'Φόρος μεταβίβασης (ΦΜΑ)',value:fmaOwed===0?'Απαλλαγή':fmtEur(fmaOwed),sub:fmaSub},
-            {label:'Συμβολαιογραφικά',value:fmtEur(totalCosts.notary),sub:'Κλιμακωτή αμοιβή'},
-            {label:'Κτηματολόγιο και εγγραφή',value:fmtEur(totalCosts.landReg),sub:'0,475% επί αξίας'},
-            {label:'Δικηγόρος ελέγχου τίτλων',value:fmtEur(totalCosts.legal),sub:'Έλεγχος + παρουσία'},
-            {label:'Αμοιβή μεσίτη',value:hasAgent?fmtEur(AGNT):fe(0),sub:hasAgent?`${agentPct}%`:'Ανενεργό'},
-            {label:'Λοιπά',value:fmtEur(totalCosts.other),sub:'Φόρος ενεγγύησης'},
+            // ΟΙ ΕΞΗΓΗΣΕΙΣ ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΙΣ ΣΤΑΘΕΡΕΣ, ΟΠΩΣ ΤΑ ΠΟΣΑ. Εδώ έγραφε
+            // «0,475% επί αξίας» με το χέρι, ενώ το ΦΕΚ λέει 5‰ συν πάγιο. Ό,τι
+            // δεν έχει επίσημη πηγή γράφει «εκτίμηση» (lib/loans/mortgageCosts.ts).
+            {label:'Συμβολαιογραφικά',value:fmtEur(totalCosts.notary),sub:'Κλιμακωτή αμοιβή με ΦΠΑ, εκτίμηση'},
+            {label:'Κτηματολόγιο και εγγραφή',value:fmtEur(totalCosts.landReg),sub:`${fn(CADASTRE_RATE*1000)}‰ επί αξίας συν ${fe(CADASTRE_FIXED)}`},
+            {label:'Δικηγόρος ελέγχου τίτλων',value:fmtEur(totalCosts.legal),sub:'Με ΦΠΑ, εκτίμηση'},
+            {label:'Αμοιβή μεσίτη',value:hasAgent?fmtEur(AGNT):fe(0),sub:hasAgent?`${agentPct}% συν ΦΠΑ`:'Ανενεργό'},
+            {label:'Λοιπά',value:fmtEur(totalCosts.other),sub:'Πιστοποιητικά και εγγραφή υποθήκης, εκτίμηση'},
           ].map((item,i:number)=>{
             const on=hoverCost===i
             return (
@@ -267,10 +273,13 @@ export function TableLens({
             έχει ήδη οκτώ πλακίδια και έναν ένθετο πίνακα, το τέταρτο πλαίσιο δεν
             προσθέτει έμφαση — προσθέτει βάρος. Μένει γραμμή κειμένου, δίπλα στην
             αδελφή της που λέει την πηγή. */}
-        <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,lineHeight:1.7,marginBottom:6}}>Ετήσιο κόστος ασφαλειών · Κατοικίας, υποχρεωτική: από {fmtEur(100)} έως {fmtEur(300)} · Ζωής: περίπου {fmtEur(LA*0.001)}</p>
+        <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,lineHeight:1.7,marginBottom:6}}>Ετήσιο κόστος ασφαλειών, εκτίμηση · Κατοικίας, υποχρεωτική: από {fmtEur(insurance.homeMin)} έως {fmtEur(insurance.homeMax)} · Ζωής: περίπου {fmtEur(insurance.life)}</p>
+        {/* Η ΠΗΓΗ ΛΕΕΙ ΤΙ ΚΑΛΥΠΤΕΙ. Έγραφε «Πηγή: ΑΑΔΕ» κάτω από συμβολαιογραφικά
+            και ασφάλειες, που η ΑΑΔΕ δεν ορίζει. */}
         <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',lineHeight:1.6,fontFamily: T.font.sans}}>
-          Εκτιμήσεις βάσει δεδομένων χρήστη. Πηγή:{' '}
+          Ο φόρος μεταβίβασης κατά την{' '}
           <a href={AADE_HOME} target="_blank" rel="noreferrer" title="ΑΑΔΕ: Ανεξάρτητη Αρχή Δημοσίων Εσόδων" style={{color:'var(--accent)',textDecoration:'none',fontWeight:500}}>ΑΑΔΕ</a>
+          , τα τέλη Κτηματολογίου κατά την απόφαση 2/2026. Συμβολαιογραφικά, δικηγόρος, υποθήκη και ασφάλειες είναι εκτιμήσεις χωρίς επίσημη πηγή: τα ακριβή ποσά τα δίνουν ο συμβολαιογράφος και η τράπεζα.
         </p>
       </div>
     </>

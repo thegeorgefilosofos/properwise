@@ -24,7 +24,7 @@ import type { User } from '@supabase/supabase-js'
 import { writeStatus, type PropertyStatus } from '@/lib/property/status'
 import type { OwnerContext } from '@/lib/property/visibility'
 import { LEGAL_FORMS, type LegalForm } from '@/lib/accounting/dossier'
-import { confirmDialog } from '@/components/ConfirmDialog'
+import { confirmDialog, confirmDiscard } from '@/components/ConfirmDialog'
 import { notifyError } from '@/components/Toast'
 import { clearHistory as clearAssistantHistory } from '../assistantPersona'
 import { leaveDevice } from '@/lib/localPrivacy'
@@ -575,8 +575,17 @@ export function useDashboard() {
   // υπάρχει: η σάρωση ξεκινά πάνω σε ακίνητο που ο χρήστης αποθήκευσε από τον
   // οδηγό, με δική του κατάσταση· ένα κλείσιμο δεν έχει λόγο να το αγγίξει.
   const [scanBusy, setScanBusy] = useState(false);
+  // ΚΑΙ ΣΤΟ ΒΗΜΑ ΕΛΕΓΧΟΥ ΡΩΤΑ ΠΡΙΝ ΚΛΕΙΣΕΙ (έλεγχος 19/10/2026). Η σάρωση έχει
+  // ήδη μετρήσει στο όριο του μήνα και τα στοιχεία της ζουν μόνο στη φόρμα· ένα
+  // Escape ή ένα πάτημα στο φόντο τα έσβηνε χωρίς ερώτηση.
+  const [scanDirty, setScanDirty] = useState(false);
 
   const closeQuickAdd = () => setQuickAddOpen(false);
+  const requestCloseQuickAdd = async () => {
+    if (scanBusy) return;
+    if (scanDirty && !(await confirmDiscard('Η σάρωση έγινε και τα στοιχεία της δεν έχουν καταχωρηθεί.'))) return;
+    closeQuickAdd();
+  };
 
   // Υγιεινή αποσύνδεσης σε κοινόχρηστη συσκευή.
   //
@@ -628,6 +637,6 @@ export function useDashboard() {
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
     setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, openWizard, updateStatus, deleteProperty,
-    scanBusy, setScanBusy, closeQuickAdd, signOut, enfiaCarry, dropEnfiaCarry, commitEnfiaCarry,
+    scanBusy, setScanBusy, setScanDirty, closeQuickAdd, requestCloseQuickAdd, signOut, enfiaCarry, dropEnfiaCarry, commitEnfiaCarry,
   }
 }

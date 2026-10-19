@@ -136,6 +136,20 @@ export function confirmDialog(a?: string | ConfirmOptions, b?: ConfirmOptions): 
 }
 
 /**
+ * «Να φύγουν οι αλλαγές;» Η ΜΙΑ ερώτηση πριν κλείσει παράθυρο με αλλαγές που
+ * δεν αποθηκεύτηκαν (lib/ui/dismiss.ts). Ίδια λέξη και ίδια κουμπιά σε κάθε
+ * παράθυρο: το προεπιλεγμένο κουμπί είναι το «Συνέχεια», ώστε ένα δεύτερο
+ * Enter ή Escape να κρατά ό,τι γράφτηκε.
+ */
+export const DISCARD_TITLE = 'Να φύγουν οι αλλαγές;';
+export function confirmDiscard(message = 'Ό,τι έγραψες εδώ δεν έχει αποθηκευτεί.'): Promise<boolean> {
+  return confirmDialog({
+    title: DISCARD_TITLE, message, tone: 'negative',
+    confirmLabel: 'Κλείσιμο χωρίς αποθήκευση', cancelLabel: 'Συνέχεια',
+  });
+}
+
+/**
  * Συνδέει τον host. Επιστρέφει συνάρτηση αποσύνδεσης. Μόνο για το ConfirmDialog.tsx.
  *
  * Η αποσύνδεση ΔΕΝ ακυρώνει το ανοιχτό αίτημα: στο dev ο React προσαρτά,

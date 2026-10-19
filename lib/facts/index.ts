@@ -15,5 +15,7 @@ export * from './platformFees';
 export * from './yield';
 export * from './enfia';
 export * from './taxpayer';
+export * from './taxIncome';
+export * from './rentTax';
 export * from './deadlines';
 export * from './completeness';

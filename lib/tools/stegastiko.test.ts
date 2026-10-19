@@ -8,7 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import {
   parseRate, loanRate, mortgagePlan, borrowingCapacity, marketFact, mortgageMarket, rateField,
-  housingNote, housingText, marketDescription, startRates, NO_MARKET,
+  housingNote, housingText, marketDescription, startRates, spreadHint, NO_MARKET,
 } from './stegastiko'
 import { totalInterest, interestForYear } from '@/lib/loans/recommend'
 import { ECB_SERIES, seriesPage, type MarketKey, type Provenance, type RateProvenance } from '@/lib/market/ecb'
@@ -187,6 +187,31 @@ ok('Ζ. η τιμή του πεδίου ξαναδιαβάζεται ίδια', 
   const noFixed = mortgageMarket({ bog_housing_new: three.bog_housing_new, bog_housing_floating: three.bog_housing_floating }, '2026-10-13')
   ok('Η. χωρίς σταθερό, το πεδίο μένει κενό: ποτέ ο μέσος όρος ή το κυμαινόμενο', startRates(noFixed).fixed === '')
   ok('Η. παλιό σταθερό δεν προτείνεται', startRates(mortgageMarket(three, '2027-01-15')).fixed === '')
+
+  // ── ΧΩΡΙΣ ΣΤΑΘΕΡΟ: ΚΥΜΑΙΝΟΜΕΝΟ ΜΕ ΔΟΣΗ (19/10/2026) ─────────────────────────
+  // Η γραμμή της παραγωγής: F 3,39%, Euribor 2,64%, καμία K. Η φόρμα άνοιγε στο
+  // «Σταθερό» με κενό πεδίο, δηλαδή χωρίς δόση.
+  const eur = { value: 2.6350455, asOf: '2026-09-01', source: 'Ευρωπαϊκή Κεντρική Τράπεζα',
+    basis: 'μέσος όρος μήνα', url: pageOf('euribor_3m'), fetchedAt: '2026-10-19T08:00:00Z' }
+  const prod = mortgageMarket({ bog_housing_new: at('bog_housing_new', 3.3), bog_housing_floating: at('bog_housing_floating', 3.39), euribor_3m: eur }, '2026-10-19')
+  const s0 = startRates(prod)
+  ok('Η. χωρίς σταθερό, ανοίγει στο κυμαινόμενο', s0.kind === 'floating' && s0.fixed === '')
+  ok('Η. το περιθώριο είναι F μείον Euribor, όπως φαίνονται', s0.euribor === '2,64' && s0.spread === '0,75')
+  const r0 = loanRate({ kind: s0.kind, fixed: parseRate(s0.fixed), euribor: parseRate(s0.euribor), spread: parseRate(s0.spread) })
+  ok('Η. Euribor συν περιθώριο δίνουν ακριβώς το κυμαινόμενο της ΕΚΤ', near(r0, 3.39, 1e-9))
+  ok('Η. …άρα η φόρμα ανοίγει με δόση', r0 !== null && mortgagePlan(150000, r0, 25).monthly > 0)
+  ok('Η. η βοήθεια λέει από πού βγήκε το περιθώριο',
+    spreadHint(prod) === `Νέα στεγαστικά, κυμαινόμενο ή σταθερό έως 1 έτος 3,39% (Αύγουστος 2026, ${BOG}), μείον το Euribor. Γράψε της προσφοράς σου.`)
+  // Με σταθερό, η φόρμα μένει στο «Σταθερό».
+  ok('Η. με σταθερό, ανοίγει στο σταθερό', startRates(mortgageMarket({ ...three, euribor_3m: eur }, '2026-10-19')).kind === 'fixed')
+  // Χωρίς Euribor ή χωρίς F δεν υπάρχει περιθώριο: η φόρμα μένει στο «Σταθερό» και ζητά επιτόκιο.
+  ok('Η. χωρίς Euribor, κανένα περιθώριο', startRates(noFixed).spread === '' && startRates(noFixed).kind === 'fixed')
+  ok('Η. χωρίς F, κανένα περιθώριο',
+    startRates(mortgageMarket({ euribor_3m: eur }, '2026-10-19')).spread === '' && spreadHint(mortgageMarket({ euribor_3m: eur }, '2026-10-19')) === null)
+  // Αρνητική ή μηδενική διαφορά δεν είναι περιθώριο.
+  const inverted = mortgageMarket({ bog_housing_floating: at('bog_housing_floating', 2.5), euribor_3m: eur }, '2026-10-19')
+  ok('Η. αρνητική διαφορά δεν γίνεται περιθώριο', startRates(inverted).spread === '' && startRates(inverted).kind === 'fixed')
+  ok('Η. χωρίς τιμές, σταθερό και κενά', JSON.stringify(startRates(NO_MARKET)) === JSON.stringify({ fixed: '', euribor: '', spread: '', kind: 'fixed' }))
 
   // ── ΤΙΜΗ ΑΛΛΗΣ ΣΕΙΡΑΣ ΔΕΝ ΠΕΡΝΑ ΜΕ ΑΥΤΟ ΤΟ ΟΝΟΜΑ ───────────────────────────
   // Η βάση την 13/10/2026 έχει κάτω από το `bog_housing_new` την τιμή της F με

@@ -84,6 +84,7 @@ const SAMPLE = {
 // ── Ο κατάλογος προθεμάτων είναι ουσιαστικός ───────────────────────────────
 ok('καλύπτει τις συνομιλίες', PERSONAL_KEY_PREFIXES.includes('pa_hist_'))
 ok('καλύπτει την κατανομή συνιδιοκτητών', PERSONAL_KEY_PREFIXES.includes('po_owner_split_'))
+ok('καλύπτει τα πρόχειρα φορμών', PERSONAL_KEY_PREFIXES.includes('po_draft_'))
 ok('δεν καλύπτει τις αναμνήσεις', !(PERSONAL_KEY_PREFIXES as readonly string[]).includes('pa_mem_'))
 
 // ── Η ΕΞΟΔΟΣ ΑΠΟ ΤΗ ΣΥΣΚΕΥΗ ΚΑΝΕΙ ΚΑΙ ΤΑ ΔΥΟ ────────────────────────────────

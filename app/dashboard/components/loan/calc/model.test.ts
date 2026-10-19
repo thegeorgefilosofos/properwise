@@ -11,8 +11,10 @@ import { greekWhen, MONTH_MEAN } from '@/lib/market/ecb';
 import { monthGen } from '@/lib/core/months';
 import { regionByKey, GREECE_AVG_GROSS_YIELD } from '@/lib/market/greekMarket';
 import { LOAN_TYPES } from '../../TabLoanData';
+import { transferCosts, transferTaxOn, notaryFee, firstHomeExemption } from '@/lib/accounting/transfer';
+import { mortgageCosts } from '@/lib/loans/mortgageCosts';
 import {
-  calcNotaryFees, areaGrossYield, euriborPeriod, presetsFor, AREA_OPTIONS, LOAN_TYPE_OPTIONS, PROP_TYPE_OPTIONS,
+  loanPurchaseCosts, areaGrossYield, euriborPeriod, presetsFor, AREA_OPTIONS, LOAN_TYPE_OPTIONS, PROP_TYPE_OPTIONS,
   PROPERTY_TYPES, CHILDREN_OPTIONS, NATURAL_BORROWERS, BUSINESS_BORROWERS,
 } from './model';
 
@@ -23,20 +25,33 @@ const ok = (name: string, cond: boolean, got?: unknown) => {
 };
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
-// ── Η κλιμακωτή αμοιβή του συμβολαιογράφου ───────────────────────────────
+// ── ΤΑ ΕΞΟΔΑ ΑΓΟΡΑΣ ΤΟΥ ΔΑΝΕΙΟΥ ΕΙΝΑΙ ΤΑ ΕΞΟΔΑ ΑΓΟΡΑΣ ΤΗΣ ΛΟΓΙΣΤΙΚΗΣ (#7) ───────
+// Για 200.000€ το Δάνειο έγραφε 1.520€ συμβολαιογραφικά και 950€ Κτηματολόγιο,
+// η Λογιστική 1.984€ και 1.020€. Τώρα και τα δύο βγαίνουν από το `transferCosts`.
 {
-  // 100.000€: 0,8% = 800 · υποθήκη 40% = 320 · κτηματολόγιο 0,475% = 475 ·
-  // δικηγόρος 0,3% με κατώτατο 300 = 300 · ενεγγύηση 0,1% = 100.
-  const a = calcNotaryFees(100000);
-  ok('αμοιβή αγοράς και υποθήκης', r2(a.notary) === 1120, a.notary);
-  ok('κτηματολόγιο', r2(a.landReg) === 475, a.landReg);
-  ok('δικηγόρος με κατώτατο', a.legal === 300, a.legal);
-  ok('σύνολο', r2(a.total) === 1995, a.total);
-  ok('η ανάλυση λέει μόνο τα δύο συμβολαιογραφικά', a.breakdown.map(b => b.l).join() === 'Συμβολαιογραφικά αγοράς,Συμβολαιογραφικά υποθήκης');
-  // 200.000€: 120.000 × 0,8% + 80.000 × 0,7% = 960 + 560.
-  ok('δεύτερο κλιμάκιο', r2(calcNotaryFees(200000).breakdown[0].v) === 1520);
-  ok('κατώτατη αμοιβή 200€', calcNotaryFees(10000).breakdown[0].v === 200);
-  ok('ο δικηγόρος έχει ταβάνι 1.500€', calcNotaryFees(2000000).legal === 1500);
+  const buy = transferCosts({ side: 'buy', price: 200000, useLawyer: true })
+  const line = (k: string) => buy.lines.find(l => l.key === k)?.amount ?? 0
+  const cash = loanPurchaseCosts({ value: 200000, loanAmount: 0, firstHome: false, married: false, children: 0, newBuild: false, agentPct: null })
+  ok('χωρίς δάνειο: ίδιο σύνολο με τη Λογιστική', r2(cash.total) === r2(buy.totalCosts), [cash.total, buy.totalCosts]);
+  ok('ίδια συμβολαιογραφικά με τη Λογιστική', r2(cash.notary) === r2(line('notary')), [cash.notary, line('notary')]);
+  ok('ίδιο Κτηματολόγιο με τη Λογιστική (5‰ συν πάγιο)', r2(cash.landReg) === r2(line('cadastre')), cash.landReg);
+  ok('ίδιος φόρος μεταβίβασης', r2(cash.tax) === r2(line('transferTax')));
+  // 200.000€: (120.000 × 0,8% + 80.000 × 0,7%) × 1,24 = 1.520 × 1,24.
+  ok('η κλίμακα με ΦΠΑ', r2(line('notary')) === r2(notaryFee(200000) * 1.24) && notaryFee(200000) === 1520);
+  ok('κατώτατη αμοιβή', notaryFee(10000) === 200);
+
+  // Με δάνειο προστίθενται ΜΟΝΟ τα έξοδα της υποθήκης, επί του κεφαλαίου.
+  const loan = loanPurchaseCosts({ value: 200000, loanAmount: 50000, firstHome: false, married: false, children: 0, newBuild: false, agentPct: null })
+  const m = mortgageCosts(50000, notaryFee(200000))
+  ok('με δάνειο: Λογιστική + υποθήκη', r2(loan.total) === r2(buy.totalCosts + m.total), [loan.total, buy.totalCosts, m.total]);
+  ok('η εγγραφή της υποθήκης μετρά στο δάνειο, όχι στην αξία', m.registration === 50);
+  ok('τα ίδια κεφάλαια = προκαταβολή + έξοδα', r2(loan.totalCash) === r2(150000 + loan.total));
+  ok('η ανάλυση λέει τα δύο συμβολαιογραφικά', loan.breakdown.map(b => b.l).join() === 'Συμβολαιογραφικά αγοράς,Συμβολαιογραφικά υποθήκης (εκτίμηση)');
+
+  // Μεσίτης και πρώτη κατοικία περνούν στο transferCosts με τους ίδιους όρους.
+  const fh = loanPurchaseCosts({ value: 220000, loanAmount: 150000, firstHome: true, married: false, children: 0, newBuild: false, agentPct: 2 })
+  ok('πρώτη κατοικία: φόρος μόνο πάνω από το όριο', fh.tax === transferTaxOn(220000, firstHomeExemption({ married: false })));
+  ok('μεσίτης 2% συν ΦΠΑ, όπως στη Λογιστική', r2(fh.agent) === r2(220000 * 0.02 * 1.24));
 }
 
 // ── Ενοίκιο-αναφορά ανά περιοχή ──────────────────────────────────────────
