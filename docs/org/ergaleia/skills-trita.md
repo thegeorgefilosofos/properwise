@@ -34,14 +34,45 @@
 | `seo-audit` | `coreyhaines31/marketingskills` | `365b412152b9542499ca1439426f7fc3cc92bb65` | `SKILL.md`, `references/*.md` |
 | `ai-seo` | `coreyhaines31/marketingskills` | `365b412152b9542499ca1439426f7fc3cc92bb65` | `SKILL.md`, `references/*.md` |
 | `schema` | `coreyhaines31/marketingskills` | `365b412152b9542499ca1439426f7fc3cc92bb65` | `SKILL.md`, `references/*.md` |
+| `competitors` | `coreyhaines31/marketingskills` | `365b412152b9542499ca1439426f7fc3cc92bb65` | `SKILL.md`, `references/*.md` |
+| `site-architecture` | `coreyhaines31/marketingskills` | `365b412152b9542499ca1439426f7fc3cc92bb65` | `SKILL.md`, `references/*.md` |
+| `programmatic-seo` | `coreyhaines31/marketingskills` | `365b412152b9542499ca1439426f7fc3cc92bb65` | `SKILL.md`, `references/*.md` |
+| `customer-research` | `coreyhaines31/marketingskills` | `365b412152b9542499ca1439426f7fc3cc92bb65` | `SKILL.md`, `references/*.md` |
 
 Αδεια και των δύο: MIT. Το κείμενό της είναι στο `LICENSE` κάθε φακέλου.
 
 Η κεφαλίδα κάθε `SKILL.md` λέει ότι υπερισχύουν το `AGENTS.md`, το `CLAUDE.md` και
-τα δικά μας skills. Στα τρία skills marketing προσθέτει τους κανόνες μας που
+τα δικά μας skills. Στα skills marketing προσθέτει τους κανόνες μας που
 συγκρούονται με γενικές συμβουλές τους: αριθμοί φόρου, ΕΝΦΙΑ, προθεσμιών και
 τιμών μόνο από τον κώδικα, στατιστική μόνο με πηγή, καμία ψεύτικη κριτική ή
 βαθμολογία στο schema, κανένα εξωτερικό εργαλείο χωρίς έγκριση.
+
+Τα τέσσερα της δεύτερης παρτίδας (έγκριση ιδιοκτήτη, 19/10/2026) έχουν και δικές
+τους υπερισχύσεις στην κεφαλίδα, γιατί η πηγή διδάσκει πράγματα που εδώ δεν γίνονται:
+
+- **`competitors`**: η πηγή χτίζει σελίδες «[Competitor] alternative» και «vs» με
+  το όνομα του ανταγωνιστή σε τίτλο, διεύθυνση και footer. Εδώ: κανένας ισχυρισμός
+  για ανταγωνιστή χωρίς URL και ημερομηνία ελέγχου, κανένα όνομα ανταγωνιστή σε
+  διαφήμιση (κανόνας 12 του `docs/org/prompts/03-agora.md`), συγκριτική διαφήμιση
+  μόνο κατά το άρθρο 9 του ν.2251/1994 και με νομικό έλεγχο. Οχι αστέρια, όχι
+  μαρτυρίες χωρίς γραπτή συναίνεση, όχι εγγραφή σε προϊόν ανταγωνιστή χωρίς απόφαση.
+  Μένει χρήσιμο για εσωτερική έρευνα και για τον έλεγχο παλιών ισχυρισμών (asset audit).
+- **`site-architecture`**: τα παραδείγματα CTA («Start Free Trial») αντικαθίστανται
+  από το `lib/legal/billingWords.ts`· όχι διευθύνσεις `/vs/` με όνομα ανταγωνιστή·
+  `noindex` σε σελίδες με δεδομένα χρήστη· πλατφόρμα το δικό μας Next.js, οι
+  «Verified Partners» της πηγής δεν είναι σύσταση.
+- **`programmatic-seo`**: κάθε αριθμός σε σελίδα κλίμακας από `lib/tax/**`,
+  `lib/billing/**`, `lib/facts/**`· όχι scraping· όχι «Profiles» προσώπων, όχι
+  «best/top» και κατάλογοι με ονόματα ανταγωνιστών· όχι τοπικές σελίδες που αλλάζουν
+  μόνο το όνομα της πόλης.
+- **`customer-research`**: η πηγή λέει να μη λέμε ότι κάνουμε έρευνα· εδώ ο σκοπός
+  δηλώνεται (ΓΚΠΔ, άρθρα 13–14) και η καταγραφή θέλει ρητή συναίνεση. Αποσπάσματα
+  χωρίς όνομα χρήστη ή προφίλ, κανένας κατάλογος ατόμων, όχι cookies, κλειστές ομάδες
+  ή εργαλεία με κλειδί API (SparkToro) χωρίς έγκριση, καμία ανάγνωση της βάσης για
+  στρατολόγηση, κανένα κίνητρο σε χρήματα χωρίς απόφαση ιδιοκτήτη.
+
+Από κάθε φάκελο της πηγής δεν μπήκε το `evals/evals.json` (δοκιμές της πηγής, όχι
+οδηγίες).
 
 ## Ενημέρωση, μόνο χειροκίνητα
 
@@ -81,7 +112,7 @@
   Εχουμε ήδη ροή worktree και αξιολόγηση από το Codex.
 - **`diagnosing-superpowers`**: αφορά μόνο το ίδιο το superpowers.
 
-### coreyhaines31/marketingskills (τα υπόλοιπα 47)
+### coreyhaines31/marketingskills (τα υπόλοιπα 43)
 
 - Το plugin είναι η ρίζα του αποθετηρίου, άρα φέρνει και τα `tools/clis/*.js`
   (Google Ads, GA4, Klaviyo, Apollo κ.λπ. με κλειδιά API). Τα skills τα καλούν.
@@ -95,8 +126,9 @@
   προσωπικά δεδομένα. Θέλει χωριστή απόφαση και νομικό έλεγχο.
 - `copywriting`, `copy-editing`: γραμμένα για αγγλικό κείμενο. Το `anartisi` καλύπτει
   τα ελληνικά σημάδια κειμένου μηχανής.
-- Υποψήφια για αργότερα, με απόφαση ιδιοκτήτη: `competitors` (σελίδες σύγκρισης),
-  `site-architecture`, `programmatic-seo`, `customer-research`.
+- `competitor-profiling`: scraping ιστοτόπων ανταγωνιστών (Firecrawl) και δεδομένα
+  SEO μέσω MCP με κλειδιά API (DataForSEO, Ahrefs, Semrush). Η έρευνα για
+  ανταγωνιστές γίνεται με το `competitors` και τους κανόνες της κεφαλίδας του.
 
 ### Panniantong/agent-reach (ολόκληρο)
 
