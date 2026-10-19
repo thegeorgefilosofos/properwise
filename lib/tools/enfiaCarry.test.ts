@@ -50,7 +50,12 @@ ok('τα κλειδιά της συνέχειας είναι τα κλειδιά
   ok('ξένα κλειδιά δεν γράφονται στη διαδρομή', foreign === `${HOME}?action=enfia`)
 
   // Ο σύνδεσμος της εγγραφής και η πραγματική συνέχεια (lib/auth/continuation.ts).
-  for (const v of [SPEC, vals({ tm: '64,5', zoni: '3.200', pososto: '50', voith: '8' }), vals({ tm: '90&next=//kako.gr' })]) {
+  // ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΤΗΣ ΣΕΛΙΔΑΣ ΔΕΝ ΓΙΝΕΤΑΙ ΑΚΙΝΗΤΟ. Με τις προεπιλογές ο οδηγός
+  // άνοιγε με 85 τ.μ. και 2ο όροφο που δεν έγραψε κανείς και η Επισκόπηση
+  // έδειχνε τον ΕΝΦΙΑ του παραδείγματος σαν εκτίμηση του νέου ακινήτου.
+  ok('προεπιλογές → σκέτη εγγραφή, χωρίς συνέχεια', enfiaSignupHref(SPEC) === '/signup')
+  ok('…και με τις προεπιλογές γραμμένες ρητά', enfiaSignupHref({ ...SPEC }) === '/signup')
+  for (const v of [vals({ tm: '64,5', zoni: '3.200', pososto: '50', voith: '8' }), vals({ tm: '90&next=//kako.gr' }), vals({ orofos: 'third' })]) {
     const href = enfiaSignupHref(v)
     const u = new URL(href, 'https://properwise.gr')
     ok(`ο σύνδεσμος πηγαίνει στην εγγραφή (${href})`, u.pathname === '/signup' && [...u.searchParams.keys()].join() === 'next')
@@ -74,8 +79,10 @@ ok('τα κλειδιά της συνέχειας είναι τα κλειδιά
 
 // ── Η ΔΙΕΥΘΥΝΣΗ ΠΡΟΣ ΤΑ ΜΕΣΑ: ΜΟΝΟ ΤΑ ΚΛΕΙΔΙΑ ΤΟΥ SPEC, ΜΟΝΟ ΕΓΚΥΡΕΣ ΤΙΜΕΣ ──────
 {
-  const d = readEnfiaCarry(P(''))
-  ok('χωρίς πεδία → οι προεπιλογές του υπολογιστή', !!d && JSON.stringify(d.values) === JSON.stringify(SPEC))
+  ok('χωρίς πεδία → κανένα φορτίο (το παράδειγμα δεν είναι εκτίμηση)', readEnfiaCarry(P('')) === null)
+  ok('…ούτε με κενά ή ξένα κλειδιά μόνο', readEnfiaCarry(P('tm=&zoni=%20&next=%2Fx&plan=pro')) === null)
+  const d = readEnfiaCarry(P('tm=85'))
+  ok('ένα πεδίο αρκεί, τα υπόλοιπα από τις προεπιλογές', !!d && JSON.stringify(d.values) === JSON.stringify(SPEC))
 
   const r = readEnfiaCarry(P('tm=120&zoni=2100&orofos=third&palaiotita=y10_14&pososto=50&voith=6'))
   ok('έγκυρα πεδία περνούν', !!r && r.values.tm === '120' && r.inputs.sqm === 120 && r.inputs.zone === '1501_2500' && r.inputs.own === 50 && r.inputs.aux === 6)

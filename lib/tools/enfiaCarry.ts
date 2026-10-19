@@ -108,8 +108,17 @@ export function enfiaCarryPath(values: Readonly<Record<string, string>>): string
   return `${HOME}?${out.toString()}`
 }
 
-/** Ο σύνδεσμος του «Ξεκίνα δωρεάν» κάτω από τον υπολογιστή. */
+/**
+ * Ο σύνδεσμος του «Ξεκίνα δωρεάν» κάτω από τον υπολογιστή.
+ *
+ * ΧΩΡΙΣ ΑΛΛΑΓΜΕΝΟ ΠΕΔΙΟ, ΣΚΕΤΗ ΕΓΓΡΑΦΗ. Οι προεπιλογές του SPEC είναι το
+ * παράδειγμα της σελίδας, όχι το ακίνητο του επισκέπτη. Με αυτές στη συνέχεια
+ * ο οδηγός άνοιγε με τα τ.μ. και τον όροφο του παραδείγματος και, αν δεν τα
+ * άλλαζε κανείς, οι ρυθμίσεις ΕΝΦΙΑ του νέου ακινήτου έπαιρναν το ποσό του
+ * παραδείγματος σαν δική του εκτίμηση.
+ */
 export function enfiaSignupHref(values: Readonly<Record<string, string>>): string {
+  if (!toolQuery(SPEC, values)) return '/signup'
   return `/signup?${new URLSearchParams({ next: enfiaCarryPath(values) }).toString()}`
 }
 
@@ -148,9 +157,13 @@ const VALID: Record<keyof typeof SPEC, (s: string) => boolean> = {
  * Το φορτίο ΕΝΦΙΑ μιας διεύθυνσης εκκίνησης, ή `null`.
  *
  * Διαβάζει ΜΟΝΟ τα κλειδιά του SPEC· όσα λείπουν παίρνουν την προεπιλογή, όπως
- * στη σελίδα. Μία τιμή που δεν περνά τον έλεγχό της ακυρώνει όλο το φορτίο.
+ * στη σελίδα, αρκεί να υπάρχει ένα τουλάχιστον. Μία τιμή που δεν περνά τον
+ * έλεγχό της ακυρώνει όλο το φορτίο.
  */
 export function readEnfiaCarry(params: URLSearchParams): EnfiaCarry | null {
+  // Χωρίς κανένα πεδίο δεν υπάρχει εκτίμηση του επισκέπτη, μόνο το παράδειγμα
+  // της σελίδας (`enfiaSignupHref`): δεν γίνεται ακίνητο κανενός.
+  if (!ENFIA_KEYS.some(k => (params.get(k) ?? '').trim() !== '')) return null
   const values = readTool(SPEC, params)
   for (const k of ENFIA_KEYS) {
     const v = values[k]

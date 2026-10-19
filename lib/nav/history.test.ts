@@ -106,7 +106,8 @@ ok('αφαίρεση ακινήτου → εγγραφή', shouldPush(L('a', 'p'
   ok('…και η διεύθυνση καθαρίζει από τα κλειδιά της', e1.consumed && e1.search === '' && !e1.scan && e1.hash === null)
 
   const e2 = readLaunchShortcut('?action=enfia', '', KNOWN)
-  ok('χωρίς πεδία → οι προεπιλογές του υπολογιστή', e2.enfia?.inputs.sqm === 85 && e2.enfia?.inputs.zone === '751_1500')
+  // Χωρίς πεδία έμενε το παράδειγμα της σελίδας (85 τ.μ.) και ο οδηγός άνοιγε μ' αυτό.
+  ok('χωρίς πεδία → καμία εκτίμηση', e2.enfia === null && e2.consumed && e2.search === '')
 
   const e3 = readLaunchShortcut('?utm_source=x&action=enfia&tm=90&next=%2F%2Fkako.gr&plan=pro', '', KNOWN)
   ok('ξένα κλειδιά δεν μπαίνουν στο φορτίο', !!e3.enfia && Object.keys(e3.enfia.values).join() === 'tm,zoni,orofos,palaiotita,pososto,voith')
