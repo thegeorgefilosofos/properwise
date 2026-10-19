@@ -39,7 +39,7 @@ export interface Tenant   { monthly_rent:number|null; lease_end:string|null; }
 /** Το ενοίκιο και ο τρόπος είσπραξης, ανά ακίνητο του χαρτοφυλακίου. */
 export interface TenRow { property_id: string; monthly_rent: number | null; e_payment: boolean | null }
 /** Ό,τι θέλει η Επισκόπηση από τον τρέχοντα μισθωτή, πέρα από το ενοίκιο. */
-export interface TenantFull { id?:string; lease_start:string|null; lease_end:string|null; e_payment?:boolean|null }
+export interface TenantFull { id?:string; lease_start:string|null; lease_end:string|null; e_payment?:boolean|null; payment_frequency?:string|null; rent_due_day?:number|null }
 
 // ── Η ΡΑΜΠΑ ΤΗΣ ΚΑΤΑΣΤΑΣΗΣ, ΠΑΡΑΓΩΓΗ ΑΠΟ ΤΟ ΘΕΜΑ ────────────────────────────
 // Επτά ομοιογενείς αποχρώσεις, από γεμάτο προς σβησμένο, στη λογική σειρά των

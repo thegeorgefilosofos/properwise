@@ -7,7 +7,7 @@
 // αναφέρει πλέον στο captureError, αλλά μετά το ανέβασμα. Ο έλεγχος γίνεται
 // λοιπόν ΚΑΙ ΕΔΩ, όπου φαίνεται πριν.
 // ═══════════════════════════════════════════════════════════════════════════
-import { PRODUCT_EVENTS, WIZARD_FROM, onboardingProps, track, trackOnboarding, type ProductEvent, type OnboardingStep } from './events';
+import { PRODUCT_EVENTS, WIZARD_FROM, FORECAST_STATES, onboardingProps, forecastProps, track, trackOnboarding, type ProductEvent, type OnboardingStep, type ForecastState } from './events';
 import { readFileSync } from 'node:fs';
 
 let passed = 0, failed = 0;
@@ -23,7 +23,7 @@ const NAME_RULE = /^[a-z][a-z0-9_]{2,47}$/;
   ok('κάθε όνομα περνά τον έλεγχο της βάσης', names.every(n => NAME_RULE.test(n)));
   ok('το κλειδί είναι ίδιο με την τιμή', Object.entries(PRODUCT_EVENTS).every(([k, v]) => k === v));
   ok('κανένα διπλότυπο', new Set(names).size === names.length);
-  ok('εννέα σκαλιά της αξίας και τέσσερα της υποδοχής', names.length === 13);
+  ok('εννέα σκαλιά της αξίας, τέσσερα της υποδοχής και η πρόβλεψη', names.length === 14);
 }
 
 // ── ΤΟ ΧΩΝΙ ΕΧΕΙ ΣΕΙΡΑ ΚΑΙ Η ΣΕΙΡΑ ΕΧΕΙ ΝΟΗΜΑ ───────────────────────────
@@ -65,6 +65,21 @@ const NAME_RULE = /^[a-z][a-z0-9_]{2,47}$/;
   ok('δεκαδικό βήμα κόβεται σε ακέραιο', out[2].step === 2);
   ok('αρνητικό ή τεράστιο γίνεται 0', out[3].step === 0 && out[4].card === 0);
   ok('κανένα φορτίο δεν έχει ελεύθερο κείμενο', out.every(onlyFixed));
+}
+
+// ── Η ΠΡΟΒΛΕΨΗ: ΑΡΙΘΜΟΙ ΚΑΙ ΜΙΑ ΛΕΞΗ, ΠΟΤΕ ΠΟΣΟ ───────────────────────────
+{
+  const idx = (e: ProductEvent) => Object.values(PRODUCT_EVENTS).indexOf(e);
+  ok('η πρόβλεψη έρχεται μετά το πρώτο ακίνητο', idx(PRODUCT_EVENTS.forecast_viewed) > idx(PRODUCT_EVENTS.property_added));
+  ok('γεμάτη κάρτα', JSON.stringify(forecastProps({ months: 12, gaps: 3, state: 'filled' })) === '{"months":12,"gaps":3,"state":"filled"}');
+  ok('κενή κάρτα', JSON.stringify(forecastProps({ months: 0, gaps: 0, state: 'empty' })) === '{"months":0,"gaps":0,"state":"empty"}');
+  const sneaky = forecastProps({ months: 13, gaps: -2, state: 'Φεβρουάριος −347,40€' as ForecastState });
+  ok('πάνω από δώδεκα μήνες γίνεται 0', sneaky.months === 0);
+  ok('αρνητικό γίνεται 0', sneaky.gaps === 0);
+  ok('κείμενο στην κατάσταση γίνεται «empty»', sneaky.state === 'empty');
+  ok('οι καταστάσεις είναι σταθερές πεζές λέξεις', FORECAST_STATES.every(w => /^[a-z]+$/.test(w)));
+  const src = readFileSync('app/dashboard/components/ForecastCard.tsx', 'utf8');
+  ok('η κάρτα καλεί το forecast_viewed με το καθαρό φορτίο', /PRODUCT_EVENTS\.forecast_viewed,\s*forecastProps\(/.test(src));
 }
 
 // ── ΚΑΙ ΚΑΘΕ ΣΚΑΛΙ ΤΗΣ ΥΠΟΔΟΧΗΣ ΚΑΛΕΙΤΑΙ ΚΑΠΟΥ ───────────────────────────
@@ -181,7 +196,7 @@ async function trackTests() {
   const used = new Set<string>();
   // Τα κλειδιά που ΟΝΤΩΣ χρησιμοποιεί η εφαρμογή, γραμμένα ρητά εδώ ώστε ο
   // κατάλογος να είναι ορατός και ελέγξιμος με μια ματιά.
-  ['plan', 'count', 'source', 'kind', 'cycle', 'card', 'from', 'step'].forEach(k => used.add(k));
+  ['plan', 'count', 'source', 'kind', 'cycle', 'card', 'from', 'step', 'months', 'gaps', 'state'].forEach(k => used.add(k));
   ok('κανένα κλειδί φορτίου δεν είναι προσωπικό δεδομένο',
     [...used].every(k => !forbidden.includes(k)));
 }
