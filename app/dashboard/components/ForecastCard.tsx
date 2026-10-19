@@ -295,7 +295,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   /* Η συμπαγής EmptyState βάζει τη δράση σε σκέτο div: τρία κουμπιά κολλούσαν. */
   .fc-empty-acts { display: flex; flex-wrap: wrap; gap: 8px; }
 
-  .fc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; }
+  .fc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .fc-lead { min-width: 0; flex: 1 1 320px; }
   .fc-kicker {
     display: block; font-family: ${T.font.sans}; font-size: 11px; font-weight: 700;
@@ -327,7 +327,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   .sw-out { background: var(--series-out); }
   .sw-exp { background: color-mix(in srgb, var(--text-tertiary) 14%, transparent); border: 1px dashed var(--text-secondary); }
   .sw-vac { background: transparent; border: 1px dashed var(--text-tertiary); }
-  .sw-miss { background: transparent; border: 1px dashed var(--text-tertiary); border-top: none; border-radius: 0 0 ${T.radius.hair}px ${T.radius.hair}px; }
+  .sw-miss { background: transparent; border: 1px dashed var(--text-tertiary); border-top: none; border-radius: ${T.radius.hair}px; }
   .sw-in.sw-exp-of { background: color-mix(in srgb, var(--series-in) 22%, transparent); border: 1px dashed var(--series-in); }
   .sw-out.sw-exp-of { background: color-mix(in srgb, var(--series-out) 22%, transparent); border: 1px dashed var(--series-out); }
 
@@ -351,18 +351,18 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   .fc-bar { display: block; height: calc(var(--fc-share, 0) * 100%); width: min(64%, 28px); flex-shrink: 0; min-height: 2px; }
   .fc-bar.in { background: var(--series-in); }
   .fc-bar.out { background: var(--series-out); }
-  .fc-up .fc-bar:last-child { border-radius: ${T.radius.hair}px ${T.radius.hair}px 0 0; }
-  .fc-down .fc-bar:last-of-type { border-radius: 0 0 ${T.radius.hair}px ${T.radius.hair}px; }
+  .fc-up .fc-bar:last-child { border-radius: ${T.radius.hair}px; }
+  .fc-down .fc-bar:last-of-type { border-radius: ${T.radius.hair}px; }
   .fc-bar.exp { border-width: 1px; border-style: dashed; }
   .fc-bar.in.exp { background: color-mix(in srgb, var(--series-in) 22%, transparent); border-color: var(--series-in); }
   .fc-bar.out.exp { background: color-mix(in srgb, var(--series-out) 22%, transparent); border-color: var(--series-out); }
   .fc-vac {
     position: relative; display: block; height: calc(var(--fc-share, 0) * 100%); width: min(64%, 28px); flex-shrink: 0;
-    border: 1px dashed var(--text-tertiary); border-bottom: none; border-radius: ${T.radius.hair}px ${T.radius.hair}px 0 0;
+    border: 1px dashed var(--text-tertiary); border-bottom: none; border-radius: ${T.radius.hair}px;
   }
   .fc-miss {
     display: block; width: min(64%, 28px); height: 12px; margin-top: 2px; flex-shrink: 0;
-    border: 1px dashed var(--text-tertiary); border-top: none; border-radius: 0 0 ${T.radius.hair}px ${T.radius.hair}px;
+    border: 1px dashed var(--text-tertiary); border-top: none; border-radius: ${T.radius.hair}px;
   }
   .fc-labels {
     display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 4px; margin-top: 8px;
@@ -400,7 +400,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   .fc-none { margin: 8px 0 0; font-family: ${T.font.sans}; font-size: 13px; color: var(--text-tertiary); }
 
   .fc-foot {
-    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
     margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-subtle);
   }
   .fc-note {
