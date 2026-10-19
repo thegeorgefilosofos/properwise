@@ -32,7 +32,7 @@ import { athensToday } from '@/lib/core/time';
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO } from '@/lib/accounting/renovation39b';
 import { ANAK_NAME, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_SCOPE_TEXT, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT } from '@/lib/accounting/anakainisi2026';
 import { STR_SPECS_TEXT } from '@/lib/accounting/strSpecs';
-import { SPITI_MOU, SPITI_MOU_3, spitiMouOpen, spitiMouClosedLine, spitiMouClosedSentence, spitiMou3Line } from '@/lib/loans/recommend';
+import { SPITI_MOU, SPITI_MOU_3, spitiMouOpen, spitiMouClosedLine, spitiMouClosedSentence, spitiMou3Line, spitiMou3ReportedLines, spitiMou3ReportedCaveat } from '@/lib/loans/recommend';
 import { programDateLabel } from '@/lib/loans/programStatus';
 import { energyProgramStates } from '@/lib/loans/energyPrograms';
 import { roundHalfUp } from '@/lib/core/money';
@@ -419,8 +419,8 @@ const SPITI_LOANS = spitiMouOpen(day)
 // κατάλογος και το δημόσιο FAQ. Η εντολή λέει ρητά τι ΔΕΝ λέγεται.
 const SPITI_3 = `${SPITI_MOU_3.name}: ${spitiMou3Line()} Το ύψος του, κατά την ίδια τράπεζα, είναι ${fn(SPITI_MOU_3.budgetEur / 1e9)} δισ. ευρώ. `
   + `Κατά την κυβερνητική εξειδίκευση των μέτρων της ΔΕΘ, η ανώτατη ηλικία είναι ${SPITI_MOU_3.ageMax}. Μόνο αυτά είναι επίσημα. `
-  + 'ΔΕΝ κρίνεις επιλεξιμότητα, ΔΕΝ υπολογίζεις δόση ή όφελος από το πρόγραμμα και ΔΕΝ δίνεις όρια δανείου, αξίας ή εισοδήματος '
-  + 'ούτε αριθμό δικαιούχων που κυκλοφορούν σε δηλώσεις και δημοσιεύματα: δεν είναι όροι του προγράμματος. '
+  + `Αν σε ρωτήσουν για όρια, λες ΜΟΝΟ ως «τι έχει ειπωθεί, όχι ακόμη επίσημο»: ${spitiMou3ReportedLines().join(' ')} ${spitiMou3ReportedCaveat()} `
+  + 'ΔΕΝ κρίνεις επιλεξιμότητα με αυτά, ΔΕΝ υπολογίζεις δόση ή όφελος από το πρόγραμμα και ΔΕΝ τα παρουσιάζεις ως όρους. '
   + `Για τους όρους παραπέμπεις στην ${SPITI_MOU_3.channel} (${new URL(SPITI_MOU_3.sources.hdb).hostname}).`;
 // ══ ΤΑ ΕΝΕΡΓΕΙΑΚΑ ΠΡΟΓΡΑΜΜΑΤΑ, ΜΕ ΤΟΝ ΙΔΙΟ ΤΡΟΠΟ ══════════════════════════
 // Το prompt πρότεινε «Εξοικονομώ» και «Αναβαθμίζω» ως διαθέσιμα σε τέσσερα

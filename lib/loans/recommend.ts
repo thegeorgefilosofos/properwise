@@ -3,7 +3,7 @@
 // και σύσταση καλύτερου δανείου με βάση τις καταχωρήσεις και τις ανάγκες του χρήστη.
 // ΟΛΑ τα αποτελέσματα είναι ΕΝΔΕΙΚΤΙΚΑ, όχι δεσμευτική προσφορά τράπεζας.
 
-import { fe } from '@/lib/core/format'
+import { fe, feWhole, fn } from '@/lib/core/format'
 import { fp } from '../core/format'
 import { programStatus, programDateLabel, parseProgramDate, type ProgramStatus } from './programStatus'
 import { roundHalfUp } from '../core/money';
@@ -199,6 +199,48 @@ export function spitiMou3Line(): string {
   const d = programDateLabel(SPITI_MOU_3.announcedOn)
   return `Ανακοινώθηκε στη ΔΕΘ (${d}). Δεν έχει βγει ακόμη επίσημο κείμενο με τους όρους `
     + `και δεν γίνονται αιτήσεις. Κατά την ${SPITI_MOU_3.channel} ξεκινά ${SPITI_MOU_3.startLabel}.`
+}
+
+// ═══ «ΣΠΙΤΙ ΜΟΥ ΙΙΙ»: ΤΙ ΕΧΕΙ ΕΙΠΩΘΕΙ, ΧΩΡΙΣ ΝΑ ΕΙΝΑΙ ΟΡΟΣ ═════════════════
+// Χωριστή σταθερά, ΟΧΙ πεδία του SPITI_MOU_3: καμία συνάρτηση επιλεξιμότητας
+// ή δόσης δεν τη διαβάζει, και η δοκιμή το κρατά. Είναι ό,τι έχουν πει
+// υπουργοί και ό,τι μεταφέρει ο Τύπος, με την πηγή και την ημερομηνία του,
+// ώσπου να βγει ΚΥΑ. Τότε φεύγει ολόκληρη και τα όρια μπαίνουν στο SPITI_MOU_3
+// από το ΦΕΚ. Απόφαση George 19/10/2026: «πλαίσιο όχι επίσημο».
+export const SPITI_MOU_3_REPORTED = {
+  asOf: '2026-10-18',
+  source: {
+    label: 'newmoney.gr, 18/10/2026',
+    url: 'https://www.newmoney.gr/roh/palmos-oikonomias/ellada/spiti-mou-3-ti-allazi-sta-ilikiaka-ke-isodimatika-kritiria-ta-nea-oria-chrimatodotisis/',
+  },
+  /** Δήλωση της υπουργού Κοινωνικής Συνοχής στον ιστότοπο του υπουργείου (01/10/2026). */
+  beneficiariesSource: 'https://minscfa.gov.gr/domna-michailidou-mesa-ston-oktovrio-i-prokatavoli-50-gia-to-anakainizo-erchetai-to-spiti-mou-iii/',
+  maxAmount: 230_000,
+  maxPropertyValue: 300_000,
+  maxLtvPct: 90,
+  beneficiaries: 20_000,
+  incomeSingle: 25_000,
+  incomeMarriedBase: 35_000,
+  incomePerChild: 7_000,
+  incomeSingleParentBase: 39_000,
+  sqmPerChildAboveFour: 10,
+} as const
+
+/** Οι γραμμές του πλαισίου «όχι επίσημο»: κάθε αριθμός με το από πού. */
+export function spitiMou3ReportedLines(): string[] {
+  const r = SPITI_MOU_3_REPORTED
+  return [
+    `Δάνειο έως ${feWhole(r.maxAmount)} για κατοικία αξίας έως ${feWhole(r.maxPropertyValue)}, με χρηματοδότηση έως ${fn(r.maxLtvPct)}% της αξίας.`,
+    `Εισόδημα έως ${feWhole(r.incomeSingle)} για άγαμους, ${feWhole(r.incomeMarriedBase)} για ζευγάρια και ${feWhole(r.incomeSingleParentBase)} για μονογονεϊκές, με ${feWhole(r.incomePerChild)} ανά παιδί.`,
+    `${fn(r.sqmPerChildAboveFour)} τ.μ. επιπλέον για κάθε παιδί πέρα από το τέταρτο.`,
+    `Περίπου ${fn(r.beneficiaries)} ωφελούμενοι, κατά την υπουργό Κοινωνικής Συνοχής.`,
+  ]
+}
+
+/** Η μία πρόταση που λέει από πού έρχονται τα παραπάνω και τι δεν είναι. */
+export function spitiMou3ReportedCaveat(): string {
+  return `Σύμφωνα με δηλώσεις υπουργών και δημοσιεύματα (${SPITI_MOU_3_REPORTED.source.label}). `
+    + 'Δεν είναι ακόμη όροι του προγράμματος: θα ισχύσουν μόνο όπως γραφτούν στην ΚΥΑ.'
 }
 
 // Τοκοχρεολύσιο: σταθερή μηνιαία δόση (annuity).
