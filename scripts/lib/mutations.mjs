@@ -267,10 +267,13 @@ export const MUTATIONS = {
   // προστίθεται αρχείο — αλλοιώνεται το ΥΠΑΡΧΟΝ PLAN_LABEL, γιατί αυτό είναι
   // το σημείο που μπορεί πραγματικά να χαλάσει.
   // Δύο διαδρομές: η καρφωτή διαδρομή σε σενάριο και η έκδοση του CI που
-  // ξεκολλά από το playwright-core.
+  // ξεκολλά από το playwright-core. Η τρίτη μετάλλαξη αφήνει πίσω ΜΟΝΟ το
+  // τελευταίο job (webkit): ο φύλακας κοίταζε μόνο το πρώτο pin και την άφηνε
+  // να περάσει πράσινη (19/10/2026).
   'chromium-path': { every: [
     { add: 'scripts/__mut__.mjs', content: "import { chromium } from 'playwright-core';\nawait chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });\n" },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.63.0 install', to: 'playwright@1.40.0 install' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.0 install', to: 'playwright@1.40.0 install' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.0 install --with-deps webkit', to: 'playwright@1.63.0 install --with-deps webkit' },
   ] },
   'email-audience': {
     file: 'supabase/functions/_shared/emailTemplates.ts',
