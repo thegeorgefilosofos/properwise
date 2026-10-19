@@ -10,7 +10,7 @@ import {
   DOC_KINDS, KIND_OPTIONS, kindOf, applyKind, docForm, docTargets, fieldOptions, fieldValue, withField,
   selectLine, withPropertyLine, archiveOptions, folderForDoc, FOLDERS, BILL_CATEGORIES,
   SCAN_NUM_KEYS, SCAN_MAX_LINES, PROPERTY_TARGET, compactRow, shelfPath, lineUnset, LINE_NONE,
-  commonMonthOf, PEA_EXPIRY_TITLE,
+  commonMonthOf, PEA_EXPIRY_TITLE, incomeTaxYearOf, INCOME_TAX_TITLE,
   type ScannedDoc, type DocType, type DocKindId, type DocField,
 } from './documents';
 import { SYSTEM_PROMPT, SCAN_KEYS } from './scanPrompt';
@@ -920,6 +920,18 @@ check('χώρα εκδότη: κείμενο, όχι κωδικός', allFields(
   eq('λογαριασμός: Ποσό και Λήξη πρώτα στη Χρέωση', docForm(asKind('bill', { category: 'electricity' }))!.groups[1].rows[0].map(f => f.key), ['amount', 'due_date']);
   const pay = docForm(asKind('payment'))!.groups[0].rows.map(r => r[0].key);
   check('απόδειξη: Ποσό πριν από Κατηγορία', pay.indexOf('amount') < pay.indexOf('category'));
+}
+
+// ── ΤΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ ΞΑΝΑΔΙΑΒΑΖΕΤΑΙ ─────────────────────────
+// Ο τίτλος που γράφει η σάρωση διαβάζεται πίσω σε έτος από τους επόμενους 12
+// μήνες. Αν αλλάξει ο ένας κανόνας και όχι ο άλλος, οι δόσεις του φόρου θα
+// έγραφαν «λείπει» για εκκαθαριστικό που υπάρχει.
+{
+  const p = planDocSave(doc({ doc_type: 'tax', subtype: 'income_tax', tax_year: 2025, amount: 1600, due_date: '2026-07-31' }), TODAY);
+  check('ο τίτλος της σάρωσης δίνει πίσω το έτος', incomeTaxYearOf(p.archive?.title) === 2025);
+  check('το ποσό μένει στο έγγραφο', p.archive?.amount === 1600);
+  check('ο τίτλος ξεκινά από το short του είδους', (p.archive?.title || '').startsWith(INCOME_TAX_TITLE));
+  check('άλλο έγγραφο δεν διαβάζεται ως εκκαθαριστικό', incomeTaxYearOf('ΕΝΦΙΑ 2025') === null && incomeTaxYearOf(`${INCOME_TAX_TITLE} πέρσι`) === null && incomeTaxYearOf(null) === null);
 }
 
 // ── report ───────────────────────────────────────────────────────────────────
