@@ -12,6 +12,7 @@ import { hy } from '@/components/Hyphen'
 import { ASSISTANT_NAME, ASSISTANT_ACC } from '@/lib/assistant/identity'
 import { signupCta } from '@/lib/billing/trialOffer'
 import { ACCENT, PANEL, TEXT, MUTED, FAINT, LINE, GAP, wrap, check } from './landingKit'
+import { FaqPlus } from './FaqPlus'
 
 /** Μία ερώτηση, ένα σχήμα. Οι δύο λίστες (ορατές και κρυμμένες) δεν επιτρέπεται
  *  να αποκλίνουν σε τυπογραφία ή σε συμπεριφορά: είναι η ίδια ενότητα.
@@ -25,7 +26,7 @@ export function FaqList({ list }: { list: { q: string; a: string }[] }) {
       {list.map((f) => (
         <details key={f.q} className="lp-faq">
           <summary style={{ cursor: 'pointer', listStyle: 'none', padding: '19px 0', fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-            {f.q}<span className="lp-plus" style={{ color: ACCENT, fontSize: 20, fontWeight: 450, lineHeight: 1, transition: 'transform .2s', flexShrink: 0 }}>+</span>
+            {f.q}<FaqPlus style={{ color: ACCENT }} />
           </summary>
           {/* ΠΕΡΑ-ΠΕΡΑ, ΓΙΑΤΙ ΕΙΝΑΙ ΔΥΟ ΓΡΑΜΜΕΣ.
           Το μέτρο των 680px υπήρχε για να μη χάνει το μάτι τη σειρά του σε
@@ -164,7 +165,7 @@ export function SectionHead({ over, title, sub }: { over: string; title: string;
     <div style={{ marginBottom: 'clamp(24px, 3.4vw, 40px)' }}>
       <hr className="lp-hair" />
       <div className="lp-eyebrow">{over}</div>
-      <h2 style={{ fontSize: 'clamp(25px, 3.4vw, 40px)', fontWeight: 680, letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0, textWrap: 'balance' }}>{title}</h2>
+      <h2 style={{ fontSize: 'clamp(25px, 3.4vw, 40px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0, textWrap: 'balance' }}>{title}</h2>
       {/* Ο υπότιτλος παίρνει όλο το πλάτος της στήλης και ΚΑΘΕ κείμενο κόπηκε ώστε
           να χωρά σε μία γραμμή. Δύο γραμμές υπότιτλου κάτω από μονόγραμμο τίτλο
           δίνουν βαρύ, ασύμμετρο μπλοκ· μία και μία διαβάζονται ως ζευγάρι.
@@ -208,7 +209,7 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
   );
   const price = (amount: string, per: string) => (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}>
-      <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 'clamp(24px, 2.4vw, 29px)', fontWeight: 680, letterSpacing: '-0.03em', color: TEXT, lineHeight: 1.1 }}>{amount}</span>
+      <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 'clamp(24px, 2.4vw, 29px)', fontWeight: 700, letterSpacing: '-0.03em', color: TEXT, lineHeight: 1.1 }}>{amount}</span>
       <span style={{ fontSize: 13, color: MUTED }}>{per}</span>
     </div>
   );
@@ -289,7 +290,7 @@ export function PlanCard({ planId, name, nameColor, sub, price, per, note, annua
           μήνα» έπεφτε κάτω από το «29,90€» και «79,90€» —τα δύο μεγαλύτερα
           ποσά— και οι λίστες ξεκινούσαν σε διαφορετικό ύψος σε κάθε κάρτα. */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}>
-        <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 'clamp(24px, 2.4vw, 29px)', fontWeight: 680, letterSpacing: '-0.03em', color: TEXT, lineHeight: 1.1 }}>{price}</span>
+        <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 'clamp(24px, 2.4vw, 29px)', fontWeight: 700, letterSpacing: '-0.03em', color: TEXT, lineHeight: 1.1 }}>{price}</span>
         <span style={{ fontSize: 13, color: MUTED }}>{per}</span>
       </div>
       <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>{note}</div>

@@ -300,7 +300,7 @@ export function SectionHead({ over, title, sub }: { over: string; title: string;
   return (
     <div style={{ marginBottom: 'clamp(18px,2.4vw,26px)' }}>
       <div className="lp-eyebrow">{over}</div>
-      <h2 style={{ fontSize: 'clamp(21px,3vw,28px)', fontWeight: 680, letterSpacing: '-0.03em', lineHeight: 1.15, margin: 0, textWrap: 'balance' }}>{title}</h2>
+      <h2 style={{ fontSize: 'clamp(21px,3vw,28px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.15, margin: 0, textWrap: 'balance' }}>{title}</h2>
       {sub && <p className="po-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '10px 0 0', maxWidth: READING }}>{hy(sub)}</p>}
     </div>
   );

@@ -352,7 +352,7 @@ export function LandingStyles() {
           padding: clamp(20px, 2.4vw, 26px) clamp(18px, 1.9vw, 24px);
         }
         .lp-stat-n {
-          font-size: clamp(30px, 3.2vw, 38px); font-weight: 680;
+          font-size: clamp(30px, 3.2vw, 38px); font-weight: 700;
           letter-spacing: -0.04em; line-height: 1; color: var(--text-primary);
           font-variant-numeric: tabular-nums;
         }

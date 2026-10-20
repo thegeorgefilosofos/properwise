@@ -14,6 +14,7 @@ import ScrollStory from './ScrollStory';
 import LandingCalculator from './LandingCalculator';
 import Spotlight from './Spotlight';
 import FaqMore from './FaqMore';
+import { FaqPlus } from './FaqPlus';
 import { PublicFooter, PublicNav, JsonLd } from './PublicChrome';
 import { T } from '@/components/tokens';
 import { hy } from '@/components/Hyphen';
@@ -226,7 +227,7 @@ export default async function Landing() {
             <span>Ο «{PLANS.free.name}» είναι πλέον δωρεάν για ένα ακίνητο</span>
             <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </Link>
-          <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
+          <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
             {/* Ο ΙΔΙΟΣ ΤΙΤΛΟΣ ΜΕ ΤΗΝ ΚΑΡΤΕΛΑ ΚΑΙ ΤΗΝ ΚΑΡΤΑ ΚΟΙΝΟΠΟΙΗΣΗΣ (HOME_TITLE_LINES,
                 lib/core/site.ts). Δύο γραμμές· από τα 900 και πάνω καμία δεν σπάει. */}
             {/* Το κενό ανάμεσα δεν φαίνεται (οι γραμμές είναι block) αλλά το
@@ -281,7 +282,7 @@ export default async function Landing() {
               γραμμή που δεν σπάει, με πλήρη στοίχιση και το πλάτος ακολουθεί τη
               μεγαλύτερη (`fit-content`), οπότε η μικρότερη ανοίγει ελάχιστα ανά
               κενό. Στο κινητό οι προτάσεις ρέουν κεντραρισμένες (.lp-lede). */}
-          <p className="lp-rise-2 lp-lede" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17.5px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 28px' }}>
+          <p className="lp-rise-2 lp-lede" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 28px' }}>
             {/* Η ΝΟΑ ΔΕΝ ΤΗΝ ΕΧΟΥΝ ΟΛΟΙ: γι' αυτό ο υπότιτλος δεν την υπόσχεται.
                 Η δοκιμή της λέγεται στα ✓ από κάτω, η τιμή της στον τιμοκατάλογο. */}
             <span className="lp-lede-line">Λογαριασμός, μισθωτήριο, απόδειξη: η{'\u00a0'}εφαρμογή τα διαβάζει και τα βάζει στη θέση{'\u00a0'}τους.</span>{' '}
@@ -372,7 +373,7 @@ export default async function Landing() {
           {features.map((f, i) => (
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 24px)' }}>
               <div style={{ width: 38, height: 38, borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: T.sp.lg }}>{ic(f.i)}</div>
-              <h3 style={{ fontSize: 16, fontWeight: 680, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{f.t}</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{f.t}</h3>
               {/* Πέρα πέρα, σε ΔΥΟ γραμμές το πολύ (απόφαση ιδιοκτήτη, 26.09.2026):
                   στήλη ~290px σε σώμα 15 χωρά ~38 χαρακτήρες τη γραμμή, άρα
                   λεζάντα ως ~72. Τις τρύπες της στοίχισης τις κλείνει ο
@@ -398,7 +399,7 @@ export default async function Landing() {
         <div className="lp-works">
           {WORKS_WITH.map((w, i) => (
             <div key={i}>
-              <div className="lp-works-t" style={{ fontSize: 15, fontWeight: 680, color: TEXT, letterSpacing: '-0.01em', marginBottom: 4 }}>{w.t}</div>
+              <div className="lp-works-t" style={{ fontSize: 15, fontWeight: 700, color: TEXT, letterSpacing: '-0.01em', marginBottom: 4 }}>{w.t}</div>
               <div className="lp-even lp-works-d" style={{ fontSize: 14, color: FAINT, lineHeight: 1.5 }}>{w.d}</div>
             </div>
           ))}
@@ -472,7 +473,7 @@ export default async function Landing() {
                   <svg aria-hidden="true" width={17} height={17} viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{s.i.split('M').filter(Boolean).map((p, j) => <path key={j} d={'M' + p} />)}</svg>
                 </div>
                 <div>
-                  <div className="lp-even" data-nohy="" style={{ fontSize: 15, fontWeight: 680, color: TEXT, marginBottom: 4, letterSpacing: '-0.01em' }}>{s.t}</div>
+                  <div className="lp-even" data-nohy="" style={{ fontSize: 15, fontWeight: 700, color: TEXT, marginBottom: 4, letterSpacing: '-0.01em' }}>{s.t}</div>
                   <div className="po-just" style={{ fontSize: 14, color: MUTED, lineHeight: 1.55 }}>{s.d}</div>
                 </div>
               </div>
@@ -511,7 +512,7 @@ export default async function Landing() {
       <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
         {/* ═══ ΤΡΙΑ ΠΡΑΓΜΑΤΑ ΔΙΟΡΘΩΘΗΚΑΝ ΕΔΩ ΚΑΙ ΤΑ ΤΡΙΑ ΦΑΙΝΟΝΤΑΝ ══════════
             ΤΟ ΜΕΓΕΘΟΣ. Ο τίτλος ήταν 30 εικονοστοιχεία σε βάρος 450, ενώ κάθε
-            άλλη ενότητα της σελίδας έχει 40 σε βάρος 680. Δίπλα στο «Τέσσερα
+            άλλη ενότητα της σελίδας έχει 40 σε βάρος 700. Δίπλα στο «Τέσσερα
             πακέτα» από κάτω του διαβαζόταν ως ΥΠΟΤΙΤΛΟΣ εκείνου, όχι ως δικός
             του τίτλος. Τώρα χρησιμοποιεί το `SectionHead`, όπως όλες: μία
             κεφαλίδα ενότητας σε όλη τη σελίδα, καμία τοπική εκδοχή.
@@ -605,7 +606,7 @@ export default async function Landing() {
             billingWords και σβήνει μόνη της τη μέρα που ανοίγει το ταμείο. */}
         {pricingNotice && (
           <div role="note" style={{ padding: '14px 16px', marginBottom: 16, borderRadius: T.radius.popup, background: PANEL, border: '1px solid color-mix(in srgb, var(--accent) 35%, transparent)', fontSize: 14, lineHeight: 1.55, color: MUTED }}>
-            <strong style={{ color: TEXT, fontWeight: 680 }}>{pricingNotice.title}</strong>{' '}{pricingNotice.body}
+            <strong style={{ color: TEXT, fontWeight: 700 }}>{pricingNotice.title}</strong>{' '}{pricingNotice.body}
           </div>
         )}
         <div className="lp-plans" style={{ display: 'grid', gridTemplateColumns: `repeat(${LANDING_PLANS.length}, minmax(0, 1fr))`, gap: CARD_GAP, alignItems: 'stretch' }}>
@@ -696,7 +697,7 @@ export default async function Landing() {
                 <div style={{ width: 44, height: 44, borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{ic(r.i)}</div>
                 <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: ACCENT }}>{r.tag}</span>
               </div>
-              <h3 style={{ fontSize: 16, fontWeight: 680, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{r.t}</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{r.t}</h3>
               <p className="po-just" style={{ fontSize: 15, color: MUTED, lineHeight: 1.6, margin: '0 0 18px' }}>{r.d}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {r.items.map((t, j) => (
@@ -778,7 +779,7 @@ export default async function Landing() {
           <summary style={{ cursor: 'pointer', listStyle: 'none', fontSize: 14, fontWeight: 600, color: ACCENT, alignItems: 'center', gap: 8 }}>
             <span className="lp-more-open">Περισσότερες ερωτήσεις</span>
             <span className="lp-more-shut">Λιγότερες ερωτήσεις</span>
-            <span className="lp-plus" style={{ fontSize: 18, fontWeight: 450, lineHeight: 1, transition: 'transform .2s' }}>+</span>
+            <FaqPlus />
           </summary>
           <div style={{ borderBottom: `1px solid ${LINE}` }}>
             <FaqList list={FAQ.slice(FAQ_VISIBLE)} />
@@ -794,7 +795,7 @@ export default async function Landing() {
       <section className="lp-hero lp-reveal lp-final" style={{ position: 'relative', overflow: 'hidden', borderBottom: 'none' }}>
         <div className="lp-aurora" aria-hidden="true" />
         <div style={{ ...wrap, position: 'relative', zIndex: 1, textAlign: 'center', paddingTop: GAP, paddingBottom: GAP }}>
-          <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>Το ακίνητό σου, υπό έλεγχο.</h2>
+          <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>Το ακίνητό σου, υπό έλεγχο.</h2>
           {/* ΤΟ ΚΛΕΙΣΙΜΟ ΛΕΕΙ ΤΙ ΚΕΡΔΙΖΕΙΣ, ΟΧΙ ΤΙ ΚΟΣΤΙΖΕΙ (02.10.2026, απόφαση
               ιδιοκτήτη). Ίδια λογική και ίδια διάταξη με τον υπότιτλο του hero
               (.lp-lede): δύο προτάσεις ίσου μήκους, μία ανά γραμμή από τα 720

@@ -608,6 +608,7 @@ export const MUTATIONS = {
   // Μισό εικονοστοιχείο εκτός κλίμακας: το παλιό μοτίβο `(\d+)\b` το διάβαζε
   // «12» και το άφηνε να περάσει. Αν ο φύλακας ξαναχάσει τα δεκαδικά, πρασινίζει.
   'type-scale': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ fontSize: 12.5 }}>Κείμενο εκτός κλίμακας</div>") },
+  'weight-scale': { add: 'components/__mut__.tsx', content: tsx("    <div style={{ fontWeight: 680 }}>Βάρος εκτός κλίμακας</div>") },
   'dead-exports': { add: 'lib/core/__mut__.ts', content: 'export const neverCalledByAnyone = () => 42\n' },
   'schema-drift': { add: 'lib/core/__mut__.ts', content: "import { createClient } from '@/lib/supabase/client'\nexport const q = () => createClient().from('user_properties').select('stili_pou_den_yparxei')\n" },
 
