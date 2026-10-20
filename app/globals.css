@@ -77,6 +77,13 @@ html {
   text-size-adjust: 100%;
 }
 
+/* ── ΚΩΔΙΚΑΣ ΣΤΗ ΓΡΑΜΜΑΤΟΣΕΙΡΑ ΤΟΥ ΕΡΓΟΥ, ΟΧΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ (20.10.2026) ──────
+   Δεν υπήρχε κανόνας για `code`: το «http://» στο /trust αποδιδόταν με τη
+   `monospace` του συστήματος (Courier, DejaVu Sans Mono), δηλαδή με τρίτη
+   γραμματοσειρά δίπλα στην Inter, που διαφέρει από υπολογιστή σε υπολογιστή.
+   Η Roboto Mono φορτώνεται ήδη για τους πίνακες (T.font.mono). */
+code, kbd, samp, pre { font-family: 'Roboto Mono', 'JetBrains Mono', monospace; }
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 14px;
@@ -1437,12 +1444,27 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
    στις δύο άκρες, ίδιο με το εσωτερικό των πλευρών· σε στήλη πλέγματος το
    περιθώριο αφαιρείται από το πλάτος της, οπότε δεν ξεχειλίζει όπως ξεχείλιζε
    η παλιά `flex-basis: 100%` (μετρημένο σε Pixel 7: 19 εικονοστοιχεία έξω). */
+/* ΟΙ ΔΥΟ ΕΝΕΡΓΕΙΕΣ ΤΗΣ ΕΠΙΣΚΟΠΗΣΗΣ ΦΤΑΝΟΥΝ ΩΣ ΤΗΝ ΑΚΡΗ ΣΤΟ ΚΙΝΗΤΟ (20.10.2026).
+   Τυλιγμένες κάτω από το ποσό, σταματούσαν 24px πριν από τη δεξιά ακμή του
+   περιεχομένου, ενώ κάθε κάρτα από κάτω φτάνει ως εκεί. Ως τα 480 μοιράζουν τη
+   σειρά σε δύο ίσες στήλες. */
+@media (max-width: 480px) {
+  .ov-head-actions { display: grid !important; grid-template-columns: 1fr 1fr; width: 100%; }
+}
 .cash-sides { display: grid; grid-template-columns: minmax(0, 1fr); }
 .cash-side { display: flex; flex-direction: column; min-width: 0; }
 .cash-divider { height: 1px; margin: 0 20px; background: var(--border-subtle); }
+/* ΤΟ «0,00€» ΤΗΣ ΑΔΕΙΑΣ ΠΛΕΥΡΑΣ ΥΠΑΡΧΕΙ ΓΙΑ ΤΗ ΖΥΓΙΣΗ ΚΑΙ ΜΟΝΟ ΕΚΕΙ ΦΑΙΝΕΤΑΙ.
+   Δίπλα δίπλα κρατά τις δύο πλευρές στις ίδιες γραμμές (CashHero). Η μία κάτω
+   από την άλλη δεν ζυγίζει τίποτα: εκεί θα ήταν εξήντα εικονοστοιχεία για την
+   απουσία είδησης, οπότε η πλευρά μένει ετικέτα και φράση, όπως πριν. */
+.cash-figure-empty { display: none; }
+.cash-note-empty { font-size: var(--fs-md); }
 @container (min-width: 520px) {
   .cash-sides[data-pair] { grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr); }
   .cash-sides[data-pair] > .cash-divider { height: auto; margin: 14px 0; }
+  .cash-sides[data-pair] .cash-figure-empty { display: block; }
+  .cash-sides[data-pair] .cash-note-empty { font-size: 12px; }
 }
 
 /* KPI / Metric card — ταυτίζεται με το KPIGrid του Theme.tsx (μία αισθητική) */
@@ -2503,6 +2525,15 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 
      Ο στόχος αφής δεν χάνεται: τα 44 × 44 τα δίνει το ψευδοστοιχείο και ο
      σαρωτής τα μετρά από εκεί, όπως ακριβώς και στο `.po-box`. */
+  /* ΚΑΙ Ο ΣΥΝΔΕΣΜΟΣ ΜΕΣΑ ΣΕ ΠΡΟΤΑΣΗ — ΑΛΛΑ ΜΟΝΟ ΑΥΤΟΣ (20.10.2026). Το
+     `.po-link` (LinkBtn) είναι `<button>`, οπότε το δάπεδο το έκανε inline-block
+     44 ψηλό μέσα σε γραμμή 21: μετρημένο στην ειδοποίηση των Όρων, η γραμμή
+     άνοιγε στα 33. Η πρώτη διόρθωση εξαίρεσε ΚΑΘΕ `.po-link`· ο σαρωτής
+     μετά τη ζωγραφική βρήκε επτά μόνους συνδέσμους στα 21: «Επιλογή
+     πολλαπλών», «Καταχώρηση», «Δες τι έρχεται». Εκεί δεν υπάρχει γραμμή να
+     ψηλώσει, οπότε το δάπεδο μένει. Ο σύνδεσμος που ζει σε πρόταση το δηλώνει
+     με `className="po-tap-inline"` στο LinkBtn και παίρνει τα 44 από το
+     ψευδοστοιχείο, όπως κάθε άλλος στόχος μέσα σε κείμενο. */
   .app-content button:not(.po-box):not(.po-tap-inline),
   .app-content [role="button"]:not(.po-box):not(.po-tap-inline),
   .app-content select,
@@ -2595,8 +2626,13 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   .po-tap-inline::after {
     content: '';
     position: absolute;
-    top: calc((100% - 44px) / 2);
-    bottom: calc((100% - 44px) / 2);
+    /* ΤΟ ΤΕΤΑΡΤΟ ΤΟΥ ΕΙΚΟΝΟΣΤΟΙΧΕΙΟΥ ΕΙΝΑΙ ΣΤΡΟΓΓΥΛΕΜΑ, ΟΧΙ ΣΧΕΔΙΟ (20.10.2026).
+       Σε στοιχείο με κλασματικό ύψος (12px × 1,6 = 19,2) ο περιηγητής δίνει
+       το `top` στρογγυλεμένο και τα δύο μισά αθροίζουν 43,99: ο σαρωτής
+       έβγαζε «75×44» ως εύρημα. Με ένα τέταρτο από κάθε πλευρά ο στόχος είναι
+       πάντα τουλάχιστον 44, χωρίς καμία ορατή αλλαγή. */
+    top: calc((100% - 44px) / 2 - 0.25px);
+    bottom: calc((100% - 44px) / 2 - 0.25px);
     /* ΚΑΙ ΟΡΙΖΟΝΤΙΑ, ΓΙΑ ΤΟ ΣΤΟΙΧΕΙΟ ΠΟΥ ΕΙΝΑΙ ΜΟΝΟ ΕΙΚΟΝΙΔΙΟ. Ενας σύνδεσμος
        με λέξεις είναι ήδη αρκετά φαρδύς και θέλει μόνο ύψος· το ⓘ του InfoHint
        είναι 14 επί 14 και του λείπουν ΚΑΙ ΤΑ ΔΥΟ. Το `min` διαλέγει μόνο του:
@@ -5134,7 +5170,7 @@ body:has(.po-tool-page) .po-cookie {
   border: 1px solid var(--border-subtle); background: var(--bg-surface); gap: 4px;
 }
 .gd-related-k { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
-.gd-related-t { font-size: 15px; font-weight: 680; letter-spacing: -0.01em; line-height: 1.3; color: var(--text-primary); }
+.gd-related-t { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.3; color: var(--text-primary); }
 .gd-related-d {
   font-size: 13px; line-height: 1.5; color: var(--text-secondary);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -5671,7 +5707,12 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    στο tablet μέσα από το Instagram. Η κάρτα κρίνει από το δικό της πλάτος
    (container query): κάτω από 880 ο κύριος αριθμός παίρνει όλη τη σειρά. Ο
    πολύ μακρύς (`.po-tool-hero-wide`, ToolHero) την παίρνει πάντα. */
-.po-tool-hero { container-type: inline-size; }
+/* ΚΑΙ ΣΤΟΙΧΙΖΕΤΑΙ ΣΤΗ ΓΡΑΜΜΗ ΒΑΣΗΣ, ΟΧΙ ΣΤΟ ΚΑΤΩ ΑΚΡΟ (20.10.2026). Το `end`
+   του πλέγματος στοίχιζε τα ΚΟΥΤΙΑ: το «180,28€» στα 44 και το «15,02€» στα 22
+   κάθονταν σε γραμμές βάσης που απείχαν περίπου 6px, γιατί η μεγάλη
+   γραμματοσειρά έχει βαθύτερη ουρά κάτω από τη γραμμή. Το μάτι διαβάζει τους
+   αριθμούς, όχι τα κουτιά τους. */
+.po-tool-hero { container-type: inline-size; align-items: last baseline; }
 .po-tool-hero-wide > .po-tool-fig-primary { grid-column: 1 / -1; }
 @container (max-width: 879px) {
   .po-tool-hero > .po-tool-fig-primary { grid-column: 1 / -1; }
@@ -5768,7 +5809,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
     background: none; border: 0; border-left: 1px solid var(--border-subtle); border-radius: 0; padding: 2px 0 2px 18px;
   }
   .lg-grid > .lg-toc .lg-toc-list, .gd-rail .lg-toc-list { columns: 1; }
-  .lg-grid > .lg-toc .lg-toc-list a, .gd-rail .lg-toc-list a { position: relative; font-size: 13.5px; transition: color .15s; }
+  .lg-grid > .lg-toc .lg-toc-list a, .gd-rail .lg-toc-list a { position: relative; font-size: 13px; transition: color .15s; }
   /* Στη στενή στήλη (272) τα ονόματα των ενοτήτων τύλιγαν με μία λέξη μόνη
      στη δεύτερη γραμμή. Δύο ίσες γραμμές διαβάζονται ως ένα όνομα. */
   .lg-grid > .lg-toc .lg-toc-list a, .gd-rail .lg-toc-list a { text-wrap: balance; }
@@ -6289,7 +6330,7 @@ tr.po-row-more { display: none; }
 /* Η δεύτερη τιμή («χωρίς όριο με Νόα») κάτω από την πρώτη, σε δεύτερο τόνο. */
 .plan-card-alt {
   display: block; margin-top: 1px;
-  font-size: 12.5px; font-weight: 600; line-height: 1.35; color: var(--text-secondary);
+  font-size: 12px; font-weight: 600; line-height: 1.35; color: var(--text-secondary);
 }
 /* Η ετικέτα του προτεινόμενου πακέτου, ίδια με την κορδέλα της αρχικής. */
 .plan-rec {
@@ -6310,7 +6351,7 @@ tr.po-row-more { display: none; }
   padding: 16px 16px 14px;
 }
 .plan-card-name {
-  margin: 0 0 4px; font-size: 18px; font-weight: 680; letter-spacing: -0.02em;
+  margin: 0 0 4px; font-size: 18px; font-weight: 700; letter-spacing: -0.02em;
   color: var(--text-primary);
 }
 .plan-card-list { margin: 0; }
@@ -6387,7 +6428,7 @@ tr.po-row-more { display: none; }
 .plan-th-flag { display: flex; justify-content: center; align-items: center; height: 22px; margin-bottom: 6px; }
 .plan-th-flag .plan-rec { margin: 0; line-height: 16px; }
 .plan-th-name {
-  display: block; font-size: 16px; font-weight: 680; letter-spacing: -0.02em; line-height: 1.25;
+  display: block; font-size: 16px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25;
   color: var(--text-primary);
 }
 .plan-th .plan-price { padding: 8px 0 0; }
@@ -6396,7 +6437,7 @@ tr.po-row-more { display: none; }
 .plan-matrix .po-table tbody td { vertical-align: middle; }
 /* Το σημάδι στο κέντρο του κελιού, ένα εικονοστοιχείο χαμηλότερα: η μέση της
    ελληνικής πεζής γραμμής κάθεται κάτω από τη μέση του κουτιού της. */
-.plan-matrix td > .plan-tick { display: block; margin: 0 auto; transform: translateY(1px); }
+.plan-matrix td > .plan-tick, .plan-matrix td > .plan-no { display: block; margin: 0 auto; transform: translateY(1px); }
 .plan-matrix .plan-card-alt { font-size: 12px; }
 /* Οι τιμές των κελιών στον πρώτο τόνο και σε βάρος, όπως στις κάρτες: τα
    «Έως 3» και «Χωρίς όριο» είναι η απάντηση, η ετικέτα αριστερά η ερώτηση. */
@@ -6863,7 +6904,7 @@ tr.po-row-more { display: none; }
 }
 .pc-seg label {
   display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 36px; padding: 0 6px; min-width: 0;
-  border-radius: 999px; font-size: 12.5px; font-weight: 650; color: var(--text-secondary);
+  border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--text-secondary);
   cursor: pointer; user-select: none; white-space: nowrap; transition: background-color .15s, color .15s;
 }
 .pc-seg label:hover { color: var(--text-primary); }
@@ -6889,7 +6930,7 @@ tr.po-row-more { display: none; }
 .lp-news {
   display: inline-flex; align-items: center; gap: 10px; margin: 0 auto 20px;
   padding: 5px 14px 5px 5px; min-height: 44px; box-sizing: border-box; border-radius: 999px; text-decoration: none;
-  font-size: 13.5px; font-weight: 600; color: var(--text-primary); line-height: 1.3;
+  font-size: 13px; font-weight: 600; color: var(--text-primary); line-height: 1.3;
   background: color-mix(in srgb, var(--accent) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
   transition: border-color .15s, background .15s;
@@ -6912,12 +6953,12 @@ tr.po-row-more { display: none; }
 .nf-band { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 64px); align-items: start; }
 .nf-title {
   display: flex; align-items: center; gap: 14px; margin: 0;
-  font-size: clamp(25px, 3.4vw, 40px); font-weight: 680; letter-spacing: -0.03em; line-height: 1.1;
+  font-size: clamp(25px, 3.4vw, 40px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
 }
 .nf-mono {
   flex: none; width: 1.18em; height: 1.18em; border-radius: 30%;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 0.82em; font-weight: 800; letter-spacing: -0.02em;
+  font-size: 0.82em; font-weight: 700; letter-spacing: -0.02em;
   background: var(--accent); color: var(--accent-text);
   box-shadow: 0 10px 34px -10px color-mix(in srgb, var(--accent) 70%, transparent);
 }
@@ -6933,22 +6974,22 @@ tr.po-row-more { display: none; }
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-.nf-does strong { font-size: 15.5px; font-weight: 680; color: var(--text-primary); letter-spacing: -0.01em; }
+.nf-does strong { font-size: 16px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
 /* Η περιγραφή κάτω από κάθε δυνατότητα της Νόας είναι μία με δύο γραμμές
    στη λίστα της ζώνης: σύντομο κείμενο, όχι στήλη ανάγνωσης. Ως 06.10.2026
    στοιχιζόταν πέρα πέρα· τώρα αριστερά, όπως κάθε κάρτα. */
-.nf-does span { font-size: 14.5px; line-height: 1.5; color: var(--text-secondary); }
+.nf-does span { font-size: 14px; line-height: 1.5; color: var(--text-secondary); }
 .nf-offer {
   display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 18px; row-gap: 6px;
   margin-top: 28px; padding: 16px 20px; border-radius: 16px; background: var(--bg-surface);
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .nf-price { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
-.nf-amount { font-size: clamp(30px, 3.4vw, 38px); font-weight: 720; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; color: var(--text-primary); line-height: 1; }
+.nf-amount { font-size: clamp(30px, 3.4vw, 38px); font-weight: 700; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; color: var(--text-primary); line-height: 1; }
 .nf-per { font-size: 15px; color: var(--text-secondary); }
 .nf-terms { font-size: 14px; color: var(--text-secondary); line-height: 1.45; }
 .nf-cta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px; margin-top: 20px; }
-.nf-free { font-size: 13.5px; color: var(--text-tertiary); }
+.nf-free { font-size: 13px; color: var(--text-tertiary); }
 
 .nf-stage { position: relative; }
 /* Η κάρτα ξεκινά στη γραμμή του τίτλου, όχι της ταμπέλας από πάνω του: η
@@ -6965,20 +7006,20 @@ tr.po-row-more { display: none; }
   box-shadow: 0 30px 70px -38px color-mix(in srgb, var(--text-primary) 45%, transparent);
 }
 .nf-head { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--border-subtle); }
-.nf-head strong { display: block; font-size: 14.5px; font-weight: 700; color: var(--text-primary); }
+.nf-head strong { display: block; font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .nf-head small { display: block; font-size: 12px; color: var(--text-secondary); }
-.nf-avatar { flex: none; width: 36px; height: 36px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; background: var(--accent); color: var(--accent-text); }
+.nf-avatar { flex: none; width: 36px; height: 36px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; background: var(--accent); color: var(--accent-text); }
 .nf-asks { list-style: none; margin: 0; padding: 18px 0 6px; display: flex; flex-direction: column; gap: 10px; }
 .nf-asks li {
   margin-left: auto; max-width: 88%; padding: 11px 15px; border-radius: 18px 18px 5px 18px;
-  font-size: 14.5px; line-height: 1.45; background: var(--accent); color: var(--accent-text);
+  font-size: 14px; line-height: 1.45; background: var(--accent); color: var(--accent-text);
 }
 .nf-asks li:nth-child(2) { margin-right: 14px; opacity: .9; }
 .nf-asks li:nth-child(3) { margin-right: 28px; opacity: .8; }
 .nf-input {
   display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px;
   padding: 11px 14px 11px 16px; border-radius: 999px; border: 1px solid var(--border-default);
-  font-size: 13.5px; color: var(--text-tertiary); background: var(--bg-base);
+  font-size: 13px; color: var(--text-tertiary); background: var(--bg-base);
 }
 .nf-input svg { flex: none; color: var(--accent); }
 @media (max-width: 900px) {
@@ -7058,7 +7099,7 @@ tr.po-row-more { display: none; }
    σύνθεση χωρίς να ανταγωνίζεται τον τίτλο. Στο τηλέφωνο τα δύο κουμπιά
    γίνονται ίσα και στοιβαγμένα, αντί για δύο πλάτη που τυλίγουν άτακτα. */
 .e404-code {
-  margin: 0 0 8px; font-size: clamp(88px, 16vw, 144px); font-weight: 800; line-height: 1;
+  margin: 0 0 8px; font-size: clamp(88px, 16vw, 144px); font-weight: 700; line-height: 1;
   letter-spacing: -0.06em; font-variant-numeric: tabular-nums;
   color: var(--border-default); user-select: none;
 }

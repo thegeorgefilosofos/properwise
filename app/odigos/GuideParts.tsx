@@ -19,6 +19,7 @@ import { SectionHead, WRAP, WRAP_PAD } from '../PublicChrome';
 import { LINK_STYLE } from '../linkStyle';
 import { BackLink } from '../BackLink';
 import { TocSpy } from '../TocSpy';
+import { FaqPlus } from '../FaqPlus';
 import { refsOnly } from '@/components/Hyphen';
 import { LISTED_GUIDES, guideShareImageUrl, relatedGuides, type Guide } from './guides';
 
@@ -284,7 +285,7 @@ export function GuideFaq({ title, faq }: { title: string; faq: GuideFaqItem[] })
             <summary style={{ cursor: 'pointer', listStyle: 'none', padding: '17px 0', fontSize: 15,
               fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
               {f.q}
-              <span className="lp-plus" aria-hidden="true" style={{ color: 'var(--accent)', fontSize: 20, fontWeight: 450, lineHeight: 1, transition: 'transform .2s', flexShrink: 0 }}>+</span>
+              <FaqPlus style={{ color: 'var(--accent)' }} />
             </summary>
             <p style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
               {f.a}

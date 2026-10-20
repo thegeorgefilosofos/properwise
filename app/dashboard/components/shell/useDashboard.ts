@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client'
 import { hardNavigate } from '@/lib/core/navigate'
 import * as propertyStore from '@/lib/data/properties'
 import * as calendarStore from '@/lib/data/calendar'
+import * as documentStore from '@/lib/data/documents'
 import * as settingsStore from '@/lib/data/settings'
 import { enfiaCarrySettings, type EnfiaCarry } from '@/lib/tools/enfiaCarry'
 import { athensToday } from '@/lib/core/time'
@@ -246,6 +247,33 @@ export function useDashboard() {
     trialActive: trial.active,
     daysLeft: trial.daysLeft,
   });
+  // ═══ ΤΟ ΒΗΜΑ ΤΣΕΚΑΡΕΤΑΙ ΜΟΛΙΣ ΓΙΝΕΙ, ΟΧΙ ΣΤΗΝ ΕΠΟΜΕΝΗ ΦΟΡΤΩΣΗ ═══════════
+  // Τα σήματα του πίνακα («σάρωσε ένα έγγραφο», «δες τις προθεσμίες σου»)
+  // μετριόνταν μία φορά, στο άνοιγμα. Ο χρήστης σάρωνε, γύριζε στην
+  // Επισκόπηση και έβρισκε το βήμα ακόμη ανοιχτό με το κουμπί «Άνοιγμα»: η
+  // εφαρμογή του έλεγε ότι δεν έκανε αυτό που μόλις έκανε. Τώρα ξαναμετρώνται
+  // κάθε φορά που επιστρέφει στην Επισκόπηση ή κλείνει η σάρωση, όσο ο
+  // πίνακας είναι ορατός. Μόνο προς τα πάνω: μια ανάγνωση που αποτυγχάνει (0)
+  // δεν ξετσεκάρει βήμα που είχε ήδη γίνει.
+  const refreshStartSignals = useCallback(async () => {
+    if (!user) return;
+    const [docCount, taxEvents] = await Promise.all([
+      documentStore.countOfUser(supabase, user.id),
+      calendarStore.taxEventCount(supabase, user.id),
+    ]);
+    setStartSignals(cur => {
+      const next = { documents: Math.max(cur.documents, docCount || 0), taxEvents: Math.max(cur.taxEvents, taxEvents) };
+      return next.documents === cur.documents && next.taxEvents === cur.taxEvents ? cur : next;
+    });
+  }, [user, supabase]);
+  const startPrimed = useRef(false);
+  useEffect(() => {
+    if (!user || nav !== 'overview' || quickAddOpen || !startState.visible) return;
+    // Την πρώτη φορά τα μέτρησε ήδη η `init`.
+    if (!startPrimed.current) { startPrimed.current = true; return; }
+    void refreshStartSignals();
+  }, [user, nav, quickAddOpen, startState.visible, refreshStartSignals]);
+
   const toggleStartPanel = (next: boolean) => {
     setStartCollapsed(next);
     if (!user) return;
@@ -409,6 +437,18 @@ export function useDashboard() {
         // «από πού ξεκινάς» για κάτι που έχει ήδη ξεκινήσει. Μόνο σε λογαριασμό
         // χωρίς ακίνητα: όποιος έχει ήδη, δεν ανοίγει οδηγό που δεν ζήτησε.
         if (LAUNCH.enfia && !countErr && count === 0) { setShowAddModal(true); void trackOnboarding(supabase, { event: PRODUCT_EVENTS.wizard_opened, from: 'other' }); }
+        // Η ΣΥΝΤΟΜΕΥΣΗ «ΣΑΡΩΣΗ» ΧΩΡΙΣ ΑΚΙΝΗΤΟ ΔΕΝ ΕΚΑΝΕ ΤΙΠΟΤΑ (20.10.2026). Το
+        // παράθυρο της σάρωσης ανοίγει μόνο με επιλεγμένο ακίνητο, οπότε όποιος
+        // πατούσε το εικονίδιο της εφαρμογής σε άδειο λογαριασμό έβλεπε την
+        // κενή οθόνη, χωρίς καμία απάντηση στο πάτημα. Τώρα ανοίγει ο οδηγός
+        // και η σάρωση ακολουθεί μόλις αποθηκευτεί το ακίνητο, ο ίδιος δρόμος
+        // με το «Σάρωσε έγγραφο» του καλωσορίσματος.
+        else if (LAUNCH.scan && !countErr && count === 0) {
+          setEnfiaCarry(null);
+          setScanAfterAdd(true);
+          setShowAddModal(true);
+          void trackOnboarding(supabase, { event: PRODUCT_EVENTS.wizard_opened, from: 'scan' });
+        }
         else {
           setEnfiaCarry(null);
           if (!obErr && !countErr && !ob?.welcomed && count === 0) setShowWelcome(true);

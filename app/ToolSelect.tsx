@@ -32,7 +32,7 @@ export function ToolSelect({ label, value, onChange, options, hint, span }: {
   return (
     <div className={spanClass(span)}>
       <span style={TOOL_LABEL}>{label}</span>
-      <CustomSelect ariaLabel={label} value={value} onChange={onChange} options={[...options]}/>
+      <CustomSelect ariaLabel={label} value={value} onChange={onChange} options={[...options]} variant="tool"/>
       {hint && <ToolHint>{hint}</ToolHint>}
     </div>
   );

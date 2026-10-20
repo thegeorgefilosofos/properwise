@@ -53,6 +53,11 @@ ok('land → Γη / Αγρός', e2IncomeCategory('land', null) === 'Γη / Αγ
 ok('parking → Βοηθητικός χώρος', e2IncomeCategory('parking', null) === 'Βοηθητικός χώρος');
 ok('seasonal overrides type', e2IncomeCategory('apartment', 'seasonal') === 'Βραχυχρόνια μίσθωση');
 ok('unknown type → Ακίνητο', e2IncomeCategory('spaceship', null) === 'Ακίνητο');
+// Η ελληνική ετικέτα των παλιών εγγραφών, όπως στο 4Δ2 (e1PropertyClass).
+ok('«Κατοικία» → Κατοικία', e2IncomeCategory('Κατοικία', null) === 'Κατοικία');
+ok('«Διαμέρισμα» → Κατοικία', e2IncomeCategory('Διαμέρισμα', null) === 'Κατοικία');
+ok('«Οικόπεδο» → Γη / Αγρός', e2IncomeCategory('Οικόπεδο', null) === 'Γη / Αγρός');
+ok('«Αποθήκη πολυκατοικίας» δεν γίνεται κατοικία', e2IncomeCategory('Αποθήκη πολυκατοικίας', null) === 'Ακίνητο');
 
 // ── buildE2Row ───────────────────────────────────────────────────────────────
 const P = (o: Partial<E2Property> = {}): E2Property => ({ id: 'p1', atak: '01234567890', address: 'Οδός 1', postal_code: '10000', ownership: 100, prop_type: 'apartment', status_detail: 'rented', target_rent: 800, ...o });

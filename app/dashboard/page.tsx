@@ -512,11 +512,14 @@ export default function Dashboard() {
                   είναι ιδιώτης. Δεν πατιόταν, δεν άλλαζε, δεν προειδοποιούσε.
                   Και το σκεύωμα του μεταλλίου —γυαλάδες, στεφάνες, σκιές— ήταν
                   ξένο σώμα σε μια επίπεδη, ήσυχη διεπαφή. */}
+              {/* ΠΙΛΟΥΛΑ ΚΑΙ ΣΤΗΝ ΑΦΗ (20.10.2026). Η ακτίνα ήταν των παραθύρων (18):
+                  στα 36 του ποντικιού έβγαινε πιλούλα κατά σύμπτωση, στα 44 της
+                  αφής γινόταν μαλακό τετράγωνο δίπλα σε chip γωνίας 8. */}
               {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `IconBtn` δεν δέχεται className και εδώ η
                   `topbar-search` είναι που το κάνει 44 κεντραρισμένο στο κινητό·
                   σε υπολογιστή δείχνει και το πλακίδιο του ⌘K, άρα δεν είναι
                   ούτε καθαρό εικονοκούμπι. */}
-              <button onClick={()=>setCmdkOpen(true)} className="topbar-search po-hov-fill" title={`Αναζήτηση και γρήγορες ενέργειες (${kbdHint})`} aria-label="Αναζήτηση" style={{display:'flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 10px 0 12px',borderRadius: T.radius.modal,border:'1px solid var(--border-default)',color:'var(--text-secondary)',cursor:'pointer',flexShrink:0}} >
+              <button onClick={()=>setCmdkOpen(true)} className="topbar-search po-hov-fill" title={`Αναζήτηση και γρήγορες ενέργειες (${kbdHint})`} aria-label="Αναζήτηση" style={{display:'flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 10px 0 12px',borderRadius: T.radius.pill,border:'1px solid var(--border-default)',color:'var(--text-secondary)',cursor:'pointer',flexShrink:0}} >
                 <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
                 <span className="desktop-only" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.mono,color:'var(--text-tertiary)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.xs,padding:'1px 5px'}}>{kbdHint}</span>
               </button>
@@ -552,7 +555,11 @@ export default function Dashboard() {
               <p style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 28px',maxWidth:600,textWrap:'balance'}}>Φτάνουν ο τύπος, η κατάσταση και ένα όνομα, π.χ. «Διαμέρισμα στο κέντρο». Τα υπόλοιπα τα συμπληρώνεις όποτε θέλεις.</p>
               <ol style={{listStyle:'none',padding:0,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,170px),1fr))',gap:12,margin:'0 0 30px',textAlign:'left'}}>
                 {[
-                  {t:'Τα βασικά',d:'Όνομα, διεύθυνση και τετραγωνικά.'},
+                  // ΙΔΙΟ ΜΕ ΤΟΝ ΟΔΗΓΟ ΚΑΙ ΜΕ ΤΗΝ ΠΡΟΤΑΣΗ ΑΠΟ ΠΑΝΩ (20.10.2026). Ελεγε
+                  // «Όνομα, διεύθυνση και τετραγωνικά» δύο γραμμές κάτω από το
+                  // «Φτάνουν ο τύπος, η κατάσταση και ένα όνομα»: δύο απαντήσεις
+                  // στο ίδιο ερώτημα. Ο οδηγός ζητά υποχρεωτικά αυτά τα τρία.
+                  {t:'Τα βασικά',d:'Τύπος, κατάσταση και ένα όνομα.'},
                   {t:'Ένας λογαριασμός',d:'Τον φωτογραφίζεις, ελέγχεις τα ποσά και καταχωρείται στο ακίνητο.'},
                   {t:'Ο ΕΝΦΙΑ σου',d:'Ενδεικτικά, μαζί με ό,τι λείπει για τον λογιστή.'},
                 ].map((f,i)=>(
@@ -566,7 +573,15 @@ export default function Dashboard() {
               {/* Η ΜΟΝΑΔΙΚΗ ΧΡΗΣΗ ΤΟΥ ΠΑΛΙΟΥ `.btn`. Είχε δικό της ύψος, ακτίνα και
                   μέγεθος γραμματοσειράς, δηλαδή έμοιαζε με κουμπί άλλης
                   εφαρμογής δίπλα σε κάθε άλλο κουμπί της ίδιας οθόνης. */}
-              <Btn variant="primary" onClick={() => tryAddProperty('empty')}>Πρόσθεσε το ακίνητό σου</Btn>
+              {/* ΚΑΙ ΤΟ ΠΑΡΑΔΕΙΓΜΑ, ΟΠΩΣ ΣΤΟΝ ΠΙΝΑΚΑ ΤΗΣ ΔΟΚΙΜΗΣ (20.10.2026). Το
+                  «Δες ένα παράδειγμα» ζούσε μόνο στον πίνακα «Από πού ξεκινάς»,
+                  που εμφανίζεται ΜΕΤΑ το πρώτο ακίνητο: όποιος δεν είχε ακόμη
+                  κανένα (3 από 8 λογαριασμούς) δεν μπορούσε να δει τι θα πάρει
+                  πριν δώσει οτιδήποτε. Δευτερεύον, δίπλα στην κύρια ενέργεια. */}
+              <div style={{display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap'}}>
+                <Btn variant="primary" onClick={() => tryAddProperty('empty')}>Πρόσθεσε το ακίνητό σου</Btn>
+                <Btn variant="secondary" onClick={() => setShowPreview(true)}>Δες ένα παράδειγμα</Btn>
+              </div>
             </div>
           </div>
         ) : (

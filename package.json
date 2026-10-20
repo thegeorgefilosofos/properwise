@@ -107,7 +107,7 @@
     "post-numbers": "node scripts/guard-post-numbers.mjs",
     "cpi-freshness": "node scripts/guard-cpi-freshness.mjs",
     "surface-scale": "node scripts/guard-surface-scale.mjs",
-    "e2e:landing": "node scripts/e2e-landing.mjs",
+    "e2e:landing": "node scripts/e2e-landing.mjs && node scripts/e2e-public-scale.mjs",
     "guards:verify": "node scripts/verify-guards.mjs",
     "edge:expected": "node scripts/edge-drift.mjs --expected",
     "edge:drift": "node scripts/edge-drift.mjs",

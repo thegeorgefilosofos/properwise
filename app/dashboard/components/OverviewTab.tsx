@@ -858,7 +858,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         </div>
         {/* «ΣΑΡΩΣΕ ΕΓΓΡΑΦΟ» ΣΤΗΝ ΠΡΩΤΗ ΟΘΟΝΗ ΚΑΙ ΣΤΟ ΚΙΝΗΤΟ. Στα 390 εικονοστοιχεία
             η σάρωση ήθελε κύλιση· είναι η πιο συχνή πράξη του ιδιοκτήτη. */}
-        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+        <div className="ov-head-actions" style={{display:'flex',gap:8,flexWrap:'wrap'}}>
         <Btn variant="primary" onClick={()=>onNavigate('scan')}>
           <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
           Σάρωσε έγγραφο

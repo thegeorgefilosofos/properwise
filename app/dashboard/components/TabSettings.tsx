@@ -881,7 +881,11 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
               const needsPlan = o.v === 'professional' && !proEligible;
               return (
                 <button key={o.v} onClick={() => setProfile(o.v)} className="acc-choice"
-                  style={{ textAlign: 'left', cursor: 'pointer', borderRadius: T.radius.card, padding: '16px 16px 15px', border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: on ? 'var(--accent-soft)' : 'var(--bg-surface)', boxShadow: on ? '0 0 0 3px var(--accent-dim)' : 'none' }}>
+                  // ΤΕΣΣΕΡΑ ΣΗΜΑΔΙΑ ΕΠΙΛΟΓΗΣ ΑΡΚΟΥΝ (20.10.2026): χρώμα περιγράμματος,
+                  // φόντο, τίτλος στον τόνο και το γεμάτο κυκλάκι. Ηταν και πέμπτο,
+                  // λάμψη 3px, με περίγραμμα 1,5px που στις οθόνες 1x θολώνει
+                  // ανάμεσα σε δύο γραμμές· και γέμισμα 16/15 που δεν ήταν ίσο.
+                  style={{ textAlign: 'left', cursor: 'pointer', borderRadius: T.radius.card, padding: T.sp.lg, border: `1px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: on ? 'var(--accent-soft)' : 'var(--bg-surface)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <span style={{ fontSize: 15, fontWeight: 700, color: on ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.sans }}>{o.title}</span>
                     <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, border: `2px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`, background: on ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

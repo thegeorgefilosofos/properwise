@@ -387,7 +387,7 @@ export default function ReportBuilder({ open, onClose, userId, supabase, brandin
                       {on && <svg aria-hidden="true" width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>}
                     </span>
                     <span>
-                      <span style={{ display: 'block', fontWeight: 660, letterSpacing: '-0.01em' }}>{s.label}</span>
+                      <span style={{ display: 'block', fontWeight: T.weight.emphasis, letterSpacing: '-0.01em' }}>{s.label}</span>
                       <span style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4, fontWeight: 400, lineHeight: 1.4 }}>{s.hint}</span>
                     </span>
                   </button>

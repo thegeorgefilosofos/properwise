@@ -33,7 +33,7 @@ import * as expenseStore from '@/lib/data/expenses'
 import * as billStore from '@/lib/data/bills'
 import ExpenseCompare from './ExpenseCompare';
 import type { Spend } from '@/lib/expenses/compare';
-import { T, TT, fe, fn, Btn, Card, EmptyState, Modal, Skeleton, fixedCols, ABSENT_DATE, Stat } from '@/components/Theme';
+import { T, TT, fe, fn, Btn, LinkBtn, Card, EmptyState, Modal, Skeleton, fixedCols, ABSENT_DATE, Stat } from '@/components/Theme';
 import { ChevronRight } from 'lucide-react';
 import { notify, notifyError } from '@/components/toastBus';
 import { confirmDialog } from '@/components/ConfirmDialog';
@@ -679,7 +679,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
       {!loading && missing.length > 0 && (
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: T.sp.lg,
-          padding: '11px 14px', borderRadius: T.radius.inner,
+          padding: '12px 14px', borderRadius: T.radius.inner,
           background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
         }}>
           <span style={{ flexShrink: 0, width: 5, height: 5, borderRadius: '50%', background: 'var(--text-tertiary)', marginTop: 8 }} />
@@ -697,14 +697,19 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
                 χρήστης να ξέρει τι ψάχνει στον λογαριασμό. */}
             <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
               {missing.slice(0, 4).map(m => (
-                <div key={m.key} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                // ΣΥΝΔΕΣΜΟΣ ΣΤΗ ΓΡΑΜΜΗ, ΟΧΙ ΚΟΥΜΠΙ ΔΙΠΛΑ ΤΗΣ (20.10.2026). Ηταν
+                // `Btn variant="ghost"` ύψους 36 σε στοίχιση γραμμής βάσης: το
+                // κουτί του έσπρωχνε τη σειρά, ο τίτλος απείχε 43 από το κείμενο
+                // ενώ στη διπλανή ειδοποίηση 31· η κάρτα έβγαινε 84 έναντι 64.
+                // Το `LinkBtn` κάθεται στη γραμμή κειμένου, όπως το «Αλλαγή».
+                <div key={m.key} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: 'var(--fs-xs)', lineHeight: 1.6 }}>
                   <span style={{ ...TT.caption, lineHeight: 1.6, minWidth: 0 }}>
                     {entryName(m)}, συνήθως {fe(m.typicalAmount)} {cadenceLabel(m.everyMonths)} · το περιμέναμε {shortDate(m.expectedDate)}
                   </span>
-                  <Btn variant="ghost" onClick={() => {
+                  <LinkBtn onClick={() => {
                     setSeed({ id: m.key, what: m.title, date: m.expectedDate, slug: resolveCategory(m.category) || '' });
                     setAdding(true);
-                  }}>Καταχώρηση</Btn>
+                  }}>Καταχώρηση</LinkBtn>
                 </div>
               ))}
               {missing.length > 4 && (
@@ -721,7 +726,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
       {!loading && changed.length > 0 && (
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: T.sp.lg,
-          padding: '11px 14px', borderRadius: T.radius.inner,
+          padding: '12px 14px', borderRadius: T.radius.inner,
           background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
         }}>
           <span style={{ flexShrink: 0, width: 5, height: 5, borderRadius: '50%', background: 'var(--text-tertiary)', marginTop: 8 }} />
