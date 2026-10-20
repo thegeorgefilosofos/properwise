@@ -18,6 +18,12 @@ create table if not exists auth.users (
   last_sign_in_at timestamptz, phone text, confirmed_at timestamptz,
   deleted_at timestamptz
 );
+-- Οι συνεδρίες: η μέτρηση επιστροφής (20261020150000) διαβάζει πότε άνοιξε και
+-- πότε ανανεώθηκε τελευταία μια σύνδεση. Μόνο οι στήλες που αγγίζονται.
+create table if not exists auth.sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null, created_at timestamptz, updated_at timestamptz
+);
 create or replace function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
 create or replace function auth.role() returns text language sql stable as $$ select 'authenticated'::text $$;
 create or replace function auth.jwt() returns jsonb language sql stable as $$ select '{}'::jsonb $$;
