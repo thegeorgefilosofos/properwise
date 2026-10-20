@@ -33,7 +33,8 @@ const sql = file ? readFileSync(`${dir}/${file}`, 'utf8') : '';
 for (const f of ['metrics_weekly(integer)', 'metrics_snapshot()']) {
   ok(`${f}: revoke από public, anon, authenticated`, sql.includes(`revoke all on function public.${f} from public, anon, authenticated;`));
   ok(`${f}: μόνο service_role`, sql.includes(`grant execute on function public.${f} to service_role;`));
-  ok(`${f}: κανένα grant στον περιηγητή`, !new RegExp(`grant execute on function public\\.${f.replace(/[()]/g, '\\$&')} to (anon|authenticated)`).test(sql));
+  const esc = f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  ok(`${f}: κανένα grant στον περιηγητή`, !new RegExp(`grant execute on function public\\.${esc} to (anon|authenticated)`).test(sql));
 }
 ok('security definer με καρφωμένο search_path', (sql.match(/security definer\s+set search_path = public, pg_temp/g) ?? []).length === 2);
 ok('οι διαχειριστές βγαίνουν έξω', (sql.match(/join public\.app_admins a on lower\(a\.email\) = lower\(u\.email\)/g) ?? []).length === 2);
