@@ -2525,13 +2525,16 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 
      Ο στόχος αφής δεν χάνεται: τα 44 × 44 τα δίνει το ψευδοστοιχείο και ο
      σαρωτής τα μετρά από εκεί, όπως ακριβώς και στο `.po-box`. */
-  /* ΚΑΙ Ο ΣΥΝΔΕΣΜΟΣ ΜΕΣΑ ΣΕ ΠΡΟΤΑΣΗ, ΓΙΑ ΤΟΝ ΙΔΙΟ ΛΟΓΟ (20.10.2026). Το
+  /* ΚΑΙ Ο ΣΥΝΔΕΣΜΟΣ ΜΕΣΑ ΣΕ ΠΡΟΤΑΣΗ — ΑΛΛΑ ΜΟΝΟ ΑΥΤΟΣ (20.10.2026). Το
      `.po-link` (LinkBtn) είναι `<button>`, οπότε το δάπεδο το έκανε inline-block
      44 ψηλό μέσα σε γραμμή 21: μετρημένο στην ειδοποίηση των Όρων, η γραμμή
-     άνοιγε στα 33 και η τελεία δίπλα στο κείμενο κεντραριζόταν στη μέση της
-     παραγράφου. Παίρνει τα 44 του από το ίδιο ψευδοστοιχείο με το
-     `.po-tap-inline`, πιο κάτω. */
-  .app-content button:not(.po-box):not(.po-tap-inline):not(.po-link),
+     άνοιγε στα 33. Η πρώτη διόρθωση εξαίρεσε ΚΑΘΕ `.po-link`· ο σαρωτής
+     μετά τη ζωγραφική βρήκε επτά μόνους συνδέσμους στα 21: «Επιλογή
+     πολλαπλών», «Καταχώρηση», «Δες τι έρχεται». Εκεί δεν υπάρχει γραμμή να
+     ψηλώσει, οπότε το δάπεδο μένει. Ο σύνδεσμος που ζει σε πρόταση το δηλώνει
+     με `className="po-tap-inline"` στο LinkBtn και παίρνει τα 44 από το
+     ψευδοστοιχείο, όπως κάθε άλλος στόχος μέσα σε κείμενο. */
+  .app-content button:not(.po-box):not(.po-tap-inline),
   .app-content [role="button"]:not(.po-box):not(.po-tap-inline),
   .app-content select,
   .app-content input:not(.po-field-inner):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) { min-height: 44px; }
@@ -2619,8 +2622,8 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
    σαρωτής υπολόγιζε τριπλάσιο στόχο και έβγαζε πράσινο χωρίς λόγο. Ενα ιδίωμα
    που ξεγελά τον φύλακά του είναι χειρότερο από καθόλου ιδίωμα. */
 @media (pointer: coarse), (max-width: 650px) {
-  .po-tap-inline, .po-link { position: relative; }
-  .po-tap-inline::after, .po-link::after {
+  .po-tap-inline { position: relative; }
+  .po-tap-inline::after {
     content: '';
     position: absolute;
     /* ΤΟ ΤΕΤΑΡΤΟ ΤΟΥ ΕΙΚΟΝΟΣΤΟΙΧΕΙΟΥ ΕΙΝΑΙ ΣΤΡΟΓΓΥΛΕΜΑ, ΟΧΙ ΣΧΕΔΙΟ (20.10.2026).

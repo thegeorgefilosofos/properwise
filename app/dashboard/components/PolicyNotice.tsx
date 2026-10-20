@@ -67,7 +67,9 @@ export default function PolicyNotice() {
         <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: 0 }}>
           <strong style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{POLICY_NOTICE_HEADLINE}</strong>{' '}
           {POLICY_NOTICE_LEDE}{' '}
-          <LinkBtn onClick={() => setOpen(o => !o)}>{open ? 'Απόκρυψη' : 'Τι άλλαξε'}</LinkBtn>
+          {/* `po-tap-inline`: μέσα σε πρόταση, άρα τα 44 της αφής από ψευδοστοιχείο
+              και όχι από δάπεδο ύψους που θα άνοιγε τη γραμμή (app/globals.css). */}
+          <LinkBtn className="po-tap-inline" onClick={() => setOpen(o => !o)}>{open ? 'Απόκρυψη' : 'Τι άλλαξε'}</LinkBtn>
           {' · '}
           <a href="/terms" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1 }}>Δες τους Όρους</a>
         </p>
