@@ -13,7 +13,8 @@ import {
 } from '@/lib/billing/greekTax';
 import { TRANSFER_TAX_RATE, NEW_BUILD_VAT_RATE } from '@/lib/accounting/transfer';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
-import { COMMERCIAL_STAMP_DUTY } from '@/app/dashboard/components/TabTenantHelpers';
+import { COMMERCIAL_STAMP_DUTY } from '@/lib/billing/commercialLease';
+import { COMMERCIAL_RENT_CAP_2026, computeRentAdjustment } from '@/lib/documents/rentAdjustment';
 import { fpRate } from '@/lib/core/format';
 import { ratePct, rateScale, rateScaleEach, rateSeries, topBracketFrom, bracketSlices } from './taxText';
 
@@ -74,6 +75,19 @@ const HAND = [/15 \/ 25 \/ 35 \/ 45%/, /15 \/ 35 \/ 45%/, /15% \/ 25%/, /36\.000
 for (const f of FILES) {
   const code = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   for (const re of HAND) ok(`${f}: χωρίς χειρόγραφο ${re.source}`, !re.test(code));
+}
+
+// ── Ο οδηγός του πλαφόν γράφει όριο, περίοδο και παράδειγμα από τη σταθερά (20/10/2026) ──
+// Ήταν γραμμένα με το χέρι σε περίπου τριάντα πέντε σημεία. Για τις σημερινές
+// τιμές το παράδειγμα βγαίνει ίδιο με το χειρόγραφο: 1.545€ αντί για 1.575€.
+{
+  const R = computeRentAdjustment({ currentRent: 1_500, method: 'percent', percent: 5, capPct: COMMERCIAL_RENT_CAP_2026.pct });
+  ok('πλαφόν: 1.500€ με όρο 5% → 1.545€', R.newRent === 1_545 && R.uncappedRent === 1_575 && R.capped);
+  ok('πλαφόν: τέλος στα 1.545€ = 55,62€', Math.abs(1_545 * COMMERCIAL_STAMP_DUTY - 55.62) < 1e-9);
+  const code = readFileSync('app/odigos/plafon-3-emporikes-misthoseis-2026/page.tsx', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  for (const re of [/1\.5\d\d€/, /[^\d,]3%/, /3,6%/, /01\/01\/2026/, /31\/12\/2026/])
+    ok(`πλαφόν: χωρίς χειρόγραφο ${re.source}`, !re.test(code));
 }
 
 console.log(fail ? `✗ taxText: ${fail} απέτυχαν, ${pass} πέρασαν` : `✓ taxText: ${pass} έλεγχοι πέρασαν`);

@@ -57,6 +57,25 @@ export const THESS_STR_FREEZE = {
   circular: 'Ο.3029/2026',
 } as const
 
+// ── Η ΑΝΑΣΤΟΛΗ ΝΕΩΝ ΑΜΑ ΣΤΟ ΚΕΝΤΡΟ ΤΗΣ ΑΘΗΝΑΣ: Η ΙΔΙΑ ΣΤΑΘΕΡΑ ΓΙΑ ΤΗ ΔΕΥΤΕΡΗ ΖΩΝΗ ──
+// ΓΙΑΤΙ ΥΠΑΡΧΕΙ (20/10/2026). Η λήξη γραφόταν «31/12/2026» με το χέρι τρεις
+// φορές στον οδηγό Airbnb (μαζί με την ερώτηση του JSON-LD) και εδώ, στη
+// σημείωση του κέντρου, ενώ η Θεσσαλονίκη είχε ήδη σταθερά. Αν δοθεί παράταση,
+// κάθε σημείο θα έλεγε άλλο. ΠΗΓΗ, όπως την έχουν ήδη οι οδηγοί και το
+// lib/legal/validity.ts (`str-freeze`): άρθρο 111 παρ. 2Α ν.4446/2016, όπως
+// προστέθηκε με το άρθρο 29 παρ. 1 ν.5162/2024· παράταση ως 31.12.2026 με την
+// ΚΥΑ 225563 ΕΞ 2025 (ΦΕΚ Β΄ 7200/31.12.2025). Ίδια τιμή με πριν· καμία αλλαγή
+// κανόνα. Ο οδηγός ΑΜΑ θα τη διαβάσει όταν υπογράψει η Legal.
+export const ATHENS_STR_FREEZE = {
+  /** Η περιοχή, όπως τη γράφουν οι οδηγοί: «στο …». */
+  area: '1ο, 2ο και 3ο δημοτικό διαμέρισμα της Αθήνας',
+  to: '2026-12-31',
+  provision: 'άρθρο 111 παρ. 2Α ν.4446/2016',
+  addedBy: 'άρθρο 29 παρ. 1 ν.5162/2024',
+  extension: 'ΚΥΑ 225563 ΕΞ 2025',
+  fek: 'ΦΕΚ Β΄ 7200/31.12.2025',
+} as const
+
 /** Η προειδοποίηση των δεδομένων αγοράς, από την ίδια σταθερά με τους οδηγούς. */
 const THESS_FREEZE_NOTE =
   `Στην ${THESS_STR_FREEZE.area} δεν δίνεται νέος ΑΜΑ για βραχυχρόνια από ${grDate(THESS_STR_FREEZE.from)} έως ${grDate(THESS_STR_FREEZE.to)} (${THESS_STR_FREEZE.law}). Έλεγξε σε ποια ανήκει το ακίνητό σου.`
@@ -266,7 +285,7 @@ export interface ShortTermStat {
 // ΜΟΝΟ την Α΄ Δημοτική Κοινότητα· το προφίλ `thess` το δανείζονται και άλλες πόλεις
 // (ST_ALIAS στο app/dashboard/components/roi/model.ts), οπότε όποιος τη διαβάσει κρίνει με το ακριβές κλειδί.
 export const SHORT_TERM: ShortTermStat[] = [
-  { key: 'ath_center', label: 'Κέντρο Αθήνας', occupancy: 58, adr: 76, annualRevenue: 16000, grossYield: 8, longTermYield: 5.0, redZone: true, note: 'Στο 1ο, 2ο και 3ο δημοτικό διαμέρισμα της Αθήνας δεν δίνεται νέος ΑΜΑ ως 31/12/2026. Έλεγξε σε ποιο ανήκει το ακίνητό σου.' },
+  { key: 'ath_center', label: 'Κέντρο Αθήνας', occupancy: 58, adr: 76, annualRevenue: 16000, grossYield: 8, longTermYield: 5.0, redZone: true, note: `Στο ${ATHENS_STR_FREEZE.area} δεν δίνεται νέος ΑΜΑ ως ${grDate(ATHENS_STR_FREEZE.to)}. Έλεγξε σε ποιο ανήκει το ακίνητό σου.` },
   { key: 'ath_riviera', label: 'Αθηναϊκή Ριβιέρα', occupancy: 55, adr: 70, annualRevenue: 14000, grossYield: 6, longTermYield: 3.8, note: 'Εκτός κόκκινης ζώνης· επιτρέπονται νέα μητρώα ακινήτων· βασικός διαφοροποιητής έναντι του κέντρου.' },
   { key: 'thess', label: 'Θεσσαλονίκη', occupancy: 62, adr: 62, annualRevenue: 14000, grossYield: 7, longTermYield: 4.4, redZone: true, note: THESS_FREEZE_NOTE },
   { key: 'mykonos_santorini', label: 'Μύκονος / Σαντορίνη', occupancy: 62, adr: 221, annualRevenue: 50000, grossYield: 5, longTermYield: 3.5, note: 'Τεράστια έσοδα, με μέση τιμή Αυγούστου πάνω από 360,00€ τη νύχτα, αλλά πολύ υψηλή τιμή αγοράς, άρα η % απόδοση μέτρια. Ακραία εποχικότητα, πέντε με έξι μήνες.' },

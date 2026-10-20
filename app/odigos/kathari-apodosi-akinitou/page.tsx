@@ -21,13 +21,15 @@
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl, PRODUCT_NAME } from '@/lib/core/site';
-import { fp, fpRate, feWhole, fn, grDateOf } from '@/lib/core/format';
+import { fe, fp, feWhole, fn, grDateOf } from '@/lib/core/format';
 import {
   FIRST_YEAR_NEW_BRACKETS, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, rentalBracketsForYear,
   DEPOSIT_INTEREST_WITHHOLDING_RATE,
 } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { propertyYield } from '@/lib/tools/apodosi';
+import { estimateENFIA, zoneKeyFromPricePerSqm, enfiaAgeKeyFromYears } from '@/lib/billing/enfia';
+import { ENFIA_FLOOR_LABEL } from '@/lib/billing/enfiaFloors';
 import { ratePct } from '../taxText';
 import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
 import { shareImage } from '../../og/share';
@@ -38,7 +40,7 @@ import {
   RelatedGuides, guideJsonLd, type GuideFaqItem,
 } from '../GuideParts';
 
-const H1 = 'Καθαρή απόδοση ακινήτου: τι μένει μετά τον φόρο';
+const H1 = 'Καθαρή απόδοση ακινήτου: τι μένει μετά από φόρους και έξοδα';
 const TITLE = H1;
 // Κάτω από 160 χαρακτήρες: τόσα δείχνει η σελίδα αποτελεσμάτων πριν κόψει.
 // Η επιφύλαξη «ενδεικτικός» μένει στο σώμα της σελίδας.
@@ -53,7 +55,15 @@ export const metadata: Metadata = publicMetadata({ title: TITLE, description: DE
 // ── ΤΟ ΠΑΡΑΔΕΙΓΜΑ: ΥΠΟΘΕΣΕΙΣ ΕΔΩ, ΑΠΟΤΕΛΕΣΜΑΤΑ ΑΠΟ ΤΗ ΜΗΧΑΝΗ ─────────────────
 const EX_VALUE = 200_000;
 const EX_MONTHLY = 700;
-const EX_ENFIA = 500;
+// Ο ΕΝΦΙΑ ΑΠΟ ΤΗ ΜΗΧΑΝΗ, ΟΧΙ ΑΠΟ ΤΟ ΧΕΡΙ (20/10/2026). Ήταν «500€» γραμμένο εδώ,
+// ενώ η `estimateENFIA` δίνει για το ίδιο διαμέρισμα 343,81€ και ο οδηγός ΕΝΦΙΑ
+// 309,42€ για 180.000€: ο αναγνώστης των δύο οδηγών έβλεπε ΕΝΦΙΑ κατά 45%
+// μεγαλύτερο. Υποθέσεις: 100 τ.μ. × 2.000€ τιμή ζώνης = η αξία του παραδείγματος.
+const EX_ENFIA_INPUT = { sqm: 100, zonePrice: 2_000, years: 12, floor: 'third' } as const;
+const EX_ENFIA = estimateENFIA({
+  sqm: EX_ENFIA_INPUT.sqm, zone: zoneKeyFromPricePerSqm(EX_ENFIA_INPUT.zonePrice)!, floor: EX_ENFIA_INPUT.floor,
+  age: enfiaAgeKeyFromYears(EX_ENFIA_INPUT.years)!, totalValue: EX_VALUE, propertyValue: EX_VALUE,
+})!.annual;
 const EX_EXPENSES = 800;
 /** Ακαθάριστα ενοίκια από άλλα ακίνητα, για τον οριακό φόρο της σημείωσης. */
 const EX_OTHER_GROSS = 12_000;
@@ -95,7 +105,7 @@ const GAP = fn((BASE.yieldGap ?? 0) * 100, 2);
 const EX_DEPOSIT_RATE = 0.02;
 const DEPOSIT_TAX = ratePct(DEPOSIT_INTEREST_WITHHOLDING_RATE);
 const DEPOSIT_GROSS = ratePct(EX_DEPOSIT_RATE);
-const DEPOSIT_NET = pctOf(EX_DEPOSIT_RATE * (1 - DEPOSIT_INTEREST_WITHHOLDING_RATE));
+const DEPOSIT_NET = ratePct(EX_DEPOSIT_RATE * (1 - DEPOSIT_INTEREST_WITHHOLDING_RATE));
 const PAYBACK = fn(BASE.paybackYears ?? 0);
 
 // Οι ερωτήσεις τροφοδοτούν ΚΑΙ την ορατή λίστα ΚΑΙ το δομημένο σχήμα — μία πηγή.
@@ -122,14 +132,14 @@ const FAQ: GuideFaqItem[] = [
      + 'ακίνητο κενό, χωρίς να εκπίπτει από το εισόδημα. Μειώνει άμεσα την καθαρή απόδοση.',
   },
   {
-    q: 'Τι δαπάνες μετράνε;',
-    a: 'Οι λειτουργικές δαπάνες που βαραίνουν τον ιδιοκτήτη: συντήρηση και επισκευές, '
-     + 'ασφάλιση, τα κοινόχρηστα που δεν βαραίνουν τον ενοικιαστή. Οι μήνες που το '
+    q: 'Ποιες δαπάνες μετρούν;',
+    a: 'Οι λειτουργικές δαπάνες που βαρύνουν τον ιδιοκτήτη: συντήρηση και επισκευές, '
+     + 'ασφάλιση, τα κοινόχρηστα που δεν βαρύνουν τον ενοικιαστή. Οι μήνες που το '
      + 'ακίνητο μένει κενό μειώνουν επίσης το ετήσιο μίσθωμα.',
   },
   {
     q: 'Σε πόσα χρόνια αποσβένεται το ακίνητο;',
-    a: `Χοντρικά, η αξία διά τα καθαρά ετήσια έσοδα. Με καθαρά ${feWhole(BASE.net)} σε ακίνητο `
+    a: `Κατά προσέγγιση, η αξία διά τα καθαρά ετήσια έσοδα. Με καθαρά ${feWhole(BASE.net)} σε ακίνητο `
      + `${feWhole(EX_VALUE)}, περίπου ${PAYBACK} χρόνια, χωρίς να υπολογιστούν ανατίμηση ή πληθωρισμός. `
      + 'Είναι δείκτης σύγκρισης και δεν προβλέπει τιμές.',
   },
@@ -137,12 +147,12 @@ const FAQ: GuideFaqItem[] = [
 
 // Οι πηγές/νομική βάση, ορατές όπως στα εργαλεία (E-E-A-T).
 const SOURCES: string[] = [
-  `Φόρος εισοδήματος: κλίμακα ενοικίων ${FIRST_YEAR_NEW_BRACKETS} (ν.5246/2025) · τεκμαρτή έκπτωση ${DEDUCTION} (άρθρο 39 ΚΦΕ) · η προϋπόθεση τραπεζικής είσπραξης (άρθρο 210 ν.5222/2025) ξεκινά την ${BANK_FROM} (απόφαση ΑΑΔΕ Α.1187/2026, ΦΕΚ Β΄ 5590/17.09.2026).`,
+  `Φόρος εισοδήματος: κλίμακα ενοικίων ${FIRST_YEAR_NEW_BRACKETS} (ν.5246/2025) · τεκμαρτή έκπτωση ${DEDUCTION} (άρθρο 39 παρ. 3 περ. α΄ ΚΦΕ) · η προϋπόθεση τραπεζικής είσπραξης (άρθρο 210 ν.5222/2025, ΦΕΚ Α΄ 134/28.07.2025) ξεκινά την ${BANK_FROM} (απόφαση ΑΑΔΕ Α.1187/2026, ΦΕΚ Β΄ 5590/17.09.2026).`,
   `Τόκοι καταθέσεων: παρακράτηση φόρου ${DEPOSIT_TAX} στην πηγή (άρθρο 64 ν.4172/2013)· το ${DEPOSIT_NET} είναι ${DEPOSIT_GROSS} × (1 − ${DEPOSIT_TAX}).`,
-  'ΕΝΦΙΑ: φόρος κατοχής, ανεξάρτητος από το εισόδημα · άρθρο 4 ν.4223/2013, όπως ισχύει με τον ν.4916/2022.',
+  'ΕΝΦΙΑ: φόρος κατοχής, που δεν υπολογίζεται από το εισόδημα · άρθρο 4 ν.4223/2013, όπως ισχύει με τον ν.4916/2022.',
   // Μόνο η διάταξη: η λίστα κάθεται κάτω από τον τίτλο «Νομική βάση και πηγές».
   // Η πρόταση για το πώς υπολογίζει ο πίνακας ελέγχου πήγε στο «Υπολόγισε».
-  'Ο φόρος του ακινήτου υπολογίζεται οριακά, ως η διαφορά που προσθέτει στον φόρο του συνολικού σου εισοδήματος από ακίνητα (άρθρο 40 παρ. 4 ν.4172/2013).',
+  'Η κλίμακα εφαρμόζεται στο σύνολο του εισοδήματος από ακίνητα (άρθρο 40 παρ. 4 ν.4172/2013)· γι’ αυτό ο φόρος ενός ακινήτου μετριέται ως η διαφορά που προσθέτει στον συνολικό φόρο.',
 ];
 
 // Οι ενότητες τροφοδοτούν ΚΑΙ τις κεφαλίδες ΚΑΙ τα περιεχόμενα — μία πηγή.
@@ -177,7 +187,7 @@ export default function Page() {
 
         {/* Εισαγωγή */}
         <p className="lg-p">
-          {`«Απόδοση ${fpRate((BASE.grossYield ?? 0) * 100)}»: ενοίκιο επί δώδεκα, διά την αξία. Αυτή είναι η μεικτή απόδοση, δηλαδή τα χρήματα πριν περάσουν από τη ΔΟΥ, πριν πληρωθεί ο ΕΝΦΙΑ και πριν αλλάξει ο θερμοσίφωνας. Είναι το νούμερο που ο ιδιοκτήτης συγκρίνει, λανθασμένα, με το επιτόκιο μιας προθεσμιακής κατάθεσης. Εκεί η τράπεζα παρακρατά ${DEPOSIT_TAX} φόρο στην πηγή, οπότε ένα ${DEPOSIT_GROSS} φτάνει στον λογαριασμό ως ${DEPOSIT_NET}· στο ενοίκιο τον φόρο, τον ΕΝΦΙΑ και τα έξοδα τα αφαιρείς εσύ, αργότερα.`}
+          {`«Απόδοση ${pctOf(BASE.grossYield)}»: ενοίκιο επί δώδεκα, διά την αξία. Αυτή είναι η μεικτή απόδοση, δηλαδή τα χρήματα πριν περάσουν από τη ΔΟΥ, πριν πληρωθεί ο ΕΝΦΙΑ και πριν αλλάξει ο θερμοσίφωνας. Είναι το νούμερο που ο ιδιοκτήτης συγκρίνει, λανθασμένα, με το επιτόκιο μιας προθεσμιακής κατάθεσης. Εκεί η τράπεζα παρακρατά ${DEPOSIT_TAX} φόρο στην πηγή, οπότε ένα ${DEPOSIT_GROSS} φτάνει στον λογαριασμό ως ${DEPOSIT_NET}· στο ενοίκιο τον φόρο, τον ΕΝΦΙΑ και τα έξοδα τα αφαιρείς εσύ, αργότερα.`}
         </p>
         <p className="lg-p">
           {'Ο οδηγός δείχνει, με πηγές, τι μένει πραγματικά καθαρό: τη μεικτή απόδοση μείον τον φόρο στο δικό σου κλιμάκιο, τον ΕΝΦΙΑ και τις δαπάνες.'}
@@ -186,30 +196,30 @@ export default function Page() {
         {/* 1. Μεικτή και καθαρή */}
         <H2 {...S.gap} />
         <p className="lg-p">
-          {'Η μεικτή απόδοση αγνοεί κάθε επιβάρυνση, γι’ αυτό δείχνει πάντα μεγαλύτερη. Ο ιδιοκτήτης που τη συγκρίνει με έναν τόκο κατάθεσης βγάζει λάθος συμπέρασμα: τον φόρο του τόκου τον κρατά η τράπεζα πριν πιστώσει τον λογαριασμό, ενώ το ενοίκιο έρχεται ολόκληρο και τα βάρη του φαίνονται μήνες μετά.'}
+          {'Η μεικτή απόδοση αγνοεί κάθε επιβάρυνση, γι’ αυτό είναι πάντα μεγαλύτερη από την καθαρή. Ο ιδιοκτήτης που τη συγκρίνει με έναν τόκο κατάθεσης βγάζει λάθος συμπέρασμα: τον φόρο του τόκου τον κρατά η τράπεζα πριν πιστώσει τον λογαριασμό, ενώ το ενοίκιο έρχεται ολόκληρο και τα βάρη του φαίνονται μήνες μετά.'}
         </p>
 
         {/* 2. Τι τη μικραίνει */}
         <H2 {...S.costs} />
         <ul className="lg-ul">
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Ο φόρος, στο δικό σου κλιμάκιο.'}</strong>{' Το ακίνητο φορολογείται με τον συντελεστή που αφήνουν τα ενοίκια που ήδη δηλώνεις.'}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Ο ΕΝΦΙΑ. Φόρος κατοχής:'}</strong>{' τον πληρώνεις κάθε χρόνο, ακόμη και με το ακίνητο κενό.'}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Οι δαπάνες.'}</strong>{' Συντήρηση, ασφάλιση, κοινόχρηστα του ιδιοκτήτη. Και οι μήνες που το ακίνητο μένει κενό, που μειώνουν το ενοίκιο.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Ο φόρος, στο δικό σου κλιμάκιο.'}</strong>{' Το ακίνητο φορολογείται με τον συντελεστή του κλιμακίου στο οποίο σε φέρνουν τα ενοίκια που ήδη δηλώνεις.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Ο ΕΝΦΙΑ.'}</strong>{' Φόρος κατοχής: τον πληρώνεις κάθε χρόνο, ακόμη και με το ακίνητο κενό.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Οι δαπάνες.'}</strong>{' Συντήρηση, ασφάλιση, κοινόχρηστα που βαρύνουν τον ιδιοκτήτη. Μετρούν και οι μήνες χωρίς ενοικιαστή, γιατί μειώνουν το ετήσιο μίσθωμα.'}</li>
         </ul>
 
         {/* 3. Παράδειγμα */}
         <H2 {...S.example} />
         <p className="lg-p">
-          {`Διαμέρισμα αξίας ${feWhole(EX_VALUE)}, με μηνιαίο μίσθωμα ${feWhole(EX_MONTHLY)} όλο τον χρόνο, ΕΝΦΙΑ ${feWhole(EX_ENFIA)} και δαπάνες ${feWhole(EX_EXPENSES)}. Πρώτα ο φόρος:`}
+          {`Διαμέρισμα ${fn(EX_ENFIA_INPUT.sqm)} τ.μ. αξίας ${feWhole(EX_VALUE)} (τιμή ζώνης ${feWhole(EX_ENFIA_INPUT.zonePrice)}/τ.μ., ${EX_ENFIA_INPUT.years} ετών, ${ENFIA_FLOOR_LABEL[EX_ENFIA_INPUT.floor].toLowerCase()}), με μηνιαίο μίσθωμα ${feWhole(EX_MONTHLY)} όλο τον χρόνο, ΕΝΦΙΑ ${fe(EX_ENFIA)} (όπως τον βγάζει ο υπολογισμός ΕΝΦΙΑ) και δαπάνες ${feWhole(EX_EXPENSES)}. Πρώτα ο φόρος:`}
         </p>
         <ul className="lg-ul">
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Μεικτά ενοίκια:'}</strong>{` ${feWhole(EX_MONTHLY)} × 12 = ${feWhole(BASE.gross)}.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Ακαθάριστα ενοίκια:'}</strong>{` ${feWhole(EX_MONTHLY)} × 12 = ${feWhole(BASE.gross)}.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{`Τεκμαρτή έκπτωση ${DEDUCTION}:`}</strong>{` −${feWhole(BASE.deduction)}, οπότε φορολογητέο ${feWhole(BASE.taxable)}.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{`Φόρος, ως μοναδικό εισόδημα από ακίνητα (κλιμάκιο ${ratePct(BASE.marginal)}):`}</strong>{` ${fn(BASE.taxable)} × ${ratePct(BASE.marginal)} = ${feWhole(BASE.tax)}.`}</li>
         </ul>
         <p className="lg-p">{'Μετά τα καθαρά:'}</p>
         <ul className="lg-ul">
-          <li>{`${feWhole(BASE.gross)} − ${feWhole(BASE.tax)} (φόρος) − ${feWhole(BASE.enfia)} (ΕΝΦΙΑ) − ${feWhole(BASE.expenses)} (δαπάνες) = `}<strong style={{ color: 'var(--text-primary)' }}>{`${feWhole(BASE.net)} καθαρά.`}</strong></li>
+          <li>{`${fe(BASE.gross)} − ${fe(BASE.tax)} (φόρος) − ${fe(BASE.enfia)} (ΕΝΦΙΑ) − ${fe(BASE.expenses)} (δαπάνες) = `}<strong style={{ color: 'var(--text-primary)' }}>{`${fe(BASE.net)} καθαρά.`}</strong></li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Μεικτή απόδοση:'}</strong>{` ${fn(BASE.gross)} / ${fn(EX_VALUE)} = ${pctOf(BASE.grossYield)}.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{`Καθαρή απόδοση: ${fn(BASE.net)} / ${fn(EX_VALUE)} = ${pctOf(BASE.netYield)}.`}</strong>{` Χάσμα ${GAP} ποσοστιαίες μονάδες.`}</li>
         </ul>
@@ -224,7 +234,7 @@ export default function Page() {
         {/* 4. Απόσβεση */}
         <H2 {...S.payback} />
         <p className="lg-p">
-          {`Χοντρικός δείκτης σύγκρισης: η αξία διά τα καθαρά ετήσια έσοδα. Στο παράδειγμα, ${fn(EX_VALUE)} / ${fn(BASE.net)} ≈ ${PAYBACK} χρόνια, με τα σημερινά καθαρά και χωρίς να υπολογιστούν ανατίμηση ή πληθωρισμός. Είναι μέτρο σύγκρισης: βάζει το ακίνητο δίπλα σε άλλες επιλογές, στην ίδια μονάδα. Δεν προβλέπει τιμές.`}
+          {`Ενδεικτικός δείκτης σύγκρισης: η αξία διά τα καθαρά ετήσια έσοδα. Στο παράδειγμα, ${fn(EX_VALUE)} / ${fn(BASE.net)} ≈ ${PAYBACK} χρόνια, με τα σημερινά καθαρά και χωρίς να υπολογιστούν ανατίμηση ή πληθωρισμός. Βάζει το ακίνητο δίπλα σε άλλες επιλογές, στην ίδια μονάδα· δεν προβλέπει τιμές.`}
         </p>
 
         {/* 5. Πηγές / νομική βάση */}
