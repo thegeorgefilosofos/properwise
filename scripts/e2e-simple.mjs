@@ -29,6 +29,12 @@ const ok = (name, cond, detail = '') => {
 // ΤΟ ΤΑΒΑΝΙ ΑΝΑ ΒΗΜΑ ΚΑΙ ΑΝΑ ΠΕΡΙΠΤΩΣΗ, ΜΕΤΡΗΜΕΝΟ ΣΗΜΕΡΑ.
 // Πριν το μητρώο πεδίων: 26 στα «Βασικά», 18 στα «Οικονομικά», 26 στις
 // «Ρυθμίσεις». Οποιος τα ανεβάσει θα βρει κόκκινο πριν φτάσει στον χρήστη.
+//
+// ΤΕΣΣΕΡΑ ΒΗΜΑΤΑ ΑΠΟ 20/10/2026. Το βήμα 3 εδώ ήταν οι «Επαφές», με μηδέν
+// ορατά κουτιά και ένα «Περισσότερα». Οι επαφές μπήκαν κλειστές στη «Σύνοψη»,
+// οπότε το βήμα 3 μετρά τώρα τη Σύνοψη: πάλι μηδέν ορατά, ίδιο όριο. Το
+// «Περισσότερα» της ελέγχεται όπως πριν. Το όριο δεν άλλαξε· άλλαξε ότι ο
+// χρήστης περνά μία οθόνη λιγότερη.
 // ΚΟΛΛΗΜΕΝΟ ΣΤΟ ΜΕΤΡΗΜΕΝΟ, ΧΩΡΙΣ ΤΖΟΓΟ. Ενα όριο με περιθώριο δύο πεδίων
 // αφήνει δύο πεδία να μπουν χωρίς να το πάρει κανείς είδηση — και η επόμενη
 // φορά ξεκινά από εκεί. Τρεις καστάνιες αυτού του αποθετηρίου είχαν ακριβώς
@@ -180,6 +186,38 @@ for (const [k, caps] of Object.entries(CAP)) {
   if (ask) await page.click('text=Κλείσιμο χωρίς αποθήκευση')
   await page.waitForSelector('[role="dialog"]', { state: 'detached', timeout: 2000 }).catch(() => {})
   ok('το «Κλείσιμο χωρίς αποθήκευση» κλείνει τον οδηγό', !(await page.$('[role="dialog"]')))
+}
+
+// ── ΤΕΣΣΕΡΑ ΒΗΜΑΤΑ, ΜΕ ΤΙΣ ΕΠΑΦΕΣ ΣΤΗ ΣΥΝΟΨΗ ─────────────────────────────
+// Η ράγα του οδηγού έχει όσους κύκλους και βήματα· μετά από τρία «Συνέχεια»
+// ο χρήστης είναι στη Σύνοψη και βλέπει εκεί το κουτί των επαφών.
+{
+  await page.click('[data-s-open="vacant"]')
+  await page.waitForSelector('[role="dialog"]')
+  for (let i = 0; i < 3; i++) { await page.click('text=Συνέχεια'); await page.waitForTimeout(60) }
+  const txt = await page.evaluate(() => document.querySelector('[role="dialog"]').innerText)
+  const active = await page.evaluate(() => document.querySelector('[role="dialog"] .wiz-step-on')?.textContent?.trim())
+  const steps = await page.evaluate(() => document.querySelectorAll('[role="dialog"] .wiz-step').length)
+  ok('ο οδηγός έχει τέσσερα βήματα και τελειώνει στη Σύνοψη',
+    steps === 4 && active === 'Σύνοψη' && !(await page.$('[role="dialog"] >> text=Συνέχεια')), `${steps} βήματα, ενεργό «${active}»`)
+  ok('οι επαφές ζουν στη Σύνοψη, κλειστές', /Επαφές, προαιρετικά/.test(txt))
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(80)
+}
+
+// ── ΣΤΟ ΝΟΙΚΙΑΣΜΕΝΟ ΤΟ ΕΝΟΙΚΙΟ, ΣΤΟ ΚΕΝΟ Ο ΣΤΟΧΟΣ ───────────────────────
+// Ο ιδιοκτήτης με ενοικιαστή διάβαζε «Στόχος ενοικίου» και δεν ήξερε τι να
+// γράψει. Η ετικέτα κρίνεται από την κατάσταση του πρώτου βήματος.
+for (const [k, want, not] of [['long', 'Μηνιαίο μίσθωμα (€)', 'Στόχος ενοικίου (€/μήνα)'], ['vacant', 'Στόχος ενοικίου (€/μήνα)', 'Μηνιαίο μίσθωμα (€)']]) {
+  await page.click(`[data-s-open="${k}"]`)
+  await page.waitForSelector('[role="dialog"]')
+  await page.click('text=Συνέχεια'); await page.waitForTimeout(60)
+  await page.click('text=Συνέχεια'); await page.waitForTimeout(60)
+  const has = await page.getByLabel(want, { exact: true }).count()
+  const hasNot = await page.getByLabel(not, { exact: true }).count()
+  ok(`${LABEL[k]}: το πεδίο του ενοικίου λέγεται «${want}»`, has === 1 && hasNot === 0)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(80)
 }
 
 // ── Η ΕΞΟΔΟΣ ΑΠΟ ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ────────────────────────────────────────
