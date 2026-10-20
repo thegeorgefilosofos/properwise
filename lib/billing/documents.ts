@@ -341,6 +341,21 @@ export function incomeTaxYearOf(title: string | null | undefined): number | null
   return m ? Number(m[1]) : null;
 }
 
+// ── ΚΑΙ ΤΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΕΝΦΙΑ ─────────────────────────────────────────────
+// Ο ίδιος κανόνας («ΕΝΦΙΑ 2026»). Το ποσό του στο Αρχείο είναι το ΣΥΝΟΛΟ του
+// εκκαθαριστικού (όλα τα ακίνητα του ΑΦΜ) και από αυτό βγαίνει πόσες δόσεις έχει
+// (lib/calendar/enfiaTotals.ts → υπενθυμίσεις).
+/** Η αρχή του τίτλου που δίνει η σάρωση στο εκκαθαριστικό ΕΝΦΙΑ. */
+export const ENFIA_TITLE = KIND_BY_ID.enfia.short;
+
+/** Το έτος ενός εκκαθαριστικού ΕΝΦΙΑ, από τον τίτλο του· αλλιώς `null`. */
+export function enfiaYearOf(title: string | null | undefined): number | null {
+  const t = (title || '').trim();
+  if (!t.startsWith(`${ENFIA_TITLE} `)) return null;
+  const m = /^(\d{4})$/.exec(t.slice(ENFIA_TITLE.length + 1).trim());
+  return m ? Number(m[1]) : null;
+}
+
 /** Οι επιλογές του «Τύπος εγγράφου»: με την εξήγηση κάθε είδους και επικεφαλίδα ανά ομάδα. */
 export const KIND_OPTIONS: Choice[] = DOC_KINDS.map((k, i) => ({
   value: k.value, label: k.label,
@@ -1341,7 +1356,14 @@ export function planDocSave(doc: ScannedDoc, today: string): SavePlan {
   // ΤΟ ΠΟΣΟ ΤΟΥ ΕΓΓΡΑΦΟΥ ΤΟ ΟΡΙΖΕΙ ΤΟ ΕΙΔΟΣ. Το Ε1, το Ε9 και ο τίτλος δεν
   // έχουν «ποσό που πλήρωσα»· στον ΕΝΦΙΑ το Αρχείο κρατά το σύνολο του
   // εκκαθαριστικού, όχι το μερίδιο του ακινήτου.
-  const docAmount = k === 'enfia' ? (doc.amount ?? doc.property_amount)
+  //
+  // ΤΟ ΜΕΡΙΔΙΟ ΔΕΝ ΓΡΑΦΕΤΑΙ ΣΑΝ ΣΥΝΟΛΟ (20.10.2026). Χωρίς σύνολο, το Αρχείο
+  // έπαιρνε το «Ποσό για αυτό το ακίνητο», δηλαδή ΜΕΡΙΔΙΟ, κάτω από τίτλο
+  // «ΕΝΦΙΑ 2026». Από αυτό το ποσό βγαίνει πλέον πόσες δόσεις έχει το
+  // εκκαθαριστικό: ένα μερίδιο 27€ από σύνολο 120€ θα έβγαζε δύο υπενθυμίσεις
+  // αντί για δώδεκα. Το μερίδιο είναι σύνολο ΜΟΝΟ όταν το εκκαθαριστικό έχει
+  // ένα ακίνητο (μία γραμμή)· αλλιώς το ποσό μένει «δεν διαβάστηκε».
+  const docAmount = k === 'enfia' ? (doc.amount ?? (doc.lines?.length === 1 ? doc.property_amount : undefined))
     : kind.amountKey && kind.amountKey !== 'monthly_rent' ? doc[kind.amountKey] : undefined;
   const afm = digitsOnly(doc.provider_afm);
   const year = doc.tax_year ? String(doc.tax_year) : '';

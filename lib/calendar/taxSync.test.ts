@@ -15,6 +15,7 @@ import { syncOwnerTaxDeadlines, syncAllTaxDeadlines, planTaxSync, contentHash, c
 import { oneTaxCopy } from './taxOnce';
 import { deadlineItems } from './deadlines';
 import { taxEventsToWrite } from '@/lib/facts/deadlines';
+import { ENFIA_FEWER_HINT } from '@/lib/tax/greekTaxCalendar';
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean, extra?: unknown) => {
@@ -37,11 +38,14 @@ function fakeDb(tables: Tables) {
     const filters: ((r: Row) => boolean)[] = [];
     let op: 'select' | 'insert' | 'update' | 'delete' = 'select';
     let payload: Row | Row[] | null = null;
+    let single = false;
     const q = {
       select() { return q; },
       eq(c: string, v: unknown) { filters.push(r => r[c] === v); return q; },
       in(c: string, v: unknown[]) { filters.push(r => v.includes(r[c])); return q; },
       like(c: string, p: string) { const pre = p.replace(/%$/, ''); filters.push(r => String(r[c] ?? '').startsWith(pre)); return q; },
+      ilike(c: string, p: string) { const pre = p.replace(/%$/, '').toLowerCase(); filters.push(r => String(r[c] ?? '').toLowerCase().startsWith(pre)); return q; },
+      maybeSingle() { single = true; return q; },
       gt(c: string, v: string) { filters.push(r => String(r[c]) > v); return q; },
       order() { return q; },
       limit() { return q; },
@@ -50,6 +54,8 @@ function fakeDb(tables: Tables) {
       delete() { op = 'delete'; return q; },
       then(res: (v: { data: unknown; error: { code?: string; message?: string } | null }) => unknown) {
         return Promise.resolve().then(() => {
+          // Πίνακας στο `__fail`: η ανάγνωση αποτυγχάνει, όπως ένα 500 του PostgREST.
+          if ((tables.__fail as unknown as string[] | undefined)?.includes(t)) return res({ data: null, error: { code: '500', message: 'boom' } });
           const match = (r: Row) => filters.every(f => f(r));
           if (op === 'insert') {
             const list = Array.isArray(payload) ? payload : [payload as Row];
@@ -64,7 +70,8 @@ function fakeDb(tables: Tables) {
           }
           if (op === 'update') { for (const r of rows.filter(match)) Object.assign(r, payload); return res({ data: null, error: null }); }
           if (op === 'delete') { tables[t] = rows.filter(r => !match(r)); return res({ data: null, error: null }); }
-          return res({ data: rows.filter(match).map(r => ({ ...r })), error: null });
+          const found = rows.filter(match).map(r => ({ ...r }));
+          return res({ data: single ? (found[0] ?? null) : found, error: null });
         });
       },
     };
@@ -240,6 +247,92 @@ const STR_NOV = 'tax:str-registry-2026-11';
     const jan = await syncAllTaxDeadlines(db, '2027-01-04');
     ok('Ιανουάριος: έρχονται οι νέες ημερομηνίες', jan.inserted > 0 && !!bySrc(tables, 'p1', 'tax:income-decl-2027'));
     ok('Ιανουάριος: οι περσινές μένουν ως ιστορικό', !!bySrc(tables, 'p1', EIGHTH));
+  }
+
+  // ── 7β. ΟΙ ΔΟΣΕΙΣ ΕΝΦΙΑ ΑΚΟΛΟΥΘΟΥΝ ΤΟ ΣΥΝΟΛΟ ΤΟΥ ΕΚΚΑΘΑΡΙΣΤΙΚΟΥ ─────────────
+  // Ο κανόνας των 10€ (lib/tools/enfiaSchedule.ts). «Σήμερα» 1η Μαρτίου 2026,
+  // πριν από την 1η δόση, ώστε να μετρηθούν ΟΛΕΣ οι υπενθυμίσεις του έτους.
+  {
+    const MARCH = '2026-03-01';
+    const enfia2026 = (rows: Row[], pid = 'p1') => rows.filter(r => r.property_id === pid && /^tax:enfia-(first|instalment|last)-2026/.test(String(r.source)));
+    const stmt = (pid: string, amount: number, year = 2026) =>
+      ({ id: `d-${pid}-${amount}`, property_id: pid, user_id: OWNER, title: `ΕΝΦΙΑ ${year}`, amount });
+
+    const run = async (docs: Row[], extra: Tables = {}) => {
+      const { db, tables } = fakeDb({
+        user_properties: [prop('p1', 'rented', 'long_term'), prop('p2', 'rented', 'long_term')],
+        billing_profiles: [{ user_id: OWNER, profile_type: 'individual' }],
+        property_documents: docs, ...extra,
+      });
+      const r = await syncOwnerTaxDeadlines(db, OWNER, { today: MARCH });
+      return { r, tables, db };
+    };
+
+    const a = await run([stmt('p1', 27.44)]);
+    ok('ΕΝΦΙΑ 27,44€: δύο υπενθυμίσεις', enfia2026(a.tables.calendar_events).length === 2, enfia2026(a.tables.calendar_events).map(r => r.source));
+    ok('ΕΝΦΙΑ 27,44€: η 2η λέγεται τελευταία', enfia2026(a.tables.calendar_events).some(r => r.title === 'ΕΝΦΙΑ, 2η και τελευταία δόση'));
+    ok('ΕΝΦΙΑ 27,44€: ίδιο εκκαθαριστικό, ίδιο πλήθος και στο άλλο ακίνητο', enfia2026(a.tables.calendar_events, 'p2').length === 2);
+    ok('ΕΝΦΙΑ γνωστό σύνολο: χωρίς τη σημείωση «λιγότερες»', enfia2026(a.tables.calendar_events).every(r => !String(r.notes).includes(ENFIA_FEWER_HINT)));
+
+    const b = await run([stmt('p2', 67.2)]);
+    ok('ΕΝΦΙΑ 67,20€: έξι υπενθυμίσεις', enfia2026(b.tables.calendar_events).length === 6, enfia2026(b.tables.calendar_events).length);
+
+    const c = await run([]);
+    const unknown = enfia2026(c.tables.calendar_events);
+    ok('ΕΝΦΙΑ άγνωστο σύνολο: δώδεκα υπενθυμίσεις', unknown.length === 12, unknown.length);
+    ok('ΕΝΦΙΑ άγνωστο σύνολο: η σημείωση το λέει', unknown.every(r => String(r.notes).includes(ENFIA_FEWER_HINT)));
+
+    // Το σύνολο που έγραψε ο χρήστης μετρά όπως το σαρωμένο· δύο πηγές → το μεγαλύτερο.
+    const typed = await run([], { bills_settings: [{ property_id: 'p2', user_id: OWNER, section: 'services', data: { enfiaStatementTotal: '27,44', enfiaStatementYear: '2026' } }] });
+    ok('ΕΝΦΙΑ σύνολο από τον χρήστη: δύο υπενθυμίσεις', enfia2026(typed.tables.calendar_events).length === 2);
+    const both = await run([stmt('p1', 67.2)], { bills_settings: [{ property_id: 'p2', user_id: OWNER, section: 'services', data: { enfiaStatementTotal: '27,44', enfiaStatementYear: '2026' } }] });
+    ok('ΕΝΦΙΑ δύο σύνολα που διαφωνούν: μετρά το μεγαλύτερο', enfia2026(both.tables.calendar_events).length === 6);
+    const stale = await run([], { bills_settings: [{ property_id: 'p1', user_id: OWNER, section: 'services', data: { enfiaStatementTotal: '27,44', enfiaStatementYear: '2025' } }] });
+    ok('ΕΝΦΙΑ σύνολο άλλου έτους: δεν μετρά', enfia2026(stale.tables.calendar_events).length === 12);
+
+    // ΣΥΜΦΙΛΙΩΣΗ. Δώδεκα γραμμένες, ο χρήστης άλλαξε την 5η και πλήρωσε την 9η·
+    // μετά σαρώνει εκκαθαριστικό 27,44€ και ο συγχρονισμός τρέχει τον Οκτώβριο.
+    const fifth = enfia2026(c.tables.calendar_events).find(r => r.source === 'tax:enfia-instalment-2026-5')!;
+    fifth.title = 'ΕΝΦΙΑ 5η, από τον λογαριασμό της Ελένης';
+    const ninth = enfia2026(c.tables.calendar_events).find(r => r.source === 'tax:enfia-instalment-2026-9')!;
+    ninth.status = 'paid';
+    c.tables.property_documents.push(stmt('p1', 27.44));
+    const r1 = await syncOwnerTaxDeadlines(c.db, OWNER, { today: TODAY });
+    const left = enfia2026(c.tables.calendar_events).map(r => String(r.source)).sort();
+    ok('συμφιλίωση: φεύγουν οι δόσεις που δεν υπάρχουν ακόμη και περασμένες', r1.error === null && left.join() === [
+      'tax:enfia-first-2026', 'tax:enfia-instalment-2026-2', 'tax:enfia-instalment-2026-5', 'tax:enfia-instalment-2026-9',
+    ].join(), left);
+    ok('συμφιλίωση: η γραμμή που άλλαξε ο χρήστης μένει ανέγγιχτη', fifth.title === 'ΕΝΦΙΑ 5η, από τον λογαριασμό της Ελένης');
+    ok('συμφιλίωση: η πληρωμένη μένει πληρωμένη', ninth.status === 'paid');
+    ok('συμφιλίωση: στο άλλο ακίνητο μένουν μόνο οι δύο', enfia2026(c.tables.calendar_events, 'p2').length === 2);
+    const r2 = await syncOwnerTaxDeadlines(c.db, OWNER, { today: TODAY });
+    ok('συμφιλίωση: δεύτερο πέρασμα δεν αλλάζει τίποτα και δεν ξαναγεννά', r2.inserted === 0 && r2.updated === 0 && r2.removed === 0
+      && enfia2026(c.tables.calendar_events).length === 4, r2);
+    const r3 = await syncOwnerTaxDeadlines(c.db, OWNER, { today: '2026-03-01' });
+    ok('συμφιλίωση: ούτε με «σήμερα» πριν από αυτές', r3.inserted === 0 && enfia2026(c.tables.calendar_events).length === 4, r3);
+
+    // ΑΝΑΓΝΩΣΗ ΠΟΥ ΑΠΕΤΥΧΕ: καμία γραφή, αλλιώς οι δώδεκα θα ξαναγεννιούνταν.
+    (c.tables as Record<string, unknown>).__fail = ['property_documents'];
+    const before = c.tables.calendar_events.length;
+    const r4 = await syncOwnerTaxDeadlines(c.db, OWNER, { today: '2026-03-01' });
+    ok('σφάλμα στο σύνολο: κανένα γράψιμο', r4.error !== null && r4.inserted === 0 && c.tables.calendar_events.length === before, r4);
+    (c.tables as Record<string, unknown>).__fail = [];
+
+    // Επαγγελματίας: κάθε καρτέλα «Ιδιοκτήτης» είναι άλλο εκκαθαριστικό.
+    const pro = fakeDb({
+      user_properties: [prop('p1', 'rented', 'long_term', { client_id: 'c1' }), prop('p2', 'rented', 'long_term', { client_id: 'c2' })],
+      billing_profiles: [{ user_id: OWNER, profile_type: 'professional' }],
+      clients: [{ id: 'c1', user_id: OWNER, type: 'owner' }, { id: 'c2', user_id: OWNER, type: 'owner' }],
+      property_documents: [stmt('p1', 27.44)],
+    });
+    await syncOwnerTaxDeadlines(pro.db, OWNER, { today: '2026-03-01' });
+    ok('επαγγελματίας: το σύνολο του ενός ιδιοκτήτη δεν αγγίζει τον άλλον',
+      enfia2026(pro.tables.calendar_events, 'p1').length === 2 && enfia2026(pro.tables.calendar_events, 'p2').length === 12);
+
+    // Χωρίς προφίλ (π.χ. μέλος ομάδας που δεν το βλέπει): κάθε ακίνητο μόνο του.
+    const noProfile = await run([stmt('p1', 27.44)], { billing_profiles: [] });
+    ok('χωρίς προφίλ: το σύνολο μένει στο ακίνητό του', enfia2026(noProfile.tables.calendar_events, 'p1').length === 2
+      && enfia2026(noProfile.tables.calendar_events, 'p2').length === 12);
   }
 
   // ── 8. ΤΟ ΣΧΕΔΙΟ ΧΩΡΙΣ ΒΑΣΗ ─────────────────────────────────────────────────
