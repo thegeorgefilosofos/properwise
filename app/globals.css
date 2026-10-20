@@ -6427,7 +6427,7 @@ tr.po-row-more { display: none; }
 .plan-matrix .po-table tbody td { vertical-align: middle; }
 /* Το σημάδι στο κέντρο του κελιού, ένα εικονοστοιχείο χαμηλότερα: η μέση της
    ελληνικής πεζής γραμμής κάθεται κάτω από τη μέση του κουτιού της. */
-.plan-matrix td > .plan-tick { display: block; margin: 0 auto; transform: translateY(1px); }
+.plan-matrix td > .plan-tick, .plan-matrix td > .plan-no { display: block; margin: 0 auto; transform: translateY(1px); }
 .plan-matrix .plan-card-alt { font-size: 12px; }
 /* Οι τιμές των κελιών στον πρώτο τόνο και σε βάρος, όπως στις κάρτες: τα
    «Έως 3» και «Χωρίς όριο» είναι η απάντηση, η ετικέτα αριστερά η ερώτηση. */

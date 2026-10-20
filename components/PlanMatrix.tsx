@@ -233,6 +233,25 @@ function PlanPrice({ id }: { id: ComparedPlan }) {
   );
 }
 
+/**
+ * ΤΟ «ΟΧΙ» ΩΣ ΣΗΜΑΔΙ, ΟΧΙ ΩΣ ΛΕΞΗ (20.10.2026). Ο πίνακας είχε 22 κελιά με τη
+ * λέξη «Όχι» δίπλα σε 40 εικονίδια ✓: η σελίδα τιμών διαβαζόταν ως λίστα
+ * αρνήσεων. Μια αχνή παύλα στο ίδιο μέγεθος με το ✓ λέει το ίδιο ήσυχα· ο
+ * αναγνώστης οθόνης ακούει «Όχι», όπως ακούει «Ναι» στο ✓. Το «Όχι» μέσα σε
+ * φράση («Όχι · 30 με Νόα») μένει λέξη, γιατί εκεί είναι μισή πρόταση.
+ */
+function NoMark() {
+  return (
+    <>
+      <svg className="plan-no" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth={2.4}
+        strokeLinecap="round" aria-hidden="true">
+        <path d="M7 12h10" />
+      </svg>
+      <span className="sr-only">Όχι</span>
+    </>
+  );
+}
+
 function Tick() {
   return (
     <svg className="plan-tick" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth={2.4}
@@ -315,7 +334,7 @@ export function PlanMatrix({ highlight, recommended, headingLevel = 3 }: { highl
                         ? <CellText v={v} />
                         : v
                           ? <><Tick /><span className="sr-only">Ναι</span></>
-                          : <span className="plan-card-no">Όχι</span>}
+                          : <NoMark />}
                     </dd>
                   </div>
                 );
@@ -420,7 +439,7 @@ export function PlanMatrix({ highlight, recommended, headingLevel = 3 }: { highl
                         ? <CellText v={v} />
                         : v === true
                           ? <><Tick /><span className="sr-only">Ναι</span></>
-                          : <span className="plan-card-no">Όχι</span>}
+                          : <NoMark />}
                     </td>
                   );
                 })}
