@@ -1447,9 +1447,17 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 .cash-sides { display: grid; grid-template-columns: minmax(0, 1fr); }
 .cash-side { display: flex; flex-direction: column; min-width: 0; }
 .cash-divider { height: 1px; margin: 0 20px; background: var(--border-subtle); }
+/* ΤΟ «0,00€» ΤΗΣ ΑΔΕΙΑΣ ΠΛΕΥΡΑΣ ΥΠΑΡΧΕΙ ΓΙΑ ΤΗ ΖΥΓΙΣΗ ΚΑΙ ΜΟΝΟ ΕΚΕΙ ΦΑΙΝΕΤΑΙ.
+   Δίπλα δίπλα κρατά τις δύο πλευρές στις ίδιες γραμμές (CashHero). Η μία κάτω
+   από την άλλη δεν ζυγίζει τίποτα: εκεί θα ήταν εξήντα εικονοστοιχεία για την
+   απουσία είδησης, οπότε η πλευρά μένει ετικέτα και φράση, όπως πριν. */
+.cash-figure-empty { display: none; }
+.cash-note-empty { font-size: var(--fs-md); }
 @container (min-width: 520px) {
   .cash-sides[data-pair] { grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr); }
   .cash-sides[data-pair] > .cash-divider { height: auto; margin: 14px 0; }
+  .cash-sides[data-pair] .cash-figure-empty { display: block; }
+  .cash-sides[data-pair] .cash-note-empty { font-size: 12px; }
 }
 
 /* KPI / Metric card — ταυτίζεται με το KPIGrid του Theme.tsx (μία αισθητική) */

@@ -42,10 +42,16 @@ function Side({ label, side, kind, onOpen, actionLabel, action, compact }: {
   action?: ReactNode;
 }) {
   const note = cashSideNote(side, kind);
-  // ΤΟ ΜΗΔΕΝ ΛΕΓΕΤΑΙ ΜΕ ΛΕΞΕΙΣ, ΣΤΗ ΘΕΣΗ ΤΟΥ ΠΟΣΟΥ. Ενα «0,00€» στα σαράντα
-  // εικονοστοιχεία, δίπλα στο ποσό της άλλης πλευράς, διεκδικεί την ίδια
-  // προσοχή για την απουσία είδησης. Η πλευρά κρατά την ίδια δομή με την
-  // απέναντι (ετικέτα από πάνω, απάντηση από κάτω)· απλώς η απάντηση είναι φράση.
+  // ΤΟ ΜΗΔΕΝ ΓΡΑΦΕΤΑΙ ΣΤΟ ΙΔΙΟ ΜΕΓΕΘΟΣ, ΣΕ ΣΒΗΣΤΟ ΤΟΝΟ (20.10.2026). Ως τώρα
+  // λεγόταν μόνο με λέξεις, για να μη διεκδικεί ένα «0,00€» στα σαράντα την
+  // ίδια προσοχή με το ποσό απέναντι. Το τίμημα ήταν η ζύγιση: η μία πλευρά
+  // είχε ετικέτα, ποσό και υποσημείωση, η άλλη ετικέτα και μία φράση, οπότε
+  // στα 1920 η μισή κάρτα έμενε άδεια και οι γραμμές των δύο πλευρών δεν
+  // συναντιούνταν πουθενά. Τώρα και οι δύο έχουν την ίδια δομή στις ίδιες
+  // γραμμές· την προσοχή τη ρυθμίζει ο τόνος (`--text-tertiary`), όχι η
+  // απουσία του αριθμού. Μόνο όταν οι πλευρές στέκουν ΔΙΠΛΑ ΔΙΠΛΑ: η μία κάτω
+  // από την άλλη, το μηδέν κρύβεται και μένει η φράση (`.cash-figure-empty`,
+  // globals.css). Η ήσυχη μορφή μιας γραμμής (`compact`) μένει ως έχει.
   const empty = side.count === 0;
   return (
     <div className="cash-side">
@@ -79,15 +85,15 @@ function Side({ label, side, kind, onOpen, actionLabel, action, compact }: {
           το στρογγυλεμένο ποσό τυπωνόταν σαν να ήταν ακριβές: 97,45€ γινόταν
           «97,00€», ενώ η γραμμή ακριβώς από κάτω έλεγε «84,55€ ληξιπρόθεσμα».
           Δύο ασυμβίβαστα νούμερα, στο ΠΡΩΤΟ πράγμα που βλέπει ο ιδιοκτήτης. */}
-      {!compact && !empty && (
-        <span className="cash-figure" style={{
-          fontFamily: T.font.num, fontWeight: 700, color: 'var(--text-primary)',
+      {!compact && (
+        <span className={empty ? 'cash-figure cash-figure-empty' : 'cash-figure'} style={{
+          fontFamily: T.font.num, fontWeight: 700, color: empty ? 'var(--text-tertiary)' : 'var(--text-primary)',
           fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', lineHeight: 1.05,
           maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>{fe(side.total)}</span>
       )}
-      <span style={{
-        fontFamily: T.font.sans, fontSize: compact || empty ? 'var(--fs-md)' : 12,
+      <span className={empty && !compact ? 'cash-note-empty' : undefined} style={{
+        fontFamily: T.font.sans, fontSize: compact ? 'var(--fs-md)' : empty ? undefined : 12,
         color: 'var(--text-secondary)', lineHeight: 1.45,
       }}>{note}</span>
     </button>
