@@ -77,6 +77,13 @@ html {
   text-size-adjust: 100%;
 }
 
+/* ── ΚΩΔΙΚΑΣ ΣΤΗ ΓΡΑΜΜΑΤΟΣΕΙΡΑ ΤΟΥ ΕΡΓΟΥ, ΟΧΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ (20.10.2026) ──────
+   Δεν υπήρχε κανόνας για `code`: το «http://» στο /trust αποδιδόταν με τη
+   `monospace` του συστήματος (Courier, DejaVu Sans Mono), δηλαδή με τρίτη
+   γραμματοσειρά δίπλα στην Inter, που διαφέρει από υπολογιστή σε υπολογιστή.
+   Η Roboto Mono φορτώνεται ήδη για τους πίνακες (T.font.mono). */
+code, kbd, samp, pre { font-family: 'Roboto Mono', 'JetBrains Mono', monospace; }
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 14px;

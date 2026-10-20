@@ -23,6 +23,7 @@ import { useEffect, useState } from 'react';
 import { captureError } from '@/lib/observability/report';
 import { recoverFromStaleBuild, alreadyRecovered } from '@/lib/recovery';
 import { Btn } from '@/components/Theme';
+import { T } from '@/components/tokens';
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   // Παράγεται κατά την απόδοση και όχι σε effect: αν η επαναφορά δεν έχει γίνει
@@ -59,7 +60,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
               background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
               borderRadius: 10, fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)',
               whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 160, overflow: 'auto',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+              fontFamily: T.font.mono,
             }}>
             {error.message}{error.digest ? `\ndigest: ${error.digest}` : ''}
             {`\nbuild: ${process.env.NEXT_PUBLIC_BUILD_SHA ?? 'dev'}`}
