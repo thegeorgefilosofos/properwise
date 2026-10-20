@@ -79,9 +79,13 @@ const symbolSvg = (fill) =>
   + paths(fill) + '</svg>';
 
 // ── Η ΣΧΕΣΗ ΣΥΜΒΟΛΟΥ ΚΑΙ ΛΕΞΗΣ ΕΙΝΑΙ ΑΥΤΗ ΤΟΥ BrandLogo ────────────────────
-// Στο συστατικό: κενό 0,38 του ύψους, μέγεθος λέξης 0,72, βάρος 800, αραίωμα
+// Στο συστατικό: κενό 0,38 του ύψους, μέγεθος λέξης 0,72, βάρος 700, αραίωμα
 // 0,02em. Εδώ τα ίδια, σε μονάδες του πλαισίου 90, ώστε το αρχείο να μοιάζει
 // με ό,τι βλέπει ο χρήστης στην οθόνη.
+//
+// ΤΟ ΒΑΡΟΣ ΗΤΑΝ 800 ΕΔΩ ΚΑΙ 700 ΣΤΗΝ ΟΘΟΝΗ (ως 20/10/2026). Το σχόλιο έλεγε
+// «τα ίδια» και ο αριθμός δεν ήταν: τα αρχεία διανομής (email, LinkedIn,
+// παρουσιάσεις) έβγαιναν ένα σκαλί βαρύτερα από το λογότυπο της εφαρμογής.
 const GAP = 90 * 0.38, FS = 90 * 0.72;
 const WORD_X = 90 + GAP;
 
@@ -92,7 +96,7 @@ const logoSvg = (fill, width) =>
   + paths(fill)
   + `<text x="${WORD_X.toFixed(2)}" y="45" dominant-baseline="central" fill="${fill}"`
   + ` font-family="Inter, Arial, Helvetica, sans-serif" font-size="${FS.toFixed(2)}"`
-  + ` font-weight="800" letter-spacing="${(FS * 0.02).toFixed(3)}">PROPERWISE</text></svg>`;
+  + ` font-weight="700" letter-spacing="${(FS * 0.02).toFixed(3)}">PROPERWISE</text></svg>`;
 
 const b = await chromium.launch({ executablePath: chromePath(), args: CHROME_ARGS });
 const page = await b.newPage({ viewport: { width: 2400, height: 800 }, deviceScaleFactor: 1 });
@@ -101,7 +105,7 @@ const page = await b.newPage({ viewport: { width: 2400, height: 800 }, deviceSca
 await page.setContent(`<!doctype html><meta charset="utf-8"><style>${FONT_CSS}
   body{margin:0}
   #w{position:absolute;left:-9999px;font-family:Inter,sans-serif;font-size:${FS}px;
-     font-weight:800;letter-spacing:0.02em;white-space:nowrap}
+     font-weight:700;letter-spacing:0.02em;white-space:nowrap}
 </style><span id="w">PROPERWISE</span>`);
 await page.evaluate(() => document.fonts.ready);
 const wordW = await page.evaluate(() => document.getElementById('w').getBoundingClientRect().width);
