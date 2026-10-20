@@ -7,18 +7,22 @@ and what happens if there's a breach. Free to maintain; no tooling required.
 
 | Data | Retention | Mechanism |
 |---|---|---|
-| Account (auth) | Life of account + **30 days** grace after deletion request | `delete_my_account` cascades; auth row removed |
+| Account (auth) | Life of account; on deletion **removed from the database immediately**, from backups within 30 days (as `/privacy` states; the earlier «+30 days grace» was not what the code does) | `delete_my_account` → `erase_account`: deletes every `public` table with `user_id`, then the auth row |
 | Property / financial records | Life of account | Cascade on account deletion |
 | Tax-relevant records | Per Greek statutory periods (customer's obligation) | Retained while account active; exportable before deletion |
 | Tenant / guest records | Controlled by the customer | Deleted on customer instruction or account deletion |
 | Email outbox | Sent rows kept for audit; **stale/expired rows purged** | `drain_email_outbox` marks `expired` past 2 days |
-| Marketing suppression (unsubscribes) | Kept indefinitely | Needed to honour opt-out — lawful under 6(1)(f) |
+| Marketing preferences and unsubscribes | Life of account; deleted with it (`/privacy`, «Χρόνος διατήρησης»; FK `on delete cascade`). The earlier «kept indefinitely» contradicted the published policy | Marketing is consent-only (6(1)(a)), not soft opt-in |
+| Guest pre-check-in data | While the property exists; deleted with the property or the account. **Open:** automatic deletion after departure (DPIA action A4) | `purge_property_children`, `erase_account` |
+| Withdrawal declarations (`withdrawal_requests`) | **Not yet defined** (DPIA action A6). Kept unlinked (`account_id = null`) after account deletion as proof of the exercised right | Migration `20261020120000_i_ypanaxorisi_echei_koumpi.sql` |
 | Backups | **30-day** rolling window | `db-backup.yml` `retention-days: 30` |
 | CI logs / Actions artifacts | Per GitHub defaults; backups encrypted | `BACKUP_PASSPHRASE` |
 
 **Deletion propagation**: `delete_my_account` removes the auth user; every table
 with a FK `on delete cascade` to `auth.users` is purged with it. Backups age out
 within 30 days, so a deletion is fully effective across the estate within that window.
+One deliberate exception: withdrawal declarations keep their row with `account_id = null`
+(FK `on delete set null`), as evidence under GDPR 17(3)(e).
 
 ## 2. Incident (personal-data breach) response — runbook
 
