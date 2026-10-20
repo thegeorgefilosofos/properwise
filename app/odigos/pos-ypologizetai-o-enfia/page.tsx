@@ -37,6 +37,7 @@ import {
   GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideTable, GuideSources, GuideCta, GuideFaq,
   RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
 } from '../GuideParts';
+import { enfiaInstalmentRule, enfiaInstalmentDates } from '../enfiaText';
 
 const GUIDE = guideAt('/odigos/pos-ypologizetai-o-enfia');
 // Η επικεφαλίδα είναι το όνομα του οδηγού στον κατάλογο: ίδιο στην κάρτα του
@@ -72,7 +73,8 @@ const SMALL = reduction('small_settlement_2026');
 const ZONE_TAXES = Object.values(ENFIA_ZONE_TAX);
 
 // Οι ερωτήσεις τροφοδοτούν ΚΑΙ την ορατή λίστα ΚΑΙ το δομημένο σχήμα — μία πηγή.
-const FAQ: GuideFaqItem[] = [
+// Θέλουν τη χρονιά: οι ημερομηνίες των δόσεων είναι του εκκαθαριστικού της.
+const faqFor = (year: number): GuideFaqItem[] => [
   {
     q: 'Ο ΕΝΦΙΑ εξαρτάται από το εισόδημά μου;',
     // ΤΟ ΑΠΟΛΥΤΟ «ΟΧΙ» ΔΙΑΨΕΥΔΟΤΑΝ ΣΤΗΝ ΕΝΟΤΗΤΑ 4 (20/10/2026): η μείωση του
@@ -95,8 +97,9 @@ const FAQ: GuideFaqItem[] = [
     q: 'Πληρώνεται σε δόσεις;',
     // Ο ΟΔΗΓΟΣ ΤΗΣ ΠΛΗΡΩΜΗΣ ΕΧΕΙ ΤΙΣ ΗΜΕΡΟΜΗΝΙΕΣ (20/10/2026). Εδώ έλεγε «ορίζονται
     // κάθε έτος», ο οδηγός ΕΝΦΙΑ 2026 «του νόμου»: ο σύνδεσμος στέλνει εκεί.
-    a: 'Ναι. Μπορείς να τον πληρώσεις εφάπαξ ή σε μηνιαίες δόσεις, που λήγουν την τελευταία '
-     + 'εργάσιμη κάθε μήνα. Τις ημερομηνίες όλων των δόσεων τις βρίσκεις στον οδηγό για την πληρωμή του ΕΝΦΙΑ.',
+    // Η ΙΔΙΑ ΔΙΑΤΥΠΩΣΗ ΚΑΙ ΣΤΟΥΣ ΤΡΕΙΣ ΟΔΗΓΟΥΣ (20/10/2026, ../enfiaText.ts).
+    a: `Ναι. Μπορείς να τον πληρώσεις εφάπαξ ή σε ${enfiaInstalmentRule(year)} ${enfiaInstalmentDates(year)} `
+     + 'Κάθε δόση λήγει την τελευταία εργάσιμη του μήνα της.',
     link: { href: '/odigos/enfia-2026-pliromi-doseis-pistopoiitiko', label: 'ΕΝΦΙΑ 2026: πληρωμή και δόσεις' },
   },
   {
@@ -203,6 +206,7 @@ export default function Page() {
   // Τα έτη ανέγερσης κάθε κανόνα των παλιών κτιρίων αλλάζουν κάθε χρόνο.
   const { year } = athensParts();
   const old = enfiaOldBuildingYears(year);
+  const FAQ = faqFor(year);
   const jsonLd = guideJsonLd({
     guide: GUIDE, headline: H1, description: DESC, faq: FAQ,
     about: 'Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων (ΕΝΦΙΑ) και ο υπολογισμός του',

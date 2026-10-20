@@ -46,6 +46,7 @@ import {
   GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
   RelatedGuides, guideJsonLd, LINK_STYLE, longDate, dayMonth, dateCells, type GuideFaqItem,
 } from '../GuideParts';
+import { enfiaInstalmentRule, enfiaInstalmentDates } from '../enfiaText';
 
 export const revalidate = 86400;
 
@@ -88,13 +89,15 @@ const PATH_TEXT = ENFIA_PATH.map(s => `«${s}»`).join(', ');
 const FAQ: GuideFaqItem[] = [
   {
     q: `Πότε πληρώνεται ο ΕΝΦΙΑ ${YEAR};`,
-    a: `Εφάπαξ ή σε ${N} μηνιαίες δόσεις, από τις ${longDate(FIRST)} έως τις ${longDate(LAST)}. Κάθε δόση λήγει `
+    a: `Εφάπαξ ή σε ${enfiaInstalmentRule(YEAR)} ${enfiaInstalmentDates(YEAR)} Κάθε δόση λήγει `
      + 'την τελευταία εργάσιμη του μήνα της. Αν η τελευταία μέρα του μήνα είναι Σαββατοκύριακο '
      + 'ή αργία, η δόση λήγει την προηγούμενη εργάσιμη.',
   },
   {
     q: 'Σε πόσες δόσεις πληρώνεται ο ΕΝΦΙΑ;',
-    a: `Εφάπαξ ή σε ${N} ισόποσες μηνιαίες δόσεις. Για τον ΕΝΦΙΑ ${YEAR} η πρώτη δόση λήγει `
+    // Η ΙΔΙΑ ΔΙΑΤΥΠΩΣΗ ΚΑΙ ΣΤΟΥΣ ΤΡΕΙΣ ΟΔΗΓΟΥΣ (20/10/2026, ../enfiaText.ts). Το
+    // «ισόποσες» έφυγε: η τελευταία παίρνει τη διαφορά των λεπτών.
+    a: `Εφάπαξ ή σε ${enfiaInstalmentRule(YEAR)} Με ${N} δόσεις, η πρώτη λήγει `
      + `στις ${longDate(FIRST)} και η τελευταία στις ${longDate(LAST)}.`,
   },
   {
@@ -188,7 +191,7 @@ export default function Page() {
 
         <p className="lg-p">
           {ISSUED
-            ? `Τα εκκαθαριστικά του ΕΝΦΙΑ ${YEAR} έχουν αναρτηθεί στο ${PORTAL.portal}. Ο φόρος πληρώνεται εφάπαξ ή σε ${N} μηνιαίες δόσεις, από τις ${longDate(FIRST)} έως τις ${longDate(LAST)}.`
+            ? `Τα εκκαθαριστικά του ΕΝΦΙΑ ${YEAR} έχουν αναρτηθεί στο ${PORTAL.portal}. Ο φόρος πληρώνεται εφάπαξ ή σε ${enfiaInstalmentRule(YEAR)} ${enfiaInstalmentDates(YEAR)}`
             : `Το εκκαθαριστικό του ΕΝΦΙΑ ${YEAR} δεν έχει εκδοθεί ακόμη. Οι ημερομηνίες αυτής της σελίδας ακολουθούν το περσινό πρόγραμμα και θα επιβεβαιωθούν με την έκδοση.`}
         </p>
         <p className="lg-p">

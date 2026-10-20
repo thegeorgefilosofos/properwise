@@ -69,7 +69,9 @@ const declared: EnfiaSettings = { ...ENFIA_DEFAULTS, enfiaAnnual: '428.60' }
   const facts = { objValue: 180000, sqm: 80, yearBuilt: 1990, ownershipPct: 50 }
   const f = forecast12({ ...base, enfia: { settings: ENFIA_DEFAULTS, facts } })
   const e = enfiaYear(ENFIA_DEFAULTS, 2026, facts)
-  const l8 = ofKind(f, 'enfia').find(l => l.label === 'ΕΝΦΙΑ 8/12')
+  // Το μερίδιο είναι 103,60€: με ελάχιστη δόση 10€ δέκα δόσεις, όχι δώδεκα (20.10.2026).
+  ok('εκτίμηση: καμία δόση κάτω από 10€, άρα 10 δόσεις', e.instalments.length === 10 && e.instalments.every(i => i.amount >= 10))
+  const l8 = ofKind(f, 'enfia').find(l => l.label === `ΕΝΦΙΑ 8/${e.instalments.length}`)
   ok('εκτίμηση: το ποσό της μηχανής στο μερίδιο', !!l8 && eq(l8.amount, e.instalments[7].amount) && e.annual > 0)
   ok('εκτίμηση: αναμενόμενο, με την πηγή του', !!l8 && l8.certainty === 'expected' && l8.source.startsWith('εκτίμηση'))
 }

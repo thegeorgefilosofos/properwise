@@ -6,7 +6,7 @@
 // Κυριακή. Και τα δύο κλειδώνονται εδώ, με ημερομηνίες υπολογισμένες στο χέρι
 // από ημερολόγιο.
 // ═══════════════════════════════════════════════════════════════════════════
-import { enfiaInstalments, grDateLong, ENFIA_INSTALMENTS } from './enfiaSchedule'
+import { enfiaInstalments, enfiaInstalmentCount, grDateLong, ENFIA_INSTALMENTS, ENFIA_MIN_INSTALMENT } from './enfiaSchedule'
 import { isNonWorkingDay } from '../calendar/greekHolidays'
 
 let passed = 0, failed = 0
@@ -23,9 +23,9 @@ const eq = (a: number, b: number, tol = 0.005) => Math.abs(a - b) <= tol
     const sum = rows.reduce((a, r) => a + r.amount, 0)
     if (!eq(sum, annual, 0.0001)) { allSum = false; console.log(`    ↯ ${annual} → ${sum}`) }
     if (rows.some(r => r.amount < 0)) allPositive = false
-    if (rows.some(r => r.amount > rows[11].amount + 0.0001)) lastBiggest = false
+    if (rows.some(r => r.amount > rows[rows.length - 1].amount + 0.0001)) lastBiggest = false
   }
-  ok('οι δώδεκα δόσεις αθροίζουν ακριβώς το ετήσιο', allSum)
+  ok('οι δόσεις αθροίζουν ακριβώς το ετήσιο', allSum)
   ok('καμία δόση δεν είναι αρνητική', allPositive)
   ok('η τελευταία δόση δεν είναι ποτέ μικρότερη από τις άλλες', lastBiggest)
 }
@@ -41,6 +41,34 @@ const eq = (a: number, b: number, tol = 0.005) => Math.abs(a - b) <= tol
   const uneven = enfiaInstalments(180.28, 2026)
   ok('180,28: οι έντεκα πρώτες 15,02€', uneven.slice(0, 11).every(r => eq(r.amount, 15.02)))
   ok('180,28: η τελευταία απορροφά τη διαφορά, 15,06€', eq(uneven[11].amount, 15.06))
+}
+
+// ── ΚΑΜΙΑ ΔΟΣΗ ΚΑΤΩ ΑΠΟ 10€ (20.10.2026) ─────────────────────────────────
+// Ως τότε το ετήσιο μοιραζόταν πάντα σε δώδεκα: 67,20€ → 12 × 5,60€.
+{
+  const r67 = enfiaInstalments(67.2, 2026)
+  ok('67,20€: 6 δόσεις', r67.length === 6)
+  ok('67,20€: όλες 11,20€', r67.every(x => eq(x.amount, 11.2)))
+  ok('67,20€: η 6η λήγει τον Αύγουστο', r67[5].date === '2026-08-31')
+  const r27 = enfiaInstalments(27.44, 2026)
+  ok('27,44€: 2 δόσεις των 13,72€', r27.length === 2 && r27.every(x => eq(x.amount, 13.72)))
+  const r9 = enfiaInstalments(9, 2026)
+  ok('9€: μία δόση, εφάπαξ', r9.length === 1 && eq(r9[0].amount, 9))
+  const r120 = enfiaInstalments(120, 2026)
+  ok('120€: 12 × 10€', r120.length === 12 && r120.every(x => eq(x.amount, 10)))
+  const r1200 = enfiaInstalments(1200, 2026)
+  ok('1.200€: 12 × 100€', r1200.length === 12 && r1200.every(x => eq(x.amount, 100)))
+  ok('119,99€: 11 δόσεις', enfiaInstalmentCount(119.99) === 11)
+  ok('το ανώτατο μένει 12', enfiaInstalmentCount(1_000_000) === ENFIA_INSTALMENTS)
+  let floorOk = true
+  for (let a = 10; a <= 300; a += 0.37) {
+    const rows = enfiaInstalments(a, 2026)
+    if (rows.some(x => x.amount < ENFIA_MIN_INSTALMENT - 1e-9)) { floorOk = false; console.log(`    ↯ ${a}`) }
+  }
+  ok('από 10€ και πάνω καμία δόση κάτω από 10€', floorOk)
+  // Τα δύο παραδείγματα της σελίδας του υπολογιστή (app/ypologismos-enfia/seo.ts).
+  ok('παράδειγμα 1, 178,16€: 12 δόσεις', enfiaInstalmentCount(178.16) === 12)
+  ok('παράδειγμα 2, 67,20€: 6 δόσεις', enfiaInstalmentCount(67.2) === 6)
 }
 
 // ── ΟΙ ΗΜΕΡΟΜΗΝΙΕΣ ────────────────────────────────────────────────────────

@@ -29,8 +29,10 @@ import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import { upcomingRows, nextOfKind } from './next';
-import { ENFIA_INSTALMENTS } from '@/lib/tools/enfiaSchedule';
+import { ENFIA_INSTALMENTS, ENFIA_MIN_INSTALMENT } from '@/lib/tools/enfiaSchedule';
+import { feWhole } from '@/lib/core/format';
 import { monthNom, monthGen, monthAcc } from '@/lib/core/months';
+import { enfiaInstalmentRule, enfiaInstalmentDates } from '../enfiaText';
 import {
   GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
   RelatedGuides, guideJsonLd, LINK_STYLE, longDate, dayMonth, dateCells, type GuideFaqItem,
@@ -65,7 +67,6 @@ const COUNT_WORD: Readonly<Record<number, string>> = {
   9: 'εννέα', 10: 'δέκα', 11: 'έντεκα', 12: 'δώδεκα',
 };
 const INCOME_TAX_INSTALMENTS_WORD = COUNT_WORD[INCOME_TAX_INSTALMENTS] ?? String(INCOME_TAX_INSTALMENTS);
-const ENFIA_INSTALMENTS_WORD = COUNT_WORD[ENFIA_INSTALMENTS] ?? String(ENFIA_INSTALMENTS);
 
 /** Ποιος κάνει την ενέργεια, στη γλώσσα του αναγνώστη που δεν έχει λογαριασμό. */
 const WHO: Record<TaxObligation['who'], string> = { owner: 'Εσύ', app: 'Εσύ', accountant: 'Ο λογιστής σου' };
@@ -103,9 +104,10 @@ const faqFor = (at: { autofile: string; issue: string; first: string; last: stri
   },
   {
     q: 'Πότε βγαίνει το εκκαθαριστικό του ΕΝΦΙΑ;',
-    a: `Τα τελευταία έτη γύρω στα μέσα ${monthGen(month0(at.issue))}. Η πρώτη δόση λήγει στο τέλος ${monthGen(month0(at.first))} `
-     + `και η τελευταία τον ${monthAcc(month0(at.last))} του επόμενου έτους: έως ${ENFIA_INSTALMENTS_WORD} μηνιαίες δόσεις `
-     + 'συνολικά. Την ακριβή ημερομηνία έκδοσης την ανακοινώνει κάθε χρόνο η ΑΑΔΕ.',
+    // Η ΙΔΙΑ ΔΙΑΤΥΠΩΣΗ ΓΙΑ ΤΙΣ ΔΟΣΕΙΣ ΚΑΙ ΣΤΟΥΣ ΤΡΕΙΣ ΟΔΗΓΟΥΣ (20/10/2026, ../enfiaText.ts).
+    a: `Τα τελευταία έτη γύρω στα μέσα ${monthGen(month0(at.issue))}. `
+     + `Την ακριβή ημερομηνία έκδοσης την ανακοινώνει κάθε χρόνο η ΑΑΔΕ. Ο φόρος πληρώνεται εφάπαξ ή σε ${enfiaInstalmentRule(Number(at.first.slice(0, 4)))} `
+     + enfiaInstalmentDates(Number(at.first.slice(0, 4))),
   },
   {
     q: 'Πρέπει να υποβάλλω Ε9 κάθε χρόνο;',
@@ -133,7 +135,7 @@ const faqFor = (at: { autofile: string; issue: string; first: string; last: stri
 // κοπής, που στο κινητό άνοιγε τρύπα στη γραμμή από πάνω και δεν πατιόταν.
 const EXT = { target: '_blank', rel: 'noopener noreferrer', className: 'lp-link', style: LINK_STYLE } as const;
 const SOURCES: React.ReactNode[] = [
-  'ΕΝΦΙΑ: ν.4223/2013, όπως ισχύει και όπως κωδικοποιήθηκε στον Κώδικα Φορολογίας Περιουσίας (ν.5219/2025). Έκδοση εκκαθαριστικού και αριθμός δόσεων ανακοινώνονται κάθε χρόνο από την ΑΑΔΕ.',
+  `ΕΝΦΙΑ: ν.4223/2013, όπως ισχύει και όπως κωδικοποιήθηκε στον Κώδικα Φορολογίας Περιουσίας (ν.5219/2025). Έως ${ENFIA_INSTALMENTS} δόσεις, καθεμία τουλάχιστον ${feWhole(ENFIA_MIN_INSTALMENT)}, κατά τον νόμο· την έκδοση του εκκαθαριστικού και τις ακριβείς ημερομηνίες τις ανακοινώνει κάθε χρόνο η ΑΑΔΕ.`,
   'Ε9: προθεσμία 30 ημερών από κάθε μεταβολή, άρθρο 6 παρ. 3 ν.4223/2013, όπως κωδικοποιήθηκε στον ν.5219/2025.',
   'Δήλωση φορολογίας εισοδήματος (Ε1, Ε2): προθεσμίες και αυτόματη οριστικοποίηση των προσυμπληρωμένων δηλώσεων όπως τις ανακοινώνει η ΑΑΔΕ για κάθε φορολογικό έτος.',
   'Βραχυχρόνια: δήλωση βραχυχρόνιας διαμονής στο Μητρώο Ακινήτων Βραχυχρόνιας Διαμονής της ΑΑΔΕ · τέλος ανθεκτικότητας στην κλιματική κρίση, άρθρο 44 ν.5177/2025 (πρώην άρθρο 53 ν.4389/2016).',
@@ -249,7 +251,7 @@ export default function Page() {
           </p>
         )}
         <p className="lg-p">
-          {`Ο ΕΝΦΙΑ είναι ο ετήσιος φόρος κατοχής ακινήτων. Το επόμενο εκκαθαριστικό αναμένεται γύρω στις ${longDate(at.issue.date)} και η πρώτη δόση λήγει στις ${longDate(at.first.date)}. Ο φόρος πληρώνεται εφάπαξ ή σε έως ${ENFIA_INSTALMENTS_WORD} μηνιαίες δόσεις, η τελευταία στις ${longDate(at.last.date)}.${running ? '' : ' Κάθε δόση λήγει την τελευταία εργάσιμη του μήνα της.'}`}
+          {`Ο ΕΝΦΙΑ είναι ο ετήσιος φόρος κατοχής ακινήτων. Το επόμενο εκκαθαριστικό αναμένεται γύρω στις ${longDate(at.issue.date)}. Ο φόρος πληρώνεται εφάπαξ ή σε ${enfiaInstalmentRule(Number(at.first.date.slice(0, 4)))} ${enfiaInstalmentDates(Number(at.first.date.slice(0, 4)))}${running ? '' : ' Κάθε δόση λήγει την τελευταία εργάσιμη του μήνα της.'}`}
         </p>
         <p className="lg-p">
           {'Το εκκαθαριστικό βγαίνει από όσα έχεις δηλώσει στο Ε9. Γι’ αυτό ο έλεγχος του Ε9 προηγείται στο ημερολόγιο.'}
