@@ -677,6 +677,9 @@ export const MUTATIONS = {
   'accounting-sources': { add: 'lib/core/__mut__.ts', content: "// Κατά το ν.9999/2020, το τεκμαρτό ποσοστό αλλάζει.\nexport const rate = 0.05\n" },
   'landing-theme': { file: 'app/LandingStyles.tsx', from: '          --bg-base: var(--mkt-bg-base);', to: '          --bg-base: #101418;' },
   // Διαδρομή που παρακάμπτει τη θύρα και μιλά κατευθείαν στον πάροχο.
+  // Η ΔΙΑΔΡΟΜΗ ΤΟΥ ΤΑΜΕΙΟΥ ΞΑΝΑΡΩΤΑ ΜΟΝΟ ΤΟΝ ΕΜΠΟΡΟ: ακριβώς το σφάλμα της
+  // 20/10/2026, ζωντανό κλειδί με ανώνυμο πωλητή.
+  'checkout-gate': { file: 'app/api/billing/checkout/route.ts', from: 'const gate = checkoutState(process.env);', to: 'const gate = { live: mor.isLive(process.env), closedBy: null };' },
   'merchant-seam': { add: 'app/api/__mut__/route.ts', content: "import { creemPort } from '@/lib/billing/merchant/creem'\nexport const GET = () => Response.json({ live: creemPort.isLive(process.env) })\n" },
   // Νέα οθόνη ταυτοποίησης με επικεφαλίδα και καμία έξοδο: το αδιέξοδο που
   // εμφανίστηκε τέσσερις φορές.

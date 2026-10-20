@@ -240,6 +240,10 @@ export default function TrustPage() {
               Μέχρι τότε, για κάθε θέμα γράψε στο <MailLink to={IDENTITY.supportEmail} />.
             </p>
           )}
+          {/* ΚΑΙ ΤΙ ΣΗΜΑΙΝΕΙ ΑΥΤΟ ΓΙΑ ΤΙΣ ΑΓΟΡΕΣ. Η ελλιπής ταυτότητα κλείνει το
+              ταμείο (lib/legal/checkout.ts)· η σελίδα το λέει με τα πεδία που
+              λείπουν, από το billingWords, όπου ζει κάθε δήλωση για τη χρέωση. */}
+          {words.saleClosedReason && <p className="lg-note">{words.saleClosedReason}</p>}
         </>
       ),
     },

@@ -43,6 +43,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { merchant, type BillingEnv } from '@/lib/billing/merchant';
+// ΤΟ ΤΑΜΕΙΟ ΚΡΙΝΕΤΑΙ ΚΑΙ ΑΠΟ ΤΗΝ ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΠΩΛΗΤΗ (20/10/2026). Ζωντανό
+// κλειδί με ανώνυμο φορέα έδινε τη «ζωντανή» εκδοχή των λόγων: lib/legal/checkout.ts.
+import { checkoutState } from '@/lib/legal/checkout';
+import { IDENTITY, sellerIdentityGaps, sellerFieldLabel, type LegalIdentity } from '@/lib/legal/identity';
 import { TRIAL_DAYS, PLANS } from '@/lib/billing/plans';
 import { SCAN_LIMITS } from '@/lib/billing/aiLimits';
 
@@ -224,6 +228,16 @@ export interface BillingWords {
    * στα στοιχεία του παραστατικού που έστειλε ο ίδιος.
    */
   withdrawalTo: string | null;
+  /**
+   * Γιατί δεν πουλάμε ακόμη, όταν ο λόγος είναι η ταυτότητα του πωλητή, αλλιώς
+   * `null`.
+   *
+   * ΓΡΑΦΕΤΑΙ ΓΙΑ ΤΗ ΣΕΛΙΔΑ «ΠΟΙΟΙ ΕΙΜΑΣΤΕ». Η αξιολόγηση της 20/10/2026 βρήκε
+   * ταμείο ανοιχτό με ανώνυμο φορέα· τώρα το ταμείο μένει κλειστό ώσπου να
+   * δημοσιευθούν τα στοιχεία (lib/legal/checkout.ts) και η σελίδα λέει ακριβώς
+   * αυτό, με τα πεδία που λείπουν, αντί για ένα γενικό «σύντομα».
+   */
+  saleClosedReason: string | null;
 }
 
 /**
@@ -264,7 +278,7 @@ const MONEY_BACK_SOON =
 //
 // ΓΙΑΤΙ ΣΥΝΑΡΤΗΣΗ ΚΑΙ ΟΧΙ ΣΤΑΘΕΡΑ: μια σταθερά θα έπρεπε να θυμηθεί κάποιος
 // να την αλλάξει και αυτό ακριβώς είναι που δεν συνέβη.
-const liveWords = (mor: string): Omit<BillingWords, 'live'> => ({
+const liveWords = (mor: string): Omit<BillingWords, 'live' | 'saleClosedReason'> => ({
   chargingToday:
     `Η χρέωση συνδρομής γίνεται μέσω της ${mor}, που ενεργεί ως merchant of record: πουλά τη συνδρομή στο δικό της όνομα, εκδίδει το παραστατικό και αποδίδει τον ΦΠΑ της χώρας σου.`,
   // Χωρίς τις ημέρες: οι Οροι τις λένε στην αμέσως προηγούμενη παράγραφο
@@ -326,7 +340,7 @@ const liveWords = (mor: string): Omit<BillingWords, 'live'> => ({
 
 const TRIAL_BADGE = `Δοκιμή ${TRIAL_DAYS} ημερών χωρίς κάρτα`;
 
-const NOT_LIVE: Omit<BillingWords, 'live'> = {
+const NOT_LIVE: Omit<BillingWords, 'live' | 'saleClosedReason'> = {
   chargingToday:
     'Η χρέωση συνδρομής δεν έχει ενεργοποιηθεί και σήμερα δεν γίνεται καμία πληρωμή μέσα από την Υπηρεσία.',
   afterTrial:
@@ -378,9 +392,28 @@ const NOT_LIVE: Omit<BillingWords, 'live'> = {
   withdrawalTo: null,
 };
 
-/** Τα λόγια που ισχύουν αυτή τη στιγμή. Διαβάζεται ΜΟΝΟ σε διακομιστή. */
-export function billingWords(env: BillingEnv = process.env): BillingWords {
+/** Τα στοιχεία σε φράση, με «και» πριν από το τελευταίο. */
+const listOf = (xs: string[]): string =>
+  xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} και ${xs[xs.length - 1]}`;
+
+/**
+ * Η εξήγηση όταν το ταμείο κλείνει για την ταυτότητα. Ισχύει όποια κι αν είναι
+ * η ρύθμιση του εμπόρου: ακόμη κι αν εκείνη ήταν πλήρης, δεν θα πουλούσαμε.
+ */
+function saleClosedReason(id: LegalIdentity): string | null {
+  const gaps = sellerIdentityGaps(id);
+  if (!gaps.length) return null;
+  return `Η αγορά συνδρομών μένει κλειστή ώσπου να δημοσιευθούν εδώ τα στοιχεία του φορέα που ζητά ο νόμος για κάθε πώληση από απόσταση: ${listOf(gaps.map(f => sellerFieldLabel(f, id)))}. Δεν θέλουμε να πληρώνεις χωρίς να ξέρεις από ποιον αγοράζεις. Μόλις δημοσιευθούν, οι συνδρομές ανοίγουν και τα στοιχεία φαίνονται πριν από την αγορά.`;
+}
+
+/**
+ * Τα λόγια που ισχύουν αυτή τη στιγμή. Διαβάζεται ΜΟΝΟ σε διακομιστή.
+ *
+ * @param id η ταυτότητα του φορέα, ρητά μόνο για τις σουίτες· στην εφαρμογή
+ *   είναι πάντα το IDENTITY.
+ */
+export function billingWords(env: BillingEnv = process.env, id: LegalIdentity = IDENTITY): BillingWords {
   const port = merchant(env);
-  const live = port.isLive(env);
-  return { live, ...(live ? liveWords(port.name) : NOT_LIVE) };
+  const { live } = checkoutState(env, id);
+  return { live, ...(live ? liveWords(port.name) : NOT_LIVE), saleClosedReason: saleClosedReason(id) };
 }

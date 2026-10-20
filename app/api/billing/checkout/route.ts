@@ -31,6 +31,7 @@ import { PLANS, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 import { merchant } from '@/lib/billing/merchant';
 import { isEntitled, isMorStatus } from '@/lib/billing/subscription';
 import { billingWords } from '@/lib/legal/billingWords';
+import { checkoutState } from '@/lib/legal/checkout';
 import { SITE } from '@/lib/core/site';
 import * as billing from '@/lib/data/billing';
 import { reportRoute } from '@/lib/observability/route';
@@ -62,10 +63,18 @@ export async function GET(request: NextRequest) {
   }
 
   const mor = merchant();
-  if (!mor.isLive(process.env)) {
+  // ΠΕΜΠΤΟΣ ΕΛΕΓΧΟΣ, ΠΡΩΤΟΣ ΣΤΗ ΣΕΙΡΑ: ΞΕΡΕΙ Ο ΑΓΟΡΑΣΤΗΣ ΑΠΟ ΠΟΙΟΝ ΑΓΟΡΑΖΕΙ;
+  // Το ταμείο άνοιγε με μόνο ζωντανό κλειδί, ενώ ο φορέας ήταν ανώνυμος
+  // (νομική αξιολόγηση 20/10/2026). Η οθόνη κρύβει πλέον το κουμπί, αλλά ένας
+  // σελιδοδείκτης ή μια ανοιχτή καρτέλα φτάνουν εδώ κατευθείαν: η άρνηση ζει
+  // στον διακομιστή, στην ΙΔΙΑ συνθήκη με τα κείμενα (lib/legal/checkout.ts).
+  const gate = checkoutState(process.env);
+  if (!gate.live) {
     // ΤΟ «ΓΙΑΤΙ ΟΧΙ» ΤΑΞΙΔΕΥΕΙ ΜΟΝΟ ΠΡΟΣ ΤΑ ΜΕΣΑ. Ονόματα μεταβλητών δεν
     // εκτίθενται σε δημόσια διεύθυνση.
-    console.info(`[${mor.id}] η χρέωση δεν είναι ρυθμισμένη`);
+    console.info(gate.closedBy === 'identity'
+      ? `[${mor.id}] το ταμείο μένει κλειστό: η ταυτότητα του πωλητή δεν έχει δημοσιευθεί`
+      : `[${mor.id}] η χρέωση δεν είναι ρυθμισμένη`);
     return closed();
   }
 

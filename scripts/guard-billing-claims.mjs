@@ -275,8 +275,9 @@ for (const file of projectFiles(SCOPE)) {
 // Το μητρώο υπεργολάβων δεν γράφει καρφωτά την κατάσταση του παρόχου πληρωμών.
 const registry = readFileSync('lib/legal/subprocessors.ts', 'utf8');
 // Η ΣΥΝΘΗΚΗ ΤΟΥ ΤΑΜΕΙΟΥ, ΜΕΤΑ ΤΗ ΘΥΡΑ. Ηταν «checkoutIsLive(env)» όσο το
-// κείμενο μιλούσε κατευθείαν στον πάροχο· τώρα «merchant(env).isLive(env)».
-// Ιδια συνθήκη, ίδιο σημείο αλήθειας, άλλο όνομα.
+// κείμενο μιλούσε κατευθείαν στον πάροχο, μετά «merchant(env).isLive(env)» και
+// από 20/10/2026 ξανά «checkoutIsLive(env)», που κρίνει και την ταυτότητα του
+// πωλητή (lib/legal/checkout.ts· scripts/guard-checkout-gate.mjs).
 const LIVE_CHECK = /checkoutIsLive|\.isLive\(/;
 if (!LIVE_CHECK.test(registry)) {
   problems.push('lib/legal/subprocessors.ts: η κατάσταση του παρόχου πληρωμών δεν δένεται με το ταμείο.');
@@ -287,7 +288,7 @@ if (problems.length) {
   problems.forEach(p => console.error('  ' + p));
   console.error(`
   Η κατάσταση της χρέωσης λέγεται από το ${WORDS}, που τη διαβάζει από την
-  ΙΔΙΑ συνθήκη με το κουμπί του ταμείου (\`merchant().isLive\`). Ενα κείμενο που
+  ΙΔΙΑ συνθήκη με το κουμπί του ταμείου (\`checkoutIsLive\`, lib/legal/checkout.ts). Ενα κείμενο που
   τη γράφει μόνο του θα μείνει πίσω την επόμενη φορά — και έμεινε.
   (Ο ίδιος ο φύλακας: ${GUARD})`);
   process.exit(1);
