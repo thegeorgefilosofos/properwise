@@ -512,11 +512,14 @@ export default function Dashboard() {
                   είναι ιδιώτης. Δεν πατιόταν, δεν άλλαζε, δεν προειδοποιούσε.
                   Και το σκεύωμα του μεταλλίου —γυαλάδες, στεφάνες, σκιές— ήταν
                   ξένο σώμα σε μια επίπεδη, ήσυχη διεπαφή. */}
+              {/* ΠΙΛΟΥΛΑ ΚΑΙ ΣΤΗΝ ΑΦΗ (20.10.2026). Η ακτίνα ήταν των παραθύρων (18):
+                  στα 36 του ποντικιού έβγαινε πιλούλα κατά σύμπτωση, στα 44 της
+                  αφής γινόταν μαλακό τετράγωνο δίπλα σε chip γωνίας 8. */}
               {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `IconBtn` δεν δέχεται className και εδώ η
                   `topbar-search` είναι που το κάνει 44 κεντραρισμένο στο κινητό·
                   σε υπολογιστή δείχνει και το πλακίδιο του ⌘K, άρα δεν είναι
                   ούτε καθαρό εικονοκούμπι. */}
-              <button onClick={()=>setCmdkOpen(true)} className="topbar-search po-hov-fill" title={`Αναζήτηση και γρήγορες ενέργειες (${kbdHint})`} aria-label="Αναζήτηση" style={{display:'flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 10px 0 12px',borderRadius: T.radius.modal,border:'1px solid var(--border-default)',color:'var(--text-secondary)',cursor:'pointer',flexShrink:0}} >
+              <button onClick={()=>setCmdkOpen(true)} className="topbar-search po-hov-fill" title={`Αναζήτηση και γρήγορες ενέργειες (${kbdHint})`} aria-label="Αναζήτηση" style={{display:'flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 10px 0 12px',borderRadius: T.radius.pill,border:'1px solid var(--border-default)',color:'var(--text-secondary)',cursor:'pointer',flexShrink:0}} >
                 <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
                 <span className="desktop-only" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.mono,color:'var(--text-tertiary)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.xs,padding:'1px 5px'}}>{kbdHint}</span>
               </button>
