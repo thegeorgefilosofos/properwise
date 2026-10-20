@@ -197,7 +197,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   await inputs.nth(1).fill('δεν ξέρω'); await p.waitForTimeout(300)
   const bodyJunk = await p.locator('body').innerText().then(plain)
   ok('σκουπίδια δεν σπάνε τη σελίδα', !/Infinity|NaN/.test(bodyJunk))
-  ok('και το ακίνητο που δεν αποδίδει δεν βγάζει αρνητικά χρόνια', bodyJunk.includes('Δεν επιστρέφει'))
+  ok('και το ακίνητο που δεν αποδίδει δεν βγάζει αρνητικά χρόνια', bodyJunk.includes('Δεν αποσβένεται'))
 
   ok('υπάρχει σύνδεσμος εγγραφής', await p.locator('a[href="/signup"]').count() > 0)
   await ctx.close()

@@ -27,7 +27,7 @@ import {
   rentalBracketsForYear, FIRST_YEAR_NEW_BRACKETS, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT,
 } from '@/lib/billing/greekTax';
 import { parseAmount } from '@/lib/core/greek';
-import { bankReceiptMatters, presumptiveDeductionRateForYear, PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
+import { bankReceiptMatters, presumptiveDeductionRateForYear, cashReceiptTaxCost, PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { Toggle } from '@/app/dashboard/components/UIComponents';
 import { EstimateNote, ToolClampNote } from '@/app/ToolNotes';
 import { ToolNumField, ToolFields, ToolSeg, ToolHero, ToolLedger, ToolStats } from '@/app/ToolParts';
@@ -149,8 +149,10 @@ export function RentTaxCalculator({ today, cta }: {
       // ΤΙ ΚΟΣΤΙΖΟΥΝ ΤΑ ΜΕΤΡΗΤΑ, ΣΕ ΕΥΡΩ. Η διαφορά των δύο φόρων, όχι το 5%
       // του ενοικίου: η έκπτωση μειώνει τη ΒΑΣΗ, οπότε το κόστος εξαρτάται από
       // το κλιμάκιο. Στα 7.200€ είναι 54,00€ (15%), στα 48.000€ είναι 108,00€
-      // (45%) — ένα ποσοστό στη θέση αυτού του αριθμού θα ήταν λάθος.
-      cashCost: rentalIncomeTax(gross, brackets) - rentalIncomeTax(gross * (1 - PRESUMPTIVE_DEDUCTION_RATE), brackets),
+      // (45%) — ένα ποσοστό στη θέση αυτού του αριθμού θα ήταν λάθος. Το 2027
+      // η κύρωση πιάνει μόνο το δεύτερο εξάμηνο, άρα 27,00€ στα 7.200€: ο ίδιος
+      // συντελεστής με τον φόρο της κάρτας (lib/billing/presumptive.ts).
+      cashCost: cashReceiptTaxCost(gross, year, brackets),
     };
   }, [monthly, months, viaBank, brackets, year]);
 
@@ -202,7 +204,11 @@ export function RentTaxCalculator({ today, cta }: {
           <p style={{ margin: '3px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)' }}>
             {viaBank
               ? `Προϋπόθεση για την τεκμαρτή έκπτωση ${ratePct(PRESUMPTIVE_DEDUCTION_RATE)}, από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν.5222/2025).`
-              : `Με μετρητά φορολογείται το 100% του ενοικίου (ν.5222/2025). Η έκπτωση που χάνεται κοστίζει ${feAuto(r.cashCost)} τον χρόνο.`}
+              : year === FIRST_YEAR_BANK_RECEIPT
+                // Η ΠΡΩΤΗ ΧΡΟΝΙΑ ΕΙΝΑΙ ΜΙΣΗ (20.10.2026): το 100% πιάνει μόνο ό,τι
+                // εισπράττεται μετρητά από τον Ιούλιο, όχι όλο το ενοίκιο της χρονιάς.
+                ? `Ό,τι εισπράττεται μετρητά από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} φορολογείται στο 100% (ν.5222/2025). Η έκπτωση που χάνεται κοστίζει ${feAuto(r.cashCost)} για το ${year}.`
+                : `Με μετρητά φορολογείται το 100% του ενοικίου (ν.5222/2025). Η έκπτωση που χάνεται κοστίζει ${feAuto(r.cashCost)} τον χρόνο.`}
           </p>
         </div>
         <Toggle on={viaBank} onChange={on => set('trapeza', on ? '1' : '0')}
@@ -268,7 +274,7 @@ export function RentTaxCalculator({ today, cta }: {
           { k: 'Ετήσιο ενοίκιο', v: feAuto(r.gross) },
           {
             k: 'Φόρος εισοδήματος', v: feSigned(-r.tax),
-            sub: <>Στο φορολογητέο {feAuto(r.taxable)}: το ενοίκιο μείον τεκμαρτή έκπτωση {feAuto(r.deduction)}.</>,
+            sub: <>Στο φορολογητέο {feAuto(r.taxable)}: το ενοίκιο μείον την τεκμαρτή έκπτωση {feAuto(r.deduction)}.</>,
           },
           { k: 'Σου μένουν τον χρόνο', v: feAuto(r.net), kind: 'total' },
         ]}/>
@@ -394,7 +400,7 @@ export function RentTaxCalculator({ today, cta }: {
           <strong style={{ color: 'var(--text-primary)' }}>Τι δεν περιλαμβάνει.</strong>{' '}
           Ο υπολογισμός αφορά <strong>μόνο</strong> το εισόδημα από ενοίκια, με την τεκμαρτή
           έκπτωση {ratePct(PRESUMPTIVE_DEDUCTION_RATE)} που δίνει ο νόμος χωρίς δικαιολογητικά. Δεν περιλαμβάνει άλλα
-          εισοδήματά σου, τον ΕΝΦΙΑ, ούτε ειδικές περιπτώσεις (βραχυχρόνια μίσθωση,
+          εισοδήματά σου, τον ΕΝΦΙΑ ούτε ειδικές περιπτώσεις (βραχυχρόνια μίσθωση,
           συνιδιοκτησία, νομικό πρόσωπο, κενά διαστήματα, ανείσπρακτα). <EstimateNote />
         </p>
       </div>

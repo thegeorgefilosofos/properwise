@@ -25,7 +25,7 @@ import { useMemo, useId, useState, type ReactNode } from 'react';
 import { T, feAuto } from '@/components/tokens';
 import { fe, fn, fpRate, feRate, feSigned, feWhole } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
-import { enfiaFloorCoef, enfiaAgeCoef, enfiaAgeChoices, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS, ENFIA_AUX_COEF, ENFIA_PRE_YEAR } from '@/lib/billing/enfia';
+import { enfiaFloorCoef, enfiaAgeCoef, enfiaAgeChoices, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS, ENFIA_AUX_COEF, ENFIA_PRE_YEAR, ENFIA_EXTRA_TAX_FREE, ENFIA_SURCHARGE_THRESHOLD } from '@/lib/billing/enfia';
 import { ENFIA_FLOOR_LABEL, ENFIA_FLOOR_SHORT } from '@/lib/billing/enfiaFloors';
 import { enfiaInstalments, ENFIA_INSTALMENTS } from '@/lib/tools/enfiaSchedule';
 import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
@@ -180,13 +180,13 @@ export function EnfiaCalculator({ year, today, cta }: {
           options={ages.map(a => ({ value: a.key, label: a.label }))}
           hint={`Τα έτη μετρούν από τη νεότερη οικοδομική άδεια (χωρίς άδεια, από την κατασκευή)· το «πριν από το ${ENFIA_PRE_YEAR}» κρίνεται από το έτος ανέγερσης.`}/>
         <ToolNumField id={ids.own} label="Ποσοστό ιδιοκτησίας" value={ownership} onChange={x => set('pososto', x)}
-          unit="%" mode="numeric" hint="Αν το ακίνητο είναι μοιρασμένο."/>
+          unit="%" mode="numeric" hint="Αν το ακίνητο είναι συνιδιόκτητο."/>
         <ToolNumField id={ids.aux} label="Βοηθητικοί χώροι" value={auxSqm} onChange={x => set('voith', x)}
           unit="τ.μ." unitPad={44} hint="Αποθήκη ή θέση στάθμευσης. Προαιρετικό."/>
       </ToolFields>
 
       <ToolClampNote notes={[
-        own !== amount(ownership) && `Το ποσοστό ιδιοκτησίας μετρά από 1% έως 100%· υπολογίστηκε με ${fpRate(own)}.`,
+        own !== amount(ownership) && `Το ποσοστό ιδιοκτησίας είναι από 1% έως 100%· υπολογίστηκε με ${fpRate(own)}.`,
       ]}/>
 
       {/* ── Η κεφαλίδα του χαρτιού, πάνω από το αποτέλεσμα ─────────────── */}
@@ -271,9 +271,9 @@ export function EnfiaCalculator({ year, today, cta }: {
               { k: 'Συντελεστής ορόφου', v: fn(enfiaFloorCoef(floor), 2), kind: 'param' },
               { k: 'Συντελεστής παλαιότητας', v: fn(enfiaAgeCoef(age), 2), kind: 'param' },
               { k: 'Κύριος φόρος κτίσματος', v: feAuto(ledger.basic) },
-              r.aux > 0 && { k: `Βοηθητικοί χώροι (συντελεστής ${fn(ENFIA_AUX_COEF, 2)}, χωρίς όροφο)`, v: feAuto(ledger.auxiliary) },
-              ledger.extra > 0 && { k: 'Πρόσθετος φόρος (αξία πάνω από 400.000€)', v: feAuto(ledger.extra) },
-              ledger.supplementary > 0 && { k: 'Προσαύξηση (περιουσία πάνω από 500.000€)', v: feAuto(ledger.supplementary) },
+              r.aux > 0 && { k: `Βοηθητικοί χώροι (συντελεστής ${fn(ENFIA_AUX_COEF, 2)}, χωρίς συντελεστή ορόφου)`, v: feAuto(ledger.auxiliary) },
+              ledger.extra > 0 && { k: `Πρόσθετος φόρος (αξία πάνω από ${feWhole(ENFIA_EXTRA_TAX_FREE)})`, v: feAuto(ledger.extra) },
+              ledger.supplementary > 0 && { k: `Προσαύξηση (περιουσία πάνω από ${feWhole(ENFIA_SURCHARGE_THRESHOLD)})`, v: feAuto(ledger.supplementary) },
               r.reductionPct > 0 && {
                 k: `Αυτόματη μείωση ${fpRate(r.reductionPct)}${bracket ? ` (περιουσία έως ${feWhole(bracket)})` : ''}`,
                 v: feSigned(-ledger.reduction),
@@ -299,7 +299,7 @@ export function EnfiaCalculator({ year, today, cta }: {
           Η εκτίμηση αφορά <strong>ένα κτίσμα</strong> και θεωρεί τη συνολική σου
           ακίνητη περιουσία <strong>ίση με αυτό</strong>. Αν έχεις κι άλλα ακίνητα, οικόπεδα
           ή αποθήκες, η μείωση και η προσαύξηση αλλάζουν, οπότε το ποσό στο εκκαθαριστικό
-          θα διαφέρει. Δεν περιλαμβάνει τις νόμιμες εκπτώσεις και απαλλαγές που θέλουν
+          θα διαφέρει. Δεν περιλαμβάνει τις νόμιμες εκπτώσεις και απαλλαγές που προϋποθέτουν
           κριτήρια (χαμηλό εισόδημα, τρίτεκνοι, αναπηρία), την έκπτωση για ασφαλισμένη
           κατοικία{smallRelief && <>, {smallRelief}</>} ούτε τους ειδικούς συντελεστές
           οικοπέδου και πρόσοψης. Αν δικαιούσαι κάποια έκπτωση ή απαλλαγή, έλεγξέ το με
@@ -404,7 +404,7 @@ function Instalments({ annual, year, today }: { annual: number; year: number; to
       <p className="po-prose" style={{ margin: '10px 0 0', fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)' }}>
         Οι ημερομηνίες είναι οι τυπικές των τελευταίων ετών, δηλαδή η τελευταία εργάσιμη
         κάθε μήνα· ανακοινώνονται κάθε χρόνο με απόφαση. Ο ΕΝΦΙΑ πληρώνεται εφάπαξ ή σε
-        δόσεις. Η τελευταία δόση φέρει τη διαφορά της στρογγυλοποίησης, ώστε οι δώδεκα να
+        δόσεις. Η τελευταία δόση παίρνει τη διαφορά της στρογγυλοποίησης, ώστε οι δώδεκα να
         δίνουν ακριβώς το ετήσιο.
       </p>
     </div>
