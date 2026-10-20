@@ -48,6 +48,8 @@
     "e2e:hscroll": "node scripts/e2e-hscroll.mjs",
     "e2e:mobile": "node scripts/perf-bench/build-mobile.mjs && node scripts/e2e-mobile.mjs",
     "posts": "tsx scripts/marketing/posts.ts",
+    "noa:eval": "tsx scripts/noa-eval.ts",
+    "metrics:report": "tsx scripts/metrics-report.ts",
     "reel": "tsx scripts/marketing/reel.ts",
     "perf:budget": "node scripts/perf-budget.mjs",
     "perf:server": "node scripts/server-weight.mjs",
