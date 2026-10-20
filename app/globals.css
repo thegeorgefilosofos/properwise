@@ -1444,6 +1444,13 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
    στις δύο άκρες, ίδιο με το εσωτερικό των πλευρών· σε στήλη πλέγματος το
    περιθώριο αφαιρείται από το πλάτος της, οπότε δεν ξεχειλίζει όπως ξεχείλιζε
    η παλιά `flex-basis: 100%` (μετρημένο σε Pixel 7: 19 εικονοστοιχεία έξω). */
+/* ΟΙ ΔΥΟ ΕΝΕΡΓΕΙΕΣ ΤΗΣ ΕΠΙΣΚΟΠΗΣΗΣ ΦΤΑΝΟΥΝ ΩΣ ΤΗΝ ΑΚΡΗ ΣΤΟ ΚΙΝΗΤΟ (20.10.2026).
+   Τυλιγμένες κάτω από το ποσό, σταματούσαν 24px πριν από τη δεξιά ακμή του
+   περιεχομένου, ενώ κάθε κάρτα από κάτω φτάνει ως εκεί. Ως τα 480 μοιράζουν τη
+   σειρά σε δύο ίσες στήλες. */
+@media (max-width: 480px) {
+  .ov-head-actions { display: grid !important; grid-template-columns: 1fr 1fr; width: 100%; }
+}
 .cash-sides { display: grid; grid-template-columns: minmax(0, 1fr); }
 .cash-side { display: flex; flex-direction: column; min-width: 0; }
 .cash-divider { height: 1px; margin: 0 20px; background: var(--border-subtle); }
