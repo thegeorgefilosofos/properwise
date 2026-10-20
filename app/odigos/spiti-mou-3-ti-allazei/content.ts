@@ -107,14 +107,14 @@ export const COMPARISON: readonly CompareRow[] = [
     NONE,
   ] },
   { label: 'Χρηματοδότηση', cells: [
-    off(`${share(P1.interestFreeShare)} από τη ΔΥΠΑ χωρίς τόκο, ${share(1 - P1.interestFreeShare)} από την τράπεζα με το επιτόκιό της. Για τρίτεκνους και πολύτεκνους όλο χωρίς τόκο`),
-    off(`${share(F2.interestFreeShare)} χωρίς τόκο, ${share(1 - F2.interestFreeShare)} από την τράπεζα με το επιτόκιό της. Με ${F2.largeFamilyChildren} παιδιά και πάνω το επιτόκιο της τράπεζας μειωμένο κατά ${share(F2.largeFamilyRateCut)}`),
+    off(`${share(P1.interestFreeShare)} από τη ΔΥΠΑ χωρίς τόκο, ${share(1 - P1.interestFreeShare)} από την τράπεζα με το επιτόκιό της. Για τρίτεκνους και πολύτεκνους ολόκληρο το δάνειο χωρίς τόκο`),
+    off(`${share(F2.interestFreeShare)} χωρίς τόκο, ${share(1 - F2.interestFreeShare)} από την τράπεζα με το επιτόκιό της. Με ${F2.largeFamilyChildren} παιδιά και άνω, το επιτόκιο της τράπεζας μειώνεται κατά ${share(F2.largeFamilyRateCut)}`),
     NONE,
   ] },
   { label: 'Αιτήσεις', cells: [
     off(`${date(P1.applicationsFrom)} έως ${date(P1.applicationsTo)}`),
     off(`Έως ${date(P2.applicationDeadline)}· υπογραφές έως ${date(P2.contractDeadline)}`),
-    off(`Από ${P3.startLabel}, κατά την ΕΑΤ`),
+    off(`Από τις ${P3.startLabel}, κατά την ΕΑΤ`),
   ] },
 ];
 
@@ -125,7 +125,7 @@ export function incomeChangeLine(): string {
     + `άγαμοι από ${feWhole(b.incomeSingle)} σε ${feWhole(P2.incomeSingle)}, `
     + `ζευγάρια από ${feWhole(b.incomeMarriedBase)} σε ${feWhole(P2.incomeMarriedBase)} `
     + `(ανά παιδί από ${feWhole(b.incomePerChild)} σε ${feWhole(P2.incomePerChild)}), `
-    + `μονογονεϊκές από ${feWhole(b.incomeSingleParentBase)} σε ${feWhole(P2.incomeSingleParentBase)}. `
+    + `μονογονεϊκές οικογένειες από ${feWhole(b.incomeSingleParentBase)} σε ${feWhole(P2.incomeSingleParentBase)}. `
     + `Το κατώτατο έμεινε ${feWhole(P2.incomeMin)}.`;
 }
 
@@ -151,7 +151,7 @@ export function faq(today: string): FaqItem[] {
   return [
     {
       q: `Πότε ανοίγει το «${P3.name}»;`,
-      a: `${spitiMou3Line()} Μέχρι τότε δεν υπάρχει τρόπος να ελέγξει κανείς αν είσαι επιλέξιμος.`,
+      a: `${spitiMou3Line()} Μέχρι τότε δεν μπορείς να ελέγξεις αν είσαι επιλέξιμος.`,
     },
     {
       q: `Ισχύει ακόμη το «${NAME_2}»;`,
