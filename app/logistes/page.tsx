@@ -201,7 +201,7 @@ export default function Page() {
           <BackLink />
           {hy(<>
             <div className="lp-eyebrow">Για λογιστές</div>
-            <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
+            <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 700, letterSpacing: '-0.035em',
               lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
               {H1}
             </h1>
@@ -335,7 +335,7 @@ export default function Page() {
                 ερώτηση. Μία διεύθυνση, του μητρώου ταυτότητας· κανένα όνομα. */}
             <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
               <div style={box}>
-                <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 680, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+                <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
                   {'Ξεκίνα με τον πρώτο σου πελάτη'}
                 </h2>
                 <p style={{ margin: '0 0 16px', fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)' }}>

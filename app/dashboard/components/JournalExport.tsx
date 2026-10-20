@@ -319,7 +319,7 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
                   // είναι δύο γραμμές — τίτλος και επεξήγηση.
                   <ChipToggle key={f.key} on={on} onClick={() => setFormat(f.key)}>
                     <span style={{ minWidth: 0, flex: 1, textAlign: 'left', padding: '9px 0' }}>
-                      <span style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 660, letterSpacing: '-0.01em', color: on ? 'var(--accent)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.label}</span>
+                      <span style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: T.weight.emphasis, letterSpacing: '-0.01em', color: on ? 'var(--accent)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.label}</span>
                       <span style={{ display: 'block', fontSize: 'var(--fs-xs)', fontWeight: 400, color: 'var(--text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.hint}</span>
                     </span>
                     {on && <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, alignSelf: 'flex-start', marginTop: 11 }}><path d="M20 6 9 17l-5-5"/></svg>}
@@ -440,13 +440,13 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
                             return (
                               <div key={c.key} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 14, alignItems: 'start', padding: '11px 2px', borderTop: i ? '1px solid var(--border-subtle)' : 'none' }}>
                                 <span style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 560, color: 'var(--text-primary)' }}>{c.label}</div>
+                                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: T.weight.medium, color: 'var(--text-primary)' }}>{c.label}</div>
                                   <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.5 }}>{c.detail}</div>
                                   {!isPass && c.fix && (
                                     <>
                                       <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'flex-start', padding: '9px 11px', borderRadius: T.radius.chip, background: 'var(--bg-elevated)' }}>
                                         <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="po-lead-ico" style={{ color: 'var(--text-tertiary)' }}><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2h6c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"/></svg>
-                                        <span style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)' }}><b style={{ color: 'var(--text-primary)', fontWeight: 640 }}>Πρόταση:</b> {c.fix}</span>
+                                        <span style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)' }}><b style={{ color: 'var(--text-primary)', fontWeight: T.weight.emphasis }}>Πρόταση:</b> {c.fix}</span>
                                       </div>
                                       {/* Το περιθώριο και η γραμματοσειρά ζουν στο περιτύλιγμα:
                                           ο σύνδεσμος κληρονομεί το `font` και δεν κρατά δική

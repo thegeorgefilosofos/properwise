@@ -531,7 +531,12 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
       if (!active) return;
       const p = prof;
       const proposed = {
-        owner_name:  firstFilled(p?.owner_name, p?.full_name, p?.company_name),
+        // ΚΑΙ ΤΟ ΟΝΟΜΑ ΤΗΣ ΕΓΓΡΑΦΗΣ (20.10.2026). Η φόρμα εγγραφής το γράφει στο
+        // `user_metadata.full_name` και όχι στο προφίλ, οπότε σε 5 από 5
+        // λογαριασμούς ο οδηγός ζητούσε ξανά το όνομα που ο χρήστης είχε δώσει
+        // ένα λεπτό πριν. Μένει τελευταίο: ό,τι έγραψε στο προφίλ υπερισχύει.
+        owner_name:  firstFilled(p?.owner_name, p?.full_name, p?.company_name,
+          (auth?.user?.user_metadata as { full_name?: string } | undefined)?.full_name),
         owner_afm:   firstFilled(p?.afm),
         owner_phone: firstFilled(p?.phone),
         owner_email: firstFilled(auth?.user?.email),

@@ -661,11 +661,20 @@ type CustomSelectProps = SelectNaming & {
   options: SelectOption[];
   placeholder?: string;
   disabled?: boolean;
+  /**
+   * «tool»: ο επιλογέας των δημόσιων υπολογιστών, δίπλα στα πεδία του
+   * `TOOL_FIELD` (app/ToolParts.tsx). Στην ίδια σειρά ο επιλογέας είχε άλλο
+   * περίγραμμα (rgb(104,123,149) έναντι rgba(255,255,255,.12)), άλλο γέμισμα
+   * και κείμενο 14 δίπλα σε 16: το μάτι έβλεπε δύο είδη κουτιού στη σειρά των
+   * τεσσάρων. Η παραλλαγή παίρνει τα μέτρα του πεδίου, τίποτα άλλο.
+   */
+  variant?: 'tool';
 }
 
 export function CustomSelect({
-  label, ariaLabel, labelInfo, value, onChange, options, placeholder = 'Επιλογή…', disabled,
+  label, ariaLabel, labelInfo, value, onChange, options, placeholder = 'Επιλογή…', disabled, variant,
 }: CustomSelectProps) {
+  const tool = variant === 'tool';
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -833,9 +842,9 @@ export function CustomSelect({
           gap: 8,
           cursor: disabled ? 'not-allowed' : 'pointer',
           opacity: disabled ? 0.5 : 1,
-          border: `1px solid ${fieldBorderColor(open || focused)}`,
+          border: `1px solid ${tool && !(open || focused) ? 'var(--border-default)' : fieldBorderColor(open || focused)}`,
           boxShadow: fieldRing(open || focused),
-          padding: '10px 16px',
+          padding: tool ? '0 14px' : '10px 16px',
           userSelect: 'none',
         }}
       >
@@ -845,8 +854,8 @@ export function CustomSelect({
           {/* `po-field-value`: 16 στην αφή, όπως κάθε <input> δίπλα του (globals.css). */}
           <span className="po-elide po-field-value" style={{
             fontFamily: T.font.sans,
-            fontSize: 14,
-            letterSpacing: '0.25px',
+            fontSize: tool ? 16 : 14,
+            letterSpacing: tool ? 0 : '0.25px',
             color: selected ? 'var(--text-primary)' : 'var(--text-tertiary)',
           }}>
             {selected?.label || placeholder}

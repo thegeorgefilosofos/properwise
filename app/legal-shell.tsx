@@ -281,7 +281,7 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
             <div className="gd">
               <BackLink />
               <div className="lp-eyebrow">{eyebrow}</div>
-              <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
+              <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
                 {title}
               </h1>
               {/* Μία γραμμή στοιχείων κάτω από τον τίτλο, όπως η ημερομηνία των
@@ -322,7 +322,7 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
         <div className="lg-head">
         <BackLink />
         <div className="lp-eyebrow">{eyebrow}</div>
-        <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
+        <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
           {title}
         </h1>
 
@@ -373,7 +373,7 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
                     για τον αναγνώστη, αλλιώς το όνομα της ενότητας ακουγόταν
                     «1Υπεύθυνος επεξεργασίας». */}
                 {b.part && <h2 className={i === 0 ? 'lg-part lg-part-first' : 'lg-part'}>{b.part}</h2>}
-                <h3 style={{ display: 'flex', gap: 12, alignItems: 'baseline', fontSize: 'clamp(18px,2.2vw,21px)', fontWeight: 680, letterSpacing: '-0.02em', lineHeight: 1.3, margin: '0 0 12px' }}>
+                <h3 style={{ display: 'flex', gap: 12, alignItems: 'baseline', fontSize: 'clamp(18px,2.2vw,21px)', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.3, margin: '0 0 12px' }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, minWidth: 18 }}>{i + 1}<span className="sr-only">. </span></span>
                   <span style={{ textWrap: 'balance' }}>{b.h}</span>
                 </h3>

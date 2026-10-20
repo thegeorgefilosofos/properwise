@@ -323,7 +323,7 @@ export default function ScrollStory() {
                 της μίας σειράς αφορά τη στήλη των 460 του υπολογιστή· κάτω από τα
                 900 η στήλη πιάνει όλο το πλάτος, οπότε ο τίτλος παίρνει σταθερά 20
                 (κανόνας .story-h, μαζί με το υπόλοιπο φύλλο). */}
-            <h3 className="story-h" style={{ fontWeight: 680, letterSpacing: '-0.03em', lineHeight: 1.15, color: 'var(--text-primary)', margin: '0 0 14px', maxWidth: 460 }}>{a.h}</h3>
+            <h3 className="story-h" style={{ fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.15, color: 'var(--text-primary)', margin: '0 0 14px', maxWidth: 460 }}>{a.h}</h3>
             <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 20px', maxWidth: 460 }}>{a.p}</p>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {a.b.map((t, j) => (

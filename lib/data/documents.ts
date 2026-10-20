@@ -136,6 +136,13 @@ export async function count(db: Db, propertyId: string, userId?: string): Promis
   return n ?? 0;
 }
 
+/** Πόσα έγγραφα έχει ο χρήστης σε όλα του τα ακίνητα. `null` όταν η μέτρηση
+ *  απέτυχε: άγνωστο δεν σημαίνει μηδέν (πίνακας «Από πού ξεκινάς»). */
+export async function countOfUser(db: Db, userId: string): Promise<number | null> {
+  const { count: n, error } = await db.from(TABLE).select('id', { count: 'exact', head: true }).eq('user_id', userId);
+  return error ? null : n ?? 0;
+}
+
 // ── ΕΓΓΡΑΦΗ ────────────────────────────────────────────────────────────────
 
 /** Νέο έγγραφο. Επιστρέφει το κλειδί του, ή `null` αν δεν χρειάστηκε. */
