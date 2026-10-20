@@ -47,6 +47,45 @@ export const FIRST_HOME_EXEMPTION_SINGLE = 200000
 export const FIRST_HOME_EXEMPTION_MARRIED = 250000
 export const FIRST_HOME_EXEMPTION_CHILD_FIRST_TWO = 25000  // +25.000€ για καθένα από τα 2 πρώτα τέκνα
 export const FIRST_HOME_EXEMPTION_CHILD_THIRD_PLUS = 30000 // +30.000€ για το 3ο και κάθε επόμενο
+// ═══ Η ΑΜΟΙΒΗ ΤΟΥ ΣΥΜΒΟΛΑΙΟΓΡΑΦΟΥ: ΜΙΑ ΚΛΙΜΑΚΑ ΓΙΑ ΔΑΝΕΙΟ ΚΑΙ ΛΟΓΙΣΤΙΚΗ ═════════
+// ΤΟ ΠΕΡΙΣΤΑΤΙΚΟ (έλεγχος 19/10/2026, #7). Για 200.000€ η καρτέλα Δάνειο έγραφε
+// 1.520€ (κλίμακα, χωρίς ΦΠΑ) και η Λογιστική 1.984€ (σκέτο 0,8% συν ΦΠΑ). Δύο
+// μοντέλα για το ίδιο έξοδο. Η κλίμακα του Δανείου ζει πλέον εδώ και την
+// καλούν και οι δύο, με ΦΠΑ 24% όπως κάθε υπηρεσία της αγοράς σε αυτό το αρχείο.
+//
+// ΠΗΓΗ: ΔΕΝ ΕΠΑΛΗΘΕΥΤΗΚΕ (19/10/2026). Η κλίμακα αντιστοιχεί στην ΥΑ 111376/2011
+// (ΦΕΚ Β΄ 13/11.01.2012) για τις αμοιβές των συμβολαιογράφων, με το πρώτο
+// κλιμάκιο 0,80% όπως το έφερε η τροποποίηση (ΥΑ 72386/2015, ΦΕΚ Β΄ 2170/2015).
+// Το επίσημο κείμενο (et.gr) δεν άνοιξε από το περιβάλλον ανάπτυξης: τα κλιμάκια
+// 0,80% και 0,70% βρέθηκαν μόνο σε αποσπάσματα αναζήτησης, τα 0,65% και 0,60%
+// και η κατώτατη αμοιβή όχι. TODO(δεν βρέθηκε): έλεγχος στο ΦΕΚ. Ως τότε η
+// οθόνη τη λέει «εκτίμηση».
+export const NOTARY_FEE_BANDS: readonly { upTo: number; rate: number }[] = [
+  { upTo: 120000, rate: 0.008 }, { upTo: 380000, rate: 0.007 },
+  { upTo: 2000000, rate: 0.0065 }, { upTo: Infinity, rate: 0.006 },
+]
+export const NOTARY_FEE_MIN = 200
+
+/** Η αναλογική αμοιβή του συμβολαιογράφου επί της αξίας, ΧΩΡΙΣ ΦΠΑ. Εκτίμηση. */
+export function notaryFee(value: number): number {
+  let fee = 0, prev = 0
+  const v = pos(value)
+  for (const b of NOTARY_FEE_BANDS) {
+    const chunk = Math.min(v, b.upTo) - prev
+    if (chunk <= 0) break
+    fee += chunk * b.rate
+    prev = b.upTo
+  }
+  return v > 0 ? centsOr0(Math.max(fee, NOTARY_FEE_MIN)) : 0
+}
+
+const pct = (r: number): string => `${fn(r * 100, Number.isInteger(r * 1000) ? 1 : 2)}%`
+/** Η σημείωση της γραμμής, από τις ίδιες σταθερές: κανένα ποσοστό γραμμένο με το χέρι. */
+export const NOTARY_NOTE = `Εκτίμηση: κλιμακωτή αμοιβή ${pct(NOTARY_FEE_BANDS[0].rate)} έως ${pct(NOTARY_FEE_BANDS[NOTARY_FEE_BANDS.length - 1].rate)} συν ΦΠΑ ${fn(VAT * 100)}%. Το τελικό ποσό το δίνει ο συμβολαιογράφος.`
+
+/** Ο ΦΠΑ των υπηρεσιών της αγοράς (συμβολαιογράφος, μεσίτης, δικηγόρος). */
+export const SERVICES_VAT_RATE = VAT
+
 // Πάγια κόστη πιστοποιητικών/τεχνικών (ενδεικτικά).
 export const PEA_COST = 150                    // Πιστοποιητικό Ενεργειακής Απόδοσης
 export const BUILDING_ID_COST = 400            // ταυτότητα κτιρίου / βεβαιώσεις μηχανικού
@@ -139,7 +178,7 @@ export function transferCosts(input: TransferInput): TransferResult {
         note: input.firstHome ? `Μετά απαλλαγή πρώτης κατοικίας έως ${fe(Math.round(exemption))}.` : 'Επί της μεγαλύτερης μεταξύ τιμήματος και αντικειμενικής.' })
     }
     // Συμβολαιογραφικά (κλιμακωτά ~0,8% + ΦΠΑ), δικηγόρος, μεσίτης, Κτηματολόγιο, πιστοποιητικά.
-    lines.push({ key: 'notary', label: 'Συμβολαιογραφικά', amount: centsOr0(taxBase * 0.008 * (1 + VAT)), note: 'Ενδεικτικά ~0,8% + ΦΠΑ (κλιμακωτά).' })
+    lines.push({ key: 'notary', label: 'Συμβολαιογραφικά', amount: centsOr0(notaryFee(taxBase) * (1 + VAT)), note: NOTARY_NOTE })
     if (input.useLawyer) lines.push({ key: 'lawyer', label: 'Δικηγόρος', amount: centsOr0(taxBase * ((input.lawyerRatePct ?? 0.5) / 100) * (1 + VAT)), note: 'Προαιρετικός, έλεγχος τίτλων/βαρών.' })
     if (input.useAgent) lines.push({ key: 'agent', label: 'Μεσιτική αμοιβή', amount: centsOr0(price * ((input.agentRatePct ?? AGENT_RATE_DEFAULT * 100) / 100) * (1 + VAT)), note: 'Ενδεικτικά 2% + ΦΠΑ.' })
     lines.push({ key: 'cadastre', label: 'Τέλη Κτηματολογίου', amount: centsOr0(taxBase * CADASTRE_RATE + CADASTRE_FIXED), note: 'Αναλογικό 5‰ + πάγιο (ΦΕΚ Β\'64/2026). Σε περιοχές με ενεργό κτηματολόγιο ~6‰.' })

@@ -21,6 +21,7 @@
 export const PERSONAL_KEY_PREFIXES = [
   'pa_hist_',          // συνομιλίες βοηθού: ονόματα ενοικιαστών, ΑΦΜ, ποσά
   'po_owner_split_',   // κατανομή συνιδιοκτητών: ονοματεπώνυμα και ΑΦΜ
+  'po_draft_',         // πρόχειρα φορμών (sessionStorage, lib/ui/dismiss.ts): ονόματα και ΑΦΜ
 ] as const;
 
 /** Σβήνει από τη συσκευή ό,τι τοπικό περιέχει προσωπικά δεδομένα.
@@ -74,7 +75,13 @@ export function leaveDevice(deps?: {
   /** `null` σημαίνει «κανένας worker». Παραλείποντάς το, βρίσκεται μόνος του. */
   controller?: { postMessage: (m: string) => void } | null;
 }): number {
-  const cleared = clearLocalPersonalData(deps?.storage);
+  // ΚΑΙ ΤΟ sessionStorage. Τα πρόχειρα των φορμών (lib/ui/dismiss.ts) ζουν εκεί
+  // και σβήνουν όταν κλείσει η καρτέλα, όχι όταν βγει ο χρήστης· σε κοινό
+  // υπολογιστή ο επόμενος θα έβρισκε τον οδηγό με τα στοιχεία του προηγούμενου.
+  const session = deps?.storage ? null : (() => {
+    try { return typeof sessionStorage === 'undefined' ? null : sessionStorage; } catch { return null; }
+  })();
+  const cleared = clearLocalPersonalData(deps?.storage) + (session ? clearLocalPersonalData(session) : 0);
   const controller = deps && 'controller' in deps
     ? deps.controller
     : (typeof navigator === 'undefined' ? null : navigator.serviceWorker?.controller ?? null);

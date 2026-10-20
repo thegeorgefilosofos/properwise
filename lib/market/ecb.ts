@@ -163,6 +163,11 @@ export const ECB_SERIES: readonly SeriesSpec[] = [
   { key: 'bog_housing_floating', label: 'Κυμαινόμενο ή σταθερό έως 1 έτος', source: 'ΕΚΤ, στοιχεία Τράπεζας της Ελλάδος',
     min: RATE_MIN, max: RATE_MAX,
     candidates: [{ flow: 'MIR', series: 'M.GR.B.A2C.F.R.A.2250.EUR.N', basis: 'νέες χορηγήσεις' }] },
+  // TODO(19/10/2026): η A2C.K απαντά 500 από την ΕΚΤ σε κάθε πρωινή εκτέλεση
+  // (log της market-data-updater, 08:00:08 UTC) και δεν έχει γραφτεί ποτέ στο
+  // market_rates. Μένει ως έχει: η σειρά που την αντικαθιστά δεν επαληθεύτηκε,
+  // γιατί το data-api.ecb.europa.eu δεν ανοίγει από το περιβάλλον ανάπτυξης.
+  // Ως τότε ο υπολογιστής στεγαστικού ανοίγει στο «Κυμαινόμενο» (`startRates`).
   { key: 'bog_housing_fixed', label: 'Σταθερό πάνω από 1 έτος', source: 'ΕΚΤ, στοιχεία Τράπεζας της Ελλάδος',
     min: RATE_MIN, max: RATE_MAX,
     candidates: [{ flow: 'MIR', series: 'M.GR.B.A2C.K.R.A.2250.EUR.N', basis: 'νέες χορηγήσεις' }] },

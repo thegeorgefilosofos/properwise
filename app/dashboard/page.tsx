@@ -71,7 +71,7 @@ export default function Dashboard() {
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
     setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, openWizard, updateStatus, deleteProperty,
-    scanBusy, setScanBusy, closeQuickAdd, signOut, enfiaCarry, dropEnfiaCarry, commitEnfiaCarry,
+    setScanBusy, setScanDirty, closeQuickAdd, requestCloseQuickAdd, signOut, enfiaCarry, dropEnfiaCarry, commitEnfiaCarry,
   } = useDashboard()
 
   // Ο χειροποίητος κύκλος είχε ΔΙΚΟ ΤΟΥ inline <style> με @keyframes spin — ακριβές
@@ -670,7 +670,7 @@ export default function Dashboard() {
                   ήδη ο τίτλος της καρτέλας με καλύτερα λόγια. Η επικεφαλίδα ζει
                   μέσα στο component, όπως σε κάθε άλλη καρτέλα. */}
               {navSafe==='plan'      && <TabPlan key={selected.id} propertyId={selected.id} userId={user.id} status={readStatus(selected)} property={selected}/>}
-              {navSafe==='tenant'    && <TabTenant key={selected.id} propertyId={selected.id} userId={user.id} plan={effPlan} onStartHandover={(tenantName,tenantPhone,type)=>{ setHandoverIntent({tenantName,tenantPhone,type}); setNav('inventory'); }}/>}
+              {navSafe==='tenant'    && <TabTenant key={selected.id} propertyId={selected.id} userId={user.id} plan={effPlan} profileType={effProfileType} onStartHandover={(tenantName,tenantPhone,type)=>{ setHandoverIntent({tenantName,tenantPhone,type}); setNav('inventory'); }}/>}
               {/* ═══ ΑΠΟΔΟΣΗ — ΜΙΑ ΚΑΡΤΕΛΑ ΓΙΑ ΜΙΑ ΕΡΩΤΗΣΗ ═══════════════════════
                   Τρεις καρτέλες απαντούσαν στο ίδιο πράγμα από τρεις μεριές:
                   «Αποδόσεις» (πόσο αποδίδει ΑΥΤΟ), «Σύγκριση» (πόσο αποδίδει σε
@@ -884,9 +884,9 @@ export default function Dashboard() {
           σαρώνει πια τίποτα. Ο τίτλος μένει: είναι το όνομα του παραθύρου δίπλα
           στο «×» και το μόνο που ακούει ο αναγνώστης οθόνης — το χειρόγραφο
           παράθυρο δεν είχε κανένα. */}
-      <Modal open={!!(quickAddOpen&&user&&selected)} onClose={()=>{ if(!scanBusy) closeQuickAdd(); }} size="lg"
+      <Modal open={!!(quickAddOpen&&user&&selected)} onClose={requestCloseQuickAdd} size="lg"
         title="Σάρωση εγγράφου">
-        {user&&selected&&<DocumentScan propertyId={selected.id} userId={user.id} properties={properties} onBusyChange={setScanBusy}
+        {user&&selected&&<DocumentScan propertyId={selected.id} userId={user.id} properties={properties} onBusyChange={setScanBusy} onDirtyChange={setScanDirty}
           onManual={()=>{ closeQuickAdd(); setNav('finances'); setManualExpense(n=>n+1); }}
           onOpenAccounting={()=>{ closeQuickAdd(); setNav('accounting'); }}
           onSaved={async()=>{await fetchProperties(user.id);}}/>}

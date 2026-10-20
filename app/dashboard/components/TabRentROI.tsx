@@ -17,6 +17,7 @@ import * as tenantStore from '@/lib/data/tenants';
 import { type IncomeRent } from '@/lib/income/propertyIncome';
 import { taxpayerRentSources, ownershipPctOf, wholePropertyTax, type TaxpayerPropInput, type OtherPropertyIncome } from '@/lib/accounting/taxpayerIncome';
 import { taxpayerScope } from '@/lib/facts/taxpayer';
+import { targetMonthlyOf } from '@/lib/facts/taxIncome';
 import { propertyStatus, propertyStatusLabel, isLease, NOT_LET_NOTE, YIELD_SHORT_LABELS, YIELD_PRE_TAX_SUB, yearExpenses, yieldCosts, yieldCostParts, netPreTaxLabel, MODELLED_COST_LABELS, rentIncome, yieldIncome, yieldPlatformFees, INCOME_LABELS, PLATFORM_FEE_LABELS, type PropertyStatus, type RentIncome } from '@/lib/facts';
 import type { CategorisedExpense } from '@/lib/tax/shortTermTax';
 import type { StayAmountLike } from '@/lib/clients/stayAmounts';
@@ -206,7 +207,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       setLoading(true);
       try {
         const yearNow = Number(athensToday().slice(0, 4));
-        const [pr, rc, exp, ln, allPr, allRc, bil, sts, yrRents, allYrRents, allSts, ownerRes, ten] = await Promise.all([
+        const [pr, rc, exp, ln, allPr, allRc, bil, sts, yrRents, allYrRents, allSts, ownerRes, ten, allTen] = await Promise.all([
           properties.one(supabase, propertyId, 'value,target_rent,rental_mode,status_detail,sqm,prop_type,name,postal_code', userId),
           supabase.from('rent_config').select('actual_rent,target_rent').eq('property_id', propertyId).maybeSingle(),
           // ΓΙΑΤΙ ΜΕ ΗΜΕΡΟΜΗΝΙΑ. Το ερώτημα ήταν χωρίς φίλτρο έτους και το άθροισμα
@@ -234,6 +235,9 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           // Ο τρέχων ενοικιαστής, όπως στην Επισκόπηση: το μίσθωμά του είναι τα
           // «αναμενόμενα με βάση τη μίσθωση». Το `rent_config` δεν το γράφει κανείς.
           tenantStore.current<{ monthly_rent: number | null }>(supabase, propertyId, 'monthly_rent', userId),
+          // Οι τρέχοντες ενοικιαστές ΟΛΩΝ των ακινήτων, για τη βάση του φόρου των
+          // άλλων (`annualIncomeForTax`): ίδια με την Επισκόπηση και τη Σύγκριση.
+          tenantStore.currentByProperty<{ property_id: string; monthly_rent: number | null; e_payment: boolean | null }>(supabase, userId, 'monthly_rent,e_payment'),
         ]);
         // ΤΑ ΔΥΟ ΣΧΗΜΑΤΑ, ΟΠΩΣ ΤΑ ΖΗΤΑ ΤΟ ΕΡΩΤΗΜΑ. Ήταν `any`, δηλαδή κάθε πεδίο
         // παρακάτω («p.sqm», «p.postal_code») ήταν αδιαφανές: ένα λάθος όνομα θα
@@ -254,10 +258,13 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
           owners: ownerRes.data ? new Set((ownerRes.data as { id: string }[]).map(r => r.id)) : null,
           income: new Map(prRows.map(x => {
             const cfg = rcMap.get(x.id);
+            const t = allTen.get(x.id);
             return [x.id, {
               rents: allYrRents.filter(r => r.property_id === x.id),
               stays: allSts.filter(st => st.property_id === x.id),
-              estimateMonthly: Number(cfg?.actual_rent) || Number(cfg?.target_rent) || Number(x.target_rent) || 0,
+              leaseMonthly: Number(t?.monthly_rent) || null,
+              targetMonthly: targetMonthlyOf(cfg, x.target_rent),
+              viaBank: t ? t.e_payment !== false : true,
             }];
           })),
         });

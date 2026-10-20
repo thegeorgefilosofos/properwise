@@ -16,10 +16,9 @@
 // ώστε η οθόνη να φορολογεί τον αριθμό που δείχνει.
 // ═══════════════════════════════════════════════════════════════════════════
 import { sameTaxpayer, type TaxpayerProperty } from './taxpayer'
-import { propertyIncome, type IncomeRent } from '../income/propertyIncome'
 import { readStatus, type StatusRow } from '../property/status'
+import { taxIncomeOf, type TaxIncomeRow } from '../facts/taxIncome'
 import { ownerShareOfAmount } from '../expenses/sharing'
-import type { StayAmountLike } from '../clients/stayAmounts'
 import type { RentSource } from '../billing/consolidate'
 
 export interface TaxpayerPropInput extends TaxpayerProperty, StatusRow {
@@ -48,14 +47,14 @@ export function wholePropertyTax(shareTax: number, ownershipPct: number): number
   return ownershipPct > 0 && ownershipPct < 100 ? shareTax * 100 / ownershipPct : shareTax
 }
 
-export interface OtherPropertyIncome {
-  rents?: readonly IncomeRent[]
-  stays?: readonly StayAmountLike[]
-  /** Μηνιαίο ενοίκιο μισθωτηρίου ή στόχου, όταν δεν υπάρχει καμία καταγραφή. */
-  estimateMonthly?: number | null
-  /** Εισπράττεται μέσω τράπεζας; Χωρίς δήλωση, ναι. */
-  viaBank?: boolean
-}
+/**
+ * Τα έσοδα ενός ακινήτου για τον φόρο. Η βάση βγαίνει ΜΟΝΟ από την
+ * `annualIncomeForTax` (lib/facts/taxIncome.ts): μίσθωμα × 12 με μίσθωση,
+ * διαμονές ή δόσεις σε ετήσιο ρυθμό, στόχος ως εκτίμηση. Έως 19/10/2026 εδώ
+ * μετρούσαν οι δόσεις σε ετήσιο ρυθμό, ενώ η Επισκόπηση φορολογούσε το
+ * τρέχον ακίνητο στο μίσθωμα × 12: δύο βάσεις μέσα στον ίδιο φόρο.
+ */
+export type OtherPropertyIncome = TaxIncomeRow
 
 export interface TaxpayerSourcesInput {
   props: readonly TaxpayerPropInput[]
@@ -72,13 +71,13 @@ export interface TaxpayerSourcesInput {
 export function taxpayerRentSources(i: TaxpayerSourcesInput): RentSource[] {
   const mine = sameTaxpayer(i.props, i.current.id, i.ownerClientIds)
   const others = mine.filter(p => p.id !== i.current.id).map(p => {
-    const o = i.income.get(p.id) ?? {}
-    const inc = propertyIncome({ rents: o.rents ?? [], stays: o.stays ?? [], year: i.year, today: i.today, estimateMonthly: o.estimateMonthly })
+    const o = i.income.get(p.id)
+    const inc = taxIncomeOf(readStatus(p), o, i.year, i.today)
     return {
       id: p.id,
-      annualRent: ownerShareOfAmount(inc.annualized, ownershipPctOf(p)),
-      shortTerm: readStatus(p) === 'rent_short' || inc.source === 'stays',
-      rentsPaidViaBank: o.viaBank ?? true,
+      annualRent: ownerShareOfAmount(inc.annual, ownershipPctOf(p)),
+      shortTerm: readStatus(p) === 'rent_short' || inc.basis === 'stays',
+      rentsPaidViaBank: o?.viaBank ?? true,
     }
   })
   const cur = i.props.find(p => p.id === i.current.id)

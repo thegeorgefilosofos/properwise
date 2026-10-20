@@ -37,7 +37,8 @@ import { grDateOf, fpRate } from '@/lib/core/format';
 import { navLabel } from '@/lib/nav/labels';
 import { confirmDialog } from '@/components/ConfirmDialog';
 import { roleLabel } from '@/lib/contacts/roles';
-import { rentalIncomeTax, rentalRowsForYear, rentalBracketsForYear, FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '@/lib/billing/greekTax';
+import { rentalRowsForYear, FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '@/lib/billing/greekTax';
+import type { PropertyRentTax } from '@/lib/facts/rentTax';
 import { athensParts } from '@/lib/core/time';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
 import { presumptiveDeductionRateForYear, bankReceiptMatters } from '@/lib/billing/presumptive';
@@ -364,8 +365,18 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
 // πανομοιότυπο όνομα και υπογραφή, οπότε τα μηνύματα αυτού του component κατέληγαν
 // σε άλλον υποδοχέα από τα υπόλοιπα της ίδιας οθόνης.
 
-export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; propertyCount:number }) {
-  const annualRent=Math.max(0,(tenant.monthly_rent||0)*12);
+export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant; propertyCount:number;
+  /**
+   * Ο φόρος του ακινήτου από την `propertyRentTax` (lib/facts/rentTax.ts), ο
+   * ΙΔΙΟΣ με την Επισκόπηση και τη Σύγκριση. `null` όσο φορτώνει.
+   *
+   * ΤΡΙΤΗ ΒΑΣΗ ΩΣ ΤΙΣ 19/10/2026. Εδώ ο φόρος έβγαινε από το μίσθωμα × 12 του
+   * ενοικιαστή, μόνο του: χωρίς τα άλλα ακίνητα στην κλίμακα και χωρίς ποσοστό
+   * ιδιοκτησίας, οπότε το ίδιο ακίνητο είχε τρεις φόρους σε τρεις οθόνες.
+   */
+  rentTax:PropertyRentTax|null }) {
+  const taxLoading=!rentTax;
+  const annualRent=rentTax?.income.annual??0;
   // ΤΕΚΜΑΡΤΗ ΕΚΠΤΩΣΗ 5%: ίδιος συντελεστής και ίδιος ΟΡΟΣ με το
   // lib/accounting/statement.ts. Από 1.7.2027 (ν.5222/2025) η έκπτωση θα προϋποθέτει
   // είσπραξη μέσω τράπεζας· με μετρητά ο φόρος στο 100% των ακαθάριστων. Ο φόρος
@@ -385,38 +396,42 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
   const deductionRate=presumptiveDeductionRateForYear(taxYear,viaBank);
   const taxable=annualRent*(1-deductionRate);
   const ratePct=fp(deductionRate*100);
-  const tax=taxable>0?rentalIncomeTax(taxable,rentalBracketsForYear(taxYear)):0;
+  const tax=rentTax?.tax??0;
+  // Η ΚΛΙΜΑΚΑ ΕΦΑΡΜΟΖΕΤΑΙ ΣΤΟ ΣΥΝΟΛΟ ΤΟΥ ΦΟΡΟΛΟΓΟΥΜΕΝΟΥ: το κλιμάκιο «εδώ» του
+  // πίνακα είναι του συνολικού φορολογητέου, όχι αυτού του ακινήτου μόνου.
+  const consolidated=rentTax?.consolidated;
+  const bracketTaxable=consolidated?.totalTaxable??taxable;
+  const manyIncomes=(consolidated?.count??0)>=2;
   const effRate=annualRent>0?tax/annualRent:0;
   const isCommercial=tenant.lease_category==='commercial';
   const stampDuty=isCommercial?annualRent*COMMERCIAL_STAMP_DUTY:0;   // 3,6% επί του μισθώματος
   const net=annualRent-tax-stampDuty;
   // Η κλίμακα είναι προοδευτική στο ΣΥΝΟΛΟ των ενοικίων του φορολογούμενου, όχι
-  // ανά ακίνητο. Με δύο ή περισσότερα ακίνητα, το νούμερο εδώ είναι υποεκτίμηση
-  // και το λέει ρητά — δεν σιωπά και δεν μαντεύει το σύνολο που δεν ξέρει.
-  const perPropertyCaveat=propertyCount>=2;
-
+  // ανά ακίνητο. Ο φόρος εδώ είναι πλέον το μερίδιο αυτού του ακινήτου από τον
+  // ΕΝΑ φόρο (ίδιος με την Επισκόπηση), οπότε η παλιά επιφύλαξη «υποεκτίμηση»
+  // δεν ισχύει· μένει η εξήγηση της ενοποίησης όταν υπάρχουν δύο ή περισσότερα.
   const kpis:KPIItem[]=[
-    { label:'Ετήσιο Ακαθάριστο Ενοίκιο', value:fe(annualRent), tone:'accent' },
-    { label:'Φόρος για αυτό το ακίνητο', value:fe(tax), tone:'warning', sub:annualRent>0?`πραγματικός συντελεστής ${fp((effRate*100))} επί των ακαθάριστων`:undefined },
+    { label:'Ετήσιο Ακαθάριστο Ενοίκιο', value:taxLoading?ABSENT:fe(annualRent), tone:'accent', sub:rentTax?.income.estimated?'εκτίμηση':undefined },
+    { label:'Φόρος για αυτό το ακίνητο', value:taxLoading?ABSENT:fe(tax), tone:'warning', sub:!taxLoading&&annualRent>0?`πραγματικός συντελεστής ${fp((effRate*100))} επί των ακαθάριστων`:undefined },
     ...(isCommercial?[{ label:`Ψηφιακό Τέλος Συναλλαγής (${fpRate(COMMERCIAL_STAMP_DUTY*100)})`, value:fe(stampDuty), tone:'warning' as const }]:[]),
     // ΤΟ ΟΝΟΜΑ ΛΕΕΙ ΤΙ ΑΦΑΙΡΕΘΗΚΕ ΚΑΙ ΤΙΠΟΤΑ ΠΑΡΑΠΑΝΩ. Σε μίσθωση κατοικίας
     // δεν υπάρχει κανένα τέλος: το «και Τέλη» ήταν λέξη για ποσό που δεν
     // αφαιρέθηκε ποτέ. Και στην επαγγελματική, το τέλος αφαιρείται ΟΛΟΚΛΗΡΟ,
     // που είναι η δυσμενέστερη εκδοχή για τον ιδιοκτήτη· ποιον βαρύνει τελικά
     // το ορίζει το μισθωτήριο, οπότε η παραδοχή γράφεται αντί να υπονοείται.
-    { label:isCommercial?'Καθαρό μετά Φόρο και Τέλος':'Καθαρό μετά τον Φόρο', value:fe(net), tone:'positive' as const,
+    { label:isCommercial?'Καθαρό μετά Φόρο και Τέλος':'Καθαρό μετά τον Φόρο', value:taxLoading?ABSENT:fe(net), tone:'positive' as const,
       sub:isCommercial?'με το τέλος να το βαρύνεσαι εξ ολοκλήρου':undefined },
   ];
 
   return (
     <div>
       <KPIGrid items={kpis}/>
-      <InfoBanner tone={perPropertyCaveat?'warning':'info'}>
-        <strong>Εκτίμηση για αυτό το ακίνητο. Η κλίμακα εφαρμόζεται στο σύνολο των ενοικίων σου.</strong>{' '}
-        {perPropertyCaveat
-          ? `Έχεις ${fn(propertyCount)} ακίνητα: επειδή ο φόρος είναι προοδευτικός στο άθροισμα, το ποσό εδώ είναι μικρότερο από το μερίδιο που θα αναλογεί πραγματικά σε αυτό το ακίνητο. Το συνολικό νούμερο βγαίνει στη «Λογιστική».`
+      <InfoBanner tone="info">
+        <strong>Εκτίμηση για αυτό το ακίνητο, ίδια με την Επισκόπηση. Η κλίμακα εφαρμόζεται στο σύνολο των ενοικίων σου.</strong>{' '}
+        {manyIncomes
+          ? `Έχεις ${fn(consolidated?.count??propertyCount)} ακίνητα με έσοδα: ο φόρος βγαίνει μία φορά στο σύνολό τους και εδώ φαίνεται το μερίδιο αυτού του ακινήτου.`
           : 'Αν αποκτήσεις δεύτερο ακίνητο που αποδίδει, το άθροισμα μπορεί να ανεβάσει κλιμάκιο και ο φόρος να μην είναι το άθροισμα των δύο εκτιμήσεων.'}{' '}
-        Ενοίκιο {fe(tenant.monthly_rent||0)}/μήνα, τύπος μίσθωσης «{tenant.lease_category?LEASE_CATEGORY_LABELS[tenant.lease_category]:ABSENT}»
+        Ενοίκιο ενοικιαστή {fe(tenant.monthly_rent||0)}/μήνα, τύπος μίσθωσης «{tenant.lease_category?LEASE_CATEGORY_LABELS[tenant.lease_category]:ABSENT}»
         {viaBank
           ? `, με τεκμαρτή έκπτωση ${ratePct} (φορολογητέο ${fe(taxable)})${cashMatters?' επειδή το ενοίκιο εισπράττεται μέσω τράπεζας':''}.`
           : !cashMatters
@@ -457,7 +472,7 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
               <thead><tr>{['Κλιμάκιο Εισοδήματος','Συντελεστής'].map((h,i)=><th key={i} scope="col" style={{ textAlign:i?'right' as const:'left' as const }}>{h}</th>)}</tr></thead>
               <tbody>
                 {rentalRowsForYear(taxYear).map((r,i)=>{
-                  const active=taxable>r.from&&(r.to===Infinity||taxable<=r.to);
+                  const active=bracketTaxable>r.from&&(r.to===Infinity||bracketTaxable<=r.to);
                   return (
                     <tr key={i} className={active?'is-on':undefined}>
                       <td><span style={{ display:'inline-flex', alignItems:'center', gap:8 }}>{r.range}{active&&<Badge tone="accent">εδώ</Badge>}</span></td>
@@ -473,7 +488,7 @@ export function LegalTaxView({ tenant, propertyCount }:{ tenant:Tenant; property
               δεξιά άκρη ριγμένη κάτω από έναν πίνακα που κλείνει ίσια. Παίρνει
               πλήρη στοίχιση ΜΑΖΙ με συλλαβισμό: σκέτη η στοίχιση θα τέντωνε τα
               κενά, αφού τα τρία ποσά της πρότασης δεν σπάνε πουθενά. */}
-          <div className="po-just" style={{ marginTop:12, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>{hy(<>Ο φόρος υπολογίζεται προοδευτικά ανά κλιμάκιο επί του φορολογητέου ({fe(taxable)} = ακαθάριστα {fe(annualRent)}{deductionRate>0?` μείον τεκμαρτή έκπτωση ${ratePct}`:''}), σύνολο {fe(tax)} για αυτό το ακίνητο. Επιβεβαίωσε την τελική δήλωση με λογιστή ή την ΑΑΔΕ.</>)}</div>
+          <div className="po-just" style={{ marginTop:12, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>{hy(<>Ο φόρος υπολογίζεται προοδευτικά ανά κλιμάκιο επί του φορολογητέου ({fe(taxable)} = ακαθάριστα {fe(annualRent)}{deductionRate>0?` μείον τεκμαρτή έκπτωση ${ratePct}`:''}{manyIncomes?`· όλα τα ακίνητα μαζί ${fe(bracketTaxable)}`:''}), σύνολο {fe(tax)} για αυτό το ακίνητο. Επιβεβαίωσε την τελική δήλωση με λογιστή ή την ΑΑΔΕ.</>)}</div>
         </div>
 
         {/* Νομικές υποχρεώσεις */}

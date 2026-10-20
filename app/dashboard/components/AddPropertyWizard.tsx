@@ -21,6 +21,8 @@ import { fieldPlacement, PROPERTY_FIELDS, OBJ_VALUE_WHOLE, type FieldContext, ty
 import { failed } from '@/lib/core/dbError';
 import { PEA_CLASSES } from '@/lib/property/pea';
 import type { EnfiaWizardInitial } from '@/lib/tools/enfiaCarry';
+import { draftKey, readDraft, writeDraft, clearDraft, sameDraft, restoreDraft } from '@/lib/ui/dismiss';
+import { confirmDiscard } from '@/components/ConfirmDialog';
 
 // Η ενεργειακή κλάση (ΠΕΑ) ζει στο lib/property/pea.ts: τη γράφει και η σάρωση
 // του πιστοποιητικού, με το ίδιο λεξιλόγιο.
@@ -90,6 +92,20 @@ const INIT_SETTINGS: PropertySettings = {
   property_manager: '', property_manager_phone: '',
   insurance_company: '', insurance_policy: '', insurance_expiry: '', notes: '',
 };
+
+/**
+ * Ό,τι γράφει ο χρήστης στον οδηγό, σε ένα αντικείμενο: για το «υπάρχουν
+ * αλλαγές;» και για το πρόχειρο (lib/ui/dismiss.ts). Το βήμα δεν είναι αλλαγή.
+ */
+interface WizardForm {
+  propType: string; statusKey: PropertyStatus | null; ama: string;
+  name: string; address: string; postalCode: string; atak: string; sqm: string; floor: string; yearBuilt: string;
+  value: string; objValue: string; enfia: string; purchasePrice: string; purchaseDate: string;
+  rent: string; ownership: string; coOwners: string[];
+  peaClass: string; heating: string; parking: string; storageSqm: string; powerSupply: string; bedrooms: string;
+  settings: PropertySettings;
+}
+const WIZARD_DRAFT = 'property_wizard';
 
 // ── Εικονίδια ανά τύπο ακινήτου (inline SVG, currentColor) ──────────────────
 function TypeIcon({ type }: { type: string }) {
@@ -329,7 +345,64 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   const isEdit = !!existing?.id;
   const seed = existing ? undefined : initial;
   const focusAfm = isEdit && focus === 'owner_afm';
-  const [step, setStep] = useState(focusAfm ? STEPS.indexOf('Επαφές') : 0); // 0..3
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ΤΟ ΠΑΡΑΘΥΡΟ ΔΕΝ ΧΑΝΕΙ Ο,ΤΙ ΓΡΑΦΤΗΚΕ (έλεγχος 19/10/2026)
+  //
+  // Ένα σύρσιμο επιλογής κειμένου έξω από το πλαίσιο ή ένα αθέλητο Escape
+  // έσβηνε πέντε βήματα. Τώρα:
+  //   • `pristine` είναι η φόρμα όπως άνοιξε. Όσο η τρέχουσα διαφέρει, κάθε
+  //     δρόμος κλεισίματος (φόντο, Escape, «×», «Ακύρωση») ρωτά πρώτα.
+  //   • Σε νέο ακίνητο η φόρμα γράφεται ως πρόχειρο στο sessionStorage και
+  //     ξαναγεμίζει στο επόμενο άνοιγμα στην ίδια καρτέλα. Σβήνει με την
+  //     αποθήκευση, με το «Κλείσιμο χωρίς αποθήκευση» και με την αποσύνδεση.
+  //   • Η προσυμπλήρωση από το προφίλ και η φόρτωση των ρυθμίσεων ενημερώνουν
+  //     ΚΑΙ το `pristine`: δεν είναι αλλαγές του χρήστη.
+  // ══════════════════════════════════════════════════════════════════════════
+  const formKey = draftKey(WIZARD_DRAFT, userId);
+  const [pristine, setPristine] = useState<WizardForm>(() => {
+    const known = readCoOwners(existing?.co_owners);
+    return {
+      propType: existing?.prop_type || 'apartment',
+      // ΜΙΑ κατάσταση, στο λεξιλόγιο της εφαρμογής (βλ. `statusKey` πιο κάτω).
+      statusKey: existing ? readStatus(existing) : null,
+      ama: cleanAma(existing?.ama || ''),
+      name: existing?.name || '', address: existing?.address || '', postalCode: existing?.postal_code || '',
+      atak: existing?.atak || '', sqm: s(existing?.sqm) || seed?.sqm || '',
+      floor: s(existing?.floor) || (seed?.floor && FLOOR_OPTS.includes(seed.floor) ? seed.floor : ''),
+      yearBuilt: s(existing?.year_built),
+      value: s(existing?.value), objValue: s(existing?.obj_value), enfia: s(existing?.enfia),
+      purchasePrice: s(existing?.purchase_price), purchaseDate: existing?.purchase_date || '',
+      // Στη βραχυχρόνια το πεδίο ζητά τιμή ΑΝΑ ΔΙΑΝΥΚΤΕΡΕΥΣΗ, ενώ η βάση κρατά
+      // μηνιαίο. Το πεδίο φόρτωνε ωμό το `target_rent`: άνοιγες ένα Airbnb ακίνητο
+      // για να αλλάξεις τη διεύθυνση και έβρισκες 3.000 στην «τιμή ανά
+      // διανυκτέρευση», με την προεπισκόπηση να λέει 657.000€ ετήσια έσοδα. Κάθε
+      // αποθήκευση πολλαπλασίαζε ξανά το νούμερο.
+      rent: s(existing?.target_rent),
+      ownership: s(existing?.ownership) || seed?.ownership || '100',
+      coOwners: known.length ? known.map(c => c.name) : [''],
+      peaClass: existing?.pea_class || '', heating: normalizeHeating(existing?.heating),
+      parking: s(existing?.parking_spaces), storageSqm: s(existing?.storage_sqm) || seed?.storageSqm || '',
+      powerSupply: existing?.power_supply_no || '', bedrooms: s(existing?.bedrooms),
+      settings: INIT_SETTINGS,
+    };
+  });
+  // Το πρόχειρο διαβάζεται ΜΙΑ φορά, μόνο για νέο ακίνητο και μόνο ό,τι έχει
+  // τον σωστό τύπο (`restoreDraft`). Κατάσταση εκτός λίστας δεν περνά.
+  const [draft] = useState<{ form: WizardForm; step: number } | null>(() => {
+    if (isEdit) return null;
+    const d = readDraft<Partial<WizardForm> & { step?: unknown }>(formKey);
+    if (!d) return null;
+    const form = restoreDraft(pristine as unknown as Record<string, unknown>, d) as unknown as WizardForm;
+    if (form.statusKey !== null && !STATUSES.some(x => x.key === form.statusKey)) form.statusKey = null;
+    if (!form.coOwners.length) form.coOwners = [''];
+    if (sameDraft(form, pristine)) return null;
+    const step = typeof d.step === 'number' && Number.isInteger(d.step) && d.step >= 0 && d.step < STEPS.length ? d.step : 0;
+    return { form, step };
+  });
+  const start = draft?.form ?? pristine;
+
+  const [step, setStep] = useState(focusAfm ? STEPS.indexOf('Επαφές') : draft?.step ?? 0); // 0..3
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   // Αλλαγή βήματος = νέα προσπάθεια· το παλιό σφάλμα δεν αφορά πια την οθόνη.
@@ -338,14 +411,14 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // αποθήκευσης (βλ. save()) — κρατά το «δοκίμασε ξανά» πάνω στο ίδιο ακίνητο.
   const [createdId, setCreatedId] = useState<string | null>(null);
 
-  const [propType, setPropType] = useState(existing?.prop_type || 'apartment');
+  const [propType, setPropType] = useState(start.propType);
   // ΜΙΑ κατάσταση, στο λεξιλόγιο της εφαρμογής. Η μετάφραση προς τις δύο
   // στήλες της βάσης γίνεται από το `writeStatus`, που τις γράφει ΜΑΖΙ.
   //
   // ΚΑΜΙΑ ΠΡΟΕΠΙΛΟΓΗ ΣΕ ΝΕΟ ΑΚΙΝΗΤΟ. Ηταν «Κενό» φωτισμένο από την αρχή, οπότε
   // ένα γρήγορο «Συνέχεια» έγραφε λάθος κατάσταση. Η κατάσταση κρίνει καρτέλες
   // και φορολογία. Το πρώτο βήμα δεν προχωρά χωρίς επιλογή (`canNext`).
-  const [statusKey, setStatusKey] = useState<PropertyStatus | null>(existing ? readStatus(existing) : null);
+  const [statusKey, setStatusKey] = useState<PropertyStatus | null>(start.statusKey);
   // Από το δεύτερο βήμα και μετά η επιλογή υπάρχει πάντα· το «vacant» εδώ μόνο
   // ικανοποιεί τον τύπο και δεν φτάνει ποτέ στη βάση.
   const status: PropertyStatus = statusKey ?? 'vacant';
@@ -354,38 +427,29 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // ΑΜΑ: πεδίο ΤΟΥ ΑΚΙΝΗΤΟΥ, ζητούμενο τη στιγμή που η κατάσταση γίνεται
   // βραχυχρόνια — όχι κρυμμένο σε accordion άλλης καρτέλας πίσω από τρίτο
   // διακόπτη (βλ. AMA_DEACTIVATIONS).
-  const [ama, setAma] = useState(cleanAma(existing?.ama || ''));
+  const [ama, setAma] = useState(start.ama);
 
-  const [name, setName] = useState(existing?.name || '');
-  const [address, setAddress] = useState(existing?.address || '');
-  const [postalCode, setPostalCode] = useState(existing?.postal_code || '');
-  const [atak, setAtak] = useState(existing?.atak || '');
-  const [sqm, setSqm] = useState(s(existing?.sqm) || seed?.sqm || '');
-  const [floor, setFloor] = useState(s(existing?.floor) || (seed?.floor && FLOOR_OPTS.includes(seed.floor) ? seed.floor : ''));
-  const [yearBuilt, setYearBuilt] = useState(s(existing?.year_built));
+  const [name, setName] = useState(start.name);
+  const [address, setAddress] = useState(start.address);
+  const [postalCode, setPostalCode] = useState(start.postalCode);
+  const [atak, setAtak] = useState(start.atak);
+  const [sqm, setSqm] = useState(start.sqm);
+  const [floor, setFloor] = useState(start.floor);
+  const [yearBuilt, setYearBuilt] = useState(start.yearBuilt);
 
-  const [value, setValue] = useState(s(existing?.value));
-  const [objValue, setObjValue] = useState(s(existing?.obj_value));
-  const [enfia, setEnfia] = useState(s(existing?.enfia));
-  const [purchasePrice, setPurchasePrice] = useState(s(existing?.purchase_price));
-  const [purchaseDate, setPurchaseDate] = useState(existing?.purchase_date || '');
-  // Στη βραχυχρόνια το πεδίο ζητά τιμή ΑΝΑ ΔΙΑΝΥΚΤΕΡΕΥΣΗ, ενώ η βάση κρατά
-  // μηνιαίο. Το πεδίο φόρτωνε ωμό το `target_rent`: άνοιγες ένα Airbnb ακίνητο
-  // για να αλλάξεις τη διεύθυνση και έβρισκες 3.000 στην «τιμή ανά
-  // διανυκτέρευση», με την προεπισκόπηση να λέει 657.000€ ετήσια έσοδα. Κάθε
-  // αποθήκευση πολλαπλασίαζε ξανά το νούμερο.
-  const [rent, setRent] = useState(() =>
-    s(existing?.target_rent)
-  );
-  const [ownership, setOwnership] = useState(s(existing?.ownership) || seed?.ownership || '100');
+  const [value, setValue] = useState(start.value);
+  const [objValue, setObjValue] = useState(start.objValue);
+  const [enfia, setEnfia] = useState(start.enfia);
+  const [purchasePrice, setPurchasePrice] = useState(start.purchasePrice);
+  const [purchaseDate, setPurchaseDate] = useState(start.purchaseDate);
+  const [rent, setRent] = useState(start.rent);
+  const [ownership, setOwnership] = useState(start.ownership);
   // Συνιδιοκτήτες: όταν το ποσοστό < 100%, ζητάμε πλήθος (1–99) και ονόματα.
   // Η στήλη κρατά αντικείμενα {name, afm, pct, address}· ο οδηγός αλλάζει μόνο
   // ονόματα και τα υπόλοιπα (από την Κατανομή σε συνιδιοκτήτες) ξαναδένονται
   // στην αποθήκευση με το `mergeCoOwnerNames`.
   const knownCoOwners = readCoOwners(existing?.co_owners);
-  const [coOwners, setCoOwners] = useState<string[]>(
-    knownCoOwners.length ? knownCoOwners.map(c => c.name) : ['']
-  );
+  const [coOwners, setCoOwners] = useState<string[]>(start.coOwners);
   const setCoOwnerCount = (n: number) => {
     const c = Math.max(1, Math.min(99, Math.floor(n) || 1));
     setCoOwners(prev => {
@@ -395,12 +459,12 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     });
   };
   const setCoOwnerAt = (i: number, val: string) => setCoOwners(prev => prev.map((v, idx) => idx === i ? val : v));
-  const [peaClass, setPeaClass] = useState(existing?.pea_class || '');
-  const [heating, setHeating] = useState(normalizeHeating(existing?.heating));
-  const [parking, setParking] = useState(s(existing?.parking_spaces));
-  const [storageSqm, setStorageSqm] = useState(s(existing?.storage_sqm) || seed?.storageSqm || '');
+  const [peaClass, setPeaClass] = useState(start.peaClass);
+  const [heating, setHeating] = useState(start.heating);
+  const [parking, setParking] = useState(start.parking);
+  const [storageSqm, setStorageSqm] = useState(start.storageSqm);
   // Ε2 στήλη 18: ο αριθμός παροχής ρεύματος, όπως τον γράφει ο χρήστης.
-  const [powerSupply, setPowerSupply] = useState(existing?.power_supply_no || '');
+  const [powerSupply, setPowerSupply] = useState(start.powerSupply);
   const powerCheck = cleanDigits(powerSupply);
   // Πρόταση από σαρωμένο λογαριασμό ρεύματος. Δεν γράφεται μόνη της: ο
   // χρήστης την επιβεβαιώνει με ένα πάτημα, γιατί η σάρωση μπορεί να διάβασε
@@ -419,10 +483,10 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?.id]);
-  const [bedrooms, setBedrooms] = useState(s(existing?.bedrooms));
+  const [bedrooms, setBedrooms] = useState(start.bedrooms);
 
   // property_settings (μόνο για υπάρχον ακίνητο υπάρχει ήδη γραμμή· για νέο τη δημιουργούμε στο save)
-  const [settings, setSettings] = useState<PropertySettings>(INIT_SETTINGS);
+  const [settings, setSettings] = useState<PropertySettings>(start.settings);
   const setSf = (k: keyof PropertySettings) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setSettings(p => ({ ...p, [k]: e.target.value }));
 
@@ -430,7 +494,12 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     if (!existing?.id) return;
     let active = true;
     supabase.from('property_settings').select('*').eq('property_id', existing.id).maybeSingle()
-      .then(({ data }) => { if (active && data) setSettings({ ...INIT_SETTINGS, ...(data as Partial<PropertySettings>) }); });
+      .then(({ data }) => {
+        if (!active || !data) return;
+        const loaded = { ...INIT_SETTINGS, ...(data as Partial<PropertySettings>) };
+        setSettings(loaded);
+        setPristine(p => ({ ...p, settings: loaded }));
+      });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?.id]);
@@ -468,6 +537,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
         owner_email: firstFilled(auth?.user?.email),
       };
       setSettings(cur => ({ ...cur, ...fillOnlyEmpty(proposed, { ...cur }) }));
+      setPristine(p => ({ ...p, settings: { ...p.settings, ...fillOnlyEmpty(proposed, { ...p.settings }) } }));
     })();
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -606,8 +676,25 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     }
 
     setSaving(false);
+    clearDraft(formKey);
     onSaved(propertyId);
   };
+
+  // ── Η ΦΟΡΜΑ ΤΩΡΑ, ΤΑ «ΑΛΛΑΓΕΣ;» ΚΑΙ ΤΟ ΠΡΟΧΕΙΡΟ ─────────────────────────────
+  const form: WizardForm = {
+    propType, statusKey, ama, name, address, postalCode, atak, sqm, floor, yearBuilt,
+    value, objValue, enfia, purchasePrice, purchaseDate, rent, ownership, coOwners,
+    peaClass, heating, parking, storageSqm, powerSupply, bedrooms, settings,
+  };
+  const dirty = !sameDraft(form, pristine);
+  const formJson = JSON.stringify(form);
+  // Μόνο νέο ακίνητο που δεν έχει γραφτεί ακόμη: μετά το πρώτο insert
+  // (`createdId`) ένα πρόχειρο θα ξανάφτιαχνε το ίδιο ακίνητο από την αρχή.
+  useEffect(() => {
+    if (isEdit || saving) return;
+    if (createdId || !dirty) { clearDraft(formKey); return; }
+    writeDraft(formKey, { ...JSON.parse(formJson), step });
+  }, [isEdit, saving, createdId, dirty, formKey, formJson, step]);
 
   // ══════════════════════════════════════════════════════════════════════════
   // ΤΟ ΣΥΜΦΡΑΖΟΜΕΝΟ ΠΟΥ ΚΡΙΝΕΙ ΤΙ ΦΑΙΝΕΤΑΙ
@@ -648,8 +735,13 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // ΤΟ ΒΗΜΑ ΟΠΟΥ ΕΚΛΕΙΣΕ. Νέο ακίνητο που δεν αποθηκεύτηκε ποτέ: το σκαλί
   // `wizard_closed` λέει σε ποιο από τα πέντε βήματα σταμάτησε. Η επεξεργασία
   // υπάρχοντος, ή ο οδηγός που έχει ήδη γράψει το ακίνητο, δεν μετρά.
-  const requestClose = () => {
+  //
+  // ΚΑΙ ΔΕΝ ΚΛΕΙΝΕΙ ΧΩΡΙΣ ΕΡΩΤΗΣΗ ΟΣΟ ΥΠΑΡΧΟΥΝ ΑΛΛΑΓΕΣ. Ένας δρόμος για όλα: το
+  // φόντο, το Escape, το «×» και το «Ακύρωση» περνούν από εδώ.
+  const requestClose = async () => {
     if (saving) return;
+    if (dirty && !(await confirmDiscard())) return;
+    clearDraft(formKey);
     if (!isEdit && !createdId) void trackOnboarding(supabase, { event: PRODUCT_EVENTS.wizard_closed, step: step + 1 });
     onClose();
   };
@@ -725,6 +817,13 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
           έβγαινε 3,6 εικονοστοιχεία δίπλα σε τρεις των 8,5 και στα 300 μηδένιζε.
           Το πλέγμα δίνει στις τέσσερις γραμμές ίδιο κλάσμα: μετρημένες 7,3 στα
           320 και 17,3 στα 360, ίσες μεταξύ τους σε κάθε πλάτος. */}
+      {/* ΤΟ ΠΡΟΧΕΙΡΟ ΛΕΓΕΤΑΙ. Χωρίς αυτή τη γραμμή, ένα οδηγός που ανοίγει
+          γεμάτος μοιάζει με λάθος: «ποιος τα έγραψε αυτά;». */}
+      {draft && (
+        <p role="status" style={{ ...TT.bodySm, margin: 0 }}>
+          Συνεχίζεις από εκεί που σταμάτησες. Το πρόχειρο μένει μόνο σε αυτή την καρτέλα.
+        </p>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, auto minmax(4px, 1fr)) auto', alignItems: 'start' }}>
         {STEPS.map((label, i) => {
           const done = i < step, active = i === step;

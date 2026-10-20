@@ -224,16 +224,54 @@ export function mortgageMarket(p: Provenance | null | undefined, today: string):
 /** Η τιμή μόνο όσο είναι φρέσκια: παλιά τιμή γράφεται για αναφορά, δεν προτείνεται. */
 export const freshFact = (f: MarketFact | null): MarketFact | null => (f && !f.stale ? f : null)
 
+/** Η αφετηρία της φόρμας: τα τρία πεδία επιτοκίου και ο τύπος που ανοίγει. */
+export interface StartRates {
+  fixed: string
+  euribor: string
+  /** Το περιθώριο που προκύπτει από την αγορά: βλ. `startRates`. Κενό όταν λείπει κάτι. */
+  spread: string
+  /** Ο τύπος με τον οποίο ανοίγει η φόρμα όταν η διεύθυνση δεν λέει άλλον. */
+  kind: RateKind
+}
+
 /**
  * Από πού ξεκινούν τα πεδία επιτοκίου του υπολογιστή.
  *
  * Το «Σταθερό επιτόκιο» ξεκινά ΜΟΝΟ από τη σειρά του σταθερού πάνω από 1 έτος.
- * Χωρίς αυτήν (ή με παλιά τιμή) μένει κενό και η σελίδα ζητά το επιτόκιο της
- * προσφοράς. Ποτέ από τον μέσο όρο ή από το κυμαινόμενο: αυτό ήταν το P0.
+ * Χωρίς αυτήν (ή με παλιά τιμή) μένει κενό. Ποτέ από τον μέσο όρο ή από το
+ * κυμαινόμενο: αυτό ήταν το P0.
+ *
+ * ΧΩΡΙΣ ΣΤΑΘΕΡΟ, Η ΦΟΡΜΑ ΑΝΟΙΓΕΙ ΣΤΟ ΚΥΜΑΙΝΟΜΕΝΟ (19/10/2026). Η σειρά A2C.K δεν
+ * ήρθε ποτέ από την ΕΚΤ, η φόρμα άνοιγε στο «Σταθερό» με κενό πεδίο και η
+ * αναζήτηση «δόση στεγαστικού» προσγειωνόταν σε κάρτα χωρίς δόση. Το περιθώριο
+ * ξεκινά από τη διαφορά των δύο σειρών της αγοράς: κυμαινόμενο νέων στεγαστικών
+ * (A2C.F) μείον Euribor τριμήνου, όπως φαίνονται στα πεδία. Έτσι Euribor συν
+ * περιθώριο δίνουν ακριβώς το μέσο κυμαινόμενο της ΕΚΤ, χωρίς κανέναν αριθμό
+ * γραμμένο εδώ. Η βοήθεια του πεδίου λέει από πού βγήκε και ζητά της προσφοράς.
  */
-export function startRates(m: MortgageMarket): { fixed: string; euribor: string } {
+export function startRates(m: MortgageMarket): StartRates {
   const field = (f: MarketFact | null): string => { const x = freshFact(f); return x ? rateField(x.value) : '' }
-  return { fixed: field(m.fixed), euribor: field(m.euribor) }
+  const fixed = field(m.fixed)
+  const euribor = field(m.euribor)
+  const floating = field(m.floating)
+  const e = parseRate(euribor)
+  const f = parseRate(floating)
+  // Από τα στρογγυλεμένα πεδία, ώστε το άθροισμα στην οθόνη να είναι η τιμή της ΕΚΤ.
+  const gap = e !== null && f !== null ? Math.round((f - e) * 100) / 100 : null
+  const spread = gap !== null && gap > 0 ? rateField(gap) : ''
+  const kind: RateKind = !fixed && euribor && spread ? 'floating' : 'fixed'
+  return { fixed, euribor, spread, kind }
+}
+
+/**
+ * Η βοήθεια κάτω από το «Περιθώριο τράπεζας» όσο το πεδίο κρατά την αφετηρία
+ * της αγοράς. Η ετικέτα της σειράς γράφεται όπως είναι: η F είναι «κυμαινόμενο
+ * ή σταθερό έως 1 έτος», όχι σκέτο «κυμαινόμενο».
+ */
+export function spreadHint(m: MortgageMarket): string | null {
+  const f = freshFact(m.floating)
+  if (!f || !startRates(m).spread) return null
+  return `Νέα στεγαστικά, ${lowerFirst(f.label)} ${fp(f.value)} (${f.month}, ${f.source}), μείον το Euribor. Γράψε της προσφοράς σου.`
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

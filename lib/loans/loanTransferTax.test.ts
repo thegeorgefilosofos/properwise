@@ -7,7 +7,12 @@
 // 618€, φόρο μόνο για τις 20.000€ πάνω από το όριο. Βρέθηκε στην αξιολόγηση
 // της 08/10/2026 (TabLoanCalculator.tsx:238).
 // ═══════════════════════════════════════════════════════════════════════════
-import { loanTransferTax, calcFmaExemption } from '@/app/dashboard/components/TabLoanData';
+import { calcFmaExemption } from '@/app/dashboard/components/TabLoanData';
+import { loanPurchaseCosts } from '@/app/dashboard/components/loan/calc/model';
+// Ο φόρος που δείχνει η καρτέλα Δάνειο, από τον ίδιο δρόμο με την οθόνη (19/10/2026:
+// το `loanPurchaseCosts` πάνω στο `transferCosts`, όχι δική του συνάρτηση).
+const loanTransferTax = (value: number, firstHome: boolean, marital: 'single' | 'married', children: number) =>
+  loanPurchaseCosts({ value, loanAmount: 0, firstHome, married: marital === 'married', children, newBuild: false, agentPct: null }).tax;
 import { transferCosts, firstHomeExemption } from '@/lib/accounting/transfer';
 
 let pass = 0; const fail: string[] = [];

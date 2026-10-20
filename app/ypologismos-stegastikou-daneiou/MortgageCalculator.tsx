@@ -18,6 +18,11 @@
 // από τη σειρά A2C.F, δηλαδή από το κυμαινόμενο ή σταθερό έως 1 έτος. Η
 // αφετηρία ζει πλέον στην `startRates` και ελέγχεται στο stegastiko.test.ts.
 //
+// ΧΩΡΙΣ ΣΤΑΘΕΡΟ, ΑΝΟΙΓΕΙ ΣΤΟ «ΚΥΜΑΙΝΟΜΕΝΟ» ΜΕ ΔΟΣΗ (19/10/2026). Η σειρά K δεν
+// ήρθε ποτέ και η σελίδα άνοιγε χωρίς δόση. Ο τύπος της διεύθυνσης ξεκινά κενός
+// («αυτόματος»): η `startRates` διαλέγει. Παλιός σύνδεσμος με επιτόκιο και
+// χωρίς τύπο ανοίγει στο «Σταθερό», όπως όταν δημιουργήθηκε.
+//
 // ΜΙΑ ΠΗΓΗ ΓΙΑ ΤΗΝ ΑΡΙΘΜΗΤΙΚΗ: lib/tools/stegastiko.ts, που καλεί τις ίδιες
 // συναρτήσεις δανείου με τον πίνακα ελέγχου. Η οθόνη δεν κάνει πράξεις.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -28,7 +33,7 @@ import { fe, fn, fp, fpRate } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { DSTI_LIMIT } from '@/lib/loans/affordability';
 import {
-  parseRate, loanRate, mortgagePlan, borrowingCapacity, rateField, freshFact, startRates, RATE_CAP, YEARS_CAP,
+  parseRate, loanRate, mortgagePlan, borrowingCapacity, rateField, freshFact, startRates, spreadHint, RATE_CAP, YEARS_CAP,
   type MortgageMarket, type RateKind,
 } from '@/lib/tools/stegastiko';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
@@ -42,7 +47,7 @@ import LiveResult from '@/components/LiveResult';
  * κουβαλά πάντα το επιτόκιο με το οποίο βγήκε το αποτέλεσμα, όχι το αυριανό.
  */
 const SPEC = {
-  poso: '150000', eti: '25', typos: 'stathero', epitokio: '', euribor: '', perithorio: '',
+  poso: '150000', eti: '25', typos: '', epitokio: '', euribor: '', perithorio: '',
   eisodima: '2000', doseis: '0', proti: 'nai',
 } as const;
 const PATH = '/ypologismos-stegastikou-daneiou';
@@ -89,11 +94,19 @@ export function MortgageCalculator({ market, today, cta }: {
   const fixed = freshFact(market.fixed);
   const euribor = freshFact(market.euribor);
   const start = startRates(market);
-  const [v, set] = useToolState(SPEC, PATH, x => ({
-    ...x,
-    epitokio: x.epitokio || start.fixed,
-    euribor: x.euribor || start.euribor,
-  }));
+  const [v, set] = useToolState(SPEC, PATH, x => {
+    // Ο,τι διαφέρει από την προεπιλογή ήρθε από τη διεύθυνση: ένας παλιός
+    // σύνδεσμος χωρίς `typos` εννοούσε «Σταθερό», την τότε προεπιλογή.
+    const fromLink = (Object.keys(SPEC) as (keyof typeof SPEC)[]).some(k => x[k] !== SPEC[k]);
+    return {
+      ...x,
+      typos: x.typos || (!fromLink && start.kind === 'floating' ? 'kymainomeno' : 'stathero'),
+      epitokio: x.epitokio || start.fixed,
+      euribor: x.euribor || start.euribor,
+      perithorio: x.perithorio || start.spread,
+    };
+  });
+  const marketSpreadHint = spreadHint(market);
   const ids = {
     poso: useId(), eti: useId(), epitokio: useId(), euribor: useId(), perithorio: useId(),
     eisodima: useId(), doseis: useId(),
@@ -157,7 +170,8 @@ export function MortgageCalculator({ market, today, cta }: {
                   ?? 'Ο δείκτης της σύμβασης, συνήθως τριμήνου.'}/>
               <ToolNumField id={ids.perithorio} label="Περιθώριο τράπεζας" value={v.perithorio}
                 onChange={x => set('perithorio', x)} unit="%"
-                hint="Το περιθώριο που γράφει η προσφορά, πάνω από το Euribor."/>
+                hint={(marketSpreadHint && v.perithorio === start.spread ? marketSpreadHint : null)
+                  ?? 'Το περιθώριο που γράφει η προσφορά, πάνω από το Euribor.'}/>
             </>)}
           </ToolFields>
         </div>

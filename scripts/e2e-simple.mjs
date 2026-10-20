@@ -172,8 +172,14 @@ for (const [k, caps] of Object.entries(CAP)) {
   ok('βραχυχρόνια: η μεικτή απόδοση βγαίνει από τον ίδιο αριθμό',
     txt.includes('8,40%'), '16.800 / 200.000')
   ok('βραχυχρόνια: καμία πληρότητα δεν μαντεύεται', !/πληρότητ/i.test(txt))
+  // ΟΙ ΑΛΛΑΓΕΣ ΔΕΝ ΧΑΝΟΝΤΑΙ ΜΕ ΕΝΑ ESCAPE. Ο οδηγός έχει πια γραμμένα ποσά:
+  // το Escape ρωτά «Να φύγουν οι αλλαγές;» αντί να κλείσει σιωπηλά (Κύμα 1, #5).
   await page.keyboard.press('Escape')
-  await page.waitForTimeout(80)
+  const ask = await page.waitForSelector('text=Να φύγουν οι αλλαγές;', { timeout: 2000 }).catch(() => null)
+  ok('με γραμμένα ποσά, το Escape ρωτά πριν κλείσει', !!ask)
+  if (ask) await page.click('text=Κλείσιμο χωρίς αποθήκευση')
+  await page.waitForSelector('[role="dialog"]', { state: 'detached', timeout: 2000 }).catch(() => {})
+  ok('το «Κλείσιμο χωρίς αποθήκευση» κλείνει τον οδηγό', !(await page.$('[role="dialog"]')))
 }
 
 // ── Η ΕΞΟΔΟΣ ΑΠΟ ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ────────────────────────────────────────

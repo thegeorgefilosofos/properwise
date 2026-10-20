@@ -125,6 +125,7 @@ import {
   RenewalView,
 } from './TabTenantMoney';
 import { DashboardView, CommView, LegalTaxView, DamagesView, MaintenanceView } from './TabTenantCare';
+import { usePropertyRentTax } from './usePropertyRentTax';
 import { useLoad, type LoadTurn } from '@/app/hooks/useLoad';
 import { plural } from '@/lib/core/greek';
 import { ActionMenu } from '@/components/ActionMenu';
@@ -186,8 +187,11 @@ export async function purgeTenant(io: {
 // ─── Main Export ──────────────────────────────────────────────────────────────
 type DossierTab='overview'|'lease'|'condition'|'legal'|'comm'|'docs';
 
-export default function TabTenant({ propertyId, userId, onStartHandover, plan='free' }:TabTenantProps) {
+export default function TabTenant({ propertyId, userId, onStartHandover, plan='free', profileType }:TabTenantProps) {
   const supabase=createClient();
+  // Ο φόρος του ακινήτου για το «Νομικά και Φόρος», με την ίδια βάση και την
+  // ίδια ενοποίηση με την Επισκόπηση (lib/facts/rentTax.ts).
+  const rentTax=usePropertyRentTax(propertyId,userId,profileType);
   const branding=useReportBranding(userId);
   // Ψηφιακό μισθωτήριο: σύνταξη, υπογραφή και των δύο μερών, επαληθεύσιμο PDF.
   const [leaseOpen,setLeaseOpen]=useState(false);
@@ -851,7 +855,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
               <div style={{ borderTop:'1px solid var(--border-subtle)', marginTop:28, paddingTop:28 }}><MaintenanceView tenant={dc} propertyId={propertyId} userId={userId} requests={dcMaint} others={dc?maint.filter(m=>m.tenant_id!==dc.id):maint} onRefresh={refresh}/></div>
             </div>
           )}
-          {dossierTab==='legal'&&<LegalTaxView tenant={dc} propertyCount={propertyCount}/>}
+          {dossierTab==='legal'&&<LegalTaxView tenant={dc} propertyCount={propertyCount} rentTax={rentTax}/>}
           {dossierTab==='comm'&&<CommView tenant={dc} propertyId={propertyId} userId={userId}/>}
           {dossierTab==='docs'&&(
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap:16 }}>

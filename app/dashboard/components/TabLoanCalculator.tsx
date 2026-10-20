@@ -9,7 +9,7 @@ import { useReportBranding } from '@/lib/reportBranding'
 import { notify, notifyError } from '@/components/Toast';
 import {
   LOAN_TYPES,
-  calcMonthly, calcAmortization, calcFmaExemption, loanTransferTax, calcRentalTax, taxableRental,
+  calcMonthly, calcAmortization, calcFmaExemption, calcRentalTax, taxableRental,
   fmtEur, fmtPct, fmtPct1, type ComparisonBank,
   LoanType, RateType, BorrowerType, LoanScenario, MarketRates, SavedLoan, rateTypeLabel
 } from './TabLoanData'
@@ -27,7 +27,7 @@ import { MARKET_DATA_ASOF } from '@/lib/market/greekMarket'
 // φάκελο loan/calc/. Η σύγκριση τραπεζών και η Συμβουλευτική δεν ήταν ποτέ εδώ:
 // ζουν στο TabLoan και στο loan/LoanAdvisor.
 import {
-  PROPERTY_TYPES, calcNotaryFees, BORROWER_OPTIONS, presetsFor, AREA_OPTIONS, areaGrossYield,
+  PROPERTY_TYPES, loanPurchaseCosts, BORROWER_OPTIONS, presetsFor, AREA_OPTIONS, areaGrossYield,
   NATURAL_BORROWERS, BUSINESS_BORROWERS,
 } from './loan/calc/model'
 import { Section } from './loan/calc/Bits'
@@ -210,7 +210,6 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   const CR   = parseFloat(curRate)||0
   const NR   = parseFloat(newRate)||0
   const XC   = parseFloat(xferCost)||0
-  const AGNT = hasAgent?(PV*parseFloat(agentPct||'2')/100):0
 
   const effRate   = rateType==='variable'?market.euribor_3m+R:R
   const monthly   = calcMonthly(LA,effRate,Y)
@@ -220,7 +219,6 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   const sqmPrice  = PV>0&&SQM>0?PV/SQM:0
   const amort     = useMemo(()=>calcAmortization(LA,effRate,Y),[LA,effRate,Y])
 
-  const notaryCosts = useMemo(()=>calcNotaryFees(PV),[PV])
   const fmaEx    = calcFmaExemption(marital,CH)
   const isNewBuilding = propType==='new_residence'
   const isCommercial  = propType==='store'||propType==='warehouse'
@@ -241,17 +239,19 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   // (και το transfer.ts) φορολογεί μόνο τις 20.000€ πάνω από το όριο, 618€. Η
   // σταθερά ήταν κοινή· ο κανόνας όχι. Τώρα κοινός είναι και ο κανόνας.
   const firstHomeTax = loanType==='first_home'&&!isCommercial
-  const fmaOwed  = useMemo(()=>
-    loanTransferTax(PV, firstHomeTax, marital, CH),
-  [firstHomeTax,PV,marital,CH])
+  // ΤΑ ΕΞΟΔΑ ΑΓΟΡΑΣ ΑΠΟ ΤΟ ΙΔΙΟ ΜΟΝΤΕΛΟ ΜΕ ΤΗ ΛΟΓΙΣΤΙΚΗ (19/10/2026): το
+  // `transferCosts`, συν τα έξοδα της υποθήκης επί του δανείου (`loanPurchaseCosts`).
+  const totalCosts = useMemo(()=>loanPurchaseCosts({
+    value:PV, loanAmount:LA, firstHome:firstHomeTax, married:marital==='married', children:CH, newBuild:isNewBuilding,
+    agentPct:hasAgent?(parseFloat(agentPct)||null):null,
+  }),[PV,LA,firstHomeTax,marital,CH,isNewBuilding,hasAgent,agentPct])
+  const notaryCosts = totalCosts
+  const AGNT = totalCosts.agent
+  const fmaOwed  = totalCosts.tax
   const fmaSub = fmaOwed===0 ? 'Πρώτη κατοικία'
     : firstHomeTax ? `${fpRate(TRANSFER_TAX_RATE*100)} πάνω από ${fmtEur(fmaEx)}` : `${fpRate(TRANSFER_TAX_RATE*100)} επί αξίας`
   // Ενημερωτικό, όχι χρέωση: πόσο ΘΑ ηταν ο ΦΠΑ αν έπαυε η αναστολή.
   const vatOwed  = isNewBuilding?PV*NEW_BUILD_VAT_RATE:0
-  const totalCosts = useMemo(()=>{
-    const tax=fmaOwed
-    return{tax,notary:notaryCosts.notary,landReg:notaryCosts.landReg,legal:notaryCosts.legal,agent:AGNT,other:notaryCosts.other,total:tax+notaryCosts.total+AGNT,downpayment:PV-LA,totalCash:(PV-LA)+tax+notaryCosts.total+AGNT}
-  },[fmaOwed,notaryCosts,AGNT,PV,LA])
 
   // ── ΕΝΟΙΚΙΟ-ΑΝΑΦΟΡΑ: ΠΡΑΓΜΑΤΙΚΟ Ή ΤΕΚΜΗΡΙΩΜΕΝΟ ─────────────────────────────
   // Πριν: `renInc = PV*0.04`, «ενοίκιο ~4% της αξίας», που τροφοδοτούσε τον

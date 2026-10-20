@@ -1,13 +1,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // ΤΟ ΜΟΝΤΕΛΟ ΤΟΥ ΥΠΟΛΟΓΙΣΤΗ ΔΑΝΕΙΟΥ: ΕΠΙΛΟΓΕΣ, ΕΤΟΙΜΑ ΣΕΝΑΡΙΑ, ΠΕΡΙΟΧΕΣ,
-// ΣΥΜΒΟΛΑΙΟΓΡΑΦΙΚΑ
+// ΕΞΟΔΑ ΑΓΟΡΑΣ
 // ─────────────────────────────────────────────────────────────────────────
 // Ζούσαν στην κορυφή του TabLoanCalculator.tsx, ανάμεσα στα γραφήματα και στην
 // οθόνη. Καθαρά δεδομένα και καθαρές συναρτήσεις, χωρίς React: τα ελέγχει το
 // loan/calc/model.test.ts χωρίς περιηγητή.
 // ═══════════════════════════════════════════════════════════════════════════
 import { fp, feWhole } from '@/lib/core/format'
-import { firstHomeExemption } from '@/lib/accounting/transfer'
+import { firstHomeExemption, transferCosts, notaryFee, type TransferResult } from '@/lib/accounting/transfer'
+import { mortgageCosts, type MortgageCosts } from '@/lib/loans/mortgageCosts'
 import { LOAN_TYPES, BORROWER_PROFILES, rateRange, type LoanType, type RateType, type BorrowerType } from '../../TabLoanData'
 import { greekWhen, MONTH_MEAN } from '@/lib/market/ecb'
 import { monthGen } from '@/lib/core/months'
@@ -22,35 +23,52 @@ export const PROPERTY_TYPES = [
   {value:'parking',      label:'Θέση στάθμευσης',       desc:'Αυτοτελής ή παράρτημα'},
 ]
 
-export function calcNotaryFees(propValue:number):{notary:number;landReg:number;agent:number;legal:number;other:number;total:number;breakdown:{l:string;v:number}[]} {
-  let notaryFee=0
-  const bands=[{up:120000,rate:0.008},{up:380000,rate:0.007},{up:2000000,rate:0.0065},{up:Infinity,rate:0.006}]
-  let remaining=propValue,prev=0
-  for(const band of bands){
-    const chunk=Math.min(remaining,band.up-prev);if(chunk<=0)break
-    notaryFee+=chunk*band.rate;remaining-=chunk;prev=band.up
+// ═══ ΤΑ ΕΞΟΔΑ ΑΓΟΡΑΣ ΤΟΥ ΔΑΝΕΙΟΥ ΕΙΝΑΙ ΤΑ ΕΞΟΔΑ ΑΓΟΡΑΣ ΤΗΣ ΛΟΓΙΣΤΙΚΗΣ ══════════
+// ΤΟ ΠΕΡΙΣΤΑΤΙΚΟ (έλεγχος 19/10/2026, #7). Εδώ ζούσε η `calcNotaryFees`, δεύτερο
+// μοντέλο εξόδων αγοράς με τιμές γραμμένες με το χέρι: συμβολαιογράφος χωρίς ΦΠΑ,
+// Κτηματολόγιο 4,75‰ αντί για το 5‰ του ΦΕΚ, δικηγόρος με δικό του κατώτατο και
+// ταβάνι, «φόρος ενεγγύησης» επί της αξίας του ακινήτου. Για 200.000€ το Δάνειο
+// έγραφε 1.520€ / 950€ και η Λογιστική 1.984€ / 1.020€.
+//
+// Τώρα: τα έξοδα της αγοράς είναι το `transferCosts` (lib/accounting/transfer.ts),
+// το ίδιο με τη Λογιστική. Τα έξοδα της υποθήκης, που υπάρχουν μόνο με δάνειο,
+// είναι το `mortgageCosts` (lib/loans/mortgageCosts.ts), επί του κεφαλαίου του
+// δανείου και με τη σήμανση «εκτίμηση». Αυτό το αρχείο μόνο τα συνθέτει.
+export interface LoanPurchaseInput {
+  value: number; loanAmount: number
+  firstHome: boolean; married: boolean; children: number; newBuild: boolean
+  /** Ποσοστό μεσίτη· `null` χωρίς μεσίτη. */
+  agentPct: number | null
+}
+export interface LoanPurchaseCosts {
+  tax: number; notary: number; landReg: number; legal: number; agent: number; other: number
+  total: number; downpayment: number; totalCash: number
+  breakdown: { l: string; v: number }[]
+  /** Οι γραμμές της αγοράς, όπως τις δίνει το `transferCosts`. */
+  purchase: TransferResult
+  mortgage: MortgageCosts
+}
+export function loanPurchaseCosts(i: LoanPurchaseInput): LoanPurchaseCosts {
+  const value = Math.max(0, i.value || 0)
+  const loan = Math.max(0, i.loanAmount || 0)
+  const purchase = transferCosts({
+    side: 'buy', price: value, firstHome: i.firstHome, married: i.married, children: i.children, newBuild: i.newBuild,
+    useAgent: i.agentPct != null, agentRatePct: i.agentPct ?? undefined, useLawyer: true,
+  })
+  const line = (k: string) => purchase.lines.find(l => l.key === k)?.amount ?? 0
+  const mortgage = mortgageCosts(loan, notaryFee(value))
+  const total = purchase.totalCosts + mortgage.total
+  return {
+    tax: line('transferTax') + line('vat'), notary: line('notary') + mortgage.deed, landReg: line('cadastre'),
+    legal: line('lawyer'), agent: line('agent'), other: line('certs') + mortgage.registration,
+    total, downpayment: value - loan, totalCash: value - loan + total,
+    // Μένει αυτό που ΜΟΝΟ εδώ φαίνεται: πώς σπάει η αμοιβή του συμβολαιογράφου.
+    breakdown: [
+      { l: 'Συμβολαιογραφικά αγοράς', v: line('notary') },
+      { l: 'Συμβολαιογραφικά υποθήκης (εκτίμηση)', v: mortgage.deed },
+    ],
+    purchase, mortgage,
   }
-  notaryFee=Math.max(notaryFee,200)
-  const mortgageDeed=notaryFee*0.4
-  const landReg=propValue*0.00475
-  const legal=Math.min(Math.max(propValue*0.003,300),1500)
-  const mortgageTax=propValue*0.001
-  const total=notaryFee+mortgageDeed+landReg+legal+mortgageTax
-  // Η ΑΝΑΛΥΣΗ ΛΕΕΙ ΜΟΝΟ Ο,ΤΙ ΔΕΝ ΛΕΝΕ ΗΔΗ ΤΑ ΠΛΑΚΙΔΙΑ. Από τις πέντε γραμμές, οι
-  // τρεις (κτηματολόγιο, δικηγόρος, φόρος ενεγγύησης) ήταν αντιγραφή τριών
-  // πλακιδίων που κάθονται δέκα εικονοστοιχεία πιο πάνω, με το ίδιο νούμερο.
-  //
-  // ΚΑΙ Η ΠΕΜΠΤΗ ΗΤΑΝ ΛΑΘΟΣ. Σε επαγγελματικό ακίνητο έγραφε «Τέλη χαρτοσήμου
-  // μίσθωσης (3,6%)» μέσα στα έξοδα ΑΓΟΡΑΣ: τέλος που αφορά μίσθωση, όχι
-  // απόκτηση, με νούμερο που δεν έμπαινε ποτέ στο σύνολο. Σε κατάστημα 200.000€
-  // εμφάνιζε 7.200€ κόστος που κανείς δεν πληρώνει στη μεταβίβαση.
-  //
-  // Μένει αυτό που ΜΟΝΟ εδώ φαίνεται: πώς σπάει η αμοιβή του συμβολαιογράφου.
-  const breakdown=[
-    {l:'Συμβολαιογραφικά αγοράς', v:notaryFee},
-    {l:'Συμβολαιογραφικά υποθήκης', v:mortgageDeed},
-  ]
-  return{notary:notaryFee+mortgageDeed,landReg,agent:0,legal,other:mortgageTax,total,breakdown}
 }
 
 export const LOAN_TYPE_OPTIONS = Object.entries(LOAN_TYPES).map(([k,v])=>({value:k,label:v.label,description:`${rateRange(v)} · Δάνειο προς αξία έως ${fp(v.typical_ltv)}`}))

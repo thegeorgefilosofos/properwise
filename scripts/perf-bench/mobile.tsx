@@ -95,6 +95,7 @@ import PropertyAssistant from '@/app/dashboard/components/PropertyAssistant';
 import TabPlan from '@/app/dashboard/components/TabPlan';
 import PropertySwitcher from '@/app/dashboard/components/PropertySwitcher';
 import { T, Modal, Btn, PageTitle, InfoBanner, fieldRow } from '@/components/Theme';
+import { ConfirmHost } from '@/components/ConfirmDialog';
 import { createClient } from '@/lib/supabase/client';
 import type { CashLine, CashPosition } from '@/lib/home/cash';
 
@@ -535,7 +536,9 @@ window.__t.start = performance.now();
 const withNoa = params.get('noa') === '1';
 // Ο ΣΤΟΙΧΕΙΟΘΕΤΗΣ ΤΗΣ ΕΦΑΡΜΟΓΗΣ ΜΠΑΙΝΕΙ ΚΑΙ ΕΔΩ, όπως στο app/dashboard/page.tsx:
 // αλλιώς οι σαρωτές θα μετρούσαν κείμενο που ο χρήστης δεν βλέπει ποτέ έτσι.
+// Και ο υποδοχέας επιβεβαίωσης, όπως στο app/layout.tsx: χωρίς αυτόν το «Να
+// φύγουν οι αλλαγές;» του οδηγού (19/10/2026) δεν θα εμφανιζόταν ποτέ εδώ.
 createRoot(host).render(withNoa
-  ? <><Typesetter /><JustifyPolish /><View /><PropertyAssistant propertyId="p1" userId="u1" propContext={{ name: 'Ακίνητο 2' }} onNavigate={() => {}} onScan={() => {}} assistantLocked={params.get('locked') === '1'} /></>
-  : <><Typesetter /><JustifyPolish /><View /></>);
+  ? <><Typesetter /><JustifyPolish /><View /><ConfirmHost /><PropertyAssistant propertyId="p1" userId="u1" propContext={{ name: 'Ακίνητο 2' }} onNavigate={() => {}} onScan={() => {}} assistantLocked={params.get('locked') === '1'} /></>
+  : <><Typesetter /><JustifyPolish /><View /><ConfirmHost /></>);
 requestAnimationFrame(() => { window.__t.firstPaint = performance.now(); });

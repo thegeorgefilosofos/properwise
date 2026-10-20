@@ -10,7 +10,7 @@ import { EXOIKONOMO_2025, ANAVATHMIZO, openEnergyPrograms, joinGreek } from '@/l
 import { athensToday, athensParts } from '@/lib/core/time'
 import { fn, feWhole, fpRate, grDateOf } from '@/lib/core/format'
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/renovation39b'
-import { firstHomeExemption, transferTaxOn } from '@/lib/accounting/transfer'
+import { firstHomeExemption } from '@/lib/accounting/transfer'
 import { ANAK_NAME, ANAK_FUND, ANAK_KYA, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_CAP, ANAK_MAX_SQM, ANAK_MAX_SQM_LARGE_FAMILY, ANAK_PERMIT_BY, ANAK_ENERGY_CLASS, ANAK_YEARS, ANAK_PCT_I, ANAK_ELIGIBILITY_CLOSED_TO, ANAK_ELIGIBILITY_OPEN_TO, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT, ANAK_HREF } from '@/lib/accounting/anakainisi2026'
 
 export type LoanType = 'purchase'|'first_home'|'renovation'|'energy'|'investment'|'auction'|'construction'|'commercial'|'land'|'refinance'
@@ -635,11 +635,6 @@ export function calcAmortization(amount:number,annualRate:number,years:number):A
 
 export function calcFmaExemption(maritalStatus:'single'|'married',children:number):number {
   return firstHomeExemption({ married: maritalStatus==='married', children })
-}
-
-/** Ο φόρος μεταβίβασης της καρτέλας Δάνειο: στην πρώτη κατοικία μόνο το ποσό πάνω από την απαλλαγή. */
-export function loanTransferTax(value:number, firstHome:boolean, maritalStatus:'single'|'married', children:number):number {
-  return transferTaxOn(value, firstHome ? calcFmaExemption(maritalStatus, children) : 0)
 }
 
 // Κοινή πηγή αλήθειας (lib/billing/greekTax), ώστε ο φόρος να μη διαφέρει ανά καρτέλα.

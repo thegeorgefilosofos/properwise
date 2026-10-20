@@ -24,7 +24,7 @@ import { subscribeConfirm, type ConfirmRequest } from './confirmBus';
 import { hy } from './Hyphen';
 
 // Ξανα-εξάγονται εδώ ώστε ένα component να χρειάζεται μία μόνο εισαγωγή.
-export { confirmDialog, CONFIRM_OK, CONFIRM_CANCEL } from './confirmBus';
+export { confirmDialog, confirmDiscard, CONFIRM_OK, CONFIRM_CANCEL } from './confirmBus';
 export type { ConfirmOptions, ConfirmTone } from './confirmBus';
 
 export function ConfirmHost() {

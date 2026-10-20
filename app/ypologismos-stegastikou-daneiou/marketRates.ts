@@ -5,8 +5,12 @@
 // επισκέπτης δεν κατεβάζει τον πελάτη της βάσης για να δει ένα νούμερο και η
 // μηχανή αναζήτησης βρίσκει την τιμή στο HTML. Ο πίνακας `market_rates`
 // διαβάζεται από τον ανώνυμο ρόλο (πολιτική `market_rates_read`) και η απάντηση
-// κρατιέται μία ημέρα (`next.revalidate` του αιτήματος), όχι ανά επίσκεψη. Οι
-// τιμές της ΕΚΤ είναι μηνιαίες, οπότε η ημέρα περισσεύει.
+// κρατιέται μία ώρα (`next.revalidate` του αιτήματος), όχι ανά επίσκεψη.
+//
+// ΜΙΑ ΩΡΑ, ΟΧΙ ΜΙΑ ΗΜΕΡΑ (19/10/2026). Οι τιμές της ΕΚΤ είναι μηνιαίες, αλλά η
+// τροφοδοσία γράφει νέα γραμμή κάθε πρωί. Με μία ημέρα η σελίδα σέρβιρε τη
+// γραμμή της προηγούμενης μέρας, που απορρίφθηκε, ενώ η φρέσκια (3,30%, ΕΚΤ)
+// ήταν ήδη στη βάση. Μία ώρα κοστίζει μία ανάγνωση την ώρα.
 //
 // ΟΤΑΝ Η ΒΑΣΗ ΔΕΝ ΑΠΑΝΤΑ, Η ΣΕΛΙΔΑ ΔΕΝ ΜΑΝΤΕΥΕΙ. Χωρίς ρυθμίσεις (τοπικό build),
 // με σφάλμα δικτύου ή με απάντηση που δεν διαβάζεται, επιστρέφεται κενό και η
@@ -18,8 +22,8 @@ import { mortgageMarket, NO_MARKET, type MortgageMarket } from '@/lib/tools/steg
 import type { Provenance } from '@/lib/market/ecb'
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase/env'
 
-/** Μία μέρα: όσο κρατά και η σελίδα. */
-const DAY = 86400
+/** Μία ώρα: όσο κρατά και η σελίδα (`revalidate` του page.tsx). */
+const HOUR = 3600
 
 /**
  * ΜΙΑ ΑΝΑΓΝΩΣΗ ΑΝΑ ΑΙΤΗΜΑ. Τη ζητούν η περιγραφή (`generateMetadata`) και η
@@ -37,7 +41,7 @@ export const readMortgageMarket = cache(async (today: string): Promise<MortgageM
       `${base.replace(/\/+$/, '')}/rest/v1/market_rates?select=provenance&order=updated_at.desc&limit=1`,
       {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
-        next: { revalidate: DAY },
+        next: { revalidate: HOUR },
         signal: AbortSignal.timeout(5000),
       },
     )

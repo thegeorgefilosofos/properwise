@@ -18,8 +18,8 @@ import * as documentStore from '@/lib/data/documents'
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventory from '@/lib/data/inventory'
 import { readStatus, statusLabel as statusLabelOf, isShortTerm, isLet } from '@/lib/property/status'
-import { taxpayerRentSources, ownershipPctOf, wholePropertyTax } from '@/lib/accounting/taxpayerIncome'
 import { taxpayerScope } from '@/lib/facts/taxpayer'
+import { ownershipPctOf } from '@/lib/accounting/taxpayerIncome'
 import { type StayAmountLike } from '@/lib/clients/stayAmounts'
 import MonthlyFeedbackNudge from './MonthlyFeedbackNudge'
 import type { LegalForm } from '@/lib/accounting/dossier'
@@ -41,7 +41,7 @@ import { computeInsights } from '@/lib/insights/engine'
 import { remainingBalance } from '@/lib/market/returns'
 import { type LoanView, isActiveLoan, loansInstalmentTotal } from '@/lib/loans/shape'
 import {
-  consolidateRentTax, taxShareOf, consolidationSummary, CONSOLIDATION_NOTE, bankReceiptMatters,
+  consolidationSummary, CONSOLIDATION_NOTE, bankReceiptMatters,
 } from '@/lib/billing/consolidate'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive'
 import { FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '@/lib/billing/greekTax'
@@ -67,7 +67,7 @@ import OccupancyPanel from './OccupancyPanel'
 import PolicyNotice from './PolicyNotice'
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time'
 import { type IncomeRent } from '@/lib/income/propertyIncome'
-import { yearExpensesOf, expenseParts, expensePartsShort, EXPENSE_LABELS, INCOME_LABELS, rentIncome, yieldIncome, propertyStatus, hostingReceipts, hostingParts, hostingPartsShort, HOSTING_LABELS, YIELD_LABELS, YIELD_INLINE_LABELS, yieldCosts, yieldPlatformFees, netPreTaxLabel, PLATFORM_FEE_LABELS, enfiaYear, closedTaxRefs } from '@/lib/facts'
+import { yearExpensesOf, expenseParts, expensePartsShort, EXPENSE_LABELS, INCOME_LABELS, rentIncome, yieldIncome, propertyStatus, hostingReceipts, hostingParts, hostingPartsShort, HOSTING_LABELS, YIELD_LABELS, YIELD_INLINE_LABELS, yieldCosts, yieldPlatformFees, netPreTaxLabel, PLATFORM_FEE_LABELS, enfiaYear, closedTaxRefs, propertyRentTax, targetMonthlyOf } from '@/lib/facts'
 import { useEnfiaSettings } from './useEnfia'
 import type { ClientStaysRow } from '@/lib/supabase/tables'
 import { useLoad, type LoadTurn } from '@/app/hooks/useLoad'
@@ -181,7 +181,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // είσπραξη μέσω τράπεζας· με μετρητά ο φόρος στο 100% του ενοικίου. Ο χρήστης
   // το δηλώνει ήδη στην καρτέλα Ενοικιαστή (`tenants.e_payment`)· η κύρωση
   // περνά στον φόρο μόνο για χρήσεις από το 2027 (bankReceiptMatters(year)).
-  const [portfolioRents, setPortfolioRents] = useState<{ property_id:string; monthly:number; viaBank:boolean }[]>([]);
+  const [portfolioRents, setPortfolioRents] = useState<{ property_id:string; lease:number|null; target:number; viaBank:boolean }[]>([]);
   // Οι δόσεις και οι διαμονές ΟΛΩΝ των ακινήτων του έτους και οι καρτέλες
   // «Ιδιοκτήτης»: ο φόρος βγαίνει ανά φορολογούμενο, με τα έσοδα του κοινού
   // υπολογισμού (lib/accounting/taxpayerIncome.ts), όχι με το μηνιαίο × 12.
@@ -320,10 +320,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     setPortfolioRents(properties.map(p => {
       const rc = rcById.get(p.id);
       const fromTenant = tenById.get(p.id);
-      const monthly = fromTenant?.monthly || Number(rc?.actual_rent) || Number(rc?.target_rent) || Number(p.target_rent) || 0;
       // Χωρίς ενοικιαστή δεν υπάρχει δηλωμένος τρόπος είσπραξης: το ενοίκιο
       // είναι στόχος, όχι πραγματική είσπραξη και η προεπιλογή είναι τράπεζα.
-      return { property_id: p.id, monthly, viaBank: fromTenant?.viaBank ?? true };
+      return { property_id: p.id, lease: fromTenant?.monthly || null, target: targetMonthlyOf(rc, p.target_rent), viaBank: fromTenant?.viaBank ?? true };
     }));
     setPortfolioIncome({
       rents: allYearRents.rows, stays: allStays.rows,
@@ -558,29 +557,24 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // μετρούσαν το μηνιαίο του μισθωτηρίου ή του στόχου × 12 και σε λογαριασμό
   // επαγγελματία ανακατεύονταν ιδιοκτήτες. Τώρα: ίδιος φορολογούμενος
   // (client_id), έσοδα από δόσεις και διαμονές, όπως και οι Αποδόσεις.
-  const portfolioTax = consolidateRentTax(
-    taxpayerRentSources({
-      props: properties,
-      current: { id: prop.id, annualRent: incomeMonthly * 12, shortTerm: isShortTerm(prop), rentsPaidViaBank: tenantFull?.e_payment !== false },
-      ownerClientIds: taxpayerScope(profileType, portfolioIncome.owners),
-      income: new Map(properties.map(p => {
-        const row = portfolioRents.find(r => r.property_id === p.id);
-        return [p.id, {
-          rents: portfolioIncome.rents.filter(r => r.property_id === p.id),
-          stays: portfolioIncome.stays.filter(st => st.property_id === p.id),
-          estimateMonthly: row?.monthly ?? 0,
-          viaBank: row?.viaBank ?? true,
-        }];
-      })),
-      year, today: todayAthens,
-    }),
-    undefined, year,
-  );
+  // ΜΙΑ ΒΑΣΗ ΜΕ ΤΗ ΣΥΓΚΡΙΣΗ ΚΑΙ ΤΟ ΕΝΟΙΚΙΑΣΤΗΣ → ΦΟΡΟΣ (19/10/2026): η
+  // `propertyRentTax` (lib/facts/rentTax.ts) φορολογεί το τρέχον ακίνητο ΚΑΙ τα
+  // άλλα με την `annualIncomeForTax`. Το τρέχον με τις δόσεις, τις διαμονές και
+  // τον ενοικιαστή που φόρτωσε αυτή η οθόνη· τα άλλα με τις γραμμές του χαρτοφυλακίου.
+  const taxInputs = new Map(properties.map(p => {
+    const row = portfolioRents.find(r => r.property_id === p.id);
+    return [p.id, p.id === prop.id
+      ? { rents: yearRents, stays: hostStays, leaseMonthly: tenant?.monthly_rent, targetMonthly: row?.target ?? prop.target_rent, viaBank: tenantFull?.e_payment !== false }
+      : { rents: portfolioIncome.rents.filter(r => r.property_id === p.id), stays: portfolioIncome.stays.filter(st => st.property_id === p.id),
+          leaseMonthly: row?.lease, targetMonthly: row?.target, viaBank: row?.viaBank ?? true }];
+  }));
+  const rentTax = propertyRentTax({ props: properties, propertyId: prop.id, ownerClientIds: taxpayerScope(profileType, portfolioIncome.owners), income: taxInputs, year, today: todayAthens });
+  const portfolioTax = rentTax.consolidated;
   // Χωρίς `Math.round`: 1.060,20€ γραφόταν «1.060,00€», λεπτά που δεν υπάρχουν.
   // Η στρογγυλοποίηση ανήκει στην εμφάνιση, που ήδη γράφει δύο δεκαδικά.
   // Ο φόρος βγαίνει στο ποσοστό συνιδιοκτησίας· τα πλακίδια δείχνουν όλο το
   // ακίνητο, οπότε ο αριθμός ανάγεται στο ακίνητο με τον ίδιο συντελεστή.
-  const estTax = wholePropertyTax(taxShareOf(portfolioTax, prop.id), ownershipPctOf(prop));
+  const estTax = rentTax.tax;
   // ΕΝΑ ΝΟΥΜΕΡΟ ΠΡΩΤΟ (02.10.2026). Η Επισκόπηση άνοιγε με ημερομηνία και
   // κουμπί PDF· ο πρώτος αριθμός ήταν κάτω από τη Νόα. Ο ίδιος υπολογισμός με
   // το πλακίδιο «Καθαρό αποτέλεσμα»: σε ακίνητο με έσοδα το καθαρό, αλλιώς οι

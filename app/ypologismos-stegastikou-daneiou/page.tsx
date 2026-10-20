@@ -46,9 +46,10 @@ import { guideAt } from '../odigos/guides';
 import { MortgageCalculator } from './MortgageCalculator';
 import { readMortgageMarket } from './marketRates';
 
-// Μία ημέρα το πολύ: οι τιμές της ΕΚΤ είναι μηνιαίες. Η κατάσταση του «Σπίτι
-// μου ΙΙ» στις Συχνές ερωτήσεις κρίνεται με την ημερομηνία της απόδοσης.
-export const revalidate = 86400;
+// Μία ώρα το πολύ: η τροφοδοσία γράφει κάθε πρωί και η σελίδα δεν σερβίρει τη
+// χθεσινή γραμμή (βλ. marketRates.ts). Η κατάσταση του «Σπίτι μου ΙΙ» στις
+// Συχνές ερωτήσεις κρίνεται με την ημερομηνία της απόδοσης.
+export const revalidate = 3600;
 
 /** Ο οδηγός «τι ίσχυε, τι αλλάζει» για τα προγράμματα «Σπίτι μου», κάτω από την ερώτηση για το ΙΙΙ. */
 const SPITI_GUIDE = guideAt('/odigos/spiti-mou-3-ti-allazei');
