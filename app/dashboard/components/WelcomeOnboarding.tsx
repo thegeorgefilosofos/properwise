@@ -41,6 +41,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { T, TT, fe, Btn, ChipToggle, useOverlayShell } from '@/components/Theme';
 import { athensToday } from '@/lib/core/time';
+import { grDate } from '@/lib/core/format';
 import { saved } from '@/components/dbWrite';
 import * as billing from '@/lib/data/billing';
 import { defaultBookkeeping, type LegalForm, type BookKeeping } from '@/lib/accounting/dossier';
@@ -69,8 +70,6 @@ const KEEP_OPEN = () => {};
 // να ήταν δικό του. Μόνο η τελευταία κάρτα έλεγε «παράδειγμα».
 const SAMPLE = 'Παράδειγμα με φανταστικά στοιχεία';
 
-/** Ημέρα και μήνας μιας προθεσμίας, όπως γράφεται σε ημερολόγιο. */
-const dayMonth = (iso: string): string => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
 /**
  * Οι τέσσερις κάρτες, με τα δεδομένα τους.
@@ -117,9 +116,12 @@ function buildCards(today: string): WelcomeCard[] {
       copy: 'Κάθε δήλωση και κάθε δόση με την επίσημη καταληκτική ημερομηνία.',
       // Οι προθεσμίες ΔΕΝ είναι παράδειγμα: βγαίνουν από το φορολογικό ημερολόγιο.
       source: 'Οι επόμενες προθεσμίες του φορολογικού ημερολογίου',
+      // ΜΕ ΤΟ ΕΤΟΣ (20.10.2026). Ηταν «31/10»: δίπλα σε δόση ΕΝΦΙΑ του
+      // Φεβρουαρίου δεν έλεγε ποιας χρονιάς, ενώ κάθε άλλη ημερομηνία της
+      // εφαρμογής γράφεται 31/10/2026.
       rows: [
-        { left: deadlines[0]?.title ?? '', right: deadlines[0] ? dayMonth(deadlines[0].date) : '' },
-        { left: deadlines[1]?.title ?? '', right: deadlines[1] ? dayMonth(deadlines[1].date) : '' },
+        { left: deadlines[0]?.title ?? '', right: deadlines[0] ? grDate(deadlines[0].date) : '' },
+        { left: deadlines[1]?.title ?? '', right: deadlines[1] ? grDate(deadlines[1].date) : '' },
       ],
     },
     {
