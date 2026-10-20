@@ -2,48 +2,48 @@
   "σημείωση": "Παράγεται από το npm run guides:stamp. Μην το γράφεις με το χέρι. Το φυλάει ο scripts/guard-guide-updated.mjs.",
   "guides": {
     "/odigos/airbnb-takk-2026": {
-      "hash": "d4edb1a8b1f2ca9f",
-      "updated": "2026-10-05"
+      "hash": "53a3125075aee3a4",
+      "updated": "2026-10-20"
     },
     "/odigos/ekptosi-forou-anakainisis": {
-      "hash": "514f8c10accc6107",
-      "updated": "2026-10-08"
+      "hash": "f66dc2ffe1c6d1f6",
+      "updated": "2026-10-20"
     },
     "/odigos/enfia-2026-pliromi-doseis-pistopoiitiko": {
-      "hash": "3de967d527806ba3",
-      "updated": "2026-10-03"
+      "hash": "595a4a3b77b35a76",
+      "updated": "2026-10-20"
     },
     "/odigos/enoikio-meso-trapezas": {
-      "hash": "ee4446b1881552b6",
-      "updated": "2026-09-27"
+      "hash": "360ef351dbd2efc0",
+      "updated": "2026-10-20"
     },
     "/odigos/forologia-enoikion-2026": {
-      "hash": "03393f5dac097c94",
-      "updated": "2026-09-24"
+      "hash": "7acdfea81e653807",
+      "updated": "2026-10-20"
     },
     "/odigos/forologikes-prothesmies-idioktiton": {
-      "hash": "9a2e3d47adb3b4ba",
-      "updated": "2026-09-27"
+      "hash": "0a40b0714e9e42a4",
+      "updated": "2026-10-20"
     },
     "/odigos/kathari-apodosi-akinitou": {
-      "hash": "0f459651ce8f2436",
-      "updated": "2026-09-24"
+      "hash": "9555bd0efbf23dbc",
+      "updated": "2026-10-20"
     },
     "/odigos/plafon-3-emporikes-misthoseis-2026": {
-      "hash": "1d20d88c18b81335",
-      "updated": "2026-09-27"
+      "hash": "5c0161b249e38e05",
+      "updated": "2026-10-20"
     },
     "/odigos/pos-ypologizetai-o-enfia": {
-      "hash": "2d000ebaefa640b0",
-      "updated": "2026-10-13"
+      "hash": "f9cee4c7cd1ea7c7",
+      "updated": "2026-10-20"
     },
     "/odigos/spiti-mou-3-ti-allazei": {
-      "hash": "8600457385771a0c",
-      "updated": "2026-10-19"
+      "hash": "a398d077c6c875aa",
+      "updated": "2026-10-20"
     },
     "/odigos/vraxyxronia-ama-prodiagrafes-2026": {
-      "hash": "2c9c43fc9bbc8b59",
-      "updated": "2026-10-12"
+      "hash": "1a6793a230407021",
+      "updated": "2026-10-20"
     }
   }
 }

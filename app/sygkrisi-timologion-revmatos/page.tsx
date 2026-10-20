@@ -16,12 +16,13 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { T, fdLong } from '@/components/tokens';
+import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
-import { feRate } from '@/lib/core/format';
+import { feRate, fpRate } from '@/lib/core/format';
 import { TARIFFS_VERIFIED, TARIFFS_MAX_AGE_DAYS, CATALOGUE_MONTH_GEN } from '@/lib/energy/catalogue';
-import { ETMEAR } from '@/lib/energy/tariff';
+import { ETMEAR, ELECTRICITY_VAT_PCT } from '@/lib/energy/tariff';
+import { asOfDate } from '@/lib/facts/prices';
 import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, ToolCta, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { ToolGuides } from '../odigos/ToolGuides';
 import { hy } from '@/components/Hyphen';
@@ -35,7 +36,8 @@ import { PAGE_UPDATED } from '../pageUpdated';
 // Η ΦΡΑΣΗ ΠΟΥ ΓΡΑΦΕΙ Ο ΚΟΣΜΟΣ (Bing, 03.10.2026): «σύγκριση τιμολογίων
 // ρεύματος», «φθηνότερο ρεύμα». Η πρώτη δεκάδα γράφει στον τίτλο τη χρονιά ή
 // τον μήνα: όποιος δεν τη γράφει μοιάζει παλιός.
-const TITLE = 'Σύγκριση τιμολογίων ρεύματος 2026: ποιο είναι φθηνότερο για την κατανάλωσή σου';
+// Το έτος από την ημερομηνία ελέγχου του καταλόγου, όχι γραμμένο με το χέρι (20.10.2026).
+const TITLE = `Σύγκριση τιμολογίων ρεύματος ${TARIFFS_VERIFIED.slice(0, 4)}: ποιο είναι φθηνότερο για την κατανάλωσή σου`;
 const DESC =
   'Τι θα πλήρωνες τον μήνα με κάθε τιμολόγιο ρεύματος: σταθερά, κυμαινόμενα, πράσινα. '
   + 'Με τις κιλοβατώρες σου και την ημερομηνία ελέγχου των τιμών.';
@@ -59,13 +61,13 @@ const FAQ: { q: string; a: string; link?: { text: string; href: string } }[] = [
   {
     q: 'Τι περιλαμβάνει το ποσό;',
     a: 'Τη χρέωση του προμηθευτή, δηλαδή πάγιο και ενέργεια, μαζί με το ΕΤΜΕΑΡ '
-     + `(${feRate(ETMEAR)} ανά κιλοβατώρα) και ΦΠΑ 6%. Δεν περιλαμβάνει χρεώσεις δικτύου, ΥΚΩ, `
+     + `(${feRate(ETMEAR)} ανά κιλοβατώρα) και ΦΠΑ ${fpRate(ELECTRICITY_VAT_PCT)}. Δεν περιλαμβάνει χρεώσεις δικτύου, ΥΚΩ, `
      + 'ΕΦΚ, δημοτικά τέλη ούτε τέλος ΕΡΤ. Αυτά είναι ίδια σε κάθε πάροχο, οπότε δεν αλλάζουν τη '
      + 'σειρά, αλλά ο λογαριασμός σου θα βγει μεγαλύτερος από το ποσό της σύγκρισης.',
   },
   {
-    q: 'Πόσο φρέσκες είναι οι τιμές;',
-    a: `Τελευταία ενημέρωση τιμών: ${fdLong(TARIFFS_VERIFIED)}, από τον πίνακα της ΡΑΑΕΥ στο energycost.gr. `
+    q: 'Πόσο πρόσφατες είναι οι τιμές;',
+    a: `Τελευταία ενημέρωση τιμών: ${asOfDate(TARIFFS_VERIFIED)}, από τον πίνακα της ΡΑΑΕΥ στο energycost.gr. `
      + `Οι τιμές είναι ${CATALOGUE_MONTH_GEN}, εκτός όπου κάποιο τιμολόγιο γράφει άλλον μήνα· μόνο οι τιμές `
      + `${CATALOGUE_MONTH_GEN} μπαίνουν στη σειρά. Οι πάροχοι ανακοινώνουν νέες τιμές κάθε `
      + `μήνα. Όταν περάσουν πάνω από ${TARIFFS_MAX_AGE_DAYS} ημέρες από τον έλεγχο, η σελίδα σταματά `
@@ -75,8 +77,8 @@ const FAQ: { q: string; a: string; link?: { text: string; href: string } }[] = [
   {
     q: 'Πού βρίσκω την κατανάλωσή μου;',
     a: 'Στον λογαριασμό ρεύματος, στις κιλοβατώρες της περιόδου. Αν ο λογαριασμός είναι έναντι, '
-     + 'πάρε τον εκκαθαριστικό, που βγαίνει με πραγματική μέτρηση. Αν έχεις τον αριθμό του χρόνου, '
-     + 'γράψ’ τον ως ετήσιο και η σελίδα τον μοιράζει στους δώδεκα μήνες.',
+     + 'χρησιμοποίησε τον εκκαθαριστικό, που βγαίνει με πραγματική μέτρηση. Αν έχεις τον αριθμό του χρόνου, '
+     + 'γράψε τον, διάλεξε «Τον χρόνο» και η σελίδα τον μοιράζει ισόποσα στους δώδεκα μήνες.',
   },
   TOOL_PRIVACY_FAQ,
 ];

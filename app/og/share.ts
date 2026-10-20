@@ -63,7 +63,7 @@ export const SHARE_CARDS: Record<string, ShareCard> = {
   'sygkrisi-timologion-revmatos': { kind: 'calc', over: 'Σύγκριση', title: 'Τι θα πλήρωνες με κάθε τιμολόγιο ρεύματος',
     chips: ['Σταθερά, κυμαινόμενα, πράσινα', 'Με τις κιλοβατώρες σου', `Τιμές ελεγμένες ${grDate(TARIFFS_VERIFIED)}`],
     path: '/sygkrisi-timologion-revmatos' },
-  'odigos': { kind: 'guide', over: 'Οδηγοί', title: 'Οδηγοί φορολογίας ακινήτων',
+  'odigos': { kind: 'guide', over: 'Οδηγοί', title: 'Οδηγοί για ιδιοκτήτες ακινήτων: φόροι, ενοίκια, στέγαση',
     chips: GUIDES.map(g => g.kicker), path: '/odigos' },
   // Η ΣΕΛΙΔΑ ΤΩΝ ΛΟΓΙΣΤΩΝ. Τη μοιράζεται λογιστής σε λογιστή, οπότε η κάρτα λέει
   // τι παίρνει εκείνος, όχι τι κάνει ο ιδιοκτήτης.

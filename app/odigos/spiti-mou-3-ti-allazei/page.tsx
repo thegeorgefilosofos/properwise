@@ -43,7 +43,7 @@ const H1 = `${SPITI_MOU_3.name}: τι ίσχυε στα προηγούμενα �
 const TITLE = H1;
 // Κάτω από 160 χαρακτήρες.
 const DESC = `${SPITI_MOU_1.name} και ${NAME_2}: τα όρια δίπλα σε ό,τι είναι επίσημο για το ${SPITI_MOU_3.name}. `
-  + 'Τι έχει μόνο ειπωθεί και τι κάνεις ως την ΚΥΑ.';
+  + 'Τι έχει μόνο ειπωθεί και τι κάνεις μέχρι να βγει η ΚΥΑ.';
 const URL = siteUrl(GUIDE.href);
 const CALC = { href: '/ypologismos-stegastikou-daneiou', action: 'Υπολόγισε τη δόση του στεγαστικού σου' } as const;
 
@@ -120,7 +120,7 @@ export default function Page() {
         {/* 1. Σπίτι μου Ι */}
         <H2 {...S.one} />
         <p className="lg-p">
-          {`Το πρώτο πρόγραμμα το έτρεχε η ${P1.agency} (${P1.legalBasis}). Αιτήσεις έγιναν από ${programDateLabel(P1.applicationsFrom)} έως ${programDateLabel(P1.applicationsTo)}. Ήταν για νέους και ζευγάρια ${P1.ageMin} έως ${P1.ageMax} ετών, για πρώτη κατοικία έως ${feWhole(P1.maxPropertyValue)} και ${P1.maxSqm} τ.μ., σε κτίριο τουλάχιστον ${P1.minBuildingAgeYears} ετών.`}
+          {`Το πρώτο πρόγραμμα το διαχειριζόταν η ${P1.agency}· νομική βάση: ${P1.legalBasis}. Αιτήσεις έγιναν από ${programDateLabel(P1.applicationsFrom)} έως ${programDateLabel(P1.applicationsTo)}. Ήταν για νέους και ζευγάρια ${P1.ageMin} έως ${P1.ageMax} ετών, για πρώτη κατοικία έως ${feWhole(P1.maxPropertyValue)} και ${P1.maxSqm} τ.μ., σε κτίριο τουλάχιστον ${P1.minBuildingAgeYears} ετών.`}
         </p>
         <p className="lg-p">
           {`Το δάνειο έφτανε τα ${feWhole(P1.maxAmount)}. Το ${fpRate(P1.interestFreeShare * 100)} το έδινε η ${P1.agency} χωρίς τόκο και το υπόλοιπο η τράπεζα με το επιτόκιό της. Πόσα δάνεια υπογράφηκαν τελικά δεν βρέθηκε σε επίσημο απολογισμό.`}
@@ -129,7 +129,7 @@ export default function Page() {
         {/* 2. Σπίτι μου ΙΙ */}
         <H2 {...S.two} />
         <p className="lg-p">
-          {`Το δεύτερο το διαχειριζόταν η Ελληνική Αναπτυξιακή Τράπεζα με πόρους του Ταμείου Ανάκαμψης (${SPITI_MOU_LEGAL.kya}). Ανέβασε την ηλικία στα ${SPITI_MOU.ageMax}, το δάνειο στα ${feWhole(SPITI_MOU.maxAmount)} και την αξία στα ${feWhole(SPITI_MOU.maxPropertyValue)}. Οι αιτήσεις έκλεισαν στις ${programDateLabel(SPITI_MOU.applicationDeadline)} και οι υπογραφές στις ${programDateLabel(SPITI_MOU.contractDeadline)}.`}
+          {`Το δεύτερο το διαχειριζόταν η Ελληνική Αναπτυξιακή Τράπεζα με πόρους του Ταμείου Ανάκαμψης· νομική βάση: ${SPITI_MOU_LEGAL.kya}. Ανέβασε την ηλικία στα ${SPITI_MOU.ageMax}, το δάνειο στα ${feWhole(SPITI_MOU.maxAmount)} και την αξία στα ${feWhole(SPITI_MOU.maxPropertyValue)}. Οι αιτήσεις έκλεισαν στις ${programDateLabel(SPITI_MOU.applicationDeadline)} και οι υπογραφές στις ${programDateLabel(SPITI_MOU.contractDeadline)}.`}
         </p>
         <p className="lg-p">{incomeChangeLine()}</p>
         <p className="lg-p">
@@ -140,7 +140,7 @@ export default function Page() {
         <H2 {...S.three} />
         <ul className="lg-ul">
           <li><strong style={STRONG}>{'Ανακοίνωση:'}</strong>{` στη ΔΕΘ, ${grDate(P3.announcedOn)}.`}</li>
-          <li><strong style={STRONG}>{'Φορέας:'}</strong>{` ${P3.channel}.`}</li>
+          <li><strong style={STRONG}>{'Φορέας:'}</strong>{` ${P3.channel} (ΕΑΤ).`}</li>
           <li><strong style={STRONG}>{'Προϋπολογισμός:'}</strong>{` ${fn(P3.budgetEur / 1e9)} δισ. ευρώ, κατά την ΕΑΤ.`}</li>
           <li><strong style={STRONG}>{'Έναρξη:'}</strong>{` ${P3.startLabel}, κατά την ΕΑΤ. Δεν είναι ημερομηνία αιτήσεων.`}</li>
           <li><strong style={STRONG}>{'Ηλικία:'}</strong>{` έως ${P3.ageMax} ετών, κατά την κυβερνητική εξειδίκευση των μέτρων.`}</li>
@@ -158,7 +158,7 @@ export default function Page() {
             {spitiMou3ReportedLines().map(l => <li key={l}>{l}</li>)}
           </ul>
           <span>{`${spitiMou3ReportedCaveat()} `}</span>
-          <span>{'Πηγές: '}<ExtLink href={R.source.url}>{R.source.label}</ExtLink>{' · '}<ExtLink href={R.beneficiariesSource}>υπουργείο Κοινωνικής Συνοχής</ExtLink>.</span>
+          <span>{'Πηγές: '}<ExtLink href={R.source.url}>{R.source.label}</ExtLink>{' · '}<ExtLink href={R.beneficiariesSource}>Υπουργείο Κοινωνικής Συνοχής</ExtLink>.</span>
         </aside>
 
         {/* 4. Σύγκριση */}
@@ -197,7 +197,7 @@ export default function Page() {
         <H2 {...S.now} />
         <ul className="lg-ul">
           <li><strong style={STRONG}>{'Μέτρα τη δόση, όχι το πρόγραμμα.'}</strong>{` ${dstiLine()}`}</li>
-          <li><strong style={STRONG}>{'Κράτα ενεργούς τους κωδικούς σου στο gov.gr.'}</strong>{` Στο ${NAME_2} η βεβαίωση επιλεξιμότητας έβγαινε ηλεκτρονικά στο gov.gr και την πήγαινες στην τράπεζα. Για το ${P3.name} δεν έχει δημοσιευτεί ακόμη λίστα δικαιολογητικών.`}</li>
+          <li><strong style={STRONG}>{'Κράτα ενεργούς τους κωδικούς σου στο gov.gr.'}</strong>{` Στο ${NAME_2} η βεβαίωση επιλεξιμότητας εκδιδόταν ηλεκτρονικά στο gov.gr και την προσκόμιζες στην τράπεζα. Για το ${P3.name} δεν έχει δημοσιευτεί ακόμη λίστα δικαιολογητικών.`}</li>
           <li><strong style={STRONG}>{'Μη δεσμευτείς με όρια που δεν έχουν γραφτεί.'}</strong>{' Προκαταβολή ή προσύμφωνο με την προσδοκία ενός ορίου εισοδήματος ή αξίας είναι ρίσκο ώσπου να δημοσιευτεί η ΚΥΑ.'}</li>
         </ul>
         <p className="lg-p">

@@ -35,6 +35,7 @@ import { ApodosiCalculator } from './ApodosiCalculator';
 import { rentalIncomeTax } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
 import { feWhole } from '@/lib/core/format';
+import { ratePct } from '../odigos/taxText';
 import { PAGE_UPDATED, limitsChecked } from '../pageUpdated';
 
 // ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΤΗΣ ΑΠΑΝΤΗΣΗΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗ ΜΗΧΑΝΗ, ΟΧΙ ΑΠΟ ΤΟ ΧΕΡΙ. Τα 1.197€,
@@ -71,17 +72,17 @@ const FAQ: { q: string; a: string; link?: { text: string; href: string } }[] = [
   },
   {
     q: 'Γιατί ο φόρος εξαρτάται από τα άλλα μου ενοίκια;',
-    a: 'Επειδή η κλίμακα των ενοικίων είναι προοδευτική στο ΣΥΝΟΛΟ του εισοδήματός '
-     + `σου από ακίνητα, όχι ανά ακίνητο. Ένα διαμέρισμα με ${feWhole(EX_RENT)} ενοίκια κοστίζει `
+    a: 'Επειδή η κλίμακα των ενοικίων είναι προοδευτική στο σύνολο του εισοδήματός '
+     + `σου από ακίνητα, όχι ανά ακίνητο. Ένα διαμέρισμα με ${feWhole(EX_RENT)} ενοίκια τον χρόνο κοστίζει `
      + `${feWhole(EX_ALONE)} φόρο αν είναι το μοναδικό σου και ${feWhole(EX_ON_TOP)} αν δηλώνεις ήδη άλλα `
      + `${feWhole(EX_OTHER)}. Ίδιο ακίνητο, διαφορά ${feWhole(EX_ON_TOP - EX_ALONE)} τον χρόνο. Γι’ αυτό ο υπολογιστής `
      + 'ρωτά τι άλλο δηλώνεις.',
   },
   {
-    q: 'Τι δαπάνες να βάλω;',
+    q: 'Ποιες δαπάνες να βάλω;',
     a: 'Συντήρηση και επισκευές, ασφάλιση, τα κοινόχρηστα που βαρύνουν τον ιδιοκτήτη '
-     + 'και τυχόν αμοιβή διαχείρισης. Βάλε τα πραγματικά σου ποσά. Η έκπτωση 5% του νόμου '
-     + 'μειώνει τον φόρο και δεν μετρά τι ξοδεύεις. Ο υπολογιστής την εφαρμόζει ήδη στον φόρο.',
+     + `και τυχόν αμοιβή διαχείρισης. Βάλε τα πραγματικά σου ποσά. Η τεκμαρτή έκπτωση ${ratePct(PRESUMPTIVE_DEDUCTION_RATE)} του νόμου `
+     + 'μειώνει τον φόρο και δεν αντιστοιχεί σε όσα πραγματικά ξοδεύεις. Ο υπολογιστής την εφαρμόζει ήδη.',
   },
   {
     q: 'Περιλαμβάνεται η άνοδος της αξίας του ακινήτου;',
@@ -99,9 +100,9 @@ const FAQ: { q: string; a: string; link?: { text: string; href: string } }[] = [
     link: { text: 'υπολογιστής ΕΝΦΙΑ', href: '/ypologismos-enfia' },
   },
   {
-    q: 'Ισχύει και για βραχυχρόνια μίσθωση;',
+    q: 'Ο υπολογισμός ισχύει και για βραχυχρόνια μίσθωση;',
     a: 'Όχι. Η βραχυχρόνια έχει τέλος ανθεκτικότητας ανά διανυκτέρευση, προμήθεια '
-     + 'πλατφόρμας που δεν εκπίπτει για το φυσικό πρόσωπο, λειτουργικά ανά νύχτα και '
+     + 'πλατφόρμας που δεν εκπίπτει για το φυσικό πρόσωπο, λειτουργικά έξοδα ανά διανυκτέρευση και '
      + 'δικά της όρια πριν θεωρηθεί επιχειρηματική δραστηριότητα. Τη συγκρίνει '
      + 'χωριστά ο υπολογιστής «Βραχυχρόνια ή μακροχρόνια».',
   },
@@ -158,7 +159,7 @@ export default function Page() {
         <Suspense fallback={<div style={{ minHeight: 460 }} aria-hidden/>}>
           <ApodosiCalculator year={year} today={athensToday()} cta={
             <ToolCta
-              title="Για όλα σου τα ακίνητα, χωρίς να το ξαναϋπολογίσεις;"
+              title="Θέλεις να το βλέπεις για όλα σου τα ακίνητα, χωρίς να το ξαναϋπολογίζεις;"
               body="Το PROPERWISE κρατά ενοίκια, ΕΝΦΙΑ και δαπάνες ανά ακίνητο και δείχνει ποιο αποδίδει, ποιο σε βαραίνει."
             />
           }/>
@@ -194,7 +195,7 @@ export default function Page() {
         {/* Τα τέσσερα εργαλεία είναι μια αλυσίδα, όχι τέσσερις άσχετες σελίδες
             που τυχαίνει να ζουν στο ίδιο domain. */}
         <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
-          <SectionHead over="Και μετά" title="Τα δύο νούμερα που μπαίνουν εδώ μέσα" />
+          <SectionHead over="Και μετά" title="Τα δύο ποσά που χρειάζεται ο υπολογισμός" />
           <p className="po-just" style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0 }}>{hy(<>
             Ο{' '}
             <Link href="/ypologismos-enfia" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
@@ -202,8 +203,8 @@ export default function Page() {
             </Link>{' '}βγαίνει από τα τετραγωνικά και την τιμή ζώνης και ο{' '}
             <Link href="/ypologismos-forou-enoikion" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               φόρος ενοικίων
-            </Link>{' '}αναλυτικά, κλιμάκιο κλιμάκιο. Και αν σκέφτεσαι να το βγάλεις σε
-            βραχυχρόνια, η{' '}
+            </Link>{' '}αναλυτικά, κλιμάκιο προς κλιμάκιο. Και αν σκέφτεσαι να το διαθέσεις σε
+            βραχυχρόνια μίσθωση, η{' '}
             <Link href="/vraxyxronia-i-makroxronia" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               σύγκριση βραχυχρόνιας και μακροχρόνιας
             </Link>{' '}δείχνει από ποια πληρότητα και πάνω συμφέρει. Η απόδοση εδώ δεν

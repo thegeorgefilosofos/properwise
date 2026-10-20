@@ -25,9 +25,10 @@ import { useMemo, useId, useState, type ReactNode } from 'react';
 import { T, feAuto } from '@/components/tokens';
 import { fe, fn, fpRate, feRate, feSigned, feWhole } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
-import { enfiaFloorCoef, enfiaAgeCoef, enfiaAgeChoices, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS, ENFIA_AUX_COEF, ENFIA_PRE_YEAR } from '@/lib/billing/enfia';
+import { enfiaFloorCoef, enfiaAgeCoef, enfiaAgeChoices, ENFIA_ZONE_TAX, ENFIA_FLOOR_COEF, ENFIA_AGE_BANDS, ENFIA_AUX_COEF, ENFIA_PRE_YEAR, ENFIA_EXTRA_TAX_FREE, ENFIA_SURCHARGE_THRESHOLD } from '@/lib/billing/enfia';
 import { ENFIA_FLOOR_LABEL, ENFIA_FLOOR_SHORT } from '@/lib/billing/enfiaFloors';
-import { enfiaInstalments, ENFIA_INSTALMENTS } from '@/lib/tools/enfiaSchedule';
+import { enfiaInstalments, ENFIA_INSTALMENTS, ENFIA_MIN_INSTALMENT } from '@/lib/tools/enfiaSchedule';
+import { greekPropertyTaxObligations } from '@/lib/tax/greekTaxCalendar';
 import { smallSettlementRelief } from '@/lib/tools/enfiaRelief';
 import { enfiaLedger, enfiaWealthBracketLimit } from '@/lib/tools/enfiaLedger';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
@@ -128,6 +129,10 @@ export function EnfiaCalculator({ year, today, cta }: {
   // Ο ΚΥΡΙΟΣ ΦΟΡΟΣ, Η ΜΕΙΩΣΗ ΚΑΙ ΤΟ ΕΤΗΣΙΟ ΑΘΡΟΙΖΟΥΝ ΣΤΟ ΛΕΠΤΟ (lib/tools/enfiaLedger.ts).
   const ledger = r ? enfiaLedger(r) : null;
   const bracket = r ? enfiaWealthBracketLimit(r.share) : null;
+  // Πόσες δόσεις και πόσο η πρώτη, από τον ίδιο πίνακα που τυπώνεται από κάτω.
+  const instalmentRows = r ? enfiaInstalments(r.annual, year) : [];
+  const instalmentCount = instalmentRows.length;
+  const firstInstalment = instalmentRows[0]?.amount ?? 0;
 
   return (
     <div style={{ fontFamily: T.font.sans }}>
@@ -180,13 +185,13 @@ export function EnfiaCalculator({ year, today, cta }: {
           options={ages.map(a => ({ value: a.key, label: a.label }))}
           hint={`Τα έτη μετρούν από τη νεότερη οικοδομική άδεια (χωρίς άδεια, από την κατασκευή)· το «πριν από το ${ENFIA_PRE_YEAR}» κρίνεται από το έτος ανέγερσης.`}/>
         <ToolNumField id={ids.own} label="Ποσοστό ιδιοκτησίας" value={ownership} onChange={x => set('pososto', x)}
-          unit="%" mode="numeric" hint="Αν το ακίνητο είναι μοιρασμένο."/>
+          unit="%" mode="numeric" hint="Αν το ακίνητο είναι συνιδιόκτητο."/>
         <ToolNumField id={ids.aux} label="Βοηθητικοί χώροι" value={auxSqm} onChange={x => set('voith', x)}
           unit="τ.μ." unitPad={44} hint="Αποθήκη ή θέση στάθμευσης. Προαιρετικό."/>
       </ToolFields>
 
       <ToolClampNote notes={[
-        own !== amount(ownership) && `Το ποσοστό ιδιοκτησίας μετρά από 1% έως 100%· υπολογίστηκε με ${fpRate(own)}.`,
+        own !== amount(ownership) && `Το ποσοστό ιδιοκτησίας είναι από 1% έως 100%· υπολογίστηκε με ${fpRate(own)}.`,
       ]}/>
 
       {/* ── Η κεφαλίδα του χαρτιού, πάνω από το αποτέλεσμα ─────────────── */}
@@ -226,9 +231,18 @@ export function EnfiaCalculator({ year, today, cta }: {
                 που πρέπει να βρίσκεις κάθε μήνα. */}
             {/* ΤΟ ΕΤΗΣΙΟ ΟΔΗΓΕΙ, Ο ΜΗΝΑΣ ΤΟ ΠΛΑΙΣΙΩΝΕΙ. Ακέραια ευρώ στην κορυφή·
                 τα λεπτά τα κρατούν η ανάλυση και ο πίνακας των δόσεων. */}
+            {/* «ΑΝΑ ΜΗΝΑ» ΜΟΝΟ ΜΕ ΔΩΔΕΚΑ ΔΟΣΕΙΣ (20.10.2026). Καμία δόση κάτω από
+                10€: για μικρό ποσό οι δόσεις λιγοστεύουν (lib/tools/enfiaSchedule.ts)
+                και το «ανά μήνα» θα έγραφε δόση που δεν υπάρχει. */}
             <ToolHero primary={{ label: 'ΕΝΦΙΑ ετησίως', value: fe(r.annual) }}
-              secondary={[{ label: 'Ανά μήνα', value: fe(r.annual / ENFIA_INSTALMENTS) }]}/>
-              <LiveResult say={`ΕΝΦΙΑ ${feAuto(r.annual)} τον χρόνο, ${feAuto(r.annual / ENFIA_INSTALMENTS)} τον μήνα.`} />
+              secondary={instalmentCount === ENFIA_INSTALMENTS
+                ? [{ label: 'Ανά μήνα', value: fe(r.annual / ENFIA_INSTALMENTS) }]
+                : instalmentCount > 1 ? [{ label: `Ανά δόση, ${instalmentCount} δόσεις`, value: fe(firstInstalment) }] : []}/>
+              <LiveResult say={instalmentCount === ENFIA_INSTALMENTS
+                ? `ΕΝΦΙΑ ${feAuto(r.annual)} τον χρόνο, ${feAuto(r.annual / ENFIA_INSTALMENTS)} τον μήνα.`
+                : instalmentCount > 1
+                  ? `ΕΝΦΙΑ ${feAuto(r.annual)} τον χρόνο, σε ${instalmentCount} δόσεις των ${feAuto(firstInstalment)}.`
+                  : `ΕΝΦΙΑ ${feAuto(r.annual)} τον χρόνο, εφάπαξ.`} />
 
             <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
 
@@ -271,9 +285,9 @@ export function EnfiaCalculator({ year, today, cta }: {
               { k: 'Συντελεστής ορόφου', v: fn(enfiaFloorCoef(floor), 2), kind: 'param' },
               { k: 'Συντελεστής παλαιότητας', v: fn(enfiaAgeCoef(age), 2), kind: 'param' },
               { k: 'Κύριος φόρος κτίσματος', v: feAuto(ledger.basic) },
-              r.aux > 0 && { k: `Βοηθητικοί χώροι (συντελεστής ${fn(ENFIA_AUX_COEF, 2)}, χωρίς όροφο)`, v: feAuto(ledger.auxiliary) },
-              ledger.extra > 0 && { k: 'Πρόσθετος φόρος (αξία πάνω από 400.000€)', v: feAuto(ledger.extra) },
-              ledger.supplementary > 0 && { k: 'Προσαύξηση (περιουσία πάνω από 500.000€)', v: feAuto(ledger.supplementary) },
+              r.aux > 0 && { k: `Βοηθητικοί χώροι (συντελεστής ${fn(ENFIA_AUX_COEF, 2)}, χωρίς συντελεστή ορόφου)`, v: feAuto(ledger.auxiliary) },
+              ledger.extra > 0 && { k: `Πρόσθετος φόρος (αξία πάνω από ${feWhole(ENFIA_EXTRA_TAX_FREE)})`, v: feAuto(ledger.extra) },
+              ledger.supplementary > 0 && { k: `Προσαύξηση (περιουσία πάνω από ${feWhole(ENFIA_SURCHARGE_THRESHOLD)})`, v: feAuto(ledger.supplementary) },
               r.reductionPct > 0 && {
                 k: `Αυτόματη μείωση ${fpRate(r.reductionPct)}${bracket ? ` (περιουσία έως ${feWhole(bracket)})` : ''}`,
                 v: feSigned(-ledger.reduction),
@@ -299,7 +313,7 @@ export function EnfiaCalculator({ year, today, cta }: {
           Η εκτίμηση αφορά <strong>ένα κτίσμα</strong> και θεωρεί τη συνολική σου
           ακίνητη περιουσία <strong>ίση με αυτό</strong>. Αν έχεις κι άλλα ακίνητα, οικόπεδα
           ή αποθήκες, η μείωση και η προσαύξηση αλλάζουν, οπότε το ποσό στο εκκαθαριστικό
-          θα διαφέρει. Δεν περιλαμβάνει τις νόμιμες εκπτώσεις και απαλλαγές που θέλουν
+          θα διαφέρει. Δεν περιλαμβάνει τις νόμιμες εκπτώσεις και απαλλαγές που προϋποθέτουν
           κριτήρια (χαμηλό εισόδημα, τρίτεκνοι, αναπηρία), την έκπτωση για ασφαλισμένη
           κατοικία{smallRelief && <>, {smallRelief}</>} ούτε τους ειδικούς συντελεστές
           οικοπέδου και πρόσοψης. Αν δικαιούσαι κάποια έκπτωση ή απαλλαγή, έλεγξέ το με
@@ -343,6 +357,11 @@ function Instalments({ annual, year, today }: { annual: number; year: number; to
   const rows = enfiaInstalments(annual, year);
   if (!rows.length) return null;
 
+  const n = rows.length;
+  // Οι ημερομηνίες είναι του νόμου όταν έχει εκδοθεί το εκκαθαριστικό της χρονιάς
+  // (η 1η δόση του ημερολογίου είναι `statutory`)· αλλιώς ο πίνακας τις προβάλλει.
+  const confirmed = greekPropertyTaxObligations(year, 'owner')
+    .find(o => o.kind === 'enfia-first')?.confidence === 'statutory';
   const next = rows.findIndex(r => r.date >= today);
   const from = next < 0 ? Math.max(0, rows.length - 3) : Math.min(next, rows.length - 3);
   const shown = (i: number) => all || (i >= from && i < from + 3);
@@ -356,9 +375,9 @@ function Instalments({ annual, year, today }: { annual: number; year: number; to
               «Οι 12 δόσεις» πάνω από τρεις γραμμές. Στο χαρτί τυπώνονται και οι
               δώδεκα, οπότε εκεί μένει ο πλήρης τίτλος. */}
           <caption>
-            {all ? `Οι ${ENFIA_INSTALMENTS} δόσεις του ${year}` : <>
+            {all || n <= 3 ? `${n === 1 ? 'Η δόση' : `Οι ${n} δόσεις`} του ${year}` : <>
               <span className="po-noprint">Επόμενες δόσεις</span>
-              <span className="po-printonly">Οι {ENFIA_INSTALMENTS} δόσεις του {year}</span>
+              <span className="po-printonly">Οι {n} δόσεις του {year}</span>
             </>}
           </caption>
           <thead>
@@ -391,20 +410,25 @@ function Instalments({ annual, year, today }: { annual: number; year: number; to
         </table>
        </div>
       </div>
-      <div className="po-noprint" style={{ marginTop: 10 }}>
+      {n > 3 && <div className="po-noprint" style={{ marginTop: 10 }}>
         <Btn onClick={() => setAll(a => !a)} expanded={all}>
-          {all ? 'Μόνο οι επόμενες' : `Όλες οι ${ENFIA_INSTALMENTS} δόσεις`}
+          {all ? 'Μόνο οι επόμενες' : `Όλες οι ${n} δόσεις`}
         </Btn>
-      </div>
+      </div>}
       {/* ΤΕΣΣΕΡΙΣ ΠΡΟΤΑΣΕΙΣ ΠΕΡΑ ΠΕΡΑ, ΜΕ ΤΟΝ ΑΕΡΑ ΤΟΥΣ. Μετρημένο στα 1.024, στα
           1.280 και στα 1.440: 134 χαρακτήρες ανά γραμμή. Το κείμενο δεν στενεύει,
           όπως πουθενά στην εφαρμογή — δοκιμάστηκε ταβάνι πλάτους και άφηνε τη
           μισή κάρτα λευκή. Παίρνει το 1,7 της `.po-prose`, που το γράφει μία
           φορά για κάθε τέτοια παράγραφο του προϊόντος. */}
       <p className="po-prose" style={{ margin: '10px 0 0', fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)' }}>
-        Οι ημερομηνίες είναι οι τυπικές των τελευταίων ετών, δηλαδή η τελευταία εργάσιμη
-        κάθε μήνα· ανακοινώνονται κάθε χρόνο με απόφαση. Ο ΕΝΦΙΑ πληρώνεται εφάπαξ ή σε
-        δόσεις. Η τελευταία δόση φέρει τη διαφορά της στρογγυλοποίησης, ώστε οι δώδεκα να
+        Ο ΕΝΦΙΑ πληρώνεται εφάπαξ ή σε έως {ENFIA_INSTALMENTS} μηνιαίες δόσεις, με την τελευταία
+        το αργότερο τον Φεβρουάριο του επόμενου έτους, όπως ορίζει ο νόμος. Κάθε δόση πρέπει να είναι
+        τουλάχιστον {feWhole(ENFIA_MIN_INSTALMENT)}, οπότε για μικρό ποσό οι δόσεις λιγοστεύουν.
+        Τις ακριβείς ημερομηνίες τις γράφει το εκκαθαριστικό·{' '}
+        {confirmed
+          ? `για το ${year} είναι αυτές του πίνακα, η τελευταία εργάσιμη κάθε μήνα.`
+          : `για το ${year} δεν έχουν ανακοινωθεί και ο πίνακας δείχνει την τελευταία εργάσιμη κάθε μήνα, όπως τα τελευταία έτη.`}
+        {' '}Η τελευταία δόση παίρνει τη διαφορά της στρογγυλοποίησης, ώστε οι δόσεις να
         δίνουν ακριβώς το ετήσιο.
       </p>
     </div>

@@ -128,7 +128,7 @@ export const TAX_EVENT_CATEGORY = 'tax' as const
 // σημειώσεις και στην επεξήγηση, όπου διαβάζεται ολόκληρο και μία φορά.
 export const CONFIDENCE_LABEL: Record<TaxObligation['confidence'], string> = {
   statutory: 'Ημερομηνία του νόμου',
-  announced: 'Ημερομηνία περυσινή',
+  announced: 'Περυσινή ημερομηνία',
 }
 /** Η πλήρης εξήγηση, για επεξήγηση εργαλείου και για σημειώσεις. */
 export const CONFIDENCE_HINT: Record<TaxObligation['confidence'], string> = {
