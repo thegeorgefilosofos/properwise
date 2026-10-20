@@ -138,7 +138,7 @@ export function ApodosiCalculator({ year, today, cta }: {
           {/* ΜΙΑ ΓΡΑΜΜΗ Η ΚΑΘΕ ΥΠΟΔΕΙΞΗ ΚΑΙ Η ΦΡΑΣΗ-ΣΥΝΔΕΣΜΟΣ ΔΕΝ ΣΠΑΕΙ. Το γεγονός
               που κουβαλά: ο ΕΝΦΙΑ πληρώνεται και σε άδειο ακίνητο. */}
           <ToolNumField id={ids.enfia} label="ΕΝΦΙΑ τον χρόνο" value={v.enfia} onChange={x => set('enfia', x)} unit="€"
-            hint={<>Τον πληρώνεις κι άδειο.{' '}
+            hint={<>Πληρώνεται και όταν το ακίνητο μένει άδειο.{' '}
               <Link href="/ypologismos-enfia" className="lp-link"
                 style={{ color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 Υπολόγισέ τον
@@ -148,7 +148,7 @@ export function ApodosiCalculator({ year, today, cta }: {
           <ToolNumField id={ids.dapanes} label="Δαπάνες τον χρόνο" value={v.dapanes} onChange={x => set('dapanes', x)} unit="€"
             hint="Συντήρηση, ασφάλιση, κοινόχρηστα που πληρώνεις εσύ."/>
           {/* Ακαθάριστα· και ανεβάζουν το κλιμάκιο ΑΥΤΟΥ του ακινήτου. */}
-          <ToolNumField id={ids.alla} label="Άλλα ενοίκια" value={v.alla} onChange={x => set('alla', x)} unit="€"
+          <ToolNumField id={ids.alla} label="Άλλα ενοίκια τον χρόνο" value={v.alla} onChange={x => set('alla', x)} unit="€"
             hint="Ακαθάριστα, από τα υπόλοιπα ακίνητά σου. Ανεβάζουν το κλιμάκιο αυτού εδώ."/>
         </ToolFields>
       </Group>
@@ -157,8 +157,9 @@ export function ApodosiCalculator({ year, today, cta }: {
         { k: 'Αξία', v: feAuto(amount(v.axia)) },
         { k: 'Μηνιαίο ενοίκιο', v: feAuto(amount(v.enoikio)) },
         { k: 'Μήνες', v: fn(Math.min(12, Math.round(amount(v.mines)))) },
-        { k: 'ΕΝΦΙΑ', v: feAuto(r.enfia) },
-        { k: 'Δαπάνες', v: feAuto(r.expenses) },
+        // Όπως η ανάλυση: το μηδέν που δεν δηλώθηκε δεν τυπώνεται ως ποσό (20.10.2026).
+        { k: 'ΕΝΦΙΑ', v: r.enfia > 0 ? feAuto(r.enfia) : 'δεν δηλώθηκε' },
+        { k: 'Δαπάνες', v: r.expenses > 0 ? feAuto(r.expenses) : 'δεν δηλώθηκαν' },
         { k: 'Άλλα ενοίκια', v: feAuto(amount(v.alla)) },
       ]}/>
 
@@ -188,7 +189,7 @@ export function ApodosiCalculator({ year, today, cta }: {
                 σημείωση εξηγεί γιατί, εκεί που το μάτι πάει μετά τον αριθμό. */}
             {noCosts && (
               <p style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)', textWrap: 'pretty' }}>
-                Δεν δηλώθηκε ΕΝΦΙΑ ούτε δαπάνες, οπότε η απόδοση κρατά μόνο τον φόρο. Με τα δύο
+                Δεν δηλώθηκαν ΕΝΦΙΑ ούτε δαπάνες, οπότε η απόδοση αφαιρεί μόνο τον φόρο. Με τα δύο
                 πεδία συμπληρωμένα βγαίνει η καθαρή.
               </p>
             )}
@@ -244,7 +245,7 @@ export function ApodosiCalculator({ year, today, cta }: {
           // ΟΣΑ ΔΕΝ ΔΗΛΩΘΗΚΑΝ ΔΕΝ ΓΡΑΦΟΝΤΑΙ «0,00€»: το μηδέν εκεί διαβαζόταν ως
           // ΕΝΦΙΑ που μετρήθηκε μηδέν. Η λέξη λέει ότι το πεδίο έμεινε κενό.
           r.enfia > 0 ? { k: 'ΕΝΦΙΑ', v: feSigned(-r.enfia) } : { k: 'ΕΝΦΙΑ', v: 'δεν δηλώθηκε', kind: 'param' },
-          r.expenses > 0 ? { k: 'Δαπάνες', v: feSigned(-r.expenses) } : { k: 'Δαπάνες', v: 'δεν δηλώθηκε', kind: 'param' },
+          r.expenses > 0 ? { k: 'Δαπάνες', v: feSigned(-r.expenses) } : { k: 'Δαπάνες', v: 'δεν δηλώθηκαν', kind: 'param' },
           { k: 'Σου μένουν τον χρόνο', v: feSigned(r.net), kind: 'total' },
         ]}/>
         {/* ΟΤΑΝ ΤΟ ΑΚΙΝΗΤΟ ΔΕΝ ΕΠΙΣΤΡΕΦΕΙ, ΔΕΝ ΓΡΑΦΕΤΑΙ ΑΡΙΘΜΟΣ. Η διαίρεση με
@@ -255,7 +256,7 @@ export function ApodosiCalculator({ year, today, cta }: {
         <ToolStats items={[
           { k: 'Καθαρά τον μήνα', v: wholeSigned(r.netMonthly) },
           { k: 'Χρόνια απόσβεσης', v: !hasValue ? 'Χρειάζεται αξία'
-            : r.paybackYears === null ? 'Δεν επιστρέφει' : fn(r.paybackYears, 1) },
+            : r.paybackYears === null ? 'Δεν αποσβένεται' : fn(r.paybackYears, 1) },
           { k: 'Οριακός συντελεστής', v: fpRate(r.marginal * 100) },
         ]}/>
       </div>
@@ -281,11 +282,11 @@ export function ApodosiCalculator({ year, today, cta }: {
           <strong style={{ color: 'var(--text-primary)' }}>Τι περιλαμβάνει και τι όχι.</strong>{' '}
           Ο φόρος βγαίνει με την κλίμακα ενοικίων {year}
           {` (${rateScale(rentalBracketsForYear(year))})`} και
-          την τεκμαρτή έκπτωση {fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}, που από {BANK_FROM} θα θέλει είσπραξη μέσω τράπεζας
-          (ν.5222/2025)· εδώ θεωρείται δεδομένη. Δεν περιλαμβάνει: μεταβολή της
+          την τεκμαρτή έκπτωση {fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}, που από {BANK_FROM} θα προϋποθέτει είσπραξη μέσω τράπεζας
+          (ν.5222/2025)· εδώ η είσπραξη μέσω τράπεζας θεωρείται δεδομένη. Δεν περιλαμβάνει: μεταβολή της
           αξίας, δάνειο και τόκους, έξοδα αγοράς ή πώλησης, ανακαίνιση,
-          ανείσπρακτα, βραχυχρόνια, νομικό πρόσωπο ούτε τα άλλα σου
-          εισοδήματα. <EstimateNote investment />
+          ανείσπρακτα, βραχυχρόνια, νομικό πρόσωπο ούτε εισοδήματα εκτός
+          ενοικίων. <EstimateNote investment />
         </p>
       </div>
 

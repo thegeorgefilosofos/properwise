@@ -34,11 +34,11 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl, PRODUCT_NAME } from '@/lib/core/site';
 import { REGULATORY_UPDATES_2026 } from '@/lib/accounting/updates2026';
-import { feWhole } from '@/lib/core/format';
+import { feWhole, fn, fpRate } from '@/lib/core/format';
 import { ANAK_NAME, ANAK_KYA, ANAK_KYA_AMEND, ANAK_KYA_AMEND2, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_OTHER_TEXT, ANAK_SCOPE_TEXT, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT } from '@/lib/accounting/anakainisi2026';
 import {
   renovationCredit, RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_PER_YEAR, RENO_39B_FROM, RENO_39B_TO,
-  RENO_39B_LAW, RENO_39B_KYA, RENO_39B_OLD_RATE,
+  RENO_39B_LAW, RENO_39B_KYA, RENO_39B_OLD_RATE, RENO_39B_MATERIALS_SHARE,
 } from '@/lib/accounting/renovation39b';
 import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
 import { shareImage } from '../../og/share';
@@ -66,6 +66,11 @@ const OVER = 25000;
 const R_OVER = renovationCredit({ services: OVER, materials: 0 });
 // Ο κανόνας του 2020, μόνο για τη σύγκριση που κάνει ο αναγνώστης.
 const OLD_RATE = RENO_39B_OLD_RATE;
+// Το κλάσμα των υλικών και ο παλιός συντελεστής από τις σταθερές που υπολογίζουν
+// (20/10/2026): η σελίδα έγραφε «/ 3», «40%» και «δυόμισι φορές» με το χέρι.
+const MAT_DIV = fn(1 / RENO_39B_MATERIALS_SHARE); // «3»
+const OLD_PCT = fpRate(OLD_RATE * 100); // «40%»
+const OLD_TIMES = fn(1 / OLD_RATE, 1); // «2,5»
 
 const H1 = `Έκπτωση φόρου για ανακαίνιση: έως ${CAP} σε ${RENO_39B_YEARS} έτη`;
 const TITLE = H1;
@@ -81,8 +86,8 @@ export const metadata: Metadata = publicMetadata({ title: TITLE, description: DE
 // Οι ερωτήσεις τροφοδοτούν ΚΑΙ την ορατή λίστα ΚΑΙ το δομημένο σχήμα: μία πηγή.
 const FAQ: GuideFaqItem[] = [
   {
-    q: 'Η έκπτωση είναι 40%;',
-    a: `Όχι πια. Το 40% ίσχυε για δαπάνες 2020 έως 2022. Για δαπάνες από ${RENO_39B_FROM} έως ${RENO_39B_TO} `
+    q: `Η έκπτωση είναι ${OLD_PCT};`,
+    a: `Όχι πια. Το ${OLD_PCT} ίσχυε για δαπάνες 2020 έως 2022. Για δαπάνες από ${RENO_39B_FROM} έως ${RENO_39B_TO} `
      + `η μείωση φόρου ισούται με την επιλέξιμη δαπάνη, έως ${CAP} συνολικά για όλα τα έτη.`,
   },
   {
@@ -91,25 +96,25 @@ const FAQ: GuideFaqItem[] = [
      + 'δεν ξεπερνά τον φόρο που αναλογεί· ό,τι περισσεύει δεν επιστρέφεται.',
   },
   {
-    q: 'Μετράει δαπάνη που πλήρωσα με μετρητά;',
+    q: 'Μετρά δαπάνη που πλήρωσα με μετρητά;',
     a: 'Όχι. Η δαπάνη πληρώνεται ηλεκτρονικά (κάρτα, έμβασμα ή άμεση πληρωμή) και συνοδεύεται '
      + 'από τιμολόγιο στο ΑΦΜ σου. Πληρωμή με μετρητά σημαίνει καμία έκπτωση, όσο σωστό κι αν είναι το παραστατικό.',
   },
   {
-    q: 'Πόσα υλικά μετράνε;',
-    a: 'Η αξία των υλικών λαμβάνεται έως το ένα τρίτο της αξίας των υπηρεσιών. Με εργασία '
-     + `${feWhole(EX2.services)} μετράνε έως ${feWhole(R2.materialsCounted)} υλικά· ό,τι περισσεύει μένει εκτός επιλέξιμης δαπάνης.`,
+    q: 'Πόσα υλικά μετρούν;',
+    a: `Η αξία των υλικών λαμβάνεται υπόψη έως το 1/${MAT_DIV} της αξίας των υπηρεσιών. Με εργασία `
+     + `${feWhole(EX2.services)} μετρούν έως ${feWhole(R2.materialsCounted)} υλικά· ό,τι περισσεύει μένει εκτός επιλέξιμης δαπάνης.`,
   },
   {
     q: 'Είναι το ίδιο με το «Ανακαινίζω 2026»;',
-    a: `Όχι. Το «Ανακαινίζω 2026» (δράση ${ANAK_NAME}) είναι επιχορήγηση ${ANAK_RATES_TEXT}, `
+    a: `Όχι. Το «Ανακαινίζω 2026» (η δράση ${ANAK_NAME}) είναι επιχορήγηση ${ANAK_RATES_TEXT}, `
      + `${ANAK_CAP_TEXT}. ${ANAK_STATUS_TEXT}. Η έκπτωση του άρθρου 39Β μειώνει τον φόρο εισοδήματος.`,
   },
 ];
 
 // Οι πηγές και η νομική βάση, ορατές όπως στα εργαλεία (E-E-A-T).
 const SOURCES: string[] = [
-  `Έκπτωση φόρου δαπανών ανακαίνισης: ${RENO_39B_LAW}, ισχύς από ${RENO_39B_FROM} · μείωση φόρου ίση με την επιλέξιμη δαπάνη · ανώτατο ${CAP} για όλα τα έτη, ισόποσα σε ${RENO_39B_YEARS} έτη · υλικά έως το 1/3 της αξίας των υπηρεσιών · ηλεκτρονική πληρωμή και παραστατικά στο ΑΦΜ του ιδιοκτήτη.`,
+  `Έκπτωση φόρου δαπανών ανακαίνισης: ${RENO_39B_LAW}, ισχύς από ${RENO_39B_FROM} · μείωση φόρου ίση με την επιλέξιμη δαπάνη · ανώτατο ${CAP} για όλα τα έτη, ισόποσα σε ${RENO_39B_YEARS} έτη · υλικά έως το 1/${MAT_DIV} της αξίας των υπηρεσιών · ηλεκτρονική πληρωμή και παραστατικά στο ΑΦΜ του ιδιοκτήτη.`,
   `${RENO_39B_KYA}: εφαρμογή της διάταξης για δαπάνες από ${RENO_39B_FROM} έως ${RENO_39B_TO}, προϋποθέσεις παρόχων και παραστατικών, αποκλεισμός της ίδιας δαπάνης ως επιχειρηματικής.`,
   `${ANAK_NAME} («Ανακαινίζω 2026»): ${ANAK_KYA}, όπως τροποποιήθηκε με την ${ANAK_KYA_AMEND} και την ${ANAK_KYA_AMEND2} · επιχορήγηση ${ANAK_RATES_TEXT} · η επιχορήγηση φτάνει ${ANAK_CAP_TEXT}, ${ANAK_OTHER_TEXT}.`,
 ];
@@ -120,7 +125,7 @@ const S = {
   limit: { id: 'orio', over: '2. Το όριο', title: 'Ένα όριο για δαπάνη και μείωση' },
   terms: { id: 'proypotheseis', over: '3. Προϋποθέσεις', title: 'Πληρωμή, τιμολόγια, υλικά' },
   example: { id: 'paradeigma', over: '4. Παράδειγμα', title: 'Δύο ανακαινίσεις, βήμα βήμα' },
-  confirm: { id: 'ti-allazei', over: '5. Τι επιβεβαιώνεις', title: 'Παράθυρο και φόρος που φτάνει' },
+  confirm: { id: 'ti-allazei', over: '5. Τι επιβεβαιώνεις', title: 'Προθεσμία δαπανών και επάρκεια φόρου' },
   grant: { id: 'anakainizo', over: '6. Μην το μπερδέψεις', title: 'Η διαφορά από το «Ανακαινίζω»' },
 } as const;
 
@@ -148,10 +153,10 @@ export default function Page() {
 
         {/* Εισαγωγή */}
         <p className="lg-p">
-          {`Το άρθρο 39Β του Κώδικα Φορολογίας Εισοδήματος (ν.4172/2013) μειώνει τον φόρο κατά ποσό ίσο με την επιλέξιμη δαπάνη για ανακαίνιση, έως ${CAP} συνολικά. Κυκλοφορεί ακόμη το «40%»: ήταν ο κανόνας για δαπάνες 2020 έως 2022 και δίνει όφελος δυόμισι φορές μικρότερο από το σημερινό.`}
+          {`Το άρθρο 39Β του Κώδικα Φορολογίας Εισοδήματος (ν.4172/2013) μειώνει τον φόρο κατά ποσό ίσο με την επιλέξιμη δαπάνη για ανακαίνιση, έως ${CAP} συνολικά. Κυκλοφορεί ακόμη το «${OLD_PCT}»: ήταν ο κανόνας για δαπάνες 2020 έως 2022 και με αυτόν το όφελος βγαίνει ${OLD_TIMES} φορές μικρότερο από το σημερινό.`}
         </p>
         <p className="lg-p">
-          {`Ο οδηγός δείχνει πώς υπολογίζεται η μείωση, ποιες προϋποθέσεις τηρούνται πριν πληρώσεις το πρώτο τιμολόγιο και τι επιβεβαιώνεις πριν από τις ${RENO_39B_TO}.`}
+          {`Ο οδηγός δείχνει πώς υπολογίζεται η μείωση, ποιες προϋποθέσεις πρέπει να τηρείς πριν πληρώσεις το πρώτο τιμολόγιο και τι επιβεβαιώνεις πριν από τις ${RENO_39B_TO}.`}
         </p>
 
         {/* 1. Τι είναι */}
@@ -163,7 +168,7 @@ export default function Page() {
         {/* 2. Το όριο */}
         <H2 {...S.limit} />
         <p className="lg-p">
-          {`Τα ${CAP} είναι ταυτόχρονα η μέγιστη επιλέξιμη δαπάνη και η μέγιστη μείωση φόρου, για όλα τα έτη μαζί. Μοιρασμένα σε ${RENO_39B_YEARS} έτη κάνουν το πολύ ${PER_YEAR} τον χρόνο. Όποιος υπολογίζει με το παλιό 40% βλέπει το πολύ ${feWhole(RENO_39B_CAP * OLD_RATE)}, δηλαδή δυόμισι φορές λιγότερα από όσα δικαιούται.`}
+          {`Τα ${CAP} είναι ταυτόχρονα η μέγιστη επιλέξιμη δαπάνη και η μέγιστη μείωση φόρου, για όλα τα έτη μαζί. Μοιρασμένα σε ${RENO_39B_YEARS} έτη κάνουν το πολύ ${PER_YEAR} τον χρόνο. Όποιος υπολογίζει με το παλιό ${OLD_PCT} βλέπει το πολύ ${feWhole(RENO_39B_CAP * OLD_RATE)}, δηλαδή ${OLD_TIMES} φορές λιγότερα από όσα δικαιούται.`}
         </p>
         <p className="lg-p">
           {`Δαπάνη πάνω από το όριο δεν αυξάνει τη μείωση. Μια ανακαίνιση με επιλέξιμη δαπάνη ${feWhole(OVER)} δίνει κι αυτή το πολύ ${feWhole(R_OVER.total)}. Ούτε η μείωση ενός έτους ξεπερνά τον φόρο του: με ετήσιο φόρο κάτω από ${PER_YEAR}, η μείωση του έτους κόβεται στο ύψος του φόρου.`}
@@ -174,8 +179,8 @@ export default function Page() {
         <ul className="lg-ul">
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Ηλεκτρονική πληρωμή.'}</strong>{' Κάρτα, έμβασμα ή άμεση πληρωμή. Δαπάνη που πληρώθηκε με μετρητά δεν μετρά, όσο σωστό κι αν είναι το παραστατικό.'}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Παραστατικά στο όνομά σου.'}</strong>{' Τιμολόγιο στο ΑΦΜ σου για κάθε εργασία και κάθε αγορά υλικών.'}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Πάροχος με έδρα στην Ελλάδα.'}</strong>{' Το συνεργείο ή ο προμηθευτής έχει φορολογική κατοικία ή μόνιμη εγκατάσταση στην Ελλάδα.'}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Υλικά έως το 1/3 των υπηρεσιών.'}</strong>{' Η αξία των υλικών λαμβάνεται υπόψη μόνο έως το ένα τρίτο της αξίας των υπηρεσιών. Ό,τι περισσεύει μένει εκτός.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Πάροχος εγκατεστημένος στην Ελλάδα.'}</strong>{' Το συνεργείο ή ο προμηθευτής έχει φορολογική κατοικία ή μόνιμη εγκατάσταση στην Ελλάδα.'}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{`Υλικά έως το 1/${MAT_DIV} των υπηρεσιών.`}</strong>{` Η αξία των υλικών λαμβάνεται υπόψη μόνο έως το 1/${MAT_DIV} της αξίας των υπηρεσιών. Ό,τι περισσεύει μένει εκτός.`}</li>
         </ul>
         <p className="lg-p">
           {'Κράτα τιμολόγια και αποδεικτικά πληρωμής ανά ακίνητο από την πρώτη μέρα. Αυτά ζητά ο λογιστής όταν φτάσει η δήλωση.'}
@@ -187,7 +192,7 @@ export default function Page() {
           {`Ανακαίνιση διαμερίσματος με ${feWhole(EX1.services)} εργασία και ${feWhole(EX1.materials)} υλικά, όλα πληρωμένα ηλεκτρονικά και τιμολογημένα στο ΑΦΜ του ιδιοκτήτη.`}
         </p>
         <ul className="lg-ul">
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Όριο υλικών:'}</strong>{` ${feWhole(EX1.services)} / 3 = ${feWhole(EX1.services / 3)}. Τα υλικά είναι ${feWhole(EX1.materials)}, άρα μετράνε ολόκληρα.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Όριο υλικών:'}</strong>{` ${feWhole(EX1.services)} / ${MAT_DIV} = ${feWhole(EX1.services * RENO_39B_MATERIALS_SHARE)}. Τα υλικά είναι ${feWhole(EX1.materials)}, άρα μετρούν ολόκληρα.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Επιλέξιμη δαπάνη:'}</strong>{` ${feWhole(EX1.services)} + ${feWhole(R1.materialsCounted)} = ${feWhole(R1.eligible)}, ακριβώς στο όριο.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{`Μείωση φόρου: ${feWhole(R1.total)},`}</strong>{` δηλαδή ${feWhole(R1.perYear)} τον χρόνο για ${RENO_39B_YEARS} έτη, εφόσον ο φόρος κάθε έτους φτάνει.`}</li>
         </ul>
@@ -195,8 +200,8 @@ export default function Page() {
           {`Τώρα άλλη αναλογία: ${feWhole(EX2.services)} εργασία και ${feWhole(EX2.materials)} υλικά, σύνολο ${feWhole(EX2.services + EX2.materials)}.`}
         </p>
         <ul className="lg-ul">
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Όριο υλικών:'}</strong>{` ${feWhole(EX2.services)} / 3 = ${feWhole(R2.materialsCounted)}. Τα υλικά είναι ${feWhole(EX2.materials)}, άρα μετράνε μόνο τα ${feWhole(R2.materialsCounted)}.`}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{'Επιλέξιμη δαπάνη:'}</strong>{` ${feWhole(EX2.services)} + ${feWhole(R2.materialsCounted)} = ${feWhole(R2.eligible)}. Τα ${feWhole(EX2.materials - R2.materialsCounted)} υλικών πάνω από το όριο δεν μετράνε.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Όριο υλικών:'}</strong>{` ${feWhole(EX2.services)} / ${MAT_DIV} = ${feWhole(R2.materialsCounted)}. Τα υλικά είναι ${feWhole(EX2.materials)}, άρα μετρούν μόνο τα ${feWhole(R2.materialsCounted)}.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{'Επιλέξιμη δαπάνη:'}</strong>{` ${feWhole(EX2.services)} + ${feWhole(R2.materialsCounted)} = ${feWhole(R2.eligible)}. Τα υπόλοιπα ${feWhole(EX2.materials - R2.materialsCounted)} των υλικών δεν μετρούν.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{`Μείωση φόρου: ${feWhole(R2.total)},`}</strong>{` δηλαδή ${feWhole(R2.perYear)} τον χρόνο για ${RENO_39B_YEARS} έτη, αντί για ${feWhole(EX2.services + EX2.materials)} αν μετρούσαν όλα τα υλικά.`}</li>
         </ul>
 
@@ -210,7 +215,7 @@ export default function Page() {
           {`Ο κανόνας ισχύει για δαπάνες από ${RENO_39B_FROM} έως ${RENO_39B_TO}, με την ${RENO_39B_KYA}. Πριν αναθέσεις την εργασία, επιβεβαίωσε με τον λογιστή σου δύο πράγματα:`}
         </p>
         <ul className="lg-ul">
-          <li>{`Ότι η δική σου δαπάνη πέφτει μέσα στο παράθυρο. Μετρά η ημερομηνία του τιμολογίου και της πληρωμής· εργασία που τιμολογείται μετά τις ${RENO_39B_TO} μένει εκτός, εκτός αν δοθεί νέα παράταση.`}</li>
+          <li>{`Ότι η δική σου δαπάνη πέφτει μέσα στο παράθυρο. Μετρά η ημερομηνία του τιμολογίου και της πληρωμής· εργασία που τιμολογείται μετά τις ${RENO_39B_TO} δεν μετρά, εκτός αν δοθεί νέα παράταση.`}</li>
           <li>{`Ότι ο φόρος σου φτάνει για να απορροφήσει έως ${PER_YEAR} τον χρόνο. Η μείωση δεν ξεπερνά τον φόρο κάθε έτους και ό,τι περισσεύει δεν επιστρέφεται.`}</li>
         </ul>
         <p className="lg-p">
@@ -220,10 +225,10 @@ export default function Page() {
         {/* 6. Ανακαινίζω */}
         <H2 {...S.grant} />
         <p className="lg-p">
-          {`Το «Ανακαινίζω 2026», δηλαδή η δράση ${ANAK_NAME}, είναι επιδότηση, όχι μείωση φόρου. Καλύπτει ${ANAK_SCOPE_TEXT}. Η επιχορήγηση είναι ${ANAK_RATES_TEXT}. Φτάνει ${ANAK_CAP_TEXT}, ${ANAK_OTHER_TEXT}. ${ANAK_OBLIGATION_TEXT}.`}
+          {`Το «Ανακαινίζω 2026», δηλαδή η δράση ${ANAK_NAME}, είναι επιχορήγηση, όχι μείωση φόρου. Καλύπτει ${ANAK_SCOPE_TEXT}. Η επιχορήγηση είναι ${ANAK_RATES_TEXT}. Δίνεται ${ANAK_CAP_TEXT}, ${ANAK_OTHER_TEXT}. ${ANAK_OBLIGATION_TEXT}.`}
         </p>
         <p className="lg-p">
-          {`${ANAK_STATUS_TEXT}. Στα επιδοτούμενα προγράμματα οι δαπάνες πριν από την ένταξη συνήθως δεν είναι επιλέξιμες, οπότε πρώτα η έγκριση και μετά η εργασία. Οι όροι μετρούν όπως τους γράφουν τα ΦΕΚ της ενότητας 7· τις ανακοινώσεις για το δεύτερο στάδιο τις βλέπεις στη `}
+          {`${ANAK_STATUS_TEXT}. Στα επιδοτούμενα προγράμματα οι δαπάνες πριν από την ένταξη συνήθως δεν είναι επιλέξιμες, οπότε πρώτα η έγκριση και μετά η εργασία. Ισχύουν οι όροι όπως τους ορίζουν τα ΦΕΚ της ενότητας 7· τις ανακοινώσεις για το δεύτερο στάδιο τις βλέπεις στη `}
           <a href={ANAKAINIZO_HREF} target="_blank" rel="noopener noreferrer" className="lp-link" style={LINK_STYLE}>{'σελίδα της δράσης στο stegasi.gov.gr'}</a>
           {'.'}
         </p>

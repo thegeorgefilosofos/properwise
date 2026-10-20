@@ -20,6 +20,7 @@ import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/reno
 import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { feWhole, fpRate, grDateOf } from '@/lib/core/format';
+import { COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
 
 // Η κλίμακα της περιγραφής βγαίνει από την κλίμακα που υπολογίζει: «15 / 25 /
 // 35 / 45%», το όριο του τελευταίου κλιμακίου και η τεκμαρτή έκπτωση.
@@ -61,7 +62,7 @@ export const GUIDES: readonly Guide[] = [
     desc: `Η κλίμακα ${RENT_SCALE} (όριο ${feWhole(RENT_TOP_FROM)}), η τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)} και η `
         + 'προϋπόθεση της τραπεζικής είσπραξης, με παραδείγματα σε ευρώ.',
     published: '2026-09-21',
-    updated: '2026-09-24',
+    updated: '2026-10-20',
     tools: ['/ypologismos-forou-enoikion', '/kathari-apodosi'],
   },
   {
@@ -71,9 +72,9 @@ export const GUIDES: readonly Guide[] = [
     // Η ΠΕΡΙΓΡΑΦΗ ΤΗΣ ΣΕΛΙΔΑΣ, ΙΔΙΑ ΚΑΙ ΣΤΗΝ ΚΑΡΤΑ (05.10.2026): το κείμενο v2
     // ανοίγει με το τέλος ανθεκτικότητας και την αλλαγή της 1ης Νοεμβρίου.
     desc: 'Πόσο είναι το τέλος ανθεκτικότητας ανά διανυκτέρευση το 2026, τι αλλάζει από 1η Νοεμβρίου, '
-        + 'πώς δηλώνεται στο myAADE και πώς φορολογείται το Airbnb.',
+        + 'πώς δηλώνεται στο myAADE και πώς φορολογείται το εισόδημα από Airbnb.',
     published: '2026-09-21',
-    updated: '2026-10-05',
+    updated: '2026-10-20',
     tools: ['/vraxyxronia-i-makroxronia'],
   },
   {
@@ -85,7 +86,7 @@ export const GUIDES: readonly Guide[] = [
     published: '2026-09-21',
     // 13.10.2026: οι συντελεστές 0,8 και 0,60 των παλιών κτιρίων και το όριο
     // πληθυσμού του μικρού οικισμού («έως» 1.500, 1.700 στα σύνορα).
-    updated: '2026-10-13',
+    updated: '2026-10-20',
     tools: ['/ypologismos-enfia'],
   },
   {
@@ -95,7 +96,7 @@ export const GUIDES: readonly Guide[] = [
     desc: 'Από τη μεικτή απόδοση αφαιρούνται ο φόρος στο δικό σου κλιμάκιο, ο ΕΝΦΙΑ '
         + 'και οι δαπάνες. Τι μένει καθαρό, με παράδειγμα σε ευρώ.',
     published: '2026-09-21',
-    updated: '2026-09-24',
+    updated: '2026-10-20',
     tools: ['/kathari-apodosi', '/ypologismos-stegastikou-daneiou', '/sygkrisi-timologion-revmatos'],
   },
   // ── Δεύτερο κύμα (27.09.2026). Κάθε οδηγός γράφεται από δεδομένα που ήδη
@@ -105,30 +106,34 @@ export const GUIDES: readonly Guide[] = [
     href: '/odigos/forologikes-prothesmies-idioktiton',
     kicker: 'Προθεσμίες',
     title: 'Φορολογικές προθεσμίες ιδιοκτήτη',
-    desc: 'ΕΝΦΙΑ, Ε9, προσυμπληρωμένη δήλωση, Ε1 και Ε2 και οι μηνιαίες υποχρεώσεις '
+    desc: 'ΕΝΦΙΑ, Ε9, προσυμπληρωμένη δήλωση, Ε1/Ε2 και οι μηνιαίες υποχρεώσεις '
         + 'της βραχυχρόνιας, με ημερομηνία, υπεύθυνο και επίσημη πηγή.',
     published: '2026-09-27',
-    updated: '2026-09-27',
+    updated: '2026-10-20',
     tools: ['/ypologismos-enfia', '/ypologismos-forou-enoikion', '/vraxyxronia-i-makroxronia'],
   },
   {
     href: '/odigos/enoikio-meso-trapezas',
     kicker: 'Ενοίκια',
     title: 'Ενοίκιο μέσω τράπεζας',
-    desc: `Από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} το ενοίκιο κατοικίας εισπράττεται ηλεκτρονικά, αλλιώς χάνεται `
-        + `η έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}. Τι ισχύει για τα εισοδήματα 2025 και 2026.`,
+    // Η ΕΚΠΤΩΣΗ ΘΕΛΕΙ ΤΡΑΠΕΖΑ, ΤΑ ΜΕΤΡΗΤΑ ΔΕΝ ΑΠΑΓΟΡΕΥΟΝΤΑΙ (20.10.2026): η κάρτα
+    // το έγραφε ως γεγονός («εισπράττεται ηλεκτρονικά»), ενώ η παρ. 5 του
+    // άρθρου 39 ΚΦΕ είναι όρος για την έκπτωση (lib/billing/greekTax.ts).
+    desc: `Από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} το ενοίκιο κατοικίας πρέπει να εισπράττεται μέσω τράπεζας για να μη χαθεί `
+        + `η έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}. Τι ισχύει για τα εισοδήματα ${FIRST_YEAR_BANK_RECEIPT - 2} και ${FIRST_YEAR_BANK_RECEIPT - 1}.`,
     published: '2026-09-27',
-    updated: '2026-09-27',
+    updated: '2026-10-20',
     tools: ['/ypologismos-forou-enoikion'],
   },
   {
     href: '/odigos/plafon-3-emporikes-misthoseis-2026',
     kicker: 'Επαγγελματικές μισθώσεις',
-    title: 'Πλαφόν 3% στις επαγγελματικές μισθώσεις 2026',
+    // Όριο και έτος από τη σταθερά της ειδοποίησης αναπροσαρμογής (20.10.2026).
+    title: `Πλαφόν ${fpRate(COMMERCIAL_RENT_CAP_2026.pct)} στις επαγγελματικές μισθώσεις ${COMMERCIAL_RENT_CAP_2026.from.slice(0, 4)}`,
     desc: 'Ποιες μισθώσεις αφορά το όριο αναπροσαρμογής, ποιες όχι, τι ισχύει στις νέες '
         + 'συμβάσεις και ποιοι εκμισθωτές εξαιρούνται.',
     published: '2026-09-27',
-    updated: '2026-09-27',
+    updated: '2026-10-20',
     tools: ['/kathari-apodosi'],
   },
   {
@@ -138,7 +143,7 @@ export const GUIDES: readonly Guide[] = [
     desc: `Η μείωση φόρου ισούται με τη δαπάνη, έως ${feWhole(RENO_39B_CAP)} σε ${RENO_39B_YEARS} έτη, `
         + `για δαπάνες έως ${RENO_39B_TO}. Προϋποθέσεις, πληρωμή, υλικά και παράδειγμα.`,
     published: '2026-09-27',
-    updated: '2026-10-08',
+    updated: '2026-10-20',
     tools: ['/ypologismos-forou-enoikion', '/kathari-apodosi'],
   },
   {
@@ -148,7 +153,7 @@ export const GUIDES: readonly Guide[] = [
     desc: 'Η αναστολή νέων εγγραφών στο κέντρο της Αθήνας, γιατί ο ΑΜΑ δεν μεταβιβάζεται, '
         + 'οι προδιαγραφές ασφαλείας και τα πρόστιμα.',
     published: '2026-09-27',
-    updated: '2026-10-12',
+    updated: '2026-10-20',
     tools: ['/vraxyxronia-i-makroxronia'],
     // ΧΩΡΙΣ ΕΣΩΤΕΡΙΚΟΥΣ ΣΥΝΔΕΣΜΟΥΣ ΑΠΟ 13/10/2026. Ο οδηγός θέλει την υπογραφή
     // της Legal πριν ξαναπάρει σύνδεσμο από άλλη σελίδα (πλάνο SEO, έως 16/10).
@@ -166,7 +171,7 @@ export const GUIDES: readonly Guide[] = [
     desc: 'Πότε λήγει κάθε δόση, πού πατάς στο myAADE για να πληρώσεις, πώς βγάζεις '
         + 'πιστοποιητικό ΕΝΦΙΑ για πώληση και ποιος κάνει την οριστικοποίηση.',
     published: '2026-10-03',
-    updated: '2026-10-03',
+    updated: '2026-10-20',
     tools: ['/ypologismos-enfia'],
   },
   // ── Τέταρτο κύμα (19.10.2026). Μετά τη ΔΕΘ ο κόσμος ψάχνει «Σπίτι μου 3». Τα
@@ -179,7 +184,7 @@ export const GUIDES: readonly Guide[] = [
     desc: 'Τα όρια του Σπίτι μου Ι και ΙΙ δίπλα σε ό,τι είναι επίσημο για το ΙΙΙ. '
         + 'Τι έχει μόνο ειπωθεί και τι κάνεις μέχρι να βγει η ΚΥΑ.',
     published: '2026-10-19',
-    updated: '2026-10-19',
+    updated: '2026-10-20',
     tools: ['/ypologismos-stegastikou-daneiou'],
   },
 ];

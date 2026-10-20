@@ -159,8 +159,8 @@ ok('green class lowers Cheap nominal rate', greenRanked.find(r => r.bankId === '
   ok('...η κατάσταση είναι «closed»', spitiMouStatus(TODAY).state === 'closed')
   ok('31/05/2026 ήταν η τελευταία μέρα αιτήσεων', spitiMouOpen('2026-05-31') === true && spitiMouOpen('2026-06-01') === false)
   ok('η γραμμή λέει την ημερομηνία κλεισίματος',
-    spitiMouClosedLine(TODAY).startsWith('Κλειστό για νέες αιτήσεις από 31/05/2026.'))
-  ok('...σε αόριστο για τις υπογραφές που πέρασαν', /υπέγραφαν έως 31\/08\/2026/.test(spitiMouClosedLine(TODAY)))
+    spitiMouClosedLine(TODAY).startsWith('Η προθεσμία των αιτήσεων έληξε στις 31/05/2026.'))
+  ok('...σε παρελθόν για τις υπογραφές που πέρασαν', /μπορούσαν να υπογράψουν έως 31\/08\/2026/.test(spitiMouClosedLine(TODAY)))
   ok('...σε ενεστώτα όσο τρέχουν ακόμη', /υπογράφουν έως 31\/08\/2026/.test(spitiMouClosedLine(AFTER_APPLY)))
   ok('...κενή όσο δέχεται αιτήσεις', spitiMouClosedLine(OPEN_DAY) === '')
   ok('...χωρίς κανένα ποσοστό οφέλους', !/%|άτοκ|επιδότ/.test(spitiMouClosedLine(TODAY)))
@@ -189,7 +189,7 @@ ok('green class lowers Cheap nominal rate', greenRanked.find(r => r.bankId === '
   const lines = spitiMou3ReportedLines().join(' ')
   ok('ΙΙΙ-τύπος: τα όρια λέγονται', lines.includes('230.000€') && lines.includes('300.000€'))
   ok('ΙΙΙ-τύπος: η επιφύλαξη λέει ότι δεν είναι όροι και ποια η πηγή',
-    /Δεν είναι ακόμη όροι/.test(spitiMou3ReportedCaveat()) && spitiMou3ReportedCaveat().includes(SPITI_MOU_3_REPORTED.source.label))
+    /Δεν είναι όροι του προγράμματος/.test(spitiMou3ReportedCaveat()) && spitiMou3ReportedCaveat().includes(SPITI_MOU_3_REPORTED.source.label))
   ok('ΙΙΙ-τύπος: κανένα όριο δεν πέρασε στα επίσημα του SPITI_MOU_3',
     !Object.keys(SPITI_MOU_3).some(k => /amount|value|income|ltv|sqm|benefic/i.test(k)))
   ok('ΙΙΙ-τύπος: η πηγή έχει διεύθυνση', /^https:\/\//.test(SPITI_MOU_3_REPORTED.source.url))

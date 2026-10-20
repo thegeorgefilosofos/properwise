@@ -40,13 +40,42 @@ import { monthGen } from '@/lib/core/months'
 import { roundHalfUp } from '../core/money';
 
 /**
- * Πόσες δόσεις: Μάρτιος έως Φεβρουάριο του επόμενου έτους.
+ * Πόσες δόσεις το πολύ: Μάρτιος έως Φεβρουάριο του επόμενου έτους.
  *
  * ΕΚΚΡΕΜΕΙ (13.10.2026): ΟΙ ΔΟΣΕΙΣ ΤΟΥ ΕΝΦΙΑ 2026 ΜΕΝΟΥΝ ΩΣ ΕΧΟΥΝ ώσπου να
  * επιβεβαιωθεί επίσημη πηγή (απόφαση ΑΑΔΕ ή ΦΕΚ) για το πλήθος τους. Εντολή του
- * ιδιοκτήτη: καμία αλλαγή χωρίς αυτήν.
+ * ιδιοκτήτη: καμία αλλαγή χωρίς αυτήν. Το 12 είναι το ανώτατο· για μικρό ποσό
+ * οι δόσεις λιγοστεύουν (`ENFIA_MIN_INSTALMENT`).
  */
 export const ENFIA_INSTALMENTS = 12
+
+/**
+ * ΚΑΜΙΑ ΔΟΣΗ ΚΑΤΩ ΑΠΟ 10€ (απόφαση ιδιοκτήτη 20.10.2026).
+ *
+ * ΤΟ ΣΦΑΛΜΑ, ΟΠΩΣ ΗΤΑΝ. Το ετήσιο μοιραζόταν πάντα σε δώδεκα, για οποιοδήποτε
+ * ποσό: 67,20€ έβγαιναν 12 × 5,60€, δόσεις που δεν υπάρχουν στο εκκαθαριστικό.
+ * Ο κανόνας του νόμου «κάθε δόση δεν μπορεί να είναι μικρότερη από 10 ευρώ»
+ * ισχύει και για τον ΕΝΦΙΑ: taxheaven, «Τροπολογία για μειώσεις ΕΝΦΙΑ και
+ * καταβολή δόσεων» (https://www.taxheaven.gr/news/59285/tropologia-gia-meiwseis-enfia-kai-katabolh-dosewn:
+ * «Παραμένει η πρόβλεψη ότι κάθε δόση δεν μπορεί να είναι μικρότερη από 10
+ * ευρώ»)· ΥΠΕΘΟΟ (https://minfin.gov.gr/katatethike-sti-vouli-i-tropologia-gia-pliromi-tou-enfia-se-11-doseis/)·
+ * ΑΑΔΕ (https://www.aade.gr/en/greeks-abroad-non-residents/property-taxation/unified-tax-ownership-real-estate-e9-enfia)·
+ * gov.gr (https://www.gov.gr/en/sdg/residence/purchasing-and-selling-of-immovable-property/taxation-for-possession-of-real-estate-property/uniform-real-estate-property-tax-enfia).
+ * ΔΕΝ είναι το ελάχιστο 30€ της πάγιας ρύθμισης (24 δόσεις, έντοκη): άλλος κανόνας.
+ */
+export const ENFIA_MIN_INSTALMENT = 10
+
+/**
+ * Το πλήθος των δόσεων για αυτό το ετήσιο: όσες χωρούν με τουλάχιστον
+ * `ENFIA_MIN_INSTALMENT` η καθεμία, έως `ENFIA_INSTALMENTS` και τουλάχιστον
+ * μία. 67,20€ → 6, 27,44€ → 2, 9€ → 1, 120€ → 12. Μετρά σε λεπτά, ώστε το
+ * δυαδικό δεκαδικό να μη βγάλει 11 εκεί που χωρούν ακριβώς 12.
+ */
+export function enfiaInstalmentCount(annual: number): number {
+  if (!(annual > 0)) return 0
+  const fits = Math.floor(Math.round(annual * 100) / (ENFIA_MIN_INSTALMENT * 100))
+  return Math.max(1, Math.min(ENFIA_INSTALMENTS, fits))
+}
 /** Ο μήνας της πρώτης δόσης, με αρίθμηση του JavaScript (0 = Ιανουάριος). */
 const FIRST_MONTH = 2
 
@@ -79,24 +108,30 @@ export function grDateLong(isoDate: string): string {
 }
 
 /**
- * Οι δώδεκα δόσεις ενός ετήσιου ΕΝΦΙΑ, με ημερομηνία και ποσό.
+ * Οι δόσεις ενός ετήσιου ΕΝΦΙΑ, με ημερομηνία και ποσό: έως δώδεκα, καμία
+ * κάτω από `ENFIA_MIN_INSTALMENT` (εκτός από τη μία, όταν το ετήσιο δεν φτάνει
+ * ούτε για αυτήν). Οι δόσεις είναι μηνιαίες από την πρώτη, τον Μάρτιο· με
+ * λιγότερες από δώδεκα, η τελευταία λήγει νωρίτερα από τον Φεβρουάριο. Ο
+ * κανόνας των λεπτών μένει ο ίδιος: οι πρώτες κόβονται προς τα κάτω και η
+ * τελευταία παίρνει τη διαφορά.
  *
  * @param annual το ετήσιο ποσό όπως το υπολόγισε το lib/billing/enfia.ts
  * @param year   το έτος του εκκαθαριστικού· οι δόσεις 11 και 12 πέφτουν στο επόμενο
  */
 export function enfiaInstalments(annual: number, year: number): EnfiaInstalment[] {
-  if (!(annual > 0)) return []
-  const each = centsDown(annual / ENFIA_INSTALMENTS)
+  const n = enfiaInstalmentCount(annual)
+  if (!n) return []
+  const each = centsDown(annual / n)
   const out: EnfiaInstalment[] = []
-  for (let i = 0; i < ENFIA_INSTALMENTS; i++) {
+  for (let i = 0; i < n; i++) {
     const m = FIRST_MONTH + i
     const date = lastWorkingDayOfMonth(year + Math.floor(m / 12), m % 12)
-    const last = i === ENFIA_INSTALMENTS - 1
+    const last = i === n - 1
     out.push({
       no: i + 1,
       date,
       label: grDateLong(date),
-      amount: last ? cents(annual - each * (ENFIA_INSTALMENTS - 1)) : each,
+      amount: last ? cents(annual - each * (n - 1)) : each,
     })
   }
   return out

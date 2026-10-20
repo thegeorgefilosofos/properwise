@@ -66,7 +66,7 @@ const FIGURES = [
     subject: /φμα|μεταβιβασ/u },
   { name: 'NEW_BUILD_VAT_RATE', file: 'lib/accounting/transfer.ts', expect: '24%', was: [],
     subject: /νεοδμητ/u },
-  { name: 'COMMERCIAL_STAMP_DUTY', file: 'app/dashboard/components/TabTenantHelpers.tsx', expect: '3,6%', was: [],
+  { name: 'COMMERCIAL_STAMP_DUTY', file: 'lib/billing/commercialLease.ts', expect: '3,6%', was: [],
     subject: /τελος συναλλαγης|χαρτοσημ/u },
   { name: 'MUNICIPAL_ACCOM_TAX_RATE', file: 'lib/billing/greekTax.ts', expect: '0,5%', was: [],
     subject: /παρεπιδημ/u },

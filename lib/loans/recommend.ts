@@ -241,14 +241,17 @@ export function spitiMouClosedLine(today: string): string {
   const apply = programDateLabel(SPITI_MOU.applicationDeadline)
   const sign = programDateLabel(SPITI_MOU.contractDeadline)
   return s.state === 'applications-closed'
-    ? `Κλειστό για νέες αιτήσεις από ${apply}. Όσοι έχουν ήδη έγκριση υπογράφουν έως ${sign}.`
-    : `Κλειστό για νέες αιτήσεις από ${apply}. Όσοι είχαν έγκριση υπέγραφαν έως ${sign}.`
+    // «ΚΛΕΙΣΤΟ ΑΠΟ 31/05» ΕΛΕΓΕ ΟΤΙ Η ΤΕΛΕΥΤΑΙΑ ΜΕΡΑ ΗΤΑΝ ΚΛΕΙΣΤΗ (20.10.2026),
+    // ενώ ο πίνακας του οδηγού γράφει «Αιτήσεις έως 31/05/2026». Και ο
+    // παρατατικός «υπέγραφαν» διαβαζόταν ως συνήθεια, όχι ως προθεσμία.
+    ? `Η προθεσμία των αιτήσεων έληξε στις ${apply}. Όσοι έχουν ήδη έγκριση υπογράφουν έως ${sign}.`
+    : `Η προθεσμία των αιτήσεων έληξε στις ${apply}. Όσοι είχαν έγκριση μπορούσαν να υπογράψουν έως ${sign}.`
 }
 
 /** Η ίδια γραμμή με υποκείμενο, για κείμενο όπου το όνομα δεν γράφεται ήδη από πάνω. */
 export function spitiMouClosedSentence(today: string): string {
   const line = spitiMouClosedLine(today)
-  return line ? `Το «Σπίτι μου ΙΙ» είναι ${line.charAt(0).toLowerCase()}${line.slice(1)}` : ''
+  return line ? `Στο «Σπίτι μου ΙΙ» ${line.charAt(0).toLowerCase()}${line.slice(1)}` : ''
 }
 
 // ═══ «ΣΠΙΤΙ ΜΟΥ ΙΙΙ»: ΜΟΝΟ ΟΣΑ ΕΧΕΙ ΠΕΙ ΕΠΙΣΗΜΑ ΦΟΡΕΑΣ ════════════════════
@@ -333,7 +336,7 @@ export function spitiMou3ReportedLines(): string[] {
   const r = SPITI_MOU_3_REPORTED
   return [
     `Δάνειο έως ${feWhole(r.maxAmount)} για κατοικία αξίας έως ${feWhole(r.maxPropertyValue)}, με χρηματοδότηση έως ${fn(r.maxLtvPct)}% της αξίας.`,
-    `Εισόδημα έως ${feWhole(r.incomeSingle)} για άγαμους, ${feWhole(r.incomeMarriedBase)} για ζευγάρια και ${feWhole(r.incomeSingleParentBase)} για μονογονεϊκές, με ${feWhole(r.incomePerChild)} ανά παιδί.`,
+    `Εισόδημα έως ${feWhole(r.incomeSingle)} για άγαμους, ${feWhole(r.incomeMarriedBase)} για ζευγάρια και ${feWhole(r.incomeSingleParentBase)} για μονογονεϊκές οικογένειες, με ${feWhole(r.incomePerChild)} ανά παιδί.`,
     `${fn(r.sqmPerChildAboveFour)} τ.μ. επιπλέον για κάθε παιδί πέρα από το τέταρτο.`,
     `Περίπου ${fn(r.beneficiaries)} ωφελούμενοι, κατά την υπουργό Κοινωνικής Συνοχής.`,
   ]
@@ -341,8 +344,8 @@ export function spitiMou3ReportedLines(): string[] {
 
 /** Η μία πρόταση που λέει από πού έρχονται τα παραπάνω και τι δεν είναι. */
 export function spitiMou3ReportedCaveat(): string {
-  return `Σύμφωνα με δηλώσεις υπουργών και δημοσιεύματα (${SPITI_MOU_3_REPORTED.source.label}). `
-    + 'Δεν είναι ακόμη όροι του προγράμματος: θα ισχύσουν μόνο όπως γραφτούν στην ΚΥΑ.'
+  return `Τα στοιχεία αυτά προέρχονται από δηλώσεις υπουργών και δημοσιεύματα (${SPITI_MOU_3_REPORTED.source.label}). `
+    + 'Δεν είναι όροι του προγράμματος: θα ισχύσουν μόνο όπως γραφτούν στην ΚΥΑ.'
 }
 
 // Τοκοχρεολύσιο: σταθερή μηνιαία δόση (annuity).

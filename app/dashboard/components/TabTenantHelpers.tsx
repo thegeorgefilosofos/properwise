@@ -63,8 +63,9 @@ export const LEASE_MONTHS: Record<LeaseType, number | null> = {
 export const LEASE_CATEGORY_LABELS: Record<LeaseCategory, string> = {
   residential:'Κατοικία', commercial:'Επαγγελματική',
 };
-// Τέλος χαρτοσήμου επαγγελματικής μίσθωσης (3,6% επί του μισθώματος).
-export const COMMERCIAL_STAMP_DUTY = 0.036;
+// Τέλος επαγγελματικής μίσθωσης (Ψηφιακό Τέλος Συναλλαγής, 3,6% επί του μισθώματος):
+// ζει στο lib/billing/commercialLease.ts, ώστε να το διαβάζει και ο οδηγός του πλαφόν.
+export { COMMERCIAL_STAMP_DUTY } from '@/lib/billing/commercialLease';
 // Ελάχιστη νόμιμη διάρκεια μίσθωσης (μήνες) ανά τύπο.
 // Εδώ κάθονταν τρεις σταθερές που δεν διάβαζε κανείς: η ελάχιστη διάρκεια
 // μίσθωσης (36 μήνες και για τα δύο είδη, δηλαδή ούτε καν διέκρινε), οι

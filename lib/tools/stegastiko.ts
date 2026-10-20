@@ -271,7 +271,7 @@ export function startRates(m: MortgageMarket): StartRates {
 export function spreadHint(m: MortgageMarket): string | null {
   const f = freshFact(m.floating)
   if (!f || !startRates(m).spread) return null
-  return `Νέα στεγαστικά, ${lowerFirst(f.label)} ${fp(f.value)} (${f.month}, ${f.source}), μείον το Euribor. Γράψε της προσφοράς σου.`
+  return `Νέα στεγαστικά, ${lowerFirst(f.label)} ${fp(f.value)} (${f.month}, ${f.source}), μείον το Euribor. Αν η προσφορά σου γράφει άλλο, γράψε εκείνο.`
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

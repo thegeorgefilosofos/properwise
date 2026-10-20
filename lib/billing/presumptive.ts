@@ -8,7 +8,7 @@
 // όριο βάρους κατά 1 KB. Εδώ ζει ΜΟΝΟ ο κανόνας· το consolidate.ts και το
 // statement.ts τον επανεξάγουν, οπότε κάθε οθόνη μένει στην ίδια πηγή.
 // ═══════════════════════════════════════════════════════════════════════════
-import { FIRST_YEAR_BANK_RECEIPT, bankReceiptPenaltyShare } from './greekTax'
+import { FIRST_YEAR_BANK_RECEIPT, bankReceiptPenaltyShare, rentalIncomeTax, type TaxBracket } from './greekTax'
 
 /** Τεκμαρτή έκπτωση φυσικού προσώπου για επισκευές/συντήρηση: 5% (άρθρο 39 §3 ΚΦΕ). */
 export const PRESUMPTIVE_DEDUCTION_RATE = 0.05
@@ -43,4 +43,21 @@ export function presumptiveDeductionRateForYear(
 ): number {
   if (rentsPaidViaBank) return PRESUMPTIVE_DEDUCTION_RATE
   return PRESUMPTIVE_DEDUCTION_RATE * (1 - bankReceiptPenaltyShare(year, monthWeights))
+}
+
+/**
+ * ΤΙ ΚΟΣΤΙΖΟΥΝ ΤΑ ΜΕΤΡΗΤΑ ΣΤΗ ΧΡΗΣΗ, ΣΕ ΕΥΡΩ: ο φόρος με είσπραξη μετρητοίς
+ * μείον ο φόρος με είσπραξη μέσω τράπεζας, πάνω στο ίδιο ετήσιο ενοίκιο.
+ *
+ * ΤΟ ΣΦΑΛΜΑ, ΟΠΩΣ ΗΤΑΝ (20.10.2026). Ο υπολογιστής φόρου ενοικίων αφαιρούσε
+ * ΟΛΟΚΛΗΡΗ την έκπτωση για κάθε χρονιά. Ο φόρος της ίδιας κάρτας για το 2027
+ * όμως χάνει μόνο το μισό (`presumptiveDeductionRateForYear`, κύρωση από τον
+ * Ιούλιο): στα 600€ τον μήνα η κάρτα έγραφε φόρο 1.053€ αντί για 1.026€,
+ * δηλαδή 27€ διαφορά· από κάτω όμως έγραφε «κοστίζει 54,00€». Η διαφορά βγαίνει πια
+ * από τον ίδιο συντελεστή που βγάζει τον φόρο.
+ */
+export function cashReceiptTaxCost(gross: number, year: number | null | undefined, brackets: TaxBracket[]): number {
+  const cash = rentalIncomeTax(gross * (1 - presumptiveDeductionRateForYear(year, false)), brackets)
+  const bank = rentalIncomeTax(gross * (1 - presumptiveDeductionRateForYear(year, true)), brackets)
+  return cash - bank
 }

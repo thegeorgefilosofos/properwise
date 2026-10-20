@@ -140,7 +140,7 @@ export function MortgageCalculator({ market, today, cta }: {
 
   const hasLoan = loan > 0 && years > 0;
   const rateHint = (typed: string, fact: typeof fixed, label: string) => fact && typed === rateField(fact.value)
-    ? `${label} ${fact.period}, ${fact.source}. Γράψε της προσφοράς σου.`
+    ? `${label} ${fact.period}, ${fact.source}. Αν η προσφορά σου γράφει άλλο, γράψε εκείνο.`
     : null;
 
   const schedule = plan?.schedule ?? [];
@@ -226,7 +226,7 @@ export function MortgageCalculator({ market, today, cta }: {
             <ToolStats items={[
               { k: 'Τόκοι πρώτου έτους', v: fe(plan.firstYear.interest) },
               { k: 'Κεφάλαιο πρώτου έτους', v: fe(plan.firstYear.principal) },
-              { k: 'Τόκος στη δόση', v: fp(plan.firstYear.interest + plan.firstYear.principal > 0
+              { k: 'Μερίδιο τόκου πρώτου έτους', v: fp(plan.firstYear.interest + plan.firstYear.principal > 0
                 ? (plan.firstYear.interest / (plan.firstYear.interest + plan.firstYear.principal)) * 100 : 0) },
             ]}/>
           </>
@@ -296,7 +296,7 @@ export function MortgageCalculator({ market, today, cta }: {
               hint="Καταναλωτικά, κάρτες, άλλο στεγαστικό."/>
             <ToolSeg label="Δανείζεσαι πρώτη φορά;" value={v.proti} onChange={x => set('proti', x)}
               options={[{ value: 'nai', label: 'Ναι' }, { value: 'oxi', label: 'Όχι' }]}
-              hint={`Η δόση μαζί με τις άλλες έως ${fpRate(DSTI_LIMIT.firstTimeBuyer * 100)} του καθαρού την πρώτη φορά, ${fpRate(DSTI_LIMIT.other * 100)} αν έχεις ήδη ακίνητο ή είχες στεγαστικό.`}/>
+              hint={`Όλες οι δόσεις μαζί έως ${fpRate(DSTI_LIMIT.firstTimeBuyer * 100)} του καθαρού εισοδήματος την πρώτη φορά· έως ${fpRate(DSTI_LIMIT.other * 100)} αν έχεις ήδη ακίνητο ή είχες στεγαστικό.`}/>
           </ToolFields>
         </Group>
 
@@ -334,7 +334,7 @@ export function MortgageCalculator({ market, today, cta }: {
         <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
           <strong style={{ color: 'var(--text-primary)' }}>Τι περιλαμβάνει και τι όχι.</strong>{' '}
           Η δόση βγαίνει με τον τύπο του τοκοχρεολυτικού δανείου, ίδια κάθε μήνα για όλη τη
-          διάρκεια. Δεν περιλαμβάνει έξοδα φακέλου, εκτίμησης και υποθήκης, ασφάλιστρα ούτε
+          διάρκεια. Δεν περιλαμβάνει έξοδα φακέλου, εκτίμησης και προσημείωσης, ασφάλιστρα ούτε
           αλλαγές του Euribor. Για να συγκρίνεις προσφορές, κοίτα το ΣΕΠΠΕ (συνολικό ετήσιο
           πραγματικό ποσοστό επιβάρυνσης) που γράφει κάθε προσφορά. <EstimateNote loan />
         </p>

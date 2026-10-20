@@ -71,6 +71,15 @@ import { cents } from '../core/money'
  */
 export const ETMEAR = 0.017;
 
+/**
+ * ΦΠΑ ΣΤΗΝ ΗΛΕΚΤΡΙΚΗ ΕΝΕΡΓΕΙΑ, ΣΕ ΠΟΣΟΣΤΟ: 6% (μειωμένος συντελεστής του
+ * Παραρτήματος ΙΙΙ του Κώδικα ΦΠΑ, ν.2859/2000). Κάθε τιμολόγιο του καταλόγου
+ * γράφει το δικό του `vat`· η σταθερά είναι η προεπιλογή του τύπου και ο
+ * αριθμός που τυπώνουν οι σελίδες, ώστε το κείμενο να μη γράφει «6%» με το χέρι
+ * (20.10.2026).
+ */
+export const ELECTRICITY_VAT_PCT = 6;
+
 export interface Tariff {
   id: string;
   name: string;
@@ -244,7 +253,7 @@ function energyCharge(t: Tariff, u: Usage): number {
  * Ο ΜΟΝΑΔΙΚΟΣ τύπος: τον καλεί και η κάρτα «το τιμολόγιό σου» και η σύγκριση.
  */
 export function monthlyCost(t: Tariff, u: Usage): CostBreakdown {
-  const vatRate = (t.vat ?? 6) / 100;
+  const vatRate = (t.vat ?? ELECTRICITY_VAT_PCT) / 100;
   const zero: CostBreakdown = { supply: 0, regulated: 0, vat: 0, total: 0, overage: 0, manual: false };
 
   // Δυναμικό τιμολόγιο: η τιμή ακολουθεί τη χονδρεμπορική ανά ώρα και ΔΕΝ

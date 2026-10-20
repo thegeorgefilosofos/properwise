@@ -28,7 +28,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
-import { athensToday } from '@/lib/core/time';
+import { athensParts, athensToday } from '@/lib/core/time';
 import { fe, feWhole, fp, fpRate } from '@/lib/core/format';
 import { DSTI_LIMIT } from '@/lib/loans/affordability';
 import { spitiMouOpen, spitiMouClosedSentence, SPITI_MOU, SPITI_MOU_3, spitiMou3Line } from '@/lib/loans/recommend';
@@ -57,7 +57,9 @@ const SPITI_GUIDE = guideAt('/odigos/spiti-mou-3-ti-allazei');
 // Η ΦΡΑΣΗ ΠΟΥ ΓΡΑΦΕΙ Ο ΚΟΣΜΟΣ (Bing, 03.10.2026): στο σκέτο «στεγαστικό δάνειο»
 // την πρώτη δεκάδα την έχουν οι τράπεζες. Οι ουδέτεροι υπολογιστές μπαίνουν με
 // τη μακρύτερη αναζήτηση: δόση, τόκοι, πόσο δάνειο.
-const TITLE = 'Υπολογιστής στεγαστικού δανείου 2026: δόση, τόκοι, πόσο δάνειο παίρνω';
+// Το έτος του τίτλου είναι το τρέχον, όπως στον ΕΝΦΙΑ: γραμμένο «2026» με το
+// χέρι, την 01/01/2027 θα έλεγε άλλη χρονιά από τη σελίδα (20.10.2026).
+const titleFor = (year: number) => `Υπολογιστής στεγαστικού δανείου ${year}: δόση, τόκοι, πόσο δάνειο παίρνω`;
 const DESC =
   'Η μηνιαία δόση στεγαστικού με σταθερό ή κυμαινόμενο επιτόκιο, οι τόκοι ανά έτος '
   + 'και πόσο δάνειο μπορείς να πάρεις με το εισόδημά σου. Δωρεάν, χωρίς εγγραφή.';
@@ -70,7 +72,7 @@ const URL = siteUrl('/ypologismos-stegastikou-daneiou');
 export async function generateMetadata(): Promise<Metadata> {
   const market = await readMortgageMarket(athensToday());
   return publicMetadata({
-    title: TITLE, description: marketDescription(market, DESC), url: URL,
+    title: titleFor(athensParts().year), description: marketDescription(market, DESC), url: URL,
     image: shareImage('ypologismos-stegastikou-daneiou'),
   });
 }
@@ -95,7 +97,7 @@ function faq(today: string): FaqItem[] {
     {
       q: 'Πώς υπολογίζεται η μηνιαία δόση στεγαστικού;',
       a: 'Με τον τύπο του τοκοχρεολυτικού δανείου: η δόση μένει ίδια κάθε μήνα και στην αρχή '
-       + `είναι κυρίως τόκος. Με παράδειγμα επιτόκιο ${fp(EX.rate)}, δάνειο ${feWhole(EX.amount)} για ${EX.years} χρόνια `
+       + `είναι κυρίως τόκος. Για παράδειγμα, με επιτόκιο ${fp(EX.rate)} ένα δάνειο ${feWhole(EX.amount)} για ${EX.years} χρόνια `
        + `έχει δόση ${fe(EX_PLAN.monthly)} και τόκους ${fe(EX_PLAN.totalInterest)} συνολικά. Τον πρώτο χρόνο `
        + `πληρώνεις ${fe(EX_PLAN.firstYear.interest)} τόκους και μόλις ${fe(EX_PLAN.firstYear.principal)} κεφάλαιο.`,
     },
@@ -242,7 +244,7 @@ export default async function Page() {
           <MortgageCalculator market={market} today={today} cta={
             <ToolCta
               title="Θέλεις να βλέπεις τι χρωστάς ακόμη, κάθε μήνα;"
-              body="Το PROPERWISE κρατά το δάνειο μαζί με το ακίνητο: τη δόση, το υπόλοιπο που μένει και τους τόκους κάθε χρονιάς. Δεν εγκρίνει δάνεια και δεν μιλά για λογαριασμό καμίας τράπεζας."
+              body="Το PROPERWISE κρατά το δάνειο μαζί με το ακίνητο: τη δόση, το υπόλοιπο και τους τόκους κάθε χρονιάς. Δεν εγκρίνει δάνεια και δεν μιλά για λογαριασμό καμίας τράπεζας."
             />
           }/>
         </Suspense>

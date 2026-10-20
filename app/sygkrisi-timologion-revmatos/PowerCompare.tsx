@@ -17,12 +17,12 @@
 import { Fragment, useId, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { T, fdLong } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
-import { fe, feRate, fn } from '@/lib/core/format';
+import { fe, feRate, fn, fpRate } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { athensToday } from '@/lib/core/time';
 import { comparePower, POWER_COLOURS, UNRANKED_WHY, type PowerColour, type PowerRow } from '@/lib/tools/revma';
 import { PROVIDERS, TARIFFS_VERIFIED, CATALOGUE_MONTH_GEN, BADGE_MEANING, PRICES_SOURCE, PRICES_UPDATED_LINE, priceMonthNote, conditionNote } from '@/lib/energy/catalogue';
-import { ETMEAR } from '@/lib/energy/tariff';
+import { ETMEAR, ELECTRICITY_VAT_PCT } from '@/lib/energy/tariff';
 import { fixedChargeText } from '@/lib/energy/fixedCharge';
 import { RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy/freshness';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
@@ -109,7 +109,7 @@ export function PowerCompare({ serverToday, cta }: {
         <ToolNumField id={ids.kwh} label={period === 'year' ? 'Κατανάλωση τον χρόνο' : 'Κατανάλωση τον μήνα'}
           value={v.kwh} onChange={x => set('kwh', x)} unit="kWh" unitPad={52}
           hint="Από τον λογαριασμό σου, στις κιλοβατώρες της περιόδου."/>
-        <ToolSeg label="Ο αριθμός είναι" value={period === 'year' ? 'xronos' : 'mina'}
+        <ToolSeg label="Ο αριθμός αφορά" value={period === 'year' ? 'xronos' : 'mina'}
           onChange={x => set('periodos', x)}
           options={[{ value: 'mina', label: 'Τον μήνα' }, { value: 'xronos', label: 'Τον χρόνο' }]}
           hint={period === 'year' ? 'Μοιράζεται ισόποσα στους δώδεκα μήνες.' : undefined}/>
@@ -118,7 +118,7 @@ export function PowerCompare({ serverToday, cta }: {
         <ToolSeg label="Ηλεκτρονικός λογαριασμός" value={ebill ? 'nai' : 'oxi'}
           onChange={x => set('ebill', x)}
           options={[{ value: 'nai', label: 'Ναι' }, { value: 'oxi', label: 'Όχι' }]}
-          hint="Μαζί με πάγια εντολή, σε κάποια τιμολόγια το πάγιο πέφτει."/>
+          hint="Σε κάποια τιμολόγια, μαζί με πάγια εντολή, το πάγιο μειώνεται."/>
         <ToolSelect label="Είδος τιμολογίου" value={colour} onChange={x => set('xroma', x)}
           options={POWER_COLOURS} span={2}/>
       </ToolFields>
@@ -151,7 +151,7 @@ export function PowerCompare({ serverToday, cta }: {
         ) : r.recommend && !(best && best.monthly !== null) ? (
           <>
             <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-              Σε αυτό το είδος κανένα τιμολόγιο δεν έχει ποσό που κλείνει για {kwhLine}. Ο λόγος
+              Σε αυτό το είδος κανένα τιμολόγιο δεν μπαίνει σε σειρά για {kwhLine}. Ο λόγος
               γράφεται κάτω από το καθένα.
             </p>
             <LiveResult say="Κανένα τιμολόγιο αυτού του είδους δεν μπαίνει σε σειρά."/>
@@ -206,7 +206,7 @@ export function PowerCompare({ serverToday, cta }: {
             <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 8px' }}/>
             <p style={{ margin: '0 0 4px', fontSize: 13, color: 'var(--text-tertiary)' }}>
               {r.rows.length} τιμολόγια για {kwhLine}
-              {r.recommend ? ', από το φθηνότερο.' : ', αλφαβητικά κατά πάροχο.'}
+              {r.recommend ? ', με σειρά από το φθηνότερο.' : ', αλφαβητικά κατά πάροχο.'}
             </p>
             {/* ΜΙΑ ΓΡΑΜΜΗ ΑΝΑ ΤΙΜΟΛΟΓΙΟ, ΤΟ ΠΟΣΟ ΔΕΞΙΑ. Ιδια διάταξη με την
                 κατάταξη του πίνακα ελέγχου (`.tariff-row`): στο κινητό οι δύο
@@ -291,8 +291,8 @@ export function PowerCompare({ serverToday, cta }: {
         <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
           <strong style={{ color: 'var(--text-primary)' }}>Τι περιλαμβάνει και τι όχι.</strong>{' '}
           Το ποσό είναι η χρέωση του προμηθευτή (πάγιο και ενέργεια) μαζί με το ΕΤΜΕΑΡ
-          ({feRate(ETMEAR)} ανά κιλοβατώρα) και ΦΠΑ 6% και στα δύο. Στα πακέτα σταθερού ποσού
-          μετρά το ποσό του πακέτου με ΦΠΑ 6% και η χρέωση υπέρβασης όπου είναι καταγεγραμμένη.
+          ({feRate(ETMEAR)} ανά κιλοβατώρα), με ΦΠΑ {fpRate(ELECTRICITY_VAT_PCT)} και στα δύο. Στα πακέτα σταθερού ποσού
+          μετρά το ποσό του πακέτου με ΦΠΑ {fpRate(ELECTRICITY_VAT_PCT)} και η χρέωση υπέρβασης όπου είναι καταγεγραμμένη.
           Δεν περιλαμβάνει χρεώσεις δικτύου (ΔΕΔΔΗΕ, ΑΔΜΗΕ), ΥΚΩ, ΕΦΚ, δημοτικά τέλη ούτε τέλος
           ΕΡΤ: είναι ίδια σε όποιον πάροχο κι αν διαλέξεις, οπότε δεν αλλάζουν τη σειρά, αλλά ο
           λογαριασμός σου θα βγει μεγαλύτερος. Οι τιμές ανά κιλοβατώρα και τα πάγια στις γραμμές
