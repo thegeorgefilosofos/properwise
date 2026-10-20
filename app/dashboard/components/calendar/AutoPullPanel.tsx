@@ -25,7 +25,8 @@ import { buildBookingEvents } from '@/lib/calendar/bookingEvents'
 import {
   taxProfileOf, AADE_CALENDAR_URL, TAXHEAVEN_CALENDAR_URL,
 } from '@/lib/tax/greekTaxCalendar'
-import { taxEventsToWrite, upcomingTaxObligations } from '@/lib/facts/deadlines'
+import { upcomingTaxObligations } from '@/lib/facts/deadlines'
+import { syncOwnerTaxDeadlines } from '@/lib/calendar/taxSync'
 import { annuityMonthly } from '@/lib/loans/recommend'
 import { syncTenantSchedule } from '../TabTenantHelpers'
 import { notifyError } from '@/components/Toast'
@@ -50,9 +51,6 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
   const [counts,setCounts]=useState<Record<SyncKey,number>|null>(null)
   const [done,setDone]=useState<Record<string,{n:number;at:string}>>({})
   const [lastSync,setLastSync]=useState<string|null>(null)
-  // Το φορολογικό προφίλ βγαίνει από την ΜΙΑ κατάσταση του ακινήτου (taxProfileOf),
-  // τον ίδιο κανόνα που χρησιμοποιεί και η Επισκόπηση.
-  const taxProfile=(mode==='short_term'?'short_term':mode==='long_term'?'long_term':'owner')
 
   // Ο τύπος του ερωτήματος καταμέτρησης δεν γράφεται με το χέρι — τον δίνει το ίδιο
   // το Supabase. Με `(q:any)=>any` το `extra` μπορούσε να καλέσει οτιδήποτε πάνω στο
@@ -205,16 +203,16 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
       return rows.length
     }
     // ── Φορολογικά (ΑΑΔΕ): πραγματικές, θεσμοθετημένες προθεσμίες ──
-    // Ο ορίζοντας και οι ημερομηνίες ορίζονται ΜΟΝΟ στο greekTaxCalendar. Το κλειδί
-    // `tax:<id>` είναι το ίδιο που γράφει και η κάρτα «Υποχρεώσεις & Προθεσμίες»
-    // της Επισκόπησης, άρα το δεύτερο πάτημα αντικαθιστά — δεν διπλογράφει.
-    // ΚΑΙ ΚΡΑΤΑ ΟΣΑ ΕΧΕΙΣ ΣΗΜΕΙΩΣΕΙ. Περασμένες δεν γεννιούνται ως εκκρεμείς και
-    // ό,τι σημείωσες πληρωμένο μένει πληρωμένο (lib/facts/deadlines, `taxEventsToWrite`).
+    // ΔΕΝ ΧΡΕΙΑΖΕΤΑΙ ΠΙΑ ΠΑΤΗΜΑ. Γράφονται μόνες τους όταν αποθηκεύεται το
+    // ακίνητο και κάθε πρωί (lib/calendar/taxSync.ts). Εδώ είναι το «Ανανέωση
+    // τώρα» του ίδιου συγχρονισμού, όχι δεύτερος: δεν σβήνει και δεν ξαναγράφει,
+    // κρατά ό,τι σημείωσες ή μετακίνησες και δεν διπλογράφει. Οι γραμμές ανήκουν
+    // στον ιδιοκτήτη του ακινήτου, όχι σε όποιον πάτησε το κουμπί.
     if(k==='tax'){
-      const had=await calendar.sourceStates(supabase,propertyId,{prefix:'tax:'})
-      const rows=taxEventsToWrite(todayStr(),taxProfile,had)
-      await must(calendar.replaceSource(supabase,scope,{prefix:'tax:'},rows))
-      return rows.length
+      const owner=await properties.one<{ user_id: string }>(supabase, propertyId, 'user_id')
+      const res=await syncOwnerTaxDeadlines(supabase, owner?.user_id || userId)
+      if(res.error) throw new Error(res.error.message || 'tax sync failed')
+      return res.totals[propertyId] ?? 0
     }
     // ── Δόσεις δανείου: ίδιο source με το κουμπί των Δανείων → idempotent, χωρίς διπλά ──
     if(k==='loans'){
@@ -326,7 +324,8 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
       {hasTax&&(
         <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginTop:12, fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans }}>
           <Info size={13} style={{ color:'var(--accent)' }}/>
-          Οι φορολογικές προθεσμίες βασίζονται στο πλαίσιο της ΑΑΔΕ (έκδοση και δόσεις ΕΝΦΙΑ, δηλώσεις). Διπλός έλεγχος:
+          Οι φορολογικές προθεσμίες μπαίνουν μόνες τους, κάθε πρωί και μόλις αλλάξεις το ακίνητο. Το «Φορολογικά (ΑΑΔΕ)» εδώ τις ανανεώνει αμέσως.
+          Βασίζονται στο πλαίσιο της ΑΑΔΕ (έκδοση και δόσεις ΕΝΦΙΑ, δηλώσεις). Διπλός έλεγχος:
           <a href={AADE_CALENDAR_URL} target="_blank" rel="noreferrer" style={{ color:'var(--accent)', textDecoration:'none' }}>myAADE</a>·
           <a href={TAXHEAVEN_CALENDAR_URL} target="_blank" rel="noreferrer" style={{ color:'var(--accent)', textDecoration:'none' }}>taxheaven</a>
         </div>

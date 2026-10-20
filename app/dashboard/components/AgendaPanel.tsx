@@ -39,10 +39,11 @@
 // όχι με κόκκινο. Το κόκκινο θα ήταν ετυμηγορία· η σειρά είναι πληροφορία.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import type { ReactNode } from 'react';
 import { T } from '@/components/Theme';
 import { itemDue, overdueCount, type AgendaItem } from '@/lib/home/agenda';
 
-export default function AgendaPanel({ items, total, onNavigate, incomplete = false }: {
+export default function AgendaPanel({ items, total, onNavigate, incomplete = false, footer }: {
   items: AgendaItem[];
   /** Πόσα υπάρχουν συνολικά — η λίστα δείχνει τα πρώτα. */
   total: number;
@@ -52,6 +53,12 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
    * «δεν ξέρουμε». Ως τις 08/10/2026 η αποτυχία έγραφε «Δεν εκκρεμεί τίποτα».
    */
   incomplete?: boolean;
+  /**
+   * Η τελευταία γραμμή της κάρτας, κάτω από το «Όλες οι εκκρεμότητες». Εκεί
+   * κάθεται η πρόταση «Βάλε τις προθεσμίες στο ημερολόγιο του κινητού σου»:
+   * δίπλα στις ίδιες τις προθεσμίες, όχι στον Λογαριασμό.
+   */
+  footer?: ReactNode;
 }) {
   const late = overdueCount(items);
   // «Σε σειρά προθεσμίας» μόνο όταν υπάρχουν προθεσμίες· αλλιώς το πλήθος.
@@ -149,6 +156,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
       <button type="button" className="agenda-more" onClick={() => onNavigate('checklist')}>
         {total > items.length ? 'Δες λοιπές εκκρεμότητες' : 'Όλες οι εκκρεμότητες'}
       </button>
+      {footer}
 
       <style jsx>{`
         .agenda {

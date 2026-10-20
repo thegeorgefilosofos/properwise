@@ -68,6 +68,7 @@ import { usePointerDrag, DaySheet, MonthView } from './calendar/MonthView'
 import { AutoPullPanel } from './calendar/AutoPullPanel'
 import { EventModal, ScopeModal } from './calendar/EventModal'
 import { SubscribeModal } from './calendar/SubscribeModal'
+import { CalendarQuickAdd } from './calendar/CalendarQuickAdd'
 import { dueTextStart } from '@/lib/facts/deadlines'
 
 // Οποιος αλλάξει τον διακόπτη σε ΑΛΛΗ καρτέλα ή σε άλλη οθόνη, φτάνει εδώ.
@@ -571,6 +572,11 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
         </div>
       )}
 
+      {/* Η ΣΥΝΔΡΟΜΗ ΣΤΟ ΚΙΝΗΤΟ, ΟΡΑΤΗ. Ηταν μόνο στο «⋯» και στον Λογαριασμό· οι
+          φορολογικές προθεσμίες μπαίνουν πλέον εδώ μόνες τους και το επόμενο
+          βήμα είναι να φτάσουν στο κινητό. Φεύγει μόλις συνδεθεί ημερολόγιο. */}
+      <CalendarQuickAdd userId={userId} framed />
+
       {/* Toolbar — καθαρή, ένα πρωτεύον κουμπί· τα δευτερεύοντα σε ένα ήσυχο μενού */}
       <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
         {/* Το κουτί της ομάδας παίρνει το ύψος από τα κουμπιά της: 32 συν 3
@@ -621,7 +627,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
               {([
                 {label: bulkMode?'Τέλος επιλογής':'Μαζική επιλογή', icon:<CheckSquare size={15}/>, on:()=>{setBulkMode(b=>!b);setSelectedIds(new Set());setShowMenu(false)}},
                 {label: showFilters?'Απόκρυψη φίλτρων':'Φίλτρα', icon:<Filter size={15}/>, on:()=>{setShowFilters(f=>!f);setShowMenu(false)}},
-                {label:'Συγχρονισμός δεδομένων', icon:<RefreshCw size={15}/>, on:()=>{setShowAutoPull(f=>!f);setShowMenu(false)}},
+                {label:'Ανανέωση τώρα', icon:<RefreshCw size={15}/>, on:()=>{setShowAutoPull(f=>!f);setShowMenu(false)}},
                 {label:'Συνδρομή σε ζωντανό ημερολόγιο', icon:<CalendarPlus size={15}/>, on:openSubscribe},
                 {label:'Λήψη αρχείου .ics', icon:<Download size={15}/>, on:()=>{exportICal();setShowMenu(false)}},
                 {label:'Εισαγωγή από .ics', icon:<CalendarDays size={15}/>, on:()=>{importRef.current?.click()}},

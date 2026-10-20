@@ -8,6 +8,10 @@ import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import type { CalendarEventsRow, NotificationLogRow, RentPaymentsRow, TenantsRow, UserPropertiesRow } from '../../../lib/supabase/tables.ts'
 import { eur } from '../_shared/format.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
+// Ο ΕΝΦΙΑ ΕΙΝΑΙ ΕΝΑ ΕΚΚΑΘΑΡΙΣΤΙΚΟ, ΟΧΙ ΕΝΑ ΑΝΑ ΑΚΙΝΗΤΟ. Οι προθεσμίες γράφονται
+// πλέον μόνες τους σε κάθε ακίνητο· ο ίδιος κανόνας με τη συνδρομή και το push
+// κρατά μία γραμμή ανά `tax:<id>`, ώστε δύο διαμερίσματα να μη δίνουν δύο email.
+import { oneTaxCopy } from '../../../lib/calendar/taxOnce.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -58,7 +62,9 @@ function buildEmail(events: CalendarEventsRow[], reminderType: string) {
   // (app/dashboard/components/calendar/model.tsx): το χρώμα κρατιέται για την
   // κατάσταση, όχι για το είδος. Η κατηγορία λέγεται με λέξη στη δεύτερη γραμμή.
   const catLabels: Record<string, string> = {
-    financial: 'Οικονομικά', bills: 'Λογαριασμοί', maintenance: 'Συντήρηση', contract: 'Συμβόλαιο', tenant: 'Ενοικιαστής', reminder: 'Υπενθύμιση',
+    // Οι φορολογικές προθεσμίες έφταναν ως «tax»: η κατηγορία έλειπε από τον
+    // πίνακα και το κλειδί τυπωνόταν αυτούσιο κάτω από τον τίτλο.
+    tax: 'Φορολογικά', financial: 'Οικονομικά', bills: 'Λογαριασμοί', maintenance: 'Συντήρηση', contract: 'Συμβόλαιο', tenant: 'Ενοικιαστής', reminder: 'Υπενθύμιση',
   }
   const isUrgent = reminderType === 'today' || reminderType === 'overdue'
   const totalAmount = events.reduce((s, e) => s + (e.amount || 0), 0)
@@ -255,9 +261,10 @@ Deno.serve(async (req) => {
       // δεν έπαιρνε ΚΑΜΙΑ υπενθύμιση και η εργασία απαντούσε «success». Ο
       // μετρητής `skipped` ταξιδεύει ήδη στην απάντηση, όπως και στις άλλες
       // τρεις αναγνώσεις αυτού του βρόχου.
-      const { data: events, error: evErr } = await supabase.from('calendar_events').select('*').eq('user_id', pref.user_id).eq('status', 'pending')
+      const { data: rows, error: evErr } = await supabase.from('calendar_events').select('*').eq('user_id', pref.user_id).eq('status', 'pending')
       if (evErr) { console.error('[send-reminders] γεγονότα ημερολογίου:', evErr); skipped++; continue }
-      if (!events?.length) continue
+      const events = oneTaxCopy((rows || []) as CalendarEventsRow[]).kept
+      if (!events.length) continue
 
       const checks = [
         { type: '7days', enabled: pref.reminder_7days, date: fmt(in7days) },

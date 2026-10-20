@@ -28,6 +28,7 @@
 import { fe } from '@/lib/core/format';
 import { isClosedStatus, taskNoteOf } from '@/lib/facts/deadlines';
 import type { FeedItem } from './feed';
+import { oneTaxCopy } from './taxOnce';
 
 export interface DeadlineProperty { id: string; name?: string | null }
 
@@ -131,8 +132,11 @@ export function deadlineItems(s: DeadlineSources): FeedItem[] {
   }
   const rentProps = new Set(s.rent.filter(r => !r.paid && inWindow(day(r.due_date))).map(r => String(r.property_id || '')));
 
-  for (const e of s.events) {
-    if (isClosedStatus(e.status)) continue;
+  // Η ΙΔΙΑ ΘΕΣΜΙΚΗ ΠΡΟΘΕΣΜΙΑ ΣΕ ΔΥΟ ΑΚΙΝΗΤΑ ΕΙΝΑΙ ΜΙΑ (lib/calendar/taxOnce).
+  // Ο ΕΝΦΙΑ είναι ένα εκκαθαριστικό: χωρίς όνομα ακινήτου, γιατί δεν ανήκει σε
+  // κανένα από τα δύο περισσότερο απ' ό,τι στο άλλο.
+  const { kept: open, shared } = oneTaxCopy(s.events.filter(e => !isClosedStatus(e.status)));
+  for (const e of open) {
     const src = text(e.source);
     if (src === 'bills') continue;
     if (RENT_DUE.test(src) && rentProps.has(String(e.property_id || ''))) continue;
@@ -141,7 +145,7 @@ export function deadlineItems(s: DeadlineSources): FeedItem[] {
   // μετονομάζει τίποτα: δημιουργεί διπλότυπα σε κάθε συνδρομητή, γιατί το
   // πρόγραμμα ημερολογίου βλέπει καινούρια γεγονότα και κρατά και τα παλιά.
     push(`event-${e.id}@properwise`, day(e.event_date),
-      text(e.title) + at(e.property_id),
+      text(e.title) + (shared.has(src) ? '' : at(e.property_id)),
       [money(e.amount), text(e.notes)].filter(Boolean).join(' · '));
   }
 

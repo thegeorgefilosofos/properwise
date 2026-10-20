@@ -8,8 +8,8 @@ import { startSteps, startPanel, daysLabel, stepsLabel } from './start';
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
 
-const sig = (o: Partial<{ properties: number; documents: number; taxEvents: number }> = {}) =>
-  ({ properties: 0, documents: 0, taxEvents: 0, ...o });
+const sig = (o: Partial<{ properties: number; documents: number; calendarLinked: boolean }> = {}) =>
+  ({ properties: 0, documents: 0, calendarLinked: false, ...o });
 
 // ── ΤΑ ΒΗΜΑΤΑ ─────────────────────────────────────────────────────────────
 {
@@ -31,8 +31,12 @@ ok('ένα ακίνητο κλείνει το πρώτο βήμα',
    startSteps(sig({ properties: 1 })).find(s => s.key === 'property')?.done === true);
 ok('ένα παραστατικό κλείνει το δεύτερο',
    startSteps(sig({ documents: 1 })).find(s => s.key === 'document')?.done === true);
-ok('ένα φορολογικό γεγονός κλείνει το τρίτο',
-   startSteps(sig({ taxEvents: 1 })).find(s => s.key === 'deadlines')?.done === true);
+ok('ημερολόγιο που διάβασε τη συνδρομή κλείνει το τρίτο',
+   startSteps(sig({ calendarLinked: true })).find(s => s.key === 'deadlines')?.done === true);
+// Οι προθεσμίες γράφονται μόνες τους με το πρώτο ακίνητο: το ακίνητο ΔΕΝ
+// κλείνει το βήμα του κινητού, που θέλει ένα πάτημα του χρήστη.
+ok('το ακίνητο ΔΕΝ κλείνει το βήμα του κινητού',
+   startSteps(sig({ properties: 1 })).find(s => s.key === 'deadlines')?.done === false);
 ok('το ακίνητο ΔΕΝ κλείνει το παραστατικό',
    startSteps(sig({ properties: 5 })).find(s => s.key === 'document')?.done === false);
 
@@ -43,7 +47,7 @@ ok('το ακίνητο ΔΕΝ κλείνει το παραστατικό',
   ok('μετρά τα ανοιχτά', on.open === 2);
   ok('κρατά τις ημέρες', on.daysLeft === 24);
 
-  const done = startPanel({ properties: 1, documents: 1, taxEvents: 1, trialActive: true, daysLeft: 24 });
+  const done = startPanel({ properties: 1, documents: 1, calendarLinked: true, trialActive: true, daysLeft: 24 });
   ok('με όλα κλειστά, φεύγει', !done.visible);
   ok('και δεν μένει τίποτα ανοιχτό', done.open === 0);
 

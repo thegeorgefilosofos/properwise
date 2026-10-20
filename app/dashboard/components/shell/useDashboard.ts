@@ -12,8 +12,9 @@ import { useEffect, useState, useCallback, useMemo, useRef, useSyncExternalStore
 import { createClient } from '@/lib/supabase/client'
 import { hardNavigate } from '@/lib/core/navigate'
 import * as propertyStore from '@/lib/data/properties'
-import * as calendarStore from '@/lib/data/calendar'
 import * as documentStore from '@/lib/data/documents'
+import * as feedStore from '@/lib/data/calendarFeed'
+import { syncOwnerTaxDeadlines } from '@/lib/calendar/taxSync'
 import * as settingsStore from '@/lib/data/settings'
 import { enfiaCarrySettings, type EnfiaCarry } from '@/lib/tools/enfiaCarry'
 import { athensToday } from '@/lib/core/time'
@@ -128,7 +129,7 @@ export function useDashboard() {
   // ── Ο ΠΙΝΑΚΑΣ «ΑΠΟ ΠΟΥ ΞΕΚΙΝΑΣ» ─────────────────────────────────────────
   // Τα σήματα διαβάζονται ΜΙΑ φορά, μαζί με τα υπόλοιπα counts της εκκίνησης:
   // ο πίνακας δεν δικαιολογεί δικό του ερώτημα σε κάθε φόρτωση της Επισκόπησης.
-  const [startSignals, setStartSignals] = useState({ documents: 0, taxEvents: 0 });
+  const [startSignals, setStartSignals] = useState({ documents: 0, calendarLinked: false });
   const [startCollapsed, setStartCollapsed] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [scanAfterAdd, setScanAfterAdd] = useState(false);// «Σάρωση εγγράφου» της υποδοχής: σάρωση μόλις αποθηκευτεί το ακίνητο
@@ -243,12 +244,12 @@ export function useDashboard() {
   const startState = startPanel({
     properties: properties.length,
     documents: startSignals.documents,
-    taxEvents: startSignals.taxEvents,
+    calendarLinked: startSignals.calendarLinked,
     trialActive: trial.active,
     daysLeft: trial.daysLeft,
   });
   // ═══ ΤΟ ΒΗΜΑ ΤΣΕΚΑΡΕΤΑΙ ΜΟΛΙΣ ΓΙΝΕΙ, ΟΧΙ ΣΤΗΝ ΕΠΟΜΕΝΗ ΦΟΡΤΩΣΗ ═══════════
-  // Τα σήματα του πίνακα («σάρωσε ένα έγγραφο», «δες τις προθεσμίες σου»)
+  // Τα σήματα του πίνακα («σάρωσε ένα έγγραφο», «βάλε τις προθεσμίες στο κινητό σου»)
   // μετριόνταν μία φορά, στο άνοιγμα. Ο χρήστης σάρωνε, γύριζε στην
   // Επισκόπηση και έβρισκε το βήμα ακόμη ανοιχτό με το κουμπί «Άνοιγμα»: η
   // εφαρμογή του έλεγε ότι δεν έκανε αυτό που μόλις έκανε. Τώρα ξαναμετρώνται
@@ -257,13 +258,13 @@ export function useDashboard() {
   // δεν ξετσεκάρει βήμα που είχε ήδη γίνει.
   const refreshStartSignals = useCallback(async () => {
     if (!user) return;
-    const [docCount, taxEvents] = await Promise.all([
+    const [docCount, feedRes] = await Promise.all([
       documentStore.countOfUser(supabase, user.id),
-      calendarStore.taxEventCount(supabase, user.id),
+      feedStore.feed(supabase, user.id),
     ]);
     setStartSignals(cur => {
-      const next = { documents: Math.max(cur.documents, docCount || 0), taxEvents: Math.max(cur.taxEvents, taxEvents) };
-      return next.documents === cur.documents && next.taxEvents === cur.taxEvents ? cur : next;
+      const next = { documents: Math.max(cur.documents, docCount || 0), calendarLinked: cur.calendarLinked || feedStore.feedConnected(feedRes.row) };
+      return next.documents === cur.documents && next.calendarLinked === cur.calendarLinked ? cur : next;
     });
   }, [user, supabase]);
   const startPrimed = useRef(false);
@@ -378,6 +379,21 @@ export function useDashboard() {
     return props;
   }, [selected, supabase]);
 
+  // ── ΟΙ ΦΟΡΟΛΟΓΙΚΕΣ ΠΡΟΘΕΣΜΙΕΣ ΔΕΝ ΠΕΡΙΜΕΝΟΥΝ ΚΟΥΜΠΙ ───────────────────────
+  // Γράφονται από τον ΕΝΑ συγχρονισμό (lib/calendar/taxSync.ts): κάθε πρωί από
+  // το πρόγραμμα του διακομιστή και εδώ, μία φορά τη μέρα σε κάθε συσκευή και
+  // αμέσως μόλις αλλάξει η κατάσταση ενός ακινήτου. Δεν μπλοκάρει την οθόνη και
+  // η αποτυχία δεν λέγεται: το πρόγραμμα του πρωινού θα τα γράψει ούτως ή άλλως.
+  const refreshTaxDeadlines = useCallback((uid: string, force = false) => {
+    const key = `tax_sync_${uid}`;
+    const today = athensToday();
+    if (!force) { try { if (localStorage.getItem(key) === today) return; } catch { /* ιδιωτική περιήγηση */ } }
+    void syncOwnerTaxDeadlines(supabase, uid).then(r => {
+      if (r.error) return;
+      try { localStorage.setItem(key, today); } catch { /* ιδιωτική περιήγηση */ }
+    });
+  }, [supabase]);
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -405,6 +421,7 @@ export function useDashboard() {
       // η οθόνη θα έμενε για πάντα στο spinner.
       try {
         await fetchProperties(user.id);
+        refreshTaxDeadlines(user.id);
         const cnt = (t: string) => supabase.from(t).select('id', { count: 'exact', head: true }).eq('user_id', user.id);
         // ΕΝΑ COUNT ΛΙΓΟΤΕΡΟ ΣΕ ΚΑΘΕ ΦΟΡΤΩΣΗ: ΕΦΥΓΕ ΤΟ cnt('contacts').
         // Γέμιζε το σήμα `hasContacts`, που έθρεφε τον κανόνα αποκάλυψης
@@ -414,19 +431,19 @@ export function useDashboard() {
         // 'contacts' δεν ρωτήθηκε ποτέ. Οι Επαφές αποδίδονται ως ενότητα μέσα
         // στο Αρχείο και ο μόνος δρόμος στο nav==='contacts' (ο βοηθός) κρίνεται
         // από το tabDecision. Πέντε COUNT έγιναν τέσσερα, ίδια ακριβώς οθόνη.
-        const [{ data: ob, error: obErr }, { count, error: countErr }, { count: docCount }, loanRes, invRes, taxEvents] = await Promise.all([
+        const [{ data: ob, error: obErr }, { count, error: countErr }, { count: docCount }, loanRes, invRes, feedRes] = await Promise.all([
           supabase.from('onboarding_progress').select('welcomed, revealed_tabs, nav_show_all, start_collapsed').eq('user_id', user.id).maybeSingle(),
           cnt('user_properties'),
           cnt('property_documents'),
           cnt('loans'),
           cnt('inventory_items'),
-          // Το τρίτο βήμα του πίνακα υποδοχής: «είδε τις προθεσμίες του». Το
-          // σήμα δεν είναι επίσκεψη σε καρτέλα αλλά ΓΕΓΟΝΟΣ στο ημερολόγιό του —
-          // μια επίσκεψη δεν αφήνει ίχνος και θα ζητούσε δικό της πεδίο, δηλαδή
-          // δεύτερη αλήθεια για το ίδιο πράγμα.
-          calendarStore.taxEventCount(supabase, user.id),
+          // Το τρίτο βήμα του πίνακα υποδοχής: «οι προθεσμίες στο κινητό του».
+          // Το σήμα δεν είναι πάτημα κουμπιού αλλά ΓΕΓΟΝΟΣ: ένα ημερολόγιο
+          // διάβασε τη συνδρομή (lib/home/start.ts). Τα φορολογικά γεγονότα
+          // δεν είναι πια σήμα, γιατί γράφονται μόνα τους με το πρώτο ακίνητο.
+          feedStore.feed(supabase, user.id),
         ]);
-        setStartSignals({ documents: docCount || 0, taxEvents: taxEvents });
+        setStartSignals({ documents: docCount || 0, calendarLinked: feedStore.feedConnected(feedRes.row) });
         // ΑΓΝΩΣΤΟ ΔΕΝ ΣΗΜΑΙΝΕΙ ΜΗΔΕΝ. Αποτυχημένη μέτρηση γυρίζει `count: null`
         // και το `|| 0` έδειχνε το καλωσόρισμα πρώτης χρήσης σε ιδιοκτήτη με
         // ακίνητα. Ούτε το «δεν το έχει δει» το ξέρουμε όταν η πρόοδος δεν
@@ -543,6 +560,9 @@ export function useDashboard() {
     if (!await saved('Η κατάσταση του ακινήτου δεν άλλαξε',
       propertyStore.update(supabase, selected.id, writeStatus(status), user.id))) return;
     setStatusDropdown(false);
+    // Βραχυχρόνια ↔ μακροχρόνια αλλάζει τις προθεσμίες: οι μηνιαίες δηλώσεις
+    // μπαίνουν ή φεύγουν τώρα, όχι αύριο το πρωί.
+    refreshTaxDeadlines(user.id, true);
     await fetchProperties(user.id);
   };
 
