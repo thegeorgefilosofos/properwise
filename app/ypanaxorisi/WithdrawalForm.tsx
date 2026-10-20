@@ -95,7 +95,7 @@ export default function WithdrawalForm({ signedIn, prefill }: {
   if (step === 'done' && done) {
     return (
       <div style={box} aria-live="polite">
-        <p style={{ fontSize: 18, fontWeight: 650, margin: '0 0 12px', color: 'var(--text-primary)' }}>Η δήλωσή σου καταγράφηκε.</p>
+        <p style={{ fontSize: 18, fontWeight: 600, margin: '0 0 12px', color: 'var(--text-primary)' }}>Η δήλωσή σου καταγράφηκε.</p>
         <Lines rows={done.lines} />
         <p className="lg-p" style={{ margin: 0 }}>
           {done.ackSent
@@ -117,7 +117,7 @@ export default function WithdrawalForm({ signedIn, prefill }: {
     ];
     return (
       <div style={box}>
-        <p style={{ fontSize: 16, fontWeight: 650, margin: '0 0 12px', color: 'var(--text-primary)' }}>Έλεγξε τη δήλωση πριν την υποβάλεις</p>
+        <p style={{ fontSize: 16, fontWeight: 600, margin: '0 0 12px', color: 'var(--text-primary)' }}>Έλεγξε τη δήλωση πριν την υποβάλεις</p>
         <Lines rows={rows} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
           <Btn variant="primary" onClick={confirm} disabled={busy}>{busy ? 'Υποβολή…' : WITHDRAWAL_CONFIRM_LABEL}</Btn>
