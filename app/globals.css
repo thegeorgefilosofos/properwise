@@ -5697,7 +5697,12 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    στο tablet μέσα από το Instagram. Η κάρτα κρίνει από το δικό της πλάτος
    (container query): κάτω από 880 ο κύριος αριθμός παίρνει όλη τη σειρά. Ο
    πολύ μακρύς (`.po-tool-hero-wide`, ToolHero) την παίρνει πάντα. */
-.po-tool-hero { container-type: inline-size; }
+/* ΚΑΙ ΣΤΟΙΧΙΖΕΤΑΙ ΣΤΗ ΓΡΑΜΜΗ ΒΑΣΗΣ, ΟΧΙ ΣΤΟ ΚΑΤΩ ΑΚΡΟ (20.10.2026). Το `end`
+   του πλέγματος στοίχιζε τα ΚΟΥΤΙΑ: το «180,28€» στα 44 και το «15,02€» στα 22
+   κάθονταν σε γραμμές βάσης που απείχαν περίπου 6px, γιατί η μεγάλη
+   γραμματοσειρά έχει βαθύτερη ουρά κάτω από τη γραμμή. Το μάτι διαβάζει τους
+   αριθμούς, όχι τα κουτιά τους. */
+.po-tool-hero { container-type: inline-size; align-items: last baseline; }
 .po-tool-hero-wide > .po-tool-fig-primary { grid-column: 1 / -1; }
 @container (max-width: 879px) {
   .po-tool-hero > .po-tool-fig-primary { grid-column: 1 / -1; }
