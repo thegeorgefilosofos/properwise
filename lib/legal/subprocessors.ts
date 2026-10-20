@@ -77,6 +77,10 @@ export const ROLE_LABEL: Record<SubprocessorRole, string> = {
 
 import { merchant, type BillingEnv } from '@/lib/billing/merchant';
 import { billingWords } from './billingWords';
+// Ο ΕΜΠΟΡΟΣ ΕΠΕΞΕΡΓΑΖΕΤΑΙ ΟΤΑΝ ΠΟΥΛΑΜΕ, ΟΧΙ ΟΤΑΝ ΥΠΑΡΧΕΙ ΚΛΕΙΔΙ. Η συνθήκη του
+// ταμείου κρίνει πλέον και την ταυτότητα του πωλητή (lib/legal/checkout.ts).
+import { checkoutIsLive } from './checkout';
+import { IDENTITY, type LegalIdentity } from './identity';
 import { inboundDomain } from '@/lib/inbound/address';
 
 /** Το εμπορικό όνομα των υπηρεσιών push, όπως γράφεται στο μητρώο. */
@@ -229,9 +233,9 @@ const base = (mor: string): readonly Subprocessor[] => [
  * Ο κατάλογος όπως ισχύει ΤΩΡΑ. Ο πάροχος πληρωμών παίρνει την κατάστασή του
  * από την ίδια συνθήκη που δείχνει το κουμπί του ταμείου.
  */
-export function subprocessors(env: BillingEnv = process.env): readonly Subprocessor[] {
+export function subprocessors(env: BillingEnv = process.env, id: LegalIdentity = IDENTITY): readonly Subprocessor[] {
   const port = merchant(env);
-  const live = port.isLive(env);
+  const live = checkoutIsLive(env, id);
   // ΟΙ ΥΠΗΡΕΣΙΕΣ PUSH ΕΠΕΞΕΡΓΑΖΟΝΤΑΙ ΜΟΝΟ ΟΤΑΝ ΥΠΑΡΧΕΙ ΚΛΕΙΔΙ. Χωρίς το δημόσιο
   // κλειδί VAPID ο διακόπτης δεν εμφανίζεται σε καμία οθόνη, καμία συσκευή δεν
   // γράφεται και κανένα μήνυμα δεν φεύγει. Ενα καρφωμένο `true` θα δήλωνε
@@ -267,16 +271,16 @@ export function subprocessors(env: BillingEnv = process.env): readonly Subproces
       // του ίδιου γεγονότος είναι τρεις ευκαιρίες να αποκλίνουν. Δική της φράση
       // (`merchantRow`) και όχι το `cardData`: εκείνο λέει «ο πάροχος πληρωμών»
       // και εδώ διαβαζόταν ως ο πάροχος να μιλά για τον εαυτό του.
-      purpose: `${s.purpose} ${billingWords(env).merchantRow}`,
+      purpose: `${s.purpose} ${billingWords(env, id).merchantRow}`,
     };
   });
 }
 
 /** Όσοι επεξεργάζονται δεδομένα σήμερα. */
-export const activeSubprocessors = (env?: BillingEnv) => subprocessors(env).filter(s => s.active);
+export const activeSubprocessors = (env?: BillingEnv, id?: LegalIdentity) => subprocessors(env, id).filter(s => s.active);
 
 /** Όσοι είναι σχεδιασμένοι αλλά δεν έχουν ενεργοποιηθεί. */
-export const plannedSubprocessors = (env?: BillingEnv) => subprocessors(env).filter(s => !s.active);
+export const plannedSubprocessors = (env?: BillingEnv, id?: LegalIdentity) => subprocessors(env, id).filter(s => !s.active);
 
 /** Ο ρόλος μέσα σε πρόταση: πεζό το πρώτο γράμμα. */
 const roleInline = (r: SubprocessorRole): string =>

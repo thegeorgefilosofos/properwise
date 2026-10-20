@@ -84,7 +84,17 @@ const nextConfig: NextConfig = {
     // Το react.development.js (49 KB) ανέβαινε σε ΚΑΘΕ συνάρτηση, 70 φορές: 3,4 MB
     // ανά ανάπτυξη. Το node_modules/react/index.js το φορτώνει μόνο όταν
     // NODE_ENV !== 'production'· στο Vercel είναι πάντα production.
-    '**/*': ['node_modules/@img/**', 'node_modules/sharp/**', 'node_modules/react/cjs/react.development.js'],
+    //
+    // ΚΑΙ ΤΟ jsonwebtoken ΤΟΥ NEXT (121 KB × 70 = 8,5 MB ανά ανάπτυξη, 20/10/2026).
+    // Το φορτώνει ΜΟΝΟ το try-get-preview-data, για το cookie της λειτουργίας
+    // προεπισκόπησης (draft mode) και μόνο όταν το cookie φέρει το μυστικό
+    // previewModeId του χτισίματος. Η εφαρμογή δεν καλεί πουθενά `draftMode()`
+    // ούτε `setPreviewData` (grep σε app/ και lib/). Και αν φτάσει ποτέ εκεί, η
+    // κλήση ζει μέσα σε try/catch που σβήνει το cookie και συνεχίζει χωρίς
+    // προεπισκόπηση (app-page-turbo.runtime.prod.js), οπότε η έλλειψη του αρθρώματος
+    // δεν ρίχνει σελίδα. Η εξοικονόμηση κάλυψε τις δύο νέες συναρτήσεις της
+    // υπαναχώρησης (/ypanaxorisi, /api/withdrawal), περίπου 4,8 MB.
+    '**/*': ['node_modules/@img/**', 'node_modules/sharp/**', 'node_modules/react/cjs/react.development.js', 'node_modules/next/dist/compiled/jsonwebtoken/**'],
   },
   // ── ΟΙ ΔΙΕΥΘΥΝΣΕΙΣ ΠΟΥ ΠΛΗΚΤΡΟΛΟΓΕΙ Ο ΚΟΣΜΟΣ ─────────────────────────────
   // Τα αγγλικά ονόματα που δοκιμάζει όποιος ψάχνει τιμές, εργαλεία ή cookies.

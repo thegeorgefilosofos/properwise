@@ -1,41 +1,76 @@
-# Records of Processing Activities (RoPA) — PROPERWISE
+# Αρχείο δραστηριοτήτων επεξεργασίας (άρθ. 30 GDPR) · PROPERWISE
 
-GDPR Art. 30 record for PROPERWISE as **data controller** for its customers'
-account data, and as **data processor** for the tenant/third-party personal data
-that customers enter about their properties. Keep current; a technical/legal
-buyer's due diligence expects this document to exist.
+**Ενημέρωση:** 20/10/2026, μετά τη νομική αξιολόγηση της ίδιας ημέρας (εύρημα 9).
+**Η προηγούμενη εκδοχή** (αγγλικά) είχε δύο αντιφάσεις με την `/privacy`: διαγραφή «με 30
+ημέρες περιθώριο» ενώ η Πολιτική λέει «αμέσως από τη βάση» και ενημερωτικά με «soft opt-in,
+6§1 στ΄» ενώ η Πολιτική και η εγγραφή στηρίζονται μόνο σε συγκατάθεση. Και οι δύο
+διορθώνονται εδώ προς ό,τι κάνει ο κώδικας. Έλειπαν η Vercel, ο Sentry, η Google, οι
+υπηρεσίες push, το pre-check-in, οι πύλες, οι συστάσεις, τα δεδομένα κοινότητας, η παραλαβή
+email και ολόκληρο το αρχείο ως εκτελών (30§2).
 
-## Controller / contact
-- **Controller**: PROPERWISE (operator of «PROPERWISE»), Greece.
-- **Contact for data protection**: _(add the responsible person + email)_.
-- **EU establishment**: yes (Greece); primary data residency **EU — Frankfurt**.
+Η εξαίρεση του άρθ. 30§5 δεν εφαρμόζεται: η επεξεργασία δεν είναι περιστασιακή και
+περιλαμβάνει αριθμούς ταυτότητας και οικονομικά δεδομένα. Η εκτίμηση αντικτύπου:
+`docs/compliance/dpia.md`.
 
-## Processing activities
+## 1. Υπεύθυνος επεξεργασίας και επικοινωνία (30§1 α΄)
 
-| # | Activity | Data subjects | Data categories | Purpose | Legal basis (Art. 6) | Retention |
-|---|---|---|---|---|---|---|
-| 1 | **Account & authentication** | Property owners (users) | Email, name, hashed password, MFA factor, session/audit logs | Provide the service, secure the account | Contract 6(1)(b); security = legitimate interest 6(1)(f) | Life of account + 30 days after deletion |
-| 2 | **Property & financial records** | Users | Property details, ΑΤΑΚ, obj. value, ΕΝΦΙΑ, rent, loans, bank-import lines, tax figures, documents | Core product function (management, tax, reporting) | Contract 6(1)(b); tax records = legal obligation 6(1)(c) | Life of account; tax-relevant records per Greek statutory periods |
-| 3 | **Tenant / guest records** (customer acts as controller; we are processor) | Tenants, short-stay guests, leads | Name, ΑΦΜ, phone, email, ID number, lease terms, stay history | Let the customer manage tenancies | Processor — customer's basis (contract / legitimate interest) | Controlled by the customer; deleted on their instruction or account deletion |
-| 4 | **Transactional email/notifications** | Users, tenants | Email/phone, message content | Deliver receipts, reminders, obligations | Contract 6(1)(b) | Outbox rows retained for audit; expired/stale purged |
-| 5 | **Lifecycle & marketing email** | Users | Email, engagement, plan/tenure, derived segments | Onboarding, product news, seasonal/value nudges | Consent 6(1)(a) / soft opt-in with easy unsubscribe = legitimate interest 6(1)(f) | Until unsubscribe; suppression list kept |
-| 6 | **AI assistant / suggestions** | Users | Prompt context (property data, questions) | In-product assistance | Contract 6(1)(b); processed by Anthropic under SCCs | Not retained for training (confirm in DPA) |
-| 7 | **Billing** | Users | Billing contact, subscription IDs (card at Creem) | Take payment | Contract 6(1)(b); invoices = legal obligation 6(1)(c) | Statutory accounting period |
-| 8 | **Backups & DR** | All of the above | Full logical dump | Disaster recovery | Legitimate interest 6(1)(f) | 30-day rolling; encrypted at rest when configured |
+- **Υπεύθυνος:** ο φορέας λειτουργίας του PROPERWISE, φυσικό πρόσωπο (`lib/legal/identity.ts`,
+  `kind: 'natural'`). **TODO George:** ονοματεπώνυμο, διεύθυνση, ΑΦΜ και τηλέφωνο δεν έχουν
+  συμπληρωθεί· όσο λείπουν, το ταμείο μένει κλειστό (`lib/legal/checkout.ts`).
+- **Επικοινωνία για δεδομένα:** `privacy@properwise.gr` (`IDENTITY.privacyEmail`).
+- **Υπεύθυνος προστασίας δεδομένων (DPO):** δεν έχει οριστεί· η αιτιολόγηση είναι στην `/privacy`.
+  Να ξανακριθεί με την κλίμακα (ενέργεια A12 της DPIA).
+- **Εγκατάσταση:** Ελλάδα. Σύστημα καταγραφής: Supabase, ΕΕ (Φρανκφούρτη).
 
-## Data subject rights — how they are served
-- **Access & portability**: one-click **export** (`export_my_data`, per-user JSON of every table).
-- **Erasure**: **delete account** (`delete_my_account`, cascades to owned data).
-- **Rectification**: in-app editing across all records.
-- **Objection / opt-out**: per-message unsubscribe; marketing gated behind `email_marketing_prefs`.
-- **Restriction**: account can be closed; data export before deletion.
+## 2. Ως υπεύθυνος επεξεργασίας (30§1)
 
-## International transfers
-US subprocessors (Resend, Anthropic, GitHub, Creem) under **SCCs**; system of
-record stays in the EU. See `subprocessors.md`.
+| # | Δραστηριότητα | Υποκείμενα | Κατηγορίες δεδομένων | Σκοπός | Βάση (άρθ. 6) | Αποδέκτες | Διατήρηση |
+|---|---|---|---|---|---|---|---|
+| Y1 | Λογαριασμός και ταυτοποίηση | Χρήστες | Email, όνομα, κατακερματισμένος κωδικός, παράγοντας TOTP, ιστορικό ασφαλείας | Παροχή και ασφάλεια λογαριασμού | Σύμβαση 6§1 β΄· ασφάλεια: έννομο συμφέρον 6§1 στ΄ | Supabase, Vercel, Google (μόνο με σύνδεση Google, αυτοτελής υπεύθυνος) | Όσο ζει ο λογαριασμός· με τη διαγραφή **αμέσως από τη βάση**, από τα αντίγραφα μέσα σε 30 ημέρες (`/privacy`, «Χρόνος διατήρησης») |
+| Y2 | Ακίνητα, οικονομικά, φορολογικά του χρήστη | Χρήστες | Ακίνητα, ΑΤΑΚ, ΕΝΦΙΑ, μισθώματα, δάνεια, δαπάνες, τραπεζικές κινήσεις | Λειτουργίες της Υπηρεσίας | Σύμβαση 6§1 β΄ | Supabase, Vercel, Anthropic (μόνο όσα στέλνει η Νόα) | Όσο ζει ο λογαριασμός |
+| Y3 | Νόα και σάρωση εγγράφων | Χρήστες | Ερώτηση, πλαίσιο λογαριασμού, έγγραφα που σαρώνονται | Βοήθεια μέσα στην εφαρμογή | Σύμβαση 6§1 β΄ | Anthropic (ΗΠΑ, SCCs) | Όχι για εκπαίδευση (Commercial Terms §B)· χρόνος διατήρησης στον πάροχο: **δεν επαληθεύτηκε** |
+| Y4 | Συνδρομές και πληρωμές | Συνδρομητές | Email, αναγνωριστικά συνδρομής και πελάτη, κατάσταση | Χρέωση· η Creem πουλά ως merchant of record | Σύμβαση 6§1 β΄· παραστατικά: 6§1 γ΄ | Creem (αυτοτελής υπεύθυνος για το ταμείο) | Όσο ζει ο λογαριασμός· τα παραστατικά τα τηρεί η Creem |
+| Y5 | Δηλώσεις υπαναχώρησης | Καταναλωτές με ή χωρίς λογαριασμό | Όνομα, email, σύμβαση, ημερομηνία αγοράς, ώρα υποβολής | Άσκηση του δικαιώματος υπαναχώρησης (άρθ. 3ζα ν. 2251/1994) και απόδειξη | Έννομη υποχρέωση 6§1 γ΄ | Supabase, Resend (αποδεικτικό), Creem (διαβίβαση για την επιστροφή) | **TODO George:** χρόνος διατήρησης (DPIA, A6). Με τη διαγραφή λογαριασμού η γραμμή μένει χωρίς δεσμό (17§3 ε΄) |
+| Y6 | Λειτουργικά email και υπενθυμίσεις | Χρήστες | Email, περιεχόμενο | Ειδοποιήσεις υποχρεώσεων, επιβεβαιώσεις | Σύμβαση 6§1 β΄ | Resend (ΗΠΑ, SCCs και DPF) | Ουρά αποστολής: οι ληγμένες γραμμές σημαδεύονται μετά από 2 ημέρες (`drain_email_outbox`)· σβήνονται με τον λογαριασμό (`erase_account`) |
+| Y7 | Ενημερωτικά προϊόντος και αγοράς | Χρήστες που τα ζήτησαν | Email, προτιμήσεις, απεγγραφές | Ενημέρωση | **Συγκατάθεση 6§1 α΄** (κουτί στην εγγραφή, ατσεκάριστο· `/privacy`, «Σκοποί») | Resend | Ώσπου να ανακληθεί· οι προτιμήσεις σβήνονται με τον λογαριασμό (`/privacy`) |
+| Y8 | Δεδομένα κοινότητας | Χρήστες που ενεργοποίησαν τη συνεισφορά | Περιοχή, τύπος, εμβαδόν, τιμή, ανώνυμα | Συγκεντρωτικές στατιστικές αγοράς | Συγκατάθεση 6§1 α΄, με καταγραφή χρόνου | Supabase | Ώσπου να κλείσει ο διακόπτης ή να διαγραφεί ο λογαριασμός |
+| Y9 | Πρόγραμμα πρόσκλησης | Χρήστες, προσκεκλημένοι | Σχέση «ποιος σύστησε ποιον», ανταμοιβές | Πίστωση ανταμοιβών | Σύμβαση 6§1 β΄ (Όροι, `#systaseis`) | Supabase | Όσο ζει ο λογαριασμός |
+| Y10 | Παραλαβή email | Χρήστες, όσοι γράφουν στις διευθύνσεις μας | Προωθημένα μηνύματα δαπανών, μηνύματα προς support@, privacy@, security@ | Πρόταση δαπανών· απάντηση | Σύμβαση 6§1 β΄· έννομο συμφέρον για την υποστήριξη | Resend (ενεργή στην παραγωγή: `NEXT_PUBLIC_INBOUND_DOMAIN` από 17/09/2026) | Αρχείο αυτόματων απαντήσεων χωρίς τη διεύθυνση (`support_ack_log`) |
+| Y11 | Ειδοποιήσεις push | Χρήστες που τις ζήτησαν ανά συσκευή | Endpoint συσκευής, κρυπτογραφημένο περιεχόμενο | Ειδοποιήσεις | Συγκατάθεση 6§1 α΄ (άδεια του περιηγητή) | Υπηρεσίες push Google, Apple, Mozilla, Microsoft (ενεργές στην παραγωγή: `NEXT_PUBLIC_VAPID_PUBLIC_KEY` από 01/09/2026) | Όσο ισχύει η εγγραφή της συσκευής ή ο λογαριασμός |
+| Y12 | Καταγραφή σφαλμάτων | Χρήστες | Μήνυμα, στοίβα, διεύθυνση σελίδας | Αξιοπιστία και ασφάλεια | Έννομο συμφέρον 6§1 στ΄ | Sentry (ενεργός στην παραγωγή: `NEXT_PUBLIC_SENTRY_DSN` από 13/08/2026)· **TODO George:** νομικό πρόσωπο, περιοχή, DPA | Κατά τον πάροχο: **δεν επαληθεύτηκε** |
+| Y13 | Μέτρηση επισκεψιμότητας | Επισκέπτες | Χωρίς cookies (Vercel Web Analytics)· από τη διεύθυνση μόνο η σελίδα και οι πέντε `utm_` (`lib/analytics/pageUrl.ts`) | Στατιστικά | Έννομο συμφέρον 6§1 στ΄ (LIA: **TODO**, αξιολόγηση εύρημα 14) | Vercel | Κατά τον πάροχο |
+| Y15 | Μέτρηση χρήσης του προϊόντος | Χρήστες | Ποιο βασικό βήμα έκανε ο λογαριασμός και πότε (`product_events`), ημερομηνίες σύνδεσης· χωρίς ποσά, ονόματα ή περιεχόμενο | Να ξέρουμε αν η Υπηρεσία είναι χρήσιμη, μόνο σε πλήθη ανά εβδομάδα | Έννομο συμφέρον 6§1 στ΄ (`/privacy`, «Σκοποί» και «Cookies») | Supabase (μόνο ρόλος υπηρεσίας για τα πλήθη) | Διαγράφεται με τον λογαριασμό (`on delete cascade`) |
+| Y14 | Αντίγραφα ασφαλείας | Όλα τα παραπάνω | Λογικό αντίγραφο της βάσης, GPG AES256 | Αποκατάσταση | Έννομο συμφέρον 6§1 στ΄ | GitHub (DPA) | 30 ημέρες (`.github/workflows/db-backup.yml`, `retention-days: 30`) |
 
-## Security measures (summary)
-RLS tenant isolation on every table; SECURITY DEFINER functions pin `search_path`;
-service-role key server-side only; secrets in the deployment environment only;
-MFA/TOTP available; encrypted backups (optional passphrase); full adversarial
-security audit on file (`docs/db/security-audit-2026-07.md`).
+## 3. Ως εκτελών για λογαριασμό των χρηστών (30§2)
+
+**Υπεύθυνοι:** οι χρήστες (ιδιοκτήτες και επαγγελματίες) που καταχωρούν δεδομένα τρίτων.
+Η σύμβαση επεξεργασίας είναι η ενότητα `#epexergasia` των Όρων, με αποδοχή πριν από την
+πρώτη αποθήκευση στοιχείων ενοικιαστή (`lib/legal/dpa.ts`).
+
+| # | Κατηγορία επεξεργασίας για τον υπεύθυνο (30§2 β΄) | Υποκείμενα | Δεδομένα | Υπο-εκτελούντες | Διαβιβάσεις (30§2 γ΄) |
+|---|---|---|---|---|---|
+| E1 | Μητρώο ενοικιαστών και μισθώσεων | Ενοικιαστές | Ονοματεπώνυμο, ΑΦΜ, τηλέφωνο, email, όροι μίσθωσης | Supabase, Vercel, Resend (καταστάσεις), Anthropic (ονόματα στη Νόα) | ΗΠΑ: Vercel (**χωρίς DPA**), Resend, Anthropic (SCCs) |
+| E2 | Πύλη ενοικιαστή | Ενοικιαστές | Αιτήματα συντήρησης, φωτογραφίες, μηνύματα | Supabase, Vercel | ΗΠΑ: Vercel |
+| E3 | Pre-check-in επισκεπτών | Επισκέπτες, συνταξιδιώτες, ανήλικοι | Ονοματεπώνυμο, αριθμός ταυτότητας ή διαβατηρίου, εθνικότητα, ημερομηνία γέννησης, προαιρετικά τηλέφωνο και email | Supabase, Vercel | ΗΠΑ: Vercel |
+| E4 | Πελάτες, επισκέπτες και επαφές | Πελάτες, επαφές | Όνομα, ιστορικό διαμονών, βαθμολογία, σημειώσεις | Supabase, Vercel, Anthropic (έως 50 πελάτες και 60 επαφές, χωρίς τηλέφωνα και ΑΦΜ) | ΗΠΑ: Vercel, Anthropic |
+| E5 | Σάρωση εγγράφων τρίτων | Ενοικιαστές, επισκέπτες | Μισθωτήρια, έγγραφα ταυτότητας | Supabase, Anthropic | ΗΠΑ: Anthropic |
+| E6 | Φάκελος λογιστή | Ενοικιαστές (μέσω των εισοδημάτων) | Ό,τι περιέχει ο φάκελος | Supabase, Vercel | ΗΠΑ: Vercel |
+
+Τεχνικά και οργανωτικά μέτρα (30§1 ζ΄ και 30§2 δ΄): `docs/compliance/dpia.md`, §5.
+
+## 4. Δικαιώματα υποκειμένων
+
+- **Πρόσβαση και φορητότητα:** εξαγωγή όλων σε JSON (`export_my_data`), με το δεύτερο βήμα· περιλαμβάνει κάθε πίνακα με στήλη ή ξένο κλειδί προς τον χρήστη, μαζί και τις δηλώσεις υπαναχώρησης.
+- **Διαγραφή:** `delete_my_account` (μέσω `erase_account`): πρώτα ακύρωση συνδρομής, μετά οι πίνακες με `user_id` και ο χρήστης. Οι δηλώσεις υπαναχώρησης μένουν χωρίς δεσμό (στήλη `account_id`).
+- **Διόρθωση:** μέσα στην εφαρμογή.
+- **Εναντίωση και ανάκληση:** απεγγραφή σε κάθε μήνυμα· διακόπτες για κοινότητα και push.
+- **Υπαναχώρηση από τη σύμβαση:** `/ypanaxorisi` (`docs/legal/ypanaxorisi.md`).
+- **Υποκείμενα των χρηστών (ενοικιαστές, επισκέπτες):** τα αιτήματα πηγαίνουν στον υπεύθυνο-χρήστη· εμείς συνδράμουμε (28§3 ε΄).
+
+## 5. Διεθνείς διαβιβάσεις
+
+Η πλήρης κατάσταση ανά πάροχο: `docs/compliance/subprocessors.md`. Σε συντομία: SCCs με
+Supabase, Resend και Anthropic (23/09/2026)· DPA με GitHub· **χωρίς DPA η Vercel**·
+**δεν έχει τεκμηριωθεί** μηχανισμός για Sentry, Creem και υπηρεσίες push (TODO George,
+DPIA ενέργεια A7).

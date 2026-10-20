@@ -165,7 +165,14 @@ begin
                                 'accountant_id', 'subject_id', 'property_id')
      )
      -- …ή το χειρίζεται ήδη το βήμα 1β
-     and c.table_name not in ('email_outbox', 'app_admins');
+     and c.table_name not in ('email_outbox', 'app_admins')
+     -- …ή είναι ΑΠΟΔΕΙΞΗ που ο νόμος θέλει να επιζήσει της διαγραφής (20.10.2026).
+     -- Το αίτημα υπαναχώρησης (20261020120000_i_ypanaxorisi_echei_koumpi.sql)
+     -- αποδεικνύει ότι ο καταναλωτής άσκησε δικαίωμα (άρθ. 3ζα ν. 2251/1994,
+     -- άρθ. 11α Οδηγίας 2011/83/ΕΕ)· κρατιέται αποσυνδεδεμένο από τον λογαριασμό,
+     -- με νομική βάση το άρθ. 6§1γ ΓΚΠΔ. Ο έλεγχος ξανατρέχει σε κάθε επανεκτέλεση,
+     -- γι' αυτό η εξαίρεση γράφεται εδώ ονομαστικά και όχι με γενικό κανόνα.
+     and c.table_name not in ('withdrawal_requests');
 
   if v_orphans is not null then
     raise exception using

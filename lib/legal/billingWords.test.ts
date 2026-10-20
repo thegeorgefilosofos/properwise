@@ -10,6 +10,8 @@ import { merchant } from '../billing/merchant'
 import { subprocessors, activeSubprocessors, plannedSubprocessors } from './subprocessors'
 import { MERCHANT_NAMES, KNOWN_MERCHANTS, merchantId, PROVIDER_ENV } from './merchant'
 import { TRIAL_DAYS, PLANS } from '../billing/plans'
+import { checkoutIsLive as gateIsLive, checkoutState } from './checkout'
+import { IDENTITY, sellerIdentityGaps, sellerIdentityComplete, type LegalIdentity } from './identity'
 
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
@@ -17,8 +19,19 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.er
 /** Ο έμπορος αυτού του περιβάλλοντος, ονομαστικά. */
 const mor = (env: Record<string, string | undefined>) => MERCHANT_NAMES[merchantId(env)]
 
-/** Η ΙΔΙΑ συνθήκη με το κουμπί του ταμείου, από τη θύρα και όχι από πάροχο. */
-const checkoutIsLive = (env: Record<string, string | undefined>) => merchant(env).isLive(env)
+// ΤΑΥΤΟΤΗΤΑ ΠΩΛΗΤΗ ΓΙΑ ΤΗ ΣΟΥΙΤΑ. Από 20/10/2026 το ταμείο ανοίγει μόνο με
+// πλήρη ταυτότητα (lib/legal/checkout.ts). Τα πεδία είναι εμφανώς δοκιμαστικά
+// και ζουν μόνο εδώ· το IDENTITY της εφαρμογής δεν αγγίζεται.
+const SELLER: LegalIdentity = {
+  ...IDENTITY,
+  legalName: 'ΔΟΚΙΜΑΣΤΙΚΟ ΟΝΟΜΑ',
+  address: 'ΔΟΚΙΜΑΣΤΙΚΗ ΔΙΕΥΘΥΝΣΗ',
+  afm: 'ΔΟΚΙΜΑΣΤΙΚΟ ΑΦΜ',
+  phone: 'ΔΟΚΙΜΑΣΤΙΚΟ ΤΗΛΕΦΩΝΟ',
+}
+
+/** Η ΙΔΙΑ συνθήκη με το κουμπί του ταμείου: έμπορος και ταυτότητα πωλητή. */
+const checkoutIsLive = (env: Record<string, string | undefined>) => gateIsLive(env, SELLER)
 
 // Ο ΕΜΠΟΡΟΣ, ΖΩΝΤΑΝΟΣ, ΜΕ ΟΛΟΚΛΗΡΟ ΤΟΝ ΧΑΡΤΗ. Ο έμπορος πουλά μόνο με και τα
 // οκτώ ζεύγη (τέσσερα πακέτα σε δύο κύκλους): με ένα λιγότερο το ταμείο μένει
@@ -52,9 +65,47 @@ ok('χωρίς κλειδί API δεν μετράει', !checkoutIsLive({ ...LIV
 ok('χάρτης με ζεύγος που λείπει δεν μετράει',
   !checkoutIsLive({ ...LIVE, CREEM_PRODUCTS: PRODUCTS.replace(',p8:office:annual', '') }))
 
+// ── ΧΩΡΙΣ ΔΗΜΟΣΙΑ ΤΑΥΤΟΤΗΤΑ ΠΩΛΗΤΗ ΤΟ ΤΑΜΕΙΟ ΜΕΝΕΙ ΚΛΕΙΣΤΟ ─────────────────
+// ΤΟ ΠΕΡΙΣΤΑΤΙΚΟ (νομική αξιολόγηση 20/10/2026). Ζωντανό κλειδί στην παραγωγή
+// και ανώνυμος φορέας: οι Οροι έλεγαν «η χρέωση γίνεται» και το ταμείο άνοιγε.
+// GDPR 13§1 α΄, π.δ. 131/2003 άρθ. 4, ν. 2251/1994 άρθ. 3β§1 β΄–γ΄.
+{
+  const anon: LegalIdentity = { ...SELLER, legalName: null, address: null, afm: null, phone: null }
+  ok('πλήρης ρύθμιση εμπόρου και ανώνυμος φορέας: κλειστό', !gateIsLive(LIVE, anon))
+  ok('και ο λόγος λέγεται: ταυτότητα', checkoutState(LIVE, anon).closedBy === 'identity')
+  ok('χωρίς ρύθμιση ο λόγος είναι ο έμπορος, όποια κι αν είναι η ταυτότητα',
+    checkoutState(DARK, SELLER).closedBy === 'merchant' && checkoutState(DARK, anon).closedBy === 'merchant')
+  ok('με ρύθμιση και πλήρη ταυτότητα: ανοιχτό, χωρίς λόγο', checkoutState(LIVE, SELLER).live && checkoutState(LIVE, SELLER).closedBy === null)
+  for (const f of ['legalName', 'address', 'afm', 'phone'] as const) {
+    ok(`λείπει μόνο το ${f}: κλειστό`, !gateIsLive(LIVE, { ...SELLER, [f]: null }))
+    ok(`κενό με διαστήματα στο ${f} δεν μετράει`, !gateIsLive(LIVE, { ...SELLER, [f]: '   ' }))
+  }
+  ok('το ΔΟΥ δεν το ζητά καμία διάταξη: δεν κλείνει το ταμείο', gateIsLive(LIVE, { ...SELLER, doy: null }))
+  ok('φυσικό πρόσωπο χωρίς ΓΕΜΗ: ανοιχτό', gateIsLive(LIVE, { ...SELLER, kind: 'natural', gemi: null }))
+  ok('εταιρεία χωρίς ΓΕΜΗ: κλειστό', !gateIsLive(LIVE, { ...SELLER, kind: 'company', gemi: null }))
+  ok('εταιρεία με ΓΕΜΗ: ανοιχτό', gateIsLive(LIVE, { ...SELLER, kind: 'company', gemi: 'ΔΟΚΙΜΑΣΤΙΚΟ ΓΕΜΗ' }))
+  ok('τα κενά απαριθμούνται', sellerIdentityGaps(anon).join() === 'legalName,address,afm,phone')
+
+  // ΤΑ ΛΟΓΙΑ ΓΥΡΙΖΟΥΝ ΣΤΗΝ «ΟΧΙ ΑΚΟΜΗ» ΕΚΔΟΧΗ, ΟΛΑ ΜΑΖΙ.
+  const w = billingWords(LIVE, anon), dark = billingWords(DARK, SELLER), open = billingWords(LIVE, SELLER)
+  ok('ανώνυμος φορέας: τα λόγια λένε ότι δεν χρεώνουμε', w.live === false && w.chargingToday === dark.chargingToday)
+  ok('κανένα σήμα πληρωμής και κανένας πωλητής', w.securedBy === null && w.contractParties === null && w.withdrawalTo === null)
+  ok('ο τιμοκατάλογος δείχνει την ειδοποίηση', !!w.pricingNotice)
+  ok('η εξήγηση ονομάζει τα πεδία που λείπουν',
+    !!w.saleClosedReason && ['ονοματεπώνυμο', 'διεύθυνση', 'ΑΦΜ', 'τηλέφωνο'].every(x => w.saleClosedReason!.includes(x)))
+  ok('με πλήρη ταυτότητα καμία εξήγηση', open.saleClosedReason === null && dark.saleClosedReason === null)
+  ok('ο έμπορος δεν δηλώνεται ενεργός εκτελών όσο δεν πουλάμε',
+    subprocessors(LIVE, anon).find(s => s.name === mor(LIVE))!.active === false)
+
+  // ΚΑΙ ΣΗΜΕΡΑ: το αρχείο της εφαρμογής, όπως είναι. Οσο λείπει έστω ένα
+  // πεδίο, κανένα περιβάλλον δεν ανοίγει ταμείο, ούτε με πλήρη ρύθμιση.
+  ok('το IDENTITY της εφαρμογής κρίνεται από την ίδια συνάρτηση',
+    gateIsLive(LIVE) === sellerIdentityComplete(IDENTITY))
+}
+
 // ── ΟΙ ΔΥΟ ΚΑΤΑΣΤΑΣΕΙΣ ΕΙΝΑΙ ΟΝΤΩΣ ΔΥΟ ────────────────────────────────────
 {
-  const live = billingWords(LIVE), dark = billingWords(DARK)
+  const live = billingWords(LIVE, SELLER), dark = billingWords(DARK, SELLER)
   ok('η σημαία ακολουθεί το ταμείο', live.live === true && dark.live === false)
   const keys = ['chargingToday', 'afterTrial', 'afterTrialShort', 'cardData', 'compMonths', 'howWeArePaid', 'paymentMethodAsked', 'moneyBack', 'firstCharge', 'contractSteps', 'planChange', 'subscriptionPlace', 'renewal', 'merchantRow'] as const
   // Αν μια φράση είναι ίδια και στις δύο καταστάσεις, τότε η μία από τις δύο
@@ -104,7 +155,7 @@ ok('χάρτης με ζεύγος που λείπει δεν μετράει',
 // οθόνη. Οι έλεγχοι είναι λεξιλογικοί επίτηδες — ό,τι υπόσχεται ένα νομικό
 // κείμενο δεν επιτρέπεται να αλλάξει κατά λάθος.
 {
-  const live = billingWords(LIVE), dark = billingWords(DARK)
+  const live = billingWords(LIVE, SELLER), dark = billingWords(DARK, SELLER)
 
   // Η ΔΟΚΙΜΗ ΔΕΝ ΖΗΤΑ ΚΑΡΤΑ, Η ΣΥΝΔΡΟΜΗ ΧΡΕΩΝΕΤΑΙ ΣΤΗΝ ΑΓΟΡΑ (απόφαση 27.09.2026).
   // Ο έμπορος δεν έχει δοκιμή στα προϊόντα του: η πρώτη χρέωση φεύγει την
@@ -209,22 +260,22 @@ ok('χάρτης με ζεύγος που λείπει δεν μετράει',
 // εκεί δεν είναι σχόλιο, είναι δήλωση προς το υποκείμενο.
 {
   const merchantOf = (env: Record<string, string | undefined>) =>
-    subprocessors(env).find(s => s.name === mor(env))!
+    subprocessors(env, SELLER).find(s => s.name === mor(env))!
   ok('με ζωντανό ταμείο ο πάροχος πληρωμών είναι ενεργός', merchantOf(LIVE).active === true)
   ok('χωρίς ταμείο δεν είναι', merchantOf(DARK).active === false)
   ok('και μετακινείται ανάμεσα στους δύο καταλόγους',
-    activeSubprocessors(LIVE).some(s => s.name === mor(LIVE))
-    && plannedSubprocessors(DARK).some(s => s.name === mor(DARK)))
+    activeSubprocessors(LIVE, SELLER).some(s => s.name === mor(LIVE))
+    && plannedSubprocessors(DARK, SELLER).some(s => s.name === mor(DARK)))
   ok('η αιτιολόγηση του παρόχου δανείζεται τη μία διατύπωση',
-    merchantOf(DARK).purpose.includes(billingWords(DARK).merchantRow)
-    && merchantOf(LIVE).purpose.includes(billingWords(LIVE).merchantRow))
+    merchantOf(DARK).purpose.includes(billingWords(DARK, SELLER).merchantRow)
+    && merchantOf(LIVE).purpose.includes(billingWords(LIVE, SELLER).merchantRow))
   // Η ΓΡΑΜΜΗ ΤΟΥ ΕΜΠΟΡΟΥ ΔΕΝ ΜΙΛΑ ΓΙΑ «ΤΟΝ ΠΑΡΟΧΟ ΠΛΗΡΩΜΩΝ»: ο πάροχος είναι
   // ο ίδιος και η τρίτη πρόσωπη αναφορά διαβαζόταν σαν να υπάρχει κι άλλος.
   ok('η γραμμή του εμπόρου δεν αναφέρεται στον εαυτό της ως τρίτο',
     !merchantOf(DARK).purpose.includes('ο πάροχος πληρωμών'))
   // Οι υπόλοιποι πάροχοι δεν παρασύρονται από τη μεταβλητή της χρέωσης.
   const others = (env: Record<string, string | undefined>) =>
-    subprocessors(env).filter(s => s.name !== mor(env)).map(s => `${s.name}:${s.active}`).join()
+    subprocessors(env, SELLER).filter(s => s.name !== mor(env)).map(s => `${s.name}:${s.active}`).join()
   ok('κανένας άλλος πάροχος δεν αλλάζει κατάσταση', others(LIVE) === others(DARK))
 }
 
@@ -255,7 +306,7 @@ ok('χάρτης με ζεύγος που λείπει δεν μετράει',
   // παρόχου γραμμένο κυριολεκτικά, ακόμη και σε σουίτα.
   const FOREIGN = /stripe|paddle|lemon/i
   const others: string[] = KNOWN_MERCHANTS.filter(id => id !== 'creem').map(id => MERCHANT_NAMES[id])
-  const w2 = billingWords(LIVE_2)
+  const w2 = billingWords(LIVE_2, SELLER)
   ok('ο έμπορος είναι ζωντανός και χωρίς μεταβλητή επιλογής', w2.live === true)
   ok('τα λόγια ονομάζουν αυτόν που εισπράττει',
     w2.chargingToday.includes(MERCHANT_NAMES.creem) && w2.cardData.includes(MERCHANT_NAMES.creem))
@@ -263,7 +314,7 @@ ok('χάρτης με ζεύγος που λείπει δεν μετράει',
     !FOREIGN.test(w2.chargingToday) && !FOREIGN.test(w2.cardData)
     && others.every(o => !w2.chargingToday.includes(o) && !w2.cardData.includes(o)))
 
-  const reg2 = subprocessors(LIVE_2)
+  const reg2 = subprocessors(LIVE_2, SELLER)
   ok('το μητρώο υπεργολάβων γράφει τον ίδιο έμπορο',
     reg2.some(s => s.name === MERCHANT_NAMES.creem && s.active))
   ok('και δεν γράφει άλλον πάροχο πληρωμών',

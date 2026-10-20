@@ -38,6 +38,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { PLANS, PLAN_ORDER, normalizePlan, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 import { cycleFromParam, activeHold } from '@/lib/billing/entitlements';
 import { merchant } from '@/lib/billing/merchant';
+import { checkoutIsLive } from '@/lib/legal/checkout';
 import { classifyChange, planDrops } from '@/lib/billing/subscription';
 import * as billing from '@/lib/data/billing';
 import { reportRoute, codeOf } from '@/lib/observability/route';
@@ -112,8 +113,10 @@ export async function POST(request: Request) {
   }
 
   const mor = merchant();
-  if (!mor.isLive(process.env)) {
-    console.info('[plan] η χρέωση δεν είναι ρυθμισμένη');
+  // Η ΑΝΑΒΑΘΜΙΣΗ ΕΙΝΑΙ ΝΕΑ ΧΡΕΩΣΗ, ΑΡΑ ΠΩΛΗΣΗ. Ιδια συνθήκη με το ταμείο: χωρίς
+  // δημοσιευμένη ταυτότητα πωλητή δεν χρεώνεται ούτε η διαφορά (lib/legal/checkout.ts).
+  if (!checkoutIsLive(process.env)) {
+    console.info('[plan] η χρέωση δεν είναι ανοιχτή (ρύθμιση εμπόρου ή ταυτότητα πωλητή)');
     return NextResponse.json({ error: 'Η αλλαγή πακέτου δεν είναι διαθέσιμη αυτή τη στιγμή.' }, { status: 503 });
   }
 
