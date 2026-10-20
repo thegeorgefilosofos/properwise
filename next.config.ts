@@ -87,7 +87,7 @@ const nextConfig: NextConfig = {
     //
     // ΚΑΙ ΤΟ jsonwebtoken ΤΟΥ NEXT (121 KB × 70 = 8,5 MB ανά ανάπτυξη, 20/10/2026).
     // Το φορτώνει ΜΟΝΟ το try-get-preview-data, για το cookie της λειτουργίας
-    // προεπισκόπησης (draft mode), και μόνο όταν το cookie φέρει το μυστικό
+    // προεπισκόπησης (draft mode) και μόνο όταν το cookie φέρει το μυστικό
     // previewModeId του χτισίματος. Η εφαρμογή δεν καλεί πουθενά `draftMode()`
     // ούτε `setPreviewData` (grep σε app/ και lib/). Και αν φτάσει ποτέ εκεί, η
     // κλήση ζει μέσα σε try/catch που σβήνει το cookie και συνεχίζει χωρίς
