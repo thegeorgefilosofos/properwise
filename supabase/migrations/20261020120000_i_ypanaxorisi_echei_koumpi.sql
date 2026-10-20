@@ -70,3 +70,9 @@ grant select, insert, update on table public.withdrawal_requests to service_role
 drop policy if exists withdrawal_requests_own_read on public.withdrawal_requests;
 create policy withdrawal_requests_own_read on public.withdrawal_requests for select to authenticated
   using (account_id = (select auth.uid()));
+
+-- Ίδια πύλη δεύτερου βήματος με κάθε πίνακα δεδομένων χρήστη
+-- (20261003120000_to_deftero_vima_fylaei_kai_ta_dedomena.sql).
+drop policy if exists mfa_withdrawal_requests on public.withdrawal_requests;
+create policy mfa_withdrawal_requests on public.withdrawal_requests as restrictive for all to authenticated
+  using ((select private.mfa_satisfied())) with check ((select private.mfa_satisfied()));

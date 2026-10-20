@@ -69,7 +69,9 @@ export interface WithdrawalClean {
   purchaseIso: string | null;
 }
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Γραμμικό: κανένα τμήμα δεν μπορεί να ταιριάξει την τελεία του επόμενου, άρα
+// καμία οπισθοδρόμηση σε κείμενο που το έγραψε άγνωστος (CodeQL js/polynomial-redos).
+const EMAIL = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 const squash = (v: unknown): string => String(v ?? '').replace(/\s+/g, ' ').trim();
 
 /**
@@ -88,7 +90,7 @@ export function validateWithdrawal(
   const dateText = squash(raw.purchaseDate);
   if (name.length < 2) return { ok: false, error: 'Γράψε το ονοματεπώνυμό σου.' };
   if (name.length > MAX.name) return { ok: false, error: 'Το ονοματεπώνυμο είναι πολύ μεγάλο.' };
-  if (!EMAIL.test(email) || email.length > MAX.email) return { ok: false, error: 'Γράψε μια έγκυρη διεύθυνση email: εκεί θα λάβεις το αποδεικτικό.' };
+  if (email.length > MAX.email || !EMAIL.test(email)) return { ok: false, error: 'Γράψε μια έγκυρη διεύθυνση email: εκεί θα λάβεις το αποδεικτικό.' };
   if (contract.length < 2) return { ok: false, error: 'Γράψε ποια σύμβαση αφορά, για παράδειγμα το πακέτο ή τον αριθμό του παραστατικού.' };
   if (contract.length > MAX.contract) return { ok: false, error: 'Η περιγραφή της σύμβασης είναι πολύ μεγάλη.' };
   let purchaseIso: string | null = null;
