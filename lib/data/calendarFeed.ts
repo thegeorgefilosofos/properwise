@@ -22,7 +22,7 @@ const TABLE = 'calendar_feed_tokens';
 
 export type Db = SupabaseClient;
 
-export type FeedRow = Pick<CalendarFeedTokensRow, 'token'>;
+export type FeedRow = Pick<CalendarFeedTokensRow, 'token' | 'last_fetched_at'>;
 export type FeedOwner = Pick<CalendarFeedTokensRow, 'user_id' | 'expires_at'>;
 
 /**
@@ -51,10 +51,29 @@ export const feedUrl = (token: string | null | undefined): string =>
 export const feedSubscribeUrl = (token: string | null | undefined): string =>
   feedUrl(token).replace(/^https?:/, 'webcal:');
 
+/** Η οθόνη «Προσθήκη από URL» του Google Calendar, με τη διεύθυνση έτοιμη. */
+export const feedGoogleUrl = (token: string | null | undefined): string =>
+  token ? `https://calendar.google.com/calendar/r/settings/addbyurl?url=${encodeURIComponent(feedUrl(token))}` : '';
+
 /** Η συνδρομή του συνδεδεμένου, ή τίποτα όταν δεν έχει γεννηθεί. */
 export async function feed(db: Db, userId: string): Promise<ReadOneResult<FeedRow>> {
-  return readOne<FeedRow>(db.from(TABLE).select('token').eq('user_id', userId).maybeSingle());
+  return readOne<FeedRow>(db.from(TABLE).select('token,last_fetched_at').eq('user_id', userId).maybeSingle());
 }
+
+/**
+ * Ενα εξωτερικό ημερολόγιο μόλις διάβασε τη συνδρομή. ΜΟΝΟ για τον διακομιστή:
+ * ο χρήστης δεν έχει πολιτική ενημέρωσης σε αυτόν τον πίνακα, άρα δεν μπορεί να
+ * πει «συνδέθηκε» για κάτι που δεν συνδέθηκε. Το «συνδέθηκε» κλείνει την πρόταση
+ * «Βάλε τις προθεσμίες στο κινητό» όπου εμφανίζεται.
+ */
+export async function markFetched(db: Db, token: string): Promise<{ error: DbError | null }> {
+  const { error } = await db.from(TABLE).update({ last_fetched_at: new Date().toISOString() }).eq('token', token);
+  return { error: error as DbError | null };
+}
+
+/** Εχει συνδεθεί ποτέ η συνδρομή σε ημερολόγιο; */
+export const feedConnected = (row: Pick<FeedRow, 'last_fetched_at'> | null | undefined): boolean =>
+  !!row?.last_fetched_at;
 
 /** Σε ποιον ανήκει ένα κουπόνι. ΜΟΝΟ για τον διακομιστή. */
 export async function ownerOfToken(db: Db, token: string): Promise<ReadOneResult<FeedOwner>> {

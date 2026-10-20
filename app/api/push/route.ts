@@ -21,6 +21,19 @@
 // ΜΙΑ ΑΠΟΤΥΧΙΑ ΕΝΟΣ ΔΕΝ ΣΤΑΜΑΤΑ ΤΟΥΣ ΥΠΟΛΟΙΠΟΥΣ. Η εργασία τρέχει μέχρι το
 // τέλος και απαντά με τον απολογισμό της· τα σφάλματα ζουν στα αρχεία
 // καταγραφής, όχι σε μια πρόωρη έξοδο.
+//
+// ── ΠΡΩΤΑ ΟΙ ΠΡΟΘΕΣΜΙΕΣ, ΜΕΤΑ ΟΙ ΕΙΔΟΠΟΙΗΣΕΙΣ (20.10.2026) ────────────────
+// Οι φορολογικές προθεσμίες (ΕΝΦΙΑ, Ε1/Ε2, Ε9, μηνιαίες της βραχυχρόνιας)
+// γράφονταν στο ημερολόγιο μόνο με κουμπί. Τώρα αυτή η πρωινή εργασία περνά
+// πρώτα κάθε ιδιοκτήτη από τον ΙΔΙΟ συγχρονισμό της καρτέλας
+// (lib/calendar/taxSync.ts) και μετά στέλνει: το push των 05:00 και το email
+// των 06:00 βρίσκουν έτσι γραμμένες τις προθεσμίες της ημέρας. Ο,τι άλλαξε ο
+// χρήστης μένει όπως το άφησε. Τρέχει ΚΑΙ χωρίς κλειδιά VAPID: το email και η
+// συνδρομή του κινητού δεν εξαρτώνται από το push.
+//
+// ΓΙΑΤΙ ΕΔΩ ΚΑΙ ΟΧΙ ΣΕ ΔΙΚΗ ΤΟΥ ΔΙΑΔΡΟΜΗ. Κάθε διαδρομή είναι ξεχωριστή
+// συνάρτηση που ανεβαίνει με ολόκληρο το ίχνος της σε κάθε ανάπτυξη
+// (scripts/server-weight.mjs). Η σειρά «γράψε, μετά ειδοποίησε» χωρά σε μία.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { NextResponse } from 'next/server';
@@ -41,6 +54,7 @@ import { sendPush, vapidKeys } from '@/lib/push/send';
 import { endpointHost } from '@/lib/push/subscription';
 import { athensToday, athensDatePlus } from '@/lib/core/time';
 import { reportRoute, codeOf } from '@/lib/observability/route';
+import { syncAllTaxDeadlines } from '@/lib/calendar/taxSync';
 
 /**
  * Πόσο πίσω κοιτά η ειδοποίηση.
@@ -64,12 +78,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const keys = vapidKeys(process.env);
-  if ('missing' in keys) {
-    log(`λείπει το ${keys.missing}`);
-    return NextResponse.json({ error: 'not_configured' }, { status: 503 });
-  }
-
   const missing = serviceClientError(process.env);
   if (missing) {
     log(SERVICE_CLIENT_LOG, missing);
@@ -78,11 +86,28 @@ export async function POST(request: Request) {
   }
   const db = createServiceClient();
 
+  // ── ΟΙ ΠΡΟΘΕΣΜΙΕΣ ΤΗΣ ΗΜΕΡΑΣ, ΓΡΑΜΜΕΝΕΣ ΠΡΙΝ ΑΠΟ ΚΑΘΕ ΕΙΔΟΠΟΙΗΣΗ ─────────
+  const sweep = await syncAllTaxDeadlines(db, athensToday());
+  const deadlines = { owners: sweep.owners, inserted: sweep.inserted, updated: sweep.updated, removed: sweep.removed, failed: sweep.failed };
+  if (sweep.readError) {
+    log('οι προθεσμίες δεν γράφτηκαν, τα ακίνητα δεν διαβάστηκαν:', sweep.readError.message);
+    void reportRoute('api/push', 'deadlines: properties not read', { status: 502, code: codeOf(sweep.readError) });
+  } else {
+    log(`προθεσμίες: ${sweep.owners} ιδιοκτήτες · ${sweep.inserted} νέες · ${sweep.updated} ενημερώθηκαν · ${sweep.removed} έφυγαν · ${sweep.failed} απέτυχαν`);
+    if (sweep.failed) void reportRoute('api/push', 'deadlines: some owners not synced', { status: 207 });
+  }
+
+  const keys = vapidKeys(process.env);
+  if ('missing' in keys) {
+    log(`λείπει το ${keys.missing}`);
+    return NextResponse.json({ error: 'not_configured', deadlines }, { status: 503 });
+  }
+
   const { rows, error } = await devices.all(db);
   if (error) {
     log('οι συνδρομές δεν διαβάστηκαν:', error.message);
     void reportRoute('api/push', 'subscriptions not read', { status: 502, code: codeOf(error) });
-    return NextResponse.json({ error: 'read_failed' }, { status: 502 });
+    return NextResponse.json({ error: 'read_failed', deadlines }, { status: 502 });
   }
 
   const today = athensToday();
@@ -134,5 +159,5 @@ export async function POST(request: Request) {
   }
 
   log(`${byUser.size} χρήστες · ${sent} στάλθηκαν · ${quiet} χωρίς λόγο · ${dropped} σβήστηκαν · ${failed} απέτυχαν · ${skipped} είχαν ήδη πάρει`);
-  return NextResponse.json({ users: byUser.size, sent, quiet, dropped, failed, skipped });
+  return NextResponse.json({ users: byUser.size, sent, quiet, dropped, failed, skipped, deadlines });
 }

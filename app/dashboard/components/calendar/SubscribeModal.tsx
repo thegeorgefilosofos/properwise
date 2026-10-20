@@ -3,7 +3,7 @@
 // Η ΖΩΝΤΑΝΗ ΣΥΝΔΡΟΜΗ: ΟΙ ΣΥΝΔΕΣΜΟΙ ΓΙΑ ΕΞΩΤΕΡΙΚΑ ΗΜΕΡΟΛΟΓΙΑ ΚΑΙ ΚΑΝΑΛΙΑ
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState } from 'react'
-import { feedUrl } from '@/lib/data/calendarFeed'
+import { feedUrl, feedSubscribeUrl, feedGoogleUrl } from '@/lib/data/calendarFeed'
 import { T, Btn, Modal, Spinner } from '@/components/Theme'
 import { Calendar, CalendarDays, Info, CalendarPlus } from 'lucide-react'
 import { SUPABASE_URL } from '@/lib/supabase/env'
@@ -58,8 +58,8 @@ export function SubscribeModal({ token, propertyId, onClose }: { token:string|nu
   const httpsUrl=feedUrl(token)
   const busyUrl=token?`${base}/functions/v1/bookings-feed?token=${token}&property=${propertyId}`:''
   const copyBusy=async()=>{ try{ await navigator.clipboard.writeText(busyUrl); setCopiedBusy(true); setTimeout(()=>setCopiedBusy(false),1800) }catch{} }
-  const webcalUrl=httpsUrl.replace(/^https?:\/\//,'webcal://')
-  const googleUrl=`https://calendar.google.com/calendar/r/settings/addbyurl?url=${encodeURIComponent(httpsUrl)}`
+  const webcalUrl=feedSubscribeUrl(token)
+  const googleUrl=feedGoogleUrl(token)
   const copy=async()=>{ try{ await navigator.clipboard.writeText(httpsUrl); setCopied(true); setTimeout(()=>setCopied(false),1800) }catch{} }
   return (
     <Modal open onClose={onClose} size="md" icon={<CalendarPlus size={19}/>}

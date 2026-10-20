@@ -129,6 +129,8 @@ export interface EventDraft {
   contact_email?: string | null;
   color?: string | null;
   bill_id?: string | null;
+  /** Το αποτύπωμα του αυτόματου συγχρονισμού προθεσμιών (lib/calendar/taxSync). */
+  auto_hash?: string | null;
   /** Αν λείπει, παίρνει την πηγή του `replaceSource`/`insert`. */
   source?: string;
 }
@@ -161,6 +163,7 @@ export function row(scope: Scope, source: string, d: EventDraft): EventRow {
     contact_email: d.contact_email ?? null,
     color: d.color ?? null,
     bill_id: d.bill_id ?? null,
+    auto_hash: d.auto_hash ?? null,
     source: d.source ?? source,
   };
 }
@@ -307,23 +310,43 @@ export async function exists(db: Db, propertyId: string, match: EventMatch): Pro
   return !!(await readRows<{ id: string }>(applyMatch(scoped(db, propertyId, 'id'), match).limit(1))).length;
 }
 
+/** Ό,τι χρειάζεται ο αυτόματος συγχρονισμός προθεσμιών από κάθε γραμμή `tax:*`. */
+export type TaxRow = Pick<CalendarEventsRow,
+  'id' | 'property_id' | 'source' | 'status' | 'title' | 'event_date' | 'category' | 'priority' | 'notes' | 'amount' | 'auto_hash'>;
+
+const TAX_ROW_COLUMNS = 'id,property_id,source,status,title,event_date,category,priority,notes,amount,auto_hash';
+
 /**
- * Πόσα φορολογικά γεγονότα έχει ο ΧΡΗΣΤΗΣ, σε όλα του τα ακίνητα.
+ * Οι θεσμικές προθεσμίες ΠΟΛΛΩΝ ακινήτων με ένα ερώτημα, με το σφάλμα ορατό.
  *
- * ΓΙΑΤΙ ΔΕΝ ΕΙΝΑΙ ΑΝΑ ΑΚΙΝΗΤΟ, ΟΠΩΣ ΟΛΑ ΤΑ ΥΠΟΛΟΙΠΑ ΕΔΩ. Ο πίνακας υποδοχής
- * ρωτά «είδε ποτέ τις προθεσμίες του;» — ερώτηση του λογαριασμού, όχι του
- * ακινήτου. Με εμβέλεια ακινήτου, ο χρήστης που δέχτηκε τις προθεσμίες στο
- * πρώτο του ακίνητο και μετά άνοιξε δεύτερο θα ξανάβλεπε το βήμα ανοιχτό.
- *
- * ΜΕΤΡΑΕΙ, ΔΕΝ ΚΑΤΕΒΑΖΕΙ (`head: true`): η απάντηση είναι ένας αριθμός και σε
- * λογαριασμό με τριάντα ακίνητα οι γραμμές θα ήταν εκατοντάδες για ένα «>0».
+ * Ανά ακίνητο και όχι ανά χρήστη: τη γραμμή μπορεί να την έγραψε μέλος της
+ * ομάδας με δικό του `user_id`, αλλά ανήκει στο ακίνητο. Αποτυχία εδώ σημαίνει
+ * «δεν ξέρουμε τι υπάρχει», άρα ο συγχρονισμός δεν γράφει τίποτα.
  */
-export async function taxEventCount(db: Db, userId: string): Promise<number> {
-  const { count } = await db.from(TABLE)
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .like('source', `${TAX_SOURCE_PREFIX}%`);
-  return count || 0;
+export async function taxRowsOf(db: Db, propertyIds: readonly string[]): Promise<ReadResult<TaxRow>> {
+  if (!propertyIds.length) return { rows: [], error: null };
+  return read<TaxRow>(db.from(TABLE).select(TAX_ROW_COLUMNS)
+    .in('property_id', [...propertyIds]).like('source', `${TAX_SOURCE_PREFIX}%`));
+}
+
+/**
+ * Εισαγωγή που δεν διπλογράφει. Το κλειδί `calendar_events_tax_once` κρατά μία
+ * γραμμή ανά (ακίνητο, `tax:<id>`)· αν άλλος γραφέας πρόλαβε, η παρτίδα
+ * απορρίπτεται ολόκληρη (23505) και ξαναδοκιμάζεται γραμμή-γραμμή, όπου το
+ * «υπάρχει ήδη» δεν είναι σφάλμα: είναι ακριβώς αυτό που θέλαμε.
+ */
+export async function insertOnce(db: Db, rows: EventRow[]): Promise<Outcome> {
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const part = rows.slice(i, i + BATCH);
+    const { error } = await db.from(TABLE).insert(part);
+    if (!error) continue;
+    if (error.code !== '23505') return { data: null, error };
+    for (const one of part) {
+      const { error: e } = await db.from(TABLE).insert(one);
+      if (e && e.code !== '23505') return { data: null, error: e };
+    }
+  }
+  return { data: null, error: null };
 }
 
 // ── ΓΡΑΨΙΜΟ ────────────────────────────────────────────────────────────────

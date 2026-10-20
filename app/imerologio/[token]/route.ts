@@ -110,6 +110,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
 
   const ics = buildCalendarFeed(items, { name: CALENDAR_NAME, now: new Date(), link: siteUrl('/dashboard?tab=calendar') });
   log(`${items.length} προθεσμίες, ${from} ως ${to}`);
+  // Η ΠΡΩΤΗ ΑΝΑΓΝΩΣΗ ΚΛΕΙΝΕΙ ΤΗΝ ΠΡΟΤΑΣΗ «ΒΑΛΕ ΤΙΣ ΣΤΟ ΚΙΝΗΤΟ». Αποτυχία εδώ δεν
+  // στερεί από κανέναν το ημερολόγιό του: η πρόταση απλώς μένει μία μέρα ακόμη.
+  const mark = await feedStore.markFetched(db, raw);
+  if (mark.error) log('η ώρα ανάγνωσης δεν γράφτηκε:', mark.error.message);
 
   return new Response(ics, {
     status: 200,

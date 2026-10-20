@@ -358,6 +358,7 @@ export interface CalendarEventsRow {
   recurrence_exdates: Json;
   contact_phone: string | null;
   contact_email: string | null;
+  auto_hash: string | null;
 }
 
 export interface CalendarFeedTokensRow {
@@ -365,6 +366,7 @@ export interface CalendarFeedTokensRow {
   token: string;
   created_at: string;
   expires_at: string | null;
+  last_fetched_at: string | null;
 }
 
 export interface CategoryHintsRow {

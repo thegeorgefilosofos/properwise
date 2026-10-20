@@ -125,6 +125,21 @@ export async function listWithError<T = PropertyCard>(
 }
 
 /**
+ * ΟΛΑ τα ακίνητα, σε σελίδες ταξινομημένες κατά αναγνωριστικό. ΜΟΝΟ για τον
+ * πελάτη υπηρεσίας του πρωινού προγράμματος (app/api/push): ο πελάτης
+ * του περιηγητή βλέπει ούτως ή άλλως μόνο τα δικά του. Με σελίδα από το
+ * τελευταίο αναγνωριστικό και όχι με μετατόπιση, ώστε ένα ακίνητο που
+ * προστέθηκε στο μεταξύ να μη μετακινεί τα υπόλοιπα.
+ */
+export async function pageAfter<T = { id: string; user_id: string }>(
+  db: Db, columns: string, afterId: string | null, limit: number,
+): Promise<ReadResult<T>> {
+  let q = db.from(TABLE).select(columns).order('id', { ascending: true }).limit(limit);
+  if (afterId) q = q.gt('id', afterId);
+  return read<T>(q);
+}
+
+/**
  * Ερώτημα με την εμβέλεια δεμένη, για τη ΜΙΑ οθόνη που χτίζει το φίλτρο της
  * δυναμικά (η λωρίδα ΑΜΑ δείχνει είτε όλα τα ακίνητα είτε ένα). Παντού αλλού
  * χρησιμοποιείται η `list`: ένας γενικός κατασκευαστής σε κάθε οθόνη θα ήταν

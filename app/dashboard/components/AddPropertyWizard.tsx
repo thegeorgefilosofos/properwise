@@ -15,6 +15,7 @@ import { CustomSelect, DatePicker } from './UIComponents';
 import { cleanAma, isValidAmaFormat, amaLengthLooksUnusual } from '@/lib/property/ama';
 import { ATAK_SOURCE, atakDigits } from '@/lib/property/atak';
 import { STATUSES, BY_KEY, readStatus, writeStatus, type PropertyStatus } from '@/lib/property/status';
+import { syncOwnerTaxDeadlines } from '@/lib/calendar/taxSync';
 import { PROPERTY_TYPES, propertyTypeLabel } from '@/lib/property/types';
 import { fillOnlyEmpty, firstFilled } from '@/lib/core/prefill';
 import { fieldPlacement, PROPERTY_FIELDS, OBJ_VALUE_WHOLE, type FieldContext, type Placement } from '@/lib/property/fields';
@@ -651,6 +652,14 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
       if (propertyId) setCreatedId(propertyId);
     }
     if (err) { setSaving(false); setError(failed('Το ακίνητο δεν αποθηκεύτηκε', err)); return; }
+
+    // ── ΟΙ ΠΡΟΘΕΣΜΙΕΣ ΤΟΥ ΑΚΙΝΗΤΟΥ ΜΠΑΙΝΟΥΝ ΤΩΡΑ ─────────────────────────────
+    // ΕΝΦΙΑ, Ε1/Ε2, Ε9 και, για βραχυχρόνια, οι μηνιαίες δηλώσεις: στο
+    // ημερολόγιο, στις υπενθυμίσεις και στη συνδρομή του κινητού, χωρίς να
+    // ψάξει ο χρήστης κουμπί συγχρονισμού (lib/calendar/taxSync.ts). Χωρίς
+    // αναμονή: ο οδηγός δεν καθυστερεί και αν αποτύχει, το πρόγραμμα του
+    // πρωινού τις γράφει.
+    if (propertyId) void syncOwnerTaxDeadlines(supabase, userId);
 
     // ── ΤΟ ΣΚΑΛΙ ΤΗΣ ΑΞΙΑΣ ─────────────────────────────────────────────────
     // Το πρώτο ακίνητο είναι η στιγμή που η εφαρμογή αρχίζει να χρησιμεύει, το

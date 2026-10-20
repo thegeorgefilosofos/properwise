@@ -50,6 +50,7 @@ import AthensNow from './AthensNow'
 import CashHero from './CashHero'
 import RentReceived, { receivableLines } from './RentReceived'
 import AgendaPanel from './AgendaPanel'
+import { CalendarQuickAdd } from './calendar/CalendarQuickAdd'
 import AssistantStrip from './AssistantStrip'
 import ForecastCard from './ForecastCard'
 import { forecast12, type IncomeTaxStatement } from '@/lib/home/forecast12'
@@ -952,7 +953,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
 
       {/* Μία λίστα «τι χρειάζεται τώρα», στη θέση των τεσσάρων που έλεγαν εν
           μέρει τα ίδια πράγματα. Η συγχώνευση γίνεται στο lib/home/agenda.ts. */}
-      <AgendaPanel items={agenda} total={agendaAll.length} onNavigate={onNavigate} incomplete={failedReads.length > 0} />
+      <AgendaPanel items={agenda} total={agendaAll.length} onNavigate={onNavigate} incomplete={failedReads.length > 0}
+        footer={<CalendarQuickAdd userId={userId} />} />
 
       {/* ΤΙ ΕΡΧΕΤΑΙ, ΜΕΤΑ ΑΠΟ ΤΟ ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΤΩΡΑ. Με έστω μία ανάγνωση πεσμένη
           η κάρτα δεν αποδίδεται: μισή πρόβλεψη θα έδειχνε λάθος «σφιχτό μήνα». */}
