@@ -1500,6 +1500,22 @@ export interface UserPropertiesRow {
   power_supply_no: string | null;
 }
 
+export interface WithdrawalRequestsRow {
+  id: string | null;
+  account_id: string | null;
+  submitted_at: string;
+  consumer_name: string;
+  consumer_email: string;
+  contract: string;
+  purchase_date: string | null;
+  within_period: boolean | null;
+  subscription_id: string | null;
+  cancel_outcome: string;
+  ack_sent_at: string | null;
+  forwarded_at: string | null;
+  status: string;
+}
+
 /** Όνομα πίνακα → τύπος γραμμής, για γενικούς βοηθούς. */
 export interface Tables {
   account_deletion_incidents: AccountDeletionIncidentsRow;
@@ -1596,4 +1612,5 @@ export interface Tables {
   tenants: TenantsRow;
   user_feedback: UserFeedbackRow;
   user_properties: UserPropertiesRow;
+  withdrawal_requests: WithdrawalRequestsRow;
 }

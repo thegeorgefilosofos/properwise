@@ -36,6 +36,7 @@ import { notifyError, notifyOk } from '@/components/Toast';
 import { ALL_COUNTRIES, isEuCountry, isReverseCharge } from '@/lib/billing/invoiceProfile';
 import { determineVat, vatTreatmentLabel } from '@/lib/billing/invoicing';
 import { isReferralCode } from '@/lib/referral/referral';
+import { WITHDRAWAL_DAYS, WITHDRAWAL_LABEL, WITHDRAWAL_PATH } from '@/lib/legal/withdrawalLabels';
 
 interface BillingData {
   doc_type: string; full_name: string; company_name: string; afm: string; doy: string;
@@ -174,6 +175,22 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
           διακομιστής βγάζει σύνδεσμο μιας χρήσης προς τον έμπορο, που ζητά ο
           ίδιος ό,τι του λείπει. Η σειρά δεν ήταν ροή — ήταν συνήθεια. */}
       <Subscription d={d} wantPlan={wantPlan} wantCycle={wantCycle} wishPlan={wishPlan} wishCycle={wishCycle} onChanged={reload} onLive={setBillingLive} />
+
+      {/* ═══ Η ΥΠΑΝΑΧΩΡΗΣΗ ΕΙΝΑΙ ΠΑΝΤΑ ΕΔΩ, ΟΧΙ ΜΟΝΟ ΟΣΟ ΤΡΕΧΕΙ ΣΥΝΔΡΟΜΗ ═══════════
+          Το άρθ. 11α της Οδηγίας 2011/83/ΕΕ (Οδηγία (ΕΕ) 2023/2673· άρθ. 3ζα
+          ν. 2251/1994) θέλει λειτουργία με την ένδειξη «Υπαναχώρηση από τη
+          σύμβαση εδώ», εμφανή σε όλη την προθεσμία. Ζούσε μόνο ως email στους
+          Όρους. Ο σύνδεσμος οδηγεί στη σελίδα της λειτουργίας, που ανοίγει και
+          χωρίς σύνδεση και εδώ έρχεται συμπληρωμένη (lib/legal/withdrawal.ts).
+          Χωρίς όρο εμφάνισης: η οθόνη δεν ξέρει την ημερομηνία αγοράς και ένα
+          κουμπί που χάνεται τη λάθος μέρα είναι χειρότερο από ένα που μένει. */}
+      <Card>
+        <SecHdr label="Υπαναχώρηση" />
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55, marginTop: -6, marginBottom: 12 }}>
+          Ως καταναλωτής υπαναχωρείς από τη σύμβαση μέσα σε {WITHDRAWAL_DAYS} ημέρες από τη σύναψή της, χωρίς αιτιολογία. Βλέπεις τη δήλωση πριν την επιβεβαιώσεις και λαμβάνεις αποδεικτικό στο email σου.
+        </div>
+        <Btn variant="secondary" href={WITHDRAWAL_PATH}>{WITHDRAWAL_LABEL}</Btn>
+      </Card>
 
       {/* ΧΩΡΙΣ ΤΑΜΕΙΟ, ΧΩΡΙΣ ΦΟΡΜΑ. Η οθόνη ζητούσε ΑΦΜ, ΔΟΥ, διεύθυνση και
           τηλέφωνο «για να μη σου ζητηθεί τίποτα στην ενεργοποίηση», ενώ το
