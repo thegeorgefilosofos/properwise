@@ -29,6 +29,26 @@ const box: React.CSSProperties = {
   border: '1px solid var(--border-default)', borderRadius: T.radius.card, padding: 'clamp(16px,3vw,24px)', background: 'var(--bg-surface)', margin: '8px 0 0',
 };
 
+/**
+ * Η δήλωση γραμμή προς γραμμή: ετικέτα πάνω, τιμή από κάτω.
+ *
+ * ΟΧΙ ΔΥΟ ΣΤΗΛΕΣ. Με πλέγμα «ετικέτα | τιμή» στα 390 η στήλη των ετικετών
+ * έπαιρνε όλο το πλάτος και η τιμή έσπαγε ένα γράμμα ανά γραμμή (στιγμιότυπο
+ * 20/10/2026). Η στοίβα διαβάζεται ίδια σε κάθε πλάτος.
+ */
+function Lines({ rows }: { rows: [string, string][] }) {
+  return (
+    <dl style={{ display: 'grid', gap: 10, margin: '0 0 16px' }}>
+      {rows.map(([k, v]) => (
+        <div key={k}>
+          <dt style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{k}</dt>
+          <dd style={{ margin: '2px 0 0', fontSize: 14, color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export default function WithdrawalForm({ signedIn, prefill }: {
   signedIn: boolean;
   prefill: { name: string; email: string; contract: string };
@@ -76,12 +96,7 @@ export default function WithdrawalForm({ signedIn, prefill }: {
     return (
       <div style={box} aria-live="polite">
         <p style={{ fontSize: 18, fontWeight: 650, margin: '0 0 12px', color: 'var(--text-primary)' }}>Η δήλωσή σου καταγράφηκε.</p>
-        <dl style={{ display: 'grid', gridTemplateColumns: 'minmax(0,auto) minmax(0,1fr)', gap: '6px 16px', margin: '0 0 14px', fontSize: 14 }}>
-          {done.lines.map(([k, v]) => [
-            <dt key={`k${k}`} style={{ color: 'var(--text-tertiary)' }}>{k}</dt>,
-            <dd key={`v${k}`} style={{ margin: 0, color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{v}</dd>,
-          ])}
-        </dl>
+        <Lines rows={done.lines} />
         <p className="lg-p" style={{ margin: 0 }}>
           {done.ackSent
             ? 'Σου στείλαμε το αποδεικτικό στο email σου, με το ίδιο περιεχόμενο. Κράτησέ το.'
@@ -103,12 +118,7 @@ export default function WithdrawalForm({ signedIn, prefill }: {
     return (
       <div style={box}>
         <p style={{ fontSize: 16, fontWeight: 650, margin: '0 0 12px', color: 'var(--text-primary)' }}>Έλεγξε τη δήλωση πριν την υποβάλεις</p>
-        <dl style={{ display: 'grid', gridTemplateColumns: 'minmax(0,auto) minmax(0,1fr)', gap: '6px 16px', margin: '0 0 16px', fontSize: 14 }}>
-          {rows.map(([k, v]) => [
-            <dt key={`k${k}`} style={{ color: 'var(--text-tertiary)' }}>{k}</dt>,
-            <dd key={`v${k}`} style={{ margin: 0, color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{v}</dd>,
-          ])}
-        </dl>
+        <Lines rows={rows} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
           <Btn variant="primary" onClick={confirm} disabled={busy}>{busy ? 'Υποβολή…' : WITHDRAWAL_CONFIRM_LABEL}</Btn>
           <Btn variant="secondary" onClick={() => setStep('form')} disabled={busy}>Πίσω για διόρθωση</Btn>
