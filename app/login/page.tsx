@@ -27,6 +27,12 @@ const afterSignIn = () => continuation(window.location.search)
 const SEARCH_NEVER_CHANGES = () => () => {}
 const readSearch = () => window.location.search
 
+/** Οι νομικοί σύνδεσμοι κάτω από τη φόρμα: υπογραμμισμένοι όπως το `.po-link`. */
+const LEGAL_LINK: React.CSSProperties = {
+  color: 'var(--accent)', whiteSpace: 'nowrap',
+  textDecorationLine: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1,
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Σύνδεση, στα χρώματα του app (design tokens, theme-aware light/dark).
 // Δύο στήλες σε desktop· σε κινητό το marketing panel κρύβεται (auth-* classes).
@@ -444,10 +450,14 @@ export default function LoginPage() {
            μέγεθος με τη συναίνεση της εγγραφής.
            Η ΠΟΛΙΤΙΚΗ ΑΠΟΡΡΗΤΟΥ ΔΕΝ ΓΙΝΕΤΑΙ ΑΠΟΔΕΚΤΗ. Είναι ενημέρωση (άρθρα 13
            και 14 ΓΚΠΔ), όχι σύμβαση: «αποδέχεσαι» λέγεται μόνο για τους Όρους. */
+        /* ΥΠΟΓΡΑΜΜΙΣΜΕΝΟΙ, ΟΠΩΣ ΚΑΘΕ ΣΥΝΔΕΣΜΟΣ ΜΕΣΑ ΣΕ ΠΡΟΤΑΣΗ (20.10.2026).
+           Ηταν μόνο χρώμα: για όποιον δεν ξεχωρίζει το γαλάζιο από το γκρι, δύο
+           λέξεις χωρίς καμία ένδειξη ότι πατιούνται. Ιδια γραμμή με το
+           `.po-link`: 1px, 3px κάτω από τα γράμματα. */
         <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 20, marginBottom: 0, lineHeight: 1.6, textWrap: 'pretty' }}>
           Συνεχίζοντας, αποδέχεσαι τους{' '}
-          <Link href="/terms" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Όρους</Link>. Δες και την{' '}
-          <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>.
+          <Link href="/terms" className="lp-link" style={LEGAL_LINK}>Όρους</Link>. Δες και την{' '}
+          <Link href="/privacy" className="lp-link" style={LEGAL_LINK}>Πολιτική απορρήτου</Link>.
         </p>
         )}
         </>)}

@@ -529,7 +529,9 @@ export default function SignupPage() {
   // γραμμή άδεια δεξιά. Το «pretty» γεμίζει τη σειρά και φυλάει μόνο το τέλος
   // από ορφανή λέξη.
   const consentText: React.CSSProperties = { fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer', textWrap: 'pretty' }
-  const consentLink: React.CSSProperties = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }
+  // Υπογραμμισμένοι, ίδια γραμμή με το `.po-link` και τη σύνδεση (20.10.2026):
+  // το χρώμα μόνο του δεν λέει «πατιέται» σε όποιον δεν ξεχωρίζει τόνους.
+  const consentLink: React.CSSProperties = { color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1, fontWeight: 600, whiteSpace: 'nowrap' }
   // Το δεύτερο κουτί, με το ίδιο ιδίωμα αφής με το πρώτο. Προαιρετικό: η
   // εγγραφή προχωρά ό,τι κι αν διαλέξεις.
   const newsRow = (id: string) => (
