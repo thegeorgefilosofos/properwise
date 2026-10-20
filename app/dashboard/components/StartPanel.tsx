@@ -20,6 +20,10 @@ import { T, TT, Btn } from '@/components/Theme';
 import { daysLabel, stepsLabel, type StartPanelState } from '@/lib/home/start';
 import { askCta } from '@/lib/assistant/identity';
 
+/** «Έγιναν 2 από τα 3 βήματα.» — για τον αναγνώστη οθόνης. */
+const doneLine = (done: number, total: number): string =>
+  `${done === 1 ? 'Έγινε' : 'Έγιναν'} ${done} από τα ${total} βήματα.`;
+
 const Tick = ({ state }: { state: 'done' | 'now' | 'todo' }) => {
   if (state === 'done') return (
     <span aria-hidden style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--accent)', color: 'var(--accent-text)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
@@ -76,6 +80,9 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
         </div>
       </div>
 
+      {/* Το τσεκάρισμα ακούγεται κιόλας: τα βήματα ξαναμετρώνται όταν ο χρήστης
+          γυρίζει στην Επισκόπηση (useDashboard, `refreshStartSignals`). */}
+      <p role="status" className="sr-only">{doneLine(state.steps.length - state.open, state.steps.length)}</p>
       <ul style={{ listStyle: 'none', margin: '16px 0 0', padding: 0 }}>
         {state.steps.map((s, i) => {
           // ΜΟΝΟ ΕΝΑ ΒΗΜΑ ΕΙΝΑΙ «ΤΩΡΑ»: το πρώτο ανοιχτό. Δύο ταυτόχρονα
