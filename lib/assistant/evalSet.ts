@@ -21,14 +21,15 @@
 // αντίστροφο νόημα. Όταν μέσα στην απάντηση υπάρχει και το σωστό και ένα γνωστό
 // λάθος ποσό, η απάντηση πάει σε άνθρωπο να τη διαβάσει.
 //
-// Ο εκτελεστής είναι το scripts/noa-eval.ts. Δεν τρέχει στο CI: χρειάζεται
-// κλειδί και το μοντέλο δεν απαντά ίδια κάθε φορά.
+// Ο εκτελεστής είναι το scripts/noa-eval.ts (npm run noa:eval). Τρέχει αυτές
+// τις ερωτήσεις μαζί με τις υπόλοιπες κατηγορίες του evalSuite.ts· η κρίση της
+// απάντησης ζει στο evalGrade.ts και το τρέξιμο στο evalReport.ts. Δεν τρέχει
+// στο CI: χρειάζεται κλειδί και το μοντέλο δεν απαντά ίδια κάθε φορά.
 // ═══════════════════════════════════════════════════════════════════════════
 import { rentalIncomeTax, rentalBracketsForYear, art15BracketsForAge, type TaxBracket } from '../billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE, presumptiveDeductionRateForYear } from '../billing/presumptive';
 import { incomeStatement } from '../accounting/statement';
 import { feWhole } from '../core/format';
-import { identityProblems } from './identity';
 import { modelFor } from './model';
 
 export interface NoaEvalCase {
@@ -183,81 +184,6 @@ export function extractAmounts(text: string): number[] {
   return out;
 }
 
-export interface EvalScore {
-  verdict: 'pass' | 'fail' | 'ambiguous';
-  found: number[];
-  /** Οι κανόνες ταυτότητας που παραβιάζει η απάντηση (lib/assistant/identity.ts). */
-  identity: string[];
-}
-
-export function scoreAnswer(c: NoaEvalCase, answer: string): EvalScore {
-  const found = extractAmounts(answer);
-  const near = (x: number) => found.some(n => Math.abs(n - x) <= c.tolerance);
-  const right = near(c.expected);
-  const wrong = (c.wrong ?? []).some(near);
-  return {
-    verdict: right ? (wrong ? 'ambiguous' : 'pass') : 'fail',
-    found,
-    identity: identityProblems(answer).map(p => p.rule.id),
-  };
-}
-
-/** Μια γραμμή του τρεξίματος: η απάντηση και η βαθμολογία της, ή το σφάλμα της κλήσης. */
-export interface EvalRow {
-  id: string;
-  category: NoaEvalCase['category'];
-  verdict: EvalScore['verdict'] | 'error';
-  expected: number;
-  found: number[];
-  identity: string[];
-  /** Η απάντηση της Νόας, ή το μήνυμα σφάλματος όταν `verdict` είναι 'error'. */
-  answer: string;
-}
-
-/**
- * Ρωτά κάθε ερώτηση με τη σειρά και κρατά ΚΑΘΕ αποτέλεσμα.
- *
- * ΕΝΑ 429 ΔΕΝ ΣΒΗΝΕΙ ΤΟ ΤΡΕΞΙΜΟ. Ως τώρα το σφάλμα μιας κλήσης (429, 529,
- * λήξη χρόνου) έβγαινε από τον βρόχο: οι απαντήσεις που είχαν ήδη πληρωθεί
- * δεν έμπαιναν στο ποσοστό ούτε στο αρχείο --out. Τώρα η ερώτηση γράφεται ως
- * 'error' και το τρέξιμο συνεχίζει.
- */
-export async function runEval(
-  cases: readonly NoaEvalCase[],
-  ask: (c: NoaEvalCase) => Promise<string>,
-  onRow: (row: EvalRow) => void = () => {},
-): Promise<EvalRow[]> {
-  const rows: EvalRow[] = [];
-  for (const c of cases) {
-    let row: EvalRow;
-    try {
-      const answer = await ask(c);
-      const s = scoreAnswer(c, answer);
-      row = { id: c.id, category: c.category, verdict: s.verdict, expected: c.expected, found: s.found, identity: s.identity, answer };
-    } catch (err) {
-      const answer = err instanceof Error ? err.message : String(err);
-      row = { id: c.id, category: c.category, verdict: 'error', expected: c.expected, found: [], identity: [], answer };
-    }
-    rows.push(row);
-    onRow(row);
-  }
-  return rows;
-}
-
-/**
- * Το ποσοστό: μόνο οι ερωτήσεις με μέθοδο μέσα στο prompt που ΑΠΑΝΤΗΘΗΚΑΝ.
- * Ένα σφάλμα του παρόχου δεν είναι λάθος της Νόας, οπότε δεν μετρά ούτε ως
- * αποτυχία· μετριέται χωριστά.
- */
-export function evalSummary(rows: readonly EvalRow[]) {
-  const head = rows.filter(r => r.category === 'in-prompt-method' && r.verdict !== 'error');
-  return {
-    passed: head.filter(r => r.verdict === 'pass').length,
-    answered: head.length,
-    errors: rows.filter(r => r.verdict === 'error').length,
-  };
-}
-
 type Block = { type: 'text'; text: string };
 
 /**
@@ -265,7 +191,7 @@ type Block = { type: 'text'; text: string };
  * `max_tokens` με τον πελάτη, ένα `cache_control` στο πρώτο μπλοκ και ΚΑΘΟΛΟΥ
  * temperature/top_p/top_k, που το μοντέλο τα απορρίπτει (route.tsx).
  */
-export function evalRequestBody(c: NoaEvalCase, system: readonly Block[], model: string = modelFor(c.question)) {
+export function evalRequestBody(c: Pick<NoaEvalCase, 'question'>, system: readonly Block[], model: string = modelFor(c.question)) {
   return {
     model,
     max_tokens: 1800,

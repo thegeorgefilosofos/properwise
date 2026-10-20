@@ -1,37 +1,38 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// ΠΟΣΕΣ ΕΡΩΤΗΣΕΙΣ ΦΟΡΟΥ ΑΠΑΝΤΑ ΣΩΣΤΑ Η ΝΟΑ
+// ΠΟΣΟ ΣΩΣΤΑ ΑΠΑΝΤΑ Η ΝΟΑ · npm run noa:eval
 // ─────────────────────────────────────────────────────────────────────────
-// Στέλνει τις ερωτήσεις του lib/assistant/evalSet.ts στο μοντέλο με το ίδιο
-// system που φτιάχνει ο διακομιστής για τη Νόα και βαθμολογεί τα ποσά της
-// απάντησης απέναντι στους υπολογιστές της εφαρμογής.
+// Στέλνει τις ερωτήσεις του lib/assistant/evalSuite.ts στο μοντέλο ΜΕ ΤΗΝ
+// ΙΔΙΑ ΔΙΑΔΡΟΜΗ ΠΟΥ ΑΚΟΛΟΥΘΕΙ Η ΕΡΩΤΗΣΗ ΤΟΥ ΧΡΗΣΤΗ:
+//   · το προσωπικό μπλοκ από το buildPersonalPrompt, όπως ο πελάτης
+//     (useAssistantChat.ts), με ώρα Ελλάδας·
+//   · η γνώση από το noaSystemBlocks, όπως ο διακομιστής (/api/anthropic)·
+//   · μοντέλο από το modelFor, max_tokens 1800, cache_control στο πρώτο μπλοκ
+//     (evalRequestBody)·
+//   · η απάντηση περνά από το parseAction, όπως πριν φτάσει στην οθόνη·
+//     βαθμολογείται ΑΥΤΟ που θα διάβαζε ο χρήστης.
+// Παρακάμπτει μόνο το όριο ερωτήσεων και τη σύνδεση της διαδρομής.
 //
-// ΤΙ ΣΗΜΑΙΝΕΙ ΤΟ ΝΟΥΜΕΡΟ. Συμφωνία με τις μηχανές της εφαρμογής, όχι νομική
-// αλήθεια. Ερώτηση χωρίς δεδομένα ακινήτου: κάτω όριο για ό,τι βλέπει ο
-// χρήστης. Το μοντέλο δεν απαντά ίδια κάθε φορά, οπότε το ποσοστό είναι ρυθμός
-// και ΔΕΝ μπαίνει σε CI. Το ποσοστό μετρά μόνο τις ερωτήσεις με μέθοδο μέσα
-// στο prompt. Όσες θέλουν γνώση που δεν έχει γράφονται χωριστά· οι
-// διφορούμενες τυπώνονται ολόκληρες για ανάγνωση από άνθρωπο.
-//
-// Παρακάμπτει το /api/anthropic (όριο ερωτήσεων, λίστα μοντέλων): γι' αυτό
-// προειδοποιεί όταν το `--model` δεν είναι μοντέλο που θα δεχόταν η διαδρομή.
-//
-// ΧΡΗΣΗ:  npx tsx scripts/noa-eval.ts --dry
-//         ANTHROPIC_API_KEY=… npx tsx scripts/noa-eval.ts [--model ID] [--only ID] [--out αρχείο.json]
-// ΕΞΟΔΟΣ: 0 όταν τελείωσε, 2 χωρίς κλειδί (εκτός από --dry), 1 σε σφάλμα
-//         (και όταν έστω μία κλήση απέτυχε· τα υπόλοιπα γράφονται κανονικά).
-// Το κλειδί διαβάζεται μόνο από το περιβάλλον και δεν τυπώνεται ποτέ. Το
-// --out γράφεται πάντα στον προσωρινό κατάλογο του συστήματος.
+// ΧΡΗΣΗ:  npm run noa:eval -- --dry                     (η λίστα, χωρίς κλήσεις)
+//         ANTHROPIC_API_KEY=… npm run noa:eval [-- --limit 5] [--only id,id]
+//                                [--category enfia] [--model ID] [--out-dir φάκελος]
+// ΕΞΟΔΟΣ: 0 έλεγξε · 2 ΔΕΝ ΕΛΕΓΧΘΗΚΕ (λείπει κλειδί) · 1 σφάλμα ή αποτυχημένη κλήση.
+//         Το --dry βγαίνει με 2: δεν ελέγχει τίποτα.
+// Το κλειδί διαβάζεται μόνο από το περιβάλλον και δεν τυπώνεται ποτέ. Οι
+// αναφορές (JSON και Markdown) γράφονται στον προσωρινό κατάλογο του συστήματος,
+// εκτός αν δοθεί --out-dir.
 // ═══════════════════════════════════════════════════════════════════════════
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { EVAL_CONTEXT, evalRequestBody } from '../lib/assistant/evalSet';
+import { NOA_SUITE, SUITE_CATEGORIES, type SuiteCase } from '../lib/assistant/evalSuite';
 import {
-  NOA_EVAL_CASES, EVAL_CONTEXT, extractAmounts, evalRequestBody, runEval, evalSummary, type EvalRow,
-} from '../lib/assistant/evalSet';
-import { MODEL_DEEP, MODEL_FAST } from '../lib/assistant/model';
+  runSuite, summarize, suiteMarkdown, notCheckedMarkdown, exitCodeFor, NOT_CHECKED, type SuiteRow,
+} from '../lib/assistant/evalReport';
+import { MODEL_DEEP, MODEL_FAST, modelFor } from '../lib/assistant/model';
 import { athensNowLabel, athensToday } from '../lib/core/time';
 import { fn } from '../lib/core/format';
-import { noaSystemBlocks, buildPersonalPrompt, DEFAULT_PREFS } from '../app/dashboard/components/assistantPersona';
+import { noaSystemBlocks, buildPersonalPrompt, parseAction, DEFAULT_PREFS } from '../app/dashboard/components/assistantPersona';
 
 const args = process.argv.slice(2);
 const flag = (name: string) => args.includes(name);
@@ -39,14 +40,30 @@ const opt = (name: string) => { const i = args.indexOf(name); return i >= 0 ? ar
 
 const dry = flag('--dry');
 const model = opt('--model');
-const only = opt('--only');
-const out = opt('--out');
+const only = opt('--only')?.split(',').map(s => s.trim()).filter(Boolean);
+const category = opt('--category');
+const limit = Number(opt('--limit')) || 0;
+const outDir = resolve(opt('--out-dir') ?? join(tmpdir(), 'noa-eval'));
 
-// Η ΜΕΡΑ ΟΠΩΣ ΤΗ ΣΤΕΛΝΕΙ Ο ΠΕΛΑΤΗΣ (useAssistantChat.ts): ώρα Ελλάδας και ISO.
-const today = `${athensNowLabel()} (ISO: ${athensToday()}, ώρα Ελλάδας)`;
+if (category && !(SUITE_CATEGORIES as readonly string[]).includes(category)) {
+  console.error(`Άγνωστη κατηγορία «${category}». Υπάρχουν: ${SUITE_CATEGORIES.join(', ')}`);
+  process.exit(1);
+}
+let cases: SuiteCase[] = NOA_SUITE.filter(c => (!only || only.includes(c.id)) && (!category || c.category === category));
+if (limit > 0) cases = cases.slice(0, limit);
+
+const date = athensToday();
+const today = `${athensNowLabel()} (ISO: ${date}, ώρα Ελλάδας)`;
 const personal = buildPersonalPrompt(DEFAULT_PREFS, EVAL_CONTEXT, undefined, { today });
-const cases = NOA_EVAL_CASES.filter(c => !only || c.id === only);
-const money = (n: number) => `${fn(n, 2)}€`;
+const modelLabel = model ?? 'modelFor(ερώτηση)';
+
+function writeReports(stem: string, json: unknown, md: string) {
+  mkdirSync(outDir, { recursive: true });
+  const j = join(outDir, `${stem}.json`), m = join(outDir, `${stem}.md`);
+  writeFileSync(j, JSON.stringify(json, null, 2));
+  writeFileSync(m, md);
+  console.log(`\nΑναφορές:\n  ${j}\n  ${m}`);
+}
 
 if (model && model !== MODEL_DEEP && model !== MODEL_FAST) {
   console.error(`! Το μοντέλο ${model} δεν είναι στη λίστα του /api/anthropic: στην παραγωγή θα αντικαθίστατο.`);
@@ -54,17 +71,25 @@ if (model && model !== MODEL_DEEP && model !== MODEL_FAST) {
 
 if (dry) {
   for (const c of cases) {
-    const wrong = c.wrong?.length ? `  λάθος: ${c.wrong.map(money).join(', ')}` : '';
-    console.log(`${c.id} [${c.category}]\n  ${c.question}\n  σωστό: ${money(c.expected)}${wrong}\n  πηγή: ${c.source}`);
+    const want = [
+      ...(c.expect.amounts ?? []).map(a => `${a.label} ${fn(a.value, 2)} (±${fn(a.tolerance, 2)})`),
+      ...(c.expect.dates ?? []).map(d => `ημερομηνία ${d}`),
+      ...(c.expect.required ?? []).map(p => `λέει: ${p.label}`),
+      ...(c.expect.forbidden ?? []).map(p => `δεν λέει: ${p.label}`),
+    ].join(' · ');
+    console.log(`${c.id} [${c.category} · ${c.knowledge}]\n  ${c.question}\n  ζητά: ${want || 'μόνο τους κανόνες ταυτότητας'}\n  πηγή: ${c.source}`);
   }
-  console.log(`\n${cases.length} ερωτήσεις, καμία κλήση στο δίκτυο.`);
-  process.exit(0);
+  console.log(`\n${cases.length} ερωτήσεις, καμία κλήση στο δίκτυο. ${NOT_CHECKED}: η λίστα δεν είναι έλεγχος.`);
+  process.exit(exitCodeFor({ checked: false, errors: 0 }));
 }
 
 const key = process.env.ANTHROPIC_API_KEY;
 if (!key) {
-  console.error('Λείπει το ANTHROPIC_API_KEY. Για τη λίστα χωρίς κλήσεις: --dry');
-  process.exit(2);
+  const reason = 'Λείπει το ANTHROPIC_API_KEY από το περιβάλλον, οπότε καμία ερώτηση δεν στάλθηκε. Για τη λίστα χωρίς κλήσεις: --dry.';
+  console.error(`${NOT_CHECKED}. ${reason}`);
+  writeReports(`noa-eval-${date}`, { status: 'not-checked', date, reason, cases: cases.length },
+    notCheckedMarkdown(reason, { date, model: modelLabel, cases: cases.length }));
+  process.exit(exitCodeFor({ checked: false, errors: 0 }));
 }
 
 async function ask(body: ReturnType<typeof evalRequestBody>): Promise<string> {
@@ -81,32 +106,23 @@ async function ask(body: ReturnType<typeof evalRequestBody>): Promise<string> {
 }
 
 async function main() {
-  // ΚΑΘΕ ΕΡΩΤΗΣΗ ΚΡΑΤΙΕΤΑΙ: ένα 429/529 ή λήξη χρόνου γράφεται ως 'error' και
-  // το τρέξιμο συνεχίζει (runEval), ώστε οι απαντήσεις που πληρώθηκαν να
-  // μπαίνουν στο ποσοστό και στο --out.
-  const rows: EvalRow[] = await runEval(cases, c => {
+  const rows: SuiteRow[] = await runSuite(cases, async c => {
     const system = noaSystemBlocks([{ role: 'user', content: c.question }], personal);
     if (!system) throw new Error(`${c.id}: δεν φτιάχτηκε system`);
-    return ask(evalRequestBody(c, system, model));
-  }, r => console.log(r.verdict === 'error'
-    ? `${r.verdict.padEnd(9)} ${r.id}  ${r.answer}`
-    : `${r.verdict.padEnd(9)} ${r.id}  σωστό ${money(r.expected)}  βρέθηκαν ${extractAmounts(r.answer).map(money).join(', ') || 'κανένα'}`));
-  const { passed, answered, errors } = evalSummary(rows);
-  console.log(`\nΜΕ ΜΕΘΟΔΟ ΣΤΟ PROMPT: ${passed}/${answered} σωστά (${fn(answered ? (passed / answered) * 100 : 0, 1)}%)`);
-  if (errors) console.log(`ΣΦΑΛΜΑΤΑ ΚΛΗΣΗΣ (δεν μετρούν): ${errors}. Ξανατρέξε τες με --only.`);
-  const extra = rows.filter(r => r.category !== 'in-prompt-method' && r.verdict !== 'error');
-  if (extra.length) console.log(`ΕΚΤΟΣ PROMPT (δεν μετρά): ${extra.filter(r => r.verdict === 'pass').length}/${extra.length} σωστά`);
-  const ident = rows.filter(r => r.identity.length);
-  if (ident.length) console.log(`ΤΑΥΤΟΤΗΤΑ: ${ident.map(r => `${r.id} (${r.identity.join(', ')})`).join(' · ')}`);
-  for (const r of rows.filter(x => x.verdict === 'ambiguous')) {
-    console.log(`\n── ΔΙΦΟΡΟΥΜΕΝΟ, ΘΕΛΕΙ ΑΝΑΓΝΩΣΗ: ${r.id} (σωστό ${money(r.expected)})\n${r.answer}`);
-  }
-  if (out) {
-    const file = join(tmpdir(), basename(out));
-    writeFileSync(file, JSON.stringify({ today, model: model ?? 'modelFor', rows }, null, 2));
-    console.log(`\nΑποτελέσματα: ${file}`);
-  }
-  if (errors) process.exitCode = 1;
+    const body = evalRequestBody(c, system, model ?? modelFor(c.question));
+    // Ό,τι θα έβλεπε ο χρήστης: χωρίς ετικέτες ενεργειών, πριν από το πρώτο ακίνητο.
+    return parseAction(await ask(body), null).clean;
+  }, r => {
+    const bad = r.checks.filter(c => !c.ok).map(c => c.name).join(' · ');
+    console.log(`${r.verdict.padEnd(9)} ${r.id}${r.verdict === 'error' ? `  ${r.answer}` : bad ? `  ✗ ${bad}` : ''}`);
+  });
+  const s = summarize(rows);
+  console.log(`\nΜΕ ΓΝΩΣΗ ΣΤΟ PROMPT: ${s.headline.passed}/${s.headline.answered} σωστά (${s.headline.pct == null ? '—' : `${fn(s.headline.pct, 1)}%`})`);
+  for (const c of s.categories) console.log(`  ${c.label}: ${c.passed}/${c.answered}${c.errors ? ` · σφάλματα ${c.errors}` : ''}`);
+  if (s.errors) console.log(`ΣΦΑΛΜΑΤΑ ΚΛΗΣΗΣ (δεν μετρούν): ${s.errors}. Ξανατρέξε τες με --only.`);
+  const meta = { date, model: modelLabel, cases: cases.length };
+  writeReports(`noa-eval-${date}`, { status: 'checked', ...meta, summary: s, rows }, suiteMarkdown(rows, meta));
+  process.exitCode = exitCodeFor({ checked: true, errors: s.errors });
 }
 
 main().catch(err => { console.error(err instanceof Error ? err.message : err); process.exit(1); });
