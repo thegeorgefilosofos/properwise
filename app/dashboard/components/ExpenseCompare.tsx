@@ -272,7 +272,9 @@ export default function ExpenseCompare({ spends, today }: Props) {
   if (!anyBasis && !hasHistory) return null;
 
   return (
-    <Card pad="lg" style={{ marginBottom: 16 }}>
+    // Γέμισμα 16 όπως κάθε άλλη κάρτα των Δαπανών· ήταν 20 και η σύγκριση
+    // διαβαζόταν ως άλλου είδους επιφάνεια ανάμεσα σε δύο κάρτες των 16.
+    <Card style={{ marginBottom: 16 }}>
       {anyBasis && (
         <>
           {/* ΜΙΑ ΠΡΟΤΑΣΗ, ΟΧΙ ΔΥΟ ΑΚΡΑ. Με `space-between` η ετικέτα καθόταν
