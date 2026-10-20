@@ -33,7 +33,9 @@ import { fmtBytes } from '@/lib/core/bytes';
 import { declarationYear } from '@/lib/core/declarationYear';
 import { athensToday } from '@/lib/core/time';
 import E2PrefilledImport, { type KnownProperty } from '@/app/dashboard/components/E2PrefilledImport';
-import { loadStatements, downloadAll, lastMove, type BulkClient, type ClientStatement } from '../bulk';
+import { loadStatements, downloadAll, downloadPacks, bundleMode, lastMove, type BulkClient, type ClientStatement, type PackRef } from '../bulk';
+import { readZipEntry } from '@/lib/accounting/zip';
+import BulkInvite from './BulkInvite';
 import { foldName } from '@/lib/contacts/alpha';
 import { notify, notifyError } from '@/components/Toast';
 import { confirmDialog } from '@/components/confirmBus';
@@ -76,7 +78,10 @@ export default function AccountantWorkspace() {
   // στιγμή όπου ο λογιστής διάβαζε τα ποσά του 2024 κάτω από τον τίτλο του 2025.
   const [cash, setCash] = useState<{ year: number; map: Map<string, ClientStatement> } | null>(null);
   const money = cash && cash.year === year ? cash.map : null;
-  const [busy, setBusy] = useState<'money' | 'zip' | null>(null);
+  const [busy, setBusy] = useState<'money' | 'zip' | 'packs' | null>(null);
+  // Πόσοι φάκελοι κατέβηκαν ως τώρα στη μαζική λήψη: με ογδόντα πελάτες
+  // ένα «Ετοιμάζεται…» χωρίς αριθμό μοιάζει με κόλλημα.
+  const [packProgress, setPackProgress] = useState('');
   // ΜΕ ΟΓΔΟΝΤΑ ΠΕΛΑΤΕΣ, Η ΣΕΙΡΑ ΛΥΝΕΙ ΤΗ ΜΙΑ ΧΡΗΣΗ ΚΑΙ Η ΑΝΑΖΗΤΗΣΗ ΤΗΝ ΑΛΛΗ.
   // «Ποιος δεν κλείνει» το απαντά η σειρά· «θέλω τον Παπαδόπουλο τώρα» το
   // απαντούσε μόνο το Ctrl+F του περιηγητή.
@@ -161,6 +166,22 @@ export default function AccountantWorkspace() {
     downloadFile(new Blob([bytes.slice().buffer as ArrayBuffer], { type: 'application/zip' }), `${c.name} · ${PACK_FILES.zip(year, afm)}`, 'application/zip');
   };
 
+  // ── ΤΟ ΦΥΛΛΟ ΚΩΔΙΚΩΝ, ΧΩΡΙΣ ΤΟΝ ΥΠΟΛΟΙΠΟ ΦΑΚΕΛΟ ───────────────────────────
+  // Βγαίνει από το ίδιο zip που έστειλε ο πελάτης (`readZipEntry`): ο λογιστής
+  // δεν φτιάχνει δικό του από τα δεδομένα του πελάτη. Φάκελος που στάλθηκε πριν
+  // μπει το φύλλο δεν το έχει· τότε το λέμε, με το τι να κάνει.
+  const downloadCodes = async (c: ClientCounts, afm: string, path: string) => {
+    const k = `${path}#codes`;
+    setPackBusy(k);
+    const bytes = await fileBytes(supabase, path);
+    setPackBusy('');
+    if (!bytes) { notifyError('Ο φάκελος δεν κατέβηκε. Αν ο πελάτης ανακάλεσε τον σύνδεσμο, ζήτησε νέο.'); return; }
+    const sheet = readZipEntry(bytes, PACK_FILES.codes);
+    if (!sheet) { notifyError('Ο φάκελος στάλθηκε πριν μπει το φύλλο κωδικών. Ζήτησε από τον πελάτη να τον ξαναστείλει.'); return; }
+    downloadFile(new Blob([sheet.slice().buffer as ArrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+      `${c.name} · ${PACK_FILES.codesFile(year, afm)}`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  };
+
   // Οι ΑΤΑΚ των ακινήτων του πελάτη, από την ίδια ανάγνωση που ανοίγει την
   // κατάστασή του, για να ξεκινά η καταχώρηση με το χέρι από αυτούς.
   const openImport = async (c: ClientCounts) => {
@@ -239,6 +260,30 @@ export default function AccountantWorkspace() {
       : n === 1 ? 'Κατέβηκε ένα βιβλίο.' : `Κατέβηκαν ${n} βιβλία.`);
   };
 
+  // ── ΟΛΟΙ ΟΙ ΦΑΚΕΛΟΙ ΤΗΣ ΧΡΗΣΗΣ ───────────────────────────────────────────
+  // Μόνο όσοι έχουν σταλεί: ο φάκελος είναι του πελάτη και δεν χτίζεται εδώ.
+  // Με τη σειρά της λίστας (όποιος δεν κλείνει πρώτος), ώστε ο κατάλογος του zip
+  // να διαβάζεται όπως η οθόνη.
+  const packRefs = useMemo((): PackRef[] => ordered.flatMap(({ c, ready }) =>
+    (c.e2?.packs ?? []).filter(p => p.filePath).map(p => ({
+      ownerId: c.ownerId, name: c.name, afm: p.ownerAfm, path: p.filePath as string, sizeBytes: p.sizeBytes,
+      readiness: ready.label, aade: aadeStateLabel(aadeStateOf(c.e2)), missingCount: p.missingCount, sharedAt: p.sharedAt,
+    }))), [ordered]);
+
+  const downloadAllPacks = async () => {
+    if (!packRefs.length) return;
+    setBusy('packs');
+    setPackProgress('');
+    const r = await downloadPacks(packRefs, year, path => fileBytes(supabase, path), (d, t) => setPackProgress(`${d}/${t}`));
+    setBusy(null);
+    setPackProgress('');
+    const how = r.mode === 'one' ? 'σε ένα zip' : 'ένας ένας, γιατί μαζί ξεπερνούν το όριο του ενός αρχείου';
+    const lost = r.failed.length ? ` Δεν κατέβηκαν: ${r.failed.join(', ')}.` : '';
+    setNotice(r.done === 0
+      ? `Κανένας φάκελος δεν κατέβηκε.${lost}`
+      : `${r.done === 1 ? 'Κατέβηκε 1 φάκελος' : `Κατέβηκαν ${r.done} φάκελοι`} ${how}.${lost}`);
+  };
+
   const wrap = portalWrap;
   const label: React.CSSProperties = {
     fontSize: 11, letterSpacing: '0.5px', textTransform: 'uppercase',
@@ -293,6 +338,15 @@ export default function AccountantWorkspace() {
               <Btn variant="secondary" onClick={() => void downloadEverything()} disabled={busy !== null}>
                 {busy === 'zip' ? 'Ετοιμάζεται…' : 'Κατέβασε τα όλα'}
               </Btn>
+              {/* ΟΙ ΦΑΚΕΛΟΙ ΚΑΙ ΟΧΙ ΤΑ ΒΙΒΛΙΑ. Το «Κατέβασε τα όλα» δίνει τις
+                  καταστάσεις εσόδων και δαπανών· αυτό δίνει ό,τι έστειλε κάθε
+                  πελάτης: Ε2, έλεγχο, παραστατικά και κωδικούς. */}
+              {packRefs.length > 0 && (
+                <Btn variant="secondary" onClick={() => void downloadAllPacks()} disabled={busy !== null}
+                  title={bundleMode(packRefs) === 'one' ? undefined : 'Πολλοί ή βαριοί φάκελοι: κατεβαίνουν ένας ένας'}>
+                  {busy === 'packs' ? `Κατεβαίνουν${packProgress ? ` ${packProgress}` : '…'}` : packRefs.length === 1 ? 'Ο φάκελος' : `Οι ${packRefs.length} φάκελοι`}
+                </Btn>
+              )}
             </div>
           ) : undefined} />
 
@@ -326,6 +380,8 @@ export default function AccountantWorkspace() {
           <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '10px 0 0', fontFamily: T.font.sans }}>{notice}</p>
         )}
       </Card>
+
+      <BulkInvite db={supabase} label={label} />
 
       {/* Η ΑΝΑΖΗΤΗΣΗ ΕΜΦΑΝΙΖΕΤΑΙ ΟΤΑΝ ΑΡΧΙΖΕΙ ΝΑ ΕΧΕΙ ΝΟΗΜΑ. Πάνω από ένα
           κατέβασμα οθόνης, το μάτι δεν σαρώνει πια: ψάχνει. Κάτω από αυτό,
@@ -453,7 +509,13 @@ export default function AccountantWorkspace() {
                         <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
                           {`Φάκελος ΑΦΜ ${p.ownerAfm} · στάλθηκε ${p.sharedAt ? fd(p.sharedAt) : ''}${p.sizeBytes ? ` · ${fmtBytes(p.sizeBytes)}` : ''}${p.missingCount ? ` · λείπουν ${p.missingCount}` : ' · πλήρης'}`}
                         </span>
-                        <span className="po-noprint" style={{ flexShrink: 0 }}>
+                        <span className="po-noprint" style={{ flexShrink: 0, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {/* ΤΟ ΦΥΛΛΟ ΠΟΥ ΑΝΟΙΓΕΙ ΔΙΠΛΑ ΣΤΟ TAXISNET. Οι κωδικοί του Ε1
+                              και οι γραμμές του Ε2, με το «ελέγχθηκε» ή «λείπει» κάθε
+                              γραμμής, χωρίς να ανοίξει όλος ο φάκελος. */}
+                          <Btn variant="ghost" onClick={() => void downloadCodes(c, p.ownerAfm, p.filePath!)} disabled={packBusy === `${p.filePath}#codes`}>
+                            {packBusy === `${p.filePath}#codes` ? 'Κατεβαίνει…' : 'Κωδικοί Ε1 και Ε2'}
+                          </Btn>
                           <Btn variant="secondary" onClick={() => void downloadPack(c, p.ownerAfm, p.filePath!)} disabled={packBusy === p.filePath}>
                             {packBusy === p.filePath ? 'Κατεβαίνει…' : 'Κατέβασε τον φάκελο'}
                           </Btn>

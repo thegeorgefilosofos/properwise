@@ -100,6 +100,11 @@ eq('και το λέει με μία λέξη', readinessOf(gapsOf(base)).label,
   const two = aadeStateOf({ aadeRows: 5, aadeChangedAt: '2026-03-09T10:00:00Z', packs: [pack({ differences: 2 }), pack({ ownerAfm: '123456783', differences: 1 })] });
   eq('διαφορές από δύο ΑΦΜ αθροίζονται', two, { kind: 'differences', count: 3 });
   eq('η φράση λέει το πλήθος', aadeStateLabel(two), '3 διαφορές με το προσυμπληρωμένο Ε2');
+  // Η ΠΡΟΗΓΟΥΜΕΝΗ ΣΥΓΚΡΙΣΗ ΔΕΝ ΧΑΝΕΤΑΙ ΟΣΟ ΠΕΡΙΜΕΝΕΙ Ο ΠΕΛΑΤΗΣ.
+  const stale = aadeStateOf({ aadeRows: 3, aadeChangedAt: '2026-03-12T10:00:00Z', packs: [pack({ differences: 2 })] });
+  eq('εκκρεμεί, με την τελευταία γνωστή', stale.kind === 'pending' ? stale.last?.count : null, 2);
+  eq('η φράση λέει και τι ίσχυε', /έβρισκε 2 διαφορές\./.test(aadeStateLabel(stale)) && /12\/03\/2026/.test(aadeStateLabel(stale)), true);
+  eq('χωρίς προηγούμενη σύγκριση, χωρίς «έβρισκε»', /έβρισκε/.test(aadeStateLabel(aadeStateOf({ aadeRows: 3, aadeChangedAt: '2026-03-11T10:00:00Z', packs: [] }))), false);
   const g = gapsOf({ ...base, e2: { aadeRows: 5, aadeChangedAt: '2026-03-09T10:00:00Z', packs: [pack({ differences: 2, filePath: null })] } });
   ok('οι διαφορές μπλοκάρουν', g.some(x => x.key === 'aade_diff' && x.blocking));
   ok('φάκελος που δεν στάλθηκε: λέγεται', g.some(x => x.key === 'pack' && !x.blocking));

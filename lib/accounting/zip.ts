@@ -151,3 +151,48 @@ export function buildZip(files: readonly ZipFile[], now: Date = new Date()): Uin
   out.u16(0);
   return out.merge();
 }
+
+/**
+ * ΕΝΑ ΑΡΧΕΙΟ ΑΠΟ ΦΑΚΕΛΟ ΠΟΥ ΕΓΡΑΨΕ Η `buildZip`.
+ *
+ * Ο λογιστής θέλει συχνά μόνο το φύλλο κωδικών, όχι όλο τον φάκελο με τα
+ * παραστατικά. Ο φάκελος όμως είναι αυτός που ΕΣΤΕΙΛΕ ο πελάτης και ο χώρος
+ * του λογιστή δεν φτιάχνει δικό του από τα δεδομένα του πελάτη. Οπότε το φύλλο
+ * βγαίνει από το ίδιο zip, εδώ, στον περιηγητή.
+ *
+ * ΜΟΝΟ ΑΠΟΘΗΚΕΥΣΗ (μέθοδος 0), όπως γράφει η `buildZip`. Ένα συμπιεσμένο
+ * αρχείο δεν διαβάζεται εδώ και επιστρέφει `null`, όπως και ένα αρχείο που
+ * λείπει ή που χάλασε (λάθος CRC): «δεν το βρήκα» και ποτέ μισά bytes.
+ */
+export function readZipEntry(zip: Uint8Array, path: string): Uint8Array | null {
+  const u16 = (at: number) => zip[at] | (zip[at + 1] << 8);
+  const u32 = (at: number) => (zip[at] | (zip[at + 1] << 8) | (zip[at + 2] << 16) | (zip[at + 3] << 24)) >>> 0;
+  // Το τέλος του κεντρικού καταλόγου: 22 bytes, ίσως με σχόλιο ως 64KB.
+  let eocd = -1;
+  for (let i = zip.length - 22; i >= Math.max(0, zip.length - 22 - 0xffff); i--) {
+    if (u32(i) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) return null;
+  const count = u16(eocd + 10);
+  let at = u32(eocd + 16);
+  const want = enc.encode(path);
+  const dec = (a: number, n: number) => zip.subarray(a, a + n);
+  for (let k = 0; k < count && at + 46 <= zip.length; k++) {
+    if (u32(at) !== 0x02014b50) return null;
+    const method = u16(at + 10);
+    const crc = u32(at + 16);
+    const size = u32(at + 20);
+    const nameLen = u16(at + 28), extraLen = u16(at + 30), commentLen = u16(at + 32);
+    const local = u32(at + 42);
+    const name = dec(at + 46, nameLen);
+    if (name.length === want.length && name.every((b, i) => b === want[i])) {
+      if (method !== 0 || u32(local) !== 0x04034b50) return null;
+      const start = local + 30 + u16(local + 26) + u16(local + 28);
+      if (start + size > zip.length) return null;
+      const body = zip.slice(start, start + size);
+      return crc32(body) === crc ? body : null;
+    }
+    at += 46 + nameLen + extraLen + commentLen;
+  }
+  return null;
+}

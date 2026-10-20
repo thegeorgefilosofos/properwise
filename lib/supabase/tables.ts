@@ -48,6 +48,16 @@ export interface AccountantDossierRow {
   updated_at: string;
 }
 
+export interface AccountantInvitesRow {
+  id: string | null;
+  accountant_id: string;
+  email: string;
+  status: string;
+  created_at: string;
+  sent_at: string;
+  answered_at: string | null;
+}
+
 export interface AccountantLinksRow {
   id: string;
   token: string;
@@ -1523,6 +1533,7 @@ export interface Tables {
   account_deletion_incidents: AccountDeletionIncidentsRow;
   accountant_clients: AccountantClientsRow;
   accountant_dossier: AccountantDossierRow;
+  accountant_invites: AccountantInvitesRow;
   accountant_links: AccountantLinksRow;
   accountant_packs: AccountantPacksRow;
   accountant_requests: AccountantRequestsRow;

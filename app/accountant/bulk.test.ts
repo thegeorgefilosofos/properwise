@@ -11,7 +11,8 @@
 // τύπος: η `downloadAll` επιστρέφει `files.length`, που ΗΤΑΝ σωστό — το zip
 // έχανε το αρχείο αργότερα, στον υπολογιστή του λογιστή.
 // ═══════════════════════════════════════════════════════════════════════════
-import { bookName, bookNames, lastMove } from './bulk';
+import { bookName, bookNames, lastMove, bundleMode, bundlePaths, bundleIndex, downloadPacks, BUNDLE_MAX_BYTES, type PackRef } from './bulk';
+import { readZipEntry } from '@/lib/accounting/zip';
 
 let passed = 0, failed = 0;
 const fails: string[] = [];
@@ -73,6 +74,39 @@ const uniq = (xs: string[]) => new Set(xs).size === xs.length;
   ok('μέσα στον μήνα μετριέται σε ημέρες', lastMove(ago(5), now).includes('5 ημέρες'));
 }
 
-console.log(`\nbulk.ts — ${passed} passed, ${failed} failed`);
-if (failed) { console.log('FAILED:\n' + fails.map(f => '  ✗ ' + f).join('\n')); process.exit(1); }
-console.log('✓ όλα πέρασαν');
+// ── ΟΛΟΙ ΟΙ ΦΑΚΕΛΟΙ ΣΕ ΕΝΑ ZIP ──────────────────────────────────────────────
+const ref = (o: Partial<PackRef> = {}): PackRef => ({
+  ownerId: 'o1', name: 'Γεώργιος Παπαδόπουλος', afm: '094014201', path: 'o1/2025/pack.zip', sizeBytes: 1000,
+  readiness: 'Έτοιμος', aade: 'Συμφωνεί με το προσυμπληρωμένο Ε2', missingCount: 0, sharedAt: '2026-11-04T10:00:00Z', ...o,
+});
+{
+  ok('λίγοι φάκελοι: ένα zip', bundleMode([ref(), ref()]) === 'one');
+  ok('πάνω από το όριο: ένας ένας', bundleMode([ref({ sizeBytes: BUNDLE_MAX_BYTES }), ref()]) === 'sequential');
+  ok('άγνωστο μέγεθος μετρά συντηρητικά', bundleMode(Array.from({ length: 20 }, () => ref({ sizeBytes: null }))) === 'sequential');
+  const paths = bundlePaths([ref(), ref({ ownerId: 'o2' }), ref({ ownerId: 'o3', afm: '123456783' })], 2025);
+  ok('ίδιος πελάτης, ίδιο ΑΦΜ: δύο διαφορετικά αρχεία', uniq(paths) && paths[1].endsWith('(2).zip'));
+  ok('το ΑΦΜ στο όνομα', paths[2].includes('ΑΦΜ 123456783'));
+  const csv = bundleIndex([ref({ name: '=HYPERLINK("x")' })], ['a.zip']);
+  ok('ο κατάλογος δεν εκτελεί τύπους', !csv.split('\r\n')[1].startsWith('=') && csv.includes("'=HYPERLINK"));
+  ok('η ημερομηνία ως 04/11/2026', csv.includes('04/11/2026'));
+}
+void (async () => {
+  // Ο ΦΑΚΕΛΟΣ ΠΟΥ ΔΕΝ ΚΑΤΕΒΗΚΕ ΛΕΓΕΤΑΙ, ΔΕΝ ΧΑΝΕΤΑΙ ΣΙΩΠΗΛΑ.
+  let blob: Blob | null = null;
+  const bytes = new TextEncoder().encode('zip-του-πελάτη');
+  const r = await downloadPacks([ref(), ref({ ownerId: 'o2', name: 'Μαρία', path: 'gone' })], 2025, async p => (p === 'gone' ? null : bytes), undefined, b => { blob = b; });
+  ok('ένα κατέβηκε, ένα όχι', r.done === 1 && r.failed.length === 1 && r.failed[0] === 'Μαρία');
+  const zip = new Uint8Array(await (blob as unknown as Blob).arrayBuffer());
+  const inner = readZipEntry(zip, bundlePaths([ref()], 2025)[0]);
+  ok('ο φάκελος του πελάτη μπαίνει αυτούσιος', !!inner && new TextDecoder().decode(inner) === 'zip-του-πελάτη');
+  const idx = readZipEntry(zip, '00 Κατάλογος φακέλων 2025.csv');
+  ok('ο κατάλογος λέει ποιος δεν κατέβηκε', !!idx && new TextDecoder().decode(idx).includes('Δεν κατέβηκε'));
+
+  finish();
+})();
+
+function finish() {
+  console.log(`\nbulk.ts — ${passed} passed, ${failed} failed`);
+  if (failed) { console.log('FAILED:\n' + fails.map(f => '  ✗ ' + f).join('\n')); process.exit(1); }
+  console.log('✓ όλα πέρασαν');
+}

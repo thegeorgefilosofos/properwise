@@ -4016,3 +4016,116 @@ begin
   perform public.erase_account('f4f4f4f4-0000-4000-8000-0000000000a1');
   perform public.erase_account('f4f4f4f4-0000-4000-8000-0000000000b1');
 end $probe$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Η ΜΑΖΙΚΗ ΠΡΟΣΚΛΗΣΗ ΤΟΥ ΛΟΓΙΣΤΗ (20261021090000)
+-- ─────────────────────────────────────────────────────────────────────────
+-- Ο λογιστής στέλνει λίστα· κάθε γραμμή παίρνει κατάσταση, τα διπλά και τα
+-- άκυρα δεν στέλνονται και τίποτα του πελάτη δεν φαίνεται πριν πει «ναι» ο
+-- ίδιος. Ο ξένος δεν βλέπει ούτε απαντά σε πρόσκληση που δεν είναι δική του.
+-- Και η διεύθυνση του προσκεκλημένου σβήνει μαζί με τον λογαριασμό του.
+-- ═══════════════════════════════════════════════════════════════════════════
+reset role;
+set session "probe.uid" = '';
+set session "request.jwt.claims" = '';
+do $probe$
+begin
+  insert into auth.users(id, email) values
+    ('1a1a1a1a-0000-4000-8000-0000000000ac', 'inv-acc@probe.test'),
+    ('1a1a1a1a-0000-4000-8000-0000000000c1', 'inv-cli@probe.test'),
+    ('1a1a1a1a-0000-4000-8000-0000000000ff', 'inv-str@probe.test');
+end $probe$;
+
+-- ── Ο λογιστής στέλνει ─────────────────────────────────────────────────────
+set role authenticated;
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000ac';
+do $probe$
+declare res json; st text;
+begin
+  res := public.accountant_invite_clients(array['Inv-Cli@probe.test', ' inv-cli@probe.test ', 'nobody@probe.test', 'όχι διεύθυνση@', 'inv-acc@probe.test']);
+  select string_agg(x->>'status', ',' order by ord) into st from json_array_elements(res) with ordinality as t(x, ord);
+  if st <> 'sent,duplicate,sent,invalid,self' then raise exception 'Οι καταστάσεις της πρόσκλησης: %', st; end if;
+  if json_array_length(public.accountant_clients_overview(2026)) <> 0 then
+    raise exception 'ΔΙΑΡΡΟΗ: ο λογιστής βλέπει πελάτη πριν την αποδοχή';
+  end if;
+  res := public.accountant_invite_clients(array['inv-cli@probe.test']);
+  if res->0->>'status' <> 'already_invited' then raise exception 'Η ίδια πρόσκληση ξαναστάλθηκε: %', res; end if;
+  begin
+    insert into public.accountant_invites(accountant_id, email) values ('1a1a1a1a-0000-4000-8000-0000000000ac', 'x@probe.test');
+    raise exception 'ΔΙΑΡΡΟΗ: πρόσκληση γράφτηκε χωρίς το όριο της συνάρτησης';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'probe: η λίστα του λογιστή παίρνει κατάσταση ανά γραμμή και τίποτα δεν φαίνεται πριν την αποδοχή';
+end $probe$;
+
+reset role;
+do $probe$
+declare n int;
+begin
+  select count(*) into n from public.email_outbox where copy_id = 'accountant_invite' and category = 'transactional';
+  if n <> 2 then raise exception 'Στην ουρά μπήκαν % προσκλήσεις αντί για 2', n; end if;
+end $probe$;
+
+-- ── Ο ξένος δεν βλέπει και δεν απαντά ──────────────────────────────────────
+set role authenticated;
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000ff';
+do $probe$
+declare res json; id uuid;
+begin
+  if json_array_length(public.my_accountant_invites()) <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο ξένος βλέπει πρόσκληση άλλου'; end if;
+  if (select count(*) from public.accountant_invites) <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο ξένος διαβάζει τον πίνακα'; end if;
+  reset role;
+  select i.id into id from public.accountant_invites i where i.email = 'inv-cli@probe.test';
+  set role authenticated;
+  res := public.accountant_invite_answer(id, true);
+  if (res->>'ok')::boolean then raise exception 'ΔΙΑΡΡΟΗ: ο ξένος αποδέχτηκε πρόσκληση άλλου: %', res; end if;
+  raise notice 'probe: ο ξένος δεν βλέπει ούτε απαντά σε πρόσκληση που δεν είναι δική του';
+end $probe$;
+
+-- ── Ο πελάτης αποδέχεται, πρώτα χωρίς σύνδεσμο και μετά με ────────────────
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000c1';
+do $probe$
+declare res json; inv json;
+begin
+  inv := public.my_accountant_invites();
+  if json_array_length(inv) <> 1 then raise exception 'Ο πελάτης βλέπει % προσκλήσεις αντί για 1', json_array_length(inv); end if;
+  res := public.accountant_invite_answer((inv->0->>'id')::uuid, true);
+  if res->>'reason' <> 'no_link' then raise exception 'Αποδοχή χωρίς σύνδεσμο: %', res; end if;
+  insert into public.accountant_links(user_id, token, active) values ('1a1a1a1a-0000-4000-8000-0000000000c1', 'probe-token-inv', true);
+  res := public.accountant_invite_answer((inv->0->>'id')::uuid, true);
+  if (res->>'ok')::boolean is not true then raise exception 'Η αποδοχή απέτυχε: %', res; end if;
+  if json_array_length(public.my_accountant_invites()) <> 0 then raise exception 'Η απαντημένη πρόσκληση μένει ανοιχτή'; end if;
+  raise notice 'probe: η αποδοχή θέλει ζωντανό σύνδεσμο του ίδιου του πελάτη';
+end $probe$;
+
+-- ── Τώρα ο λογιστής τον βλέπει και δεν τον ξαναπροσκαλεί ─────────────────
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000ac';
+do $probe$
+declare res json;
+begin
+  if json_array_length(public.accountant_clients_overview(2026)) <> 1 then raise exception 'Μετά την αποδοχή ο λογιστής δεν βλέπει τον πελάτη'; end if;
+  res := public.accountant_invite_clients(array['inv-cli@probe.test']);
+  if res->0->>'status' <> 'already_client' then raise exception 'Ο πελάτης ξαναπροσκλήθηκε: %', res; end if;
+  if (select status from public.accountant_invites where email = 'inv-cli@probe.test') <> 'accepted' then
+    raise exception 'Η πρόσκληση δεν γράφει «accepted»';
+  end if;
+  raise notice 'probe: μετά την αποδοχή ο λογιστής βλέπει τον πελάτη και δεν τον ξαναπροσκαλεί';
+end $probe$;
+
+-- ── Η διεύθυνση φεύγει με τον λογαριασμό του προσκεκλημένου ────────────────
+reset role;
+set session "probe.uid" = '';
+do $probe$
+declare n int;
+begin
+  insert into auth.users(id, email) values ('1a1a1a1a-0000-4000-8000-0000000000d1', 'Nobody@probe.test');
+  delete from auth.users where id = '1a1a1a1a-0000-4000-8000-0000000000d1';
+  select count(*) into n from public.accountant_invites where email = 'nobody@probe.test';
+  if n <> 0 then raise exception 'Η διεύθυνση του διαγραμμένου επιβίωσε σε % προσκλήσεις', n; end if;
+  perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000ac');
+  select count(*) into n from public.accountant_invites;
+  if n <> 0 then raise exception 'Οι προσκλήσεις του λογιστή επιβίωσαν της διαγραφής του: %', n; end if;
+  perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000c1');
+  perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000ff');
+  raise notice 'probe: οι προσκλήσεις σβήνουν με τον λογιστή και η διεύθυνση με τον προσκεκλημένο';
+end $probe$;

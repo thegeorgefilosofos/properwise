@@ -13,6 +13,7 @@
 // αριθμοί σε προτάσεις, με τον ίδιο κανόνα για κάθε πελάτη.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { grDate } from '@/lib/core/format';
 
 type Db = SupabaseClient;
 
@@ -82,7 +83,12 @@ export interface ClientE2 {
 /** Η σύγκριση με το προσυμπληρωμένο, σε μία κατάσταση για τη λίστα του λογιστή. */
 export type AadeState =
   | { kind: 'not_uploaded' }
-  | { kind: 'pending' }
+  /**
+   * `last`: η τελευταία σύγκριση που ΕΧΕΙ γίνει, πριν ανέβουν οι νέες γραμμές.
+   * Ζει ήδη στη βάση (`accountant_packs`) και λέγεται, σημασμένη ως παλιά: ο
+   * λογιστής δεν περιμένει τον πελάτη για να μάθει τι ίσχυε ως τότε.
+   */
+  | { kind: 'pending'; uploadedAt?: string | null; last?: { count: number; checkedAt: string } }
   | { kind: 'matches' }
   | { kind: 'differences'; count: number };
 
@@ -95,9 +101,12 @@ export type AadeState =
 export function aadeStateOf(e2: ClientE2 | undefined): AadeState {
   if (!e2 || e2.aadeRows === 0) return { kind: 'not_uploaded' };
   const checked = e2.packs.filter(p => p.checkedAt && p.differences != null);
-  if (!checked.length) return { kind: 'pending' };
-  if (e2.aadeChangedAt && checked.some(p => (p.checkedAt as string) < (e2.aadeChangedAt as string))) return { kind: 'pending' };
+  if (!checked.length) return { kind: 'pending', uploadedAt: e2.aadeChangedAt };
   const count = checked.reduce((s, p) => s + (p.differences ?? 0), 0);
+  if (e2.aadeChangedAt && checked.some(p => (p.checkedAt as string) < (e2.aadeChangedAt as string))) {
+    const at = checked.map(p => p.checkedAt as string).sort()[0];
+    return { kind: 'pending', uploadedAt: e2.aadeChangedAt, last: { count, checkedAt: at } };
+  }
   return count === 0 ? { kind: 'matches' } : { kind: 'differences', count };
 }
 
@@ -105,7 +114,18 @@ export function aadeStateOf(e2: ClientE2 | undefined): AadeState {
 export function aadeStateLabel(st: AadeState): string {
   switch (st.kind) {
     case 'not_uploaded': return 'Το προσυμπληρωμένο Ε2 δεν έχει ανέβει';
-    case 'pending': return 'Το προσυμπληρωμένο ανέβηκε· η σύγκριση γίνεται όταν το ανοίξει ο πελάτης';
+    case 'pending': {
+      // Η ΣΥΓΚΡΙΣΗ ΤΡΕΧΕΙ ΣΤΗ ΣΥΣΚΕΥΗ ΤΟΥ ΠΕΛΑΤΗ, ΟΧΙ ΣΤΗ ΒΑΣΗ. Οι γραμμές της
+      // ΑΑΔΕ και τα στοιχεία του πελάτη υπάρχουν στον διακομιστή, ο κανόνας της
+      // σύγκρισης όμως ζει στο lib/billing/e2Reconcile.ts και ταιριάζει με ΑΦΜ
+      // μισθωτών, που ο λογιστής δεν διαβάζει. Το νέο αποτέλεσμα γράφεται όταν
+      // ανοίξει ο πελάτης· ως τότε λέγεται ό,τι ίσχυε, με την ημερομηνία του.
+      const up = st.uploadedAt ? ` ${grDate(st.uploadedAt)}` : '';
+      const head = `Το προσυμπληρωμένο ανέβηκε${up}· η νέα σύγκριση γίνεται όταν ανοίξει την εφαρμογή ο πελάτης`;
+      if (!st.last) return head;
+      const n = st.last.count === 0 ? 'καμία διαφορά' : st.last.count === 1 ? 'μία διαφορά' : `${st.last.count} διαφορές`;
+      return `${head}. Η προηγούμενη σύγκριση (${grDate(st.last.checkedAt)}) έβρισκε ${n}.`;
+    }
     case 'matches': return 'Συμφωνεί με το προσυμπληρωμένο Ε2';
     case 'differences': return `${st.count === 1 ? 'Μία διαφορά' : `${st.count} διαφορές`} με το προσυμπληρωμένο Ε2`;
   }

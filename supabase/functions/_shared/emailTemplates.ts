@@ -415,6 +415,9 @@ export interface Personal extends Ctx {
   // Πύλη λογιστή: ο πελάτης απάντησε σε αίτημα του λογιστή του
   clientName?: string;       // όνομα του ιδιοκτήτη, όπως τον ξέρει ο λογιστής
   requestItem?: string;      // τι ακριβώς είχε ζητηθεί
+  // Πύλη λογιστή: ο λογιστής προσκαλεί πελάτη να του δώσει πρόσβαση
+  accountantName?: string;   // το όνομα του λογιστή, όπως το έγραψε ο ίδιος
+  accountantEmail?: string;  // η διεύθυνσή του, για να τον αναγνωρίσει ο πελάτης
   // Συνδρομή / σχέσεις / benchmarking
   cardLast4?: string;        // τελευταία ψηφία κάρτας
   marketRent?: number;       // μέσο ενοίκιο αγοράς, σε EUR

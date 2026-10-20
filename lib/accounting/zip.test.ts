@@ -3,7 +3,7 @@
 // Ο φάκελος πρέπει να ΑΝΟΙΓΕΙ. Δεν υπάρχει «σχεδόν έγκυρο» ZIP: ή το διαβάζει ο
 // υπολογιστής του λογιστή ή χάθηκε η δουλειά. Οι έλεγχοι εδώ ξαναδιαβάζουν τα
 // bytes όπως θα τα διάβαζε ένας extractor, χωρίς καμία βιβλιοθήκη.
-import { buildZip, crc32 } from './zip';
+import { buildZip, crc32, readZipEntry } from './zip';
 
 let pass = 0, fail = 0;
 function ok(name: string, cond: boolean) { if (cond) { pass++; } else { fail++; console.error(`✗ ${name}`); } }
@@ -81,6 +81,28 @@ function eqInternal(a: number, b: number) { if (a !== b) throw new Error(`ασυ
 {
   // Γνωστή τιμή αναφοράς: CRC-32 του «123456789» είναι 0xCBF43926.
   eq('CRC-32 σε γνωστή τιμή', crc32(new TextEncoder().encode('123456789')).toString(16), 'cbf43926');
+}
+
+{
+  // Ένα αρχείο από τον φάκελο, χωρίς να ανοίξει όλος: το φύλλο κωδικών που
+  // κατεβάζει ο λογιστής μόνο του.
+  const bin = new Uint8Array(500).map((_, i) => (i * 11) % 256);
+  const z = buildZip([
+    { path: '00 Σύνοψη.pdf', data: 'pdf' },
+    { path: '03 Παραστατικά/Α/01.pdf', data: 'x' },
+    { path: '05 Κωδικοί Ε1 και Ε2.xlsx', data: bin },
+  ]);
+  const got = readZipEntry(z, '05 Κωδικοί Ε1 και Ε2.xlsx');
+  ok('το αρχείο βγαίνει ίδιο byte προς byte', !!got && got.length === bin.length && got.every((b, i) => b === bin[i]));
+  eq('αρχείο που λείπει: null', readZipEntry(z, '05 Άλλο.xlsx'), null);
+  eq('φάκελος δεν είναι αρχείο', readZipEntry(z, '03 Παραστατικά/Α/01.pdf') !== null, true);
+  const broken = z.slice(); broken[z.length - 1] = 0; broken[z.length - 22] = 0;
+  eq('χωρίς κεντρικό κατάλογο: null', readZipEntry(broken, '00 Σύνοψη.pdf'), null);
+  const bad = z.slice();
+  // Η πρώτη εγγραφή ξεκινά στο 0: το περιεχόμενο μετά τα 30 bytes και το όνομα.
+  bad[30 + (bad[26] | (bad[27] << 8))] ^= 0xff;
+  eq('χαλασμένο περιεχόμενο (λάθος CRC): null', readZipEntry(bad, '00 Σύνοψη.pdf'), null);
+  eq('άδειο ή όχι zip: null', readZipEntry(new Uint8Array(10), 'x'), null);
 }
 
 console.log(fail === 0 ? `✓ zip: ${pass} έλεγχοι πέρασαν` : `✗ zip: ${fail} απέτυχαν από ${pass + fail}`);
