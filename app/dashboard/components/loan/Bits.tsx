@@ -58,12 +58,19 @@ export function MiniSection({title,badges,meta,defaultOpen,order,flat,open:openP
     <div style={flat
       ? {order,borderTop:'1px solid var(--border-subtle)'}
       : {order,...panelStyle,border:`1px solid ${open?'var(--border-default)':'var(--border-raised)'}`,transition:'border-color 0.2s'}}>
-      <button onClick={()=>setOpen(o=>!o)} aria-expanded={open} className="acc-toggle acc-row acc-apart" style={{ '--acc-pad': flat ? '12px 2px' : '16px 16px' }}>
-        <div style={{display:'flex',alignItems:'center',gap:10,minWidth:0,flexWrap:'wrap'}}>
+      {/* ΣΤΟ ΣΤΕΝΟ Η ΣΗΜΕΙΩΣΗ ΚΑΤΕΒΑΙΝΕΙ, Ο ΤΙΤΛΟΣ ΔΕΝ ΣΤΡΙΜΩΧΝΕΤΑΙ (21/10/2026).
+          Η σημείωση δεξιά δεν μικραίνει (`nowrap` στις περισσότερες), οπότε στα
+          320 έπαιρνε όσο ήθελε και ο τίτλος έμενε με 70 έως 95 εικονοστοιχεία:
+          «Υπολογιστής / νέου / δανείου» μία λέξη ανά γραμμή, «Ιστορικό Euribor
+          τριμήνου…» σε έξι γραμμές, με την πηγή πάνω στον τίτλο. Ο τίτλος
+          κρατά πια τουλάχιστον 10em· όταν δεν χωρούν και τα δύο, η σημείωση
+          με το βέλος πάει στη δική της σειρά, δεξιά. Στο φαρδύ δεν αλλάζει τίποτα. */}
+      <button onClick={()=>setOpen(o=>!o)} aria-expanded={open} className="acc-toggle acc-row acc-apart" style={{ '--acc-pad': flat ? '12px 2px' : '16px 16px', flexWrap:'wrap' }}>
+        <div style={{display:'flex',alignItems:'center',gap:10,minWidth:0,flexWrap:'wrap',flex:'1 1 10em'}}>
           <span style={{fontSize:flat?13:15,fontWeight:600,color:'var(--text-primary)',fontFamily: T.font.sans,letterSpacing:'-0.01em'}}>{title}</span>
           {badges}
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:12,flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,flexShrink:0,marginLeft:'auto'}}>
           {meta}
           <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" style={{transform:open?'rotate(180deg)':'none',transition:'transform 0.2s'}}><polyline points="6 9 12 15 18 9"/></svg>
         </div>

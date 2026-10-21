@@ -184,9 +184,11 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
   if (loading) return <Spinner label="Φόρτωση…" />;
 
   // ── Section header ────────────────────────────────────────────────────────
+  // Ο τίτλος κρατά 12em και η πιλούλα του συνδέσμου κατεβαίνει όταν δεν χωρά,
+  // όπως στο secHdr του BillsProviders (σάρωση 21/10/2026).
   const secHdr = (label: string, sub?: string, link?: { url: string; text: string }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
-      <div style={{ flex: 1 }}>
+    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
+      <div style={{ flex: '1 1 12em' }}>
         <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontFamily: T.font.sans }}>{label}</div>
         {sub && <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{sub}</div>}
       </div>

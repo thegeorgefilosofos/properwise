@@ -456,8 +456,12 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
           )}
         </div>
 
-        <div style={{ background: tariffBc.bg, border: `1px solid ${tariffBc.border}`, borderRadius: T.radius.inner, padding: '12px 16px', marginTop: 14, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-          <div style={{ flex: 1 }}>
+        {/* ΣΤΟ ΣΤΕΝΟ Η «ΙΣΤΟΣΕΛΙΔΑ» ΚΑΤΕΒΑΙΝΕΙ (21/10/2026). Η πιλούλα δεν τυλίγει
+            και στα 320 άφηνε στο τιμολόγιο 103 εικονοστοιχεία: «Τιμή /
+            Οκτωβρίου / 2026» και η περιγραφή σε στήλη δύο λέξεων. Το κείμενο
+            κρατά τουλάχιστον 12em· όταν δεν χωρούν δίπλα, η πιλούλα πάει από κάτω. */}
+        <div style={{ background: tariffBc.bg, border: `1px solid ${tariffBc.border}`, borderRadius: T.radius.inner, padding: '12px 16px', marginTop: 14, display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ flex: '1 1 12em', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' as const }}>
               <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans }}>{tariff.name}</span>
               <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: tariffBc.color, background: tariffBc.border, padding: '2px 10px', borderRadius: T.radius.pill, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{tariff.badge}</span>
@@ -809,7 +813,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                         {/* Ο πάροχος γίνεται σύνδεσμος στη σελίδα του: η τελευταία
                             γραμμή της οθόνης ζητά επιβεβαίωση της τιμής πριν την
                             υπογραφή και τώρα υπάρχει από πού. */}
-                        <a href={t.providerUrl} target="_blank" rel="noopener noreferrer"
+                        <a href={t.providerUrl} target="_blank" rel="noopener noreferrer" className="po-tap-inline"
                           title={`Οι τιμές του παρόχου ${t.providerLabel}, στη σελίδα του`}
                           style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>
                           {t.providerLabel}
@@ -867,7 +871,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
             Δεν περιλαμβάνονται χρεώσεις δικτύου ΔΕΔΔΗΕ, δημοτικά τέλη και τέλος ΕΡΤ, επειδή είναι ίδια όποιον πάροχο κι αν διαλέξεις και δεν αλλάζουν τη σειρά.
             <br />
             {PRICES_UPDATED_LINE}. Πηγή: {PRICES_SOURCE}. Μόνο τιμές {CATALOGUE_MONTH_GEN} μπαίνουν στη σειρά· όσα γράφουν άλλον μήνα ακολουθούν χωρίς θέση.
-            {' '}<a href={RAAEY_COMPARE} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Διασταύρωσε στη ΡΑΑΕΥ</a>.
+            {' '}<a href={RAAEY_COMPARE} target="_blank" rel="noopener noreferrer" className="po-tap-inline" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Διασταύρωσε στη ΡΑΑΕΥ</a>.
             Πριν υπογράψεις, επιβεβαίωσε την τιμή στη σελίδα του παρόχου: το κυμαινόμενο ανακοινώνεται κάθε μήνα.
           </div>
         </div>
