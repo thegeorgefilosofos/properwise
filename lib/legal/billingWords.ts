@@ -42,7 +42,8 @@
 // διαβάζουν και οι Οροι και η σελίδα εμπιστοσύνης από την ίδια πηγή.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { merchant, type BillingEnv } from '@/lib/billing/merchant';
+import { merchant, type BillingEnv, type MerchantPort } from '@/lib/billing/merchant';
+import { morSellerDisclosed } from '@/lib/legal/merchant';
 // ΤΟ ΤΑΜΕΙΟ ΚΡΙΝΕΤΑΙ ΚΑΙ ΑΠΟ ΤΗΝ ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΠΩΛΗΤΗ (20/10/2026). Ζωντανό
 // κλειδί με ανώνυμο φορέα έδινε τη «ζωντανή» εκδοχή των λόγων: lib/legal/checkout.ts.
 import { checkoutState } from '@/lib/legal/checkout';
@@ -238,6 +239,16 @@ export interface BillingWords {
    * αυτό, με τα πεδία που λείπουν, αντί για ένα γενικό «σύντομα».
    */
   saleClosedReason: string | null;
+  /**
+   * Ο πωλητής σε μία γραμμή, με τον σύνδεσμο των όρων του για τον αγοραστή, ή
+   * `null` όταν το ταμείο είναι κλειστό ή ο έμπορος δεν είναι merchant of record.
+   *
+   * ΑΠΟΦΑΣΗ GEORGE 21/10/2026. Το ταμείο ανοίγει με πωλητή τον έμπορο, χωρίς τα
+   * στοιχεία του φορέα (lib/legal/checkout.ts). Η γραμμή φαίνεται στο ταμείο, στον
+   * τιμοκατάλογο και στους Όρους, πριν από την πληρωμή: ο αγοραστής μαθαίνει από
+   * ποιον αγοράζει. Τα στοιχεία: lib/legal/merchant.ts, MOR_SELLERS.
+   */
+  seller: { line: string; termsUrl: string; termsLabel: string } | null;
 }
 
 /**
@@ -278,7 +289,7 @@ const MONEY_BACK_SOON =
 //
 // ΓΙΑΤΙ ΣΥΝΑΡΤΗΣΗ ΚΑΙ ΟΧΙ ΣΤΑΘΕΡΑ: μια σταθερά θα έπρεπε να θυμηθεί κάποιος
 // να την αλλάξει και αυτό ακριβώς είναι που δεν συνέβη.
-const liveWords = (mor: string): Omit<BillingWords, 'live' | 'saleClosedReason'> => ({
+const liveWords = (mor: string): Omit<BillingWords, 'live' | 'saleClosedReason' | 'seller'> => ({
   chargingToday:
     `Η χρέωση συνδρομής γίνεται μέσω της ${mor}, που ενεργεί ως merchant of record: πουλά τη συνδρομή στο δικό της όνομα, εκδίδει το παραστατικό και αποδίδει τον ΦΠΑ της χώρας σου.`,
   // Χωρίς τις ημέρες: οι Οροι τις λένε στην αμέσως προηγούμενη παράγραφο
@@ -340,7 +351,7 @@ const liveWords = (mor: string): Omit<BillingWords, 'live' | 'saleClosedReason'>
 
 const TRIAL_BADGE = `Δοκιμή ${TRIAL_DAYS} ημερών χωρίς κάρτα`;
 
-const NOT_LIVE: Omit<BillingWords, 'live' | 'saleClosedReason'> = {
+const NOT_LIVE: Omit<BillingWords, 'live' | 'saleClosedReason' | 'seller'> = {
   chargingToday:
     'Η χρέωση συνδρομής δεν έχει ενεργοποιηθεί και σήμερα δεν γίνεται καμία πληρωμή μέσα από την Υπηρεσία.',
   afterTrial:
@@ -412,8 +423,28 @@ function saleClosedReason(id: LegalIdentity): string | null {
  * @param id η ταυτότητα του φορέα, ρητά μόνο για τις σουίτες· στην εφαρμογή
  *   είναι πάντα το IDENTITY.
  */
-export function billingWords(env: BillingEnv = process.env, id: LegalIdentity = IDENTITY): BillingWords {
-  const port = merchant(env);
-  const { live } = checkoutState(env, id);
-  return { live, ...(live ? liveWords(port.name) : NOT_LIVE), saleClosedReason: saleClosedReason(id) };
+export function billingWords(
+  env: BillingEnv = process.env, id: LegalIdentity = IDENTITY, port: MerchantPort = merchant(env),
+): BillingWords {
+  const { live } = checkoutState(env, id, port);
+  return {
+    live,
+    ...(live ? liveWords(port.name) : NOT_LIVE),
+    // ΜΕ ΑΝΟΙΧΤΟ ΤΑΜΕΙΟ ΚΑΜΙΑ ΕΞΗΓΗΣΗ «ΓΙΑΤΙ ΚΛΕΙΣΤΟ». Με πωλητή τον έμπορο το
+    // ταμείο ανοίγει και με ελλιπή ταυτότητα φορέα· η σελίδα «Ποιοι είμαστε»
+    // δεν επιτρέπεται να λέει ταυτόχρονα ότι η αγορά μένει κλειστή.
+    saleClosedReason: live ? null : saleClosedReason(id),
+    seller: live ? sellerOf(port) : null,
+  };
+}
+
+/** Η γραμμή του πωλητή, μόνο για έμπορο merchant of record με δηλωμένα στοιχεία. */
+function sellerOf(port: MerchantPort): BillingWords['seller'] {
+  const s = port.sellerOfRecord;
+  if (!morSellerDisclosed(s)) return null;
+  return {
+    line: `Πωλητής: ${s.name} (merchant of record). Εισπράττει την πληρωμή, εκδίδει την απόδειξη και αποδίδει τον ΦΠΑ.`,
+    termsUrl: s.buyerTermsUrl,
+    termsLabel: `Όροι αγοραστή της ${s.name}`,
+  };
 }

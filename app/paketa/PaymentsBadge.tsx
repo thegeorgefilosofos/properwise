@@ -21,10 +21,18 @@
 import { billingWords } from '@/lib/legal/billingWords';
 import { merchant } from '@/lib/billing/merchant';
 import { SecuredBy } from './SecuredBy';
+import { SellerLine } from './SellerLine';
 
 export function PaymentsBadge() {
-  const { live, securedBy, securedByLead } = billingWords();
+  const { live, securedBy, securedByLead, seller } = billingWords();
   if (!live || !securedBy) return null;
   const m = merchant();
-  return <SecuredBy text={securedBy} href={m.site} lead={securedByLead} logo={m.logo} />;
+  // Ο ΠΩΛΗΤΗΣ ΔΙΠΛΑ ΣΤΙΣ ΤΙΜΕΣ (απόφαση George 21/10/2026): ο επισκέπτης
+  // μαθαίνει από ποιον αγοράζει πριν πατήσει «αγορά».
+  return (
+    <div style={{ display: 'grid', justifyItems: 'center' }}>
+      <SecuredBy text={securedBy} href={m.site} lead={securedByLead} logo={m.logo} />
+      <SellerLine seller={seller} />
+    </div>
+  );
 }

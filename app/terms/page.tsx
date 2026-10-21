@@ -134,6 +134,8 @@ export default function TermsPage() {
         ] },
         { h: 'Πληρωμές και τιμολόγηση', p: [
           words.chargingToday,
+          // Ο ΠΩΛΗΤΗΣ ΚΑΙ ΟΙ ΟΡΟΙ ΤΟΥ (απόφαση George 21/10/2026): lib/legal/billingWords.ts.
+          ...(words.seller ? [`${words.seller.line} ${words.seller.termsLabel}: ${words.seller.termsUrl}`] : []),
           ...(words.contractParties ? [words.contractParties] : []),
           words.cardData,
           words.subscriptionPlace,

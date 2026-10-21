@@ -5,12 +5,13 @@
 // πληρωμής και πέντε επιφάνειες συνέχισαν να γράφουν «η χρέωση δεν έχει
 // ενεργοποιηθεί». Ο έλεγχος δεν ρωτά «τι λέει η σελίδα» — ρωτά αν οι δύο
 // καταστάσεις είναι όντως δύο και αν διαλέγονται από τη ΣΩΣΤΗ συνθήκη.
-import { billingWords } from './billingWords'
 import { merchant } from '../billing/merchant'
-import { subprocessors, activeSubprocessors, plannedSubprocessors } from './subprocessors'
+import { subprocessors, subprocessors as subprocessors0, activeSubprocessors, plannedSubprocessors } from './subprocessors'
 import { MERCHANT_NAMES, KNOWN_MERCHANTS, merchantId, PROVIDER_ENV } from './merchant'
 import { TRIAL_DAYS, PLANS } from '../billing/plans'
-import { checkoutIsLive as gateIsLive, checkoutState } from './checkout'
+import { checkoutIsLive as gateIsLive, checkoutIsLive as gateIsLive0, checkoutState as checkoutState0 } from './checkout'
+import { billingWords, billingWords as billingWords0 } from './billingWords'
+import type { MerchantPort } from '../billing/merchant'
 import { IDENTITY, sellerIdentityGaps, sellerIdentityComplete, type LegalIdentity } from './identity'
 
 let pass = 0, fail = 0
@@ -69,7 +70,16 @@ ok('χάρτης με ζεύγος που λείπει δεν μετράει',
 // ΤΟ ΠΕΡΙΣΤΑΤΙΚΟ (νομική αξιολόγηση 20/10/2026). Ζωντανό κλειδί στην παραγωγή
 // και ανώνυμος φορέας: οι Οροι έλεγαν «η χρέωση γίνεται» και το ταμείο άνοιγε.
 // GDPR 13§1 α΄, π.δ. 131/2003 άρθ. 4, ν. 2251/1994 άρθ. 3β§1 β΄–γ΄.
+//
+// ΙΣΧΥΕΙ ΓΙΑ ΕΜΠΟΡΟ ΠΟΥ ΔΕΝ ΕΙΝΑΙ MERCHANT OF RECORD (απόφαση George
+// 21/10/2026): όταν πουλά ο ίδιος ο έμπορος, πωλητής είναι εκείνος· βλ.
+// lib/legal/checkout.test.ts. Εδώ ο ίδιος έμπορος ΧΩΡΙΣ δηλωμένο πωλητή.
 {
+  const NON_MOR = (env: Record<string, string | undefined>): MerchantPort => ({ ...merchant(env), sellerOfRecord: null })
+  const gateIsLive = (env: Record<string, string | undefined>, id?: LegalIdentity) => gateIsLive0(env, id, NON_MOR(env))
+  const checkoutState = (env: Record<string, string | undefined>, id?: LegalIdentity) => checkoutState0(env, id, NON_MOR(env))
+  const billingWords = (env: Record<string, string | undefined>, id?: LegalIdentity) => billingWords0(env, id, NON_MOR(env))
+  const subprocessors = (env: Record<string, string | undefined>, id: LegalIdentity) => subprocessors0(env, id, NON_MOR(env))
   const anon: LegalIdentity = { ...SELLER, legalName: null, address: null, afm: null, phone: null }
   ok('πλήρης ρύθμιση εμπόρου και ανώνυμος φορέας: κλειστό', !gateIsLive(LIVE, anon))
   ok('και ο λόγος λέγεται: ταυτότητα', checkoutState(LIVE, anon).closedBy === 'identity')
@@ -97,8 +107,8 @@ ok('χάρτης με ζεύγος που λείπει δεν μετράει',
   ok('ο έμπορος δεν δηλώνεται ενεργός εκτελών όσο δεν πουλάμε',
     subprocessors(LIVE, anon).find(s => s.name === mor(LIVE))!.active === false)
 
-  // ΚΑΙ ΣΗΜΕΡΑ: το αρχείο της εφαρμογής, όπως είναι. Οσο λείπει έστω ένα
-  // πεδίο, κανένα περιβάλλον δεν ανοίγει ταμείο, ούτε με πλήρη ρύθμιση.
+  // ΚΑΙ ΣΗΜΕΡΑ: το αρχείο της εφαρμογής, όπως είναι. Για έμπορο που δεν
+  // είναι merchant of record, όσο λείπει έστω ένα πεδίο το ταμείο μένει κλειστό.
   ok('το IDENTITY της εφαρμογής κρίνεται από την ίδια συνάρτηση',
     gateIsLive(LIVE) === sellerIdentityComplete(IDENTITY))
 }

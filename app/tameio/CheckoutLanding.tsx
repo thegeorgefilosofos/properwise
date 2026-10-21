@@ -24,6 +24,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useState } from 'react';
 import { SecuredBy } from '../paketa/SecuredBy';
+import { SellerLine } from '../paketa/SellerLine';
 import { T } from '@/components/tokens';
 import { StandaloneCard, CARD_TITLE, CARD_BODY, CARD_NOTE } from '../StandaloneCard';
 import { ChipToggle, Btn } from '@/components/Theme';
@@ -60,7 +61,7 @@ type Stage = 'opening' | 'choose' | 'confirm' | 'closed' | 'anonymous';
  * ξέρει ποιος έμπορος εισπράττει· τα ίδια κείμενα με τους Ορους της τα δίνει
  * το page.tsx (lib/legal/billingWords.ts).
  */
-export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, securedHref, securedLead, securedLogo }: { firstCharge: string; moneyBack: string; securedBy: string | null; securedHref: string; securedLead?: string | null; securedLogo?: { readonly viewBox: string; readonly d: string } }) {
+export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, securedHref, securedLead, securedLogo, seller = null }: { firstCharge: string; moneyBack: string; securedBy: string | null; securedHref: string; securedLead?: string | null; securedLogo?: { readonly viewBox: string; readonly d: string }; seller?: { line: string; termsUrl: string; termsLabel: string } | null }) {
   const [stage, setStage] = useState<Stage>('opening');
   const [note, setNote] = useState('');
   const [what, setWhat] = useState('');
@@ -233,6 +234,9 @@ export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, sec
             {/* ΤΟ ΣΗΜΑ ΚΑΤΩ ΑΠΟ ΤΟ ΚΟΥΜΠΙ, ΟΧΙ ΣΤΑ ΠΑΚΕΤΑ ΜΟΝΟ. Εδώ ρωτά ο πελάτης «πού
                 θα δώσω την κάρτα μου»: ένα κλικ πριν ανοίξει η σελίδα του εμπόρου. */}
             {securedBy && <div style={{ textAlign: 'center' }}><SecuredBy text={securedBy} href={securedHref} lead={securedLead} logo={securedLogo} /></div>}
+            {/* Ο ΠΩΛΗΤΗΣ ΠΡΙΝ ΑΠΟ ΤΗΝ ΠΛΗΡΩΜΗ (απόφαση George 21/10/2026): από ποιον
+                αγοράζεις, ποιος εκδίδει την απόδειξη και οι όροι του. */}
+            <SellerLine seller={seller} />
             <TrialLink />
           </>
         )}
