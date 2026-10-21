@@ -8,7 +8,7 @@ import { CustomSelect, TextInput } from './UIComponents'
 import { T, PageTitle, KPIGrid, Btn, IconBtn, ChipToggle, EmptyState, Skeleton, SkeletonKPIs, fe, feRate, fn, pressable, Bar, RuntimeImg } from '@/components/Theme'
 import { PackageOpen, SearchX, Archive } from 'lucide-react'
 import { portfolioSummary, replacementSuggestion, NOT_TAX_DEPRECIATION_NOTE } from '@/lib/inventory/depreciation'
-import type { FieldContext } from '@/lib/property/fields'
+import { inventoryFormContext, type FieldContext } from '@/lib/property/fields'
 import { readStatus, statusLabel, type StatusRow } from '@/lib/property/status'
 import { notifyError, notifyOk } from '@/components/Toast'
 import { confirmDialog } from '@/components/confirmBus'
@@ -31,6 +31,7 @@ import * as calendar from '@/lib/data/calendar'
 import { INVENTORY_CATEGORIES, type InventoryItem, type InventoryRepair, type InventoryHandover, type MaintenanceSchedule, type HandoverIntent, type InventoryPropertyOption, type TabInventoryProps, ROOM_PRESETS, STARTER_PACK, inventoryLabel } from './inventory/model'
 import { calcCurrentValue, calcDepreciationPct, calcYearsLeft, calcAgeDisplay, calcMonthlyKwh, calcMonthlyCost, hasEnergy, fmtDate, daysUntil, warrantyStatus, needsAction } from './inventory/calc'
 import { DOCS_BUCKET } from './inventory/storage'
+import { itemPayload } from './inventory/payload'
 import { InfoHint } from './InfoHint'
 import { Badge, EnergyBadge, DepBar, ReplacementHint, InlineConditionEdit, OverflowMenu, SelectBox, BulkPicker, SectionLabel, QRModal, cardStyle, IconEdit, IconRepair, IconQR, IconCal, IconTrash, type OverflowAction } from './inventory/Bits'
 import { ItemFormModal } from './inventory/ItemFormModal'
@@ -723,16 +724,18 @@ export default function TabInventory({propertyId,userId,profileType='individual'
     if(error){notifyError(failed('Η τιμή ρεύματος δεν αποθηκεύτηκε',error));return}
     notifyOk('Η τιμή ρεύματος αποθηκεύτηκε')
   }
-  const handleSaveItem=async(data:Partial<InventoryItem>)=>{
-    // Γράφονται ΜΟΝΟ τα πεδία που ζητάει πλέον η φόρμα. Οι στήλες που έμειναν στη
-    // βάση (provenance, discount_pct, smart_device, standby_watts…) δεν αγγίζονται:
-    // τα παλιά δεδομένα μένουν ακέραια, απλώς δεν παράγονται καινούργια.
-    const payload={name:data.name||'',category:data.category||'Λοιπά',room:data.room||'',brand:data.brand||'',model:data.model||'',serial_number:data.serial_number||'',condition:data.condition||'Καλή',notes:data.notes||'',photo_url:data.photo_url||'',photos:data.photos||[],purchase_value:data.purchase_value||0,purchase_date:data.purchase_date||null,warranty_expiry:data.warranty_expiry||null,energy_class:data.energy_class||'',power_watts:data.power_watts||0,daily_hours_use:data.daily_hours_use||0,replacement_cost:data.replacement_cost||0,receipt_doc_url:data.receipt_doc_url||null,receipt_doc_name:data.receipt_doc_name||null}
-    if(editingItem){const {error}=await inventory.update(supabase,editingItem.id,payload);if(error)notifyError(failed('Το αντικείμενο δεν αποθηκεύτηκε',error))
+  // ΤΟ ΠΑΡΑΘΥΡΟ ΚΛΕΙΝΕΙ ΜΟΝΟ ΟΤΑΝ Η ΕΓΓΡΑΦΗ ΠΕΤΥΧΕΙ. Εκλεινε πάντα, ακόμη
+  // και με σφάλμα: ο χρήστης έχανε ό,τι είχε πληκτρολογήσει και έβλεπε μόνο ένα μήνυμα
+  // που έφευγε. Τώρα το σφάλμα λέγεται και η φόρμα μένει όπως ήταν.
+  // Το φορτίο το φτιάχνει η `itemPayload` (inventory/payload.ts).
+  const handleSaveItem=async(data:Partial<InventoryItem>):Promise<boolean>=>{
+    const payload=itemPayload(data)
+    if(editingItem){const {error}=await inventory.update(supabase,editingItem.id,payload);if(error){notifyError(failed('Το αντικείμενο δεν αποθηκεύτηκε',error));return false}
       // Καθάρισε την ΠΑΛΙΑ απόδειξη αν αντικαταστάθηκε/αφαιρέθηκε (αποφυγή orphan στο storage).
-      else{const oldDoc=editingItem.receipt_doc_url;if(oldDoc&&oldDoc!==payload.receipt_doc_url&&!/^https?:\/\//.test(oldDoc))await supabase.storage.from(DOCS_BUCKET).remove([oldDoc])}}
-    else{const {error}=await inventory.add(supabase,propertyId,userId,[payload]);if(error)notifyError(failed('Το αντικείμενο δεν καταχωρήθηκε',error))}
-    setShowItemForm(false);setEditingItem(null);fetchData()
+      const oldDoc=editingItem.receipt_doc_url;if(oldDoc&&oldDoc!==payload.receipt_doc_url&&!/^https?:\/\//.test(oldDoc))await supabase.storage.from(DOCS_BUCKET).remove([oldDoc])}
+    else{const {error}=await inventory.add(supabase,propertyId,userId,[payload]);if(error){notifyError(failed('Το αντικείμενο δεν καταχωρήθηκε',error));return false}}
+    setShowItemForm(false);setEditingItem(null);setFormManual(false);fetchData()
+    return true
   }
   // Καθαρισμός συνημμένων αποδείξεων (private bucket) ώστε να μη μένουν orphan αρχεία.
   const cleanupDocs=async(its:InventoryItem[])=>{const paths=its.map(i=>i.receipt_doc_url).filter((p):p is string=>!!p&&!/^https?:\/\//.test(p));if(paths.length)await supabase.storage.from(DOCS_BUCKET).remove(paths)}
@@ -847,7 +850,10 @@ export default function TabInventory({propertyId,userId,profileType='individual'
   // δηλώνει με την πράξη του ότι υπάρχει εξοπλισμός να καταγραφεί, αλλιώς δεν
   // θα πατούσε «Πρόσθεσε ένα αντικείμενο». Το παράθυρο παίρνει το ίδιο
   // περιβάλλον με τη σημαία της επίπλωσης ανοιχτή· η καρτέλα κρατά το δικό της.
-  const formCtx: FieldContext = { ...fieldCtx, furnished: true }
+  //
+  // ΚΑΙ Η ΚΑΤΑΣΤΑΣΗ, ΟΧΙ ΜΟΝΟ Η ΕΠΙΠΛΩΣΗ. Το `equipped` θέλει και μίσθωση: σε
+  // κενό ακίνητο ή ιδιοχρησία η φόρμα έμενε πάλι άδεια (βλ. inventoryFormContext).
+  const formCtx: FieldContext = inventoryFormContext(fieldCtx)
 
   // ═══ ΤΑ ΤΕΣΣΕΡΑ ΝΟΥΜΕΡΑ ΤΗΣ ΑΠΟΓΡΑΦΗΣ ════════════════════════════════════
   // Υπολογίζονται ΕΔΩ, μία φορά και εμφανίζονται ΕΔΩ, μία φορά: η σειρά μετρικών

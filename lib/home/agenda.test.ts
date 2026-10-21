@@ -5,7 +5,7 @@
 // δύο, τα ελλιπή στοιχεία δύο. Αυτό το αρχείο κρατά τη συγχώνευση ειλικρινή: αν
 // κάποιος προσθέσει πηγή χωρίς να δηλώσει θέμα, τα διπλότυπα επιστρέφουν σιωπηλά.
 import {
-  buildAgenda, obligationSubject, insightSubject, overdueCount, dueLabel, dueParts, itemDue, shortNote,
+  buildAgenda, attachAmounts, obligationSubject, insightSubject, overdueCount, dueLabel, dueParts, itemDue, shortNote,
   type InsightLike, type ObligationLike, type SetupLike,
 } from './agenda'
 
@@ -309,6 +309,23 @@ ok('και ο μετρητής δεν σκάει', overdueCount([]) === 0)
     ],
   })
   ok('το μετρημένο προηγείται του αμέτρητου', a[0].title === 'Με ποσό')
+}
+
+{
+  // «ΕΝΦΙΑ, 8η δόση» χωρίς ποσό και χωρίς κουμπί, ενώ οι γείτονές της είχαν (21/10/2026).
+  const a = buildAgenda({ today: TODAY, obligations: [obl({ id: 'enfia-instalment-2026-8', title: 'Δόση 8', date: '2026-08-14', daysUntil: 9 })] })
+  ok('η προθεσμία του νόμου έχει ενέργεια', a[0].action?.tab === 'calendar' && a[0].action.label === 'Ημερολόγιο')
+  const m = buildAgenda({ today: TODAY, obligations: [obl({ id: 'insurance' })], insights: [ins({ id: 'insurance-soon', action: { label: 'Ασφάλεια', tab: 'finances' } })] })
+  ok('η ενέργεια του insight προηγείται της προεπιλογής', m[0].action?.tab === 'finances')
+  const lines = [
+    { kind: 'enfia', date: '2026-08-14', amount: 28.33, certainty: 'expected' as const },
+    { kind: 'loan', date: '2026-08-14', amount: 500, certainty: 'actual' as const },
+  ]
+  const w = attachAmounts(a, lines)
+  ok('η δόση παίρνει το ποσό της ίδιας ημερομηνίας από την πρόβλεψη', w[0].amount?.value === 28.33 && w[0].amount.estimate === true)
+  const none = attachAmounts(buildAgenda({ today: TODAY, obligations: [obl({ id: 'lease_end', date: '2026-08-14' })] }), lines)
+  ok('άλλες γραμμές δεν παίρνουν ποσό ΕΝΦΙΑ', none[0].amount === undefined)
+  ok('χωρίς γραμμή ίδιας ημερομηνίας, κανένα ποσό', attachAmounts(a, [{ ...lines[0], date: '2026-09-30' }])[0].amount === undefined)
 }
 
 console.log(fail === 0 ? `✓ agenda: ${pass} έλεγχοι πέρασαν` : `✗ agenda: ${fail} απέτυχαν από ${pass + fail}`)

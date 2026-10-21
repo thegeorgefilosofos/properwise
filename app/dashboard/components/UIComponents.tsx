@@ -1388,6 +1388,7 @@ export function Toggle({ on, onChange, label, ariaLabel }: ToggleProps) {
       <button
         type="button"
         role="switch"
+        className="po-switch"
         aria-checked={on}
         aria-label={label || ariaLabel || 'Εναλλαγή'}
         onClick={() => onChange(!on)}
@@ -1409,7 +1410,10 @@ export function Toggle({ on, onChange, label, ariaLabel }: ToggleProps) {
           επιλογές. Η κατάσταση φαίνεται ήδη από τη ΘΕΣΗ του δείκτη· η ένταση
           του κειμένου αρκεί για να ξεχωρίσει το ενεργό. */}
       {label && (
-        <span style={{ fontFamily: T.font.sans, fontSize: 14, color: on ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: on ? 600 : 400, letterSpacing: '0.25px', transition: 'color 0.15s' }}>
+        // ΤΟ ΒΑΡΟΣ ΜΕΝΕΙ ΣΤΑΘΕΡΟ (21/10/2026). Με 600 στο ανοιχτό η ετικέτα
+        // φάρδαινε και ό,τι ακολουθούσε στη σειρά μετακινούνταν σε κάθε πάτημα.
+        // Την κατάσταση τη λέει ο διακόπτης· το κείμενο αλλάζει μόνο χρώμα.
+        <span style={{ fontFamily: T.font.sans, fontSize: 14, color: on ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.25px', transition: 'color 0.15s' }}>
           {label}
         </span>
       )}

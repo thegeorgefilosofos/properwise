@@ -22,7 +22,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { T, Btn, IconBtn, LinkBtn, EmptyState, fe } from '@/components/Theme';
+import { T, Btn, IconBtn, LinkBtn, EmptyState, fe, feWhole } from '@/components/Theme';
 import { feSigned, grDate } from '@/lib/core/format';
 import { monthNom, monthShort, monthAcc } from '@/lib/core/months';
 import type { Forecast, ForecastGap, ForecastLine, ForecastMonth } from '@/lib/home/forecast12';
@@ -80,13 +80,6 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
     return () => io.disconnect();
   }, [propertyId, supabase, monthsWithLines, gapCount, empty]);
 
-  const head = (
-    <div className="fc-head">
-      <h2 className="fc-title">Οι επόμενοι 12 μήνες</h2>
-      <span className="fc-sub">Από μισθώσεις, δόσεις και λογαριασμούς που ήδη υπάρχουν</span>
-    </div>
-  );
-
 
   // ── Η ΚΟΙΝΗ ΚΛΙΜΑΚΑ ─────────────────────────────────────────────────────
   // Το ύψος της εισροής και της εκροής μετριέται με τον ίδιο χάρακα: η πάνω
@@ -95,10 +88,25 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   // Το ύψος του άδειου πλαισίου είναι ΕΝΑ μίσθωμα (`level` από τη μηχανή), όχι η
   // μεγαλύτερη γραμμή ενοικίου: μια τριμηνιαία δόση θα το έκανε τριπλάσιο.
   const vacancyOf = (m: ForecastMonth) => m.gaps.find(g => g.kind === 'vacancy');
-  const vacLevel = (m: ForecastMonth) => vacancyOf(m)?.level ?? 0;
-  const maxUp = Math.max(0, ...months.map(m => Math.max(m.inActual + m.inExpected, vacLevel(m))));
+  // ΤΟ «ΚΕΝΟ;» ΔΕΝ ΜΠΑΙΝΕΙ ΠΙΑ ΣΤΗΝ ΚΛΙΜΑΚΑ (21/10/2026). Ζωγραφιζόταν ως
+  // διακεκομμένο κουτί στο ύψος ενός μισθώματος και από τον Μάρτιο ως τον
+  // Σεπτέμβριο γέμιζε όλη την πάνω ζώνη χωρίς κανένα ποσό: διαβαζόταν ως
+  // «αναμενόμενο». Είναι ΑΓΝΩΣΤΟ, όχι ποσό, οπότε γίνεται μικρό σημάδι στη
+  // βάση και η κλίμακα μετρά μόνο ό,τι έχει τιμή.
+  const maxUp = Math.max(0, ...months.map(m => m.inActual + m.inExpected));
   const maxDown = Math.max(0, ...months.map(m => m.outActual + m.outExpected));
-  const span = maxUp + maxDown || 1;
+  const anyVac = months.some(x => vacancyOf(x));
+  // Η πάνω ζώνη κρατά λίγο ύψος για το σημάδι του κενού ακόμη κι αν δεν υπάρχει εισροή.
+  const upRoom = maxUp > 0 ? maxUp : anyVac ? (maxDown || 1) * 0.12 : 0;
+  const span = upRoom + maxDown || 1;
+  const [hov, setHov] = useState<number | null>(null);
+  const plotRef = useRef<HTMLDivElement>(null);
+  const hoverAt = (clientX: number) => {
+    const el = plotRef.current; if (!el) return;
+    const r = el.getBoundingClientRect();
+    const i = Math.floor(((clientX - r.left) / Math.max(1, r.width)) * months.length);
+    setHov(i >= 0 && i < months.length ? i : null);
+  };
   // ΚΛΑΣΜΑ, ΟΧΙ ΠΟΣΟΣΤΟ ΣΕ ΚΕΙΜΕΝΟ. Το ύψος περνά ως μεταβλητή (`--fc-share`, 0 ως 1) και
   // το CSS το κάνει μήκος· έτσι κανένα «%» δεν γράφεται με το χέρι στο JSX.
   const frac = (v: number, of: number): CSSProperties => ({ ['--fc-share' as string]: of > 0 ? Math.max(0, Math.min(1, v / of)) : 0 });
@@ -114,7 +122,16 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   const isEmpty = forecast.empty || months.length === 0;
   return (
     <section ref={cardRef} className="fc" aria-label="Οι επόμενοι 12 μήνες">
-      {head}
+      {/* ═══ Η ΚΕΦΑΛΙΔΑ ΖΕΙ ΜΕΣΑ ΣΤΟ return, ΟΧΙ ΣΕ ΜΕΤΑΒΛΗΤΗ ════════════════
+          Ηταν `const head = (<div className="fc-head">…)`. Το styled-jsx βάζει
+          την κλάση εμβέλειας μόνο στα στοιχεία της απόδοσης· στη μεταβλητή το
+          `fc-head` έφτανε γυμνό, οπότε στην παραγωγή η κεφαλίδα δεν έπαιρνε
+          ούτε περιθώριο ούτε γραμματοσειρά και κολλούσε στην αριστερή άκρη. Ο
+          πάγκος δεν το έβλεπε: εκεί το <style jsx> αποδίδεται καθολικό. */}
+      <div className="fc-head">
+        <h2 className="fc-title">Οι επόμενοι 12 μήνες</h2>
+        <span className="fc-sub">Από μισθώσεις, δόσεις και λογαριασμούς που ήδη υπάρχουν</span>
+      </div>
       {isEmpty ? (
       <div className="fc-body">
         <EmptyState title="Καμία προγραμματισμένη χρέωση ακόμη"
@@ -154,27 +171,41 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
             <li><span className="sw sw-in" aria-hidden />Εισροές</li>
             <li><span className="sw sw-out" aria-hidden />Εκροές</li>
             <li><span className="sw sw-exp" aria-hidden />Αναμενόμενο</li>
-            {months.some(x => vacancyOf(x)) && <li><span className="sw sw-vac" aria-hidden />κενό; μετά τη λήξη</li>}
+            {anyVac && <li><span className="sw sw-vac" aria-hidden />κενό; χωρίς ενοίκιο μετά τη λήξη</li>}
+            {tight && <li><span className="sw-dot" aria-hidden />ο πιο σφιχτός μήνας</li>}
             {/* Το σημάδι του «λείπει» κάτω από τις εκροές μοιάζει με αναμενόμενο ποσό·
                 χωρίς δική του γραμμή στο υπόμνημα διαβαζόταν ως τέτοιο. */}
             {months.some(x => x.gaps.some(g => g.kind === 'missing' && g.flow !== 'rent')) && <li><span className="sw sw-miss" aria-hidden />λείπει ποσό</li>}
           </ul>
         </div>
 
-        {/* ═══ ΤΟ ΓΡΑΦΗΜΑ ═══════════════════════════════════════════════════ */}
+        {/* ═══ ΤΟ ΓΡΑΦΗΜΑ ═══════════════════════════════════════════════════
+            ΜΙΑ ΕΠΙΛΟΓΗ, ΜΙΑ ΚΛΙΜΑΚΑ (21/10/2026). Εδειχνε δύο «επιλεγμένους»
+            μήνες μαζί: περίγραμμα στον πιο σφιχτό και γκρίζο φόντο στον
+            επιλεγμένο. Τώρα η επιλογή είναι μία (φόντο και λεπτό περίγραμμα) και
+            ο πιο σφιχτός μήνας λέγεται με κουκκίδα κάτω από το όνομά του. Η
+            κλίμακα γράφεται αριστερά: πάνω η μεγαλύτερη εισροή, κάτω η μεγαλύτερη
+            εκροή, στη μέση το μηδέν. */}
         <figure className="fc-chart" role="img" aria-label={`${summary} Ο πίνακας κάτω από το γράφημα έχει όλους τους μήνες.`}>
-          <div className="fc-plot">
-            <span className="fc-axis" style={frac(maxUp, span)} aria-hidden />
+          <div className="fc-scale" aria-hidden>
+            {maxUp > 0 && <span className="fc-tick fc-tick-top">{feWhole(maxUp)}</span>}
+            <span className="fc-tick fc-tick-zero" style={frac(upRoom, span)}>0</span>
+            {maxDown > 0 && <span className="fc-tick fc-tick-bot">−{feWhole(maxDown)}</span>}
+          </div>
+          <div className="fc-plot" ref={plotRef} onMouseMove={e => hoverAt(e.clientX)} onMouseLeave={() => setHov(null)}>
+            {maxUp > 0 && <span className="fc-grid fc-grid-top" aria-hidden />}
+            {maxDown > 0 && <span className="fc-grid fc-grid-bot" aria-hidden />}
+            <span className="fc-axis" style={frac(upRoom, span)} aria-hidden />
             {months.map((x, i) => {
               const vac = vacancyOf(x);
               const missing = x.gaps.some(g => g.kind === 'missing' && g.flow !== 'rent');
+              const noIn = x.inActual + x.inExpected === 0;
               return (
-                <div key={x.ym} className="fc-col" data-sel={i === sel ? '' : undefined} data-tight={tightest?.index === i ? '' : undefined}
-                  title={`${monthTitle(x)}: εισροές ${fe(x.inActual + x.inExpected)}, εκροές ${fe(x.outActual + x.outExpected)}`}>
-                  <div className="fc-up" style={frac(maxUp, span)}>
-                    {x.inActual > 0 && <span className="fc-bar in" style={frac(x.inActual, maxUp)} />}
-                    {x.inExpected > 0 && <span className="fc-bar in exp" style={frac(x.inExpected, maxUp)} />}
-                    {vac && x.inActual + x.inExpected === 0 && <span className="fc-vac" style={frac(vacLevel(x), maxUp)} />}
+                <div key={x.ym} className="fc-col" data-sel={i === sel ? '' : undefined} data-hov={i === hov && i !== sel ? '' : undefined}>
+                  <div className="fc-up" style={frac(upRoom, span)}>
+                    {x.inActual > 0 && <span className="fc-bar in" style={frac(x.inActual, upRoom)} />}
+                    {x.inExpected > 0 && <span className="fc-bar in exp" style={frac(x.inExpected, upRoom)} />}
+                    {vac && noIn && <span className="fc-vac" />}
                   </div>
                   <div className="fc-down" style={frac(maxDown, span)}>
                     {x.outActual > 0 && <span className="fc-bar out" style={frac(x.outActual, maxDown)} />}
@@ -184,12 +215,22 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
                 </div>
               );
             })}
+            {/* Η ΤΙΜΗ ΣΤΟ ΠΕΡΑΣΜΑ ΤΟΥ ΔΕΙΚΤΗ. Ο,τι λέει εδώ το λέει και η
+                γραμμή του επιλεγμένου μήνα από κάτω, με πλήκτρα και αφή. */}
+            {hov != null && months[hov] && (
+              <span className="fc-tip" aria-hidden style={{ ['--fc-share' as string]: Math.min(0.88, Math.max(0.12, (hov + 0.5) / months.length)) }}>
+                <span className="fc-tip-m">{monthTitle(months[hov])}</span>
+                <span className="fc-tip-v">καθαρό {feSigned(months[hov].net)}</span>
+              </span>
+            )}
           </div>
+          <span aria-hidden />
           <div className="fc-labels" aria-hidden>
             {months.map((x, i) => (
               <span key={x.ym} className="fc-lab" data-sel={i === sel ? '' : undefined} data-odd={i % 2 ? '' : undefined}>
                 <span className="fc-lab-m">{monthShort(x.month - 1)}</span>
-                {(i === 0 || x.month === 1) && <span className="fc-year">{x.year}</span>}
+                <span className="fc-year">{(i === 0 || x.month === 1) ? x.year : '\u00a0'}</span>
+                {tightest?.index === i && <span className="fc-dot" />}
               </span>
             ))}
           </div>
@@ -202,6 +243,11 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
           </IconBtn>
           <div className="fc-step-mid" aria-live="polite">
             <span className="fc-step-month">{monthTitle(m)}</span>
+            {/* ΤΑ ΠΟΣΑ ΤΗΣ ΣΤΗΛΗΣ, ΟΧΙ ΜΟΝΟ ΤΟ ΥΨΟΣ ΤΗΣ. Οι στήλες δεν έγραφαν
+                πουθενά τιμή: το διακεκομμένο κουτί ενός κενού μήνα έφτανε ως
+                πάνω και διαβαζόταν ως «αναμενόμενο» χωρίς ποσό. Ο επιλεγμένος
+                μήνας λέει εισροές και εκροές με την ίδια κλίμακα που ζωγραφίζει. */}
+            <span className="fc-step-net">εισροές {fe(m.inActual + m.inExpected)} · εκροές {fe(m.outActual + m.outExpected)}</span>
             <span className="fc-step-net">καθαρό {feSigned(m.net)}</span>
           </div>
           <IconBtn label="Επόμενος μήνας" disabled={sel >= months.length - 1} onClick={() => setSel(s => Math.min(months.length - 1, s + 1))}>
@@ -325,45 +371,70 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   .sw { display: inline-block; width: 10px; height: 10px; border-radius: ${T.radius.hair}px; flex-shrink: 0; }
   .sw-in { background: var(--series-in); }
   .sw-out { background: var(--series-out); }
-  .sw-exp { background: color-mix(in srgb, var(--text-tertiary) 14%, transparent); border: 1px dashed var(--text-secondary); }
-  .sw-vac { background: transparent; border: 1px dashed var(--text-tertiary); }
+  /* ΤΟ ΑΝΑΜΕΝΟΜΕΝΟ ΕΙΝΑΙ Η ΙΔΙΑ ΤΙΜΗ, ΠΙΟ ΕΛΑΦΡΙΑ. Διαγράμμιση στο χρώμα της
+     σειράς του, όχι διακεκομμένο άδειο κουτί. */
+  .sw-exp {
+    background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--text-secondary) 55%, transparent) 0 2px, transparent 2px 4px);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-secondary) 45%, transparent);
+  }
+  .sw-vac, .fc-vac {
+    background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--text-tertiary) 40%, transparent) 0 1px, transparent 1px 4px);
+    box-shadow: inset 0 0 0 1px var(--text-tertiary);
+  }
   .sw-miss { background: transparent; border: 1px dashed var(--text-tertiary); border-top: none; border-radius: ${T.radius.hair}px; }
-  .sw-in.sw-exp-of { background: color-mix(in srgb, var(--series-in) 22%, transparent); border: 1px dashed var(--series-in); }
-  .sw-out.sw-exp-of { background: color-mix(in srgb, var(--series-out) 22%, transparent); border: 1px dashed var(--series-out); }
+  .sw-in.sw-exp-of, .sw-out.sw-exp-of { box-shadow: none; }
+  .sw-in.sw-exp-of { background: repeating-linear-gradient(135deg, var(--series-in) 0 2px, color-mix(in srgb, var(--series-in) 25%, transparent) 2px 4px); }
+  .sw-out.sw-exp-of { background: repeating-linear-gradient(135deg, var(--series-out) 0 2px, color-mix(in srgb, var(--series-out) 25%, transparent) 2px 4px); }
+  .sw-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
 
-  .fc-chart { margin: 20px 0 0; }
+  .fc-chart {
+    margin: 20px 0 0; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px;
+  }
+  .fc-scale { position: relative; height: 176px; min-width: 40px; }
+  .fc-tick {
+    position: absolute; right: 0; font-family: ${T.font.num}; font-size: 11px; line-height: 1;
+    color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .fc-tick-top { top: 0; }
+  .fc-tick-bot { bottom: 0; }
+  .fc-tick-zero { top: calc(var(--fc-share, 0) * 100%); transform: translateY(-50%); }
   .fc-plot {
     position: relative; height: 176px;
     display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 4px;
   }
+  .fc-grid { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dotted var(--border-subtle); pointer-events: none; }
+  .fc-grid-top { top: 0; }
+  .fc-grid-bot { bottom: 0; }
   .fc-axis { position: absolute; left: 0; right: 0; top: calc(var(--fc-share, 0) * 100%); height: 1px; background: var(--series-axis); pointer-events: none; }
   .fc-col {
     position: relative; display: flex; flex-direction: column; min-width: 0;
-    border-radius: ${T.radius.xs}px;
+    border-radius: ${T.radius.xs}px; transition: background .16s ${T.ease.standard};
   }
-  .fc-col[data-sel] { background: var(--bg-hover); }
-  .fc-col[data-tight]::after {
-    content: ''; position: absolute; inset: -4px -2px; border-radius: ${T.radius.chip}px;
-    box-shadow: inset 0 0 0 2px var(--accent); pointer-events: none;
-  }
+  .fc-col[data-hov] { background: color-mix(in srgb, var(--bg-hover) 60%, transparent); }
+  .fc-col[data-sel] { background: var(--bg-hover); box-shadow: inset 0 0 0 1px var(--border-default); }
   .fc-up { height: calc(var(--fc-share, 0) * 100%); display: flex; flex-direction: column-reverse; align-items: center; min-height: 0; }
   .fc-down { height: calc(var(--fc-share, 0) * 100%); display: flex; flex-direction: column; align-items: center; min-height: 0; }
-  .fc-bar { display: block; height: calc(var(--fc-share, 0) * 100%); width: min(64%, 28px); flex-shrink: 0; min-height: 2px; }
+  .fc-bar { display: block; height: calc(var(--fc-share, 0) * 100%); width: min(60%, 24px); flex-shrink: 0; min-height: 2px; }
   .fc-bar.in { background: var(--series-in); }
   .fc-bar.out { background: var(--series-out); }
-  .fc-up .fc-bar:last-child { border-radius: ${T.radius.hair}px; }
-  .fc-down .fc-bar:last-of-type { border-radius: ${T.radius.hair}px; }
-  .fc-bar.exp { border-width: 1px; border-style: dashed; }
-  .fc-bar.in.exp { background: color-mix(in srgb, var(--series-in) 22%, transparent); border-color: var(--series-in); }
-  .fc-bar.out.exp { background: color-mix(in srgb, var(--series-out) 22%, transparent); border-color: var(--series-out); }
-  .fc-vac {
-    position: relative; display: block; height: calc(var(--fc-share, 0) * 100%); width: min(64%, 28px); flex-shrink: 0;
-    border: 1px dashed var(--text-tertiary); border-bottom: none; border-radius: ${T.radius.hair}px;
-  }
+  .fc-up .fc-bar:last-child, .fc-down .fc-bar:last-of-type { border-radius: ${T.radius.hair}px; }
+  .fc-bar.in.exp { background: repeating-linear-gradient(135deg, var(--series-in) 0 2px, color-mix(in srgb, var(--series-in) 25%, transparent) 2px 5px); }
+  .fc-bar.out.exp { background: repeating-linear-gradient(135deg, var(--series-out) 0 2px, color-mix(in srgb, var(--series-out) 25%, transparent) 2px 5px); }
+  .fc-vac { display: block; height: 10px; width: min(60%, 24px); flex-shrink: 0; border-radius: ${T.radius.hair}px; }
   .fc-miss {
-    display: block; width: min(64%, 28px); height: 12px; margin-top: 2px; flex-shrink: 0;
+    display: block; width: min(60%, 24px); height: 10px; margin-top: 2px; flex-shrink: 0;
     border: 1px dashed var(--text-tertiary); border-top: none; border-radius: ${T.radius.hair}px;
   }
+  .fc-tip {
+    position: absolute; top: 0; left: calc(var(--fc-share, 0.5) * 100%);
+    transform: translate(-50%, calc(-100% - 6px)); pointer-events: none;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; white-space: nowrap;
+    padding: 6px 10px; border-radius: ${T.radius.chip}px; border: 1px solid var(--border-default);
+    background: var(--bg-surface); box-shadow: var(--elev-1);
+    font-family: ${T.font.sans}; font-size: 11px; color: var(--text-secondary);
+  }
+  .fc-tip-m { font-weight: 700; color: var(--text-primary); }
+  .fc-tip-v { font-family: ${T.font.num}; font-variant-numeric: tabular-nums; }
   .fc-labels {
     display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 4px; margin-top: 8px;
   }
@@ -373,11 +444,15 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   }
   .fc-lab[data-sel] { color: var(--text-primary); font-weight: 700; }
   .fc-year { font-size: 11px; color: var(--text-tertiary); font-weight: 400; }
+  .fc-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-top: 2px; }
 
   .fc-step {
     display: grid; grid-template-columns: auto minmax(0, 240px) auto; justify-content: center; align-items: center; gap: 8px;
     margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-subtle);
   }
+  /* Μόνο το κοινό δαχτυλίδι του :focus-visible. Μετά από πάτημα με το ποντίκι
+     ή το δάχτυλο δεν μένει κουτί γύρω από το «›». */
+  .fc-step :global(.po-ico:focus:not(:focus-visible)) { outline: none; box-shadow: none; }
   .fc-step-mid { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
   .fc-step-month { font-family: ${T.font.sans}; font-size: 14px; font-weight: 700; color: var(--text-primary); }
   .fc-step-net { font-family: ${T.font.num}; font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
@@ -419,20 +494,23 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   .fc-table td { text-align: right; color: var(--text-primary); font-variant-numeric: tabular-nums; font-family: ${T.font.num}; }
   .fc-table tr[data-tight] th, .fc-table tr[data-tight] td { background: var(--accent-soft); }
 
+  @media (prefers-reduced-motion: reduce) { .fc-col { transition: none; } }
   @media (max-width: 620px) {
     .fc-body { padding: 14px 14px 10px; }
     .fc-head { padding: 14px 14px 12px; }
-    .fc-plot { height: 148px; column-gap: 2px; }
+    .fc-plot, .fc-scale { height: 148px; }
+    .fc-plot { column-gap: 2px; }
+    .fc-chart { column-gap: 6px; }
     .fc-labels { column-gap: 2px; }
     .fc-month, .fc-net { font-size: 18px; }
     .fc-legend { justify-content: flex-start; gap: 4px 12px; }
-    .fc-col[data-tight]::after { inset: -4px -1px; }
   }
   /* ΣΤΑ 320 ΔΩΔΕΚΑ ΕΤΙΚΕΤΕΣ ΔΕΝ ΧΩΡΑΝΕ. Κάθε στήλη είναι 20 εικονοστοιχεία και
      «Μαΐ Ιουν Ιουλ» κολλούσαν σε μία λέξη. Μένει κάθε δεύτερος μήνας, ο
      επιλεγμένος πάντα (με κρυμμένους τους γείτονές του, γιατί είναι έντονος) και
      το έτος όπου αλλάζει. */
-  @media (max-width: 360px) {
+  /* Με τη στήλη της κλίμακας αριστερά οι δώδεκα ετικέτες κολλούσαν ήδη στα 390. */
+  @media (max-width: 420px) {
     .fc-lab[data-odd]:not([data-sel]) .fc-lab-m { visibility: hidden; }
     .fc-lab[data-sel] + .fc-lab .fc-lab-m, .fc-lab:has(+ .fc-lab[data-sel]) .fc-lab-m { visibility: hidden; }
   }

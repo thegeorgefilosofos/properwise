@@ -23,20 +23,33 @@ import * as feedStore from '@/lib/data/calendarFeed'
 import { T, Btn } from '@/components/Theme'
 import { Calendar, CalendarDays, CalendarPlus } from 'lucide-react'
 
+// ═══ ΜΙΑ ΦΟΡΑ ΑΝΑ ΟΘΟΝΗ ════════════════════════════════════════════════════
+// Ο ιδιοκτήτης είδε την ίδια πρόταση δύο φορές στην Επισκόπηση (21/10/2026),
+// μία πάνω από τη Νόα και μία μέσα στην ατζέντα. Οποια κι αν είναι η δεύτερη
+// διαδρομή που την προσαρτά, η πρόταση δεν επαναλαμβάνεται: όσο υπάρχει μία
+// ορατή, κάθε επόμενη αποδίδει τίποτα.
+let shownBy: symbol | null = null
+
 export function CalendarQuickAdd({ userId, framed = false }: {
   userId: string
   /** Με δικό του περίγραμμα (Ημερολόγιο) ή ως τελευταία γραμμή κάρτας (Επισκόπηση). */
   framed?: boolean
 }) {
   const [row, setRow] = useState<feedStore.FeedRow | null>(null)
+  const [first, setFirst] = useState(false)
 
   useEffect(() => {
     let live = true
-    feedStore.feed(createClient(), userId).then(({ row: r }) => { if (live) setRow(r) })
-    return () => { live = false }
+    const me = Symbol('calendar-quick-add')
+    feedStore.feed(createClient(), userId).then(({ row: r }) => {
+      if (!live) return
+      if (shownBy === null) { shownBy = me; setFirst(true) }
+      setRow(r)
+    })
+    return () => { live = false; if (shownBy === me) shownBy = null }
   }, [userId])
 
-  if (!row?.token || feedStore.feedConnected(row)) return null
+  if (!first || !row?.token || feedStore.feedConnected(row)) return null
 
   const box = framed
     ? { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '10px 16px' }

@@ -21,19 +21,21 @@ import { type EventStatus, STATUSES } from './model'
 // Γι' αυτό η κράτηση τεσσάρων νυχτών φαινόταν σαν ένα χάπι, τρία κενά κελιά και
 // μια γραμμούλα. Το `fill` το λύνει ρητά, χωρίς να αλλάξει τίποτα στις
 // υπόλοιπες τριάντα χρήσεις.
-export function Tooltip({ text, children, fill }: { text: string; children: React.ReactNode; fill?: boolean }) {
+// ΜΕ `content` Η ΕΠΕΞΗΓΗΣΗ ΕΧΕΙ ΣΧΗΜΑ (EventDetails): πλατύτερη, με γραμμές
+// αντί για ένα κομμάτι κείμενο. Ανοίγει και με την εστίαση του πληκτρολογίου.
+export function Tooltip({ text, children, fill, content }: { text: string; children: React.ReactNode; fill?: boolean; content?: React.ReactNode }) {
   const [show, setShow] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left:number; top:number; below:boolean }>({ left:0, top:0, below:false })
-  const W = 280
+  const W = content ? 320 : 280
   const place = () => { const el=ref.current; if(!el)return; const r=el.getBoundingClientRect(); const below=r.top<170; const cx=r.left+r.width/2; const left=Math.max(8+W/2, Math.min(cx, window.innerWidth-8-W/2)); setPos({ left, top: below?r.bottom+8:r.top-8, below }) }
   useEffect(()=>{ if(!show)return; place(); const s=()=>place(); window.addEventListener('scroll',s,true); window.addEventListener('resize',s); return ()=>{ window.removeEventListener('scroll',s,true); window.removeEventListener('resize',s) } },[show])
   return (
-    <div ref={ref} style={fill?{ display:'flex', width:'100%', height:'100%' }:{ display:'inline-flex' }} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}>
+    <div ref={ref} style={fill?{ display:'flex', width:'100%', height:'100%' }:{ display:'inline-flex' }} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)} onFocus={content?()=>setShow(true):undefined} onBlur={content?()=>setShow(false):undefined}>
       {children}
-      {show && text && createPortal(
-        <div style={{ position:'fixed', left:pos.left, top:pos.top, transform:`translate(-50%, ${pos.below?'0':'-100%'})`, background:'var(--bg-elevated)', border:'1px solid var(--border-default)', borderRadius: T.radius.chip, padding:'9px 13px', fontSize:12, lineHeight:1.5, color:'var(--text-primary)', fontFamily: T.font.sans, zIndex:3000, pointerEvents:'none', width:W, maxWidth:'calc(100vw - 16px)', whiteSpace:'pre-wrap' as const, boxShadow:'var(--elev-3)' }}>
-          {text}
+      {show && (content || text) && createPortal(
+        <div role={content ? 'tooltip' : undefined} style={{ position:'fixed', left:pos.left, top:pos.top, transform:`translate(-50%, ${pos.below?'0':'-100%'})`, background:'var(--bg-elevated)', border:'1px solid var(--border-default)', borderRadius: content ? T.radius.popup : T.radius.chip, padding: content ? '12px 14px' : '9px 13px', fontSize:12, lineHeight:1.5, color:'var(--text-primary)', fontFamily: T.font.sans, zIndex:3000, pointerEvents:'none', width:W, maxWidth:'calc(100vw - 16px)', whiteSpace: content ? undefined : 'pre-wrap' as const, boxShadow:'var(--elev-3)' }}>
+          {content ?? text}
         </div>, document.body)}
     </div>
   )

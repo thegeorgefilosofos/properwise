@@ -41,7 +41,7 @@ const ITEM_SCAN_SYSTEM = `Είσαι σύστημα αναγνώρισης οι�
 Διάβασε ό,τι φαίνεται με ακρίβεια· άφησε κενά όσα δεν διακρίνονται. Το name να είναι περιγραφικό (π.χ. «Πλυντήριο Bosch WAU28»). Χωρίς κείμενο εκτός του JSON.`
 
 
-export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,startManual}:{item?:InventoryItem|null;onSave:(d:Partial<InventoryItem>)=>void;onClose:()=>void;propertyId:string;ctx:FieldContext;kwhPrice:number;
+export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,startManual}:{item?:InventoryItem|null;onSave:(d:Partial<InventoryItem>)=>Promise<boolean>|boolean|void;onClose:()=>void;propertyId:string;ctx:FieldContext;kwhPrice:number;
   /** Ανοίγει με όλα τα πεδία ορατά, όταν ο χρήστης ζήτησε ρητά το χέρι. */
   startManual?:boolean}) {
   const [form,setForm] = useState<Partial<InventoryItem>>(item?{...item,photos:item.photos||[]}:{...EMPTY_ITEM})
@@ -89,8 +89,10 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
     if(!form.name?.trim()){notifyError('Το όνομα είναι υποχρεωτικό.');return}
     const primaryUrl = form.photo_url||(form.photos&&form.photos.length>0?form.photos[0]:'')
     setSaving(true)
-    await onSave({...form,photo_url:primaryUrl})
-    setSaving(false)
+    // Ο τρόπος μέτρησης που ΒΛΕΠΕΙ ο χρήστης γράφεται μαζί με τα νούμερά του:
+    // αλλιώς kWh ανά 100 κύκλους θα αποθηκεύονταν χωρίς να λένε τι είναι.
+    try { await onSave({...form,photo_url:primaryUrl,energy_mode:isElectric?energyMode:(form.energy_mode??null)}) }
+    finally { setSaving(false) }
   }
   const [docUp,setDocUp] = useState(false)
   // Οι αποδείξεις πάνε σε ΙΔΙΩΤΙΚΟ bucket, με path ανά ακίνητο· αποθηκεύουμε το PATH και ανοίγουμε με signed URL.

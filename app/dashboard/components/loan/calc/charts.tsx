@@ -289,12 +289,20 @@ export function StressBars({stress,limit,INC,fmt,fmtPct,fmtPct1}:{stress:{label:
   const [svgRef,W]=useChartWidth(620)
   const H=176,padL=8,padT=18,padB=28
   const maxV=Math.max(...stress.map(s=>s.monthly), limit, 1)*1.14
-  const padR=axisGutter((limit>0?[0,limit,maxV/1.14]:[0,maxV/2/1.14,maxV/1.14]).map(v=>fmt(v)))
-  const plotW=W-padL-padR, plotH=H-padT-padB, base=padT+plotH
-  const step=plotW/stress.length, bw=Math.min(42, step*0.56)
+  const plotH=H-padT-padB, base=padT+plotH
   const Y=(v:number)=> padT+(1-v/maxV)*plotH
+  // ═══ ΔΥΟ ΕΤΙΚΕΤΕΣ ΣΤΟ ΙΔΙΟ ΥΨΟΣ ═══════════════════════════════════════
+  // Ο άξονας έγραφε πάντα το όριο ΚΑΙ τη μεγαλύτερη δόση. Με δόση 810,25€ και
+  // όριο 800,00€ οι δύο ετικέτες έπεφταν η μία πάνω στην άλλη (και πάνω στο
+  // «Όριο δόσης»). Οταν απέχουν λιγότερο από μία γραμμή κειμένου, μένει μόνο
+  // το όριο: η δόση κάθε σεναρίου λέγεται στο πλαίσιο και στον πίνακα.
+  const top=maxV/1.14
+  const grid=limit>0?[0,limit,...(Math.abs(Y(top)-Y(limit))>=14?[top]:[])]:[0,top/2,top]
+  const padR=axisGutter(grid.map(v=>fmt(v)))
+  const plotW=W-padL-padR
+  const step=plotW/stress.length, bw=Math.min(42, step*0.56)
   const cx=(i:number)=> padL+i*step+step/2
-  const grid=limit>0?[0,limit,maxV/1.14]:[0,maxV/2/1.14,maxV/1.14]
+  const anyOver=limit>0&&stress.some(s=>s.monthly>limit)
   const locate=(clientX:number)=>{
     const el=wrapRef.current; if(!el)return
     const r=el.getBoundingClientRect()
@@ -336,10 +344,19 @@ export function StressBars({stress,limit,INC,fmt,fmtPct,fmtPct1}:{stress:{label:
         })}
         {limit>0&&(<g>
           <line x1={padL} y1={Y(limit)} x2={W-padR} y2={Y(limit)} stroke="var(--text-secondary)" strokeWidth="1.4" strokeDasharray="5 4"/>
-          <text x={padL+2} y={Y(limit)-5} style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fill:'var(--text-secondary)',fontWeight:600}}>Όριο δόσης</text>
+          {/* Με περίγραμμα στο χρώμα της κάρτας: πάνω από στήλη διαβάζεται. */}
+          <text x={padL+2} y={Y(limit)-5} style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fill:'var(--text-secondary)',fontWeight:600,paintOrder:'stroke',stroke:'var(--surface-raised)',strokeWidth:3,strokeLinejoin:'round'}}>Όριο δόσης</text>
         </g>)}
         <line x1={padL} y1={base} x2={W-padR} y2={base} stroke="var(--border-default)" strokeWidth="1"/>
       </svg>
+      {/* ΤΟ ΓΚΡΙΖΟ ΗΤΑΝ ΧΩΡΙΣ ΕΞΗΓΗΣΗ. Η στήλη πάνω από το όριο βάφεται γκρίζα,
+          αλλά τίποτα στην οθόνη δεν το έλεγε· διαβαζόταν ως «ανενεργό σενάριο». */}
+      {anyOver&&(
+        <div style={{display:'flex',flexWrap:'wrap',gap:'4px 16px',marginTop:6,fontSize:'var(--fs-xs)',fontFamily:T.font.sans,color:'var(--text-secondary)'}}>
+          {stress.some(s=>s.monthly<=limit)&&<span style={{display:'inline-flex',alignItems:'center',gap:6}}><span aria-hidden style={{width:10,height:10,borderRadius:T.radius.hair,background:'var(--accent)'}}/>Μέσα στο όριο δόσης</span>}
+          <span style={{display:'inline-flex',alignItems:'center',gap:6}}><span aria-hidden style={{width:10,height:10,borderRadius:T.radius.hair,background:'var(--text-tertiary)'}}/>Πάνω από το όριο δόσης</span>
+        </div>
+      )}
       {hi!=null&&(()=>{
         const s=stress[hi], diff=s.monthly-stress[0].monthly, dti=INC>0?(s.monthly/INC)*100:0, over=limit>0&&s.monthly>limit
         return (

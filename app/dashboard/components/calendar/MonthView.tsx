@@ -12,6 +12,9 @@ import { staysOnDay, weekSegments, channelColor, type StaySpan } from '@/lib/cal
 import { MONTHS_NOM, mondayFirst, monthGen } from '@/lib/core/months'
 import { type CalEvent, CATEGORIES, DAY_NAMES_GR, daysUntil, isOverdue, todayStr } from './model'
 import { Tooltip } from './Bits'
+import { EventDetails } from './EventDetails'
+import { grDate } from '@/lib/core/format'
+import { taxKindOfEventSource } from '@/lib/tax/greekTaxCalendar'
 import { dueTextStart } from '@/lib/facts/deadlines'
 
 // Ενιαίο drag με pointer events — δουλεύει σε ΠΟΝΤΙΚΙ ΚΑΙ ΑΦΗ (κινητό/tablet).
@@ -131,7 +134,8 @@ export function DaySheet({ date, events, onClose, onPick, onNew }: {
       footer={<Btn variant="primary" onClick={onNew} className="act-fill">Νέο γεγονός</Btn>}>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {sorted.map((ev, i) => (
-          <button key={ev.id} onClick={() => onPick(ev)} className="po-hov-row cal-day-row" data-last={i === sorted.length - 1}>
+          <div key={ev.id} style={{ display: 'flex', flexDirection: 'column' }}>
+          <button onClick={() => onPick(ev)} className="po-hov-row cal-day-row" data-last={i === sorted.length - 1 && !(ev.notes || taxKindOfEventSource(ev.source))}>
             {/* Η ώρα κρατά σταθερή στήλη ώστε οι τίτλοι να ξεκινούν όλοι από το
                 ίδιο σημείο· χωρίς ώρα μένει κενή αντί να μετακινήσει τη γραμμή. */}
             {anyTime && <span style={{ width: '5ch', flexShrink: 0, fontSize: 'var(--fs-sm)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>{ev.event_time || ''}</span>}
@@ -144,6 +148,11 @@ export function DaySheet({ date, events, onClose, onPick, onNew }: {
           <span className="po-elide" style={{ flex: 1, minWidth: '6ch', fontSize: 'var(--fs-base)', fontWeight: 500, color: ev.status === 'paid' ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: ev.status === 'paid' ? 'line-through' : 'none' }}>{ev.title}</span>
             {ev.amount ? <span style={{ flexShrink: 0, fontSize: 'var(--fs-base)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>{fe(ev.amount)}</span> : null}
           </button>
+          {/* Η ΣΗΜΕΙΩΣΗ ΣΕ ΓΡΑΜΜΕΣ, ΟΧΙ ΣΕ ΤΟΙΧΟ. Στο τηλέφωνο δεν υπάρχει
+              αιώρηση: ό,τι λέει η επεξήγηση του πλέγματος λέγεται εδώ, με τις
+              πηγές ως συνδέσμους. */}
+          {(ev.notes || taxKindOfEventSource(ev.source)) && <div style={{ padding: '0 12px 12px' }}><EventDetails event={ev} header={false} interactive/></div>}
+          </div>
         ))}
       </div>
     </Modal>
@@ -401,7 +410,7 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
                         : null })()}
                       <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
                         {dayEvents.slice(0,3).map(ev=>(
-                          <Tooltip key={ev.id} text={`${ev.title}${ev.event_time?` · ${ev.event_time}`:''}${ev.amount?` · ${fe(ev.amount)}` :''}${ev._virtual?'\n(επαναλαμβανόμενο)':''}${ev.notes?`\n${ev.notes}`:''}`}>
+                          <Tooltip key={ev.id} text={ev.title} content={<EventDetails event={ev}/>}>
                             <div {...(coarse ? {} : { onPointerDown: !ev._virtual&&drag?drag.onDown(ev.id,ev.title):undefined, role:'button', tabIndex:0, 'aria-label':`Άνοιγμα: ${ev.title}`, onKeyDown:(e:React.KeyboardEvent)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();onEventClick(ev)}}, onClick:(e:React.MouseEvent)=>{e.stopPropagation();onEventClick(ev)} })} className="po-elide cal-chip" style={{ touchAction:'none', padding:'1px 4px', borderRadius: T.radius.xs, backgroundColor:CATEGORIES[ev.category].bg, color:CATEGORIES[ev.category].color, cursor:coarse?'inherit':ev._virtual?'pointer':'grab', width:'100%', opacity:ev.status==='paid'?0.4:ev._virtual?0.72:1, textDecoration:ev.status==='paid'?'line-through':'none', fontFamily: T.font.sans, letterSpacing:'0.25px' }}>
                               {(ev.recurring||ev._virtual)&&<RotateCcw size={9} style={{ marginRight: 4, verticalAlign:'middle', opacity:0.7 }}/>}{ev.event_time?ev.event_time+' ':''}{ev.title}
                             </div>
@@ -524,17 +533,20 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
               const when=dueTextStart(d)
               const soon=d<=1
               const more=row.kind==='series'?row.count-1:0
+              // ═══ ΜΙΑ ΓΡΑΜΜΗ ΤΙΤΛΟΣ, Η ΗΜΕΡΟΜΗΝΙΑ ΔΕΞΙΑ (21/10/2026) ═══════════
+              // Οι μακριοί τίτλοι («Τέλος ανθεκτικότητας κλιματικής κρίσης,
+              // απόδοση») έπιαναν τρεις σειρές στα 200 εικονοστοιχεία και το
+              // «Σε N ημέρες» άλλαζε θέση σε κάθε γραμμή. Τώρα ο τίτλος κόβεται σε
+              // μία σειρά (ολόκληρος στην επεξήγηση), η ημερομηνία κάθεται σε
+              // σταθερή στήλη δεξιά, απέναντι από το «σε N ημέρες»· το ποσό πάει
+              // στην τρίτη γραμμή μαζί με τον ρυθμό της σειράς.
               return (
-                <div key={row.kind==='series'?row.key:ev.id} title={`${ev.title}${ev.event_time?`, ${ev.event_time}`:''} ${when}`} style={{ display:'flex', gap: 8, alignItems:'flex-start' }}>
-                  <div style={{ width:3, borderRadius:3, background:cat.color, alignSelf:'stretch', flexShrink:0, minHeight:30, opacity:0.85 }}/>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color:'var(--text-primary)', lineHeight:1.35, marginBottom: 4, letterSpacing:'0.1px' }}>{ev.title}</p>
-                    <div style={{ display:'flex', gap:8, alignItems:'baseline', flexWrap:'wrap' }}>
-                      <span style={{ fontSize:12, fontFamily: T.font.sans, fontWeight:soon?600:400, color:soon?'var(--text-primary)':'var(--text-tertiary)' }}>{when}</span>
-                      {ev.amount!=null&&<span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--text-secondary)' }}>{fe(ev.amount)}</span>}
-                    </div>
-                    {more>0&&<p style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:'3px 0 0' }}>{[row.kind==='series'?row.cadence:null, more===1?'άλλη 1 φορά':`άλλες ${more} φορές`].filter(Boolean).join(' · ')}</p>}
-                  </div>
+                <div key={row.kind==='series'?row.key:ev.id} title={`${ev.title}, ${grDate(ev.event_date)}${ev.event_time?` ${ev.event_time}`:''}`} style={{ display:'grid', gridTemplateColumns:'3px minmax(0,1fr) auto', columnGap:12, rowGap:4, alignItems:'baseline' }}>
+                  <div style={{ gridRow:'1 / span 3', width:3, borderRadius:3, background:cat.color, alignSelf:'stretch', opacity:0.85 }}/>
+                  <p className="po-elide" style={{ gridColumn:'2 / span 2', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color:'var(--text-primary)', lineHeight:1.35, margin:0, minWidth:0 }}>{ev.title}</p>
+                  <span style={{ fontSize:12, fontFamily: T.font.sans, color:soon?'var(--text-primary)':'var(--text-tertiary)', fontWeight:soon?600:400, whiteSpace:'nowrap' }}>{when}</span>
+                  <span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--text-tertiary)', whiteSpace:'nowrap' }}>{grDate(ev.event_date)}</span>
+                  {(more>0||ev.amount!=null)&&<p style={{ gridColumn:'2 / span 2', fontSize: 'var(--fs-xs)', fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:0 }}>{ev.amount!=null&&<span style={{ color:'var(--text-secondary)', fontVariantNumeric:'tabular-nums' }}>{fe(ev.amount)}</span>}{ev.amount!=null&&more>0?' · ':''}{more>0?[row.kind==='series'?row.cadence:null, more===1?'άλλη 1 φορά':`άλλες ${more} φορές`].filter(Boolean).join(' · '):''}</p>}
                 </div>
               )
             })}

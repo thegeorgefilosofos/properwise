@@ -53,6 +53,11 @@ export interface AgendaItem {
   stake?: number;
   /** Ποιος το κάνει — μόνο οι υποχρεώσεις το ξέρουν. */
   who?: string;
+  /**
+   * Το ποσό της πληρωμής, όταν η εφαρμογή το ξέρει ήδη (δόση ΕΝΦΙΑ από την ίδια
+   * μηχανή με την πρόβλεψη). `estimate`: δεν βγήκε από εκκαθαριστικό.
+   */
+  amount?: { value: number; estimate: boolean };
 }
 
 /** Ό,τι παράγει το `computeInsights`, στο ελάχιστο που χρειάζεται εδώ. */
@@ -328,8 +333,32 @@ export function buildAgenda(input: {
     return byStake(a, b);
   });
 
+  // ═══ ΚΑΘΕ ΓΡΑΜΜΗ ΕΧΕΙ ΚΑΠΟΥ ΝΑ ΣΕ ΠΑΕΙ ═══════════════════════════════
+  // Οι προθεσμίες του νόμου έρχονταν χωρίς ενέργεια: η «ΕΝΦΙΑ, 8η δόση»
+  // καθόταν πρώτη, με αριθμό ημερών αριστερά και τίποτα δεξιά, ενώ όλες οι
+  // γραμμές από κάτω είχαν κουμπί. Η ενέργεια μπαίνει ΜΕΤΑ τη συγχώνευση,
+  // ώστε όπου ένα insight ξέρει καλύτερο προορισμό, να κρατιέται εκείνος.
+  const withAction = sorted.map(it => (it.action || it.origin !== 'obligation' ? it
+    : { ...it, action: { label: navLabel('calendar'), tab: 'calendar' } }));
+
   const limit = input.limit ?? 0;
-  return limit > 0 ? sorted.slice(0, limit) : sorted;
+  return limit > 0 ? withAction.slice(0, limit) : withAction;
+}
+
+/** Ό,τι χρειάζεται από μια γραμμή της πρόβλεψης για να δώσει ποσό. */
+export interface AmountLine { kind: string; date: string | null; amount: number; certainty: 'actual' | 'expected' }
+
+/**
+ * Το ποσό κάθε δόσης ΕΝΦΙΑ, από τις ΙΔΙΕΣ γραμμές που δείχνει η κάρτα «Οι
+ * επόμενοι 12 μήνες». Κανένας δεύτερος υπολογισμός: ίδια ημερομηνία, ίδιο ποσό.
+ * Όπου δεν βρεθεί γραμμή, η ατζέντα δεν μαντεύει.
+ */
+export function attachAmounts(items: AgendaItem[], lines: readonly AmountLine[]): AgendaItem[] {
+  return items.map(it => {
+    if (it.amount || !it.due || !/^tax:enfia-(first|instalment|last)-/.test(it.key)) return it;
+    const l = lines.find(x => x.kind === 'enfia' && x.date === it.due && x.amount > 0);
+    return l ? { ...it, amount: { value: l.amount, estimate: l.certainty !== 'actual' } } : it;
+  });
 }
 
 /** Πόσα από τη λίστα είναι ήδη ληξιπρόθεσμα — ο αριθμός δίπλα στην κεφαλίδα. */

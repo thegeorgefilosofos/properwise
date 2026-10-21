@@ -80,10 +80,27 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   // πλωτό κουμπί. Και σε οθόνη κάτω από 1.280 μένει σήμα από την αρχή: εκεί
   // το περιεχόμενο φτάνει ως την άκρη και δεν υπάρχει άδεια γωνία να καθίσει.
   const [scrolled, setScrolled] = useState(false);
+  // ═══ ΚΑΙ ΦΕΥΓΕΙ ΟΣΟ ΔΙΑΒΑΖΕΙΣ ΠΡΟΣ ΤΑ ΚΑΤΩ ════════════════════════════
+  // Το σήμα των 52 εικονοστοιχείων σκέπαζε ακόμη ό,τι περνούσε από τη γωνία:
+  // ο ιδιοκτήτης το φωτογράφισε πάνω στον τελευταίο μήνα («Σεπ») του γραφήματος
+  // «Οι επόμενοι 12 μήνες» (21/10/2026). Το περιθώριο του .app-content
+  // προστατεύει μόνο το ΤΕΛΟΣ της κύλισης. Οσο ο χρήστης κυλά προς τα κάτω το
+  // κουμπί αποσύρεται, με την πρώτη κίνηση προς τα πάνω, στην κορυφή ή στο
+  // τέλος της σελίδας ξαναγυρίζει — όπως κάθε πλωτό κουμπί κινητού.
+  const [away, setAway] = useState(false);
   useEffect(() => {
     const el = document.querySelector('.app-content');
     if (!(el instanceof HTMLElement)) return;
-    const read = () => setScrolled(el.scrollTop > 4);
+    let last = el.scrollTop;
+    const read = () => {
+      const y = el.scrollTop;
+      setScrolled(y > 4);
+      const atEnd = y + el.clientHeight >= el.scrollHeight - 8;
+      if (y <= 4 || atEnd) setAway(false);
+      else if (y > last + 6) setAway(true);
+      else if (y < last - 6) setAway(false);
+      last = y;
+    };
     read();
     el.addEventListener('scroll', read, { passive: true });
     return () => el.removeEventListener('scroll', read);
@@ -746,7 +763,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   useLoad(bootContext);
 
   return {
-    supabase, open, setOpen, fabPos, setFabPos, dragging, setDragging, scrolled, prefs, setPrefs,
+    supabase, open, setOpen, fabPos, setFabPos, dragging, setDragging, scrolled, away, prefs, setPrefs,
     reconcile, setReconcile, editing, setEditing, msgs, setMsgs, input, setInput, busy, setBusy,
     consumedActions, setConsumedActions, feedbackOpen, setFeedbackOpen, answeredRef, nudgedRef,
     imgRef, err, setErr, limitMsg, setLimitMsg, errDetail, setErrDetail, quota, setQuota, ctxStr,
