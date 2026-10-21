@@ -14,6 +14,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AadeE2Row, E2IncomeColumn } from '@/lib/tax/aadeE2';
 import type { E2PrefilledRow, AccountantPacksRow } from '@/lib/supabase/tables';
 import { safeRelPath } from '@/lib/storage/scopedUpload';
+import { forInsert } from './notNull';
 
 type Db = SupabaseClient;
 
@@ -131,7 +132,7 @@ export async function savePackStatus(db: Db, userId: string, year: number, owner
   if ('aadeDifferences' in patch) { row.aade_differences = patch.aadeDifferences; row.aade_checked_at = new Date().toISOString(); }
   if (patch.missingCount != null) row.missing_count = patch.missingCount;
   if (patch.missingTop) row.missing_top = patch.missingTop.slice(0, 5).map(s => s.slice(0, 200));
-  const { error } = await db.from('accountant_packs').upsert(row, { onConflict: 'user_id,tax_year,owner_afm' });
+  const { error } = await db.from('accountant_packs').upsert(forInsert('accountant_packs', row), { onConflict: 'user_id,tax_year,owner_afm' });
   if (error) { console.error('[e2Prefilled] κατάσταση φακέλου:', error); return false; }
   return true;
 }
@@ -172,12 +173,12 @@ export async function sharePack(db: Db, userId: string, year: number, ownerAfm: 
   const { error: upErr } = await db.storage.from(BUCKET).upload(path, new Blob([zip], { type: 'application/zip' }), { contentType: 'application/zip', upsert: true });
   if (upErr) { console.error('[e2Prefilled] ανέβασμα φακέλου:', upErr); return { ok: false, error: upErr.message }; }
   const sharedAt = new Date().toISOString();
-  const { error } = await db.from('accountant_packs').upsert({
+  const { error } = await db.from('accountant_packs').upsert(forInsert('accountant_packs', {
     user_id: userId, tax_year: year, owner_afm: ownerAfm,
     aade_differences: status.aadeDifferences, aade_checked_at: sharedAt,
-    missing_count: status.missingCount, missing_top: status.missingTop.slice(0, 5).map(s => s.slice(0, 200)),
+    missing_count: status.missingCount, missing_top: (status.missingTop ?? []).slice(0, 5).map(s => s.slice(0, 200)),
     file_path: path, size_bytes: zip.length, shared_at: sharedAt,
-  }, { onConflict: 'user_id,tax_year,owner_afm' });
+  }), { onConflict: 'user_id,tax_year,owner_afm' });
   if (error) { console.error('[e2Prefilled] γραμμή φακέλου:', error); return { ok: false, error: error.message }; }
   return { ok: true, sharedAt };
 }

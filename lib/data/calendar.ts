@@ -46,6 +46,7 @@ import { TAX_SOURCE_PREFIX } from '@/lib/tax/greekTaxCalendar';
 // εξάγει ήδη δικό του `row()` — τον κατασκευαστή της γραμμής — και ονομάζει
 // `rows` τις παραμέτρους του γραψίματος.
 import { read, rows as readRows, row as readRow, type ReadResult } from './read';
+import { forInsertMany, forUpdate } from './notNull';
 
 const TABLE = 'calendar_events';
 
@@ -146,7 +147,8 @@ export function row(scope: Scope, source: string, d: EventDraft): EventRow {
     property_id: scope.propertyId,
     user_id: scope.userId,
     title: d.title,
-    category: d.category,
+    // NOT NULL με προεπιλογή, όπως οι εξαιρέσεις πιο κάτω.
+    category: d.category ?? 'reminder',
     event_date: d.event_date,
     amount: d.amount ?? null,
     priority: d.priority ?? 'medium',
@@ -171,6 +173,21 @@ export function row(scope: Scope, source: string, d: EventDraft): EventRow {
     auto_hash: d.auto_hash ?? null,
     source: d.source ?? source,
   };
+}
+
+/**
+ * Η ίδια γραμμή ως ΔΙΟΡΘΩΣΗ υπάρχοντος γεγονότος.
+ *
+ * Το `row()` γράφει `recurrence_exdates: []` για να μη φτάσει ποτέ null σε
+ * εισαγωγή. Σε ενημέρωση όμως το `[]` ΣΒΗΝΕΙ: η αποθήκευση της φόρμας με
+ * «Όλη τη σειρά» έφερνε πίσω κάθε ημέρα που ο χρήστης είχε βγάλει από τη σειρά
+ * (και κάθε πληρωμένο μήνα της υπενθύμισης ενοικίου). Η φόρμα δεν δείχνει τις
+ * εξαιρέσεις, άρα δεν τις αγγίζει.
+ */
+export function editPatch(r: EventRow): Partial<CalendarEventsRow> {
+  const out: Partial<EventRow> = { ...r };
+  delete out.recurrence_exdates;
+  return out as Partial<CalendarEventsRow>;
 }
 
 /**
@@ -342,7 +359,7 @@ export async function taxRowsOf(db: Db, propertyIds: readonly string[]): Promise
  */
 export async function insertOnce(db: Db, rows: EventRow[]): Promise<Outcome> {
   for (let i = 0; i < rows.length; i += BATCH) {
-    const part = rows.slice(i, i + BATCH);
+    const part = forInsertMany(TABLE, rows.slice(i, i + BATCH));
     const { error } = await db.from(TABLE).insert(part);
     if (!error) continue;
     if (error.code !== '23505') return { data: null, error };
@@ -359,7 +376,7 @@ export async function insertOnce(db: Db, rows: EventRow[]): Promise<Outcome> {
 /** Εισαγωγή σε παρτίδες. Σταματά στο πρώτο σφάλμα και το επιστρέφει. */
 export async function insert(db: Db, rows: EventRow[]): Promise<Outcome> {
   for (let i = 0; i < rows.length; i += BATCH) {
-    const { error } = await db.from(TABLE).insert(rows.slice(i, i + BATCH));
+    const { error } = await db.from(TABLE).insert(forInsertMany(TABLE, rows.slice(i, i + BATCH)));
     if (error) return { data: null, error };
   }
   return { data: null, error: null };
@@ -374,7 +391,7 @@ export async function add(
 
 /** Ενημέρωση μιας γραμμής. */
 export function update(db: Db, id: string, patch: Partial<CalendarEventsRow>): PromiseLike<{ error: DbError | null }> {
-  return db.from(TABLE).update(patch).eq('id', id);
+  return db.from(TABLE).update(forUpdate(TABLE, patch)).eq('id', id);
 }
 
 /**
@@ -385,7 +402,7 @@ export function update(db: Db, id: string, patch: Partial<CalendarEventsRow>): P
  * και πενήντα πιθανά μηνύματα σφάλματος για την ίδια ενέργεια.
  */
 export function updateMany(db: Db, ids: string[], patch: Partial<CalendarEventsRow>): PromiseLike<{ error: DbError | null }> {
-  return db.from(TABLE).update(patch).in('id', ids);
+  return db.from(TABLE).update(forUpdate(TABLE, patch)).in('id', ids);
 }
 
 /**
@@ -394,7 +411,7 @@ export function updateMany(db: Db, ids: string[], patch: Partial<CalendarEventsR
  * πληρωμή που έχει ήδη γίνει.
  */
 export function updateByBill(db: Db, billId: string, patch: Partial<CalendarEventsRow>): PromiseLike<{ error: DbError | null }> {
-  return db.from(TABLE).update(patch).eq('bill_id', billId);
+  return db.from(TABLE).update(forUpdate(TABLE, patch)).eq('bill_id', billId);
 }
 
 /** Διαγραφή μιας γραμμής ή πολλών, με ένα αίτημα. */

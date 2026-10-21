@@ -27,6 +27,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { rows as readRows, row as readRow, readOne, read } from './read';
+import { forInsert } from './notNull';
 import type { DbError } from '@/lib/supabase/writeResult';
 
 const TABLE = 'bills_settings';
@@ -144,8 +145,14 @@ export async function acrossPropertiesWithError<T = SettingsData>(
  * ή στη `must()` και η αποτυχία να μη χαθεί.
  */
 export function put(db: Db, propertyId: string, userId: string, name: Section, data: SettingsData) {
+  // ΕΝΑ null ΔΕΝ ΓΡΑΦΕΤΑΙ ΠΟΤΕ. Το upsert αντικαθιστά ολόκληρο το jsonb της
+  // ενότητας: αν το null ερχόταν από ανάγνωση που απέτυχε, ένα `{}` στη θέση
+  // του θα έσβηνε σιωπηλά όλες τις ρυθμίσεις. Αποτυγχάνει φανερά, χωρίς αίτημα.
+  if (data == null) {
+    return Promise.resolve({ data: null, error: { message: 'Η ενότητα ρυθμίσεων δεν έχει περιεχόμενο', code: 'EMPTY_SECTION' } });
+  }
   return db.from(TABLE).upsert(
-    { property_id: propertyId, user_id: String(userId), section: name, data },
+    forInsert(TABLE, { property_id: propertyId, user_id: String(userId), section: name, data }),
     { onConflict: 'property_id,section' },
   );
 }

@@ -25,6 +25,7 @@ import type { ClientStaysRow } from '@/lib/supabase/tables';
 // ΤΟ `rows` ΠΑΙΡΝΕΙ ΨΕΥΔΩΝΥΜΟ: οι εγγραφές του αρχείου (`add`, `addBatched`)
 // έχουν ήδη παράμετρο με το όνομα `rows`.
 import { read, rows as readRows, type ReadResult } from './read';
+import { forInsertMany, forUpdate } from './notNull';
 
 const TABLE = 'client_stays';
 
@@ -146,7 +147,7 @@ export async function withClientName<T = Partial<ClientStaysRow>>(
 // ── ΕΓΓΡΑΦΗ ────────────────────────────────────────────────────────────────
 
 export function add(db: Db, rows: StayPatch[]) {
-  return db.from(TABLE).insert(rows);
+  return db.from(TABLE).insert(forInsertMany(TABLE, rows));
 }
 
 /**
@@ -158,14 +159,14 @@ export function add(db: Db, rows: StayPatch[]) {
  */
 export async function addBatched(db: Db, rows: StayPatch[], batch = 50) {
   for (let i = 0; i < rows.length; i += batch) {
-    const { error } = await db.from(TABLE).insert(rows.slice(i, i + batch));
+    const { error } = await db.from(TABLE).insert(forInsertMany(TABLE, rows.slice(i, i + batch)));
     if (error) return { data: null, error };
   }
   return { data: null, error: null };
 }
 
 export function update(db: Db, id: string, patch: StayPatch) {
-  return db.from(TABLE).update(patch).eq('id', id);
+  return db.from(TABLE).update(forUpdate(TABLE, patch)).eq('id', id);
 }
 
 export function remove(db: Db, id: string) {

@@ -27,6 +27,7 @@ import type { UserPropertiesRow } from '@/lib/supabase/tables';
 // ΤΟ `row` ΠΑΙΡΝΕΙ ΨΕΥΔΩΝΥΜΟ: το αρχείο έχει ήδη παραμέτρους με το όνομα `row`
 // στις εγγραφές (`add`).
 import { read, readOne, row as readRow, type ReadResult, type ReadOneResult } from './read';
+import { forInsert } from './notNull';
 
 const TABLE = 'user_properties';
 
@@ -171,11 +172,23 @@ export async function count(db: Db, userId: string): Promise<number> {
 
 // ── ΓΡΑΨΙΜΟ ────────────────────────────────────────────────────────────────
 
+// ΤΟ ΚΕΝΟ ΕΜΒΑΔΟΝ ΔΕΝ ΕΙΝΑΙ null (PROPERWISE-9). Τα `sqm`, `ownership` και
+// `prop_type` είναι NOT NULL με προεπιλογή και το PostgREST δεν τη βάζει όταν
+// του στέλνεις null. Ο οδηγός έστελνε `sqm: null` όταν το πεδίο έμενε κενό,
+// ενώ η οθόνη το λέει προαιρετικό: «Το ακίνητο δεν αποθηκεύτηκε» στη
+// δημιουργία και στην επεξεργασία. Το κενό γράφεται πλέον 0, όπως θα το έγραφε
+// η ίδια η βάση· όλες οι αναγνώσεις διαβάζουν το 0 ως «δεν δόθηκε» (ΕΝΦΙΑ,
+// τέλος ανθεκτικότητας, συμφωνητικό, δήλωση μίσθωσης, σύγκριση).
+
 /** Ενημέρωση ακινήτου, δεμένη στον χρήστη όπου τον ξέρουμε. */
 export function update(
   db: Db, propertyId: string, patch: PropertyPatch, userId?: string,
 ): PromiseLike<{ error: { message?: string; code?: string } | null }> {
-  const q = db.from(TABLE).update(patch).eq('id', propertyId);
+  // ΜΟΝΟ το εμβαδόν: «κενό = 0» είναι η συμφωνημένη ανάγνωση. Ενα null στο
+  // ποσοστό ή στον τύπο ΔΕΝ γίνεται 100% ή «Κατοικία»: ένα ποσοστό που δεν
+  // δήλωσε κανείς αλλάζει τον φόρο, οπότε εκεί προτιμάται η φανερή αποτυχία.
+  const safe = patch.sqm === null ? { ...patch, sqm: 0 } : patch;
+  const q = db.from(TABLE).update(safe).eq('id', propertyId);
   return userId ? q.eq('user_id', userId) : q;
 }
 
@@ -183,7 +196,7 @@ export function update(
 export function add(
   db: Db, row: PropertyPatch,
 ): PromiseLike<{ data: { id: string } | null; error: { message?: string; code?: string } | null }> {
-  return db.from(TABLE).insert(row).select('id').single();
+  return db.from(TABLE).insert(forInsert(TABLE, row)).select('id').single();
 }
 
 /** Διαγραφή ακινήτου. Ο χρήστης δίνεται πάντα: εδώ δεν υπάρχει «δεν τον ξέρω». */

@@ -320,7 +320,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
     // πέτυχε — ο χρήστης έχανε τίτλο, ημερομηνία, ώρα, ποσό, επανάληψη και
     // σημειώσεις, χωρίς να του πει κανείς τίποτα.
     const { error } = editingEvent
-      ? await calendar.update(supabase,editingEvent.id,payload)
+      ? await calendar.update(supabase,editingEvent.id,calendar.editPatch(payload))
       : await calendar.insert(supabase,[payload])
     if(error){ notifyError('Το γεγονός δεν αποθηκεύτηκε. Δοκίμασε ξανά.'); setSaving(false); return }
     if(!editingEvent) await maybeCreateExpense()
@@ -332,7 +332,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
     const base=editingEvent; const occ=editOccDate||base.event_date; const payload=buildPayload()
     try{
       if(scope==='all'){
-        await saved('Η σειρά δεν ενημερώθηκε', calendar.update(supabase,base.id,payload))
+        await saved('Η σειρά δεν ενημερώθηκε', calendar.update(supabase,base.id,calendar.editPatch(payload)))
       }else if(scope==='this'){
         // Απόσπαση μόνο αυτής: νέο μεμονωμένο με τις αλλαγές + εξαίρεση της ημέρας από τη σειρά.
         // Η ΣΕΙΡΑ ΤΩΝ ΔΥΟ ΕΧΕΙ ΣΗΜΑΣΙΑ: αν μπει η εξαίρεση χωρίς να έχει
@@ -344,7 +344,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       }else{
         // Αυτό και τα επόμενα: κόψε τη σειρά την προηγούμενη μέρα + νέα σειρά από την occ.
         if(await saved('Η σειρά δεν κόπηκε στη σωστή ημερομηνία', calendar.update(supabase,base.id,{recurrence_until:addDaysStr(occ,-1),recurrence_count:null}))){
-          await saved('Η νέα σειρά δεν δημιουργήθηκε', calendar.insert(supabase,[{...payload,event_date:occ}]))
+          await saved('Η νέα σειρά δεν δημιουργήθηκε', calendar.insert(supabase,[{...payload,event_date:occ,recurrence_exdates:((base.recurrence_exdates||[]) as string[]).filter(d=>d>=occ)}]))
         }
       }
     }catch{}
