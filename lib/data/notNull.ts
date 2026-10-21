@@ -28,7 +28,7 @@ export const NOT_NULL_DEFAULTS = {
   calendar_events: { category: 'reminder', recurrence_exdates: [] as string[] },
   bills_settings: { data: {} as Record<string, unknown> },
   client_stays: { amount_basis: 'unknown' },
-  property_documents: { kind: 'document' },
+  property_documents: { kind: 'document', statement_total: false },
   accountant_packs: { missing_count: 0, missing_top: [] as string[] },
 } as const;
 
