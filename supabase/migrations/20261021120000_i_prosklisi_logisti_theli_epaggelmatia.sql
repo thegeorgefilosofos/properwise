@@ -158,9 +158,12 @@ begin
       v_status := 'already_client';
     -- ΕΝΑΝΤΙΩΣΗ ΜΕΣΩ ΥΠΟΣΤΗΡΙΞΗΣ (5γ): «όχι» προς όλους τους αποστολείς. Ο
     -- αποστολέας διαβάζει ό,τι και στο «Όχι» του πελάτη· τίποτα παραπάνω.
+    -- ΜΕΤΡΑ ΣΤΟ ΟΡΙΟ ΟΠΩΣ ΜΙΑ ΑΠΟΣΤΟΛΗ: αλλιώς ο αποστολέας θα δοκίμαζε δωρεάν
+    -- εκατό διευθύνσεις τη φορά για να μάθει ποιες αντιτάχθηκαν.
     elsif exists (select 1 from accountant_invite_optouts o
                    where o.address_sha256 = private.invite_address_sha256(v_email)) then
-      v_status := 'declined';
+      v_quota := public.bump_send_quota('accountant_invite', 1, 50, interval '24 hours');
+      v_status := case when coalesce((v_quota ->> 'allowed')::boolean, false) then 'declined' else 'rate_limited' end;
     else
       select * into v_inv from accountant_invites where accountant_id = v_me and email = v_email;
       if found and v_inv.status = 'declined' then
@@ -386,10 +389,13 @@ end $$;
 -- και δεν ξαναπαίρνει πρόσκληση από ΚΑΝΕΝΑΝ αποστολέα.
 --
 -- ΚΑΜΙΑ ΔΙΕΥΘΥΝΣΗ, ΜΟΝΟ ΑΠΟΤΥΠΩΜΑ. Κρατιέται το SHA-256 της διεύθυνσης σε
--- πεζά: αρκεί για να αναγνωριστεί όταν ξαναγραφτεί και δεν διαβάζεται πίσω.
--- Γι' αυτό ο πίνακας δεν έχει στήλη email και ο έλεγχος πληρότητας της
--- διαγραφής (20260818100000) δεν τον αφορά. Μένει και μετά από διαγραφή
--- λογαριασμού: είναι η ίδια η εναντίωση και χωρίς αυτήν θα ξαναστελνόταν.
+-- πεζά: αρκεί για να αναγνωριστεί όταν ξαναγραφτεί. ΔΕΝ είναι ανώνυμο: χωρίς
+-- αλάτι, όποιος μαντέψει μια διεύθυνση βρίσκει αν είναι εδώ. Είναι
+-- ψευδωνυμοποιημένο προσωπικό δεδομένο (αιτ. 26 ΓΚΠΔ) και φυλάσσεται ως τέτοιο:
+-- καμία πρόσβαση εκτός από τον ρόλο υπηρεσίας. Ο πίνακας δεν έχει στήλη email,
+-- οπότε ο έλεγχος πληρότητας της διαγραφής (20260818100000) δεν τον αφορά.
+-- Μένει επ' αόριστον ακόμη και μετά από διαγραφή λογαριασμού: είναι η απόδειξη της
+-- εναντίωσης (άρθρα 17§3, 21 ΓΚΠΔ) και χωρίς αυτήν θα ξαναστελνόταν.
 create table if not exists public.accountant_invite_optouts (
   address_sha256 text primary key,
   created_at     timestamptz not null default now()
@@ -423,8 +429,11 @@ as $$ select encode(sha256(convert_to(lower(btrim(coalesce(p_email, ''))), 'UTF8
 alter function private.invite_address_sha256(text) owner to postgres;
 revoke all on function private.invite_address_sha256(text) from public, anon, authenticated;
 
--- Η υποστήριξη καταχωρεί την εναντίωση. Οι ανοιχτές προσκλήσεις προς αυτή
--- τη διεύθυνση σβήνουν και τα μηνύματά τους που δεν έφυγαν ακυρώνονται.
+-- Η υποστήριξη καταχωρεί την εναντίωση. Από εκεί και πέρα η διεύθυνση ΔΕΝ
+-- μένει πουθενά στις προσκλήσεις: σβήνουν όλα τα μηνύματα `accountant_invite`
+-- προς αυτήν στην ουρά (σταλμένα, ακυρωμένα και εκκρεμή) και οι προσκλήσεις
+-- της κάθε αποστολέα εκτός από την αποδεκτή, που είναι ίχνος σύνδεσης
+-- λογαριασμού. Ετσι το υποσέλιδο λέει αλήθεια: «κρατάμε μόνο αποτύπωμα».
 create or replace function public.accountant_invite_optout(p_email text)
  returns json
  language plpgsql
@@ -439,9 +448,9 @@ begin
   insert into accountant_invite_optouts (address_sha256)
     values (private.invite_address_sha256(v_email))
   on conflict (address_sha256) do nothing;
-  update email_outbox set status = 'skipped', last_error = 'optout'
-   where copy_id = 'accountant_invite' and status = 'pending' and lower(btrim(to_email)) = v_email;
-  delete from accountant_invites where email = v_email and status in ('sent', 'withdrawn');
+  delete from email_outbox
+   where copy_id = 'accountant_invite' and lower(btrim(to_email)) = v_email;
+  delete from accountant_invites where email = v_email and status in ('sent', 'withdrawn', 'declined');
   get diagnostics v_n = row_count;
   return json_build_object('ok', true, 'invitesRemoved', v_n);
 end $$;
@@ -503,6 +512,15 @@ revoke all on function private.accountant_invites_forget_email() from public, an
 -- κερδήθηκε με πέντε συνδρομητές (`pro_paid`) να μη χαθεί επειδή υπάρχει και
 -- ένας παλιός «Ιδιοκτήτης+». Η κατάχρηση μένει κλειστή: τις βαθμίδες τις
 -- γράφει μόνο ο διακομιστής και η «agency» κερδίζεται μόνο με συνδρομητές.
+--
+-- ΡΗΤΗ ΕΠΙΛΟΓΗ, ΠΕΡΙΜΕΝΕΙ ΕΓΚΡΙΣΗ ΙΔΙΟΚΤΗΤΗ. Οι μήνες ΑΘΡΟΙΖΟΝΤΑΙ από όλες τις
+-- βαθμίδες (ως 12) και ΟΛΟΙ παίρνουν την υψηλότερη: 11 μήνες «Ιδιοκτήτης+» και
+-- ένας «Επαγγελματίας» κάνουν 12 μήνες «Επαγγελματίας». Η εναλλακτική είναι
+-- λογαριασμός μηνών ανά βαθμίδα, που θέλει δεύτερο `comp_plan` ή διαδοχικά
+-- διαστήματα. Στην παραγωγή δεν υπάρχει σήμερα καμία ανταμοιβή. Το
+-- scripts/db/rls-probe.sql καρφώνει την τρέχουσα συμπεριφορά (πλήθος μηνών και
+-- βαθμίδα), ώστε η αλλαγή να γίνει μόνο ως απόφαση.
+--
 -- Αν λείπει η βαθμίδα, «owner». Το υπόλοιπο σώμα είναι αυτούσιο, με το
 -- `search_path` καρφωμένο όπως στις υπόλοιπες συναρτήσεις αυτού του αρχείου.
 create or replace function public.sync_comp_from_referrals()

@@ -4150,6 +4150,12 @@ begin
   perform public.sync_comp_from_referrals();
   select comp_plan into cp from public.billing_profiles where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
   if cp is distinct from 'agency' then raise exception 'Ο κερδισμένος μήνας «Επαγγελματίας» χάθηκε δίπλα σε «Ιδιοκτήτης+»: comp_plan = %', cp; end if;
+  -- ΚΑΡΦΩΜΕΝΗ ΕΠΙΛΟΓΗ (περιμένει έγκριση): οι μήνες αθροίζονται από όλες τις
+  -- βαθμίδες και όλοι παίρνουν την υψηλότερη. 1 «owner» + 1 «agency» = 2 μήνες «agency».
+  if (select comp_months_granted from public.billing_profiles where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0') is distinct from 2 then
+    raise exception 'Οι μήνες των μικτών ανταμοιβών δεν είναι 2: %',
+      (select comp_months_granted from public.billing_profiles where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0');
+  end if;
   raise notice 'probe: με μικτές ανταμοιβές μετρά η υψηλότερη βαθμίδα';
 end $probe$;
 
@@ -4271,10 +4277,25 @@ set session "probe.uid" = '';
 do $probe$
 declare res json;
 begin
+  -- Η διεύθυνση έχει ήδη περάσει από την ουρά (σταλμένο και εκκρεμές μήνυμα) και
+  -- από τις προσκλήσεις (ένα «όχι»): μετά την εναντίωση δεν μένει πουθενά.
+  insert into public.email_outbox (copy_id, to_email, params, category, dedup_key, status, sent_at) values
+    ('accountant_invite', 'Opt@probe.test', '{}'::jsonb, 'transactional', 'probe-opt-sent', 'sent', now()),
+    ('accountant_invite', 'opt@probe.test', '{}'::jsonb, 'transactional', 'probe-opt-pending', 'pending', null);
+  insert into public.accountant_invites (accountant_id, email, status) values
+    ('1a1a1a1a-0000-4000-8000-0000000000ac', 'opt@probe.test', 'declined');
+  perform set_config('probe.units', coalesce((select units from public.send_quota
+     where user_id = '1a1a1a1a-0000-4000-8000-0000000000ac' and kind = 'accountant_invite'), 0)::text, false);
   res := public.accountant_invite_optout(' Opt@Probe.test ');
   if (res->>'ok')::boolean is not true then raise exception 'Η εναντίωση δεν καταχωρήθηκε: %', res; end if;
   if exists (select 1 from public.accountant_invite_optouts where address_sha256 like '%@%') then
     raise exception 'Η εναντίωση κρατά τη διεύθυνση αντί για αποτύπωμα';
+  end if;
+  if exists (select 1 from public.email_outbox where copy_id = 'accountant_invite' and lower(btrim(to_email)) = 'opt@probe.test') then
+    raise exception 'Μετά την εναντίωση η διεύθυνση μένει στην ουρά των email (και σταλμένα)';
+  end if;
+  if exists (select 1 from public.accountant_invites where email = 'opt@probe.test') then
+    raise exception 'Μετά την εναντίωση η διεύθυνση μένει στις προσκλήσεις';
   end if;
 end $probe$;
 set role authenticated;
@@ -4302,6 +4323,12 @@ do $probe$
 begin
   if exists (select 1 from public.accountant_invites where email = 'opt@probe.test') then
     raise exception 'Η διεύθυνση που αντιτάχθηκε γράφτηκε στις προσκλήσεις';
+  end if;
+  -- Η απάντηση «declined» για εναντίωση ΜΕΤΡΑ στο όριο όπως μια αποστολή.
+  if (select units from public.send_quota where user_id = '1a1a1a1a-0000-4000-8000-0000000000ac' and kind = 'accountant_invite')
+     is distinct from current_setting('probe.units')::int + 1 then
+    raise exception 'Η δοκιμή διεύθυνσης που αντιτάχθηκε δεν μέτρησε στο όριο (πριν %, τώρα %)', current_setting('probe.units'),
+      (select units from public.send_quota where user_id = '1a1a1a1a-0000-4000-8000-0000000000ac' and kind = 'accountant_invite');
   end if;
   if exists (select 1 from public.email_outbox where copy_id = 'accountant_invite' and to_email = 'opt@probe.test') then
     raise exception 'Μήνυμα μπήκε στην ουρά για διεύθυνση που αντιτάχθηκε';
