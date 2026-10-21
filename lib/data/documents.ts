@@ -26,6 +26,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PropertyDocumentsRow } from '@/lib/supabase/tables';
 import { read, rows as readRows } from './read';
+import { forInsert, forUpdate } from './notNull';
 import type { DbError } from '@/lib/supabase/writeResult';
 import { INCOME_TAX_TITLE, incomeTaxYearOf, ENFIA_TITLE, enfiaYearOf } from '@/lib/billing/documents';
 
@@ -182,7 +183,7 @@ export async function add(
 ): Promise<{ id: string | null; error: { message?: string } | null }> {
   const { data, error } = await withoutMissingColumns<{ id?: string } | null>(
     { ...patch, property_id: propertyId, user_id: userId },
-    p => db.from(TABLE).insert(p).select('id').single(),
+    p => db.from(TABLE).insert(forInsert(TABLE, p)).select('id').single(),
   );
   return { id: data?.id ?? null, error };
 }
@@ -190,7 +191,7 @@ export async function add(
 /** Ενημέρωση ενός ή περισσότερων εγγράφων, με την ίδια άμυνα στηλών. */
 export async function update(db: Db, ids: string[], patch: DocumentPatch) {
   if (ids.length === 0) return { data: null, error: null };
-  return withoutMissingColumns<null>(patch, p => db.from(TABLE).update(p).in('id', ids));
+  return withoutMissingColumns<null>(patch, p => db.from(TABLE).update(forUpdate(TABLE, p)).in('id', ids));
 }
 
 export function remove(db: Db, id: string) {

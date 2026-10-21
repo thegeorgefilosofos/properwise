@@ -459,6 +459,16 @@ const TWO_LEASE_PAYS: E2Payment[] = [
   // Συμπληρωματικά II: κτήση μέσα στο έτος.
   ok('Συμπληρωματικά II: αγορά του έτους', e2AcquiredRows(P({ purchase_date: '2025-04-10' }), 2025)[0]?.[3].toString().startsWith('Αγορά 10/04/2025'));
   ok('Συμπληρωματικά II: παλιότερη αγορά δεν μπαίνει', e2AcquiredRows(P({ purchase_date: '2019-04-10' }), 2025).length === 0);
+  // ΤΟ 0 Τ.Μ. ΕΙΝΑΙ «ΔΕΝ ΔΟΘΗΚΕ», ΟΧΙ ΕΜΒΑΔΟΝ. Η βάση γράφει 0 όταν το πεδίο μένει
+  // κενό (προεπιλογή NOT NULL)· στο Ε2 έβγαινε 0,00 στη στήλη επιφάνειας.
+  {
+    const zero = P({ sqm: 0, purchase_date: '2025-04-10' } as never);
+    const off = buildE2OfficialCells(zero, T(), [], '999999999', 2025, 1);
+    ok('Ε2 Πίνακας I: εμβαδόν 0 γράφεται κενό', off.length > 0 && off.every(r => r[E2_NUM_COLS.sqm] === ''));
+    ok('Ε2 Πίνακας II: εμβαδόν 0 δεν γράφει «0 τ.μ.»', !String(e2AcquiredRows(zero, 2025)[0]?.join(' ') ?? '').includes('0 τ.μ.'));
+    const real = buildE2OfficialCells(P({ sqm: 85 } as never), T(), [], '999999999', 2025, 1);
+    ok('Ε2 Πίνακας I: πραγματικό εμβαδόν μένει', real[0]?.[E2_NUM_COLS.sqm] === 85);
+  }
 }
 
 // ── report ───────────────────────────────────────────────────────────────────
