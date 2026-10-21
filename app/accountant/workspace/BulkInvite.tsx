@@ -29,6 +29,7 @@ import { PLANS } from '@/lib/billing/plans';
 import { PROFESSIONAL_MIN_PLAN } from '@/lib/billing/entitlements';
 import {
   parseEmailList, uniqueCount, inviteClients, myInvitesSent, withdrawInvite,
+  myAllowance, allowanceLine, invitesLeft, INVITE_LIMITS, type InviteAllowance,
   INVITE_STATUS_LABEL, type InviteResult, type SentInvite,
 } from '@/lib/data/accountantInvites';
 
@@ -37,7 +38,7 @@ const HISTORY_ROWS = 12;
 
 /** Το μήνυμα της άρνησης, ανά λόγο. Το πακέτο από τη μηχανή, όχι γραμμένο εδώ. */
 const REFUSAL = {
-  plan: `Η πρόσκληση με email ανοίγει στο πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω.`,
+  plan: `Η πρόσκληση με email ανοίγει στο πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω· στη δοκιμή, με μικρότερα όρια.`,
   unverified: 'Επιβεβαίωσε πρώτα τη διεύθυνσή σου: αυτή βλέπει ο πελάτης ως αποστολέα.',
   error: 'Οι προσκλήσεις δεν στάλθηκαν. Δοκίμασε ξανά σε λίγο.',
 } as const;
@@ -60,7 +61,13 @@ export default function BulkInvite({ db, label }: { db: SupabaseClient; label: R
     setHistory(r.rows);
   }, [db]);
 
-  const openPanel = () => { setOpen(true); void loadHistory(); };
+  // ΤΑ ΟΡΙΑ ΚΑΙ ΤΟ ΥΠΟΛΟΙΠΟ ΑΠΟ ΤΗ ΒΑΣΗ (20261021120000). Στη δοκιμή η αποστολή
+  // ανοίγει με μικρότερα όρια (έγκριση George 21/10/2026)· η οθόνη τα λέει πριν
+  // πατηθεί το κουμπί, όχι μετά από ένα «όριο» στη μέση της λίστας.
+  const [allowance, setAllowance] = useState<InviteAllowance | null>(null);
+  const loadAllowance = useCallback(async () => { setAllowance(await myAllowance(db)); }, [db]);
+
+  const openPanel = () => { setOpen(true); void loadHistory(); void loadAllowance(); };
 
   const send = async () => {
     if (!emails.length) return;
@@ -73,6 +80,7 @@ export default function BulkInvite({ db, label }: { db: SupabaseClient; label: R
     const keep = r.rows.filter(x => x.status === 'invalid' || x.status === 'rate_limited' || x.status === 'over_limit').map(x => x.email);
     setText(keep.join('\n'));
     void loadHistory();
+    void loadAllowance();
   };
 
   const withdraw = async (id: string) => {
@@ -96,7 +104,7 @@ export default function BulkInvite({ db, label }: { db: SupabaseClient; label: R
         <div style={{ minWidth: 0 }}>
           <p style={label}>Πρόσκληση πελατών</p>
           <p style={{ ...small, marginTop: 6 }}>
-            {`Στείλε σε όλους μαζί ένα μήνυμα με αποστολέα τη διεύθυνσή σου. Ο καθένας αποφασίζει ο ίδιος· δεν βλέπεις τίποτα δικό του πριν πει «ναι». Για πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω.`}
+            {`Στείλε σε όλους μαζί ένα μήνυμα με αποστολέα τη διεύθυνσή σου. Ο καθένας αποφασίζει ο ίδιος· δεν βλέπεις τίποτα δικό του πριν πει «ναι». Για πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω· στη δοκιμή έως ${INVITE_LIMITS.trialPerDay} τη μέρα και ${INVITE_LIMITS.trialTotal} συνολικά.`}
           </p>
         </div>
         {!open && <Btn variant="secondary" onClick={openPanel}>Πρόσκληση με email</Btn>}
@@ -119,12 +127,16 @@ export default function BulkInvite({ db, label }: { db: SupabaseClient; label: R
             </label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Btn variant="ghost" onClick={() => { setOpen(false); setResults(null); }}>Κλείσιμο</Btn>
-              <Btn variant="primary" onClick={() => void send()} disabled={busy || count === 0}>
+              <Btn variant="primary" onClick={() => void send()} disabled={busy || count === 0 || (allowance != null && invitesLeft(allowance) === 0)}>
                 {busy ? 'Αποστολή…' : count === 0 ? 'Στείλε' : count === 1 ? 'Στείλε σε 1' : `Στείλε σε ${count}`}
               </Btn>
             </div>
           </div>
-          <p style={small}>Έως 50 μηνύματα ανά 24 ώρες. Η ίδια διεύθυνση ξαναπαίρνει μήνυμα μετά από 7 ημέρες· όποιος απάντησε «όχι» δεν ξαναπαίρνει.</p>
+          {allowance?.mode && (
+            <p style={{ ...small, color: invitesLeft(allowance) === 0 ? 'var(--text-secondary)' : small.color }}>{allowanceLine(allowance)}</p>
+          )}
+          {allowance && !allowance.mode && <p style={small}>{REFUSAL.plan}</p>}
+          <p style={small}>Η ίδια διεύθυνση ξαναπαίρνει μήνυμα μετά από 7 ημέρες· όποιος απάντησε «όχι» δεν ξαναπαίρνει.</p>
 
           {results && (
             <div style={{ paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>

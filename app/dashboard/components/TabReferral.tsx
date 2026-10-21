@@ -16,7 +16,7 @@ import {
   referralCode, referralLink, progress,
   individualReferrerReward,
   INDIV_PRO_BONUS_MONTHS, REFERRER_SLOT_MONTHS,
-  INDIV_VOLUME_TARGET, INDIV_VOLUME_BONUS_MONTHS,
+  INDIV_VOLUME_TARGET, INDIV_VOLUME_BONUS_MONTHS, INDIV_VOLUME_TIER, REWARDS_MERGE_LINE, REFERRAL_COMP_CAP_MONTHS, PRO_PAID_TIER,
   PRO_PAID_TARGET, PRO_PAID_BONUS_MONTHS, PARTNER_WELCOME_MONTHS, partnerWelcomeTier,
   STREAK_TARGET_MONTHS, PARTNER_MONTHLY_FREE_MONTHS,
   ACTIVATION_MIN_PROPERTIES, ACTIVATION_MIN_DOCUMENTS,
@@ -74,6 +74,9 @@ const ACTIVATES = `προσθέτει ${ACT_PROPS} και σαρώνει ${ACT_D
 /** Το όνομα πακέτου μέσα σε πρόταση: σε εισαγωγικά, στην ονομαστική. Η γενική
  *  («μήνας Ιδιοκτήτη») διαβαζόταν σαν «μήνας ενός ιδιοκτήτη». */
 const planQ = (id: PlanId) => `«${PLANS[id].name}»`;
+/** Το πακέτο μιας ανταμοιβής, όπως το γράφει η βάση (`referral_rewards.tier`). */
+const tierPlan = (tier: string | null | undefined): PlanId =>
+  tier && tier in PLANS ? (tier as PlanId) : INDIV_VOLUME_TIER;
 
 /**
  * Πλέγμα καρτών με ΡΗΤΟ πλήθος στηλών και το κενό της ενότητας από κάτω.
@@ -167,7 +170,7 @@ const REWARD_REASON: Record<string, string> = {
 const rewardReason = (reason: string) => REWARD_REASON[reason] || 'Ανταμοιβή';
 const rewardTitle = (r: Reward) => r.kind === 'slot'
   ? `1 ακίνητο χωρίς χρέωση για ${moAcc(r.months)}`
-  : `${moNom(r.months)} ${planQ(r.tier === 'agency' ? 'agency' : 'solo')} χωρίς χρέωση`;
+  : `${moNom(r.months)} ${planQ(tierPlan(r.tier))} χωρίς χρέωση`;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΚΑΡΤΑ ΜΗΝΙΑΙΟΥ ΣΤΟΧΟΥ — ΟΡΙΖΕΤΑΙ ΕΞΩ ΑΠΟ ΤΟ COMPONENT
@@ -692,11 +695,12 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
             </>
           ) : (<>
           <SectionLabel>Ο στόχος του μήνα</SectionLabel>
+          <p style={{ ...TT.bodySm, margin: `0 0 ${T.sp.md}px`, color: 'var(--text-secondary)' }}>{`${REWARDS_MERGE_LINE} Έως ${moAcc(REFERRAL_COMP_CAP_MONTHS)} συνολικά.`}</p>
           <div style={{ marginBottom: T.sp.xl }}>
             <Milestone title="Συνδρομητές, σε οποιοδήποτε πακέτο"
               icon="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z|M23 21v-2a4 4 0 0 0-3-3.9|M16 3.1a4 4 0 0 1 0 7.8"
               count={stats?.m_paid ?? 0} target={PRO_PAID_TARGET} kind="pro_paid"
-              rewardTitle={`+${moNom(PRO_PAID_BONUS_MONTHS)} συνδρομής χωρίς χρέωση`} claimState={claim.pro_paid || 'idle'} onClaim={doClaim} />
+              rewardTitle={`+${moNom(PRO_PAID_BONUS_MONTHS)} ${planQ(PRO_PAID_TIER)} χωρίς χρέωση`} claimState={claim.pro_paid || 'idle'} onClaim={doClaim} />
           </div>
 
           {/* ── Συνεργάτης: Η ΙΔΙΑ ΚΑΡΤΑ ΜΕ ΤΟΝ ΣΤΟΧΟ ΤΟΥ ΜΗΝΑ ──────────────────
@@ -754,6 +758,10 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
         /* ═══ ΙΔΙΩΤΗΣ — αξία ανά φίλο + μηνιαίο μπόνους όγκου ═══ */
         <>
           <SectionLabel>Τι κερδίζεις σε κάθε πρόσκληση</SectionLabel>
+          {/* ΤΑ ΠΑΚΕΤΑ ΤΩΝ ΔΩΡΩΝ ΕΙΝΑΙ ΟΣΑ ΓΡΑΦΕΙ Η ΒΑΣΗ. Εδώ έγραφε «Ιδιοκτήτης με
+              Νόα» (solo) ενώ η βάση δίνει «Ιδιοκτήτης+» (owner)· τα ονόματα
+              βγαίνουν πλέον από τη βαθμίδα της ανταμοιβής (lib/referral). */}
+          <p style={{ ...TT.bodySm, margin: `0 0 ${T.sp.md}px`, color: 'var(--text-secondary)' }}>{`${REWARDS_MERGE_LINE} Έως ${moAcc(REFERRAL_COMP_CAP_MONTHS)} συνολικά.`}</p>
           <div {...cardGrid(2)}>
             <div className="ref-lift" style={{ ...card, padding: PAD }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -765,7 +773,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
                   είναι ο τρόπος χρήσης στις Ρυθμίσεις. Το πακέτο λέγεται
                   «Ιδιοκτήτης» και η ανταμοιβή πρέπει να λέγεται όπως αυτό που
                   θα βρει ο χρήστης στη «Συνδρομή». */}
-              <div style={{ ...TT.displaySm, marginBottom: 6 }}>{youBase.isSlot ? '+1 ακίνητο' : `+${moNom(youBase.months)} ${planQ('solo')}`}</div>
+              <div style={{ ...TT.displaySm, marginBottom: 6 }}>{youBase.isSlot ? '+1 ακίνητο' : `+${moNom(youBase.months)} ${planQ(youBase.tier)}`}</div>
               <div style={{ ...TT.bodySm, lineHeight: 1.55 }}>{youBase.isSlot
                 ? `για ${moAcc(youBase.months)}, στο πακέτο σου, για κάθε φίλο που ${ACTIVATES}.`
                 : `στη συνδρομή σου, για κάθε φίλο που ${ACTIVATES}.`}</div>
@@ -796,7 +804,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
                 </span>
                 {(stats?.m_pro ?? 0) >= 1 && <Badge tone="positive">Το πέτυχες</Badge>}
               </div>
-              <div style={{ ...TT.displaySm, marginBottom: 6 }}>+{moNom(INDIV_PRO_BONUS_MONTHS)} {planQ('solo')}</div>
+              <div style={{ ...TT.displaySm, marginBottom: 6 }}>+{moNom(INDIV_PRO_BONUS_MONTHS)} {planQ(individualReferrerReward(false, 'agency').tier)}</div>
               {/* Μετρά συνδρομή, οπότε λέει και πότε μπορεί να μετρήσει: όσο η
                   χρέωση δεν τρέχει, η ίδια επιφύλαξη με τους στόχους του συνεργάτη. */}
               <div style={{ ...TT.bodySm, lineHeight: 1.55 }}>μόλις κάποιος που προσκάλεσες γίνει συνδρομητής στο {planQ('agency')}. Ολόκληρος μήνας, όχι ένα ακίνητο.{targetHold ? ` ${targetHold}` : ''}</div>
@@ -805,7 +813,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
             <Milestone title={`${INDIV_VOLUME_TARGET} νέοι τον μήνα`}
               icon="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z|M23 21v-2a4 4 0 0 0-3-3.9|M16 3.1a4 4 0 0 1 0 7.8"
               count={stats?.m_indiv ?? 0} target={INDIV_VOLUME_TARGET} kind="indiv_volume"
-              rewardTitle={`+${moNom(INDIV_VOLUME_BONUS_MONTHS)} ${planQ('solo')}`}
+              rewardTitle={`+${moNom(INDIV_VOLUME_BONUS_MONTHS)} ${planQ(INDIV_VOLUME_TIER)}`}
               claimState={claim.indiv_volume || 'idle'} onClaim={doClaim} />
           </div>
         </>

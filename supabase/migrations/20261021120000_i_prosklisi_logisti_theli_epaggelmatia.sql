@@ -30,6 +30,8 @@
 --    μόνο με συνδρομητές (στόχος `pro_paid`) ή ως συνεργάτης. Ως τώρα οι
 --    δωρεάν μήνες έπαιρναν το πακέτο από το `profile_type`, που το αλλάζει ο
 --    ίδιος ο χρήστης· αυτό κλείνει στο 5β πιο κάτω.
+--    ΚΑΙ ΣΤΗ ΔΟΚΙΜΗ, ΜΕ ΜΙΚΡΟΤΕΡΑ ΟΡΙΑ (έγκριση George 21/10/2026): 10 τη μέρα,
+--    25 σε όλη τη δοκιμή (ενότητα 1α).
 --    Επιπλέον ο αποστολέας πρέπει να έχει ΕΠΙΒΕΒΑΙΩΜΕΝΗ διεύθυνση
 --    (`auth.users.email_confirmed_at`) και αυτή, όχι το όνομα, είναι που
 --    ταξιδεύει στο μήνυμα και στην οθόνη του πελάτη.
@@ -92,6 +94,149 @@ revoke insert, update, delete on public.accountant_invites from authenticated;
 revoke all on public.accountant_invites from anon, public;
 grant select on public.accountant_invites to authenticated;
 
+-- ── 1α. ΠΟΙΟΣ ΣΤΕΛΝΕΙ ΚΑΙ ΠΟΣΑ: ΕΠΑΓΓΕΛΜΑΤΙΑΣ Ή ΔΟΚΙΜΗ ─────────────────────
+-- ΑΠΟΦΑΣΗ (έγκριση George 21/10/2026). Η μαζική πρόσκληση ανοίγει και στη
+-- δοκιμή, με μικρότερα όρια: 10 τη μέρα και 25 σε όλη τη δοκιμή. Ο βαθμός
+-- «Επαγγελματίας» (πληρωμένος, συνεργάτης ή δωρεάν μήνες αυτής της βαθμίδας)
+-- κρατά τις 50 τη μέρα. Ολα τα υπόλοιπα μένουν: επιβεβαιωμένη διεύθυνση,
+-- ουδέτερο μήνυμα, επιβεβαίωση από τον πελάτη, μόνιμο «όχι».
+--
+-- ΤΑ ΟΡΙΑ ΖΟΥΝ ΣΕ ΕΝΑ ΣΗΜΕΙΟ: στη `send_quota_rule`, όπως κάθε όριο αποστολής
+-- (20260825130000· η `bump_send_quota` αγνοεί ό,τι της περάσει ο καλών). Το
+-- lib/data/accountantInvites.ts τα επαναλαμβάνει για την οθόνη και το τεστ του
+-- απαιτεί να είναι ίδια με αυτήν εδώ. Τρία είδη:
+--   accountant_invite              50 / 24 ώρες   (επαγγελματίας)
+--   accountant_invite_trial_day    10 / 24 ώρες   (δοκιμή)
+--   accountant_invite_trial_total  25 / 10 χρόνια (δοκιμή, δηλαδή συνολικά)
+-- Ολόκληρος ο κατάλογος, γιατί η τελευταία γραφή είναι η ισχύουσα.
+create or replace function public.send_quota_rule(p_kind text)
+returns table (max_units int, window_span interval)
+language sql immutable set search_path = public as $$
+  select t.max_units, t.window_span
+    from (values
+      ('client_email',                  3000, interval '24 hours'),
+      ('org_invite',                      20, interval '24 hours'),
+      ('accountant_invite',               50, interval '24 hours'),
+      ('accountant_invite_trial_day',     10, interval '24 hours'),
+      ('accountant_invite_trial_total',   25, interval '3650 days'),
+      ('test_notification',               10, interval '24 hours'),
+      ('tester_code',                      5, interval '24 hours'),
+      ('ical_preview',                    60, interval  '1 hour')
+    ) as t(kind, max_units, window_span)
+   where t.kind = btrim(coalesce(p_kind, ''))
+$$;
+
+alter function public.send_quota_rule(text) owner to postgres;
+revoke all     on function public.send_quota_rule(text) from public, anon;
+grant  execute on function public.send_quota_rule(text) to authenticated, service_role;
+
+-- Ο τρόπος του αποστολέα: 'paid' (βαθμός «Επαγγελματίας», εκτός δοκιμής του
+-- εμπόρου), 'trial' (δοκιμή του εμπόρου `on_trial` ή τοπική δοκιμή που δεν
+-- έληξε, με τον ίδιο κανόνα της `user_plan_rank`), αλλιώς κενό → plan_required.
+-- Οι δωρεάν μήνες από συστάσεις ακολουθούν τη βαθμίδα τους (5β): «Ιδιοκτήτης+»
+-- δεν είναι ούτε 'paid' ούτε 'trial'.
+create or replace function private.accountant_invite_mode(p_uid uuid)
+ returns text
+ language plpgsql stable
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $$
+declare v_status text; v_trial_used timestamptz; v_created timestamptz;
+begin
+  if p_uid is null then return null; end if;
+  select bp.subscription_status, bp.trial_used_at into v_status, v_trial_used
+    from billing_profiles bp where bp.user_id = p_uid;
+  if coalesce(v_status, '') <> 'on_trial' and public.user_plan_rank(p_uid) >= public.plan_rank('agency') then
+    return 'paid';
+  end if;
+  if v_status = 'on_trial' then return 'trial'; end if;
+  if v_trial_used is null then
+    select u.created_at into v_created from auth.users u where u.id = p_uid;
+    if v_created is not null and v_created > now() - (public.trial_days() || ' days')::interval then
+      return 'trial';
+    end if;
+  end if;
+  return null;
+end $$;
+
+alter function private.accountant_invite_mode(uuid) owner to postgres;
+revoke all on function private.accountant_invite_mode(uuid) from public, anon, authenticated;
+
+-- Μία μονάδα από το σωστό όριο. Στη δοκιμή μετρούν ΚΑΙ η μέρα ΚΑΙ το σύνολο·
+-- αν κόψει η μέρα, η μονάδα του συνόλου επιστρέφεται.
+create or replace function private.accountant_invite_bump(p_mode text)
+ returns boolean
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $$
+declare v_q json;
+begin
+  if p_mode = 'paid' then
+    v_q := public.bump_send_quota('accountant_invite', 1, 0, interval '0');
+    return coalesce((v_q ->> 'allowed')::boolean, false);
+  elsif p_mode = 'trial' then
+    v_q := public.bump_send_quota('accountant_invite_trial_total', 1, 0, interval '0');
+    if not coalesce((v_q ->> 'allowed')::boolean, false) then return false; end if;
+    v_q := public.bump_send_quota('accountant_invite_trial_day', 1, 0, interval '0');
+    if not coalesce((v_q ->> 'allowed')::boolean, false) then
+      update send_quota set units = greatest(units - 1, 0)
+       where user_id = auth.uid() and kind = 'accountant_invite_trial_total';
+      return false;
+    end if;
+    return true;
+  end if;
+  return false;
+end $$;
+
+alter function private.accountant_invite_bump(text) owner to postgres;
+revoke all on function private.accountant_invite_bump(text) from public, anon, authenticated;
+
+-- Για την οθόνη: τρόπος, όρια και πόσα έμειναν. Τίποτα που να μην ξέρει ήδη ο
+-- ίδιος ο χρήστης.
+create or replace function public.my_accountant_invite_allowance()
+ returns json
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v_me uuid := auth.uid();
+  v_mode text;
+  v_day text;
+  v_used_day int := 0;
+  v_used_total int := 0;
+  v_max_day int;
+  v_max_total int;
+begin
+  if not private.mfa_satisfied() then
+    raise exception 'mfa_required' using errcode = '42501';
+  end if;
+  v_mode := private.accountant_invite_mode(v_me);
+  if v_mode is null then return json_build_object('mode', null); end if;
+  v_day := case v_mode when 'paid' then 'accountant_invite' else 'accountant_invite_trial_day' end;
+  select r.max_units into v_max_day from public.send_quota_rule(v_day) r;
+  select coalesce(max(q.units) filter (where q.bucket + r.window_span > now()), 0) into v_used_day
+    from send_quota q, public.send_quota_rule(v_day) r
+   where q.user_id = v_me and q.kind = v_day;
+  if v_mode = 'trial' then
+    select r.max_units into v_max_total from public.send_quota_rule('accountant_invite_trial_total') r;
+    select coalesce(max(q.units) filter (where q.bucket + r.window_span > now()), 0) into v_used_total
+      from send_quota q, public.send_quota_rule('accountant_invite_trial_total') r
+     where q.user_id = v_me and q.kind = 'accountant_invite_trial_total';
+  end if;
+  return json_build_object(
+    'mode', v_mode, 'perDay', v_max_day, 'usedToday', v_used_day,
+    'total', v_max_total, 'usedTotal', case when v_mode = 'trial' then v_used_total end);
+end $$;
+
+alter function public.my_accountant_invite_allowance() owner to postgres;
+revoke all     on function public.my_accountant_invite_allowance() from public, anon;
+grant  execute on function public.my_accountant_invite_allowance() to authenticated;
+
+comment on function public.my_accountant_invite_allowance() is
+  'Πόσες προσκλήσεις λογιστή μπορεί να στείλει ακόμη ο συνδεδεμένος: τρόπος (paid/trial), όριο ημέρας, όριο δοκιμής και χρήση.';
+
 -- ── 2. Η ΠΡΟΣΚΛΗΣΗ ──────────────────────────────────────────────────────────
 -- Το σώμα είναι αυτό του 20261021090000 με τρεις αλλαγές: η πύλη του πακέτου,
 -- η επιβεβαιωμένη διεύθυνση του αποστολέα από το `auth.users` και η απόσυρση
@@ -111,16 +256,18 @@ declare
   v_seen   text[] := '{}';
   v_out    json[] := '{}';
   v_inv    record;
-  v_quota  json;
   v_id     uuid;
   v_sent   timestamptz;
   v_n      int := 0;
   v_status text;
+  v_mode   text;
 begin
   if not private.mfa_satisfied() then
     raise exception 'mfa_required' using errcode = '42501';
   end if;
-  if public.my_plan_rank() < public.plan_rank('agency') then
+  -- Η ΠΥΛΗ (1α): βαθμός «Επαγγελματίας» ή δοκιμή σε εξέλιξη.
+  v_mode := private.accountant_invite_mode(v_me);
+  if v_mode is null then
     raise exception 'plan_required' using errcode = '42501';
   end if;
   if v_me is null then return '[]'::json; end if;
@@ -162,8 +309,7 @@ begin
     -- εκατό διευθύνσεις τη φορά για να μάθει ποιες αντιτάχθηκαν.
     elsif exists (select 1 from accountant_invite_optouts o
                    where o.address_sha256 = private.invite_address_sha256(v_email)) then
-      v_quota := public.bump_send_quota('accountant_invite', 1, 50, interval '24 hours');
-      v_status := case when coalesce((v_quota ->> 'allowed')::boolean, false) then 'declined' else 'rate_limited' end;
+      v_status := case when private.accountant_invite_bump(v_mode) then 'declined' else 'rate_limited' end;
     else
       select * into v_inv from accountant_invites where accountant_id = v_me and email = v_email;
       if found and v_inv.status = 'declined' then
@@ -172,8 +318,7 @@ begin
       elsif found and v_inv.status in ('sent', 'withdrawn') and v_inv.sent_at > now() - interval '7 days' then
         v_status := 'already_invited'; v_sent := v_inv.sent_at;
       else
-        v_quota := public.bump_send_quota('accountant_invite', 1, 50, interval '24 hours');
-        if coalesce((v_quota ->> 'allowed')::boolean, false) is not true then
+        if not private.accountant_invite_bump(v_mode) then
           v_status := 'rate_limited';
         else
           insert into accountant_invites (accountant_id, email, status, sent_at, answered_at)

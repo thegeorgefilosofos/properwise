@@ -4,7 +4,8 @@
 // λογιστικού προγράμματος, «Όνομα <διεύθυνση>» από το ταχυδρομείο. Κρατιέται ό,τι
 // μοιάζει με διεύθυνση· τα διπλά και τα άκυρα τα λέει η βάση γραμμή γραμμή.
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { parseEmailList, uniqueCount, INVITE_STATUS_LABEL, INVITE_BATCH, refusalOf, inviteSender, withdrawInvite, inviteClients } from './accountantInvites';
+import { readFileSync, readdirSync } from 'node:fs';
+import { parseEmailList, uniqueCount, INVITE_STATUS_LABEL, INVITE_BATCH, INVITE_LIMITS, invitesLeft, allowanceLine, refusalOf, inviteSender, withdrawInvite, inviteClients } from './accountantInvites';
 
 let pass = 0, fail = 0;
 function eq(name: string, got: unknown, want: unknown) {
@@ -31,6 +32,30 @@ eq('όνομα ίδιο με τη διεύθυνση: όχι δύο φορές',
 eq('plan_required → πακέτο', refusalOf({ message: 'plan_required', code: '42501' }), 'plan');
 eq('email_unverified → διεύθυνση', refusalOf({ message: 'email_unverified', code: '42501' }), 'unverified');
 eq('άλλο → σφάλμα', refusalOf({ message: 'timeout' }), 'error');
+
+// ── ΤΑ ΟΡΙΑ ΤΗΣ ΟΘΟΝΗΣ ΕΙΝΑΙ ΤΑ ΟΡΙΑ ΤΗΣ ΒΑΣΗΣ ──────────────────────────────
+// Η τελευταία μετάβαση που ορίζει τη `send_quota_rule` είναι η ισχύουσα.
+{
+  const dir = 'supabase/migrations';
+  const head = 'create or replace function public.send_quota_rule';
+  const file = readdirSync(dir).filter(f => f.endsWith('.sql')).sort().reverse()
+    .find(f => readFileSync(`${dir}/${f}`, 'utf8').includes(head));
+  const sql = file ? readFileSync(`${dir}/${file}`, 'utf8') : '';
+  const body = sql.slice(sql.indexOf(head), sql.indexOf('$$;', sql.indexOf(head)));
+  const rule = (kind: string) => Number(new RegExp(`\\('${kind}',\\s*(\\d+),`).exec(body)?.[1]);
+  eq('όριο επαγγελματία: ίδιο με τη βάση', rule('accountant_invite'), INVITE_LIMITS.paidPerDay);
+  eq('όριο ημέρας στη δοκιμή: ίδιο με τη βάση', rule('accountant_invite_trial_day'), INVITE_LIMITS.trialPerDay);
+  eq('όριο δοκιμής συνολικά: ίδιο με τη βάση', rule('accountant_invite_trial_total'), INVITE_LIMITS.trialTotal);
+}
+
+// ── ΠΟΣΑ ΕΜΕΙΝΑΝ ─────────────────────────────────────────────────────────────
+eq('δοκιμή: η μικρότερη από ημέρα και σύνολο', invitesLeft({ mode: 'trial', perDay: 10, usedToday: 3, total: 25, usedTotal: 20 }), 5);
+eq('δοκιμή: ημέρα γεμάτη', invitesLeft({ mode: 'trial', perDay: 10, usedToday: 10, total: 25, usedTotal: 10 }), 0);
+eq('επαγγελματίας: μόνο η ημέρα', invitesLeft({ mode: 'paid', perDay: 50, usedToday: 12, total: null, usedTotal: null }), 38);
+eq('χωρίς τρόπο: τίποτα', invitesLeft({ mode: null, perDay: null, usedToday: 0, total: null, usedTotal: null }), 0);
+eq('η γραμμή της δοκιμής λέει όρια και υπόλοιπο',
+  allowanceLine({ mode: 'trial', perDay: 10, usedToday: 3, total: 25, usedTotal: 20 }),
+  'Στη δοκιμή: έως 10 προσκλήσεις τη μέρα και 25 συνολικά. Απομένουν 7 σήμερα και 5 συνολικά, άρα μπορείς να στείλεις ακόμη 5.');
 
 async function asyncChecks() {
   // Η ΑΠΟΣΥΡΣΗ ΠΕΡΝΑ ΑΠΟ ΤΗ ΣΥΝΑΡΤΗΣΗ, ΠΟΤΕ ΑΠΟ ΔΙΑΓΡΑΦΗ (εύρημα B). Η απευθείας

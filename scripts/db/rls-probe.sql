@@ -4038,10 +4038,11 @@ begin
     ('1a1a1a1a-0000-4000-8000-0000000000e1', 'inv-dec@probe.test', now()),
     ('1a1a1a1a-0000-4000-8000-0000000000a2', 'inv-unconf@probe.test', null);
   -- Ο λογιστής πληρώνει «Επαγγελματίας» (20261021120000). Ο ανεπιβεβαίωτος επίσης·
-  -- ο ξένος είναι νέος λογαριασμός σε δοκιμή, δηλαδή «Ιδιοκτήτης+».
+  -- ο ξένος δεν έχει ούτε πακέτο ούτε δοκιμή (τη δοκιμή την έχει ήδη χρησιμοποιήσει).
   insert into public.billing_profiles (user_id, plan, trial_used_at, owner_name) values
     ('1a1a1a1a-0000-4000-8000-0000000000ac', 'agency', now(), 'Ο λογιστής σου'),
-    ('1a1a1a1a-0000-4000-8000-0000000000a2', 'agency', now(), null)
+    ('1a1a1a1a-0000-4000-8000-0000000000a2', 'agency', now(), null),
+    ('1a1a1a1a-0000-4000-8000-0000000000ff', 'free', now(), null)
   on conflict (user_id) do update set plan = excluded.plan, trial_used_at = excluded.trial_used_at, owner_name = excluded.owner_name;
 end $probe$;
 
@@ -4058,7 +4059,7 @@ begin
   exception when insufficient_privilege then
     if sqlerrm <> 'plan_required' then raise; end if;
   end;
-  raise notice 'probe: ο λογαριασμός σε δοκιμή δεν στέλνει προσκλήσεις λογιστή';
+  raise notice 'probe: ο λογαριασμός χωρίς πακέτο και χωρίς δοκιμή δεν στέλνει προσκλήσεις λογιστή';
 end $probe$;
 
 set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000a2';
@@ -4453,4 +4454,132 @@ begin
   perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000b2');
   perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000b3');
   raise notice 'probe: οι προσκλήσεις σβήνουν με τον λογιστή και η διεύθυνση με τον προσκεκλημένο';
+end $probe$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Η ΠΡΟΣΚΛΗΣΗ ΣΤΗ ΔΟΚΙΜΗ (έγκριση George 21/10/2026)
+-- ─────────────────────────────────────────────────────────────────────────
+-- Δοκιμή: 10 τη μέρα, 25 συνολικά. Επαγγελματίας: 50 τη μέρα. Δοκιμή που
+-- έληξε ή λογαριασμός που τη χρησιμοποίησε: plan_required.
+-- ═══════════════════════════════════════════════════════════════════════════
+reset role;
+set session "probe.uid" = '';
+do $probe$
+begin
+  insert into auth.users(id, email, email_confirmed_at, created_at) values
+    ('2b2b2b2b-0000-4000-8000-0000000000a1', 'tr-new@probe.test',  now(), now()),
+    ('2b2b2b2b-0000-4000-8000-0000000000a2', 'tr-old@probe.test',  now(), now() - interval '40 days'),
+    ('2b2b2b2b-0000-4000-8000-0000000000a3', 'tr-used@probe.test', now(), now()),
+    ('2b2b2b2b-0000-4000-8000-0000000000a4', 'tr-paid@probe.test', now(), now());
+  insert into public.billing_profiles (user_id, plan, trial_used_at) values
+    ('2b2b2b2b-0000-4000-8000-0000000000a3', 'free', now()),
+    ('2b2b2b2b-0000-4000-8000-0000000000a4', 'agency', now())
+  on conflict (user_id) do update set plan = excluded.plan, trial_used_at = excluded.trial_used_at;
+end $probe$;
+
+set role authenticated;
+set session "probe.uid" = '2b2b2b2b-0000-4000-8000-0000000000a1';
+do $probe$
+declare res json; st text; a json;
+begin
+  -- Ημέρα 1: έντεκα διευθύνσεις → δέκα στάλθηκαν, η ενδέκατη στο όριο.
+  res := public.accountant_invite_clients(array(select 'd1-' || g || '@probe.test' from generate_series(1, 11) g));
+  select string_agg(x->>'status', ',' order by ord) into st from json_array_elements(res) with ordinality as t(x, ord);
+  if st <> repeat('sent,', 10) || 'rate_limited' then raise exception 'Δοκιμή, ημέρα 1: %', st; end if;
+  a := public.my_accountant_invite_allowance();
+  if a->>'mode' <> 'trial' or (a->>'perDay')::int <> 10 or (a->>'usedToday')::int <> 10 or (a->>'total')::int <> 25 or (a->>'usedTotal')::int <> 10 then
+    raise exception 'Η οθόνη της δοκιμής διαβάζει λάθος υπόλοιπο: %', a;
+  end if;
+  raise notice 'probe: στη δοκιμή δέκα τη μέρα, η ενδέκατη κόβεται';
+end $probe$;
+
+-- Ημέρα 2: άλλες δέκα (σύνολο 20).
+reset role;
+update public.send_quota set bucket = now() - interval '25 hours'
+ where user_id = '2b2b2b2b-0000-4000-8000-0000000000a1' and kind = 'accountant_invite_trial_day';
+set role authenticated;
+do $probe$
+declare res json; st text;
+begin
+  res := public.accountant_invite_clients(array(select 'd2-' || g || '@probe.test' from generate_series(1, 10) g));
+  select string_agg(x->>'status', ',' order by ord) into st from json_array_elements(res) with ordinality as t(x, ord);
+  if st <> rtrim(repeat('sent,', 10), ',') then raise exception 'Δοκιμή, ημέρα 2: %', st; end if;
+end $probe$;
+
+-- Ημέρα 3: έξι διευθύνσεις → πέντε στάλθηκαν (σύνολο 25), η έκτη στο όριο της δοκιμής.
+reset role;
+update public.send_quota set bucket = now() - interval '25 hours'
+ where user_id = '2b2b2b2b-0000-4000-8000-0000000000a1' and kind = 'accountant_invite_trial_day';
+set role authenticated;
+do $probe$
+declare res json; st text;
+begin
+  res := public.accountant_invite_clients(array(select 'd3-' || g || '@probe.test' from generate_series(1, 6) g));
+  select string_agg(x->>'status', ',' order by ord) into st from json_array_elements(res) with ordinality as t(x, ord);
+  if st <> repeat('sent,', 5) || 'rate_limited' then raise exception 'Δοκιμή, ημέρα 3: %', st; end if;
+end $probe$;
+
+-- Ημέρα 4: η εικοστή έκτη κόβεται, με άδειο όριο ημέρας.
+reset role;
+update public.send_quota set bucket = now() - interval '25 hours'
+ where user_id = '2b2b2b2b-0000-4000-8000-0000000000a1' and kind = 'accountant_invite_trial_day';
+set role authenticated;
+do $probe$
+declare res json;
+begin
+  res := public.accountant_invite_clients(array['d4-1@probe.test']);
+  if res->0->>'status' <> 'rate_limited' then raise exception 'ΔΙΑΡΡΟΗ: η δοκιμή έστειλε πάνω από 25: %', res; end if;
+  raise notice 'probe: στη δοκιμή είκοσι πέντε συνολικά, η εικοστή έκτη κόβεται';
+end $probe$;
+
+reset role;
+do $probe$
+declare n int;
+begin
+  select count(*) into n from public.email_outbox where copy_id = 'accountant_invite' and params->>'accountantEmail' = 'tr-new@probe.test';
+  if n <> 25 then raise exception 'Η δοκιμή έβαλε % μηνύματα στην ουρά αντί για 25', n; end if;
+  -- Η μονάδα της ημέρας που κόπηκε δεν χάνει μονάδα από το σύνολο.
+  if (select units from public.send_quota where user_id = '2b2b2b2b-0000-4000-8000-0000000000a1' and kind = 'accountant_invite_trial_total') <> 25 then
+    raise exception 'Ο μετρητής της δοκιμής δεν είναι 25';
+  end if;
+end $probe$;
+
+-- Δοκιμή που έληξε και λογαριασμός που τη χρησιμοποίησε: plan_required.
+set role authenticated;
+do $probe$
+declare u text;
+begin
+  foreach u in array array['2b2b2b2b-0000-4000-8000-0000000000a2', '2b2b2b2b-0000-4000-8000-0000000000a3'] loop
+    perform set_config('probe.uid', u, false);
+    begin
+      perform public.accountant_invite_clients(array['x-' || right(u, 2) || '@probe.test']);
+      raise exception 'ΔΙΑΡΡΟΗ: ο % χωρίς ενεργή δοκιμή έστειλε πρόσκληση', u;
+    exception when insufficient_privilege then
+      if sqlerrm <> 'plan_required' then raise; end if;
+    end;
+    if public.my_accountant_invite_allowance()->>'mode' is not null then raise exception 'Η οθόνη δείχνει όρια σε λογαριασμό χωρίς δικαίωμα'; end if;
+  end loop;
+  raise notice 'probe: δοκιμή που έληξε ή χρησιμοποιήθηκε: plan_required';
+end $probe$;
+
+-- Επαγγελματίας: πενήντα τη μέρα, όπως πριν.
+set session "probe.uid" = '2b2b2b2b-0000-4000-8000-0000000000a4';
+do $probe$
+declare res json; st text;
+begin
+  res := public.accountant_invite_clients(array(select 'p-' || g || '@probe.test' from generate_series(1, 51) g));
+  select string_agg(x->>'status', ',' order by ord) into st from json_array_elements(res) with ordinality as t(x, ord);
+  if st <> repeat('sent,', 50) || 'rate_limited' then raise exception 'Επαγγελματίας: %', st; end if;
+  if public.my_accountant_invite_allowance()->>'mode' <> 'paid' then raise exception 'Ο επαγγελματίας δεν διαβάζεται ως paid'; end if;
+  raise notice 'probe: ο επαγγελματίας στέλνει πενήντα τη μέρα';
+end $probe$;
+
+reset role;
+set session "probe.uid" = '';
+do $probe$
+begin
+  perform public.erase_account('2b2b2b2b-0000-4000-8000-0000000000a1');
+  perform public.erase_account('2b2b2b2b-0000-4000-8000-0000000000a2');
+  perform public.erase_account('2b2b2b2b-0000-4000-8000-0000000000a3');
+  perform public.erase_account('2b2b2b2b-0000-4000-8000-0000000000a4');
 end $probe$;

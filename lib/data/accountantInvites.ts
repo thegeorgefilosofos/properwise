@@ -18,6 +18,64 @@ type Db = SupabaseClient;
 /** Πόσες διευθύνσεις δέχεται η βάση στη μία φορά. Ίδιο με τη συνάρτηση. */
 export const INVITE_BATCH = 100;
 
+/**
+ * ΤΑ ΟΡΙΑ ΑΠΟΣΤΟΛΗΣ, ΟΠΩΣ ΤΑ ΟΡΙΖΕΙ Η ΒΑΣΗ (`send_quota_rule`, 20261021120000).
+ * Η βάση τα επιβάλλει· εδώ επαναλαμβάνονται για τα κείμενα της οθόνης και το
+ * accountantInvites.test.ts απαιτεί να είναι ίδια. Η δοκιμή στέλνει με
+ * μικρότερα όρια (έγκριση George 21/10/2026).
+ */
+export const INVITE_LIMITS = {
+  /** Βαθμός «Επαγγελματίας»: ανά 24 ώρες. */
+  paidPerDay: 50,
+  /** Δοκιμή: ανά 24 ώρες. */
+  trialPerDay: 10,
+  /** Δοκιμή: σε όλη τη διάρκειά της. */
+  trialTotal: 25,
+} as const;
+
+/** Τι μπορεί να στείλει ακόμη ο συνδεδεμένος, από τη `my_accountant_invite_allowance`. */
+export interface InviteAllowance {
+  mode: 'paid' | 'trial' | null;
+  perDay: number | null;
+  usedToday: number;
+  total: number | null;
+  usedTotal: number | null;
+}
+
+/** Πόσες απομένουν: η μικρότερη από ημέρα και σύνολο. Καθαρή συνάρτηση. */
+export function invitesLeft(a: InviteAllowance): number {
+  if (!a.mode || a.perDay == null) return 0;
+  const day = Math.max(a.perDay - a.usedToday, 0);
+  if (a.mode !== 'trial' || a.total == null) return day;
+  return Math.min(day, Math.max(a.total - (a.usedTotal ?? 0), 0));
+}
+
+/** Η γραμμή που λέει τα όρια και πόσα έμειναν, στα ελληνικά. Καθαρή συνάρτηση. */
+export function allowanceLine(a: InviteAllowance): string {
+  const left = invitesLeft(a);
+  const today = a.perDay == null ? 0 : Math.max(a.perDay - a.usedToday, 0);
+  if (a.mode === 'trial') {
+    const total = Math.max((a.total ?? INVITE_LIMITS.trialTotal) - (a.usedTotal ?? 0), 0);
+    return `Στη δοκιμή: έως ${a.perDay ?? INVITE_LIMITS.trialPerDay} προσκλήσεις τη μέρα και ${a.total ?? INVITE_LIMITS.trialTotal} συνολικά. Απομένουν ${today} σήμερα και ${total} συνολικά, άρα μπορείς να στείλεις ακόμη ${left}.`;
+  }
+  if (a.mode === 'paid') return `Έως ${a.perDay ?? INVITE_LIMITS.paidPerDay} προσκλήσεις ανά 24 ώρες. Απομένουν ${left}.`;
+  return '';
+}
+
+/** Διαβάζει τι μπορεί να στείλει ακόμη. `null` όταν η ανάγνωση απέτυχε. */
+export async function myAllowance(db: Db): Promise<InviteAllowance | null> {
+  const { data, error } = await db.rpc('my_accountant_invite_allowance');
+  if (error || !data || typeof data !== 'object') return null;
+  const d = data as Partial<InviteAllowance>;
+  return {
+    mode: d.mode === 'paid' || d.mode === 'trial' ? d.mode : null,
+    perDay: typeof d.perDay === 'number' ? d.perDay : null,
+    usedToday: typeof d.usedToday === 'number' ? d.usedToday : 0,
+    total: typeof d.total === 'number' ? d.total : null,
+    usedTotal: typeof d.usedTotal === 'number' ? d.usedTotal : null,
+  };
+}
+
 export type InviteStatus =
   | 'sent' | 'already_invited' | 'already_client' | 'declined' | 'accepted' | 'withdrawn'
   | 'duplicate' | 'invalid' | 'self' | 'rate_limited' | 'over_limit';
@@ -33,7 +91,7 @@ export const INVITE_STATUS_LABEL: Record<InviteStatus, string> = {
   duplicate: 'Διπλή στη λίστα',
   invalid: 'Δεν είναι διεύθυνση email',
   self: 'Είναι η δική σου διεύθυνση',
-  rate_limited: 'Όριο 50 προσκλήσεων ανά 24 ώρες· ξαναδοκίμασε αύριο',
+  rate_limited: `Έφτασες το όριο (${INVITE_LIMITS.paidPerDay} ανά 24 ώρες· στη δοκιμή ${INVITE_LIMITS.trialPerDay} τη μέρα και ${INVITE_LIMITS.trialTotal} συνολικά)`,
   over_limit: `Πάνω από ${INVITE_BATCH} στη μία φορά· στείλ᾽ την σε δεύτερη λίστα`,
 };
 
