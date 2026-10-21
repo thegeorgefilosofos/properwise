@@ -443,7 +443,7 @@ function sellerOf(port: MerchantPort): BillingWords['seller'] {
   const s = port.sellerOfRecord;
   if (!morSellerDisclosed(s)) return null;
   return {
-    line: `Πωλητής: ${s.name} (merchant of record). Εκδίδει την απόδειξη και χειρίζεται ΦΠΑ και επιστροφές.`,
+    line: `Πωλητής: ${s.name} (merchant of record). Εισπράττει την πληρωμή, εκδίδει την απόδειξη και αποδίδει τον ΦΠΑ.`,
     termsUrl: s.buyerTermsUrl,
     termsLabel: `Όροι αγοραστή της ${s.name}`,
   };

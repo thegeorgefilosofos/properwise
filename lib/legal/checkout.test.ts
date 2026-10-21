@@ -65,8 +65,12 @@ ok('το IDENTITY της εφαρμογής δεν αλλάζει', IDENTITY.leg
   const seller = MOR_SELLERS.creem!
   ok('ανοιχτό ταμείο με ανώνυμο φορέα: τα λόγια είναι τα ζωντανά', w.live === true)
   ok('η γραμμή ονομάζει τον πωλητή', !!w.seller && w.seller.line.startsWith(`Πωλητής: ${seller.name}`))
-  ok('λέει merchant of record, απόδειξη, ΦΠΑ, επιστροφές',
-    !!w.seller && ['merchant of record', 'απόδειξη', 'ΦΠΑ', 'επιστροφές'].every(x => w.seller!.line.includes(x)))
+  ok('λέει merchant of record, πληρωμή, απόδειξη, ΦΠΑ',
+    !!w.seller && ['merchant of record', 'πληρωμή', 'απόδειξη', 'ΦΠΑ'].every(x => w.seller!.line.includes(x)))
+  // Η Creem ΔΕΝ αποφασίζει τις επιστροφές: την πολιτική την ορίζει ο έμπορος και
+  // η Creem παρεμβαίνει μόνο μετά από 7 ημέρες χωρίς απάντηση
+  // (https://docs.creem.io/for-customers/). Η γραμμή δεν το υπόσχεται.
+  ok('δεν υπόσχεται ότι η Creem χειρίζεται τις επιστροφές', !!w.seller && !w.seller.line.includes('επιστροφ'))
   ok('δείχνει στους όρους του για τον αγοραστή', !!w.seller && w.seller.termsUrl === seller.buyerTermsUrl)
   ok('καμία εξήγηση «γιατί κλειστό» όσο πουλάμε', w.saleClosedReason === null)
   ok('κανένα στοιχείο φορέα στη γραμμή', !!w.seller && !/ΑΦΜ|ΓΕΜΗ/.test(w.seller.line))
