@@ -12,6 +12,7 @@ import { cardStyle } from '../../LoanShared'
 import { T, fixedCols } from '@/components/Theme'
 import { BORROWER_PROFILES, fmtEur, fmtPct, loanTaxNote, type LoanType, type RateType, type BorrowerType, type MarketRates } from '../../TabLoanData'
 import { greekDay, MONTH_MEAN } from '@/lib/market/ecb'
+import { FALLBACK_NOTE } from '@/app/hooks/useMarketData'
 import { NEW_BUILD_VAT_SUSPENDED_UNTIL, NEW_BUILD_VAT_RATE, TRANSFER_TAX_RATE } from '@/lib/accounting/transfer'
 import { fpRate } from '@/lib/core/format'
 import { PROP_TYPE_OPTIONS, AREA_OPTIONS, LOAN_TYPE_OPTIONS, RATE_TYPE_OPTIONS, FIXED_PERIOD_OPTIONS, euriborPeriod } from './model'
@@ -122,11 +123,12 @@ export function LoanCard({
                     το δημοσιεύει μηνιαία, όχι ημερήσια (lib/market/ecb.ts). Τώρα λέει
                     ό,τι λέει η προέλευση της ίδιας της τιμής, με την ίδια συνάρτηση
                     που τη γράφει και η σύγκριση επιτοκίων. Χωρίς προέλευση παίζει η
-                    εφεδρική τιμή και το λέει. */}
+                    εφεδρική τιμή και το λέει με τη λεζάντα της λωρίδας: τελευταία
+                    γνωστή τιμή της ΕΚΤ, όχι «εφεδρική τιμή χωρίς ημερομηνία». */}
                 <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop: 4,fontFamily: T.font.sans}}>
                   {market.euribor_asOf && market.euribor_basis
                     ? `Euribor 3 μηνών, ${euriborPeriod(market.euribor_asOf, market.euribor_basis)}${market.euribor_source ? `. Πηγή: ${market.euribor_source}` : ''}${market.euribor_fetchedAt ? `, λήψη ${greekDay(market.euribor_fetchedAt.slice(0,10))}` : ''}`
-                    : 'εφεδρική τιμή, χωρίς ημερομηνία παρατήρησης'}
+                    : FALLBACK_NOTE}
                 </p>
                 {/* Ο ΜΕΣΟΣ ΟΡΟΣ ΔΕΝ ΕΙΝΑΙ Η ΤΙΜΗ ΤΗΣ ΤΡΑΠΕΖΑΣ. Η τράπεζα εφαρμόζει
                     το Euribor μιας συγκεκριμένης ημέρας, της αναπροσαρμογής. Στον
