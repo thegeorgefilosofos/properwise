@@ -13,6 +13,7 @@
 // 100%, ενώ η κύρωση ισχύει από την ημερομηνία του `FIRST_YEAR_BANK_RECEIPT`
 // (Α.1187/2026, ΦΕΚ Β΄ 5590/17.09.2026, lib/billing/presumptive.ts).
 // ═══════════════════════════════════════════════════════════════════════════
+import { readFileSync } from 'node:fs';
 import { KNOWLEDGE_PACKS, packsFor } from '../../app/dashboard/components/assistantPersona';
 import { incomeStatement } from '../accounting/statement';
 import {
@@ -155,6 +156,35 @@ for (const q of [
   ]) {
     ok(`πιάνεται χωρίς ημερομηνία: «${undated}»`, cashUndated(`${p}. ${undated}`, from).length > 0);
   }
+}
+
+// ── 5. ΚΑΝΕΝΑ ΠΟΣΟ ΤΩΝ ΠΑΡΑΔΕΙΓΜΑΤΩΝ ΓΡΑΜΜΕΝΟ ΜΕ ΤΟ ΧΕΡΙ ΣΤΗΝ ΠΗΓΗ ───────────
+// Οι έλεγχοι 1 και 2 συγκρίνουν το κείμενο με τη μηχανή ΣΗΜΕΡΑ. Με τα ποσά
+// γραμμένα με το χέρι περνούσαν· μια αλλαγή συντελεστή θα τους κοκκίνιζε και
+// κάποιος θα έπρεπε να ξαναγράψει την πρόζα με το χέρι. Εδώ ελέγχεται η ΠΗΓΗ
+// του assistantPersona.ts: στα «ΕΠΑΛΗΘΕΥΜΕΝΑ» παραδείγματα και στην παλιά κλίμακα
+// ενοικίων του 2025 δεν μένει κανένα ποσό, ποσοστό ή όριο έξω από `${…}`.
+// Οι ηλικίες («≤25», «26–30») δεν είναι ποσά και μένουν.
+{
+  const src = readFileSync(new URL('../../app/dashboard/components/assistantPersona.ts', import.meta.url), 'utf8');
+  const between = (a: string, b: string) => {
+    const i = src.indexOf(a);
+    const j = i < 0 ? -1 : src.indexOf(b, i);
+    return i < 0 || j < 0 ? null : src.slice(i, j).replace(/\$\{[^}]*\}/g, '');
+  };
+  // ΚΑΘΕ ψηφίο μετρά: και ένα «855» χωρίς τελεία χιλιάδων ή μονάδα (ανεξάρτητος
+  // έλεγχος του #425 το έγραψε με το χέρι και πέρασε). Εξαιρούνται μόνο όσα δεν
+  // είναι ποσά: ο αριθμός του άρθρου και οι ηλικίες.
+  const NOT_AMOUNTS = /άρθρου 15|≤25|26–30/g;
+  const handTyped = (seg: string) => [...seg.replace(NOT_AMOUNTS, '').matchAll(/\d[\d.,/]*/g)].map(m => m[0]);
+  const examples = between('ΕΠΑΛΗΘΕΥΜΕΝΟΙ ΥΠΟΛΟΓΙΣΜΟΙ, ΧΡΗΣΙΜΟΠΟΙΗΣΕ', 'ΕΝΦΙΑ: 100');
+  ok('βρέθηκαν τα επαληθευμένα παραδείγματα στην πηγή', examples != null);
+  const ex = handTyped(examples ?? '');
+  ok(`επαληθευμένα παραδείγματα χωρίς ποσά με το χέρι${ex.length ? `: ${ex.join(', ')}` : ''}`, ex.length === 0);
+  const old = between('ισχύουν ΑΚΟΜΗ οι ΠΑΛΙΕΣ κλίμακες', 'Ο υπολογιστής φόρου ενοικίων');
+  ok('βρέθηκε η παλιά κλίμακα του 2025 στην πηγή', old != null);
+  const ol = handTyped(old ?? '');
+  ok(`κλίμακα ενοικίων 2025 χωρίς ποσοστά και όρια με το χέρι${ol.length ? `: ${ol.join(', ')}` : ''}`, ol.length === 0);
 }
 
 console.log(fail === 0 ? `✓ promptTaxFacts: ${pass} έλεγχοι πέρασαν` : `✗ promptTaxFacts: ${fail} απέτυχαν από ${pass + fail}`);
