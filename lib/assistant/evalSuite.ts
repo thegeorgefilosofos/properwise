@@ -214,7 +214,8 @@ function enfiaCases(): SuiteCase[] {
       id: `enfia-2026-extra-${big}`,
       category: 'enfia',
       question: `Έχω ένα ακίνητο αντικειμενικής αξίας ${feWhole(big)}, 100% δικό μου. Η συνολική μου περιουσία ξεπερνά τα ${feWhole(big)}. Πόσος είναι ο πρόσθετος φόρος της αξίας του ακινήτου στον ΕΝΦΙΑ;`,
-      knowledge: 'not-in-prompt',
+      // Τα κλιμάκια του ENFIA_EXTRA_BRACKETS μπήκαν στη γνώση στις 21/10/2026.
+      knowledge: 'in-prompt',
       source: `enfiaExtraPropertyTax(${big}) · αφορολόγητο ${feWhole(ENFIA_EXTRA_TAX_FREE)}`,
       expect: { amounts: [{ value: extra, tolerance: CENTS, label: 'πρόσθετος φόρος' }] },
       computed: [extra],
