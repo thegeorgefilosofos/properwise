@@ -75,7 +75,7 @@ export const ROLE_LABEL: Record<SubprocessorRole, string> = {
   mixed: 'Αυτοτελής υπεύθυνος για την πληρωμή και τα φορολογικά στοιχεία, εκτελών για τα υπόλοιπα',
 };
 
-import { merchant, type BillingEnv } from '@/lib/billing/merchant';
+import { merchant, type BillingEnv, type MerchantPort } from '@/lib/billing/merchant';
 import { billingWords } from './billingWords';
 // Ο ΕΜΠΟΡΟΣ ΕΠΕΞΕΡΓΑΖΕΤΑΙ ΟΤΑΝ ΠΟΥΛΑΜΕ, ΟΧΙ ΟΤΑΝ ΥΠΑΡΧΕΙ ΚΛΕΙΔΙ. Η συνθήκη του
 // ταμείου κρίνει πλέον και την ταυτότητα του πωλητή (lib/legal/checkout.ts).
@@ -233,9 +233,10 @@ const base = (mor: string): readonly Subprocessor[] => [
  * Ο κατάλογος όπως ισχύει ΤΩΡΑ. Ο πάροχος πληρωμών παίρνει την κατάστασή του
  * από την ίδια συνθήκη που δείχνει το κουμπί του ταμείου.
  */
-export function subprocessors(env: BillingEnv = process.env, id: LegalIdentity = IDENTITY): readonly Subprocessor[] {
-  const port = merchant(env);
-  const live = checkoutIsLive(env, id);
+export function subprocessors(
+  env: BillingEnv = process.env, id: LegalIdentity = IDENTITY, port: MerchantPort = merchant(env),
+): readonly Subprocessor[] {
+  const live = checkoutIsLive(env, id, port);
   // ΟΙ ΥΠΗΡΕΣΙΕΣ PUSH ΕΠΕΞΕΡΓΑΖΟΝΤΑΙ ΜΟΝΟ ΟΤΑΝ ΥΠΑΡΧΕΙ ΚΛΕΙΔΙ. Χωρίς το δημόσιο
   // κλειδί VAPID ο διακόπτης δεν εμφανίζεται σε καμία οθόνη, καμία συσκευή δεν
   // γράφεται και κανένα μήνυμα δεν φεύγει. Ενα καρφωμένο `true` θα δήλωνε
@@ -271,7 +272,7 @@ export function subprocessors(env: BillingEnv = process.env, id: LegalIdentity =
       // του ίδιου γεγονότος είναι τρεις ευκαιρίες να αποκλίνουν. Δική της φράση
       // (`merchantRow`) και όχι το `cardData`: εκείνο λέει «ο πάροχος πληρωμών»
       // και εδώ διαβαζόταν ως ο πάροχος να μιλά για τον εαυτό του.
-      purpose: `${s.purpose} ${billingWords(env, id).merchantRow}`,
+      purpose: `${s.purpose} ${billingWords(env, id, port).merchantRow}`,
     };
   });
 }

@@ -29,7 +29,7 @@
 // λάθος, γιατί ο πελάτης μπορεί να πληρώσει με άλλο.
 // ═══════════════════════════════════════════════════════════════════════════
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { MERCHANT_NAMES } from '@/lib/legal/merchant';
+import { MERCHANT_NAMES, MOR_SELLERS } from '@/lib/legal/merchant';
 import { parseVariantMap, planOfVariant } from '../variantMap';
 import type { MorStatus, MorSubscription } from '../subscription';
 import { isMorStatus } from '../subscription';
@@ -236,6 +236,9 @@ export const creemPort: MerchantPort = {
   name: MERCHANT_NAMES.creem,
   site: 'https://www.creem.io/',
   logo: CREEM_LOGO,
+  // MERCHANT OF RECORD: πουλά στο δικό του όνομα (απόφαση George 21/10/2026).
+  // Τα στοιχεία και οι πηγές τους: lib/legal/merchant.ts, MOR_SELLERS.
+  sellerOfRecord: MOR_SELLERS.creem,
 
   // ΠΩΛΗΣΗ ΘΕΛΕΙ ΚΛΕΙΔΙ ΚΑΙ ΧΑΡΤΗ. Χωρίς χάρτη προϊόντων το ταμείο δεν ξέρει
   // τι πουλά, οπότε δεν ανοίγει καθόλου.

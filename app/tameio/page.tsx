@@ -19,7 +19,7 @@ import { StandaloneCard, CARD_TITLE, CARD_BODY } from '../StandaloneCard';
 
 export default function Page() {
   const w = billingWords();
-  if (w.live) return <CheckoutLanding firstCharge={w.firstCharge} moneyBack={w.moneyBack} securedBy={w.securedBy} securedHref={merchant().site} securedLead={w.securedByLead} securedLogo={merchant().logo}/>;
+  if (w.live) return <CheckoutLanding firstCharge={w.firstCharge} moneyBack={w.moneyBack} securedBy={w.securedBy} securedHref={merchant().site} securedLead={w.securedByLead} securedLogo={merchant().logo} seller={w.seller}/>;
   return (
     <StandaloneCard>
       <h1 style={CARD_TITLE}>Δεν χρειάζεται πληρωμή</h1>

@@ -18,7 +18,17 @@
 // ήδη: αν τους έκλεινε η ελλιπής ταυτότητα, ένας πελάτης που αγόρασε θα έχανε
 // την ακύρωση ή τα παραστατικά του, δηλαδή θα τιμωρούνταν για δικό μας κενό.
 // ═══════════════════════════════════════════════════════════════════════════
-import { merchant, type BillingEnv } from '@/lib/billing/merchant';
+//
+// ΚΑΙ ΟΤΑΝ ΠΟΥΛΑ Ο ΙΔΙΟΣ Ο ΕΜΠΟΡΟΣ (απόφαση George 21/10/2026). Αν ο έμπορος
+// είναι merchant of record, πωλητής απέναντι στον αγοραστή είναι εκείνος και όχι
+// ο φορέας: εκδίδει την απόδειξη, αποδίδει τον ΦΠΑ, εκτελεί τις επιστροφές. Τότε
+// η ταυτότητα που ζητά ο νόμος πριν από την πληρωμή είναι η δική του
+// (lib/legal/merchant.ts, MOR_SELLERS) και πρέπει να είναι δηλωμένη. Για κάθε
+// έμπορο που ΔΕΝ πουλά στο όνομά του ισχύει ο κανόνας της 20/10 αυτούσιος. Ο
+// έλεγχος του εμπόρου (κλειδί, χάρτης, όχι δοκιμαστικό κλειδί στην παραγωγή)
+// μένει πρώτος και αμετάβλητος.
+import { merchant, type BillingEnv, type MerchantPort } from '@/lib/billing/merchant';
+import { morSellerDisclosed } from './merchant';
 import { IDENTITY, sellerIdentityComplete, type LegalIdentity } from './identity';
 
 /** Γιατί είναι κλειστό το ταμείο, ή `null` όταν είναι ανοιχτό. */
@@ -32,14 +42,23 @@ export type CheckoutClosedBy = 'merchant' | 'identity' | null;
  *   καταστάσεις χωρίς να αλλάζουν το αρχείο. Στην εφαρμογή είναι πάντα το IDENTITY.
  */
 export function checkoutState(
-  env: BillingEnv = process.env, id: LegalIdentity = IDENTITY,
+  env: BillingEnv = process.env, id: LegalIdentity = IDENTITY, port: MerchantPort = merchant(env),
 ): { live: boolean; closedBy: CheckoutClosedBy } {
-  if (!merchant(env).isLive(env)) return { live: false, closedBy: 'merchant' };
+  if (!port.isLive(env)) return { live: false, closedBy: 'merchant' };
+  // Πωλητής ο έμπορος, με δηλωμένη ταυτότητα: αυτήν βλέπει ο αγοραστής.
+  if (morSellerDisclosed(port.sellerOfRecord)) return { live: true, closedBy: null };
   if (!sellerIdentityComplete(id)) return { live: false, closedBy: 'identity' };
   return { live: true, closedBy: null };
 }
 
-/** Πουλάμε τώρα; Η ΜΙΑ συνθήκη για κάθε κουμπί, κείμενο και διαδρομή πώλησης. */
-export function checkoutIsLive(env: BillingEnv = process.env, id: LegalIdentity = IDENTITY): boolean {
-  return checkoutState(env, id).live;
+/**
+ * Πουλάμε τώρα; Η ΜΙΑ συνθήκη για κάθε κουμπί, κείμενο και διαδρομή πώλησης.
+ *
+ * @param port ο έμπορος, ρητά μόνο για τις σουίτες (έμπορος χωρίς merchant of
+ *   record). Στην εφαρμογή είναι πάντα ο `merchant(env)`.
+ */
+export function checkoutIsLive(
+  env: BillingEnv = process.env, id: LegalIdentity = IDENTITY, port: MerchantPort = merchant(env),
+): boolean {
+  return checkoutState(env, id, port).live;
 }

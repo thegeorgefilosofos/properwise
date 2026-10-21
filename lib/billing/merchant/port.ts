@@ -113,8 +113,8 @@ export type ReadEvent =
 // ΤΟ ΑΝΑΓΝΩΡΙΣΤΙΚΟ ΤΟΥ ΕΜΠΟΡΟΥ ΔΕΝ ΟΡΙΖΕΤΑΙ ΕΔΩ. Ορίζεται μαζί με το εμπορικό
 // του όνομα, στο lib/legal/merchant.ts, γιατί τα νομικά κείμενα χρειάζονται
 // ΜΟΝΟ το όνομα και δεν επιτρέπεται να φορτώνουν τις υλοποιήσεις των θυρών.
-export type { MerchantId } from '@/lib/legal/merchant';
-import type { MerchantId } from '@/lib/legal/merchant';
+export type { MerchantId, MorSeller } from '@/lib/legal/merchant';
+import type { MerchantId, MorSeller } from '@/lib/legal/merchant';
 
 /**
  * Η θύρα. Καμία μέθοδος δεν δέχεται ή επιστρέφει έννοια του παρόχου.
@@ -131,6 +131,13 @@ export interface MerchantPort {
   readonly site: string;
   /** Το σήμα του εμπόρου ως διαδρομή SVG χωρίς χρώμα, για το σήμα ασφαλούς πληρωμής. */
   readonly logo?: { readonly viewBox: string; readonly d: string };
+  /**
+   * Ο πωλητής της συνδρομής, όταν ο έμπορος είναι merchant of record: πουλά
+   * στο δικό του όνομα, εκδίδει την απόδειξη, αποδίδει τον ΦΠΑ και εκτελεί τις
+   * επιστροφές. Χωρίς αυτό, πωλητής είναι ο φορέας και το ταμείο θέλει την
+   * πλήρη ταυτότητά του (lib/legal/checkout.ts).
+   */
+  readonly sellerOfRecord?: MorSeller | null;
   /** Ολα ρυθμισμένα για ΠΩΛΗΣΗ; Οσο είναι `false`, το ταμείο δεν ανοίγει. */
   isLive(env: BillingEnv): boolean;
   /**
