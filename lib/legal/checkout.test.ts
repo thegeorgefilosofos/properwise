@@ -70,7 +70,7 @@ ok('το IDENTITY της εφαρμογής δεν αλλάζει', IDENTITY.leg
   // Η Creem ΔΕΝ αποφασίζει τις επιστροφές: την πολιτική την ορίζει ο έμπορος και
   // η Creem παρεμβαίνει μόνο μετά από 7 ημέρες χωρίς απάντηση
   // (https://docs.creem.io/for-customers/). Η γραμμή δεν το υπόσχεται.
-  ok('δεν υπόσχεται ότι η Creem χειρίζεται τις επιστροφές', !!w.seller && !w.seller.line.includes('επιστροφ'))
+  ok('δεν υπόσχεται ότι ο πωλητής χειρίζεται τις επιστροφές', !!w.seller && !w.seller.line.includes('επιστροφ'))
   ok('δείχνει στους όρους του για τον αγοραστή', !!w.seller && w.seller.termsUrl === seller.buyerTermsUrl)
   ok('καμία εξήγηση «γιατί κλειστό» όσο πουλάμε', w.saleClosedReason === null)
   ok('κανένα στοιχείο φορέα στη γραμμή', !!w.seller && !/ΑΦΜ|ΓΕΜΗ/.test(w.seller.line))
