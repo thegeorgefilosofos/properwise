@@ -37,6 +37,11 @@ import type { FixedAsset } from '@/lib/accounting/fixedAssets'
 import type { VatDeduction } from '@/lib/tax/myData'
 import { failed } from '@/lib/core/dbError';
 import { openRequests, answerRequest, type OpenRequest } from '@/lib/data/accountant';
+import { invitesForMe, answerInvite, type ReceivedInvite } from '@/lib/data/accountantInvites';
+import * as accountantLink from '@/lib/data/accountantLink';
+import { notify, notifyError } from '@/components/Toast';
+import { FEATURE_MIN_PLAN } from '@/lib/billing/entitlements';
+import { PLANS } from '@/lib/billing/plans';
 import { aadeTitle } from '@/components/AadeLink';
 import { aadePath, AADE_DESTINATIONS } from '@/lib/tax/aade';
 import MeetingPackCard from './MeetingPackCard';
@@ -282,8 +287,14 @@ export interface DossierExportSource {
 }
 
 export default function AccountantDossier({
-  state, year, properties, exportSource, actions, compact = false, yearData, userId, onEditProperty,
+  state, year, properties, exportSource, actions, compact = false, yearData, userId, onEditProperty, canShareLink = true,
 }: {
+  /**
+   * Το πακέτο επιτρέπει σύνδεσμο λογιστή (`e2_export`). Χωρίς αυτό, η πρόσκληση
+   * λογιστή φαίνεται αλλά η αποδοχή περιμένει την αναβάθμιση: αλλιώς ο λογιστής
+   * θα έβρισκε κλειδωμένο φάκελο και ο πελάτης θα το μάθαινε από εκείνον.
+   */
+  canShareLink?: boolean
   /** Ανοίγει τον οδηγό του ακινήτου στο ΑΦΜ του ιδιοκτήτη. */
   onEditProperty?: (propertyId: string) => void
   /** Ο ιδιοκτήτης: ο φάκελος ανά ΑΦΜ φορτώνεται με το δικό του αναγνωριστικό. */
@@ -482,6 +493,7 @@ export default function AccountantDossier({
             τον λογιστή· η επιστροφή ήταν τηλεφώνημα. Κάθεται ΕΔΩ και όχι σε
             δική της καρτέλα, γιατί εδώ βρίσκεται ήδη ο χρήστης όταν σκέφτεται
             «τι θέλει από μένα ο λογιστής μου». */}
+        {userId && <AccountantInvites userId={userId} canShare={canShareLink} />}
         <AccountantAsks />
 
         {actions && (
@@ -654,6 +666,69 @@ export default function AccountantDossier({
         )}
       </div>
       </>)}
+    </div>
+  )
+}
+
+/**
+ * Ο ΛΟΓΙΣΤΗΣ ΖΗΤΑ ΠΡΟΣΒΑΣΗ ΚΑΙ ΑΠΟΦΑΣΙΖΕΙ Ο ΠΕΛΑΤΗΣ.
+ *
+ * Η μαζική πρόσκληση του λογιστή φτάνει εδώ ως μία γραμμή ανά λογιστή. Μέχρι το
+ * «Αποδοχή» ο λογιστής δεν βλέπει τίποτα· με το «Αποδοχή» βγαίνει (ή ανανεώνεται)
+ * ο ίδιος σύνδεσμος που θα έστελνε ο πελάτης με το χέρι και η σύνδεση γράφεται
+ * με αυτόν. Ανακαλείται όπως κάθε άλλη, από τις Ρυθμίσεις.
+ *
+ * ΔΕΝ ΚΑΤΑΛΑΜΒΑΝΕΙ ΧΩΡΟ ΟΤΑΝ ΔΕΝ ΕΧΕΙ ΝΑ ΠΕΙ ΤΙΠΟΤΑ, όπως και τα αιτήματα.
+ */
+function AccountantInvites({ userId, canShare }: { userId: string; canShare: boolean }) {
+  const supabase = useMemo(() => createClient(), [])
+  const [invites, setInvites] = useState<ReceivedInvite[]>([])
+  const [busy, setBusy] = useState('')
+
+  useEffect(() => { void invitesForMe(supabase).then(setInvites) }, [supabase])
+
+  const answer = useCallback(async (inv: ReceivedInvite, accept: boolean) => {
+    setBusy(inv.id)
+    try {
+      if (accept) {
+        // Ο ΣΥΝΔΕΣΜΟΣ ΠΡΩΤΑ. Η σύνδεση γράφεται με τον ζωντανό σύνδεσμο του
+        // πελάτη· η `issue` τον φτιάχνει ή ανανεώνει τη λήξη του υπάρχοντος.
+        const link = await accountantLink.issue(supabase, userId)
+        if (!link?.live) { notifyError('Ο σύνδεσμος για τον λογιστή δεν δημιουργήθηκε'); return }
+      }
+      const r = await answerInvite(supabase, inv.id, accept)
+      if (!r.ok) { notifyError(accept ? 'Η αποδοχή δεν ολοκληρώθηκε' : 'Η απάντηση δεν στάλθηκε'); return }
+      setInvites(xs => xs.filter(x => x.id !== inv.id))
+      if (accept) notify(`Ο λογιστής ${inv.name} βλέπει πλέον τον φάκελό σου, μόνο για ανάγνωση`)
+    } finally { setBusy('') }
+  }, [supabase, userId])
+
+  if (invites.length === 0) return null
+
+  return (
+    <div style={{ margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+      <p style={{ fontSize: 'var(--fs-xs)', letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans }}>
+        {invites.length === 1 ? 'Ο λογιστής σου ζητά πρόσβαση' : `${invites.length} λογιστές ζητούν πρόσβαση`}
+      </p>
+      <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0', display: 'grid', gap: 0 }}>
+        {invites.map(inv => (
+          <li key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '9px 0', borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.sans, lineHeight: 1.5, minWidth: 0, overflowWrap: 'anywhere' }}>
+              {inv.name}
+              <span style={{ color: 'var(--text-tertiary)' }}>{` · ${inv.email} · θα βλέπει τον φάκελό σου, μόνο για ανάγνωση`}</span>
+              {!canShare && (
+                <span style={{ display: 'block', color: 'var(--text-tertiary)', fontSize: 'var(--fs-xs)' }}>
+                  {`Ο σύνδεσμος για τον λογιστή περιλαμβάνεται από το πακέτο «${PLANS[FEATURE_MIN_PLAN.e2_export].name}» και πάνω.`}
+                </span>
+              )}
+            </span>
+            <span style={{ display: 'flex', gap: 8 }}>
+              <Btn variant="secondary" onClick={() => void answer(inv, true)} disabled={!canShare || busy === inv.id}>Αποδοχή</Btn>
+              <Btn variant="ghost" onClick={() => void answer(inv, false)} disabled={busy === inv.id}>Όχι</Btn>
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

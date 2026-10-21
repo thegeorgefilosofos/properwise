@@ -35,6 +35,7 @@ import { reportPdfBlob } from '@/lib/pdf/pdfReport';
 import { issueDocument } from '@/lib/documents/issue';
 import { grDate } from '@/lib/core/format';
 import { roundHalfUp } from '@/lib/core/money';
+import { taxisnetSheet, sheetSummary, CHECK_LABEL, type TaxisnetSheet } from '@/lib/accounting/taxisnetSheet';
 
 /** Το βιβλίο «02 Έλεγχος φακέλου»: σύνοψη, σύγκριση, ακίνητα, βραχυχρόνια, τι λείπει. */
 export function buildReviewWorkbook(input: MeetingPackInput, issuedAt: Date = new Date()): XLSX.WorkBook {
@@ -163,6 +164,46 @@ export function buildReviewWorkbook(input: MeetingPackInput, issuedAt: Date = ne
     });
     XLSX.utils.book_append_sheet(wb, ws, 'Τι λείπει');
   }
+  return wb;
+}
+
+/**
+ * Το βιβλίο «05 Κωδικοί Ε1 και Ε2»: ένα φύλλο, δύο πίνακες, μία στήλη ελέγχου.
+ * Τα ποσά γράφονται ως αριθμοί με τη μορφή τους, όπως σε κάθε εξαγωγή: ο
+ * λογιστής τα αθροίζει και τα αντιγράφει χωρίς να ξαναγράψει κόμματα.
+ */
+export function buildCodesWorkbook(sheet: TaxisnetSheet, ownerName: string | null, issuedAt: Date = new Date()): XLSX.WorkBook {
+  const wb = XLSX.utils.book_new();
+  const who = `ΑΦΜ ${sheet.ownerAfm}${ownerName ? ` · ${ownerName}` : ''}`;
+  const sub = `${who} · Φορολογικό έτος ${sheet.year} · Εκδόθηκε ${grDate(issuedAt.toISOString())}`;
+  const { ws } = sectionSheet({
+    title: `ΚΩΔΙΚΟΙ Ε1 ΚΑΙ ΓΡΑΜΜΕΣ Ε2 ΓΙΑ ΤΟ TAXISNET · ${sheet.year}`, sub, maxWidth: 60,
+    blocks: [
+      {
+        title: 'Ε1 · ΠΙΝΑΚΑΣ 4Δ2', lead: sheetSummary(sheet),
+        head: ['Κωδικός υπόχρεου', 'Κωδικός συζύγου', 'Περιγραφή', 'Ποσό', 'Έλεγχος', 'Τι σημαίνει'],
+        numeric: [3], formats: { 3: FMT.int },
+        rows: sheet.e1.map(l => [l.code || 'Χωρίς κωδικό', l.spouseCode, l.label, l.amount, CHECK_LABEL[l.check.state], l.check.detail]),
+        empty: 'Κανένα εισόδημα από ακίνητη περιουσία στο έτος.',
+        notes: [`Πηγή κωδικών: ${sheet.source}. Ο πρώτος κωδικός είναι του υπόχρεου, ο δεύτερος του ή της συζύγου.`],
+      },
+      {
+        title: 'Ε2 · ΠΙΝΑΚΑΣ I',
+        head: ['Ακίνητο', 'ΑΤΑΚ', 'Μισθωτής (στ. 6)', 'ΑΦΜ μισθωτή (στ. 7)', 'Από (στ. 8)', 'Έως (στ. 9)', 'Μήνες (στ. 10)', 'Ποσοστό (στ. 12)', 'Στ. 13', 'Στ. 14', 'Στ. 15', 'Στ. 16', 'Έλεγχος', 'Τι σημαίνει'],
+        numeric: [6, 7, 8, 9, 10, 11], formats: { 6: FMT.int, 7: FMT.pct, 8: FMT.eur, 9: FMT.eur, 10: FMT.eur, 11: FMT.eur },
+        rows: sheet.e2.map(l => [
+          l.propertyName, l.atak || 'Λείπει', l.tenantName, l.tenantAfm, l.from, l.to, l.months, l.ownershipPct,
+          l.col13, l.col14, l.col15, l.col16, CHECK_LABEL[l.check.state], l.check.detail,
+        ]),
+        empty: 'Καμία γραμμή Ε2 στο έτος.',
+        notes: [
+          'Στ. 13 εκμίσθωση, στ. 14 δωρεάν παραχώρηση, στ. 15 ιδιοχρησιμοποίηση, στ. 16 ανείσπρακτα. Τα ποσά είναι το μερίδιο του υπόχρεου.',
+          '«Ελέγχθηκε»: συμφωνεί με το προσυμπληρωμένο Ε2 και δεν λείπει στοιχείο. «Λείπει» ή «Διαφέρει»: δες τη στήλη δίπλα πριν πληκτρολογήσεις.',
+        ],
+      },
+    ],
+  });
+  XLSX.utils.book_append_sheet(wb, ws, 'Κωδικοί Ε1 και Ε2');
   return wb;
 }
 
@@ -306,8 +347,21 @@ export async function buildMeetingPack(db: SupabaseClient, req: MeetingPackReque
     else paperNotes.push('Το πρωτότυπο προσυμπληρωμένο δεν κατέβηκε και δεν συνοδεύει αυτόν τον φάκελο.');
   }
 
+  // Το φύλλο κωδικών από τις ΙΔΙΕΣ γραμμές και την ΙΔΙΑ σύγκριση με το Ε2 και
+  // τον έλεγχο του φακέλου. Καμία δεύτερη ανάγνωση.
+  const codes = taxisnetSheet({
+    year, ownerAfm,
+    properties: group.idx.map(i => {
+      const p = loaded.properties[i];
+      return { id: p.id, name: (p.name || '').trim() || p.address || 'Ακίνητο', atak: p.atak, power_supply_no: p.power_supply_no };
+    }),
+    rows: group.idx.map(i => loaded.rows[i]),
+    reconciliation,
+  });
+
   const entries = packEntries({
     year, cover, e2: workbookBytes(e2wb), review: workbookBytes(buildReviewWorkbook(input)), papers, original,
+    codes: workbookBytes(buildCodesWorkbook(codes, req.ownerName)),
   });
   return {
     zip: buildZip(entries),

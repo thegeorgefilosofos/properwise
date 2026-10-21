@@ -19,7 +19,7 @@ npm run katalogos
 | UPSELL | 10 | Αναβάθμιση πακέτου, όταν η χρήση το δικαιολογεί |
 | SEASONAL | 6 | Εποχικά: σεζόν βραχυχρόνιας, χειμώνας, κλείσιμο χρονιάς |
 | REFERRAL | 4 | Πρόγραμμα πρόσκλησης |
-| LIFECYCLE | 8 | Δοκιμή, λήξη δοκιμής, επιστροφή |
+| LIFECYCLE | 9 | Δοκιμή, λήξη δοκιμής, επιστροφή |
 | WINBACK | 5 | Επανάκτηση χρήστη που σταμάτησε |
 | OPERATIONS | 12 | Λειτουργικά: ενοίκια, λογαριασμοί, συμβόλαια, συντηρήσεις |
 | SHORTTERM | 7 | Βραχυχρόνια μίσθωση: κρατήσεις, ΤΑΚΚ, μητρώο |
@@ -31,7 +31,7 @@ npm run katalogos
 | VALUE | 8 | Απόδειξη αξίας με τα δικά του νούμερα |
 | NEWS | 5 | Ενημερωτικό δελτίο |
 | DIGESTS | 3 | Συνόψεις αγοράς και χαρτοφυλακίου |
-| **ΣΥΝΟΛΟ** | **119** | |
+| **ΣΥΝΟΛΟ** | **120** | |
 
 ## ONBOARDING
 
@@ -88,7 +88,7 @@ npm run katalogos
 | `trial_ending` | Η δοκιμή σου τελειώνει σύντομα | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260819130000_o_kyklos_zois_diavazei_to_sosto_pedio.sql` (+2) |
 | `winback_downgrade` | Είμαστε εδώ, όποτε θες | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
 | `reactivation_offer` | Γύρνα με ${o.pct}% έκπτωση | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/send-lifecycle-email/index.ts` |
-| `trial_started` | Η δοκιμή σου ξεκίνησε. Ας την αξιοποιήσουμε | `lib/analytics/events.ts`, `lib/billing/morWebhook.ts` (+2) |
+| `trial_started` | Η δοκιμή σου ξεκίνησε. Ας την αξιοποιήσουμε | `lib/analytics/events.ts`, `lib/billing/morWebhook.ts` (+3) |
 
 ## SEASONAL
 
@@ -125,6 +125,7 @@ npm run katalogos
 | `payment_failed` | Η πληρωμή της συνδρομής δεν ολοκληρώθηκε | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `security_login` | Νέα σύνδεση στον λογαριασμό σου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `accountant_request_answered` | ${esc(c.clientName \|\| 'Ο πελάτης σου')}: ήρθε αυτό που ζήτησες | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260825150000_i_pyli_logisti_kleinei_ton_kyklo.sql` |
+| `accountant_invite` | c.accountantName ? `${esc(c.accountantName)} ζητά πρόσβαση στον φάκελό σου` : 'Ο λογιστής σου ζητά πρόσβαση στον φάκελό σου' | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20261021090000_o_logistis_proskalei_tous_pelates.sql` (+1) |
 | `reply_ack` | Λάβαμε το μήνυμά σου | `supabase/functions/_shared/emailPolicy.ts` |
 | `mobile_launch` | Έρχεται το PROPERWISE στο κινητό σου | `supabase/functions/send-lifecycle-email/index.ts` |
 | `legislation_update` | Νομοθεσία ακινήτων: ${head} | **με το χέρι** · Νομοθετική αλλαγή. Το τι άλλαξε το γράφει άνθρωπος, δεν το μαντεύει σαρωτής. |

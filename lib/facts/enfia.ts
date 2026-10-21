@@ -31,6 +31,9 @@ export const ENFIA_UNKNOWN = '';
 export const ENFIA_DEFAULTS = {
   // Φετινό, αν το έχει ήδη στα χέρια του.
   enfiaAnnual: '', enfiaMonthly: '',
+  // Το σύνολο του εκκαθαριστικού (όλα τα ακίνητα του ΑΦΜ) και το έτος του: από
+  // αυτό βγαίνει πόσες δόσεις μπαίνουν στις υπενθυμίσεις (lib/calendar/enfiaTotals.ts).
+  enfiaStatementTotal: '', enfiaStatementYear: '',
   // Περσινό: το ένα από τα δύο αρκεί.
   enfiaLastAnnual: '', enfiaLastInstalment: '', enfiaLastCount: ENFIA_UNKNOWN,
   // Εκτίμηση, μόνο όταν δεν υπάρχει κανένα από τα δύο.

@@ -48,6 +48,16 @@ export interface AccountantDossierRow {
   updated_at: string;
 }
 
+export interface AccountantInvitesRow {
+  id: string | null;
+  accountant_id: string;
+  email: string;
+  status: string;
+  created_at: string;
+  sent_at: string;
+  answered_at: string | null;
+}
+
 export interface AccountantLinksRow {
   id: string;
   token: string;
@@ -1089,6 +1099,14 @@ export interface PricingSettingsRow {
   updated_at: string;
 }
 
+export interface ProductEventsRow {
+  id: string | null;
+  user_id: string;
+  event: string;
+  props: Json;
+  created_at: string;
+}
+
 export interface ProductUpdatesRow {
   id: string;
   title: string;
@@ -1523,6 +1541,7 @@ export interface Tables {
   account_deletion_incidents: AccountDeletionIncidentsRow;
   accountant_clients: AccountantClientsRow;
   accountant_dossier: AccountantDossierRow;
+  accountant_invites: AccountantInvitesRow;
   accountant_links: AccountantLinksRow;
   accountant_packs: AccountantPacksRow;
   accountant_requests: AccountantRequestsRow;
@@ -1590,6 +1609,7 @@ export interface Tables {
   portal_links: PortalLinksRow;
   portal_pin_attempts: PortalPinAttemptsRow;
   pricing_settings: PricingSettingsRow;
+  product_events: ProductEventsRow;
   product_updates: ProductUpdatesRow;
   property_data: PropertyDataRow;
   property_documents: PropertyDocumentsRow;

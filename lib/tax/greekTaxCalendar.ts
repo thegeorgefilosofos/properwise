@@ -175,6 +175,49 @@ const ENFIA_ISSUED: Readonly<Record<number, { date: string; source: string }>> =
 }
 const LAW_4223_ART6 = 'ν. 4223/2013, άρθρο 6'
 
+// ── ΠΟΣΕΣ ΔΟΣΕΙΣ ΕΧΕΙ ΤΟ ΔΙΚΟ ΣΟΥ ΕΚΚΑΘΑΡΙΣΤΙΚΟ (20.10.2026) ─────────────────
+// ΤΟ ΣΦΑΛΜΑ. Η μηχανή έβγαζε ΠΑΝΤΑ δώδεκα δόσεις και ο αυτόματος συγχρονισμός
+// (lib/calendar/taxSync.ts) έγραφε δώδεκα υπενθυμίσεις και σε ΕΝΦΙΑ 27,44€, που
+// πληρώνεται σε δύο. Δέκα υπενθυμίσεις για πληρωμές που δεν υπάρχουν.
+//
+// Ο ΚΑΝΟΝΑΣ ΤΟΥ ΝΟΜΟΥ. Κάθε δόση τουλάχιστον 10€, έως δώδεκα δόσεις (έγκριση
+// ιδιοκτήτη 20.10.2026· ο κανόνας και οι πηγές του ζουν στο
+// lib/tools/enfiaSchedule.ts, `ENFIA_MIN_INSTALMENT` / `enfiaInstalmentCount`):
+//   · taxheaven, «Τροπολογία για μειώσεις ΕΝΦΙΑ και καταβολή δόσεων»,
+//     https://www.taxheaven.gr/news/59285/tropologia-gia-meiwseis-enfia-kai-katabolh-dosewn
+//     («κάθε δόση δεν μπορεί να είναι μικρότερη από 10 ευρώ»)·
+//   · ΥΠΕΘΟΟ, https://minfin.gov.gr/katatethike-sti-vouli-i-tropologia-gia-pliromi-tou-enfia-se-11-doseis/·
+//   · ΑΑΔΕ, https://www.aade.gr/en/greeks-abroad-non-residents/property-taxation/unified-tax-ownership-real-estate-e9-enfia.
+//
+// ΤΟ ΠΛΗΘΟΣ ΕΡΧΕΤΑΙ ΑΠΟ ΤΟ ΣΥΝΟΛΟ ΤΟΥ ΕΚΚΑΘΑΡΙΣΤΙΚΟΥ, ΟΧΙ ΤΟΥ ΑΚΙΝΗΤΟΥ. Το
+// εκκαθαριστικό είναι ένα ανά ΑΦΜ. Ο καλών (taxSync) το υπολογίζει με την
+// `enfiaInstalmentCount` και το δίνει εδώ ανά έτος. Αυτό το αρχείο δεν ξέρει
+// το ελάχιστο ποσό: παίρνει έτοιμο αριθμό, για να μη δεθούν τα δύο αρχεία κυκλικά.
+//
+// ΑΓΝΩΣΤΟ ΣΥΝΟΛΟ ΣΗΜΑΙΝΕΙ ΔΩΔΕΚΑ. Μια υπενθύμιση παραπάνω είναι φθηνότερη από
+// μια πληρωμή που χάθηκε· η σημείωση όμως το λέει (`ENFIA_FEWER_HINT`). Και
+// ΠΟΤΕ λιγότερες από όσες ζητά ο νόμος: το πλήθος ισχύει μόνο για έτος με
+// εκδοθέν εκκαθαριστικό (ENFIA_ISSUED), όπου οι ημερομηνίες είναι του νόμου.
+/** Η σημείωση της δόσης όταν το σύνολο του εκκαθαριστικού δεν είναι γνωστό. */
+export const ENFIA_FEWER_HINT = 'Αν το ποσό σου είναι μικρό, οι δόσεις είναι λιγότερες· δες το εκκαθαριστικό.'
+
+/** Ρυθμίσεις του ημερολογίου που εξαρτώνται από τον φορολογούμενο. */
+export interface TaxCalendarOptions {
+  /**
+   * Έτος εκκαθαριστικού ΕΝΦΙΑ → πλήθος δόσεων, ΜΟΝΟ όταν το σύνολο του
+   * εκκαθαριστικού είναι γνωστό (`enfiaInstalmentCount` του
+   * lib/tools/enfiaSchedule.ts). Ό,τι λείπει είναι άγνωστο: δώδεκα, με σημείωση.
+   */
+  enfiaInstalments?: Readonly<Record<number, number>>
+}
+
+/** Το πλήθος δόσεων που ισχύει για το έτος, ή `null` όταν δεν είναι γνωστό. */
+function knownEnfiaCount(year: number, opts: TaxCalendarOptions): number | null {
+  if (!ENFIA_ISSUED[year]) return null
+  const n = opts.enfiaInstalments?.[year]
+  return typeof n === 'number' && Number.isInteger(n) && n >= 1 ? Math.min(n, 12) : null
+}
+
 // ── ΔΟΣΕΙΣ ΤΟΥ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ ΦΥΣΙΚΩΝ ΠΡΟΣΩΠΩΝ ─────────────────────────
 // Ο αριθμός ζούσε μόνο μέσα στη σημείωση του `income-decl` («έως 8 δόσεις») και
 // γραμμένος με το χέρι στον οδηγό προθεσμιών («έως οκτώ δόσεις»).
@@ -192,9 +235,15 @@ const LAW_4223_ART6 = 'ν. 4223/2013, άρθρο 6'
 export const INCOME_TAX_INSTALMENTS = 8
 
 // Οι υποχρεώσεις που ισχύουν για ΟΛΟΥΣ τους ιδιοκτήτες ακινήτων, ανά έτος.
-function ownerObligations(year: number): Draft[] {
+function ownerObligations(year: number, opts: TaxCalendarOptions = {}): Draft[] {
   const out: Draft[] = []
   const issued = ENFIA_ISSUED[year]
+  // Το πλήθος του ΔΙΚΟΥ του εκκαθαριστικού, αν το ξέρουμε (βλ. ENFIA_FEWER_HINT).
+  const count = knownEnfiaCount(year, opts)
+  const n = count ?? 12
+  const countNote = count == null ? ` ${ENFIA_FEWER_HINT}`
+    : count === 1 ? ' Με το σύνολο του εκκαθαριστικού σου πληρώνεται σε μία δόση.'
+    : ` Με το σύνολο του εκκαθαριστικού σου πληρώνεται σε ${count} δόσεις.`
   const issueMonth = issued ? Number(issued.date.slice(5, 7)) - 1 : 2
   const enfiaConfidence = issued ? 'statutory' as const : 'announced' as const
   const enfiaBasis = issued ? ` Εκκαθαριστικό ${year}: ${issued.source}· προθεσμίες κατά το ${LAW_4223_ART6}.` : ''
@@ -207,14 +256,16 @@ function ownerObligations(year: number): Draft[] {
   out.push({
     kind: 'enfia-issue', id: `enfia-issue-${year}`, date: nextWorkingDay(issued ? issued.date : iso(year, 2, 15)), // ~μέσα Μαρτίου (2026: ανάρτηση Κυριακή 15/3)
     title: issued ? 'ΕΝΦΙΑ, έκδοση εκκαθαριστικού' : 'ΕΝΦΙΑ, έκδοση εκκαθαριστικού (αναμένεται)',
-    notes: `Ο ΕΝΦΙΑ (Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων) εκκαθαρίζεται πλέον νωρίτερα (τα τελευταία έτη ~μέσα Μαρτίου) και πληρώνεται εφάπαξ ή σε 12 μηνιαίες δόσεις έως τον Φεβρουάριο του επόμενου έτους.${enfiaBasis} ${CONFIRM}`,
+    notes: `Ο ΕΝΦΙΑ (Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων) εκκαθαρίζεται πλέον νωρίτερα (τα τελευταία έτη ~μέσα Μαρτίου) και πληρώνεται εφάπαξ ή σε έως 12 μηνιαίες δόσεις έως τον Φεβρουάριο του επόμενου έτους.${countNote}${enfiaBasis} ${CONFIRM}`,
     category: 'tax', confidence: enfiaConfidence, profiles: ['owner', 'long_term', 'short_term'],
     who: 'owner', dossier: 'enfia',
   })
   out.push({
     kind: 'enfia-first', id: `enfia-first-${year}`, date: lastWorkingDayOfMonth(year, issueMonth), // τέλος του μήνα έκδοσης (τα τελευταία έτη Μάρτιος)
-    title: 'ΕΝΦΙΑ, 1η δόση',
-    notes: `Καταληκτική 1ης δόσης ΕΝΦΙΑ (τα τελευταία έτη τέλος Μαρτίου). Ακολουθούν έως 12 μηνιαίες δόσεις έως τον Φεβρουάριο του επόμενου έτους.${enfiaBasis} ${CONFIRM}`,
+    title: count === 1 ? 'ΕΝΦΙΑ, πληρωμή σε μία δόση' : 'ΕΝΦΙΑ, 1η δόση',
+    notes: count === 1
+      ? `Καταληκτική της μίας και μοναδικής δόσης ΕΝΦΙΑ (τα τελευταία έτη τέλος Μαρτίου).${countNote}${enfiaBasis} ${CONFIRM}`
+      : `Καταληκτική 1ης δόσης ΕΝΦΙΑ (τα τελευταία έτη τέλος Μαρτίου). Ακολουθούν μηνιαίες δόσεις, έως τη 12η τον Φεβρουάριο του επόμενου έτους.${countNote}${enfiaBasis} ${CONFIRM}`,
     category: 'tax', confidence: enfiaConfidence, profiles: ['owner', 'long_term', 'short_term'],
     who: 'owner', dossier: 'enfia',
   })
@@ -236,24 +287,29 @@ function ownerObligations(year: number): Draft[] {
   //
   // Τα `enfia-first` και `enfia-last` κρατούν τα κλειδιά και τα είδη τους: ο
   // οδηγός προθεσμιών, η επίδειξη και το reel τα διαβάζουν ήδη.
+  //
+  // ΜΕ ΛΙΓΟΤΕΡΕΣ ΑΠΟ ΔΩΔΕΚΑ (γνωστό σύνολο, `count`): οι δόσεις 2 ως n με τα ίδια
+  // κλειδιά, η n-οστή λέγεται «τελευταία» και το `enfia-last` (η 12η) δεν
+  // βγαίνει. Ο συγχρονισμός σβήνει τις περιττές που είχε γράψει ο ίδιος.
   if (issued) {
-    for (let n = 2; n <= 11; n++) {
-      const t = issueMonth + n - 1
+    for (let k = 2; k <= Math.min(n, 11); k++) {
+      const t = issueMonth + k - 1
+      const isLast = count != null && k === count
       out.push({
-        kind: 'enfia-instalment', id: `enfia-instalment-${year}-${n}`,
+        kind: 'enfia-instalment', id: `enfia-instalment-${year}-${k}`,
         date: lastWorkingDayOfMonth(year + Math.floor(t / 12), t % 12),
-        title: `ΕΝΦΙΑ, ${n}η δόση`,
-        notes: `Καταληκτική ${n}ης δόσης ΕΝΦΙΑ, την τελευταία εργάσιμη του μήνα της.${enfiaBasis} ${CONFIRM}`,
+        title: isLast ? `ΕΝΦΙΑ, ${k}η και τελευταία δόση` : `ΕΝΦΙΑ, ${k}η δόση`,
+        notes: `Καταληκτική ${k}ης ${isLast ? 'και τελευταίας ' : ''}δόσης ΕΝΦΙΑ, την τελευταία εργάσιμη του μήνα της.${countNote}${enfiaBasis} ${CONFIRM}`,
         category: 'tax', confidence: enfiaConfidence, profiles: ['owner', 'long_term', 'short_term'],
         who: 'owner', dossier: 'enfia',
       })
     }
   }
-  out.push({
+  if (n === 12) out.push({
     // Η δωδέκατη δόση: έντεκα μήνες μετά τον μήνα της πρώτης.
     kind: 'enfia-last', id: `enfia-last-${year}`, date: lastWorkingDayOfMonth(year + Math.floor((issueMonth + 11) / 12), (issueMonth + 11) % 12), // τέλος Φεβρουαρίου επόμενου έτους
     title: 'ΕΝΦΙΑ, τελευταία δόση',
-    notes: `Καταληκτική τελευταίας δόσης ΕΝΦΙΑ (τυπικά τελευταία εργάσιμη Φεβρουαρίου του επόμενου έτους, 12η δόση).${enfiaBasis} ${CONFIRM}`,
+    notes: `Καταληκτική τελευταίας δόσης ΕΝΦΙΑ (τυπικά τελευταία εργάσιμη Φεβρουαρίου του επόμενου έτους, 12η δόση).${countNote}${enfiaBasis} ${CONFIRM}`,
     category: 'tax', confidence: enfiaConfidence, profiles: ['owner', 'long_term', 'short_term'],
     who: 'owner', dossier: 'enfia',
   })
@@ -358,8 +414,10 @@ function shortTermObligations(year: number): Draft[] {
 //
 // Ο προορισμός δεν γράφεται πια στο χέρι: προκύπτει από το ΕΙΔΟΣ, μέσα από το
 // `lib/tax/aade.ts`, όπου κάθε ενέργεια έχει έναν και μόνο προορισμό.
-export function greekPropertyTaxObligations(year: number, profile: PropertyTaxProfile): TaxObligation[] {
-  const all = [...ownerObligations(year), ...(profile === 'short_term' ? shortTermObligations(year) : [])]
+export function greekPropertyTaxObligations(
+  year: number, profile: PropertyTaxProfile, opts: TaxCalendarOptions = {},
+): TaxObligation[] {
+  const all = [...ownerObligations(year, opts), ...(profile === 'short_term' ? shortTermObligations(year) : [])]
   return all
     .filter((o) => o.profiles.includes(profile))
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -380,14 +438,16 @@ export function greekPropertyTaxObligations(year: number, profile: PropertyTaxPr
  * Ο κανόνας ζει ΕΔΩ και μόνο εδώ: Επισκόπηση, Ημερολόγιο και Εκκρεμότητες τον
  * καλούν, δεν τον αντιγράφουν. Αλλιώς οι οθόνες ξαναδιαφωνούν κάθε Ιανουάριο.
  */
-export function taxObligationsHorizon(today: string, profile: PropertyTaxProfile): TaxObligation[] {
+export function taxObligationsHorizon(
+  today: string, profile: PropertyTaxProfile, opts: TaxCalendarOptions = {},
+): TaxObligation[] {
   const year = Number(today.slice(0, 4))
   if (!Number.isFinite(year)) return []
   const from = `${year}-01-01`, until = `${year + 1}-04-01`
   return [
-    ...greekPropertyTaxObligations(year - 1, profile),
-    ...greekPropertyTaxObligations(year, profile),
-    ...greekPropertyTaxObligations(year + 1, profile),
+    ...greekPropertyTaxObligations(year - 1, profile, opts),
+    ...greekPropertyTaxObligations(year, profile, opts),
+    ...greekPropertyTaxObligations(year + 1, profile, opts),
   ].filter((o) => o.date >= from && o.date < until)
     .sort((a, b) => a.date.localeCompare(b.date))
 }
