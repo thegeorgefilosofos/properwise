@@ -44,7 +44,7 @@ export type DocumentPatch = Record<string, unknown>;
  * αναφέρει το σφάλμα, ποτέ όλες μαζί.
  */
 export const OPTIONAL_COLUMNS = [
-  'amount', 'provider_afm', 'period_from', 'period_to', 'issue_date', 'supplier',
+  'amount', 'provider_afm', 'period_from', 'period_to', 'issue_date', 'supplier', 'statement_total',
 ] as const;
 
 /**
@@ -135,13 +135,20 @@ export async function incomeTaxStatementsWithError(
  * Από το σύνολο βγαίνει πόσες δόσεις έχει το εκκαθαριστικό (lib/calendar/
  * enfiaTotals.ts). Με το σφάλμα ορατό: «δεν διαβάστηκε» δεν είναι «δεν
  * υπάρχει». Κενό ποσό (η σάρωση δεν βρήκε σύνολο) δεν περνά.
+ *
+ * ΜΟΝΟ Ο,ΤΙ ΣΗΜΑΔΕΨΕ Η ΣΑΡΩΣΗ (έλεγχος 21/10/2026, εύρημα E). Ο τίτλος
+ * «ΕΝΦΙΑ YYYY» δεν αποδεικνύει ότι το ποσό είναι σύνολο: ένα αρχείο που
+ * μετονομάστηκε, ή ποσό γραμμένο στο χέρι στη «Διόρθωση αναγνώρισης», είναι
+ * συχνά το μερίδιο ενός ακινήτου και έβγαζε λιγότερες δόσεις από τις
+ * αληθινές. Μετρά μόνο η γραμμή με `statement_total` (20261021120000), που
+ * τη γράφει η σάρωση όταν διάβασε το σύνολο (`planDocSave`).
  */
 export async function enfiaStatementsWithError(
   db: Db, propertyIds: string[], userId: string,
 ): Promise<{ statements: { propertyId: string; year: number; amount: number }[]; error: DbError | null }> {
   if (propertyIds.length === 0) return { statements: [], error: null };
   const q = db.from(TABLE).select('property_id,title,amount').in('property_id', propertyIds).eq('user_id', userId)
-    .ilike('title', `${ENFIA_TITLE} %`);
+    .ilike('title', `${ENFIA_TITLE} %`).eq('statement_total', true);
   const { rows, error } = await read<{ property_id: string; title: string | null; amount: number | null }>(q);
   const statements: { propertyId: string; year: number; amount: number }[] = [];
   for (const r of rows) {

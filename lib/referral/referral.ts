@@ -93,7 +93,9 @@ export { normalizePhone };
 export const REFERRER_SLOT_MONTHS = 1;        // κάθε συστήνων: +1 ακίνητο για 1 μήνα
 export const INDIV_PRO_BONUS_MONTHS = 1;      // αν ο νέος γίνει Επαγγελματίας → +1 μήνας στο πακέτο «Ιδιοκτήτης»
 export const INDIV_VOLUME_TARGET = 3;         // 3 νέοι ιδιώτες μέσα στον μήνα
-export const INDIV_VOLUME_BONUS_MONTHS = 1;   // → +1 μήνας στο πακέτο «Ιδιοκτήτης»
+export const INDIV_VOLUME_BONUS_MONTHS = 1;   // → +1 μήνας στο πακέτο «Ιδιοκτήτης+»
+/** Το πακέτο του μήνα του στόχου όγκου: ό,τι γράφει η `claim_referral_bonus` (`v_tier`). */
+export const INDIV_VOLUME_TIER = 'owner' as const;
 
 export type Outcome = 'free' | 'owner' | 'agency';
 export type SideReward = { months: number; isSlot: boolean; tier: 'owner' | 'agency' | 'office' };
@@ -148,6 +150,16 @@ export function individualReferrerReward(_referrerPaying: boolean, outcome: Outc
 // ═══════════════════════════════════════════════════════════════════════════
 export const PRO_PAID_TARGET = 5;             // 5 συνδρομητές τον μήνα, οποιοδήποτε πακέτο
 export const PRO_PAID_BONUS_MONTHS = 1;       // → η συνδρομή του επόμενου μήνα δωρεάν
+/** Το πακέτο του μήνα του στόχου συνδρομητών: ό,τι γράφει η `claim_referral_bonus`. */
+export const PRO_PAID_TIER = 'agency' as const;
+
+/**
+ * ΠΩΣ ΕΝΩΝΟΝΤΑΙ ΤΑ ΔΩΡΑ (έγκριση George 21/10/2026). Οι μήνες όλων των
+ * ανταμοιβών αθροίζονται (ως `REFERRAL_COMP_CAP_MONTHS`) και όλοι μετρούν στο
+ * καλύτερο πακέτο που κερδήθηκε (`sync_comp_from_referrals`, 20261021120000).
+ */
+export const REFERRAL_COMP_CAP_MONTHS = 12;
+export const REWARDS_MERGE_LINE = 'Τα δώρα σου ενώνονται στο καλύτερο πακέτο που κέρδισες.';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΙΔΙΟΤΗΤΑ ΣΥΝΕΡΓΑΤΗ

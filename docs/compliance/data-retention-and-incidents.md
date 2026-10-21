@@ -15,6 +15,7 @@ and what happens if there's a breach. Free to maintain; no tooling required.
 | Marketing preferences and unsubscribes | Life of account; deleted with it (`/privacy`, «Χρόνος διατήρησης»; FK `on delete cascade`). The earlier «kept indefinitely» contradicted the published policy | Marketing is consent-only (6(1)(a)), not soft opt-in |
 | Guest pre-check-in data | While the property exists; deleted with the property or the account. **Open:** automatic deletion after departure (DPIA action A4) | `purge_property_children`, `erase_account` |
 | Withdrawal declarations (`withdrawal_requests`) | **Not yet defined** (DPIA action A6). Kept unlinked (`account_id = null`) after account deletion as proof of the exercised right | Migration `20261020120100_i_ypanaxorisi_echei_koumpi.sql` |
+| Accountant access requests (`accountant_invites`, approved by George 21/10/2026) | Unanswered or withdrawn: **90 days**, then purged. «Όχι» from an account: until that account is deleted. Objection via support: only an unsalted SHA-256 of the address (pseudonymised, not anonymous), kept indefinitely as proof of the objection (GDPR 17(3), 21); the address is deleted from invites and from the email outbox | `private.accountant_invite_retention()` (mirrored by `ACCOUNTANT_INVITE_RETENTION_DAYS` for the email), daily `accountant-invites-prune` → `prune_accountant_invites()`, `accountant_invite_optout()` |
 | Backups | **30-day** rolling window | `db-backup.yml` `retention-days: 30` |
 | CI logs / Actions artifacts | Per GitHub defaults; backups encrypted | `BACKUP_PASSPHRASE` |
 

@@ -48,6 +48,11 @@ export interface AccountantDossierRow {
   updated_at: string;
 }
 
+export interface AccountantInviteOptoutsRow {
+  address_sha256: string | null;
+  created_at: string;
+}
+
 export interface AccountantInvitesRow {
   id: string | null;
   accountant_id: string;
@@ -1145,6 +1150,7 @@ export interface PropertyDocumentsRow {
   period_from: string | null;
   period_to: string | null;
   issue_date: string | null;
+  statement_total: boolean | null;
 }
 
 export interface PropertyPlanRow {
@@ -1541,6 +1547,7 @@ export interface Tables {
   account_deletion_incidents: AccountDeletionIncidentsRow;
   accountant_clients: AccountantClientsRow;
   accountant_dossier: AccountantDossierRow;
+  accountant_invite_optouts: AccountantInviteOptoutsRow;
   accountant_invites: AccountantInvitesRow;
   accountant_links: AccountantLinksRow;
   accountant_packs: AccountantPacksRow;

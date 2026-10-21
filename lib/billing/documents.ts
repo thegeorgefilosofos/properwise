@@ -356,6 +356,23 @@ export function enfiaYearOf(title: string | null | undefined): number | null {
   return m ? Number(m[1]) : null;
 }
 
+/**
+ * Η αλλαγή τίτλου στο Αρχείο, ως ενημέρωση της γραμμής. Καθαρή συνάρτηση.
+ *
+ * ΤΟ ΣΗΜΑ ΤΟΥ ΣΥΝΟΛΟΥ ΔΕΝ ΤΑΞΙΔΕΥΕΙ ΣΕ ΑΛΛΟ ΕΤΟΣ (2ος έλεγχος, 21/10/2026). Το
+ * `statement_total` λέει «αυτό είναι το σύνολο του εκκαθαριστικού ΕΝΦΙΑ του
+ * έτους του τίτλου». Αν ο τίτλος αλλάξει έτος ή πάψει να είναι ΕΝΦΙΑ, το ποσό
+ * δεν είναι πια σύνολο κανενός εκκαθαριστικού που ξέρουμε και το σήμα φεύγει.
+ */
+export function renamePatch(
+  oldTitle: string | null | undefined, newTitle: string, statementTotal: boolean | null | undefined,
+): { title: string; statement_total?: false } {
+  const title = newTitle.trim().slice(0, 200);
+  if (!statementTotal) return { title };
+  return enfiaYearOf(oldTitle) === enfiaYearOf(title) && enfiaYearOf(title) !== null
+    ? { title } : { title, statement_total: false };
+}
+
 /** Οι επιλογές του «Τύπος εγγράφου»: με την εξήγηση κάθε είδους και επικεφαλίδα ανά ομάδα. */
 export const KIND_OPTIONS: Choice[] = DOC_KINDS.map((k, i) => ({
   value: k.value, label: k.label,
@@ -1243,6 +1260,12 @@ export interface ArchivePlan {
   period_from?: string;   // → period_from
   period_to?: string;     // → period_to
   issue_date?: string;    // → issue_date    (έκδοση, διακριτή από το doc_date)
+  /**
+   * → statement_total. Αληθές ΜΟΝΟ όταν το `amount` είναι το σύνολο του
+   * εκκαθαριστικού ΕΝΦΙΑ. Από αυτό μετρά πόσες δόσεις έχει
+   * (lib/calendar/enfiaTotals.ts)· τίτλος και ποσό μόνα τους δεν αρκούν.
+   */
+  statement_total?: boolean;
 }
 
 export interface SavePlan {
@@ -1383,6 +1406,8 @@ export function planDocSave(doc: ScannedDoc, today: string): SavePlan {
     period_to: pTo || undefined,
     issue_date: iso(doc.issue_date) || undefined,
   };
+  // ΤΟ ΣΗΜΑ ΤΟΥ ΣΥΝΟΛΟΥ. Μόνο ο ΕΝΦΙΑ, μόνο με ποσό που γράφτηκε ως σύνολο.
+  if (k === 'enfia' && archive.amount !== undefined) archive.statement_total = true;
   // Ο υποτύπος και το έτος ζουν στον τίτλο μέχρι να αποκτήσει στήλες το Αρχείο
   // («Ε9 2025»)· αλλιώς ο τίτλος του εγγράφου, όπως τον είδε ο χρήστης.
   const own = (doc.title || '').trim();

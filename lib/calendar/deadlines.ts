@@ -96,6 +96,36 @@ const text = (v: string | null | undefined): string => String(v ?? '').trim();
 const money = (v: number | null | undefined): string =>
   typeof v === 'number' && Number.isFinite(v) && v > 0 ? fe(v) : '';
 
+/** Μορφή uuid: ό,τι δεν μοιάζει με κλειδί ακινήτου δεν φιλτράρει, απορρίπτεται. */
+const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Οι πηγές ΕΝΟΣ ακινήτου, για τη συνδρομή που ζήτησε ένα (έλεγχος 21/10/2026).
+ *
+ * Η παλιά διεύθυνση `?property=X` έδειχνε μόνο εκείνο το ακίνητο. Οταν έγινε
+ * ανακατεύθυνση στη νέα, έδειχνε όλο τον λογαριασμό. Εδώ ξαναστενεύει.
+ *
+ * `null` όταν το ακίνητο δεν είναι ανάμεσα στα ακίνητα του κατόχου του
+ * κουπονιού ή δεν έχει μορφή κλειδιού: ο καλών απαντά «δεν βρέθηκε» και
+ * τίποτα ξένο δεν φαίνεται. Ο,τι δεν έχει ακίνητο (`property_id` κενό) μένει
+ * έξω: δεν ανήκει σε αυτό που ζητήθηκε. Καθαρή συνάρτηση.
+ */
+export function scopeToProperty(s: DeadlineSources, propertyId: string): DeadlineSources | null {
+  const id = String(propertyId || '').trim().toLowerCase();
+  if (!UUID_SHAPE.test(id)) return null;
+  const props = s.properties.filter(p => String(p.id).toLowerCase() === id);
+  if (props.length === 0) return null;
+  const mine = (r: { property_id?: string | null }) => String(r.property_id || '').toLowerCase() === id;
+  return {
+    ...s,
+    properties: props,
+    events: s.events.filter(mine),
+    tasks: s.tasks.filter(mine),
+    bills: s.bills.filter(mine),
+    rent: s.rent.filter(mine),
+  };
+}
+
 /**
  * Οι προθεσμίες ενός λογαριασμού, έτοιμες για ημερολόγιο.
  *

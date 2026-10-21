@@ -256,7 +256,7 @@ const STR_NOV = 'tax:str-registry-2026-11';
     const MARCH = '2026-03-01';
     const enfia2026 = (rows: Row[], pid = 'p1') => rows.filter(r => r.property_id === pid && /^tax:enfia-(first|instalment|last)-2026/.test(String(r.source)));
     const stmt = (pid: string, amount: number, year = 2026) =>
-      ({ id: `d-${pid}-${amount}`, property_id: pid, user_id: OWNER, title: `ΕΝΦΙΑ ${year}`, amount });
+      ({ id: `d-${pid}-${amount}`, property_id: pid, user_id: OWNER, title: `ΕΝΦΙΑ ${year}`, amount, statement_total: true });
 
     const run = async (docs: Row[], extra: Tables = {}) => {
       const { db, tables } = fakeDb({
@@ -276,6 +276,12 @@ const STR_NOV = 'tax:str-registry-2026-11';
 
     const b = await run([stmt('p2', 67.2)]);
     ok('ΕΝΦΙΑ 67,20€: έξι υπενθυμίσεις', enfia2026(b.tables.calendar_events).length === 6, enfia2026(b.tables.calendar_events).length);
+
+    // ΜΟΝΟ ΤΟ ΣΗΜΑΔΕΜΕΝΟ ΑΠΟ ΤΗ ΣΑΡΩΣΗ ΜΕΤΡΑ (έλεγχος 21/10/2026, εύρημα E). Ενα
+    // έγγραφο που μετονομάστηκε «ΕΝΦΙΑ 2026» με ποσό γραμμένο στο χέρι (π.χ.
+    // το μερίδιο ενός ακινήτου) δεν είναι σύνολο εκκαθαριστικού.
+    const manual = await run([{ ...stmt('p1', 27.44), statement_total: false }]);
+    ok('ΕΝΦΙΑ έγγραφο χωρίς σήμα συνόλου: δεν μετρά, δώδεκα', enfia2026(manual.tables.calendar_events).length === 12, enfia2026(manual.tables.calendar_events).length);
 
     const c = await run([]);
     const unknown = enfia2026(c.tables.calendar_events);
@@ -299,17 +305,34 @@ const STR_NOV = 'tax:str-registry-2026-11';
     c.tables.property_documents.push(stmt('p1', 27.44));
     const r1 = await syncOwnerTaxDeadlines(c.db, OWNER, { today: TODAY });
     const left = enfia2026(c.tables.calendar_events).map(r => String(r.source)).sort();
-    ok('συμφιλίωση: φεύγουν οι δόσεις που δεν υπάρχουν ακόμη και περασμένες', r1.error === null && left.join() === [
-      'tax:enfia-first-2026', 'tax:enfia-instalment-2026-2', 'tax:enfia-instalment-2026-5', 'tax:enfia-instalment-2026-9',
+    // ΟΙ ΠΕΡΑΣΜΕΝΕΣ ΜΕΝΟΥΝ (εύρημα E). Φεύγουν μόνο οι μελλοντικές που περισσεύουν
+    // (8η, 10η, 11η, τελευταία)· η 3η ως 7η έχουν περάσει στις 05/10/2026 και
+    // ένα λάθος πλήθος δεν επιτρέπεται να σβήσει αληθινή απλήρωτη δόση.
+    ok('συμφιλίωση: φεύγουν μόνο οι μελλοντικές που δεν υπάρχουν, ποτέ οι περασμένες', r1.error === null && left.join() === [
+      'tax:enfia-first-2026', 'tax:enfia-instalment-2026-2', 'tax:enfia-instalment-2026-3', 'tax:enfia-instalment-2026-4',
+      'tax:enfia-instalment-2026-5', 'tax:enfia-instalment-2026-6', 'tax:enfia-instalment-2026-7', 'tax:enfia-instalment-2026-9',
     ].join(), left);
     ok('συμφιλίωση: η γραμμή που άλλαξε ο χρήστης μένει ανέγγιχτη', fifth.title === 'ΕΝΦΙΑ 5η, από τον λογαριασμό της Ελένης');
     ok('συμφιλίωση: η πληρωμένη μένει πληρωμένη', ninth.status === 'paid');
-    ok('συμφιλίωση: στο άλλο ακίνητο μένουν μόνο οι δύο', enfia2026(c.tables.calendar_events, 'p2').length === 2);
+    ok('συμφιλίωση: στο άλλο ακίνητο μένουν οι περασμένες, φεύγουν οι μελλοντικές', enfia2026(c.tables.calendar_events, 'p2').length === 7, enfia2026(c.tables.calendar_events, 'p2').length);
     const r2 = await syncOwnerTaxDeadlines(c.db, OWNER, { today: TODAY });
     ok('συμφιλίωση: δεύτερο πέρασμα δεν αλλάζει τίποτα και δεν ξαναγεννά', r2.inserted === 0 && r2.updated === 0 && r2.removed === 0
-      && enfia2026(c.tables.calendar_events).length === 4, r2);
+      && enfia2026(c.tables.calendar_events).length === 8, r2);
     const r3 = await syncOwnerTaxDeadlines(c.db, OWNER, { today: '2026-03-01' });
-    ok('συμφιλίωση: ούτε με «σήμερα» πριν από αυτές', r3.inserted === 0 && enfia2026(c.tables.calendar_events).length === 4, r3);
+    ok('συμφιλίωση: ούτε με «σήμερα» πριν από αυτές', r3.inserted === 0, r3);
+
+    // Η ΔΟΣΗ ΠΟΥ ΛΗΓΕΙ ΣΗΜΕΡΑ ΜΕΝΕΙ (2ος έλεγχος, 21/10/2026). Δώδεκα γραμμένες,
+    // μετά σύνολο 27,44€ (δύο δόσεις) και συγχρονισμός την ημέρα της 8ης.
+    {
+      const d = await run([]);
+      const eighth = enfia2026(d.tables.calendar_events).find(r => r.source === 'tax:enfia-instalment-2026-8')!;
+      const day8 = String(eighth.event_date).slice(0, 10);
+      d.tables.property_documents.push(stmt('p1', 27.44));
+      await syncOwnerTaxDeadlines(d.db, OWNER, { today: day8 });
+      const kept = enfia2026(d.tables.calendar_events).map(r => String(r.source));
+      ok('η δόση με ημερομηνία σήμερα δεν σβήνεται', kept.includes('tax:enfia-instalment-2026-8'), { day8, kept });
+      ok('η επόμενη μελλοντική που περισσεύει σβήνεται', !kept.includes('tax:enfia-instalment-2026-9'), kept);
+    }
 
     // ΑΝΑΓΝΩΣΗ ΠΟΥ ΑΠΕΤΥΧΕ: καμία γραφή, αλλιώς οι δώδεκα θα ξαναγεννιούνταν.
     (c.tables as Record<string, unknown>).__fail = ['property_documents'];

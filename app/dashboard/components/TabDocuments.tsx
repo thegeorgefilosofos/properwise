@@ -26,7 +26,7 @@ import * as documents from '@/lib/data/documents';
 // Η ΜΙΑ μηχανή σάρωσης/καταχώρησης. Το Αρχείο δεν έχει δική του λογική OCR, δικό
 // του prompt, ούτε δική του απόφαση για το ράφι: όλα ζουν στο scanDoc.ts και στο
 // lib/billing (δοκιμασμένα). Ό,τι φαίνεται εδώ είναι μόνο οθόνη.
-import { ARCHIVE_CATEGORIES, validateDoc, DOC_FIELD_LABELS, DOC_TYPE_LABELS, FOLDERS, folderForDoc, archiveOptions, docForm, fieldOptions, fieldValue, kindOf, shelfPath, planDocSave, type FolderKey, type ScannedDoc } from '@/lib/billing/documents';
+import { ARCHIVE_CATEGORIES, validateDoc, DOC_FIELD_LABELS, DOC_TYPE_LABELS, FOLDERS, folderForDoc, archiveOptions, docForm, fieldOptions, fieldValue, kindOf, shelfPath, planDocSave, renamePatch, type FolderKey, type ScannedDoc } from '@/lib/billing/documents';
 import {
   scanFile, commitScannedDoc, archiveScannedFile, archiveCategoryFor, archiveInputFrom,
   withAnswer, failedNotice, openQuestion, notForFolder, FOLDER_ACCEPT,
@@ -67,6 +67,8 @@ interface DocRow {
   mime: string | null; size_bytes: number | null; created_at: string;
   amount?: number | string | null; provider_afm?: string | null;
   period_from?: string | null; period_to?: string | null; issue_date?: string | null;
+  /** Η σάρωση σημάδεψε το ποσό ως σύνολο εκκαθαριστικού ΕΝΦΙΑ (20261021120000). */
+  statement_total?: boolean | null;
   signedUrl?: string;
 }
 
@@ -583,7 +585,8 @@ export default function TabDocuments({
     await documents.update(supabase, its.filter(i => i.raw).map(i => i.raw!.id), p);
     fetchAll();
   };
-  const applyRename = async (title: string) => { if (renameItem && title.trim()) await updateDocs([renameItem], { title: title.trim().slice(0, 200) }); setRenameItem(null); };
+  // Το σήμα του συνόλου ΕΝΦΙΑ φεύγει όταν ο τίτλος αλλάξει έτος (renamePatch).
+  const applyRename = async (title: string) => { if (renameItem && title.trim()) await updateDocs([renameItem], renamePatch(renameItem.raw?.title, title, renameItem.raw?.statement_total)); setRenameItem(null); };
   const applyFix = async (p: Record<string, unknown>) => { if (fixItems?.length) await updateDocs(fixItems, p); setFixItems(null); setSelected(new Set()); };
 
   const toggleSel = (id: string) => setSelected(p => { return toggleIn(p, id); });
@@ -1535,11 +1538,16 @@ function FixModal({ items, onCancel, onSave }: { items: Item[]; onCancel: () => 
 
   const submit = () => {
     if (!one) { onSave({ category: cat }); return; }
+    // ΠΟΣΟ ΓΡΑΜΜΕΝΟ ΣΤΟ ΧΕΡΙ ΔΕΝ ΕΙΝΑΙ ΣΥΝΟΛΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟΥ. Αν αλλάξει, το σήμα
+    // της σάρωσης φεύγει και ο ΕΝΦΙΑ μετρά πάλι δώδεκα δόσεις (20261021120000).
+    const typed = amount.trim() ? numOrNull(amount.trim()) : null;
+    const changed = typed !== (one.amount != null ? numOrNull(one.amount) : null);
     onSave({
       category: cat,
       supplier: supplier.trim() || null,
       provider_afm: afmDigitsOnly || null,
-      amount: amount.trim() ? numOrNull(amount.trim()) : null,
+      amount: typed,
+      ...(changed && one.statement_total ? { statement_total: false } : {}),
       issue_date: issue || null,
       period_from: from || null,
       period_to: to || null,

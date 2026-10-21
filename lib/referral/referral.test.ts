@@ -3,13 +3,13 @@ import {
   referralCode, referralLink, isReferralCode, normalizePhone,
   individualReferrerReward,
   REFERRER_SLOT_MONTHS, INDIV_PRO_BONUS_MONTHS,
-  INDIV_VOLUME_TARGET, INDIV_VOLUME_BONUS_MONTHS,
+  INDIV_VOLUME_TARGET, INDIV_VOLUME_BONUS_MONTHS, INDIV_VOLUME_TIER, PRO_PAID_TIER, REFERRAL_COMP_CAP_MONTHS,
   PRO_PAID_TARGET, PRO_PAID_BONUS_MONTHS, partnerWelcome, partnerWelcomeTier, PARTNER_WELCOME_MONTHS,
   progress, currentStreak, isPartner, streakProgress, partnerFreeMonths,
   STREAK_TARGET_MONTHS, PARTNER_MONTHLY_FREE_MONTHS,
 } from './referral';
 import * as referral from './referral';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 let p = 0, f = 0;
 const ok = (c: boolean, m: string) => { if (c) p++; else { f++; console.error('✗', m); } };
@@ -158,6 +158,27 @@ ok(!('partnerCommission' in referral) && !('PARTNER_COMMISSION_RATE' in referral
   // Η πιο συχνή ανταμοιβή του προγράμματος γραφόταν και δεν εφαρμοζόταν ποτέ.
   ok(/kind = 'slot'/.test(sql), 'οι κερδισμένες θέσεις ακινήτου εφαρμόζονται πραγματικά');
   ok(/bonus_properties/.test(sql), 'οι κερδισμένες θέσεις έχουν δική τους στήλη, με λήξη');
+}
+
+// ── Η ΒΑΘΜΙΔΑ ΚΑΙ ΤΟ ΤΑΒΑΝΙ, ΟΠΩΣ ΤΑ ΓΡΑΦΕΙ Η ΤΕΛΕΥΤΑΙΑ ΜΕΤΑΒΑΣΗ ─────────────────
+// Η οθόνη έγραφε «Ιδιοκτήτης με Νόα» για μήνα που η βάση δίνει ως «Ιδιοκτήτης+».
+// Διαβάζεται η τελευταία μετάβαση που ορίζει κάθε συνάρτηση.
+{
+  const dir = new URL('../../supabase/migrations/', import.meta.url);
+  const files = readdirSync(dir).filter(f => f.endsWith('.sql')).sort().reverse();
+  const latest = (head: string) => {
+    const f = files.find(x => readFileSync(new URL(x, dir), 'utf8').includes(head));
+    const sql = f ? readFileSync(new URL(f, dir), 'utf8') : '';
+    const from = sql.indexOf(head);
+    return from < 0 ? '' : sql.slice(from, sql.indexOf('$$;', from));
+  };
+  const claim = latest('create or replace function public.claim_referral_bonus');
+  const tier = (kind: string) => new RegExp(`p_kind = '${kind}'\\s*then[^;]*;[^;]*;\\s*v_tier := '(\\w+)'`).exec(claim)?.[1];
+  ok(tier('indiv_volume') === INDIV_VOLUME_TIER, `η βάση δίνει «${tier('indiv_volume')}» στον στόχο όγκου, η οθόνη «${INDIV_VOLUME_TIER}»`);
+  ok(tier('pro_paid') === PRO_PAID_TIER, `η βάση δίνει «${tier('pro_paid')}» στον στόχο συνδρομητών, η οθόνη «${PRO_PAID_TIER}»`);
+  const sync = latest('create or replace function public.sync_comp_from_referrals');
+  ok(Number(/v_cap\s+int := (\d+)/.exec(sync)?.[1]) === REFERRAL_COMP_CAP_MONTHS, 'ίδιο ταβάνι μηνών στη βάση και στην οθόνη');
+  ok(/order by public\.plan_rank\(t\.tier\) desc/.test(sync), 'τα δώρα ενώνονται στο καλύτερο πακέτο (έγκριση George 21/10/2026)');
 }
 
 console.log(`\nreferral/referral.ts — ${p} passed, ${f} failed`);

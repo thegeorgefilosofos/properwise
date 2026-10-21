@@ -16,20 +16,22 @@
 //
 // ΤΙΠΟΤΑ ΔΕΝ ΔΙΑΒΑΖΕΤΑΙ ΑΠΟ ΤΗ ΒΑΣΗ. Η μορφή του κουπονιού ελέγχεται εδώ με
 // τον ίδιο κανόνα της νέας διαδρομής. Η ύπαρξη και η λήξη του κρίνονται εκεί.
-// Το `property` της παλιάς διεύθυνσης δεν μεταφέρεται: η νέα συνδρομή
-// κουβαλά όλα τα ακίνητα του λογαριασμού.
+// Το `property` της παλιάς διεύθυνσης ΜΕΤΑΦΕΡΕΤΑΙ (έλεγχος 21/10/2026): η
+// συνδρομή ενός ακινήτου μένει συνδρομή ενός ακινήτου. Ο κανόνας ζει στο
+// target.ts.
 // ═══════════════════════════════════════════════════════════════════════════
 import { appUrl } from '../_shared/site.ts'
+import { legacyFeedPath } from './target.ts'
 
 Deno.serve((req) => {
-  const token = (new URL(req.url).searchParams.get('token') || '').toLowerCase()
-  if (!/^[0-9a-f]{16,64}$/.test(token)) {
+  const path = legacyFeedPath(new URL(req.url).searchParams)
+  if (!path) {
     return new Response('Δεν βρέθηκε ημερολόγιο σε αυτή τη διεύθυνση.', {
       status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
     })
   }
   return new Response(null, {
     status: 301,
-    headers: { Location: appUrl(`/imerologio/${token}.ics`), 'Cache-Control': 'no-store' },
+    headers: { Location: appUrl(path), 'Cache-Control': 'no-store' },
   })
 })

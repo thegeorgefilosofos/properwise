@@ -97,6 +97,25 @@ for (const fn of ['clear_org_upgrade_request()', 'invite_org_member(',
     gate > body.indexOf('if v_org.id is null then') && body.indexOf('if v_org.id is null then') > 0, true)
 }
 
+// ── Η ΜΑΖΙΚΗ ΠΡΟΣΚΛΗΣΗ ΤΟΥ ΛΟΓΙΣΤΗ (20261021120000) ───────────────────────────
+// Στέλνει email σε ξένους από το δικό μας domain. Ανοίγει στον βαθμό του
+// επαγγελματία ή στη δοκιμή (έγκριση George 21/10/2026, με μικρότερα όρια).
+// Η πύλη έρχεται μετά το δεύτερο βήμα και σηκώνει «plan_required».
+{
+  const body = latestFn('accountant_invite_clients(')
+  const gate = body.search(/v_mode := private\.accountant_invite_mode\(v_me\);\s*\n\s*if v_mode is null then\s*\n\s*raise exception 'plan_required' using errcode = '42501';/)
+  eq('accountant_invite_clients: πύλη τρόπου αποστολέα με plan_required', gate > 0, true)
+  eq('accountant_invite_clients: το δεύτερο βήμα ρωτιέται πρώτο',
+    body.indexOf('mfa_satisfied') > 0 && body.indexOf('mfa_satisfied') < gate, true)
+  const head = 'create or replace function private.accountant_invite_mode('
+  const sql = latestWith(head)
+  const mode = sql.slice(sql.indexOf(head), sql.indexOf('$$;', sql.indexOf(head)))
+  eq('accountant_invite_mode: «paid» με το πακέτο του επαγγελματία',
+    /user_plan_rank\(p_uid\) >= public\.plan_rank\('(\w+)'\)/.exec(mode)?.[1], PROFESSIONAL_MIN_PLAN)
+  eq('accountant_invite_mode: η τοπική δοκιμή με τον κανόνα της user_plan_rank',
+    /v_trial_used is null/.test(mode) && /trial_days\(\)/.test(mode), true)
+}
+
 // ── Η ΑΦΑΙΡΕΣΗ ΠΡΟΣΒΑΣΗΣ ΔΕΝ ΘΕΛΕΙ ΠΑΚΕΤΟ ──────────────────────────────────
 // Ο ιδιοκτήτης που σταμάτησε τη συνδρομή βγάζει πάντα έναν πρώην συνεργάτη
 // από την ομάδα του. Η `set_member_edit` κλειδώνει μόνο όταν ΔΙΝΕΙ δικαίωμα.
@@ -115,7 +134,10 @@ eq('revoke_org_member: κρατά το δεύτερο βήμα', /mfa_satisfied/
 // Το πακέτο του μέλους δεν κρίνει την ομάδα κάποιου άλλου: η αποδοχή της
 // πρόσκλησης τρέχει σε κάθε φόρτωση του πίνακα και το αίτημα για πακέτο δεν
 // μπορεί να απαιτεί το πακέτο.
-for (const fn of ['accept_org_invites_for_me()', 'request_member_edit()', 'request_org_upgrade()']) {
+// Η απόσυρση πρόσκλησης λογιστή και η απάντηση του πελάτη: αφαίρεση και απόφαση
+// τρίτου, όχι πληρωμένη λειτουργία.
+for (const fn of ['accept_org_invites_for_me()', 'request_member_edit()', 'request_org_upgrade()',
+                  'accountant_invite_withdraw(', 'accountant_invite_answer(', 'my_accountant_invites()']) {
   eq(`${fn.replace(/\(.*$/, '')}: χωρίς πύλη πακέτου`, /plan_required/.test(latestFn(fn)), false)
 }
 

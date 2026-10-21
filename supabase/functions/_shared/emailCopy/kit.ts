@@ -11,6 +11,8 @@ import { APP_URL } from '../site.ts'
 export const app = (c: Personal) => c.appUrl || APP_URL
 export const dash = (c: Personal) => `${app(c)}/dashboard`
 export const esc = (v: unknown) => String(v ?? '').replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch] || ch))
+/** Για τιμή μέσα σε χαρακτηριστικό (href="…"): διαφεύγουν και τα εισαγωγικά. */
+export const escAttr = (v: unknown) => esc(v).replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 export const has = (n: unknown): n is number => typeof n === 'number' && isFinite(n) && n > 0
 export const plural = (n: number, one: string, many: string) => `${n.toLocaleString('el-GR')} ${n === 1 ? one : many}`
 

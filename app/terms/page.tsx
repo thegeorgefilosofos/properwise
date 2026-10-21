@@ -8,7 +8,7 @@ import { IDENTITY, identityIsPublished, identityPendingSentence, POLICY_UPDATED,
 // PLANS, με τον ίδιο μορφοποιητή που τυπώνει κάθε ποσό της εφαρμογής.
 import { PLANS, TRIAL_DAYS, PRIORITY_SUPPORT_LINE, firstPlanWith } from '@/lib/billing/plans';
 import { SCAN_LIMITS, TRIAL_SCANS_PER_MONTH } from '@/lib/billing/aiLimits';
-import { TRIAL_PLAN, EARLY_ACCESS_DAYS } from '@/lib/billing/entitlements';
+import { TRIAL_PLAN, EARLY_ACCESS_DAYS, PROFESSIONAL_MIN_PLAN } from '@/lib/billing/entitlements';
 import { fe } from '@/lib/core/format';
 // ΤΑ ΛΟΓΙΑ ΓΙΑ ΤΑ ΧΡΗΜΑΤΑ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΗΝ ΙΔΙΑ ΣΥΝΘΗΚΗ ΜΕ ΤΟ ΚΟΥΜΠΙ ΤΟΥ ΤΑΜΕΙΟΥ.
 import { billingWords } from '@/lib/legal/billingWords';
@@ -18,6 +18,7 @@ import { WITHDRAWAL_LABEL, WITHDRAWAL_CONFIRM_LABEL, WITHDRAWAL_PATH } from '@/l
 // εκδοχή και είχε ήδη αποκλίνει σε πάροχο και σε κατάσταση.
 import { activeSubprocessors, plannedSubprocessors, type Subprocessor } from '@/lib/legal/subprocessors';
 import { siteUrl } from '@/lib/core/site';
+import { INVITE_LIMITS } from '@/lib/data/accountantInvites';
 import { publicMetadata } from '../publicMetadata';
 // ΟΙ ΣΤΟΧΟΙ ΚΑΙ Η ΙΔΙΟΤΗΤΑ ΣΥΝΕΡΓΑΤΗ ΔΙΑΒΑΖΟΝΤΑΙ ΑΠΟ ΤΗ ΜΗΧΑΝΗ ΤΟΥ ΠΡΟΓΡΑΜΜΑΤΟΣ.
 // Η οθόνη των συστάσεων τους υπόσχεται με αυτούς τους αριθμούς· οι Όροι δεν
@@ -204,8 +205,12 @@ export default function TermsPage() {
         { h: 'Αποδεκτή χρήση', part: 'Δ. Τι επιτρέπεται και σε ποιον ανήκει τι', p: ['Συμφωνείς να μη χρησιμοποιείς την Υπηρεσία για να:'], list: [
           'παραβιάζεις νόμους ή δικαιώματα τρίτων, ή να καταχωρείς δεδομένα τους χωρίς νόμιμη βάση,',
           'επιχειρείς μη εξουσιοδοτημένη πρόσβαση, υπερφόρτωση ή παρέμβαση στην ασφάλεια των συστημάτων,',
+          // Η ΠΡΟΣΚΛΗΣΗ ΠΕΛΑΤΩΝ ΣΤΕΛΝΕΙ EMAIL ΣΕ ΤΡΙΤΟΥΣ ΑΠΟ ΤΟ ΔΙΚΟ ΜΑΣ DOMAIN
+          // (έγκριση George 21/10/2026). Τα όρια από το lib/data/accountantInvites.ts,
+          // που ελέγχεται απέναντι στη βάση.
+          'στέλνεις αιτήματα πρόσβασης σε φάκελο σε ανθρώπους με τους οποίους δεν έχεις επαγγελματική σχέση ή για να αποσπάσεις στοιχεία με παραπλάνηση,',
           'αντιγράφεις, μεταπωλείς ή εκμεταλλεύεσαι την Υπηρεσία πέραν της προβλεπόμενης χρήσης.',
-        ] },
+        ], note: `Η πρόσκληση πελατών με email (αίτημα πρόσβασης στον φάκελό τους) ανοίγει από το πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» (έως ${INVITE_LIMITS.paidPerDay} τη μέρα) και στη δοκιμή (έως ${INVITE_LIMITS.trialPerDay} τη μέρα και ${INVITE_LIMITS.trialTotal} συνολικά). Το μήνυμα φεύγει με αποστολέα την επιβεβαιωμένη διεύθυνση του λογαριασμού σου· η κατάχρηση είναι ουσιώδης παραβίαση (βλ. «Αναστολή και καταγγελία»).` },
         { h: 'Το περιεχόμενό σου και άδεια χρήσης', p: [
           'Τα δεδομένα και τα αρχεία που καταχωρείς παραμένουν δικά σου. Μας παρέχεις μια περιορισμένη, μη αποκλειστική άδεια να τα αποθηκεύουμε και να τα επεξεργαζόμαστε αποκλειστικά για να λειτουργεί η Υπηρεσία για εσένα. Μπορείς να τα εξάγεις ή να τα διαγράψεις ανά πάσα στιγμή.',
         ] },
