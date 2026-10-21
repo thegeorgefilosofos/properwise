@@ -64,7 +64,7 @@ https://www.klgates.com/thought-leadership/New-EU-Withdrawal-Button-Requirement-
 
 ## 5. Δεδομένα και διατήρηση
 
-Πίνακας `public.withdrawal_requests` (`supabase/migrations/20261020120000_i_ypanaxorisi_echei_koumpi.sql`):
+Πίνακας `public.withdrawal_requests` (`supabase/migrations/20261020120100_i_ypanaxorisi_echei_koumpi.sql`):
 RLS ενεργό· γράφει μόνο ο ρόλος υπηρεσίας· ο χρήστης διαβάζει μόνο τις δικές του γραμμές.
 Με τη διαγραφή λογαριασμού η γραμμή μένει με `account_id = null` (η στήλη δεν λέγεται `user_id` επίτηδες, ώστε να μην τη σβήσει η `erase_account`), ως απόδειξη άσκησης
 δικαιώματος (GDPR 17§3 ε΄, 6§1 γ΄). **Ο χρόνος διατήρησης δεν έχει οριστεί** (ενέργεια A6 της

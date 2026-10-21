@@ -226,6 +226,7 @@ export const MUTATIONS = {
   'rls-coverage': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  user_id uuid not null references auth.users(id) on delete cascade\n);\n' },
   'rls-initplan': { add: 'supabase/migrations/29990101000000_mut.sql', content: "create policy mut_probe_own on public.properties using (auth.uid() = user_id);\n" },
   'rls-parent-scope': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  property_id uuid not null references public.properties(id) on delete cascade\n);\nalter table public.mut_probe enable row level security;\ncreate policy mut_probe_own on public.mut_probe using (true);\n' },
+  'migration-versions': { add: 'supabase/migrations/20261020120000_mut.sql', content: 'select 1;\n' },
   'idempotent-migrations': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'alter table public.properties add constraint mut_probe_chk check (id is not null);\n' },
   'storage-delete': { add: 'supabase/migrations/29990101000000_mut.sql', content: "create or replace function public.mut_probe() returns void language plpgsql as $$\nbegin\n  delete from storage.objects where owner is null;\nend $$;\n" },
   // Ο ΕΥΚΟΛΟΣ ΚΛΑΔΟΣ ΘΑ ΗΤΑΝ ΝΕΟΣ ΦΑΚΕΛΟΣ ΧΩΡΙΣ ΔΗΛΩΣΗ. Ο δύσκολος και ο
