@@ -156,6 +156,11 @@ begin
          and public.accountant_link_live(v_me, ac.owner_id)
     ) then
       v_status := 'already_client';
+    -- ΕΝΑΝΤΙΩΣΗ ΜΕΣΩ ΥΠΟΣΤΗΡΙΞΗΣ (5γ): «όχι» προς όλους τους αποστολείς. Ο
+    -- αποστολέας διαβάζει ό,τι και στο «Όχι» του πελάτη· τίποτα παραπάνω.
+    elsif exists (select 1 from accountant_invite_optouts o
+                   where o.address_sha256 = private.invite_address_sha256(v_email)) then
+      v_status := 'declined';
     else
       select * into v_inv from accountant_invites where accountant_id = v_me and email = v_email;
       if found and v_inv.status = 'declined' then
@@ -374,6 +379,80 @@ begin
   perform cron.schedule('accountant-invites-prune', '41 4 * * *', 'select public.prune_accountant_invites()');
 end $$;
 
+-- ── 5γ. ΕΝΑΝΤΙΩΣΗ ΧΩΡΙΣ ΛΟΓΑΡΙΑΣΜΟ (2ος έλεγχος, 21/10/2026) ───────────────
+-- Το «Όχι» θέλει λογαριασμό· οι προσκλήσεις πηγαίνουν και σε ανθρώπους χωρίς
+-- (άρθρα 12§2, 21 ΓΚΠΔ). Οποιος απαντήσει στο μήνυμα ή γράψει στην υποστήριξη
+-- μπαίνει εδώ από την ομάδα (`accountant_invite_optout`, μόνο `service_role`)
+-- και δεν ξαναπαίρνει πρόσκληση από ΚΑΝΕΝΑΝ αποστολέα.
+--
+-- ΚΑΜΙΑ ΔΙΕΥΘΥΝΣΗ, ΜΟΝΟ ΑΠΟΤΥΠΩΜΑ. Κρατιέται το SHA-256 της διεύθυνσης σε
+-- πεζά: αρκεί για να αναγνωριστεί όταν ξαναγραφτεί και δεν διαβάζεται πίσω.
+-- Γι' αυτό ο πίνακας δεν έχει στήλη email και ο έλεγχος πληρότητας της
+-- διαγραφής (20260818100000) δεν τον αφορά. Μένει και μετά από διαγραφή
+-- λογαριασμού: είναι η ίδια η εναντίωση και χωρίς αυτήν θα ξαναστελνόταν.
+create table if not exists public.accountant_invite_optouts (
+  address_sha256 text primary key,
+  created_at     timestamptz not null default now()
+);
+
+do $c$ begin
+  if not exists (select 1 from pg_constraint where conname = 'accountant_invite_optouts_hash_shape') then
+    alter table public.accountant_invite_optouts add constraint accountant_invite_optouts_hash_shape
+      check (address_sha256 ~ '^[0-9a-f]{64}$');
+  end if;
+end $c$;
+
+alter table public.accountant_invite_optouts enable row level security;
+
+drop policy if exists mfa_accountant_invite_optouts on public.accountant_invite_optouts;
+create policy mfa_accountant_invite_optouts on public.accountant_invite_optouts as restrictive for all to authenticated
+  using ((select private.mfa_satisfied())) with check ((select private.mfa_satisfied()));
+
+revoke all on public.accountant_invite_optouts from public, anon, authenticated;
+
+comment on table public.accountant_invite_optouts is
+  'Διευθύνσεις (ως SHA-256 σε πεζά) που ζήτησαν να μην ξαναπάρουν πρόσκληση λογιστή από κανέναν. Τις γράφει μόνο η ομάδα υποστήριξης.';
+
+-- Το αποτύπωμα μιας διεύθυνσης, ο ίδιος κανόνας παντού.
+create or replace function private.invite_address_sha256(p_email text)
+ returns text
+ language sql immutable
+ set search_path to 'pg_catalog'
+as $$ select encode(sha256(convert_to(lower(btrim(coalesce(p_email, ''))), 'UTF8')), 'hex') $$;
+
+alter function private.invite_address_sha256(text) owner to postgres;
+revoke all on function private.invite_address_sha256(text) from public, anon, authenticated;
+
+-- Η υποστήριξη καταχωρεί την εναντίωση. Οι ανοιχτές προσκλήσεις προς αυτή
+-- τη διεύθυνση σβήνουν και τα μηνύματά τους που δεν έφυγαν ακυρώνονται.
+create or replace function public.accountant_invite_optout(p_email text)
+ returns json
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $$
+declare v_email text := lower(btrim(coalesce(p_email, ''))); v_n int;
+begin
+  if v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then
+    return json_build_object('ok', false, 'reason', 'invalid');
+  end if;
+  insert into accountant_invite_optouts (address_sha256)
+    values (private.invite_address_sha256(v_email))
+  on conflict (address_sha256) do nothing;
+  update email_outbox set status = 'skipped', last_error = 'optout'
+   where copy_id = 'accountant_invite' and status = 'pending' and lower(btrim(to_email)) = v_email;
+  delete from accountant_invites where email = v_email and status in ('sent', 'withdrawn');
+  get diagnostics v_n = row_count;
+  return json_build_object('ok', true, 'invitesRemoved', v_n);
+end $$;
+
+alter function public.accountant_invite_optout(text) owner to postgres;
+revoke all     on function public.accountant_invite_optout(text) from public, anon, authenticated;
+grant  execute on function public.accountant_invite_optout(text) to service_role;
+
+comment on function public.accountant_invite_optout(text) is
+  'Για την υποστήριξη: η διεύθυνση δεν ξαναπαίρνει πρόσκληση λογιστή από κανέναν. Κρατιέται μόνο το αποτύπωμά της· οι ανοιχτές προσκλήσεις της σβήνουν.';
+
 -- ── 5α. Ο ΑΠΟΣΤΟΛΕΑΣ ΦΕΥΓΕΙ ΚΑΙ ΑΠΟ ΤΑ ΜΗΝΥΜΑ ΠΟΥ ΣΤΕΙΛΕ ─────────────────────
 -- Η `erase_account` σβήνει από την ουρά ό,τι έχει ΠΑΡΑΛΗΠΤΗ τον χρήστη
 -- (`to_email`). Η διεύθυνσή του ως ΑΠΟΣΤΟΛΕΑ προσκλήσεων όμως ζούσε στο
@@ -419,14 +498,18 @@ revoke all on function private.accountant_invites_forget_email() from public, an
 -- Η ΔΙΟΡΘΩΣΗ. Το πακέτο είναι η ΒΑΘΜΙΔΑ ΤΗΣ ΑΝΤΑΜΟΙΒΗΣ (`referral_rewards.tier`,
 -- όπως τη γράφουν η `claim_referral_bonus` και η `reconcile_referral_rewards`
 -- και όπως την ορίζει το lib/referral/referral.ts, `SideReward.tier`). Με
--- ανταμοιβές πολλών βαθμίδων μετρά η ΧΑΜΗΛΟΤΕΡΗ: ο ένας `comp_plan` καλύπτει
--- όλους τους μήνες και ένας μήνας «Ιδιοκτήτης+» δεν γίνεται «Επαγγελματίας».
--- Αν λείπει η βαθμίδα, «owner». Το υπόλοιπο σώμα είναι αυτούσιο.
+-- ανταμοιβές πολλών βαθμίδων μετρά μία, γιατί ο ένας `comp_plan` καλύπτει
+-- όλους τους μήνες· η ΥΨΗΛΟΤΕΡΗ, ώστε ένας μήνας «Επαγγελματίας» που
+-- κερδήθηκε με πέντε συνδρομητές (`pro_paid`) να μη χαθεί επειδή υπάρχει και
+-- ένας παλιός «Ιδιοκτήτης+». Η κατάχρηση μένει κλειστή: τις βαθμίδες τις
+-- γράφει μόνο ο διακομιστής και η «agency» κερδίζεται μόνο με συνδρομητές.
+-- Αν λείπει η βαθμίδα, «owner». Το υπόλοιπο σώμα είναι αυτούσιο, με το
+-- `search_path` καρφωμένο όπως στις υπόλοιπες συναρτήσεις αυτού του αρχείου.
 create or replace function public.sync_comp_from_referrals()
  returns void
  language plpgsql
  security definer
- set search_path to 'public'
+ set search_path to 'public', 'pg_temp'
 as $$
 declare
   v_uid    uuid := auth.uid();
@@ -450,7 +533,7 @@ begin
     from (select coalesce(nullif(btrim(rr.tier), ''), 'owner') as tier
             from referral_rewards rr
            where rr.user_id = v_uid and rr.kind = 'months') t
-   order by public.plan_rank(t.tier) asc
+   order by public.plan_rank(t.tier) desc
    limit 1;
   v_target := coalesce(v_target, 'owner');
 

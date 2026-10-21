@@ -2,6 +2,7 @@ import { emailShell, eyebrow, h, p, bullets, button, greeting, note, senderIdent
 import { eur } from '../format.ts'
 import { app, dash, esc, has, packageName, NOTE, type CopyFn } from './kit.ts'
 import { ACCOUNTANT_INVITE_RETENTION_DAYS } from '../accountantInvite.ts'
+import { SUPPORT_EMAIL } from '../sender.mjs'
 
 // ── Φάση 6: Lifecycle, Νομικά & Συναλλαγές ───────────────────────────────────
 export const LIFECYCLE: Record<string, CopyFn> = {
@@ -134,7 +135,10 @@ export const LIFECYCLE: Record<string, CopyFn> = {
         // app/privacy/page.tsx («έννομο συμφέρον … (άρθρο 6§1στ)»).
         footerNote: `Έλαβες αυτό το μήνυμα επειδή ο λογαριασμός ${mail || 'ενός χρήστη'} έγραψε αυτή τη διεύθυνση στο PROPERWISE.${who ? ` ${esc(who)}.` : ''}`
           + ' Νομική βάση: έννομο συμφέρον του αποστολέα να επικοινωνήσει μαζί σου για τον φάκελο των ακινήτων σου (άρθρο 6§1στ ΓΚΠΔ).'
-          + ' Μπορείς να αντιταχθείς: με το «Όχι» στη Λογιστική δεν ξαναπαίρνεις πρόσκληση από αυτόν τον αποστολέα και κρατάμε μόνο τη διεύθυνσή σου για να το τηρούμε, ώσπου να διαγράψεις τον λογαριασμό σου.'
+          // ΕΝΑΝΤΙΩΣΗ ΚΑΙ ΧΩΡΙΣ ΛΟΓΑΡΙΑΣΜΟ (άρθρα 12§2, 21 ΓΚΠΔ): το «Όχι» θέλει
+          // λογαριασμό, η απάντηση στο μήνυμα (Reply-To: υποστήριξη) όχι.
+          + ' Μπορείς να αντιταχθείς. Αν έχεις λογαριασμό, με το «Όχι» στη Λογιστική δεν ξαναπαίρνεις πρόσκληση από αυτόν τον αποστολέα· κρατάμε μόνο τη διεύθυνσή σου για να το τηρούμε, ώσπου να διαγράψεις τον λογαριασμό σου.'
+          + ` Με ή χωρίς λογαριασμό, απάντησε σε αυτό το μήνυμα ή γράψε στο <a class="lnk" href="mailto:${esc(SUPPORT_EMAIL)}" style="color:inherit;text-decoration:underline;">${esc(SUPPORT_EMAIL)}</a>: δεν θα ξαναπάρεις πρόσκληση από κανέναν αποστολέα και κρατάμε μόνο ένα αποτύπωμα της διεύθυνσής σου, όχι την ίδια.`
           + ` Αν δεν απαντήσεις, η διεύθυνσή σου σβήνει από τις προσκλήσεις σε ${ACCOUNTANT_INVITE_RETENTION_DAYS} ημέρες. <a class="lnk" href="${esc(privacy)}" style="color:inherit;text-decoration:underline;">Πολιτική απορρήτου</a>`,
         bodyHtml: eyebrow('Αίτημα πρόσβασης') + h('Κάποιος ζητά να βλέπει τον φάκελό σου') + greeting(c.name)
           + p(`Ο λογαριασμός <b>${mail || 'ενός χρήστη'}</b>${claimed} ζητά να βλέπει τον φάκελο των ακινήτων σου στο PROPERWISE, μόνο για ανάγνωση.`)

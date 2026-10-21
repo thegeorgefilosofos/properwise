@@ -4134,6 +4134,25 @@ begin
   raise notice 'probe: οι δωρεάν μήνες δίνουν τη βαθμίδα της ανταμοιβής, όχι του προφίλ';
 end $probe$;
 
+-- Μικτές βαθμίδες: ένας μήνας «Επαγγελματίας» από τον στόχο συνδρομητών δεν
+-- χάνεται επειδή υπάρχει και μήνας «Ιδιοκτήτης+». Μετρά η ΥΨΗΛΟΤΕΡΗ.
+reset role;
+do $probe$
+begin
+  insert into public.referral_rewards (user_id, kind, months, tier, reason, status)
+    values ('1a1a1a1a-0000-4000-8000-0000000000b0', 'months', 1, 'agency', 'pro_paid', 'pending');
+end $probe$;
+set role authenticated;
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000b0';
+do $probe$
+declare cp text;
+begin
+  perform public.sync_comp_from_referrals();
+  select comp_plan into cp from public.billing_profiles where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  if cp is distinct from 'agency' then raise exception 'Ο κερδισμένος μήνας «Επαγγελματίας» χάθηκε δίπλα σε «Ιδιοκτήτης+»: comp_plan = %', cp; end if;
+  raise notice 'probe: με μικτές ανταμοιβές μετρά η υψηλότερη βαθμίδα';
+end $probe$;
+
 -- ── Ο λογιστής στέλνει ─────────────────────────────────────────────────────
 set role authenticated;
 set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000ac';
@@ -4244,6 +4263,49 @@ begin
   res := public.accountant_invite_clients(array['inv-dec@probe.test']);
   if res->0->>'status' <> 'declined' then raise exception 'ΔΙΑΡΡΟΗ: ο πελάτης που είπε «όχι» ξαναπροσκλήθηκε: %', res; end if;
   raise notice 'probe: το «όχι» του πελάτη δεν σβήνεται και δεν παρακάμπτεται';
+end $probe$;
+
+-- ── Εναντίωση χωρίς λογαριασμό, μέσω υποστήριξης (2ος έλεγχος) ─────────────
+reset role;
+set session "probe.uid" = '';
+do $probe$
+declare res json;
+begin
+  res := public.accountant_invite_optout(' Opt@Probe.test ');
+  if (res->>'ok')::boolean is not true then raise exception 'Η εναντίωση δεν καταχωρήθηκε: %', res; end if;
+  if exists (select 1 from public.accountant_invite_optouts where address_sha256 like '%@%') then
+    raise exception 'Η εναντίωση κρατά τη διεύθυνση αντί για αποτύπωμα';
+  end if;
+end $probe$;
+set role authenticated;
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000ac';
+do $probe$
+declare res json; n int;
+begin
+  res := public.accountant_invite_clients(array['opt@probe.test']);
+  if res->0->>'status' <> 'declined' then raise exception 'ΔΙΑΡΡΟΗ: πρόσκληση σε διεύθυνση που αντιτάχθηκε: %', res; end if;
+  begin
+    -- Το σενάριο δίνει GRANT σε όλα· κόβει η RLS (καμία πολιτική ανάγνωσης).
+    select count(*) into n from public.accountant_invite_optouts;
+    if n <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο λογιστής διαβάζει τις εναντιώσεις (% γραμμές)', n; end if;
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.accountant_invite_optout('x@probe.test');
+    raise exception 'ΔΙΑΡΡΟΗ: ο χρήστης καταχωρεί εναντιώσεις για άλλους';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'probe: η εναντίωση μέσω υποστήριξης σταματά κάθε αποστολέα';
+end $probe$;
+reset role;
+do $probe$
+begin
+  if exists (select 1 from public.accountant_invites where email = 'opt@probe.test') then
+    raise exception 'Η διεύθυνση που αντιτάχθηκε γράφτηκε στις προσκλήσεις';
+  end if;
+  if exists (select 1 from public.email_outbox where copy_id = 'accountant_invite' and to_email = 'opt@probe.test') then
+    raise exception 'Μήνυμα μπήκε στην ουρά για διεύθυνση που αντιτάχθηκε';
+  end if;
 end $probe$;
 
 -- ── Η διεύθυνση του αγνώστου δεν μένει για πάντα (εύρημα C) ───────────────

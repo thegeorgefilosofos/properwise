@@ -26,7 +26,8 @@ export const DEFAULT_FROM = 'PROPERWISE <no-reply@properwise.gr>'
  * μετρά αρνητικά στη φήμη του αποστολέα. Η ίδια διεύθυνση υποστήριξης με το
  * `IDENTITY.supportEmail` (lib/legal/identity.ts).
  */
-export const REPLY_TO = 'PROPERWISE <support@properwise.gr>'
+export const SUPPORT_EMAIL = 'support@properwise.gr'
+export const REPLY_TO = `PROPERWISE <${SUPPORT_EMAIL}>`
 
 const ADDR = '[^\\s@<>",]+@[^\\s@<>",]+\\.[A-Za-z]{2,}'
 const VALID = new RegExp(`^(?:[^<>@]+<${ADDR}>|${ADDR})$`)

@@ -8,6 +8,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { LIFECYCLE } from './lifecycle.ts'
 import { ACCOUNTANT_INVITE_RETENTION_DAYS } from '../accountantInvite.ts'
+import { SUPPORT_EMAIL } from '../sender.mjs'
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean, got?: unknown) {
@@ -26,7 +27,11 @@ ok('λέει τι θα δει', text.includes('ΑΦΜ') && text.includes('μισ
 ok('σύνδεσμος πολιτικής απορρήτου', out.html.includes('https://properwise.gr/privacy') && text.includes('Πολιτική απορρήτου'))
 ok('λέει πόσο κρατιέται η διεύθυνση, από τη σταθερά', text.includes(`${ACCOUNTANT_INVITE_RETENTION_DAYS} ημέρες`))
 ok('νομική βάση: έννομο συμφέρον, άρθρο 6§1στ', text.includes('έννομο συμφέρον') && text.includes('6§1στ'))
-ok('δικαίωμα εναντίωσης: το «Όχι» σταματά τις επόμενες', text.includes('αντιταχθείς') && text.includes('δεν ξαναπαίρνεις πρόσκληση'))
+ok('δικαίωμα εναντίωσης: το «Όχι» σταματά τον αποστολέα, μόνο για όποιον έχει λογαριασμό',
+  text.includes('αντιταχθείς') && text.includes('Αν έχεις λογαριασμό, με το «Όχι»') && text.includes('από αυτόν τον αποστολέα'))
+ok('εναντίωση χωρίς λογαριασμό: απάντηση ή email στην υποστήριξη, για όλους τους αποστολείς',
+  text.includes('Με ή χωρίς λογαριασμό, απάντησε σε αυτό το μήνυμα') && out.html.includes(`mailto:${SUPPORT_EMAIL}`) && text.includes('από κανέναν αποστολέα'))
+ok('το «ώσπου να διαγράψεις τον λογαριασμό σου» μόνο υπό όρο', /Αν έχεις λογαριασμό[^.]*ώσπου να διαγράψεις τον λογαριασμό σου/.test(text))
 
 // ── Η ΙΔΙΑ ΔΙΑΡΚΕΙΑ ΣΤΟ ΜΗΝΥΜΑ ΚΑΙ ΣΤΗ ΒΑΣΗ ────────────────────────────────────
 // Η τελευταία μετάβαση που ορίζει την `private.accountant_invite_retention()`.
