@@ -4159,6 +4159,31 @@ begin
   raise notice 'probe: με μικτές ανταμοιβές μετρά η υψηλότερη βαθμίδα';
 end $probe$;
 
+-- Στο ταβάνι των 12 μηνών: με 12 μήνες «Ιδιοκτήτης+» ήδη, ένας κερδισμένος μήνας
+-- «Επαγγελματίας» δεν χάνεται επειδή δεν αυξάνει τους μήνες.
+reset role;
+do $probe$
+begin
+  delete from public.referral_rewards where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  insert into public.referral_rewards (user_id, kind, months, tier, reason, status)
+    values ('1a1a1a1a-0000-4000-8000-0000000000b0', 'months', 12, 'owner', 'per_referral_pro', 'pending');
+  update public.billing_profiles set comp_plan = 'owner', comp_months_granted = 12
+   where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  insert into public.referral_rewards (user_id, kind, months, tier, reason, status)
+    values ('1a1a1a1a-0000-4000-8000-0000000000b0', 'months', 1, 'agency', 'pro_paid', 'pending');
+end $probe$;
+set role authenticated;
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000b0';
+do $probe$
+declare cp text; m int;
+begin
+  perform public.sync_comp_from_referrals();
+  select comp_plan, comp_months_granted into cp, m from public.billing_profiles where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  if cp is distinct from 'agency' then raise exception 'Στο ταβάνι των 12 μηνών ο μήνας «Επαγγελματίας» χάθηκε: comp_plan = %', cp; end if;
+  if m is distinct from 12 then raise exception 'Στο ταβάνι οι μήνες έγιναν %', m; end if;
+  raise notice 'probe: στο ταβάνι των 12 μηνών η βαθμίδα ανεβαίνει';
+end $probe$;
+
 -- ── Ο λογιστής στέλνει ─────────────────────────────────────────────────────
 set role authenticated;
 set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000ac';

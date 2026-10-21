@@ -460,7 +460,7 @@ revoke all     on function public.accountant_invite_optout(text) from public, an
 grant  execute on function public.accountant_invite_optout(text) to service_role;
 
 comment on function public.accountant_invite_optout(text) is
-  'Για την υποστήριξη: η διεύθυνση δεν ξαναπαίρνει πρόσκληση λογιστή από κανέναν. Κρατιέται μόνο το αποτύπωμά της· οι ανοιχτές προσκλήσεις της σβήνουν.';
+  'Για την υποστήριξη: η διεύθυνση δεν ξαναπαίρνει πρόσκληση λογιστή από κανέναν. Κρατιέται μόνο το αποτύπωμά της (ψευδωνυμοποιημένο). Σβήνουν οι προσκλήσεις της που δεν έγιναν δεκτές (sent, withdrawn, declined) και όλα τα μηνύματα accountant_invite προς αυτήν στην ουρά, σε όποια κατάσταση.';
 
 -- ── 5α. Ο ΑΠΟΣΤΟΛΕΑΣ ΦΕΥΓΕΙ ΚΑΙ ΑΠΟ ΤΑ ΜΗΝΥΜΑ ΠΟΥ ΣΤΕΙΛΕ ─────────────────────
 -- Η `erase_account` σβήνει από την ουρά ό,τι έχει ΠΑΡΑΛΗΠΤΗ τον χρήστη
@@ -521,6 +521,10 @@ revoke all on function private.accountant_invites_forget_email() from public, an
 -- scripts/db/rls-probe.sql καρφώνει την τρέχουσα συμπεριφορά (πλήθος μηνών και
 -- βαθμίδα), ώστε η αλλαγή να γίνει μόνο ως απόφαση.
 --
+-- ΚΑΙ ΣΤΟ ΤΑΒΑΝΙ. Η ενημέρωση γινόταν μόνο όταν αυξάνονταν οι μήνες: με 12 μήνες
+-- «Ιδιοκτήτης+» ήδη, ένας νέος «Επαγγελματίας» χανόταν σιωπηλά. Τρέχει πλέον και
+-- όταν ανεβαίνει μόνο η βαθμίδα.
+--
 -- Αν λείπει η βαθμίδα, «owner». Το υπόλοιπο σώμα είναι αυτούσιο, με το
 -- `search_path` καρφωμένο όπως στις υπόλοιπες συναρτήσεις αυτού του αρχείου.
 create or replace function public.sync_comp_from_referrals()
@@ -564,7 +568,8 @@ begin
            comp_until          = coalesce(comp_started_at, now())
                                  + (greatest(coalesce(comp_months_granted, 0), v_months) || ' months')::interval
      where user_id = v_uid
-       and v_months > coalesce(comp_months_granted, 0);
+       and (v_months > coalesce(comp_months_granted, 0)
+            or public.plan_rank(v_target) > public.plan_rank(coalesce(comp_plan, 'owner')));
   end if;
 
   v_slots := least(v_slots, 500);
