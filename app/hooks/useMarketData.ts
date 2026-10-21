@@ -12,9 +12,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useLoad } from '@/app/hooks/useLoad';
-import { staleKeys, catalogEntry, ECB_SERIES, type Provenance, type MarketKey } from '@/lib/market/ecb'
+import { staleKeys, catalogEntry, greekWhen, MONTH_MEAN, ECB_SERIES, type Provenance, type MarketKey } from '@/lib/market/ecb'
 import { athensToday } from '@/lib/core/time'
+import { monthGen } from '@/lib/core/months'
 import { failed } from '@/lib/core/dbError'
+import { captureError } from '@/lib/observability/report'
+import type { MarketRatesRow } from '@/lib/supabase/tables'
 
 export interface LiveMarketRates {
   euribor_3m: number
@@ -36,6 +39,13 @@ export interface LiveMarketRates {
   source_bog: string
   rate_changed: boolean
   isLoading: boolean
+  /**
+   * ΗΡΘΕ Η ΓΡΑΜΜΗ ΤΗΣ ΒΑΣΗΣ Ή ΟΧΙ. `false` σημαίνει ότι η ανάγνωση απέτυχε και
+   * οι τιμές είναι οι τελευταίες γνωστές του κώδικα (`RATES_FALLBACK`). Πριν, το
+   * ίδιο το αντικείμενο της εφεδρείας με `isLoading: false` ήταν το μόνο σημάδι
+   * και η λωρίδα το διάβαζε από την απουσία ταυτότητας: «εκτίμηση».
+   */
+  live: boolean
   /**
    * ΠΟΤΕ ΠΑΡΑΤΗΡΗΘΗΚΕ ΚΑΘΕ ΤΙΜΗ, ΠΟΙΟΣ ΤΗ ΛΕΕΙ ΚΑΙ ΤΙ ΜΕΤΡΑ.
    *
@@ -115,8 +125,9 @@ export interface LiveProgram {
 // Οταν η βάση δεν απαντούσε, ο πίνακας γύριζε αυτές τις χειρόγραφες τιμές με
 // ημερομηνία «τώρα» και ο έλεγχος παλαιότητας των 48 ωρών έβρισκε πάντα
 // φρέσκα δεδομένα. Σταθερή ημερομηνία, όση αξίζουν: είναι το τελευταίο σημείο
-// που ξέρουμε, όχι μέτρηση της στιγμής. Η `provenance` μένει κενή επίτηδες· και
-// η οθόνη δεν γράφει ημερομηνία δίπλα σε καμία από αυτές.
+// που ξέρουμε, όχι μέτρηση της στιγμής. Η `provenance` μένει κενή επίτηδες και
+// η λωρίδα γράφει δίπλα τους «τελευταία γνωστή τιμή ΕΚΤ» με τον μήνα αυτής της
+// ημερομηνίας (`FALLBACK_NOTE`).
 //
 // ΚΑΙ ΤΑ ΝΟΥΜΕΡΑ ΗΤΑΝ ΛΑΘΟΣ, ΟΧΙ ΑΠΛΩΣ ΠΑΛΙΑ. Στην πρώτη αληθινή εκτέλεση της
 // τροφοδοσίας, 01/09/2026, η ΕΚΤ έδωσε Euribor τριμήνου 2,51% εκεί που ο
@@ -149,61 +160,175 @@ const RATES_FALLBACK: LiveMarketRates = {
   euribor_3m: 2.635, euribor_1m: 2.414, euribor_6m: 2.922, euribor_12m: 3.247,
   ecb_rate: 2.65, ecb_dfl: 2.50, bog_housing_new: null, bog_housing_stock: 2.90,
   updated_at: FALLBACK_AS_OF, source_euribor: 'fallback', source_bog: 'fallback',
-  rate_changed: false, isLoading: true, provenance: {}, stale: [], isStale: false,
+  rate_changed: false, isLoading: true, live: false, provenance: {}, stale: [], isStale: false,
 }
+
+/** Η εφεδρεία όπως τη βλέπει η οθόνη όταν η ανάγνωση απέτυχε: έτοιμη, όχι ζωντανή. */
+export const RATES_UNREAD: LiveMarketRates = { ...RATES_FALLBACK, isLoading: false }
+
+/**
+ * Η γραμμή του `market_rates` όπως τη δείχνει η καρτέλα Δάνειο.
+ *
+ * ΧΩΡΙΣΤΑ ΑΠΟ ΤΟ HOOK ΓΙΑ ΝΑ ΔΟΚΙΜΑΖΕΤΑΙ ΜΕ ΤΗ ΓΡΑΜΜΗ ΤΗΣ ΠΑΡΑΓΩΓΗΣ. Ο
+ * έλεγχος app/hooks/marketRates.test.ts της δίνει τη γραμμή της 21/10/2026.
+ */
+function asProvenance(raw: unknown): Provenance {
+  // Jsonb γραμμένο ως κείμενο φτάνει ως συμβολοσειρά· διαβάζεται, δεν πετιέται.
+  if (typeof raw === 'string') { try { raw = JSON.parse(raw) } catch { return {} } }
+  return (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) as Provenance
+}
+
+export function marketFromRow(row: MarketRatesRow, today: string): LiveMarketRates {
+  // Η ΠΑΛΑΙΟΤΗΤΑ ΒΓΑΙΝΕΙ ΑΠΟ ΤΙΣ ΤΙΜΕΣ, ΟΧΙ ΑΠΟ ΤΗ ΓΡΑΜΜΗ. Και κάθε
+  // είδος έχει δικό του όριο: το Euribor βγαίνει κάθε εργάσιμη, το
+  // επιτόκιο πολιτικής λίγες φορές τον χρόνο. Το παλιό «48 ώρες για
+  // όλα» θα φώναζε ψέματα στο δεύτερο ακόμη κι αν δούλευε.
+  const provenance = asProvenance(row.provenance)
+  const stale = staleKeys(provenance, today)
+  return {
+    euribor_3m:        row.euribor_3m        ?? RATES_FALLBACK.euribor_3m,
+    euribor_1m:        row.euribor_1m        ?? RATES_FALLBACK.euribor_1m,
+    euribor_6m:        row.euribor_6m        ?? RATES_FALLBACK.euribor_6m,
+    euribor_12m:       row.euribor_12m       ?? RATES_FALLBACK.euribor_12m,
+    ecb_rate:          row.ecb_rate          ?? RATES_FALLBACK.ecb_rate,
+    ecb_dfl:           row.ecb_dfl           ?? RATES_FALLBACK.ecb_dfl,
+    // Η ΣΕΙΡΑ ΚΡΙΝΕΙ, ΟΧΙ Η ΣΤΗΛΗ: τιμή άλλης σειράς δεν περνά με αυτό το όνομα.
+    bog_housing_new:   catalogEntry(provenance, 'bog_housing_new')?.value ?? null,
+    bog_housing_stock: row.bog_housing_stock ?? RATES_FALLBACK.bog_housing_stock,
+    updated_at:        row.updated_at,
+    source_euribor:    row.source_euribor    ?? 'fallback',
+    source_bog:        row.source_bog        ?? 'fallback',
+    rate_changed:      row.rate_changed      ?? false,
+    isLoading: false,
+    live: true,
+    provenance, stale,
+    isStale: stale.length > 0,
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Η ΛΕΖΑΝΤΑ ΔΙΠΛΑ ΣΕ ΚΑΘΕ ΤΙΜΗ ΤΗΣ ΛΩΡΙΔΑΣ
+// ─────────────────────────────────────────────────────────────────────────
+// ΤΑ ΣΤΟΙΧΕΙΑ ΤΗΣ ΕΚΤ ΔΕΝ ΕΙΝΑΙ ΕΚΤΙΜΗΣΗ (21/10/2026). Η λωρίδα της καρτέλας
+// Δάνειο έγραφε «EURIBOR ΤΡΙΜΗΝΟΥ 2,64% εκτίμηση Σεπ 2026», «ΕΚΤ, ΚΑΤΑΘΕΣΕΙΣ
+// 2,50% εκτίμηση Σεπ 2026», χωρίς «ΤτΕ μέσο». Το «εκτίμηση» έβγαινε όποτε έλειπε
+// η ταυτότητα της τιμής, δηλαδή όποτε η ανάγνωση του `market_rates` είχε
+// αποτύχει και το hook είχε κρατήσει σιωπηλά την εφεδρεία. Και τότε όμως τα
+// νούμερα είναι επίσημα: ο μέσος όρος Σεπτεμβρίου της ΕΚΤ και το επιτόκιο που
+// ισχύει. Δεν τα εκτιμήσαμε εμείς· απλώς δεν τα διαβάσαμε φρέσκα.
+//
+// Τρεις περιπτώσεις, καμία «εκτίμηση»:
+//   · ζωντανή γραμμή με ταυτότητα: η περίοδος της τιμής («μέσος όρος
+//     Σεπτεμβρίου», ή η ημερομηνία για ό,τι αλλάζει με απόφαση)
+//   · εφεδρεία, επειδή η ανάγνωση απέτυχε: «τελευταία γνωστή τιμή ΕΚΤ, Σεπ
+//     2026», με διακεκομμένη υπογράμμιση
+//   · ζωντανή γραμμή χωρίς ταυτότητα για αυτό το κλειδί: τίποτα. Η απουσία
+//     λέγεται με απουσία.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Η λεζάντα της εφεδρείας: τι είναι η τιμή και από πότε. */
+export const FALLBACK_NOTE = `τελευταία γνωστή τιμή ΕΚΤ, ${greekWhen(FALLBACK_AS_OF.slice(0, 10), MONTH_MEAN)}`
+
+export interface RateNote {
+  text: string
+  title: string
+  /** Διακεκομμένη υπογράμμιση: παλιά ή εφεδρική τιμή. */
+  dotted: boolean
+}
+
+/**
+ * «μέσος όρος Σεπτεμβρίου» δίπλα σε κάθε τιμή που είναι μέσος όρος μήνα.
+ *
+ * ΤΟ «Αυγ 2026» ΔΙΑΒΑΖΟΤΑΝ ΩΣ ΣΗΜΕΡΙΝΗ ΤΙΜΗ (28.09.2026). Το Euribor της ΕΚΤ
+ * στη λωρίδα είναι ο μέσος όρος του προηγούμενου μήνα· γράφεται αυτό ακριβώς.
+ * Οι σειρές που αλλάζουν σε συγκεκριμένη μέρα κρατούν την ημερομηνία τους.
+ */
+function periodOf(asOf: string, basis: string): string {
+  const m = /^\d{4}-(\d{2})-\d{2}$/.exec(asOf || '')
+  return m && basis === MONTH_MEAN ? `μέσος όρος ${monthGen(Number(m[1]) - 1)}` : greekWhen(asOf, basis)
+}
+
+/** Τι γράφεται δίπλα στην τιμή `key`. `null`: τίποτα. */
+export function rateNote(market: LiveMarketRates, key: MarketKey): RateNote | null {
+  if (market.isLoading) return null
+  if (!market.live) return {
+    text: FALLBACK_NOTE,
+    title: 'Η ανάγνωση των επιτοκίων απέτυχε. Είναι η τελευταία γνωστή τιμή της ΕΚΤ, όχι η σημερινή ανάγνωση.',
+    dotted: true,
+  }
+  const p = market.provenance[key]
+  if (!p) return null
+  const stale = market.stale.includes(key)
+  return {
+    text: periodOf(p.asOf, p.basis),
+    title: `${p.basis}, ${p.source}${stale ? '. Δεν ανανεώθηκε στον αναμενόμενο χρόνο' : ''}`,
+    dotted: stale,
+  }
+}
+
+/** Πόσες φορές δοκιμάζεται η ανάγνωση και πόσο περιμένει πριν από κάθε νέα. */
+const READ_RETRIES_MS = [800, 2500] as const
 
 export function useMarketRates() {
   const [data, setData] = useState<LiveMarketRates>(RATES_FALLBACK)
   const supabase = createClient()
 
   useEffect(() => {
-    async function load() {
+    let alive = true
+    // ΜΙΑ ΑΠΟΤΥΧΙΑ ΑΝΑΓΝΩΣΗΣ ΚΡΑΤΟΥΣΕ ΤΗΝ ΕΦΕΔΡΕΙΑ ΓΙΑ ΟΛΗ ΤΗ ΖΩΗ ΤΗΣ ΚΑΡΤΕΛΑΣ
+    // (21/10/2026). Η γραμμή της βάσης ήταν σωστή και πλήρης· το hook τη δίνει
+    // σωστά στη λωρίδα (app/hooks/marketRates.test.ts, με τη γραμμή της
+    // παραγωγής). Ομως ό,τι κι αν χαλούσε στον πελάτη — σφάλμα στο `error`,
+    // κενό `row`, εξαίρεση — κατέληγε στο ίδιο: `isLoading: false` πάνω στην
+    // εφεδρεία, μία φορά, χωρίς δεύτερη δοκιμή. Το σφάλμα πήγαινε μόνο στην
+    // κονσόλα και η εξαίρεση πουθενά (`catch {}`), οπότε κανείς δεν το μάθαινε
+    // και η λωρίδα έγραφε «εκτίμηση» σε επίσημα νούμερα.
+    //
+    // Τώρα: δύο ακόμη δοκιμές. Αν αποτύχουν και αυτές, η εφεδρεία βγαίνει
+    // με `live: false`, λέει τι είναι («τελευταία γνωστή τιμή») και η αποτυχία
+    // ταξιδεύει στο Sentry με τον λόγο της.
+    async function readOnce(): Promise<{ row: MarketRatesRow | null; reason: string }> {
       try {
-        // Η ΕΦΕΔΡΕΙΑ ΕΙΝΑΙ ΣΧΕΔΙΑΣΜΕΝΗ ΚΑΙ ΤΟ ΛΕΕΙ: το `source_euribor: 'fallback'`
-        // ταξιδεύει ως την οθόνη. Αυτό που ΕΛΕΙΠΕ ήταν το ίχνος — η αποτυχία δεν
-        // ξεχώριζε από «δεν υπάρχει ακόμη γραμμή», οπότε κανείς δεν μάθαινε ποτέ
-        // ότι ο πίνακας δεν διαβάζεται.
-        const { data: row, error: rowErr } = await supabase
+        const { data: row, error } = await supabase
           .from('market_rates')
           .select('*')
           .order('updated_at', { ascending: false })
           .limit(1)
           .maybeSingle()
-        if (rowErr) console.error('[useMarketRates] τα επιτόκια δεν διαβάστηκαν:', rowErr)
-
-        if (row) {
-          // Η ΠΑΛΑΙΟΤΗΤΑ ΒΓΑΙΝΕΙ ΑΠΟ ΤΙΣ ΤΙΜΕΣ, ΟΧΙ ΑΠΟ ΤΗ ΓΡΑΜΜΗ. Και κάθε
-          // είδος έχει δικό του όριο: το Euribor βγαίνει κάθε εργάσιμη, το
-          // επιτόκιο πολιτικής λίγες φορές τον χρόνο. Το παλιό «48 ώρες για
-          // όλα» θα φώναζε ψέματα στο δεύτερο ακόμη κι αν δούλευε.
-          const provenance = (row.provenance ?? {}) as Provenance
-          const stale = staleKeys(provenance, athensToday())
-          setData({
-            euribor_3m:        row.euribor_3m        ?? RATES_FALLBACK.euribor_3m,
-            euribor_1m:        row.euribor_1m        ?? RATES_FALLBACK.euribor_1m,
-            euribor_6m:        row.euribor_6m        ?? RATES_FALLBACK.euribor_6m,
-            euribor_12m:       row.euribor_12m       ?? RATES_FALLBACK.euribor_12m,
-            ecb_rate:          row.ecb_rate          ?? RATES_FALLBACK.ecb_rate,
-            ecb_dfl:           row.ecb_dfl           ?? RATES_FALLBACK.ecb_dfl,
-            // Η ΣΕΙΡΑ ΚΡΙΝΕΙ, ΟΧΙ Η ΣΤΗΛΗ: τιμή άλλης σειράς δεν περνά με αυτό το όνομα.
-            bog_housing_new:   catalogEntry(provenance, 'bog_housing_new')?.value ?? null,
-            bog_housing_stock: row.bog_housing_stock ?? RATES_FALLBACK.bog_housing_stock,
-            updated_at:        row.updated_at,
-            source_euribor:    row.source_euribor    ?? 'fallback',
-            source_bog:        row.source_bog        ?? 'fallback',
-            rate_changed:      row.rate_changed      ?? false,
-            isLoading: false,
-            provenance, stale,
-            isStale: stale.length > 0,
-          })
-        } else {
-          setData(r => ({ ...r, isLoading: false }))
-        }
-      } catch {
-        setData(r => ({ ...r, isLoading: false }))
+        if (error) return { row: null, reason: `${error.code || 'χωρίς κωδικό'}: ${error.message}` }
+        if (!row) return { row: null, reason: 'καμία γραμμή' }
+        return { row, reason: '' }
+      } catch (e) {
+        return { row: null, reason: e instanceof Error ? `${e.name}: ${e.message}` : String(e) }
       }
     }
+    async function load() {
+      const reasons: string[] = []
+      for (let attempt = 0; attempt <= READ_RETRIES_MS.length; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, READ_RETRIES_MS[attempt - 1]))
+        if (!alive) return
+        const { row, reason } = await readOnce()
+        if (!alive) return
+        if (row) {
+          try {
+            setData(marketFromRow(row, athensToday()))
+            return
+          } catch (e) {
+            reasons.push(`η γραμμή δεν διαβάστηκε: ${e instanceof Error ? e.message : String(e)}`)
+            break
+          }
+        }
+        reasons.push(reason)
+      }
+      if (!alive) return
+      console.error('[useMarketRates] τα επιτόκια δεν διαβάστηκαν, δείχνεται η τελευταία γνωστή τιμή:', reasons)
+      captureError(new Error('market_rates: η ανάγνωση απέτυχε, η λωρίδα δείχνει την εφεδρεία'), {
+        attempts: reasons.length, reasons: reasons.join(' | '),
+      })
+      setData(RATES_UNREAD)
+    }
     load()
+    return () => { alive = false }
   }, [supabase])
 
   return data

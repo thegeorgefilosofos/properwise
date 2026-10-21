@@ -8,8 +8,7 @@ import { athensToday } from '@/lib/core/time'
 import { T, EmptyState, Btn, IconBtn, ChipToggle } from '@/components/Theme'
 import { Gift } from 'lucide-react'
 import TabLoanCalculator from './TabLoanCalculator'
-import { greekWhen, MONTH_MEAN } from '@/lib/market/ecb'
-import { monthGen } from '@/lib/core/months'
+import { rateNote } from '@/app/hooks/useMarketData'
 import { RATES_DISCLAIMER, calcMonthly, fmtEur, fmtPct, spreadRange } from './TabLoanData'
 import { isOfficialSource } from '@/lib/loans/rateFeed'
 import { hy } from '@/components/Hyphen'
@@ -28,18 +27,6 @@ import { LoanGuide } from './loan/LoanGuide'
 // χρησιμοποιούνταν ποτέ — ένα νεκρό καλώδιο που έδινε την εντύπωση ότι ο
 // Υπολογιστής ξέρει το ενοίκιο, ενώ αυτός υπολόγιζε «4% της αξίας». Πλέον ο
 // Υπολογιστής διαβάζει ο ίδιος το πραγματικό ενοίκιο (rent_config) από τη βάση.
-/**
- * «μέσος όρος Αυγούστου» δίπλα σε κάθε τιμή που είναι μέσος όρος μήνα.
- *
- * ΤΟ «Αυγ 2026» ΔΙΑΒΑΖΟΤΑΝ ΩΣ ΣΗΜΕΡΙΝΗ ΤΙΜΗ (28.09.2026). Το Euribor της ΕΚΤ
- * στη λωρίδα είναι ο μέσος όρος του προηγούμενου μήνα· γράφεται αυτό ακριβώς.
- * Οι σειρές που αλλάζουν σε συγκεκριμένη μέρα κρατούν την ημερομηνία τους.
- */
-function periodOf(asOf: string, basis: string): string {
-  const m = /^\d{4}-(\d{2})-\d{2}$/.exec(asOf || '');
-  return m && basis === MONTH_MEAN ? `μέσος όρος ${monthGen(Number(m[1]) - 1)}` : greekWhen(asOf, basis);
-}
-
 export default function TabLoan({propertyId,userId,propertyValue,propertySqm,propertyYearBuilt,profileType='individual'}:LoanProps) {
   const {
     initValue, initAmount, FIXED_TERM_COLUMNS, openSec, setOpenSec, profile, calcRef,
@@ -104,7 +91,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
             // «επιτόκιο της ΕΚΤ» και το ονομάζει.
             {l:'ΕΚΤ, καταθέσεις',v:market.ecb_dfl,k:'ecb_dfl' as const},
             ...(market.bog_housing_new?[{l:'ΤτΕ μέσο',v:market.bog_housing_new,k:'bog_housing_new' as const}]:[]),
-          ].map(item=>(
+          ].map(item=>({...item,note:rateNote(market,item.k)})).map(({note,...item})=>(
             /* ΤΟ ΔΙΑΧΩΡΙΣΤΙΚΟ ΗΤΑΝ ΑΡΙΣΤΕΡΟ ΠΕΡΙΓΡΑΜΜΑ ΚΑΙ ΣΤΟ ΤΥΛΙΓΜΑ ΕΠΕΦΤΕ ΣΤΗΝ
                ΑΡΧΗ ΤΗΣ ΓΡΑΜΜΗΣ. Μετρημένο στα 390: η λωρίδα σπάει σε 1+2+1 και
                δύο κάθετες γραμμούλες κάθονταν κολλητά στο αριστερό περιθώριο,
@@ -129,21 +116,15 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               <span style={{fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:market.isLoading?'var(--border-default)':'var(--text-primary)',fontWeight:700,letterSpacing:'-0.01em'}}>
                 {market.isLoading?'…':fmtPct(item.v)}
               </span>
-              {!market.isLoading && market.provenance[item.k] && (
-                <span title={`${market.provenance[item.k]!.basis}, ${market.provenance[item.k]!.source}${market.stale.includes(item.k)?'. Δεν ανανεώθηκε στον αναμενόμενο χρόνο':''}`}
+              {/* ΤΑ ΣΤΟΙΧΕΙΑ ΤΗΣ ΕΚΤ ΔΕΝ ΓΡΑΦΟΝΤΑΙ «ΕΚΤΙΜΗΣΗ». Η λεζάντα βγαίνει από
+                  τη `rateNote`: η περίοδος της τιμής όταν η γραμμή ήρθε, η
+                  «τελευταία γνωστή τιμή ΕΚΤ» με διακεκομμένη υπογράμμιση όταν η
+                  ανάγνωση απέτυχε, τίποτα όταν η τιμή δεν έχει ταυτότητα. */}
+              {note && (
+                <span title={note.title}
                   style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)',fontWeight:500,
-                    borderBottom:market.stale.includes(item.k)?'1px dotted var(--text-tertiary)':undefined}}>
-                  {periodOf(market.provenance[item.k]!.asOf, market.provenance[item.k]!.basis)}
-                </span>
-              )}
-              {/* ΧΩΡΙΣ ΤΑΥΤΟΤΗΤΑ Η ΤΙΜΗ ΕΙΝΑΙ Η ΕΦΕΔΡΙΚΗ ΚΑΙ ΤΟ ΛΕΕΙ. Γυμνή, μια
-                  τιμή γραμμένη στον κώδικα έμοιαζε με σημερινή. Γράφεται ο
-                  μήνας της τελευταίας γνωστής παρατήρησης, με διακεκομμένη
-                  υπογράμμιση όπως κάθε παλιά τιμή της λωρίδας. */}
-              {!market.isLoading && !market.provenance[item.k] && (
-                <span title="Εφεδρική τιμή, όχι ζωντανή: η τροφοδοσία δεν έχει δώσει ακόμη νεότερη. Είναι η τελευταία γνωστή παρατήρηση."
-                  style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)',fontWeight:500,borderBottom:'1px dotted var(--text-tertiary)'}}>
-                  εκτίμηση {greekWhen(market.updated_at.slice(0,10), 'μέσος όρος μήνα')}
+                    borderBottom:note.dotted?'1px dotted var(--text-tertiary)':undefined}}>
+                  {note.text}
                 </span>
               )}
             </span>
