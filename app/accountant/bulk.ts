@@ -19,6 +19,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildZip, type ZipFile } from '@/lib/accounting/zip';
 import { downloadFile, safeFilename } from '@/lib/core/download';
+import { csvCell } from '@/lib/core/csv';
+import { PACK_FILES } from '@/lib/accounting/meetingPack';
 import {
   propertyLines, statementTotals, statementSheets, type PortalData, type PropertyLine,
 } from './statement';
@@ -150,6 +152,107 @@ export async function downloadAll(
   return files.length;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ΟΛΟΙ ΟΙ ΦΑΚΕΛΟΙ ΤΗΣ ΧΡΗΣΗΣ, ΣΕ ΕΝΑ ZIP
+// ─────────────────────────────────────────────────────────────────────────
+// ΤΙ ΥΠΗΡΧΕ. Το «Κατέβασε τα όλα» έδινε τα βιβλία εσόδων και δαπανών. Ο πλήρης
+// φάκελος (Ε2, έλεγχος, παραστατικά, κωδικοί) κατέβαινε ένας ένας: ογδόντα
+// πατήματα τον Ιούνιο.
+//
+// ΓΙΑΤΙ ΣΤΟΝ ΠΕΡΙΗΓΗΤΗ ΚΑΙ ΟΧΙ ΣΤΟΝ ΔΙΑΚΟΜΙΣΤΗ. Οι φάκελοι είναι ήδη έτοιμα zip
+// που έστειλαν οι πελάτες· δεν υπάρχει τίποτα να υπολογιστεί, μόνο να μπουν
+// μαζί. Μια συνάρτηση διακομιστή θα κουβαλούσε το ίδιο υλικό δύο φορές (από τον
+// χώρο αρχείων σε αυτήν και από αυτήν στον λογιστή) και θα ανέβαζε το βάρος
+// του docs/perf/server.json. Εδώ τα bytes περνούν μία φορά, με τα δικαιώματα
+// του ίδιου του λογιστή: ό,τι δεν θα κατέβαζε ένα ένα, δεν κατεβαίνει ούτε μαζί.
+//
+// ΤΟ ΟΡΙΟ. Το zip χτίζεται στη μνήμη. Πάνω από `BUNDLE_MAX_BYTES` (με το μέγεθος
+// που δήλωσε κάθε φάκελος) δεν στήνεται ένα αρχείο-τέρας που θα κρεμάσει την
+// καρτέλα: οι φάκελοι κατεβαίνουν ένας ένας με τη σειρά και το λέμε.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Πάνω από τόσα bytes συνολικά, οι φάκελοι κατεβαίνουν ένας ένας. */
+export const BUNDLE_MAX_BYTES = 150_000_000;
+
+/** Ένας φάκελος που έστειλε πελάτης, όπως τον ξέρει η λίστα. */
+export interface PackRef {
+  ownerId: string;
+  name: string;
+  afm: string;
+  path: string;
+  sizeBytes: number | null;
+  /** Η κατάσταση του πελάτη, για τον κατάλογο: «Έτοιμος», «Δεν κλείνει»… */
+  readiness: string;
+  /** Η σύγκριση με το προσυμπληρωμένο, με τα λόγια της λίστας. */
+  aade: string;
+  missingCount: number;
+  sharedAt: string | null;
+}
+
+export type BundleMode = 'one' | 'sequential';
+
+/** Πόσο μετρά φάκελος χωρίς δηλωμένο μέγεθος (παλιά γραμμή): συντηρητικά, όσο ένας βαρύς. */
+const UNKNOWN_PACK_BYTES = 10_000_000;
+
+/** Ένα zip ή ένας ένας. */
+export function bundleMode(refs: readonly PackRef[], max = BUNDLE_MAX_BYTES): BundleMode {
+  return refs.reduce((s, r) => s + (r.sizeBytes ?? UNKNOWN_PACK_BYTES), 0) > max ? 'sequential' : 'one';
+}
+
+/** Οι διαδρομές μέσα στο zip, μία ανά φάκελο, εγγυημένα διαφορετικές. */
+export function bundlePaths(refs: readonly PackRef[], year: number): string[] {
+  const seen = new Map<string, number>();
+  return refs.map(r => {
+    const base = `${safeFilename(r.name)} · ${PACK_FILES.zip(year, r.afm)}`;
+    const n = (seen.get(base) || 0) + 1;
+    seen.set(base, n);
+    return n === 1 ? base : base.replace(/\.zip$/, ` (${n}).zip`);
+  });
+}
+
+/** Ο κατάλογος του zip: ποιος, ποιο ΑΦΜ, πόσο έτοιμος και τι λείπει. */
+export function bundleIndex(refs: readonly PackRef[], paths: readonly string[], failed: ReadonlySet<number> = new Set()): string {
+  const head = ['Πελάτης', 'ΑΦΜ', 'Κατάσταση', 'Σύγκριση με το προσυμπληρωμένο Ε2', 'Τι λείπει', 'Στάλθηκε', 'Αρχείο'];
+  const day = (iso: string | null) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '');
+  const rows = refs.map((r, i) => [
+    r.name, r.afm, r.readiness, r.aade, String(r.missingCount), day(r.sharedAt),
+    failed.has(i) ? 'Δεν κατέβηκε: ζήτησε νέο σύνδεσμο ή κατέβασέ τον από τη λίστα' : paths[i],
+  ]);
+  return [head, ...rows].map(cols => cols.map(c => csvCell(c)).join(';')).join('\r\n');
+}
+
+export interface BundleResult { mode: BundleMode; done: number; failed: string[] }
+
+/**
+ * Κατεβάζει τους φακέλους. `fetchPack` είναι η ίδια ανάγνωση με το κουμπί
+ * κάθε πελάτη (`fileBytes`): αν ο πελάτης ανακάλεσε τον σύνδεσμο, ο φάκελός
+ * του δεν κατεβαίνει ούτε εδώ.
+ */
+export async function downloadPacks(
+  refs: readonly PackRef[], year: number,
+  fetchPack: (path: string) => Promise<Uint8Array | null>,
+  onProgress?: (done: number, total: number) => void,
+  save: (blob: Blob, name: string) => void = (blob, name) => { downloadFile(blob, name, 'application/zip'); },
+): Promise<BundleResult> {
+  const mode = bundleMode(refs);
+  const paths = bundlePaths(refs, year);
+  const failed = new Set<number>();
+  const files: ZipFile[] = [];
+  // ΕΝΑΣ ΕΝΑΣ ΚΑΙ ΟΧΙ ΣΕ ΛΩΡΙΔΕΣ. Κάθε φάκελος είναι μεγάλος· τέσσερις μαζί στη
+  // μνήμη δεν κερδίζουν χρόνο, μόνο αυξάνουν το ύψος της κορυφής.
+  for (const [i, r] of refs.entries()) {
+    const bytes = await fetchPack(r.path);
+    onProgress?.(i + 1, refs.length);
+    if (!bytes) { failed.add(i); continue; }
+    if (mode === 'one') files.push({ path: paths[i], data: bytes });
+    else save(new Blob([bytes.slice().buffer as ArrayBuffer], { type: 'application/zip' }), paths[i]);
+  }
+  if (mode === 'one' && files.length) {
+    files.unshift({ path: `00 Κατάλογος φακέλων ${year}.csv`, data: '\uFEFF' + bundleIndex(refs, paths, failed) });
+    save(new Blob([buildZip(files).slice().buffer], { type: 'application/zip' }), `${safeFilename(`Φάκελοι πελατών ${year}`)}.zip`);
+  }
+  return { mode, done: refs.length - failed.size, failed: [...failed].map(i => refs[i].name) };
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΠΟΤΕ ΚΙΝΗΘΗΚΕ ΤΕΛΕΥΤΑΙΑ ΦΟΡΑ Ο ΦΑΚΕΛΟΣ

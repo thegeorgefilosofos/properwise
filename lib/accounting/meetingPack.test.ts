@@ -131,6 +131,8 @@ const input = (o: Partial<MeetingPackInput> = {}): MeetingPackInput => ({
   eq('κάθετος σε όνομα ακινήτου δεν γίνεται υποφάκελος', folderName('Χανιά/Νότια'), 'Χανιά Νότια');
   const twins = packEntries({ year: 2025, cover: b(''), e2: b(''), review: b(''), papers: [{ property: 'Α', file: 'x.pdf', bytes: b('1') }, { property: 'Α ', file: 'y.pdf', bytes: b('2') }] });
   ok('δύο ακίνητα με το ίδιο όνομα: δύο φάκελοι', twins.some(f => f.path === '03 Παραστατικά/Α (2)/y.pdf'));
+  const withCodes = packEntries({ year: 2025, cover: b(''), e2: b(''), review: b(''), papers: [], codes: b('codes') });
+  eq('το φύλλο κωδικών μπαίνει τελευταίο, στη ρίζα', withCodes.map(f => f.path).at(-1), '05 Κωδικοί Ε1 και Ε2.xlsx');
   const unz = unzipSync(buildZip(files));
   ok('το zip ανοίγει και έχει τα αρχεία', strFromU8(unz['04 ΑΑΔΕ/Ε2 2025.pdf']) === 'aade' && strFromU8(unz['03 Παραστατικά/Πατησίων/02 Νερό.pdf']) === '3');
 }

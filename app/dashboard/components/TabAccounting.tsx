@@ -388,7 +388,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           ακόμη τίποτα έβλεπε πρώτα τι θα ζητήσει ο λογιστής και μετά πώς να
           ξεκινήσει. Τώρα ξεκινά από το «ξεκίνα» και ο κατάλογος ανοίγει με ένα
           πάτημα. */}
-      <AccountantDossier userId={userId} onEditProperty={onEditProperty} state={dossier} year={year} properties={dossierProps} exportSource={dossierExport} actions={accountantActions}
+      <AccountantDossier userId={userId} onEditProperty={onEditProperty} state={dossier} year={year} properties={dossierProps} exportSource={dossierExport} actions={accountantActions} canShareLink={canAccountantPortal}
         compact={!hasActivity} yearData={yearData} />
 
       {/* ΤΟ ΚΑΘΕΣΤΩΣ ΠΡΙΝ ΑΠΟ ΤΟΝ ΑΡΙΘΜΟ. Με περισσότερα βραχυχρόνια από το όριο

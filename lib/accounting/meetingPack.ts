@@ -17,6 +17,9 @@
 //                                   βραχυχρόνια, τι λείπει (μία φορά)
 //   03 Παραστατικά/<ακίνητο>/…      τα χαρτιά της χρήσης, ανά ακίνητο
 //   04 ΑΑΔΕ/…                       το πρωτότυπο προσυμπληρωμένο, αν ανέβηκε
+//   05 Κωδικοί Ε1 και Ε2.xlsx       τι πληκτρολογείται στο Taxisnet, με το
+//                                   «ελέγχθηκε» ή «λείπει» κάθε γραμμής
+//                                   (lib/accounting/taxisnetSheet.ts)
 //
 // ΕΔΩ ΖΕΙ Η ΛΟΓΙΚΗ, ΟΧΙ Η ΒΙΒΛΙΟΘΗΚΗ. Τι λείπει, τι γράφει η σύνοψη, πώς
 // λέγονται τα αρχεία, ποια μπαίνουν στο zip: όλα καθαρές συναρτήσεις,
@@ -182,6 +185,11 @@ export const PACK_FILES = {
   review: '02 Έλεγχος φακέλου.xlsx',
   papers: '03 Παραστατικά',
   aade: '04 ΑΑΔΕ',
+  // ΣΤΗ ΡΙΖΑ ΤΟΥ ΦΑΚΕΛΟΥ, ΜΕ ΣΤΑΘΕΡΟ ΟΝΟΜΑ. Ο χώρος του λογιστή το βγάζει από
+  // το zip που έστειλε ο πελάτης με αυτό ακριβώς το όνομα (`readZipEntry`).
+  codes: '05 Κωδικοί Ε1 και Ε2.xlsx',
+  /** Το φύλλο κωδικών όταν κατεβαίνει μόνο του, έξω από τον φάκελο. */
+  codesFile: (year: number, afm: string) => `Κωδικοί Ε1 και Ε2 ${year} ΑΦΜ ${afm}.xlsx`,
 } as const;
 
 /** Ονομα φακέλου ακινήτου: χωρίς χαρακτήρες που δεν δέχονται τα Windows. */
@@ -202,6 +210,8 @@ export function packEntries(o: {
   review: Uint8Array;
   papers: readonly PackPaper[];
   original?: { name: string; bytes: Uint8Array } | null;
+  /** Το φύλλο κωδικών Ε1 και Ε2. Λείπει σε καλούντα που δεν το φτιάχνει. */
+  codes?: Uint8Array | null;
 }): ZipFile[] {
   const files: ZipFile[] = [
     { path: PACK_FILES.cover, data: o.cover },
@@ -222,6 +232,7 @@ export function packEntries(o: {
     files.push({ path: `${PACK_FILES.papers}/${folder}/${p.file}`, data: p.bytes });
   }
   if (o.original) files.push({ path: `${PACK_FILES.aade}/${folderName(o.original.name)}`, data: o.original.bytes });
+  if (o.codes) files.push({ path: PACK_FILES.codes, data: o.codes });
   return files;
 }
 
@@ -285,7 +296,7 @@ export function coverModel(input: MeetingPackInput, meta: { id: string; issuedAt
     rows: missing.length
       ? [...cut(missing).map(m => [m.blocking ? `${m.what} (απαραίτητο)` : m.what, m.scope, m.who]), ...(missing.length > COVER_ROWS ? [[`Και ${missing.length - COVER_ROWS} ακόμη στο «02 Έλεγχος φακέλου».`, '', '']] : [])]
       : [['Τίποτα. Ο φάκελος είναι πλήρης.', '', '']] });
-  sections.push({ type: 'note', title: 'Περιεχόμενα', text: `${PACK_FILES.e2(input.year)}: το έντυπο Ε2 του ΑΦΜ. ${PACK_FILES.review}: σύγκριση με την ΑΑΔΕ, ανά ακίνητο, βραχυχρόνια και τι λείπει. ${PACK_FILES.papers}: τα παραστατικά της χρήσης ανά ακίνητο.${input.aade ? ` ${PACK_FILES.aade}: το πρωτότυπο προσυμπληρωμένο.` : ''}` });
+  sections.push({ type: 'note', title: 'Περιεχόμενα', text: `${PACK_FILES.e2(input.year)}: το έντυπο Ε2 του ΑΦΜ. ${PACK_FILES.review}: σύγκριση με την ΑΑΔΕ, ανά ακίνητο, βραχυχρόνια και τι λείπει. ${PACK_FILES.papers}: τα παραστατικά της χρήσης ανά ακίνητο.${input.aade ? ` ${PACK_FILES.aade}: το πρωτότυπο προσυμπληρωμένο.` : ''} ${PACK_FILES.codes}: οι κωδικοί του Ε1 και οι γραμμές του Ε2 για το Taxisnet, με τον έλεγχο κάθε γραμμής.` });
 
   const share = input.properties.some(p => p.ownershipPct < 100)
     ? ` Τα ποσά είναι το μερίδιο του υπόχρεου (${input.properties.filter(p => p.ownershipPct < 100).map(p => `${p.name} ${fp(p.ownershipPct)}`).join(', ')}).`
