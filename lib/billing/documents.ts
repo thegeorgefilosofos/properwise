@@ -1243,6 +1243,12 @@ export interface ArchivePlan {
   period_from?: string;   // → period_from
   period_to?: string;     // → period_to
   issue_date?: string;    // → issue_date    (έκδοση, διακριτή από το doc_date)
+  /**
+   * → statement_total. Αληθές ΜΟΝΟ όταν το `amount` είναι το σύνολο του
+   * εκκαθαριστικού ΕΝΦΙΑ. Από αυτό μετρά πόσες δόσεις έχει
+   * (lib/calendar/enfiaTotals.ts)· τίτλος και ποσό μόνα τους δεν αρκούν.
+   */
+  statement_total?: boolean;
 }
 
 export interface SavePlan {
@@ -1383,6 +1389,8 @@ export function planDocSave(doc: ScannedDoc, today: string): SavePlan {
     period_to: pTo || undefined,
     issue_date: iso(doc.issue_date) || undefined,
   };
+  // ΤΟ ΣΗΜΑ ΤΟΥ ΣΥΝΟΛΟΥ. Μόνο ο ΕΝΦΙΑ, μόνο με ποσό που γράφτηκε ως σύνολο.
+  if (k === 'enfia' && archive.amount !== undefined) archive.statement_total = true;
   // Ο υποτύπος και το έτος ζουν στον τίτλο μέχρι να αποκτήσει στήλες το Αρχείο
   // («Ε9 2025»)· αλλιώς ο τίτλος του εγγράφου, όπως τον είδε ο χρήστης.
   const own = (doc.title || '').trim();

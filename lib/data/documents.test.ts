@@ -59,8 +59,8 @@ const RICH = {
 };
 
 async function asyncChecks() {
-  ok('έξι προαιρετικές στήλες, καμία δύο φορές',
-    new Set(OPTIONAL_COLUMNS).size === OPTIONAL_COLUMNS.length && OPTIONAL_COLUMNS.length === 6);
+  ok('επτά προαιρετικές στήλες, καμία δύο φορές',
+    new Set(OPTIONAL_COLUMNS).size === OPTIONAL_COLUMNS.length && OPTIONAL_COLUMNS.length === 7);
 
   // ── ΜΙΑ ΣΤΗΛΗ ΤΗ ΦΟΡΑ, ΟΧΙ ΟΛΕΣ ΜΑΖΙ ───────────────────────────────────
   {

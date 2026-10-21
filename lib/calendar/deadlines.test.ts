@@ -1,5 +1,5 @@
 // npx tsx lib/calendar/deadlines.test.ts
-import { deadlineItems, type DeadlineSources } from './deadlines';
+import { deadlineItems, scopeToProperty, type DeadlineSources } from './deadlines';
 
 let p = 0, f = 0;
 const ok = (c: boolean, m: string) => { if (c) p++; else { f++; console.error('✗', m); } };
@@ -86,6 +86,26 @@ eq(JSON.stringify(deadlineItems(shuffled)), JSON.stringify(deadlineItems(full)),
 const before = JSON.stringify(full);
 deadlineItems(full);
 eq(JSON.stringify(full), before, 'οι γραμμές που δόθηκαν μένουν άθικτες');
+
+// ── ΕΝΑ ΑΚΙΝΗΤΟ, ΑΝ ΖΗΤΗΘΗΚΕ ΕΝΑ (έλεγχος 21/10/2026, εύρημα D) ─────────────
+{
+  const A = '3f2504e0-4f89-11d3-9a0c-0305e82c3301', B = '9b2d1c00-0000-4000-8000-00000000000b';
+  const two: DeadlineSources = {
+    ...base,
+    properties: [{ id: A, name: 'Αλεξάνδρας 12' }, { id: B, name: 'Πατησίων 40' }],
+    events: [{ id: 'e1', property_id: A, title: 'Συντήρηση', event_date: '2026-10-10' }, { id: 'e2', property_id: B, title: 'Κοινόχρηστα', event_date: '2026-10-11' }],
+    tasks: [{ id: 't1', property_id: B, description: 'Κλειδαριά', due_date: '2026-09-20' }, { id: 't0', property_id: null, description: 'Γενικό', due_date: '2026-09-21' }],
+    bills: [{ id: 'b1', property_id: B, name: 'ΔΕΗ', amount: 87.45, due_date: '2026-09-05', paid: false }],
+    rent: [{ id: 'r1', property_id: A, amount: 450, due_date: '2026-09-01', paid: false }, { id: 'r2', property_id: B, amount: 380, due_date: '2026-09-01', paid: false }],
+  };
+  const one = scopeToProperty(two, A);
+  eq(one && uids(one).join('|'), 'rent-r1@properwise|event-e1@properwise', 'μόνο οι γραμμές του ακινήτου που ζητήθηκε');
+  ok(!!one && titles(one).every(t => !t.includes('Πατησίων')), 'τίποτα από το άλλο ακίνητο');
+  eq(scopeToProperty(two, A.toUpperCase()) && uids(scopeToProperty(two, A.toUpperCase())!).length, 2, 'κεφαλαία ή πεζά, ίδιο ακίνητο');
+  eq(scopeToProperty(two, '11111111-1111-4111-8111-111111111111'), null, 'ακίνητο που δεν είναι του κατόχου: τίποτα');
+  eq(scopeToProperty(two, 'all'), null, 'λάθος μορφή: τίποτα');
+  eq(scopeToProperty(two, ''), null, 'κενό: τίποτα (ο καλών δεν φιλτράρει καθόλου)');
+}
 
 console.log(`\ncalendar/deadlines.ts — ${p} passed, ${f} failed`);
 if (f > 0) process.exit(1);

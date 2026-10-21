@@ -80,8 +80,10 @@ for (const t of ['organizations', 'organization_members']) {
 // και σηκώνει «plan_required» με τον ίδιο κωδικό 42501.
 const GATE = new RegExp(
   `if public\\.my_plan_rank\\(\\) < public\\.plan_rank\\('(\\w+)'\\) then\\s*\\n\\s*raise exception 'plan_required' using errcode = '42501';`)
+// Η ΜΑΖΙΚΗ ΠΡΟΣΚΛΗΣΗ ΤΟΥ ΛΟΓΙΣΤΗ ΣΤΕΛΝΕΙ EMAIL ΣΕ ΞΕΝΟΥΣ ΑΠΟ ΤΟ ΔΙΚΟ ΜΑΣ DOMAIN
+// (20261021120000, έλεγχος 21/10/2026): η ίδια πύλη με την πρόσκληση μέλους.
 for (const fn of ['clear_org_upgrade_request()', 'invite_org_member(',
-                  'rename_organization(']) {
+                  'rename_organization(', 'accountant_invite_clients(']) {
   const body = latestFn(fn)
   const name = fn.replace(/\(.*$/, '')
   eq(`${name}: πύλη πακέτου με το πακέτο του επαγγελματία`, GATE.exec(body)?.[1], PROFESSIONAL_MIN_PLAN)
@@ -115,7 +117,10 @@ eq('revoke_org_member: κρατά το δεύτερο βήμα', /mfa_satisfied/
 // Το πακέτο του μέλους δεν κρίνει την ομάδα κάποιου άλλου: η αποδοχή της
 // πρόσκλησης τρέχει σε κάθε φόρτωση του πίνακα και το αίτημα για πακέτο δεν
 // μπορεί να απαιτεί το πακέτο.
-for (const fn of ['accept_org_invites_for_me()', 'request_member_edit()', 'request_org_upgrade()']) {
+// Η απόσυρση πρόσκλησης λογιστή και η απάντηση του πελάτη: αφαίρεση και απόφαση
+// τρίτου, όχι πληρωμένη λειτουργία.
+for (const fn of ['accept_org_invites_for_me()', 'request_member_edit()', 'request_org_upgrade()',
+                  'accountant_invite_withdraw(', 'accountant_invite_answer(', 'my_accountant_invites()']) {
   eq(`${fn.replace(/\(.*$/, '')}: χωρίς πύλη πακέτου`, /plan_required/.test(latestFn(fn)), false)
 }
 

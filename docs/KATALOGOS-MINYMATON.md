@@ -125,7 +125,7 @@ npm run katalogos
 | `payment_failed` | Η πληρωμή της συνδρομής δεν ολοκληρώθηκε | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `security_login` | Νέα σύνδεση στον λογαριασμό σου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `accountant_request_answered` | ${esc(c.clientName \|\| 'Ο πελάτης σου')}: ήρθε αυτό που ζήτησες | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260825150000_i_pyli_logisti_kleinei_ton_kyklo.sql` |
-| `accountant_invite` | c.accountantName ? `${esc(c.accountantName)} ζητά πρόσβαση στον φάκελό σου` : 'Ο λογιστής σου ζητά πρόσβαση στον φάκελό σου' | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20261021090000_o_logistis_proskalei_tous_pelates.sql` (+1) |
+| `accountant_invite` | mail ? `${mail} ζητά πρόσβαση στον φάκελό σου στο PROPERWISE` : 'Αίτημα πρόσβασης στον φάκελό σου στο PROPERWISE' | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20261021090000_o_logistis_proskalei_tous_pelates.sql` (+2) |
 | `reply_ack` | Λάβαμε το μήνυμά σου | `supabase/functions/_shared/emailPolicy.ts` |
 | `mobile_launch` | Έρχεται το PROPERWISE στο κινητό σου | `supabase/functions/send-lifecycle-email/index.ts` |
 | `legislation_update` | Νομοθεσία ακινήτων: ${head} | **με το χέρι** · Νομοθετική αλλαγή. Το τι άλλαξε το γράφει άνθρωπος, δεν το μαντεύει σαρωτής. |

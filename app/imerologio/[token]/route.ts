@@ -22,6 +22,11 @@
 // μία ώρα αποθήκευσης. Αν αποτύχει οποιαδήποτε ανάγνωση, απαντά 503 χωρίς
 // αποθήκευση και ο πελάτης κρατά το προηγούμενο αντίγραφο.
 //
+// ΕΝΑ ΑΚΙΝΗΤΟ, ΑΝ ΖΗΤΗΘΗΚΕ ΕΝΑ. Το `?property=<uuid>` έρχεται από την παλιά
+// διεύθυνση της συνδρομής (supabase/functions/calendar-feed), που έδειχνε ένα
+// ακίνητο. Η συνδρομή μένει ό,τι ήταν: μόνο εκείνο, μόνο αν είναι του κατόχου
+// του κουπονιού, αλλιώς το ίδιο 404 με το άγνωστο κουπόνι.
+//
 // ΤΟ ΠΑΡΑΘΥΡΟ ΕΙΝΑΙ ΕΝΑΣ ΜΗΝΑΣ ΠΙΣΩ ΚΑΙ ΕΝΑΣ ΧΡΟΝΟΣ ΜΠΡΟΣΤΑ. Ο ένας μήνας
 // πίσω κρατά ό,τι μόλις έληξε και δεν πληρώθηκε· πιο παλιά είναι ιστορία και
 // η ιστορία δεν ανήκει σε ημερολόγιο υπενθυμίσεων.
@@ -34,7 +39,7 @@ import * as calendar from '@/lib/data/calendar';
 import * as checklist from '@/lib/data/checklist';
 import * as bills from '@/lib/data/bills';
 import * as rent from '@/lib/data/rent';
-import { deadlineItems, type DeadlineProperty, type DeadlineEvent, type DeadlineTask, type DeadlineBill, type DeadlineRent } from '@/lib/calendar/deadlines';
+import { deadlineItems, scopeToProperty, type DeadlineProperty, type DeadlineEvent, type DeadlineTask, type DeadlineBill, type DeadlineRent } from '@/lib/calendar/deadlines';
 import { buildCalendarFeed } from '@/lib/calendar/feed';
 import { athensDatePlus } from '@/lib/core/time';
 import { siteUrl } from '@/lib/core/site';
@@ -56,7 +61,7 @@ const unavailable = () => new Response('Το ημερολόγιο δεν είν�
   status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
 });
 
-export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
   // Η διεύθυνση τελειώνει σε `.ics` ώστε οι πελάτες ημερολογίου να την
   // αναγνωρίζουν ως αρχείο. Το κουπόνι είναι ό,τι μένει.
   const raw = (await params).token.replace(/\.ics$/i, '').toLowerCase();
@@ -64,6 +69,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   // uuid); ο έλεγχος δέχεται και μικρότερα ώστε να μη σπάσει αν αλλάξει η
   // προεπιλογή, αλλά ΤΙΠΟΤΑ που δεν είναι δεκαεξαδικό δεν φτάνει στη βάση.
   if (!/^[0-9a-f]{16,64}$/.test(raw)) return notFound();
+  // Κενό = όλος ο λογαριασμός· οτιδήποτε άλλο κρίνεται από τη `scopeToProperty`.
+  const only = (new URL(request.url).searchParams.get('property') ?? '').trim();
 
   const missing = serviceClientError(process.env);
   if (missing) {
@@ -103,10 +110,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     return unavailable();
   }
 
-  const items = deadlineItems({
+  const all = {
     properties: props.rows, events: events.rows, tasks: tasks.rows,
     bills: unpaidBills.rows, rent: dues.rows, from, to,
-  });
+  };
+  const sources = only ? scopeToProperty(all, only) : all;
+  if (!sources) return notFound();
+  const items = deadlineItems(sources);
 
   const ics = buildCalendarFeed(items, { name: CALENDAR_NAME, now: new Date(), link: siteUrl('/dashboard?tab=calendar') });
   log(`${items.length} προθεσμίες, ${from} ως ${to}`);

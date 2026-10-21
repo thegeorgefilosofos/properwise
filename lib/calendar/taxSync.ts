@@ -32,10 +32,18 @@
 //   6. ΔΟΣΕΙΣ ΕΝΦΙΑ ΠΟΥ ΔΕΝ ΥΠΑΡΧΟΥΝ (20.10.2026). Με γνωστό σύνολο
 //      εκκαθαριστικού οι δόσεις είναι όσες βγάζει ο κανόνας των 10€
 //      (lib/calendar/enfiaTotals.ts). Οσες είχε γράψει η μηχανή πάνω από αυτές
-//      φεύγουν αν είναι ανοιχτές και ανέγγιχτες, ακόμη και περασμένες: μια «8η δόση»
-//      που δεν υπήρξε ποτέ δεν είναι ληξιπρόθεσμη, είναι λάθος. Ό,τι άλλαξε ή
-//      έκλεισε ο χρήστης μένει. Δεν ξαναγεννιούνται, γιατί η μηχανή δεν τις
-//      βγάζει· και αν η ανάγνωση του συνόλου αποτύχει, δεν γράφεται τίποτα.
+//      φεύγουν αν είναι ΜΕΛΛΟΝΤΙΚΕΣ, ανοιχτές και ανέγγιχτες, όπως ο κανόνας 5.
+//      Ό,τι άλλαξε ή έκλεισε ο χρήστης μένει. Δεν ξαναγεννιούνται, γιατί η
+//      μηχανή δεν τις βγάζει· και αν η ανάγνωση του συνόλου αποτύχει, δεν
+//      γράφεται τίποτα.
+//
+//      ΟΧΙ ΚΑΙ ΟΙ ΠΕΡΑΣΜΕΝΕΣ (έλεγχος 21/10/2026, εύρημα E). Εσβηνε και δόσεις με
+//      ημερομηνία που πέρασε, με το σκεπτικό «μια 8η δόση που δεν υπήρξε δεν
+//      είναι ληξιπρόθεσμη». Ομως το πλήθος βγαίνει από ένα ποσό που μπορεί να
+//      είναι λάθος (μερίδιο ακινήτου γραμμένο σαν σύνολο) και τότε έσβηνε
+//      ΑΛΗΘΙΝΕΣ απλήρωτες δόσεις, δηλαδή ακριβώς τις υπενθυμίσεις που
+//      γλιτώνουν πρόστιμο. Μια περασμένη υπενθύμιση που περισσεύει κοστίζει
+//      ένα κλικ· μια που λείπει, προσαύξηση.
 //
 // ΣΥΝΙΔΙΟΚΤΗΣΙΑ ΚΑΙ ΟΜΑΔΑ. Η γραμμή ανήκει πάντα στον ΙΔΙΟΚΤΗΤΗ του ακινήτου
 // (`user_properties.user_id`): εκείνου είναι το εκκαθαριστικό και σε εκείνον
@@ -48,7 +56,7 @@ import type { CalendarEventsRow } from '@/lib/supabase/tables';
 import type { DbError } from '@/lib/supabase/writeResult';
 import { taxEventsToWrite, isClosedStatus } from '@/lib/facts/deadlines';
 import {
-  taxProfileOf, taxObligationOfEventSource, taxKindOfEventSource, TAX_SOURCE_PREFIX, type PropertyTaxProfile,
+  taxProfileOf, taxObligationOfEventSource, type PropertyTaxProfile,
 } from '@/lib/tax/greekTaxCalendar';
 import { readEnfiaCounts } from './enfiaTotals';
 import type { StatusRow } from '@/lib/property/status';
@@ -104,23 +112,6 @@ function statusTouched(r: Pick<TaxRow, 'auto_hash' | 'status'>): boolean {
 /** Προθεσμία του φορολογούμενου (ΕΝΦΙΑ, Ε1, Ε9) και όχι ενός ακινήτου. */
 export function isPersonLevel(source: string | null | undefined): boolean {
   return !!taxObligationOfEventSource(source)?.profiles.includes('owner');
-}
-
-/**
- * Δόση ΕΝΦΙΑ πάνω από το πλήθος του εκκαθαριστικού (κανόνας 6). Μόνο με γνωστό
- * πλήθος για το έτος της· η 1η δόση δεν περισσεύει ποτέ.
- */
-export function isSurplusEnfiaInstalment(
-  source: string | null | undefined, counts: Readonly<Record<number, number>>,
-): boolean {
-  const kind = taxKindOfEventSource(source);
-  if (kind !== 'enfia-instalment' && kind !== 'enfia-last') return false;
-  const id = String(source).slice(TAX_SOURCE_PREFIX.length);
-  const m = kind === 'enfia-last' ? /-(\d{4})$/.exec(id) : /-(\d{4})-(\d{1,2})$/.exec(id);
-  if (!m) return false;
-  const count = counts[Number(m[1])];
-  const no = kind === 'enfia-last' ? 12 : Number(m[2]);
-  return typeof count === 'number' && count >= 1 && no > count;
 }
 
 export interface TaxSyncPlan {
@@ -185,7 +176,9 @@ export function planTaxSync(
   for (const r of bySource.values()) {
     if (wanted.has(r.source as string)) continue;
     if (isClosedStatus(r.status) || contentEdited(r) || statusTouched(r)) continue;
-    if (text(r.event_date).slice(0, 10) < today && !isSurplusEnfiaInstalment(r.source, enfiaInstalments)) continue;
+    // Ο,ΤΙ ΠΕΡΑΣΕ ΔΕΝ ΣΒΗΝΕΤΑΙ ΠΟΤΕ, ούτε ως «περιττή» δόση ΕΝΦΙΑ (κανόνας 6). Η
+    // `isSurplusEnfiaInstalment` που το επέτρεπε έφυγε μαζί με την εξαίρεση.
+    if (text(r.event_date).slice(0, 10) < today) continue;
     plan.remove.push(r.id);
   }
   return plan;

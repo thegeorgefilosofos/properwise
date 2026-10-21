@@ -67,6 +67,8 @@ interface DocRow {
   mime: string | null; size_bytes: number | null; created_at: string;
   amount?: number | string | null; provider_afm?: string | null;
   period_from?: string | null; period_to?: string | null; issue_date?: string | null;
+  /** Η σάρωση σημάδεψε το ποσό ως σύνολο εκκαθαριστικού ΕΝΦΙΑ (20261021120000). */
+  statement_total?: boolean | null;
   signedUrl?: string;
 }
 
@@ -1535,11 +1537,16 @@ function FixModal({ items, onCancel, onSave }: { items: Item[]; onCancel: () => 
 
   const submit = () => {
     if (!one) { onSave({ category: cat }); return; }
+    // ΠΟΣΟ ΓΡΑΜΜΕΝΟ ΣΤΟ ΧΕΡΙ ΔΕΝ ΕΙΝΑΙ ΣΥΝΟΛΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟΥ. Αν αλλάξει, το σήμα
+    // της σάρωσης φεύγει και ο ΕΝΦΙΑ μετρά πάλι δώδεκα δόσεις (20261021120000).
+    const typed = amount.trim() ? numOrNull(amount.trim()) : null;
+    const changed = typed !== (one.amount != null ? numOrNull(one.amount) : null);
     onSave({
       category: cat,
       supplier: supplier.trim() || null,
       provider_afm: afmDigitsOnly || null,
-      amount: amount.trim() ? numOrNull(amount.trim()) : null,
+      amount: typed,
+      ...(changed && one.statement_total ? { statement_total: false } : {}),
       issue_date: issue || null,
       period_from: from || null,
       period_to: to || null,

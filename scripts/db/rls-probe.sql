@@ -4031,10 +4031,54 @@ set session "probe.uid" = '';
 set session "request.jwt.claims" = '';
 do $probe$
 begin
-  insert into auth.users(id, email) values
-    ('1a1a1a1a-0000-4000-8000-0000000000ac', 'inv-acc@probe.test'),
-    ('1a1a1a1a-0000-4000-8000-0000000000c1', 'inv-cli@probe.test'),
-    ('1a1a1a1a-0000-4000-8000-0000000000ff', 'inv-str@probe.test');
+  insert into auth.users(id, email, email_confirmed_at) values
+    ('1a1a1a1a-0000-4000-8000-0000000000ac', 'inv-acc@probe.test', now()),
+    ('1a1a1a1a-0000-4000-8000-0000000000c1', 'inv-cli@probe.test', now()),
+    ('1a1a1a1a-0000-4000-8000-0000000000ff', 'inv-str@probe.test', now()),
+    ('1a1a1a1a-0000-4000-8000-0000000000e1', 'inv-dec@probe.test', now()),
+    ('1a1a1a1a-0000-4000-8000-0000000000a2', 'inv-unconf@probe.test', null);
+  -- Ο λογιστής πληρώνει «Επαγγελματίας» (20261021120000). Ο ανεπιβεβαίωτος επίσης·
+  -- ο ξένος είναι νέος λογαριασμός σε δοκιμή, δηλαδή «Ιδιοκτήτης+».
+  insert into public.billing_profiles (user_id, plan, trial_used_at, owner_name) values
+    ('1a1a1a1a-0000-4000-8000-0000000000ac', 'agency', now(), 'Ο λογιστής σου'),
+    ('1a1a1a1a-0000-4000-8000-0000000000a2', 'agency', now(), null)
+  on conflict (user_id) do update set plan = excluded.plan, trial_used_at = excluded.trial_used_at, owner_name = excluded.owner_name;
+end $probe$;
+
+-- ── Μόνο ο επαγγελματίας στέλνει, με επιβεβαιωμένη διεύθυνση (εύρημα A) ────
+-- Πριν, ΟΠΟΙΟΣ έφτιαχνε λογαριασμό έστελνε 50 μηνύματα τη μέρα από το δικό μας
+-- domain, με «Ο λογιστής σου ζητά πρόσβαση» και ελεύθερο όνομα αποστολέα.
+set role authenticated;
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000ff';
+do $probe$
+begin
+  begin
+    perform public.accountant_invite_clients(array['inv-cli@probe.test']);
+    raise exception 'ΔΙΑΡΡΟΗ: λογαριασμός χωρίς πακέτο επαγγελματία έστειλε πρόσκληση λογιστή';
+  exception when insufficient_privilege then
+    if sqlerrm <> 'plan_required' then raise; end if;
+  end;
+  raise notice 'probe: ο λογαριασμός σε δοκιμή δεν στέλνει προσκλήσεις λογιστή';
+end $probe$;
+
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000a2';
+do $probe$
+begin
+  begin
+    perform public.accountant_invite_clients(array['inv-cli@probe.test']);
+    raise exception 'ΔΙΑΡΡΟΗ: αποστολέας με ανεπιβεβαίωτη διεύθυνση έστειλε πρόσκληση';
+  exception when insufficient_privilege then
+    if sqlerrm <> 'email_unverified' then raise; end if;
+  end;
+  raise notice 'probe: ο αποστολέας χωρίς επιβεβαιωμένη διεύθυνση δεν στέλνει';
+end $probe$;
+
+reset role;
+do $probe$
+declare n int;
+begin
+  select count(*) into n from public.email_outbox where copy_id = 'accountant_invite';
+  if n <> 0 then raise exception 'Οι αρνημένες προσκλήσεις έγραψαν % μηνύματα στην ουρά', n; end if;
 end $probe$;
 
 -- ── Ο λογιστής στέλνει ─────────────────────────────────────────────────────
@@ -4065,6 +4109,106 @@ declare n int;
 begin
   select count(*) into n from public.email_outbox where copy_id = 'accountant_invite' and category = 'transactional';
   if n <> 2 then raise exception 'Στην ουρά μπήκαν % προσκλήσεις αντί για 2', n; end if;
+  if exists (select 1 from public.email_outbox where copy_id = 'accountant_invite'
+              and params->>'accountantEmail' is distinct from 'inv-acc@probe.test') then
+    raise exception 'Η πρόσκληση δεν κουβαλά την επιβεβαιωμένη διεύθυνση του αποστολέα';
+  end if;
+end $probe$;
+
+-- ── Το «όχι» και οι 7 ημέρες δεν σβήνονται από τον λογιστή (εύρημα B) ──────
+set role authenticated;
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000ac';
+do $probe$
+declare res json; k int; wid uuid;
+begin
+  res := public.accountant_invite_clients(array['inv-dec@probe.test', 'w@probe.test']);
+  if res->0->>'status' <> 'sent' or res->1->>'status' <> 'sent' then raise exception 'Αποστολή για απόσυρση: %', res; end if;
+
+  -- Καμία διαγραφή ή ενημέρωση απευθείας: ούτε της «sent». Το σενάριο δίνει
+  -- σκόπιμα GRANT σε όλα (όπως τα προεπιλεγμένα της παραγωγής), οπότε εδώ
+  -- κόβει η RLS: καμία πολιτική διαγραφής ή ενημέρωσης, μηδέν γραμμές.
+  begin
+    delete from public.accountant_invites where email = 'w@probe.test';
+    get diagnostics k = row_count;
+    if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο λογιστής σβήνει πρόσκληση απευθείας'; end if;
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update public.accountant_invites set sent_at = now() - interval '30 days' where email = 'w@probe.test';
+    get diagnostics k = row_count;
+    if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο λογιστής αλλάζει πρόσκληση απευθείας'; end if;
+  exception when insufficient_privilege then null;
+  end;
+
+  -- Η απόσυρση σημαδεύει, δεν σβήνει· οι 7 ημέρες μένουν.
+  select id into wid from public.accountant_invites where email = 'w@probe.test';
+  res := public.accountant_invite_withdraw(wid);
+  if (res->>'ok')::boolean is not true then raise exception 'Η απόσυρση απέτυχε: %', res; end if;
+  if (select status from public.accountant_invites where id = wid) <> 'withdrawn' then raise exception 'Η απόσυρση δεν γράφει «withdrawn»'; end if;
+  res := public.accountant_invite_withdraw(wid);
+  if (res->>'ok')::boolean then raise exception 'Δεύτερη απόσυρση της ίδιας: %', res; end if;
+  res := public.accountant_invite_clients(array['w@probe.test']);
+  if res->0->>'status' <> 'already_invited' then raise exception 'ΔΙΑΡΡΟΗ: η απόσυρση μηδένισε τις 7 ημέρες: %', res; end if;
+  raise notice 'probe: η απόσυρση περνά από τη συνάρτηση και κρατά τις 7 ημέρες';
+end $probe$;
+
+reset role;
+do $probe$
+begin
+  if exists (select 1 from public.email_outbox where copy_id = 'accountant_invite' and to_email = 'w@probe.test' and status = 'pending') then
+    raise exception 'Το μήνυμα της πρόσκλησης που αποσύρθηκε μένει στην ουρά';
+  end if;
+  if not exists (select 1 from public.email_outbox where copy_id = 'accountant_invite' and to_email = 'w@probe.test' and status = 'skipped' and last_error = 'withdrawn') then
+    raise exception 'Η απόσυρση δεν ακύρωσε το μήνυμα στην ουρά';
+  end if;
+end $probe$;
+
+set role authenticated;
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000e1';
+do $probe$
+declare inv json; res json;
+begin
+  inv := public.my_accountant_invites();
+  if json_array_length(inv) <> 1 then raise exception 'Ο προσκεκλημένος βλέπει % προσκλήσεις αντί για 1', json_array_length(inv); end if;
+  if inv->0->>'email' <> 'inv-acc@probe.test' then raise exception 'Ο αποστολέας δεν φαίνεται με τη διεύθυνσή του: %', inv; end if;
+  res := public.accountant_invite_answer((inv->0->>'id')::uuid, false);
+  if res->>'status' <> 'declined' then raise exception 'Η άρνηση απέτυχε: %', res; end if;
+end $probe$;
+
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000ac';
+do $probe$
+declare res json; did uuid; k int;
+begin
+  select id into did from public.accountant_invites where email = 'inv-dec@probe.test';
+  res := public.accountant_invite_withdraw(did);
+  if (res->>'ok')::boolean then raise exception 'ΔΙΑΡΡΟΗ: ο λογιστής απέσυρε το «όχι» του πελάτη: %', res; end if;
+  begin
+    delete from public.accountant_invites where id = did;
+    get diagnostics k = row_count;
+    if k <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο λογιστής σβήνει το «όχι» του πελάτη'; end if;
+  exception when insufficient_privilege then null;
+  end;
+  res := public.accountant_invite_clients(array['inv-dec@probe.test']);
+  if res->0->>'status' <> 'declined' then raise exception 'ΔΙΑΡΡΟΗ: ο πελάτης που είπε «όχι» ξαναπροσκλήθηκε: %', res; end if;
+  raise notice 'probe: το «όχι» του πελάτη δεν σβήνεται και δεν παρακάμπτεται';
+end $probe$;
+
+-- ── Η διεύθυνση του αγνώστου δεν μένει για πάντα (εύρημα C) ───────────────
+reset role;
+set session "probe.uid" = '';
+do $probe$
+declare n int;
+begin
+  update public.accountant_invites set sent_at = now() - interval '91 days'
+   where email in ('nobody@probe.test', 'w@probe.test', 'inv-dec@probe.test');
+  n := public.prune_accountant_invites();
+  if n <> 2 then raise exception 'Το σκούπισμα έσβησε % προσκλήσεις αντί για 2 (sent και withdrawn)', n; end if;
+  if not exists (select 1 from public.accountant_invites where email = 'inv-dec@probe.test') then
+    raise exception 'Το σκούπισμα έσβησε το «όχι» του προσκεκλημένου';
+  end if;
+  -- Η διεύθυνση του προσκεκλημένου ξαναμπαίνει για τη δοκιμή διαγραφής πιο κάτω.
+  insert into public.accountant_invites (accountant_id, email) values ('1a1a1a1a-0000-4000-8000-0000000000ac', 'nobody@probe.test');
+  raise notice 'probe: πρόσκληση χωρίς απάντηση πάνω από 90 ημέρες σβήνει· το «όχι» μένει';
 end $probe$;
 
 -- ── Ο ξένος δεν βλέπει και δεν απαντά ──────────────────────────────────────
@@ -4128,5 +4272,7 @@ begin
   if n <> 0 then raise exception 'Οι προσκλήσεις του λογιστή επιβίωσαν της διαγραφής του: %', n; end if;
   perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000c1');
   perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000ff');
+  perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000e1');
+  perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000a2');
   raise notice 'probe: οι προσκλήσεις σβήνουν με τον λογιστή και η διεύθυνση με τον προσκεκλημένο';
 end $probe$;

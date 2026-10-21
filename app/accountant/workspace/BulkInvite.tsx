@@ -11,6 +11,11 @@
 // όριο. Ο πελάτης αποφασίζει ο ίδιος, στη Λογιστική του· ο λογιστής δεν βλέπει
 // τίποτα δικό του πριν πει «ναι».
 //
+// ΜΟΝΟ Ο ΕΠΑΓΓΕΛΜΑΤΙΑΣ ΣΤΕΛΝΕΙ (20261021120000). Μήνυμα από το δικό μας domain
+// που ζητά πρόσβαση σε ΑΦΜ και μισθωτήρια είναι ακριβώς ό,τι θέλει όποιος
+// ψαρεύει. Η βάση ανοίγει την αποστολή στο πακέτο του επαγγελματία και με
+// επιβεβαιωμένη διεύθυνση αποστολέα· εδώ λέγεται ο λόγος όταν αρνηθεί.
+//
 // ΚΛΕΙΣΤΟ ΑΠΟ ΠΡΟΕΠΙΛΟΓΗ. Η λίστα των πελατών είναι η δουλειά της ημέρας· η
 // πρόσκληση γίνεται μία φορά τον χρόνο. Μένει μία γραμμή με ένα κουμπί ώσπου
 // να τη χρειαστεί.
@@ -20,6 +25,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { T, Card, Btn, fd } from '@/components/Theme';
 import { Textarea } from '@/app/dashboard/components/UIComponents';
 import { notifyError } from '@/components/Toast';
+import { PLANS } from '@/lib/billing/plans';
+import { PROFESSIONAL_MIN_PLAN } from '@/lib/billing/entitlements';
 import {
   parseEmailList, uniqueCount, inviteClients, myInvitesSent, withdrawInvite,
   INVITE_STATUS_LABEL, type InviteResult, type SentInvite,
@@ -27,6 +34,13 @@ import {
 
 /** Πόσες από τις προηγούμενες προσκλήσεις φαίνονται πριν το «και Ν ακόμη». */
 const HISTORY_ROWS = 12;
+
+/** Το μήνυμα της άρνησης, ανά λόγο. Το πακέτο από τη μηχανή, όχι γραμμένο εδώ. */
+const REFUSAL = {
+  plan: `Η πρόσκληση με email ανοίγει στο πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω.`,
+  unverified: 'Επιβεβαίωσε πρώτα τη διεύθυνσή σου: αυτή βλέπει ο πελάτης ως αποστολέα.',
+  error: 'Οι προσκλήσεις δεν στάλθηκαν. Δοκίμασε ξανά σε λίγο.',
+} as const;
 
 const small: React.CSSProperties = { fontSize: 12, color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans, lineHeight: 1.5 };
 
@@ -53,7 +67,7 @@ export default function BulkInvite({ db, label }: { db: SupabaseClient; label: R
     setBusy(true);
     const r = await inviteClients(db, emails);
     setBusy(false);
-    if (r.failed) { notifyError('Οι προσκλήσεις δεν στάλθηκαν. Δοκίμασε ξανά σε λίγο.'); return; }
+    if (r.failed) { notifyError(REFUSAL[r.refusal ?? 'error']); return; }
     setResults(r.rows);
     // Ό,τι στάλθηκε φεύγει από το πεδίο· ό,τι δεν στάλθηκε μένει, για διόρθωση.
     const keep = r.rows.filter(x => x.status === 'invalid' || x.status === 'rate_limited' || x.status === 'over_limit').map(x => x.email);
@@ -82,7 +96,7 @@ export default function BulkInvite({ db, label }: { db: SupabaseClient; label: R
         <div style={{ minWidth: 0 }}>
           <p style={label}>Πρόσκληση πελατών</p>
           <p style={{ ...small, marginTop: 6 }}>
-            Στείλε σε όλους μαζί ένα μήνυμα με το όνομά σου. Ο καθένας αποφασίζει ο ίδιος· δεν βλέπεις τίποτα δικό του πριν πει «ναι».
+            {`Στείλε σε όλους μαζί ένα μήνυμα με αποστολέα τη διεύθυνσή σου. Ο καθένας αποφασίζει ο ίδιος· δεν βλέπεις τίποτα δικό του πριν πει «ναι». Για πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω.`}
           </p>
         </div>
         {!open && <Btn variant="secondary" onClick={openPanel}>Πρόσκληση με email</Btn>}

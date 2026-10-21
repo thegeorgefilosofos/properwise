@@ -398,6 +398,8 @@ export interface ArchiveInput {
   period_from?: string | null;
   period_to?: string | null;
   issue_date?: string | null;
+  /** Το ποσό είναι σύνολο εκκαθαριστικού ΕΝΦΙΑ (ArchivePlan.statement_total). */
+  statement_total?: boolean;
 }
 
 /** Ανεβάζει το πρωτότυπο και γράφει τη γραμμή του Αρχείου. */
@@ -423,6 +425,9 @@ export async function archiveScannedFile(input: ArchiveInput): Promise<{ ok: boo
     period_from: input.period_from || null,
     period_to: input.period_to || null,
     issue_date: input.issue_date || null,
+    // Μόνο όταν είναι αληθές: ένα «false» σε κάθε άλλο έγγραφο δεν λέει τίποτα
+    // και θα έσπαγε την καταχώρηση σε βάση χωρίς τη στήλη πριν από τη μετάβαση.
+    ...(input.statement_total ? { statement_total: true } : {}),
   };
 
   const { error } = await documents.add(supabase, propertyId, userId, payload);
@@ -438,6 +443,7 @@ export function archiveInputFrom(plan: ArchivePlan, file: File, propertyId: stri
     amount: plan.amount ?? null, provider_afm: plan.provider_afm ?? null,
     period_from: plan.period_from ?? null, period_to: plan.period_to ?? null,
     issue_date: plan.issue_date ?? null,
+    statement_total: plan.statement_total === true,
   };
 }
 

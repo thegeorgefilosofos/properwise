@@ -11,6 +11,7 @@
 // και αποφασίζει· μόνο το «ναι» του ανοίγει τον φάκελο.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { isPlanRequired } from '@/lib/core/dbError';
 
 type Db = SupabaseClient;
 
@@ -18,7 +19,7 @@ type Db = SupabaseClient;
 export const INVITE_BATCH = 100;
 
 export type InviteStatus =
-  | 'sent' | 'already_invited' | 'already_client' | 'declined' | 'accepted'
+  | 'sent' | 'already_invited' | 'already_client' | 'declined' | 'accepted' | 'withdrawn'
   | 'duplicate' | 'invalid' | 'self' | 'rate_limited' | 'over_limit';
 
 /** Η κατάσταση με λόγια, ίδια στη λίστα αποτελεσμάτων και στο ιστορικό. */
@@ -28,6 +29,7 @@ export const INVITE_STATUS_LABEL: Record<InviteStatus, string> = {
   already_client: 'Είναι ήδη πελάτης σου',
   declined: 'Ο πελάτης απάντησε «όχι»· δεν ξαναστέλνεται',
   accepted: 'Αποδέχτηκε',
+  withdrawn: 'Την πήρες πίσω',
   duplicate: 'Διπλή στη λίστα',
   invalid: 'Δεν είναι διεύθυνση email',
   self: 'Είναι η δική σου διεύθυνση',
@@ -59,15 +61,32 @@ export function uniqueCount(emails: readonly string[]): number {
   return new Set(emails.map(e => e.toLowerCase())).size;
 }
 
+/**
+ * Γιατί η βάση αρνήθηκε ολόκληρη τη λίστα.
+ *   plan        η πρόσκληση με email ανοίγει στο πακέτο του επαγγελματία
+ *               (20261021120000, ίδια πύλη με την πρόσκληση μέλους ομάδας)·
+ *   unverified  η διεύθυνση του αποστολέα δεν έχει επιβεβαιωθεί: αυτή είναι
+ *               που βλέπει ο πελάτης, οπότε χωρίς αυτήν δεν φεύγει τίποτα·
+ *   error       οτιδήποτε άλλο.
+ */
+export type InviteRefusal = 'plan' | 'unverified' | 'error';
+
+/** Το σφάλμα της βάσης ως λόγος άρνησης. Καθαρή συνάρτηση. */
+export function refusalOf(e: unknown): InviteRefusal {
+  if (isPlanRequired(e)) return 'plan';
+  const m = String((e as { message?: unknown } | null)?.message ?? '');
+  return /\bemail_unverified\b/.test(m) ? 'unverified' : 'error';
+}
+
 /** Στέλνει τις προσκλήσεις. Το `failed` ξεχωρίζει «δεν απάντησε η βάση» από «καμία γραμμή». */
-export async function inviteClients(db: Db, emails: readonly string[]): Promise<{ rows: InviteResult[]; failed: boolean }> {
+export async function inviteClients(db: Db, emails: readonly string[]): Promise<{ rows: InviteResult[]; failed: boolean; refusal?: InviteRefusal }> {
   const { data, error } = await db.rpc('accountant_invite_clients', { p_emails: emails.slice(0, INVITE_BATCH * 2) });
-  if (error) return { rows: [], failed: true };
+  if (error) return { rows: [], failed: true, refusal: refusalOf(error) };
   return { rows: Array.isArray(data) ? (data as InviteResult[]) : [], failed: false };
 }
 
 /** Μία πρόσκληση όπως τη θυμάται ο λογιστής. */
-export interface SentInvite { id: string; email: string; status: 'sent' | 'accepted' | 'declined'; sentAt: string; answeredAt: string | null }
+export interface SentInvite { id: string; email: string; status: 'sent' | 'accepted' | 'declined' | 'withdrawn'; sentAt: string; answeredAt: string | null }
 
 /** Οι προσκλήσεις του λογιστή, νεότερες πρώτες. Η RLS κρατά μόνο τις δικές του. */
 export async function myInvitesSent(db: Db): Promise<{ rows: SentInvite[]; failed: boolean }> {
@@ -85,15 +104,37 @@ export async function myInvitesSent(db: Db): Promise<{ rows: SentInvite[]; faile
   };
 }
 
-/** Παίρνει πίσω πρόσκληση που δεν απαντήθηκε. */
+/**
+ * Παίρνει πίσω πρόσκληση που δεν απαντήθηκε.
+ *
+ * ΔΕΝ ΣΒΗΝΕΙ ΓΡΑΜΜΗ. Η απευθείας διαγραφή άφηνε τον λογιστή να σβήσει το «όχι»
+ * του πελάτη και να ξαναστείλει αμέσως (20261021120000). Η συνάρτηση σημαδεύει
+ * «withdrawn», κρατά την ώρα αποστολής για τις 7 ημέρες και ακυρώνει το
+ * μήνυμα που δεν έφυγε ακόμη.
+ */
 export async function withdrawInvite(db: Db, id: string): Promise<boolean> {
-  const { error } = await db.from('accountant_invites').delete().eq('id', id);
-  return !error;
+  const { data, error } = await db.rpc('accountant_invite_withdraw', { p_id: id });
+  return !error && (data as { ok?: boolean } | null)?.ok === true;
 }
 
 // ── Η ΠΛΕΥΡΑ ΤΟΥ ΠΕΛΑΤΗ ─────────────────────────────────────────────────────
 
+/**
+ * Μία πρόσκληση προς εμένα. Το `email` είναι η επιβεβαιωμένη διεύθυνση του
+ * λογαριασμού που τη στέλνει· το `name` το έγραψε ο ίδιος (μπορεί να λείπει)
+ * και δεν αποδεικνύει τίποτα.
+ */
 export interface ReceivedInvite { id: string; name: string; email: string; sentAt: string }
+
+/**
+ * Ποιος ρωτά, όπως τον δείχνει η οθόνη: πρώτα η διεύθυνση (δεν επινοείται)
+ * και δίπλα το όνομα ως «δηλώνει». Καθαρή συνάρτηση.
+ */
+export function inviteSender(inv: Pick<ReceivedInvite, 'name' | 'email'>): { who: string; claimed: string } {
+  const name = String(inv.name ?? '').trim();
+  const email = String(inv.email ?? '').trim();
+  return { who: email || 'Άγνωστος αποστολέας', claimed: name && name.toLowerCase() !== email.toLowerCase() ? name : '' };
+}
 
 /** Ποιοι λογιστές ζήτησαν πρόσβαση στη δική μου διεύθυνση. */
 export async function invitesForMe(db: Db): Promise<ReceivedInvite[]> {

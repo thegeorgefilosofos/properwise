@@ -1145,6 +1145,7 @@ export interface PropertyDocumentsRow {
   period_from: string | null;
   period_to: string | null;
   issue_date: string | null;
+  statement_total: boolean | null;
 }
 
 export interface PropertyPlanRow {

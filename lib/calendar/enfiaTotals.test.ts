@@ -11,7 +11,6 @@
 import { greekPropertyTaxObligations, lastWorkingDayOfMonth, ENFIA_FEWER_HINT } from '@/lib/tax/greekTaxCalendar';
 import { enfiaInstalmentCount } from '@/lib/tools/enfiaSchedule';
 import { enfiaCountsByProperty, enfiaTotalOfSettings } from './enfiaTotals';
-import { isSurplusEnfiaInstalment } from './taxSync';
 import { enfiaYearOf, planDocSave, ENFIA_TITLE } from '@/lib/billing/documents';
 
 let pass = 0, fail = 0;
@@ -67,14 +66,6 @@ ok('ρυθμίσεις: χωρίς έτος δεν μετρά', enfiaTotalOfSett
 ok('ρυθμίσεις: κενό ή μηδέν δεν μετρά', enfiaTotalOfSettings('a', { enfiaStatementTotal: '', enfiaStatementYear: '2026' }) === null
   && enfiaTotalOfSettings('a', { enfiaStatementTotal: '0', enfiaStatementYear: '2026' }) === null);
 
-// ── ΠΟΙΑ ΓΡΑΜΜΗ ΠΕΡΙΣΣΕΥΕΙ ───────────────────────────────────────────────────
-ok('περιττή: 3η με πλήθος 2', isSurplusEnfiaInstalment('tax:enfia-instalment-2026-3', { 2026: 2 }));
-ok('περιττή: η 12η με πλήθος 11', isSurplusEnfiaInstalment('tax:enfia-last-2026', { 2026: 11 }));
-ok('όχι περιττή: η 2η με πλήθος 2', !isSurplusEnfiaInstalment('tax:enfia-instalment-2026-2', { 2026: 2 }));
-ok('όχι περιττή: άγνωστο πλήθος', !isSurplusEnfiaInstalment('tax:enfia-instalment-2026-3', {}));
-ok('όχι περιττή: άλλο έτος', !isSurplusEnfiaInstalment('tax:enfia-instalment-2026-3', { 2027: 2 }));
-ok('όχι περιττή: η 1η και τα άλλα είδη', !isSurplusEnfiaInstalment('tax:enfia-first-2026', { 2026: 1 }) && !isSurplusEnfiaInstalment('tax:e9-2026', { 2026: 1 }));
-
 // ── ΤΟ ΑΡΧΕΙΟ ΚΡΑΤΑ ΣΥΝΟΛΟ, ΟΧΙ ΜΕΡΙΔΙΟ ──────────────────────────────────────
 ok('τίτλος: «ΕΝΦΙΑ 2026» → 2026', enfiaYearOf(`${ENFIA_TITLE} 2026`) === 2026 && enfiaYearOf('Ε9 2026') === null && enfiaYearOf('ΕΝΦΙΑ') === null);
 {
@@ -85,6 +76,12 @@ ok('τίτλος: «ΕΝΦΙΑ 2026» → 2026', enfiaYearOf(`${ENFIA_TITLE} 202
   ok('ένα ακίνητο: το ποσό του είναι το σύνολο', single.archive?.amount === 27);
   const total = planDocSave({ doc_type: 'tax', subtype: 'enfia', tax_year: 2026, amount: 120, property_amount: 27, lines, line: 0 }, '2026-10-20');
   ok('με σύνολο: το σύνολο', total.archive?.amount === 120 && total.archive?.title === 'ΕΝΦΙΑ 2026');
+  // ΤΟ ΣΗΜΑ ΤΟΥ ΣΥΝΟΛΟΥ (έλεγχος 21/10/2026, εύρημα E): μόνο αυτό μετρά δόσεις.
+  ok('με σύνολο: σημαδεμένο ως σύνολο', total.archive?.statement_total === true);
+  ok('ένα ακίνητο: σημαδεμένο ως σύνολο', single.archive?.statement_total === true);
+  ok('μερίδιο χωρίς σύνολο: χωρίς σήμα', share.archive?.statement_total === undefined);
+  const bill = planDocSave({ doc_type: 'tax', tax_year: 2026, amount: 50 }, '2026-10-20');
+  ok('άλλο φορολογικό με ποσό: χωρίς σήμα', bill.archive?.statement_total === undefined, bill.archive);
 }
 
 console.log(`\nenfiaTotals: ${pass} ✓ · ${fail} ✗`);
