@@ -6,6 +6,7 @@
 // δικτύου στη μέση άφηνε τον χρήστη με ημερολόγιο χωρίς τις δόσεις του δανείου.
 // Το τεστ καταγράφει κάθε κλήση και ελέγχει τη σειρά — αν κάποιος τη γυρίσει
 // πίσω «για απλότητα», σπάει εδώ και όχι στην οθόνη κάποιου.
+import { readFileSync } from 'node:fs'
 import * as calendar from './calendar'
 
 let passed = 0, failed = 0
@@ -52,6 +53,19 @@ ok('row: κατάσταση εκκρεμής', r.status === 'pending')
 ok('row: προτεραιότητα μεσαία', r.priority === 'medium')
 ok('row: όχι επαναλαμβανόμενο', r.recurring === false)
 ok('row: ποσό κενό, όχι μηδέν', r.amount === null)
+ok('row: εξαιρέσεις κενή λίστα, ποτέ null', Array.isArray(r.recurrence_exdates) && r.recurrence_exdates.length === 0)
+ok('row: εξαιρέσεις του σχεδίου περνούν', calendar.row(scope, 'loan', { ...draft, recurrence_exdates: ['2026-10-01'] }).recurrence_exdates?.[0] === '2026-10-01')
+// Η ΒΑΣΗ ΚΡΙΝΕΙ, ΟΧΙ Η ΜΝΗΜΗ ΜΑΣ. Κάθε στήλη NOT NULL του calendar_events στο
+// baseline: το row() δεν τη στέλνει ποτέ null (το PostgREST δεν βάζει την
+// προεπιλογή όταν το κλειδί υπάρχει). Ετσι πιάνεται και η επόμενη τέτοια στήλη.
+{
+  const sql = readFileSync('supabase/migrations/00000000000000_baseline.sql', 'utf8')
+  const body = /CREATE TABLE IF NOT EXISTS "public"\."calendar_events" \(([\s\S]*?)\n\);/.exec(sql)?.[1] ?? ''
+  const notNull = [...body.matchAll(/^\s*"([a-z_]+)"[^\n]*NOT NULL/gm)].map(m => m[1])
+  ok('το baseline διαβάζεται (στήλες NOT NULL του calendar_events)', notNull.includes('recurrence_exdates') && notNull.includes('title'))
+  const rec = r as unknown as Record<string, unknown>
+  for (const c of notNull) if (c in rec) ok(`row: η ${c} δεν στέλνεται null`, rec[c] !== null && rec[c] !== undefined)
+}
 ok('row: δική του πηγή υπερισχύει',
    calendar.row(scope, 'loan', { ...draft, source: 'booking:1:in' }).source === 'booking:1:in')
 
