@@ -5,7 +5,9 @@
 // μας: δεν λέει «ο λογιστής σου», δείχνει την επιβεβαιωμένη διεύθυνση του
 // αποστολέα, το όνομα μόνο ως «δηλώνει» και ποτέ στο θέμα. Εχει υποσέλιδο
 // με πολιτική απορρήτου (εύρημα C).
+import { readFileSync, readdirSync } from 'node:fs'
 import { LIFECYCLE } from './lifecycle.ts'
+import { ACCOUNTANT_INVITE_RETENTION_DAYS } from '../accountantInvite.ts'
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean, got?: unknown) {
@@ -22,7 +24,23 @@ ok('το όνομα μόνο ως «δηλώνει»', text.includes('δηλών
 ok('«Δέξου μόνο αν γνωρίζεις τον αποστολέα»', text.includes('Δέξου μόνο αν γνωρίζεις τον αποστολέα'))
 ok('λέει τι θα δει', text.includes('ΑΦΜ') && text.includes('μισθωτήρια'))
 ok('σύνδεσμος πολιτικής απορρήτου', out.html.includes('https://properwise.gr/privacy') && text.includes('Πολιτική απορρήτου'))
-ok('λέει πόσο κρατιέται η διεύθυνση', text.includes('90 ημέρες'))
+ok('λέει πόσο κρατιέται η διεύθυνση, από τη σταθερά', text.includes(`${ACCOUNTANT_INVITE_RETENTION_DAYS} ημέρες`))
+ok('νομική βάση: έννομο συμφέρον, άρθρο 6§1στ', text.includes('έννομο συμφέρον') && text.includes('6§1στ'))
+ok('δικαίωμα εναντίωσης: το «Όχι» σταματά τις επόμενες', text.includes('αντιταχθείς') && text.includes('δεν ξαναπαίρνεις πρόσκληση'))
+
+// ── Η ΙΔΙΑ ΔΙΑΡΚΕΙΑ ΣΤΟ ΜΗΝΥΜΑ ΚΑΙ ΣΤΗ ΒΑΣΗ ────────────────────────────────────
+// Η τελευταία μετάβαση που ορίζει την `private.accountant_invite_retention()`.
+{
+  const dir = 'supabase/migrations'
+  const head = 'create or replace function private.accountant_invite_retention()'
+  const file = readdirSync(dir).filter(f => f.endsWith('.sql')).sort().reverse()
+    .find(f => readFileSync(`${dir}/${f}`, 'utf8').includes(head))
+  const sql = file ? readFileSync(`${dir}/${file}`, 'utf8') : ''
+  const body = sql.slice(sql.indexOf(head), sql.indexOf('$$;', sql.indexOf(head)) + 3)
+  const days = Number(/interval '(\d+) days'/.exec(body)?.[1])
+  ok('η βάση και το μήνυμα λένε τις ίδιες ημέρες', days === ACCOUNTANT_INVITE_RETENTION_DAYS, { file, days })
+  ok('καμία σκέτη διάρκεια 90 ημερών στις συναρτήσεις της πρόσκλησης', !/interval '90 days'/.test(sql.replace(body, '')), file)
+}
 
 const bare = LIFECYCLE.accountant_invite({ appUrl: 'https://properwise.gr' } as never) as { subject: string; html: string }
 ok('χωρίς διεύθυνση: ουδέτερο θέμα', bare.subject === 'Αίτημα πρόσβασης στον φάκελό σου στο PROPERWISE', bare.subject)

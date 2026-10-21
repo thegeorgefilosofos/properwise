@@ -26,7 +26,7 @@ import * as documents from '@/lib/data/documents';
 // Η ΜΙΑ μηχανή σάρωσης/καταχώρησης. Το Αρχείο δεν έχει δική του λογική OCR, δικό
 // του prompt, ούτε δική του απόφαση για το ράφι: όλα ζουν στο scanDoc.ts και στο
 // lib/billing (δοκιμασμένα). Ό,τι φαίνεται εδώ είναι μόνο οθόνη.
-import { ARCHIVE_CATEGORIES, validateDoc, DOC_FIELD_LABELS, DOC_TYPE_LABELS, FOLDERS, folderForDoc, archiveOptions, docForm, fieldOptions, fieldValue, kindOf, shelfPath, planDocSave, type FolderKey, type ScannedDoc } from '@/lib/billing/documents';
+import { ARCHIVE_CATEGORIES, validateDoc, DOC_FIELD_LABELS, DOC_TYPE_LABELS, FOLDERS, folderForDoc, archiveOptions, docForm, fieldOptions, fieldValue, kindOf, shelfPath, planDocSave, renamePatch, type FolderKey, type ScannedDoc } from '@/lib/billing/documents';
 import {
   scanFile, commitScannedDoc, archiveScannedFile, archiveCategoryFor, archiveInputFrom,
   withAnswer, failedNotice, openQuestion, notForFolder, FOLDER_ACCEPT,
@@ -585,7 +585,8 @@ export default function TabDocuments({
     await documents.update(supabase, its.filter(i => i.raw).map(i => i.raw!.id), p);
     fetchAll();
   };
-  const applyRename = async (title: string) => { if (renameItem && title.trim()) await updateDocs([renameItem], { title: title.trim().slice(0, 200) }); setRenameItem(null); };
+  // Το σήμα του συνόλου ΕΝΦΙΑ φεύγει όταν ο τίτλος αλλάξει έτος (renamePatch).
+  const applyRename = async (title: string) => { if (renameItem && title.trim()) await updateDocs([renameItem], renamePatch(renameItem.raw?.title, title, renameItem.raw?.statement_total)); setRenameItem(null); };
   const applyFix = async (p: Record<string, unknown>) => { if (fixItems?.length) await updateDocs(fixItems, p); setFixItems(null); setSelected(new Set()); };
 
   const toggleSel = (id: string) => setSelected(p => { return toggleIn(p, id); });

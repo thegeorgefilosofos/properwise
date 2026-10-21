@@ -4081,6 +4081,59 @@ begin
   if n <> 0 then raise exception 'Οι αρνημένες προσκλήσεις έγραψαν % μηνύματα στην ουρά', n; end if;
 end $probe$;
 
+-- ── Ούτε με «Επαγγελματίας» στις Ρυθμίσεις και μπόνους τριών φίλων ────────
+-- (2ος έλεγχος, 21/10/2026). Η `sync_comp_from_referrals` έδινε δωρεάν μήνες
+-- «Επαγγελματίας» σε όποιον είχε `profile_type = 'professional'`, ενώ το μπόνους
+-- όγκου είναι μήνας «Ιδιοκτήτης+». Το `profile_type` το αλλάζει ο ίδιος.
+reset role;
+set session "probe.uid" = '';
+do $probe$
+begin
+  insert into auth.users(id, email, email_confirmed_at) values
+    ('1a1a1a1a-0000-4000-8000-0000000000b0', 'inv-ref@probe.test', now()),
+    ('1a1a1a1a-0000-4000-8000-0000000000b1', 'inv-f1@probe.test', now()),
+    ('1a1a1a1a-0000-4000-8000-0000000000b2', 'inv-f2@probe.test', now()),
+    ('1a1a1a1a-0000-4000-8000-0000000000b3', 'inv-f3@probe.test', now());
+  insert into public.billing_profiles (user_id, plan, trial_used_at, profile_type) values
+    ('1a1a1a1a-0000-4000-8000-0000000000b0', 'free', now(), 'individual'),
+    ('1a1a1a1a-0000-4000-8000-0000000000b1', 'free', now(), 'individual'),
+    ('1a1a1a1a-0000-4000-8000-0000000000b2', 'free', now(), 'individual'),
+    ('1a1a1a1a-0000-4000-8000-0000000000b3', 'free', now(), 'individual')
+  on conflict (user_id) do update set plan = excluded.plan, trial_used_at = excluded.trial_used_at, profile_type = excluded.profile_type;
+  insert into public.referral_codes (user_id, code) values ('1a1a1a1a-0000-4000-8000-0000000000b0', 'PROBEREF');
+  insert into public.referrals (code, referred_user_id, referrer_user_id, activated_at) values
+    ('PROBEREF', '1a1a1a1a-0000-4000-8000-0000000000b1', '1a1a1a1a-0000-4000-8000-0000000000b0', now()),
+    ('PROBEREF', '1a1a1a1a-0000-4000-8000-0000000000b2', '1a1a1a1a-0000-4000-8000-0000000000b0', now()),
+    ('PROBEREF', '1a1a1a1a-0000-4000-8000-0000000000b3', '1a1a1a1a-0000-4000-8000-0000000000b0', now());
+end $probe$;
+
+set role authenticated;
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000b0';
+do $probe$
+declare res json; cp text;
+begin
+  -- Ο χρήστης δεν γράφει δωρεάν μήνες στον εαυτό του (lock_billing_plan).
+  update public.billing_profiles set comp_plan = 'agency', comp_until = now() + interval '1 year'
+   where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  select comp_plan into cp from public.billing_profiles where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  if cp is not null then raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: ο χρήστης έγραψε comp_plan = % απευθείας', cp; end if;
+
+  update public.billing_profiles set profile_type = 'professional'
+   where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  res := public.claim_referral_bonus('PROBEREF', 'indiv_volume');
+  if (res->>'ok')::boolean is not true then raise exception 'Το μπόνους όγκου δεν δόθηκε: %', res; end if;
+  perform public.sync_comp_from_referrals();
+  select comp_plan into cp from public.billing_profiles where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  if cp is distinct from 'owner' then raise exception 'ΔΙΑΡΡΟΗ ΠΑΚΕΤΟΥ: το μπόνους όγκου έδωσε comp_plan = %', cp; end if;
+  begin
+    perform public.accountant_invite_clients(array['inv-cli@probe.test']);
+    raise exception 'ΔΙΑΡΡΟΗ: «Επαγγελματίας» στις Ρυθμίσεις και τρεις φίλοι άνοιξαν την πρόσκληση λογιστή';
+  exception when insufficient_privilege then
+    if sqlerrm <> 'plan_required' then raise; end if;
+  end;
+  raise notice 'probe: οι δωρεάν μήνες δίνουν τη βαθμίδα της ανταμοιβής, όχι του προφίλ';
+end $probe$;
+
 -- ── Ο λογιστής στέλνει ─────────────────────────────────────────────────────
 set role authenticated;
 set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000ac';
@@ -4267,12 +4320,23 @@ begin
   delete from auth.users where id = '1a1a1a1a-0000-4000-8000-0000000000d1';
   select count(*) into n from public.accountant_invites where email = 'nobody@probe.test';
   if n <> 0 then raise exception 'Η διεύθυνση του διαγραμμένου επιβίωσε σε % προσκλήσεις', n; end if;
+  if not exists (select 1 from public.email_outbox where copy_id = 'accountant_invite' and params->>'accountantEmail' = 'inv-acc@probe.test') then
+    raise exception 'Το σενάριο δεν έχει μηνύματα με αποστολέα για να ελέγξει τη διαγραφή';
+  end if;
   perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000ac');
   select count(*) into n from public.accountant_invites;
   if n <> 0 then raise exception 'Οι προσκλήσεις του λογιστή επιβίωσαν της διαγραφής του: %', n; end if;
+  -- Ο αποστολέας φεύγει και από τα μηνύματα προς τρίτους (2ος έλεγχος, εύρημα 6).
+  select count(*) into n from public.email_outbox where copy_id = 'accountant_invite'
+     and (params ? 'accountantEmail' or params ? 'accountantName' or status = 'pending');
+  if n <> 0 then raise exception 'Η διεύθυνση του διαγραμμένου αποστολέα μένει σε % μηνύματα της ουράς', n; end if;
   perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000c1');
   perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000ff');
   perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000e1');
   perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000a2');
+  perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000b0');
+  perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000b1');
+  perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000b2');
+  perform public.erase_account('1a1a1a1a-0000-4000-8000-0000000000b3');
   raise notice 'probe: οι προσκλήσεις σβήνουν με τον λογιστή και η διεύθυνση με τον προσκεκλημένο';
 end $probe$;

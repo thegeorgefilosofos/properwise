@@ -356,6 +356,23 @@ export function enfiaYearOf(title: string | null | undefined): number | null {
   return m ? Number(m[1]) : null;
 }
 
+/**
+ * Η αλλαγή τίτλου στο Αρχείο, ως ενημέρωση της γραμμής. Καθαρή συνάρτηση.
+ *
+ * ΤΟ ΣΗΜΑ ΤΟΥ ΣΥΝΟΛΟΥ ΔΕΝ ΤΑΞΙΔΕΥΕΙ ΣΕ ΑΛΛΟ ΕΤΟΣ (2ος έλεγχος, 21/10/2026). Το
+ * `statement_total` λέει «αυτό είναι το σύνολο του εκκαθαριστικού ΕΝΦΙΑ του
+ * έτους του τίτλου». Αν ο τίτλος αλλάξει έτος ή πάψει να είναι ΕΝΦΙΑ, το ποσό
+ * δεν είναι πια σύνολο κανενός εκκαθαριστικού που ξέρουμε και το σήμα φεύγει.
+ */
+export function renamePatch(
+  oldTitle: string | null | undefined, newTitle: string, statementTotal: boolean | null | undefined,
+): { title: string; statement_total?: false } {
+  const title = newTitle.trim().slice(0, 200);
+  if (!statementTotal) return { title };
+  return enfiaYearOf(oldTitle) === enfiaYearOf(title) && enfiaYearOf(title) !== null
+    ? { title } : { title, statement_total: false };
+}
+
 /** Οι επιλογές του «Τύπος εγγράφου»: με την εξήγηση κάθε είδους και επικεφαλίδα ανά ομάδα. */
 export const KIND_OPTIONS: Choice[] = DOC_KINDS.map((k, i) => ({
   value: k.value, label: k.label,

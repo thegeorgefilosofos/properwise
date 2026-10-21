@@ -178,7 +178,8 @@ export function planTaxSync(
     if (isClosedStatus(r.status) || contentEdited(r) || statusTouched(r)) continue;
     // Ο,ΤΙ ΠΕΡΑΣΕ ΔΕΝ ΣΒΗΝΕΤΑΙ ΠΟΤΕ, ούτε ως «περιττή» δόση ΕΝΦΙΑ (κανόνας 6). Η
     // `isSurplusEnfiaInstalment` που το επέτρεπε έφυγε μαζί με την εξαίρεση.
-    if (text(r.event_date).slice(0, 10) < today) continue;
+    // Και η σημερινή: μια δόση που λήγει ΣΗΜΕΡΑ είναι η πιο επείγουσα από όλες.
+    if (text(r.event_date).slice(0, 10) <= today) continue;
     plan.remove.push(r.id);
   }
   return plan;

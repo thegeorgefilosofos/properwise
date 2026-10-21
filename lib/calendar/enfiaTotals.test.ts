@@ -11,7 +11,7 @@
 import { greekPropertyTaxObligations, lastWorkingDayOfMonth, ENFIA_FEWER_HINT } from '@/lib/tax/greekTaxCalendar';
 import { enfiaInstalmentCount } from '@/lib/tools/enfiaSchedule';
 import { enfiaCountsByProperty, enfiaTotalOfSettings } from './enfiaTotals';
-import { enfiaYearOf, planDocSave, ENFIA_TITLE } from '@/lib/billing/documents';
+import { enfiaYearOf, planDocSave, renamePatch, ENFIA_TITLE } from '@/lib/billing/documents';
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean, extra?: unknown) => {
@@ -83,6 +83,12 @@ ok('τίτλος: «ΕΝΦΙΑ 2026» → 2026', enfiaYearOf(`${ENFIA_TITLE} 202
   const bill = planDocSave({ doc_type: 'tax', tax_year: 2026, amount: 50 }, '2026-10-20');
   ok('άλλο φορολογικό με ποσό: χωρίς σήμα', bill.archive?.statement_total === undefined, bill.archive);
 }
+
+// ── Η ΜΕΤΟΝΟΜΑΣΙΑ ΚΡΑΤΑ ΤΟ ΣΗΜΑ ΜΟΝΟ ΣΤΟ ΙΔΙΟ ΕΤΟΣ ───────────────────────────
+ok('μετονομασία, ίδιο έτος: το σήμα μένει', JSON.stringify(renamePatch('ΕΝΦΙΑ 2026', 'ΕΝΦΙΑ 2026 ', true)) === '{"title":"ΕΝΦΙΑ 2026"}');
+ok('μετονομασία, άλλο έτος: το σήμα φεύγει', renamePatch('ΕΝΦΙΑ 2026', 'ΕΝΦΙΑ 2025', true).statement_total === false);
+ok('μετονομασία, όχι πια ΕΝΦΙΑ: το σήμα φεύγει', renamePatch('ΕΝΦΙΑ 2026', 'Εκκαθαριστικό', true).statement_total === false);
+ok('μετονομασία χωρίς σήμα: μόνο ο τίτλος', JSON.stringify(renamePatch('Χαρτί', 'ΕΝΦΙΑ 2026', false)) === '{"title":"ΕΝΦΙΑ 2026"}');
 
 console.log(`\nenfiaTotals: ${pass} ✓ · ${fail} ✗`);
 if (fail) process.exit(1);

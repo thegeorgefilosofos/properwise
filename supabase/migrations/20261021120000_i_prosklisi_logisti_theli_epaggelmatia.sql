@@ -25,8 +25,11 @@
 --    20261003140000): `my_plan_rank() >= plan_rank('agency')`, «plan_required»
 --    με 42501, αμέσως μετά το δεύτερο βήμα. Η δοκιμή δίνει «Ιδιοκτήτης+»,
 --    βαθμό 2: ένας νέος λογαριασμός δεν στέλνει τίποτα. Πρόσκληση με email σε
---    ξένους ανοίγει μόνο σε όποιον πλήρωσε το πακέτο του επαγγελματία ή έχει
---    ιδιότητα συνεργάτη: δηλαδή σε λογαριασμό με ταυτότητα στον έμπορο.
+--    ξένους ανοίγει σε όποιον έχει βαθμό «Επαγγελματίας»: πληρωμένη συνδρομή,
+--    ιδιότητα συνεργάτη ή δωρεάν μήνες ΑΥΤΗΣ της βαθμίδας, που κερδίζονται
+--    μόνο με συνδρομητές (στόχος `pro_paid`) ή ως συνεργάτης. Ως τώρα οι
+--    δωρεάν μήνες έπαιρναν το πακέτο από το `profile_type`, που το αλλάζει ο
+--    ίδιος ο χρήστης· αυτό κλείνει στο 5β πιο κάτω.
 --    Επιπλέον ο αποστολέας πρέπει να έχει ΕΠΙΒΕΒΑΙΩΜΕΝΗ διεύθυνση
 --    (`auth.users.email_confirmed_at`) και αυτή, όχι το όνομα, είναι που
 --    ταξιδεύει στο μήνυμα και στην οθόνη του πελάτη.
@@ -61,6 +64,20 @@
 -- ΙΔΙΟΔΥΝΑΜΗ. `drop … if exists` πριν από κάθε `create policy`/constraint,
 -- `add column if not exists`, `create or replace` με ίδια υπογραφή.
 -- ═══════════════════════════════════════════════════════════════════════════
+
+-- ── 0α. ΠΟΣΟ ΚΡΑΤΙΕΤΑΙ Η ΔΙΕΥΘΥΝΣΗ ΧΩΡΙΣ ΑΠΑΝΤΗΣΗ ───────────────────────────
+-- ΕΝΑΣ αριθμός για σκούπισμα, εμφάνιση και απάντηση. Ο ίδιος ζει στο
+-- `ACCOUNTANT_INVITE_RETENTION_DAYS` (supabase/functions/_shared/accountantInvite.ts)
+-- για το υποσέλιδο του μηνύματος· το emailCopy/accountantInvite.test.ts
+-- απαιτεί να συμφωνούν.
+create or replace function private.accountant_invite_retention()
+ returns interval
+ language sql immutable
+ set search_path to 'pg_catalog'
+as $$ select interval '90 days' $$;
+
+alter function private.accountant_invite_retention() owner to postgres;
+revoke all on function private.accountant_invite_retention() from public, anon, authenticated;
 
 -- ── 0. Η ΚΑΤΑΣΤΑΣΗ «withdrawn» ─────────────────────────────────────────────
 alter table public.accountant_invites drop constraint if exists accountant_invites_status_known;
@@ -254,7 +271,7 @@ begin
     join auth.users u on u.id = i.accountant_id
     left join billing_profiles bp on bp.user_id = i.accountant_id
    where i.email = v_email and i.status = 'sent' and i.accountant_id <> v_me
-     and i.sent_at > now() - interval '90 days';
+     and i.sent_at > now() - private.accountant_invite_retention();
 
   return v_rows;
 end $$;
@@ -286,7 +303,7 @@ begin
 
   select * into v_inv from accountant_invites
    where id = p_id and email = v_email and status = 'sent'
-     and sent_at > now() - interval '90 days'
+     and sent_at > now() - private.accountant_invite_retention()
    for update;
   if not found then return json_build_object('ok', false, 'reason', 'invalid'); end if;
   if v_inv.accountant_id = v_me then return json_build_object('ok', false, 'reason', 'self'); end if;
@@ -326,7 +343,7 @@ begin
     delete from accountant_invites a
      where a.id in (
        select id from accountant_invites
-        where status in ('sent', 'withdrawn') and sent_at < now() - interval '90 days'
+        where status in ('sent', 'withdrawn') and sent_at < now() - private.accountant_invite_retention()
         order by sent_at
         limit greatest(p_batch, 1)
           for update skip locked);
@@ -356,6 +373,109 @@ begin
   end if;
   perform cron.schedule('accountant-invites-prune', '41 4 * * *', 'select public.prune_accountant_invites()');
 end $$;
+
+-- ── 5α. Ο ΑΠΟΣΤΟΛΕΑΣ ΦΕΥΓΕΙ ΚΑΙ ΑΠΟ ΤΑ ΜΗΝΥΜΑ ΠΟΥ ΣΤΕΙΛΕ ─────────────────────
+-- Η `erase_account` σβήνει από την ουρά ό,τι έχει ΠΑΡΑΛΗΠΤΗ τον χρήστη
+-- (`to_email`). Η διεύθυνσή του ως ΑΠΟΣΤΟΛΕΑ προσκλήσεων όμως ζούσε στο
+-- `params` μηνυμάτων προς τρίτους. Η σκανδάλη του 20261021090000 πάνω στο
+-- `auth.users` (τρέχει και μέσα στην `erase_account`) κάνει τώρα και αυτό: όσα
+-- δεν έφυγαν ακυρώνονται και από όλα σβήνουν διεύθυνση και όνομα αποστολέα.
+-- Οι προσκλήσεις του φεύγουν ήδη με το cascade του `accountant_id`.
+create or replace function private.accountant_invites_forget_email()
+ returns trigger
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $$
+declare v_email text := lower(btrim(coalesce(old.email, '')));
+begin
+  if v_email <> '' then
+    delete from public.accountant_invites where email = v_email;
+    update public.email_outbox
+       set status     = case when status = 'pending' then 'skipped' else status end,
+           last_error = case when status = 'pending' then 'sender_erased' else last_error end,
+           params     = params - 'accountantEmail' - 'accountantName'
+     where copy_id = 'accountant_invite'
+       and lower(btrim(coalesce(params->>'accountantEmail', ''))) = v_email;
+  end if;
+  return old;
+end $$;
+
+alter function private.accountant_invites_forget_email() owner to postgres;
+revoke all on function private.accountant_invites_forget_email() from public, anon, authenticated;
+
+-- ── 5β. ΟΙ ΔΩΡΕΑΝ ΜΗΝΕΣ ΔΙΝΟΥΝ ΤΟ ΠΑΚΕΤΟ ΤΗΣ ΑΝΤΑΜΟΙΒΗΣ, ΟΧΙ ΤΟΥ ΠΡΟΦΙΛ ────
+-- ΤΟ ΣΦΑΛΜΑ (2ος έλεγχος, 21/10/2026). Η `sync_comp_from_referrals`
+-- (20261003120000) έγραφε `comp_plan = 'agency'` σε όποιον είχε
+-- `profile_type = 'professional'`, όποια βαθμίδα κι αν είχε η ανταμοιβή. Το
+-- `profile_type` το αλλάζει ο ίδιος ο χρήστης (Ρυθμίσεις· η
+-- `lock_billing_plan` δεν το κλειδώνει, σωστά, γιατί είναι τρόπος χρήσης) και η
+-- `claim_referral_bonus('indiv_volume')` δίνει μήνα «Ιδιοκτήτης+» (`tier`
+-- 'owner') με τρεις ενεργοποιημένους δωρεάν φίλους. Δηλαδή: τρεις
+-- λογαριασμοί, ένα κουμπί στις Ρυθμίσεις και ένας μήνας «Επαγγελματίας»
+-- δωρεάν· μαζί του άνοιγαν οι πύλες της μαζικής πρόσκλησης πιο πάνω, του
+-- πελατολογίου και της ομάδας (20261003140000).
+--
+-- Η ΔΙΟΡΘΩΣΗ. Το πακέτο είναι η ΒΑΘΜΙΔΑ ΤΗΣ ΑΝΤΑΜΟΙΒΗΣ (`referral_rewards.tier`,
+-- όπως τη γράφουν η `claim_referral_bonus` και η `reconcile_referral_rewards`
+-- και όπως την ορίζει το lib/referral/referral.ts, `SideReward.tier`). Με
+-- ανταμοιβές πολλών βαθμίδων μετρά η ΧΑΜΗΛΟΤΕΡΗ: ο ένας `comp_plan` καλύπτει
+-- όλους τους μήνες και ένας μήνας «Ιδιοκτήτης+» δεν γίνεται «Επαγγελματίας».
+-- Αν λείπει η βαθμίδα, «owner». Το υπόλοιπο σώμα είναι αυτούσιο.
+create or replace function public.sync_comp_from_referrals()
+ returns void
+ language plpgsql
+ security definer
+ set search_path to 'public'
+as $$
+declare
+  v_uid    uuid := auth.uid();
+  v_months int;
+  v_slots  int;
+  v_target text;
+  v_cap    int := 12;
+begin
+  if not private.mfa_satisfied() then
+    raise exception 'mfa_required' using errcode = '42501';
+  end if;
+  if v_uid is null then return; end if;
+
+  select coalesce(sum(months) filter (where kind = 'months'), 0),
+         coalesce(sum(months) filter (where kind = 'slot'), 0)
+    into v_months, v_slots
+    from referral_rewards
+   where user_id = v_uid;
+
+  select t.tier into v_target
+    from (select coalesce(nullif(btrim(rr.tier), ''), 'owner') as tier
+            from referral_rewards rr
+           where rr.user_id = v_uid and rr.kind = 'months') t
+   order by public.plan_rank(t.tier) asc
+   limit 1;
+  v_target := coalesce(v_target, 'owner');
+
+  v_months := least(v_months, v_cap);
+  if v_months > 0 then
+    update billing_profiles
+       set comp_months_granted = greatest(coalesce(comp_months_granted, 0), v_months),
+           comp_started_at     = coalesce(comp_started_at, now()),
+           comp_plan           = v_target,
+           comp_until          = coalesce(comp_started_at, now())
+                                 + (greatest(coalesce(comp_months_granted, 0), v_months) || ' months')::interval
+     where user_id = v_uid
+       and v_months > coalesce(comp_months_granted, 0);
+  end if;
+
+  v_slots := least(v_slots, 500);
+  if v_slots > 0 then
+    update billing_profiles
+       set bonus_properties       = greatest(coalesce(bonus_properties, 0), v_slots),
+           bonus_properties_until = greatest(coalesce(bonus_properties_until, now()), now() + interval '1 month')
+     where user_id = v_uid
+       and v_slots > coalesce(bonus_properties, 0);
+  end if;
+end;
+$$;
 
 -- ── 6. ΤΟ ΣΥΝΟΛΟ ΤΟΥ ΕΚΚΑΘΑΡΙΣΤΙΚΟΥ ΕΝΦΙΑ ΤΟ ΣΗΜΑΔΕΥΕΙ Η ΣΑΡΩΣΗ ──────────────
 alter table public.property_documents add column if not exists statement_total boolean not null default false;

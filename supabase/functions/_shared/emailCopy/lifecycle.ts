@@ -1,6 +1,7 @@
 import { emailShell, eyebrow, h, p, bullets, button, greeting, note, senderIdentity } from '../emailTemplates.ts'
 import { eur } from '../format.ts'
 import { app, dash, esc, has, packageName, NOTE, type CopyFn } from './kit.ts'
+import { ACCOUNTANT_INVITE_RETENTION_DAYS } from '../accountantInvite.ts'
 
 // ── Φάση 6: Lifecycle, Νομικά & Συναλλαγές ───────────────────────────────────
 export const LIFECYCLE: Record<string, CopyFn> = {
@@ -129,7 +130,12 @@ export const LIFECYCLE: Record<string, CopyFn> = {
       subject: mail ? `${mail} ζητά πρόσβαση στον φάκελό σου στο PROPERWISE` : 'Αίτημα πρόσβασης στον φάκελό σου στο PROPERWISE',
       html: emailShell({
         preheader: 'Δέξου μόνο αν γνωρίζεις τον αποστολέα.',
-        footerNote: `Έλαβες αυτό το μήνυμα επειδή ο λογαριασμός ${mail || 'ενός χρήστη'} έγραψε αυτή τη διεύθυνση στο PROPERWISE.${who ? ` ${esc(who)}.` : ''} Αν δεν απαντήσεις, η διεύθυνσή σου σβήνει από τις προσκλήσεις σε 90 ημέρες. <a class="lnk" href="${esc(privacy)}" style="color:inherit;text-decoration:underline;">Πολιτική απορρήτου</a>`,
+        // Η ΝΟΜΙΚΗ ΒΑΣΗ ΚΑΙ ΤΟ ΔΙΚΑΙΩΜΑ ΕΝΑΝΤΙΩΣΗΣ, με τη διατύπωση της
+        // app/privacy/page.tsx («έννομο συμφέρον … (άρθρο 6§1στ)»).
+        footerNote: `Έλαβες αυτό το μήνυμα επειδή ο λογαριασμός ${mail || 'ενός χρήστη'} έγραψε αυτή τη διεύθυνση στο PROPERWISE.${who ? ` ${esc(who)}.` : ''}`
+          + ' Νομική βάση: έννομο συμφέρον του αποστολέα να επικοινωνήσει μαζί σου για τον φάκελο των ακινήτων σου (άρθρο 6§1στ ΓΚΠΔ).'
+          + ' Μπορείς να αντιταχθείς: με το «Όχι» στη Λογιστική δεν ξαναπαίρνεις πρόσκληση από αυτόν τον αποστολέα και κρατάμε μόνο τη διεύθυνσή σου για να το τηρούμε, ώσπου να διαγράψεις τον λογαριασμό σου.'
+          + ` Αν δεν απαντήσεις, η διεύθυνσή σου σβήνει από τις προσκλήσεις σε ${ACCOUNTANT_INVITE_RETENTION_DAYS} ημέρες. <a class="lnk" href="${esc(privacy)}" style="color:inherit;text-decoration:underline;">Πολιτική απορρήτου</a>`,
         bodyHtml: eyebrow('Αίτημα πρόσβασης') + h('Κάποιος ζητά να βλέπει τον φάκελό σου') + greeting(c.name)
           + p(`Ο λογαριασμός <b>${mail || 'ενός χρήστη'}</b>${claimed} ζητά να βλέπει τον φάκελο των ακινήτων σου στο PROPERWISE, μόνο για ανάγνωση.`)
           + p('Αν δεχτείς, θα βλέπει ΑΦΜ, ακίνητα, μισθωτήρια, ενοίκια, δαπάνες και τα στοιχεία των ενοικιαστών σου. Μέχρι τότε δεν βλέπει τίποτα.')

@@ -321,6 +321,19 @@ const STR_NOV = 'tax:str-registry-2026-11';
     const r3 = await syncOwnerTaxDeadlines(c.db, OWNER, { today: '2026-03-01' });
     ok('συμφιλίωση: ούτε με «σήμερα» πριν από αυτές', r3.inserted === 0, r3);
 
+    // Η ΔΟΣΗ ΠΟΥ ΛΗΓΕΙ ΣΗΜΕΡΑ ΜΕΝΕΙ (2ος έλεγχος, 21/10/2026). Δώδεκα γραμμένες,
+    // μετά σύνολο 27,44€ (δύο δόσεις) και συγχρονισμός την ημέρα της 8ης.
+    {
+      const d = await run([]);
+      const eighth = enfia2026(d.tables.calendar_events).find(r => r.source === 'tax:enfia-instalment-2026-8')!;
+      const day8 = String(eighth.event_date).slice(0, 10);
+      d.tables.property_documents.push(stmt('p1', 27.44));
+      await syncOwnerTaxDeadlines(d.db, OWNER, { today: day8 });
+      const kept = enfia2026(d.tables.calendar_events).map(r => String(r.source));
+      ok('η δόση με ημερομηνία σήμερα δεν σβήνεται', kept.includes('tax:enfia-instalment-2026-8'), { day8, kept });
+      ok('η επόμενη μελλοντική που περισσεύει σβήνεται', !kept.includes('tax:enfia-instalment-2026-9'), kept);
+    }
+
     // ΑΝΑΓΝΩΣΗ ΠΟΥ ΑΠΕΤΥΧΕ: καμία γραφή, αλλιώς οι δώδεκα θα ξαναγεννιούνταν.
     (c.tables as Record<string, unknown>).__fail = ['property_documents'];
     const before = c.tables.calendar_events.length;
