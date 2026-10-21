@@ -3,7 +3,8 @@
 // ΑΠΟΘΕΤΗΡΙΟ ΚΑΙ ΠΑΡΑΓΩΓΗ: Η ΣΥΓΚΡΙΣΗ ΤΩΝ ΣΥΝΑΡΤΗΣΕΩΝ ΑΚΡΟΥ (έλεγχος 19/10/2026, #1)
 // ─────────────────────────────────────────────────────────────────────────
 // Η λίστα της παραγωγής εδώ είναι κατασκευασμένη, με το σχήμα του Management
-// API. Περιέχει ακριβώς την απόκλιση της 19/10: τρεις συναρτήσεις χωρίς πηγή.
+// API. Περιέχει την απόκλιση της 19/10 όπως έμεινε μετά τις 21/10: δύο
+// συναρτήσεις χωρίς πηγή (η calendar-feed απέκτησε πηγή στο αποθετήριο).
 // Ο ίδιος ο έλεγχος της παραγωγής θέλει διακριτικό: `npm run edge:drift`.
 // ═══════════════════════════════════════════════════════════════════════════
 import { spawnSync } from 'node:child_process'
@@ -21,8 +22,9 @@ const jwt: Map<string, boolean> = configuredJwt()
 // ── Η λίστα του αποθετηρίου ─────────────────────────────────────────────────
 ok('η λίστα βγαίνει από τους φακέλους', expected.includes('market-data-updater') && expected.includes('health-check'))
 ok('ο κοινός κώδικας δεν είναι συνάρτηση', !expected.includes('_shared'))
-ok('οι τρεις χωρίς πηγή δεν είναι στο αποθετήριο',
-  !['euribor-updater', 'calendar-feed', 'dispatch-message'].some(s => expected.includes(s)))
+ok('οι δύο αποσυρμένες δεν είναι στο αποθετήριο',
+  !['euribor-updater', 'dispatch-message'].some(s => expected.includes(s)))
+ok('η calendar-feed έχει πηγή, χωρίς JWT', expected.includes('calendar-feed') && jwt.get('calendar-feed') === false)
 ok('το config.toml έχει verify_jwt για κάθε συνάρτηση του αποθετηρίου', expected.every(s => jwt.has(s)))
 ok('και καμία ενότητα για συνάρτηση που δεν υπάρχει', [...jwt.keys()].every(s => expected.includes(s)))
 
@@ -31,12 +33,11 @@ const prod = {
   functions: [
     ...expected.map(slug => ({ slug, version: 1, status: 'ACTIVE', verify_jwt: jwt.get(slug) ?? false })),
     { slug: 'euribor-updater', version: 17, status: 'ACTIVE', verify_jwt: false },
-    { slug: 'calendar-feed', version: 30, status: 'ACTIVE', verify_jwt: false },
     { slug: 'dispatch-message', version: 27, status: 'ACTIVE', verify_jwt: false },
   ],
 }
 const d = edgeDrift(expected, parseDeployed(prod), jwt)
-ok('βρίσκει τις τρεις χωρίς πηγή', d.extra.map((f: { slug: string }) => f.slug).join() === 'calendar-feed,dispatch-message,euribor-updater')
+ok('βρίσκει τις δύο χωρίς πηγή', d.extra.map((f: { slug: string }) => f.slug).join() === 'dispatch-message,euribor-updater')
 ok('καμία που δεν ανέβηκε', d.missing.length === 0)
 ok('δεν είναι καθαρό', d.clean === false)
 
