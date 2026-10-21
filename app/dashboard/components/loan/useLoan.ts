@@ -236,7 +236,9 @@ export function useLoan({ propertyId, userId, propertyValue, profileType='indivi
   // ημερομηνία που δείχνουμε είναι πότε επιβεβαιώθηκαν, όχι πότε τα κοίταξε
   // τελευταία κάποιος.
   const feedFresh = feed.checked && feed.ok && feed.hoursSilent != null && feed.hoursSilent <= 200
-  const feedCheckedStr = feed.lastOk ? new Date(feed.lastOk).toLocaleDateString('el-GR',{day:'2-digit',month:'short'}) : ''
+  // ΜΙΑ ΓΡΑΦΗ ΗΜΕΡΟΜΗΝΙΑΣ. Ηταν «19 Οκτ» δίπλα σε «05/10/2026» στην ίδια γραμμή.
+  // Η ημέρα μετριέται σε ώρα Αθήνας, όχι στο πρόθεμα UTC της σφραγίδας.
+  const feedCheckedStr = feed.lastOk ? grDate(athensToday(new Date(feed.lastOk))) : ''
   const banksStale = !feedFresh && banksAgeDays > 45
   // Μία πηγή αλήθειας: η ανάλυση αντλεί απευθείας τα στοιχεία του Υπολογιστή
   // (χωρίς διπλά πεδία ποσού/διάρκειας/σκοπού).

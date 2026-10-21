@@ -295,7 +295,12 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   const refSav   = mSav*RY*12-XC
   const brkEven  = mSav>0?Math.ceil(XC/mSav):null
 
-  const stress   =[{label:'Τρέχον',rate:effRate},{label:'+0,5%',rate:effRate+0.5},{label:'+1%',rate:effRate+1},{label:'+2%',rate:effRate+2},{label:'+3%',rate:effRate+3},{label:'6% συνολικό',rate:6}].filter(s=>s.label==='Τρέχον'||s.rate>effRate).map(s=>({...s,monthly:calcMonthly(LA,s.rate,Y)}))
+  const stress   =[{label:'Τρέχον',rate:effRate},{label:'+0,5%',rate:effRate+0.5},{label:'+1%',rate:effRate+1},{label:'+2%',rate:effRate+2},{label:'+3%',rate:effRate+3},{label:'6%',rate:6}].filter(s=>s.label==='Τρέχον'||s.rate>effRate).sort((a,b)=>a.rate-b.rate).map(s=>({...s,monthly:calcMonthly(LA,s.rate,Y)}))
+  // ΣΕ ΣΕΙΡΑ ΕΠΙΤΟΚΙΟΥ. Το «6% συνολικό» έμπαινε πάντα τελευταίο, οπότε με επιτόκιο
+  // 3,5% η στήλη του «+3%» (6,5%) έβγαινε ψηλότερη από την επόμενή της και οι
+  // στήλες δεν ανέβαιναν πια με το επιτόκιο. Και το λεκτικό έγινε «6%»: ανάμεσα
+  // στα «+2%» και «+3%» τα έντεκα γράμματά του έπεφταν πάνω τους στα 390. Το
+  // πρόσημο ξεχωρίζει την άνοδο από το συνολικό επιτόκιο.
   const amortChart = useMemo(()=>{const out=[];for(let y=1;y<=Math.min(Y,30);y++){const rows=amort.slice((y-1)*12,y*12);out.push({year:`${y}`,Κεφάλαιο:Math.round(rows.reduce((s,r)=>s+r.principal,0)),Τόκοι:Math.round(rows.reduce((s,r)=>s+r.interest,0))})}return out},[amort,Y])
   // Κυμαινόμενο = Euribor + ΠΕΡΙΘΩΡΙΟ (spread). Σε λειτουργία «σταθερού» το R είναι το ΠΛΗΡΕΣ
   // επιτόκιο, όχι spread — γι' αυτό χρειάζεται περιθώριο αναφοράς για τη σύγκριση.

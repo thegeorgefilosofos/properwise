@@ -47,7 +47,7 @@ import { useAssistantChat } from './assistant/useAssistantChat'
 
 export default function PropertyAssistant({ propertyId, userId, propContext, allProperties = [], onNavigate, onScan, onAddProperty, canNavigate, planBrief, assistantLocked = false }: Props) {
   const {
-    supabase, open, setOpen, fabPos, setFabPos, dragging, setDragging, scrolled, prefs, setPrefs,
+    supabase, open, setOpen, fabPos, setFabPos, dragging, setDragging, scrolled, away, prefs, setPrefs,
     reconcile, setReconcile, editing, setEditing, msgs, setMsgs, input, setInput, busy, setBusy,
     consumedActions, setConsumedActions, feedbackOpen, setFeedbackOpen, answeredRef, nudgedRef,
     imgRef, err, setErr, limitMsg, setLimitMsg, errDetail, setErrDetail, quota, setQuota, ctxStr,
@@ -288,7 +288,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
           Ονομαστικό, όχι διακοσμητικό: λέει ΠΟΙΑ είναι και ΤΙ κάνεις μαζί της,
           γιατί ένα ανώνυμο πλωτό κουκκί δεν το πατά κανείς δεύτερη φορά. */}
       {!open && !overlayOpen && (
-        <div className="pa-fab-wrap" style={fabFixed} data-scrolled={scrolled ? '1' : undefined}>
+        <div className="pa-fab-wrap" style={fabFixed} data-scrolled={scrolled ? '1' : undefined} data-away={away && !dragging ? '1' : undefined}>
           <button ref={fabRef} className="pa-fab" onPointerDown={startFabDrag} onClick={fabToggle(true)}
             aria-label={openAria()} title={dragHint}
             style={{ cursor: dragging ? 'grabbing' : 'pointer' }}>
@@ -650,12 +650,17 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
            η μέτρηση είναι γραμμένα πάνω από την κατάσταση scrolled πιο πάνω. */
         .pa-fab-wrap[data-scrolled] .pa-fab{padding:0 8px;gap:0}
         .pa-fab-wrap[data-scrolled] .pa-fab-cta{display:none}
+        /* Αποσύρεται όσο κυλά η σελίδα προς τα κάτω (useAssistant, away). Με
+           εστίαση πληκτρολογίου μένει: δεν εξαφανίζεται ό,τι έχει την εστίαση. */
+        .pa-fab-wrap{transition:transform .2s ${T.ease.standard},opacity .2s ${T.ease.standard}}
+        .pa-fab-wrap[data-away]:not(:focus-within){transform:translateY(calc(var(--fab-h) + var(--fab-bottom)));opacity:0;pointer-events:none}
         @media (max-width:1279px){
           .pa-fab{padding:0 8px;gap:0}
           .pa-fab-cta{display:none}
         }
         @media (prefers-reduced-motion:reduce){
           .pa-fab,.pa-fab:hover{transition:none;transform:none}
+          .pa-fab-wrap{transition:none}
           .pa-fab-live{animation:none}
         }
       `}</style>

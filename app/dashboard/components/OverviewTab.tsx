@@ -55,7 +55,7 @@ import AssistantStrip from './AssistantStrip'
 import ForecastCard from './ForecastCard'
 import { forecast12, type IncomeTaxStatement } from '@/lib/home/forecast12'
 import { cashPosition } from '@/lib/home/cash'
-import { buildAgenda, type SetupLike as SetupStep } from '@/lib/home/agenda'
+import { buildAgenda, attachAmounts, type SetupLike as SetupStep } from '@/lib/home/agenda'
 import {
   readFailures, moneyIncomplete, failedSentence, trustedStep, trustedInsight, trustedObligation,
   LEASE_DECL_AREA, TAX_DEADLINES_AREA,
@@ -802,7 +802,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       // και ασφάλισης, δηλώσεις, συντήρηση, βήματα ρύθμισης.
       .filter(it => it.key !== 'bills');
   // Πέντε στην αρχική. Η πλήρης λίστα ζει στις «Εκκρεμότητες» — και η οθόνη το λέει.
-  const agenda = agendaAll.slice(0, 5);
+  // Το ποσό της δόσης ΕΝΦΙΑ από τις ίδιες γραμμές με την κάρτα των 12 μηνών.
+  const agenda = attachAmounts(agendaAll.slice(0, 5), forecast.months.flatMap(m => m.lines));
 
   if (loading) return (
     <div>

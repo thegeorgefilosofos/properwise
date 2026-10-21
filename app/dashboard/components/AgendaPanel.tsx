@@ -40,7 +40,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { ReactNode } from 'react';
-import { T } from '@/components/Theme';
+import { T, fe } from '@/components/Theme';
 import { itemDue, overdueCount, type AgendaItem } from '@/lib/home/agenda';
 
 export default function AgendaPanel({ items, total, onNavigate, incomplete = false, footer }: {
@@ -102,14 +102,19 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
               <li key={it.key} className={`agenda-row${d.overdue ? ' is-late' : ''}`}>
                 {/* Η ΣΤΗΛΗ ΤΟΥ ΧΡΟΝΟΥ. Σταθερό πλάτος ώστε οι αριθμοί όλων των
                     γραμμών να πέφτουν στον ίδιο άξονα, δεξιά στοιχισμένοι. */}
-                <div className="agenda-when" aria-hidden={false}>
+                <div className={`agenda-when${d.value == null && !d.word ? ' agenda-when--quiet' : ''}`} aria-hidden={false}>
                   {d.value != null ? (
                     <>
                       <span className="agenda-num">{d.value}</span>
                       <span className="agenda-unit">{d.unit}</span>
                     </>
+                  ) : d.word ? (
+                    <span className="agenda-word">{d.word}</span>
                   ) : (
-                    d.word && <span className="agenda-word">{d.word}</span>
+                    // ΚΑΘΕ ΓΡΑΜΜΗ ΓΕΜΙΖΕΙ ΤΗ ΣΤΗΛΗ. Σε λίστα με μία προθεσμία οι
+                    // υπόλοιπες γραμμές άφηναν κενό αριστερά και η πρώτη έμοιαζε
+                    // με άλλο είδος γραμμής. Χωρίς ημερομηνία, το λέει.
+                    <span className="agenda-word agenda-word--quiet">εκκρεμεί</span>
                   )}
                 </div>
 
@@ -126,10 +131,23 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
                   )}
                 </div>
 
-                {it.action && (
-                  <button type="button" className="agenda-go" onClick={() => onNavigate(it.action!.tab)}>
-                    {it.action.label}
-                  </button>
+                {/* ΠΟΣΟ ΚΑΙ ΕΝΕΡΓΕΙΑ ΣΤΗΝ ΙΔΙΑ ΘΕΣΗ ΣΕ ΚΑΘΕ ΓΡΑΜΜΗ. Η δόση ΕΝΦΙΑ
+                    ερχόταν χωρίς ποσό και χωρίς κουμπί, ενώ οι γειτονικές είχαν
+                    κουμπί: τρεις μορφές γραμμής σε μία λίστα πέντε γραμμών. */}
+                {(it.amount || it.action) && (
+                  <div className="agenda-side">
+                    {it.amount && (
+                      <span className="agenda-amt">
+                        {fe(it.amount.value)}
+                        {it.amount.estimate && <span className="agenda-amt-note">εκτίμηση</span>}
+                      </span>
+                    )}
+                    {it.action && (
+                      <button type="button" className="agenda-go" onClick={() => onNavigate(it.action!.tab)}>
+                        {it.action.label}
+                      </button>
+                    )}
+                  </div>
                 )}
               </li>
             );
@@ -219,9 +237,12 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
         }
         .agenda-row.is-late { background: color-mix(in srgb, var(--accent) 4%, transparent); }
         .is-late .agenda-unit { color: var(--text-secondary); }
+        /* ΚΕΝΤΡΑΡΙΣΜΕΝΗ, ΟΧΙ ΔΕΞΙΑ (21/10/2026). Δεξιά στοιχισμένο, το «9» με
+           το «ημέρες» από κάτω ξεκολλούσε από τον τίτλο και κρεμόταν στη μέση της
+           στήλης· κεντραρισμένο, αριθμός και μονάδα είναι ένα σημάδι. */
         .agenda-when {
-          display: flex; flex-direction: column; align-items: flex-end;
-          text-align: right; padding-top: 1px;
+          display: flex; flex-direction: column; align-items: center;
+          text-align: center; padding-top: 1px;
         }
         /* 18, ΟΧΙ 19 (03.10.2026). Το 19 ήταν το μόνο μέγεθος εκτός κλίμακας μέσα
            στην εφαρμογή και ζούσε μόνο εδώ. Δεν φαινόταν στη μέτρηση επειδή
@@ -248,6 +269,19 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           font-family: ${T.font.sans}; font-size: 12px; line-height: 1.55;
           color: var(--text-tertiary); text-wrap: pretty;
         }
+        .agenda-side {
+          align-self: center; display: flex; flex-direction: column; align-items: flex-end;
+          gap: 4px; min-width: 0;
+        }
+        .agenda-amt {
+          display: flex; flex-direction: column; align-items: flex-end;
+          font-family: ${T.font.num}; font-size: 14px; font-weight: 600; line-height: 1.3;
+          color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap;
+        }
+        .agenda-amt-note {
+          font-family: ${T.font.sans}; font-size: 11px; font-weight: 400; color: var(--text-tertiary);
+        }
+        .agenda-word--quiet { font-weight: 400; color: var(--text-tertiary); }
         .agenda-go {
           align-self: center; flex-shrink: 0;
           height: 30px; padding: 0 14px; border-radius: 100px;
@@ -287,6 +321,9 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
             gap: 6px; text-align: left;
           }
           .agenda-num { font-size: 15px; }
+          /* Στο κινητό ο χρόνος είναι γραμμή ΠΑΝΩ από τον τίτλο, όχι στήλη:
+             το «εκκρεμεί» δεν κρατά άξονα εδώ, μόνο ύψος. */
+          .agenda-when--quiet { display: none; }
           .agenda-unit { margin-top: 0; font-size: 11px; }
         }
       `}</style>

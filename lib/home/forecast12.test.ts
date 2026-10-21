@@ -5,7 +5,7 @@
 // η πρόβλεψη έλεγε 17,83€ για τη δόση ΕΝΦΙΑ και η Λογιστική 17,84€, ο
 // ιδιοκτήτης θα έπαυε να εμπιστεύεται και τις δύο. Οι έλεγχοι εδώ ρωτούν τη
 // μηχανή και συγκρίνουν, στο πνεύμα του scripts/e2e-same-number.mjs.
-import { forecast12, incomeTaxInstalments, FORECAST_MONTHS, type ForecastInput, type ForecastLine } from './forecast12'
+import { forecast12, incomeTaxInstalments, splitPeriod, FORECAST_MONTHS, type ForecastInput, type ForecastLine } from './forecast12'
 import { enfiaYear, ENFIA_DEFAULTS, type EnfiaSettings } from '../facts/enfia'
 import { enfiaDueDates } from '../facts/deadlines'
 import { INCOME_TAX_INSTALMENTS } from '../tax/greekTaxCalendar'
@@ -213,7 +213,7 @@ const entry = (o: Partial<LedgerEntry>): LedgerEntry => ({
   ok('ο ΕΝΦΙΑ γραμμένος και ως δαπάνη δεν μετρά δύο φορές', !bills.some(b => b.label === 'ΕΝΦΙΑ'))
   const rec = ofKind(f, 'recurring')
   ok('η μηνιαία σειρά προβάλλεται στους επόμενους μήνες, αναμενόμενη',
-    rec.length === 11 && rec.every(l => l.certainty === 'expected' && l.amount === 60 && l.source === 'συνήθως κάθε μήνα'))
+    rec.length === 11 && rec.every(l => l.certainty === 'expected' && l.amount === 60 && l.source === 'εκτίμηση από τους τελευταίους λογαριασμούς, συνήθως κάθε μήνα'))
   ok('ο μήνας που έχει ήδη γραμμή της σειράς δεν παίρνει δεύτερη', !f.months[0].lines.some(l => l.kind === 'recurring'))
 }
 
@@ -297,6 +297,22 @@ const entry = (o: Partial<LedgerEntry>): LedgerEntry => ({
   const f = forecast12({ ...base, ledger: [L('2026-07-05', true), L('2026-08-05', true), L('2026-09-05', true), L('2026-10-05', false, '2026-11-03')] })
   ok('μία ΔΕΗ τον Νοέμβριο, όχι δύο', f.months[1].lines.length === 1 && f.months[1].lines[0].date === '2026-11-03')
   ok('η σειρά συνεχίζει από τον Δεκέμβριο', f.months[2].lines.length === 1 && f.months[2].lines[0].kind === 'recurring')
+}
+
+{
+  // «ΔΕΗ Ιουνίου» τον Νοέμβριο (21/10/2026): η προβολή κρατούσε το όνομα της
+  // τελευταίας εμφάνισης, μαζί με τον μήνα της περιόδου της.
+  const L = (date: string, title: string, paid = true, due: string | null = null): LedgerEntry => ({ key: date, billId: null, expenseId: date, date, due, title, amount: 91.35, paid, category: 'Ρεύμα', group: null, recurring: true, vendor: 'ΔΕΗ' })
+  const f = forecast12({ ...base, ledger: [L('2026-05-20', 'ΔΕΗ Απριλίου'), L('2026-07-20', 'ΔΕΗ Ιουνίου'), L('2026-09-20', 'ΔΕΗ Αυγούστου')] })
+  const rec = ofKind(f, 'recurring')
+  ok('η προβολή δεν φέρει μήνα περιόδου στο όνομα', rec.length > 0 && rec.every(l => l.label === 'ΔΕΗ'))
+  const g = forecast12({ ...base, ledger: [L('2026-07-20', 'ΔΕΗ Ιουνίου', false, '2026-11-05')] })
+  const bill = ofKind(g, 'bill')[0]
+  ok('ο απλήρωτος λογαριασμός που λήγει άλλον μήνα λέει την περίοδο του', bill?.label === 'ΔΕΗ (περίοδος Ιουνίου)')
+  const h = forecast12({ ...base, ledger: [L('2026-10-20', 'ΔΕΗ Νοεμβρίου', false, '2026-11-05')] })
+  ok('όταν περίοδος και λήξη συμπίπτουν, το όνομα μένει ως έχει', ofKind(h, 'bill')[0]?.label === 'ΔΕΗ Νοεμβρίου')
+  ok('χωρίς τόνους και κεφαλαία: ίδια λέξη', splitPeriod('ΔΕΗ ΙΟΥΝΙΟΥ 2026').base === 'ΔΕΗ' && splitPeriod('ΔΕΗ ΙΟΥΝΙΟΥ 2026').period === 5)
+  ok('όνομα χωρίς μήνα: αμετάβλητο', splitPeriod('Κοινόχρηστα').period === null)
 }
 
 console.log(fail === 0 ? `✓ forecast12: ${pass} έλεγχοι πέρασαν` : `✗ forecast12: ${fail} απέτυχαν από ${pass + fail}`)

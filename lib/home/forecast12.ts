@@ -48,6 +48,7 @@ import { resolveCategory } from '@/lib/expenses/taxonomy';
 import { hostPayout, type StayAmountLike } from '@/lib/clients/stayAmounts';
 import { stayTotal } from '@/lib/clients/clients';
 import { roundHalfUp } from '../core/money';
+import { MONTHS_NOM, MONTHS_GEN, MONTHS_ACC, monthGen } from '../core/months';
 import { grDate } from '../core/format';
 import { instalmentPeriods, monthsPerInstalment, type PaymentFreq } from '@/lib/rent/frequency';
 
@@ -200,6 +201,40 @@ const centsDown = (n: number) => Math.floor(n * 100 + 1e-9) / 100;
  * ΤΑ ΛΕΠΤΑ ΚΛΕΙΝΟΥΝ ΟΠΩΣ ΣΤΟΝ ΕΝΦΙΑ: οι πρώτες κόβονται προς τα κάτω και η
  * τελευταία παίρνει τη διαφορά, ώστε το άθροισμα να είναι ΠΑΝΤΑ το ποσό.
  */
+// ═══ «ΔΕΗ ΙΟΥΝΙΟΥ» ΤΟΝ ΝΟΕΜΒΡΙΟ ═══════════════════════════════════════════
+// Η σειρά που προβάλλεται παίρνει το όνομα της ΤΕΛΕΥΤΑΙΑΣ της εμφάνισης. Οταν
+// ο χρήστης (ή η σάρωση) ονομάζει τον λογαριασμό με την περίοδό του, η πρόβλεψη
+// του Νοεμβρίου έγραφε «ΔΕΗ Ιουνίου» και η κάρτα έλεγε «Πέφτουν μαζί: ΔΕΗ
+// Ιουνίου 91,35€» τον Νοέμβριο. Ο μήνας της περιόδου βγαίνει από το όνομα:
+// η προβολή κρατά μόνο τον πάροχο, ο πραγματικός λογαριασμός που λήγει άλλον
+// μήνα λέει ρητά ποια περίοδο αφορά.
+// Χωρίς τόνους και πεζά, γράμμα προς γράμμα: «ΙΟΥΝΙΟΥ» και «Ιουνίου» είναι η
+// ίδια λέξη και το μήκος μένει ίδιο, ώστε οι θέσεις να ισχύουν στο πρωτότυπο.
+const fold = (t: string): string => Array.from(t, c => (c.normalize('NFD')[0] ?? c).toLowerCase()).join('');
+const MONTH_WORDS: [RegExp, number][] = [MONTHS_GEN, MONTHS_NOM, MONTHS_ACC].flatMap(list =>
+  list.map((w, i): [RegExp, number] => [new RegExp(`(^|[\\s(,/–-])${fold(w)}(\\s+\\d{4})?(?=$|[\\s),/–-])`, 'u'), i]));
+
+/** Το όνομα χωρίς τον μήνα της περιόδου μαζί με τον μήνα (0–11). */
+export function splitPeriod(title: string): { base: string; period: number | null } {
+  const folded = fold(title);
+  if (folded.length !== title.length) return { base: title, period: null };
+  for (const [re, i] of MONTH_WORDS) {
+    const m = folded.match(re);
+    if (!m) continue;
+    const base = (title.slice(0, m.index! + m[1].length) + title.slice(m.index! + m[0].length))
+      .replace(/\(\s*\)/g, '').replace(/\s*[-–,/]\s*$/, '').replace(/^\s*[-–,/]\s*/, '').replace(/\s{2,}/g, ' ').trim();
+    if (base) return { base, period: i };
+  }
+  return { base: title, period: null };
+}
+
+/** Πραγματικός λογαριασμός: η περίοδος λέγεται όταν δεν συμπίπτει με τη λήξη. */
+export function billLabel(title: string, dueIso: string): string {
+  const { base, period } = splitPeriod(title);
+  if (period === null || period === +dueIso.slice(5, 7) - 1) return title;
+  return `${base} (περίοδος ${monthGen(period)})`;
+}
+
 export function incomeTaxInstalments(amount: number, taxYear: number): { no: number; date: string; amount: number }[] {
   if (!(amount > 0)) return [];
   const each = centsDown(amount / INCOME_TAX_INSTALMENTS);
@@ -450,7 +485,7 @@ export function forecast12(input: ForecastInput): Forecast {
     if (when && !e.paid) seen.add(`${seriesKey(e)}@${when.slice(0, 7)}`);
     if (e.paid || covered(e.category)) continue;
     if (!when) continue;
-    putDated({ kind: 'bill', label: entryName(e), source: 'καταχώρηση', amount: e.amount, dir: 'out', certainty: 'actual', date: when });
+    putDated({ kind: 'bill', label: billLabel(entryName(e), when), source: 'καταχώρηση', amount: e.amount, dir: 'out', certainty: 'actual', date: when });
   }
   const now = new Date(`${today}T12:00:00`);
   for (const s of expectedSeries(ledger as LedgerEntry[], now)) {
@@ -459,7 +494,7 @@ export function forecast12(input: ForecastInput): Forecast {
       const ym = ymOf(idx);
       if (seen.has(`${s.key}@${ym}`)) continue;
       const date = `${ym}-${String(s.typicalDay).padStart(2, '0')}`;
-      put(idx, { kind: 'recurring', label: entryName(s), source: `συνήθως ${cadenceLabel(s.everyMonths)}`, amount: s.typicalAmount, dir: 'out', certainty: 'expected', date });
+      put(idx, { kind: 'recurring', label: splitPeriod(entryName(s)).base, source: `εκτίμηση από τους τελευταίους λογαριασμούς, συνήθως ${cadenceLabel(s.everyMonths)}`, amount: s.typicalAmount, dir: 'out', certainty: 'expected', date });
     }
   }
 

@@ -66,6 +66,7 @@ export interface ApprovalResult {
   ltvPct: number                   // δείκτης δανείου προς αξία (%)
   maxLtv: number                   // όριο LTV
   ageAtEnd: number                 // ηλικία στη λήξη
+  maxAgeAtEnd: number              // το όριο ηλικίας στη λήξη που εφαρμόστηκε
   requestedMonthly: number         // δόση αιτούμενου ποσού
   factors: ApprovalFactor[]        // ανά κριτήριο (pass/warn/block)
   suggestions: string[]            // συγκεκριμένες, ποσοτικοποιημένες προτάσεις
@@ -246,6 +247,7 @@ export function assessApproval(input: ApprovalInput): ApprovalResult {
     dstiPct, dstiLimitPct: limitPct,
     ltvPct: ltv, maxLtv,
     ageAtEnd,
+    maxAgeAtEnd,
     requestedMonthly,
     factors, suggestions,
   }

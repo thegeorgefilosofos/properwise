@@ -33,7 +33,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
     scrollToCalc, calcLens, setCalcLens, lensRef, calcOpen, setCalcOpen, openCalcDocs, applyBank,
     savedLoans, filterSpiti, setFS, selBank, setSelBank, appliedLoan, setAppliedLoan, recHover,
     setRecHover, scoreHover, setScoreHover, otherHover, setOtherHover, hoverBank, setHoverBank,
-    hoverBankRow, setHoverBankRow, loadingSaved, market, liveBanks, banksLoading, feed, reloadBanks,
+    hoverBankRow, setHoverBankRow, loadingSaved, market, banksLoading, feed, reloadBanks,
     isAdmin, feedHealth, BANKS, calcState, setCalcState, handleSaveLoan, handleSaveCal,
     handleSaveExp, deleteLoan, banksUpdStr, banksAgeDays, feedFresh, feedCheckedStr, banksStale,
     publishedRate, advType, advBorr, LA, Y, isSpitiMou2, stateOf, openPrograms, activePrograms,
@@ -220,7 +220,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
       ]}/>
 
       {/* ═══ ΣΥΓΚΡΙΣΗ ΤΡΑΠΕΖΩΝ ═══ */}
-      {openSec==='banks' && (<LensPanel title="Σύγκριση τραπεζών" subtitle={`${BANKS.length} τράπεζες · επιβεβαιωμένα ${banksUpdStr}${banksStale?' · χρήζουν επαλήθευσης':''}`}>
+      {openSec==='banks' && (<LensPanel title="Σύγκριση τραπεζών" subtitle={`${BANKS.length} τράπεζες · επιβεβαιωμένα ${banksUpdStr}${feedFresh&&feedCheckedStr?` · ελέγχθηκαν ${feedCheckedStr}`:''}${banksStale?' · χρήζουν επαλήθευσης':''}`}>
         <div style={{display:'flex',flexDirection:'column',gap:12}}>
           {/* Ο διαχειριστής αποθήκευε νέα επιτόκια και η οθόνη κρατούσε τα ΠΑΛΙΑ:
               το onSaved ήταν κενό, οπότε ο πίνακας σύγκρισης, οι κάρτες τραπεζών
@@ -243,11 +243,19 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
             {spitiOpen && <ChipToggle on={filterSpiti} onClick={()=>setFS(f=>!f)}>
               Σπίτι μου ΙΙ
             </ChipToggle>}
-            <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginLeft:'auto',fontFamily: T.font.sans}}>
-              {banksLoading?'Φόρτωση…':feedFresh?`Ελέγχθηκαν ${feedCheckedStr} · επιβεβαιωμένα ${banksUpdStr}`:`Δελτία τραπεζών · ${banksUpdStr}`}
-              {liveBanks.length>0&&!feedFresh&&<span style={{color:'var(--text-secondary)',marginLeft:6}}>Ενημερωμένα στοιχεία</span>}
-              {feed.heldChanges>0&&<span style={{color:'var(--warning)',marginLeft:6}}>{feed.heldChanges} {feed.heldChanges===1?'μεταβολή περιμένει':'μεταβολές περιμένουν'} επιβεβαίωση</span>}
-            </p>
+            {/* ═══ ΜΙΑ ΓΡΑΜΜΗ ΚΑΤΑΣΤΑΣΗΣ, ΟΧΙ ΔΥΟ ════════════════════════════
+                Εδώ ξαναγραφόταν ό,τι λέει ο υπότιτλος από πάνω, με άλλη γραφή
+                ημερομηνίας («19 Οκτ» δίπλα σε «05/10/2026») και άλλη στοίχιση,
+                μαζί με κίτρινο «1 μεταβολή περιμένει επιβεβαίωση». Το τελευταίο
+                είναι εσωτερική κατάσταση της τροφοδοσίας: μια νέα τιμή που
+                περιμένει δεύτερη ανάγνωση πριν δημοσιευτεί. Ο χρήστης βλέπει
+                ήδη τις επιβεβαιωμένες τιμές· το διπλό κλείδωμα αφορά τον
+                διαχειριστή και λέγεται μόνο σε εκείνον, ουδέτερα. */}
+            {(banksLoading || (isAdmin && feed.heldChanges>0)) && (
+              <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginLeft:'auto',fontFamily: T.font.sans}}>
+                {banksLoading ? 'Φόρτωση…' : feed.heldChanges===1 ? 'Μία τιμή υπό διπλό έλεγχο' : `${feed.heldChanges} τιμές υπό διπλό έλεγχο`}
+              </p>
+            )}
           </div>
 
           {/* Επιλέξιμες συμπαγείς κάρτες — διάλεξε τράπεζα για λεπτομέρειες */}

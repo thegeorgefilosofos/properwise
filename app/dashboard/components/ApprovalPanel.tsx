@@ -78,7 +78,7 @@ export default function ApprovalPanel({
   const metrics = [
     { l:'Δείκτης δόσης', v:fp(res.dstiPct), sub:`όριο ${fp(res.dstiLimitPct)}`, over:res.dstiPct>res.dstiLimitPct },
     { l:'Δάνειο προς αξία', v:fp(res.ltvPct), sub:`όριο ${fp(res.maxLtv)}`, over:res.ltvPct>res.maxLtv },
-    { l:'Ηλικία στη λήξη', v:`${res.ageAtEnd}`, sub:'όριο 75', over:res.ageAtEnd>75 },
+    { l:'Ηλικία στη λήξη', v:`${res.ageAtEnd}`, sub:`όριο ${res.maxAgeAtEnd}`, over:res.ageAtEnd>res.maxAgeAtEnd },
     { l:'Δόση', v:fmtEur(res.requestedMonthly), sub:'τον μήνα', over:false },
   ]
 
@@ -164,7 +164,12 @@ export default function ApprovalPanel({
       {/* Ανάλυση κριτηρίων — μαζεμένες σειρές· η επεξήγηση κρύβεται πίσω από ⓘ */}
       <div>
         <p style={{...labelStyle,marginBottom:10}}>Ανάλυση κριτηρίων</p>
-        {/* Πέντε κριτήρια, μία σειρά. Το `auto-fit` τα έβγαζε τρία και δύο. */}
+        {/* ═══ ΠΟΤΕ ΚΑΤΩ ΑΠΟ ΑΝΑΓΝΩΣΙΜΟ ΠΛΑΤΟΣ (21/10/2026) ════════════════
+            Στα 1.280 με την πλαϊνή στήλη έξι κάρτες έπαιρναν 160 εικονοστοιχεία
+            η καθεμία: «Δάνειο / προς / αξία» μία λέξη ανά γραμμή και η κουκκίδα
+            (i) πάνω στο «Πιστοληπτικό προφίλ». Το σπάσιμο σε τρεις στήλες της
+            `fc-chips` ανέβηκε από τα 1.100 στα 1.360 (globals.css): πέντε κάρτες
+            γίνονται 3+2, έξι γίνονται 3+3, ποτέ τέσσερις και μία ορφανή. */}
         <div {...fixedCols(res.factors.length, 6, 'stretch', 'fc-chips')}>
           {res.factors.map((f,i)=>(
             <InfoChip key={i} label={f.label} detail={f.detail} tone={f.kind==='block'?'negative':'default'}
