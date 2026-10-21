@@ -134,7 +134,7 @@ async function main() {
   }
   {
     const { db, sent } = fakeDb()
-    await properties.update(db, 'p1', { ...nulls('user_properties'), address: null }, 'u1')
+    await properties.update(db, 'p1', { sqm: null, address: null }, 'u1')
     noNull('properties.update (σβήσιμο εμβαδού)', 'user_properties', sent)
     const r = rowsOf(sent, 'user_properties')[0]
     ok('properties.update: σβησμένο εμβαδόν γράφεται 0', r?.sqm === 0)
@@ -185,8 +185,11 @@ async function main() {
   // ── 2γ. bills_settings ─────────────────────────────────────────────────────
   {
     const { db, sent } = fakeDb()
-    await settings.put(db, 'p1', 'u1', 'common', null as never)
-    noNull('settings.put (data null)', 'bills_settings', sent)
+    const res = await settings.put(db, 'p1', 'u1', 'common', null as never)
+    // Το null ΔΕΝ γράφεται ως `{}`: το upsert θα αντικαθιστούσε ολόκληρη την
+    // ενότητα και θα έσβηνε σιωπηλά ό,τι υπήρχε. Αποτυγχάνει χωρίς αίτημα.
+    ok('settings.put (data null): κανένα αίτημα', rowsOf(sent, 'bills_settings').length === 0)
+    ok('settings.put (data null): φανερό σφάλμα', !!(res as { error: unknown }).error)
   }
 
   // ── 2δ. client_stays ───────────────────────────────────────────────────────

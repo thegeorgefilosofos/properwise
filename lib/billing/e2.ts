@@ -632,7 +632,7 @@ export function e2OfficialRows(p: E2Property, row: E2RowDetail, index: number): 
     loc,
     p.floor != null && p.floor !== '' ? String(p.floor) : '',
     e2CategoryLabel(p.prop_type),
-    p.sqm != null ? p.sqm : '',
+    Number(p.sqm) > 0 ? Number(p.sqm) : '',
     l.use,                                // στ.17: είδος μίσθωσης-χρήση (οδηγία 7)
     e2PowerSupply(p.power_supply_no),     // στ.18: τα 9 πρώτα ψηφία (οδηγία 8, Φ-01.002/Έκδοση 2026)
     l.tenantName,
@@ -691,7 +691,7 @@ export function e2SupplementaryRows(p: E2Property, row: E2RowDetail): (string | 
   const rest = roundHalfUp((100 - row.ownershipPct), 2);
   return co.map(c => [
     '', loc, p.floor != null && p.floor !== '' ? String(p.floor) : '', e2CategoryLabel(p.prop_type),
-    p.sqm != null ? p.sqm : '', use, e2PowerSupply(p.power_supply_no),
+    Number(p.sqm) > 0 ? Number(p.sqm) : '', use, e2PowerSupply(p.power_supply_no),
     c.name, c.afm ?? '', c.address ?? '',
     c.pct ?? (co.length === 1 && rest > 0 ? rest : ''),
     '',
@@ -706,7 +706,7 @@ export function e2SupplementaryRows(p: E2Property, row: E2RowDetail): (string | 
 export function e2AcquiredRows(p: E2Property, year: number): (string | number)[][] {
   const d = isoDay(p.purchase_date);
   if (!d || Number(d.slice(0, 4)) !== year) return [];
-  const what = [[p.address, p.postal_code].filter(Boolean).join(', '), e2CategoryLabel(p.prop_type), p.sqm != null ? `${String(p.sqm).replace('.', ',')} τ.μ.` : ''].filter(Boolean).join(' · ');
+  const what = [[p.address, p.postal_code].filter(Boolean).join(', '), e2CategoryLabel(p.prop_type), Number(p.sqm) > 0 ? `${String(p.sqm).replace('.', ',')} τ.μ.` : ''].filter(Boolean).join(' · ');
   return [['', what, e2PowerSupply(p.power_supply_no), `Αγορά ${dmy(d)} · αριθ. συμβολαίου και συμβολαιογράφος: συμπληρώνονται από το συμβόλαιο`]];
 }
 

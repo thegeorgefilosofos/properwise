@@ -344,7 +344,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       }else{
         // Αυτό και τα επόμενα: κόψε τη σειρά την προηγούμενη μέρα + νέα σειρά από την occ.
         if(await saved('Η σειρά δεν κόπηκε στη σωστή ημερομηνία', calendar.update(supabase,base.id,{recurrence_until:addDaysStr(occ,-1),recurrence_count:null}))){
-          await saved('Η νέα σειρά δεν δημιουργήθηκε', calendar.insert(supabase,[{...payload,event_date:occ}]))
+          await saved('Η νέα σειρά δεν δημιουργήθηκε', calendar.insert(supabase,[{...payload,event_date:occ,recurrence_exdates:((base.recurrence_exdates||[]) as string[]).filter(d=>d>=occ)}]))
         }
       }
     }catch{}
