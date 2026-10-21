@@ -102,7 +102,7 @@ async function sends() {
   ok('η ακύρωση δεν περνά από τη συνθήκη πώλησης', !/checkoutIsLive|checkoutState/.test(SRC.replace(/\/\/.*$/gm, '')))
   ok('κάθε αποτυχία καταγραφής δίνει δρόμο με email', /fallback\(502/.test(SRC) && /fallback\(503/.test(SRC) && /fallback\(429/.test(SRC))
 
-  const SQL = readFileSync('supabase/migrations/20261020120000_i_ypanaxorisi_echei_koumpi.sql', 'utf8')
+  const SQL = readFileSync('supabase/migrations/20261020120100_i_ypanaxorisi_echei_koumpi.sql', 'utf8')
   ok('ο πίνακας έχει RLS', /alter table public\.withdrawal_requests enable row level security/.test(SQL))
   ok('ο χρήστης διαβάζει μόνο τις δικές του', /for select to authenticated\s+using \(account_id = \(select auth\.uid\(\)\)\)/.test(SQL))
   ok('κανένας πελάτης δεν γράφει', /revoke all on table public\.withdrawal_requests from public, anon, authenticated/.test(SQL)

@@ -14,7 +14,7 @@ and what happens if there's a breach. Free to maintain; no tooling required.
 | Email outbox | Sent rows kept for audit; **stale/expired rows purged** | `drain_email_outbox` marks `expired` past 2 days |
 | Marketing preferences and unsubscribes | Life of account; deleted with it (`/privacy`, «Χρόνος διατήρησης»; FK `on delete cascade`). The earlier «kept indefinitely» contradicted the published policy | Marketing is consent-only (6(1)(a)), not soft opt-in |
 | Guest pre-check-in data | While the property exists; deleted with the property or the account. **Open:** automatic deletion after departure (DPIA action A4) | `purge_property_children`, `erase_account` |
-| Withdrawal declarations (`withdrawal_requests`) | **Not yet defined** (DPIA action A6). Kept unlinked (`account_id = null`) after account deletion as proof of the exercised right | Migration `20261020120000_i_ypanaxorisi_echei_koumpi.sql` |
+| Withdrawal declarations (`withdrawal_requests`) | **Not yet defined** (DPIA action A6). Kept unlinked (`account_id = null`) after account deletion as proof of the exercised right | Migration `20261020120100_i_ypanaxorisi_echei_koumpi.sql` |
 | Backups | **30-day** rolling window | `db-backup.yml` `retention-days: 30` |
 | CI logs / Actions artifacts | Per GitHub defaults; backups encrypted | `BACKUP_PASSPHRASE` |
 
