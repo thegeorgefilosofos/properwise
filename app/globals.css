@@ -612,13 +612,6 @@ body {
   outline-offset: 2px;
 }
 
-/* ΤΟ ΔΑΧΤΥΛΙΔΙ ΤΟΥ ΔΙΑΚΟΠΤΗ ΑΚΟΛΟΥΘΕΙ ΤΟ ΕΛΑΤΗΡΙΟ (21/10/2026). Το κουμπί
-   είναι 44×44 για το δάχτυλο και το περίγραμμα εστίασης ζωγραφιζόταν γύρω από
-   αυτό: τετράγωνο κουτί πάνω σε στρογγυλό διακόπτη, που έμενε μετά το πάτημα.
-   Τώρα μόνο στην εστίαση πληκτρολογίου και πάνω στο ίδιο το ελατήριο. */
-.po-switch:focus, .po-switch:focus-visible { outline: none; }
-.po-switch:focus-visible > span { outline: 2px solid var(--accent); outline-offset: 2px; }
-
 /* ── Selection ── */
 ::selection {
   background: color-mix(in srgb, var(--accent) 22%, transparent);

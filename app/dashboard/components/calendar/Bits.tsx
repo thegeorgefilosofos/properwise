@@ -28,8 +28,15 @@ export function Tooltip({ text, children, fill, content }: { text: string; child
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left:number; top:number; below:boolean }>({ left:0, top:0, below:false })
   const W = content ? 320 : 280
-  const place = () => { const el=ref.current; if(!el)return; const r=el.getBoundingClientRect(); const below=r.top<170; const cx=r.left+r.width/2; const left=Math.max(8+W/2, Math.min(cx, window.innerWidth-8-W/2)); setPos({ left, top: below?r.bottom+8:r.top-8, below }) }
-  useEffect(()=>{ if(!show)return; place(); const s=()=>place(); window.addEventListener('scroll',s,true); window.addEventListener('resize',s); return ()=>{ window.removeEventListener('scroll',s,true); window.removeEventListener('resize',s) } },[show])
+  // Η ΤΟΠΟΘΕΤΗΣΗ ΖΕΙ ΜΕΣΑ ΣΤΟ EFFECT: εξαρτάται από το πλάτος, που αλλάζει με
+  // το `content`, οπότε το πλάτος είναι δηλωμένη εξάρτηση και όχι κλειστή τιμή.
+  useEffect(()=>{
+    if(!show)return
+    const place = () => { const el=ref.current; if(!el)return; const r=el.getBoundingClientRect(); const below=r.top<170; const cx=r.left+r.width/2; const left=Math.max(8+W/2, Math.min(cx, window.innerWidth-8-W/2)); setPos({ left, top: below?r.bottom+8:r.top-8, below }) }
+    place()
+    window.addEventListener('scroll',place,true); window.addEventListener('resize',place)
+    return ()=>{ window.removeEventListener('scroll',place,true); window.removeEventListener('resize',place) }
+  },[show, W])
   return (
     <div ref={ref} style={fill?{ display:'flex', width:'100%', height:'100%' }:{ display:'inline-flex' }} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)} onFocus={content?()=>setShow(true):undefined} onBlur={content?()=>setShow(false):undefined}>
       {children}

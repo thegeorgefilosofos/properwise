@@ -1376,26 +1376,26 @@ export function Toggle({ on, onChange, label, ariaLabel }: ToggleProps) {
   // εκεί που πονάει: στη στήλη των ειδοποιήσεων, όπου δέκα διακόπτες στοιβάζονται
   // ο ένας κάτω από τον άλλο και η αστοχία πατά τον διπλανό.
   //
-  // ΤΩΡΑ ΤΟ ΚΟΥΜΠΙ ΕΙΝΑΙ 44×44 ΚΑΙ ΤΟ ΕΛΑΤΗΡΙΟ ΖΩΓΡΑΦΙΖΕΤΑΙ ΜΕΣΑ ΤΟΥ. Το
-  // αρνητικό περιθώριο επαναφέρει το κουτί ΔΙΑΤΑΞΗΣ στις παλιές διαστάσεις, ώστε
-  // καμία σειρά να μη μετακινηθεί ούτε κατά ένα εικονοστοιχείο: η περιοχή που
-  // δέχεται το δάχτυλο μεγαλώνει, η εικόνα όχι.
-  const hit = 44;
-  const boxW = Math.max(w, hit);
-
+  // Η περιοχή που δέχεται το δάχτυλο μεγαλώνει, η εικόνα όχι.
+  // ═══ ΤΟ ΚΟΥΜΠΙ ΕΧΕΙ ΤΟ ΣΧΗΜΑ ΤΟΥ ΕΛΑΤΗΡΙΟΥ (21/10/2026) ═══════════════
+  // Ηταν κουτί 44×44 με το ελατήριο ζωγραφισμένο μέσα του, οπότε το δαχτυλίδι
+  // εστίασης έβγαινε τετράγωνο γύρω από στρογγυλό διακόπτη. Τώρα το κουμπί
+  // είναι όσο το ελατήριο με την ακτίνα του· τα 44 της αφής τα δίνει το
+  // ψευδοστοιχείο του `.po-box`, όπως σε κάθε άλλο σχήμα της εφαρμογής. Το
+  // δαχτυλίδι είναι το κοινό του `.po-box:focus-visible` και ακολουθεί την
+  // ακτίνα· μετά από πάτημα με ποντίκι ή δάχτυλο δεν μένει τίποτα.
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, userSelect: 'none' }}>
       <button
         type="button"
         role="switch"
-        className="po-switch"
+        className="po-box"
         aria-checked={on}
         aria-label={label || ariaLabel || 'Εναλλαγή'}
         onClick={() => onChange(!on)}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(!on); } }}
         style={{
-          width: boxW, height: hit,
-          margin: `${(h - hit) / 2}px ${(w - boxW) / 2}px`,
+          width: w, height: h, borderRadius: h,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           background: 'transparent', border: 'none', padding: 0,
           flexShrink: 0, cursor: 'pointer',
