@@ -26,7 +26,7 @@
 //    έχει δηλώσει ποτέ τίποτε ο ιδιοκτήτης. Οι οκτώ ενότητες είναι πλέον τύπος.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { rows as readRows, row as readRow, readOne } from './read';
+import { rows as readRows, row as readRow, readOne, read } from './read';
 import type { DbError } from '@/lib/supabase/writeResult';
 
 const TABLE = 'bills_settings';
@@ -114,6 +114,23 @@ export async function acrossProperties<T = SettingsData>(
     if (row.property_id) out[row.property_id] = row.data;
   }
   return out;
+}
+
+/**
+ * Το ίδιο, με το σφάλμα ορατό. Για τον συγχρονισμό των προθεσμιών: μια
+ * αποτυχημένη ανάγνωση δεν επιτρέπεται να διαβαστεί «δεν έγραψε σύνολο
+ * εκκαθαριστικού», γιατί τότε οι δόσεις ΕΝΦΙΑ θα ξαναγίνονταν δώδεκα.
+ */
+export async function acrossPropertiesWithError<T = SettingsData>(
+  db: Db, propertyIds: string[], name: Section, userId?: string,
+): Promise<{ data: Record<string, T>; error: DbError | null }> {
+  if (propertyIds.length === 0) return { data: {}, error: null };
+  let q = db.from(TABLE).select('property_id,data').in('property_id', propertyIds).eq('section', name);
+  if (userId) q = q.eq('user_id', userId);
+  const { rows, error } = await read<{ property_id: string | null; data: T }>(q);
+  const out: Record<string, T> = {};
+  for (const row of rows) if (row.property_id) out[row.property_id] = row.data;
+  return { data: out, error };
 }
 
 // ── ΕΓΓΡΑΦΗ ────────────────────────────────────────────────────────────────

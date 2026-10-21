@@ -27,7 +27,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PropertyDocumentsRow } from '@/lib/supabase/tables';
 import { read, rows as readRows } from './read';
 import type { DbError } from '@/lib/supabase/writeResult';
-import { INCOME_TAX_TITLE, incomeTaxYearOf } from '@/lib/billing/documents';
+import { INCOME_TAX_TITLE, incomeTaxYearOf, ENFIA_TITLE, enfiaYearOf } from '@/lib/billing/documents';
 
 const TABLE = 'property_documents';
 
@@ -126,6 +126,30 @@ export async function incomeTaxStatementsWithError(
     if (y && Number.isFinite(a) && !byYear.has(y)) byYear.set(y, Math.max(0, a));
   }
   return { statements: [...byYear].map(([taxYear, amount]) => ({ taxYear, amount })), error };
+}
+
+/**
+ * Τα σαρωμένα εκκαθαριστικά ΕΝΦΙΑ πολλών ακινήτων: ακίνητο, έτος και ΣΥΝΟΛΟ.
+ *
+ * Από το σύνολο βγαίνει πόσες δόσεις έχει το εκκαθαριστικό (lib/calendar/
+ * enfiaTotals.ts). Με το σφάλμα ορατό: «δεν διαβάστηκε» δεν είναι «δεν
+ * υπάρχει». Κενό ποσό (η σάρωση δεν βρήκε σύνολο) δεν περνά.
+ */
+export async function enfiaStatementsWithError(
+  db: Db, propertyIds: string[], userId: string,
+): Promise<{ statements: { propertyId: string; year: number; amount: number }[]; error: DbError | null }> {
+  if (propertyIds.length === 0) return { statements: [], error: null };
+  const q = db.from(TABLE).select('property_id,title,amount').in('property_id', propertyIds).eq('user_id', userId)
+    .ilike('title', `${ENFIA_TITLE} %`);
+  const { rows, error } = await read<{ property_id: string; title: string | null; amount: number | null }>(q);
+  const statements: { propertyId: string; year: number; amount: number }[] = [];
+  for (const r of rows) {
+    const y = enfiaYearOf(r.title);
+    if (r.amount == null || String(r.amount).trim() === '') continue;
+    const a = Number(r.amount);
+    if (y && Number.isFinite(a) && a > 0) statements.push({ propertyId: r.property_id, year: y, amount: a });
+  }
+  return { statements, error };
 }
 
 /** Πόσα έγγραφα έχει αυτό το ακίνητο. Χωρίς να κατεβεί καμία γραμμή. */

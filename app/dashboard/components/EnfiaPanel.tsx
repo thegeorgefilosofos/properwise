@@ -52,7 +52,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
-import { T, TT, fe, fp, SecHdr, Spinner, fixedCols, Btn, ABSENT } from '@/components/Theme';
+import { T, TT, fe, feWhole, fp, SecHdr, Spinner, fixedCols, Btn, ABSENT } from '@/components/Theme';
 import { NumberInput, CustomSelect } from './UIComponents';
 import { AadePill } from '@/components/AadeLink';
 import { AsOfNote } from '@/components/AsOfNote';
@@ -62,6 +62,8 @@ import {
 } from '@/lib/billing/enfia';
 import { ENFIA_FLOOR_LABEL } from '@/lib/billing/enfiaFloors';
 import { ENFIA_UNKNOWN as UNKNOWN, type EnfiaState } from './useEnfia';
+import { ENFIA_INSTALMENTS, ENFIA_MIN_INSTALMENT, enfiaInstalmentCount } from '@/lib/tools/enfiaSchedule';
+import { parseAmount } from '@/lib/core/greek';
 
 const ZONE_OPTIONS = [
   { value: UNKNOWN,      label: 'Δεν γνωρίζω ακόμη'                 },
@@ -526,6 +528,8 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
               onChange={v => upd({ enfiaAnnual: v, enfiaMonthly: '' })}
               suffix="€"/>
           </div>
+          <StatementTotal year={year} value={s.enfiaStatementYear === String(year) ? s.enfiaStatementTotal : ''}
+            onChange={v => upd({ enfiaStatementTotal: v, enfiaStatementYear: v.trim() ? String(year) : '' })}/>
         </>)}
 
         {activeRoute === 'estimate' && (<>
@@ -655,6 +659,32 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
           )}
         </>)}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══ ΤΟ ΣΥΝΟΛΟ ΤΟΥ ΕΚΚΑΘΑΡΙΣΤΙΚΟΥ ΚΡΙΝΕΙ ΠΟΣΕΣ ΥΠΕΝΘΥΜΙΣΕΙΣ ΘΑ ΕΡΘΟΥΝ ════════
+// Το εκκαθαριστικό είναι ένα ανά ΑΦΜ με όλα τα ακίνητα μέσα και κάθε δόση
+// του είναι τουλάχιστον `ENFIA_MIN_INSTALMENT`. Από το ΣΥΝΟΛΟ (όχι από το
+// ποσό αυτού του ακινήτου) βγαίνει πόσες δόσεις μπαίνουν στο Ημερολόγιο και
+// στις υπενθυμίσεις (lib/calendar/enfiaTotals.ts). Κενό: όλες, για να μη
+// χαθεί καμία. Αρκεί σε ένα ακίνητο του ίδιου ΑΦΜ· αν διαφωνούν, μετρά το
+// μεγαλύτερο.
+function StatementTotal({ year, value, onChange }: { year: number; value: string; onChange: (v: string) => void }) {
+  const total = parseAmount(value) ?? 0;
+  const n = total > 0 ? enfiaInstalmentCount(total) : 0;
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div {...fixedCols(1, 14)}>
+        <NumberInput label={`Σύνολο εκκαθαριστικού ${year}, όλα τα ακίνητα του ΑΦΜ`} value={value}
+          onChange={onChange} suffix="€"
+          labelInfo={`Κάθε δόση είναι τουλάχιστον ${feWhole(ENFIA_MIN_INSTALMENT)}, έως ${ENFIA_INSTALMENTS} δόσεις. Από το σύνολο βγαίνει πόσες υπενθυμίσεις θα πάρεις.`}/>
+      </div>
+      <div style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: 10 }}>
+        {n > 0
+          ? `${n === 1 ? 'Μία δόση' : `${n} δόσεις`} στο Ημερολόγιο και στις υπενθυμίσεις, από τον επόμενο συγχρονισμό. Ισχύει για όλα τα ακίνητα του ίδιου ΑΦΜ.`
+          : `Χωρίς σύνολο κρατάμε και τις ${ENFIA_INSTALMENTS} δόσεις στις υπενθυμίσεις, για να μη χάσεις καμία.`}
       </div>
     </div>
   );

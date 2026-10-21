@@ -1099,6 +1099,14 @@ export interface PricingSettingsRow {
   updated_at: string;
 }
 
+export interface ProductEventsRow {
+  id: string | null;
+  user_id: string;
+  event: string;
+  props: Json;
+  created_at: string;
+}
+
 export interface ProductUpdatesRow {
   id: string;
   title: string;
@@ -1601,6 +1609,7 @@ export interface Tables {
   portal_links: PortalLinksRow;
   portal_pin_attempts: PortalPinAttemptsRow;
   pricing_settings: PricingSettingsRow;
+  product_events: ProductEventsRow;
   product_updates: ProductUpdatesRow;
   property_data: PropertyDataRow;
   property_documents: PropertyDocumentsRow;

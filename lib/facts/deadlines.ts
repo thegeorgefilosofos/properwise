@@ -34,7 +34,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import {
   taxObligationsHorizon, greekPropertyTaxObligations, taxEventSource, taxObligationToEvent,
-  type PropertyTaxProfile, type TaxObligation,
+  type PropertyTaxProfile, type TaxObligation, type TaxCalendarOptions,
 } from '@/lib/tax/greekTaxCalendar';
 import type { EventDraft, EventStatus } from '@/lib/data/calendar';
 import { daysBetweenIso } from '@/lib/core/time';
@@ -214,16 +214,20 @@ const shift = (iso: string, days: number): string => {
  * (ή «εκκρεμής» αν είναι καινούριες). Περασμένη ξαναγράφεται μόνο αν υπήρχε
  * ήδη, με την κατάστασή της: τίποτα από όσα έγραψε ο χρήστης δεν χάνεται και
  * τίποτα περασμένο δεν γεννιέται ως νέα εκκρεμότητα.
+ *
+ * Το `opts.enfiaInstalments` είναι το πλήθος δόσεων του ΔΙΚΟΥ του
+ * εκκαθαριστικού ΕΝΦΙΑ, όταν το σύνολο είναι γνωστό (lib/calendar/enfiaTotals.ts).
  */
 export function taxEventsToWrite(
   today: string, profile: PropertyTaxProfile,
   existing: readonly { source?: string | null; status?: string | null }[] = [],
+  opts: TaxCalendarOptions = {},
 ): EventDraft[] {
   const t = day(today);
   const had = new Map<string, string>();
   for (const e of existing) if (e.source) had.set(e.source, String(e.status || 'pending'));
   const out: EventDraft[] = [];
-  for (const o of taxObligationsHorizon(t, profile)) {
+  for (const o of taxObligationsHorizon(t, profile, opts)) {
     const src = taxEventSource(o.id);
     const prev = had.get(src);
     if (o.date < t && prev === undefined) continue;
