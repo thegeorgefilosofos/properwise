@@ -136,7 +136,8 @@ export interface EventDraft {
 }
 
 export type EventRow = Omit<CalendarEventsRow, 'id' | 'created_at' | 'recurrence_exdates'> & {
-  recurrence_exdates?: string[] | null;
+  /** NOT NULL στη βάση (προεπιλογή `[]`): κενό σημαίνει απορριφθείσα εγγραφή. */
+  recurrence_exdates?: string[];
 };
 
 /** Το πλήρες αντικείμενο εγγραφής, με τα σταθερά που ξεχνιούνται. */
@@ -154,7 +155,11 @@ export function row(scope: Scope, source: string, d: EventDraft): EventRow {
     recurring_interval: d.recurring_interval ?? null,
     recurrence_until: d.recurrence_until ?? null,
     recurrence_count: d.recurrence_count ?? null,
-    recurrence_exdates: d.recurrence_exdates ?? null,
+    // ΠΟΤΕ null. Η στήλη είναι `jsonb not null default '[]'` και το PostgREST
+    // στέλνει το null όπως είναι, δεν βάζει την προεπιλογή. Με null κάθε
+    // εισαγωγή του ημερολογίου απορριπτόταν (23502) από 22/09/2026 ως 21/10/2026:
+    // χειροκίνητα γεγονότα, εισαγωγές .ics και οι αυτόματες προθεσμίες.
+    recurrence_exdates: d.recurrence_exdates ?? [],
     notes: d.notes ?? null,
     event_time: d.event_time ?? null,
     duration_minutes: d.duration_minutes ?? null,
