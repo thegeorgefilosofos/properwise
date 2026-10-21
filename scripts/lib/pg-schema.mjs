@@ -8,7 +8,7 @@
 // είχε μάθει μόνο ο ένας — και η απόκλιση θα ήταν αόρατη, γιατί και οι δύο
 // θα «περνούσαν».
 //
-// ΤΙ ΕΠΙΣΤΡΕΦΕΙ. Map<πίνακας, Map<στήλη, { sql, notNull }>>. Η σειρά των
+// ΤΙ ΕΠΙΣΤΡΕΦΕΙ. Map<πίνακας, Map<στήλη, { sql, notNull, rejectsNull, default }>>. Η σειρά των
 // στηλών διατηρείται όπως στα migrations, ώστε το παραγόμενο αρχείο να μην
 // αλλάζει σειρά χωρίς λόγο.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -30,9 +30,21 @@ function parseColumns(body) {
     // Μια γραμμή σαν `"id" "uuid" DEFAULT … NOT NULL` — ο τύπος είναι ό,τι
     // προηγείται της πρώτης λέξης-κλειδί.
     const type = rest.split(/\s+(?:default|not\s+null|null|references|generated|primary|unique|check|collate)\b/i)[0];
-    cols.set(m[1], { sql: type.replace(/"/g, '').trim(), notNull: /\bnot\s+null\b/i.test(rest) });
+    const notNull = /\bnot\s+null\b/i.test(rest);
+    cols.set(m[1], { sql: type.replace(/"/g, '').trim(), notNull, rejectsNull: notNull, default: defaultOf(rest) });
   }
   return cols;
+}
+
+// ── Η ΠΡΟΕΠΙΛΟΓΗ, ΩΣ ΚΕΙΜΕΝΟ SQL ─────────────────────────────────────────
+// Τη χρειάζεται το lib/data/notNull.test.ts: το PostgREST ΔΕΝ βάζει την
+// προεπιλογή όταν το κλειδί έρχεται με ρητό null, οπότε το στρώμα δεδομένων
+// τη γράφει μόνο του και το τεστ ελέγχει ότι γράφει ΤΗΝ ΙΔΙΑ με τη βάση.
+// Επιστρέφεται ωμή (`'[]'::"jsonb"`, `0`, `now()`)· την ερμηνεία την κάνει
+// όποιος τη χρειάζεται. `null` = καμία προεπιλογή.
+function defaultOf(rest) {
+  const m = /\bdefault\s+([\s\S]+?)(?=\s+(?:not\s+null|null|check|references|primary|unique|generated|constraint)\b|\s*,?\s*$)/i.exec(rest);
+  return m ? m[1].trim() : null;
 }
 
 /** Ο χάρτης του σχήματος: πίνακας → στήλη → { sql, notNull }. */
@@ -54,17 +66,28 @@ export function readSchema() {
     for (const stmt of sql.matchAll(/alter\s+table\s+(?:only\s+)?(?:public\.)?"?(\w+)"?([\s\S]*?);/gi)) {
       const cols = schema.get(stmt[1]);
       if (!cols) continue;
-      for (const c of stmt[2].matchAll(/add\s+column\s+(?:if\s+not\s+exists\s+)?"?(\w+)"?\s*([a-z0-9_ ()\[\],]*)/gi))
-        if (!cols.has(c[1])) cols.set(c[1], {
+      for (const c of stmt[2].matchAll(/add\s+column\s+(?:if\s+not\s+exists\s+)?"?(\w+)"?\s*([a-z0-9_ ()\[\],]*)/gi)) {
+        if (cols.has(c[1])) continue;
+        // Ο ορισμός της ΜΙΑΣ στήλης: ως το επόμενο `add column` της πρότασης ή
+        // ως το τέλος του. Η προεπιλογή διαβάζεται από το ΠΛΗΡΕΣ κείμενο (το
+        // c[2] κόβεται στο πρώτο εισαγωγικό, δηλαδή μέσα σε `default 'unknown'`).
+        const def = stmt[2].slice(c.index + c[0].length - c[2].length).split(/,\s*add\s+column\b/i)[0];
+        cols.set(c[1], {
           // Το κόμμα που χωρίζει δύο `add column` στην ίδια πρόταση κολλούσε
           // στον τύπο: `numeric,` δεν είναι τύπος και δεν αντιστοιχίζεται.
           sql: (c[2] || 'text').trim().split(/\s+(?:default|not\s+null|references)\b/i)[0].replace(/,\s*$/, '').trim() || 'text',
+          // ΣΚΟΠΙΜΑ false: από αυτό γράφονται οι τύποι (lib/supabase/tables.ts)
+          // και η αλλαγή του θα άλλαζε τύπους σε άλλες οθόνες. Το αληθινό
+          // NOT NULL της στήλης είναι το `rejectsNull`.
           notNull: false,
+          rejectsNull: /\bnot\s+null\b/i.test(def),
+          default: defaultOf(def),
         });
+      }
       // Μια στήλη που έγινε NOT NULL αργότερα μετράει ως NOT NULL.
       for (const c of stmt[2].matchAll(/alter\s+column\s+"?(\w+)"?\s+set\s+not\s+null/gi)) {
         const col = cols.get(c[1]);
-        if (col) col.notNull = true;
+        if (col) { col.notNull = true; col.rejectsNull = true; }
       }
       // ── ΚΑΙ Η ΑΝΤΙΣΤΡΟΦΗ ΚΙΝΗΣΗ, ΠΟΥ ΕΛΕΙΠΕ ────────────────────────────
       // Ο αναγνώστης ήξερε `set not null` και όχι `drop not null`. Δύο
@@ -79,7 +102,7 @@ export function readSchema() {
       // ταξιδεύει ως `undefined` μέσα σε ταξινόμηση και σε άθροισμα.
       for (const c of stmt[2].matchAll(/alter\s+column\s+"?(\w+)"?\s+drop\s+not\s+null/gi)) {
         const col = cols.get(c[1]);
-        if (col) col.notNull = false;
+        if (col) { col.notNull = false; col.rejectsNull = false; }
       }
       for (const c of stmt[2].matchAll(/drop\s+column\s+(?:if\s+exists\s+)?"?(\w+)"?/gi)) cols.delete(c[1]);
       // ── Η ΜΕΤΟΝΟΜΑΣΙΑ ΗΤΑΝ ΤΥΦΛΟ ΣΗΜΕΙΟ ΚΑΙ ΠΡΟΣ ΤΙΣ ΔΥΟ ΚΑΤΕΥΘΥΝΣΕΙΣ ──

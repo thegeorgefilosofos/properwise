@@ -27,6 +27,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { rows as readRows, row as readRow, readOne, read } from './read';
+import { forInsert } from './notNull';
 import type { DbError } from '@/lib/supabase/writeResult';
 
 const TABLE = 'bills_settings';
@@ -145,7 +146,9 @@ export async function acrossPropertiesWithError<T = SettingsData>(
  */
 export function put(db: Db, propertyId: string, userId: string, name: Section, data: SettingsData) {
   return db.from(TABLE).upsert(
-    { property_id: propertyId, user_id: String(userId), section: name, data },
+    // Το `data` είναι jsonb NOT NULL με προεπιλογή `{}`: ένα null από ενότητα
+    // που δεν διαβάστηκε ποτέ γινόταν 23502 και η αποθήκευση χανόταν.
+    forInsert(TABLE, { property_id: propertyId, user_id: String(userId), section: name, data }),
     { onConflict: 'property_id,section' },
   );
 }

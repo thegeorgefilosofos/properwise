@@ -320,7 +320,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
     // πέτυχε — ο χρήστης έχανε τίτλο, ημερομηνία, ώρα, ποσό, επανάληψη και
     // σημειώσεις, χωρίς να του πει κανείς τίποτα.
     const { error } = editingEvent
-      ? await calendar.update(supabase,editingEvent.id,payload)
+      ? await calendar.update(supabase,editingEvent.id,calendar.editPatch(payload))
       : await calendar.insert(supabase,[payload])
     if(error){ notifyError('Το γεγονός δεν αποθηκεύτηκε. Δοκίμασε ξανά.'); setSaving(false); return }
     if(!editingEvent) await maybeCreateExpense()
@@ -332,7 +332,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
     const base=editingEvent; const occ=editOccDate||base.event_date; const payload=buildPayload()
     try{
       if(scope==='all'){
-        await saved('Η σειρά δεν ενημερώθηκε', calendar.update(supabase,base.id,payload))
+        await saved('Η σειρά δεν ενημερώθηκε', calendar.update(supabase,base.id,calendar.editPatch(payload)))
       }else if(scope==='this'){
         // Απόσπαση μόνο αυτής: νέο μεμονωμένο με τις αλλαγές + εξαίρεση της ημέρας από τη σειρά.
         // Η ΣΕΙΡΑ ΤΩΝ ΔΥΟ ΕΧΕΙ ΣΗΜΑΣΙΑ: αν μπει η εξαίρεση χωρίς να έχει
