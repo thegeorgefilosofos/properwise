@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Η ΕΝΗΜΕΡΩΣΗ ΓΙΑ ΤΟΥΣ ΟΡΟΥΣ, ΜΙΑ ΦΟΡΑ ΑΝΑ ΕΚΔΟΣΗ
 // ─────────────────────────────────────────────────────────────────────────
-// Μία γραμμή, χωρίς έντονα χρώματα.
+// Μία γραμμή, χωρίς έντονα χρώματα, κάτω από την κεφαλίδα της Επισκόπησης.
 // Το κλείσιμο γράφεται στα στοιχεία του λογαριασμού (`policy_notice_seen`),
 // ώστε να μη ζητηθεί ξανά σε άλλη συσκευή και να μένει ίχνος ότι η ενημέρωση
 // δόθηκε. Το τοπικό αντίγραφο κρατά το πλαίσιο κλειστό αν η εγγραφή αργήσει.
@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { T, IconBtn, LinkBtn } from '@/components/Theme';
 import { POLICY_VERSION } from '@/lib/legal/identity';
-import { POLICY_CHANGE_SUMMARY, POLICY_NOTICE_HEADLINE, POLICY_NOTICE_LEDE, POLICY_NOTICE_KEY, policyNoticeDue, type PolicyMeta } from '@/lib/legal/policyNotice';
+import { POLICY_CHANGE_SUMMARY, POLICY_NOTICE_HEADLINE, POLICY_NOTICE_LEDE, POLICY_NOTICE_SHORT, POLICY_NOTICE_KEY, policyNoticeDue, type PolicyMeta } from '@/lib/legal/policyNotice';
 
 export default function PolicyNotice() {
   const supabase = createClient();
@@ -49,33 +49,29 @@ export default function PolicyNotice() {
   };
 
   return (
+    // ΜΙΑ ΓΡΑΜΜΗ ΚΑΙ ΤΟ «×» (20/10/2026): η γραμμή λέει ότι άλλαξαν Όροι και
+    // Απόρρητο, το «Τι άλλαξε» ανοίγει από κάτω την πλήρη πρόταση, την
+    // περίληψη και τον σύνδεσμο των Όρων. Ούτε κρυμμένη ούτε τρεις γραμμές
+    // πάνω από το ποσό: κάθεται κάτω από την κεφαλίδα της Επισκόπησης.
     <section aria-label="Τι άλλαξε στους όρους χρήσης" style={{
-      // ΣΤΗΝ ΑΡΧΗ, ΟΧΙ ΣΤΗ ΜΕΣΗ. Με `center` η τελεία καθόταν στο κέντρο της
-      // παραγράφου, που στο κινητό είναι τρεις γραμμές: δίπλα στη δεύτερη, όχι
-      // στην πρώτη. Τώρα η τελεία και το «×» στοιχίζονται με την πρώτη γραμμή.
-      display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap',
+      display: 'flex', alignItems: 'flex-start', gap: 12,
       background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
       borderRadius: T.radius.card, padding: '12px 16px', marginBottom: 16,
     }}>
       {/* Το κέντρο της πρώτης γραμμής: (ύψος γραμμής − 6) / 2, με το ύψος γραμμής
           1,5 × --fs-base όπως η παράγραφος δίπλα της. */}
       <span aria-hidden style={{ width: 6, height: 6, borderRadius: T.radius.pill, background: 'var(--text-tertiary)', flexShrink: 0, marginTop: 'calc((1.5 * var(--fs-base) - 6px) / 2)' }} />
-      {/* ΜΙΑ ΓΡΑΜΜΗ, Η ΠΕΡΙΛΗΨΗ ΜΕ ΕΝΑ ΠΑΤΗΜΑ (05.10.2026). Η πλήρης περίληψη
-          έπιανε πέντε σειρές πάνω από την Επισκόπηση· τώρα ανοίγει με το
-          «Τι άλλαξε». Το κείμενο ζει στο lib/legal/policyNotice.ts. */}
-      <div style={{ flex: 1, minWidth: 200 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: 0 }}>
-          <strong style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{POLICY_NOTICE_HEADLINE}</strong>{' '}
-          {POLICY_NOTICE_LEDE}{' '}
+          <strong style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{POLICY_NOTICE_SHORT}</strong>{' '}
           {/* `po-tap-inline`: μέσα σε πρόταση, άρα τα 44 της αφής από ψευδοστοιχείο
               και όχι από δάπεδο ύψους που θα άνοιγε τη γραμμή (app/globals.css). */}
           <LinkBtn className="po-tap-inline" onClick={() => setOpen(o => !o)}>{open ? 'Απόκρυψη' : 'Τι άλλαξε'}</LinkBtn>
-          {' · '}
-          <a href="/terms" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1 }}>Δες τους Όρους</a>
         </p>
         {open && (
           <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.6, margin: '8px 0 0', maxWidth: '78ch' }}>
-            {POLICY_CHANGE_SUMMARY}
+            {POLICY_NOTICE_HEADLINE} {POLICY_NOTICE_LEDE} {POLICY_CHANGE_SUMMARY}{' '}
+            <a href="/terms" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1 }}>Δες τους Όρους</a>
           </p>
         )}
       </div>

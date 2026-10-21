@@ -829,8 +829,6 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           ακίνητο και η οθόνη δεν αλλάζει ούτε ένα εικονοστοιχείο. */}
       <h1 className="sr-only" ref={headingRef} tabIndex={-1}>{navLabel('overview')}</h1>
       <p role="status" className="sr-only">{retryNote}</p>
-      {/* Τι άλλαξε στους Όρους, μία φορά ανά έκδοση (lib/legal/policyNotice.ts). */}
-      <PolicyNotice />
 
       {/* ═══ Η ΚΕΦΑΛΙΔΑ ΠΟΥ ΕΛΕΙΠΕ ══════════════════════════════════════════
           Η οθόνη άνοιγε με ένα μοναχικό κουμπί «Αναφορά (PDF)» στοιχισμένο
@@ -888,6 +886,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       </div>
 
 
+      {/* ═══ Η ΕΝΗΜΕΡΩΣΗ ΤΩΝ ΟΡΩΝ ΚΑΤΩ ΑΠΟ ΤΗΝ ΚΕΦΑΛΙΔΑ, ΣΕ ΜΙΑ ΓΡΑΜΜΗ ══════════
+          Ηταν η πρώτη κάρτα της οθόνης, τρεις γραμμές στα 390, πάνω από το
+          ποσό (αξιολόγηση χρήστη, 20/10/2026). Μένει ορατή και προσβάσιμη,
+          μία φορά ανά έκδοση (lib/legal/policyNotice.ts), αλλά μετά το ποσό. */}
+      <PolicyNotice />
+
       {/* ═══ ΤΟ ΤΑΜΕΙΟ ══════════════════════════════════════════════════════
           Η οθόνη άνοιγε με «Μηνιαίο ενοίκιο · Μεικτή απόδοση · Καθαρή απόδοση»:
           τρεις αριθμοί που ο ιδιοκτήτης ξέρει απ' έξω και που δεν αλλάζουν από
@@ -918,6 +922,19 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           </InfoBanner>
         </div>
       )}
+      {/* ═══ «ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΤΩΡΑ» ΣΤΗΝ ΠΡΩΤΗ ΟΘΟΝΗ ══════════════════════════
+          Μία λίστα «τι χρειάζεται τώρα», στη θέση των τεσσάρων που έλεγαν εν
+          μέρει τα ίδια πράγματα. Η συγχώνευση γίνεται στο lib/home/agenda.ts.
+
+          ΠΡΩΤΗ ΜΕΤΑ ΤΗΝ ΚΕΦΑΛΙΔΑ (20/10/2026). Στα 390×844 η κάρτα ξεκινούσε
+          στα 869, δηλαδή κάτω από την πρώτη οθόνη, πίσω από την ενημέρωση των
+          Όρων, τη Νόα και το Ταμείο. Είναι η απάντηση που ζητά ο ιδιοκτήτης
+          όταν ανοίγει την εφαρμογή («να μη χάνω προθεσμίες»). Τίποτα δεν
+          αφαιρέθηκε: η Νόα και το Ταμείο ακολουθούν, με τη σειρά τους. Οι
+          λογαριασμοί μένουν έξω από τη λίστα (τους λέει το Ταμείο). */}
+      <AgendaPanel items={agenda} total={agendaAll.length} onNavigate={onNavigate} incomplete={failedReads.length > 0}
+        footer={<CalendarQuickAdd userId={userId} />} />
+
       {/* Με μισά ποσά η Νόα θα έλεγε «βλέπω» για όσα δεν διάβασε. */}
       {!moneyGap && <AssistantStrip ctx={assistantCtx} />}
 
@@ -951,10 +968,6 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         />
       )}
 
-      {/* Μία λίστα «τι χρειάζεται τώρα», στη θέση των τεσσάρων που έλεγαν εν
-          μέρει τα ίδια πράγματα. Η συγχώνευση γίνεται στο lib/home/agenda.ts. */}
-      <AgendaPanel items={agenda} total={agendaAll.length} onNavigate={onNavigate} incomplete={failedReads.length > 0}
-        footer={<CalendarQuickAdd userId={userId} />} />
 
       {/* ΤΙ ΕΡΧΕΤΑΙ, ΜΕΤΑ ΑΠΟ ΤΟ ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΤΩΡΑ. Με έστω μία ανάγνωση πεσμένη
           η κάρτα δεν αποδίδεται: μισή πρόβλεψη θα έδειχνε λάθος «σφιχτό μήνα». */}

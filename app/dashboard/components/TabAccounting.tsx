@@ -436,9 +436,23 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           σελίδα λέει για το ΤΑΚΚ ότι δεν είναι έσοδο του ιδιοκτήτη. Το σύνολο
           μένει (δεν το γράφει κανείς άλλος), με όνομα που το περιγράφει και με
           τον φόρο εισοδήματος ξεχωριστά στη γραμμή από κάτω. */}
+      {/* ΤΙ ΔΕΝ ΜΕΤΡΑ Ο ΦΟΡΟΣ ΤΗΣ ΕΠΙΧΕΙΡΗΣΗΣ, ΔΙΠΛΑ ΣΤΟ ΠΟΣΟ (αξιολόγηση λογιστή,
+          20/10/2026). Με τον διακόπτη «Ενοίκια ιδιώτη / Μέσω επιχείρησης» ο
+          χρήστης βλέπει δύο φόρους και τους συγκρίνει. Ο δεύτερος δεν έχει μέσα
+          του εισφορές ΕΦΚΑ, ΦΠΑ, τήρηση βιβλίων και αμοιβή λογιστή: για κανένα
+          από αυτά δεν υπάρχει στο αποθετήριο ποσό με επίσημη πηγή, οπότε δεν
+          προστίθεται κανένα. Λέγεται ρητά και πρώτο στη σημείωση. Ο αριθμός
+          γράφεται ήσυχα (`muted`) ώστε να μη διαβάζεται ως οικονομία. Το
+          ελάχιστο τεκμαρτό του άρθρου 28Α ΜΕΤΡΑ ήδη στην ατομική (useAccounting,
+          `presumptiveMinIncome`) και λέγεται κι αυτό. */}
       <Kpi label={provision.propertyTaxes>0 ? `Φόροι και τέλη ${year}` : `Φόρος εισοδήματος ${year}`} value={eur(provision.annualTaxTotal)}
-        hot={taxHot} onHover={setTaxHot}
+        hot={taxHot} onHover={setTaxHot} muted={businessMode}
         note={<>
+          {businessMode && <>
+            <strong style={{ fontWeight:600, color:'var(--text-secondary)' }}>Δεν περιλαμβάνονται: εισφορές ΕΦΚΑ, ΦΠΑ, τήρηση βιβλίων και αμοιβή λογιστή.</strong>
+            {elpForm==='sole'&&grossIncome>0 ? ' Περιλαμβάνεται το ελάχιστο τεκμαρτό εισόδημα του άρθρου 28Α.' : ''}
+            {' Γι\' αυτό ο αριθμός δεν είναι σύγκριση με τα ενοίκια ιδιώτη: τη σύγκριση την κάνει ο λογιστής σου. '}
+          </>}
           {provision.propertyTaxes>0
             ? (provision.annualTaxTotal-provision.propertyTaxes>0
               ? `Φόρος εισοδήματος ${eur(provision.annualTaxTotal-provision.propertyTaxes)} και ${eur(provision.propertyTaxes)} φόροι και τέλη ακινήτου. `

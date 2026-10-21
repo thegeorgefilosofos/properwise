@@ -17,7 +17,10 @@ import { estimateENFIA } from '../billing/enfia';
 import { enfiaInstalments, ENFIA_MIN_INSTALMENT } from '../tools/enfiaSchedule';
 import { maxMonthlyPayment, DSTI_LIMIT } from '../loans/affordability';
 import { greekPropertyTaxObligations } from '../tax/greekTaxCalendar';
-import { fn } from '../core/format';
+import { fn, fpRate, grDate } from '../core/format';
+import { presumptiveDeductionRateForYear } from '../billing/presumptive';
+import { STR_INDIVIDUAL_MAX_PROPERTIES } from '../billing/greekTax';
+import { INCOME_TAX_INSTALMENTS } from '../tax/greekTaxCalendar';
 import { roundHalfUp } from '../core/money';
 import { athensNowLabel, athensToday } from '../core/time';
 
@@ -96,7 +99,27 @@ for (const c of NOA_SUITE.filter(x => x.computed?.length && x.category !== 'rent
     ['deadline-str-registry-2026-05', /έως την 20|20ή του/],
     ['str-2-no-business', /έως 2 ακίνητα|έως δύο ακίνητα|3\+ ακίνητα|τρία ή περισσότερα ακίνητα/],
     ['str-municipal-rate-business', /παρεπιδημούντων \(0,5%/],
+    // Οι κανόνες που μπήκαν στη γνώση στις 20/10/2026, με τη διατύπωση που
+    // τους γράφει το assistantPersona.ts και τα ποσά από τις ίδιες σταθερές.
+    ['presumptive-taxable-2027-cash-18400', new RegExp(`με μετρητά παίρνει τεκμαρτή έκπτωση ${esc(fpRate(presumptiveDeductionRateForYear(2027, false) * 100))}`)],
+    ['enfia-instalments-84-70', /κομμένο προς τα κάτω στο λεπτό/],
+    ['enfia-instalments-9-40', /πληρώνεται σε μία δόση, εφάπαξ/],
+    ['deadline-autofile-2026', new RegExp(esc(grDate(byId('deadline-autofile-2026')?.expect.dates?.[0] ?? '')))],
+    ['deadline-enfia-8-2026', new RegExp(`8η ${esc(grDate(byId('deadline-enfia-8-2026')?.expect.dates?.[0] ?? ''))}`)],
+    ['deadline-enfia-last-2026', new RegExp(`τελευταία ${esc(grDate(byId('deadline-enfia-last-2026')?.expect.dates?.[0] ?? ''))}`)],
+    ['deadline-income-tax-instalments', new RegExp(`έως ${INCOME_TAX_INSTALMENTS} ισόποσες μηνιαίες δόσεις`)],
+    [`str-${STR_INDIVIDUAL_MAX_PROPERTIES + 1}-business`, new RegExp(`Με ${STR_INDIVIDUAL_MAX_PROPERTIES + 1} ή περισσότερα ακίνητα[^.]*έναρξη εργασιών`)],
+    [`str-municipal-${STR_INDIVIDUAL_MAX_PROPERTIES}-exempt`, new RegExp(`έως ${STR_INDIVIDUAL_MAX_PROPERTIES} ακίνητα βραχυχρόνιας εξαιρείται`)],
   ];
+  // ΚΑΙ ΚΑΜΙΑ ΕΡΩΤΗΣΗ ΔΕΝ ΜΕΝΕΙ «ΕΚΤΟΣ» ΧΩΡΙΣ ΛΟΓΟ. Από τις δεκαέξι του #413
+  // μένουν δύο, γιατί η μέθοδός τους δεν είναι στη γνώση: η κλίμακα της
+  // πρώτης τριετίας και ο πρόσθετος φόρος της αξίας στον ΕΝΦΙΑ. Μια τρίτη
+  // εδώ σημαίνει ότι κάποιος έβγαλε κανόνα από τη γνώση ή πρόσθεσε ερώτηση
+  // χωρίς να την ελέγξει απέναντι στο prompt. Οι προθεσμίες μένουν έξω από
+  // τη μέτρηση: η ετικέτα τους ακολουθεί τον ορίζοντα της μέρας (evalSuite.ts).
+  const outside = NOA_SUITE.filter(c => c.knowledge === 'not-in-prompt' && c.category !== 'deadlines').map(c => c.id).sort();
+  ok(`εκτός γνώσης μόνο τα δύο γνωστά (${outside.join(', ')})`,
+    outside.length === 2 && outside.some(id => id.startsWith('sole-2026-first3')) && outside.some(id => id.startsWith('enfia-2026-extra')));
   for (const [id, re] of facts) {
     const c = byId(id);
     ok(`${id}: υπάρχει`, !!c);

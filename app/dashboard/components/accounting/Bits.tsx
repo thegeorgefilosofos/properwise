@@ -116,14 +116,24 @@ export function Check({ checked, onChange, label, hint, align='center' }:{ check
 //
 // ΧΩΡΙΣ `tone`: το πλακίδιο ήταν χρωματιστό όταν το ταμείο έβγαινε αρνητικό.
 // Ο φόρος δεν είναι ποτέ αρνητικός, οπότε η ιδιότητα δεν είχε πια καλούντα.
-export function Kpi({ label, value, note, hot, onHover }:{
-  label:string; value:string; note:React.ReactNode; hot:boolean; onHover:(v:boolean)=>void
+//
+// ΤΟ `muted`: Ο ΑΡΙΘΜΟΣ ΠΟΥ ΔΕΝ ΕΙΝΑΙ ΟΛΟ ΤΟ ΚΟΣΤΟΣ ΔΕΝ ΦΩΝΑΖΕΙ (20/10/2026).
+// Στη «Μέσω επιχείρησης» ο φόρος βγαίνει μικρότερος από των ενοικίων ιδιώτη
+// (μετρημένο σε 30.000€: 2.700€ έναντι 6.375€), αλλά χωρίς εισφορές ΕΦΚΑ, ΦΠΑ,
+// τήρηση βιβλίων και λογιστή, για τα οποία δεν έχουμε ποσό με επίσημη πηγή.
+// Γραμμένος με το βάρος και το χρώμα του κανονικού, διαβαζόταν ως οικονομία.
+// Εδώ μένει στο μέγεθος του TT.kpi, με το βάρος και το χρώμα του δευτερεύοντος
+// κειμένου. Η σημείωση από κάτω λέει τι λείπει.
+export function Kpi({ label, value, note, hot, onHover, muted = false }:{
+  label:string; value:string; note:React.ReactNode; hot:boolean; onHover:(v:boolean)=>void; muted?:boolean
 }){
   return (
     <div onMouseEnter={()=>onHover(true)} onMouseLeave={()=>onHover(false)}
       style={{ ...card, padding:'18px 20px', minWidth:0, borderColor:hot?'var(--border-default)':undefined, transition:'border-color 0.15s' }}>
       <p style={{ ...TT.label, color:'var(--text-tertiary)', margin:0 }}>{label}</p>
-      <p style={{ ...TT.kpi, fontSize:24, color:hot?'var(--accent)':'var(--text-primary)', margin:'11px 0 0', transition:'color 0.15s' }}>{value}</p>
+      <p style={muted
+        ? { ...TT.kpi, fontWeight:500, color:'var(--text-secondary)', margin:'11px 0 0' }
+        : { ...TT.kpi, fontSize:24, color:hot?'var(--accent)':'var(--text-primary)', margin:'11px 0 0', transition:'color 0.15s' }}>{value}</p>
       <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'9px 0 0', fontFamily: T.font.sans, lineHeight:1.5 }}>{note}</p>
     </div>
   )

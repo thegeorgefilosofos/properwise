@@ -66,9 +66,16 @@ const LAND_LIKE = new Set(['land', 'parking', 'storage', 'warehouse']);
 // στις πληρωμές του. Ενα πεδίο αντί για δύο, καμία σταθερά και το άνοιγμα για
 // επεξεργασία ξαναδείχνει ακριβώς ό,τι γράφτηκε.
 
-// Το τέταρτο βήμα λεγόταν «Ρυθμίσεις», όπως και η καρτέλα του λογαριασμού,
-// ενώ κρατά ιδιοκτήτη, παρόχους, διαχειριστή και ασφάλεια: επαφές.
-const STEPS = ['Τύπος', 'Βασικά', 'Οικονομικά', 'Επαφές', 'Σύνοψη'];
+// ΤΕΣΣΕΡΑ ΒΗΜΑΤΑ, ΟΧΙ ΠΕΝΤΕ (αξιολόγηση χρήστη, 20/10/2026). Το τέταρτο,
+// «Επαφές», ήταν ένα κουμπί «Περισσότερα» και τίποτα άλλο: κάθε πεδίο του
+// (ιδιοκτήτης, πάροχοι, διαχειριστής, ασφάλεια) είναι σπάνιο στο μητρώο
+// πεδίων, τα στοιχεία του ιδιοκτήτη έρχονται από το προφίλ και οι πάροχοι από
+// την πρώτη σάρωση. Ενα ολόκληρο βήμα για ένα πάτημα που κανείς δεν χρειάζεται
+// την πρώτη μέρα. Τα ίδια πεδία ζουν τώρα στη «Σύνοψη», κλειστά, κάτω από τα
+// στοιχεία που θα αποθηκευτούν: κανένα δεν χάθηκε, ο οδηγός παραμένει ο μόνος
+// τους επεξεργαστής.
+const STEPS = ['Τύπος', 'Βασικά', 'Οικονομικά', 'Σύνοψη'];
+const SUMMARY_STEP = STEPS.length - 1;
 
 /** Μια γραμμή φόρμας: ποιο πεδίο είναι, πόσο πλάτος πιάνει και το χειριστήριό του. */
 interface FormRow { id: string; span: 'auto' | 'full'; node: React.ReactNode; label?: string }
@@ -277,12 +284,18 @@ const row = (id: string, span: 'auto' | 'full', node: React.ReactNode, label?: s
  * έχανε το κουτί που έγραφε. Το `react-hooks/static-components` το είπε και
  * είχε δίκιο.
  */
-function StepBody({ rows, place, after }: {
+function StepBody({ rows, place, after, moreTitle = 'Περισσότερα', lessTitle = 'Λιγότερα', defaultOpen = false }: {
   rows: FormRow[];
   place: (id: string) => Placement;
   after?: React.ReactNode;
+  /** Η κεφαλίδα του κλειστού κουτιού, πριν από τα πρώτα ονόματα που κρύβει. */
+  moreTitle?: string;
+  /** Η κεφαλίδα του ανοιχτού κουτιού. */
+  lessTitle?: string;
+  /** Ανοιχτό από την αρχή: όταν ο οδηγός ανοίγει για να γραφτεί ακριβώς κάτι από μέσα. */
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const core = rows.filter(r => place(r.id) === 'core');
   // Η ΣΕΙΡΑ ΤΩΝ ΚΡΥΜΜΕΝΩΝ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟ ΜΗΤΡΩΟ. Το JSX γράφει πρώτα όσα
   // ΣΥΝΗΘΩΣ φαίνονται και μετά τα σπάνια· όταν ένας κανόνας στέλνει κάποιο από
@@ -316,7 +329,7 @@ function StepBody({ rows, place, after }: {
                 υποχρεώνει σε άνοιγμα για να μάθει ο χρήστης αν τον αφορά. */}
             <span style={{ flex: 1, fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--text-primary)' }}>
               {/* Το όνομα του μητρώου και όχι της φόρμας: χωρίς «(%)» και «(€)». */}
-              {open ? 'Λιγότερα' : `Περισσότερα: ${more.slice(0, 3).map(r => inSentence(labelOf(r.id))).join(', ')}${more.length > 3 ? ` και ${more.length - 3} ακόμη` : ''}`}
+              {open ? lessTitle : `${moreTitle}: ${more.slice(0, 3).map(r => inSentence(labelOf(r.id))).join(', ')}${more.length > 3 ? ` και ${more.length - 3} ακόμη` : ''}`}
             </span>
           </button>
           {open && <div style={grid2}>{more.map(cell)}</div>}
@@ -337,8 +350,8 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   initial?: EnfiaWizardInitial;
   /**
    * ΑΠΟ ΠΟΥ ΑΝΟΙΓΕΙ Ο ΟΔΗΓΟΣ. Η Λογιστική ζητά το ΑΦΜ του ιδιοκτήτη· με
-   * `owner_afm` ο οδηγός ανοίγει στο βήμα «Επαφές» με τον κέρσορα εκεί, αντί
-   * ο χρήστης να περάσει τρία βήματα για να το βρει.
+   * `owner_afm` ο οδηγός ανοίγει στη «Σύνοψη» με τις επαφές ανοιχτές και τον
+   * κέρσορα στο ΑΦΜ, αντί ο χρήστης να περάσει τρία βήματα για να το βρει.
    */
   focus?: 'owner_afm' | null;
 }) {
@@ -398,12 +411,14 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     if (form.statusKey !== null && !STATUSES.some(x => x.key === form.statusKey)) form.statusKey = null;
     if (!form.coOwners.length) form.coOwners = [''];
     if (sameDraft(form, pristine)) return null;
-    const step = typeof d.step === 'number' && Number.isInteger(d.step) && d.step >= 0 && d.step < STEPS.length ? d.step : 0;
+    // Πρόχειρο από τον οδηγό των πέντε βημάτων: το παλιό 4 (Σύνοψη) και το
+    // παλιό 3 (Επαφές) πέφτουν και τα δύο στη Σύνοψη, όπου ζουν πια οι επαφές.
+    const step = typeof d.step === 'number' && Number.isInteger(d.step) && d.step >= 0 ? Math.min(d.step, SUMMARY_STEP) : 0;
     return { form, step };
   });
   const start = draft?.form ?? pristine;
 
-  const [step, setStep] = useState(focusAfm ? STEPS.indexOf('Επαφές') : draft?.step ?? 0); // 0..3
+  const [step, setStep] = useState(focusAfm ? SUMMARY_STEP : draft?.step ?? 0); // 0..3
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   // Αλλαγή βήματος = νέα προσπάθεια· το παλιό σφάλμα δεν αφορά πια την οθόνη.
@@ -564,7 +579,17 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   const annualRent = rentN != null ? rentN * 12 : null;
   const grossYield = (annualRent != null && effValueN != null && effValueN > 0) ? (annualRent / effValueN) * 100 : null;
 
-  const rentLabel = airbnb ? 'Μέσο μηνιαίο έσοδο (€)' : 'Στόχος ενοικίου (€/μήνα)';
+  // ΣΕ ΝΟΙΚΙΑΣΜΕΝΟ ΑΚΙΝΗΤΟ ΡΩΤΑΜΕ ΤΟ ΕΝΟΙΚΙΟ, ΟΧΙ ΤΟΝ ΣΤΟΧΟ (αξιολόγηση
+  // χρήστη, 20/10/2026). Ο ιδιοκτήτης που μόλις διάλεξε «Μακροχρόνια μίσθωση»
+  // διάβαζε «Στόχος ενοικίου» και δεν ήξερε τι να γράψει: έχει ενοίκιο, όχι
+  // στόχο. Το πεδίο είναι το ίδιο (`target_rent`) και πηγαίνει εκεί όπου η
+  // εφαρμογή ζητά ήδη το μίσθωμα μισθωμένου ακινήτου χωρίς καταχωρημένη μίσθωση:
+  // απόδοση, φόρος ενοικίων (lib/facts/taxIncome.ts, κανόνας 4) και Ε2
+  // (lib/billing/e2.ts). Μόλις γραφτεί ενοικιαστής με μίσθωμα, μετρά εκείνο,
+  // οπότε δεν υπάρχει δεύτερη πηγή που να διαφωνεί. Στο κενό, στην ανακαίνιση,
+  // στην πώληση και στο αμφισβητούμενο μένει «στόχος», γιατί εκεί είναι.
+  const leased = statusKey === 'rent_long';
+  const rentLabel = airbnb ? 'Μέσο μηνιαίο έσοδο (€)' : leased ? 'Μηνιαίο μίσθωμα (€)' : 'Στόχος ενοικίου (€/μήνα)';
   const sqmLabel = propType === 'land' ? 'Εμβαδόν οικοπέδου (τ.μ.)' : 'Εμβαδόν (τ.μ.)';
 
   const canNext = step === 0 ? !!propType && statusKey !== null : step === 1 ? !!name.trim() : true;
@@ -747,7 +772,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // δεν προλαβαίνει να διαβαστεί. Όσο γράφει, το παράθυρο μένει.
   //
   // ΤΟ ΒΗΜΑ ΟΠΟΥ ΕΚΛΕΙΣΕ. Νέο ακίνητο που δεν αποθηκεύτηκε ποτέ: το σκαλί
-  // `wizard_closed` λέει σε ποιο από τα πέντε βήματα σταμάτησε. Η επεξεργασία
+  // `wizard_closed` λέει σε ποιο από τα τέσσερα βήματα σταμάτησε. Η επεξεργασία
   // υπάρχοντος, ή ο οδηγός που έχει ήδη γράψει το ακίνητο, δεν μετρά.
   //
   // ΚΑΙ ΔΕΝ ΚΛΕΙΝΕΙ ΧΩΡΙΣ ΕΡΩΤΗΣΗ ΟΣΟ ΥΠΑΡΧΟΥΝ ΑΛΛΑΓΕΣ. Ένας δρόμος για όλα: το
@@ -1081,6 +1106,11 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
                   Η τιμή ανά νύχτα επί τις νύχτες που νοικιάζεται τον μήνα, κατά μέσο όρο μέσα στη χρονιά. Οι καταγεγραμμένες διαμονές αντικαθιστούν αυτή την εκτίμηση παντού όπου υπάρχουν.
                 </div>
               )}
+              {leased && (
+                <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.6 }}>
+                  Όσο πληρώνει σήμερα ο ενοικιαστής, όπως γράφει το μισθωτήριο. Όταν καταχωρήσεις τον ενοικιαστή με τη μίσθωσή του, μετρά το μίσθωμα εκείνης.
+                </div>
+              )}
             </>, rentLabel),
             row('prop.co_owners', 'full', <>
               <input style={monoInputStyle} type="number" inputMode="numeric" min={1} max={99} value={coOwners.length}
@@ -1116,61 +1146,14 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
         />
       )}
 
-      {/* STEP 4, Ρυθμίσεις (property_settings)
+      {/* ΒΗΜΑ 4, Σύνοψη, με τις επαφές (property_settings) από κάτω, κλειστές.
 
-          ΟΛΟΚΛΗΡΟ ΤΟ ΒΗΜΑ ΕΙΝΑΙ «ΠΕΡΙΣΣΟΤΕΡΑ». Κανένα από αυτά δεν χρειάζεται
+          ΟΛΕΣ ΟΙ ΕΠΑΦΕΣ ΕΙΝΑΙ «ΠΕΡΙΣΣΟΤΕΡΑ». Κανένα από αυτά δεν χρειάζεται
           για να υπάρξει το ακίνητο: τα στοιχεία του ιδιοκτήτη έρχονται ήδη
           συμπληρωμένα από το προφίλ και οι πάροχοι γράφονται μόνοι τους με την
-          πρώτη σάρωση λογαριασμού. Το βήμα μένει επειδή ο οδηγός είναι ο μόνος
-          τους επεξεργαστής, όχι επειδή ζητά κάτι από την πρώτη μέρα. Και γι'
-          αυτό τα πεδία φαίνονται κατευθείαν: το StepBody δεν κλείνει βήμα που
-          δεν έχει τίποτα άλλο να δείξει. */}
-      {step === 3 && (
-        <StepBody
-          place={place}
-          rows={[
-            row('prop.owner_name', 'full', <>
-              {/* Λέμε από πού ήρθαν τα στοιχεία. Προσυμπληρωμένο ΑΦΜ που δεν
-                  ελέγχθηκε είναι χειρότερο από κενό: φαίνεται επιβεβαιωμένο. */}
-              {!existing?.id && (settings.owner_name || settings.owner_afm) && (
-                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 6 }}>
-                  Συμπληρώθηκαν από το προφίλ σου. Έλεγξέ τα και άλλαξε ό,τι χρειάζεται.
-                </div>
-              )}
-              <input style={inputStyle} value={settings.owner_name} onChange={setSf('owner_name')} onFocus={onFocus} onBlur={onBlur} />
-            </>, 'Ονοματεπώνυμο'),
-            row('prop.owner_afm', 'auto',
-              <input style={monoInputStyle} value={settings.owner_afm} onChange={setSf('owner_afm')} inputMode="numeric" autoFocus={focusAfm} onFocus={onFocus} onBlur={onBlur} />, 'ΑΦΜ'),
-            row('prop.owner_phone', 'auto',
-              <input style={inputStyle} value={settings.owner_phone} onChange={setSf('owner_phone')} inputMode="tel" onFocus={onFocus} onBlur={onBlur} />, 'Τηλέφωνο'),
-            row('prop.owner_email', 'full',
-              <input type="email" style={inputStyle} value={settings.owner_email} onChange={setSf('owner_email')} onFocus={onFocus} onBlur={onBlur} />, 'Ηλεκτρονικό ταχυδρομείο'),
-            /* ΤΟ «ΠΡΟΓΡΑΜΜΑ» ΕΦΥΓΕ. Ζητούσε το εμπορικό όνομα του πακέτου
-               internet — κάτι που ούτε ο ίδιος ο συνδρομητής θυμάται, δεν
-               χρησιμοποιείται πουθενά στην εφαρμογή και δεν αλλάζει καμία
-               απόφαση. Μια φόρμα καταχώρησης δεν έχει δικαίωμα να ρωτά κάτι
-               που δεν πρόκειται να χρησιμοποιήσει. */
-            row('prop.providers', 'full', <div style={grid3}>
-              <Field label="Ρεύμα"><input style={inputStyle} value={settings.electricity_provider} onChange={setSf('electricity_provider')} onFocus={onFocus} onBlur={onBlur} /></Field>
-              <Field label="Νερό"><input style={inputStyle} value={settings.water_provider} onChange={setSf('water_provider')} onFocus={onFocus} onBlur={onBlur} /></Field>
-              <Field label="Internet"><input style={inputStyle} value={settings.internet_provider} onChange={setSf('internet_provider')} onFocus={onFocus} onBlur={onBlur} /></Field>
-            </div>),
-            row('prop.manager', 'full', <div style={grid2}>
-              <Field label="Ονοματεπώνυμο"><input style={inputStyle} value={settings.property_manager} onChange={setSf('property_manager')} onFocus={onFocus} onBlur={onBlur} /></Field>
-              <Field label="Τηλέφωνο"><input style={inputStyle} value={settings.property_manager_phone} onChange={setSf('property_manager_phone')} inputMode="tel" onFocus={onFocus} onBlur={onBlur} /></Field>
-            </div>),
-            row('prop.insurance', 'full', <div style={grid3}>
-              <Field label="Ασφαλιστική"><input style={inputStyle} value={settings.insurance_company} onChange={setSf('insurance_company')} onFocus={onFocus} onBlur={onBlur} /></Field>
-              <Field label="Αριθμός ασφαλιστηρίου"><input style={inputStyle} value={settings.insurance_policy} onChange={setSf('insurance_policy')} onFocus={onFocus} onBlur={onBlur} /></Field>
-              <Field label="Λήξη"><DatePicker value={settings.insurance_expiry} onChange={v => setSettings(p => ({ ...p, insurance_expiry: v }))} /></Field>
-            </div>),
-            row('prop.notes', 'full',
-              <textarea value={settings.notes} onChange={setSf('notes')} rows={4} style={{ ...inputStyle, height: 'auto', resize: 'none' }} />, 'Σημειώσεις'),
-          ]}
-        />
-      )}
-      {/* STEP 5, Σύνοψη */}
-      {step === 4 && (
+          πρώτη σάρωση λογαριασμού. Ηταν δικό τους βήμα, με ένα μόνο κουμπί μέσα·
+          τώρα είναι ένα κουτί στο τέλος, πριν από την «Προσθήκη ακινήτου». */}
+      {step === SUMMARY_STEP && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup }}>
             <div style={{ color: 'var(--accent)' }}><TypeIcon type={propType} /></div>
@@ -1210,7 +1193,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               num(enfia) != null ? ['ΕΝΦΙΑ που πληρώνεις', `${fe(num(enfia)!)} / έτος`, true] : null,
               [labelOf('prop.purchase_price'), num(purchasePrice) != null ? fe(num(purchasePrice)!) : ABSENT, true],
               purchaseDate ? [labelOf('prop.purchase_date'), fd(purchaseDate)] : null,
-              [airbnb ? 'Μέσο μηνιαίο έσοδο' : 'Στόχος ενοικίου', rentN != null ? `${fe(rentN)} / μήνα` : ABSENT, true],
+              [airbnb ? 'Μέσο μηνιαίο έσοδο' : leased ? 'Μηνιαίο μίσθωμα' : 'Στόχος ενοικίου', rentN != null ? `${fe(rentN)} / μήνα` : ABSENT, true],
               [labelOf('prop.ownership'), share(ownershipN ?? 100), true],
               ['Εκτιμώμενη μεικτή απόδοση', grossYield != null ? fp(grossYield) : ABSENT, true],
             ].filter(Boolean) as [string, string, boolean?][]).map(([k, v, numeric], i) => (
@@ -1220,6 +1203,54 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               </div>
             ))}
           </div>
+          {/* Στη Σύνοψη οι ετικέτες του μητρώου λένε ΤΙΝΟΣ είναι το στοιχείο
+              («Ονοματεπώνυμο ιδιοκτήτη»): δεν υπάρχει πια τίτλος βήματος
+              «Επαφές» από πάνω τους να το πει. */}
+          <StepBody
+            place={place}
+            moreTitle="Επαφές, προαιρετικά"
+            lessTitle="Απόκρυψη επαφών"
+            defaultOpen={focusAfm}
+            rows={[
+              row('prop.owner_name', 'full', <>
+                {/* Λέμε από πού ήρθαν τα στοιχεία. Προσυμπληρωμένο ΑΦΜ που δεν
+                    ελέγχθηκε είναι χειρότερο από κενό: φαίνεται επιβεβαιωμένο. */}
+                {!existing?.id && (settings.owner_name || settings.owner_afm) && (
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 6 }}>
+                    Συμπληρώθηκαν από το προφίλ σου. Έλεγξέ τα και άλλαξε ό,τι χρειάζεται.
+                  </div>
+                )}
+                <input style={inputStyle} value={settings.owner_name} onChange={setSf('owner_name')} onFocus={onFocus} onBlur={onBlur} />
+              </>),
+              row('prop.owner_afm', 'auto',
+                <input style={monoInputStyle} value={settings.owner_afm} onChange={setSf('owner_afm')} inputMode="numeric" autoFocus={focusAfm} onFocus={onFocus} onBlur={onBlur} />),
+              row('prop.owner_phone', 'auto',
+                <input style={inputStyle} value={settings.owner_phone} onChange={setSf('owner_phone')} inputMode="tel" onFocus={onFocus} onBlur={onBlur} />),
+              row('prop.owner_email', 'full',
+                <input type="email" style={inputStyle} value={settings.owner_email} onChange={setSf('owner_email')} onFocus={onFocus} onBlur={onBlur} />),
+              /* ΤΟ «ΠΡΟΓΡΑΜΜΑ» ΕΦΥΓΕ. Ζητούσε το εμπορικό όνομα του πακέτου
+                 internet — κάτι που ούτε ο ίδιος ο συνδρομητής θυμάται, δεν
+                 χρησιμοποιείται πουθενά στην εφαρμογή και δεν αλλάζει καμία
+                 απόφαση. Μια φόρμα καταχώρησης δεν έχει δικαίωμα να ρωτά κάτι
+                 που δεν πρόκειται να χρησιμοποιήσει. */
+              row('prop.providers', 'full', <div style={grid3}>
+                <Field label="Ρεύμα"><input style={inputStyle} value={settings.electricity_provider} onChange={setSf('electricity_provider')} onFocus={onFocus} onBlur={onBlur} /></Field>
+                <Field label="Νερό"><input style={inputStyle} value={settings.water_provider} onChange={setSf('water_provider')} onFocus={onFocus} onBlur={onBlur} /></Field>
+                <Field label="Internet"><input style={inputStyle} value={settings.internet_provider} onChange={setSf('internet_provider')} onFocus={onFocus} onBlur={onBlur} /></Field>
+              </div>),
+              row('prop.manager', 'full', <div style={grid2}>
+                <Field label="Ονοματεπώνυμο"><input style={inputStyle} value={settings.property_manager} onChange={setSf('property_manager')} onFocus={onFocus} onBlur={onBlur} /></Field>
+                <Field label="Τηλέφωνο"><input style={inputStyle} value={settings.property_manager_phone} onChange={setSf('property_manager_phone')} inputMode="tel" onFocus={onFocus} onBlur={onBlur} /></Field>
+              </div>),
+              row('prop.insurance', 'full', <div style={grid3}>
+                <Field label="Ασφαλιστική"><input style={inputStyle} value={settings.insurance_company} onChange={setSf('insurance_company')} onFocus={onFocus} onBlur={onBlur} /></Field>
+                <Field label="Αριθμός ασφαλιστηρίου"><input style={inputStyle} value={settings.insurance_policy} onChange={setSf('insurance_policy')} onFocus={onFocus} onBlur={onBlur} /></Field>
+                <Field label="Λήξη"><DatePicker value={settings.insurance_expiry} onChange={v => setSettings(p => ({ ...p, insurance_expiry: v }))} /></Field>
+              </div>),
+              row('prop.notes', 'full',
+                <textarea value={settings.notes} onChange={setSf('notes')} rows={4} style={{ ...inputStyle, height: 'auto', resize: 'none' }} />, 'Σημειώσεις'),
+            ]}
+          />
         </div>
       )}
 

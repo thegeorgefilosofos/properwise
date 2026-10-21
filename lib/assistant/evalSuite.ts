@@ -34,7 +34,8 @@ import {
   rentalBracketsForYear, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT,
   STR_INDIVIDUAL_MAX_PROPERTIES, MUNICIPAL_ACCOM_TAX_RATE,
 } from '../billing/greekTax';
-import { greekPropertyTaxObligations, INCOME_TAX_INSTALMENTS, type TaxObligation } from '../tax/greekTaxCalendar';
+import { greekPropertyTaxObligations, taxObligationsHorizon, INCOME_TAX_INSTALMENTS, type TaxObligation } from '../tax/greekTaxCalendar';
+import { athensToday } from '../core/time';
 import { DSTI_LIMIT, maxMonthlyPayment } from '../loans/affordability';
 import { fe, feWhole, fn, fpRate } from '../core/format';
 import { roundHalfUp } from '../core/money';
@@ -139,7 +140,8 @@ function presumptiveCases(): SuiteCase[] {
       id: `presumptive-taxable-2027-cash-${g27}`,
       category: 'presumptive',
       question: `Το 2027 θα εισπράξω ${feWhole(g27)} ενοίκια από μακροχρόνια μίσθωση κατοικίας, σε μετρητά, ισόποσα κάθε μήνα. Πόσο θα είναι το φορολογητέο εισόδημα από αυτά, μετά την τεκμαρτή έκπτωση;`,
-      knowledge: 'not-in-prompt',
+      // Η μισή χρήση του πρώτου έτους της κύρωσης μπήκε στη γνώση (20/10/2026).
+      knowledge: 'in-prompt',
       source: 'presumptiveDeductionRateForYear(2027, false)',
       expect: {
         amounts: [{ value: taxable27, tolerance: CENTS, label: 'φορολογητέο' }],
@@ -230,7 +232,7 @@ function instalmentCases(): SuiteCase[] {
       id: 'enfia-min-instalment',
       category: 'enfia_instalments',
       question: 'Ποιο είναι το ελάχιστο ποσό κάθε δόσης του ΕΝΦΙΑ;',
-      knowledge: 'not-in-prompt',
+      knowledge: 'in-prompt',
       source: 'ENFIA_MIN_INSTALMENT (lib/tools/enfiaSchedule.ts)',
       expect: { amounts: [{ value: ENFIA_MIN_INSTALMENT, tolerance: 0, label: 'ελάχιστη δόση' }] },
     },
@@ -238,7 +240,7 @@ function instalmentCases(): SuiteCase[] {
       id: `enfia-instalments-${fn(small, 2).replace(',', '-')}`,
       category: 'enfia_instalments',
       question: `Το εκκαθαριστικό του ΕΝΦΙΑ 2026 γράφει ${fe(small)}. Σε πόσες μηνιαίες δόσεις μπορώ να το πληρώσω και πόση είναι η πρώτη δόση;`,
-      knowledge: 'not-in-prompt',
+      knowledge: 'in-prompt',
       source: `enfiaInstalmentCount(${small}) · enfiaInstalments(${small}, 2026)[0].amount`,
       expect: {
         amounts: [
@@ -254,7 +256,7 @@ function instalmentCases(): SuiteCase[] {
       id: `enfia-instalments-${fn(tiny, 2).replace(',', '-')}`,
       category: 'enfia_instalments',
       question: `Ο ΕΝΦΙΑ μου για το 2026 είναι ${fe(tiny)}. Μπορώ να τον πληρώσω σε δόσεις;`,
-      knowledge: 'not-in-prompt',
+      knowledge: 'in-prompt',
       source: `enfiaInstalmentCount(${tiny}) = 1`,
       expect: {
         amounts: [{ value: tiny, tolerance: CENTS, label: 'ολόκληρο το ποσό' }],
@@ -266,7 +268,7 @@ function instalmentCases(): SuiteCase[] {
       id: `enfia-instalments-${fn(full, 2).replace(',', '-')}`,
       category: 'enfia_instalments',
       question: `Ο ΕΝΦΙΑ του 2026 μου βγήκε ${fe(full)}. Αν τον πληρώσω σε όλες τις δόσεις, πόση θα είναι η κάθε μηνιαία δόση;`,
-      knowledge: 'not-in-prompt',
+      knowledge: 'in-prompt',
       source: `enfiaInstalments(${full}, 2026)[0].amount · ${fu.length} δόσεις`,
       expect: { amounts: [{ value: fu[0].amount, tolerance: CENTS, label: 'μηνιαία δόση' }] },
       computed: [fu[0].amount],
@@ -283,6 +285,14 @@ const obligation = (year: number, id: string): TaxObligation => {
   return o;
 };
 
+// ΤΙ ΞΕΡΕΙ Η ΝΟΑ ΓΙΑ ΤΙΣ ΠΡΟΘΕΣΜΙΕΣ ΤΟ ΛΕΕΙ Ο ΟΡΙΖΟΝΤΑΣ ΤΗΣ ΜΕΡΑΣ. Η γνώση της
+// γράφει τις προθεσμίες του `taxObligationsHorizon` της μέρας της ερώτησης
+// (assistantPersona.ts, `deadlinesText`). Μια προθεσμία του 2026 που έχει
+// βγει από τον ορίζοντα (π.χ. τον Απρίλιο του 2027) δεν είναι πια στη γνώση και
+// μετρά ξανά χωριστά, χωρίς να αλλάξει κανείς την ετικέτα με το χέρι.
+const knows = (o: TaxObligation): SuiteCase['knowledge'] =>
+  taxObligationsHorizon(athensToday(), 'short_term').some(x => x.id === o.id) ? 'in-prompt' : 'not-in-prompt';
+
 function deadlineCases(): SuiteCase[] {
   const decl = obligation(2026, 'income-decl-2026');
   const auto = obligation(2026, 'income-autofile-2026');
@@ -294,7 +304,7 @@ function deadlineCases(): SuiteCase[] {
       id: 'deadline-income-decl-2026',
       category: 'deadlines',
       question: 'Ως πότε πρέπει να υποβάλω φέτος, το 2026, τη φορολογική δήλωση με το Ε2 για τα ενοίκια;',
-      knowledge: 'not-in-prompt',
+      knowledge: knows(decl),
       source: `greekPropertyTaxObligations(2026).${decl.id}`,
       expect: { dates: [decl.date], required: [ACCOUNTANT] },
     },
@@ -302,7 +312,7 @@ function deadlineCases(): SuiteCase[] {
       id: 'deadline-autofile-2026',
       category: 'deadlines',
       question: 'Η δήλωσή μου το 2026 ήταν προσυμπληρωμένη. Μέχρι πότε μπορώ να τη διορθώσω πριν οριστικοποιηθεί αυτόματα;',
-      knowledge: 'not-in-prompt',
+      knowledge: knows(auto),
       source: `greekPropertyTaxObligations(2026).${auto.id}`,
       expect: { dates: [auto.date] },
     },
@@ -310,7 +320,7 @@ function deadlineCases(): SuiteCase[] {
       id: 'deadline-enfia-8-2026',
       category: 'deadlines',
       question: 'Πότε λήγει η 8η δόση του ΕΝΦΙΑ 2026;',
-      knowledge: 'not-in-prompt',
+      knowledge: knows(e8),
       source: `greekPropertyTaxObligations(2026).${e8.id}`,
       expect: { dates: [e8.date] },
     },
@@ -318,7 +328,7 @@ function deadlineCases(): SuiteCase[] {
       id: 'deadline-enfia-last-2026',
       category: 'deadlines',
       question: 'Ποια είναι η τελευταία προθεσμία για την τελευταία δόση του ΕΝΦΙΑ 2026;',
-      knowledge: 'not-in-prompt',
+      knowledge: knows(last),
       source: `greekPropertyTaxObligations(2026).${last.id}`,
       expect: { dates: [last.date] },
     },
@@ -326,7 +336,7 @@ function deadlineCases(): SuiteCase[] {
       id: 'deadline-str-registry-2026-05',
       category: 'deadlines',
       question: 'Έχω Airbnb. Ως πότε πρέπει να υποβάλω στο Μητρώο Βραχυχρόνιας Διαμονής τη δήλωση για τις αναχωρήσεις του Μαΐου 2026;',
-      knowledge: 'not-in-prompt',
+      knowledge: knows(reg),
       source: `greekPropertyTaxObligations(2026, 'short_term').${reg.id}`,
       expect: { dates: [reg.date] },
     },
@@ -334,7 +344,7 @@ function deadlineCases(): SuiteCase[] {
       id: 'deadline-income-tax-instalments',
       category: 'deadlines',
       question: 'Σε πόσες μηνιαίες δόσεις μπορώ να πληρώσω τον φόρο εισοδήματος που θα βγει από τη δήλωσή μου;',
-      knowledge: 'not-in-prompt',
+      knowledge: 'in-prompt',
       source: 'INCOME_TAX_INSTALMENTS (lib/tax/greekTaxCalendar.ts)',
       expect: { amounts: [{ value: INCOME_TAX_INSTALMENTS, tolerance: 0, label: 'δόσεις' }] },
     },
@@ -349,7 +359,7 @@ function shortTermCases(): SuiteCase[] {
       id: `str-${max}-no-business`,
       category: 'short_term',
       question: `Είμαι ιδιώτης και νοικιάζω ${max} διαμερίσματα μέσω Airbnb, χωρίς πρωινό ή άλλες υπηρεσίες. Χρειάζεται να κάνω έναρξη εργασιών στην εφορία;`,
-      knowledge: 'not-in-prompt',
+      knowledge: 'in-prompt',
       source: 'STR_INDIVIDUAL_MAX_PROPERTIES (greekTax.ts) · άρθρο 39Α ΚΦΕ',
       expect: {
         required: [{ label: 'δεν χρειάζεται έναρξη', any: ['δεν χρειαζ', 'δεν απαιτ', 'χωρις εναρξη', 'δεν υποχρεουσαι', 'δεν εχεις υποχρεωση', 'οχι, δεν'] }],
@@ -360,7 +370,7 @@ function shortTermCases(): SuiteCase[] {
       id: `str-${max + 1}-business`,
       category: 'short_term',
       question: `Είμαι ιδιώτης και θέλω να βάλω στο Airbnb και ${max + 1}ο ακίνητο, δηλαδή ${max + 1} συνολικά. Αλλάζει κάτι φορολογικά;`,
-      knowledge: 'not-in-prompt',
+      knowledge: 'in-prompt',
       source: 'STR_INDIVIDUAL_MAX_PROPERTIES + 1 (greekTax.ts) · άρθρο 39Α ΚΦΕ',
       expect: { required: [{ label: 'έναρξη ή επιχειρηματική δραστηριότητα', any: ['εναρξη', 'επιχειρηματικ'] }, ACCOUNTANT] },
     },
@@ -368,7 +378,7 @@ function shortTermCases(): SuiteCase[] {
       id: `str-municipal-${max}-exempt`,
       category: 'short_term',
       question: `Πληρώνω τέλος παρεπιδημούντων στον δήμο αν είμαι ιδιώτης με ${max} ακίνητα σε βραχυχρόνια μίσθωση;`,
-      knowledge: 'not-in-prompt',
+      knowledge: 'in-prompt',
       source: 'isMunicipalTaxExempt({ individual: true, propertyCount: 2 })',
       expect: { required: [{ label: 'εξαιρείται', any: ['εξαιρ', 'δεν πληρων', 'δεν οφειλ', 'δεν επιβαρυν', 'απαλλασσ'] }] },
     },

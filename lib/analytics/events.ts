@@ -44,7 +44,7 @@ export const PRODUCT_EVENTS = {
   welcome_later: 'welcome_later',
   /** Άνοιξε ο οδηγός νέου ακινήτου· `from` από πού (`WIZARD_FROM`). */
   wizard_opened: 'wizard_opened',
-  /** Έκλεισε ο οδηγός χωρίς αποθήκευση· `step` το βήμα (1 έως 5). */
+  /** Έκλεισε ο οδηγός χωρίς αποθήκευση· `step` το βήμα (1 έως 4· ως τις 20/10/2026 ήταν πέντε, με τις «Επαφές» στο 4). */
   wizard_closed: 'wizard_closed',
   /** Άνοιξε η σάρωση εγγράφου. */
   scan_opened: 'scan_opened',
