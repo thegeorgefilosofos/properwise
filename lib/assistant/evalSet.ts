@@ -105,8 +105,9 @@ function soleCase(profit: number, opts: { age?: number; advance?: boolean; first
     ? 'Πόση προκαταβολή φόρου θα βεβαιωθεί για τον επόμενο χρόνο;'
     : 'Πόσο φόρο εισοδήματος θα πληρώσω;';
   const tag = opts.advance ? 'advance' : opts.age ? `age${opts.age}` : opts.firstThreeYears ? 'first3' : 'tax';
-  // ΤΟ ΛΑΘΟΣ ΠΟΥ ΨΑΧΝΟΥΜΕ ΣΤΟΥΣ ΝΕΟΥΣ: η κανονική κλίμακα, σαν να μην υπήρχε η ηλικία.
-  const noAge = opts.age && !opts.advance
+  // ΤΟ ΛΑΘΟΣ ΠΟΥ ΨΑΧΝΟΥΜΕ ΣΤΟΥΣ ΝΕΟΥΣ ΚΑΙ ΣΤΗΝ ΠΡΩΤΗ ΤΡΙΕΤΙΑ: η κανονική κλίμακα,
+  // σαν να μην υπήρχε η ηλικία ή η τριετία.
+  const noAge = (opts.age || opts.firstThreeYears) && !opts.advance
     ? incomeStatement({ regime: 'business', businessForm: 'sole', grossIncome: profit, itemizedExpenses: 0 })
     : null;
   const youthWrong = noAge && Math.abs(noAge.incomeTax - s.incomeTax) > TOLERANCE ? noAge.incomeTax : null;
@@ -116,8 +117,9 @@ function soleCase(profit: number, opts: { age?: number; advance?: boolean; first
     expected: opts.advance ? s.advanceTax : s.incomeTax,
     tolerance: TOLERANCE,
     source: `incomeStatement({ regime: 'business', businessForm: 'sole' })${opts.advance ? '.advanceTax' : '.incomeTax'}`,
-    // Η κλίμακα της πρώτης τριετίας δεν είναι στη γνώση της Νόας.
-    category: opts.firstThreeYears ? 'not-in-prompt' : 'in-prompt-method',
+    // Η κλίμακα της πρώτης τριετίας μπήκε στη γνώση στις 21/10/2026, από το
+    // NEW_PROFESSIONAL_BRACKETS_2026 (assistantPersona.ts).
+    category: 'in-prompt-method',
     ...(youthWrong != null ? { wrong: [youthWrong], wrongMethod: { taxable: profit, brackets: art15BracketsForAge() } } : {}),
     inputs: [profit],
   };
@@ -165,7 +167,7 @@ export const NOA_EVAL_CASES: readonly NoaEvalCase[] = [
   // κλιμάκιο 26% της κανονικής κλίμακας και η λάθος ανάλυση θα περνούσε.
   soleCase(34000, { age: 24 }),
   soleCase(23000, { age: 28 }),
-  // Εκτός prompt: μετριέται χωριστά, δεν μπαίνει στο ποσοστό.
+  // Νέος επαγγελματίας, πρώτη τριετία: η κλίμακα του NEW_PROFESSIONAL_BRACKETS_2026.
   soleCase(15000, { firstThreeYears: true }),
 ];
 

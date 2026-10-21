@@ -17,9 +17,10 @@ import { estimateENFIA } from '../billing/enfia';
 import { enfiaInstalments, ENFIA_MIN_INSTALMENT } from '../tools/enfiaSchedule';
 import { maxMonthlyPayment, DSTI_LIMIT } from '../loans/affordability';
 import { greekPropertyTaxObligations } from '../tax/greekTaxCalendar';
-import { fn, fpRate, grDate } from '../core/format';
+import { fn, fpRate, feWhole, grDate } from '../core/format';
 import { presumptiveDeductionRateForYear } from '../billing/presumptive';
-import { STR_INDIVIDUAL_MAX_PROPERTIES } from '../billing/greekTax';
+import { STR_INDIVIDUAL_MAX_PROPERTIES, NEW_PROFESSIONAL_BRACKETS_2026, BUSINESS_INCOME_BRACKETS_2026 } from '../billing/greekTax';
+import { ENFIA_EXTRA_BRACKETS, ENFIA_EXTRA_TAX_FREE } from '../billing/enfia';
 import { INCOME_TAX_INSTALMENTS } from '../tax/greekTaxCalendar';
 import { roundHalfUp } from '../core/money';
 import { athensNowLabel, athensToday } from '../core/time';
@@ -71,6 +72,8 @@ for (const c of NOA_SUITE) {
 // ── 3. ΚΑΝΕΝΑ ΑΠΟΤΕΛΕΣΜΑ ΜΕΘΟΔΟΥ ΣΤΟ PROMPT ─────────────────────────────────
 // Αν το αναμενόμενο υπάρχει ήδη στη γνώση της Νόας, μετράμε αντιγραφή, όχι
 // μέθοδο. Με όρια ψηφίων, όπως στο evalSet.test.ts.
+// «4,5%», «0,2%», «9%»: το ποσοστό με το σύμβολο, όπως το γράφει η γνώση.
+const pc = (r: number) => fpRate(roundHalfUp(r * 100, 2));
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const forms = (n: number) => [...new Set([fn(n, 2), Number.isInteger(n) ? fn(n) : '', String(n).replace('.', ',')].filter(Boolean))];
 const appearsIn = (text: string, n: number) =>
@@ -110,16 +113,20 @@ for (const c of NOA_SUITE.filter(x => x.computed?.length && x.category !== 'rent
     ['deadline-income-tax-instalments', new RegExp(`έως ${INCOME_TAX_INSTALMENTS} ισόποσες μηνιαίες δόσεις`)],
     [`str-${STR_INDIVIDUAL_MAX_PROPERTIES + 1}-business`, new RegExp(`Με ${STR_INDIVIDUAL_MAX_PROPERTIES + 1} ή περισσότερα ακίνητα[^.]*έναρξη εργασιών`)],
     [`str-municipal-${STR_INDIVIDUAL_MAX_PROPERTIES}-exempt`, new RegExp(`έως ${STR_INDIVIDUAL_MAX_PROPERTIES} ακίνητα βραχυχρόνιας εξαιρείται`)],
+    // Οι δύο τελευταίοι (21/10/2026): το πρώτο κλιμάκιο του νέου επαγγελματία
+    // απέναντι στο κανονικό και το πρώτο και το τελευταίο κλιμάκιο του
+    // πρόσθετου φόρου, με τα ποσοστά από τις σταθερές.
+    ['sole-2026-first3-15000', new RegExp(`ΝΕΟΣ ΕΠΑΓΓΕΛΜΑΤΙΑΣ[^•]*${esc(pc(NEW_PROFESSIONAL_BRACKETS_2026[0].rate))} αντί ${esc(pc(BUSINESS_INCOME_BRACKETS_2026[0].rate))}`)],
+    [`enfia-2026-extra-560000`, new RegExp(`ΠΡΟΣΘΕΤΟΣ ΦΟΡΟΣ ΑΞΙΑΣ[^•]*${esc(pc(ENFIA_EXTRA_BRACKETS[0].rate))} από ${esc(feWhole(ENFIA_EXTRA_TAX_FREE))} έως ${esc(feWhole(ENFIA_EXTRA_BRACKETS[0].upto))}[^•]*${esc(pc(ENFIA_EXTRA_BRACKETS.at(-1)!.rate))} πάνω από ${esc(feWhole(ENFIA_EXTRA_BRACKETS.at(-2)!.upto))}`)],
   ];
   // ΚΑΙ ΚΑΜΙΑ ΕΡΩΤΗΣΗ ΔΕΝ ΜΕΝΕΙ «ΕΚΤΟΣ» ΧΩΡΙΣ ΛΟΓΟ. Από τις δεκαέξι του #413
-  // μένουν δύο, γιατί η μέθοδός τους δεν είναι στη γνώση: η κλίμακα της
-  // πρώτης τριετίας και ο πρόσθετος φόρος της αξίας στον ΕΝΦΙΑ. Μια τρίτη
-  // εδώ σημαίνει ότι κάποιος έβγαλε κανόνα από τη γνώση ή πρόσθεσε ερώτηση
+  // δεν μένει καμία: οι δύο τελευταίες (η κλίμακα της πρώτης τριετίας και ο
+  // πρόσθετος φόρος της αξίας στον ΕΝΦΙΑ) μπήκαν στη γνώση στις 21/10/2026.
+  // Μία εδώ σημαίνει ότι κάποιος έβγαλε κανόνα από τη γνώση ή πρόσθεσε ερώτηση
   // χωρίς να την ελέγξει απέναντι στο prompt. Οι προθεσμίες μένουν έξω από
   // τη μέτρηση: η ετικέτα τους ακολουθεί τον ορίζοντα της μέρας (evalSuite.ts).
   const outside = NOA_SUITE.filter(c => c.knowledge === 'not-in-prompt' && c.category !== 'deadlines').map(c => c.id).sort();
-  ok(`εκτός γνώσης μόνο τα δύο γνωστά (${outside.join(', ')})`,
-    outside.length === 2 && outside.some(id => id.startsWith('sole-2026-first3')) && outside.some(id => id.startsWith('enfia-2026-extra')));
+  ok(`καμία ερώτηση εκτός γνώσης (${outside.join(', ')})`, outside.length === 0);
   for (const [id, re] of facts) {
     const c = byId(id);
     ok(`${id}: υπάρχει`, !!c);
