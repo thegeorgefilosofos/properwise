@@ -172,9 +172,11 @@ for (const q of [
     const j = i < 0 ? -1 : src.indexOf(b, i);
     return i < 0 || j < 0 ? null : src.slice(i, j).replace(/\$\{[^}]*\}/g, '');
   };
-  const handTyped = (seg: string) => [
-    ...seg.matchAll(/\d{1,3}(?:\.\d{3})+|\d+(?:,\d+)?\s*(?:%|€|k\b)|\d+\/\d+/g),
-  ].map(m => m[0]);
+  // ΚΑΘΕ ψηφίο μετρά: και ένα «855» χωρίς τελεία χιλιάδων ή μονάδα (ανεξάρτητος
+  // έλεγχος του #425 το έγραψε με το χέρι και πέρασε). Εξαιρούνται μόνο όσα δεν
+  // είναι ποσά: ο αριθμός του άρθρου και οι ηλικίες.
+  const NOT_AMOUNTS = /άρθρου 15|≤25|26–30/g;
+  const handTyped = (seg: string) => [...seg.replace(NOT_AMOUNTS, '').matchAll(/\d[\d.,/]*/g)].map(m => m[0]);
   const examples = between('ΕΠΑΛΗΘΕΥΜΕΝΟΙ ΥΠΟΛΟΓΙΣΜΟΙ, ΧΡΗΣΙΜΟΠΟΙΗΣΕ', 'ΕΝΦΙΑ: 100');
   ok('βρέθηκαν τα επαληθευμένα παραδείγματα στην πηγή', examples != null);
   const ex = handTyped(examples ?? '');
