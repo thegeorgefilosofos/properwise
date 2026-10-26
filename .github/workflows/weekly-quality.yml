@@ -1,0 +1,225 @@
+name: Ποιότητα παραγωγής, κάθε εβδομάδα
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ΓΙΑΤΙ ΥΠΑΡΧΕΙ ΑΥΤΟ ΤΟ WORKFLOW
+#
+# Το ci.yml κρίνει τον ΚΩΔΙΚΟ τη στιγμή που αλλάζει. Τρία πράγματα όμως
+# χαλάνε χωρίς να αλλάξει γραμμή εδώ, ή χαλάνε σε σημείο που το PR δεν
+# κοιτάζει:
+#
+#   1. ΔΙΑΤΑΞΗ. Η οπτική σάρωση (scripts/e2e-optiki-sarosi.mjs) βρήκε 441
+#      ευρήματα σε μία μέρα (21/10/2026), 94 αληθινά, όλα περασμένα από
+#      πράσινο CI. Είναι πολύ ακριβή για κάθε PR (βλ. το κόστος πιο κάτω),
+#      οπότε τρέχει εδώ, με καστάνια: κοκκινίζει μόνο όταν μια κατηγορία
+#      ΑΝΕΒΕΙ σε σχέση με το scripts/optiki-baseline.json.
+#   2. ΣΥΝΔΕΣΜΟΙ. Ενας οδηγός που σβήστηκε αφήνει 404 σε κάθε σελίδα που τον
+#      ανέφερε. Μια διεύθυνση του gov.gr που άλλαξε αφήνει τον επισκέπτη χωρίς
+#      την απόδειξη για το νούμερο που μόλις διάβασε.
+#   3. ΠΕΡΙΕΧΟΜΕΝΟ ΜΕ ΖΩΝΤΑΝΑ ΔΕΔΟΜΕΝΑ. Το CI χτίζει χωρίς βάση, άρα χωρίς
+#      τιμές αγοράς: ο έλεγχος «το ίδιο νούμερο σε κάθε θέση» εκεί ελέγχει
+#      μόνο ότι καμία θέση δεν γράφει επιτόκιο. Εδώ τρέχει απέναντι στην
+#      παραγωγή, όπου οι τιμές της ΕΚΤ υπάρχουν.
+#
+# ΤΙ ΔΕΝ ΞΑΝΑΚΑΝΕΙ. Το «ανοίγει η σελίδα» το κρίνει ήδη ο έλεγχος υγείας
+# (supabase/functions/health-check, κάθε τέταρτο, δωρεάν) σε επτά διαδρομές.
+# Εδώ ο ΙΔΙΟΣ κανόνας (verdictOf του supabase/functions/_shared/probe.mjs)
+# εφαρμόζεται σε κάθε σελίδα του χάρτη, μία φορά την εβδομάδα. Οχι δεύτερο
+# αντίγραφο του κανόνα.
+#
+# ΤΙ ΔΕΝ ΚΑΝΕΙ ΠΟΤΕ. Δεν κάνει deploy, δεν γράφει σε βάση, δεν έχει κανένα
+# μυστικό πέρα από το GITHUB_TOKEN για το ζήτημα. Απέναντι στην παραγωγή
+# στέλνει μόνο GET και HEAD· οι περιηγητές κόβουν κάθε άλλο αίτημα πριν
+# φύγει, μαζί με τα μετρητικά επισκεψιμότητας. Ο πίνακας ελέγχου σαρώνεται
+# στον τοπικό πάγκο (.perf-bench), όχι σε λογαριασμό.
+#
+# ΟΤΑΝ ΒΡΕΙ ΚΑΤΙ. Ανοίγει ΕΝΑ ζήτημα με τη λίστα, το σχολιάζει στις επόμενες
+# εβδομάδες όσο μένει ανοιχτό και το κλείνει μόνο του όταν βγει καθαρό. Ιδιος
+# μηχανισμός με το security-daily.yml. Η δουλειά δεν κοκκινίζει ποτέ για
+# εύρημα: το εύρημα είναι το ζήτημα. Κοκκινίζει μόνο αν σπάσει η ίδια.
+#
+# ΚΟΣΤΟΣ, ΜΕΤΡΗΜΕΝΟ ΤΟΠΙΚΑ 26/10/2026 ΣΕ ΤΕΣΣΕΡΙΣ ΠΥΡΗΝΕΣ:
+#
+#     οπτική σάρωση, 68 οθόνες × 4 πλάτη, σκούρο    312΄΄
+#     το ίδιο ποσό σε κάθε θέση                       64΄΄
+#     σύνδεσμοι (χωρίς τους ξένους host)               5΄΄
+#     πάγκος                                           3΄΄
+#
+# Ο δρομέας του ιδιωτικού αποθετηρίου έχει δύο πυρήνες και κάθε σουίτα
+# περιηγητή τρέχει περίπου στον διπλάσιο χρόνο (βλ. ci.yml, «rendered»). Με
+# «npm ci», Chromium και τους ξένους συνδέσμους: περίπου 17 λεπτά ανά
+# εκτέλεση, 74 τον μήνα. Το νούμερο το κρατά το scripts/guard-ci-minutes.mjs
+# (MEASURED_MINUTES_PER_RUN) και διορθώνεται με την πρώτη αληθινή εκτέλεση.
+#
+# ΓΙΑΤΙ ΟΧΙ ΣΕ ΚΑΘΕ PR. Η ίδια σάρωση μέσα στο υπάρχον job «rendered» του
+# ci.yml, που έχει ήδη χτίσιμο, πάγκο και διακομιστή, θα πρόσθετε περίπου
+# 10 λεπτά σε κάθε εκτέλεση (312΄΄ × 2). Το όριο που τέθηκε ήταν 3.
+#
+# ΓΙΑΤΙ ΜΟΝΟ ΣΚΟΥΡΟ ΘΕΜΑ. Στο πλήρες πέρασμα με τα δύο θέματα (321 ευρήματα)
+# κανένα εύρημα δεν υπήρχε μόνο στο φωτεινό: η σάρωση κρίνει διάταξη, όχι
+# χρώμα. Τα χρώματα και την αντίθεση στα δύο θέματα τα κρίνουν ήδη οι σαρωτές
+# του ci.yml. Το δεύτερο θέμα θα διπλασίαζε τον χρόνο χωρίς να βρίσκει τίποτα.
+# ═══════════════════════════════════════════════════════════════════════════
+
+on:
+  schedule:
+    # Κυριακή 20:47 UTC: 22:47 ώρα Ελλάδας τον χειμώνα, 23:47 το καλοκαίρι.
+    # Κανείς δεν κάνει deploy εκείνη την ώρα και το ζήτημα περιμένει τη
+    # Δευτέρα το πρωί. Το λεπτό δεν είναι στρογγυλό για να μην πέφτει πάνω
+    # στον συνωστισμό των :00 του GitHub.
+    - cron: '47 20 * * 0'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: weekly-quality
+  cancel-in-progress: false
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  # ΜΙΑ ΔΟΥΛΕΙΑ ΚΑΙ ΟΧΙ ΤΡΕΙΣ. Το GitHub χρεώνει ανά δουλειά, με
+  # στρογγυλοποίηση προς τα πάνω· τρεις δουλειές θα πλήρωναν τρεις φορές
+  # checkout, «npm ci» και Chromium για ελέγχους που διαρκούν λιγότερο από
+  # την εγκατάστασή τους.
+  sweep:
+    runs-on: ubuntu-latest
+    # Μετρημένο τοπικά σε τέσσερις πυρήνες: βλ. την περιγραφή του PR. Ο δρομέας
+    # του ιδιωτικού αποθετηρίου έχει δύο, οπότε το όριο έχει περιθώριο
+    # ενάμιση φοράς πάνω από τον διπλάσιο χρόνο. Δεν χρεώνει όταν τελειώσει νωρίτερα.
+    timeout-minutes: 50
+    env:
+      # Ο τίτλος είναι το κλειδί με το οποίο η ροή βρίσκει, σχολιάζει και
+      # κλείνει το ζήτημα. Γραμμένος μία φορά (ίδιος λόγος με το security-daily).
+      ISSUE_TITLE: 'Ποιότητα παραγωγής: η εβδομαδιαία σάρωση βρήκε προβλήματα'
+      SITE: https://properwise.gr
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Chromium για τις σαρώσεις
+        run: npx --yes playwright@1.64.0 install --with-deps chromium
+
+      # ── 1. Σελίδες του χάρτη και σύνδεσμοι ─────────────────────────────
+      # Χωρίς περιηγητή: σκέτο fetch. Πρώτο, γιατί είναι το φθηνότερο και
+      # γιατί αν η παραγωγή δεν απαντά καθόλου, τα επόμενα δεν έχουν νόημα.
+      - name: Σελίδες του χάρτη, εσωτερικοί και εξωτερικοί σύνδεσμοι
+        id: links
+        continue-on-error: true
+        env:
+          LINKS_OUT: ${{ runner.temp }}/links.txt
+        run: node scripts/check-links.mjs "$SITE"
+
+      # ── 2. Το ίδιο νούμερο παντού, με τις τιμές της αγοράς ─────────────
+      - name: Το ίδιο ποσό σε κάθε θέση, στην παραγωγή
+        id: same
+        continue-on-error: true
+        env:
+          E2E_BASE: ${{ env.SITE }}
+        run: node scripts/e2e-same-number.mjs > "$RUNNER_TEMP/same.txt" 2>&1
+
+      # ── 3. Η οπτική σάρωση με την καστάνια της ─────────────────────────
+      # Ο πάγκος χτίζεται από τον ίδιο κώδικα που τρέχει στην παραγωγή (main)·
+      # οι δημόσιες σελίδες διαβάζονται ζωντανές από το site και από τον χάρτη
+      # του. Χωρίς στιγμιότυπα: τα αρχεία της σάρωσης ανεβαίνουν ως artifact.
+      - name: Οπτική σάρωση και καστάνια
+        id: optiki
+        continue-on-error: true
+        env:
+          E2E_BASE: ${{ env.SITE }}
+          OPT_SITEMAP: '1'
+          OPT_SHOTS: '0'
+          # Το προφίλ της βάσης (scripts/optiki-baseline.json). Με άλλο προφίλ
+          # η καστάνια αρνείται να κρίνει, αντί να βγάλει ψεύτικη άνοδο.
+          OPT_THEMES: dark
+        run: |
+          set -o pipefail
+          node scripts/perf-bench/build-mobile.mjs
+          node scripts/e2e-optiki-sarosi.mjs
+          node scripts/optiki-ratchet.mjs 2>&1 | tee "$RUNNER_TEMP/optiki.txt"
+
+      - name: Τα ευρήματα της σάρωσης
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: optiki-${{ github.run_id }}
+          path: |
+            .perf-bench/optiki/findings.md
+            .perf-bench/optiki/findings.json
+            .perf-bench/optiki/run.json
+          retention-days: 28
+          if-no-files-found: ignore
+
+      - name: Σύνοψη
+        id: sum
+        run: |
+          set -euo pipefail
+          fails=""
+          add() { [ "$1" = "failure" ] && fails="${fails}- $2"$'\n' || true; }
+          add "${{ steps.links.outcome }}"  "Σελίδες του χάρτη ή εσωτερικοί σύνδεσμοι"
+          add "${{ steps.same.outcome }}"   "Το ίδιο ποσό σε κάθε θέση"
+          add "${{ steps.optiki.outcome }}" "Οπτική σάρωση: κατηγορία πάνω από τη βάση, ή η σάρωση δεν ολοκληρώθηκε"
+          {
+            echo '### Ποιότητα παραγωγής'
+            echo ''
+            echo '```'
+            cat "$RUNNER_TEMP/links.txt" 2>/dev/null || echo '(ο έλεγχος συνδέσμων δεν έγραψε αναφορά)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$fails" ]; then
+            echo "Καθαρό." && echo "clean=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "clean=0" >> "$GITHUB_OUTPUT"
+            { echo "report<<EOF"; echo "$fails"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Ειδοποίηση
+        if: steps.sum.outputs.clean == '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPORT: ${{ steps.sum.outputs.report }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          title="$ISSUE_TITLE"
+          # Οι λεπτομέρειες γράφονται ΣΤΟ ζήτημα, όχι μόνο στο log: ένα «απέτυχε»
+          # χωρίς το ποια σελίδα και ποιο αρχείο:γραμμή στέλνει τον αναγνώστη να
+          # ανοίξει το run, δηλαδή να μην το διαβάσει.
+          section() { [ -s "$2" ] && printf '\n<details><summary>%s</summary>\n\n```\n%s\n```\n</details>\n' "$1" "$(head -c 20000 "$2")" || true; }
+          body=$(printf 'Η εβδομαδιαία σάρωση της παραγωγής βρήκε:\n\n%s\nΑναλυτικά: %s (τα ευρήματα της οπτικής σάρωσης είναι στο artifact του run).\n%s%s%s\n\nΤο workflow δεν κάνει deploy, δεν γράφει σε βάση και στέλνει στην παραγωγή μόνο GET και HEAD.' \
+            "$REPORT" "$RUN" \
+            "$(section 'Σύνδεσμοι και σελίδες' "$RUNNER_TEMP/links.txt")" \
+            "$(section 'Το ίδιο ποσό σε κάθε θέση' "$RUNNER_TEMP/same.txt")" \
+            "$(section 'Οπτική σάρωση' "$RUNNER_TEMP/optiki.txt")")
+          open=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number' || true)
+          if [ -n "$open" ] && [ "$open" != "null" ]; then
+            gh issue comment "$open" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
+
+      - name: Κλείσιμο όταν η σάρωση βγει καθαρή
+        if: steps.sum.outputs.clean == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          title="$ISSUE_TITLE"
+          open=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number' || true)
+          if [ -z "$open" ] || [ "$open" = "null" ]; then
+            echo "Καθαρό και κανένα ανοιχτό ζήτημα ποιότητας. Τίποτα να κλείσει."
+            exit 0
+          fi
+          gh issue comment "$open" --body "$(printf 'Η εβδομαδιαία σάρωση της παραγωγής πέρασε καθαρή σε όλα τα σημεία.\n\nΑναλυτικά: %s\n\nΚλείνει αυτόματα. Αν ξαναβρεθεί πρόβλημα, ανοίγει νέο ζήτημα.' "$RUN")"
+          gh issue close "$open" --reason completed

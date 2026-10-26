@@ -139,6 +139,19 @@ const MIN_RUNS_PER_MONTH = 20
 /** Ενα λεπτό ανά δουλειά είναι το ελάχιστο που χρεώνει το GitHub. */
 const FLOOR_MINUTES_PER_JOB = 1
 
+/**
+ * ΠΡΟΓΡΑΜΜΑΤΙΣΜΕΝΑ ΜΕ ΜΕΤΡΗΜΕΝΗ ΔΙΑΡΚΕΙΑ, ΠΑΝΩ ΑΠΟ ΤΟ ΔΑΠΕΔΟ.
+ *
+ * Το δάπεδο του ενός λεπτού είναι σωστό για ό,τι ρωτά ένα μητρώο και κλείνει.
+ * Η εβδομαδιαία σάρωση της παραγωγής (weekly-quality.yml) σηκώνει Chromium
+ * και περνά δεκάδες οθόνες: με δάπεδο θα φαινόταν τέσσερα λεπτά τον μήνα ενώ
+ * κοστίζει δεκαπλάσια. Ακριβώς το αόρατο κόστος που γέννησε αυτόν τον φύλακα.
+ * Λεπτά ΑΝΑ ΕΚΤΕΛΕΣΗ, μετρημένα (η μέθοδος στην κεφαλίδα του workflow).
+ */
+const MEASURED_MINUTES_PER_RUN = {
+  'weekly-quality.yml': 17,
+}
+
 // ── Ανάλυση cron ────────────────────────────────────────────────────────────
 // Πέντε πεδία: λεπτό ώρα ημέρα-μήνα μήνας ημέρα-εβδομάδας. Στηρίζονται `*`,
 // `*/n`, `a-b`, `a-b/n`, `a,b,c` και σκέτος αριθμός.
@@ -229,6 +242,14 @@ function parse(file) {
 }
 
 const flows = readdirSync(DIR).filter(f => /\.ya?ml$/.test(f)).map(parse)
+// Μια μέτρηση για workflow που μετονομάστηκε δεν μετρά πια τίποτα: το νέο
+// όνομα θα πλήρωνε πάλι μόνο το δάπεδο, σιωπηλά.
+for (const name of Object.keys(MEASURED_MINUTES_PER_RUN)) {
+  if (!flows.some(f => f.file === name)) {
+    console.error(`✗ Το MEASURED_MINUTES_PER_RUN γράφει «${name}», που δεν υπάρχει στο ${DIR}. Διόρθωσε το όνομα.`)
+    process.exit(1)
+  }
+}
 
 const rows = []
 let scheduled = 0
@@ -241,7 +262,7 @@ for (const f of flows) {
       process.exit(1)
     }
     const perMonth = year / 12
-    const minutes = perMonth * f.jobs * FLOOR_MINUTES_PER_JOB
+    const minutes = perMonth * Math.max(f.jobs * FLOOR_MINUTES_PER_JOB, MEASURED_MINUTES_PER_RUN[f.file] ?? 0)
     scheduled += minutes
     rows.push({ file: f.file, cron: c, perMonth, jobs: f.jobs, minutes })
   }

@@ -123,7 +123,10 @@
     "e2e:noa": "node scripts/perf-bench/build-mobile.mjs && node scripts/e2e-noa-cover.mjs",
     "e2e:tilerow": "node scripts/perf-bench/build-mobile.mjs && node scripts/e2e-tile-row.mjs",
     "e2e:numcol": "node scripts/perf-bench/build-mobile.mjs && node scripts/e2e-number-column.mjs",
-    "e2e:scale": "node scripts/perf-bench/build-mobile.mjs && node scripts/e2e-design-scale.mjs"
+    "e2e:scale": "node scripts/perf-bench/build-mobile.mjs && node scripts/e2e-design-scale.mjs",
+    "e2e:optiki": "node scripts/perf-bench/build-mobile.mjs && node scripts/e2e-optiki-sarosi.mjs",
+    "optiki:ratchet": "node scripts/optiki-ratchet.mjs",
+    "links": "node scripts/check-links.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
