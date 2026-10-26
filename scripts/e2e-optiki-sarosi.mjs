@@ -427,7 +427,11 @@ const PROBE = ({ fabSel, withTouch, scSrc }) => {
         if (!r || r.width < 1) continue
         tops.push(Math.round(r.top / 3)); words.push(m[0])
         const rr = [...rg.getClientRects()].filter(q => q.width > 1)
-        if (rr.length > 1 && m[0].length > 3 && Math.abs(rr[0].top - rr[rr.length - 1].top) > 4 && !t.parentElement.closest('.po-elide') && !breakIsLegit(t, m.index, m[0])) words.broken = m[0]
+        // `hyphens: auto` (η στήλη των οδηγών, globals.css) συλλαβίζει σκόπιμα, με
+        // παύλα που ζωγραφίζει ο περιηγητής. Το λεξικό συλλαβισμού υπάρχει στον
+        // runner του GitHub και όχι σε κάθε τοπικό Chromium: χωρίς αυτή την
+        // εξαίρεση η εβδομαδιαία σάρωση της 26/10 έβγαλε 180 ψεύτικα «σπασίματα».
+        if (rr.length > 1 && m[0].length > 3 && Math.abs(rr[0].top - rr[rr.length - 1].top) > 4 && !t.parentElement.closest('.po-elide') && getComputedStyle(t.parentElement).hyphens !== 'auto' && !breakIsLegit(t, m.index, m[0])) words.broken = m[0]
       }
     }
     const lines = new Map()
