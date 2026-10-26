@@ -108,7 +108,7 @@ jobs:
         run: npm ci
 
       - name: Chromium για τις σαρώσεις
-        run: npx --yes playwright@1.64.0 install --with-deps chromium
+        run: npx --yes playwright@1.64.1 install --with-deps chromium
 
       # ── 1. Σελίδες του χάρτη και σύνδεσμοι ─────────────────────────────
       # Χωρίς περιηγητή: σκέτο fetch. Πρώτο, γιατί είναι το φθηνότερο και
