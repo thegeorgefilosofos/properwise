@@ -97,19 +97,29 @@ export async function probe(base, route) {
   }
 
   const body = await res.text().catch(() => '');
-  const ms = Date.now() - started;
+  return { ...verdictOf(res.status, body, route), ms: Date.now() - started };
+}
 
-  if (res.status !== 200) return { ok: false, status: res.status, ms, why: `κωδικός ${res.status}` };
-  if (body.includes(ERROR_MARKER)) return { ok: false, status: 200, ms, why: `200 αλλά σελίδα σφάλματος («${ERROR_MARKER}»)` };
-  if (body.length < MIN_CHARS) return { ok: false, status: 200, ms, why: `200 αλλά σχεδόν άδειο σώμα (${body.length} χαρακτήρες)` };
+/**
+ * Η ΕΤΥΜΗΓΟΡΙΑ ΧΩΡΙΣ ΔΙΚΤΥΟ: κωδικός και σώμα μέσα, «υγιές ή όχι» έξω.
+ *
+ * Βγήκε από το `probe` για να τη διαβάζει και ο εβδομαδιαίος έλεγχος
+ * συνδέσμων (scripts/check-links.mjs), που κατεβάζει ήδη κάθε σελίδα του
+ * χάρτη για να βρει τους συνδέσμους της. Δεύτερο αντίγραφο του «τι είναι
+ * σελίδα σφάλματος» θα διαφωνούσε με αυτό εδώ μέσα σε έναν μήνα — ακριβώς ο
+ * λόγος που υπάρχει αυτό το αρχείο.
+ */
+export function verdictOf(status, body, route) {
+  if (status !== 200) return { ok: false, status, why: `κωδικός ${status}` };
+  if (body.includes(ERROR_MARKER)) return { ok: false, status: 200, why: `200 αλλά σελίδα σφάλματος («${ERROR_MARKER}»)` };
+  if (body.length < MIN_CHARS) return { ok: false, status: 200, why: `200 αλλά σχεδόν άδειο σώμα (${body.length} χαρακτήρες)` };
   // Το `miss` είναι το ΜΗΧΑΝΑΓΝΩΣΤΟ σκέλος της ίδιας ετυμηγορίας: το `why`
   // γράφεται για άνθρωπο, η διάγνωση παρακάτω δεν επιτρέπεται να το διαβάζει
   // ψάχνοντας λέξεις μέσα σε πρόταση.
   if (route.must && !body.includes(route.must)) {
-    return { ok: false, status: 200, ms, miss: true, why: `200 αλλά λείπει το αναμενόμενο «${route.must}»` };
+    return { ok: false, status: 200, miss: true, why: `200 αλλά λείπει το αναμενόμενο «${route.must}»` };
   }
-
-  return { ok: true, status: 200, ms, why: '' };
+  return { ok: true, status: 200, why: '' };
 }
 
 /** Μία διαδρομή, με τις επαναλήψεις της. */

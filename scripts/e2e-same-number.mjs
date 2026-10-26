@@ -523,6 +523,13 @@ async function mortgage(ctx, view) {
 
 for (const v of VIEWS) {
   const ctx = await browser.newContext({ ...v.ctx, locale: 'el-GR', timezoneId: 'Europe/Athens' });
+  // ΑΠΕΝΑΝΤΙ ΣΤΗΝ ΠΑΡΑΓΩΓΗ, ΜΟΝΟ ΑΝΑΓΝΩΣΗ. Η εβδομαδιαία σάρωση τρέχει αυτό το
+  // σενάριο στο properwise.gr (το ίδιο νούμερο με τις τιμές της αγοράς που δεν
+  // έχει το CI). Ο,τι δεν είναι GET/HEAD/OPTIONS κόβεται πριν φύγει, μαζί με τα
+  // μετρητικά επισκεψιμότητας. Τοπικά δεν αλλάζει τίποτα.
+  if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(B)) {
+    await ctx.route('**/*', r => (!/^(GET|HEAD|OPTIONS)$/.test(r.request().method()) || /\/_vercel\/(insights|speed-insights)\//.test(r.request().url())) ? r.abort() : r.continue());
+  }
   await ctx.addInitScript(SEED_CONSENT);
   console.log(`\n── ${v.name} ──`);
   await rent(ctx, v.name);
