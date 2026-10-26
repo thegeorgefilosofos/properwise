@@ -1092,7 +1092,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           // των αποδόσεων· τα εισπραγμένα γράφονται από κάτω μόνο όταν
           // καταγράφηκαν, όχι η εκτίμηση «μίσθωμα × μήνες».
           incomeRecorded ? {
-            label: `${yi.basis === 'stays' ? 'Έσοδα φιλοξενίας' : 'Έσοδα από ενοίκια'}${incomeIsEstimate ? `, ${INCOME_LABELS.estimate}` : ''}`, value:fmtEur(annualRent),
+            // ΣΤΑ 320 Η ΕΤΙΚΕΤΑ ΕΠΙΑΝΕ ΤΡΕΙΣ ΓΡΑΜΜΕΣ (26/10/2026): «ΕΣΟΔΑ /
+            // ΦΙΛΟΞΕΝΙΑΣ, / ΕΚΤΙΜΗΣΗ». Οταν είναι εκτίμηση, το πλακίδιο λέει
+            // «Φιλοξενία, εκτίμηση»: το ποσό σε ευρώ λέει ήδη ότι είναι έσοδο και
+            // ο τίτλος από κάτω το εξηγεί ολόκληρο.
+            label: yi.basis === 'stays'
+              ? (incomeIsEstimate ? `Φιλοξενία, ${INCOME_LABELS.estimate}` : 'Έσοδα φιλοξενίας')
+              : `Έσοδα από ενοίκια${incomeIsEstimate ? `, ${INCOME_LABELS.estimate}` : ''}`, value:fmtEur(annualRent),
             sub: yi.received != null ? `${fmtEur(yi.received)} ${INCOME_LABELS.received}` : `${fmtEur(rent)} τον μήνα`,
             title: fromLease
               ? `Το μηνιαίο μίσθωμα × 12 (${INCOME_LABELS.expected}). ${yi.received != null ? `${fmtEur(yi.received)} ${INCOME_LABELS.received}.` : 'Δεν έχει καταγραφεί δόση ακόμη.'} Ίδια βάση με το ${navLabel('portfolio')} και τις ${navLabel('roi')}.`
