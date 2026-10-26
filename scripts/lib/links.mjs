@@ -24,16 +24,10 @@ const decode = (s) => s
  * θα έδιναν κάθε σύνδεσμο δύο φορές ή συνδέσμους που δεν αποδόθηκαν ποτέ.
  */
 export function anchorHrefs(html) {
-  // Επανάληψη ώσπου να μη μένει τίποτα να αφαιρεθεί: ένα κομμάτι μέσα σε άλλο
-  // (π.χ. «<scr<script></script>ipt>») δεν ξαναγεννά ετικέτα μετά την πρώτη αφαίρεση.
-  let visible = String(html)
-  for (let prev = ''; prev !== visible;) {
-    prev = visible
-    visible = visible
-      .replace(/<script\b[\s\S]*?<\/script\s*>/gi, '')
-      .replace(/<template\b[\s\S]*?<\/template\s*>/gi, '')
-      .replace(/<!--[\s\S]*?-->/g, '')
-  }
+  // Οχι κανονική έκφραση πάνω σε HTML: σάρωση με indexOf, από το άνοιγμα ως το
+  // πρώτο «>» μετά το κλείσιμο. Ετικέτα χωρίς κλείσιμο κόβει ως το τέλος.
+  const visible = cutBlocks(cutBlocks(cutBlocks(String(html), '<script', '</script'),
+    '<template', '</template'), '<!--', '-->')
   const out = []
   for (const m of visible.matchAll(/<a\b[^>]*?\shref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
     out.push(decode((m[1] ?? m[2] ?? m[3] ?? '').trim()))
@@ -78,4 +72,21 @@ export function internalVerdict(chain) {
   if (last.status === 200) return { ok: true, why: chain.length > 1 ? `ανακατεύθυνση → ${last.url}` : '' }
   if (last.status >= 300 && last.status < 400) return { ok: false, why: `πάνω από ${chain.length - 1} ανακατευθύνσεις` }
   return { ok: false, why: `κωδικός ${last.status}${chain.length > 1 ? ` μετά από ανακατεύθυνση από ${chain[0].url}` : ''}` }
+}
+
+/** Αφαιρεί κάθε μπλοκ από `open` ως το κλείσιμό του, χωρίς διάκριση πεζών. */
+function cutBlocks(text, open, close) {
+  let out = ''
+  let pos = 0
+  const lower = text.toLowerCase()
+  for (;;) {
+    const i = lower.indexOf(open, pos)
+    if (i < 0) return out + text.slice(pos)
+    out += text.slice(pos, i)
+    const j = lower.indexOf(close, i + open.length)
+    if (j < 0) return out
+    const k = close === '-->' ? j + close.length - 1 : lower.indexOf('>', j)
+    if (k < 0) return out
+    pos = k + 1
+  }
 }
