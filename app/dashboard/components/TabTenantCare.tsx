@@ -22,7 +22,7 @@ import {
   CustomSelect as SelectField,
   DatePicker,
 } from './UIComponents';
-import { T, KPIGrid, InfoBanner, Badge, EmptyState, fe, fn, fp, Spinner, type KPIItem, ABSENT, ABSENT_DATE, TT, localDay, formGrid, RuntimeImg, Btn, LinkBtn } from '@/components/Theme';
+import { T, KPIGrid, InfoBanner, Badge, EmptyState, fe, fn, fp, Spinner, type KPIItem, ABSENT, ABSENT_DATE, TT, localDay, fd, formGrid, RuntimeImg, Btn, LinkBtn } from '@/components/Theme';
 import {
   MessageSquare,
   Hammer,
@@ -778,7 +778,8 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
     setBusy(false); onRefresh(); if(ok) notifyOk('Καταγράφηκε στις φθορές');
   };
   const del=async(m:MaintenanceReq)=>{ if(!(await confirmDialog('Διαγραφή αιτήματος;',{tone:'negative',confirmLabel:'Διαγραφή'}))) return; if(await saved('Το αίτημα δεν διαγράφηκε',supabase.from('maintenance_requests').delete().eq('id',m.id))) onRefresh(); };
-  const gdt=(d:string|null)=>d?localDay(d).toLocaleDateString('el-GR',{day:'2-digit',month:'short',year:'numeric'}):ABSENT_DATE;
+  // Από το κοινό `fd`, όχι δικό του μορφοποιητή: έγραφε «05 Οκτ 2026» (26/10/2026).
+  const gdt=(d:string|null)=>d?fd(d):ABSENT_DATE;
   const openAssign=(m:MaintenanceReq)=>{ setAssignFor(m.id); setAf({name:m.assignee_name||'',contact:m.assignee_contact||''}); };
   const saveAssign=async(m:MaintenanceReq)=>{
     setBusy(true);
