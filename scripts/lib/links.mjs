@@ -11,9 +11,10 @@ export function sitemapLocs(xml) {
   return [...String(xml).matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)].map((m) => decode(m[1]))
 }
 
+// Το &amp; τελευταίο: αλλιώς το «&amp;lt;» θα γινόταν «<» αντί για «&lt;».
 const decode = (s) => s
-  .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'")
-  .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  .replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'")
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
 
 /**
  * Τα `href` των `<a>` μιας σελίδας HTML. Μόνο σύνδεσμοι που πατά ο
@@ -23,10 +24,16 @@ const decode = (s) => s
  * θα έδιναν κάθε σύνδεσμο δύο φορές ή συνδέσμους που δεν αποδόθηκαν ποτέ.
  */
 export function anchorHrefs(html) {
-  const visible = String(html)
-    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
-    .replace(/<template\b[\s\S]*?<\/template>/gi, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
+  // Επανάληψη ώσπου να μη μένει τίποτα να αφαιρεθεί: ένα κομμάτι μέσα σε άλλο
+  // (π.χ. «<scr<script></script>ipt>») δεν ξαναγεννά ετικέτα μετά την πρώτη αφαίρεση.
+  let visible = String(html)
+  for (let prev = ''; prev !== visible;) {
+    prev = visible
+    visible = visible
+      .replace(/<script\b[\s\S]*?<\/script\s*>/gi, '')
+      .replace(/<template\b[\s\S]*?<\/template\s*>/gi, '')
+      .replace(/<!--[\s\S]*?-->/g, '')
+  }
   const out = []
   for (const m of visible.matchAll(/<a\b[^>]*?\shref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
     out.push(decode((m[1] ?? m[2] ?? m[3] ?? '').trim()))

@@ -736,7 +736,7 @@ const findSource = (text, cssSel, scene) => {
   const compDir = comp.replace(/\.tsx$/, '').replace(/Tab/, '').toLowerCase()
   const pref = (f) => f === comp ? 0 : (compDir && f.toLowerCase().includes(compDir.split('/').pop())) ? 1 : (scene.startsWith('/') ? !f.startsWith('app/dashboard') : f.startsWith('app/dashboard')) ? 2 : 3
   const tries = []
-  const runs = (text || '').replace(/[«»"“”]/g, ' ').split(/[\d€%×|/·()]+/).map(s => s.trim()).filter(s => s.length >= 8 && /[α-ωΑ-Ωά-ώA-Za-z]{3}/.test(s))
+  const runs = (text || '').replace(/[«»"“”]/g, ' ').split(/[\d€%×|/·()]+/).map(s => s.trim()).filter(s => s.length >= 8 && /[α-ωΑ-ΩάέήίόύώΆΈΉΊΌΎΏϊϋΐΰA-Za-z]{3}/.test(s))
   runs.sort((a, b) => b.length - a.length)
   for (const r of runs.slice(0, 3)) { tries.push(r.slice(0, 40)); tries.push(r.split(' ').slice(0, 3).join(' ')) }
   // Κλάση μόνο όταν ανήκει σε λίγα αρχεία: το «kpi-card» είναι παντού και

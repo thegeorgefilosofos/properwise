@@ -66,7 +66,7 @@ if (r.refused) {
   process.exit(2)
 }
 
-const label = (k) => k.replace('|', ' · ')
+const label = (k) => k.replaceAll('|', ' · ')
 console.log(`Οπτική σάρωση: ${findings.length} ευρήματα σε ${run.targets.length} οθόνες, ${run.widths.join('/')} · ${run.themes.join('/')}`)
 for (const row of r.rows) console.log(`  ${String(row.now).padStart(4)}/${String(row.max).padEnd(4)} ${label(row.key)}`)
 
