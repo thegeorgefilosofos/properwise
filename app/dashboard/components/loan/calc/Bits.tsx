@@ -16,8 +16,11 @@ export type SetState<V> = React.Dispatch<React.SetStateAction<V>>
 
 // ── MD3 tokens ────────────────────────────────────────────────────────────────
 export const labelStyle: React.CSSProperties = { ...TT.label, display:'block', marginBottom:6 }
+// ΤΟ ΔΕΞΙ ΚΟΜΜΑΤΙ ΚΑΤΕΒΑΙΝΕΙ ΟΤΑΝ ΔΕΝ ΧΩΡΑ (21/10/2026). Στα 320 το «Διαμέρισμα ·
+// τ.μ. · περιοχή» δεξιά άφηνε στην ετικέτα 123 εικονοστοιχεία και το «Πλήρης
+// ανάλυση κόστους απόκτησης» έβγαινε μία λέξη ανά γραμμή, κολλητά στο διπλανό.
 export const SectionLabel = ({label,right}:{label:string;right?:React.ReactNode}) => (
-  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:14}}>
     <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:700,fontFamily: T.font.sans}}>{label}</p>
     {right}
   </div>

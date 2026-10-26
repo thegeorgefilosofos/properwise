@@ -1565,7 +1565,11 @@ export function ChipToggle({ children, on, onClick, shape = 'chip', disabled, ti
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         minHeight: size === 'lg' ? T.h.lg : T.h.sm, padding: '0 12px', borderRadius: T.radius.chip,
-        fontSize: 'var(--fs-xs)', fontWeight: on ? 600 : 500, fontFamily: T.font.sans,
+        // ΤΟ ΒΑΡΟΣ ΔΕΝ ΑΛΛΑΖΕΙ ΜΕ ΤΗΝ ΕΠΙΛΟΓΗ (21/10/2026). Με 600 στο ενεργό και
+        // 500 στα άλλα, κάθε πάτημα φάρδαινε το λεκτικό και έσπρωχνε τα διπλανά
+        // πλακίδια: η οπτική σάρωση το βρήκε σε οκτώ καρτέλες, στα 390 και στα
+        // 1280. Το ενεργό ξεχωρίζει ήδη με επιφάνεια, περίγραμμα και χρώμα.
+        fontSize: 'var(--fs-xs)', fontWeight: 500, fontFamily: T.font.sans,
         cursor: disabled ? 'not-allowed' : 'pointer',
         ...(grow ? { flex: 1, minWidth: 0 } : null),
       }}

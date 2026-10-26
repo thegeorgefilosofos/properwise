@@ -692,9 +692,11 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
 
       {/* ── Checklist renewal banner ──────────────────────────────────────── */}
       {checklistRenewal && checklistRenewal.daysLeft !== null && checklistRenewal.daysLeft <= 60 && (
-        <div style={{ background: checklistRenewal.daysLeft <= 7 ? 'var(--negative-soft)' : 'var(--warning-soft)', border: `1px solid ${checklistRenewal.daysLeft <= 7 ? 'var(--negative-border)' : 'var(--warning-border)'}`, borderRadius: T.radius.inner, padding: '11px 18px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ background: checklistRenewal.daysLeft <= 7 ? 'var(--negative-soft)' : 'var(--warning-soft)', border: `1px solid ${checklistRenewal.daysLeft <= 7 ? 'var(--negative-border)' : 'var(--warning-border)'}`, borderRadius: T.radius.inner, padding: '11px 18px', marginBottom: 12, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: checklistRenewal.daysLeft <= 7 ? 'var(--negative)' : 'var(--warning)', flexShrink: 0 }}/>
-          <div style={{ flex: 1, fontSize: 12, fontFamily: T.font.sans }}>
+          {/* Το κείμενο κρατά 12em και η πιλούλα κατεβαίνει όταν δεν χωρά: στα
+              320 έμενε στήλη 94 εικονοστοιχείων, μία λέξη ανά γραμμή (21/10/2026). */}
+          <div style={{ flex: '1 1 12em', fontSize: 12, fontFamily: T.font.sans }}>
             <span style={{ fontWeight: 700, color: checklistRenewal.daysLeft <= 7 ? 'var(--negative)' : 'var(--warning)' }}>Ανανέωση ασφαλιστηρίου </span>
             <span style={{ color: 'var(--text-secondary)' }}>{checklistRenewal.daysLeft <= 0 ? 'έχει λήξει' : `σε ${checklistRenewal.daysLeft} ημέρες`}</span>
           </div>

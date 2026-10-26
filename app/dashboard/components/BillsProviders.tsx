@@ -523,9 +523,13 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
     { key: 'phoneVoip',   label: 'VoIP / App',                 val: s.phoneVoip,   toggle: () => upd({ phoneVoip:   !s.phoneVoip   }), tip: 'Κλήσεις μέσω διαδικτύου ή εφαρμογής (VoIP), π.χ. Viber, WhatsApp, Skype' },
   ];
 
+  // ΣΤΟ ΣΤΕΝΟ Η ΠΙΛΟΥΛΑ ΚΑΤΕΒΑΙΝΕΙ (21/10/2026). Στα 320 το «ΕΕΤΤ 360° Σύγκριση»
+  // δεν μικραίνει και άφηνε στον τίτλο 77 εικονοστοιχεία: «INTERNET / ΚΑΙ /
+  // ΣΤΑΘΕΡΟ / ΤΗΛΕΦΩΝΟ», μία λέξη ανά γραμμή. Ο τίτλος κρατά τουλάχιστον 14em·
+  // όταν δεν χωρούν και τα δύο, η πιλούλα πάει στη δική της σειρά.
   const secHdr = (label: string, link?: { url: string; text: string }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
-      <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontFamily: T.font.sans, flex: 1 }}>{label}</span>
+    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
+      <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontFamily: T.font.sans, flex: '1 1 14em' }}>{label}</span>
       {link?.url && (
         <a href={link.url} target="_blank" rel="noopener noreferrer" className="tap-link"
           style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, fontFamily: T.font.sans, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.pill, padding: '3px 10px', whiteSpace: 'nowrap' as const }}>
@@ -651,7 +655,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
               })()}
               {(!s.internetSpeedReal || !s.internetSpeed) && (
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
-                  Μέτρησε στο{' '}<a href="https://www.speedtest.net" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>speedtest.net</a>
+                  Μέτρησε στο{' '}<a href="https://www.speedtest.net" target="_blank" rel="noopener noreferrer" className="po-tap-inline" style={{ color: 'var(--accent)', textDecoration: 'none' }}>speedtest.net</a>
                 </div>
               )}
           </div>
@@ -710,10 +714,14 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                   στυλ, γραμμένο έξι φορές, που αποκλίνει με την πρώτη αλλαγή. */}
               <div className="po-table-box">
                <div className="po-scroll-x">
+                {/* Η ΚΑΡΦΩΜΕΝΗ ΣΤΗΛΗ ΚΡΑΤΑ 150 (21/10/2026). Οι κεφαλίδες των άλλων
+                    στηλών δεν τυλίγουν, οπότε στα 390 της έμεναν 99 και το
+                    «Telekom Double Play Advanced Unlimited» έβγαινε μία λέξη ανά
+                    γραμμή. Τα 150 χωρούν δύο λέξεις ανά γραμμή· ο πίνακας κυλά. */}
                 <table className="po-table pin-1" style={{ '--tbl-fs': 'var(--fs-xs)', '--tbl-min': '560px', '--row-bg': 'var(--bg-surface)' }}>
                   <thead>
                     <tr>{['Πρόγραμμα','Ταχύτητα','Σταθερό Τηλέφωνο','Δέσμευση','Μηνιαίο','Ετήσιο'].map((h, i) => (
-                      <th key={i} scope="col" style={{ background: 'var(--bg-elevated)', whiteSpace: 'nowrap' as const, textAlign: i === 2 ? ('center' as const) : i >= 4 ? ('right' as const) : undefined }}>{h}</th>
+                      <th key={i} scope="col" style={{ background: 'var(--bg-elevated)', whiteSpace: 'nowrap' as const, textAlign: i === 2 ? ('center' as const) : i >= 4 ? ('right' as const) : undefined, minWidth: i === 0 ? 150 : undefined }}>{h}</th>
                     ))}</tr>
                   </thead>
                   <tbody>

@@ -183,8 +183,16 @@ export { fe, feAuto, feRate, feCompact, feWhole, fp, fn, feOr, fpOr, DASH, isBla
 import { localDay } from '@/lib/core/time';
 export { localDay };
 
-export const fd = (d: string | Date) =>
-  localDay(d).toLocaleDateString('el-GR', { day: '2-digit', month: 'short', year: 'numeric' });
+// Η ΣΥΝΤΟΜΗ ΜΟΡΦΗ ΕΙΝΑΙ Η ΜΟΡΦΗ ΤΟΥ ΣΠΙΤΙΟΥ: «05/10/2026» (26/10/2026). Εγραφε
+// «05 Οκτ 2026», ενώ το `grDate` (lib/core/format.ts), τα έγγραφα και οι οδηγοί
+// γράφουν ηη/μμ/εεεε: στην ίδια οθόνη έβγαιναν δύο γραφές της ίδιας μέρας. Οι
+// αριθμοί βγαίνουν από τους ΤΟΠΙΚΟΥΣ getters του `localDay`, όπως πριν ο
+// μορφοποιητής, ώστε η χρονοσήμανση να μένει στη μέρα του χρήστη. Ετικέτες
+// μόνο μήνα («Οκτ») ή μήνα και έτους δεν περνούν από εδώ και δεν αλλάζουν.
+export const fd = (d: string | Date) => {
+  const x = localDay(d);
+  return `${String(x.getDate()).padStart(2, '0')}/${String(x.getMonth() + 1).padStart(2, '0')}/${x.getFullYear()}`;
+};
 
 // Πλήρης μορφή χωρίς συντομογραφία μήνα («30 Ιουνίου 2026»).
 export const fdLong = (d: string | Date) =>
