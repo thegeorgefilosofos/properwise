@@ -17,7 +17,7 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { publicMetadata } from './publicMetadata';
 import { SHARE_IMAGE } from '@/lib/core/site';
-import { GUIDES, guideSlug } from './odigos/guides';
+import { GUIDES, LISTED_GUIDES, guideSlug } from './odigos/guides';
 import { SHARE_CARDS, shareImage } from './og/share';
 import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
 import sitemap from './sitemap';
@@ -64,7 +64,17 @@ for (const g of GUIDES) {
   ok(`${g.href}: ημερομηνίες ISO`, ISO.test(g.published) && ISO.test(g.updated));
   ok(`${g.href}: η ενημέρωση δεν προηγείται της δημοσίευσης`, g.updated >= g.published);
   const row = map.find(r => r.url === SITE + g.href);
-  ok(`${g.href}: ο χάρτης δίνει την ημερομηνία του οδηγού`, row?.lastModified === g.updated);
+  // ΜΙΑ ΣΥΝΘΗΚΗ ΓΙΑ ΚΟΜΒΟ, ΧΑΡΤΗ ΚΑΙ ΕΥΡΕΤΗΡΙΟ (27.10.2026). Ο οδηγός εκτός
+  // καταλόγου ήταν στον χάρτη και ευρετηριάσιμος, ενώ ο κόμβος τον έκρυβε.
+  const isListed = LISTED_GUIDES.includes(g);
+  const robots = publicMetadata({ title: 'Τ', description: 'Π', url: SITE + g.href }).robots;
+  if (isListed) {
+    ok(`${g.href}: ο χάρτης δίνει την ημερομηνία του οδηγού`, row?.lastModified === g.updated);
+    ok(`${g.href}: ευρετηριάζεται`, robots === undefined);
+  } else {
+    ok(`${g.href}: εκτός καταλόγου, εκτός χάρτη`, row === undefined);
+    ok(`${g.href}: εκτός καταλόγου, noindex`, JSON.stringify(robots) === JSON.stringify({ index: false, follow: true }));
+  }
   // Η δική του κάρτα κοινοποίησης: αλλιώς ο σύνδεσμος φτάνει με τη γενική εικόνα.
   ok(`${g.href}: έχει δική του εικόνα κοινοποίησης`, !!SHARE_CARDS[guideSlug(g)]);
 }

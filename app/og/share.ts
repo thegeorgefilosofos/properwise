@@ -17,6 +17,7 @@ import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing
 import { fpRate, grDate } from '@/lib/core/format';
 import { DSTI_LIMIT } from '@/lib/loans/affordability';
 import { TARIFFS_VERIFIED } from '@/lib/energy/catalogue';
+import { ASSISTANT_TO } from '@/lib/assistant/identity';
 
 export type ShareCard = {
   /** Οδηγός, υπολογιστής ή σελίδα που μιλά σε ένα κοινό (π.χ. /logistes). */
@@ -69,6 +70,14 @@ export const SHARE_CARDS: Record<string, ShareCard> = {
   // τι παίρνει εκείνος, όχι τι κάνει ο ιδιοκτήτης.
   'logistes': { kind: 'page', over: 'Για λογιστές', title: 'Ενοίκια και Ε2 των πελατών σου σε Excel',
     chips: ['Σύνδεσμος μόνο για ανάγνωση', 'Ε2 ανά ΑΦΜ', 'Τι λείπει, πρώτο', 'Όλοι οι πελάτες σε μία λίστα'], path: '/logistes' },
+  // ΤΑ ΠΑΚΕΤΑ ΚΑΙ ΤΟ «ΠΟΙΟΙ ΕΙΜΑΣΤΕ» (27.10.2026). Κοινοποιούνταν με τη γενική
+  // κάρτα της αρχικής. Κανένα ποσό στην κάρτα των πακέτων: οι τιμές ζουν στο
+  // lib/billing/plans και η πλατφόρμα κρατά την εικόνα εβδομάδες. Τα γεγονότα
+  // είναι όσα λέει η περιγραφή της κάθε σελίδας.
+  'paketa': { kind: 'page', over: 'Πακέτα', title: 'Τι περιλαμβάνει κάθε πακέτο',
+    chips: ['Γραμμή προς γραμμή', `Ερωτήσεις ${ASSISTANT_TO}`, 'Σάρωση εγγράφων', 'Εξαγωγή Ε2'], path: '/paketa' },
+  'trust': { kind: 'page', over: 'Εμπιστοσύνη', title: 'Ποιοι είμαστε και τι γίνεται με τα δεδομένα σου',
+    chips: ['Πού φυλάσσονται', 'Ποιος τα βλέπει', 'Τι δεν κάνουμε ποτέ'], path: '/trust' },
   ...Object.fromEntries(GUIDES.map(g => [guideSlug(g), {
     kind: 'guide' as const, over: 'Οδηγός', title: g.title,
     chips: [g.kicker, `Ενημερώθηκε ${grDate(g.updated)}`, 'Με τις πηγές του νόμου'], path: g.href,

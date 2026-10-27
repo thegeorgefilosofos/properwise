@@ -20,6 +20,8 @@
 import Link from 'next/link';
 import { hy } from '@/components/Hyphen';
 import { ORG_ID, PRODUCT_NAME, SITE } from '@/lib/core/site';
+import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
+import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 
 /** Η υπογραφή του περιεχομένου, ορατή στη σελίδα και ως `author` στο σχήμα. */
 const CONTENT_AUTHOR = 'Ομάδα Properwise';
@@ -31,7 +33,20 @@ interface ToolFaq { q: string; a: string }
 const MORTGAGE_PATH = '/ypologismos-stegastikou-daneiou';
 const LINK = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 } as const;
 
-/** Εφαρμογή και συχνές ερωτήσεις ενός δημόσιου υπολογιστή, σε ένα `@graph`. */
+/**
+ * Η ΔΙΑΔΡΟΜΗ ΤΟΥ ΥΠΟΛΟΓΙΣΤΗ: «Αρχική › <υπολογιστής>» (27.10.2026). Το όνομα
+ * είναι η ετικέτα του καταλόγου (lib/core/publicTools.ts), η ίδια με το
+ * υποσέλιδο. Χωρίς ενδιάμεσο κρίκο «Υπολογισμοί»: δεν υπάρχει σελίδα-κόμβος
+ * των υπολογιστών και κρίκος χωρίς σελίδα θα έδειχνε στο κενό
+ * (lib/seo/breadcrumbs.ts). Άγνωστη διαδρομή είναι σφάλμα γραφής.
+ */
+export function toolBreadcrumb(path: string) {
+  const tool = PUBLIC_TOOLS.find(t => t.href === path);
+  if (!tool) throw new Error(`Άγνωστος δημόσιος υπολογιστής: ${path}`);
+  return breadcrumbJsonLd([{ name: tool.label, path: tool.href }]);
+}
+
+/** Εφαρμογή, διαδρομή και συχνές ερωτήσεις ενός δημόσιου υπολογιστή, σε ένα `@graph`. */
 export function toolJsonLd({ name, url, description, faq }: {
   name: string; url: string; description: string; faq: readonly ToolFaq[];
 }) {
@@ -50,6 +65,7 @@ export function toolJsonLd({ name, url, description, faq }: {
         author: { '@type': 'Organization', name: CONTENT_AUTHOR, url: SITE },
         publisher: { '@type': 'Organization', '@id': ORG_ID, name: PRODUCT_NAME, url: SITE },
       },
+      toolBreadcrumb(url.slice(SITE.length)),
       {
         '@type': 'FAQPage',
         mainEntity: faq.map(f => ({

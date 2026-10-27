@@ -21,6 +21,7 @@ import { BackLink } from '../BackLink';
 import { TocSpy } from '../TocSpy';
 import { FaqPlus } from '../FaqPlus';
 import { refsOnly } from '@/components/Hyphen';
+import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { LISTED_GUIDES, guideShareImageUrl, relatedGuides, type Guide } from './guides';
 
 const HUB = { href: '/odigos', label: 'Οδηγοί' } as const;
@@ -379,14 +380,9 @@ export function guideJsonLd({ guide, headline, description, about, faq }: {
         publisher: { '@id': orgId },
         about: { '@type': 'Thing', name: about },
       },
-      {
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Αρχική', item: SITE },
-          { '@type': 'ListItem', position: 2, name: HUB.label, item: siteUrl(HUB.href) },
-          { '@type': 'ListItem', position: 3, name: guide.title, item: url },
-        ],
-      },
+      // Η διαδρομή από την κοινή συνάρτηση (lib/seo/breadcrumbs.ts), όπως στους
+      // υπολογιστές και στο /logistes.
+      breadcrumbJsonLd([{ name: HUB.label, path: HUB.href }, { name: guide.title, path: guide.href }]),
       {
         '@type': 'FAQPage',
         mainEntity: faq.map(f => ({

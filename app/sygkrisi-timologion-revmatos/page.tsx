@@ -29,6 +29,7 @@ import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
+import { toolBreadcrumb } from '../toolSeo';
 import { PowerCompare } from './PowerCompare';
 import { PAGE_UPDATED } from '../pageUpdated';
 
@@ -97,6 +98,7 @@ export default function Page() {
         description: DESC,
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
       },
+      toolBreadcrumb('/sygkrisi-timologion-revmatos'),
       {
         '@type': 'FAQPage',
         mainEntity: FAQ.map(f => ({

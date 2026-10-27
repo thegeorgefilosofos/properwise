@@ -28,7 +28,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync, existsSync } from 'node:fs';
 import sitemap from './sitemap';
 import { PAGE_UPDATED, type DatedPage } from './pageUpdated';
-import { GUIDES, GUIDES_UPDATED } from './odigos/guides';
+import { GUIDES, LISTED_GUIDES, GUIDES_UPDATED } from './odigos/guides';
 import { SITE } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
 import { monthGen, monthYearLabel } from '@/lib/core/months';
@@ -168,10 +168,11 @@ async function main() {
     }
   }
   for (const p of [...Object.keys(SOURCED), ...MANUAL]) ok(`${p}: υπάρχει στο pageUpdated.ts`, p in PAGE_UPDATED);
-  // ΔΕΝ ΕΙΝΑΙ ΚΕΝΟΣ Ο ΕΛΕΓΧΟΣ. Κάθε οδηγός, οι πέντε υπολογιστές με πλαίσιο
-  // πηγών και οι τρεις νομικές σελίδες γράφουν ημερομηνία· αν η εξαγωγή
-  // σταματήσει να τις βρίσκει, το (3) περνά χωρίς να έχει κοιτάξει τίποτα.
-  ok(`βρέθηκε ορατή ημερομηνία σε ${withDate} σελίδες (τουλάχιστον ${GUIDES.length + 8})`, withDate >= GUIDES.length + 8);
+  // ΔΕΝ ΕΙΝΑΙ ΚΕΝΟΣ Ο ΕΛΕΓΧΟΣ. Κάθε οδηγός του χάρτη, οι πέντε υπολογιστές με
+  // πλαίσιο πηγών και οι τρεις νομικές σελίδες γράφουν ημερομηνία· αν η εξαγωγή
+  // σταματήσει να τις βρίσκει, το (3) περνά χωρίς να έχει κοιτάξει τίποτα. Ο
+  // οδηγός εκτός καταλόγου δεν είναι στον χάρτη (27.10.2026), άρα ούτε εδώ.
+  ok(`βρέθηκε ορατή ημερομηνία σε ${withDate} σελίδες (τουλάχιστον ${LISTED_GUIDES.length + 8})`, withDate >= LISTED_GUIDES.length + 8);
 
   // ── 5. ΤΟ ΠΕΡΙΣΤΑΤΙΚΟ ΤΟΥ 18/10 ──────────────────────────────────────────
   // Χάρτης και σελίδα ΕΝΦΙΑ και φόρου ενοικίων δεν γράφουν πια τον έλεγχο των

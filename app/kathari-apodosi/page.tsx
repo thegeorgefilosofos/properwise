@@ -31,6 +31,7 @@ import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
+import { toolBreadcrumb } from '../toolSeo';
 import { ApodosiCalculator } from './ApodosiCalculator';
 import { rentalIncomeTax } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement';
@@ -124,6 +125,7 @@ export default function Page() {
         description: DESC,
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
       },
+      toolBreadcrumb('/kathari-apodosi'),
       {
         '@type': 'FAQPage',
         mainEntity: FAQ.map(f => ({

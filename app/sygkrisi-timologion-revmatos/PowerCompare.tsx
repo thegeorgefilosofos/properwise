@@ -255,13 +255,20 @@ export function PowerCompare({ serverToday, cta }: {
                 σύνδεσμος ανά γραμμή ήταν στόχος αφής 20 εικονοστοιχείων μέσα σε
                 πυκνή λίστα (scripts/e2e-mobile.mjs): το δάχτυλο έπεφτε στον
                 γείτονα. Μέσα σε πρόταση ο σύνδεσμος είναι κείμενο που διαβάζεται
-                και η οδηγία «επιβεβαίωσε στον πάροχο» έχει από πού. */}
+                και η οδηγία «επιβεβαίωσε στον πάροχο» έχει από πού.
+
+                ΚΑΙ ΣΤΗΝ ΑΦΗ, 44 ΑΝΤΙ ΓΙΑ 16 (έλεγχος 27/10/2026). Μέσα στην πρόταση
+                κάθε όνομα παρόχου ήταν στόχος 16 εικονοστοιχείων ύψος (ΔΕΗ 27×16)
+                σε γραμμές των 22: έντεκα σύνδεσμοι στη σειρά. Με `po-tap` κάθε
+                όνομα παίρνει τα 44 του δαπέδου αφής μόνο σε `pointer: coarse`
+                (globals.css), όπως το `.po-secured`· η γραμμή ψηλώνει, οπότε οι
+                στόχοι δεν επικαλύπτονται. Στο ποντίκι η πρόταση μένει ίδια. */}
             <p style={{ margin: '14px 0 0', fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)', textWrap: 'pretty' }}>
               Πριν υπογράψεις, επιβεβαίωσε την τιμή στη σελίδα του παρόχου:{' '}
               {PROVIDERS.map((pr, i) => (
                 <Fragment key={pr.value}>
                   {i > 0 && ', '}
-                  <a href={pr.url} target="_blank" rel="noopener noreferrer" className="lp-link"
+                  <a href={pr.url} target="_blank" rel="noopener noreferrer" className="lp-link po-tap"
                     title={`Οι τιμές του παρόχου ${pr.label}, στη σελίδα του`}
                     style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{pr.label}</a>
                 </Fragment>

@@ -45,6 +45,7 @@ import { LINK_STYLE } from '../linkStyle';
 import { MailLink } from '../legal-shell';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
+import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { GuideH2 as H2, GuideFaq, type GuideFaqItem } from '../odigos/GuideParts';
 
 const PATH = '/logistes';
@@ -152,13 +153,7 @@ const jsonLd = {
       audience: { '@type': 'Audience', audienceType: 'Λογιστές και φοροτεχνικοί' },
       about: { '@type': 'Thing', name: 'Ενοίκια, δαπάνες και έντυπο Ε2 πελατών σε Excel για λογιστές' },
     },
-    {
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Αρχική', item: SITE },
-        { '@type': 'ListItem', position: 2, name: 'Για λογιστές', item: URL },
-      ],
-    },
+    breadcrumbJsonLd([{ name: 'Για λογιστές', path: PATH }]),
     {
       '@type': 'FAQPage',
       mainEntity: FAQ.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),

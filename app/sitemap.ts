@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { SITE } from '@/lib/core/site'
-import { GUIDES, GUIDES_UPDATED } from './odigos/guides'
+import { LISTED_GUIDES, GUIDES_UPDATED } from './odigos/guides'
 import { PAGE_UPDATED, type DatedPage } from './pageUpdated'
 
 // Χάρτης της δημόσιας σελίδας για τις μηχανές αναζήτησης. Μόνο δημόσιες
@@ -37,7 +37,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // ΤΟ ΜΟΝΟ ΣΗΜΑ ΠΟΥ ΔΙΑΒΑΖΕΙ Η GOOGLE: το `changeFrequency` και το
     // `priority` τα αγνοεί, το `lastModified` όχι. Έρχεται από τον ίδιο
     // κατάλογο που τυπώνει την ημερομηνία στον οδηγό.
-    ...GUIDES.map(g => ({ url: base + g.href, lastModified: g.updated, changeFrequency: 'monthly' as const, priority: 0.8 })),
+    //
+    // ΜΟΝΟ ΟΙ ΟΔΗΓΟΙ ΤΟΥ ΚΟΜΒΟΥ (27.10.2026). Ο χάρτης έπαιρνε το πλήρες `GUIDES`
+    // και έδινε στη Google οδηγό που ο κόμβος έκρυβε, εν αναμονή νομικού
+    // ελέγχου. Ο οδηγός εκτός καταλόγου λέει και `noindex` (app/publicMetadata.ts).
+    ...LISTED_GUIDES.map(g => ({ url: base + g.href, lastModified: g.updated, changeFrequency: 'monthly' as const, priority: 0.8 })),
     // Τι περιλαμβάνει κάθε πακέτο: η ερώτηση που κάνει ο επισκέπτης ΠΡΙΝ
     // εγγραφεί, οπότε η απάντηση δεν ζει πίσω από τη σύνδεση.
     { ...at('/paketa'), changeFrequency: 'monthly', priority: 0.8 },
