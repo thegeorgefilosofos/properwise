@@ -29,6 +29,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import sitemap from './sitemap';
 import { PAGE_UPDATED, type DatedPage } from './pageUpdated';
 import { GUIDES, LISTED_GUIDES, GUIDES_UPDATED } from './odigos/guides';
+import { TOOLS_UPDATED } from './pageUpdated';
 import { SITE } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
 import { monthGen, monthYearLabel } from '@/lib/core/months';
@@ -124,7 +125,7 @@ async function main() {
 
     // ── 1. ΜΙΑ ΠΗΓΗ ───────────────────────────────────────────────────────
     const fromRegistry = (PAGE_UPDATED as Record<string, string>)[path];
-    const expected = fromRegistry ?? guideBy.get(row.url) ?? (path === '/odigos' ? GUIDES_UPDATED : undefined);
+    const expected = fromRegistry ?? guideBy.get(row.url) ?? (path === '/odigos' ? GUIDES_UPDATED : path === '/ergaleia' ? TOOLS_UPDATED : undefined);
     ok(`${path}: ο χάρτης παίρνει την ημερομηνία από το pageUpdated.ts ή το guides.ts`, expected !== undefined && lm === expected);
 
     // ── 2. ΚΑΜΙΑ ΜΕΛΛΟΝΤΙΚΗ ─────────────────────────────────────────────────

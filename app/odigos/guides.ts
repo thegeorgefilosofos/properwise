@@ -21,15 +21,15 @@ import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_REC
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { feWhole, fpRate, grDateOf } from '@/lib/core/format';
 import { COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
+import type { TopicId } from '@/lib/core/topics';
 
 // Η κλίμακα της περιγραφής βγαίνει από την κλίμακα που υπολογίζει: «15 / 25 /
 // 35 / 45%», το όριο του τελευταίου κλιμακίου και η τεκμαρτή έκπτωση.
 const RENT_SCALE = RENTAL_TAX_BRACKETS_2026.map(b => Math.round(b.rate * 100)).join(' / ') + '%';
 const RENT_TOP_FROM = RENTAL_TAX_BRACKETS_2026[RENTAL_TAX_BRACKETS_2026.length - 1].from;
 
-/** Οι ομάδες του κόμβου, με τη σειρά που εμφανίζονται. */
-export const GUIDE_TOPICS = ['enoikia', 'enfia', 'agora'] as const;
-export type GuideTopic = typeof GUIDE_TOPICS[number];
+/** Το θέμα του οδηγού: τα ίδια θέματα με τον κόμβο των εργαλείων (lib/core/topics.ts). */
+export type GuideTopic = TopicId;
 
 export type Guide = {
   href: string;
@@ -50,7 +50,7 @@ export type Guide = {
   /**
    * Η ΟΜΑΔΑ ΤΟΥ ΣΤΟΝ ΚΟΜΒΟ /odigos (27.10.2026). Ο κόμβος ήταν μία λίστα καρτών
    * χωρίς κείμενο· τώρα χωρίζεται σε θέματα, το καθένα με την εισαγωγή του και
-   * τους υπολογιστές του (app/odigos/page.tsx, `TOPICS`). Υποχρεωτικό, ώστε
+   * τους υπολογιστές του (app/odigos/page.tsx, lib/core/topics.ts). Υποχρεωτικό, ώστε
    * νέος οδηγός να μη μένει εκτός ομάδας χωρίς να το πει ο μεταγλωττιστής.
    */
   topic: GuideTopic;

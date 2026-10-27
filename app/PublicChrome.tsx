@@ -21,7 +21,7 @@
 // ΤΙ ΔΕΝ ΚΑΝΕΙ. Η κεφαλίδα της αρχικής μένει δική της (κολλητή, ημιδιαφανής,
 // με θόλωμα). Οι ΣΥΝΔΕΣΜΟΙ της όμως είναι οι ίδιοι παντού, μέσω του `PublicNav`.
 // ═══════════════════════════════════════════════════════════════════════════
-import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
+import { PUBLIC_TOOLS, TOOLS_HUB } from '@/lib/core/publicTools';
 import { PRODUCT_NAME, LINKEDIN_URL, INSTAGRAM_URL, YOUTUBE_URL } from '@/lib/core/site';
 import { jsonLdScript } from '@/lib/core/jsonLd';
 import { BrandLogo } from '@/components/BrandMark';
@@ -103,7 +103,7 @@ export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current
   if (!signedIn) pages.push(['/login', 'Σύνδεση']);
   const menu: MenuGroup[] = [
     { links: pages },
-    { label: 'Υπολογισμοί', links: PUBLIC_TOOLS.map(t => [t.href, t.label] as const) },
+    { label: 'Υπολογισμοί', links: [...PUBLIC_TOOLS.map(t => [t.href, t.label] as const), [TOOLS_HUB.href, 'Όλα τα εργαλεία'] as const] },
   ];
   return (
     <div className="lp-nav-row" style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm }}>
@@ -214,7 +214,8 @@ export function PublicFooter() {
           {/* Ο ΠΕΜΠΤΟΣ ΚΑΙ Ο ΕΚΤΟΣ ΜΠΑΙΝΟΥΝ ΤΕΛΕΥΤΑΙΟΙ. Η δόση στεγαστικού και η σύγκριση
               ρεύματος δεν έχουν ακόμη οδηγό στη διπλανή στήλη, οπότε στέκουν κάτω από τα τέσσερα
               ζευγάρια και δεν σπάνε τη στοίχιση «πόσο / γιατί» από πάνω. */}
-          <FootCol label="Υπολογισμοί" links={PUBLIC_TOOLS.map(t => [t.href, t.label] as [string, string])} />
+          {/* ΚΑΙ Ο ΚΟΜΒΟΣ ΤΟΥΣ ΤΕΛΕΥΤΑΙΟΣ (27.10.2026), όπως το «Όλοι οι οδηγοί» δίπλα. */}
+          <FootCol label="Υπολογισμοί" links={[...PUBLIC_TOOLS.map(t => [t.href, t.label] as [string, string]), [TOOLS_HUB.href, 'Όλα τα εργαλεία']]} />
           {/* ΟΙ ΟΔΗΓΟΙ ΘΕΛΟΥΝ ΔΙΚΗ ΤΟΥΣ ΣΤΗΛΗ, ΜΕ ΤΟ ΟΝΟΜΑ ΤΟΥ ΚΑΘΕΝΟΣ. Ενας
               σύνδεσμος «Οδηγοί» κρυμμένος στο τέλος των εργαλείων διαβαζόταν ως
               πάρεργο. Ξεχωριστή στήλη απαντά στο «γιατί» δίπλα στο «πόσο» και

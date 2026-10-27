@@ -41,6 +41,7 @@ import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 import { PRICE_FACTS } from '@/lib/facts/prices';
 import { POLICY_VERSION } from '@/lib/legal/identity';
 import TOOL_STAMPS from './toolStamps.json';
+import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
 
 /** Μητρώο χωρίς ημερομηνία ελέγχου σπάει το χτίσιμο, δεν γίνεται σιωπηλά «καμία». */
 function checked(iso: string | null, what: string): string {
@@ -107,3 +108,13 @@ export const PAGE_UPDATED = {
 } as const satisfies Record<string, string>;
 
 export type DatedPage = keyof typeof PAGE_UPDATED;
+
+/**
+ * Η ΗΜΕΡΟΜΗΝΙΑ ΤΟΥ ΚΟΜΒΟΥ /ergaleia (27.10.2026): η νεότερη από τους
+ * υπολογιστές που δείχνει, όπως του /odigos από τους οδηγούς του. Υπολογιστής
+ * χωρίς γραμμή εδώ δεν μετρά· ο ίδιος ο υπολογιστής έχει δική του στον χάρτη.
+ */
+export const TOOLS_UPDATED: string = PUBLIC_TOOLS
+  .map(t => (PAGE_UPDATED as Record<string, string>)[t.href])
+  .filter((d): d is string => typeof d === 'string')
+  .sort().at(-1)!;

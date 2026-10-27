@@ -20,7 +20,7 @@
 import Link from 'next/link';
 import { hy } from '@/components/Hyphen';
 import { ORG_ID, PRODUCT_NAME, SITE } from '@/lib/core/site';
-import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
+import { PUBLIC_TOOLS, TOOLS_HUB } from '@/lib/core/publicTools';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 
 /** Η υπογραφή του περιεχομένου, ορατή στη σελίδα και ως `author` στο σχήμα. */
@@ -34,16 +34,16 @@ const MORTGAGE_PATH = '/ypologismos-stegastikou-daneiou';
 const LINK = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 } as const;
 
 /**
- * Η ΔΙΑΔΡΟΜΗ ΤΟΥ ΥΠΟΛΟΓΙΣΤΗ: «Αρχική › <υπολογιστής>» (27.10.2026). Το όνομα
- * είναι η ετικέτα του καταλόγου (lib/core/publicTools.ts), η ίδια με το
- * υποσέλιδο. Χωρίς ενδιάμεσο κρίκο «Υπολογισμοί»: δεν υπάρχει σελίδα-κόμβος
- * των υπολογιστών και κρίκος χωρίς σελίδα θα έδειχνε στο κενό
+ * Η ΔΙΑΔΡΟΜΗ ΤΟΥ ΥΠΟΛΟΓΙΣΤΗ: «Αρχική › Εργαλεία › <υπολογιστής>» (27.10.2026).
+ * Το όνομα είναι η ετικέτα του καταλόγου (lib/core/publicTools.ts), η ίδια με
+ * το υποσέλιδο· ο μεσαίος κρίκος είναι ο κόμβος /ergaleia (`TOOLS_HUB`), με
+ * δική του σελίδα, όπως ζητά η Google για κάθε ενδιάμεσο κρίκο
  * (lib/seo/breadcrumbs.ts). Άγνωστη διαδρομή είναι σφάλμα γραφής.
  */
 export function toolBreadcrumb(path: string) {
   const tool = PUBLIC_TOOLS.find(t => t.href === path);
   if (!tool) throw new Error(`Άγνωστος δημόσιος υπολογιστής: ${path}`);
-  return breadcrumbJsonLd([{ name: tool.label, path: tool.href }]);
+  return breadcrumbJsonLd([{ name: TOOLS_HUB.label, path: TOOLS_HUB.href }, { name: tool.label, path: tool.href }]);
 }
 
 /** Εφαρμογή, διαδρομή και συχνές ερωτήσεις ενός δημόσιου υπολογιστή, σε ένα `@graph`. */

@@ -1,7 +1,8 @@
 import type { MetadataRoute } from 'next'
 import { SITE } from '@/lib/core/site'
 import { LISTED_GUIDES, GUIDES_UPDATED } from './odigos/guides'
-import { PAGE_UPDATED, type DatedPage } from './pageUpdated'
+import { PAGE_UPDATED, TOOLS_UPDATED, type DatedPage } from './pageUpdated'
+import { TOOLS_HUB } from '@/lib/core/publicTools'
 
 // Χάρτης της δημόσιας σελίδας για τις μηχανές αναζήτησης. Μόνο δημόσιες
 // διαδρομές: το dashboard, τα portals και οι σελίδες με token μένουν εκτός.
@@ -28,6 +29,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { ...at('/kathari-apodosi'), changeFrequency: 'monthly', priority: 0.9 },
     { ...at('/ypologismos-stegastikou-daneiou'), changeFrequency: 'monthly', priority: 0.9 },
     { ...at('/sygkrisi-timologion-revmatos'), changeFrequency: 'monthly', priority: 0.9 },
+    // Κόμβος εργαλείων (27.10.2026): όλοι οι υπολογιστές ανά θέμα, ο μεσαίος
+    // κρίκος της διαδρομής τους. Ημερομηνία η νεότερη των υπολογιστών του.
+    { url: base + TOOLS_HUB.href, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.8 },
     // Κόμβος οδηγών: η μία σελίδα που μαζεύει όλους τους οδηγούς, συνδεδεμένη
     // από το υποσέλιδο κάθε δημόσιας σελίδας. Η ημερομηνία του είναι η πιο
     // πρόσφατη των οδηγών του, αφού αυτούς δείχνει.

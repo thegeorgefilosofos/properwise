@@ -18,6 +18,7 @@ import { fpRate, grDate } from '@/lib/core/format';
 import { DSTI_LIMIT } from '@/lib/loans/affordability';
 import { TARIFFS_VERIFIED } from '@/lib/energy/catalogue';
 import { ASSISTANT_TO } from '@/lib/assistant/identity';
+import { PUBLIC_TOOLS, TOOLS_HUB } from '@/lib/core/publicTools';
 
 export type ShareCard = {
   /** Οδηγός, υπολογιστής ή σελίδα που μιλά σε ένα κοινό (π.χ. /logistes). */
@@ -76,6 +77,9 @@ export const SHARE_CARDS: Record<string, ShareCard> = {
   // είναι όσα λέει η περιγραφή της κάθε σελίδας.
   'paketa': { kind: 'page', over: 'Πακέτα', title: 'Τι περιλαμβάνει κάθε πακέτο',
     chips: ['Γραμμή προς γραμμή', `Ερωτήσεις ${ASSISTANT_TO}`, 'Σάρωση εγγράφων', 'Εξαγωγή Ε2'], path: '/paketa' },
+  // Ο κόμβος των εργαλείων: τα ονόματα των υπολογιστών από τον κατάλογο τους.
+  'ergaleia': { kind: 'calc', over: 'Εργαλεία', title: 'Δωρεάν υπολογισμοί για ιδιοκτήτες ακινήτων',
+    chips: PUBLIC_TOOLS.map(t => t.label), path: TOOLS_HUB.href },
   'trust': { kind: 'page', over: 'Εμπιστοσύνη', title: 'Ποιοι είμαστε και τι γίνεται με τα δεδομένα σου',
     chips: ['Πού φυλάσσονται', 'Ποιος τα βλέπει', 'Τι δεν κάνουμε ποτέ'], path: '/trust' },
   ...Object.fromEntries(GUIDES.map(g => [guideSlug(g), {

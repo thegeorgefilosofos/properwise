@@ -13,7 +13,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
 import { SITE } from '@/lib/core/site'
-import { PUBLIC_TOOLS } from '@/lib/core/publicTools'
+import { PUBLIC_TOOLS, TOOLS_HUB } from '@/lib/core/publicTools'
 import { breadcrumbJsonLd, crumbUrl, HOME_CRUMB } from './breadcrumbs'
 import { toolBreadcrumb } from '@/app/toolSeo'
 
@@ -42,7 +42,9 @@ type Item = { '@type': string; position: number; name: string; item: string }
 // ── (β) ΚΑΘΕ ΥΠΟΛΟΓΙΣΤΗΣ ────────────────────────────────────────────────────
 for (const t of PUBLIC_TOOLS) {
   const items = toolBreadcrumb(t.href).itemListElement as Item[]
-  ok(`${t.href}: Αρχική › ${t.label}`, items.length === 2 && items[1].name === t.label && items[1].item === SITE + t.href)
+  ok(`${t.href}: Αρχική › Εργαλεία › ${t.label}`, items.length === 3
+    && items[1].name === TOOLS_HUB.label && items[1].item === SITE + TOOLS_HUB.href
+    && items[2].name === t.label && items[2].item === SITE + t.href)
   const src = readFileSync(`app${t.href}/page.tsx`, 'utf8')
   ok(`${t.href}: η σελίδα δηλώνει τη διαδρομή της`,
     src.includes(`toolBreadcrumb('${t.href}')`) || /toolJsonLd\(/.test(src))
@@ -54,7 +56,7 @@ for (const t of PUBLIC_TOOLS) {
 }
 
 // ── (γ) ΜΙΑ ΣΥΝΑΡΤΗΣΗ ───────────────────────────────────────────────────────
-for (const f of ['app/odigos/GuideParts.tsx', 'app/logistes/page.tsx', 'app/odigos/page.tsx', 'app/toolSeo.tsx']) {
+for (const f of ['app/odigos/GuideParts.tsx', 'app/logistes/page.tsx', 'app/odigos/page.tsx', 'app/toolSeo.tsx', 'app/ergaleia/page.tsx']) {
   const src = readFileSync(f, 'utf8')
   ok(`${f}: χωρίς δικό του BreadcrumbList`, !src.includes("'BreadcrumbList'"))
   ok(`${f}: από το breadcrumbJsonLd`, src.includes('breadcrumbJsonLd('))
