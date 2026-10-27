@@ -21,11 +21,15 @@ import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_REC
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { feWhole, fpRate, grDateOf } from '@/lib/core/format';
 import { COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
+import type { TopicId } from '@/lib/core/topics';
 
 // Η κλίμακα της περιγραφής βγαίνει από την κλίμακα που υπολογίζει: «15 / 25 /
 // 35 / 45%», το όριο του τελευταίου κλιμακίου και η τεκμαρτή έκπτωση.
 const RENT_SCALE = RENTAL_TAX_BRACKETS_2026.map(b => Math.round(b.rate * 100)).join(' / ') + '%';
 const RENT_TOP_FROM = RENTAL_TAX_BRACKETS_2026[RENTAL_TAX_BRACKETS_2026.length - 1].from;
+
+/** Το θέμα του οδηγού: τα ίδια θέματα με τον κόμβο των εργαλείων (lib/core/topics.ts). */
+export type GuideTopic = TopicId;
 
 export type Guide = {
   href: string;
@@ -44,12 +48,25 @@ export type Guide = {
    */
   tools: readonly string[];
   /**
-   * ΟΔΗΓΟΣ ΕΚΤΟΣ ΚΑΤΑΛΟΓΟΥ, με την αιτία του. Η σελίδα του μένει δημοσιευμένη,
-   * στον χάρτη ιστότοπου και στο ευρετήριο, αλλά καμία άλλη σελίδα δεν τον
-   * δείχνει: ούτε ο κόμβος /odigos, ούτε οι «Σχετικοί οδηγοί», ούτε το εργαλείο
-   * του, ούτε το /llms.txt. Από εδώ περνούν όλα μέσα από το `LISTED_GUIDES`
-   * και το `listed`· το guard-unlisted-guides κοκκινίζει σε σύνδεσμο προς αυτόν
-   * από οποιαδήποτε άλλη σελίδα.
+   * Η ΟΜΑΔΑ ΤΟΥ ΣΤΟΝ ΚΟΜΒΟ /odigos (27.10.2026). Ο κόμβος ήταν μία λίστα καρτών
+   * χωρίς κείμενο· τώρα χωρίζεται σε θέματα, το καθένα με την εισαγωγή του και
+   * τους υπολογιστές του (app/odigos/page.tsx, lib/core/topics.ts). Υποχρεωτικό, ώστε
+   * νέος οδηγός να μη μένει εκτός ομάδας χωρίς να το πει ο μεταγλωττιστής.
+   */
+  topic: GuideTopic;
+  /**
+   * ΟΔΗΓΟΣ ΕΚΤΟΣ ΚΑΤΑΛΟΓΟΥ, με την αιτία του. Η σελίδα του απαντά σε όποιον
+   * έχει τη διεύθυνση, αλλά καμία άλλη σελίδα δεν τον δείχνει: ούτε ο κόμβος
+   * /odigos, ούτε οι «Σχετικοί οδηγοί», ούτε το εργαλείο του, ούτε το /llms.txt.
+   * Από εδώ περνούν όλα μέσα από το `LISTED_GUIDES` και το `listed`· το
+   * guard-unlisted-guides κοκκινίζει σε σύνδεσμο προς αυτόν από οποιαδήποτε
+   * άλλη σελίδα.
+   *
+   * ΟΥΤΕ ΧΑΡΤΗΣ ΟΥΤΕ ΕΥΡΕΤΗΡΙΟ (27.10.2026). Ως τώρα ο χάρτης ιστότοπου τον
+   * κρατούσε και η σελίδα δεν έλεγε `noindex`: η Google είχε στο ευρετήριο
+   * σελίδα που ο κόμβος έκρυβε και που περίμενε νομικό έλεγχο. Ο χάρτης
+   * (app/sitemap.ts) διαβάζει πλέον το `LISTED_GUIDES` και τα μεταδεδομένα
+   * (app/publicMetadata.ts) το `isHiddenGuide`: η ίδια συνθήκη με τον κόμβο.
    */
   unlisted?: string;
 };
@@ -64,6 +81,7 @@ export const GUIDES: readonly Guide[] = [
     published: '2026-09-21',
     updated: '2026-10-20',
     tools: ['/ypologismos-forou-enoikion', '/kathari-apodosi'],
+    topic: 'enoikia',
   },
   {
     href: '/odigos/airbnb-takk-2026',
@@ -76,6 +94,7 @@ export const GUIDES: readonly Guide[] = [
     published: '2026-09-21',
     updated: '2026-10-20',
     tools: ['/vraxyxronia-i-makroxronia'],
+    topic: 'enoikia',
   },
   {
     href: '/odigos/pos-ypologizetai-o-enfia',
@@ -88,6 +107,7 @@ export const GUIDES: readonly Guide[] = [
     // πληθυσμού του μικρού οικισμού («έως» 1.500, 1.700 στα σύνορα).
     updated: '2026-10-20',
     tools: ['/ypologismos-enfia'],
+    topic: 'enfia',
   },
   {
     href: '/odigos/kathari-apodosi-akinitou',
@@ -98,6 +118,7 @@ export const GUIDES: readonly Guide[] = [
     published: '2026-09-21',
     updated: '2026-10-20',
     tools: ['/kathari-apodosi', '/ypologismos-stegastikou-daneiou', '/sygkrisi-timologion-revmatos'],
+    topic: 'agora',
   },
   // ── Δεύτερο κύμα (27.09.2026). Κάθε οδηγός γράφεται από δεδομένα που ήδη
   // τρέχουν στην εφαρμογή, με τη νομική βάση τους: lib/tax/greekTaxCalendar.ts
@@ -111,6 +132,7 @@ export const GUIDES: readonly Guide[] = [
     published: '2026-09-27',
     updated: '2026-10-20',
     tools: ['/ypologismos-enfia', '/ypologismos-forou-enoikion', '/vraxyxronia-i-makroxronia'],
+    topic: 'enfia',
   },
   {
     href: '/odigos/enoikio-meso-trapezas',
@@ -124,6 +146,7 @@ export const GUIDES: readonly Guide[] = [
     published: '2026-09-27',
     updated: '2026-10-20',
     tools: ['/ypologismos-forou-enoikion'],
+    topic: 'enoikia',
   },
   {
     href: '/odigos/plafon-3-emporikes-misthoseis-2026',
@@ -135,6 +158,7 @@ export const GUIDES: readonly Guide[] = [
     published: '2026-09-27',
     updated: '2026-10-20',
     tools: ['/kathari-apodosi'],
+    topic: 'enoikia',
   },
   {
     href: '/odigos/ekptosi-forou-anakainisis',
@@ -145,6 +169,7 @@ export const GUIDES: readonly Guide[] = [
     published: '2026-09-27',
     updated: '2026-10-20',
     tools: ['/ypologismos-forou-enoikion', '/kathari-apodosi'],
+    topic: 'enfia',
   },
   {
     href: '/odigos/vraxyxronia-ama-prodiagrafes-2026',
@@ -155,10 +180,12 @@ export const GUIDES: readonly Guide[] = [
     published: '2026-09-27',
     updated: '2026-10-20',
     tools: ['/vraxyxronia-i-makroxronia'],
+    topic: 'enoikia',
     // ΧΩΡΙΣ ΕΣΩΤΕΡΙΚΟΥΣ ΣΥΝΔΕΣΜΟΥΣ ΑΠΟ 13/10/2026. Ο οδηγός θέλει την υπογραφή
     // της Legal πριν ξαναπάρει σύνδεσμο από άλλη σελίδα (πλάνο SEO, έως 16/10).
-    // Η σελίδα μένει δημοσιευμένη και στον χάρτη. Με την υπογραφή σβήνει αυτή
-    // η γραμμή και ο οδηγός ξαναμπαίνει παντού μόνος του.
+    // Από 27/10/2026 και εκτός χάρτη, με `noindex` (βλ. `unlisted`). Με την
+    // υπογραφή σβήνει αυτή η γραμμή και ο οδηγός ξαναμπαίνει παντού μόνος του,
+    // στον χάρτη και στο ευρετήριο μαζί.
     unlisted: 'Περιμένει την υπογραφή της Legal (13/10/2026)',
   },
   // ── Τρίτο κύμα (03.10.2026). Από τα ερωτήματα αναζήτησης: ο κόσμος ψάχνει τι
@@ -173,6 +200,7 @@ export const GUIDES: readonly Guide[] = [
     published: '2026-10-03',
     updated: '2026-10-20',
     tools: ['/ypologismos-enfia'],
+    topic: 'enfia',
   },
   // ── Τέταρτο κύμα (19.10.2026). Μετά τη ΔΕΘ ο κόσμος ψάχνει «Σπίτι μου 3». Τα
   // όρια του Ι, του ΙΙ και ό,τι είναι επίσημο για το ΙΙΙ από το
@@ -186,6 +214,7 @@ export const GUIDES: readonly Guide[] = [
     published: '2026-10-19',
     updated: '2026-10-20',
     tools: ['/ypologismos-stegastikou-daneiou'],
+    topic: 'agora',
   },
 ];
 
@@ -194,10 +223,19 @@ const listed = (g: Guide): boolean => !g.unlisted;
 
 /**
  * ΟΙ ΟΔΗΓΟΙ ΠΟΥ ΔΕΙΧΝΟΥΝ ΟΙ ΑΛΛΕΣ ΣΕΛΙΔΕΣ: ο κόμβος /odigos, το πλήθος του
- * «Όλοι οι οδηγοί» και το /llms.txt. Το πλήρες `GUIDES` το διαβάζουν μόνο ο
- * χάρτης ιστότοπου και οι κάρτες κοινοποίησης, που δεν είναι σύνδεσμοι.
+ * «Όλοι οι οδηγοί», το /llms.txt και ο χάρτης ιστότοπου. Το πλήρες `GUIDES`
+ * το διαβάζουν μόνο οι κάρτες κοινοποίησης, που δεν είναι σύνδεσμοι.
  */
 export const LISTED_GUIDES: readonly Guide[] = GUIDES.filter(listed);
+
+/**
+ * Η ΔΙΑΔΡΟΜΗ ΕΙΝΑΙ ΟΔΗΓΟΣ ΕΚΤΟΣ ΚΑΤΑΛΟΓΟΥ: κάτω από το /odigos/ και όχι στο
+ * `LISTED_GUIDES`. Το διαβάζει το app/publicMetadata.ts για το `noindex`, ώστε
+ * ο κόμβος, ο χάρτης και το ευρετήριο να κρίνουν με την ίδια συνθήκη.
+ */
+export function isHiddenGuide(path: string): boolean {
+  return path.startsWith('/odigos/') && !LISTED_GUIDES.some(g => g.href === path);
+}
 
 /**
  * ΟΙ ΟΔΗΓΟΙ ΕΝΟΣ ΕΡΓΑΛΕΙΟΥ, με τη σειρά του καταλόγου. Μέχρι τις 05/10/2026
@@ -238,10 +276,10 @@ export function guideAt(href: string): Guide {
 }
 
 /**
- * Η τελευταία ουσιαστική αλλαγή σε οποιονδήποτε οδηγό: η ημερομηνία του κόμβου
+ * Η τελευταία ουσιαστική αλλαγή σε οδηγό του κόμβου: η ημερομηνία του κόμβου
  * /odigos στον χάρτη, που αλλάζει όταν αλλάζει κάτι από όσα δείχνει.
  */
-export const GUIDES_UPDATED: string = GUIDES.map(g => g.updated).sort().at(-1)!;
+export const GUIDES_UPDATED: string = LISTED_GUIDES.map(g => g.updated).sort().at(-1)!;
 
 /** Το όνομα της κάρτας κοινοποίησης του οδηγού στο /og/<slug> (app/og/share.ts). */
 export function guideSlug(g: Guide): string {

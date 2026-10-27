@@ -14,7 +14,8 @@
 // σελίδα γράψει `openGraph` με το χέρι.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { Metadata } from 'next';
-import { PRODUCT_NAME, SHARE_IMAGE } from '@/lib/core/site';
+import { PRODUCT_NAME, SHARE_IMAGE, SITE } from '@/lib/core/site';
+import { isHiddenGuide } from './odigos/guides';
 
 
 /**
@@ -31,9 +32,14 @@ export function publicMetadata({ title, description, url, type = 'website', imag
   image?: { url: string; width: number; height: number; alt: string };
 }): Metadata {
   const images = [image ?? SHARE_IMAGE];
+  // ΟΔΗΓΟΣ ΕΚΤΟΣ ΚΑΤΑΛΟΓΟΥ, ΕΚΤΟΣ ΕΥΡΕΤΗΡΙΟΥ (27.10.2026). Η ίδια συνθήκη με τον
+  // κόμβο και τον χάρτη (`isHiddenGuide`, app/odigos/guides.ts): όσο ο οδηγός
+  // περιμένει υπογραφή, η σελίδα του απαντά αλλά δεν ευρετηριάζεται.
+  const hidden = url.startsWith(SITE) && isHiddenGuide(url.slice(SITE.length));
   return {
     title: { absolute: title },
     description,
+    ...(hidden && { robots: { index: false, follow: true } }),
     alternates: { canonical: url },
     openGraph: {
       title, description, url, type,

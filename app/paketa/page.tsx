@@ -25,6 +25,8 @@ import { billingWords, PRICES_VAT, CANCEL_ANYTIME } from '@/lib/legal/billingWor
 import { PublicHeader, PublicFooter, JsonLd, WRAP, WRAP_PAD } from '../PublicChrome';
 import { BackLink } from '../BackLink';
 import { publicMetadata } from '../publicMetadata';
+import { shareImage } from '../og/share';
+import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { PlanMatrix } from '@/components/PlanMatrix';
 import { ASSISTANT_TO } from '@/lib/assistant/identity';
 import { PaymentsBadge } from './PaymentsBadge';
@@ -40,7 +42,7 @@ const URL = siteUrl(PATH);
 
 // Απόλυτος τίτλος (publicMetadata): το TITLE έχει ήδη το «· PROPERWISE», οπότε
 // το πρότυπο της ρίζας (`%s · PROPERWISE`) θα το πρόσθετε δεύτερη φορά.
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL });
+export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, image: shareImage('paketa') });
 
 export default function Page() {
   return (
@@ -49,10 +51,10 @@ export default function Page() {
     <div className="pub-root min-h-dvh" data-mode="dark">
       <JsonLd data={{
         '@context': 'https://schema.org',
-        '@type': 'WebPage',
-        name: TITLE,
-        description: DESC,
-        url: URL,
+        '@graph': [
+          { '@type': 'WebPage', name: TITLE, description: DESC, url: URL },
+          breadcrumbJsonLd([{ name: 'Πακέτα', path: PATH }]),
+        ],
       }} />
       <PublicHeader current="paketa" />
       {/* Ιδια δομή κεφαλίδας με τα δωρεάν εργαλεία: μάτι, τίτλος πρώτου

@@ -26,16 +26,55 @@ import { hyphenate, bindRefs } from '@/lib/core/hyphenate';
 import { billingWords } from '@/lib/legal/billingWords';
 import { LegalLayout, MailLink, type LegalBlock } from '../legal-shell';
 import Link from 'next/link';
-import { siteUrl } from '@/lib/core/site';
+import { siteUrl, SITE, ORG_ID, SOCIAL_PROFILES } from '@/lib/core/site';
+import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
+import { JsonLd } from '../PublicChrome';
+import { shareImage } from '../og/share';
 import { grDate } from '@/lib/core/format';
 import { LINK_STYLE } from '../linkStyle';
 import { publicMetadata } from '../publicMetadata';
 
+const PATH = '/trust';
+const URL = siteUrl(PATH);
+const DESC = 'Ποιοι είμαστε, πού φυλάσσονται τα δεδομένα σου, ποιος μπορεί να τα δει και τι δεν κάνουμε ποτέ μ’ αυτά.';
+
 export const metadata: Metadata = publicMetadata({
-  title: 'Ποιοι είμαστε · PROPERWISE',
-  description: 'Ποιοι είμαστε, πού φυλάσσονται τα δεδομένα σου, ποιος μπορεί να τα δει και τι δεν κάνουμε ποτέ μ’ αυτά.',
-  url: siteUrl('/trust'),
+  title: 'Ποιοι είμαστε · PROPERWISE', description: DESC, url: URL, image: shareImage('trust'),
 });
+
+// ── ΤΟ ΔΟΜΗΜΕΝΟ ΣΧΗΜΑ (27.10.2026) ─────────────────────────────────────────
+// Η σελίδα δεν είχε κανένα, ενώ είναι αυτή που απαντά «ποιοι είστε». Δηλώνει
+// ότι είναι η σελίδα «σχετικά με» (`AboutPage`) του ίδιου οργανισμού με την
+// αρχική (ORG_ID) και τη διαδρομή της. ΚΑΝΕΝΑ ΣΤΟΙΧΕΙΟ ΤΑΥΤΟΤΗΤΑΣ ΠΕΡΑ ΑΠΟ ΟΣΑ
+// ΔΗΛΩΝΕΙ ΗΔΗ Η ΑΡΧΙΚΗ: όνομα, διεύθυνση ιστότοπου, λογότυπο, λογαριασμοί. Ούτε
+// ΑΦΜ, ούτε διεύθυνση, ούτε πρόσωπα: όσα δεν έχουν δημοσιευθεί στη σελίδα δεν
+// δημοσιεύονται από το σχήμα.
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': ORG_ID,
+      name: IDENTITY.tradeName,
+      url: SITE,
+      logo: { '@type': 'ImageObject', url: siteUrl('/icons/icon-512.png'), width: 512, height: 512 },
+      sameAs: [...SOCIAL_PROFILES],
+    },
+    {
+      '@type': 'AboutPage',
+      '@id': `${URL}#webpage`,
+      url: URL,
+      name: 'Ποιοι είμαστε',
+      description: DESC,
+      inLanguage: 'el',
+      dateModified: POLICY_VERSION,
+      isPartOf: { '@id': `${SITE}/#website` },
+      about: { '@id': ORG_ID },
+      publisher: { '@id': ORG_ID },
+    },
+    breadcrumbJsonLd([{ name: 'Ποιοι είμαστε', path: PATH }]),
+  ],
+};
 
 // ── Τα στοιχεία ταυτότητας, σε σειρά ανάγνωσης ─────────────────────────────
 //
@@ -494,15 +533,18 @@ export default function TrustPage() {
   ];
 
   return (
-    <LegalLayout
-      guideHeads
-      self="/trust"
-      eyebrow="Εμπιστοσύνη"
-      title="Ποιοι είμαστε"
-      meta={`Τελευταία ενημέρωση: ${POLICY_UPDATED}`}
-      version={`Έκδοση ${grDate(POLICY_VERSION)} · Τελευταία ενημέρωση: ${POLICY_UPDATED}`}
-      intro="Σου ζητάμε το ΑΦΜ σου, τα μισθωτήριά σου και τα έσοδά σου. Δεν υπάρχει λόγος να μας τα εμπιστευτείς αν δεν ξέρεις ποιοι είμαστε, πού πάνε και τι δεν κάνουμε μ’ αυτά. Εδώ τα λέμε όσο πιο ανοιχτά μπορούμε, χωρίς μικρά γράμματα, μαζί με τις εξαιρέσεις που δεν μας βολεύουν."
-      blocks={blocks}
-    />
+    <>
+      <JsonLd data={jsonLd} />
+      <LegalLayout
+        guideHeads
+        self="/trust"
+        eyebrow="Εμπιστοσύνη"
+        title="Ποιοι είμαστε"
+        meta={`Τελευταία ενημέρωση: ${POLICY_UPDATED}`}
+        version={`Έκδοση ${grDate(POLICY_VERSION)} · Τελευταία ενημέρωση: ${POLICY_UPDATED}`}
+        intro="Σου ζητάμε το ΑΦΜ σου, τα μισθωτήριά σου και τα έσοδά σου. Δεν υπάρχει λόγος να μας τα εμπιστευτείς αν δεν ξέρεις ποιοι είμαστε, πού πάνε και τι δεν κάνουμε μ’ αυτά. Εδώ τα λέμε όσο πιο ανοιχτά μπορούμε, χωρίς μικρά γράμματα, μαζί με τις εξαιρέσεις που δεν μας βολεύουν."
+        blocks={blocks}
+      />
+    </>
   );
 }

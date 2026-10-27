@@ -28,6 +28,7 @@ import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
+import { toolBreadcrumb } from '../toolSeo';
 import { ShortVsLongCalculator } from './ShortVsLongCalculator';
 import { PAGE_UPDATED, limitsChecked } from '../pageUpdated';
 
@@ -115,6 +116,7 @@ export default function Page() {
         description: DESC,
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
       },
+      toolBreadcrumb('/vraxyxronia-i-makroxronia'),
       {
         '@type': 'FAQPage',
         mainEntity: FAQ.map(f => ({

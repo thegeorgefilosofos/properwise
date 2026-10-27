@@ -8,10 +8,13 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import {
   parseRate, loanRate, mortgagePlan, borrowingCapacity, marketFact, mortgageMarket, rateField,
-  housingNote, housingText, marketDescription, startRates, spreadHint, NO_MARKET,
+  housingNote, marketDescription, startRates, spreadHint, NO_MARKET, MORTGAGE_DESC,
 } from './stegastiko'
 import { totalInterest, interestForYear } from '@/lib/loans/recommend'
 import { ECB_SERIES, seriesPage, type MarketKey, type Provenance, type RateProvenance } from '@/lib/market/ecb'
+
+/** Το κείμενο της σημείωσης χωρίς συνδέσμους, όπως το διαβάζει ο άνθρωπος. */
+const housingText = (m: Parameters<typeof housingNote>[0]): string => housingNote(m).map(x => x.text).join('')
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }
@@ -163,9 +166,18 @@ ok('Ζ. η τιμή του πεδίου ξαναδιαβάζεται ίδια', 
   ok('Η. οι άλλες δύο τιμές δείχνουν στη δική τους σειρά',
     segs.filter(x => x.strong && x.href).map(x => x.href).join() === [pageOf('bog_housing_floating'), pageOf('bog_housing_fixed')].join())
   ok('Η. η σελίδα και η περιγραφή έχουν το ίδιο κείμενο', segs.map(x => x.text).join('') === housingText(m))
-  ok('Η. η περιγραφή για τη μηχανή αναζήτησης ξεκινά με το ίδιο κείμενο',
-    marketDescription(m, 'Βάση.') === `${housingText(m)} Βάση.`)
-  ok('Η. χωρίς τιμές, η περιγραφή μένει η στατική', marketDescription(NO_MARKET, 'Βάση.') === 'Βάση.')
+  ok('Η. η περιγραφή ξεκινά με το μέσο επιτόκιο της σελίδας, ίδια ετικέτα, τιμή και μήνας',
+    marketDescription(m, 'Βάση.', 'Ουρά.') === 'Μέσο επιτόκιο νέων στεγαστικών 3,21% (Αύγουστος 2026, ΕΚΤ). Ουρά.')
+  ok('Η. χωρίς τιμές, η περιγραφή μένει η στατική', marketDescription(NO_MARKET, 'Βάση.', 'Ουρά.') === 'Βάση.')
+  ok('Η. παλιός μέσος όρος δεν μπαίνει στην περιγραφή', marketDescription(mortgageMarket(three, '2027-01-15'), 'Βάση.', 'Ουρά.') === 'Βάση.')
+  // ── ΤΟ ΜΗΚΟΣ ΤΗΣ ΠΕΡΙΓΡΑΦΗΣ (27.10.2026) ─────────────────────────────────
+  // Ήταν 301 χαρακτήρες στην παραγωγή. Ο φύλακας guard-meta-description μετρά
+  // ό,τι αποδίδει η σελίδα χωρίς βάση, δηλαδή τη στατική· εδώ μετριέται η
+  // χειρότερη εκδοχή με τιμή: ο μακρύτερος μήνας και διψήφιο επιτόκιο.
+  const longest = mortgageMarket({ bog_housing_new: at('bog_housing_new', 10.25, '2026-09-01') }, '2026-10-13')
+  const worst = marketDescription(longest)
+  ok(`Η. η περιγραφή με τιμή χωρά στους 160 (${worst.length})`, worst.length >= 70 && worst.length <= 160 && worst.includes('Σεπτέμβριος'))
+  ok(`Η. η στατική περιγραφή χωρά στους 160 (${MORTGAGE_DESC.length})`, MORTGAGE_DESC.length >= 70 && MORTGAGE_DESC.length <= 160)
   ok('Η. χωρίς τιμές, κανένα κείμενο', housingText(NO_MARKET) === '')
 
   // Άλλος μήνας σε μία σειρά: γράφεται δίπλα της, ώστε να μη δανείζεται τον μήνα του μέσου όρου.

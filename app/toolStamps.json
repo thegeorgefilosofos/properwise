@@ -2,11 +2,11 @@
   "σημείωση": "Παράγεται από το npm run tools:stamp. Μην το γράφεις με το χέρι. Το φυλάει ο scripts/guard-tool-updated.mjs. updated: null = δεν έχει οριστεί ημερομηνία περιεχομένου· ισχύει ο έλεγχος των ορίων.",
   "tools": {
     "/kathari-apodosi": {
-      "hash": "a9f5796dec657afa",
+      "hash": "1b291fd439e653a0",
       "updated": "2026-10-20"
     },
     "/vraxyxronia-i-makroxronia": {
-      "hash": "3c966f5f6f646479",
+      "hash": "443008013da6c04d",
       "updated": null
     },
     "/ypologismos-enfia": {

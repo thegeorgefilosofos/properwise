@@ -1,7 +1,8 @@
 import type { MetadataRoute } from 'next'
 import { SITE } from '@/lib/core/site'
-import { GUIDES, GUIDES_UPDATED } from './odigos/guides'
-import { PAGE_UPDATED, type DatedPage } from './pageUpdated'
+import { LISTED_GUIDES, GUIDES_UPDATED } from './odigos/guides'
+import { PAGE_UPDATED, TOOLS_UPDATED, type DatedPage } from './pageUpdated'
+import { TOOLS_HUB } from '@/lib/core/publicTools'
 
 // Χάρτης της δημόσιας σελίδας για τις μηχανές αναζήτησης. Μόνο δημόσιες
 // διαδρομές: το dashboard, τα portals και οι σελίδες με token μένουν εκτός.
@@ -28,6 +29,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { ...at('/kathari-apodosi'), changeFrequency: 'monthly', priority: 0.9 },
     { ...at('/ypologismos-stegastikou-daneiou'), changeFrequency: 'monthly', priority: 0.9 },
     { ...at('/sygkrisi-timologion-revmatos'), changeFrequency: 'monthly', priority: 0.9 },
+    // Κόμβος εργαλείων (27.10.2026): όλοι οι υπολογιστές ανά θέμα, ο μεσαίος
+    // κρίκος της διαδρομής τους. Ημερομηνία η νεότερη των υπολογιστών του.
+    { url: base + TOOLS_HUB.href, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.8 },
     // Κόμβος οδηγών: η μία σελίδα που μαζεύει όλους τους οδηγούς, συνδεδεμένη
     // από το υποσέλιδο κάθε δημόσιας σελίδας. Η ημερομηνία του είναι η πιο
     // πρόσφατη των οδηγών του, αφού αυτούς δείχνει.
@@ -37,7 +41,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // ΤΟ ΜΟΝΟ ΣΗΜΑ ΠΟΥ ΔΙΑΒΑΖΕΙ Η GOOGLE: το `changeFrequency` και το
     // `priority` τα αγνοεί, το `lastModified` όχι. Έρχεται από τον ίδιο
     // κατάλογο που τυπώνει την ημερομηνία στον οδηγό.
-    ...GUIDES.map(g => ({ url: base + g.href, lastModified: g.updated, changeFrequency: 'monthly' as const, priority: 0.8 })),
+    //
+    // ΜΟΝΟ ΟΙ ΟΔΗΓΟΙ ΤΟΥ ΚΟΜΒΟΥ (27.10.2026). Ο χάρτης έπαιρνε το πλήρες `GUIDES`
+    // και έδινε στη Google οδηγό που ο κόμβος έκρυβε, εν αναμονή νομικού
+    // ελέγχου. Ο οδηγός εκτός καταλόγου λέει και `noindex` (app/publicMetadata.ts).
+    ...LISTED_GUIDES.map(g => ({ url: base + g.href, lastModified: g.updated, changeFrequency: 'monthly' as const, priority: 0.8 })),
     // Τι περιλαμβάνει κάθε πακέτο: η ερώτηση που κάνει ο επισκέπτης ΠΡΙΝ
     // εγγραφεί, οπότε η απάντηση δεν ζει πίσω από τη σύνδεση.
     { ...at('/paketa'), changeFrequency: 'monthly', priority: 0.8 },

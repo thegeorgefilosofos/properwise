@@ -725,4 +725,12 @@ export const MUTATIONS = {
     // το `ensureDpa(` ΑΛΛΗΣ συνάρτησης. Μέσα στις 40 γραμμές, έξω από τη συνάρτησή της.
     { add: 'app/__mut_dpa__.tsx', content: "import { ensureDpa } from '@/lib/legal/dpa'\nimport { addReturningId } from '@/lib/data/contacts'\nexport function useProbe(supabase: any) {\n  const gated = async () => {\n    if (!(await ensureDpa(supabase))) return\n  }\n  const register = async (name: string) => {\n    await addReturningId(supabase, 'p', 'u', { full_name: name })\n  }\n  return { gated, register }\n}\n" },
   ] },
+
+  // Η περιγραφή της εγγραφής ξαναπαίρνει την πρόταση της χρέωσης: ακριβώς οι 220
+  // χαρακτήρες του ελέγχου της 27/10/2026, κομμένοι στη μέση στη σελίδα
+  // αποτελεσμάτων. Και το αντίθετο άκρο: περιγραφή μιας λέξης στο /trust.
+  'meta-description': { every: [
+    { file: 'app/signup/layout.tsx', from: 'στο «${PLANS[TRIAL_PLAN].name}».`,', to: 'στο «${PLANS[TRIAL_PLAN].name}». ${billingWords().firstCharge}`,' },
+    { file: 'app/trust/page.tsx', from: "const DESC = 'Ποιοι είμαστε, πού φυλάσσονται", to: "const DESC = 'Ποιοι είμαστε.' || 'Ποιοι είμαστε, πού φυλάσσονται" },
+  ] },
 }

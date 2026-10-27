@@ -157,8 +157,8 @@ email**. Οι λογιστές δουλεύουν με Epsilon Net κ.λπ. γι
 - «properwise», «διαχείριση ακινήτων εφαρμογή», «app ιδιοκτήτη ακινήτου», «σάρωση εγγράφων ακινήτου», «βοηθός ακινήτων Νόα».
 
 Κάθε cluster: ίδιο H1 με την πρόθεση, έτος στον τίτλο ΜΟΝΟ αν ο συντελεστής είναι
-του έτους, εσωτερικοί σύνδεσμοι προς τα άλλα εργαλεία, FAQ schema από τις
-ΠΡΑΓΜΑΤΙΚΕΣ απαντήσεις.
+του έτους, εσωτερικοί σύνδεσμοι προς τα άλλα εργαλεία, `FAQPage` μόνο με τις
+ΠΡΑΓΜΑΤΙΚΕΣ απαντήσεις της σελίδας (όχι για rich result, βλ. §4).
 
 ---
 
@@ -223,26 +223,55 @@ email**. Οι λογιστές δουλεύουν με Epsilon Net κ.λπ. γι
 
 ---
 
-## 4. On-page playbook (τι ΕΓΙΝΕ / τι μένει)
+## 4. On-page playbook (κατάσταση 27/10/2026)
 
 **Ήδη σωστά (μη το χαλάσεις):**
-- JSON-LD: `Organization`, `WebSite`, `SoftwareApplication`, `WebApplication`,
-  `FAQPage`, `Offer` (φύλακας `guard-schema-drift`).
-- `sitemap.xml` (10 δημόσιες σελίδες), `robots.txt` (allow public, disallow
-  ιδιωτικά/token), canonical/`metadataBase`, Open Graph/Twitter cards.
+- JSON-LD: `Organization` (με `alternateName` και `sameAs` LinkedIn/Instagram/
+  YouTube από το `SOCIAL_PROFILES` του `lib/core/site.ts`), `WebSite`,
+  `SoftwareApplication`, `WebApplication` + `Offer` στους υπολογιστές,
+  `Article` στους οδηγούς, `CollectionPage`/`ItemList` στον κόμβο `/odigos`,
+  `AboutPage` στο `/trust`, `FAQPage` όπου η σελίδα έχει ορατές ερωτήσεις
+  (φύλακας `guard-schema-drift`).
+- `BreadcrumbList` σε υπολογιστές, οδηγούς, στους δύο κόμβους, `/logistes`,
+  `/paketa` και `/trust`, από μία συνάρτηση (`lib/seo/breadcrumbs.ts`) με
+  απόλυτα URL του κανονικού host σε κάθε κρίκο. Οι υπολογιστές: «Αρχική ›
+  Εργαλεία › υπολογιστής», οι οδηγοί: «Αρχική › Οδηγοί › οδηγός».
+- Δύο κόμβοι με τα ίδια θέματα (`lib/core/topics.ts`) και την ίδια σύνθεση
+  (`app/HubParts.tsx`): `/odigos` από το `LISTED_GUIDES` και `/ergaleia` από το
+  `PUBLIC_TOOLS`, με `CollectionPage` + `ItemList`. Νέος υπολογιστής ή οδηγός
+  μπαίνει στον κόμβο του μόνος του.
+- `sitemap.xml` από το `app/sitemap.ts`: αρχική, δημόσιοι υπολογιστές
+  (`lib/core/publicTools.ts`), κόμβος και οδηγοί του καταλόγου (`LISTED_GUIDES`),
+  πακέτα, λογιστές, εγγραφή, `/trust` και τα νομικά. Το πλήθος δεν γράφεται εδώ:
+  το δίνει ο χάρτης. Ημερομηνία κάθε γραμμής από μία πηγή (`app/pageUpdated.ts`,
+  `app/odigos/guides.ts`).
+- Οδηγός εκτός καταλόγου (`unlisted`, π.χ. όσο περιμένει νομικό έλεγχο): εκτός
+  κόμβου, εκτός χάρτη και `noindex`, με την ίδια συνθήκη (`isHiddenGuide`).
+- `robots.txt` (allow public, disallow ιδιωτικά/token), canonical/`metadataBase`,
+  Open Graph/Twitter με δική τους κάρτα (`app/og/share.ts`) για κάθε δημόσια
+  σελίδα του χάρτη.
+- Meta description 70–160 χαρακτήρες σε κάθε σελίδα του χάρτη, μετρημένη όπως
+  αποδίδεται (φύλακας `guard-meta-description`).
 - Mobile-first, Core Web Vitals σε προτεραιότητα, «ενδεικτικό, όχι εκκαθαριστικό».
 
+**Rich results που ΔΕΝ κυνηγάμε:**
+- **HowTo:** η Google το περιόρισε στον υπολογιστή τον Αύγουστο του 2023 και από
+  τον Σεπτέμβριο του 2023 δεν το δείχνει καθόλου. Δεν προσθέτουμε `HowTo`.
+- **FAQ:** από τον Αύγουστο του 2023 το FAQ rich result εμφανίζεται μόνο σε
+  γνωστούς κυβερνητικούς ιστότοπους και ιστότοπους υγείας. Το `FAQPage` μένει
+  μόνο επειδή περιγράφει πιστά τις ορατές ερωτήσεις· δεν φέρνει snippet σε εμάς
+  και δεν μετριέται ως στόχος.
+- Πηγές: Google Search Central, «Changes to HowTo and FAQ rich results»
+  (08/08/2023), https://developers.google.com/search/blog/2023/08/howto-faq-changes ·
+  ενημερώσεις τεκμηρίωσης, https://developers.google.com/search/updates
+
 **Επόμενα βήματα (bot backlog, με σειρά):**
-1. `alternateName` στο `Organization`/`SoftwareApplication` (PROPERWISE variants)
-   → ανθεκτικότητα σε λάθος γραφές, χωρίς spam σελίδες.
-2. `sameAs` στο `Organization` μόλις υπάρχουν επίσημα social (Instagram/LinkedIn/
-   X/TikTok) — δηλώνει στη Google ότι ανήκουν στο brand.
-3. Έλεγχος/βελτίωση `<title>` + `meta description` ανά σελίδα ώστε να ταιριάζουν
-   με την πρόθεση του cluster (μοναδικοί, με το keyword μπροστά, φυσικοί).
-4. Εσωτερική διασύνδεση: κάθε εργαλείο να συνδέει τα άλλα τρία με περιγραφικό
-   anchor (όχι «κάντε κλικ εδώ»).
-5. Ενοποίηση ονόματος βοηθού σε «Νόα» και στο δημόσιο copy (brand consistency —
-   η Google ήδη δείχνει «Νόα» στην AI Overview).
+1. Έλεγχος στο GSC για αλληλοεπικάλυψη ΕΝΦΙΑ (εργαλείο και δύο οδηγοί) και
+   καθαρής απόδοσης (εργαλείο και οδηγός): ποιο URL παίρνει κάθε ερώτημα.
+2. Ενοποίηση ονόματος βοηθού σε «Νόα» και στο δημόσιο copy (brand consistency).
+
+Έκλεισε (27/10/2026): ο κόμβος των εργαλείων `/ergaleia` και ο μεσαίος κρίκος
+«Εργαλεία» στη διαδρομή κάθε υπολογιστή.
 
 ---
 
@@ -281,10 +310,12 @@ prowise είναι να γίνει το ΣΩΣΤΟ brand αναγνωρίσιμ�
 - [x] Mobile-first, responsive 320→1440, χωρίς οριζόντια κύλιση.
 - [x] Core Web Vitals σε προτεραιότητα (βάρος σελίδας υπό φύλακες).
 - [x] `sitemap.xml` + `robots.txt` + canonical + `metadataBase`.
-- [x] Structured data (Organization/WebSite/SoftwareApplication/FAQPage/Offer).
+- [x] Structured data (βλ. §4), με `BreadcrumbList` από μία συνάρτηση.
 - [x] HTTPS, `www`→apex 308, καθαρά URLs.
-- [ ] `alternateName`/`sameAs` (backlog §4).
-- [ ] Επιβεβαίωση μοναδικών title/description ανά σελίδα (backlog §4).
+- [x] `alternateName`/`sameAs` στο `Organization`.
+- [x] Meta description 70–160 χαρακτήρες (φύλακας `guard-meta-description`).
+- [x] Οδηγός εκτός καταλόγου: εκτός χάρτη και `noindex`.
+- [ ] Μοναδικότητα title/description ανά σελίδα: δεν ελέγχεται ακόμη αυτόματα.
 
 ---
 
@@ -295,7 +326,8 @@ prowise είναι να γίνει το ΣΩΣΤΟ brand αναγνωρίσιμ�
 - **Brand vs non-brand:** «Απόδοση» → φίλτρο ερωτημάτων που περιέχουν «properwise»
   (brand) vs τα υπόλοιπα (non-brand, ο πραγματικός δείκτης ανάπτυξης).
 - **Θέσεις εργαλείων:** μέση θέση για τα queries της Τάξης Β.
-- **Rich results:** εμφάνιση FAQ rich snippets.
+- **Rich results:** μόνο όσα δείχνει ακόμη η Google για τα σχήματά μας (π.χ.
+  διαδρομή). FAQ και HowTo δεν μετρώνται (βλ. §4).
 
 **Στόχοι-ορόσημα:**
 - Εβδομάδα 1-3: brand queries top-3, indexed ≥ 10 σελίδες.
@@ -318,13 +350,14 @@ links· ψεύτικες κριτικές/στοιχεία/νούμερα· ον
 
 ## 10. Backlog για marketing/SEO bots (σειρά εκτέλεσης)
 
-1. [code] `alternateName` (PROPERWISE variants) στο Organization/SoftwareApplication + ενημέρωση `schema-drift-baseline.json`.
-2. [code] Ενοποίηση «Νόα» στο δημόσιο copy (αφαίρεση marketing pages από το allowlist του guard-assistant-name).
-3. [code] Audit μοναδικών `title`/`description` ανά cluster, ευθυγράμμιση με intent.
-4. [code] Ρητή εσωτερική διασύνδεση των 4 εργαλείων (περιγραφικά anchors).
-5. [human] Δημιουργία επίσημων social + προσθήκη `sameAs`.
-6. [human] 3-5 value-first τοποθετήσεις σε ελληνικές communities με σύνδεσμο εργαλείου.
-7. [review] Μηνιαία ανασκόπηση GSC (brand vs non-brand, θέσεις, indexing) και επαναϊεράρχηση.
+1. [code] Ενοποίηση «Νόα» στο δημόσιο copy (αφαίρεση marketing pages από το allowlist του guard-assistant-name).
+2. [code] Έλεγχος μοναδικότητας `title`/`description` ανά σελίδα του χάρτη.
+3. [human] Πρόσβαση στο GSC για εβδομαδιαία εξαγωγή (Search Analytics API).
+4. [human] Value-first τοποθετήσεις σε ελληνικές communities με σύνδεσμο εργαλείου.
+5. [review] Μηνιαία ανασκόπηση GSC (brand vs non-brand, θέσεις, indexing) και επαναϊεράρχηση.
+
+Έγιναν: `alternateName` και `sameAs` στο `Organization`, εσωτερική διασύνδεση
+υπολογιστών και οδηγών (`guidesForTool`, κόμβος ανά θέμα), περιγραφές εντός ορίων.
 
 > Κάθε στοιχείο του backlog που αγγίζει κώδικα ακολουθεί τη ροή του repo: μικρό PR,
 > πράσινοι φύλακες, μία αλλαγή τη φορά. Κάθε στοιχείο marketing μπαίνει ως issue με

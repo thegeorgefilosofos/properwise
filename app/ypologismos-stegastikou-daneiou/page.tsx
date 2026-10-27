@@ -42,6 +42,7 @@ import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
+import { toolBreadcrumb } from '../toolSeo';
 import { guideAt } from '../odigos/guides';
 import { MortgageCalculator } from './MortgageCalculator';
 import { readMortgageMarket } from './marketRates';
@@ -60,19 +61,18 @@ const SPITI_GUIDE = guideAt('/odigos/spiti-mou-3-ti-allazei');
 // Το έτος του τίτλου είναι το τρέχον, όπως στον ΕΝΦΙΑ: γραμμένο «2026» με το
 // χέρι, την 01/01/2027 θα έλεγε άλλη χρονιά από τη σελίδα (20.10.2026).
 const titleFor = (year: number) => `Υπολογιστής στεγαστικού δανείου ${year}: δόση, τόκοι, πόσο δάνειο παίρνω`;
-const DESC =
-  'Η μηνιαία δόση στεγαστικού με σταθερό ή κυμαινόμενο επιτόκιο, οι τόκοι ανά έτος '
-  + 'και πόσο δάνειο μπορείς να πάρεις με το εισόδημά σου. Δωρεάν, χωρίς εγγραφή.';
 const URL = siteUrl('/ypologismos-stegastikou-daneiou');
 
 // Η ΠΕΡΙΓΡΑΦΗ ΞΕΚΙΝΑ ΜΕ ΤΙΣ ΤΙΜΕΣ ΤΗΣ ΑΓΟΡΑΣ, ΑΠΟ ΤΙΣ ΣΕΙΡΕΣ. Ήταν στατική και η
 // μηχανή αναζήτησης έπαιρνε το απόσπασμα από τη σημείωση της σελίδας, που έγραφε
 // το κυμαινόμενο ως μέσο όρο. Η ανάγνωση της βάσης είναι η ίδια με της σελίδας
 // (`readMortgageMarket`, μία φορά ανά αίτημα). Χωρίς τιμές, μένει η στατική.
+// Από 27.10.2026 μόνο το μέσο επιτόκιο και σύντομη ουρά, κάτω από τους 160
+// χαρακτήρες (lib/tools/stegastiko.ts, `marketDescription`).
 export async function generateMetadata(): Promise<Metadata> {
   const market = await readMortgageMarket(athensToday());
   return publicMetadata({
-    title: titleFor(athensParts().year), description: marketDescription(market, DESC), url: URL,
+    title: titleFor(athensParts().year), description: marketDescription(market), url: URL,
     image: shareImage('ypologismos-stegastikou-daneiou'),
   });
 }
@@ -208,9 +208,10 @@ export default async function Page() {
         applicationCategory: 'FinanceApplication',
         operatingSystem: 'Web',
         inLanguage: 'el',
-        description: marketDescription(market, DESC),
+        description: marketDescription(market),
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
       },
+      toolBreadcrumb('/ypologismos-stegastikou-daneiou'),
       {
         '@type': 'FAQPage',
         mainEntity: FAQ.map(f => ({

@@ -44,7 +44,9 @@ async function main() {
   ok('το `hy()` βάζει ακόμη μαλακά ενωτικά (ο έλεγχος δεν είναι κενός)',
     renderToStaticMarkup(createElement('p', null, hy('Το τέλος ανθεκτικότητας στην κλιματική κρίση.'))).includes(SHY));
 
-  const routes = [{ href: '/odigos', file: './page' }, ...GUIDES.map(g => ({ href: g.href, file: `.${g.href.slice('/odigos'.length)}/page` }))];
+  // Και ο κόμβος των εργαλείων (27.10.2026): ίδια σύνθεση (app/HubParts.tsx), ίδιος κανόνας.
+  const routes = [{ href: '/odigos', file: './page' }, { href: '/ergaleia', file: '../ergaleia/page' },
+    ...GUIDES.map(g => ({ href: g.href, file: `.${g.href.slice('/odigos'.length)}/page` }))];
   let seen = 0;
   for (const r of routes) {
     const mod = await import(r.file) as { default: () => ReactElement };
@@ -55,7 +57,7 @@ async function main() {
     ok(`${r.href}: κανένα &shy; ως οντότητα`, !SHY_ENTITY.test(html));
     ok(`${r.href}: το <main> φορά data-nohy, ώστε να μη συλλαβίσει ο στοιχειοθέτης`, /<main\b[^>]*\bdata-nohy=/.test(html));
   }
-  ok(`αποδόθηκαν όλοι οι οδηγοί και ο κόμβος (${seen} από ${GUIDES.length + 1})`, seen === GUIDES.length + 1);
+  ok(`αποδόθηκαν όλοι οι οδηγοί και οι δύο κόμβοι (${seen} από ${GUIDES.length + 2})`, seen === GUIDES.length + 2);
 
   // ── Ο ΣΤΟΙΧΕΙΟΘΕΤΗΣ ΣΕΒΕΤΑΙ ΤΟ data-nohy ───────────────────────────────────
   const typeset = readFileSync('lib/ui/typeset.ts', 'utf8');
