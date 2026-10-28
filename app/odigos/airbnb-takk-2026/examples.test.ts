@@ -54,7 +54,7 @@ ok('κλίμακα 2026: 12.000 / 24.000 / 36.000 με 15 / 25 / 35 / 45%',
   rentalBracketsForYear(2026).map(b => `${b.from}:${b.rate}`).join() === '0:0.15,12000:0.25,24000:0.35,36000:0.45');
 
 // ── Η σελίδα ───────────────────────────────────────────────────────────────
-// Χωρίς `exclude` εδώ: τον οδηγό ΑΜΑ τον κρατά έξω η σημαία `unlisted` του app/odigos/guides.ts.
+// Χωρίς `exclude` εδώ: ό,τι μένει έξω το κρατά η σημαία `unlisted` του app/odigos/guides.ts.
 {
   const page = readFileSync('app/odigos/airbnb-takk-2026/page.tsx', 'utf8');
   ok('η σελίδα δεν εξαιρεί πια κανέναν οδηγό', /<RelatedGuides current=\{GUIDE\} \/>/.test(page) && !page.includes('RELATED_EXCLUDE'));
