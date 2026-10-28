@@ -29,6 +29,7 @@ import {
 } from '@/lib/energy/catalogue'
 import { freshness, canRecommend, type Freshness } from '@/lib/energy/freshness'
 import { cents } from '@/lib/core/money'
+import { asOfDate } from '@/lib/facts/prices'
 
 /** Ενα τιμολόγιο του καταλόγου μαζί με τον πάροχό του. */
 export type PowerTariff = LocalTariff & { providerLabel: string; providerUrl: string }
@@ -101,9 +102,29 @@ export interface PowerResult {
  * Μετρημένη σε ημερολογιακές μέρες UTC, όπως το `freshness`: πάνω από αλλαγή
  * ώρας μια μέρα 23 ωρών δεν επιτρέπεται να μετακινήσει το όριο.
  */
-export function rankUntil(verifiedAt = TARIFFS_VERIFIED, maxAgeDays = TARIFFS_MAX_AGE_DAYS): string {
+export function rankUntil(verifiedAt: string = TARIFFS_VERIFIED, maxAgeDays: number = TARIFFS_MAX_AGE_DAYS): string {
   const [y, m, d] = verifiedAt.split('-').map(Number)
   return new Date(Date.UTC(y, m - 1, d + maxAgeDays)).toISOString().slice(0, 10)
+}
+
+/**
+ * ΤΙ ΛΕΕΙ Η ΣΕΛΙΔΑ ΜΟΛΙΣ Ο ΚΑΤΑΛΟΓΟΣ ΠΕΡΑΣΕΙ ΤΟ ΟΡΙΟ.
+ *
+ * Έλεγε «ελέγχθηκαν πριν από 41 ημέρες»: σωστό, αλλά ο επισκέπτης έπρεπε να
+ * μετρήσει μόνος του από πότε και δεν μάθαινε τι περιμένουμε. Τώρα γράφει την
+ * ημέρα του ελέγχου, την ημέρα που έληξε η σειρά και ότι η επόμενη ενημέρωση
+ * έρχεται από τον πίνακα της ΡΑΑΕΥ. Η προειδοποίηση «Οι τιμές μπορεί να έχουν
+ * αλλάξει» μένει πρώτη: είναι αυτό που πρέπει να διαβάσει ο επισκέπτης πριν από
+ * οποιοδήποτε ποσό. Αυτό ελέγχει το scripts/e2e-public-tools.mjs.
+ * Οι ημερομηνίες βγαίνουν από τον κατάλογο
+ * (lib/facts/prices.ts), καμία δεν γράφεται με το χέρι (27/10/2026).
+ */
+export function staleCatalogueNote(verifiedAt: string = TARIFFS_VERIFIED, maxAgeDays: number = TARIFFS_MAX_AGE_DAYS): { lead: string; body: string } {
+  return {
+    lead: `Οι τιμές μπορεί να έχουν αλλάξει: ελέγχθηκαν στις ${asOfDate(verifiedAt)} και αναμένεται ο νέος κατάλογος της ΡΑΑΕΥ.`,
+    body: `Η σειρά ίσχυε έως τις ${asOfDate(rankUntil(verifiedAt, maxAgeDays))}. Οι πάροχοι ανακοινώνουν νέες τιμές `
+      + 'κάθε μήνα, γι’ αυτό ο πίνακας μένει ενδεικτικός: σε αλφαβητική σειρά, χωρίς κατάταξη και χωρίς φθηνότερο.',
+  }
 }
 
 /** Γιατί το τιμολόγιο δεν μπαίνει σε σειρά, ή `null` όταν μπαίνει. */
