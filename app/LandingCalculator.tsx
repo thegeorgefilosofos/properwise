@@ -163,6 +163,10 @@ export default function LandingCalculator({ cta }: { cta: string }) {
           transition: border-color .15s, background .15s;
         }
         .calc-amount:hover { border-color: var(--border-subtle); }
+        ${/* ΣΤΟΧΟΣ ΑΦΗΣ 44 ΧΩΡΙΣ ΝΑ ΨΗΛΩΣΕΙ Η ΣΕΙΡΑ (27/10/2026). Το πεδίο του
+           ποσού ήταν 30 ψηλό σε κάθε τηλέφωνο και ταμπλέτα. Το αρνητικό
+           περιθώριο κρατά τη σειρά «ετικέτα · ποσό» στο ύψος που είχε. */''}
+        @media (pointer: coarse) { .calc-amount { min-height: 44px; margin-block: -7px; } }
         .calc-amount:focus { border-color: var(--accent); background: var(--bg-base); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
       `}</style>
 

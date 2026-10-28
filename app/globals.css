@@ -2779,6 +2779,18 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
    PublicChrome το διαβάζει, ώστε αρχή και τέλος να συμπίπτουν σε κάθε πλάτος. */
 :root { --pub-gutter: clamp(20px, 5vw, 48px); }
 @media (max-width: 360px) { :root { --pub-gutter: 14px; } }
+/* ΚΑΙ Η ΕΓΚΟΠΗ ΤΟΥ iPHONE ΜΕΤΡΑ (27/10/2026). Η ρίζα δηλώνει `viewportFit:
+   "cover"`, οπότε στο οριζόντιο iPhone η σελίδα απλώνεται κάτω από την εγκοπή
+   και το νησί και το περιθώριο των 33 έβαζε το λογότυπο και την αρχή κάθε
+   τίτλου πίσω τους. Το περιθώριο γίνεται το μεγαλύτερο από το δικό του και
+   την προστατευμένη ζώνη· σε κάθε άλλη συσκευή η ζώνη είναι μηδέν και τίποτα
+   δεν αλλάζει. Ίδιο και από τις δύο πλευρές, ώστε η στήλη να μένει κεντραρισμένη.
+   Γράφεται ΚΑΙ για το σκαλί των 360, αλλιώς, ως μεταγενέστερος κανόνας,
+   θα ξανάφερνε τα 20 εκεί όπου η κεφαλίδα θέλει 14. */
+@supports (padding: max(0px, env(safe-area-inset-left))) {
+  :root { --pub-gutter: max(clamp(20px, 5vw, 48px), env(safe-area-inset-left), env(safe-area-inset-right)); }
+  @media (max-width: 360px) { :root { --pub-gutter: max(14px, env(safe-area-inset-left), env(safe-area-inset-right)); } }
+}
 
 @media (max-width: 360px) {
   .po-brand-logo { gap: 7px !important; }
@@ -5136,6 +5148,12 @@ body:has(.po-tool-page) .po-cookie {
      θέλει ολόκληρο στόχο αφής 44px, όπως κάθε άλλος του υποσέλιδου. */
   .po-foot-legal > a { display: flex; align-items: center; min-height: 44px; margin-top: 0; }
 }
+/* ΚΑΙ ΣΤΗΝ ΤΑΜΠΛΕΤΑ (27/10/2026). Πάνω από τα 440 ο σύνδεσμος μένει μέσα στη
+   γραμμή και ήταν 15 εικονοστοιχεία ψηλός στο iPad. Στην αφή παίρνει τα 44 του
+   με αρνητικό περιθώριο, ώστε η γραμμή του υποσέλιδου να μη ψηλώνει. */
+@media (min-width: 441px) and (pointer: coarse) {
+  .po-foot-legal > a { display: inline-flex; align-items: center; min-height: 44px; margin-block: -14px; }
+}
 /* ΔΥΟ ΣΗΜΑΤΑ, ΕΝΑ ΚΕΛΙ (04.10.2026). Το LinkedIn και το Instagram μοιράζονται τη
    ζώνη `social` ως ομάδα. Τα αρνητικά περιθώρια ζουν στην ομάδα, όχι σε κάθε
    σήμα: αλλιώς το −9 δεξιά του πρώτου θα έφερνε τον στόχο του πάνω στον
@@ -6987,6 +7005,8 @@ tr.po-row-more { display: none; }
   transition: border-color .15s, background .15s;
   max-width: 100%;
 }
+/* Σε δύο γραμμές, ίσες: στα 430 το «ακίνητο» έμενε μόνο του στη δεύτερη. */
+.lp-news > span:not(.lp-news-tag) { text-wrap: balance; }
 .lp-news:hover { border-color: color-mix(in srgb, var(--accent) 60%, transparent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
 .lp-news:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .lp-news svg { flex: none; color: var(--accent); }
@@ -7035,10 +7055,15 @@ tr.po-row-more { display: none; }
   margin-top: 28px; padding: 16px 20px; border-radius: 16px; background: var(--bg-surface);
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
 }
-.nf-price { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+/* Η ΤΙΜΗ ΑΝΑΔΙΠΛΩΝΕΤΑΙ ΑΝΑΜΕΣΑ ΣΤΑ ΚΟΜΜΑΤΙΑ ΤΗΣ, ΠΟΤΕ ΜΕΣΑ ΤΟΥΣ (27/10/2026).
+   Ολόκληρη σε μία γραμμή χωρίς αναδίπλωση, στα 320 έβγαινε 19 εικονοστοιχεία
+   έξω από την οθόνη και το «τον χρόνο» κοβόταν από το `overflow-x: clip` της
+   ρίζας. Κάθε κομμάτι («4,99€», «τον μήνα», «ή … τον χρόνο») μένει ακέραιο. */
+.nf-price { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 8px; row-gap: 4px; }
+.nf-price > * { white-space: nowrap; }
 .nf-amount { font-size: clamp(30px, 3.4vw, 38px); font-weight: 700; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; color: var(--text-primary); line-height: 1; }
 .nf-per { font-size: 15px; color: var(--text-secondary); }
-.nf-terms { font-size: 14px; color: var(--text-secondary); line-height: 1.45; }
+.nf-terms { font-size: 14px; color: var(--text-secondary); line-height: 1.45; text-wrap: pretty; }
 .nf-cta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px; margin-top: 20px; }
 .nf-free { font-size: 13px; color: var(--text-tertiary); }
 
@@ -7117,10 +7142,17 @@ tr.po-row-more { display: none; }
           mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 /* ΔΥΟ ΚΟΥΜΠΙΑ ΤΟ ΕΝΑ ΚΑΤΩ ΑΠΟ ΤΟ ΑΛΛΟ, ΙΣΑ. Στο κινητό στοιβάζονταν με το
-   πλάτος του κειμένου τους (170 και 184) και διαβάζονταν ως δύο άσχετα πράγματα. */
+   πλάτος του κειμένου τους (170 και 184) και διαβάζονταν ως δύο άσχετα πράγματα.
+   ΚΑΙ ΣΤΟ ΠΛΑΤΟΣ ΤΗΣ ΣΤΗΛΗΣ (27/10/2026). Το όριο των 320 τα άφηνε 6 με 8
+   εικονοστοιχεία μέσα από τη στήλη στα 360 και στα 375, ενώ η βιτρίνα από κάτω
+   φτάνει ως τις άκρες της: δύο δεξιά άκρα στην ίδια οθόνη. Τώρα πιάνουν όλη τη
+   στήλη, όπως κάθε άλλο κουμπί πλήρους πλάτους. Το ίδιο και το κουμπί του
+   κλεισίματος (`.lp-final-cta`): ήταν το μόνο κουμπί της σελίδας με το πλάτος
+   του κειμένου του στο κινητό. */
 @media (max-width: 480px) {
-  .lp-hero-ctas { flex-direction: column; align-items: stretch; max-width: 320px; margin-inline: auto; }
+  .lp-hero-ctas { flex-direction: column; align-items: stretch; }
   .lp-hero-ctas > a { text-align: center; }
+  .lp-final-cta { display: block !important; width: 100%; text-align: center; }
 }
 
 /* ═══ ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΘΕΛΕΙ ΑΠΛΗ ΑΝΑΔΙΠΛΩΣΗ, ΟΠΟΙΟΣ ΚΙ ΑΝ ΕΙΝΑΙ Ο ΓΟΝΕΑΣ ════════

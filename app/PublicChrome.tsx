@@ -179,7 +179,7 @@ function FootCol({ label, links }: { label: string; links: [string, string][] })
 export function PublicFooter() {
   return (
     <footer style={{ borderTop: '1px solid var(--border-subtle)' }}>
-      <div style={{ ...WRAP, padding: `clamp(36px,5vw,56px) ${WRAP_PAD} clamp(24px,3vw,32px)` }}>
+      <div style={{ ...WRAP, padding: `clamp(36px,5vw,56px) ${WRAP_PAD} calc(clamp(24px,3vw,32px) + env(safe-area-inset-bottom, 0px))` }}>
         <div className="lp-foot">
           <div>
             <Link href="/" className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, textDecoration: 'none', color: 'var(--text-primary)', width: 'fit-content' }}>
