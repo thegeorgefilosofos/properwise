@@ -178,7 +178,7 @@ export default async function Landing() {
       <div className="lp-atmos" aria-hidden="true"><div className="lp-orb" /></div>
 
       {/* ── Nav ── */}
-      <header className="lp-head" style={{ position: 'sticky', top: 0, zIndex: 50, background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)', borderBottom: `1px solid ${LINE}` }}>
+      <header className="lp-head" style={{ position: 'sticky', top: 0, zIndex: 50, paddingTop: 'env(safe-area-inset-top, 0px)', background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)', borderBottom: `1px solid ${LINE}` }}>
         {/* ΚΕΝΟ 12, ΟΧΙ 16. Στα 320 το «Δοκιμή», με το δικό του περιθώριο από το
             «Είσοδος», έβγαινε τρία εικονοστοιχεία έξω από την οθόνη. */}
         <nav style={{ ...wrap, height: 64, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -807,7 +807,7 @@ export default async function Landing() {
             <span className="lp-lede-line">Κάθε έγγραφο στη θέση του, κάθε προθεσμία στην ώρα της.</span>{' '}
             <span className="lp-lede-line">Και η επόμενη δήλωση θα σε βρει με τον φάκελο ήδη έτοιμο.</span>
           </p>
-          <Link href={loggedIn ? '/dashboard' : '/signup'} className="lp-cta lp-primary" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : signupCta()}</Link>
+          <Link href={loggedIn ? '/dashboard' : '/signup'} className="lp-cta lp-primary lp-final-cta" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : signupCta()}</Link>
         </div>
       </section>
 
