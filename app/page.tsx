@@ -229,7 +229,7 @@ export default async function Landing() {
             <span>Ο «{PLANS.free.name}» είναι πλέον δωρεάν για ένα ακίνητο</span>
             <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </Link>
-          <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
+          <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.15, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
             {/* Ο ΙΔΙΟΣ ΤΙΤΛΟΣ ΜΕ ΤΗΝ ΚΑΡΤΕΛΑ ΚΑΙ ΤΗΝ ΚΑΡΤΑ ΚΟΙΝΟΠΟΙΗΣΗΣ (HOME_TITLE_LINES,
                 lib/core/site.ts). Δύο γραμμές· από τα 900 και πάνω καμία δεν σπάει. */}
             {/* Το κενό ανάμεσα δεν φαίνεται (οι γραμμές είναι block) αλλά το
@@ -354,7 +354,7 @@ export default async function Landing() {
 
       {/* ── Scrollytelling: το προϊόν μένει sticky και αλλάζει πράξη όσο διαβάζεις.
              ΠΡΟΣΟΧΗ: χωρίς lp-reveal εδώ (transform στον πρόγονο σπάει το sticky). */}
-      <section style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
+      <section id="pos-leitourgei" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP, scrollMarginTop: 72 }}>
         <SectionHead over="Πώς λειτουργεί" title="Τρεις κινήσεις και το ακίνητο μπαίνει σε τάξη" sub="Φωτογραφίζεις και ρωτάς. Τα ενδιάμεσα τα κάνει η εφαρμογή." />
         <ScrollStory />
       </section>

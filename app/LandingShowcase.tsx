@@ -92,10 +92,18 @@ export default function LandingShowcase() {
             <span style={{ width: 11, height: 11, borderRadius: '50%', background: 'var(--border-strong)', flexShrink: 0 }} />
             <span style={{ width: 11, height: 11, borderRadius: '50%', background: 'var(--border-strong)', flexShrink: 0 }} />
             <span style={{ width: 11, height: 11, borderRadius: '50%', background: 'var(--border-strong)', flexShrink: 0 }} />
-            <div style={{ margin: '0 auto', minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.chip, padding: '5px 14px', fontSize: 13, color: 'var(--text-tertiary)' }}>
-              <svg aria-hidden="true" width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>properwise.gr/scan</span>
-            </div>
+            {/* ΣΥΝΔΕΣΜΟΣ, ΟΧΙ ΓΥΜΝΗ ΔΙΕΥΘΥΝΣΗ (28/10/2026). Η μπάρα έγραφε
+                «properwise.gr/scan»: διεύθυνση που δεν ανοίγει πουθενά, σε
+                κείμενο που μοιάζει με σύνδεσμο. Τώρα λέει τι θα δεις και πάει
+                εκεί, στο «Πώς λειτουργεί» πιο κάτω. Ο στόχος αφής είναι 48 (το πλαίσιο
+                γέρνει και μικραίνει ελάχιστα, οπότε 44 μετριούνται 43,8) με
+                αρνητικό περιθώριο, οπότε η μπάρα κρατά το ύψος της. */}
+            <a href="#pos-leitourgei" className="ls-url" style={{ margin: '-10px auto', minWidth: 0, minHeight: 48, display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+              <span style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.chip, padding: '5px 14px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Δες πώς λειτουργεί</span>
+                <svg aria-hidden="true" width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 5v14M6 13l6 6 6-6" /></svg>
+              </span>
+            </a>
           </div>
 
           {/* Η σκηνή: μία πράξη, αυτή που υπόσχεται ο τίτλος από πάνω. */}

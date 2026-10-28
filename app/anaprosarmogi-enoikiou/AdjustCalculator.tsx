@@ -283,7 +283,11 @@ export function AdjustCalculator({ today, cta }: {
         <div style={{ marginTop: T.sp.xxl }}>
           <div className="po-table-box">
            <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-            <table className="po-table po-tool-table tbl-fixed" style={{ '--tbl-min': '300px' }}>
+            {/* Η ΗΜΕΡΟΜΗΝΙΑ ΣΕ ΜΙΑ ΓΡΑΜΜΗ (28/10/2026). Με ελάχιστο πλάτος 300 η
+                στήλη «Από» έδινε 68 εικονοστοιχεία και το «01/10/2026» έσπαγε
+                στη μέση. Με 340 χωρά, χωρίς να στενέψει το «Ποσοστό». Κάτω από
+                αυτό ο πίνακας κυλά μέσα στο πλαίσιό του, όπως και πριν. */}
+            <table className="po-table po-tool-table tbl-fixed" style={{ '--tbl-min': '340px' }}>
               <caption>Το μίσθωμα ανά έτος</caption>
               <colgroup>
                 <col style={{ width: '28%' }} />
@@ -304,7 +308,7 @@ export function AdjustCalculator({ today, cta }: {
                   const flag = rowFlag(r);
                   return (
                     <tr key={r.ym} className={allYears || i < YEARS_SHOWN ? undefined : 'po-row-more'}>
-                      <th scope="row" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 400, color: 'var(--text-primary)' }}>{grDate(`${r.ym}-01`)}</th>
+                      <th scope="row" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 400, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{grDate(`${r.ym}-01`)}</th>
                       <td className="num">
                         {fpRate(r.appliedPct)}
                         {flag && <span style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)' }}>{flag}</span>}
