@@ -48,13 +48,14 @@ for (const g of GUIDES) {
   ok('exclude: χωρίς διπλούς και όχι ο εαυτός του', new Set(r.map(x => x.href)).size === 4 && r.every(x => x.href !== AIRBNB));
 }
 // ── Ο οδηγός εκτός καταλόγου (`unlisted`) ────────────────────────────────
-// Ο ΑΜΑ περιμένει την υπογραφή της Legal (13/10/2026): η σελίδα του μένει
-// δημοσιευμένη, αλλά καμία άλλη δεν τον δείχνει. Οταν υπογραφεί, φεύγει το
-// `unlisted` από τον κατάλογο και ο πρώτος έλεγχος εδώ μαζί του.
+// Ο ΑΜΑ ήταν εκτός καταλόγου από 13/10/2026, ώσπου να υπογράψει η Legal. Στις
+// 27/10/2026 επαληθεύτηκε στις πηγές του και δημοσιεύτηκε με έγκριση του
+// ιδιοκτήτη: ο πρώτος έλεγχος λέει πια ότι είναι στον κατάλογο. Οι υπόλοιποι
+// μένουν για κάθε μελλοντικό οδηγό με `unlisted`.
 {
   const AMA = '/odigos/vraxyxronia-ama-prodiagrafes-2026';
   const hidden = GUIDES.filter(g => g.unlisted).map(g => g.href);
-  ok('ο οδηγός ΑΜΑ είναι εκτός καταλόγου ώσπου να τον υπογράψει η Legal', hidden.includes(AMA));
+  ok('ο οδηγός ΑΜΑ είναι στον κατάλογο από 27/10/2026', !hidden.includes(AMA) && LISTED_GUIDES.some(g => g.href === AMA));
   ok('ο κόμβος και το /llms.txt δεν τους έχουν', LISTED_GUIDES.every(g => !hidden.includes(g.href)));
   ok('ο κόμβος έχει όλους τους υπόλοιπους', LISTED_GUIDES.length === GUIDES.length - hidden.length);
   for (const t of TOOLS) ok(`${t}: δεν δείχνει οδηγό εκτός καταλόγου`, guidesForTool(t).every(g => !hidden.includes(g.href)));
