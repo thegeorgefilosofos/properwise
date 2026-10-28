@@ -20,7 +20,7 @@ import { Btn } from '@/components/Theme';
 import { fe, feRate, fn, fpRate } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { athensToday } from '@/lib/core/time';
-import { comparePower, POWER_COLOURS, UNRANKED_WHY, type PowerColour, type PowerRow } from '@/lib/tools/revma';
+import { comparePower, staleCatalogueNote, POWER_COLOURS, UNRANKED_WHY, type PowerColour, type PowerRow } from '@/lib/tools/revma';
 import { PROVIDERS, TARIFFS_VERIFIED, CATALOGUE_MONTH_GEN, BADGE_MEANING, PRICES_SOURCE, PRICES_UPDATED_LINE, priceMonthNote, conditionNote } from '@/lib/energy/catalogue';
 import { ETMEAR, ELECTRICITY_VAT_PCT } from '@/lib/energy/tariff';
 import { fixedChargeText } from '@/lib/energy/fixedCharge';
@@ -98,6 +98,8 @@ export function PowerCompare({ serverToday, cta }: {
   const shown = all ? r.rows : r.rows.slice(0, VISIBLE);
   const best = r.cheapest;
   const colourLabel = POWER_COLOURS.find(c => c.value === colour)?.label ?? '';
+  // Η πρόταση του ληγμένου καταλόγου, με τις ημερομηνίες του (lib/tools/revma.ts).
+  const stale = staleCatalogueNote();
 
   return (
     <div style={{ fontFamily: T.font.sans }}>
@@ -140,7 +142,7 @@ export function PowerCompare({ serverToday, cta }: {
             σωστή τον Αύγουστο διαβάζεται ως σωστή και τον Δεκέμβριο. */}
         <p style={{ margin: '0 0 16px', fontSize: 13, lineHeight: 1.55, color: 'var(--text-secondary)', textWrap: 'pretty' }}>
           <strong style={{ color: 'var(--text-primary)' }}>{PRICES_UPDATED_LINE}</strong>. Πηγή: {PRICES_SOURCE}.
-          Τιμές {CATALOGUE_MONTH_GEN}, εκτός όπου γράφεται άλλος μήνας· μόνο αυτές μπαίνουν στη σειρά.
+          Τιμές {CATALOGUE_MONTH_GEN}, εκτός όπου γράφεται άλλος μήνας{r.fresh.canRank ? '· μόνο αυτές μπαίνουν στη σειρά.' : '.'}
           {r.recommend && <> Η σειρά ισχύει έως τις {fdLong(r.rankUntil)}· μετά, αν δεν ενημερωθούν οι τιμές, ο πίνακας μένει ενδεικτικός.</>}
         </p>
 
@@ -179,10 +181,8 @@ export function PowerCompare({ serverToday, cta }: {
               border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)',
             }}>
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: 'var(--text-primary)', textWrap: 'pretty' }}>
-                <strong>Οι τιμές μπορεί να έχουν αλλάξει.</strong>{' '}
-                Ελέγχθηκαν πριν από {fn(r.fresh.ageDays)} ημέρες και οι πάροχοι ανακοινώνουν νέες τιμές
-                κάθε μήνα. Γι’ αυτό ο πίνακας μένει ενδεικτικός: σε αλφαβητική σειρά, χωρίς κατάταξη και
-                χωρίς φθηνότερο. Τις τρέχουσες τιμές τις δημοσιεύει η{' '}
+                <strong>{stale.lead}</strong>{' '}
+                {stale.body} Τις τρέχουσες τιμές τις δημοσιεύει η{' '}
                 <a href={RAAEY_COMPARE} target="_blank" rel="noopener noreferrer" title={RAAEY_NAME}
                   className="lp-link" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
                   ΡΑΑΕΥ στο επίσημο εργαλείο σύγκρισης
@@ -196,8 +196,8 @@ export function PowerCompare({ serverToday, cta }: {
               </p>
             )}
             <LiveResult say={priced.length > 0
-              ? `Ενδεικτικά, χωρίς κατάταξη: από ${fe(low)} έως ${fe(high)} τον μήνα.`
-              : 'Ενδεικτικά, χωρίς κατάταξη.'}/>
+              ? `${stale.lead} Ενδεικτικά, χωρίς κατάταξη: από ${fe(low)} έως ${fe(high)} τον μήνα.`
+              : `${stale.lead} Ενδεικτικά, χωρίς κατάταξη.`}/>
           </>
         )}
 

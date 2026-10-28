@@ -7,8 +7,9 @@
 // με αριθμούς: ότι το ποσό είναι ΤΟ ΙΔΙΟ με του πίνακα ελέγχου και ότι με
 // παλιό κατάλογο η σελίδα ΔΕΝ ονομάζει φθηνότερο ούτε κατατάσσει.
 // ═══════════════════════════════════════════════════════════════════════════
-import { comparePower, rankUntil, POWER_COLOURS, type PowerInput } from './revma'
+import { comparePower, rankUntil, staleCatalogueNote, POWER_COLOURS, type PowerInput } from './revma'
 import { freshness } from '@/lib/energy/freshness'
+import { asOfDate } from '@/lib/facts/prices'
 import { TARIFFS_VERIFIED, TARIFFS_MAX_AGE_DAYS } from '@/lib/energy/catalogue'
 
 let passed = 0, failed = 0
@@ -74,6 +75,14 @@ const BASE: PowerInput = { kwh: 300, period: 'month', nightPct: 0, ebill: true, 
   ok('Δ. δεν ονομάζει φθηνότερο', r.cheapest === null)
   ok('Δ. καμία γραμμή δεν έχει θέση', r.rows.every(x => x.rank === null))
   ok('Δ. τα ποσά μένουν, ως ενδεικτικά', r.rows.some(x => x.monthly !== null))
+  // Η ΠΡΟΤΑΣΗ ΤΟΥ ΛΗΓΜΕΝΟΥ ΚΑΤΑΛΟΓΟΥ λέει πότε ελέγχθηκαν οι τιμές, ως πότε
+  // ίσχυε η σειρά και ότι περιμένουμε τη ΡΑΑΕΥ, με ημερομηνίες dd/mm/yyyy.
+  const note = staleCatalogueNote()
+  ok('Δ. η πρόταση ξεκινά με την προειδοποίηση', note.lead.startsWith('Οι τιμές μπορεί να έχουν αλλάξει'))
+  ok('Δ. η πρόταση γράφει την ημέρα του ελέγχου', note.lead.includes(`ελέγχθηκαν στις ${asOfDate(TARIFFS_VERIFIED)}`))
+  ok('Δ. και ότι αναμένεται ο νέος κατάλογος της ΡΑΑΕΥ', note.lead.includes('αναμένεται ο νέος κατάλογος της ΡΑΑΕΥ'))
+  ok('Δ. και ως πότε ίσχυε η σειρά', note.body.includes(`ίσχυε έως τις ${asOfDate(rankUntil())}`))
+  ok('Δ. καμία ημερομηνία χωρίς τον κατάλογο', staleCatalogueNote('2027-01-03', 40).body.includes('12/02/2027'))
   const names = r.rows.map(x => `${x.t.providerLabel} ${x.t.name}`)
   ok('Δ. η σειρά είναι αλφαβητική, κατά πάροχο', r.rows.every((x, i) => i === 0
     || r.rows[i - 1].t.providerLabel.localeCompare(x.t.providerLabel, 'el') <= 0))
