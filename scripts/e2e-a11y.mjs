@@ -46,6 +46,7 @@ const PAGES = [
   // ξεκινά κενό και δεν θα υπήρχε δόση να ακουστεί.
   { path: '/ypologismos-stegastikou-daneiou?epitokio=3%2C5', what: 'δόση στεγαστικού' },
   { path: '/sygkrisi-timologion-revmatos', what: 'σύγκριση ρεύματος' },
+  { path: '/anaprosarmogi-enoikiou',     what: 'αναπροσαρμογή ενοικίου' },
 ]
 
 /** Ολα τα ποσά και ποσοστά ενός κειμένου, ώστε να συγκριθούν οθόνη και φωνή. */

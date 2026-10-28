@@ -36,6 +36,7 @@ import { monthGen, monthYearLabel } from '@/lib/core/months';
 import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 import { PRICE_FACTS } from '@/lib/facts/prices';
 import { POLICY_VERSION } from '@/lib/legal/identity';
+import { CPI_CONFIRMED_AT } from '@/lib/market/cpi';
 import { renderToStaticMarkup as html } from 'react-dom/server';
 import { ToolSources } from './PublicChrome';
 
@@ -59,6 +60,7 @@ const SOURCED: Partial<Record<DatedPage, { from: string; iso: string | null }>> 
   '/vraxyxronia-i-makroxronia': { from: "toolDate('/vraxyxronia-i-makroxronia')", iso: newest('/vraxyxronia-i-makroxronia', taxLimitAsOf('short').checkedAt) },
   '/kathari-apodosi': { from: "toolDate('/kathari-apodosi')", iso: newest('/kathari-apodosi', taxLimitAsOf('yield').checkedAt) },
   '/sygkrisi-timologion-revmatos': { from: 'PRICE_FACTS.electricity.checkedAt', iso: PRICE_FACTS.electricity.checkedAt },
+  '/anaprosarmogi-enoikiou': { from: 'CPI_CONFIRMED_AT', iso: CPI_CONFIRMED_AT },
   '/trust': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
   '/privacy': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
   '/terms': { from: 'POLICY_VERSION', iso: POLICY_VERSION },

@@ -40,6 +40,7 @@
 import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 import { PRICE_FACTS } from '@/lib/facts/prices';
 import { POLICY_VERSION } from '@/lib/legal/identity';
+import { CPI_CONFIRMED_AT } from '@/lib/market/cpi';
 import TOOL_STAMPS from './toolStamps.json';
 import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
 
@@ -99,6 +100,10 @@ export const PAGE_UPDATED = {
   // ── Η ΣΥΓΚΡΙΣΗ ΡΕΥΜΑΤΟΣ: Ο ΕΛΕΓΧΟΣ ΤΟΥ ΚΑΤΑΛΟΓΟΥ ΤΙΜΟΛΟΓΙΩΝ ─────────────────
   // Αλλάζει με τον κατάλογο, όχι με τον νόμο (lib/facts/prices, data/price-sources.json).
   '/sygkrisi-timologion-revmatos': checked(PRICE_FACTS.electricity.checkedAt, 'electricity'),
+
+  // ── Η ΑΝΑΠΡΟΣΑΡΜΟΓΗ ΕΝΟΙΚΙΟΥ: Ο ΕΛΕΓΧΟΣ ΤΟΥ ΠΙΝΑΚΑ ΤΟΥ ΔΤΚ ─────────────────
+  // Αλλάζει με κάθε μηνιαίο δελτίο της ΕΛΣΤΑΤ που μπαίνει στο lib/market/cpi.ts.
+  '/anaprosarmogi-enoikiou': checked(CPI_CONFIRMED_AT, 'ΔΤΚ ΕΛΣΤΑΤ'),
 
   // ── ΕΜΠΙΣΤΟΣΥΝΗ ΚΑΙ ΝΟΜΙΚΑ: Η ΕΚΔΟΣΗ ΠΟΥ ΤΥΠΩΝΟΥΝ ─────────────────────────
   // «Έκδοση … · Τελευταία ενημέρωση: …» και στις τρεις, από το `POLICY_VERSION`.

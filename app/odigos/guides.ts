@@ -157,7 +157,7 @@ export const GUIDES: readonly Guide[] = [
         + 'συμβάσεις και ποιοι εκμισθωτές εξαιρούνται.',
     published: '2026-09-27',
     updated: '2026-10-20',
-    tools: ['/kathari-apodosi'],
+    tools: ['/anaprosarmogi-enoikiou', '/kathari-apodosi'],
     topic: 'enoikia',
   },
   {

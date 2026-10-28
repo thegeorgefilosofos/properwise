@@ -19,6 +19,7 @@ import { DSTI_LIMIT } from '@/lib/loans/affordability';
 import { TARIFFS_VERIFIED } from '@/lib/energy/catalogue';
 import { ASSISTANT_TO } from '@/lib/assistant/identity';
 import { PUBLIC_TOOLS, TOOLS_HUB } from '@/lib/core/publicTools';
+import { COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
 
 export type ShareCard = {
   /** Οδηγός, υπολογιστής ή σελίδα που μιλά σε ένα κοινό (π.χ. /logistes). */
@@ -65,6 +66,11 @@ export const SHARE_CARDS: Record<string, ShareCard> = {
   'sygkrisi-timologion-revmatos': { kind: 'calc', over: 'Σύγκριση', title: 'Τι θα πλήρωνες με κάθε τιμολόγιο ρεύματος',
     chips: ['Σταθερά, κυμαινόμενα, πράσινα', 'Με τις κιλοβατώρες σου', `Τιμές ελεγμένες ${grDate(TARIFFS_VERIFIED)}`],
     path: '/sygkrisi-timologion-revmatos' },
+  // Το όριο και το έτος από τη σταθερά που εφαρμόζει ο υπολογισμός. Κανένας
+  // δείκτης στην κάρτα: αλλάζει κάθε μήνα και η πλατφόρμα κρατά την εικόνα εβδομάδες.
+  'anaprosarmogi-enoikiou': { kind: 'calc', over: 'Υπολογιστής', title: 'Πόσο γίνεται το ενοίκιο με την αναπροσαρμογή',
+    chips: ['Ποσοστό ή ΔΤΚ ΕΛΣΤΑΤ', 'Πίνακας ανά έτος', `Όριο ${fpRate(COMMERCIAL_RENT_CAP_2026.pct)} στις επαγγελματικές ${COMMERCIAL_RENT_CAP_2026.from.slice(0, 4)}`],
+    path: '/anaprosarmogi-enoikiou' },
   'odigos': { kind: 'guide', over: 'Οδηγοί', title: 'Οδηγοί για ιδιοκτήτες ακινήτων: φόροι, ενοίκια, στέγαση',
     chips: GUIDES.map(g => g.kicker), path: '/odigos' },
   // Η ΣΕΛΙΔΑ ΤΩΝ ΛΟΓΙΣΤΩΝ. Τη μοιράζεται λογιστής σε λογιστή, οπότε η κάρτα λέει
