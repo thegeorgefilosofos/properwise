@@ -141,6 +141,8 @@ export async function proxy(request: NextRequest) {
     "/kathari-apodosi", "/ypologismos-stegastikou-daneiou",
     // Η σύγκριση τιμολογίων ρεύματος: έκτο δωρεάν εργαλείο, ίδιος κανόνας.
     "/sygkrisi-timologion-revmatos",
+    // Η αναπροσαρμογή ενοικίου: έβδομο δωρεάν εργαλείο, ίδιος κανόνας.
+    "/anaprosarmogi-enoikiou",
     // Η περιγραφή του site για τα εργαλεία AI (lib/seo/llms.ts). Το matcher
     // την προσπερνά ήδη· εδώ δηλώνεται για τον φύλακα των δημόσιων διαδρομών.
     "/llms.txt",

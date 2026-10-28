@@ -336,7 +336,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
 }
 
 // ── Προσβασιμότητα & responsive και στα δύο ───────────────────────────────
-for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari-apodosi','/vraxyxronia-i-makroxronia','/ypologismos-stegastikou-daneiou','/sygkrisi-timologion-revmatos']) {
+for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari-apodosi','/vraxyxronia-i-makroxronia','/ypologismos-stegastikou-daneiou','/sygkrisi-timologion-revmatos','/anaprosarmogi-enoikiou']) {
   for (const w of [360, 390, 768, 1440]) {
     const ctx = await b.newContext({ viewport:{width:w,height:900}, locale:'el-GR', isMobile:w<700 })
     const p = await page(ctx, path)
@@ -359,7 +359,7 @@ for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari
 }
 
 // ── Το middleware δεν ζητά σύνδεση ────────────────────────────────────────
-for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari-apodosi','/vraxyxronia-i-makroxronia','/ypologismos-stegastikou-daneiou','/sygkrisi-timologion-revmatos']) {
+for (const path of ['/ypologismos-forou-enoikion','/ypologismos-enfia','/kathari-apodosi','/vraxyxronia-i-makroxronia','/ypologismos-stegastikou-daneiou','/sygkrisi-timologion-revmatos','/anaprosarmogi-enoikiou']) {
   const res = await fetch(B+path, { redirect:'manual' })
   ok(`${path}: δημόσιο (HTTP ${res.status})`, res.status === 200)
 }

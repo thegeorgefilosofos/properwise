@@ -35,7 +35,7 @@ const BASE = process.env.E2E_BASE || 'http://localhost:3100'
 const ROUTES = [
   '/', '/paketa', '/login', '/signup', '/trust', '/logistes', '/odigos', '/terms', '/privacy',
   '/ypologismos-enfia', '/ypologismos-forou-enoikion', '/ypologismos-stegastikou-daneiou',
-  '/kathari-apodosi', '/vraxyxronia-i-makroxronia', '/sygkrisi-timologion-revmatos',
+  '/kathari-apodosi', '/vraxyxronia-i-makroxronia', '/sygkrisi-timologion-revmatos', '/anaprosarmogi-enoikiou',
 ]
 
 const PROBE = () => {

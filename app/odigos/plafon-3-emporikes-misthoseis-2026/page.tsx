@@ -32,6 +32,7 @@
 // Server Component για SEO/ταχύτητα. Καμία εξάρτηση από 'use client'.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { T } from '@/components/tokens';
 import { siteUrl, PRODUCT_NAME } from '@/lib/core/site';
 import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
@@ -136,7 +137,7 @@ export default function Page() {
       <JsonLd data={jsonLd} />
       <PublicHeader current="odigos" />
 
-      <GuideMain rail={{ sections: Object.values(S), cta: { href: '/kathari-apodosi', action: 'Δες τι σου μένει καθαρό' } }}>
+      <GuideMain rail={{ sections: Object.values(S), cta: { href: '/anaprosarmogi-enoikiou', action: 'Υπολόγισε την αναπροσαρμογή' } }}>
         <div className="lp-eyebrow">Οδηγός</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
@@ -216,6 +217,7 @@ export default function Page() {
         <ul className="lg-ul">
           <li>{'Διάβασε τον όρο αναπροσαρμογής: ποσοστό ή δείκτη και μήνα εφαρμογής.'}</li>
           <li>{`Υπολόγισε το μίσθωμα κατά τον όρο και σύγκρινέ το με το μίσθωμα του ${BASE_YEAR} × ${CAP_FACTOR}. Κράτα το μικρότερο από τα δύο.`}</li>
+          <li>{'Ο '}<Link href="/anaprosarmogi-enoikiou" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{'υπολογισμός αναπροσαρμογής ενοικίου'}</Link>{` κάνει τη σύγκριση μόνος του και δείχνει το μίσθωμα ανά έτος, με το όριο μέσα στο ${YEAR}.`}</li>
           <li>{`Χρέωσε το σωστό ποσό. Το Ψηφιακό Τέλος Συναλλαγής ${STAMP} υπολογίζεται επί του μισθώματος: στα ${feWhole(R.newRent)} είναι ${stamp(R.newRent)} τον μήνα αντί για ${stamp(R.uncappedRent)} στα ${feWhole(R.uncappedRent)}. Δεν οφείλεται αν η μίσθωση έχει νομίμως υπαχθεί σε ΦΠΑ.`}</li>
           <li>{'Αν ο όρος είναι διατυπωμένος ασαφώς ή αν εξετάζεις εξαίρεση, επιβεβαίωσε με δικηγόρο ή λογιστή πριν στείλεις την ειδοποίηση στον μισθωτή.'}</li>
         </ul>

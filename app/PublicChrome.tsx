@@ -37,7 +37,9 @@ import { asOfDate } from '@/lib/facts/prices';
 import { FIRST_YEAR_NEW_BRACKETS, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { ELECTRICITY_VAT_PCT } from '@/lib/energy/tariff';
-import { fpRate, grDateOf } from '@/lib/core/format';
+import { fpRate, grDate, grDateOf } from '@/lib/core/format';
+import { COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
+import { COMMERCIAL_STAMP_DUTY } from '@/lib/billing/commercialLease';
 
 /**
  * ΕΝΑ ΜΕΤΡΟ ΓΙΑ ΟΛΕΣ ΤΙΣ ΔΗΜΟΣΙΕΣ ΣΕΛΙΔΕΣ — ΤΟ ΙΔΙΟ ΜΕ ΤΗΣ ΑΡΧΙΚΗΣ.
@@ -447,6 +449,13 @@ const TOOL_SOURCES = {
   // Οι δύο ρυθμιζόμενες γραμμές του τύπου (ΕΤΜΕΑΡ, ΦΠΑ) έχουν και νομική βάση.
   power: 'Τιμές: τιμολόγια των παρόχων, διασταυρωμένα με το εργαλείο σύγκρισης της ΡΑΑΕΥ (energycost.gr) · '
     + `ΕΤΜΕΑΡ: ν.4001/2011 · ΦΠΑ ${fpRate(ELECTRICITY_VAT_PCT)} στην ηλεκτρική ενέργεια: Κώδικας ΦΠΑ (ν.2859/2000)`,
+  // Η αναπροσαρμογή ενοικίου: το όριο, η περίοδός του και το τέλος από τις
+  // σταθερές που εφαρμόζει ο υπολογισμός (lib/documents/rentAdjustment.ts,
+  // lib/billing/commercialLease.ts)· ο δείκτης από το δελτίο της ΕΛΣΤΑΤ.
+  adjust: `Όριο αναπροσαρμογής ${fpRate(COMMERCIAL_RENT_CAP_2026.pct)} στις υφιστάμενες επαγγελματικές μισθώσεις (ΠΔ 34/1995), `
+    + `${grDate(COMMERCIAL_RENT_CAP_2026.from)} έως ${grDate(COMMERCIAL_RENT_CAP_2026.to)}: άρθρο 59 ν.5255/2025 · άρθρο 96 ν.5007/2022 · `
+    + 'ΔΤΚ: ΕΛΣΤΑΤ, ανακοίνωση για την αναπροσαρμογή μισθωμάτων (δωδεκάμηνη μεταβολή και 75% αυτής) · '
+    + `Ψηφιακό Τέλος Συναλλαγής ${fpRate(COMMERCIAL_STAMP_DUTY * 100)}: άρθρο 6 ν.5177/2025`,
 } as const;
 /** Η ετικέτα του πλαισίου: «Νομική βάση» όπου εφαρμόζεται νόμος, «Πηγές» όπου τιμοκατάλογος. */
 const SOURCE_BADGE: Partial<Record<keyof typeof TOOL_SOURCES, string>> = { power: 'Πηγές' };

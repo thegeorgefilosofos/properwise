@@ -27,6 +27,7 @@ export const PUBLIC_TOOLS: readonly PublicTool[] = [
   { href: '/ypologismos-forou-enoikion', label: 'Φορολογία ενοικίων', desc: 'Ο φόρος των ενοικίων με την κλίμακα του έτους και την τεκμαρτή έκπτωση.', topic: 'enoikia' },
   { href: '/kathari-apodosi', label: 'Καθαρή απόδοση', desc: 'Μεικτή και καθαρή απόδοση ακινήτου μετά τον φόρο, τον ΕΝΦΙΑ και τις δαπάνες.', topic: 'agora' },
   { href: '/vraxyxronia-i-makroxronia', label: 'Βραχυχρόνια ή μακροχρόνια', desc: 'Τα καθαρά της βραχυχρόνιας και της μακροχρόνιας μίσθωσης, με φόρο, τέλος ανθεκτικότητας και προμήθεια.', topic: 'enoikia' },
+  { href: '/anaprosarmogi-enoikiou', label: 'Αναπροσαρμογή ενοικίου', desc: 'Το νέο μίσθωμα με ποσοστό ή ΔΤΚ της ΕΛΣΤΑΤ, ανά έτος, με το όριο των επαγγελματικών μισθώσεων όπου ισχύει.', topic: 'enoikia' },
   { href: '/ypologismos-stegastikou-daneiou', label: 'Δόση στεγαστικού', desc: 'Μηνιαία δόση, τόκοι και πόσο στεγαστικό δάνειο επιτρέπει το εισόδημα.', topic: 'agora' },
   { href: '/sygkrisi-timologion-revmatos', label: 'Σύγκριση τιμολογίων ρεύματος', desc: 'Τι θα πλήρωνες τον μήνα με κάθε οικιακό τιμολόγιο ρεύματος, με την ημερομηνία ελέγχου των τιμών.', topic: 'agora' },
 ];
