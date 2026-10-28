@@ -31,6 +31,8 @@ interface ToolFaq { q: string; a: string }
 
 /** Ο υπολογιστής στεγαστικού, στη διεύθυνση του καταλόγου των εργαλείων. */
 const MORTGAGE_PATH = '/ypologismos-stegastikou-daneiou';
+/** Τα έξοδα αγοράς: η άλλη ερώτηση πριν από το δάνειο. */
+const PURCHASE_PATH = '/exoda-agoras-akinitou';
 const LINK = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 } as const;
 
 /**
@@ -95,7 +97,9 @@ export function ToolOnwardLinks() {
     <p className="po-just" style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: '12px 0 0' }}>{hy(<>
       Αν σκέφτεσαι να αγοράσεις ακίνητο με δάνειο, ο{' '}
       <Link href={MORTGAGE_PATH} className="lp-link" style={LINK}>υπολογισμός στεγαστικού δανείου</Link>{' '}
-      δείχνει τη δόση, τους τόκους και πόσο δάνειο επιτρέπει το εισόδημά σου.
+      δείχνει τη δόση, τους τόκους και πόσο δάνειο επιτρέπει το εισόδημά σου. Τα{' '}
+      <Link href={PURCHASE_PATH} className="lp-link" style={LINK}>έξοδα αγοράς ακινήτου</Link>{' '}
+      δείχνουν τον φόρο μεταβίβασης και πόσα μετρητά χρειάζεσαι πέρα από το δάνειο.
     </>)}</p>
   );
 }

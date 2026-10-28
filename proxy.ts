@@ -139,6 +139,8 @@ export async function proxy(request: NextRequest) {
     // για να απαντά ΠΡΙΝ μας ξέρει κανείς και δεν απαντούσε σε κανέναν.
     "/ypologismos-forou-enoikion", "/ypologismos-enfia", "/vraxyxronia-i-makroxronia",
     "/kathari-apodosi", "/ypologismos-stegastikou-daneiou",
+    // Τα έξοδα αγοράς ακινήτου: έβδομο δωρεάν εργαλείο, ίδιος κανόνας.
+    "/exoda-agoras-akinitou",
     // Η σύγκριση τιμολογίων ρεύματος: έκτο δωρεάν εργαλείο, ίδιος κανόνας.
     "/sygkrisi-timologion-revmatos",
     // Η αναπροσαρμογή ενοικίου: έβδομο δωρεάν εργαλείο, ίδιος κανόνας.

@@ -117,7 +117,7 @@ export const GUIDES: readonly Guide[] = [
         + 'και οι δαπάνες. Τι μένει καθαρό, με παράδειγμα σε ευρώ.',
     published: '2026-09-21',
     updated: '2026-10-20',
-    tools: ['/kathari-apodosi', '/ypologismos-stegastikou-daneiou', '/sygkrisi-timologion-revmatos'],
+    tools: ['/kathari-apodosi', '/ypologismos-stegastikou-daneiou', '/exoda-agoras-akinitou', '/sygkrisi-timologion-revmatos'],
     topic: 'agora',
   },
   // ── Δεύτερο κύμα (27.09.2026). Κάθε οδηγός γράφεται από δεδομένα που ήδη
@@ -213,7 +213,7 @@ export const GUIDES: readonly Guide[] = [
         + 'Τι έχει μόνο ειπωθεί και τι κάνεις μέχρι να βγει η ΚΥΑ.',
     published: '2026-10-19',
     updated: '2026-10-20',
-    tools: ['/ypologismos-stegastikou-daneiou'],
+    tools: ['/ypologismos-stegastikou-daneiou', '/exoda-agoras-akinitou'],
     topic: 'agora',
   },
 ];

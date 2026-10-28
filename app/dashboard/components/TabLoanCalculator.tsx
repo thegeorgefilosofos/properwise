@@ -27,7 +27,7 @@ import { MARKET_DATA_ASOF } from '@/lib/market/greekMarket'
 // φάκελο loan/calc/. Η σύγκριση τραπεζών και η Συμβουλευτική δεν ήταν ποτέ εδώ:
 // ζουν στο TabLoan και στο loan/LoanAdvisor.
 import {
-  PROPERTY_TYPES, loanPurchaseCosts, BORROWER_OPTIONS, presetsFor, AREA_OPTIONS, areaGrossYield,
+  PROPERTY_TYPES, isNewBuildType, loanPurchaseCosts, BORROWER_OPTIONS, presetsFor, AREA_OPTIONS, areaGrossYield,
   NATURAL_BORROWERS, BUSINESS_BORROWERS,
 } from './loan/calc/model'
 import { Section } from './loan/calc/Bits'
@@ -220,7 +220,8 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   const amort     = useMemo(()=>calcAmortization(LA,effRate,Y),[LA,effRate,Y])
 
   const fmaEx    = calcFmaExemption(marital,CH)
-  const isNewBuilding = propType==='new_residence'
+  const isNewBuilding = isNewBuildType(propType)
+  const newBuildVat   = propType==='new_residence_vat'
   const isCommercial  = propType==='store'||propType==='warehouse'
   // ═══ ΤΟ ΝΕΟΔΜΗΤΟ ΧΡΕΩΝΟΤΑΝ ΜΕ ΦΠΑ 24% ΠΟΥ ΚΑΝΕΙΣ ΔΕΝ ΠΛΗΡΩΝΕΙ ═══════════
   // Η ΙΔΙΑ ΕΦΑΡΜΟΓΗ ΕΛΕΓΕ ΔΥΟ ΠΡΑΓΜΑΤΑ. Το lib/accounting/transfer.ts, που
@@ -242,13 +243,14 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   // ΤΑ ΕΞΟΔΑ ΑΓΟΡΑΣ ΑΠΟ ΤΟ ΙΔΙΟ ΜΟΝΤΕΛΟ ΜΕ ΤΗ ΛΟΓΙΣΤΙΚΗ (19/10/2026): το
   // `transferCosts`, συν τα έξοδα της υποθήκης επί του δανείου (`loanPurchaseCosts`).
   const totalCosts = useMemo(()=>loanPurchaseCosts({
-    value:PV, loanAmount:LA, firstHome:firstHomeTax, married:marital==='married', children:CH, newBuild:isNewBuilding,
+    value:PV, loanAmount:LA, firstHome:firstHomeTax, married:marital==='married', children:CH, newBuild:isNewBuilding, newBuildVat,
     agentPct:hasAgent?(parseFloat(agentPct)||null):null,
-  }),[PV,LA,firstHomeTax,marital,CH,isNewBuilding,hasAgent,agentPct])
+  }),[PV,LA,firstHomeTax,marital,CH,isNewBuilding,newBuildVat,hasAgent,agentPct])
   const notaryCosts = totalCosts
   const AGNT = totalCosts.agent
   const fmaOwed  = totalCosts.tax
-  const fmaSub = fmaOwed===0 ? 'Πρώτη κατοικία'
+  const fmaSub = newBuildVat ? `${fpRate(NEW_BUILD_VAT_RATE*100)} στο τίμημα, αντί για ΦΜΑ`
+    : fmaOwed===0 ? 'Πρώτη κατοικία'
     : firstHomeTax ? `${fpRate(TRANSFER_TAX_RATE*100)} πάνω από ${fmtEur(fmaEx)}` : `${fpRate(TRANSFER_TAX_RATE*100)} επί αξίας`
   // Ενημερωτικό, όχι χρέωση: πόσο ΘΑ ηταν ο ΦΠΑ αν έπαυε η αναστολή.
   const vatOwed  = isNewBuilding?PV*NEW_BUILD_VAT_RATE:0
@@ -472,7 +474,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
         propValue={propValue} setPropValue={setPropValue} sqm={sqm} setSqm={setSqm} loanType={loanType} setLoanType={setLoanType}
         borrower={borrower} setBorrower={setBorrower} borrowerOptions={borrowerOptions} sqmPrice={sqmPrice}
         hasAgent={hasAgent} setHasAgent={setHasAgent} agentPct={agentPct} setAgentPct={setAgentPct} AGNT={AGNT}
-        isNewBuilding={isNewBuilding} vatOwed={vatOwed} isCommercial={isCommercial}/>
+        isNewBuilding={isNewBuilding} newBuildVat={newBuildVat} vatOwed={vatOwed} isCommercial={isCommercial}/>
 
       {/* Δάνειο, επιτόκιο και παράμετροι — ενιαία κάρτα, ενιαίο πλέγμα πεδίων */}
       <LoanCard loanAmount={loanAmount} setLoanAmount={setLoanAmount} setActivePreset={setActivePreset} years={years} setYears={setYears}
@@ -533,7 +535,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
       {lens==='table' && <TableLens Y={Y} exportAmortPdf={exportAmortPdf} officialAmort={officialAmort} genOfficial={genOfficial}
         exportAmortCsv={exportAmortCsv} amort={amort} hoverRow={hoverRow} setHoverRow={setHoverRow} loanType={loanType}
         propTypeLabel={propTypeLabel} isNewBuilding={isNewBuilding} propertyId={propertyId} borrower={borrower} SQM={SQM}
-        areaLabel={areaLabel} fmaOwed={fmaOwed} fmaSub={fmaSub} totalCosts={totalCosts} hasAgent={hasAgent} AGNT={AGNT} agentPct={agentPct}
+        areaLabel={areaLabel} fmaOwed={fmaOwed} fmaSub={fmaSub} newBuildVat={newBuildVat} totalCosts={totalCosts} hasAgent={hasAgent} AGNT={AGNT} agentPct={agentPct}
         hoverCost={hoverCost} setHoverCost={setHoverCost} notaryCosts={notaryCosts} LA={LA}/>}
 
     </div>

@@ -20,6 +20,7 @@ import { TARIFFS_VERIFIED } from '@/lib/energy/catalogue';
 import { ASSISTANT_TO } from '@/lib/assistant/identity';
 import { PUBLIC_TOOLS, TOOLS_HUB } from '@/lib/core/publicTools';
 import { COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
+import { TRANSFER_TAX_RATE } from '@/lib/accounting/transfer';
 
 export type ShareCard = {
   /** Οδηγός, υπολογιστής ή σελίδα που μιλά σε ένα κοινό (π.χ. /logistes). */
@@ -61,6 +62,10 @@ export const SHARE_CARDS: Record<string, ShareCard> = {
   'ypologismos-stegastikou-daneiou': { kind: 'calc', over: 'Υπολογιστής', title: 'Πόση δόση και πόσο στεγαστικό δάνειο',
     chips: ['Σταθερό ή κυμαινόμενο', 'Τόκοι ανά έτος', `Όριο δόσης ${fpRate(DSTI_LIMIT.firstTimeBuyer * 100)} ή ${fpRate(DSTI_LIMIT.other * 100)}`],
     path: '/ypologismos-stegastikou-daneiou' },
+  // Ο συντελεστής από τη σταθερά που υπολογίζει (lib/accounting/transfer.ts).
+  'exoda-agoras-akinitou': { kind: 'calc', over: 'Υπολογιστής', title: 'Πόσα θα δώσεις πάνω από την τιμή του ακινήτου',
+    chips: [`Φόρος μεταβίβασης ${fpRate(TRANSFER_TAX_RATE * 100)}`, 'Πρώτη κατοικία', 'Μετρητά εκτός δανείου'],
+    path: '/exoda-agoras-akinitou' },
   // Η ΗΜΕΡΟΜΗΝΙΑ ΕΛΕΓΧΟΥ ΚΑΙ ΟΧΙ ΤΙΜΗ: η πλατφόρμα κρατά την εικόνα εβδομάδες
   // και μια τιμή θα έμενε πίσω από τον κατάλογο. Η μέρα του ελέγχου μένει αληθής.
   'sygkrisi-timologion-revmatos': { kind: 'calc', over: 'Σύγκριση', title: 'Τι θα πλήρωνες με κάθε τιμολόγιο ρεύματος',

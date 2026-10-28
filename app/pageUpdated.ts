@@ -43,6 +43,7 @@ import { POLICY_VERSION } from '@/lib/legal/identity';
 import { CPI_CONFIRMED_AT } from '@/lib/market/cpi';
 import TOOL_STAMPS from './toolStamps.json';
 import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
+import { PURCHASE_SOURCES_CHECKED } from '@/lib/tools/exodaAgoras';
 
 /** Μητρώο χωρίς ημερομηνία ελέγχου σπάει το χτίσιμο, δεν γίνεται σιωπηλά «καμία». */
 function checked(iso: string | null, what: string): string {
@@ -88,6 +89,10 @@ export const PAGE_UPDATED = {
   // Αλλαγές του ίδιου: πηγές και περιγραφή από την αγορά (#401 18/10), FAQ
   // «Σπίτι μου ΙΙΙ» (#405 19/10/2026). Ο χάρτης έλεγε ακόμη 03/10.
   '/ypologismos-stegastikou-daneiou': '2026-10-19',
+  // Τα έξοδα αγοράς: η ημέρα που ελέγχθηκαν οι πηγές τους στο κείμενο των ΦΕΚ,
+  // από τη μηχανή τους. Ο φόρος μεταβίβασης έχει και δικό του μητρώο ισχύος
+  // (`transfer-tax`, lib/legal/validity.ts), όχι κλειδί στο lib/facts/taxLimits.
+  '/exoda-agoras-akinitou': PURCHASE_SOURCES_CHECKED,
 
   // ── ΟΙ ΦΟΡΟΛΟΓΙΚΟΙ ΥΠΟΛΟΓΙΣΤΕΣ: ΕΛΕΓΧΟΣ ΟΡΙΩΝ Ή ΑΛΛΑΓΗ ΠΕΡΙΕΧΟΜΕΝΟΥ ─────────
   // Η «Τελευταία ενημέρωση» του πλαισίου «Νομική βάση» (`ToolSources`): η

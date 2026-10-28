@@ -15,7 +15,7 @@ import { transferCosts, transferTaxOn, notaryFee, firstHomeExemption } from '@/l
 import { mortgageCosts } from '@/lib/loans/mortgageCosts';
 import {
   loanPurchaseCosts, areaGrossYield, euriborPeriod, presetsFor, AREA_OPTIONS, LOAN_TYPE_OPTIONS, PROP_TYPE_OPTIONS,
-  PROPERTY_TYPES, CHILDREN_OPTIONS, NATURAL_BORROWERS, BUSINESS_BORROWERS,
+  PROPERTY_TYPES, isNewBuildType, CHILDREN_OPTIONS, NATURAL_BORROWERS, BUSINESS_BORROWERS,
 } from './model';
 
 let pass = 0, fail = 0;
@@ -80,6 +80,19 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
   ok('μία επιλογή ανά τύπο ακινήτου', PROP_TYPE_OPTIONS.length === PROPERTY_TYPES.length);
   ok('έως πέντε τέκνα', CHILDREN_OPTIONS.length === 6 && CHILDREN_OPTIONS[3].description === '+80.000€');
   ok('φυσικά και νομικά πρόσωπα χωριστά', !NATURAL_BORROWERS.some(b => BUSINESS_BORROWERS.includes(b)));
+}
+
+// ── ΝΕΟΔΜΗΤΟ ΧΩΡΙΣ ΑΝΑΣΤΟΛΗ: ΦΠΑ ΣΤΟ ΤΙΜΗΜΑ (άρθρα 24, 26, 70 Κώδικα ΦΠΑ) ─────
+// Η αναστολή δίνεται με αίτηση του κατασκευαστή, άρα δεν είναι δεδομένη. Ο
+// παλιός κώδικας είχε μόνο το νεόδμητο σε αναστολή: εδώ έβγαζε ΦΜΑ 6.180€.
+{
+  const vat = loanPurchaseCosts({ value: 200000, loanAmount: 0, firstHome: true, married: false, children: 0, newBuild: true, newBuildVat: true, agentPct: null })
+  ok('νεόδμητο με ΦΠΑ: 24% στο τίμημα, 48.000€', vat.tax === 48000)
+  ok('νεόδμητο με ΦΠΑ: η απαλλαγή πρώτης κατοικίας δεν εφαρμόζεται', vat.purchase.lines.some(l => l.key === 'vat') && !vat.purchase.lines.some(l => l.key === 'transferTax'))
+  const susp = loanPurchaseCosts({ value: 200000, loanAmount: 0, firstHome: false, married: false, children: 0, newBuild: true, agentPct: null })
+  ok('νεόδμητο σε αναστολή: ΦΜΑ 6.180€', susp.tax === 6180)
+  ok('δύο επιλογές νεόδμητου στον τύπο ακινήτου', isNewBuildType('new_residence') && isNewBuildType('new_residence_vat') && !isNewBuildType('residence'))
+  ok('η επιλογή με ΦΠΑ υπάρχει στη λίστα', PROPERTY_TYPES.some(p => p.value === 'new_residence_vat'))
 }
 
 console.log(fail ? `✗ loan/calc/model: ${fail} απέτυχαν από ${pass + fail}` : `✓ loan/calc/model: ${pass} έλεγχοι πέρασαν`);

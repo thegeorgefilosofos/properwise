@@ -2,7 +2,7 @@
   "σημείωση": "Παράγεται από το npm run guides:stamp. Μην το γράφεις με το χέρι. Το φυλάει ο scripts/guard-guide-updated.mjs.",
   "guides": {
     "/odigos/airbnb-takk-2026": {
-      "hash": "53a3125075aee3a4",
+      "hash": "f058c71e52bb44e5",
       "updated": "2026-10-20"
     },
     "/odigos/ekptosi-forou-anakainisis": {
@@ -14,11 +14,11 @@
       "updated": "2026-10-20"
     },
     "/odigos/enoikio-meso-trapezas": {
-      "hash": "360ef351dbd2efc0",
+      "hash": "467870c8a65a460b",
       "updated": "2026-10-20"
     },
     "/odigos/forologia-enoikion-2026": {
-      "hash": "7acdfea81e653807",
+      "hash": "5db14463072020cb",
       "updated": "2026-10-20"
     },
     "/odigos/forologikes-prothesmies-idioktiton": {

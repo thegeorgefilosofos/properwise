@@ -1,5 +1,5 @@
 // Τεστ για το κόστος αγοράς/πώλησης ακινήτου (lib/accounting/transfer.ts).
-import { transferCosts, transferTaxOn, firstHomeExemption, TRANSFER_TAX_RATE, CADASTRE_RATE, CADASTRE_FIXED } from './transfer'
+import { transferCosts, transferTaxOn, firstHomeExemption, TRANSFER_TAX_RATE, TRANSFER_TAX_MAIN_RATE, MUNICIPAL_SURCHARGE_RATE, CADASTRE_RATE, CADASTRE_FIXED } from './transfer'
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }
@@ -91,6 +91,25 @@ const near = (a: number, b: number, eps = 0.5) => Math.abs(a - b) <= eps
   ok('transferTaxOn: χωρίς απαλλαγή → 3,09% όλης της αξίας', transferTaxOn(220000) === 6798)
   const fh = transferCosts({ side: 'buy', price: 220000, firstHome: true })
   ok('transferCosts και transferTaxOn συμφωνούν', fh.lines.find(l => l.key === 'transferTax')!.amount === transferTaxOn(220000, single))
+}
+
+// ── ΦΠΑ νεόδμητου στο ΤΙΜΗΜΑ (Κώδικας ΦΠΑ, άρθρο 24 περ. ε΄) ─────────────────
+// Ο παλιός κώδικας τον έβαζε στη μεγαλύτερη από τίμημα και αντικειμενική:
+// 60.000€ αντί για 48.000€ εδώ.
+{
+  const r = transferCosts({ side: 'buy', price: 200000, objectiveValue: 250000, newBuild: true, vatSuspended: false })
+  ok('ΦΠΑ νεόδμητου στο τίμημα, όχι στην αντικειμενική: 48.000€', r.lines.find(l => l.key === 'vat')!.amount === 48000)
+  const fma = transferCosts({ side: 'buy', price: 200000, objectiveValue: 250000, newBuild: true })
+  ok('σε αναστολή ο ΦΜΑ μένει στη μεγαλύτερη αξία', fma.lines.find(l => l.key === 'transferTax')!.amount === 7725)
+}
+
+// ── Τα δύο κομμάτια του 3,09% (άρθρο 27 παρ. 1 και 5 ν.5219/2025) ─────────────
+// Η οθόνη των εξόδων αγοράς λέει «3% συν 3% του φόρου υπέρ Δήμων». Αν αλλάξει
+// το ένα κομμάτι και όχι το σύνολο, ο υπολογισμός και το κείμενο διαφωνούν.
+{
+  ok('κύριος φόρος 3%', TRANSFER_TAX_MAIN_RATE === 0.03)
+  ok('πρόσθετος υπέρ Δήμων 3% του φόρου', MUNICIPAL_SURCHARGE_RATE === 0.03)
+  ok('3% × (1 + 3%) = 3,09%', Math.abs(TRANSFER_TAX_MAIN_RATE * (1 + MUNICIPAL_SURCHARGE_RATE) - TRANSFER_TAX_RATE) < 1e-12)
 }
 
 console.log(`transfer.ts — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)
