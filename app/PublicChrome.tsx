@@ -29,6 +29,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { T } from '@/components/tokens';
 import { TRIAL_DAYS } from '@/lib/billing/plans';
+import { signupCta } from '@/lib/billing/trialOffer';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { hy } from '@/components/Hyphen';
 import PublicMenu, { type MenuGroup } from './PublicMenu';
@@ -130,7 +131,7 @@ export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current
             globals.css): χάπι, 44, λεκτικό 15. Μένει `Link` για την πλοήγηση
             χωρίς επαναφόρτωση· τη γεωμετρία την παίρνει από τις ίδιες τιμές. */}
         <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 'var(--btn-h, 44px)', textDecoration: 'none', fontSize: 'var(--btn-fs, 15px)', fontWeight: 700, padding: '0 20px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>
-          <span className="lp-hide-xs">Ξεκίνα δωρεάν</span><span className="lp-only-xs">Ξεκίνα</span>
+          <span className="lp-hide-xs">{signupCta()}</span><span className="lp-only-xs">Ξεκίνα</span>
         </Link>
       </>) : signedIn}
       {/* ΟΔΗΓΟΙ ΚΑΙ ΤΙΜΕΣ ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ (06/10/2026). Κάτω από τα 640 οι τρεις

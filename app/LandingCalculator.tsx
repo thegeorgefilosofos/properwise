@@ -230,8 +230,11 @@ export default function LandingCalculator({ cta }: { cta: string }) {
           {hy(<>Ενδεικτικός υπολογισμός για ένα ακίνητο χωρίς άλλο εισόδημα από ενοίκια, με την κλίμακα ενοικίων {FIRST_YEAR_NEW_BRACKETS} (ν.5246/2025) και τεκμαρτή έκπτωση {statutory(PRESUMPTIVE_DEDUCTION_RATE)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
         </p>
         <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
-          {/* Στα 320 η πλήρης φράση έσπαγε σε δύο γραμμές με το «σου» μόνο του. */}
-          <span className="lp-hide-xxs">{cta} με το ακίνητό σου</span><span className="lp-only-xxs">{cta}</span>
+          {/* ΕΝΑ ΚΕΙΜΕΝΟ ΕΓΓΡΑΦΗΣ ΣΕ ΟΛΗ ΤΗΝ ΑΡΧΙΚΗ (28/10/2026). Εδώ έγραφε «… με
+              το ακίνητό σου», ενώ η κορυφή και το τέλος της σελίδας γράφουν σκέτο
+              το λεκτικό του `signupCta()`: δύο κουμπιά προς την ίδια εγγραφή με
+              άλλα λόγια. Τώρα λένε το ίδιο. */}
+          {cta}
         </Link>
       </div>
     </div>

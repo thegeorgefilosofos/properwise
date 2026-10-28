@@ -107,7 +107,7 @@ export default function AuthAside({
             γραμμές παντού: 880 → 22,3 σε πάνελ 304 · 1024 → 27,1 σε 365 ·
             1280 → 35,7 σε 480 · 1440 και πάνω → 38, το ίδιο ταβάνι που είχε.
             Το δάπεδο στα 20 δεν το πιάνει καμία οθόνη όπου φαίνεται το πάνελ. */}
-        <div className="auth-aside-h" style={{ fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.12, margin: '0 0 18px', color: 'var(--mkt-text-primary)' }}>
+        <div className="auth-aside-h" style={{ fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.17, margin: '0 0 18px', color: 'var(--mkt-text-primary)' }}>
           {headline}{oneLine ? ' ' : <br />}<span style={{ color: 'var(--mkt-accent)' }}>{accent}</span>
         </div>
         {/* ═══ ΤΟ ΚΕΙΜΕΝΟ ΣΤΑΜΑΤΟΥΣΕ ΣΤΗ ΜΕΣΗ ΤΟΥ ΠΑΝΕΛ ══════════════════════
