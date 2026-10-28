@@ -443,7 +443,7 @@ for (const path of ['/', '/ypologismos-enfia']) for (const [w, h] of [[320, 568]
     // Ο ΤΕΛΕΥΤΑΙΟΣ ΣΥΝΔΕΣΜΟΣ ΤΟΥ ΦΥΛΛΟΥ, όχι ο τελευταίος της πρώτης ομάδας: το
     // `li:last-child a` έπιανε το πρώτο `li` που είναι τελευταίο στη λίστα του,
     // δηλαδή το τέλος των υπολογισμών. Με οκτώ υπολογισμούς αυτό ανεβαίνει έξω
-    // από το φύλλο όταν κυλήσει στο τέλος, και ο έλεγχος κοκκίνιζε ενώ ο
+    // από το φύλλο όταν κυλήσει στο τέλος: ο έλεγχος κοκκίνιζε ενώ ο
     // πραγματικά τελευταίος σύνδεσμος φαινόταν (28/10/2026).
     const last = [...sheet.querySelectorAll('li a')].at(-1).getBoundingClientRect()
     const cut = [...sheet.querySelectorAll('a')].filter(a => a.scrollWidth > a.clientWidth + 1).map(a => a.textContent)
