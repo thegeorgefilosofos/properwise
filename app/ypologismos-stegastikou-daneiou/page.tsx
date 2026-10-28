@@ -281,6 +281,14 @@ export default async function Page() {
             και οι δύο οδηγοί τους απαντούν στην επόμενη ερώτηση. */}
         <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
           <SectionHead over="Και μετά" title="Μετά την αγορά: ΕΝΦΙΑ και απόδοση" />
+          {/* ΤΑ ΕΞΟΔΑ ΑΓΟΡΑΣ ΠΡΙΝ ΑΠΟ ΤΗ ΔΟΣΗ (27/10/2026). Η δόση απαντά πόσο
+              πληρώνεις τον μήνα· πόσα μετρητά θέλεις πέρα από το δάνειο το λένε
+              τα έξοδα αγοράς, με το ίδιο ποσό δανείου στη διεύθυνση. */}
+          <p className="po-just" style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: '0 0 12px' }}>{hy(<>
+            Πέρα από το δάνειο θα χρειαστείς την ίδια συμμετοχή και τα έξοδα της αγοράς: τα{' '}
+            <Link href="/exoda-agoras-akinitou" className="lp-link" style={LINK}>έξοδα αγοράς ακινήτου</Link>
+            {' '}δείχνουν τον φόρο μεταβίβασης και πόσα μετρητά χρειάζεσαι εκτός δανείου.
+          </>)}</p>
           <p className="po-just" style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0 }}>{hy(<>
             Κάθε χρόνο θα πληρώνεις{' '}
             <Link href="/ypologismos-enfia" className="lp-link" style={LINK}>ΕΝΦΙΑ</Link>

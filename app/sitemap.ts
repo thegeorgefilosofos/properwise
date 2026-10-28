@@ -28,6 +28,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { ...at('/vraxyxronia-i-makroxronia'), changeFrequency: 'monthly', priority: 0.9 },
     { ...at('/kathari-apodosi'), changeFrequency: 'monthly', priority: 0.9 },
     { ...at('/anaprosarmogi-enoikiou'), changeFrequency: 'monthly', priority: 0.9 },
+    { ...at('/exoda-agoras-akinitou'), changeFrequency: 'monthly', priority: 0.9 },
     { ...at('/ypologismos-stegastikou-daneiou'), changeFrequency: 'monthly', priority: 0.9 },
     { ...at('/sygkrisi-timologion-revmatos'), changeFrequency: 'monthly', priority: 0.9 },
     // Κόμβος εργαλείων (27.10.2026): όλοι οι υπολογιστές ανά θέμα, ο μεσαίος

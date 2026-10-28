@@ -52,7 +52,7 @@ export function AmortLens({ LA, totalInt, amortChart }: {
 
 export function TableLens({
   Y, exportAmortPdf, officialAmort, genOfficial, exportAmortCsv, amort, hoverRow, setHoverRow, loanType, propTypeLabel,
-  isNewBuilding, propertyId, borrower, SQM, areaLabel, fmaOwed, fmaSub, totalCosts, hasAgent, AGNT, agentPct,
+  isNewBuilding, propertyId, borrower, SQM, areaLabel, fmaOwed, fmaSub, newBuildVat = false, totalCosts, hasAgent, AGNT, agentPct,
   hoverCost, setHoverCost, notaryCosts, LA,
 }: {
   Y: number; exportAmortPdf: () => void; officialAmort: () => Promise<void>; genOfficial: boolean; exportAmortCsv: () => void;
@@ -60,6 +60,8 @@ export function TableLens({
   isNewBuilding: boolean; propertyId: string; borrower: BorrowerType; SQM: number; areaLabel: string; fmaOwed: number;
   /** Πώς βγήκε ο φόρος: «Πρώτη κατοικία», «3,09% πάνω από 200.000€» ή «3,09% επί αξίας». */
   fmaSub: string;
+  /** Νεόδμητο χωρίς αναστολή: η γραμμή του φόρου είναι ΦΠΑ, όχι ΦΜΑ. */
+  newBuildVat?: boolean;
   totalCosts: { tax: number; notary: number; landReg: number; legal: number; agent: number; other: number; total: number; downpayment: number; totalCash: number };
   hasAgent: boolean; AGNT: number; agentPct: string; hoverCost: number | null; setHoverCost: SetState<number | null>;
   notaryCosts: LoanPurchaseCosts; LA: number;
@@ -218,7 +220,7 @@ export function TableLens({
             είναι στοιχεία που εξετάζεις ένα ένα. */}
         <div {...fixedCols(3, 8, 'stretch')} style={{...fixedCols(3, 8, 'stretch').style,marginBottom:12}}>
           {[
-            {label:'Φόρος μεταβίβασης (ΦΜΑ)',value:fmaOwed===0?'Απαλλαγή':fmtEur(fmaOwed),sub:fmaSub},
+            {label:newBuildVat?'ΦΠΑ νεόδμητου':'Φόρος μεταβίβασης (ΦΜΑ)',value:fmaOwed===0?'Απαλλαγή':fmtEur(fmaOwed),sub:fmaSub},
             // ΟΙ ΕΞΗΓΗΣΕΙΣ ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΙΣ ΣΤΑΘΕΡΕΣ, ΟΠΩΣ ΤΑ ΠΟΣΑ. Εδώ έγραφε
             // «0,475% επί αξίας» με το χέρι, ενώ το ΦΕΚ λέει 5‰ συν πάγιο. Ό,τι
             // δεν έχει επίσημη πηγή γράφει «εκτίμηση» (lib/loans/mortgageCosts.ts).

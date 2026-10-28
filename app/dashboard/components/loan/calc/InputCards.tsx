@@ -24,14 +24,14 @@ type Option = { value: string; label: string; description: string }
 export function PropertyCard({
   propType, setPropType, setActivePreset, area, setArea, propValue, setPropValue, sqm, setSqm, loanType, setLoanType,
   borrower, setBorrower, borrowerOptions, sqmPrice, hasAgent, setHasAgent, agentPct, setAgentPct, AGNT,
-  isNewBuilding, vatOwed, isCommercial,
+  isNewBuilding, newBuildVat = false, vatOwed, isCommercial,
 }: {
   propType: string; setPropType: SetState<string>; setActivePreset: SetState<string | null>;
   area: string; setArea: SetState<string>; propValue: string; setPropValue: SetState<string>;
   sqm: string; setSqm: SetState<string>; loanType: LoanType; setLoanType: SetState<LoanType>;
   borrower: BorrowerType; setBorrower: SetState<BorrowerType>; borrowerOptions: Option[]; sqmPrice: number;
   hasAgent: boolean; setHasAgent: SetState<boolean>; agentPct: string; setAgentPct: SetState<string>; AGNT: number;
-  isNewBuilding: boolean; vatOwed: number; isCommercial: boolean;
+  isNewBuilding: boolean; newBuildVat?: boolean; vatOwed: number; isCommercial: boolean;
 }) {
   return (
     <div style={cardStyle}>
@@ -56,7 +56,9 @@ export function PropertyCard({
           {hasAgent&&<NumberInput label="Ποσοστό μεσίτη" value={agentPct} onChange={setAgentPct} suffix="%"/>}
           {hasAgent&&<ReadStat label="Αμοιβή μεσίτη" value={fmtEur(AGNT)}/>}
         </div>
-        {isNewBuilding&&<div style={{padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p title="ΦΠΑ: Φόρος Προστιθέμενης Αξίας · ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Νεόδμητο: ο ΦΠΑ {fpRate(NEW_BUILD_VAT_RATE*100)} ({fmtEur(vatOwed)}) είναι σε αναστολή έως {NEW_BUILD_VAT_SUSPENDED_UNTIL}, οπότε ο υπολογισμός κρατά ΦΜΑ {fpRate(TRANSFER_TAX_RATE*100)}</p></div>}
+        {isNewBuilding&&<div style={{padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p title="ΦΠΑ: Φόρος Προστιθέμενης Αξίας · ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>{newBuildVat
+          ? <>Νεόδμητο χωρίς αναστολή: ο ΦΠΑ {fpRate(NEW_BUILD_VAT_RATE*100)} στο τίμημα ({fmtEur(vatOwed)}) μπαίνει στον υπολογισμό αντί για ΦΜΑ.</>
+          : <>Νεόδμητο: αν ο κατασκευαστής έχει υπαχθεί με αίτησή του σε αναστολή ΦΠΑ (έως {NEW_BUILD_VAT_SUSPENDED_UNTIL}), πληρώνεις ΦΜΑ {fpRate(TRANSFER_TAX_RATE*100)} αντί για ΦΠΑ {fpRate(NEW_BUILD_VAT_RATE*100)} ({fmtEur(vatOwed)}). Χωρίς αναστολή, διάλεξε στον τύπο ακινήτου τη νεόδμητη κατοικία με ΦΠΑ.</>}</p></div>}
         {isCommercial&&<div style={{padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p title="ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου (3% συν 3% υπέρ δήμων επί του φόρου)" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Επαγγελματικό: ΦΜΑ {fpRate(TRANSFER_TAX_RATE*100)} + Ψηφιακό Τέλος Συναλλαγής 3,6% αν εκμισθωθεί</p></div>}
       </div>
     </div>

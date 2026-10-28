@@ -38,7 +38,7 @@ const DEVICES = [
 ]
 
 const PAGES = ['/', '/login', '/signup', '/ypologismos-forou-enoikion', '/ypologismos-enfia',
-  '/vraxyxronia-i-makroxronia', '/kathari-apodosi', '/sygkrisi-timologion-revmatos', '/privacy']
+  '/vraxyxronia-i-makroxronia', '/kathari-apodosi', '/sygkrisi-timologion-revmatos', '/exoda-agoras-akinitou', '/privacy']
 
 
 // Ο κανόνας των 44 ζει στο scripts/lib/tap-targets.mjs: τον μοιράζεται με τη

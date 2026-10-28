@@ -16,7 +16,12 @@ import { regionByKey, GREECE_AVG_GROSS_YIELD } from '@/lib/market/greekMarket'
 
 export const PROPERTY_TYPES = [
   {value:'residence',    label:'Κατοικία',              desc:'Διαμέρισμα, μονοκατοικία, μεζονέτα'},
-  {value:'new_residence',label:'Νεόδμητη κατοικία',     desc:'Άδεια μετά το 2006, ΦΠΑ σε αναστολή'},
+  // Η ΑΝΑΣΤΟΛΗ ΕΙΝΑΙ ΕΠΙΛΟΓΗ ΤΟΥ ΚΑΤΑΣΚΕΥΑΣΤΗ (27/10/2026): δίνεται «με αίτηση του
+  // υποκειμένου» (άρθρο 70 Κώδικα ΦΠΑ). Το νεόδμητο είχε μία επιλογή, πάντα σε
+  // αναστολή· όποιος αγόραζε από κατασκευαστή χωρίς αναστολή έβλεπε ΦΜΑ αντί
+  // για ΦΠΑ 24%. Τώρα οι δύο περιπτώσεις είναι δύο επιλογές.
+  {value:'new_residence',label:'Νεόδμητη κατοικία',     desc:'Ο κατασκευαστής σε αναστολή ΦΠΑ: φόρος μεταβίβασης'},
+  {value:'new_residence_vat',label:'Νεόδμητη κατοικία με ΦΠΑ', desc:'Ο κατασκευαστής χωρίς αναστολή: ΦΠΑ στο τίμημα'},
   {value:'store',        label:'Κατάστημα / Γραφείο',   desc:'Επαγγελματική χρήση'},
   {value:'warehouse',    label:'Αποθήκη / Βιομηχανικό', desc:'Βιομηχανική / αποθήκευση'},
   {value:'land',         label:'Οικόπεδο / Γη',         desc:'Εντός ή εκτός σχεδίου'},
@@ -37,6 +42,8 @@ export const PROPERTY_TYPES = [
 export interface LoanPurchaseInput {
   value: number; loanAmount: number
   firstHome: boolean; married: boolean; children: number; newBuild: boolean
+  /** Νεόδμητο από κατασκευαστή ΧΩΡΙΣ αναστολή ΦΠΑ: ΦΠΑ αντί για ΦΜΑ. */
+  newBuildVat?: boolean
   /** Ποσοστό μεσίτη· `null` χωρίς μεσίτη. */
   agentPct: number | null
 }
@@ -53,6 +60,7 @@ export function loanPurchaseCosts(i: LoanPurchaseInput): LoanPurchaseCosts {
   const loan = Math.max(0, i.loanAmount || 0)
   const purchase = transferCosts({
     side: 'buy', price: value, firstHome: i.firstHome, married: i.married, children: i.children, newBuild: i.newBuild,
+    vatSuspended: !(i.newBuild && i.newBuildVat),
     useAgent: i.agentPct != null, agentRatePct: i.agentPct ?? undefined, useLawyer: true,
   })
   const line = (k: string) => purchase.lines.find(l => l.key === k)?.amount ?? 0
@@ -86,6 +94,8 @@ export const FIXED_PERIOD_OPTIONS = ['3','5','10','15','20'].map(v=>({value:v,la
 const kidsExtra = (n: number) => firstHomeExemption({ children: n }) - firstHomeExemption({ children: 0 })
 export const MARITAL_OPTIONS   = [{value:'single',label:'Άγαμος / Άγαμη',description:`Όριο ΦΜΑ: ${feWhole(firstHomeExemption({ married: false }))}`},{value:'married',label:'Έγγαμος / Έγγαμη',description:`Όριο ΦΜΑ: ${feWhole(firstHomeExemption({ married: true }))}`}]
 export const CHILDREN_OPTIONS  = [0,1,2,3,4,5].map(n=>({value:String(n),label:n===0?'Χωρίς τέκνα':`${n} εξαρτώμεν${n===1?'ο':'α'} τέκν${n===1?'ο':'α'}`,description:n===0?'':`+${feWhole(kidsExtra(n))}`}))
+/** Οι δύο επιλογές του νεόδμητου, με και χωρίς αναστολή ΦΠΑ. */
+export const isNewBuildType = (t: string): boolean => t === 'new_residence' || t === 'new_residence_vat'
 export const PROP_TYPE_OPTIONS = PROPERTY_TYPES.map(p=>({value:p.value,label:p.label,description:p.desc}))
 
 // ══ ΤΟ ΕΠΙΤΟΚΙΟ ΤΟΥ ΝΕΟΥ ΑΓΟΡΑΣΤΗ ΗΤΑΝ ΤΟΥ «ΣΠΙΤΙ ΜΟΥ ΙΙ» ══════════════════

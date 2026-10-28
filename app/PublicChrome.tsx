@@ -40,6 +40,7 @@ import { ELECTRICITY_VAT_PCT } from '@/lib/energy/tariff';
 import { fpRate, grDate, grDateOf } from '@/lib/core/format';
 import { COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
 import { COMMERCIAL_STAMP_DUTY } from '@/lib/billing/commercialLease';
+import { TRANSFER_TAX_MAIN_RATE, MUNICIPAL_SURCHARGE_RATE, NEW_BUILD_VAT_RATE, NEW_BUILD_VAT_SUSPENDED_UNTIL } from '@/lib/accounting/transfer';
 
 /**
  * ΕΝΑ ΜΕΤΡΟ ΓΙΑ ΟΛΕΣ ΤΙΣ ΔΗΜΟΣΙΕΣ ΣΕΛΙΔΕΣ — ΤΟ ΙΔΙΟ ΜΕ ΤΗΣ ΑΡΧΙΚΗΣ.
@@ -444,6 +445,12 @@ const TOOL_SOURCES = {
   // έχουν δική τους ημερομηνία δίπλα στο πεδίο.
   loan: 'Όριο δόσης προς εισόδημα: Τράπεζα της Ελλάδος, ΠΕΕ 227/1/08.03.2024 (ισχύς από 01/01/2025) · '
     + 'μέσο επιτόκιο νέων στεγαστικών και Euribor: Ευρωπαϊκή Κεντρική Τράπεζα, με στοιχεία της Τράπεζας της Ελλάδος',
+  // Τα έξοδα αγοράς: κάθε συντελεστής με το άρθρο του, από τις σταθερές που
+  // υπολογίζουν (lib/accounting/transfer.ts). Τα τέλη Κτηματολογίου και οι αμοιβές
+  // δεν έχουν εδώ πηγή γιατί δεν μπαίνουν από τον υπολογιστή.
+  buy: `Φόρος μεταβίβασης ${fpRate(TRANSFER_TAX_MAIN_RATE * 100)} και πρόσθετος ${fpRate(MUNICIPAL_SURCHARGE_RATE * 100)} υπέρ Δήμων, απαλλαγή πρώτης κατοικίας: `
+    + `ν.5219/2025, άρθρα 24 έως 27 και 40 έως 44 · ΦΠΑ νεόδμητου ${fpRate(NEW_BUILD_VAT_RATE * 100)}: Κώδικας ΦΠΑ (ΦΕΚ Α΄ 162/2024), άρθρα 24 και 26, `
+    + `αναστολή έως ${NEW_BUILD_VAT_SUSPENDED_UNTIL} (άρθρο 70, ν.5246/2025)`,
   // Η σύγκριση ρεύματος δεν εφαρμόζει νόμο αλλά τιμοκαταλόγους: οι πηγές της
   // είναι οι πάροχοι και η ΡΑΑΕΥ, όπως τις καταγράφει το data/price-sources.json.
   // Οι δύο ρυθμιζόμενες γραμμές του τύπου (ΕΤΜΕΑΡ, ΦΠΑ) έχουν και νομική βάση.
