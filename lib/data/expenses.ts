@@ -346,3 +346,38 @@ export function remove(db: Db, id: string | string[]): PromiseLike<{ error: DbEr
 export function removeIfUnpaid(db: Db, id: string): PromiseLike<{ error: DbError | null }> {
   return db.from(TABLE).delete().eq('id', id).eq('paid', false);
 }
+
+// ── «ΠΛΗΡΩΣΑ» ΤΩΝ ΥΠΕΝΘΥΜΙΣΕΩΝ (lib/reminders/payRedeem.ts) ──────────────────
+
+/**
+ * Δαπάνη με αποτύπωμα (`dedup_hash`): η δεύτερη εισαγωγή του ίδιου
+ * αποτυπώματος δεν γράφει τίποτα. Ο ίδιος μηχανισμός με την εισαγωγή τράπεζας.
+ */
+export function insertDeduped(db: Db, rows: Partial<ExpenseRow>[]): Promise<Outcome> {
+  return insertFromBank(db, rows);
+}
+
+/** Σβήνει τη δαπάνη ενός αποτυπώματος, ΜΟΝΟ του χρήστη· λέει πόσες έσβησε. */
+export async function removeByDedup(db: Db, userId: string, dedupHash: string): Promise<{ removed: number; error: DbError | null }> {
+  const { data, error } = await db.from(TABLE).delete().eq('user_id', userId).eq('dedup_hash', dedupHash).select('id');
+  return { removed: Array.isArray(data) ? data.length : 0, error: error as DbError | null };
+}
+
+/**
+ * Τα έξοδα ενός ακινήτου του χρήστη μέσα σε διάστημα ημερομηνιών, μόνο με όσα
+ * χρειάζεται ο έλεγχος διπλής καταχώρησης (lib/reminders/payDuplicate.ts).
+ */
+export async function inWindow<T = Pick<ExpensesRow, 'amount' | 'date' | 'category'>>(
+  db: Db, userId: string, propertyId: string, from: string, to: string,
+): Promise<{ rows: T[]; error: DbError | null }> {
+  const { data, error } = await db.from(TABLE).select('amount,date,category')
+    .eq('user_id', userId).eq('property_id', propertyId).gte('date', from).lte('date', to);
+  return { rows: (data as T[] | null) ?? [], error: error as DbError | null };
+}
+
+/** Υπάρχει δαπάνη με αυτό το αποτύπωμα; (`null` όταν η ανάγνωση απέτυχε.) */
+export async function hasDedup(db: Db, userId: string, dedupHash: string): Promise<boolean | null> {
+  const { data, error } = await db.from(TABLE).select('id').eq('user_id', userId).eq('dedup_hash', dedupHash).limit(1);
+  if (error) return null;
+  return Array.isArray(data) && data.length > 0;
+}

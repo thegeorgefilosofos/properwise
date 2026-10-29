@@ -30,7 +30,21 @@ export interface PushMessage {
   body: string;
   /** Πού ανοίγει το πάτημα. */
   url: string;
+  /**
+   * Το `uid` του ΜΟΝΟΥ θέματος, όταν η ειδοποίηση λέει ένα. Από αυτό ο
+   * αποστολέας ξέρει αν χωράει κουμπί «Πλήρωσα» (μόνο για γεγονός ημερολογίου).
+   * Δεν φεύγει στη συσκευή: το αφαιρεί ο αποστολέας πριν στείλει.
+   */
+  uid?: string;
+  /** Το διακριτικό «Πλήρωσα» (lib/reminders/payLink.ts), όταν υπάρχει. */
+  pay?: string;
 }
+
+/** Το γεγονός ημερολογίου πίσω από ένα `uid` της ροής, ή `null`. */
+export const eventIdOfUid = (uid: string | undefined): string | null => {
+  const m = /^event-([0-9a-f-]{36})@properwise$/.exec(uid ?? '');
+  return m ? m[1] : null;
+};
 
 /** Πόσο μπροστά κοιτά μια ειδοποίηση. Σήμερα και αύριο, τίποτα άλλο. */
 export const HORIZON_DAYS = 1;
@@ -106,6 +120,7 @@ export function dailyPush(items: readonly FeedItem[], today: string): PushMessag
       title: clip(it.title, MAX_TITLE),
       body: clip(`${whenPhrase(days)}${note ? `, ${note}` : ''}`, MAX_BODY),
       url: PUSH_URL,
+      uid: it.uid,
     };
   }
 

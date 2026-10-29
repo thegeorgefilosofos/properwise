@@ -12,6 +12,10 @@ import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 // πλέον μόνες τους σε κάθε ακίνητο· ο ίδιος κανόνας με τη συνδρομή και το push
 // κρατά μία γραμμή ανά `tax:<id>`, ώστε δύο διαμερίσματα να μη δίνουν δύο email.
 import { oneTaxCopy } from '../../../lib/calendar/taxOnce.ts'
+// «ΠΛΗΡΩΣΑ» ΜΕ ΕΝΑ ΠΑΤΗΜΑ (29/10/2026): κάθε γραμμή του email φέρνει σύνδεσμο
+// που σημειώνει τη συγκεκριμένη προθεσμία πληρωμένη. Διακριτικό 256 bit, μόνο
+// το αποτύπωμα στη βάση, μίας χρήσης, με λήξη (lib/reminders/payLink.ts).
+import { newPayToken, payTokenExpiry, payUrl, isMissingTable } from '../../../lib/reminders/payLink.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -52,7 +56,32 @@ const esc = (s: unknown) => String(s ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 
-function buildEmail(events: CalendarEventsRow[], reminderType: string) {
+/**
+ * Ένα διακριτικό «Πλήρωσα» ανά γεγονός. Αποτυχία εγγραφής δεν σταματά το email:
+ * φεύγει όπως πριν, χωρίς τον σύνδεσμο.
+ */
+async function payLinks(userId: string, events: readonly CalendarEventsRow[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  const rows: { user_id: string; event_id: string; token_hash: string; channel: string; expires_at: string }[] = []
+  const now = new Date()
+  for (const e of events) {
+    const { token, hash } = await newPayToken()
+    rows.push({ user_id: userId, event_id: e.id, token_hash: hash, channel: 'email', expires_at: payTokenExpiry(now) })
+    out.set(e.id, payUrl(APP_URL, token))
+  }
+  if (!rows.length) return out
+  const { error } = await supabase.from('reminder_pay_tokens').insert(rows)
+  if (error) {
+    // Ο πίνακας μπορεί να μην υπάρχει ακόμη (η συνάρτηση ανεβαίνει πριν από τη
+    // μετανάστευση): το email φεύγει όπως πριν, χωρίς «Πλήρωσα».
+    if (isMissingTable(error)) console.info('[send-reminders] «Πλήρωσα» ανενεργό: δεν υπάρχει ακόμη ο πίνακας')
+    else console.error('[send-reminders] διακριτικά «Πλήρωσα»:', error)
+    return new Map()
+  }
+  return out
+}
+
+function buildEmail(events: CalendarEventsRow[], reminderType: string, pay: ReadonlyMap<string, string> = new Map()) {
   // ΦΡΑΣΗ, ΟΧΙ ΕΤΙΚΕΤΑ. Το «σε ${typeLabel}» έβγαζε «σε αύριο» και το
   // «1 γεγονότα ΣΗΜΕΡΑ» μιλούσε με κεφαλαία και σε λάθος αριθμό.
   const whenPhrase: Record<string, string> = { '7days': 'σε 7 μέρες', '3days': 'σε 3 μέρες', '1day': 'αύριο', 'today': 'σήμερα' }
@@ -80,6 +109,7 @@ function buildEmail(events: CalendarEventsRow[], reminderType: string) {
         </td>
         <td class="rule-b" style="padding:12px 0;border-bottom:1px solid ${C.rule};text-align:right;vertical-align:middle;">
           ${e.amount ? `<span class="ink" style="font-family:monospace;font-size:14px;color:${C.ink};font-weight:600;">${eur(e.amount)}</span>` : `<span class="fa" style="color:${C.mute};font-size:12px;">Χωρίς ποσό</span>`}
+          ${pay.has(e.id) ? `<a href="${esc(pay.get(e.id))}" class="ac" style="display:block;margin-top:6px;font-size:13px;color:${C.accent};font-weight:700;text-decoration:none;">Πλήρωσα</a>` : ''}
         </td>
       </tr>`
   }).join('')
@@ -199,6 +229,11 @@ Deno.serve(async (req) => {
     // Το σφάλμα των τριών παρακολουθητών που έγραφαν `raise warning` πάνω σε
     // αποτυχία ήταν το ίδιο πράγμα. Οταν μια εργασία δεν μπορεί να κάνει τη
     // δουλειά της, το λέει με 500.
+    // Τα ληγμένα διακριτικά «Πλήρωσα» δεν κάνουν πια τίποτα: σβήνονται μία
+    // φορά τη μέρα. Αποτυχία εδώ δεν σταματά τις υπενθυμίσεις.
+    const { error: purgeErr } = await supabase.from('reminder_pay_tokens').delete().lt('expires_at', new Date().toISOString())
+    if (purgeErr && !isMissingTable(purgeErr)) console.error('[send-reminders] ληγμένα διακριτικά «Πλήρωσα»:', purgeErr)
+
     const { data: prefs, error: prefsErr } = await supabase.from('notification_preferences').select('*').eq('email_enabled', true)
     if (prefsErr) {
       console.error('[send-reminders] οι προτιμήσεις δεν διαβάστηκαν:', prefsErr)
@@ -289,7 +324,7 @@ Deno.serve(async (req) => {
         const sentIds = new Set(((sent||[]) as Pick<NotificationLogRow,'event_id'>[]).map(l=>l.event_id))
         const toSend  = matching.filter(e => !sentIds.has(e.id))
         if (!toSend.length) continue
-        const { subject, html } = buildEmail(toSend, check.type)
+        const { subject, html } = buildEmail(toSend, check.type, await payLinks(pref.user_id, toSend))
         const ok = await sendEmail(to, subject, html)
         if (ok) {
           await supabase.from('notification_log').insert(toSend.map(e => ({ user_id: pref.user_id, event_id: e.id, reminder_type: check.type })))
@@ -305,7 +340,7 @@ Deno.serve(async (req) => {
         const sentODIds = new Set(((sentOD||[]) as Pick<NotificationLogRow,'event_id'>[]).map(l=>l.event_id))
         const toSendOD  = overdue.filter(e => !sentODIds.has(e.id))
         if (toSendOD.length) {
-          const { subject, html } = buildEmail(toSendOD, 'overdue')
+          const { subject, html } = buildEmail(toSendOD, 'overdue', await payLinks(pref.user_id, toSendOD))
           const ok = await sendEmail(to, subject, html)
           if (ok) {
             await supabase.from('notification_log').insert(toSendOD.map(e => ({ user_id: pref.user_id, event_id: e.id, reminder_type: 'overdue' })))

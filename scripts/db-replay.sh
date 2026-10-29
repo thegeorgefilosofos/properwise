@@ -214,6 +214,15 @@ if ! sout=$($PSQL -d posdb -f "$ROOT/scripts/db/anon-surface.sql" 2>&1); then
 fi
 probes=$((probes + $(echo "$sout" | grep -c 'probe:' || true)))
 
+# ── ΤΑ ΔΙΑΚΡΙΤΙΚΑ «ΠΛΗΡΩΣΑ» ΔΕΝ ΦΤΑΝΟΥΝ ΣΤΟΝ ΠΕΡΙΗΓΗΤΗ ─────────────────────
+# Μόνο ο service role: ο χρήστης ούτε τα βλέπει ούτε τα γράφει (scripts/db/pay-token-probe.sql).
+if ! pout=$($PSQL -d posdb -f "$ROOT/scripts/db/pay-token-probe.sql" 2>&1); then
+  echo "🔴 Τα διακριτικά «Πλήρωσα» δεν είναι κλειστά όπως ορίζει η μετανάστευσή τους:"
+  echo "$pout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΣΧΗΜΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$pout" | grep -c 'probe:' || true)))
+
 # ── ΞΕΡΕΙ Η ΥΓΕΙΑ ΤΗΣ ΤΡΟΦΟΔΟΣΙΑΣ ΤΙ ΔΕΝ ΗΡΘΕ; ──────────────────────────────
 # Η `market_feed_health()` έλεγε «εντάξει, 8 από 8» στις 18/10/2026 πάνω σε
 # γραμμή χωρίς δύο σειρές του καταλόγου. Το scripts/db/market-feed-probe.sql τη
