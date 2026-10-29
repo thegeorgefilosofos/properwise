@@ -5865,6 +5865,10 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   .po-table.po-stack tbody th { flex: 1 1 0; min-width: 0; overflow-wrap: normal; text-wrap: pretty; }
   .po-table.po-stack tbody td.num { flex: 0 0 auto; margin-left: auto; }
   .po-table.po-stack tbody td.po-stack-full { flex: 1 1 100%; }
+  /* Η ημερομηνία πρώτη, σε δική της γραμμή· ο τίτλος σε όλο το πλάτος από
+     κάτω (πίνακες προθεσμιών): ένας μακρύς τίτλος δεν στριμώχνεται δίπλα της. */
+  .po-table.po-stack tbody td.po-stack-lead { order: -1; flex: 1 1 100%; margin-left: 0; text-align: left; }
+  .po-table.po-stack tbody tr:has(> td.po-stack-lead) > th { flex: 1 1 100%; }
   .po-table.po-stack tbody td[data-label] {
     flex: 1 1 100%; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
   }

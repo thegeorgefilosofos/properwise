@@ -80,7 +80,7 @@ export const GUIDES: readonly Guide[] = [
         + 'προϋπόθεση της τραπεζικής είσπραξης, με παραδείγματα σε ευρώ.',
     published: '2026-09-21',
     updated: '2026-10-20',
-    tools: ['/ypologismos-forou-enoikion', '/kathari-apodosi'],
+    tools: ['/ypologismos-forou-enoikion', '/symplirosi-e2', '/kathari-apodosi'],
     topic: 'enoikia',
   },
   {
@@ -187,7 +187,7 @@ export const GUIDES: readonly Guide[] = [
         + `για δαπάνες έως ${RENO_39B_TO}. Προϋποθέσεις, πληρωμή, υλικά και παράδειγμα.`,
     published: '2026-09-27',
     updated: '2026-10-20',
-    tools: ['/ypologismos-forou-enoikion', '/kathari-apodosi'],
+    tools: ['/ypologismos-ekptosis-anakainisis', '/ypologismos-forou-enoikion', '/kathari-apodosi'],
     topic: 'enfia',
   },
   // ── Τρίτο κύμα (03.10.2026). Από τα ερωτήματα αναζήτησης: ο κόσμος ψάχνει τι

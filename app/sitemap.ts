@@ -3,6 +3,8 @@ import { SITE } from '@/lib/core/site'
 import { LISTED_GUIDES, GUIDES_UPDATED } from './odigos/guides'
 import { PAGE_UPDATED, TOOLS_UPDATED, type DatedPage } from './pageUpdated'
 import { TOOLS_HUB } from '@/lib/core/publicTools'
+import { PROTHESMIES_PATH, PROTHESMIES_UPDATED, monthPath, upcomingMonths } from '@/lib/seo/prothesmies'
+import { athensToday } from '@/lib/core/time'
 
 // Χάρτης της δημόσιας σελίδας για τις μηχανές αναζήτησης. Μόνο δημόσιες
 // διαδρομές: το dashboard, τα portals και οι σελίδες με token μένουν εκτός.
@@ -29,6 +31,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { ...at('/kathari-apodosi'), changeFrequency: 'monthly', priority: 0.9 },
     { ...at('/anaprosarmogi-enoikiou'), changeFrequency: 'monthly', priority: 0.9 },
     { ...at('/exoda-agoras-akinitou'), changeFrequency: 'monthly', priority: 0.9 },
+    { ...at('/ypologismos-ekptosis-anakainisis'), changeFrequency: 'monthly', priority: 0.9 },
+    { ...at('/symplirosi-e2'), changeFrequency: 'monthly', priority: 0.9 },
     { ...at('/ypologismos-stegastikou-daneiou'), changeFrequency: 'monthly', priority: 0.9 },
     { ...at('/sygkrisi-timologion-revmatos'), changeFrequency: 'monthly', priority: 0.9 },
     // Κόμβος εργαλείων (27.10.2026): όλοι οι υπολογιστές ανά θέμα, ο μεσαίος
@@ -38,6 +42,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // από το υποσέλιδο κάθε δημόσιας σελίδας. Η ημερομηνία του είναι η πιο
     // πρόσφατη των οδηγών του, αφού αυτούς δείχνει.
     { url: `${base}/odigos`, lastModified: GUIDES_UPDATED, changeFrequency: 'monthly', priority: 0.7 },
+    // Οι προθεσμίες: ο κόμβος και οι δώδεκα επόμενοι μήνες με προθεσμία (lib/seo/prothesmies.ts).
+    { url: base + PROTHESMIES_PATH, lastModified: PROTHESMIES_UPDATED, changeFrequency: 'daily', priority: 0.7 },
+    ...upcomingMonths(athensToday()).map(m => ({ url: base + monthPath(m), lastModified: PROTHESMIES_UPDATED, changeFrequency: 'monthly' as const, priority: 0.6 })),
     // Οδηγοί-πυλώνες: εξηγούν τον κανόνα και δένουν με τον υπολογιστή. Χτίζουν
     // topical authority (βλ. docs/marketing/seo-strategy). Η ΗΜΕΡΟΜΗΝΙΑ ΕΙΝΑΙ
     // ΤΟ ΜΟΝΟ ΣΗΜΑ ΠΟΥ ΔΙΑΒΑΖΕΙ Η GOOGLE: το `changeFrequency` και το

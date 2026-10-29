@@ -268,6 +268,10 @@ export default function Page() {
             <Link href="/odigos/pos-ypologizetai-o-enfia" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
               πώς υπολογίζεται ο ΕΝΦΙΑ
             </Link>{' '}εξηγεί τον τύπο, τους συντελεστές (ζώνη, παλαιότητα, όροφος) και τις αυτόματες μειώσεις, με παράδειγμα σε ευρώ.
+            Ποια δόση λήγει αυτόν τον μήνα το δείχνουν οι{' '}
+            <Link href="/prothesmies" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+              προθεσμίες του ιδιοκτήτη
+            </Link>.
           </>)}</p>
         </section>
 
