@@ -36,21 +36,29 @@ const MIN = 70
 const MAX = 160
 
 const probe = `
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import * as sm from '../app/sitemap'
 import { SITE } from '../lib/core/site'
 const sitemap = ((sm as any).default?.default ?? (sm as any).default) as () => { url: string }[]
 const out: { path: string; file: string | null; desc: string | null }[] = []
 for (const row of sitemap()) {
   const path = row.url.slice(SITE.length) || '/'
-  const dir = path === '/' ? 'app' : 'app' + path
+  let dir = path === '/' ? 'app' : 'app' + path
+  // ΔΥΝΑΜΙΚΗ ΔΙΑΔΡΟΜΗ (29/10/2026): /prothesmies/2026-10 ζει στο
+  // app/prothesmies/[mina]/. Η περιγραφή βγαίνει με την παράμετρο της σελίδας.
+  let params: Record<string, string> = {}
+  if (!existsSync(dir)) {
+    const parent = dir.slice(0, dir.lastIndexOf('/'))
+    const dyn = existsSync(parent) ? readdirSync(parent).find(n => /^\[[a-z]+\]$/.test(n)) : undefined
+    if (dyn) { params = { [dyn.slice(1, -1)]: dir.slice(dir.lastIndexOf('/') + 1) }; dir = parent + '/' + dyn }
+  }
   let file: string | null = null
   let desc: string | null = null
   for (const f of [dir + '/page.tsx', dir + '/layout.tsx']) {
     if (!existsSync(f)) continue
     const m = await import('../' + f)
     const md = m.metadata ?? (typeof m.generateMetadata === 'function'
-      ? await m.generateMetadata({ params: Promise.resolve({}), searchParams: Promise.resolve({}) })
+      ? await m.generateMetadata({ params: Promise.resolve(params), searchParams: Promise.resolve({}) })
       : null)
     if (md && typeof md.description === 'string') { file = f; desc = md.description; break }
   }

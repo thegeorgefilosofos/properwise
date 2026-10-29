@@ -24,10 +24,12 @@ export interface PublicTool {
 
 export const PUBLIC_TOOLS: readonly PublicTool[] = [
   { href: '/ypologismos-enfia', label: 'ΕΝΦΙΑ', desc: 'Ο ΕΝΦΙΑ του ακινήτου από τα τετραγωνικά, την τιμή ζώνης, τον όροφο και την παλαιότητα.', topic: 'enfia' },
+  { href: '/ypologismos-ekptosis-anakainisis', label: 'Έκπτωση φόρου ανακαίνισης', desc: 'Πόσο μειώνεται ο φόρος εισοδήματος για υπηρεσίες ανακαίνισης, ανά έτος και συνολικά, με το όριο κάθε έτους.', topic: 'enfia' },
   { href: '/ypologismos-forou-enoikion', label: 'Φορολογία ενοικίων', desc: 'Ο φόρος των ενοικίων με την κλίμακα του έτους και την τεκμαρτή έκπτωση.', topic: 'enoikia' },
   { href: '/kathari-apodosi', label: 'Καθαρή απόδοση', desc: 'Μεικτή και καθαρή απόδοση ακινήτου μετά τον φόρο, τον ΕΝΦΙΑ και τις δαπάνες.', topic: 'agora' },
   { href: '/vraxyxronia-i-makroxronia', label: 'Βραχυχρόνια ή μακροχρόνια', desc: 'Τα καθαρά της βραχυχρόνιας και της μακροχρόνιας μίσθωσης, με φόρο, τέλος ανθεκτικότητας και προμήθεια.', topic: 'enoikia' },
   { href: '/anaprosarmogi-enoikiou', label: 'Αναπροσαρμογή ενοικίου', desc: 'Το νέο μίσθωμα με ποσοστό ή ΔΤΚ της ΕΛΣΤΑΤ, ανά έτος, με το όριο των επαγγελματικών μισθώσεων όπου ισχύει.', topic: 'enoikia' },
+  { href: '/symplirosi-e2', label: 'Ε2: τι γράφω πού', desc: 'Τι γράφεις σε κάθε στήλη του Ε2 για ένα ακίνητο και σε ποιον κωδικό του Ε1 πηγαίνει το ποσό.', topic: 'enoikia' },
   { href: '/exoda-agoras-akinitou', label: 'Έξοδα αγοράς ακινήτου', desc: 'Φόρος μεταβίβασης, ΦΠΑ νεόδμητου, τέλη, αμοιβές και πόσα μετρητά χρειάζεσαι εκτός δανείου, με την πηγή κάθε ποσού.', topic: 'agora' },
   { href: '/ypologismos-stegastikou-daneiou', label: 'Δόση στεγαστικού', desc: 'Μηνιαία δόση, τόκοι και πόσο στεγαστικό δάνειο επιτρέπει το εισόδημα.', topic: 'agora' },
   { href: '/sygkrisi-timologion-revmatos', label: 'Σύγκριση τιμολογίων ρεύματος', desc: 'Τι θα πλήρωνες τον μήνα με κάθε οικιακό τιμολόγιο ρεύματος, με την ημερομηνία ελέγχου των τιμών.', topic: 'agora' },

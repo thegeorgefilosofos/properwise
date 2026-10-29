@@ -48,6 +48,8 @@ const PAGES = [
   { path: '/sygkrisi-timologion-revmatos', what: 'σύγκριση ρεύματος' },
   { path: '/anaprosarmogi-enoikiou',     what: 'αναπροσαρμογή ενοικίου' },
   { path: '/exoda-agoras-akinitou', what: 'έξοδα αγοράς' },
+  { path: '/ypologismos-ekptosis-anakainisis', what: 'έκπτωση ανακαίνισης' },
+  { path: '/symplirosi-e2', what: 'συμπλήρωση Ε2' },
 ]
 
 /** Ολα τα ποσά και ποσοστά ενός κειμένου, ώστε να συγκριθούν οθόνη και φωνή. */

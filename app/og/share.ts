@@ -91,6 +91,14 @@ export const SHARE_CARDS: Record<string, ShareCard> = {
   // Ο κόμβος των εργαλείων: τα ονόματα των υπολογιστών από τον κατάλογο τους.
   'ergaleia': { kind: 'calc', over: 'Εργαλεία', title: 'Δωρεάν υπολογισμοί για ιδιοκτήτες ακινήτων',
     chips: PUBLIC_TOOLS.map(t => t.label), path: TOOLS_HUB.href },
+  'ypologismos-ekptosis-anakainisis': { kind: 'calc', over: 'Υπολογιστής', title: 'Πόσο μειώνεται ο φόρος σου για ανακαίνιση',
+    chips: ['Άρθρο 39Β ΚΦΕ', 'Ανά έτος', 'Με το όριο κάθε έτους'], path: '/ypologismos-ekptosis-anakainisis' },
+  'symplirosi-e2': { kind: 'calc', over: 'Οδηγός Ε2', title: 'Ε2: τι γράφεις σε κάθε στήλη',
+    chips: ['Στήλη προς στήλη', 'Κωδικός του Ε1', 'Η μηχανή του λογιστή'], path: '/symplirosi-e2' },
+  // Οι προθεσμίες του ιδιοκτήτη: μία κάρτα για τον κόμβο και κάθε μήνα. Κανένα
+  // ποσό και καμία ημερομηνία: η πλατφόρμα κρατά την εικόνα εβδομάδες.
+  'prothesmies': { kind: 'page', over: 'Προθεσμίες', title: 'Οι προθεσμίες του ιδιοκτήτη, μήνα μήνα',
+    chips: ['ΕΝΦΙΑ', 'Βραχυχρόνια μίσθωση', 'Δηλώσεις', 'Με την επίσημη πηγή'], path: '/prothesmies' },
   'trust': { kind: 'page', over: 'Εμπιστοσύνη', title: 'Ποιοι είμαστε και τι γίνεται με τα δεδομένα σου',
     chips: ['Πού φυλάσσονται', 'Ποιος τα βλέπει', 'Τι δεν κάνουμε ποτέ'], path: '/trust' },
   ...Object.fromEntries(GUIDES.map(g => [guideSlug(g), {

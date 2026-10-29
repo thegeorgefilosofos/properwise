@@ -29,6 +29,8 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { T } from '@/components/tokens';
 import { TRIAL_DAYS } from '@/lib/billing/plans';
+import { RENO_39B_LAW, RENO_39B_KYA } from '@/lib/accounting/renovation39b';
+import { E1_4D2_SOURCE } from '@/lib/accounting/e1Codes';
 import { signupCta } from '@/lib/billing/trialOffer';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { hy } from '@/components/Hyphen';
@@ -441,6 +443,10 @@ export function ToolLede({ children }: { children: ReactNode }) {
 // φορολογικά εργαλεία (κάθε απάντηση με παραπομπή σε επίσημη πηγή). Καμία
 // εφεύρεση: μόνο ό,τι ήδη ισχύει στη μία πηγή αλήθειας των `lib`.
 const TOOL_SOURCES = {
+  // Η μείωση φόρου για ανακαίνιση: νόμος και εφαρμοστική απόφαση από το lib/accounting/renovation39b.ts.
+  reno: `${RENO_39B_LAW} · ${RENO_39B_KYA}`,
+  // Ο οδηγός του Ε2: το έντυπο και ο πίνακας κωδικών, από το lib/accounting/e1Codes.ts.
+  e2: `Ε2 και ${E1_4D2_SOURCE}, όπως τα εφαρμόζει η μηχανή του Ε2 της εφαρμογής`,
   enfia: 'ΕΝΦΙΑ: άρθρο 4 ν.4223/2013, όπως τροποποιήθηκε με τον ν.4916/2022 και κωδικοποιήθηκε στον ν.5219/2025 · αντικειμενικές αξίες ΑΑΔΕ',
   // Κάθε κανόνας που εφαρμόζει η σελίδα για τις δύο χρονιές του επιλογέα:
   // η κλίμακα (άρθρο 40, με τα νέα κλιμάκια από 2026), το 5% και η τράπεζα.

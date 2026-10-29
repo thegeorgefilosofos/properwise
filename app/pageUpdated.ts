@@ -44,6 +44,8 @@ import { CPI_CONFIRMED_AT } from '@/lib/market/cpi';
 import TOOL_STAMPS from './toolStamps.json';
 import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
 import { PURCHASE_SOURCES_CHECKED } from '@/lib/tools/exodaAgoras';
+import { E2_GUIDE_CHECKED } from '@/lib/tools/e2Odigos';
+import { regulated } from '@/lib/legal/validity';
 
 /** Μητρώο χωρίς ημερομηνία ελέγχου σπάει το χτίσιμο, δεν γίνεται σιωπηλά «καμία». */
 function checked(iso: string | null, what: string): string {
@@ -93,6 +95,10 @@ export const PAGE_UPDATED = {
   // από τη μηχανή τους. Ο φόρος μεταβίβασης έχει και δικό του μητρώο ισχύος
   // (`transfer-tax`, lib/legal/validity.ts), όχι κλειδί στο lib/facts/taxLimits.
   '/exoda-agoras-akinitou': PURCHASE_SOURCES_CHECKED,
+  // ── Η ΕΚΠΤΩΣΗ ΑΝΑΚΑΙΝΙΣΗΣ: Ο ΕΛΕΓΧΟΣ ΤΟΥ ΜΗΤΡΩΟΥ ΙΣΧΥΟΣ (renovation-39b) ───────
+  '/ypologismos-ekptosis-anakainisis': regulated('renovation-39b').checkedAt,
+  // ── ΤΟ Ε2: ΟΙ ΠΗΓΕΣ ΤΟΥ ΟΔΗΓΟΥ (lib/tools/e2Odigos.ts) ───────────────────────
+  '/symplirosi-e2': E2_GUIDE_CHECKED,
 
   // ── ΟΙ ΦΟΡΟΛΟΓΙΚΟΙ ΥΠΟΛΟΓΙΣΤΕΣ: ΕΛΕΓΧΟΣ ΟΡΙΩΝ Ή ΑΛΛΑΓΗ ΠΕΡΙΕΧΟΜΕΝΟΥ ─────────
   // Η «Τελευταία ενημέρωση» του πλαισίου «Νομική βάση» (`ToolSources`): η

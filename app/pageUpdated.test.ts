@@ -31,6 +31,7 @@ import { PAGE_UPDATED, type DatedPage } from './pageUpdated';
 import { GUIDES, LISTED_GUIDES, GUIDES_UPDATED } from './odigos/guides';
 import { TOOLS_UPDATED } from './pageUpdated';
 import { SITE } from '@/lib/core/site';
+import { PROTHESMIES_PATH, PROTHESMIES_UPDATED } from '@/lib/seo/prothesmies';
 import { athensToday } from '@/lib/core/time';
 import { monthGen, monthYearLabel } from '@/lib/core/months';
 import { taxLimitAsOf } from '@/lib/facts/taxLimits';
@@ -40,6 +41,8 @@ import { POLICY_VERSION } from '@/lib/legal/identity';
 import { CPI_CONFIRMED_AT } from '@/lib/market/cpi';
 import { renderToStaticMarkup as html } from 'react-dom/server';
 import { ToolSources } from './PublicChrome';
+import { E2_GUIDE_CHECKED } from '@/lib/tools/e2Odigos';
+import { regulated } from '@/lib/legal/validity';
 
 // ── ΟΙ ΥΠΟΛΟΓΙΣΤΕΣ: Η ΝΕΟΤΕΡΗ ΑΠΟ ΕΛΕΓΧΟ ΟΡΙΩΝ ΚΑΙ ΑΛΛΑΓΗ ΠΕΡΙΕΧΟΜΕΝΟΥ ──────
 // Το #401 (18/10/2026) άλλαξε H1, παραδείγματα και FAQ στις σελίδες ΕΝΦΙΑ και
@@ -63,6 +66,8 @@ const SOURCED: Partial<Record<DatedPage, { from: string; iso: string | null }>> 
   '/sygkrisi-timologion-revmatos': { from: 'PRICE_FACTS.electricity.checkedAt', iso: PRICE_FACTS.electricity.checkedAt },
   '/anaprosarmogi-enoikiou': { from: 'CPI_CONFIRMED_AT', iso: CPI_CONFIRMED_AT },
   '/exoda-agoras-akinitou': { from: 'PURCHASE_SOURCES_CHECKED', iso: PURCHASE_SOURCES_CHECKED },
+  '/ypologismos-ekptosis-anakainisis': { from: "regulated('renovation-39b').checkedAt", iso: regulated('renovation-39b').checkedAt },
+  '/symplirosi-e2': { from: 'E2_GUIDE_CHECKED', iso: E2_GUIDE_CHECKED },
   '/trust': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
   '/privacy': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
   '/terms': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
@@ -101,15 +106,20 @@ function visibleDates(html: string): string[] {
 }
 
 /** Η σελίδα μιας διαδρομής, αποδομένη όπως στον διακομιστή (ή `null` αν θέλει το Next). */
+/** Το αρχείο της σελίδας· οι μήνες των προθεσμιών είναι μία δυναμική διαδρομή. */
+const pageOf = (path: string): string =>
+  path === '/' ? 'app/page.tsx' : /^\/prothesmies\/\d{4}-\d{2}$/.test(path) ? 'app/prothesmies/[mina]/page.tsx' : `app${path}/page.tsx`;
+
 async function render(path: string): Promise<string | null> {
-  const file = path === '/' ? './page' : `.${path}/page`;
-  const src = readFileSync(`app${path === '/' ? '' : path}/page.tsx`, 'utf8');
+  const file = './' + pageOf(path).slice(4).replace(/\.tsx$/, '');
+  const src = readFileSync(pageOf(path), 'utf8');
   const mod = await import(file) as { default: (p?: object) => ReactElement | Promise<ReactElement> };
   try {
     // Η σελίδα του περιηγητή ('use client') αποδίδεται ως στοιχείο· η σελίδα του
     // διακομιστή καλείται, γιατί μπορεί να είναι ασύγχρονη.
     if (/^\s*['"]use client['"]/.test(src)) return renderToStaticMarkup(createElement(mod.default));
-    return renderToStaticMarkup(await mod.default({}));
+    const mina = /^\/prothesmies\/(\d{4}-\d{2})$/.exec(path)?.[1];
+    return renderToStaticMarkup(await mod.default(mina ? { params: Promise.resolve({ mina }) } : {}));
   } catch {
     return null;
   }
@@ -129,7 +139,8 @@ async function main() {
 
     // ── 1. ΜΙΑ ΠΗΓΗ ───────────────────────────────────────────────────────
     const fromRegistry = (PAGE_UPDATED as Record<string, string>)[path];
-    const expected = fromRegistry ?? guideBy.get(row.url) ?? (path === '/odigos' ? GUIDES_UPDATED : path === '/ergaleia' ? TOOLS_UPDATED : undefined);
+    const expected = fromRegistry ?? guideBy.get(row.url) ?? (path === '/odigos' ? GUIDES_UPDATED : path === '/ergaleia' ? TOOLS_UPDATED
+      : path.startsWith(PROTHESMIES_PATH) ? PROTHESMIES_UPDATED : undefined);
     ok(`${path}: ο χάρτης παίρνει την ημερομηνία από το pageUpdated.ts ή το guides.ts`, expected !== undefined && lm === expected);
 
     // ── 2. ΚΑΜΙΑ ΜΕΛΛΟΝΤΙΚΗ ─────────────────────────────────────────────────
@@ -137,12 +148,12 @@ async function main() {
     ok(`${path}: όχι μελλοντική (${lm} έναντι ${TODAY})`, lm <= TODAY);
 
     // ── 3. Η ΟΡΑΤΗ ΗΜΕΡΟΜΗΝΙΑ ΕΙΝΑΙ ΑΥΤΗ ΤΟΥ ΧΑΡΤΗ ──────────────────────────
-    ok(`${path}: η σελίδα υπάρχει`, existsSync(`app${path === '/' ? '' : path}/page.tsx`));
+    ok(`${path}: η σελίδα υπάρχει`, existsSync(pageOf(path)));
     const html = await render(path);
     if (html === null) {
       // Δεν αποδίδεται έξω από το Next (π.χ. η εγγραφή, με τον δρομολογητή του).
       // Τότε δεν πρέπει να τυπώνει ημερομηνία ενημέρωσης ούτε στην πηγή της.
-      const src = readFileSync(`app${path === '/' ? '' : path}/page.tsx`, 'utf8');
+      const src = readFileSync(pageOf(path), 'utf8');
       ok(`${path}: δεν αποδίδεται εδώ, άρα δεν πρέπει να γράφει «Τελευταία ενημέρωση»`, !/Τελευταία ενημέρωση|Έκδοση \$\{/.test(src));
       continue;
     }
