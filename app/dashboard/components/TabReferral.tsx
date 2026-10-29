@@ -60,14 +60,14 @@ const Ic = ({ d, s = 18, c = 'currentColor', sw = 1.8 }: { d: string; s?: number
 // Η ΜΟΝΑΔΑ «ΜΗΝΑΣ» ΓΡΑΦΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΚΛΙΝΕΤΑΙ. Τα κείμενα διαβάζουν τους
 // αριθμούς από τη μηχανή· χωρίς αυτό, κάθε αλλαγή κανόνα άφηνε πίσω της ένα
 // «1 μήνες» — δηλαδή ένα προϊόν που δεν ξέρει ελληνικά.
-const moAcc = (n: number) => (n === 1 ? 'έναν μήνα' : `${n} μήνες`);
+const moAcc = (n: number) => (n === 1 ? 'έναν μήνα' : `${n} μήνες`);
 const moNom = (n: number) => `${n} ${n === 1 ? 'μήνας' : 'μήνες'}`;
 
 // ΤΟ ΠΟΤΕ ΚΕΡΔΙΖΕΤΑΙ Η ΑΝΤΑΜΟΙΒΗ ΛΕΓΕΤΑΙ ΜΕ ΤΙΣ ΙΔΙΕΣ ΛΕΞΕΙΣ ΠΑΝΤΟΥ. Η οθόνη
 // είχε τρεις ορισμούς («ξεκινά», «ενεργοποιεί τον λογαριασμό του», «προσθέσει
 // ένα ακίνητο και σαρώσει ένα έγγραφο») για τον ΕΝΑΝ κανόνα της βάσης
 // (`mark_referral_activated`). Μένει ο τρίτος, που λέει τι πρέπει να γίνει.
-const ACT_PROPS = ACTIVATION_MIN_PROPERTIES === 1 ? 'ένα ακίνητο' : `${ACTIVATION_MIN_PROPERTIES} ακίνητα`;
+const ACT_PROPS = ACTIVATION_MIN_PROPERTIES === 1 ? 'ένα ακίνητο' : `${ACTIVATION_MIN_PROPERTIES} ακίνητα`;
 const ACT_DOCS = ACTIVATION_MIN_DOCUMENTS === 1 ? 'ένα έγγραφο' : `${ACTIVATION_MIN_DOCUMENTS} έγγραφα`;
 /** «προσθέτει ένα ακίνητο και σαρώνει ένα έγγραφο» */
 const ACTIVATES = `προσθέτει ${ACT_PROPS} και σαρώνει ${ACT_DOCS}`;
@@ -169,7 +169,7 @@ const REWARD_REASON: Record<string, string> = {
 };
 const rewardReason = (reason: string) => REWARD_REASON[reason] || 'Ανταμοιβή';
 const rewardTitle = (r: Reward) => r.kind === 'slot'
-  ? `1 ακίνητο χωρίς χρέωση για ${moAcc(r.months)}`
+  ? `1 ακίνητο χωρίς χρέωση για ${moAcc(r.months)}`
   : `${moNom(r.months)} ${planQ(tierPlan(r.tier))} χωρίς χρέωση`;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -252,7 +252,7 @@ function Milestone({ title, icon, count, target, unit, kind, rewardTitle, claimS
         {deadline && !pr.reached && (
           <div style={{ ...TT.caption, marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, color: dleft <= 5 ? 'var(--warning)' : 'var(--text-tertiary)' }}>
             <Ic d="M12 8v4l3 2|M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" s={13} c="currentColor" />
-            {dleft <= 1 ? 'Τελευταία ημέρα του μήνα' : `Απομένουν ${dleft} ημέρες ως το τέλος του μήνα`}
+            {dleft <= 1 ? 'Τελευταία ημέρα του μήνα' : `Απομένουν ${dleft} ημέρες ως το τέλος του μήνα`}
           </div>
         )}
         {pr.reached && kind && onClaim && (
@@ -386,7 +386,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
   // ΚΑΙ Η ΔΟΚΙΜΗ ΔΕΝ ΕΙΝΑΙ ΚΕΡΔΟΣ ΤΗΣ ΣΥΣΤΑΣΗΣ. Το «με τον σύνδεσμό μου
   // κερδίζεις» την παρουσίαζε ως δώρο του συνδέσμου· τη δοκιμή την έχει όποιος
   // γραφτεί, με ή χωρίς σύνδεσμο. Λέγεται ως αυτό που είναι: η αρχή.
-  const friendStart = `Ξεκινάς με δοκιμή ${TRIAL_DAYS} ημερών`;
+  const friendStart = `Ξεκινάς με δοκιμή ${TRIAL_DAYS} ημερών`;
   const invite = isPro
     ? `Για το ακίνητό σου, σου προτείνω το PROPERWISE. Κρατάει τα οικονομικά σου σε τάξη και ετοιμάζει σωστά τα στοιχεία για τη φορολογική σου δήλωση, ώστε να μην τρέχεις εσύ. ${friendStart}: ${link}`
     : `Οργανώνω το ακίνητό μου με το PROPERWISE και μου έλυσε τα χέρια: σαρώνω λογαριασμούς, βλέπω φόρους και αποδόσεις. Ρίξε του μια ματιά. ${friendStart}: ${link}`;
@@ -746,7 +746,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
                 <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 12px', borderRadius: T.radius.inner, background: 'color-mix(in srgb, var(--warning) 9%, transparent)', border: '1px solid color-mix(in srgb, var(--warning) 26%, transparent)' }}>
                   <span className="po-lead-ico" style={{ color: 'var(--warning)' }}><Ic d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z|M12 9v4|M12 17h.01" s={15} /></span>
                   <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    {d === 1 ? 'Ο μήνας κλείνει αύριο.' : `Ο μήνας κλείνει σε ${d} ημέρες.`} {r === 1 ? 'Σου λείπει ένας συνδρομητής' : `Σου λείπουν ${r} συνδρομητές`} {partner ? 'για να εξασφαλίσεις τον μήνα χωρίς χρέωση.' : 'για να διατηρήσεις τους συνεχόμενους μήνες σου.'}
+                    {d === 1 ? 'Ο μήνας κλείνει αύριο.' : `Ο μήνας κλείνει σε ${d} ημέρες.`} {r === 1 ? 'Σου λείπει ένας συνδρομητής' : `Σου λείπουν ${r} συνδρομητές`} {partner ? 'για να εξασφαλίσεις τον μήνα χωρίς χρέωση.' : 'για να διατηρήσεις τους συνεχόμενους μήνες σου.'}
                   </span>
                 </div>
               );
@@ -773,7 +773,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
                   είναι ο τρόπος χρήσης στις Ρυθμίσεις. Το πακέτο λέγεται
                   «Ιδιοκτήτης» και η ανταμοιβή πρέπει να λέγεται όπως αυτό που
                   θα βρει ο χρήστης στη «Συνδρομή». */}
-              <div style={{ ...TT.displaySm, marginBottom: 6 }}>{youBase.isSlot ? '+1 ακίνητο' : `+${moNom(youBase.months)} ${planQ(youBase.tier)}`}</div>
+              <div style={{ ...TT.displaySm, marginBottom: 6 }}>{youBase.isSlot ? '+1 ακίνητο' : `+${moNom(youBase.months)} ${planQ(youBase.tier)}`}</div>
               <div style={{ ...TT.bodySm, lineHeight: 1.55 }}>{youBase.isSlot
                 ? `για ${moAcc(youBase.months)}, στο πακέτο σου, για κάθε φίλο που ${ACTIVATES}.`
                 : `στη συνδρομή σου, για κάθε φίλο που ${ACTIVATES}.`}</div>
@@ -783,7 +783,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
                 <Ic d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2|M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" s={16} c="var(--text-secondary)" />
                 <span style={{ ...TT.label }}>Ο φίλος σου ξεκινά με</span>
               </div>
-              <div style={{ ...TT.displaySm, marginBottom: 6 }}>{TRIAL_DAYS} ημέρες δοκιμή</div>
+              <div style={{ ...TT.displaySm, marginBottom: 6 }}>{TRIAL_DAYS} ημέρες δοκιμή</div>
               {/* ΜΕ ΤΙΣ ΔΥΝΑΤΟΤΗΤΕΣ ΤΟΥ TRIAL_PLAN, ΟΠΩΣ ΚΑΘΕ ΝΕΟΣ ΛΟΓΑΡΙΑΣΜΟΣ. Εγραφε
                   «στο πακέτο που θα διαλέξει», δηλαδή ακριβώς την υπόσχεση που το
                   σχόλιο πιο πάνω λέει ότι έφυγε: η δοκιμή τρέχει πάντα στο ίδιο
@@ -857,7 +857,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
                         κανόνας είναι γραμμένος στη βάση (mark_referral_activated: ακίνητο +
                         σαρωμένο έγγραφο). Δύο λέξεις παραπάνω κλείνουν το χωνί. */}
                     <div style={{ ...TT.bodySm, marginTop: 2 }}>{pending
-                      ? `Λείπει ${ACTIVATION_MIN_PROPERTIES === 1 ? '1 ακίνητο' : `${ACTIVATION_MIN_PROPERTIES} ακίνητα`} και ${ACTIVATION_MIN_DOCUMENTS === 1 ? '1 σαρωμένο έγγραφο' : `${ACTIVATION_MIN_DOCUMENTS} σαρωμένα έγγραφα`}. Θύμισέ του· με την ενεργοποίηση κερδίζεις τη θέση.`
+                      ? `Λείπει ${ACTIVATION_MIN_PROPERTIES === 1 ? '1 ακίνητο' : `${ACTIVATION_MIN_PROPERTIES} ακίνητα`} και ${ACTIVATION_MIN_DOCUMENTS === 1 ? '1 σαρωμένο έγγραφο' : `${ACTIVATION_MIN_DOCUMENTS} σαρωμένα έγγραφα`}. Θύμισέ του· με την ενεργοποίηση κερδίζεις τη θέση.`
                       : `Ξεκίνησε ${when}`}</div>
                   </div>
                 </div>

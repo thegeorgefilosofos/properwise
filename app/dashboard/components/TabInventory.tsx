@@ -226,7 +226,7 @@ function AnalysisCards({items,repairs,kwhPrice,kwhControl}:{items:InventoryItem[
                   {item.energy_class&&<EnergyBadge cls={item.energy_class}/>}
                   <span className="po-elide" style={{fontSize: 'var(--fs-xs)',color:'var(--text-primary)',fontFamily:T.font.sans}}>{item.name}</span>
                 </div>
-                <span style={{fontSize: 'var(--fs-xs)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700,flexShrink:0}}>{kwhPrice>0?`${fe(mc)} τον μήνα`:`${fn(calcMonthlyKwh(item),1)} kWh`}</span>
+                <span style={{fontSize: 'var(--fs-xs)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700,flexShrink:0}}>{kwhPrice>0?`${fe(mc)} τον μήνα`:`${fn(calcMonthlyKwh(item),1)} kWh`}</span>
               </div>
               <Bar pct={maxMc>0?(mc/maxMc)*100:0} height={3} label={`Μερίδιο κατανάλωσης, ${item.name}`}/>
             </div>
@@ -1037,7 +1037,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
                 sub:`από ${fe(invSummary.totalOriginal)} αξία αγοράς, μένει το ${Math.max(0,100-invSummary.avgDepreciatedPct)}%${undatedCount>0?` · ${undatedCount} ${undatedCount===1?'αντικείμενο χωρίς ημερομηνία μετρά':'αντικείμενα χωρίς ημερομηνία μετρούν'} με την τιμή αγοράς`:''}`}]:[]),
               ...(electricItems.length>0?[kwhPrice>0
                 ? {label:'Ρεύμα ανά μήνα',value:fe(monthlyCost),sub:`${fn(monthlyKwh,1)} κιλοβατώρες, στα ${feRate(kwhPrice)} ανά κιλοβατώρα`}
-                : {label:'Ρεύμα ανά μήνα',value:`${fn(monthlyKwh,1)} kWh`,sub:'δήλωσε τιμή ανά κιλοβατώρα για κόστος'}]:[]),
+                : {label:'Ρεύμα ανά μήνα',value:`${fn(monthlyKwh,1)} kWh`,sub:'δήλωσε τιμή ανά κιλοβατώρα για κόστος'}]:[]),
               ...(declaredRepl.length>0?[{label:'Κόστος αντικατάστασης',value:fe(declaredReplTotal),
                 sub:declaredRepl.length<items.length
                   ? `δηλωμένο σε ${declaredRepl.length} από ${items.length} αντικείμενα`

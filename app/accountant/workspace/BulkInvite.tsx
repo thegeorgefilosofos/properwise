@@ -136,7 +136,7 @@ export default function BulkInvite({ db, label }: { db: SupabaseClient; label: R
             <p style={{ ...small, color: invitesLeft(allowance) === 0 ? 'var(--text-secondary)' : small.color }}>{allowanceLine(allowance)}</p>
           )}
           {allowance && !allowance.mode && <p style={small}>{REFUSAL.plan}</p>}
-          <p style={small}>Η ίδια διεύθυνση ξαναπαίρνει μήνυμα μετά από 7 ημέρες· όποιος απάντησε «όχι» δεν ξαναπαίρνει.</p>
+          <p style={small}>Η ίδια διεύθυνση ξαναπαίρνει μήνυμα μετά από 7 ημέρες· όποιος απάντησε «όχι» δεν ξαναπαίρνει.</p>
 
           {results && (
             <div style={{ paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>

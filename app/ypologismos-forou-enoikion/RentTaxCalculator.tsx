@@ -185,7 +185,7 @@ export function RentTaxCalculator({ today, cta }: {
             : `Κλίμακα ${rateScale(rentalBracketsForYear(year))}, χωρίς το ενδιάμεσο κλιμάκιο.`}</>}/>
       </ToolFields>
       <ToolClampNote notes={[
-        Math.round(amount(months)) > MAX_MONTHS && `Μέγιστο ${MAX_MONTHS} μήνες· υπολογίστηκαν ${MAX_MONTHS}.`,
+        Math.round(amount(months)) > MAX_MONTHS && `Μέγιστο ${MAX_MONTHS} μήνες· υπολογίστηκαν ${MAX_MONTHS}.`,
       ]}/>
 
       {bankMatters && <div className="po-tool-controls" style={{

@@ -229,7 +229,7 @@ function HistoryBars({ points, currentKey }: { points: MonthPoint[]; currentKey:
         avg > 0 && months >= 2 ? (
           <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>
             μέσος όρος <span style={{ color: 'var(--text-secondary)' }}><Eur value={avg} dim={false} /></span>
-            {months < points.length && ` σε ${months === 1 ? 'έναν μήνα' : `${months} μήνες`} με δαπάνες`}
+            {months < points.length && ` σε ${months === 1 ? 'έναν μήνα' : `${months} μήνες`} με δαπάνες`}
           </span>
         ) : undefined
       }

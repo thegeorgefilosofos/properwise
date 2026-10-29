@@ -204,7 +204,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
 
       {(isExpired||isExpiring)&&(
         <AlertBar
-          text={isExpired?`Το μισθωτήριο έληξε στις ${fmtDate(tenant.lease_end)}. Ανανέωσέ το πριν από οποιαδήποτε αναπροσαρμογή.`:`Το μισθωτήριο λήγει ${daysExp===0?'σήμερα':daysExp===1?'αύριο':`σε ${daysExp} ημέρες`} (${fmtDate(tenant.lease_end)}).`}
+          text={isExpired?`Το μισθωτήριο έληξε στις ${fmtDate(tenant.lease_end)}. Ανανέωσέ το πριν από οποιαδήποτε αναπροσαρμογή.`:`Το μισθωτήριο λήγει ${daysExp===0?'σήμερα':daysExp===1?'αύριο':`σε ${daysExp} ημέρες`} (${fmtDate(tenant.lease_end)}).`}
           level={isExpired?'critical':'warning'}
         />
       )}
@@ -215,7 +215,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
           κάθε πάνελ έπαιρνε 351,5 · ΛΙΓΟΤΕΡΟ από τα 381 του τηλεφώνου των 430.
           Μαζί του στένευε το πεδίο έτους σε 301,5 από 331 του τηλεφώνου · η
           λωρίδα «Ιστορικό ΔΤΚ» έπεφτε σε 2 πλακίδια ανά σειρά από 3, δηλαδή 6
-          σειρές για 11 έτη αντί για 4. Με 380 το σπάσιμο πάει στα 776 ωφέλιμα:
+          σειρές για 11 έτη αντί για 4. Με 380 το σπάσιμο πάει στα 776 ωφέλιμα:
           στα 768 μία στήλη 719 με 6 πλακίδια ανά σειρά, στα 834 μένουν οι δύο
           στήλες των 384,5 · στα 1024 οι δύο των 457,5. Το τηλέφωνο δεν αλλάζει
           καθόλου: στα 320, 390, 430 μετρήθηκε ταυτόσημο με πριν. */}
@@ -445,7 +445,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
   },[missing.length]);
 
   // Το μήνυμα λέει «δημιουργήθηκαν» ΜΟΝΟ αν όντως γράφτηκαν.
-  const generateNow=async()=>{ setBusy(true); const ok=await genForRows(missing); setBusy(false); onRefresh(); if(ok) notifyOk(missing.length?`Δημιουργήθηκαν ${missing.length} δόσεις`:'Οι δόσεις είναι ενημερωμένες'); };
+  const generateNow=async()=>{ setBusy(true); const ok=await genForRows(missing); setBusy(false); onRefresh(); if(ok) notifyOk(missing.length?`Δημιουργήθηκαν ${missing.length} δόσεις`:'Οι δόσεις είναι ενημερωμένες'); };
 
   const sorted=useMemo(()=>[...payments].sort((a,b)=>b.period_year-a.period_year||b.period_month-a.period_month),[payments]);
   const open=useMemo(()=>payments.filter(p=>!p.paid),[payments]);
@@ -726,7 +726,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       {/* KPI strip */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap:10, marginBottom:16 }}>
         <KpiCard label="Εισπραχθέντα" value={fmt(received)} color="var(--text-primary)"/>
-        <KpiCard label="Ληξιπρόθεσμα" value={fmt(arrearsTotal)} sub={`${overdue.length} δόσεις`} color={arrearsTotal>0?'var(--negative)':'var(--text-primary)'}/>
+        <KpiCard label="Ληξιπρόθεσμα" value={fmt(arrearsTotal)} sub={`${overdue.length} δόσεις`} color={arrearsTotal>0?'var(--negative)':'var(--text-primary)'}/>
         <KpiCard label="Εκκρεμείς" value={String(open.length)} color="var(--text-primary)"/>
         <KpiCard label="Δόσεις" value={`${payments.filter(p=>p.paid).length}/${payments.length}`} color="var(--text-primary)"/>
       </div>
@@ -1071,7 +1071,7 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
   // Η πρόταση που ΦΕΥΓΕΙ σε άλλον άνθρωπο: αγορά αν υπάρχει βάση, αλλιώς ΔΤΚ, αλλιώς τίποτα.
   const suggested=hasMarket?Math.round(marketRent):(legalNew!==null?Math.round(legalNew):null);
   const basis=hasMarket
-    ?`βάσει της μέσης τιμής ${fmt(avgPerSqm)}/τ.μ. στην περιοχή επί τα ${fn(sqm||0)} τ.μ. του ακινήτου`
+    ?`βάσει της μέσης τιμής ${fmt(avgPerSqm)}/τ.μ. στην περιοχή επί τα ${fn(sqm||0)} τ.μ. του ακινήτου`
     :`βάσει της ετήσιας αναπροσαρμογής ΔΤΚ ${CPI_LATEST_YEAR}`;
   const phoneDigits=msgDigits(tenant.phone);
   const proposalText=suggested!==null
@@ -1115,7 +1115,7 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
           {hasMarket?(
             <>
               <DataRow label={`Μέση τιμή ανά τ.μ. (${fn(perSqmValues.length)} συγκρίσιμα)`} value={<span style={{ fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' }}>{fmt(avgPerSqm)}</span>}/>
-              <DataRow label={`× ${fn(sqm||0)} τ.μ. δικά σου`} value={<span style={{ color:'var(--accent)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(marketRent)}</span>}/>
+              <DataRow label={`× ${fn(sqm||0)} τ.μ. δικά σου`} value={<span style={{ color:'var(--accent)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(marketRent)}</span>}/>
               <DataRow label="Απόκλιση τρέχοντος" value={<span style={{ color:marketDiff>0?'var(--positive)':marketDiff<0?'var(--warning)':'var(--text-secondary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{marketDiff>0?'+':''}{fmt(marketDiff)} ({fp(marketDiffPct)})</span>}/>
               {variance&&<div style={{ marginTop:12 }}><AlertBar text={variance} level="warning"/></div>}
               <div style={{ marginTop:10, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>

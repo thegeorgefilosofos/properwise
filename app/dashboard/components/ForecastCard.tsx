@@ -116,12 +116,12 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   const tightVacant = tight ? !!vacancyOf(tight) : false;
   const summary = tight
     ? `Ο πιο σφιχτός μήνας είναι ο ${monthAcc(tight.month - 1)} ${tight.year}, με καθαρό ${feSigned(tight.net)}.`
-    : 'Καμία εκροή μέσα στους επόμενους 12 μήνες.';
+    : 'Καμία εκροή μέσα στους επόμενους 12 μήνες.';
 
   const steps = EMPTY_STEPS.filter(s => tabVisible(s.tab));
   const isEmpty = forecast.empty || months.length === 0;
   return (
-    <section ref={cardRef} className="fc" aria-label="Οι επόμενοι 12 μήνες">
+    <section ref={cardRef} className="fc" aria-label="Οι επόμενοι 12 μήνες">
       {/* ═══ Η ΚΕΦΑΛΙΔΑ ΖΕΙ ΜΕΣΑ ΣΤΟ return, ΟΧΙ ΣΕ ΜΕΤΑΒΛΗΤΗ ════════════════
           Ηταν `const head = (<div className="fc-head">…)`. Το styled-jsx βάζει
           την κλάση εμβέλειας μόνο στα στοιχεία της απόδοσης· στη μεταβλητή το
@@ -129,7 +129,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
           ούτε περιθώριο ούτε γραμματοσειρά και κολλούσε στην αριστερή άκρη. Ο
           πάγκος δεν το έβλεπε: εκεί το <style jsx> αποδίδεται καθολικό. */}
       <div className="fc-head">
-        <h2 className="fc-title">Οι επόμενοι 12 μήνες</h2>
+        <h2 className="fc-title">Οι επόμενοι 12 μήνες</h2>
         <span className="fc-sub">Από μισθώσεις, δόσεις και λογαριασμούς που ήδη υπάρχουν</span>
       </div>
       {isEmpty ? (
@@ -164,7 +164,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
                 </p>
               </>
             ) : (
-              <p className="fc-why">Μόνο εισροές μέσα στους επόμενους 12 μήνες.</p>
+              <p className="fc-why">Μόνο εισροές μέσα στους επόμενους 12 μήνες.</p>
             )}
           </div>
           <ul className="fc-legend" aria-label="Υπόμνημα">
@@ -294,7 +294,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
         {table && (
           <div className="fc-table-wrap">
             <table className="fc-table">
-              <caption className="sr-only">Οι επόμενοι 12 μήνες ανά μήνα</caption>
+              <caption className="sr-only">Οι επόμενοι 12 μήνες ανά μήνα</caption>
               <thead>
                 <tr><th scope="col">Μήνας</th><th scope="col">Εισροές</th><th scope="col">Εκροές</th><th scope="col">Καθαρό</th><th scope="col">Σωρευτικά</th></tr>
               </thead>

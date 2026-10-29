@@ -72,11 +72,11 @@ const MAT_DIV = fn(1 / RENO_39B_MATERIALS_SHARE); // «3»
 const OLD_PCT = fpRate(OLD_RATE * 100); // «40%»
 const OLD_TIMES = fn(1 / OLD_RATE, 1); // «2,5»
 
-const H1 = `Έκπτωση φόρου για ανακαίνιση: έως ${CAP} σε ${RENO_39B_YEARS} έτη`;
+const H1 = `Έκπτωση φόρου για ανακαίνιση: έως ${CAP} σε ${RENO_39B_YEARS} έτη`;
 const TITLE = H1;
 // Κάτω από 160 χαρακτήρες: τόσα δείχνει η σελίδα αποτελεσμάτων πριν κόψει.
 const DESC =
-  `Η μείωση φόρου για ανακαίνιση ισούται με τη δαπάνη, έως ${CAP} σε ${RENO_39B_YEARS} έτη, `
+  `Η μείωση φόρου για ανακαίνιση ισούται με τη δαπάνη, έως ${CAP} σε ${RENO_39B_YEARS} έτη, `
   + `για δαπάνες έως ${RENO_39B_TO}. Προϋποθέσεις και παράδειγμα.`;
 const GUIDE = guideAt('/odigos/ekptosi-forou-anakainisis');
 const URL = siteUrl(GUIDE.href);
@@ -92,7 +92,7 @@ const FAQ: GuideFaqItem[] = [
   },
   {
     q: 'Σε πόσα χρόνια μοιράζεται η μείωση;',
-    a: `Ισόποσα σε ${RENO_39B_YEARS} έτη, δηλαδή το πολύ ${PER_YEAR} τον χρόνο. Σε κάθε έτος η μείωση `
+    a: `Ισόποσα σε ${RENO_39B_YEARS} έτη, δηλαδή το πολύ ${PER_YEAR} τον χρόνο. Σε κάθε έτος η μείωση `
      + 'δεν ξεπερνά τον φόρο που αναλογεί· ό,τι περισσεύει δεν επιστρέφεται.',
   },
   {
@@ -114,7 +114,7 @@ const FAQ: GuideFaqItem[] = [
 
 // Οι πηγές και η νομική βάση, ορατές όπως στα εργαλεία (E-E-A-T).
 const SOURCES: string[] = [
-  `Έκπτωση φόρου δαπανών ανακαίνισης: ${RENO_39B_LAW}, ισχύς από ${RENO_39B_FROM} · μείωση φόρου ίση με την επιλέξιμη δαπάνη · ανώτατο ${CAP} για όλα τα έτη, ισόποσα σε ${RENO_39B_YEARS} έτη · υλικά έως το 1/${MAT_DIV} της αξίας των υπηρεσιών · ηλεκτρονική πληρωμή και παραστατικά στο ΑΦΜ του ιδιοκτήτη.`,
+  `Έκπτωση φόρου δαπανών ανακαίνισης: ${RENO_39B_LAW}, ισχύς από ${RENO_39B_FROM} · μείωση φόρου ίση με την επιλέξιμη δαπάνη · ανώτατο ${CAP} για όλα τα έτη, ισόποσα σε ${RENO_39B_YEARS} έτη · υλικά έως το 1/${MAT_DIV} της αξίας των υπηρεσιών · ηλεκτρονική πληρωμή και παραστατικά στο ΑΦΜ του ιδιοκτήτη.`,
   `${RENO_39B_KYA}: εφαρμογή της διάταξης για δαπάνες από ${RENO_39B_FROM} έως ${RENO_39B_TO}, προϋποθέσεις παρόχων και παραστατικών, αποκλεισμός της ίδιας δαπάνης ως επιχειρηματικής.`,
   `${ANAK_NAME} («Ανακαινίζω 2026»): ${ANAK_KYA}, όπως τροποποιήθηκε με την ${ANAK_KYA_AMEND} και την ${ANAK_KYA_AMEND2} · επιχορήγηση ${ANAK_RATES_TEXT} · η επιχορήγηση φτάνει ${ANAK_CAP_TEXT}, ${ANAK_OTHER_TEXT}.`,
 ];
@@ -162,13 +162,13 @@ export default function Page() {
         {/* 1. Τι είναι */}
         <H2 {...S.what} />
         <p className="lg-p">
-          {`Η διάταξη αφορά δαπάνες ενεργειακής, λειτουργικής και αισθητικής αναβάθμισης κτιρίων που γίνονται από ${RENO_39B_FROM} έως ${RENO_39B_TO}. Δεν αφαιρεί τη δαπάνη από το εισόδημα: μειώνει τον ίδιο τον φόρο κατά ποσό ίσο με την επιλέξιμη δαπάνη. Η μείωση δεν δίνεται μονομιάς· κατανέμεται ισόποσα σε ${RENO_39B_YEARS} έτη και σε κάθε έτος δεν ξεπερνά τον φόρο που αναλογεί.`}
+          {`Η διάταξη αφορά δαπάνες ενεργειακής, λειτουργικής και αισθητικής αναβάθμισης κτιρίων που γίνονται από ${RENO_39B_FROM} έως ${RENO_39B_TO}. Δεν αφαιρεί τη δαπάνη από το εισόδημα: μειώνει τον ίδιο τον φόρο κατά ποσό ίσο με την επιλέξιμη δαπάνη. Η μείωση δεν δίνεται μονομιάς· κατανέμεται ισόποσα σε ${RENO_39B_YEARS} έτη και σε κάθε έτος δεν ξεπερνά τον φόρο που αναλογεί.`}
         </p>
 
         {/* 2. Το όριο */}
         <H2 {...S.limit} />
         <p className="lg-p">
-          {`Τα ${CAP} είναι ταυτόχρονα η μέγιστη επιλέξιμη δαπάνη και η μέγιστη μείωση φόρου, για όλα τα έτη μαζί. Μοιρασμένα σε ${RENO_39B_YEARS} έτη κάνουν το πολύ ${PER_YEAR} τον χρόνο. Όποιος υπολογίζει με το παλιό ${OLD_PCT} βλέπει το πολύ ${feWhole(RENO_39B_CAP * OLD_RATE)}, δηλαδή ${OLD_TIMES} φορές λιγότερα από όσα δικαιούται.`}
+          {`Τα ${CAP} είναι ταυτόχρονα η μέγιστη επιλέξιμη δαπάνη και η μέγιστη μείωση φόρου, για όλα τα έτη μαζί. Μοιρασμένα σε ${RENO_39B_YEARS} έτη κάνουν το πολύ ${PER_YEAR} τον χρόνο. Όποιος υπολογίζει με το παλιό ${OLD_PCT} βλέπει το πολύ ${feWhole(RENO_39B_CAP * OLD_RATE)}, δηλαδή ${OLD_TIMES} φορές λιγότερα από όσα δικαιούται.`}
         </p>
         <p className="lg-p">
           {`Δαπάνη πάνω από το όριο δεν αυξάνει τη μείωση. Μια ανακαίνιση με επιλέξιμη δαπάνη ${feWhole(OVER)} δίνει κι αυτή το πολύ ${feWhole(R_OVER.total)}. Ούτε η μείωση ενός έτους ξεπερνά τον φόρο του: με ετήσιο φόρο κάτω από ${PER_YEAR}, η μείωση του έτους κόβεται στο ύψος του φόρου.`}
@@ -194,7 +194,7 @@ export default function Page() {
         <ul className="lg-ul">
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Όριο υλικών:'}</strong>{` ${feWhole(EX1.services)} / ${MAT_DIV} = ${feWhole(EX1.services * RENO_39B_MATERIALS_SHARE)}. Τα υλικά είναι ${feWhole(EX1.materials)}, άρα μετρούν ολόκληρα.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Επιλέξιμη δαπάνη:'}</strong>{` ${feWhole(EX1.services)} + ${feWhole(R1.materialsCounted)} = ${feWhole(R1.eligible)}, ακριβώς στο όριο.`}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{`Μείωση φόρου: ${feWhole(R1.total)},`}</strong>{` δηλαδή ${feWhole(R1.perYear)} τον χρόνο για ${RENO_39B_YEARS} έτη, εφόσον ο φόρος κάθε έτους φτάνει.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{`Μείωση φόρου: ${feWhole(R1.total)},`}</strong>{` δηλαδή ${feWhole(R1.perYear)} τον χρόνο για ${RENO_39B_YEARS} έτη, εφόσον ο φόρος κάθε έτους φτάνει.`}</li>
         </ul>
         <p className="lg-p">
           {`Τώρα άλλη αναλογία: ${feWhole(EX2.services)} εργασία και ${feWhole(EX2.materials)} υλικά, σύνολο ${feWhole(EX2.services + EX2.materials)}.`}
@@ -202,7 +202,7 @@ export default function Page() {
         <ul className="lg-ul">
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Όριο υλικών:'}</strong>{` ${feWhole(EX2.services)} / ${MAT_DIV} = ${feWhole(R2.materialsCounted)}. Τα υλικά είναι ${feWhole(EX2.materials)}, άρα μετρούν μόνο τα ${feWhole(R2.materialsCounted)}.`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Επιλέξιμη δαπάνη:'}</strong>{` ${feWhole(EX2.services)} + ${feWhole(R2.materialsCounted)} = ${feWhole(R2.eligible)}. Τα υπόλοιπα ${feWhole(EX2.materials - R2.materialsCounted)} των υλικών δεν μετρούν.`}</li>
-          <li><strong style={{ color: 'var(--text-primary)' }}>{`Μείωση φόρου: ${feWhole(R2.total)},`}</strong>{` δηλαδή ${feWhole(R2.perYear)} τον χρόνο για ${RENO_39B_YEARS} έτη, αντί για ${feWhole(EX2.services + EX2.materials)} αν μετρούσαν όλα τα υλικά.`}</li>
+          <li><strong style={{ color: 'var(--text-primary)' }}>{`Μείωση φόρου: ${feWhole(R2.total)},`}</strong>{` δηλαδή ${feWhole(R2.perYear)} τον χρόνο για ${RENO_39B_YEARS} έτη, αντί για ${feWhole(EX2.services + EX2.materials)} αν μετρούσαν όλα τα υλικά.`}</li>
         </ul>
 
         <div className="lg-note lg-note-tip" style={{ marginTop: 16 }}>

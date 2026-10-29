@@ -447,7 +447,7 @@ export default function AccountantWorkspace() {
                       ) : c.name}
                     </h2>
                     <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0', fontFamily: T.font.sans }}>
-                      {c.properties === 1 ? '1 ακίνητο' : `${c.properties} ακίνητα`}
+                      {c.properties === 1 ? '1 ακίνητο' : `${c.properties} ακίνητα`}
                       {c.afm ? ` · ΑΦΜ ${c.afm}` : ''}
                       {!c.token ? ' · ο σύνδεσμός του δεν ισχύει πια' : ''}
                     </p>

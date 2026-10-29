@@ -311,7 +311,7 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
             {[
               {label:'Εκτιμώμενη υπολειπόμενη αξία',value:fe(calcCurrentValue({...form,id:'',user_id:''} as InventoryItem))},
               {label:'Ποσοστό που μένει',value:`${Math.max(0,100-calcDepreciationPct({...form,id:'',user_id:''} as InventoryItem))}%`},
-              {label:'Εκτιμώμενα χρόνια ζωής',value:`περίπου ${calcYearsLeft({...form,id:'',user_id:''} as InventoryItem)} χρόνια`},
+              {label:'Εκτιμώμενα χρόνια ζωής',value:`περίπου ${calcYearsLeft({...form,id:'',user_id:''} as InventoryItem)} χρόνια`},
             ].map((k,i)=>(
               <div key={i} style={{textAlign:'center'}}>
                 <p style={{fontSize:14,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',marginBottom:2}}>{k.value}</p>

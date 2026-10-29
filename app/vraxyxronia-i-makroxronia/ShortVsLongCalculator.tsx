@@ -187,7 +187,7 @@ export function ShortVsLongCalculator({ today, cta }: {
         { k: 'Μηνιαίο ενοίκιο', v: feAuto(amount(v.enoikio)) },
         { k: 'Τιμή διανυκτέρευσης', v: feAuto(amount(v.timi)) },
         { k: 'Πληρότητα', v: fpRate(amount(v.plirotita)) },
-        { k: 'Ακίνητο', v: `${TYPES.find(t => t.value === v.typos)?.label ?? v.typos}, ${fn(amount(v.tm), Number.isInteger(amount(v.tm)) ? 0 : 2)} τ.μ.` },
+        { k: 'Ακίνητο', v: `${TYPES.find(t => t.value === v.typos)?.label ?? v.typos}, ${fn(amount(v.tm), Number.isInteger(amount(v.tm)) ? 0 : 2)} τ.μ.` },
         { k: 'Προμήθεια', v: fpRate(amount(v.promitheia)) },
         { k: 'Καθαριότητα', v: `${feAuto(amount(v.kostos))} τη νύχτα, κατά μέσο όρο` },
         { k: 'Πάγια', v: `${feAuto(amount(v.pagia))} τον μήνα` },
@@ -342,7 +342,7 @@ export function ShortVsLongCalculator({ today, cta }: {
                       <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fpRate(row.pct)}</span>
                       {isMine && <span className="po-tool-tag">η δική σου</span>}
                       <span style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 400 }}>
-                        {fn(row.nights)} νύχτες
+                        {fn(row.nights)} νύχτες
                       </span>
                     </th>
                     <td className="num" style={{ fontWeight: ahead ? 600 : 400 }}>{feSigned(row.net)}</td>
@@ -376,7 +376,7 @@ export function ShortVsLongCalculator({ today, cta }: {
           ανθεκτικότητας υπολογίζεται με τα ποσά που ισχύουν από το {FIRST_YEAR_CURRENT_LEVY} και για το 2026:{' '}
           {feWhole(LEVY.small.high)} και {feWhole(LEVY.small.low)} τη διανυκτέρευση για
           διαμερίσματα, {feWhole(LEVY.large.high)} και {feWhole(LEVY.large.low)} για
-          μονοκατοικίες άνω των 80 τ.μ., με υψηλή περίοδο Απρίλιο ως Οκτώβριο
+          μονοκατοικίες άνω των 80 τ.μ., με υψηλή περίοδο Απρίλιο ως Οκτώβριο
           (ν.5162/2024). Απ’ έξω: ΕΝΦΙΑ, ασφάλιση, έπιπλα και εξοπλισμός, κενά
           ανακαίνισης, ο χρόνος σου. <EstimateNote />
         </p>

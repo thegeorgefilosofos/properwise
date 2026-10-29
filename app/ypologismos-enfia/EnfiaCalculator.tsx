@@ -163,7 +163,7 @@ export function EnfiaCalculator({ year, today, cta }: {
           όροφο στα 820. Έξι λωρίδες κάνουν τα πέντε 3+2 ΖΥΓΙΣΜΕΝΑ (δύο λωρίδες
           το καθένα από πάνω, τρεις από κάτω). Στο τηλέφωνο τα δύο ποσά μένουν
           δίπλα δίπλα και οι επιλογείς με το ποσοστό παίρνουν όλο το πλάτος,
-          γιατί στη μισή στήλη το «26 έτη και άνω» κοβόταν (`.fc-5-even` στο
+          γιατί στη μισή στήλη το «26 έτη και άνω» κοβόταν (`.fc-5-even` στο
           globals.css). Κάτω από τα 340 όλα γίνονται μία στήλη. */}
       {/* ΣΤΟ ΚΟΙΝΟ ΠΛΕΓΜΑ ΤΩΝ ΤΕΣΣΑΡΩΝ (`ToolFields`). Ηταν έξι λωρίδες με
           κλάση μόνο γι' αυτόν (`fc-5-even`): στα 768 τα τρία πάνω έπιαναν δύο
@@ -204,7 +204,7 @@ export function EnfiaCalculator({ year, today, cta }: {
         { k: 'Όροφος', v: ENFIA_FLOOR_SHORT[floor as keyof typeof ENFIA_FLOOR_SHORT] ?? floor },
         { k: 'Παλαιότητα', v: ageLabel(ages, age) },
         { k: 'Ποσοστό ιδιοκτησίας', v: fpRate(own) },
-        ...(r.aux > 0 ? [{ k: 'Βοηθητικοί χώροι', v: `${fn(r.aux, Number.isInteger(r.aux) ? 0 : 2)} τ.μ.` }] : []),
+        ...(r.aux > 0 ? [{ k: 'Βοηθητικοί χώροι', v: `${fn(r.aux, Number.isInteger(r.aux) ? 0 : 2)} τ.μ.` }] : []),
       ]}/>}
 
       {/* ── Το αποτέλεσμα ──────────────────────────────────────────────── */}
@@ -237,11 +237,11 @@ export function EnfiaCalculator({ year, today, cta }: {
             <ToolHero primary={{ label: 'ΕΝΦΙΑ ετησίως', value: fe(r.annual) }}
               secondary={instalmentCount === ENFIA_INSTALMENTS
                 ? [{ label: 'Ανά μήνα', value: fe(r.annual / ENFIA_INSTALMENTS) }]
-                : instalmentCount > 1 ? [{ label: `Ανά δόση, ${instalmentCount} δόσεις`, value: fe(firstInstalment) }] : []}/>
+                : instalmentCount > 1 ? [{ label: `Ανά δόση, ${instalmentCount} δόσεις`, value: fe(firstInstalment) }] : []}/>
               <LiveResult say={instalmentCount === ENFIA_INSTALMENTS
                 ? `ΕΝΦΙΑ ${feAuto(r.annual)} τον χρόνο, ${feAuto(r.annual / ENFIA_INSTALMENTS)} τον μήνα.`
                 : instalmentCount > 1
-                  ? `ΕΝΦΙΑ ${feAuto(r.annual)} τον χρόνο, σε ${instalmentCount} δόσεις των ${feAuto(firstInstalment)}.`
+                  ? `ΕΝΦΙΑ ${feAuto(r.annual)} τον χρόνο, σε ${instalmentCount} δόσεις των ${feAuto(firstInstalment)}.`
                   : `ΕΝΦΙΑ ${feAuto(r.annual)} τον χρόνο, εφάπαξ.`} />
 
             <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
@@ -372,12 +372,12 @@ function Instalments({ annual, year, today }: { annual: number; year: number; to
        <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
         <table className="po-table po-tool-table" style={{ '--tbl-min': '280px' }}>
           {/* ΚΛΕΙΣΤΟΣ, Ο ΠΙΝΑΚΑΣ ΛΕΕΙ ΟΤΙ ΔΕΙΧΝΕΙ ΤΙΣ ΕΠΟΜΕΝΕΣ. Η λεζάντα έγραφε
-              «Οι 12 δόσεις» πάνω από τρεις γραμμές. Στο χαρτί τυπώνονται και οι
+              «Οι 12 δόσεις» πάνω από τρεις γραμμές. Στο χαρτί τυπώνονται και οι
               δώδεκα, οπότε εκεί μένει ο πλήρης τίτλος. */}
           <caption>
-            {all || n <= 3 ? `${n === 1 ? 'Η δόση' : `Οι ${n} δόσεις`} του ${year}` : <>
+            {all || n <= 3 ? `${n === 1 ? 'Η δόση' : `Οι ${n} δόσεις`} του ${year}` : <>
               <span className="po-noprint">Επόμενες δόσεις</span>
-              <span className="po-printonly">Οι {n} δόσεις του {year}</span>
+              <span className="po-printonly">Οι {n} δόσεις του {year}</span>
             </>}
           </caption>
           <thead>
@@ -412,7 +412,7 @@ function Instalments({ annual, year, today }: { annual: number; year: number; to
       </div>
       {n > 3 && <div className="po-noprint" style={{ marginTop: 10 }}>
         <Btn onClick={() => setAll(a => !a)} expanded={all}>
-          {all ? 'Μόνο οι επόμενες' : `Όλες οι ${n} δόσεις`}
+          {all ? 'Μόνο οι επόμενες' : `Όλες οι ${n} δόσεις`}
         </Btn>
       </div>}
       {/* ΤΕΣΣΕΡΙΣ ΠΡΟΤΑΣΕΙΣ ΠΕΡΑ ΠΕΡΑ, ΜΕ ΤΟΝ ΑΕΡΑ ΤΟΥΣ. Μετρημένο στα 1.024, στα

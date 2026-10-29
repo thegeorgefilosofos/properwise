@@ -353,14 +353,14 @@ export function tenantScheduleRows(
     });
     events.push({
       source: key('lease_end_60'), category: 'contract',
-      title: `Λήξη μίσθωσης σε 60 ημέρες, ${name}`, event_date: shiftISO(t.lease_end, -60),
+      title: `Λήξη μίσθωσης σε 60 ημέρες, ${name}`, event_date: shiftISO(t.lease_end, -60),
       notes: 'Ξεκίνα διαπραγμάτευση ανανέωσης μίσθωσης εγκαίρως.',
     });
     events.push({
       source: key('lease_end_30'), category: 'contract',
-      title: `Λήξη μίσθωσης σε 30 ημέρες, ${name}`, event_date: shiftISO(t.lease_end, -30),
+      title: `Λήξη μίσθωσης σε 30 ημέρες, ${name}`, event_date: shiftISO(t.lease_end, -30),
       priority: 'high',
-      notes: 'Κρίσιμο: απόφαση ανανέωσης ή αποχώρησης εντός 30 ημερών.',
+      notes: 'Κρίσιμο: απόφαση ανανέωσης ή αποχώρησης εντός 30 ημερών.',
     });
     // 3) Επιστροφή εγγύησης στη λήξη.
     if (t.deposit_amount && t.deposit_amount > 0) {

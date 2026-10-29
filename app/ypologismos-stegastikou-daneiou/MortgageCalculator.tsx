@@ -176,14 +176,14 @@ export function MortgageCalculator({ market, today, cta }: {
           </ToolFields>
         </div>
         <ToolClampNote notes={[
-          yearsTyped > YEARS_CAP && `Μέγιστη διάρκεια ${YEARS_CAP} έτη· υπολογίστηκε με ${YEARS_CAP}.`,
+          yearsTyped > YEARS_CAP && `Μέγιστη διάρκεια ${YEARS_CAP} έτη· υπολογίστηκε με ${YEARS_CAP}.`,
           typedRate !== null && typedRate > RATE_CAP && `Μέγιστο επιτόκιο ${fpRate(RATE_CAP)}· υπολογίστηκε με ${fpRate(RATE_CAP)}.`,
         ]}/>
       </Group>
 
       <ToolPaper title="Δόση στεγαστικού δανείου" on={today} inputs={[
         { k: 'Ποσό', v: fe(loan) },
-        { k: 'Διάρκεια', v: `${fn(years)} έτη` },
+        { k: 'Διάρκεια', v: `${fn(years)} έτη` },
         { k: kind === 'fixed' ? 'Σταθερό επιτόκιο' : 'Κυμαινόμενο', v: rate === null ? 'δεν δόθηκε' : fp(rate) },
         { k: 'Καθαρό εισόδημα', v: fe(income) },
         { k: 'Άλλες δόσεις', v: fe(debts) },
@@ -274,7 +274,7 @@ export function MortgageCalculator({ market, today, cta }: {
           {schedule.length > YEARS_SHOWN && (
             <div className="po-noprint" style={{ marginTop: 10 }}>
               <Btn onClick={() => setAllYears(a => !a)} expanded={allYears}>
-                {allYears ? `Μόνο τα πρώτα ${YEARS_SHOWN} έτη` : `Όλα τα ${schedule.length} έτη`}
+                {allYears ? `Μόνο τα πρώτα ${YEARS_SHOWN} έτη` : `Όλα τα ${schedule.length} έτη`}
               </Btn>
             </div>
           )}

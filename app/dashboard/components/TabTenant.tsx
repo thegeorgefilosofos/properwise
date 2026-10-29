@@ -743,7 +743,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                         υπογεγραμμένη ειδοποίηση θα ζούσε μόνο σε ένα PDF και η αλλαγή
                         θα εμφανιζόταν μια νύχτα χωρίς εξήγηση. */}
                     {!isPastTenant(t)&&t.pending_rent!=null&&t.pending_rent_from&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', fontFamily:T.font.sans }}>Αναπροσαρμογή σε {fmt(t.pending_rent)} από {fmtD(t.pending_rent_from)}</div>}
-                    {!isPastTenant(t)&&d!=null&&d>=0&&d<=60&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--warning)', fontFamily:T.font.sans }}>Λήξη μίσθωσης σε {fn(d)} ημέρες</div>}
+                    {!isPastTenant(t)&&d!=null&&d>=0&&d<=60&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--warning)', fontFamily:T.font.sans }}>Λήξη μίσθωσης σε {fn(d)} ημέρες</div>}
                   </RecordCard>
                 );
               })}

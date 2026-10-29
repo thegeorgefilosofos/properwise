@@ -153,7 +153,7 @@ export async function exportChecklistExcel(items: ChecklistItem[]) {
         item.description,
         getPri(item.priority).label,
         item.due_date ? fmtDate(item.due_date) : ABSENT_DATE,
-        d !== null ? (d < 0 ? `${Math.abs(d)} πριν` : `${d} ημέρες`) : ABSENT_DATE,
+        d !== null ? (d < 0 ? `${Math.abs(d)} πριν` : `${d} ημέρες`) : ABSENT_DATE,
         item.assigned_contact_name || ABSENT,
         item._who ? WHO_LABEL[item._who] : ABSENT_SHORT,
         item.estimated_cost || '',

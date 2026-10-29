@@ -132,7 +132,7 @@ export function DashboardView({ tenant, payments, propertyCount }:{ tenant:Tenan
         <KpiCard label="Βασικό ενοίκιο" value={fmt(tenant.monthly_rent)} color="var(--text-primary)"/>
         <KpiCard label="Σύνολο μηνιαίως" value={fmt(totalTenant)} color="var(--text-primary)"/>
         <KpiCard label="Κόστη ιδιοκτήτη" value={fmt(ownerCosts)} color="var(--text-primary)"/>
-        <KpiCard label="Λήξη μίσθωσης" value={d==null?ABSENT_DATE:d<0?'Έληξε':`${d} ημέρες`} color={st?.color||'var(--text-primary)'}/>
+        <KpiCard label="Λήξη μίσθωσης" value={d==null?ABSENT_DATE:d<0?'Έληξε':`${d} ημέρες`} color={st?.color||'var(--text-primary)'}/>
         <KpiCard label="Εκκρεμή ποσά" value={fmt(unpaidAmt)} color={unpaidAmt>0?'var(--negative)':'var(--text-primary)'}/>
         <KpiCard label="Εγγύηση" value={fmt(tenant.deposit_amount)} color={tenant.deposit_returned?'var(--positive)':'var(--accent)'}/>
       </div>
@@ -156,13 +156,13 @@ export function DashboardView({ tenant, payments, propertyCount }:{ tenant:Tenan
       </div>
 
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24, marginBottom:16 }}>
-        <SectionTitle>Ιστορικό πληρωμών, τελευταίοι 12 μήνες</SectionTitle>
+        <SectionTitle>Ιστορικό πληρωμών, τελευταίοι 12 μήνες</SectionTitle>
         <PaymentBars payments={payments}/>
         {payments.length>0&&(
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap:10, marginTop:20 }}>
             <KpiCard label="Πληρωμές" value={`${paidPay.length}/${payments.length}`} color="var(--text-primary)"/>
             <KpiCard label="Ποσοστό εξόφλησης" value={`${fp(((paidPay.length/payments.length)*100))}`} color="var(--text-primary)"/>
-            <KpiCard label="Μέση καθυστέρηση" value={avgLate>0?`${avgLate.toFixed(0)} ημέρες`:'Χωρίς'} color={avgLate>7?'var(--warning)':'var(--positive)'}/>
+            <KpiCard label="Μέση καθυστέρηση" value={avgLate>0?`${avgLate.toFixed(0)} ημέρες`:'Χωρίς'} color={avgLate>7?'var(--warning)':'var(--positive)'}/>
             <KpiCard label="Εισπραχθέντα σύνολο" value={fmt(totalReceived)} color="var(--text-primary)"/>
           </div>
         )}
@@ -243,9 +243,9 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
   const d=daysLeft(tenant.lease_end);
   const reminders=[];
   if(d!==null){
-    if(d<=30&&d>=0) reminders.push({label:`Λήξη σε ${d} ημέρες, ζήτα άμεσα απόφαση ανανέωσης`,urgent:true});
-    else if(d<=60&&d>=31) reminders.push({label:`Λήξη σε ${d} ημέρες, ενημέρωσε τον ενοικιαστή`,urgent:false});
-    else if(d<=90&&d>=61) reminders.push({label:`Λήξη σε ${d} ημέρες, ξεκίνα συζήτηση ανανέωσης`,urgent:false});
+    if(d<=30&&d>=0) reminders.push({label:`Λήξη σε ${d} ημέρες, ζήτα άμεσα απόφαση ανανέωσης`,urgent:true});
+    else if(d<=60&&d>=31) reminders.push({label:`Λήξη σε ${d} ημέρες, ενημέρωσε τον ενοικιαστή`,urgent:false});
+    else if(d<=90&&d>=61) reminders.push({label:`Λήξη σε ${d} ημέρες, ξεκίνα συζήτηση ανανέωσης`,urgent:false});
   }
   const inputStyle:React.CSSProperties={width:'100%',height: T.h.lg,background:'var(--bg-surface)',border:'1px solid var(--border-control)',borderRadius:T.radius.inner,padding:'0 14px',color:'var(--text-primary)',fontSize:14,letterSpacing:0,fontFamily:T.font.sans,outline:'none',boxSizing:'border-box'};
 
@@ -429,7 +429,7 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
       <InfoBanner tone="info">
         <strong>Εκτίμηση για αυτό το ακίνητο, ίδια με την Επισκόπηση. Η κλίμακα εφαρμόζεται στο σύνολο των ενοικίων σου.</strong>{' '}
         {manyIncomes
-          ? `Έχεις ${fn(consolidated?.count??propertyCount)} ακίνητα με έσοδα: ο φόρος βγαίνει μία φορά στο σύνολό τους και εδώ φαίνεται το μερίδιο αυτού του ακινήτου.`
+          ? `Έχεις ${fn(consolidated?.count??propertyCount)} ακίνητα με έσοδα: ο φόρος βγαίνει μία φορά στο σύνολό τους και εδώ φαίνεται το μερίδιο αυτού του ακινήτου.`
           : 'Αν αποκτήσεις δεύτερο ακίνητο που αποδίδει, το άθροισμα μπορεί να ανεβάσει κλιμάκιο και ο φόρος να μην είναι το άθροισμα των δύο εκτιμήσεων.'}{' '}
         Ενοίκιο ενοικιαστή {fe(tenant.monthly_rent||0)}/μήνα, τύπος μίσθωσης «{tenant.lease_category?LEASE_CATEGORY_LABELS[tenant.lease_category]:ABSENT}»
         {viaBank
@@ -500,7 +500,7 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
                 σε δικό μας φορέα κειμένου μέσα στο InfoBlock — το InfoBlock το
                 μοιράζονται κι άλλες καρτέλες. Ο συλλαβισμός πάει μαζί του:
                 χωρίς αυτόν εννιά γραμμές κλείνουν τεντώνοντας τα κενά. */}
-            <div className="po-just">{hy(<>Κάθε νέα μίσθωση, καθώς και κάθε τροποποίηση ή λύση, δηλώνεται ηλεκτρονικά στην ΑΑΔΕ έως το τέλος του επόμενου μήνα από την έναρξη ή τη μεταβολή.{tenant.lease_start?` Για έναρξη ${fmtD(tenant.lease_start)}, προθεσμία δήλωσης έως ${lastDayNextMonth(tenant.lease_start)}.`:''} Χωρίς τη δήλωση δεν αναγνωρίζεται φορολογικά η μίσθωση. Μετά την υποβολή, ο μισθωτής (και τυχόν συνιδιοκτήτες) ειδοποιείται μέσω myAADE/email και έχει 30 ημέρες να την αποδεχθεί ή να την απορρίψει — αλλιώς θεωρείται σιωπηρά αποδεκτή (ισχύς από 02/06/2025)· ενημέρωσέ τον εγκαίρως. Επιβεβαίωσε την ακριβή προθεσμία στην ΑΑΔΕ (σύνδεσμος πιο κάτω).</>)}</div>
+            <div className="po-just">{hy(<>Κάθε νέα μίσθωση, καθώς και κάθε τροποποίηση ή λύση, δηλώνεται ηλεκτρονικά στην ΑΑΔΕ έως το τέλος του επόμενου μήνα από την έναρξη ή τη μεταβολή.{tenant.lease_start?` Για έναρξη ${fmtD(tenant.lease_start)}, προθεσμία δήλωσης έως ${lastDayNextMonth(tenant.lease_start)}.`:''} Χωρίς τη δήλωση δεν αναγνωρίζεται φορολογικά η μίσθωση. Μετά την υποβολή, ο μισθωτής (και τυχόν συνιδιοκτήτες) ειδοποιείται μέσω myAADE/email και έχει 30 ημέρες να την αποδεχθεί ή να την απορρίψει — αλλιώς θεωρείται σιωπηρά αποδεκτή (ισχύς από 02/06/2025)· ενημέρωσέ τον εγκαίρως. Επιβεβαίωσε την ακριβή προθεσμία στην ΑΑΔΕ (σύνδεσμος πιο κάτω).</>)}</div>
           </InfoBlock>
           <InfoBlock title="Είσπραξη μέσω τράπεζας" tone={viaBank?'var(--positive)':'var(--negative)'}>
             {/* Ο αρνητικός κλάδος είναι 264 χαρακτήρες σε κουτί 398, τέσσερις

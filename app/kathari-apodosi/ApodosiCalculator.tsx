@@ -125,7 +125,7 @@ export function ApodosiCalculator({ year, today, cta }: {
             onChange={x => set('mines', x)} mode="numeric" unit="μήνες" unitPad={64}/>
         </ToolFields>
         <ToolClampNote notes={[
-          Math.round(amount(v.mines)) > 12 && 'Μέγιστο 12 μήνες· υπολογίστηκαν 12.',
+          Math.round(amount(v.mines)) > 12 && 'Μέγιστο 12 μήνες· υπολογίστηκαν 12.',
         ]}/>
       </Group>
 

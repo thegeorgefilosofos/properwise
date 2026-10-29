@@ -378,7 +378,7 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
                    «κουμπί» χωρίς τίποτε άλλο. Το `onDayClick` είχε ήδη φρένο
                    (`day&&`), δηλαδή το πάτημα δεν έκανε ποτέ τίποτα. */
                 <div key={idx} className="cal-cell"
-                  {...(day!=null ? (()=>{ const pr = pressable(()=>{ if(coarse&&dayEvents.length) onDayOpen(dateStr); else onDayClick(dateStr) }, `${day} ${monthGen(month)}${coarse&&dayEvents.length?`, ${dayEvents.length} ${dayEvents.length===1?'γεγονός':'γεγονότα'}`:''}`)
+                  {...(day!=null ? (()=>{ const pr = pressable(()=>{ if(coarse&&dayEvents.length) onDayOpen(dateStr); else onDayClick(dateStr) }, `${day} ${monthGen(month)}${dayEvents.length?`, ${dayEvents.length} ${dayEvents.length===1?'γεγονός':'γεγονότα'}`:''}`)
                     // Το `pressable` δίνει tabIndex 0 σε ΚΑΘΕ κελί. Εδώ μένει μία
                     // στάση για όλο το πλέγμα και τα υπόλοιπα κελιά βγαίνουν από
                     // τη σειρά του Tab χωρίς να χάσουν το Enter και το κενό.
@@ -408,10 +408,17 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
                       {(()=>{ const extra=staysOnDay(stays,dateStr).length-shownLanes; return extra>0
                         ? <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom:2 }}>+{extra} {extra===1?'κράτηση':'κρατήσεις'}</div>
                         : null })()}
-                      <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                      {/* ΣΤΟ ΣΤΕΝΟ ΚΕΛΙ ΜΕΤΡΗΤΗΣ, ΟΧΙ ΚΟΜΜΕΝΟ ΚΕΙΜΕΝΟ. Κάτω από τα 80
+                          του κελιού (βλ. globals.css, «ΣΤΕΝΟ ΚΕΛΙ») τα τσιπάκια
+                          κρύβονται και μένει το «+N»· η ημέρα ανοίγει με πάτημα. */}
+                      {dayEvents.length>0&&(
+                        <span className="cal-count" aria-hidden
+                          onClick={e=>{e.stopPropagation();onDayOpen(dateStr)}}>+{dayEvents.length}</span>
+                      )}
+                      <div className="cal-ev-list" style={{ display:'flex', flexDirection:'column', gap:2 }}>
                         {dayEvents.slice(0,3).map(ev=>(
                           <Tooltip key={ev.id} text={ev.title} content={<EventDetails event={ev}/>}>
-                            <div {...(coarse ? {} : { onPointerDown: !ev._virtual&&drag?drag.onDown(ev.id,ev.title):undefined, role:'button', tabIndex:0, 'aria-label':`Άνοιγμα: ${ev.title}`, onKeyDown:(e:React.KeyboardEvent)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();onEventClick(ev)}}, onClick:(e:React.MouseEvent)=>{e.stopPropagation();onEventClick(ev)} })} className="po-elide cal-chip" style={{ touchAction:'none', padding:'1px 4px', borderRadius: T.radius.xs, backgroundColor:CATEGORIES[ev.category].bg, color:CATEGORIES[ev.category].color, cursor:coarse?'inherit':ev._virtual?'pointer':'grab', width:'100%', opacity:ev.status==='paid'?0.4:ev._virtual?0.72:1, textDecoration:ev.status==='paid'?'line-through':'none', fontFamily: T.font.sans, letterSpacing:'0.25px' }}>
+                            <div {...(coarse ? {} : { onPointerDown: !ev._virtual&&drag?drag.onDown(ev.id,ev.title):undefined, role:'button', tabIndex:0, 'aria-label':`Άνοιγμα: ${ev.title}`, onKeyDown:(e:React.KeyboardEvent)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();onEventClick(ev)}}, onClick:(e:React.MouseEvent)=>{e.stopPropagation();onEventClick(ev)} })} title={ev.title} className="cal-chip" style={{ touchAction:'none', padding:'1px 4px', borderRadius: T.radius.xs, backgroundColor:CATEGORIES[ev.category].bg, color:CATEGORIES[ev.category].color, cursor:coarse?'inherit':ev._virtual?'pointer':'grab', width:'100%', opacity:ev.status==='paid'?0.4:ev._virtual?0.72:1, textDecoration:ev.status==='paid'?'line-through':'none', fontFamily: T.font.sans, letterSpacing:'0.25px' }}>
                               {(ev.recurring||ev._virtual)&&<RotateCcw size={9} style={{ marginRight: 4, verticalAlign:'middle', opacity:0.7 }}/>}{ev.event_time?ev.event_time+' ':''}{ev.title}
                             </div>
                           </Tooltip>
@@ -543,7 +550,7 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
               return (
                 <div key={row.kind==='series'?row.key:ev.id} title={`${ev.title}, ${grDate(ev.event_date)}${ev.event_time?` ${ev.event_time}`:''}`} style={{ display:'grid', gridTemplateColumns:'3px minmax(0,1fr) auto', columnGap:12, rowGap:4, alignItems:'baseline' }}>
                   <div style={{ gridRow:'1 / span 3', width:3, borderRadius:3, background:cat.color, alignSelf:'stretch', opacity:0.85 }}/>
-                  <p className="po-elide" style={{ gridColumn:'2 / span 2', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color:'var(--text-primary)', lineHeight:1.35, margin:0, minWidth:0 }}>{ev.title}</p>
+                  <p className="po-elide-lines" style={{ WebkitLineClamp:2, gridColumn:'2 / span 2', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color:'var(--text-primary)', lineHeight:1.35, margin:0, minWidth:0 }}>{ev.title}</p>
                   <span style={{ fontSize:12, fontFamily: T.font.sans, color:soon?'var(--text-primary)':'var(--text-tertiary)', fontWeight:soon?600:400, whiteSpace:'nowrap' }}>{when}</span>
                   <span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--text-tertiary)', whiteSpace:'nowrap' }}>{grDate(ev.event_date)}</span>
                   {(more>0||ev.amount!=null)&&<p style={{ gridColumn:'2 / span 2', fontSize: 'var(--fs-xs)', fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:0 }}>{ev.amount!=null&&<span style={{ color:'var(--text-secondary)', fontVariantNumeric:'tabular-nums' }}>{fe(ev.amount)}</span>}{ev.amount!=null&&more>0?' · ':''}{more>0?[row.kind==='series'?row.cadence:null, more===1?'άλλη 1 φορά':`άλλες ${more} φορές`].filter(Boolean).join(' · '):''}</p>}

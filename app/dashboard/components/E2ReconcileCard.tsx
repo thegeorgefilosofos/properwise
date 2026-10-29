@@ -234,7 +234,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
         <div role="group" aria-label="ΑΦΜ υπόχρεου" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
           {withAfm.map(g => (
             <ChipToggle key={g.afm} on={g.afm === current?.afm} onClick={() => setAfm(g.afm)}>
-              {`ΑΦΜ ${g.afm} · ${g.idx.length === 1 ? '1 ακίνητο' : `${g.idx.length} ακίνητα`}`}
+              {`ΑΦΜ ${g.afm} · ${g.idx.length === 1 ? '1 ακίνητο' : `${g.idx.length} ακίνητα`}`}
             </ChipToggle>
           ))}
         </div>
@@ -255,7 +255,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
         <div style={{ padding: '14px 16px', background: 'var(--bg-elevated)', borderRadius: T.radius.inner }}>
           <p style={{ ...TT.body, fontWeight: 600, margin: 0 }}>Δεν έχει ανέβει ακόμη το προσυμπληρωμένο για το ΑΦΜ {current.afm}.</p>
           <p style={{ ...TT.caption, margin: '4px 0 12px' }}>
-            {`Η εφαρμογή έχει ${result ? fe(result.totalOurs) : fe(0)} σε ${current.idx.length === 1 ? '1 ακίνητο' : `${current.idx.length} ακίνητα`}. Το ανεβάζεις εσύ ή ο λογιστής σου.`}
+            {`Η εφαρμογή έχει ${result ? fe(result.totalOurs) : fe(0)} σε ${current.idx.length === 1 ? '1 ακίνητο' : `${current.idx.length} ακίνητα`}. Το ανεβάζεις εσύ ή ο λογιστής σου.`}
           </p>
           {/* Στα 320 το κουμπί έσπαγε σε δύο γραμμές (234×50). */}
           <Btn variant="primary" onClick={() => setImporting(true)}><FileUp size={15} /><span className="lp-hide-xxs">Ανέβασε το προσυμπληρωμένο</span><span className="lp-only-xxs">Ανέβασε το Ε2</span></Btn>
@@ -323,7 +323,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
 
       {noAfmGroup && current && (
         <p style={{ ...TT.caption, margin: '12px 0 0' }}>
-          {noAfmGroup.idx.length === 1 ? 'Ένα ακίνητο δεν έχει' : `${noAfmGroup.idx.length} ακίνητα δεν έχουν`} ΑΦΜ ιδιοκτήτη και μένουν εκτός σύγκρισης. Όρισέ το στην <EditDetailsLink properties={noAfmGroup.idx.map(i => loaded?.properties[i] ?? {})} onEdit={onEditProperty} />.
+          {noAfmGroup.idx.length === 1 ? 'Ένα ακίνητο δεν έχει' : `${noAfmGroup.idx.length} ακίνητα δεν έχουν`} ΑΦΜ ιδιοκτήτη και μένουν εκτός σύγκρισης. Όρισέ το στην <EditDetailsLink properties={noAfmGroup.idx.map(i => loaded?.properties[i] ?? {})} onEdit={onEditProperty} />.
         </p>
       )}
 

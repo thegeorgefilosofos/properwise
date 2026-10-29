@@ -83,7 +83,9 @@ ok('4 έως 6 ερωτήσεις', FAQ.length >= 4 && FAQ.length <= 6);
 ok('η ερώτηση για το ΙΙΙ απαντά με την πρόταση της σταθεράς', FAQ[0].a.startsWith(spitiMou3Line()));
 ok('η ερώτηση για τα όρια του Τύπου απαντά με την επιφύλαξη', FAQ.some(f => f.a.includes(spitiMou3ReportedCaveat())));
 
-const html = unescape(plain(renderToStaticMarkup(Page())));
+// Το αδιάσπαστο κενό ανάμεσα σε αριθμό και μονάδα («10\u00a0τ.μ.») το βάζει η
+// απόδοση (bindRefs, guard-text-glue)· εδώ ελέγχεται ότι υπάρχει το ΚΕΙΜΕΝΟ.
+const html = unescape(plain(renderToStaticMarkup(Page()))).replace(/\u00a0/g, ' ');
 ok('η σελίδα έχει το πλαίσιο «όχι ακόμη επίσημο»', html.includes('Τι έχει ειπωθεί, όχι ακόμη επίσημο'));
 for (const l of spitiMou3ReportedLines()) ok(`το πλαίσιο έχει: ${l.slice(0, 40)}…`, html.includes(l));
 ok('το πλαίσιο έχει την επιφύλαξη και την πηγή', html.includes(spitiMou3ReportedCaveat()) && html.includes(R.source.url));

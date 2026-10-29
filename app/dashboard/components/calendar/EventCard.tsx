@@ -201,7 +201,7 @@ export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, o
       <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap: 4, flexShrink:0 }}>
         {/* Το βάρος κάνει τη δουλειά που έκανε το χρώμα: εκπρόθεσμο και σημερινό
             διαβάζονται πιο έντονα, τα υπόλοιπα υποχωρούν. */}
-        {/* ΤΟ ΕΚΠΡΟΘΕΣΜΟ ΛΕΓΕΤΑΙ ΜΕ ΤΗ ΛΕΞΗ ΤΟΥ. Εγραφε μόνο «πριν 7 ημέρες»,
+        {/* ΤΟ ΕΚΠΡΟΘΕΣΜΟ ΛΕΓΕΤΑΙ ΜΕ ΤΗ ΛΕΞΗ ΤΟΥ. Εγραφε μόνο «πριν 7 ημέρες»,
             που διαβάζεται και ως απλή ημερομηνία. Η λέξη πάνω, η απόσταση από
             κάτω: σε μία σειρά έκοβε τον τίτλο του γεγονότος στα 390. */}
         {overdue && <span style={{ fontSize:12, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-primary)' }}>Ληξιπρόθεσμο</span>}

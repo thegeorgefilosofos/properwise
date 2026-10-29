@@ -486,7 +486,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
             <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' as const }}>
               {[
                 { label: 'Μερίδιό σου',     value: fe(myFundShare),                              color: 'var(--text-primary)' },
-                { label: 'Απόθεμα (μήνες)', value: `${fundMonths} μήνες`,                         color: fundMonths >= 6 ? 'var(--positive)' : 'var(--warning)' },
+                { label: 'Απόθεμα (μήνες)', value: `${fundMonths} μήνες`,                         color: fundMonths >= 6 ? 'var(--positive)' : 'var(--warning)' },
                 { label: 'Εισφορά / έτος',  value: fe((parseFloat(fundMonthly) || 0) * 12),       color: 'var(--text-primary)' },
               ].map((k, i) => (
                 <div key={i}>

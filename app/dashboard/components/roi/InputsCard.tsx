@@ -65,7 +65,7 @@ export function InputsCard({
               : [
                   `Αξία ${fe(nVal)}`,
                   term === 'short'
-                    ? `${fp(Number(stOcc) || 0)} πληρότητα ${stBasis === 'bookings' ? 'από τις κρατήσεις 12 μηνών' : stBasis === 'area' ? 'αναφοράς περιοχής' : ''}`.trim()
+                    ? `${fp(Number(stOcc) || 0)} πληρότητα ${stBasis === 'bookings' ? 'από τις κρατήσεις 12 μηνών' : stBasis === 'area' ? 'αναφοράς περιοχής' : ''}`.trim()
                     : `${fe(Number(rent) || 0)} τον μήνα`,
                   term === 'short' ? `${fe(Number(stAdr) || 0)} ανά νύχτα` : null,
                   `${fe(Number(opex) || 0)} έξοδα τον χρόνο`,
@@ -96,7 +96,7 @@ export function InputsCard({
       )}
       {showEstValue && (
         <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 'var(--fs-base)', fontFamily: SANS, color: 'var(--text-secondary)' }}>
-          <span>Ενδεικτική εκτίμηση αξίας για την περιοχή{pSqm ? ` (${pSqm} τ.μ.)` : ''}: <strong style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{fe(estValue)}</strong></span>
+          <span>Ενδεικτική εκτίμηση αξίας για την περιοχή{pSqm ? ` (${pSqm} τ.μ.)` : ''}: <strong style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{fe(estValue)}</strong></span>
           <TermInfo term="Ενδεικτική εκτίμηση αξίας" text={`Ενδεικτικός υπολογισμός: μέση τιμή ανά τετραγωνικό μέτρο στην περιοχή, επί τα τ.μ. και τον συντελεστή τύπου του ακινήτου. Δεν υποκαθιστά την αντικειμενική αξία ούτε την εκτίμηση πιστοποιημένου εκτιμητή. Χρησιμοποίησέ την ως αφετηρία και προσάρμοσέ την στην πραγματική κατάσταση, τον όροφο και τη θέση του ακινήτου.`} />
           {/* Ο τόνος accent δεν ταξιδεύει: η όψη ζει στο `.po-btn` και το κουμπί
               είναι δευτερεύουσα ενέργεια, όχι η κύρια της κάρτας. Το ύψος 28
@@ -110,8 +110,8 @@ export function InputsCard({
             <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', fontFamily: SANS }}>Παράμετροι βραχυχρόνιας</span>
             <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: SANS }}>
               {fromBookings && booked
-                ? `· πληρότητα και τιμή από ${fn(booked.nights, 0)} νύχτες των τελευταίων 12 μηνών`
-                : `· προσυμπληρωμένες από τα δεδομένα αναφοράς της περιοχής${pSqm ? `, για ${pSqm} τ.μ.` : ''}`}
+                ? `· πληρότητα και τιμή από ${fn(booked.nights, 0)} νύχτες των τελευταίων 12 μηνών`
+                : `· προσυμπληρωμένες από τα δεδομένα αναφοράς της περιοχής${pSqm ? `, για ${pSqm} τ.μ.` : ''}`}
             </span>
           </div>
           <div {...g4}>

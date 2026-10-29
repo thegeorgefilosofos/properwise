@@ -52,7 +52,7 @@ export default function DemoPreview({ open, onClose, onAddProperty }: {
   return (
     <Modal open={open} onClose={onClose} size="lg"
       title="Παράδειγμα μιας ολόκληρης χρονιάς"
-      subtitle={`${DEMO_PROPERTY.name} · ${DEMO_PROPERTY.sqm} τ.μ. · μακροχρόνια μίσθωση · ${s.year}`}
+      subtitle={`${DEMO_PROPERTY.name} · ${DEMO_PROPERTY.sqm} τ.μ. · μακροχρόνια μίσθωση · ${s.year}`}
       footerInfo="Το παράδειγμα δεν αποθηκεύεται στον λογαριασμό σου."
       footer={<>
         <Btn onClick={onClose}>Κλείσιμο</Btn>
@@ -62,7 +62,7 @@ export default function DemoPreview({ open, onClose, onAddProperty }: {
       {/* ── ΤΑ ΤΡΙΑ ΠΟΣΑ ─────────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: T.sp.lg }}>
         <Stat label="Εισπράχθηκαν" value={fe(s.collected)}
-          sub={`${fe(DEMO_PROPERTY.monthlyRent)} τον μήνα, ${inYear} μήνες μέσα στη χρονιά`} />
+          sub={`${fe(DEMO_PROPERTY.monthlyRent)} τον μήνα, ${inYear} μήνες μέσα στη χρονιά`} />
         <Stat label="Δαπάνες" value={fe(s.expenses)}
           sub={`${ledger.length} κατηγορίες, μαζί με τον ΕΝΦΙΑ`} />
         <Stat label="Στο ταμείο" value={fe(s.statement.netCash)}

@@ -287,7 +287,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 ...(parts.length > 1 ? parts : []),
                 ...(monthlyCost > 0 ? [{ l: 'Τον χρόνο', v: monthlyCost * 12, sub: 'με τον ρυθμό του μήνα' }] : []),
                 ...(monthlyCost > 0 && (propSqm || 0) > 0
-                  ? [{ l: 'Ανά τετραγωνικό', v: monthlyCost / (propSqm as number), sub: `σε ${propSqm} τ.μ. τον μήνα` }] : []),
+                  ? [{ l: 'Ανά τετραγωνικό', v: monthlyCost / (propSqm as number), sub: `σε ${propSqm} τ.μ. τον μήνα` }] : []),
                 ...(prev > 0 ? [{ l: `Λογαριασμοί έναντι ${monthGen(Number(_prevYm.slice(5, 7)) - 1)}`,
                   v: diff, txt: `${diff > 0 ? '+' : diff < 0 ? '−' : ''}${feAuto(Math.abs(diff))}`, sub: `από ${feAuto(prev)}` }] : []),
               ];
@@ -796,7 +796,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                       μέσα του μήνα. Η εφαρμογή δεν βγάζει συμπέρασμα από δεδομένα
                       που δεν έχουν φτάσει. */}
                   {catSpark(cat.key).filter(v => v > 0).length >= 3 && (
-                    <span title="Τάση 12 μηνών"><Sparkline values={catSpark(cat.key)} activeIndex={_sparkYms.indexOf(viewYm)} /></span>
+                    <span title="Τάση 12 μηνών"><Sparkline values={catSpark(cat.key)} activeIndex={_sparkYms.indexOf(viewYm)} /></span>
                   )}
                   {isCurMonth && actual > 0 && tr.avgPrior > 0 && tr.direction !== 'flat' && (
                     <span title={`Μέσος όρος τριμήνου: ${feAuto(tr.avgPrior)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 'var(--fs-xs)', fontWeight: 700, fontFamily: T.font.num, color: 'var(--text-tertiary)' }}>

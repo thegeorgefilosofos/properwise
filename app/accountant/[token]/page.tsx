@@ -225,7 +225,7 @@ export default function AccountantPortal() {
             <PortalTitle
               over="Οικονομική εικόνα ακινήτων"
               title={owner}
-              meta={`Χρήση 01/01/${year} έως 31/12/${year} · ${props.length === 1 ? '1 ακίνητο' : `${props.length} ακίνητα`} · Ημερομηνία έκδοσης ${issued}`}
+              meta={`Χρήση 01/01/${year} έως 31/12/${year} · ${props.length === 1 ? '1 ακίνητο' : `${props.length} ακίνητα`} · Ημερομηνία έκδοσης ${issued}`}
               right={props.length > 0 ? (
                 /* ΤΟ ΑΡΧΕΙΟ ΕΙΝΑΙ ΤΟ ΠΑΡΑΔΟΤΕΟ, ΑΡΑ ΚΑΘΕΤΑΙ ΣΤΗΝ ΤΑΥΤΟΤΗΤΑ ΤΟΥ
                    ΕΓΓΡΑΦΟΥ. Δίπλα στο ποιος και για πότε, όχι στο τέλος της
@@ -306,7 +306,7 @@ export default function AccountantPortal() {
               const ident = [
                 x.p.address,
                 x.p.atak ? `ΑΤΑΚ ${x.p.atak}` : null,
-                Number(x.p.sqm) > 0 ? `${x.p.sqm} τ.μ.` : null,
+                Number(x.p.sqm) > 0 ? `${x.p.sqm} τ.μ.` : null,
                 Number(x.p.ownership) > 0 && Number(x.p.ownership) < 100 ? `συνιδιοκτησία ${x.p.ownership}%` : null,
               ].filter(Boolean).join(' · ');
 

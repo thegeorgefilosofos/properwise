@@ -107,9 +107,9 @@ export function MaintenanceTab({items,schedules,propertyId,userId,onSaved}:{item
       <div style={{display:'grid',gridTemplateColumns:'1fr auto auto auto auto',gap:10,alignItems:'center',padding:'12px 16px',background:'var(--bg-elevated)',borderRadius:T.radius.inner,border:'1px solid var(--border-subtle)'}}>
         <div>
           <p style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)',marginBottom:2}}>{s.task}</p>
-          <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{s.item_name||'Γενική'} · κάθε {s.interval_months} μήνες{(s.est_cost||0)>0?` · περίπου ${fe(s.est_cost||0)}`:''}{s.last_done?` · τελευταία ${fmtDate(s.last_done)}`:''}</p>
+          <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{s.item_name||'Γενική'} · κάθε {s.interval_months} μήνες{(s.est_cost||0)>0?` · περίπου ${fe(s.est_cost||0)}`:''}{s.last_done?` · τελευταία ${fmtDate(s.last_done)}`:''}</p>
         </div>
-        <Badge label={days<0?`${Math.abs(days)===1?'1 ημέρα':`${Math.abs(days)} ημέρες`} καθυστέρηση`:days===0?'Σήμερα':days===1?'Αύριο':`σε ${days} ημέρες`} color={c}/>
+        <Badge label={days<0?`${Math.abs(days)===1?'1 ημέρα':`${Math.abs(days)} ημέρες`} καθυστέρηση`:days===0?'Σήμερα':days===1?'Αύριο':`σε ${days} ημέρες`} color={c}/>
         <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',whiteSpace:'nowrap',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums'}}>{fmtDate(s.next_due)}</span>
         <Btn variant="secondary" onClick={()=>markDone(s)} disabled={doneBusy===s.id} title="Καταγράφει την εκτέλεση, ρολάρει στην επόμενη ημερομηνία και ενημερώνει δαπάνες/ημερολόγιο">{doneBusy===s.id?'…':'Έγινε'}</Btn>
         <OverflowMenu actions={[
@@ -130,7 +130,7 @@ export function MaintenanceTab({items,schedules,propertyId,userId,onSaved}:{item
         {!adding&&<ActionMenu label="Νέα εργασία" items={[
           ...DEFAULT_MAINTENANCE.map((sug,i)=>({
             key:`sug${i}`, label:sug.task,
-            description:`κάθε ${sug.interval_months} μήνες · ${sug.category}`,
+            description:`κάθε ${sug.interval_months} μήνες · ${sug.category}`,
             onClick:()=>addSuggested(sug),
           })),
           {key:'own', label:'Δική μου εργασία', description:'Ορίζεις εσύ τι, κάθε πότε και με τι κόστος.', onClick:()=>setAdding(true)},

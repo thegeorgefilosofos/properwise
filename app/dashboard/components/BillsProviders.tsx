@@ -148,8 +148,8 @@ export const INTERNET_PLANS: Record<string, {
     // 42,90€, «από 2/2/2026»). Το «δεν προσφέρεται πλέον» μένει, γιατί το eshop
     // της 07/09/2026 είναι νεότερο από το PDF· η τιμή μετά τη λήξη αφορά
     // ακριβώς όσους το έχουν ήδη.
-    { id:'c_dp_24',    name: 'Double Play Unlimited 24 (παλαιό)', speed: '24 Mbps', price: 19.90, hasPhone: true,  note: 'ADSL. Δεν προσφέρεται πλέον σε νέες συνδέσεις· μένει για όσους το έχουν ήδη. Μετά τους 24 μήνες 42,90€.', networkType: 'ADSL', contract: '24 μήνες' },
-    { id:'c_dp_50',    name: 'Telekom Double Play Advanced Unlimited', speed: '50 Mbps', price: 22.90, hasPhone: true,  note: '100% οπτική ίνα ως την πρίζα, με εγγύηση καλής εγκατάστασης. Μετά τους 24 μήνες 47,90€.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_dp_24',    name: 'Double Play Unlimited 24 (παλαιό)', speed: '24 Mbps', price: 19.90, hasPhone: true,  note: 'ADSL. Δεν προσφέρεται πλέον σε νέες συνδέσεις· μένει για όσους το έχουν ήδη. Μετά τους 24 μήνες 42,90€.', networkType: 'ADSL', contract: '24 μήνες' },
+    { id:'c_dp_50',    name: 'Telekom Double Play Advanced Unlimited', speed: '50 Mbps', price: 22.90, hasPhone: true,  note: '100% οπτική ίνα ως την πρίζα, με εγγύηση καλής εγκατάστασης. Μετά τους 24 μήνες 47,90€.', networkType: 'Fiber', contract: '24 μήνες' },
     // ═══ ΔΥΟ ΠΑΚΕΤΑ ΜΕ ΤΟ ΙΔΙΟ ΟΝΟΜΑ ΚΑΙ ΤΗΝ ΙΔΙΑ ΤΙΜΗ ══════════════════════
     // ΤΟ 23,71€ ΔΕΝ ΥΠΑΡΧΕΙ ΣΕ ΚΑΝΕΝΑ ΑΠΟ ΤΑ ΔΥΟ PDF ΤΗΣ TELEKOM. Ήταν η τιμή
     // του eshop στις 07/09/2026, με τα 24,90€ διαγραμμένα δίπλα της· έτσι το
@@ -160,26 +160,26 @@ export const INTERNET_PLANS: Record<string, {
     // γραμμή: το ένα είναι 100% οπτική ίνα ως την πρίζα με εγγύηση
     // εγκατάστασης· το άλλο «έως 100 Mbps» με μόνο δωρεάν router. Γι' αυτό
     // το λέει η σημείωση του καθενός: από την τιμή δεν ξεχωρίζουν.
-    { id:'c_f100',     name: 'Telekom Fiber 100 Unlimited', speed: '100 Mbps',  price: 24.90, hasPhone: true,  note: '100% οπτική ίνα ως την πρίζα, με εγγύηση καλής εγκατάστασης. Μετά τους 24 μήνες 52,90€.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f100_vdsl', name: 'Telekom Fiber 100 Unlimited (έως 100)', speed: '100 Mbps', price: 24.90, hasPhone: true, note: 'Έως 100 Mbps, χωρίς εγγύηση εγκατάστασης. Δωρεάν ασύρματο router. Μετά τους 24 μήνες 52,90€.', networkType: 'VDSL', contract: '24 μήνες' },
+    { id:'c_f100',     name: 'Telekom Fiber 100 Unlimited', speed: '100 Mbps',  price: 24.90, hasPhone: true,  note: '100% οπτική ίνα ως την πρίζα, με εγγύηση καλής εγκατάστασης. Μετά τους 24 μήνες 52,90€.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f100_vdsl', name: 'Telekom Fiber 100 Unlimited (έως 100)', speed: '100 Mbps', price: 24.90, hasPhone: true, note: 'Έως 100 Mbps, χωρίς εγγύηση εγκατάστασης. Δωρεάν ασύρματο router. Μετά τους 24 μήνες 52,90€.', networkType: 'VDSL', contract: '24 μήνες' },
     // ΤΟ FIBER 100 XL ΕΛΕΙΠΕ. Ίδιος κατάλογος, ανάγνωση 12/10/2026: 33,90€ και
     // 51,90€ μετά τους 24 μήνες. Τα 500 λεπτά προς κινητά είναι από την
     // ανάγνωση του ίδιου PDF στις 05/10/2026. Ο τύπος γραμμής δεν αναγράφεται
     // στον έλεγχο και δεν συμπληρώνεται εδώ.
-    { id:'c_f100_xl',  name: 'Telekom Fiber 100 XL',        speed: '100 Mbps',  price: 33.90, hasPhone: true,  note: '500 λεπτά προς κινητά. Μετά τους 24 μήνες 51,90€.', contract: '24 μήνες' },
+    { id:'c_f100_xl',  name: 'Telekom Fiber 100 XL',        speed: '100 Mbps',  price: 33.90, hasPhone: true,  note: '500 λεπτά προς κινητά. Μετά τους 24 μήνες 51,90€.', contract: '24 μήνες' },
     // Η ΒΑΘΜΙΔΑ ΤΩΝ 200 ΕΛΕΙΠΕ. Από τον κατάλογο προσφορών οικιακών της Telekom
     // (πρώην Cosmote, cosmote.gr/static/uploads/programmata_prosfores_2_2_2026_out.pdf), ανάγνωση 05/10/2026
     // και ξανά 12/10/2026, ΦΠΑ 24% μέσα. Η τιμή μετά τη λήξη του 24μήνου πάει στη σημείωση.
-    { id:'c_f200',     name: 'Telekom Fiber 200 Unlimited', speed: '200 Mbps',  price: 34.20, hasPhone: true,  note: 'Μόνο οπτική ίνα FTTH. Μετά τους 24 μήνες 64,67€.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f300',     name: 'Telekom Fiber 300 Unlimited', speed: '300 Mbps',  price: 27.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 150 Mbps upload. Με MagentaTV Start δώρο. Μετά τους 24 μήνες 58,00€.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f500',     name: 'Telekom Fiber 500 Unlimited', speed: '500 Mbps',  price: 31.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 250 Mbps upload. Με MagentaTV Start δώρο. Μετά τους 24 μήνες 67,53€.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f1g',      name: 'Telekom Fiber 1Gbps Unlimited', speed: '1 Gbps',  price: 35.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 500 Mbps upload. Με MagentaTV Start δώρο. Μετά τους 24 μήνες 81,81€.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f3g',      name: 'Telekom Fiber 3Gbps Unlimited', speed: '3 Gbps',  price: 70.39, hasPhone: true,  note: 'Οπτική ίνα FTTH, 1.500 Mbps upload. Με MagentaTV Start δώρο. Μετά τους 24 μήνες 105,62€.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f200',     name: 'Telekom Fiber 200 Unlimited', speed: '200 Mbps',  price: 34.20, hasPhone: true,  note: 'Μόνο οπτική ίνα FTTH. Μετά τους 24 μήνες 64,67€.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f300',     name: 'Telekom Fiber 300 Unlimited', speed: '300 Mbps',  price: 27.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 150 Mbps upload. Με MagentaTV Start δώρο. Μετά τους 24 μήνες 58,00€.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f500',     name: 'Telekom Fiber 500 Unlimited', speed: '500 Mbps',  price: 31.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 250 Mbps upload. Με MagentaTV Start δώρο. Μετά τους 24 μήνες 67,53€.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f1g',      name: 'Telekom Fiber 1Gbps Unlimited', speed: '1 Gbps',  price: 35.90, hasPhone: true,  note: 'Οπτική ίνα FTTH, 500 Mbps upload. Με MagentaTV Start δώρο. Μετά τους 24 μήνες 81,81€.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f3g',      name: 'Telekom Fiber 3Gbps Unlimited', speed: '3 Gbps',  price: 70.39, hasPhone: true,  note: 'Οπτική ίνα FTTH, 1.500 Mbps upload. Με MagentaTV Start δώρο. Μετά τους 24 μήνες 105,62€.', networkType: 'Fiber', contract: '24 μήνες' },
     // ΤΟ ΦΟΙΤΗΤΙΚΟ ΤΗΣ TELEKOM ΕΛΕΙΠΕ. Ίδιος κατάλογος, ανάγνωση 12/10/2026:
     // What's Up Student 1000 S, μόνο για φοιτητές, 24,90€ και 71,90€ μετά τους
     // 24 μήνες. Ο τύπος γραμμής δεν αναγράφεται στον έλεγχο. Ούτε η τηλεφωνία:
     // `hasPhone: null`.
-    { id:'c_wus_1g',   name: "Telekom What's Up Student 1000 S", speed: '1 Gbps', price: 24.90, hasPhone: null,  note: 'Μόνο για φοιτητές. Μετά τους 24 μήνες 71,90€.', contract: '24 μήνες', student: true },
+    { id:'c_wus_1g',   name: "Telekom What's Up Student 1000 S", speed: '1 Gbps', price: 24.90, hasPhone: null,  note: 'Μόνο για φοιτητές. Μετά τους 24 μήνες 71,90€.', contract: '24 μήνες', student: true },
     // ── 5G WiFi (Internet backup μέσω 5G) ────────────────────────────────
     // ΔΕΝ ΞΑΝΑΕΠΙΒΕΒΑΙΩΘΗΚΑΝ ΜΕΤΑ ΤΗ ΜΕΤΟΝΟΜΑΣΙΑ. Ο κατάλογος που ελέγχθηκε
     // στις 07/09/2026 ήταν των Double Play οπτικής ίνας· τα ασύρματα ζουν σε
@@ -213,17 +213,17 @@ export const INTERNET_PLANS: Record<string, {
     // (Double Play Advanced με Entry, Cinema ή Full· Fiber 200, 500 και 1G με
     // Full) δεν μπαίνουν για τον ίδιο λόγο. Τα δύο με Netflix δεν υπάρχουν
     // στο PDF.
-    { id:'c_f100_tv',  name: 'Telekom Fiber 100 Unlimited + MagentaTV Full', speed: '100 Mbps',  price: 57.91, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV Full. Μετά τους 24 μήνες 73,83€. Τιμή από τον κατάλογο προσφορών της Telekom (PDF 02/02/2026)· η διάθεση σήμερα δεν επιβεβαιώθηκε (12/10/2026).', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f300_tv',  name: 'Telekom New Fiber 300 + TV Full', speed: '300 Mbps',  price: 61.55, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV Full. Μετά τους 24 μήνες 75,75€. Τιμή από τον κατάλογο προσφορών της Telekom (PDF 02/02/2026), γραμμή με ισχύ από 23/08/2024· η διάθεση σήμερα δεν επιβεβαιώθηκε (12/10/2026).', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f500_tv',  name: 'Fiber 500 + TV + Netflix',    speed: '500 Mbps',  price: 62.06, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV + Netflix. Δωρεάν εξοπλισμός. Τιμή μη επαληθευμένη στον έλεγχο της 12/10/2026.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'c_f1g_tv',   name: 'Fiber 1 Gbps + TV + Netflix', speed: '1 Gbps',    price: 65.30, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV + Netflix. Δωρεάν εξοπλισμός. Τιμή μη επαληθευμένη στον έλεγχο της 12/10/2026.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f100_tv',  name: 'Telekom Fiber 100 Unlimited + MagentaTV Full', speed: '100 Mbps',  price: 57.91, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV Full. Μετά τους 24 μήνες 73,83€. Τιμή από τον κατάλογο προσφορών της Telekom (PDF 02/02/2026)· η διάθεση σήμερα δεν επιβεβαιώθηκε (12/10/2026).', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f300_tv',  name: 'Telekom New Fiber 300 + TV Full', speed: '300 Mbps',  price: 61.55, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV Full. Μετά τους 24 μήνες 75,75€. Τιμή από τον κατάλογο προσφορών της Telekom (PDF 02/02/2026), γραμμή με ισχύ από 23/08/2024· η διάθεση σήμερα δεν επιβεβαιώθηκε (12/10/2026).', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f500_tv',  name: 'Fiber 500 + TV + Netflix',    speed: '500 Mbps',  price: 62.06, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV + Netflix. Δωρεάν εξοπλισμός. Τιμή μη επαληθευμένη στον έλεγχο της 12/10/2026.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'c_f1g_tv',   name: 'Fiber 1 Gbps + TV + Netflix', speed: '1 Gbps',    price: 65.30, hasPhone: true, hasTV: true, note: 'FTTH + MagentaTV + Netflix. Δωρεάν εξοπλισμός. Τιμή μη επαληθευμένη στον έλεγχο της 12/10/2026.', networkType: 'Fiber', contract: '24 μήνες' },
   ],
   nova: [
     // ── Double Play (Σταθερή + Internet) ─────────────────────────────────
     // Ούτε στον έλεγχο της 12/10/2026 δεν εμφανίστηκαν στις σελίδες της Nova:
     // τα ποσά μένουν και η σημείωση λέει ότι δεν επαληθεύτηκαν.
-    { id:'n_24',       name: 'Nova 24 Double Play',         speed: '24 Mbps',   price: 18.90, hasPhone: true,  note: 'ADSL. Απεριόριστα λεπτά σταθερά και κινητά. Τιμή μη επαληθευμένη στον έλεγχο της 12/10/2026.', networkType: 'ADSL', contract: '24 μήνες' },
-    { id:'n_50',       name: 'Nova 50 Double Play',         speed: '50 Mbps',   price: 22.90, hasPhone: true,  note: 'VDSL. Απεριόριστα λεπτά σταθερά και κινητά. Τιμή μη επαληθευμένη στον έλεγχο της 12/10/2026.', networkType: 'VDSL', contract: '24 μήνες' },
+    { id:'n_24',       name: 'Nova 24 Double Play',         speed: '24 Mbps',   price: 18.90, hasPhone: true,  note: 'ADSL. Απεριόριστα λεπτά σταθερά και κινητά. Τιμή μη επαληθευμένη στον έλεγχο της 12/10/2026.', networkType: 'ADSL', contract: '24 μήνες' },
+    { id:'n_50',       name: 'Nova 50 Double Play',         speed: '50 Mbps',   price: 22.90, hasPhone: true,  note: 'VDSL. Απεριόριστα λεπτά σταθερά και κινητά. Τιμή μη επαληθευμένη στον έλεγχο της 12/10/2026.', networkType: 'VDSL', contract: '24 μήνες' },
     // ═══ ΟΙ ΒΑΘΜΙΔΕΣ ΟΠΤΙΚΗΣ ΙΝΑΣ, ΑΠΟ ΤΗ ΣΕΛΙΔΑ ΤΗΣ NOVA (28/09/2026) ═══════
     // Πηγή: https://nova.gr/statheri-tilefonia/programmata/stathero-internet,
     // ανάγνωση ομάδας Grok 28/09/2026 (ops.handoffs a41bd5b2, P1-11). Ίδια
@@ -231,11 +231,11 @@ export const INTERNET_PLANS: Record<string, {
     // Ο κατάλογος έγραφε 24,90 · 27,90 · 32,90 · 37,90 για 100/300/600/1G. Η
     // σελίδα γράφει 21 · 23 · 26 · 31 · 54 για 100/300/500/1G/3G και δεν έχει
     // βαθμίδα 600: ήταν ανύπαρκτο προϊόν, που έβγαινε και φθηνότερο από το 1G.
-    { id:'n_f100',     name: 'Nova Fiber 100',              speed: '100 Mbps',  price: 21.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f300',     name: 'Nova Fiber 300',              speed: '300 Mbps',  price: 23.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά. Τιμή προσφοράς· η σελίδα της Nova γράφει από 26€.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f500',     name: 'Nova Fiber 500',              speed: '500 Mbps',  price: 26.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f1g',      name: 'Nova Fiber 1 Gbps',           speed: '1 Gbps',    price: 31.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f3g',      name: 'Nova Fiber 3 Gbps',           speed: '3 Gbps',    price: 54.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f100',     name: 'Nova Fiber 100',              speed: '100 Mbps',  price: 21.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f300',     name: 'Nova Fiber 300',              speed: '300 Mbps',  price: 23.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά. Τιμή προσφοράς· η σελίδα της Nova γράφει από 26€.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f500',     name: 'Nova Fiber 500',              speed: '500 Mbps',  price: 26.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f1g',      name: 'Nova Fiber 1 Gbps',           speed: '1 Gbps',    price: 31.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f3g',      name: 'Nova Fiber 3 Gbps',           speed: '3 Gbps',    price: 54.00, hasPhone: true,  note: 'Οπτική ίνα FTTH. Απεριόριστα λεπτά.', networkType: 'Fiber', contract: '24 μήνες' },
     // ── Triple Play (Σταθερή + Internet + EON) ───────────────────────────
     // ΕΠΑΛΗΘΕΥΜΕΝΑ 05/10/2026 ΚΑΙ ΞΑΝΑ 12/10/2026 από
     // https://nova.gr/eon-tv/programmata/eon-me-statheri:
@@ -245,35 +245,35 @@ export const INTERNET_PLANS: Record<string, {
     // μένουν (αποθηκεύονται) και δείχνουν τώρα το EON+, το πακέτο με τα
     // αθλητικά που περιέγραφαν. Πρόσθετα της ίδιας σελίδας (05/10/2026): EON
     // Extra +2,73€, διεθνείς κλήσεις +7,00€ τον μήνα.
-    { id:'n_f100_eon', name: 'Nova Fiber 100 EON',          speed: '100/10 Mbps', price: 27.00, hasPhone: true, hasTV: true, note: 'FTTH + EON, 89 κανάλια (65 HD). Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f300_eon', name: 'Nova Fiber 300 EON',          speed: '300/150 Mbps', price: 29.00, hasPhone: true, hasTV: true, note: 'FTTH + EON, 89 κανάλια (65 HD). Χωρίς Smart Box. Τιμή προσφοράς· η σελίδα γράφει από 32€.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f500_eon', name: 'Nova Fiber 500 EON',          speed: '500/250 Mbps', price: 32.00, hasPhone: true, hasTV: true, note: 'FTTH + EON, 89 κανάλια (65 HD). Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f1g_eon',  name: 'Nova Fiber 1 Gbps EON',       speed: '1 Gbps/500 Mbps', price: 37.00, hasPhone: true, hasTV: true, note: 'FTTH + EON, 89 κανάλια (65 HD). Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f3g_eon',  name: 'Nova Fiber 3 Gbps EON',       speed: '3 Gbps/1,5 Gbps', price: 60.00, hasPhone: true, hasTV: true, note: 'FTTH + EON, 89 κανάλια (65 HD). Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f100_tv',  name: 'Nova Fiber 100 EON+',         speed: '100/10 Mbps', price: 40.00, hasPhone: true, hasTV: true, note: 'FTTH + EON+, 117 κανάλια (92 HD) με Novasports. Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f300_tv',  name: 'Nova Fiber 300 EON+',         speed: '300/150 Mbps', price: 42.00, hasPhone: true, hasTV: true, note: 'FTTH + EON+, 117 κανάλια (92 HD) με Novasports. Χωρίς Smart Box. Τιμή προσφοράς· η σελίδα γράφει από 45€.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f500_eonp', name: 'Nova Fiber 500 EON+',        speed: '500/250 Mbps', price: 45.00, hasPhone: true, hasTV: true, note: 'FTTH + EON+, 117 κανάλια (92 HD) με Novasports. Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f1g_tv',   name: 'Nova Fiber 1 Gbps EON+',      speed: '1 Gbps/500 Mbps', price: 50.00, hasPhone: true, hasTV: true, note: 'FTTH + EON+, 117 κανάλια (92 HD) με Novasports. Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'n_f3g_eonp', name: 'Nova Fiber 3 Gbps EON+',      speed: '3 Gbps/1,5 Gbps', price: 73.00, hasPhone: true, hasTV: true, note: 'FTTH + EON+, 117 κανάλια (92 HD) με Novasports. Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f100_eon', name: 'Nova Fiber 100 EON',          speed: '100/10 Mbps', price: 27.00, hasPhone: true, hasTV: true, note: 'FTTH + EON, 89 κανάλια (65 HD). Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f300_eon', name: 'Nova Fiber 300 EON',          speed: '300/150 Mbps', price: 29.00, hasPhone: true, hasTV: true, note: 'FTTH + EON, 89 κανάλια (65 HD). Χωρίς Smart Box. Τιμή προσφοράς· η σελίδα γράφει από 32€.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f500_eon', name: 'Nova Fiber 500 EON',          speed: '500/250 Mbps', price: 32.00, hasPhone: true, hasTV: true, note: 'FTTH + EON, 89 κανάλια (65 HD). Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f1g_eon',  name: 'Nova Fiber 1 Gbps EON',       speed: '1 Gbps/500 Mbps', price: 37.00, hasPhone: true, hasTV: true, note: 'FTTH + EON, 89 κανάλια (65 HD). Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f3g_eon',  name: 'Nova Fiber 3 Gbps EON',       speed: '3 Gbps/1,5 Gbps', price: 60.00, hasPhone: true, hasTV: true, note: 'FTTH + EON, 89 κανάλια (65 HD). Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f100_tv',  name: 'Nova Fiber 100 EON+',         speed: '100/10 Mbps', price: 40.00, hasPhone: true, hasTV: true, note: 'FTTH + EON+, 117 κανάλια (92 HD) με Novasports. Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f300_tv',  name: 'Nova Fiber 300 EON+',         speed: '300/150 Mbps', price: 42.00, hasPhone: true, hasTV: true, note: 'FTTH + EON+, 117 κανάλια (92 HD) με Novasports. Χωρίς Smart Box. Τιμή προσφοράς· η σελίδα γράφει από 45€.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f500_eonp', name: 'Nova Fiber 500 EON+',        speed: '500/250 Mbps', price: 45.00, hasPhone: true, hasTV: true, note: 'FTTH + EON+, 117 κανάλια (92 HD) με Novasports. Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f1g_tv',   name: 'Nova Fiber 1 Gbps EON+',      speed: '1 Gbps/500 Mbps', price: 50.00, hasPhone: true, hasTV: true, note: 'FTTH + EON+, 117 κανάλια (92 HD) με Novasports. Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'n_f3g_eonp', name: 'Nova Fiber 3 Gbps EON+',      speed: '3 Gbps/1,5 Gbps', price: 73.00, hasPhone: true, hasTV: true, note: 'FTTH + EON+, 117 κανάλια (92 HD) με Novasports. Χωρίς Smart Box.', networkType: 'Fiber', contract: '24 μήνες' },
   ],
   vodafone: [
     // ── Double Play (Σταθερή + Internet) ─────────────────────────────────
-    { id:'v_24',       name: 'Vodafone 24',                 speed: '24 Mbps',   price: 21.00, hasPhone: true,  note: 'ADSL. Απεριόριστα σταθερά, 300 λεπτά κινητά. Η σελίδα της Vodafone δεν δείχνει τιμή (05/10/2026): μη επαληθευμένη.', networkType: 'ADSL', contract: '24 μήνες' },
-    { id:'v_50',       name: 'Vodafone 50',                 speed: '50 Mbps',   price: 24.00, hasPhone: true,  note: 'VDSL. Απεριόριστα σταθερά, 300 λεπτά κινητά. Η σελίδα της Vodafone δεν δείχνει τιμή (05/10/2026): μη επαληθευμένη.', networkType: 'VDSL', contract: '24 μήνες' },
+    { id:'v_24',       name: 'Vodafone 24',                 speed: '24 Mbps',   price: 21.00, hasPhone: true,  note: 'ADSL. Απεριόριστα σταθερά, 300 λεπτά κινητά. Η σελίδα της Vodafone δεν δείχνει τιμή (05/10/2026): μη επαληθευμένη.', networkType: 'ADSL', contract: '24 μήνες' },
+    { id:'v_50',       name: 'Vodafone 50',                 speed: '50 Mbps',   price: 24.00, hasPhone: true,  note: 'VDSL. Απεριόριστα σταθερά, 300 λεπτά κινητά. Η σελίδα της Vodafone δεν δείχνει τιμή (05/10/2026): μη επαληθευμένη.', networkType: 'VDSL', contract: '24 μήνες' },
     // ΤΟ FIBER 100 ΧΩΡΙΣ ΤΗΛΕΟΡΑΣΗ ΕΛΕΙΠΕ. Από https://www.vodafone.gr/statheri-internet-programmata,
     // ανάγνωση 05/10/2026. Η ημερομηνία μπαίνει και στη σημείωση: η Vodafone
     // έχει ημερομηνία ελέγχου 04/10/2026 από άλλη σελίδα (fiber-to-the-home) και
     // χωρίς αυτήν η γραμμή θα φαινόταν να την καλύπτει. Το ίδιο για τις τρεις
     // γραμμές με τηλεόραση πιο κάτω.
-    { id:'v_f100',     name: 'Fiber 100',                   speed: '100 Mbps',  price: 26.00, hasPhone: true,  note: 'Εγγυημένη ταχύτητα 93 Mbps. Απεριόριστα σταθερά, 360 λεπτά προς κινητά και διεθνή 45 χωρών. Τέλος ενεργοποίησης 6,00€ εφάπαξ. Από τη σελίδα προγραμμάτων της Vodafone, ανάγνωση 05/10/2026.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'v_f100',     name: 'Fiber 100',                   speed: '100 Mbps',  price: 26.00, hasPhone: true,  note: 'Εγγυημένη ταχύτητα 93 Mbps. Απεριόριστα σταθερά, 360 λεπτά προς κινητά και διεθνή 45 χωρών. Τέλος ενεργοποίησης 6,00€ εφάπαξ. Από τη σελίδα προγραμμάτων της Vodafone, ανάγνωση 05/10/2026.', networkType: 'Fiber', contract: '24 μήνες' },
     // Πηγή: https://www.vodafone.gr/statheri-internet-programmata/fiber-to-the-home
     // (04/10/2026, ανάγνωση της ομάδας Grok, οδηγία ιδιοκτήτη). Τιμή χωρίς
     // κινητή Vodafone στο `price` (χωρίς όρο), με κινητή στη σημείωση. Πριν:
     // 35,00 / 42,00 / 49,00. ΟΧΙ ο τιμοκατάλογος Μαρτίου 2026 (52,38 / 57,14 /
     // 66,67): εκείνα είναι άλλα προϊόντα (Homedouble play FTTH Pro).
-    { id:'v_ff300',    name: 'Full Fiber 300 Plus',         speed: '300 Mbps',  price: 24.22, hasPhone: true,  note: 'Οπτική ίνα FTTH. Με συμβόλαιο κινητής Vodafone 22,80€/μήνα. ΦΠΑ 24% μέσα. Η σελίδα γράφει ότι οι προσφορές ισχύουν για νέους πελάτες με 24μηνο συμβόλαιο και ότι για αιτήσεις από 01/05/26 η τιμή προσφοράς ισχύει τους 12 πρώτους μήνες, με αναπροσαρμογή του παγίου έως 3€ από τον 13ο.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'v_ff500',    name: 'Full Fiber 500 Plus',         speed: '500 Mbps',  price: 28.35, hasPhone: true,  note: 'Οπτική ίνα FTTH. Με συμβόλαιο κινητής Vodafone 26,90€/μήνα. ΦΠΑ 24% μέσα. Η σελίδα γράφει ότι οι προσφορές ισχύουν για νέους πελάτες με 24μηνο συμβόλαιο και ότι για αιτήσεις από 01/05/26 η τιμή προσφοράς ισχύει τους 12 πρώτους μήνες, με αναπροσαρμογή του παγίου έως 3€ από τον 13ο.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'v_ff1g',     name: 'Full Fiber 1 Gbps Plus',      speed: '1 Gbps',    price: 31.33, hasPhone: true,  note: 'Οπτική ίνα FTTH. Με συμβόλαιο κινητής Vodafone 29,90€/μήνα. ΦΠΑ 24% μέσα. Η σελίδα γράφει ότι οι προσφορές ισχύουν για νέους πελάτες με 24μηνο συμβόλαιο και ότι για αιτήσεις από 01/05/26 η τιμή προσφοράς ισχύει τους 12 πρώτους μήνες, με αναπροσαρμογή του παγίου έως 3€ από τον 13ο.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'v_ff300',    name: 'Full Fiber 300 Plus',         speed: '300 Mbps',  price: 24.22, hasPhone: true,  note: 'Οπτική ίνα FTTH. Με συμβόλαιο κινητής Vodafone 22,80€/μήνα. ΦΠΑ 24% μέσα. Η σελίδα γράφει ότι οι προσφορές ισχύουν για νέους πελάτες με 24μηνο συμβόλαιο και ότι για αιτήσεις από 01/05/26 η τιμή προσφοράς ισχύει τους 12 πρώτους μήνες, με αναπροσαρμογή του παγίου έως 3€ από τον 13ο.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'v_ff500',    name: 'Full Fiber 500 Plus',         speed: '500 Mbps',  price: 28.35, hasPhone: true,  note: 'Οπτική ίνα FTTH. Με συμβόλαιο κινητής Vodafone 26,90€/μήνα. ΦΠΑ 24% μέσα. Η σελίδα γράφει ότι οι προσφορές ισχύουν για νέους πελάτες με 24μηνο συμβόλαιο και ότι για αιτήσεις από 01/05/26 η τιμή προσφοράς ισχύει τους 12 πρώτους μήνες, με αναπροσαρμογή του παγίου έως 3€ από τον 13ο.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'v_ff1g',     name: 'Full Fiber 1 Gbps Plus',      speed: '1 Gbps',    price: 31.33, hasPhone: true,  note: 'Οπτική ίνα FTTH. Με συμβόλαιο κινητής Vodafone 29,90€/μήνα. ΦΠΑ 24% μέσα. Η σελίδα γράφει ότι οι προσφορές ισχύουν για νέους πελάτες με 24μηνο συμβόλαιο και ότι για αιτήσεις από 01/05/26 η τιμή προσφοράς ισχύει τους 12 πρώτους μήνες, με αναπροσαρμογή του παγίου έως 3€ από τον 13ο.', networkType: 'Fiber', contract: '24 μήνες' },
     // ── Triple Play (+ Vodafone TV) ───────────────────────────────────────
     // ΤΑ ΔΥΟ ΠΡΩΤΑ ΕΙΝΑΙ ΟΣΑ ΔΕΙΧΝΕΙ ΣΗΜΕΡΑ Η ΣΕΛΙΔΑ vodafone.gr/tv, δίπλα στο
     // σκέτο Vodafone TV Start. Γράφονται με την τιμή εκκίνησης που δηλώνει η
@@ -286,16 +286,16 @@ export const INTERNET_PLANS: Record<string, {
     // φαινόταν να την καλύπτει η ημερομηνία της Vodafone (04/10/2026), που είναι
     // μόνο της σελίδας fiber-to-the-home. Η σημείωση το λέει και το
     // `planCaveat` βάζει ένδειξη.
-    { id:'v_f100_tv',  name: 'Fiber 100 με Vodafone TV',     speed: '100 Mbps', price: 33.90, hasPhone: true, hasTV: true, note: 'Τιμή εκκίνησης. Εγγυημένη ταχύτητα 93 Mbps, απεριόριστα σταθερά και 360 λεπτά κινητά. HBO Max και Viaplay. Τέλος ενεργοποίησης 6,00€ εφάπαξ. Από τη σελίδα τηλεόρασης της Vodafone, χωρίς ημερομηνία ανάγνωσης.', networkType: 'Fiber' },
+    { id:'v_f100_tv',  name: 'Fiber 100 με Vodafone TV',     speed: '100 Mbps', price: 33.90, hasPhone: true, hasTV: true, note: 'Τιμή εκκίνησης. Εγγυημένη ταχύτητα 93 Mbps, απεριόριστα σταθερά και 360 λεπτά κινητά. HBO Max και Viaplay. Τέλος ενεργοποίησης 6,00€ εφάπαξ. Από τη σελίδα τηλεόρασης της Vodafone, χωρίς ημερομηνία ανάγνωσης.', networkType: 'Fiber' },
     { id:'v_ff300p_tv', name: 'Full Fiber 300 Plus με Vodafone TV Plus', speed: '300 Mbps', price: 37.00, hasPhone: true, hasTV: true, note: 'Τιμή εκκίνησης. Εγγυημένη ταχύτητα 100%, router Wi-Fi 6, απεριόριστα σταθερά και κινητά. HBO Max, Disney+ και Viaplay. Τέλος ενεργοποίησης 6,00€ εφάπαξ. Από τη σελίδα τηλεόρασης της Vodafone, χωρίς ημερομηνία ανάγνωσης.', networkType: 'Fiber' },
     // ΟΙ ΤΡΕΙΣ ΠΑΛΙΕΣ ΓΡΑΜΜΕΣ ΕΓΡΑΦΑΝ 44 · 51 · 58€ ΧΩΡΙΣ ΠΗΓΗ. Η σελίδα
     // προγραμμάτων της Vodafone (ανάγνωση 05/10/2026) δείχνει Full Fiber 300 Plus
     // με Vodafone TV 32,00€ και Full Fiber 500 Plus με Vodafone TV Plus 46,40€. Το
     // 1 Gbps με τηλεόραση δεν εμφανίζεται εκεί και το λέει η σημείωσή του.
-    { id:'v_f100_tvs', name: 'Fiber 100 με Vodafone TV Start', speed: '100 Mbps', price: 29.90, hasPhone: true, hasTV: true, note: 'Εγγυημένη ταχύτητα 93 Mbps + Vodafone TV Start. Τέλος ενεργοποίησης 6,00€ εφάπαξ. Από τη σελίδα προγραμμάτων της Vodafone, ανάγνωση 05/10/2026.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'v_ff300_tv', name: 'Full Fiber 300 Plus με Vodafone TV', speed: '300 Mbps', price: 32.00, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV χωρίς αποκωδικοποιητή· αποκωδικοποιητής προαιρετικά +3,00€ τον μήνα. Τέλος ενεργοποίησης 6,00€ εφάπαξ. Από τη σελίδα προγραμμάτων της Vodafone, ανάγνωση 05/10/2026.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'v_ff500_tv', name: 'Full Fiber 500 Plus με Vodafone TV Plus', speed: '500 Mbps', price: 46.40, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV Plus. Τέλος ενεργοποίησης 6,00€ εφάπαξ. Από τη σελίδα προγραμμάτων της Vodafone, ανάγνωση 05/10/2026.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'v_ff1g_tv',  name: 'Full Fiber 1 Gbps + TV',       speed: '1 Gbps',   price: 58.00, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV + αποκωδικοποιητής +2,50€. Τιμή μη επαληθευμένη στον έλεγχο της 05/10/2026.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'v_f100_tvs', name: 'Fiber 100 με Vodafone TV Start', speed: '100 Mbps', price: 29.90, hasPhone: true, hasTV: true, note: 'Εγγυημένη ταχύτητα 93 Mbps + Vodafone TV Start. Τέλος ενεργοποίησης 6,00€ εφάπαξ. Από τη σελίδα προγραμμάτων της Vodafone, ανάγνωση 05/10/2026.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'v_ff300_tv', name: 'Full Fiber 300 Plus με Vodafone TV', speed: '300 Mbps', price: 32.00, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV χωρίς αποκωδικοποιητή· αποκωδικοποιητής προαιρετικά +3,00€ τον μήνα. Τέλος ενεργοποίησης 6,00€ εφάπαξ. Από τη σελίδα προγραμμάτων της Vodafone, ανάγνωση 05/10/2026.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'v_ff500_tv', name: 'Full Fiber 500 Plus με Vodafone TV Plus', speed: '500 Mbps', price: 46.40, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV Plus. Τέλος ενεργοποίησης 6,00€ εφάπαξ. Από τη σελίδα προγραμμάτων της Vodafone, ανάγνωση 05/10/2026.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'v_ff1g_tv',  name: 'Full Fiber 1 Gbps + TV',       speed: '1 Gbps',   price: 58.00, hasPhone: true, hasTV: true, note: 'FTTH + Vodafone TV + αποκωδικοποιητής +2,50€. Τιμή μη επαληθευμένη στον έλεγχο της 05/10/2026.', networkType: 'Fiber', contract: '24 μήνες' },
   ],
   dei: [
     // ΤΟ «ΦΘΗΝΟΤΕΡΟ FIBER ΣΤΗΝ ΑΓΟΡΑ» ΔΕΝ ΕΙΧΕ ΠΗΓΗ (12/10/2026). Ο χάρτης αγοράς
@@ -303,10 +303,10 @@ export const INTERNET_PLANS: Record<string, {
     // δεν έχει ημερομηνία ελέγχου στο lib/facts/prices. Ούτε ο ίδιος ο πίνακας
     // το στηρίζει: το φοιτητικό 300 της Inalan (i_300_st) είναι φθηνότερο. Η
     // σημείωση γράφει μόνο τι είναι η γραμμή, όπως του dei_f1g.
-    { id:'dei_f500',   name: 'ΔΕΗ Fiber 500',              speed: '500 Mbps',  price: 17.90, hasPhone: false, note: 'Οπτική ίνα. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'dei_f1g',    name: 'ΔΕΗ Fiber 1 Gbps',           speed: '1 Gbps',    price: 24.90, hasPhone: false, note: 'Οπτική ίνα. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'dei_f25g',   name: 'ΔΕΗ Fiber 2.5 Gbps',         speed: '2.5 Gbps',  price: 52.90, hasPhone: false, note: 'Ultra broadband. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'dei_f500_v', name: 'ΔΕΗ Fiber 500 + Φωνή',       speed: '500 Mbps',  price: 21.90, hasPhone: true,  note: 'Fiber + τηλεφωνία (+4€). Απεριόριστα λεπτά σταθερά.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'dei_f500',   name: 'ΔΕΗ Fiber 500',              speed: '500 Mbps',  price: 17.90, hasPhone: false, note: 'Οπτική ίνα. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'dei_f1g',    name: 'ΔΕΗ Fiber 1 Gbps',           speed: '1 Gbps',    price: 24.90, hasPhone: false, note: 'Οπτική ίνα. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'dei_f25g',   name: 'ΔΕΗ Fiber 2.5 Gbps',         speed: '2.5 Gbps',  price: 52.90, hasPhone: false, note: 'Ultra broadband. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'dei_f500_v', name: 'ΔΕΗ Fiber 500 + Φωνή',       speed: '500 Mbps',  price: 21.90, hasPhone: true,  note: 'Fiber + τηλεφωνία (+4€). Απεριόριστα λεπτά σταθερά.', networkType: 'Fiber', contract: '24 μήνες' },
   ],
   inalan: [
     // ═══ ΑΠΟ ΤΗ ΣΕΛΙΔΑ ΤΗΣ INALAN (12/10/2026) ══════════════════════════════
@@ -321,10 +321,10 @@ export const INTERNET_PLANS: Record<string, {
     // σημείωσή τους. Η «Επετειακή» των 12€ ίσχυε έως 10/10/2026 και το «Πρώτος
     // στο κτίριο −50%» έχει όρους ανά κτίριο: κανένα δεν μπαίνει ως πρόγραμμα.
     // ── Οικιακά (με σύμβαση 24 μηνών) ────────────────────────────────────
-    { id:'i_300_24',   name: 'Fiber 300 (24 μήνες)',        speed: '300/300 Mbps συμμετρικό', price: 28.00, hasPhone: false, note: 'Χωρίς τηλεφωνία. Δωρεάν εξοπλισμός. Η σελίδα της Inalan δεν δείχνει αυτό το πρόγραμμα (12/10/2026): τιμή μη επαληθευμένη.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'i_300_ph',   name: 'Fiber 300 + Τηλεφωνία',      speed: '300/300 Mbps + τηλεφωνία', price: 28.00, hasPhone: true,  note: 'Απεριόριστα λεπτά εντός Ευρωπαϊκής Ένωσης.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'i_1g_24',    name: 'Fiber 1 Gbps (24 μήνες)',     speed: '1 Gbps/1 Gbps συμμετρικό', price: 38.00, hasPhone: false, note: 'Οπτική ίνα ως το σπίτι (FTTH). Δωρεάν εξοπλισμός. Η σελίδα της Inalan δεν δείχνει αυτό το πρόγραμμα (12/10/2026): τιμή μη επαληθευμένη.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'i_1g_ph',    name: 'Fiber 1 Gbps + Τηλεφωνία',   speed: '1 Gbps + τηλεφωνία', price: 34.00, hasPhone: true, note: 'Απεριόριστα λεπτά + 300 λεπτά σε ΕΕ/ΗΠΑ/Καναδά.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'i_300_24',   name: 'Fiber 300 (24 μήνες)',        speed: '300/300 Mbps συμμετρικό', price: 28.00, hasPhone: false, note: 'Χωρίς τηλεφωνία. Δωρεάν εξοπλισμός. Η σελίδα της Inalan δεν δείχνει αυτό το πρόγραμμα (12/10/2026): τιμή μη επαληθευμένη.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'i_300_ph',   name: 'Fiber 300 + Τηλεφωνία',      speed: '300/300 Mbps + τηλεφωνία', price: 28.00, hasPhone: true,  note: 'Απεριόριστα λεπτά εντός Ευρωπαϊκής Ένωσης.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'i_1g_24',    name: 'Fiber 1 Gbps (24 μήνες)',     speed: '1 Gbps/1 Gbps συμμετρικό', price: 38.00, hasPhone: false, note: 'Οπτική ίνα ως το σπίτι (FTTH). Δωρεάν εξοπλισμός. Η σελίδα της Inalan δεν δείχνει αυτό το πρόγραμμα (12/10/2026): τιμή μη επαληθευμένη.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'i_1g_ph',    name: 'Fiber 1 Gbps + Τηλεφωνία',   speed: '1 Gbps + τηλεφωνία', price: 34.00, hasPhone: true, note: 'Απεριόριστα λεπτά + 300 λεπτά σε ΕΕ/ΗΠΑ/Καναδά.', networkType: 'Fiber', contract: '24 μήνες' },
     // ── Αδέσμευτα, προπληρωμένα ──────────────────────────────────────────
     { id:'i_300_free', name: 'Fiber Prepaid 300',           speed: '300/300 Mbps', price: 28.00, hasPhone: false, note: 'Προπληρωμένο, χωρίς δέσμευση.', networkType: 'Fiber' },
     { id:'i_1g_free',  name: 'Fiber Prepaid 1G',            speed: '1 Gbps/1 Gbps', price: 34.00, hasPhone: false, note: 'Προπληρωμένο, χωρίς δέσμευση.', networkType: 'Fiber' },
@@ -333,8 +333,8 @@ export const INTERNET_PLANS: Record<string, {
     { id:'i_1g_st',    name: 'Φοιτητικό 1 Gbps',           speed: '1 Gbps/1 Gbps συμμετρικό', price: 28.00, hasPhone: false, note: 'Φοιτητικό, χωρίς δέσμευση. Απαιτείται φοιτητική ταυτότητα ή ΑΜΚΑ.', networkType: 'Fiber', student: true },
   ],
   hol: [
-    { id:'h_100',      name: 'HOL Fiber 100',               speed: '100/50 Mbps', price: 19.90, hasPhone: true, note: 'Δέσμευση 24 μηνών.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'h_500',      name: 'HOL Fiber 500',               speed: '500/200 Mbps',price: 24.90, hasPhone: true, note: 'Δέσμευση 24 μηνών.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'h_100',      name: 'HOL Fiber 100',               speed: '100/50 Mbps', price: 19.90, hasPhone: true, note: 'Δέσμευση 24 μηνών.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'h_500',      name: 'HOL Fiber 500',               speed: '500/200 Mbps',price: 24.90, hasPhone: true, note: 'Δέσμευση 24 μηνών.', networkType: 'Fiber', contract: '24 μήνες' },
   ],
 
 };
@@ -422,7 +422,7 @@ const SECURITY_COMPANIES = [
 // μένει μέχρι να μπει πηγή με ημερομηνία.
 const BENCHMARKS = {
   internet: { avg: 22.50, label: 'Μέσος όρος Ελλάδας, εκτίμηση'              },
-  water:    { avg: 12.00, label: 'Μέσος όρος Αττικής, ~24€ / 2 μήνες, εκτίμηση' },
+  water:    { avg: 12.00, label: 'Μέσος όρος Αττικής, ~24€ / 2 μήνες, εκτίμηση' },
   heating:  { avg: 70.00, label: 'Μέσος όρος χειμώνα, εκτίμηση'               },
   security: { avg: 18.00, label: 'Μέσος όρος αγοράς, εκτίμηση'                },
 };
@@ -669,7 +669,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: days <= 14 ? 'var(--negative)' : 'var(--warning)', flexShrink: 0 }}/>
                 <span style={{ color: 'var(--text-secondary)' }}>
                   Λήξη συμβολαίου Internet σε{' '}
-                  <strong style={{ color: days <= 14 ? 'var(--negative)' : 'var(--warning)' }}>{days} ημέρες</strong>
+                  <strong style={{ color: days <= 14 ? 'var(--negative)' : 'var(--warning)' }}>{days} ημέρες</strong>
                   {'. '}Σύγκρινε στο ΕΕΤΤ 360° για καλύτερη τιμή.
                 </span>
               </div>
@@ -692,7 +692,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                   </div>
                 ))}
               </div>
-              <TextInput label="Σημειώσεις πακέτου" value={s.phoneNotes} onChange={v => upd({ phoneNotes: v })} placeholder="100 λεπτά διεθνή, αποκλείονται premium…"/>
+              <TextInput label="Σημειώσεις πακέτου" value={s.phoneNotes} onChange={v => upd({ phoneNotes: v })} placeholder="100 λεπτά διεθνή, αποκλείονται premium…"/>
             </div>
           )}
 

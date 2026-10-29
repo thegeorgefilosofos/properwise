@@ -234,7 +234,7 @@ export function SavedLoans({ savedLoans, exportSavedLoans, deleteLoan }: Pick<Lo
                 <Bar pct={prog.percentRepaid} label="Ποσοστό αποπληρωμής" track="var(--bg-elevated)" style={{borderRadius: T.radius.pill,border:'1px solid var(--border-subtle)'}}/>
                 <div className="po-stack-sm" style={{display:'flex',justifyContent:'space-between',gap:12,marginTop:6}}>
                   <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily:T.font.sans}}>
-                    Εξοφλήθηκε {fp(prog.percentRepaid)} του κεφαλαίου σε {prog.paidMonths} από {prog.totalMonths} δόσεις, με {fe(prog.interestPaid)} τόκους ως τώρα
+                    Εξοφλήθηκε {fp(prog.percentRepaid)} του κεφαλαίου σε {prog.paidMonths} από {prog.totalMonths} δόσεις, με {fe(prog.interestPaid)} τόκους ως τώρα
                   </span>
                   {prog.endDate&&<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,whiteSpace:'nowrap'}}>Λήξη {fdLong(prog.endDate)}</span>}
                 </div>
@@ -256,8 +256,8 @@ export function SavedLoans({ savedLoans, exportSavedLoans, deleteLoan }: Pick<Lo
                 ΤΙ ΕΦΥΓΕ ΑΠΟ ΤΗ ΓΡΑΜΜΗ. Είχε πέντε στοιχεία και τα δύο γράφονταν
                 ήδη πιο πάνω: το «Αρχικό ποσό 120.000,00€» κάθεται δύο εκατοστά
                 ψηλότερα ως «από 120.000,00€», ακριβώς κάτω από το υπόλοιπο, όπου
-                έχει και νόημα· και η «Διάρκεια 25 έτη» γράφεται από τη μπάρα ως
-                «σε 53 από 300 δόσεις», με τη λήξη σε ημερομηνία δίπλα της.
+                έχει και νόημα· και η «Διάρκεια 25 έτη» γράφεται από τη μπάρα ως
+                «σε 53 από 300 δόσεις», με τη λήξη σε ημερομηνία δίπλα της.
                 Τριακόσιες δόσεις ΕΙΝΑΙ εικοσιπέντε έτη.
 
                 ΤΙ ΗΡΘΕ ΜΕΣΑ ΤΗΣ. Οι δύο τόκοι ήταν πλακίδια `KPI` σε δύο στήλες:

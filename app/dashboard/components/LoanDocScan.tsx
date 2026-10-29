@@ -366,9 +366,9 @@ export default function LoanDocScan({ banks, euribor, defaultPropertyValue, onAp
   const chips: { k: string; v: string }[] = ex ? [
     ex.loan_amount ? { k: 'Ποσό δανείου', v: fmtEur(ex.loan_amount) } : null,
     ex.property_value ? { k: 'Αξία ακινήτου', v: fmtEur(ex.property_value) } : null,
-    ex.years ? { k: 'Διάρκεια', v: `${ex.years} έτη` } : null,
+    ex.years ? { k: 'Διάρκεια', v: `${ex.years} έτη` } : null,
     ex.income_annual ? { k: 'Εισόδημα (έτος)', v: fmtEur(ex.income_annual) } : null,
-    ex.age ? { k: 'Ηλικία', v: `${ex.age} ετών` } : null,
+    ex.age ? { k: 'Ηλικία', v: `${ex.age} ετών` } : null,
     ex.children != null ? { k: 'Τέκνα', v: String(ex.children) } : null,
     ex.first_home ? { k: 'Κατοικία', v: 'Πρώτη κατοικία' } : null,
     ex.energy_class ? { k: 'Ενεργειακή κλάση', v: ex.energy_class } : null,

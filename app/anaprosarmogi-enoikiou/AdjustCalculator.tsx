@@ -215,7 +215,7 @@ export function AdjustCalculator({ today, cta }: {
           </ToolFields>
         </div>
         <ToolClampNote notes={[
-          yearsTyped > YEARS_MAX && `Μέχρι ${YEARS_MAX} έτη· υπολογίστηκε με ${YEARS_MAX}.`,
+          yearsTyped > YEARS_MAX && `Μέχρι ${YEARS_MAX} έτη· υπολογίστηκε με ${YEARS_MAX}.`,
         ]}/>
       </Group>
 
@@ -240,7 +240,7 @@ export function AdjustCalculator({ today, cta }: {
               secondary={[
                 { label: 'Αύξηση τον μήνα', value: fe(first.increase) },
                 plan.rows.length > 1
-                  ? { label: `Σε ${fn(plan.rows.length)} έτη`, value: fe(plan.final) }
+                  ? { label: `Σε ${fn(plan.rows.length)} έτη`, value: fe(plan.final) }
                   : { label: 'Ποσοστό', value: fpRate(first.appliedPct) },
               ]}/>
             <LiveResult say={`Νέο μίσθωμα ${fe(first.to)}, αύξηση ${fe(first.increase)} τον μήνα.`}/>
@@ -325,7 +325,7 @@ export function AdjustCalculator({ today, cta }: {
           {plan.rows.length > YEARS_SHOWN && (
             <div className="po-noprint" style={{ marginTop: 10 }}>
               <Btn onClick={() => setAllYears(a => !a)} expanded={allYears}>
-                {allYears ? `Μόνο τα πρώτα ${YEARS_SHOWN} έτη` : `Όλα τα ${plan.rows.length} έτη`}
+                {allYears ? `Μόνο τα πρώτα ${YEARS_SHOWN} έτη` : `Όλα τα ${plan.rows.length} έτη`}
               </Btn>
             </div>
           )}

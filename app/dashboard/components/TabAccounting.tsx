@@ -571,7 +571,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             <InfoHint>
               {businessMode
                 ? (elpForm==='company' ? `Νομικό πρόσωπο: ${fpRate(CORPORATE_TAX_RATE_2026*100)} επί των καθαρών κερδών (μετά από εκπιπτόμενα έξοδα, αποσβέσεις κτιρίου και εξοπλισμού, καθώς και τόκους), συν προκαταβολή φόρου ${fpRate(ADVANCE_TAX_RATE_COMPANY*100)} και ${fpRate(DIVIDEND_WITHHOLDING_RATE*100)} φόρος στη διανομή μερίσματος.` : `Ατομική επιχείρηση: κλίμακα άρθρου 15 (${fpRate(BUSINESS_INCOME_BRACKETS_2026[0].rate*100)} έως ${fpRate(BUSINESS_INCOME_BRACKETS_2026[BUSINESS_INCOME_BRACKETS_2026.length-1].rate*100)}) επί των καθαρών κερδών, μετά από εκπιπτόμενα έξοδα, ΕΦΚΑ, αποσβέσεις και τόκους, με τεκμαρτό ελάχιστο καθαρό εισόδημα ${eur(minNetIncome.amount)}${minNetIncome.sourceYear!==year?` (ποσό ${minNetIncome.sourceYear}: για το ${year} δεν έχει ανακοινωθεί κατώτατος μισθός)`:''} και προκαταβολή φόρου ${fpRate(ADVANCE_TAX_RATE_SOLE*100)}.`)
-                : (regime==='individual_longterm' ? `Μακροχρόνια μίσθωση φυσικού προσώπου: το εισόδημα φορολογείται κατά το άρθρο 40, με τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} για επισκευές και συντήρηση. Οι λοιπές δαπάνες, ο ΕΝΦΙΑ και οι τόκοι δανείου δεν εκπίπτουν.` : `Βραχυχρόνια μίσθωση φυσικού προσώπου: εισόδημα ακινήτων, με τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} στα μεικτά (άρθρο 39 ΚΦΕ). Οι πραγματικές δαπάνες δεν εκπίπτουν. Επιπλέον το τέλος ανθεκτικότητας ανά διανυκτέρευση και το τέλος παρεπιδημούντων όπου ισχύει.${strNotice?` Με περισσότερα από ${fn(STR_INDIVIDUAL_MAX_PROPERTIES)} ακίνητα σε βραχυχρόνια ισχύουν οι κανόνες του επιχειρηματικού εισοδήματος και ο φόρος εδώ δεν τους ακολουθεί.`:''}`)}
+                : (regime==='individual_longterm' ? `Μακροχρόνια μίσθωση φυσικού προσώπου: το εισόδημα φορολογείται κατά το άρθρο 40, με τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} για επισκευές και συντήρηση. Οι λοιπές δαπάνες, ο ΕΝΦΙΑ και οι τόκοι δανείου δεν εκπίπτουν.` : `Βραχυχρόνια μίσθωση φυσικού προσώπου: εισόδημα ακινήτων, με τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} στα μεικτά (άρθρο 39 ΚΦΕ). Οι πραγματικές δαπάνες δεν εκπίπτουν. Επιπλέον το τέλος ανθεκτικότητας ανά διανυκτέρευση και το τέλος παρεπιδημούντων όπου ισχύει.${strNotice?` Με περισσότερα από ${fn(STR_INDIVIDUAL_MAX_PROPERTIES)} ακίνητα σε βραχυχρόνια ισχύουν οι κανόνες του επιχειρηματικού εισοδήματος και ο φόρος εδώ δεν τους ακολουθεί.`:''}`)}
               {/* Η πρόταση απαριθμούσε ΔΥΟ στοιχεία («αξία και τ.μ.»)
                   ενώ η εκτίμηση διαβάζει πλέον ΤΕΣΣΕΡΑ. Ο ιδιοκτήτης που
                   συμπλήρωσε έτος κατασκευής ή όροφο έβλεπε το νούμερο να
@@ -622,7 +622,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                 title="Προαιρετικό. Ενεργοποιεί τη μειωμένη κλίμακα νέων (ν.5246/2025) στην ατομική επιχείρηση."
                 onFocus={e=>e.currentTarget.style.borderColor='var(--accent)'} onBlur={e=>e.currentTarget.style.borderColor='var(--border-default)'}
                 style={{ width:90, height:T.h.lg, padding:'10px 16px', borderRadius:10, border:'1px solid var(--border-default)', background:'var(--bg-elevated)', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right', outline:'none', transition:'border-color 0.14s' }}/>
-              <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans }}>Μειωμένη κλίμακα νέων (έως 30 ετών).</span>
+              <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans }}>Μειωμένη κλίμακα νέων (έως 30 ετών).</span>
             </div>
           )}
           {elpForm==='company'&&(
@@ -640,7 +640,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           <div style={{ display:'flex', flexDirection:'column', gap:6, justifyContent:'center', paddingLeft:14, borderLeft:'1px solid var(--border-subtle)', minWidth:220 }}>
             <Check checked={firstYears} onChange={updateFirstYears} label={<span style={{ fontWeight:500, color:'var(--text-primary)' }}>Νέα επιχείρηση (πρώτη τριετία)</span>} align="start" />
             {/* Κρέμασμα κάτω από την ετικέτα: κουτάκι 17 συν το κενό της σειράς. */}
-            <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5, paddingLeft: 17 + T.sp.sm }}>Τα πρώτα 3 έτη δραστηριότητας: 1ο κλιμάκιο 4,5% (αντί 9%) και προκαταβολή φόρου μειωμένη κατά 50%.</span>
+            <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5, paddingLeft: 17 + T.sp.sm }}>Τα πρώτα 3 έτη δραστηριότητας: 1ο κλιμάκιο 4,5% (αντί 9%) και προκαταβολή φόρου μειωμένη κατά 50%.</span>
           </div>
         </div>
       )}

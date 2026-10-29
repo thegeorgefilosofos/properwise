@@ -593,7 +593,7 @@ export default function AccountantDossier({
             <p style={eyebrow}>Από τι βγαίνει αυτή η λίστα</p>
             <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0', fontFamily: T.font.sans }}>
               {LEGAL_FORM_LABEL[profile.form]} · {BOOKS_LABEL[profile.books]}
-              {properties.length > 0 && ` · ${properties.length === 1 ? '1 ακίνητο' : `${properties.length} ακίνητα`}`}
+              {properties.length > 0 && ` · ${properties.length === 1 ? '1 ακίνητο' : `${properties.length} ακίνητα`}`}
             </p>
           </div>
         </button>

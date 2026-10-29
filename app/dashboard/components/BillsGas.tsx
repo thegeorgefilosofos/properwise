@@ -334,7 +334,7 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
               <span title="Κιλοβατώρα, μονάδα μέτρησης κατανάλωσης ενέργειας" style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>Χρέωση kWh:{'  '}<strong style={{ color: 'var(--text-primary)' }}>{tariff.kwh != null ? `${fk(tariff.kwh)} / kWh` : 'χωρίς γνωστή τιμή'}</strong></span>
               <span style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>Πάγιο:{'  '}<strong>{fe(tariff.fixed)} / μήνα</strong></span>
               {tariff.contract_months != null && (
-                <span style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>Δέσμευση:{'  '}<strong>{tariff.contract_months} μήνες</strong></span>
+                <span style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>Δέσμευση:{'  '}<strong>{tariff.contract_months} μήνες</strong></span>
               )}
             </div>
           </div>
@@ -346,8 +346,8 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
         <div style={card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, flexWrap: 'wrap' as const, gap: 10 }}>
             {secHdr('Σύγκριση παρόχων', ownInView === 0
-              ? `${allTariffs.length} τιμολόγια της ΡΑΑΕΥ σε ${kwh} kWh τον μήνα, χρέωση προμήθειας`
-              : `${allTariffs.length} τιμολόγια σε ${kwh} kWh τον μήνα, χρέωση προμήθειας: ${allTariffs.length - ownInView} της ΡΑΑΕΥ και ${ownInView} με τιμή από τον τιμοκατάλογο του παρόχου`)}
+              ? `${allTariffs.length} τιμολόγια της ΡΑΑΕΥ σε ${kwh} kWh τον μήνα, χρέωση προμήθειας`
+              : `${allTariffs.length} τιμολόγια σε ${kwh} kWh τον μήνα, χρέωση προμήθειας: ${allTariffs.length - ownInView} της ΡΑΑΕΥ και ${ownInView} με τιμή από τον τιμοκατάλογο του παρόχου`)}
             <div style={{ display: 'flex', background: 'var(--bg-base)', borderRadius: T.radius.pill, padding: 4, border: '1px solid var(--border-default)' }}>
               {/* shape="seg" και όχι "chip": η ράγα από πάνω έχει ήδη δικό της περίγραμμα. */}
               {(['residential', 'business'] as const).map(seg => (
@@ -411,7 +411,7 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
                       <td>
                         <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, padding: '2px 8px', borderRadius: T.radius.badge, ...badgeStyle }}>{t.badge}</span>
                       </td>
-                      <td className="num">{t.contract_months != null ? `${t.contract_months} μήνες` : 'Χωρίς'}</td>
+                      <td className="num">{t.contract_months != null ? `${t.contract_months} μήνες` : 'Χωρίς'}</td>
                       <td className="num">{t.kwh != null ? fk(t.kwh) : 'άγνωστη'}</td>
                       <td className="num">{fe(t.fixed)}</td>
                       <td style={{ whiteSpace: 'nowrap' as const, color: t.thisMonth ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>
@@ -458,7 +458,7 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
           hints.push({ text: 'Είμαστε σε περίοδο θέρμανσης και δεν έχεις καταχωρήσει ακόμη κατανάλωση ή κόστος αερίου. Συμπλήρωσε τα στοιχεία για ακριβή παρακολούθηση.', severity: 'warning' });
         }
         if (tariff?.type === 'variable' && kwh > 800) {
-          hints.push({ text: `Με ${kwh} kWh/μήνα, ένα σταθερό τιμολόγιο θα σε προστάτευε από διακυμάνσεις TTF τον χειμώνα, τότε οι τιμές συνήθως ανεβαίνουν.`, severity: 'tip' });
+          hints.push({ text: `Με ${kwh} kWh/μήνα, ένα σταθερό τιμολόγιο θα σε προστάτευε από διακυμάνσεις TTF τον χειμώνα, τότε οι τιμές συνήθως ανεβαίνουν.`, severity: 'tip' });
         }
         if (heatingType === 'central_gas') {
           hints.push({ text: 'Με κεντρική θέρμανση, το κόστος αερίου μοιράζεται στους ενοίκους/ιδιοκτήτες βάσει χιλιοστών. Έλεγξε τον κανονισμό κοινοχρήστων.', severity: 'info' });

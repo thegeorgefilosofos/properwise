@@ -190,7 +190,7 @@ export default function CheckoutLanding({ firstCharge, moneyBack, securedBy, sec
                 const p = PLANS[id];
                 const price = cycle === 'annual' ? p.priceAnnual : p.priceMonthly;
                 const limit = Number.isFinite(p.maxProperties)
-                  ? (p.maxProperties === 1 ? '1 ακίνητο' : `Έως ${p.maxProperties} ακίνητα`)
+                  ? (p.maxProperties === 1 ? '1 ακίνητο' : `Έως ${p.maxProperties} ακίνητα`)
                   : 'Απεριόριστα ακίνητα';
                 return (
                   <button key={id} type="button" onClick={() => open(id, cycle)}

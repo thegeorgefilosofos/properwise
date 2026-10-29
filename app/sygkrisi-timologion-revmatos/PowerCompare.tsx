@@ -14,6 +14,7 @@
 // κατάλογος έχει παλιώσει στο μεταξύ, η σειρά και το «φθηνότερο» φεύγουν μόλις
 // φορτώσει η σελίδα.
 // ═══════════════════════════════════════════════════════════════════════════
+import { bindRefs } from '@/lib/core/hyphenate';
 import { Fragment, useId, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { T, fdLong } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
@@ -48,7 +49,7 @@ export function facts(t: PowerRow['t'], ebill: boolean): string[] {
   } else {
     // Στα αναδρομικά ο αριθμός του καταλόγου είναι η ΒΑΣΙΚΗ τιμή, όχι η τελική.
     out.push(t.kwh_day == null ? (t.priceUnsupported ? 'Κλιμακωτό σε περισσότερες από δύο κλίμακες' : 'Χωρίς γνωστή τιμή')
-      : t.priceStatus !== 'retro' ? `${feRate(t.kwh_day)} ανά κιλοβατώρα${t.kwh_tier2 != null && t.tier2_threshold != null ? (t.tier2_scope === 'all' ? `, ${feRate(t.kwh_tier2)} για όλες πάνω από ${fn(t.tier2_threshold)} kWh` : `, ${feRate(t.kwh_tier2)} από την ${fn(t.tier2_threshold + 1)}η`) : ''}`
+      : t.priceStatus !== 'retro' ? `${feRate(t.kwh_day)} ανά κιλοβατώρα${t.kwh_tier2 != null && t.tier2_threshold != null ? (t.tier2_scope === 'all' ? `, ${feRate(t.kwh_tier2)} για όλες πάνω από ${fn(t.tier2_threshold)} kWh` : `, ${feRate(t.kwh_tier2)} από την ${fn(t.tier2_threshold + 1)}η`) : ''}`
       : t.kwh_day > 0 ? `${feRate(t.kwh_day)} βασική τιμή, κλείνει αναδρομικά`
       : 'Η τιμή του μήνα ανακοινώνεται τον επόμενο');
     if (t.kwh_night) out.push(`Νυχτερινή ${feRate(t.kwh_night)}`);
@@ -63,7 +64,7 @@ export function facts(t: PowerRow['t'], ebill: boolean): string[] {
   out.push(priceMonthNote(t));
   const cond = conditionNote(t);
   if (cond) out.push(cond);
-  out.push(t.contract_months ? `Δέσμευση ${t.contract_months} μήνες` : 'Χωρίς δέσμευση');
+  out.push(t.contract_months ? `Δέσμευση ${t.contract_months} μήνες` : 'Χωρίς δέσμευση');
   return out;
 }
 
@@ -230,7 +231,7 @@ export function PowerCompare({ serverToday, cta }: {
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.5 }}>
                       <span title={BADGE_MEANING[x.t.badge]} style={{ color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em' }}>{x.t.badge}</span>
-                      {' · '}{facts(x.t, ebill).join(' · ')}
+                      {' · '}{bindRefs(facts(x.t, ebill).join(' · '))}
                     </div>
                     {x.unranked && (
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.5 }}>

@@ -48,7 +48,7 @@ export function generateMetadata(): Metadata {
     // δοκιμής και της χρέωσης φαίνονται στη σελίδα, από το billingWords
     // (`trialBadge`, `signupPlanTerms`). Ο φύλακας guard-meta-description κρατά
     // το μήκος στα 70–160.
-    description: `Δημιούργησε λογαριασμό στο δωρεάν πακέτο «${PLANS.free.name}». Κάθε νέος λογαριασμός ξεκινά με δοκιμή ${TRIAL_DAYS} ημερών στο «${PLANS[TRIAL_PLAN].name}».`,
+    description: `Δημιούργησε λογαριασμό στο δωρεάν πακέτο «${PLANS.free.name}». Κάθε νέος λογαριασμός ξεκινά με δοκιμή ${TRIAL_DAYS} ημερών στο «${PLANS[TRIAL_PLAN].name}».`,
     url: siteUrl('/signup'),
   });
 }

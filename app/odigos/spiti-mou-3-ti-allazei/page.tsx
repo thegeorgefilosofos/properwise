@@ -120,7 +120,7 @@ export default function Page() {
         {/* 1. Σπίτι μου Ι */}
         <H2 {...S.one} />
         <p className="lg-p">
-          {`Το πρώτο πρόγραμμα το διαχειριζόταν η ${P1.agency}· νομική βάση: ${P1.legalBasis}. Αιτήσεις έγιναν από ${programDateLabel(P1.applicationsFrom)} έως ${programDateLabel(P1.applicationsTo)}. Ήταν για νέους και ζευγάρια ${P1.ageMin} έως ${P1.ageMax} ετών, για πρώτη κατοικία έως ${feWhole(P1.maxPropertyValue)} και ${P1.maxSqm} τ.μ., σε κτίριο τουλάχιστον ${P1.minBuildingAgeYears} ετών.`}
+          {`Το πρώτο πρόγραμμα το διαχειριζόταν η ${P1.agency}· νομική βάση: ${P1.legalBasis}. Αιτήσεις έγιναν από ${programDateLabel(P1.applicationsFrom)} έως ${programDateLabel(P1.applicationsTo)}. Ήταν για νέους και ζευγάρια ${P1.ageMin} έως ${P1.ageMax} ετών, για πρώτη κατοικία έως ${feWhole(P1.maxPropertyValue)} και ${P1.maxSqm} τ.μ., σε κτίριο τουλάχιστον ${P1.minBuildingAgeYears} ετών.`}
         </p>
         <p className="lg-p">
           {`Το δάνειο έφτανε τα ${feWhole(P1.maxAmount)}. Το ${fpRate(P1.interestFreeShare * 100)} το έδινε η ${P1.agency} χωρίς τόκο και το υπόλοιπο η τράπεζα με το επιτόκιό της. Πόσα δάνεια υπογράφηκαν τελικά δεν βρέθηκε σε επίσημο απολογισμό.`}
@@ -143,7 +143,7 @@ export default function Page() {
           <li><strong style={STRONG}>{'Φορέας:'}</strong>{` ${P3.channel} (ΕΑΤ).`}</li>
           <li><strong style={STRONG}>{'Προϋπολογισμός:'}</strong>{` ${fn(P3.budgetEur / 1e9)} δισ. ευρώ, κατά την ΕΑΤ.`}</li>
           <li><strong style={STRONG}>{'Έναρξη:'}</strong>{` ${P3.startLabel}, κατά την ΕΑΤ. Δεν είναι ημερομηνία αιτήσεων.`}</li>
-          <li><strong style={STRONG}>{'Ηλικία:'}</strong>{` έως ${P3.ageMax} ετών, κατά την κυβερνητική εξειδίκευση των μέτρων.`}</li>
+          <li><strong style={STRONG}>{'Ηλικία:'}</strong>{` έως ${P3.ageMax} ετών, κατά την κυβερνητική εξειδίκευση των μέτρων.`}</li>
         </ul>
         <p className="lg-p">
           {'Κανένα άλλο κριτήριο δεν έχει δημοσιευτεί σε επίσημο κείμενο: ούτε εισόδημα, ούτε αξία, ούτε ποιες τράπεζες συμμετέχουν.'}

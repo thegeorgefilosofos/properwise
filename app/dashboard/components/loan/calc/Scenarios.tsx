@@ -36,7 +36,7 @@ export function Scenarios({ scenarios, totalInt, editingId, setEditingId, updSce
                   <td>{isEd?cell(s.label,'label',120):<div style={{display:'flex',alignItems:'center',gap: 8}}><span style={{color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500}}>{s.label}</span>{isBest&&<Badge tone="accent">Βέλτιστο</Badge>}</div>}</td>
                   <td className="num">{isEd?cell(String(s.amount),'amount',90):<span style={{color:'var(--text-primary)',fontWeight:600}}>{fmtEur(s.amount)}</span>}</td>
                   <td className="num">{isEd?cell(String(s.rate),'rate',65):<span>{fmtPct(s.rate)}</span>}</td>
-                  <td className="num">{isEd?cell(String(s.years),'years',55):<span>{s.years} έτη</span>}</td>
+                  <td className="num">{isEd?cell(String(s.years),'years',55):<span>{s.years} έτη</span>}</td>
                   <td className="num" style={{color:'var(--text-primary)',fontWeight:600}}>{fmtEur(m)}</td>
                   <td className="num">{fmtEur(ti)}</td>
                   <td className="num" style={{color:saved>0?'var(--accent)':'var(--text-tertiary)',fontWeight:600}}>{saved>0?`-${fmtEur(saved)}`:`+${fmtEur(-saved)}`}</td>

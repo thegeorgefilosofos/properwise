@@ -110,7 +110,7 @@ export default function MeetingPackCard({ userId, year, ownerName, dossier, onEd
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <div style={{ ...TT.body, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>ΑΦΜ {o.afm}</div>
                   <div style={{ ...TT.caption, marginTop: 4 }}>
-                    {o.properties === 1 ? '1 ακίνητο' : `${o.properties} ακίνητα`}
+                    {o.properties === 1 ? '1 ακίνητο' : `${o.properties} ακίνητα`}
                     {st?.sharedAt ? ` · στάλθηκε στον λογιστή ${fd(st.sharedAt)}${st.sizeBytes ? `, ${fmtBytes(st.sizeBytes)}` : ''}` : ' · δεν έχει σταλεί'}
                     {st && st.missingCount > 0 ? ` · λείπουν ${st.missingCount}` : ''}
                   </div>

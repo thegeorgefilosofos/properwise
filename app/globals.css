@@ -1452,8 +1452,15 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
    περιεχομένου, ενώ κάθε κάρτα από κάτω φτάνει ως εκεί. Ως τα 480 μοιράζουν τη
    σειρά σε δύο ίσες στήλες. */
 @media (max-width: 480px) {
-  .ov-head-actions { display: grid !important; grid-template-columns: 1fr 1fr; width: 100%; }
+  .ov-head-actions { display: flex !important; flex-wrap: wrap; width: 100%; }
+  .ov-head-actions > * { flex: 1 1 0; min-width: -webkit-fit-content; min-width: fit-content; }
 }
+/* ΚΑΙ ΔΕΝ ΤΥΛΙΓΟΝΤΑΙ ΜΕΣΑ ΤΟΥΣ (29/10/2026). Στα 320 οι δύο ίσες στήλες έδιναν
+   144 στο καθένα και το «Σάρωσε έγγραφο» γινόταν «Σάρωσε / έγγραφο», το
+   «Αναφορά σε PDF» «Αναφορά σε / PDF»: δύο κουμπιά διπλού ύψους. Με flex που
+   τυλίγει και ελάχιστο πλάτος το λεκτικό τους, μοιράζουν τη σειρά ίσα όταν
+   χωρούν και πέφτουν το ένα κάτω από το άλλο, σε πλήρες πλάτος, όταν όχι. Ο
+   ίδιος κανόνας με την `.act-row` πιο κάτω. */
 .cash-sides { display: grid; grid-template-columns: minmax(0, 1fr); }
 .cash-side { display: flex; flex-direction: column; min-width: 0; }
 .cash-divider { height: 1px; margin: 0 20px; background: var(--border-subtle); }
@@ -3124,6 +3131,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    του, μετρημένο στην πώληση στα 900. */
 .plan-row-step { grid-template-columns: minmax(0, 1fr) 170px; }
 .plan-row-fund { grid-template-columns: minmax(0, 1fr) 170px auto; }
+/* Ο ΣΥΝΔΕΣΜΟΣ «Επίσημη σελίδα» ΥΠΟΓΡΑΜΜΙΖΕΙ ΤΟ ΛΕΚΤΙΚΟ ΤΟΥ, ΟΧΙ ΤΗ ΣΤΗΛΗ (29/10/2026).
+   Είναι στοιχείο πλέγματος, άρα τεντωνόταν σε όλη τη στήλη και η κάτω γραμμή
+   του έβγαινε 170 φαρδιά: στο τηλέφωνο, όπου πέφτει σε δική του σειρά, διαβαζόταν
+   ως δεύτερος, κομμένος διαχωριστής ανάμεσα στα προγράμματα. */
+.plan-row-fund > a { justify-self: start; }
 .plan-row-bare { grid-template-columns: minmax(0, 1fr) 15px; }
 .plan-tag { text-align: right; }
 
@@ -4115,25 +4127,28 @@ body { hyphens: none; }
      τον χώρο που ΠΕΡΙΣΣΕΥΕΙ σε κάθε γραμμή, χωρίς να επιβάλλει τύλιγμα. */
   .act-row > * { flex: 1 1 auto; }
 }
+/* 29/10/2026: ΑΠΟ ΠΛΕΓΜΑ ΔΥΟ ΣΤΗΛΩΝ ΣΕ FLEX ΠΟΥ ΤΥΛΙΓΕΙ. Οι δύο ίσες στήλες
+   έκοβαν το λεκτικό όταν δεν χωρούσε στο μισό: «Δεν είναι / δαπάνη» στα
+   320 και 375, «Καταχώρηση / αρχείου» ώς τα 414 (κουμπιά διπλού ύψους δίπλα
+   σε μονό). Τώρα κάθε κουμπί έχει ελάχιστο πλάτος το λεκτικό του: όσα χωρούν
+   μοιράζονται τη σειρά ίσα (`flex: 1 1 0`), όποιο δεν χωρά πέφτει στην επόμενη
+   και την πιάνει ολόκληρη. Η δεξιά ακμή μένει ευθεία όπως με το πλέγμα και
+   το μονό τελευταίο παίρνει όλη τη σειρά μόνο του, χωρίς ειδικό κανόνα. */
 @media (max-width: 560px) {
-  .act-row { width: 100%; display: grid !important; grid-template-columns: 1fr 1fr; }
-  .act-row > * { min-width: 0; }
-  /* Το μονό τελευταίο κουμπί παίρνει ολόκληρη τη σειρά, ίδιος κανόνας με τα
-     πλακίδια KPI: αλλιώς μένει μισό, με τρύπα ίδιου μεγέθους δίπλα του. Και
-     επειδή η κύρια ενέργεια γράφεται πάντα τελευταία, πέφτει ακριβώς εκεί. */
-  .act-row > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .act-row { width: 100%; display: flex !important; flex-wrap: wrap; }
+  .act-row > * { flex: 1 1 0; min-width: -webkit-fit-content; min-width: fit-content; }
   .act-row > button, .act-row > a,
   .act-row > * > button, .act-row > * > a { width: 100%; }
   /* ΜΙΑ ΜΟΝΗ ΕΝΕΡΓΕΙΑ ΔΕΝ ΤΕΝΤΩΝΕΤΑΙ. Το πλέγμα λύνει το πρόβλημα των πολλών
      κουμπιών με άνισα λεκτικά· ένα κουμπί δεν έχει τέτοιο πρόβλημα και σε
      πλήρες πλάτος διαβάζεται ως κύρια ενέργεια της οθόνης, που συχνά δεν
      είναι (π.χ. ένα «Περισσότερα»). Μένει στο φυσικό του πλάτος, αριστερά. */
-  .act-row > :only-child { grid-column: 1 / -1; justify-self: start; }
+  .act-row > :only-child { flex: 0 1 auto; }
   .act-row > :only-child,
   .act-row > :only-child > button, .act-row > :only-child > a { width: auto; }
   /* Εκτός όταν η μόνη ενέργεια ΕΙΝΑΙ η κύρια του φύλλου και το λέει ρητά
      (`act-fill`), όπως το «Νέο γεγονός» στο φύλλο της ημέρας. */
-  .act-row > .act-fill:only-child { justify-self: stretch; width: 100%; }
+  .act-row > .act-fill:only-child { flex: 1 1 100%; width: 100%; }
 }
 
 /* Δύο ισότιμες διαδρομές σε πολύ στενό τηλέφωνο: στοίβα αντί για δύο στήλες.
@@ -4300,30 +4315,32 @@ body { hyphens: none; }
    θέλουν περίπου 72 συν τα περιθώρια. Κάτω από αυτό η ετικέτα γίνεται στέλεχος
    («Λογαρ…») που δεν ξεχωρίζει τον έναν λογαριασμό από τον άλλο· από πάνω
    («Συντήρηση καυ…») ενημερώνει πραγματικά. */
+/* 29/10/2026: ΣΤΟ ΣΤΕΝΟ ΚΕΛΙ «+N», ΟΧΙ ΜΠΑΡΕΣ ΧΩΡΙΣ ΚΕΙΜΕΝΟ ═══════════════
+   Η προηγούμενη λύση (τσιπάκι χωρίς κείμενο, με `text-indent`) έλεγε «κάτι
+   υπάρχει», όχι ΠΟΣΑ. Τρεις λωρίδες ίδιου χρώματος σε κελί 43 διαβάζονταν ως
+   μία. Τώρα τα τσιπάκια βγαίνουν από την όψη (μένουν στο δέντρο
+   προσβασιμότητας με τον τίτλο τους) και το κελί γράφει τον αριθμό των
+   γεγονότων· το πάτημα ανοίγει το φύλλο της ημέρας με πλήρεις τίτλους. */
+.cal-count { display: none; }
 @container (max-width: 80px) {
-  /* ΤΟ ΤΣΙΠ ΚΡΑΤΑ ΤΟ ΥΨΟΣ ΤΟΥ. ΜΟΝΟ ΤΟ ΚΕΙΜΕΝΟ ΦΕΥΓΕΙ ═══════════════════
-     ΠΡΩΤΗ ΓΡΑΦΗ ΗΤΑΝ `font-size: 0` ΜΕ ΥΨΟΣ 4 ΚΑΙ ΗΤΑΝ ΧΕΙΡΟΤΕΡΗ ΑΠΟ ΤΟ
-     ΠΡΟΒΛΗΜΑ. Η σάρωση απόδοσης το είπε με δύο τρόπους ταυτόχρονα: δώδεκα
-     νέα ευρήματα, «κείμενο < 11px … 0px» και «στόχος < 44 … 39×4». Δηλαδή
-     διόρθωνα την αναγνωσιμότητα σπάζοντας την αφή — το τσιπ είναι
-     role="button" και το έκανα τέσσερα εικονοστοιχεία ψηλό.
-
-     ΤΟ ΖΗΤΟΥΜΕΝΟ ΗΤΑΝ ΠΑΝΤΑ ΜΟΝΟ ΤΟ ΚΕΙΜΕΝΟ. Το `text-indent` το σπρώχνει
-     έξω από το πλαίσιο και το `overflow` το κόβει: το τσιπ μένει ΑΚΡΙΒΩΣ
-     όπως ήταν σε ύψος, χρώμα και στόχο αφής, απλώς χωρίς τους τέσσερις
-     χαρακτήρες που δεν έλεγαν τίποτα. Το κείμενο παραμένει 11 για τον
-     μετρητή και για τον αναγνώστη οθόνης· απλώς δεν ζωγραφίζεται. */
-  .cal-chip { text-indent: -999px; overflow: hidden; }
-  .cal-chip svg { display: none; }
-  /* ΚΑΙ Η ΜΠΑΡΑ ΔΕΝ ΜΟΙΑΖΕΙ ΜΕ ΣΚΕΛΕΤΟ ΦΟΡΤΩΣΗΣ. Χωρίς κείμενο, το γκρι γέμισμα
-     της κατηγορίας έβγαινε ίδιο με τα ορθογώνια αναμονής: στα 390 οι ημέρες
-     2, 8, 17 και 26 έμοιαζαν να φορτώνουν ακόμη. Λωρίδα και απαλό γέμισμα του
-     accent λένε «εδώ υπάρχει γεγονός». Το χρώμα της κατηγορίας γράφεται ως
-     `backgroundColor`, οπότε το ζωγραφίζουμε με εσωτερική σκιά από πάνω του.
-     ΟΧΙ `background-image`: ο μετρητής αντίθεσης συνθέτει τις διαβαθμίσεις
-     ως φόντο του κειμένου και έβγαζε 1,05:1 για κείμενο που δεν ζωγραφίζεται. */
-  .cal-chip { box-shadow: inset 3px 0 0 var(--accent), inset 0 0 0 999px var(--accent-soft); }
+  .cal-ev-list { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .cal-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 22px; height: 18px; padding: 0 5px; border-radius: 100px;
+    background: var(--accent-soft); color: var(--accent);
+    font-size: var(--fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1;
+  }
 }
+/* ΤΟ ΤΣΙΠΑΚΙ ΑΝΑΔΙΠΛΩΝΕΤΑΙ, ΔΕΝ ΚΟΒΕΤΑΙ (29/10/2026). Με `po-elide` ο τίτλος
+   έβγαινε «Τέλος ανθεκτικότ…» σε κελί 100 έως 180: το μισό όνομα, χωρίς
+   τρόπο να ξεχωρίσει από το διπλανό. Εως τρεις γραμμές στο φαρδύ κελί, δύο
+   στο μεσαίο· ο πλήρης τίτλος στο `title` και στο `aria-label`. */
+.cal-chip {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+  overflow: hidden; min-width: 0; white-space: normal;
+  overflow-wrap: break-word; hyphens: manual; line-height: 1.3; text-wrap: pretty;
+}
+@container (max-width: 120px) { .cal-chip { -webkit-line-clamp: 2; } }
 
 /* Η μικρογραφία της κάρτας αρχείου. Χωρίς εικόνα, στο τηλέφωνο γίνεται λωρίδα
    88 εικονοστοιχείων αντί για άδειο πλαίσιο 4:3 (TabDocuments, FileCard). */
@@ -5386,6 +5403,16 @@ body:has(.po-tool-page) .po-cookie {
    ανοιχτού έβαφε μπλε και τις έξι από κάτω, χωρίς να έχει πατηθεί καμία. */
 details.lp-faq { border-top: 1px solid var(--border-subtle); }
 details.lp-faq > summary { transition: color .18s; }
+/* ΤΟ «+» ΚΑΘΕΤΑΙ ΣΤΗΝ ΠΡΩΤΗ ΓΡΑΜΜΗ ΤΗΣ ΕΡΩΤΗΣΗΣ, ΟΧΙ ΣΤΗ ΜΕΣΗ (29/10/2026).
+   Ολα τα σημεία γράφουν `align-items: center` στο summary: σε ερώτηση δύο ή
+   τριών γραμμών το «+» αιωρούνταν 23 εικονοστοιχεία κάτω από την πρώτη
+   γραμμή, ανάμεσα σε λέξεις, σε 52 ερωτήσεις των οδηγών στα 320 ώς 600. Με
+   σταθερό ύψος γραμμής 22 και κορυφή, το εικονίδιο των 16 κεντράρεται στην
+   πρώτη γραμμή (3 πάνω, 3 κάτω) και το «+» κειμένου (20) με 1. Το
+   `!important` νικά τα ενσωματωμένα στυλ των δέκα σημείων κλήσης. */
+details.lp-faq:not(.lp-faq-more) > summary { align-items: flex-start !important; line-height: 22px; }
+details.lp-faq > summary > svg.lp-plus { margin-top: 3px; }
+details.lp-faq > summary > span.lp-plus { margin-top: 1px; }
 
 /* Η ΑΠΑΝΤΗΣΗ ΠΙΑΝΕΙ ΟΣΟ ΚΑΙ Η ΕΡΩΤΗΣΗ ΤΗΣ. Είχε όριο 74 χαρακτήρων και το
    αποτέλεσμα ήταν ένα κείμενο που σταματούσε στα δύο τρίτα, με τη γραμμή της
@@ -6006,10 +6033,10 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    και τρία μετά (MIN_RIGHT). Στο κινητό ο κανόνας
    «ΣΤΟ ΚΙΝΗΤΟ ΑΡΙΣΤΕΡΑ ΚΑΙ ΧΩΡΙΣ ΚΟΨΙΜΑΤΑ» πιο κάτω κρατά το `none`. */
 .gd .lg-p, .gd .lg-ul li {
-  font-size: 16px; line-height: 1.65; text-align: start; hyphens: auto; hyphenate-limit-chars: 6 2 3;
+  font-size: 16px; line-height: 1.65; text-align: start; hyphens: auto; hyphenate-limit-chars: 6 2 3; text-wrap: pretty;
   color: color-mix(in srgb, var(--text-primary) 90%, transparent);
 }
-.gd .lg-note { text-align: start; hyphens: auto; hyphenate-limit-chars: 6 2 3; }
+.gd .lg-note { text-align: start; hyphens: auto; hyphenate-limit-chars: 6 2 3; text-wrap: pretty; }
 /* Ο ΤΥΠΟΣ ΤΟΥ ΕΝΦΙΑ: ΑΡΙΣΤΕΡΑ, ΧΩΡΙΣ ΕΝΩΤΙΚΑ, ΣΠΑΕΙ ΜΟΝΟ ΠΡΙΝ ΑΠΟ ΤΟ «×».
    Οι όροι έχουν αδιάσπαστα κενά (app/odigos/pos-ypologizetai-o-enfia). Πέρα
    πέρα έκοβε το «συ-ντελεστής» και τέντωνε τα κενά γύρω από τα «×». */
@@ -6051,7 +6078,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    πλάτος· βλ. «ΠΕΡΑ ΠΕΡΑ ΜΟΝΟ ΣΤΙΣ ΣΤΗΛΕΣ ΑΝΑΓΝΩΣΗΣ». */
 @media (max-width: 640px) {
   .lg-lede > p:first-child, .lg-p, .lg-ul li, .lg-note, .lg-just,
-  .gd .lg-p, .gd .lg-ul li, .gd .lg-note, .po-table td.lg-cell-prose { text-align: start; hyphens: none; }
+  .gd .lg-p, .gd .lg-ul li, .gd .lg-note, .po-table td.lg-cell-prose { text-align: start; hyphens: none; text-wrap: pretty; }
 }
 
 @media (max-width: 900px) {
@@ -7213,9 +7240,14 @@ tr.po-row-more { display: none; }
    σημάδι του στοιχειοθέτη και το `.lp-why p` δεν στοιχίζονται πια πέρα πέρα,
    οπότε το `!important` τους έσβηνε χωρίς λόγο το `pretty` που είχαν γράψει
    τα ίδια τα σημεία (`.fineprint`, `details.lp-faq > p`, ενσωματωμένα στυλ).
-   Μένουν οι στήλες ανάγνωσης, μόνο πάνω από τα 640 όπου στοιχίζονται. */
+   Μένουν οι στήλες ανάγνωσης, μόνο πάνω από τα 640 όπου στοιχίζονται.
+
+   29/10/2026: ΟΧΙ ΟΙ ΟΔΗΓΟΙ. Το `.gd` στοιχίζει αριστερά σε κάθε πλάτος (βλ.
+   «07.10.2026: ΟΙ ΟΔΗΓΟΙ ΣΤΟΙΧΙΖΟΝΤΑΙ ΑΡΙΣΤΕΡΑ»), οπότε εδώ δεν είχε τίποτα να
+   προστατέψει: έσβηνε μόνο το `pretty` και άφηνε «…με τον λογιστή / σου.»
+   στα 1.280. */
 @media (min-width: 641px) {
-  .lg-lede > p:first-child, .lg-p, .lg-ul li, .lg-note, .lg-just, .po-table td.lg-cell-prose { text-wrap: wrap !important; }
+  :is(.lg-lede > p:first-child, .lg-p, .lg-ul li, .lg-note, .lg-just, .po-table td.lg-cell-prose):not(.gd *) { text-wrap: wrap !important; }
 }
 
 /* ═══ Η ΣΕΛΙΔΑ 404: ΑΓΚΥΡΑ ΚΑΙ ΔΥΟ ΔΡΟΜΟΙ ══════════════════════════════════════
@@ -7312,6 +7344,37 @@ tr.po-row-more { display: none; }
    τους· όπου ένα σημείο έχει γράψει δικό του `text-wrap`, νικά εκείνο. Το
    κόστος μετρήθηκε αμελητέο (βλ. «ΤΙ ΔΟΚΙΜΑΣΤΗΚΕ ΚΑΙ ΑΠΟΡΡΙΦΘΗΚΕ» πιο πάνω). */
 h1, h2, h3, h4, details > summary, th, dt { text-wrap: balance; }
+
+/* ═══ ΚΑΙ ΟΙ ΤΙΤΛΟΙ ΠΟΥ ΔΕΝ ΕΙΝΑΙ <h> (29/10/2026) ════════════════════════════
+   ΤΙ ΒΡΗΚΕ Η ΣΑΡΩΣΗ ΖΥΓΙΣΗΣ, 40 ΣΚΗΝΕΣ ΚΑΙ 31 ΔΗΜΟΣΙΕΣ ΣΕΛΙΔΕΣ ΣΕ 11 ΠΛΑΤΗ.
+   Ο κανόνας από πάνω ζύγιζε μόνο τα <h1>–<h4>. Οι τίτλοι της εφαρμογής όμως
+   είναι <span> και <div> με όνομα κλάσης: «Πρόσθεσε ενοικιαστή και / ενοίκιο»,
+   «Η δόση ξεπερνά όσα αφήνει το / ακίνητο», «Δόση δανείου, Τράπεζα /
+   Πειραιώς», «ΔΟΣΗ ΔΑΝΕΙΟΥ / / ΜΗΝΑ». Μία λέξη μόνη στη δεύτερη γραμμή
+   τίτλου, σε κάθε κάρτα του Τι χρειάζεται τώρα στα 390.
+
+   ΓΙΑΤΙ ΜΕ ΟΝΟΜΑ ΚΛΑΣΗΣ ΚΑΙ ΜΕΣΑ ΣΕ `:where()`. Το έργο ονομάζει τίτλους και
+   ετικέτες με το ίδιο επίθεμα παντού (`-title`, `-label`, `-name`,
+   `-kicker`, `-eyebrow`): ένας κανόνας τα πιάνει όλα μαζί με τα επόμενα.
+   Και ο σύνδεσμος ή το κουμπί που στέκει μόνο του σε γραμμή («Ποιοι είμαστε
+   και πού βρίσκονται τα δεδομένα / σου»): το `text-wrap` ισχύει μόνο σε
+   κουτί μπλοκ, οπότε ο σύνδεσμος μέσα σε παράγραφο δεν επηρεάζεται. Το
+   `:where()` έχει μηδενική εξειδίκευση, οπότε όπου ένα σημείο γράφει δικό
+   του `text-wrap` (π.χ. `nowrap` σε τσιπ), νικά εκείνο χωρίς `!important`.
+
+   ΠΑΡΑΓΡΑΦΟΙ: `pretty`, ΕΚΤΟΣ ΑΠΟ ΤΗΝ ΠΛΗΡΗ ΣΤΟΙΧΙΣΗ. Το `pretty` κοιτά μόνο τις
+   τελευταίες γραμμές και κρατά τη λέξη μαζί με τη διπλανή της («τα δεδομένα /
+   σου», «από τον / φάκελο»). Στις στοιχισμένες πέρα πέρα στήλες ανάγνωσης ΔΕΝ
+   μπαίνει: εκεί ακυρώνει τα μαλακά ενωτικά και ανοίγει ποτάμια λευκού (βλ.
+   «ΚΑΙ ΤΟ `text-wrap: pretty` ΗΤΑΝ ΑΥΤΟ ΠΟΥ ΑΚΥΡΩΝΕ ΤΟΝ ΣΥΛΛΑΒΙΣΜΟ» και
+   scripts/guard-justify-hyphen.mjs). Η λίστα του `:not()` είναι ακριβώς οι
+   κανόνες `text-align: justify` αυτού του αρχείου. Οπου οι ίδιοι κανόνες
+   γυρίζουν σε αριστερή στοίχιση (οδηγοί `.gd` και κάτω από τα 640), το
+   `pretty` γράφεται στο δικό τους μπλοκ, δίπλα στο `text-align: start`. Και το `:not()` μπαίνει μέσα σε `:where()`:
+   μόνο του θα έφερνε την εξειδίκευση της κλάσης του και θα νικούσε π.χ. το
+   `balance` του `.lp-lede`. */
+:where([class*="-title"], [class*="-label"], [class*="-name"], [class*="-kicker"], [class*="eyebrow"], legend, figcaption, a, button) { text-wrap: balance; }
+:where(p, li, dd, blockquote):where(:not(.lg-p, .lg-ul li, .lg-note, .lg-just, .lg-just *, .lg-lede > p)) { text-wrap: pretty; }
 
 /* ΤΟ ΦΟΝΤΟ ΠΙΣΩ ΑΠΟ ΤΙΣ ΣΚΟΥΡΕΣ ΣΕΛΙΔΕΣ ΕΙΝΑΙ ΚΙ ΑΥΤΟ ΣΚΟΥΡΟ (02.10.2026). Με
    φωτεινό θέμα στις Ρυθμίσεις, το <html> και το <body> έπαιρναν το φωτεινό

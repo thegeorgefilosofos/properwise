@@ -349,7 +349,7 @@ export function SectionHead({ over, title, sub }: { over: string; title: string;
 
 /** Η φράση της δοκιμής, μία φορά για όλα τα εργαλεία. */
 // Χωρίς γυμνό «δωρεάν»: η λέξη ανήκει μόνο στη σταθερή φράση των υπολογιστών.
-export const TRIAL_LINE = `Δωρεάν για ένα ακίνητο, με ${ASSISTANT_ACC} τις πρώτες ${TRIAL_DAYS} ημέρες.`;
+export const TRIAL_LINE = `Δωρεάν για ένα ακίνητο, με ${ASSISTANT_ACC} τις πρώτες ${TRIAL_DAYS} ημέρες.`;
 
 // Η ΕΠΙΦΥΛΑΞΗ (`EstimateNote`) ΚΑΙ ΤΟ ΟΡΙΟ ΠΟΥ ΕΠΙΒΛΗΘΗΚΕ (`ToolClampNote`) ΖΟΥΝ
 // ΣΤΟ app/ToolNotes.tsx. Τα καλούν οι υπολογιστές, που τρέχουν στον περιηγητή·

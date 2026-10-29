@@ -140,7 +140,7 @@ export function TaxLens({
         </table>
          </div>
         </div>
-        {rateType==='fixed'&&<div style={{marginTop:10,padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:500}}>Σταθερό για {fixedPeriod} χρόνια: ως τότε η δόση δεν αλλάζει με το Euribor{Number(fixedPeriod)<Y?'· μετά το επιτόκιο αλλάζει':''}.</p></div>}
+        {rateType==='fixed'&&<div style={{marginTop:10,padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:500}}>Σταθερό για {fixedPeriod} χρόνια: ως τότε η δόση δεν αλλάζει με το Euribor{Number(fixedPeriod)<Y?'· μετά το επιτόκιο αλλάζει':''}.</p></div>}
       </Section>
 
       <Section title="Ανάλυση αναχρηματοδότησης" sub="Σημείο απόσβεσης, πότε αξίζει η μεταφορά">
@@ -167,7 +167,7 @@ export function TaxLens({
           <NumberInput label="Νέο επιτόκιο" value={newRate} onChange={setNewRate} suffix="%"/>
           <NumberInput label="Κόστος μεταφοράς" value={xferCost} onChange={setXferCost} suffix="€"/>
         </div>
-        {(()=>{ const brk=brkEven?`${brkEven} μήνες`:'Δεν αποσβένεται', w=widestOf(fmtEur(currM), fmtEur(newM), fmtEur(Math.max(0,refSav)), brk); return (
+        {(()=>{ const brk=brkEven?`${brkEven} μήνες`:'Δεν αποσβένεται', w=widestOf(fmtEur(currM), fmtEur(newM), fmtEur(Math.max(0,refSav)), brk); return (
         <div {...fixedCols(4, 8)}>
           <Tile label="Τρέχουσα δόση" value={fmtEur(currM)} chars={w}/>
           <Tile label="Νέα δόση" value={fmtEur(newM)} chars={w} sub={`${fmtEur(mSav)} τον μήνα`}/>

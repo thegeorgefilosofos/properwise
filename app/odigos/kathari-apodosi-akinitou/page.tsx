@@ -140,7 +140,7 @@ const FAQ: GuideFaqItem[] = [
   {
     q: 'Σε πόσα χρόνια αποσβένεται το ακίνητο;',
     a: `Κατά προσέγγιση, η αξία διά τα καθαρά ετήσια έσοδα. Με καθαρά ${feWhole(BASE.net)} σε ακίνητο `
-     + `${feWhole(EX_VALUE)}, περίπου ${PAYBACK} χρόνια, χωρίς να υπολογιστούν ανατίμηση ή πληθωρισμός. `
+     + `${feWhole(EX_VALUE)}, περίπου ${PAYBACK} χρόνια, χωρίς να υπολογιστούν ανατίμηση ή πληθωρισμός. `
      + 'Είναι δείκτης σύγκρισης και δεν προβλέπει τιμές.',
   },
 ];
@@ -210,7 +210,7 @@ export default function Page() {
         {/* 3. Παράδειγμα */}
         <H2 {...S.example} />
         <p className="lg-p">
-          {`Διαμέρισμα ${fn(EX_ENFIA_INPUT.sqm)} τ.μ. αξίας ${feWhole(EX_VALUE)} (τιμή ζώνης ${feWhole(EX_ENFIA_INPUT.zonePrice)}/τ.μ., ${EX_ENFIA_INPUT.years} ετών, ${ENFIA_FLOOR_LABEL[EX_ENFIA_INPUT.floor].toLowerCase()}), με μηνιαίο μίσθωμα ${feWhole(EX_MONTHLY)} όλο τον χρόνο, ΕΝΦΙΑ ${fe(EX_ENFIA)} (όπως τον βγάζει ο υπολογισμός ΕΝΦΙΑ) και δαπάνες ${feWhole(EX_EXPENSES)}. Πρώτα ο φόρος:`}
+          {`Διαμέρισμα ${fn(EX_ENFIA_INPUT.sqm)} τ.μ. αξίας ${feWhole(EX_VALUE)} (τιμή ζώνης ${feWhole(EX_ENFIA_INPUT.zonePrice)}/τ.μ., ${EX_ENFIA_INPUT.years} ετών, ${ENFIA_FLOOR_LABEL[EX_ENFIA_INPUT.floor].toLowerCase()}), με μηνιαίο μίσθωμα ${feWhole(EX_MONTHLY)} όλο τον χρόνο, ΕΝΦΙΑ ${fe(EX_ENFIA)} (όπως τον βγάζει ο υπολογισμός ΕΝΦΙΑ) και δαπάνες ${feWhole(EX_EXPENSES)}. Πρώτα ο φόρος:`}
         </p>
         <ul className="lg-ul">
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Ακαθάριστα ενοίκια:'}</strong>{` ${feWhole(EX_MONTHLY)} × 12 = ${feWhole(BASE.gross)}.`}</li>
@@ -234,7 +234,7 @@ export default function Page() {
         {/* 4. Απόσβεση */}
         <H2 {...S.payback} />
         <p className="lg-p">
-          {`Ενδεικτικός δείκτης σύγκρισης: η αξία διά τα καθαρά ετήσια έσοδα. Στο παράδειγμα, ${fn(EX_VALUE)} / ${fn(BASE.net)} ≈ ${PAYBACK} χρόνια, με τα σημερινά καθαρά και χωρίς να υπολογιστούν ανατίμηση ή πληθωρισμός. Βάζει το ακίνητο δίπλα σε άλλες επιλογές, στην ίδια μονάδα· δεν προβλέπει τιμές.`}
+          {`Ενδεικτικός δείκτης σύγκρισης: η αξία διά τα καθαρά ετήσια έσοδα. Στο παράδειγμα, ${fn(EX_VALUE)} / ${fn(BASE.net)} ≈ ${PAYBACK} χρόνια, με τα σημερινά καθαρά και χωρίς να υπολογιστούν ανατίμηση ή πληθωρισμός. Βάζει το ακίνητο δίπλα σε άλλες επιλογές, στην ίδια μονάδα· δεν προβλέπει τιμές.`}
         </p>
 
         {/* 5. Πηγές / νομική βάση */}

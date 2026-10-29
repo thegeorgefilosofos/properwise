@@ -187,7 +187,7 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
       <Card>
         <SecHdr label="Υπαναχώρηση" />
         <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55, marginTop: -6, marginBottom: 12 }}>
-          Ως καταναλωτής υπαναχωρείς από τη σύμβαση μέσα σε {WITHDRAWAL_DAYS} ημέρες από τη σύναψή της, χωρίς αιτιολογία. Βλέπεις τη δήλωση πριν την επιβεβαιώσεις και λαμβάνεις αποδεικτικό στο email σου.
+          Ως καταναλωτής υπαναχωρείς από τη σύμβαση μέσα σε {WITHDRAWAL_DAYS} ημέρες από τη σύναψή της, χωρίς αιτιολογία. Βλέπεις τη δήλωση πριν την επιβεβαιώσεις και λαμβάνεις αποδεικτικό στο email σου.
         </div>
         <Btn variant="secondary" href={WITHDRAWAL_PATH}>{WITHDRAWAL_LABEL}</Btn>
       </Card>

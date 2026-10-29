@@ -548,7 +548,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
                     <p style={{ fontSize:12, fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:'2px 0 0' }}>{fmt(e.event_date)}{e.event_time?` · ${e.event_time}`:''}</p>
                   </div>
                   {/* ΠΟΣΟ ΚΑΙ ΑΠΟΣΤΑΣΗ ΣΕ ΜΙΑ ΣΤΗΛΗ (05.10.2026). Δίπλα δίπλα, με την
-                      ενιαία διατύπωση «Πριν από 36 ημέρες», στα 320 έσφιγγαν τη στήλη
+                      ενιαία διατύπωση «Πριν από 36 ημέρες», στα 320 έσφιγγαν τη στήλη
                       του τίτλου κάτω από το πλάτος της ημερομηνίας και αυτή έπεφτε
                       πάνω στο ποσό. */}
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2, flexShrink:0, textAlign:'right' }}>
@@ -567,7 +567,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
         <div style={{ display:'flex', alignItems:'center', gap: 12, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderLeft:'3px solid var(--warning)', borderRadius:10, padding:'10px 16px' }}>
           <Shield size={14} color="var(--warning)"/>
           <p style={{ fontSize:14, color:'var(--text-secondary)', fontFamily: T.font.sans, letterSpacing:'0.1px', margin:0 }}>
-            {expiring.length} συμβόλαι{expiring.length===1?'ο λήγει':'α λήγουν'} εντός 60 ημερών · <span style={{ color:'var(--text-primary)' }}>{expiring.map(e=>`${e.title} (${fmtShort(e.event_date)})`).join(', ')}</span>
+            {expiring.length} συμβόλαι{expiring.length===1?'ο λήγει':'α λήγουν'} εντός 60 ημερών · <span style={{ color:'var(--text-primary)' }}>{expiring.map(e=>`${e.title} (${fmtShort(e.event_date)})`).join(', ')}</span>
           </p>
         </div>
       )}
@@ -756,7 +756,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
             </div>
             {(()=>{ const pad2=(n:number)=>String(n).padStart(2,'0'); const iso=(d:Date)=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; const an=athensNow(); const presets=[
               {label:'Αυτός ο μήνας', from:iso(new Date(an.getFullYear(),an.getMonth(),1)), to:iso(new Date(an.getFullYear(),an.getMonth()+1,0))},
-              {label:'Επόμενες 30 ημέρες', from:todayStr(), to:iso(new Date(an.getFullYear(),an.getMonth(),an.getDate()+30))},
+              {label:'Επόμενες 30 ημέρες', from:todayStr(), to:iso(new Date(an.getFullYear(),an.getMonth(),an.getDate()+30))},
               {label:'Φέτος', from:`${an.getFullYear()}-01-01`, to:`${an.getFullYear()}-12-31`},
             ]; return (
               <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', marginTop:10 }}>
@@ -814,8 +814,8 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       {!loading&&viewMode==='agenda'&&(
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
           {overdue.length>0&&<Section title="Ληξιπρόθεσμα" color="var(--negative)" events={overdue} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
-          {thisWeek.length>0&&<Section title="Επόμενες 7 ημέρες" color="var(--accent)" events={thisWeek} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
-          {thisMonth.length>0&&<Section title="Σε 8 ως 30 ημέρες" color="var(--text-secondary)" events={thisMonth} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
+          {thisWeek.length>0&&<Section title="Επόμενες 7 ημέρες" color="var(--accent)" events={thisWeek} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
+          {thisMonth.length>0&&<Section title="Σε 8 ως 30 ημέρες" color="var(--text-secondary)" events={thisMonth} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {later.length>0&&<Section title="Αργότερα" color="var(--text-secondary)" events={later} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {done.length>0&&<Section title="Ολοκληρωμένα και ακυρωμένα" color="var(--text-tertiary)" events={done} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} collapsed desc bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {/* ΔΥΟ ΔΙΑΦΟΡΕΤΙΚΕΣ ΚΕΝΕΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΟΧΙ ΜΙΑ. Το «άλλαξε φίλτρο» σε

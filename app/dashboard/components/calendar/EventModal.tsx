@@ -165,7 +165,7 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
           <NumberInput label="Ποσό" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} suffix="€"/>
           {form.event_time&&(
             <CustomSelect label="Διάρκεια" value={form.duration} onChange={v=>setForm(f=>({...f,duration:v}))} placeholder="Χωρίς διάρκεια"
-              options={[{value:'',label:'Χωρίς διάρκεια'},{value:'30',label:'30 λεπτά'},{value:'60',label:'1 ώρα'},{value:'90',label:'1 ώρα 30 λεπτά'},{value:'120',label:'2 ώρες'},{value:'180',label:'3 ώρες'}]}/>
+              options={[{value:'',label:'Χωρίς διάρκεια'},{value:'30',label:'30 λεπτά'},{value:'60',label:'1 ώρα'},{value:'90',label:'1 ώρα 30 λεπτά'},{value:'120',label:'2 ώρες'},{value:'180',label:'3 ώρες'}]}/>
           )}
         </div>
         {/* Κύκλωμα: κόστος → δαπάνη */}
