@@ -15,8 +15,8 @@
 #
 # ΓΙΑΤΙ ΟΧΙ `git rebase`. Το rebase προσπαθεί να ξαναπαίξει commits που το main
 # έχει ήδη ως squash: κάθε ένα συγκρούεται με τον εαυτό του. Εδώ κρατάμε το
-# ΑΠΟΤΕΛΕΣΜΑ και όχι τη διαδρομή — τη διαφορά περιεχομένου από το main — και τη
-# βάζουμε καθαρά από πάνω του.
+# ΑΠΟΤΕΛΕΣΜΑ και όχι τη διαδρομή — ό,τι έχει το κλαδί και δεν έχει ακόμη το
+# main — και το βάζουμε καθαρά από πάνω του.
 #
 # ΔΕΝ ΚΑΝΕΙ ΤΙΠΟΤΑ ΣΤΑ ΤΥΦΛΑ. Αν η διαφορά ΔΕΝ εφαρμόζεται καθαρά πάνω στο νέο
 # main, υπάρχει πραγματική σύγκρουση — κάποιος άλλος άλλαξε τα ίδια σημεία — και
@@ -44,33 +44,74 @@ fi
 echo "→ φέρνω το $BASE"
 git fetch origin "$BASE" --quiet
 
-CHANGED="$(git diff --name-only "origin/$BASE" HEAD)"
-if [ -z "$CHANGED" ]; then
-  echo "✓ Το κλαδί δεν έχει καμία διαφορά περιεχομένου από το origin/$BASE."
+# ── ΑΠΟ ΠΟΥ ΜΕΤΡΙΕΤΑΙ Η ΔΙΑΦΟΡΑ ──────────────────────────────────────────────
+# ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΔΙΟΡΘΩΘΗΚΕ (29/10/2026). Το σενάριο έπαιρνε τη διαφορά με δύο
+# τελείες, `git diff origin/main HEAD`: «κάνε το main ίδιο με το κλαδί». Αν το
+# main είχε προχωρήσει μετά τη βάση του κλαδιού, η διαφορά ΑΝΑΙΡΟΥΣΕ ό,τι μπήκε
+# στο main στο μεταξύ, σιωπηλά και «καθαρά». Εκείνη τη μέρα θα έσβηνε περίπου
+# 1.200 γραμμές των #451/#452 από το επόμενο PR.
+#
+# ΓΙΑΤΙ ΟΧΙ ΣΚΕΤΗ merge-base. Η `merge-base..HEAD` περιέχει και τη δουλειά που
+# έχει ΗΔΗ μπει στο main ως squash· αν η νέα δουλειά αγγίζει τις ίδιες γραμμές,
+# βγαίνει ψεύτικη σύγκρουση. Γι' αυτό:
+#   1. τριμερής συγχώνευση με `git merge-tree`, που γίνεται ΜΟΝΟ στη μνήμη·
+#      ίδιες αλλαγές και από τις δύο μεριές συγχωνεύονται καθαρά·
+#   2. βάση της είναι το ΝΕΟΤΕΡΟ commit του κλαδιού που το main ήδη περιέχει
+#      (το σημείο του τελευταίου squash), αλλιώς η κοινή βάση των δύο.
+# Μόνο αν η συγχώνευση βγει καθαρή αγγίζεται το κλαδί.
+TARGET="origin/$BASE"
+MAIN_TREE="$(git rev-parse "$TARGET^{tree}")"
+MB="$(git merge-base "$TARGET" HEAD || true)"
+if [ -z "$MB" ]; then
+  echo "✗ Το κλαδί δεν έχει κοινή ιστορία με το $TARGET. Θέλει άνθρωπο."; exit 1
+fi
+
+SYNC="$MB"
+for c in $(git rev-list "$MB..HEAD"); do
+  if t="$(git merge-tree --write-tree --merge-base="$MB" "$TARGET" "$c" 2>/dev/null | head -1)" \
+     && [ "$t" = "$MAIN_TREE" ]; then
+    SYNC="$c"; break
+  fi
+done
+if [ "$SYNC" != "$MB" ]; then
+  echo "→ το $TARGET περιέχει ήδη το κλαδί ως το $(git rev-parse --short "$SYNC")"
+fi
+
+if ! MERGED="$(git merge-tree --write-tree --merge-base="$SYNC" "$TARGET" HEAD)"; then
+  echo ""
+  echo "✗ Η δουλειά ΔΕΝ μπαίνει καθαρά πάνω στο νέο $BASE."
+  echo "  Αυτό είναι πραγματική σύγκρουση: κάποιος άλλος άλλαξε τα ίδια σημεία."
+  echo "$MERGED" | sed -n '2,$p' | grep -v '^$' | sed 's/^/   /' | head -20
+  echo "  Το κλαδί δεν πειράχθηκε."
+  exit 1
+fi
+TREE="$(echo "$MERGED" | head -1)"
+
+if [ "$TREE" = "$MAIN_TREE" ]; then
+  echo "✓ Το κλαδί δεν έχει καμία διαφορά περιεχομένου από το $TARGET."
   echo "  Ολη η δουλειά έχει ήδη συγχωνευθεί· το ξαναστήνω και τελειώνει εδώ."
-  git checkout -B "$BRANCH" "origin/$BASE" --quiet
+  git checkout -B "$BRANCH" "$TARGET" --quiet
   exit 0
 fi
 
-echo "→ διαφορά περιεχομένου από το origin/$BASE:"
-git diff --stat "origin/$BASE" HEAD | sed 's/^/   /'
+echo "→ η δουλειά του κλαδιού πάνω στο $TARGET:"
+git diff --stat "$TARGET" "$TREE" | sed 's/^/   /'
 
 PATCH="$(mktemp)"
 trap 'rm -f "$PATCH"' EXIT
-git diff --binary "origin/$BASE" HEAD > "$PATCH"
+git diff --binary "$TARGET" "$TREE" > "$PATCH"
 
 OLD="$(git rev-parse HEAD)"
-git checkout -B "$BRANCH" "origin/$BASE" --quiet
+git checkout -B "$BRANCH" "$TARGET" --quiet
 
 if ! git apply --index "$PATCH"; then
   echo ""
-  echo "✗ Η διαφορά ΔΕΝ εφαρμόζεται καθαρά πάνω στο νέο $BASE."
-  echo "  Αυτό είναι πραγματική σύγκρουση: κάποιος άλλος άλλαξε τα ίδια σημεία."
-  echo "  Το κλαδί γύρισε στο $OLD και δεν πειράχθηκε τίποτα."
+  echo "✗ Η διαφορά δεν εφαρμόστηκε. Το κλαδί γύρισε στο $OLD και δεν πειράχθηκε τίποτα."
+  git reset --hard --quiet "$OLD"
   git checkout -B "$BRANCH" "$OLD" --quiet
   exit 1
 fi
 
 echo ""
-echo "✓ Το κλαδί $BRANCH ξεκινά τώρα από το origin/$BASE, με τη δουλειά από πάνω."
+echo "✓ Το κλαδί $BRANCH ξεκινά τώρα από το $TARGET, με τη δουλειά από πάνω."
 echo "  Οι αλλαγές είναι σταδιασμένες. Γράψε το commit και σπρώξε με --force-with-lease."
