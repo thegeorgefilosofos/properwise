@@ -109,11 +109,17 @@ export const INSTAGRAM_URL = 'https://www.instagram.com/properwisegr';
 export const YOUTUBE_URL = 'https://www.youtube.com/@properwisegr';
 
 /**
+ * Η σελίδα στο Facebook, ζωντανή από 29.10.2026. Χωρίς την παράμετρο `rdid`
+ * του συνδέσμου κοινοποίησης, για τον ίδιο λόγο με το `stkn` του Instagram.
+ */
+export const FACEBOOK_URL = 'https://www.facebook.com/properwise.gr';
+
+/**
  * Οι λογαριασμοί της μάρκας, με τη σειρά του υποσέλιδου. Το `sameAs` της
  * Organization τους διαβάζει από εδώ, ώστε ένας νέος λογαριασμός να μπαίνει
  * σε ένα σημείο και να τον βλέπουν μαζί ο άνθρωπος και η Google.
  */
-export const SOCIAL_PROFILES = [LINKEDIN_URL, INSTAGRAM_URL, YOUTUBE_URL] as const;
+export const SOCIAL_PROFILES = [LINKEDIN_URL, INSTAGRAM_URL, FACEBOOK_URL, YOUTUBE_URL] as const;
 
 /**
  * ΤΟ ΚΛΕΙΔΙ ΤΟΥ IndexNow, ΓΡΑΜΜΕΝΟ ΜΙΑ ΦΟΡΑ.
