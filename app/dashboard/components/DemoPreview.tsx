@@ -100,7 +100,7 @@ export default function DemoPreview({ open, onClose, onAddProperty }: {
         {/* Ο ΕΝΦΙΑ ΤΟΥ ΠΑΡΑΔΕΙΓΜΑΤΟΣ ΕΞΗΓΕΙΤΑΙ ΜΕ ΤΑ ΣΤΟΙΧΕΙΑ ΤΟΥ (29/10/2026): όλα
             από το demoEnfia, δηλαδή από τη μηχανή ΕΝΦΙΑ της εφαρμογής. */}
         <div style={{ ...TT.caption, marginTop: 4 }}>
-          ΕΝΦΙΑ {fe(enfia.result.annual)}: {DEMO_PROPERTY.sqm} τ.μ. × {fe(enfia.zoneTax)} βασικός φόρος ζώνης
+          ΕΝΦΙΑ {fe(enfia.result.annual)}: {DEMO_PROPERTY.sqm} τ.μ. × {fe(enfia.zoneTax)} βασικός φόρος ζώνης
           ({fe(enfia.pricePerSqm)} ανά τ.μ.) × {fn(enfia.floorCoef, 2)} όροφος × {fn(enfia.ageCoef, 2)} παλαιότητα
           = {fe(enfia.result.subtotal)}, μείον {fn(enfia.result.reductionPct)}% μείωση.
         </div>
