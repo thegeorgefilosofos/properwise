@@ -86,7 +86,7 @@ export function E2Calculator({ today, cta }: { today: string; cta: ReactNode }) 
         background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', boxShadow: 'var(--well-inset)' }}>
         <ToolHero primary={{ label: 'Ακαθάριστο στο Ε2', value: fe(g.gross) }}
           secondary={[{ label: 'Μήνες', value: fn(g.months) }, { label: 'Κωδικός Ε1', value: code ? `${code.code} / ${code.spouseCode}` : 'κανένας' }]}/>
-        <LiveResult say={`Ακαθάριστο ${fe(g.gross)}, ${fn(g.months)} μήνες${code ? `, κωδικός Ε1 ${code.code}` : ''}.`}/>
+        <LiveResult say={`Ακαθάριστο ${fe(g.gross)}, ${fn(g.months)} μήνες${code ? `, κωδικός Ε1 ${code.code}` : ''}.`}/>
         <div className="po-table-box gd-table" style={{ marginTop: 20 }}>
           <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
             <table className="po-table po-stack" style={{ ['--tbl-min' as string]: '420px' }}>

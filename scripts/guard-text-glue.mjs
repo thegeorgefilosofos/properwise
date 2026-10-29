@@ -31,8 +31,10 @@
 //     Απαγορεύεται: ψηφίο ή `}` (τέλος έκφρασης JSX ή `${…}`) + ΑΠΛΟ κενό +
 //     μονάδα χρόνου, επιφάνειας, ενέργειας ή πλήθους (βλ. UNIT).
 //   · app/globals.css: ο κανόνας `:where([class*="-title"], [class*="-label"] …)
-//     { text-wrap: balance }` και ο `:where(p, li, dd, blockquote)… { text-wrap:
-//     pretty }`.
+//     { text-wrap-style: balance }` και ο `:where(p, li, dd, blockquote)…
+//     { text-wrap-style: pretty }`. ΜΕ ΤΟ LONGHAND: το shorthand `text-wrap`
+//     γράφει και `text-wrap-mode: wrap` και ακύρωνε το `nowrap` που
+//     κληρονομούν τα ποσά των πινάκων («Αγορά 615,00€» σε τέσσερις σειρές).
 //
 // ΤΟ € ΔΕΝ ΕΙΝΑΙ ΕΔΩ: γράφεται κολλητά στο ποσό («1.234,56€», guard-euro-space)
 // και ο αλγόριθμος αλλαγής γραμμής (UAX #14, LB25) δεν σπάει ποτέ ανάμεσα σε
@@ -61,8 +63,8 @@ for (const f of files) {
 
 const css = readFileSync('app/globals.css', 'utf8')
 const kanones = [
-  { re: /:where\(\[class\*="-title"\], \[class\*="-label"\][^{]*\)\s*\{\s*text-wrap:\s*balance;?\s*\}/, ti: 'ο κανόνας `:where([class*="-title"], [class*="-label"] …) { text-wrap: balance }`' },
-  { re: /:where\(p, li, dd, blockquote\)[^{]*\{\s*text-wrap:\s*pretty;?\s*\}/, ti: 'ο κανόνας `:where(p, li, dd, blockquote)… { text-wrap: pretty }`' },
+  { re: /:where\(\[class\*="-title"\], \[class\*="-label"\][^{]*\)\s*\{\s*text-wrap-style:\s*balance;?\s*\}/, ti: 'ο κανόνας `:where([class*="-title"], [class*="-label"] …) { text-wrap-style: balance }`' },
+  { re: /:where\(p, li, dd, blockquote\)[^{]*\{\s*text-wrap-style:\s*pretty;?\s*\}/, ti: 'ο κανόνας `:where(p, li, dd, blockquote)… { text-wrap-style: pretty }`' },
 ]
 const leipoun = kanones.filter(k => !k.re.test(css))
 

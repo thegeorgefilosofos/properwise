@@ -38,7 +38,7 @@ const SHARE = `${fn(1)}/${fn(Math.round(1 / RENO_39B_MATERIALS_SHARE))}`;
 const H1 = 'Έκπτωση φόρου ανακαίνισης: πόσο μειώνεται ο φόρος σου';
 const TITLE = `Υπολογισμός έκπτωσης φόρου ανακαίνισης έως ${feWhole(RENO_39B_CAP)} (άρθρο 39Β)`;
 const DESC = `Πόσο μειώνεται ο φόρος εισοδήματος για υπηρεσίες ανακαίνισης: έως ${feWhole(RENO_39B_CAP)} σε `
-  + `${fn(RENO_39B_YEARS)} έτη, υλικά έως ${SHARE} των υπηρεσιών, όχι πάνω από τον φόρο κάθε έτους.`;
+  + `${fn(RENO_39B_YEARS)} έτη, υλικά έως ${SHARE} των υπηρεσιών, όχι πάνω από τον φόρο κάθε έτους.`;
 
 export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, image: shareImage('ypologismos-ekptosis-anakainisis') });
 

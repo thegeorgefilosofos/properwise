@@ -735,11 +735,12 @@ export const MUTATIONS = {
   ] },
 
   // Αριθμός και μονάδα με απλό κενό: ακριβώς το «…τις πρώτες 30 / ημέρες.» της
-  // 29/10/2026. Και οι δύο κανόνες ζύγισης του globals.css, ο καθένας χωριστά.
+  // 29/10/2026. Και οι δύο κανόνες ζύγισης του globals.css, ο καθένας χωριστά·
+  // και η επιστροφή τους στο shorthand `text-wrap`, που έσπαγε τα ποσά.
   'text-glue': { every: [
     { add: 'components/__mut__.tsx', content: tsx('    <p>Δωρεάν τις πρώτες {30} ημέρες, σε 80 τ.μ.</p>') },
     { file: 'app/globals.css', from: ':where([class*="-title"], [class*="-label"]', to: ':where([class*="-titlos"], [class*="-label"]' },
-    { file: 'app/globals.css', from: 'legend, figcaption, a, button) { text-wrap: balance; }', to: 'legend, figcaption, a, button) { text-wrap: wrap; }' },
-    { file: 'app/globals.css', from: ', .lg-lede > p)) { text-wrap: pretty; }', to: ', .lg-lede > p)) { text-wrap: wrap; }' },
+    { file: 'app/globals.css', from: 'legend, figcaption, a, button) { text-wrap-style: balance; }', to: 'legend, figcaption, a, button) { text-wrap: balance; }' },
+    { file: 'app/globals.css', from: ', .lg-lede > p)) { text-wrap-style: pretty; }', to: ', .lg-lede > p)) { text-wrap: pretty; }' },
   ] },
 }
