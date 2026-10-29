@@ -60,6 +60,27 @@ export function enfiaTotalOfSettings(propertyId: string, s: EnfiaTotalSettings |
 export function enfiaCountsByProperty(
   props: readonly TaxpayerProperty[], scope: ReadonlySet<string> | null, facts: readonly EnfiaTotalFact[],
 ): Map<string, Record<number, number>> {
+  const out = new Map<string, Record<number, number>>();
+  for (const [id, byYear] of enfiaTotalsByProperty(props, scope, facts)) {
+    const counts: Record<number, number> = {};
+    for (const [year, total] of Object.entries(byYear)) {
+      const n = enfiaInstalmentCount(total);
+      if (n > 0) counts[Number(year)] = n;
+    }
+    out.set(id, counts);
+  }
+  return out;
+}
+
+/**
+ * Ακίνητο → (έτος → ΣΥΝΟΛΟ εκκαθαριστικού ΕΝΦΙΑ του φορολογούμενου του).
+ * Ο ίδιος κανόνας φορολογούμενου με την `enfiaCountsByProperty`: δύο ακίνητα
+ * του ίδιου ανθρώπου μοιράζονται ένα εκκαθαριστικό, όχι δύο. Από αυτό βγαίνει
+ * το ποσό κάθε δόσης στις υπενθυμίσεις (`enfiaInstalments`, 29/10/2026).
+ */
+export function enfiaTotalsByProperty(
+  props: readonly TaxpayerProperty[], scope: ReadonlySet<string> | null, facts: readonly EnfiaTotalFact[],
+): Map<string, Record<number, number>> {
   const keyOf = (p: TaxpayerProperty) => !scope ? '' : scope.size === 0 ? `p:${p.id}` : taxpayerOf(p, scope);
   const key = new Map(props.map(p => [p.id, keyOf(p)]));
   // Φορολογούμενος → έτος → το μεγαλύτερο γνωστό σύνολο.
@@ -72,14 +93,7 @@ export function enfiaCountsByProperty(
     totals.set(k, byYear);
   }
   const out = new Map<string, Record<number, number>>();
-  for (const p of props) {
-    const counts: Record<number, number> = {};
-    for (const [year, total] of totals.get(key.get(p.id) as string) ?? []) {
-      const n = enfiaInstalmentCount(total);
-      if (n > 0) counts[year] = n;
-    }
-    out.set(p.id, counts);
-  }
+  for (const p of props) out.set(p.id, Object.fromEntries(totals.get(key.get(p.id) as string) ?? []));
   return out;
 }
 
@@ -89,9 +103,9 @@ export function enfiaCountsByProperty(
  */
 export async function readEnfiaCounts(
   db: SupabaseClient, ownerId: string, props: readonly TaxpayerProperty[],
-): Promise<{ counts: Map<string, Record<number, number>>; error: DbError | null }> {
+): Promise<{ counts: Map<string, Record<number, number>>; totals: Map<string, Record<number, number>>; error: DbError | null }> {
   const empty = new Map<string, Record<number, number>>();
-  if (!props.length) return { counts: empty, error: null };
+  if (!props.length) return { counts: empty, totals: empty, error: null };
   const ids = props.map(p => p.id);
   const [prof, conf, docs] = await Promise.all([
     billing.profileOutcome<{ profile_type: string | null }>(db, ownerId, 'profile_type'),
@@ -99,14 +113,14 @@ export async function readEnfiaCounts(
     documents.enfiaStatementsWithError(db, ids, ownerId),
   ]);
   const error = (prof.error as DbError | null) ?? conf.error ?? docs.error;
-  if (error) return { counts: empty, error };
+  if (error) return { counts: empty, totals: empty, error };
 
   // Ο τύπος λογαριασμού που δεν διαβάστηκε δεν ενώνει τίποτα.
   let scope: ReadonlySet<string> | null = new Set<string>();
   if (prof.data && prof.data.profile_type !== 'professional') scope = null;
   else if (prof.data?.profile_type === 'professional') {
     const owners = await db.from('clients').select('id').eq('user_id', ownerId).eq('type', 'owner');
-    if (owners.error) return { counts: empty, error: owners.error };
+    if (owners.error) return { counts: empty, totals: empty, error: owners.error };
     scope = new Set(((owners.data ?? []) as { id: string }[]).map(r => r.id));
   }
 
@@ -114,5 +128,5 @@ export async function readEnfiaCounts(
     ...docs.statements,
     ...ids.map(id => enfiaTotalOfSettings(id, conf.data[id])).filter((f): f is EnfiaTotalFact => !!f),
   ];
-  return { counts: enfiaCountsByProperty(props, scope, facts), error: null };
+  return { counts: enfiaCountsByProperty(props, scope, facts), totals: enfiaTotalsByProperty(props, scope, facts), error: null };
 }

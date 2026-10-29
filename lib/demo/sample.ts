@@ -28,6 +28,10 @@ import { expenseAccount } from '@/lib/accounting/journal';
 import { categoryLabel, isDeductible } from '@/lib/expenses/taxonomy';
 import { rentalBracketsForYear, bracketsLabelForYear } from '@/lib/billing/greekTax';
 import { greekPropertyTaxObligations } from '@/lib/tax/greekTaxCalendar';
+import {
+  estimateENFIAFromFacts, zoneKeyFromPricePerSqm, enfiaAgeKeyFromYearBuilt, enfiaFloorKeyFromValue,
+  enfiaAgeCoef, enfiaFloorCoef, ENFIA_ZONE_TAX, type ENFIAResult,
+} from '@/lib/billing/enfia';
 import { roundHalfUp } from '../core/money';
 
 /** Το ακίνητο του παραδείγματος. Ένα, μακροχρόνια μισθωμένο, με πλήρη στοιχεία. */
@@ -43,6 +47,47 @@ export const DEMO_PROPERTY = {
   monthlyRent: 780,
   objValue: 96400,
 } as const;
+
+/**
+ * Ο ΕΝΦΙΑ ΤΟΥ ΠΑΡΑΔΕΙΓΜΑΤΟΣ, ΑΠΟ ΤΗ ΜΗΧΑΝΗ (29/10/2026).
+ *
+ * ΤΙ ΗΤΑΝ. Η δαπάνη ΕΝΦΙΑ γραφόταν στο χέρι, 316,00€. Για τα ίδια στοιχεία
+ * (68 τ.μ., αξία 96.400€, 1998, 3ος όροφος) η `estimateENFIAFromFacts`, που
+ * βλέπει και ο πραγματικός χρήστης, βγάζει άλλο ποσό: το παράδειγμα έδειχνε
+ * έναν ΕΝΦΙΑ που η εφαρμογή δεν θα υπολόγιζε ποτέ.
+ *
+ * ΤΙ ΙΣΧΥΕΙ. Ζώνη, συντελεστές και ποσό βγαίνουν από το lib/billing/enfia.ts,
+ * με τις πηγές που γράφει εκείνο το αρχείο. Η τιμή ζώνης είναι η αξία ανά
+ * τετραγωνικό του ακινήτου του παραδείγματος, το οποίο είναι φανταστικό: δεν
+ * ισχυρίζεται τιμή ζώνης καμίας πραγματικής διεύθυνσης.
+ */
+export interface DemoEnfia {
+  year: number;
+  /** Αξία ανά τ.μ., από την οποία κρίνεται η ζώνη. */
+  pricePerSqm: number;
+  zone: string;
+  /** Βασικός φόρος ζώνης ανά τ.μ. */
+  zoneTax: number;
+  floorCoef: number;
+  ageCoef: number;
+  result: ENFIAResult;
+}
+
+export function demoEnfia(year: number): DemoEnfia {
+  const pricePerSqm = roundHalfUp(DEMO_PROPERTY.objValue / DEMO_PROPERTY.sqm, 2);
+  const zone = zoneKeyFromPricePerSqm(pricePerSqm) as string;
+  const result = estimateENFIAFromFacts({
+    value: DEMO_PROPERTY.objValue, sqm: DEMO_PROPERTY.sqm, yearBuilt: DEMO_PROPERTY.yearBuilt,
+    floor: DEMO_PROPERTY.floor, taxYear: year,
+  });
+  if (!result) throw new Error('Το ακίνητο του παραδείγματος δεν δίνει εκτίμηση ΕΝΦΙΑ');
+  return {
+    year, pricePerSqm, zone, zoneTax: ENFIA_ZONE_TAX[zone],
+    floorCoef: enfiaFloorCoef(enfiaFloorKeyFromValue(DEMO_PROPERTY.floor)),
+    ageCoef: enfiaAgeCoef(enfiaAgeKeyFromYearBuilt(DEMO_PROPERTY.yearBuilt, year)),
+    result,
+  };
+}
 
 /** Η χρονιά του παραδείγματος: η τελευταία κλεισμένη. */
 export function demoYear(today: string): number {
@@ -106,7 +151,7 @@ export function demoExpenses(year: number): DemoExpense[] {
     { date: `${year}-04-18`, category: 'electricity', description: 'Ρεύμα, κοινόχρηστος μετρητής', amount: 62.40 },
     { date: `${year}-05-06`, category: 'water',      description: 'Ύδρευση, λογαριασμός διμήνου', amount: 48.30 },
     { date: `${year}-06-11`, category: 'repair',     description: 'Βαφή καθιστικού και διαδρόμου', amount: 420.00 },
-    { date: enfiaPayDate(year), category: 'enfia',   description: 'ΕΝΦΙΑ, εξόφληση εκκαθαριστικού', amount: 316.00 },
+    { date: enfiaPayDate(year), category: 'enfia',   description: 'ΕΝΦΙΑ, εξόφληση εκκαθαριστικού', amount: demoEnfia(year).result.annual },
     { date: `${year}-08-27`, category: 'ac_service', description: 'Συντήρηση κλιματιστικών, δύο μονάδες', amount: 110.00 },
     { date: `${year}-09-16`, category: 'electrician', description: 'Ηλεκτρολόγος, πίνακας και ρελέ', amount: 135.00 },
     { date: `${year}-11-13`, category: 'appliance',  description: 'Πλυντήριο ρούχων, αντικατάσταση', amount: 349.00 },
