@@ -1,10 +1,11 @@
 // npx tsx lib/reminders/payLink.test.ts
 // «Πλήρωσα»: διακριτικό, κανόνας δαπάνης και εξαργύρωση με επανάληψη, IDOR, λήξη, αναίρεση.
 import {
-  newPayToken, hashPayToken, isPayTokenShape, payUrl, expenseForPaidEvent, canUndo, payTokenExpiry, payDedupHash,
+  newPayToken, hashPayToken, isPayTokenShape, payUrl, expenseForPaidEvent, canUndo, payTokenExpiry, payDedupHash, isMissingTable,
   PAY_TOKEN_DAYS, PAY_UNDO_HOURS,
 } from './payLink';
 import { redeemPayToken, undoPayToken, peekPayToken } from './payRedeem';
+import { mintPayToken } from './payMint';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 let p = 0, f = 0;
@@ -40,7 +41,7 @@ ok(!canUndo(new Date(now.getTime() - (PAY_UNDO_HOURS * 3_600_000 + 1000)).toISOS
 
 // ── Η εξαργύρωση, πάνω σε ψεύτικη βάση με τη συμπεριφορά του PostgREST ───────
 type Row = Record<string, unknown>;
-function fakeDb(tables: Record<string, Row[]>) {
+function fakeDb(tables: Record<string, Row[]>, missing: string[] = []) {
   const from = (t: string) => {
     const rows = tables[t] ??= [];
     let op: 'select' | 'update' | 'insert' | 'delete' = 'select', patch: Row = {}, ins: Row | null = null, dedupIgnore = false;
@@ -52,8 +53,11 @@ function fakeDb(tables: Record<string, Row[]>) {
       eq: (k: string, v: unknown) => { where.push(r => r[k] === v); return q; },
       is: (k: string, v: unknown) => { where.push(r => (r[k] ?? null) === v); return q; },
       gt: (k: string, v: string) => { where.push(r => String(r[k]) > v); return q; },
+      gte: (k: string, v: string) => { where.push(r => String(r[k]) >= v); return q; },
+      lte: (k: string, v: string) => { where.push(r => String(r[k]) <= v); return q; },
       limit: () => q,
       run(single: boolean) {
+        if (missing.includes(t)) return { data: null, error: { code: 'PGRST205', message: `Could not find the table 'public.${t}' in the schema cache` } };
         if (op === 'insert') {
           if (t === 'expenses' && rows.some(r => r.dedup_hash === (ins as Row).dedup_hash)) return dedupIgnore ? { data: null, error: null } : { data: null, error: { code: '23505' } };
           const r = { id: `${t}-${rows.length + 1}`, ...(ins as Row) }; rows.push(r); return { data: r, error: null };
@@ -123,6 +127,65 @@ const r4 = await redeemPayToken(db, old.token, now, '2026-10-29', true);
 ok(!r4.ok && r4.kind === 'expired', 'ληγμένο: απορρίπτεται');
 const unknown = await newPayToken();
 ok(!(await redeemPayToken(db, unknown.token, now, '2026-10-29', true)).ok, 'άγνωστο διακριτικό: απορρίπτεται');
+
+// ── Η προεπιλογή του εξόδου: τσεκαρισμένο ΜΟΝΟ χωρίς υπάρχον έξοδο ─────────
+{
+  const ev = { ...enfia, user_id: 'u1', status: 'pending', event_date: '2026-10-30' };
+  const mk = async (rows: Row[], missing: string[] = []) => {
+    const t = await newPayToken();
+    const tb: Record<string, Row[]> = {
+      reminder_pay_tokens: [{ id: 'd1', user_id: 'u1', event_id: 'e1', token_hash: t.hash, used_at: null, undone_at: null, expires_at: payTokenExpiry(now) }],
+      calendar_events: [ev], expenses: rows,
+    };
+    return { t, tb, db: fakeDb(tb, missing) };
+  };
+  const exp = (o: Row = {}) => ({ id: 'x1', user_id: 'u1', property_id: 'p1', amount: 26.33, date: '2026-10-28', category: 'enfia', ...o });
+
+  let c = await mk([]);
+  let pk = await peekPayToken(c.db, c.t.token, now);
+  ok(pk.ok && pk.expenseEligible && pk.expenseDefault && !pk.expenseDuplicate, 'χωρίς έξοδο: τσεκαρισμένο, χωρίς σημείωση');
+
+  c = await mk([exp()]);
+  pk = await peekPayToken(c.db, c.t.token, now);
+  ok(pk.ok && pk.expenseDuplicate && !pk.expenseDefault, 'με έξοδο ΕΝΦΙΑ ίδιου ποσού στο διάστημα: ξετσεκαρισμένο και σημείωση');
+
+  c = await mk([exp({ property_id: 'p2' })]);
+  pk = await peekPayToken(c.db, c.t.token, now);
+  ok(pk.ok && pk.expenseDefault && !pk.expenseDuplicate, 'έξοδο άλλου ακινήτου: δεν μετρά');
+
+  c = await mk([exp({ user_id: 'u2' })]);
+  pk = await peekPayToken(c.db, c.t.token, now);
+  ok(pk.ok && pk.expenseDefault, 'έξοδο άλλου χρήστη: δεν μετρά');
+
+  c = await mk([], ['expenses']);
+  pk = await peekPayToken(c.db, c.t.token, now);
+  ok(pk.ok && !pk.expenseDefault && !pk.expenseDuplicate, 'η ανάγνωση εξόδων απέτυχε: ξετσεκαρισμένο (άγνωστο ≠ «δεν υπάρχει»)');
+
+  // Idempotent καταχώρηση: η ίδια δαπάνη από δύο διαδρομές γράφεται μία φορά.
+  c = await mk([]);
+  ok((await redeemPayToken(c.db, c.t.token, now, '2026-10-29', true)).ok, 'πληρωμή με έξοδο');
+  await import('@/lib/data/expenses').then(m => m.insertDeduped(c.db, [{ user_id: 'u1', property_id: 'p1', amount: 26.33, category: 'enfia', date: '2026-10-29', description: 'x', dedup_hash: payDedupHash('e1') }]));
+  eq(c.tb.expenses.length, 1, 'δεύτερη εγγραφή με το ίδιο αποτύπωμα: καμία νέα γραμμή (ON CONFLICT … DO NOTHING)');
+}
+
+// ── Πριν τη μετανάστευση: ο πίνακας των διακριτικών δεν υπάρχει ──────────────
+{
+  ok(isMissingTable({ code: '42P01' }) && isMissingTable({ code: 'PGRST205' }), 'αναγνωρίζει «δεν υπάρχει ο πίνακας»');
+  ok(!isMissingTable({ code: '23505' }) && !isMissingTable(null), 'άλλα σφάλματα δεν είναι «λείπει ο πίνακας»');
+  const tb: Record<string, Row[]> = { calendar_events: [{ ...enfia, user_id: 'u1', status: 'pending' }], expenses: [] };
+  const db0 = fakeDb(tb, ['reminder_pay_tokens']);
+  const quiet = console.error; let noise = 0; console.error = () => { noise++; };
+  const minted = await mintPayToken(db0, 'u1', 'e1', 'push', now);
+  console.error = quiet;
+  eq(minted, null, 'χωρίς πίνακα: κανένα διακριτικό, άρα η ειδοποίηση φεύγει χωρίς «Πλήρωσα»');
+  eq(noise, 0, 'και χωρίς σφάλμα στα αρχεία');
+  const t0 = await newPayToken();
+  const pk0 = await peekPayToken(db0, t0.token, now);
+  ok(!pk0.ok && pk0.kind === 'error', 'η σελίδα: «Δεν φορτώθηκε τώρα», όχι κατάρρευση');
+  const r0 = await redeemPayToken(db0, t0.token, now, '2026-10-29', true);
+  ok(!r0.ok && r0.kind === 'error', 'το POST: προσωρινό σφάλμα (503), τίποτα δεν άλλαξε');
+  eq(tb.calendar_events[0].status, 'pending', 'και η προθεσμία μένει ανοιχτή');
+}
 
 console.log(`payLink: ${p} ✓ · ${f} ✗`);
 if (f) process.exit(1);

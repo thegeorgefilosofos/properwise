@@ -45,6 +45,8 @@ export async function POST(request: Request) {
   const db = createServiceClient();
   const now = new Date();
   const out = action === 'undo' ? await undoPayToken(db, token, now) : await redeemPayToken(db, token, now, athensToday(), body.expense === true);
-  const status = out.ok ? 200 : out.kind === 'invalid' ? 404 : out.kind === 'error' ? 500 : 409;
+  // Σφάλμα βάσης (και πίνακας που δεν υπάρχει ακόμη) είναι 503: προσωρινό, όχι
+  // βλάβη του αιτήματος. Η σελίδα και το service worker δείχνουν «δοκίμασε ξανά».
+  const status = out.ok ? 200 : out.kind === 'invalid' ? 404 : out.kind === 'error' ? 503 : 409;
   return NextResponse.json(out, { status, headers: NO_STORE });
 }

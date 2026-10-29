@@ -100,6 +100,20 @@ export function expenseForPaidEvent(e: PaidEvent): PayExpense | null {
   return { category: 'enfia', amount: Math.round(e.amount * 100) / 100, description: e.title, dedupHash: payDedupHash(e.id) };
 }
 
+/**
+ * ΠΡΙΝ ΤΗ ΜΕΤΑΝΑΣΤΕΥΣΗ. Ο κώδικας φτάνει στην παραγωγή (Vercel, edge
+ * functions) ΠΡΙΝ από τον πίνακα `reminder_pay_tokens`: η ροή του αποθετηρίου
+ * ανεβάζει πρώτα τις συναρτήσεις και μετά τρέχει το `db push`. Σε εκείνο το
+ * παράθυρο (και όσο η μετανάστευση δεν έχει εφαρμοστεί) κάθε γραφή διακριτικού
+ * αποτυγχάνει με «δεν υπάρχει ο πίνακας». Αυτό δεν είναι βλάβη· σημαίνει ότι η
+ * υπενθύμιση φεύγει ΧΩΡΙΣ «Πλήρωσα», όπως πριν.
+ *
+ *   42P01       Postgres: undefined_table
+ *   PGRST205    PostgREST: ο πίνακας δεν είναι στην κρυφή μνήμη του σχήματος
+ */
+export const isMissingTable = (e: { code?: string | null; message?: string | null } | null | undefined): boolean =>
+  !!e && (e.code === '42P01' || e.code === 'PGRST205' || /reminder_pay_tokens.*(does not exist|schema cache)/i.test(e.message ?? ''));
+
 /** Χωράει ακόμη αναίρεση; */
 export const canUndo = (usedAt: string | null, undoneAt: string | null, now: Date): boolean =>
   !!usedAt && !undoneAt && now.getTime() - new Date(usedAt).getTime() <= PAY_UNDO_HOURS * 3_600_000;

@@ -15,7 +15,7 @@ import { oneTaxCopy } from '../../../lib/calendar/taxOnce.ts'
 // «ΠΛΗΡΩΣΑ» ΜΕ ΕΝΑ ΠΑΤΗΜΑ (29/10/2026): κάθε γραμμή του email φέρνει σύνδεσμο
 // που σημειώνει τη συγκεκριμένη προθεσμία πληρωμένη. Διακριτικό 256 bit, μόνο
 // το αποτύπωμα στη βάση, μίας χρήσης, με λήξη (lib/reminders/payLink.ts).
-import { newPayToken, payTokenExpiry, payUrl } from '../../../lib/reminders/payLink.ts'
+import { newPayToken, payTokenExpiry, payUrl, isMissingTable } from '../../../lib/reminders/payLink.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -71,7 +71,13 @@ async function payLinks(userId: string, events: readonly CalendarEventsRow[]): P
   }
   if (!rows.length) return out
   const { error } = await supabase.from('reminder_pay_tokens').insert(rows)
-  if (error) { console.error('[send-reminders] διακριτικά «Πλήρωσα»:', error); return new Map() }
+  if (error) {
+    // Ο πίνακας μπορεί να μην υπάρχει ακόμη (η συνάρτηση ανεβαίνει πριν από τη
+    // μετανάστευση): το email φεύγει όπως πριν, χωρίς «Πλήρωσα».
+    if (isMissingTable(error)) console.info('[send-reminders] «Πλήρωσα» ανενεργό: δεν υπάρχει ακόμη ο πίνακας')
+    else console.error('[send-reminders] διακριτικά «Πλήρωσα»:', error)
+    return new Map()
+  }
   return out
 }
 
@@ -226,7 +232,7 @@ Deno.serve(async (req) => {
     // Τα ληγμένα διακριτικά «Πλήρωσα» δεν κάνουν πια τίποτα: σβήνονται μία
     // φορά τη μέρα. Αποτυχία εδώ δεν σταματά τις υπενθυμίσεις.
     const { error: purgeErr } = await supabase.from('reminder_pay_tokens').delete().lt('expires_at', new Date().toISOString())
-    if (purgeErr) console.error('[send-reminders] ληγμένα διακριτικά «Πλήρωσα»:', purgeErr)
+    if (purgeErr && !isMissingTable(purgeErr)) console.error('[send-reminders] ληγμένα διακριτικά «Πλήρωσα»:', purgeErr)
 
     const { data: prefs, error: prefsErr } = await supabase.from('notification_preferences').select('*').eq('email_enabled', true)
     if (prefsErr) {

@@ -39,7 +39,8 @@ export default async function Page({ params }: { params: Promise<{ token: string
             {peek.amount != null && peek.amount > 0 && (
               <p style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fe(peek.amount)}</p>
             )}
-            <PayActions token={token} used={peek.used} undoable={peek.undoable} undoHours={PAY_UNDO_HOURS} expenseEligible={peek.expenseEligible} />
+            <PayActions token={token} used={peek.used} undoable={peek.undoable} undoHours={PAY_UNDO_HOURS} expenseEligible={peek.expenseEligible}
+              expenseDuplicate={peek.expenseDuplicate} expenseDefault={peek.expenseDefault} />
           </>
         )}
       </main>

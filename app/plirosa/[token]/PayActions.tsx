@@ -5,13 +5,15 @@ import { Btn } from '@/components/Theme';
 
 type Phase = 'ask' | 'paid' | 'undone' | 'failed' | 'used';
 
-export function PayActions({ token, used, undoable, undoHours, expenseEligible }: {
-  token: string; used: boolean; undoable: boolean; undoHours: number; expenseEligible: boolean;
+export function PayActions({ token, used, undoable, undoHours, expenseEligible, expenseDuplicate, expenseDefault }: {
+  token: string; used: boolean; undoable: boolean; undoHours: number;
+  expenseEligible: boolean; expenseDuplicate: boolean; expenseDefault: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>(used ? 'used' : 'ask');
   const [expense, setExpense] = useState(false);
-  // Η δαπάνη είναι ΕΠΙΛΟΓΗ του χρήστη, ορατή πριν από το πάτημα.
-  const [withExpense, setWithExpense] = useState(true);
+  // Η δαπάνη είναι ΕΠΙΛΟΓΗ του χρήστη, ορατή πριν από το πάτημα. Τσεκαρισμένη
+  // μόνο όταν ο διακομιστής ξέρει ότι δεν υπάρχει ήδη έξοδο για τη δόση.
+  const [withExpense, setWithExpense] = useState(expenseDefault);
   const [busy, setBusy] = useState(false);
 
   async function send(action: 'pay' | 'undo') {
@@ -32,7 +34,14 @@ export function PayActions({ token, used, undoable, undoHours, expenseEligible }
       {expenseEligible && (
         <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', margin: '0 0 20px', fontSize: 15, lineHeight: 1.5, color: 'var(--text-primary)', cursor: 'pointer' }}>
           <input type="checkbox" checked={withExpense} onChange={e => setWithExpense(e.target.checked)} style={{ marginTop: 2, width: 18, height: 18, flexShrink: 0 }} />
-          <span>Καταχώρησέ τη και στις δαπάνες του ακινήτου, ως ΕΝΦΙΑ</span>
+          <span>
+            Καταχώρησέ τη και στις δαπάνες του ακινήτου, ως ΕΝΦΙΑ
+            {expenseDuplicate && (
+              <span style={{ display: 'block', marginTop: 4, fontSize: 13, color: 'var(--text-tertiary)' }}>
+                Υπάρχει ήδη καταχωρημένο έξοδο για αυτή τη δόση.
+              </span>
+            )}
+          </span>
         </label>
       )}
       <Btn variant="primary" onClick={() => send('pay')} disabled={busy}>Πλήρωσα</Btn>
