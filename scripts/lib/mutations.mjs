@@ -22,6 +22,9 @@
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
 export const MUTATIONS = {
+  // Η διαφορά ξανά με δύο τελείες, από το origin/main στο HEAD: ακριβώς το
+  // patch που θα έσβηνε τις ~1.200 γραμμές των #451/#452 (29/10/2026).
+  'rebranch': { file: 'scripts/rebranch.sh', from: 'git diff --binary "$TARGET" "$TREE" > "$PATCH"', to: 'git diff --binary "$TARGET" HEAD > "$PATCH"' },
   // Νέο module που διαβάζει το κλειδί της βάσης απευθείας: ακριβώς ο δρόμος
   // από τον οποίο ένα κρυφό «\n» έριξε όλο το Realtime (06.10.2026).
   'supabase-env': { add: 'lib/__mut_env__.ts', content: "export const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY\n" },
