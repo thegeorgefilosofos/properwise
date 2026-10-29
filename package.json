@@ -22,6 +22,7 @@
     "schema-drift": "node scripts/guard-schema-drift.mjs",
     "theme-tokens": "node scripts/guard-theme-tokens.mjs",
     "db-types": "node scripts/gen-db-types.mjs",
+    "db:replay": "bash scripts/db-replay.sh",
     "tax-year": "node scripts/guard-tax-year.mjs",
     "validity": "node scripts/guard-validity.mjs",
     "katalogos": "node scripts/gen-message-catalog.mjs",
