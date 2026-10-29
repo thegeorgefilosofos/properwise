@@ -21,7 +21,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { Modal, Btn, T, TT, fe, fp, Stat } from '@/components/Theme';
-import { DEMO_PROPERTY, demoLedger, demoRents, demoSummary } from '@/lib/demo/sample';
+import { DEMO_PROPERTY, demoEnfia, demoLedger, demoRents, demoSummary } from '@/lib/demo/sample';
+import { fn } from '@/lib/core/format';
 import { MONTHS_GEN } from '@/lib/core/months';
 import { isoDate } from '@/lib/core/time';
 
@@ -46,6 +47,7 @@ export default function DemoPreview({ open, onClose, onAddProperty }: {
   // σειρά και τα λεκτικά του νόμου. Δεν ξαναγράφονται εδώ — αλλιώς θα υπήρχαν
   // δύο εκδοχές της ίδιας κατάστασης, μία για την προεπισκόπηση και μία αληθινή.
   const lines = s.statement.lines;
+  const enfia = demoEnfia(s.year);
 
   return (
     <Modal open={open} onClose={onClose} size="lg"
@@ -94,6 +96,13 @@ export default function DemoPreview({ open, onClose, onAddProperty }: {
             και υποθέτει ότι λείπει ένα. */}
         <div style={{ ...TT.caption, marginTop: 10 }}>
           Φόρος με {s.bracketsLabel}. Πραγματικός συντελεστής {fp(s.statement.effectiveRate * 100)}.
+        </div>
+        {/* Ο ΕΝΦΙΑ ΤΟΥ ΠΑΡΑΔΕΙΓΜΑΤΟΣ ΕΞΗΓΕΙΤΑΙ ΜΕ ΤΑ ΣΤΟΙΧΕΙΑ ΤΟΥ (29/10/2026): όλα
+            από το demoEnfia, δηλαδή από τη μηχανή ΕΝΦΙΑ της εφαρμογής. */}
+        <div style={{ ...TT.caption, marginTop: 4 }}>
+          ΕΝΦΙΑ {fe(enfia.result.annual)}: {DEMO_PROPERTY.sqm} τ.μ. × {fe(enfia.zoneTax)} βασικός φόρος ζώνης
+          ({fe(enfia.pricePerSqm)} ανά τ.μ.) × {fn(enfia.floorCoef, 2)} όροφος × {fn(enfia.ageCoef, 2)} παλαιότητα
+          = {fe(enfia.result.subtotal)}, μείον {fn(enfia.result.reductionPct)}% μείωση.
         </div>
         {late && (
           <div style={{ ...TT.caption, marginTop: 4 }}>

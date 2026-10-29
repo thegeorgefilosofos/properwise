@@ -38,6 +38,7 @@ import {
 } from '@/lib/tax/greekTaxCalendar';
 import type { EventDraft, EventStatus } from '@/lib/data/calendar';
 import { daysBetweenIso } from '@/lib/core/time';
+import { enfiaInstalments } from '@/lib/tools/enfiaSchedule';
 
 /**
  * Καταστάσεις που ΔΕΝ είναι ανοιχτή προθεσμία, σε κάθε πίνακα: οι εκκρεμότητες
@@ -217,11 +218,19 @@ const shift = (iso: string, days: number): string => {
  *
  * Το `opts.enfiaInstalments` είναι το πλήθος δόσεων του ΔΙΚΟΥ του
  * εκκαθαριστικού ΕΝΦΙΑ, όταν το σύνολο είναι γνωστό (lib/calendar/enfiaTotals.ts).
+ *
+ * ΤΟ ΠΟΣΟ ΤΗΣ ΔΟΣΗΣ (29/10/2026). Με γνωστό το σύνολο (`amounts.enfiaTotals`),
+ * κάθε δόση ΕΝΦΙΑ γράφεται με το ποσό της από το `enfiaInstalments`: ίσες
+ * δόσεις κομμένες στο λεπτό και η τελευταία κλείνει το σύνολο. Το ποσό ταξιδεύει
+ * από εκεί στο email και στην ειδοποίηση. Η δόση ταιριάζει με την ΗΜΕΡΟΜΗΝΙΑ
+ * της, όχι με τον αριθμό: αν οι δύο μηχανές διαφωνήσουν ποτέ, η δόση μένει
+ * χωρίς ποσό, όπως πριν, αντί να πάρει το ποσό άλλης.
  */
 export function taxEventsToWrite(
   today: string, profile: PropertyTaxProfile,
   existing: readonly { source?: string | null; status?: string | null }[] = [],
   opts: TaxCalendarOptions = {},
+  amounts: { enfiaTotals?: Readonly<Record<number, number>> } = {},
 ): EventDraft[] {
   const t = day(today);
   const had = new Map<string, string>();
@@ -231,9 +240,20 @@ export function taxEventsToWrite(
     const src = taxEventSource(o.id);
     const prev = had.get(src);
     if (o.date < t && prev === undefined) continue;
-    out.push({ ...taxObligationToEvent(o), status: (prev ?? 'pending') as EventStatus });
+    const ev: EventDraft = { ...taxObligationToEvent(o), status: (prev ?? 'pending') as EventStatus };
+    const amount = ENFIA_KINDS.has(o.kind) ? enfiaInstalmentAmount(o, amounts.enfiaTotals) : null;
+    if (amount !== null) ev.amount = amount;
+    out.push(ev);
   }
   return out;
+}
+
+/** Το ποσό μιας δόσης ΕΝΦΙΑ από το σύνολο του εκκαθαριστικού, ή `null`. */
+function enfiaInstalmentAmount(o: TaxObligation, totals: Readonly<Record<number, number>> | undefined): number | null {
+  const total = totals?.[enfiaYearOf(o)];
+  if (!(typeof total === 'number' && total > 0)) return null;
+  const hit = enfiaInstalments(total, enfiaYearOf(o)).find(i => i.date === o.date);
+  return hit ? hit.amount : null;
 }
 
 // ── ΟΙ ΔΟΣΕΙΣ ΕΝΦΙΑ ────────────────────────────────────────────────────────

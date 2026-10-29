@@ -5,7 +5,7 @@
 // ότι κάθε ποσό της προεπισκόπησης βγαίνει από τις ΙΔΙΕΣ συναρτήσεις με του
 // πληρωμένου χρήστη και ότι τίποτα δεν αποθηκεύεται.
 import {
-  DEMO_PROPERTY, demoYear, demoRents, demoExpenses, demoLedger, demoSummary,
+  DEMO_PROPERTY, demoEnfia, demoYear, demoRents, demoExpenses, demoLedger, demoSummary,
 } from './sample';
 import { resolveCategory } from '@/lib/expenses/taxonomy';
 import { incomeStatement } from '@/lib/accounting/statement';
@@ -90,6 +90,25 @@ ok('η κλίμακα του έτους αναγράφεται', sum.bracketsLab
   const src = readFileSync(new URL('./sample.ts', import.meta.url), 'utf8');
   ok('το παράδειγμα δεν εισάγει Supabase', !/supabase/i.test(src));
   ok('το παράδειγμα δεν κάνει insert/upsert/delete', !/\.(insert|upsert|delete)\(/.test(src));
+}
+
+// ── Ο ΕΝΦΙΑ ΑΠΟ ΤΗ ΜΗΧΑΝΗ· ΚΑΝΕΝΑ ΚΕΝΟ ΣΤΗΝ ΟΘΟΝΗ (29/10/2026) ─────────────
+{
+  const yr = demoYear('2026-10-29');
+  const e = demoEnfia(yr);
+  ok('η ζώνη του παραδείγματος είναι ζώνη του πίνακα', typeof e.zoneTax === 'number' && e.zoneTax > 0);
+  ok('ο ΕΝΦΙΑ βγαίνει ολόκληρος', [e.pricePerSqm, e.floorCoef, e.ageCoef, e.result.basic, e.result.subtotal, e.result.annual].every(v => Number.isFinite(v) && v > 0));
+  ok('η δαπάνη ΕΝΦΙΑ είναι το ποσό της μηχανής', demoExpenses(yr).find(x => x.category === 'enfia')?.amount === e.result.annual);
+  ok('η σύνοψη έχει τον ίδιο ΕΝΦΙΑ', Math.round(demoSummary('2026-10-29').enfia * 100) === Math.round(e.result.annual * 100));
+  // Κάθε αριθμός που δείχνει η προεπισκόπηση είναι αριθμός· κάθε ετικέτα έχει κείμενο.
+  const sm = demoSummary('2026-10-29');
+  const nums: number[] = [sm.collected, sm.expenses, sm.enfia, sm.carriedOver, sm.statement.netCash, sm.statement.effectiveRate,
+    ...sm.statement.lines.map(l => l.amount), ...demoLedger(yr).map(r => r.amount)];
+  ok('κανένα NaN ή κενό ποσό στην προεπισκόπηση', nums.every(v => typeof v === 'number' && Number.isFinite(v)));
+  ok('καμία ετικέτα κενή ή «—»', [...sm.statement.lines.map(l => l.label), ...demoLedger(yr).flatMap(r => [r.label, r.account, r.accountName])]
+    .every(t => typeof t === 'string' && t.trim() !== '' && t.trim() !== '—'));
+  const ui = readFileSync(new URL('../../app/dashboard/components/DemoPreview.tsx', import.meta.url), 'utf8');
+  ok('η οθόνη του παραδείγματος δεν έχει εφεδρικό «—»', !/['"`]—['"`]/.test(ui));
 }
 
 console.log(`${pass} πέρασαν, ${fail} απέτυχαν`);

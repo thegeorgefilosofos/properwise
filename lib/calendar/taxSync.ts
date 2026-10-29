@@ -129,16 +129,18 @@ export interface TaxSyncPlan {
  *        φορολογούμενου που έκλεισαν σε ΑΛΛΟ ακίνητο του ίδιου ιδιοκτήτη.
  * @param enfiaInstalments έτος → πλήθος δόσεων ΕΝΦΙΑ, όπου το σύνολο του
  *        εκκαθαριστικού είναι γνωστό (κανόνας 6)· αλλιώς δώδεκα.
+ * @param enfiaTotals έτος → σύνολο εκκαθαριστικού, για το ποσό κάθε δόσης.
  */
 export function planTaxSync(
   today: string, profile: PropertyTaxProfile, existing: readonly TaxRow[],
   closedElsewhere: ReadonlyMap<string, string> = new Map(),
   enfiaInstalments: Readonly<Record<number, number>> = {},
+  enfiaTotals: Readonly<Record<number, number>> = {},
 ): TaxSyncPlan {
   const bySource = new Map<string, TaxRow>();
   for (const r of existing) if (r.source && !bySource.has(r.source)) bySource.set(r.source, r);
 
-  const desired = taxEventsToWrite(today, profile, [...bySource.values()], { enfiaInstalments });
+  const desired = taxEventsToWrite(today, profile, [...bySource.values()], { enfiaInstalments }, { enfiaTotals });
   const plan: TaxSyncPlan = { insert: [], update: [], remove: [], total: desired.length };
   const wanted = new Set<string>();
 
@@ -249,7 +251,7 @@ export async function syncOwnerTaxDeadlines(
   }
 
   for (const p of props) {
-    const plan = planTaxSync(today, taxProfileOf(p), byProperty.get(p.id) ?? [], closedElsewhere.get(p.id), enfia.counts.get(p.id));
+    const plan = planTaxSync(today, taxProfileOf(p), byProperty.get(p.id) ?? [], closedElsewhere.get(p.id), enfia.counts.get(p.id), enfia.totals.get(p.id));
     out.totals[p.id] = plan.total;
     const scope = { propertyId: p.id, userId: ownerId };
 
