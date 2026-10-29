@@ -32,7 +32,7 @@ export function LoanAdvisor({
   'otherHover' | 'setOtherHover' | 'profile'
 >) {
   return (
-    <LensPanel title="Το δάνειό σου" subtitle={`Βάσει ${fmtEur(LA)} / ${Y} χρόνια · από τον υπολογιστή`}>
+    <LensPanel title="Το δάνειό σου" subtitle={`Βάσει ${fmtEur(LA)} / ${Y} χρόνια · από τον υπολογιστή`}>
       <LoanDocScan
         banks={BANKS}
         euribor={market.euribor_3m || MARKET_FALLBACK.euribor_3m}
@@ -143,7 +143,7 @@ export function LoanAdvisor({
                   παραπάνω τον μήνα».
 
               Δύο προτάσεις με τα ΙΔΙΑ δύο ποσά, σε απόσταση μιας κύλισης.
-              Το ίδιο και για τη διάρκεια: «Σε 20 χρόνια η δόση γίνεται …
+              Το ίδιο και για τη διάρκεια: «Σε 20 χρόνια η δόση γίνεται …
               και γλιτώνεις … τόκους» γραφόταν και στους τόκους και στις
               βελτιώσεις.
 
@@ -170,7 +170,7 @@ export function LoanAdvisor({
             const fixedAll = cs.rateType==='variable' ? false : fixedYears >= cs.years
             const fixedNote = fixedAll
               ? `Σταθερή δόση για όλη τη διάρκεια. Euribor τριμήνου ${fmtPct(market.euribor_3m)}, από το οποίο είσαι προστατευμένος.`
-              : `Σταθερό για ${fixedYears} χρόνια. Μετά ακολουθεί το Euribor (σήμερα ${fmtPct(market.euribor_3m)} τριμήνου), οπότε η δόση μπορεί να αλλάξει.`
+              : `Σταθερό για ${fixedYears} χρόνια. Μετά ακολουθεί το Euribor (σήμερα ${fmtPct(market.euribor_3m)} τριμήνου), οπότε η δόση μπορεί να αλλάξει.`
             const rateFix = issues.includes('Επιτόκιο') ? ` Ζήτησε γραπτές προσφορές από τρεις τράπεζες: μειώσεις ${fp(0.10)} έως ${fp(0.25)} είναι συνηθισμένες.` : ''
             const varFix = issues.includes('Κυμαινόμενο') ? ' Το σταθερό επιτόκιο κλειδώνει τη δόση για όσα χρόνια ορίζει η σύμβαση.' : ''
             return (
@@ -188,7 +188,7 @@ export function LoanAdvisor({
                     <div style={{position:'absolute',left:'60%',top:0,bottom:0,width:0,borderLeft:'1px dashed var(--text-tertiary)',opacity:0.5}}/>
                     <div style={{position:'absolute',left:'80%',top:0,bottom:0,width:0,borderLeft:'1px dashed var(--text-tertiary)',opacity:0.5}}/>
                   </div>
-                  <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop: 8,fontFamily: T.font.sans}}>Όρια: αποδεκτό 60 · υγιές 80. Βάσει {fmtEur(cs.loanAmount)} · {cs.years} χρόνια · {fmtPct(cs.effectiveRate)} {rateTypeLabel(cs.rateType).toLowerCase()}.</p>
+                  <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop: 8,fontFamily: T.font.sans}}>Όρια: αποδεκτό 60 · υγιές 80. Βάσει {fmtEur(cs.loanAmount)} · {cs.years} χρόνια · {fmtPct(cs.effectiveRate)} {rateTypeLabel(cs.rateType).toLowerCase()}.</p>
                 </div>
               </div>
 
@@ -229,8 +229,8 @@ export function LoanAdvisor({
                   title={`Συνολικοί τόκοι ${fmtEur(cs.totalInterest)}, ${fp(interestRatio*100)} επί του κεφαλαίου`}
                   body={<>Για {fmtEur(cs.loanAmount)} αποπληρώνεις συνολικά {fmtEur(totalCost)}.
                     {cs.years>20&&savedByShortening>0
-                      ? ` Σε 20 χρόνια η δόση γίνεται ${fmtEur(shortMonthly20)}, δηλαδή ${fmtEur(shortMonthly20-cs.monthly)} παραπάνω, με ${fmtEur(savedByShortening)} λιγότερους τόκους.`
-                      : ` Έκτακτη πληρωμή 100€ τον μήνα κόβει ${extraPay100Saving.toFixed(1).replace('.',',')} χρόνια από τη διάρκεια.`}</>}
+                      ? ` Σε 20 χρόνια η δόση γίνεται ${fmtEur(shortMonthly20)}, δηλαδή ${fmtEur(shortMonthly20-cs.monthly)} παραπάνω, με ${fmtEur(savedByShortening)} λιγότερους τόκους.`
+                      : ` Έκτακτη πληρωμή 100€ τον μήνα κόβει ${extraPay100Saving.toFixed(1).replace('.',',')} χρόνια από τη διάρκεια.`}</>}
                 />
               </div>
               {/* ΤΟ «ΑΡΙΣΤΟ ΠΡΟΦΙΛ ΔΑΝΕΙΟΥ» ΕΦΥΓΕ. Η ίδια ετυμηγορία γραφόταν
@@ -401,11 +401,11 @@ export function LoanAdvisor({
 
           {/* ── Σύσταση καλύτερου δανείου — premium, πτυσσόμενη ── */}
           {/* Η ΚΛΕΙΣΤΗ ΓΡΑΜΜΗ ΕΔΙΝΕ ΤΑ ΔΕΔΟΜΕΝΑ, ΟΧΙ ΤΗΝ ΑΠΑΝΤΗΣΗ. Το `meta`
-              έγραφε «120.000€ / 25 έτη», δηλαδή ό,τι έβαλε ο ίδιος ο χρήστης
+              έγραφε «120.000€ / 25 έτη», δηλαδή ό,τι έβαλε ο ίδιος ο χρήστης
               στον Υπολογιστή δύο οθόνες πιο πάνω. Ο κανόνας του αρχείου είναι
               ότι η κλειστή ενότητα λέει ΤΙ ΥΠΑΡΧΕΙ χωρίς να την ανοίξεις: εδώ
               αυτό είναι το όνομα της τράπεζας και το επιτόκιό της. */}
-          <MiniSection title="Τράπεζες για το σενάριό σου" meta={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap' as const}}>{topRec ? `${topRec.bankName} · ${fmtPct(topRec.effectiveRatePct)}` : `${fmtEur(LA)} / ${Y} χρόνια`}</span>}>
+          <MiniSection title="Τράπεζες για το σενάριό σου" meta={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap' as const}}>{topRec ? `${topRec.bankName} · ${fmtPct(topRec.effectiveRatePct)}` : `${fmtEur(LA)} / ${Y} χρόνια`}</span>}>
             {topRec && (
               <div onMouseEnter={()=>setRecHover(true)} onMouseLeave={()=>setRecHover(false)}
                 onTouchStart={()=>setRecHover(true)} onTouchEnd={()=>setRecHover(false)}

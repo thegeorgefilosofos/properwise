@@ -80,10 +80,10 @@ const scanLine = (n: number | null): string => n === null ? 'σάρωση χωρ
  * το ταβάνι της σάρωσης θα διαβαζόταν ότι και η δοκιμή σαρώνει απεριόριστα.
  */
 const trialLine = (): string =>
-  `Δοκιμή ${TRIAL_DAYS} ημερών: ${TRIAL_LIMITS.perMonth} ερωτήσεις, έως ${TRIAL_LIMITS.perDay} την ημέρα · ${scanLine(TRIAL_SCANS_PER_MONTH)}`;
+  `Δοκιμή ${TRIAL_DAYS} ημερών: ${TRIAL_LIMITS.perMonth} ερωτήσεις, έως ${TRIAL_LIMITS.perDay} την ημέρα · ${scanLine(TRIAL_SCANS_PER_MONTH)}`;
 
 /** Το όριο ακινήτων από τα PLANS, σε λέξεις για το ένα. */
-const propertiesLine = (n: number): string => n === 1 ? 'Ένα ακίνητο' : `Έως ${n} ακίνητα`;
+const propertiesLine = (n: number): string => n === 1 ? 'Ένα ακίνητο' : `Έως ${n} ακίνητα`;
 
 const NOA_ASKS = [
   'Πόσα έδωσα σε κοινόχρηστα φέτος;',
@@ -121,7 +121,7 @@ export function NoaFeature() {
               <span className="nf-per">{`ή ${fe(noa.priceAnnual)} τον χρόνο`}</span>
             </div>
             {/* ΤΟ ΠΑΚΕΤΟ ΚΑΙ Η ΔΟΚΙΜΗ ΕΧΟΥΝ ΑΛΛΑ ΟΡΙΑ. Η γραμμή έλεγε τις ερωτήσεις
-                του πληρωμένου δίπλα στο «δοκιμή 30 ημερών» και κάτω από το κουμπί
+                του πληρωμένου δίπλα στο «δοκιμή 30 ημερών» και κάτω από το κουμπί
                 της δοκιμής· η δοκιμή όμως μετρά με τα TRIAL_LIMITS (effectiveAiLimits).
                 Η πρώτη γραμμή είναι το πακέτο, δίπλα στην τιμή του· η δεύτερη η δοκιμή. */}
             <div className="nf-terms">{ai.perMonth} ερωτήσεις τον μήνα · {scanLine(SCAN_LIMITS.solo)}</div>
@@ -266,7 +266,7 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
           <div style={{ fontSize: 12, color: FAINT, lineHeight: 1.4, marginTop: 2 }}>{trialLine()}</div>
         </div>
         {cta(`/signup?plan=solo&cycle=monthly`, signupCta('solo'))}
-        {billingLive && <Link href="/signup?plan=solo&cycle=annual" className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{`Ετήσια: ${paidMonths} μήνες αντί για 12`}</Link>}
+        {billingLive && <Link href="/signup?plan=solo&cycle=annual" className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{`Ετήσια: ${paidMonths} μήνες αντί για 12`}</Link>}
       </div>
     </div>
   );

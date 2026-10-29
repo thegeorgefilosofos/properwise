@@ -17,7 +17,7 @@ function relTime(iso: string): string {
   const d = new Date(iso).getTime();
   const s = Math.floor((Date.now() - d) / 1000);
   if (s < 60) return 'μόλις τώρα';
-  const m = Math.floor(s / 60); if (m < 60) return `πριν ${m} λεπτά`;
+  const m = Math.floor(s / 60); if (m < 60) return `πριν ${m} λεπτά`;
   const h = Math.floor(m / 60); if (h < 24) return `πριν ${h} ${h === 1 ? 'ώρα' : 'ώρες'}`;
   const dd = Math.floor(h / 24); if (dd < 30) return `πριν ${dd} ${dd === 1 ? 'ημέρα' : 'ημέρες'}`;
   // ΧΡΟΝΟΣΗΜΑΝΣΗ, ΟΧΙ ΗΜΕΡΟΛΟΓΙΑΚΗ ΗΜΕΡΑ: το `iso` κουβαλά ώρα (η ίδια

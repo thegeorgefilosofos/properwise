@@ -210,9 +210,9 @@ export function leaseAlerts(payments:RentPayment[], tenant:Tenant|null):{text:st
     if(d<0) alerts.push({text:'Το μισθωτήριο έχει λήξει, ανανέωσε ή ξεκίνα διαδικασία αποχώρησης',level:'critical'});
     // Το «Κρίσιμο:» και το «απαιτείται άμεση ενέργεια» τα έλεγε ήδη το χρώμα·
     // η πρόταση λέει μόνο το γεγονός. Και το «σε 1 ημέρες» δεν γράφεται.
-    else if(d<=30) alerts.push({text:`Το μισθωτήριο λήγει ${d===0?'σήμερα':d===1?'αύριο':`σε ${d} ημέρες`}`,level:'critical'});
-    else if(d<=60) alerts.push({text:`Το μισθωτήριο λήγει σε ${d} ημέρες: ξεκίνα τη συζήτηση για ανανέωση`,level:'warning'});
-    else if(d<=90) alerts.push({text:`Το μισθωτήριο λήγει σε ${d} ημέρες`,level:'info'});
+    else if(d<=30) alerts.push({text:`Το μισθωτήριο λήγει ${d===0?'σήμερα':d===1?'αύριο':`σε ${d} ημέρες`}`,level:'critical'});
+    else if(d<=60) alerts.push({text:`Το μισθωτήριο λήγει σε ${d} ημέρες: ξεκίνα τη συζήτηση για ανανέωση`,level:'warning'});
+    else if(d<=90) alerts.push({text:`Το μισθωτήριο λήγει σε ${d} ημέρες`,level:'info'});
   }
   const unpaid=payments.filter(p=>!p.paid);
   // Μόνο από δύο και πάνω, οπότε ο πληθυντικός είναι πάντα σωστός.
@@ -329,7 +329,7 @@ const latenessOf = (p: RentPayment): Lateness => !p.paid ? 'unpaid' : (p.days_la
 
 export function PaymentBars({ payments }:{payments:RentPayment[]}) {
   if(!payments.length) return (
-    <EmptyState icon={<BarChart3 size={20}/>} title="Καμία πληρωμή ακόμη" hint="Μόλις καταγραφεί η πρώτη είσπραξη, το γράφημα 12 μηνών γεμίζει αυτόματα." />
+    <EmptyState icon={<BarChart3 size={20}/>} title="Καμία πληρωμή ακόμη" hint="Μόλις καταγραφεί η πρώτη είσπραξη, το γράφημα 12 μηνών γεμίζει αυτόματα." />
   );
   const last12=[...payments].sort((a,b)=>b.period_year-a.period_year||b.period_month-a.period_month).slice(0,12).reverse();
   return (

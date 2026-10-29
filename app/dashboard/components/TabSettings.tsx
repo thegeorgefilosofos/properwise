@@ -837,7 +837,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           <div style={{ marginTop: 14, display: 'flex', alignItems: 'flex-start', gap: 10, background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '12px 14px' }}>
             <span className="acc-live-dot accent" style={{ width: 6, height: 6, background: 'var(--accent)', flexShrink: 0, marginTop: 6 }} />
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
-              Δοκιμάζεις το <strong style={{ color: 'var(--text-primary)' }}>{PLANS[effPlan].name}</strong> για {trial.daysLeft === 1 ? 'ακόμη μία ημέρα' : `ακόμη ${trial.daysLeft} ημέρες`}, χωρίς χρέωση.
+              Δοκιμάζεις το <strong style={{ color: 'var(--text-primary)' }}>{PLANS[effPlan].name}</strong> για {trial.daysLeft === 1 ? 'ακόμη μία ημέρα' : `ακόμη ${trial.daysLeft} ημέρες`}, χωρίς χρέωση.
               {/* ΤΙ ΓΙΝΕΤΑΙ ΣΤΗ ΛΗΞΗ ΤΟ ΛΕΝΕ ΟΙ ΟΡΟΙ, ΟΧΙ ΑΥΤΗ Η ΟΘΟΝΗ. Εγραφε με
                   το χέρι «τα δεδομένα σου ανέπαφα», ενώ με ενεργή χρέωση οι Οροι
                   λένε διαγραφή μετά την περίοδο χάριτος. Η πρόταση έρχεται από το
@@ -959,11 +959,11 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
               <CustomSelect ariaLabel="Ορίζοντας προθεσμιών" value={String(prefs.agendaHorizonDays)}
                 onChange={v => updatePrefs({ agendaHorizonDays: Number(v) as AppPreferences['agendaHorizonDays'] })}
                 options={[
-                  { value: '30',  label: 'Επόμενος μήνας (30 ημέρες)' },
-                  { value: '60',  label: 'Δύο μήνες (60 ημέρες)' },
-                  { value: '90',  label: 'Τρίμηνο (90 ημέρες)' },
-                  { value: '180', label: 'Εξάμηνο (180 ημέρες)' },
-                  { value: '365', label: 'Ολόκληρο έτος (365 ημέρες)' },
+                  { value: '30',  label: 'Επόμενος μήνας (30 ημέρες)' },
+                  { value: '60',  label: 'Δύο μήνες (60 ημέρες)' },
+                  { value: '90',  label: 'Τρίμηνο (90 ημέρες)' },
+                  { value: '180', label: 'Εξάμηνο (180 ημέρες)' },
+                  { value: '365', label: 'Ολόκληρο έτος (365 ημέρες)' },
                 ]} />
             </div>} />
           <SetRow title="Μειωμένη κίνηση" desc="Περιορίζει τα εφέ κίνησης σε όλη την εφαρμογή, για πιο ήρεμη εμπειρία."

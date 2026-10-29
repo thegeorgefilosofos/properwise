@@ -421,7 +421,7 @@ export const MUTATIONS = {
   // δημόσια κείμενα. Και οι δύο κατευθύνσεις δοκιμάζονται.
   'disclosure-terms': { every: [
     { file: 'lib/legal/disclosure.ts', from: 'ackBusinessDays: 3', to: 'ackBusinessDays: 5' },
-    { file: 'app/trust/page.tsx', from: '{DISCLOSURE.embargoDays} ημέρες', to: '90 ημέρες' },
+    { file: 'app/trust/page.tsx', from: '{DISCLOSURE.embargoDays} ημέρες', to: '90 ημέρες' },
   ] },
   'tax-year': { add: 'lib/core/__mut__.ts', content: "import { rentalIncomeTax } from '@/lib/billing/greekTax'\nexport const t = (year: number, taxable: number) => { void year; return rentalIncomeTax(taxable) }\n" },
   'stale-flags': { add: 'lib/core/__mut__.ts', content: "export const CALL = { deadline: '2020-01-12', is_active: true }\n" },
@@ -732,5 +732,15 @@ export const MUTATIONS = {
   'meta-description': { every: [
     { file: 'app/signup/layout.tsx', from: 'στο «${PLANS[TRIAL_PLAN].name}».`,', to: 'στο «${PLANS[TRIAL_PLAN].name}». ${billingWords().firstCharge}`,' },
     { file: 'app/trust/page.tsx', from: "const DESC = 'Ποιοι είμαστε, πού φυλάσσονται", to: "const DESC = 'Ποιοι είμαστε.' || 'Ποιοι είμαστε, πού φυλάσσονται" },
+  ] },
+
+  // Αριθμός και μονάδα με απλό κενό: ακριβώς το «…τις πρώτες 30 / ημέρες.» της
+  // 29/10/2026. Και οι δύο κανόνες ζύγισης του globals.css, ο καθένας χωριστά·
+  // και η επιστροφή τους στο shorthand `text-wrap`, που έσπαγε τα ποσά.
+  'text-glue': { every: [
+    { add: 'components/__mut__.tsx', content: tsx('    <p>Δωρεάν τις πρώτες {30} ημέρες, σε 80 τ.μ.</p>') },
+    { file: 'app/globals.css', from: ':where([class*="-title"], [class*="-label"]', to: ':where([class*="-titlos"], [class*="-label"]' },
+    { file: 'app/globals.css', from: 'legend, figcaption, a, button) { text-wrap-style: balance; }', to: 'legend, figcaption, a, button) { text-wrap: balance; }' },
+    { file: 'app/globals.css', from: ', .lg-lede > p)) { text-wrap-style: pretty; }', to: ', .lg-lede > p)) { text-wrap: pretty; }' },
   ] },
 }

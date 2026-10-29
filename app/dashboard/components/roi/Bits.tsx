@@ -193,7 +193,7 @@ export function BarRow({ label, value, max, valueLabel, tone = 'neutral', hint, 
 //
 // Ο κοινός δίνει `flex: 1` σε κάθε τμήμα: δύο επιλογές γίνονται δύο ίσα μισά,
 // τρεις γίνονται τρία ίσα τρίτα, όποιο κι αν είναι το λεκτικό τους.
-export const yearOpts = (...years: number[]) => years.map(y => ({ value: String(y), label: `${y} έτη` }));
+export const yearOpts = (...years: number[]) => years.map(y => ({ value: String(y), label: `${y} έτη` }));
 
 /**
  * ΝΟΥΜΕΡΟ ΜΕ ΕΤΙΚΕΤΑ ΑΠΟ ΠΑΝΩ — ΜΙΑ ΦΟΡΑ, ΓΙΑ ΟΛΗ ΤΗΝ ΟΘΟΝΗ.

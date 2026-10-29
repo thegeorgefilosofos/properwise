@@ -224,7 +224,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
 
                   {occ.peak && occ.peak.days < occ.availableDays && (
                     <div style={{ ...note, marginTop: 10 }}>
-                      Υψηλή περίοδος από {MONTHS_ACC[occ.peak.fromMonth]} έως {MONTHS_ACC[occ.peak.toMonth]}: {fp(occ.peak.pct)}, {occ.peak.bookedNights} {occ.peak.bookedNights === 1 ? 'νύχτα' : 'νύχτες'} σε {occ.peak.days} ημέρες.
+                      Υψηλή περίοδος από {MONTHS_ACC[occ.peak.fromMonth]} έως {MONTHS_ACC[occ.peak.toMonth]}: {fp(occ.peak.pct)}, {occ.peak.bookedNights} {occ.peak.bookedNights === 1 ? 'νύχτα' : 'νύχτες'} σε {occ.peak.days} ημέρες.
                     </div>
                   )}
 
@@ -283,7 +283,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
                   )}
                   {tax.grossRevenue === 0 && tax.totalNights > 0 && (
                     <div style={{ ...note, marginTop: tax.levy > 0 ? 8 : 12 }}>
-                      Οι {tax.totalNights} νύχτες της χρήσης δεν έχουν καταγεγραμμένο ποσό.
+                      Οι {tax.totalNights} νύχτες της χρήσης δεν έχουν καταγεγραμμένο ποσό.
                       {guestsReachable && <>{' '}Τα ποσά συμπληρώνονται ανά κράτηση στους {guests}: η εισαγωγή iCal φέρνει ημερομηνίες, όχι εισπράξεις.</>}
                     </div>
                   )}

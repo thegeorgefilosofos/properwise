@@ -290,7 +290,7 @@ export function GuideFaq({ title, faq }: { title: string; faq: GuideFaqItem[] })
               <FaqPlus style={{ color: 'var(--accent)' }} />
             </summary>
             <p style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-              {f.a}
+              {refsOnly(f.a)}
             </p>
             {f.link && (
               <p style={{ margin: '-6px 0 18px', fontSize: 14 }}>

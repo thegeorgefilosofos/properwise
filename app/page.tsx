@@ -310,7 +310,7 @@ export default async function Landing() {
               ισχύει την ημέρα του λανσαρίσματος δεν μπαίνει στην πρώτη οθόνη. */}
           <ul className="lp-rise-4 lp-facts" aria-label="Χωρίς ρίσκο">
             <li>Δωρεάν για ένα ακίνητο</li>
-            <li>Δοκιμή {TRIAL_DAYS} ημερών με {ASSISTANT_ACC}</li>
+            <li>Δοκιμή {TRIAL_DAYS} ημερών με {ASSISTANT_ACC}</li>
           </ul>
 
           <LandingShowcase />
@@ -410,7 +410,7 @@ export default async function Landing() {
             ΝΑ ΠΑΕΙ. Ο ιδιοκτήτης που αναρωτιέται «τι θα δει ο λογιστής μου» και ο
             λογιστής που έφτασε εδώ βρίσκουν τη σελίδα του, με το ίδιο σχήμα
             συνδέσμου όπως το «Ποιοι είμαστε» πιο κάτω. */}
-        <div style={{ marginTop: 16 }}>
+        <div style={{ marginTop: 16, textWrap: 'balance' }}>
           <Link href="/logistes" className="lp-link po-tap" style={{ color: ACCENT, textDecoration: 'none', fontSize: 15, fontWeight: 600 }}>
             Για λογιστές: τι βλέπει ο λογιστής σου από τον φάκελο
           </Link>
@@ -561,7 +561,7 @@ export default async function Landing() {
           margin: 'clamp(26px, 3.2vw, 40px) 0 0', textWrap: 'balance' }}>
           Εσύ κρατάς τις αποφάσεις· το PROPERWISE κάνει τα υπόλοιπα.
         </p>
-        <div style={{ marginTop: 14 }}>
+        <div style={{ marginTop: 14, textWrap: 'balance' }}>
           <Link href="/trust" className="lp-link po-tap" style={{ color: ACCENT, textDecoration: 'none', fontSize: 15, fontWeight: 600 }}>
             Ποιοι είμαστε και πού βρίσκονται τα δεδομένα σου
           </Link>
@@ -638,7 +638,7 @@ export default async function Landing() {
                 note={<>ή <strong style={{ color: TEXT }}>{fe(plan.priceAnnual)} τον χρόνο</strong></>}
                 // Χωρίς ταμείο δεν υπάρχει κύκλος να διαλέξεις: ο σύνδεσμος της
                 // ετήσιας κρύβεται μαζί με κάθε άλλη ένδειξη ότι κάτι αγοράζεται.
-                annual={billingLive ? `Ετήσια: ${paidMonths} μήνες αντί για 12` : undefined}
+                annual={billingLive ? `Ετήσια: ${paidMonths} μήνες αντί για 12` : undefined}
                 // ΓΕΝΙΚΗ, ΟΧΙ ΟΝΟΜΑΣΤΙΚΗ: «Όλα του «Ιδιοκτήτη» και:». Το `nameGen`
                 // υπάρχει στο plans.ts ακριβώς γι' αυτό και ο φύλακας
                 // scripts/guard-plan-genitive κόβει την ονομαστική μετά από «του».

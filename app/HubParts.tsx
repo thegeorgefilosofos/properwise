@@ -7,6 +7,7 @@
 // όνομα συνδέσμου). Εδώ ζει μία φορά και οι δύο σελίδες δίνουν μόνο το
 // περιεχόμενο. Server Components, καμία εξάρτηση από 'use client'.
 // ═══════════════════════════════════════════════════════════════════════════
+import { bindRefs } from '@/lib/core/hyphenate';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { T } from '@/components/tokens';
@@ -65,7 +66,7 @@ export function HubCards({ items, cta }: { items: readonly HubItem[]; cta: strin
               background: featured ? 'color-mix(in srgb, var(--accent) 6%, var(--bg-surface))' : 'var(--bg-surface)', textDecoration: 'none' }}>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--accent)' }}>{g.kicker}</span>
             <h3 id={id} style={{ margin: 0, fontSize: featured ? 22 : 18, fontWeight: T.weight.bold, letterSpacing: '-0.02em', color: 'var(--text-primary)', lineHeight: 1.25 }}>{g.title}</h3>
-            <span style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--text-secondary)', textWrap: 'pretty' }}>{g.desc}</span>
+            <span style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--text-secondary)', textWrap: 'pretty' }}>{bindRefs(g.desc)}</span>
             <span aria-hidden="true" style={{ marginTop: 'auto', paddingTop: 4, fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>{cta}</span>
           </Link>
         );

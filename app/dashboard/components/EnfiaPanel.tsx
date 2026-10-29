@@ -103,9 +103,9 @@ const ageOptions = (year: number) => [
 // επιλογή με το όνομά της. Κανένα νούμερο δεν γεννιέται από μαντεψιά.
 const INSTALMENT_OPTIONS = [
   { value: UNKNOWN, label: 'Δεν γνωρίζω' },
-  { value: '12', label: '12 δόσεις' },
-  { value: '10', label: '10 δόσεις' },
-  { value: '6',  label: '6 δόσεις'  },
+  { value: '12', label: '12 δόσεις' },
+  { value: '10', label: '10 δόσεις' },
+  { value: '6',  label: '6 δόσεις'  },
   { value: '1',  label: 'Εφάπαξ'    },
 ];
 
@@ -496,7 +496,7 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
             <div style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: 12 }}>
               {s.enfiaLastCount === '1'
                 ? `Εφάπαξ ${fe(lastYear)} τον χρόνο.`
-                : `${s.enfiaLastCount} δόσεις επί ${fe(parseFloat(s.enfiaLastInstalment) || 0)} δίνουν ${fe(lastYear)} τον χρόνο.`}
+                : `${s.enfiaLastCount} δόσεις επί ${fe(parseFloat(s.enfiaLastInstalment) || 0)} δίνουν ${fe(lastYear)} τον χρόνο.`}
             </div>
           )}
           {/* Η ΕΛΛΕΙΨΗ ΛΕΓΕΤΑΙ, ΔΕΝ ΚΑΛΥΠΤΕΤΑΙ ΜΕ ΥΠΟΘΕΣΗ. Ποσό δόσης χωρίς
@@ -679,12 +679,12 @@ function StatementTotal({ year, value, onChange }: { year: number; value: string
       <div {...fixedCols(1, 14)}>
         <NumberInput label={`Σύνολο εκκαθαριστικού ${year}, όλα τα ακίνητα του ΑΦΜ`} value={value}
           onChange={onChange} suffix="€"
-          labelInfo={`Κάθε δόση είναι τουλάχιστον ${feWhole(ENFIA_MIN_INSTALMENT)}, έως ${ENFIA_INSTALMENTS} δόσεις. Από το σύνολο βγαίνει πόσες υπενθυμίσεις θα πάρεις.`}/>
+          labelInfo={`Κάθε δόση είναι τουλάχιστον ${feWhole(ENFIA_MIN_INSTALMENT)}, έως ${ENFIA_INSTALMENTS} δόσεις. Από το σύνολο βγαίνει πόσες υπενθυμίσεις θα πάρεις.`}/>
       </div>
       <div style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: 10 }}>
         {n > 0
-          ? `${n === 1 ? 'Μία δόση' : `${n} δόσεις`} στο Ημερολόγιο και στις υπενθυμίσεις, από τον επόμενο συγχρονισμό. Ισχύει για όλα τα ακίνητα του ίδιου ΑΦΜ.`
-          : `Χωρίς σύνολο κρατάμε και τις ${ENFIA_INSTALMENTS} δόσεις στις υπενθυμίσεις, για να μη χάσεις καμία.`}
+          ? `${n === 1 ? 'Μία δόση' : `${n} δόσεις`} στο Ημερολόγιο και στις υπενθυμίσεις, από τον επόμενο συγχρονισμό. Ισχύει για όλα τα ακίνητα του ίδιου ΑΦΜ.`
+          : `Χωρίς σύνολο κρατάμε και τις ${ENFIA_INSTALMENTS} δόσεις στις υπενθυμίσεις, για να μη χάσεις καμία.`}
       </div>
     </div>
   );

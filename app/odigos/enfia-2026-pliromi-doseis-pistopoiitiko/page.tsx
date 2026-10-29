@@ -97,7 +97,7 @@ const FAQ: GuideFaqItem[] = [
     q: 'Σε πόσες δόσεις πληρώνεται ο ΕΝΦΙΑ;',
     // Η ΙΔΙΑ ΔΙΑΤΥΠΩΣΗ ΚΑΙ ΣΤΟΥΣ ΤΡΕΙΣ ΟΔΗΓΟΥΣ (20/10/2026, ../enfiaText.ts). Το
     // «ισόποσες» έφυγε: η τελευταία παίρνει τη διαφορά των λεπτών.
-    a: `Εφάπαξ ή σε ${enfiaInstalmentRule(YEAR)} Με ${N} δόσεις, η πρώτη λήγει `
+    a: `Εφάπαξ ή σε ${enfiaInstalmentRule(YEAR)} Με ${N} δόσεις, η πρώτη λήγει `
      + `στις ${longDate(FIRST)} και η τελευταία στις ${longDate(LAST)}.`,
   },
   {
@@ -206,7 +206,7 @@ export default function Page() {
         </p>
         <p className="lg-p">
           {next
-            ? `Σήμερα, ${longDate(today)}, μένουν ${left} από τις ${N} δόσεις. Η επόμενη λήγει στις ${longDate(next)}.`
+            ? `Σήμερα, ${longDate(today)}, μένουν ${left} από τις ${N} δόσεις. Η επόμενη λήγει στις ${longDate(next)}.`
             : `Όλες οι δόσεις του ΕΝΦΙΑ ${YEAR} έχουν λήξει. Το επόμενο εκκαθαριστικό και η πρώτη του δόση είναι στον οδηγό για τις φορολογικές προθεσμίες.`}
         </p>
         <div className="po-table-box gd-table gd-table-wide" style={{ marginTop: 14 }}>

@@ -52,7 +52,7 @@ export function ToolsSection({
           μεγαλύτερη οθόνη έδινε ΛΙΓΟΤΕΡΟ πλάτος ανά κάρτα από το τηλέφωνο,
           επειδή το `fixed-cols` κρατά δύο στήλες σε κάθε πλάτος πάνω από
           τα 480 ενώ κάθε κάρτα κουβαλά μέσα της φωλιασμένο πλέγμα πεδίων.
-          Και κοβόταν: ο επιλογέας «10 έτη · 20 έτη» ζητά 159 εικονοστοιχεία
+          Και κοβόταν: ο επιλογέας «10 έτη · 20 έτη» ζητά 159 εικονοστοιχεία
           και έπαιρνε 78,8 στα 481, 108,5 στα 600, 144,5 στα 768. Στα 481
           κόβονταν μαζί του το «335.343,55€» (106 σε 76,8) · το «έτη»
           (99 σε 78,8) · το «%» (92 σε 78,8).
@@ -146,7 +146,7 @@ export function ToolsSection({
           <div {...fixedCols(2, 12)}>
             <NumberInput label="Δάνειο (% αξίας)" value={ltv} onChange={setLtv} suffix="%" max={100} />
             <NumberInput label="Επιτόκιο" value={loanRate} onChange={setLoanRate} suffix="%" />
-            {/* Η διάρκεια ήταν καρφωμένη στα 25 έτη μέσα στη κλήση της
+            {/* Η διάρκεια ήταν καρφωμένη στα 25 έτη μέσα στη κλήση της
                 μηχανής: καθόριζε δόση, ταμειακή ροή, DSCR και IRR χωρίς να
                 φαίνεται πουθενά. Τώρα είναι πεδίο, με την προεπιλογή ρητή. */}
             <NumberInput label="Διάρκεια δανείου" value={loanYears} onChange={setLoanYears} suffix="έτη" max={40} />
@@ -209,7 +209,7 @@ export function ToolsSection({
             </div>
             <div>
               <p style={roiFootLabel}>Διάρκεια δανείου</p>
-              <p style={roiFootValue}>{nLoanYears} έτη</p>
+              <p style={roiFootValue}>{nLoanYears} έτη</p>
             </div>
           </div>
         </div>
@@ -270,7 +270,7 @@ export function DealSection({
             ['Αύξηση ενοικίου', fp(parseFloat(rentGrowth) || 0), 'τον χρόνο'],
             ['Λειτουργικά έξοδα', fp(opexPctOfRent), 'των εσόδων'],
             ['Δάνειο', fp(parseFloat(ltv) || 0), `της αξίας, με επιτόκιο ${fp(parseFloat(loanRate) || 0)}`],
-            ['Διάρκεια δανείου', `${nLoanYears} έτη`, `ορίζοντας κατοχής ${holdYears} έτη`],
+            ['Διάρκεια δανείου', `${nLoanYears} έτη`, `ορίζοντας κατοχής ${holdYears} έτη`],
             ['Επιτόκιο προεξόφλησης', fp(parseFloat(discountRate) || 0), 'για την καθαρή παρούσα αξία'],
           ].map(([l, v, sub]) => (
             <div key={l}>

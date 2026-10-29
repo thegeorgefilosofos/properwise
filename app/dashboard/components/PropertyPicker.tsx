@@ -41,8 +41,8 @@ export default function PropertyPicker({ items, selected, onChange, loading, pla
     : items.length === 0 ? 'Δεν υπάρχουν ακίνητα'
     : selected.size === 0 ? placeholder
     : allOn ? `Όλα τα ακίνητα · ${items.length}`
-    : selected.size === 1 ? (items.find(i => selected.has(i.id))?.name || '1 ακίνητο')
-    : `${selected.size} από ${items.length} ακίνητα`;
+    : selected.size === 1 ? (items.find(i => selected.has(i.id))?.name || '1 ακίνητο')
+    : `${selected.size} από ${items.length} ακίνητα`;
 
   const box = (on: boolean, mixed = false): React.CSSProperties => ({
     width: 17, height: 17, borderRadius: T.radius.xs, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',

@@ -95,7 +95,7 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
     const now = new Date();
     const firstNext = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     const daysLeft = Math.max(1, Math.ceil((firstNext.getTime() - now.getTime()) / 86400000));
-    const dayPhrase = daysLeft === 1 ? 'σε 1 ημέρα' : `σε ${daysLeft} ημέρες`;
+    const dayPhrase = daysLeft === 1 ? 'σε 1 ημέρα' : `σε ${daysLeft} ημέρες`;
     return (
       <div style={shell}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>

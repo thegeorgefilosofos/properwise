@@ -218,7 +218,7 @@ export default function PlanComparison({ profileType, currentPlan, paidPlan = 'f
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
                     <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{feAuto(p.priceAnnual)}/χρόνο</span>
                     {freeMonths > 0 && (
-                      <Chip>{`${12 - freeMonths} μήνες αντί για 12`}</Chip>
+                      <Chip>{`${12 - freeMonths} μήνες αντί για 12`}</Chip>
                     )}
                   </div>
                 )}
@@ -233,7 +233,7 @@ export default function PlanComparison({ profileType, currentPlan, paidPlan = 'f
                     διαιρούνται μεταξύ τους, στην ίδια κάρτα. */}
                 {Number.isFinite(p.maxProperties) && p.maxProperties > 1 && (
                   <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, marginTop: 8 }}>
-                    {p.maxProperties} ακίνητα, {feAuto(roundHalfUp(((cycle === 'annual' ? annualPerMonth(id) : p.priceMonthly) / p.maxProperties), 2))} το καθένα τον μήνα.
+                    {p.maxProperties} ακίνητα, {feAuto(roundHalfUp(((cycle === 'annual' ? annualPerMonth(id) : p.priceMonthly) / p.maxProperties), 2))} το καθένα τον μήνα.
                   </div>
                 )}
 

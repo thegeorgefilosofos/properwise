@@ -91,9 +91,9 @@ export const TAX_META = taxKindMeta(new Date().getFullYear())
 export const RECURRING_OPTIONS = [
   { value: 'weekly',    label: 'Κάθε εβδομάδα' },
   { value: 'monthly',   label: 'Κάθε μήνα' },
-  { value: 'bimonthly', label: 'Κάθε 2 μήνες' },
-  { value: 'quarterly', label: 'Κάθε 3 μήνες' },
-  { value: 'biannual',  label: 'Κάθε 6 μήνες' },
+  { value: 'bimonthly', label: 'Κάθε 2 μήνες' },
+  { value: 'quarterly', label: 'Κάθε 3 μήνες' },
+  { value: 'biannual',  label: 'Κάθε 6 μήνες' },
   { value: 'annual',    label: 'Κάθε χρόνο' },
 ]
 

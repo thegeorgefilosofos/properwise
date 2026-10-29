@@ -59,7 +59,7 @@ export function RenoCalculator({ today, cta }: { today: string; cta: ReactNode }
         </ToolFields>
       </Group>
 
-      <Group title={`Ο φόρος σου στα ${fn(RENO_39B_YEARS)} έτη (προαιρετικό)`}>
+      <Group title={`Ο φόρος σου στα ${fn(RENO_39B_YEARS)} έτη (προαιρετικό)`}>
         <ToolFields xs2>
           {TAX_KEYS.map((k, i) => (
             <ToolNumField key={k} id={ids.f[i]} label={`Φόρος έτους ${i + 1}`} value={v[k]} onChange={x => set(k, x)} unit="€"/>
@@ -82,7 +82,7 @@ export function RenoCalculator({ today, cta }: { today: string; cta: ReactNode }
           <>
             <ToolHero primary={{ label: 'Μείωση φόρου συνολικά', value: fe(anyTax ? (r.applied ?? 0) : r.total) }}
               secondary={[{ label: 'Τον χρόνο', value: fe(r.perYear) }, { label: 'Επιλέξιμη δαπάνη', value: fe(Math.min(r.eligible, RENO_39B_CAP)) }]}/>
-            <LiveResult say={`Μείωση φόρου ${fe(anyTax ? (r.applied ?? 0) : r.total)}, ${fe(r.perYear)} τον χρόνο για ${fn(RENO_39B_YEARS)} έτη.`}/>
+            <LiveResult say={`Μείωση φόρου ${fe(anyTax ? (r.applied ?? 0) : r.total)}, ${fe(r.perYear)} τον χρόνο για ${fn(RENO_39B_YEARS)} έτη.`}/>
             <div style={{ marginTop: 20 }}>
               <ToolLedger rows={[
                 { k: 'Υπηρεσίες', v: fe(services) },

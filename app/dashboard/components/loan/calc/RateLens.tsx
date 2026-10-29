@@ -74,8 +74,8 @@ export function RateLens({
             Τώρα προκύπτει από τα ίδια επιτόκια τραπεζών που δείχνει η καρτέλα. */}
         <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',lineHeight:1.6,marginBottom:14,fontFamily: T.font.sans}}>
           {rateType==='variable'
-            ? <>Το κυμαινόμενο είναι το δικό σου: Euribor 3 μηνών {fmtPct(market.euribor_3m)} συν περιθώριο {fmtPct(R)}. Το σταθερό αναφοράς είναι το χαμηλότερο καταχωρημένο σταθερό επιτόκιο {bankFixedMins.length} τραπεζών ({fmtPct(fixedRefRate)}, επιβεβαιωμένα {banksVerified}).</>
-            : <>Το σταθερό είναι το δικό σου ({fmtPct(effRate)}). Κυμαινόμενο αναφοράς: Euribor 3 μηνών {fmtPct(market.euribor_3m)} συν <strong style={{color:'var(--text-secondary)'}}>διάμεσο περιθώριο {fmtPct(refVarSpread.pct)}</strong>: ο διάμεσος των ελάχιστων περιθωρίων {refVarSpread.count} τραπεζών, από τα ίδια καταχωρημένα επιτόκια της σύγκρισης τραπεζών (επιβεβαιωμένα {banksVerified}), όχι στρογγυλή υπόθεση. Το δικό σου περιθώριο εξαρτάται από το προφίλ σου· μπορεί να είναι υψηλότερο.</>}
+            ? <>Το κυμαινόμενο είναι το δικό σου: Euribor 3 μηνών {fmtPct(market.euribor_3m)} συν περιθώριο {fmtPct(R)}. Το σταθερό αναφοράς είναι το χαμηλότερο καταχωρημένο σταθερό επιτόκιο {bankFixedMins.length} τραπεζών ({fmtPct(fixedRefRate)}, επιβεβαιωμένα {banksVerified}).</>
+            : <>Το σταθερό είναι το δικό σου ({fmtPct(effRate)}). Κυμαινόμενο αναφοράς: Euribor 3 μηνών {fmtPct(market.euribor_3m)} συν <strong style={{color:'var(--text-secondary)'}}>διάμεσο περιθώριο {fmtPct(refVarSpread.pct)}</strong>: ο διάμεσος των ελάχιστων περιθωρίων {refVarSpread.count} τραπεζών, από τα ίδια καταχωρημένα επιτόκια της σύγκρισης τραπεζών (επιβεβαιωμένα {banksVerified}), όχι στρογγυλή υπόθεση. Το δικό σου περιθώριο εξαρτάται από το προφίλ σου· μπορεί να είναι υψηλότερο.</>}
         </p>
         <p style={{...labelStyle,marginBottom:10}}>Σωρευτικοί τόκοι στη διάρκεια</p>
         <DualLine data={fvChartData} keyA="Σταθερό" keyB="Κυμαινόμενο" fmt={fmtEur}/>
@@ -126,7 +126,7 @@ export function RateLens({
               {ok:loanType==='first_home',t:'Σκοπός: αγορά πρώτης κατοικίας'},
               {ok:PV<=SPITI_MOU.maxPropertyValue,t:`Αξία ακινήτου έως ${fmtEur(SPITI_MOU.maxPropertyValue)}`},
               {ok:LA<=SPITI_MOU.maxAmount,t:`Ποσό δανείου έως ${fmtEur(SPITI_MOU.maxAmount)}`},
-              {ok:Y<=SPITI_MOU.maxYears,t:`Διάρκεια έως ${SPITI_MOU.maxYears} έτη`},
+              {ok:Y<=SPITI_MOU.maxYears,t:`Διάρκεια έως ${SPITI_MOU.maxYears} έτη`},
               {ok:!isNewBuilding,t:'Υφιστάμενο ακίνητο (όχι νεόδμητο)'},
               {ok:!isCommercial,t:'Κατοικία (όχι επαγγελματικό ακίνητο)'},
             ].map(c=>(

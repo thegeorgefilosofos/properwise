@@ -201,7 +201,7 @@ export default function Page() {
         <section className="po-tool-more" style={{ marginTop: 'clamp(44px,6vw,72px)' }}>
           <SectionHead over={`Λυμένο παράδειγμα ${year}`} title={`${fe(ex.gross)} ενοίκιο τον χρόνο, ${fe(ex.tax)} φόρος`} />
           <p className="po-just" style={{ ...PROSE, marginBottom: 16 }}>{hy(
-            `Μηνιαίο ενοίκιο ${fe(ex.monthly)} για ${fn(ex.months)} μήνες, εισόδημα του ${year}, με την κλίμακα της χρονιάς και την τεκμαρτή έκπτωση ${ratePct(ex.rate)}.`)}</p>
+            `Μηνιαίο ενοίκιο ${fe(ex.monthly)} για ${fn(ex.months)} μήνες, εισόδημα του ${year}, με την κλίμακα της χρονιάς και την τεκμαρτή έκπτωση ${ratePct(ex.rate)}.`)}</p>
           <ToolLedger rows={[
             { k: 'Ετήσιο ενοίκιο', v: fe(ex.gross) },
             { k: `Τεκμαρτή έκπτωση ${ratePct(ex.rate)}`, v: feSigned(-ex.deduction) },

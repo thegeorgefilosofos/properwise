@@ -1010,8 +1010,13 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
                 ? <a href={f.href} target="_blank" rel="noopener noreferrer" className="tap-link"
                     style={{
                       fontFamily: T.font.sans, fontSize: 12, fontWeight: 600,
-                      color: 'var(--text-secondary)', textDecoration: 'none',
-                      borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap',
+                      color: 'var(--text-secondary)', whiteSpace: 'nowrap',
+                      // Υπογράμμιση του ΚΕΙΜΕΝΟΥ, όχι κάτω ακμή του κουτιού: το
+                      // κουτί είναι στόχος αφής 44 και η ακμή του έπεφτε 13
+                      // εικονοστοιχεία κάτω από τη λέξη, πάνω στον διαχωριστή της
+                      // επόμενης σειράς, σαν δεύτερη γραμμή (29/10/2026).
+                      textDecoration: 'underline', textDecorationColor: 'var(--border-default)',
+                      textUnderlineOffset: 3,
                     }}>
                     Επίσημη σελίδα
                   </a>
@@ -1037,9 +1042,9 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', paddingBottom: 2 }}>
                   <span style={{ ...TT.kpi, fontSize: 20 }}>{feAuto(loan.monthly)}</span>
                   <span style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>
-                    τον μήνα για {ASSUMED_YEARS} έτη · συνολικοί τόκοι {feAuto(loan.interest)}
+                    τον μήνα για {ASSUMED_YEARS} έτη · συνολικοί τόκοι {feAuto(loan.interest)}
                     <InfoHint label="Πάνω σε τι υπολογίζεται η δόση">
-                      Ενδεικτική δόση επισκευαστικού με υποθετικό επιτόκιο {ASSUMED_RATE_PCT}% σε {ASSUMED_YEARS} έτη.
+                      Ενδεικτική δόση επισκευαστικού με υποθετικό επιτόκιο {ASSUMED_RATE_PCT}% σε {ASSUMED_YEARS} έτη.
                       Τα σημερινά επιτόκια και τα έξοδα συγκρίνονται στην καρτέλα Δάνειο.
                     </InfoHint>
                   </span>

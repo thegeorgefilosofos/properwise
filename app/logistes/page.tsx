@@ -61,7 +61,7 @@ const DESC =
 export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, image: shareImage('logistes') });
 
 /** Μήνες σε αιτιατική, όπως στους Όρους: «έναν μήνα», «2 μήνες». */
-const monthsAcc = (n: number): string => (n === 1 ? 'έναν μήνα' : `${n} μήνες`);
+const monthsAcc = (n: number): string => (n === 1 ? 'έναν μήνα' : `${n} μήνες`);
 
 // ΤΟ ΠΑΚΕΤΟ ΠΟΥ ΑΝΟΙΓΕΙ ΤΟΝ ΣΥΝΔΕΣΜΟ ΔΙΑΒΑΖΕΤΑΙ, ΔΕΝ ΓΡΑΦΕΤΑΙ. Η πύλη και η
 // εξαγωγή Ε2 κρίνονται από το ίδιο δικαίωμα (`e2_export`) στη Λογιστική.
@@ -109,7 +109,7 @@ const FAQ: GuideFaqItem[] = [
   },
   {
     q: 'Πόσο ισχύει ο σύνδεσμος;',
-    a: `${ACCOUNTANT_LINK_DAYS} ημέρες από τη στιγμή που τον βγάζει ο ιδιοκτήτης. Μπορεί να τον ανακαλέσει οποτεδήποτε: `
+    a: `${ACCOUNTANT_LINK_DAYS} ημέρες από τη στιγμή που τον βγάζει ο ιδιοκτήτης. Μπορεί να τον ανακαλέσει οποτεδήποτε: `
      + 'ο παλιός σταματά αμέσως να λειτουργεί και βγαίνει καινούριος.',
   },
   {
@@ -211,7 +211,7 @@ export default function Page() {
             {/* 1. Ο σύνδεσμος */}
             <H2 {...S.link} />
             <ol className="lg-ul">
-              <li><strong style={strong}>{'Ο ιδιοκτήτης τον βγάζει από τη Λογιστική του'}</strong>{` και σου τον στέλνει. Καλύπτει όλα τα ακίνητά του, ισχύει ${ACCOUNTANT_LINK_DAYS} ημέρες και ανακαλείται οποτεδήποτε: ο παλιός σταματά αμέσως. Υπάρχει από το πακέτο «${LINK_PLAN}».`}</li>
+              <li><strong style={strong}>{'Ο ιδιοκτήτης τον βγάζει από τη Λογιστική του'}</strong>{` και σου τον στέλνει. Καλύπτει όλα τα ακίνητά του, ισχύει ${ACCOUNTANT_LINK_DAYS} ημέρες και ανακαλείται οποτεδήποτε: ο παλιός σταματά αμέσως. Υπάρχει από το πακέτο «${LINK_PLAN}».`}</li>
               <li><strong style={strong}>{'Τον ανοίγεις χωρίς λογαριασμό.'}</strong>{' Χωρίς κωδικό και χωρίς email. Διαλέγεις χρήση· η προεπιλογή είναι η προηγούμενη χρονιά, εκεί που δουλεύεις τον περισσότερο καιρό.'}</li>
               <li><strong style={strong}>{'Με δικό σου λογαριασμό τον κρατάς.'}</strong>{' Επικολλάς τον σύνδεσμο στους πελάτες σου και τον βρίσκεις μαζί με τους υπόλοιπους, χωρίς σελιδοδείκτες.'}</li>
             </ol>
@@ -269,7 +269,7 @@ export default function Page() {
             <figure style={{ ...box, margin: '16px 0 0' }}>
               <figcaption style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {`Παράδειγμα πελάτη · ${SAMPLE.properties} ακίνητα`}
+                  {`Παράδειγμα πελάτη · ${SAMPLE.properties} ακίνητα`}
                 </span>
                 <span style={{ fontSize: 13, fontWeight: SAMPLE_READY.blocking > 0 ? 700 : 500, color: 'var(--text-primary)' }}>{SAMPLE_READY.label}</span>
               </figcaption>
@@ -320,7 +320,7 @@ export default function Page() {
               <li><strong style={strong}>{'Από εκεί και πέρα,'}</strong>{` κάθε μήνας που πιάνει τον στόχο σού δίνει ${monthsAcc(PARTNER_MONTHLY_FREE_MONTHS)} συνδρομής χωρίς χρέωση, με προτεραιότητα στη σειρά διάθεσης των νέων δυνατοτήτων.`}</li>
             </ul>
             <p className="lg-p">
-              {`${words.compMonths}${words.partnerTarget ? ` ${words.partnerTarget}` : ''} Ο προσκεκλημένος ξεκινά με τη δοκιμή των ${TRIAL_DAYS} ημερών, όπως κάθε νέος λογαριασμός· ο σύνδεσμος δεν του δίνει επιπλέον παροχή.`}
+              {`${words.compMonths}${words.partnerTarget ? ` ${words.partnerTarget}` : ''} Ο προσκεκλημένος ξεκινά με τη δοκιμή των ${TRIAL_DAYS} ημερών, όπως κάθε νέος λογαριασμός· ο σύνδεσμος δεν του δίνει επιπλέον παροχή.`}
             </p>
             <p className="lg-p">
               <Link href="/terms#systaseis" className="lp-link po-tap" style={LINK_STYLE}>{'Οι όροι του προγράμματος'}</Link>

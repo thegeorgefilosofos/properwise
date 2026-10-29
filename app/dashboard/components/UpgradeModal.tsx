@@ -55,7 +55,7 @@ export default function UpgradeModal({ currentCount, planId, onClose, onManage }
           <p className="po-just" style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0 0 20px', lineHeight: 1.6 }}>
             {/* Χωρίς «στήνουμε πακέτο στα μέτρα σου» και «απαντάμε την ίδια ημέρα»:
                 κανένα από τα δύο δεν το εγγυάται κάτι πίσω από την οθόνη. */}
-            {hy(<>Το πακέτο «{PLANS[paidPlanForProfile('professional')].name}» καλύπτει έως {PLANS[paidPlanForProfile('professional')].maxProperties} ακίνητα και τα έχεις ήδη συμπληρώσει.
+            {hy(<>Το πακέτο «{PLANS[paidPlanForProfile('professional')].name}» καλύπτει έως {PLANS[paidPlanForProfile('professional')].maxProperties} ακίνητα και τα έχεις ήδη συμπληρώσει.
             Για περισσότερα, γράψε μας στο <strong style={{ color: 'var(--text-primary)' }}>{IDENTITY.supportEmail}</strong>.</>)}
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>

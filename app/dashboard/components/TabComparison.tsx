@@ -557,10 +557,10 @@ export default function TabComparison({ properties, userId, onNavigate, profileT
     // αποφύγουμε — μόνο που τώρα δεν υπάρχει οθόνη να την εξηγήσει.
     const notes = [
       oneTaxpayer
-        ? `${CONSOLIDATION_NOTE} Συνολικά ${portfolioTax.count} ακίνητα με εισόδημα, ενοίκια ${money(portfolioTax.totalAnnualRent)}, φόρος ${money(portfolioTax.totalTax)}.`
+        ? `${CONSOLIDATION_NOTE} Συνολικά ${portfolioTax.count} ακίνητα με εισόδημα, ενοίκια ${money(portfolioTax.totalAnnualRent)}, φόρος ${money(portfolioTax.totalTax)}.`
         : `${CONSOLIDATION_NOTE} Ο φόρος υπολογίζεται χωριστά για κάθε ιδιοκτήτη του Πελατολογίου.`,
       oneTaxpayer && rowsData.length < portfolioTax.count
-        ? `Προσοχή: το αρχείο περιέχει ${rowsData.length} από τα ${portfolioTax.count} ακίνητα με εισόδημα (εξάγεται η ομάδα που εμφανίζεται στην οθόνη). Το άθροισμα της στήλης φόρου είναι μέρος του συνολικού φόρου, όχι ο συνολικός φόρος.`
+        ? `Προσοχή: το αρχείο περιέχει ${rowsData.length} από τα ${portfolioTax.count} ακίνητα με εισόδημα (εξάγεται η ομάδα που εμφανίζεται στην οθόνη). Το άθροισμα της στήλης φόρου είναι μέρος του συνολικού φόρου, όχι ο συνολικός φόρος.`
         : '',
       group.warning || '',
     ];
@@ -605,7 +605,7 @@ export default function TabComparison({ properties, userId, onNavigate, profileT
       )}
 
       {/* Η ΠΡΟΕΙΔΟΠΟΙΗΣΗ ΔΕΝ ΕΙΝΑΙ ΨΙΛΑ ΓΡΑΜΜΑΤΑ. Δύο διαμερίσματα είναι συγκρίσιμα
-          ως κατηγορία, αλλά 45 τ.μ. του 1975 δίπλα σε 140 τ.μ. του 2018 βγάζουν
+          ως κατηγορία, αλλά 45 τ.μ. του 1975 δίπλα σε 140 τ.μ. του 2018 βγάζουν
           «το δεύτερο αποδίδει καλύτερα» — αληθές και εντελώς άχρηστο. Ο χρήστης
           έχει δικαίωμα να δει τη σύγκριση· έχει και δικαίωμα να ξέρει τι κοιτάζει. */}
       {/* Και εμφανίζεται μόνο όταν υπάρχει σύγκριση να προειδοποιήσει: πάνω από
@@ -657,7 +657,7 @@ export default function TabComparison({ properties, userId, onNavigate, profileT
                         δεν γράφεται παύλα για κάθε πεδίο χωριστά. */}
                     {/* ═══ Η ΤΑΥΤΟΤΗΤΑ ΤΡΑΒΟΥΣΕ ΤΟΝ ΠΙΝΑΚΑ ΠΕΡΑ ΔΩΘΕ ══════════════════
                         ΜΕΤΡΗΜΕΝΟ ΣΤΟΝ ΠΑΓΚΟ, ΜΕ ΤΑ ΑΚΙΝΗΤΑ ΤΗΣ ΑΝΑΦΟΡΑΣ. Η γραμμή
-                        «Βραχυχρόνια μίσθωση · 42 τ.μ. · 120.000,00€ · 2.857,14€
+                        «Βραχυχρόνια μίσθωση · 42 τ.μ. · 120.000,00€ · 2.857,14€
                         ανά τετραγωνικό» θέλει 425 εικονοστοιχεία και δεν είχε
                         κανένα όριο πλάτους: τραβούσε τη στήλη στα 453 και τον
                         πίνακα στα 1.095. Το δοχείο έχει 974 σε ταμπλέτα 1024,
@@ -675,7 +675,7 @@ export default function TabComparison({ properties, userId, onNavigate, profileT
                         σειρές, ακριβώς ό,τι κάνει κάθε δευτερεύον κείμενο.
 
                         ΚΑΙ ΤΟ «ΑΝΑ ΤΕΤΡΑΓΩΝΙΚΟ» ΓΙΝΕΤΑΙ «/τ.μ.» ΕΔΩ: η μονάδα
-                        λέγεται ήδη δύο στοιχεία πριν («42 τ.μ.»), οπότε η
+                        λέγεται ήδη δύο στοιχεία πριν («42 τ.μ.»), οπότε η
                         ολογράφως επανάληψη είναι το ίδιο πράγμα δεύτερη φορά.
                         Οι γραμμές του πίνακα από κάτω κρατούν την πλήρη
                         διατύπωση, γιατί εκεί στέκει μόνη της.
@@ -688,7 +688,7 @@ export default function TabComparison({ properties, userId, onNavigate, profileT
                         δύο στοιχεία. */}
                     <div title={r.p.value ? 'Εμπορική αξία' : 'Αντικειμενική αξία (Ε9), επειδή δεν έχει καταχωρηθεί εμπορική'}
                       style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginTop: 4, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', maxWidth: '100%', whiteSpace: 'normal', lineHeight: 1.45 }}>
-                      {[statusLabel(r.p as StatusRow) || null, r.sqm > 0 ? `${fn(r.sqm)} τ.μ.` : null, r.value != null ? fe(r.value) : null, r.perSqm != null ? `${fe(r.perSqm)}/τ.μ.` : null].filter(Boolean).join('\u00a0· ') || ABSENT}
+                      {[statusLabel(r.p as StatusRow) || null, r.sqm > 0 ? `${fn(r.sqm)} τ.μ.` : null, r.value != null ? fe(r.value) : null, r.perSqm != null ? `${fe(r.perSqm)}/τ.μ.` : null].filter(Boolean).join('\u00a0· ') || ABSENT}
                     </div>
                   </th>
                 ))}

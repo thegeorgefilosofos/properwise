@@ -412,9 +412,9 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       // «Από 71 διανυκτερεύσεις» της κάρτας από κάτω και έμοιαζε με λάθος.
       sub: measuredOcc != null
         ? (taxSummary.totalNights > occNights
-          ? `${fn(occNights)} από τις ${fn(taxSummary.totalNights)} νύχτες του ${nowYear}, στις εποχές του πίνακα`
-          : `${fn(occNights)} νύχτες στις εποχές του πίνακα`)
-        : `Χρειάζονται τουλάχιστον ${MIN_NIGHTS_FOR_OCCUPANCY} νύχτες ανά εποχή`,
+          ? `${fn(occNights)} από τις ${fn(taxSummary.totalNights)} νύχτες του ${nowYear}, στις εποχές του πίνακα`
+          : `${fn(occNights)} νύχτες στις εποχές του πίνακα`)
+        : `Χρειάζονται τουλάχιστον ${MIN_NIGHTS_FOR_OCCUPANCY} νύχτες ανά εποχή`,
     },
   ], [sum, base, measuredOcc, occNights, taxSummary.totalNights, nowYear]);
 
@@ -550,7 +550,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     const rd = (() => { const wanted = addDaysIso(g.start, -5); return wanted < todayIso() ? todayIso() : wanted; })();
     const { error } = await calendar.insert(supabase, [calendar.row({ propertyId, userId }, 'pricing_gap', {
       title, category: 'reminder', event_date: rd, priority: g.soon ? 'high' : 'medium',
-      notes: `${g.nights} κενές νύχτες. Προτεινόμενη τιμή πλήρωσης ${fe(g.fillPrice)}/νύχτα${minStay > 1 ? `, ελάχιστη διαμονή ${minStay} νύχτες` : ''}.`,
+      notes: `${g.nights} κενές νύχτες. Προτεινόμενη τιμή πλήρωσης ${fe(g.fillPrice)}/νύχτα${minStay > 1 ? `, ελάχιστη διαμονή ${minStay} νύχτες` : ''}.`,
     })]);
     if (error) { notifyError(failed('Οι ρυθμίσεις τιμολόγησης δεν αποθηκεύτηκαν', error)); return; }
     setGapTitles(prev => new Set(prev).add(title));
@@ -558,7 +558,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   };
   // Ενέργεια: αντιγραφή κειμένου προσφοράς last minute.
   const copyOffer = (g: Gap) => {
-    const txt = `Τελευταία διαθεσιμότητα ${fd(g.start)} - ${fd(g.end)} (${g.nights} ${g.nights === 1 ? 'νύχτα' : 'νύχτες'}) σε ειδική τιμή ${fe(g.fillPrice)} ανά νύχτα${minStay > 1 ? `, ελάχιστη διαμονή ${minStay} νύχτες` : ''}. Κλείσε τώρα, οι ημερομηνίες είναι περιορισμένες.`;
+    const txt = `Τελευταία διαθεσιμότητα ${fd(g.start)} - ${fd(g.end)} (${g.nights} ${g.nights === 1 ? 'νύχτα' : 'νύχτες'}) σε ειδική τιμή ${fe(g.fillPrice)} ανά νύχτα${minStay > 1 ? `, ελάχιστη διαμονή ${minStay} νύχτες` : ''}. Κλείσε τώρα, οι ημερομηνίες είναι περιορισμένες.`;
     navigator.clipboard?.writeText(txt);
     notifyOk('Το κείμενο προσφοράς αντιγράφηκε');
   };

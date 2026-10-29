@@ -110,10 +110,10 @@ const shortDate = (d: string): string => {
  */
 const dueText = (due: string): { text: string; late: boolean } => {
   const days = daysUntil(due) ?? 0;
-  if (days < 0) return { text: days === -1 ? 'πέρασε χθες' : `πέρασε πριν ${-days} ημέρες`, late: true };
+  if (days < 0) return { text: days === -1 ? 'πέρασε χθες' : `πέρασε πριν ${-days} ημέρες`, late: true };
   if (days === 0) return { text: 'λήγει σήμερα', late: true };
   if (days === 1) return { text: 'λήγει αύριο', late: false };
-  return { text: `λήγει σε ${days} ημέρες`, late: false };
+  return { text: `λήγει σε ${days} ημέρες`, late: false };
 };
 
 /**

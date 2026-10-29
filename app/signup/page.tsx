@@ -720,7 +720,7 @@ export default function SignupPage() {
                       χωρίς. Ο κωδικός είναι PO με επτά λατινικά ή ψηφία: ο συλλαβισμός
                       δεν αγγίζει λατινικά, οπότε μένει ακέραιος. */}
                   <span className="po-just" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                    {hy(<>Ήρθες με πρόσκληση. Ο κωδικός <strong style={{ color: 'var(--text-primary)' }}>{refCode.trim()}</strong> καταγράφεται με την εγγραφή και μετράει σε εκείνον που σε κάλεσε. Η δοκιμή των {TRIAL_DAYS} ημερών είναι ίδια για όλους.</>)}
+                    {hy(<>Ήρθες με πρόσκληση. Ο κωδικός <strong style={{ color: 'var(--text-primary)' }}>{refCode.trim()}</strong> καταγράφεται με την εγγραφή και μετράει σε εκείνον που σε κάλεσε. Η δοκιμή των {TRIAL_DAYS} ημερών είναι ίδια για όλους.</>)}
                   </span>
                 </div>
               )}
@@ -769,7 +769,7 @@ export default function SignupPage() {
                   σειρές, ένας άξονας αριστερά και ένας δεξιά:
 
                       Ιδιοκτήτης+                99,00€
-                      Ετήσια χρέωση          Δοκιμή 30 ημερών
+                      Ετήσια χρέωση          Δοκιμή 30 ημερών
 
                   Αριστερά ΤΙ ΕΙΝΑΙ, δεξιά ΤΙ ΠΛΗΡΩΝΕΙΣ. Η πάνω σειρά κρατά την
                   ταυτότητα, η κάτω τους όρους. Δύο μεγέθη συνολικά, δύο βάρη,
@@ -801,7 +801,7 @@ export default function SignupPage() {
                   {/* Η ΔΟΚΙΜΗ ΔΙΝΕΙ ΤΟ TRIAL_PLAN, ΟΧΙ ΟΠΟΙΟ ΠΑΚΕΤΟ ΔΙΑΛΕΞΕΣ. Πάνω από
                       αυτό η ταμπέλα λέει σε ποιο πακέτο τρέχει η δοκιμή. */}
                   <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.45, color: 'var(--text-tertiary)', textAlign: 'right', whiteSpace: planAtLeast(TRIAL_PLAN, chosenPlan) ? 'nowrap' : undefined }}>
-                    Δοκιμή {TRIAL_DAYS} ημερών{!planAtLeast(TRIAL_PLAN, chosenPlan) && <> στο «{PLANS[TRIAL_PLAN].name}»</>}
+                    Δοκιμή {TRIAL_DAYS} ημερών{!planAtLeast(TRIAL_PLAN, chosenPlan) && <> στο «{PLANS[TRIAL_PLAN].name}»</>}
                   </span>
                 </div>
               )}

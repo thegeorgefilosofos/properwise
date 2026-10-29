@@ -49,7 +49,7 @@ export function CapacityLens({
         <div className="kpi-row" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',gap:12,marginBottom:16,'--kpi-lg':3,'--kpi-md':3,'--kpi-sm':1} as React.CSSProperties}>
           {(()=>{ const cap=[
             {k:'Μέγιστη δόση τον μήνα',v:fmtEur(aff.maxMonthly),s:`${fp(aff.limitPct*100)} του εισοδήματος${firstTimeBuyer?', ως πρωτοαγοραστής':''}`},
-            {k:'Μέγιστο δάνειο',v:fmtEur(aff.maxLoan),s:`με ${fmtPct(effRate)} · ${Y} έτη`},
+            {k:'Μέγιστο δάνειο',v:fmtEur(aff.maxLoan),s:`με ${fmtPct(effRate)} · ${Y} έτη`},
             {k:'Δείκτης δόσης προς εισόδημα',v:INC>0?fmtPct1(aff.dstiUsedPct):fp(0),s:`όριο ${Math.round(aff.limitPct*100)}%`},
           ]; const w=widestOf(...cap.map(t=>t.v));
             return cap.map(t=>(<Tile key={t.k} label={t.k} value={t.v} sub={t.s} chars={w}/>)) })()}
@@ -103,7 +103,7 @@ export function CapacityLens({
         const rvb = rentVsBuy({ price:PV, downPayment:PV-LA, ratePct:effRate, years:Y, monthlyRent:rent, purchaseCosts:totalCosts.total, horizonYears:horizon })
         const buys = rvb.advantageAtHorizon>0
         return (
-      <Section title="Ενοικίαση ή αγορά" sub={`Σύγκριση συνολικού κόστους σε ${horizon} έτη`}>
+      <Section title="Ενοικίαση ή αγορά" sub={`Σύγκριση συνολικού κόστους σε ${horizon} έτη`}>
         <div style={{marginBottom:6,maxWidth:280}}><NumberInput label="Μηνιαίο ενοίκιο αντίστοιχου ακινήτου" value={rentShown} onChange={v=>{setMonthlyRent(v);setRentTouched(true)}} suffix="€"/></div>
         <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginBottom:12,lineHeight:1.55,fontFamily: T.font.sans}}>
           {rentTouched ? 'Δική σου υπόθεση.' : rentAssumptionText}
@@ -119,8 +119,8 @@ export function CapacityLens({
             ορφανό. */}
         {(()=>{ const w=widestOf(fmtEur(rvb.buyNetAtHorizon), fmtEur(rvb.rentAtHorizon), fmtEur(Math.abs(rvb.advantageAtHorizon))); return (
         <div {...fixedCols(3, 8, 'stretch')} style={{...fixedCols(3, 8, 'stretch').style, marginBottom:14}}>
-          <Tile label="Καθαρό κόστος αγοράς" value={fmtEur(rvb.buyNetAtHorizon)} chars={w} sub={`σε ${horizon} έτη, μετά την περιουσία`}/>
-          <Tile label="Κόστος ενοικίασης" value={fmtEur(rvb.rentAtHorizon)} chars={w} sub={`σε ${horizon} έτη`}/>
+          <Tile label="Καθαρό κόστος αγοράς" value={fmtEur(rvb.buyNetAtHorizon)} chars={w} sub={`σε ${horizon} έτη, μετά την περιουσία`}/>
+          <Tile label="Κόστος ενοικίασης" value={fmtEur(rvb.rentAtHorizon)} chars={w} sub={`σε ${horizon} έτη`}/>
           <Tile label={buys?'Πλεονέκτημα αγοράς':'Πλεονέκτημα ενοικίασης'} value={fmtEur(Math.abs(rvb.advantageAtHorizon))} chars={w} sub={rvb.breakEvenYear?`ισοσκελισμός στο έτος ${rvb.breakEvenYear}`:'χωρίς ισοσκελισμό στον ορίζοντα'}/>
         </div>) })()}
         <RentBuyChart buy={rvb.buyNetCostByYear} rent={rvb.rentCostByYear} horizon={horizon} breakEvenYear={rvb.breakEvenYear} fmt={fmtEur}/>

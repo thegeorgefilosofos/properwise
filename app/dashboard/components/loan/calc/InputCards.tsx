@@ -129,7 +129,7 @@ export function LoanCard({
                     γνωστή τιμή της ΕΚΤ, όχι «εφεδρική τιμή χωρίς ημερομηνία». */}
                 <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop: 4,fontFamily: T.font.sans}}>
                   {market.euribor_asOf && market.euribor_basis
-                    ? `Euribor 3 μηνών, ${euriborPeriod(market.euribor_asOf, market.euribor_basis)}${market.euribor_source ? `. Πηγή: ${market.euribor_source}` : ''}${market.euribor_fetchedAt ? `, λήψη ${greekDay(market.euribor_fetchedAt.slice(0,10))}` : ''}`
+                    ? `Euribor 3 μηνών, ${euriborPeriod(market.euribor_asOf, market.euribor_basis)}${market.euribor_source ? `. Πηγή: ${market.euribor_source}` : ''}${market.euribor_fetchedAt ? `, λήψη ${greekDay(market.euribor_fetchedAt.slice(0,10))}` : ''}`
                     : FALLBACK_NOTE}
                 </p>
                 {/* Ο ΜΕΣΟΣ ΟΡΟΣ ΔΕΝ ΕΙΝΑΙ Η ΤΙΜΗ ΤΗΣ ΤΡΑΠΕΖΑΣ. Η τράπεζα εφαρμόζει
@@ -150,7 +150,7 @@ export function LoanCard({
             <NumberInput label="Έκτακτη μηνιαία πληρωμή" value={extraPay} onChange={setExtraPay} suffix="€" placeholder=""/>
             {extraSav&&EP>0&&(
               <div style={{marginTop:6,padding:'9px 12px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
-                <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:500}}>Εξοικονομείς {Math.round(extraSav.savedMonths/12)} χρόνια και {fmtEur(extraSav.savedInt)} τόκους</p>
+                <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:500}}>Εξοικονομείς {Math.round(extraSav.savedMonths/12)} χρόνια και {fmtEur(extraSav.savedInt)} τόκους</p>
               </div>
             )}
           </div>

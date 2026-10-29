@@ -86,10 +86,10 @@ const FACT: React.CSSProperties = {
 
 const DURATION_OPTIONS = [
   { value: '',    label: 'Χωρίς δέσμευση' },
-  { value: '12',  label: '12 μήνες'        },
-  { value: '18',  label: '18 μήνες'        },
-  { value: '24',  label: '24 μήνες'        },
-  { value: '36',  label: '36 μήνες'        },
+  { value: '12',  label: '12 μήνες'        },
+  { value: '18',  label: '18 μήνες'        },
+  { value: '24',  label: '24 μήνες'        },
+  { value: '36',  label: '36 μήνες'        },
 ];
 
 // ΗΤΑΝ ΠΙΝΑΚΑΣ ΕΞΙ ΕΓΓΡΑΦΩΝ ΜΕ ΠΑΝΟΜΟΙΟΤΥΠΕΣ ΤΙΜΕΣ ΚΑΙ ΕΝΑ ΨΕΥΔΕΣ ΣΧΟΛΙΟ.
@@ -184,10 +184,10 @@ export function electricitySwitchFinding(
     current, best: best.cost.total, savingsMonthly: savings,
     bestLabel: `${best.tariff.providerLabel} ${best.tariff.name}`,
     basedOn: usageEst.source === 'history'
-      ? `${usageEst.kwhMonthly} kWh τον μήνα, από το ιστορικό σου`
+      ? `${usageEst.kwhMonthly} kWh τον μήνα, από το ιστορικό σου`
       : usageEst.source === 'bills'
-      ? `${usageEst.kwhMonthly} kWh τον μήνα, από τους λογαριασμούς σου`
-      : `${usageEst.kwhMonthly} kWh τον μήνα`,
+      ? `${usageEst.kwhMonthly} kWh τον μήνα, από τους λογαριασμούς σου`
+      : `${usageEst.kwhMonthly} kWh τον μήνα`,
   };
 }
 
@@ -411,7 +411,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
         <div style={{ marginBottom: 14, background: contractExpiry.daysLeft <= 14 ? 'color-mix(in srgb, var(--negative) 6%, transparent)' : 'color-mix(in srgb, var(--warning) 5%, transparent)', border: `1px solid ${contractExpiry.daysLeft <= 14 ? 'color-mix(in srgb, var(--negative) 20%, transparent)' : 'color-mix(in srgb, var(--warning) 20%, transparent)'}`, borderRadius: T.radius.inner, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: contractExpiry.daysLeft <= 14 ? 'var(--negative)' : 'var(--warning)' }}/>
           <span style={{ fontSize: 12, fontFamily: T.font.sans, color: 'var(--text-primary)', fontWeight: 600 }}>
-            Σύμβαση ρεύματος λήγει σε {contractExpiry.daysLeft} ημέρες, {contractExpiry.date}
+            Σύμβαση ρεύματος λήγει σε {contractExpiry.daysLeft} ημέρες, {contractExpiry.date}
           </span>
           <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
             Καλό να συγκρίνεις τιμές πριν ανανεώσεις
@@ -467,7 +467,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
               <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: tariffBc.color, background: tariffBc.border, padding: '2px 10px', borderRadius: T.radius.pill, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{tariff.badge}</span>
               {tariff.contract_months ? (
                 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', background: 'var(--bg-elevated)', padding: '2px 10px', borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)', fontFamily: T.font.sans }}>
-                  {tariff.contract_months} μήνες
+                  {tariff.contract_months} μήνες
                 </span>
               ) : (
                 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', background: 'var(--bg-elevated)', padding: '2px 10px', borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)', fontFamily: T.font.sans }}>
@@ -482,10 +482,10 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
               {/* ΜΟΝΟ ΟΤΑΝ ΔΕΝ ΤΟ ΛΕΕΙ ΗΔΗ Η ΠΡΟΕΙΔΟΠΟΙΗΣΗ. Κάτω από τις εξήντα
                   ημέρες, μια μπάρα εκατό εικονοστοιχεία πιο πάνω γράφει την ίδια
                   ημερομηνία και τις ίδιες ημέρες, στο ίδιο χρώμα. Και ο
-                  πληθυντικός δεν κρατά στο ένα: «σε 1 ημέρες». */}
+                  πληθυντικός δεν κρατά στο ένα: «σε 1 ημέρες». */}
               {contractExpiry && !contractExpiry.expired && contractExpiry.daysLeft > 60 && (
                 <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', padding: '2px 10px', borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)', fontFamily: T.font.sans }}>
-                  Λήγει {contractExpiry.date}, σε {contractExpiry.daysLeft} ημέρες
+                  Λήγει {contractExpiry.date}, σε {contractExpiry.daysLeft} ημέρες
                 </span>
               )}
               {/* ═══ ΠΟΤΕ ΓΙΝΕΤΑΙ ΟΡΙΣΤΙΚΗ Η ΤΙΜΗ ΠΟΥ ΔΕΙΧΝΟΥΜΕ ═══════════════════
@@ -521,7 +521,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                 αυτήν. Γράφεται από τα πεδία, όχι από την περιγραφή. */}
             {tariff.undiscounted && tariff.undiscounted.day != null && (tariff.undiscounted.day !== tariff.kwh_day || (tariff.undiscounted.fixed ?? tariff.fixed) !== tariff.fixed) && (
               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, fontFamily: T.font.sans, marginTop: 4 }}>
-                Χωρίς την προϋπόθεση: {fk(tariff.undiscounted.day)}{tariff.undiscounted.tier2 != null && tariff.tier2_threshold != null ? ` έως τις ${fn(tariff.tier2_threshold)} kWh, ${fk(tariff.undiscounted.tier2)} πάνω από αυτές` : ' ανά κιλοβατώρα'}{tariff.undiscounted.night != null ? ` και ${fk(tariff.undiscounted.night)} τη νύχτα` : ''}{tariff.undiscounted.fixed != null && tariff.undiscounted.fixed !== tariff.fixed ? `, πάγιο ${fe(tariff.undiscounted.fixed)}` : ''}. Η σύγκριση τρέχει με την τιμή της προϋπόθεσης.
+                Χωρίς την προϋπόθεση: {fk(tariff.undiscounted.day)}{tariff.undiscounted.tier2 != null && tariff.tier2_threshold != null ? ` έως τις ${fn(tariff.tier2_threshold)} kWh, ${fk(tariff.undiscounted.tier2)} πάνω από αυτές` : ' ανά κιλοβατώρα'}{tariff.undiscounted.night != null ? ` και ${fk(tariff.undiscounted.night)} τη νύχτα` : ''}{tariff.undiscounted.fixed != null && tariff.undiscounted.fixed !== tariff.fixed ? `, πάγιο ${fe(tariff.undiscounted.fixed)}` : ''}. Η σύγκριση τρέχει με την τιμή της προϋπόθεσης.
               </div>
             )}
             {conditionNote(tariff) && (
@@ -542,14 +542,14 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
               <div style={{ marginTop: 6, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.badge, padding: '6px 12px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" className="po-lead-ico"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
                 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-                  Σταθερό μηνιαίο ποσό για {tariff.contract_months || 12} μήνες (προμήθεια + ρυθμιζόμενες χρεώσεις, όχι υπέρ τρίτων). Ανοχή υπέρβασης 5% χωρίς χρέωση· πάνω από αυτό, {fk(tariff.flat_overage_rate)}/kWh. Ετήσια εκκαθάριση.
+                  Σταθερό μηνιαίο ποσό για {tariff.contract_months || 12} μήνες (προμήθεια + ρυθμιζόμενες χρεώσεις, όχι υπέρ τρίτων). Ανοχή υπέρβασης 5% χωρίς χρέωση· πάνω από αυτό, {fk(tariff.flat_overage_rate)}/kWh. Ετήσια εκκαθάριση.
                 </span>
               </div>
             )}
             {tariff.type !== 'dynamic' && tariff.type !== 'fixed_monthly' && (
               <div style={{ display: 'flex', gap: 20, marginTop: 10, flexWrap: 'wrap' as const, alignItems: 'center' }}>
                 <span style={FACT}>
-                  {tariff.kwh_tier2 != null && tariff.tier2_threshold != null ? `Έως ${tariff.tier2_threshold} kWh:` : 'Χρέωση ημέρας:'}{' '}<strong style={{ color: tariffBc.color, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{tariff.kwh_day != null ? `${fk(tariff.kwh_day)} / kWh` : (tariff.priceText ?? priceMonthNote(tariff))}</strong>
+                  {tariff.kwh_tier2 != null && tariff.tier2_threshold != null ? `Έως ${tariff.tier2_threshold} kWh:` : 'Χρέωση ημέρας:'}{' '}<strong style={{ color: tariffBc.color, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{tariff.kwh_day != null ? `${fk(tariff.kwh_day)} / kWh` : (tariff.priceText ?? priceMonthNote(tariff))}</strong>
                 </span>
                 {tariff.kwh_night != null && (
                   <span style={FACT}>
@@ -558,7 +558,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                 )}
                 {tariff.kwh_tier2 != null && (
                   <span style={FACT}>
-                    {tariff.tier2_scope === 'all' ? `Πάνω από ${tariff.tier2_threshold} kWh, για όλες από την 1η:` : `Άνω των ${tariff.tier2_threshold} kWh:`}{' '}<strong style={{ color: tariffBc.color, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fk(tariff.kwh_tier2)} / kWh</strong>
+                    {tariff.tier2_scope === 'all' ? `Πάνω από ${tariff.tier2_threshold} kWh, για όλες από την 1η:` : `Άνω των ${tariff.tier2_threshold} kWh:`}{' '}<strong style={{ color: tariffBc.color, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fk(tariff.kwh_tier2)} / kWh</strong>
                   </span>
                 )}
                 {/* Το «Χωρίς πάγιο» το λέει ήδη η σήμανση από πάνω. Ένα
@@ -579,7 +579,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                 </span>
                 {tariff.flat_annual_kwh != null && (
                   <span style={FACT}>
-                    Όριο κατανάλωσης:{' '}<strong style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{tariff.flat_annual_kwh.toLocaleString('el-GR')} kWh / έτος</strong>
+                    Όριο κατανάλωσης:{' '}<strong style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{tariff.flat_annual_kwh.toLocaleString('el-GR')} kWh / έτος</strong>
                   </span>
                 )}
               </div>
@@ -607,17 +607,17 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
             προεπιλογή. Πριν ήταν πάντα προεπιλογή και δεν φαινόταν πουθενά. */}
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.55, marginBottom: 14 }}>
           {usageEst.source === 'history'
-            ? `Υπολογισμός με ${usageEst.kwhMonthly} kWh τον μήνα, μέσος όρος από ${usageEst.months} ${usageEst.months === 1 ? 'μήνα' : 'μήνες'} του ιστορικού σου.`
+            ? `Υπολογισμός με ${usageEst.kwhMonthly} kWh τον μήνα, μέσος όρος από ${usageEst.months} ${usageEst.months === 1 ? 'μήνα' : 'μήνες'} του ιστορικού σου.`
             : usageEst.source === 'bills'
-              ? `Υπολογισμός με ${usageEst.kwhMonthly} kWh τον μήνα, μέσος όρος από ${usageEst.months} ${usageEst.months === 1 ? 'λογαριασμό' : 'λογαριασμούς'} που έχεις καταχωρήσει.`
+              ? `Υπολογισμός με ${usageEst.kwhMonthly} kWh τον μήνα, μέσος όρος από ${usageEst.months} ${usageEst.months === 1 ? 'λογαριασμό' : 'λογαριασμούς'} που έχεις καταχωρήσει.`
               : usageEst.source === 'manual'
                 ? (kwhMonthly === ELEC_DEFAULTS.kwhMonthly
                     // ΤΟ «ΟΠΩΣ ΤΑ ΔΗΛΩΣΕΣ» ΕΛΕΓΕ ΨΕΜΑΤΑ ΣΤΗΝ ΠΡΟΕΠΙΛΟΓΗ. Το πεδίο
                     // ξεκινά στα 250 kWh· ένας χρήστης που δεν το άγγιξε ποτέ
                     // διάβαζε ότι δήλωσε νούμερο που δεν έγραψε και πάνω του
                     // στηνόταν ολόκληρη η σύγκριση τιμολογίων.
-                    ? `Υπολογισμός με ${fn(usageEst.kwhMonthly)} kWh τον μήνα, ενδεικτική τιμή εκκίνησης. Ανέβασε έναν λογαριασμό ή συμπλήρωσε το ιστορικό για δικό σου νούμερο.`
-                    : `Υπολογισμός με ${fn(usageEst.kwhMonthly)} kWh τον μήνα, όπως το έγραψες.`)
+                    ? `Υπολογισμός με ${fn(usageEst.kwhMonthly)} kWh τον μήνα, ενδεικτική τιμή εκκίνησης. Ανέβασε έναν λογαριασμό ή συμπλήρωσε το ιστορικό για δικό σου νούμερο.`
+                    : `Υπολογισμός με ${fn(usageEst.kwhMonthly)} kWh τον μήνα, όπως το έγραψες.`)
                 : 'Δεν ξέρουμε ακόμη πόσο ρεύμα καίει το ακίνητο. Γράψε τη μέση μηνιαία κατανάλωση ή συμπλήρωσε το ιστορικό πιο κάτω και η σύγκριση θα τρέξει στα δικά σου δεδομένα.'}
           {usageEst.source !== 'unknown' && !usageEst.reliable && (
             <> Με {usageEst.months} {usageEst.months === 1 ? 'μήνα' : 'μήνες'} δεδομένων η εικόνα είναι πρόχειρη: ο Ιούλιος με κλιματιστικό και ο Απρίλιος δεν μοιάζουν.</>
@@ -759,7 +759,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                 // «0,148€ ανά κιλοβατώρα» διαβάζεται ως αντίφαση: εδώ λέγεται τι
                 // είναι. Και όταν ούτε βασική τιμή υπάρχει, δεν γράφεται μηδέν.
                 facts.push(t.kwh_day == null ? (t.priceUnsupported ? 'Κλιμακωτό σε περισσότερες από δύο κλίμακες' : 'Χωρίς γνωστή τιμή')
-                  : t.priceStatus !== 'retro' ? `${fk(t.kwh_day)} ανά κιλοβατώρα${t.kwh_tier2 != null && t.tier2_threshold != null ? (t.tier2_scope === 'all' ? `, ${fk(t.kwh_tier2)} για όλες πάνω από ${fn(t.tier2_threshold)} kWh` : `, ${fk(t.kwh_tier2)} από την ${fn(t.tier2_threshold + 1)}η`) : ''}`
+                  : t.priceStatus !== 'retro' ? `${fk(t.kwh_day)} ανά κιλοβατώρα${t.kwh_tier2 != null && t.tier2_threshold != null ? (t.tier2_scope === 'all' ? `, ${fk(t.kwh_tier2)} για όλες πάνω από ${fn(t.tier2_threshold)} kWh` : `, ${fk(t.kwh_tier2)} από την ${fn(t.tier2_threshold + 1)}η`) : ''}`
                   : t.kwh_day > 0 ? `${fk(t.kwh_day)} βασική τιμή, κλείνει αναδρομικά`
                   : 'Η τιμή του μήνα ανακοινώνεται τον επόμενο');
                 // Τα «πράσινα» αλλάζουν κάθε 1η του μήνα: η τιμή λέει και για
@@ -773,7 +773,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
                 // διαφορετικό κανόνα και δεν έβγαιναν μεταξύ τους.
                 facts.push(t.no_fixed ? 'Χωρίς πάγιο' : `Πάγιο ${fixedChargeText(t, useEbill)}`);
               }
-              facts.push(t.contract_months ? `Δέσμευση ${t.contract_months} μήνες` : 'Χωρίς δέσμευση');
+              facts.push(t.contract_months ? `Δέσμευση ${t.contract_months} μήνες` : 'Χωρίς δέσμευση');
 
               // Η ΔΙΑΦΟΡΑ ΓΡΑΜΜΕΝΗ ΜΕ ΛΕΞΕΙΣ, ΟΧΙ ΜΕ ΠΡΟΣΗΜΟ. Το «+2,10€» δίπλα
               // σε «−3,40€» απαιτεί από τον αναγνώστη να θυμάται ως προς τι
@@ -945,20 +945,20 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
           if (vnmTariff && vnmTariff.monthly < costNum - 5) {
             // Το κουμπί «Πάρε Προσφορά» έστελνε στην καρτέλα «Ρεύμα» — δηλαδή σε
             // αυτήν ΠΟΥ ΗΔΗ ΒΛΕΠΕΙ ο χρήστης. Η υπόδειξη μένει, το κουμπί φεύγει.
-            hints.push({ text: `Με ${kwhNum} kWh/μήνα το VNM (Εικονική Καθαρή Μέτρηση) μπορεί να σου εξοικονομήσει ${fe(costNum - vnmTariff.monthly)} τον μήνα.`, severity: 'tip' });
+            hints.push({ text: `Με ${kwhNum} kWh/μήνα το VNM (Εικονική Καθαρή Μέτρηση) μπορεί να σου εξοικονομήσει ${fe(costNum - vnmTariff.monthly)} τον μήνα.`, severity: 'tip' });
           } else {
-            hints.push({ text: `Κατανάλωση ${kwhNum} kWh/μήνα, αξίζει σύγκριση με φωτοβολταϊκό ή κοινοτικό VNM.`, severity: 'tip' });
+            hints.push({ text: `Κατανάλωση ${kwhNum} kWh/μήνα, αξίζει σύγκριση με φωτοβολταϊκό ή κοινοτικό VNM.`, severity: 'tip' });
           }
         } else if (kwhNum > 0 && kwhNum < 100) {
           const noFixed = allTariffs.find(t => t.no_fixed && t.type !== 'dynamic');
           if (noFixed && noFixed.monthly < costNum) {
-            hints.push({ text: `Χαμηλή κατανάλωση (${kwhNum} kWh). Τιμολόγιο χωρίς πάγιο (${noFixed.providerLabel} ${noFixed.name}) εξοικονομεί ${fe((costNum - noFixed.monthly))}/μήνα.`, severity: 'tip' });
+            hints.push({ text: `Χαμηλή κατανάλωση (${kwhNum} kWh). Τιμολόγιο χωρίς πάγιο (${noFixed.providerLabel} ${noFixed.name}) εξοικονομεί ${fe((costNum - noFixed.monthly))}/μήνα.`, severity: 'tip' });
           }
         }
 
         // ── Contract expiry ─────────────────────────────────────────────────────
         if (contractExpiry && contractExpiry.daysLeft <= 30 && contractExpiry.daysLeft > 0) {
-          hints.push({ text: `Η σύμβασή σου λήγει σε ${contractExpiry.daysLeft} ημέρες (${contractExpiry.date}). Σύγκρινε πριν ανανεώσεις.`, severity: 'warning' });
+          hints.push({ text: `Η σύμβασή σου λήγει σε ${contractExpiry.daysLeft} ημέρες (${contractExpiry.date}). Σύγκρινε πριν ανανεώσεις.`, severity: 'warning' });
         }
 
         // ── Dynamic tariff suggestion ───────────────────────────────────────────

@@ -155,7 +155,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
             ...(res.deposit > 0 ? [{ label: 'Εγγύηση', value: pEur(res.deposit) }] : []),
             { label: 'Έναρξη', value: grDate(res.start) },
             { label: 'Λήξη', value: grDate(res.end) },
-            { label: 'Διάρκεια', value: `${res.months} μήνες` },
+            { label: 'Διάρκεια', value: `${res.months} μήνες` },
             { label: 'Ημέρα καταβολής', value: `${res.paymentDay}η κάθε μήνα` },
             ...(res.adjustmentPct > 0 ? [{ label: 'Ετήσια αναπροσαρμογή', value: fp(res.adjustmentPct) }] : []),
           ] },
@@ -361,7 +361,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
                 {stat('Έναρξη', grDate(res.start))}
                 <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
                 {stat('Λήξη', grDate(res.end), true)}
-                {stat('Διάρκεια', `${res.months} μήνες`)}
+                {stat('Διάρκεια', `${res.months} μήνες`)}
                 <div style={{ marginLeft: 'auto' }}>{stat('Δήλωση έως', grDate(res.declarationDeadline))}</div>
               </div>
               {res.belowLegalMinimum && (

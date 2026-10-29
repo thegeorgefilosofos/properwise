@@ -386,13 +386,13 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                 'Πληρότητα',
                 occ.availableDays > 0 ? fp(occ.pct) : 'Χωρίς κρατήσεις',
                 { title: occ.openFromMonth != null
-                    ? `${occ.bookedNights} νύχτες σε ${occ.availableDays} διαθέσιμες ημέρες, από ${MONTHS_ACC[occ.openFromMonth]} έως ${MONTHS_ACC[occ.openToMonth!]} ${reportYear}, όχι σε 365${occ.overbooked ? '. Οι νύχτες ξεπερνούν τις διαθέσιμες ημέρες: κάπου δύο κρατήσεις πέφτουν στην ίδια νύχτα.' : ''}`
+                    ? `${occ.bookedNights} νύχτες σε ${occ.availableDays} διαθέσιμες ημέρες, από ${MONTHS_ACC[occ.openFromMonth]} έως ${MONTHS_ACC[occ.openToMonth!]} ${reportYear}, όχι σε 365${occ.overbooked ? '. Οι νύχτες ξεπερνούν τις διαθέσιμες ημέρες: κάπου δύο κρατήσεις πέφτουν στην ίδια νύχτα.' : ''}`
                     : 'Χωρίς κρατήσεις' },
               )}
               {occ.peak && statTile(
                 'Πληρότητα υψηλής περιόδου',
                 fp(occ.peak.pct),
-                { title: `Από ${MONTHS_ACC[occ.peak.fromMonth]} έως ${MONTHS_ACC[occ.peak.toMonth]}: ${occ.peak.bookedNights} νύχτες σε ${occ.peak.days} ημέρες. Η περίοδος βγαίνει από ΤΑ ΔΙΚΑ ΣΟΥ δεδομένα, δεν την αποφασίσαμε εμείς.` },
+                { title: `Από ${MONTHS_ACC[occ.peak.fromMonth]} έως ${MONTHS_ACC[occ.peak.toMonth]}: ${occ.peak.bookedNights} νύχτες σε ${occ.peak.days} ημέρες. Η περίοδος βγαίνει από ΤΑ ΔΙΚΑ ΣΟΥ δεδομένα, δεν την αποφασίσαμε εμείς.` },
               )}
             </div>
 
@@ -435,16 +435,16 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                          hover)` και με `:focus-within` για το πληκτρολόγιο. */
                       <div key={r.channel} className="exp-bar cl-ch"
                         tabIndex={0}
-                        aria-label={`${r.label}: ${fe(r.revenue)}, ${r.nights} νύχτες, ${r.count} ${r.count === 1 ? 'διαμονή' : 'διαμονές'}`}>
+                        aria-label={`${r.label}: ${fe(r.revenue)}, ${r.nights} νύχτες, ${r.count} ${r.count === 1 ? 'διαμονή' : 'διαμονές'}`}>
                         {/* ΤΡΕΙΣ ΣΤΗΛΕΣ, ΩΣΤΕ ΤΑ ΕΥΡΩ ΝΑ ΠΕΦΤΟΥΝ ΤΟ ΕΝΑ ΚΑΤΩ ΑΠΟ
                             ΤΟ ΑΛΛΟ. Ηταν ένα `span` με ποσό και μετρήσεις μαζί,
-                            στοιχισμένο δεξιά: «3.400,00€ 20 νύχτες · 5 διαμονές»
-                            και από κάτω «400,00€ 4 νύχτες · 1 διαμονές». Καμία
+                            στοιχισμένο δεξιά: «3.400,00€ 20 νύχτες · 5 διαμονές»
+                            και από κάτω «400,00€ 4 νύχτες · 1 διαμονές». Καμία
                             κάθετη δεν έπεφτε πάνω σε άλλη. */}
                         <div className="cl-ch-head">
                           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
                           <span style={{ fontSize: 12, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>{fe(r.revenue)}</span>
-                          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }}>{r.nights} νύχτες · {r.count} {r.count === 1 ? 'διαμονή' : 'διαμονές'}</span>
+                          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }}>{r.nights} νύχτες · {r.count} {r.count === 1 ? 'διαμονή' : 'διαμονές'}</span>
                         </div>
                         <div style={{ height: 8, borderRadius: T.radius.xs, background: 'var(--ring-track)', overflow: 'hidden', marginTop: 6 }}>
                           <div className="cl-ch-fill" style={{ width: `${pct}%` }} />
@@ -837,7 +837,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                             </div>
                             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                               {s.check_in && <span>{fd(s.check_in)}{s.check_out ? ` - ${fd(s.check_out)}` : ''}</span>}
-                              <span style={{ color: 'var(--text-tertiary)' }}>·</span><span>{n} νύχτες</span>
+                              <span style={{ color: 'var(--text-tertiary)' }}>·</span><span>{n} νύχτες</span>
                               {s.guests != null && <><span style={{ color: 'var(--text-tertiary)' }}>·</span><span>{s.guests} άτομα</span></>}
                               {s.channel && <><span style={{ color: 'var(--text-tertiary)' }}>·</span><span>{STAY_CHANNEL_LABELS[s.channel as keyof typeof STAY_CHANNEL_LABELS] || s.channel}</span></>}
                               {declared && s.declared_at && <><span style={{ color: 'var(--text-tertiary)' }}>·</span><span style={{ color: 'var(--text-secondary)' }}>δηλώθηκε {fd(s.declared_at)}</span></>}

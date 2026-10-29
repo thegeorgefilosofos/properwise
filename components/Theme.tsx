@@ -743,10 +743,18 @@ export function Tile({ label, value, sub, subTone, tone, title, info, chars, hal
       // `[data-long]` στο globals.css.
       data-long={label.length > 17 || undefined}
       style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* Το ύψος γραμμής είναι 16 γιατί 16 είναι και το εικονίδιο: με στοίχιση
-          στην κορυφή, το ⓘ κάθεται πάνω στην ΠΡΩΤΗ γραμμή της ετικέτας, σε
-          ετικέτα μιας γραμμής και σε δύο. Στο κέντρο, αιωρούνταν ανάμεσά τους. */}
-      <div className="kpi-label" style={info ? { display: 'flex', alignItems: 'flex-start', lineHeight: '16px' } : undefined}>{label}{info}</div>
+      {/* Το ύψος γραμμής είναι 16 γιατί 16 είναι και το εικονίδιο.
+
+          ΤΟ ⓘ ΑΚΟΛΟΥΘΕΙ ΤΗΝ ΤΕΛΕΥΤΑΙΑ ΛΕΞΗ (29/10/2026). Η ετικέτα ήταν flex:
+          το κείμενο γινόταν ανώνυμο στοιχείο που, μόλις τύλιγε, έπιανε όλο το
+          πλάτος και το ⓘ έφευγε στη δεξιά ακμή του πλακιδίου. Στην Απόδοση,
+          στα 1.024, τρία πλακίδια είχαν το ⓘ δίπλα στη λέξη και το τέταρτο
+          («Εκτιμώμενη καθαρή απόδοση») στη γωνία. Τώρα είναι κείμενο σε ροή:
+          το ⓘ κάθεται στο τέλος της τελευταίας γραμμής, δεμένο με την
+          τελευταία λέξη ώστε να μην πέσει μόνο του σε νέα γραμμή. */}
+      <div className="kpi-label" style={info ? { lineHeight: '16px' } : undefined}>
+        {info ? <>{label.replace(/\s*\S+$/, '')}{/\s/.test(label) ? ' ' : ''}<span style={{ whiteSpace: 'nowrap' }}>{label.match(/\S+$/)?.[0]}{info}</span></> : label}
+      </div>
       {/* Ουδέτερο by default· ο σημασιολογικός τόνος αποκαλύπτεται στο hover ή
           στο άγγιγμα (data-tone + globals.css), για χαμηλού θορύβου look. */}
       <KpiValue value={value} chars={chars} half={half} tone={toned ? tone : undefined} />
