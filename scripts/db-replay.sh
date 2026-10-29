@@ -183,6 +183,15 @@ if ! out=$($PSQL -d posdb -f "$ROOT/scripts/db/rls-probe.sql" 2>&1); then
 fi
 probes=$(( $(echo "$out" | grep -c 'probe:' || true) + eprobes ))
 
+# ── ΤΑ ΔΙΑΚΡΙΤΙΚΑ «ΠΛΗΡΩΣΑ» ΔΕΝ ΦΤΑΝΟΥΝ ΣΤΟΝ ΠΕΡΙΗΓΗΤΗ ─────────────────────
+# Μόνο ο service role: ο χρήστης ούτε τα βλέπει ούτε τα γράφει (scripts/db/pay-token-probe.sql).
+if ! pout=$($PSQL -d posdb -f "$ROOT/scripts/db/pay-token-probe.sql" 2>&1); then
+  echo "🔴 Τα διακριτικά «Πλήρωσα» δεν είναι κλειστά όπως ορίζει η μετανάστευσή τους:"
+  echo "$pout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΣΧΗΜΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$pout" | grep -c 'probe:' || true)))
+
 # ── ΤΙ ΜΠΟΡΕΙ ΝΑ ΚΑΛΕΣΕΙ ΚΑΠΟΙΟΣ ΧΩΡΙΣ ΛΟΓΑΡΙΑΣΜΟ ──────────────────────────
 # Κάθε SECURITY DEFINER παρακάμπτει την RLS. Όσες φτάνουν στον ανώνυμο πρέπει
 # να είναι ονομαστικά γραμμένες, με τον λόγο τους.

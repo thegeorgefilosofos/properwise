@@ -1229,6 +1229,18 @@ export interface ReferralsRow {
   activated_at: string | null;
 }
 
+export interface ReminderPayTokensRow {
+  id: string | null;
+  user_id: string;
+  event_id: string;
+  token_hash: string;
+  channel: string;
+  expires_at: string;
+  used_at: string | null;
+  undone_at: string | null;
+  created_at: string;
+}
+
 export interface RentComparablesRow {
   id: string;
   property_id: string | null;
@@ -1627,6 +1639,7 @@ export interface Tables {
   referral_partners: ReferralPartnersRow;
   referral_rewards: ReferralRewardsRow;
   referrals: ReferralsRow;
+  reminder_pay_tokens: ReminderPayTokensRow;
   rent_comparables: RentComparablesRow;
   rent_config: RentConfigRow;
   rent_payments: RentPaymentsRow;

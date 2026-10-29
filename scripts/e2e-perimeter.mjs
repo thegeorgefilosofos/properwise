@@ -170,5 +170,39 @@ const push = (headers = {}) => fetch(PUSH, { method: 'POST', headers, redirect: 
   ok('ΤΙΠΟΤΑ ΔΕΝ ΦΕΥΓΕΙ ΜΕ GET: ο αποστολέας είναι ενέργεια, όχι σελίδα', r.status === 405 || r.status === 404)
 }
 
-console.log(`\n/api/inbound, /imerologio και /api/push — ${pass} πέρασαν, ${fail} απέτυχαν`)
+// ═══════════════════════════════════════════════════════════════════════════
+//  ΤΟ «ΠΛΗΡΩΣΑ» ΤΩΝ ΥΠΕΝΘΥΜΙΣΕΩΝ
+// ─────────────────────────────────────────────────────────────────────────
+//  Η σελίδα ανοίγει χωρίς σύνδεση, δεν ευρετηριάζεται και ΔΕΝ πληρώνει με το
+//  άνοιγμα. Η ενέργεια είναι μόνο POST με JSON, από το δικό μας origin.
+// ═══════════════════════════════════════════════════════════════════════════
+const PAY_TOKEN = 'A'.repeat(43)
+{
+  const r = await fetch(B + '/plirosa/' + PAY_TOKEN, { redirect: 'manual' })
+  ok('η σελίδα «Πλήρωσα» ανοίγει χωρίς ανακατεύθυνση σε σύνδεση', r.status === 200)
+  const html = await r.text()
+  ok('και δεν ευρετηριάζεται', /<meta[^>]+name="robots"[^>]+noindex/.test(html))
+  ok('και άγνωστο διακριτικό δεν δείχνει κουμπί πληρωμής', !/>Πλήρωσα</.test(html))
+}
+const pay = (body, headers = { 'content-type': 'application/json' }) =>
+  fetch(B + '/api/plirosa', { method: 'POST', headers, body, redirect: 'manual' })
+{
+  const r = await pay(JSON.stringify({ token: PAY_TOKEN, action: 'pay' }))
+  ok('το POST απαντά το ίδιο, χωρίς ανακατεύθυνση σε σύνδεση', r.status !== 307 && r.status !== 302)
+  ok('άγνωστο διακριτικό: 404 ή 503 χωρίς βάση, ποτέ 200', r.status === 404 || r.status === 503)
+}
+{
+  const r = await pay(JSON.stringify({ token: PAY_TOKEN, action: 'pay' }), { 'content-type': 'application/json', origin: 'https://kakos.example' })
+  ok('CSRF: ξένο origin, 403', r.status === 403)
+}
+{
+  const r = await pay('token=' + PAY_TOKEN, { 'content-type': 'application/x-www-form-urlencoded' })
+  ok('CSRF: φόρμα χωρίς JSON, 415', r.status === 415)
+}
+{
+  const r = await fetch(B + '/api/plirosa', { redirect: 'manual' })
+  ok('ΤΙΠΟΤΑ ΔΕΝ ΠΛΗΡΩΝΕΤΑΙ ΜΕ GET', r.status === 405 || r.status === 404)
+}
+
+console.log(`\n/api/inbound, /imerologio, /api/push και /plirosa — ${pass} πέρασαν, ${fail} απέτυχαν`)
 if (fail) process.exit(1)

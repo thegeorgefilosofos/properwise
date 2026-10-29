@@ -193,18 +193,37 @@ self.addEventListener('push', (event) => {
   try { msg = event.data ? event.data.json() : null; } catch { msg = null; }
   if (!msg || !msg.title || !msg.body) return;
 
+  // «ΠΛΗΡΩΣΑ» (29/10/2026): όταν η ειδοποίηση λέει ΕΝΑ γεγονός, ο διακομιστής
+  // στέλνει και διακριτικό (`pay`). Οι περιηγητές που δείχνουν κουμπιά το
+  // δείχνουν· οι άλλοι αγνοούν το `actions` και το πάτημα ανοίγει τη σελίδα του.
+  const pay = typeof msg.pay === 'string' && /^[A-Za-z0-9_-]{43}$/.test(msg.pay) ? msg.pay : null;
   event.waitUntil(self.registration.showNotification(msg.title, {
     body: msg.body,
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
     tag: NOTIFY_TAG,
     renotify: true,
-    data: { url: typeof msg.url === 'string' ? msg.url : '/dashboard' },
+    actions: pay ? [{ action: 'plirosa', title: 'Πλήρωσα' }] : [],
+    data: { url: typeof msg.url === 'string' ? msg.url : '/dashboard', pay },
   }));
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const pay = event.notification.data && event.notification.data.pay;
+  // Το κουμπί «Πλήρωσα»: POST από το ίδιο origin και μια σύντομη επιβεβαίωση.
+  // Αν αποτύχει, ανοίγει η σελίδα του διακριτικού, όπου ο χρήστης το ξαναδοκιμάζει.
+  if (event.action === 'plirosa' && pay) {
+    event.waitUntil(
+      fetch('/api/plirosa', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: pay, action: 'pay' }) })
+        .then((r) => r.json().catch(() => ({ ok: false })))
+        .then((out) => out && out.ok
+          ? self.registration.showNotification('Σημειώθηκε ως πληρωμένη', { body: out.expense ? 'Καταχωρήθηκε και στις δαπάνες του ακινήτου.' : 'Οι υπενθυμίσεις της σταματούν.', icon: '/icons/icon-192.png', tag: NOTIFY_TAG })
+          : self.clients.openWindow('/plirosa/' + pay))
+        .catch(() => self.clients.openWindow('/plirosa/' + pay))
+    );
+    return;
+  }
   const target = new URL((event.notification.data && event.notification.data.url) || '/dashboard', self.location.origin);
   // Μόνο δική μας διεύθυνση ανοίγει: το περιεχόμενο έρχεται από τον διακομιστή
   // μας, αλλά ένα `url` που δείχνει αλλού δεν έχει καμία δουλειά εδώ.

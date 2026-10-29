@@ -509,3 +509,20 @@ export async function bySource(
 export function clearSource(db: Db, scope: Scope, match: EventMatch): Promise<Outcome> {
   return replaceSource(db, scope, match, []);
 }
+
+// ── «ΠΛΗΡΩΣΑ» ΤΩΝ ΥΠΕΝΘΥΜΙΣΕΩΝ (lib/reminders/payRedeem.ts) ──────────────────
+// Ο καλών έχει τον service role, άρα καμία RLS δεν κρίνει τον ιδιοκτήτη: και η
+// ανάγνωση και η ενημέρωση φιλτράρουν ΡΗΤΑ με το `user_id` του διακριτικού.
+
+/** Ενα γεγονός, ΜΟΝΟ αν ανήκει στον χρήστη. */
+export async function ofUserById<T = CalendarEventsRow>(
+  db: Db, userId: string, id: string, columns: string,
+): Promise<{ row: T | null; error: DbError | null }> {
+  const { data, error } = await db.from(TABLE).select(columns).eq('id', id).eq('user_id', userId).maybeSingle();
+  return { row: (data as T | null) ?? null, error: error as DbError | null };
+}
+
+/** Η κατάσταση ενός γεγονότος, ΜΟΝΟ αν ανήκει στον χρήστη. */
+export function setStatusOfUser(db: Db, userId: string, id: string, status: EventStatus): PromiseLike<{ error: DbError | null }> {
+  return db.from(TABLE).update({ status }).eq('id', id).eq('user_id', userId);
+}

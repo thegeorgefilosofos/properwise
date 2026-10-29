@@ -8,6 +8,7 @@ import * as stayStore from '@/lib/data/stays';
 import * as expenses from '@/lib/data/expenses'
 // Ο πίνακας των γεγονότων έχει ένα σπίτι: lib/data/calendar.
 import * as calendar from '@/lib/data/calendar'
+import { payDedupHash } from '@/lib/reminders/payLink'
 import * as feedStore from '@/lib/data/calendarFeed'
 import type { ClientStaysRow } from '@/lib/supabase/tables'
 // Οι μπάρες διαμονής της προβολής Μήνα ζητούν ΛΙΓΟΤΕΡΕΣ στήλες από τον συγχρονισμό
@@ -362,6 +363,12 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
     }
     const ns:EventStatus=e.status==='paid'?'pending':'paid'
     if(!await saved('Η κατάσταση δεν αποθηκεύτηκε', calendar.update(supabase,e.id,{status:ns}))) return
+    // ΑΝΑΙΡΕΣΗ ΤΟΥ «ΠΛΗΡΩΣΑ» ΑΠΟ ΤΗΝ ΕΦΑΡΜΟΓΗ: αν η πληρωμή είχε γραφτεί και ως
+    // δαπάνη από την υπενθύμιση (lib/reminders/payLink.ts), ρωτά πριν τη σβήσει.
+    if(ns==='pending'&&await expenses.hasDedup(supabase,userId,payDedupHash(e.id))
+      &&await confirmDialog({title:'Να σβηστεί και η δαπάνη;',message:'Η πληρωμή είχε καταχωρηθεί και στις δαπάνες του ακινήτου από την υπενθύμιση.',tone:'negative',confirmLabel:'Σβήσιμο δαπάνης'})){
+      await saved('Η δαπάνη δεν σβήστηκε', expenses.removeByDedup(supabase,userId,payDedupHash(e.id)))
+    }
     setEvents(prev=>prev.map(ev=>ev.id===e.id?{...ev,status:ns}:ev))
   }
   // Έγινε async επειδή ο διάλογος επιβεβαίωσης δεν παγώνει πια τη σελίδα όπως το

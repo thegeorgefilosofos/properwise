@@ -15,7 +15,7 @@ export default function robots(): MetadataRoute.Robots {
       // ταχυδρομείου στη διεύθυνση της σελίδας. Ούτε η ροή ημερολογίου, που
       // σερβίρει τις προθεσμίες ενός ιδιοκτήτη σε διεύθυνση με κλειδί, ούτε το
       // ταμείο, που είναι `noindex` αλλά οι μηχανές το επισκέπτονταν κανονικά.
-      disallow: ['/dashboard', '/portal/', '/checkin/', '/accountant/', '/unsubscribe/', '/verify/', '/epivevaiosi-email/', '/reset-password', '/imerologio/', '/tameio'],
+      disallow: ['/dashboard', '/portal/', '/checkin/', '/accountant/', '/unsubscribe/', '/plirosa/', '/verify/', '/epivevaiosi-email/', '/reset-password', '/imerologio/', '/tameio'],
     },
     sitemap: siteUrl('/sitemap.xml'),
   }

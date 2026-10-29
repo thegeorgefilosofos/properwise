@@ -49,7 +49,8 @@ import {
   deadlineItems, type DeadlineProperty, type DeadlineEvent, type DeadlineTask,
   type DeadlineBill, type DeadlineRent,
 } from '@/lib/calendar/deadlines';
-import { dailyPush, alreadySentToday, HORIZON_DAYS } from '@/lib/push/message';
+import { dailyPush, alreadySentToday, eventIdOfUid, HORIZON_DAYS } from '@/lib/push/message';
+import { mintPayToken } from '@/lib/reminders/payMint';
 import { sendPush, vapidKeys } from '@/lib/push/send';
 import { endpointHost } from '@/lib/push/subscription';
 import { athensToday, athensDatePlus } from '@/lib/core/time';
@@ -143,9 +144,14 @@ export async function POST(request: Request) {
       today,
     );
     if (!msg) { quiet += due.length; continue; }
+    // «ΠΛΗΡΩΣΑ» ΣΤΗΝ ΕΙΔΟΠΟΙΗΣΗ: μόνο όταν λέει ΕΝΑ γεγονός ημερολογίου. Ενα
+    // διακριτικό για όλες τις συσκευές του χρήστη· όποια πατηθεί πρώτη το εξαργυρώνει.
+    const eventId = eventIdOfUid(msg.uid);
+    const pay = eventId ? await mintPayToken(db, userId, eventId, 'push', new Date()) : null;
+    const out = { title: msg.title, body: msg.body, url: msg.url, ...(pay ? { pay } : {}) };
 
     for (const sub of due) {
-      const outcome = await sendPush(sub, msg, keys);
+      const outcome = await sendPush(sub, out, keys);
       if (outcome.sent) { sent++; await devices.markSent(db, sub.id); continue; }
       // ΤΟ ΑΡΧΕΙΟ ΚΑΤΑΓΡΑΦΗΣ ΔΕΝ ΠΑΙΡΝΕΙ ΠΟΤΕ ΟΛΟΚΛΗΡΗ ΤΗ ΔΙΕΥΘΥΝΣΗ: όποιος τη
       // διαβάσει μπορεί να στέλνει ο ίδιος σε εκείνο το τηλέφωνο.

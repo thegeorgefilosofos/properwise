@@ -210,6 +210,8 @@ export async function proxy(request: NextRequest) {
     || pathname.startsWith("/portal/") || pathname.startsWith("/accountant/")
     || pathname.startsWith("/checkin/") || pathname.startsWith("/verify/")
     || pathname.startsWith("/unsubscribe/")
+    // Το «Πλήρωσα» των υπενθυμίσεων: το διακριτικό είναι το κλειδί, όχι η συνεδρία.
+    || pathname.startsWith("/plirosa/")
     // ── ΚΑΘΕ ΟΔΗΓΟΣ ΕΙΝΑΙ ΔΗΜΟΣΙΟΣ, ΟΧΙ ΜΟΝΟ ΟΣΟΙ ΘΥΜΗΘΗΚΑΜΕ ─────────────────
     // Οι πέντε οδηγοί του δεύτερου κύματος (27.09.2026) μπήκαν στον κατάλογο
     // και στον χάρτη του ιστότοπου και γύριζαν 307 προς το /login: ο κατάλογος

@@ -346,3 +346,26 @@ export function remove(db: Db, id: string | string[]): PromiseLike<{ error: DbEr
 export function removeIfUnpaid(db: Db, id: string): PromiseLike<{ error: DbError | null }> {
   return db.from(TABLE).delete().eq('id', id).eq('paid', false);
 }
+
+// ── «ΠΛΗΡΩΣΑ» ΤΩΝ ΥΠΕΝΘΥΜΙΣΕΩΝ (lib/reminders/payRedeem.ts) ──────────────────
+
+/**
+ * Δαπάνη με αποτύπωμα (`dedup_hash`): η δεύτερη εισαγωγή του ίδιου
+ * αποτυπώματος δεν γράφει τίποτα. Ο ίδιος μηχανισμός με την εισαγωγή τράπεζας.
+ */
+export function insertDeduped(db: Db, rows: Partial<ExpenseRow>[]): Promise<Outcome> {
+  return insertFromBank(db, rows);
+}
+
+/** Σβήνει τη δαπάνη ενός αποτυπώματος, ΜΟΝΟ του χρήστη· λέει πόσες έσβησε. */
+export async function removeByDedup(db: Db, userId: string, dedupHash: string): Promise<{ removed: number; error: DbError | null }> {
+  const { data, error } = await db.from(TABLE).delete().eq('user_id', userId).eq('dedup_hash', dedupHash).select('id');
+  return { removed: Array.isArray(data) ? data.length : 0, error: error as DbError | null };
+}
+
+/** Υπάρχει δαπάνη με αυτό το αποτύπωμα; (`null` όταν η ανάγνωση απέτυχε.) */
+export async function hasDedup(db: Db, userId: string, dedupHash: string): Promise<boolean | null> {
+  const { data, error } = await db.from(TABLE).select('id').eq('user_id', userId).eq('dedup_hash', dedupHash).limit(1);
+  if (error) return null;
+  return Array.isArray(data) && data.length > 0;
+}
