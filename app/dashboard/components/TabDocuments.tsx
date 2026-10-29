@@ -1171,10 +1171,13 @@ function FileCard({ i, a }: { i: Item; a: FileActions }) {
       </div>
       <div style={{ padding: '9px 11px' }}>
         <div className="po-elide" style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>{i.title}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-          <OriginTag i={i}/>
-          {i.value != null && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', fontFamily: T.font.mono }}>{fe(i.value)}</span>}
-          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.mono, marginLeft: 'auto' }}>{i.date ? fd(i.date) : ABSENT_DATE}</span>
+        {/* Προέλευση σε δική της γραμμή, κάτω από τον τίτλο· ποσό και ημερομηνία
+            στην επόμενη, με ίσα ψηφία και χωρίς αλλαγή γραμμής. Ετσι κανένα από
+            τα τρία δεν διεκδικεί τον χώρο του άλλου σε στενή κάρτα. */}
+        {(i.provider || ORIGIN_LABEL[i.source]) && <div style={{ display: 'flex', marginTop: 6 }}><OriginTag i={i}/></div>}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 6 }}>
+          {i.value != null && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fe(i.value)}</span>}
+          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', marginLeft: 'auto' }}>{i.date ? fd(i.date) : ABSENT_DATE}</span>
         </div>
         {/* ═══ ΤΟ ΔΑΠΕΔΟ ΤΩΝ 44 ΔΕΝ ΠΙΑΝΕΙ ΤΟΥΣ ΣΥΝΔΕΣΜΟΥΣ ═══════════════════
             Ο κανόνας του globals.css τεντώνει `button`, `select` και `input`.
@@ -1208,8 +1211,8 @@ function FileRow({ i, a }: { i: Item; a: FileActions }) {
       style={{ display: 'flex', alignItems: 'center', gap: 12, background: sel ? 'var(--accent-soft)' : 'var(--bg-elevated)', border: `1px solid ${sel ? 'var(--accent-border)' : 'var(--border-subtle)'}`, borderRadius: T.radius.inner, padding: '10px 14px', transition: `background 0.14s ${T.ease.standard}` }}>
       <div style={{ width: 18, display: 'flex', flexShrink: 0 }}>{selectable && (shown || sel) && <SelectBox checked={sel} onChange={() => a.onToggleSel(i.id)} label={`Επιλογή ${i.title}`}/>}</div>
       {i.isImage && i.url
-        ? <RuntimeImg src={i.url} alt="" onClick={() => a.onOpenLightbox(i)} style={{ width: 40, height: 40, borderRadius: T.radius.badge, objectFit: 'cover', flexShrink: 0, cursor: 'pointer', border: '1px solid var(--border-subtle)' }}/>
-        : <div {...pressable(() => { if (canPreview(i)) a.onOpenLightbox(i); })} style={{ width: 40, height: 40, borderRadius: T.radius.badge, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--accent)', cursor: canPreview(i) ? 'pointer' : 'default' }}>
+        ? <RuntimeImg src={i.url} alt="" onClick={() => a.onOpenLightbox(i)} style={{ width: 44, height: 44, borderRadius: T.radius.badge, objectFit: 'cover', flexShrink: 0, cursor: 'pointer', border: '1px solid var(--border-subtle)' }}/>
+        : <div {...pressable(() => { if (canPreview(i)) a.onOpenLightbox(i); })} style={{ width: 44, height: 44, borderRadius: T.radius.badge, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--accent)', cursor: canPreview(i) ? 'pointer' : 'default' }}>
             <svg aria-hidden="true" {...S} width={17} height={17}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           </div>}
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -1254,11 +1257,25 @@ function FileRow({ i, a }: { i: Item; a: FileActions }) {
 function OriginTag({ i }: { i: Item }) {
   const label = ORIGIN_LABEL[i.source];
   if (!i.provider && !label) return null;
+  // ΤΟ CHIP ΔΕΝ ΣΥΜΠΙΕΖΕΤΑΙ, ΑΛΛΑΖΕΙ ΓΡΑΜΜΗ (29/10/2026). Ως απλό στοιχείο
+  // γραμμής που τυλίγεται, το chip μίκραινε για να χωρέσει δίπλα στο ποσό και
+  // στην ημερομηνία· με το «οπουδήποτε» του Chip, το «Λογαριασμοί» έσπαγε στη
+  // μέση στα 320. Τώρα το περίβλημα κρατά το φυσικό του πλάτος (`flex: none`)
+  // και, αν δεν χωρά, κατεβαίνει ολόκληρο στην επόμενη γραμμή. Το `maxWidth`
+  // κρατά το «οπουδήποτε» μόνο για όνομα μακρύτερο από όλη την κάρτα.
   return (
-    <>
+    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, flex: 'none', maxWidth: '100%', minWidth: 0 }}>
       {i.provider && <Chip tone="neutral">{i.provider}</Chip>}
-      {label && <Chip tone="neutral">{`από «${label}»`}</Chip>}
-    </>
+      {/* Σε κάρτα στενότερη από ολόκληρο το chip (118 εικονοστοιχεία στα 320,
+          όσο περίπου και το «Λογαριασμοί» μόνο του) το όνομα δεν σπάει: κόβεται
+          με αποσιωπητικά και ολόκληρο μένει στο `title`. Μία γραμμή, ποτέ
+          γράμματα σε δύο γραμμές, ποτέ πάνω στο διπλανό ποσό. */}
+      {label && (
+        <Chip tone="neutral" title={`από «${label}»`}>
+          <span className="po-elide" style={{ display: 'block', minWidth: 0 }}>{`από «${label}»`}</span>
+        </Chip>
+      )}
+    </span>
   );
 }
 

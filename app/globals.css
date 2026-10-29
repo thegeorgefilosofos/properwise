@@ -5837,6 +5837,41 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 /* Ο πίνακας των προθεσμιών κρατά τίτλο και υπεύθυνο στο ίδιο κελί: χρειάζεται τη στήλη. */
 .gd-table.gd-table-wide { max-width: none; }
 .po-table td.gd-date { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+/* ═══ ΣΤΟΙΒΑΓΜΕΝΟΣ ΠΙΝΑΚΑΣ ΚΑΤΩ ΑΠΟ ΤΑ 480 (`.po-stack`, 29/10/2026) ══════════
+   ΤΙ ΕΣΠΑΓΕ. Στον οδηγό φορολογίας ενοικίων, στα 320 και στα 375, η ετικέτα
+   «Πραγματικός συντελεστής επί των ακαθάριστων» έπιανε τέσσερις γραμμές σε
+   στήλη 138 εικονοστοιχείων: η κεφαλίδα «Αποτέλεσμα» κρατούσε τη στήλη της
+   τιμής φαρδιά, ενώ η τιμή θέλει 70. Το ίδιο στο «Δεύτερη μετάθεση · ισχύουσα
+   έναρξη» δίπλα στην πηγή του.
+   ΤΙ ΓΙΝΕΤΑΙ. Κάτω από τα 480 κάθε σειρά γίνεται μια λωρίδα «ετικέτα — τιμή»:
+   η ετικέτα παίρνει όσο χώρο της αφήνει η τιμή και η τιμή κάθεται δεξιά, σε
+   ίσα ψηφία. Οταν μια σειρά έχει πολλές τιμές (`data-label` στο κελί), καθεμία
+   πάει σε δική της γραμμή με το όνομα της στήλης της μπροστά. Οι κεφαλίδες
+   στηλών μένουν στον κώδικα για τον αναγνώστη οθόνης και κρύβονται μόνο
+   οπτικά· τα ποσά είναι τα ίδια κελιά, από τον ίδιο υπολογισμό. */
+@media (max-width: 479px) {
+  .po-table.po-stack { min-width: 0; }
+  .po-table.po-stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .po-table.po-stack tbody tr { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 12px; row-gap: 4px; padding: 10px 12px; border-bottom: 1px solid var(--border-subtle); }
+  .po-table.po-stack tbody tr:last-child { border-bottom: none; }
+  .po-table.po-stack tbody tr > * { display: block; padding: 0; border-bottom: none; background: none; }
+  /* Η ζώνη της ζέβρας πάει στη σειρά: στα κελιά έβγαινε λωρίδα μόνο πίσω από
+     όσο πιάνει το κείμενο, όχι σε όλο το πλάτος. */
+  .po-table.po-stack tbody tr { background: var(--row-bg, transparent); }
+  /* Η καρφωμένη κεφαλίδα γραμμής δεν χρειάζεται όταν δεν υπάρχει κύλιση· το
+     αδιαφανές φόντο της έκοβε τη ζώνη της σειράς στη μέση. */
+  .po-scroll-x .po-table.po-stack tbody th[scope="row"] { position: static; background: none; }
+  .gd-table .po-table.po-stack tbody tr:nth-child(even):not(.is-on) > * { background: none; }
+  .po-table.po-stack tbody th { flex: 1 1 0; min-width: 0; overflow-wrap: normal; text-wrap: pretty; }
+  .po-table.po-stack tbody td.num { flex: 0 0 auto; margin-left: auto; }
+  .po-table.po-stack tbody td.po-stack-full { flex: 1 1 100%; }
+  .po-table.po-stack tbody td[data-label] {
+    flex: 1 1 100%; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  }
+  .po-table.po-stack tbody td[data-label]::before {
+    content: attr(data-label); color: var(--text-tertiary); white-space: normal; text-align: left;
+  }
+}
 .gd-date-m { display: inline-block; min-width: 2.2em; }
 .gd-table .po-table tbody th { color: var(--text-secondary); }
 .gd-table .po-table tbody td { color: var(--text-primary); }
@@ -6504,6 +6539,11 @@ tr.po-row-more { display: none; }
 .plan-th .plan-price-alt { font-size: 12px; margin-top: 4px; }
 .plan-matrix .po-table tbody th,
 .plan-matrix .po-table tbody td { vertical-align: middle; }
+/* ΑΡΙΘΜΟΙ ΚΑΙ ΣΗΜΑΔΙΑ ΣΤΟ ΙΔΙΟ ΚΕΝΤΡΟ (29/10/2026). Σε πίνακα σύγκρισης η στήλη
+   είναι το ΠΑΚΕΤΟ, όχι ένα ποσό που αθροίζεται: «60», «150», ✓ και ✗ στέκονται
+   στον ίδιο άξονα, όπως οι κεφαλές από πάνω τους. Τα ψηφία με ίσο πλάτος, ώστε
+   το «60» και το «150» να μη χορεύουν από γραμμή σε γραμμή. */
+.plan-matrix .po-table tbody td { text-align: center; font-variant-numeric: tabular-nums; }
 /* Το σημάδι στο κέντρο του κελιού, ένα εικονοστοιχείο χαμηλότερα: η μέση της
    ελληνικής πεζής γραμμής κάθεται κάτω από τη μέση του κουτιού της. */
 .plan-matrix td > .plan-tick, .plan-matrix td > .plan-no { display: block; margin: 0 auto; transform: translateY(1px); }
@@ -7276,3 +7316,7 @@ h1, h2, h3, h4, details > summary, th, dt { text-wrap: balance; }
    όσο στη σελίδα υπάρχει περιτύλιγμα της δημόσιας πλευράς. */
 :root:has(.lp-root, .pub-root, .auth-split[data-mode="dark"]) { background: var(--mkt-bg-base); color-scheme: dark; }
 :root:has(.lp-root, .pub-root, .auth-split[data-mode="dark"]) body { background: var(--mkt-bg-base); }
+
+/* Τεχνικός όρος μέσα σε νομικό κείμενο (`withRefs`, app/legal-shell.tsx):
+   ίδιο μέγεθος με το κείμενο, γραμματοσειρά σταθερού πλάτους, χωρίς κουτί. */
+.lg-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em; color: var(--text-primary); overflow-wrap: anywhere; }

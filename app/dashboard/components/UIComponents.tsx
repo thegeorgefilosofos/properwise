@@ -1092,6 +1092,11 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
           border: `1px solid ${fieldBorderColor(open || focused)}`,
           boxShadow: fieldRing(open || focused),
           padding: '10px 14px',
+          // ΤΟ ΔΑΠΕΔΟ ΑΦΗΣ ΚΑΙ ΣΤΗΝ ΗΜΕΡΟΜΗΝΙΑ (29/10/2026). Ο κανόνας του
+          // globals.css τεντώνει `input`, `select` και `button`· αυτό είναι `div`
+          // με ρόλο κουμπιού και έμενε στο ύψος του γεμίσματος. Το ίδιο ύψος με
+          // τα διπλανά πεδία: 36 με ποντίκι, 44 με δάχτυλο.
+          minHeight: 'var(--h-md, 36px)',
           userSelect: 'none',
         }}
       >

@@ -277,7 +277,7 @@ export default function Page() {
             {/* Η ΠΗΓΗ ΜΕΣΑ ΣΤΟ ΚΕΛΙ, ΟΧΙ ΣΕ ΤΡΙΤΗ ΣΤΗΛΗ. Με τρεις στήλες και ελάχιστο
                 420 μέσα σε κουτί 358, στα 390 κοβόταν η πηγή και οι ετικέτες
                 έσπαγαν στη μέση της λέξης («μετάθεσ/η», «Τρέχουσ/α»). */}
-            <table className="po-table" style={{ '--tbl-min': '280px' } as CSSProperties}>
+            <table className="po-table po-stack" style={{ '--tbl-min': '280px' } as CSSProperties}>
               <caption>Χρονική πορεία της διάταξης</caption>
               <thead>
                 <tr><th scope="col">Στάδιο</th><th scope="col">Τι ορίζει και πού</th></tr>
@@ -286,7 +286,7 @@ export default function Page() {
                 {TIMELINE.map(t => (
                   <tr key={t.step}>
                     <th scope="row">{t.step}</th>
-                    <td>{t.what}<span style={{ display: 'block', marginTop: 2, fontSize: 12, color: 'var(--text-tertiary)' }}>{t.source}</span></td>
+                    <td className="po-stack-full">{t.what}<span style={{ display: 'block', marginTop: 2, fontSize: 12, color: 'var(--text-tertiary)' }}>{t.source}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -322,7 +322,7 @@ export default function Page() {
         </p>
         <div className="po-table-box" style={{ marginTop: 14 }}>
           <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-            <table className="po-table" style={{ '--tbl-min': '320px' } as CSSProperties}>
+            <table className="po-table po-stack" style={{ '--tbl-min': '320px' } as CSSProperties}>
               <caption>Παράδειγμα 3</caption>
               <thead>
                 <tr>
@@ -335,8 +335,8 @@ export default function Page() {
                 {ROW_LABELS.map(([k, v]) => (
                   <tr key={k}>
                     <th scope="row">{k}</th>
-                    <td className="num">{v(EX3_WITH)}</td>
-                    <td className="num">{v(EX3_WITHOUT)}</td>
+                    <td className="num" data-label={`Με έκπτωση ${DEDUCTION}`}>{v(EX3_WITH)}</td>
+                    <td className="num" data-label="Χωρίς έκπτωση">{v(EX3_WITHOUT)}</td>
                   </tr>
                 ))}
               </tbody>
