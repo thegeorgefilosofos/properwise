@@ -183,6 +183,27 @@ if ! out=$($PSQL -d posdb -f "$ROOT/scripts/db/rls-probe.sql" 2>&1); then
 fi
 probes=$(( $(echo "$out" | grep -c 'probe:' || true) + eprobes ))
 
+# ── ΔΕΧΕΤΑΙ Η ΒΑΣΗ ΤΙΣ ΓΡΑΜΜΕΣ ΟΠΩΣ ΤΙΣ ΧΤΙΖΕΙ Η ΕΦΑΡΜΟΓΗ; ─────────────────────
+# Το rls-probe γράφει γραμμές με το χέρι. Οι γραμμές της εφαρμογής όμως τις
+# χτίζει το lib/data· από εκεί ήρθαν τα null σε NOT NULL που έφτασαν στην
+# παραγωγή (#423, PROPERWISE-9). Το scripts/db/write-flows.ts καλεί τις
+# πραγματικές συναρτήσεις εγγραφής με πελάτη που καταγράφει και τυπώνει το
+# αντίστοιχο SQL· εδώ τρέχει ως `authenticated`, σε κλώνο, γιατί γράφει.
+WF="$WORK/write-flows.sql"
+if ! (cd "$ROOT" && npx --no-install tsx scripts/db/write-flows.ts > "$WF"); then
+  echo "🔴 Οι ροές εγγραφής δεν παράχθηκαν (scripts/db/write-flows.ts)."
+  exit 1
+fi
+$PSQL -c "drop database if exists writeprobe" >/dev/null
+$PSQL -c "create database writeprobe template posdb" >/dev/null
+if ! wout=$($PSQL -d writeprobe -f "$WF" 2>&1); then
+  echo "🔴 Μια εγγραφή της εφαρμογής δεν περνά στη βάση, ή περνά εκεί που δεν πρέπει:"
+  echo "$wout" | grep -m3 -E 'ERROR|ΡΟΗ|ΔΙΑΡΡΟΗ' | sed 's/^/    /'
+  exit 1
+fi
+$PSQL -c "drop database if exists writeprobe" >/dev/null
+wflows=$(echo "$wout" | grep -c 'write-flow:' || true)
+
 # ── ΤΙ ΜΠΟΡΕΙ ΝΑ ΚΑΛΕΣΕΙ ΚΑΠΟΙΟΣ ΧΩΡΙΣ ΛΟΓΑΡΙΑΣΜΟ ──────────────────────────
 # Κάθε SECURITY DEFINER παρακάμπτει την RLS. Όσες φτάνουν στον ανώνυμο πρέπει
 # να είναι ονομαστικά γραμμένες, με τον λόγο τους.
@@ -274,6 +295,7 @@ drift=0
 
 echo "✅ $count μεταναστεύσεις τρέχουν σε πραγματικό Postgres, $probes έλεγχοι απομόνωσης"
 echo "   κρατούν, οι $rechecked αντέχουν δεύτερη εκτέλεση όσο υπόσχεται το baseline,"
+echo "   $wflows εγγραφές της εφαρμογής (lib/data) περνούν ή κόβονται όπως πρέπει,"
 echo "   η υγεία της τροφοδοσίας επιτοκίων κρίνει σωστά $feeds σενάρια,"
 echo "   το σενάριο του staging γεμίζει λογαριασμό και οι στόχοι του"
 echo "   Προγράμματος Πρόσκλησης συμφωνούν με το"
