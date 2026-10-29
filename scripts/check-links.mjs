@@ -149,6 +149,11 @@ for (const [url, from] of external) {
   byHost.get(h).push([url, from])
 }
 const extWarn = []
+// ΜΟΝΙΜΗ ΜΕΤΑΚΟΜΙΣΗ (29/10/2026). Ενα 301/308 «δουλεύει» για τον επισκέπτη και
+// μετρούσε ως απάντηση· είναι όμως ο πάροχος που λέει ότι η διεύθυνση άλλαξε για
+// πάντα. Γράφεται χωριστά, με τον νέο προορισμό, ώστε ο σύνδεσμος να ενημερωθεί
+// πριν η παλιά διεύθυνση σβήσει. Προειδοποίηση, όχι αποτυχία.
+const extMoved = []
 let extOk = 0
 await Promise.all([...byHost.values()].map(async (list) => {
   for (const [url, from] of list) {
@@ -158,7 +163,13 @@ await Promise.all([...byHost.values()].map(async (list) => {
     if (res.error || res.status >= 400) { await sleep(EXT_PAUSE); res = await get(url, 'GET') }
     if (!res.error) await res.arrayBuffer?.().catch(() => {})
     if (res.error || res.status >= 400) extWarn.push({ url, why: res.error ? `δίκτυο: ${res.error}` : `κωδικός ${res.status}`, official: OFFICIAL.test(new URL(url).hostname), from: [...from] })
-    else extOk++
+    else {
+      extOk++
+      if (res.status === 301 || res.status === 308) {
+        const to = res.headers?.get?.('location')
+        if (to) extMoved.push({ url, to: new URL(to, url).href, from: [...from] })
+      }
+    }
     await sleep(EXT_PAUSE)
   }
 }))
@@ -185,6 +196,11 @@ if (extWarn.length) {
   lines.push(`ΠΡΟΕΙΔΟΠΟΙΗΣΕΙΣ, ΕΞΩΤΕΡΙΚΟΙ ΣΥΝΔΕΣΜΟΙ (${extWarn.length}, από αυτούς ${off.length} επίσημες πηγές):`)
   for (const w of [...off, ...rest].slice(0, 40)) lines.push(`  ⚠ ${w.official ? '[επίσημη] ' : ''}${w.url}  ${w.why} · από ${w.from.slice(0, 3).join(', ')}`)
   lines.push('  Τα κρατικά site πέφτουν και κόβουν ρομπότ: άνοιξέ τα με περιηγητή πριν αλλάξεις σύνδεσμο.')
+  lines.push('')
+}
+if (extMoved.length) {
+  lines.push(`ΕΞΩΤΕΡΙΚΟΙ ΣΥΝΔΕΣΜΟΙ ΠΟΥ ΜΕΤΑΚΟΜΙΣΑΝ ΜΟΝΙΜΑ (${extMoved.length}, 301/308):`)
+  for (const m of extMoved.slice(0, 40)) lines.push(`  → ${m.url}  ⇒ ${m.to} · από ${m.from.slice(0, 3).join(', ')}`)
   lines.push('')
 }
 if (redirects.length) lines.push(`Σκόπιμες ανακατευθύνσεις (${redirects.length}): ${redirects.slice(0, 12).map((r) => r.path).join(', ')}${redirects.length > 12 ? ' …' : ''}`)

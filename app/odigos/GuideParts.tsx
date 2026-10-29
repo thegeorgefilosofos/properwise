@@ -216,7 +216,8 @@ export function GuideTable({ caption, head, rows, min }: {
   return (
     <div className="po-table-box gd-table" style={{ marginTop: 14 }}>
       <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
-        <table className="po-table" style={{ '--tbl-min': min } as CSSProperties}>
+        {/* `po-stack`: κάτω από τα 480 ετικέτα και τιμή στην ίδια λωρίδα (globals.css). */}
+        <table className="po-table po-stack" style={{ '--tbl-min': min } as CSSProperties}>
           <caption>{caption}</caption>
           <thead>
             <tr><th scope="col">{head[0]}</th><th scope="col" className="num">{head[1]}</th></tr>

@@ -497,6 +497,15 @@ const PROBE = ({ fabSel, withTouch, scSrc }) => {
     for (const [i, cells] of cols) {
       // Η πρώτη στήλη είναι ταυτότητα γραμμής (έτος, μήνας, α/α), όχι ποσό.
       if (cells.length < 2 || i === 0) continue
+      // ΣΤΗΛΗ ΣΥΓΚΡΙΣΗΣ, ΟΧΙ ΣΤΗΛΗ ΠΟΣΩΝ. Οταν η ίδια στήλη έχει και σημάδια
+      // (✓/✗ ως εικονίδιο, χωρίς ψηφία) και ΟΛΑ της τα κελιά είναι κεντραρισμένα,
+      // είναι πίνακας σύγκρισης πακέτων: ο αριθμός στέκει στον άξονα του
+      // σημαδιού από πάνω του και δεξιά στοίχιση θα τον έβγαζε από αυτόν. Ζητείται
+      // ομοιόμορφο κέντρο και ίσα ψηφία, όχι δεξιά άκρη (29/10/2026).
+      const all = [...tb.querySelectorAll('tbody tr')].map(tr => tr.children[i]).filter(td => td && td.tagName === 'TD')
+      const marks = all.filter(td => !numericText(td) && td.querySelector('svg') && !/\d/.test(td.textContent || ''))
+      if (marks.length && all.every(td => getComputedStyle(td).textAlign === 'center')
+        && cells.every(td => /tabular/.test(getComputedStyle(td).fontVariantNumeric))) continue
       const bad = cells.filter(td => !/right|end/.test(getComputedStyle(td).textAlign))
       const tab = cells.every(td => /tabular/.test(getComputedStyle(td).fontVariantNumeric) || /tabular/.test(getComputedStyle(td.firstElementChild || td).fontVariantNumeric))
       if (bad.length) add('στοίχιση', 'Μεσαίο', bad[0], `στήλη ${i + 1}: ${bad.length}/${cells.length} αριθμητικά κελιά δεν είναι δεξιά στοιχισμένα${tab ? '' : ' και χωρίς tabular-nums'}`)

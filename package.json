@@ -126,7 +126,8 @@
     "e2e:scale": "node scripts/perf-bench/build-mobile.mjs && node scripts/e2e-design-scale.mjs",
     "e2e:optiki": "node scripts/perf-bench/build-mobile.mjs && node scripts/e2e-optiki-sarosi.mjs",
     "optiki:ratchet": "node scripts/optiki-ratchet.mjs",
-    "links": "node scripts/check-links.mjs"
+    "links": "node scripts/check-links.mjs",
+    "links:prod": "node scripts/check-links.mjs https://properwise.gr"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

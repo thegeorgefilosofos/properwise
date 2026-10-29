@@ -96,8 +96,17 @@ const PAGE_BY_NAME: Record<string, string> = Object.fromEntries(TRUST_PAGES.map(
  * χειρότερος από κανέναν. Το `legal-shell.test.ts` αποδίδει τις δύο σελίδες
  * και κοκκινίζει αν κάποια παραπομπή σε ενότητα έμεινε χωρίς σύνδεσμο.
  */
+/**
+ * ΟΝΟΜΑΤΑ ΤΕΧΝΟΛΟΓΙΩΝ ΩΣ ΚΩΔΙΚΑΣ (29/10/2026). Η Πολιτική απορρήτου πρέπει να
+ * ονομάζει το `localStorage` (άρθρο 5§3 ePrivacy: κάθε αποθήκευση στη συσκευή)·
+ * μέσα σε ελληνική πρόταση όμως διαβαζόταν σαν ξεχασμένο αναγνωριστικό. Το
+ * κείμενο λέει πρώτα τι είναι στα ελληνικά και ο όρος μπαίνει σε `<code>`, που
+ * είναι η σημασιολογική θέση ενός τεχνικού ονόματος.
+ */
+const TECH_TERMS = ['localStorage'];
+
 const REF_IN_TEXT = new RegExp(
-  `(${MAIL_IN_TEXT.source})|(ενότητα «)([^«»]+)(»)|«(${Object.keys(PAGE_BY_NAME).join('|')})»`,
+  `(${MAIL_IN_TEXT.source})|(ενότητα «)([^«»]+)(»)|«(${Object.keys(PAGE_BY_NAME).join('|')})»|\\b(${TECH_TERMS.join('|')})\\b`,
   'giu',
 );
 
@@ -116,12 +125,13 @@ function withRefs(text: string, ctx: RefContext): ReactNode {
   const parts: ReactNode[] = [];
   let last = 0;
   for (const m of text.matchAll(REF_IN_TEXT)) {
-    const [whole, mail, secOpen, secTitle, secClose, page] = m;
+    const [whole, mail, secOpen, secTitle, secClose, page, tech] = m;
     const at = m.index;
     const anchor = secTitle ? ctx.anchors.get(secTitle) : undefined;
     const href = page ? PAGE_BY_NAME[page] : undefined;
     let node: ReactNode = null;
     if (mail) node = <MailLink key={at} to={mail} />;
+    else if (tech) node = <code key={at} className="lg-code">{tech}</code>;
     else if (anchor) node = <span key={at}>{secOpen}<a href={`#${anchor}`} className="lp-link po-tap-inline" style={REF_STYLE}>{secTitle}</a>{secClose}</span>;
     else if (href && href !== ctx.self) node = <span key={at}>«<Link href={href} className="lp-link po-tap-inline" style={REF_STYLE}>{page}</Link>»</span>;
     if (!node) continue;
