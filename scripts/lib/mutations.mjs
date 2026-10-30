@@ -746,4 +746,12 @@ export const MUTATIONS = {
     { file: 'app/globals.css', from: 'legend, figcaption, a, button) { text-wrap-style: balance; }', to: 'legend, figcaption, a, button) { text-wrap: balance; }' },
     { file: 'app/globals.css', from: ', .lg-lede > p)) { text-wrap-style: pretty; }', to: ', .lg-lede > p)) { text-wrap: pretty; }' },
   ] },
+
+  // Ακριβώς το #455: σελίδα με κλειδί στη διαδρομή και φάκελος που λείπει από
+  // το SECRET_PATH. Και τα δύο σκέλη: το `plirosa` σβήνεται από τη λίστα· μια
+  // νέα σελίδα [token] μπαίνει κάτω από δημόσιο φάκελο.
+  'secret-path-analytics': { every: [
+    { file: 'lib/analytics/pageUrl.ts', from: '|epivevaiosi-email|plirosa|auth)', to: '|epivevaiosi-email|auth)' },
+    { add: 'app/odigos/[token]/page.tsx', content: tsx('    <p>κλειδί</p>') },
+  ] },
 }
