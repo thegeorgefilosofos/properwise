@@ -14,7 +14,8 @@ import { isValidRf, rfCompact } from './rf';
 import { matchProperty, addressKey, fillOnlyEmpty, type KnownProperty } from './match';
 import { freeSlots, overLimit, excessOf } from './planLimit';
 import { planStatement } from './statement';
-import { canUndoImport, newPropertyRow, statementDocRow, MYAADE_DAILY_IMPORTS, IMPORT_UNDO_HOURS } from './commit';
+import { canUndoImport, newPropertyRow, statementDocRow, undoUntilLabel, MYAADE_DAILY_IMPORTS, IMPORT_UNDO_HOURS } from './commit';
+import { buildDrafts, deriveReview, preselectOwner, commitRowOf, SELF_OWNER } from './review';
 import PDFDocument from 'pdfkit';
 import { fakeAtak } from './fixtures';
 
@@ -314,6 +315,44 @@ async function run() {
     const sql = mig ? readFileSync(`supabase/migrations/${mig}`, 'utf8') : '';
     ok('το όριο της βάσης είναι το ίδιο με της οθόνης', sql.includes(`v_used >= ${MYAADE_DAILY_IMPORTS}`) && sql.includes(`interval '${IMPORT_UNDO_HOURS} hours'`));
   }
+
+  // ── 12. Η προεπισκόπηση: εμπόδια με λόγο, ιδιοκτήτης, όριο πακέτου ────
+  {
+    const doc = okDoc(parseEnfiaAct(enfiaActLines({
+      properties: [fakeProperty(1, '412,30'), fakeProperty(2, '210,40', { address: 'Οδός Παραδείγματος 12' }), fakeProperty(3, '120,50'), fakeProperty(4, '100,00')],
+    })))!;
+    const known: KnownProperty[] = [
+      { id: 'p1', name: 'Σπίτι', address: 'x 1', atak: fakeAtak(1) },
+      { id: 'p2', name: 'Πάνω', address: 'Παραδείγματος 12', atak: null },
+    ];
+    const rows = buildDrafts(doc, known, 1);
+    ok('καταστάσεις: υπάρχει, ίσως, νέο, εκτός πακέτου',
+      JSON.stringify(rows.map(r => [r.match.status, r.include, r.overPlan])) === JSON.stringify([['exists', true, false], ['maybe', true, false], ['new', true, false], ['new', false, true]]), rows.map(r => [r.match.status, r.include, r.overPlan]));
+    const base = { rows, year: '2026', total: '843,20', slots: 1, left: 5, owners: [], ownerId: null, dailyLimit: MYAADE_DAILY_IMPORTS };
+    const r1 = deriveReview(base);
+    ok('ανοιχτό «Ίσως υπάρχει»: εμπόδιο με λόγο σε λέξεις', r1.blockers[0]?.id === 'maybe' && r1.blockers[0].text.includes('Ίσως υπάρχει'), r1.blockers);
+    const other = rows.map(r => (r.match.status === 'maybe' ? { ...r, same: false } : r));
+    const r2 = deriveReview({ ...base, rows: other });
+    ok('«άλλο ακίνητο» πάνω από το όριο: εμπόδιο «excess» με τον αριθμό', r2.excess === 1 && r2.blockers.some(b => b.id === 'excess' && b.text.includes('Ξετσέκαρε 1')), r2.blockers);
+    const same = rows.map(r => (r.match.status === 'maybe' ? { ...r, same: true } : r));
+    const r3 = deriveReview({ ...base, rows: same });
+    ok('«είναι το ίδιο»: καμία αντίρρηση, 1 νέο, 2 συμπληρώνονται, 1 εκτός', !r3.blockers.length && r3.newCount === 1 && r3.filledCount === 2 && r3.leftOut === 1, r3);
+    ok('το όριο της ημέρας εμποδίζει πρώτο', deriveReview({ ...base, rows: same, left: 0 }).blockers[0]?.id === 'limit');
+    ok('ποσό που δεν διαβάζεται: εμπόδιο, ποτέ μηδέν', deriveReview({ ...base, rows: same, total: 'abc' }).blockers.some(b => b.id === 'total'));
+    ok('ποσό χωρίς έτος: εμπόδιο', deriveReview({ ...base, rows: same, year: '' }).blockers.some(b => b.id === 'year'));
+    ok('κενό ποσό: δεν γράφεται σύνολο, δεν εμποδίζει', (() => { const r = deriveReview({ ...base, rows: same, total: '' }); return !r.writesTotal && !r.blockers.length; })());
+    const owners = [{ id: 'o1', name: 'Α', afm: validTestAfm() }, { id: 'o2', name: 'Β', afm: FAKE_AFM }];
+    ok('πολλοί ιδιοκτήτες: χωρίς επιλογή, εμπόδιο «owner»', deriveReview({ ...base, rows: same, owners }).blockers[0]?.id === 'owner');
+    ok('ο ιδιοκτήτης με τον ΑΦΜ της πράξης προεπιλέγεται', preselectOwner(owners, validTestAfm()) === 'o1');
+    ok('άγνωστος ΑΦΜ: καμία προεπιλογή', preselectOwner(owners, null) === null && preselectOwner([owners[0]], validTestAfm()) === null);
+    ok('με επιλεγμένο ιδιοκτήτη, καμία αντίρρηση', !deriveReview({ ...base, rows: same, owners, ownerId: SELF_OWNER }).blockers.length);
+    const row = commitRowOf(same[1]);
+    ok('η γραμμή «είναι το ίδιο» φεύγει ως υπάρχον ακίνητο', row.existingId === 'p2' && row.sqm === 62, row);
+    ok('νέο ακίνητο στην καρτέλα του ιδιοκτήτη', newPropertyRow('u', { ...row, existingId: null }, 'o1').client_id === 'o1');
+  }
+
+  // ── 13. Η προθεσμία της αναίρεσης, σε ώρα Ελλάδας ───────────────────
+  ok('αναίρεση έως: dd/mm/yyyy HH:MM, 24 ώρες μετά, ώρα Ελλάδας', undoUntilLabel('2026-10-30T10:15:00Z') === '31/10/2026 12:15', undoUntilLabel('2026-10-30T10:15:00Z'));
 
   // ── 11. Τα fixtures είναι ψεύτικα ───────────────────────────────────
   ok('το ΑΦΜ των fixtures δεν περνά τον έλεγχο', FAKE_AFM.length === 9 && !okDoc(parseEnfiaAct(enfiaActLines()))?.afm);

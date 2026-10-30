@@ -31,6 +31,8 @@ import { syncOwnerTaxDeadlines } from '@/lib/calendar/taxSync';
 import { sameTaxpayer, taxpayerScope } from '@/lib/facts/taxpayer';
 import { PAY_UNDO_HOURS } from '@/lib/reminders/payLink';
 import { atakDigits, isAtak } from '@/lib/property/atak';
+import { grDate } from '@/lib/core/format';
+import { athensToday, athensTime } from '@/lib/core/time';
 import { fillOnlyEmpty, type KnownProperty } from './match';
 import { planStatement, type Replaced, type SettingsTotal } from './statement';
 
@@ -61,6 +63,8 @@ export interface CommitInput {
   rows: readonly CommitRow[];
   known: readonly KnownProperty[];
   docDate: string;
+  /** Επαγγελματικός λογαριασμός: η καρτέλα «Ιδιοκτήτης» στην οποία ανήκει η πράξη. */
+  clientId?: string | null;
 }
 
 export type CommitOutcome =
@@ -71,8 +75,10 @@ type Err = { message?: string | null; code?: string | null } | null;
 const isPropertyLimit = (e: Err) => /PROPERTY_LIMIT/.test(e?.message ?? '');
 
 /** Η γραμμή του ακινήτου, μόνο με ό,τι υπάρχει. Το κενό αφήνεται στην προεπιλογή της βάσης. */
-export function newPropertyRow(userId: string, r: CommitRow): Record<string, unknown> {
+export function newPropertyRow(userId: string, r: CommitRow, clientId: string | null = null): Record<string, unknown> {
   const row: Record<string, unknown> = { user_id: userId, name: r.name.trim().slice(0, 120) };
+  // Ο ιδιοκτήτης της πράξης: έτσι το σύνολο πηγαίνει στον σωστό φορολογούμενο (taxpayerOf).
+  if (clientId) row.client_id = clientId;
   if (r.address?.trim()) row.address = r.address.trim();
   if (isAtak(r.atak)) row.atak = atakDigits(r.atak);
   if (r.sqm && r.sqm > 0) row.sqm = r.sqm;
@@ -174,7 +180,7 @@ export async function commitImport(db: SupabaseClient, input: CommitInput): Prom
       continue;
     }
     if (limitHit) { failures.push(`Το «${r.name}» δεν προστέθηκε: το πακέτο δεν χωρά άλλο ακίνητο.`); continue; }
-    const res = await properties.add(db, newPropertyRow(input.userId, r));
+    const res = await properties.add(db, newPropertyRow(input.userId, r, input.clientId ?? null));
     if (res.error || !res.data) {
       limitHit = isPropertyLimit(res.error);
       failures.push(limitHit ? `Το «${r.name}» δεν προστέθηκε: το πακέτο δεν χωρά άλλο ακίνητο.` : `Το «${r.name}» δεν προστέθηκε.`);
@@ -220,6 +226,12 @@ const BATCH_COLUMNS = 'id,created_at,undone_at,tax_year,created_property_ids,doc
 /** Μέσα στο παράθυρο αναίρεσης; Καθαρή συνάρτηση· η βάση το ξαναελέγχει. */
 export const canUndoImport = (createdAt: string, undoneAt: string | null, now: Date = new Date()): boolean =>
   !undoneAt && now.getTime() - new Date(createdAt).getTime() <= IMPORT_UNDO_HOURS * 3_600_000;
+
+/** Ως πότε αναιρείται μια εισαγωγή, σε ώρα Ελλάδας: «dd/mm/yyyy HH:MM». */
+export function undoUntilLabel(createdAt: string): string {
+  const end = new Date(new Date(createdAt).getTime() + IMPORT_UNDO_HOURS * 3_600_000);
+  return `${grDate(athensToday(end))} ${athensTime(end)}`;
+}
 
 /** Η τελευταία εισαγωγή που αναιρείται ακόμη, αν υπάρχει. */
 export async function lastUndoable(db: SupabaseClient, userId: string, now: Date = new Date()): Promise<ImportBatch | null> {

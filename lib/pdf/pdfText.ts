@@ -551,8 +551,13 @@ function toLines(items: Item[]): string[] {
   }).filter(Boolean);
 }
 
-/** Το κείμενο ενός PDF, γραμμή προς γραμμή. */
-export function extractPdfText(bytes: Uint8Array): PdfTextResult {
+/**
+ * Το κείμενο ενός PDF, γραμμή προς γραμμή.
+ *
+ * @param opts.onPage καλείται πριν από κάθε σελίδα (1-based, σύνολο σελίδων),
+ *        ώστε ο εργάτης της εισαγωγής myAADE να λέει «σελίδα 2 από 3».
+ */
+export function extractPdfText(bytes: Uint8Array, opts: { onPage?: (page: number, pages: number) => void } = {}): PdfTextResult {
   if (latin1(bytes, 0, Math.min(bytes.length, 1024)).indexOf('%PDF') < 0) return { lines: [], pages: 0, failure: 'not_pdf' };
   const { objs, trailer } = readObjects(bytes);
   const get = (v: PdfVal | undefined, hop = 0): PdfVal | undefined => (isRef(v) && hop < 32 ? get(objs.get(v.ref)?.val, hop + 1) : v);
@@ -598,7 +603,8 @@ export function extractPdfText(bytes: Uint8Array): PdfTextResult {
   };
 
   const lines: string[] = [];
-  for (const page of pages) {
+  for (const [index, page] of pages.entries()) {
+    opts.onPage?.(index + 1, pages.length);
     const fonts = fontsOf(page.Resources);
     const res = get(page.Resources);
     const xo = isDict(res) ? get(res.XObject) : undefined;

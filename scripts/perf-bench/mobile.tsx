@@ -97,6 +97,10 @@ import PropertySwitcher from '@/app/dashboard/components/PropertySwitcher';
 import { T, Modal, Btn, PageTitle, InfoBanner, fieldRow } from '@/components/Theme';
 import { ConfirmHost } from '@/components/ConfirmDialog';
 import { createClient } from '@/lib/supabase/client';
+import MyaadeImport from '@/app/dashboard/components/MyaadeImport';
+import { Callout, DoneView, DropZone, MyaadeSteps, MYAADE_CSS } from '@/app/dashboard/components/MyaadeSteps';
+import { parseEnfiaAct } from '@/lib/myaade/enfiaAct';
+import { fakeAtak } from '@/lib/myaade/fixtures';
 import type { CashLine, CashPosition } from '@/lib/home/cash';
 
 declare global {
@@ -135,8 +139,29 @@ const applyEq = (rows: unknown[], filters: Array<[string, string, unknown]>) => 
   return out;
 };
 
+// ── Η ΕΙΣΑΓΩΓΗ ΑΠΟ ΤΟ myAADE ────────────────────────────────────────────────
+// Συνθετική πράξη (ψεύτικοι ΑΤΑΚ με το πρόθεμα 999, «Οδός Παραδείγματος»).
+// Στην εφαρμογή υπάρχουν δύο ακίνητα: ένα με τον ΑΤΑΚ της πρώτης γραμμής, ένα
+// χωρίς ΑΤΑΚ με τη διεύθυνση της δεύτερης, ώστε να φανούν όλες οι καταστάσεις.
+// Και δύο «Ιδιοκτήτες» στο Πελατολόγιο, για την ερώτηση «Ποιου ιδιοκτήτη;».
+const myaadeRow = (n: number, tax: string, kind = 'Διαμέρισμα') =>
+  [fakeAtak(n), `Οδός Παραδείγματος ${10 + n}`, 'Δήμος Δοκιμής', kind, String(n), `${60 + n},00`, '100,00', tax].join('\t');
+const MYAADE_ACT = parseEnfiaAct([
+  'ΔΗΛΩΣΗ ΕΝΦΙΑ - ΠΡΑΞΗ ΠΡΟΣΔΙΟΡΙΣΜΟΥ ΦΟΡΟΥ ΕΤΟΥΣ 2026', 'Φορολογικό έτος:\t2026', 'Ημερομηνία έκδοσης:\t15/03/2026',
+  ['Α.Τ.ΑΚ.', 'Διεύθυνση', 'Δήμος / Δ. Κοινότητα', 'Είδος', 'Όροφος', 'Επιφάνεια (τ.μ.)', 'Ποσοστό', 'Φόρος'].join('\t'),
+  myaadeRow(1, '412,30'), myaadeRow(2, '210,40'), myaadeRow(3, '120,50'), myaadeRow(4, '100,00', 'Αποθήκη'),
+  'Ποσό για καταβολή:\t843,20',
+]);
+const MYAADE_KNOWN = [
+  { id: 'p0', name: 'Σπίτι Παραδείγματος', address: 'Οδός Παραδείγματος 11', atak: fakeAtak(1), sqm: 61, ownership: 100, floor: '1', user_id: 'u1' },
+  { id: 'p1', name: 'Διαμέρισμα πάνω', address: 'Παραδείγματος 12', atak: null, sqm: 0, ownership: 100, floor: '', user_id: 'u1' },
+];
+const MYAADE_OWNERS = [{ id: 'o1', full_name: 'Ελένη Παραδείγματος', afm: null, type: 'owner' }, { id: 'o2', full_name: 'Νίκος Δοκιμής', afm: null, type: 'owner' }];
+
 const respond: Responder = (call) => {
   if (call.op !== 'select') return { data: null, error: null };
+  if (which.startsWith('myaade') && call.table === 'user_properties') return { data: MYAADE_KNOWN, error: null };
+  if (which.startsWith('myaade') && call.table === 'clients') return { data: MYAADE_OWNERS, error: null };
   if (call.table === 'inbound_messages') return { data: inboundRows, error: null };
   const rows = bench.rows[call.table];
   if (!rows) return { data: call.single ? null : [], error: null };
@@ -346,6 +371,32 @@ function ScanReviewScene() {
 }
 
 const VIEWS: Record<string, () => React.ReactElement> = {
+  // Η εισαγωγή από το myAADE, σε όλες τις καταστάσεις της. Το ίδιο το
+  // παράθυρο για την επιλογή αρχείου και την προεπισκόπηση· για το «Έτοιμο» και
+  // το σφάλμα αρχείου οι ίδιες οθόνες του MyaadeSteps, με σταθερά δεδομένα.
+  myaade: () => <MyaadeImport userId="u1" limit={3} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} />,
+  myaadeReview: () => <MyaadeImport userId="u1" limit={3} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}}
+    initialDoc={MYAADE_ACT.status === 'ok' ? MYAADE_ACT.doc : undefined} />,
+  myaadeDone: () => (
+    <Modal open onClose={() => {}} size="lg" title="Εισαγωγή από το myAADE"
+      footer={<><Btn variant="secondary">Τέλος</Btn><Btn variant="primary">Δες τις δόσεις στο ημερολόγιο</Btn></>}>
+      <style>{MYAADE_CSS}</style>
+      <DoneView s={{ created: 1, filled: 2, enfia: { year: 2026, total: 843.2, instalments: 12 }, leftOut: 1, undoUntil: '31/10/2026 12:15' }}
+        onUpgrade={() => {}} onUndo={() => {}} busy={false} />
+    </Modal>
+  ),
+  myaadeError: () => (
+    <Modal open onClose={() => {}} size="lg" title="Εισαγωγή από το myAADE">
+      <style>{MYAADE_CSS}</style>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
+        <MyaadeSteps />
+        <Callout tone="negative" title="Δεν το αναγνωρίσαμε" action={{ label: 'Διάλεξε άλλο αρχείο', onClick: () => {} }}>
+          Δεν το αναγνωρίσαμε ως πράξη ΕΝΦΙΑ του myAADE. Βεβαιώσου ότι είναι η πράξη ΕΝΦΙΑ από το myAADE.
+        </Callout>
+        <DropZone onFile={() => {}} disabled={false} inputId="mya-bench-pdf" />
+      </div>
+    </Modal>
+  ),
   overview: () => <OverviewTab prop={OVERVIEW_PROPERTY as never} properties={[OVERVIEW_PROPERTY] as never} userId="u1" onNavigate={() => {}} tabVisible={() => true} />,
   portfolio: () => <PortfolioTab properties={bench.properties} userId="u1" onSelectProperty={() => {}} />,
   cash: () => <CashHero cash={cash} showIncome onNavigate={() => {}} onRecordRent={() => {}} />,

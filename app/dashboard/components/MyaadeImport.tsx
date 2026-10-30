@@ -3,25 +3,28 @@
 // ΕΙΣΑΓΩΓΗ ΑΠΟ ΤΟ myAADE: ΤΑ ΑΚΙΝΗΤΑ ΚΑΙ Ο ΕΝΦΙΑ ΑΠΟ ΕΝΑ PDF
 // ─────────────────────────────────────────────────────────────────────────
 // Ο χρήστης ανεβάζει την πράξη ΕΝΦΙΑ του myAADE. Το κείμενο βγαίνει ΣΤΗ
-// ΣΥΣΚΕΥΗ του (lib/pdf/pdfText.ts) και το διαβάζει ο αναλυτής κανόνων
-// (lib/myaade/enfiaAct.ts): χωρίς AI, χωρίς αποστολή του αρχείου πουθενά. Το
-// PDF δεν αποθηκεύεται.
+// ΣΥΣΚΕΥΗ του, σε Web Worker (lib/myaade/readPdf.ts). Το διαβάζει ο
+// αναλυτής κανόνων (lib/myaade/enfiaAct.ts): χωρίς AI, χωρίς αποστολή του
+// αρχείου πουθενά. Το PDF δεν αποθηκεύεται.
 //
-// ΤΙΠΟΤΑ ΔΕΝ ΓΡΑΦΕΤΑΙ ΠΡΙΝ ΤΟ ΔΕΙ Ο ΧΡΗΣΤΗΣ. Κάθε ακίνητο φαίνεται με την
-// κατάστασή του («Νέο», «Υπάρχει ήδη», «Ίσως υπάρχει», «Εκτός πακέτου»), κάθε
-// πεδίο διορθώνεται και κάθε γραμμή ξετσεκάρεται. Η καταχώρηση και η αναίρεση
-// ζουν στο lib/myaade/commit.ts.
+// ΤΙΠΟΤΑ ΔΕΝ ΓΡΑΦΕΤΑΙ ΠΡΙΝ ΤΟ ΔΕΙ Ο ΧΡΗΣΤΗΣ. Κάθε ακίνητο φαίνεται σε μία
+// συμπαγή γραμμή με την κατάστασή του· τα πεδία ανοίγουν με «Επεξεργασία». Η
+// καταχώρηση και η αναίρεση ζουν στο lib/myaade/commit.ts, οι έλεγχοι στο
+// lib/myaade/review.ts και οι οθόνες στο MyaadeSteps.tsx.
+//
+// ΤΟ ΚΟΥΜΠΙ ΔΕΝ ΣΒΗΝΕΙ ΧΩΡΙΣ ΛΟΓΟ. Είναι πάντα το κανονικό κύριο κουμπί. Όσο
+// κάτι λείπει, ο λόγος γράφεται δίπλα του (aria-describedby) και το πάτημα
+// οδηγεί στο σημείο που θέλει απάντηση.
 //
 // ΤΟ ΟΡΙΟ ΤΟΥ ΠΑΚΕΤΟΥ (απόφαση ιδιοκτήτη 30/10/2026): φαίνονται όλα όσα
 // βρέθηκαν, τσεκαρισμένα είναι όσα χωρούν και ο δρόμος για τα υπόλοιπα είναι
-// το υπάρχον παράθυρο αναβάθμισης (UpgradeModal), μέσω του `onUpgrade`.
+// το υπάρχον παράθυρο αναβάθμισης, μέσω του `onUpgrade`.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { FileUp, Undo2 } from 'lucide-react';
+import { useEffect, useId, useMemo, useState } from 'react';
+import { FileUp } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { T, TT, Btn, Badge, InfoBanner, Modal, formGrid, fe, SelectBox } from '@/components/Theme';
-import { AadeLink } from '@/components/AadeLink';
-import { TextInput, NumberInput, CustomSelect } from './UIComponents';
+import { T, TT, Btn, Badge, Modal, formGrid, fe } from '@/components/Theme';
+import { NumberInput, CustomSelect } from './UIComponents';
 import { notify, notifyError } from '@/components/Toast';
 import { MAX_SCAN_MB } from './scanDoc';
 import * as propertiesData from '@/lib/data/properties';
@@ -29,56 +32,26 @@ import { read } from '@/lib/data/read';
 import { grDate } from '@/lib/core/format';
 import { athensToday } from '@/lib/core/time';
 import { plural } from '@/lib/core/greek';
-import { atakDigits, isAtak, ATAK_DIGITS } from '@/lib/property/atak';
 import { enfiaInstalments } from '@/lib/tools/enfiaSchedule';
 import { track, PRODUCT_EVENTS } from '@/lib/analytics/events';
 import { parseEnfiaAct } from '@/lib/myaade/enfiaAct';
-import { matchProperty, type KnownProperty, type MatchResult } from '@/lib/myaade/match';
-import { freeSlots, overLimit, excessOf } from '@/lib/myaade/planLimit';
-import { commitImport, undoImport, lastUndoable, importsLeft, MYAADE_DAILY_IMPORTS, IMPORT_UNDO_HOURS, type ImportBatch } from '@/lib/myaade/commit';
+import { readPdfText, PdfReadError } from '@/lib/myaade/readPdf';
+import type { KnownProperty } from '@/lib/myaade/match';
+import { freeSlots } from '@/lib/myaade/planLimit';
+import { buildDrafts, deriveReview, commitRowOf, preselectOwner, toText, SELF_OWNER, type Draft, type KnownOwner } from '@/lib/myaade/review';
+import { commitImport, undoImport, lastUndoable, importsLeft, undoUntilLabel, MYAADE_DAILY_IMPORTS, IMPORT_UNDO_HOURS, type ImportBatch } from '@/lib/myaade/commit';
 import type { MyAadeImport } from '@/lib/myaade/types';
+import { Callout, DoneView, DropZone, MyaadeSteps, PropertyRow, ReadProgress, SelectAll, MYAADE_CSS, type DoneSummary } from './MyaadeSteps';
 
-/** Μία γραμμή όπως τη διορθώνει ο χρήστης, μέχρι να αποθηκευτεί. */
-interface Draft {
-  key: number;
-  include: boolean;
-  match: MatchResult;
-  /** «Ίσως υπάρχει»: ο χρήστης είπε ότι είναι το ίδιο (`true`) ή άλλο (`false`). */
-  same: boolean | null;
-  name: string;
-  address: string;
-  atak: string;
-  sqm: string;
-  pct: string;
-  floor: string;
-  municipality: string | null;
-  kind: string | null;
-  tax: number | null;
-  check: boolean;
-  /** Νέα γραμμή που δεν χώρεσε στο πακέτο όταν διαβάστηκε το αρχείο. */
-  overPlan: boolean;
-}
-
-const PDF_FAILURE: Record<'encrypted' | 'no_text' | 'not_pdf', string> = {
-  not_pdf: 'Το αρχείο δεν είναι PDF.',
-  encrypted: 'Το PDF είναι κλειδωμένο. Κατέβασέ το ξανά από το myAADE.',
-  no_text: 'Είναι φωτογραφία ή σάρωση, όχι το αρχείο του myAADE. Κατέβασε την πράξη από το myAADE.',
+const PDF_FAILURE: Record<'encrypted' | 'no_text' | 'not_pdf', { title: string; text: string }> = {
+  not_pdf: { title: 'Το αρχείο δεν είναι PDF', text: 'Διάλεξε την πράξη ΕΝΦΙΑ όπως την αποθήκευσες από το myAADE.' },
+  encrypted: { title: 'Το PDF είναι κλειδωμένο', text: 'Κατέβασέ το ξανά από το myAADE, χωρίς κωδικό.' },
+  no_text: { title: 'Είναι φωτογραφία ή σάρωση', text: 'Χρειαζόμαστε το αρχείο που δίνει το myAADE, όχι φωτογραφία του. Ακολούθησε τα βήματα από πάνω.' },
 };
 
-const str = (n: number | null | undefined) => (n == null ? '' : String(n).replace('.', ','));
-const num = (s: string): number | null => {
-  const t = s.trim().replace(/\./g, '').replace(',', '.');
-  if (!t) return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
-};
-const suggestName = (kind: string | null, address: string | null, floor: string | null, i: number) =>
-  [kind || 'Ακίνητο', address || `από το myAADE ${i + 1}`].join(', ') + (floor ? ` (όροφος ${floor})` : '');
+type Step = 'pick' | 'reading' | 'review' | 'saving' | 'done';
 
-const isNew = (d: Draft) => d.match.status === 'new' || (d.match.status === 'maybe' && d.same === false);
-const existingIdOf = (d: Draft) => (d.match.status === 'exists' || (d.match.status === 'maybe' && d.same === true) ? d.match.id : null);
-
-export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSaved }: {
+export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSaved, onOpenCalendar, initialDoc }: {
   userId: string;
   /** Το όριο ακινήτων του πακέτου (`propertyLimit`). */
   limit: number;
@@ -87,23 +60,34 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
   onClose: () => void;
   /** Μετά την καταχώρηση ή την αναίρεση: ξαναφορτώνει τα ακίνητα. */
   onSaved: () => void | Promise<void>;
+  /** «Δες τις δόσεις στο ημερολόγιο». */
+  onOpenCalendar?: () => void;
+  /**
+   * Πράξη ήδη διαβασμένη: το παράθυρο ανοίγει στην προεπισκόπηση. Τη δίνει ο
+   * πάγκος διάταξης (scripts/perf-bench/mobile.tsx), ώστε οι σαρωτές να
+   * περνούν από ΑΥΤΟ το component και όχι από αντίγραφό του.
+   */
+  initialDoc?: MyAadeImport;
 }) {
   const supabase = useMemo(() => createClient(), []);
-  const [step, setStep] = useState<'pick' | 'review' | 'saving' | 'done'>('pick');
+  const inputId = useId();
+  const reasonId = useId();
+  const [step, setStep] = useState<Step>('pick');
+  const [progress, setProgress] = useState({ page: 0, pages: 0 });
   const [status, setStatus] = useState('');
-  const [error, setError] = useState('');
+  const [failure, setFailure] = useState<{ title: string; text: string } | null>(null);
   const [doc, setDoc] = useState<MyAadeImport | null>(null);
   const [rows, setRows] = useState<Draft[]>([]);
   const [year, setYear] = useState('');
   const [total, setTotal] = useState('');
+  const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [ownerFromAfm, setOwnerFromAfm] = useState(false);
   const [known, setKnown] = useState<KnownProperty[] | null>(null);
+  const [owners, setOwners] = useState<KnownOwner[]>([]);
   const [ownerAfms, setOwnerAfms] = useState<string[]>([]);
   const [left, setLeft] = useState<number | null>(null);
   const [undoable, setUndoable] = useState<ImportBatch | null>(null);
-  const [summary, setSummary] = useState('');
-  const [skipped, setSkipped] = useState(0);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [dragOver, setDragOver] = useState(false);
+  const [summary, setSummary] = useState<DoneSummary | null>(null);
 
   // ── ΤΙ ΞΕΡΕΙ ΗΔΗ Η ΕΦΑΡΜΟΓΗ ────────────────────────────────────────────
   // Ξαναδιαβάζεται με το άνοιγμα και μετά από κάθε καταχώρηση ή αναίρεση.
@@ -114,94 +98,92 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
     void Promise.all([
       propertiesData.listWithError<KnownProperty>(supabase, userId, { columns: 'id,name,address,atak,sqm,ownership,floor' }),
       read<{ owner_afm: string | null }>(supabase.from('property_settings').select('owner_afm').eq('user_id', userId)),
+      read<{ id: string; full_name: string; afm: string | null }>(supabase.from('clients').select('id,full_name,afm').eq('user_id', userId).eq('type', 'owner')),
       importsLeft(supabase, userId),
       lastUndoable(supabase, userId),
-    ]).then(([list, afms, n, last]) => {
+    ]).then(([list, afms, cards, n, last]) => {
       if (!live) return;
-      if (list.error) { setError('Τα ακίνητά σου δεν διαβάστηκαν. Δοκίμασε ξανά.'); setKnown([]); }
+      if (list.error) { setFailure({ title: 'Τα ακίνητά σου δεν διαβάστηκαν', text: 'Κλείσε το παράθυρο και δοκίμασε ξανά.' }); setKnown([]); }
       else setKnown(list.rows);
       setOwnerAfms([...new Set(afms.rows.map(r => (r.owner_afm ?? '').trim()).filter(Boolean))]);
+      setOwners(cards.rows.map(c => ({ id: c.id, name: c.full_name, afm: c.afm })));
       setLeft(n);
       setUndoable(last);
     });
     return () => { live = false; };
   }, [supabase, userId, contextTick]);
 
-  const currentCount = known?.length ?? 0;
-  const slots = freeSlots(limit, currentCount);
+  const slots = freeSlots(limit, known?.length ?? 0);
+  // Με ιδιοκτήτες στο Πελατολόγιο, η επιλογή «δικά μου» στέκει δίπλα τους.
+  const ownerChoices = owners.length > 1 ? [...owners, { id: SELF_OWNER, name: 'Δικά μου ακίνητα', afm: null }] : owners;
+  const review = deriveReview({ rows, year, total, slots, left, owners: ownerChoices, ownerId, dailyLimit: MYAADE_DAILY_IMPORTS });
 
   // ── ΑΠΟ ΤΟ PDF ΣΤΗΝ ΠΡΟΕΠΙΣΚΟΠΗΣΗ ──────────────────────────────────────
-  const readPdf = async (f: File) => {
-    setError(''); setSummary('');
-    if (f.size > MAX_SCAN_MB * 1024 * 1024) { setError(`Το αρχείο ξεπερνά τα ${MAX_SCAN_MB} MB.`); return; }
-    setStatus('Διαβάζεται το PDF στη συσκευή σου…');
+  const applyDoc = (d: MyAadeImport) => {
+    setRows(buildDrafts(d, known ?? [], slots));
+    setDoc(d);
+    setYear(d.year ? String(d.year) : '');
+    setTotal(toText(d.total));
+    const pre = preselectOwner(owners, d.afm);
+    setOwnerId(pre); setOwnerFromAfm(!!pre);
+    setStep('review');
+    setStatus(`Βρέθηκαν ${d.properties.length} ${plural(d.properties.length, 'ακίνητο', 'ακίνητα')}.`);
+  };
+  // Η πράξη που δόθηκε έτοιμη μπαίνει μόλις φορτωθούν τα ακίνητα: το ταίριασμα θέλει να τα ξέρει.
+  const [initialApplied, setInitialApplied] = useState(false);
+  if (initialDoc && !initialApplied && known !== null) { setInitialApplied(true); applyDoc(initialDoc); }
+
+  const readFile = async (f: File | undefined) => {
+    if (!f) return;
+    setFailure(null);
+    if (f.size > MAX_SCAN_MB * 1024 * 1024) { setFailure({ title: 'Το αρχείο είναι πολύ μεγάλο', text: `Η πράξη του myAADE είναι λίγες σελίδες· δεχόμαστε έως ${MAX_SCAN_MB} MB.` }); return; }
+    setStep('reading'); setProgress({ page: 0, pages: 0 }); setStatus('Ανοίγω το PDF…');
     try {
-      // Ο αναγνώστης φορτώνεται μόνο τώρα: δεν βαραίνει την αρχική σελίδα.
-      const { extractPdfText } = await import('@/lib/pdf/pdfText');
-      const res = extractPdfText(new Uint8Array(await f.arrayBuffer()));
-      if (res.failure) { setError(PDF_FAILURE[res.failure]); return; }
-      setStatus('Αναγνωρίζονται τα στοιχεία της πράξης…');
+      const res = await readPdfText(f, (page, pages) => {
+        setProgress({ page, pages });
+        setStatus(`Διαβάζω τη σελίδα ${page} από ${pages}…`);
+      });
+      if (res.failure) { setFailure(PDF_FAILURE[res.failure]); setStep('pick'); return; }
+      setStatus('Αναγνωρίζω τα στοιχεία της πράξης…');
       const parsed = parseEnfiaAct(res.lines);
-      if (parsed.status === 'unrecognized') { setError(parsed.reason); return; }
-      const d = parsed.doc;
-      const base = known ?? [];
-      const drafts: Draft[] = d.properties.map((p, i) => ({
-        key: i, include: true, match: matchProperty(p, base), same: null,
-        name: suggestName(p.kind, p.address, p.floor, i), address: p.address ?? '', atak: p.atak ?? '',
-        sqm: str(p.sqm), pct: str(p.ownershipPct), floor: p.floor ?? '',
-        municipality: p.municipality, kind: p.kind, tax: p.tax, check: p.check, overPlan: false,
-      }));
-      // Οι νέες πέρα από το όριο ξεκινούν ξετσεκαρισμένες. Το «Ίσως υπάρχει» δεν
-      // πιάνει θέση ώσπου να απαντήσει ο χρήστης.
-      const over = new Set(overLimit(drafts.filter(r => r.match.status === 'new').map(r => r.key), slots));
-      setRows(drafts.map(r => (over.has(r.key) ? { ...r, include: false, overPlan: true } : r)));
-      setDoc(d);
-      setYear(d.year ? String(d.year) : '');
-      setTotal(str(d.total));
-      setStep('review');
-    } catch {
-      // Μόνο το είδος της αποτυχίας: τίποτα από το περιεχόμενο του αρχείου δεν καταγράφεται.
-      setError('Το PDF δεν διαβάστηκε. Κατέβασέ το ξανά από το myAADE και ξαναδοκίμασε.');
-    } finally { setStatus(''); }
+      if (parsed.status === 'unrecognized') {
+        setFailure({ title: parsed.kind === 'e9' ? 'Αυτό είναι το Ε9' : 'Δεν το αναγνωρίσαμε', text: parsed.reason + (parsed.kind === 'e9' ? '' : ' Βεβαιώσου ότι είναι η πράξη ΕΝΦΙΑ από το myAADE.') });
+        setStep('pick'); return;
+      }
+      applyDoc(parsed.doc);
+    } catch (e) {
+      // Μόνο το είδος της αποτυχίας: τίποτα από το περιεχόμενο δεν καταγράφεται.
+      setFailure({ title: 'Το PDF δεν διαβάστηκε', text: e instanceof PdfReadError ? e.message : 'Κατέβασέ το ξανά από το myAADE και ξαναδοκίμασε.' });
+      setStep('pick');
+    }
   };
 
-  const pick = (f: File | undefined) => { if (f) void readPdf(f); };
-
   const patch = (key: number, p: Partial<Draft>) => setRows(rs => rs.map(r => (r.key === key ? { ...r, ...p, check: false } : r)));
+  const rowDomId = (key: number) => `mya-row-${key}`;
 
-  // ── ΕΛΕΓΧΟΙ ΠΡΙΝ ΤΗΝ ΑΠΟΘΗΚΕΥΣΗ ─────────────────────────────────────────
-  const chosen = rows.filter(r => r.include);
-  const unanswered = chosen.filter(r => r.match.status === 'maybe' && r.same === null).length;
-  const newCount = chosen.filter(isNew).length;
-  const excess = excessOf(newCount, slots);
-  const notIncludedNew = rows.filter(r => !r.include && isNew(r)).length;
-  const badAtak = chosen.some(r => r.atak.trim() !== '' && !isAtak(r.atak));
-  const noName = chosen.some(r => isNew(r) && !r.name.trim());
-  const totalN = num(total);
-  const yearN = Number(year);
-  const yearOk = Number.isInteger(yearN) && yearN >= 2014 && yearN <= 2100;
-  const totalBad = total.trim() !== '' && !(totalN && totalN > 0);
-  const writesTotal = !!(totalN && totalN > 0 && yearOk);
-  const nothing = chosen.length === 0;
-  const blocked = left === 0 || excess > 0 || unanswered > 0 || badAtak || noName || totalBad || (!!totalN && !yearOk) || nothing;
-  const afmClash = !!doc?.afm && ownerAfms.length > 0 && !ownerAfms.includes(doc.afm);
-  const schedule = writesTotal ? enfiaInstalments(totalN as number, yearN) : [];
+  /** Πηγαίνει τον χρήστη εκεί που θέλει απάντηση: το πρώτο εμπόδιο. */
+  const showBlocker = () => {
+    const first = review.blockers[0];
+    if (!first) return;
+    const target = first.id === 'maybe' ? rowDomId(review.chosen.find(r => r.match.status === 'maybe' && r.same === null)?.key ?? -1)
+      : first.id === 'owner' ? 'mya-owner' : first.id === 'excess' ? 'mya-plan' : first.id === 'total' || first.id === 'year' ? 'mya-act' : null;
+    const el = target ? document.getElementById(target) : null;
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    (el?.querySelector('button, input') as HTMLElement | null)?.focus({ preventScroll: true });
+    setStatus(first.text);
+  };
 
   const save = async () => {
-    if (blocked || step !== 'review' || !doc) return;
-    setStep('saving');
-    setStatus('Αποθηκεύονται τα ακίνητα και ο ΕΝΦΙΑ…');
+    if (step !== 'review' || !doc) return;
+    if (review.blockers.length) { showBlocker(); return; }
+    setStep('saving'); setStatus('Αποθηκεύονται τα ακίνητα και ο ΕΝΦΙΑ…');
     const res = await commitImport(supabase, {
-      userId, year: yearOk ? yearN : null, total: writesTotal ? totalN : null, foundCount: rows.length,
-      rows: chosen.map(r => ({
-        existingId: existingIdOf(r), name: r.name, address: r.address || null, atak: isAtak(r.atak) ? atakDigits(r.atak) : null,
-        sqm: num(r.sqm), ownershipPct: num(r.pct), floor: r.floor || null,
-      })),
-      known: known ?? [], docDate: doc.issueDate ?? athensToday(),
+      userId, year: review.yearN, total: review.writesTotal ? review.totalN : null, foundCount: rows.length,
+      rows: review.chosen.map(commitRowOf), known: known ?? [], docDate: doc.issueDate ?? athensToday(),
+      clientId: ownerId && ownerId !== SELF_OWNER ? ownerId : null,
     });
-    setStatus('');
     if (!res.ok) {
-      setStep('review');
+      setStep('review'); setStatus('');
       if (res.reason === 'daily_limit') { setLeft(0); notifyError(`Έφτασες τις ${MYAADE_DAILY_IMPORTS} εισαγωγές των τελευταίων 24 ωρών. Δοκίμασε αργότερα.`); }
       else notifyError('Η εισαγωγή δεν αποθηκεύτηκε. Δοκίμασε ξανά.');
       return;
@@ -213,24 +195,25 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
         void track(supabase, n >= 2 ? PRODUCT_EVENTS.second_property_added : PRODUCT_EVENTS.property_added, { count: n });
       })();
     }
-    const parts = [
-      res.created.length ? `${plural(res.created.length, 'Προστέθηκε', 'Προστέθηκαν')} ${res.created.length} ${plural(res.created.length, 'ακίνητο', 'ακίνητα')}` : '',
-      res.filled ? `${plural(res.filled, 'συμπληρώθηκε', 'συμπληρώθηκαν')} ${res.filled} ${plural(res.filled, 'υπάρχον', 'υπάρχοντα')}` : '',
-      res.statement === 'inserted' || res.statement === 'updated' ? `ο ΕΝΦΙΑ ${yearN} είναι ${fe(totalN as number)}` : '',
-    ].filter(Boolean);
-    setSummary(parts.length ? `${parts.join(' · ')}.` : 'Όλα ήταν ήδη στην εφαρμογή. Δεν άλλαξε τίποτα.');
-    setSkipped(notIncludedNew);
-    setStep('done');
+    const wrote = res.statement === 'inserted' || res.statement === 'updated' || res.statement === 'same';
+    setSummary({
+      created: res.created.length, filled: res.filled,
+      enfia: wrote && review.writesTotal ? { year: review.yearN as number, total: review.totalN as number, instalments: enfiaInstalments(review.totalN as number, review.yearN as number).length } : null,
+      leftOut: review.leftOut,
+      undoUntil: null,
+    });
+    setStep('done'); setStatus('Η εισαγωγή ολοκληρώθηκε.');
     await onSaved();
     loadContext();
   };
 
-  const undo = async (batch: ImportBatch) => {
+  const undo = async (batch: ImportBatch | null) => {
+    if (!batch) return;
     setStatus('Αναιρείται η εισαγωγή…');
     const res = await undoImport(supabase, userId, batch);
     setStatus('');
     if (!res.ok) {
-      notifyError(res.reason === 'expired' ? `Η αναίρεση ισχύει ${IMPORT_UNDO_HOURS}\u00a0ώρες από την εισαγωγή.` : 'Η αναίρεση δεν ολοκληρώθηκε. Δοκίμασε ξανά.');
+      notifyError(res.reason === 'expired' ? `Η αναίρεση ισχύει ${IMPORT_UNDO_HOURS} ώρες από την εισαγωγή.` : 'Η αναίρεση δεν ολοκληρώθηκε. Δοκίμασε ξανά.');
       loadContext();
       return;
     }
@@ -239,182 +222,115 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
       : 'Η εισαγωγή αναιρέθηκε.');
     await onSaved();
     loadContext();
-    setStep('pick'); setDoc(null); setRows([]); setSummary('');
+    setStep('pick'); setDoc(null); setRows([]); setSummary(null);
   };
 
-  const busy = step === 'saving' || !!status;
+  const busy = step === 'saving' || step === 'reading' || status.startsWith('Αναιρείται');
   const requestClose = () => { if (!busy) onClose(); };
-  const found = rows.length;
+  const schedule = review.writesTotal ? enfiaInstalments(review.totalN as number, review.yearN as number) : [];
+  const afmClash = !!doc?.afm && ownerAfms.length > 0 && !ownerAfms.includes(doc.afm) && !ownerFromAfm;
+  const reason = step === 'review' && review.blockers.length ? review.blockers[0].text : null;
 
   return (
     <Modal open onClose={requestClose} size="lg" icon={<FileUp size={19} />}
       title="Εισαγωγή από το myAADE"
       subtitle="Τα ακίνητα και ο ΕΝΦΙΑ σου από την πράξη ΕΝΦΙΑ, χωρίς πληκτρολόγηση"
+      footerInfo={reason ? <span id={reasonId}>{reason}</span> : undefined}
       footer={step === 'review' || step === 'saving' ? (
         <>
-          <Btn variant="secondary" onClick={() => { setStep('pick'); setDoc(null); setRows([]); }} disabled={busy}>Άλλο αρχείο</Btn>
-          <Btn variant="primary" onClick={() => void save()} disabled={blocked || busy}>
-            {step === 'saving' ? 'Αποθήκευση…' : newCount ? `Πρόσθεσε ${newCount} ${plural(newCount, 'ακίνητο', 'ακίνητα')}` : 'Αποθήκευση'}
+          <Btn variant="secondary" onClick={() => { setStep('pick'); setDoc(null); setRows([]); setStatus(''); }} disabled={busy}>Άλλο αρχείο</Btn>
+          <Btn variant="primary" onClick={() => void save()} disabled={step === 'saving'} describedBy={reason ? reasonId : undefined}>
+            {step === 'saving' ? 'Αποθήκευση…' : review.newCount ? `Πρόσθεσε ${review.newCount} ${plural(review.newCount, 'ακίνητο', 'ακίνητα')}` : 'Αποθήκευση'}
           </Btn>
         </>
       ) : step === 'done' ? (
         <>
-          {undoable && <Btn variant="secondary" onClick={() => void undo(undoable)} disabled={busy}><Undo2 size={15} />Αναίρεση</Btn>}
-          <Btn variant="primary" onClick={onClose} disabled={busy}>Τέλος</Btn>
+          <Btn variant="secondary" onClick={onClose}>Τέλος</Btn>
+          {summary?.enfia && onOpenCalendar && <Btn variant="primary" onClick={onOpenCalendar}>Δες τις δόσεις στο ημερολόγιο</Btn>}
         </>
       ) : undefined}>
+      <style>{MYAADE_CSS}</style>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
+        {/* Η πρόοδος και κάθε αλλαγή κατάστασης ανακοινώνονται· η εστίαση μένει όπου είναι. */}
+        <p role="status" aria-live="polite" className="sr-only">{status}</p>
 
-      {/* Η πρόοδος ανακοινώνεται στους αναγνώστες οθόνης· η εστίαση μένει όπου είναι. */}
-      <p role="status" aria-live="polite" style={{ ...TT.bodySm, margin: status ? `0 0 ${T.sp.md}px` : 0, minHeight: 0 }}>{status}</p>
-
-      {step === 'pick' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
-          {undoable && (
-            <InfoBanner tone="info">
-              <span>Η τελευταία εισαγωγή σου ({grDate(undoable.created_at)}) αναιρείται για {IMPORT_UNDO_HOURS}{'\u00a0'}ώρες.</span>{' '}
-              <Btn variant="ghost" onClick={() => void undo(undoable)} disabled={busy}><Undo2 size={15} />Αναίρεση</Btn>
-            </InfoBanner>
-          )}
-          <div>
-            <p style={{ ...TT.bodySm, margin: '0 0 8px' }}>Στο myAADE άνοιξε τον ΕΝΦΙΑ του έτους και αποθήκευσε την πράξη ως PDF:</p>
-            <AadeLink action="enfia" emphasis />
-          </div>
-
-          <div
-            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={e => { e.preventDefault(); setDragOver(false); pick(e.dataTransfer.files?.[0]); }}
-            style={{
-              border: `1.5px dashed ${dragOver ? 'var(--accent)' : 'var(--border-default)'}`, borderRadius: T.radius.inner,
-              background: dragOver ? 'var(--accent-soft)' : 'var(--bg-elevated)', padding: T.sp.lg,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: T.sp.md, textAlign: 'center',
-            }}>
-            <label htmlFor="myaade-pdf" style={{ ...TT.body, fontWeight: 600 }}>Σύρε εδώ το PDF ή διάλεξε αρχείο</label>
-            <input id="myaade-pdf" ref={fileRef} type="file" accept="application/pdf,.pdf" className="sr-only"
-              onChange={e => { pick(e.target.files?.[0]); e.currentTarget.value = ''; }} />
-            <Btn variant="primary" onClick={() => fileRef.current?.click()} disabled={busy || left === 0 || known === null}>
-              <FileUp size={15} />{busy ? 'Διαβάζεται…' : 'Διάλεξε το PDF'}
-            </Btn>
-            <span style={{ ...TT.caption }}>Διαβάζεται στη συσκευή σου και δεν αποθηκεύεται. Αποθηκεύονται μόνο όσα επιβεβαιώσεις.</span>
-          </div>
-
-          {left === 0 && <InfoBanner tone="negative">Έφτασες τις {MYAADE_DAILY_IMPORTS} εισαγωγές των τελευταίων 24 ωρών. Δοκίμασε αργότερα.</InfoBanner>}
-          {error && <p role="alert" style={{ ...TT.bodySm, color: 'var(--negative)', margin: 0 }}>{error}</p>}
-        </div>
-      )}
-
-      {(step === 'review' || step === 'saving') && doc && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
-          {/* Η ΕΠΙΚΕΦΑΛΙΔΑ ΑΠΟ ΤΑ ΜΕΤΡΗΜΕΝΑ: κανένα ψηφίο δεν γράφεται με το χέρι. */}
-          <h3 style={{ ...TT.h2, margin: 0 }}>
-            {`Βρήκαμε ${found} ${plural(found, 'ακίνητο', 'ακίνητα')}`}
-            {writesTotal ? ` και ΕΝΦΙΑ ${yearN}: ${fe(totalN as number)}` : ''}
-          </h3>
-
-          <div style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: T.sp.lg, background: 'var(--bg-elevated)' }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-              <span style={{ ...TT.body, fontWeight: 600 }}>Η πράξη ΕΝΦΙΑ</span>
-              {doc.corrective && <Badge tone="info">Διορθωτική</Badge>}
-            </div>
-            <div style={formGrid(160, 220)}>
-              <NumberInput label="Έτος" value={year} onChange={setYear} min={2014} max={2100} />
-              <NumberInput label="Ποσό για καταβολή" suffix="€" value={total} onChange={setTotal} />
-            </div>
-            {schedule.length > 0 && (
-              <p style={{ ...TT.caption, margin: '10px 0 0' }}>
-                {`${schedule.length} ${plural(schedule.length, 'δόση', 'δόσεις')}, η πρώτη έως ${grDate(schedule[0].date)}. Οι υπενθυμίσεις και το «Πλήρωσα» ενημερώνονται μόνα τους.`}
-              </p>
+        {step === 'pick' && (
+          <>
+            {undoable && (
+              <Callout tone="info" title="Η τελευταία εισαγωγή αναιρείται ακόμη" action={{ label: 'Αναίρεση', onClick: () => void undo(undoable) }}>
+                {`Έγινε στις ${grDate(undoable.created_at)}. Η αναίρεση ισχύει έως ${undoUntilLabel(undoable.created_at)}.`}
+              </Callout>
             )}
-            {doc.paymentRef && <p style={{ ...TT.caption, margin: '6px 0 0' }}>{'Ταυτότητα οφειλής '}<span style={{ fontFamily: T.font.num }}>{doc.paymentRef}</span>. Δεν αποθηκεύεται.</p>}
-            <p style={{ ...TT.caption, margin: '6px 0 0' }}>Το ποσό αντικαθιστά κάθε άλλο σύνολο ΕΝΦΙΑ του ίδιου έτους στην εφαρμογή.</p>
-          </div>
+            <MyaadeSteps />
+            {failure && <Callout tone="negative" title={failure.title} action={{ label: 'Διάλεξε άλλο αρχείο', onClick: () => document.getElementById(inputId)?.click() }}>{failure.text}</Callout>}
+            {left === 0
+              ? <Callout tone="warning" title="Έφτασες το όριο της ημέρας">{`Χωρούν ${MYAADE_DAILY_IMPORTS} εισαγωγές σε 24\u00a0ώρες. Δοκίμασε αργότερα.`}</Callout>
+              : <DropZone onFile={f => void readFile(f)} disabled={known === null} inputId={inputId} />}
+          </>
+        )}
 
-          {afmClash && <InfoBanner tone="warning">Η πράξη είναι άλλου ΑΦΜ από αυτό των ακινήτων σου. Συνέχισε μόνο αν είναι δική σου ή του πελάτη σου.</InfoBanner>}
-          {doc.warnings.map(w => <InfoBanner key={w} tone="warning">{w}</InfoBanner>)}
-          {totalBad && <InfoBanner tone="negative">Το ποσό δεν διαβάζεται. Γράψε το ποσό για καταβολή όπως το δείχνει η πράξη, με κόμμα στα δεκαδικά.</InfoBanner>}
-          {!!totalN && !yearOk && <InfoBanner tone="negative">Διάλεξε το έτος της πράξης.</InfoBanner>}
-          {excess > 0 && (
-            <InfoBanner tone="warning">
-              <span>{`Το πακέτο σου χωρά ${slots === 0 ? 'κανένα νέο ακίνητο' : `ακόμη ${slots} ${plural(slots, 'νέο ακίνητο', 'νέα ακίνητα')}`}. Ξετσέκαρε ${excess} ή δες τα πακέτα.`}</span>{' '}
-              <Btn variant="ghost" onClick={onUpgrade}>Δες τα πακέτα</Btn>
-            </InfoBanner>
-          )}
-          {excess === 0 && notIncludedNew > 0 && Number.isFinite(slots) && (
-            <InfoBanner tone="info">
-              <span>{`${notIncludedNew} ${plural(notIncludedNew, 'ακίνητο μένει εκτός, γιατί το πακέτο σου δεν το χωρά', 'ακίνητα μένουν εκτός, γιατί το πακέτο σου δεν τα χωρά')}.`}</span>{' '}
-              <Btn variant="ghost" onClick={onUpgrade}>Δες τα πακέτα</Btn>
-            </InfoBanner>
-          )}
+        {step === 'reading' && <ReadProgress page={progress.page} pages={progress.pages} label={status} />}
 
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }} aria-label="Ακίνητα της πράξης">
-            {rows.map((r, i) => {
-              const tag = r.match.status === 'exists' ? <Badge tone="positive">Υπάρχει ήδη</Badge>
-                : r.match.status === 'maybe' ? <Badge tone="warning">Ίσως υπάρχει</Badge>
-                : r.overPlan && !r.include ? <Badge tone="neutral">Εκτός πακέτου</Badge>
-                : <Badge tone="accent">Νέο</Badge>;
-              const target = r.match.status !== 'new' ? (known ?? []).find(k => k.id === (r.match as { id: string }).id) : undefined;
-              const atakBad = r.atak.trim() !== '' && !isAtak(r.atak);
-              return (
-                <li key={r.key} style={{
-                  border: `1px solid ${atakBad ? 'var(--negative-border)' : r.check ? 'var(--warning)' : 'var(--border-subtle)'}`,
-                  borderRadius: T.radius.inner, padding: T.sp.lg, background: 'var(--bg-elevated)', opacity: r.include ? 1 : 0.72,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: r.include ? 12 : 0, flexWrap: 'wrap' }}>
-                    <SelectBox checked={r.include} onChange={() => setRows(rs => rs.map(x => (x.key === r.key ? { ...x, include: !x.include } : x)))}
-                      label={`Να μπει: ${r.address || r.atak || `ακίνητο ${i + 1}`}`} />
-                    <span style={{ ...TT.body, fontWeight: 600, flex: 1, minWidth: 0 }} className="po-elide">
-                      {r.address || `Ακίνητο ${i + 1}`}{r.municipality ? ` · ${r.municipality}` : ''}
-                    </span>
-                    {tag}
-                    {r.check && <Badge tone="warning">Έλεγξέ το</Badge>}
-                  </div>
-                  {r.include && (
-                    <>
-                      {r.match.status === 'maybe' && (
-                        <div style={{ ...formGrid(200, 320), marginBottom: 12 }}>
-                          <CustomSelect label="Είναι ακίνητο που έχεις ήδη;" value={r.same === null ? '' : r.same ? 'same' : 'other'}
-                            onChange={v => patch(r.key, { same: v === 'same' ? true : v === 'other' ? false : null })}
-                            options={[{ value: 'same', label: `Είναι το «${target?.name ?? ''}»` }, { value: 'other', label: 'Είναι άλλο ακίνητο' }]} />
-                        </div>
-                      )}
-                      {existingIdOf(r) && <p style={{ ...TT.caption, margin: '0 0 12px' }}>{`Συμπληρώνονται μόνο τα κενά πεδία του «${target?.name ?? ''}».`}</p>}
-                      <div style={formGrid(140, 200)}>
-                        {isNew(r) && <TextInput label="Όνομα" value={r.name} onChange={v => patch(r.key, { name: v })} />}
-                        <TextInput label="Διεύθυνση" value={r.address} onChange={v => patch(r.key, { address: v })} />
-                        <TextInput label="ΑΤΑΚ" value={r.atak} onChange={v => patch(r.key, { atak: atakDigits(v) })} placeholder={`${ATAK_DIGITS} ψηφία`} mono inputMode="numeric" />
-                        <NumberInput label="Επιφάνεια" suffix="τ.μ." value={r.sqm} onChange={v => patch(r.key, { sqm: v })} />
-                        <NumberInput label="Ποσοστό" suffix="%" value={r.pct} onChange={v => patch(r.key, { pct: v })} max={100} />
-                        <TextInput label="Όροφος" value={r.floor} onChange={v => patch(r.key, { floor: v })} />
-                      </div>
-                      {(r.kind || r.tax != null) && (
-                        <p style={{ ...TT.caption, margin: '10px 0 0' }}>
-                          {[r.kind, r.tax != null ? `φόρος ακινήτου ${fe(r.tax)}` : ''].filter(Boolean).join(' · ')}
-                        </p>
-                      )}
-                      {atakBad && <p style={{ ...TT.caption, color: 'var(--negative)', margin: '8px 0 0' }}>{`Ο ΑΤΑΚ είναι ${ATAK_DIGITS} ψηφία.`}</p>}
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          {unanswered > 0 && <p style={{ ...TT.caption, margin: 0 }}>{`Απάντησε για ${unanswered} ${plural(unanswered, 'ακίνητο', 'ακίνητα')} αν υπάρχει ήδη.`}</p>}
-        </div>
-      )}
+        {(step === 'review' || step === 'saving') && doc && (
+          <>
+            {/* Η ΕΠΙΚΕΦΑΛΙΔΑ ΑΠΟ ΤΑ ΜΕΤΡΗΜΕΝΑ: κανένα ψηφίο δεν γράφεται με το χέρι. */}
+            <h3 style={{ ...TT.h2, margin: 0 }}>
+              {`Βρήκαμε ${rows.length} ${plural(rows.length, 'ακίνητο', 'ακίνητα')}`}
+              {review.writesTotal ? ` και ΕΝΦΙΑ ${review.yearN}: ${fe(review.totalN as number)}` : ''}
+            </h3>
 
-      {step === 'done' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
-          <h3 style={{ ...TT.h2, margin: 0 }}>Έτοιμο</h3>
-          <p style={{ ...TT.body, margin: 0 }}>{summary}</p>
-          {skipped > 0 && (
-            <InfoBanner tone="info">
-              <span>{`${skipped} ${plural(skipped, 'ακίνητο δεν μπήκε, γιατί το πακέτο σου δεν το χωρά', 'ακίνητα δεν μπήκαν, γιατί το πακέτο σου δεν τα χωρά')}.`}</span>{' '}
-              <Btn variant="ghost" onClick={onUpgrade}>Δες τα πακέτα</Btn>
-            </InfoBanner>
-          )}
-          {undoable && <p style={{ ...TT.caption, margin: 0 }}>{`Η εισαγωγή αναιρείται για ${IMPORT_UNDO_HOURS}\u00a0ώρες, εδώ ή από το ίδιο παράθυρο.`}</p>}
-        </div>
-      )}
+            <section id="mya-act" aria-label="Η πράξη ΕΝΦΙΑ" style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: T.sp.lg, background: 'var(--bg-elevated)', display: 'flex', flexDirection: 'column', gap: T.sp.md }}>
+              <div style={{ display: 'flex', gap: T.sp.sm, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ ...TT.body, fontWeight: 600 }}>Η πράξη ΕΝΦΙΑ</span>
+                {doc.corrective && <Badge tone="info">Διορθωτική</Badge>}
+              </div>
+              <div style={formGrid(160, 220)}>
+                <NumberInput label="Έτος" value={year} onChange={setYear} min={2014} max={2100} />
+                <NumberInput label="Ποσό για καταβολή" suffix="€" value={total} onChange={setTotal} />
+              </div>
+              {ownerChoices.length > 1 && (
+                <div id="mya-owner" style={formGrid(200, 360)}>
+                  <CustomSelect label="Ποιου ιδιοκτήτη είναι η πράξη;" value={ownerId ?? ''} onChange={v => { setOwnerId(v || null); setOwnerFromAfm(false); }}
+                    options={ownerChoices.map(o => ({ value: o.id, label: o.name }))} />
+                </div>
+              )}
+              {ownerFromAfm && <span style={{ ...TT.caption }}>Ο ιδιοκτήτης προτάθηκε από τον ΑΦΜ της πράξης.</span>}
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: T.sp.xs }}>
+                {schedule.length > 0 && <li style={{ ...TT.caption }}>{`${schedule.length} ${plural(schedule.length, 'δόση', 'δόσεις')}, η πρώτη έως ${grDate(schedule[0].date)}. Οι υπενθυμίσεις και το «Πλήρωσα» ενημερώνονται μόνα τους.`}</li>}
+                {doc.paymentRef && <li style={{ ...TT.caption }}>{'Ταυτότητα οφειλής '}<span style={{ fontFamily: T.font.num }}>{doc.paymentRef}</span>. Δεν αποθηκεύεται.</li>}
+                <li style={{ ...TT.caption }}>Το ποσό αντικαθιστά κάθε άλλο σύνολο ΕΝΦΙΑ του ίδιου έτους στην εφαρμογή.</li>
+              </ul>
+            </section>
+
+            {afmClash && (
+              <Callout tone="warning" title="Η πράξη είναι σε άλλο ΑΦΜ">
+                Ο ΑΦΜ της πράξης δεν είναι κανενός ιδιοκτήτη που έχεις στην εφαρμογή. Αν είναι δική σου, συνιδιοκτήτη ή πελάτη σου, συνέχισε. Αλλιώς διάλεξε άλλο αρχείο.
+              </Callout>
+            )}
+            {doc.warnings.map(w => <Callout key={w} tone="warning">{w}</Callout>)}
+            {(review.excess > 0 || review.leftOut > 0) && Number.isFinite(slots) && (
+              <Callout id="mya-plan" tone={review.excess > 0 ? 'warning' : 'info'} action={{ label: 'Δες τα πακέτα', onClick: onUpgrade }}>
+                {review.excess > 0
+                  ? review.blockers.find(b => b.id === 'excess')?.text
+                  : `${review.leftOut} ${plural(review.leftOut, 'ακίνητο μένει εκτός, γιατί το πακέτο σου δεν το χωρά', 'ακίνητα μένουν εκτός, γιατί το πακέτο σου δεν τα χωρά')}.`}
+              </Callout>
+            )}
+
+            <SelectAll total={rows.length} chosen={review.chosen.length} onAll={on => setRows(rs => rs.map(r => ({ ...r, include: on })))} />
+            <ul aria-label="Ακίνητα της πράξης" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: T.sp.sm }}>
+              {rows.map((r, i) => (
+                <PropertyRow key={r.key} row={r} index={i} overPlan={r.overPlan} known={known ?? []} rowId={rowDomId(r.key)}
+                  onToggle={() => setRows(rs => rs.map(x => (x.key === r.key ? { ...x, include: !x.include } : x)))}
+                  onPatch={p => patch(r.key, p)} />
+              ))}
+            </ul>
+          </>
+        )}
+
+        {/* Η ΠΡΟΘΕΣΜΙΑ ΤΗΣ ΑΝΑΙΡΕΣΗΣ ΑΠΟ ΤΗΝ ΚΑΤΑΓΡΑΦΗ ΤΗΣ ΒΑΣΗΣ, όχι από το ρολόι του περιηγητή. */}
+        {step === 'done' && summary && <DoneView s={{ ...summary, undoUntil: undoable ? undoUntilLabel(undoable.created_at) : null }}
+          onUpgrade={onUpgrade} onUndo={() => void undo(undoable)} busy={busy} />}
+      </div>
     </Modal>
   );
 }

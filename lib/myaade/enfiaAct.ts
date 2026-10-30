@@ -233,7 +233,7 @@ export function parseEnfiaAct(lines: readonly string[]): MyAadeParse {
     }
     if (afm) break;
   }
-  if (!afm && afmBad) warnings.push('Το ΑΦΜ της πράξης δεν περνά τον έλεγχο ψηφίου.');
+  if (!afm && afmBad) warnings.push('Δεν επιβεβαιώσαμε σε ποιον ανήκει η πράξη, γιατί ο ΑΦΜ της δεν διαβάστηκε καθαρά. Αν είναι δική σου ή πελάτη σου, συνέχισε κανονικά.');
 
   // Το ποσό: πρώτα «για καταβολή», μετά «συνολικός φόρος». Ποτέ υπολογισμένο.
   const payable = headerValue<number>(lines, HEADER_LABELS.payable, 'money');

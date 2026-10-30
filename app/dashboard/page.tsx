@@ -961,7 +961,9 @@ export default function Dashboard() {
       {myaadeOpen&&<MyaadeImport userId={user.id} limit={propertyLimit(ent)}
         onUpgrade={()=>{ setMyaadeOpen(false); setShowUpgrade(true); }}
         onClose={()=>setMyaadeOpen(false)}
-        onSaved={async()=>{ await fetchProperties(user.id); }}/>}
+        onSaved={async()=>{ await fetchProperties(user.id); }}
+        // Οι δόσεις ζουν στο ημερολόγιο ακινήτου: χωρίς επιλεγμένο, το πρώτο της λίστας.
+        onOpenCalendar={async()=>{ setMyaadeOpen(false); const list = await fetchProperties(user.id); if (!selected && list?.[0]) setSelected(list[0]); setNav('calendar'); }}/>}
       {showUpgrade&&<UpgradeModal currentCount={properties.length} planId={effPlan} onClose={()=>setShowUpgrade(false)} onManage={()=>{setShowUpgrade(false);setNav('settings');}}/>}
       <DpaModal />
     </div>
