@@ -21,9 +21,16 @@ export const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_conten
 /** Μέγιστο μήκος τιμής utm: αρκεί για όνομα καμπάνιας, όχι για κείμενο. */
 const UTM_MAX = 100;
 
-/** Διαδρομές όπου το μονοπάτι κουβαλά μυστικό· δεν μετρώνται καθόλου. */
+/**
+ * Διαδρομές όπου το μονοπάτι κουβαλά μυστικό· δεν μετρώνται καθόλου.
+ *
+ * Το `plirosa` έλειπε όταν μπήκε το app/plirosa/[token] (#455): το κλειδί του
+ * «Πλήρωσα» θα έφευγε ολόκληρο στη μέτρηση. Κάθε νέα σελίδα με [token] ή [id]
+ * κάτω από το app/ πρέπει να ταιριάζει εδώ· το επιβάλλει ο
+ * scripts/guard-secret-path-analytics.mjs.
+ */
 export const SECRET_PATH =
-  /^\/(portal|accountant|checkin|verify|imerologio|unsubscribe|reset-password|epivevaiosi-email|auth)\//;
+  /^\/(portal|accountant|checkin|verify|imerologio|unsubscribe|reset-password|epivevaiosi-email|plirosa|auth)\//;
 
 /**
  * Η διεύθυνση για τη μέτρηση: origin, μονοπάτι και μόνο τα utm. `null` όταν η

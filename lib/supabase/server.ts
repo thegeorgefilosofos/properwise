@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./env";
+import { resilientFetch } from "./resilientFetch";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -9,6 +10,8 @@ export async function createClient() {
     SUPABASE_URL,
     SUPABASE_ANON_KEY,
     {
+      // Μία επανάληψη για GET/HEAD σε νεκρή σύνδεση keep-alive (lib/supabase/resilientFetch.ts).
+      global: { fetch: resilientFetch },
       cookies: {
         getAll() {
           return cookieStore.getAll();

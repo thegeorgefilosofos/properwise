@@ -29,7 +29,7 @@ ok('κενή τιμή utm δεν φεύγει', analyticsUrl(`${O}/?utm_source=`
 ok('τιμή πάνω από 100 χαρακτήρες δεν φεύγει', analyticsUrl(`${O}/?utm_content=${'a'.repeat(101)}&utm_source=x`) === `${O}/?utm_source=x`);
 
 // Σελίδες με μυστικό στη διαδρομή: ολόκληρο το γεγονός απορρίπτεται ακόμη και με utm.
-for (const p of ['/portal/tok', '/checkin/tok', '/verify/abc', '/unsubscribe/abc', '/accountant/tok', '/auth/callback'])
+for (const p of ['/portal/tok', '/checkin/tok', '/verify/abc', '/unsubscribe/abc', '/accountant/tok', '/auth/callback', '/plirosa/tok', '/imerologio/tok', '/epivevaiosi-email/tok'])
   ok(`${p}: δεν μετριέται`, analyticsUrl(`${O}${p}?utm_source=x`) === null);
 
 ok('διεύθυνση που δεν διαβάζεται: δεν φεύγει', analyticsUrl('not a url?token=abc') === null);

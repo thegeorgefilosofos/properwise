@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { sessionNeedsSecondStep } from "@/lib/auth/mfa";
 import { loginSearch } from "@/lib/auth/continuation";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase/env";
+import { resilientFetch } from "@/lib/supabase/resilientFetch";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -91,6 +92,10 @@ export async function proxy(request: NextRequest) {
       SUPABASE_URL,
       SUPABASE_ANON_KEY,
       {
+        // Το getUser() πιο κάτω είναι GET /auth/v1/user. Σε νεκρή σύνδεση
+        // keep-alive (UND_ERR_SOCKET, 21–27/10/2026) ξαναδοκιμάζεται μία φορά,
+        // αντί να δει ο συνδεδεμένος χρήστης τη σελίδα σαν ασύνδετος.
+        global: { fetch: resilientFetch },
         cookies: {
           getAll() {
             return request.cookies.getAll();
