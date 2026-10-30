@@ -3,7 +3,8 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Τυπώνει ανά εβδομάδα τις εγγραφές, πόσοι έβαλαν ακίνητο, την επιστροφή
 // D1/D7/D30, τους ενεργούς, τις σαρώσεις και τους νέους πληρωμένους. Από πάνω
-// γράφει τη σημερινή εικόνα. Οι αριθμοί βγαίνουν από τη βάση (metrics_weekly,
+// γράφει τη σημερινή εικόνα και από κάτω το χωνί των πέντε βημάτων
+// (metrics_funnel, lib/metrics/funnel.ts). Οι αριθμοί βγαίνουν από τη βάση (metrics_weekly,
 // metrics_snapshot)· οι ορισμοί είναι στη μετανάστευση 20261020150000 και στο
 // lib/metrics/weekly.ts.
 //
@@ -15,6 +16,7 @@
 // είναι πλήθη: κανένα αναγνωριστικό, κανένα email, κανένα ποσό.
 // ═══════════════════════════════════════════════════════════════════════════
 import { reportText } from '../lib/metrics/weekly';
+import { funnelText } from '../lib/metrics/funnel';
 import { loadMetrics, metricsUnavailable } from '../lib/metrics/source';
 import { athensToday } from '../lib/core/time';
 
@@ -31,10 +33,10 @@ if (missing) {
 }
 
 async function main() {
-  const { rows, snapshot } = await loadMetrics(weeks, env);
+  const { rows, snapshot, funnel } = await loadMetrics(weeks, env);
   const today = athensToday();
-  if (asJson) console.log(JSON.stringify({ date: today, snapshot, weeks: rows }, null, 2));
-  else console.log(reportText(rows, snapshot, today.split('-').reverse().join('/')));
+  if (asJson) console.log(JSON.stringify({ date: today, snapshot, weeks: rows, funnel }, null, 2));
+  else console.log(`${reportText(rows, snapshot, today.split('-').reverse().join('/'))}\n\n${funnelText(funnel)}`);
 }
 
 main().catch(err => { console.error(err instanceof Error ? err.message : err); process.exit(1); });

@@ -67,6 +67,13 @@ export const PRODUCT_EVENTS = {
   report_generated: 'report_generated',
   /** Ρώτησε τη βοηθό. Δείχνει ότι εμπιστεύτηκε το προϊόν με ερώτηση. */
   assistant_asked: 'assistant_asked',
+  /**
+   * Σημείωσε μια προθεσμία ως πληρωμένη: «Πλήρωσα» από την υπενθύμιση (το
+   * γράφει ο διακομιστής, lib/reminders/payRedeem.ts) ή από το Ημερολόγιο.
+   * Το τελευταίο σκαλί του χωνιού: η υπενθύμιση έφτασε και έπιασε τόπο.
+   * Φορτίο: `paidProps`, μόνο η λέξη της αφετηρίας.
+   */
+  paid_marked: 'paid_marked',
   /** Ξεκίνησε δοκιμή. */
   trial_started: 'trial_started',
   /** Πλήρωσε. Το μόνο γεγονός που μετρά στο τέλος. */
@@ -126,6 +133,15 @@ export function forecastProps(p: { months: number; gaps: number; state: Forecast
     gaps: ordinal(p.gaps),
     state: (FORECAST_STATES as readonly string[]).includes(p.state) ? p.state : 'empty',
   };
+}
+
+/** Από πού πατήθηκε το «Πλήρωσα»: από την υπενθύμιση ή μέσα από την εφαρμογή. */
+export const PAID_VIA = ['reminder', 'app'] as const;
+export type PaidVia = typeof PAID_VIA[number];
+
+/** Το φορτίο του `paid_marked`: μόνο μία λέξη του `PAID_VIA`. Κανένα ποσό, καμία προθεσμία. */
+export function paidProps(via: PaidVia): EventProps {
+  return { via: (PAID_VIA as readonly string[]).includes(via) ? via : 'app' };
 }
 
 /** Καταγράφει ένα σκαλί της υποδοχής. Όπως η `track`: δεν πετάει, καλείται με `void`. */
