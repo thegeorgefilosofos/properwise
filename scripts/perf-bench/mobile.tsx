@@ -94,11 +94,11 @@ import { OverviewTab } from '@/app/dashboard/components/OverviewTab';
 import PropertyAssistant from '@/app/dashboard/components/PropertyAssistant';
 import TabPlan from '@/app/dashboard/components/TabPlan';
 import PropertySwitcher from '@/app/dashboard/components/PropertySwitcher';
-import { T, Modal, Btn, PageTitle, InfoBanner, fieldRow } from '@/components/Theme';
+import { T, TT, Modal, Btn, PageTitle, InfoBanner, fieldRow } from '@/components/Theme';
 import { ConfirmHost } from '@/components/ConfirmDialog';
 import { createClient } from '@/lib/supabase/client';
 import MyaadeImport from '@/app/dashboard/components/MyaadeImport';
-import { Callout, DoneView, DropZone, MyaadeSteps, MYAADE_CSS } from '@/app/dashboard/components/MyaadeSteps';
+import { CenterState, DoneView, MYAADE_CSS } from '@/app/dashboard/components/MyaadeSteps';
 import { parseEnfiaAct } from '@/lib/myaade/enfiaAct';
 import { fakeAtak } from '@/lib/myaade/fixtures';
 import type { CashLine, CashPosition } from '@/lib/home/cash';
@@ -378,23 +378,19 @@ const VIEWS: Record<string, () => React.ReactElement> = {
   myaadeReview: () => <MyaadeImport userId="u1" limit={3} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}}
     initialDoc={MYAADE_ACT.status === 'ok' ? MYAADE_ACT.doc : undefined} />,
   myaadeDone: () => (
-    <Modal open onClose={() => {}} size="lg" title="Εισαγωγή από το myAADE"
-      footer={<><Btn variant="secondary">Τέλος</Btn><Btn variant="primary">Δες τις δόσεις στο ημερολόγιο</Btn></>}>
+    <Modal open onClose={() => {}} size="md" title="Εισαγωγή από το myAADE" footerInfo="Αναίρεση έως 31/10/2026 12:15"
+      footer={<><Btn variant="ghost">Αναίρεση</Btn><Btn variant="secondary">Τέλος</Btn><Btn variant="primary">Δες τις δόσεις</Btn></>}>
       <style>{MYAADE_CSS}</style>
-      <DoneView s={{ created: 1, filled: 2, enfia: { year: 2026, total: 843.2, instalments: 12 }, leftOut: 1, undoUntil: '31/10/2026 12:15' }}
-        onUpgrade={() => {}} onUndo={() => {}} busy={false} />
+      <DoneView s={{ created: 1, filled: 2, enfia: { year: 2026, total: 843.2, instalments: 12 }, leftOut: 1 }} onUpgrade={() => {}} />
     </Modal>
   ),
   myaadeError: () => (
-    <Modal open onClose={() => {}} size="lg" title="Εισαγωγή από το myAADE">
+    <Modal open onClose={() => {}} size="md" title="Εισαγωγή από το myAADE">
       <style>{MYAADE_CSS}</style>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.lg }}>
-        <MyaadeSteps />
-        <Callout tone="negative" title="Δεν το αναγνωρίσαμε" action={{ label: 'Διάλεξε άλλο αρχείο', onClick: () => {} }}>
-          Δεν το αναγνωρίσαμε ως πράξη ΕΝΦΙΑ του myAADE. Βεβαιώσου ότι είναι η πράξη ΕΝΦΙΑ από το myAADE.
-        </Callout>
-        <DropZone onFile={() => {}} disabled={false} inputId="mya-bench-pdf" />
-      </div>
+      <CenterState tone="negative" title="Δεν το αναγνωρίσαμε" info="Δεν το αναγνωρίσαμε ως πράξη ΕΝΦΙΑ του myAADE."
+        action={{ label: 'Δοκίμασε άλλο αρχείο', onClick: () => {} }}>
+        <span style={{ ...TT.body, color: 'var(--text-secondary)' }}>Χρειαζόμαστε την πράξη ΕΝΦΙΑ, όπως την αποθηκεύεις από το myAADE.</span>
+      </CenterState>
     </Modal>
   ),
   overview: () => <OverviewTab prop={OVERVIEW_PROPERTY as never} properties={[OVERVIEW_PROPERTY] as never} userId="u1" onNavigate={() => {}} tabVisible={() => true} />,

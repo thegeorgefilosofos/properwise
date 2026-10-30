@@ -20,17 +20,16 @@
 // βρέθηκαν, τσεκαρισμένα είναι όσα χωρούν και ο δρόμος για τα υπόλοιπα είναι
 // το υπάρχον παράθυρο αναβάθμισης, μέσω του `onUpgrade`.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useEffect, useId, useMemo, useState } from 'react';
-import { FileUp } from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, TT, Btn, Badge, Modal, formGrid, fe } from '@/components/Theme';
+import { T, TT, Btn, Badge, Modal, fe } from '@/components/Theme';
 import { NumberInput, CustomSelect } from './UIComponents';
 import { notify, notifyError } from '@/components/Toast';
 import { MAX_SCAN_MB } from './scanDoc';
 import * as propertiesData from '@/lib/data/properties';
 import { read } from '@/lib/data/read';
 import { grDate } from '@/lib/core/format';
-import { athensToday } from '@/lib/core/time';
+import { athensToday, athensParts } from '@/lib/core/time';
 import { plural } from '@/lib/core/greek';
 import { enfiaInstalments } from '@/lib/tools/enfiaSchedule';
 import { track, PRODUCT_EVENTS } from '@/lib/analytics/events';
@@ -38,15 +37,19 @@ import { parseEnfiaAct } from '@/lib/myaade/enfiaAct';
 import { readPdfText, PdfReadError } from '@/lib/myaade/readPdf';
 import type { KnownProperty } from '@/lib/myaade/match';
 import { freeSlots } from '@/lib/myaade/planLimit';
-import { buildDrafts, deriveReview, commitRowOf, preselectOwner, toText, SELF_OWNER, type Draft, type KnownOwner } from '@/lib/myaade/review';
+import { buildDrafts, deriveReview, commitRowOf, preselectOwner, toMoneyText, singleFlight, SELF_OWNER, type Draft, type KnownOwner } from '@/lib/myaade/review';
 import { commitImport, undoImport, lastUndoable, importsLeft, undoUntilLabel, MYAADE_DAILY_IMPORTS, IMPORT_UNDO_HOURS, type ImportBatch } from '@/lib/myaade/commit';
 import type { MyAadeImport } from '@/lib/myaade/types';
-import { Callout, DoneView, DropZone, MyaadeSteps, PropertyRow, ReadProgress, SelectAll, MYAADE_CSS, type DoneSummary } from './MyaadeSteps';
+import { CenterState, DoneView, DropZone, MyaadeSteps, Note, PropertyRow, ReadProgress, SelectAll, MYAADE_CSS, type DoneSummary } from './MyaadeSteps';
 
-const PDF_FAILURE: Record<'encrypted' | 'no_text' | 'not_pdf', { title: string; text: string }> = {
-  not_pdf: { title: 'Το αρχείο δεν είναι PDF', text: 'Διάλεξε την πράξη ΕΝΦΙΑ όπως την αποθήκευσες από το myAADE.' },
-  encrypted: { title: 'Το PDF είναι κλειδωμένο', text: 'Κατέβασέ το ξανά από το myAADE, χωρίς κωδικό.' },
-  no_text: { title: 'Είναι φωτογραφία ή σάρωση', text: 'Χρειαζόμαστε το αρχείο που δίνει το myAADE, όχι φωτογραφία του. Ακολούθησε τα βήματα από πάνω.' },
+// Κάθε αποτυχία: τίτλος μιας γραμμής στην οθόνη, η εξήγηση πίσω από το ⓘ.
+// ΜΙΑ ΠΡΟΤΑΣΗ ΣΤΗΝ ΟΘΟΝΗ, Η ΕΞΗΓΗΣΗ ΣΤΟ ⓘ.
+type Failure = { title: string; hint: string; info?: string };
+const WANT_ACT = 'Χρειαζόμαστε την πράξη ΕΝΦΙΑ, όπως την αποθηκεύεις από το myAADE.';
+const PDF_FAILURE: Record<'encrypted' | 'no_text' | 'not_pdf', Failure> = {
+  not_pdf: { title: 'Δεν είναι PDF', hint: WANT_ACT },
+  encrypted: { title: 'Το PDF είναι κλειδωμένο', hint: 'Κατέβασέ το ξανά από το myAADE, χωρίς κωδικό.' },
+  no_text: { title: 'Είναι εικόνα, όχι το PDF', hint: 'Χρειαζόμαστε το PDF του myAADE, όχι φωτογραφία ή σάρωση.' },
 };
 
 type Step = 'pick' | 'reading' | 'review' | 'saving' | 'done';
@@ -75,7 +78,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
   const [step, setStep] = useState<Step>('pick');
   const [progress, setProgress] = useState({ page: 0, pages: 0 });
   const [status, setStatus] = useState('');
-  const [failure, setFailure] = useState<{ title: string; text: string } | null>(null);
+  const [failure, setFailure] = useState<Failure | null>(null);
   const [doc, setDoc] = useState<MyAadeImport | null>(null);
   const [rows, setRows] = useState<Draft[]>([]);
   const [year, setYear] = useState('');
@@ -103,7 +106,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
       lastUndoable(supabase, userId),
     ]).then(([list, afms, cards, n, last]) => {
       if (!live) return;
-      if (list.error) { setFailure({ title: 'Τα ακίνητά σου δεν διαβάστηκαν', text: 'Κλείσε το παράθυρο και δοκίμασε ξανά.' }); setKnown([]); }
+      if (list.error) { setFailure({ title: 'Τα ακίνητά σου δεν φόρτωσαν', hint: 'Κλείσε το παράθυρο και δοκίμασε ξανά.', info: 'Χωρίς αυτά δεν ξέρουμε ποια υπάρχουν ήδη.' }); setKnown([]); }
       else setKnown(list.rows);
       setOwnerAfms([...new Set(afms.rows.map(r => (r.owner_afm ?? '').trim()).filter(Boolean))]);
       setOwners(cards.rows.map(c => ({ id: c.id, name: c.full_name, afm: c.afm })));
@@ -116,14 +119,14 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
   const slots = freeSlots(limit, known?.length ?? 0);
   // Με ιδιοκτήτες στο Πελατολόγιο, η επιλογή «δικά μου» στέκει δίπλα τους.
   const ownerChoices = owners.length > 1 ? [...owners, { id: SELF_OWNER, name: 'Δικά μου ακίνητα', afm: null }] : owners;
-  const review = deriveReview({ rows, year, total, slots, left, owners: ownerChoices, ownerId, dailyLimit: MYAADE_DAILY_IMPORTS });
+  const review = deriveReview({ rows, year, total, slots, left, owners: ownerChoices, ownerId, dailyLimit: MYAADE_DAILY_IMPORTS, currentYear: athensParts().year });
 
   // ── ΑΠΟ ΤΟ PDF ΣΤΗΝ ΠΡΟΕΠΙΣΚΟΠΗΣΗ ──────────────────────────────────────
   const applyDoc = (d: MyAadeImport) => {
     setRows(buildDrafts(d, known ?? [], slots));
     setDoc(d);
     setYear(d.year ? String(d.year) : '');
-    setTotal(toText(d.total));
+    setTotal(toMoneyText(d.total));
     const pre = preselectOwner(owners, d.afm);
     setOwnerId(pre); setOwnerFromAfm(!!pre);
     setStep('review');
@@ -136,7 +139,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
   const readFile = async (f: File | undefined) => {
     if (!f) return;
     setFailure(null);
-    if (f.size > MAX_SCAN_MB * 1024 * 1024) { setFailure({ title: 'Το αρχείο είναι πολύ μεγάλο', text: `Η πράξη του myAADE είναι λίγες σελίδες· δεχόμαστε έως ${MAX_SCAN_MB} MB.` }); return; }
+    if (f.size > MAX_SCAN_MB * 1024 * 1024) { setFailure({ title: 'Πολύ μεγάλο αρχείο', hint: `Δεχόμαστε έως ${MAX_SCAN_MB} MB.`, info: 'Η πράξη του myAADE είναι λίγες σελίδες.' }); return; }
     setStep('reading'); setProgress({ page: 0, pages: 0 }); setStatus('Ανοίγω το PDF…');
     try {
       const res = await readPdfText(f, (page, pages) => {
@@ -147,13 +150,13 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
       setStatus('Αναγνωρίζω τα στοιχεία της πράξης…');
       const parsed = parseEnfiaAct(res.lines);
       if (parsed.status === 'unrecognized') {
-        setFailure({ title: parsed.kind === 'e9' ? 'Αυτό είναι το Ε9' : 'Δεν το αναγνωρίσαμε', text: parsed.reason + (parsed.kind === 'e9' ? '' : ' Βεβαιώσου ότι είναι η πράξη ΕΝΦΙΑ από το myAADE.') });
+        setFailure({ title: parsed.kind === 'e9' ? 'Αυτό είναι το Ε9' : 'Δεν το αναγνωρίσαμε', hint: parsed.kind === 'e9' ? 'Χρειαζόμαστε την πράξη ΕΝΦΙΑ, όχι το Ε9.' : WANT_ACT, info: parsed.reason });
         setStep('pick'); return;
       }
       applyDoc(parsed.doc);
     } catch (e) {
       // Μόνο το είδος της αποτυχίας: τίποτα από το περιεχόμενο δεν καταγράφεται.
-      setFailure({ title: 'Το PDF δεν διαβάστηκε', text: e instanceof PdfReadError ? e.message : 'Κατέβασέ το ξανά από το myAADE και ξαναδοκίμασε.' });
+      setFailure({ title: 'Το PDF δεν διαβάστηκε', hint: 'Κατέβασέ το ξανά από το myAADE και ξαναδοκίμασε.', info: e instanceof PdfReadError ? e.message : undefined });
       setStep('pick');
     }
   };
@@ -162,18 +165,21 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
   const rowDomId = (key: number) => `mya-row-${key}`;
 
   /** Πηγαίνει τον χρήστη εκεί που θέλει απάντηση: το πρώτο εμπόδιο. */
+  const [openKey, setOpenKey] = useState<number | null>(null);
   const showBlocker = () => {
     const first = review.blockers[0];
     if (!first) return;
+    if (first.id === 'maybe') setOpenKey(review.chosen.find(r => r.match.status === 'maybe' && r.same === null)?.key ?? null);
     const target = first.id === 'maybe' ? rowDomId(review.chosen.find(r => r.match.status === 'maybe' && r.same === null)?.key ?? -1)
       : first.id === 'owner' ? 'mya-owner' : first.id === 'excess' ? 'mya-plan' : first.id === 'total' || first.id === 'year' ? 'mya-act' : null;
     const el = target ? document.getElementById(target) : null;
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    (el?.querySelector('button, input') as HTMLElement | null)?.focus({ preventScroll: true });
+    // Το ίδιο το πεδίο, όχι το ⓘ της ετικέτας του (που είναι το πρώτο κουμπί).
+    (el?.querySelector('input, button:not([aria-label="Επεξήγηση"])') as HTMLElement | null)?.focus({ preventScroll: true });
     setStatus(first.text);
   };
 
-  const save = async () => {
+  const doSave = async () => {
     if (step !== 'review' || !doc) return;
     if (review.blockers.length) { showBlocker(); return; }
     setStep('saving'); setStatus('Αποθηκεύονται τα ακίνητα και ο ΕΝΦΙΑ…');
@@ -200,12 +206,20 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
       created: res.created.length, filled: res.filled,
       enfia: wrote && review.writesTotal ? { year: review.yearN as number, total: review.totalN as number, instalments: enfiaInstalments(review.totalN as number, review.yearN as number).length } : null,
       leftOut: review.leftOut,
-      undoUntil: null,
     });
     setStep('done'); setStatus('Η εισαγωγή ολοκληρώθηκε.');
     await onSaved();
     loadContext();
   };
+
+  // ΕΝΑ ΠΑΤΗΜΑ, ΜΙΑ ΚΑΤΑΧΩΡΗΣΗ. Το `step` αλλάζει στην επόμενη απόδοση· δύο
+  // κλικ στο ίδιο καρέ το βλέπουν και τα δύο «review». Το `singleFlight` κρατά
+  // τη δεύτερη πάνω στην πρώτη. Η πιο πρόσφατη `doSave` ζει σε ref· η πύλη
+  // στήνεται στο πρώτο πάτημα, όχι στην απόδοση.
+  const latestSave = useRef(doSave);
+  useEffect(() => { latestSave.current = doSave; });
+  const gate = useRef<(() => Promise<void>) | null>(null);
+  const save = () => (gate.current ??= singleFlight(() => latestSave.current()))();
 
   const undo = async (batch: ImportBatch | null) => {
     if (!batch) return;
@@ -230,23 +244,31 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
   const schedule = review.writesTotal ? enfiaInstalments(review.totalN as number, review.yearN as number) : [];
   const afmClash = !!doc?.afm && ownerAfms.length > 0 && !ownerAfms.includes(doc.afm) && !ownerFromAfm;
   const reason = step === 'review' && review.blockers.length ? review.blockers[0].text : null;
+  const pickFile = () => document.getElementById(inputId)?.click();
+  // Το κουμπί λέει τι θα γίνει: πόσα νέα, πόσα υπάρχοντα.
+  const commitLabel = (() => {
+    const parts = [
+      review.newCount ? `${review.newCount} ${plural(review.newCount, 'νέο', 'νέα')}` : '',
+      review.filledCount ? `${review.filledCount} ${plural(review.filledCount, 'υπάρχον', 'υπάρχοντα')}` : '',
+    ].filter(Boolean);
+    return parts.length ? `Καταχώρηση · ${parts.join(' · ')}` : 'Καταχώρηση';
+  })();
+  const notFit = review.excess || review.leftOut;
 
   return (
-    <Modal open onClose={requestClose} size="lg" icon={<FileUp size={19} />}
-      title="Εισαγωγή από το myAADE"
-      subtitle="Τα ακίνητα και ο ΕΝΦΙΑ σου από την πράξη ΕΝΦΙΑ, χωρίς πληκτρολόγηση"
-      footerInfo={reason ? <span id={reasonId}>{reason}</span> : undefined}
+    <Modal open onClose={requestClose} size="md" title="Εισαγωγή από το myAADE"
+      footerInfo={step === 'review' && reason ? <span id={reasonId}>{reason}</span>
+        : step === 'done' && undoable ? `Αναίρεση έως ${undoUntilLabel(undoable.created_at)}` : undefined}
       footer={step === 'review' || step === 'saving' ? (
-        <>
-          <Btn variant="secondary" onClick={() => { setStep('pick'); setDoc(null); setRows([]); setStatus(''); }} disabled={busy}>Άλλο αρχείο</Btn>
-          <Btn variant="primary" onClick={() => void save()} disabled={step === 'saving'} describedBy={reason ? reasonId : undefined}>
-            {step === 'saving' ? 'Αποθήκευση…' : review.newCount ? `Πρόσθεσε ${review.newCount} ${plural(review.newCount, 'ακίνητο', 'ακίνητα')}` : 'Αποθήκευση'}
-          </Btn>
-        </>
+        <Btn variant="primary" onClick={() => void save()} disabled={step === 'saving'} describedBy={reason ? reasonId : undefined}>
+          {step === 'saving' ? 'Καταχώρηση…' : commitLabel}
+        </Btn>
       ) : step === 'done' ? (
         <>
-          <Btn variant="secondary" onClick={onClose}>Τέλος</Btn>
-          {summary?.enfia && onOpenCalendar && <Btn variant="primary" onClick={onOpenCalendar}>Δες τις δόσεις στο ημερολόγιο</Btn>}
+          {undoable && <Btn variant="ghost" onClick={() => void undo(undoable)} disabled={busy}>Αναίρεση</Btn>}
+          {summary?.enfia && onOpenCalendar
+            ? <><Btn variant="secondary" onClick={onClose}>Τέλος</Btn><Btn variant="primary" onClick={onOpenCalendar}>Δες τις δόσεις</Btn></>
+            : <Btn variant="primary" onClick={onClose}>Τέλος</Btn>}
         </>
       ) : undefined}>
       <style>{MYAADE_CSS}</style>
@@ -254,20 +276,26 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
         {/* Η πρόοδος και κάθε αλλαγή κατάστασης ανακοινώνονται· η εστίαση μένει όπου είναι. */}
         <p role="status" aria-live="polite" className="sr-only">{status}</p>
 
-        {step === 'pick' && (
+        {step === 'pick' && (failure ? (
+          <CenterState tone="negative" title={failure.title} info={failure.info} action={{ label: 'Δοκίμασε άλλο αρχείο', onClick: pickFile }}>
+            <span style={{ ...TT.body, color: 'var(--text-secondary)' }}>{failure.hint}</span>
+          </CenterState>
+        ) : left === 0 ? (
+          <CenterState tone="warning" title="Έφτασες το όριο της ημέρας" info={`Χωρούν ${MYAADE_DAILY_IMPORTS} εισαγωγές σε 24 ώρες, μετρημένες στον διακομιστή. Δοκίμασε αργότερα.`} />
+        ) : (
           <>
             {undoable && (
-              <Callout tone="info" title="Η τελευταία εισαγωγή αναιρείται ακόμη" action={{ label: 'Αναίρεση', onClick: () => void undo(undoable) }}>
-                {`Έγινε στις ${grDate(undoable.created_at)}. Η αναίρεση ισχύει έως ${undoUntilLabel(undoable.created_at)}.`}
-              </Callout>
+              <Note tone="info" info={`Σβήνει όσα ακίνητα δημιούργησε και δεν έχεις αλλάξει από τότε και επαναφέρει το προηγούμενο ποσό ΕΝΦΙΑ. Ισχύει έως ${undoUntilLabel(undoable.created_at)}.`}
+                action={{ label: 'Αναίρεση', onClick: () => void undo(undoable) }}>
+                {`Τελευταία εισαγωγή: ${grDate(undoable.created_at)}`}
+              </Note>
             )}
             <MyaadeSteps />
-            {failure && <Callout tone="negative" title={failure.title} action={{ label: 'Διάλεξε άλλο αρχείο', onClick: () => document.getElementById(inputId)?.click() }}>{failure.text}</Callout>}
-            {left === 0
-              ? <Callout tone="warning" title="Έφτασες το όριο της ημέρας">{`Χωρούν ${MYAADE_DAILY_IMPORTS} εισαγωγές σε 24\u00a0ώρες. Δοκίμασε αργότερα.`}</Callout>
-              : <DropZone onFile={f => void readFile(f)} disabled={known === null} inputId={inputId} />}
           </>
-        )}
+        ))}
+        {/* Το πεδίο του αρχείου ζει και στο σφάλμα: το «Δοκίμασε άλλο αρχείο» το ανοίγει. */}
+        {step === 'pick' && left !== 0 && (failure ? <input id={inputId} type="file" accept="application/pdf,.pdf" className="sr-only" tabIndex={-1} aria-label="Η πράξη ΕΝΦΙΑ σε PDF" onChange={e => { void readFile(e.target.files?.[0]); e.currentTarget.value = ''; }} />
+          : <DropZone onFile={f => void readFile(f)} disabled={known === null} inputId={inputId} />)}
 
         {step === 'reading' && <ReadProgress page={progress.page} pages={progress.pages} label={status} />}
 
@@ -280,46 +308,56 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
             </h3>
 
             <section id="mya-act" aria-label="Η πράξη ΕΝΦΙΑ" style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: T.sp.lg, background: 'var(--bg-elevated)', display: 'flex', flexDirection: 'column', gap: T.sp.md }}>
-              <div style={{ display: 'flex', gap: T.sp.sm, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ ...TT.body, fontWeight: 600 }}>Η πράξη ΕΝΦΙΑ</span>
+              <div style={{ display: 'flex', gap: T.sp.sm, alignItems: 'center' }}>
+                <span style={{ ...TT.bodySm, fontWeight: 600, color: 'var(--text-primary)' }}>Η πράξη ΕΝΦΙΑ</span>
                 {doc.corrective && <Badge tone="info">Διορθωτική</Badge>}
+                {/* ΤΟ ΥΠΟΣΕΛΙΔΟ ΚΡΑΤΑ ΜΙΑ ΕΝΕΡΓΕΙΑ: με δύο κουμπιά η υπόδειξη έπεφτε σε δική της γραμμή. */}
+                <span style={{ marginLeft: 'auto' }}><Btn variant="ghost" className="mya-disclose" onClick={() => { setStep('pick'); setDoc(null); setRows([]); setStatus(''); }} disabled={busy}>Άλλο αρχείο</Btn></span>
               </div>
-              <div style={formGrid(160, 220)}>
+              {/* ΕΝΑ ΠΛΕΓΜΑ, ΙΣΕΣ ΣΤΗΛΕΣ: έτος, ποσό και ιδιοκτήτης έχουν το ίδιο πλάτος. */}
+              <div className={ownerChoices.length > 1 ? 'mya-fields mya-act mya-fields-3' : 'mya-fields mya-act'}>
                 <NumberInput label="Έτος" value={year} onChange={setYear} min={2014} max={2100} />
-                <NumberInput label="Ποσό για καταβολή" suffix="€" value={total} onChange={setTotal} />
+                <NumberInput label="Ποσό για καταβολή" suffix="€" value={total} onChange={setTotal}
+                  labelInfo={`Από αυτό βγαίνουν οι δόσεις, οι υπενθυμίσεις και το «Πλήρωσα». Αντικαθιστά κάθε άλλο σύνολο ΕΝΦΙΑ του ίδιου έτους στην εφαρμογή.${doc.paymentRef ? ` Ταυτότητα οφειλής: ${doc.paymentRef} (δεν αποθηκεύεται).` : ''}`} />
+                {ownerChoices.length > 1 && (
+                  <div id="mya-owner" className="mya-span">
+                    <CustomSelect label="Ιδιοκτήτης" value={ownerId ?? ''} onChange={v => { setOwnerId(v || null); setOwnerFromAfm(false); }}
+                      labelInfo={ownerFromAfm ? 'Προτάθηκε από τον ΑΦΜ της πράξης.' : 'Σε ποιον ιδιοκτήτη του Πελατολογίου ανήκει η πράξη. Τα νέα ακίνητα μπαίνουν στην καρτέλα του.'}
+                      options={ownerChoices.map(o => ({ value: o.id, label: o.name }))} />
+                  </div>
+                )}
               </div>
-              {ownerChoices.length > 1 && (
-                <div id="mya-owner" style={formGrid(200, 360)}>
-                  <CustomSelect label="Ποιου ιδιοκτήτη είναι η πράξη;" value={ownerId ?? ''} onChange={v => { setOwnerId(v || null); setOwnerFromAfm(false); }}
-                    options={ownerChoices.map(o => ({ value: o.id, label: o.name }))} />
-                </div>
-              )}
-              {ownerFromAfm && <span style={{ ...TT.caption }}>Ο ιδιοκτήτης προτάθηκε από τον ΑΦΜ της πράξης.</span>}
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: T.sp.xs }}>
-                {schedule.length > 0 && <li style={{ ...TT.caption }}>{`${schedule.length} ${plural(schedule.length, 'δόση', 'δόσεις')}, η πρώτη έως ${grDate(schedule[0].date)}. Οι υπενθυμίσεις και το «Πλήρωσα» ενημερώνονται μόνα τους.`}</li>}
-                {doc.paymentRef && <li style={{ ...TT.caption }}>{'Ταυτότητα οφειλής '}<span style={{ fontFamily: T.font.num }}>{doc.paymentRef}</span>. Δεν αποθηκεύεται.</li>}
-                <li style={{ ...TT.caption }}>Το ποσό αντικαθιστά κάθε άλλο σύνολο ΕΝΦΙΑ του ίδιου έτους στην εφαρμογή.</li>
-              </ul>
+              <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>
+                {schedule.length > 0 ? `${schedule.length} ${plural(schedule.length, 'δόση', 'δόσεις')} · πρώτη ${grDate(schedule[0].date)}`
+                  : review.noDebt ? 'Χωρίς ποσό για πληρωμή · καμία δόση' : 'Χωρίς ποσό · καμία δόση'}
+              </span>
             </section>
 
-            {afmClash && (
-              <Callout tone="warning" title="Η πράξη είναι σε άλλο ΑΦΜ">
-                Ο ΑΦΜ της πράξης δεν είναι κανενός ιδιοκτήτη που έχεις στην εφαρμογή. Αν είναι δική σου, συνιδιοκτήτη ή πελάτη σου, συνέχισε. Αλλιώς διάλεξε άλλο αρχείο.
-              </Callout>
+            {review.otherYear && review.yearN != null && (
+              <Note tone="info" info={`Οι δόσεις μπαίνουν με τις ημερομηνίες του ${review.yearN}. Για τον φετινό ΕΝΦΙΑ, κατέβασε την πράξη του ${athensParts().year}.`}>
+                {`Η πράξη είναι του ${review.yearN}.`}
+              </Note>
             )}
-            {doc.warnings.map(w => <Callout key={w} tone="warning">{w}</Callout>)}
-            {(review.excess > 0 || review.leftOut > 0) && Number.isFinite(slots) && (
-              <Callout id="mya-plan" tone={review.excess > 0 ? 'warning' : 'info'} action={{ label: 'Δες τα πακέτα', onClick: onUpgrade }}>
-                {review.excess > 0
-                  ? review.blockers.find(b => b.id === 'excess')?.text
-                  : `${review.leftOut} ${plural(review.leftOut, 'ακίνητο μένει εκτός, γιατί το πακέτο σου δεν το χωρά', 'ακίνητα μένουν εκτός, γιατί το πακέτο σου δεν τα χωρά')}.`}
-              </Callout>
+            {afmClash && (
+              <Note tone="warning" info="Ο ΑΦΜ της πράξης δεν είναι κανενός ιδιοκτήτη που έχεις στην εφαρμογή. Αν είναι δική σου, συνιδιοκτήτη ή πελάτη σου, συνέχισε. Αλλιώς διάλεξε άλλο αρχείο.">
+                Η πράξη είναι σε άλλο ΑΦΜ.
+              </Note>
+            )}
+            {doc.warnings.length > 0 && (
+              <Note tone="warning" info={doc.warnings.join(' ')}>
+                {`Έλεγξε ${doc.warnings.length} ${plural(doc.warnings.length, 'σημείο', 'σημεία')} της πράξης.`}
+              </Note>
+            )}
+            {notFit > 0 && Number.isFinite(slots) && (
+              <Note id="mya-plan" tone={review.excess > 0 ? 'warning' : 'info'} action={{ label: 'Δες τα πακέτα', onClick: onUpgrade }}>
+                {`${notFit} ${plural(notFit, 'ακίνητο δεν χωρά', 'ακίνητα δεν χωρούν')} στο πακέτο σου.`}
+              </Note>
             )}
 
             <SelectAll total={rows.length} chosen={review.chosen.length} onAll={on => setRows(rs => rs.map(r => ({ ...r, include: on })))} />
             <ul aria-label="Ακίνητα της πράξης" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: T.sp.sm }}>
               {rows.map((r, i) => (
-                <PropertyRow key={r.key} row={r} index={i} overPlan={r.overPlan} known={known ?? []} rowId={rowDomId(r.key)}
+                <PropertyRow key={r.key} row={r} index={i} known={known ?? []} rowId={rowDomId(r.key)} forceOpen={openKey === r.key}
                   onToggle={() => setRows(rs => rs.map(x => (x.key === r.key ? { ...x, include: !x.include } : x)))}
                   onPatch={p => patch(r.key, p)} />
               ))}
@@ -327,9 +365,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
           </>
         )}
 
-        {/* Η ΠΡΟΘΕΣΜΙΑ ΤΗΣ ΑΝΑΙΡΕΣΗΣ ΑΠΟ ΤΗΝ ΚΑΤΑΓΡΑΦΗ ΤΗΣ ΒΑΣΗΣ, όχι από το ρολόι του περιηγητή. */}
-        {step === 'done' && summary && <DoneView s={{ ...summary, undoUntil: undoable ? undoUntilLabel(undoable.created_at) : null }}
-          onUpgrade={onUpgrade} onUndo={() => void undo(undoable)} busy={busy} />}
+        {step === 'done' && summary && <DoneView s={summary} onUpgrade={onUpgrade} />}
       </div>
     </Modal>
   );

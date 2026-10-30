@@ -36,9 +36,13 @@ import { isValidRf, rfCompact } from './rf';
 import type { MyAadeImport, MyAadeParse, MyAadeProperty } from './types';
 
 // ── Μορφές τιμών ─────────────────────────────────────────────────────────
-/** Ποσό με ελληνική υποδιαστολή ΚΑΙ δύο δεκαδικά: «1.234,56». Χωρίς δεκαδικά δεν είναι ποσό εδώ. */
-const RE_MONEY = /^-?(?:\d{1,3}(?:\.\d{3})+|\d+),\d{2}$/;
-const RE_NUMBER = /^\d+(?:[.,]\d{1,2})?$/;
+/**
+ * Ποσό με ελληνική υποδιαστολή: «1.234,56», «1 234,56», «1234,5». ΧΩΡΙΣ
+ * δεκαδικά δεν είναι ποσό εδώ: ένα σκέτο «2026» ή «1.234» είναι έτος ή κωδικός
+ * πιο συχνά απ' ό,τι ποσό· ένα λάθος ποσό κοστίζει περισσότερο από ένα κενό.
+ */
+const RE_MONEY = /^-?(?:\d{1,3}(?:\.\d{3})+|\d+),\d{1,2}$/;
+const RE_NUMBER = /^(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d{1,2})?$|^\d+\.\d{1,2}$/;
 const RE_DATE = /^\d{1,2}[/.-]\d{1,2}[/.-]\d{4}$/;
 const RE_ATAK = new RegExp(`(?<!\\d)\\d{${ATAK_DIGITS}}(?!\\d)`);
 const RE_AFM = /(?<!\d)\d{9}(?!\d)/g;
@@ -47,8 +51,15 @@ const clean = (s: string) => s.replace(/€/g, '').replace(/\s+/g, ' ').trim();
 const cellsOf = (line: string) => line.split('\t').map(c => c.trim()).filter(Boolean);
 
 const asMoney = (s: string): number | null => {
-  const t = clean(s).replace(/\s/g, '');
-  return RE_MONEY.test(t) ? parseAmount(t) : null;
+  // Τα κενά (και τα αδιάσπαστα) είναι διαχωριστικά χιλιάδων· το «€» πριν ή μετά
+  // φεύγει στο `clean`. Οι παρενθέσεις είναι αρνητικό, όπως στις τράπεζες.
+  let t = clean(s).replace(/\s/g, '');
+  const paren = /^\((.*)\)$/.exec(t);
+  if (paren) t = `-${paren[1]}`;
+  if (!RE_MONEY.test(t)) return null;
+  const n = parseAmount(t);
+  // Σε λεπτά: ό,τι διαβάζεται ως 843,2 γράφεται 843,20, ποτέ 843,19999.
+  return n === null ? null : Math.round(n * 100) / 100;
 };
 const asNumber = (s: string): number | null => {
   const t = clean(s).replace(/%$/, '').trim();
@@ -246,13 +257,15 @@ export function parseEnfiaAct(lines: readonly string[]): MyAadeParse {
     warnings.push(`Ο συνολικός φόρος είναι ${fe(gross.value)} και το ποσό για καταβολή ${fe(payable.value)}. Οι δόσεις βγαίνουν από το ποσό για καταβολή.`);
   }
   if (total == null && !payable.conflict.length && !gross.conflict.length) warnings.push('Δεν βρέθηκε το ποσό του ΕΝΦΙΑ. Γράψε το σύνολο της πράξης.');
+  // ΜΗΔΕΝ Ή ΠΙΣΤΩΣΗ ΔΕΝ ΕΙΝΑΙ ΟΦΕΙΛΗ. Τα ακίνητα περνούν, δόσεις δεν γράφονται.
+  if (total != null && total <= 0) warnings.push('Η πράξη δεν έχει ποσό για πληρωμή. Τα ακίνητα περνούν χωρίς δόσεις.');
 
   const main = headerValue<number>(lines, HEADER_LABELS.mainTax, 'money');
   const supp = headerValue<number>(lines, HEADER_LABELS.supplementaryTax, 'money');
   const count = headerValue<number>(lines, HEADER_LABELS.instalmentCount, 'int');
   const each = headerValue<number>(lines, HEADER_LABELS.instalmentAmount, 'money');
   const printedInstalments = count.value != null || each.value != null ? { count: count.value, amount: each.value } : null;
-  if (total != null && count.value != null && count.value !== enfiaInstalmentCount(total)) {
+  if (total != null && total > 0 && count.value != null && count.value !== enfiaInstalmentCount(total)) {
     warnings.push(`Η πράξη γράφει ${count.value} δόσεις· για ${fe(total)} η εφαρμογή βγάζει ${enfiaInstalmentCount(total)}. Οι υπενθυμίσεις ακολουθούν την εφαρμογή· έλεγξε τον «Λογαριασμό μου» στο myAADE.`);
   }
 

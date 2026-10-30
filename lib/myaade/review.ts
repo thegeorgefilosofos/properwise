@@ -9,7 +9,7 @@
 // το λέει σε μία πρόταση με τον αριθμό μέσα. Η οθόνη δείχνει την πρώτη κάτω από
 // το κουμπί και πηγαίνει τον χρήστη στο σημείο αν πατήσει.
 // ═══════════════════════════════════════════════════════════════════════════
-import { plural } from '@/lib/core/greek';
+import { plural, parseAmount } from '@/lib/core/greek';
 import { atakDigits, isAtak, ATAK_DIGITS } from '@/lib/property/atak';
 import { matchProperty, type KnownProperty, type MatchResult } from './match';
 import { overLimit, excessOf } from './planLimit';
@@ -43,13 +43,35 @@ export interface KnownOwner { id: string; name: string; afm: string | null }
 /** Η επιλογή «δικά μου», δίπλα στις καρτέλες ιδιοκτητών. */
 export const SELF_OWNER = 'self';
 
+/** Ποσό για πεδίο: πάντα δύο δεκαδικά με κόμμα, από ακέραια λεπτά («843,20»). */
+export const toMoneyText = (n: number | null | undefined): string =>
+  (n == null ? '' : (Math.round(n * 100) / 100).toFixed(2).replace('.', ','));
+/** Αριθμός για πεδίο χωρίς μονάδα (τ.μ., ποσοστό): όσα δεκαδικά έχει, με κόμμα. */
 export const toText = (n: number | null | undefined): string => (n == null ? '' : String(n).replace('.', ','));
+/**
+ * Ό,τι γράφει ο χρήστης, με τον ΙΔΙΟ αναγνώστη που διαβάζει η υπόλοιπη
+ * εφαρμογή (`parseAmount`): «1.234,56», «1 234,56», «843,2», «€ 12».
+ */
 export const toNumber = (s: string): number | null => {
-  const t = s.trim().replace(/\./g, '').replace(',', '.');
-  if (!t) return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
+  const n = parseAmount(s.replace(/\s/g, ''));
+  return n === null || !Number.isFinite(n) ? null : n;
 };
+/** Σε ακέραια λεπτά και πίσω: η μόνη στρογγυλοποίηση ποσού της εισαγωγής. */
+export const toCents = (n: number): number => Math.round(n * 100);
+
+/**
+ * Μία εκτέλεση τη φορά: δεύτερο πάτημα όσο τρέχει η πρώτη επιστρέφει την ίδια
+ * υπόσχεση, δεν ξεκινά δεύτερη καταχώρηση. Η κατάσταση του React ενημερώνεται
+ * στην επόμενη απόδοση· δύο κλικ στο ίδιο καρέ τη βλέπουν και τα δύο «ελεύθερη».
+ */
+export function singleFlight<T>(fn: () => Promise<T>): () => Promise<T> {
+  let running: Promise<T> | null = null;
+  return () => {
+    if (running) return running;
+    running = fn().finally(() => { running = null; });
+    return running;
+  };
+}
 
 /** Πρόταση ονόματος για νέο ακίνητο: είδος, διεύθυνση, όροφος. */
 export const suggestName = (kind: string | null, address: string | null, floor: string | null, i: number): string =>
@@ -87,6 +109,8 @@ export interface ReviewInput {
   owners: readonly KnownOwner[];
   ownerId: string | null;
   dailyLimit: number;
+  /** Το τρέχον έτος, για την ένδειξη «πράξη άλλου έτους». */
+  currentYear: number;
 }
 
 export interface ReviewState {
@@ -102,7 +126,11 @@ export interface ReviewState {
   /** Θα γραφτεί σύνολο ΕΝΦΙΑ: υπάρχει ποσό και σωστό έτος. */
   writesTotal: boolean;
   needsOwner: boolean;
-  /** Γιατί δεν γίνεται ακόμη η αποθήκευση, με σειρά προτεραιότητας. Κενό = γίνεται. */
+  /** Ποσό μηδέν ή πιστωτικό: δεν είναι οφειλή, δεν γράφονται δόσεις. */
+  noDebt: boolean;
+  /** Η πράξη είναι άλλου έτους από το τρέχον (π.χ. περσινή). */
+  otherYear: boolean;
+  /** Γιατί δεν γίνεται ακόμη η αποθήκευση, με σειρά προτεραιότητας. Κενό = γίνεται. Σύντομα: χωρούν σε μία γραμμή. */
   blockers: { id: 'limit' | 'owner' | 'none' | 'maybe' | 'excess' | 'atak' | 'name' | 'total' | 'year'; text: string }[];
 }
 
@@ -113,24 +141,29 @@ export function deriveReview(i: ReviewInput): ReviewState {
   const unanswered = chosen.filter(r => r.match.status === 'maybe' && r.same === null).length;
   const excess = excessOf(newCount, i.slots);
   const leftOut = i.rows.filter(r => !r.include && r.overPlan).length;
-  const totalN = toNumber(i.total);
+  const parsed = i.total.trim() === '' ? null : toNumber(i.total);
+  const totalN = parsed === null ? null : toCents(parsed) / 100;
   const y = Number(i.year);
   const yearN = Number.isInteger(y) && y >= 2014 && y <= 2100 ? y : null;
-  const totalBad = i.total.trim() !== '' && !(totalN && totalN > 0);
+  // Κάτι γράφτηκε και δεν διαβάζεται ως ποσό: εμποδίζει. Μηδέν ή αρνητικό ΔΙΑΒΑΖΕΤΑΙ
+  // και απλώς δεν γράφει δόσεις: τα ακίνητα της πράξης περνούν κανονικά.
+  const totalBad = i.total.trim() !== '' && parsed === null;
+  const noDebt = totalN !== null && totalN <= 0;
   const needsOwner = i.owners.length > 1;
   const b: ReviewState['blockers'] = [];
-  if (i.left === 0) b.push({ id: 'limit', text: `Έφτασες τις ${i.dailyLimit} εισαγωγές των τελευταίων 24 ωρών. Δοκίμασε αργότερα.` });
-  if (needsOwner && !i.ownerId) b.push({ id: 'owner', text: 'Διάλεξε ποιου ιδιοκτήτη είναι η πράξη.' });
+  if (i.left === 0) b.push({ id: 'limit', text: `Έφτασες τις ${i.dailyLimit} εισαγωγές της ημέρας.` });
+  if (needsOwner && !i.ownerId) b.push({ id: 'owner', text: 'Διάλεξε ιδιοκτήτη.' });
   if (!chosen.length) b.push({ id: 'none', text: 'Διάλεξε τουλάχιστον ένα ακίνητο.' });
-  if (unanswered) b.push({ id: 'maybe', text: `Πες μας αν ${plural(unanswered, 'το ακίνητο με την ετικέτα «Ίσως υπάρχει» είναι', `τα ${unanswered} ακίνητα με την ετικέτα «Ίσως υπάρχει» είναι`)} ήδη στην εφαρμογή.` });
-  if (excess) b.push({ id: 'excess', text: `Το πακέτο σου χωρά ${i.slots === 0 ? 'κανένα νέο ακίνητο' : `ακόμη ${i.slots} ${plural(i.slots, 'νέο ακίνητο', 'νέα ακίνητα')}`}. Ξετσέκαρε ${excess} ή δες τα πακέτα.` });
-  if (chosen.some(r => r.atak.trim() !== '' && !isAtak(r.atak))) b.push({ id: 'atak', text: `Ένας ΑΤΑΚ δεν έχει ${ATAK_DIGITS} ψηφία. Διόρθωσέ τον ή άφησέ τον κενό.` });
-  if (chosen.some(r => isNew(r) && !r.name.trim())) b.push({ id: 'name', text: 'Ένα νέο ακίνητο δεν έχει όνομα.' });
-  if (totalBad) b.push({ id: 'total', text: 'Το ποσό για καταβολή δεν διαβάζεται. Γράψε το όπως το δείχνει η πράξη, με κόμμα στα δεκαδικά.' });
-  if (totalN && totalN > 0 && yearN === null) b.push({ id: 'year', text: 'Γράψε το έτος της πράξης.' });
+  if (unanswered) b.push({ id: 'maybe', text: `Απάντησε για ${unanswered} ${plural(unanswered, 'ακίνητο', 'ακίνητα')}: «Ίσως υπάρχει».` });
+  if (excess) b.push({ id: 'excess', text: `Ξετσέκαρε ${excess} ή δες τα πακέτα.` });
+  if (chosen.some(r => r.atak.trim() !== '' && !isAtak(r.atak))) b.push({ id: 'atak', text: `Ο ΑΤΑΚ θέλει ${ATAK_DIGITS} ψηφία.` });
+  if (chosen.some(r => isNew(r) && !r.name.trim())) b.push({ id: 'name', text: 'Δώσε όνομα στο νέο ακίνητο.' });
+  if (totalBad) b.push({ id: 'total', text: 'Διόρθωσε το ποσό.' });
+  if (totalN !== null && totalN > 0 && yearN === null) b.push({ id: 'year', text: 'Συμπλήρωσε το έτος.' });
   return {
     chosen, newCount, filledCount: chosen.filter(r => existingIdOf(r)).length, unanswered, excess, leftOut,
-    yearN, totalN: totalN && totalN > 0 ? totalN : null, writesTotal: !!(totalN && totalN > 0 && yearN), needsOwner, blockers: b,
+    yearN, totalN, writesTotal: totalN !== null && totalN > 0 && yearN !== null, needsOwner,
+    noDebt, otherYear: yearN !== null && yearN !== i.currentYear, blockers: b,
   };
 }
 

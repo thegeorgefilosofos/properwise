@@ -14,8 +14,10 @@ import { isValidRf, rfCompact } from './rf';
 import { matchProperty, addressKey, fillOnlyEmpty, type KnownProperty } from './match';
 import { freeSlots, overLimit, excessOf } from './planLimit';
 import { planStatement } from './statement';
-import { canUndoImport, newPropertyRow, statementDocRow, undoUntilLabel, MYAADE_DAILY_IMPORTS, IMPORT_UNDO_HOURS } from './commit';
-import { buildDrafts, deriveReview, preselectOwner, commitRowOf, SELF_OWNER } from './review';
+import { canUndoImport, newPropertyRow, statementDocRow, undoUntilLabel, commitImport, undoImport, MYAADE_DAILY_IMPORTS, IMPORT_UNDO_HOURS } from './commit';
+import { makeFakeDb, type DbCall } from '@/scripts/e2e-money/fakeDb';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { buildDrafts, deriveReview, preselectOwner, commitRowOf, singleFlight, toNumber, toMoneyText, SELF_OWNER } from './review';
 import PDFDocument from 'pdfkit';
 import { fakeAtak } from './fixtures';
 
@@ -328,7 +330,7 @@ async function run() {
     const rows = buildDrafts(doc, known, 1);
     ok('καταστάσεις: υπάρχει, ίσως, νέο, εκτός πακέτου',
       JSON.stringify(rows.map(r => [r.match.status, r.include, r.overPlan])) === JSON.stringify([['exists', true, false], ['maybe', true, false], ['new', true, false], ['new', false, true]]), rows.map(r => [r.match.status, r.include, r.overPlan]));
-    const base = { rows, year: '2026', total: '843,20', slots: 1, left: 5, owners: [], ownerId: null, dailyLimit: MYAADE_DAILY_IMPORTS };
+    const base = { rows, year: '2026', total: '843,20', slots: 1, left: 5, owners: [], ownerId: null, dailyLimit: MYAADE_DAILY_IMPORTS, currentYear: 2026 };
     const r1 = deriveReview(base);
     ok('ανοιχτό «Ίσως υπάρχει»: εμπόδιο με λόγο σε λέξεις', r1.blockers[0]?.id === 'maybe' && r1.blockers[0].text.includes('Ίσως υπάρχει'), r1.blockers);
     const other = rows.map(r => (r.match.status === 'maybe' ? { ...r, same: false } : r));
@@ -353,6 +355,110 @@ async function run() {
 
   // ── 13. Η προθεσμία της αναίρεσης, σε ώρα Ελλάδας ───────────────────
   ok('αναίρεση έως: dd/mm/yyyy HH:MM, 24 ώρες μετά, ώρα Ελλάδας', undoUntilLabel('2026-10-30T10:15:00Z') === '31/10/2026 12:15', undoUntilLabel('2026-10-30T10:15:00Z'));
+
+  // ── 14. ΑΚΡΙΒΕΙΑ: ελληνικοί αριθμοί, μηδέν, πίστωση, ποσοστά, σελίδες ──
+  {
+    const totalOf = (payable: string) => okDoc(parseEnfiaAct(enfiaActLines({ payable, gross: null, properties: [fakeProperty(1, '')] })))?.total;
+    const cases: [string, number | null][] = [
+      ['1.234,56', 1234.56], ['1 234,56', 1234.56], ['1 234,56', 1234.56], ['1234,5', 1234.5],
+      ['€ 843,20', 843.2], ['843,20 €', 843.2], ['843,20€', 843.2], ['1.234.567,89', 1234567.89],
+      ['1.234', null], ['2026', null],
+    ];
+    for (const [raw, want] of cases) ok(`ποσό «${raw}» → ${want}`, totalOf(raw) === want, totalOf(raw));
+    ok('το πεδίο διαβάζει τις ίδιες γραφές', toNumber('1.234,56') === 1234.56 && toNumber('1 234,56') === 1234.56 && toNumber('843,2') === 843.2 && toNumber('abc') === null);
+    ok('το ποσό στο πεδίο έχει πάντα δύο δεκαδικά, από λεπτά', toMoneyText(843.2) === '843,20' && toMoneyText(0.1 + 0.2) === '0,30' && toMoneyText(1234.565) === '1234,57');
+
+    const zero = okDoc(parseEnfiaAct(enfiaActLines({ payable: '0,00', gross: null })));
+    ok('ποσό 0: διαβάζεται ως 0, με ένδειξη ότι δεν είναι οφειλή', zero?.total === 0 && !!zero?.warnings.some(w => w.includes('δεν έχει ποσό για πληρωμή')), zero?.warnings);
+    for (const raw of ['-12,00', '(12,00)']) {
+      const neg = okDoc(parseEnfiaAct(enfiaActLines({ payable: raw, gross: null })));
+      ok(`πίστωση «${raw}»: αρνητικό, όχι οφειλή`, neg?.total === -12 && !!neg?.warnings.some(w => w.includes('δεν έχει ποσό για πληρωμή')), neg?.total);
+    }
+    const doc = okDoc(parseEnfiaAct(enfiaActLines()))!;
+    const rows0 = buildDrafts(doc, [], Infinity);
+    const base0 = { rows: rows0, year: '2026', slots: Infinity, left: 5, owners: [], ownerId: null, dailyLimit: MYAADE_DAILY_IMPORTS, currentYear: 2026 };
+    for (const total of ['0,00', '-12,00']) {
+      const r = deriveReview({ ...base0, total });
+      ok(`«${total}»: τα ακίνητα περνούν, δόσεις δεν γράφονται, κανένα εμπόδιο`, !r.writesTotal && r.noDebt && !r.blockers.length && r.newCount === 2, r);
+    }
+
+    const third = okDoc(parseEnfiaAct(enfiaActLines({ properties: [fakeProperty(1, '281,07', { pct: '33,33' })], payable: '281,07', gross: '281,07' })))!;
+    ok('συνιδιοκτησία 33,33%', third.properties[0].ownershipPct === 33.33, third.properties[0]);
+    ok('και φτάνει έτσι στη βάση', newPropertyRow('u', commitRowOf(buildDrafts(third, [], Infinity)[0])).ownership === 33.33);
+
+    // Πολυσέλιδη: ο πίνακας κόβεται στη μέση, η κεφαλίδα ΔΕΝ επαναλαμβάνεται,
+    // υπάρχει υποσέλιδο σελίδας και η τελευταία γραμμή της 1ης σελίδας ξανατυπώνεται στη 2η.
+    const props = [1, 2, 3, 4, 5].map(n => fakeProperty(n, '100,00'));
+    const lines = enfiaActLines({ properties: props, payable: '500,00', gross: '500,00' });
+    const at = lines.findIndex(l => l.startsWith(fakeAtak(3)));
+    const split = [...lines.slice(0, at + 1), 'Σελίδα 1 από 2', lines[at], ...lines.slice(at + 1)];
+    const res = extractPdfText(await enfiaActPdf(split, { pagesOf: at + 2 }));
+    const multi = okDoc(parseEnfiaAct(res.lines));
+    ok('σελίδα που κόβει τον πίνακα: πέντε ακίνητα, όλα κατά στήλη', res.pages === 2 && multi?.properties.length === 5 && multi.properties.every(p => !p.check), { pages: res.pages, n: multi?.properties.length });
+    ok('ο ίδιος ΑΤΑΚ στις δύο σελίδες: μία φορά, με ένδειξη', !!multi?.warnings.some(w => w.includes(fakeAtak(3)) && w.includes('δύο φορές')), multi?.warnings);
+    ok('το άθροισμα βγαίνει (το διπλό δεν μετρήθηκε)', !multi?.warnings.some(w => w.includes('αθροίζουν')), multi?.warnings);
+
+    const old = okDoc(parseEnfiaAct(enfiaActLines({ year: 2025 })))!;
+    const rOld = deriveReview({ ...base0, rows: buildDrafts(old, [], Infinity), year: String(old.year), total: '843,20' });
+    ok('πράξη άλλου έτους: ένδειξη, το σύνολο γράφεται στο δικό της έτος', rOld.otherYear && rOld.writesTotal && rOld.yearN === 2025, rOld);
+    ok('πράξη του τρέχοντος έτους: καμία ένδειξη', !deriveReview({ ...base0, total: '843,20' }).otherYear);
+  }
+
+  // ── 15. ΚΑΤΑΧΩΡΗΣΗ: δεύτερη φορά, όριο ημέρας, διπλό πάτημα, αναίρεση ─
+  {
+    const doc = okDoc(parseEnfiaAct(enfiaActLines()))!;
+    const known: KnownProperty[] = doc.properties.map((p, i) => ({ id: `p${i}`, name: `Ακίνητο ${i}`, address: p.address, atak: p.atak, sqm: p.sqm, ownership: 100, floor: p.floor }));
+    const writes = (calls: DbCall[], table: string, op: DbCall['op']) => calls.filter(c => c.table === table && c.op === op);
+
+    // Η ΙΔΙΑ ΠΡΑΞΗ ΔΕΥΤΕΡΗ ΦΟΡΑ: όλα «Υπάρχει ήδη», το σύνολο ήδη ίδιο.
+    const again = buildDrafts(doc, known, Infinity);
+    ok('δεύτερη εισαγωγή: όλα υπάρχουν ήδη, κανένα νέο', again.every(r => r.match.status === 'exists') && deriveReview({ rows: again, year: '2026', total: '843,20', slots: Infinity, left: 5, owners: [], ownerId: null, dailyLimit: 10, currentYear: 2026 }).newCount === 0);
+    const second = makeFakeDb(c => {
+      if (c.table === 'myaade_imports' && c.op === 'insert') return { data: { id: 'b2' }, error: null };
+      if (c.table === 'user_properties' && c.op === 'select') return { data: known.map(k => ({ ...k, client_id: null })), error: null };
+      if (c.table === 'property_documents' && c.op === 'select') return { data: [{ id: 'd1', property_id: 'p0', amount: 843.2 }], error: null };
+      return undefined;
+    });
+    const out2 = await commitImport(second.db as unknown as SupabaseClient, {
+      userId: 'u1', year: 2026, total: 843.2, foundCount: 2, rows: again.map(commitRowOf), known, docDate: '2026-03-15',
+    });
+    ok('δεύτερη εισαγωγή: κανένα νέο ακίνητο, καμία νέα γραμμή ΕΝΦΙΑ, κανένα ποσό δεν αλλάζει',
+      out2.ok && !out2.created.length && !writes(second.calls, 'user_properties', 'insert').length
+      && !writes(second.calls, 'property_documents', 'insert').length && !writes(second.calls, 'property_documents', 'update').length
+      && out2.statement === 'same', { out2, docs: second.calls.filter(c => c.table === 'property_documents').map(c => c.op) });
+
+    // Η 11η ΕΙΣΑΓΩΓΗ: η βάση απαντά 54000 και δεν γράφεται τίποτα άλλο.
+    const limit = makeFakeDb(c => (c.table === 'myaade_imports' && c.op === 'insert'
+      ? { data: null, error: { code: '54000', message: 'MYAADE_DAILY_LIMIT: έως 10 εισαγωγές σε 24 ώρες' } } : undefined));
+    const out3 = await commitImport(limit.db as unknown as SupabaseClient, {
+      userId: 'u1', year: 2026, total: 843.2, foundCount: 2, rows: buildDrafts(doc, [], Infinity).map(commitRowOf), known: [], docDate: '2026-03-15',
+    });
+    ok('11η εισαγωγή: «daily_limit», καμία άλλη εγγραφή', !out3.ok && out3.reason === 'daily_limit' && limit.calls.length === 1, { out3, calls: limit.calls.length });
+    const blocked = deriveReview({ rows: buildDrafts(doc, [], Infinity), year: '2026', total: '843,20', slots: Infinity, left: 0, owners: [], ownerId: null, dailyLimit: MYAADE_DAILY_IMPORTS, currentYear: 2026 });
+    ok('και η οθόνη το λέει σε μία γραμμή', blocked.blockers[0]?.id === 'limit' && blocked.blockers[0].text === `Έφτασες τις ${MYAADE_DAILY_IMPORTS} εισαγωγές της ημέρας.`, blocked.blockers[0]);
+
+    // ΔΙΠΛΟ ΠΑΤΗΜΑ: δύο κλήσεις στο ίδιο καρέ, μία καταχώρηση.
+    let runs = 0;
+    let release: () => void = () => {};
+    const once = singleFlight(() => { runs++; return new Promise<void>(r => { release = r; }); });
+    const a = once(), b = once();
+    ok('διπλό πάτημα: η δεύτερη κλήση παίρνει την ίδια υπόσχεση', a === b && runs === 1);
+    release(); await a;
+    void once(); release();
+    ok('μετά το τέλος, νέο πάτημα τρέχει ξανά', runs === 2);
+
+    // ΑΝΑΙΡΕΣΗ ΜΕΤΑ ΑΠΟ 24 ΩΡΕΣ: ούτε κλήση στη βάση.
+    const now = new Date('2026-10-30T12:00:00Z');
+    const lateDb = makeFakeDb();
+    const batch = { id: 'b1', created_at: new Date(now.getTime() - 25 * 3_600_000).toISOString(), undone_at: null, tax_year: 2026, created_property_ids: ['p9'], document_id: 'd9', replaced: [] };
+    const late = await undoImport(lateDb.db as unknown as SupabaseClient, 'u1', batch, now);
+    ok('αναίρεση μετά από 24 ώρες: «expired», καμία κλήση', !late.ok && late.reason === 'expired' && lateDb.calls.length === 0, late);
+    // Το ρολόι της συσκευής λέει «μέσα», η βάση λέει «όχι» (0 γραμμές): τίποτα δεν σβήνεται.
+    const serverDb = makeFakeDb(c => (c.table === 'myaade_imports' && c.op === 'update' ? { data: [], error: null } : undefined));
+    const srv = await undoImport(serverDb.db as unknown as SupabaseClient, 'u1', { ...batch, created_at: new Date(now.getTime() - 3_600_000).toISOString() }, now);
+    ok('η βάση αρνείται: «expired», κανένα ακίνητο και κανένα έγγραφο δεν σβήνεται',
+      !srv.ok && srv.reason === 'expired' && !serverDb.calls.some(c => c.op === 'delete'), { srv, ops: serverDb.calls.map(c => `${c.table}:${c.op}`) });
+  }
 
   // ── 11. Τα fixtures είναι ψεύτικα ───────────────────────────────────
   ok('το ΑΦΜ των fixtures δεν περνά τον έλεγχο', FAKE_AFM.length === 9 && !okDoc(parseEnfiaAct(enfiaActLines()))?.afm);
