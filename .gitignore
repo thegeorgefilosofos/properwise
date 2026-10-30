@@ -92,3 +92,6 @@ docs/marketing/shorts/out/**/*
 !docs/marketing/shorts/out/**/
 !docs/marketing/shorts/out/*/texts.md
 !docs/marketing/shorts/out/*/cover.jpg
+
+# Τα πραγματικά PDF του myAADE, μόνο τοπικά (lib/myaade, guard-fixture-identities)
+local-samples/

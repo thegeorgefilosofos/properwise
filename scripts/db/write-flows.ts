@@ -38,6 +38,11 @@ import * as expenses from '@/lib/data/expenses';
 import * as tenants from '@/lib/data/tenants';
 import * as bills from '@/lib/data/bills';
 import * as rent from '@/lib/data/rent';
+import * as documents from '@/lib/data/documents';
+import { newPropertyRow, statementDocRow } from '@/lib/myaade/commit';
+import { matchProperty } from '@/lib/myaade/match';
+import { planStatement } from '@/lib/myaade/statement';
+import { fakeAtak } from '@/lib/myaade/fixtures';
 import { instalmentRows } from '@/app/dashboard/components/rentInstalments';
 import type { Tenant } from '@/app/dashboard/components/TabTenantTypes';
 
@@ -48,7 +53,7 @@ interface Write {
   /** Ποιος είναι συνδεδεμένος όταν στέλνεται η εγγραφή. */
   uid: string;
   table: string;
-  op: 'insert' | 'upsert' | 'update';
+  op: 'insert' | 'upsert' | 'update' | 'delete';
   rows: Row[];
   onConflict?: string;
   ignoreDuplicates?: boolean;
@@ -65,8 +70,16 @@ const BILL = '7e570000-0000-4000-8000-0000000000a3';
 /** Ο οργανισμός του Α και το μέλος του με δικαίωμα επεξεργασίας. */
 const ORG = '7e570000-0000-4000-8000-0000000000a4';
 export const M = '7e570000-0000-4000-8000-00000000000c';
+/** Η εισαγωγή από το myAADE: δύο καταγραφές, ένα ακίνητο, μία γραμμή «ΕΝΦΙΑ 2026». */
+const IMP = '7e570000-0000-4000-8000-0000000000a5';
+const IMP2 = '7e570000-0000-4000-8000-0000000000a6';
+const IP1 = '7e570000-0000-4000-8000-0000000000a7';
+const IDOC = '7e570000-0000-4000-8000-0000000000a8';
+const IATAK = fakeAtak(1);
 
 const writes: Write[] = [];
+/** Σήμα για το `.is(στήλη, null)`: γίνεται `στήλη is null`, όχι `= null`. */
+const IS_NULL = Symbol('is null');
 let current: Pick<Write, 'label' | 'expect' | 'uid'> = { label: '', expect: 'ok', uid: A };
 
 /** Πελάτης που δεν στέλνει τίποτα: γράφει τι θα έστελνε. */
@@ -81,6 +94,9 @@ function recorder(): SupabaseClient {
         w.op = 'upsert'; w.rows = arr(x); w.onConflict = o.onConflict; w.ignoreDuplicates = !!o.ignoreDuplicates; writes.push(w); return q;
       },
       update(x: Row) { w.op = 'update'; w.rows = [x]; writes.push(w); return q; },
+      delete() { w.op = 'delete'; w.rows = [{}]; writes.push(w); return q; },
+      in(k: string, v: unknown[]) { if (v.length !== 1) throw new Error('το write-flows γράφει ένα `in` μόνο με μία τιμή'); w.where.push([k, v[0]]); return q; },
+      is(k: string, v: unknown) { if (v !== null) throw new Error('το write-flows ξέρει μόνο `is null`'); w.where.push([k, IS_NULL]); return q; },
       eq(k: string, v: unknown) { w.where.push([k, v]); return q; },
       select() { return q; },
       single() { return Promise.resolve(result()); },
@@ -159,6 +175,41 @@ async function flows() {
   // ιδιοκτήτη μου, με δικαίωμα επεξεργασίας». Και τα δύο σκέλη ελέγχονται εδώ.
   await flow('μέλος του οργανισμού διορθώνει λογαριασμό του ιδιοκτήτη', () => bills.update(db, BILL, { amount: 90 }), 'ok', M);
   await flow('ΞΕΝΟΣ: αλλαγή ποσού σε λογαριασμό του Α', () => bills.update(db, BILL, { amount: 1 }), 'deny', B);
+
+  // ── Η ΕΙΣΑΓΩΓΗ ΑΠΟ ΤΟ myAADE (lib/myaade/commit.ts) ────────────────────
+  // Οι εγγραφές με τη σειρά του `commitImport`. Οι αποφάσεις (υπάρχει ήδη; τι
+  // αντικαθίσταται;) βγαίνουν από τις ίδιες καθαρές συναρτήσεις της οθόνης.
+  const row = { existingId: null, name: 'Διαμέρισμα, Οδός Παραδείγματος 11', address: 'Οδός Παραδείγματος 11', atak: IATAK, sqm: 61, ownershipPct: 100, floor: '1' };
+  await flow('εισαγωγή myAADE: καταγραφή (όριο ημέρας)', () => db.from('myaade_imports').insert({ id: IMP, user_id: A, kind: 'enfia_act', tax_year: 2026, found_count: 1 }));
+  await flow('εισαγωγή myAADE: νέο ακίνητο', () => properties.add(db, { ...newPropertyRow(A, row), id: IP1 }));
+  await flow('εισαγωγή myAADE: το σύνολο «ΕΝΦΙΑ 2026», χωρίς αρχείο', () =>
+    documents.add(db, IP1, A, { ...statementDocRow(2026, 843.2, '2026-03-15'), id: IDOC }));
+  await flow('εισαγωγή myAADE: τι δημιούργησε, για την αναίρεση', () =>
+    db.from('myaade_imports').update({ created_property_ids: [IP1], document_id: IDOC, replaced: [] }).eq('id', IMP));
+
+  // Η ΙΔΙΑ ΠΡΑΞΗ ΔΕΥΤΕΡΗ ΦΟΡΑ: το ακίνητο ταιριάζει με ΑΤΑΚ και το σύνολο είναι
+  // ήδη το ίδιο. Γράφεται μόνο η καταγραφή· κανένα ακίνητο, καμία γραμμή.
+  if (matchProperty({ atak: IATAK, address: null }, [{ id: IP1, name: row.name, address: row.address, atak: IATAK }]).status !== 'exists') {
+    throw new Error('η δεύτερη εισαγωγή δεν βρίσκει το ακίνητο με τον ΑΤΑΚ του');
+  }
+  const again = planStatement(2026, 843.2, [{ id: IDOC, property_id: IP1, amount: 843.2 }], [], IP1);
+  if (again.insertOn || again.docUpdates.length) throw new Error('η δεύτερη εισαγωγή θα έγραφε δεύτερο σύνολο');
+  await flow('εισαγωγή myAADE ξανά: μόνο καταγραφή', () => db.from('myaade_imports').insert({ id: IMP2, user_id: A, kind: 'enfia_act', tax_year: 2026, found_count: 1 }));
+
+  // ΔΙΟΡΘΩΤΙΚΗ ΠΡΑΞΗ ΜΕ ΜΙΚΡΟΤΕΡΟ ΠΟΣΟ: η ίδια γραμμή αλλάζει ποσό.
+  const corrective = planStatement(2026, 700, [{ id: IDOC, property_id: IP1, amount: 843.2 }], [], IP1);
+  if (corrective.insertOn || corrective.docUpdates.length !== 1) throw new Error('η διορθωτική δεν αντικαθιστά');
+  await flow('διορθωτική πράξη: αντικαθιστά το σύνολο', () => documents.update(db, [IDOC], { amount: corrective.docUpdates[0].amount }));
+
+  // Ο ΞΕΝΟΣ: ούτε καταγραφή στο όνομα του Α ούτε αναίρεση της εισαγωγής του.
+  await flow('ΞΕΝΗ καταγραφή εισαγωγής στο όνομα του Α', () => db.from('myaade_imports').insert({ user_id: A, kind: 'enfia_act', tax_year: 2026, found_count: 1 }), 'deny', B);
+  await flow('ΞΕΝΟΣ: αναίρεση της εισαγωγής του Α', () => db.from('myaade_imports').update({ undone_at: '2026-10-30T12:00:00Z' }).eq('id', IMP), 'deny', B);
+
+  // Η ΑΝΑΙΡΕΣΗ: σήμανση πρώτα, μετά ό,τι δημιούργησε η εισαγωγή.
+  await flow('αναίρεση εισαγωγής: σήμανση', () => db.from('myaade_imports').update({ undone_at: '2026-10-30T12:00:00Z' }).eq('id', IMP).is('undone_at', null));
+  await flow('αναίρεση εισαγωγής: η γραμμή του συνόλου', () => documents.remove(db, IDOC));
+  await flow('αναίρεση εισαγωγής: το ακίνητο', () => properties.remove(db, IP1, A));
+  await flow('ΔΕΥΤΕΡΗ αναίρεση της ίδιας εισαγωγής', () => db.from('myaade_imports').update({ undone_at: '2026-10-30T13:00:00Z' }).eq('id', IMP), 'deny');
 }
 
 // ── ΜΕΤΑΦΡΑΣΗ ΣΕ SQL, ΜΕ ΤΗ ΣΗΜΑΣΙΑ ΤΟΥ PostgREST ───────────────────────────
@@ -173,11 +224,15 @@ const jsonLit = (x: unknown) => {
   return `$j$${s}$j$::json`;
 };
 
+const whereOf = (w: Write) =>
+  w.where.map(([k, v]) => (v === IS_NULL ? `t.${ident(k)} is null` : `t.${ident(k)} = ${lit(v)}`)).join(' and ') || 'true';
+
 function statement(w: Write): string {
   const t = `public.${ident(w.table)}`;
+  if (w.op === 'delete') return `delete from ${t} t where ${whereOf(w)}`;
   if (w.op === 'update') {
     const cols = Object.keys(w.rows[0]).map(ident);
-    const where = w.where.map(([k, v]) => `t.${ident(k)} = ${lit(v)}`).join(' and ') || 'true';
+    const where = whereOf(w);
     return `update ${t} t set (${cols.join(', ')}) = (select ${cols.map(c => 'r.' + c).join(', ')} from json_populate_record(null::${t}, ${jsonLit(w.rows[0])}) r) where ${where}`;
   }
   // Οι στήλες είναι η ΕΝΩΣΗ των κλειδιών όλων των γραμμών (supabase-js,
@@ -204,7 +259,7 @@ function block(w: Write, i: number): string {
     return who + `do $w$ declare n int; begin
   ${s};
   get diagnostics n = row_count;
-  if n = 0 and '${w.op}' = 'update' then raise exception 'ΡΟΗ «${name}»: η ενημέρωση δεν βρήκε γραμμή'; end if;
+  if n = 0 and '${w.op}' in ('update', 'delete') then raise exception 'ΡΟΗ «${name}»: η εντολή δεν βρήκε γραμμή'; end if;
   raise notice 'write-flow: ${name} (% γραμμές)', n;
 exception when others then
   if sqlerrm like 'ΡΟΗ «%' then raise; end if;
@@ -266,6 +321,61 @@ end $w$;`,
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο ανώνυμος άλλαξε % λογαριασμούς', n; end if;
   raise notice 'write-flow: ο ανώνυμος δεν βλέπει ούτε αλλάζει λογαριασμό (σωστά)';
+end $w$;`,
+    'reset role;',
+    // ── Η ΕΙΣΑΓΩΓΗ ΑΠΟ ΤΟ myAADE, ΣΤΗ ΒΑΣΗ ─────────────────────────────────
+    `do $w$ begin
+  if (select count(*) from public.user_properties where user_id = ${lit(A)} and atak = ${lit(IATAK)}) <> 0 then
+    raise exception 'ΡΟΗ «αναίρεση εισαγωγής»: το ακίνητο της εισαγωγής έμεινε';
+  end if;
+  if (select count(*) from public.myaade_imports where user_id = ${lit(A)}) <> 2 then
+    raise exception 'ΡΟΗ «εισαγωγή myAADE»: οι καταγραφές δεν είναι δύο (μία ανά εισαγωγή)';
+  end if;
+  if (select undone_at from public.myaade_imports where id = ${lit(IMP)}) <> '2026-10-30T12:00:00Z'::timestamptz then
+    raise exception 'ΡΟΗ «αναίρεση εισαγωγής»: η δεύτερη αναίρεση ή ο ξένος άλλαξαν τη σήμανση';
+  end if;
+  raise notice 'write-flow: εισαγωγή, δεύτερη εισαγωγή χωρίς διπλότυπο, διορθωτική και αναίρεση στη βάση όπως η οθόνη';
+end $w$;`,
+    // Ο ΞΕΝΟΣ ΔΕΝ ΒΛΕΠΕΙ τις εισαγωγές του Α.
+    'set role authenticated;',
+    `set session "probe.uid" = ${lit(B)};`,
+    `do $w$ begin
+  if (select count(*) from public.myaade_imports where user_id = ${lit(A)}) <> 0 then
+    raise exception 'ΔΙΑΡΡΟΗ: ο Β βλέπει εισαγωγές του Α';
+  end if;
+  raise notice 'write-flow: ο ξένος δεν βλέπει τις εισαγωγές του Α (σωστά)';
+end $w$;`,
+    // ΤΟ ΟΡΙΟ ΤΩΝ 10 ΣΕ 24 ΩΡΕΣ: ο Α έχει ήδη δύο, η ενδέκατη απορρίπτεται.
+    `set session "probe.uid" = ${lit(A)};`,
+    `do $w$ declare i int; begin
+  for i in 1..8 loop
+    insert into public.myaade_imports (user_id, kind, tax_year, found_count) values (${lit(A)}, 'enfia_act', 2026, 0);
+  end loop;
+  begin
+    insert into public.myaade_imports (user_id, kind, tax_year, found_count) values (${lit(A)}, 'enfia_act', 2026, 0);
+    raise exception 'ΡΟΗ «όριο εισαγωγών»: η ενδέκατη εισαγωγή σε 24 ώρες πέρασε';
+  exception when sqlstate '54000' then
+    raise notice 'write-flow: η ενδέκατη εισαγωγή σε 24 ώρες απορρίπτεται (σωστά)';
+  end;
+end $w$;`,
+    // Ο ΧΡΟΝΟΣ ΔΕΝ ΔΙΝΕΤΑΙ ΑΠΟ ΤΟΝ ΠΕΡΙΗΓΗΤΗ: ένα παλιό created_at δεν παρακάμπτει το όριο.
+    'reset role;',
+    `delete from public.myaade_imports where user_id = ${lit(A)} and id not in (${lit(IMP)}, ${lit(IMP2)});`,
+    'set role authenticated;',
+    `do $w$ declare v timestamptz; begin
+  insert into public.myaade_imports (user_id, kind, created_at) values (${lit(A)}, 'enfia_act', '2000-01-01') returning created_at into v;
+  if v < now() - interval '1 minute' then raise exception 'ΡΟΗ «όριο εισαγωγών»: ο περιηγητής όρισε παλιά ώρα'; end if;
+  raise notice 'write-flow: η ώρα της εισαγωγής είναι της βάσης (σωστά)';
+end $w$;`,
+    // Η ΑΝΑΙΡΕΣΗ ΚΛΕΙΝΕΙ ΣΤΙΣ 24 ΩΡΕΣ.
+    'reset role;',
+    `update public.myaade_imports set created_at = now() - interval '25 hours' where id = ${lit(IMP2)};`,
+    'set role authenticated;',
+    `do $w$ declare n int; begin
+  update public.myaade_imports set undone_at = now() where id = ${lit(IMP2)};
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'ΡΟΗ «αναίρεση εισαγωγής»: αναιρέθηκε μετά από 24 ώρες'; end if;
+  raise notice 'write-flow: η αναίρεση κλείνει στις 24 ώρες (σωστά)';
 end $w$;`,
     'reset role;',
     // Τα triggers της ενημέρωσης: ο λογαριασμός που πληρώθηκε έχει νέο updated_at.

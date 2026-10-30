@@ -43,9 +43,16 @@ import CookieConsent from '@/app/CookieConsent';
 import UpdateWatcher from './components/UpdateWatcher';
 import { planBriefing } from './components/assistantPersona';
 import UpgradeModal from './components/UpgradeModal';
+import dynamic from 'next/dynamic';
+import { useEffect, useState } from 'react';
+import { MYAADE_OPEN_EVENT } from './components/myaadeOpen';
 import FeatureLock, { LockBadge } from './components/FeatureLock';
 import { PLANS } from '@/lib/billing/plans';
-import { isTabAllowed, isTabPurchasable, canAddProperty, hasFeature, planAtLeast, paidPlanForProfile, requiredPlanForFeature } from '@/lib/billing/entitlements';
+import { isTabAllowed, isTabPurchasable, canAddProperty, hasFeature, planAtLeast, paidPlanForProfile, requiredPlanForFeature, propertyLimit } from '@/lib/billing/entitlements';
+
+// Η ΕΙΣΑΓΩΓΗ ΑΠΟ ΤΟ myAADE ΦΟΡΤΩΝΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΑΝΟΙΞΕΙ: ο αναλυτής και ο
+// αναγνώστης PDF δεν βαραίνουν την αρχική σελίδα του πίνακα.
+const MyaadeImport = dynamic(() => import('./components/MyaadeImport'), { ssr: false });
 import { hasAssistant } from '@/lib/billing/aiLimits';
 import { enfiaCarryWizard } from '@/lib/tools/enfiaCarry';
 import { isTabVisible, hiddenTabCount } from '@/lib/nav/disclosure';
@@ -91,6 +98,16 @@ export default function Dashboard() {
   // στο υπάρχον gate, για να ΚΩΔΙΚΟΠΟΙΗΣΕΙ την αναλλοίωτη μία φορά και να
   // στενέψει τον τύπο για ΟΛΗ την απόδοση — αντί για 20 `!` ή cast στα σημεία
   // χρήσης, που θα σιώπαγαν τον έλεγχο αντί να τον ικανοποιήσουν.
+  // ── Η ΕΙΣΑΓΩΓΗ ΑΠΟ ΤΟ myAADE ΑΝΟΙΓΕΙ ΑΠΟ ΤΡΙΑ ΣΗΜΕΙΑ ───────────────────
+  // Η κενή οθόνη και η υποδοχή την ανοίγουν απευθείας· η καρτέλα ΕΝΦΙΑ, που
+  // ζει βαθιά μέσα στη Λογιστική, στέλνει γεγονός (όπως το «pos:ask»).
+  const [myaadeOpen, setMyaadeOpen] = useState(false);
+  useEffect(() => {
+    const open = () => setMyaadeOpen(true);
+    window.addEventListener(MYAADE_OPEN_EVENT, open);
+    return () => window.removeEventListener(MYAADE_OPEN_EVENT, open);
+  }, []);
+
   if (loading || !user) return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--bg-base)'}}>
       <Spinner size={48} label="Φόρτωση…" />
@@ -580,6 +597,7 @@ export default function Dashboard() {
                   πριν δώσει οτιδήποτε. Δευτερεύον, δίπλα στην κύρια ενέργεια. */}
               <div style={{display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap'}}>
                 <Btn variant="primary" onClick={() => tryAddProperty('empty')}>Πρόσθεσε το ακίνητό σου</Btn>
+                <Btn variant="secondary" onClick={() => setMyaadeOpen(true)}>Εισαγωγή από το myAADE</Btn>
                 <Btn variant="secondary" onClick={() => setShowPreview(true)}>Δες ένα παράδειγμα</Btn>
               </div>
             </div>
@@ -917,6 +935,7 @@ export default function Dashboard() {
         // κατάσταση, όνομα· «Αποθήκευση τώρα» υπάρχει από το δεύτερο βήμα) και η
         // σάρωση ξεκινά πάνω στο ακίνητο που αποθηκεύτηκε.
         onScanCreate={()=>{ setShowWelcome(false); setScanAfterAdd(true); openWizard('scan'); }}
+        onMyaade={()=>{ setShowWelcome(false); setMyaadeOpen(true); }}
         onProfile={setProfileType}
         onClose={()=>setShowWelcome(false)} />}
       {/* ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΔΕΝ ΓΡΑΦΕΙ ΤΙΠΟΤΑ. Ήταν ακίνητο μέσα στον λογαριασμό, με
@@ -939,6 +958,10 @@ export default function Dashboard() {
         if (added) { setSelected(added); setNav('overview'); setQuickAddOpen(true); }
       }}/>}
       {editProperty&&user&&<AddPropertyWizard userId={user.id} existing={editProperty} focus={editFocus} onClose={()=>{setEditProperty(null);setEditFocus(null);}} onSaved={async()=>{setEditProperty(null);setEditFocus(null);await fetchProperties(user.id);}}/>}
+      {myaadeOpen&&<MyaadeImport userId={user.id} limit={propertyLimit(ent)}
+        onUpgrade={()=>{ setMyaadeOpen(false); setShowUpgrade(true); }}
+        onClose={()=>setMyaadeOpen(false)}
+        onSaved={async()=>{ await fetchProperties(user.id); }}/>}
       {showUpgrade&&<UpgradeModal currentCount={properties.length} planId={effPlan} onClose={()=>setShowUpgrade(false)} onManage={()=>{setShowUpgrade(false);setNav('settings');}}/>}
       <DpaModal />
     </div>
