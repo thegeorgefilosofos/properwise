@@ -25,6 +25,8 @@
 //    · στήλη που η εφαρμογή στέλνει και ο πίνακας δεν έχει·
 //    · το `ON CONFLICT` κάθε upsert: βρίσκει ευρετήριο που ταιριάζει;
 //    · η RLS στη γραφή (WITH CHECK): ο χρήστης γράφει στα δικά του, όχι σε ξένα·
+//    · η RLS του `bills` για τρίτους: το μέλος του οργανισμού βλέπει και
+//      διορθώνει λογαριασμό του ιδιοκτήτη, ο ξένος και ο ανώνυμος τίποτα·
 //    · τα triggers που τρέχουν πάνω σε αυτές τις εγγραφές.
 //
 //  ΧΡΗΣΗ: npx tsx scripts/db/write-flows.ts > ροές.sql   (το καλεί το db-replay)
@@ -43,6 +45,8 @@ type Row = Record<string, unknown>;
 interface Write {
   label: string;
   expect: 'ok' | 'deny';
+  /** Ποιος είναι συνδεδεμένος όταν στέλνεται η εγγραφή. */
+  uid: string;
   table: string;
   op: 'insert' | 'upsert' | 'update';
   rows: Row[];
@@ -58,9 +62,12 @@ export const PA = '7e570000-0000-4000-8000-0000000000a1';
 export const PB = '7e570000-0000-4000-8000-0000000000b1';
 const TA = '7e570000-0000-4000-8000-0000000000a2';
 const BILL = '7e570000-0000-4000-8000-0000000000a3';
+/** Ο οργανισμός του Α και το μέλος του με δικαίωμα επεξεργασίας. */
+const ORG = '7e570000-0000-4000-8000-0000000000a4';
+export const M = '7e570000-0000-4000-8000-00000000000c';
 
 const writes: Write[] = [];
-let current: Pick<Write, 'label' | 'expect'> = { label: '', expect: 'ok' };
+let current: Pick<Write, 'label' | 'expect' | 'uid'> = { label: '', expect: 'ok', uid: A };
 
 /** Πελάτης που δεν στέλνει τίποτα: γράφει τι θα έστελνε. */
 function recorder(): SupabaseClient {
@@ -85,8 +92,8 @@ function recorder(): SupabaseClient {
   return { from } as unknown as SupabaseClient;
 }
 
-async function flow(label: string, fn: () => PromiseLike<unknown>, expect: 'ok' | 'deny' = 'ok') {
-  current = { label, expect };
+async function flow(label: string, fn: () => PromiseLike<unknown>, expect: 'ok' | 'deny' = 'ok', uid = A) {
+  current = { label, expect, uid };
   const before = writes.length;
   await fn();
   if (writes.length === before) throw new Error(`η ροή «${label}» δεν έγραψε τίποτα`);
@@ -146,6 +153,12 @@ async function flows() {
   await flow('ΞΕΝΟ ακίνητο στο όνομα του Β', () => properties.add(db, { user_id: B, name: 'ξένο' }), 'deny');
   await flow('ΞΕΝΟΣ μισθωτής στο ακίνητο του Β', () => tenants.add(db, PB, B, { full_name: 'ξένος' }), 'deny');
   await flow('ΞΕΝΟ ακίνητο: αλλαγή ονόματος στο ακίνητο του Β', () => properties.update(db, PB, { name: 'κλεμμένο' }), 'deny');
+
+  // ── ΤΟ ΜΕΛΟΣ ΤΟΥ ΟΡΓΑΝΙΣΜΟΥ ΓΡΑΦΕΙ, Ο ΞΕΝΟΣ ΟΧΙ ─────────────────────────
+  // Η πολιτική ενημέρωσης του `bills` είναι ΕΝΑ OR: «δικό μου» ή «του
+  // ιδιοκτήτη μου, με δικαίωμα επεξεργασίας». Και τα δύο σκέλη ελέγχονται εδώ.
+  await flow('μέλος του οργανισμού διορθώνει λογαριασμό του ιδιοκτήτη', () => bills.update(db, BILL, { amount: 90 }), 'ok', M);
+  await flow('ΞΕΝΟΣ: αλλαγή ποσού σε λογαριασμό του Α', () => bills.update(db, BILL, { amount: 1 }), 'deny', B);
 }
 
 // ── ΜΕΤΑΦΡΑΣΗ ΣΕ SQL, ΜΕ ΤΗ ΣΗΜΑΣΙΑ ΤΟΥ PostgREST ───────────────────────────
@@ -186,8 +199,9 @@ function statement(w: Write): string {
 function block(w: Write, i: number): string {
   const name = `${i + 1}. ${w.label}`.replace(/'/g, "''");
   const s = statement(w);
+  const who = `set session "probe.uid" = ${lit(w.uid)};\n`;
   if (w.expect === 'ok') {
-    return `do $w$ declare n int; begin
+    return who + `do $w$ declare n int; begin
   ${s};
   get diagnostics n = row_count;
   if n = 0 and '${w.op}' = 'update' then raise exception 'ΡΟΗ «${name}»: η ενημέρωση δεν βρήκε γραμμή'; end if;
@@ -197,7 +211,7 @@ exception when others then
   raise exception 'ΡΟΗ «${name}» δεν γράφεται: % [%]', sqlerrm, sqlstate;
 end $w$;`;
   }
-  return `do $w$ declare n int; begin
+  return who + `do $w$ declare n int; begin
   ${s};
   get diagnostics n = row_count;
   if n > 0 then raise exception 'ΔΙΑΡΡΟΗ: «${name}» έγραψε % γραμμές', n; end if;
@@ -218,14 +232,49 @@ async function main() {
     // Οι δύο ιδιοκτήτες, με τα triggers της εγγραφής (προφίλ χρέωσης, ταχυδρομείο, ημερολόγιο).
     `insert into auth.users(id, email) values (${lit(A)}, 'write-a@probe.test'), (${lit(B)}, 'write-b@probe.test');`,
     `insert into public.user_properties(id, user_id, name) values (${lit(PB)}, ${lit(B)}, 'Του Β');`,
+    // Ο Α έχει οργανισμό· ο Μ είναι ενεργό μέλος του με δικαίωμα επεξεργασίας.
+    `insert into auth.users(id, email) values (${lit(M)}, 'write-m@probe.test');`,
+    `insert into public.organizations(id, owner_user_id, name) values (${lit(ORG)}, ${lit(A)}, 'Γραφείο Α');`,
+    `insert into public.organization_members(org_id, user_id, email, status, can_edit) values (${lit(ORG)}, ${lit(M)}, 'write-m@probe.test', 'active', true);`,
     'set role authenticated;',
-    `set session "probe.uid" = ${lit(A)};`,
     ...writes.map(block),
+    // ── ΠΟΙΟΣ ΒΛΕΠΕΙ ΤΟΝ ΛΟΓΑΡΙΑΣΜΟ ΤΟΥ Α ──────────────────────────────────
+    `set session "probe.uid" = ${lit(M)};`,
+    `do $w$ begin
+  if (select count(*) from public.bills where id = ${lit(BILL)}) <> 1 then
+    raise exception 'ΡΟΗ «μέλος»: το μέλος του οργανισμού δεν βλέπει τον λογαριασμό του ιδιοκτήτη';
+  end if;
+  raise notice 'write-flow: το μέλος του οργανισμού βλέπει τον λογαριασμό του ιδιοκτήτη';
+end $w$;`,
+    `set session "probe.uid" = ${lit(B)};`,
+    `do $w$ begin
+  if (select count(*) from public.bills where user_id = ${lit(A)}) <> 0 then
+    raise exception 'ΔΙΑΡΡΟΗ: ο Β βλέπει λογαριασμούς του Α';
+  end if;
+  raise notice 'write-flow: ο ξένος δεν βλέπει λογαριασμό του Α (σωστά)';
+end $w$;`,
+    // Ο ανώνυμος έχει GRANT στην παραγωγή· μόνο η RLS τον σταματά. Το ίδιο εδώ.
+    'reset role;',
+    'grant select, insert, update, delete on public.bills to anon;',
+    'set role anon;',
+    `set session "probe.uid" = '';`,
+    `do $w$ declare n int; begin
+  if (select count(*) from public.bills) <> 0 then
+    raise exception 'ΔΙΑΡΡΟΗ: ο ανώνυμος βλέπει λογαριασμούς';
+  end if;
+  update public.bills set amount = 0;
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'ΔΙΑΡΡΟΗ: ο ανώνυμος άλλαξε % λογαριασμούς', n; end if;
+  raise notice 'write-flow: ο ανώνυμος δεν βλέπει ούτε αλλάζει λογαριασμό (σωστά)';
+end $w$;`,
     'reset role;',
     // Τα triggers της ενημέρωσης: ο λογαριασμός που πληρώθηκε έχει νέο updated_at.
     `do $w$ begin
   if not exists (select 1 from public.bills where id = ${lit(BILL)} and paid and updated_at > created_at) then
     raise exception 'ΡΟΗ «λογαριασμός»: η πληρωμή δεν γράφτηκε ή το updated_at δεν το έγραψε το trigger';
+  end if;
+  if (select amount from public.bills where id = ${lit(BILL)}) <> 90 then
+    raise exception 'ΡΟΗ «μέλος»: η διόρθωση του μέλους δεν γράφτηκε ή την άλλαξε ο ξένος';
   end if;
   if (select count(*) from public.expenses where user_id = ${lit(A)} and dedup_hash = 'write-flows-bank-1') <> 1 then
     raise exception 'ΡΟΗ «τράπεζα»: η δεύτερη εισαγωγή διπλογράφει';
