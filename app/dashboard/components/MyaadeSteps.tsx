@@ -53,6 +53,12 @@ export const MYAADE_CSS = `
   .mya-fields > .mya-span{grid-column:1/-1}
   .mya-fields.mya-act{grid-template-columns:minmax(0,2fr) minmax(0,3fr);align-items:end}
 }
+/* ΣΤΑ 320 ΤΟ ΠΟΣΟ ΔΕΝ ΧΩΡΑ ΔΙΠΛΑ ΣΤΟ ΕΤΟΣ. Στο Safari (WebKit) το πεδίο του
+   ποσού έμενε με 46px για τα 54px του «843,20»: ο σαρωτής διάταξης το έπιασε
+   ως κομμένη τιμή. Κάτω από 380 τα πεδία της πράξης πάνε το ένα κάτω από το άλλο. */
+@media (max-width:380px){
+  .mya-fields.mya-act,.mya-fields.mya-act.mya-fields-3{grid-template-columns:minmax(0,1fr)}
+}
 `;
 
 // ── Μία γραμμή ειδοποίησης: εικονίδιο, κείμενο, ενέργεια στο ίδιο ύψος ────
