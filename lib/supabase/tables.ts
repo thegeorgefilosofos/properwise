@@ -1008,6 +1008,19 @@ export interface MobileWaitlistRow {
   notified_at: string | null;
 }
 
+export interface MyaadeImportsRow {
+  id: string | null;
+  user_id: string;
+  kind: string;
+  tax_year: number | null;
+  found_count: number;
+  created_property_ids: string[];
+  document_id: string | null;
+  replaced: Json;
+  created_at: string;
+  undone_at: string | null;
+}
+
 export interface NotificationLogRow {
   id: string;
   user_id: string;
@@ -1620,6 +1633,7 @@ export interface Tables {
   maintenance_tasks: MaintenanceTasksRow;
   market_rates: MarketRatesRow;
   mobile_waitlist: MobileWaitlistRow;
+  myaade_imports: MyaadeImportsRow;
   notification_log: NotificationLogRow;
   notification_preferences: NotificationPreferencesRow;
   onboarding_progress: OnboardingProgressRow;

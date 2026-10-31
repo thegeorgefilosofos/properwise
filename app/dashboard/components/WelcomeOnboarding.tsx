@@ -55,6 +55,7 @@ interface Props {
   userId: string;
   onAddProperty: () => void;                 // άνοιγμα οδηγού προσθήκης
   onScanCreate: () => void;                  // δημιουργία + άνοιγμα σάρωσης εγγράφου
+  onMyaade?: () => void;                     // εισαγωγή ακινήτων και ΕΝΦΙΑ από το PDF του myAADE
   onProfile?: (v: 'individual' | 'professional') => void;
   onClose: () => void;                       // «Αργότερα» / κλείσιμο
 }
@@ -139,7 +140,7 @@ function buildCards(today: string): WelcomeCard[] {
   ];
 }
 
-export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate, onProfile, onClose }: Props) {
+export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate, onMyaade, onProfile, onClose }: Props) {
   const supabase = createClient();
   const [step, setStep] = useState(0);
   // ΚΑΜΙΑ ΠΡΟΕΠΙΛΟΓΗ, ΟΠΩΣ ΚΑΙ ΣΤΗ ΦΟΡΟΛΟΓΙΚΗ ΕΡΩΤΗΣΗ ΑΠΟ ΚΑΤΩ. Το «Ιδιώτης»
@@ -189,6 +190,7 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
 
   const addProperty = async () => { await mark(); onAddProperty(); };
   const scanCreate = async () => { await mark(); onScanCreate(); };
+  const myaade = async () => { await mark(); onMyaade?.(); };
   // Η ΚΑΡΤΑ ΤΟΥ «ΑΡΓΟΤΕΡΑ». Όλοι οι νέοι χωρίς ακίνητο είχαν `welcomed=true` και
   // κανείς δεν ήξερε σε ποια κάρτα έφυγαν. Μόνο ο αριθμός της κάρτας.
   const later = async () => {
@@ -310,6 +312,7 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
                 όχι λέξεις μέσα σε πρόταση. Το accent μελάνι της σάρωσης γίνεται
                 text-secondary — τον ρόλο τον δίνει πλέον η θέση, όχι το χρώμα. */}
             <Btn variant="ghost" onClick={scanCreate}>Σάρωση εγγράφου</Btn>
+            {onMyaade && <Btn variant="ghost" onClick={myaade}>Από το myAADE</Btn>}
             <Btn variant="ghost" onClick={later}>Αργότερα</Btn>
           </div>
         )}

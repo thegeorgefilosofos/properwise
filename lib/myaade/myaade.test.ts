@@ -1,0 +1,530 @@
+// npx tsx lib/myaade/myaade.test.ts
+//
+// Η εισαγωγή από το myAADE: αναλυτής της πράξης ΕΝΦΙΑ πάνω σε ΣΥΝΘΕΤΙΚΑ
+// έγγραφα (κείμενο και PDF), «δεν αναγνωρίστηκε» αντί για λάθος αριθμούς,
+// ταίριασμα με τα ακίνητα της εφαρμογής, όριο πακέτου, αντικατάσταση του
+// συνόλου από διορθωτική πράξη και το παράθυρο αναίρεσης.
+import { readFileSync, readdirSync } from 'node:fs';
+import { extractPdfText, ascii85Decode, asciiHexDecode } from '@/lib/pdf/pdfText';
+import { enfiaTotalsByProperty } from '@/lib/calendar/enfiaTotals';
+import { PAY_UNDO_HOURS } from '@/lib/reminders/payLink';
+import { parseEnfiaAct } from './enfiaAct';
+import { detectDocKind } from './detect';
+import { isValidRf, rfCompact } from './rf';
+import { matchProperty, addressKey, fillOnlyEmpty, type KnownProperty } from './match';
+import { freeSlots, overLimit, excessOf } from './planLimit';
+import { planStatement } from './statement';
+import { canUndoImport, newPropertyRow, statementDocRow, undoUntilLabel, commitImport, undoImport, MYAADE_DAILY_IMPORTS, IMPORT_UNDO_HOURS } from './commit';
+import { makeFakeDb, type DbCall } from '@/scripts/e2e-money/fakeDb';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { buildDrafts, deriveReview, preselectOwner, commitRowOf, singleFlight, toNumber, toMoneyText, SELF_OWNER } from './review';
+import PDFDocument from 'pdfkit';
+import { fakeAtak } from './fixtures';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΣΥΝΘΕΤΙΚΕΣ ΠΡΑΞΕΙΣ ΕΝΦΙΑ: ΠΟΤΕ ΠΡΑΓΜΑΤΙΚΑ ΣΤΟΙΧΕΙΑ
+// ─────────────────────────────────────────────────────────────────────────
+// Το αποθετήριο είναι δημόσιο. Καμία πραγματική πράξη δεν μπαίνει εδώ: τα
+// αρχεία του ιδιοκτήτη ζουν στο `local-samples/`, που το αγνοεί το git. Τα PDF
+// των δοκιμών παράγονται όταν τρέχει η δοκιμή, με pdfkit.
+//
+// Η ΔΙΑΤΑΞΗ ΕΙΝΑΙ ΥΠΟΘΕΣΗ, όπως και οι ετικέτες του `labels.ts`: κεφαλίδα με
+// «Ετικέτα: τιμή», ο Πίνακας 1 με μία γραμμή ανά ΑΤΑΚ και τα ποσά στο τέλος.
+// Να επιβεβαιωθεί με πραγματικό PDF· τότε αλλάζει αυτή η γεννήτρια.
+//
+// ΤΑ ΣΤΟΙΧΕΙΑ ΕΙΝΑΙ ΕΜΦΑΝΩΣ ΨΕΥΤΙΚΑ (το φυλάει ο guard-fixture-identities):
+//   · ΑΦΜ που ΔΕΝ περνά τον έλεγχο ψηφίου (`FAKE_AFM`). Όπου χρειάζεται
+//     έγκυρο, φτιάχνεται τη στιγμή της δοκιμής (`validTestAfm`).
+//   · ΑΤΑΚ με το πρόθεμα `999` (`fakeAtak`).
+//   · Διεύθυνση «Οδός Παραδείγματος» (η σύμβαση του guard-private-street).
+//   · Ταυτότητα Οφειλής μόνο τη στιγμή της δοκιμής (`rfFor`).
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** ΑΦΜ που δεν περνά τον έλεγχο ψηφίου: δεν μπορεί να είναι κανενός. */
+const FAKE_AFM = '123456789';
+
+/** Έγκυρο ΑΦΜ, φτιαγμένο τη στιγμή της δοκιμής από εμφανώς δοκιμαστική βάση. */
+function validTestAfm(): string {
+  const base = '0000000' + '1';
+  let sum = 0;
+  for (let i = 0; i < 8; i++) sum += Number(base[i]) * 2 ** (8 - i);
+  return base + String((sum % 11) % 10);
+}
+
+/** Έγκυρη Ταυτότητα Οφειλής των δοκιμών, φτιαγμένη τη στιγμή της δοκιμής. */
+const testRf = (): string => rfFor('TEST' + 'ONLY' + '0001');
+
+interface FakeProperty {
+  atak: string; address: string; municipality: string; kind: string; floor: string; sqm: string; pct: string; tax: string;
+}
+
+const fakeProperty = (n: number, tax: string, over: Partial<FakeProperty> = {}): FakeProperty => ({
+  atak: fakeAtak(n), address: `Οδός Παραδείγματος ${10 + n}`, municipality: 'Δήμος Δοκιμής',
+  kind: 'Διαμέρισμα', floor: String(n), sqm: `${60 + n},00`, pct: '100,00', tax, ...over,
+});
+
+interface ActOptions {
+  year?: number;
+  afm?: string;
+  corrective?: boolean;
+  properties?: FakeProperty[];
+  payable?: string | null;
+  gross?: string | null;
+  instalments?: string | null;
+  rf?: string | null;
+  /** Χωρίς γραμμή επικεφαλίδων στον πίνακα: ο αναλυτής πέφτει στη μορφή των τιμών. */
+  noHeader?: boolean;
+}
+
+const TABLE_HEADER = ['Α.Τ.ΑΚ.', 'Διεύθυνση', 'Δήμος / Δ. Κοινότητα', 'Είδος', 'Όροφος', 'Επιφάνεια (τ.μ.)', 'Ποσοστό', 'Φόρος'];
+
+/** Οι γραμμές μιας πράξης όπως θα τις έβγαζε το `extractPdfText`: στήλες με tab. */
+function enfiaActLines(o: ActOptions = {}): string[] {
+  const year = o.year ?? 2026;
+  const props = o.properties ?? [fakeProperty(1, '412,30'), fakeProperty(2, '430,90')];
+  const lines = [
+    'ΑΝΕΞΑΡΤΗΤΗ ΑΡΧΗ ΔΗΜΟΣΙΩΝ ΕΣΟΔΩΝ',
+    `${o.corrective ? 'ΔΙΟΡΘΩΤΙΚΗ ' : ''}ΔΗΛΩΣΗ ΕΝΦΙΑ - ΠΡΑΞΗ ΠΡΟΣΔΙΟΡΙΣΜΟΥ ΦΟΡΟΥ ΕΤΟΥΣ ${year}`,
+    `Φορολογικό έτος:\t${year}`,
+    `Α.Φ.Μ.:\t${o.afm ?? FAKE_AFM}`,
+    'Ονοματεπώνυμο:\tΔΟΚΙΜΑΣΤΙΚΟΣ ΦΟΡΟΛΟΓΟΥΜΕΝΟΣ',
+    `Ημερομηνία έκδοσης:\t15/03/${year}`,
+    'ΠΙΝΑΚΑΣ 1. ΣΤΟΙΧΕΙΑ ΑΚΙΝΗΤΩΝ',
+  ];
+  if (!o.noHeader) lines.push(TABLE_HEADER.join('\t'));
+  for (const p of props) lines.push([p.atak, p.address, p.municipality, p.kind, p.floor, p.sqm, p.pct, p.tax].join('\t'));
+  if (o.gross !== null) lines.push(`Συνολικός φόρος:\t${o.gross ?? '843,20'}`);
+  if (o.payable !== null) lines.push(`Ποσό για καταβολή:\t${o.payable ?? '843,20'}`);
+  if (o.instalments !== null) lines.push(`Αριθμός δόσεων:\t${o.instalments ?? '12'}`);
+  if (o.rf !== null && o.rf !== undefined) lines.push(`Ταυτότητα Οφειλής:\t${o.rf}`);
+  return lines;
+}
+
+/**
+ * Το ίδιο κείμενο ως πραγματικό PDF, με γραμματοσειρά Type0 και χάρτη
+ * ToUnicode (Roboto), όπως τα PDF του myAADE. Κάθε κελί σε δική του στήλη, ώστε
+ * το `extractPdfText` να ξαναβρεί τα tab.
+ */
+function enfiaActPdf(lines: readonly string[], opts: { pagesOf?: number } = {}): Promise<Uint8Array> {
+  const ROBOTO = 'node_modules/pdfmake/fonts/Roboto/Roboto-Regular.ttf';
+  return new Promise(resolve => {
+    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 20 });
+    const chunks: Buffer[] = [];
+    doc.on('data', (c: Buffer) => chunks.push(c));
+    doc.on('end', () => resolve(new Uint8Array(Buffer.concat(chunks))));
+    doc.font(ROBOTO).fontSize(7);
+    const COL = 100;
+    let y = 30;
+    lines.forEach((line, i) => {
+      if (opts.pagesOf && i > 0 && i % opts.pagesOf === 0) { doc.addPage(); doc.font(ROBOTO).fontSize(7); y = 30; }
+      line.split('\t').forEach((cell, k) => doc.text(cell, 20 + k * COL, y, { lineBreak: false }));
+      y += 14;
+    });
+    doc.end();
+  });
+}
+
+/** Ένα PDF χωρίς κείμενο: μόνο γραφικά, όπως μια σάρωση. */
+function imageOnlyPdf(): Promise<Uint8Array> {
+  return new Promise(resolve => {
+    const doc = new PDFDocument({ size: 'A4', margin: 20 });
+    const chunks: Buffer[] = [];
+    doc.on('data', (c: Buffer) => chunks.push(c));
+    doc.on('end', () => resolve(new Uint8Array(Buffer.concat(chunks))));
+    doc.rect(40, 40, 200, 100).fill('#888888');
+    doc.end();
+  });
+}
+
+/** Τα ψηφία ελέγχου για ένα σώμα αναφοράς: για τα συνθετικά fixtures και τις δοκιμές. */
+function rfFor(body: string): string {
+  const b = rfCompact(body);
+  for (let c = 0; c < 100; c++) {
+    const candidate = `RF${String(c).padStart(2, '0')}${b}`;
+    if (isValidRf(candidate)) return candidate;
+  }
+  throw new Error('αδύνατη αναφορά');
+}
+
+let pass = 0, fail = 0;
+function ok(name: string, cond: boolean, detail?: unknown) {
+  if (cond) pass++; else { fail++; console.error(`✗ ${name}${detail === undefined ? '' : `\n   ${JSON.stringify(detail)}`}`); }
+}
+const okDoc = (r: ReturnType<typeof parseEnfiaAct>) => (r.status === 'ok' ? r.doc : null);
+
+async function run() {
+  form2017Checks();
+  filterChecks();
+  // ── 1. Η βασική πράξη, από κείμενο ─────────────────────────────────────
+  {
+    const doc = okDoc(parseEnfiaAct(enfiaActLines()));
+    ok('η πράξη αναγνωρίζεται', !!doc);
+    ok('έτος από την ετικέτα', doc?.year === 2026, doc?.year);
+    ok('σύνολο από το «Ποσό για καταβολή»', doc?.total === 843.2, doc?.total);
+    ok('δύο ακίνητα', doc?.properties.length === 2);
+    const p = doc?.properties[0];
+    ok('ΑΤΑΚ, διεύθυνση, Δήμος, είδος, όροφος κατά στήλη',
+      p?.atak === fakeAtak(1) && p?.address === 'Οδός Παραδείγματος 11' && p?.municipality === 'Δήμος Δοκιμής'
+      && p?.kind === 'Διαμέρισμα' && p?.floor === '1', p);
+    ok('τ.μ., ποσοστό και φόρος ως αριθμοί', p?.sqm === 61 && p?.ownershipPct === 100 && p?.tax === 412.3, p);
+    ok('από επικεφαλίδα: χωρίς σημαία ελέγχου', p?.check === false);
+    ok('ΑΦΜ που δεν περνά τον έλεγχο: κανένα ΑΦΜ και προειδοποίηση',
+      doc?.afm === null && !!doc?.warnings.some(w => w.includes('ΑΦΜ')), doc?.warnings);
+    ok('οι δόσεις που τυπώνονται κρατιούνται μόνο για σύγκριση', doc?.printedInstalments?.count === 12);
+    ok('το άθροισμα των ακινήτων βγάζει το σύνολο: καμία προειδοποίηση γι’ αυτό',
+      !doc?.warnings.some(w => w.includes('αθροίζουν')), doc?.warnings);
+    ok('ημερομηνία έκδοσης σε ISO', doc?.issueDate === '2026-03-15', doc?.issueDate);
+    ok('όχι διορθωτική', doc?.corrective === false);
+  }
+
+  // ── 2. Έγκυρο ΑΦΜ (φτιαγμένο τώρα) και Ταυτότητα Οφειλής ─────────────
+  {
+    const afm = validTestAfm();
+    const rf = testRf();
+    ok('η Ταυτότητα των δοκιμών περνά το mod 97', isValidRf(rf));
+    const doc = okDoc(parseEnfiaAct(enfiaActLines({ afm, rf })));
+    ok('έγκυρο ΑΦΜ διαβάζεται', doc?.afm === afm);
+    ok('έγκυρη Ταυτότητα Οφειλής διαβάζεται', doc?.paymentRef === rf, doc?.paymentRef);
+    const bad = rf.slice(0, 2) + (rf.slice(2, 4) === '00' ? '01' : '00') + rf.slice(4);
+    const docBad = okDoc(parseEnfiaAct(enfiaActLines({ rf: bad })));
+    ok('λάθος ψηφία ελέγχου: καμία Ταυτότητα και προειδοποίηση',
+      docBad?.paymentRef === null && !!docBad?.warnings.some(w => w.includes('ταυτότητα οφειλής')), docBad?.warnings);
+  }
+
+  // ── 3. Το ίδιο έγγραφο ως PDF, μία και δύο σελίδες ───────────────────
+  {
+    const lines = enfiaActLines({ properties: [1, 2, 3].map(n => fakeProperty(n, n === 3 ? '0,00' : n === 1 ? '412,30' : '430,90')) });
+    const fromText = okDoc(parseEnfiaAct(lines));
+    for (const pagesOf of [0, 6]) {
+      const res = extractPdfText(await enfiaActPdf(lines, { pagesOf }));
+      ok(`PDF (${pagesOf ? 'δύο σελίδες' : 'μία σελίδα'}): το κείμενο βγαίνει`, res.failure === null, res.failure);
+      const doc = okDoc(parseEnfiaAct(res.lines));
+      ok(`PDF (${pagesOf ? 'δύο σελίδες' : 'μία σελίδα'}): ίδιο αποτέλεσμα με το κείμενο`,
+        JSON.stringify(doc) === JSON.stringify(fromText), { pdf: res.lines.slice(0, 12) });
+    }
+  }
+
+  // ── 4. «Δεν αναγνωρίστηκε», ΠΟΤΕ λάθος αριθμοί ───────────────────────
+  {
+    const income = ['ΑΝΕΞΑΡΤΗΤΗ ΑΡΧΗ ΔΗΜΟΣΙΩΝ ΕΣΟΔΩΝ', 'ΠΡΑΞΗ ΔΙΟΙΚΗΤΙΚΟΥ ΠΡΟΣΔΙΟΡΙΣΜΟΥ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ', 'Ποσό για καταβολή:\t1.250,00'];
+    const r1 = parseEnfiaAct(income);
+    ok('εκκαθαριστικό εισοδήματος: δεν αναγνωρίζεται ως ΕΝΦΙΑ', r1.status === 'unrecognized' && r1.kind === 'unknown', r1);
+    const e9 = ['ΔΗΛΩΣΗ ΣΤΟΙΧΕΙΩΝ ΑΚΙΝΗΤΩΝ (Ε9)', `${fakeAtak(1)}\tΟδός Παραδείγματος 1`];
+    const r2 = parseEnfiaAct(e9);
+    // Η κεφαλίδα της πραγματικής εκτύπωσης (31/10/2026), ΧΩΡΙΣ στοιχεία προσώπου,
+    // με τη στήλη από δίπλα ανάμεσα στις λέξεις, όπως τη δίνει ο αναγνώστης.
+    const e9real = ['Σελίδα 1 από', 'ΒΕΒΑΙΩΣΗ ΔΗΛΩΘΕΙΣΑΣ\tΣΤΟΙΧΕΙΑ ΤΟΥ ΥΠΟΧΡΕΟΥ', 'ΠΕΡΙΟΥΣΙΑΚΗΣ ΚΑΤΑΣΤΑΣΗΣ', 'όπως έχει δηλωθεί την 1η Ιανουαρίου 2027'];
+    ok('Ε9: η πραγματική κεφαλίδα «Βεβαίωση δηλωθείσας περιουσιακής κατάστασης»', detectDocKind(e9real) === 'e9');
+    ok('Ε9: αναγνωρίζεται ως Ε9, δεν διαβάζεται ακόμη', r2.status === 'unrecognized' && r2.kind === 'e9', r2);
+    ok('ο ανιχνευτής: πράξη, Ε9, άγνωστο',
+      detectDocKind(enfiaActLines()) === 'enfia_act' && detectDocKind(e9) === 'e9' && detectDocKind(['Τιμολόγιο ρεύματος']) === 'unknown');
+    const empty = parseEnfiaAct(['ΔΗΛΩΣΗ ΕΝΦΙΑ - ΠΡΑΞΗ ΠΡΟΣΔΙΟΡΙΣΜΟΥ ΦΟΡΟΥ', 'Κείμενο χωρίς τίποτα']);
+    ok('μοιάζει με πράξη αλλά χωρίς ποσό και ακίνητα: δεν αναγνωρίστηκε', empty.status === 'unrecognized' && empty.kind === 'enfia_act', empty);
+    const img = extractPdfText(await imageOnlyPdf());
+    ok('PDF χωρίς κείμενο: ρητή αιτία', img.failure === 'no_text', img.failure);
+    const conflict = okDoc(parseEnfiaAct([...enfiaActLines({ gross: null }), 'Ποσό για καταβολή:\t900,00']));
+    ok('δύο διαφορετικά ποσά για καταβολή: κανένα σύνολο, με προειδοποίηση',
+      conflict?.total === null && !!conflict?.warnings.some(w => w.includes('διαφορετικές τιμές')), conflict?.warnings);
+    const sumOff = okDoc(parseEnfiaAct(enfiaActLines({ payable: '900,00', gross: '900,00' })));
+    ok('τα ποσά των ακινήτων δεν βγάζουν το σύνολο: προειδοποίηση, το σύνολο μένει όπως γράφεται',
+      sumOff?.total === 900 && !!sumOff?.warnings.some(w => w.includes('αθροίζουν')), sumOff?.warnings);
+    const noTotal = okDoc(parseEnfiaAct(enfiaActLines({ payable: null, gross: null })));
+    ok('χωρίς ποσό: σύνολο κενό, ποτέ υπολογισμένο από τα ακίνητα', noTotal?.total === null && noTotal?.properties.length === 2);
+  }
+
+  // ── 5. Μειώσεις, διορθωτική, δόσεις, χωρίς επικεφαλίδες ──────────────
+  {
+    const reduced = okDoc(parseEnfiaAct(enfiaActLines({ gross: '900,00', payable: '843,20' })));
+    ok('μετά από μείωση: οι δόσεις βγαίνουν από το ποσό για καταβολή', reduced?.total === 843.2
+      && !!reduced?.warnings.some(w => w.includes('για καταβολή')), reduced?.warnings);
+    ok('διορθωτική πράξη', okDoc(parseEnfiaAct(enfiaActLines({ corrective: true })))?.corrective === true);
+    const small = okDoc(parseEnfiaAct(enfiaActLines({ properties: [fakeProperty(1, '67,20')], payable: '67,20', gross: '67,20', instalments: '12' })));
+    ok('η πράξη γράφει άλλο πλήθος δόσεων από τη μηχανή: προειδοποίηση', !!small?.warnings.some(w => w.includes('δόσεις')), small?.warnings);
+    const shape = okDoc(parseEnfiaAct(enfiaActLines({ noHeader: true })));
+    const s = shape?.properties[0];
+    ok('χωρίς επικεφαλίδες: ΑΤΑΚ από τη μορφή, όλα σημαδεμένα, κανένα ποσό μαντεμένο',
+      s?.atak === fakeAtak(1) && s?.check === true && s?.tax === null && s?.sqm === null, s);
+    const dup = okDoc(parseEnfiaAct(enfiaActLines({ properties: [fakeProperty(1, '412,30'), fakeProperty(1, '412,30')], payable: '412,30', gross: '412,30' })));
+    ok('ο ίδιος ΑΤΑΚ δύο φορές: μία γραμμή', dup?.properties.length === 1 && !!dup?.warnings.some(w => w.includes('δύο φορές')));
+  }
+
+  // ── 6. Ταίριασμα με την εφαρμογή ─────────────────────────────────────
+  {
+    const known: KnownProperty[] = [
+      { id: 'a', name: 'Με ΑΤΑΚ', address: 'κάπου αλλού 1', atak: fakeAtak(1) },
+      { id: 'b', name: 'Χωρίς ΑΤΑΚ', address: 'ΠΑΡΑΔΕΙΓΜΑΤΟΣ 12, Αθήνα', atak: null },
+      { id: 'c', name: 'Άλλος ΑΤΑΚ', address: 'Οδός Παραδείγματος 13', atak: fakeAtak(9) },
+    ];
+    ok('ΑΤΑΚ: υπάρχει ήδη', JSON.stringify(matchProperty({ atak: fakeAtak(1), address: null }, known)) === '{"status":"exists","id":"a"}');
+    ok('διεύθυνση: μόνο πρόταση', JSON.stringify(matchProperty({ atak: fakeAtak(2), address: 'Οδός Παραδείγματος 12' }, known)) === '{"status":"maybe","id":"b"}');
+    ok('ακίνητο με άλλο ΑΤΑΚ δεν προτείνεται ποτέ', matchProperty({ atak: fakeAtak(3), address: 'Οδός Παραδείγματος 13' }, known).status === 'new');
+    ok('άλλος αριθμός, άλλο ακίνητο', matchProperty({ atak: null, address: 'Οδός Παραδείγματος 14' }, known).status === 'new');
+    ok('κανονικοποίηση διεύθυνσης', addressKey('Οδός Παραδείγματος 12, Αθήνα') === addressKey('παραδειγματος 12'));
+    ok('διεύθυνση χωρίς αριθμό δεν ταιριάζει', addressKey('Οδός Παραδείγματος') === null);
+    const patch = fillOnlyEmpty({ id: 'x', name: 'x', address: 'Γραμμένη', atak: null, sqm: 0, floor: '' }, { atak: fakeAtak(4), sqm: 70, floor: '2', address: 'Άλλη' });
+    ok('μόνο τα κενά πεδία συμπληρώνονται', JSON.stringify(patch) === JSON.stringify({ atak: fakeAtak(4), sqm: 70, floor: '2' }), patch);
+  }
+
+  // ── 7. Το όριο του πακέτου ──────────────────────────────────────────
+  {
+    ok('δωρεάν, κανένα ακίνητο: μία θέση', freeSlots(1, 0) === 1);
+    ok('δωρεάν, γεμάτο: καμία', freeSlots(1, 1) === 0 && freeSlots(1, 3) === 0);
+    ok('χωρίς όριο', freeSlots(Infinity, 40) === Infinity && overLimit([0, 1, 2], Infinity).length === 0);
+    ok('οι πρώτες χωρούν, οι υπόλοιπες «Εκτός πακέτου»', JSON.stringify(overLimit([0, 2, 5], 1)) === '[2,5]');
+    ok('πόσα πάνω από το όριο', excessOf(3, 1) === 2 && excessOf(1, 1) === 0);
+  }
+
+  // ── 8. Η διορθωτική πράξη ΑΝΤΙΚΑΘΙΣΤΑ το σύνολο ─────────────────────
+  {
+    const rows = [{ id: 'd1', property_id: 'p1', amount: 900 }, { id: 'd2', property_id: 'p2', amount: 900 }];
+    const sets = [
+      { propertyId: 'p1', data: { enfiaStatementTotal: '950,00', enfiaStatementYear: '2026', other: 'μένει' } },
+      { propertyId: 'p2', data: { enfiaStatementTotal: '700', enfiaStatementYear: '2025' } },
+    ];
+    const plan = planStatement(2026, 843.2, rows, sets, 'p1');
+    ok('καμία δεύτερη γραμμή', plan.insertOn === null);
+    ok('κάθε γραμμή του έτους παίρνει το νέο ποσό', JSON.stringify(plan.docUpdates) === JSON.stringify([{ id: 'd1', amount: 843.2 }, { id: 'd2', amount: 843.2 }]));
+    ok('το «Σύνολο εκκαθαριστικού» του ίδιου έτους ενημερώνεται, του άλλου όχι',
+      plan.settingsUpdates.length === 1 && plan.settingsUpdates[0].data.enfiaStatementTotal === '843,2' && plan.settingsUpdates[0].data.other === 'μένει', plan.settingsUpdates);
+    ok('τα παλιά ποσά κρατιούνται για την αναίρεση', plan.replaced.length === 3);
+    // Μετά την αντικατάσταση, ο κανόνας «το μεγαλύτερο κερδίζει» βλέπει μόνο το νέο.
+    const facts = [
+      ...rows.map(r => ({ propertyId: r.property_id, year: 2026, amount: 843.2 })),
+      { propertyId: 'p1', year: 2026, amount: 843.2 },
+    ];
+    const totals = enfiaTotalsByProperty([{ id: 'p1' }, { id: 'p2' }], null, facts);
+    ok('μετά τη διορθωτική, οι δόσεις βγαίνουν από το ΜΙΚΡΟΤΕΡΟ νέο σύνολο', totals.get('p1')?.[2026] === 843.2 && totals.get('p2')?.[2026] === 843.2, Object.fromEntries(totals));
+    // Αν είχε γραφτεί δεύτερη γραμμή, θα κέρδιζε το παλιό: αυτό αποφεύγεται.
+    const wrong = enfiaTotalsByProperty([{ id: 'p1' }], null, [{ propertyId: 'p1', year: 2026, amount: 900 }, { propertyId: 'p1', year: 2026, amount: 843.2 }]);
+    ok('(γιατί: δύο γραμμές θα κρατούσαν το παλιό 900)', wrong.get('p1')?.[2026] === 900);
+    const first = planStatement(2026, 843.2, [], [], 'p9');
+    ok('χωρίς υπάρχουσα γραμμή: μία νέα στο ακίνητο-στόχο', first.insertOn === 'p9' && !first.docUpdates.length);
+    const same = planStatement(2026, 843.2, [{ id: 'd1', property_id: 'p1', amount: 843.2 }], [{ propertyId: 'p1', data: { enfiaStatementTotal: '843,20', enfiaStatementYear: '2026' } }], 'p1');
+    ok('η ίδια πράξη δεύτερη φορά: τίποτα δεν αλλάζει', !same.insertOn && !same.docUpdates.length && !same.settingsUpdates.length);
+    const row = statementDocRow(2026, 843.2, '2026-03-15');
+    ok('η γραμμή του Αρχείου: «ΕΝΦΙΑ 2026», σύνολο, χωρίς αρχείο',
+      row.title === 'ΕΝΦΙΑ 2026' && row.statement_total === true && row.amount === 843.2 && row.file_path === '', row);
+  }
+
+  // ── 9. Νέο ακίνητο: μόνο ό,τι υπάρχει ───────────────────────────────
+  {
+    const r = newPropertyRow('u', { existingId: null, name: ' Διαμέρισμα ', address: null, atak: '123', sqm: null, ownershipPct: 50, floor: ' 2 ' });
+    ok('μισός ΑΤΑΚ δεν γράφεται, κενά πεδία λείπουν', JSON.stringify(r) === JSON.stringify({ user_id: 'u', name: 'Διαμέρισμα', ownership: 50, floor: '2' }), r);
+  }
+
+  // ── 10. Αναίρεση και όριο ημέρας ────────────────────────────────────
+  {
+    const now = new Date('2026-10-30T12:00:00Z');
+    ok('η αναίρεση κρατά όσο το «Πλήρωσα»', IMPORT_UNDO_HOURS === PAY_UNDO_HOURS);
+    ok('μέσα στο παράθυρο', canUndoImport(new Date(now.getTime() - 3_600_000).toISOString(), null, now));
+    ok('μετά το παράθυρο όχι', !canUndoImport(new Date(now.getTime() - (IMPORT_UNDO_HOURS * 3_600_000 + 1000)).toISOString(), null, now));
+    ok('αναιρεμένη δεν ξαναναιρείται', !canUndoImport(now.toISOString(), now.toISOString(), now));
+    const mig = readdirSync('supabase/migrations').find(f => f.includes('myaade'));
+    const sql = mig ? readFileSync(`supabase/migrations/${mig}`, 'utf8') : '';
+    ok('το όριο της βάσης είναι το ίδιο με της οθόνης', sql.includes(`v_used >= ${MYAADE_DAILY_IMPORTS}`) && sql.includes(`interval '${IMPORT_UNDO_HOURS} hours'`));
+  }
+
+  // ── 12. Η προεπισκόπηση: εμπόδια με λόγο, ιδιοκτήτης, όριο πακέτου ────
+  {
+    const doc = okDoc(parseEnfiaAct(enfiaActLines({
+      properties: [fakeProperty(1, '412,30'), fakeProperty(2, '210,40', { address: 'Οδός Παραδείγματος 12' }), fakeProperty(3, '120,50'), fakeProperty(4, '100,00')],
+    })))!;
+    const known: KnownProperty[] = [
+      { id: 'p1', name: 'Σπίτι', address: 'x 1', atak: fakeAtak(1) },
+      { id: 'p2', name: 'Πάνω', address: 'Παραδείγματος 12', atak: null },
+    ];
+    const rows = buildDrafts(doc, known, 1);
+    ok('καταστάσεις: υπάρχει, ίσως, νέο, εκτός πακέτου',
+      JSON.stringify(rows.map(r => [r.match.status, r.include, r.overPlan])) === JSON.stringify([['exists', true, false], ['maybe', true, false], ['new', true, false], ['new', false, true]]), rows.map(r => [r.match.status, r.include, r.overPlan]));
+    const base = { rows, year: '2026', total: '843,20', slots: 1, left: 5, owners: [], ownerId: null, dailyLimit: MYAADE_DAILY_IMPORTS, currentYear: 2026 };
+    const r1 = deriveReview(base);
+    ok('ανοιχτό «Ίσως υπάρχει»: εμπόδιο με λόγο σε λέξεις', r1.blockers[0]?.id === 'maybe' && r1.blockers[0].text.includes('Ίσως υπάρχει'), r1.blockers);
+    const other = rows.map(r => (r.match.status === 'maybe' ? { ...r, same: false } : r));
+    const r2 = deriveReview({ ...base, rows: other });
+    ok('«άλλο ακίνητο» πάνω από το όριο: εμπόδιο «excess» με τον αριθμό', r2.excess === 1 && r2.blockers.some(b => b.id === 'excess' && b.text.includes('Ξετσέκαρε 1')), r2.blockers);
+    const same = rows.map(r => (r.match.status === 'maybe' ? { ...r, same: true } : r));
+    const r3 = deriveReview({ ...base, rows: same });
+    ok('«είναι το ίδιο»: καμία αντίρρηση, 1 νέο, 2 συμπληρώνονται, 1 εκτός', !r3.blockers.length && r3.newCount === 1 && r3.filledCount === 2 && r3.leftOut === 1, r3);
+    ok('το όριο της ημέρας εμποδίζει πρώτο', deriveReview({ ...base, rows: same, left: 0 }).blockers[0]?.id === 'limit');
+    ok('ποσό που δεν διαβάζεται: εμπόδιο, ποτέ μηδέν', deriveReview({ ...base, rows: same, total: 'abc' }).blockers.some(b => b.id === 'total'));
+    ok('ποσό χωρίς έτος: εμπόδιο', deriveReview({ ...base, rows: same, year: '' }).blockers.some(b => b.id === 'year'));
+    ok('κενό ποσό: δεν γράφεται σύνολο, δεν εμποδίζει', (() => { const r = deriveReview({ ...base, rows: same, total: '' }); return !r.writesTotal && !r.blockers.length; })());
+    const owners = [{ id: 'o1', name: 'Α', afm: validTestAfm() }, { id: 'o2', name: 'Β', afm: FAKE_AFM }];
+    ok('πολλοί ιδιοκτήτες: χωρίς επιλογή, εμπόδιο «owner»', deriveReview({ ...base, rows: same, owners }).blockers[0]?.id === 'owner');
+    ok('ο ιδιοκτήτης με τον ΑΦΜ της πράξης προεπιλέγεται', preselectOwner(owners, validTestAfm()) === 'o1');
+    ok('άγνωστος ΑΦΜ: καμία προεπιλογή', preselectOwner(owners, null) === null && preselectOwner([owners[0]], validTestAfm()) === null);
+    ok('με επιλεγμένο ιδιοκτήτη, καμία αντίρρηση', !deriveReview({ ...base, rows: same, owners, ownerId: SELF_OWNER }).blockers.length);
+    const row = commitRowOf(same[1]);
+    ok('η γραμμή «είναι το ίδιο» φεύγει ως υπάρχον ακίνητο', row.existingId === 'p2' && row.sqm === 62, row);
+    ok('νέο ακίνητο στην καρτέλα του ιδιοκτήτη', newPropertyRow('u', { ...row, existingId: null }, 'o1').client_id === 'o1');
+  }
+
+  // ── 13. Η προθεσμία της αναίρεσης, σε ώρα Ελλάδας ───────────────────
+  ok('αναίρεση έως: dd/mm/yyyy HH:MM, 24 ώρες μετά, ώρα Ελλάδας', undoUntilLabel('2026-10-30T10:15:00Z') === '31/10/2026 12:15', undoUntilLabel('2026-10-30T10:15:00Z'));
+
+  // ── 14. ΑΚΡΙΒΕΙΑ: ελληνικοί αριθμοί, μηδέν, πίστωση, ποσοστά, σελίδες ──
+  {
+    const totalOf = (payable: string) => okDoc(parseEnfiaAct(enfiaActLines({ payable, gross: null, properties: [fakeProperty(1, '')] })))?.total;
+    const cases: [string, number | null][] = [
+      ['1.234,56', 1234.56], ['1 234,56', 1234.56], ['1 234,56', 1234.56], ['1234,5', 1234.5],
+      ['€ 843,20', 843.2], ['843,20 €', 843.2], ['843,20€', 843.2], ['1.234.567,89', 1234567.89],
+      ['1.234', null], ['2026', null],
+    ];
+    for (const [raw, want] of cases) ok(`ποσό «${raw}» → ${want}`, totalOf(raw) === want, totalOf(raw));
+    ok('το πεδίο διαβάζει τις ίδιες γραφές', toNumber('1.234,56') === 1234.56 && toNumber('1 234,56') === 1234.56 && toNumber('843,2') === 843.2 && toNumber('abc') === null);
+    ok('το ποσό στο πεδίο έχει πάντα δύο δεκαδικά, από λεπτά', toMoneyText(843.2) === '843,20' && toMoneyText(0.1 + 0.2) === '0,30' && toMoneyText(1234.565) === '1234,57');
+
+    const zero = okDoc(parseEnfiaAct(enfiaActLines({ payable: '0,00', gross: null })));
+    ok('ποσό 0: διαβάζεται ως 0, με ένδειξη ότι δεν είναι οφειλή', zero?.total === 0 && !!zero?.warnings.some(w => w.includes('δεν έχει ποσό για πληρωμή')), zero?.warnings);
+    for (const raw of ['-12,00', '(12,00)']) {
+      const neg = okDoc(parseEnfiaAct(enfiaActLines({ payable: raw, gross: null })));
+      ok(`πίστωση «${raw}»: αρνητικό, όχι οφειλή`, neg?.total === -12 && !!neg?.warnings.some(w => w.includes('δεν έχει ποσό για πληρωμή')), neg?.total);
+    }
+    const doc = okDoc(parseEnfiaAct(enfiaActLines()))!;
+    const rows0 = buildDrafts(doc, [], Infinity);
+    const base0 = { rows: rows0, year: '2026', slots: Infinity, left: 5, owners: [], ownerId: null, dailyLimit: MYAADE_DAILY_IMPORTS, currentYear: 2026 };
+    for (const total of ['0,00', '-12,00']) {
+      const r = deriveReview({ ...base0, total });
+      ok(`«${total}»: τα ακίνητα περνούν, δόσεις δεν γράφονται, κανένα εμπόδιο`, !r.writesTotal && r.noDebt && !r.blockers.length && r.newCount === 2, r);
+    }
+
+    const third = okDoc(parseEnfiaAct(enfiaActLines({ properties: [fakeProperty(1, '281,07', { pct: '33,33' })], payable: '281,07', gross: '281,07' })))!;
+    ok('συνιδιοκτησία 33,33%', third.properties[0].ownershipPct === 33.33, third.properties[0]);
+    ok('και φτάνει έτσι στη βάση', newPropertyRow('u', commitRowOf(buildDrafts(third, [], Infinity)[0])).ownership === 33.33);
+
+    // Πολυσέλιδη: ο πίνακας κόβεται στη μέση, η κεφαλίδα ΔΕΝ επαναλαμβάνεται,
+    // υπάρχει υποσέλιδο σελίδας και η τελευταία γραμμή της 1ης σελίδας ξανατυπώνεται στη 2η.
+    const props = [1, 2, 3, 4, 5].map(n => fakeProperty(n, '100,00'));
+    const lines = enfiaActLines({ properties: props, payable: '500,00', gross: '500,00' });
+    const at = lines.findIndex(l => l.startsWith(fakeAtak(3)));
+    const split = [...lines.slice(0, at + 1), 'Σελίδα 1 από 2', lines[at], ...lines.slice(at + 1)];
+    const res = extractPdfText(await enfiaActPdf(split, { pagesOf: at + 2 }));
+    const multi = okDoc(parseEnfiaAct(res.lines));
+    ok('σελίδα που κόβει τον πίνακα: πέντε ακίνητα, όλα κατά στήλη', res.pages === 2 && multi?.properties.length === 5 && multi.properties.every(p => !p.check), { pages: res.pages, n: multi?.properties.length });
+    ok('ο ίδιος ΑΤΑΚ στις δύο σελίδες: μία φορά, με ένδειξη', !!multi?.warnings.some(w => w.includes(fakeAtak(3)) && w.includes('δύο φορές')), multi?.warnings);
+    ok('το άθροισμα βγαίνει (το διπλό δεν μετρήθηκε)', !multi?.warnings.some(w => w.includes('αθροίζουν')), multi?.warnings);
+
+    const old = okDoc(parseEnfiaAct(enfiaActLines({ year: 2025 })))!;
+    const rOld = deriveReview({ ...base0, rows: buildDrafts(old, [], Infinity), year: String(old.year), total: '843,20' });
+    ok('πράξη άλλου έτους: ένδειξη, το σύνολο γράφεται στο δικό της έτος', rOld.otherYear && rOld.writesTotal && rOld.yearN === 2025, rOld);
+    ok('πράξη του τρέχοντος έτους: καμία ένδειξη', !deriveReview({ ...base0, total: '843,20' }).otherYear);
+  }
+
+  // ── 15. ΚΑΤΑΧΩΡΗΣΗ: δεύτερη φορά, όριο ημέρας, διπλό πάτημα, αναίρεση ─
+  {
+    const doc = okDoc(parseEnfiaAct(enfiaActLines()))!;
+    const known: KnownProperty[] = doc.properties.map((p, i) => ({ id: `p${i}`, name: `Ακίνητο ${i}`, address: p.address, atak: p.atak, sqm: p.sqm, ownership: 100, floor: p.floor }));
+    const writes = (calls: DbCall[], table: string, op: DbCall['op']) => calls.filter(c => c.table === table && c.op === op);
+
+    // Η ΙΔΙΑ ΠΡΑΞΗ ΔΕΥΤΕΡΗ ΦΟΡΑ: όλα «Υπάρχει ήδη», το σύνολο ήδη ίδιο.
+    const again = buildDrafts(doc, known, Infinity);
+    ok('δεύτερη εισαγωγή: όλα υπάρχουν ήδη, κανένα νέο', again.every(r => r.match.status === 'exists') && deriveReview({ rows: again, year: '2026', total: '843,20', slots: Infinity, left: 5, owners: [], ownerId: null, dailyLimit: 10, currentYear: 2026 }).newCount === 0);
+    const second = makeFakeDb(c => {
+      if (c.table === 'myaade_imports' && c.op === 'insert') return { data: { id: 'b2' }, error: null };
+      if (c.table === 'user_properties' && c.op === 'select') return { data: known.map(k => ({ ...k, client_id: null })), error: null };
+      if (c.table === 'property_documents' && c.op === 'select') return { data: [{ id: 'd1', property_id: 'p0', amount: 843.2 }], error: null };
+      return undefined;
+    });
+    const out2 = await commitImport(second.db as unknown as SupabaseClient, {
+      userId: 'u1', year: 2026, total: 843.2, foundCount: 2, rows: again.map(commitRowOf), known, docDate: '2026-03-15',
+    });
+    ok('δεύτερη εισαγωγή: κανένα νέο ακίνητο, καμία νέα γραμμή ΕΝΦΙΑ, κανένα ποσό δεν αλλάζει',
+      out2.ok && !out2.created.length && !writes(second.calls, 'user_properties', 'insert').length
+      && !writes(second.calls, 'property_documents', 'insert').length && !writes(second.calls, 'property_documents', 'update').length
+      && out2.statement === 'same', { out2, docs: second.calls.filter(c => c.table === 'property_documents').map(c => c.op) });
+
+    // Η 11η ΕΙΣΑΓΩΓΗ: η βάση απαντά 54000 και δεν γράφεται τίποτα άλλο.
+    const limit = makeFakeDb(c => (c.table === 'myaade_imports' && c.op === 'insert'
+      ? { data: null, error: { code: '54000', message: 'MYAADE_DAILY_LIMIT: έως 10 εισαγωγές σε 24 ώρες' } } : undefined));
+    const out3 = await commitImport(limit.db as unknown as SupabaseClient, {
+      userId: 'u1', year: 2026, total: 843.2, foundCount: 2, rows: buildDrafts(doc, [], Infinity).map(commitRowOf), known: [], docDate: '2026-03-15',
+    });
+    ok('11η εισαγωγή: «daily_limit», καμία άλλη εγγραφή', !out3.ok && out3.reason === 'daily_limit' && limit.calls.length === 1, { out3, calls: limit.calls.length });
+    const blocked = deriveReview({ rows: buildDrafts(doc, [], Infinity), year: '2026', total: '843,20', slots: Infinity, left: 0, owners: [], ownerId: null, dailyLimit: MYAADE_DAILY_IMPORTS, currentYear: 2026 });
+    ok('και η οθόνη το λέει σε μία γραμμή', blocked.blockers[0]?.id === 'limit' && blocked.blockers[0].text === `Έφτασες τις ${MYAADE_DAILY_IMPORTS} εισαγωγές της ημέρας.`, blocked.blockers[0]);
+
+    // ΔΙΠΛΟ ΠΑΤΗΜΑ: δύο κλήσεις στο ίδιο καρέ, μία καταχώρηση.
+    let runs = 0;
+    let release: () => void = () => {};
+    const once = singleFlight(() => { runs++; return new Promise<void>(r => { release = r; }); });
+    const a = once(), b = once();
+    ok('διπλό πάτημα: η δεύτερη κλήση παίρνει την ίδια υπόσχεση', a === b && runs === 1);
+    release(); await a;
+    void once(); release();
+    ok('μετά το τέλος, νέο πάτημα τρέχει ξανά', runs === 2);
+
+    // ΑΝΑΙΡΕΣΗ ΜΕΤΑ ΑΠΟ 24 ΩΡΕΣ: ούτε κλήση στη βάση.
+    const now = new Date('2026-10-30T12:00:00Z');
+    const lateDb = makeFakeDb();
+    const batch = { id: 'b1', created_at: new Date(now.getTime() - 25 * 3_600_000).toISOString(), undone_at: null, tax_year: 2026, created_property_ids: ['p9'], document_id: 'd9', replaced: [] };
+    const late = await undoImport(lateDb.db as unknown as SupabaseClient, 'u1', batch, now);
+    ok('αναίρεση μετά από 24 ώρες: «expired», καμία κλήση', !late.ok && late.reason === 'expired' && lateDb.calls.length === 0, late);
+    // Το ρολόι της συσκευής λέει «μέσα», η βάση λέει «όχι» (0 γραμμές): τίποτα δεν σβήνεται.
+    const serverDb = makeFakeDb(c => (c.table === 'myaade_imports' && c.op === 'update' ? { data: [], error: null } : undefined));
+    const srv = await undoImport(serverDb.db as unknown as SupabaseClient, 'u1', { ...batch, created_at: new Date(now.getTime() - 3_600_000).toISOString() }, now);
+    ok('η βάση αρνείται: «expired», κανένα ακίνητο και κανένα έγγραφο δεν σβήνεται',
+      !srv.ok && srv.reason === 'expired' && !serverDb.calls.some(c => c.op === 'delete'), { srv, ops: serverDb.calls.map(c => `${c.table}:${c.op}`) });
+  }
+
+  // ── 11. Τα fixtures είναι ψεύτικα ───────────────────────────────────
+  ok('το ΑΦΜ των fixtures δεν περνά τον έλεγχο', FAKE_AFM.length === 9 && !okDoc(parseEnfiaAct(enfiaActLines()))?.afm);
+}
+
+// ── ΤΟ ΠΡΑΓΜΑΤΙΚΟ ΕΝΤΥΠΟ «ΕΚΔΟΣΗ 6.0-2017» (31/10/2026) ─────────────────
+// Η διάταξη όπως τη δίνει ο αναγνώστης για πραγματική πράξη, με ΣΥΝΘΕΤΙΚΑ
+// στοιχεία: ΑΤΑΚ 999…, ΑΦΜ που αποτυγχάνει στο ψηφίο ελέγχου, φανταστική οδός.
+function form2017Lines(): string[] {
+  return [
+    'Δ Η Λ Ω Σ Η Ε Ν Ι Α Ι Ο Υ Φ Ο Ρ Ο Υ Ι Δ Ι Ο Κ Τ Η Σ Ι Α Σ Α Κ Ι Ν Η Τ Ω Ν (ΕΝ.Φ.Ι.Α.) - ΠΡΑΞΗ ΔΙΟΙΚΗΤΙΚΟΥ ΠΡΟΣΔΙΟΡΙΣΜΟΥ ΦΟΡΟΥ Ν.4223/2013\tΣελ. 1 / 1',
+    'Α. ΣΤΟΙΧΕΙΑ ΥΠΗΡΕΣΙΑΣ\tΓ. ΣΤΟΙΧΕΙΑ ΕΚΚΑΘΑΡΙΣΗΣ ΕΝ.Φ.Ι.Α.',
+    'ΑΡΙΘΜΟΣ ΔΗΛΩΣΗΣ / ΕΤΟΣ: 100001 / 2026',
+    'ΗΜΕΡΟΜΗΝΙΑ ΕΚΔΟΣΗΣ ΠΡΑΞΗΣ: 15-03-2026\t2\t0\t0,00\tΤΕΛΙΚΟ',
+    'ΣΥΝΟΛΑ\t2\t+\t600,00\t150.000,00 +\t0,00 -\t120,00\t480,00',
+    'Αρχική Εκκαθάριση ΕΝ.Φ.Ι.Α. 2026',
+    'ΑΡΙΘΜΟΣ ΦΟΡ/ΚΟΥ ΜΗΤΡΩΟΥ (Α.Φ.Μ.): 123456780',
+    'Δ. ΣΤΟΙΧΕΙΑ ΟΙΚΟΠΕΔΩΝ (ΕΝΤΟΣ ΣΧΕΔΙΟΥ ή ΟΙΚΙΣΜΟΥ) ΚΑΙ ΚΤΙΣΜΑΤΩΝ (ΕΝΤΟΣ & ΕΚΤΟΣ ΣΧΕΔΙΟΥ) - ΠΙΝΑΚΑΣ 1 ΕΝΤΥΠΟΥ Ε9',
+    'ΔΟΚΙΜΗΣ, ΠΑΡΑΔΕΙΓΜΑΤΟΣ, ΦΑΝΤΑΣΤΙΚΗΣ, T.K.',
+    `1\t${fakeAtak(1)} 10000\t1\t1\t1\t2\t80,00\t1990 1 100,00000\tNAI\t1.000,00\t400,00\t100.000,00`,
+    'ΔΟΚΙΜΗΣ, ΠΑΡΑΔΕΙΓΜΑΤΟΣ, ΑΛΛΗΣ, T.K.',
+    `2\t${fakeAtak(2)} 10001\t1\t1\t1\t0\t45,50\t2005 1 50,00000\tNAI\t800,00\t200,00\t50.000,00`,
+    'ΠΟΣΟ ΕΦΑΠΑΞ ΚΑΤΑΒΟΛΗΣ:\t480,00',
+    'ΠΛΗΡΩΤΕΟ ΜΕΧΡΙ:\t31-03-2026\tΔ1\tΔ2\tΔ3\tΔ4\tΔ5\tΔ6\tΔ7\tΔ8\tΔ9\tΔ10\tΔ11\tΔ12',
+    'ΠΛΗΡΩΤΕΟ ΜΕΧΡΙ\tΠΛΗΡΩΤΕΟ ΜΕΧΡΙ',
+    'Έκδοση 6.0-2017, ΔΙΕΥΘΥΝΣΗ ΗΛΕΚΤΡΟΝΙΚΗΣ ΔΙΑΚΥΒΕΡΝΗΣΗΣ Α.Α.Δ.Ε.',
+  ];
+}
+
+function form2017Checks() {
+  const r = parseEnfiaAct(form2017Lines());
+  ok('έντυπο 6.0-2017: αναγνωρίζεται ως πράξη', r.status === 'ok', r);
+  if (r.status !== 'ok') return;
+  const d = r.doc;
+  ok('έντυπο 6.0-2017: έτος', d.year === 2026, d.year);
+  ok('έντυπο 6.0-2017: πληρωτέο από «ΠΟΣΟ ΕΦΑΠΑΞ ΚΑΤΑΒΟΛΗΣ»', d.total === 480, d.total);
+  ok('έντυπο 6.0-2017: κύριος και συμπληρωματικός από τα ΣΥΝΟΛΑ', d.mainTax === 600 && d.supplementaryTax === 0, [d.mainTax, d.supplementaryTax]);
+  ok('έντυπο 6.0-2017: δώδεκα δόσεις από τα «Δn»', d.printedInstalments?.count === 12, d.printedInstalments);
+  ok('έντυπο 6.0-2017: ημερομηνίες', d.issueDate === '2026-03-15' && d.firstDueDate === '2026-03-31', [d.issueDate, d.firstDueDate]);
+  ok('έντυπο 6.0-2017: δύο ακίνητα', d.properties.length === 2, d.properties.length);
+  const [a, b] = d.properties;
+  ok('έντυπο 6.0-2017: ΑΤΑΚ, Τ.Κ. στη διεύθυνση, δήμος', a.atak === fakeAtak(1) && a.address === 'ΔΟΚΙΜΗΣ, ΠΑΡΑΔΕΙΓΜΑΤΟΣ, ΦΑΝΤΑΣΤΙΚΗΣ, Τ.Κ. 10000' && a.municipality === 'ΠΑΡΑΔΕΙΓΜΑΤΟΣ', a);
+  ok('έντυπο 6.0-2017: τ.μ., ποσοστό, όροφος, φόρος', a.sqm === 80 && a.ownershipPct === 100 && a.floor === '2' && a.tax === 400 && !a.check, a);
+  ok('έντυπο 6.0-2017: ισόγειο και μισό ποσοστό', b.sqm === 45.5 && b.ownershipPct === 50 && b.floor === '0' && b.tax === 200, b);
+  ok('έντυπο 6.0-2017: ο φόρος ανά ακίνητο συμφωνεί με τον κύριο φόρο', !d.warnings.some(w => w.includes('αθροίζουν')), d.warnings);
+  ok('έντυπο 6.0-2017: ΑΦΜ με λάθος ψηφίο ελέγχου δεν κρατιέται', d.afm === null);
+}
+
+function filterChecks() {
+  const enc = (s: string) => new TextEncoder().encode(s);
+  const dec = (b: Uint8Array | null) => (b ? new TextDecoder().decode(b) : null);
+  ok('ASCII85: «9jqo^» → «Man »', dec(ascii85Decode(enc('9jqo^~>'))) === 'Man ');
+  ok('ASCII85: μισή ομάδα «9jqo» → «Man»', dec(ascii85Decode(enc('9jqo~>'))) === 'Man');
+  ok('ASCII85: «z» → τέσσερα μηδενικά', ascii85Decode(enc('z~>'))?.join(',') === '0,0,0,0');
+  ok('ASCII85: κενά αγνοούνται', dec(ascii85Decode(enc('9j qo\n^~>'))) === 'Man ');
+  ok('ASCII85: άκυρο σύμβολο → null', ascii85Decode(enc('9jqo{~>')) === null);
+  ok('ASCIIHex: «4D616E>» → «Man»', dec(asciiHexDecode(enc('4D 61 6E>'))) === 'Man');
+}
+
+run().then(() => {
+  console.log(fail === 0 ? `✓ myaade: ${pass} έλεγχοι πέρασαν` : `✗ myaade: ${fail} απέτυχαν από ${pass + fail}`);
+  process.exit(fail ? 1 : 0);
+});

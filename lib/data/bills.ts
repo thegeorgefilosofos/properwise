@@ -179,3 +179,13 @@ export const paidFields = () => ({ paid: true, paid_at: new Date().toISOString()
 export function markPaid(db: Db, id: string) {
   return db.from(TABLE).update(paidFields()).eq('id', id);
 }
+
+/**
+ * Πόσες γραμμές έχει ένα ακίνητο, χωρίς να κατεβεί καμία. `null` όταν η
+ * μέτρηση απέτυχε: άγνωστο δεν σημαίνει μηδέν. Τη ρωτά η αναίρεση της
+ * εισαγωγής από το myAADE, που δεν σβήνει ακίνητο όπου ο χρήστης έχει γράψει.
+ */
+export async function countOfProperty(db: Db, propertyId: string): Promise<number | null> {
+  const { count, error } = await db.from(TABLE).select('id', { count: 'exact', head: true }).eq('property_id', propertyId);
+  return error ? null : count ?? 0;
+}

@@ -53,6 +53,7 @@ import { createClient } from '@/lib/supabase/client';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
 import { T, TT, fe, feWhole, fp, SecHdr, Spinner, fixedCols, Btn, ABSENT } from '@/components/Theme';
+import { openMyaadeImport } from './myaadeOpen';
 import { NumberInput, CustomSelect } from './UIComponents';
 import { AadePill } from '@/components/AadeLink';
 import { AsOfNote } from '@/components/AsOfNote';
@@ -404,7 +405,11 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
     <div style={{ fontFamily: T.font.sans, color: 'var(--text-primary)' }}>
       <SecHdr label="Υπολογισμός ΕΝΦΙΑ"
         sub="Πόσο είναι ο φόρος του ακινήτου και πόσα να βάζεις στην άκρη κάθε μήνα"
-        right={<AadePill action="enfia" label="Ε9 και ΕΝΦΙΑ"/>}/>
+        right={<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Η ΠΡΑΞΗ ΑΠΟ ΤΟ myAADE ΓΡΑΦΕΙ ΤΟ ΣΥΝΟΛΟ: δόσεις και υπενθυμίσεις βγαίνουν από αυτό. */}
+          <Btn variant="secondary" onClick={openMyaadeImport}>Ενημέρωσε από την πράξη</Btn>
+          <AadePill action="enfia" label="Ε9 και ΕΝΦΙΑ"/>
+        </div>}/>
       {/* Οι συντελεστές και τα όρια του υπολογισμού, με το πότε ελέγχθηκαν (lib/facts/taxLimits). */}
       <AsOfNote fact={taxLimitAsOf('enfia')} style={{ margin: '-4px 0 12px' }} />
 

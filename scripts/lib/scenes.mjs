@@ -19,6 +19,7 @@ export const SCENES = [
   'budget', 'budgetPro',
   'calendar', 'calendarDay', 'clients', 'documents', 'inventory', 'settings', 'settingsPro',
   'billing', 'branding', 'referral', 'referralPro', 'plan', 'planReno', 'planSale',
+  'myaade', 'myaadeReview', 'myaadeDone', 'myaadeError',
 ];
 
 /** Οι σκηνές που ζητά η `E2E_ONLY`, αλλιώς όλες. */

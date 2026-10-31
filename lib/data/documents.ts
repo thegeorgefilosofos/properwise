@@ -160,12 +160,34 @@ export async function enfiaStatementsWithError(
   return { statements, error };
 }
 
+/**
+ * Οι γραμμές «ΕΝΦΙΑ YYYY» με `statement_total` ενός έτους, σε πολλά ακίνητα:
+ * όσες αντικαθιστά η εισαγωγή από το myAADE (lib/myaade/statement.ts). Με το
+ * σφάλμα ορατό: «δεν διαβάστηκε» δεν είναι «δεν υπάρχει», αλλιώς θα γραφόταν
+ * δεύτερο σύνολο δίπλα στο πρώτο.
+ */
+export async function enfiaStatementRowsOfYear(
+  db: Db, propertyIds: string[], userId: string, year: number,
+): Promise<{ rows: { id: string; property_id: string; amount: number | null }[]; error: DbError | null }> {
+  if (propertyIds.length === 0) return { rows: [], error: null };
+  return read<{ id: string; property_id: string; amount: number | null }>(db.from(TABLE).select('id,property_id,amount')
+    .in('property_id', propertyIds).eq('user_id', userId).eq('title', `${ENFIA_TITLE} ${year}`).eq('statement_total', true));
+}
+
 /** Πόσα έγγραφα έχει αυτό το ακίνητο. Χωρίς να κατεβεί καμία γραμμή. */
 export async function count(db: Db, propertyId: string, userId?: string): Promise<number> {
   let q = db.from(TABLE).select('id', { count: 'exact', head: true }).eq('property_id', propertyId);
   if (userId) q = q.eq('user_id', userId);
   const { count: n } = await q;
   return n ?? 0;
+}
+
+/** Πόσα έγγραφα έχει το ακίνητο εκτός από ένα. `null` όταν η μέτρηση απέτυχε. */
+export async function countExcept(db: Db, propertyId: string, exceptId: string | null): Promise<number | null> {
+  let q = db.from(TABLE).select('id', { count: 'exact', head: true }).eq('property_id', propertyId);
+  if (exceptId) q = q.neq('id', exceptId);
+  const { count: n, error } = await q;
+  return error ? null : n ?? 0;
 }
 
 /** Πόσα έγγραφα έχει ο χρήστης σε όλα του τα ακίνητα. `null` όταν η μέτρηση
