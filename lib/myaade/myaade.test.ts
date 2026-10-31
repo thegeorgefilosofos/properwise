@@ -5,7 +5,7 @@
 // ταίριασμα με τα ακίνητα της εφαρμογής, όριο πακέτου, αντικατάσταση του
 // συνόλου από διορθωτική πράξη και το παράθυρο αναίρεσης.
 import { readFileSync, readdirSync } from 'node:fs';
-import { extractPdfText } from '@/lib/pdf/pdfText';
+import { extractPdfText, ascii85Decode, asciiHexDecode } from '@/lib/pdf/pdfText';
 import { enfiaTotalsByProperty } from '@/lib/calendar/enfiaTotals';
 import { PAY_UNDO_HOURS } from '@/lib/reminders/payLink';
 import { parseEnfiaAct } from './enfiaAct';
@@ -153,6 +153,8 @@ function ok(name: string, cond: boolean, detail?: unknown) {
 const okDoc = (r: ReturnType<typeof parseEnfiaAct>) => (r.status === 'ok' ? r.doc : null);
 
 async function run() {
+  form2017Checks();
+  filterChecks();
   // ── 1. Η βασική πράξη, από κείμενο ─────────────────────────────────────
   {
     const doc = okDoc(parseEnfiaAct(enfiaActLines()));
@@ -466,6 +468,60 @@ async function run() {
 
   // ── 11. Τα fixtures είναι ψεύτικα ───────────────────────────────────
   ok('το ΑΦΜ των fixtures δεν περνά τον έλεγχο', FAKE_AFM.length === 9 && !okDoc(parseEnfiaAct(enfiaActLines()))?.afm);
+}
+
+// ── ΤΟ ΠΡΑΓΜΑΤΙΚΟ ΕΝΤΥΠΟ «ΕΚΔΟΣΗ 6.0-2017» (31/10/2026) ─────────────────
+// Η διάταξη όπως τη δίνει ο αναγνώστης για πραγματική πράξη, με ΣΥΝΘΕΤΙΚΑ
+// στοιχεία: ΑΤΑΚ 999…, ΑΦΜ που αποτυγχάνει στο ψηφίο ελέγχου, φανταστική οδός.
+function form2017Lines(): string[] {
+  return [
+    'Δ Η Λ Ω Σ Η Ε Ν Ι Α Ι Ο Υ Φ Ο Ρ Ο Υ Ι Δ Ι Ο Κ Τ Η Σ Ι Α Σ Α Κ Ι Ν Η Τ Ω Ν (ΕΝ.Φ.Ι.Α.) - ΠΡΑΞΗ ΔΙΟΙΚΗΤΙΚΟΥ ΠΡΟΣΔΙΟΡΙΣΜΟΥ ΦΟΡΟΥ Ν.4223/2013\tΣελ. 1 / 1',
+    'Α. ΣΤΟΙΧΕΙΑ ΥΠΗΡΕΣΙΑΣ\tΓ. ΣΤΟΙΧΕΙΑ ΕΚΚΑΘΑΡΙΣΗΣ ΕΝ.Φ.Ι.Α.',
+    'ΑΡΙΘΜΟΣ ΔΗΛΩΣΗΣ / ΕΤΟΣ: 100001 / 2026',
+    'ΗΜΕΡΟΜΗΝΙΑ ΕΚΔΟΣΗΣ ΠΡΑΞΗΣ: 15-03-2026\t2\t0\t0,00\tΤΕΛΙΚΟ',
+    'ΣΥΝΟΛΑ\t2\t+\t600,00\t150.000,00 +\t0,00 -\t120,00\t480,00',
+    'Αρχική Εκκαθάριση ΕΝ.Φ.Ι.Α. 2026',
+    'ΑΡΙΘΜΟΣ ΦΟΡ/ΚΟΥ ΜΗΤΡΩΟΥ (Α.Φ.Μ.): 123456780',
+    'Δ. ΣΤΟΙΧΕΙΑ ΟΙΚΟΠΕΔΩΝ (ΕΝΤΟΣ ΣΧΕΔΙΟΥ ή ΟΙΚΙΣΜΟΥ) ΚΑΙ ΚΤΙΣΜΑΤΩΝ (ΕΝΤΟΣ & ΕΚΤΟΣ ΣΧΕΔΙΟΥ) - ΠΙΝΑΚΑΣ 1 ΕΝΤΥΠΟΥ Ε9',
+    'ΔΟΚΙΜΗΣ, ΠΑΡΑΔΕΙΓΜΑΤΟΣ, ΦΑΝΤΑΣΤΙΚΗΣ, T.K.',
+    `1\t${fakeAtak(1)} 10000\t1\t1\t1\t2\t80,00\t1990 1 100,00000\tNAI\t1.000,00\t400,00\t100.000,00`,
+    'ΔΟΚΙΜΗΣ, ΠΑΡΑΔΕΙΓΜΑΤΟΣ, ΑΛΛΗΣ, T.K.',
+    `2\t${fakeAtak(2)} 10001\t1\t1\t1\t0\t45,50\t2005 1 50,00000\tNAI\t800,00\t200,00\t50.000,00`,
+    'ΠΟΣΟ ΕΦΑΠΑΞ ΚΑΤΑΒΟΛΗΣ:\t480,00',
+    'ΠΛΗΡΩΤΕΟ ΜΕΧΡΙ:\t31-03-2026\tΔ1\tΔ2\tΔ3\tΔ4\tΔ5\tΔ6\tΔ7\tΔ8\tΔ9\tΔ10\tΔ11\tΔ12',
+    'ΠΛΗΡΩΤΕΟ ΜΕΧΡΙ\tΠΛΗΡΩΤΕΟ ΜΕΧΡΙ',
+    'Έκδοση 6.0-2017, ΔΙΕΥΘΥΝΣΗ ΗΛΕΚΤΡΟΝΙΚΗΣ ΔΙΑΚΥΒΕΡΝΗΣΗΣ Α.Α.Δ.Ε.',
+  ];
+}
+
+function form2017Checks() {
+  const r = parseEnfiaAct(form2017Lines());
+  ok('έντυπο 6.0-2017: αναγνωρίζεται ως πράξη', r.status === 'ok', r);
+  if (r.status !== 'ok') return;
+  const d = r.doc;
+  ok('έντυπο 6.0-2017: έτος', d.year === 2026, d.year);
+  ok('έντυπο 6.0-2017: πληρωτέο από «ΠΟΣΟ ΕΦΑΠΑΞ ΚΑΤΑΒΟΛΗΣ»', d.total === 480, d.total);
+  ok('έντυπο 6.0-2017: κύριος και συμπληρωματικός από τα ΣΥΝΟΛΑ', d.mainTax === 600 && d.supplementaryTax === 0, [d.mainTax, d.supplementaryTax]);
+  ok('έντυπο 6.0-2017: δώδεκα δόσεις από τα «Δn»', d.printedInstalments?.count === 12, d.printedInstalments);
+  ok('έντυπο 6.0-2017: ημερομηνίες', d.issueDate === '2026-03-15' && d.firstDueDate === '2026-03-31', [d.issueDate, d.firstDueDate]);
+  ok('έντυπο 6.0-2017: δύο ακίνητα', d.properties.length === 2, d.properties.length);
+  const [a, b] = d.properties;
+  ok('έντυπο 6.0-2017: ΑΤΑΚ, Τ.Κ. στη διεύθυνση, δήμος', a.atak === fakeAtak(1) && a.address === 'ΔΟΚΙΜΗΣ, ΠΑΡΑΔΕΙΓΜΑΤΟΣ, ΦΑΝΤΑΣΤΙΚΗΣ, Τ.Κ. 10000' && a.municipality === 'ΠΑΡΑΔΕΙΓΜΑΤΟΣ', a);
+  ok('έντυπο 6.0-2017: τ.μ., ποσοστό, όροφος, φόρος', a.sqm === 80 && a.ownershipPct === 100 && a.floor === '2' && a.tax === 400 && !a.check, a);
+  ok('έντυπο 6.0-2017: ισόγειο και μισό ποσοστό', b.sqm === 45.5 && b.ownershipPct === 50 && b.floor === '0' && b.tax === 200, b);
+  ok('έντυπο 6.0-2017: ο φόρος ανά ακίνητο συμφωνεί με τον κύριο φόρο', !d.warnings.some(w => w.includes('αθροίζουν')), d.warnings);
+  ok('έντυπο 6.0-2017: ΑΦΜ με λάθος ψηφίο ελέγχου δεν κρατιέται', d.afm === null);
+}
+
+function filterChecks() {
+  const enc = (s: string) => new TextEncoder().encode(s);
+  const dec = (b: Uint8Array | null) => (b ? new TextDecoder().decode(b) : null);
+  ok('ASCII85: «9jqo^» → «Man »', dec(ascii85Decode(enc('9jqo^~>'))) === 'Man ');
+  ok('ASCII85: μισή ομάδα «9jqo» → «Man»', dec(ascii85Decode(enc('9jqo~>'))) === 'Man');
+  ok('ASCII85: «z» → τέσσερα μηδενικά', ascii85Decode(enc('z~>'))?.join(',') === '0,0,0,0');
+  ok('ASCII85: κενά αγνοούνται', dec(ascii85Decode(enc('9j qo\n^~>'))) === 'Man ');
+  ok('ASCII85: άκυρο σύμβολο → null', ascii85Decode(enc('9jqo{~>')) === null);
+  ok('ASCIIHex: «4D616E>» → «Man»', dec(asciiHexDecode(enc('4D 61 6E>'))) === 'Man');
 }
 
 run().then(() => {

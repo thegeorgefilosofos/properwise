@@ -206,11 +206,60 @@ function decodeStream(o: PdfObject, resolve: (v: PdfVal | undefined) => PdfVal |
       const parms = resolve(o.val.DecodeParms);
       const pred = isDict(parms) ? Number(resolve(parms.Predictor) ?? 1) : 1;
       if (pred >= 10 && isDict(parms)) data = pngUnpredict(data, Number(resolve(parms.Columns) ?? 1));
+    } else if (name === 'ASCII85Decode' || name === 'A85') {
+      const d = ascii85Decode(data);
+      if (!d) return null;
+      data = d;
+    } else if (name === 'ASCIIHexDecode' || name === 'AHx') {
+      data = asciiHexDecode(data);
     } else {
       return null; // εικόνες (DCT, JBIG2) και ό,τι άλλο: δεν είναι κείμενο
     }
   }
   return data;
+}
+
+/**
+ * ASCII85 (PDF 32000-1 §7.4.3). Η πράξη ΕΝΦΙΑ της ΑΑΔΕ (Oracle Reports) γράφει
+ * τις σελίδες της ως `[/ASCII85Decode /FlateDecode]`: χωρίς αυτό ο αναγνώστης
+ * έβλεπε «σάρωση χωρίς κείμενο» σε έγγραφο με τρεις χιλιάδες χαρακτήρες.
+ * Ομάδες πέντε χαρακτήρων `!`–`u` γίνονται τέσσερα bytes· το `z` είναι τέσσερα
+ * μηδενικά· το `~>` τελειώνει τη ροή· τα κενά αγνοούνται. Άκυρο σύμβολο → null.
+ */
+export function ascii85Decode(src: Uint8Array): Uint8Array | null {
+  const out: number[] = [];
+  const grp: number[] = [];
+  const flush = (n: number) => {
+    let v = 0;
+    for (let i = 0; i < 5; i++) v = v * 85 + (i < n ? grp[i] : 84);
+    const bytes = [(v >>> 24) & 0xff, (v >>> 16) & 0xff, (v >>> 8) & 0xff, v & 0xff];
+    for (let i = 0; i < n - 1; i++) out.push(bytes[i]);
+  };
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (WS.has(c)) continue;
+    if (c === 0x7e) break; // ~>
+    if (c === 0x7a && grp.length === 0) { out.push(0, 0, 0, 0); continue; } // z
+    if (c < 0x21 || c > 0x75) return null;
+    grp.push(c - 0x21);
+    if (grp.length === 5) { flush(5); grp.length = 0; }
+  }
+  if (grp.length === 1) return null;
+  if (grp.length) flush(grp.length);
+  return Uint8Array.from(out);
+}
+
+/** ASCIIHex (PDF 32000-1 §7.4.2): ζεύγη δεκαεξαδικών ως το `>`, τα κενά αγνοούνται. */
+export function asciiHexDecode(src: Uint8Array): Uint8Array {
+  let digits = '';
+  for (const c of src) {
+    if (c === 0x3e) break;
+    if (!WS.has(c)) digits += String.fromCharCode(c);
+  }
+  if (digits.length % 2) digits += '0';
+  const out = new Uint8Array(digits.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(digits.slice(i * 2, i * 2 + 2), 16) || 0;
+  return out;
 }
 
 /** Η πρόβλεψη PNG που βάζουν οι γεννήτριες στις ροές xref. */

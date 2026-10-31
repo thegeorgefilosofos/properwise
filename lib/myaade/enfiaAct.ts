@@ -31,7 +31,7 @@ import { roundHalfUp } from '@/lib/core/money';
 import { fe } from '@/lib/core/format';
 import { enfiaInstalmentCount } from '@/lib/tools/enfiaSchedule';
 import { detectDocKind, HEAD_LINES } from './detect';
-import { HEADER_LABELS, COLUMN_LABELS, CORRECTIVE, type ColumnField } from './labels';
+import { HEADER_LABELS, COLUMN_LABELS, CORRECTIVE, FORM_2017, type ColumnField } from './labels';
 import { isValidRf, rfCompact } from './rf';
 import type { MyAadeImport, MyAadeParse, MyAadeProperty } from './types';
 
@@ -189,7 +189,81 @@ function byShape(cells: string[]): MyAadeProperty {
   return p;
 }
 
+// ── Το έντυπο «Έκδοση 6.0-2017» (labels.ts, FORM_2017) ──────────────────
+const tokensOf = (line: string) => line.split(/[\t ]+/).map(t => t.trim()).filter(Boolean);
+const isForm2017 = (lines: readonly string[]) => lines.some(l => FORM_2017.marker.test(fold(l)));
+
+/** Η γραμμή «ΣΥΝΟΛΑ»: πέντε ποσά με σταθερή σειρά, αλλιώς τίποτα. */
+function form2017Totals(lines: readonly string[]): { main: number; value: number; supp: number; discount: number; owed: number } | null {
+  for (const line of lines) {
+    const cells = cellsOf(line);
+    const k = cells.findIndex(c => FORM_2017.totalsRow.test(fold(c)));
+    if (k < 0) continue;
+    const money = cells.slice(k + 1).flatMap(tokensOf).map(asMoney).filter((n): n is number => n !== null);
+    if (money.length !== 5) return null;
+    const [main, value, supp, discount, owed] = money;
+    return { main, value, supp, discount, owed };
+  }
+  return null;
+}
+
+/** Πόσες δόσεις τυπώνει το ΣΤ: η μεγαλύτερη ένδειξη «Δn». */
+function form2017Instalments(lines: readonly string[]): number | null {
+  let max = 0;
+  for (const line of lines) for (const c of cellsOf(line)) {
+    const m = FORM_2017.instalmentTag.exec(clean(c));
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return max || null;
+}
+
+/**
+ * Μία γραμμή ακινήτου του εντύπου. Τα πεδία αναγνωρίζονται από τη θέση τους ως
+ * προς σταθερά σημεία (ΑΤΑΚ, ποσοστό με πέντε δεκαδικά, ένδειξη ηλεκτροδότησης)
+ * και όχι από επικεφαλίδες, που το έντυπο τυπώνει σε πολλές γραμμές.
+ */
+function form2017Property(line: string, prev: string): MyAadeProperty | null {
+  const toks = tokensOf(line);
+  const ai = toks.findIndex(t => new RegExp(`^\\d{${ATAK_DIGITS}}$`).test(t));
+  if (ai < 0) return null;
+  const p = emptyProperty();
+  p.atak = toks[ai];
+  const tk = /^\d{5}$/.test(toks[ai + 1] ?? '') ? toks[ai + 1] : null;
+  const addr = clean(prev).replace(/,?\s*T\.?\s*K\.?\s*$/i, '');
+  if (addr && /\p{L}{3,}/u.test(addr) && !RE_ATAK.test(prev)) {
+    p.address = tk ? `${addr}, Τ.Κ. ${tk}` : addr;
+    const parts = addr.split(',').map(x => x.trim()).filter(Boolean);
+    if (parts.length >= 3) p.municipality = parts[1];
+  }
+  const oi = toks.findIndex(t => FORM_2017.ownership.test(t));
+  if (oi >= 0) { const n = asNumber(toks[oi].replace(/(,\d{2})\d+$/, '$1')); if (n !== null && n > 0 && n <= 100) p.ownershipPct = n; }
+  // Η πρώτη επιφάνεια μετά τον ΑΤΑΚ (με δύο δεκαδικά) είναι οι κύριοι χώροι· ο αμέσως προηγούμενος ακέραιος, ο όροφος.
+  const si = toks.findIndex((t, i) => i > ai + 1 && (oi < 0 || i < oi) && asMoney(t) !== null);
+  if (si >= 0) {
+    const n = asMoney(toks[si]); if (n !== null && n > 0) p.sqm = n;
+    if (/^-?\d{1,2}$/.test(toks[si - 1] ?? '') && si - 1 > ai + 1) p.floor = toks[si - 1];
+  }
+  // Μετά την ένδειξη ηλεκτροδότησης: τιμή ζώνης, κύριος φόρος ακινήτου, αξία ακινήτου.
+  const pi = toks.findIndex(t => FORM_2017.powered.test(t));
+  const tail = (pi >= 0 ? toks.slice(pi + 1) : []).map(asMoney).filter((n): n is number => n !== null);
+  if (tail.length === 3) p.tax = tail[1];
+  p.check = !(p.atak && p.sqm != null && p.ownershipPct != null && p.address);
+  return p;
+}
+
 function readProperties(lines: readonly string[], warnings: string[]): MyAadeProperty[] {
+  if (isForm2017(lines)) {
+    const out: MyAadeProperty[] = [];
+    const seen = new Set<string>();
+    lines.forEach((line, i) => {
+      const p = form2017Property(line, lines[i - 1] ?? '');
+      if (!p?.atak) return;
+      if (seen.has(p.atak)) { warnings.push(`Ο ΑΤΑΚ ${p.atak} εμφανίζεται δύο φορές· κρατήθηκε η πρώτη.`); return; }
+      seen.add(p.atak);
+      out.push(p);
+    });
+    return out;
+  }
   const header = findHeader(lines);
   const out: MyAadeProperty[] = [];
   const seen = new Set<string>();
@@ -248,7 +322,10 @@ export function parseEnfiaAct(lines: readonly string[]): MyAadeParse {
 
   // Το ποσό: πρώτα «για καταβολή», μετά «συνολικός φόρος». Ποτέ υπολογισμένο.
   const payable = headerValue<number>(lines, HEADER_LABELS.payable, 'money');
-  const gross = headerValue<number>(lines, HEADER_LABELS.total, 'money');
+  const form = isForm2017(lines) ? form2017Totals(lines) : null;
+  const grossLabelled = headerValue<number>(lines, HEADER_LABELS.total, 'money');
+  // Το έντυπο 6.0-2017 δεν έχει ετικέτα «συνολικός φόρος»: το «ΠΟΣΟ ΟΦΕΙΛΗΣ» είναι η τελευταία στήλη των ΣΥΝΟΛΩΝ.
+  const gross = grossLabelled.value == null && !grossLabelled.conflict.length && form ? { value: form.owed, conflict: [] as number[] } : grossLabelled;
   for (const [name, r] of [['ποσό για καταβολή', payable], ['συνολικό φόρο', gross]] as const) {
     if (r.conflict.length) warnings.push(`Βρέθηκαν διαφορετικές τιμές για ${name}: ${r.conflict.map(fe).join(', ')}. Γράψε το σωστό.`);
   }
@@ -260,9 +337,12 @@ export function parseEnfiaAct(lines: readonly string[]): MyAadeParse {
   // ΜΗΔΕΝ Ή ΠΙΣΤΩΣΗ ΔΕΝ ΕΙΝΑΙ ΟΦΕΙΛΗ. Τα ακίνητα περνούν, δόσεις δεν γράφονται.
   if (total != null && total <= 0) warnings.push('Η πράξη δεν έχει ποσό για πληρωμή. Τα ακίνητα περνούν χωρίς δόσεις.');
 
-  const main = headerValue<number>(lines, HEADER_LABELS.mainTax, 'money');
-  const supp = headerValue<number>(lines, HEADER_LABELS.supplementaryTax, 'money');
-  const count = headerValue<number>(lines, HEADER_LABELS.instalmentCount, 'int');
+  const mainL = headerValue<number>(lines, HEADER_LABELS.mainTax, 'money');
+  const suppL = headerValue<number>(lines, HEADER_LABELS.supplementaryTax, 'money');
+  const main = mainL.value == null && form ? { value: form.main } : mainL;
+  const supp = suppL.value == null && form ? { value: form.supp } : suppL;
+  const countL = headerValue<number>(lines, HEADER_LABELS.instalmentCount, 'int');
+  const count = countL.value == null && !countL.conflict.length ? { value: form2017Instalments(lines), conflict: [] as number[] } : countL;
   const each = headerValue<number>(lines, HEADER_LABELS.instalmentAmount, 'money');
   const printedInstalments = count.value != null || each.value != null ? { count: count.value, amount: each.value } : null;
   if (total != null && total > 0 && count.value != null && count.value !== enfiaInstalmentCount(total)) {
@@ -283,11 +363,14 @@ export function parseEnfiaAct(lines: readonly string[]): MyAadeParse {
   if (!properties.length) warnings.push('Δεν βρέθηκαν ακίνητα με ΑΤΑΚ στην πράξη.');
 
   // Αυτοέλεγχος: το άθροισμα ανά ακίνητο, σε λεπτά, πρέπει να βγάζει το σύνολο.
+  // Στο έντυπο 6.0-2017 ο φόρος της γραμμής είναι ΚΥΡΙΟΣ φόρος, πριν από έκπτωση
+  // και συμπληρωματικό: συγκρίνεται με τον κύριο φόρο των ΣΥΝΟΛΩΝ, όχι με το πληρωτέο.
   const taxed = properties.filter(p => p.tax != null);
-  if (total != null && taxed.length && taxed.length === properties.length) {
+  const against = form ? form.main : total;
+  if (against != null && taxed.length && taxed.length === properties.length) {
     const sum = roundHalfUp(taxed.reduce((s, p) => s + (p.tax as number), 0), 2);
-    if (Math.round(sum * 100) !== Math.round(total * 100)) {
-      warnings.push(`Τα ποσά των ακινήτων αθροίζουν ${fe(sum)}, ενώ το σύνολο είναι ${fe(total)}. Έλεγξε τις γραμμές.`);
+    if (Math.round(sum * 100) !== Math.round(against * 100)) {
+      warnings.push(`Τα ποσά των ακινήτων αθροίζουν ${fe(sum)}, ενώ ο ${form ? 'κύριος φόρος' : 'σύνολο'} είναι ${fe(against)}. Έλεγξε τις γραμμές.`);
     }
   }
 
