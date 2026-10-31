@@ -22,6 +22,7 @@ import { expenseForPaidEvent, hashPayToken, isPayTokenShape, canUndo, payDedupHa
 import * as expenses from '@/lib/data/expenses';
 import { duplicateWindow, hasMatchingInstalment } from './payDuplicate';
 import * as calendar from '@/lib/data/calendar';
+import { PRODUCT_EVENTS, paidProps } from '@/lib/analytics/events';
 
 export type PayOutcome =
   | { ok: true; kind: 'paid' | 'undone'; title: string; amount: number | null; expense: boolean }
@@ -87,6 +88,17 @@ async function duplicateExpense(db: SupabaseClient, userId: string, propertyId: 
  * «Πλήρωσα»: σημειώνει τη δόση πληρωμένη και, ΜΟΝΟ αν το ζήτησε ο χρήστης
  * (`withExpense`) και ισχύει ο κανόνας, γράφει τη δαπάνη.
  */
+/**
+ * Το σκαλί «Πλήρωσα» του χωνιού (lib/metrics/funnel.ts). Ο χρήστης εδώ δεν
+ * έχει συνεδρία, άρα γράφει η `log_event_for` του service role. Δεν πετά και
+ * δεν αλλάζει την έκβαση: η μέτρηση δεν επιτρέπεται να χαλάσει την πληρωμή.
+ */
+async function logPaid(db: SupabaseClient, userId: string): Promise<void> {
+  try {
+    await db.rpc('log_event_for', { p_user: userId, p_event: PRODUCT_EVENTS.paid_marked, p_props: paidProps('reminder') });
+  } catch { /* σιωπηλά, όπως η track */ }
+}
+
 export async function redeemPayToken(
   db: SupabaseClient, token: string, now: Date, payDay: string, withExpense: boolean,
 ): Promise<PayOutcome> {
@@ -124,6 +136,7 @@ export async function redeemPayToken(
       return { ok: false, kind: 'error' };
     }
   }
+  await logPaid(db, claimed.user_id);
   return { ok: true, kind: 'paid', title: ev.title, amount: ev.amount, expense: !!x };
 }
 

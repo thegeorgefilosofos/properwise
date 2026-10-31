@@ -9,6 +9,7 @@ import * as expenses from '@/lib/data/expenses'
 // Ο πίνακας των γεγονότων έχει ένα σπίτι: lib/data/calendar.
 import * as calendar from '@/lib/data/calendar'
 import { payDedupHash } from '@/lib/reminders/payLink'
+import { track, PRODUCT_EVENTS, paidProps } from '@/lib/analytics/events'
 import * as feedStore from '@/lib/data/calendarFeed'
 import type { ClientStaysRow } from '@/lib/supabase/tables'
 // Οι μπάρες διαμονής της προβολής Μήνα ζητούν ΛΙΓΟΤΕΡΕΣ στήλες από τον συγχρονισμό
@@ -359,10 +360,12 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       if(!await saved('Η ολοκλήρωση δεν αποθηκεύτηκε', calendar.insert(supabase,[calendar.row({propertyId:base.property_id,userId:base.user_id},base.source||'manual',{title:base.title,category:base.category,event_date:e.event_date,event_time:base.event_time||null,duration_minutes:base.duration_minutes||null,amount:base.amount??null,priority:base.priority,status:'paid',notes:base.notes||null,attachment_url:base.attachment_url||null})]))) return
       const ex=Array.from(new Set([...(base.recurrence_exdates||[]),e.event_date]))
       await saved('Η ημέρα δεν αφαιρέθηκε από τη σειρά', calendar.update(supabase,base.id,{recurrence_exdates:ex}))
+      void track(supabase, PRODUCT_EVENTS.paid_marked, paidProps('app'))
       await load(); return
     }
     const ns:EventStatus=e.status==='paid'?'pending':'paid'
     if(!await saved('Η κατάσταση δεν αποθηκεύτηκε', calendar.update(supabase,e.id,{status:ns}))) return
+    if(ns==='paid') void track(supabase, PRODUCT_EVENTS.paid_marked, paidProps('app'))
     // ΑΝΑΙΡΕΣΗ ΤΟΥ «ΠΛΗΡΩΣΑ» ΑΠΟ ΤΗΝ ΕΦΑΡΜΟΓΗ: αν η πληρωμή είχε γραφτεί και ως
     // δαπάνη από την υπενθύμιση (lib/reminders/payLink.ts), ρωτά πριν τη σβήσει.
     if(ns==='pending'&&await expenses.hasDedup(supabase,userId,payDedupHash(e.id))
@@ -398,7 +401,8 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   function toggleSelect(id:string){setSelectedIds(prev=>{return toggleIn(prev, id)})}
   async function bulkMarkPaid(){
     if(!selectedIds.size)return
-    await saved('Τα γεγονότα δεν σημειώθηκαν ως πληρωμένα', calendar.updateMany(supabase,[...selectedIds],{status:'paid'}))
+    if(await saved('Τα γεγονότα δεν σημειώθηκαν ως πληρωμένα', calendar.updateMany(supabase,[...selectedIds],{status:'paid'})))
+      void track(supabase, PRODUCT_EVENTS.paid_marked, paidProps('app'))
     await load(); setSelectedIds(new Set()); setBulkMode(false)
   }
   async function bulkDelete(){
