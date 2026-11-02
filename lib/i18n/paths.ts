@@ -34,6 +34,10 @@ export const PAGE_PAIRS = [
   ['/ypologismos-stegastikou-daneiou', '/en/mortgage-calculator'],
   ['/exoda-agoras-akinitou', '/en/property-purchase-costs'],
   ['/ypologismos-ekptosis-anakainisis', '/en/renovation-tax-credit-calculator'],
+  ['/odigos', '/en/guides'],
+  ['/odigos/forologia-enoikion-2026', '/en/guides/greek-rental-income-tax-2026'],
+  ['/odigos/pos-ypologizetai-o-enfia', '/en/guides/how-enfia-is-calculated'],
+  ['/odigos/kathari-apodosi-akinitou', '/en/guides/net-rental-yield'],
 ] as const satisfies readonly (readonly [string, string])[];
 
 const EL_TO_EN = new Map<string, string>(PAGE_PAIRS.map(([el, en]) => [el, en]));

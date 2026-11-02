@@ -31,7 +31,7 @@ import { signupCta } from '@/lib/billing/trialOffer';
 import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { signupCtaEn } from '@/lib/billing/trialOffer';
 import { fmtFor } from '@/lib/core/format';
-import { ASSISTANT_NAME_EN } from '@/lib/assistant/identity';
+import { ASSISTANT_NAME_EN } from '@/lib/i18n/en/noa';
 import type { Locale } from '@/lib/i18n/locale';
 import { localHref } from '@/lib/i18n/paths';
 import { PLAN_COPY_EN } from '@/lib/i18n/en/plans';

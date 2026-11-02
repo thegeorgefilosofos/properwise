@@ -44,7 +44,7 @@ import { SPEC } from './spec';
 import { useLocale } from '@/lib/i18n/useLocale';
 import { localHref } from '@/lib/i18n/paths';
 import { fmtFor } from '@/lib/core/format';
-import { ENFIA_EN, ENFIA_FLOOR_EN, enfiaAgeChoicesEn, smallSettlementReliefEn } from '@/lib/i18n/en/tools/enfia';
+import { ENFIA_EN, ENFIA_FLOOR_EN, ENFIA_FLOOR_SHORT_EN, enfiaAgeChoicesEn, smallSettlementReliefEn } from '@/lib/i18n/en/tools/enfia';
 import { enfiaInputs, enfiaPublicEstimate, enfiaSignupHref } from '@/lib/tools/enfiaCarry';
 import { ToolCtaHref } from '@/app/ToolCtaLink';
 const PATH = '/ypologismos-enfia';
@@ -213,7 +213,7 @@ export function EnfiaCalculator({ year, today, cta }: {
         { k: en ? E.zone : 'Τιμή ζώνης', v: `${feAuto(amount(zonePrice))}/${en ? E.sqmUnit : 'τ.μ.'}` },
         // «Όροφος 2ος», όχι «Όροφος 2ος όροφος» (#398): δίπλα στο κλειδί η σύντομη
         // ετικέτα, από το ίδιο αρχείο με τις ετικέτες του μενού.
-        { k: en ? E.floor : 'Όροφος', v: en ? floorLabel(floor) : ENFIA_FLOOR_SHORT[floor as keyof typeof ENFIA_FLOOR_SHORT] ?? floor },
+        { k: en ? E.floor : 'Όροφος', v: (en ? ENFIA_FLOOR_SHORT_EN : ENFIA_FLOOR_SHORT)[floor as keyof typeof ENFIA_FLOOR_SHORT] ?? floor },
         { k: en ? E.age : 'Παλαιότητα', v: ageLabel(ages, age) },
         { k: en ? E.share : 'Ποσοστό ιδιοκτησίας', v: fpRate(own) },
         ...(r.aux > 0 ? [{ k: en ? E.aux : 'Βοηθητικοί χώροι', v: `${fn(r.aux, Number.isInteger(r.aux) ? 0 : 2)}${en ? ' ' + E.sqmUnit : ' τ.μ.'}` }] : []),

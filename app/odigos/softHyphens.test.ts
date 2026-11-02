@@ -76,7 +76,11 @@ async function main() {
     !copyScript.includes(SHY) && !/(^|[^\\])\\u00AD/i.test(copyScript));
 
   // ── Ο ΣΥΛΛΑΒΙΣΜΟΣ ΤΟΝ ΚΑΝΕΙ Ο ΠΕΡΙΗΓΗΤΗΣ ──────────────────────────────────
-  ok('η ρίζα δηλώνει lang="el"', /<html\b[^>]*\blang="el"/.test(layout));
+  // Η γλώσσα της ρίζας έρχεται από τη διαδρομή (lib/i18n/locale.ts): «el» σε
+  // κάθε ελληνική σελίδα, «en» μόνο κάτω από το /en.
+  ok('η ρίζα δηλώνει lang="el" στις ελληνικές σελίδες',
+    /<html\b[^>]*\blang="el"/.test(layout)
+    || (/<html\b[^>]*\blang=\{locale\}/.test(layout) && /const locale: Locale = h\.get\(LOCALE_HEADER\) === "en" \? "en" : "el"/.test(layout)));
   const css = readFileSync('app/globals.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   const prose = /\.gd \.lg-p, \.gd \.lg-ul li \{([^}]*hyphens[^}]*)\}/.exec(css)?.[1] ?? '';
   ok('η στήλη του οδηγού συλλαβίζεται από τον περιηγητή (hyphens: auto)', /hyphens\s*:\s*auto/.test(prose));

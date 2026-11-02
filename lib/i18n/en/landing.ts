@@ -17,7 +17,7 @@ import { DOC_TYPES } from '@/lib/billing/documents';
 import { PROVIDERS } from '@/lib/energy/catalogue';
 import { READ_INSURERS } from '@/app/dashboard/components/insurance/catalog';
 import { billingWordsEn } from '@/lib/legal/billingWords';
-import { ASSISTANT_NAME_EN as NOA, AI_DISCLOSURE_EN } from '@/lib/assistant/identity';
+import { ASSISTANT_NAME_EN as NOA, AI_DISCLOSURE_EN } from '@/lib/i18n/en/noa';
 import { fmtFor } from '@/lib/core/format';
 import { PLAN_COPY_EN } from './plans';
 

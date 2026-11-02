@@ -39,6 +39,12 @@ eq('en: διαδρομή με ερώτημα και άγκυρα', localHref('en
 eq('en: άγκυρα στη ρίζα', localHref('en', '/#faq'), '/en#faq')
 eq('en: χωρίς ζεύγος μένει η ελληνική, όχι 404', localHref('en', '/dashboard'), '/dashboard')
 
+// ── Υπολογιστές και οδηγοί: ζεύγη με ερώτημα ────────────────────────────────
+eq('υπολογιστής με ερώτημα', localHref('en', '/ypologismos-stegastikou-daneiou?poso=150000'), '/en/mortgage-calculator?poso=150000')
+eq('οδηγός → αγγλικός οδηγός', enPathFor('/odigos/pos-ypologizetai-o-enfia'), '/en/guides/how-enfia-is-calculated')
+eq('αγγλικός οδηγός → ελληνικός', elPathFor('/en/guides/net-rental-yield'), '/odigos/kathari-apodosi-akinitou')
+eq('οδηγός χωρίς αγγλική σελίδα μένει ελληνικός', localHref('en', '/odigos/airbnb-takk-2026'), '/odigos/airbnb-takk-2026')
+
 // ── hreflang ─────────────────────────────────────────────────────────────────
 eq('αρχική: απόλυτες διευθύνσεις, χωρίς κάθετο στη ρίζα', languageAlternates('/'), { el: SITE, en: `${SITE}/en`, 'x-default': SITE })
 eq('χωρίς ζεύγος, χωρίς hreflang', languageAlternates('/dashboard'), null)

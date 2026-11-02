@@ -20,6 +20,17 @@ export const ENFIA_FLOOR_EN: Record<FloorKey, string> = {
   fifth_plus: '6th floor or higher',
 };
 
+/** Η σύντομη ετικέτα δίπλα στο κλειδί «Floor» του χαρτιού (#398): «Floor 3rd», όχι «Floor 3rd floor». */
+export const ENFIA_FLOOR_SHORT_EN: Record<FloorKey, string> = {
+  basement: 'Basement',
+  ground: 'Ground',
+  first: '1st',
+  second: '2nd',
+  third: '3rd',
+  fourth: '4th or 5th',
+  fifth_plus: '6th or higher',
+};
+
 /** Οι ζώνες παλαιότητας στα αγγλικά, από τα ίδια όρια του ENFIA_AGE_BANDS. */
 export function enfiaAgeChoicesEn(taxYear: number): { key: string; label: string }[] {
   const yrs = enfiaOldBuildingYears(taxYear);

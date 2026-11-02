@@ -46,11 +46,6 @@ export const ASSISTANT_INITIAL = ASSISTANT_NAME.charAt(0);
 /** Ως αντικείμενο ρήματος: «Ρώτα τη Νόα», «Πες στη Νόα». */
 export const ASSISTANT_ACC = `τη ${ASSISTANT_NAME}`;
 export const ASSISTANT_TO = `στη ${ASSISTANT_NAME}`;
-// ── ΣΤΙΣ ΑΓΓΛΙΚΕΣ ΣΕΛΙΔΕΣ (/en) ──────────────────────────────────────────
-// Το ίδιο όνομα, χωρίς άρθρο και χωρίς φύλο: ποτέ «she», «he» ή «assistant».
-// Η γνωστοποίηση λέγεται ΑΚΡΙΒΩΣ έτσι, μία φορά, εκεί που συστήνεται η Νόα.
-export const ASSISTANT_NAME_EN = 'Noa';
-export const AI_DISCLOSURE_EN = `${ASSISTANT_NAME_EN} is an AI tool.`;
 
 // ── Τι λέει για τον εαυτό του ───────────────────────────────────────────────
 // Πηγαίνει αυτούσιο στο system prompt. Είναι ΤΟ κείμενο που κρατά το γένος

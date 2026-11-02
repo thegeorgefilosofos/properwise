@@ -144,7 +144,7 @@ async function main() {
 
     // ── 1. ΜΙΑ ΠΗΓΗ ───────────────────────────────────────────────────────
     const fromRegistry = (PAGE_UPDATED as Record<string, string>)[path];
-    const expected = fromRegistry ?? guideBy.get(row.url) ?? (path === '/odigos' ? GUIDES_UPDATED : path === '/ergaleia' ? TOOLS_UPDATED
+    const expected = fromRegistry ?? guideBy.get(SITE + path) ?? (path === '/odigos' ? GUIDES_UPDATED : path === '/ergaleia' ? TOOLS_UPDATED
       : path.startsWith(PROTHESMIES_PATH) ? PROTHESMIES_UPDATED : undefined);
     ok(`${path}: ο χάρτης παίρνει την ημερομηνία από το pageUpdated.ts ή το guides.ts`, expected !== undefined && lm === expected);
 

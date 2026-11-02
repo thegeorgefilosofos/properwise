@@ -23,8 +23,9 @@ import { readFileSync, globSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 
 /** Κελύφη που παρέχουν `h1` για λογαριασμό του καλούντος. */
-// Το `<ToolPageEn` (app/en/ToolPageEn.tsx) αποδίδει το `<h1>` κάθε αγγλικού υπολογιστή.
-const SHELLS = ['<PageTitle', '<LegalShell', '<LegalLayout', '<AlreadySignedIn', '<PortalTitle', '<ToolPageEn']
+// Το `<ToolPageEn` (app/en/ToolPageEn.tsx) αποδίδει το `<h1>` κάθε αγγλικού υπολογιστή
+// και το `<GuideShellEn` (app/en/guides/GuideShellEn.tsx) κάθε αγγλικού οδηγού.
+const SHELLS = ['<PageTitle', '<LegalShell', '<LegalLayout', '<AlreadySignedIn', '<PortalTitle', '<ToolPageEn', '<GuideShellEn']
 
 /**
  * Οθόνες που ΔΕΝ είναι σελίδες με δικό τους όνομα και ο λόγος τους.

@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Ο κόμβος δείχνει μόνο υπολογισμούς με αγγλική σελίδα (lib/i18n/en/tools.ts).
 // ═══════════════════════════════════════════════════════════════════════════
-import { ASSISTANT_NAME_EN as NOA } from '@/lib/assistant/identity';
+import { ASSISTANT_NAME_EN as NOA } from '@/lib/i18n/en/noa';
 import type { TopicId } from '@/lib/core/topics';
 
 export const PRICING_EN = {
