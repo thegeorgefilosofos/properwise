@@ -313,13 +313,35 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
         }
 
         @media (max-width: 620px) {
-          /* Σε στενή οθόνη η στήλη των 72px θα έστριβε τους τίτλους σε τέσσερις
-             λέξεις ανά γραμμή. Ο χρόνος ανεβαίνει πάνω, οριζόντια. */
-          .agenda-row { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
-          .agenda-when {
-            grid-column: 1 / -1; flex-direction: row; align-items: baseline;
-            gap: 6px; text-align: left;
+          /* ═══ ΜΙΑ ΜΟΡΦΗ ΓΡΑΜΜΗΣ ΣΤΟ ΤΗΛΕΦΩΝΟ, ΜΕ ΠΟΣΟ Ή ΧΩΡΙΣ (02/11/2026) ═══════
+             ΤΙ ΦΩΤΟΓΡΑΦΗΘΗΚΕ ΣΕ IPHONE. Το κουμπί κρατούσε τη δεξιά στήλη σε ΟΛΟ
+             το ύψος της γραμμής, οπότε τίτλος και εξήγηση στρίμωχνονταν σε
+             μισή κάρτα: «Δήλωση βραχυχρόνιας / διαμονής», «Συμπλήρωσε τον
+             ταχυδρομικό / κώδικα…» δίπλα σε κενό. Και η γραμμή με ποσό είχε
+             άλλη μορφή από τις υπόλοιπες (ποσό πάνω, κουμπί κάτω δεξιά).
+
+             ΤΩΡΑ, ΣΕ ΚΑΘΕ ΓΡΑΜΜΗ: ο χρόνος, ο τίτλος με το ποσό στη δεξιά άκρη
+             της ΙΔΙΑΣ σειράς, η εξήγηση σε όλο το πλάτος και η ενέργεια από
+             κάτω, αριστερά, εκεί που τελειώνει η ανάγνωση. Τα δύο περιτυλίγματα
+             (.agenda-body, .agenda-side) λύνονται με display: contents
+             ώστε τα κομμάτια τους να πάρουν θέση στο πλέγμα της γραμμής. Οι
+             αποστάσεις είναι περιθώρια και όχι row-gap: ό,τι λείπει από μια
+             γραμμή (ποσό, εξήγηση, ενέργεια) δεν αφήνει κενό πίσω του. */
+          .agenda-row {
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-areas: "when when" "title amt" "note note" "go go";
+            column-gap: 12px; row-gap: 0;
           }
+          .agenda--undated .agenda-row { grid-template-columns: minmax(0, 1fr) auto; }
+          .agenda-body, .agenda-side { display: contents; }
+          .agenda-when {
+            grid-area: when; flex-direction: row; align-items: baseline;
+            gap: 6px; text-align: left; margin-bottom: 4px;
+          }
+          .agenda-item-title { grid-area: title; }
+          .agenda-amt { grid-area: amt; align-self: start; }
+          .agenda-note { grid-area: note; margin-top: 4px; }
+          .agenda-go { grid-area: go; justify-self: start; margin-top: 10px; }
           .agenda-num { font-size: 15px; }
           /* Στο κινητό ο χρόνος είναι γραμμή ΠΑΝΩ από τον τίτλο, όχι στήλη:
              το «εκκρεμεί» δεν κρατά άξονα εδώ, μόνο ύψος. */

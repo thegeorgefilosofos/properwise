@@ -161,9 +161,12 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
             εμφάνισης, ένα αδέσποτο πλαίσιο πάνω από τον τίτλο. */}
 
         <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
-          {/* App-icon tile με το «P» mark */}
+          {/* App-icon tile με το «P» mark. Στο τηλέφωνο κρύβεται (globals.css,
+              .rm-app-ico): κρατούσε στήλη 60 εικονοστοιχείων σε όλο το ύψος της
+              κάρτας και η οδηγία εγκατάστασης στρίμωχνε σε οκτώ σειρές. */}
           <div
             aria-hidden
+            className="rm-app-ico"
             style={{
               width: 46, height: 46, borderRadius: T.radius.popup, flexShrink: 0,
               background: 'var(--accent)', color: 'var(--on-tone)',
@@ -266,7 +269,7 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
             <button
               key={it.name}
               type="button"
-              className="acc-section acc-choice"
+              className="acc-section acc-choice rm-item"
               aria-expanded={isOpen}
               onClick={() => toggle(i)}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'var(--highlight-inset), var(--elev-1)'; }}

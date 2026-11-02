@@ -515,19 +515,19 @@ export function SecHdr({ label, sub, info, right }: { label: string; sub?: strin
     // Η κεφαλίδα χρησιμοποιείται σε δεκάδες σημεία, οπότε ο κανόνας γράφεται
     // εδώ μία φορά: όταν τα δύο δεν χωρούν στην ίδια σειρά, η ενέργεια παίρνει
     // δική της από κάτω. Σε φαρδιά οθόνη δεν αλλάζει τίποτα, γιατί χωρούν.
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, rowGap: 8, flexWrap: 'wrap', marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
+    <div className="sec-hdr" style={{ display: 'flex', alignItems: 'center', gap: 10, rowGap: 8, flexWrap: 'wrap', marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
       {/* ΤΟ `info` ΕΙΝΑΙ Η ΘΕΣΗ ΤΟΥ ΥΠΟΤΙΤΛΟΥ ΠΟΥ ΔΕΝ ΑΞΙΖΕΙ ΓΡΑΜΜΗ. Μια ενότητα
           έχει συχνά μία διευκρίνιση («μόνο όσα φεύγουν από τον λογαριασμό
           σου») που είναι σωστή, χρήσιμη και διαβάζεται ΜΙΑ φορά στη ζωή του
           χρήστη. Ως `sub` κρατούσε δική της σειρά για πάντα· ως κυκλάκι δίπλα
           στον τίτλο κρατά δεκατέσσερα εικονοστοιχεία και λέει τα ίδια. Τα δύο
           δεν αποκλείονται: όποια κεφαλίδα χρειάζεται ΚΑΙ τα δύο, τα έχει. */}
-      <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+      <div className="sec-hdr-main" style={{ flex: '1 1 200px', minWidth: 0 }}>
         {/* ΤΙΤΛΟΣ ΔΕΥΤΕΡΟΥ ΕΠΙΠΕΔΟΥ, ΜΕ ΤΗΝ ΙΔΙΑ ΕΜΦΑΝΙΣΗ. Ως <div>, η πλοήγηση
             ανά επικεφαλίδα του αναγνώστη οθόνης δεν έβρισκε τίποτα κάτω από το
             h1 της καρτέλας. */}
         <h2 style={{ ...TT.label, fontSize: 'var(--fs-xs)', margin: 0 }}>{label}{info}</h2>
-        {sub && <div style={{ ...TT.caption, fontSize: 'var(--fs-xs)', marginTop: 2 }}>{sub}</div>}
+        {sub && <div className="sec-hdr-sub" style={{ ...TT.caption, fontSize: 'var(--fs-xs)', marginTop: 2 }}>{sub}</div>}
       </div>
       {right}
     </div>
@@ -550,9 +550,14 @@ export function PageTitle({ over, title, sub, lede, right, titleHint }: { over?:
     // τίτλο, στο ύψος του υπότιτλου (φωτογραφημένο, 25.09.2026). Με εισαγωγή
     // (`lede`) οι ενέργειες μένουν πάνω, στο ύψος του τίτλου: δίπλα σε
     // παράγραφο τριών γραμμών το κέντρο θα τις έριχνε στη μέση του κειμένου.
-    <div style={{ display: 'flex', alignItems: lede ? 'flex-start' : 'center', justifyContent: 'space-between', gap: 16, marginBottom: T.sp.xxl, flexWrap: 'wrap' as const }}>
-      <div style={{ minWidth: 0 }}>
-        {over && <div style={{ ...TT.label, color: 'var(--text-tertiary)', marginBottom: 8 }}>{over}</div>}
+    // ΜΙΑ ΛΕΞΗ-ΣΥΝΔΕΣΜΟΣ ΜΕΝΕΙ ΣΤΗ ΣΕΙΡΑ ΤΟΥ ΤΙΤΛΟΥ (02/11/2026). Στο τηλέφωνο
+    // ο υπότιτλος έσπρωχνε το «Εκκρεμότητες 3» του Ημερολογίου σε δική του
+    // σειρά, με ύψος αφής 44 και κενό 16 πάνω του: μια λέξη να αιωρείται
+    // ανάμεσα σε δύο κενά. Οι κλάσεις αφήνουν το `.page-head` του globals.css
+    // να το βάλει δεξιά του τίτλου, με τον υπότιτλο σε όλο το πλάτος από κάτω.
+    <div className="page-head" style={{ display: 'flex', alignItems: lede ? 'flex-start' : 'center', justifyContent: 'space-between', gap: 16, marginBottom: T.sp.xxl, flexWrap: 'wrap' as const }}>
+      <div className="page-head-main" style={{ minWidth: 0 }}>
+        {over && <div className="page-over" style={{ ...TT.label, color: 'var(--text-tertiary)', marginBottom: 8 }}>{over}</div>}
         {/* Η ΚΛΑΣΗ ΥΠΑΡΧΕΙ ΓΙΑ ΝΑ ΜΙΚΡΑΙΝΕΙ Ο ΤΙΤΛΟΣ ΣΤΟ ΤΗΛΕΦΩΝΟ. Τα 28 είναι
             σωστά σε οθόνη υπολογιστή, όπου δίνουν στη σελίδα παρουσία. Σε
             Galaxy A μετρήθηκε ότι ο τίτλος, ο υπότιτλος και τα κουμπιά μαζί
@@ -562,7 +567,7 @@ export function PageTitle({ over, title, sub, lede, right, titleHint }: { over?:
         <h1 className="page-title" title={titleHint} style={{ ...TT.display, margin: 0 }}>{title}</h1>
         {/* Ο υπότιτλος στα 14, όχι στα 12: κάτω από τίτλο 28 τα 12 διαβάζονταν
             ως υποσημείωση, όχι ως η δεύτερη γραμμή του ίδιου τίτλου. */}
-        {sub && <div style={{ ...TT.caption, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', marginTop: 6 }}>{sub}</div>}
+        {sub && <div className="page-sub" style={{ ...TT.caption, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', marginTop: 6 }}>{sub}</div>}
         {/* Η εισαγωγή είναι κείμενο σώματος, όχι λεζάντα: το `sub` των δέκα
             καρτελών είναι 12 εικονοστοιχεία και μια παράγραφος τριών σειρών σε
             αυτό το μέγεθος διαβάζεται ως ψιλά γράμματα.

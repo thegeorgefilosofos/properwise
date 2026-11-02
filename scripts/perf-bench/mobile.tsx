@@ -94,6 +94,7 @@ import { OverviewTab } from '@/app/dashboard/components/OverviewTab';
 import PropertyAssistant from '@/app/dashboard/components/PropertyAssistant';
 import TabPlan from '@/app/dashboard/components/TabPlan';
 import PropertySwitcher from '@/app/dashboard/components/PropertySwitcher';
+import { BOTTOM_NAV } from '@/app/dashboard/components/shell/nav';
 import { T, TT, Modal, Btn, PageTitle, InfoBanner, fieldRow } from '@/components/Theme';
 import { ConfirmHost } from '@/components/ConfirmDialog';
 import { createClient } from '@/lib/supabase/client';
@@ -473,7 +474,7 @@ const VIEWS: Record<string, () => React.ReactElement> = {
   // πλαστά δεδομένα, άρα η καρτέλα μένει κενή — που είναι ακριβώς το ζητούμενο.
   accountingEmpty: () => <TabAccounting propertyId="p9" userId="u1" status="vacant" />,
   accountingShort: () => <TabAccounting propertyId="p9" userId="u1" status="rent_short" />,
-  calendar: () => <TabCalendar propertyId="p0" userId="u1" openTasks={3} />,
+  calendar: () => <TabCalendar propertyId="p0" userId="u1" openTasks={3} onOpenTasks={() => {}} />,
   clients: () => <TabClients userId="u1" />,
   documents: () => <TabDocuments propertyId="p0" userId="u1" />,
   // Οι κάρτες ανταμοιβής δεν είχαν ΚΑΜΙΑ κάλυψη: η καρτέλα ζει πίσω από
@@ -572,11 +573,30 @@ function BenchTopbar() {
   );
 }
 
+// ═══ ΚΑΙ Η ΚΑΤΩ ΠΛΟΗΓΗΣΗ (02/11/2026) ════════════════════════════════════
+// Ο πάγκος δεν απέδιδε ποτέ την `.bottom-nav`, οπότε κάθε στιγμιότυπο τηλεφώνου
+// έδειχνε περιεχόμενο εκεί όπου στην εφαρμογή κάθεται η μπάρα· και ο έλεγχος
+// της Νόας μετρούσε το κουμπί πάνω σε κάτι που δεν φαίνεται. Ιδια λίστα
+// (BOTTOM_NAV) με τη σελίδα· το CSS την κρύβει πάνω από τα 768, όπως και εκεί.
+function BenchBottomNav() {
+  return (
+    <nav className="bottom-nav" aria-label="Κύρια πλοήγηση">
+      {BOTTOM_NAV.map((item, i) => (
+        <button key={item.id} className={`bottom-nav-item ${i === 0 ? 'active' : ''}`} aria-current={i === 0 ? 'page' : undefined}>
+          {item.icon}
+          <span>{item.label}</span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 const shell = document.createElement('div');
 shell.className = 'app-shell';
-shell.innerHTML = '<main class="app-main"><div class="bench-topbar"></div><div class="app-content"></div></main>';
+shell.innerHTML = '<main class="app-main"><div class="bench-topbar"></div><div class="app-content"></div></main><div class="bench-bottomnav"></div>';
 document.body.appendChild(shell);
 createRoot(shell.querySelector('.bench-topbar') as HTMLElement).render(<BenchTopbar />);
+createRoot(shell.querySelector('.bench-bottomnav') as HTMLElement).render(<BenchBottomNav />);
 const host = shell.querySelector('.app-content') as HTMLElement;
 
 // ═══ ΑΓΝΩΣΤΗ ΣΚΗΝΗ: ΦΩΝΑΖΕΙ, ΔΕΝ ΓΥΡΝΑΕΙ ΣΙΩΠΗΛΑ ΣΤΟ ΧΑΡΤΟΦΥΛΑΚΙΟ ═══════════

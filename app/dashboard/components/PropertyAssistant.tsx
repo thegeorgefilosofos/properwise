@@ -616,7 +616,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
            δεν ζει πάνω από ένα καρέ: μπαίνει, μετριέται, φεύγει. Υπάρχει γιατί
            το calc() και το env() ΔΕΝ διαβάζονται από το getComputedStyle ως
            αριθμός — μόνο η γεωμετρία ενός αληθινού στοιχείου τα λύνει. */
-        .pa-fab-home{position:fixed;right:var(--fab-side);bottom:var(--fab-bottom);width:0;height:0;visibility:hidden;pointer-events:none}
+        .pa-fab-home{position:fixed;right:var(--fab-side);bottom:var(--fab-bottom);width:0;height:var(--fab-h);visibility:hidden;pointer-events:none}
         /* ΔΕΝ ΕΙΝΑΙ ΠΑΡΑΘΥΡΟ ΚΑΙ ΔΕΝ ΓΙΝΕΤΑΙ Modal. Δεν έχει scrim, δεν
            μπλοκάρει την εφαρμογή και δεν κεντράρεται: αγκυρώνεται στο πλωτό
            κουμπί (και το ακολουθεί όταν ο χρήστης το σύρει αλλού — panelFixed),
@@ -657,6 +657,13 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
         @media (max-width:1279px){
           .pa-fab{padding:0 8px;gap:0}
           .pa-fab-cta{display:none}
+        }
+        /* Στο τηλέφωνο το κουμπί είναι κύκλος 48 (--fab-h) με το σήμα στο
+           κέντρο: με γέμισμα 8 έβγαινε 54×48, ωοειδές. Μετά τον κανόνα των
+           1.279, που αλλιώς θα ξανάδινε το γέμισμα. */
+        @media (max-width:768px){
+          .pa-fab,.pa-fab-wrap[data-scrolled] .pa-fab{width:var(--fab-h);padding:0;justify-content:center}
+          .pa-fab-live{left:32px;top:6px}
         }
         @media (prefers-reduced-motion:reduce){
           .pa-fab,.pa-fab:hover{transition:none;transform:none}

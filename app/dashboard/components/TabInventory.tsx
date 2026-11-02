@@ -133,8 +133,8 @@ function AttentionCard({items,onEdit,onWarrantyReminder}:{items:InventoryItem[];
       <SectionLabel label="Χρειάζονται προσοχή" right={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{attention.length} {attention.length===1?'αντικείμενο':'αντικείμενα'}</span>}/>
       <div style={{display:'flex',flexDirection:'column',gap:6}}>
         {attention.slice(0,6).map(({item,label,kind})=>(
-          <div key={item.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',background:'var(--bg-elevated)',borderRadius:T.radius.inner,border:'1px solid var(--border-subtle)'}}>
-            <div style={{minWidth:0,flex:1}}>
+          <div key={item.id} className="po-row-act" style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',background:'var(--bg-elevated)',borderRadius:T.radius.inner,border:'1px solid var(--border-subtle)'}}>
+            <div className="po-row-act-main" style={{minWidth:0,flex:1}}>
               <p className="po-elide" style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{item.name}</p>
               <p className="po-elide-lines" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>
                 {label}{item.room?` · ${inventoryLabel(item.room)}`:''}
@@ -1040,7 +1040,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
               // αξία» έβγαινε μία λέξη ανά γραμμή στα 320 (26/10/2026). Η αναφορά
               // και η εξαγωγή (inventory/exports.tsx) κρατούν τον πλήρη όρο.
               ...(invSummary.totalOriginal>0?[{label:'Αξία σήμερα (εκτίμηση)',value:fe(totalValue),
-                sub:`από ${fe(invSummary.totalOriginal)} αξία αγοράς, μένει το ${fpRate(Math.max(0,100-invSummary.avgDepreciatedPct))}${undatedCount>0?` · ${undatedCount} ${undatedCount===1?'αντικείμενο χωρίς ημερομηνία μετρά':'αντικείμενα χωρίς ημερομηνία μετρούν'} με την τιμή αγοράς`:''}`}]:[]),
+                sub:`το ${fpRate(Math.max(0,100-invSummary.avgDepreciatedPct))} των ${fe(invSummary.totalOriginal)} αγοράς${undatedCount>0?` · ${undatedCount} χωρίς ημερομηνία, στην τιμή αγοράς`:''}`}]:[]),
               ...(electricItems.length>0?[kwhPrice>0
                 ? {label:'Ρεύμα ανά μήνα',value:fe(monthlyCost),sub:`${fn(monthlyKwh,1)} κιλοβατώρες, στα ${feRate(kwhPrice)} ανά κιλοβατώρα`}
                 : {label:'Ρεύμα ανά μήνα',value:`${fn(monthlyKwh,1)} kWh`,sub:'δήλωσε τιμή ανά κιλοβατώρα για κόστος'}]:[]),

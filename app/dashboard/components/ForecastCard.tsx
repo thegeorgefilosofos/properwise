@@ -496,6 +496,18 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
     font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right;
   }
   .fc-line-word { font-family: ${T.font.sans}; font-weight: 400; font-size: 12px; color: var(--text-tertiary); }
+  /* ΣΤΟ ΤΗΛΕΦΩΝΟ Η ΠΗΓΗ ΠΑΙΡΝΕΙ ΟΛΟ ΤΟ ΠΛΑΤΟΣ. Η στήλη του ποσού κρατούσε
+     ~90 εικονοστοιχεία σε όλο το ύψος της γραμμής και η πηγή («28/07/2027 ·
+     εκτίμηση από τους τελευταίους λογαριασμούς…») έσπαγε σε τρεις σειρές.
+     Τίτλος και ποσό στην ίδια σειρά, η πηγή από κάτω ώς τη δεξιά άκρη. */
+  @media (max-width: 560px) {
+    .fc-line { grid-template-areas: "sw label amt" ". src src"; row-gap: 2px; }
+    .fc-line-body { display: contents; }
+    .fc-line .sw { grid-area: sw; }
+    .fc-line-label { grid-area: label; min-width: 0; }
+    .fc-line-src { grid-area: src; }
+    .fc-line-amt { grid-area: amt; }
+  }
   .fc-none { margin: 8px 0 0; font-family: ${T.font.sans}; font-size: 13px; color: var(--text-tertiary); }
 
   .fc-foot {

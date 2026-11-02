@@ -421,7 +421,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color: r.sub ? 'var(--text-secondary)' : 'var(--text-primary)', fontWeight: r.sub ? 400 : 600 }}>
                   <span>{r.l}</span>
                   {r.v == null
-                    ? <span style={{ color: 'var(--text-tertiary)', textAlign: 'right' }}>Δεν υπολογίζεται: οι κρατήσεις του μήνα δεν έχουν νύχτες</span>
+                    ? <span style={{ color: 'var(--text-tertiary)', textAlign: 'right' }}>Λείπουν οι νύχτες</span>
                     : <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: r.v < 0 ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{feSigned(r.v)}</span>}
                 </div>
               ))}

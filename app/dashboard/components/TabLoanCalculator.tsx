@@ -418,7 +418,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
     <div style={{display:'flex',flexDirection:'column',gap:14}}>
 
       {/* Quick Presets — συμπτυσσόμενα, διακριτικά chips (όχι κουραστικές κάρτες) */}
-      <Section title="Γρήγορη συμπλήρωση" sub="Έτοιμα σενάρια, προαιρετικό ξεκίνημα">
+      <Section title="Γρήγορη συμπλήρωση" sub="Ξεκίνα από ένα έτοιμο σενάριο, αν θέλεις">
         <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
           {PRESETS.map(p=>{
             const on = activePreset===p.id

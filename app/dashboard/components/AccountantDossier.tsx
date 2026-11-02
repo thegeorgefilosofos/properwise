@@ -419,7 +419,7 @@ export default function AccountantDossier({
           <div style={{ flex: 1, minWidth: 260 }}>
             {/* Ο ΦΑΚΕΛΟΣ ΕΙΝΑΙ ΟΛΟΥ ΤΟΥ ΧΑΡΤΟΦΥΛΑΚΙΟΥ ΚΑΙ ΤΟ ΛΕΕΙ. Στη σελίδα
                 ενός ακινήτου, το «Λείπουν 6 πράγματα» διαβαζόταν ως δικό του. */}
-            <p style={eyebrow}>Τι πάει στον λογιστή · {year}{properties.length > 1 ? ` · και τα ${properties.length} ακίνητά σου` : ''}</p>
+            <p style={eyebrow}>Για τον λογιστή · {year}{properties.length > 1 ? ` · ${properties.length} ακίνητα` : ''}</p>
             <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, letterSpacing: '-0.01em', lineHeight: 1.45, margin: '10px 0 0' }}>
               {headline}
             </p>
@@ -515,7 +515,7 @@ export default function AccountantDossier({
           <div className="acd-actions" style={{ margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
             <style>{`
               @media (max-width: 560px) {
-                .acd-actions > div { flex-direction: column; align-items: stretch !important; }
+                .acd-actions > div:not(.acct-link) { flex-direction: column; align-items: stretch !important; }
                 .acd-actions > div > span { display: flex !important; }
                 .acd-actions > div > span > button, .acd-actions > div > button, .acd-actions > div > a { width: 100%; }
               }
@@ -588,7 +588,7 @@ export default function AccountantDossier({
         <div style={card}>
           <p style={eyebrow}>Πριν τον στείλεις</p>
           <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '5px 0 14px', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-            {warnings.length === 1 ? 'Ένα σημείο που κοστίζει, όταν πάει στραβά.' : `${warnings.length} σημεία που κοστίζουν, όταν πάνε στραβά.`}
+            {warnings.length === 1 ? 'Ένα σημείο που κοστίζει όταν πάει στραβά.' : `${warnings.length} σημεία που κοστίζουν όταν πάνε στραβά.`}
           </p>
           {/* ΤΡΕΙΣ ΣΤΗΛΕΣ, ΣΤΑΘΕΡΑ. Με ελάχιστο 210 το πλέγμα έβγαζε τέσσερις
               στήλες σε πλατιά οθόνη, δηλαδή έξι σημεία γίνονταν τέσσερα και

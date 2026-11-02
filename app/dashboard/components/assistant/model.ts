@@ -117,19 +117,22 @@ const fabHome = () => {
   document.body.appendChild(probe);
   const r = probe.getBoundingClientRect();
   probe.remove();
-  return { side: window.innerWidth - r.right, bottom: window.innerHeight - r.bottom };
+  // Και το ΥΨΟΣ μετριέται: στο κινητό το κουμπί είναι 48, όχι τα 52 του
+  // υπολογιστή (globals.css, --fab-h). Το `FAB_H` μένει μόνο ως δίχτυ, αν ο
+  // περιηγητής δεν δώσει ύψος.
+  return { side: window.innerWidth - r.right, bottom: window.innerHeight - r.bottom, h: r.height || FAB_H };
 };
 
 // Η ΓΩΝΙΑ ΜΕΤΡΙΕΤΑΙ, ΔΕΝ ΜΑΝΤΕΥΕΤΑΙ. Πρώτη γραφή: `parseFloat` πάνω στο
-// `--float-bottom`. Στο κινητό η τιμή είναι `calc(82px + env(...) + …)` και το
+// `--float-bottom`. Στο κινητό η τιμή είναι `calc(… + env(...) + …)` και το
 // `parseFloat` επιστρέφει NaN, οπότε έπεφτε στα 24 — το κουμπί κούμπωνε 58
 // εικονοστοιχεία ΧΑΜΗΛΟΤΕΡΑ από το σπίτι του, πάνω στην κάτω πλοήγηση. Δηλαδή
 // το κούμπωμα προκαλούσε ακριβώς το σφάλμα που ήρθε να λύσει. Μόνο ο πάγκος
 // αφής με αληθινά αγγίγματα το είδε.
 export const snapCorner = (x: number, w: number) => {
   if (typeof window === 'undefined') return null;
-  const { side, bottom } = fabHome();
+  const { side, bottom, h } = fabHome();
   const vw = window.innerWidth, vh = window.innerHeight;
   const right = x + w / 2 > vw / 2;
-  return { x: right ? vw - w - side : side, y: vh - FAB_H - bottom };
+  return { x: right ? vw - w - side : side, y: vh - h - bottom };
 };

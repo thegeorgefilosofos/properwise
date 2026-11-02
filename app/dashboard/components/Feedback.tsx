@@ -139,14 +139,9 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
 
   return (
     <div style={shell}>
-      {/* Διακριτικό βάθος στο περίβλημα (μόνο εκτός modal) */}
-      {!embedded && (
-        <span aria-hidden style={{ position: 'absolute', top: -26, right: -18, color: 'var(--accent)', opacity: 0.08, pointerEvents: 'none' }}>
-          <svg aria-hidden="true" width={132} height={132} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        </span>
-      )}
+      {/* Εδώ ζούσε ένα μεγάλο συννεφάκι στο 8%, κομμένο στην πάνω δεξιά γωνία.
+          Στο τηλέφωνο διαβαζόταν ως αδέσποτο πλαίσιο πάνω από τον τίτλο, όπως
+          το περίγραμμα κινητού που έφυγε από το «Τι έρχεται» (02/11/2026). */}
 
       <div style={{ position: 'relative' }}>
         {/* ΜΕΣΑ ΣΕ ΠΑΡΑΘΥΡΟ, ΤΗΝ ΚΕΦΑΛΙΔΑ ΤΗ ΔΙΝΕΙ ΤΟ ΚΕΛΥΦΟΣ.
@@ -212,7 +207,7 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
         <div style={{ fontSize: 12, color: ready ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 8, lineHeight: 1.5 }}>
           {ready
             ? 'Ωραία, το μήνυμά σου είναι έτοιμο.'
-            : `Γράψε λίγες λέξεις ακόμη και βοήθησέ μας να βελτιωθούμε (${words}/${MIN_WORDS}).`}
+            : `Γράψε λίγες λέξεις ακόμη (${words}/${MIN_WORDS}).`}
         </div>
 
         {error && (
