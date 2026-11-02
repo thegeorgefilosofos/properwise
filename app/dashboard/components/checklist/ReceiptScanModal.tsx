@@ -239,7 +239,7 @@ export function ReceiptScanModal({ item, propertyId, userId, onClose, onSaved }:
         </div>
       )}
 
-      {err && <p style={{ fontSize: 12, color: 'var(--negative)', fontFamily: T.font.sans, margin: 0, lineHeight: 1.5 }}>{err}</p>}
+      {err && <p style={{ fontSize: 'var(--fs-note)', color: 'var(--negative)', fontFamily: T.font.sans, margin: 0, lineHeight: 1.5 }}>{err}</p>}
 
       <input ref={fileRef} type="file" accept={SCAN_ACCEPT} capture="environment" style={{ display: 'none' }}
         onChange={e => { const f = e.target.files?.[0]; if (f) read(f); e.currentTarget.value = '' }} />

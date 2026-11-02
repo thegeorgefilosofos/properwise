@@ -29,7 +29,7 @@ function FeedLink({ label, hint, url, onCopy, copied }: {
         <span style={{ fontSize: 'var(--fs-xs)', fontWeight:600, color:'var(--text-secondary)', textTransform:'uppercase', letterSpacing:'0.06em', fontFamily: T.font.sans }}>{label}</span>
         <Btn onClick={onCopy}>{copied?'Αντιγράφηκε':'Αντιγραφή'}</Btn>
       </div>
-      <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'0 0 8px', lineHeight:1.5, fontFamily: T.font.sans }}>{hint}</p>
+      <p style={{ fontSize: 'var(--fs-note)', color:'var(--text-tertiary)', margin:'0 0 8px', lineHeight:1.5, fontFamily: T.font.sans }}>{hint}</p>
       {/* ΤΟ ΚΕΙΜΕΝΟ ΕΠΙΛΕΓΕΤΑΙ ΜΕ ΤΟ ΧΕΡΙ ΟΠΩΣ ΠΡΙΝ. Το `user-select: all` δίνει
           ολόκληρο τον σύνδεσμο με ένα κλικ, για όποιον δεν εμπιστεύεται το
           πρόχειρο ή δουλεύει σε περιηγητή που το αρνείται. */}
@@ -83,7 +83,7 @@ export function SubscribeModal({ token, propertyId, onClose }: { token:string|nu
             οι οδηγίες για όποιον προτιμά τη χειροκίνητη διαδρομή. */}
         <div style={{ display:'flex', gap:8, padding:'10px 12px', background:'var(--accent-soft)', border:'1px solid var(--accent-border)', borderRadius:T.radius.inner }}>
           <Info size={15} color="var(--accent)" className="po-lead-ico"/>
-          <p style={{ fontSize:12, color:'var(--text-secondary)', lineHeight:1.5, margin:0, fontFamily: T.font.sans }}>Με το χέρι στο Google Calendar: «Άλλα ημερολόγια», μετά «Από URL» και επικόλλησε τον σύνδεσμο.</p>
+          <p style={{ fontSize: 'var(--fs-note)', color:'var(--text-secondary)', lineHeight:1.5, margin:0, fontFamily: T.font.sans }}>Με το χέρι στο Google Calendar: «Άλλα ημερολόγια», μετά «Από URL» και επικόλλησε τον σύνδεσμο.</p>
         </div>
         {/* Αμφίδρομος συγχρονισμός καναλιών (Airbnb/Booking auto-block) */}
         <div style={{ paddingTop:16, borderTop:'1px solid var(--border-subtle)' }}>

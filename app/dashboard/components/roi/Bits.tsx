@@ -128,7 +128,7 @@ export function GradeCard({ grade, note }: { grade: YieldGrade; note: string }) 
           <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: SANS, fontVariantNumeric: 'tabular-nums' }}>{grade.label} · {grade.score} / 100</span>
         </div>
         <Bar pct={Math.max(3, grade.score)} track="var(--bg-elevated)" label="Βαθμός απόδοσης" style={{ marginTop: 8 }} />
-        <p className="roi-grade-note" style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-tertiary)', fontFamily: SANS, lineHeight: 1.5 }}>{note}</p>
+        <p className="roi-grade-note" style={{ margin: '8px 0 0', fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', fontFamily: SANS, lineHeight: 1.5 }}>{note}</p>
       </div>
     </div>
   );
@@ -285,7 +285,7 @@ export function LeverCard({ lever }: { lever: YieldLever }) {
             : <span aria-hidden style={{ display: 'inline-block', minWidth: T.h.md, marginRight: -8 }} />}
         </span>
       </div>
-      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, fontFamily: SANS, lineHeight: 1.6 }}>{lever.impact}</p>
+      <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', margin: 0, fontFamily: SANS, lineHeight: 1.6 }}>{lever.impact}</p>
     </div>
   );
 }

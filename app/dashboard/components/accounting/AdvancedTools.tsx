@@ -48,7 +48,7 @@ export function TaxScaleCard({ businessMode, taxRows, statement, hoverBracket, s
                 έβρισκε: το πρώτο σκαλί σε μία γραμμή, τα άλλα σε δύο, με
                 τον συντελεστή σε άλλο ύψος στο καθένα. Κάτω όριο πάνω,
                 άνω όριο κάτω: όλα τα σκαλιά ίδιο σχήμα, ίδιο ύψος. */}
-            <p style={{ fontSize:12, lineHeight:1.45, color:'var(--text-tertiary)', margin:0, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums' }}>
+            <p style={{ fontSize: 'var(--fs-note)', lineHeight:1.45, color:'var(--text-tertiary)', margin:0, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums' }}>
               {(() => { const k = r.range.indexOf(' – '); const [a, b] = k >= 0 ? [r.range.slice(0, k + 2), r.range.slice(k + 3)] : r.range.startsWith('Πάνω από ') ? ['Πάνω από', r.range.slice(9)] : [r.range, '']; return <><span style={{ display:'block', whiteSpace:'nowrap' }}>{a}</span><span style={{ display:'block', whiteSpace:'nowrap' }}>{b}</span></> })()}
             </p>
             <p style={{ fontSize:16, fontWeight:700, color:hot?'var(--accent)':'var(--text-primary)', margin:'6px 0 0', fontVariantNumeric:'tabular-nums', fontFamily: T.font.sans, transition:'color 0.16s ease' }}>{r.rate}</p>
@@ -77,7 +77,7 @@ export function ConsolidationCard({
         {!portfolio?(
           <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-tertiary)', fontFamily: T.font.sans, padding:'8px 0' }}>Δεν υπάρχουν έσοδα σε άλλα ακίνητα για το {year}.</p>
         ):(<>
-          <p style={{ fontSize:12, color:'var(--text-secondary)', margin:'0 0 12px', fontFamily: T.font.sans, lineHeight:1.5 }}>Ο φόρος φυσικού προσώπου είναι προοδευτικός στο <strong style={{ color:'var(--text-primary)' }}>σύνολο</strong> των ενοικίων (όπως στο Ε1), όχι ανά ακίνητο.</p>
+          <p style={{ fontSize: 'var(--fs-note)', color:'var(--text-secondary)', margin:'0 0 12px', fontFamily: T.font.sans, lineHeight:1.5 }}>Ο φόρος φυσικού προσώπου είναι προοδευτικός στο <strong style={{ color:'var(--text-primary)' }}>σύνολο</strong> των ενοικίων (όπως στο Ε1), όχι ανά ακίνητο.</p>
           {/* ΤΡΙΑ ΝΟΥΜΕΡΑ ΓΡΑΜΜΕΝΑ ΜΕ ΤΟ ΧΕΡΙ, ΜΕ ΔΙΚΟ ΤΟΥΣ ΜΕΓΕΘΟΣ. Ετικέτα
               11 με 0,4px γράμμα και νούμερο σταθερά 16, ενώ η γραμμή
               στοιχείων του βιβλίου κλιμακώνεται με το πλάτος και κρατά ένα
@@ -120,7 +120,7 @@ export function ConsolidationCard({
               {row.map(([k, v]) => <Stat key={k} label={k} value={v} chars={w} />)}
             </div>
           ) })()}
-        <p style={{ fontSize:12, color:'var(--text-secondary)', margin:0, fontFamily: T.font.sans, lineHeight:1.5 }}>Για ιδιώτη τα έξοδα δεν εκπίπτουν αναλυτικά. Στο καθεστώς <strong style={{ color:'var(--text-primary)' }}>Επιχείρηση (ΕΛΠ)</strong> εκπίπτουν πλήρως.<InfoHint>Για φυσικό πρόσωπο με μακροχρόνια μίσθωση κατοικίας ισχύει η τεκμαρτή έκπτωση 5% (όχι αναλυτικά έξοδα). Στο καθεστώς Επιχείρηση (ΕΛΠ) εκπίπτουν αναλυτικά, μαζί με αποσβέσεις εξοπλισμού ({eur(inventoryDepr)} τον χρόνο) και τόκους δανείων ({eur(loanInterestYear)} τον χρόνο).</InfoHint></p>
+        <p style={{ fontSize: 'var(--fs-note)', color:'var(--text-secondary)', margin:0, fontFamily: T.font.sans, lineHeight:1.5 }}>Για ιδιώτη τα έξοδα δεν εκπίπτουν αναλυτικά. Στο καθεστώς <strong style={{ color:'var(--text-primary)' }}>Επιχείρηση (ΕΛΠ)</strong> εκπίπτουν πλήρως.<InfoHint>Για φυσικό πρόσωπο με μακροχρόνια μίσθωση κατοικίας ισχύει η τεκμαρτή έκπτωση 5% (όχι αναλυτικά έξοδα). Στο καθεστώς Επιχείρηση (ΕΛΠ) εκπίπτουν αναλυτικά, μαζί με αποσβέσεις εξοπλισμού ({eur(inventoryDepr)} τον χρόνο) και τόκους δανείων ({eur(loanInterestYear)} τον χρόνο).</InfoHint></p>
       </div>
     </div>
   )
@@ -138,7 +138,7 @@ export function AdvisoryCard({
         <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius: T.radius.chip, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)', flexShrink:0 }}><Lightbulb size={15}/></span>
         <div style={{ flex:1, minWidth:0 }}>
           <p style={{ ...cardTitle, margin:0 }}>Συμβουλευτική</p>
-          <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'2px 0 0', fontFamily: T.font.sans }}>{advisory.length === 1 ? 'Μία ιδέα' : `${advisory.length} ιδέες`} φορολογίας, χρηματοδότησης και αξιοποίησης, από τα δικά σου δεδομένα.</p>
+          <p style={{ fontSize: 'var(--fs-note)', color:'var(--text-tertiary)', margin:'2px 0 0', fontFamily: T.font.sans }}>{advisory.length === 1 ? 'Μία ιδέα' : `${advisory.length} ιδέες`} φορολογίας, χρηματοδότησης και αξιοποίησης, από τα δικά σου δεδομένα.</p>
         </div>
         <ChevronRight size={17} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:advisoryOpen?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
       </button>
@@ -184,7 +184,7 @@ export function AdvisoryCard({
         })}
       </div>
       <div style={{ marginTop:14, paddingTop:12, borderTop:'1px solid var(--border-subtle)' }}>
-        <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:0, fontFamily: T.font.sans, lineHeight:1.55 }}>Ενημερωτικές προτάσεις, όχι επίσημη συμβουλή.<InfoHint>Οι προτάσεις δεν υποκαθιστούν τον λογιστή, τον δικηγόρο ή τον συμβολαιογράφο σου. Για την επίσημη εξαγωγή συμπερασμάτων και δηλώσεων απευθύνσου σε πιστοποιημένο επαγγελματία.</InfoHint></p>
+        <p style={{ fontSize: 'var(--fs-note)', color:'var(--text-tertiary)', margin:0, fontFamily: T.font.sans, lineHeight:1.55 }}>Ενημερωτικές προτάσεις, όχι επίσημη συμβουλή.<InfoHint>Οι προτάσεις δεν υποκαθιστούν τον λογιστή, τον δικηγόρο ή τον συμβολαιογράφο σου. Για την επίσημη εξαγωγή συμπερασμάτων και δηλώσεων απευθύνσου σε πιστοποιημένο επαγγελματία.</InfoHint></p>
       </div>
       </>)}
     </div>
@@ -203,7 +203,7 @@ export function ChangesCard({
         <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius: T.radius.chip, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)', flexShrink:0 }}><Landmark size={15}/></span>
         <div style={{ flex:1, minWidth:0 }}>
           <p style={{ ...cardTitle, margin:0 }}>Τι άλλαξε το 2026</p>
-          <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'2px 0 0', fontFamily: T.font.sans }}>{relevantChanges.length === 1 ? 'Ένας επίκαιρος κανόνας' : `${relevantChanges.length} επίκαιροι κανόνες`} για το προφίλ σου.</p>
+          <p style={{ fontSize: 'var(--fs-note)', color:'var(--text-tertiary)', margin:'2px 0 0', fontFamily: T.font.sans }}>{relevantChanges.length === 1 ? 'Ένας επίκαιρος κανόνας' : `${relevantChanges.length} επίκαιροι κανόνες`} για το προφίλ σου.</p>
         </div>
         <ChevronRight size={17} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:changesOpen?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
       </button>
@@ -255,7 +255,7 @@ export function ChangesCard({
             Συμβουλευτική γράφει «Ενημερωτικές προτάσεις, όχι επίσημη
             συμβουλή.» και βάζει τα υπόλοιπα σε κυκλάκι· εδώ η ίδια
             αποποίηση ήταν απλωμένη σε δύο σειρές ψιλών γραμμάτων. */}
-        <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:0, fontFamily: T.font.sans, lineHeight:1.55 }}>Ενημερωτικά, με επίσημες πηγές.<InfoHint>Οι κανόνες αλλάζουν. Επιβεβαίωσε στο myAADE ή στο gov.gr, ή με τον λογιστή σου.</InfoHint></p>
+        <p style={{ fontSize: 'var(--fs-note)', color:'var(--text-tertiary)', margin:0, fontFamily: T.font.sans, lineHeight:1.55 }}>Ενημερωτικά, με επίσημες πηγές.<InfoHint>Οι κανόνες αλλάζουν. Επιβεβαίωσε στο myAADE ή στο gov.gr, ή με τον λογιστή σου.</InfoHint></p>
       </div>
       )}
     </div>
@@ -283,7 +283,7 @@ export function TransferCostCard({
           <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:xferOpen?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
           <div>
             <p style={{ ...cardTitle, margin:0 }}>Κόστος αγοράς και πώλησης</p>
-            {xferOpen&&<p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'3px 0 0', fontFamily: T.font.sans, fontWeight:400 }}>Φόροι, συμβολαιογραφικά και μεσιτικά. Εκτίμηση πριν τη μεταβίβαση.</p>}
+            {xferOpen&&<p style={{ fontSize: 'var(--fs-note)', color:'var(--text-tertiary)', margin:'3px 0 0', fontFamily: T.font.sans, fontWeight:400 }}>Φόροι, συμβολαιογραφικά και μεσιτικά. Εκτίμηση πριν τη μεταβίβαση.</p>}
           </div>
         </button>
         {xferOpen&&(
@@ -342,7 +342,7 @@ export function TransferCostCard({
             <span style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)', fontVariantNumeric:'tabular-nums', fontFamily: T.font.sans }}>{eur(xferSide==='buy'?(xfer.cashOut||0):(xfer.netProceeds||0))}</span>
           </div>
         </div>
-        <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'14px 0 0', paddingTop:12, borderTop:'1px solid var(--border-subtle)', fontFamily: T.font.sans, lineHeight:1.55 }}>Ενδεικτική εκτίμηση. Τα ακριβή ποσά ορίζονται από συμβολαιογράφο ή την ΑΑΔΕ.<InfoHint>Τα ποσοστά είναι τα ισχύοντα. Τα κλιμακωτά συμβολαιογραφικά, η αντικειμενική αξία και οι απαλλαγές οριστικοποιούνται από συμβολαιογράφο, δικηγόρο ή την ΑΑΔΕ. Ο φόρος υπεραξίας 15% τελεί σε αναστολή.</InfoHint></p>
+        <p style={{ fontSize: 'var(--fs-note)', color:'var(--text-tertiary)', margin:'14px 0 0', paddingTop:12, borderTop:'1px solid var(--border-subtle)', fontFamily: T.font.sans, lineHeight:1.55 }}>Ενδεικτική εκτίμηση. Τα ακριβή ποσά ορίζονται από συμβολαιογράφο ή την ΑΑΔΕ.<InfoHint>Τα ποσοστά είναι τα ισχύοντα. Τα κλιμακωτά συμβολαιογραφικά, η αντικειμενική αξία και οι απαλλαγές οριστικοποιούνται από συμβολαιογράφο, δικηγόρο ή την ΑΑΔΕ. Ο φόρος υπεραξίας 15% τελεί σε αναστολή.</InfoHint></p>
       </>):(
         <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-tertiary)', fontFamily: T.font.sans, padding:'4px 0' }}>Δώσε τιμή για να δεις την ανάλυση κόστους.</p>
       )}

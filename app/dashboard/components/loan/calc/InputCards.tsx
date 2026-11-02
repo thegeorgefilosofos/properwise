@@ -56,10 +56,10 @@ export function PropertyCard({
           {hasAgent&&<NumberInput label="Ποσοστό μεσίτη" value={agentPct} onChange={setAgentPct} suffix="%"/>}
           {hasAgent&&<ReadStat label="Αμοιβή μεσίτη" value={fmtEur(AGNT)}/>}
         </div>
-        {isNewBuilding&&<div style={{padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p title="ΦΠΑ: Φόρος Προστιθέμενης Αξίας · ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>{newBuildVat
+        {isNewBuilding&&<div style={{padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p title="ΦΠΑ: Φόρος Προστιθέμενης Αξίας · ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου" style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily: T.font.sans}}>{newBuildVat
           ? <>Νεόδμητο χωρίς αναστολή: ο ΦΠΑ {fpRate(NEW_BUILD_VAT_RATE*100)} στο τίμημα ({fmtEur(vatOwed)}) μπαίνει στον υπολογισμό αντί για ΦΜΑ.</>
           : <>Νεόδμητο: αν ο κατασκευαστής έχει υπαχθεί με αίτησή του σε αναστολή ΦΠΑ (έως {NEW_BUILD_VAT_SUSPENDED_UNTIL}), πληρώνεις ΦΜΑ {fpRate(TRANSFER_TAX_RATE*100)} αντί για ΦΠΑ {fpRate(NEW_BUILD_VAT_RATE*100)} ({fmtEur(vatOwed)}). Χωρίς αναστολή, διάλεξε στον τύπο ακινήτου τη νεόδμητη κατοικία με ΦΠΑ.</>}</p></div>}
-        {isCommercial&&<div style={{padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p title="ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου (3% συν 3% υπέρ δήμων επί του φόρου)" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Επαγγελματικό: ΦΜΑ {fpRate(TRANSFER_TAX_RATE*100)} + Ψηφιακό Τέλος Συναλλαγής 3,6% αν εκμισθωθεί</p></div>}
+        {isCommercial&&<div style={{padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p title="ΦΜΑ: Φόρος Μεταβίβασης Ακινήτου (3% συν 3% υπέρ δήμων επί του φόρου)" style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily: T.font.sans}}>Επαγγελματικό: ΦΜΑ {fpRate(TRANSFER_TAX_RATE*100)} + Ψηφιακό Τέλος Συναλλαγής 3,6% αν εκμισθωθεί</p></div>}
       </div>
     </div>
   );
@@ -119,7 +119,7 @@ export function LoanCard({
             <NumberInput label={rateType==='variable'?'Περιθώριο τράπεζας':'Ετήσιο επιτόκιο'} value={rate} onChange={v=>{setRate(v);setActivePreset(null)}} suffix="%"/>
             {rateType==='variable'&&(
               <div style={{marginTop: 8,padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
-                <p style={{fontSize:12,fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-secondary)'}}><span title="Διατραπεζικό επιτόκιο ευρώ: βάση κυμαινόμενων δανείων">Euribor</span> {fmtPct(market.euribor_3m)} + {fmtPct(R)} = <strong>{fmtPct(effRate)}</strong></p>
+                <p style={{fontSize: 'var(--fs-note)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-secondary)'}}><span title="Διατραπεζικό επιτόκιο ευρώ: βάση κυμαινόμενων δανείων">Euribor</span> {fmtPct(market.euribor_3m)} + {fmtPct(R)} = <strong>{fmtPct(effRate)}</strong></p>
                 {/* Η ΛΕΖΑΝΤΑ ΔΙΑΒΑΖΕΤΑΙ, ΔΕΝ ΓΡΑΦΕΤΑΙ. Εδώ έλεγε «Αυτόματη ενημέρωση
                     από την ΕΚΤ κάθε πρωί» — υπόσχεση που η ΕΚΤ δεν δίνει: το Euribor
                     το δημοσιεύει μηνιαία, όχι ημερήσια (lib/market/ecb.ts). Τώρα λέει
@@ -150,7 +150,7 @@ export function LoanCard({
             <NumberInput label="Έκτακτη μηνιαία πληρωμή" value={extraPay} onChange={setExtraPay} suffix="€" placeholder=""/>
             {extraSav&&EP>0&&(
               <div style={{marginTop:6,padding:'9px 12px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
-                <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:500}}>Εξοικονομείς {Math.round(extraSav.savedMonths/12)} χρόνια και {fmtEur(extraSav.savedInt)} τόκους</p>
+                <p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:500}}>Εξοικονομείς {Math.round(extraSav.savedMonths/12)} χρόνια και {fmtEur(extraSav.savedInt)} τόκους</p>
               </div>
             )}
           </div>

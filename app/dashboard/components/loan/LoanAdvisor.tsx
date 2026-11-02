@@ -432,7 +432,7 @@ export function LoanAdvisor({
                         </Btn>
                       )}
                     </div>
-                    <p className="po-just" style={{fontSize:12,color:'var(--text-secondary)',marginTop: 6,lineHeight:1.5,fontFamily: T.font.sans}}>{topRec.eligible?topRec.why:topRec.blockers.join(' · ')}</p>
+                    <p className="po-just" style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',marginTop: 6,lineHeight:1.5,fontFamily: T.font.sans}}>{topRec.eligible?topRec.why:topRec.blockers.join(' · ')}</p>
                   </div>
                   <div style={{textAlign:'right' as const,flexShrink:0}}>
                     <p style={{fontSize:22,fontWeight:700,color:recHover?'var(--accent)':'var(--text-primary)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',lineHeight:1,letterSpacing:'-0.03em',transition:'color 0.15s'}}>{fmtPct(topRec.effectiveRatePct)}</p>

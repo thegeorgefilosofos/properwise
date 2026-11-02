@@ -152,22 +152,22 @@ export default function BankRatesAdmin({ onSaved }:{
           </div>
 
           {health && (
-            <p style={{fontSize:12,color:health.ok?'var(--text-secondary)':'var(--negative)',fontFamily: T.font.sans,lineHeight:1.5}}>
+            <p style={{fontSize: 'var(--fs-note)',color:health.ok?'var(--text-secondary)':'var(--negative)',fontFamily: T.font.sans,lineHeight:1.5}}>
               {health.ok
                 ? `Καθημερινός έλεγχος: τελευταίο πέρασμα ${health.last_check ? new Date(health.last_check).toLocaleString('el-GR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : ABSENT}, πέτυχε.`
                 : `Καθημερινός έλεγχος: ${health.reason}.`}
             </p>
           )}
           {feedErr && (
-            <p style={{fontSize:12,color:'var(--negative)',fontFamily: T.font.sans,lineHeight:1.5}}>
+            <p style={{fontSize: 'var(--fs-note)',color:'var(--negative)',fontFamily: T.font.sans,lineHeight:1.5}}>
               Η κατάσταση του εβδομαδιαίου ελέγχου δεν διαβάστηκε. Δεν φαίνεται αν υπάρχουν μεταβολές που περιμένουν επιβεβαίωση: δοκιμάστε ξανά σε λίγο.
             </p>
           )}
           {held.length>0 && (
             <div style={{border:'1px solid var(--warning-border)',background:'var(--warning-soft)',borderRadius: T.radius.inner,padding:'10px 12px',display:'flex',flexDirection:'column',gap:4}}>
-              <p style={{fontSize:12,fontWeight:600,color:'var(--text-primary)',fontFamily: T.font.sans}}>Μεταβολές που περιμένουν δεύτερη επιβεβαίωση</p>
+              <p style={{fontSize: 'var(--fs-note)',fontWeight:600,color:'var(--text-primary)',fontFamily: T.font.sans}}>Μεταβολές που περιμένουν δεύτερη επιβεβαίωση</p>
               {held.map((c,i)=>(
-                <p key={i} style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>
+                <p key={i} style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily: T.font.sans}}>
                   <span style={{fontFamily: T.font.mono}}>{c.bank_id} · {c.field}</span>: από {c.old_value==null?ABSENT:String(c.old_value).replace('.',',')} σε {String(c.new_value).replace('.',',')} · {c.reason}
                 </p>
               ))}
@@ -217,11 +217,11 @@ export default function BankRatesAdmin({ onSaved }:{
               )
             })}
             {ratesErr && (
-              <p style={{fontSize:12,color:'var(--negative)',fontFamily: T.font.sans,padding:'4px 2px',lineHeight:1.5}}>
+              <p style={{fontSize: 'var(--fs-note)',color:'var(--negative)',fontFamily: T.font.sans,padding:'4px 2px',lineHeight:1.5}}>
                 Ο κατάλογος επιτοκίων δεν διαβάστηκε: δεν ξέρουμε τι ισχύει αυτή τη στιγμή. Κλείσε και άνοιξε ξανά τη διαχείριση.
               </p>
             )}
-            {!ratesErr && rows.length===0 && <p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,padding:'4px 2px'}}>Καμία ζωντανή εγγραφή επιτοκίων ακόμη</p>}
+            {!ratesErr && rows.length===0 && <p style={{fontSize: 'var(--fs-note)',color:'var(--text-tertiary)',fontFamily: T.font.sans,padding:'4px 2px'}}>Καμία ζωντανή εγγραφή επιτοκίων ακόμη</p>}
           </div>
         </div>
       )}

@@ -210,7 +210,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
       {fromTenant&&(
         <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'var(--accent-soft)',border:'1px solid var(--accent-border)',borderRadius:T.radius.inner}}>
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>Προσυμπληρώθηκε από την καρτέλα ενοικιαστή για <strong style={{color:'var(--text-primary)'}}>{fromTenant}</strong>. Έλεγξε την κατάσταση κάθε αντικειμένου πριν αποθηκεύσεις.</p>
+          <p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily:T.font.sans}}>Προσυμπληρώθηκε από την καρτέλα ενοικιαστή για <strong style={{color:'var(--text-primary)'}}>{fromTenant}</strong>. Έλεγξε την κατάσταση κάθε αντικειμένου πριν αποθηκεύσεις.</p>
         </div>
       )}
       <div style={{...formGrid(200, 270),gap:10}}>
@@ -230,7 +230,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
       </div>
       <div>
         <SectionLabel label="Κατάσταση αντικειμένων" right={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{items.length} αντικείμενα</span>}/>
-        <p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily:T.font.sans,margin:'-4px 0 10px',lineHeight:1.5}}>Πάτησε τη μικρογραφία για να τραβήξεις <strong style={{color:'var(--text-secondary)'}}>φωτογραφία της τρέχουσας κατάστασης</strong>, χρονοσφραγίζεται και μπαίνει στο εκτυπώσιμο πρωτόκολλο ως απόδειξη.</p>
+        <p style={{fontSize: 'var(--fs-note)',color:'var(--text-tertiary)',fontFamily:T.font.sans,margin:'-4px 0 10px',lineHeight:1.5}}>Πάτησε τη μικρογραφία για να τραβήξεις <strong style={{color:'var(--text-secondary)'}}>φωτογραφία της τρέχουσας κατάστασης</strong>, χρονοσφραγίζεται και μπαίνει στο εκτυπώσιμο πρωτόκολλο ως απόδειξη.</p>
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
           {items.map(item=>(
             <div key={item.id} style={{display:'grid',gridTemplateColumns:'44px minmax(0,1.4fr) 150px minmax(0,1.6fr)',gap:14,alignItems:'center',padding:'10px 14px',background:'var(--bg-elevated)',borderRadius:T.radius.inner,border:'1px solid var(--border-subtle)'}}>
@@ -270,7 +270,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
         <div style={{minWidth:0}}>
           <p style={{fontSize:16,fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>Πρωτόκολλα παράδοσης</p>
-          <p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily:T.font.sans,marginTop:2,maxWidth:560,lineHeight:1.5}}>Καταγράφει την κατάσταση κάθε αντικειμένου κατά την είσοδο και την έξοδο του ενοικιαστή, απόδειξη για την επιστροφή της εγγύησης σε περίπτωση φθορών.</p>
+          <p style={{fontSize: 'var(--fs-note)',color:'var(--text-tertiary)',fontFamily:T.font.sans,marginTop:2,maxWidth:560,lineHeight:1.5}}>Καταγράφει την κατάσταση κάθε αντικειμένου κατά την είσοδο και την έξοδο του ενοικιαστή, απόδειξη για την επιστροφή της εγγύησης σε περίπτωση φθορών.</p>
         </div>
         <div style={{display:'flex',gap:8,flexShrink:0}}>
           {handovers.length>=2&&<Btn variant="secondary" onClick={()=>setMode('compare')}>Σύγκριση εισόδου/εξόδου</Btn>}

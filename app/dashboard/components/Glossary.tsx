@@ -25,7 +25,7 @@ export default function Glossary({ items }: { items: { term: string; def: string
             {/* Ο ορισμός παίρνει το μέτρο ανάγνωσης της `.po-prose`. Χωρίς αυτό,
                 στα 1.440 η κάρτα δίνει χίλια εικονοστοιχεία και ο ορισμός του
                 δείκτη δόσης έβγαινε 137 χαρακτήρες σε μία γραμμή. */}
-            <p className="po-prose po-just" style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: font }}>{hy(it.def)}</p>
+            <p className="po-prose po-just" style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', fontFamily: font }}>{hy(it.def)}</p>
           </div>
         )
       })}

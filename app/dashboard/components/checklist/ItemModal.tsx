@@ -134,7 +134,7 @@ export function ItemModal({ item, contacts, onSave, onClose, onScan }: {
       {/* Η ΕΠΙΣΗΜΗ ΠΗΓΗ ΤΗΣ ΥΠΟΧΡΕΩΣΗΣ, όταν δεν την έγραψε ο χρήστης. */}
       {item?._src && (
         <div style={{ padding: '10px 12px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
-          <p style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: 0 }}>
+          <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: 0 }}>
             {item._who ? <strong style={{ color: 'var(--text-primary)' }}>{WHO_LABEL[item._who]}. </strong> : null}
             <a href={item._src} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Επίσημη πηγή</a>
           </p>
@@ -145,7 +145,7 @@ export function ItemModal({ item, contacts, onSave, onClose, onScan }: {
         {/* ΚΑΜΙΑ ΥΠΟΣΧΕΣΗ «ΕΚΚΡΕΜΗΣ ΔΑΠΑΝΗ». Η εκτίμηση δεν γράφεται πλέον στα
             Δαπάνες: ο προϋπολογισμός και το σύνολο που πάει στο Ε2 δεν δέχονται
             νούμερο χωρίς παραστατικό. */}
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: 0 }}>{form.due_date ? <>Με προθεσμία μπαίνει στο <strong style={{ color: 'var(--text-primary)' }}>ημερολόγιο</strong> με υπενθύμιση email. Η εκτίμηση μένει εδώ, <strong style={{ color: 'var(--text-primary)' }}>δεν γίνεται δαπάνη</strong> πριν υπάρξει παραστατικό.</> : 'Βάλε προθεσμία για αυτόματη υπενθύμιση στο ημερολόγιο.'}</p>
+        <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: 0 }}>{form.due_date ? <>Με προθεσμία μπαίνει στο <strong style={{ color: 'var(--text-primary)' }}>ημερολόγιο</strong> με υπενθύμιση email. Η εκτίμηση μένει εδώ, <strong style={{ color: 'var(--text-primary)' }}>δεν γίνεται δαπάνη</strong> πριν υπάρξει παραστατικό.</> : 'Βάλε προθεσμία για αυτόματη υπενθύμιση στο ημερολόγιο.'}</p>
       </div>
     </Modal>
   )

@@ -253,7 +253,7 @@ function SeriesCard({ group, onToggle, onEdit, onDelete, bulkMode, selectedIds, 
               κλάση ΕΙΝΑΙ η δήλωση. Η αδελφή κάρτα το είχε ήδη διορθώσει· αυτή εδώ
               έμεινε πίσω, γιατί η διόρθωση έγινε σε ένα σημείο αντί για δύο. */}
           <p className="po-elide" style={{ fontSize:14, fontFamily: T.font.sans, color:'var(--text-primary)', margin:0, letterSpacing:'0.1px' }}>{lead.title}</p>
-          <p style={{ fontSize:12, fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:'3px 0 0' }}>
+          <p style={{ fontSize: 'var(--fs-note)', fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:'3px 0 0' }}>
             {[cadence, `επόμενη ${fmt(lead.event_date)}`, `${count} συνολικά έως ${fmt(lastDate)}`].filter(Boolean).join(' · ')}
             {totalAmount!=null&&<> · σύνολο <span style={{ fontVariantNumeric:'tabular-nums' }}>{fe(totalAmount)}</span></>}
           </p>

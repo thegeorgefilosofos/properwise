@@ -524,7 +524,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                     {collectionModeReason(collection)}
                     {rentsBankOverride !== null && ' Το άλλαξες εσύ· μετράει η δική σου απάντηση.'}
                   </p>
-                  {!rentsBank && <p style={{ margin:'4px 0 0', paddingLeft: 17 + T.sp.sm, fontSize:12, color:'var(--negative)', fontFamily: T.font.sans }}>Χωρίς τραπεζική είσπραξη ο φόρος υπολογίζεται στο 100% των ενοικίων.</p>}
+                  {!rentsBank && <p style={{ margin:'4px 0 0', paddingLeft: 17 + T.sp.sm, fontSize: 'var(--fs-note)', color:'var(--negative)', fontFamily: T.font.sans }}>Χωρίς τραπεζική είσπραξη ο φόρος υπολογίζεται στο 100% των ενοικίων.</p>}
                 </div>
               )}
               {uncollectedRent>0 && (
@@ -579,7 +579,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           {/* Η ΚΛΙΜΑΚΑ ΚΑΙ ΤΟ 5% ΜΕ ΤΟ ΠΟΤΕ ΤΑ ΕΙΔΕ ΑΝΘΡΩΠΟΣ (lib/facts/taxLimits). */}
           <AsOfNote fact={taxLimitAsOf(businessMode ? 'business' : 'rent')} />
           <div style={{ flex:1 }}/>
-          <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'14px 0 0', paddingTop:12, borderTop:'1px solid var(--border-subtle)', fontFamily: T.font.sans, lineHeight:1.55 }}>
+          <p style={{ fontSize: 'var(--fs-note)', color:'var(--text-tertiary)', margin:'14px 0 0', paddingTop:12, borderTop:'1px solid var(--border-subtle)', fontFamily: T.font.sans, lineHeight:1.55 }}>
             Ενδεικτικά ποσά. Το τελικό ποσό το επιβεβαιώνει ο λογιστής σου ή το εκκαθαριστικό στο <a href={AADE_CALENDAR_URL} target="_blank" rel="noreferrer" style={{ color:'var(--accent)', textDecoration:'none' }}>myAADE</a>.
             <InfoHint>
               {businessMode
@@ -780,7 +780,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           <ChevronRight size={16} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:advancedOpen?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
           <div style={{ flex:1, minWidth:0 }}>
             <p style={{ ...cardTitle, margin:0 }}>Προχωρημένα εργαλεία</p>
-            <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'3px 0 0', fontFamily: T.font.sans, lineHeight:1.5 }}>{advancedSummary}</p>
+            <p style={{ fontSize: 'var(--fs-note)', color:'var(--text-tertiary)', margin:'3px 0 0', fontFamily: T.font.sans, lineHeight:1.5 }}>{advancedSummary}</p>
           </div>
         </button>
         {advancedOpen && (

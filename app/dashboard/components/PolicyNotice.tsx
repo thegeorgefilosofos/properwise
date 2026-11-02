@@ -69,7 +69,7 @@ export default function PolicyNotice() {
           <LinkBtn className="po-tap-inline" onClick={() => setOpen(o => !o)}>{open ? 'Απόκρυψη' : 'Τι άλλαξε'}</LinkBtn>
         </p>
         {open && (
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.6, margin: '8px 0 0', maxWidth: '78ch' }}>
+          <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.6, margin: '8px 0 0', maxWidth: '78ch' }}>
             {POLICY_NOTICE_HEADLINE} {POLICY_NOTICE_LEDE} {POLICY_CHANGE_SUMMARY}{' '}
             <a href="/terms" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1 }}>Δες τους Όρους</a>
           </p>

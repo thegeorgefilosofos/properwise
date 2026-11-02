@@ -81,7 +81,7 @@ export function TaxSection({
                 Μένουν οι τρεις προτάσεις που δεν λέγονται πουθενά αλλού: το
                 κατώφλι της επιχειρηματικής δραστηριότητας, ο Αριθμός
                 Μητρώου Ακινήτων και το ποιος επιβεβαιώνει τα τελικά. */}
-            <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: SANS, lineHeight: 1.6 }}>
+            <p style={{ margin: '12px 0 0', fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', fontFamily: SANS, lineHeight: 1.6 }}>
               {individualPerson ? 'Όταν η δραστηριότητα ξεπεράσει τα όρια (πολλά ακίνητα ή παροχή υπηρεσιών ξενοδοχειακού τύπου), θεωρείται επιχειρηματική και υπάγεται σε ΦΠΑ και στην κλίμακα του άρθρου 15· είναι θέμα του λογιστή.' : 'Ως νομικό πρόσωπο, τα έσοδα υπάγονται σε ΦΠΑ και εταιρική φορολογία, ενώ τα τέλη εκπίπτουν ως δαπάνες.'} Κάθε ακίνητο χρειάζεται Αριθμό Μητρώου Ακινήτων σε κάθε αγγελία. Οι τελικές υποχρεώσεις επιβεβαιώνονται με τον λογιστή ή την ΑΑΔΕ.
             </p>
           </div>
@@ -115,7 +115,7 @@ export function TaxSection({
               note="Ο νόμος το βάζει στον επισκέπτη και ο ιδιοκτήτης το αποδίδει. Οι πλατφόρμες όμως δεν έχουν πεδίο γι’ αυτό στην Ελλάδα: αν δεν το ζητήσεις ρητά, βγαίνει από την τσέπη σου." />
           </div>
         )}
-        <p className="po-prose po-just" style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: SANS }}>
+        <p className="po-prose po-just" style={{ margin: '10px 0 0', fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', fontFamily: SANS }}>
           {hy(<>{consolidated
             ? <>{CONSOLIDATION_NOTE} Το χαρτοφυλάκιό σου: <strong style={{ color: 'var(--text-primary)' }}>{portfolioTax.count} ακίνητα</strong> με ενοίκια {fe(portfolioTax.totalAnnualRent)} και συνολικό φόρο {fe(portfolioTax.totalTax)} (μέσος συντελεστής {fp(portfolioTax.effectiveRate * 100)}, οριακός {fp(portfolioTax.marginalRate * 100)}). Το μερίδιο αυτού του ακινήτου είναι <strong style={{ color: 'var(--text-primary)' }}>{fe(annualTax)}</strong>. Αν υπολογιζόταν μόνο του, θα έδειχνε {fe(portfolioTax.perProperty.find(p => p.id === propertyId)?.standaloneTax ?? 0)}, δηλαδή λιγότερα από την πραγματικότητα.</>
             : <>{/* Μένει ο ΔΙΚΟΣ ΣΟΥ συντελεστής, που είναι το νούμερο της

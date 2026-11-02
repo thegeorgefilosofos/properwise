@@ -149,7 +149,7 @@ export function MaintenanceTab({items,schedules,propertyId,userId,onSaved}:{item
           </div>
           <div style={{display:'flex',alignItems:'center',gap:8,marginTop:10,padding:'9px 12px',background:'var(--accent-soft)',border:'1px solid var(--accent-border)',borderRadius:T.radius.inner}}>
             <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-            <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans,lineHeight:1.5}}>Με την αποθήκευση μπαίνει αυτόματα στο <strong style={{color:'var(--text-primary)'}}>ημερολόγιο</strong> (με υπενθύμιση email πριν λήξει){form.est_cost>0?<> και ως <strong style={{color:'var(--text-primary)'}}>εκκρεμής δαπάνη</strong> στον προϋπολογισμό «Συντήρηση»</>:''}.</p>
+            <p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily:T.font.sans,lineHeight:1.5}}>Με την αποθήκευση μπαίνει αυτόματα στο <strong style={{color:'var(--text-primary)'}}>ημερολόγιο</strong> (με υπενθύμιση email πριν λήξει){form.est_cost>0?<> και ως <strong style={{color:'var(--text-primary)'}}>εκκρεμής δαπάνη</strong> στον προϋπολογισμό «Συντήρηση»</>:''}.</p>
           </div>
           <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:12}}>
             <Btn variant="secondary" onClick={()=>setAdding(false)}>Ακύρωση</Btn>
@@ -167,7 +167,7 @@ export function MaintenanceTab({items,schedules,propertyId,userId,onSaved}:{item
           στέκεται δύο εκατοστά πιο πάνω και λέει την ίδια κίνηση. Σε κινητό το
           μπλοκ έπιανε μισή οθόνη για να ανακοινώσει ότι δεν υπάρχει τίποτα. */}
       {schedules.length===0
-        ? <p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily:T.font.sans,margin:0}}>Καμία προγραμματισμένη συντήρηση.</p>
+        ? <p style={{fontSize: 'var(--fs-note)',color:'var(--text-tertiary)',fontFamily:T.font.sans,margin:0}}>Καμία προγραμματισμένη συντήρηση.</p>
         : <div style={{display:'flex',flexDirection:'column',gap:6}}>
             {[...schedules].sort((a,b)=>daysUntil(a.next_due)-daysUntil(b.next_due)).map(s=><SchedRow key={s.id} s={s}/>)}
           </div>}

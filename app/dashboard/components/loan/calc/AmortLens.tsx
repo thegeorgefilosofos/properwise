@@ -237,7 +237,7 @@ export function TableLens({
               onTouchStart={()=>setHoverCost(i)} onTouchEnd={()=>setHoverCost(null)}
               style={{display:'flex',flexDirection:'column',gap:6,padding:'12px 14px',borderRadius:T.radius.inner,background:'var(--bg-elevated)',border:`1px solid ${on?'var(--border-default)':'var(--border-subtle)'}`,transition:'border-color 0.15s, box-shadow 0.15s, transform 0.15s',transform:on?'translateY(-1px)':'none',
               boxShadow:on?'var(--elev-2)':'none'}}>
-              <p style={{fontSize:12,color:'var(--text-secondary)',fontWeight:500,fontFamily: T.font.sans,lineHeight:1.35}}>{item.label}</p>
+              <p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontWeight:500,fontFamily: T.font.sans,lineHeight:1.35}}>{item.label}</p>
               <p style={{fontSize:15,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:on?'var(--accent)':'var(--text-primary)',fontWeight:600,lineHeight:1,marginTop:'auto',transition:'color 0.15s'}}>{item.value}</p>
               <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,lineHeight:1.35}}>{item.sub}</p>
             </div>
@@ -250,7 +250,7 @@ export function TableLens({
             {label:'Απαιτούμενα ίδια κεφάλαια',value:fmtEur(totalCosts.totalCash),sub:'Προκαταβολή + έξοδα',strong:true},
           ].map(item=>(
             <div key={item.label} style={{display:'flex',flexDirection:'column',gap:6,padding:'12px 14px',borderRadius:T.radius.inner,background:'var(--bg-surface)',border:`1px solid ${item.strong?'var(--border-default)':'var(--border-subtle)'}`}}>
-              <p style={{fontSize:12,color:'var(--text-secondary)',fontWeight:500,fontFamily: T.font.sans,lineHeight:1.35}}>{item.label}</p>
+              <p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontWeight:500,fontFamily: T.font.sans,lineHeight:1.35}}>{item.label}</p>
               <p style={{fontSize:item.strong?20:17,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700,lineHeight:1,marginTop:'auto'}}>{item.value}</p>
               <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,lineHeight:1.35}}>{item.sub}</p>
             </div>
@@ -275,7 +275,7 @@ export function TableLens({
             έχει ήδη οκτώ πλακίδια και έναν ένθετο πίνακα, το τέταρτο πλαίσιο δεν
             προσθέτει έμφαση — προσθέτει βάρος. Μένει γραμμή κειμένου, δίπλα στην
             αδελφή της που λέει την πηγή. */}
-        <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,lineHeight:1.7,marginBottom:6}}>Ετήσιο κόστος ασφαλειών, εκτίμηση · Κατοικίας, υποχρεωτική: από {fmtEur(insurance.homeMin)} έως {fmtEur(insurance.homeMax)} · Ζωής: περίπου {fmtEur(insurance.life)}</p>
+        <p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily: T.font.sans,lineHeight:1.7,marginBottom:6}}>Ετήσιο κόστος ασφαλειών, εκτίμηση · Κατοικίας, υποχρεωτική: από {fmtEur(insurance.homeMin)} έως {fmtEur(insurance.homeMax)} · Ζωής: περίπου {fmtEur(insurance.life)}</p>
         {/* Η ΠΗΓΗ ΛΕΕΙ ΤΙ ΚΑΛΥΠΤΕΙ. Έγραφε «Πηγή: ΑΑΔΕ» κάτω από συμβολαιογραφικά
             και ασφάλειες, που η ΑΑΔΕ δεν ορίζει. */}
         <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',lineHeight:1.6,fontFamily: T.font.sans}}>

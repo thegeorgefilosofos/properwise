@@ -91,7 +91,7 @@ export function RateLens({
       {spitiClosed ? (
         <div style={{...panelStyle,padding:'14px 16px'}}>
           <p style={{fontSize:14,color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:600}}>Σπίτι μου ΙΙ</p>
-          <p style={{fontSize:12,color:'var(--text-secondary)',marginTop: 4,lineHeight:1.5,fontFamily: T.font.sans}}>{spitiClosed}</p>
+          <p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',marginTop: 4,lineHeight:1.5,fontFamily: T.font.sans}}>{spitiClosed}</p>
         </div>
       ) : (
       <Section title="Σπίτι μου ΙΙ έναντι κανονικού δανείου" sub={spitiEligible?'Εκτίμηση εξοικονόμησης':'Κριτήρια ένταξης'}>
@@ -113,7 +113,7 @@ export function RateLens({
           ))}
         </div>
         <div style={{background:'var(--accent-dim)',border:'1px solid var(--border-accent)',borderRadius:10,padding:'14px 18px',textAlign:'center' as const}}>
-          <p style={{fontSize:12,color:'var(--text-secondary)',marginBottom:4,fontFamily: T.font.sans}}>Εκτιμώμενη συνολική εξοικονόμηση</p>
+          <p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',marginBottom:4,fontFamily: T.font.sans}}>Εκτιμώμενη συνολική εξοικονόμηση</p>
           <p style={{fontSize:28,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--accent)',fontWeight:700}}>{fmtEur(spitiSv)}</p>
           <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:6,fontFamily: T.font.sans}}>{fmtEur(spitiSv/Math.max(Y*12,1))} τον μήνα εξοικονόμηση</p>
         </div>
