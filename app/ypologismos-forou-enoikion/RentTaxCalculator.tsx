@@ -20,8 +20,8 @@
 // την εγγραφή — που είναι ο γρηγορότερος τρόπος να χάσεις την εμπιστοσύνη του.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId, type ReactNode } from 'react';
-import { T, feAuto, fn, fp } from '@/components/tokens';
-import { fe, fpRate, feWhole, feSigned, grDateOf } from '@/lib/core/format';
+import { T } from '@/components/tokens';
+import { grDateOf, fmtFor } from '@/lib/core/format';
 import {
   rentalIncomeTax, marginalRate,
   rentalBracketsForYear, FIRST_YEAR_NEW_BRACKETS, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT,
@@ -58,6 +58,9 @@ import LiveResult from '@/components/LiveResult';
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { SPEC } from './spec';
+import { useLocale } from '@/lib/i18n/useLocale';
+import { localHref } from '@/lib/i18n/paths';
+import { RENT_EN, filingNoteEn, rateScaleEn } from '@/lib/i18n/en/tools/rent';
 const PATH = '/ypologismos-forou-enoikion';
 
 // ═══ Η ΧΡΟΝΙΑ ΠΟΥ ΑΝΟΙΓΕΙ Ο ΥΠΟΛΟΓΙΣΤΗΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗ ΣΗΜΕΡΙΝΗ ΗΜΕΡΟΜΗΝΙΑ ═══
@@ -109,7 +112,15 @@ export function RentTaxCalculator({ today, cta }: {
   /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
   cta: ReactNode;
 }) {
-  const [v, set] = useToolState(SPEC, PATH, x => x.etos ? x
+  // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/rental-income-tax-calculator) ─────────────
+  // Ιδιος υπολογισμός· αλλάζουν οι λέξεις (lib/i18n/en/tools/rent.ts) και η
+  // γραφή των αριθμών (`fmtFor`). Στα ελληνικά οι μορφοποιητές είναι οι ίδιοι.
+  const locale = useLocale(), en = locale === 'en', E = RENT_EN, path = localHref(locale, PATH);
+  const { fe, fn, fp, fpRate, feSigned, feWhole, date } = fmtFor(locale);
+  const feAuto = fe;
+  const dateOf = (y: number, m: number) => (en ? date(`${y}-${String(m).padStart(2, '0')}-01`) : grDateOf(y, m));
+  const pctOf = (rate: number) => (en ? fpRate(rate * 100) : ratePct(rate));
+  const [v, set] = useToolState(SPEC, path, x => x.etos ? x
     : { ...x, etos: toolQuery(SPEC, x) ? LEGACY_YEAR : openingYear(today) });
   const monthly = v.enoikio, months = v.mines, viaBank = v.trapeza !== '0';
   const year = incomeYearFor(v.etos, today, FIRST_DOCUMENTED_YEAR);
@@ -169,23 +180,24 @@ export function RentTaxCalculator({ today, cta }: {
           με την επιλογή της χρονιάς σε δική της σειρά από κάτω. Τώρα τα δύο
           πεδία πιάνουν από μία στήλη και η χρονιά τις άλλες δύο: μία σειρά. */}
       <ToolFields xs2>
-        <ToolNumField id={monthlyId} label="Μηνιαίο ενοίκιο" value={monthly} onChange={x => set('enoikio', x)} unit="€"/>
-        <ToolNumField id={monthsId} label="Μήνες ενοικίασης" value={months} onChange={x => set('mines', x)}
-          mode="numeric" unit="μήνες" unitPad={64}/>
+        <ToolNumField id={monthlyId} label={en ? E.monthly : 'Μηνιαίο ενοίκιο'} value={monthly} onChange={x => set('enoikio', x)} unit="€"/>
+        <ToolNumField id={monthsId} label={en ? E.months : 'Μήνες ενοικίασης'} value={months} onChange={x => set('mines', x)}
+          mode="numeric" unit={en ? E.monthsUnit : 'μήνες'} unitPad={64}/>
         {/* ── ΠΟΙΑΣ ΧΡΟΝΙΑΣ ΕΙΣΟΔΗΜΑ ─────────────────────────────────────
             Δύο κουμπιά, όχι μενού: οι επιλογές είναι δύο και θα μείνουν δύο ώσπου
             να αλλάξει ο νόμος. Η προεπιλογή και η βοήθεια βγαίνουν από τη
             σημερινή ημερομηνία (`openingYear`, `filingNote`). Το «πότε
             δηλώνεται» ζούσε σε δεύτερη σειρά μέσα σε κάθε κουμπί και έκανε τη
             ράγα ψηλότερη από τα πεδία δίπλα της· μένει στη βοήθεια από κάτω. */}
-        <ToolSeg label="Εισόδημα ποιας χρονιάς" value={String(year)} onChange={x => set('etos', x)}
+        <ToolSeg label={en ? E.year : 'Εισόδημα ποιας χρονιάς'} value={String(year)} onChange={x => set('etos', x)}
           options={offeredIncomeYears(today, FIRST_DOCUMENTED_YEAR).map(y => ({ value: String(y), label: String(y) }))}
-          hint={<>Του {year}, {filingNote(year, today)}. {year >= FIRST_YEAR_NEW_BRACKETS
+          hint={en ? E.yearHint(year, filingNoteEn(year, today), rateScaleEn(rentalBracketsForYear(year))) : <>Του {year}, {filingNote(year, today)}. {year >= FIRST_YEAR_NEW_BRACKETS
             ? `Κλίμακα ${rateScale(rentalBracketsForYear(year))} (ν.5246/2025).`
             : `Κλίμακα ${rateScale(rentalBracketsForYear(year))}, χωρίς το ενδιάμεσο κλιμάκιο.`}</>}/>
       </ToolFields>
       <ToolClampNote notes={[
-        Math.round(amount(months)) > MAX_MONTHS && `Μέγιστο ${MAX_MONTHS} μήνες· υπολογίστηκαν ${MAX_MONTHS}.`,
+        Math.round(amount(months)) > MAX_MONTHS && en && E.clamp(MAX_MONTHS),
+        Math.round(amount(months)) > MAX_MONTHS && !en && `Μέγιστο ${MAX_MONTHS} μήνες· υπολογίστηκαν ${MAX_MONTHS}.`,
       ]}/>
 
       {bankMatters && <div className="po-tool-controls" style={{
@@ -196,13 +208,18 @@ export function RentTaxCalculator({ today, cta }: {
       }}>
         <div style={{ flex: 1, minWidth: 210 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-            Εισπράττω μέσω τράπεζας
+            {en ? E.bank : 'Εισπράττω μέσω τράπεζας'}
           </div>
           {/* ΤΟ ΚΕΙΜΕΝΟ ΑΛΛΑΖΕΙ ΜΕ ΤΗΝ ΑΠΑΝΤΗΣΗ ΚΑΙ ΔΕΝ ΛΕΕΙ ΔΥΟ ΦΟΡΕΣ ΤΟ ΙΔΙΟ.
               Όσο ο διακόπτης είναι ανοιχτός αρκεί ο κανόνας· μόλις κλείσει,
               στη θέση του κανόνα μπαίνει το ΠΟΣΟ που κοστίζει η επιλογή. */}
           <p style={{ margin: '3px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)' }}>
-            {viaBank
+            {en ? (viaBank
+              ? E.bankOn(pctOf(PRESUMPTIVE_DEDUCTION_RATE), dateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT))
+              : year === FIRST_YEAR_BANK_RECEIPT
+                ? E.bankOffFirst(dateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT), feAuto(r.cashCost), year)
+                : E.bankOff(feAuto(r.cashCost)))
+            : viaBank
               ? `Προϋπόθεση για την τεκμαρτή έκπτωση ${ratePct(PRESUMPTIVE_DEDUCTION_RATE)}, από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν.5222/2025).`
               : year === FIRST_YEAR_BANK_RECEIPT
                 // Η ΠΡΩΤΗ ΧΡΟΝΙΑ ΕΙΝΑΙ ΜΙΣΗ (20.10.2026): το 100% πιάνει μόνο ό,τι
@@ -212,14 +229,19 @@ export function RentTaxCalculator({ today, cta }: {
           </p>
         </div>
         <Toggle on={viaBank} onChange={on => set('trapeza', on ? '1' : '0')}
-          ariaLabel="Εισπράττω μέσω τράπεζας"/>
+          ariaLabel={en ? E.bank : 'Εισπράττω μέσω τράπεζας'}/>
       </div>}
 
       {/* ── Η κεφαλίδα του χαρτιού, πάνω από το αποτέλεσμα ─────────────── */}
       {/* Ο τρόπος είσπραξης μπαίνει στο χαρτί ΜΟΝΟ όταν αλλάζει το ποσό: για
           εισοδήματα 2025 η έκπτωση δίνεται ανεξάρτητα και μια γραμμή που δεν
           επηρεάζει τίποτα διαβάζεται ως προϋπόθεση που δεν υπάρχει. */}
-      <ToolPaper title={`Εκτίμηση φόρου ενοικίων ${year}`} on={today} inputs={[
+      <ToolPaper title={en ? E.paper(year) : `Εκτίμηση φόρου ενοικίων ${year}`} on={today} inputs={en ? [
+        { k: E.monthly, v: feAuto(amount(monthly)) },
+        { k: E.months2, v: fn(r.months) },
+        { k: E.annual, v: feAuto(r.gross) },
+        ...(bankMatters ? [{ k: E.collection, v: viaBank ? E.viaBank : E.inCash }] : []),
+      ] : [
         { k: 'Μηνιαίο ενοίκιο', v: feAuto(amount(monthly)) },
         { k: 'Μήνες', v: fn(r.months) },
         { k: 'Ετήσιο ενοίκιο', v: feAuto(r.gross) },
@@ -257,9 +279,9 @@ export function RentTaxCalculator({ today, cta }: {
             ισομεγέθη νούμερα άφηναν το «Σου μένουν» πρώτο, δηλαδή η απάντηση
             στην ερώτηση του τίτλου ήταν δεύτερη. Ακέραια ευρώ στην κορυφή· τα
             λεπτά τα κρατά η ανάλυση από κάτω, που πρέπει να κλείνει στο λεπτό. */}
-        <ToolHero primary={{ label: 'Φόρος', value: fe(r.tax) }}
-          secondary={[{ label: 'Σου μένουν', value: fe(r.net) }]}/>
-        <LiveResult say={`Φόρος ${feAuto(r.tax)}. Σου μένουν ${feAuto(r.net)}.`} />
+        <ToolHero primary={{ label: en ? E.tax : 'Φόρος', value: fe(r.tax) }}
+          secondary={[{ label: en ? E.keep : 'Σου μένουν', value: fe(r.net) }]}/>
+        <LiveResult say={en ? E.say(feAuto(r.tax), feAuto(r.net)) : `Φόρος ${feAuto(r.tax)}. Σου μένουν ${feAuto(r.net)}.`} />
 
         <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
 
@@ -270,7 +292,11 @@ export function RentTaxCalculator({ today, cta }: {
             φορολογητέο δεν είναι βήματα αυτής της αφαίρεσης (ο φόρος βγαίνει
             ΠΑΝΩ στο φορολογητέο, δεν αφαιρείται από αυτό), οπότε μπαίνουν ως
             εξήγηση κάτω από τον φόρο και ο αναγνώστης δεν αφαιρεί λάθος πράγματα. */}
-        <ToolLedger rows={[
+        <ToolLedger rows={en ? [
+          { k: E.annual, v: feAuto(r.gross) },
+          { k: E.incomeTax, v: feSigned(-r.tax), sub: E.incomeTaxSub(feAuto(r.taxable), feAuto(r.deduction)) },
+          { k: E.keepYear, v: feAuto(r.net), kind: 'total' },
+        ] : [
           { k: 'Ετήσιο ενοίκιο', v: feAuto(r.gross) },
           {
             k: 'Φόρος εισοδήματος', v: feSigned(-r.tax),
@@ -284,13 +310,13 @@ export function RentTaxCalculator({ today, cta }: {
         {/* Ετικέτες μιας γραμμής και στα 768: «Φόρος ως ποσοστό του ενοικίου»
             έπιανε δύο και κατέβαζε το νούμερό της κάτω από τα διπλανά. */}
         <ToolStats items={[
-          { k: 'Καθαρά τον μήνα', v: fe(r.monthlyNet) },
-          { k: 'Φόρος επί ενοικίου', v: fp(r.rentShare * 100) },
-          { k: 'Οριακός συντελεστής', v: fpRate(r.marginal * 100) },
+          { k: en ? E.perMonth : 'Καθαρά τον μήνα', v: fe(r.monthlyNet) },
+          { k: en ? E.share : 'Φόρος επί ενοικίου', v: fp(r.rentShare * 100) },
+          { k: en ? E.marginal : 'Οριακός συντελεστής', v: fpRate(r.marginal * 100) },
         ]}/>
       </div>
 
-      <ToolActions path={PATH} spec={SPEC} values={v}/>
+      <ToolActions path={path} spec={SPEC} values={v}/>
 
       {/* ── Η κλίμακα, ώστε να φαίνεται από πού βγήκε ο αριθμός ─────────── */}
       {/* ΗΤΑΝ <h2> ΣΤΑ 13 ΕΙΚΟΝΟΣΤΟΙΧΕΙΑ. Δηλαδή επικεφαλίδα δεύτερου επιπέδου —
@@ -304,7 +330,7 @@ export function RentTaxCalculator({ today, cta }: {
         <div className="po-table-box">
          <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
           <table className="po-table po-tool-table tbl-fixed" style={{ '--tbl-min': '300px' }}>
-            <caption>Η κλίμακα του {year}</caption>
+            <caption>{en ? E.caption(year) : <>Η κλίμακα του {year}</>}</caption>
             {/* ΡΗΤΑ ΠΛΑΤΗ ΚΑΙ ΚΕΦΑΛΙΔΕΣ ΠΟΥ ΧΩΡΑΝΕ ΣΤΑ 360. Το «Φόρος σε αυτό το
                 κλιμάκιο» έπιανε τρεις σειρές και το εύρος έσπαγε στην παύλα. */}
             <colgroup>
@@ -314,9 +340,9 @@ export function RentTaxCalculator({ today, cta }: {
             </colgroup>
             <thead>
               <tr>
-                <th scope="col">Εισόδημα</th>
-                <th scope="col" className="num">Συντελεστής</th>
-                <th scope="col" className="num">Φόρος κλιμακίου</th>
+                <th scope="col">{en ? E.colIncome : 'Εισόδημα'}</th>
+                <th scope="col" className="num">{en ? E.colRate : 'Συντελεστής'}</th>
+                <th scope="col" className="num">{en ? E.colTax : 'Φόρος κλιμακίου'}</th>
               </tr>
             </thead>
             <tbody>
@@ -356,7 +382,7 @@ export function RentTaxCalculator({ today, cta }: {
                 // και στα 360· ένα «0 –» πάνω από ένα «12.000€» δεν διαβάζεται
                 // ως ένα ποσό.
                 const range = b.to === Infinity
-                  ? <>Πάνω από <span style={{ whiteSpace: 'nowrap' }}>{feWhole(b.from)}</span></>
+                  ? <>{en ? E.over : 'Πάνω από'} <span style={{ whiteSpace: 'nowrap' }}>{feWhole(b.from)}</span></>
                   : <span style={{ whiteSpace: 'nowrap' }}>{fn(b.from)} – {feWhole(b.to)}</span>;
                 return (
                   <tr key={b.from} className={active ? 'is-on' : undefined}>
@@ -397,15 +423,16 @@ export function RentTaxCalculator({ today, cta }: {
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
         <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+          {en ? <><strong style={{ color: 'var(--text-primary)' }}>{E.notLead}</strong>{' '}{E.not(pctOf(PRESUMPTIVE_DEDUCTION_RATE))} <EstimateNote en /></> : <>
           <strong style={{ color: 'var(--text-primary)' }}>Τι δεν περιλαμβάνει.</strong>{' '}
           Ο υπολογισμός αφορά <strong>μόνο</strong> το εισόδημα από ενοίκια, με την τεκμαρτή
           έκπτωση {ratePct(PRESUMPTIVE_DEDUCTION_RATE)} που δίνει ο νόμος χωρίς δικαιολογητικά. Δεν περιλαμβάνει άλλα
           εισοδήματά σου, τον ΕΝΦΙΑ ούτε ειδικές περιπτώσεις (βραχυχρόνια μίσθωση,
-          συνιδιοκτησία, νομικό πρόσωπο, κενά διαστήματα, ανείσπρακτα). <EstimateNote />
+          συνιδιοκτησία, νομικό πρόσωπο, κενά διαστήματα, ανείσπρακτα). <EstimateNote /></>}
         </p>
       </div>
 
-      <ToolPaperFoot path={PATH} spec={SPEC} values={v}/>
+      <ToolPaperFoot path={path} spec={SPEC} values={v}/>
 
       {cta}
     </div>

@@ -18,13 +18,17 @@
  * συμβουλή, δηλαδή αυτή που θα διαβαστεί αν κάποιος παραπονεθεί ότι το ποσό
  * δεν βγήκε. Πρέπει να λέει το ίδιο και στους τρεις, πάντα.
  */
-export function EstimateNote({ investment = false, loan = false }: { investment?: boolean; loan?: boolean }) {
+export function EstimateNote({ investment = false, loan = false, en = false }: { investment?: boolean; loan?: boolean; en?: boolean }) {
   // Ο ΥΠΟΛΟΓΙΣΤΗΣ ΑΠΟΔΟΣΗΣ ΤΟ ΕΓΡΑΦΕ ΜΟΝΟΣ ΤΟΥ, ΓΙΑ ΜΙΑ ΛΕΞΗ. Τρεις σελίδες
   // καλούσαν αυτό το εξάρτημα και η τέταρτη ξανάγραφε την ίδια πρόταση με το
   // «επενδυτική» παραπάνω — γιατί εκεί ο αριθμός είναι απόδοση κεφαλαίου, όχι
   // φόρος. Η λέξη γίνεται σημαία· η πρόταση μένει μία.
   // ΣΤΟ ΔΑΝΕΙΟ Η ΑΡΝΗΣΗ ΕΙΝΑΙ ΑΛΛΗ. Η δόση δεν είναι φόρος· αυτό που πρέπει να
   // ειπωθεί είναι ότι το νούμερο δεν είναι προσφορά ούτε έγκριση τράπεζας.
+  // Η ΙΔΙΑ ΠΡΟΤΑΣΗ ΣΤΙΣ ΑΓΓΛΙΚΕΣ ΣΕΛΙΔΕΣ (/en/...), με την ίδια σημαία.
+  if (en) return loan
+    ? <>It is an <strong>estimate</strong> to give you the order of magnitude, not a loan offer or approval.</>
+    : <>It is an <strong>estimate</strong> to give you the order of magnitude, not {investment ? 'investment or ' : ''}tax advice.</>;
   if (loan) return <>Είναι <strong>εκτίμηση</strong> για να ξέρεις την τάξη μεγέθους, όχι προσφορά ή έγκριση δανείου.</>;
   return <>Είναι <strong>εκτίμηση</strong> για να ξέρεις την τάξη μεγέθους, όχι {investment ? 'επενδυτική ή ' : ''}φορολογική συμβουλή.</>;
 }

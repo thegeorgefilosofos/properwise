@@ -28,6 +28,9 @@ export const PAGE_PAIRS = [
   ['/privacy', '/en/privacy'],
   ['/terms', '/en/terms'],
   ['/ypologismos-enfia', '/en/enfia-calculator'],
+  ['/ypologismos-forou-enoikion', '/en/rental-income-tax-calculator'],
+  ['/kathari-apodosi', '/en/rental-yield-calculator'],
+  ['/vraxyxronia-i-makroxronia', '/en/short-term-vs-long-term-rental'],
 ] as const satisfies readonly (readonly [string, string])[];
 
 const EL_TO_EN = new Map<string, string>(PAGE_PAIRS.map(([el, en]) => [el, en]));

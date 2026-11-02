@@ -21,8 +21,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useMemo, useId, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { T, feAuto } from '@/components/tokens';
-import { fe, fn, fp, fpRate, feSigned, fpSigned, grDateOf } from '@/lib/core/format';
+import { T } from '@/components/tokens';
+import { grDateOf, fmtFor } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { propertyYield } from '@/lib/tools/apodosi';
 import { rentalBracketsForYear, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
@@ -33,6 +33,10 @@ import { EstimateNote, ToolClampNote } from '@/app/ToolNotes';
 import { ToolNumField, ToolFields, ToolHero, ToolLedger, ToolStats, TOOL_LABEL, TOOL_FIELD } from '@/app/ToolParts';
 
 import LiveResult from '@/components/LiveResult';
+import { useLocale } from '@/lib/i18n/useLocale';
+import { localHref } from '@/lib/i18n/paths';
+import { YIELD_EN } from '@/lib/i18n/en/tools/yield';
+import { rateScaleEn } from '@/lib/i18n/en/tools/rent';
 /** Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. */
 const SPEC = {
   axia: '200000', enoikio: '700', mines: '12',
@@ -45,7 +49,7 @@ const BANK_FROM = grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT);
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
 /** Ακέραια ευρώ με τυπογραφικό μείον, όπως στη σύγκριση βραχυχρόνιας. */
-const wholeSigned = (n: number) => (Math.round(n * 100) < 0 ? `−${fe(-n)}` : fe(n));
+const signedWith = (fe: (n: number) => string) => (n: number) => (Math.round(n * 100) < 0 ? `−${fe(-n)}` : fe(n));
 
 /**
  * ΟΜΑΔΑ ΠΕΔΙΩΝ ΜΕ ΤΙΤΛΟ ΠΟΥ ΞΕΧΩΡΙΖΕΙ ΑΠΟ ΤΙΣ ΕΤΙΚΕΤΕΣ.
@@ -71,7 +75,13 @@ export function ApodosiCalculator({ year, today, cta }: {
   /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
   cta: ReactNode;
 }) {
-  const [v, set] = useToolState(SPEC, PATH);
+  // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/rental-yield-calculator) ──────────────────
+  const locale = useLocale(), en = locale === 'en', E = YIELD_EN, path = localHref(locale, PATH);
+  const { fe, fn, fp, fpRate, feSigned, date } = fmtFor(locale);
+  const feAuto = fe, wholeSigned = signedWith(fe);
+  const fpSigned = (n: number) => (n < 0 ? `−${fp(-n)}` : fp(n));
+  const bankFrom = en ? date(`${FIRST_YEAR_BANK_RECEIPT}-${String(FIRST_MONTH_BANK_RECEIPT).padStart(2, '0')}-01`) : BANK_FROM;
+  const [v, set] = useToolState(SPEC, path);
   const ids = {
     axia: useId(), enoikio: useId(), mines: useId(),
     enfia: useId(), dapanes: useId(), alla: useId(), name: useId(),
@@ -100,14 +110,14 @@ export function ApodosiCalculator({ year, today, cta }: {
 
   const hasValue = amount(v.axia) > 0;
   const noCosts = r.enfia === 0 && r.expenses === 0;
-  const netLabel = noCosts ? 'Απόδοση μετά τον φόρο' : 'Καθαρή απόδοση';
+  const netLabel = en ? (noCosts ? E.afterTax : E.net) : noCosts ? 'Απόδοση μετά τον φόρο' : 'Καθαρή απόδοση';
   // Τα κομμάτια της μπάρας και του υπομνήματός της, με το μερίδιο του ενοικίου.
   const pct = (n: number) => `${fn(r.gross > 0 ? (n / r.gross) * 100 : 0)}%`;
   const split = ([
-    { key: 'keep', name: 'Σου μένουν', n: Math.max(0, r.net), bg: 'var(--accent)', op: 1 },
-    { key: 'tax', name: 'Φόρος', n: r.tax, bg: 'var(--text-tertiary)', op: 0.7 },
-    { key: 'enfia', name: 'ΕΝΦΙΑ', n: r.enfia, bg: 'var(--text-tertiary)', op: 0.45 },
-    { key: 'costs', name: 'Δαπάνες', n: r.expenses, bg: 'var(--text-tertiary)', op: 0.25 },
+    { key: 'keep', name: en ? E.keep : 'Σου μένουν', n: Math.max(0, r.net), bg: 'var(--accent)', op: 1 },
+    { key: 'tax', name: en ? E.tax : 'Φόρος', n: r.tax, bg: 'var(--text-tertiary)', op: 0.7 },
+    { key: 'enfia', name: en ? E.enfiaShort : 'ΕΝΦΙΑ', n: r.enfia, bg: 'var(--text-tertiary)', op: 0.45 },
+    { key: 'costs', name: en ? E.expensesShort : 'Δαπάνες', n: r.expenses, bg: 'var(--text-tertiary)', op: 0.25 },
   ]).filter(p => p.n > 0).map(p => ({ ...p, pct: pct(p.n) }));
 
   return (
@@ -115,17 +125,18 @@ export function ApodosiCalculator({ year, today, cta }: {
       {/* ── ΤΟ ΑΚΙΝΗΤΟ: ΤΑ ΤΡΙΑ ΠΟΥ ΞΕΡΕΙ ΑΠΕΞΩ Ο ΚΑΘΕΝΑΣ ──────────────────
           Αξία, ενοίκιο, μήνες. Ό,τι άλλο θελήσουμε να ρωτήσουμε πρώτο είναι
           μια αφορμή να φύγει κάποιος που μόλις μας βρήκε. */}
-      <Group title="Το ακίνητο" first>
+      <Group title={en ? E.property : 'Το ακίνητο'} first>
         {/* ΣΤΟ ΚΟΙΝΟ ΠΛΕΓΜΑ ΤΩΝ ΤΕΣΣΑΡΩΝ (`ToolFields`): ίδια πλάτη πεδίων με τους
             άλλους τρεις υπολογιστές, όχι τρίτα της κάρτας. */}
         <ToolFields>
-          <ToolNumField id={ids.axia} label="Αξία ακινήτου" value={v.axia} onChange={x => set('axia', x)} unit="€"/>
-          <ToolNumField id={ids.enoikio} label="Μηνιαίο ενοίκιο" value={v.enoikio} onChange={x => set('enoikio', x)} unit="€"/>
-          <ToolNumField id={ids.mines} label="Μήνες ενοικίασης" value={v.mines}
-            onChange={x => set('mines', x)} mode="numeric" unit="μήνες" unitPad={64}/>
+          <ToolNumField id={ids.axia} label={en ? E.value : 'Αξία ακινήτου'} value={v.axia} onChange={x => set('axia', x)} unit="€"/>
+          <ToolNumField id={ids.enoikio} label={en ? E.monthly : 'Μηνιαίο ενοίκιο'} value={v.enoikio} onChange={x => set('enoikio', x)} unit="€"/>
+          <ToolNumField id={ids.mines} label={en ? E.months : 'Μήνες ενοικίασης'} value={v.mines}
+            onChange={x => set('mines', x)} mode="numeric" unit={en ? E.monthsUnit : 'μήνες'} unitPad={64}/>
         </ToolFields>
         <ToolClampNote notes={[
-          Math.round(amount(v.mines)) > 12 && 'Μέγιστο 12 μήνες· υπολογίστηκαν 12.',
+          Math.round(amount(v.mines)) > 12 && en && E.clamp(12),
+          Math.round(amount(v.mines)) > 12 && !en && 'Μέγιστο 12 μήνες· υπολογίστηκαν 12.',
         ]}/>
       </Group>
 
@@ -133,27 +144,37 @@ export function ApodosiCalculator({ year, today, cta }: {
           Τρία πεδία που ξεκινούν στο μηδέν, με τη βοήθεια από κάτω τους. Το
           μηδέν δεν κρύβεται: το αποτέλεσμα λέει ρητά τι δεν περιλαμβάνει όσο
           μένουν άδεια. */}
-      <Group title="Τι το βαραίνει">
+      <Group title={en ? E.costs : 'Τι το βαραίνει'}>
         <ToolFields>
           {/* ΜΙΑ ΓΡΑΜΜΗ Η ΚΑΘΕ ΥΠΟΔΕΙΞΗ ΚΑΙ Η ΦΡΑΣΗ-ΣΥΝΔΕΣΜΟΣ ΔΕΝ ΣΠΑΕΙ. Το γεγονός
               που κουβαλά: ο ΕΝΦΙΑ πληρώνεται και σε άδειο ακίνητο. */}
-          <ToolNumField id={ids.enfia} label="ΕΝΦΙΑ τον χρόνο" value={v.enfia} onChange={x => set('enfia', x)} unit="€"
-            hint={<>Πληρώνεται και όταν το ακίνητο μένει άδειο.{' '}
+          <ToolNumField id={ids.enfia} label={en ? E.enfia : 'ΕΝΦΙΑ τον χρόνο'} value={v.enfia} onChange={x => set('enfia', x)} unit="€"
+            hint={en ? <>{E.enfiaHint}{' '}
+              <a href={localHref(locale, '/ypologismos-enfia')} className="lp-link"
+                style={{ color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>{E.enfiaLink}</a>.</>
+              : <>Πληρώνεται και όταν το ακίνητο μένει άδειο.{' '}
               <Link href="/ypologismos-enfia" className="lp-link"
                 style={{ color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 Υπολόγισέ τον
               </Link>.</>}/>
           {/* ΤΟ 5% ΔΕΝ ΣΥΜΠΛΗΡΩΝΕΤΑΙ ΕΔΩ: είναι η τεκμαρτή ΕΚΠΤΩΣΗ του φόρου, όχι
               εκτίμηση του τι ξοδεύεις. Η έκπτωση μπαίνει ήδη στον φόρο. */}
-          <ToolNumField id={ids.dapanes} label="Δαπάνες τον χρόνο" value={v.dapanes} onChange={x => set('dapanes', x)} unit="€"
-            hint="Συντήρηση, ασφάλιση, κοινόχρηστα που πληρώνεις εσύ."/>
+          <ToolNumField id={ids.dapanes} label={en ? E.expenses : 'Δαπάνες τον χρόνο'} value={v.dapanes} onChange={x => set('dapanes', x)} unit="€"
+            hint={en ? E.expensesHint : 'Συντήρηση, ασφάλιση, κοινόχρηστα που πληρώνεις εσύ.'}/>
           {/* Ακαθάριστα· και ανεβάζουν το κλιμάκιο ΑΥΤΟΥ του ακινήτου. */}
-          <ToolNumField id={ids.alla} label="Άλλα ενοίκια τον χρόνο" value={v.alla} onChange={x => set('alla', x)} unit="€"
-            hint="Ακαθάριστα, από τα υπόλοιπα ακίνητά σου. Ανεβάζουν το κλιμάκιο αυτού εδώ."/>
+          <ToolNumField id={ids.alla} label={en ? E.other : 'Άλλα ενοίκια τον χρόνο'} value={v.alla} onChange={x => set('alla', x)} unit="€"
+            hint={en ? E.otherHint : 'Ακαθάριστα, από τα υπόλοιπα ακίνητά σου. Ανεβάζουν το κλιμάκιο αυτού εδώ.'}/>
         </ToolFields>
       </Group>
 
-      <ToolPaper title={name.trim() ? `Καθαρή απόδοση · ${name.trim()}` : 'Καθαρή απόδοση ακινήτου'} on={today} inputs={[
+      <ToolPaper title={en ? E.paper(name.trim()) : name.trim() ? `Καθαρή απόδοση · ${name.trim()}` : 'Καθαρή απόδοση ακινήτου'} on={today} inputs={en ? [
+        { k: E.pValue, v: feAuto(amount(v.axia)) },
+        { k: E.monthly, v: feAuto(amount(v.enoikio)) },
+        { k: E.pMonths, v: fn(Math.min(12, Math.round(amount(v.mines)))) },
+        { k: E.enfiaShort, v: r.enfia > 0 ? feAuto(r.enfia) : E.notEntered },
+        { k: E.expensesShort, v: r.expenses > 0 ? feAuto(r.expenses) : E.notEntered },
+        { k: E.pOther, v: feAuto(amount(v.alla)) },
+      ] : [
         { k: 'Αξία', v: feAuto(amount(v.axia)) },
         { k: 'Μηνιαίο ενοίκιο', v: feAuto(amount(v.enoikio)) },
         { k: 'Μήνες', v: fn(Math.min(12, Math.round(amount(v.mines)))) },
@@ -181,23 +202,23 @@ export function ApodosiCalculator({ year, today, cta }: {
         {hasValue ? (
           <>
             <ToolHero primary={{ label: netLabel, value: fpSigned((r.netYield ?? 0) * 100) }}
-              secondary={[{ label: 'Μεικτή απόδοση', value: fp((r.grossYield ?? 0) * 100) }]}/>
-            <LiveResult say={`${netLabel} ${fpSigned((r.netYield ?? 0) * 100)}. Μεικτή ${fp((r.grossYield ?? 0) * 100)}.`} />
+              secondary={[{ label: en ? E.gross : 'Μεικτή απόδοση', value: fp((r.grossYield ?? 0) * 100) }]}/>
+            <LiveResult say={en ? `${netLabel} ${fpSigned((r.netYield ?? 0) * 100)}. ${E.grossShort} ${fp((r.grossYield ?? 0) * 100)}.` : `${netLabel} ${fpSigned((r.netYield ?? 0) * 100)}. Μεικτή ${fp((r.grossYield ?? 0) * 100)}.`} />
             {/* ΤΟ ΜΗΔΕΝ ΠΟΥ ΔΕΝ ΔΗΛΩΘΗΚΕ ΛΕΓΕΤΑΙ ΚΑΤΩ ΑΠΟ ΤΟ ΝΟΥΜΕΡΟ, ΩΣ ΣΗΜΕΙΩΣΗ. Ηταν
                 παράγραφος ΠΑΝΩ από τα νούμερα και η κάρτα άνοιγε με επιφύλαξη αντί
                 για απάντηση. Η ετικέτα ήδη λέει «μετά τον φόρο» όσο λείπουν· η
                 σημείωση εξηγεί γιατί, εκεί που το μάτι πάει μετά τον αριθμό. */}
             {noCosts && (
               <p style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)', textWrap: 'pretty' }}>
-                Δεν δηλώθηκαν ΕΝΦΙΑ ούτε δαπάνες, οπότε η απόδοση αφαιρεί μόνο τον φόρο. Με τα δύο
-                πεδία συμπληρωμένα βγαίνει η καθαρή.
+                {en ? E.noCosts : <>Δεν δηλώθηκαν ΕΝΦΙΑ ούτε δαπάνες, οπότε η απόδοση αφαιρεί μόνο τον φόρο. Με τα δύο
+                πεδία συμπληρωμένα βγαίνει η καθαρή.</>}
               </p>
             )}
           </>
         ) : (
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-            Η απόδοση χρειάζεται αξία. Με το ποσό που αξίζει ή που θα δώσεις για το
-            ακίνητο, τα υπόλοιπα βγαίνουν από μόνα τους.
+            {en ? E.needValue : <>Η απόδοση χρειάζεται αξία. Με το ποσό που αξίζει ή που θα δώσεις για το
+            ακίνητο, τα υπόλοιπα βγαίνουν από μόνα τους.</>}
           </p>
         )}
 
@@ -215,7 +236,7 @@ export function ApodosiCalculator({ year, today, cta }: {
             τον αναγνώστη οθόνης. */}
         {r.gross > 0 && (
           <div style={{ marginBottom: T.sp.lg }}>
-            <div role="img" aria-label={`Πού πάει το ενοίκιο: ${split.map(p => `${p.name} ${p.pct}`).join(', ')}.`} style={{
+            <div role="img" aria-label={en ? E.split(split.map(p => `${p.name} ${p.pct}`).join(', ')) : `Πού πάει το ενοίκιο: ${split.map(p => `${p.name} ${p.pct}`).join(', ')}.`} style={{
               display: 'flex', gap: 2, height: 10, borderRadius: T.radius.pill, overflow: 'hidden',
               background: 'var(--bg-elevated)',
             }}>
@@ -239,7 +260,13 @@ export function ApodosiCalculator({ year, today, cta }: {
             Τα λεπτά μένουν εδώ, γιατί ο φόρος είναι ποσό του νόμου και η στήλη
             πρέπει να κλείνει στο λεπτό. Τα καθαρά μπορεί να βγουν αρνητικά:
             τυπογραφικό μείον, σφιχτό. */}
-        <ToolLedger rows={[
+        <ToolLedger rows={en ? [
+          { k: E.annual, v: feAuto(r.gross) },
+          { k: E.incomeTax, v: feSigned(-r.tax) },
+          r.enfia > 0 ? { k: E.enfiaShort, v: feSigned(-r.enfia) } : { k: E.enfiaShort, v: E.notEntered, kind: 'param' },
+          r.expenses > 0 ? { k: E.expensesShort, v: feSigned(-r.expenses) } : { k: E.expensesShort, v: E.notEntered, kind: 'param' },
+          { k: E.keepYear, v: feSigned(r.net), kind: 'total' },
+        ] : [
           { k: 'Ετήσιο ενοίκιο', v: feAuto(r.gross) },
           { k: 'Φόρος εισοδήματος', v: feSigned(-r.tax) },
           // ΟΣΑ ΔΕΝ ΔΗΛΩΘΗΚΑΝ ΔΕΝ ΓΡΑΦΟΝΤΑΙ «0,00€»: το μηδέν εκεί διαβαζόταν ως
@@ -253,7 +280,11 @@ export function ApodosiCalculator({ year, today, cta }: {
             διαβάζονται ως απάντηση. Χωρίς αξία όμως δεν υπάρχει τι να
             επιστρέψει: το `null` σημαίνει και τα δύο και η σειρά τα ξεχωρίζει. */}
         {/* Ετικέτες μιας γραμμής και στα 768, ακέραια ευρώ όπως στην κορυφή. */}
-        <ToolStats items={[
+        <ToolStats items={en ? [
+          { k: E.perMonth, v: wholeSigned(r.netMonthly) },
+          { k: E.payback, v: !hasValue ? E.needs : r.paybackYears === null ? E.never : fn(r.paybackYears, 1) },
+          { k: E.marginal, v: fpRate(r.marginal * 100) },
+        ] : [
           { k: 'Καθαρά τον μήνα', v: wholeSigned(r.netMonthly) },
           { k: 'Χρόνια απόσβεσης', v: !hasValue ? 'Χρειάζεται αξία'
             : r.paybackYears === null ? 'Δεν αποσβένεται' : fn(r.paybackYears, 1) },
@@ -263,10 +294,10 @@ export function ApodosiCalculator({ year, today, cta }: {
 
       {/* ΤΟ ΟΝΟΜΑ ΤΟΥ ΑΚΙΝΗΤΟΥ, ΜΟΝΟ ΓΙΑ ΤΟ ΧΑΡΤΙ, ΠΑΝΩ ΑΠΟ ΤΟ «Εκτύπωση». Ηταν
           κάτω από τα κουμπιά, δηλαδή μετά την ενέργεια που επηρεάζει. */}
-      <ToolActions path={PATH} spec={SPEC} values={v} lead={<>
-        <label htmlFor={ids.name} style={{ ...TOOL_LABEL, marginBottom: 6 }}>Όνομα για την εκτύπωση</label>
+      <ToolActions path={path} spec={SPEC} values={v} lead={<>
+        <label htmlFor={ids.name} style={{ ...TOOL_LABEL, marginBottom: 6 }}>{en ? E.printName : 'Όνομα για την εκτύπωση'}</label>
         <input id={ids.name} value={name} onChange={e => setName(e.target.value)}
-          placeholder="π.χ. Διαμέρισμα κέντρου, 3ος"
+          placeholder={en ? E.printPh : 'π.χ. Διαμέρισμα κέντρου, 3ος'}
           style={{ ...TOOL_FIELD, fontFamily: T.font.sans }}/>
       </>}/>
 
@@ -279,6 +310,8 @@ export function ApodosiCalculator({ year, today, cta }: {
           {/* ΤΟ ΚΟΥΤΙ ΛΕΓΟΤΑΝ «Τι δεν περιλαμβάνει» ΚΑΙ ΞΕΚΙΝΟΥΣΕ ΜΕ ΟΣΑ ΠΕΡΙΛΑΜΒΑΝΕΙ.
               Ο αναγνώστης καταλάβαινε ότι η κλίμακα και το 5% ΔΕΝ εφαρμόζονται.
               Δύο προτάσεις, με τη σειρά που τις ρωτά. */}
+          {en ? <><strong style={{ color: 'var(--text-primary)' }}>{E.notLead}</strong>{' '}
+            {E.not(year, rateScaleEn(rentalBracketsForYear(year)), fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100), bankFrom)} <EstimateNote investment en /></> : <>
           <strong style={{ color: 'var(--text-primary)' }}>Τι περιλαμβάνει και τι όχι.</strong>{' '}
           Ο φόρος βγαίνει με την κλίμακα ενοικίων {year}
           {` (${rateScale(rentalBracketsForYear(year))})`} και
@@ -286,11 +319,11 @@ export function ApodosiCalculator({ year, today, cta }: {
           (ν.5222/2025)· εδώ η είσπραξη μέσω τράπεζας θεωρείται δεδομένη. Δεν περιλαμβάνει: μεταβολή της
           αξίας, δάνειο και τόκους, έξοδα αγοράς ή πώλησης, ανακαίνιση,
           ανείσπρακτα, βραχυχρόνια, νομικό πρόσωπο ούτε εισοδήματα εκτός
-          ενοικίων. <EstimateNote investment />
+          ενοικίων. <EstimateNote investment /></>}
         </p>
       </div>
 
-      <ToolPaperFoot path={PATH} spec={SPEC} values={v}/>
+      <ToolPaperFoot path={path} spec={SPEC} values={v}/>
 
       {cta}
     </div>
