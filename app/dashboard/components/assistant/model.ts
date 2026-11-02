@@ -117,7 +117,10 @@ const fabHome = () => {
   document.body.appendChild(probe);
   const r = probe.getBoundingClientRect();
   probe.remove();
-  return { side: window.innerWidth - r.right, bottom: window.innerHeight - r.bottom };
+  // Και το ΥΨΟΣ μετριέται: στο κινητό το κουμπί κάθεται μέσα στην πλοήγηση με
+  // το ύψος των καρτελών της (48), όχι με τα 52 του υπολογιστή. Το `FAB_H`
+  // μένει μόνο ως δίχτυ, αν ο περιηγητής δεν δώσει ύψος.
+  return { side: window.innerWidth - r.right, bottom: window.innerHeight - r.bottom, h: r.height || FAB_H };
 };
 
 // Η ΓΩΝΙΑ ΜΕΤΡΙΕΤΑΙ, ΔΕΝ ΜΑΝΤΕΥΕΤΑΙ. Πρώτη γραφή: `parseFloat` πάνω στο
@@ -128,8 +131,8 @@ const fabHome = () => {
 // αφής με αληθινά αγγίγματα το είδε.
 export const snapCorner = (x: number, w: number) => {
   if (typeof window === 'undefined') return null;
-  const { side, bottom } = fabHome();
+  const { side, bottom, h } = fabHome();
   const vw = window.innerWidth, vh = window.innerHeight;
   const right = x + w / 2 > vw / 2;
-  return { x: right ? vw - w - side : side, y: vh - FAB_H - bottom };
+  return { x: right ? vw - w - side : side, y: vh - h - bottom };
 };

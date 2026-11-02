@@ -4670,34 +4670,56 @@ body { hyphens: none; }
    ══════════════════════════════════════════════════════════════════════════ */
 .bottom-nav { display: none; }
 @media (max-width: 768px) {
+  /* ═══ Η ΝΟΑ ΚΑΘΕΤΑΙ ΜΕΣΑ ΣΤΗΝ ΠΛΟΗΓΗΣΗ, ΟΧΙ ΠΑΝΩ ΣΤΟ ΠΕΡΙΕΧΟΜΕΝΟ (02/11/2026)
+     ΤΙ ΦΩΤΟΓΡΑΦΗΘΗΚΕ ΣΕ IPHONE. Το «Ν» έπλεε 82 εικονοστοιχεία πάνω από το
+     κάτω άκρο, δηλαδή πάνω στη στήλη του περιεχομένου: σκέπαζε το «Σήμερα» και
+     το «⋯» του Ημερολογίου στο πρώτο κάδρο και τη δεύτερη γραμμή του «Ο φάκελος
+     για τον λογιστή» στη μέση της κύλισης. Το κάτω περιθώριο του `.app-content`
+     προστάτευε μόνο το ΤΕΛΟΣ της κύλισης· σε κάθε άλλη θέση το κουμπί καθόταν
+     πάνω σε ό,τι περνούσε από τη γωνία.
+
+     ΓΙΑΤΙ ΜΕΣΑ ΣΤΗΝ ΠΛΟΗΓΗΣΗ. Είναι η μόνη λωρίδα της οθόνης που δεν κρατά
+     περιεχόμενο ποτέ. Η πλοήγηση κρατά πλέον ΣΤΑΘΕΡΟ ύψος (`--nav-h`) και
+     αφήνει στο πλάι μια θέση για το κουμπί, στη μεριά όπου είναι κουμπωμένο
+     (`data-fab-side`, το γράφει το PropertyAssistant). Οι τέσσερις καρτέλες
+     μοιράζονται ό,τι μένει. Το κουμπί παίρνει το ύψος των καρτελών (48), όχι
+     τα 52 του υπολογιστή· κεντράρεται κάθετα στη λωρίδα.
+
+     ΤΙ ΚΕΡΔΙΖΕΙ ΚΑΙ ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ. Το κάτω περιθώριο δεν χρειάζεται πια το
+     ύψος του κουμπιού: κρατά την πλοήγηση και τα 24 του γεμίσματος, όπως
+     κάθε άλλη πλευρά της στήλης. Το ίδιο και ό,τι πλέει (μηνύματα, γραμμές
+     μαζικών ενεργειών): κάθεται πάνω από την πλοήγηση και δεν έχει τίποτε
+     άλλο να αποφύγει. */
+  :root {
+    --nav-h: 64px;
+    --fab-h: 48px;
+    --fab-side: 10px;
+    --fab-bottom: calc(env(safe-area-inset-bottom, 0px) + (var(--nav-h) - var(--fab-h)) / 2);
+    --float-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 12px);
+  }
   .bottom-nav {
-    display: flex;
+    display: flex; align-items: center;
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 900;
+    box-sizing: border-box;
+    height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
     background: var(--bg-surface);
     border-top: 1px solid var(--border-subtle);
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    padding: 0 calc(var(--fab-side) + var(--fab-h) + 4px) env(safe-area-inset-bottom, 0px) 4px;
     justify-content: space-around;
     box-shadow: 0 -1px 3px color-mix(in srgb, var(--shadow-ink) 6%, transparent);
   }
-  /* Στο κινητό στοιβάζονται ΔΥΟ πλωτά στοιχεία: η κάτω πλοήγηση κολλητά στο
-     άκρο και πάνω της το κουμπί του βοηθού (bottom:82px). Το περιθώριο πρέπει
-     να καθαρίζει το ψηλότερο από τα δύο — τα 80px κάλυπταν μόνο την πλοήγηση,
-     οπότε το κουμπί συνέχιζε να κάθεται πάνω στην τελευταία κάρτα. */
+  :root[data-fab-side="left"] .bottom-nav {
+    padding-left: calc(var(--fab-side) + var(--fab-h) + 4px); padding-right: 4px;
+  }
+  /* ΧΩΡΙΣ ΤΗ ΝΟΑ (κλειδωμένη, ή με ανοιχτό παράθυρο) η θέση της δεν μένει
+     τρύπα: οι καρτέλες ξαναπιάνουν όλο το πλάτος. */
+  :root[data-fab-side="none"] .bottom-nav { padding-left: 4px; padding-right: 4px; }
   /* ═══ ΚΑΙ Η ΜΠΑΡΑ ΑΦΗΣ ΤΟΥ IPHONE ΜΕΤΡΑΕΙ ══════════════════════════════
-     Τα 82 ήταν το ύψος της πλοήγησης ΧΩΡΙΣ το κάτω όριο ασφαλείας. Η ίδια η
-     πλοήγηση το κρατά σωστά (padding-bottom με env), άρα στο iPhone είναι
-     ψηλότερη κατά τη μπάρα αφής — περίπου 34 εικονοστοιχεία. Ο,τι υπολόγιζε
-     82 κρατούσε 34 λιγότερα απ' όσα χρειάζονταν: η τελευταία κάρτα κάθε
-     λίστας κρυβόταν πίσω από την πλοήγηση και το μήνυμα επιβεβαίωσης
-     εμφανιζόταν από κάτω της. Στο Android το inset είναι μηδέν και τίποτα
-     δεν αλλάζει. */
-  .app-content { padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px) + var(--fab-h) + 16px); }
-  /* Πάνω από την πλοήγηση ΚΑΙ πάνω από το κουμπί του βοηθού: ακριβώς το ίδιο
-     ύψος που κρατά ήδη ελεύθερο η `.app-content` από πάνω. */
-  :root { --float-bottom: calc(82px + env(safe-area-inset-bottom, 0px) + var(--fab-h) + 12px); }
-  /* Το ΙΔΙΟ όριο ασφαλείας για το πλωτό κουμπί, χωρίς το ύψος του εαυτού του:
-     κάθεται πάνω στην πλοήγηση, όχι πάνω σε άλλο πλωτό στοιχείο. */
-  :root { --fab-bottom: calc(82px + env(safe-area-inset-bottom, 0px)); --fab-side: 16px; }
+     Η πλοήγηση κρατά το κάτω όριο ασφαλείας μέσα στο ύψος της (env), άρα στο
+     iPhone είναι ψηλότερη κατά τη μπάρα αφής — περίπου 34 εικονοστοιχεία. Ο,τι
+     την καθαρίζει πρέπει να το προσθέτει, αλλιώς η τελευταία κάρτα κάθε
+     λίστας κρύβεται πίσω της. Στο Android το inset είναι μηδέν. */
+  .app-content { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 24px); }
 }
 .bottom-nav-item {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -7421,3 +7443,108 @@ h1, h2, h3, h4, details > summary, th, dt { text-wrap: balance; }
 /* Τεχνικός όρος μέσα σε νομικό κείμενο (`withRefs`, app/legal-shell.tsx):
    ίδιο μέγεθος με το κείμενο, γραμματοσειρά σταθερού πλάτους, χωρίς κουτί. */
 .lg-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em; color: var(--text-primary); overflow-wrap: anywhere; }
+
+/* ═══ ΚΙΝΗΤΟ: ΚΕΙΜΕΝΟ ΣΕ ΟΛΟ ΤΟ ΠΛΑΤΟΣ, ΕΝΕΡΓΕΙΕΣ ΑΠΟ ΚΑΤΩ (02/11/2026) ═══════
+   Ο ιδιοκτήτης έστειλε τρία στιγμιότυπα από iPhone μετά το πέρασμα ποιότητας:
+   «τα κείμενα να πηγαίνουν πέρα πέρα, να είναι όλα ζυγισμένα και σωστά
+   στοιχισμένα». Κοινό σε όλα: μια ενέργεια κρατούσε τη δεξιά στήλη σε όλο το
+   ύψος του κειμένου δίπλα της και το κείμενο στρίμωχνε σε μισή κάρτα. Ο κανόνας
+   για κάθε σειρά που ακολουθεί είναι ένας: τίτλος (με ποσό ή σύντομη λέξη στη
+   δεξιά άκρη της ΙΔΙΑΣ σειράς), μετά εξήγηση σε όλο το πλάτος, μετά η ενέργεια. */
+
+/* ── Η κεφαλίδα σελίδας με μία λέξη-σύνδεσμο (PageTitle, components/Theme.tsx).
+   Στο τηλέφωνο ο υπότιτλος έσπρωχνε τον σύνδεσμο σε δική του σειρά, ανάμεσα σε
+   δύο κενά. Μένει στη σειρά του τίτλου, δεξιά· ο υπότιτλος πιάνει όλο το
+   πλάτος από κάτω. Μόνο για ΕΝΑ `.po-link` και όχι για κουμπιά: μια σειρά
+   κουμπιών χρειάζεται το πλάτος που της δίνει η `.act-row`. */
+@media (max-width: 560px) {
+  /* Και το κενό κάτω από την κεφαλίδα: 24 στον υπολογιστή, 16 στο τηλέφωνο,
+     όσο και ανάμεσα στις κάρτες. Στο Ημερολόγιο το 24 προστίθετο στο κενό 16
+     της στήλης και η πρώτη κάρτα ξεκινούσε 40 εικονοστοιχεία πιο κάτω. */
+  .page-head { margin-bottom: 16px !important; }
+  .page-head:has(> .act-row > .po-link:only-child):not(:has(.page-over)) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "title act" "sub sub" "lede lede";
+    column-gap: 12px !important; row-gap: 0 !important;
+  }
+  .page-head:has(> .act-row > .po-link:only-child):not(:has(.page-over)) > .page-head-main { display: contents; }
+  .page-head:has(> .act-row > .po-link:only-child):not(:has(.page-over)) .page-title { grid-area: title; align-self: center; }
+  .page-head:has(> .act-row > .po-link:only-child):not(:has(.page-over)) .page-sub { grid-area: sub; }
+  .page-head:has(> .act-row > .po-link:only-child):not(:has(.page-over)) .po-prose { grid-area: lede; }
+  .page-head:has(> .act-row > .po-link:only-child):not(:has(.page-over)) > .act-row { grid-area: act; width: auto; align-self: center; }
+}
+
+/* ── Η γραμμή εργαλείων του Ημερολογίου (TabCalendar.tsx). Στο τηλέφωνο έβγαινε
+   τρεις σειρές χωρίς σχέδιο: οι δύο όψεις σε μισό πλάτος, ο μήνας με το
+   «Σήμερα» κολλημένο δεξιά και αρκετό κενό αριστερά, η εύρεση με κουμπί 36
+   δίπλα σε δύο των 40. Τώρα: οι όψεις σε όλο το πλάτος, μισό η καθεμία· ο
+   μήνας ανάμεσα στα βέλη, που πιάνουν τη σειρά, με το «Σήμερα» στην άκρη· η
+   εύρεση γεμίζει ό,τι αφήνουν το «Νέο» και το «⋯». Ιδιο κενό 10 παντού. */
+@media (max-width: 560px) {
+  .cal-toolbar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center; gap: 10px !important;
+  }
+  .cal-toolbar > .cal-seg { grid-column: 1 / -1; }
+  .cal-toolbar > .cal-seg > button { flex: 1 1 0; justify-content: center; }
+  .cal-toolbar > .cal-nav {
+    grid-column: 1 / -1;
+    display: grid !important; grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center; gap: 4px;
+  }
+  .cal-toolbar .cal-period { min-width: 0 !important; }
+  .cal-toolbar .cal-today { margin-left: 8px; }
+  .cal-toolbar > .cal-search { min-width: 0 !important; }
+}
+
+/* ── Η κάρτα του συνδέσμου για τον λογιστή (TabAccounting.tsx). Δύο σειρές
+   στον υπολογιστή (διεύθυνση με ενέργειες, εμβέλεια με ανάκληση), τέσσερις
+   στο τηλέφωνο: διεύθυνση, δύο ίσες ενέργειες, εμβέλεια σε όλο το πλάτος και
+   η ανάκληση από κάτω της, αριστερά, ως κουμπί-κείμενο. */
+.acct-link {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+  gap: 10px 12px; margin-top: 10px; padding: 10px 10px 12px 12px;
+  border-radius: 10px; background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+}
+.acct-link-url { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.acct-link-icon {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 24px; height: 24px; border-radius: 6px;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-tertiary);
+}
+.acct-link-actions { display: flex; gap: 8px; }
+.acct-link-foot { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 6px 16px; padding-left: 2px; }
+.acct-link-meta { flex: 1 1 auto; min-width: 0; font-size: var(--fs-xs); line-height: 1.55; font-family: 'Inter', sans-serif; }
+.acct-link-revoke { flex-shrink: 0; }
+@media (max-width: 560px) {
+  .acct-link { grid-template-columns: minmax(0, 1fr); }
+  .acct-link-actions > * { flex: 1 1 0; }
+  .acct-link-foot { flex-direction: column; align-items: flex-start; }
+}
+
+/* ── Σειρά «κείμενο και μία ενέργεια» (`.po-row-act`). Στον υπολογιστή η
+   ενέργεια κάθεται δεξιά· στο τηλέφωνο το κείμενο παίρνει όλο το πλάτος και η
+   ενέργεια πέφτει από κάτω, αριστερά, όπως στις γραμμές της Επισκόπησης. Στα
+   «Χρειάζονται προσοχή» του Εξοπλισμού το «Άνοιγμα» κρατούσε 90 από τα 300 και
+   η περιγραφή έσπαγε σε τρεις σειρές. */
+@media (max-width: 560px) {
+  .po-row-act { flex-wrap: wrap; row-gap: 10px !important; }
+  .po-row-act > .po-row-act-main { flex: 1 1 100% !important; }
+}
+
+/* ── Δύο ενέργειες τυλιγμένες σε ΕΝΑ περιτύλιγμα μέσα στην `.act-row`
+   (Επαφές, Ενοικιαστές, Επισκέπτες, Εξοπλισμός). Ο κανόνας «μία ενέργεια δεν
+   τεντώνεται» τις έβλεπε ως μία και τις άφηνε στο φυσικό τους πλάτος: δύο
+   κουμπιά αριστερά και κενό δεξιά, ενώ η διπλανή καρτέλα (Εκκρεμότητες,
+   Φάκελος) γέμιζε τη σειρά. Τώρα μοιράζονται τη σειρά ίσα, όπως παντού. */
+@media (max-width: 560px) {
+  .act-row > :only-child:has(> * + *) {
+    flex: 1 1 100%; width: 100%; display: flex !important; flex-wrap: wrap;
+  }
+  .act-row > :only-child:has(> * + *) > * { flex: 1 1 0; min-width: -webkit-fit-content; min-width: fit-content; }
+  .act-row > :only-child:has(> * + *) > button,
+  .act-row > :only-child:has(> * + *) > a,
+  .act-row > :only-child:has(> * + *) > * > button { width: 100%; }
+}

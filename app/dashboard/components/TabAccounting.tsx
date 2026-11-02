@@ -196,31 +196,44 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         )}
       </div>
       {acctLink && (
-        <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:10, padding:'8px 8px 8px 12px', borderRadius:T.radius.inner, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', flexWrap:'wrap' }}>
-          <span style={{ display:'inline-flex', width:24, height:24, borderRadius: T.radius.chip, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', alignItems:'center', justifyContent:'center', color:'var(--text-tertiary)', flexShrink:0 }}>
-            <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
-          </span>
-          <input aria-label="Σύνδεσμος λογιστή" readOnly value={acctLink} onFocus={e=>e.currentTarget.select()} style={{ flex:1, minWidth:150, border:'none', background:'transparent', color:'var(--text-secondary)', fontSize:12, fontFamily: T.font.sans, outline:'none', textOverflow:'ellipsis' }} />
-          {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: κάθεται σε σειρά με το «Άνοιγμα πύλης» των T.h.sm
-              και το minHeight T.h.md του Btn θα ψήλωνε μόνο αυτό, σπάζοντας τη
-              στοίχιση της γραμμής. */}
-          <button onClick={async ()=>{ try{ await navigator.clipboard.writeText(acctLink); setAcctCopied(true); setTimeout(()=>setAcctCopied(false),2000) }catch{ notifyError('Ο σύνδεσμος δεν αντιγράφηκε. Ο φυλλομετρητής δεν έδωσε πρόσβαση στο πρόχειρο.') } }} style={{ height:T.h.sm, padding:'0 12px', borderRadius:T.radius.pill, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:acctCopied?'var(--positive)':'var(--text-secondary)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily: T.font.sans, whiteSpace:'nowrap' }}>{acctCopied?'Αντιγράφηκε':'Αντιγραφή'}</button>
-          <a href={acctLink} target="_blank" rel="noreferrer" style={{ display:'inline-flex', alignItems:'center', gap: 4, height:T.h.sm, padding:'0 13px', borderRadius:T.radius.pill, background:'var(--accent)', color:'var(--accent-text)', fontSize:12, fontWeight:600, textDecoration:'none', fontFamily: T.font.sans, whiteSpace:'nowrap' }}>Άνοιγμα πύλης<ArrowUpRight size={13}/></a>
-          <div style={{ width:'100%', display:'flex', alignItems:'center', gap:10, marginTop:2, paddingLeft:2 }}>
+        // ═══ Η ΚΑΡΤΑ ΤΟΥ ΣΥΝΔΕΣΜΟΥ, ΣΕ ΤΡΕΙΣ ΣΕΙΡΕΣ (02/11/2026) ═══════════════
+        // ΤΙ ΦΩΤΟΓΡΑΦΗΘΗΚΕ ΣΕ IPHONE. Ηταν μία γραμμή με τύλιγμα και η στοίβα
+        // του `.acd-actions` την έκανε στήλη: το εικονίδιο μόνο του σε δική του
+        // σειρά πάνω από τη διεύθυνση, το «Άνοιγμα πύλης» αριστερά μέσα σε
+        // κουμπί όλου του πλάτους και το «Ανάκληση» να κρέμεται δίπλα σε
+        // παράγραφο τριών σειρών.
+        //
+        // ΤΩΡΑ: εικονίδιο και διεύθυνση στην ίδια σειρά, οι δύο ενέργειες ίσες
+        // από κάτω, η εμβέλεια σε όλο το πλάτος και η ανάκληση στο τέλος της,
+        // ως καθαρό κουμπί-κείμενο. Στον υπολογιστή χωράνε σε δύο σειρές. Οι
+        // κανόνες ζουν στην `.acct-link` του globals.css.
+        <div className="acct-link">
+          <div className="acct-link-url">
+            <span className="acct-link-icon" aria-hidden="true">
+              <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+            </span>
+            <input aria-label="Σύνδεσμος λογιστή" readOnly value={acctLink} onFocus={e=>e.currentTarget.select()} style={{ flex:1, minWidth:0, border:'none', background:'transparent', color:'var(--text-secondary)', fontSize:12, fontFamily: T.font.sans, outline:'none', textOverflow:'ellipsis' }} />
+          </div>
+          <div className="acct-link-actions">
+            {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: κάθεται σε σειρά με το «Άνοιγμα πύλης» των T.h.sm
+                και το minHeight T.h.md του Btn θα ψήλωνε μόνο αυτό, σπάζοντας τη
+                στοίχιση της γραμμής. */}
+            <button onClick={async ()=>{ try{ await navigator.clipboard.writeText(acctLink); setAcctCopied(true); setTimeout(()=>setAcctCopied(false),2000) }catch{ notifyError('Ο σύνδεσμος δεν αντιγράφηκε. Ο φυλλομετρητής δεν έδωσε πρόσβαση στο πρόχειρο.') } }} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', height:T.h.sm, padding:'0 12px', borderRadius:T.radius.pill, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:acctCopied?'var(--positive)':'var(--text-secondary)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily: T.font.sans, whiteSpace:'nowrap' }}>{acctCopied?'Αντιγράφηκε':'Αντιγραφή'}</button>
+            <a href={acctLink} target="_blank" rel="noreferrer" style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap: 4, height:T.h.sm, padding:'0 13px', borderRadius:T.radius.pill, background:'var(--accent)', color:'var(--accent-text)', fontSize:12, fontWeight:600, textDecoration:'none', fontFamily: T.font.sans, whiteSpace:'nowrap' }}>Άνοιγμα πύλης<ArrowUpRight size={13}/></a>
+          </div>
+          <div className="acct-link-foot">
             {/* Η ΕΜΒΕΛΕΙΑ ΛΕΓΕΤΑΙ ΕΚΕΙ ΠΟΥ ΠΑΙΡΝΕΤΑΙ Η ΑΠΟΦΑΣΗ. Ο πίνακας
                 accountant_links δεν έχει στήλη ακινήτου: ο σύνδεσμος είναι ΑΝΑ
                 ΧΡΗΣΤΗ και ο RPC επιστρέφει κάθε ακίνητο του κατόχου, με
                 διεύθυνση, ΑΤΑΚ και μίσθωμα. Το κουμπί όμως ζει μέσα στην καρτέλα
                 ΕΝΟΣ ακινήτου, οπότε η φυσική ανάγνωση ήταν «μοιράζομαι αυτό
-                εδώ». Η μόνη ένδειξη ήταν σε tooltip που δεν ανοίγει σε κινητό. */}
-            <span style={{ fontSize: 'var(--fs-xs)', color:acctRevoked?'var(--positive)':'var(--text-tertiary)', fontFamily: T.font.sans }}>{acctRevoked?'Ο παλιός σύνδεσμος ακυρώθηκε και ο λογιστής βγήκε.':`Πρόσβαση μόνο για ανάγνωση, σε ΟΛΑ τα ακίνητά σου, όχι μόνο σε αυτό.${acctUntil?` Ισχύει ${acctUntil}.`:''}`}</span>
-            {/* LinkBtn και όχι Btn ghost: η ενέργεια κάθεται στο τέλος μιας
-                πρότασης χωρίς κουτί, οπότε το γέμισμα ενός κουμπιού θα
-                μετακινούσε τη γραμμή. Ο τόνος `danger` κρατά το κόκκινο που
-                έδινε η χειροκίνητη αιώρηση: η ανάκληση σβήνει τον σύνδεσμο. */}
-            <span style={{ marginLeft:'auto' }}>
-              <LinkBtn tone="danger" onClick={revokeAccountantLink} disabled={acctBusy} title="Ακυρώνει τον τρέχοντα σύνδεσμο και δημιουργεί καινούριο· ο παλιός παύει αμέσως να λειτουργεί και όποιος λογιστής τον είχε ήδη ανοίξει χάνει την πρόσβαση">Ανάκληση</LinkBtn>
-            </span>
+                εδώ». Η μόνη ένδειξη ήταν σε tooltip που δεν ανοίγει σε κινητό.
+                Το «όλα» τονίζεται με βάρος, όχι με κεφαλαία: μέσα σε πρόταση τα
+                κεφαλαία διαβάζονται ως φωνή. */}
+            <span className="acct-link-meta" style={{ color:acctRevoked?'var(--positive)':'var(--text-tertiary)' }}>{acctRevoked?'Ο παλιός σύνδεσμος ακυρώθηκε και ο λογιστής βγήκε.':<>Πρόσβαση μόνο για ανάγνωση, σε <strong style={{ fontWeight:600, color:'var(--text-secondary)' }}>όλα</strong> τα ακίνητά σου, όχι μόνο σε αυτό.{acctUntil?` Ισχύει ${acctUntil}.`:''}</>}</span>
+            {/* LinkBtn και όχι Btn ghost: η ενέργεια είναι κείμενο χωρίς κουτί.
+                Ο τόνος `danger` λέει ότι η ανάκληση σβήνει τον σύνδεσμο. */}
+            <LinkBtn tone="danger" className="acct-link-revoke" onClick={revokeAccountantLink} disabled={acctBusy} title="Ακυρώνει τον τρέχοντα σύνδεσμο και δημιουργεί καινούριο· ο παλιός παύει αμέσως να λειτουργεί και όποιος λογιστής τον είχε ήδη ανοίξει χάνει την πρόσβαση">Ανάκληση</LinkBtn>
           </div>
         </div>
       )}

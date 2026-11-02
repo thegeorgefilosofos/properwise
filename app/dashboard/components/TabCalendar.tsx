@@ -589,11 +589,15 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       <CalendarQuickAdd userId={userId} framed />
 
       {/* Toolbar — καθαρή, ένα πρωτεύον κουμπί· τα δευτερεύοντα σε ένα ήσυχο μενού */}
-      <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+      {/* Στο τηλέφωνο η γραμμή γίνεται τρεις ζυγισμένες σειρές: οι δύο όψεις σε
+          όλο το πλάτος, ο μήνας κεντραρισμένος ανάμεσα στα βέλη με το «Σήμερα»
+          στην άκρη και η εύρεση με τις δύο ενέργειες. Οι κανόνες ζουν στην
+          `.cal-toolbar` του globals.css (02/11/2026). */}
+      <div className="cal-toolbar" style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
         {/* Το κουτί της ομάδας παίρνει το ύψος από τα κουμπιά της: 32 συν 3
             γέμισμα και 1 περίγραμμα πάνω κάτω, δηλαδή 40, όσο και τα υπόλοιπα
             χειριστήρια της γραμμής. Με γέμισμα 2 έβγαινε 38. */}
-        <div style={{ display:'flex', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:10, padding: 4, gap:2 }}>
+        <div className="cal-seg" style={{ display:'flex', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:10, padding: 4, gap:2 }}>
           {/* shape="seg" και όχι "chip": το κουτί από πάνω έχει ήδη δικό του περίγραμμα. */}
           {([['month','Μήνας',Calendar],['agenda','Ατζέντα',List]] as [ViewMode,string,typeof Calendar][]).map(([v,label,Icon])=>(
             <ChipToggle key={v} on={viewMode===v} shape="seg" onClick={()=>setViewMode(v)}>
@@ -612,7 +616,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
           </div>
         )}
 
-        <div style={{ flex:1, minWidth:100, position:'relative' }}>
+        <div className="cal-search" style={{ flex:1, minWidth:100, position:'relative' }}>
           {/* Το «Τίτλος γεγονότος» ζητούσε 143 εικονοστοιχεία και το πεδίο δίνει
               116 στα 320: κοβόταν στο «Τίτλος γεγον…». Το σκέτο «Τίτλος» όμως,
               χωρίς φακό και δίπλα στο «+ Νέο», διαβαζόταν ως πεδίο γρήγορης
@@ -632,7 +636,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
 
         {/* Ένα ήσυχο μενού για όλα τα δευτερεύοντα */}
         <div ref={menuRef} style={{ position:'relative' }}>
-          <button ref={menuBtnRef} aria-label="Περισσότερα" aria-haspopup="menu" aria-expanded={showMenu} title="Περισσότερα" onClick={()=>setShowMenu(m=>!m)} style={{ width:T.h.md, height:T.h.md, borderRadius:'50%', border:'1px solid '+(showMenu?'var(--border-default)':'var(--border-subtle)'), background:showMenu?'var(--bg-elevated)':'var(--bg-surface)', cursor:'pointer', color:'var(--text-secondary)', display:'flex', alignItems:'center', justifyContent:'center' }}><MoreHorizontal size={18}/></button>
+          <button ref={menuBtnRef} aria-label="Περισσότερα" aria-haspopup="menu" aria-expanded={showMenu} title="Περισσότερα" onClick={()=>setShowMenu(m=>!m)} style={{ width:T.h.lg, height:T.h.lg, borderRadius:'50%', border:'1px solid '+(showMenu?'var(--border-default)':'var(--border-subtle)'), background:showMenu?'var(--bg-elevated)':'var(--bg-surface)', cursor:'pointer', color:'var(--text-secondary)', display:'flex', alignItems:'center', justifyContent:'center' }}><MoreHorizontal size={18}/></button>
           {showMenu&&createPortal(
             <div ref={menuPopRef} role="menu" style={{ position:'fixed', top:menuCoords.top, left:menuCoords.left, transform:menuCoords.up?'translateY(-100%)':'none', width:248, maxHeight:'min(392px, 80vh)', overflowY:'auto', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius: T.radius.popup, boxShadow:'var(--elev-3)', padding:6, zIndex:3000 }}>
               {([

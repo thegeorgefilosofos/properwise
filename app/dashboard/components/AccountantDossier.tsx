@@ -515,7 +515,7 @@ export default function AccountantDossier({
           <div className="acd-actions" style={{ margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
             <style>{`
               @media (max-width: 560px) {
-                .acd-actions > div { flex-direction: column; align-items: stretch !important; }
+                .acd-actions > div:not(.acct-link) { flex-direction: column; align-items: stretch !important; }
                 .acd-actions > div > span { display: flex !important; }
                 .acd-actions > div > span > button, .acd-actions > div > button, .acd-actions > div > a { width: 100%; }
               }

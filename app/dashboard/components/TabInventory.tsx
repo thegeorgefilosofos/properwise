@@ -133,8 +133,8 @@ function AttentionCard({items,onEdit,onWarrantyReminder}:{items:InventoryItem[];
       <SectionLabel label="Χρειάζονται προσοχή" right={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{attention.length} {attention.length===1?'αντικείμενο':'αντικείμενα'}</span>}/>
       <div style={{display:'flex',flexDirection:'column',gap:6}}>
         {attention.slice(0,6).map(({item,label,kind})=>(
-          <div key={item.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',background:'var(--bg-elevated)',borderRadius:T.radius.inner,border:'1px solid var(--border-subtle)'}}>
-            <div style={{minWidth:0,flex:1}}>
+          <div key={item.id} className="po-row-act" style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',background:'var(--bg-elevated)',borderRadius:T.radius.inner,border:'1px solid var(--border-subtle)'}}>
+            <div className="po-row-act-main" style={{minWidth:0,flex:1}}>
               <p className="po-elide" style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{item.name}</p>
               <p className="po-elide-lines" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>
                 {label}{item.room?` · ${inventoryLabel(item.room)}`:''}

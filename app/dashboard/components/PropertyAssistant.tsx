@@ -160,6 +160,21 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   // Τρία πράγματα το κλείνουν: το `touch-action:none` στο ίδιο το κουμπί, η
   // σύλληψη του δείκτη (`setPointerCapture`) ώστε οι κινήσεις να έρχονται εδώ
   // ακόμη κι όταν το δάχτυλο βγει εκτός· τρίτο, ακροατής στο `pointercancel`.
+  // ═══ Η ΠΛΟΗΓΗΣΗ ΚΡΑΤΑ ΘΕΣΗ ΣΤΗ ΜΕΡΙΑ ΤΟΥ ΚΟΥΜΠΙΟΥ ═══════════════════════
+  // Στο κινητό το κουμπί κάθεται μέσα στην κάτω πλοήγηση, στη γωνία όπου το
+  // κούμπωσε ο χρήστης. Η μπάρα ανήκει στη σελίδα και δεν ξέρει ποια είναι
+  // αυτή· το λέει εδώ μία ιδιότητα στη ρίζα και το CSS κρατά τη θέση στη σωστή
+  // μεριά. Χωρίς κουμπί (ανοιχτό παράθυρο) οι καρτέλες ξαναπαίρνουν όλο το
+  // πλάτος. Ενόσω σέρνεται, η θέση μένει όπου ήταν ώς να κουμπώσει.
+  const fabShown = open || !overlayOpen;
+  useEffect(() => {
+    if (typeof document === 'undefined' || dragging) return;
+    const root = document.documentElement;
+    const side = !fabShown ? 'none'
+      : fabPos && fabPos.x + fabBox().w / 2 < window.innerWidth / 2 ? 'left' : 'right';
+    root.dataset.fabSide = side;
+    return () => { delete root.dataset.fabSide; };
+  }, [fabShown, fabPos, dragging]);
   const fabDrag = useRef<{ id: number; sx: number; sy: number; ox: number; oy: number; slop: number; moved: boolean } | null>(null);
   const justDragged = useRef(false);
   useEffect(() => {
@@ -616,7 +631,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
            δεν ζει πάνω από ένα καρέ: μπαίνει, μετριέται, φεύγει. Υπάρχει γιατί
            το calc() και το env() ΔΕΝ διαβάζονται από το getComputedStyle ως
            αριθμός — μόνο η γεωμετρία ενός αληθινού στοιχείου τα λύνει. */
-        .pa-fab-home{position:fixed;right:var(--fab-side);bottom:var(--fab-bottom);width:0;height:0;visibility:hidden;pointer-events:none}
+        .pa-fab-home{position:fixed;right:var(--fab-side);bottom:var(--fab-bottom);width:0;height:var(--fab-h);visibility:hidden;pointer-events:none}
         /* ΔΕΝ ΕΙΝΑΙ ΠΑΡΑΘΥΡΟ ΚΑΙ ΔΕΝ ΓΙΝΕΤΑΙ Modal. Δεν έχει scrim, δεν
            μπλοκάρει την εφαρμογή και δεν κεντράρεται: αγκυρώνεται στο πλωτό
            κουμπί (και το ακολουθεί όταν ο χρήστης το σύρει αλλού — panelFixed),
@@ -654,6 +669,12 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
            εστίαση πληκτρολογίου μένει: δεν εξαφανίζεται ό,τι έχει την εστίαση. */
         .pa-fab-wrap{transition:transform .2s ${T.ease.standard},opacity .2s ${T.ease.standard}}
         .pa-fab-wrap[data-away]:not(:focus-within){transform:translateY(calc(var(--fab-h) + var(--fab-bottom)));opacity:0;pointer-events:none}
+        /* ΣΤΟ ΚΙΝΗΤΟ ΔΕΝ ΑΠΟΣΥΡΕΤΑΙ: κάθεται στη δική του θέση μέσα στην κάτω
+           πλοήγηση (globals.css, --nav-h), όπου δεν σκεπάζει τίποτα. Αν έφευγε
+           στην κύλιση θα άφηνε τρύπα στη μπάρα. */
+        @media (max-width:768px){
+          .pa-fab-wrap[data-away]:not(:focus-within){transform:none;opacity:1;pointer-events:auto}
+        }
         @media (max-width:1279px){
           .pa-fab{padding:0 8px;gap:0}
           .pa-fab-cta{display:none}
