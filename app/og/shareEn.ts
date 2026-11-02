@@ -26,6 +26,8 @@ export const EN_SHARE_CARDS: Record<string, ShareCard> = {
     chips: ['Monthly payment', 'Total interest', 'Fixed or floating', 'Income limit'], path: '/en/mortgage-calculator' },
   'en-property-purchase-costs': { kind: 'calc', over: 'Calculator', title: 'What it costs to buy a property in Greece',
     chips: ['Transfer tax', 'VAT on new builds', 'Fees', 'Cash needed'], path: '/en/property-purchase-costs' },
+  'en-renovation-tax-credit-calculator': { kind: 'calc', over: 'Calculator', title: 'Greek tax credit for renovation',
+    chips: ['Services', 'Materials', 'Per year', 'Cap'], path: '/en/renovation-tax-credit-calculator' },
   'en-tools': { kind: 'calc', over: 'Tools', title: 'Calculators for property owners in Greece',
     chips: enTools().map(t => t.label).slice(0, 4), path: '/en/tools' },
 };
