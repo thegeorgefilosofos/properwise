@@ -446,7 +446,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       if(ins.error){ setError(failed('Το έγγραφο δεν καταχωρήθηκε', ins.error)); setDocBusy(false); return; }
       if(ins.id) setFormDocs(prev=>[...prev,{id:ins.id as string,file_name:file.name,tag}]);
       notifyOk('Το έγγραφο ανέβηκε');
-    }catch{ setError('Σφάλμα ανεβάσματος εγγράφου'); }
+    }catch{ setError('Το έγγραφο δεν ανέβηκε. Δοκίμασε ξανά.'); }
     setDocBusy(false);
   };
 
@@ -535,7 +535,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       if(instErr) notifyError(`Ο ενοικιαστής αποθηκεύτηκε, αλλά οι δόσεις ενοικίου δεν δημιουργήθηκαν. ${instErr}`);
     }
     setSaving(false);setIsForm(false);
-    notifyOk(editId?'Αποθηκεύτηκε':'Ενοικιαστής προστέθηκε');
+    notifyOk(editId?'Αποθηκεύτηκε':'Ο ενοικιαστής προστέθηκε');
     await refresh();
   };
 
@@ -556,7 +556,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     if(!res.ok){notifyError(res.error);return;}
     if(openId===t.id) setOpenId(null);
     if(res.filesError) notifyError(res.filesError);
-    else notify('Διαγράφηκε');
+    else notify('Ο ενοικιαστής διαγράφηκε');
     void refresh();
   };
 
@@ -575,7 +575,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     if(!t.lease_doc_name) return;
     const path=`${userId}/${t.id}/${t.lease_doc_name}`;
     const{data,error:e}=await supabase.storage.from('lease-documents').createSignedUrl(path,60*60);
-    if(e||!data?.signedUrl){setError('Δεν ήταν δυνατό το άνοιγμα του PDF.');return;}
+    if(e||!data?.signedUrl){setError('Το PDF δεν άνοιξε. Δοκίμασε ξανά.');return;}
     window.open(data.signedUrl,'_blank','noopener,noreferrer');
   };
 
@@ -624,9 +624,9 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
 
   const DTABS:{id:DossierTab;label:string;badge?:number}[]=dc?[
     {id:'overview',label:'Επισκόπηση'},
-    {id:'lease',label:'Μίσθωση και Εγγύηση',badge:(dcOverdue.count+(declaredByTenant.get(dc.id)||0))||undefined},
-    {id:'condition',label:'Φθορές και Βλάβες',badge:(dcDamages.filter(d=>!d.repaired).length+dcMaint.filter(m=>m.status!=='done').length)||undefined},
-    {id:'legal',label:'Νομικά και Φόρος'},
+    {id:'lease',label:'Μίσθωση και εγγύηση',badge:(dcOverdue.count+(declaredByTenant.get(dc.id)||0))||undefined},
+    {id:'condition',label:'Φθορές και βλάβες',badge:(dcDamages.filter(d=>!d.repaired).length+dcMaint.filter(m=>m.status!=='done').length)||undefined},
+    {id:'legal',label:'Νομικά και φόρος'},
     {id:'comm',label:'Επικοινωνία'},
     {id:'docs',label:'Έγγραφα'},
   ]:[];

@@ -102,7 +102,7 @@ export const PRODUCT: Record<string, CopyFn> = {
       preheader: 'Μικρές κινήσεις, μεγάλα αποτελέσματα.', unsubUrl: c.unsubUrl,
       hero: has(c.collected) ? heroStat(eur(c.collected), 'οργανωμένες εισπράξεις') : (has(c.properties) ? heroStat(`${c.properties}`, c.properties === 1 ? 'ακίνητο υπό διαχείριση' : 'ακίνητα υπό διαχείριση') : ''),
       bodyHtml: eyebrow('Ορόσημο') + h('Έφτασες κάπου που μετράει') + greeting(c.name)
-        + p(`Μόλις πέρασες ${what} μέσα από το PROPERWISE. Πίσω από αυτό το δεδομένο κρύβονται ώρες που κέρδισες και εκκρεμότητες που δεν σε απασχόλησαν.`)
+        + p(`Μόλις πέρασες ${what} μέσα από το PROPERWISE. Πίσω από αυτόν τον αριθμό κρύβονται ώρες που κέρδισες και εκκρεμότητες που δεν σε απασχόλησαν.`)
         + button('Δες την πρόοδό σου', dash(c))
         + note('Κάθε καταχώρηση μετράει. Συνέχισε έτσι.'),
     }) };

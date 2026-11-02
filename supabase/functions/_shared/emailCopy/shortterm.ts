@@ -1,5 +1,5 @@
 import { emailShell, eyebrow, h, p, button, greeting, note, heroStat } from '../emailTemplates.ts'
-import { eur } from '../format.ts'
+import { eur, pctRate } from '../format.ts'
 import { dash, esc, has, plural, NOTE, type CopyFn } from './kit.ts'
 
 // ── Φάση 9: Βραχυχρόνια μίσθωση (Short-term operations) ───────────────────────
@@ -90,14 +90,14 @@ export const SHORTTERM: Record<string, CopyFn> = {
   str_season_recap: (c) => {
     const bits: string[] = [];
     if (has(c.collected)) bits.push(`έσοδα <b>${eur(c.collected)}</b>`);
-    if (has(c.occupancy)) bits.push(`πληρότητα <b>${esc(String(c.occupancy))}%</b>`);
+    if (has(c.occupancy)) bits.push(`πληρότητα <b>${pctRate(c.occupancy)}</b>`);
     if (has(c.reviewsCount)) bits.push(`<b>${plural(c.reviewsCount, 'αξιολόγηση', 'αξιολογήσεις')}</b>`);
     const line = bits.length
       ? p(`Η σεζόν έκλεισε με ${bits.join(', ')}${has(c.rating) ? ` και μέση βαθμολογία <b>${c.rating!.toLocaleString('el-GR')}</b>` : ''}.`)
       : p('Η σεζόν σου σε βραχυχρόνιες έκλεισε. Δες τη συνολική εικόνα, ανά ακίνητο και ανά μήνα.');
     return { subject: 'Ο απολογισμός της σεζόν σου', html: emailShell({
       preheader: 'Έσοδα, πληρότητα και αξιολογήσεις με μια ματιά.', unsubUrl: c.unsubUrl,
-      hero: has(c.occupancy) ? heroStat(`${esc(String(c.occupancy))}%`, 'πληρότητα σεζόν') : (has(c.collected) ? heroStat(eur(c.collected), 'έσοδα σεζόν') : ''),
+      hero: has(c.occupancy) ? heroStat(`${pctRate(c.occupancy)}`, 'πληρότητα σεζόν') : (has(c.collected) ? heroStat(eur(c.collected), 'έσοδα σεζόν') : ''),
       bodyHtml: eyebrow('Απολογισμός') + h('Πώς πήγε η σεζόν') + greeting(c.name)
         + line
         + p('Σύγκρινε με πέρσι, εντόπισε τους δυνατούς σου μήνες και προγραμμάτισε την επόμενη σεζόν από τώρα.')

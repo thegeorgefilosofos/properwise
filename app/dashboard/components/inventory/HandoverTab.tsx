@@ -260,7 +260,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
       <div style={{display:'flex',justifyContent:'flex-end',gap:10}}>
         <Btn variant="secondary" onClick={()=>setMode('list')}>Ακύρωση</Btn>
         <Btn variant="primary" onClick={handleSave} disabled={saving}>
-          {saving?'Αποθήκευση…':'Αποθήκευση Πρωτοκόλλου'}
+          {saving?'Αποθήκευση…':'Αποθήκευση πρωτοκόλλου'}
         </Btn>
       </div>
     </div>
@@ -295,7 +295,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
                       <Badge label={h.handover_type==='check_in'?'Είσοδος':'Έξοδος'} color="var(--text-secondary)"/>
                       <p style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{h.tenant_name}</p>
                     </div>
-                    <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{fmtDate(h.handover_date)}{h.tenant_phone?` · ${h.tenant_phone}`:''} · {snap.length} αντικείμενα{(()=>{const ph=snap.filter(s=>s.condition_photo).length;return ph>0?` · ${ph} φωτό`:''})()}</p>
+                    <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{fmtDate(h.handover_date)}{h.tenant_phone?` · ${h.tenant_phone}`:''} · {snap.length} αντικείμενα{(()=>{const ph=snap.filter(s=>s.condition_photo).length;return ph>0?` · ${ph} ${ph===1?'φωτογραφία':'φωτογραφίες'}`:''})()}</p>
                   </div>
                   <div style={{display:'flex',gap:8,alignItems:'center'}}>
                     {bad>0&&<Badge label={`${bad} προβλήματα`} color="var(--negative)"/>}

@@ -117,7 +117,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
       if (!res.ok || data?.error) { setScanning(false); notifyError(res.status === 429 && typeof data?.error === 'string' ? data.error : 'Η σάρωση δεν είναι διαθέσιμη τώρα'); return }
       const text = (data.content || []).find((c: { type: string }) => c.type === 'text')?.text || '{}'
       let d: Record<string, string> = {}
-      try { d = JSON.parse(text.replace(/```json?|```/g, '').trim()) } catch { setScanning(false); notifyError('Δεν διάβασα καθαρά την κάρτα, δοκίμασε πάλι'); return }
+      try { d = JSON.parse(text.replace(/```json?|```/g, '').trim()) } catch { setScanning(false); notifyError('Η κάρτα δεν διαβάστηκε καθαρά. Δοκίμασε με πιο καθαρή φωτογραφία.'); return }
       const roleVal = (d.role && ROLE_META[d.role.trim().toLowerCase()]) ? d.role.trim().toLowerCase() : inferRole([d.role, d.specialty, d.full_name].filter(Boolean).join(' ')) || 'other'
       const has = (v?: string) => (v || '').trim()
       setEditContact(null); setRoleOther('')
@@ -128,7 +128,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
       setShowMore(!!(has(d.afm) || has(d.iban) || has(d.website) || has(d.address) || has(d.specialty)))
       setError(null); setScanning(false); setShowModal(true)
       notify(has(d.full_name) ? 'Έλεγξε τα στοιχεία και αποθήκευσε' : 'Συμπλήρωσε τα στοιχεία που λείπουν', { tone: 'info' })
-    } catch { setScanning(false); notifyError('Παρουσιάστηκε σφάλμα στη σάρωση') }
+    } catch { setScanning(false); notifyError('Η σάρωση δεν ολοκληρώθηκε. Δοκίμασε ξανά.') }
   }
   // ΕΔΩ ΗΤΑΝ ΔΥΟ ΔΙΑΔΡΟΜΕΣ ΕΙΣΑΓΩΓΗΣ (~60 γραμμές): αρχείο .vcf/.csv και Contacts
   // Picker του κινητού. Έφυγαν και οι δύο. Η πρώτη έσπαγε σε κάθε πραγματικό CSV
@@ -203,7 +203,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
       const { error: e } = await contactStore.update(supabase, editContact.id, payload)
       if (e) { setError(failed('Η επαφή δεν αποθηκεύτηκε', e)); setSaving(false); return }
       await syncContactReminder(editContact.id, name)
-      setSaving(false); closeModal(); fetchContacts(); notifyOk('Επαφή ενημερώθηκε'); return
+      setSaving(false); closeModal(); fetchContacts(); notifyOk('Η επαφή ενημερώθηκε'); return
     }
     // Νέα επαφή: πρώτα η σύμβαση επεξεργασίας (lib/legal/dpa.ts). Οι Όροι
     // ονομάζουν «τους συνεργάτες σου». Η φόρμα μένει ανοιχτή με ό,τι γράφτηκε.
@@ -211,7 +211,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
     const { data: ins, error: e } = await contactStore.addReturningId(supabase, propertyId, userId, payload)
     if (e) { setError(failed('Η επαφή δεν αποθηκεύτηκε', e)); setSaving(false); return }
     if (ins?.id) await syncContactReminder(ins.id, name)
-    setSaving(false); setDup(null); closeModal(); fetchContacts(); notifyOk('Επαφή προστέθηκε')
+    setSaving(false); setDup(null); closeModal(); fetchContacts(); notifyOk('Η επαφή προστέθηκε')
   }
 
   const handleSave = async () => {
@@ -227,7 +227,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
     if (gone.length) await removeFiles(supabase, gone)
     if (!await saved('Η επαφή δεν διαγράφηκε', contactStore.remove(supabase, id))) return
     await saved('Η υπενθύμιση της επαφής δεν καθαρίστηκε', calendar.clearSource(supabase, { propertyId, userId }, { source: `contact:${id}:reminder` }))
-    fetchContacts(); notify('Επαφή διαγράφηκε')
+    fetchContacts(); notify('Η επαφή διαγράφηκε')
   }
   // ΜΙΑ ΕΡΩΤΗΣΗ ΓΙΑ ΤΕΣΣΕΡΑ ΚΟΥΜΠΙΑ. Το «Διαγραφή» της κάρτας, της γραμμής
   // λίστας, του μενού «···» και του ντοσιέ άναβαν όλα την ίδια κατάσταση
@@ -363,7 +363,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
         <div role="status" aria-live="polite" aria-label="Ανάλυση κάρτας" style={{ position: 'fixed', inset: 0, background: T.scrim, zIndex: 2100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.modal, padding: '26px 32px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: 'var(--elev-3)' }}>
             <div style={{ width: 22, height: 22, border: '2.5px solid var(--border-default)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'contactsSpin 0.7s linear infinite' }} />
-            <div><div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Ανάλυση κάρτας…</div><div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Εξάγω τα στοιχεία επαφής</div></div>
+            <div><div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Ανάλυση κάρτας…</div><div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Διαβάζονται τα στοιχεία της επαφής</div></div>
           </div>
           <style>{`@keyframes contactsSpin{to{transform:rotate(360deg)}}`}</style>
         </div>
@@ -878,8 +878,8 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
         </Modal>
       )}
 
-      {quickExpense && <QuickExpenseModal contact={quickExpense} propertyId={propertyId} userId={userId} onClose={() => setQuickExpense(null)} onSaved={() => { notifyOk('Δαπάνη αποθηκεύτηκε'); setDossierRefresh(x => x + 1) }} />}
-      {quickCalendar && <QuickCalendarModal contact={quickCalendar} propertyId={propertyId} userId={userId} onClose={() => setQuickCalendar(null)} onSaved={(date) => { linkAppointmentToContact(quickCalendar, date); notifyOk('Ραντεβού προστέθηκε, καταχωρήθηκε και στην επαφή') }} />}
+      {quickExpense && <QuickExpenseModal contact={quickExpense} propertyId={propertyId} userId={userId} onClose={() => setQuickExpense(null)} onSaved={() => { notifyOk('Η δαπάνη αποθηκεύτηκε'); setDossierRefresh(x => x + 1) }} />}
+      {quickCalendar && <QuickCalendarModal contact={quickCalendar} propertyId={propertyId} userId={userId} onClose={() => setQuickCalendar(null)} onSaved={(date) => { linkAppointmentToContact(quickCalendar, date); notifyOk('Το ραντεβού προστέθηκε, καταχωρήθηκε και στην επαφή') }} />}
       {historyContact && <HistoryModal contact={historyContact} propertyId={propertyId} onClose={() => setHistoryContact(null)} />}
       {qrContact && <QRCodeModal contact={qrContact} onClose={() => setQrContact(null)} />}
     </div>

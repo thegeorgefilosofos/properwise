@@ -80,7 +80,7 @@ export function inventoryExports({items,repairs,kwhPrice}:{items:InventoryItem[]
       + `<h1>Κατάσταση εξοπλισμού</h1>`
       + `<div class="sub">${rEsc(String(items.length))} αντικείμενα</div>`
       + reportSection('Σύνοψη')
-      + `<div class="kpis">${reportKpi('Εκτιμώμενη υπολειπόμενη αξία', rEur(totalCurrent))}${reportKpi('Δηλωμένο κόστος αντικατάστασης', rEur(totalDeclaredRepl))}${reportKpi('Επισκευές', rEur(totalRepairs))}${electricItems.length>0&&kwhPrice>0?reportKpi('Ρεύμα/Μήνα', rEur(totalMonthlyCost)):''}</div>`
+      + `<div class="kpis">${reportKpi('Εκτιμώμενη υπολειπόμενη αξία', rEur(totalCurrent))}${reportKpi('Δηλωμένο κόστος αντικατάστασης', rEur(totalDeclaredRepl))}${reportKpi('Επισκευές', rEur(totalRepairs))}${electricItems.length>0&&kwhPrice>0?reportKpi('Ρεύμα/μήνα', rEur(totalMonthlyCost)):''}</div>`
       + reportSection('Ανά κατηγορία')
       + `<table><tbody>${catRows}</tbody></table>`
       + reportSection('Αναλυτικός κατάλογος')

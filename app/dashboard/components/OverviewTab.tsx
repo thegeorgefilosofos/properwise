@@ -1110,7 +1110,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               : `Μηνιαίο ενοίκιο ${fmtEur(rent)} × 12.` },
           { label:EXPENSE_LABELS.total, value:fmtEur(yExp.total),
             sub: expensePartsShort(yExp, fmtEur),
-            title:`Οι δαπάνες του ${year} όπως είναι καταχωρημένες: ${expenseParts(yExp, fmtEur)}. Λογαριασμοί και δαπάνες μαζί, κάθε ευρώ μία φορά, χωρίς προβολή. Ίδιο ποσό με τις ${navLabel('finances')}, το ${navLabel('portfolio')}, την ${navLabel('roi')} και τη ${navLabel('accounting')}.${expDeltaPct!=null?` Το ίδιο διάστημα του ${year-1}: ${expDeltaPct>0?'+':expDeltaPct<0?'−':''}${Math.abs(expDeltaPct)}%.`:''}` },
+            title:`Οι δαπάνες του ${year} όπως είναι καταχωρημένες: ${expenseParts(yExp, fmtEur)}. Λογαριασμοί και δαπάνες μαζί, κάθε ευρώ μία φορά, χωρίς προβολή. Ίδιο ποσό με τις ${navLabel('finances')}, το ${navLabel('portfolio')}, την ${navLabel('roi')} και τη ${navLabel('accounting')}.${expDeltaPct!=null?` Το ίδιο διάστημα του ${year-1}: ${expDeltaPct>0?'+':expDeltaPct<0?'−':''}${fpRate(Math.abs(expDeltaPct))}.`:''}` },
           // ══ Η ΕΤΙΚΕΤΑ ΣΕ ΜΙΑ ΓΡΑΜΜΗ ΚΑΙ ΧΩΡΙΣ ΝΑ ΧΑΣΕΙ ΝΟΗΜΑ ══════════════
           // «Μερίδιο φόρου ενοικίου» είναι 22 χαρακτήρες δίπλα σε τρεις
           // ετικέτες των 7 ως 17: έσπαγε σε δεύτερη γραμμή και ΜΟΝΟ αυτή,

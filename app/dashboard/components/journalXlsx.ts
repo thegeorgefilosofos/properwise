@@ -115,7 +115,7 @@ export function downloadJournalWorkbook(opts: {
   {
     const NC = 6, HR = 3;
     const tb = trialBalance(lines);
-    const header = ['Κωδικός', 'Λογαριασμός', 'Σύνολο Χρέωσης', 'Σύνολο Πίστωσης', 'Χρεωστικό υπόλοιπο', 'Πιστωτικό υπόλοιπο'];
+    const header = ['Κωδικός', 'Λογαριασμός', 'Σύνολο χρέωσης', 'Σύνολο πίστωσης', 'Χρεωστικό υπόλοιπο', 'Πιστωτικό υπόλοιπο'];
     const data: (string | number)[][] = tb.map(r => [
       r.code, r.account, r.debit || '', r.credit || '',
       r.balance > 0 ? r.balance : '', r.balance < 0 ? -r.balance : '',

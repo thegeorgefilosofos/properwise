@@ -4,7 +4,7 @@
 // ΟΛΑ τα αποτελέσματα είναι ΕΝΔΕΙΚΤΙΚΑ, όχι δεσμευτική προσφορά τράπεζας.
 
 import { fe, feWhole, fn } from '@/lib/core/format'
-import { fp } from '../core/format'
+import { fp, fpRate } from '../core/format'
 import { programStatus, programDateLabel, parseProgramDate, type ProgramStatus } from './programStatus'
 import { roundHalfUp } from '../core/money';
 
@@ -451,7 +451,7 @@ export function spitiMouEligibility(n: UserLoanNeeds, today: string): SpitiMouRe
   }
   if (n.propertySqm != null && n.propertySqm > SPITI_MOU.maxSqm) {
     eligible = false
-    reasons.push(`Εμβαδόν ${n.propertySqm}τμ > όριο ${SPITI_MOU.maxSqm}τμ`)
+    reasons.push(`Εμβαδόν ${fn(n.propertySqm)} τ.μ. > όριο ${fn(SPITI_MOU.maxSqm)} τ.μ.`)
   }
   if (n.propertyYearBuilt != null && n.propertyYearBuilt > SPITI_MOU.maxYearBuilt) {
     eligible = false
@@ -521,7 +521,7 @@ export function rankLoans(needs: UserLoanNeeds, banks: BankInput[], euribor3m: n
     const blockers: string[] = []
     if (needs.amount > bank.max_amount) blockers.push(`Ποσό > όριο τράπεζας ${fe(bank.max_amount)}`)
     if (needs.amount < bank.min_amount) blockers.push(`Ποσό < ελάχιστο ${fe(bank.min_amount)}`)
-    if (ltv > bank.max_ltv) blockers.push(`LTV ${fp(ltv)} > μέγιστο ${bank.max_ltv}%`)
+    if (ltv > bank.max_ltv) blockers.push(`LTV ${fp(ltv)} > μέγιστο ${fpRate(bank.max_ltv)}`)
     if (needs.years > bank.max_years) blockers.push(`Διάρκεια > ${bank.max_years} έτη`)
 
     const greenDisc = green ? (bank.green_discount ?? 0) : 0
@@ -545,7 +545,7 @@ export function rankLoans(needs: UserLoanNeeds, banks: BankInput[], euribor3m: n
 
     const whyBits: string[] = []
     if (useSpiti) whyBits.push(`«Σπίτι μου ΙΙ» 50% άτοκο${spiti.rateSubsidyShare > 0 ? ' + επιδότηση επιτοκίου 50%' : ''}`)
-    if (greenDisc > 0) whyBits.push(`πράσινη έκπτωση -${greenDisc}%`)
+    if (greenDisc > 0) whyBits.push(`πράσινη έκπτωση −${fpRate(greenDisc)}`)
     whyBits.push(`επιτόκιο ${fp(effectiveRatePct)}`)
 
     return {

@@ -336,7 +336,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       // Το μήνυμα λέει ΤΙ ΙΣΧΥΕΙ, όχι τι θα κερδίσεις: η πρόβλεψη εσόδων έφυγε
       // επειδή ήταν ταυτολογία και μαζί της κάθε υπόσχεση ποσού.
       const range = `${fe(min || base)}–${fe(max || base)}`;
-      setSaveNote(`Αποθηκεύτηκε. Βάση ${fe(base)}, εύρος ${range}, Σαββατοκύριακο +${wknd}%, ελάχιστη διαμονή ${minStay} ${minStay === 1 ? 'νύχτα' : 'νύχτες'}.`);
+      setSaveNote(`Αποθηκεύτηκε. Βάση ${fe(base)}, εύρος ${range}, Σαββατοκύριακο +${fpRate(wknd)}, ελάχιστη διαμονή ${minStay} ${minStay === 1 ? 'νύχτα' : 'νύχτες'}.`);
     }, 700);
     return () => clearTimeout(t);
   }, [base, min, max, wknd, minStay, touched, unread, persist]);
@@ -542,7 +542,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     const title = gapTitle(g);
     if (gapTitles.has(title)) {
       const { error } = await calendar.clearSource(supabase, { propertyId, userId }, { source: 'pricing_gap', title });
-      if (error) { notifyError(failed('Οι ρυθμίσεις τιμολόγησης δεν αποθηκεύτηκαν', error)); return; }
+      if (error) { notifyError(failed('Η υπενθύμιση δεν αφαιρέθηκε από το ημερολόγιο', error)); return; }
       setGapTitles(prev => { const n = new Set(prev); n.delete(title); return n; });
       notify('Αφαιρέθηκε από το Ημερολόγιο');
       return;
@@ -552,13 +552,13 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       title, category: 'reminder', event_date: rd, priority: g.soon ? 'high' : 'medium',
       notes: `${g.nights} κενές νύχτες. Προτεινόμενη τιμή πλήρωσης ${fe(g.fillPrice)}/νύχτα${minStay > 1 ? `, ελάχιστη διαμονή ${minStay} νύχτες` : ''}.`,
     })]);
-    if (error) { notifyError(failed('Οι ρυθμίσεις τιμολόγησης δεν αποθηκεύτηκαν', error)); return; }
+    if (error) { notifyError(failed('Η υπενθύμιση δεν μπήκε στο ημερολόγιο', error)); return; }
     setGapTitles(prev => new Set(prev).add(title));
     notifyOk('Προστέθηκε στο Ημερολόγιο');
   };
   // Ενέργεια: αντιγραφή κειμένου προσφοράς last minute.
   const copyOffer = (g: Gap) => {
-    const txt = `Τελευταία διαθεσιμότητα ${fd(g.start)} - ${fd(g.end)} (${g.nights} ${g.nights === 1 ? 'νύχτα' : 'νύχτες'}) σε ειδική τιμή ${fe(g.fillPrice)} ανά νύχτα${minStay > 1 ? `, ελάχιστη διαμονή ${minStay} νύχτες` : ''}. Κλείσε τώρα, οι ημερομηνίες είναι περιορισμένες.`;
+    const txt = `Τελευταία διαθεσιμότητα ${fd(g.start)} – ${fd(g.end)} (${g.nights} ${g.nights === 1 ? 'νύχτα' : 'νύχτες'}) σε ειδική τιμή ${fe(g.fillPrice)} ανά νύχτα${minStay > 1 ? `, ελάχιστη διαμονή ${minStay} νύχτες` : ''}. Κλείσε τώρα, οι ημερομηνίες είναι περιορισμένες.`;
     navigator.clipboard?.writeText(txt);
     notifyOk('Το κείμενο προσφοράς αντιγράφηκε');
   };
@@ -715,7 +715,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
         </div>
       </div>
       <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 16, minHeight: 16 }}>
-        {adr > 0 && <>Μέση πραγματική τιμή (ADR): <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{fe(adr)}</strong> / νύχτα από {stays.length} διαμονές. </>}
+        {adr > 0 && <>Μέση πραγματική τιμή (ADR): <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{fe(adr)}</strong>/νύχτα από {stays.length} διαμονές. </>}
         {saveNote && <span style={{ color: 'var(--text-secondary)' }}>{saveNote}</span>}
         {/* Η άρνηση λέγεται ΕΚΕΙ που ο χρήστης περιμένει το «αποθηκεύτηκε». Σιωπηλή
             αποθήκευση που δεν γίνεται είναι χειρότερη από αποτυχία που φαίνεται. */}
@@ -750,13 +750,13 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                 {compBase > 0 ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '12px 14px' }}>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
-                      Προτεινόμενη βάση <strong style={{ color: 'var(--text-primary)', fontFamily: T.font.num }}>{fe(compBase)}</strong> / νύχτα
+                      Προτεινόμενη βάση <strong style={{ color: 'var(--text-primary)', fontFamily: T.font.num }}>{fe(compBase)}</strong>/νύχτα
                       <span style={{ color: 'var(--text-tertiary)' }}> (διάμεση − 10%, αφού η βάση αφορά καθημερινή εκτός αιχμής· η εποχή/ΣΚ προστίθενται από πάνω)</span>
                     </div>
                     <Btn variant="secondary" onClick={() => { mark(setBase)(compBase); const g = suggestGuardrails(compBase); mark(setMin)(g.min); mark(setMax)(g.max); }}>Χρησιμοποίησε αυτή τη βάση</Btn>
                   </div>
                 ) : (
-                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Πρόσθεσε 1-4 τιμές ανταγωνιστών (π.χ. από Airbnb/Booking για παρόμοια ακίνητα) για να δεις προτεινόμενη βάση. Αποθηκεύεται τοπικά στη συσκευή σου.</div>
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Πρόσθεσε 1 έως 4 τιμές ανταγωνιστών (π.χ. από Airbnb/Booking για παρόμοια ακίνητα) για να δεις προτεινόμενη βάση. Αποθηκεύεται τοπικά στη συσκευή σου.</div>
                 )}
               </div>
             )}
@@ -861,7 +861,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
               πληρότητας, θα παρήγαμε «κέρδος» που δεν μπορεί να βγει αρνητικό. */}
           {measuredOcc == null && occNights > 0 && (
             <div style={{ marginTop: 14, fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
-              Έχεις {occNights} καταγεγραμμένες νύχτες σε αυτό το ακίνητο. Η πληρότητα εμφανίζεται όταν συγκεντρωθούν {MIN_NIGHTS_FOR_OCCUPANCY}+ πραγματικές νύχτες σε μια εποχή. Κάτω από αυτό ο αριθμός θα ήταν εικασία με ετικέτα μέτρησης.
+              Έχεις {fn(occNights)} καταγεγραμμένες νύχτες σε αυτό το ακίνητο. Η πληρότητα εμφανίζεται όταν συγκεντρωθούν {MIN_NIGHTS_FOR_OCCUPANCY}+ πραγματικές νύχτες σε μια εποχή. Κάτω από αυτό ο αριθμός θα ήταν εικασία με ετικέτα μέτρησης.
             </div>
           )}
 

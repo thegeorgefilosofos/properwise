@@ -43,7 +43,7 @@ export function MaintenanceTab({items,schedules,propertyId,userId,onSaved}:{item
   // το πλαίσιο πάνω από το κουμπί αποθήκευσης. Σιωπηλή αποτυχία εκεί σημαίνει ότι
   // ο χρήστης βασίζεται σε υπενθύμιση που δεν υπάρχει.
   const makeCalEvent=async(task:string,item_name:string,due:string,est:number):Promise<string|undefined>=>{
-    const {data,error}=await calendar.add(supabase,{propertyId,userId},'inventory-maint',{title:taskTitle(task,item_name),category:'maintenance',event_date:due,amount:est||0,notes:est>0?`Αυτόματο από Συντήρηση Απογραφής · εκτιμώμενο κόστος ${fe(est)}`:'Αυτόματο από Συντήρηση Απογραφής'})
+    const {data,error}=await calendar.add(supabase,{propertyId,userId},'inventory-maint',{title:taskTitle(task,item_name),category:'maintenance',event_date:due,amount:est||0,notes:est>0?`Αυτόματα από τη συντήρηση της απογραφής · εκτιμώμενο κόστος ${fe(est)}`:'Αυτόματα από τη συντήρηση της απογραφής'})
     if(error){notifyError(failed(MSG.reminder,error));return undefined}
     return data?.id
   }
@@ -111,7 +111,7 @@ export function MaintenanceTab({items,schedules,propertyId,userId,onSaved}:{item
         </div>
         <Badge label={days<0?`${Math.abs(days)===1?'1 ημέρα':`${Math.abs(days)} ημέρες`} καθυστέρηση`:days===0?'Σήμερα':days===1?'Αύριο':`σε ${days} ημέρες`} color={c}/>
         <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',whiteSpace:'nowrap',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums'}}>{fmtDate(s.next_due)}</span>
-        <Btn variant="secondary" onClick={()=>markDone(s)} disabled={doneBusy===s.id} title="Καταγράφει την εκτέλεση, ρολάρει στην επόμενη ημερομηνία και ενημερώνει δαπάνες/ημερολόγιο">{doneBusy===s.id?'…':'Έγινε'}</Btn>
+        <Btn variant="secondary" onClick={()=>markDone(s)} disabled={doneBusy===s.id} title="Καταγράφει την εκτέλεση, μεταφέρει την εργασία στην επόμενη ημερομηνία και ενημερώνει δαπάνες και ημερολόγιο">{doneBusy===s.id?'…':'Έγινε'}</Btn>
         <OverflowMenu actions={[
           {label:'Διαγραφή',icon:IconTrash,danger:true,onClick:async()=>{ if(await confirmDialog('Διαγραφή; Θα αφαιρεθεί και η προγραμματισμένη υπενθύμιση/δαπάνη.',{tone:'negative'})) await deleteSched(s) }},
         ]}/>

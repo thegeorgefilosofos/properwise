@@ -55,7 +55,7 @@ export type IdDocType = 'Αστυνομική Ταυτότητα' | 'Διαβα�
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const LEASE_LABELS: Record<LeaseType, string> = {
   monthly:'Μηνιαίο', biannual:'Εξάμηνο', annual:'Ετήσιο',
-  '18months':'18 Μήνες', '24months':'24 Μήνες', '36months':'36 Μήνες', custom:'Προσαρμοσμένο',
+  '18months':'18 μήνες', '24months':'24 μήνες', '36months':'36 μήνες', custom:'Προσαρμοσμένο',
 };
 export const LEASE_MONTHS: Record<LeaseType, number | null> = {
   monthly:1, biannual:6, annual:12, '18months':18, '24months':24, '36months':36, custom:null,

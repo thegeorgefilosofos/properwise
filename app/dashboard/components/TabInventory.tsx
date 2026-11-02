@@ -1,6 +1,8 @@
 'use client'
 
 import { formatNavHash } from '@/lib/nav/history'
+import { navLabel } from '@/lib/nav/labels'
+import { fpRate } from '@/lib/core/format'
 import { useState, useCallback, useMemo } from 'react'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import * as tenantStore from '@/lib/data/tenants'
@@ -802,7 +804,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
     const title=`Εγγύηση: ${item.name}`
     if(await calendar.exists(supabase,propertyId,{source:'inventory',title,eventDate:item.warranty_expiry})){notifyOk(`Η υπενθύμιση για «${item.name}» υπάρχει ήδη στο ημερολόγιο.`);return true}
     const {error}=await calendar.insert(supabase,[calendar.row({propertyId,userId},'inventory',{title,notes:`Λήγει ${fmtDate(item.warranty_expiry)}`,event_date:item.warranty_expiry,category:'maintenance',priority:daysUntil(item.warranty_expiry)<=30?'high':'medium'})])
-    if(error){notifyError(failed('Δεν μπόρεσα να προσθέσω την υπενθύμιση',error));return false}
+    if(error){notifyError(failed('Η υπενθύμιση εγγύησης δεν προστέθηκε',error));return false}
     // ΗΤΑΝ notifyError: μήνυμα ΕΠΙΤΥΧΙΑΣ σε κόκκινο toast. Ο χρήστης νόμιζε ότι απέτυχε
     // και το ξαναπατούσε, φτιάχνοντας διπλές εγγραφές ημερολογίου.
     notifyOk(`Προστέθηκε υπενθύμιση εγγύησης στο ημερολόγιο για «${item.name}».`)
@@ -954,7 +956,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
              αφορά. Ο τίτλος λέει ΤΙ συμβαίνει· η υπόδειξη λέει ΤΙ ΝΑ ΚΑΝΕΙ,
              σε μία γραμμή. Ο,τι έμενε ήταν ήδη γραμμένο δύο φορές. */
           hint={status==='rent_long'
-            ? 'Δήλωσε την επίπλωση στην καρτέλα «Ενοικιαστές» και η απογραφή ανοίγει εδώ.'
+            ? `Δήλωσε την επίπλωση στην καρτέλα «${navLabel('tenant')}» και η απογραφή ανοίγει εδώ.`
             : `Το ακίνητο είναι σε κατάσταση «${statusLabel(propRow)}». Η απογραφή ανοίγει μόλις μπει σε μίσθωση.`}
           /* Η ΚΕΝΗ ΚΑΤΑΣΤΑΣΗ ΕΣΤΕΛΝΕ ΑΛΛΟΥ ΚΑΙ ΤΕΛΕΙΩΝΕ ΕΚΕΙ. Οποιος έχει έναν
              λέβητα ή ένα κλιματιστικό να καταγράψει τώρα δεν έχει λόγο να
@@ -963,7 +965,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
           page
           points={['Αξία και εγγύηση κάθε αντικειμένου', 'Επισκευές και κατανάλωση ρεύματος', 'Πρωτόκολλο παράδοσης στον ενοικιαστή']}
           action={<>
-            {status==='rent_long' && <Btn variant="primary" onClick={()=>{ window.location.hash = formatNavHash({ tab:'tenant', propertyId }) }}>Άνοιξε τον Ενοικιαστή</Btn>}
+            {status==='rent_long' && <Btn variant="primary" onClick={()=>{ window.location.hash = formatNavHash({ tab:'tenant', propertyId }) }}>Άνοιξε τους {navLabel('tenant')}</Btn>}
             <Btn onClick={()=>{setEditingItem(null);setFormManual(true);setShowItemForm(true)}}>Πρόσθεσε ένα αντικείμενο</Btn>
           </>}
         />
@@ -1034,7 +1036,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
               // αξία» έβγαινε μία λέξη ανά γραμμή στα 320 (26/10/2026). Η αναφορά
               // και η εξαγωγή (inventory/exports.tsx) κρατούν τον πλήρη όρο.
               ...(invSummary.totalOriginal>0?[{label:'Αξία σήμερα (εκτίμηση)',value:fe(totalValue),
-                sub:`από ${fe(invSummary.totalOriginal)} αξία αγοράς, μένει το ${Math.max(0,100-invSummary.avgDepreciatedPct)}%${undatedCount>0?` · ${undatedCount} ${undatedCount===1?'αντικείμενο χωρίς ημερομηνία μετρά':'αντικείμενα χωρίς ημερομηνία μετρούν'} με την τιμή αγοράς`:''}`}]:[]),
+                sub:`από ${fe(invSummary.totalOriginal)} αξία αγοράς, μένει το ${fpRate(Math.max(0,100-invSummary.avgDepreciatedPct))}${undatedCount>0?` · ${undatedCount} ${undatedCount===1?'αντικείμενο χωρίς ημερομηνία μετρά':'αντικείμενα χωρίς ημερομηνία μετρούν'} με την τιμή αγοράς`:''}`}]:[]),
               ...(electricItems.length>0?[kwhPrice>0
                 ? {label:'Ρεύμα ανά μήνα',value:fe(monthlyCost),sub:`${fn(monthlyKwh,1)} κιλοβατώρες, στα ${feRate(kwhPrice)} ανά κιλοβατώρα`}
                 : {label:'Ρεύμα ανά μήνα',value:`${fn(monthlyKwh,1)} kWh`,sub:'δήλωσε τιμή ανά κιλοβατώρα για κόστος'}]:[]),

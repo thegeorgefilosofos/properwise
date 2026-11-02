@@ -74,7 +74,8 @@ import * as planData from '@/lib/data/plan';
 import { readCosts, EMPTY_PLAN, type PlanState } from '@/lib/data/plan';
 import { saved } from '@/components/dbWrite';
 import { notify, notifyOk } from '@/components/Toast';
-import { feSigned } from '@/lib/core/format';
+import { feSigned, fpRate } from '@/lib/core/format';
+import { navLabel } from '@/lib/nav/labels';
 import { hyphenate } from '@/lib/core/hyphenate';
 import type { PropertyStatus } from '@/lib/property/status';
 import {
@@ -500,7 +501,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
       }));
       if (ok) {
         setPushedIds(prev => prev.includes(step.id) ? prev : [...prev, step.id]);
-        notifyOk('Μπήκε στις Εργασίες, χωρίς προθεσμία');
+        notifyOk(`Μπήκε στις ${navLabel('checklist')}, χωρίς προθεσμία`);
       }
     } finally {
       setPushing(false);
@@ -518,7 +519,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
       const ok = await saved('Η εργασία δεν αφαιρέθηκε', checklist.removeByTemplate(createClient(), propertyId, userId, `${TASK_PREFIX}${step.id}`));
       if (ok) {
         setPushedIds(prev => prev.filter(id => id !== step.id));
-        notifyOk('Βγήκε από τις Εργασίες');
+        notifyOk(`Βγήκε από τις ${navLabel('checklist')}`);
       }
     } finally {
       setPushing(false);
@@ -712,8 +713,8 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
         {isNext && !on && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '2px 0 10px' }}>
             {pushedIds.includes(s.id)
-              ? <Btn onClick={() => removeFromTasks(s)} disabled={pushing}>Βγάλ᾽ το από τις Εργασίες</Btn>
-              : <Btn onClick={() => pushToTasks(s)} disabled={pushing}>Πρόσθεσε στις Εργασίες</Btn>}
+              ? <Btn onClick={() => removeFromTasks(s)} disabled={pushing}>Βγάλ’ το από τις {navLabel('checklist')}</Btn>
+              : <Btn onClick={() => pushToTasks(s)} disabled={pushing}>Πρόσθεσε στις {navLabel('checklist')}</Btn>}
           </div>
         )}
         </div>
@@ -1044,8 +1045,8 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
                   <span style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>
                     τον μήνα για {ASSUMED_YEARS} έτη · συνολικοί τόκοι {feAuto(loan.interest)}
                     <InfoHint label="Πάνω σε τι υπολογίζεται η δόση">
-                      Ενδεικτική δόση επισκευαστικού με υποθετικό επιτόκιο {ASSUMED_RATE_PCT}% σε {ASSUMED_YEARS} έτη.
-                      Τα σημερινά επιτόκια και τα έξοδα συγκρίνονται στην καρτέλα Δάνειο.
+                      Ενδεικτική δόση επισκευαστικού με υποθετικό επιτόκιο {fpRate(ASSUMED_RATE_PCT)} σε {ASSUMED_YEARS} έτη.
+                      Τα σημερινά επιτόκια και τα έξοδα συγκρίνονται στην καρτέλα «{navLabel('loan')}».
                     </InfoHint>
                   </span>
                 </div>

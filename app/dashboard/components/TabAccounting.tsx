@@ -9,7 +9,7 @@ import { InfoHint } from './InfoHint'
 import BankImport from './BankImport'
 import E2ReconcileCard from './E2ReconcileCard'
 import { Landmark, Lock, Unlock } from 'lucide-react'
-import { bracketsLabelForYear, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, BUSINESS_INCOME_BRACKETS_2026, CORPORATE_TAX_RATE_2026, ADVANCE_TAX_RATE_SOLE, ADVANCE_TAX_RATE_COMPANY, DIVIDEND_WITHHOLDING_RATE, STR_INDIVIDUAL_MAX_PROPERTIES } from '@/lib/billing/greekTax'
+import { bracketsLabelForYear, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, BUSINESS_INCOME_BRACKETS_2026, NEW_PROFESSIONAL_BRACKETS_2026, CORPORATE_TAX_RATE_2026, ADVANCE_TAX_RATE_SOLE, ADVANCE_TAX_RATE_COMPANY, DIVIDEND_WITHHOLDING_RATE, STR_INDIVIDUAL_MAX_PROPERTIES } from '@/lib/billing/greekTax'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement'
 import { FEATURE_MIN_PLAN, isTabPurchasable, planAtLeast, requiredPlanForTab } from '@/lib/billing/entitlements'
 import { PLANS } from '@/lib/billing/plans'
@@ -277,7 +277,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               ══════════════════════════════════════════════════════════════ */}
           {isCoOwned && (
             <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'6px 0 0', fontFamily: T.font.sans }}>
-              Συνιδιοκτησία {fn(ownPct, 2)}%: κάθε ποσό εδώ είναι το ΔΙΚΟ σου μερίδιο, όχι το σύνολο του ακινήτου. Οι δαπάνες που δήλωσες μοιρασμένες κρατούν το δικό τους ποσοστό.
+              Συνιδιοκτησία {fpRate(ownPct)}: κάθε ποσό εδώ είναι το ΔΙΚΟ σου μερίδιο, όχι το σύνολο του ακινήτου. Οι δαπάνες που δήλωσες μοιρασμένες κρατούν το δικό τους ποσοστό.
             </p>
           )}
         </div>
@@ -640,7 +640,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           <div style={{ display:'flex', flexDirection:'column', gap:6, justifyContent:'center', paddingLeft:14, borderLeft:'1px solid var(--border-subtle)', minWidth:220 }}>
             <Check checked={firstYears} onChange={updateFirstYears} label={<span style={{ fontWeight:500, color:'var(--text-primary)' }}>Νέα επιχείρηση (πρώτη τριετία)</span>} align="start" />
             {/* Κρέμασμα κάτω από την ετικέτα: κουτάκι 17 συν το κενό της σειράς. */}
-            <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5, paddingLeft: 17 + T.sp.sm }}>Τα πρώτα 3 έτη δραστηριότητας: 1ο κλιμάκιο 4,5% (αντί 9%) και προκαταβολή φόρου μειωμένη κατά 50%.</span>
+            <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5, paddingLeft: 17 + T.sp.sm }}>Τα πρώτα 3 έτη δραστηριότητας: 1ο κλιμάκιο {fpRate(NEW_PROFESSIONAL_BRACKETS_2026[0].rate*100)} (αντί {fpRate(BUSINESS_INCOME_BRACKETS_2026[0].rate*100)}) και προκαταβολή φόρου μειωμένη κατά 50%.</span>
           </div>
         </div>
       )}
@@ -786,7 +786,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             <span style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily: T.font.sans }}>
               {st==='unknown'?<>Δεν μπορέσαμε να διαβάσουμε αν η χρήση {year} είναι κλειδωμένη. Δεν εμφανίζεται κουμπί κλειδώματος: αν είναι ήδη κλειδωμένη, ένα νέο κλείδωμα θα έσβηνε το αρχικό στιγμιότυπο. Ανανέωσε τη σελίδα.</>:st==='open'?(isCurrent?<>Χρήση {year} σε εξέλιξη · μήνας {provMonth} από 12.</>:isFuture?<>Η χρήση {year} δεν έχει ξεκινήσει ακόμη.</>:<>Χρήση {year} ολοκληρωμένη, έτοιμη για κλείδωμα.</>):st==='drift'?<>Η χρήση {year} κλειδώθηκε, αλλά τα δεδομένα άλλαξαν έκτοτε.</>:<>Χρήση {year}, κλειδωμένη στις {new Date(closing!.locked_at).toLocaleDateString('el-GR')}.</>}
               <InfoHint>Το κλείδωμα κρατά αμετάβλητο στιγμιότυπο των αριθμών του έτους (χρήσιμο μετά την υποβολή στην ΑΑΔΕ). Αν αργότερα αλλάξεις ενοίκια ή έξοδα, εμφανίζεται προειδοποίηση απόκλισης, χωρίς να χαθεί το αρχικό κλείδωμα.</InfoHint>
-              {lockErr && <span style={{ display:'block', marginTop:4, color:'var(--negative)', fontSize:12 }}>Το κλείδωμα δεν αποθηκεύτηκε: {lockErr}. Έλεγξε ότι έχει εφαρμοστεί το migration book_closings στη βάση.</span>}
+              {lockErr && <span style={{ display:'block', marginTop:4, color:'var(--negative)', fontSize:12 }}>{lockErr}</span>}
               {closingErr && <span style={{ display:'block', marginTop:4, color:'var(--negative)', fontSize:12 }}>{closingErr}</span>}
             </span>
             <div style={{ flex:1 }}/>

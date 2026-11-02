@@ -183,7 +183,7 @@ export function computeObligations(
       id: 'lease_end', source: tenant?.id ? `tenant:${tenant.id}:lease_end` : null,
       date: d, category: 'contract', priority: 'high', who: 'owner',
       title: 'Λήξη σύμβασης μίσθωσης',
-      note: 'Ξεκίνα συζήτηση ανανέωσης ή αναπροσαρμογής ενοικίου ~2 μήνες πριν.',
+      note: 'Ξεκίνα συζήτηση ανανέωσης ή αναπροσαρμογής ενοικίου περίπου δύο μήνες πριν.',
     });
   }
   // Δήλωση μίσθωσης στην ΑΑΔΕ — Η ΔΙΚΗ ΜΑΣ ημερομηνία, από τη δική του υπογραφή.

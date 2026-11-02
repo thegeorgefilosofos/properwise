@@ -25,7 +25,7 @@ export const REFERRAL: Record<string, CopyFn> = {
     return { subject: 'Ο σύνδεσμος πρόσκλησής σου περιμένει', html: emailShell({
       preheader: 'Με κάθε ενεργή σύσταση κερδίζεις κι εσύ.',
       unsubUrl: c.unsubUrl,
-      bodyHtml: eyebrow('Πρόγραμμα πρόσκλησης') + h('Κάποιος θα σε ευγνωμονεί') + greeting(c.name)
+      bodyHtml: eyebrow('Πρόγραμμα πρόσκλησης') + h('Κάποιος θα σου είναι ευγνώμων') + greeting(c.name)
         + p('Οι καλύτερες συστάσεις έρχονται από ανθρώπους που εμπιστευόμαστε. Αν το PROPERWISE σου έκανε τη ζωή πιο εύκολη, ίσως κάνει το ίδιο και σε κάποιον δικό σου.')
         + code
         + button('Στείλε μια πρόσκληση', dash(c))

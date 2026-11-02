@@ -385,7 +385,7 @@ const isTopPlan = (plan: PlanId | string | null | undefined) =>
 export function dailyExhaustedMessage(plan: PlanId | string | null | undefined, canBuy = false): string {
   const l = aiLimitsFor(plan);
   const base = `Έφτασες τις ${l.perDay} ερωτήσεις για σήμερα. Το όριο ανανεώνεται τα μεσάνυχτα.`;
-  if (isTopPlan(plan)) return `${base} Αν το χρειάζεσαι συστηματικά ψηλότερα, γράψε μας· το ρυθμίζουμε.`;
+  if (isTopPlan(plan)) return `${base} Αν χρειάζεσαι σταθερά ψηλότερο όριο, γράψε μας· το ρυθμίζουμε.`;
   return canBuy ? `${base} Με αναβάθμιση παίρνεις περισσότερες κάθε μέρα και μεγαλύτερο μηνιαίο όριο.` : base;
 }
 

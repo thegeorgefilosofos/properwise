@@ -50,7 +50,7 @@ npm run katalogos
 | `voice_entry` | Πες το και καταχωρείται | `supabase/functions/_shared/emailPolicy.ts` |
 | `tip_reports` | Επίσημη αναφορά με ένα κλικ | `supabase/functions/_shared/emailPolicy.ts` |
 | `feedback_week1` | Πώς σου φαίνεται μέχρι τώρα; | `supabase/functions/_shared/emailPolicy.ts` |
-| `recap_week2` | Η πρώτη σου εβδομάδα σε δεδομένα | `supabase/functions/_shared/emailPolicy.ts` |
+| `recap_week2` | Η πρώτη σου εβδομάδα σε αριθμούς | `supabase/functions/_shared/emailPolicy.ts` |
 
 ## ENGAGEMENT
 

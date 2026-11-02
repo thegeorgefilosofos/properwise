@@ -216,7 +216,7 @@ export function leaseAlerts(payments:RentPayment[], tenant:Tenant|null):{text:st
   }
   const unpaid=payments.filter(p=>!p.paid);
   // Μόνο από δύο και πάνω, οπότε ο πληθυντικός είναι πάντα σωστός.
-  if(unpaid.length>=2) alerts.push({text:`${unpaid.length} απλήρωτα ενοίκια.`,level:'critical'});
+  if(unpaid.length>=2) alerts.push({text:`${unpaid.length} απλήρωτα ενοίκια`,level:'critical'});
   return alerts;
 }
 
@@ -338,9 +338,10 @@ export function PaymentBars({ payments }:{payments:RentPayment[]}) {
         {last12.map((p)=>{
           const late=p.days_late||0;
           const L=LATENESS[latenessOf(p)];
+          const says=`${MONTHS_SHORT[p.period_month-1]} ${p.period_year}: ${p.paid?'Εξοφλήθη':'Απλήρωτη'}${late>0?` (καθυστέρηση ${days(late)})`:''}`;
           return (
-            <div key={p.id} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center' }}
-              title={`${MONTHS_SHORT[p.period_month-1]} ${p.period_year}: ${p.paid?'Εξοφλήθη':'Απλήρωτη'}${late>0?` (καθυστέρηση ${days(late)})`:''}`}>
+            <div key={p.id} role="img" aria-label={says} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center' }}
+              title={says}>
               <div style={{ width:'100%', height:p.paid?72:36, background:L.color, borderRadius:'3px 3px 0 0', transition:'height 0.4s ease', display:'flex', justifyContent:'center', paddingTop:4, color:'var(--on-tone)' }}>
                 <L.Icon size={10} strokeWidth={3} aria-hidden="true" />
               </div>

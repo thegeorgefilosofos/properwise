@@ -474,7 +474,7 @@ export function welcomeEmail(c: Ctx & { plan?: Plan }): Out {
 export function planUpgradedEmail(c: Ctx & { plan: Plan | PackageId }): Out | null {
   const pkg = packageOf(c.plan);
   if (!pkg) return null;
-  const name = PACKAGE_NAME[pkg];
+  const name = `«${PACKAGE_NAME[pkg]}»`;
   const body = eyebrow('Αναβάθμιση') + h(`Το πακέτο σου είναι πλέον ${name}`)
     + greeting(c.name)
     + p('Ευχαριστούμε για την εμπιστοσύνη. Τι προσθέτει:')
@@ -490,7 +490,7 @@ export function planDowngradedEmail(c: Ctx & { plan: Plan | PackageId }): Out {
   // ΧΩΡΙΣ ΣΥΝΔΡΟΜΗ ΔΕΝ ΣΗΜΑΙΝΕΙ «ΣΤΑΜΑΤΗΣΕ». Από 25.09.2026 ο λογαριασμός
   // συνεχίζει στο δωρεάν πακέτο «Ιδιοκτήτης» (ένα ακίνητο, τα φορολογικά,
   // σαρώσεις με μηνιαίο όριο, χωρίς Νόα) και δεν διαγράφεται.
-  const title = pkg ? `Το πακέτο σου είναι τώρα ${PACKAGE_NAME[pkg]}` : 'Συνεχίζεις στο δωρεάν πακέτο Ιδιοκτήτης';
+  const title = pkg ? `Το πακέτο σου είναι τώρα «${PACKAGE_NAME[pkg]}»` : 'Συνεχίζεις στο δωρεάν πακέτο «Ιδιοκτήτης»';
   const body = eyebrow('Αλλαγή πακέτου') + h(title)
     + greeting(c.name)
     + p('Καταγράψαμε την αλλαγή. Τα δεδομένα σου μένουν στον λογαριασμό σου.')
@@ -545,7 +545,7 @@ export function referralInviteEmail(c: Ctx): Out {
 /** Upsell δωρεάν → paid, με προαιρετική έκπτωση/εποχή. */
 export function upsellEmail(c: Ctx & { toPlan?: Plan | PackageId; discountPct?: number; discountCode?: string; seasonLabel?: string }): Out {
   const pkg = packageOf(c.toPlan) || 'solo';
-  const name = PACKAGE_NAME[pkg];
+  const name = `«${PACKAGE_NAME[pkg]}»`;
   // ΕΚΠΤΩΣΗ ΧΩΡΙΣ ΚΩΔΙΚΟ ΔΕΝ ΥΠΑΡΧΕΙ. Το ταμείο εφαρμόζει έκπτωση μόνο με
   // κωδικό· ένα ποσοστό χωρίς αυτόν ήταν υπόσχεση που κανένα κουμπί δεν τηρούσε.
   const code = (c.discountCode || '').trim();

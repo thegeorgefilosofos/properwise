@@ -65,7 +65,7 @@ export function BulkImportModal({propertyId,userId,onImported,onClose}:{property
       const cols=table[i]
       if(!cols[0])continue
       const cat=cols[1]||'Λοιπά'; const cond=cols[6]||'Καλή'
-      if(![...INVENTORY_CATEGORIES].includes(cat))errs.push(`Γραμμή ${i+1}: Άγνωστη κατηγορία "${cat}"`)
+      if(![...INVENTORY_CATEGORIES].includes(cat))errs.push(`Γραμμή ${i+1}: Άγνωστη κατηγορία «${cat}»`)
       parsed.push({name:cols[0],category:cat,room:cols[2]||'',brand:cols[3]||'',model:cols[4]||'',serial_number:cols[5]||'',condition:CONDITIONS.find(c=>c.toLocaleLowerCase('el')===cond.toLocaleLowerCase('el'))??'Καλή',purchase_value:parseFloat(cols[7])||0,purchase_date:cols[8]||'',warranty_expiry:cols[9]||'',energy_class:cols[10]||'',power_watts:parseFloat(cols[11])||0,daily_hours_use:parseFloat(cols[12])||0,replacement_cost:parseFloat(cols[13])||0})
     }
     setRows(parsed);setErrors(errs);if(parsed.length>0)setStep('preview')

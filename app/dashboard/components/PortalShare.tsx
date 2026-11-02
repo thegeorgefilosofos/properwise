@@ -15,6 +15,7 @@ import * as portalStore from '@/lib/data/portal';
 import { T, fd, fe, EmptyState, Skeleton, pressable, Btn, InfoBanner } from '@/components/Theme';
 import { notify, notifyOk, notifyError } from '@/components/Toast';
 import { athensToday } from '@/lib/core/time';
+import { parseAmount } from '@/lib/core/greek';
 import { saved, savedData } from '@/components/dbWrite';
 import { failed } from '@/lib/core/dbError';
 import { photosKey, signMaintenancePhotos } from '@/lib/maintenance/photos';
@@ -257,15 +258,15 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
       event_date: today, priority: 'high',
       notes: r.description ? `Αίτημα ενοικιαστή, ${r.description}` : 'Αίτημα ενοικιαστή',
     })]);
-    if (error) { notifyError('Σφάλμα μεταφοράς στο Ημερολόγιο'); return; }
+    if (error) { notifyError('Το αίτημα δεν μπήκε στο Ημερολόγιο'); return; }
     setSynced(prev => new Set(prev).add(r.id));
     if (r.status === 'new') setStatus(r.id, 'in_progress');
-    notifyOk(`«${r.title}» προστέθηκε στο Ημερολόγιο (σήμερα), άλλαξε ημερομηνία από την καρτέλα Ημερολόγιο.`);
+    notifyOk(`«${r.title}» μπήκε στο Ημερολόγιο με σημερινή ημερομηνία. Την αλλάζεις από το Ημερολόγιο.`);
   };
 
   // Cross-tab: ολοκληρωμένο αίτημα ως Δαπάνη (κόστος επισκευής)
   const toExpense = async (r: Req) => {
-    const amt = parseFloat(cost.replace(',', '.'));
+    const amt = parseAmount(cost);
     if (!amt || amt <= 0) { notify('Βάλε έγκυρο ποσό', { tone: 'warning' }); return; }
     const { error } = await expenses.insert(supabase, [expenses.row({ propertyId, userId }, {
       description: `Επισκευή: ${r.title}`, amount: amt,
@@ -273,9 +274,9 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
       date: athensToday(), paid: true,
       notes: r.description ? `Από αίτημα ενοικιαστή, ${r.description}` : 'Από αίτημα ενοικιαστή',
     })]);
-    if (error) { notifyError('Σφάλμα καταχώρησης δαπάνης'); return; }
+    if (error) { notifyError('Η δαπάνη δεν καταχωρήθηκε'); return; }
     setCostFor(null); setCost('');
-    notifyOk(`Δαπάνη ${fe(amt)} καταχωρήθηκε στις Δαπάνες.`);
+    notifyOk(`Η δαπάνη ${fe(amt)} καταχωρήθηκε στις Δαπάνες.`);
   };
 
   const pending = reqs.filter(r => r.status !== 'done');
@@ -321,7 +322,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
             <InfoBanner tone="negative">{linkErr} Ανανέωσε τη σελίδα· ώσπου να διαβαστεί, δεν ξέρουμε αν η πύλη είναι ήδη ενεργή· η ενεργοποίηση μένει κλειστή ώστε να μη χαθεί ο σύνδεσμος που ίσως έχει ήδη ο ενοικιαστής.</InfoBanner>
           ) : !token ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, flex: 1, minWidth: 200 }}>Ενεργοποίησε έναν ασφαλή σύνδεσμο που μπορεί να μοιραστεί ο ενοικιαστής σου, βλέπει ενοίκιο/σύμβαση και στέλνει αιτήματα.</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, flex: 1, minWidth: 200 }}>Ενεργοποίησε έναν ασφαλή σύνδεσμο για τον ενοικιαστή σου: βλέπει ενοίκιο και σύμβαση και στέλνει αιτήματα βλάβης.</div>
               <Btn variant="primary" onClick={enable} disabled={busy}>{busy ? 'Ενεργοποίηση…' : 'Ενεργοποίηση πύλης'}</Btn>
             </div>
           ) : (
@@ -332,7 +333,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
               {staleLink && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
                   <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--warning-on-container)', lineHeight: 1.5, flex: 1, minWidth: 200 }}>
-                    Ο σύνδεσμος ανήκει στον προηγούμενο ενοικιαστή. Έκδωσε νέον για <strong>{tenant?.full_name || 'τον σημερινό ενοικιαστή'}</strong>, ο παλιός παύει αμέσως να ισχύει.
+                    Ο σύνδεσμος ανήκει στον προηγούμενο ενοικιαστή. Έκδωσε νέον για <strong>{tenant?.full_name || 'τον σημερινό ενοικιαστή'}</strong>· ο παλιός παύει αμέσως να ισχύει.
                   </div>
                   {/* Μένει χειροποίητο: το γέμισμα είναι var(--warning) και το Btn έχει μόνο accent, οπότε η προειδοποιητική σήμανση θα χανόταν. */}
                   <button onClick={reissue} disabled={busy} style={{ height: T.h.sm, padding: '0 14px', borderRadius: T.radius.pill, border: 'none', background: 'var(--warning)', color: 'var(--on-tone)', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: busy ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{busy ? 'Έκδοση…' : 'Έκδοση νέου συνδέσμου'}</button>
@@ -341,7 +342,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
               {unboundLink && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
                   <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1, minWidth: 200 }}>
-                    Ο σύνδεσμος δεν είναι δεμένος σε ενοικιαστή, οπότε θα ακολουθεί όποιον μένει κάθε φορά. Δέσ&apos; τον στον <strong>{tenant?.full_name || 'σημερινό ενοικιαστή'}</strong>, ο ίδιος σύνδεσμος συνεχίζει να δουλεύει.
+                    Ο σύνδεσμος δεν είναι δεμένος σε ενοικιαστή, οπότε θα ακολουθεί όποιον μένει κάθε φορά. Δέσ&apos; τον στον <strong>{tenant?.full_name || 'σημερινό ενοικιαστή'}</strong>· ο ίδιος σύνδεσμος συνεχίζει να δουλεύει.
                   </div>
                   <Btn variant="secondary" onClick={bind} disabled={busy}>{busy ? 'Δέσιμο…' : 'Δέσιμο στον ενοικιαστή'}</Btn>
                 </div>

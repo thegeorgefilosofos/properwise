@@ -119,7 +119,7 @@ export default function TenantPortal() {
     if (error) { setPinErr('Δεν φτάσαμε ως τον διακομιστή. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.'); return; }
     if (!d || (d as { locked?: boolean }).locked) {
       const rl = (d as { rate_limited?: boolean } | null)?.rate_limited;
-      setPinErr(rl ? 'Πολλές αποτυχημένες προσπάθειες. Δοκίμασε ξανά σε λίγα λεπτά.' : 'Λάθος κωδικός');
+      setPinErr(rl ? 'Πολλές αποτυχημένες προσπάθειες. Δοκίμασε ξανά σε λίγα λεπτά.' : 'Ο κωδικός δεν ταιριάζει. Έλεγξέ τον και δοκίμασε ξανά.');
       return;
     }
     applyData(d);

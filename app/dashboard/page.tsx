@@ -648,7 +648,7 @@ export default function Dashboard() {
                       <SecHdr label="Σύγκριση ακινήτων"/>
                       {canCompare(properties)
                         ? <TabComparison properties={properties} userId={user.id} onNavigate={(t)=>setNav(t)} profileType={effProfileType}/>
-                        : <p style={{fontSize:'var(--fs-sm)',color:'var(--text-secondary)',fontFamily:T.font.sans,lineHeight:1.55}}>Δεν υπάρχουν δύο ακίνητα ίδιου τύπου για σύγκριση. Η σύγκριση βάζει δίπλα δίπλα ακίνητα της ίδιας αγοράς.</p>}
+                        : <p style={{fontSize:'var(--fs-sm)',color:'var(--text-secondary)',fontFamily:T.font.sans,lineHeight:1.55}}>Δεν υπάρχουν δύο ακίνητα ίδιου τύπου για σύγκριση. Η σύγκριση βάζει δίπλα-δίπλα ακίνητα της ίδιας αγοράς.</p>}
                       {/* Η ΠΡΟΣΚΛΗΣΗ ΜΟΝΟ ΣΕ ΟΠΟΙΟΝ ΜΠΟΡΕΙ ΝΑ ΤΗ ΔΕΧΤΕΙ. Ο ιδιώτης
                           δεν αγοράζει το πακέτο της συγκεντρωτικής εικόνας με
                           κανένα πλάνο του προφίλ του· γι' αυτόν η γραμμή ήταν

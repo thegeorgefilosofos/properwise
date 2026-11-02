@@ -8,7 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { vocative } from '../greekName';
-import { fp, fe, feSigned } from '../core/format';
+import { fp, fpRate, fe, feSigned } from '../core/format';
 import { navLabel } from '../nav/labels';
 import { findAnomalies } from './anomaly';
 import { categoryLabel, resolveCategory } from '../expenses/taxonomy';
@@ -196,7 +196,7 @@ export function computeInsights(input: InsightInput): Insight[] {
     out.push({
       id: 'spend-spike',
       kind: 'attention',
-      title: `${categoryLabel(top.category)}: ${top.overPct}% πάνω από το συνηθισμένο σου`,
+      title: `${categoryLabel(top.category)}: ${fpRate(top.overPct)} πάνω από το συνηθισμένο σου`,
       // ΛΕΕΙ ΑΥΤΟ ΠΟΥ ΚΑΝΕΙ Ο ΚΩΔΙΚΑΣ. Έγραφε «των τελευταίων 4 μηνών», ενώ ο
       // ανιχνευτής παίρνει τους προηγούμενους μήνες ΜΕ δαπάνη στην κατηγορία,
       // χωρίς παράθυρο και χωρίς τους μηδενικούς.

@@ -1,5 +1,5 @@
 import { emailShell, eyebrow, h, p, bullets, button, greeting, note } from '../emailTemplates.ts'
-import { eur } from '../format.ts'
+import { eur, pctRate } from '../format.ts'
 import { dash, esc, has, NOTE, type CopyFn } from './kit.ts'
 
 // ── Φάση 15: Αξία & Εξοικονόμηση (Value) ─────────────────────────────────────
@@ -87,7 +87,7 @@ export const VALUE: Record<string, CopyFn> = {
   yield_boost: (c) => {
     const ref = c.propertyName ? ` του «${esc(c.propertyName)}»` : ' του ακινήτου σου'
     const lead = has(c.occupancy)
-      ? p(`Η πληρότητα${ref} κινείται γύρω στο <b>${esc(String(c.occupancy))}%</b>. Με λίγες στοχευμένες κινήσεις, η απόδοση ανεβαίνει χωρίς μεγάλη επένδυση:`)
+      ? p(`Η πληρότητα${ref} κινείται γύρω στο <b>${pctRate(c.occupancy)}</b>. Με λίγες στοχευμένες κινήσεις, η απόδοση ανεβαίνει χωρίς μεγάλη επένδυση:`)
       : p('Κάθε ακίνητο κρύβει λίγη ακόμη απόδοση, αν ξέρεις πού να κοιτάξεις. Να τρεις πρακτικές ιδέες που πιάνουν τόπο:')
     return { subject: 'Τρεις κινήσεις για μεγαλύτερη απόδοση', html: emailShell({
       preheader: 'Μικρές αλλαγές που ανεβάζουν την απόδοση του ακινήτου σου.', unsubUrl: c.unsubUrl,

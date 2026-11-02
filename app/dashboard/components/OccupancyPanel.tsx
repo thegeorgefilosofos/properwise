@@ -275,7 +275,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
                           λέει, αντί να το κρύβει. */}
                       {tax.levyRegimeAssumed && (
                         <div style={{ ...note, marginTop: 8 }}>
-                          Οι συντελεστές του τέλους άλλαξαν από 1/1/{FIRST_YEAR_CURRENT_LEVY}. Για τη χρήση {year} το ποσό
+                          Οι συντελεστές του τέλους άλλαξαν από 01/01/{FIRST_YEAR_CURRENT_LEVY}. Για τη χρήση {year} το ποσό
                           είναι υπολογισμένο με τους σημερινούς· επιβεβαίωσέ το στην ΑΑΔΕ ή με τον λογιστή σου.
                         </div>
                       )}

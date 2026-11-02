@@ -482,7 +482,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       <td style="font-size:11px">${rEsc(cat?.label||'')}</td>
       <td class="n" style="font-weight:${weight};font-size:12px;white-space:nowrap">${rEsc(whenText(d))}</td></tr>`}).join('')
       :`<tr><td colspan="4" class="empty" style="text-align:center">Καμία εκκρεμότητα.</td></tr>`
-    const html=reportHead('Ημερολόγιο, PROPERWISE')
+    const html=reportHead('Ημερολόγιο ακινήτου')
       + `<body><div class="page">`
       + reportHeader(null, 'Επερχόμενα γεγονότα και προθεσμίες')
       + `

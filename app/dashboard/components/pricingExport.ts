@@ -50,7 +50,7 @@ export function exportPricingWorkbook(inp: PricingExportInput): void {
       { label: 'Βασική τιμή / νύχτα', value: settings.base, z: FMT.eur },
       { label: 'Κατώτατο όριο', value: settings.min || settings.base, z: FMT.eur },
       { label: 'Ανώτατο όριο', value: settings.max || settings.base, z: FMT.eur },
-      { label: 'Premium Σαββατοκύριακου', value: settings.weekendPremiumPct, z: FMT.pct },
+      { label: 'Προσαύξηση Σαββατοκύριακου', value: settings.weekendPremiumPct, z: FMT.pct },
       { label: 'Ελάχιστη διαμονή (νύχτες)', value: settings.minStay, z: FMT.int },
     ];
     const resultLines: Line[] = [

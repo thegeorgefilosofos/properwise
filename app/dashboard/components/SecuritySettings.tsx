@@ -20,6 +20,8 @@ import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/pass
 import PasswordStrength from '@/components/PasswordStrength';
 import PasswordEye from '@/app/PasswordEye';
 import { failed } from '@/lib/core/dbError';
+import { grDate } from '@/lib/core/format';
+import { athensToday, athensTime } from '@/lib/core/time';
 
 // Η γεωμετρία της γραμμής (περιθώρια, περιγράμματα) έρχεται από το SettingsKit
 // και το `.po-settings`. Εδώ μένουν μόνο τα δύο που είναι ειδικά της ασφάλειας.
@@ -271,7 +273,7 @@ export default function SecuritySettings() {
       setConfirmDisable(false);
       void logActivity(supabase, 'mfa_disabled', 'security');
     } catch {
-      setMfaErr('Δεν ήταν δυνατή η απενεργοποίηση. Δοκίμασε ξανά.');
+      setMfaErr('Η επαλήθευση δύο βημάτων δεν απενεργοποιήθηκε. Δοκίμασε ξανά.');
     } finally {
       setMfaBusy(false);
     }
@@ -347,7 +349,7 @@ export default function SecuritySettings() {
   }
 
   const lastSignInText = lastSignIn
-    ? new Date(lastSignIn).toLocaleString('el-GR', { dateStyle: 'medium', timeStyle: 'short' })
+    ? `${grDate(athensToday(new Date(lastSignIn)))}, ${athensTime(new Date(lastSignIn))}`
     : ABSENT_DATE;
 
   return (

@@ -1332,7 +1332,7 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onAnswer, onArchiveOnly, 
   const miss = (k: string) => v.blocking.includes(k) || v.recommended.includes(k)
     || (k === 'period_to' && v.recommended.includes('period_from'));
   const bad = (k: string) => v.invalid.includes(k) || (k === 'period_to' && v.invalid.includes('period_from'));
-  const mark = (labelText: string, k: string) => `${labelText}${bad(k) ? ' • άκυρο' : miss(k) ? ' • λείπει' : ''}`;
+  const mark = (labelText: string, k: string) => `${labelText}${bad(k) ? ' · άκυρο' : miss(k) ? ' · λείπει' : ''}`;
   // ΣΤΟΝ ΕΝΦΙΑ ΤΟ ΠΟΣΟ ΠΟΥ ΓΙΝΕΤΑΙ ΔΑΠΑΝΗ ΕΙΝΑΙ ΑΥΤΟΥ ΤΟΥ ΑΚΙΝΗΤΟΥ. Η κάρτα
   // διόρθωνε το σύνολο του εκκαθαριστικού, που δεν γράφεται ποτέ ως δαπάνη· ο
   // ΕΝΦΙΑ χωρίς ποσό ακινήτου έμενε μόνο στον Φάκελο χωρίς καμία εξήγηση.

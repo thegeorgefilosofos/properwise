@@ -224,7 +224,7 @@ export function PropertyRow({ row, index, known, onToggle, onPatch, rowId, force
     ? { tone: 'positive', text: 'Υπάρχει ήδη', tip: `Είναι το «${target?.name ?? ''}» (ίδιος ΑΤΑΚ). Συμπληρώνονται μόνο τα κενά του πεδία.` }
     : row.match.status === 'maybe'
       ? { tone: 'warning', text: 'Ίσως υπάρχει', tip: `Ίδια διεύθυνση με το «${target?.name ?? ''}», που δεν έχει ΑΤΑΚ. Πες μας αν είναι το ίδιο ακίνητο.` }
-      : row.overPlan && !row.include ? { tone: 'neutral', text: 'Εκτός πακέτου', tip: 'Δεν χωρά στο πακέτο σου. Τσέκαρέ το αν ξετσεκάρεις άλλο.' }
+      : row.overPlan && !row.include ? { tone: 'neutral', text: 'Εκτός πακέτου', tip: 'Δεν χωρά στο πακέτο σου. Για να το επιλέξεις, αφαίρεσε την επιλογή από άλλο.' }
       : { tone: 'accent', text: 'Νέο' };
   const pct = toNumber(row.pct);
   const meta = [

@@ -212,9 +212,9 @@ export default function NotificationSettings({ userId }: { userId: string }) {
               </div>
             )}
             <SetGroup>Πόσο πριν</SetGroup>
-            <SetRow title="Επτά ημέρες πριν" desc="Εβδομαδιαία προειδοποίηση."
+            <SetRow title="Επτά ημέρες πριν" desc="Προειδοποίηση μία εβδομάδα νωρίτερα."
               control={<Toggle on={prefs.reminder_7days} onChange={v => update({ reminder_7days: v })} />} />
-            <SetRow title="Τρεις ημέρες πριν" desc="Τριήμερη προειδοποίηση."
+            <SetRow title="Τρεις ημέρες πριν" desc="Προειδοποίηση τρεις ημέρες νωρίτερα."
               control={<Toggle on={prefs.reminder_3days} onChange={v => update({ reminder_3days: v })} />} />
             <SetRow title="Την προηγούμενη ημέρα" desc="Υπενθύμιση αύριο το πρωί."
               control={<Toggle on={prefs.reminder_1day} onChange={v => update({ reminder_1day: v })} />} />

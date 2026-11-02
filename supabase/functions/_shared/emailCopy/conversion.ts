@@ -13,9 +13,9 @@ export const CONVERSION: Record<string, CopyFn> = {
     // ΧΩΡΙΣ «ΩΡΕΣ ΠΟΥ ΚΕΡΔΙΣΕΣ». Καμία συνάρτηση δεν τις μετρά· ήταν στατιστικό
     // χωρίς πηγή που περίμενε να γεμίσει. Μένει μόνο ό,τι καταγράφηκε.
     const money = has(c.collected) ? p(`Παράλληλα, οργάνωσε <b>${eur(c.collected)}</b> σε εισπράξεις χωρίς να χαθεί τίποτα στη διαδρομή.`) : '';
-    const fallback = !has(c.collected) ? p('Κάθε αυτόματη υπενθύμιση, κάθε έτοιμη αναφορά και κάθε καταχώρηση που δεν χρειάστηκε να κάνεις με το χέρι, είναι χρόνος που κέρδισες.') : '';
+    const fallback = !has(c.collected) ? p('Κάθε αυτόματη υπενθύμιση, κάθε έτοιμη αναφορά και κάθε καταχώρηση που δεν χρειάστηκε να κάνεις με το χέρι είναι χρόνος που κέρδισες.') : '';
     return { subject: 'Πόσο σου απέδωσε το PROPERWISE', html: emailShell({
-      preheader: 'Ο χρόνος που κέρδισες, σε δεδομένα.', unsubUrl: c.unsubUrl,
+      preheader: 'Ο χρόνος που κέρδισες, σε αριθμούς.', unsubUrl: c.unsubUrl,
       hero: has(c.collected) ? heroStat(eur(c.collected), 'οργανωμένες εισπράξεις') : '',
       bodyHtml: eyebrow('Η αξία σου') + h('Ας δούμε τι κέρδισες') + greeting(c.name)
         + money + fallback
@@ -33,7 +33,7 @@ export const CONVERSION: Record<string, CopyFn> = {
       bodyHtml: eyebrow('Σύγκριση πακέτων') + h('Ας βρούμε το σωστό πακέτο για σένα') + greeting(c.name)
         + p(`${use}Αξίζει να δεις τι προσφέρει κάθε πακέτο σε σχέση με το πώς χρησιμοποιείς σήμερα το PROPERWISE.`)
         + bullets([
-            'Ιδιοκτήτης: δωρεάν, 1 ακίνητο με τα φορολογικά, υπενθυμίσεις και αναφορές PDF με QR επαλήθευσης.',
+            'Ιδιοκτήτης: χωρίς συνδρομή, 1 ακίνητο με τα φορολογικά, υπενθυμίσεις και αναφορές PDF με QR επαλήθευσης.',
             `${PACKAGE_NAME.solo}: ο ίδιος, με τη Νόα και σάρωση χωρίς όριο.`,
             `${PACKAGE_NAME.owner}: έως ${PACKAGE_MAX_PROPERTIES.owner} ακίνητα και σύγκριση ακινήτων.`,
             `${PACKAGE_NAME.agency}: έως ${PACKAGE_MAX_PROPERTIES.agency} ακίνητα, αναφορές με την επωνυμία σου, κατανομή σε συνιδιοκτήτες.`,

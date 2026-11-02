@@ -66,7 +66,7 @@ export default class TabBoundary extends Component<Props, State> {
           </div>
           <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 14 }}>
             Οι υπόλοιπες ενότητες λειτουργούν κανονικά και τα δεδομένα σου είναι ασφαλή.
-            Δοκίμασε ξανά, ή συνέχισε από το μενού.
+            Δοκίμασε ξανά ή συνέχισε από το μενού.
           </div>
 
           {/* Το μήνυμα ορατό και αντιγράψιμο: αλλιώς η αναφορά του προβλήματος

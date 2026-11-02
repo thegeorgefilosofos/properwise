@@ -211,7 +211,7 @@ export default function SpitiMouPanel({
         {status.acceptsApplications && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: FONT, marginLeft: 'auto' }}>Προθεσμία {deadlineStr}</span>}
       </div>
       <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.6, fontFamily: FONT }}>
-        Επιτρέπεται αίτηση σε <strong style={{ color: 'var(--text-secondary)' }}>μία μόνο τράπεζα</strong>, οπότε επίλεξε προσεκτικά με βάση το συνολικό κόστος. Ενδεικτικά στοιχεία, επιβεβαίωσε την επιλεξιμότητα στην{' '}
+        Επιτρέπεται αίτηση σε <strong style={{ color: 'var(--text-secondary)' }}>μία μόνο τράπεζα</strong>, οπότε επίλεξε προσεκτικά με βάση το συνολικό κόστος. Τα στοιχεία είναι ενδεικτικά· επιβεβαίωσε την επιλεξιμότητα στην{' '}
         <a href="https://www.gov.gr/ipiresies/periousia-kai-phorologia/akinhta/elegkhos-epile3imotetas-programmatos-spiti-mou-ii" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}>επίσημη πύλη</a>.
         {onOpenCalculator && <> Συμπλήρωσε ηλικία, εισόδημα και στοιχεία ακινήτου στον <LinkBtn onClick={onOpenCalculator}>Υπολογιστή</LinkBtn> για ακριβέστερο έλεγχο.</>}
       </p>

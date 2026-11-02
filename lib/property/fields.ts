@@ -42,6 +42,7 @@
 import type { PropertyStatus } from './status';
 import { FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '../billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '../billing/presumptive';
+import { COMMERCIAL_STAMP_DUTY } from '../billing/commercialLease';
 import { fpRate, grDateOf } from '../core/format';
 
 // Η ημερομηνία και το ποσοστό του κανόνα της τραπεζικής είσπραξης, από τον
@@ -171,7 +172,7 @@ export const TENANT_FIELDS: readonly FieldRule[] = [
   // ΤΟ ΟΝΟΜΑ ΕΛΕΓΕ ΤΙΣ ΔΥΟ ΕΠΙΛΟΓΕΣ ΠΟΥ ΕΓΡΑΦΑΝ ΑΠΟ ΚΑΤΩ ΤΑ ΚΟΥΜΠΙΑ. Ετικέτα
   // «Κατοικία ή επαγγελματική», κουμπιά «Κατοικία» και «Επαγγελματική»: η ίδια
   // πληροφορία δύο φορές, σε απόσταση είκοσι εικονοστοιχείων.
-  { id: 'tenant.lease_category', label: 'Είδος μίσθωσης', why: 'Στην επαγγελματική μίσθωση οφείλεται Ψηφιακό Τέλος Συναλλαγής 3,6% επί του μισθώματος. Στην κατοικία δεν οφείλεται.', when: isLong, critical: true },
+  { id: 'tenant.lease_category', label: 'Είδος μίσθωσης', why: `Στην επαγγελματική μίσθωση οφείλεται Ψηφιακό Τέλος Συναλλαγής ${fpRate(COMMERCIAL_STAMP_DUTY * 100)} επί του μισθώματος. Στην κατοικία δεν οφείλεται.`, when: isLong, critical: true },
   { id: 'tenant.lease_type', label: 'Διάρκεια', why: 'Από τη διάρκεια βγαίνει η λήξη. Στην κατοικία ισχύει τριετής ελάχιστη προστασία ακόμη κι αν συμφωνήσετε λιγότερο.', when: isLong },
   { id: 'tenant.lease_start', label: 'Έναρξη μίσθωσης', why: 'Από εδώ βγαίνει η προθεσμία δήλωσης του μισθωτηρίου στο myAADE: έως το τέλος του επόμενου μήνα από την έναρξη.', when: isLong, critical: true },
   // Ε2 στήλη 19 (οδηγία 9, Φ-01.002/Έκδοση 2026): ανά μίσθωση, όχι ανά ακίνητο.

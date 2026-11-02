@@ -37,7 +37,8 @@ import { bracketsLabelForYear } from '@/lib/billing/greekTax';
 import { asOfLine } from '@/lib/facts/prices';
 import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 import { PRESUMPTIVE_RULE } from '@/lib/billing/consolidate';
-import { T, feAuto, Card, Btn } from '@/components/Theme';
+import { T, feAuto, fn, Card, Btn } from '@/components/Theme';
+import { fpRate } from '@/lib/core/format';
 // Η ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ ΕΙΝΑΙ ΔΙΚΗ ΤΗΣ ΔΙΑΔΡΟΜΗ ΚΑΙ ΚΟΥΒΑΛΟΥΣΕ ΚΙ ΕΚΕΙΝΗ ΤΑ
 // 2,5 MB: ο λογιστής ανοίγει έναν σύνδεσμο, κοιτάζει και συνήθως δεν κατεβάζει
 // τίποτα. Η πρόσοψη φορτώνει τη βιβλιοθήκη με το πάτημα.
@@ -294,7 +295,7 @@ export default function AccountantPortal() {
             </Card>
             )}
 
-            {lines.map(x => {
+            {lines.map((x, i) => {
               const quiet = x.income === 0 && x.expenses === 0;
               const byCategory = Object.entries((x.p.expenses || []).reduce<Record<string, number>>((m, e) => {
                 const k = e.category || 'Χωρίς κατηγορία';
@@ -306,12 +307,12 @@ export default function AccountantPortal() {
               const ident = [
                 x.p.address,
                 x.p.atak ? `ΑΤΑΚ ${x.p.atak}` : null,
-                Number(x.p.sqm) > 0 ? `${x.p.sqm} τ.μ.` : null,
-                Number(x.p.ownership) > 0 && Number(x.p.ownership) < 100 ? `συνιδιοκτησία ${x.p.ownership}%` : null,
+                Number(x.p.sqm) > 0 ? `${fn(Number(x.p.sqm), Number.isInteger(Number(x.p.sqm)) ? 0 : 2)} τ.μ.` : null,
+                Number(x.p.ownership) > 0 && Number(x.p.ownership) < 100 ? `συνιδιοκτησία ${fpRate(Number(x.p.ownership))}` : null,
               ].filter(Boolean).join(' · ');
 
               return (
-                <Card key={x.p.name}>
+                <Card key={`${i}-${x.p.name}`}>
                   <div style={{ fontSize: 16, fontWeight: 700 }}>{x.p.name}</div>
                   {ident && (
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4, fontFamily: T.font.sans }}>{ident}</div>

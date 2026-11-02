@@ -127,9 +127,9 @@ const BASE: PowerInput = { kwh: 300, period: 'month', nightPct: 0, ebill: true, 
   // Φωτοβολταϊκό: το ποσό υπάρχει, η προϋπόθεση όχι.
   ok('ΣΤ. το VNM μένει εκτός σειράς με ποσό', by('heron_ena')?.unranked === 'conditional' && by('heron_ena')?.rank === null && by('heron_ena')?.monthly !== null)
   // Πακέτο χωρίς δημοσιευμένο όριο.
-  ok('ΣΤ. το ZeΝergy S δεν έχει δημοσιευμένο όριο', by('zen_zenergy_s')?.unranked === 'no-allowance' && by('zen_zenergy_s')?.monthly === null)
-  // ZeΝergy XS: όριο 2.000 kWh τον χρόνο, χωρίς τιμή υπέρβασης. 300 × 12 = 3.600 > 2.100.
-  ok('ΣΤ. το ZeΝergy XS ξεπερνιέται στις 300 τον μήνα', by('zen_zenergy_xs')?.unranked === 'over-allowance' && by('zen_zenergy_xs')?.monthly === null)
+  ok('ΣΤ. το ZeNergy S δεν έχει δημοσιευμένο όριο', by('zen_zenergy_s')?.unranked === 'no-allowance' && by('zen_zenergy_s')?.monthly === null)
+  // ZeNergy XS: όριο 2.000 kWh τον χρόνο, χωρίς τιμή υπέρβασης. 300 × 12 = 3.600 > 2.100.
+  ok('ΣΤ. το ZeNergy XS ξεπερνιέται στις 300 τον μήνα', by('zen_zenergy_xs')?.unranked === 'over-allowance' && by('zen_zenergy_xs')?.monthly === null)
   // 150 × 12 = 1.800 < 2.100: μέσα στο όριο, το ποσό βγαίνει. 49,00 × 1,06 = 51,94.
   // Η τιμή του όμως είναι Αυγούστου (δεν υπάρχει στον πίνακα της ΡΑΑΕΥ του
   // Οκτωβρίου), οπότε μένει χωρίς θέση με το ποσό του.

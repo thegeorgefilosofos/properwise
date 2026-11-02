@@ -8,7 +8,7 @@
 // τόκους + έξοδα + υποχρεωτικές ασφάλειες, ώστε να συγκρίνονται προσφορές.
 // ═══════════════════════════════════════════════════════════════════════════
 import { annuityMonthly } from './recommend'
-import { fe } from '../core/format'
+import { fe, fn, fp, fpRate } from '../core/format'
 import { roundHalfUp } from '../core/money';
 
 export interface EsisFee { label: string; amount: number }
@@ -99,12 +99,12 @@ export function analyzeEsis(input: EsisInput, opts?: { benchmarkAprc?: number })
   // ΣΕΠΠΕ έναντι ονομαστικού: πόσο προσθέτουν έξοδα και ασφάλειες.
   if (aprcGapPct >= 0.6) {
     score -= 22
-    flags.push({ kind: 'bad', label: 'Μεγάλη απόκλιση ΣΕΠΠΕ από το ονομαστικό', detail: `Το ΣΕΠΠΕ (${aprc}%) είναι ${aprcGapPct} μονάδες πάνω από το ονομαστικό (${nominal}%). Τα έξοδα και οι ασφάλειες βαραίνουν σημαντικά το πραγματικό κόστος.` })
+    flags.push({ kind: 'bad', label: 'Μεγάλη απόκλιση ΣΕΠΠΕ από το ονομαστικό', detail: `Το ΣΕΠΠΕ (${fp(aprc)}) είναι ${fn(aprcGapPct, 2)} ποσοστιαίες μονάδες πάνω από το ονομαστικό (${fpRate(nominal)}). Τα έξοδα και οι ασφάλειες βαραίνουν σημαντικά το πραγματικό κόστος.` })
   } else if (aprcGapPct >= 0.3) {
     score -= 10
-    flags.push({ kind: 'warn', label: 'Έξοδα και ασφάλειες ανεβάζουν το κόστος', detail: `Το ΣΕΠΠΕ (${aprc}%) υπερβαίνει το ονομαστικό (${nominal}%) κατά ${aprcGapPct} μονάδες.` })
+    flags.push({ kind: 'warn', label: 'Έξοδα και ασφάλειες ανεβάζουν το κόστος', detail: `Το ΣΕΠΠΕ (${fp(aprc)}) υπερβαίνει το ονομαστικό (${fpRate(nominal)}) κατά ${fn(aprcGapPct, 2)} ποσοστιαίες μονάδες.` })
   } else if (nominal > 0) {
-    flags.push({ kind: 'info', label: 'Διαφανές κόστος', detail: `Το ΣΕΠΠΕ (${aprc}%) είναι κοντά στο ονομαστικό (${nominal}%).` })
+    flags.push({ kind: 'info', label: 'Διαφανές κόστος', detail: `Το ΣΕΠΠΕ (${fp(aprc)}) είναι κοντά στο ονομαστικό (${fpRate(nominal)}).` })
   }
 
   // Δείκτης αγοράς.
@@ -113,10 +113,10 @@ export function analyzeEsis(input: EsisInput, opts?: { benchmarkAprc?: number })
       flags.push({ kind: 'info', label: 'Ανταγωνιστικό επιτόκιο', detail: `Το ΣΕΠΠΕ είναι στα επίπεδα της αγοράς${vsMarketPct <= -0.1 ? ' ή καλύτερο' : ''}.` })
     } else if (vsMarketPct <= 0.6) {
       score -= 12
-      flags.push({ kind: 'warn', label: 'Πάνω από την αγορά', detail: `Το ΣΕΠΠΕ είναι ${vsMarketPct} μονάδες πάνω από τον δείκτη αγοράς. Ζήτησε βελτίωση ή σύγκρινε άλλη τράπεζα.` })
+      flags.push({ kind: 'warn', label: 'Πάνω από την αγορά', detail: `Το ΣΕΠΠΕ είναι ${fn(vsMarketPct, 2)} ποσοστιαίες μονάδες πάνω από τον δείκτη αγοράς. Ζήτησε βελτίωση ή σύγκρινε άλλη τράπεζα.` })
     } else {
       score -= 25
-      flags.push({ kind: 'bad', label: 'Ακριβότερο της αγοράς', detail: `Το ΣΕΠΠΕ είναι ${vsMarketPct} μονάδες πάνω από τον δείκτη αγοράς.` })
+      flags.push({ kind: 'bad', label: 'Ακριβότερο της αγοράς', detail: `Το ΣΕΠΠΕ είναι ${fn(vsMarketPct, 2)} ποσοστιαίες μονάδες πάνω από τον δείκτη αγοράς.` })
     }
   }
 
@@ -124,7 +124,7 @@ export function analyzeEsis(input: EsisInput, opts?: { benchmarkAprc?: number })
   const feePct = amount > 0 ? (totalFees / amount) * 100 : 0
   if (feePct >= 1) {
     score -= 12
-    flags.push({ kind: 'warn', label: 'Υψηλά αρχικά έξοδα', detail: `Έξοδα ${fe(totalFees)} (${Math.round(feePct * 10) / 10}% του δανείου). Πολλά διαπραγματεύονται ή απαλείφονται.` })
+    flags.push({ kind: 'warn', label: 'Υψηλά αρχικά έξοδα', detail: `Έξοδα ${fe(totalFees)} (${fp(feePct)} του δανείου). Πολλά διαπραγματεύονται ή απαλείφονται.` })
   } else if (totalFees > 0) {
     flags.push({ kind: 'info', label: 'Αρχικά έξοδα', detail: `Συνολικά έξοδα ${fe(totalFees)}. Ζήτησε αναλυτική παράθεση και έκπτωση.` })
   }

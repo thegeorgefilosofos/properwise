@@ -1,6 +1,6 @@
 'use client'
 import { navLabel } from '@/lib/nav/labels';
-import { fp, fe } from '@/lib/core/format'
+import { fp, fe, fpRate, grDate } from '@/lib/core/format'
 import { ABSENT } from '@/components/tokens'
 import { programDateLabel } from '@/lib/loans/programStatus'
 import { spitiMouOpen } from '@/lib/loans/recommend'
@@ -293,7 +293,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                     </div>
                     <div style={{display:'flex',alignItems:'baseline',gap:8,minWidth:0}}>
                       <span style={{fontSize:14,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600,lineHeight:1,whiteSpace:'nowrap',flexShrink:0}}>{myM!==null?fmtEur(myM):fe(0)}</span>
-                      <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}}>{myM!==null?'δόση':'χωρίς δημοσιευμένο επιτόκιο'}{myM!==null&&bank.max_ltv?` · έως ${bank.max_ltv}%`:''}</span>
+                      <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}}>{myM!==null?'δόση':'χωρίς δημοσιευμένο επιτόκιο'}{myM!==null&&bank.max_ltv?` · έως ${fpRate(bank.max_ltv)}`:''}</span>
                     </div>
                   </div>
                 </button>
@@ -326,7 +326,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                         ιστότοπος δεν είναι δελτίο της. */}
                     <p style={{fontSize:12,color:'var(--text-tertiary)',marginTop: 4,fontFamily: T.font.sans}}>
                       {isOfficialSource(bank.id, bank.source_url)
-                        ? <><a href={bank.source_url} target="_blank" rel="noreferrer" style={{color:'var(--accent)',textDecoration:'none',fontWeight:500}}>Δελτίο επιτοκίων της τράπεζας</a>{bank.source_doc_date ? ` · ισχύς ${bank.source_doc_date.split('-').reverse().join('/')}` : ' · χωρίς ημερομηνία δελτίου'}</>
+                        ? <><a href={bank.source_url} target="_blank" rel="noreferrer" style={{color:'var(--accent)',textDecoration:'none',fontWeight:500}}>Δελτίο επιτοκίων της τράπεζας</a>{bank.source_doc_date ? ` · ισχύς ${grDate(bank.source_doc_date)}` : ' · χωρίς ημερομηνία δελτίου'}</>
                         : 'Δεν βρέθηκε επίσημο δελτίο επιτοκίων'}
                     </p>
                   </div>

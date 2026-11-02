@@ -10,7 +10,13 @@ import { EXOIKONOMO_2025, ANAVATHMIZO, openEnergyPrograms, joinGreek } from '@/l
 import { athensToday, athensParts } from '@/lib/core/time'
 import { fn, feWhole, fpRate, grDateOf } from '@/lib/core/format'
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/renovation39b'
-import { firstHomeExemption } from '@/lib/accounting/transfer'
+import { firstHomeExemption, TRANSFER_TAX_RATE, TRANSFER_TAX_MAIN_RATE, MUNICIPAL_SURCHARGE_RATE, NEW_BUILD_VAT_RATE, NEW_BUILD_VAT_SUSPENDED_UNTIL, FIRST_HOME_EXEMPTION_SINGLE, FIRST_HOME_EXEMPTION_MARRIED } from '@/lib/accounting/transfer'
+import { COMMERCIAL_STAMP_DUTY } from '@/lib/billing/commercialLease'
+import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive'
+
+// Οι συντελεστές στα κείμενα βγαίνουν από τις σταθερές του νόμου, όχι με το χέρι.
+const XFER_PARTS = `${fpRate(TRANSFER_TAX_MAIN_RATE*100)} συν ${fpRate(MUNICIPAL_SURCHARGE_RATE*100)} υπέρ ΟΤΑ επί του φόρου`
+const XFER_TOTAL = fpRate(TRANSFER_TAX_RATE*100)
 import { ANAK_NAME, ANAK_FUND, ANAK_KYA, ANAK_RATES_TEXT, ANAK_CAP_TEXT, ANAK_CAP, ANAK_MAX_SQM, ANAK_MAX_SQM_LARGE_FAMILY, ANAK_PERMIT_BY, ANAK_ENERGY_CLASS, ANAK_YEARS, ANAK_PCT_I, ANAK_ELIGIBILITY_CLOSED_TO, ANAK_ELIGIBILITY_OPEN_TO, ANAK_OBLIGATION_TEXT, ANAK_STATUS_TEXT, ANAK_HREF } from '@/lib/accounting/anakainisi2026'
 
 export type LoanType = 'purchase'|'first_home'|'renovation'|'energy'|'investment'|'auction'|'construction'|'commercial'|'land'|'refinance'
@@ -238,7 +244,7 @@ export const STATE_PROGRAMS = [
   // κανείς. Ακόμη και η ανώτατη ηλικία της εξειδίκευσης των μέτρων μπαίνει
   // μόνο ως κείμενο κριτηρίου, ώσπου να βγει ΚΥΑ.
   { id:'spiti_mou_3', name:SPITI_MOU_3.name, status:'upcoming', type:'Ανακοινώθηκε, χωρίς επίσημους όρους', desc:spitiMou3Line(), max_amount:null, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:null, age_max:null, duration:'Δεν έχει οριστεί', deadline:`Έναρξη ${SPITI_MOU_3.startLabel}, κατά την ΕΑΤ`, verified_at:SPITI_MOU_3.checkedAt, total_budget:`${fn(SPITI_MOU_3.budgetEur / 1e9)} δισ. ευρώ, κατά την ΕΑΤ`, criteria:[`Ανώτατη ηλικία ${SPITI_MOU_3.ageMax} ετών, κατά την κυβερνητική εξειδίκευση των μέτρων της ΔΕΘ`,'Τα υπόλοιπα κριτήρια δεν έχουν δημοσιευτεί σε επίσημο κείμενο','Δεν έχει οριστεί ποια ακίνητα είναι επιλέξιμα','Καμία τράπεζα δεν συμμετέχει ακόμη'], how_it_works:'Θα γίνει γνωστό μόνο με την ΚΥΑ και τον οδηγό του προγράμματος. Όρια εισοδήματος, αξίας ή δανείου που διαβάζεις σε δημοσιεύματα δεν είναι όροι του προγράμματος.', extra:`Τι έχει ειπωθεί, όχι ακόμη επίσημο: ${spitiMou3ReportedLines().join(' ')} ${spitiMou3ReportedCaveat()} Το προηγούμενο πρόγραμμα έκλεισε για νέες αιτήσεις στις ${programDateLabel(SPITI_MOU.applicationDeadline)}. Μη στηρίξεις απόφαση αγοράς σε όρους του νέου πριν δημοσιευτούν.`, savings_example:'Δεν υπάρχει παράδειγμα: οι όροι δεν έχουν ανακοινωθεί', url:SPITI_MOU_3.sources.hdb, guide:'/odigos/spiti-mou-3-ti-allazei', banks:['Δεν έχουν οριστεί'] },
-  { id:'anavathmizo', name:'Αναβαθμίζω το Σπίτι μου',  type:'Κρατικό, Δάνειο ενεργειακής αναβάθμισης', desc:'Δάνειο 5.000€ έως 25.000€, άτοκο για τον δανειολήπτη: το 75% από το Ταμείο Ανάκαμψης χωρίς τόκο και το 25% από την τράπεζα με πλήρη επιδότηση των τόκων από το Δημόσιο', max_amount:25000, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:18, age_max:null, duration:'3–7 χρόνια', application_deadline:programDateLabel(ANAVATHMIZO.applicationDeadline), deadline:programDateLabel(ANAVATHMIZO.deadline),  total_budget:'80 εκ. ευρώ', criteria:['ΠΕΑ πριν και μετά','Αναβάθμιση ≥3 ενεργειακές κατηγορίες','Εξοικονόμηση >30%'], how_it_works:'Δάνειο για ενεργειακές παρεμβάσεις, ένα ακίνητο ανά ΑΦΜ, χωρίς εισοδηματικά κριτήρια', extra:'Αυξημένη επιδότηση για ΑμεΑ, τρίτεκνους και πολύτεκνους. Οι αιτήσεις υπαγωγής έκλεισαν στις 31/05/2026· η 31/08/2026 αφορά μόνο την υπογραφή σύμβασης για όσους έχουν ήδη έγκριση', savings_example:'Μηδενικό κόστος δανεισμού και χαμηλότεροι λογαριασμοί ενέργειας', url:'https://greece20.gov.gr/home-loans/', banks:['Εθνική','Alpha','Eurobank','Πειραιώς','CrediaBank'] },
+  { id:'anavathmizo', name:'Αναβαθμίζω το Σπίτι μου',  type:'Κρατικό, δάνειο ενεργειακής αναβάθμισης', desc:'Δάνειο 5.000€ έως 25.000€, άτοκο για τον δανειολήπτη: το 75% από το Ταμείο Ανάκαμψης χωρίς τόκο και το 25% από την τράπεζα με πλήρη επιδότηση των τόκων από το Δημόσιο', max_amount:25000, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:18, age_max:null, duration:'3–7 χρόνια', application_deadline:programDateLabel(ANAVATHMIZO.applicationDeadline), deadline:programDateLabel(ANAVATHMIZO.deadline),  total_budget:'80 εκ. ευρώ', criteria:['ΠΕΑ πριν και μετά','Αναβάθμιση ≥3 ενεργειακές κατηγορίες','Εξοικονόμηση >30%'], how_it_works:'Δάνειο για ενεργειακές παρεμβάσεις, ένα ακίνητο ανά ΑΦΜ, χωρίς εισοδηματικά κριτήρια', extra:'Αυξημένη επιδότηση για ΑμεΑ, τρίτεκνους και πολύτεκνους. Οι αιτήσεις υπαγωγής έκλεισαν στις 31/05/2026· η 31/08/2026 αφορά μόνο την υπογραφή σύμβασης για όσους έχουν ήδη έγκριση', savings_example:'Μηδενικό κόστος δανεισμού και χαμηλότεροι λογαριασμοί ενέργειας', url:'https://greece20.gov.gr/home-loans/', banks:['Εθνική','Alpha','Eurobank','Πειραιώς','CrediaBank'] },
   { id:'exoikonomo_2025', name:'Εξοικονομώ 2025',  type:'Επιδότηση ενεργειακής αναβάθμισης', desc:'Δεν δέχεται νέες αιτήσεις. Οι παρατάσεις που ανακοίνωσε το υπουργείο αφορούν την ολοκλήρωση των έργων όσων έχουν ήδη ενταχθεί, όχι νέες αιτήσεις· επιβεβαίωσε στο exoikonomo2025.gov.gr', max_amount:null, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:18, age_max:null, duration:'Εφάπαξ', deadline:`Έληξε ${programDateLabel(EXOIKONOMO_2025.deadline)}`,  verified_at:'2026-07-08', total_budget:'Ταμείο Ανάκαμψης ΕΕ', criteria:['Εξοικονόμηση >30%','Αναβάθμιση ≥3 κατηγορίες','ΠΕΑ πριν και μετά'], how_it_works:'Επιδότηση κουφωμάτων, μόνωσης, θέρμανσης, φωτοβολταϊκών', extra:'Ειδικά κίνητρα για ΑμεΑ, τρίτεκνους, πολύτεκνους, νέους', savings_example:'Μείωση λογαριασμών + επιδότηση κόστους', url:'https://exoikonomo2025.gov.gr/', banks:['Εθνική','Alpha','Eurobank','Πειραιώς'] },
   { id:'exoikonomo_2026', name:'Εξοικονομώ 2026', status:'upcoming', type:'Επερχόμενο, χωρίς επίσημο οδηγό', desc:'Νέος κύκλος ενεργειακής αναβάθμισης που έχει αναφερθεί δημόσια. Δεν έχει δημοσιευτεί οδηγός ούτε ημερομηνία αιτήσεων.', max_amount:null, max_prop_value:null, max_ltv:null, max_sqm:null, age_min:null, age_max:null, duration:'Δεν έχει οριστεί', deadline:'Χωρίς ημερομηνία έναρξης', total_budget:'Δεν έχει δημοσιευτεί', criteria:['Δεν έχουν δημοσιευτεί κριτήρια'], how_it_works:'Θα γίνει γνωστό μόνο με τον επίσημο οδηγό του προγράμματος. Ποσοστά επιδότησης και προϋπολογισμοί που κυκλοφορούν δεν είναι όροι του προγράμματος.', extra:'Μη δεσμευτείς ακόμη. Τους όρους τους ανακοινώνει το Υπουργείο Περιβάλλοντος και Ενέργειας.', savings_example:'Δεν υπάρχει παράδειγμα: οι όροι δεν έχουν ανακοινωθεί', url:'https://ypen.gov.gr/', banks:['Δεν έχουν οριστεί'] },
   // Έγραφε «40% επιδότηση + εγγυημένο ενοίκιο ΟΠΕΚΑ, έως 15.000€, Τρέχον»: το
@@ -451,14 +457,14 @@ export const LOAN_TYPES: Record<LoanType,{label:string;desc:string;rate_from:num
     {name:'Δήλωση στοιχείων ακινήτων (Ε9)', where:'ΑΑΔΕ'},
     {name:'Συμβόλαιο ή προσύμφωνο αγοραπωλησίας', where:'Συμβολαιογράφος'},
     {name:'Αριθμός Ταυτότητας Ακινήτου (ΑΤΑΚ)', where:'ΑΑΔΕ, Ε9'},
-  ], tax_note:'Φόρος μεταβίβασης 3% συν 3% υπέρ ΟΤΑ επί του φόρου, δηλαδή 3,09% συνολικά, επί της μεγαλύτερης μεταξύ τιμήματος και αντικειμενικής αξίας. Απαλλαγή πρώτης κατοικίας εφόσον πληρούνται οι όροι'},
+  ], tax_note:`Φόρος μεταβίβασης ${XFER_PARTS}, δηλαδή ${XFER_TOTAL} συνολικά, επί της μεγαλύτερης μεταξύ τιμήματος και αντικειμενικής αξίας. Απαλλαγή πρώτης κατοικίας εφόσον πληρούνται οι όροι`},
   first_home:   {label:'Πρώτη κατοικία',        desc:'Αγορά πρώτης και κύριας κατοικίας',     ...PURCHASE_RATES, typical_ltv:90, notes:`Το «Σπίτι μου ΙΙ» έκλεισε για νέες αιτήσεις στις ${programDateLabel(SPITI_MOU.applicationDeadline)}`, docs:[
     {name:'Δελτίο ταυτότητας ή διαβατήριο'},
     {name:'Εκκαθαριστικά σημειώματα δύο τελευταίων ετών', where:'ΑΑΔΕ'},
     {name:'Αποδεικτικά εισοδήματος ή μισθοδοσίας', where:'Εργοδότης, ΑΑΔΕ'},
     {name:'Υπεύθυνη δήλωση πρώτης κατοικίας', where:'gov.gr'},
     {name:'Μηδενική δήλωση ακινήτων (Ε9): αποδεικνύει μη κατοχή κατοικίας', where:'ΑΑΔΕ'},
-  ], tax_note:'Απαλλαγή φόρου μεταβίβασης: άγαμος έως 200.000€ και έγγαμος έως 250.000€ (ΑΑΔΕ 2026)'},
+  ], tax_note:`Απαλλαγή φόρου μεταβίβασης: άγαμος έως ${feWhole(FIRST_HOME_EXEMPTION_SINGLE)} και έγγαμος έως ${feWhole(FIRST_HOME_EXEMPTION_MARRIED)} (ΑΑΔΕ 2026)`},
   renovation:   {label:'Ανακαίνιση',            desc:'Χρηματοδότηση ανακαίνισης',             rate_from:3.00, rate_to:4.50, typical_ltv:70, notes:'Χωρίς εγγύηση σε μικρά ποσά', docs:[
     {name:'Δελτίο ταυτότητας ή διαβατήριο'},
     {name:'Εκκαθαριστικό σημείωμα', where:'ΑΑΔΕ'},
@@ -482,32 +488,32 @@ export const LOAN_TYPES: Record<LoanType,{label:string;desc:string;rate_from:num
     {name:'Τίτλοι ιδιοκτησίας', where:'Κτηματολόγιο'},
     // Η κλίμακα δεν γράφεται ξανά εδώ: έρχεται από τη μοναδική πηγή (greekTax).
     // Και η έκπτωση 5% ΔΕΝ είναι «αυτόματη» — από 1.7.2027 (ν.5222/2025) θέλει τραπεζική είσπραξη.
-  ], tax_note:`${RENTAL_TAX_SUMMARY_2026} Τεκμαρτή έκπτωση 5%· από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν.5222/2025) θα προϋποθέτει είσπραξη μέσω τράπεζας. Οι τόκοι δανείου δεν εκπίπτουν για φυσικό πρόσωπο.`},
+  ], tax_note:`${RENTAL_TAX_SUMMARY_2026} Τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)}· από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν.5222/2025) θα προϋποθέτει είσπραξη μέσω τράπεζας. Οι τόκοι δανείου δεν εκπίπτουν για φυσικό πρόσωπο.`},
   auction:      {label:'Πλειστηριασμός',         desc:'Αγορά σε ηλεκτρονικό πλειστηριασμό',   rate_from:2.80, rate_to:4.00, typical_ltv:70, notes:'Έλεγξε βάρη, γρήγορη εκταμίευση', docs:[
     {name:'Δελτίο ταυτότητας ή διαβατήριο'},
     {name:'Φορολογικά στοιχεία εισοδήματος', where:'ΑΑΔΕ'},
     {name:'Απόσπασμα κατασχετήριας έκθεσης πλειστηριασμού', where:'eauction.gr'},
     {name:'Νομικός έλεγχος τίτλων και βαρών', where:'Δικηγόρος'},
-  ], tax_note:'Φόρος μεταβίβασης 3,09% (3% συν 3% υπέρ ΟΤΑ επί του φόρου). Έλεγξε βάρη και δεσμεύσεις στο Κτηματολόγιο'},
+  ], tax_note:`Φόρος μεταβίβασης ${XFER_TOTAL} (${XFER_PARTS}). Έλεγξε βάρη και δεσμεύσεις στο Κτηματολόγιο`},
   construction: {label:'Ανέγερση κατοικίας',    desc:'Χρηματοδότηση κατασκευής',             rate_from:3.00, rate_to:4.50, typical_ltv:75, notes:'Εκταμίευση σε φάσεις', docs:[
     {name:'Οικοδομική άδεια (άδεια δόμησης)', where:'Πολεοδομία'},
     {name:'Εγκεκριμένα αρχιτεκτονικά σχέδια', where:'Μηχανικός'},
     {name:'Σύμβαση με εργολάβο ή ανάδοχο'},
     {name:'Δελτίο ταυτότητας ή διαβατήριο'},
     {name:'Τίτλος ιδιοκτησίας οικοπέδου', where:'Κτηματολόγιο'},
-  ], tax_note:'ΦΠΑ 24% για νεόδμητα (άδεια μετά το 2006), σε αναστολή έως 31/12/2026: ισχύει ο φόρος μεταβίβασης'},
+  ], tax_note:`ΦΠΑ ${fpRate(NEW_BUILD_VAT_RATE*100)} για νεόδμητα (άδεια μετά το 2006), σε αναστολή έως ${NEW_BUILD_VAT_SUSPENDED_UNTIL}: ισχύει ο φόρος μεταβίβασης`},
   commercial:   {label:'Επαγγελματικό ακίνητο', desc:'Γραφεία, καταστήματα, αποθήκες',       rate_from:3.50, rate_to:5.00, typical_ltv:65, notes:'Οι τόκοι εκπίπτουν φορολογικά', docs:[
     {name:'Καταστατικό εταιρείας ή δελτίο ταυτότητας'},
     {name:'Ισολογισμοί τριών τελευταίων ετών', where:'Λογιστήριο'},
     {name:'Φορολογική και ασφαλιστική ενημερότητα', where:'ΑΑΔΕ, ΕΦΚΑ'},
     {name:'Τίτλος ιδιοκτησίας', where:'Κτηματολόγιο'},
-  ], tax_note:'Ψηφιακό Τέλος Συναλλαγής 3,6% στις επαγγελματικές μισθώσεις'},
+  ], tax_note:`Ψηφιακό Τέλος Συναλλαγής ${fpRate(COMMERCIAL_STAMP_DUTY*100)} στις επαγγελματικές μισθώσεις`},
   land:         {label:'Αγορά οικοπέδου',        desc:'Αγορά οικοπέδου ή αγροτεμαχίου',      rate_from:3.50, rate_to:5.00, typical_ltv:60, notes:'Χαμηλότερο δάνειο προς αξία', docs:[
     {name:'Δελτίο ταυτότητας ή διαβατήριο'},
     {name:'Φορολογικά στοιχεία εισοδήματος', where:'ΑΑΔΕ'},
     {name:'Τοπογραφικό διάγραμμα', where:'Μηχανικός'},
     {name:'Βεβαίωση αρτιότητας και οικοδομησιμότητας', where:'Πολεοδομία'},
-  ], tax_note:'Φόρος μεταβίβασης 3,09% (3% συν 3% υπέρ ΟΤΑ επί του φόρου). Έλεγξε τη χρήση γης και τις εκτός σχεδίου διατάξεις'},
+  ], tax_note:`Φόρος μεταβίβασης ${XFER_TOTAL} (${XFER_PARTS}). Έλεγξε τη χρήση γης και τις εκτός σχεδίου διατάξεις`},
   refinance:    {label:'Αναχρηματοδότηση',       desc:'Μεταφορά δανείου σε άλλη τράπεζα',     rate_from:2.40, rate_to:4.90, typical_ltv:80, notes:'Εξοικονόμηση από χαμηλότερο επιτόκιο', docs:[
     {name:'Δελτίο ταυτότητας ή διαβατήριο'},
     {name:'Φορολογικά στοιχεία εισοδήματος', where:'ΑΑΔΕ'},
@@ -552,7 +558,7 @@ export const BORROWER_PROFILES: Record<BorrowerType,{label:string;income_ratio:n
   family:      {label:'Οικογένεια/Πολύτεκνη', income_ratio:0.40, notes:'Συν-δανειολήπτες', special:'', tax_benefits:'Υψηλότερα όρια απαλλαγής ΦΜΑ'},
   senior:      {label:'50+ ετών',              income_ratio:0.30, notes:'Μέγιστη ηλικία 75', special:'Ηλικία+χρόνια ≤75', tax_benefits:'Κανονικοί συντελεστές'},
   military:    {label:'Ένοπλες Δυνάμεις',      income_ratio:0.40, notes:'Σταθερό εισόδημα, ευνοϊκή αξιολόγηση', special:'ΑΟΟΑ και Ταμείο Παρακαταθηκών και Δανείων', tax_benefits:'Έλεγξε τα προγράμματα του ΑΟΟΑ πριν την τράπεζα'},
-  abroad:      {label:'Κάτοικος Εξωτερικού',   income_ratio:0.35, notes:'Επιπλέον έγγραφα', special:'Δάνειο προς αξία ≤70%', tax_benefits:'Εξαρτάται από χώρα'},
+  abroad:      {label:'Κάτοικος εξωτερικού',   income_ratio:0.35, notes:'Επιπλέον έγγραφα', special:'Δάνειο προς αξία ≤70%', tax_benefits:'Εξαρτάται από χώρα'},
 }
 
 // Γλωσσάρι σε σωστά ελληνικά — ο ελληνικός όρος πρώτα, η διεθνής ονομασία μόνο
@@ -565,7 +571,7 @@ export const GLOSSARY: {term:string;def:string;level:'basic'|'advanced'}[] = [
   {term:'Περιθώριο τράπεζας',                     def:'Το σταθερό ποσοστό που προσθέτει η τράπεζα πάνω από το Euribor στα κυμαινόμενα δάνεια, για όλη τη διάρκεια.', level:'basic'},
   {term:'Euribor',                                def:'Το βασικό διατραπεζικό επιτόκιο αναφοράς της ευρωζώνης. Στα κυμαινόμενα δάνεια το επιτόκιο διαμορφώνεται ως Euribor συν το περιθώριο της τράπεζας.', level:'basic'},
   {term:'Πιστοποιητικό Ενεργειακής Απόδοσης',     def:'Κατατάσσει ενεργειακά το ακίνητο, από Α+ (η υψηλότερη κατηγορία) έως Η. Απαιτείται για τη μεταβίβαση και για τα ενεργειακά προγράμματα.', level:'basic'},
-  {term:'Φόρος Μεταβίβασης Ακινήτων',             def:'Φόρος 3% συν 3% υπέρ ΟΤΑ επί του φόρου, δηλαδή 3,09% συνολικά, επί της μεγαλύτερης μεταξύ τιμήματος και αντικειμενικής αξίας. Βαρύνει τον αγοραστή. Προβλέπεται απαλλαγή πρώτης κατοικίας εντός ορίων.', level:'basic'},
+  {term:'Φόρος Μεταβίβασης Ακινήτων',             def:`Φόρος ${XFER_PARTS}, δηλαδή ${XFER_TOTAL} συνολικά, επί της μεγαλύτερης μεταξύ τιμήματος και αντικειμενικής αξίας. Βαρύνει τον αγοραστή. Προβλέπεται απαλλαγή πρώτης κατοικίας εντός ορίων.`, level:'basic'},
   {term:'Τειρεσίας',                              def:'Το σύστημα καταγραφής αθετήσεων πληρωμών. Οι τράπεζες τον ελέγχουν πριν εγκρίνουν το δάνειο.', level:'basic'},
   {term:'Αριθμός Ταυτότητας Ακινήτου',            def:'Ο μοναδικός κωδικός κάθε ακινήτου στο Κτηματολόγιο και την ΑΑΔΕ.', level:'advanced'},
   {term:'Σημείο απόσβεσης',                       def:'Οι μήνες που χρειάζονται ώστε η μηνιαία εξοικονόμηση από μια αναχρηματοδότηση να καλύψει τα έξοδα μεταφοράς του δανείου.', level:'advanced'},
