@@ -297,8 +297,8 @@ export default function AccountantPortal() {
                    ένας «φόρος 0,00€» είναι υπολογισμός πάνω στο τίποτα, με το
                    κύρος του αριθμού. */
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '10px 0 0', lineHeight: 1.7 }}>
-                  Καμία καταχώρηση εσόδου ή δαπάνης για τη χρήση {year}, άρα κανένας υπολογισμός.
-                  Αν περίμενες κινήσεις, η χρονιά αλλάζει από πάνω.
+                  Καμία καταχώρηση εσόδου ή δαπάνης για τη χρήση {year}.
+                  Αν περίμενες κινήσεις, άλλαξε χρονιά από πάνω.
                 </p>
               )}
             </Card>
@@ -379,7 +379,7 @@ export default function AccountantPortal() {
             {props.length === 0 && (
               <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13, padding: '26px 20px', lineHeight: 1.7 }}>
                 <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Κανένα ακίνητο για τη χρήση {year}</div>
-                Η χρονιά αλλάζει από πάνω.
+                Άλλαξε χρονιά από πάνω.
               </div>
             )}
 

@@ -32,7 +32,7 @@ export function LoanAdvisor({
   'otherHover' | 'setOtherHover' | 'profile'
 >) {
   return (
-    <LensPanel title="Το δάνειό σου" subtitle={`Βάσει ${fmtEur(LA)} / ${Y} χρόνια · από τον υπολογιστή`}>
+    <LensPanel title="Το δάνειό σου" subtitle={`Βάσει ${fmtEur(LA)} · ${Y} χρόνια · από τον υπολογιστή`}>
       <LoanDocScan
         banks={BANKS}
         euribor={market.euribor_3m || MARKET_FALLBACK.euribor_3m}

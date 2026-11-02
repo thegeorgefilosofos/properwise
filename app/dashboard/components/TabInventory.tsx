@@ -1040,7 +1040,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
               // αξία» έβγαινε μία λέξη ανά γραμμή στα 320 (26/10/2026). Η αναφορά
               // και η εξαγωγή (inventory/exports.tsx) κρατούν τον πλήρη όρο.
               ...(invSummary.totalOriginal>0?[{label:'Αξία σήμερα (εκτίμηση)',value:fe(totalValue),
-                sub:`από ${fe(invSummary.totalOriginal)} αξία αγοράς, μένει το ${fpRate(Math.max(0,100-invSummary.avgDepreciatedPct))}${undatedCount>0?` · ${undatedCount} ${undatedCount===1?'αντικείμενο χωρίς ημερομηνία μετρά':'αντικείμενα χωρίς ημερομηνία μετρούν'} με την τιμή αγοράς`:''}`}]:[]),
+                sub:`το ${fpRate(Math.max(0,100-invSummary.avgDepreciatedPct))} των ${fe(invSummary.totalOriginal)} αγοράς${undatedCount>0?` · ${undatedCount} χωρίς ημερομηνία, στην τιμή αγοράς`:''}`}]:[]),
               ...(electricItems.length>0?[kwhPrice>0
                 ? {label:'Ρεύμα ανά μήνα',value:fe(monthlyCost),sub:`${fn(monthlyKwh,1)} κιλοβατώρες, στα ${feRate(kwhPrice)} ανά κιλοβατώρα`}
                 : {label:'Ρεύμα ανά μήνα',value:`${fn(monthlyKwh,1)} kWh`,sub:'δήλωσε τιμή ανά κιλοβατώρα για κόστος'}]:[]),

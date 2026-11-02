@@ -377,7 +377,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
             <div className="tile-row" style={{ marginBottom: 16 }}>
               {statTile(tot.unresolved > 0 ? 'Ακαθάριστα, ενδεικτικά' : 'Δηλωτέα ακαθάριστα', fe(tot.revenue))}
               {statTile('Τέλος ανθεκτικότητας', tot.climateLevy > 0 ? fe(tot.climateLevy) : fe(0), { title: 'Εισπράχθηκε από τους επισκέπτες για λογαριασμό του κράτους. Δεν είναι έσοδό σου.' })}
-              {statTile('Προμήθειες πλατφορμών', tot.platformFees > 0 ? fe(tot.platformFees) : fe(0), { title: 'Δαπάνη που εκπίπτει. ΔΕΝ μειώνει το δηλωτέο έσοδο.' })}
+              {statTile('Προμήθειες πλατφορμών', tot.platformFees > 0 ? fe(tot.platformFees) : fe(0), { title: 'Δαπάνη που εκπίπτει. Δεν μειώνει το δηλωτέο έσοδο.' })}
               {/* ΤΟ ΠΟΣΟΣΤΟ ΠΕΡΝΑ ΑΠΟ ΤΟΝ ΜΟΡΦΟΠΟΙΗΤΗ. Γραφόταν `${occ.pct}%`,
                   δηλαδή ο ωμός αριθμός με τελεία: «87.5%» ακριβώς δίπλα σε
                   «1.234,56€» της ίδιας γραμμής — δύο συστήματα αρίθμησης σε
@@ -386,13 +386,13 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                 'Πληρότητα',
                 occ.availableDays > 0 ? fp(occ.pct) : 'Χωρίς κρατήσεις',
                 { title: occ.openFromMonth != null
-                    ? `${occ.bookedNights} νύχτες σε ${occ.availableDays} διαθέσιμες ημέρες, από ${MONTHS_ACC[occ.openFromMonth]} έως ${MONTHS_ACC[occ.openToMonth!]} ${reportYear}, όχι σε 365${occ.overbooked ? '. Οι νύχτες ξεπερνούν τις διαθέσιμες ημέρες: κάπου δύο κρατήσεις πέφτουν στην ίδια νύχτα.' : ''}`
+                    ? `${occ.bookedNights} νύχτες σε ${occ.availableDays} διαθέσιμες ημέρες, από ${MONTHS_ACC[occ.openFromMonth]} έως ${MONTHS_ACC[occ.openToMonth!]} ${reportYear}${occ.overbooked ? '. Οι νύχτες ξεπερνούν τις διαθέσιμες ημέρες: κάπου δύο κρατήσεις πέφτουν στην ίδια νύχτα.' : ''}`
                     : 'Χωρίς κρατήσεις' },
               )}
               {occ.peak && statTile(
                 'Πληρότητα υψηλής περιόδου',
                 fp(occ.peak.pct),
-                { title: `Από ${MONTHS_ACC[occ.peak.fromMonth]} έως ${MONTHS_ACC[occ.peak.toMonth]}: ${occ.peak.bookedNights} νύχτες σε ${occ.peak.days} ημέρες. Η περίοδος βγαίνει από ΤΑ ΔΙΚΑ ΣΟΥ δεδομένα, δεν την αποφασίσαμε εμείς.` },
+                { title: `Από ${MONTHS_ACC[occ.peak.fromMonth]} έως ${MONTHS_ACC[occ.peak.toMonth]}: ${occ.peak.bookedNights} νύχτες σε ${occ.peak.days} ημέρες. Η περίοδος προκύπτει από τις δικές σου κρατήσεις.` },
               )}
             </div>
 

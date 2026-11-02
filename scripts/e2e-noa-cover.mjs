@@ -29,8 +29,11 @@
 //      πενήντα χιλιάδων.
 //   4. Μόνο κορυφή και τέλος. Το κουμπί ξαναφαίνεται με την πρώτη κύλιση
 //      προς τα πάνω, δηλαδή σε ΟΠΟΙΑΔΗΠΟΤΕ θέση: εκεί σκέπαζε τον φάκελο.
-// ΤΩΡΑ: στο τηλέφωνο το κουμπί κάθεται μέσα στην κάτω πλοήγηση και ο κανόνας
-// είναι μηδέν — καμία τομή, με κείμενο Ή με χειριστήριο, σε κορυφή, μέση και
+// ΤΩΡΑ: στο τηλέφωνο η στήλη του περιεχομένου τελειώνει πάνω από το κουμπί
+// (globals.css, --fab-lane). Το κουμπί κρύβεται όσο κυλάς προς τα κάτω και
+// ξαναβγαίνει μόλις σταματήσεις. Μετριέται ΣΕ ΗΡΕΜΙΑ, ορατό: ο έλεγχος
+// περιμένει να γυρίσει και, αν δεν γυρίσει, αυτό είναι σφάλμα. Ο κανόνας είναι
+// μηδέν — καμία τομή, με κείμενο Ή με χειριστήριο, σε κορυφή, μέση και
 // τέλος, σε 360 · 375 · 390 · 430. Η καστάνια εμβαδού μένει όπως ήταν, στα
 // ίδια τρία πλάτη, για το κείμενο του πρώτου κάδρου· τα χειριστήρια κάτω από
 // το κουμπί σε ταμπλέτα και υπολογιστή τυπώνονται χωρίς να μπλοκάρουν.
@@ -62,11 +65,14 @@ const PROBE = (where) => {
   // ΑΠΟΣΥΡΜΕΝΟ ΣΤΗΝ ΚΥΛΙΣΗ (data-away, αόρατο): δεν σκεπάζει τίποτα.
   if (getComputedStyle(fab.closest('.pa-fab-wrap') || fab).opacity === '0') return { hits: [], controls: [] }
   const f = fab.getBoundingClientRect()
-  // Ο,ΤΙ ΠΕΡΝΑ ΠΙΣΩ ΑΠΟ ΤΗΝ ΚΑΤΩ ΠΛΟΗΓΗΣΗ ΔΕΝ ΦΑΙΝΕΤΑΙ ΟΥΤΩΣ Η ΑΛΛΩΣ: το
-  // περιεχόμενο κόβεται στην πάνω ακμή της πριν μετρηθεί η τομή.
+  // Ο,ΤΙ ΠΕΡΝΑ ΠΙΣΩ ΑΠΟ ΤΗΝ ΚΑΤΩ ΠΛΟΗΓΗΣΗ Ή ΚΑΤΩ ΑΠΟ ΤΗΝ ΑΚΜΗ ΤΗΣ ΣΤΗΛΗΣ ΔΕΝ
+  // ΦΑΙΝΕΤΑΙ ΟΥΤΩΣ Η ΑΛΛΩΣ: το περιεχόμενο κόβεται εκεί πριν μετρηθεί η τομή.
   const nav = document.querySelector('.bottom-nav')
   const navTop = nav && nav.checkVisibility?.() ? nav.getBoundingClientRect().top : Infinity
-  const cut = (r) => ({ left: r.left, right: r.right, top: r.top, bottom: Math.min(r.bottom, navTop) })
+  const col = document.querySelector('.app-content')
+  const colBottom = col ? col.getBoundingClientRect().bottom : Infinity
+  const clip = Math.min(navTop, colBottom)
+  const cut = (r) => ({ left: r.left, right: r.right, top: r.top, bottom: Math.min(r.bottom, clip) })
   const meet = (r) => {
     const w = Math.min(r.right, f.right) - Math.max(r.left, f.left)
     const h = Math.min(r.bottom, f.bottom) - Math.max(r.top, f.top)
@@ -124,18 +130,29 @@ const swept = await sweep(browser, {
     if (top.withdrawn) return { withdrawn: true }
     if (top.missing) return { missing: true }
     const scrollTo = (k) => page.evaluate((k) => { const c = document.querySelector('.app-content'); if (c) c.scrollTop = Math.round((c.scrollHeight - c.clientHeight) * k) }, k)
-    // Η ΜΕΣΗ ΤΗΣ ΚΥΛΙΣΗΣ, ΜΟΝΟ ΣΤΟ ΤΗΛΕΦΩΝΟ. Εκεί το κουμπί μένει πάντα
-    // ορατό (μέσα στην πλοήγηση)· στον υπολογιστή αποσύρεται όσο κυλάς.
+    // ΣΤΟ ΤΗΛΕΦΩΝΟ ΜΕΤΡΙΕΤΑΙ ΣΕ ΗΡΕΜΙΑ. Μετά την κύλιση το κουμπί κρύβεται και
+    // γυρίζει μόλις σταματήσει η κίνηση· ο έλεγχος περιμένει να ξαναφανεί
+    // ΟΛΟΚΛΗΡΟ (χωρίς data-away, αδιαφάνεια 1). Αν μετρούσε ενώ είναι κρυμμένο
+    // θα έβγαινε πάντα πράσινος. Αν δεν γυρίσει, είναι σφάλμα. Στον υπολογιστή
+    // μένει κρυμμένο ώς την κίνηση προς τα πάνω, οπότε εκεί δεν περιμένει.
+    // Πρώτα 150 χιλιοστά ώστε να φτάσει το γεγονός κύλισης: αλλιώς η αναμονή
+    // βλέπει το κουμπί ορατό ΠΡΙΝ φύγει και μετρά πάνω στη στιγμή που φεύγει.
+    const atRest = () => page.waitForTimeout(150).then(() => page.waitForFunction(() => {
+      const w = document.querySelector('.pa-fab-wrap')
+      return w && !w.dataset.away && getComputedStyle(w).opacity === '1'
+    }, null, { timeout: 4000 })).then(() => true, () => false)
     const mids = []
+    const stuck = []
     if (width <= PHONE_MAX) for (const k of [1 / 3, 2 / 3]) {
-      await scrollTo(k); await page.waitForTimeout(150)
+      await scrollTo(k)
+      if (!(await atRest())) { stuck.push('μέση'); continue }
       mids.push(await page.evaluate(PROBE, 'μέση'))
     }
     await scrollTo(1)
-    await page.waitForTimeout(150)
+    if (width <= PHONE_MAX) { if (!(await atRest())) stuck.push('τέλος') } else await page.waitForTimeout(150)
     const end = await page.evaluate(PROBE, 'τέλος')
     const all = [top, ...mids, end]
-    return { hits: all.flatMap(r => r.hits || []), controls: all.flatMap(r => r.controls || []) }
+    return { hits: all.flatMap(r => r.hits || []), controls: all.flatMap(r => r.controls || []), stuck }
   },
   onError: (e) => ({ broke: String(e.message).slice(0, 60) }),
 })
@@ -144,6 +161,7 @@ await browser.close()
 const scenes = swept.length
 const withdrawn = swept.filter(r => r.value.withdrawn).length
 const missing = swept.filter(r => r.value.missing).length
+const stuck = swept.flatMap(({ scene, width, value }) => (value.stuck || []).map(w => `${scene}@${width}  ${w}: το κουμπί δεν ξαναφάνηκε σε ηρεμία`))
 const findings = swept.flatMap(({ scene, width, value }) =>
   value.broke ? [`${scene}@${width}  δεν φόρτωσε: ${value.broke}`]
               : (value.hits || []).map(h => `${scene}@${width}  ${h}`))
@@ -160,8 +178,9 @@ if (missing) { console.error(`✗ σε ${missing} σκηνές δεν αποδό
 // ΤΡΕΙΣ ΚΑΝΟΝΕΣ ΜΗΔΕΝ ΚΑΙ ΜΙΑ ΚΑΣΤΑΝΙΑ.
 //   · Στο τέλος της κύλισης υπάρχει περιθώριο ακριβώς για το κουμπί: καμία
 //     τομή, σε κανένα πλάτος.
-//   · Στο τηλέφωνο το κουμπί κάθεται μέσα στην πλοήγηση: καμία τομή, ούτε με
-//     κείμενο ούτε με χειριστήριο, σε καμία θέση.
+//   · Στο τηλέφωνο η στήλη τελειώνει πάνω από το κουμπί: σε ηρεμία καμία
+//     τομή, ούτε με κείμενο ούτε με χειριστήριο, σε καμία θέση· και το κουμπί
+//     ΠΡΕΠΕΙ να ξαναφαίνεται όταν σταματά η κύλιση.
 //   · Στο πρώτο κάδρο του υπολογιστή ένα πλωτό κουμπί σε γωνία κάθεται εξ
 //     ορισμού πάνω σε ό,τι φτάνει στη γωνία· εκεί μετριέται και ΔΕΝ επιτρέπεται
 //     να χειροτερέψει (καστάνια, scripts/noa-cover-baseline.json). Πρώτη
@@ -188,14 +207,14 @@ const topArea = atTop.reduce((n, f) => { const m = f.match(/(\d+)×(\d+)$/); ret
 // μένει η ίδια όσο κι αν αλλάξει η βάση με τον καιρό.
 const TOLERANCE = 0.01
 const areaCeiling = Math.round(BASE.maxTopArea * (1 + TOLERANCE))
-if (atEnd.length || onPhone.length || controls.length || broken.length || topArea > areaCeiling) {
-  console.error(`\n✗ Το κουμπί της Νόας: ${atEnd.length} τομές στο τέλος της κύλισης (όριο 0), ${onPhone.length} τομές με κείμενο στο τηλέφωνο (όριο 0), ${controls.length} χειριστήρια από κάτω του (όριο 0), ${topArea} px² κρυμμένα στο πρώτο κάδρο σε ${atTop.length} σημεία (όριο ${BASE.maxTopArea} px² + 1% ανοχή = ${areaCeiling}), ${broken.length} σκηνές δεν φόρτωσαν:\n`)
-  for (const f of [...findings, ...controls]) console.error('  ' + f)
+if (stuck.length || atEnd.length || onPhone.length || controls.length || broken.length || topArea > areaCeiling) {
+  console.error(`\n✗ Το κουμπί της Νόας: ${stuck.length} θέσεις όπου δεν ξαναφάνηκε σε ηρεμία (όριο 0), ${atEnd.length} τομές στο τέλος της κύλισης (όριο 0), ${onPhone.length} τομές με κείμενο στο τηλέφωνο (όριο 0), ${controls.length} χειριστήρια από κάτω του (όριο 0), ${topArea} px² κρυμμένα στο πρώτο κάδρο σε ${atTop.length} σημεία (όριο ${BASE.maxTopArea} px² + 1% ανοχή = ${areaCeiling}), ${broken.length} σκηνές δεν φόρτωσαν:\n`)
+  for (const f of [...stuck, ...findings, ...controls]) console.error('  ' + f)
   console.error(`
   Στο τέλος της κύλισης δεν επιτρέπεται τομή: το .app-content κρατά περιθώριο
-  ακριβώς γι' αυτό. Στο τηλέφωνο (≤${PHONE_MAX}) το κουμπί κάθεται μέσα στην
-  κάτω πλοήγηση (--nav-h, data-fab-side): αν βρέθηκε πάνω σε περιεχόμενο, κάτι
-  το έβγαλε από εκεί. Στο πρώτο κάδρο ο αριθμός μόνο κατεβαίνει: αν ανέβηκε, κάτι μεγάλωσε
+  ακριβώς γι' αυτό. Στο τηλέφωνο (≤${PHONE_MAX}) η στήλη τελειώνει πάνω από
+  το κουμπί (--fab-lane): αν βρέθηκε πάνω σε περιεχόμενο, κάτι έβγαλε το
+  κουμπί από τη λωρίδα του ή κάτι πλέει μέσα της. Στο πρώτο κάδρο ο αριθμός μόνο κατεβαίνει: αν ανέβηκε, κάτι μεγάλωσε
   το κουμπί ή έφερε κείμενο στη γωνία.`)
   process.exit(1)
 }
@@ -204,4 +223,4 @@ if (deskControls.length) {
   for (const f of deskControls) console.log('     ' + f)
 }
 if (topArea < BASE.maxTopArea) console.log(`   ↓ Πρώτο κάδρο: ${topArea} px² < όριο ${BASE.maxTopArea}. Κατέβασε το "maxTopArea" στο scripts/noa-cover-baseline.json με μέτρηση του CI.`)
-console.log(`✅ Το κουμπί της Νόας δεν σκεπάζει τίποτα στο τηλέφωνο (${PHONES.join(' · ')}: κορυφή, μέση, τέλος), σε ${scenes - withdrawn} σκηνές (${withdrawn} με ανοιχτό παράθυρο, όπου αποσύρεται επίτηδες).`)
+console.log(`✅ Το κουμπί της Νόας δεν σκεπάζει τίποτα στο τηλέφωνο σε ηρεμία (${PHONES.join(' · ')}: κορυφή, μέση, τέλος), σε ${scenes - withdrawn} σκηνές (${withdrawn} με ανοιχτό παράθυρο, όπου αποσύρεται επίτηδες).`)

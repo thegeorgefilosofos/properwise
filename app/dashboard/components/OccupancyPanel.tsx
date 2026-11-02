@@ -146,7 +146,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
           `Πληρότητα και βραχυχρόνια${occ.availableDays > 0 ? `, ${fp(occ.pct)}` : ''}`, open)}>
         <div style={{ minWidth: 0 }}>
           <div style={label}>Πληρότητα και βραχυχρόνια</div>
-          <div className="po-subline" style={note}>Από τις καταγεγραμμένες κρατήσεις σου, όχι από πληκτρολόγηση</div>
+          <div className="po-subline" style={note}>Από τις κρατήσεις που έχεις καταγράψει</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {/* Η ΠΛΗΡΟΤΗΤΑ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ, ΕΔΩ. Ηταν και σήμα και πλακίδιο, δύο

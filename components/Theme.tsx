@@ -515,19 +515,19 @@ export function SecHdr({ label, sub, info, right }: { label: string; sub?: strin
     // Η κεφαλίδα χρησιμοποιείται σε δεκάδες σημεία, οπότε ο κανόνας γράφεται
     // εδώ μία φορά: όταν τα δύο δεν χωρούν στην ίδια σειρά, η ενέργεια παίρνει
     // δική της από κάτω. Σε φαρδιά οθόνη δεν αλλάζει τίποτα, γιατί χωρούν.
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, rowGap: 8, flexWrap: 'wrap', marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
+    <div className="sec-hdr" style={{ display: 'flex', alignItems: 'center', gap: 10, rowGap: 8, flexWrap: 'wrap', marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
       {/* ΤΟ `info` ΕΙΝΑΙ Η ΘΕΣΗ ΤΟΥ ΥΠΟΤΙΤΛΟΥ ΠΟΥ ΔΕΝ ΑΞΙΖΕΙ ΓΡΑΜΜΗ. Μια ενότητα
           έχει συχνά μία διευκρίνιση («μόνο όσα φεύγουν από τον λογαριασμό
           σου») που είναι σωστή, χρήσιμη και διαβάζεται ΜΙΑ φορά στη ζωή του
           χρήστη. Ως `sub` κρατούσε δική της σειρά για πάντα· ως κυκλάκι δίπλα
           στον τίτλο κρατά δεκατέσσερα εικονοστοιχεία και λέει τα ίδια. Τα δύο
           δεν αποκλείονται: όποια κεφαλίδα χρειάζεται ΚΑΙ τα δύο, τα έχει. */}
-      <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+      <div className="sec-hdr-main" style={{ flex: '1 1 200px', minWidth: 0 }}>
         {/* ΤΙΤΛΟΣ ΔΕΥΤΕΡΟΥ ΕΠΙΠΕΔΟΥ, ΜΕ ΤΗΝ ΙΔΙΑ ΕΜΦΑΝΙΣΗ. Ως <div>, η πλοήγηση
             ανά επικεφαλίδα του αναγνώστη οθόνης δεν έβρισκε τίποτα κάτω από το
             h1 της καρτέλας. */}
         <h2 style={{ ...TT.label, fontSize: 'var(--fs-xs)', margin: 0 }}>{label}{info}</h2>
-        {sub && <div style={{ ...TT.caption, fontSize: 'var(--fs-xs)', marginTop: 2 }}>{sub}</div>}
+        {sub && <div className="sec-hdr-sub" style={{ ...TT.caption, fontSize: 'var(--fs-xs)', marginTop: 2 }}>{sub}</div>}
       </div>
       {right}
     </div>

@@ -333,7 +333,7 @@ export default function E2ReconcileCard({ userId, year, plan = 'free', onUpgrade
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
           <p style={{ ...TT.caption, margin: '0 0 8px' }}>Χωρίς ΑΤΑΚ η ταύτιση με την ΑΑΔΕ γίνεται μόνο με ΑΦΜ μισθωτή. {ATAK_SOURCE}</p>
           {noAtak.map(p => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '6px 0' }}>
+            <div key={p.id} className="atak-row" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '6px 0' }}>
               <label htmlFor={`atak-${p.id}`} style={{ ...TT.bodySm, flex: 1, minWidth: 160 }}>{p.name || p.address || 'Ακίνητο'}</label>
               <input id={`atak-${p.id}`} inputMode="numeric" autoComplete="off" style={inp}
                 placeholder={`${ATAK_DIGITS} ψηφία`} value={atakDraft[p.id] ?? ''}

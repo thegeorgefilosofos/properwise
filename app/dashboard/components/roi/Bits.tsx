@@ -86,7 +86,7 @@ export function Section({ icon, title, sub, info, children, defaultOpen = false 
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={() => setOpen(o => !o)} aria-expanded={open} aria-label={title} className="acc-toggle"
           style={{ position: 'absolute', inset: 0, width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} />
-        <span style={{ position: 'relative', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: T.radius.chip, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', flexShrink: 0 }}>{icon}</span>
+        <span className="roi-sec-ico" style={{ position: 'relative', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: T.radius.chip, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', flexShrink: 0 }}>{icon}</span>
         <div style={{ position: 'relative', pointerEvents: 'none', flex: 1, minWidth: 0 }}>
           <p style={titleStyle}>{title}</p>
           {sub && <p style={subStyle}>{sub}</p>}
@@ -118,17 +118,17 @@ export function Section({ icon, title, sub, info, children, defaultOpen = false 
 export function GradeCard({ grade, note }: { grade: YieldGrade; note: string }) {
   const strong = grade.grade === 'A' || grade.grade === 'B';
   return (
-    <div style={{ ...card, display: 'flex', alignItems: 'center', gap: T.sp.lg }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 64, height: 64, borderRadius: T.radius.card, background: 'var(--bg-elevated)', border: `1px solid ${strong ? 'var(--border-accent)' : 'var(--border-subtle)'}`, flexShrink: 0 }}>
+    <div className="roi-grade" style={{ ...card, display: 'flex', alignItems: 'center', gap: T.sp.lg }}>
+      <div className="roi-grade-mark" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 64, height: 64, borderRadius: T.radius.card, background: 'var(--bg-elevated)', border: `1px solid ${strong ? 'var(--border-accent)' : 'var(--border-subtle)'}`, flexShrink: 0 }}>
         <span style={{ fontSize: 28, fontWeight: 700, color: strong ? 'var(--accent)' : 'var(--text-primary)', fontFamily: SANS, lineHeight: 1 }}>{grade.grade}</span>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="roi-grade-main" style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontFamily: SANS, display: 'flex', alignItems: 'center' }}>Βαθμός απόδοσης<TermInfo term="Βαθμός απόδοσης" text={G.grade} /></p>
           <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: SANS, fontVariantNumeric: 'tabular-nums' }}>{grade.label} · {grade.score} / 100</span>
         </div>
         <Bar pct={Math.max(3, grade.score)} track="var(--bg-elevated)" label="Βαθμός απόδοσης" style={{ marginTop: 8 }} />
-        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-tertiary)', fontFamily: SANS, lineHeight: 1.5 }}>{note}</p>
+        <p className="roi-grade-note" style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-tertiary)', fontFamily: SANS, lineHeight: 1.5 }}>{note}</p>
       </div>
     </div>
   );

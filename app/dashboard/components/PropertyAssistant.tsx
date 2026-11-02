@@ -160,21 +160,6 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   // Τρία πράγματα το κλείνουν: το `touch-action:none` στο ίδιο το κουμπί, η
   // σύλληψη του δείκτη (`setPointerCapture`) ώστε οι κινήσεις να έρχονται εδώ
   // ακόμη κι όταν το δάχτυλο βγει εκτός· τρίτο, ακροατής στο `pointercancel`.
-  // ═══ Η ΠΛΟΗΓΗΣΗ ΚΡΑΤΑ ΘΕΣΗ ΣΤΗ ΜΕΡΙΑ ΤΟΥ ΚΟΥΜΠΙΟΥ ═══════════════════════
-  // Στο κινητό το κουμπί κάθεται μέσα στην κάτω πλοήγηση, στη γωνία όπου το
-  // κούμπωσε ο χρήστης. Η μπάρα ανήκει στη σελίδα και δεν ξέρει ποια είναι
-  // αυτή· το λέει εδώ μία ιδιότητα στη ρίζα και το CSS κρατά τη θέση στη σωστή
-  // μεριά. Χωρίς κουμπί (ανοιχτό παράθυρο) οι καρτέλες ξαναπαίρνουν όλο το
-  // πλάτος. Ενόσω σέρνεται, η θέση μένει όπου ήταν ώς να κουμπώσει.
-  const fabShown = open || !overlayOpen;
-  useEffect(() => {
-    if (typeof document === 'undefined' || dragging) return;
-    const root = document.documentElement;
-    const side = !fabShown ? 'none'
-      : fabPos && fabPos.x + fabBox().w / 2 < window.innerWidth / 2 ? 'left' : 'right';
-    root.dataset.fabSide = side;
-    return () => { delete root.dataset.fabSide; };
-  }, [fabShown, fabPos, dragging]);
   const fabDrag = useRef<{ id: number; sx: number; sy: number; ox: number; oy: number; slop: number; moved: boolean } | null>(null);
   const justDragged = useRef(false);
   useEffect(() => {
@@ -669,15 +654,16 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
            εστίαση πληκτρολογίου μένει: δεν εξαφανίζεται ό,τι έχει την εστίαση. */
         .pa-fab-wrap{transition:transform .2s ${T.ease.standard},opacity .2s ${T.ease.standard}}
         .pa-fab-wrap[data-away]:not(:focus-within){transform:translateY(calc(var(--fab-h) + var(--fab-bottom)));opacity:0;pointer-events:none}
-        /* ΣΤΟ ΚΙΝΗΤΟ ΔΕΝ ΑΠΟΣΥΡΕΤΑΙ: κάθεται στη δική του θέση μέσα στην κάτω
-           πλοήγηση (globals.css, --nav-h), όπου δεν σκεπάζει τίποτα. Αν έφευγε
-           στην κύλιση θα άφηνε τρύπα στη μπάρα. */
-        @media (max-width:768px){
-          .pa-fab-wrap[data-away]:not(:focus-within){transform:none;opacity:1;pointer-events:auto}
-        }
         @media (max-width:1279px){
           .pa-fab{padding:0 8px;gap:0}
           .pa-fab-cta{display:none}
+        }
+        /* Στο τηλέφωνο το κουμπί είναι κύκλος 48 (--fab-h) με το σήμα στο
+           κέντρο: με γέμισμα 8 έβγαινε 54×48, ωοειδές. Μετά τον κανόνα των
+           1.279, που αλλιώς θα ξανάδινε το γέμισμα. */
+        @media (max-width:768px){
+          .pa-fab,.pa-fab-wrap[data-scrolled] .pa-fab{width:var(--fab-h);padding:0;justify-content:center}
+          .pa-fab-live{left:32px;top:6px}
         }
         @media (prefers-reduced-motion:reduce){
           .pa-fab,.pa-fab:hover{transition:none;transform:none}

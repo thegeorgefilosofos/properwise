@@ -87,11 +87,18 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   // προστατεύει μόνο το ΤΕΛΟΣ της κύλισης. Οσο ο χρήστης κυλά προς τα κάτω το
   // κουμπί αποσύρεται, με την πρώτη κίνηση προς τα πάνω, στην κορυφή ή στο
   // τέλος της σελίδας ξαναγυρίζει — όπως κάθε πλωτό κουμπί κινητού.
+  // ΣΤΟ ΤΗΛΕΦΩΝΟ ΓΥΡΙΖΕΙ ΚΑΙ ΜΟΛΙΣ ΣΤΑΜΑΤΗΣΕΙ Η ΚΥΛΙΣΗ (02/11/2026). Εκεί η
+  // στήλη του περιεχομένου τελειώνει πάνω από το κουμπί (globals.css,
+  // --fab-lane), οπότε σε ηρεμία δεν σκεπάζει τίποτα σε καμία θέση και δεν
+  // υπάρχει λόγος να περιμένει κίνηση προς τα πάνω. Στον υπολογιστή πλέει πάνω
+  // από τη στήλη, άρα μένει κρυμμένο ώς την πρώτη κίνηση προς τα πάνω.
   const [away, setAway] = useState(false);
   useEffect(() => {
     const el = document.querySelector('.app-content');
     if (!(el instanceof HTMLElement)) return;
+    const phone = window.matchMedia('(max-width: 768px)');
     let last = el.scrollTop;
+    let rest: ReturnType<typeof setTimeout> | undefined;
     const read = () => {
       const y = el.scrollTop;
       setScrolled(y > 4);
@@ -100,10 +107,12 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       else if (y > last + 6) setAway(true);
       else if (y < last - 6) setAway(false);
       last = y;
+      clearTimeout(rest);
+      if (phone.matches) rest = setTimeout(() => setAway(false), 600);
     };
     read();
     el.addEventListener('scroll', read, { passive: true });
-    return () => el.removeEventListener('scroll', read);
+    return () => { el.removeEventListener('scroll', read); clearTimeout(rest); };
   }, []);
   // ΟΙ ΠΡΟΤΙΜΗΣΕΙΣ ΤΟΥ ΒΟΗΘΟΥ ΖΟΥΝ ΣΤΟΝ ΠΕΡΙΗΓΗΤΗ. Ηταν προεπιλογή που ένα
   // effect αντικαθιστούσε μετά την πρώτη απόδοση: όποιος είχε ζητήσει πληθυντικό

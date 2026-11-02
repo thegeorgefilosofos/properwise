@@ -750,7 +750,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
             <div className="po-disclosure" {...pressable(() => setCompsOpen(o => !o))}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>Βαθμονόμηση από τον ανταγωνισμό</div>
-                <div className="po-subline" style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Βάλε τιμές/νύχτα παρόμοιων ακινήτων της περιοχής και δες μια προτεινόμενη βάση</div>
+                <div className="po-subline" style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Βάλε τις τιμές ανά νύχτα παρόμοιων ακινήτων της περιοχής για να δεις μια προτεινόμενη βάση.</div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                 {median > 0 && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', fontFamily: T.font.num }}>διάμεση {fe(median)}</span>}

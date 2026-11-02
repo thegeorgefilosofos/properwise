@@ -320,10 +320,10 @@ export function compareMonth(
 
   if (diff > 0) {
     const big = bigOneOff(cur);
-    if (big) caveats.push(`Η αύξηση οφείλεται σε μεγάλο βαθμό σε έκτακτη δαπάνη: ${nameOf(big)}.`);
+    if (big) caveats.push(`Η αύξηση οφείλεται κυρίως σε έκτακτη δαπάνη: ${nameOf(big)}.`);
   } else if (diff < 0) {
     const big = bigOneOff(bas);
-    if (big) caveats.push(`Η μείωση οφείλεται σε μεγάλο βαθμό σε έκτακτη δαπάνη του ${monthGenitive(baseKey)}: ${nameOf(big)}.`);
+    if (big) caveats.push(`Η μείωση οφείλεται κυρίως σε έκτακτη δαπάνη του ${monthGenitive(baseKey)}: ${nameOf(big)}.`);
   }
 
   const pct = bas.total > 0 ? (diff / bas.total) * 100 : null;
