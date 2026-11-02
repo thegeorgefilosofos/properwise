@@ -126,7 +126,7 @@ export default function BulkInvite({ db, label }: { db: SupabaseClient; label: R
                 ποτέ με Tab. Το κουμπί ανοίγει το ίδιο πεδίο. */}
             <span>
               <LinkBtn onClick={() => fileRef.current?.click()}>Από αρχείο CSV</LinkBtn>
-              <input ref={fileRef} type="file" accept=".csv,text/csv,text/plain" hidden tabIndex={-1} aria-hidden="true"
+              <input ref={fileRef} type="file" accept=".csv,text/csv,text/plain" hidden tabIndex={-1} aria-hidden="true" aria-label="Αρχείο με τους πελάτες"
                 onChange={e => { readFile(e.target.files?.[0]); e.target.value = ''; }} />
             </span>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

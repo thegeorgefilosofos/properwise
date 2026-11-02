@@ -1,6 +1,6 @@
 {
   "σημείωση": "Αθροίσματα ποσών μέσα σε οθόνες του app/dashboard, ανά αρχείο. Μόνο προς τα κάτω. Πρώτη μέτρηση 170 σε 47 αρχεία στις 05.10.2026, 165 μετά την πρώτη μεταφορά (Μία πηγή αλήθειας, lib/facts). Κάθε άθροισμα που φεύγει πηγαίνει σε συνάρτηση του lib/facts ή του lib/ με τεστ.",
-  "total": 165,
+  "total": 164,
   "files": {
     "app/dashboard/components/BillsBudget.tsx": 4,
     "app/dashboard/components/BillsCommon.tsx": 6,
@@ -20,7 +20,7 @@
     "app/dashboard/components/TabComparison.tsx": 1,
     "app/dashboard/components/TabInventory.tsx": 6,
     "app/dashboard/components/TabLoanCalculator.tsx": 2,
-    "app/dashboard/components/TabPricing.tsx": 2,
+    "app/dashboard/components/TabPricing.tsx": 1,
     "app/dashboard/components/TabTenant.tsx": 4,
     "app/dashboard/components/TabTenantCare.tsx": 6,
     "app/dashboard/components/TabTenantMoney.tsx": 6,

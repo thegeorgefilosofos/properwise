@@ -24,6 +24,7 @@ import type { StayAmountLike } from '@/lib/clients/stayAmounts';
 import { type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger';
 import { trailingStays, type ReportStay, type TrailingStays } from '@/lib/clients/reports';
 import { athensToday } from '@/lib/core/time';
+import { resolveValue } from '@/lib/billing/propertyFacts';
 import { isActiveLoan } from '@/lib/loans/shape'
 import { readStatus, type StatusRow } from '@/lib/property/status'
 import { businessFormOf } from '@/lib/accounting/taxProfile'
@@ -208,7 +209,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       try {
         const yearNow = Number(athensToday().slice(0, 4));
         const [pr, rc, exp, ln, allPr, allRc, bil, sts, yrRents, allYrRents, allSts, ownerRes, ten, allTen] = await Promise.all([
-          properties.one(supabase, propertyId, 'value,target_rent,rental_mode,status_detail,sqm,prop_type,name,postal_code', userId),
+          properties.one(supabase, propertyId, 'value,obj_value,target_rent,rental_mode,status_detail,sqm,prop_type,name,postal_code', userId),
           supabase.from('rent_config').select('actual_rent,target_rent').eq('property_id', propertyId).maybeSingle(),
           // ΓΙΑΤΙ ΜΕ ΗΜΕΡΟΜΗΝΙΑ. Το ερώτημα ήταν χωρίς φίλτρο έτους και το άθροισμα
           // έμπαινε στο πεδίο με ετικέτα «Ετήσια έξοδα». Δηλαδή στον δεύτερο χρόνο
@@ -243,7 +244,7 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         // παρακάτω («p.sqm», «p.postal_code») ήταν αδιαφανές: ένα λάθος όνομα θα
         // έδινε undefined και η οθόνη θα υποχωρούσε αθόρυβα στις προεπιλογές.
         type PropRow = {
-          value: number | null; target_rent: number | null; sqm: number | null;
+          value: number | null; obj_value: number | null; target_rent: number | null; sqm: number | null;
           prop_type: string | null; name: string | null; postal_code: string | null;
           status_detail: string | null; rental_mode: string | null;
         };
@@ -279,7 +280,11 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
         // και το rate_type/fixed_rate/euribor/spread (lib/loans/shape.ts).
         const activeLoan = ln.find(l => isActiveLoan(l));
         if (activeLoan) setSavedLoan({ amount: activeLoan.amount, rate: activeLoan.rate, property_value: Number(activeLoan.property_value) || 0, loan_type: activeLoan.loan_type ?? '' });
-        setValue(String(propertyValue || p.value || localStorage.getItem(K('value')) || ''));
+        // Η ΑΞΙΑ ΜΕ ΤΟΝ ΚΑΝΟΝΑ ΤΗΣ ΕΠΙΣΚΟΠΗΣΗΣ (`resolveValue`): εμπορική, αλλιώς
+        // αντικειμενική. Χωρίς αυτό, ακίνητο με μόνο αντικειμενική αξία είχε
+        // απόδοση στην Επισκόπηση και κενή καρτέλα εδώ.
+        const valueNow = resolveValue(propertyValue || p.value, p.obj_value).value;
+        setValue(String(valueNow || localStorage.getItem(K('value')) || ''));
         setRent(String(tenantRent || c.actual_rent || c.target_rent || p.target_rent || localStorage.getItem(K('rent')) || ''));
         const thisYear = Number(athensToday().slice(0, 4));
         // ΣΤΑ ΛΕΠΤΑ, ΟΧΙ ΣΤΟ ΕΥΡΩ. Το `Math.round` έγραφε «Έξοδα 10.160,00€» δύο
@@ -488,6 +493,9 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
   const consolidated = !pro && portfolioTax.count > 1;
 
   const y = useMemo(() => yields(monthlyEquiv, nVal, effOpex, annualTax), [monthlyEquiv, nVal, effOpex, annualTax]);
+  // Η καθαρή μόνο με τα καταγεγραμμένα (δαπάνες έτους και προμήθειες διαμονών),
+  // χωρίς τις εκτιμήσεις του μοντέλου: ο αριθμός της Επισκόπησης.
+  const netRecorded = nVal > 0 ? ((grossAnnual - costs.recorded - costs.stayFees) / nVal) * 100 : 0;
   // Μη στρογγυλοποιημένη μεικτή απόδοση για τα εργαλεία μόχλευσης/IRR (ώστε NOI/DSCR/IRR να
   // συμφωνούν ακριβώς με το ενοίκιο που έδωσε ο χρήστης, χωρίς σφάλμα στρογγυλοποίησης).
   const grossYieldExact = nVal > 0 ? (grossAnnual / nVal) * 100 : 0;
@@ -698,23 +706,30 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
       {!empty && (<>
         {/* KPIs */}
         <div {...g4box}>
-          <Tile label="Μεικτή απόδοση" value={fp(y.grossYield)} sub={useRecorded && yi ? (yi.basis === 'lease' ? `${fe(y.annualRent)} τον χρόνο ${yi.shortLabel}` : `${fe(y.annualRent)} τον χρόνο, από ${fe(yi.received ?? 0)} ως σήμερα`) : mkt(`${fe(y.annualRent)} έσοδα τον χρόνο`)} info={<TermInfo term="Μεικτή απόδοση" text={G.gross_yield} />} />
+          <Tile label="Μεικτή απόδοση" value={fp(y.grossYield)} fact={useRecorded ? 'yield-gross' : undefined}
+            facts={useRecorded ? { 'income-year': fe(y.annualRent) } : undefined} sub={useRecorded && yi ? (yi.basis === 'lease' ? `${fe(y.annualRent)} τον χρόνο ${yi.shortLabel}` : yi.basis === 'stays' ? `${fe(y.annualRent)} το ${taxYear}, ${yi.shortLabel}` : `${fe(y.annualRent)} τον χρόνο, από ${fe(yi.received ?? 0)} ως σήμερα`) : mkt(`${fe(y.annualRent)} έσοδα τον χρόνο`)} info={<TermInfo term="Μεικτή απόδοση" text={G.gross_yield} />} />
           {/* Η ΚΑΘΑΡΗ ΛΕΕΙ ΑΝ ΜΕΣΑ ΤΗΣ ΥΠΑΡΧΕΙ ΕΚΤΙΜΗΣΗ. Μόνο με καταγραφές είναι ο
               ίδιος αριθμός με την Επισκόπηση· με κόστη του μοντέλου που δεν έχουν
               καταγραφεί είναι «Εκτιμώμενη» και το λέει ποια. */}
           <Tile label={netPreTaxLabel(costs, true)} value={fp(y.netYield)}
+            facts={useRecorded ? { 'yield-net-recorded': fp(netRecorded) } : undefined}
             sub={mkt(`${yieldCostParts(costs, fe)}, ${YIELD_PRE_TAX_SUB}`)}
             info={<TermInfo term={netLabel} text={[
               G.net_yield,
               costs.stayFees > 0 ? `Αφαιρούνται ${fe(costs.stayFees)} ${PLATFORM_FEE_LABELS.fromStays}. ${PLATFORM_FEE_LABELS.note}${stayFees && stayFees.ownMonths > 0 ? ` ${PLATFORM_FEE_LABELS.ownMonths}` : ''}` : null,
               costs.basis === 'estimated' ? `Εδώ αφαιρούνται και εκτιμήσεις για ό,τι δεν έχεις καταγράψει φέτος ως δαπάνη: ${costs.modelledKinds.map(k => MODELLED_COST_LABELS[k]).join(', ')}.` : null,
+              // Η ΓΕΦΥΡΑ ΠΡΟΣ ΤΗΝ ΕΠΙΣΚΟΠΗΣΗ. Εκεί η καθαρή βγαίνει μόνο από
+              // καταγραφές· εδώ, με τις εκτιμήσεις, είναι μικρότερη. Ο ίδιος αριθμός
+              // χωρίς τις εκτιμήσεις λέγεται, ώστε τα δύο ποσοστά να εξηγούνται.
+              costs.basis === 'estimated' && nVal > 0 ? `Μόνο με τα καταγεγραμμένα έξοδα: ${fp(netRecorded)}, ο αριθμός της Επισκόπησης.` : null,
             ].filter(Boolean).join(' ')} />} />
           {/* «Μετά τον φόρο» και όχι «Απόδοση μετά τον φόρο»: δίπλα στη μεικτή και
               την καθαρή η λέξη «απόδοση» εννοείται· στα 390 η ετικέτα
               έσπαγε σε δύο γραμμές. Η εταιρεία πληρώνει φόρο μερίσματος μόνο
               στη διανομή· ο υπολογισμός υποθέτει πλήρη διανομή και το λέει. */}
           <Tile label={YIELD_SHORT_LABELS.net_after_tax} value={fp(y.netYieldAfterTax)}
-            sub={mkt(consolidated ? `μερίδιο φόρου ${fe(annualTax)} τον χρόνο` : pro && entity === 'company' ? `φόρος ${fe(annualTax)} τον χρόνο, με πλήρη διανομή κερδών` : `φόρος ${fe(annualTax)} τον χρόνο`)}
+            facts={useRecorded && !pro ? { 'tax-year': fe(annualTax) } : undefined}
+            sub={mkt(consolidated ? `μερίδιο φόρου ${taxYear} ${fe(annualTax)}` : pro && entity === 'company' ? `φόρος ${taxYear} ${fe(annualTax)}, με πλήρη διανομή κερδών` : `φόρος ${taxYear} ${fe(annualTax)}`)}
             tone="accent" info={<TermInfo term="Απόδοση μετά τον φόρο" text={consolidated ? `${G.after_tax_yield} ${CONSOLIDATION_NOTE}` : G.after_tax_yield} />} />
           {canInvest
             ? <Tile label="Απόδοση ιδίων κεφαλαίων" value={fpSigned(lev.cashOnCash)} sub={mkt(lev.cashOnCash >= 0 ? 'θετική μόχλευση' : (lev.positiveCarry ? 'θετική μόχλευση, αρνητική ροή' : 'αρνητική μόχλευση'))} info={<TermInfo term="Απόδοση ιδίων κεφαλαίων" text={G.cash_on_cash} />} />
@@ -729,7 +744,11 @@ export default function TabRentROI({ propertyId, userId, propertyValue, profileT
             {useRecorded
               ? <span>{yi?.basis === 'lease'
                   ? `Έσοδα: ${yi.label}. ${fe(yi.received ?? 0)} ${INCOME_LABELS.received}. Ο ίδιος αριθμός με την Επισκόπηση. Άλλαξε ενοίκιο για σενάριο.`
-                  : `Έσοδα από ${recorded.source === 'stays' ? 'τις διαμονές' : 'τις δόσεις'} που καταγράφηκαν φέτος, σε ετήσιο ρυθμό: ο ίδιος αριθμός με την Επισκόπηση. Άλλαξε ενοίκιο ή πληρότητα για σενάριο.`}</span>
+                  : yi?.basis === 'stays'
+                    // Σύντομη, σε δύο γραμμές στα 375 (e2e:vertical): το «άλλαξε για
+                    // σενάριο» το λένε ήδη τα πεδία από πάνω και το κουμπί επιστροφής.
+                    ? `Έσοδα ${taxYear}: ${fe(yi.received ?? 0)} ως σήμερα και ${fe(recorded.booked)} κλεισμένα έως 31/12, όπως στην Επισκόπηση.`
+                    : `Έσοδα από τις δόσεις που καταγράφηκαν φέτος, σε ετήσιο ρυθμό: ο ίδιος αριθμός με την Επισκόπηση. Άλλαξε ενοίκιο ή πληρότητα για σενάριο.`}</span>
               : <>
                   <span>Σενάριο με τα νούμερα που έγραψες, όχι τα έσοδα που καταγράφηκαν.</span>
                   <Btn variant="secondary" onClick={() => setScenario(false)}>Πίσω στα καταγεγραμμένα</Btn>

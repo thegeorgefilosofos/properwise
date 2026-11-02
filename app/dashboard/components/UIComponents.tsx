@@ -6,7 +6,7 @@ import { T, localDay, Btn, IconBtn, ChipToggle } from '@/components/Theme';
 import { Z } from '@/components/tokens';
 import { acceptNumeric, forDisplay } from '@/lib/core/numInput';
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time';
-import { MONTHS_SHORT } from '@/lib/core/months';
+import { MONTHS_SHORT, DAY_NAMES_MIN } from '@/lib/core/months';
 import { fn } from '@/lib/core/format';
 import { hy } from '@/components/Hyphen';
 
@@ -992,7 +992,7 @@ export function CustomSelect({
  * δισύλλαβη συντομογραφία δεν έχει: δύο ημερολόγια, δύο ορθογραφίες. Ξεκινά
  * από Δευτέρα, όπως κάθε ελληνικό ημερολόγιο.
  */
-export const WEEKDAYS_SHORT = ['Δε', 'Τρ', 'Τε', 'Πε', 'Πα', 'Σα', 'Κυ'] as const;
+export const WEEKDAYS_SHORT = DAY_NAMES_MIN;
 
 interface DatePickerProps {
   /**

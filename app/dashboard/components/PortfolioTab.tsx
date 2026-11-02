@@ -728,7 +728,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                   {/* ΙΔΙΟ ΚΕΛΙ ΜΕ ΤΑ ΠΟΣΑ. Η πληρότητα είναι αριθμός στήλης όπως τα
                       έσοδα: δεξιά, tabular, ίδιο γέμισμα — όχι δικό της κουτί. */}
                   {r.occupancy != null
-                    ? <Num v={fp(r.occupancy)} title={occupancyTitle(r)} />
+                    ? <Num v={fp(r.occupancy)} title={occupancyTitle(r)} fact={{ name: 'occ-year', property: r.id }} />
                     : <td style={{ padding: '13px 14px', textAlign: 'right', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>{r.mode === 'short' ? ABSENT_SHORT : 'Δεν ισχύει'}</td>}
                   <td style={{ padding: '13px 14px', textAlign: 'right' }}>
                     {r.pending > 0
@@ -938,12 +938,14 @@ function Th({ label, k, sort, asc, onSort, align = 'right', pin }: { label: stri
   );
 }
 
-function Num({ v, muted, bold, tone, mark, title }: { v: string; muted?: boolean; bold?: boolean; tone?: string; mark?: string; title?: string }) {
+function Num({ v, muted, bold, tone, mark, title, fact }: { v: string; muted?: boolean; bold?: boolean; tone?: string; mark?: string; title?: string;
+  /** Για τον έλεγχο «ίδιος αριθμός σε κάθε οθόνη» (scripts/e2e-same-number.mjs). */
+  fact?: { name: string; property: string } }) {
   // ΜΙΑ ΓΡΑΜΜΑΤΟΣΕΙΡΑ ΓΙΑ ΤΟΥΣ ΑΡΙΘΜΟΥΣ. Ο πίνακας έγραφε τα ποσά σε monospace
   // ενώ τα πλακίδια από πάνω τα έγραφαν στην αριθμητική του θέματος: το ίδιο
   // «0,00€» φαινόταν δύο διαφορετικά πράγματα σε απόσταση εκατό εικονοστοιχείων.
   return (
-    <td title={title} style={{ padding: '13px 14px', textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-base)', fontWeight: bold ? 700 : 400, color: tone || (muted ? 'var(--text-secondary)' : 'var(--text-primary)') }}>
+    <td title={title} data-fact={fact?.name} data-fact-property={fact?.property} data-fact-value={fact ? v : undefined} style={{ padding: '13px 14px', textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-base)', fontWeight: bold ? 700 : 400, color: tone || (muted ? 'var(--text-secondary)' : 'var(--text-primary)') }}>
       {v}
       {/* Η σήμανση της εκτίμησης μπαίνει ΔΙΠΛΑ ΣΤΟ ΠΟΣΟ: σε υποσημείωση δεν τη διαβάζει κανείς. */}
       {mark && <span style={{ marginLeft: 4, fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)' }}>{mark}</span>}

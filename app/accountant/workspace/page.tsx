@@ -461,7 +461,7 @@ export default function AccountantWorkspace() {
                         καταχώρηση δεν έχει έσοδα «0,00€»: δεν έχει μέτρηση. Και
                         όποιος δεν απάντησε λείπει, δεν μηδενίζεται. */}
                     {showMoney && money && (
-                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '6px 0 0', fontFamily: T.font.mono }}>
+                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '6px 0 0', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>
                         {(() => {
                           const m = money.get(c.ownerId);
                           if (!m) return <span style={{ fontFamily: T.font.sans, color: 'var(--text-tertiary)' }}>Τα ποσά δεν διαβάστηκαν</span>;

@@ -438,7 +438,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
                 {a.label}
                 {/* Ιδιο με τα φίλτρα του Αρχείου: η διαφάνεια έριχνε τον μετρητή στο
                     3,46:1. Το βάρος το δίνει το χρώμα, όχι το ξεθώριασμα. */}
-                <span style={{ fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)', color: on ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{fn(a.count)}</span>
+                <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)', color: on ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{fn(a.count)}</span>
               </ChipToggle>
             )
           })}
@@ -871,7 +871,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '12px 14px' }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{dup.full_name}</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {dup.phone && <span style={{ fontFamily: T.font.mono }}>{dup.phone}</span>}
+              {dup.phone && <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{dup.phone}</span>}
               {dup._extra?.afm && <span title="Αριθμός Φορολογικού Μητρώου">ΑΦΜ {dup._extra.afm}</span>}
             </div>
           </div>

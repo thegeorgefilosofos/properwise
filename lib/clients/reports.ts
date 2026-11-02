@@ -88,6 +88,19 @@ export function revenueByMonth(stays: ReportStay[], year: number): number[] {
   return out;
 }
 
+/**
+ * Ο μέσος όρος του έτους, μόνο από τους μήνες που είχαν έσοδα. Ένας μήνας
+ * χωρίς διαμονή δεν είναι μήνας «με μηδέν», είναι μήνας χωρίς μέτρηση: με
+ * αυτόν μέσα, ο μέσος όρος μιας σεζόν πέντε μηνών έβγαινε στο μισό. Με
+ * λιγότερους από δύο μήνες δεν υπάρχει μέσος όρος (`undefined`): ένα σημείο
+ * είναι το ίδιο το ποσό.
+ */
+export function activeMonthsAverage(months: readonly number[]): { avg: number | undefined; active: number } {
+  const active = months.filter(v => v > 0);
+  const avg = active.length >= 2 ? active.reduce((a, v) => a + v, 0) / active.length : undefined;
+  return { avg, active: active.length };
+}
+
 /** Νύχτες που πέφτουν εντός του διαστήματος [from, to) για μία διαμονή. */
 export function nightsInRange(s: ReportStay, from: string, to: string): number {
   if (!s.check_in || !s.check_out) return 0;

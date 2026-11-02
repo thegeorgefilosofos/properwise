@@ -24,10 +24,6 @@ export const ratePct = (rate: number): string => fpRate(rate * 100);
 export const rateScale = (brackets: readonly TaxBracket[]): string =>
   `${brackets.map(b => fn(b.rate * 100)).join(' / ')}%`;
 
-/** «15% / 25% / 35% / 45%»: κάθε συντελεστής με το σύμβολό του. */
-export const rateScaleEach = (brackets: readonly TaxBracket[]): string =>
-  brackets.map(b => ratePct(b.rate)).join(' / ');
-
 /** «15%, 25%, 35% και 45%»: οι συντελεστές μέσα σε πρόταση. */
 export function rateSeries(brackets: readonly TaxBracket[]): string {
   const parts = brackets.map(b => ratePct(b.rate));

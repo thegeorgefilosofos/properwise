@@ -12,16 +12,15 @@
 import { XLSX, setCell, downloadWorkbook, sheetFinish } from './xlsxStyle';
 import { FMT, S, ROW, money, percent, intGr, type Cell } from './sheetFormat';
 import { SEASON_LABELS, type Season } from '@/lib/pricing/dynamicPricing';
-import { MONTHS_NOM } from '@/lib/core/months';
+import { MONTHS_NOM, DAY_NAMES_MIN, mondayFirst } from '@/lib/core/months';
 import { fd } from '@/components/tokens';
 
 // Κείμενο βάσει μορφής: ποσό «€», ποσοστό «%», ακέραιος — πάντα με ελληνικό κόμμα.
 const fmtZ = (v: number, z?: string): string => (z === FMT.pct ? percent(v) : z === FMT.int ? intGr(v) : money(v));
 
-const WEEKDAYS = ['Δε', 'Τρ', 'Τε', 'Πε', 'Πα', 'Σα', 'Κυ'];
 const toDate = (d: string): Date | string => { const t = new Date(d + 'T00:00:00'); return isNaN(t.getTime()) ? d : t; };
 // dow: 0=Κυρ … 6=Σαβ (όπως το engine) → ελληνική συντομογραφία Δε…Κυ.
-const wd = (dow: number) => WEEKDAYS[(dow + 6) % 7] || '';
+const wd = (dow: number): string => DAY_NAMES_MIN[mondayFirst(dow)] ?? '';
 
 export interface PricingExportRow { date: string; dow: number; season: Season; isWeekend: boolean; holidayName?: string; price: number; booked: boolean }
 export interface PricingExportInput {

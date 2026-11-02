@@ -58,7 +58,7 @@ import {
   AMOUNT_BASIS_LABELS, type AmountBasis,
 } from '@/lib/clients/stayAmounts';
 import { MSG_TEMPLATES, buildMessage, whatsappLink, viberLink as viberTextLink } from '@/lib/clients/messages';
-import { revenueByChannel, revenueByMonth, occupancyFromMonths, totals } from '@/lib/clients/reports';
+import { revenueByChannel, revenueByMonth, occupancyFromMonths, totals, activeMonthsAverage } from '@/lib/clients/reports';
 import { nightsByMonthForYear } from '@/lib/tax/shortTermTax';
 import { PLATFORM_FEE_NOTE } from '@/lib/billing/consolidate';
 import { navLabel } from '@/lib/nav/labels';
@@ -467,7 +467,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                     const pts = months.map((v, i) => ({ key: `${reportYear}-${String(i + 1).padStart(2, '0')}`, label: `${MONTHS_NOM[i]} ${reportYear}`, total: v }));
                     const cur = `${reportYear}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
                     const filled = pts.filter(p => p.total > 0);
-                    const avg = filled.length >= 2 ? filled.reduce((a, p) => a + p.total, 0) / filled.length : undefined;
+                    const { avg } = activeMonthsAverage(months);
                     const peak = filled.reduce<typeof pts[number] | null>((b, p) => (!b || p.total > b.total ? p : b), null);
                     return (
                       <MonthBars series points={pts} currentKey={cur}

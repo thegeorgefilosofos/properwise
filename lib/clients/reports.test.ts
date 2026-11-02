@@ -11,7 +11,7 @@
 import { execFileSync } from 'node:child_process'
 import {
   revenueByChannel, revenueByMonth, nightsInRange, nightsByMonth,
-  yearOccupancy, occupancyFromMonths, totals, trailingStays, type ReportStay,
+  yearOccupancy, occupancyFromMonths, totals, trailingStays, activeMonthsAverage, type ReportStay,
 } from './reports'
 import { nightsByMonthForYear } from '../tax/shortTermTax'
 
@@ -244,6 +244,12 @@ if (!process.env.PO_TZ_CHILD) {
 // ═══ «ΩΣ ΣΗΜΕΡΑ»: Η ΚΡΑΤΗΣΗ ΠΟΥ ΔΕΝ ΞΕΚΙΝΗΣΕ ΔΕΝ ΕΙΝΑΙ ΕΣΟΔΟ ═════════════════
 // Ο κανόνας «ως σήμερα» των διαμονών ζει πλέον στο lib/facts/hosting.ts
 // (hostingReceipts) και ελέγχεται στο lib/facts/facts.test.ts.
+
+// Μέσος όρος μόνο από τους μήνες με έσοδα.
+eq('μέσος όρος: δύο μήνες με έσοδα, οι άλλοι εκτός', activeMonthsAverage([0, 100, 0, 300, 0, 0, 0, 0, 0, 0, 0, 0]).avg, 200)
+eq('μέσος όρος: πλήθος ενεργών μηνών', activeMonthsAverage([0, 100, 0, 300]).active, 2)
+eq('μέσος όρος: ένας μήνας δεν έχει μέσο όρο', activeMonthsAverage([0, 500, 0]).avg, undefined)
+eq('μέσος όρος: κανένας μήνας', activeMonthsAverage(new Array(12).fill(0)).avg, undefined)
 
 console.log(fail === 0 ? `✓ reports: ${pass} έλεγχοι πέρασαν` : `✗ reports: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

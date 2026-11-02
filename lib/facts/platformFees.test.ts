@@ -40,13 +40,14 @@ const STAYS = [
   stay('2026-03-10', '2026-03-15', 1000, 150),
   stay('2026-05-05', '2026-05-10', 1200, 180),
   stay('2026-06-01', '2026-06-06', 800, 120),
-  stay('2026-08-01', '2026-08-06', 900, 135), // δεν έχει έρθει: δεν μετρά
+  stay('2026-08-01', '2026-08-06', 900, 135), // κλεισμένη, δεν έχει έρθει: μετρά στο έτος, όχι στο ως σήμερα
 ];
 const fi = rentIncome({ status: 'rent_short', rents: [], stays: STAYS, year: YEAR, today: TODAY, value: VALUE, estimateMonthly: null });
 const yi = yieldIncome(fi);
-ok('διαμονές: το έσοδο της απόδοσης είναι ο ετήσιος ρυθμός', yi.basis === 'stays' && yi.annual === fi.annualized, yi);
+ok('διαμονές: το έσοδο της απόδοσης είναι το έσοδο του έτους', yi.basis === 'stays' && yi.annual === fi.annualized, yi);
 ok('διαμονές: το δηλωτέο ως σήμερα (χωρίς το τέλος)', fi.received === 960 + 1160 + 760, fi.received);
-const factor = fi.annualized / fi.received;
+// 02.11.2026: εισπραγμένα + κλεισμένες κρατήσεις έως 31/12, όχι γραμμικός ρυθμός.
+ok('διαμονές: έτος = ως σήμερα + κλεισμένη κράτηση Αυγούστου', fi.booked === 860 && fi.annualized === 2880 + 860, { booked: fi.booked, annualized: fi.annualized });
 
 // ── Η ΠΑΛΙΑ ΑΠΟΚΛΙΣΗ ─────────────────────────────────────────────────────
 // Επισκόπηση: έσοδο μείον καταγεγραμμένες δαπάνες, καμία προμήθεια.
@@ -62,8 +63,8 @@ ok('ΠΡΙΝ: οι Αποδόσεις έλεγαν «Εκτιμώμενη»', ol
 {
   const fees = yieldPlatformFees(fi, STAYS, { year: YEAR, today: TODAY, expenses: [] });
   ok('οι προμήθειες ως σήμερα είναι όσες κρατήθηκαν', fees.toDate === 450, fees);
-  ok('σε ετήσιο ρυθμό με τον συντελεστή του εσόδου', fees.annual === Math.round(450 * factor * 100) / 100, fees);
-  ok('η διαμονή του Αυγούστου δεν μετρά', fees.stays === 3, fees.stays);
+  ok('στο έτος: ως σήμερα + η προμήθεια της κλεισμένης κράτησης', fees.annual === 450 + 135, fees);
+  ok('η διαμονή του Αυγούστου δεν μετρά στο ως σήμερα', fees.stays === 3, fees.stays);
   // Η Επισκόπηση περνά τις δαπάνες της· οι Αποδόσεις τις ίδιες και το μοντέλο.
   const ovCosts = yieldCosts({ recorded: RECORDED, recordedCategories: [], stayFees: fees.annual });
   const roiCosts = yieldCosts({ recorded: RECORDED, recordedCategories: [], stayFees: fees.annual, modelled: { platform_fee: fi.annualized * FIELD_PCT } });

@@ -16,6 +16,7 @@ import { Sparkline, MonthBars, Donut } from './budget/charts'
 import { InlineNumber, InlineText } from './budget/Bits'
 import { useBudget } from './budget/useBudget'
 import { STR_INDIVIDUAL_MAX_PROPERTIES } from '@/lib/billing/greekTax'
+import { YIELD_SHORT_LABELS, YIELD_PRE_TAX_SUB } from '@/lib/facts/labels'
 
 /**
  * Από πόσα βραχυχρόνια ακίνητα και πάνω η εκμίσθωση φυσικού προσώπου θεωρείται
@@ -562,7 +563,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font.sans }}>Απόδοση επένδυσης</span>
-            <InfoDot text={`Καθαρό προ δόσης (καθαρό λειτουργικό έσοδο): έσοδα μείον λειτουργικές δαπάνες, χωρίς τη δόση. Ταμειακή ροή: αυτό μείον τη δόση. Απόδοση επί ${invReturns.onPurchase ? 'τιμής αγοράς' : 'αξίας'}: καθαρό προ δόσης / ${invReturns.onPurchase ? 'τιμή αγοράς' : 'αξία'}. Απόδοση ιδίων κεφαλαίων: ταμειακή ροή / ίδια κεφάλαια, όπου ίδια κεφάλαια = τιμή αγοράς μείον αρχικό δάνειο. Ενδεικτικά, σε ετήσια βάση.`} />
+            <InfoDot text={`Καθαρό προ δόσης (καθαρό λειτουργικό έσοδο): έσοδα μείον λειτουργικές δαπάνες, χωρίς τη δόση. Ταμειακή ροή: αυτό μείον τη δόση. Καθαρή απόδοση: καθαρό προ δόσης / ${invReturns.onPurchase ? 'τιμή αγοράς' : 'τρέχουσα αξία'}, πριν από τον φόρο. Έσοδα και δαπάνες του έτους με τον ορισμό της Επισκόπησης: με διαμονές, όσες έγιναν ως σήμερα και όσες έχουν κλειστεί έως 31/12. Απόδοση ιδίων κεφαλαίων: ταμειακή ροή / ίδια κεφάλαια, όπου ίδια κεφάλαια = τιμή αγοράς μείον αρχικό δάνειο. Ενδεικτικά, σε ετήσια βάση.`} />
           </div>
           <KPIGrid nested items={[
             // ΜΙΑ ΓΡΑΜΜΗ ΣΤΑ 390, ΟΠΩΣ Η ΓΕΙΤΟΝΙΚΗ. Το «Καθαρό λειτουργικό έσοδο / έτος»
@@ -570,7 +571,11 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
             // Ο όρος μένει ολόκληρος στην επεξήγηση, το «ετήσια» επίσης.
             { label: 'Καθαρό προ δόσης', value: feSigned(invReturns.noi) },
             { label: 'Ταμειακή ροή', value: feSigned(invReturns.preTaxCashFlow) },
-            { label: invReturns.onPurchase ? 'Απόδοση επί τιμής αγοράς' : 'Απόδοση επί αξίας', value: fpSigned(invReturns.capRatePct) },
+            // ΤΟ ΙΔΙΟ ΟΝΟΜΑ ΜΕ ΤΗΝ ΕΠΙΣΚΟΠΗΣΗ ΚΑΙ ΤΙΣ ΑΠΟΔΟΣΕΙΣ. «Απόδοση επί αξίας»
+            // ήταν η καθαρή απόδοση προ φόρου με άλλο όνομα και άλλη μηχανή. Τώρα
+            // βγαίνει από το lib/facts και η βάση της λέγεται στον υπότιτλο.
+            { label: YIELD_SHORT_LABELS.net_pre_tax, value: fpSigned(invReturns.capRatePct), fact: invReturns.onPurchase ? undefined : 'yield-net-recorded',
+              sub: `${invReturns.onPurchase ? 'επί τιμής αγοράς' : 'επί τρέχουσας αξίας'}, ${YIELD_PRE_TAX_SUB}` },
             invReturns.cashOnCashPct != null
               ? { label: 'Απόδοση ιδίων κεφαλαίων', value: fpSigned(invReturns.cashOnCashPct) }
               : { label: 'Απόδοση ιδίων κεφαλαίων', value: ABSENT_SHORT, sub: 'χρειάζεται τιμή αγοράς και προκαταβολή' },

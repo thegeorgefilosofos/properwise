@@ -615,6 +615,15 @@ export interface KPIItem {
   title?: string;
   /** Χρώμα για τη γραμμή `sub` (π.χ. μεταβολή vs πέρσι). */
   subTone?: Tone;
+  /**
+   * ΤΟ ΟΝΟΜΑ ΤΟΥ ΜΕΓΕΘΟΥΣ ΓΙΑ ΤΟΝ ΕΛΕΓΧΟ «ΙΔΙΟΣ ΑΡΙΘΜΟΣ ΣΕ ΚΑΘΕ ΟΘΟΝΗ»
+   * (scripts/e2e-same-number.mjs, ενότητα πίνακα ελέγχου). Γράφεται ως
+   * `data-fact`, με την τιμή όπως φαίνεται στο `data-fact-value`. Δεν αλλάζει
+   * τίποτα στην εμφάνιση.
+   */
+  fact?: string;
+  /** Άλλα μεγέθη που γράφονται μέσα στο πλακίδιο (π.χ. στον υπότιτλο), όνομα → κείμενο. */
+  facts?: Record<string, string>;
 }
 
 const TONE_COLOR: Record<string, string> = {
@@ -718,7 +727,7 @@ export function KpiValue({ value, tone, chars, half }: { value: string; tone?: T
 export const widestOf = (...values: string[]): number =>
   values.reduce((m, v) => Math.max(m, v.length), 0);
 
-export function Tile({ label, value, sub, subTone, tone, title, info, chars, half, nested, compact }: KPIItem & {
+export function Tile({ label, value, sub, subTone, tone, title, info, chars, half, nested, compact, fact, facts }: KPIItem & {
   /** Το ⓘ δίπλα στην ετικέτα. Δίνεται ως κόμβος από τον καλούντα: το `InfoHint`
    *  ζει στον πίνακα ελέγχου και διαβάζει από εδώ, οπότε δεν μπορεί να εισαχθεί. */
   info?: ReactNode;
@@ -742,7 +751,9 @@ export function Tile({ label, value, sub, subTone, tone, title, info, chars, hal
       // πράγματι τυλίγει. Ο λόγος και οι δύο μετρήσεις ζουν πάνω από τον κανόνα
       // `[data-long]` στο globals.css.
       data-long={label.length > 17 || undefined}
+      data-fact={fact} data-fact-value={fact ? value : undefined}
       style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {facts && Object.entries(facts).map(([k, v]) => <span key={k} hidden data-fact={k} data-fact-value={v} />)}
       {/* Το ύψος γραμμής είναι 16 γιατί 16 είναι και το εικονίδιο.
 
           ΤΟ ⓘ ΑΚΟΛΟΥΘΕΙ ΤΗΝ ΤΕΛΕΥΤΑΙΑ ΛΕΞΗ (29/10/2026). Η ετικέτα ήταν flex:

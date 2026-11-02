@@ -16,7 +16,7 @@ import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { COMMERCIAL_STAMP_DUTY } from '@/lib/billing/commercialLease';
 import { COMMERCIAL_RENT_CAP_2026, computeRentAdjustment } from '@/lib/documents/rentAdjustment';
 import { fpRate } from '@/lib/core/format';
-import { ratePct, rateScale, rateScaleEach, rateSeries, topBracketFrom, bracketSlices } from './taxText';
+import { ratePct, rateScale, rateSeries, topBracketFrom, bracketSlices } from './taxText';
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
@@ -24,7 +24,6 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.er
 // ── Από τα κλιμάκια ──────────────────────────────────────────────────────
 const FAKE: TaxBracket[] = [{ from: 0, to: 10_000, rate: 0.1 }, { from: 10_000, to: Infinity, rate: 0.3 }];
 ok('rateScale ακολουθεί τα κλιμάκια', rateScale(FAKE) === '10 / 30%');
-ok('rateScaleEach ακολουθεί τα κλιμάκια', rateScaleEach(FAKE) === '10% / 30%');
 ok('rateSeries ακολουθεί τα κλιμάκια', rateSeries(FAKE) === '10% και 30%');
 ok('topBracketFrom: η αρχή του ανώτερου', topBracketFrom(FAKE) === 10_000);
 for (const brackets of [RENTAL_TAX_BRACKETS_2026, RENTAL_TAX_BRACKETS_2025, FAKE]) {
@@ -37,7 +36,6 @@ for (const brackets of [RENTAL_TAX_BRACKETS_2026, RENTAL_TAX_BRACKETS_2025, FAKE
 // ── Η σημερινή κλίμακα: ίδιο κείμενο με πριν ─────────────────────────────
 ok('2026: «15 / 25 / 35 / 45%»', rateScale(RENTAL_TAX_BRACKETS_2026) === '15 / 25 / 35 / 45%');
 ok('2025: «15 / 35 / 45%»', rateScale(RENTAL_TAX_BRACKETS_2025) === '15 / 35 / 45%');
-ok('2026: «15% / 25% / 35% / 45%»', rateScaleEach(RENTAL_TAX_BRACKETS_2026) === '15% / 25% / 35% / 45%');
 ok('2026: «15%, 25%, 35% και 45%»', rateSeries(RENTAL_TAX_BRACKETS_2026) === '15%, 25%, 35% και 45%');
 ok('ratePct(0.05) → «5%»', ratePct(0.05) === '5%');
 {

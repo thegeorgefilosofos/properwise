@@ -15,7 +15,7 @@ export const PAID_BY_OPTIONS = [
   { value: 'tenant',   label: 'Ενοικιαστής'       },
   { value: 'family',   label: 'Με οικογένεια'     },
   { value: 'parents',  label: 'Με γονείς'         },
-  { value: 'split',    label: 'Μοιρασμένο 50/50'  },
+  { value: 'split',    label: 'Μισά-μισά'         },
   { value: 'company',  label: 'Εταιρεία'          },
 ];
 

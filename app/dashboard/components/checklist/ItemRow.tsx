@@ -121,7 +121,9 @@ export function ItemRow({ item, allItems, onToggle, onEdit, onDelete, onAddToCal
           26 εικονοστοιχεία έξω από την κάρτα, γιατί η σειρά δεν τύλιγε ποτέ.
           Τυλίγει· και η ίδια η προθεσμία δεν ξεπερνά το πλάτος της γραμμής. */}
       <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 10px' }}>
-        {priShowDot(item.priority) && <span title={'Προτεραιότητα: ' + getPri(item.priority).label} style={{ width: 7, height: 7, borderRadius: '50%', background: item.priority === 'critical' ? priDotColor(item.priority) : 'transparent', border: item.priority === 'critical' ? 'none' : '1.5px solid var(--text-tertiary)', boxSizing: 'border-box', flexShrink: 0 }} />}
+        {/* Η ΕΚΠΡΟΘΕΣΜΗ ΣΕΙΡΑ ΕΧΕΙ ΗΔΗ ΤΗΝ ΕΝΔΕΙΞΗ ΤΗΣ: κόκκινο κουτάκι και κόκκινη
+            προθεσμία. Η τελεία προτεραιότητας από πάνω έκανε δύο σήματα για ένα. */}
+        {priShowDot(item.priority) && !(overdue && !done) && <span title={'Προτεραιότητα: ' + getPri(item.priority).label} style={{ width: 7, height: 7, borderRadius: '50%', background: item.priority === 'critical' ? priDotColor(item.priority) : 'transparent', border: item.priority === 'critical' ? 'none' : '1.5px solid var(--text-tertiary)', boxSizing: 'border-box', flexShrink: 0 }} />}
         {/* Η ΔΙΑΓΡΑΦΗ ΛΕΕΙ «ΕΓΙΝΕ», ΟΧΙ Η ΔΙΑΦΑΝΕΙΑ. Με 0,6 πάνω στο δευτερεύον
             γκρι η αντίθεση έπεφτε στο 3,85:1, κάτω από το 4,5 του WCAG AA. */}
         <span style={{ fontSize: 14, fontWeight: 500, color: done || blocked ? 'var(--text-secondary)' : 'var(--text-primary)', textDecoration: done ? 'line-through' : 'none', fontFamily: T.font.sans, transition: 'color 0.3s ease' }} className="po-elide">

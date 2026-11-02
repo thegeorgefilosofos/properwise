@@ -41,11 +41,9 @@ import { isTabPurchasable } from '@/lib/billing/entitlements';
 import { shortTermYearSummary, isHouseType } from '@/lib/tax/shortTermTax';
 import { isIndividualTaxpayer, businessFormOf } from '@/lib/accounting/taxProfile';
 import { incomeStatement } from '@/lib/accounting/statement';
-import { consolidateRentTax, taxShareOf } from '@/lib/billing/consolidate';
-import { rentalBracketsForYear } from '@/lib/billing/greekTax';
+import { usePropertyRentTax } from './usePropertyRentTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { fpRate } from '@/lib/core/format';
-import { isLet, readStatus, type StatusRow } from '@/lib/property/status';
 import type { LegalForm } from '@/lib/accounting/dossier';
 import { shortTermCashflow } from '@/lib/tax/shortTermCashflow';
 import { ledgerYearTotal, type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger';
@@ -56,7 +54,7 @@ import { NumberInput, WEEKDAYS_SHORT } from './UIComponents';
 import { exportPricingWorkbook } from './sheets';
 import {
   recommendPrices, summarize, suggestBase, suggestGuardrails, bookedDatesFromStays,
-  realizedAdr, findGaps, estimateSeasonalOccupancy, MIN_NIGHTS_FOR_OCCUPANCY, SEASON_PHRASE,
+  realizedAdr, findGaps, estimateSeasonalOccupancy, MIN_NIGHTS_FOR_OCCUPANCY, SEASON_PHRASE, SEASON_GENITIVE,
   type DayPrice, type PricingStay, type Gap, type Season,
 } from '@/lib/pricing/dynamicPricing';
 import { guestPriceBreakdown } from '@/lib/tax/shortTermTax';
@@ -201,7 +199,6 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   const [propCount, setPropCount] = useState(1);
   // Τα ενοίκια των ΑΛΛΩΝ ακινήτων, όπως τα διαβάζει η Απόδοση· `null` όσο η
   // ανάγνωση δεν πέτυχε (τότε δεν ξέρουμε αν ο φόρος ενοποιείται).
-  const [otherRents, setOtherRents] = useState<{ id: string; annualRent: number; shortTerm: boolean; let: boolean }[] | null>(null);
   const [comps, setComps] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(compsKey) || '[]'); } catch { return []; } });
   const [compsOpen, setCompsOpen] = useState(false);
 
@@ -252,23 +249,11 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   // Οι λειτουργικές δαπάνες της χρονιάς και πόσα ακίνητα έχει ο φορολογούμενος
   // (κρίνει την εξαίρεση του τέλους παρεπιδημούντων: ισχύει έως δύο ακίνητα).
   const loadCashflowInputs = useCallback(async () => {
-    const [exp, bil, count, allPr, allRc] = await Promise.all([
+    const [exp, bil, count] = await Promise.all([
       expenses.ledger(supabase, propertyId, { userId }),
       billStore.ofProperty(supabase, propertyId, billStore.LEDGER_COLUMNS, userId),
       properties.countShortTerm(supabase, userId),
-      properties.listWithError<{ id: string; target_rent: number | null; rental_mode: string | null; status_detail: string | null }>(supabase, userId, { columns: 'id,target_rent,rental_mode,status_detail' }),
-      supabase.from('rent_config').select('property_id,actual_rent,target_rent').eq('user_id', userId),
     ]);
-    // ΙΔΙΑ ΠΗΓΗ ΜΕ ΤΗΝ ΑΠΟΔΟΣΗ (TabRentROI): μηνιαίο ενοίκιο × 12 ανά ακίνητο.
-    if (allPr.error || allRc.error) setOtherRents(null);
-    else {
-      const rcMap = new Map(((allRc.data || []) as { property_id: string; actual_rent: number | null; target_rent: number | null }[]).map(r => [r.property_id, r]));
-      setOtherRents(allPr.rows.filter(x => x.id !== propertyId).map(x => {
-        const cfg = rcMap.get(x.id);
-        const monthly = Number(cfg?.actual_rent) || Number(cfg?.target_rent) || Number(x.target_rent) || 0;
-        return { id: x.id, annualRent: monthly * 12, shortTerm: readStatus(x as StatusRow) === 'rent_short', let: isLet(x as StatusRow) };
-      }));
-    }
     // ΚΑΘΕ ΕΥΡΩ ΜΙΑ ΦΟΡΑ. Ο πληρωμένος λογαριασμός και η δαπάνη του είναι το ΙΔΙΟ
     // γεγονός: αθροίζοντας και τα δύο, τα λειτουργικά έξοδα θα έβγαιναν διπλά και
     // το «μένει σε εσένα» θα έδειχνε λιγότερα απ' όσα πραγματικά μένουν. Η
@@ -394,14 +379,16 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   // της ως διαθέσιμες, όπως το ταβάνι την έχει ήδη μετρήσει.
   const occMeasure = useMemo(() => {
     let booked = 0, open = 0;
+    const seasons: Season[] = [];
     for (const s of seasonsShown) {
       const rate = occ.occ[s];
       if (rate == null || !(rate > 0)) continue;
       const n = occ.nights[s];
       booked += n;
       open += rate >= 1 ? n : Math.round(n / rate);
+      seasons.push(s);
     }
-    return open > 0 ? { booked, open } : null;
+    return open > 0 ? { booked, open, seasons } : null;
   }, [seasonsShown, occ]);
   const measuredOcc = occMeasure ? Math.round((occMeasure.booked / occMeasure.open) * 100) : null;
   const occNights = useMemo(() => seasonsShown.reduce((a, s) => a + occ.nights[s], 0), [seasonsShown, occ]);
@@ -423,7 +410,12 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     { label: 'Κατώτατη πρόταση', value: base > 0 ? fe(sum.min) : fe(0), sub: 'Χαμηλότερη ημέρα' },
     { label: 'Υψηλότερη πρόταση', value: base > 0 ? fe(sum.max) : fe(0), sub: 'Ακριβότερη ημέρα' },
     {
-      label: 'Πληρότητα από το ιστορικό',
+      // ΠΟΙΑΣ ΠΕΡΙΟΔΟΥ (02.11.2026). «Πληρότητα από το ιστορικό» με 21% δίπλα
+      // στο 19,50% της Επισκόπησης έμοιαζε με το ίδιο μέγεθος. Είναι η πληρότητα
+      // των εποχών που απομένουν στον πίνακα, από όλο το ιστορικό: το λέει.
+      label: occMeasure && occMeasure.seasons.length === 1
+        ? `Πληρότητα ${SEASON_GENITIVE[occMeasure.seasons[0]]}`
+        : 'Πληρότητα εποχών πίνακα',
       // Χωρίς μέτρηση η τιμή είναι «Εκκρεμεί», όχι «0%»: το μηδέν είναι μέτρηση.
       value: measuredOcc != null ? fpRate(measuredOcc) : ABSENT_SHORT,
       // Ο υπότιτλος είναι η ΔΙΑΙΡΕΣΗ που δίνει το ποσοστό, όχι άλλο μέγεθος.
@@ -434,6 +426,13 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
         : `Χρειάζονται τουλάχιστον ${MIN_NIGHTS_FOR_OCCUPANCY} νύχτες ανά εποχή`,
     },
   ], [sum, base, measuredOcc, occMeasure]);
+
+  // ΟΙ ΑΛΛΕΣ ΠΗΓΕΣ ΤΟΥ ΦΟΡΟΥ, ΟΠΩΣ ΣΤΗΝ ΕΠΙΣΚΟΠΗΣΗ ΚΑΙ ΣΤΙΣ ΑΠΟΔΟΣΕΙΣ (02.11.2026).
+  // Τα άλλα ακίνητα μετρούσαν εδώ το `rent_config` × 12, ακόμη και τα
+  // βραχυχρόνια, χωρίς συνιδιοκτησία και χωρίς φορολογούμενο: στον πάγκο
+  // 1.588,44€ εδώ, 1.758,04€ στις Αποδόσεις, για το ίδιο ακίνητο και έτος.
+  // Τώρα ο φόρος βγαίνει από την `propertyRentTax` (lib/facts/rentTax.ts).
+  const rentTax = usePropertyRentTax(propertyId, userId, profileType);
 
   // ═══ Ο ΦΟΡΟΣ ΕΙΣΟΔΗΜΑΤΟΣ ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ ΜΕ ΤΗΝ ΑΠΟΔΟΣΗ ═══════════════
   // Το `taxSummary.incomeTax` φορολογεί ΜΟΝΟ αυτό το ακίνητο με την κλίμακα
@@ -455,20 +454,18 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
         onGross: false,
       };
     }
-    const standalone = { amount: taxSummary.incomeTax, onGross: true, note: undefined as string | undefined };
-    if (otherRents == null || otherRents.some(o => o.let && o.annualRent <= 0)) {
-      return { ...standalone, label: 'Φόρος εισοδήματος (αν ήταν το μόνο σου ακίνητο)' };
+    // Όσο φορτώνει ή αν απέτυχε η ανάγνωση των άλλων ακινήτων: ο φόρος μόνο
+    // αυτού, με ετικέτα που το λέει.
+    if (rentTax == null) {
+      return { amount: taxSummary.incomeTax, onGross: true, note: undefined as string | undefined, label: `Φόρος εισοδήματος ${nowYear} (αν ήταν το μόνο σου ακίνητο)` };
     }
-    const portfolio = consolidateRentTax([
-      { id: propertyId, annualRent: gross, shortTerm: true },
-      ...otherRents,
-    ], rentalBracketsForYear(nowYear), nowYear);
-    if (portfolio.count < 2) return { ...standalone, label: 'Φόρος εισοδήματος' };
     return {
-      amount: taxShareOf(portfolio, propertyId), label: 'Φόρος εισοδήματος', onGross: true,
-      note: 'Το μερίδιο αυτού του ακινήτου στον φόρο όλων των ενοικίων σου, όπως στο Ε1 και στην Απόδοση.',
+      amount: rentTax.tax, label: `Φόρος εισοδήματος ${nowYear}`, onGross: true,
+      note: rentTax.consolidated.count > 1
+        ? 'Το μερίδιο αυτού του ακινήτου στον φόρο όλων των ενοικίων σου, όπως στο Ε1, στην Επισκόπηση και στην Απόδοση.'
+        : undefined,
     };
-  }, [taxSummary, opex, profileType, legalForm, otherRents, propertyId, nowYear]);
+  }, [taxSummary, opex, profileType, legalForm, rentTax, nowYear]);
   const cashflow = useMemo(
     () => shortTermCashflow({
       grossRevenue: taxSummary.grossRevenue,
@@ -853,8 +850,16 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                 </div>
               )}
 
+              {/* Για τον έλεγχο «ίδιος αριθμός σε κάθε οθόνη»: ο φόρος και τα
+                  ακαθάριστα του έτους, όπως γράφονται στη στήλη από κάτω. */}
+              {rentTax != null && profileType !== 'professional' && <span hidden data-fact="tax-year" data-fact-value={fe(tax.amount)} />}
+              <span hidden data-fact="income-year" data-fact-value={fe(taxSummary.grossRevenue)} />
               <MoneySteps scale="lead" steps={cashflow.steps.map(st => ({
                 ...st,
+                // Η βάση της χρονιάς στην ετικέτα: όλες οι διαμονές του έτους μαζί με τις
+                // κλεισμένες που δεν έχουν έρθει ακόμη. Ο ίδιος ορισμός με το «Έσοδα
+                // έτους» της Επισκόπησης και τον φόρο (lib/facts/income, κανόνας 3).
+                ...(st.key === 'gross' ? { label: `Ακαθάριστα ${nowYear}, με τις κλεισμένες κρατήσεις` } : null),
                 ...(st.key === 'tax' ? { label: tax.label, note: tax.note ?? `Υπολογίζεται στο ${TAX_BASE_PCT} των ακαθάριστων (τεκμαρτή έκπτωση ${DEDUCTION_PCT}), όχι στο υπόλοιπο μετά τα έξοδα.` } : null),
                 negative: st.kind === 'total' && cashflow.net < 0,
               }))} />

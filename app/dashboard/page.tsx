@@ -581,7 +581,7 @@ export default function Dashboard() {
                   {t:'Ο ΕΝΦΙΑ σου',d:'Ενδεικτικά, μαζί με ό,τι λείπει για τον λογιστή.'},
                 ].map((f,i)=>(
                   <li key={i} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.popup,padding:'16px 16px 18px'}}>
-                    <div style={{fontFamily: T.font.mono,fontSize: 'var(--fs-xs)',fontWeight:600,color:'var(--accent)',marginBottom:10}}>{i+1}</div>
+                    <div style={{fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontSize: 'var(--fs-xs)',fontWeight:600,color:'var(--accent)',marginBottom:10}}>{i+1}</div>
                     <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',fontWeight:700,color:'var(--text-primary)',marginBottom:4}}>{f.t}</div>
                     <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',lineHeight:1.5}}>{f.d}</div>
                   </li>

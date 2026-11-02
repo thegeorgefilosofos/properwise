@@ -378,7 +378,7 @@ export default function TenantPortal() {
                   ) : (
                     <>
                       <div style={{ ...label, marginBottom: 12 }}>Οφειλή</div>
-                      <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', fontFamily: T.font.mono, color: 'var(--text-primary)', marginBottom: 4 }}>{eur(data.total_due)}</div>
+                      <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', marginBottom: 4 }}>{eur(data.total_due)}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: T.sp.lg }}>Συνολικό εκκρεμές ποσό προς εξόφληση</div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 4 }}>
@@ -386,7 +386,7 @@ export default function TenantPortal() {
                           <div key={item.id} style={{ border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 16px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
                               <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{monthLabel(item.month, item.year)}</span>
-                              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.mono }}>{eur(item.amount)}</span>
+                              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{eur(item.amount)}</span>
                             </div>
                             <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>Λήξη προθεσμίας: {gdate(item.due_date)}</div>
                             <div style={{ marginTop: 12 }}>

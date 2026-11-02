@@ -300,6 +300,9 @@ const PLAN_PROPERTY = {
 // ΤΟ ΑΚΙΝΗΤΟ ΕΙΝΑΙ ΠΛΗΡΕΣ, ΟΧΙ ΣΚΙΤΣΟ: η οθόνη διαβάζει αντικειμενική αξία,
 // παλαιότητα, ΑΤΑΚ, ασφάλιση και ενεργειακή κλάση για να χτίσει τον φόρο, τον
 // ΕΝΦΙΑ και τις εκκρεμότητες. Με μισό ακίνητο θα μετρούσαμε μισή οθόνη.
+function pick(o: Record<string, unknown>, keys: string[]): Record<string, unknown> {
+  return Object.fromEntries(keys.filter(k => k in o).map(k => [k, o[k]]));
+}
 const OVERVIEW_PROPERTY = {
   id: 'p0', user_id: 'u1', name: 'Στούντιο Κουκάκι', prop_type: 'Διαμέρισμα',
   address: 'Δημητρακοπούλου 12, Αθήνα', postal_code: '11741', sqm: 42, ownership: '100',
@@ -309,7 +312,17 @@ const OVERVIEW_PROPERTY = {
   floor: 3, heating: 'Αυτόνομη', parking_spaces: 0, storage_sqm: 5, bedrooms: 1,
   rental_mode: 'long_term', client_id: null, co_owners: null, notes: null,
   status_detail: 'rented', created_at: '2019-04-18T00:00:00Z',
+  // ΤΑ ΟΙΚΟΝΟΜΙΚΑ ΤΟΥ p0 ΑΠΟ ΤΗ ΓΡΑΜΜΗ ΤΟΥ ΠΑΓΚΟΥ (02.11.2026). Εδώ ήταν
+  // μακροχρόνιο, ενοικιασμένο, με αξία 185.000€ και στόχο 620€, ενώ κάθε άλλη
+  // σκηνή διάβαζε το ίδιο p0 βραχυχρόνιο: η Επισκόπηση έγραφε φόρο 1.012,11€ και
+  // οι Αποδόσεις 1.758,04€ για το ίδιο ακίνητο, από τον πάγκο και όχι από την
+  // εφαρμογή. Τώρα κατάσταση, αξίες, στόχος και τετραγωνικά είναι του p0.
+  ...pick(bench.rows.user_properties[0] as Record<string, unknown>,
+    ['rental_mode', 'status_detail', 'value', 'obj_value', 'target_rent', 'sqm']),
 };
+// Και η λίστα των ακινήτων είναι όλο το χαρτοφυλάκιο, όπως στην εφαρμογή
+// (app/dashboard/page.tsx): ο φόρος ενοικίων ενοποιείται στο σύνολο.
+const OVERVIEW_PROPERTIES = [OVERVIEW_PROPERTY, ...(bench.rows.user_properties as Array<{ id: string }>).filter(p => p.id !== 'p0')];
 
 // ═══ ΤΟ ΒΗΜΑ ΕΛΕΓΧΟΥ ΤΗΣ ΣΑΡΩΣΗΣ ΔΕΝ ΤΟ ΕΙΧΕ ΔΕΙ ΚΑΝΕΝΑΣ ΣΑΡΩΤΗΣ ════════════
 // Η σκηνή «scan» αποδίδει μόνο τα πλακίδια: το βήμα ελέγχου εμφανίζεται ΑΦΟΥ
@@ -393,7 +406,7 @@ const VIEWS: Record<string, () => React.ReactElement> = {
       </CenterState>
     </Modal>
   ),
-  overview: () => <OverviewTab prop={OVERVIEW_PROPERTY as never} properties={[OVERVIEW_PROPERTY] as never} userId="u1" onNavigate={() => {}} tabVisible={() => true} />,
+  overview: () => <OverviewTab prop={OVERVIEW_PROPERTY as never} properties={OVERVIEW_PROPERTIES as never} userId="u1" onNavigate={() => {}} tabVisible={() => true} />,
   portfolio: () => <PortfolioTab properties={bench.properties} userId="u1" onSelectProperty={() => {}} />,
   cash: () => <CashHero cash={cash} showIncome onNavigate={() => {}} onRecordRent={() => {}} />,
   rent: () => <RentReceived onClose={() => {}} lines={lines} supabase={supabase} propertyId={null} tenantId={null} leaseViaBank today="2026-08-23" onSaved={() => {}} />,
@@ -420,7 +433,7 @@ const VIEWS: Record<string, () => React.ReactElement> = {
   budgetPro: () => <BillsBudget propertyId="p0" userId="u1" profileType="professional" />,
   contacts: () => <TabContacts propertyId="p0" userId="u1" />,
   wizard: () => <AddPropertyWizard userId="u1" onClose={() => {}} onSaved={() => {}} />,
-  roi: () => <TabRentROI propertyId="p0" userId="u1" propertyValue={185000} />,
+  roi: () => <TabRentROI propertyId="p0" userId="u1" propertyValue={(bench.rows.user_properties[0] as { value: number }).value} />,
   // ═══ ΟΙ ΚΛΕΙΔΩΜΕΝΕΣ ΕΝΟΤΗΤΕΣ ΔΕΝ ΜΕΤΡΗΘΗΚΑΝ ΠΟΤΕ ═══════════════════════════
   // Ολες οι σκηνές τρέχουν με τις προεπιλογές των στηριγμάτων, δηλαδή
   // `plan = 'free'` και `profileType = 'individual'`. Στην Αποδοση αυτό κόβει

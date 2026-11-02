@@ -1112,11 +1112,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             // χρονιάς με τη μικρότερη λέξη που τη λέει — έσοδα, δαπάνες, φόρος,
             // καθαρό — και χωρούν σε μία γραμμή και στα 320. Η πηγή (φιλοξενία,
             // μίσθωση) και η «εκτίμηση» λέγονται στον υπότιτλο.
-            label: 'Έσοδα έτους', value:fmtEur(annualRent),
+            label: 'Έσοδα έτους', value:fmtEur(annualRent), fact: 'income-year',
             sub: `${incomeIsEstimate ? `${INCOME_LABELS.estimate} · ` : ''}${yi.received != null ? `${fmtEur(yi.received)} ${INCOME_LABELS.received}` : `${fmtEur(rent)} τον μήνα`}`,
             title: fromLease
-              ? `Το μηνιαίο μίσθωμα × 12 (${INCOME_LABELS.expected}). ${yi.received != null ? `${fmtEur(yi.received)} ${INCOME_LABELS.received}.` : 'Δεν έχει καταγραφεί δόση ακόμη.'} Ίδια βάση με το ${navLabel('portfolio')} και τις ${navLabel('roi')}.`
-              : `Όσα εισπράχθηκαν το ${year} ως σήμερα (${fmtEur(inc.receivedToDate)}), σε ετήσιο ρυθμό: ${INCOME_LABELS.estimate}, όχι είσπραξη. ${yi.basis === 'stays' ? 'Δηλωτέο ακαθάριστο των διαμονών με άφιξη ως σήμερα.' : 'Πληρωμένες δόσεις με ημερομηνία ως σήμερα.'} Ίδια βάση με το ${navLabel('portfolio')} και τις ${navLabel('roi')}.` }
+              ? `Το μηνιαίο μίσθωμα × 12 (${INCOME_LABELS.expected}). ${yi.received != null ? `${fmtEur(yi.received)} ${INCOME_LABELS.received}.` : 'Δεν έχει καταγραφεί δόση ακόμη.'} Ίδια βάση με το ${navLabel('portfolio')} και την ${navLabel('roi')}.`
+              : yi.basis === 'stays'
+                ? `Δηλωτέο ακαθάριστο του ${year}: ${fmtEur(inc.receivedToDate)} από διαμονές με άφιξη ως σήμερα και ${fmtEur(fi.booked)} από κρατήσεις που έχουν κλειστεί έως 31/12. ${fi.booked > 0 ? 'Είναι εκτίμηση: μια κράτηση μπορεί να ακυρωθεί.' : ''} Ίδια βάση με το ${navLabel('portfolio')}, την ${navLabel('roi')} και τον φόρο.`.replace(/  +/g, ' ')
+                : `Όσα εισπράχθηκαν το ${year} ως σήμερα (${fmtEur(inc.receivedToDate)}), σε ετήσιο ρυθμό: ${INCOME_LABELS.estimate}, όχι είσπραξη. Πληρωμένες δόσεις με ημερομηνία ως σήμερα. Ίδια βάση με το ${navLabel('portfolio')} και την ${navLabel('roi')}.` }
           : { label: 'Έσοδα έτους', value:fmtEur(annualRent),
             sub: rentIsTarget ? `${INCOME_LABELS.estimate} · στόχος ${fmtEur(rent)} τον μήνα, χωρίς ενοικιαστή` : `${fmtEur(rent)} τον μήνα`,
             title: rentIsTarget
@@ -1136,9 +1138,11 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           // στο σύνολο και αυτό εδώ είναι το κομμάτι που αναλογεί. Με ένα
           // ακίνητο δεν μοιράζεται τίποτα: είναι όλος ο φόρος του. Η ετικέτα
           // λέει το καθένα στη θέση του και η πλήρης εξήγηση μένει στο ⓘ.
-          { label: portfolioTax.count>1 ? 'Μερίδιο φόρου' : 'Φόρος ενοικίου', value:fmtEur(estTax),
+          { label: portfolioTax.count>1 ? 'Μερίδιο φόρου' : 'Φόρος ενοικίου', value:fmtEur(estTax), fact: 'tax-year',
             sub: incomeIsEstimate ? INCOME_LABELS.estimate : undefined,
-            title:portfolioTax.count>1
+            // Η ΒΑΣΗ ΤΟΥ ΦΟΡΟΥ ΛΕΓΕΤΑΙ ΠΡΩΤΗ: η ίδια με το «Έσοδα έτους» και με τον
+            // φόρο των Αποδόσεων και της Βραχυχρόνιας (lib/facts/rentTax).
+            title:`Φόρος ${year} στα ${fmtEur(rentTax.income.annual)} του ακινήτου${yi.label ? ` (${yi.label})` : ''}. ` + (portfolioTax.count>1
               ? `${CONSOLIDATION_NOTE} Συνολικός φόρος χαρτοφυλακίου ${fmtEur(Math.round(portfolioTax.totalTax))} σε ενοίκια ${fmtEur(Math.round(portfolioTax.totalAnnualRent))}.`
               // ΤΟ ΚΕΙΜΕΝΟ ΣΥΜΦΩΝΕΙ ΜΕ ΤΟ ΝΟΥΜΕΡΟ. Η κύρωση της τραπεζικής
               // είσπραξης (ν.5222/2025) ξεκινά την 1.7.2027· ως τότε η έκπτωση
@@ -1146,7 +1150,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               // το κείμενο δεν μιλά για απώλεια που δεν συμβαίνει ακόμη.
               : (!bankReceiptMatters(year) || rentViaBank)
                 ? `Προοδευτική κλίμακα ενοικίων ${year} με την τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}. Έχεις ένα ακίνητο με εισόδημα, οπότε ο φόρος του είναι όλος ο φόρος σου.`
-                : `Προοδευτική κλίμακα ενοικίων ${year} χωρίς την τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}: το ενοίκιο εισπράττεται με μετρητά και από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} η έκπτωση προϋποθέτει τραπεζική είσπραξη (ν.5222/2025). Ο φόρος υπολογίζεται στο 100% του ενοικίου.` },
+                : `Προοδευτική κλίμακα ενοικίων ${year} χωρίς την τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}: το ενοίκιο εισπράττεται με μετρητά και από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} η έκπτωση προϋποθέτει τραπεζική είσπραξη (ν.5222/2025). Ο φόρος υπολογίζεται στο 100% του ενοικίου.`) },
           // ΧΩΡΙΣ ΧΡΩΜΑΤΙΚΗ ΕΤΥΜΗΓΟΡΙΑ. Το πρόσημο το λέει ήδη το ίδιο το ποσό·
           // το πράσινο/κόκκινο απλώς το ξαναέλεγε και σε μια χρονιά με ΕΝΦΙΑ
           // έβαφε κόκκινο ένα ακίνητο που δουλεύει κανονικά.
@@ -1182,8 +1186,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         // οπότε κάθεται εκεί, με το ίδιο σχήμα: μεικτή ως αριθμός, καθαρή και
         // αξία ως υπότιτλος. Οι λέξεις από το lib/facts.
         if (income && propValue>0) extra.push({
-          label: YIELD_SHORT_LABELS.gross, value: fp(grossYield),
-          sub: `${YIELD_INLINE_LABELS.net_pre_tax} ${fp(netYield)} · αξία ${fmtEur(propValue)}`,
+          label: YIELD_SHORT_LABELS.gross, value: fp(grossYield), fact: 'yield-gross', facts: { 'yield-net-recorded': fp(netYield) },
+          // Στο βραχυχρόνιο το «χωρίς εκτιμήσεις» λέει γιατί οι Αποδόσεις, που
+          // προσθέτουν καθαρισμό και τέλη από το μοντέλο, γράφουν μικρότερο ποσοστό.
+          sub: `${propertyStatus(prop) === 'rent_short' ? YIELD_INLINE_LABELS.net_pre_tax_recorded : YIELD_INLINE_LABELS.net_pre_tax} ${fp(netYield)} · αξία ${fmtEur(propValue)}`,
           title: `${YIELD_LABELS.gross}: ετήσιο ενοίκιο ως ποσοστό της αξίας του ακινήτου, πριν από τις δαπάνες. ${costs.stayFees > 0
             ? `${netPreTaxLabel(costs)}: ετήσιο έσοδο μείον τις δαπάνες του έτους που έχεις καταγράψει και ${fmtEur(costs.stayFees)} ${PLATFORM_FEE_LABELS.fromStays}, ως ποσοστό της αξίας. ${PLATFORM_FEE_LABELS.note}`
             : `${netPreTaxLabel(costs)}: ετήσιο έσοδο μείον τις δαπάνες του έτους που έχεις καταγράψει, ως ποσοστό της αξίας.`}` });

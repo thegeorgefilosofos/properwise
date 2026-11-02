@@ -438,7 +438,7 @@ export default function AccountantDossier({
         {/* Πρόοδος: μία λεπτή γραμμή, χωρίς ποσοστά σε μεγάλα γράμματα. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '18px 0 0' }}>
           <Bar pct={pct} height={4} track="var(--bg-elevated)" label="Πρόοδος φακέλου" style={{ flex: 1 }} />
-          <span style={{ ...num, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{ready.done} / {ready.total}</span>
+          <span style={{ ...num, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{ready.done}/{ready.total}</span>
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════
@@ -571,7 +571,7 @@ export default function AccountantDossier({
                     : 'Τα ετοιμάζει ο λογιστής από όσα του δίνεις. Σημείωσε ό,τι έχει ήδη γίνει.'}
                 </p>
               </div>
-              <span style={{ ...num, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, flexShrink: 0 }}>{done} / {g.items.length}</span>
+              <span style={{ ...num, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, flexShrink: 0 }}>{done}/{g.items.length}</span>
             </div>
             <div style={{ marginTop: 10 }}>
               {g.items.map(r => (
