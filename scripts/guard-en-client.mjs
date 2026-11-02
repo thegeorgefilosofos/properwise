@@ -30,7 +30,16 @@ const DEBT = new Set(['components/PlanMatrix.tsx'])
 const files = projectFiles("'app/**/*.tsx' 'app/**/*.ts' 'components/**/*.tsx' 'components/**/*.ts' 'lib/**/*.tsx' 'lib/**/*.ts'")
   .filter(f => !f.startsWith('app/en/') && !f.startsWith('lib/i18n/en/') && !/\.test\.tsx?$/.test(f))
 
-const CLIENT = /^\s*(?:\/\/[^\n]*\n\s*|\/\*[\s\S]*?\*\/\s*)*['"]use client['"]/
+// Περνά τα αρχικά σχόλια με απλή σάρωση, χωρίς regex που μπορεί να κολλήσει.
+function isClient(t) {
+  let i = 0
+  for (;;) {
+    while (i < t.length && /\s/.test(t[i])) i++
+    if (t.startsWith('//', i)) { const n = t.indexOf('\n', i); if (n < 0) return false; i = n + 1; continue }
+    if (t.startsWith('/*', i)) { const n = t.indexOf('*/', i + 2); if (n < 0) return false; i = n + 2; continue }
+    return t.startsWith("'use client'", i) || t.startsWith('"use client"', i)
+  }
+}
 // `import { X } from '@/lib/i18n/en/…'`, πολλές γραμμές, όχι `import type`.
 const VALUE_IMPORT = /^import\s+(?!type\b)[^;]*?from\s+['"]((?:@\/lib\/i18n\/en|(?:\.\.?\/)+(?:lib\/)?i18n\/en|\.\/en)\/[^'"]*)['"]/gm
 
@@ -38,7 +47,7 @@ const provlimata = []
 let clients = 0
 for (const f of files) {
   const t = readFileSync(f, 'utf8')
-  if (!CLIENT.test(t)) continue
+  if (!isClient(t)) continue
   clients++
   // Το `./en/…` είναι λεξικό μόνο μέσα στο lib/i18n· αλλού είναι ο πάροχος του φακέλου.
   const hits = [...t.matchAll(VALUE_IMPORT)]
