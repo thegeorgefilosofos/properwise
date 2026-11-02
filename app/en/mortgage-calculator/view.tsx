@@ -19,7 +19,8 @@ const PATH = '/en/mortgage-calculator';
 const EL = '/ypologismos-stegastikou-daneiou';
 const D = MORTGAGE_PAGE_EN;
 
-export const revalidate = 3600;
+// Η ώρα της τιμής αγοράς τη φυλάει το ίδιο το αίτημα (`next.revalidate` στο
+// marketRates.ts). Εδώ δεν είναι πια διαδρομή, άρα δεν έχει ρύθμιση τμήματος.
 
 export function generateMetadata(): Metadata {
   return publicMetadata({ title: D.title(athensParts().year), description: D.description, url: siteUrl(PATH), image: shareImage('en-mortgage-calculator') });

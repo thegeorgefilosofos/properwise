@@ -18,6 +18,11 @@
 //      αυτόματα οι ετικέτες hreflang και η γλώσσα του Open Graph. Η αρχική
 //      γράφει τα δικά της και πρέπει να καλεί ρητά το `languageAlternates(`.
 //      Σελίδα `noindexPage(` δεν θέλει hreflang: δεν ευρετηριάζεται.
+//   4. Οι αγγλικές σελίδες είναι `view.tsx` (και `frame.tsx` στη θέση του
+//      layout) και τις αποδίδει ΜΙΑ διαδρομή, το app/en/[[...slug]]/page.tsx:
+//      κάθε αγγλική σελίδα είναι γραμμένη στον κατάλογό του κι αντίστροφα.
+//      `page.tsx` κάτω από το app/en είναι δική του συνάρτηση στον διακομιστή,
+//      με ~2,5 MB ίχνος σε κάθε ανάπτυξη (scripts/server-weight.mjs).
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
@@ -37,10 +42,11 @@ if (!pairs.length) {
 }
 
 const dirOf = (route) => (route === '/' ? 'app' : join('app', route))
-const pageOf = (route) => join(dirOf(route), 'page.tsx')
+const isEn = (route) => route === '/en' || route.startsWith('/en/')
+const pageOf = (route) => join(dirOf(route), isEn(route) ? 'view.tsx' : 'page.tsx')
 // Σελίδα noindex (π.χ. η επαναφορά κωδικού) δεν δηλώνει hreflang: δεν
 // ευρετηριάζεται σε καμία γλώσσα. Αρκεί να είναι noindex και οι ΔΥΟ πλευρές.
-const metaOk = (route, call) => [pageOf(route), join(dirOf(route), 'layout.tsx')]
+const metaOk = (route, call) => [pageOf(route), join(dirOf(route), isEn(route) ? 'frame.tsx' : 'layout.tsx')]
   .some(f => existsSync(f) && (readFileSync(f, 'utf8').includes(call) || readFileSync(f, 'utf8').includes('noindexPage(')))
 
 const problems = []
@@ -52,19 +58,32 @@ for (const { el, en } of pairs) {
   if (existsSync(pageOf(en)) && !metaOk(en, 'publicMetadata(')) problems.push(`${pageOf(en)}: χωρίς publicMetadata(…) — η αγγλική πλευρά δεν δηλώνει hreflang`)
 }
 
+const DISPATCH = 'app/en/[[...slug]]/page.tsx'
 function enPages(dir = 'app/en', base = '/en') {
   const out = []
   if (!existsSync(dir)) return out
   for (const name of readdirSync(dir)) {
     const full = join(dir, name)
     if (statSync(full).isDirectory()) out.push(...enPages(full, `${base}/${name}`))
-    else if (name === 'page.tsx') out.push(base)
+    else if (name === 'view.tsx') out.push(base)
+    else if (name === 'page.tsx' && full !== DISPATCH) {
+      problems.push(`${full}: αγγλική σελίδα ως δική της διαδρομή — γίνεται view.tsx και μπαίνει στο ${DISPATCH}`)
+    }
   }
   return out
 }
 const known = new Set(pairs.map(p => p.en))
 for (const route of enPages()) {
   if (!known.has(route)) problems.push(`${pageOf(route)}: αγγλική σελίδα χωρίς ζεύγος στο ${MAP}`)
+}
+const dispatched = existsSync(DISPATCH)
+  ? new Set([...readFileSync(DISPATCH, 'utf8').matchAll(/\[\s*'(\/en[^']*)'\s*,\s*\{\s*view:/g)].map(m => m[1]))
+  : new Set()
+for (const en of known) {
+  if (!dispatched.has(en)) problems.push(`${DISPATCH}: «${en}» δεν είναι στον κατάλογο σελίδων — η διεύθυνση δίνει 404`)
+}
+for (const en of dispatched) {
+  if (!known.has(en)) problems.push(`${DISPATCH}: «${en}» χωρίς ζεύγος στο ${MAP}`)
 }
 
 if (problems.length) {

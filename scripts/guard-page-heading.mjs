@@ -34,6 +34,7 @@ const SHELLS = ['<PageTitle', '<LegalShell', '<LegalLayout', '<AlreadySignedIn',
 const EXEMPT = {
   'app/dashboard/page.tsx': 'κέλυφος του πίνακα· την επικεφαλίδα τη δίνει η ενεργή καρτέλα',
   'app/dashboard/components/TabBoundary.tsx': 'όριο σφάλματος γύρω από την καρτέλα· δεν είναι οθόνη',
+  'app/en/[[...slug]]/page.tsx': 'διανομέας του /en· την επικεφαλίδα τη δίνει το `view.tsx` κάθε σελίδας, που ελέγχεται μόνο του',
 }
 
 /**
@@ -53,7 +54,8 @@ const tabFiles = [...tabComponents]
   .map(name => `app/dashboard/components/${name}.tsx`)
   .filter(f => existsSync(f))
 
-const files = [...globSync('app/**/page.tsx'), ...tabFiles].filter(f => !(f in EXEMPT))
+// Οι αγγλικές σελίδες είναι `view.tsx`, όχι `page.tsx` (app/en/[[...slug]]/page.tsx).
+const files = [...globSync('app/**/page.tsx'), ...globSync('app/en/**/view.tsx'), ...tabFiles].filter(f => !(f in EXEMPT))
 
 const naked = []
 for (const file of files) {

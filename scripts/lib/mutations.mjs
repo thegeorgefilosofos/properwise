@@ -770,9 +770,12 @@ export const MUTATIONS = {
   // ══ Η ΑΓΓΛΙΚΗ ΒΙΤΡΙΝΑ (02.11.2026) ════════════════════════════════════════
   // Αγγλική σελίδα που μπήκε στο app/en/ χωρίς γραμμή στο PAGE_PAIRS: ακριβώς
   // η μισή σελίδα, χωρίς hreflang και με επιλογέα που γυρίζει στην αρχική.
-  // Και ζεύγος στον χάρτη χωρίς τη σελίδα του: σύνδεσμος σε 404.
+  // Και ζεύγος στον χάρτη χωρίς τη σελίδα του: σύνδεσμος σε 404. Και αγγλική
+  // σελίδα ως δική της διαδρομή ή έξω από τον κατάλογο του app/en/[[...slug]].
   'i18n-pairs': { every: [
+    { add: 'app/en/mut-orphan/view.tsx', content: tsx('    <p>Orphan</p>') },
     { add: 'app/en/mut-orphan/page.tsx', content: tsx('    <p>Orphan</p>') },
+    { file: 'app/en/[[...slug]]/page.tsx', from: "  ['/en/tools', { view: tools }],\n", to: '' },
     { file: 'lib/i18n/paths.ts', from: "['/ergaleia', '/en/tools'],", to: "['/ergaleia', '/en/tools'],\n  ['/logistes', '/en/accountants']," },
   ] },
   // Το κουμπί «Start free» δίπλα σε τιμή, ένα ελληνικό «ή» μέσα σε αγγλική
