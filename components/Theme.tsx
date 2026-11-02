@@ -615,6 +615,15 @@ export interface KPIItem {
   title?: string;
   /** Χρώμα για τη γραμμή `sub` (π.χ. μεταβολή vs πέρσι). */
   subTone?: Tone;
+  /**
+   * ΤΟ ΟΝΟΜΑ ΤΟΥ ΜΕΓΕΘΟΥΣ ΓΙΑ ΤΟΝ ΕΛΕΓΧΟ «ΙΔΙΟΣ ΑΡΙΘΜΟΣ ΣΕ ΚΑΘΕ ΟΘΟΝΗ»
+   * (scripts/e2e-same-number.mjs, ενότητα πίνακα ελέγχου). Γράφεται ως
+   * `data-fact`, με την τιμή όπως φαίνεται στο `data-fact-value`. Δεν αλλάζει
+   * τίποτα στην εμφάνιση.
+   */
+  fact?: string;
+  /** Άλλα μεγέθη που γράφονται μέσα στο πλακίδιο (π.χ. στον υπότιτλο), όνομα → κείμενο. */
+  facts?: Record<string, string>;
 }
 
 const TONE_COLOR: Record<string, string> = {
@@ -718,7 +727,7 @@ export function KpiValue({ value, tone, chars, half }: { value: string; tone?: T
 export const widestOf = (...values: string[]): number =>
   values.reduce((m, v) => Math.max(m, v.length), 0);
 
-export function Tile({ label, value, sub, subTone, tone, title, info, chars, half, nested, compact }: KPIItem & {
+export function Tile({ label, value, sub, subTone, tone, title, info, chars, half, nested, compact, fact, facts }: KPIItem & {
   /** Το ⓘ δίπλα στην ετικέτα. Δίνεται ως κόμβος από τον καλούντα: το `InfoHint`
    *  ζει στον πίνακα ελέγχου και διαβάζει από εδώ, οπότε δεν μπορεί να εισαχθεί. */
   info?: ReactNode;
@@ -742,7 +751,9 @@ export function Tile({ label, value, sub, subTone, tone, title, info, chars, hal
       // πράγματι τυλίγει. Ο λόγος και οι δύο μετρήσεις ζουν πάνω από τον κανόνα
       // `[data-long]` στο globals.css.
       data-long={label.length > 17 || undefined}
+      data-fact={fact} data-fact-value={fact ? value : undefined}
       style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {facts && Object.entries(facts).map(([k, v]) => <span key={k} hidden data-fact={k} data-fact-value={v} />)}
       {/* Το ύψος γραμμής είναι 16 γιατί 16 είναι και το εικονίδιο.
 
           ΤΟ ⓘ ΑΚΟΛΟΥΘΕΙ ΤΗΝ ΤΕΛΕΥΤΑΙΑ ΛΕΞΗ (29/10/2026). Η ετικέτα ήταν flex:
@@ -1120,7 +1131,11 @@ export function Bar({
   const list: BarPart[] = parts
     ? parts.map(p => ({ ...p, pct: clamp(p.pct) * scale }))
     : [{ pct: clamp(pct ?? 0) * scale, tone }];
-  const r = Math.min(height / 2, 6);
+  // Ως 12 ψηλή η μπάρα είναι πίλλα: το μισό του ύψους. Γράφεται ως `pill`
+  // (ο περιηγητής κόβει την ακτίνα στο μισό της μικρής πλευράς), ώστε η ΙΔΙΑ
+  // απόφαση να μη μετριέται ως πέντε διαφορετικές ακτίνες (1,5 · 2 · 3 · 4 · 6)
+  // ανάλογα με το ύψος. Οπτική διαφορά μηδέν.
+  const r = height <= 12 ? T.radius.pill : 6;
   // Ο ρόλος `meter` έχει νόημα μόνο για ΜΙΑ ποσότητα. Με πολλά κομμάτια, η
   // μπάρα είναι σύνθεση και ο αριθμός που θα ανακοίνωνε δεν θα ήταν κανενός.
   const single = list.length === 1 && !!label;
@@ -1798,15 +1813,28 @@ export function EmptyState({ title, hint, action, icon, page, points }: { title:
  * Κανένα από αυτά δεν είναι σφάλμα που σπάει κάτι· όλα μαζί είναι ο λόγος που
  * το προϊόν διαβάζεται σαν δώδεκα προϊόντα.
  *
- * Το μέτρο μένει παράμετρος, γιατί μια φόρμα ρυθμίσεων και ένας πίνακας
- * αποσβέσεων δεν θέλουν το ίδιο πλάτος. Η ΣΤΟΙΧΙΣΗ όμως δεν είναι παράμετρος:
- * ό,τι έχει μέτρο, κεντράρεται.
+ * ΔΥΟ ΜΕΤΡΑ, ΟΝΟΜΑΣΜΕΝΑ, ΣΕ ΕΝΑ ΣΗΜΕΙΟ (02.11.2026). Ακόμη και με κοινό
+ * κέλυφος, κάθε καρτέλα έδινε δικό της αριθμό: Επαφές 1080, Σχέδιο 920,
+ * Πρόσκληση 900, Ρυθμίσεις 880 και οι υπόλοιπες ολόκληρο το πλάτος. Τέσσερα
+ * πλάτη για δύο είδη σελίδας. Τώρα:
+ *
+ *   · `wide`: καρτέλες δεδομένων (λίστες, πίνακες, πλακίδια). Ολο το πλάτος
+ *     του κελύφους, όπως κάθε άλλη καρτέλα δεδομένων.
+ *   · `form`: ρυθμίσεις, φόρμες και κείμενο προς ανάγνωση. Στενή στήλη, ώστε
+ *     η γραμμή να διαβάζεται και τα πεδία να μην τεντώνονται σε ένα μέτρο.
+ *
+ * Η ΑΡΙΣΤΕΡΗ ΑΚΡΗ ΔΕΝ ΜΕΤΑΚΙΝΕΙΤΑΙ ΠΟΤΕ. Με κεντράρισμα, το 880 στα 1280
+ * ξεκινούσε πενήντα εικονοστοιχεία πιο μέσα από τον τίτλο της διπλανής
+ * καρτέλας· κάθε αλλαγή καρτέλας έκανε τον τίτλο να πηδά. Η στενή στήλη
+ * ξεκινά στο ΙΔΙΟ x με τις καρτέλες πλήρους πλάτους και απλώς σταματά νωρίτερα·
+ * το μάτι βρίσκει τον τίτλο εκεί που τον άφησε.
  */
-export const pageShell = (measure: number): CSSProperties => ({
+export const PAGE_MEASURE = { wide: undefined, form: 880 } as const;
+export type PageMeasure = keyof typeof PAGE_MEASURE;
+/** Αριθμός: μεταβατικό, για κλήσεις που δεν έχουν περάσει ακόμη σε όνομα. */
+export const pageShell = (measure: PageMeasure | number = 'wide'): CSSProperties => ({
   fontFamily: T.font.sans,
-  maxWidth: measure,
-  marginLeft: 'auto',
-  marginRight: 'auto',
+  maxWidth: typeof measure === 'number' ? measure : PAGE_MEASURE[measure],
 });
 
 // ── Κοινό πεδίο εισόδου Ρυθμίσεων ─────────────────────────────────────────

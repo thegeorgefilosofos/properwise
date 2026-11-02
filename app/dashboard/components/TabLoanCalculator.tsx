@@ -453,7 +453,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           από το μήκος του αριθμού, ο τόνος αποκαλύπτεται στο άγγιγμα όπως
           παντού και η κατάσταση `hoverKpi` δεν χρειάζεται καν. */}
       <KPIGrid items={[
-        { label:'Μηνιαία δόση', value:fmtEur(monthly), sub:`${rateTypeLabel(rateType).toLowerCase()} ${fmtPct(effRate)} · ${Y} χρόνια` },
+        { label:'Μηνιαία δόση', value:fmtEur(monthly), sub:`${rateTypeLabel(rateType).toLowerCase()} ${fmtPct(effRate)} · ${Y} έτη` },
         { label:'Σύνολο τόκων', value:fmtEur(totalInt), sub:`${fp(((totalInt/Math.max(LA,1))*100))} επί κεφαλαίου` },
         { label:'Συνολική αποπληρωμή', value:fmtEur(total), sub:`κεφάλαιο ${fmtEur(LA)}` },
         // Ο τόνος μπαίνει ΜΟΝΟ όταν λέει κάτι: πάνω από 90% δάνειο προς αξία
@@ -465,7 +465,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
           διάρκεια, το λέμε δίπλα στα νούμερα αντί να το υπονοούμε. */}
       {(rateType==='fixed'||rateType==='mixed')&&Number(fixedPeriod)<Y&&(
         <p style={{ ...TT.caption, color:'var(--text-tertiary)', marginTop:8 }}>
-          Τα σύνολα υποθέτουν {fmtPct(effRate)} σε όλη τη διάρκεια· μετά τα {fixedPeriod} χρόνια το επιτόκιο αλλάζει, οπότε είναι ενδεικτικά.
+          Τα σύνολα υποθέτουν {fmtPct(effRate)} σε όλη τη διάρκεια· μετά τα {fixedPeriod} έτη το επιτόκιο αλλάζει, οπότε είναι ενδεικτικά.
         </p>
       )}
 

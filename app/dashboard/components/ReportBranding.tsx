@@ -64,7 +64,7 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
     setError('');
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { setError('Μη έγκυρο αρχείο. Επιτρεπτά: PNG, JPG, WebP.'); return; }
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { setError('Το αρχείο δεν είναι εικόνα PNG, JPG ή WebP.'); return; }
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
@@ -75,13 +75,13 @@ export default function ReportBranding({ userId, plan, onUpgrade }: { userId: st
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext('2d');
-        if (!ctx) { setError('Σφάλμα επεξεργασίας εικόνας.'); return; }
+        if (!ctx) { setError('Η εικόνα δεν επεξεργάστηκε. Δοκίμασε άλλο αρχείο.'); return; }
         ctx.drawImage(img, 0, 0, w, h);
         const out = canvas.toDataURL('image/png');
         if (out.length > MAX_LOGO_BYTES) { setError('Το αρχείο είναι πολύ μεγάλο. Διάλεξε εικόνα έως 500 KB.'); return; }
         setLogoUrl(out);
       };
-      img.onerror = () => setError('Μη έγκυρο αρχείο. Επιτρεπτά: PNG, JPG, WebP.');
+      img.onerror = () => setError('Το αρχείο δεν είναι εικόνα PNG, JPG ή WebP.');
       img.src = String(reader.result);
     };
     reader.readAsDataURL(file);

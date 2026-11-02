@@ -29,7 +29,7 @@ import type { ScannedDoc } from '@/lib/billing/documents';
  * υπόσχεση αυτή πρέπει να είναι απαράλλαχτη παντού, γι' αυτό ζει εδώ.
  */
 const SCAN_LABEL = 'Συμπλήρωσε από φωτογραφία';
-const SCAN_HINT = 'Διαβάζει τα στοιχεία και γεμίζει τη φόρμα. Δεν καταχωρεί τίποτα μόνο του';
+const SCAN_HINT = 'Διαβάζει τα στοιχεία και γεμίζει τη φόρμα. Δεν καταχωρεί τίποτα μόνο του.';
 
 export default function ScanButton({ label = SCAN_LABEL, hint = SCAN_HINT, onExtract }: { label?: string; hint?: string; onExtract: (doc: ScannedDoc) => void }) {
   const ref = useRef<HTMLInputElement>(null);
@@ -43,7 +43,7 @@ export default function ScanButton({ label = SCAN_LABEL, hint = SCAN_HINT, onExt
     if (r.doc) onExtract(r.doc);
     // Το όριο από τη σάρωση (ήταν «10MB» με το χέρι, η σάρωση κόβει στα 8) και
     // ο λόγος όταν ο τύπος δεν διαβάζεται, όχι «δεν διάβασα καθαρά».
-    else setErr(r.error === 'big' ? `Πολύ μεγάλο αρχείο (όριο ${MAX_SCAN_MB} MB).` : r.error === 'format' ? (r.errorText || 'Αυτός ο τύπος αρχείου δεν διαβάζεται.') : r.error === 'quota' ? (r.errorText || SAY.scanQuotaSpent) : r.error === 'key_missing' ? 'Η αυτόματη ανάγνωση δεν είναι ενεργή.' : 'Δεν διάβασα καθαρά το έγγραφο. Δοκίμασε καθαρότερη φωτό ή PDF.');
+    else setErr(r.error === 'big' ? `Πολύ μεγάλο αρχείο (όριο ${MAX_SCAN_MB} MB).` : r.error === 'format' ? (r.errorText || 'Αυτός ο τύπος αρχείου δεν διαβάζεται.') : r.error === 'quota' ? (r.errorText || SAY.scanQuotaSpent) : r.error === 'key_missing' ? 'Η αυτόματη ανάγνωση δεν είναι ενεργή.' : 'Δεν διάβασα καθαρά το έγγραφο. Δοκίμασε καθαρότερη φωτογραφία ή PDF.');
   };
 
   return (

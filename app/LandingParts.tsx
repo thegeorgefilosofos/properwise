@@ -116,8 +116,7 @@ export function NoaFeature() {
           </ul>
           <div className="nf-offer">
             <div className="nf-price">
-              <span className="nf-amount">{fe(noa.priceMonthly)}</span>
-              <span className="nf-per">τον μήνα</span>
+              <span className="nf-amount">{fe(noa.priceMonthly)}<span className="nf-per" style={{ marginLeft: 2, letterSpacing: 0, fontWeight: 400 }}>/μήνα</span></span>
               <span className="nf-per">{`ή ${fe(noa.priceAnnual)} τον χρόνο`}</span>
             </div>
             {/* ΤΟ ΠΑΚΕΤΟ ΚΑΙ Η ΔΟΚΙΜΗ ΕΧΟΥΝ ΑΛΛΑ ΟΡΙΑ. Η γραμμή έλεγε τις ερωτήσεις
@@ -129,7 +128,7 @@ export function NoaFeature() {
           </div>
           <div className="nf-cta">
             <Link href="/signup?plan=solo&cycle=monthly" className="lp-cta lp-primary lp-press" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '13px 24px', borderRadius: T.radius.pill }}>Δοκίμασε {ASSISTANT_ACC}</Link>
-            <span className="nf-free">{`Ο «${PLANS.free.name}» μένει δωρεάν, χωρίς ${ASSISTANT_ACC}.`}</span>
+            <span className="nf-free">{`Ο «${PLANS.free.name}» χωρίς ${ASSISTANT_ACC} δεν θέλει συνδρομή.`}</span>
           </div>
         </div>
         <div className="nf-stage" aria-label={`Παραδείγματα ερωτήσεων προς ${ASSISTANT_ACC}`}>
@@ -208,7 +207,7 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
     <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="po-lead-ico"><path d="M21 12a8 8 0 0 1-8 8H8l-5 3 1.4-4.2A8 8 0 1 1 21 12" /></svg>
   );
   const price = (amount: string, per: string) => (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}>
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
       <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 'clamp(24px, 2.4vw, 29px)', fontWeight: 700, letterSpacing: '-0.03em', color: TEXT, lineHeight: 1.1 }}>{amount}</span>
       <span style={{ fontSize: 13, color: MUTED }}>{per}</span>
     </div>
@@ -244,7 +243,10 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
         {/* Στη διαφήμιση το μηδέν γράφεται «0€»: δεκαδικά σε μηδέν διαβάζονται ως
             λογιστικό φύλλο. Η τιμή και το όριο όμως από τα PLANS, όπως σε κάθε
             άλλη κάρτα. */}
-        {price(free.priceMonthly === 0 ? feWhole(free.priceMonthly) : fe(free.priceMonthly), 'χωρίς συνδρομή')}
+        {/* ΙΔΙΑ ΜΟΝΑΔΑ ΜΕ ΚΑΘΕ ΑΛΛΗ ΤΙΜΗ (02.11.2026). Εγραφε «0€ χωρίς συνδρομή»
+            εδώ και «0,00€/μήνα» στο /paketa: δύο όψεις για το ίδιο μηδέν. Τώρα
+            «0€/μήνα» και στα δύο, το «χωρίς συνδρομή» το λέει ο υπότιτλος. */}
+        {price(free.priceMonthly === 0 ? feWhole(free.priceMonthly) : fe(free.priceMonthly), '/μήνα')}
         <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>{`${propertiesLine(free.maxProperties)}, όλα τα φορολογικά`}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left', margin: '14px 0 16px' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>Περιλαμβάνει:</div>
@@ -253,7 +255,7 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
         {cta('/signup', signupCta())}
       </div>
       <div className="pc-on">
-        {price(fe(noa.priceMonthly), 'τον μήνα')}
+        {price(fe(noa.priceMonthly), '/μήνα')}
         <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>ή <strong style={{ color: TEXT }}>{fe(noa.priceAnnual)} τον χρόνο</strong></div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left', margin: '14px 0 16px' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>Περιλαμβάνει:</div>
@@ -289,7 +291,7 @@ export function PlanCard({ planId, name, nameColor, sub, price, per, note, annua
           Το `nowrap` είναι απαραίτητο, όχι διακοσμητικό: χωρίς αυτό το «τον
           μήνα» έπεφτε κάτω από το «29,90€» και «79,90€» —τα δύο μεγαλύτερα
           ποσά— και οι λίστες ξεκινούσαν σε διαφορετικό ύψος σε κάθε κάρτα. */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
         <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 'clamp(24px, 2.4vw, 29px)', fontWeight: 700, letterSpacing: '-0.03em', color: TEXT, lineHeight: 1.1 }}>{price}</span>
         <span style={{ fontSize: 13, color: MUTED }}>{per}</span>
       </div>

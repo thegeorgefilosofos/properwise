@@ -23,7 +23,7 @@ import { rentalIncomeTax, rentalBracketsForYear, FIRST_YEAR_NEW_BRACKETS } from 
 import { presumptiveDeductionRateForYear } from '@/lib/billing/presumptive';
 import { incomeYearFor } from '@/lib/core/declarationYear';
 import { toolQuery } from '@/lib/tools/permalink';
-import { bracketSlices, rateScaleEach, ratePct } from '../odigos/taxText';
+import { bracketSlices, rateScale, ratePct } from '../odigos/taxText';
 import { SPEC } from './spec';
 
 const PATH = '/ypologismos-forou-enoikion';
@@ -49,8 +49,8 @@ export const rentTitle = (year: number): string =>
  */
 export const rentDesc = (year: number): string =>
   `Υπολόγισε πόσο φόρο θα πληρώσεις για τα ενοίκιά σου με την κλίμακα του ${year} `
-  + `(${rateScaleEach(rentalBracketsForYear(year))}) και την τεκμαρτή έκπτωση `
-  + `${ratePct(presumptiveDeductionRateForYear(year, true))}. Δωρεάν, χωρίς εγγραφή.`;
+  + `(${rateScale(rentalBracketsForYear(year))}) και την τεκμαρτή έκπτωση `
+  + `${ratePct(presumptiveDeductionRateForYear(year, true))}. Χωρίς εγγραφή.`;
 
 // Οι δύο τιμές των πεδίων του παραδείγματος: 1.000€ τον μήνα για 12 μήνες.
 const MONTHLY = 1_000;

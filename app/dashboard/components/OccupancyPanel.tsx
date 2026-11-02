@@ -66,6 +66,9 @@ import { navLabel } from '@/lib/nav/labels';
 interface StayRow extends ReportStay { declared_at?: string | null }
 interface PropInfo extends StatusRow { prop_type?: string | null; sqm?: number | null }
 
+/** Ημέρες του έτους (365 ή 366). */
+const daysInYear = (y: number): number => (new Date(Date.UTC(y, 1, 29)).getUTCMonth() === 1 ? 366 : 365);
+
 export default function OccupancyPanel({ propertyId, userId, profileType = 'individual', legalForm = 'individual' }: {
   propertyId: string; userId: string;
   /** ΤΟ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ ΡΩΤΑΕΙ ΑΝ ΕΙΣΑΙ ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ. Δες `isIndividualTaxpayer`. */
@@ -149,7 +152,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
           {/* Η ΠΛΗΡΟΤΗΤΑ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ, ΕΔΩ. Ηταν και σήμα και πλακίδιο, δύο
               εκατοστά μακριά το ένα από το άλλο. */}
           {!open && !loading && occ.availableDays > 0 && (
-            <span style={{ ...num, fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>{fp(occ.pct)}</span>
+            <span style={{ ...num, fontSize: 12, fontWeight: 700, color: 'var(--accent)' }} data-fact="occ-year" data-fact-property={propertyId} data-fact-value={fp(occ.pct)}>{fp(occ.pct)}</span>
           )}
           <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="m6 9 6 6 6-6" /></svg>
         </div>
@@ -200,8 +203,13 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
                         πρόθεση «από» ζητά αιτιατική: «από Μάιο», όχι «από
                         Μάιος». Ο κατάλογος MONTHS_ACC υπάρχει ακριβώς γι' αυτό. */}
                     <div style={{ ...note, marginTop: 6 }}>
-                      {occ.bookedNights} {occ.bookedNights === 1 ? 'νύχτα' : 'νύχτες'} σε {occ.availableDays} διαθέσιμες ημέρες
-                      {from != null && to != null && `, από ${MONTHS_ACC[from]} έως ${MONTHS_ACC[to]}`}. Όχι σε 365: το ακίνητο δεν ήταν στην αγορά όλο τον χρόνο.
+                      {/* ΤΟ «ΟΧΙ ΣΕ 365» ΜΟΝΟ ΟΤΑΝ ΙΣΧΥΕΙ. Γραφόταν και όταν το παράθυρο
+                          ήταν όλη η χρονιά: «71 νύχτες σε 365 διαθέσιμες ημέρες … Όχι
+                          σε 365». Και οι νύχτες περιέχουν τις κλεισμένες έως 31/12,
+                          όπως τα «Έσοδα έτους» της Επισκόπησης· το λέει. */}
+                      {occ.bookedNights} {occ.bookedNights === 1 ? 'νύχτα' : 'νύχτες'} του {year}, μαζί με τις κλεισμένες έως 31/12, σε {occ.availableDays} διαθέσιμες ημέρες
+                      {from != null && to != null && `, από ${MONTHS_ACC[from]} έως ${MONTHS_ACC[to]}`}.
+                      {occ.availableDays < daysInYear(year) && ` Όχι σε ${daysInYear(year)}: το ακίνητο δεν ήταν στην αγορά όλο τον χρόνο.`}
                     </div>
                   </div>
 
@@ -275,7 +283,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
                           λέει, αντί να το κρύβει. */}
                       {tax.levyRegimeAssumed && (
                         <div style={{ ...note, marginTop: 8 }}>
-                          Οι συντελεστές του τέλους άλλαξαν από 1/1/{FIRST_YEAR_CURRENT_LEVY}. Για τη χρήση {year} το ποσό
+                          Οι συντελεστές του τέλους άλλαξαν από 01/01/{FIRST_YEAR_CURRENT_LEVY}. Για τη χρήση {year} το ποσό
                           είναι υπολογισμένο με τους σημερινούς· επιβεβαίωσέ το στην ΑΑΔΕ ή με τον λογιστή σου.
                         </div>
                       )}

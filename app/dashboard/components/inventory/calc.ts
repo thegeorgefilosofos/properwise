@@ -12,7 +12,7 @@ import { depreciate } from '@/lib/inventory/depreciation'
 import { monthlyKwh, monthlyEnergyCost } from '@/lib/property/energy'
 import { fd, ABSENT_DATE } from '@/components/tokens'
 import { athensToday, daysUntil as athensDaysUntil } from '@/lib/core/time'
-import { plural } from '@/lib/core/greek'
+import { plural, days } from '@/lib/core/greek'
 import { addMonths as addCalendarMonths } from '@/lib/loans/progress'
 import type { InventoryItem } from './model'
 
@@ -73,8 +73,8 @@ export const warrantyStatus = (expiry: string) => {
   if (!expiry) return {label:'Χωρίς εγγύηση',color:'var(--text-tertiary)'}
   const d = daysUntil(expiry)
   if (d<0) return {label:'Έληξε',color:'var(--negative)'}
-  if (d<=30) return {label:`${d} μέρες`,color:'var(--negative)'}
-  if (d<=90) return {label:`${d} μέρες`,color:'var(--warning)'}
+  if (d<=30) return {label:days(d),color:'var(--negative)'}
+  if (d<=90) return {label:days(d),color:'var(--warning)'}
   return {label:`έως ${fmtDate(expiry)}`,color:'var(--positive)'}
 }
 // Το ίδιο πρόβλημα από την άλλη πλευρά: `new Date().toISOString()` μετά τις 21:00

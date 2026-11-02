@@ -570,6 +570,23 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
              ίδιο πράγμα χωρίς να πάρει ούτε ένα pixel. */
           .exp-actions .po-btn[data-variant="secondary"] { color: var(--accent) !important; }
         }
+        /* ΣΕ ΣΤΕΝΟ ΠΑΡΑΘΥΡΟ ΜΕ ΠΟΝΤΙΚΙ Η ΣΕΙΡΑ ΤΩΝ ΚΟΥΜΠΙΩΝ ΔΕΝ ΚΡΑΤΑ ΘΕΣΗ ΚΡΥΦΗ.
+           Με ποντίκι οι ενέργειες φαίνονται μόνο στην αιώρηση ή την εστίαση·
+           η δεύτερη σειρά όμως έμενε στη διάταξη, με τρίχα, γέμισμα και κενό
+           πλέγματος: περίπου 40 εικονοστοιχεία άδεια κάτω από ΚΑΘΕ γραμμή. Ο
+           χώρος ανοίγει τώρα μαζί με τα κουμπιά. Δεν γίνεται «display: none»:
+           τα κουμπιά πρέπει να μένουν προσβάσιμα με Tab· η εστίαση είναι
+           αυτή που ανοίγει τη σειρά. Σειρά χωρίς καμία ενέργεια δεν ζωγραφίζεται
+           ποτέ. */
+        @media (max-width: 560px) {
+          .exp-actions:empty { display: none !important; }
+        }
+        @media (max-width: 560px) and (hover: hover) {
+          .exp-row:not(:hover):not(:focus-within) { row-gap: 0; }
+          .exp-row:not(:hover):not(:focus-within) .exp-actions {
+            max-height: 0; overflow: hidden; margin-top: 0; padding-top: 0; border-top-color: transparent;
+          }
+        }
 
         /* ΚΑΤΩ ΑΠΟ ΤΑ 360 Ο ΤΙΤΛΟΣ ΤΥΛΙΓΕΤΑΙ ΑΝΤΙ ΝΑ ΚΟΠΕΙ. Με τη γραμματοσειρά
            του σώματος στα 14 σε δάχτυλο, η «Συντήρηση καυστήρα» θέλει 152
@@ -900,7 +917,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
       // άλλα λόγια· τώρα λέει ΤΙ αναζητήθηκε, που είναι το χρήσιμο.
       ) : months.length === 0 ? (
         <EmptyState title="Δεν βρέθηκαν δαπάνες" hint={`Καμία εγγραφή δεν ταιριάζει με «${q}».`}
-          action={<Btn variant="secondary" onClick={() => setQ('')}>Καθάρισε την αναζήτηση</Btn>} />
+          action={<Btn variant="secondary" onClick={() => setQ('')}>Εκκαθάριση</Btn>} />
       ) : (
         <Card pad="sm" gap={false}>
           {shown.map(m => (

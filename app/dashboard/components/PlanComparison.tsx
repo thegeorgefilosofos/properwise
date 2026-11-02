@@ -102,7 +102,7 @@ export default function PlanComparison({ profileType, currentPlan, paidPlan = 'f
           {/* ΑΠΟ 25.09.2026: ο δωρεάν «Ιδιοκτήτης» δεν έχει τη Νόα· τα πακέτα
               της σύγκρισης την έχουν όλα, με διαφορετικό πλήθος ερωτήσεων. */}
           <span style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 700 }}>Όλα τα πακέτα εδώ περιλαμβάνουν {ASSISTANT_ACC}</span>
-          <span style={{ ...TT.bodySm, color: 'var(--text-tertiary)' }}>Ο δωρεάν «{PLANS.free.name}» έχει τα φορολογικά χωρίς αυτήν.</span>
+          <span style={{ ...TT.bodySm, color: 'var(--text-tertiary)' }}>Το πακέτο «{PLANS.free.name}» έχει τα φορολογικά χωρίς αυτήν.</span>
         </div>
 
         {/* ΠΕΝΤΕ ΓΝΩΣΤΕΣ ΣΤΗΛΕΣ, ΟΧΙ «ΟΣΕΣ ΧΩΡΑΝΕ». Με ελάχιστο 220 το auto-fit

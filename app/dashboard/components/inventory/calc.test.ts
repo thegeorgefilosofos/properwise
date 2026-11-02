@@ -46,9 +46,9 @@ const inDays = (n: number) => {
   // ΤΟ ΣΗΜΕΡΑ ΔΕΝ ΕΙΝΑΙ ΑΥΡΙΟ. Ο παλιός υπολογισμός σύγκρινε μεσάνυχτα UTC με
   // πραγματική ώρα: στην Ελλάδα, από τα μεσάνυχτα ως τις 03:00, μια εγγύηση
   // που λήγει σήμερα εμφανιζόταν ως «λήγει σε 1 ημέρα».
-  ok('σήμερα, μηδέν μέρες', warrantyStatus(athensToday()).label === '0 μέρες')
-  ok('σε 30 μέρες, μέσα στο πρώτο κατώφλι', warrantyStatus(inDays(30)).label === '30 μέρες')
-  ok('σε 31 μέρες, δεύτερο κατώφλι', warrantyStatus(inDays(31)).label === '31 μέρες')
+  ok('σήμερα, μηδέν μέρες', warrantyStatus(athensToday()).label === '0 ημέρες')
+  ok('σε 30 μέρες, μέσα στο πρώτο κατώφλι', warrantyStatus(inDays(30)).label === '30 ημέρες')
+  ok('σε 31 μέρες, δεύτερο κατώφλι', warrantyStatus(inDays(31)).label === '31 ημέρες')
   ok('σε 91 μέρες, δείχνει ημερομηνία', warrantyStatus(inDays(91)).label.startsWith('έως '))
 
   ok('κενή ημερομηνία σημαίνει «ποτέ», δηλαδή άπειρο', daysUntil('') === Infinity)

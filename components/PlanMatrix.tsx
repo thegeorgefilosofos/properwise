@@ -19,12 +19,13 @@
 // πίνακας δεν μπορεί να διαφωνήσει με τον κώδικα, γιατί τον διαβάζει.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import type { CSSProperties } from 'react';
 import { PLANS, TEAM_LINE, PRIORITY_SUPPORT_LINE, firstPlanWith, type PlanId } from '@/lib/billing/plans';
 import { aiLimitsFor, SCAN_LIMITS } from '@/lib/billing/aiLimits';
 import { ASSISTANT_TO, ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { FEATURE_LABEL, FEATURE_MIN_PLAN, planAtLeast, type Feature } from '@/lib/billing/entitlements';
 import { fn } from '@/components/tokens';
-import { fe } from '@/lib/core/format';
+import { fe, feWhole } from '@/lib/core/format';
 import { Btn } from '@/components/Theme';
 import { signupCta } from '@/lib/billing/trialOffer';
 import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
@@ -87,13 +88,15 @@ const fromPlanLine = (label: string, line: string): FeatureRow => {
 // «Ιδιοκτήτης» και όπου τα δύο διαφέρουν γράφει και τα δύο, πρώτα το δωρεάν.
 // Οι γραμμές με ναι/όχι δεν αλλάζουν: ό,τι έχει ο δωρεάν το έχει και ο με Νόα.
 const WITH_NOA = `με ${ASSISTANT_NAME}`;
-const both = (free: string, noa: string) => `${free} · ${noa} ${WITH_NOA}`;
+// ΤΟ ΖΕΥΓΑΡΙ ΚΡΑΤΙΕΤΑΙ ΩΣ «χωρίς · με» ΚΑΙ ΤΟ ΟΝΟΜΑΖΕΙ Η `CellText`: δύο σειρές
+// με την ίδια σύνταξη, «Χωρίς Νόα: όχι» και «Με Νόα: 30».
+const both = (free: string, noa: string) => `${free} · ${noa}`;
 export const columnName = (id: ComparedPlan): string => id === 'solo' ? PLANS.free.name : PLANS[id].name;
 // Η ΣΤΗΛΗ ΛΕΓΕΤΑΙ ΟΠΩΣ Ο ΔΙΑΚΟΠΤΗΣ ΤΗΣ ΑΡΧΙΚΗΣ. Η κάρτα εκεί γράφει «Χωρίς Νόα»
 // και «Με Νόα»· εδώ ο αναγνώστης οθόνης άκουγε σκέτο «Ιδιοκτήτης» για στήλη
 // που περιέχει και το πληρωμένο πακέτο.
 const columnLabel = (id: ComparedPlan): string =>
-  id === 'solo' ? `${PLANS.free.name}, δωρεάν ή ${WITH_NOA}` : PLANS[id].name;
+  id === 'solo' ? `${PLANS.free.name}, χωρίς συνδρομή ή ${WITH_NOA}` : PLANS[id].name;
 const withSolo = (row: FeatureRow, solo: string): FeatureRow => ({ ...row, values: { ...row.values, solo } });
 
 const MATRIX: FeatureRow[] = [
@@ -102,19 +105,19 @@ const MATRIX: FeatureRow[] = [
     values: { ...Object.fromEntries(COMPARED.map(p => [p, fn(aiLimitsFor(p).perMonth)])) as Record<ComparedPlan, CellValue>,
       // «30 με Νόα» μόνο του διαβαζόταν σαν 30 ερωτήσεις στο δωρεάν. Πρώτα το
       // «Όχι» του δωρεάν, από κάτω όσα δίνει η Νόα, όπως και στη φωνή.
-      solo: both('Όχι', fn(aiLimitsFor('solo').perMonth)) } },
+      solo: both('όχι', fn(aiLimitsFor('solo').perMonth)) } },
   // ΤΟ ΗΜΕΡΗΣΙΟ ΟΡΙΟ ΛΕΓΕΤΑΙ ΠΡΙΝ ΤΗΝ ΑΓΟΡΑ. Μέσα σε ένα απόγευμα δεσμεύει
   // σχεδόν πάντα αυτό και όχι το μηνιαίο (βλ. `remainingLine` στο aiLimits).
   { label: `Ερωτήσεις ${ASSISTANT_TO} την ημέρα`,
     values: { ...Object.fromEntries(COMPARED.map(p => [p, fn(aiLimitsFor(p).perDay)])) as Record<ComparedPlan, CellValue>,
-      solo: both('Όχι', fn(aiLimitsFor('solo').perDay)) } },
+      solo: both('όχι', fn(aiLimitsFor('solo').perDay)) } },
   // Η ΣΑΡΩΣΗ ΜΕΤΡΑΕΙ ΧΩΡΙΣΤΑ (SCAN_LIMITS): πέντε τον μήνα στο δωρεάν, χωρίς
   // όριο σε όλα τα πληρωμένα.
   { label: 'Σάρωση εγγράφων τον μήνα',
     values: { ...Object.fromEntries(COMPARED.map(p => [p, 'Χωρίς όριο'])) as Record<ComparedPlan, CellValue>,
       solo: both(fn(SCAN_LIMITS.free ?? 0), 'χωρίς όριο') } },
   // Η ΦΩΝΗ ΖΕΙ ΜΕΣΑ ΣΤΗ ΝΟΑ (PropertyAssistant): στο δωρεάν πακέτο δεν υπάρχει.
-  withSolo(forAll('Φωνητική καταχώρηση'), both('Όχι', 'Ναι')),
+  withSolo(forAll('Φωνητική καταχώρηση'), both('όχι', 'ναι')),
   // Η ΧΡΟΝΙΑ ΕΙΝΑΙ ΤΗΣ ΚΛΙΜΑΚΑΣ, ΟΧΙ ΤΟΥ ΗΜΕΡΟΛΟΓΙΟΥ. Ηταν «φόρος 2026» με το
   // χέρι και την 1η Ιανουαρίου 2027 θα διαβαζόταν σαν πέρσινο εργαλείο. Η
   // κλίμακα του ν.5246/2025 ισχύει από το `FIRST_YEAR_NEW_BRACKETS` και η
@@ -165,12 +168,23 @@ const FEATURES = DISTINCT.filter(row => !LIMITS.includes(row));
  * περιλαμβάνεται. Παίρνει τον τόνο κάθε άλλου «Όχι» του πίνακα. Το ίδιο
  * στοιχείο τρέφει κάρτα και πίνακα, ώστε οι δύο όψεις να λένε το ίδιο.
  */
+// ΔΥΟ ΣΕΙΡΕΣ ΜΕ ΤΗΝ ΙΔΙΑ ΣΥΝΤΑΞΗ (02.11.2026). Το «Όχι» από πάνω και το «30 με
+// Νόα» από κάτω, σε άλλο μέγεθος, διαβάζονταν ως δύο άσχετες τιμές. Τώρα κάθε
+// σειρά λέει ποια εκδοχή του πακέτου περιγράφει, με την ίδια διάταξη:
+// ετικέτα σε δεύτερο τόνο, τιμή στον πρώτο.
+const VARIANT_LABEL: CSSProperties = { fontWeight: 500, color: 'var(--text-tertiary)' };
+const VARIANT_LINE: CSSProperties = { display: 'block', lineHeight: 1.45 };
 function CellText({ v }: { v: string }) {
-  const [main, ...rest] = v.split(' · ');
-  const head = main === 'Όχι' ? <span className="plan-card-no">{main}</span> : main;
-  return rest.length
-    ? <span className="plan-card-num">{head}<span className="plan-card-alt">{rest.join(' · ')}</span></span>
-    : <span className="plan-card-num">{head}</span>;
+  const parts = v.split(' · ');
+  if (parts.length < 2) return <span className="plan-card-num">{v}</span>;
+  const [free, noa] = parts;
+  const value = (x: string) => x === 'όχι' ? <span className="plan-card-no">{x}</span> : x;
+  return (
+    <span className="plan-card-num">
+      <span style={VARIANT_LINE}><span style={VARIANT_LABEL}>{`Χωρίς ${ASSISTANT_NAME}:`}</span> {value(free)}</span>
+      <span style={VARIANT_LINE}><span style={VARIANT_LABEL}>{`Με ${ASSISTANT_NAME}:`}</span> {value(noa)}</span>
+    </span>
+  );
 }
 
 /** «Εξαγωγή Ε2» μέσα σε πρόταση: πεζό μόνο το πρώτο γράμμα, τα αρκτικόλεξα μένουν. */
@@ -217,7 +231,9 @@ function PlanPrice({ id }: { id: ComparedPlan }) {
   const free = id === 'solo';
   return (
     <div className="plan-price">
-      <span className="plan-price-num">{fe(free ? PLANS.free.priceMonthly : PLANS[id].priceMonthly)}</span>
+      {/* ΤΟ ΜΗΔΕΝ ΓΡΑΦΕΤΑΙ «0€», ΟΠΩΣ ΣΤΗΝ ΑΡΧΙΚΗ (02.11.2026): το «0,00€» διαβαζόταν
+          ως λογιστικό φύλλο και διέφερε από την κάρτα της αρχικής. */}
+      <span className="plan-price-num">{free && PLANS.free.priceMonthly === 0 ? feWhole(PLANS.free.priceMonthly) : fe(free ? PLANS.free.priceMonthly : PLANS[id].priceMonthly)}</span>
       <span className="plan-price-per">/μήνα</span>
       <span className="plan-price-alt">
         {/* ΤΟ ΙΔΙΟ ΖΕΥΓΑΡΙ ΜΕ ΤΗΝ ΑΡΧΙΚΗ. Η αρχική έγραφε για τη Νόα 4,99€ τον
@@ -238,7 +254,7 @@ function PlanPrice({ id }: { id: ComparedPlan }) {
  * λέξη «Όχι» δίπλα σε 40 εικονίδια ✓: η σελίδα τιμών διαβαζόταν ως λίστα
  * αρνήσεων. Μια αχνή παύλα στο ίδιο μέγεθος με το ✓ λέει το ίδιο ήσυχα· ο
  * αναγνώστης οθόνης ακούει «Όχι», όπως ακούει «Ναι» στο ✓. Το «Όχι» μέσα σε
- * φράση («Όχι · 30 με Νόα») μένει λέξη, γιατί εκεί είναι μισή πρόταση.
+ * φράση («Χωρίς Νόα: όχι») μένει λέξη, γιατί εκεί είναι μισή πρόταση.
  */
 function NoMark() {
   return (
@@ -405,8 +421,11 @@ export function PlanMatrix({ highlight, recommended, headingLevel = 3 }: { highl
               κρατά την προσβάσιμη ονομασία του χωρίς διπλό τίτλο. */}
           <caption>Σύγκριση πακέτων ανά δυνατότητα</caption>
           <colgroup>
-            <col style={{ width: '22%' }} />
-            {COMPARED.map(id => <col key={id} style={{ width: `${78 / COMPARED.length}%` }} />)}
+            {/* 18% ΚΑΙ ΟΧΙ 22% (02.11.2026): το «Ξεκίνα χωρίς συνδρομή» θέλει 160
+                εικονοστοιχεία κειμένου και στη στήλη των 22% έσπαγε σε δύο γραμμές
+                στα 1280. Οι ετικέτες αριστερά σπάνε σε κενό λέξης χωρίς ζημιά. */}
+            <col style={{ width: '18%' }} />
+            {COMPARED.map(id => <col key={id} style={{ width: `${82 / COMPARED.length}%` }} />)}
           </colgroup>
           <thead>
             <tr>
@@ -448,7 +467,7 @@ export function PlanMatrix({ highlight, recommended, headingLevel = 3 }: { highl
             <tr className="plan-cta-row">
               <th scope="row"><span className="sr-only">Εγγραφή</span></th>
               {COMPARED.map(id => (
-                <td key={id} className={id === recommended ? 'is-rec' : undefined} style={{ textAlign: 'center' }}><TrialCta id={id} recommended={recommended} /></td>
+                <td key={id} className={id === recommended ? 'is-rec' : undefined} style={{ textAlign: 'center', ['--btn-pad' as string]: '0 8px' }}><TrialCta id={id} recommended={recommended} /></td>
               ))}
             </tr>
           </tbody>

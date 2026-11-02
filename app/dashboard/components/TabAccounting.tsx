@@ -9,7 +9,7 @@ import { InfoHint } from './InfoHint'
 import BankImport from './BankImport'
 import E2ReconcileCard from './E2ReconcileCard'
 import { Landmark, Lock, Unlock } from 'lucide-react'
-import { bracketsLabelForYear, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, BUSINESS_INCOME_BRACKETS_2026, CORPORATE_TAX_RATE_2026, ADVANCE_TAX_RATE_SOLE, ADVANCE_TAX_RATE_COMPANY, DIVIDEND_WITHHOLDING_RATE, STR_INDIVIDUAL_MAX_PROPERTIES } from '@/lib/billing/greekTax'
+import { bracketsLabelForYear, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT, BUSINESS_INCOME_BRACKETS_2026, NEW_PROFESSIONAL_BRACKETS_2026, CORPORATE_TAX_RATE_2026, ADVANCE_TAX_RATE_SOLE, ADVANCE_TAX_RATE_COMPANY, DIVIDEND_WITHHOLDING_RATE, STR_INDIVIDUAL_MAX_PROPERTIES } from '@/lib/billing/greekTax'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/accounting/statement'
 import { FEATURE_MIN_PLAN, isTabPurchasable, planAtLeast, requiredPlanForTab } from '@/lib/billing/entitlements'
 import { PLANS } from '@/lib/billing/plans'
@@ -204,7 +204,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ: κάθεται σε σειρά με το «Άνοιγμα πύλης» των T.h.sm
               και το minHeight T.h.md του Btn θα ψήλωνε μόνο αυτό, σπάζοντας τη
               στοίχιση της γραμμής. */}
-          <button onClick={()=>{ try{ navigator.clipboard?.writeText(acctLink); setAcctCopied(true); setTimeout(()=>setAcctCopied(false),2000) }catch{ /* ignore */ } }} style={{ height:T.h.sm, padding:'0 12px', borderRadius:T.radius.pill, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:acctCopied?'var(--positive)':'var(--text-secondary)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily: T.font.sans, whiteSpace:'nowrap' }}>{acctCopied?'Αντιγράφηκε':'Αντιγραφή'}</button>
+          <button onClick={async ()=>{ try{ await navigator.clipboard.writeText(acctLink); setAcctCopied(true); setTimeout(()=>setAcctCopied(false),2000) }catch{ notifyError('Ο σύνδεσμος δεν αντιγράφηκε. Ο φυλλομετρητής δεν έδωσε πρόσβαση στο πρόχειρο.') } }} style={{ height:T.h.sm, padding:'0 12px', borderRadius:T.radius.pill, border:'1px solid var(--border-default)', background:'var(--bg-surface)', color:acctCopied?'var(--positive)':'var(--text-secondary)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily: T.font.sans, whiteSpace:'nowrap' }}>{acctCopied?'Αντιγράφηκε':'Αντιγραφή'}</button>
           <a href={acctLink} target="_blank" rel="noreferrer" style={{ display:'inline-flex', alignItems:'center', gap: 4, height:T.h.sm, padding:'0 13px', borderRadius:T.radius.pill, background:'var(--accent)', color:'var(--accent-text)', fontSize:12, fontWeight:600, textDecoration:'none', fontFamily: T.font.sans, whiteSpace:'nowrap' }}>Άνοιγμα πύλης<ArrowUpRight size={13}/></a>
           <div style={{ width:'100%', display:'flex', alignItems:'center', gap:10, marginTop:2, paddingLeft:2 }}>
             {/* Η ΕΜΒΕΛΕΙΑ ΛΕΓΕΤΑΙ ΕΚΕΙ ΠΟΥ ΠΑΙΡΝΕΤΑΙ Η ΑΠΟΦΑΣΗ. Ο πίνακας
@@ -277,7 +277,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               ══════════════════════════════════════════════════════════════ */}
           {isCoOwned && (
             <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', margin:'6px 0 0', fontFamily: T.font.sans }}>
-              Συνιδιοκτησία {fn(ownPct, 2)}%: κάθε ποσό εδώ είναι το ΔΙΚΟ σου μερίδιο, όχι το σύνολο του ακινήτου. Οι δαπάνες που δήλωσες μοιρασμένες κρατούν το δικό τους ποσοστό.
+              Συνιδιοκτησία {fpRate(ownPct)}: κάθε ποσό εδώ είναι το ΔΙΚΟ σου μερίδιο, όχι το σύνολο του ακινήτου. Οι δαπάνες που δήλωσες μοιρασμένες κρατούν το δικό τους ποσοστό.
             </p>
           )}
         </div>
@@ -640,7 +640,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           <div style={{ display:'flex', flexDirection:'column', gap:6, justifyContent:'center', paddingLeft:14, borderLeft:'1px solid var(--border-subtle)', minWidth:220 }}>
             <Check checked={firstYears} onChange={updateFirstYears} label={<span style={{ fontWeight:500, color:'var(--text-primary)' }}>Νέα επιχείρηση (πρώτη τριετία)</span>} align="start" />
             {/* Κρέμασμα κάτω από την ετικέτα: κουτάκι 17 συν το κενό της σειράς. */}
-            <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5, paddingLeft: 17 + T.sp.sm }}>Τα πρώτα 3 έτη δραστηριότητας: 1ο κλιμάκιο 4,5% (αντί 9%) και προκαταβολή φόρου μειωμένη κατά 50%.</span>
+            <span style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5, paddingLeft: 17 + T.sp.sm }}>Τα πρώτα 3 έτη δραστηριότητας: 1ο κλιμάκιο {fpRate(NEW_PROFESSIONAL_BRACKETS_2026[0].rate*100)} (αντί {fpRate(BUSINESS_INCOME_BRACKETS_2026[0].rate*100)}) και προκαταβολή φόρου μειωμένη κατά 50%.</span>
           </div>
         </div>
       )}
@@ -786,7 +786,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             <span style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily: T.font.sans }}>
               {st==='unknown'?<>Δεν μπορέσαμε να διαβάσουμε αν η χρήση {year} είναι κλειδωμένη. Δεν εμφανίζεται κουμπί κλειδώματος: αν είναι ήδη κλειδωμένη, ένα νέο κλείδωμα θα έσβηνε το αρχικό στιγμιότυπο. Ανανέωσε τη σελίδα.</>:st==='open'?(isCurrent?<>Χρήση {year} σε εξέλιξη · μήνας {provMonth} από 12.</>:isFuture?<>Η χρήση {year} δεν έχει ξεκινήσει ακόμη.</>:<>Χρήση {year} ολοκληρωμένη, έτοιμη για κλείδωμα.</>):st==='drift'?<>Η χρήση {year} κλειδώθηκε, αλλά τα δεδομένα άλλαξαν έκτοτε.</>:<>Χρήση {year}, κλειδωμένη στις {new Date(closing!.locked_at).toLocaleDateString('el-GR')}.</>}
               <InfoHint>Το κλείδωμα κρατά αμετάβλητο στιγμιότυπο των αριθμών του έτους (χρήσιμο μετά την υποβολή στην ΑΑΔΕ). Αν αργότερα αλλάξεις ενοίκια ή έξοδα, εμφανίζεται προειδοποίηση απόκλισης, χωρίς να χαθεί το αρχικό κλείδωμα.</InfoHint>
-              {lockErr && <span style={{ display:'block', marginTop:4, color:'var(--negative)', fontSize:12 }}>Το κλείδωμα δεν αποθηκεύτηκε: {lockErr}. Έλεγξε ότι έχει εφαρμοστεί το migration book_closings στη βάση.</span>}
+              {lockErr && <span style={{ display:'block', marginTop:4, color:'var(--negative)', fontSize:12 }}>{lockErr}</span>}
               {closingErr && <span style={{ display:'block', marginTop:4, color:'var(--negative)', fontSize:12 }}>{closingErr}</span>}
             </span>
             <div style={{ flex:1 }}/>

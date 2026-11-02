@@ -1,4 +1,5 @@
 import { roundHalfUp } from '../core/money';
+import { fpRate } from '../core/format';
 // ═══════════════════════════════════════════════════════════════════════════
 // ownerSplit — Κατανομή εσόδων/εξόδων σε συνιδιοκτήτες + διαχειριστική αμοιβή.
 //
@@ -98,7 +99,7 @@ export function computeSplit(input: SplitInput): SplitResult {
     owners: results, gross, expenses, managementFee, distributable,
     managerName: input.managerName?.trim() || undefined,
     pctSum, valid,
-    warning: valid ? undefined : (owners.length === 0 ? 'Δεν έχουν οριστεί ιδιοκτήτες.' : `Τα ποσοστά αθροίζουν ${pctSum}% (πρέπει 100%).`),
+    warning: valid ? undefined : (owners.length === 0 ? 'Δεν έχουν οριστεί ιδιοκτήτες.' : `Τα ποσοστά αθροίζουν ${fpRate(pctSum)}, ενώ πρέπει 100%.`),
   };
 }
 

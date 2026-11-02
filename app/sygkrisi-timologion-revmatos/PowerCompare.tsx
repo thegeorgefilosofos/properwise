@@ -128,7 +128,7 @@ export function PowerCompare({ serverToday, cta }: {
 
       <ToolPaper title="Σύγκριση τιμολογίων ρεύματος" on={today} inputs={[
         { k: 'Κατανάλωση', v: kwhLine },
-        { k: 'Νυχτερινή', v: `${fn(Math.min(100, nightIn))}%` },
+        { k: 'Νυχτερινή', v: fpRate(Math.min(100, nightIn)) },
         { k: 'Ηλεκτρονικός λογαριασμός', v: ebill ? 'Ναι' : 'Όχι' },
         { k: 'Είδος', v: colourLabel },
         { k: 'Έλεγχος τιμών', v: fdLong(TARIFFS_VERIFIED) },

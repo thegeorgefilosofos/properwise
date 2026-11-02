@@ -29,7 +29,6 @@ import {
   Textarea,
   CustomSelect as SelectField,
   DatePicker,
-  InfoDot,
 } from './UIComponents';
 import {
   T,
@@ -446,7 +445,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       if(ins.error){ setError(failed('Το έγγραφο δεν καταχωρήθηκε', ins.error)); setDocBusy(false); return; }
       if(ins.id) setFormDocs(prev=>[...prev,{id:ins.id as string,file_name:file.name,tag}]);
       notifyOk('Το έγγραφο ανέβηκε');
-    }catch{ setError('Σφάλμα ανεβάσματος εγγράφου'); }
+    }catch{ setError('Το έγγραφο δεν ανέβηκε. Δοκίμασε ξανά.'); }
     setDocBusy(false);
   };
 
@@ -535,7 +534,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       if(instErr) notifyError(`Ο ενοικιαστής αποθηκεύτηκε, αλλά οι δόσεις ενοικίου δεν δημιουργήθηκαν. ${instErr}`);
     }
     setSaving(false);setIsForm(false);
-    notifyOk(editId?'Αποθηκεύτηκε':'Ενοικιαστής προστέθηκε');
+    notifyOk(editId?'Αποθηκεύτηκε':'Ο ενοικιαστής προστέθηκε');
     await refresh();
   };
 
@@ -556,7 +555,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     if(!res.ok){notifyError(res.error);return;}
     if(openId===t.id) setOpenId(null);
     if(res.filesError) notifyError(res.filesError);
-    else notify('Διαγράφηκε');
+    else notify('Ο ενοικιαστής διαγράφηκε');
     void refresh();
   };
 
@@ -575,7 +574,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     if(!t.lease_doc_name) return;
     const path=`${userId}/${t.id}/${t.lease_doc_name}`;
     const{data,error:e}=await supabase.storage.from('lease-documents').createSignedUrl(path,60*60);
-    if(e||!data?.signedUrl){setError('Δεν ήταν δυνατό το άνοιγμα του PDF.');return;}
+    if(e||!data?.signedUrl){setError('Το PDF δεν άνοιξε. Δοκίμασε ξανά.');return;}
     window.open(data.signedUrl,'_blank','noopener,noreferrer');
   };
 
@@ -624,9 +623,9 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
 
   const DTABS:{id:DossierTab;label:string;badge?:number}[]=dc?[
     {id:'overview',label:'Επισκόπηση'},
-    {id:'lease',label:'Μίσθωση και Εγγύηση',badge:(dcOverdue.count+(declaredByTenant.get(dc.id)||0))||undefined},
-    {id:'condition',label:'Φθορές και Βλάβες',badge:(dcDamages.filter(d=>!d.repaired).length+dcMaint.filter(m=>m.status!=='done').length)||undefined},
-    {id:'legal',label:'Νομικά και Φόρος'},
+    {id:'lease',label:'Μίσθωση και εγγύηση',badge:(dcOverdue.count+(declaredByTenant.get(dc.id)||0))||undefined},
+    {id:'condition',label:'Φθορές και βλάβες',badge:(dcDamages.filter(d=>!d.repaired).length+dcMaint.filter(m=>m.status!=='done').length)||undefined},
+    {id:'legal',label:'Νομικά και φόρος'},
     {id:'comm',label:'Επικοινωνία'},
     {id:'docs',label:'Έγγραφα'},
   ]:[];
@@ -714,7 +713,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                     title={t.full_name}
                     sub={<>
                       <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>{t.lease_start||t.lease_end?`${fmtD(t.lease_start)} έως ${fmtD(t.lease_end)}`:'χωρίς περίοδο μίσθωσης'}</span>
-                      {t.afm&&<span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.mono }}>ΑΦΜ {t.afm}</span>}
+                      {t.afm&&<span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>ΑΦΜ {t.afm}</span>}
                     </>}
                     badges={<>
                       {statusBadge(t)}
@@ -766,8 +765,8 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                         <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>{fmtD(t.lease_start)} έως {fmtD(t.move_out_date||t.lease_end)}</div>
                       </div>
                       <div style={{ textAlign:'right' as const }}>
-                        <span style={{ fontSize:14, fontWeight:700, fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', color:'var(--text-primary)' }}>{fmt(cur)}</span>
-                        {diff!==0&&<span style={{ marginLeft:8, fontSize: 'var(--fs-xs)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', color:'var(--text-secondary)' }}>{diff>0?'+':''}{fmt(diff)}</span>}
+                        <span style={{ fontSize:14, fontWeight:700, fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', color:'var(--text-primary)' }}>{fmt(cur)}</span>
+                        {diff!==0&&<span style={{ marginLeft:8, fontSize: 'var(--fs-xs)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', color:'var(--text-secondary)' }}>{diff>0?'+':''}{fmt(diff)}</span>}
                       </div>
                     </div>
                   );
@@ -1108,11 +1107,15 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                     η εξήγηση στο κυκλάκι της. */}
                 <button type="button" onClick={()=>setMoreOpen(o=>!o)} aria-expanded={moreOpen} aria-label="Περισσότερα πεδία"
                   className="acc-toggle acc-row" style={{ minHeight: 44 }}>
+                  {/* ΚΟΥΜΠΙ ΜΕΣΑ ΣΕ ΚΟΥΜΠΙ. Η κουκκίδα επεξήγησης είναι `<button>` και
+                      καθόταν μέσα σε αυτό το `<button>`: άκυρη HTML, δύο στόχοι στο
+                      ίδιο σημείο και ο αναγνώστης οθόνης άκουγε ένα χειριστήριο μέσα
+                      σε άλλο. Το μόνο που έλεγε ήταν «δεν είναι υποχρεωτικά»· το λέει
+                      πλέον η ίδια η μέτρηση, «3 προαιρετικά πεδία». */}
                   <span style={{ ...TT.label, fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', flex:1, minWidth:0, display:'flex', alignItems:'center' }}>
                     Περισσότερα
-                    <InfoDot text="Τίποτα εδώ δεν είναι υποχρεωτικό για τη δήλωση. Είναι όσα χρειάζονται σπάνια και γι’ αυτό δεν στέκονται μπροστά σου."/>
                   </span>
-                  <span style={{ ...TT.caption, color:'var(--text-tertiary)', fontVariantNumeric:'tabular-nums' }}>{fn(moreFields.length)} πεδία</span>
+                  <span style={{ ...TT.caption, color:'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fn(moreFields.length)} {moreFields.length===1?'προαιρετικό πεδίο':'προαιρετικά πεδία'}</span>
                   <ChevronRight aria-hidden size={15} style={{ flexShrink:0, color:'var(--text-tertiary)', transform:moreOpen?'rotate(90deg)':'none', transition:'transform .18s' }}/>
                 </button>
                 {moreOpen&&(

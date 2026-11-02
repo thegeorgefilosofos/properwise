@@ -18,9 +18,11 @@
 //     διαμονές του ίδιου μήνα δεν ξαναμετρούν. Ο κανόνας του μήνα είναι ο ίδιος
 //     με το ημερολόγιο και τη Λογιστική (`monthsWithOwnPlatformFee` του
 //     lib/tax/shortTermTax.ts): το διαβάζουμε, δεν το ξαναγράφουμε.
-//   · ΙΔΙΕΣ ΔΙΑΜΟΝΕΣ ΜΕ ΤΑ ΕΣΟΔΑ. Άφιξη ως σήμερα με το μερίδιο νυχτών του
-//     έτους (`yearShare`) και ο ίδιος ετήσιος ρυθμός με το έσοδο: μέσα στη
-//     χρονιά το έσοδο προβάλλεται σε όλο το έτος, οπότε και η προμήθειά του.
+//   · ΙΔΙΕΣ ΔΙΑΜΟΝΕΣ ΜΕ ΤΑ ΕΣΟΔΑ. Με το μερίδιο νυχτών του έτους (`yearShare`).
+//     Το έσοδο του έτους από διαμονές είναι οι διαμονές ως σήμερα συν οι
+//     κλεισμένες κρατήσεις έως 31/12 (lib/facts/income, κανόνας 3), οπότε και η
+//     ετήσια προμήθεια: όσες κρατήθηκαν ως σήμερα συν όσες γράφουν οι
+//     κλεισμένες κρατήσεις. Όχι προβολή με συντελεστή.
 //
 // ΤΙ ΔΕΝ ΑΛΛΑΖΕΙ. Το δηλωτέο ακαθάριστο, το Ε2 και ο φόρος ενοικίου μένουν στο
 // ακαθάριστο: για φυσικό πρόσωπο το εισόδημα ακινήτων φορολογείται με την
@@ -36,7 +38,11 @@ import type { RentIncome } from './income';
 export interface StayPlatformFees {
   /** Προμήθειες των διαμονών ως σήμερα, χωρίς τους μήνες με δική σου δαπάνη. */
   toDate: number;
-  /** Το ίδιο σε ετήσιο ρυθμό, με τον συντελεστή των εσόδων. Αυτό αφαιρείται στην απόδοση. */
+  /**
+   * Οι προμήθειες του έτους: ως σήμερα και των κλεισμένων κρατήσεων έως το
+   * `through` (ή, για παλιούς καλούντες, ως σήμερα επί `annualFactor`). Αυτό
+   * αφαιρείται στην απόδοση.
+   */
   annual: number;
   /** Προμήθειες διαμονών που ΔΕΝ μέτρησαν: ο μήνας τους έχει δαπάνη προμήθειας. */
   coveredByExpenses: number;
@@ -58,28 +64,34 @@ export interface StayPlatformFeesInput {
   expenses?: readonly CategorisedExpense[] | null;
   /** Πόσες φορές το «ως σήμερα» χωρά στο έτος (έσοδο ετήσιο / έσοδο ως σήμερα). */
   annualFactor?: number;
+  /** Μετρά στο `annual` και τις κλεισμένες κρατήσεις με άφιξη έως αυτή την ημερομηνία, ISO. */
+  through?: string;
 }
 
 /** Οι προμήθειες των διαμονών του έτους, μία φορά, χωρίς όσες είναι ήδη δαπάνη. */
 export function stayPlatformFees(stays: readonly StayAmountLike[], i: StayPlatformFeesInput): StayPlatformFees {
   const t = iso(i.today);
   const own = monthsWithOwnPlatformFee(i.expenses ?? []);
-  let toDate = 0, covered = 0, count = 0;
+  const through = iso(i.through);
+  let toDate = 0, booked = 0, covered = 0, count = 0;
   for (const s of stays) {
     const arrival = iso(s.check_in || s.check_out);
-    if (!arrival || arrival > t) continue;
+    if (!arrival) continue;
+    const future = arrival > t;
+    if (future && !(through && arrival <= through)) continue;
     const fee = platformFee(s);
     if (fee <= 0) continue;
     const { share } = yearShare(s, i.year);
     if (share <= 0) continue;
     // Ο μήνας της άφιξης, όπως στις παραγόμενες γραμμές του ημερολογίου.
-    if (own.has(arrival.slice(0, 7))) { covered += fee * share; continue; }
+    if (own.has(arrival.slice(0, 7))) { if (!future) covered += fee * share; continue; }
+    if (future) { booked += fee * share; continue; }
     toDate += fee * share;
     count++;
   }
   const f = Number.isFinite(i.annualFactor) && (i.annualFactor as number) > 0 ? (i.annualFactor as number) : 1;
   return {
-    toDate: cents(toDate), annual: cents(toDate * f), coveredByExpenses: cents(covered),
+    toDate: cents(toDate), annual: cents(through ? toDate + booked : toDate * f), coveredByExpenses: cents(covered),
     ownMonths: [...own].filter(m => m.startsWith(`${i.year}-`)).length, stays: count,
   };
 }
@@ -93,6 +105,7 @@ export function yieldPlatformFees(
   income: Pick<RentIncome, 'source' | 'received' | 'annualized'>,
   stays: readonly StayAmountLike[], i: Omit<StayPlatformFeesInput, 'annualFactor'>,
 ): StayPlatformFees {
-  if (income.source !== 'stays' || !(income.received > 0) || !(income.annualized > 0)) return ZERO;
-  return stayPlatformFees(stays, { ...i, annualFactor: income.annualized / income.received });
+  if (income.source !== 'stays' || !(income.annualized > 0)) return ZERO;
+  // Ίδια βάση με το έσοδο: ως σήμερα + κλεισμένες κρατήσεις έως 31/12.
+  return stayPlatformFees(stays, { ...i, through: `${i.year}-12-31` });
 }

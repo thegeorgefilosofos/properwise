@@ -7,7 +7,7 @@
 // ερωτήσεις — γι' αυτό δεν είναι η ίδια λίστα σε τρεις μορφές.
 // ═══════════════════════════════════════════════════════════════════════════
 import { downloadWorkbook } from '../sheets';
-import { fdLong, ABSENT, ABSENT_DATE, ABSENT_SHORT } from '@/components/Theme'
+import { fd, fdLong, ABSENT, ABSENT_DATE, ABSENT_SHORT } from '@/components/Theme'
 import { reportHead, reportHeader, reportSection, reportRow, reportKpi, reportDisclaimer, openReport, rEur, rSigned, rPct, rEsc, rDate } from '../reportPdf'
 import { reportAccent, brandRootVars, brandLogoImg, brandName, escHtml as esc, type ReportBranding } from '@/lib/reportBranding'
 import { printFontFaces } from '@/lib/print/fonts'
@@ -22,7 +22,7 @@ import { fmtDate, isOverdue, daysUntil, getCat, getPri, getStatusMeta } from './
 // ─── Export functions ─────────────────────────────────────────────────────────
 export async function exportChecklistExcel(items: ChecklistItem[]) {
   const XLSX = (await import('xlsx-js-style')).default
-  const today = new Date().toLocaleDateString('el-GR')
+  const today = fd(new Date())
   const wb = XLSX.utils.book_new()
   const done = items.filter(i => i.status === 'done').length
   const totalEst = items.reduce((s, i) => s + (i.estimated_cost || 0), 0)
@@ -42,7 +42,7 @@ export async function exportChecklistExcel(items: ChecklistItem[]) {
 
   // ── Sheet 1: Σύνοψη ──────────────────────────────────────────────────────
   const summaryData: (string | number)[][] = [
-    ['PROPERWISE, Εκκρεμότητες Ακινήτου', ''],
+    ['PROPERWISE, εκκρεμότητες ακινήτου', ''],
     ['Ημερομηνία εξαγωγής:', today],
     [''],
     ['ΓΕΝΙΚΗ ΣΥΝΟΨΗ', ''],
@@ -52,7 +52,7 @@ export async function exportChecklistExcel(items: ChecklistItem[]) {
     ['Σε εξέλιξη', items.filter(i => i.status === 'in_progress').length],
     ['Παραλειφθέντα', items.filter(i => i.status === 'skipped').length],
     ['Ληγμένα', overdue],
-    ['Ποσοστό Ολοκλήρωσης (%)', items.length > 0 ? Math.round((done / items.length) * 100) : 0],
+    ['Ποσοστό ολοκλήρωσης (%)', items.length > 0 ? Math.round((done / items.length) * 100) : 0],
     [''],
     // Η ΑΠΟΚΛΙΣΗ ΓΡΑΦΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΥΠΑΡΧΟΥΝ ΚΑΙ ΤΑ ΔΥΟ ΝΟΥΜΕΡΑ. Πριν, το
     // actual_cost δεν είχε κανένα input και γραφόταν πάντα 0, άρα η «Απόκλιση»
@@ -141,8 +141,8 @@ export async function exportChecklistExcel(items: ChecklistItem[]) {
     })
   const actionHeaders = ['Κατάσταση', 'Κατηγορία', 'Περιγραφή', 'Προτεραιότητα', 'Προθεσμία', 'Ημέρες', 'Ανατέθηκε σε', 'Ποιος το κάνει', 'Δική σου εκτίμηση €']
   const actionRows: (string | number)[][] = [
-    ['PROPERWISE, Λίστα Εκκρεμών Ενεργειών', ''],
-    [`${actionItems.length} εκκρεμή tasks · ${overdue} ληγμένα`, today],
+    ['PROPERWISE, λίστα εκκρεμών ενεργειών', ''],
+    [`${actionItems.length} ${actionItems.length === 1 ? 'εκκρεμής εργασία' : 'εκκρεμείς εργασίες'} · ${overdue} ${overdue === 1 ? 'ληγμένη' : 'ληγμένες'}`, today],
     [''],
     actionHeaders,
     ...actionItems.map(item => {
@@ -153,7 +153,7 @@ export async function exportChecklistExcel(items: ChecklistItem[]) {
         item.description,
         getPri(item.priority).label,
         item.due_date ? fmtDate(item.due_date) : ABSENT_DATE,
-        d !== null ? (d < 0 ? `${Math.abs(d)} πριν` : `${d} ημέρες`) : ABSENT_DATE,
+        d !== null ? (d < 0 ? `πριν από ${Math.abs(d)} ${Math.abs(d) === 1 ? 'ημέρα' : 'ημέρες'}` : `σε ${d} ${d === 1 ? 'ημέρα' : 'ημέρες'}`) : ABSENT_DATE,
         item.assigned_contact_name || ABSENT,
         item._who ? WHO_LABEL[item._who] : ABSENT_SHORT,
         item.estimated_cost || '',
@@ -264,7 +264,7 @@ export interface TenantData { full_name?: string; phone?: string; afm?: string; 
 export function exportHandoverProtocol(items: ChecklistItem[], type: 'checkin' | 'checkout', tenant?: TenantData, branding?: ReportBranding | null) {
   const accent = reportAccent(branding)
   const relevant = items.filter(i => i.category === type || (type === 'checkin' && i.category === 'legal'))
-  const title = type === 'checkin' ? 'Πρωτόκολλο Παράδοσης Ακινήτου' : 'Πρωτόκολλο Αποχώρησης Ενοικιαστή'
+  const title = type === 'checkin' ? 'Πρωτόκολλο παράδοσης ακινήτου' : 'Πρωτόκολλο αποχώρησης ενοικιαστή'
   // ΕΝΑ ΕΠΙΣΗΜΟ ΕΓΓΡΑΦΟ ΜΕ ΔΥΟ ΜΟΡΦΕΣ ΗΜΕΡΟΜΗΝΙΑΣ. Το πρωτόκολλο παράδοσης
   // έγραφε τη σημερινή ως «09 Αυγούστου 2026» και τη λήξη μίσθωσης ως «9/8/2026»,
   // δύο γραμμές μακριά, μέσα στο ίδιο χαρτί που υπογράφουν δύο άνθρωποι. Και οι
@@ -357,14 +357,14 @@ body{font-family:'Inter',sans-serif;background:${PAPER};color:${INK};font-size:1
 .meter-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .meter-card{border:1px solid ${RULE};border-radius:8px;padding:12px;background:${PAPER_ALT}}
 .meter-title{font-family:'Inter',sans-serif;font-size: 11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:${INK_MUTED};margin-bottom:8px}
-.meter-val{font-size:22px;font-weight:700;color:${INK};border-bottom:3px solid ${INK};padding-bottom:6px;margin-bottom:6px;font-family:'Roboto Mono',monospace;font-variant-numeric:tabular-nums;min-height:36px;letter-spacing:-0.5px}
+.meter-val{font-size:22px;font-weight:700;color:${INK};border-bottom:3px solid ${INK};padding-bottom:6px;margin-bottom:6px;font-family:'Inter',system-ui,sans-serif;font-variant-numeric:tabular-nums;min-height:36px;letter-spacing:-0.5px}
 .meter-unit{font-size: 11px;color:${INK_FAINT};font-family:'Inter',sans-serif}
 .meter-serial{font-size: 11px;color:${INK_MUTED};margin-top:8px;border-top:1px solid ${RULE};padding-top:6px}
 
 /* Key tracking */
 .key-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .key-card{border:1px solid ${RULE};border-radius:8px;padding:10px;text-align:center}
-.key-num{font-size:26px;font-weight:700;color:${INK};font-family:'Roboto Mono',monospace;font-variant-numeric:tabular-nums;min-height:38px;border-bottom:2px solid ${INK};margin-bottom:8px;letter-spacing:-1px}
+.key-num{font-size:26px;font-weight:700;color:${INK};font-family:'Inter',system-ui,sans-serif;font-variant-numeric:tabular-nums;min-height:38px;border-bottom:2px solid ${INK};margin-bottom:8px;letter-spacing:-1px}
 .key-label{font-size: 11px;color:${INK_MUTED};font-family:'Inter',sans-serif}
 
 /* Appliance table */
@@ -426,12 +426,12 @@ body{font-family:'Inter',sans-serif;background:${PAPER};color:${INK};font-size:1
 
 <div class="notice"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span>Αυτό το πρωτόκολλο αποτελεί νομικά δεσμευτικό αποδεικτικό παράδοσης/παραλαβής ακινήτου. Κρατήστε αντίγραφο και οι δύο πλευρές. Εκτυπώστε σε 2 αντίτυπα.</span></div>
 
-${sectionHtml(1, 'Στοιχεία Ακινήτου και Συμβαλλομένων', `
+${sectionHtml(1, 'Στοιχεία ακινήτου και συμβαλλομένων', `
   <div class="field-grid">
-    ${fieldRow('Διεύθυνση Ακινήτου', '')}
-    ${fieldRow('Διαμέρισμα / Όροφος', '')}
-    ${fieldRow('Τ.Κ. / Πόλη', '')}
-    ${fieldRow('Ημερομηνία Συναλλαγής', esc(today))}
+    ${fieldRow('Διεύθυνση ακινήτου', '')}
+    ${fieldRow('Διαμέρισμα και όροφος', '')}
+    ${fieldRow('Ταχυδρομικός κώδικας και πόλη', '')}
+    ${fieldRow('Ημερομηνία συναλλαγής', esc(today))}
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px">
     <div style="background:${PAPER_ALT};border:1px solid ${RULE};border-radius:8px;padding:12px">
@@ -452,14 +452,14 @@ ${sectionHtml(1, 'Στοιχεία Ακινήτου και Συμβαλλομέ�
     </div>
   </div>
   <div class="field-grid" style="margin-top:10px">
-    ${fieldRow('Διάρκεια Μίσθωσης', '')}
-    ${fieldRow('Λήξη Μίσθωσης', `<span class="${leaseEnd !== '______________________________' ? 'prefilled' : ''}">${esc(leaseEnd)}</span>`)}
+    ${fieldRow('Διάρκεια μίσθωσης', '')}
+    ${fieldRow('Λήξη μίσθωσης', `<span class="${leaseEnd !== '______________________________' ? 'prefilled' : ''}">${esc(leaseEnd)}</span>`)}
     ${fieldRow('Εγγύηση (€)', '')}
-    ${fieldRow('Ενοίκιο / Μήνα (€)', '')}
+    ${fieldRow('Ενοίκιο τον μήνα (€)', '')}
   </div>
 `)}
 
-${sectionHtml(2, 'Κατάσταση Χώρων ανά Δωμάτιο', `
+${sectionHtml(2, 'Κατάσταση χώρων ανά δωμάτιο', `
   <table class="room-table">
     <thead><tr>
       <th>Χώρος</th>
@@ -470,7 +470,7 @@ ${sectionHtml(2, 'Κατάσταση Χώρων ανά Δωμάτιο', `
   </table>
 `)}
 
-${sectionHtml(3, 'Κατάσταση Τοίχων, Δαπέδων και Οροφής', `
+${sectionHtml(3, 'Κατάσταση τοίχων, δαπέδων και οροφής', `
   <table class="room-table">
     <thead><tr><th>Στοιχείο</th><th>Κατάσταση</th><th>Περιγραφή</th></tr></thead>
     <tbody>
@@ -479,7 +479,7 @@ ${sectionHtml(3, 'Κατάσταση Τοίχων, Δαπέδων και Ορο�
   </table>
 `)}
 
-${sectionHtml(4, 'Μετρητές Παροχών', `
+${sectionHtml(4, 'Μετρητές παροχών', `
   <div class="meter-grid">
     <div class="meter-card">
       <div class="meter-title">ΔΕΗ / Ρεύμα</div>
@@ -501,11 +501,11 @@ ${sectionHtml(4, 'Μετρητές Παροχών', `
     </div>
   </div>
   <div style="margin-top:12px">
-    ${fieldRow('Αριθμός Παροχής ΔΕΗ', '')}
+    ${fieldRow('Αριθμός παροχής ΔΕΗ', '')}
   </div>
 `)}
 
-${sectionHtml(5, 'Κλειδιά και Κλειδαριές', `
+${sectionHtml(5, 'Κλειδιά και κλειδαριές', `
   <div class="key-grid">
     <div class="key-card">
       <div class="key-num"></div>
@@ -521,52 +521,52 @@ ${sectionHtml(5, 'Κλειδιά και Κλειδαριές', `
     </div>
     <div class="key-card">
       <div class="key-num"></div>
-      <div class="key-label">Σετ κλειδιών parking</div>
+      <div class="key-label">Σετ κλειδιών στάθμευσης</div>
     </div>
   </div>
   <div class="field-grid" style="margin-top:12px">
-    ${fieldRow('Τύπος Κλειδαριάς', '')}
-    ${fieldRow('Smart Lock / Κωδικός', '')}
-    ${fieldRow('Αρ. Γραμματοκιβωτίου', '')}
-    ${fieldRow('Κωδικός Συναγερμού', '')}
+    ${fieldRow('Τύπος κλειδαριάς', '')}
+    ${fieldRow('Έξυπνη κλειδαριά, κωδικός', '')}
+    ${fieldRow('Αριθμός γραμματοκιβωτίου', '')}
+    ${fieldRow('Κωδικός συναγερμού', '')}
   </div>
 `)}
 
-${sectionHtml(6, 'Συσκευές και Έπιπλα', `
+${sectionHtml(6, 'Συσκευές και έπιπλα', `
   <table class="app-table">
     <thead><tr><th>Είδος</th><th>Περιλαμβάνεται</th><th>Μάρκα / Μοντέλο</th><th>Κατάσταση</th><th>Εγγύηση</th></tr></thead>
     <tbody>
-      ${['Ψυγείο', 'Πλυντήριο Ρούχων', 'Στεγνωτήριο', 'Πλυντήριο Πιάτων', 'Φούρνος / Κουζίνα', 'Κλιματιστικό', 'Boiler / Ηλιακός', 'Τηλεόραση', 'Πλυντήριο / Κάδοι', 'Επιπλωμένο (γενικά)', 'Άλλο'].map(s => `<tr><td>${esc(s)}</td><td class="app-include"><div class="app-cb"></div></td><td></td><td></td><td></td></tr>`).join('')}
+      ${['Ψυγείο', 'Πλυντήριο ρούχων', 'Στεγνωτήριο', 'Πλυντήριο πιάτων', 'Φούρνος / Κουζίνα', 'Κλιματιστικό', 'Θερμοσίφωνας / ηλιακός', 'Τηλεόραση', 'Πλυντήριο / Κάδοι', 'Επιπλωμένο (γενικά)', 'Άλλο'].map(s => `<tr><td>${esc(s)}</td><td class="app-include"><div class="app-cb"></div></td><td></td><td></td><td></td></tr>`).join('')}
     </tbody>
   </table>
 `)}
 
 ${sectionHtml(7, 'Θέση στάθμευσης και αποθήκη', `
   <div class="field-grid">
-    ${fieldRow('Θέση στάθμευσης, αρ. θέσης', '')}
+    ${fieldRow('Θέση στάθμευσης, αριθμός θέσης', '')}
     ${fieldRow('Θέση στάθμευσης, τύπος', '')}
-    ${fieldRow('Αποθήκη, αρ.', '')}
-    ${fieldRow('Αποθήκη, Όροφος', '')}
+    ${fieldRow('Αποθήκη, αριθμός', '')}
+    ${fieldRow('Αποθήκη, όροφος', '')}
   </div>
   <div class="field-area"></div>
 `)}
 
-${sectionHtml(8, 'Κοινόχρηστοι Χώροι και Εγκαταστάσεις', `
+${sectionHtml(8, 'Κοινόχρηστοι χώροι και εγκαταστάσεις', `
   <div class="commons-grid">
     <div>
-      ${['Ανελκυστήρας', 'Γεννήτρια / UPS', 'Σύστημα Ασφαλείας / CCTV', 'Πόρτα Εισόδου (αυτόματη)'].map(c => `<div class="commons-row"><div class="commons-dot"></div><div class="commons-label">${esc(c)}</div><div class="commons-val"></div></div>`).join('')}
+      ${['Ανελκυστήρας', 'Γεννήτρια / UPS', 'Σύστημα ασφαλείας / CCTV', 'Πόρτα εισόδου (αυτόματη)'].map(c => `<div class="commons-row"><div class="commons-dot"></div><div class="commons-label">${esc(c)}</div><div class="commons-val"></div></div>`).join('')}
     </div>
     <div>
-      ${['Κολυμβητήριο', 'Κοινόχρηστο Πλυντήριο', 'Κοινόχρηστη Ταράτσα', 'Κάδοι Ανακύκλωσης'].map(c => `<div class="commons-row"><div class="commons-dot"></div><div class="commons-label">${esc(c)}</div><div class="commons-val"></div></div>`).join('')}
+      ${['Κολυμβητήριο', 'Κοινόχρηστο πλυντήριο', 'Κοινόχρηστη ταράτσα', 'Κάδοι ανακύκλωσης'].map(c => `<div class="commons-row"><div class="commons-dot"></div><div class="commons-label">${esc(c)}</div><div class="commons-val"></div></div>`).join('')}
     </div>
   </div>
 `)}
 
-${sectionHtml(9, 'Λίστα Ελέγχου Εκκρεμοτήτων', `
-  ${taskRows || `<div style="text-align:center;padding:20px;color:${INK_FAINT};font-size:12px">Δεν υπάρχουν tasks στην κατηγορία ${type === 'checkin' ? 'παράδοσης' : 'αποχώρησης'}</div>`}
+${sectionHtml(9, 'Λίστα ελέγχου εκκρεμοτήτων', `
+  ${taskRows || `<div style="text-align:center;padding:20px;color:${INK_FAINT};font-size:12px">Δεν υπάρχουν εργασίες στην κατηγορία ${type === 'checkin' ? 'παράδοσης' : 'αποχώρησης'}</div>`}
 `)}
 
-${sectionHtml(10, 'Καταγεγραμμένες Ζημιές και Αποκλίσεις', `
+${sectionHtml(10, 'Καταγεγραμμένες ζημιές και αποκλίσεις', `
   <div style="font-size:12px;color:${INK_MUTED};margin-bottom:10px">Καταγράψτε κάθε ζημιά, φθορά ή απόκλιση από την αρχική κατάσταση. Συνημμένα: φωτογραφίες με ημερομηνία.</div>
   <div class="damage-box"></div>
   <div class="photo-grid">
@@ -574,15 +574,15 @@ ${sectionHtml(10, 'Καταγεγραμμένες Ζημιές και Αποκλ
   </div>
 `)}
 
-${sectionHtml(11, 'Λοιπές Συμφωνίες και Σημειώσεις', `
+${sectionHtml(11, 'Λοιπές συμφωνίες και σημειώσεις', `
   <div class="damage-box" style="min-height:80px"></div>
   <div class="field-grid" style="margin-top:10px">
-    ${fieldRow('Συμφωνημένη ημ. επιστροφής εγγύησης', '')}
+    ${fieldRow('Συμφωνημένη ημερομηνία επιστροφής εγγύησης', '')}
     ${fieldRow('Εκκρεμή ποσά προς διακανονισμό', '')}
   </div>
 `)}
 
-${sectionHtml(12, 'Δηλώσεις και Υπογραφές', `
+${sectionHtml(12, 'Δηλώσεις και υπογραφές', `
   <div style="padding:12px;background:${PAPER_ALT};border-radius:8px;border:1px solid ${RULE};font-size:11px;color:${INK_MUTED};line-height:1.6;margin-bottom:16px">
     Οι υπογράφοντες βεβαιώνουν ότι έχουν λάβει γνώση και αποδέχονται το σύνολο των παραπάνω καταγεγραμμένων στοιχείων. Η παρούσα αποτελεί αναπόσπαστο παράρτημα της μισθωτικής σύμβασης.
   </div>
@@ -605,7 +605,7 @@ ${sectionHtml(12, 'Δηλώσεις και Υπογραφές', `
 `)}
 
 <div class="footer">
-  <div>${branding?.companyName ? brandName(branding) : 'PROPERWISE'} · Πρωτόκολλο ${type === 'checkin' ? 'Παράδοσης' : 'Αποχώρησης'} · Αντίγραφο ___/2</div><div>Αρ. Αναφοράς: ${new Date().getTime().toString(36).toUpperCase().slice(-8)}</div>
+  <div>${branding?.companyName ? brandName(branding) : 'PROPERWISE'} · Πρωτόκολλο ${type === 'checkin' ? 'παράδοσης' : 'αποχώρησης'} · Αντίγραφο ___/2</div><div>Αριθμός αναφοράς: ${new Date().getTime().toString(36).toUpperCase().slice(-8)}</div>
   <div>${esc(today)}</div>
 </div>
 

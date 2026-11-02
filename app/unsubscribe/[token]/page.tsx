@@ -83,7 +83,7 @@ export default function Unsubscribe() {
     }
     if (kind === 'product' || kind === 'all') setProduct(false);
     if (kind === 'market' || kind === 'all') setMarket(false);
-    setDone(kind === 'all' ? 'Απεγγράφηκες από όλα τα ενημερωτικά emails.'
+    setDone(kind === 'all' ? 'Απεγγράφηκες από όλα τα ενημερωτικά email.'
       : kind === 'product' ? 'Απεγγράφηκες από τα προϊοντικά νέα.' : 'Απεγγράφηκες από τα δεδομένα αγοράς.');
   };
 
@@ -127,13 +127,13 @@ export default function Unsubscribe() {
               ? <div role="alert" style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: T.radius.inner, padding: '12px 16px', marginBottom: 16 }}><span style={{ fontSize: 13, fontWeight: 600, color: 'var(--negative)', lineHeight: 1.6 }}>{failed}</span></div>
               : done
               ? <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: 10, padding: '11px 14px', marginBottom: 16 }}><span style={{ color: 'var(--positive)', fontWeight: 700 }}>✓</span><span style={{ fontSize: 13, fontWeight: 600, color: 'var(--positive)' }}>{done}</span></div>
-              : <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 16 }}>Διάλεξε από τι θέλεις να απεγγραφείς. Τα λειτουργικά emails (υπενθυμίσεις, καταστάσεις) δεν επηρεάζονται.</p>}
+              : <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 16 }}>Διάλεξε από τι θέλεις να απεγγραφείς. Τα λειτουργικά email (υπενθυμίσεις, καταστάσεις) δεν επηρεάζονται.</p>}
             <div style={{ display: 'grid', gap: 10 }}>
               {/* `field` γιατί η στοίβα είναι πλήρους πλάτους, όπως ήταν και το τοπικό btn(). */}
               {product && <Btn field variant="secondary" disabled={busy} onClick={() => unsubscribe('product')}>Απεγγραφή από προϊοντικά νέα</Btn>}
               {market && <Btn field variant="secondary" disabled={busy} onClick={() => unsubscribe('market')}>Απεγγραφή από δεδομένα αγοράς</Btn>}
               {(product || market) && <Btn field variant="primary" disabled={busy} onClick={() => unsubscribe('all')}>Απεγγραφή από όλα</Btn>}
-              {!product && !market && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Έχεις απεγγραφεί από όλα τα ενημερωτικά emails.</p>}
+              {!product && !market && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Έχεις απεγγραφεί από όλα τα ενημερωτικά email.</p>}
             </div>
           </div>
         )}

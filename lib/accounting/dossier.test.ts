@@ -73,7 +73,7 @@ const ids = (rs: readonly Requirement[]): string[] => rs.map(r => r.id);
   ok('κάτι το ετοιμάζουμε εμείς', g.some(x => x.who === 'app' && x.items.length > 0));
 
   const rd = readiness(r, []);
-  ok('λέει πόσα είναι δικά του', rd.message.includes('δικά σου') || rd.message.includes('δικό σου'));
+  ok('λέει πόσα είναι δικά του', /από εσένα/.test(rd.message) || rd.message.includes('δικά σου') || rd.message.includes('δικό σου'));
   ok('ξεχωρίζει τα μπλοκαριστικά', rd.blocking.length > 0);
   eq('τίποτα έτοιμο ακόμη', rd.done, 0);
 }

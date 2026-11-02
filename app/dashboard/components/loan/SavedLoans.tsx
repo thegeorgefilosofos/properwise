@@ -3,7 +3,7 @@
 // ΤΑ ΑΠΟΘΗΚΕΥΜΕΝΑ ΔΑΝΕΙΑ: ΛΙΣΤΑ, ΚΑΤΑΝΟΜΗ, ΕΞΑΓΩΓΗ
 // ═══════════════════════════════════════════════════════════════════════════
 import { fp, fe } from '@/lib/core/format'
-import { fdLong } from '@/components/tokens'
+import { fd } from '@/components/tokens'
 import { loanProgress } from '@/lib/loans/progress'
 import { T, ExportButton, fixedCols, Bar, Tile, widestOf, IconBtn } from '@/components/Theme'
 import { LOAN_TYPES, calcMonthly, fmtEur, fmtPct, LoanType, rateTypeLabel } from '../TabLoanData'
@@ -236,7 +236,7 @@ export function SavedLoans({ savedLoans, exportSavedLoans, deleteLoan }: Pick<Lo
                   <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily:T.font.sans}}>
                     Εξοφλήθηκε {fp(prog.percentRepaid)} του κεφαλαίου σε {prog.paidMonths} από {prog.totalMonths} δόσεις, με {fe(prog.interestPaid)} τόκους ως τώρα
                   </span>
-                  {prog.endDate&&<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,whiteSpace:'nowrap'}}>Λήξη {fdLong(prog.endDate)}</span>}
+                  {prog.endDate&&<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}}>Λήξη {fd(prog.endDate)}</span>}
                 </div>
               </div>
 
@@ -277,7 +277,7 @@ export function SavedLoans({ savedLoans, exportSavedLoans, deleteLoan }: Pick<Lo
                 // «Δάνειο προς αξία σήμερα» έπιανε δύο γραμμές στα 390 δίπλα σε
                 // μονόγραμμο «Επιτόκιο» και οι δύο τιμές δεν στοιχίζονταν.
                 ...(ltv>0 ? [['Δάνειο προς αξία', `${fp(ltv)} · ${prog ? 'σήμερα' : 'στην έναρξη'}`] as [string,React.ReactNode]] : []),
-                ...(loan.start_date ? [['Έναρξη', fdLong(loan.start_date)] as [string,React.ReactNode]] : []),
+                ...(loan.start_date ? [['Έναρξη', fd(loan.start_date)] as [string,React.ReactNode]] : []),
                 ...(prog ? [['Τόκοι που μένουν', fe(prog.interestRemaining), true] as [string,React.ReactNode,boolean]] : []),
               ]
               const grid = fixedCols(meta.length, T.sp.lg, 'start', 'fc-xs-2')

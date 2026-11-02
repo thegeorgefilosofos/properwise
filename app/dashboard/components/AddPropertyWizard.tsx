@@ -159,7 +159,7 @@ const inputStyle: React.CSSProperties = {
   color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans,
   letterSpacing: 0, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s, box-shadow 0.15s',
 };
-const monoInputStyle: React.CSSProperties = { ...inputStyle, fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums' };
+const numInputStyle: React.CSSProperties = { ...inputStyle, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' };
 const labelStyle: React.CSSProperties = {
   ...TT.label, display: 'flex', alignItems: 'flex-end', minHeight: 28, lineHeight: 1.3, marginBottom: 6,
 };
@@ -1050,27 +1050,27 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
             /* Η οδηγία ΔΕΝ ζει σε placeholder: το placeholder σβήνει με το πρώτο
                ψηφίο, δηλαδή τη στιγμή ακριβώς που ο χρήστης το χρειάζεται. */
             row('prop.atak', 'full', <>
-              <input style={monoInputStyle} value={atak} onChange={e => setAtak(atakDigits(e.target.value))} inputMode="numeric" onFocus={onFocus} onBlur={onBlur} />
+              <input style={numInputStyle} value={atak} onChange={e => setAtak(atakDigits(e.target.value))} inputMode="numeric" onFocus={onFocus} onBlur={onBlur} />
               <p style={{ ...TT.caption, marginTop: 6 }}>{ATAK_SOURCE}</p>
             </>, 'ΑΤΑΚ (Αριθμός Ταυτότητας Ακινήτου)'),
             row('prop.sqm', 'auto',
-              <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={sqm} onChange={e => setSqm(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, sqmLabel),
+              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={sqm} onChange={e => setSqm(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, sqmLabel),
             row('prop.pea', 'auto',
               <CustomSelect ariaLabel="Ενεργειακή κλάση (ΠΕΑ)" value={peaClass} onChange={setPeaClass} placeholder="Επίλεξε" options={PEA_CLASSES.map(c => ({ value: c, label: c }))} />, 'Ενεργειακή κλάση (ΠΕΑ)'),
             row('prop.bedrooms', 'auto',
-              <input style={monoInputStyle} type="number" min={0} value={bedrooms} onChange={e => setBedrooms(e.target.value)} onFocus={onFocus} onBlur={onBlur} />),
+              <input style={numInputStyle} type="number" min={0} value={bedrooms} onChange={e => setBedrooms(e.target.value)} onFocus={onFocus} onBlur={onBlur} />),
             row('prop.postal_code', 'auto',
               <input style={inputStyle} value={postalCode} onChange={e => setPostalCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))} inputMode="numeric" placeholder="10000" onFocus={onFocus} onBlur={onBlur} />),
             row('prop.floor', 'auto',
               <CustomSelect ariaLabel="Όροφος" value={floor} onChange={setFloor} placeholder="Επίλεξε" options={FLOOR_OPTS.map(f => ({ value: f, label: f }))} />),
             row('prop.year_built', 'auto',
-              <input style={monoInputStyle} type="number" min={0} value={yearBuilt} onChange={e => setYearBuilt(e.target.value)} onFocus={onFocus} onBlur={onBlur} />),
+              <input style={numInputStyle} type="number" min={0} value={yearBuilt} onChange={e => setYearBuilt(e.target.value)} onFocus={onFocus} onBlur={onBlur} />),
             row('prop.heating', 'auto',
               <CustomSelect ariaLabel="Θέρμανση" value={heating} onChange={setHeating} placeholder="Επίλεξε" options={[...HEATING_TYPES]} />),
             row('prop.parking', 'auto',
-              <input style={monoInputStyle} type="number" min={0} value={parking} onChange={e => setParking(e.target.value)} onFocus={onFocus} onBlur={onBlur} />),
+              <input style={numInputStyle} type="number" min={0} value={parking} onChange={e => setParking(e.target.value)} onFocus={onFocus} onBlur={onBlur} />),
             row('prop.power_supply_no', 'full', <>
-              <input style={monoInputStyle} value={powerSupply} onChange={e => { setPowerSupply(e.target.value); setError(''); }} inputMode="numeric" aria-invalid={!!powerCheck.error} onFocus={onFocus} onBlur={onBlur} />
+              <input style={numInputStyle} value={powerSupply} onChange={e => { setPowerSupply(e.target.value); setError(''); }} inputMode="numeric" aria-invalid={!!powerCheck.error} onFocus={onFocus} onBlur={onBlur} />
               <p style={{ ...TT.caption, marginTop: 6, color: powerCheck.error ? 'var(--negative)' : undefined }}>
                 {powerCheck.error ?? `Από τον λογαριασμό ρεύματος. Στο Ε2 μπαίνουν τα ${E2_POWER_SUPPLY_DIGITS} πρώτα ψηφία, ακόμη και σε κενό ακίνητο.`}
               </p>
@@ -1083,7 +1083,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               )}
             </>, 'Αριθμός παροχής ρεύματος'),
             row('prop.storage_sqm', 'auto',
-              <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={storageSqm} onChange={e => setStorageSqm(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'Αποθήκη (τ.μ.)'),
+              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={storageSqm} onChange={e => setStorageSqm(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'Αποθήκη (τ.μ.)'),
           ]}
         />
       )}
@@ -1094,7 +1094,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
           place={place}
           rows={[
             row('prop.obj_value', 'auto', <>
-              <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={objValue} onChange={e => setObjValue(e.target.value)} onFocus={onFocus} onBlur={onBlur} />
+              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={objValue} onChange={e => setObjValue(e.target.value)} onFocus={onFocus} onBlur={onBlur} />
               {/* Ο ΕΝΦΙΑ κόβει μόνος του το ποσοστό ιδιοκτησίας: η αξία του
                   μεριδίου εδώ θα το έκοβε δεύτερη φορά. */}
               <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.6 }}>
@@ -1102,7 +1102,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               </div>
             </>, 'Αντικειμενική αξία (€)'),
             row('prop.rent', airbnb ? 'full' : 'auto', <>
-              <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={rent} onChange={e => setRent(e.target.value)} placeholder={airbnb ? '1400' : '820'} onFocus={onFocus} onBlur={onBlur} />
+              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={rent} onChange={e => setRent(e.target.value)} placeholder={airbnb ? '1400' : '820'} onFocus={onFocus} onBlur={onBlur} />
               {airbnb && (
                 <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.6 }}>
                   Η τιμή ανά νύχτα επί τις νύχτες που νοικιάζεται τον μήνα, κατά μέσο όρο μέσα στη χρονιά. Οι καταγεγραμμένες διαμονές αντικαθιστούν αυτή την εκτίμηση παντού όπου υπάρχουν.
@@ -1115,7 +1115,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               )}
             </>, rentLabel),
             row('prop.co_owners', 'full', <>
-              <input style={monoInputStyle} type="number" inputMode="numeric" min={1} max={99} value={coOwners.length}
+              <input style={numInputStyle} type="number" inputMode="numeric" min={1} max={99} value={coOwners.length}
                 onChange={e => setCoOwnerCount(parseInt(e.target.value, 10))} onFocus={onFocus} onBlur={onBlur} />
               <div style={{ ...grid2, marginTop: 12 }}>
                 {coOwners.map((nm, i) => (
@@ -1126,20 +1126,20 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               </div>
             </>, 'Αριθμός συνιδιοκτητών'),
             row('prop.value', 'auto',
-              <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={value} onChange={e => setValue(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'Εμπορική αξία (€)'),
+              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={value} onChange={e => setValue(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'Εμπορική αξία (€)'),
             row('prop.purchase_price', 'auto',
-              <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'Τιμή αγοράς (€)'),
+              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'Τιμή αγοράς (€)'),
             row('prop.purchase_date', 'auto',
               <DatePicker value={purchaseDate} onChange={setPurchaseDate} />),
             row('prop.enfia', 'auto',
-              <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={enfia} onChange={e => setEnfia(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'ΕΝΦΙΑ που πληρώνεις (€/έτος)'),
+              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={enfia} onChange={e => setEnfia(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'ΕΝΦΙΑ που πληρώνεις (€/έτος)'),
             row('prop.ownership', 'auto',
-              <input style={monoInputStyle} type="number" min={0} inputMode="decimal" value={ownership} onChange={e => setOwnership(e.target.value)} max={100} onFocus={onFocus} onBlur={onBlur} />, 'Ποσοστό ιδιοκτησίας (%)'),
+              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={ownership} onChange={e => setOwnership(e.target.value)} max={100} onFocus={onFocus} onBlur={onBlur} />, 'Ποσοστό ιδιοκτησίας (%)'),
           ]}
           after={grossYield != null && (
             <div style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.card, padding: 16 }}>
               <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent)', marginBottom: 6 }}>Εκτιμώμενη μεικτή απόδοση</div>
-              <div style={{ fontFamily: T.font.mono, fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{fp(grossYield)}</div>
+              <div style={{ fontFamily: T.font.num, fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{fp(grossYield)}</div>
               <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>
                 {`Ετήσια έσοδα ${fe(annualRent!)} επί ${valueN != null ? 'εμπορικής' : 'αντικειμενικής'} αξίας ${fe(effValueN!)}`}
               </div>
@@ -1201,7 +1201,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
             ].filter(Boolean) as [string, string, boolean?][]).map(([k, v, numeric], i) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '10px 16px', borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
                 <span title={k === 'ΑΤΑΚ' ? 'Αριθμός Ταυτότητας Ακινήτου (από το Ε9)' : k === 'ΕΝΦΙΑ που πληρώνεις' ? 'Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων, ετήσιος. Σε συνιδιοκτησία, το δικό σου μερίδιο.' : undefined} style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', letterSpacing: '0.25px' }}>{k}</span>
-                <span style={{ fontFamily: numeric && v !== ABSENT ? T.font.mono : T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{v}</span>
+                <span style={{ fontFamily: numeric && v !== ABSENT ? T.font.num : T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{v}</span>
               </div>
             ))}
           </div>
@@ -1225,7 +1225,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
                 <input style={inputStyle} value={settings.owner_name} onChange={setSf('owner_name')} onFocus={onFocus} onBlur={onBlur} />
               </>),
               row('prop.owner_afm', 'auto',
-                <input style={monoInputStyle} value={settings.owner_afm} onChange={setSf('owner_afm')} inputMode="numeric" autoFocus={focusAfm} onFocus={onFocus} onBlur={onBlur} />),
+                <input style={numInputStyle} value={settings.owner_afm} onChange={setSf('owner_afm')} inputMode="numeric" autoFocus={focusAfm} onFocus={onFocus} onBlur={onBlur} />),
               row('prop.owner_phone', 'auto',
                 <input style={inputStyle} value={settings.owner_phone} onChange={setSf('owner_phone')} inputMode="tel" onFocus={onFocus} onBlur={onBlur} />),
               row('prop.owner_email', 'full',

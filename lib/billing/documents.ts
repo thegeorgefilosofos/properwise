@@ -1334,12 +1334,15 @@ export const PEA_EXPIRY_TITLE = 'Λήξη ΠΕΑ';
 // γιατί τον χρειάζεται και ο οδηγός προσθήκης ακινήτου — όχι μόνο η σάρωση.
 
 // Δομημένη σημείωση κατανάλωσης (ίδια λογική με BillsAIScan) για λογαριασμούς.
+// Ο αριθμός με τα δεκαδικά που έχει, σε ελληνική γραφή: «1.250 kWh», «12,5 m³».
+// Γραφόταν ωμός, «1250 kWh» και «12.5 m³», δίπλα σε ποσά από το `fe`.
+const asRead = (v: number): string => fn(v, Number.isInteger(v) ? 0 : Math.min(3, (String(v).split('.')[1] || '').length));
 function consumptionNote(d: ScannedDoc): string {
   return [
-    d.kwh ? `${d.kwh} kWh` : '',
-    d.cubic_meters ? `${d.cubic_meters} m³` : '',
+    d.kwh ? `${asRead(d.kwh)} kWh` : '',
+    d.cubic_meters ? `${asRead(d.cubic_meters)} m³` : '',
     (d.meter_prev != null && d.meter_current != null) ? `Ένδειξη από ${d.meter_prev} σε ${d.meter_current}` : '',
-    d.millesimi ? `${d.millesimi}‰` : '',
+    d.millesimi ? `${asRead(d.millesimi)}‰` : '',
   ].filter(Boolean).join(' · ');
 }
 

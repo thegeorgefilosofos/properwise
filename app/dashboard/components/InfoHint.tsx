@@ -1,5 +1,6 @@
 'use client'
-import { T } from '@/components/Theme'
+import { Z } from '@/components/tokens'
+import { InfoGlyph, INFO_GLYPH, INFO_TOOLTIP_STYLE } from './UIComponents'
 import { useState, useRef, useCallback, useId, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { hy } from '@/components/Hyphen'
@@ -7,7 +8,7 @@ import { hy } from '@/components/Hyphen'
 // Μικρό, ενιαίο ⓘ με premium popover που εμφανίζεται στο hover/focus. Portal →
 // δεν κόβεται από overflow. Θεματικό (light/dark). Χρήση με μέτρο: μόνο εκεί που
 // υπάρχει ουσιαστική εξήγηση να «ανοίξει έξυπνα», ώστε το UI να μένει καθαρό.
-export function InfoHint({ children, size = 14, label = 'Περισσότερα' }: { children: ReactNode; size?: number; label?: string }) {
+export function InfoHint({ children, label = 'Περισσότερα' }: { children: ReactNode; label?: string }) {
   const ref = useRef<HTMLButtonElement>(null)
   // ═══════════════════════════════════════════════════════════════════════
   // ΤΟ ΚΕΙΜΕΝΟ ΥΠΑΡΧΕΙ ΠΑΝΤΑ ΓΙΑ ΤΟΝ ΑΝΑΓΝΩΣΤΗ ΟΘΟΝΗΣ, ΟΧΙ ΜΟΝΟ ΑΝΟΙΧΤΟ
@@ -47,11 +48,11 @@ export function InfoHint({ children, size = 14, label = 'Περισσότερα'
     const place = roomBelow >= roomAbove ? 'bottom' : 'top'
     const top = place === 'bottom' ? r.bottom + 8 : r.top - 8
     let left = r.left + r.width / 2
-    // Το κουτί είναι κεντραρισμένο και φτάνει τα 300: το μισό του και 8 ανάσα
+    // Το κουτί είναι κεντραρισμένο και φτάνει τα 280: το μισό του και 8 ανάσα
     // από κάθε άκρη. Η δεξιά άκρη μετριέται χωρίς τη γραμμή κύλισης, αλλιώς η
     // σημείωση χανόταν κάτω από αυτή.
     const vw = document.documentElement.clientWidth
-    const half = Math.min(150, vw / 2 - 8) + 8
+    const half = Math.min(140, vw / 2 - 8) + 8
     left = Math.max(half, Math.min(left, vw - half))
     setPos({ top, left, place })
   }, [])
@@ -101,18 +102,19 @@ export function InfoHint({ children, size = 14, label = 'Περισσότερα'
         onClick={(e) => { e.stopPropagation(); if (pos) { hide() } else { show() } }}
         style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle',
-          width: size, height: size, borderRadius: '50%', border: 'none', padding: 0, margin: '0 0 0 4px',
+          // ΤΟ ⓘ ΔΕΝ ΜΕΓΑΛΩΝΕΙ ΤΗ ΓΡΑΜΜΗ. Στα 15 εικονοστοιχεία, με `middle`, το
+          // κουτί του κουμπιού ξεπερνούσε κατά μισό εικονοστοιχείο τη γραμμή των
+          // 16 της ετικέτας: η ετικέτα με ⓘ έβγαινε 32,5 αντί για 32 και ο
+          // αριθμός της ένα εικονοστοιχείο πιο χαμηλά από τον διπλανό
+          // (e2e:tilerow, Απόδοση στα 390). Τα αρνητικά κάθετα περιθώρια
+          // κρατούν το σημάδι στο ίδιο σημείο και βγάζουν το κουτί του από
+          // τον υπολογισμό του ύψους της γραμμής.
+          width: INFO_GLYPH, height: INFO_GLYPH, borderRadius: '50%', border: 'none', padding: 0, margin: '-2px 0 -2px 4px',
           background: 'transparent', color: 'var(--text-tertiary)', cursor: 'help', flexShrink: 0, lineHeight: 0,
-          transition: 'color 0.13s',
         }}
-        onMouseOver={(e) => (e.currentTarget.style.color = 'var(--accent)')}
-        onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
       >
-        <svg aria-hidden="true" width={size} height={size} viewBox="0 0 16 16" fill="none">
-          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.3" />
-          <path d="M8 7.2v3.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          <circle cx="8" cy="5.1" r="0.85" fill="currentColor" />
-        </svg>
+        {/* Το ίδιο σημάδι με το InfoDot, από την ίδια πηγή: ένα ⓘ σε όλη την εφαρμογή. */}
+        <InfoGlyph />
       </button>
       {/* Ο κρυφός κόμβος που δείχνει το `aria-describedby`. Το `.sr-only` του
           globals.css τον βγάζει από την εικόνα χωρίς να τον βγάλει από το
@@ -138,18 +140,20 @@ export function InfoHint({ children, size = 14, label = 'Περισσότερα'
           06.10.2026: Η `po-just` ΔΕΝ ΣΤΟΙΧΙΖΕΙ ΠΙΑ ΠΕΡΑ ΠΕΡΑ (globals.css, «ΠΕΡΑ
           ΠΕΡΑ ΜΟΝΟ ΣΤΙΣ ΣΤΗΛΕΣ ΑΝΑΓΝΩΣΗΣ»). Η επεξήγηση είναι σύντομο κείμενο:
           στοιχίζεται αριστερά και τα μαλακά ενωτικά σβήνουν (`hyphens: none`).
-          Το δάπεδο των 220 μένει, ώστε κάθε επεξήγηση να έχει την ίδια στήλη. */}
+          Το δάπεδο των 220 μένει, ώστε κάθε επεξήγηση να έχει την ίδια στήλη.
+
+          02.11.2026: ΕΝΑ ΚΟΥΤΙ ΜΕ ΤΟ InfoDot. Πλάτος 280 και το
+          `INFO_TOOLTIP_STYLE` του UIComponents: δύο ⓘ στην ίδια οθόνη άνοιγαν
+          δύο διαφορετικά κουτιά (άλλο φόντο, άλλη ακτίνα, άλλο μέτρο). */}
       {pos && typeof document !== 'undefined' && createPortal(
         <div
           role="tooltip"
           style={{
             position: 'fixed', top: pos.top, left: pos.left,
             transform: `translate(-50%, ${pos.place === 'bottom' ? '0' : '-100%'})`,
-            zIndex: 9999, maxWidth: 'min(300px, calc(100vw - 16px))', minWidth: 'min(220px, calc(100vw - 16px))', width: 'max-content',
-            background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
-            border: '1px solid var(--border-default)', borderRadius: 10,
-            padding: '12px 14px', fontSize: 12, lineHeight: 1.6, fontFamily: T.font.sans,
-            boxShadow: 'var(--elev-3)', pointerEvents: 'none',
+            width: 280, maxWidth: 'calc(100vw - 16px)',
+            // Το κουτί του InfoDot, αυτούσιο: ίδιο φόντο, περίγραμμα, ακτίνα, μέτρο.
+            ...INFO_TOOLTIP_STYLE, zIndex: Z.tooltip, pointerEvents: 'none',
           }}
           className="po-just"
         >

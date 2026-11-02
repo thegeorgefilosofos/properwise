@@ -19,7 +19,7 @@ import { CustomSelect as Select, DatePicker } from './UIComponents';
 import ScanButton from './ScanButton';
 import SignaturePad from '@/components/SignaturePad';
 import { grDate, todayIso, num, archivePdfToProperty } from './docUtils';
-import { fn } from '@/lib/core/format';
+import { fn, fpRate } from '@/lib/core/format';
 import { computeRentAdjustment, adjustmentNoticeText, rentCapPct, type AdjMethod } from '@/lib/documents/rentAdjustment';
 import { issueDocument } from '@/lib/documents/issue';
 import { generateReportPdf, reportPdfBlob, pEur, pPct, type PdfReportModel } from '@/lib/pdf/pdfReport';
@@ -328,7 +328,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
   const METHOD_HINT: Record<AdjMethod, React.ReactNode> = {
     percent: 'Σταθερό ποσοστό αύξησης, όπως το συμφωνήσατε στο μισθωτήριο.',
     cpi: !index
-      ? 'Για τον μήνα που διάλεξες δεν υπάρχει δημοσιευμένος δείκτης. Διάλεξε μεταγενέστερη ημερομηνία ισχύος, ή όρισε το ποσοστό της σύμβασης με τη μέθοδο «Ποσοστό».'
+      ? 'Για τον μήνα που διάλεξες δεν υπάρχει δημοσιευμένος δείκτης. Διάλεξε μεταγενέστερη ημερομηνία ισχύος ή όρισε το ποσοστό της σύμβασης με τη μέθοδο «Ποσοστό».'
       : <>
           Δωδεκάμηνη μεταβολή {indexPeriodLabel(index.ym)}, όπως τη δημοσίευσε η ΕΛΣΤΑΤ για τον{' '}
           {indexMonthLabel(index.ym)}. Τελευταία ενημέρωση {cpiConfirmedDate()}.{' '}
@@ -557,7 +557,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
 
               {res.capped && capPct != null && (
                 <InfoBanner tone="warning">
-                  {`Πλαφόν ${fn(capPct)}% για το 2026 στις υφιστάμενες επαγγελματικές μισθώσεις (άρθρο 59 ν.5255/2025). Το νέο μίσθωμα περιορίστηκε σε ${pEur(res.newRent)} αντί για ${pEur(res.uncappedRent)}. Δεν ισχύει για εκμισθωτές που εξαιρεί ο νόμος (ΑΕΕΑΠ, εταιρείες που ανήκουν κατά πλειοψηφία σε ΟΕΕ, εμπορικά κέντρα τουλάχιστον 15.000 τ.μ., εταιρείες του Δημοσίου).`}
+                  {`Πλαφόν ${fpRate(capPct)} για το 2026 στις υφιστάμενες επαγγελματικές μισθώσεις (άρθρο 59 ν.5255/2025). Το νέο μίσθωμα περιορίστηκε σε ${pEur(res.newRent)} αντί για ${pEur(res.uncappedRent)}. Δεν ισχύει για εκμισθωτές που εξαιρεί ο νόμος (ΑΕΕΑΠ, εταιρείες που ανήκουν κατά πλειοψηφία σε ΟΕΕ, εμπορικά κέντρα τουλάχιστον 15.000 τ.μ., εταιρείες του Δημοσίου).`}
                 </InfoBanner>
               )}
 

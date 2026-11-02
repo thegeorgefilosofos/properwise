@@ -112,7 +112,7 @@ export function TaxSection({
           <div style={{ marginTop: 10 }}>
             <Toggle checked={levyToGuest} onChange={setLevyToGuest}
               label="Χρεώνω το τέλος ανθεκτικότητας στον επισκέπτη"
-              note="Ο νόμος το βάζει στον επισκέπτη και ο ιδιοκτήτης το αποδίδει. Οι πλατφόρμες όμως δεν έχουν πεδίο γι᾽ αυτό στην Ελλάδα: αν δεν το ζητήσεις ρητά, βγαίνει από την τσέπη σου." />
+              note="Ο νόμος το βάζει στον επισκέπτη και ο ιδιοκτήτης το αποδίδει. Οι πλατφόρμες όμως δεν έχουν πεδίο γι’ αυτό στην Ελλάδα: αν δεν το ζητήσεις ρητά, βγαίνει από την τσέπη σου." />
           </div>
         )}
         <p className="po-prose po-just" style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: SANS }}>

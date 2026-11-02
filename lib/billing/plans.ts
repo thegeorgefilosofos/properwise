@@ -165,7 +165,7 @@ export const PLANS: Record<PlanId, Plan> = {
   // ═══════════════════════════════════════════════════════════════════════
   free: {
     id: 'free', name: 'Ιδιοκτήτης', nameGen: 'Ιδιοκτήτη', priceMonthly: 0, priceAnnual: 0, maxProperties: 1, trialDays: 0,
-    tagline: 'Δωρεάν για ένα ακίνητο',
+    tagline: 'Χωρίς συνδρομή για ένα ακίνητο',
     features: [
       'Ε2 έτοιμο για τον λογιστή',
       'Έλεγχος δήλωσης μίσθωσης',

@@ -14,7 +14,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { qrDataUrl } from '@/lib/qr'
-import { T, TT, Modal, SecHdr, Btn, pressable, fn, Bar, RuntimeImg } from '@/components/Theme'
+import { T, TT, Modal, SecHdr, Btn, pressable, Bar, RuntimeImg } from '@/components/Theme'
+import { fpRate } from '@/lib/core/format'
 // Το πλαίσιο επιλογής ζει στο Theme, ένα για όλη την εφαρμογή. Ξαναβγαίνει από
 // εδώ ώστε τα σημεία που το εισάγουν από τα Bits να μη χρειαστεί να αλλάξουν.
 export { SelectBox } from '@/components/Theme'
@@ -166,7 +167,7 @@ export const DepBar = ({pct,left,hasData=true,hasValue=true,compact}:{pct:number
     <div>
       <Bar pct={remaining} tone={c} height={3} label="Υπόλοιπη ζωή"/>
       <div style={{display:'flex',justifyContent:'space-between',marginTop: 4}}>
-        <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums'}}>{compact?'μένει ':'Εκτιμώμενη υπολειπόμενη αξία '}{fn(Math.round(remaining))}%</span>
+        <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums'}}>{compact?'μένει ':'Εκτιμώμενη υπολειπόμενη αξία '}{fpRate(Math.round(remaining))}</span>
         {left>0
           ?<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums'}}>περίπου {left} {plural(left,'χρόνος','χρόνια')} ακόμη</span>
           :<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily:T.font.sans}}>Τέλος ωφέλιμης ζωής</span>
@@ -292,9 +293,15 @@ export function OverflowMenu({actions,align='right',dark}:{actions:OverflowActio
           σχήμα του: το ίδιο ιδίωμα που κρατά τα τετράγωνα σημάδια στα 18. */}
       <button ref={btnRef} className="po-box" title="Ενέργειες" aria-label="Ενέργειες" onClick={()=>setOpen(v=>!v)}
         style={{width:28,height:28,borderRadius:T.radius.pill,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
-          border:`1px solid ${dark?'color-mix(in srgb, var(--on-media) 25%, transparent)':'var(--border-subtle)'}`,
-          background:dark?'var(--scrim-media)':(open?'var(--bg-hover)':'var(--bg-surface)'),
-          color:dark?'var(--on-media)':'var(--text-secondary)',backdropFilter:dark?'blur(4px)':undefined}}>
+          // ΠΑΝΩ ΣΤΗΝ ΕΙΚΟΝΑ, ΤΟ ΙΔΙΟ ΚΟΥΜΠΙ ΜΕ ΣΚΙΑ, ΟΧΙ ΣΚΟΥΡΟΣ ΔΙΣΚΟΣ. Το `dark`
+          // ζωγράφιζε συμπαγή σκούρο κύκλο με λευκές κουκκίδες: πάνω στο γκρίζο
+          // σύμβολο της κάρτας χωρίς φωτογραφία, στο φωτεινό θέμα, ήταν το μόνο
+          // γεμάτο σκούρο σημείο της οθόνης και δεν έμοιαζε με κανένα άλλο
+          // κουμπί εικονιδίου. Τώρα κρατά την επιφάνεια και το περίγραμμα των
+          // υπόλοιπων· η σκιά το ξεχωρίζει από τη φωτογραφία όταν υπάρχει.
+          border:`1px solid ${dark?'var(--border-default)':'var(--border-subtle)'}`,
+          background:open?'var(--bg-hover)':'var(--bg-surface)',
+          color:'var(--text-secondary)',boxShadow:dark?'var(--elev-1)':undefined}}>
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
       </button>
       {open&&rect&&typeof document!=='undefined'&&createPortal(

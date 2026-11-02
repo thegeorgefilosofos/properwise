@@ -14,12 +14,12 @@ import { signupCta } from './trialOffer';
 let p = 0, f = 0;
 const ok = (c: boolean, m: string) => { if (c) p++; else { f++; console.error('✗', m); } };
 
-const FREE = 'Ξεκίνα δωρεάν';
+const FREE = 'Ξεκίνα χωρίς συνδρομή';
 const TRIAL = 'Ξεκίνα τη δοκιμή';
 
 // Χωρίς `?plan=` η εγγραφή ανοίγει λογαριασμό στο δωρεάν: το ίδιο λεκτικό.
-ok(signupCta() === FREE, 'χωρίς πακέτο: «Ξεκίνα δωρεάν»');
-ok(signupCta(null) === FREE, 'με null: «Ξεκίνα δωρεάν»');
+ok(signupCta() === FREE, 'χωρίς πακέτο: «Ξεκίνα χωρίς συνδρομή»');
+ok(signupCta(null) === FREE, 'με null: «Ξεκίνα χωρίς συνδρομή»');
 ok(signupCta('free') === signupCta(), 'το δωρεάν πακέτο και η γυμνή εγγραφή λένε το ίδιο');
 
 for (const id of PLAN_ORDER) {

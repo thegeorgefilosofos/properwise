@@ -12,7 +12,8 @@ import * as properties from '@/lib/data/properties'
 import * as stayStore from '@/lib/data/stays'
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventory from '@/lib/data/inventory'
-import { fe } from '@/components/Theme'
+import { fe, fn } from '@/components/Theme'
+import { grDate } from '@/lib/core/format'
 import { confirmDialog } from '@/components/confirmBus'
 import { downloadTableXlsx } from '../exportCsv'
 import * as checkinLink from '@/lib/data/checkinLink'
@@ -295,7 +296,7 @@ export function useClients({ userId }: ClientsProps) {
       {
         label: 'Νύχτες',
         value: String(tot.nights),
-        sub: tot.count > 0 ? `Μέση διάρκεια ${(tot.nights / tot.count).toFixed(1).replace('.', ',')} νύχτες` : 'Χωρίς νύχτες ακόμη',
+        sub: tot.count > 0 ? `Μέση διάρκεια ${fn(tot.nights / tot.count, 1)} νύχτες` : 'Χωρίς νύχτες ακόμη',
       },
     ];
   }, [clients, stays]);
@@ -697,7 +698,7 @@ export function useClients({ userId }: ClientsProps) {
         setIcalMsg({ text: failed('Ο συγχρονισμός δεν ολοκληρώθηκε', error ?? undefined), error: true });
       } else {
         const failed = (data.results || []).filter((r: { ok: boolean }) => !r.ok).length;
-        setIcalMsg({ text: `Συγχρονισμός ολοκληρώθηκε: ${data.inserted || 0} νέες κρατήσεις από ${data.feeds || 0} συνδέσμους${failed ? ` (${failed} με σφάλμα)` : ''}.`, error: failed > 0 });
+        setIcalMsg({ text: `Συγχρονισμός ολοκληρώθηκε: ${(data.inserted || 0) === 1 ? '1 νέα κράτηση' : `${data.inserted || 0} νέες κρατήσεις`} από ${data.feeds || 0} συνδέσμους${failed ? ` (${failed} με σφάλμα)` : ''}.`, error: failed > 0 });
         refresh();
       }
       loadIcalFeeds();
@@ -752,7 +753,7 @@ export function useClients({ userId }: ClientsProps) {
     if (error) { setIcalMsg({ text: failed('Οι κρατήσεις δεν αποθηκεύτηκαν', error), error: true }); setIcalBusy(false); refresh(); return; }
     const inserted = rows.length;
     setIcalBusy(false);
-    setIcalMsg({ text: `Εισήχθησαν ${inserted} κρατήσεις${skipped > 0 ? ` · ${skipped} υπήρχαν ήδη` : ''}.` });
+    setIcalMsg({ text: `${inserted === 1 ? 'Εισήχθη 1 κράτηση' : `Εισήχθησαν ${inserted} κρατήσεις`}${skipped > 0 ? ` · ${skipped} υπήρχαν ήδη` : ''}.` });
     setIcalEvents(null); setIcalText(''); setIcalUrl('');
     refresh();
   };
@@ -782,7 +783,7 @@ export function useClients({ userId }: ClientsProps) {
           g ?? stayTotal(s),
           g != null ? '' : 'ΑΠΡΟΣΔΙΟΡΙΣΤΟ, χρειάζεται επιβεβαίωση',
           pay ?? '',
-          isDeclared(s) ? (s.declared_at || '').slice(0, 10) : 'ΑΔΗΛΩΤΗ',
+          isDeclared(s) ? grDate((s.declared_at || '').slice(0, 10)) : 'ΑΔΗΛΩΤΗ',
           s.damages ? (s.damage_cost || 0) : '',
           it?.name || s.damage_note || '',
         ];

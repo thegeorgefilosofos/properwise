@@ -29,7 +29,7 @@ import { mergeLedger } from '@/lib/expenses/ledger'
 import { contractOverview } from '@/lib/contracts/overview'
 import { useAppPreferences } from './useAppPreferences'
 import {
-  T, Btn, SkeletonKPIs, Skeleton, EmptyState, KPIGrid, SecHdr, InfoBanner, fp, feOr, fd, type KPIItem,
+  T, TT, Btn, SkeletonKPIs, Skeleton, EmptyState, KPIGrid, SecHdr, InfoBanner, fp, feOr, fd, type KPIItem,
 } from '@/components/Theme'
 import { FileText } from 'lucide-react'
 import {
@@ -68,7 +68,7 @@ import OccupancyPanel from './OccupancyPanel'
 import PolicyNotice from './PolicyNotice'
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time'
 import { type IncomeRent } from '@/lib/income/propertyIncome'
-import { yearExpensesOf, expenseParts, expensePartsShort, EXPENSE_LABELS, INCOME_LABELS, rentIncome, yieldIncome, propertyStatus, hostingReceipts, hostingParts, hostingPartsShort, HOSTING_LABELS, YIELD_LABELS, YIELD_INLINE_LABELS, yieldCosts, yieldPlatformFees, netPreTaxLabel, PLATFORM_FEE_LABELS, enfiaYear, closedTaxRefs, propertyRentTax, targetMonthlyOf } from '@/lib/facts'
+import { yearExpensesOf, expenseParts, expensePartsShort, EXPENSE_LABELS, INCOME_LABELS, rentIncome, yieldIncome, propertyStatus, hostingReceipts, hostingParts, hostingPartsShort, HOSTING_LABELS, YIELD_LABELS, YIELD_SHORT_LABELS, YIELD_INLINE_LABELS, yieldCosts, yieldPlatformFees, netPreTaxLabel, PLATFORM_FEE_LABELS, enfiaYear, closedTaxRefs, propertyRentTax, targetMonthlyOf } from '@/lib/facts'
 import { useEnfiaSettings } from './useEnfia'
 import type { ClientStaysRow } from '@/lib/supabase/tables'
 import { useLoad, type LoadTurn } from '@/app/hooks/useLoad'
@@ -1036,7 +1036,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             ))}
           </div>
         </div>
-        <div className="card">
+        {/* ΤΟ ΥΨΟΣ ΤΟ ΟΡΙΖΕΙ ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ΤΗΣ. Το πλέγμα τέντωνε την κάρτα στο ύψος
+            των δεκατριών στοιχείων δίπλα της: τρεις γραμμές λογαριασμών και από
+            κάτω διακόσια εικονοστοιχεία άδειας κάρτας. */}
+        <div className="card" style={{alignSelf:'start'}}>
           <h3 className="section-label"><span className="section-dot"/> Λογαριασμοί ανά μήνα</h3>
           {ledgerGap
             ? <EmptyState icon={<FileText size={20}/>} title="Δεν φορτώθηκαν οι λογαριασμοί" hint="Πάτησε «Δοκίμασε ξανά» στην ειδοποίηση πιο πάνω."/>
@@ -1096,21 +1099,34 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             // ΦΙΛΟΞΕΝΙΑΣ, / ΕΚΤΙΜΗΣΗ». Οταν είναι εκτίμηση, το πλακίδιο λέει
             // «Φιλοξενία, εκτίμηση»: το ποσό σε ευρώ λέει ήδη ότι είναι έσοδο και
             // ο τίτλος από κάτω το εξηγεί ολόκληρο.
-            label: yi.basis === 'stays'
-              ? (incomeIsEstimate ? `Φιλοξενία, ${INCOME_LABELS.estimate}` : 'Έσοδα φιλοξενίας')
-              : `Έσοδα από ενοίκια${incomeIsEstimate ? `, ${INCOME_LABELS.estimate}` : ''}`, value:fmtEur(annualRent),
-            sub: yi.received != null ? `${fmtEur(yi.received)} ${INCOME_LABELS.received}` : `${fmtEur(rent)} τον μήνα`,
+            //
+            //
+            // ΤΕΣΣΕΡΙΣ ΕΤΙΚΕΤΕΣ ΣΕ ΜΙΑ ΓΡΑΜΜΗ, ΣΕ ΚΑΘΕ ΠΛΑΤΟΣ (02/11/2026). Με
+            // «Φιλοξενία, εκτίμηση» και «Φόρος ενοικίου, εκτίμηση» η σειρά είχε
+            // ετικέτα πάνω από δεκαεπτά χαρακτήρες, το `Tile` τη σημάδευε
+            // `data-long` και ΟΛΗ η σειρά κρατούσε δεύτερη γραμμή: στα 1.280 τα
+            // τέσσερα πλακίδια είχαν 30 εικονοστοιχεία κενό ανάμεσα σε ετικέτα
+            // και ποσό, τα από κάτω όχι. Χωρίς την κράτηση όμως, στα 390 το
+            // «Καθαρό αποτέλεσμα» τύλιγε μόνο του και το ποσό του έπεφτε πιο
+            // χαμηλά από το διπλανό. Τώρα οι τέσσερις λένε την αλυσίδα της
+            // χρονιάς με τη μικρότερη λέξη που τη λέει — έσοδα, δαπάνες, φόρος,
+            // καθαρό — και χωρούν σε μία γραμμή και στα 320. Η πηγή (φιλοξενία,
+            // μίσθωση) και η «εκτίμηση» λέγονται στον υπότιτλο.
+            label: 'Έσοδα έτους', value:fmtEur(annualRent), fact: 'income-year',
+            sub: `${incomeIsEstimate ? `${INCOME_LABELS.estimate} · ` : ''}${yi.received != null ? `${fmtEur(yi.received)} ${INCOME_LABELS.received}` : `${fmtEur(rent)} τον μήνα`}`,
             title: fromLease
-              ? `Το μηνιαίο μίσθωμα × 12 (${INCOME_LABELS.expected}). ${yi.received != null ? `${fmtEur(yi.received)} ${INCOME_LABELS.received}.` : 'Δεν έχει καταγραφεί δόση ακόμη.'} Ίδια βάση με το ${navLabel('portfolio')} και τις ${navLabel('roi')}.`
-              : `Όσα εισπράχθηκαν το ${year} ως σήμερα (${fmtEur(inc.receivedToDate)}), σε ετήσιο ρυθμό: ${INCOME_LABELS.estimate}, όχι είσπραξη. ${yi.basis === 'stays' ? 'Δηλωτέο ακαθάριστο των διαμονών με άφιξη ως σήμερα.' : 'Πληρωμένες δόσεις με ημερομηνία ως σήμερα.'} Ίδια βάση με το ${navLabel('portfolio')} και τις ${navLabel('roi')}.` }
-          : { label: rentIsTarget ? 'Έσοδα από ενοίκια, εκτίμηση' : 'Έσοδα από ενοίκια', value:fmtEur(annualRent),
-            sub: rentIsTarget ? `στόχος ${fmtEur(rent)} τον μήνα, χωρίς ενοικιαστή` : `${fmtEur(rent)} τον μήνα`,
+              ? `Το μηνιαίο μίσθωμα × 12 (${INCOME_LABELS.expected}). ${yi.received != null ? `${fmtEur(yi.received)} ${INCOME_LABELS.received}.` : 'Δεν έχει καταγραφεί δόση ακόμη.'} Ίδια βάση με το ${navLabel('portfolio')} και την ${navLabel('roi')}.`
+              : yi.basis === 'stays'
+                ? `Δηλωτέο ακαθάριστο του ${year}: ${fmtEur(inc.receivedToDate)} από διαμονές με άφιξη ως σήμερα και ${fmtEur(fi.booked)} από κρατήσεις που έχουν κλειστεί έως 31/12. ${fi.booked > 0 ? 'Είναι εκτίμηση: μια κράτηση μπορεί να ακυρωθεί.' : ''} Ίδια βάση με το ${navLabel('portfolio')}, την ${navLabel('roi')} και τον φόρο.`.replace(/  +/g, ' ')
+                : `Όσα εισπράχθηκαν το ${year} ως σήμερα (${fmtEur(inc.receivedToDate)}), σε ετήσιο ρυθμό: ${INCOME_LABELS.estimate}, όχι είσπραξη. Πληρωμένες δόσεις με ημερομηνία ως σήμερα. Ίδια βάση με το ${navLabel('portfolio')} και την ${navLabel('roi')}.` }
+          : { label: 'Έσοδα έτους', value:fmtEur(annualRent),
+            sub: rentIsTarget ? `${INCOME_LABELS.estimate} · στόχος ${fmtEur(rent)} τον μήνα, χωρίς ενοικιαστή` : `${fmtEur(rent)} τον μήνα`,
             title: rentIsTarget
               ? `Στόχος ενοικίου ${fmtEur(rent)} × 12. Δεν υπάρχει ενοικιαστής με ενοίκιο, οπότε το ποσό είναι εκτίμηση.`
               : `Μηνιαίο ενοίκιο ${fmtEur(rent)} × 12.` },
           { label:EXPENSE_LABELS.total, value:fmtEur(yExp.total),
             sub: expensePartsShort(yExp, fmtEur),
-            title:`Οι δαπάνες του ${year} όπως είναι καταχωρημένες: ${expenseParts(yExp, fmtEur)}. Λογαριασμοί και δαπάνες μαζί, κάθε ευρώ μία φορά, χωρίς προβολή. Ίδιο ποσό με τις ${navLabel('finances')}, το ${navLabel('portfolio')}, την ${navLabel('roi')} και τη ${navLabel('accounting')}.${expDeltaPct!=null?` Το ίδιο διάστημα του ${year-1}: ${expDeltaPct>0?'+':expDeltaPct<0?'−':''}${Math.abs(expDeltaPct)}%.`:''}` },
+            title:`Οι δαπάνες του ${year} όπως είναι καταχωρημένες: ${expenseParts(yExp, fmtEur)}. Λογαριασμοί και δαπάνες μαζί, κάθε ευρώ μία φορά, χωρίς προβολή. Ίδιο ποσό με τις ${navLabel('finances')}, το ${navLabel('portfolio')}, την ${navLabel('roi')} και τη ${navLabel('accounting')}.${expDeltaPct!=null?` Το ίδιο διάστημα του ${year-1}: ${expDeltaPct>0?'+':expDeltaPct<0?'−':''}${fpRate(Math.abs(expDeltaPct))}.`:''}` },
           // ══ Η ΕΤΙΚΕΤΑ ΣΕ ΜΙΑ ΓΡΑΜΜΗ ΚΑΙ ΧΩΡΙΣ ΝΑ ΧΑΣΕΙ ΝΟΗΜΑ ══════════════
           // «Μερίδιο φόρου ενοικίου» είναι 22 χαρακτήρες δίπλα σε τρεις
           // ετικέτες των 7 ως 17: έσπαγε σε δεύτερη γραμμή και ΜΟΝΟ αυτή,
@@ -1122,8 +1138,11 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           // στο σύνολο και αυτό εδώ είναι το κομμάτι που αναλογεί. Με ένα
           // ακίνητο δεν μοιράζεται τίποτα: είναι όλος ο φόρος του. Η ετικέτα
           // λέει το καθένα στη θέση του και η πλήρης εξήγηση μένει στο ⓘ.
-          { label: `${portfolioTax.count>1 ? 'Μερίδιο φόρου' : 'Φόρος ενοικίου'}${incomeIsEstimate ? ', εκτίμηση' : ''}`, value:fmtEur(estTax),
-            title:portfolioTax.count>1
+          { label: portfolioTax.count>1 ? 'Μερίδιο φόρου' : 'Φόρος ενοικίου', value:fmtEur(estTax), fact: 'tax-year',
+            sub: incomeIsEstimate ? INCOME_LABELS.estimate : undefined,
+            // Η ΒΑΣΗ ΤΟΥ ΦΟΡΟΥ ΛΕΓΕΤΑΙ ΠΡΩΤΗ: η ίδια με το «Έσοδα έτους» και με τον
+            // φόρο των Αποδόσεων και της Βραχυχρόνιας (lib/facts/rentTax).
+            title:`Φόρος ${year} στα ${fmtEur(rentTax.income.annual)} του ακινήτου${yi.label ? ` (${yi.label})` : ''}. ` + (portfolioTax.count>1
               ? `${CONSOLIDATION_NOTE} Συνολικός φόρος χαρτοφυλακίου ${fmtEur(Math.round(portfolioTax.totalTax))} σε ενοίκια ${fmtEur(Math.round(portfolioTax.totalAnnualRent))}.`
               // ΤΟ ΚΕΙΜΕΝΟ ΣΥΜΦΩΝΕΙ ΜΕ ΤΟ ΝΟΥΜΕΡΟ. Η κύρωση της τραπεζικής
               // είσπραξης (ν.5222/2025) ξεκινά την 1.7.2027· ως τότε η έκπτωση
@@ -1131,14 +1150,14 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               // το κείμενο δεν μιλά για απώλεια που δεν συμβαίνει ακόμη.
               : (!bankReceiptMatters(year) || rentViaBank)
                 ? `Προοδευτική κλίμακα ενοικίων ${year} με την τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}. Έχεις ένα ακίνητο με εισόδημα, οπότε ο φόρος του είναι όλος ο φόρος σου.`
-                : `Προοδευτική κλίμακα ενοικίων ${year} χωρίς την τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}: το ενοίκιο εισπράττεται με μετρητά και από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} η έκπτωση προϋποθέτει τραπεζική είσπραξη (ν.5222/2025). Ο φόρος υπολογίζεται στο 100% του ενοικίου.` },
+                : `Προοδευτική κλίμακα ενοικίων ${year} χωρίς την τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)}: το ενοίκιο εισπράττεται με μετρητά και από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} η έκπτωση προϋποθέτει τραπεζική είσπραξη (ν.5222/2025). Ο φόρος υπολογίζεται στο 100% του ενοικίου.`) },
           // ΧΩΡΙΣ ΧΡΩΜΑΤΙΚΗ ΕΤΥΜΗΓΟΡΙΑ. Το πρόσημο το λέει ήδη το ίδιο το ποσό·
           // το πράσινο/κόκκινο απλώς το ξαναέλεγε και σε μια χρονιά με ΕΝΦΙΑ
           // έβαφε κόκκινο ένα ακίνητο που δουλεύει κανονικά.
           // Η ΠΡΟΜΗΘΕΙΑ ΤΩΝ ΔΙΑΜΟΝΩΝ ΛΕΓΕΤΑΙ ΜΕ ΤΟ ΟΝΟΜΑ ΤΗΣ. Δεν είναι στις «Δαπάνες
           // έτους» (εκείνες είναι ίδιες σε κάθε οθόνη), οπότε το αποτέλεσμα τη
           // γράφει από κάτω ώστε η αφαίρεση να φαίνεται.
-          { label:'Καθαρό αποτέλεσμα', value:fmtEur(net),
+          { label:'Καθαρό έτους', value:fmtEur(net),
             sub: costs.stayFees > 0 ? `μετά από ${fmtEur(costs.stayFees)} ${PLATFORM_FEE_LABELS.short}` : undefined,
             title: costs.stayFees > 0
               ? `Ακαθάριστα έσοδα μείον δαπάνες μείον ${fmtEur(costs.stayFees)} ${PLATFORM_FEE_LABELS.fromStays} μείον το μερίδιο φόρου. ${PLATFORM_FEE_LABELS.note}${stayFees.ownMonths > 0 ? ` ${PLATFORM_FEE_LABELS.ownMonths}` : ''} Δεν περιλαμβάνει δόσεις δανείου.`
@@ -1159,12 +1178,29 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         // αντί να χωθούν στο πρώτο, που τα ξεχείλωνε σε μια δεύτερη μισοάδεια
         // σειρά και ισοπέδωνε την ιεραρχία.
         const extra: KPIItem[] = [];
+        // ═══ Η ΑΠΟΔΟΣΗ ΜΠΗΚΕ ΣΤΑ ΣΥΜΦΡΑΖΟΜΕΝΑ, ΟΧΙ ΣΤΟ ΚΕΝΟ ΑΝΑΜΕΣΑ ═════════
+        // Ηταν μια γραμμή κειμένου 12 ανάμεσα στα δύο πλέγματα: ούτε πλακίδιο
+        // ούτε υπότιτλος, με αρνητικό περιθώριο για να κολλήσει στο πρώτο. Στα
+        // 390 έσπαγε σε δύο γραμμές και αιωρούνταν. Είναι ακριβώς ό,τι λέει το
+        // δεύτερο πλέγμα για τον εαυτό του — συμφραζόμενο του αποτελέσματος —
+        // οπότε κάθεται εκεί, με το ίδιο σχήμα: μεικτή ως αριθμός, καθαρή και
+        // αξία ως υπότιτλος. Οι λέξεις από το lib/facts.
+        if (income && propValue>0) extra.push({
+          label: YIELD_SHORT_LABELS.gross, value: fp(grossYield), fact: 'yield-gross', facts: { 'yield-net-recorded': fp(netYield) },
+          // Στο βραχυχρόνιο το «χωρίς εκτιμήσεις» λέει γιατί οι Αποδόσεις, που
+          // προσθέτουν καθαρισμό και τέλη από το μοντέλο, γράφουν μικρότερο ποσοστό.
+          sub: `${propertyStatus(prop) === 'rent_short' ? YIELD_INLINE_LABELS.net_pre_tax_recorded : YIELD_INLINE_LABELS.net_pre_tax} ${fp(netYield)} · αξία ${fmtEur(propValue)}`,
+          title: `${YIELD_LABELS.gross}: ετήσιο ενοίκιο ως ποσοστό της αξίας του ακινήτου, πριν από τις δαπάνες. ${costs.stayFees > 0
+            ? `${netPreTaxLabel(costs)}: ετήσιο έσοδο μείον τις δαπάνες του έτους που έχεις καταγράψει και ${fmtEur(costs.stayFees)} ${PLATFORM_FEE_LABELS.fromStays}, ως ποσοστό της αξίας. ${PLATFORM_FEE_LABELS.note}`
+            : `${netPreTaxLabel(costs)}: ετήσιο έσοδο μείον τις δαπάνες του έτους που έχεις καταγράψει, ως ποσοστό της αξίας.`}` });
         if (hasActiveLoan) extra.push({
           // ΧΩΡΙΣ ΣΤΡΟΓΓΥΛΕΥΣΗ ΣΤΟ ΕΥΡΩ. Η ατζέντα της ίδιας οθόνης γράφει τη δόση
           // με τα λεπτά της· εδώ έβγαινε «922,00€» δίπλα σε «922,30€».
-          label:'Δόση δανείου / μήνα', value:fmtEur(monthlyDebt),
-          sub: debtLtv>0 ? `${debtKnownAge ? 'υπόλοιπο' : 'αρχικό δάνειο'} προς αξία ${fp(debtLtv)}` : undefined,
-          title:'Εκτιμώμενη τοκοχρεολυτική δόση. Δεν αφαιρείται από το καθαρό αποτέλεσμα παραπάνω· το κεφάλαιο δεν είναι δαπάνη.' });
+          // «Δόση δανείου / μήνα» ήταν 19 χαρακτήρες: η ίδια κράτηση δεύτερης
+          // γραμμής με την πρώτη σειρά. Το «τον μήνα» πάει στον υπότιτλο.
+          label:'Δόση δανείου', value:fmtEur(monthlyDebt),
+          sub: `τον μήνα${debtLtv>0 ? ` · ${debtKnownAge ? 'υπόλοιπο' : 'αρχικό δάνειο'} προς αξία ${fp(debtLtv)}` : ''}`,
+          title:'Εκτιμώμενη τοκοχρεολυτική δόση. Δεν αφαιρείται από το «Καθαρό έτους» παραπάνω· το κεφάλαιο δεν είναι δαπάνη.' });
         // ── ΕΙΣΠΡΑΞΕΙΣ, ΟΧΙ ΕΣΟΔΑ. ΔΥΟ ΣΩΣΤΑ ΝΟΥΜΕΡΑ ΓΙΑ ΤΗΝ ΙΔΙΑ ΔΙΑΜΟΝΗ ──────
         // Ο επισκέπτης πληρώνει 1.000,00€, η πλατφόρμα κρατά 150,00€ προμήθεια
         // και εισπράττει 50,00€ τέλος ανθεκτικότητας. Στον λογαριασμό μπαίνουν
@@ -1181,7 +1217,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           // άφιξη …» έσπαγε σε τέσσερις γραμμές στα 390. Το πλακίδιο κρατά ποσό και
           // νύχτες (`hostingPartsShort`)· οι πλήρεις λέξεις και η επόμενη άφιξη
           // μένουν στην εξήγηση, όπως στις «Δαπάνες έτους».
-          label:`Εισπράξεις φιλοξενίας ${year}`, value:fmtEur(hostingYTD),
+          // Η «φιλοξενία» τη λέει ο υπότιτλος (δηλωτέο, νύχτες): με αυτήν η
+          // ετικέτα έπιανε 26 χαρακτήρες και δύο γραμμές σε όλη τη σειρά.
+          label:`Εισπράξεις ${year}`, value:fmtEur(hostingYTD),
           sub: hostingPartsShort(hosting, fmtEur),
           title:`${HOSTING_LABELS.payout}: ${fmtEur(hosting.payout)}, από την καρτέλα «${navLabel('clients')}». ${hostingParts({ declarable: hosting.declarable, nights: hostingNights }, nextArrival, fmtEur, fd)}. Το δηλωτέο είναι μεγαλύτερο γιατί περιλαμβάνει την προμήθεια της πλατφόρμας· το βλέπεις στη Λογιστική ως «Μεικτά έσοδα».` });
         // ΟΙ «ΕΚΚΡΕΜΕΙΣ ΔΑΠΑΝΕΣ» ΕΦΥΓΑΝ ΑΠΟ ΕΔΩ. Είναι ακριβώς το «Χρωστάω» του
@@ -1193,34 +1231,16 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
                 τέσσερα, το ακίνητο χωρίς έσοδα άπλωνε ένα ή δύο πλακίδια σε
                 τέσσερις θέσεις και άφηνε τη μισή σειρά κενή. */}
             <KPIGrid columns={Math.min(4, Math.max(2, items.length))} items={items} />
-            {/* Η απόδοση σε μία γραμμή αντί για δύο πλακίδια: είναι
-                συμφραζόμενο του αποτελέσματος, όχι ισότιμο μέγεθος μαζί του. Η
-                πλήρης ανάλυση ζει στις «Αποδόσεις», που είναι η καρτέλα της. */}
-            <div style={{marginTop:-4,marginBottom:16,fontFamily: T.font.sans,fontSize:12,color:'var(--text-secondary)',lineHeight:1.7}}>
-              {isLet(prop) && propValue>0 && (
-                <div>
-                  {/* «Απόδοση: μεικτή 4,03% · καθαρή προ φόρου 3,01%». Ηταν «Απόδοση.
-                      μεικτή απόδοση …», η λέξη τρεις φορές και τελεία πριν από
-                      πεζό. Οι λέξεις από το lib/facts (YIELD_INLINE_LABELS). */}
-                  <strong style={{color:'var(--text-primary)',fontWeight:600}}>{YIELD_INLINE_LABELS.title}:</strong>{' '}
-                  {/* Κάθε σκέλος δεν σπάει μέσα του: στο τηλέφωνο το «185.000,00€»
-                      έπεφτε μόνο του στη δεύτερη γραμμή, χωρισμένο από το «αξία». */}
-                  <span style={{whiteSpace:'nowrap'}} title={`${YIELD_LABELS.gross}: ετήσιο ενοίκιο ως ποσοστό της αξίας του ακινήτου, πριν από τις δαπάνες`}>{YIELD_INLINE_LABELS.gross} {fp(grossYield)}</span>
-                  {' · '}
-                  <span style={{whiteSpace:'nowrap'}} title={costs.stayFees > 0
-                    ? `${netPreTaxLabel(costs)}: ετήσιο έσοδο μείον τις δαπάνες του έτους που έχεις καταγράψει και ${fmtEur(costs.stayFees)} ${PLATFORM_FEE_LABELS.fromStays}, ως ποσοστό της αξίας. ${PLATFORM_FEE_LABELS.note}`
-                    : `${netPreTaxLabel(costs)}: ετήσιο έσοδο μείον τις δαπάνες του έτους που έχεις καταγράψει, ως ποσοστό της αξίας`}>{YIELD_INLINE_LABELS.net_pre_tax} {fp(netYield)}</span>
-                  {' · '}
-                  <span style={{whiteSpace:'nowrap'}}>αξία {fmtEur(propValue)}</span>
-                </div>
-              )}
-              {income && taxNote && (
-                <div><strong style={{color:'var(--text-primary)',fontWeight:600}}>Πώς βγαίνει ο φόρος.</strong> {taxNote}</div>
-              )}
-            </div>
-            {/* Ο ΙΔΙΟΣ ΚΑΝΟΝΑΣ ΜΕ ΤΟ ΠΡΩΤΟ ΠΛΕΓΜΑ. Με `Math.max(3, …)` δύο
-                πλακίδια (δάνειο, φιλοξενία) άφηναν την τρίτη στήλη άδεια. */}
-            {extra.length > 0 && <KPIGrid columns={Math.min(4, Math.max(2, extra.length))} items={extra} />}
+            {/* ΤΡΙΑ ΠΛΑΚΙΔΙΑ ΣΕ ΤΡΕΙΣ ΣΤΗΛΕΣ, ΕΝΑ ΣΕ ΟΛΟ ΤΟ ΠΛΑΤΟΣ. Με `Math.max(2, …)`
+                ένα μόνο πλακίδιο (π.χ. η απόδοση, χωρίς δάνειο και διαμονές)
+                έπιανε τη μισή σειρά με τρύπα ίσου πλάτους δίπλα του. */}
+            {extra.length > 0 && <KPIGrid columns={Math.min(4, extra.length)} items={extra} />}
+            {/* Ο ΦΟΡΟΣ ΤΟΥ ΧΑΡΤΟΦΥΛΑΚΙΟΥ ΜΕΝΕΙ ΣΗΜΕΙΩΣΗ, ΚΑΤΩ ΑΠΟ ΤΑ ΠΛΕΓΜΑΤΑ. Είναι
+                εξήγηση του «Μερίδιο φόρου», όχι μέγεθος: διαβάζεται αφού δεις τα
+                νούμερα, όχι ανάμεσά τους. */}
+            {income && taxNote && (
+              <p style={{...TT.caption,margin:'0 0 16px'}}><strong style={{color:'var(--text-primary)',fontWeight:600}}>Πώς βγαίνει ο φόρος.</strong> {taxNote}</p>
+            )}
           </>
         );
       })()}

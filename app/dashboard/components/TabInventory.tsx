@@ -1,6 +1,8 @@
 'use client'
 
 import { formatNavHash } from '@/lib/nav/history'
+import { navLabel } from '@/lib/nav/labels'
+import { fpRate } from '@/lib/core/format'
 import { useState, useCallback, useMemo } from 'react'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import * as tenantStore from '@/lib/data/tenants'
@@ -187,7 +189,7 @@ function AnalysisCards({items,repairs,kwhPrice,kwhControl}:{items:InventoryItem[
                 <span className="po-elide">{inventoryLabel(cat)}</span>
                 <span style={{color:'var(--text-tertiary)',fontSize: 'var(--fs-xs)',flexShrink:0}}>({count})</span>
               </span>
-              <span style={{fontSize:12,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600,flexShrink:0}}>{fe(val)}</span>
+              <span style={{fontSize:12,fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600,flexShrink:0}}>{fe(val)}</span>
             </div>
             <Bar pct={(val/maxVal)*100} height={4} label={`Μερίδιο αξίας, ${inventoryLabel(cat)}`}/>
           </div>
@@ -196,7 +198,7 @@ function AnalysisCards({items,repairs,kwhPrice,kwhControl}:{items:InventoryItem[
       {totalRepairs>0&&(
         <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid var(--border-subtle)',display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:10}}>
           <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>Επισκευές έως τώρα</span>
-          <span style={{fontSize:12,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600}}>{fe(totalRepairs)}</span>
+          <span style={{fontSize:12,fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600}}>{fe(totalRepairs)}</span>
         </div>
       )}
     </div>
@@ -359,17 +361,21 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
         {/* ΤΟ minWidth ΗΤΑΝ 180 ΚΑΙ Η ΥΠΟΔΕΙΞΗ ΘΕΛΕΙ 167 ΣΥΝ ΤΑ ΠΕΡΙΘΩΡΙΑ. Η πρώτη
             σάρωση της καρτέλας το έπιασε κομμένο στα 430 και στα 1024: το πεδίο
             έπεφτε στα 158 και το «Αντικείμενο ή μάρκα» έχανε το τέλος του. */}
-        <div style={{flex:1,minWidth:210}}><TextInput ariaLabel="Αναζήτηση αντικειμένου" value={search} onChange={setSearch} placeholder="Αντικείμενο ή μάρκα" aria-label="Αναζήτηση απογραφής"/></div>
+        {/* ΙΣΑ ΚΟΜΜΑΤΙΑ, ΟΧΙ ΣΤΑΘΕΡΑ ΠΛΑΤΗ (02.11.2026). Με 210/190/212 καρφωτά, στα
+            390 κάθε φίλτρο έπιανε άλλο πλάτος σε δική του γραμμή και η δεξιά άκρη
+            πήγαινε ζιγκ ζαγκ. Με `flex: 1 1 <βάση>` η βάση κρατά το κείμενο να
+            χωράει και κάθε γραμμή που προκύπτει από τύλιγμα γεμίζει ίσα. */}
+        <div style={{flex:'2 1 210px',minWidth:0}}><TextInput ariaLabel="Αναζήτηση αντικειμένου" value={search} onChange={setSearch} placeholder="Αντικείμενο ή μάρκα" aria-label="Αναζήτηση απογραφής"/></div>
         {/* ΤΑ ΠΛΑΤΗ ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΟ ΚΕΙΜΕΝΟ ΚΑΙ ΤΟ ΚΕΙΜΕΝΟ ΕΙΝΑΙ ΕΛΛΗΝΙΚΟ.
             Το «Όλες οι κατηγορίες» και το «Όλα τα δωμάτια» είναι οι ΠΡΟΕΠΙΛΟΓΕΣ,
             δηλαδή αυτό που βλέπει ο χρήστης πριν αγγίξει τίποτα — και δεν
             χωρούσαν στα 150 και στα 140. Η ταξινόμηση έγραφε το πρόθεμα
             «Ταξινόμηση:» μέσα σε κάθε επιλογή· το πρόθεμα είναι ετικέτα και το
             CustomSelect έχει ήδη ετικέτα. */}
-        <div style={{width:210}}><CustomSelect ariaLabel="Κατηγορία" value={filterCat} onChange={setFilterCat} options={['Όλες',...[...INVENTORY_CATEGORIES].filter(c=>items.some(i=>i.category===c))].map(c=>({value:c,label:c==='Όλες'?'Όλες οι κατηγορίες':inventoryLabel(c)}))}/></div>
-        {allRooms.length>0&&<div style={{width:190}}><CustomSelect ariaLabel="Δωμάτιο" value={filterRoom} onChange={setFilterRoom} options={[{value:'Όλα',label:'Όλα τα δωμάτια'},...allRooms.map(r=>({value:r,label:inventoryLabel(r)}))]}/></div>}
-        <div style={{display:'flex',alignItems:'center',gap:6}}>
-          <div style={{width:212}}><CustomSelect ariaLabel="Ταξινόμηση" value={sortKey} onChange={v=>setSortKey(v as SortKey)} options={(Object.keys(SORT_LABELS) as SortKey[]).map(k=>({value:k,label:SORT_LABELS[k]}))}/></div>
+        <div style={{flex:'1 1 190px',minWidth:0}}><CustomSelect ariaLabel="Κατηγορία" value={filterCat} onChange={setFilterCat} options={['Όλες',...[...INVENTORY_CATEGORIES].filter(c=>items.some(i=>i.category===c))].map(c=>({value:c,label:c==='Όλες'?'Όλες οι κατηγορίες':inventoryLabel(c)}))}/></div>
+        {allRooms.length>0&&<div style={{flex:'1 1 190px',minWidth:0}}><CustomSelect ariaLabel="Δωμάτιο" value={filterRoom} onChange={setFilterRoom} options={[{value:'Όλα',label:'Όλα τα δωμάτια'},...allRooms.map(r=>({value:r,label:inventoryLabel(r)}))]}/></div>}
+        <div style={{display:'flex',alignItems:'center',gap:6,flex:'1 1 250px',minWidth:0}}>
+          <div style={{flex:1,minWidth:0}}><CustomSelect ariaLabel="Ταξινόμηση" value={sortKey} onChange={v=>setSortKey(v as SortKey)} options={(Object.keys(SORT_LABELS) as SortKey[]).map(k=>({value:k,label:SORT_LABELS[k]}))}/></div>
           <IconBtn label="Κατεύθυνση ταξινόμησης" title={sortDir==='asc'?'Αύξουσα':'Φθίνουσα'} size="md" round onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}><svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{sortDir==='asc'?<path d="M12 19V5M5 12l7-7 7 7"/>:<path d="M12 5v14M19 12l-7 7-7-7"/>}</svg></IconBtn>
         </div>
         {/* Το πλακίδιο λέει ΚΑΤΑΣΤΑΣΗ κι όχι τόνο: το ανοιχτό βάφεται accent από το .po-chip. Το πορτοκαλί μένει εκεί που μετράει, στο σήμα του αριθμού. */}
@@ -453,13 +459,13 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                  νικά και την αιώρηση, μαζί με το μηδενικό γέμισμα της φωτογραφίας. */
               <div key={item.id} {...pressable(()=>selectMode?toggleSel(item.id):onEdit(item))} className="card" style={{padding:0,overflow:'hidden',display:'flex',flexDirection:'column',cursor:'pointer',...(sel?{borderColor:'var(--accent)',boxShadow:'0 0 0 1px var(--accent)'}:{})}}
               >
-                <div style={{height:118,background:'var(--bg-elevated)',position:'relative',overflow:'hidden',flexShrink:0}}>
+                {/* ΧΩΡΙΣ ΦΩΤΟΓΡΑΦΙΑ, ΧΩΡΙΣ 118 ΕΙΚΟΝΟΣΤΟΙΧΕΙΑ ΚΕΝΟΥ. Ενα αχνό εικονίδιο σε
+                    γκρι κουτί έπιανε το μισό ύψος της κάρτας και δεν έλεγε τίποτα·
+                    χωρίς εικόνα μένει λωρίδα που κρατά μόνο τα χειριστήρια. */}
+                <div style={{height:displayPhoto?118:52,background:'var(--bg-elevated)',position:'relative',overflow:'hidden',flexShrink:0}}>
                   {displayPhoto
                     ?<RuntimeImg src={displayPhoto} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
-                    :<div style={{height:'100%',display:'flex',alignItems:'center',justifyContent:'center',opacity:0.18}}>
-                      <svg aria-hidden="true" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
-                    </div>
-                  }
+                    :null}
                   {selectMode
                     ?<div style={{position:'absolute',top:8,left:8,background:'var(--scrim-media)',borderRadius: T.radius.chip,padding: 4,backdropFilter:'blur(4px)'}} onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></div>
                     :<>
@@ -470,9 +476,9 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                         <OverflowMenu dark actions={itemActions(item)}/>
                       </div>
                     </>}
-                  {(item.energy_class||photos.length>1)&&<div style={{position:'absolute',bottom:8,left:8,display:'flex',gap:4,alignItems:'center'}}>
+                  {(item.energy_class||photos.length>1)&&<div style={displayPhoto?{position:'absolute',bottom:8,left:8,display:'flex',gap:4,alignItems:'center'}:{position:'absolute',top:'50%',right:48,transform:'translateY(-50%)',display:'flex',gap:4,alignItems:'center'}}>
                     {item.energy_class&&<EnergyBadge cls={item.energy_class}/>}
-                    {photos.length>1&&<span style={{padding:'2px 6px',borderRadius: T.radius.xs,background:'var(--scrim-media)',color:'var(--on-media)',fontSize: 'var(--fs-xs)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums'}}>+{photos.length-1}</span>}
+                    {photos.length>1&&<span style={{padding:'2px 6px',borderRadius: T.radius.xs,background:'var(--scrim-media)',color:'var(--on-media)',fontSize: 'var(--fs-xs)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums'}}>+{photos.length-1}</span>}
                   </div>}
                 </div>
                 <div style={{padding:'12px 14px',display:'flex',flexDirection:'column',gap:8,flex:1}}>
@@ -495,7 +501,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                         πλέγμα λέει «εκτιμώμενη τρέχουσα αξία». Λέγεται ως αυτό που
                         είναι, πιο σβηστό. */}
                     {hasValue && (hasDate
-                      ? <p style={{fontSize:14,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',lineHeight:1.2,flexShrink:0}}>{fe(curVal)}</p>
+                      ? <p style={{fontSize:14,fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',lineHeight:1.2,flexShrink:0}}>{fe(curVal)}</p>
                       : <p style={{fontSize:12,fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)',lineHeight:1.2,flexShrink:0}}>Αγορά {fe(curVal)}</p>
                     )}
                   </div>
@@ -594,12 +600,12 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                       <td style={{verticalAlign:'middle'}} onClick={e=>e.stopPropagation()}><InlineConditionEdit item={item} onUpdate={onUpdateCondition}/></td>
                       <td className="num" style={{verticalAlign:'middle'}}>
                         {hasValue && hasDate
-                          ? <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(curVal)}</p>
+                          ? <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(curVal)}</p>
                           : hasValue
                           ? <p style={{fontSize:12,fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)'}}>Αγορά {fe(curVal)}</p>
                           : <p style={{fontSize:12,fontFamily:T.font.sans,color:'var(--text-tertiary)'}}>Χωρίς αξία</p>}
                       </td>
-                      <td className="num" style={{verticalAlign:'middle'}}>{mc>0&&<p style={{fontSize:12,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(mc)}</p>}</td>
+                      <td className="num" style={{verticalAlign:'middle'}}>{mc>0&&<p style={{fontSize:12,fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(mc)}</p>}</td>
                       <td style={{verticalAlign:'middle'}}><div style={{display:'flex',justifyContent:'flex-end'}}><OverflowMenu actions={itemActions(item)}/></div></td>
                     </tr>
                   )
@@ -802,7 +808,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
     const title=`Εγγύηση: ${item.name}`
     if(await calendar.exists(supabase,propertyId,{source:'inventory',title,eventDate:item.warranty_expiry})){notifyOk(`Η υπενθύμιση για «${item.name}» υπάρχει ήδη στο ημερολόγιο.`);return true}
     const {error}=await calendar.insert(supabase,[calendar.row({propertyId,userId},'inventory',{title,notes:`Λήγει ${fmtDate(item.warranty_expiry)}`,event_date:item.warranty_expiry,category:'maintenance',priority:daysUntil(item.warranty_expiry)<=30?'high':'medium'})])
-    if(error){notifyError(failed('Δεν μπόρεσα να προσθέσω την υπενθύμιση',error));return false}
+    if(error){notifyError(failed('Η υπενθύμιση εγγύησης δεν προστέθηκε',error));return false}
     // ΗΤΑΝ notifyError: μήνυμα ΕΠΙΤΥΧΙΑΣ σε κόκκινο toast. Ο χρήστης νόμιζε ότι απέτυχε
     // και το ξαναπατούσε, φτιάχνοντας διπλές εγγραφές ημερολογίου.
     notifyOk(`Προστέθηκε υπενθύμιση εγγύησης στο ημερολόγιο για «${item.name}».`)
@@ -880,7 +886,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
         onChange={e=>{const raw=e.target.value.replace(',','.');setKwInput(raw);if(/^\d*\.?\d*$/.test(raw)&&raw!=='')setKwhPrice(parseFloat(raw)||0)}}
         onFocus={e=>{e.target.select()}}
         onBlur={()=>{const n=parseFloat(kwInput);if(isNaN(n)||n<=0){setKwInput('');setKwhPrice(0)}else{setKwInput(String(n));setKwhPrice(n);saveKwh(n)}}}
-        style={{width:52,background:'transparent',border:'none',outline:'none',padding:'0 8px',fontSize:12,color:'var(--text-primary)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',textAlign:'right'}}
+        style={{width:52,background:'transparent',border:'none',outline:'none',padding:'0 8px',fontSize:12,color:'var(--text-primary)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',textAlign:'right'}}
       />
     </div>
   )
@@ -954,7 +960,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
              αφορά. Ο τίτλος λέει ΤΙ συμβαίνει· η υπόδειξη λέει ΤΙ ΝΑ ΚΑΝΕΙ,
              σε μία γραμμή. Ο,τι έμενε ήταν ήδη γραμμένο δύο φορές. */
           hint={status==='rent_long'
-            ? 'Δήλωσε την επίπλωση στην καρτέλα «Ενοικιαστές» και η απογραφή ανοίγει εδώ.'
+            ? `Δήλωσε την επίπλωση στην καρτέλα «${navLabel('tenant')}» και η απογραφή ανοίγει εδώ.`
             : `Το ακίνητο είναι σε κατάσταση «${statusLabel(propRow)}». Η απογραφή ανοίγει μόλις μπει σε μίσθωση.`}
           /* Η ΚΕΝΗ ΚΑΤΑΣΤΑΣΗ ΕΣΤΕΛΝΕ ΑΛΛΟΥ ΚΑΙ ΤΕΛΕΙΩΝΕ ΕΚΕΙ. Οποιος έχει έναν
              λέβητα ή ένα κλιματιστικό να καταγράψει τώρα δεν έχει λόγο να
@@ -963,7 +969,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
           page
           points={['Αξία και εγγύηση κάθε αντικειμένου', 'Επισκευές και κατανάλωση ρεύματος', 'Πρωτόκολλο παράδοσης στον ενοικιαστή']}
           action={<>
-            {status==='rent_long' && <Btn variant="primary" onClick={()=>{ window.location.hash = formatNavHash({ tab:'tenant', propertyId }) }}>Άνοιξε τον Ενοικιαστή</Btn>}
+            {status==='rent_long' && <Btn variant="primary" onClick={()=>{ window.location.hash = formatNavHash({ tab:'tenant', propertyId }) }}>Άνοιξε τους {navLabel('tenant')}</Btn>}
             <Btn onClick={()=>{setEditingItem(null);setFormManual(true);setShowItemForm(true)}}>Πρόσθεσε ένα αντικείμενο</Btn>
           </>}
         />
@@ -1034,7 +1040,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
               // αξία» έβγαινε μία λέξη ανά γραμμή στα 320 (26/10/2026). Η αναφορά
               // και η εξαγωγή (inventory/exports.tsx) κρατούν τον πλήρη όρο.
               ...(invSummary.totalOriginal>0?[{label:'Αξία σήμερα (εκτίμηση)',value:fe(totalValue),
-                sub:`από ${fe(invSummary.totalOriginal)} αξία αγοράς, μένει το ${Math.max(0,100-invSummary.avgDepreciatedPct)}%${undatedCount>0?` · ${undatedCount} ${undatedCount===1?'αντικείμενο χωρίς ημερομηνία μετρά':'αντικείμενα χωρίς ημερομηνία μετρούν'} με την τιμή αγοράς`:''}`}]:[]),
+                sub:`από ${fe(invSummary.totalOriginal)} αξία αγοράς, μένει το ${fpRate(Math.max(0,100-invSummary.avgDepreciatedPct))}${undatedCount>0?` · ${undatedCount} ${undatedCount===1?'αντικείμενο χωρίς ημερομηνία μετρά':'αντικείμενα χωρίς ημερομηνία μετρούν'} με την τιμή αγοράς`:''}`}]:[]),
               ...(electricItems.length>0?[kwhPrice>0
                 ? {label:'Ρεύμα ανά μήνα',value:fe(monthlyCost),sub:`${fn(monthlyKwh,1)} κιλοβατώρες, στα ${feRate(kwhPrice)} ανά κιλοβατώρα`}
                 : {label:'Ρεύμα ανά μήνα',value:`${fn(monthlyKwh,1)} kWh`,sub:'δήλωσε τιμή ανά κιλοβατώρα για κόστος'}]:[]),

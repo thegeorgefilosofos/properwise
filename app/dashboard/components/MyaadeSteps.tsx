@@ -224,7 +224,7 @@ export function PropertyRow({ row, index, known, onToggle, onPatch, rowId, force
     ? { tone: 'positive', text: 'Υπάρχει ήδη', tip: `Είναι το «${target?.name ?? ''}» (ίδιος ΑΤΑΚ). Συμπληρώνονται μόνο τα κενά του πεδία.` }
     : row.match.status === 'maybe'
       ? { tone: 'warning', text: 'Ίσως υπάρχει', tip: `Ίδια διεύθυνση με το «${target?.name ?? ''}», που δεν έχει ΑΤΑΚ. Πες μας αν είναι το ίδιο ακίνητο.` }
-      : row.overPlan && !row.include ? { tone: 'neutral', text: 'Εκτός πακέτου', tip: 'Δεν χωρά στο πακέτο σου. Τσέκαρέ το αν ξετσεκάρεις άλλο.' }
+      : row.overPlan && !row.include ? { tone: 'neutral', text: 'Εκτός πακέτου', tip: 'Δεν χωρά στο πακέτο σου. Για να το επιλέξεις, αφαίρεσε την επιλογή από άλλο.' }
       : { tone: 'accent', text: 'Νέο' };
   const pct = toNumber(row.pct);
   const meta = [
@@ -279,7 +279,7 @@ export function PropertyRow({ row, index, known, onToggle, onPatch, rowId, force
           <div className="mya-fields mya-fields-3">
             {isNew(row) && <div className="mya-span mya-full"><TextInput label="Όνομα" value={row.name} onChange={v => onPatch({ name: v })} /></div>}
             <div className="mya-span mya-two"><TextInput label="Διεύθυνση" value={row.address} onChange={v => onPatch({ address: v })} /></div>
-            <div className="mya-span"><TextInput label="ΑΤΑΚ" value={row.atak} onChange={v => onPatch({ atak: atakDigits(v) })} placeholder={`${ATAK_DIGITS} ψηφία`} mono inputMode="numeric" /></div>
+            <div className="mya-span"><TextInput label="ΑΤΑΚ" value={row.atak} onChange={v => onPatch({ atak: atakDigits(v) })} placeholder={`${ATAK_DIGITS} ψηφία`} inputMode="numeric" /></div>
             <NumberInput label="Επιφάνεια" suffix="τ.μ." value={row.sqm} onChange={v => onPatch({ sqm: v })} />
             <NumberInput label="Ποσοστό" suffix="%" value={row.pct} onChange={v => onPatch({ pct: v })} max={100} />
             <TextInput label="Όροφος" value={row.floor} onChange={v => onPatch({ floor: v })} />

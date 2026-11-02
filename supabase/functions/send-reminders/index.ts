@@ -6,7 +6,7 @@ import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 // Οι τύποι των γραμμών βγαίνουν από τα ίδια τα migrations (npm run db-types).
 // Η εισαγωγή είναι μόνο τύπων: σβήνεται στη μεταγλώττιση και δεν φτάνει στο Deno.
 import type { CalendarEventsRow, NotificationLogRow, RentPaymentsRow, TenantsRow, UserPropertiesRow } from '../../../lib/supabase/tables.ts'
-import { eur } from '../_shared/format.ts'
+import { eur, grDate } from '../_shared/format.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 // Ο ΕΝΦΙΑ ΕΙΝΑΙ ΕΝΑ ΕΚΚΑΘΑΡΙΣΤΙΚΟ, ΟΧΙ ΕΝΑ ΑΝΑ ΑΚΙΝΗΤΟ. Οι προθεσμίες γράφονται
 // πλέον μόνες τους σε κάθε ακίνητο· ο ίδιος κανόνας με τη συνδρομή και το push
@@ -100,7 +100,7 @@ function buildEmail(events: CalendarEventsRow[], reminderType: string, pay: Read
 
   const eventRows = events.map(e => {
     const label = catLabels[e.category] || e.category
-    const dateStr = e.event_date ? new Date(e.event_date).toLocaleDateString('el-GR') : ''
+    const dateStr = e.event_date ? grDate(e.event_date) : ''
     return `
       <tr>
         <td class="rule-b" style="padding:12px 0;border-bottom:1px solid ${C.rule};">
@@ -155,7 +155,7 @@ function buildDunningEmail(rows: RentPaymentsRow[], tenantMap: Record<string, Te
     // το κομμάτι απλώς δεν μπαίνει στη γραμμή.
     const period = (r.period_month != null && r.period_year != null)
       ? `${String(r.period_month).padStart(2, '0')}/${r.period_year}` : null
-    const dueStr = r.due_date ? new Date(r.due_date).toLocaleDateString('el-GR') : null
+    const dueStr = r.due_date ? grDate(r.due_date) : null
     const daysOverdue = r.due_date ? Math.floor((today.getTime() - new Date(r.due_date).getTime()) / 86400000) : 0
     const secondary = [tenant && prop ? prop : null, period && `Περίοδος ${period}`, dueStr && `Λήξη ${dueStr}`].filter(Boolean).join(' · ')
     return `

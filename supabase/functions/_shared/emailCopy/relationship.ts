@@ -1,5 +1,5 @@
 import { emailShell, eyebrow, h, p, button, greeting, note } from '../emailTemplates.ts'
-import { eur } from '../format.ts'
+import { eur, pctRate } from '../format.ts'
 import { dash, esc, has, NOTE, type CopyFn } from './kit.ts'
 
 // ── Φάση 14: Σχέσεις (ενοικιαστές & συνιδιοκτήτες) ────────────────────────────
@@ -39,7 +39,7 @@ export const RELATIONSHIP: Record<string, CopyFn> = {
   coowner_statement: (c) => {
     const per = c.period ? ` ${esc(c.period)}` : '';
     const ref = c.propertyName ? ` του «${esc(c.propertyName)}»` : '';
-    const share = has(c.sharePct) ? ` (μερίδιο ${esc(String(c.sharePct))}%)` : '';
+    const share = has(c.sharePct) ? ` (μερίδιο ${pctRate(c.sharePct)})` : '';
     const amt = has(c.amount) ? p(`Το καθαρό μερίδιό σου${share} για την περίοδο: <b>${eur(c.amount)}</b>.`) : '';
     return { subject: 'Η κατάσταση της συνιδιοκτησίας σου', html: emailShell({
       preheader: 'Το μερίδιό σου σε έσοδα και έξοδα, ξεκάθαρα.', unsubUrl: c.unsubUrl,

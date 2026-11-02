@@ -47,7 +47,7 @@ const URL = siteUrl(PATH);
 const TOTAL_PCT = fpRate(TRANSFER_TAX_RATE * 100);
 const TITLE = 'Έξοδα αγοράς ακινήτου: φόρος μεταβίβασης και όλα τα κόστη';
 const DESC = `Φόρος μεταβίβασης (${TOTAL_PCT}), ΦΠΑ νεόδμητου, τέλη, αμοιβές και πόσα μετρητά θέλει η αγορά `
-  + 'εκτός δανείου, με την πηγή κάθε ποσού. Δωρεάν, χωρίς εγγραφή.';
+  + 'εκτός δανείου, με την πηγή κάθε ποσού. Χωρίς εγγραφή.';
 
 export function generateMetadata(): Metadata {
   return publicMetadata({ title: TITLE, description: DESC, url: URL, image: shareImage('exoda-agoras-akinitou') });

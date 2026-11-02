@@ -8,7 +8,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useRef } from 'react'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
-import { T, Modal, Btn, IconBtn, LinkBtn, fe, feRate, pressable, formGrid, RuntimeImg } from '@/components/Theme'
+import { T, Modal, Btn, IconBtn, LinkBtn, fe, feRate, fn, pressable, formGrid, RuntimeImg } from '@/components/Theme'
+import { fpRate } from '@/lib/core/format'
 import { NOT_TAX_DEPRECIATION_NOTE } from '@/lib/inventory/depreciation'
 import { CustomSelect, NumberInput, TextInput, DatePicker, Textarea } from '../UIComponents'
 import { formFields, INVENTORY_FIELDS, type FieldContext, type FieldDecision } from '@/lib/property/fields'
@@ -252,14 +253,14 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
                 :<svg aria-hidden="true" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>}
             </button>
           </div>
-          <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop: 8,fontFamily:T.font.sans}}>Κάθε νέα φωτογραφία διαβάζεται αυτόματα με AI. Κλικ σε φωτογραφία για να οριστεί ως κύρια.</p>
+          <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop: 8,fontFamily:T.font.sans}}>Κάθε νέα φωτογραφία διαβάζεται αυτόματα με AI. Πάτησε μια φωτογραφία για να την ορίσεις κύρια.</p>
         </div>
       )}
 
       {/* Ταυτότητα αντικειμένου — μόνο όσα ορίζει το μητρώο, με το «γιατί» τους */}
       {revealed && (<>
         <Field d={f('inv.name')}>
-          <TextInput ariaLabel={fl('inv.name')} value={form.name||''} onChange={v=>set('name',v)} placeholder="Παράδειγμα: Πλυντήριο Ρούχων Bosch WAU28"/>
+          <TextInput ariaLabel={fl('inv.name')} value={form.name||''} onChange={v=>set('name',v)} placeholder="Παράδειγμα: Πλυντήριο ρούχων Bosch WAU28"/>
         </Field>
         <Field d={f('inv.category')}>
           <CustomSelect ariaLabel="Κατηγορία" value={form.category||'Λοιπά'} onChange={v=>set('category',v)} options={[...INVENTORY_CATEGORIES].map(c=>({value:c,label:inventoryLabel(c)}))}/>
@@ -310,11 +311,11 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 130px), 1fr))',gap:8}}>
             {[
               {label:'Εκτιμώμενη υπολειπόμενη αξία',value:fe(calcCurrentValue({...form,id:'',user_id:''} as InventoryItem))},
-              {label:'Ποσοστό που μένει',value:`${Math.max(0,100-calcDepreciationPct({...form,id:'',user_id:''} as InventoryItem))}%`},
+              {label:'Ποσοστό που μένει',value:fpRate(Math.max(0,100-calcDepreciationPct({...form,id:'',user_id:''} as InventoryItem)))},
               {label:'Εκτιμώμενα χρόνια ζωής',value:`περίπου ${calcYearsLeft({...form,id:'',user_id:''} as InventoryItem)} χρόνια`},
             ].map((k,i)=>(
               <div key={i} style={{textAlign:'center'}}>
-                <p style={{fontSize:14,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',marginBottom:2}}>{k.value}</p>
+                <p style={{fontSize:14,fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',marginBottom:2}}>{k.value}</p>
                 <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',textTransform:'uppercase',letterSpacing:'0.5px',fontFamily:T.font.sans}}>{k.label}</p>
               </div>
             ))}
@@ -435,11 +436,11 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
               δηλώσει και που άλλαζε το συμπέρασμα κάθε συσκευής. */}
           {liveKwh>0&&(
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 110px), 1fr))',gap:8,padding:'12px 14px',background:'var(--bg-elevated)',borderRadius:T.radius.inner,border:'1px solid var(--border-subtle)'}}>
-              {[{label:'kWh/μήνα',value:liveKwh.toFixed(1)},{label:'kWh/έτος',value:(liveKwh*12).toFixed(0)},
+              {[{label:'kWh/μήνα',value:fn(liveKwh,1)},{label:'kWh/έτος',value:fn(liveKwh*12)},
                 {label:'Κόστος/μήνα',value:kwhPrice>0?fe(liveKwh*kwhPrice):fe(0)},
                 {label:'Κόστος/έτος',value:kwhPrice>0?fe(liveKwh*kwhPrice*12):fe(0)}].map((k,i)=>(
                 <div key={i} style={{textAlign:'center'}}>
-                  <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',marginBottom:2}}>{k.value}</p>
+                  <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',marginBottom:2}}>{k.value}</p>
                   <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',textTransform:'uppercase',letterSpacing:'0.5px',fontFamily:T.font.sans}}>{k.label}</p>
                 </div>
               ))}

@@ -42,6 +42,7 @@ import { createClient } from '@/lib/supabase/client';
 import { T, TT, fe, Btn, ChipToggle, useOverlayShell } from '@/components/Theme';
 import { athensToday } from '@/lib/core/time';
 import { grDate } from '@/lib/core/format';
+import { ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { saved } from '@/components/dbWrite';
 import * as billing from '@/lib/data/billing';
 import { defaultBookkeeping, type LegalForm, type BookKeeping } from '@/lib/accounting/dossier';
@@ -129,7 +130,7 @@ function buildCards(today: string): WelcomeCard[] {
       // Η βοηθός έχει όνομα και το όνομα είναι ο τίτλος· η ετικέτα λέει τι
       // κάνεις μαζί της, όπως οι ετικέτες των άλλων τριών καρτών.
       label: 'Ερωτήσεις',
-      title: 'Νόα, δίπλα σου',
+      title: `${ASSISTANT_NAME}, δίπλα σου`,
       copy: 'Απαντά στα ελληνικά, με βάση τα δικά σου δεδομένα.',
       source: SAMPLE,
       rows: [

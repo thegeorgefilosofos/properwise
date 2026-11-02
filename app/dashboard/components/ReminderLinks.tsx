@@ -21,7 +21,7 @@
 
 import { TT } from '@/components/Theme';
 import { whatsappLink, viberLink } from '@/lib/clients/messages';
-import { localDay } from '@/components/Theme';
+import { fd } from '@/components/Theme';
 import { fe } from '@/lib/core/format';
 
 export interface ReminderSubject {
@@ -41,7 +41,7 @@ export interface ReminderSubject {
  */
 export function reminderText(s: ReminderSubject): string {
   const when = /^\d{4}-\d{2}-\d{2}$/.test(s.when)
-    ? localDay(s.when).toLocaleDateString('el-GR')
+    ? fd(s.when)
     : s.when;
   const parts = [`Υπενθύμιση: ${s.what} στις ${when}`];
   if (s.amount && s.amount > 0) parts.push(`Ποσό ${fe(s.amount)}`);

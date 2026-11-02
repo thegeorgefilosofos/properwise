@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect, useId, ReactNode, Fragment, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { T, localDay, Btn, IconBtn, ChipToggle } from '@/components/Theme';
+import { Z } from '@/components/tokens';
 import { acceptNumeric, forDisplay } from '@/lib/core/numInput';
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time';
-import { MONTHS_SHORT } from '@/lib/core/months';
+import { MONTHS_SHORT, DAY_NAMES_MIN } from '@/lib/core/months';
 import { fn } from '@/lib/core/format';
 import { hy } from '@/components/Hyphen';
 
@@ -169,7 +170,34 @@ export const FIELD_LABEL_ROW = (fieldLabelStyle.minHeight as number) + (fieldLab
 // ── InfoDot: διακριτικό εικονίδιο «i» με tooltip στο πέρασμα του κέρσορα/δαχτύλου.
 // Κρύβει επεξηγήσεις/σημειώσεις πίσω από σύμβολο, ώστε τα πεδία να μένουν καθαρά
 // και μαζεμένα (όχι «σούπερ μάρκετ» με μόνιμα κατεβατά). Portal → δεν κόβεται.
-export function InfoDot({ text }: { text: string }) {
+// ═══ ΕΝΑ ⓘ ΣΕ ΟΛΗ ΤΗΝ ΕΦΑΡΜΟΓΗ ════════════════════════════════════════════
+// Το ίδιο σημάδι ζωγραφιζόταν σε δύο αρχεία με δύο σχέδια: εδώ κουκκίδα 15 με
+// περίγραμμα `--border-default` και «i» 9 μέσα, στο InfoHint κύκλος 14 με
+// μολύβι `currentColor` και άλλο popover (`--bg-elevated`, `--border-default`).
+// Δύο επεξηγήσεις στην ίδια οθόνη διαβάζονταν σαν δύο διαφορετικά πράγματα.
+// Το πρότυπο είναι αυτό εδώ· το σχήμα και το κουτί της επεξήγησης εξάγονται
+// ώστε κάθε ⓘ να τα ΧΡΗΣΙΜΟΠΟΙΕΙ και όχι να τα αντιγράφει.
+export const INFO_GLYPH = 15;
+export function InfoGlyph() {
+  return (
+    <span aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: INFO_GLYPH, height: INFO_GLYPH, borderRadius: '50%', border: '1px solid var(--border-default)', color: 'var(--text-tertiary)', flexShrink: 0, boxSizing: 'border-box' }}>
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 8h.01M11 12h1v4h1" /></svg>
+    </span>
+  );
+}
+/** Το κουτί της επεξήγησης: φόντο, περίγραμμα, ακτίνα, εσωτερικό και σκιά. */
+export const INFO_TOOLTIP_STYLE: React.CSSProperties = {
+  background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner,
+  padding: '12px 14px', boxShadow: 'var(--elev-3)', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)',
+  fontFamily: T.font.sans, lineHeight: 1.6,
+};
+
+/**
+ * `label`: το όνομα του όρου που εξηγείται. Χωρίς αυτό ο αναγνώστης οθόνης
+ * άκουγε «Επεξήγηση, κουμπί» σε κάθε κουκκίδα της οθόνης, χωρίς να ξέρει ΤΙ
+ * εξηγείται· με αυτό ακούει «Τι σημαίνει: Αντικειμενική αξία».
+ */
+export function InfoDot({ text, label }: { text: string; label?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; up: boolean }>({ top: 0, left: 0, up: false });
@@ -190,20 +218,27 @@ export function InfoDot({ text }: { text: string }) {
   return (
     <>
       {/* Ορατή κουκκίδα 15px, αλλά περιοχή αφής ~32px (αρνητικά margins ώστε να μη μεγαλώνει η σειρά). */}
-      <button ref={ref} type="button" aria-label="Επεξήγηση"
-        onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}
+      {/* ═══ ΣΤΟ ΔΑΧΤΥΛΟ ΑΝΟΙΓΕ ΚΑΙ ΕΚΛΕΙΝΕ ΣΤΟ ΙΔΙΟ ΠΑΤΗΜΑ ═══════════════════
+          Σε αφή ο περιηγητής στέλνει pointerdown, mouseenter, focus και ΜΕΤΑ
+          click. Το mouseenter και το focus καλούσαν `show()` και το click
+          έβρισκε το κουτί ανοιχτό και το έκλεινε: στο κινητό η επεξήγηση δεν
+          φαινόταν ποτέ. Το ίδιο είχε μετρηθεί και διορθωθεί στο InfoHint· εδώ
+          η ίδια λύση: αιώρηση μόνο για ποντίκι, εστίαση μόνο από πληκτρολόγιο
+          (`:focus-visible`), το πάτημα ανοίγει και κλείνει για όλους. */}
+      <button ref={ref} type="button" aria-label={label ? `Τι σημαίνει: ${label}` : 'Επεξήγηση'}
+        onPointerEnter={(e) => { if (e.pointerType === 'mouse') show() }}
+        onPointerLeave={(e) => { if (e.pointerType === 'mouse') hide() }}
+        onFocus={(e) => { if (e.target.matches(':focus-visible')) show() }} onBlur={hide}
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (open) { hide() } else { show() } }}
         style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', marginLeft: 0, marginTop: -8, marginBottom: -8, padding: 0, width: T.h.sm, height: T.h.sm, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'help', flexShrink: 0 }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 15, height: 15, borderRadius: '50%', border: '1px solid var(--border-default)' }}>
-          <svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 8h.01M11 12h1v4h1" /></svg>
-        </span>
+        <InfoGlyph />
       </button>
       {open && typeof document !== 'undefined' && createPortal(
         /* Ιδιο μέτρο και ίδια στοίχιση με το ⓘ του InfoHint: δύο επεξηγήσεις
            δίπλα δίπλα δεν επιτρέπεται να διαβάζονται αλλιώς επειδή τις γράφουν
            δύο αρχεία. Πλάτος 280, πλήρης στοίχιση, συλλαβισμός στην απόδοση. */
-        <div role="tooltip" style={{ position: 'fixed', top: pos.top, left: pos.left, transform: pos.up ? 'translateY(-100%)' : 'none', width: 280, maxWidth: 'calc(100vw - 16px)', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 14px', boxShadow: 'var(--elev-3)', zIndex: 3000, pointerEvents: 'none' }}>
-          <p className="po-just" style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.6 }}>{hy(text)}</p>
+        <div role="tooltip" style={{ position: 'fixed', top: pos.top, left: pos.left, transform: pos.up ? 'translateY(-100%)' : 'none', width: 280, maxWidth: 'calc(100vw - 16px)', ...INFO_TOOLTIP_STYLE, zIndex: Z.tooltip, pointerEvents: 'none' }}>
+          <p className="po-just" style={{ margin: 0, fontSize: 'inherit', color: 'inherit', fontFamily: 'inherit', lineHeight: 'inherit' }}>{hy(text)}</p>
         </div>,
         document.body,
       )}
@@ -247,7 +282,7 @@ export function InfoChip({ label, detail, icon, tone = 'default' }: {
         flex: 1, minWidth: 0, fontSize: 'var(--fs-base)', fontWeight: 600, fontFamily: T.font.sans,
         color: tone === 'negative' ? 'var(--negative)' : tone === 'warning' ? 'var(--warning)' : 'var(--text-primary)', lineHeight: 1.4,
       }}>{label}</span>
-      {detail && <InfoDot text={detail} />}
+      {detail && <InfoDot text={detail} label={label} />}
     </div>
   );
 }
@@ -261,8 +296,8 @@ export function InfoChip({ label, detail, icon, tone = 'default' }: {
 //
 // Η διόρθωση δεν είναι να θυμάται ο καλών να τυλίγει: είναι να μη ΜΠΟΡΕΙ να
 // ξεχάσει. Κείμενο σημαίνει επεξήγηση και η επεξήγηση ζει πίσω από την κουκκίδα.
-const infoNode = (info: ReactNode): ReactNode =>
-  typeof info === 'string' ? <LabelDot text={info} /> : info;
+const infoNode = (info: ReactNode, label?: string): ReactNode =>
+  typeof info === 'string' ? <LabelDot text={info} label={label} /> : info;
 
 // ── Η ΚΟΥΚΚΙΔΑ ΤΗΣ ΕΤΙΚΕΤΑΣ ΔΕΝ ΨΗΛΩΝΕΙ ΤΗ ΓΡΑΜΜΗ ───────────────────────────
 // Το κουμπί της κουκκίδας είναι 32 (44 στην αφή) με περιθώρια −8, δηλαδή
@@ -273,8 +308,8 @@ const infoNode = (info: ReactNode): ReactNode =>
 // είναι το κείμενο.
 const DOT_SLOT: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', height: 0, verticalAlign: 'middle' };
 /** Η κουκκίδα επεξήγησης μέσα σε ετικέτα πεδίου. */
-export function LabelDot({ text }: { text: string }) {
-  return <span style={DOT_SLOT}><InfoDot text={text} /></span>;
+export function LabelDot({ text, label }: { text: string; label?: string }) {
+  return <span style={DOT_SLOT}><InfoDot text={text} label={label} /></span>;
 }
 
 // ── ΚΑΙ ΔΕΝ ΜΕΝΕΙ ΜΟΝΗ ΤΗΣ ΣΤΗ ΓΡΑΜΜΗ ──────────────────────────────────────
@@ -284,7 +319,7 @@ export function LabelDot({ text }: { text: string }) {
 // «λείπει» είναι χαρακτήρας και ένα flex θα το έσβηνε.
 const LABEL_TAIL: React.CSSProperties = { whiteSpace: 'nowrap' };
 function labelWithInfo(label: string | undefined, info: ReactNode): ReactNode {
-  const node = infoNode(info);
+  const node = infoNode(info, label);
   if (!label || node == null || node === false) return <>{label}{node}</>;
   const cut = label.lastIndexOf(' ') + 1;
   return <>{label.slice(0, cut)}<span style={LABEL_TAIL}>{label.slice(cut)}{node}</span></>;
@@ -314,6 +349,13 @@ interface NumberInputProps {
   prefix?: string;
   min?: number;
   max?: number;
+  /**
+   * ΤΟ ΚΕΝΟ ΣΗΜΑΙΝΕΙ «ΔΕΝ ΞΕΡΩ», ΟΧΙ ΜΗΔΕΝ. Χωρίς αυτό, ένα πεδίο που ο χρήστης
+   * άδειασε γίνεται `min` (συνήθως «0») στο blur. Σε πεδία όπου το άγνωστο
+   * είναι νόμιμη απάντηση (ΕΝΦΙΑ, ασφάλιστρο στο Σχέδιο) το «0» θα ήταν λάθος
+   * απάντηση: με `optional` το άδειασμα στέλνει `''`.
+   */
+  optional?: boolean;
   // ΤΟ `step` ΕΦΥΓΕ. Το πεδίο είναι `type="text"` με `inputMode="decimal"` —
   // επιλογή συνειδητή, γιατί ο Έλληνας γράφει «12,5» και ο αριθμητικός τύπος
   // απορρίπτει το κόμμα. Σε πεδίο κειμένου το `step` δεν κάνει ΤΙΠΟΤΑ: ήταν
@@ -343,7 +385,7 @@ interface NumberInputProps {
  */
 export function NumberInput({
   label, ariaLabel, id, labelInfo, value, onChange, placeholder = '', suffix, prefix,
-  min = 0, max, disabled, className,
+  min = 0, max, disabled, className, optional,
 }: NumberInputProps) {
   const [focused, setFocused] = useState(false);
   // ═══ ΤΟ ΠΡΟΧΕΙΡΟ ΥΠΑΡΧΕΙ ΜΟΝΟ ΟΣΟ ΓΡΑΦΕΙ Ο ΧΡΗΣΤΗΣ ══════════════════════
@@ -397,13 +439,17 @@ export function NumberInput({
 
   const handleBlur = () => {
     setFocused(false);
+    // ΧΩΡΙΣ ΠΛΗΚΤΡΟ, ΧΩΡΙΣ ΑΛΛΑΓΗ. Ενα πέρασμα με Tab από το πεδίο έστελνε
+    // `onChange` στον γονέα με την ίδια τιμή, ή με το `min` σε κενό πεδίο:
+    // η φόρμα σημειωνόταν «αλλαγμένη» και το προαιρετικό κενό γινόταν «0».
+    if (draft === null) return;
     const n = parseFloat(local.replace(',', '.'));
     // Το πρόχειρο ΣΒΗΝΕΙ και στις δύο διαδρομές: η τιμή που μένει είναι αυτή
     // που μόλις στάλθηκε στον γονέα και από εκεί θα ξαναδιαβαστεί. Αν έμενε,
     // το πεδίο θα κρατούσε τη δική του εκδοχή ακόμη κι όταν ο γονέας άλλαζε
     // την τιμή από αλλού (φόρτωση, επαναφορά, άλλο ακίνητο).
     if (isNaN(n) || local === '' || local === '.') {
-      const fallback = String(min ?? 0);
+      const fallback = optional ? '' : String(min ?? 0);
       setDraft(null); onChange(fallback);
     } else {
       const clamped = min !== undefined && n < min ? min : max !== undefined && n > max ? max : n;
@@ -500,7 +546,7 @@ export function NumberInput({
           <span style={{
             padding: '0 12px',
             fontFamily: T.font.sans,
-            fontSize: 14,
+            fontSize: 'var(--fs-md)',
             color: 'var(--text-secondary)',
             background: 'var(--bg-elevated)',
             alignSelf: 'stretch',
@@ -608,7 +654,7 @@ export function NumberInput({
             // FIX: dynamic padding + never shrink below content width
             padding: getSuffixPadding(suffix),
             fontFamily: T.font.sans,
-            fontSize: suffix.length > 4 ? 12 : 14,
+            fontSize: suffix.length > 4 ? 'var(--fs-sm)' : 'var(--fs-md)',
             color: 'var(--text-secondary)',
             background: 'var(--bg-elevated)',
             alignSelf: 'stretch',
@@ -940,7 +986,13 @@ export function CustomSelect({
 }
 
 // ─── Date Picker ─────────────────────────────────────────────────────────────
-const DAYS_GR = ['Δε','Τρ','Τε','Πε','Πα','Σά','Κυ'];
+/**
+ * ΟΙ ΗΜΕΡΕΣ ΤΗΣ ΕΒΔΟΜΑΔΑΣ ΣΕ ΔΥΟ ΓΡΑΜΜΑΤΑ, ΜΙΑ ΦΟΡΑ. Ηταν γραμμένες ξεχωριστά
+ * εδώ και στη Βραχυχρόνια· εδώ το Σάββατο είχε τόνο («Σά») ενώ καμία άλλη
+ * δισύλλαβη συντομογραφία δεν έχει: δύο ημερολόγια, δύο ορθογραφίες. Ξεκινά
+ * από Δευτέρα, όπως κάθε ελληνικό ημερολόγιο.
+ */
+export const WEEKDAYS_SHORT = DAY_NAMES_MIN;
 
 interface DatePickerProps {
   /**
@@ -1143,7 +1195,7 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
             </IconBtn>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0, marginBottom: 4 }}>
-            {DAYS_GR.map(d => (
+            {WEEKDAYS_SHORT.map(d => (
               <div key={d} style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 500, color: 'var(--text-secondary)', textAlign: 'center', padding: '4px 0', letterSpacing: '0.5px' }}>{d}</div>
             ))}
           </div>
@@ -1229,14 +1281,19 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
  * όνομα το γράφει ήδη η ετικέτα από πάνω, ο διακόπτης μένει χωρίς κείμενο και
  * παίρνει `ariaLabel`.
  */
-interface ToggleProps {
+// ΤΟ ΟΝΟΜΑ ΕΙΝΑΙ ΥΠΟΧΡΕΩΤΙΚΟ. Υπήρχε εφεδρικό «Εναλλαγή»: κάθε διακόπτης χωρίς
+// `label`/`ariaLabel` ανακοινωνόταν με την ίδια λέξη, δηλαδή δέκα διακόπτες στη
+// σειρά ακούγονταν «Εναλλαγή, διακόπτης» δέκα φορές. Ο τύπος ζητά πλέον το ένα
+// από τα δύο, ώστε η παράλειψη να είναι σφάλμα μεταγλώττισης, όχι σιωπή.
+type ToggleProps = {
   on: boolean;
   onChange: (v: boolean) => void;
+} & (
   /** Το όνομα του πράγματος. Σταθερό, ό,τι κι αν είναι η κατάσταση. */
-  label?: string;
+  | { label: string; ariaLabel?: string }
   /** Το όνομα όταν δεν υπάρχει ορατό κείμενο, γιατί το λέει η ετικέτα από πάνω. */
-  ariaLabel?: string;
-}
+  | { label?: undefined; ariaLabel: string }
+);
 
 // ═══ Η ΜΠΑΡΑ ΜΑΖΙΚΩΝ ΕΝΕΡΓΕΙΩΝ ════════════════════════════════════════════
 //
@@ -1396,7 +1453,7 @@ export function Toggle({ on, onChange, label, ariaLabel }: ToggleProps) {
         role="switch"
         className="po-box"
         aria-checked={on}
-        aria-label={label || ariaLabel || 'Εναλλαγή'}
+        aria-label={label || ariaLabel}
         onClick={() => onChange(!on)}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(!on); } }}
         style={{
@@ -1600,7 +1657,7 @@ export function Textarea({
 
 // ─── Service By Selector ──────────────────────────────────────────────────────
 type ServiceBy = 'owner' | 'tenant' | 'split';
-const SB_LABELS: Record<ServiceBy, string> = { owner: 'Ιδιοκτήτης', tenant: 'Ενοικιαστής', split: '50 / 50' };
+const SB_LABELS: Record<ServiceBy, string> = { owner: 'Ιδιοκτήτης', tenant: 'Ενοικιαστής', split: 'Μισά-μισά' };
 const SB_COLORS: Record<ServiceBy, string> = { owner: 'var(--warning)', tenant: 'var(--positive)', split: 'var(--accent)' };
 
 export function ServiceBySelect({ label, value, onChange }: { label: string; value: ServiceBy; onChange: (v: ServiceBy) => void }) {

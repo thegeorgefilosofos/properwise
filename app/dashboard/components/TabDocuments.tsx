@@ -736,7 +736,7 @@ export default function TabDocuments({
             {paperTotals.years.map(([y, e]) => (
               <div key={y} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '10px 12px' }}>
                 <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.06em' }}>{y}</div>
-                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', marginTop: 2 }}>{fe(e.sum)}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', marginTop: 2 }}>{fe(e.sum)}</div>
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>
                   {fn(e.withAmount)} {e.withAmount === 1 ? 'παραστατικό' : 'παραστατικά'}{e.missing ? ` · ${fn(e.missing)} χωρίς ποσό` : ''}
                 </div>
@@ -861,7 +861,7 @@ export default function TabDocuments({
             </span>
           )}
           {filtering && (
-            <LinkBtn onClick={() => { setSel(clearAll()); setQuery(''); }}>Καθαρισμός φίλτρων</LinkBtn>
+            <LinkBtn onClick={() => { setSel(clearAll()); setQuery(''); }}>Εκκαθάριση φίλτρων</LinkBtn>
           )}
         </div>
 
@@ -882,7 +882,7 @@ export default function TabDocuments({
             style={{ width: '100%', height: T.h.lg, background: 'var(--bg-elevated)', border: '1px solid var(--border-control)', borderRadius: T.radius.pill, padding: '0 34px 0 34px', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans, boxSizing: 'border-box' }}/>
           {/* Η θέση μένει εδώ, στο περιτύλιγμα: το κοινό εικονοκούμπι δίνει το
               σχήμα του στόχου αφής, όχι απόλυτη τοποθέτηση. */}
-          {query && <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)' }}><IconBtn label="Καθαρισμός αναζήτησης" onClick={() => setQuery('')}><IconX/></IconBtn></span>}
+          {query && <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)' }}><IconBtn label="Εκκαθάριση αναζήτησης" onClick={() => setQuery('')}><IconX/></IconBtn></span>}
         </div>
         )}
 
@@ -925,7 +925,7 @@ export default function TabDocuments({
                   <ChipToggle key={o.value} on={o.selected} onClick={() => setSel(s => toggleValue(s, key, o.value))}
                     title={o.selected ? `Αφαίρεση φίλτρου «${o.value}»` : `${o.count} ${o.count === 1 ? 'αρχείο' : 'αρχεία'}`}>
                     {o.value}
-                    <span style={{ fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)',
+                    <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-xs)',
                       // Η ΔΙΑΦΑΝΕΙΑ ΕΡΙΧΝΕ ΤΟΝ ΑΡΙΘΜΟ ΚΑΤΩ ΑΠΟ ΤΟ ΠΡΟΤΥΠΟ. Μετρημένο
                       // στη σάρωση προσβασιμότητας: 3,46:1 στα 11px, όριο 4,5:1. Ο
                       // μετρητής ΕΙΝΑΙ η πληροφορία του φίλτρου — πόσα έγγραφα έχει ο
@@ -979,7 +979,7 @@ export default function TabDocuments({
             title="Δεν βρέθηκαν έγγραφα"
             hint={q ? `Καμία αντιστοιχία για «${query}». Η αναζήτηση καλύπτει πάροχο, ποσό και ΑΦΜ.`
                     : 'Ο συνδυασμός των ενεργών φίλτρων δεν αφήνει κανένα αρχείο.'}
-            action={<Btn variant="secondary" onClick={() => { setSel(clearAll()); setQuery(''); }}>Καθαρισμός φίλτρων</Btn>}/>}/>
+            action={<Btn variant="secondary" onClick={() => { setSel(clearAll()); setQuery(''); }}>Εκκαθάριση φίλτρων</Btn>}/>}/>
       )}
 
       {/* ── Lightbox (εικόνα ή προεπισκόπηση PDF) ─────────────────────────
@@ -1092,12 +1092,27 @@ function MonthGroups({ groups, a }: { groups: readonly { key: string; label: str
   const OPEN_BY_DEFAULT = 2;
   const [shut, setShut] = useState<Record<string, boolean>>({});
   const isShut = (key: string, i: number) => shut[key] ?? i >= OPEN_BY_DEFAULT;
+  // ═══ ΕΝΑ ΠΛΕΓΜΑ ΜΕ ΕΠΙΚΕΦΑΛΙΔΕΣ ΜΗΝΑ, ΟΧΙ ΜΙΑ ΚΑΡΤΑ ΑΝΑ ΜΗΝΑ (02.11.2026) ══
+  // ΜΕΤΡΗΜΕΝΟ ΣΤΑ 1280: κάθε μήνας ήταν κάρτα πλήρους πλάτους (1.230) με ένα
+  // πλακίδιο 230 μέσα· τα τέσσερα πέμπτα κάθε κάρτας ήταν κενά και η οθόνη
+  // χωρούσε ενάμιση μήνα. Τώρα όλοι οι μήνες ζουν σε ΜΙΑ κάρτα και κάθε μήνας
+  // πιάνει όσο πλάτος χρειάζονται τα αρχεία του: οι μικροί μήνες κάθονται ο
+  // ένας δίπλα στον άλλο, ο καθένας με την επικεφαλίδα του· ο μεγάλος
+  // παίρνει ολόκληρη τη σειρά· ο κλειστός μήνας είναι γραμμή πλήρους πλάτους.
+  // Στο τηλέφωνο κάθε μήνας είναι όλο το πλάτος,
+  // όπως πριν. Στη λίστα οι γραμμές θέλουν πλάτος, οπότε εκεί μένουν στοίβα.
+  const grid = a.view === 'grid';
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    // `data-list`: οι μήνες είναι εγγραφές του χρήστη, όχι πλακίδια που όρισε ο
+    // σχεδιαστής. Πέντε μήνες σε σειρά των τεσσάρων δίνουν 4+1 και καμία
+    // διάταξη δεν το αποφεύγει (δες τον έλεγχο ορφανών στο e2e-layout).
+    <div className="card" data-list style={{ display: 'flex', flexWrap: 'wrap', columnGap: T.sp.lg, rowGap: T.sp.xs, alignItems: 'flex-start' }}>
       {groups.map(({ key: m, label, items: its }, i) => {
         const closed = isShut(m, i);
         return (
-          <div key={m} className="card" style={{ margin: 0 }}>
+          // Κλειστός μήνας = μία γραμμή κεφαλίδας σε όλο το πλάτος, όπως σε κάθε
+          // πτυσσόμενη λίστα· μόνο οι ανοιχτοί μήνες κάθονται δίπλα δίπλα.
+          <section key={m} style={{ flex: grid && !closed ? `0 1 ${monthWidth(its.length)}px` : '1 1 100%', minWidth: 0, maxWidth: '100%' }}>
             <button type="button" className="acc-toggle acc-month" data-open={!closed} aria-expanded={!closed}
               aria-label={`${label}, ${its.length} ${its.length === 1 ? 'αρχείο' : 'αρχεία'}`}
               onClick={() => setShut(prev => ({ ...prev, [m]: !closed }))}>
@@ -1108,17 +1123,22 @@ function MonthGroups({ groups, a }: { groups: readonly { key: string; label: str
                 stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
             </button>
             {!closed && <FileInner items={its} a={a}/>}
-          </div>
+          </section>
         );
       })}
     </div>
   );
 }
 
+/** Το πλάτος ενός μήνα στο πλέγμα: όσα πλακίδια έχει (ως τέσσερα) και ποτέ
+ *  στενότερο από την επικεφαλίδα του. Πέντε και πάνω παίρνουν όλη τη σειρά. */
+const TILE_MIN = 200, TILE_GAP = 12;
+const monthWidth = (n: number) => n >= 5 ? 99999 : Math.max(260, n * TILE_MIN + (n - 1) * TILE_GAP);
+
 function FileInner({ items, a }: { items: Item[]; a: FileActions }) {
   if (a.view === 'grid') {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${TILE_MIN}px), 1fr))`, gap: TILE_GAP }}>
         {items.map(i => <FileCard key={i.id} i={i} a={a}/>)}
       </div>
     );
@@ -1176,8 +1196,8 @@ function FileCard({ i, a }: { i: Item; a: FileActions }) {
             τα τρία δεν διεκδικεί τον χώρο του άλλου σε στενή κάρτα. */}
         {(i.provider || ORIGIN_LABEL[i.source]) && <div style={{ display: 'flex', marginTop: 6 }}><OriginTag i={i}/></div>}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 6 }}>
-          {i.value != null && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fe(i.value)}</span>}
-          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', marginLeft: 'auto' }}>{i.date ? fd(i.date) : ABSENT_DATE}</span>
+          {i.value != null && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fe(i.value)}</span>}
+          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', marginLeft: 'auto' }}>{i.date ? fd(i.date) : ABSENT_DATE}</span>
         </div>
         {/* ═══ ΤΟ ΔΑΠΕΔΟ ΤΩΝ 44 ΔΕΝ ΠΙΑΝΕΙ ΤΟΥΣ ΣΥΝΔΕΣΜΟΥΣ ═══════════════════
             Ο κανόνας του globals.css τεντώνει `button`, `select` και `input`.
@@ -1225,7 +1245,7 @@ function FileRow({ i, a }: { i: Item; a: FileActions }) {
           {[i.date ? fd(i.date) : null, i.sizeBytes ? fmtBytes(i.sizeBytes) : null, i.note].filter(Boolean).join(' · ')}
         </div>
       </div>
-      {i.value != null && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.mono, whiteSpace: 'nowrap' }}>{fe(i.value)}</span>}
+      {i.value != null && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fe(i.value)}</span>}
       {shown && i.raw && (
         <>
           <RowBtn title="Μετονομασία" onClick={() => a.onRename(i)}><IconPencil size={14}/></RowBtn>
@@ -1332,7 +1352,7 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onAnswer, onArchiveOnly, 
   const miss = (k: string) => v.blocking.includes(k) || v.recommended.includes(k)
     || (k === 'period_to' && v.recommended.includes('period_from'));
   const bad = (k: string) => v.invalid.includes(k) || (k === 'period_to' && v.invalid.includes('period_from'));
-  const mark = (labelText: string, k: string) => `${labelText}${bad(k) ? ' • άκυρο' : miss(k) ? ' • λείπει' : ''}`;
+  const mark = (labelText: string, k: string) => `${labelText}${bad(k) ? ' · άκυρο' : miss(k) ? ' · λείπει' : ''}`;
   // ΣΤΟΝ ΕΝΦΙΑ ΤΟ ΠΟΣΟ ΠΟΥ ΓΙΝΕΤΑΙ ΔΑΠΑΝΗ ΕΙΝΑΙ ΑΥΤΟΥ ΤΟΥ ΑΚΙΝΗΤΟΥ. Η κάρτα
   // διόρθωνε το σύνολο του εκκαθαριστικού, που δεν γράφεται ποτέ ως δαπάνη· ο
   // ΕΝΦΙΑ χωρίς ποσό ακινήτου έμενε μόνο στον Φάκελο χωρίς καμία εξήγηση.

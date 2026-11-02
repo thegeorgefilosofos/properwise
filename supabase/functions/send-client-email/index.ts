@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     .filter(r => isEmail(r.email) && !seen.has(r.email) && (seen.add(r.email), true))
   if (!subject) return json({ error: 'no_subject' }, 400)
   if (!recipients.length) return json({ error: 'no_recipients' }, 400)
-  if (recipients.length > 2000) return json({ error: 'too_many', detail: 'Έως 2000 παραλήπτες ανά αποστολή.' }, 400)
+  if (recipients.length > 2000) return json({ error: 'too_many', detail: 'Έως 2.000 παραλήπτες ανά αποστολή.' }, 400)
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, { global: { headers: { Authorization: authHeader } } })
   // Η ίδια διάκριση με τους πελάτες πιο κάτω: «δεν είσαι συνδεδεμένος» και «δεν
@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
   if (!quota?.allowed) {
     return json({
       error: 'daily_cap',
-      detail: 'Ξεπεράστηκε το ημερήσιο όριο αποστολών (3.000 παραλήπτες / 24ω).',
+      detail: 'Ξεπεράστηκε το ημερήσιο όριο αποστολών (3.000 παραλήπτες ανά 24 ώρες).',
       resetsAt: quota?.resets_at ?? null,
     }, 429)
   }

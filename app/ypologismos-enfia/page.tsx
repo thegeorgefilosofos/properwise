@@ -42,7 +42,7 @@ import { SPEC } from './spec';
 const titleFor = (year: number) => `Υπολογισμός ΕΝΦΙΑ ${year} με τα δικά σου δεδομένα`;
 const DESC =
   'Υπολόγισε τον ΕΝΦΙΑ του ακινήτου σου από τα τετραγωνικά, την τιμή ζώνης, τον όροφο '
-  + 'και την παλαιότητα. Δωρεάν, χωρίς εγγραφή.';
+  + 'και την παλαιότητα. Χωρίς εγγραφή.';
 const PATH = '/ypologismos-enfia';
 const URL = siteUrl(PATH);
 

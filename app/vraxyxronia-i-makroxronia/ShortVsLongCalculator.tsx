@@ -240,7 +240,7 @@ export function ShortVsLongCalculator({ today, cta }: {
               : be === 0
                 ? 'Η βραχυχρόνια βγαίνει μπροστά από την πρώτη κιόλας κράτηση.'
                 : <>Από <strong style={{ color: 'var(--text-primary)', fontFamily: T.font.num,
-                    fontVariantNumeric: 'tabular-nums' }}>{fn(be)}%</strong> πληρότητα και πάνω η
+                    fontVariantNumeric: 'tabular-nums' }}>{fpRate(be)}</strong> πληρότητα και πάνω η
                     βραχυχρόνια αφήνει περισσότερα, δηλαδή από{' '}
                     <strong style={{ color: 'var(--text-primary)', fontFamily: T.font.num,
                       fontVariantNumeric: 'tabular-nums' }}>{fn(r.breakEvenNights ?? 0)}</strong>{' '}

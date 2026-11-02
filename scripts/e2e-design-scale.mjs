@@ -54,6 +54,20 @@ const PROBE = () => {
 const handWritten = (v) => /^-?\d+(\.5)?px$/.test(v.trim())
 const onlyHand = (v) => v.split(' ').every(handWritten)
 
+// ═══ Η ΑΚΤΙΝΑ ΜΕΤΡΙΕΤΑΙ ΑΝΑ ΓΩΝΙΑ, ΟΧΙ ΑΝΑ ΣΥΝΔΥΑΣΜΟ ═══════════════════════
+// Το `getComputedStyle().borderRadius` δίνει τη συντομογραφία: μια μπάρα
+// κομμένη στα δύο έβγαινε «2px 9px 9px 2px» και η άλλη μισή «9px 2px 2px 9px».
+// Μετρημένες ως συμβολοσειρές ήταν δύο «νέες» ακτίνες, ενώ οι τιμές τους (2
+// και 9) υπήρχαν ήδη. Και εμφανίζονταν μόνο τον μήνα όπου μια διαμονή του
+// πάγκου περνά από Κυριακή σε Δευτέρα: ο αριθμός άλλαζε με την ΗΜΕΡΟΜΗΝΙΑ.
+//
+// Τώρα κάθε γωνία μετρά μία φορά, με την τιμή της. Η αυστηρότητα μένει: μια
+// πραγματικά νέα ακτίνα —ενιαία ή σε μία μόνο γωνία— είναι νέα τιμή στο
+// σύνολο και κοκκινίζει όπως πριν. Η ελλειπτική μορφή («10px / 5px») σπάει
+// και στο «/». Μια γωνία «0px» δεν είναι ακτίνα: είναι η ευθεία πλευρά της
+// μισής μπάρας, όπως ένα ενιαίο «0px» δεν μετρούσε ποτέ.
+const corners = (v) => v.split('/').flatMap(p => p.trim().split(/\s+/)).filter(Boolean)
+
 const browser = await chromium.launch({ executablePath: chromePath(), args: ['--no-sandbox'] })
 const swept = await sweep(browser, {
   widths: [1280], height: 900, scenes: SCENES, passes: 2,
@@ -66,7 +80,7 @@ for (const { value } of swept) {
   for (const v of value.size) if (handWritten(v)) seen.size.add(v)
   for (const v of value.weight) seen.weight.add(v)
   for (const v of value.gap) if (onlyHand(v)) seen.gap.add(v)
-  for (const v of value.radius) if (onlyHand(v) || v.includes('%')) seen.radius.add(v)
+  for (const v of value.radius) for (const c of corners(v)) if (c !== '0px' && (handWritten(c) || c.endsWith('%'))) seen.radius.add(c)
 }
 
 const BASE = JSON.parse(readFileSync(new URL('./design-scale-baseline.json', import.meta.url), 'utf8'))

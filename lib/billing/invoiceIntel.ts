@@ -18,6 +18,7 @@
 
 import { supplyOf, type Supply } from '../tax/placeOfSupply';
 import { isValidAfm } from '../core/greek';
+import { fpRate } from '../core/format';
 
 /**
  * ΤΟ ΠΡΟΘΕΜΑ ΤΟΥ ΑΡΙΘΜΟΥ ΦΠΑ ΕΙΝΑΙ Η ΧΩΡΑ ΚΑΙ ΤΟ ΓΡΑΦΕΙ ΚΑΘΕ ΤΙΜΟΛΟΓΙΟ.
@@ -228,7 +229,7 @@ export function deductionNotes(c: DeductionContext): string[] {
   const pct = c.expensePct ?? 100;
   out.push(pct >= 100
     ? 'Η δαπάνη εκπίπτει στο σύνολό της, εφόσον εξυπηρετεί την επιχείρηση και έχεις νόμιμο παραστατικό.'
-    : `Εκπίπτει το ${pct}% που δήλωσες ως επαγγελματική χρήση, εφόσον έχεις νόμιμο παραστατικό.`);
+    : `Εκπίπτει το ${fpRate(pct)} που δήλωσες ως επαγγελματική χρήση, εφόσον έχεις νόμιμο παραστατικό.`);
 
   if (c.supply === 'intra_eu') {
     out.push('Ενδοκοινοτική λήψη υπηρεσιών: ο πάροχος δεν χρεώνει ΦΠΑ, τον αποδίδεις εσύ με αντίστροφη χρέωση.');

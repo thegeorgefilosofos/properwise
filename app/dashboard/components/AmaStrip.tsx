@@ -176,7 +176,7 @@ export default function AmaStrip({ userId, propertyId }: { userId: string; prope
                     <Btn variant="primary" onClick={() => { setEditing(p.id); setDraft(cleanAma(p.ama || '')); }}>Καταχώρησε τον ΑΜΑ</Btn>
                   ) : (
                     <>
-                      <span style={{ fontSize: 12, fontFamily: T.font.mono, color: 'var(--text-secondary)' }}>ΑΜΑ {p.ama}</span>
+                      <span style={{ fontSize: 12, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>ΑΜΑ {p.ama}</span>
                       <LinkBtn onClick={() => { setEditing(p.id); setDraft(cleanAma(p.ama || '')); }}>Αλλαγή</LinkBtn>
                       {/* Η επιβεβαίωση είναι ρητή πράξη με ημερομηνία, όχι σιωπηλή
                           παραδοχή: όποιος αλλάξει αγγελία πρέπει να την ξανακάνει. */}

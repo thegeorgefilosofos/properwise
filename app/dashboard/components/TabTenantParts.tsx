@@ -45,7 +45,7 @@ export function SectionTitle({ children, info }: { children: React.ReactNode; in
   return (
     <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
       <span style={{ fontSize:'11px', letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-secondary)', fontFamily:T.font.sans, fontWeight:700 }}>{children}</span>
-      {info&&<InfoDot text={info}/>}
+      {info&&<InfoDot text={info} label={typeof children==='string'?children:undefined}/>}
     </div>
   );
 }
@@ -94,7 +94,7 @@ export function ChipRow({ label, groupLabel, info, flush, children }: { label?:s
           ΕΙΝΑΙ η ετικέτα: η σειρά παραλείπει τη δική της και δηλώνει το όνομα
           στο `groupLabel`, ώστε ο αναγνώστης οθόνης να ακούει «Κατάσταση
           επίπλωσης, ομάδα» και να μη χάσει τίποτα. */}
-      {label&&<div style={fieldLabelStyle}><span>{label}{info&&<InfoDot text={info}/>}</span></div>}
+      {label&&<div style={fieldLabelStyle}><span>{label}{info&&<InfoDot text={info} label={label}/>}</span></div>}
       {/* ══ ΤΑ ΚΟΥΜΠΑΚΙΑ ΚΑΘΟΝΤΑΙ ΣΕ ΚΟΥΤΙ ΥΨΟΥΣ ΠΕΔΙΟΥ ═══════════════════════
           Δίπλα σε πεδίο των 40, μια σειρά κουμπακιών των 32 είναι οκτώ
           εικονοστοιχεία κοντύτερη. Με στοίχιση στο κάτω άκρο, το κοντύτερο κελί
@@ -146,8 +146,8 @@ export const labelOf = (id:string):string => fieldDecision(id, tenantFieldCtx(tr
 export function KpiCard({ label, value, color='var(--text-primary)', sub }: { label:string; value:string; color?:string; sub?:string }) {
   return (
     <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:'16px 14px', display:'flex', flexDirection:'column', gap:4 }}>
-      <div style={{ fontSize:'18px', fontWeight:700, color, fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', letterSpacing:'-0.5px', lineHeight:1 }}>{value}</div>
-      {sub && <div style={{ fontSize:'10px', color:'var(--text-secondary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{sub}</div>}
+      <div style={{ fontSize:'18px', fontWeight:700, color, fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', letterSpacing:'-0.5px', lineHeight:1 }}>{value}</div>
+      {sub && <div style={{ fontSize:'10px', color:'var(--text-secondary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{sub}</div>}
       <div style={{ fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase' as const, color:'var(--text-secondary)', fontFamily:T.font.sans, marginTop:2 }}>{label}</div>
     </div>
   );
@@ -165,7 +165,7 @@ export function DataRow({ label, value, mono=false }: { label:string; value:Reac
   return (
     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'9px 0', borderBottom:'1px solid var(--border-subtle)' }}>
       <span style={{ fontSize:'12px', color:'var(--text-secondary)', fontFamily:T.font.sans }}>{label}</span>
-      <span style={{ fontSize:'12px', color:'var(--text-primary)', fontFamily:mono?T.font.mono:T.font.sans, fontVariantNumeric:(mono?'tabular-nums':'normal') as 'tabular-nums'|'normal', fontWeight:mono?600:400, textAlign:'right' as const, maxWidth:'55%' }}>{value}</span>
+      <span style={{ fontSize:'12px', color:'var(--text-primary)', fontFamily:mono?T.font.num:T.font.sans, fontVariantNumeric:(mono?'tabular-nums':'normal') as 'tabular-nums'|'normal', fontWeight:mono?600:400, textAlign:'right' as const, maxWidth:'55%' }}>{value}</span>
     </div>
   );
 }
@@ -216,7 +216,7 @@ export function leaseAlerts(payments:RentPayment[], tenant:Tenant|null):{text:st
   }
   const unpaid=payments.filter(p=>!p.paid);
   // Μόνο από δύο και πάνω, οπότε ο πληθυντικός είναι πάντα σωστός.
-  if(unpaid.length>=2) alerts.push({text:`${unpaid.length} απλήρωτα ενοίκια.`,level:'critical'});
+  if(unpaid.length>=2) alerts.push({text:`${unpaid.length} απλήρωτα ενοίκια`,level:'critical'});
   return alerts;
 }
 
@@ -338,9 +338,10 @@ export function PaymentBars({ payments }:{payments:RentPayment[]}) {
         {last12.map((p)=>{
           const late=p.days_late||0;
           const L=LATENESS[latenessOf(p)];
+          const says=`${MONTHS_SHORT[p.period_month-1]} ${p.period_year}: ${p.paid?'Εξοφλήθη':'Απλήρωτη'}${late>0?` (καθυστέρηση ${days(late)})`:''}`;
           return (
-            <div key={p.id} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center' }}
-              title={`${MONTHS_SHORT[p.period_month-1]} ${p.period_year}: ${p.paid?'Εξοφλήθη':'Απλήρωτη'}${late>0?` (καθυστέρηση ${days(late)})`:''}`}>
+            <div key={p.id} role="img" aria-label={says} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center' }}
+              title={says}>
               <div style={{ width:'100%', height:p.paid?72:36, background:L.color, borderRadius:'3px 3px 0 0', transition:'height 0.4s ease', display:'flex', justifyContent:'center', paddingTop:4, color:'var(--on-tone)' }}>
                 <L.Icon size={10} strokeWidth={3} aria-hidden="true" />
               </div>

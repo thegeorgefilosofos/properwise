@@ -33,6 +33,7 @@ import { athensToday, daysUntil } from '@/lib/core/time'
 import { instalmentDates } from '@/lib/core/monthStep'
 import { saveLoanFlow, loanSaveSuccessText, SCHEDULE_FAILED_AFTER_SAVE } from './saveFlow'
 import { grDate } from '@/lib/core/format'
+import { fd } from '@/components/tokens'
 import { failed } from '@/lib/core/dbError'
 import type { CalcState } from './model'
 
@@ -313,7 +314,7 @@ export function useLoan({ propertyId, userId, propertyValue, profileType='indivi
     downloadXlsx(`Αποθηκευμένα δάνεια ${athensToday()}`, [{
       name: 'Δάνεια',
       title: 'Αποθηκευμένα δάνεια',
-      subtitle: `${savedLoans.length} ${savedLoans.length===1?'δάνειο':'δάνεια'} · Έκδοση ${new Date().toLocaleDateString('el-GR')} · PROPERWISE`,
+      subtitle: `${savedLoans.length} ${savedLoans.length===1?'δάνειο':'δάνεια'} · Έκδοση ${fd(new Date())} · PROPERWISE`,
       columns: [
         { header:'Τράπεζα', kind:'text', width:20 },
         { header:'Τύπος δανείου', kind:'text', width:22 },

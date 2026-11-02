@@ -41,22 +41,20 @@ import { isTabPurchasable } from '@/lib/billing/entitlements';
 import { shortTermYearSummary, isHouseType } from '@/lib/tax/shortTermTax';
 import { isIndividualTaxpayer, businessFormOf } from '@/lib/accounting/taxProfile';
 import { incomeStatement } from '@/lib/accounting/statement';
-import { consolidateRentTax, taxShareOf } from '@/lib/billing/consolidate';
-import { rentalBracketsForYear } from '@/lib/billing/greekTax';
+import { usePropertyRentTax } from './usePropertyRentTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { fpRate } from '@/lib/core/format';
-import { isLet, readStatus, type StatusRow } from '@/lib/property/status';
 import type { LegalForm } from '@/lib/accounting/dossier';
 import { shortTermCashflow } from '@/lib/tax/shortTermCashflow';
 import { ledgerYearTotal, type LedgerBill, type LedgerExpense } from '@/lib/expenses/ledger';
 import { notify, notifyOk, notifyError } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { Tag } from 'lucide-react';
-import { NumberInput } from './UIComponents';
+import { NumberInput, WEEKDAYS_SHORT } from './UIComponents';
 import { exportPricingWorkbook } from './sheets';
 import {
   recommendPrices, summarize, suggestBase, suggestGuardrails, bookedDatesFromStays,
-  realizedAdr, findGaps, estimateSeasonalOccupancy, MIN_NIGHTS_FOR_OCCUPANCY, SEASON_PHRASE,
+  realizedAdr, findGaps, estimateSeasonalOccupancy, MIN_NIGHTS_FOR_OCCUPANCY, SEASON_PHRASE, SEASON_GENITIVE,
   type DayPrice, type PricingStay, type Gap, type Season,
 } from '@/lib/pricing/dynamicPricing';
 import { guestPriceBreakdown } from '@/lib/tax/shortTermTax';
@@ -80,7 +78,6 @@ interface Props {
 
 type PriceStay = PricingStay & StayAmountLike;
 
-const WEEKDAYS = ['Δε', 'Τρ', 'Τε', 'Πε', 'Πα', 'Σα', 'Κυ'];
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΠΟΣΟ ΦΑΡΔΙΑ ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ Η ΚΑΡΤΑ ΤΟΥ ΜΗΝΑ ΓΙΑ ΝΑ ΜΗΝ ΚΟΠΕΙ Η ΚΥΡΙΑΚΗ
@@ -202,7 +199,6 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   const [propCount, setPropCount] = useState(1);
   // Τα ενοίκια των ΑΛΛΩΝ ακινήτων, όπως τα διαβάζει η Απόδοση· `null` όσο η
   // ανάγνωση δεν πέτυχε (τότε δεν ξέρουμε αν ο φόρος ενοποιείται).
-  const [otherRents, setOtherRents] = useState<{ id: string; annualRent: number; shortTerm: boolean; let: boolean }[] | null>(null);
   const [comps, setComps] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(compsKey) || '[]'); } catch { return []; } });
   const [compsOpen, setCompsOpen] = useState(false);
 
@@ -253,23 +249,11 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   // Οι λειτουργικές δαπάνες της χρονιάς και πόσα ακίνητα έχει ο φορολογούμενος
   // (κρίνει την εξαίρεση του τέλους παρεπιδημούντων: ισχύει έως δύο ακίνητα).
   const loadCashflowInputs = useCallback(async () => {
-    const [exp, bil, count, allPr, allRc] = await Promise.all([
+    const [exp, bil, count] = await Promise.all([
       expenses.ledger(supabase, propertyId, { userId }),
       billStore.ofProperty(supabase, propertyId, billStore.LEDGER_COLUMNS, userId),
       properties.countShortTerm(supabase, userId),
-      properties.listWithError<{ id: string; target_rent: number | null; rental_mode: string | null; status_detail: string | null }>(supabase, userId, { columns: 'id,target_rent,rental_mode,status_detail' }),
-      supabase.from('rent_config').select('property_id,actual_rent,target_rent').eq('user_id', userId),
     ]);
-    // ΙΔΙΑ ΠΗΓΗ ΜΕ ΤΗΝ ΑΠΟΔΟΣΗ (TabRentROI): μηνιαίο ενοίκιο × 12 ανά ακίνητο.
-    if (allPr.error || allRc.error) setOtherRents(null);
-    else {
-      const rcMap = new Map(((allRc.data || []) as { property_id: string; actual_rent: number | null; target_rent: number | null }[]).map(r => [r.property_id, r]));
-      setOtherRents(allPr.rows.filter(x => x.id !== propertyId).map(x => {
-        const cfg = rcMap.get(x.id);
-        const monthly = Number(cfg?.actual_rent) || Number(cfg?.target_rent) || Number(x.target_rent) || 0;
-        return { id: x.id, annualRent: monthly * 12, shortTerm: readStatus(x as StatusRow) === 'rent_short', let: isLet(x as StatusRow) };
-      }));
-    }
     // ΚΑΘΕ ΕΥΡΩ ΜΙΑ ΦΟΡΑ. Ο πληρωμένος λογαριασμός και η δαπάνη του είναι το ΙΔΙΟ
     // γεγονός: αθροίζοντας και τα δύο, τα λειτουργικά έξοδα θα έβγαιναν διπλά και
     // το «μένει σε εσένα» θα έδειχνε λιγότερα απ' όσα πραγματικά μένουν. Η
@@ -336,7 +320,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       // Το μήνυμα λέει ΤΙ ΙΣΧΥΕΙ, όχι τι θα κερδίσεις: η πρόβλεψη εσόδων έφυγε
       // επειδή ήταν ταυτολογία και μαζί της κάθε υπόσχεση ποσού.
       const range = `${fe(min || base)}–${fe(max || base)}`;
-      setSaveNote(`Αποθηκεύτηκε. Βάση ${fe(base)}, εύρος ${range}, Σαββατοκύριακο +${wknd}%, ελάχιστη διαμονή ${minStay} ${minStay === 1 ? 'νύχτα' : 'νύχτες'}.`);
+      setSaveNote(`Αποθηκεύτηκε. Βάση ${fe(base)}, εύρος ${range}, Σαββατοκύριακο +${fpRate(wknd)}, ελάχιστη διαμονή ${minStay} ${minStay === 1 ? 'νύχτα' : 'νύχτες'}.`);
     }, 700);
     return () => clearTimeout(t);
   }, [base, min, max, wknd, minStay, touched, unread, persist]);
@@ -379,11 +363,34 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   const seasonsShown = useMemo(() => {
     const s = new Set<Season>(); rows.forEach(r => s.add(r.season)); return [...s];
   }, [rows]);
-  const measuredOcc = useMemo(() => {
-    const vals = seasonsShown.map(s => occ.occ[s]).filter((v): v is number => v != null);
-    if (!vals.length) return null;
-    return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100);
+  // ═══ ΤΟ ΠΟΣΟΣΤΟ ΚΑΙ Ο ΥΠΟΤΙΤΛΟΣ ΜΕΤΡΟΥΝ ΤΟ ΙΔΙΟ ΠΡΑΓΜΑ ═══════════════════
+  // ΗΤΑΝ: ποσοστό = ο ΜΕΣΟΣ ΟΡΟΣ των ποσοστών κάθε εποχής (χωρίς βάρη) και
+  // υπότιτλος = οι νύχτες όλου του ιστορικού στις εποχές του πίνακα «από τις»
+  // νύχτες ΤΟΥ ΤΡΕΧΟΝΤΟΣ ΕΤΟΥΣ. Στην οθόνη «21%» πάνω από «32 από τις 71
+  // νύχτες», που ο αναγνώστης διαιρεί και βγάζει 45%. Τρία διαφορετικά μεγέθη
+  // σε ένα πλακίδιο.
+  //
+  // ΤΩΡΑ: ΚΛΕΙΣΜΕΝΕΣ ΝΥΧΤΕΣ ΔΙΑ ΔΙΑΘΕΣΙΜΕΣ ΝΥΧΤΕΣ, στις εποχές του πίνακα που
+  // έχουν αρκετό ιστορικό. «Διαθέσιμες» είναι οι ημέρες των μηνών που είχαν
+  // έστω μία κράτηση, ο ίδιος παρονομαστής με τον οποίο μετρά κάθε εποχή το
+  // `estimateSeasonalOccupancy`· εδώ απλώς αθροίζονται αντί να βγαίνει μέσος
+  // όρος ποσοστών. Ο υπότιτλος λέει τους δύο αριθμούς και η διαίρεσή τους
+  // ΕΙΝΑΙ το ποσοστό. Η εποχή που έπιασε το ταβάνι του 100% μετρά τις νύχτες
+  // της ως διαθέσιμες, όπως το ταβάνι την έχει ήδη μετρήσει.
+  const occMeasure = useMemo(() => {
+    let booked = 0, open = 0;
+    const seasons: Season[] = [];
+    for (const s of seasonsShown) {
+      const rate = occ.occ[s];
+      if (rate == null || !(rate > 0)) continue;
+      const n = occ.nights[s];
+      booked += n;
+      open += rate >= 1 ? n : Math.round(n / rate);
+      seasons.push(s);
+    }
+    return open > 0 ? { booked, open, seasons } : null;
   }, [seasonsShown, occ]);
+  const measuredOcc = occMeasure ? Math.round((occMeasure.booked / occMeasure.open) * 100) : null;
   const occNights = useMemo(() => seasonsShown.reduce((a, s) => a + occ.nights[s], 0), [seasonsShown, occ]);
 
   // ═══ Η ΑΠΑΝΤΗΣΗ ΣΤΟ «ΠΟΣΑ ΜΕΝΟΥΝ ΣΕ ΕΜΕΝΑ» ═══════════════════════════════
@@ -403,20 +410,29 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     { label: 'Κατώτατη πρόταση', value: base > 0 ? fe(sum.min) : fe(0), sub: 'Χαμηλότερη ημέρα' },
     { label: 'Υψηλότερη πρόταση', value: base > 0 ? fe(sum.max) : fe(0), sub: 'Ακριβότερη ημέρα' },
     {
-      label: 'Πληρότητα από το ιστορικό',
-      // Χωρίς μέτρηση η τιμή είναι «Εκκρεμεί», όχι «0,00%»: το μηδέν είναι μέτρηση.
-      value: measuredOcc != null ? measuredOcc + '%' : ABSENT_SHORT,
-      // Οι νύχτες ΜΟΝΟ των εποχών του πίνακα· ο υπότιτλος της κάρτας πιο κάτω
-      // μετρά όλη τη χρονιά, γι' αυτό λέμε ποιες είναι.
-      // ΤΟ ΣΥΝΟΛΟ ΤΗΣ ΧΡΟΝΙΑΣ ΛΕΓΕΤΑΙ ΔΙΠΛΑ. Το «64 νύχτες» καθόταν πάνω από το
-      // «Από 71 διανυκτερεύσεις» της κάρτας από κάτω και έμοιαζε με λάθος.
-      sub: measuredOcc != null
-        ? (taxSummary.totalNights > occNights
-          ? `${fn(occNights)} από τις ${fn(taxSummary.totalNights)} νύχτες του ${nowYear}, στις εποχές του πίνακα`
-          : `${fn(occNights)} νύχτες στις εποχές του πίνακα`)
+      // ΠΟΙΑΣ ΠΕΡΙΟΔΟΥ (02.11.2026). «Πληρότητα από το ιστορικό» με 21% δίπλα
+      // στο 19,50% της Επισκόπησης έμοιαζε με το ίδιο μέγεθος. Είναι η πληρότητα
+      // των εποχών που απομένουν στον πίνακα, από όλο το ιστορικό: το λέει.
+      label: occMeasure && occMeasure.seasons.length === 1
+        ? `Πληρότητα ${SEASON_GENITIVE[occMeasure.seasons[0]]}`
+        : 'Πληρότητα εποχών πίνακα',
+      // Χωρίς μέτρηση η τιμή είναι «Εκκρεμεί», όχι «0%»: το μηδέν είναι μέτρηση.
+      value: measuredOcc != null ? fpRate(measuredOcc) : ABSENT_SHORT,
+      // Ο υπότιτλος είναι η ΔΙΑΙΡΕΣΗ που δίνει το ποσοστό, όχι άλλο μέγεθος.
+      // Οι νύχτες είναι όλου του ιστορικού, όχι μόνο του έτους: γι' αυτό δεν
+      // γράφεται έτος, που θα τις διάβαζε ως νύχτες του τρέχοντος έτους.
+      sub: occMeasure
+        ? `${fn(occMeasure.booked)} κλεισμένες από ${fn(occMeasure.open)} νύχτες, στους μήνες με κρατήσεις`
         : `Χρειάζονται τουλάχιστον ${MIN_NIGHTS_FOR_OCCUPANCY} νύχτες ανά εποχή`,
     },
-  ], [sum, base, measuredOcc, occNights, taxSummary.totalNights, nowYear]);
+  ], [sum, base, measuredOcc, occMeasure]);
+
+  // ΟΙ ΑΛΛΕΣ ΠΗΓΕΣ ΤΟΥ ΦΟΡΟΥ, ΟΠΩΣ ΣΤΗΝ ΕΠΙΣΚΟΠΗΣΗ ΚΑΙ ΣΤΙΣ ΑΠΟΔΟΣΕΙΣ (02.11.2026).
+  // Τα άλλα ακίνητα μετρούσαν εδώ το `rent_config` × 12, ακόμη και τα
+  // βραχυχρόνια, χωρίς συνιδιοκτησία και χωρίς φορολογούμενο: στον πάγκο
+  // 1.588,44€ εδώ, 1.758,04€ στις Αποδόσεις, για το ίδιο ακίνητο και έτος.
+  // Τώρα ο φόρος βγαίνει από την `propertyRentTax` (lib/facts/rentTax.ts).
+  const rentTax = usePropertyRentTax(propertyId, userId, profileType);
 
   // ═══ Ο ΦΟΡΟΣ ΕΙΣΟΔΗΜΑΤΟΣ ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ ΜΕ ΤΗΝ ΑΠΟΔΟΣΗ ═══════════════
   // Το `taxSummary.incomeTax` φορολογεί ΜΟΝΟ αυτό το ακίνητο με την κλίμακα
@@ -438,20 +454,18 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
         onGross: false,
       };
     }
-    const standalone = { amount: taxSummary.incomeTax, onGross: true, note: undefined as string | undefined };
-    if (otherRents == null || otherRents.some(o => o.let && o.annualRent <= 0)) {
-      return { ...standalone, label: 'Φόρος εισοδήματος (αν ήταν το μόνο σου ακίνητο)' };
+    // Όσο φορτώνει ή αν απέτυχε η ανάγνωση των άλλων ακινήτων: ο φόρος μόνο
+    // αυτού, με ετικέτα που το λέει.
+    if (rentTax == null) {
+      return { amount: taxSummary.incomeTax, onGross: true, note: undefined as string | undefined, label: `Φόρος εισοδήματος ${nowYear} (αν ήταν το μόνο σου ακίνητο)` };
     }
-    const portfolio = consolidateRentTax([
-      { id: propertyId, annualRent: gross, shortTerm: true },
-      ...otherRents,
-    ], rentalBracketsForYear(nowYear), nowYear);
-    if (portfolio.count < 2) return { ...standalone, label: 'Φόρος εισοδήματος' };
     return {
-      amount: taxShareOf(portfolio, propertyId), label: 'Φόρος εισοδήματος', onGross: true,
-      note: 'Το μερίδιο αυτού του ακινήτου στον φόρο όλων των ενοικίων σου, όπως στο Ε1 και στην Απόδοση.',
+      amount: rentTax.tax, label: `Φόρος εισοδήματος ${nowYear}`, onGross: true,
+      note: rentTax.consolidated.count > 1
+        ? 'Το μερίδιο αυτού του ακινήτου στον φόρο όλων των ενοικίων σου, όπως στο Ε1, στην Επισκόπηση και στην Απόδοση.'
+        : undefined,
     };
-  }, [taxSummary, opex, profileType, legalForm, otherRents, propertyId, nowYear]);
+  }, [taxSummary, opex, profileType, legalForm, rentTax, nowYear]);
   const cashflow = useMemo(
     () => shortTermCashflow({
       grossRevenue: taxSummary.grossRevenue,
@@ -542,7 +556,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     const title = gapTitle(g);
     if (gapTitles.has(title)) {
       const { error } = await calendar.clearSource(supabase, { propertyId, userId }, { source: 'pricing_gap', title });
-      if (error) { notifyError(failed('Οι ρυθμίσεις τιμολόγησης δεν αποθηκεύτηκαν', error)); return; }
+      if (error) { notifyError(failed('Η υπενθύμιση δεν αφαιρέθηκε από το ημερολόγιο', error)); return; }
       setGapTitles(prev => { const n = new Set(prev); n.delete(title); return n; });
       notify('Αφαιρέθηκε από το Ημερολόγιο');
       return;
@@ -552,14 +566,17 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       title, category: 'reminder', event_date: rd, priority: g.soon ? 'high' : 'medium',
       notes: `${g.nights} κενές νύχτες. Προτεινόμενη τιμή πλήρωσης ${fe(g.fillPrice)}/νύχτα${minStay > 1 ? `, ελάχιστη διαμονή ${minStay} νύχτες` : ''}.`,
     })]);
-    if (error) { notifyError(failed('Οι ρυθμίσεις τιμολόγησης δεν αποθηκεύτηκαν', error)); return; }
+    if (error) { notifyError(failed('Η υπενθύμιση δεν μπήκε στο ημερολόγιο', error)); return; }
     setGapTitles(prev => new Set(prev).add(title));
     notifyOk('Προστέθηκε στο Ημερολόγιο');
   };
   // Ενέργεια: αντιγραφή κειμένου προσφοράς last minute.
-  const copyOffer = (g: Gap) => {
-    const txt = `Τελευταία διαθεσιμότητα ${fd(g.start)} - ${fd(g.end)} (${g.nights} ${g.nights === 1 ? 'νύχτα' : 'νύχτες'}) σε ειδική τιμή ${fe(g.fillPrice)} ανά νύχτα${minStay > 1 ? `, ελάχιστη διαμονή ${minStay} νύχτες` : ''}. Κλείσε τώρα, οι ημερομηνίες είναι περιορισμένες.`;
-    navigator.clipboard?.writeText(txt);
+  // Το «αντιγράφηκε» ΜΕΤΑ την αντιγραφή: το `writeText` είναι υπόσχεση και ο
+  // φυλλομετρητής μπορεί να την αρνηθεί (χωρίς άδεια, χωρίς εστίαση, http).
+  const copyOffer = async (g: Gap) => {
+    const txt = `Τελευταία διαθεσιμότητα ${fd(g.start)} – ${fd(g.end)} (${g.nights} ${g.nights === 1 ? 'νύχτα' : 'νύχτες'}) σε ειδική τιμή ${fe(g.fillPrice)} ανά νύχτα${minStay > 1 ? `, ελάχιστη διαμονή ${minStay} νύχτες` : ''}. Κλείσε τώρα, οι ημερομηνίες είναι περιορισμένες.`;
+    try { await navigator.clipboard.writeText(txt); }
+    catch { notifyError('Το κείμενο δεν αντιγράφηκε. Ο φυλλομετρητής δεν έδωσε πρόσβαση στο πρόχειρο.'); return; }
     notifyOk('Το κείμενο προσφοράς αντιγράφηκε');
   };
 
@@ -570,7 +587,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       year: pyear,
       settings: { base, min, max, weekendPremiumPct: wknd, minStay },
       summary: sum,
-      occupancy: measuredOcc != null ? { pct: measuredOcc, nights: occNights } : null,
+      occupancy: occMeasure && measuredOcc != null ? { pct: measuredOcc, nights: occMeasure.booked } : null,
       realizedAdr: adr,
       rows: rows.map(r => ({ date: r.date, dow: r.dow, season: r.season, isWeekend: r.isWeekend, holidayName: r.holidayName, price: r.price, booked: r.booked })),
     });
@@ -715,7 +732,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
         </div>
       </div>
       <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 16, minHeight: 16 }}>
-        {adr > 0 && <>Μέση πραγματική τιμή (ADR): <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{fe(adr)}</strong> / νύχτα από {stays.length} διαμονές. </>}
+        {adr > 0 && <>Μέση πραγματική τιμή (ADR): <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{fe(adr)}</strong>/νύχτα από {stays.length} διαμονές. </>}
         {saveNote && <span style={{ color: 'var(--text-secondary)' }}>{saveNote}</span>}
         {/* Η άρνηση λέγεται ΕΚΕΙ που ο χρήστης περιμένει το «αποθηκεύτηκε». Σιωπηλή
             αποθήκευση που δεν γίνεται είναι χειρότερη από αποτυχία που φαίνεται. */}
@@ -750,13 +767,13 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                 {compBase > 0 ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '12px 14px' }}>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
-                      Προτεινόμενη βάση <strong style={{ color: 'var(--text-primary)', fontFamily: T.font.num }}>{fe(compBase)}</strong> / νύχτα
+                      Προτεινόμενη βάση <strong style={{ color: 'var(--text-primary)', fontFamily: T.font.num }}>{fe(compBase)}</strong>/νύχτα
                       <span style={{ color: 'var(--text-tertiary)' }}> (διάμεση − 10%, αφού η βάση αφορά καθημερινή εκτός αιχμής· η εποχή/ΣΚ προστίθενται από πάνω)</span>
                     </div>
                     <Btn variant="secondary" onClick={() => { mark(setBase)(compBase); const g = suggestGuardrails(compBase); mark(setMin)(g.min); mark(setMax)(g.max); }}>Χρησιμοποίησε αυτή τη βάση</Btn>
                   </div>
                 ) : (
-                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Πρόσθεσε 1-4 τιμές ανταγωνιστών (π.χ. από Airbnb/Booking για παρόμοια ακίνητα) για να δεις προτεινόμενη βάση. Αποθηκεύεται τοπικά στη συσκευή σου.</div>
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Πρόσθεσε 1 έως 4 τιμές ανταγωνιστών (π.χ. από Airbnb/Booking για παρόμοια ακίνητα) για να δεις προτεινόμενη βάση. Αποθηκεύεται τοπικά στη συσκευή σου.</div>
                 )}
               </div>
             )}
@@ -833,8 +850,16 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                 </div>
               )}
 
+              {/* Για τον έλεγχο «ίδιος αριθμός σε κάθε οθόνη»: ο φόρος και τα
+                  ακαθάριστα του έτους, όπως γράφονται στη στήλη από κάτω. */}
+              {rentTax != null && profileType !== 'professional' && <span hidden data-fact="tax-year" data-fact-value={fe(tax.amount)} />}
+              <span hidden data-fact="income-year" data-fact-value={fe(taxSummary.grossRevenue)} />
               <MoneySteps scale="lead" steps={cashflow.steps.map(st => ({
                 ...st,
+                // Η βάση της χρονιάς στην ετικέτα: όλες οι διαμονές του έτους μαζί με τις
+                // κλεισμένες που δεν έχουν έρθει ακόμη. Ο ίδιος ορισμός με το «Έσοδα
+                // έτους» της Επισκόπησης και τον φόρο (lib/facts/income, κανόνας 3).
+                ...(st.key === 'gross' ? { label: `Ακαθάριστα ${nowYear}, με τις κλεισμένες κρατήσεις` } : null),
                 ...(st.key === 'tax' ? { label: tax.label, note: tax.note ?? `Υπολογίζεται στο ${TAX_BASE_PCT} των ακαθάριστων (τεκμαρτή έκπτωση ${DEDUCTION_PCT}), όχι στο υπόλοιπο μετά τα έξοδα.` } : null),
                 negative: st.kind === 'total' && cashflow.net < 0,
               }))} />
@@ -861,7 +886,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
               πληρότητας, θα παρήγαμε «κέρδος» που δεν μπορεί να βγει αρνητικό. */}
           {measuredOcc == null && occNights > 0 && (
             <div style={{ marginTop: 14, fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
-              Έχεις {occNights} καταγεγραμμένες νύχτες σε αυτό το ακίνητο. Η πληρότητα εμφανίζεται όταν συγκεντρωθούν {MIN_NIGHTS_FOR_OCCUPANCY}+ πραγματικές νύχτες σε μια εποχή. Κάτω από αυτό ο αριθμός θα ήταν εικασία με ετικέτα μέτρησης.
+              Έχεις {fn(occNights)} καταγεγραμμένες νύχτες σε αυτό το ακίνητο. Η πληρότητα εμφανίζεται όταν συγκεντρωθούν {MIN_NIGHTS_FOR_OCCUPANCY}+ πραγματικές νύχτες σε μια εποχή. Κάτω από αυτό ο αριθμός θα ήταν εικασία με ετικέτα μέτρησης.
             </div>
           )}
 
@@ -890,7 +915,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                           τυλίγει ήδη, αλλά έριχνε ολόκληρο το ζευγάρι σε δική
                           του σειρά, όπου πάλι δεν χωρούσε. */}
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <Btn variant="secondary" onClick={() => copyOffer(g)}>Αντιγραφή προσφοράς</Btn>
+                        <Btn variant="secondary" onClick={() => { void copyOffer(g) }}>Αντιγραφή προσφοράς</Btn>
                         <Btn variant="secondary" onClick={() => toggleGap(g)}>{gapTitles.has(gapTitle(g)) ? 'Προστέθηκε στο Ημερολόγιο' : 'Υπενθύμιση'}</Btn>
                       </div>
                     </div>
@@ -946,7 +971,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                         Το ίδιο σφάλμα είναι ήδη γραμμένο και διορθωμένο στο
                         `TabCalendar.tsx`, με το ίδιο σχόλιο. Εδώ είχε μείνει. */}
                     <div role="grid" aria-label={`${MONTHS_NOM[mm - 1]} ${yy}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 4 }}>
-                      {WEEKDAYS.map(w => <div key={w} role="columnheader" style={{ textAlign: 'center', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', paddingBottom: 4 }}>{w}</div>)}
+                      {WEEKDAYS_SHORT.map(w => <div key={w} role="columnheader" style={{ textAlign: 'center', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', paddingBottom: 4 }}>{w}</div>)}
                       {Array.from({ length: lead }).map((_, i) => <div key={'b' + i} role="gridcell" />)}
                       {Array.from({ length: daysInMonth }).map((_, i) => {
                         const dayNum = i + 1;

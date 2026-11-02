@@ -53,8 +53,14 @@ export const T = {
     // Γραμματοσειρές που φορτώνει self-hosted το app (globals.css): Inter + Roboto Mono.
     sans: "'Inter', system-ui, sans-serif",
     mono: "'Roboto Mono', 'JetBrains Mono', monospace",
-    // Μεγάλοι αριθμοί «κεφαλίδας» (KPI): σφιχτή sans με tabular ψηφία, χωρίς τα
-    // πλατιά κενά του monospace γύρω από κόμμα/τελεία. Το mono μένει για πυκνούς πίνακες.
+    // ΚΑΘΕ ΑΡΙΘΜΟΣ ΤΗΣ ΔΙΕΠΑΦΗΣ: ποσά, ποσοστά, ημερομηνίες, πλήθη, ΑΦΜ. Πάντα
+    // μαζί με `fontVariantNumeric: 'tabular-nums'` (έτοιμο στα TT.figure/TT.kpi).
+    //
+    // ΤΟ MONO ΔΕΝ ΕΙΝΑΙ ΓΙΑ ΑΡΙΘΜΟΥΣ (02.11.2026). Το μηδέν του Roboto Mono έχει
+    // κάθετη γραμμή και στα ελληνικά διαβάζεται «θ»: «28/1θ/2θ26», «1θ αρχεία».
+    // Το `mono` μένει ΜΟΝΟ για κωδικούς που διαβάζονται χαρακτήρα χαρακτήρα
+    // (IBAN, κωδικός ανάκτησης, μήνυμα σφάλματος), όπου το «0» πρέπει να
+    // ξεχωρίζει από το «O».
     num:  "'Inter', system-ui, sans-serif",
   },
   sp: { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, section: 32 },
@@ -142,7 +148,7 @@ export const histInputStyle = (isCurrent: boolean, isHovered = false) => ({
   padding: '6px 4px',
   color: 'var(--text-primary)',
   fontSize: 'var(--fs-xs)',
-  fontFamily: T.font.mono,
+  fontFamily: T.font.num,
   fontVariantNumeric: 'tabular-nums' as const,
   outline: 'none',
   textAlign: 'center' as const,

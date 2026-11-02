@@ -216,7 +216,7 @@ function MarketDataSharing({ userId }: { userId: string }) {
   };
   return (
     <SetRow title="Συνεισφορά στα δεδομένα κοινότητας"
-      control={loaded ? <Toggle on={on} onChange={toggle} /> : null}
+      control={loaded ? <Toggle on={on} onChange={toggle} ariaLabel="Συνεισφορά στα δεδομένα κοινότητας" /> : null}
       desc={<>
         Τα ακίνητά σου συμμετέχουν <strong>ανώνυμα και συγκεντρωτικά</strong> στα δεδομένα αγοράς ανά περιοχή
         (διάμεση απόδοση και τιμή), ώστε κάθε ιδιοκτήτης να συγκρίνει ρεαλιστικά. Δεν κοινοποιείται ποτέ
@@ -730,7 +730,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   ];
 
   return (
-    <div style={{ ...pageShell(880), color: 'var(--text-primary)' }}>
+    <div style={{ ...pageShell('form'), color: 'var(--text-primary)' }}>
 
       {/* Ο ΥΠΟΤΙΤΛΟΣ ΑΠΑΡΙΘΜΟΥΣΕ ΤΙΣ ΕΝΟΤΗΤΕΣ ΠΟΥ ΕΠΟΝΤΑΙ. «Προφίλ, συνδρομή,
           ειδοποιήσεις, ασφάλεια και τα δεδομένα σου» — και από κάτω, με τη
@@ -954,7 +954,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
               διδάσκει ότι οι ρυθμίσεις δεν μετράνε.
               Τα ποσά γράφονται πάντα με δύο δεκαδικά, γιατί αλλιώς η υποδιαστολή
               κάθεται σε άλλη θέση σε κάθε γραμμή και η στήλη σπάει. */}
-          <SetRow title="Ορίζοντας προθεσμιών" desc="Πόσο μπροστά κοιτά η λίστα «Τι χρειάζεται τώρα». Ο,τι είναι πιο μακριά ζει στο Ημερολόγιο· οι ληξιπρόθεσμες εμφανίζονται πάντα."
+          <SetRow title="Ορίζοντας προθεσμιών" desc="Πόσο μπροστά κοιτά η λίστα «Τι χρειάζεται τώρα». Ό,τι είναι πιο μακριά ζει στο Ημερολόγιο· οι ληξιπρόθεσμες εμφανίζονται πάντα."
             control={<div style={{ width: 264 }}>
               <CustomSelect ariaLabel="Ορίζοντας προθεσμιών" value={String(prefs.agendaHorizonDays)}
                 onChange={v => updatePrefs({ agendaHorizonDays: Number(v) as AppPreferences['agendaHorizonDays'] })}
@@ -967,9 +967,9 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
                 ]} />
             </div>} />
           <SetRow title="Μειωμένη κίνηση" desc="Περιορίζει τα εφέ κίνησης σε όλη την εφαρμογή, για πιο ήρεμη εμπειρία."
-            control={<Toggle on={reduceMotion} onChange={v => setA11y('a11y-reduce-motion', v, setReduceMotion)} />} />
+            control={<Toggle on={reduceMotion} onChange={v => setA11y('a11y-reduce-motion', v, setReduceMotion)} ariaLabel="Μειωμένη κίνηση" />} />
           <SetRow title="Μεγαλύτερο κείμενο" desc="Ήπια μεγέθυνση της διεπαφής για πιο άνετη ανάγνωση."
-            control={<Toggle on={largeText} onChange={v => setA11y('a11y-large-text', v, setLargeText)} />} />
+            control={<Toggle on={largeText} onChange={v => setA11y('a11y-large-text', v, setLargeText)} ariaLabel="Μεγαλύτερο κείμενο" />} />
           {/* ── ΤΟ «ΑΠΛΟΠΟΙΗΜΕΝΟ ΜΕΝΟΥ» ΕΦΥΓΕ ΑΠΟ ΕΔΩ ────────────────────────
               Η ίδια προτίμηση ρυθμιζόταν σε δύο σημεία, με δύο ονόματα και
               ΑΝΤΙΣΤΡΟΦΗ πολικότητα: στην πλαϊνή μπάρα ως «Όλες οι καρτέλες» /

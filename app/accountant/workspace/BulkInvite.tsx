@@ -20,9 +20,9 @@
 // πρόσκληση γίνεται μία φορά τον χρόνο. Μένει μία γραμμή με ένα κουμπί ώσπου
 // να τη χρειαστεί.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { T, Card, Btn, fd } from '@/components/Theme';
+import { T, Card, Btn, LinkBtn, fd } from '@/components/Theme';
 import { Textarea } from '@/app/dashboard/components/UIComponents';
 import { notifyError } from '@/components/Toast';
 import { PLANS } from '@/lib/billing/plans';
@@ -47,6 +47,7 @@ const small: React.CSSProperties = { fontSize: 12, color: 'var(--text-tertiary)'
 
 export default function BulkInvite({ db, label }: { db: SupabaseClient; label: React.CSSProperties }) {
   const [open, setOpen] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<InviteResult[] | null>(null);
@@ -120,11 +121,14 @@ export default function BulkInvite({ db, label }: { db: SupabaseClient; label: R
             rows={4}
           />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <label style={{ fontSize: 13, color: 'var(--accent)', cursor: 'pointer', fontFamily: T.font.sans }}>
-              Από αρχείο CSV
-              <input type="file" accept=".csv,text/csv,text/plain" style={{ display: 'none' }}
+            {/* ΚΟΥΜΠΙ, ΟΧΙ ΕΤΙΚΕΤΑ (02.11.2026). Η ετικέτα τύλιγε κρυφό πεδίο
+                αρχείου (`display: none`): ο χρήστης πληκτρολογίου δεν το έβρισκε
+                ποτέ με Tab. Το κουμπί ανοίγει το ίδιο πεδίο. */}
+            <span>
+              <LinkBtn onClick={() => fileRef.current?.click()}>Από αρχείο CSV</LinkBtn>
+              <input ref={fileRef} type="file" accept=".csv,text/csv,text/plain" hidden tabIndex={-1} aria-hidden="true" aria-label="Αρχείο με τους πελάτες"
                 onChange={e => { readFile(e.target.files?.[0]); e.target.value = ''; }} />
-            </label>
+            </span>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Btn variant="ghost" onClick={() => { setOpen(false); setResults(null); }}>Κλείσιμο</Btn>
               <Btn variant="primary" onClick={() => void send()} disabled={busy || count === 0 || (allowance != null && invitesLeft(allowance) === 0)}>

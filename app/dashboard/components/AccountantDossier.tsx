@@ -406,6 +406,10 @@ export default function AccountantDossier({
 
   const pct = ready.total > 0 ? Math.round((ready.done / ready.total) * 100) : 0
 
+  // Η επικεφαλίδα βγαίνει από τη μηχανή (lib/accounting/dossier.ts), ίδια
+  // στην οθόνη και στο αρχείο που κατεβαίνει.
+  const headline = ready.message
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
@@ -417,12 +421,15 @@ export default function AccountantDossier({
                 ενός ακινήτου, το «Λείπουν 6 πράγματα» διαβαζόταν ως δικό του. */}
             <p style={eyebrow}>Τι πάει στον λογιστή · {year}{properties.length > 1 ? ` · και τα ${properties.length} ακίνητά σου` : ''}</p>
             <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, letterSpacing: '-0.01em', lineHeight: 1.45, margin: '10px 0 0' }}>
-              {ready.message}
+              {headline}
             </p>
           </div>
           {/* Το flexShrink μετακόμισε σε περιτύλιγμα: το Btn δεν δέχεται style και χωρίς αυτό το λεκτικό στριμώχνεται δίπλα στο μήνυμα */}
-          <div style={{ flexShrink: 0 }}>
-            <Btn variant="secondary" onClick={download} disabled={preparing}>
+          {/* `act-row` + `act-fill`: στο τηλέφωνο το κουμπί πιάνει όλο το πλάτος,
+              όπως οι δύο ενέργειες της κάρτας από κάτω, ώστε η στοίβα να έχει
+              ίσα πλάτη και ευθεία δεξιά ακμή. */}
+          <div className="act-row" style={{ flexShrink: 0 }}>
+            <Btn variant="secondary" onClick={download} disabled={preparing} className="act-fill">
               <Download size={14} />{preparing ? 'Ετοιμάζεται' : downloaded ? 'Κατέβηκε' : 'Φάκελος του ακινήτου'}
             </Btn>
           </div>
@@ -431,7 +438,7 @@ export default function AccountantDossier({
         {/* Πρόοδος: μία λεπτή γραμμή, χωρίς ποσοστά σε μεγάλα γράμματα. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '18px 0 0' }}>
           <Bar pct={pct} height={4} track="var(--bg-elevated)" label="Πρόοδος φακέλου" style={{ flex: 1 }} />
-          <span style={{ ...num, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{ready.done} / {ready.total}</span>
+          <span style={{ ...num, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{ready.done}/{ready.total}</span>
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════
@@ -497,8 +504,24 @@ export default function AccountantDossier({
         {userId && <AccountantInvites userId={userId} canShare={canShareLink} />}
         <AccountantAsks />
 
+        {/* ΙΣΑ ΠΛΑΤΗ ΣΤΗ ΣΤΟΙΒΑ ΤΟΥ ΤΗΛΕΦΩΝΟΥ. Στα 390 οι ενέργειες τυλίγονται
+            η μία κάτω από την άλλη και η καθεμία κρατούσε το πλάτος του
+            λεκτικού της: «Φάκελος του ακινήτου», «Μόνο το Excel» και «Σύνδεσμος
+            για τον λογιστή» σε τρία διαφορετικά πλάτη, με τρεις δεξιές ακμές.
+            Κάτω από τα 560 κάθε ενέργεια πιάνει όλη τη σειρά, όπως η `.act-row`
+            του globals.css· η σειρά των κουμπιών ανήκει στον καλούντα, γι' αυτό
+            ο κανόνας κοιτά μέσα της από εδώ. */}
         {actions && (
-          <div style={{ margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>{actions}</div>
+          <div className="acd-actions" style={{ margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+            <style>{`
+              @media (max-width: 560px) {
+                .acd-actions > div { flex-direction: column; align-items: stretch !important; }
+                .acd-actions > div > span { display: flex !important; }
+                .acd-actions > div > span > button, .acd-actions > div > button, .acd-actions > div > a { width: 100%; }
+              }
+            `}</style>
+            {actions}
+          </div>
         )}
 
         {error && (
@@ -548,7 +571,7 @@ export default function AccountantDossier({
                     : 'Τα ετοιμάζει ο λογιστής από όσα του δίνεις. Σημείωσε ό,τι έχει ήδη γίνει.'}
                 </p>
               </div>
-              <span style={{ ...num, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, flexShrink: 0 }}>{done} / {g.items.length}</span>
+              <span style={{ ...num, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, flexShrink: 0 }}>{done}/{g.items.length}</span>
             </div>
             <div style={{ marginTop: 10 }}>
               {g.items.map(r => (

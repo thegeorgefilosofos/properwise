@@ -19,6 +19,7 @@ import * as tenantStore from '@/lib/data/tenants'
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
 import { feAuto } from '@/components/Theme'
+import { fpRate } from '@/lib/core/format'
 import { waterMonthly } from '@/lib/energy/tariff'
 import { monthAcc, monthYearLabel } from '@/lib/core/months'
 import { randomSuffix } from '@/lib/core/uploadPath'
@@ -40,12 +41,18 @@ import { subscriptionsMonthly } from '@/lib/expenses/subscriptions'
 // Ο ΕΝΦΙΑ διαβάζεται από την ίδια απόφαση με την καρτέλα Υπηρεσίες.
 import { enfiaInUse, atticaMainlandFromPostcode } from '@/lib/billing/enfia'
 import { enfiaFromSettings } from '@/lib/facts/enfiaForm'
-import { climateLevyRates, isHighSeasonMonth } from '@/lib/billing/greekTax'
+import { climateLevyRates, isHighSeasonMonth, rentalBracketsForYear } from '@/lib/billing/greekTax'
 import { isHouseType } from '@/lib/tax/shortTermTax'
 import { useLoad } from '@/app/hooks/useLoad'
 import { useRemembered } from '@/components/useRememberedFlag'
 import { toggleIn } from '@/lib/core/toggleSet'
 import { propertyStatus, type StatusRow } from '@/lib/facts/status';
+import { rentIncome, yieldIncome, yearExpenses, yieldCosts, yieldPlatformFees } from '@/lib/facts';
+import { resolveValue } from '@/lib/billing/propertyFacts';
+import { athensToday } from '@/lib/core/time';
+import * as rentStore from '@/lib/data/rent';
+import type { IncomeRent } from '@/lib/income/propertyIncome';
+import type { StayAmountLike } from '@/lib/clients/stayAmounts';
 import {
   FIXED_CATS, ymOf, CATS, type MonthItem, type ExclRule, type CustomCatRaw, type Props,
   COLLAPSED_BY_DEFAULT, COLLAPSED_SERVER,
@@ -191,13 +198,17 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       ]);
 
       // ── Έσοδα + δεσμευμένες εκροές (για το «Ασφαλές διαθέσιμο») ──
-      const [propRes, loansRes, tenantsRes, staysRes] = await Promise.all([
-        properties.one(supabase, propertyId, 'rental_mode,status_detail,target_rent,value,year_built,enfia,purchase_price,sqm,prop_type,postal_code'),
+      const [propRes, loansRes, tenantsRes, staysRes, yearRentsRes, yearStaysRes] = await Promise.all([
+        properties.one(supabase, propertyId, 'rental_mode,status_detail,target_rent,value,obj_value,year_built,enfia,purchase_price,sqm,prop_type,postal_code'),
         loanStore.ofProperty(supabase, propertyId, userId),
         tenantStore.currentAll<{ monthly_rent: number | null }>(supabase, propertyId, 'monthly_rent'),
         // Καταλύματα από την αρχή του έτους: το τρέχον μήνα για έσοδα μήνα, το σύνολο YTD
         // για ετησιοποίηση (πρόβλεψη φόρου βραχυχρόνιας χωρίς εποχική στρέβλωση).
         stayStore.ofProperty<StayRow>(supabase, propertyId, 'total,nights,nightly_rate,check_in', userId, { from: `${y}-01-01`, to: dateEnd }),
+        // Για την απόδοση επένδυσης: τα έσοδα του έτους με τον ορισμό του lib/facts
+        // (δόσεις του έτους· διαμονές με τη βάση ποσού τους και οι κλεισμένες).
+        isPro ? rentStore.ofProperty<IncomeRent>(supabase, propertyId, rentStore.INCOME_COLUMNS, userId, { year: y }) : Promise.resolve([] as IncomeRent[]),
+        isPro ? stayStore.ofProperty<StayAmountLike>(supabase, propertyId, stayStore.DECLARABLE_COLUMNS, userId) : Promise.resolve([] as StayAmountLike[]),
       ]);
       // ΑΠΟ ΤΗΝ ΚΑΤΑΣΤΑΣΗ, ΟΧΙ ΑΠΟ ΤΟ ΩΜΟ `rental_mode` (lib/facts/status.ts). Το
       // παλιό βραχυχρόνιο («seasonal» χωρίς mode) έβγαινε εδώ μακροχρόνιο.
@@ -218,6 +229,8 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       const staysMonth = staysAll.filter(st => String(st.check_in ?? '') >= start);
       // Έσοδα μήνα: βραχυχρόνια → άθροισμα καταλυμάτων του μήνα· μακροχρόνια → ενεργό
       // ενοίκιο (ή στόχος). Ιδιοκατοίκηση/χωρίς mode → 0 (κανένα «φανταστικό» έσοδο).
+      // Το μίσθωμα των ενεργών ενοικιαστών: έσοδο μήνα εδώ, «αναμενόμενα» στην απόδοση πιο κάτω.
+      const leaseMonthly = tenantsRes.reduce((s, t) => s + (Number(t.monthly_rent) || 0), 0);
       let inc = 0;
       if (rMode === 'short_term') {
         inc = staysMonth.reduce((s, st) => s + stayGross(st), 0);
@@ -226,8 +239,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
         // ΜΟΝΟ ενεργοί ενοικιαστές (όχι παλιοί/αποχωρήσαντες) — αλλιώς διπλασιάζεται το έσοδο.
         // Ο κανόνας «ποιος μένει τώρα» δεν ξαναγράφεται εδώ: το στρώμα επιστρέφει
         // ήδη μόνο όσους δεν έχουν φύγει, με τον ίδιο ορισμό σε κάθε οθόνη.
-        const rentSum = tenantsRes.reduce((s, t) => s + (Number(t.monthly_rent) || 0), 0);
-        inc = rentSum > 0 ? rentSum : (Number(propRes?.target_rent) || 0);
+        inc = leaseMonthly > 0 ? leaseMonthly : (Number(propRes?.target_rent) || 0);
       }
       setIncome(Math.round(inc));
       // Έσοδα από την αρχή του έτους: βραχυχρόνια → πραγματικά καταλύματα YTD· μακροχρόνια
@@ -439,6 +451,8 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
           otherCashExpenses: annualOpex,
           ...(isPro ? { itemizedExpenses: annualOpex, loanInterest: Math.round(loanInterestAnnual) } : {}),
           loanPrincipal: Math.round(loanM * 12),
+          // Η κλίμακα του έτους του προϋπολογισμού, ρητά (scripts/guard-tax-year.mjs).
+          brackets: rentalBracketsForYear(y),
         });
         // Ιδιώτης: φόρος εισοδήματος. Επιχείρηση: φόρος + προκαταβολή (πραγματική ταμειακή
         // ανάγκη 1ου έτους) — ώστε το αποθεματικό να μην υπολείπεται.
@@ -451,21 +465,36 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       setTaxPctAuto(taxableAnnual > 0 && taxTargetAnnual > 0
         ? Math.min(100, Math.round(taxTargetAnnual / taxableAnnual * 1000) / 10)
         : null);
-      const propValue = Number(propRes?.value) || 0;
+      // Η ΑΞΙΑ ΜΕ ΤΟΝ ΚΑΝΟΝΑ ΤΗΣ ΕΠΙΣΚΟΠΗΣΗΣ: εμπορική, αλλιώς αντικειμενική.
+      const propValue = resolveValue(Number(propRes?.value) || null, Number(propRes?.obj_value) || null).value;
 
       // ── Απόδοση επένδυσης (μόνο επαγγελματίας) — NOI/cap rate/cash-on-cash από τον πυρήνα ──
+      // ── ΤΟ ΚΑΘΑΡΟ ΠΡΟ ΔΟΣΗΣ ΕΙΝΑΙ Η ΚΑΘΑΡΗ ΑΠΟΔΟΣΗ ΤΗΣ ΕΠΙΣΚΟΠΗΣΗΣ (02.11.2026) ──
+      // Εδώ υπήρχε δική του μηχανή: όλες οι διαμονές ως το τέλος του μήνα / μήνες
+      // × 12 και οι δαπάνες ως σήμερα / μήνες × 12, μετά τις εξαιρέσεις του
+      // προϋπολογισμού. Στον πάγκο «Απόδοση επί αξίας 5,56%» ενώ η Επισκόπηση, για
+      // την ίδια αξία, 5,79%: ίδιο μέγεθος, δύο αριθμοί. Τώρα: έσοδο έτους
+      // (`yieldIncome`), δαπάνες έτους με τις προμήθειες των διαμονών
+      // (`yearExpenses`, `yieldCosts`), αξία με το `resolveValue`.
+      const todayIso = athensToday();
+      const fiYear = rentIncome({ status: st, rents: yearRentsRes, stays: yearStaysRes, year: y, today: todayIso,
+        estimateMonthly: leaseMonthly || null });
+      const yiYear = yieldIncome(fiYear);
+      const yExpYear = yearExpenses(allBillsRes as LedgerBill[], allExpRes as unknown as LedgerExpense[], y, todayIso);
+      const yieldCost = yieldCosts({ recorded: yExpYear.total, recordedCategories: yExpYear.entries.map(e => e.category),
+        stayFees: yieldPlatformFees(fiYear, yearStaysRes, { year: y, today: todayIso, expenses: yExpYear.entries }).annual });
       // ── ΤΑ ΙΔΙΑ ΚΕΦΑΛΑΙΑ ΘΕΛΟΥΝ ΤΙΜΗ ΑΓΟΡΑΣ, ΟΧΙ ΑΞΙΑ ──────────────────────
       // Ίδια κεφάλαια = τιμή αγοράς μείον το ΑΡΧΙΚΟ ποσό των δανείων (όχι το
       // σημερινό υπόλοιπο): αυτό έβαλε ο ιδιοκτήτης από την τσέπη του στην
       // αγορά. Χωρίς τιμή αγοράς η απόδοση υπολογίζεται στην αξία και τα ίδια
       // κεφάλαια μένουν άγνωστα· το πλακίδιο τότε λέει τι λείπει.
       const purchasePrice = Number(propRes?.purchase_price) || 0;
-      if (isPro && annualGross > 0 && (propValue > 0 || purchasePrice > 0)) {
+      if (isPro && yiYear.annual > 0 && (propValue > 0 || purchasePrice > 0)) {
         const basis = purchasePrice || propValue;
         const loanPrincipalOriginal = activeLoans.reduce((s: number, l) => s + l.amount, 0);
         const equity = purchasePrice > 0 ? Math.max(0, purchasePrice - loanPrincipalOriginal) : 0;
         setInvReturns({
-          ...investmentReturns({ annualIncome: annualGross, annualOpEx: annualOpex, annualLoanPayment: loanM * 12, purchasePrice: basis, equityInvested: equity }),
+          ...investmentReturns({ annualIncome: yiYear.annual, annualOpEx: yieldCost.total, annualLoanPayment: loanM * 12, purchasePrice: basis, equityInvested: equity }),
           onPurchase: purchasePrice > 0,
         });
       } else {
@@ -779,7 +808,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
     }
     if (monthTrend.avgPrior > 0 && Math.abs(monthTrend.deltaPct) >= 8) {
       // Ακέραιο ποσοστό: είναι πρόβλεψη με ρυθμό, όχι μέτρηση στο εκατοστό.
-      out.push(`Με τον ρυθμό ως τώρα, ο μήνας θα κλείσει ${Math.round(Math.abs(monthTrend.deltaPct))}% ${monthTrend.direction === 'up' ? 'πάνω από' : 'κάτω από'} τον μέσο όρο του τριμήνου.`);
+      out.push(`Με τον ρυθμό ως τώρα, ο μήνας θα κλείσει ${fpRate(Math.round(Math.abs(monthTrend.deltaPct)))} ${monthTrend.direction === 'up' ? 'πάνω από' : 'κάτω από'} τον μέσο όρο του τριμήνου.`);
     }
     const biggest = activeCats.map(c => ({ label: c.label, v: actuals[c.key] || 0 })).filter(x => x.v > 0).sort((a, b) => b.v - a.v)[0];
     if (biggest && out.length < 3) out.push(`Η μεγαλύτερη δαπάνη του μήνα είναι στην κατηγορία «${biggest.label}», με ${feAuto(biggest.v)}.`);

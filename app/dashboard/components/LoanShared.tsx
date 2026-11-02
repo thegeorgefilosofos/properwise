@@ -110,3 +110,32 @@ const DIGIT_PX = 6.3
 
 export const axisGutter = (labels: string[], gap = 12) =>
   Math.ceil(Math.max(...labels.map(l => l.length), 0) * DIGIT_PX) + gap
+
+// ═══ ΣΤΡΟΓΓΥΛΑ ΣΚΑΛΙΑ ΣΤΟΝ ΑΞΟΝΑ ════════════════════════════════════════
+// Ο άξονας έγραφε το μέγιστο και το μισό του: «9.012,00€ · 4.506,00€ · 0,00€».
+// Τρία νούμερα με λεπτά που δεν αντιστοιχούν σε τίποτα: το μάτι δεν μπορεί να
+// παρεμβάλει ανάμεσα σε 4.506 και 9.012. Τα σκαλιά βγαίνουν πλέον από τη
+// σειρά 1-2-5 (100, 200, 500, 1.000 …) και η κλίμακα ανεβαίνει ως το πρώτο
+// στρογγυλό σκαλί πάνω από το μέγιστο, οπότε κάθε γραμμή είναι αριθμός που
+// διαβάζεται: «10.000€ · 5.000€ · 0€».
+/** Το μικρότερο βήμα της σειράς 1-2-5 που δεν είναι μικρότερο από `raw`. */
+export const niceStep = (raw: number): number => {
+  if (!(raw > 0) || !Number.isFinite(raw)) return 1
+  const p = 10 ** Math.floor(Math.log10(raw))
+  const f = raw / p
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p
+}
+
+/**
+ * Στρογγυλά σκαλιά από `min` ως `max`, το πολύ `count` διαστήματα.
+ * `niceTicks(9012)` → `{ lo: 0, hi: 10000, ticks: [0, 5000, 10000] }`,
+ * `niceTicks(1189)` → `{ lo: 0, hi: 1500, ticks: [0, 500, 1000, 1500] }`.
+ */
+export const niceTicks = (max: number, min = 0, count = 4) => {
+  const step = niceStep((Math.max(max, min) - min) / count || Math.abs(max) || 1)
+  const lo = Math.floor(min / step) * step
+  const hi = Math.max(lo + step, Math.ceil(max / step) * step)
+  const ticks: number[] = []
+  for (let v = lo; v <= hi + step / 2; v += step) ticks.push(Math.round(v / step) * step)
+  return { lo, hi, ticks }
+}

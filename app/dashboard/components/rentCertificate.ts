@@ -28,7 +28,7 @@ export interface RentCertificateCtx {
 }
 
 export function printRentCertificate(c: RentCertificateCtx): void {
-  const title = `Βεβαίωση Ενοικίου ${c.year}`
+  const title = `Βεβαίωση ενοικίου ${c.year}`
   const docTitle = [title, c.propName].filter(Boolean).map(x => String(x)).join(' · ')
   const tenant = (c.tenantName || '').trim() || 'ο μισθωτής'
   const afmLine = (c.tenantAfm || '').trim() ? ` (ΑΦΜ ${rEsc(String(c.tenantAfm).trim())})` : ''
@@ -41,7 +41,7 @@ export function printRentCertificate(c: RentCertificateCtx): void {
 
   const html = reportHead(docTitle)
     + `<body><div class="page">`
-    + reportHeader(c.branding, 'Βεβαίωση Ενοικίου', { rightNote: `Περίοδος αναφοράς: ${c.year}` })
+    + reportHeader(c.branding, 'Βεβαίωση ενοικίου', { rightNote: `Περίοδος αναφοράς: ${c.year}` })
     + `<h1>${rEsc(title)}</h1>`
     + (subtitle ? `<div class="sub">${subtitle}</div>` : '')
     + `<p class="note" style="font-size:13px;line-height:1.7;margin-top:14px">`
@@ -54,7 +54,7 @@ export function printRentCertificate(c: RentCertificateCtx): void {
     +   `<div style="flex:1;text-align:center"><div class="muted" style="border-top:1px solid ${INK_FAINT};padding-top:8px;font-size:12px">Ο εκμισθωτής</div></div>`
     +   `<div style="flex:1;text-align:center"><div class="muted" style="border-top:1px solid ${INK_FAINT};padding-top:8px;font-size:12px">Ο μισθωτής</div></div>`
     + `</div>`
-    + reportDisclaimer('Η βεβαίωση συντάχθηκε με βάση τα καταχωρημένα, εισπραγμένα μισθώματα. Για τη χρήση της σε δηλώσεις/δικαστικές διαδικασίες, επιβεβαίωσε τα στοιχεία με τον λογιστή ή τον δικηγόρο σου.', c.branding)
+    + reportDisclaimer('Η βεβαίωση συντάχθηκε με βάση τα καταχωρημένα, εισπραγμένα μισθώματα. Για τη χρήση της σε δηλώσεις ή δικαστικές διαδικασίες, επιβεβαίωσε τα στοιχεία με τον λογιστή ή τον δικηγόρο σου.', c.branding)
     + `</div></body></html>`
 
   openReport(html)
@@ -105,7 +105,7 @@ export async function downloadOfficialRentCertificate(c: RentCertificateCtx, o: 
     subtitle: subject,
     meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, checksum: issued.checksum, note: `Έτος ${c.year}` },
     sections,
-    disclaimer: 'Η βεβαίωση συντάχθηκε με βάση τα καταχωρημένα, εισπραγμένα μισθώματα. Για τη χρήση της σε δηλώσεις/δικαστικές διαδικασίες, επιβεβαίωσε τα στοιχεία με τον λογιστή ή τον δικηγόρο σου.',
+    disclaimer: 'Η βεβαίωση συντάχθηκε με βάση τα καταχωρημένα, εισπραγμένα μισθώματα. Για τη χρήση της σε δηλώσεις ή δικαστικές διαδικασίες, επιβεβαίωσε τα στοιχεία με τον λογιστή ή τον δικηγόρο σου.',
   }
   await generateReportPdf(model, `Βεβαίωση_ενοικίου_${c.propName}_${c.year}`)
 }

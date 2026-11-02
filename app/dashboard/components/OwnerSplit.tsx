@@ -284,7 +284,7 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
     // ΤΑ ΠΟΣΑ ΠΡΩΤΑ, ΤΑ ΠΟΣΟΣΤΑ ΜΕΤΑ. Τα ποσοστά έρχονται από τον περιηγητή κι
     // είναι έγκυρα πριν καν ξεκινήσει το ερώτημα· μόνο τους δεν αρκούν για να
     // εκδοθεί έγγραφο. Οσο δεν υπάρχουν ποσά περιόδου, δεν υπάρχει κατανομή.
-    if (!figures) { setErr(figuresFailed ? 'Τα ποσά της περιόδου δεν διαβάστηκαν. Άλλαξε περίοδο κι ξαναδοκίμασε.' : 'Τα ποσά της περιόδου φορτώνονται ακόμη.'); return; }
+    if (!figures) { setErr(figuresFailed ? 'Τα ποσά της περιόδου δεν διαβάστηκαν. Άλλαξε περίοδο και ξαναδοκίμασε.' : 'Τα ποσά της περιόδου φορτώνονται ακόμη.'); return; }
     if (!result.valid) { setErr(result.warning || 'Έλεγξε τα ποσοστά.'); return; }
     setBusy(true);
     try {
@@ -514,7 +514,7 @@ export default function OwnerSplit({ open, onClose, userId, supabase, branding }
         {/* Η ΑΠΟΤΥΧΙΑ ΕΧΕΙ ΦΩΝΗ. Πριν, η οθόνη απλώς δεν ζωγράφιζε τον πίνακα:
             ο χρήστης έβλεπε ιδιοκτήτες, ποσοστά κι ένα κουμπί εξαγωγής, χωρίς
             τίποτα να λέει ότι τα ποσά της περιόδου λείπουν. */}
-        {figuresFailed && <div role="status" style={{ fontSize: 'var(--fs-base)', color: 'var(--negative)', background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: T.radius.inner, padding: '10px 14px' }}>Τα ποσά της περιόδου δεν διαβάστηκαν. Άλλαξε περίοδο κι ξαναδοκίμασε.</div>}
+        {figuresFailed && <div role="status" style={{ fontSize: 'var(--fs-base)', color: 'var(--negative)', background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: T.radius.inner, padding: '10px 14px' }}>Τα ποσά της περιόδου δεν διαβάστηκαν. Άλλαξε περίοδο και ξαναδοκίμασε.</div>}
 
         {err && <div style={{ fontSize: 'var(--fs-base)', color: 'var(--negative)', background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 14px' }}>{err}</div>}
       </>

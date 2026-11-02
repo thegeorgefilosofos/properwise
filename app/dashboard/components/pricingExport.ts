@@ -12,15 +12,15 @@
 import { XLSX, setCell, downloadWorkbook, sheetFinish } from './xlsxStyle';
 import { FMT, S, ROW, money, percent, intGr, type Cell } from './sheetFormat';
 import { SEASON_LABELS, type Season } from '@/lib/pricing/dynamicPricing';
-import { MONTHS_NOM } from '@/lib/core/months';
+import { MONTHS_NOM, DAY_NAMES_MIN, mondayFirst } from '@/lib/core/months';
+import { fd } from '@/components/tokens';
 
 // Κείμενο βάσει μορφής: ποσό «€», ποσοστό «%», ακέραιος — πάντα με ελληνικό κόμμα.
 const fmtZ = (v: number, z?: string): string => (z === FMT.pct ? percent(v) : z === FMT.int ? intGr(v) : money(v));
 
-const WEEKDAYS = ['Δε', 'Τρ', 'Τε', 'Πε', 'Πα', 'Σα', 'Κυ'];
 const toDate = (d: string): Date | string => { const t = new Date(d + 'T00:00:00'); return isNaN(t.getTime()) ? d : t; };
 // dow: 0=Κυρ … 6=Σαβ (όπως το engine) → ελληνική συντομογραφία Δε…Κυ.
-const wd = (dow: number) => WEEKDAYS[(dow + 6) % 7] || '';
+const wd = (dow: number): string => DAY_NAMES_MIN[mondayFirst(dow)] ?? '';
 
 export interface PricingExportRow { date: string; dow: number; season: Season; isWeekend: boolean; holidayName?: string; price: number; booked: boolean }
 export interface PricingExportInput {
@@ -41,7 +41,7 @@ export interface PricingExportInput {
 export function exportPricingWorkbook(inp: PricingExportInput): void {
   const { propName, year, settings, summary, occupancy, realizedAdr, rows } = inp;
   const wb = XLSX.utils.book_new();
-  const idLine = `PROPERWISE · ${propName} · Έτος ${year} · Ημερομηνία έκδοσης ${new Date().toLocaleDateString('el-GR')}`;
+  const idLine = `PROPERWISE · ${propName} · Έτος ${year} · Ημερομηνία έκδοσης ${fd(new Date())}`;
 
   // ── Φύλλο 1: Σύνοψη ─────────────────────────────────────────────────────────
   {
@@ -50,7 +50,7 @@ export function exportPricingWorkbook(inp: PricingExportInput): void {
       { label: 'Βασική τιμή / νύχτα', value: settings.base, z: FMT.eur },
       { label: 'Κατώτατο όριο', value: settings.min || settings.base, z: FMT.eur },
       { label: 'Ανώτατο όριο', value: settings.max || settings.base, z: FMT.eur },
-      { label: 'Premium Σαββατοκύριακου', value: settings.weekendPremiumPct, z: FMT.pct },
+      { label: 'Προσαύξηση Σαββατοκύριακου', value: settings.weekendPremiumPct, z: FMT.pct },
       { label: 'Ελάχιστη διαμονή (νύχτες)', value: settings.minStay, z: FMT.int },
     ];
     const resultLines: Line[] = [

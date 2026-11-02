@@ -127,15 +127,15 @@ export interface Template { label: string; items: TemplateItem[]; when?: (c: Fie
 
 export const TEMPLATES: Record<string, Template> = {
   checkin: { label: 'Νέος ενοικιαστής', when: c => c.status === 'rent_long' || c.status === 'vacant', why: 'Μακροχρόνια μίσθωση', items: [
-    { description: 'Φωτογράφηση κάθε δωματίου (before)', category: 'checkin', priority: 'critical' },
+    { description: 'Φωτογράφηση κάθε δωματίου πριν την παράδοση', category: 'checkin', priority: 'critical' },
     { description: 'Παράδοση κλειδιών, καταγραφή αριθμού σετ', category: 'checkin', priority: 'critical' },
     { description: 'Καταγραφή μετρητή ΔΕΗ', category: 'checkin', priority: 'critical' },
     { description: 'Καταγραφή μετρητή ΕΥΔΑΠ', category: 'checkin', priority: 'critical' },
     { description: 'Υπογραφή πρωτοκόλλου παράδοσης', category: 'checkin', priority: 'critical' },
     { description: 'Δήλωση μισθωτηρίου στην ΑΑΔΕ', category: 'legal', priority: 'critical' },
     { description: 'Ενημέρωση ΔΟΥ', category: 'legal', priority: 'high' },
-    { description: 'Εξήγηση λειτουργίας θέρμανσης / boiler', category: 'checkin', priority: 'high' },
-    { description: 'Εξήγηση λειτουργίας alarm', category: 'checkin', priority: 'high' },
+    { description: 'Εξήγηση λειτουργίας θέρμανσης και θερμοσίφωνα', category: 'checkin', priority: 'high' },
+    { description: 'Εξήγηση λειτουργίας συναγερμού', category: 'checkin', priority: 'high' },
     { description: 'Ενεργοποίηση ασφαλιστηρίου', category: 'checkin', priority: 'high' },
     { description: 'Αλλαγή κωδικών WiFi', category: 'checkin', priority: 'normal' },
     { description: 'Μεταβίβαση λογαριασμών ΔΕΗ / ΕΥΔΑΠ', category: 'checkin', priority: 'normal' },
@@ -144,7 +144,7 @@ export const TEMPLATES: Record<string, Template> = {
     { description: 'Επιστροφή κλειδιών, έλεγχος αριθμού', category: 'checkout', priority: 'critical' },
     { description: 'Τελική ανάγνωση μετρητή ΔΕΗ', category: 'checkout', priority: 'critical' },
     { description: 'Τελική ανάγνωση μετρητή ΕΥΔΑΠ', category: 'checkout', priority: 'critical' },
-    { description: 'Φωτογράφηση κατάστασης vs check-in', category: 'checkout', priority: 'critical' },
+    { description: 'Φωτογράφηση κατάστασης, σύγκριση με την παράδοση', category: 'checkout', priority: 'critical' },
     { description: 'Λήξη μισθωτηρίου ΑΑΔΕ', category: 'legal', priority: 'critical' },
     { description: 'Διακανονισμός εγγύησης', category: 'checkout', priority: 'critical' },
     { description: 'Τελικός καθαρισμός ακινήτου', category: 'checkout', priority: 'high' },
@@ -154,16 +154,16 @@ export const TEMPLATES: Record<string, Template> = {
     { description: 'Ενημέρωση ΔΟΥ για λήξη μίσθωσης', category: 'legal', priority: 'normal' },
   ]},
   maintenance: { label: 'Ετήσια συντήρηση', items: [
-    { description: 'Service καλοριφέρ / λέβητα', category: 'maintenance', priority: 'critical', recurring: 'yearly' },
+    { description: 'Συντήρηση καλοριφέρ και λέβητα', category: 'maintenance', priority: 'critical', recurring: 'yearly' },
     { description: 'Έλεγχος πυροσβεστήρων', category: 'maintenance', priority: 'critical', recurring: 'yearly' },
-    { description: 'Τσεκ ηλεκτρολογικού πίνακα', category: 'maintenance', priority: 'high', recurring: 'yearly' },
+    { description: 'Έλεγχος ηλεκτρολογικού πίνακα', category: 'maintenance', priority: 'high', recurring: 'yearly' },
     { description: 'Καθαρισμός υδρορροών', category: 'maintenance', priority: 'high', recurring: 'yearly' },
     { description: 'Έλεγχος στέγης / ταράτσας', category: 'maintenance', priority: 'high', recurring: 'yearly' },
-    { description: 'Service κλιματιστικών', category: 'maintenance', priority: 'high', recurring: 'yearly' },
-    { description: 'Απολύμανση / pest control', category: 'maintenance', priority: 'normal', recurring: 'yearly' },
+    { description: 'Συντήρηση κλιματιστικών', category: 'maintenance', priority: 'high', recurring: 'yearly' },
+    { description: 'Απολύμανση και απεντόμωση', category: 'maintenance', priority: 'normal', recurring: 'yearly' },
     { description: 'Έλεγχος μόνωσης παραθύρων', category: 'maintenance', priority: 'normal', recurring: 'yearly' },
     { description: 'Βαφή / ανανέωση κοινόχρηστων', category: 'maintenance', priority: 'low', recurring: 'yearly' },
-    { description: 'Service ανελκυστήρα', category: 'maintenance', priority: 'high', recurring: 'quarterly' },
+    { description: 'Συντήρηση ανελκυστήρα', category: 'maintenance', priority: 'high', recurring: 'quarterly' },
   ]},
   // ΤΟ Ε2, Ο ΕΝΦΙΑ ΚΑΙ ΤΟ Ε9 ΕΦΥΓΑΝ ΑΠΟ ΕΔΩ. Είχαν την ίδια υποχρέωση χωρίς
   // ημερομηνία, δίπλα σε ένα ημερολόγιο που την έχει με ημερομηνία, πηγή και
@@ -188,15 +188,15 @@ export const TEMPLATES: Record<string, Template> = {
     { description: 'Φάση 3, Φινίρισμα', category: 'renovation', priority: 'normal', depends_on_idx: 6 },
     { description: 'Τελική επιθεώρηση και παραλαβή', category: 'renovation', priority: 'critical', depends_on_idx: 7 },
   ]},
-  airbnb: { label: 'Short-term / Airbnb', when: c => c.status === 'rent_short', why: 'Βραχυχρόνια μίσθωση', items: [
-    { description: 'Ρύθμιση smart lock / κωδικός check-in', category: 'airbnb', priority: 'critical' },
+  airbnb: { label: 'Βραχυχρόνια μίσθωση', when: c => c.status === 'rent_short', why: 'Βραχυχρόνια μίσθωση', items: [
+    { description: 'Ρύθμιση έξυπνης κλειδαριάς και κωδικού άφιξης', category: 'airbnb', priority: 'critical' },
     { description: 'Δημιουργία οδηγού φιλοξενίας', category: 'airbnb', priority: 'critical' },
     { description: 'Καταχώρηση σε Airbnb / Booking.com', category: 'airbnb', priority: 'critical' },
     { description: 'Φωτογράφηση από επαγγελματία', category: 'airbnb', priority: 'high' },
     { description: 'Εγγραφή στο Μητρώο Βραχυχρόνιας Μίσθωσης ΑΑΔΕ', category: 'legal', priority: 'critical' },
     { description: 'Ρύθμιση καναλιού καθαριότητας', category: 'airbnb', priority: 'high' },
     { description: 'Ανεφοδιασμός (σαπούνια, χαρτί και άλλα)', category: 'airbnb', priority: 'normal', recurring: 'monthly' },
-    { description: 'Τσεκ κλιματισμού πριν κάθε σεζόν', category: 'airbnb', priority: 'high', recurring: 'quarterly' },
+    { description: 'Έλεγχος κλιματισμού πριν από κάθε σεζόν', category: 'airbnb', priority: 'high', recurring: 'quarterly' },
   ]},
   // Ό,τι ζητά ο νόμος από το ίδιο το ακίνητο, ένα ανά γραμμή (lib/accounting/strSpecs.ts).
   // ΧΩΡΙΣ ΑΡΙΘΜΟ ΝΟΜΟΥ ΣΤΗΝ ΕΤΙΚΕΤΑ: η εργασία νόμου στην ίδια οθόνη γράφει άλλη
@@ -207,14 +207,14 @@ export const TEMPLATES: Record<string, Template> = {
   purchase: { label: 'Αγορά ακινήτου', when: c => c.propertyCount >= 3 || c.status === 'for_sale', why: 'Χαρτοφυλάκιο σε κίνηση', items: [
     { description: 'Νομικός έλεγχος τίτλων ιδιοκτησίας', category: 'purchase', priority: 'critical' },
     { description: 'Τεχνικός έλεγχος ακινήτου από μηχανικό', category: 'purchase', priority: 'critical' },
-    { description: 'Έλεγχος βαρών / υποθηκών κτηματολόγιο', category: 'purchase', priority: 'critical' },
+    { description: 'Έλεγχος βαρών και υποθηκών στο κτηματολόγιο', category: 'purchase', priority: 'critical' },
     { description: 'Πιστοποιητικό ενεργειακής απόδοσης ΠΕΑ', category: 'purchase', priority: 'critical' },
     { description: 'Συμβολαιογράφος, προσύμφωνο', category: 'purchase', priority: 'critical', depends_on_idx: 0 },
     { description: 'Έγκριση δανείου από τράπεζα', category: 'purchase', priority: 'critical' },
     { description: 'Ασφάλεια ακινήτου', category: 'purchase', priority: 'high' },
     { description: 'Τελικό συμβόλαιο αγοράς', category: 'purchase', priority: 'critical', depends_on_idx: 4 },
     { description: 'Μεταγραφή στο κτηματολόγιο', category: 'purchase', priority: 'critical', depends_on_idx: 7 },
-    { description: 'Εγγραφή στο ΑΑΔΕ ως ιδιοκτήτης', category: 'legal', priority: 'high' },
+    { description: 'Εγγραφή στην ΑΑΔΕ ως ιδιοκτήτης', category: 'legal', priority: 'high' },
   ]},
 }
 

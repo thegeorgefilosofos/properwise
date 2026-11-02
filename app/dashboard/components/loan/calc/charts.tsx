@@ -7,8 +7,9 @@
 // TabLoanCalculator.tsx· παίρνουν μόνο τα σημεία και τον μορφοποιητή τους.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useRef } from 'react'
-import { T } from '@/components/Theme'
-import { axisGutter } from '../../LoanShared'
+import { T, feWhole } from '@/components/Theme'
+import { fpRate } from '@/lib/core/format'
+import { axisGutter, niceTicks } from '../../LoanShared'
 import { useChartWidth } from '@/app/hooks/useChartWidth'
 
 // ── Bespoke SVG: donut κατανομής κεφαλαίου/τόκων (αισθητική «2050», μονόχρωμη) ──
@@ -21,7 +22,7 @@ export function AmortDonut({principal,interest}:{principal:number;interest:numbe
   const R=52, sw=15, C=2*Math.PI*R
   const pLen = C*pFrac
   return (
-    <svg viewBox="0 0 136 136" width="136" height="136" role="img" aria-label={`Κατανομή: ${Math.round(pFrac*100)}% κεφάλαιο, ${Math.round((1-pFrac)*100)}% τόκοι`} style={{flexShrink:0}}>
+    <svg viewBox="0 0 136 136" width="136" height="136" role="img" aria-label={`Κατανομή: ${fpRate(Math.round(pFrac*100))} κεφάλαιο, ${fpRate(Math.round((1-pFrac)*100))} τόκοι`} style={{flexShrink:0}}>
       <defs>
         <linearGradient id="donutCap" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.95"/>
@@ -34,7 +35,7 @@ export function AmortDonut({principal,interest}:{principal:number;interest:numbe
       <circle cx="68" cy="68" r={R} fill="none" stroke="var(--text-tertiary)" strokeOpacity="0.22" strokeWidth={sw}/>
       <circle cx="68" cy="68" r={R} fill="none" stroke="url(#donutCap)" strokeWidth={sw} strokeLinecap="round"
         strokeDasharray={`${pLen} ${C-pLen}`} transform="rotate(-90 68 68)" filter="url(#donutShadow)"/>
-      <text x="68" y="63" textAnchor="middle" style={{fontSize:22,fontWeight:700,fontFamily: T.font.sans,fill:'var(--text-primary)'}}>{Math.round(pFrac*100)}%</text>
+      <text x="68" y="63" textAnchor="middle" style={{fontSize:22,fontWeight:700,fontFamily: T.font.sans,fill:'var(--text-primary)',fontVariantNumeric:'tabular-nums'}}>{fpRate(Math.round(pFrac*100))}</text>
       <text x="68" y="80" textAnchor="middle" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fill:'var(--text-tertiary)',letterSpacing:'0.04em'}}>ΚΕΦΑΛΑΙΟ</text>
     </svg>
   )
@@ -50,8 +51,12 @@ export function AmortArea({data,fmt}:{data:{year:string;cap:number;int:number}[]
   const H=228,padL=6,padT=16,padB=26
   const n=data.length
   if(n<1) return null
-  const maxTotal=Math.max(...data.map(d=>d.cap+d.int),1)
-  const gridLabels=[0,0.5,1].map(f=>fmt(maxTotal*f))
+  // Η κλίμακα ως το πρώτο στρογγυλό σκαλί πάνω από τη μεγαλύτερη δόση
+  // (LoanShared: `niceTicks`). Ο άξονας γράφει ακέραια ευρώ· τα λεπτά μένουν
+  // στο πλαίσιο του δείκτη, όπου διαβάζεται μία συγκεκριμένη στήλη.
+  const scale=niceTicks(Math.max(...data.map(d=>d.cap+d.int),1))
+  const maxTotal=scale.hi
+  const gridLabels=scale.ticks.map(v=>feWhole(v))
   const padR=axisGutter(gridLabels)
   const plotW=W-padL-padR, plotH=H-padT-padB
   const step=plotW/n
@@ -61,7 +66,7 @@ export function AmortArea({data,fmt}:{data:{year:string;cap:number;int:number}[]
   const base=padT+plotH
   const r=Math.min(3, bw/2)
   const crossIdx=data.findIndex(d=>d.cap>=d.int)
-  const grid=[0,0.5,1].map((f,i)=>({ y:padT+(1-f)*plotH, label:gridLabels[i] }))
+  const grid=scale.ticks.map((v,i)=>({ y:Y(v), label:gridLabels[i] }))
   const tickEvery=Math.max(1, Math.ceil(n/8))
   const locate=(clientX:number)=>{
     const el=wrapRef.current; if(!el)return
@@ -87,7 +92,7 @@ export function AmortArea({data,fmt}:{data:{year:string;cap:number;int:number}[]
       {grid.map((g,i)=>(
         <g key={i}>
           <line x1={padL} y1={g.y} x2={W-padR} y2={g.y} stroke="var(--border-subtle)" strokeWidth="1" strokeOpacity={i===0?0.9:0.45}/>
-          <text x={W-2} y={g.y+3} textAnchor="end" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fill:'var(--text-tertiary)',fontVariantNumeric:'tabular-nums'}}>{g.label}</text>
+          <text x={W-2} y={g.y+3} textAnchor="end" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.num,fill:'var(--text-tertiary)',fontVariantNumeric:'tabular-nums'}}>{g.label}</text>
         </g>
       ))}
       {/* Στοιβαγμένες στήλες — η δόση ανάβει μπλε στο πέρασμα του δείκτη/δαχτύλου */}
@@ -125,16 +130,16 @@ export function AmortArea({data,fmt}:{data:{year:string;cap:number;int:number}[]
         <div style={{display:'flex',alignItems:'center',gap: 8,marginBottom: 4}}>
           <span style={{width:9,height:9,borderRadius:3,background:'var(--accent)',display:'inline-block'}}/>
           <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Κεφάλαιο</span>
-          <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{fmt(data[hi].cap)}</span>
+          <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{fmt(data[hi].cap)}</span>
         </div>
         <div style={{display:'flex',alignItems:'center',gap: 8,marginBottom: 4}}>
           <span style={{width:9,height:9,borderRadius:3,background:'var(--text-tertiary)',opacity:0.5,display:'inline-block'}}/>
           <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Τόκοι</span>
-          <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{fmt(data[hi].int)}</span>
+          <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{fmt(data[hi].int)}</span>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:14,paddingTop: 4,marginTop:2,borderTop:'1px solid var(--border-subtle)'}}>
           <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Ετήσια δόση</span>
-          <span style={{fontSize: 'var(--fs-base)',color:'var(--accent)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,marginLeft:'auto'}}>{fmt(data[hi].cap+data[hi].int)}</span>
+          <span style={{fontSize: 'var(--fs-base)',color:'var(--accent)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:700,marginLeft:'auto'}}>{fmt(data[hi].cap+data[hi].int)}</span>
         </div>
       </div>
     )}
@@ -158,13 +163,14 @@ export function DualLine({data,keyA,keyB,fmt}:{data:SeriesPoint[];keyA:string;ke
   // ανάγνωση περνά από εδώ ώστε το συμβόλαιο να λέγεται μία φορά.
   const v=(d:SeriesPoint,k:string)=>Number(d[k])||0
   const vals=data.flatMap(d=>[v(d,keyA),v(d,keyB)])
-  const maxV=Math.max(...vals,1)
-  const padR=axisGutter([0,0.5,1].map(f=>fmt(maxV*f)))
+  const scale=niceTicks(Math.max(...vals,1))
+  const maxV=scale.hi
+  const padR=axisGutter(scale.ticks.map(t=>feWhole(t)))
   const X=(i:number)=> padL + (i/(n-1))*(W-padL-padR)
   const Y=(v:number)=> padT + (1 - v/maxV)*(H-padT-padB)
   const path=(k:string)=> data.map((d,i)=>`${i===0?'M':'L'} ${X(i)} ${Y(v(d,k))}`).join(' ')
   const areaA=`M ${X(0)} ${Y(0)} `+data.map((d,i)=>`L ${X(i)} ${Y(v(d,keyA))}`).join(' ')+` L ${X(n-1)} ${Y(0)} Z`
-  const grid=[0,0.5,1].map(f=>({y:Y(maxV*f),label:fmt(maxV*f)}))
+  const grid=scale.ticks.map(t=>({y:Y(t),label:feWhole(t)}))
   const locate=(clientX:number)=>{
     const el=wrapRef.current; if(!el)return
     const r=el.getBoundingClientRect()
@@ -184,7 +190,7 @@ export function DualLine({data,keyA,keyB,fmt}:{data:SeriesPoint[];keyA:string;ke
             <stop offset="100%" stopColor="var(--accent)" stopOpacity="0"/>
           </linearGradient>
         </defs>
-        {grid.map((g,i)=>(<g key={i}><line x1={padL} y1={g.y} x2={W-padR} y2={g.y} stroke="var(--border-subtle)" strokeWidth="1" strokeOpacity={i===0?0.9:0.4}/><text x={W-2} y={g.y+3} textAnchor="end" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fill:'var(--text-tertiary)',fontVariantNumeric:'tabular-nums'}}>{g.label}</text></g>))}
+        {grid.map((g,i)=>(<g key={i}><line x1={padL} y1={g.y} x2={W-padR} y2={g.y} stroke="var(--border-subtle)" strokeWidth="1" strokeOpacity={i===0?0.9:0.4}/><text x={W-2} y={g.y+3} textAnchor="end" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.num,fill:'var(--text-tertiary)',fontVariantNumeric:'tabular-nums'}}>{g.label}</text></g>))}
         <path d={areaA} fill="url(#dualAreaA)"/>
         <path d={path(keyB)} fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeDasharray="5 4" strokeLinejoin="round" strokeLinecap="round" strokeOpacity="0.85"/>
         <path d={path(keyA)} fill="none" stroke="var(--accent)" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round"/>
@@ -205,12 +211,12 @@ export function DualLine({data,keyA,keyB,fmt}:{data:SeriesPoint[];keyA:string;ke
           <div style={{display:'flex',alignItems:'center',gap: 8,marginBottom: 4}}>
             <span style={{width:12,height:2.4,borderRadius:3,background:'var(--accent)',display:'inline-block'}}/>
             <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Σταθερό</span>
-            <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{fmt(v(data[hi],keyA))}</span>
+            <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{fmt(v(data[hi],keyA))}</span>
           </div>
           <div style={{display:'flex',alignItems:'center',gap: 8}}>
             <span style={{width:12,height:0,borderTop:'2px dashed var(--text-tertiary)',display:'inline-block'}}/>
             <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Κυμαινόμενο</span>
-            <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{fmt(v(data[hi],keyB))}</span>
+            <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{fmt(v(data[hi],keyB))}</span>
           </div>
         </div>
       )}
@@ -226,14 +232,14 @@ export function RentBuyChart({buy,rent,horizon,breakEvenYear,fmt}:{buy:number[];
   const [svgRef,W]=useChartWidth(560)
   const H=170,padL=6,padT=14,padB=22, n=horizon+1
   if(n<2) return null
-  const maxV=Math.max(...buy,...rent,1)
-  const minV=Math.min(...buy,0)
-  const padR=axisGutter([0,0.5,1].map(f=>fmt(minV+(maxV-minV)*f)))
+  const scale=niceTicks(Math.max(...buy,...rent,1),Math.min(...buy,0))
+  const maxV=scale.hi, minV=scale.lo
+  const padR=axisGutter(scale.ticks.map(t=>feWhole(t)))
   const X=(i:number)=>padL+(i/(n-1))*(W-padL-padR)
   const Yv=(v:number)=>padT+(1-(v-minV)/(maxV-minV||1))*(H-padT-padB)
   const buyLine=buy.map((v,i)=>`${i===0?'M':'L'} ${X(i)} ${Yv(v)}`).join(' ')
   const rentLine=rent.map((v,i)=>`${i===0?'M':'L'} ${X(i)} ${Yv(v)}`).join(' ')
-  const grid=[0,0.5,1].map(f=>{const v=minV+(maxV-minV)*f;return{y:Yv(v),label:fmt(v)}})
+  const grid=scale.ticks.map(v=>({y:Yv(v),label:feWhole(v)}))
   const locate=(clientX:number)=>{
     const el=wrapRef.current; if(!el)return
     const r=el.getBoundingClientRect()
@@ -247,7 +253,7 @@ export function RentBuyChart({buy,rent,horizon,breakEvenYear,fmt}:{buy:number[];
       onMouseMove={e=>locate(e.clientX)} onMouseLeave={()=>setHi(null)}
       onTouchStart={e=>locate(e.touches[0].clientX)} onTouchMove={e=>locate(e.touches[0].clientX)} onTouchEnd={()=>setHi(null)}>
       <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{display:'block'}} role="img" aria-label="Σύγκριση κόστους αγοράς και ενοικίασης, διαδραστικό">
-        {grid.map((g,i)=>(<g key={i}><line x1={padL} y1={g.y} x2={W-padR} y2={g.y} stroke="var(--border-subtle)" strokeWidth="1" strokeOpacity={i===0?0.9:0.4}/><text x={W-2} y={g.y+3} textAnchor="end" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fill:'var(--text-tertiary)',fontVariantNumeric:'tabular-nums'}}>{g.label}</text></g>))}
+        {grid.map((g,i)=>(<g key={i}><line x1={padL} y1={g.y} x2={W-padR} y2={g.y} stroke="var(--border-subtle)" strokeWidth="1" strokeOpacity={i===0?0.9:0.4}/><text x={W-2} y={g.y+3} textAnchor="end" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.num,fill:'var(--text-tertiary)',fontVariantNumeric:'tabular-nums'}}>{g.label}</text></g>))}
         <line x1={padL} y1={H-padB} x2={W-padR} y2={H-padB} stroke="var(--border-default)" strokeWidth="1"/>
         <path d={rentLine} fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeDasharray="4 3" strokeLinejoin="round"/>
         <path d={buyLine} fill="none" stroke="var(--accent)" strokeWidth="2.4" strokeLinejoin="round"/>
@@ -265,16 +271,16 @@ export function RentBuyChart({buy,rent,horizon,breakEvenYear,fmt}:{buy:number[];
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom: 4}}>
             <span style={{width:9,height:9,borderRadius:3,background:'var(--accent)',display:'inline-block'}}/>
             <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Αγορά</span>
-            <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{fmt(buy[hi])}</span>
+            <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{fmt(buy[hi])}</span>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:10}}>
             <span style={{width:9,height:2.5,background:'var(--text-tertiary)',display:'inline-block'}}/>
             <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Ενοικίαση</span>
-            <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{fmt(rent[hi])}</span>
+            <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{fmt(rent[hi])}</span>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:14,paddingTop: 4,marginTop: 4,borderTop:'1px solid var(--border-subtle)'}}>
             <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>{diff<0?'Υπέρ αγοράς':'Υπέρ ενοικίασης'}</span>
-            <span style={{fontSize: 'var(--fs-base)',color:'var(--accent)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,marginLeft:'auto'}}>{fmt(Math.abs(diff))}</span>
+            <span style={{fontSize: 'var(--fs-base)',color:'var(--accent)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:700,marginLeft:'auto'}}>{fmt(Math.abs(diff))}</span>
           </div>
         </div>
       )}
@@ -297,8 +303,10 @@ export function StressBars({stress,limit,INC,fmt,fmtPct,fmtPct1}:{stress:{label:
   // «Όριο δόσης»). Οταν απέχουν λιγότερο από μία γραμμή κειμένου, μένει μόνο
   // το όριο: η δόση κάθε σεναρίου λέγεται στο πλαίσιο και στον πίνακα.
   const top=maxV/1.14
-  const grid=limit>0?[0,limit,...(Math.abs(Y(top)-Y(limit))>=14?[top]:[])]:[0,top/2,top]
-  const padR=axisGutter(grid.map(v=>fmt(v)))
+  // Χωρίς όριο οι γραμμές είναι στρογγυλά σκαλιά (`niceTicks`), όχι «μισό του
+  // μέγιστου». Με όριο μένουν ό,τι σημαίνουν: το μηδέν, το όριο, η δόση.
+  const grid=limit>0?[0,limit,...(Math.abs(Y(top)-Y(limit))>=14?[top]:[])]:niceTicks(top).ticks.filter(v=>v<=maxV)
+  const padR=axisGutter(grid.map(v=>feWhole(v)))
   const plotW=W-padL-padR
   const step=plotW/stress.length, bw=Math.min(42, step*0.56)
   const cx=(i:number)=> padL+i*step+step/2
@@ -320,7 +328,7 @@ export function StressBars({stress,limit,INC,fmt,fmtPct,fmtPct1}:{stress:{label:
           <linearGradient id="stressOver" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--text-tertiary)" stopOpacity="1"/><stop offset="100%" stopColor="color-mix(in srgb, var(--text-tertiary) 74%, transparent)"/></linearGradient>
           <filter id="stressLift" x="-40%" y="-20%" width="180%" height="140%"><feDropShadow dx="0" dy="1.5" stdDeviation="2.5" floodColor="var(--text-primary)" floodOpacity="0.14"/></filter>
         </defs>
-        {grid.map((gv,i)=>(<g key={i}><line x1={padL} y1={Y(gv)} x2={W-padR} y2={Y(gv)} stroke="var(--border-subtle)" strokeWidth="1" strokeOpacity={i===0?0.9:0.4}/><text x={W-2} y={Y(gv)+3} textAnchor="end" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fill:'var(--text-tertiary)',fontVariantNumeric:'tabular-nums'}}>{fmt(gv)}</text></g>))}
+        {grid.map((gv,i)=>(<g key={i}><line x1={padL} y1={Y(gv)} x2={W-padR} y2={Y(gv)} stroke="var(--border-subtle)" strokeWidth="1" strokeOpacity={i===0?0.9:0.4}/><text x={W-2} y={Y(gv)+3} textAnchor="end" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.num,fill:'var(--text-tertiary)',fontVariantNumeric:'tabular-nums'}}>{feWhole(gv)}</text></g>))}
         {stress.map((s,i)=>{
           const over=limit>0&&s.monthly>limit
           const active=hi===i
@@ -364,11 +372,11 @@ export function StressBars({stress,limit,INC,fmt,fmtPct,fmtPct1}:{stress:{label:
             <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginBottom: 4,fontFamily: T.font.sans,textAlign:'center' as const}}>{s.label} · {fmtPct(s.rate)}</p>
             <div style={{display:'flex',alignItems:'center',gap:14,marginBottom: 4}}>
               <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Δόση τον μήνα</span>
-              <span style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,marginLeft:'auto'}}>{fmt(s.monthly)}</span>
+              <span style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:700,marginLeft:'auto'}}>{fmt(s.monthly)}</span>
             </div>
             <div style={{display:'flex',alignItems:'center',gap:14,marginBottom: 4}}>
               <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Αύξηση</span>
-              <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{hi===0?fmt(0):diff>=0?`+${fmt(diff)}`:`-${fmt(-diff)}`}</span>
+              <span style={{fontSize:12,color:'var(--text-primary)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:600,marginLeft:'auto'}}>{hi===0?fmt(0):diff>=0?`+${fmt(diff)}`:`-${fmt(-diff)}`}</span>
             </div>
             {/* ══ ΤΟ «ΠΑΝΩ ΑΠΟ ΤΟ ΟΡΙΟ» ΥΠΟΛΟΓΙΖΟΤΑΝ ΚΑΙ ΔΕΝ ΦΑΙΝΟΤΑΝ ═════════
                 Το `over` (δόση > όριο αντοχής) υπολογιζόταν σε κάθε άγγιγμα και
@@ -379,7 +387,7 @@ export function StressBars({stress,limit,INC,fmt,fmtPct,fmtPct1}:{stress:{label:
                 επιτοκίου για να δει ΑΚΡΙΒΩΣ αυτό: πού σπάει. */}
             <div style={{display:'flex',alignItems:'center',gap:14,paddingTop: 4,marginTop:2,borderTop:'1px solid var(--border-subtle)'}}>
               <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Δόση προς εισόδημα</span>
-              <span style={{fontSize: 'var(--fs-base)',color:over?'var(--negative)':'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,marginLeft:'auto'}}>{fmtPct1(dti)}</span>
+              <span style={{fontSize: 'var(--fs-base)',color:over?'var(--negative)':'var(--text-primary)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:700,marginLeft:'auto'}}>{fmtPct1(dti)}</span>
             </div>
             {over&&(
               <p style={{fontSize: 'var(--fs-xs)',color:'var(--negative)',fontFamily: T.font.sans,marginTop:6,fontWeight:600,textAlign:'center' as const}}>Πάνω από το όριο δόσης</p>

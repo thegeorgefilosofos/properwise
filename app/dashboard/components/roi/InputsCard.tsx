@@ -52,11 +52,11 @@ export function InputsCard({
               άδεια λέει ΤΙ ΝΑ ΣΥΜΠΛΗΡΩΣΕΙΣ, γεμάτη ανακεφαλαιώνει. Με μία κοινή
               αποκοπή σε μία γραμμή, στα 390 εικονοστοιχεία έγραφε «Συμπλήρωσε
               αξία ακινήτου και μηνιαίο μίσθ…» — έκοβε ακριβώς την οδηγία. */}
-          {/* Η γεμάτη ανακεφαλαίωση είναι δεδομένα του χρήστη σε μία γραμμή —
-              πέντε ποσά που ο ίδιος έγραψε και βλέπει ολόκληρα με ένα πάτημα
-              από κάτω. Μήκος που δεν ορίζει το προϊόν: `.po-elide`, ώστε ο
-              σαρωτής να ξέρει ότι η αποκοπή είναι απόφαση και όχι ατύχημα. */}
-          <p className={empty ? undefined : 'po-elide-lines'} style={subStyle}>
+          {/* ΚΑΙ ΓΕΜΑΤΗ ΔΙΑΒΑΖΕΤΑΙ ΟΛΟΚΛΗΡΗ (02/11/2026). Κοβόταν στις τρεις
+              γραμμές με αποσιωπητικά (`.po-elide-lines`) και στα 390 έφευγε
+              ακριβώς το τελευταίο σκέλος: «· εκτίμηση…». Μια ανακεφαλαίωση που
+              κόβεται δεν ανακεφαλαιώνει· είναι πέντε σύντομα σκέλη και τυλίγουν. */}
+          <p style={subStyle}>
             {empty
               ? (term === 'short' ? 'Συμπλήρωσε αξία, πληρότητα και τιμή ανά νύχτα' : 'Συμπλήρωσε αξία ακινήτου και μηνιαίο μίσθωμα')
               // ΑΠΟ ΠΟΥ ΕΙΝΑΙ ΤΑ ΝΟΥΜΕΡΑ ΚΑΙ ΤΙ ΑΛΛΟ ΑΦΑΙΡΕΙΤΑΙ. Η λωρίδα έγραφε
@@ -65,7 +65,7 @@ export function InputsCard({
               : [
                   `Αξία ${fe(nVal)}`,
                   term === 'short'
-                    ? `${fp(Number(stOcc) || 0)} πληρότητα ${stBasis === 'bookings' ? 'από τις κρατήσεις 12 μηνών' : stBasis === 'area' ? 'αναφοράς περιοχής' : ''}`.trim()
+                    ? `${fp(Number(stOcc) || 0)} πληρότητα ${stBasis === 'bookings' ? 'από τις κρατήσεις των τελευταίων 12 μηνών' : stBasis === 'area' ? 'αναφοράς περιοχής' : ''}`.trim()
                     : `${fe(Number(rent) || 0)} τον μήνα`,
                   term === 'short' ? `${fe(Number(stAdr) || 0)} ανά νύχτα` : null,
                   `${fe(Number(opex) || 0)} έξοδα τον χρόνο`,
@@ -115,7 +115,7 @@ export function InputsCard({
             </span>
           </div>
           <div {...g4}>
-            <NumberInput label="Ετήσια πληρότητα" value={stOcc} onChange={v => { setStOcc(v); setScenario(true); }} suffix="%" max={100} labelInfo={<TermInfo term="Ετήσια πληρότητα" text={G.occupancy} />} />
+            <NumberInput label="Πληρότητα 12 μηνών" value={stOcc} onChange={v => { setStOcc(v); setScenario(true); }} suffix="%" max={100} labelInfo={<TermInfo term="Πληρότητα 12 μηνών" text={G.occupancy} />} />
             <NumberInput label="Μέση τιμή ανά νύχτα" value={stAdr} onChange={v => { setStAdr(v); setScenario(true); }} suffix="€" labelInfo={<TermInfo term="Μέση τιμή ανά νύχτα" text={G.adr} />} />
             <NumberInput label="Καθαρισμός ανά διαμονή" value={stClean} onChange={setStClean} suffix="€" />
             <NumberInput label="Προμήθεια πλατφόρμας" value={stFee} onChange={setStFee} suffix="%" max={100} labelInfo={<TermInfo term="Προμήθεια πλατφόρμας" text={G.platform_fee} />} />

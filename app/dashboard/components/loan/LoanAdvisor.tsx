@@ -2,7 +2,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // ΤΟ ΔΑΝΕΙΟ ΣΟΥ: Ο ΣΥΜΒΟΥΛΟΣ ΠΟΥ ΒΑΘΜΟΛΟΓΕΙ, ΣΥΓΚΡΙΝΕΙ ΚΑΙ ΠΡΟΤΕΙΝΕΙ
 // ═══════════════════════════════════════════════════════════════════════════
-import { fp, fpRate } from '@/lib/core/format'
+import { fn, fp, fpRate } from '@/lib/core/format'
 import { CORPORATE_TAX_RATE_2026 } from '@/lib/billing/greekTax'
 import { programDateLabel, parseProgramDate } from '@/lib/loans/programStatus'
 import { T, Btn } from '@/components/Theme'
@@ -230,7 +230,7 @@ export function LoanAdvisor({
                   body={<>Για {fmtEur(cs.loanAmount)} αποπληρώνεις συνολικά {fmtEur(totalCost)}.
                     {cs.years>20&&savedByShortening>0
                       ? ` Σε 20 χρόνια η δόση γίνεται ${fmtEur(shortMonthly20)}, δηλαδή ${fmtEur(shortMonthly20-cs.monthly)} παραπάνω, με ${fmtEur(savedByShortening)} λιγότερους τόκους.`
-                      : ` Έκτακτη πληρωμή 100€ τον μήνα κόβει ${extraPay100Saving.toFixed(1).replace('.',',')} χρόνια από τη διάρκεια.`}</>}
+                      : ` Έκτακτη πληρωμή 100€ τον μήνα κόβει ${fn(extraPay100Saving,1)} χρόνια από τη διάρκεια.`}</>}
                 />
               </div>
               {/* ΤΟ «ΑΡΙΣΤΟ ΠΡΟΦΙΛ ΔΑΝΕΙΟΥ» ΕΦΥΓΕ. Η ίδια ετυμηγορία γραφόταν
@@ -451,8 +451,8 @@ export function LoanAdvisor({
                 <p style={{fontSize: 'var(--fs-base)',fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)'}}>Σπίτι μου ΙΙ</p>
                 <p className="po-prose po-just" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:2,fontFamily: T.font.sans}}>{hy(<>{spitiClosed}</>)}</p>
                 </>) : (<>
-                <p style={{fontSize: 'var(--fs-base)',fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)'}}>Σπίτι μου ΙΙ: {spiti.eligible?'πιθανώς επιλέξιμο':'μη επιλέξιμο'} {spitiMouOpen(today)&&<span style={{color:'var(--text-secondary)',fontWeight:400}}>· {Math.round(spiti.interestFreeShare*100)}% άτοκο</span>}</p>
-                <p className="po-prose po-just" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:2,fontFamily: T.font.sans}}>{hy(<>{spiti.reasons.slice(0,3).join(' · ')}. Ενδεικτικό, επιβεβαίωσε στην πύλη.</>)}</p>
+                <p style={{fontSize: 'var(--fs-base)',fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)'}}>Σπίτι μου ΙΙ: {spiti.eligible?'πιθανώς επιλέξιμο':'μη επιλέξιμο'} {spitiMouOpen(today)&&<span style={{color:'var(--text-secondary)',fontWeight:400}}>· {fpRate(Math.round(spiti.interestFreeShare*100))} άτοκο</span>}</p>
+                <p className="po-prose po-just" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:2,fontFamily: T.font.sans}}>{hy(<>{spiti.reasons.slice(0,3).join(' · ')}. Ενδεικτικό· επιβεβαίωσέ το στην πύλη.</>)}</p>
                 </>)}
               </div>
             </div>

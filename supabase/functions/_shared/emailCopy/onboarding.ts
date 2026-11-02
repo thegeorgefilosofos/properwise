@@ -207,7 +207,7 @@ export const ONBOARDING: Record<string, CopyFn> = {
       ? p(`Σε ${d} έχεις ήδη οργανώσει ${bits.join(' και ')} στο PROPERWISE. Καλή αρχή.`)
       : p('Μέσα σε λίγες μέρες έχεις ήδη βάλει τάξη σε πράγματα που πριν ήταν σκόρπια. Καλή αρχή.');
     return {
-      subject: 'Η πρώτη σου εβδομάδα σε δεδομένα',
+      subject: 'Η πρώτη σου εβδομάδα σε αριθμούς',
       html: emailShell({
         preheader: 'Δες τι έχεις ήδη οργανώσει.',
         unsubUrl: c.unsubUrl,

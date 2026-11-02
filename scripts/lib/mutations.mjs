@@ -187,6 +187,10 @@ export const MUTATIONS = {
   ] },
   'percent-formatter': { add: 'components/__mut__.tsx', content: tsx('    <div>{`Πληρότητα ${occ.pct}%`}</div>') },
   'number-font': { add: 'components/__mut__.tsx', content: tsx("    <p style={{ fontFamily: T.font.mono }}>Μια ολόκληρη πρόταση γραμμένη σε γραμματοσειρά στηλών</p>") },
+  // Το ποσό οφειλής της πύλης σε Roboto Mono, ΧΩΡΙΣ καμία λέξη δίπλα του (ο
+  // `number-font` ρωτά «είναι πρόταση;» και εδώ δεν είναι): το «1.2θθ,θθ€»
+  // που είδε ο ενοικιαστής πριν από τις 02.11.2026.
+  'mono-zero': { add: 'components/__mut__.tsx', content: "import { T } from './Theme'\nimport { fe } from '@/lib/core/format'\nexport default function MutationProbe({ total }: { total: number }) {\n  return (\n    <div style={{ fontSize: 28, fontFamily: T.font.mono }}>{fe(total)}</div>\n  )\n}\n" },
 
   // ── Φόρμες και οθόνες ──────────────────────────────────────────────────
   'field-name': { add: 'components/__mut__.tsx', content: tsx('    <input type="text" placeholder="Ποσό" />') },

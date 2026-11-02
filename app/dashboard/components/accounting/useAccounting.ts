@@ -867,7 +867,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     // δαπάνη αναλυτικά (άρθρο 39 ΚΦΕ, μόνο η τεκμαρτή έκπτωση): εκεί η προμήθεια
     // λείπει από το ταμείο, όχι από τη φορολογική βάση.
     const noFee = staysMissingPlatformFee(stays, year)
-    if(noFee>0) g.push(`${noFee} κρατήσεις από πλατφόρμα χωρίς καταγεγραμμένη προμήθεια: ${businessMode ? 'λείπει δαπάνη που εκπίπτει' : 'λείπει έξοδο από το ταμείο, που για ιδιώτη δεν μειώνει τον φόρο'}.`)
+    if(noFee>0) g.push(`${noFee===1?'Μία κράτηση':`${noFee} κρατήσεις`} από πλατφόρμα χωρίς καταγεγραμμένη προμήθεια: ${businessMode ? 'λείπει δαπάνη που εκπίπτει' : 'λείπει έξοδο από το ταμείο, που για ιδιώτη δεν μειώνει τον φόρο'}.`)
     // Η σημείωση λέει πλέον ΠΟΣΟΥΣ μήνες αφορά, γιατί ο κανόνας δεν είναι πια
     // ετήσιος: ο λογιστής πρέπει να ξέρει ποια κομμάτια της χρήσης βγαίνουν από
     // παραστατικό και ποια από υπολογισμό.
@@ -879,7 +879,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     if(enfiaSource==='lastYear') g.push('Ο ΕΝΦΙΑ είναι το περσινό ποσό, όχι το φετινό εκκαθαριστικό.')
     if(enfiaBlock) g.push(`Δεν έχει καταχωρηθεί ΕΝΦΙΑ. ${enfiaBlock}`)
     const noCat = expensesYear.filter(e=>!e.category).length
-    if(noCat>0) g.push(`${noCat} δαπάνες χωρίς κατηγορία.`)
+    if(noCat>0) g.push(noCat===1?'Μία δαπάνη χωρίς κατηγορία.':`${noCat} δαπάνες χωρίς κατηγορία.`)
     return g
   },[rent,stays,expensesYear,year,regime,uncollectedRent,tenant,enfiaEstimated,enfiaSource,enfiaBlock,ownFeeMonths,businessMode])
 

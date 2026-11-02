@@ -197,7 +197,7 @@ export function isAthensWorkday(now: Date = new Date()): boolean {
  */
 export function athensNowLabel(now: Date = new Date()): string {
   const { day, month, year } = athensParts(now)
-  return `${athensWeekdayName(now)} ${day}/${p2(month)}/${year}, ${athensTime(now)}`
+  return `${athensWeekdayName(now)} ${p2(day)}/${p2(month)}/${year}, ${athensTime(now)}`
 }
 
 // ── ΤΟ ΕΤΟΣ ΚΑΙ Ο ΜΗΝΑΣ ΜΙΑΣ ΗΜΕΡΟΛΟΓΙΑΚΗΣ ΗΜΕΡΑΣ ─────────────────────────

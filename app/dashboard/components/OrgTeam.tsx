@@ -275,7 +275,7 @@ export default function OrgTeam({ userId }: { userId: string }) {
     } catch { /* σιωπηλά */ }
     setInviteNote(mailed
       ? `Στάλθηκε πρόσκληση με email στο ${email}.`
-      : `Ο ${email} προστέθηκε. Θα αποκτήσει πρόσβαση μόλις συνδεθεί με αυτό το email.`);
+      : `Το μέλος ${email} προστέθηκε. Αποκτά πρόσβαση μόλις συνδεθεί με αυτό το email.`);
     setInviteEmail('');
     await loadMembers(org.id);
     setInviting(false);
@@ -494,7 +494,7 @@ export default function OrgTeam({ userId }: { userId: string }) {
           <EmptyState
             icon={<Users size={20} />}
             title="Κανένα μέλος ακόμη"
-            hint="Πρόσκαλεσε συνεργάτες και δώσε τους πρόσβαση σε συγκεκριμένα ακίνητα."
+            hint="Προσκάλεσε συνεργάτες και δώσε τους πρόσβαση σε συγκεκριμένα ακίνητα."
           />
         ) : (
           /* ΤΟ ΜΗΤΡΩΟ ΗΤΑΝ ΠΛΕΓΜΑ ΑΠΟ divs ΜΕ ΤΙΣ ΣΤΗΛΕΣ ΓΡΑΜΜΕΝΕΣ ΔΥΟ ΦΟΡΕΣ.

@@ -6,6 +6,7 @@ import { downloadTableXlsx, csvDate } from './exportCsv';
 import { saved } from '@/components/dbWrite';
 import { drawQrToCanvas } from '@/lib/qr';
 import { T, TT, Badge, Btn, PageTitle, ExportButton, EmptyState, Modal, SkeletonKPIs, InfoBanner, fn, fixedCols, pageShell, Bar } from '@/components/Theme';
+import { fpRate } from '@/lib/core/format';
 import { ActionMenu } from '@/components/ActionMenu';
 import { PLANS, TRIAL_DAYS, type PlanId } from '@/lib/billing/plans';
 import { TRIAL_PLAN } from '@/lib/billing/entitlements';
@@ -235,7 +236,7 @@ function Milestone({ title, icon, count, target, unit, kind, rewardTitle, claimS
             <Ic d={icon} s={16} c="var(--text-secondary)" />
             <span style={{ ...TT.label }}>{title}</span>
           </span>
-          <span className={pr.reached ? undefined : 'ref-kpi-hover'} style={{ ...TT.kpi, flexShrink: 0, color: pr.reached ? 'var(--positive)' : undefined }}><Num value={pr.count} /><span style={{ ...TT.caption }}> / {target}{unit ? ` ${unit}` : ''}</span></span>
+          <span className={pr.reached ? undefined : 'ref-kpi-hover'} style={{ ...TT.kpi, flexShrink: 0, color: pr.reached ? 'var(--positive)' : undefined }}><Num value={pr.count} /><span style={{ ...TT.caption, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>/{target}{unit ? ` ${unit}` : ''}</span></span>
         </div>
         <div style={{ ...TT.displaySm, marginBottom: 10 }}>{rewardTitle}</div>
         <Bar pct={pr.pct} tone={pr.reached ? 'var(--positive)' : 'var(--accent)'} height={8} track="var(--ring-track)" grow label="Πρόοδος συστάσεων" />
@@ -476,7 +477,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
   );
 
   return (
-    <div style={pageShell(900)}>
+    <div style={pageShell('form')}>
       {styleBlock}
 
       {/* ── QR κωδικός συνδέσμου (για διά ζώσης πρόσκληση) ──
@@ -522,7 +523,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
             {standing > 0 && (
               <div className="ref-rise" style={PILL}>
                 <span style={{ color: 'var(--accent)', display: 'inline-flex' }}><Ic d="M23 6l-9.5 9.5-5-5L1 18|M17 6h6v6" s={15} /></span>
-                <span style={{ ...TT.bodySm, color: PILL_TEXT, fontWeight: 600 }}>Είσαι μέσα στο {standing}% με τις περισσότερες προσκλήσεις αυτόν τον μήνα</span>
+                <span style={{ ...TT.bodySm, color: PILL_TEXT, fontWeight: 600 }}>Είσαι μέσα στο {fpRate(standing)} με τις περισσότερες προσκλήσεις αυτόν τον μήνα</span>
               </div>
             )}
             {social >= 8 && (
@@ -800,7 +801,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, minHeight: 22 }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                   <Ic d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z|M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" s={16} c="var(--text-secondary)" />
-                  <span style={{ ...TT.label }}>Προσκάλεσε έναν Επαγγελματία</span>
+                  <span style={{ ...TT.label }}>Προσκάλεσε έναν επαγγελματία</span>
                 </span>
                 {(stats?.m_pro ?? 0) >= 1 && <Badge tone="positive">Το πέτυχες</Badge>}
               </div>

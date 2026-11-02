@@ -28,6 +28,7 @@ import { monthNom, monthShort, monthAcc } from '@/lib/core/months';
 import type { Forecast, ForecastGap, ForecastLine, ForecastMonth } from '@/lib/home/forecast12';
 import { track, PRODUCT_EVENTS, forecastProps } from '@/lib/analytics/events';
 import type { createClient } from '@/lib/supabase/client';
+import { niceTicks } from './LoanShared';
 
 type SupaClient = ReturnType<typeof createClient>;
 
@@ -35,7 +36,10 @@ const monthTitle = (m: ForecastMonth) => `${monthNom(m.month - 1)} ${m.year}`;
 const signed = (l: Pick<ForecastLine, 'amount' | 'dir'>) => (l.dir === 'in' ? `+${fe(l.amount)}` : feSigned(-l.amount));
 
 /** Η λέξη στη θέση του ποσού, για ό,τι δεν ξέρουμε. Ποτέ μηδέν. */
-const GAP_WORD: Record<ForecastGap['kind'], string> = { vacancy: 'κενό;', missing: 'λείπει', unrecorded: 'άγνωστο', owed: 'οφείλεται' };
+// «ΠΙΘΑΝΟ ΚΕΝΟ», ΟΧΙ «ΚΕΝΟ;». Το «;» είναι το ελληνικό ερωτηματικό, αλλά δίπλα
+// σε ποσά διαβαζόταν ως άνω τελεία ή ως τυπογραφικό λάθος· η λέξη λέει την
+// αβεβαιότητα χωρίς σημείο στίξης.
+const GAP_WORD: Record<ForecastGap['kind'], string> = { vacancy: 'πιθανό κενό', missing: 'λείπει', unrecorded: 'άγνωστο', owed: 'οφείλεται' };
 
 // Οι ροές που θέλουν μήνυμα όταν η πρόβλεψη είναι κενή: πού γράφεται καθεμία.
 const EMPTY_STEPS: { tab: string; label: string }[] = [
@@ -84,7 +88,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   // ── Η ΚΟΙΝΗ ΚΛΙΜΑΚΑ ─────────────────────────────────────────────────────
   // Το ύψος της εισροής και της εκροής μετριέται με τον ίδιο χάρακα: η πάνω
   // ζώνη παίρνει όσο ύψος χρειάζεται ο μεγαλύτερος μήνας εισροών, η κάτω όσο ο
-  // μεγαλύτερος μήνας εκροών. Το «κενό;» μετράει με το ενοίκιο που λείπει.
+  // μεγαλύτερος μήνας εκροών. Το «πιθανό κενό» δεν μετράει: δεν έχει ποσό.
   // Το ύψος του άδειου πλαισίου είναι ΕΝΑ μίσθωμα (`level` από τη μηχανή), όχι η
   // μεγαλύτερη γραμμή ενοικίου: μια τριμηνιαία δόση θα το έκανε τριπλάσιο.
   const vacancyOf = (m: ForecastMonth) => m.gaps.find(g => g.kind === 'vacancy');
@@ -93,12 +97,36 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   // Σεπτέμβριο γέμιζε όλη την πάνω ζώνη χωρίς κανένα ποσό: διαβαζόταν ως
   // «αναμενόμενο». Είναι ΑΓΝΩΣΤΟ, όχι ποσό, οπότε γίνεται μικρό σημάδι στη
   // βάση και η κλίμακα μετρά μόνο ό,τι έχει τιμή.
-  const maxUp = Math.max(0, ...months.map(m => m.inActual + m.inExpected));
-  const maxDown = Math.max(0, ...months.map(m => m.outActual + m.outExpected));
+  // ΣΤΡΟΓΓΥΛΑ ΑΚΡΑ ΣΤΗΝ ΚΛΙΜΑΚΑ. Ο άξονας έγραφε το ίδιο το μέγιστο,
+  // «−1.189€»: αριθμός που δεν είναι σκαλί και δεν βοηθά να διαβαστεί καμία
+  // άλλη στήλη. Κάθε ζώνη ανεβαίνει ως το πρώτο στρογγυλό σκαλί της σειράς
+  // 1-2-5 (`niceTicks`, ίδιο με τα γραφήματα του δανείου): «1.500€ · 0€ · −1.500€».
+  const dataUp = Math.max(0, ...months.map(m => m.inActual + m.inExpected));
+  const dataDown = Math.max(0, ...months.map(m => m.outActual + m.outExpected));
+  const upTicks = dataUp > 0 ? niceTicks(dataUp) : null;
+  const downTicks = dataDown > 0 ? niceTicks(dataDown) : null;
+  const maxUp = upTicks?.hi ?? 0;
+  const maxDown = downTicks?.hi ?? 0;
   const anyVac = months.some(x => vacancyOf(x));
   // Η πάνω ζώνη κρατά λίγο ύψος για το σημάδι του κενού ακόμη κι αν δεν υπάρχει εισροή.
   const upRoom = maxUp > 0 ? maxUp : anyVac ? (maxDown || 1) * 0.12 : 0;
   const span = upRoom + maxDown || 1;
+  // Οι γραμμές της κλίμακας: κάθε σκαλί πάνω και κάτω από το μηδέν, ως κλάσμα
+  // του ύψους. Η ετικέτα παραλείπεται όταν θα ακουμπούσε την προηγούμενη (το
+  // στενό ύψος είναι 148: κάτω από 14 εικονοστοιχεία οι δύο αριθμοί κολλούν).
+  const zeroAt = upRoom / span;
+  const scaleLines = [
+    ...(upTicks?.ticks ?? []).filter(v => v > 0).map(v => ({ v, at: (upRoom - v) / span, label: feWhole(v) })),
+    ...(downTicks?.ticks ?? []).filter(v => v > 0).map(v => ({ v: -v, at: (upRoom + v) / span, label: `−${feWhole(v)}` })),
+  ].sort((a, b) => a.at - b.at);
+  const MIN_GAP = 14 / 148;
+  const labelled = new Set<number>();
+  {
+    const taken = [zeroAt];
+    // Πρώτα τα άκρα (μέγιστη εισροή και εκροή), μετά τα ενδιάμεσα.
+    const order = [...scaleLines].sort((a, b) => Math.abs(b.at - zeroAt) - Math.abs(a.at - zeroAt));
+    for (const l of order) if (taken.every(t => Math.abs(t - l.at) >= MIN_GAP)) { taken.push(l.at); labelled.add(l.v); }
+  }
   const [hov, setHov] = useState<number | null>(null);
   const plotRef = useRef<HTMLDivElement>(null);
   const hoverAt = (clientX: number) => {
@@ -171,11 +199,11 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
             <li><span className="sw sw-in" aria-hidden />Εισροές</li>
             <li><span className="sw sw-out" aria-hidden />Εκροές</li>
             <li><span className="sw sw-exp" aria-hidden />Αναμενόμενο</li>
-            {anyVac && <li><span className="sw sw-vac" aria-hidden />κενό; χωρίς ενοίκιο μετά τη λήξη</li>}
-            {tight && <li><span className="sw-dot" aria-hidden />ο πιο σφιχτός μήνας</li>}
+            {anyVac && <li><span className="sw sw-vac" aria-hidden />Πιθανό κενό μετά τη λήξη</li>}
+            {tight && <li><span className="sw-dot" aria-hidden />Ο πιο σφιχτός μήνας</li>}
             {/* Το σημάδι του «λείπει» κάτω από τις εκροές μοιάζει με αναμενόμενο ποσό·
                 χωρίς δική του γραμμή στο υπόμνημα διαβαζόταν ως τέτοιο. */}
-            {months.some(x => x.gaps.some(g => g.kind === 'missing' && g.flow !== 'rent')) && <li><span className="sw sw-miss" aria-hidden />λείπει ποσό</li>}
+            {months.some(x => x.gaps.some(g => g.kind === 'missing' && g.flow !== 'rent')) && <li><span className="sw sw-miss" aria-hidden />Λείπει ποσό</li>}
           </ul>
         </div>
 
@@ -188,13 +216,13 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
             εκροή, στη μέση το μηδέν. */}
         <figure className="fc-chart" role="img" aria-label={`${summary} Ο πίνακας κάτω από το γράφημα έχει όλους τους μήνες.`}>
           <div className="fc-scale" aria-hidden>
-            {maxUp > 0 && <span className="fc-tick fc-tick-top">{feWhole(maxUp)}</span>}
-            <span className="fc-tick fc-tick-zero" style={frac(upRoom, span)}>0</span>
-            {maxDown > 0 && <span className="fc-tick fc-tick-bot">−{feWhole(maxDown)}</span>}
+            {scaleLines.filter(l => labelled.has(l.v)).map(l => (
+              <span key={l.v} className="fc-tick" style={{ ['--fc-share' as string]: l.at }}>{l.label}</span>
+            ))}
+            <span className="fc-tick" style={frac(upRoom, span)}>{feWhole(0)}</span>
           </div>
           <div className="fc-plot" ref={plotRef} onMouseMove={e => hoverAt(e.clientX)} onMouseLeave={() => setHov(null)}>
-            {maxUp > 0 && <span className="fc-grid fc-grid-top" aria-hidden />}
-            {maxDown > 0 && <span className="fc-grid fc-grid-bot" aria-hidden />}
+            {scaleLines.map(l => <span key={l.v} className="fc-grid" style={{ ['--fc-share' as string]: l.at }} aria-hidden />)}
             <span className="fc-axis" style={frac(upRoom, span)} aria-hidden />
             {months.map((x, i) => {
               const vac = vacancyOf(x);
@@ -310,7 +338,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
                 ))}
               </tbody>
             </table>
-            {forecast.gapCount > 0 && <p className="fc-note">* Μήνας με «κενό;», ποσό που λείπει ή ενοίκιο που δεν έχει μπει ακόμη.</p>}
+            {forecast.gapCount > 0 && <p className="fc-note">* Μήνας με πιθανό κενό, ποσό που λείπει ή ενοίκιο που δεν έχει μπει ακόμη.</p>}
           </div>
         )}
       </div>
@@ -394,17 +422,13 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   .fc-tick {
     position: absolute; right: 0; font-family: ${T.font.num}; font-size: 11px; line-height: 1;
     color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap;
+    top: calc(var(--fc-share, 0) * 100%); transform: translateY(-50%);
   }
-  .fc-tick-top { top: 0; }
-  .fc-tick-bot { bottom: 0; }
-  .fc-tick-zero { top: calc(var(--fc-share, 0) * 100%); transform: translateY(-50%); }
   .fc-plot {
     position: relative; height: 176px;
     display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 4px;
   }
-  .fc-grid { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dotted var(--border-subtle); pointer-events: none; }
-  .fc-grid-top { top: 0; }
-  .fc-grid-bot { bottom: 0; }
+  .fc-grid { position: absolute; left: 0; right: 0; top: calc(var(--fc-share, 0) * 100%); height: 0; border-top: 1px dotted var(--border-subtle); pointer-events: none; }
   .fc-axis { position: absolute; left: 0; right: 0; top: calc(var(--fc-share, 0) * 100%); height: 1px; background: var(--series-axis); pointer-events: none; }
   .fc-col {
     position: relative; display: flex; flex-direction: column; min-width: 0;

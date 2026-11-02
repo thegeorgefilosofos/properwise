@@ -60,11 +60,13 @@ import { AsOfNote } from '@/components/AsOfNote';
 import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 import {
   ENFIA_REDUCTIONS, ENFIA_FLOOR_COEF, enfiaReductionInForce, enfiaReductionRate, enfiaAgeChoices,
+  ENFIA_SURCHARGE_THRESHOLD, ENFIA_EXTRA_TAX_FREE,
 } from '@/lib/billing/enfia';
 import { ENFIA_FLOOR_LABEL } from '@/lib/billing/enfiaFloors';
 import { ENFIA_UNKNOWN as UNKNOWN, type EnfiaState } from './useEnfia';
 import { ENFIA_INSTALMENTS, ENFIA_MIN_INSTALMENT, enfiaInstalmentCount } from '@/lib/tools/enfiaSchedule';
 import { parseAmount } from '@/lib/core/greek';
+import { fpRate } from '@/lib/core/format';
 
 const ZONE_OPTIONS = [
   { value: UNKNOWN,      label: 'Δεν γνωρίζω ακόμη'                 },
@@ -560,9 +562,9 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
           <div {...fixedCols(3, 14)} style={{ ...fixedCols(3, 14).style, marginTop: 14 }}>
             <CustomSelect label="Παλαιότητα" value={now.ageKey} onChange={v => upd({ enfiaAge: v })} options={ageOptions(enfiaYear)}/>
             <NumberInput label="Συνολική αξία όλων των ακινήτων" value={s.enfiaTotalVal} onChange={v => upd({ enfiaTotalVal: v })} suffix="€"
-              labelInfo="Από αυτήν εξαρτάται η αυτόματη μείωση και η προσαύξηση πάνω από τις 500.000€."/>
+              labelInfo={`Από αυτήν εξαρτάται η αυτόματη μείωση και η προσαύξηση πάνω από τις ${feWhole(ENFIA_SURCHARGE_THRESHOLD)}.`}/>
             <NumberInput label="Αντικειμενική αξία αυτού του ακινήτου" value={s.enfiaPropVal} onChange={v => upd({ enfiaPropVal: v })} suffix="€"
-              labelInfo="Πρόσθετος φόρος επιβάλλεται όταν η αξία του ενός ακινήτου ξεπερνά τις 400.000€."/>
+              labelInfo={`Πρόσθετος φόρος επιβάλλεται όταν η αξία του ενός ακινήτου ξεπερνά τις ${feWhole(ENFIA_EXTRA_TAX_FREE)}.`}/>
           </div>
 
           {insured && !(s.enfiaReductions || []).includes('insurance') && (
@@ -618,7 +620,7 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
                           : notYet
                             ? `Δεν ισχύει για τον ΕΝΦΙΑ ${enfiaYear}: το μέτρο ξεκινά από το ${r.sinceYear}.`
                             : attica
-                              ? 'Δεν δίνεται στην Περιφέρεια Αττικής, εκτός από την Π.Ε. Νήσων (από τον ΤΚ του ακινήτου).'
+                              ? 'Δεν δίνεται στην Περιφέρεια Αττικής, εκτός από την Περιφερειακή Ενότητα Νήσων (κρίνεται από τον ταχυδρομικό κώδικα του ακινήτου).'
                               : `Δεν δίνεται σε αυτή την αξία: το όριο του μέτρου είναι ${fe(r.maxHomeValue!)}.`}
                       </span>
                     )}
@@ -633,12 +635,12 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
             <div style={{ marginTop: T.sp.lg, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
               {[
                 { label: 'Κύριος φόρος κτισμάτων', val: est.basic },
-                ...(est.extra > 0 ? [{ label: 'Πρόσθετος φόρος, αξία πάνω από 400.000€', val: est.extra }] : []),
-                ...(est.supplementary > 0 ? [{ label: 'Προσαύξηση, συνολική αξία πάνω από 500.000€', val: est.supplementary }] : []),
+                ...(est.extra > 0 ? [{ label: `Πρόσθετος φόρος, αξία πάνω από ${feWhole(ENFIA_EXTRA_TAX_FREE)}`, val: est.extra }] : []),
+                ...(est.supplementary > 0 ? [{ label: `Προσαύξηση, συνολική αξία πάνω από ${feWhole(ENFIA_SURCHARGE_THRESHOLD)}`, val: est.supplementary }] : []),
                 // Το ποσοστό ΕΔΩ είναι το συνδυασμένο, όχι το ονομαστικό της κάθε
               // μείωσης που γράφεται πιο πάνω δίπλα στην επιλογή. Διάλεγες 50%
               // και διάβαζες 65% χωρίς λέξη που να το εξηγεί.
-              ...(est.reductionAmount > 0 ? [{ label: `Μειώσεις, συνολικά ${fp(est.reductionPct)}`, val: -est.reductionAmount }] : []),
+              ...(est.reductionAmount > 0 ? [{ label: `Μειώσεις, συνολικά ${fpRate(est.reductionPct)}`, val: -est.reductionAmount }] : []),
               ].map(row => (
                 <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border-subtle)' }}>
                   <span style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>{row.label}</span>

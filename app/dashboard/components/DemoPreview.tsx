@@ -22,7 +22,7 @@
 
 import { Modal, Btn, T, TT, fe, fp, Stat } from '@/components/Theme';
 import { DEMO_PROPERTY, demoEnfia, demoLedger, demoRents, demoSummary } from '@/lib/demo/sample';
-import { fn } from '@/lib/core/format';
+import { fn, fpRate } from '@/lib/core/format';
 import { MONTHS_GEN } from '@/lib/core/months';
 import { isoDate } from '@/lib/core/time';
 
@@ -102,7 +102,7 @@ export default function DemoPreview({ open, onClose, onAddProperty }: {
         <div style={{ ...TT.caption, marginTop: 4 }}>
           ΕΝΦΙΑ {fe(enfia.result.annual)}: {DEMO_PROPERTY.sqm} τ.μ. × {fe(enfia.zoneTax)} βασικός φόρος ζώνης
           ({fe(enfia.pricePerSqm)} ανά τ.μ.) × {fn(enfia.floorCoef, 2)} όροφος × {fn(enfia.ageCoef, 2)} παλαιότητα
-          = {fe(enfia.result.subtotal)}, μείον {fn(enfia.result.reductionPct)}% μείωση.
+          = {fe(enfia.result.subtotal)}, μείον {fpRate(enfia.result.reductionPct)} μείωση.
         </div>
         {late && (
           <div style={{ ...TT.caption, marginTop: 4 }}>
@@ -146,7 +146,7 @@ export default function DemoPreview({ open, onClose, onAddProperty }: {
                 {ledger.map(r => (
                   <tr key={r.category}>
                     <th scope="row" style={{ ...TT.bodySm, color: 'var(--text-primary)' }}>{r.label}</th>
-                    <td style={{ ...TT.caption, fontFamily: T.font.mono, whiteSpace: 'nowrap' }}>{r.account}</td>
+                    <td style={{ ...TT.caption, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{r.account}</td>
                     {/* Καμία δήλωση γραμματοσειράς αριθμών: η `.num` δίνει ήδη
                         δεξιά στοίχιση και `tabular-nums`, το `T.font.num` είναι
                         το ίδιο Inter με το κείμενο. */}
@@ -158,7 +158,7 @@ export default function DemoPreview({ open, onClose, onAddProperty }: {
           </div>
         </div>
         <div style={{ ...TT.caption, marginTop: 10 }}>
-          Οι λογαριασμοί είναι του σχεδίου των ΕΛΠ, ν.4308/2014. Ο φάκελος του λογιστή βγαίνει με αυτούς.
+          Οι λογαριασμοί είναι του σχεδίου των ΕΛΠ, ν. 4308/2014. Ο φάκελος του λογιστή βγαίνει με αυτούς.
         </div>
       </div>
     </Modal>

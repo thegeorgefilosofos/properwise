@@ -30,7 +30,7 @@ export const metadata = noindexPage(
 /** Τι σύμβαση έχει ο λογαριασμός, σε μία φράση για να την επιβεβαιώσει ο ίδιος. */
 function contractOf(plan: string | null | undefined, cycle: string | null | undefined): string {
   const id = normalizePlan(plan || 'free');
-  if (id === 'free') return `Λογαριασμός ${IDENTITY.tradeName}, δωρεάν πακέτο «${PLANS.free.name}»`;
+  if (id === 'free') return `Λογαριασμός ${IDENTITY.tradeName}, πακέτο «${PLANS.free.name}» χωρίς συνδρομή`;
   return `Συνδρομή ${IDENTITY.tradeName} «${PLANS[id].name}», ${cycle === 'annual' ? 'ετήσια' : 'μηνιαία'}`;
 }
 

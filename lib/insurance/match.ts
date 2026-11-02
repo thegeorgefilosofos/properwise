@@ -29,6 +29,8 @@
 // βεβαιότητα για το συγκεκριμένο ακίνητο: έτος κατασκευής και ύπαρξη δανείου.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { fe } from '@/lib/core/format';
+
 /** Οι ανάγκες που κρίνουν αν ένα πρόγραμμα κάνει για το ακίνητο. */
 export type Need =
   | 'earthquake'   // σεισμός
@@ -130,7 +132,7 @@ export function assessNeeds(p: PropertyRisk): NeedAssessment[] {
       reason: 'Βραχυχρόνια μίσθωση. Το σπίτι είναι επιπλωμένο και περνούν από μέσα άγνωστοι κάθε λίγες μέρες.',
     });
   } else if (contents >= 15000) {
-    out.push({ need: 'theft', weight: 'required', reason: `Δηλωμένο περιεχόμενο ${contents.toLocaleString('el-GR')} ευρώ.` });
+    out.push({ need: 'theft', weight: 'required', reason: `Δηλωμένο περιεχόμενο αξίας ${fe(contents)}.` });
   } else if (contents > 0 || p.furnished) {
     out.push({ need: 'theft', weight: 'important', reason: 'Το ακίνητο είναι επιπλωμένο.' });
   } else {
@@ -150,7 +152,7 @@ export function assessNeeds(p: PropertyRisk): NeedAssessment[] {
   if (p.rentalMode === 'long_term' && (p.monthlyRent ?? 0) > 0) {
     out.push({
       need: 'relocation', weight: 'important',
-      reason: `Σε σοβαρή ζημιά χάνεις ${Math.round(p.monthlyRent ?? 0)} ευρώ ενοίκιο τον μήνα μέχρι την αποκατάσταση.`,
+      reason: `Σε σοβαρή ζημιά χάνεις ${fe(p.monthlyRent ?? 0)} ενοίκιο τον μήνα μέχρι την αποκατάσταση.`,
     });
   } else if (!rented) {
     out.push({ need: 'relocation', weight: 'important', reason: 'Καλύπτει τη στέγασή σου όσο το σπίτι είναι μη κατοικήσιμο.' });

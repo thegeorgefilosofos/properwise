@@ -20,7 +20,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
-import { fe, feRate, feWhole, fn } from '@/lib/core/format';
+import { fe, feRate, feWhole, fn, fpRate } from '@/lib/core/format';
 import {
   ENFIA_ZONE_TAX, ENFIA_AGE_BANDS, ENFIA_FLOOR_COEF, ENFIA_WEALTH_REDUCTION, ENFIA_REDUCTIONS,
   ENFIA_SURCHARGE_THRESHOLD, ENFIA_SURCHARGE_BRACKETS,
@@ -54,7 +54,7 @@ const URL = siteUrl(GUIDE.href);
 
 export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-pos-ypologizetai-o-enfia') });
 
-const pct = (n: number) => `${fn(n)}%`;
+const pct = (n: number) => fpRate(n);
 const reduction = (key: string) => ENFIA_REDUCTIONS.find(r => r.key === key)!;
 const LOW_INCOME = reduction('low_income');
 const LARGE_FAMILY = reduction('large_family');
@@ -170,7 +170,7 @@ const WEALTH_LAST = ENFIA_WEALTH_REDUCTION.filter(w => w.pct > 0).at(-1)!;
 
 // Πρόσθετος φόρος: παράδειγμα ακινήτου 450.000€, από την ίδια συνάρτηση της μηχανής.
 const EXTRA_EXAMPLE = 450_000;
-const rate = (r: number) => `${fn(r * 100, 1)}%`;
+const rate = (r: number) => fpRate(r * 100);
 const EXTRA_FIRST = rate(ENFIA_EXTRA_BRACKETS[0].rate);
 const EXTRA_LAST = rate(ENFIA_EXTRA_BRACKETS.at(-1)!.rate);
 

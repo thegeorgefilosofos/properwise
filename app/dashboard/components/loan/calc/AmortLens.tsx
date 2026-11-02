@@ -8,7 +8,7 @@
 // της γραμμής ή του πλακιδίου που εξετάζεις (`hoverRow`, `hoverCost`) μένει
 // στην καρτέλα, ώστε να μη χάνεται όταν ο φακός κλείνει και ξανανοίγει.
 // ═══════════════════════════════════════════════════════════════════════════
-import { fe, fn } from '@/lib/core/format'
+import { fe, fn, fpRate } from '@/lib/core/format'
 import { cardStyle } from '../../LoanShared'
 import DocChecklist from '../../DocChecklist'
 import { T, fixedCols, Btn } from '@/components/Theme'
@@ -75,7 +75,7 @@ export function TableLens({
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
             Εκτύπωση / PDF
           </Btn>
-          <Btn variant="primary" onClick={officialAmort} disabled={genOfficial} title="Επίσημο true-PDF με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς">
+          <Btn variant="primary" onClick={officialAmort} disabled={genOfficial} title="Επίσημο PDF με αριθμό εγγράφου και QR επαλήθευσης· κατάλληλο για τράπεζες, ΔΟΥ και φορείς">
             <ShieldCheck size={15}/>
             {genOfficial?'Δημιουργία…':'Επίσημο PDF'}
           </Btn>
@@ -227,7 +227,7 @@ export function TableLens({
             {label:'Συμβολαιογραφικά',value:fmtEur(totalCosts.notary),sub:'Κλιμακωτή αμοιβή με ΦΠΑ, εκτίμηση'},
             {label:'Κτηματολόγιο και εγγραφή',value:fmtEur(totalCosts.landReg),sub:`${fn(CADASTRE_RATE*1000)}‰ επί αξίας συν ${fe(CADASTRE_FIXED)}`},
             {label:'Δικηγόρος ελέγχου τίτλων',value:fmtEur(totalCosts.legal),sub:'Με ΦΠΑ, εκτίμηση'},
-            {label:'Αμοιβή μεσίτη',value:hasAgent?fmtEur(AGNT):fe(0),sub:hasAgent?`${agentPct}% συν ΦΠΑ`:'Ανενεργό'},
+            {label:'Αμοιβή μεσίτη',value:hasAgent?fmtEur(AGNT):fe(0),sub:hasAgent?`${fpRate(parseFloat(agentPct)||0)} συν ΦΠΑ`:'Ανενεργό'},
             {label:'Λοιπά',value:fmtEur(totalCosts.other),sub:'Πιστοποιητικά και εγγραφή υποθήκης, εκτίμηση'},
           ].map((item,i:number)=>{
             const on=hoverCost===i

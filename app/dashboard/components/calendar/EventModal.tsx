@@ -12,6 +12,7 @@ import { holidayName, isWeekend } from '@/lib/calendar/greekHolidays'
 import { parseQuickAdd } from '@/lib/calendar/quickAdd'
 import { buildInviteICS, inviteMailto, inviteWhatsApp, inviteViber, canInvite } from '@/lib/calendar/invite'
 import { downloadFile } from '@/lib/core/download'
+import { grDate } from '@/lib/core/format'
 import {
   type EventCategory, type EventPriority, type EventStatus, type FormState, CATEGORIES,
   PRIORITIES, STATUSES, RECURRING_OPTIONS,
@@ -108,7 +109,7 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
             η έμφαση του τίτλου μένει στα 16/500, δηλαδή σε μέγεθος και βάρος. */}
         <input ref={titleRef} id={fid('title')} value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} onFocus={focus} onBlur={blur} placeholder="Συντήρηση λέβητα, Παρασκευή 10:00" style={{...fld, fontSize:16, fontWeight:500}}/>
         {(()=>{ if(editing)return null; const qa=parseQuickAdd(form.title, new Date()); const hasExtra=!!(qa.date||qa.time)&&(qa.date!==form.event_date||qa.time!==(form.event_time||null)||qa.title!==form.title); if(!hasExtra)return null
-          const dLbl=qa.date?localDay(qa.date).toLocaleDateString('el-GR',{weekday:'short',day:'numeric',month:'short'}):''
+          const dLbl=qa.date?`${localDay(qa.date).toLocaleDateString('el-GR',{weekday:'short'})} ${grDate(qa.date)}`:''
           return (
             <button onClick={()=>setForm(f=>({...f,title:qa.title,event_date:qa.date||f.event_date,event_time:qa.time||f.event_time}))} style={{ display:'flex', alignItems:'center', gap: 8, marginTop:8, padding:'7px 12px', borderRadius:10, border:'1px solid var(--accent-border)', background:'var(--accent-soft)', color:'var(--accent)', fontSize: 'var(--fs-base)', fontWeight:500, cursor:'pointer', fontFamily: T.font.sans, width:'100%', textAlign:'left' }}>
               <Zap size={13}/>Ορισμός: {[dLbl,qa.time].filter(Boolean).join(' · ')}, «{qa.title}»

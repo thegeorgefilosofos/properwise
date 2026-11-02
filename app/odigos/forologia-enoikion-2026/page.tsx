@@ -318,9 +318,12 @@ export default function Page() {
 
         <h3 style={eg}>Παράδειγμα 3: το όριο των {feWhole(THRESHOLD)}</h3>
         <p className="lg-p">
-          {`Με φορολογητέο ακριβώς ${fe(THRESHOLD)} ο φόρος είναι ${fe(rentalIncomeTax(THRESHOLD, RENTAL_TAX_BRACKETS_2026))}, χωρίς καθόλου ${TOP_RATE}. Πάνω από εκεί, ακαθάριστα ${fe(EX3_WITH.gross)} με και χωρίς την έκπτωση ${DEDUCTION}:`}
+          {`Με φορολογητέο ακριβώς ${feWhole(THRESHOLD)} ο φόρος είναι ${feWhole(rentalIncomeTax(THRESHOLD, RENTAL_TAX_BRACKETS_2026))}, χωρίς καθόλου ${TOP_RATE}. Πάνω από εκεί, ακαθάριστα ${feWhole(EX3_WITH.gross)} με και χωρίς την έκπτωση ${DEDUCTION}:`}
         </p>
-        <div className="po-table-box" style={{ marginTop: 14 }}>
+        {/* ΙΔΙΟ ΠΛΑΤΟΣ ΚΑΙ ΙΔΙΑ ΟΨΗ ΜΕ ΤΑ ΠΑΡΑΔΕΙΓΜΑΤΑ 1 ΚΑΙ 2 (02.11.2026): τα δύο
+            πρώτα κάθονταν στο στενό μέτρο της `.gd-table` και το τρίτο σε όλη τη
+            στήλη. Τρεις στήλες χωρούν στο ίδιο μέτρο (ελάχιστο 320). */}
+        <div className="po-table-box gd-table" style={{ marginTop: 14 }}>
           <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
             <table className="po-table po-stack" style={{ '--tbl-min': '320px' } as CSSProperties}>
               <caption>Παράδειγμα 3</caption>
@@ -347,7 +350,7 @@ export default function Page() {
             εφαρμόζεται η περίπτωση Β», με ποσά της κλίμακας 2026· με την κλίμακα
             του 2025 τα ίδια ακαθάριστα δίνουν άλλο φόρο. */}
         <p className="lg-p" style={{ marginTop: 16 }}>
-          {`Διαφορά ${fe(EX3_WITHOUT.tax - EX3_WITH.tax)}. Η στήλη «Χωρίς έκπτωση» δείχνει τον φόρο όταν όλο το ενοίκιο της χρονιάς εισπράττεται μετρητά, όπως θα ισχύει από το ${FIRST_YEAR_BANK_RECEIPT + 1}· το ${FIRST_YEAR_BANK_RECEIPT} η κύρωση πιάνει μόνο όσα εισπράττονται από την 1η ${monthGen(FIRST_MONTH_BANK_RECEIPT - 1)}. Για τα εισοδήματα του ${FIRST_YEAR_BANK_RECEIPT - 1} ισχύει η στήλη με την έκπτωση.`}
+          {`Διαφορά ${feWhole(EX3_WITHOUT.tax - EX3_WITH.tax)}. Η στήλη «Χωρίς έκπτωση» δείχνει τον φόρο όταν όλο το ενοίκιο της χρονιάς εισπράττεται μετρητά, όπως θα ισχύει από το ${FIRST_YEAR_BANK_RECEIPT + 1}· το ${FIRST_YEAR_BANK_RECEIPT} η κύρωση πιάνει μόνο όσα εισπράττονται από την 1η ${monthGen(FIRST_MONTH_BANK_RECEIPT - 1)}. Για τα εισοδήματα του ${FIRST_YEAR_BANK_RECEIPT - 1} ισχύει η στήλη με την έκπτωση.`}
         </p>
 
         {/* 5. Πηγές / νομική βάση */}

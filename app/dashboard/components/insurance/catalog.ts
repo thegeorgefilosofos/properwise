@@ -436,7 +436,7 @@ const CATALOG: SourceCompany[] = [
       { id: 'gen_prem',   name: 'MyHome Premium', status: 'legacy', covers: ['Πλήρης Κάλυψη + Σεισμός + Κατολίσθηση'], earthquake: true,  flood: true,  natural: true  },
     ] },
   // ΑΧΑ: η σελίδα δεν απάντησε στην ανάγνωση της 12/10/2026 (χρονικό όριο).
-  { value: 'axa',           label: 'ΑΧΑ Ασφαλιστική',          url: 'https://www.axa.gr', agent_label: 'Σύμβουλος ΑΧΑ',
+  { value: 'axa',           label: 'AXA Ασφαλιστική',          url: 'https://www.axa.gr', agent_label: 'Σύμβουλος AXA',
     checkedAt: null,
     propertyTypes: ['Κύρια Κατοικία','Εξοχική Κατοικία','Ενοικιαζόμενη'],
     note: 'Η σελίδα της εταιρείας δεν διαβάστηκε στον έλεγχο της 12/10/2026: προγράμματα και καλύψεις μη επαληθευμένα.',

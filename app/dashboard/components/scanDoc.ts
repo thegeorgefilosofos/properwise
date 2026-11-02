@@ -156,7 +156,7 @@ export function unreadableFormat(file: { type?: string; name?: string }): string
   if (/hei[cf]/i.test(`${file.type || ''} ${file.name || ''}`)) {
     return 'Οι φωτογραφίες HEIC δεν διαβάζονται ακόμη. Τράβηξέ τη από εδώ με την κάμερα ή αποθήκευσέ τη ως JPG.';
   }
-  return 'Διαβάζονται φωτογραφίες JPG, PNG ή WEBP και αρχεία PDF.';
+  return 'Διαβάζονται φωτογραφίες JPG, PNG ή WebP και αρχεία PDF.';
 }
 
 /** Γιατί δεν μπαίνει στον Φάκελο και τι να κάνει ο χρήστης. Κενό όταν μπαίνει. */

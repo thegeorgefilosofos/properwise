@@ -322,7 +322,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
                 {ownerChoices.length > 1 && (
                   <div id="mya-owner" className="mya-span">
                     <CustomSelect label="Ιδιοκτήτης" value={ownerId ?? ''} onChange={v => { setOwnerId(v || null); setOwnerFromAfm(false); }}
-                      labelInfo={ownerFromAfm ? 'Προτάθηκε από τον ΑΦΜ της πράξης.' : 'Σε ποιον ιδιοκτήτη του Πελατολογίου ανήκει η πράξη. Τα νέα ακίνητα μπαίνουν στην καρτέλα του.'}
+                      labelInfo={ownerFromAfm ? 'Προτάθηκε από το ΑΦΜ της πράξης.' : 'Σε ποιον ιδιοκτήτη του Πελατολογίου ανήκει η πράξη. Τα νέα ακίνητα μπαίνουν στην καρτέλα του.'}
                       options={ownerChoices.map(o => ({ value: o.id, label: o.name }))} />
                   </div>
                 )}
@@ -339,7 +339,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
               </Note>
             )}
             {afmClash && (
-              <Note tone="warning" info="Ο ΑΦΜ της πράξης δεν είναι κανενός ιδιοκτήτη που έχεις στην εφαρμογή. Αν είναι δική σου, συνιδιοκτήτη ή πελάτη σου, συνέχισε. Αλλιώς διάλεξε άλλο αρχείο.">
+              <Note tone="warning" info="Το ΑΦΜ της πράξης δεν είναι κανενός ιδιοκτήτη που έχεις στην εφαρμογή. Αν είναι δική σου, συνιδιοκτήτη ή πελάτη σου, συνέχισε. Αλλιώς διάλεξε άλλο αρχείο.">
                 Η πράξη είναι σε άλλο ΑΦΜ.
               </Note>
             )}

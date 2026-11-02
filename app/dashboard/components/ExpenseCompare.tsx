@@ -9,16 +9,17 @@
 // δείχνει αυτή η οθόνη το είπε η μηχανή. Αν εκείνη δεν έχει κάτι να πει
 // (`meaningful === false`), η κάρτα δεν εμφανίζεται· δεν εφευρίσκουμε νούμερα.
 //
-// ΓΙΑΤΙ ΔΕΝ ΕΧΕΙ ΧΡΩΜΑ Η ΔΙΑΦΟΡΑ: η μηχανή δεν κρίνει. Το «ξόδεψες 25€ πάνω»
-// δεν είναι κακό — μπορεί να άλλαξε ο θερμοσίφωνας. Κόκκινο και πράσινο θα
-// έβαζαν κρίση εκεί που υπάρχει μόνο μέτρηση. Η κατεύθυνση φαίνεται από τη θέση
-// της ράβδου γύρω από τον άξονα και από το πρόσημο, όχι από χρώμα.
+// Η ΚΑΤΕΥΘΥΝΣΗ ΛΕΓΕΤΑΙ ΤΡΙΣ ΦΟΡΕΣ ΣΤΙΣ ΡΑΒΔΟΥΣ ΤΗΣ ΔΙΑΦΟΡΑΣ: θέση γύρω από τον
+// άξονα, πρόσημο και τόνος (`--negative` για ό,τι ανέβηκε, `--positive` για
+// ό,τι έπεσε). Με ένα μελάνι και για τις δύο πλευρές, στον οπτικό έλεγχο οι
+// δύο ράβδοι διαβάζονταν ως ίδιο πράγμα σε δύο μήκη. Ο τόνος μένει στη ράβδο·
+// το ποσό γράφεται στο μελάνι του κειμένου, όπως σε κάθε άλλη στήλη ποσών.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { Fragment, useMemo, useState } from 'react';
-import { T, TT, Card, ChipToggle, fe, fn } from '@/components/Theme';
-import { fpSigned } from '@/lib/core/format';
-import MonthBars from '@/components/MonthBars';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { T, TT, Card, ChipToggle, fe } from '@/components/Theme';
+import { feSigned, fpSigned } from '@/lib/core/format';
+import { MONTHS_SHORT } from '@/lib/core/months';
 import {
   compareMonth, history, lastCompleteMonth, monthPhrase,
   type Basis, type Comparison, type MonthPoint, type Spend,
@@ -31,27 +32,18 @@ interface Props {
 }
 
 // ── Ποσά ───────────────────────────────────────────────────────────────────
-// Τα λεπτά μία απόχρωση πιο σβηστά από τα ευρώ: το μάτι διαβάζει πρώτα το ποσό
-// που μετράει. Το `currentColor` κρατά τη σχέση σωστή σε κάθε συμφραζόμενο,
-// φωτεινό ή σκοτεινό θέμα.
+// ΤΑ ΛΕΠΤΑ ΓΡΑΦΟΝΤΑΙ ΟΠΩΣ ΣΕ ΚΑΘΕ ΑΛΛΗ ΟΘΟΝΗ. Εδώ ζούσαν λεπτά στο 52% του
+// χρώματος, μόνο σε αυτή την κάρτα: το «+12,00€» διαβαζόταν «+12» με ένα
+// σβησμένο υπόλειμμα και το ίδιο ποσό είχε άλλη όψη δυο κάρτες πιο κάτω. Ενα
+// ποσό, μία όψη, από τον κοινό μορφοποιητή.
 //
-// ΚΑΙ ΔΕΝ ΕΦΑΡΜΟΖΕΤΑΙ ΠΑΝΩ ΣΕ Ο,ΤΙ ΕΙΝΑΙ ΗΔΗ ΤΟ ΠΙΟ ΣΒΗΣΤΟ. Μετρημένο στον
-// περιηγητή, στο ίδιο στιγμιότυπο: πάνω σε `--text-primary` τα λεπτά βγάζουν
-// αντίθεση 4,63 προς 1 και περνούν· πάνω σε `--text-tertiary`, στα ένδεκα
-// εικονοστοιχεία της γραμμής «μέσος όρος», βγάζουν 3,44 προς 1 και κόβονται
-// από το όριο του 4,50. Μια τρίτη βαθμίδα κάτω από την τρίτη δεν υπάρχει: εκεί
-// το σβήσιμο απλώς σβήνει. Το `dim` λέει πού έχει νόημα η διάκριση.
-const CENTS_DIM = 'color-mix(in srgb, currentColor 52%, transparent)';
-
-function Eur({ value, sign = false, dim = true }: { value: number; sign?: boolean; dim?: boolean }) {
-  const abs = Math.abs(value);
-  // Τα λεπτά γράφονται πιο σβηστά από τα ευρώ — τυπογραφική επιλογή, όχι δεύτερη
-  // μορφοποίηση: ο αριθμός παράγεται από τον κοινό `fn` και μετά χωρίζεται.
-  const [int, dec] = fn(abs, 2).split(',');
-  const pre = sign ? (value > 0 ? '+' : value < 0 ? '−' : '') : '';
+// Το πρόσημο: το `feSigned` γράφει το τυπογραφικό μείον· το συν μπαίνει εδώ,
+// μόνο όπου η τιμή είναι διαφορά.
+function Eur({ value, sign = false }: { value: number; sign?: boolean }) {
+  const text = sign ? `${value > 0 ? '+' : ''}${feSigned(value)}` : fe(Math.abs(value));
   return (
     <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
-      {pre}{int}<span style={dim ? { color: CENTS_DIM } : undefined}>,{dec}</span>{'€'}
+      {text}
     </span>
   );
 }
@@ -96,8 +88,9 @@ function BasisSwitch({ value, onChange, enabled, labels }: {
 }
 
 // ── Πού πήγε η διαφορά ─────────────────────────────────────────────────────
-// Άξονας στη μέση: δεξιά ό,τι ανέβηκε, αριστερά ό,τι έπεσε. Καμία χρωματική
-// κρίση — η θέση και το πρόσημο λένε την κατεύθυνση.
+// Άξονας στη μέση: δεξιά ό,τι ανέβηκε, αριστερά ό,τι έπεσε. Πάνω από τη στήλη
+// των ράβδων, δύο ετικέτες λένε ποια πλευρά είναι ποια («− λιγότερα»,
+// «+ περισσότερα»), στον τόνο της ράβδου τους.
 //
 // ═══ ΕΝΑ ΠΛΕΓΜΑ ΓΙΑ ΟΛΕΣ ΤΙΣ ΣΕΙΡΕΣ, ΟΧΙ ΕΝΑ ΑΝΑ ΣΕΙΡΑ ═════════════════════
 // Κάθε οδηγός ήταν ΔΙΚΟ ΤΟΥ πλέγμα μέσα σε στήλη flex, με τρίτη στήλη `auto`.
@@ -112,6 +105,9 @@ function BasisSwitch({ value, onChange, enabled, labels }: {
 // στον αριθμό μέσα στο ίδιο κελί, το ποσό μετακινούνταν κατά τη διαφορά τους.
 // Δική του στήλη, που υπάρχει μόνο όταν κάποιος οδηγός έχει κάτι να πει: αλλιώς
 // θα άφηνε κενό διάστημα δεξιά από κάθε ποσό.
+const UP = 'var(--negative)';
+const DOWN = 'var(--positive)';
+
 function Drivers({ c }: { c: Comparison }) {
   // ΟΙ ΓΡΑΜΜΕΣ ΑΘΡΟΙΖΟΥΝ ΣΤΟΝ ΤΙΤΛΟ. Ό,τι δεν εξηγούν οι κατηγορίες που
   // δείχνονται μπαίνει σε μία τελευταία γραμμή, με το ίδιο σχήμα.
@@ -121,13 +117,23 @@ function Drivers({ c }: { c: Comparison }) {
   const max = Math.max(...rows.map(d => Math.abs(d.diff)), 1);
   const anyFlag = c.drivers.some(d => d.isNew || d.vanished);
   const flag: React.CSSProperties = { fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, fontWeight: 400, whiteSpace: 'nowrap' };
+  const side: React.CSSProperties = { fontSize: 'var(--fs-xs)', fontFamily: T.font.sans, fontWeight: 600, whiteSpace: 'nowrap' };
   return (
     <div style={{
       display: 'grid', alignItems: 'center', columnGap: 12, rowGap: 10,
-      // Ταβάνι 176 και όχι 128: το «Επισκευές και συντήρηση», το κοινό όνομα
-      // με τον Προϋπολογισμό, κοβόταν σε «Επισκευές και συντ…» ακόμη και στα 1.440.
-      gridTemplateColumns: `minmax(84px, 176px) minmax(60px, 1fr) auto${anyFlag ? ' auto' : ''}`,
+      // Η ΣΤΗΛΗ ΤΟΥ ΟΝΟΜΑΤΟΣ ΠΑΙΡΝΕΙ ΟΣΟ ΧΡΕΙΑΖΕΤΑΙ, ΩΣ ΤΟ 40%. Με σταθερό
+      // `minmax(84px, 176px)` το «Ρεύμα» κρατούσε 176 εικονοστοιχεία στα 390
+      // και η στήλη των ράβδων έμενε με εβδομήντα· το «Επισκευές και
+      // συντήρηση» τυλίγει πια σε δεύτερη γραμμή αντί να κοπεί.
+      gridTemplateColumns: `fit-content(40%) minmax(60px, 1fr) auto${anyFlag ? ' auto' : ''}`,
     }}>
+      {/* Η ΚΕΦΑΛΙΔΑ ΤΩΝ ΡΑΒΔΩΝ: ποια πλευρά του άξονα είναι ποια. Πιάνει και
+          τη στήλη των ποσών, ώστε οι δύο ετικέτες να χωρούν και στα 320. */}
+      <span aria-hidden />
+      <span aria-hidden style={{ gridColumn: anyFlag ? '2 / 5' : '2 / 4', display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: -4 }}>
+        <span style={{ ...side, color: DOWN }}>− λιγότερα</span>
+        <span style={{ ...side, color: UP }}>+ περισσότερα</span>
+      </span>
       {rows.map(d => {
         const ratio = Math.min(Math.abs(d.diff) / max, 1);
         const up = d.diff > 0;
@@ -135,16 +141,16 @@ function Drivers({ c }: { c: Comparison }) {
           <Fragment key={d.slug}>
             {/* Τυλίγει αντί να κόβεται: στα 320 η στήλη έχει 84 εικονοστοιχεία και
                 το «Επισκευές και συντήρηση» έχανε τη μισή λέξη. */}
-            <span style={{ fontSize: 12, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans, minWidth: 0 }}>
+            <span style={{ fontSize: 'var(--fs-sm)', lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans, minWidth: 0 }}>
               {d.label}
             </span>
             <span style={{ position: 'relative', display: 'block', height: 8 }}>
-              <span aria-hidden style={{ position: 'absolute', left: '50%', top: -2, width: 1, height: 12, background: 'var(--border-default)' }} />
+              <span aria-hidden style={{ position: 'absolute', left: '50%', top: -2, width: 1, height: 12, background: 'var(--series-axis)' }} />
               <span style={{
                 position: 'absolute', top: 0, height: 8, borderRadius: T.radius.hair,
                 width: `${ratio * 50}%`,
                 left: up ? '50%' : `${50 - ratio * 50}%`,
-                background: 'color-mix(in srgb, var(--text-primary) 30%, transparent)',
+                background: up ? UP : DOWN,
               }} />
             </span>
             <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', justifySelf: 'end' }}>
@@ -159,81 +165,165 @@ function Drivers({ c }: { c: Comparison }) {
 }
 
 // ── Το ιστορικό ────────────────────────────────────────────────────────────
-// Ράβδοι με ΚΛΕΙΔΩΜΕΝΟ πλάτος και ελαστικό κενό: σε μεγάλη οθόνη οι ράβδοι δεν
-// γίνονται μπλοκ, σε μικρή δεν στριμώχνονται μεταξύ τους. Η ανάγνωση του ποσού
-// γίνεται σε σταθερή θέση πάνω από το γράφημα — τίποτα δεν αναπηδά στο hover.
-// ΕΝΑ ΓΡΑΜΜΑ ΔΕΝ ΕΙΝΑΙ ΜΗΝΑΣ. Η σειρά έγραφε «Σ Ο Ν Δ Ι Φ Μ Α Μ Ι Ι Α»: τρία
-// «Μ», δύο «Ι», δύο «Α» — δώδεκα ετικέτες από τις οποίες οι επτά δεν ξεχωρίζουν
-// μεταξύ τους. Ο χρήστης δεν μπορούσε να πει σε ποιον μήνα δείχνει η ψηλή
-// ράβδος. Οι συντομογραφίες των τριών γραμμάτων ζουν ήδη στο lib/core/months.
+// ΕΝΑ ΓΡΑΜΜΑ ΔΕΝ ΕΙΝΑΙ ΜΗΝΑΣ. Οι ετικέτες είναι οι συντομογραφίες τριών
+// γραμμάτων του lib/core/months· ράβδος και ετικέτα είναι μία στήλη, άρα και
+// στοιχισμένες.
 //
-// Χωρούσαν πάντα: οι ράβδοι είναι δεκατέσσερα εικονοστοιχεία η καθεμιά, αλλά
-// μοιράζονται ολόκληρο το πλάτος της κάρτας. Το πρόβλημα δεν ήταν ο χώρος·
-// ήταν ότι η ετικέτα είχε καρφωμένο πλάτος ίσο με της ράβδου, σε ΞΕΧΩΡΙΣΤΗ
-// σειρά. Ράβδος και ετικέτα είναι πλέον μία στήλη, άρα και στοιχισμένες.
+// ═══ ΤΟ ΓΡΑΦΗΜΑ ΕΛΕΓΕ ΜΟΝΟ ΣΧΗΜΑ ═══════════════════════════════════════════
+// Δώδεκα γκρίζες ράβδοι στο 22% του μελανιού (κάτω από το 3:1 που ζητά το WCAG
+// 1.4.11 για γραφικό με πληροφορία στο φωτεινό θέμα), χωρίς κανέναν αριθμό
+// πάνω στο γράφημα και με τον μέσο όρο μόνο ως κείμενο στη γωνία. Ο χρήστης
+// έβλεπε «ψηλή ράβδος τον Ιούλιο» αλλά όχι πόσο, ούτε πού κάθεται ο Οκτώβριος
+// σε σχέση με το συνηθισμένο.
+//
+// Τώρα: ράβδοι στο `--series-out` (η εκροή, ≥3:1 και στα δύο θέματα), ο μήνας
+// της κάρτας στο `--series-in`, γραμμή βάσης στο `--series-axis`, διακεκομμένη
+// γραμμή μέσου όρου με το ποσό της και το ποσό γραμμένο πάνω από ΔΥΟ ράβδους:
+// την ψηλότερη και τον μήνα της κάρτας. Οχι πάνω από όλες: δώδεκα ποσά σε
+// στήλες των είκοσι εικονοστοιχείων στα 320 θα έπεφταν το ένα πάνω στο άλλο.
+//
+// ═══ Η ΓΡΑΜΜΗ ΑΝΑΓΝΩΣΗΣ ════════════════════════════════════════════════════
+// Σε ηρεμία η σειρά από πάνω είναι η επικεφαλίδα του γραφήματος· με τον
+// κέρσορα ή την εστίαση πάνω σε ράβδο γίνεται η ανάγνωσή της. Η θέση και το
+// ύψος δεν αλλάζουν, οπότε τίποτα δεν αναπηδά. Κάθε στήλη εστιάζεται με Tab και
+// έχει `aria-label`, όπως στο κοινό components/MonthBars.tsx.
+//
+// ΓΙΑΤΙ ΟΧΙ ΤΟ ΚΟΙΝΟ MonthBars: δεν ξέρει μέσο όρο, ετικέτες τιμών ούτε τα
+// χρώματα σειρών. Η πρόταση να τα αποκτήσει, ώστε να τα πάρει και η καρτέλα
+// των επισκεπτών, είναι γραμμένη στην αναφορά του ελέγχου ποιότητας.
+const PLOT_H = 116;
+const LABEL_H = 16;   // μία γραμμή ετικέτας τιμής, var(--fs-xs)
+const HEAD_ROOM = 2 * LABEL_H + 4;
 
-// ═══ Η ΓΡΑΜΜΗ ΑΝΑΓΝΩΣΗΣ ΕΓΡΑΦΕ ΤΟΝ ΙΔΙΟ ΑΡΙΘΜΟ ΜΕ ΤΗΝ ΚΟΡΥΦΗ ΤΗΣ ΚΑΡΤΑΣ ═══════
-// Χωρίς κέρσορα πάνω από ράβδο, ο «επιλεγμένος» μήνας ήταν ο ΤΡΕΧΩΝ: η κάρτα
-// έγραφε «31,20€» σε 28 εικονοστοιχεία στην κορυφή και «Αύγουστος 2026 31,20€»
-// εκατόν πενήντα πιο κάτω, με μια επικεφαλίδα «ΔΩΔΕΚΑ ΜΗΝΕΣ» ανάμεσά τους. Τρεις
-// σειρές, δύο από τις οποίες έλεγαν ό,τι είχε ήδη ειπωθεί.
-//
-// ΜΙΑ ΣΕΙΡΑ, ΔΥΟ ΚΑΤΑΣΤΑΣΕΙΣ. Σε ηρεμία η σειρά είναι η επικεφαλίδα του
-// γραφήματος· με τον κέρσορα πάνω σε ράβδο γίνεται η ανάγνωσή της. Η θέση, το
-// ύψος και το δεξί άκρο δεν αλλάζουν, οπότε τίποτα δεν αναπηδά — αλλάζει μόνο
-// τι λέει· το λέει μόνο όταν υπάρχει κάτι νέο να πει.
-// ═══ ΤΟ ΓΡΑΦΗΜΑ ΕΦΥΓΕ ΣΕ ΚΟΙΝΟ ΣΤΟΙΧΕΙΟ ══════════════════════════════════════
-// Ηταν γραμμένο ΚΑΙ εδώ ΚΑΙ στην καρτέλα των επισκεπτών, με τη δεύτερη γραφή να
-// έχει χάσει τα πάντα: κανένα `aria-label`, καμία εστίαση, καμία γραμμή
-// ανάγνωσης και ένα `title` που σε οθόνη αφής δεν εμφανίζεται ποτέ — δηλαδή στο
-// κινητό δώδεκα ορθογώνια χωρίς ούτε έναν αριθμό. Δώδεκα μήνες με ένα ποσό ο
-// καθένας είναι το ίδιο σχήμα και στις δύο οθόνες: components/MonthBars.tsx.
-//
-// Ο,τι είναι ΔΙΚΟ ΤΗΣ αυτής της κάρτας μένει εδώ και περνά ως ιδιότητα: ο μέσος
-// όρος στο δεξί άκρο και η μεταβολή «από πέρσι» στη γραμμή ανάγνωσης.
 function HistoryBars({ points, currentKey }: { points: MonthPoint[]; currentKey: string }) {
+  const [hover, setHover] = useState<string | null>(null);
+  const sel = points.find(p => p.key === hover) ?? null;
   const months = points.filter(p => p.total > 0).length;
   const avg = months > 0 ? points.reduce((s, p) => s + p.total, 0) / months : 0;
-  const yoyOf = (key: string) => points.find(p => p.key === key)?.yoy ?? null;
+  // Χρειάζονται δύο τιμές για να υπάρχει μέση τιμή· με μία, ο «μέσος όρος»
+  // ΕΙΝΑΙ το ποσό του μήνα, γραμμένο δεύτερη φορά.
+  const showAvg = avg > 0 && months >= 2;
+  const max = Math.max(...points.map(p => p.total), 1);
+  const px = (v: number) => (v / max) * PLOT_H;
+
+  // ΠΟΙΕΣ ΡΑΒΔΟΙ ΓΡΑΦΟΥΝ ΤΟ ΠΟΣΟ ΤΟΥΣ: η ψηλότερη και ο μήνας της κάρτας.
+  const peakIdx = points.reduce((b, p, i) => (p.total > points[b].total ? i : b), 0);
+  const curIdx = points.findIndex(p => p.key === currentKey);
+  const labelled = new Set<number>([peakIdx, ...(curIdx >= 0 && points[curIdx].total > 0 ? [curIdx] : [])]);
+  if (points[peakIdx].total <= 0) labelled.delete(peakIdx);
+  // Δύο διπλανές ετικέτες σε κοντινό ύψος θα πατούσαν η μία την άλλη: η
+  // ψηλότερη ανεβαίνει όσο χρειάζεται για να ελευθερωθεί.
+  const lift = new Map<number, number>();
+  if (labelled.size === 2 && curIdx >= 0 && Math.abs(curIdx - peakIdx) <= 1) {
+    const gap = px(points[peakIdx].total) - px(points[curIdx].total);
+    if (gap < LABEL_H) lift.set(peakIdx, LABEL_H - gap);
+  }
+  const n = points.length;
+
+  // ΤΟ ΠΟΣΟ ΤΟΥ ΜΕΣΟΥ ΟΡΟΥ: στο δεξί περιθώριο όταν υπάρχει χώρος, αλλιώς στο
+  // υπόμνημα. Στα 390 το περιθώριο έκλεβε πενήντα εικονοστοιχεία από δώδεκα
+  // στήλες και οι ετικέτες των μηνών έπεφταν η μία πάνω στην άλλη
+  // («ΦεβΜαρΑπρ»). Μετριέται το πλάτος, δεν μαντεύεται από τη συσκευή.
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const el = boxRef.current; if (!el) return;
+    const ro = new ResizeObserver(([e]) => setWide(e.contentRect.width / n >= 44));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [n]);
+  const gutter = showAvg && wide;
 
   return (
-    <MonthBars
-      points={points}
-      currentKey={currentKey}
-      restLabel="Δώδεκα μήνες"
-      format={fe}
-      readout={p => {
-        const yoy = yoyOf(p.key);
-        return (
-          <>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>{p.label}</span>
-            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}><Eur value={p.total} /></span>
-            {yoy !== null && Math.abs(yoy) >= 1 && (
-              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>
-                <Eur value={yoy} sign dim={false} /> από πέρσι
-              </span>
-            )}
-          </>
-        );
-      }}
-      right={
-        /* Ο ΜΕΣΟΣ ΟΡΟΣ ΔΕΝ ΕΙΝΑΙ ΔΩΔΕΚΑΜΗΝΟΣ ΚΑΙ ΤΟ ΕΛΕΓΕ ΣΑΝ ΝΑ ΗΤΑΝ.
-           Διαιρεί με τους μήνες που ΕΧΟΥΝ δαπάνες, όχι με τους δώδεκα — και
-           σωστά: οι μήνες πριν από την πρώτη καταχώρηση δεν είναι μήνες με μηδέν
-           έξοδα, είναι μήνες χωρίς στοιχεία. Κάτω όμως από την επικεφαλίδα
-           «Δώδεκα μήνες», ένα σκέτο «μέσος όρος 751,00€» διαβάζεται ως
-           δωδεκάμηνος, δηλαδή δωδεκαπλάσιος από την αλήθεια: λέει σε πόσους.
-           ΚΑΙ ΜΕ ΕΝΑΝ ΜΗΝΑ ΔΕΝ ΛΕΓΕΤΑΙ ΚΑΘΟΛΟΥ: ο «μέσος όρος» ΕΙΝΑΙ το ποσό
-           του μήνα, δηλαδή το ίδιο νούμερο δύο φορές με το δεύτερο ντυμένο ως
-           σύγκριση. Χρειάζονται δύο τιμές για να υπάρχει μέση τιμή. */
-        avg > 0 && months >= 2 ? (
-          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>
-            μέσος όρος <span style={{ color: 'var(--text-secondary)' }}><Eur value={avg} dim={false} /></span>
-            {months < points.length && ` σε ${months === 1 ? 'έναν μήνα' : `${months} μήνες`} με δαπάνες`}
+    <div ref={boxRef}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 8, minHeight: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
+          {sel ? (
+            <>
+              <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>{sel.label}</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}><Eur value={sel.total} /></span>
+              {sel.yoy !== null && Math.abs(sel.yoy) >= 1 && (
+                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>
+                  <Eur value={sel.yoy} sign /> από πέρσι
+                </span>
+              )}
+            </>
+          ) : <span style={TT.label}>Δώδεκα μήνες</span>}
+        </div>
+        {/* ΤΟ ΥΠΟΜΝΗΜΑ ΤΗΣ ΔΙΑΚΕΚΟΜΜΕΝΗΣ. Ο μέσος όρος διαιρεί με τους μήνες
+            που ΕΧΟΥΝ δαπάνες, όχι με τους δώδεκα: οι μήνες πριν από την πρώτη
+            καταχώρηση είναι μήνες χωρίς στοιχεία, όχι μήνες με μηδέν. Κάτω από
+            την επικεφαλίδα «Δώδεκα μήνες» αυτό λέγεται, αλλιώς διαβάζεται ως
+            δωδεκάμηνος. */}
+        {showAvg && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>
+            <span aria-hidden style={{ width: 16, borderTop: '1px dashed var(--text-tertiary)' }} />
+            <span>μέσος όρος{!gutter && <> <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-secondary)' }}>{fe(avg)}</span></>}{months < n ? ` σε ${months} μήνες με δαπάνες` : ''}</span>
           </span>
-        ) : undefined
-      }
-    />
+        )}
+      </div>
+
+      {/* ΔΥΟ ΣΤΗΛΕΣ: το γράφημα και, δεξιά του, το ποσό του μέσου όρου στο ύψος
+          της γραμμής του. Στο περιθώριο και όχι πάνω στις ράβδους, ώστε να μην
+          κρύβει καμία και να μη συγκρούεται με τις ετικέτες τιμών. */}
+      <div style={{ display: 'grid', gridTemplateColumns: gutter ? 'minmax(0, 1fr) auto' : 'minmax(0, 1fr)', columnGap: 8 }}>
+      <div style={{ position: 'relative' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))`, alignItems: 'end' }}>
+          {points.map((p, i) => {
+            const isCur = i === curIdx;
+            const isSel = p.key === hover;
+            const h = p.total > 0 ? Math.max(px(p.total), 3) : 0;
+            const m = Number(p.key.slice(5, 7)) - 1;
+            // Η πρώτη και η τελευταία ετικέτα στοιχίζονται στο άκρο τους, ώστε
+            // να μη βγουν από την κάρτα.
+            const edge = i === 0 ? { left: 0 } : i === n - 1 ? { right: 0 } : { left: '50%', transform: 'translateX(-50%)' };
+            return (
+              <div key={p.key}
+                onMouseEnter={() => setHover(p.key)} onMouseLeave={() => setHover(null)}
+                onFocus={() => setHover(p.key)} onBlur={() => setHover(null)}
+                tabIndex={0} aria-label={`${p.label}: ${fe(p.total)}`}
+                className="exp-bar" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'default', minWidth: 0 }}>
+                <span style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%', height: PLOT_H + HEAD_ROOM, borderBottom: '1px solid var(--series-axis)' }}>
+                  {labelled.has(i) && (
+                    <span aria-hidden style={{
+                      position: 'absolute', bottom: h + 4 + (lift.get(i) ?? 0), ...edge,
+                      fontSize: 'var(--fs-xs)', lineHeight: `${LABEL_H - 2}px`, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums',
+                      fontWeight: isCur ? 700 : 600, color: isCur ? 'var(--text-primary)' : 'var(--text-secondary)', whiteSpace: 'nowrap',
+                    }}>{fe(p.total)}</span>
+                  )}
+                  <span style={{
+                    display: 'block', width: 'min(16px, 70%)', height: h,
+                    borderRadius: '3px 3px 0 0',
+                    background: isCur ? 'var(--series-in)' : 'var(--series-out)',
+                    opacity: hover && !isSel ? 0.55 : 1,
+                    transition: 'height 0.35s cubic-bezier(0.2,0,0,1), opacity 0.15s',
+                  }} />
+                </span>
+                <span style={{
+                  marginTop: 6, textAlign: 'center', fontSize: 'var(--fs-xs)', fontFamily: T.font.sans,
+                  fontWeight: isSel || isCur ? 700 : 400,
+                  color: isSel || isCur ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                }}>{MONTHS_SHORT[m]}</span>
+              </div>
+            );
+          })}
+        </div>
+        {/* Η ΓΡΑΜΜΗ ΤΟΥ ΜΕΣΟΥ ΟΡΟΥ. Κάθεται πάνω από τις ράβδους χωρίς να
+            πιάνει τον κέρσορα. Μετριέται από πάνω: όλες οι στήλες έχουν το ίδιο
+            ύψος περιοχής σχεδίασης, οπότε η κορυφή είναι κοινή. */}
+        {showAvg && (
+          <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: PLOT_H + HEAD_ROOM - px(avg), borderTop: '1px dashed var(--text-tertiary)', pointerEvents: 'none' }} />
+        )}
+      </div>
+      {gutter && (
+        <div aria-hidden style={{ position: 'relative', height: PLOT_H + HEAD_ROOM }}>
+          <span style={{ position: 'relative', top: PLOT_H + HEAD_ROOM - px(avg) - 7, display: 'block', fontSize: 'var(--fs-xs)', lineHeight: '14px', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+            {fe(avg)}
+          </span>
+        </div>
+      )}
+      </div>
+    </div>
   );
 }
 
@@ -315,7 +405,9 @@ export default function ExpenseCompare({ spends, today }: Props) {
                 κόμμα και τυπογραφικό μείον, όπως παντού αλλού. */}
             {c.pct !== null && Math.abs(c.pct) >= 1 && (
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>
-                {fpSigned(c.pct)}
+                {/* Ίδια σύμβαση προσήμου με το ποσό δίπλα: «+12,00€ +21,05%», όχι
+                    «+12,00€ 21,05%». */}
+                {c.pct > 0 ? '+' : ''}{fpSigned(c.pct)}
               </span>
             )}
           </div>

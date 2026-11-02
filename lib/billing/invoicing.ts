@@ -19,6 +19,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { standardVatRate } from './vatRates';
+import { fpRate } from '../core/format';
 import { isEuCountry } from './invoiceProfile';
 
 export type VatTreatment = 'domestic' | 'oss_b2c' | 'reverse_charge' | 'outside_eu';
@@ -56,8 +57,8 @@ export function determineVat(p: { doc_type: string; country: string; vat_number?
 // Σύντομη, ανθρώπινη περιγραφή καθεστώτος για το UI (π.χ. προεπισκόπηση).
 export function vatTreatmentLabel(v: VatDecision): string {
   switch (v.treatment) {
-    case 'domestic':       return `ΦΠΑ Ελλάδας ${v.ratePct}%`;
-    case 'oss_b2c':        return `ΦΠΑ ${v.country} ${v.ratePct}% (OSS)`;
+    case 'domestic':       return `ΦΠΑ Ελλάδας ${fpRate(v.ratePct)}`;
+    case 'oss_b2c':        return `ΦΠΑ ${v.country} ${fpRate(v.ratePct)} (OSS)`;
     case 'reverse_charge': return 'Αντιστροφή υποχρέωσης (reverse charge), χωρίς ΦΠΑ';
     case 'outside_eu':     return 'Εκτός πεδίου ΦΠΑ ΕΕ';
   }

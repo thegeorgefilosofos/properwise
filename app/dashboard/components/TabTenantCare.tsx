@@ -33,7 +33,7 @@ import {
 } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { failed } from '@/lib/core/dbError';
-import { grDateOf, fpRate } from '@/lib/core/format';
+import { grDateOf, fpRate, feSigned } from '@/lib/core/format';
 import { navLabel } from '@/lib/nav/labels';
 import { confirmDialog } from '@/components/ConfirmDialog';
 import { roleLabel } from '@/lib/contacts/roles';
@@ -146,9 +146,9 @@ export function DashboardView({ tenant, payments, propertyCount }:{ tenant:Tenan
           </div>
         ):(
           <div style={{ fontSize:14, color:'var(--text-primary)', fontFamily:T.font.sans, lineHeight:1.8 }}>
-            <strong style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fn(paidPay.length)}/{fn(payments.length)}</strong> δόσεις πληρωμένες
+            <strong style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fn(paidPay.length)} από {fn(payments.length)}</strong> δόσεις πληρωμένες
             {late.length>0
-              ? <> · <strong style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fn(late.length)}</strong> με καθυστέρηση, μέση καθυστέρηση <strong style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{avgLate.toFixed(0)}</strong> ημέρες</>
+              ? <> · <strong style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fn(late.length)}</strong> με καθυστέρηση, μέση καθυστέρηση <strong style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fn(avgLate)}</strong> ημέρες</>
               : <> · καμία καθυστέρηση</>}
             {unpaidAmt>0&&<> · εκκρεμεί <strong style={{ color:'var(--negative)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fmt(unpaidAmt)}</strong></>}
           </div>
@@ -162,7 +162,7 @@ export function DashboardView({ tenant, payments, propertyCount }:{ tenant:Tenan
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap:10, marginTop:20 }}>
             <KpiCard label="Πληρωμές" value={`${paidPay.length}/${payments.length}`} color="var(--text-primary)"/>
             <KpiCard label="Ποσοστό εξόφλησης" value={`${fp(((paidPay.length/payments.length)*100))}`} color="var(--text-primary)"/>
-            <KpiCard label="Μέση καθυστέρηση" value={avgLate>0?`${avgLate.toFixed(0)} ημέρες`:'Χωρίς'} color={avgLate>7?'var(--warning)':'var(--positive)'}/>
+            <KpiCard label="Μέση καθυστέρηση" value={avgLate>0?`${fn(avgLate)} ημέρες`:'Χωρίς'} color={avgLate>7?'var(--warning)':'var(--positive)'}/>
             <KpiCard label="Εισπραχθέντα σύνολο" value={fmt(totalReceived)} color="var(--text-primary)"/>
           </div>
         )}
@@ -170,11 +170,11 @@ export function DashboardView({ tenant, payments, propertyCount }:{ tenant:Tenan
 
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
         <SectionTitle>Οικονομική ανάλυση ενοικιαστή</SectionTitle>
-        <DataRow label="Ακαθάριστα ενοίκια ανά έτος" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(annualRent)}</span>}/>
-        <DataRow label="Κόστη ιδιοκτήτη ανά έτος" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>-{fmt(totalCosts)}</span>}/>
-        <DataRow label="Καθαρό εισόδημα ανά έτος" value={<span style={{ color:'var(--accent)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700, fontSize:15 }}>{fmt(netIncome)}</span>}/>
-        <DataRow label="Εισπραχθέντα σύνολο" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(totalReceived)}</span>}/>
-        <DataRow label="Εκκρεμή σύνολο" value={<span style={{ color:unpaidAmt>0?'var(--negative)':'var(--text-tertiary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(unpaidAmt)}</span>}/>
+        <DataRow label="Ακαθάριστα ενοίκια ανά έτος" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(annualRent)}</span>}/>
+        <DataRow label="Κόστη ιδιοκτήτη ανά έτος" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{feSigned(-totalCosts)}</span>}/>
+        <DataRow label="Καθαρό εισόδημα ανά έτος" value={<span style={{ color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700, fontSize:15 }}>{fmt(netIncome)}</span>}/>
+        <DataRow label="Εισπραχθέντα σύνολο" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(totalReceived)}</span>}/>
+        <DataRow label="Εκκρεμή σύνολο" value={<span style={{ color:unpaidAmt>0?'var(--negative)':'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(unpaidAmt)}</span>}/>
       </div>
     </div>
   );
@@ -207,7 +207,7 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
   // `tenant_comm_log_type_check` (baseline.sql:2788) δέχεται ΜΟΝΟ
   // call/email/sms/meeting/note, οπότε η καταχώρηση αποτύγχανε κάθε φορά.
   // Με `Record<CommLog['type'],string>` καμία από τις δύο δεν είναι πια δυνατή.
-  const TYPE_LABELS:Record<CommLog['type'],string>={call:'Τηλεφωνική Κλήση',email:'Ηλεκτρονικό Ταχυδρομείο',sms:'Μήνυμα',meeting:'Συνάντηση',note:'Σημείωση'};
+  const TYPE_LABELS:Record<CommLog['type'],string>={call:'Τηλεφωνική κλήση',email:'Ηλεκτρονικό ταχυδρομείο',sms:'Μήνυμα',meeting:'Συνάντηση',note:'Σημείωση'};
   const TYPE_SHORT:Record<CommLog['type'],string>={call:'Κλήση',email:'Ηλεκτρονικό ταχυδρομείο',sms:'Μήνυμα',meeting:'Συνάντηση',note:'Σημείωση'};
   // Ο SelectField επιστρέφει `string`· το `v as any` έσβηνε τη στένωση σε ένωση.
   // Εδώ ΔΕΝ κατέληγε αυθαίρετο κείμενο στη βάση — το CHECK της στήλης το κόβει
@@ -291,7 +291,7 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
               ρόλο στο `Btn` — η κύρια ενέργεια δηλώνεται με primary. */}
           {/* Χωρίς διαβασμένο ιστορικό η νέα καταχώρηση γράφεται στα τυφλά:
               πάνω από ένα ημερολόγιο που κανείς δεν ξέρει τι έχει ήδη μέσα. */}
-          {!logsErr&&<Btn variant="secondary" onClick={()=>setShowAdd(v=>!v)}>{showAdd?'Κλείσιμο':'+ Νέα Καταχώρηση'}</Btn>}
+          {!logsErr&&<Btn variant="secondary" onClick={()=>setShowAdd(v=>!v)}>{showAdd?'Κλείσιμο':'+ Νέα καταχώρηση'}</Btn>}
         </div>
 
         {showAdd&&(
@@ -411,7 +411,7 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
   // ΕΝΑ φόρο (ίδιος με την Επισκόπηση), οπότε η παλιά επιφύλαξη «υποεκτίμηση»
   // δεν ισχύει· μένει η εξήγηση της ενοποίησης όταν υπάρχουν δύο ή περισσότερα.
   const kpis:KPIItem[]=[
-    { label:'Ετήσιο Ακαθάριστο Ενοίκιο', value:taxLoading?ABSENT:fe(annualRent), tone:'accent', sub:rentTax?.income.estimated?'εκτίμηση':undefined },
+    { label:'Ετήσιο ακαθάριστο ενοίκιο', value:taxLoading?ABSENT:fe(annualRent), tone:'accent', sub:rentTax?.income.estimated?'εκτίμηση':undefined },
     { label:'Φόρος για αυτό το ακίνητο', value:taxLoading?ABSENT:fe(tax), tone:'warning', sub:!taxLoading&&annualRent>0?`πραγματικός συντελεστής ${fp((effRate*100))} επί των ακαθάριστων`:undefined },
     ...(isCommercial?[{ label:`Ψηφιακό Τέλος Συναλλαγής (${fpRate(COMMERCIAL_STAMP_DUTY*100)})`, value:fe(stampDuty), tone:'warning' as const }]:[]),
     // ΤΟ ΟΝΟΜΑ ΛΕΕΙ ΤΙ ΑΦΑΙΡΕΘΗΚΕ ΚΑΙ ΤΙΠΟΤΑ ΠΑΡΑΠΑΝΩ. Σε μίσθωση κατοικίας
@@ -419,7 +419,7 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
     // αφαιρέθηκε ποτέ. Και στην επαγγελματική, το τέλος αφαιρείται ΟΛΟΚΛΗΡΟ,
     // που είναι η δυσμενέστερη εκδοχή για τον ιδιοκτήτη· ποιον βαρύνει τελικά
     // το ορίζει το μισθωτήριο, οπότε η παραδοχή γράφεται αντί να υπονοείται.
-    { label:isCommercial?'Καθαρό μετά Φόρο και Τέλος':'Καθαρό μετά τον Φόρο', value:taxLoading?ABSENT:fe(net), tone:'positive' as const,
+    { label:isCommercial?'Καθαρό μετά από φόρο και τέλος':'Καθαρό μετά τον φόρο', value:taxLoading?ABSENT:fe(net), tone:'positive' as const,
       sub:isCommercial?'με το τέλος να το βαρύνεσαι εξ ολοκλήρου':undefined },
   ];
 
@@ -469,7 +469,7 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
           <div className="po-table-box">
            <div className="po-scroll-x">
             <table className="po-table" style={{ '--tbl-min': '320px' }}>
-              <thead><tr>{['Κλιμάκιο Εισοδήματος','Συντελεστής'].map((h,i)=><th key={i} scope="col" style={{ textAlign:i?'right' as const:'left' as const }}>{h}</th>)}</tr></thead>
+              <thead><tr>{['Κλιμάκιο εισοδήματος','Συντελεστής'].map((h,i)=><th key={i} scope="col" style={{ textAlign:i?'right' as const:'left' as const }}>{h}</th>)}</tr></thead>
               <tbody>
                 {rentalRowsForYear(taxYear).map((r,i)=>{
                   const active=bracketTaxable>r.from&&(r.to===Infinity||bracketTaxable<=r.to);
@@ -560,7 +560,7 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
                 κατοικίας είναι μία γραμμή: την τελευταία γραμμή η στοίχιση δεν
                 την πειράζει, άρα ο κοινός φορέας δεν τον βλάπτει. */}
             <div className="po-just">{hy(isCommercial
-              ?`Επαγγελματική μίσθωση: 3,60% επί του μισθώματος, το τέλος που αντικατέστησε το χαρτόσημο με τον ίδιο συντελεστή (άρθρο 6 ν.5177/2025). Για ετήσιο ενοίκιο ${fe(annualRent)} ανέρχεται σε ${fe(stampDuty)} τον χρόνο, δηλαδή ${fe(stampDuty/12)} τον μήνα. Τη δήλωση και την απόδοση στο κράτος τις κάνεις εσύ ως εκμισθωτής· ποιον βαρύνει όμως το κόστος το ορίζει το μισθωτήριο και συνήθως χρεώνεται στον μισθωτή. Δεν οφείλεται αν η μίσθωση έχει νομίμως υπαχθεί σε ΦΠΑ.`
+              ?`Επαγγελματική μίσθωση: ${fp(COMMERCIAL_STAMP_DUTY*100)} επί του μισθώματος, το τέλος που αντικατέστησε το χαρτόσημο με τον ίδιο συντελεστή (άρθρο 6 ν.5177/2025). Για ετήσιο ενοίκιο ${fe(annualRent)} ανέρχεται σε ${fe(stampDuty)} τον χρόνο, δηλαδή ${fe(stampDuty/12)} τον μήνα. Τη δήλωση και την απόδοση στο κράτος τις κάνεις εσύ ως εκμισθωτής· ποιον βαρύνει όμως το κόστος το ορίζει το μισθωτήριο και συνήθως χρεώνεται στον μισθωτή. Δεν οφείλεται αν η μίσθωση έχει νομίμως υπαχθεί σε ΦΠΑ.`
               :'Μίσθωση κατοικίας: δεν οφείλεται Ψηφιακό Τέλος Συναλλαγής.')}</div>
           </InfoBlock>
           <div style={{ marginTop:16 }}>
@@ -641,13 +641,13 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
             <div className="kpi-row" style={{ ...s.g3, marginBottom:14 }}>
               <DatePicker label="Ημερομηνία" value={f.occurred_on} onChange={v=>setF(x=>({...x,occurred_on:v}))}/>
               <NumberInput label="Κόστος" value={f.cost} onChange={v=>setF(x=>({...x,cost:v}))} suffix="€"/>
-              <div><div style={{ ...labelStyle, marginBottom:8 }}>Χρέωση στον ενοικιαστή</div><Toggle on={f.charged_to_tenant} onChange={v=>setF(x=>({...x,charged_to_tenant:v}))} ariaLabel="Ναι ή όχι"/></div>
+              <div><div style={{ ...labelStyle, marginBottom:8 }}>Χρέωση στον ενοικιαστή</div><Toggle on={f.charged_to_tenant} onChange={v=>setF(x=>({...x,charged_to_tenant:v}))} ariaLabel="Χρέωση στον ενοικιαστή"/></div>
             </div>
             <div style={{ marginBottom:14 }}>
               <TextInput label="Περιγραφή *" value={f.description} onChange={v=>setF(x=>({...x,description:v}))} placeholder="Φθορά πάγκου κουζίνας"/>
             </div>
             <div className="kpi-row" style={{ ...s.g3, marginBottom:14 }}>
-              <div><div style={{ ...labelStyle, marginBottom:8 }}>Επισκευάστηκε</div><Toggle on={f.repaired} onChange={v=>setF(x=>({...x,repaired:v}))} ariaLabel="Ναι ή όχι"/></div>
+              <div><div style={{ ...labelStyle, marginBottom:8 }}>Επισκευάστηκε</div><Toggle on={f.repaired} onChange={v=>setF(x=>({...x,repaired:v}))} ariaLabel="Επισκευάστηκε"/></div>
               {f.repaired&&<DatePicker label="Ημερομηνία επισκευής" value={f.repaired_on} onChange={v=>setF(x=>({...x,repaired_on:v}))}/>}
               <TextInput label="Σημείωση" value={f.notes} onChange={v=>setF(x=>({...x,notes:v}))} placeholder="προαιρετικό"/>
             </div>
@@ -664,7 +664,7 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
           <div key={g.label} style={{ marginBottom:T.sp.lg }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
               <span style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-secondary)', fontFamily:T.font.sans }}>{g.label}</span>
-              <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' }}>{fmt(g.items.reduce((a,d)=>a+(d.cost||0),0))}</span>
+              <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fmt(g.items.reduce((a,d)=>a+(d.cost||0),0))}</span>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {g.items.map(d=>(
@@ -680,7 +680,7 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
                       {d.notes&&<div style={{ fontSize:12, color:'var(--text-tertiary)', marginTop:6, fontFamily:T.font.sans, lineHeight:1.5 }}>{d.notes}</div>}
                     </div>
                     <div style={{ textAlign:'right' as const, flexShrink:0 }}>
-                      <div style={{ fontSize:14, fontWeight:700, fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', color:'var(--text-primary)' }}>{fmt(d.cost)}</div>
+                      <div style={{ fontSize:14, fontWeight:700, fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', color:'var(--text-primary)' }}>{fmt(d.cost)}</div>
                       {/* Δύο κείμενα χωρίς κουτί κάτω από το ποσό: `LinkBtn` και όχι
                           `Btn`. Το μέγεθος γράφεται στο δοχείο γιατί ο σύνδεσμος
                           κληρονομεί τη γραμματοσειρά της πρότασης που τον περιέχει. */}

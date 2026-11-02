@@ -66,13 +66,18 @@ export function portfolio(n: number): Bench {
     const id = `p${i}`;
     const short = i % 4 === 0;
     const rent = 400 + (i % 17) * 50;
+    // ΤΟ p0 ΕΙΝΑΙ ΤΟ ΙΔΙΟ ΑΚΙΝΗΤΟ ΣΕ ΚΑΘΕ ΣΚΗΝΗ (02.11.2026). Η Επισκόπηση
+    // έπαιρνε αξία 185.000€ από το mobile.tsx και ο Προϋπολογισμός 90.000€ από
+    // εδώ: «Απόδοση επί αξίας 5,56%» δίπλα σε «καθαρή 2,82%» για το ίδιο σπίτι,
+    // διαφορά που έφτιαχνε ο πάγκος και όχι η εφαρμογή.
+    const value = i === 0 ? 185_000 : 90_000 + (i % 23) * 7_500;
     properties.push({
       id,
       name: `Ακίνητο ${i + 1}`,
       prop_type: TYPES[i % TYPES.length],
       address: `Οδός ${i + 1}, Αθήνα`,
       target_rent: rent,
-      value: 90_000 + (i % 23) * 7_500,
+      value,
     });
     // ΤΟ ΑΚΙΝΗΤΟ ΤΟΥ ΠΑΓΚΟΥ ΕΙΧΕ ΜΟΝΟ ΤΑΥΤΟΤΗΤΑ ΚΑΙ ΙΔΙΟΚΤΗΤΗ. Καμία οθόνη που
     // διαβάζει αξία, μίσθωμα, τετραγωνικά ή τύπο δεν έφτανε ποτέ στη γεμάτη της
@@ -81,7 +86,7 @@ export function portfolio(n: number): Bench {
     propOwners.push({
       id, client_id: i % 5 === 0 ? `c${i % 40}` : null,
       name: `Ακίνητο ${i + 1}`, prop_type: TYPES[i % TYPES.length],
-      value: 90_000 + (i % 23) * 7_500, target_rent: rent,
+      value, obj_value: i === 0 ? 96_000 : null, target_rent: rent,
       sqm: 42 + (i % 9) * 8, postal_code: '11742',
       // Οι τιμές του writeStatus (lib/property/status.ts): με «short»/«long» το
       // readStatus έβγαζε κάθε ακίνητο «Κενό» και οι λήψεις μετρούσαν λάθος οθόνη.
@@ -94,12 +99,23 @@ export function portfolio(n: number): Bench {
       for (let s = 0; s < 18; s++) {
         const month = (s % 12) + 1;
         const day = ((s * 7) % 25) + 1;
+        // ΟΙ ΣΤΗΛΕΣ ΤΗΣ ΒΑΣΗΣ, ΟΧΙ ΕΦΕΥΡΕΜΕΝΕΣ. Ηταν `gross_amount` και
+        // `payout_amount`, που καμία οθόνη δεν διαβάζει: κάθε διαμονή έβγαινε
+        // «χωρίς ανάλυση ποσού» και καμία προμήθεια δεν μετρούσε. Τώρα η ανάλυση
+        // του lib/clients/stayAmounts.ts: ό,τι πλήρωσε ο επισκέπτης, το τέλος
+        // ανθεκτικότητας (8€ τη νύχτα Απρίλιο–Οκτώβριο, 2€ τους άλλους μήνες) και
+        // η προμήθεια· το `total` είναι ό,τι μένει στον λογαριασμό.
+        const ci = day, co = Math.min(day + 4, 28);
+        const gross = 240 + (s % 9) * 38;
+        const levy = (co - ci) * (month >= 4 && month <= 10 ? 8 : 2);
+        const fee = Math.round(gross * 0.15 * 100) / 100;
         stays.push({
           id: `${id}-s${s}`, property_id: id, client_id: `c${s % 40}`,
-          check_in: `${YEAR}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-          check_out: `${YEAR}-${String(month).padStart(2, '0')}-${String(Math.min(day + 4, 28)).padStart(2, '0')}`,
-          total: 220 + (s % 9) * 35, guests: 2 + (s % 3), status: 'confirmed',
-          gross_amount: 240 + (s % 9) * 38, payout_amount: 220 + (s % 9) * 35, platform: s % 2 ? 'airbnb' : 'booking',
+          check_in: `${YEAR}-${String(month).padStart(2, '0')}-${String(ci).padStart(2, '0')}`,
+          check_out: `${YEAR}-${String(month).padStart(2, '0')}-${String(co).padStart(2, '0')}`,
+          total: Math.round((gross - levy - fee) * 100) / 100, guests: 2 + (s % 3), status: 'confirmed',
+          gross_guest_paid: gross, climate_levy: levy, platform_fee: fee, amount_basis: 'gross',
+          platform: s % 2 ? 'airbnb' : 'booking',
         });
       }
     } else {

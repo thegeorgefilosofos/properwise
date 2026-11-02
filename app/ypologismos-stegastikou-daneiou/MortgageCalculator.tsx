@@ -83,8 +83,14 @@ const Empty = ({ children }: { children: React.ReactNode }) => (
   <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--text-secondary)' }}>{children}</p>
 );
 
-export function MortgageCalculator({ market, today, cta }: {
+export function MortgageCalculator({ market, today, cta, exampleRate }: {
   market: MortgageMarket; today: string;
+  /**
+   * Το επιτόκιο του λυμένου παραδείγματος της σελίδας (`EX.rate`, page.tsx).
+   * ΔΕΝ γεμίζει το πεδίο μόνο του: όταν η αγορά δεν διαβάστηκε, η κάρτα το
+   * προσφέρει με ένα πάτημα και η βοήθεια λέει ότι είναι παράδειγμα.
+   */
+  exampleRate?: number;
   /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
   cta: ReactNode;
 }) {
@@ -144,6 +150,10 @@ export function MortgageCalculator({ market, today, cta }: {
     : null;
 
   const schedule = plan?.schedule ?? [];
+  // ΚΑΜΙΑ ΚΕΝΗ ΚΑΡΤΑ (02.11.2026). Χωρίς τιμή αγοράς το πεδίο ξεκινά άδειο και
+  // η κάρτα της δόσης έμενε σκέτη πρόταση. Τώρα προσφέρει το επιτόκιο του
+  // παραδείγματος της σελίδας με ένα πάτημα, ονομασμένο ως παράδειγμα.
+  const exampleField = exampleRate != null ? rateField(exampleRate) : null;
 
   return (
     <div style={{ fontFamily: T.font.sans }}>
@@ -162,7 +172,9 @@ export function MortgageCalculator({ market, today, cta }: {
               <ToolNumField id={ids.epitokio} label="Σταθερό επιτόκιο" value={v.epitokio}
                 onChange={x => set('epitokio', x)} unit="%" span={2}
                 hint={rateHint(v.epitokio, fixed, `${fixed?.label ?? ''}, μέσος όρος νέων στεγαστικών`)
-                  ?? 'Το ονομαστικό επιτόκιο που γράφει η προσφορά της τράπεζας.'}/>
+                  ?? (exampleField && v.epitokio === exampleField
+                    ? 'Επιτόκιο του παραδείγματος, όχι τιμή αγοράς. Γράψε αυτό της προσφοράς σου.'
+                    : 'Το ονομαστικό επιτόκιο που γράφει η προσφορά της τράπεζας.')}/>
             ) : (<>
               <ToolNumField id={ids.euribor} label="Euribor" value={v.euribor}
                 onChange={x => set('euribor', x)} unit="%"
@@ -194,11 +206,20 @@ export function MortgageCalculator({ market, today, cta }: {
         {!hasLoan ? (
           <Empty>Η δόση χρειάζεται ποσό και διάρκεια.</Empty>
         ) : !plan || rate === null ? (
-          <Empty>
-            {kind === 'fixed'
-              ? 'Γράψε το επιτόκιο της προσφοράς σου για να βγει η δόση. Το βρίσκεις στην προσφορά της τράπεζας ή στο δελτίο επιτοκίων της.'
-              : 'Γράψε το Euribor και το περιθώριο της τράπεζας για να βγει η δόση.'}
-          </Empty>
+          <>
+            <Empty>
+              {kind === 'fixed'
+                ? 'Γράψε το επιτόκιο της προσφοράς σου για να βγει η δόση. Το βρίσκεις στην προσφορά της τράπεζας ή στο δελτίο επιτοκίων της.'
+                : 'Γράψε το Euribor και το περιθώριο της τράπεζας για να βγει η δόση.'}
+            </Empty>
+            {kind === 'fixed' && exampleRate != null && exampleField && (
+              <div className="po-noprint" style={{ marginTop: 14 }}>
+                <Btn variant="secondary" onClick={() => set('epitokio', exampleField)}>
+                  {`Δες ένα παράδειγμα με ${fp(exampleRate)}`}
+                </Btn>
+              </div>
+            )}
+          </>
         ) : (
           <>
             <ToolHero primary={{ label: 'Μηνιαία δόση', value: fe(plan.monthly) }}

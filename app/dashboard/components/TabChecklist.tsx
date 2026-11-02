@@ -158,9 +158,9 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
     const existingTemplates = new Set(rows.map(i => i.template_id).filter(Boolean))
     const suggestions: SmartSuggestion[] = []
     if (tenantContact && !existingTemplates.has('checkin'))
-      suggestions.push({ title: 'Νέος Ενοικιαστής', reason: 'Βρέθηκε ενοικιαστής, δημιούργησε check-in checklist', templateKey: 'checkin' })
+      suggestions.push({ title: TEMPLATES.checkin.label, reason: 'Βρέθηκε ενοικιαστής: λίστα για την παράδοση του ακινήτου', templateKey: 'checkin' })
     if (!rows.some(i => i.category === 'maintenance') && !existingTemplates.has('maintenance'))
-      suggestions.push({ title: 'Ετήσια Συντήρηση', reason: 'Καμία εργασία συντήρησης ακόμη', templateKey: 'maintenance' })
+      suggestions.push({ title: TEMPLATES.maintenance.label, reason: 'Καμία εργασία συντήρησης ακόμη', templateKey: 'maintenance' })
     // Ο τίτλος ακολουθεί την ετικέτα του προτύπου: το «Νομικά / ΑΑΔΕ» έγινε
     // «Έγγραφα ακινήτου» όταν οι φορολογικές υποχρεώσεις έφυγαν από το πρότυπο
     // και πήγαν στο ένα ημερολόγιο. Δύο ονόματα για το ίδιο κουμπί μπερδεύουν.
@@ -428,7 +428,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
           const rec = await savedData<{ id?: string }>('Η επόμενη επανάληψη δεν δημιουργήθηκε', checklist.addReturning(supabase, nextOccurrence(item, newDue)))
           const recId = rec?.id
           if (recId && !isGeneratedRef(item._ref)) { const c = await makeTaskCal({ ...item, due_date: newDue }); if (c) await saved(MSG.calendarLink, checklist.linkEvent(supabase, recId, c)) }
-          if (recId) notifyOk(`Ολοκληρώθηκε, Επόμενο: ${fmtDate(newDue)}`)
+          if (recId) notifyOk(`Ολοκληρώθηκε. Επόμενη φορά: ${fmtDate(newDue)}`)
         }
       } else if (item.calendar_event_id) {
         await saved('Το ημερολόγιο δεν ενημερώθηκε', calendar.update(supabase, item.calendar_event_id, { status: 'pending' }))
@@ -906,7 +906,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
           /* Το «Καθαρισμός φίλτρων» βρίσκεται ήδη στη μπάρα φίλτρων, λίγο πιο
              πάνω και πάντα ορατό όσο υπάρχει φίλτρο. Δεύτερο ίδιο κουμπί σε
              απόσταση σαράντα εικονοστοιχείων δεν βοηθά, ρωτά ποιο είναι ποιο. */
-          hint="Δοκίμασε διαφορετικά φίλτρα, ή πάτησε «Καθαρισμός φίλτρων» πιο πάνω."
+          hint="Δοκίμασε διαφορετικά φίλτρα ή πάτησε «Καθαρισμός φίλτρων» πιο πάνω."
         />
       ) : viewMode === 'timeline' ? (
         <TimelineView items={filtered} onEdit={item => { setEditItem(item); setShowAddModal(true) }} />

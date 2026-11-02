@@ -7,7 +7,7 @@
 // κατάσταση του TabLoanCalculator, γιατί τα διαβάζει και ο φακός αντοχής.
 // ═══════════════════════════════════════════════════════════════════════════
 import { NumberInput } from '../../UIComponents'
-import { fp } from '@/lib/core/format'
+import { fp, fpRate } from '@/lib/core/format'
 import { T, fixedCols, Tile, widestOf, LinkBtn } from '@/components/Theme'
 import { affordability, rentVsBuy } from '@/lib/loans/affordability'
 import { fmtEur, fmtPct, fmtPct1, type LoanType } from '../../TabLoanData'
@@ -50,7 +50,7 @@ export function CapacityLens({
           {(()=>{ const cap=[
             {k:'Μέγιστη δόση τον μήνα',v:fmtEur(aff.maxMonthly),s:`${fp(aff.limitPct*100)} του εισοδήματος${firstTimeBuyer?', ως πρωτοαγοραστής':''}`},
             {k:'Μέγιστο δάνειο',v:fmtEur(aff.maxLoan),s:`με ${fmtPct(effRate)} · ${Y} έτη`},
-            {k:'Δείκτης δόσης προς εισόδημα',v:INC>0?fmtPct1(aff.dstiUsedPct):fp(0),s:`όριο ${Math.round(aff.limitPct*100)}%`},
+            {k:'Δείκτης δόσης προς εισόδημα',v:INC>0?fmtPct1(aff.dstiUsedPct):fp(0),s:`όριο ${fpRate(Math.round(aff.limitPct*100))}`},
           ]; const w=widestOf(...cap.map(t=>t.v));
             return cap.map(t=>(<Tile key={t.k} label={t.k} value={t.v} sub={t.s} chars={w}/>)) })()}
         </div>
@@ -63,7 +63,7 @@ export function CapacityLens({
             <div style={{marginBottom:14}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom: 8}}>
                 <span style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',fontFamily: T.font.sans}}>Η δόση ως ποσοστό του εισοδήματος</span>
-                <span style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:600}}>{fmtPct1(usedPct)} <span style={{color:'var(--text-tertiary)'}}>από {Math.round(limitPct)}%</span></span>
+                <span style={{fontSize: 'var(--fs-base)',color:'var(--text-primary)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:600}}>{fmtPct1(usedPct)} <span style={{color:'var(--text-tertiary)'}}>από {fpRate(Math.round(limitPct))}</span></span>
               </div>
               <div style={{position:'relative',height:T.h.md,borderRadius: T.radius.popup,background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',overflow:'hidden'}}>
                 <div style={{position:'absolute',left:0,top:0,bottom:0,width:`${usedW}%`,borderRadius:'12px 0 0 12px',transition:'width 0.4s ease',
@@ -78,7 +78,7 @@ export function CapacityLens({
                     γραμμής. Η πληροφορία είναι η ίδια· αλλάζει μόνο η πλευρά. */}
                 <span style={{position:'absolute',
                   ...(limitX > 50 ? { right: `calc(${100 - limitX}% + 6px)` } : { left: `calc(${limitX}% + 6px)` }),
-                  top:'50%',transform:'translateY(-50%)',fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:600,whiteSpace:'nowrap' as const}}>Όριο {Math.round(limitPct)}%</span>
+                  top:'50%',transform:'translateY(-50%)',fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:600,whiteSpace:'nowrap' as const}}>Όριο {fpRate(Math.round(limitPct))}</span>
               </div>
             </div>
           )

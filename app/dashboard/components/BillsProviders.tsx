@@ -305,7 +305,7 @@ export const INTERNET_PLANS: Record<string, {
     // σημείωση γράφει μόνο τι είναι η γραμμή, όπως του dei_f1g.
     { id:'dei_f500',   name: 'ΔΕΗ Fiber 500',              speed: '500 Mbps',  price: 17.90, hasPhone: false, note: 'Οπτική ίνα. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
     { id:'dei_f1g',    name: 'ΔΕΗ Fiber 1 Gbps',           speed: '1 Gbps',    price: 24.90, hasPhone: false, note: 'Οπτική ίνα. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
-    { id:'dei_f25g',   name: 'ΔΕΗ Fiber 2.5 Gbps',         speed: '2.5 Gbps',  price: 52.90, hasPhone: false, note: 'Ultra broadband. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
+    { id:'dei_f25g',   name: 'ΔΕΗ Fiber 2.5 Gbps',         speed: '2,5 Gbps',  price: 52.90, hasPhone: false, note: 'Ultra broadband. Χωρίς τηλεφωνία.', networkType: 'Fiber', contract: '24 μήνες' },
     { id:'dei_f500_v', name: 'ΔΕΗ Fiber 500 + Φωνή',       speed: '500 Mbps',  price: 21.90, hasPhone: true,  note: 'Fiber + τηλεφωνία (+4€). Απεριόριστα λεπτά σταθερά.', networkType: 'Fiber', contract: '24 μήνες' },
   ],
   inalan: [
@@ -548,8 +548,8 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
       <div style={{ marginTop: 10, background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: '10px 14px', border: '1px solid var(--border-subtle)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 'var(--fs-xs)', fontFamily: T.font.sans }}>
           <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
-          <span style={{ fontWeight: 700, fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>
-            {isHigh ? `+${fp(((current / avg - 1) * 100))} πάνω από τον μέσο όρο` : isLow ? `-${fp(((1 - current / avg) * 100))} κάτω από τον μέσο όρο` : 'Στο μέσο όρο'}
+          <span style={{ fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>
+            {isHigh ? `+${fp(((current / avg - 1) * 100))} πάνω από τον μέσο όρο` : isLow ? `−${fp(((1 - current / avg) * 100))} κάτω από τον μέσο όρο` : 'Στο μέσο όρο'}
           </span>
         </div>
         <div style={{ position: 'relative', height: 6, background: 'var(--bg-overlay)', borderRadius: 3 }}>
@@ -669,7 +669,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: days <= 14 ? 'var(--negative)' : 'var(--warning)', flexShrink: 0 }}/>
                 <span style={{ color: 'var(--text-secondary)' }}>
                   Λήξη συμβολαίου Internet σε{' '}
-                  <strong style={{ color: days <= 14 ? 'var(--negative)' : 'var(--warning)' }}>{days} ημέρες</strong>
+                  <strong style={{ color: days <= 14 ? 'var(--negative)' : 'var(--warning)' }}>{days} {days === 1 ? 'ημέρα' : 'ημέρες'}</strong>
                   {'. '}Σύγκρινε στο ΕΕΤΤ 360° για καλύτερη τιμή.
                 </span>
               </div>
@@ -720,7 +720,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                     γραμμή. Τα 150 χωρούν δύο λέξεις ανά γραμμή· ο πίνακας κυλά. */}
                 <table className="po-table pin-1" style={{ '--tbl-fs': 'var(--fs-xs)', '--tbl-min': '560px', '--row-bg': 'var(--bg-surface)' }}>
                   <thead>
-                    <tr>{['Πρόγραμμα','Ταχύτητα','Σταθερό Τηλέφωνο','Δέσμευση','Μηνιαίο','Ετήσιο'].map((h, i) => (
+                    <tr>{['Πρόγραμμα','Ταχύτητα','Σταθερό τηλέφωνο','Δέσμευση','Μηνιαίο','Ετήσιο'].map((h, i) => (
                       <th key={i} scope="col" style={{ background: 'var(--bg-elevated)', whiteSpace: 'nowrap' as const, textAlign: i === 2 ? ('center' as const) : i >= 4 ? ('right' as const) : undefined, minWidth: i === 0 ? 150 : undefined }}>{h}</th>
                     ))}</tr>
                   </thead>
@@ -906,7 +906,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
               <><NumberInput label="Λίτρα τον χρόνο"     value={s.heatingLitersPerYear}    onChange={v => upd({ heatingLitersPerYear: v })}    suffix="L"/><NumberInput label="Τιμή ανά λίτρο" value={s.heatingOilPricePerLiter} onChange={v => upd({ heatingOilPricePerLiter: v })} suffix="€"/></>
             )}
             {heatingType === 'pellet' && (
-              <><NumberInput label="Kg / έτος"     value={s.heatingKgPellet}    onChange={v => upd({ heatingKgPellet: v })}    suffix="kg"/><NumberInput label="Τιμή ανά κιλό" value={s.heatingPelletPrice} onChange={v => upd({ heatingPelletPrice: v })} suffix="€"/></>
+              <><NumberInput label="Κιλά τον χρόνο"     value={s.heatingKgPellet}    onChange={v => upd({ heatingKgPellet: v })}    suffix="kg"/><NumberInput label="Τιμή ανά κιλό" value={s.heatingPelletPrice} onChange={v => upd({ heatingPelletPrice: v })} suffix="€"/></>
             )}
             {isCentralHeating(heatingType) && (
               <NumberInput label="Μερίδιο ιδιοκτησίας" value={s.heatingCentralShare} onChange={v => upd({ heatingCentralShare: v })} suffix="%"/>
@@ -915,7 +915,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
           {heatingM > 0 && (
             <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: '12px 16px', border: '1px solid var(--border-subtle)', marginBottom: 10 }}>
               <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' as const, marginBottom: 6 }}>
-                {[{ label: 'Μέσο Μηνιαίο', value: fe(heatingM) },{ label: 'Εκτιμώμενο Ετήσιο', value: fe(heatingM * 12) }].map((k, i) => (
+                {[{ label: 'Μέσο μηνιαίο', value: fe(heatingM) },{ label: 'Εκτιμώμενο ετήσιο', value: fe(heatingM * 12) }].map((k, i) => (
                   <div key={i}>
                     <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' as const, marginBottom: 4, fontFamily: T.font.sans }}>{k.label}</div>
                     <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{k.value}</div>

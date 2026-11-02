@@ -393,7 +393,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
   // Κάθε νούμερο λέει από πού βγήκε — αλλιώς ο ιδιοκτήτης δεν ξέρει τι υπογράφει.
   const revenueTitle = (r: Row): string | undefined =>
     r.mode === 'short'
-      ? `Δηλωτέα ακαθάριστα από τις καταχωρημένες διαμονές του έτους: τι πλήρωσαν οι επισκέπτες μείον το τέλος ανθεκτικότητας. Ίδιο νούμερο με την «Βραχυχρόνια» και με το Ε2.${r.staysUnresolved > 0 ? ` ${r.staysUnresolved} ${r.staysUnresolved === 1 ? 'διαμονή έχει' : 'διαμονές έχουν'} απροσδιόριστο ποσό (ιστορικές καταχωρήσεις), οπότε το σύνολο είναι εκτίμηση.` : ''}`
+      ? `Δηλωτέα ακαθάριστα από τις καταχωρημένες διαμονές του έτους: τι πλήρωσαν οι επισκέπτες μείον το τέλος ανθεκτικότητας. Ίδιο νούμερο με τη «Βραχυχρόνια» και με το Ε2.${r.staysUnresolved > 0 ? ` ${r.staysUnresolved} ${r.staysUnresolved === 1 ? 'διαμονή έχει' : 'διαμονές έχουν'} απροσδιόριστο ποσό (ιστορικές καταχωρήσεις), οπότε το σύνολο είναι εκτίμηση.` : ''}`
       : r.revenueEstimated
         ? `Εκτίμηση, όχι είσπραξη: μηνιαίο ενοίκιο × ${monthsElapsed} ${monthsElapsed === 1 ? 'μήνας' : 'μήνες'} που πέρασαν. Δεν υπάρχει καμία καταχωρημένη δόση ενοικίου για το ${year}.`
         : r.mode === 'long'
@@ -476,7 +476,7 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
     const shortEst = rs.filter(r => r.revenueEstimated && r.mode === 'short');
     const parts: string[] = [];
     if (longEst.length) parts.push(`Εκτίμηση, όχι είσπραξη: για ${longEst.map(r => r.name).join(', ')} δεν υπάρχει καμία καταχωρημένη δόση ενοικίου για το ${year}. Τα ποσά αυτά προκύπτουν από το μηνιαίο ενοίκιο επί τους μήνες που πέρασαν και ΔΕΝ αντιστοιχούν σε καταγεγραμμένη είσπραξη.`);
-    if (shortEst.length) parts.push(`Απροσδιόριστη βάση ποσού: για ${shortEst.map(r => `${r.name} (${r.staysUnresolved})`).join(', ')} υπάρχουν διαμονές καταχωρημένες πριν το app ξεχωρίσει τα ακαθάριστα από το payout, οπότε δεν είναι βέβαιο αν το ποσό είναι τι πλήρωσε ο επισκέπτης ή τι εισπράχθηκε.`);
+    if (shortEst.length) parts.push(`Απροσδιόριστη βάση ποσού: για ${shortEst.map(r => `${r.name} (${r.staysUnresolved})`).join(', ')} υπάρχουν διαμονές καταχωρημένες πριν η εφαρμογή ξεχωρίσει τα ακαθάριστα από την καθαρή είσπραξη, οπότε δεν είναι βέβαιο αν το ποσό είναι τι πλήρωσε ο επισκέπτης ή τι εισπράχθηκε.`);
     if (!parts.length) return null;
     return `${parts.join(' ')} Τα ποσά αυτά φέρουν την ένδειξη «εκτίμηση».`;
   };
@@ -725,11 +725,11 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                   <Num v={eur(r.revenue)} mark={r.revenueEstimated ? 'εκτίμηση' : undefined} title={revenueTitle(r)} />
                   <Num v={eur(r.expenses)} muted />
                   <Num v={eur(r.net)} bold />
-                  <td style={{ padding: '13px 14px', textAlign: 'right' }} title={occupancyTitle(r)}>
-                    {r.occupancy != null
-                      ? <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-base)', color: 'var(--text-primary)' }}>{fp(r.occupancy)}</span>
-                      : <span style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-tertiary)' }}>{r.mode === 'short' ? ABSENT_SHORT : 'Δεν ισχύει'}</span>}
-                  </td>
+                  {/* ΙΔΙΟ ΚΕΛΙ ΜΕ ΤΑ ΠΟΣΑ. Η πληρότητα είναι αριθμός στήλης όπως τα
+                      έσοδα: δεξιά, tabular, ίδιο γέμισμα — όχι δικό της κουτί. */}
+                  {r.occupancy != null
+                    ? <Num v={fp(r.occupancy)} title={occupancyTitle(r)} fact={{ name: 'occ-year', property: r.id }} />
+                    : <td style={{ padding: '13px 14px', textAlign: 'right', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>{r.mode === 'short' ? ABSENT_SHORT : 'Δεν ισχύει'}</td>}
                   <td style={{ padding: '13px 14px', textAlign: 'right' }}>
                     {r.pending > 0
                       ? (
@@ -938,12 +938,14 @@ function Th({ label, k, sort, asc, onSort, align = 'right', pin }: { label: stri
   );
 }
 
-function Num({ v, muted, bold, tone, mark, title }: { v: string; muted?: boolean; bold?: boolean; tone?: string; mark?: string; title?: string }) {
+function Num({ v, muted, bold, tone, mark, title, fact }: { v: string; muted?: boolean; bold?: boolean; tone?: string; mark?: string; title?: string;
+  /** Για τον έλεγχο «ίδιος αριθμός σε κάθε οθόνη» (scripts/e2e-same-number.mjs). */
+  fact?: { name: string; property: string } }) {
   // ΜΙΑ ΓΡΑΜΜΑΤΟΣΕΙΡΑ ΓΙΑ ΤΟΥΣ ΑΡΙΘΜΟΥΣ. Ο πίνακας έγραφε τα ποσά σε monospace
   // ενώ τα πλακίδια από πάνω τα έγραφαν στην αριθμητική του θέματος: το ίδιο
   // «0,00€» φαινόταν δύο διαφορετικά πράγματα σε απόσταση εκατό εικονοστοιχείων.
   return (
-    <td title={title} style={{ padding: '13px 14px', textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-base)', fontWeight: bold ? 700 : 400, color: tone || (muted ? 'var(--text-secondary)' : 'var(--text-primary)') }}>
+    <td title={title} data-fact={fact?.name} data-fact-property={fact?.property} data-fact-value={fact ? v : undefined} style={{ padding: '13px 14px', textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-base)', fontWeight: bold ? 700 : 400, color: tone || (muted ? 'var(--text-secondary)' : 'var(--text-primary)') }}>
       {v}
       {/* Η σήμανση της εκτίμησης μπαίνει ΔΙΠΛΑ ΣΤΟ ΠΟΣΟ: σε υποσημείωση δεν τη διαβάζει κανείς. */}
       {mark && <span style={{ marginLeft: 4, fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)' }}>{mark}</span>}

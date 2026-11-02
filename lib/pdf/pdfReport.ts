@@ -243,9 +243,12 @@ function lineChart(data: PdfChartPoint[], unit?: 'eur' | 'pct' | 'num'): Node {
         { type: 'polyline', lineColor: INK, lineWidth: 1.2, closePath: false, points: pts },
         ...pts.map(p => ({ type: 'ellipse', x: p.x, y: p.y, r1: 1.5, r2: 1.5, color: INK })),
       ] },
+      // Η ΕΤΙΚΕΤΑ ΚΑΙ Η ΤΙΜΗ ΤΟΥ ΙΔΙΟΥ ΣΗΜΕΙΟΥ. Έγραφε «πρώτος μήνας · ελάχιστο»
+      // και «τελευταίος μήνας · μέγιστο»: σε πτωτική σειρά ο τελευταίος μήνας
+      // έπαιρνε την τιμή του πρώτου.
       { columns: [
-        { text: `${data[0].label} · ${chartLabel(min, unit)}`, fontSize: 6.5, color: INK_FAINT },
-        { text: `${data[n - 1].label} · ${chartLabel(max, unit)}`, fontSize: 6.5, color: INK_FAINT, alignment: 'right' },
+        { text: `${data[0].label} · ${chartLabel(vals[0], unit)}`, fontSize: 6.5, color: INK_FAINT },
+        { text: `${data[n - 1].label} · ${chartLabel(vals[n - 1], unit)}`, fontSize: 6.5, color: INK_FAINT, alignment: 'right' },
       ], margin: [0, 4, 0, 0] },
     ],
     margin: [0, 4, 0, 2],

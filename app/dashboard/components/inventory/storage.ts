@@ -22,6 +22,6 @@ export async function openInventoryDoc(pathOrUrl?: string | null) {
   if (!pathOrUrl) return
   if (/^https?:\/\//.test(pathOrUrl)) { window.open(pathOrUrl, '_blank'); return }
   const { data, error } = await createClient().storage.from(DOCS_BUCKET).createSignedUrl(pathOrUrl, 3600)
-  if (error || !data) { notifyError('Δεν ήταν δυνατό το άνοιγμα του αρχείου.'); return }
+  if (error || !data) { notifyError('Το αρχείο δεν άνοιξε. Δοκίμασε ξανά.'); return }
   window.open(data.signedUrl, '_blank')
 }

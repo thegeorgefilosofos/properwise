@@ -20,12 +20,16 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import type { XlsxCol, XlsxKind } from './exportXlsx';
 import { downloadXlsx } from './sheets';
+import { fd, localDay } from '@/components/tokens';
 
 /** Ημερομηνία ΗΗ/ΜΜ/ΕΕΕΕ. */
 export const csvDate = (d: string | Date | null | undefined): string => {
   if (!d) return '';
-  const dt = new Date(d);
-  return isNaN(dt.getTime()) ? '' : dt.toLocaleDateString('el-GR');
+  // `localDay`: η σκέτη «2026-08-14» διαβάζεται τοπικά (όχι UTC, που έβγαζε
+  // την προηγούμενη ημέρα δυτικά του Γκρίνουιτς)· `fd`: ΗΗ/ΜΜ/ΕΕΕΕ με μηδενικά,
+  // όπως λέει το σχόλιο. Το σκέτο `toLocaleDateString` έγραφε «2/11/2026».
+  const dt = localDay(d);
+  return isNaN(dt.getTime()) ? '' : fd(dt);
 };
 
 // Τύπος στήλης από την επικεφαλίδα (για στοίχιση/μορφή). Συντηρητικό: «€» ή

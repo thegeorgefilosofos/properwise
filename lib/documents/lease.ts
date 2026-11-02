@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { declarationDeadline as taxDeclarationDeadline } from '../tax/leaseDeclaration';
-import { fe, fp } from '../core/format';
+import { fe, fn, fp } from '../core/format';
 import { grDate } from '@/lib/core/format';
 import { roundHalfUp } from '../core/money';
 
@@ -133,7 +133,7 @@ const BLANK = '……………………';
 export function leasePreamble(p: LeaseParties, r: LeaseResult, use: LeaseUse = 'residence'): string {
   const L = [p.landlordName || BLANK, p.landlordAfm ? `ΑΦΜ ${p.landlordAfm}` : ''].filter(Boolean).join(', ');
   const T = [p.tenantName || BLANK, p.tenantAfm ? `ΑΦΜ ${p.tenantAfm}` : ''].filter(Boolean).join(', ');
-  const where = [p.propertyAddress, p.floor ? `όροφος ${p.floor}` : '', p.sqm ? `${p.sqm} τ.μ.` : '', p.atak ? `ΑΤΑΚ ${p.atak}` : ''].filter(Boolean).join(', ');
+  const where = [p.propertyAddress, p.floor ? `όροφος ${p.floor}` : '', p.sqm ? `${fn(p.sqm, Number.isInteger(p.sqm) ? 0 : 2)} τ.μ.` : '', p.atak ? `ΑΤΑΚ ${p.atak}` : ''].filter(Boolean).join(', ');
   const purpose = use === 'residence' ? 'ως κύρια κατοικία του μισθωτή' : 'για επαγγελματική χρήση';
   return `Σήμερα, ${grDate(isoOf(new Date()))}, οι κάτωθι συμβαλλόμενοι, αφενός ο εκμισθωτής ${L} και αφετέρου ο μισθωτής ${T}, `
     + `συμφώνησαν και έκαναν αμοιβαία αποδεκτά τα ακόλουθα: ο εκμισθωτής εκμισθώνει στον μισθωτή το ακίνητο ${where || BLANK}, `

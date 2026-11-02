@@ -26,8 +26,9 @@ import {
   CustomSelect as SelectField,
   DatePicker,
 } from './UIComponents';
-import { T, InfoBanner, Badge, Btn, EmptyState, Modal, fe, fdLong, fn, fp, Spinner, ExportButton, ABSENT, ABSENT_DATE, TT, pressable, RuntimeImg } from '@/components/Theme';
+import { T, InfoBanner, Badge, Btn, EmptyState, Modal, fe, fd, fdLong, fn, Spinner, ExportButton, ABSENT, ABSENT_DATE, TT, pressable, RuntimeImg } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
+import { feSigned, fpSigned } from '@/lib/core/format';
 
 // ΤΟ «ΑΝΤΙΓΡΑΦΗΚΕ» ΕΡΧΕΤΑΙ ΜΕΤΑ ΤΗΝ ΑΝΤΙΓΡΑΦΗ, ΟΧΙ ΠΡΙΝ. Το `writeText` είναι
 // υπόσχεση: χωρίς αναμονή, το try δεν έπιανε ποτέ την άρνηση του φυλλομετρητή
@@ -46,7 +47,7 @@ import { brandName, useReportBranding } from '@/lib/reportBranding';
 import { reportHead, reportHeader, reportSection, reportRow, reportDisclaimer, openReport, rEur, rSigned, rPct, rEsc, rDate } from './reportPdf';
 import { whatsappLink, viberLink } from '@/lib/clients/messages';
 import { SYSTEM_PROMPT } from './DocumentScan';
-import { classifyDocType, type ScannedDoc } from '@/lib/billing/documents';
+import { classifyDocType, DOC_TYPE_LABELS, type ScannedDoc } from '@/lib/billing/documents';
 import { hasFeature } from '@/lib/billing/entitlements';
 import type { PlanId } from '@/lib/billing/plans';
 import {
@@ -189,9 +190,9 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
           Ο <strong style={{ color:'var(--text-primary)' }}>Δείκτης Τιμών Καταναλωτή (ΔΤΚ)</strong> είναι ο επίσημος δείκτης που χρησιμοποιεί η ΕΛΣΤΑΤ για να μετρήσει τη μεταβολή του κόστους ζωής σε ετήσια βάση. Βάσει του Αστικού Κώδικα (άρθρο 288 ΑΚ), ο εκμισθωτής έχει δικαίωμα να αναπροσαρμόσει το μίσθωμα μία φορά τον χρόνο, εφόσον αυτό προβλέπεται στη σύμβαση.
         </p>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap:10 }}>
-          {[{label:'Νομική Βάση',value:'Αρ. 288 ΑΚ'},{label:'Συχνότητα',value:'Μία φορά/έτος'},{label:'Τελευταίος δείκτης',value:String(CPI_LATEST_YEAR)}].map((item,i)=>(
+          {[{label:'Νομική βάση',value:'Αρ. 288 ΑΚ'},{label:'Συχνότητα',value:'Μία φορά/έτος'},{label:'Τελευταίος δείκτης',value:String(CPI_LATEST_YEAR)}].map((item,i)=>(
             <div key={i} style={{ background:'var(--bg-elevated)', borderRadius:T.radius.inner, padding:'12px 14px' }}>
-              <div style={{ fontSize:14, fontWeight:700, color:'var(--accent)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', marginBottom:4 }}>{item.value}</div>
+              <div style={{ fontSize:14, fontWeight:700, color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', marginBottom:4 }}>{item.value}</div>
               <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', textTransform:'uppercase' as const, letterSpacing:'0.1em', fontFamily:T.font.sans }}>{item.label}</div>
             </div>
           ))}
@@ -232,7 +233,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
           <div style={{ marginBottom:16 }}>
             <div style={{ ...labelStyle, marginBottom:8 }}>Έτος αναπροσαρμογής</div>
             <SelectField ariaLabel="Έτος αναπροσαρμογής" value={yr} onChange={v=>{ setYr(v); setUseCustom(cpiFor(parseInt(v))===null); }}
-              options={years.map(y=>{ const v=cpiFor(y); return { value:String(y), label:`${y}${v===null?', χωρίς δείκτη ακόμη':`, ΔΤΚ: ${v>=0?'+':''}${fp(v)}`}` }; })}/>
+              options={years.map(y=>{ const v=cpiFor(y); return { value:String(y), label:`${y}${v===null?', χωρίς δείκτη ακόμη':`, ΔΤΚ: ${v>=0?'+':''}${fpSigned(v)}`}` }; })}/>
           </div>
 
           {/* Έτος χωρίς δείκτη: το λέμε, δεν το μπαλώνουμε */}
@@ -249,8 +250,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
           )}
 
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, padding:'12px 14px', background:'var(--bg-elevated)', borderRadius:T.radius.inner }}>
-            <Toggle on={useCustom} onChange={setUseCustom}/>
-            <span style={{ fontSize:12, color:'var(--text-primary)', fontFamily:T.font.sans }}>Ποσοστό της σύμβασης</span>
+            <Toggle on={useCustom} onChange={setUseCustom} label="Ποσοστό της σύμβασης"/>
           </div>
           {useCustom&&(
             <div style={{ marginBottom:16 }}>
@@ -262,7 +262,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
                   μέσα σε εφαρμογή που γράφει παντού ελληνικό κόμμα. Το κενό
                   πεδίο μένει κενό και η υπόδειξη πάει από κάτω, με λέξεις. */}
               <input aria-label="Ποσοστό αναπροσαρμογής" type="number" min={0} value={customPct} onChange={e=>setCustomPct(e.target.value)} placeholder="" step="0.1"
-                style={{ ...selectStyle, border:'1px solid var(--border-default)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontSize:14 }}/>
+                style={{ ...selectStyle, border:'1px solid var(--border-default)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontSize:14 }}/>
               <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop: 4 }}>Όπως το γράφει η σύμβαση, για παράδειγμα τρία και μισό.</div>
             </div>
           )}
@@ -275,7 +275,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
               return (
                 <div key={year} {...pressable(()=>{setYr(year);setUseCustom(false);})}
                   style={{ background:active?'var(--accent-dim)':'var(--bg-elevated)', border:`1px solid ${active?'var(--accent)':'var(--border-subtle)'}`, borderRadius:T.radius.badge, padding:'7px 4px', textAlign:'center' as const, cursor:'pointer', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
-                  <div style={{ fontSize: 'var(--fs-xs)', fontWeight:700, color:active?'var(--accent)':'var(--text-secondary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' }}>{rate>=0?'+':''}{fp(rate)}</div>
+                  <div style={{ fontSize: 'var(--fs-xs)', fontWeight:700, color:active?'var(--accent)':'var(--text-secondary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{rate>=0?'+':''}{fpSigned(rate)}</div>
                   <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:2 }}>{year}</div>
                 </div>
               );
@@ -298,11 +298,11 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
               </div>
 
               <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg, marginBottom:14 }}>
-                {[{label:hasCustom?'Ποσοστό σύμβασης':`ΔΤΚ ${yr}`,value:`${pct>=0?'+':''}${fp(pct)}`},
-                  {label:'Μεταβολή ανά Μήνα',value:`${diff>=0?'+':''}${fmtE(diff)}`},
-                  {label:'Μεταβολή ανά Έτος',value:`${diff>=0?'+':''}${fmtE(diff*12)}`}
+                {[{label:hasCustom?'Ποσοστό σύμβασης':`ΔΤΚ ${yr}`,value:`${pct>=0?'+':''}${fpSigned(pct)}`},
+                  {label:'Μεταβολή ανά μήνα',value:`${diff>=0?'+':''}${feSigned(diff)}`},
+                  {label:'Μεταβολή ανά έτος',value:`${diff>=0?'+':''}${feSigned(diff*12)}`}
                 ].map((row,i)=>(
-                  <DataRow key={i} label={row.label} value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{row.value}</span>}/>
+                  <DataRow key={i} label={row.label} value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{row.value}</span>}/>
                 ))}
                 <div style={{ marginTop:10, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
                   {hasCustom?'Ποσοστό που όρισες εσύ βάσει της σύμβασης. Το έγγραφο θα το αναφέρει ως τέτοιο.':cpiConfirmedLabel()}
@@ -333,7 +333,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
           )}
 
           <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg }}>
-            <SectionTitle>Υποχρεώσεις και Σύνδεσμοι</SectionTitle>
+            <SectionTitle>Υποχρεώσεις και σύνδεσμοι</SectionTitle>
             {/* ΤΕΣΣΕΡΑ ΛΑΘΗ ΣΕ ΤΡΕΙΣ ΓΡΑΜΜΕΣ ΚΑΙ ΤΑ ΤΕΣΣΕΡΑ ΟΡΑΤΑ ΣΤΗΝ ΟΘΟΝΗ:
              *
              * 1. «ΑΑΑΔΕ» με τρία άλφα. Δύο φορές.
@@ -512,7 +512,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     if(payErr){ setBusy(false); notifyError(failed('Η πληρωμή δεν καταχωρήθηκε', payErr)); return; }
     await setRentDueOccurrencePaid(supabase,tenant.id,propertyId,payF.period_year,payF.period_month,payF.paid);
     setBusy(false);setAddOpen(false);setPayF({period_month:new Date().getMonth()+1,period_year:new Date().getFullYear(),amount:'',method:'Τραπεζική κατάθεση',paid:true,paid_date:todayISO(),notes:''});
-    onRefresh();notifyOk('Πληρωμή καταχωρήθηκε');
+    onRefresh();notifyOk('Η πληρωμή καταχωρήθηκε');
   };
 
   // Το user_properties έχει `name` και `address` — όχι `title`/`label`, που ήταν
@@ -531,7 +531,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     const landlord=branding?.companyName?brandName(branding):'PROPERWISE';
     const num=`${p.period_year}-${String(p.period_month).padStart(2,'0')}`;
     const tenantLine=`${p.tenant_id?(tenant.full_name||''):''}${tenant.afm?` · ΑΦΜ ${tenant.afm}`:''}`;
-    const html=reportHead(`Απόδειξη Ενοικίου ${num}`)
+    const html=reportHead(`Απόδειξη ενοικίου ${num}`)
       + `<body><div class="page">`
       + reportHeader(branding, 'Απόδειξη ενοικίου', { rightLabel:'Αριθμός', rightValue:num, rightNote:`Έκδοση ${rDate()}` })
       + `<h1>Απόδειξη είσπραξης ενοικίου</h1>`
@@ -675,7 +675,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
         setScan({stage:'error',msg:detail}); return;
       }
       const text=(data.content||[]).find((c:{type:string})=>c.type==='text')?.text||'{}';
-      let doc:ScannedDoc; try{ doc=JSON.parse(text.replace(/```json?|```/g,'').trim()); }catch{ setScan({stage:'error',msg:'Δεν ήταν δυνατή η ανάγνωση του εγγράφου.'}); return; }
+      let doc:ScannedDoc; try{ doc=JSON.parse(text.replace(/```json?|```/g,'').trim()); }catch{ setScan({stage:'error',msg:'Το έγγραφο δεν διαβάστηκε. Δοκίμασε με πιο καθαρή φωτογραφία.'}); return; }
       if(doc.amount!=null) doc.amount=numify(doc.amount as unknown);
       doc.doc_type=classifyDocType(doc);
       // Best-effort αρχειοθέτηση του πρωτότυπου (property_documents) για τεκμηρίωση.
@@ -687,7 +687,11 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       }catch{ /* archive optional */ }
       const amount=typeof doc.amount==='number'?doc.amount:0;
       const dateISO=doc.issue_date||doc.due_date||todayISO();
-      const method:PayMethod=doc.doc_type==='payment'?'Τραπεζική κατάθεση':'Τραπεζική κατάθεση';
+      // Η σάρωση ΔΕΝ διαβάζει τρόπο πληρωμής (το ScannedDoc δεν έχει τέτοιο
+      // πεδίο). Ηταν τριαδικός με την ίδια τιμή και στους δύο κλάδους, δηλαδή
+      // υπόσχεση διάκρισης που δεν γινόταν. Προεπιλογή η κατάθεση, την οποία ο
+      // χρήστης αλλάζει στο «Τρόπος πληρωμής» πριν από τη σήμανση.
+      const method:PayMethod='Τραπεζική κατάθεση';
       if(doc.doc_type!=='payment'){
         setScan({stage:'match',doc,method,docId,periodId: open[0]?.id});
         return;
@@ -700,7 +704,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       setScan({stage:'match',doc,method,docId,periodId:best?.p.id});
     }catch(err){ setScan({stage:'error',msg:(err as Error)?.name==='AbortError'
       ?'Η σάρωση άργησε πολύ. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.'
-      :'Παρουσιάστηκε σφάλμα κατά τη σάρωση.'}); }
+      :'Η σάρωση δεν ολοκληρώθηκε. Δοκίμασε ξανά.'}); }
     finally{ clearTimeout(timer); }
   };
   const confirmScan=async()=>{
@@ -726,7 +730,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       {/* KPI strip */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap:10, marginBottom:16 }}>
         <KpiCard label="Εισπραχθέντα" value={fmt(received)} color="var(--text-primary)"/>
-        <KpiCard label="Ληξιπρόθεσμα" value={fmt(arrearsTotal)} sub={`${overdue.length} δόσεις`} color={arrearsTotal>0?'var(--negative)':'var(--text-primary)'}/>
+        <KpiCard label="Ληξιπρόθεσμα" value={fmt(arrearsTotal)} sub={`${fn(overdue.length)} ${overdue.length===1?'δόση':'δόσεις'}`} color={arrearsTotal>0?'var(--negative)':'var(--text-primary)'}/>
         <KpiCard label="Εκκρεμείς" value={String(open.length)} color="var(--text-primary)"/>
         <KpiCard label="Δόσεις" value={`${payments.filter(p=>p.paid).length}/${payments.length}`} color="var(--text-primary)"/>
       </div>
@@ -766,7 +770,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
               {declaredPending.map(p=>(
                 <div key={p.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' as const, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:'10px 14px' }}>
                   <div style={{ minWidth:0 }}>
-                    <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans }}>{monthLabel(p)} · <span style={{ fontFamily:T.font.mono }}>{fmt(p.amount)}</span></div>
+                    <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans }}>{monthLabel(p)} · <span style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fmt(p.amount)}</span></div>
                     {p.tenant_note&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:2, whiteSpace:'pre-wrap' as const }}>{p.tenant_note}</div>}
                   </div>
                   <Btn variant="secondary" onClick={()=>setMark({p,method:'Τραπεζική κατάθεση',receipt:''})}>Επιβεβαίωση είσπραξης</Btn>
@@ -794,7 +798,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
               <SelectField label="Τρόπος πληρωμής" value={payF.method} onChange={v=>setPayF(f=>({...f,method:v as PayMethod}))} options={PAY_METHODS.map(m=>({value:m,label:m}))}/>
             </div>
             <div className="kpi-row" style={{ ...s.g3, marginBottom:14 }}>
-              <div><div style={{ ...labelStyle, marginBottom:8 }}>Εξοφλήθη</div><Toggle on={payF.paid} onChange={v=>setPayF(f=>({...f,paid:v}))} ariaLabel="Ναι ή όχι"/></div>
+              <div><div style={{ ...labelStyle, marginBottom:8 }}>Εξοφλήθη</div><Toggle on={payF.paid} onChange={v=>setPayF(f=>({...f,paid:v}))} ariaLabel="Εξοφλήθη"/></div>
               {payF.paid&&<DatePicker label="Ημερομηνία πληρωμής" value={payF.paid_date} onChange={v=>setPayF(f=>({...f,paid_date:v}))}/>}
               <TextInput label="Σημείωση" value={payF.notes} onChange={v=>setPayF(f=>({...f,notes:v}))} placeholder="προαιρετικό"/>
             </div>
@@ -822,11 +826,11 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           <div className="po-table-box" style={{ marginTop:14 }}>
            <div className="po-scroll-x">
             <table className="po-table pin-1" style={{ '--tbl-min': '820px', '--row-bg': 'var(--bg-surface)' }}>
-              <thead><tr>{['Περίοδος','Ποσό','Κατάσταση','Τρόπος','Ημερομηνία Πληρωμής','Λήξη','Ενέργειες'].map((h,i)=><th key={i} scope="col" style={{ textAlign: i===1 ? ('right' as const) : undefined }}>{h}</th>)}</tr></thead>
+              <thead><tr>{['Περίοδος','Ποσό','Κατάσταση','Τρόπος','Ημερομηνία πληρωμής','Λήξη','Ενέργειες'].map((h,i)=><th key={i} scope="col" style={{ textAlign: i===1 ? ('right' as const) : undefined }}>{h}</th>)}</tr></thead>
             <tbody>
               {sorted.map(p=>(
                 <tr key={p.id}>
-                  <td><strong style={{ fontFamily:T.font.sans }}>{MONTHS_SHORT[p.period_month-1]}</strong> <span style={{ color:'var(--text-tertiary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' }}>{p.period_year}</span></td>
+                  <td><strong style={{ fontFamily:T.font.sans }}>{MONTHS_SHORT[p.period_month-1]}</strong> <span style={{ color:'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{p.period_year}</span></td>
                   <td className="num" style={{ fontWeight:600, color:'var(--text-primary)' }}>{fmt(p.amount)}
                     {p.services_charge&&p.services_charge>0?<span style={{ display:'block', fontSize: 'var(--fs-xs)', fontWeight:400, color:'var(--text-tertiary)', fontFamily:T.font.sans }}>ενοίκιο {fmt(p.base_rent)} + υπηρεσίες {fmt(p.services_charge)}</span>:null}
                   </td>
@@ -879,7 +883,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
             <Btn variant="primary" onClick={async()=>{const mm=mark;setMark(null);await doMarkPaid(mm.p,mm.method,mm.receipt,todayISO());}}>Καταχώρηση</Btn>
           </>}>
           <SelectField label="Τρόπος πληρωμής" value={mark.method} onChange={v=>setMark(m=>m?{...m,method:v as PayMethod}:m)} options={PAY_METHODS.map(m=>({value:m,label:m}))}/>
-          <TextInput label="Σύνδεσμος απόδειξης (προαιρετικό)" value={mark.receipt} onChange={v=>setMark(m=>m?{...m,receipt:v}:m)} placeholder="https://..."/>
+          <TextInput label="Σύνδεσμος απόδειξης (προαιρετικό)" value={mark.receipt} onChange={v=>setMark(m=>m?{...m,receipt:v}:m)} placeholder="https://…"/>
         </Modal>
       )}
 
@@ -952,9 +956,9 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
           {scan.stage==='match'&&scan.doc&&(
             <>
               <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const }}>
-                <Badge tone={scan.doc.doc_type==='payment'?'positive':'warning'}>{scan.doc.doc_type==='payment'?'Απόδειξη πληρωμής':'Τύπος: '+scan.doc.doc_type}</Badge>
+                <Badge tone={scan.doc.doc_type==='payment'?'positive':'warning'}>{scan.doc.doc_type==='payment'?'Απόδειξη πληρωμής':`Τύπος: ${DOC_TYPE_LABELS[scan.doc.doc_type] ?? scan.doc.doc_type}`}</Badge>
                 {typeof scan.doc.amount==='number'&&<Badge tone="accent">{fmt(scan.doc.amount)}</Badge>}
-                {(scan.doc.issue_date||scan.doc.due_date)&&<Badge tone="neutral">{scan.doc.issue_date||scan.doc.due_date}</Badge>}
+                {(scan.doc.issue_date||scan.doc.due_date)&&<Badge tone="neutral">{fd((scan.doc.issue_date||scan.doc.due_date) as string)}</Badge>}
               </div>
               {scan.doc.doc_type!=='payment'&&<InfoBanner tone="warning">Το έγγραφο δεν αναγνωρίστηκε ως απόδειξη πληρωμής. Επίλεξε δόση χειροκίνητα πριν τη σήμανση.</InfoBanner>}
               {open.length===0?(
@@ -999,7 +1003,7 @@ export function DepositView({ tenant, payments, damages, onReturned }:{ tenant:T
     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap:16 }}>
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
         <SectionTitle>Στοιχεία εγγύησης</SectionTitle>
-        <DataRow label="Ποσό εγγύησης" value={<span style={{ color:'var(--accent)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700, fontSize:15 }}>{fmt(deposit)}</span>}/>
+        <DataRow label="Ποσό εγγύησης" value={<span style={{ color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700, fontSize:15 }}>{fmt(deposit)}</span>}/>
         <DataRow label="Τρόπος καταβολής" value={methodLabel}/>
         <DataRow label="Ημερομηνία καταβολής" value={fmtD(tenant.deposit_paid_on)}/>
         <DataRow label="Κατάσταση" value={tenant.deposit_returned?<StatusBadge label="Επεστράφη" color="var(--positive)" bg="var(--positive-dim)"/>:<StatusBadge label="Σε κατοχή" color="var(--accent)" bg="var(--accent-dim)"/>}/>
@@ -1009,7 +1013,7 @@ export function DepositView({ tenant, payments, damages, onReturned }:{ tenant:T
           <div style={{ marginTop:14 }}>
             <Btn variant="secondary" field
               onClick={async()=>{await saved('Η επιστροφή εγγύησης δεν καταχωρήθηκε', tenantStore.update(supabase,tenant.id,{deposit_returned:true,deposit_return_date:todayISO()}));onReturned();}}>
-              Σήμανση ως Επεστράφη
+              Σήμανση ως επιστραμμένη
             </Btn>
           </div>
         )}
@@ -1023,10 +1027,10 @@ export function DepositView({ tenant, payments, damages, onReturned }:{ tenant:T
         <div style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.8, marginBottom:14 }}>
           Η εγγύηση επιστρέφεται στη λήξη της μίσθωσης {dueDate?<>(<strong style={{ color:'var(--text-primary)' }}>{fmtD(dueDate)}</strong>){tenant.move_out_date?', βάσει της ημερομηνίας αποχώρησης':''}</>:'(δεν έχει οριστεί ημερομηνία λήξης/αποχώρησης)'}, μετά από <strong style={{ color:'var(--text-primary)' }}>έλεγχο για φθορές</strong> και <strong style={{ color:'var(--text-primary)' }}>εξόφληση τυχόν εκκρεμών οφειλών</strong>.
         </div>
-        <DataRow label="Εγγύηση σε κατοχή" value={<span style={{ fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(deposit)}</span>}/>
-        <DataRow label="Εκκρεμή ενοίκια" value={<span style={{ color:unpaid>0?'var(--negative)':'var(--text-tertiary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{unpaid>0?`-${fmt(unpaid)}`:fmt(0)}</span>}/>
-        <DataRow label="Χρεώσιμες φθορές" value={<span style={{ color:chargeable>0?'var(--negative)':'var(--text-tertiary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{chargeable>0?`-${fmt(chargeable)}`:fmt(0)}</span>}/>
-        <DataRow label="Καθαρό επιστρεπτέο (εκτίμηση)" value={<span style={{ color:'var(--positive)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700, fontSize:15 }}>{fmt(netReturn)}</span>}/>
+        <DataRow label="Εγγύηση σε κατοχή" value={<span style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(deposit)}</span>}/>
+        <DataRow label="Εκκρεμή ενοίκια" value={<span style={{ color:unpaid>0?'var(--negative)':'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{unpaid>0?feSigned(-unpaid):fmt(0)}</span>}/>
+        <DataRow label="Χρεώσιμες φθορές" value={<span style={{ color:chargeable>0?'var(--negative)':'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{chargeable>0?feSigned(-chargeable):fmt(0)}</span>}/>
+        <DataRow label="Καθαρό επιστρεπτέο (εκτίμηση)" value={<span style={{ color:'var(--positive)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700, fontSize:15 }}>{fmt(netReturn)}</span>}/>
         <div style={{ marginTop:12, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
           Ενδεικτικός υπολογισμός βάσει των εκκρεμών ενοικίων και των φθορών που έχεις σημειώσει ως χρεώσιμες στον ενοικιαστή. Ο τελικός συμψηφισμός γίνεται κατά την παράδοση.
         </div>
@@ -1096,9 +1100,9 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap:16, marginBottom:16 }}>
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
           <SectionTitle>Με βάση τον νόμο (ΔΤΚ)</SectionTitle>
-          <DataRow label="Τρέχον μίσθωμα" value={<span style={{ fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(rent)}</span>}/>
+          <DataRow label="Τρέχον μίσθωμα" value={<span style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(rent)}</span>}/>
           {legalNew!==null&&cpiPct!==null
-            ?<DataRow label={`Με ΔΤΚ ${CPI_LATEST_YEAR} (${cpiPct>=0?'+':''}${fp(cpiPct)})`} value={<span style={{ color:'var(--accent)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(legalNew)}</span>}/>
+            ?<DataRow label={`Με ΔΤΚ ${CPI_LATEST_YEAR} (${cpiPct>=0?'+':''}${fpSigned(cpiPct)})`} value={<span style={{ color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(legalNew)}</span>}/>
             :<DataRow label="Με ΔΤΚ" value="δεν υπάρχει επιβεβαιωμένος δείκτης"/>}
           {/* ΤΡΕΙΣ ΓΡΑΜΜΕΣ ΟΡΙΣΜΟΥ ΣΕ ΣΤΗΛΗ 409. Το πάνελ δίνει 333 ωφέλιμα στα 430
               της οθόνης και 409 στα 1024 (στήλη 457,5 μείον 48 γέμισμα): τα ~200
@@ -1114,9 +1118,9 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
           <SectionTitle>Με βάση την αγορά / περιοχή</SectionTitle>
           {hasMarket?(
             <>
-              <DataRow label={`Μέση τιμή ανά τ.μ. (${fn(perSqmValues.length)} συγκρίσιμα)`} value={<span style={{ fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' }}>{fmt(avgPerSqm)}</span>}/>
-              <DataRow label={`× ${fn(sqm||0)} τ.μ. δικά σου`} value={<span style={{ color:'var(--accent)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(marketRent)}</span>}/>
-              <DataRow label="Απόκλιση τρέχοντος" value={<span style={{ color:marketDiff>0?'var(--positive)':marketDiff<0?'var(--warning)':'var(--text-secondary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{marketDiff>0?'+':''}{fmt(marketDiff)} ({fp(marketDiffPct)})</span>}/>
+              <DataRow label={`Μέση τιμή ανά τ.μ. (${fn(perSqmValues.length)} συγκρίσιμα)`} value={<span style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fmt(avgPerSqm)}</span>}/>
+              <DataRow label={`× ${fn(sqm||0)} τ.μ. δικά σου`} value={<span style={{ color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(marketRent)}</span>}/>
+              <DataRow label="Απόκλιση τρέχοντος" value={<span style={{ color:marketDiff>0?'var(--positive)':marketDiff<0?'var(--warning)':'var(--text-secondary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{marketDiff>0?'+':''}{feSigned(marketDiff)} ({fpSigned(marketDiffPct)})</span>}/>
               {variance&&<div style={{ marginTop:12 }}><AlertBar text={variance} level="warning"/></div>}
               <div style={{ marginTop:10, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
                 {marketDiff<0?'Το τρέχον μίσθωμα είναι κάτω από την εκτίμηση της περιοχής για το μέγεθός σου. Οποιαδήποτε αύξηση σε ενεργή μίσθωση κατοικίας γίνεται μόνο με όρο αναπροσαρμογής ή νέα συμφωνία.':'Το τρέχον μίσθωμα είναι στο ή πάνω από την εκτίμηση της περιοχής για το μέγεθός σου.'}
@@ -1134,7 +1138,7 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
                 {rentComps.length===0
                   ?`Δεν υπάρχουν καταχωρημένα συγκρίσιμα ενοίκια για την περιοχή, οπότε δεν προτείνουμε ποσό. Τι πιάνει η περιοχή σου το βλέπεις στην καρτέλα «${navLabel('roi')}».`
                   :!sqm||sqm<=0
-                    ?`Υπάρχουν ${fn(rentComps.length)} συγκρίσιμα, αλλά το ακίνητο δεν έχει καταχωρημένα τ.μ.. Χωρίς τα δικά σου τ.μ. ο μέσος όρος της περιοχής δεν λέει τίποτα για το δικό σου ακίνητο, οπότε δεν προτείνουμε ποσό.`
+                    ?`Υπάρχουν ${fn(rentComps.length)} συγκρίσιμα, αλλά το ακίνητο δεν έχει καταχωρημένα τ.μ. Χωρίς τα δικά σου τ.μ. ο μέσος όρος της περιοχής δεν λέει τίποτα για το δικό σου ακίνητο, οπότε δεν προτείνουμε ποσό.`
                     : `Τα ${fn(rentComps.length)} συγκρίσιμα δεν έχουν τ.μ., οπότε δεν βγαίνει τιμή ανά τ.μ. Χωρίς αυτήν, ο ωμός μέσος όρος θα σύγκρινε ανόμοια ακίνητα.`}
                 {' '}Έως τότε, χρησιμοποίησε την πρόταση με βάση τον νόμο (ΔΤΚ).
               </>)}

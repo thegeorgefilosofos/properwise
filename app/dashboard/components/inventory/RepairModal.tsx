@@ -74,12 +74,12 @@ export function RepairModal({item,repairs,onAdd,onClose,propertyId,userId}:{item
         hasValue={(item.purchase_value||0)>0} hasData={!!item.purchase_date}/>
       {itemRepairs.length>0&&(
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          <SectionLabel label="Ιστορικό" right={<span style={{fontSize:12,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)'}}>{fe(totalCost)}</span>}/>
+          <SectionLabel label="Ιστορικό" right={<span style={{fontSize:12,fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)'}}>{fe(totalCost)}</span>}/>
           {itemRepairs.map(r=>(
             <div key={r.id} style={{background:'var(--bg-elevated)',borderRadius: T.radius.chip,padding:'10px 14px',border:'1px solid var(--border-subtle)'}}>
               <div style={{display:'flex',justifyContent:'space-between',marginBottom: 4}}>
                 <p style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>{r.description}</p>
-                <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(r.cost)}</p>
+                <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(r.cost)}</p>
               </div>
               <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{fmtDate(r.repair_date)}{r.technician?` · ${r.technician}`:''}</p>
             </div>
@@ -117,7 +117,7 @@ export function RepairModal({item,repairs,onAdd,onClose,propertyId,userId}:{item
           <p style={{fontSize: 'var(--fs-base)',fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)'}}>Καταχώρηση στις Δαπάνες</p>
           <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>Αυτόματη εισαγωγή στην καρτέλα «Δαπάνες»</p>
         </div>
-        <Toggle on={pushExpenses} onChange={setPushExpenses}/>
+        <Toggle ariaLabel="Καταχώρηση στις Δαπάνες" on={pushExpenses} onChange={setPushExpenses}/>
       </div>
     </Modal>
   )

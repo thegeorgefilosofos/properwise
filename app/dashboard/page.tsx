@@ -581,7 +581,7 @@ export default function Dashboard() {
                   {t:'Ο ΕΝΦΙΑ σου',d:'Ενδεικτικά, μαζί με ό,τι λείπει για τον λογιστή.'},
                 ].map((f,i)=>(
                   <li key={i} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.popup,padding:'16px 16px 18px'}}>
-                    <div style={{fontFamily: T.font.mono,fontSize: 'var(--fs-xs)',fontWeight:600,color:'var(--accent)',marginBottom:10}}>{i+1}</div>
+                    <div style={{fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontSize: 'var(--fs-xs)',fontWeight:600,color:'var(--accent)',marginBottom:10}}>{i+1}</div>
                     <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',fontWeight:700,color:'var(--text-primary)',marginBottom:4}}>{f.t}</div>
                     <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',lineHeight:1.5}}>{f.d}</div>
                   </li>
@@ -648,7 +648,7 @@ export default function Dashboard() {
                       <SecHdr label="Σύγκριση ακινήτων"/>
                       {canCompare(properties)
                         ? <TabComparison properties={properties} userId={user.id} onNavigate={(t)=>setNav(t)} profileType={effProfileType}/>
-                        : <p style={{fontSize:'var(--fs-sm)',color:'var(--text-secondary)',fontFamily:T.font.sans,lineHeight:1.55}}>Δεν υπάρχουν δύο ακίνητα ίδιου τύπου για σύγκριση. Η σύγκριση βάζει δίπλα δίπλα ακίνητα της ίδιας αγοράς.</p>}
+                        : <p style={{fontSize:'var(--fs-sm)',color:'var(--text-secondary)',fontFamily:T.font.sans,lineHeight:1.55}}>Δεν υπάρχουν δύο ακίνητα ίδιου τύπου για σύγκριση. Η σύγκριση βάζει δίπλα-δίπλα ακίνητα της ίδιας αγοράς.</p>}
                       {/* Η ΠΡΟΣΚΛΗΣΗ ΜΟΝΟ ΣΕ ΟΠΟΙΟΝ ΜΠΟΡΕΙ ΝΑ ΤΗ ΔΕΧΤΕΙ. Ο ιδιώτης
                           δεν αγοράζει το πακέτο της συγκεντρωτικής εικόνας με
                           κανένα πλάνο του προφίλ του· γι' αυτόν η γραμμή ήταν

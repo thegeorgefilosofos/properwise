@@ -1,6 +1,7 @@
 'use client'
+import { useEffect, useState } from 'react'
 import { navLabel } from '@/lib/nav/labels';
-import { fp, fe } from '@/lib/core/format'
+import { fp, fe, fpRate, grDate } from '@/lib/core/format'
 import { ABSENT } from '@/components/tokens'
 import { programDateLabel } from '@/lib/loans/programStatus'
 import { spitiMouOpen } from '@/lib/loans/recommend'
@@ -39,6 +40,19 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
     publishedRate, advType, advBorr, LA, Y, isSpitiMou2, stateOf, openPrograms, activePrograms,
     exportSavedLoans,
   } = useLoan({ propertyId, userId, propertyValue, propertySqm, propertyYearBuilt, profileType })
+  // ═══ ΤΟ «…» ΔΕΝ ΜΕΝΕΙ ΓΙΑ ΠΑΝΤΑ ═══════════════════════════════════════
+  // Οσο η τροφοδοσία φορτώνει, η λωρίδα γράφει «…». Οταν η ανάγνωση κολλήσει
+  // (δίκτυο, πάγκος χωρίς βάση), το «…» έμενε ως τελική απάντηση: ο χρήστης
+  // δεν ήξερε αν περιμένει ή αν δεν θα έρθει ποτέ. Μετά από οκτώ δευτερόλεπτα
+  // λέγεται ρητά «Μη διαθέσιμο».
+  const [ratesTimedOut, setRatesTimedOut] = useState(false)
+  useEffect(() => {
+    if (!market.isLoading) return
+    const t = setTimeout(() => setRatesTimedOut(true), 8000)
+    return () => clearTimeout(t)
+  }, [market.isLoading])
+  const ratesPending = market.isLoading && !ratesTimedOut
+  const ratesMissing = market.isLoading && ratesTimedOut
   const spitiOpen = spitiMouOpen(athensToday())
   // Μόνο διεύθυνση https γίνεται σύνδεσμος: η στήλη έρχεται από τη βάση.
   const sheetBanks = BANKS.filter(b=>/^https:\/\//.test(b.source_url))
@@ -113,8 +127,8 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                «σήμερα». Η απουσία λέγεται με απουσία. */
             <span key={item.l} style={{display:'inline-flex',alignItems:'baseline',gap:6,whiteSpace:'nowrap' as const}}>
               <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',textTransform:'uppercase' as const,letterSpacing:'0.06em',fontWeight:600,fontFamily: T.font.sans}}>{item.l}</span>
-              <span style={{fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:market.isLoading?'var(--border-default)':'var(--text-primary)',fontWeight:700,letterSpacing:'-0.01em'}}>
-                {market.isLoading?'…':fmtPct(item.v)}
+              <span style={{fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:ratesPending?'var(--border-default)':ratesMissing||!Number.isFinite(item.v)?'var(--text-tertiary)':'var(--text-primary)',fontWeight:ratesMissing||!Number.isFinite(item.v)?500:700,letterSpacing:'-0.01em'}}>
+                {ratesPending?'…':ratesMissing||!Number.isFinite(item.v)?'Μη διαθέσιμο':fmtPct(item.v)}
               </span>
               {/* ΤΑ ΣΤΟΙΧΕΙΑ ΤΗΣ ΕΚΤ ΔΕΝ ΓΡΑΦΟΝΤΑΙ «ΕΚΤΙΜΗΣΗ». Η λεζάντα βγαίνει από
                   τη `rateNote`: η περίοδος της τιμής όταν η γραμμή ήρθε, η
@@ -293,7 +307,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                     </div>
                     <div style={{display:'flex',alignItems:'baseline',gap:8,minWidth:0}}>
                       <span style={{fontSize:14,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:600,lineHeight:1,whiteSpace:'nowrap',flexShrink:0}}>{myM!==null?fmtEur(myM):fe(0)}</span>
-                      <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}}>{myM!==null?'δόση':'χωρίς δημοσιευμένο επιτόκιο'}{myM!==null&&bank.max_ltv?` · έως ${bank.max_ltv}%`:''}</span>
+                      <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}}>{myM!==null?'δόση':'χωρίς δημοσιευμένο επιτόκιο'}{myM!==null&&bank.max_ltv?` · έως ${fpRate(bank.max_ltv)}`:''}</span>
                     </div>
                   </div>
                 </button>
@@ -326,7 +340,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                         ιστότοπος δεν είναι δελτίο της. */}
                     <p style={{fontSize:12,color:'var(--text-tertiary)',marginTop: 4,fontFamily: T.font.sans}}>
                       {isOfficialSource(bank.id, bank.source_url)
-                        ? <><a href={bank.source_url} target="_blank" rel="noreferrer" style={{color:'var(--accent)',textDecoration:'none',fontWeight:500}}>Δελτίο επιτοκίων της τράπεζας</a>{bank.source_doc_date ? ` · ισχύς ${bank.source_doc_date.split('-').reverse().join('/')}` : ' · χωρίς ημερομηνία δελτίου'}</>
+                        ? <><a href={bank.source_url} target="_blank" rel="noreferrer" style={{color:'var(--accent)',textDecoration:'none',fontWeight:500}}>Δελτίο επιτοκίων της τράπεζας</a>{bank.source_doc_date ? ` · ισχύς ${grDate(bank.source_doc_date)}` : ' · χωρίς ημερομηνία δελτίου'}</>
                         : 'Δεν βρέθηκε επίσημο δελτίο επιτοκίων'}
                     </p>
                   </div>
