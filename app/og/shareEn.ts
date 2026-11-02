@@ -14,6 +14,8 @@ export const EN_SHARE_CARDS: Record<string, ShareCard> = {
     chips: ['One property, no subscription', 'Income and expenses', 'Tax and ENFIA', 'Deadlines'], path: '/en' },
   'en-pricing': { kind: 'page', over: 'Pricing', title: 'What each plan includes',
     chips: ['Line by line', 'Questions to Noa', 'Document scanning', 'Form E2 export'], path: '/en/pricing' },
+  'en-enfia-calculator': { kind: 'calc', over: 'Calculator', title: 'Estimate ENFIA on your Greek property',
+    chips: ['Floor area', 'Zone price', 'Floor', 'Building age'], path: '/en/enfia-calculator' },
   'en-tools': { kind: 'calc', over: 'Tools', title: 'Calculators for property owners in Greece',
     chips: enTools().map(t => t.label).slice(0, 4), path: '/en/tools' },
 };

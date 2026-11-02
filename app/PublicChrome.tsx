@@ -40,7 +40,7 @@ import { asOfDate } from '@/lib/facts/prices';
 import { FIRST_YEAR_NEW_BRACKETS, FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { ELECTRICITY_VAT_PCT } from '@/lib/energy/tariff';
-import { fpRate, grDate, grDateOf } from '@/lib/core/format';
+import { fpRate, grDate, grDateOf, fmtFor } from '@/lib/core/format';
 import { COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
 import { COMMERCIAL_STAMP_DUTY } from '@/lib/billing/commercialLease';
 import { TRANSFER_TAX_MAIN_RATE, MUNICIPAL_SURCHARGE_RATE, NEW_BUILD_VAT_RATE, NEW_BUILD_VAT_SUSPENDED_UNTIL } from '@/lib/accounting/transfer';
@@ -49,6 +49,8 @@ import { CHROME_EN, enLinks } from '@/lib/i18n/en/chrome';
 import { enTools } from '@/lib/i18n/en/tools';
 import { signupCtaEn } from '@/lib/billing/trialOffer';
 import LangSwitcher from './LangSwitcher';
+import { TOOL_SHELL_EN, TOOL_SOURCES_EN } from '@/lib/i18n/en/tools/shell';
+import { localHref } from '@/lib/i18n/paths';
 
 /**
  * ΕΝΑ ΜΕΤΡΟ ΓΙΑ ΟΛΕΣ ΤΙΣ ΔΗΜΟΣΙΕΣ ΣΕΛΙΔΕΣ — ΤΟ ΙΔΙΟ ΜΕ ΤΗΣ ΑΡΧΙΚΗΣ.
@@ -477,7 +479,21 @@ export function JsonLd({ data }: { data: unknown }) {
  * υποσημείωση είναι μπλοκ γιατί ενσωματωμένη χωρούσε μόνο στα 1280 — μετρημένο σε 768 και σε
  * 390, έσπαγε στη μέση και άφηνε το «το PROPERWISE.» ορφανό.
  */
-export function ToolLede({ children }: { children: ReactNode }) {
+export function ToolLede({ children, locale = 'el', lawYear }: { children: ReactNode; locale?: Locale; lawYear?: number }) {
+  if (locale === 'en') {
+    // ΣΤΑ ΑΓΓΛΙΚΑ: αριστερή στοίχιση χωρίς συλλαβισμό, και μία ήσυχη γραμμή
+    // ότι ο υπολογισμός εφαρμόζει το ελληνικό φορολογικό δίκαιο του έτους.
+    const E = TOOL_SHELL_EN;
+    return (
+      <p className="po-tool-lede" style={{ fontSize: 'clamp(15px,2vw,17px)', lineHeight: 1.6,
+        color: 'var(--text-secondary)', margin: '0 0 clamp(26px,3.5vw,36px)', textWrap: 'pretty' }}>
+        {children}{' '}{E.lede}
+        <span style={{ display: 'block', marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
+          {E.same}{lawYear ? <>{' '}{E.law(lawYear)}</> : null}
+        </span>
+      </p>
+    );
+  }
   // ΠΕΡΑ ΠΕΡΑ, ΜΙΑ ΠΑΡΑΓΡΑΦΟΣ (απόφαση ιδιοκτήτη, 26.09.2026). Οι δύο
   // προτάσεις ήταν δύο γραμμές-μπλοκ που σταματούσαν σε τυχαία σημεία, ενώ τα
   // πεδία από κάτω έφταναν ως τη δεξιά άκρη της στήλης. Τώρα ρέουν σε ΜΙΑ
@@ -564,11 +580,20 @@ const SOURCE_BADGE: Partial<Record<keyof typeof TOOL_SOURCES, string>> = { power
 // έλεγχο και αλλαγή περιεχομένου, app/pageUpdated.ts) το πλαίσιο γράφει και
 // τις δύο όταν διαφέρουν: «Έλεγχος ορίων … · Τελευταία ενημέρωση …». Η
 // «Τελευταία ενημέρωση» είναι πάντα η ημερομηνία του χάρτη.
-export function ToolSources({ kind, checked, updated }: {
+export function ToolSources({ kind, checked, updated, locale = 'el' }: {
+  locale?: Locale;
   kind: keyof typeof TOOL_SOURCES; checked: string | null; updated?: string | null;
 }) {
   const last = updated ?? checked;
   return (
+    locale === 'en' ? <aside className="po-tool-sources po-noprint" aria-label={TOOL_SHELL_EN.sourcesLabel}>
+      <span className="po-src-badge">{kind === 'power' ? TOOL_SHELL_EN.badgeSources : TOOL_SHELL_EN.badge}</span>
+      <span className="po-src-txt">
+        {TOOL_SOURCES_EN[kind]}
+        {checked && last && last !== checked && <> · {TOOL_SHELL_EN.checked(fmtFor('en').date(checked))}</>}
+        {last && <> · {TOOL_SHELL_EN.updated(fmtFor('en').date(last))}</>}
+      </span>
+    </aside> :
     <aside className="po-tool-sources po-noprint" aria-label="Νομική βάση και πηγές">
       <span className="po-src-badge">{SOURCE_BADGE[kind] ?? 'Νομική βάση'}</span>
       <span className="po-src-txt po-just">
@@ -590,7 +615,8 @@ export function ToolSources({ kind, checked, updated }: {
  *   υπολογιστής που τυλίγει το `ToolCta` μπορεί να τη γράψει από πάνω με τα
  *   πεδία του (`ToolCtaHref`, app/ToolCtaLink.tsx).
  */
-export function ToolCta({ title, body, href = '/signup' }: { title: string; body: ReactNode; href?: string }) {
+export function ToolCta({ title, body, href = '/signup', locale = 'el' }: { title: string; body: ReactNode; href?: string; locale?: Locale }) {
+  const en = locale === 'en';
   return (
     <div className="po-noprint" style={{
       marginTop: 20, padding: 'clamp(16px, 4vw, 22px)', borderRadius: T.radius.card,
@@ -605,15 +631,15 @@ export function ToolCta({ title, body, href = '/signup' }: { title: string; body
           {body}
         </>)}</p>
         <p style={{ margin: '8px 0 0', fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)' }}>
-          {TRIAL_LINE}
+          {en ? TOOL_SHELL_EN.trialLine : TRIAL_LINE}
         </p>
       </div>
-      <ToolCtaLink href={href} className="lp-cta lp-primary" style={{
+      <ToolCtaLink href={localHref(locale, href)} className="lp-cta lp-primary" style={{
         display: 'inline-flex', alignItems: 'center', height: T.h.lg, padding: '0 24px',
         borderRadius: T.radius.pill, fontSize: 14, fontWeight: 700,
         textDecoration: 'none', whiteSpace: 'nowrap',
       }}>
-        {signupCta()}
+        {en ? signupCtaEn() : signupCta()}
       </ToolCtaLink>
     </div>
   );

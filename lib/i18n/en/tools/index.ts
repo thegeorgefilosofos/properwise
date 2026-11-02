@@ -63,6 +63,9 @@ export function enTools(): EnTool[] {
   });
 }
 
+/** Το αγγλικό όνομα ενός υπολογισμού από την ελληνική του διαδρομή. */
+export const enToolLabel = (elHref: string): string => TOOL_EN[elHref]?.label ?? '';
+
 /** Οι ενότητες του κόμβου, στα αγγλικά. */
 export const TOPIC_EN: Record<TopicId, string> = {
   enoikia: 'Rent, leases and short-term lets',
