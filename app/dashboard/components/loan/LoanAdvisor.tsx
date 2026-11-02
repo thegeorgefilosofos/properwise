@@ -451,7 +451,7 @@ export function LoanAdvisor({
                 <p style={{fontSize: 'var(--fs-base)',fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)'}}>Σπίτι μου ΙΙ</p>
                 <p className="po-prose po-just" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:2,fontFamily: T.font.sans}}>{hy(<>{spitiClosed}</>)}</p>
                 </>) : (<>
-                <p style={{fontSize: 'var(--fs-base)',fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)'}}>Σπίτι μου ΙΙ: {spiti.eligible?'πιθανώς επιλέξιμο':'μη επιλέξιμο'} {spitiMouOpen(today)&&<span style={{color:'var(--text-secondary)',fontWeight:400}}>· {Math.round(spiti.interestFreeShare*100)}% άτοκο</span>}</p>
+                <p style={{fontSize: 'var(--fs-base)',fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)'}}>Σπίτι μου ΙΙ: {spiti.eligible?'πιθανώς επιλέξιμο':'μη επιλέξιμο'} {spitiMouOpen(today)&&<span style={{color:'var(--text-secondary)',fontWeight:400}}>· {fpRate(Math.round(spiti.interestFreeShare*100))} άτοκο</span>}</p>
                 <p className="po-prose po-just" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:2,fontFamily: T.font.sans}}>{hy(<>{spiti.reasons.slice(0,3).join(' · ')}. Ενδεικτικό· επιβεβαίωσέ το στην πύλη.</>)}</p>
                 </>)}
               </div>

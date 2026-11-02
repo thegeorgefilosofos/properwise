@@ -465,7 +465,7 @@ export default function SecuritySettings() {
                 id="sec-mfa-code" inputMode="numeric" maxLength={6} autoComplete="one-time-code" className="po-field"
                 placeholder="123456"
                 value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                style={{ ...field, maxWidth: 200, fontFamily: T.font.mono, letterSpacing: '0.3em' }}
+                style={{ ...field, maxWidth: 200, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', letterSpacing: '0.3em' }}
               />
               <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                 <Btn variant="primary" onClick={verifyCode} disabled={mfaBusy}>

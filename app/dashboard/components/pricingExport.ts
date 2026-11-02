@@ -13,6 +13,7 @@ import { XLSX, setCell, downloadWorkbook, sheetFinish } from './xlsxStyle';
 import { FMT, S, ROW, money, percent, intGr, type Cell } from './sheetFormat';
 import { SEASON_LABELS, type Season } from '@/lib/pricing/dynamicPricing';
 import { MONTHS_NOM } from '@/lib/core/months';
+import { fd } from '@/components/tokens';
 
 // Κείμενο βάσει μορφής: ποσό «€», ποσοστό «%», ακέραιος — πάντα με ελληνικό κόμμα.
 const fmtZ = (v: number, z?: string): string => (z === FMT.pct ? percent(v) : z === FMT.int ? intGr(v) : money(v));
@@ -41,7 +42,7 @@ export interface PricingExportInput {
 export function exportPricingWorkbook(inp: PricingExportInput): void {
   const { propName, year, settings, summary, occupancy, realizedAdr, rows } = inp;
   const wb = XLSX.utils.book_new();
-  const idLine = `PROPERWISE · ${propName} · Έτος ${year} · Ημερομηνία έκδοσης ${new Date().toLocaleDateString('el-GR')}`;
+  const idLine = `PROPERWISE · ${propName} · Έτος ${year} · Ημερομηνία έκδοσης ${fd(new Date())}`;
 
   // ── Φύλλο 1: Σύνοψη ─────────────────────────────────────────────────────────
   {

@@ -725,11 +725,11 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                   <Num v={eur(r.revenue)} mark={r.revenueEstimated ? 'εκτίμηση' : undefined} title={revenueTitle(r)} />
                   <Num v={eur(r.expenses)} muted />
                   <Num v={eur(r.net)} bold />
-                  <td style={{ padding: '13px 14px', textAlign: 'right' }} title={occupancyTitle(r)}>
-                    {r.occupancy != null
-                      ? <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 'var(--fs-base)', color: 'var(--text-primary)' }}>{fp(r.occupancy)}</span>
-                      : <span style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-tertiary)' }}>{r.mode === 'short' ? ABSENT_SHORT : 'Δεν ισχύει'}</span>}
-                  </td>
+                  {/* ΙΔΙΟ ΚΕΛΙ ΜΕ ΤΑ ΠΟΣΑ. Η πληρότητα είναι αριθμός στήλης όπως τα
+                      έσοδα: δεξιά, tabular, ίδιο γέμισμα — όχι δικό της κουτί. */}
+                  {r.occupancy != null
+                    ? <Num v={fp(r.occupancy)} title={occupancyTitle(r)} />
+                    : <td style={{ padding: '13px 14px', textAlign: 'right', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>{r.mode === 'short' ? ABSENT_SHORT : 'Δεν ισχύει'}</td>}
                   <td style={{ padding: '13px 14px', textAlign: 'right' }}>
                     {r.pending > 0
                       ? (

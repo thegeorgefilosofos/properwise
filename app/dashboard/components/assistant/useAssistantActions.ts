@@ -28,6 +28,7 @@ import { matchesNumber } from '@/lib/assistant/roster'
 import { commitScannedDoc, pendingAnswers, failedNotice, type ReconcileQuestion } from '../scanDoc'
 import { kindOf } from '@/lib/billing/documents'
 import { athensToday, isoMonth } from '@/lib/core/time'
+import { fd } from '@/components/tokens'
 import { MONTHS_GEN } from '@/lib/core/months'
 import * as checkinLink from '@/lib/data/checkinLink'
 import { ensureDpa } from '@/lib/legal/dpa'
@@ -447,7 +448,7 @@ export function useAssistantActions({
         priority: 'high',
         notes: `Ραντεβού που προγραμμάτισε η ${ASSISTANT_NAME}. Θα σταλεί υπενθύμιση πριν από το ραντεβού (email, εφόσον είναι ενεργές οι ειδοποιήσεις· με ένα άγγιγμα και σε Viber/WhatsApp).`,
       })]));
-      const whenStr = `${new Date(date).toLocaleDateString('el-GR')}${time ? ` στις ${time}` : ''}`;
+      const whenStr = `${fd(date)}${time ? ` στις ${time}` : ''}`;
       setMsgs(m => [...m, { role: 'assistant', text: `Το έκλεισα. Πρόσθεσα το «${title}» για ${whenStr} στο Ημερολόγιο. Αν οι ειδοποιήσεις email είναι ενεργές, θα λάβεις υπενθύμιση πριν από το ραντεβού. Θέλεις να ανοίξω το Ημερολόγιο;`, action: { type: 'go', tab: 'calendar' } }]);
     } catch {
       setMsgs(m => [...m, { role: 'assistant', text: 'Δεν μπόρεσα να αποθηκεύσω το ραντεβού τώρα. Δοκίμασε ξανά ή πρόσθεσέ το χειροκίνητα στο Ημερολόγιο.' }]);

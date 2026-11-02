@@ -10,7 +10,8 @@ import { athensToday, daysUntil as athensDaysUntil } from '@/lib/core/time'
 import * as calendar from '@/lib/data/calendar'
 import { FileText, User, Bell, Receipt, Euro, Wrench, Landmark } from 'lucide-react'
 import { taxKindMeta } from '@/lib/tax/greekTaxCalendar'
-import { MONTHS_SHORT, DAY_NAMES_SHORT } from '@/lib/core/months'
+import { DAY_NAMES_SHORT } from '@/lib/core/months'
+import { grDate } from '@/lib/core/format'
 import { STATUS_LABEL, statusColor, type StatusKind } from '@/lib/core/status'
 
 // Οι τρεις απαριθμήσεις του γεγονότος ζουν στο στρώμα δεδομένων, όχι εδώ: τις
@@ -127,8 +128,14 @@ export const EMPTY_FORM: FormState = {
   notes: '', attachment_url: '', phone: '', email: '', add_expense: false,
 }
 
-export function fmt(date: string) { if (!date) return ''; const [y,m,d]=date.split('-'); return `${d}/${m}/${y}` }
-export function fmtShort(date: string) { if (!date) return ''; const [,m,d]=date.split('-'); return `${d} ${MONTHS_SHORT[parseInt(m)-1]}` }
+// ═══ ΜΙΑ ΓΡΑΦΗ ΗΜΕΡΟΜΗΝΙΑΣ ΣΤΟ ΗΜΕΡΟΛΟΓΙΟ ════════════════════════════════
+// Το `fmtShort` έγραφε «25 Δεκ» και το `fmt` «25/12/2026»: στην ίδια οθόνη η
+// λωρίδα των συμβολαίων έλεγε «Ανανέωση ασφαλιστηρίου (25 Δεκ)» και η ράγα
+// «Επόμενα» από κάτω «25/12/2026» για το ίδιο γεγονός. Και οι δύο περνούν πια
+// από το `grDate` (lib/core/format), τη γραφή του σπιτιού. Το όνομα `fmtShort`
+// μένει για να μην αλλάξουν οι καλούντες.
+export function fmt(date: string) { return date ? grDate(date) : '' }
+export const fmtShort = fmt
 // Τρέχουσα στιγμή σε ώρα Ελλάδας (Europe/Athens), ανεξάρτητα από τη ζώνη της
 // συσκευής — ώστε «σήμερα», η γραμμή «τώρα» και οι υπενθυμίσεις να είναι σωστές.
 // ═══════════════════════════════════════════════════════════════════════════

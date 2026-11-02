@@ -435,7 +435,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                           {done && costFor !== r.id && <Btn variant="secondary" onClick={() => { setCostFor(r.id); setCost(''); }}>Ως δαπάνη</Btn>}
                           {done && costFor === r.id && (
                             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                              <input aria-label="Ποσό δαπάνης σε ευρώ" autoFocus value={cost} onChange={e => setCost(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') toExpense(r); if (e.key === 'Escape') setCostFor(null); }} placeholder="€" inputMode="decimal" style={{ width: 56, height: T.h.sm, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '0 8px', fontSize: 'var(--fs-xs)', color: 'var(--text-primary)', fontFamily: T.font.mono, outline: 'none', textAlign: 'right' }} />
+                              <input aria-label="Ποσό δαπάνης σε ευρώ" autoFocus value={cost} onChange={e => setCost(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') toExpense(r); if (e.key === 'Escape') setCostFor(null); }} placeholder="€" inputMode="decimal" style={{ width: 56, height: T.h.sm, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '0 8px', fontSize: 'var(--fs-xs)', color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', outline: 'none', textAlign: 'right' }} />
                               <Btn variant="primary" onClick={() => toExpense(r)}>Καταχώρηση</Btn>
                             </div>
                           )}

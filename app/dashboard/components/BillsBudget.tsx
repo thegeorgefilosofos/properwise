@@ -1,8 +1,8 @@
 'use client';
 
 import { TextInput, Toggle, ToggleTrack, InfoDot } from './UIComponents';
-import { T, fe, feAuto, fp, fn, ABSENT_SHORT, KPIGrid, Skeleton, SkeletonKPIs, pressable, Btn, IconBtn, ChipToggle, LinkBtn } from '@/components/Theme';
-import { feSigned, fpSigned } from '@/lib/core/format';
+import { T, fe, feAuto, fp, fn, fd, ABSENT_SHORT, KPIGrid, Skeleton, SkeletonKPIs, pressable, Btn, IconBtn, ChipToggle, LinkBtn } from '@/components/Theme';
+import { feSigned, fpSigned, fpRate } from '@/lib/core/format';
 import { monthGen } from '@/lib/core/months';
 import { notify } from '@/components/Toast';
 import { categoryStatus, RecurringCharge } from '@/lib/billing/budget';
@@ -287,7 +287,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 ...(parts.length > 1 ? parts : []),
                 ...(monthlyCost > 0 ? [{ l: 'Τον χρόνο', v: monthlyCost * 12, sub: 'με τον ρυθμό του μήνα' }] : []),
                 ...(monthlyCost > 0 && (propSqm || 0) > 0
-                  ? [{ l: 'Ανά τετραγωνικό', v: monthlyCost / (propSqm as number), sub: `σε ${propSqm} τ.μ. τον μήνα` }] : []),
+                  ? [{ l: 'Ανά τετραγωνικό', v: monthlyCost / (propSqm as number), sub: `σε ${fn(propSqm as number)} τ.μ. τον μήνα` }] : []),
                 ...(prev > 0 ? [{ l: `Λογαριασμοί έναντι ${monthGen(Number(_prevYm.slice(5, 7)) - 1)}`,
                   v: diff, txt: `${diff > 0 ? '+' : diff < 0 ? '−' : ''}${feAuto(Math.abs(diff))}`, sub: `από ${feAuto(prev)}` }] : []),
               ];
@@ -375,7 +375,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                    ποιο είναι ποιο. */
                 { label: 'Εισπράξεις μήνα', value: feAuto(income), title: 'Ό,τι μπήκε στο ταμείο από διαμονές αυτόν τον μήνα. Το δηλωτέο ποσό είναι μεγαλύτερο: το βλέπεις στη Λογιστική ως «Μεικτά έσοδα».' },
                 { label: 'Από την αρχή έτους', value: feAuto(incomeYtd), title: 'Εισπράξεις από διαμονές, από 1η Ιανουαρίου.' },
-                { label: 'Διανυκτερεύσεις', value: String(strNights) },
+                { label: 'Διανυκτερεύσεις', value: fn(strNights) },
                 { label: 'Μέση τιμή ανά βραδιά', value: strNights > 0 ? feAuto(income / strNights) : fe(0) },
               ] : [
                 { label: 'Μηνιαίο ενοίκιο', value: feAuto(income) },
@@ -390,10 +390,15 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
 
       {/* Waterfall εσόδου βραχυχρόνιας — από μεικτό σε καθαρό (μόνο short_term) */}
       {isCurMonth && isSTR && waterfall && (() => {
-        const rows = [
+        // ΤΟ ΤΕΛΟΣ ΚΡΑΤΑ ΤΗ ΘΕΣΗ ΤΟΥ ΚΑΙ ΟΤΑΝ ΔΕΝ ΥΠΟΛΟΓΙΖΕΤΑΙ. Εγραφε
+        // «άγνωστο, λείπουν διανυκτερεύσεις» στο ΤΕΛΟΣ της λίστας, κάτω από την
+        // κράτηση φόρου, ενώ με νύχτες κάθεται δεύτερο· και διαβαζόταν σαν να
+        // λείπουν ΚΡΑΤΗΣΕΙΣ, πάνω από μεικτό έσοδο που προφανώς έχει. Λείπουν οι
+        // νύχτες τους (`strWaterfall`: null μόνο όταν υπάρχει έσοδο με 0 νύχτες).
+        const rows: { l: string; v: number | null; sub: boolean }[] = [
           { l: 'Μεικτό έσοδο', v: waterfall.gross, sub: false },
           { l: 'Προμήθεια πλατφόρμας', v: -waterfall.platformFee, sub: true },
-          ...(waterfall.climateFee != null ? [{ l: 'Τέλος ανθεκτικότητας', v: -waterfall.climateFee, sub: true }] : []),
+          { l: 'Τέλος ανθεκτικότητας', v: waterfall.climateFee == null ? null : -waterfall.climateFee, sub: true },
           ...(waterfall.management > 0 ? [{ l: 'Διαχείριση', v: -waterfall.management, sub: true }] : []),
           { l: 'Κράτηση φόρου (εκτίμηση)', v: -waterfall.taxReserve, sub: true },
         ];
@@ -402,25 +407,23 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
               <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font.sans }}>Από μεικτό σε καθαρό</span>
               <InfoDot text="Ανάλυση του εσόδου βραχυχρόνιας μίσθωσης του μήνα: αφαιρούνται η προμήθεια της πλατφόρμας, το τέλος ανθεκτικότητας (ανά διανυκτέρευση), η τυχόν διαχείριση και η εκτιμώμενη κράτηση φόρου, για να δεις τι μένει πραγματικά. Πρόκειται για εκτίμηση· μπορείς να προσαρμόσεις τις παραδοχές στην επεξεργασία." />
-              <span style={{ marginLeft: 'auto', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>{strNights} διαν.</span>
+              {/* Ολόκληρη η λέξη: το «0 διαν.» ήταν η μόνη συντομογραφία της
+                  οθόνης. Με μηδέν νύχτες δεν γράφεται· το λέει η γραμμή του τέλους. */}
+              {strNights > 0 && <span style={{ marginLeft: 'auto', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{strNights === 1 ? '1 διανυκτέρευση' : `${fn(strNights)} διανυκτερεύσεις`}</span>}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {rows.map((r, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color: r.sub ? 'var(--text-secondary)' : 'var(--text-primary)', fontWeight: r.sub ? 400 : 600 }}>
-                  <span>{r.l}</span>
-                  <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: r.v < 0 ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{feSigned(r.v)}</span>
-                </div>
-              ))}
               {/* ΤΟ ΤΕΛΟΣ ΟΦΕΙΛΕΤΑΙ ΑΝΑ ΔΙΑΝΥΚΤΕΡΕΥΣΗ. Κρατήσεις με ποσό και
                   χωρίς νύχτες έδιναν «0,00€», σαν να μην οφείλεται τίποτα. Χωρίς
-                  νύχτες το ποσό είναι άγνωστο και το καθαρό το λέει. */}
-              {waterfall.climateFee == null && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color: 'var(--text-secondary)' }}>
-                  <span>Τέλος ανθεκτικότητας</span>
-                  <span style={{ color: 'var(--text-tertiary)', textAlign: 'right' }}>άγνωστο, λείπουν διανυκτερεύσεις</span>
+                  νύχτες το ποσό δεν υπολογίζεται και το καθαρό το λέει. */}
+              {rows.map((r, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color: r.sub ? 'var(--text-secondary)' : 'var(--text-primary)', fontWeight: r.sub ? 400 : 600 }}>
+                  <span>{r.l}</span>
+                  {r.v == null
+                    ? <span style={{ color: 'var(--text-tertiary)', textAlign: 'right' }}>Δεν υπολογίζεται: οι κρατήσεις του μήνα δεν έχουν νύχτες</span>
+                    : <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: r.v < 0 ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{feSigned(r.v)}</span>}
                 </div>
-              )}
+              ))}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
                 <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans }}>{waterfall.climateFee == null ? 'Καθαρό (χωρίς το τέλος)' : 'Καθαρό'}</span>
                 <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{feSigned(waterfall.net)}</span>
@@ -429,14 +432,30 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 12, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
               {waterfall.netPerNight != null
                 ? <span>Καθαρό / διανυκτέρευση <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{feSigned(waterfall.netPerNight)}</strong></span>
-                : <span>Καθαρό / διανυκτέρευση: συμπλήρωσε τις διανυκτερεύσεις στις κρατήσεις</span>}
+                : <span>Συμπλήρωσε τις νύχτες σε κάθε κράτηση του μήνα για το τέλος ανθεκτικότητας και το καθαρό ανά διανυκτέρευση.</span>}
               <span>Περιθώριο <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{fpSigned(waterfall.marginPct)}</strong></span>
             </div>
-            {/* Παραδοχές — επιτόπου επεξεργασία (κλικ στο ποσοστό) */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
-              <span>Προμήθεια πλατφόρμας <InfoDot text="Το ποσοστό προμήθειας της πλατφόρμας κράτησης (π.χ. Airbnb, Booking) επί του μεικτού εσόδου." /> <InlineNumber raw={budgets.strPlatformPct ?? '15'} display={`${fn(strPlatformPct, 0)}%`} onCommit={v => updateBudget('strPlatformPct', v)} width={44} ariaLabel="Προμήθεια πλατφόρμας %" /></span>
-              <span>Διαχείριση <InlineNumber raw={budgets.strMgmtPct ?? '0'} display={`${fn(strMgmtPct, 0)}%`} onCommit={v => updateBudget('strMgmtPct', v)} width={44} ariaLabel="Διαχείριση %" /></span>
-              <span>Συντελεστής φόρου <InlineNumber raw={budgets.strTaxPct ?? String(taxPctAuto ?? 15)} display={`${fn(strTaxPct, 0)}%`} onCommit={v => updateBudget('strTaxPct', v)} width={44} ariaLabel="Συντελεστής φόρου %" /></span>
+            {/* ═══ ΟΙ ΠΑΡΑΔΟΧΕΣ, ΩΣ ΖΕΥΓΗ ΕΤΙΚΕΤΑΣ ΚΑΙ ΤΙΜΗΣ ═════════════════════
+                Ηταν μία σειρά κειμένου, «Προμήθεια πλατφόρμας 15% Διαχείριση 0%
+                Συντελεστής φόρου 15%», όπου το μάτι δεν ξεχώριζε πού τελειώνει
+                η μία παραδοχή και πού αρχίζει η επόμενη. Τώρα η καθεμία είναι
+                δικό της κουτάκι με την ετικέτα και την τιμή, που τυλίγει ολόκληρο
+                στο στενό πλάτος. Η τιμή αλλάζει με πάτημα, όπως πριν. */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
+              <span style={{ fontWeight: 600, color: 'var(--text-secondary)', marginRight: 4 }}>Παραδοχές</span>
+              {([
+                { l: 'Προμήθεια πλατφόρμας', info: 'Το ποσοστό προμήθειας της πλατφόρμας κράτησης (π.χ. Airbnb, Booking) επί του μεικτού εσόδου.', raw: budgets.strPlatformPct ?? '15', val: strPlatformPct, key: 'strPlatformPct' },
+                { l: 'Διαχείριση', info: null, raw: budgets.strMgmtPct ?? '0', val: strMgmtPct, key: 'strMgmtPct' },
+                { l: 'Συντελεστής φόρου', info: null, raw: budgets.strTaxPct ?? String(taxPctAuto ?? 15), val: strTaxPct, key: 'strTaxPct' },
+              ] as const).map(a => (
+                <span key={a.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', minHeight: 28, borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', whiteSpace: 'nowrap' }}>
+                  {a.l}
+                  {a.info && <InfoDot text={a.info} />}
+                  <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                    <InlineNumber raw={a.raw} display={fpRate(a.val)} onCommit={v => updateBudget(a.key, v)} width={44} ariaLabel={`${a.l} %`} />
+                  </strong>
+                </span>
+              ))}
             </div>
           </div>
         );
@@ -734,7 +753,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                       <div style={{ width: 3, height: 26, borderRadius: 3, background: 'color-mix(in srgb, var(--text-primary) 26%, transparent)', flexShrink: 0 }} />
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', fontFamily: T.font.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</div>
-                        <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{cadLabel(r.cadence)} · επόμενη {parseLocalDate(r.nextExpected).toLocaleDateString('el-GR', { day: 'numeric', month: 'short' })}</div>
+                        <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{cadLabel(r.cadence)} · επόμενη {fd(parseLocalDate(r.nextExpected))}</div>
                       </div>
                       <div style={{ textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>
                         <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: hov ? 'var(--accent)' : 'var(--text-primary)', transition: 'color 0.15s' }}>{feAuto(r.monthlyEquivalent)}<span style={{ fontSize: 'var(--fs-xs)', fontWeight: 500, color: 'var(--text-tertiary)' }}>/μήνα</span></div>

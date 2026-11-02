@@ -89,7 +89,7 @@ export function TaxLens({
               {rentalRowsForYear(athensParts().year).map((b,i)=>(
                 <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 14px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:10,marginBottom: 4}}>
                   <span style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>{b.range}</span>
-                  <span style={{fontSize:14,fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{b.rate}</span>
+                  <span style={{fontSize:14,fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{b.rate}</span>
                 </div>
               ))}
               <div style={{marginTop:10,padding:'11px 12px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:10}}>

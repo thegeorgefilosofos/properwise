@@ -236,7 +236,7 @@ function Milestone({ title, icon, count, target, unit, kind, rewardTitle, claimS
             <Ic d={icon} s={16} c="var(--text-secondary)" />
             <span style={{ ...TT.label }}>{title}</span>
           </span>
-          <span className={pr.reached ? undefined : 'ref-kpi-hover'} style={{ ...TT.kpi, flexShrink: 0, color: pr.reached ? 'var(--positive)' : undefined }}><Num value={pr.count} /><span style={{ ...TT.caption }}> / {target}{unit ? ` ${unit}` : ''}</span></span>
+          <span className={pr.reached ? undefined : 'ref-kpi-hover'} style={{ ...TT.kpi, flexShrink: 0, color: pr.reached ? 'var(--positive)' : undefined }}><Num value={pr.count} /><span style={{ ...TT.caption, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>/{target}{unit ? ` ${unit}` : ''}</span></span>
         </div>
         <div style={{ ...TT.displaySm, marginBottom: 10 }}>{rewardTitle}</div>
         <Bar pct={pr.pct} tone={pr.reached ? 'var(--positive)' : 'var(--accent)'} height={8} track="var(--ring-track)" grow label="Πρόοδος συστάσεων" />
@@ -477,7 +477,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
   );
 
   return (
-    <div style={pageShell(900)}>
+    <div style={pageShell('form')}>
       {styleBlock}
 
       {/* ── QR κωδικός συνδέσμου (για διά ζώσης πρόσκληση) ──

@@ -19,7 +19,7 @@ import { NumberInput, CustomSelect, TextInput, DatePicker } from './UIComponents
 import { useBillsSettings } from './BillsSettings';
 import { ReminderLinks } from './ReminderLinks';
 import { findDuplicates, type ExpenseLike } from '@/lib/expenses/duplicates';
-import { T, TT, fe, feWhole, fieldRow, fixedCols, SecHdr, InfoBanner, Skeleton, SkeletonKPIs, localDay, pressable, Btn, IconBtn, ChipToggle } from '@/components/Theme';
+import { T, TT, fe, fd, feWhole, fieldRow, fixedCols, SecHdr, InfoBanner, Skeleton, SkeletonKPIs, pressable, Btn, IconBtn, ChipToggle } from '@/components/Theme';
 // Ο κατάλογος συνδρομών ζει στο lib: τον διαβάζει και ο Προϋπολογισμός.
 import { SUB_GROUPS, entryPlanId,
          subShare, type SubKey} from '@/lib/expenses/subscriptions';
@@ -455,7 +455,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
       // και δεν ξαναδοκίμαζε ποτέ, οπότε ο ιδιοκτήτης δεν έπαιρνε ειδοποίηση
       // λήξης — ούτε μάθαινε ποτέ ότι δεν πρόκειται να την πάρει.
       const { error } = await calendar.insert(supabase, [calendar.row({ propertyId, userId }, 'system', {
-        title: `Ανανέωση Ασφάλειας Κατοικίας, ${insCompany?.label ?? ''}`,
+        title: `Ανανέωση ασφάλειας κατοικίας, ${insCompany?.label ?? ''}`,
         category: 'insurance_renewal',
         event_date: insRenewalDate,
         amount: insCost > 0 ? insCost : null,
@@ -698,7 +698,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
               320 έμενε στήλη 94 εικονοστοιχείων, μία λέξη ανά γραμμή (21/10/2026). */}
           <div style={{ flex: '1 1 12em', fontSize: 12, fontFamily: T.font.sans }}>
             <span style={{ fontWeight: 700, color: checklistRenewal.daysLeft <= 7 ? 'var(--negative)' : 'var(--warning)' }}>Ανανέωση ασφαλιστηρίου </span>
-            <span style={{ color: 'var(--text-secondary)' }}>{checklistRenewal.daysLeft <= 0 ? 'έχει λήξει' : `σε ${checklistRenewal.daysLeft} ημέρες`}</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{checklistRenewal.daysLeft <= 0 ? 'έχει λήξει' : `σε ${checklistRenewal.daysLeft} ${checklistRenewal.daysLeft === 1 ? 'ημέρα' : 'ημέρες'}`}</span>
           </div>
           <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', background: 'var(--bg-elevated)', padding: '2px 10px', borderRadius: T.radius.pill, fontFamily: T.font.sans }}>{navLabel('checklist')}</span>
         </div>
@@ -760,7 +760,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
         {renewalAlerts.map((a, i) => (
           <div key={i} style={{ background: a.type === 'danger' ? 'var(--negative-soft)' : a.type === 'warning' ? 'var(--warning-soft)' : 'var(--accent-soft)', border: `1px solid ${a.type === 'danger' ? 'var(--negative)' : a.type === 'warning' ? 'var(--warning)' : 'var(--accent)'}`, borderRadius: T.radius.inner, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--fs-xs)', fontFamily: T.font.sans }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.type === 'danger' ? 'var(--negative)' : a.type === 'warning' ? 'var(--warning)' : 'var(--accent)', flexShrink: 0 }}/>
-            <strong>{a.name}</strong>: {a.daysLeft === 0 ? 'Λήγει ΣΗΜΕΡΑ' : `Λήγει σε ${a.daysLeft} ημέρες`}
+            <strong>{a.name}</strong>: {a.daysLeft === 0 ? 'Λήγει σήμερα' : `Λήγει σε ${a.daysLeft} ${a.daysLeft === 1 ? 'ημέρα' : 'ημέρες'}`}
             {/* Η υπενθύμιση δίπλα στην ειδοποίηση, όχι σε άλλη οθόνη: τη στιγμή
                 που ο χρήστης το μαθαίνει είναι και η μόνη στιγμή που θα κάνει
                 κάτι γι' αυτό. */}
@@ -959,7 +959,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
               εμφανίζεται, το περιθώριό του θα έλειπε μαζί του. */}
           <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: 14, marginTop: 14, marginBottom: 14, border: '1px solid var(--border-subtle)' }}>
             <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 12, fontFamily: T.font.sans }}>
-              Στοιχεία Ακινήτου, για Συγκριτική Εκτίμηση Ασφαλίστρων
+              Στοιχεία ακινήτου για συγκριτική εκτίμηση ασφαλίστρων
             </div>
             {crossProperty.sqm && !insSqm && (
               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, marginBottom: 8 }}>
@@ -1059,7 +1059,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                     <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{recommended.reason}</div>
                   </div>
                   <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{fe(recommended.q.monthlyEstimate)}</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{fe(recommended.q.monthlyEstimate)}</div>
                     <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>εκτίμηση / μήνα</div>
                   </div>
                 </div>
@@ -1120,7 +1120,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                  <div className="po-scroll-x">
                   <table className="po-table pin-1" style={{ '--tbl-fs': 'var(--fs-xs)', '--tbl-min': '760px', '--row-bg': 'var(--bg-surface)' }}>
                     <thead>
-                      <tr>{['Εταιρεία','Πρόγραμμα','Σεισμός','Πλημμύρα','Φυσικές καταστροφές','Εκτιμώμενο Μηνιαίο','Εκτιμώμενο Ετήσιο','Εξοικονόμηση/μήνα'].map((h, i) => (
+                      <tr>{['Εταιρεία','Πρόγραμμα','Σεισμός','Πλημμύρα','Φυσικές καταστροφές','Εκτιμώμενο μηνιαίο','Εκτιμώμενο ετήσιο','Εξοικονόμηση/μήνα'].map((h, i) => (
                         <th key={i} scope="col" style={{ background: 'var(--bg-elevated)', whiteSpace: i < 4 ? ('nowrap' as const) : undefined, textAlign: i > 1 && i < 5 ? ('center' as const) : i >= 5 ? ('right' as const) : undefined }}>{h}</th>
                       ))}</tr>
                     </thead>
@@ -1239,7 +1239,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                   <div key={c.service} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
                     gap: 12, flexWrap: 'wrap', padding: '7px 0' }}>
                     <span style={{ ...TT.bodySm, color: 'var(--text-primary)' }}>
-                      {c.label}, ανανέωση {localDay(c.renewalDate).toLocaleDateString('el-GR')}
+                      {c.label}, ανανέωση {fd(c.renewalDate)}
                     </span>
                     <ReminderLinks subject={{
                       what: `η συνδρομή ${c.label} ανανεώνεται`,
@@ -1281,7 +1281,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' }}>
                 <div>
                   <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>{s.name}</span>
-                  {s.renewalDate && <span style={{ fontSize: 'var(--fs-xs)', color: daysLeft !== null && daysLeft <= 7 ? 'var(--warning)' : 'var(--text-tertiary)', marginLeft: 12, fontFamily: T.font.sans }}>{localDay(s.renewalDate).toLocaleDateString('el-GR')}{daysLeft !== null && daysLeft <= 7 ? `, σε ${daysLeft} ημέρες` : ''}</span>}
+                  {s.renewalDate && <span style={{ fontSize: 'var(--fs-xs)', color: daysLeft !== null && daysLeft <= 7 ? 'var(--warning)' : 'var(--text-tertiary)', marginLeft: 12, fontFamily: T.font.sans }}>{fd(s.renewalDate)}{daysLeft !== null && daysLeft <= 7 ? `, σε ${daysLeft} ${daysLeft === 1 ? 'ημέρα' : 'ημέρες'}` : ''}</span>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fe(parseFloat(s.price))} / μήνα</span>

@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, Skeleton, EmptyState, InfoBanner } from '@/components/Theme';
+import { T, Skeleton, EmptyState, InfoBanner, fd } from '@/components/Theme';
 import { failed } from '@/lib/core/dbError';
 import { History } from 'lucide-react';
 import { activityLabel, type ActivityRow } from '@/lib/activity';
@@ -17,12 +17,13 @@ function relTime(iso: string): string {
   const d = new Date(iso).getTime();
   const s = Math.floor((Date.now() - d) / 1000);
   if (s < 60) return 'μόλις τώρα';
-  const m = Math.floor(s / 60); if (m < 60) return `πριν ${m} λεπτά`;
+  const m = Math.floor(s / 60); if (m < 60) return `πριν ${m} ${m === 1 ? 'λεπτό' : 'λεπτά'}`;
   const h = Math.floor(m / 60); if (h < 24) return `πριν ${h} ${h === 1 ? 'ώρα' : 'ώρες'}`;
   const dd = Math.floor(h / 24); if (dd < 30) return `πριν ${dd} ${dd === 1 ? 'ημέρα' : 'ημέρες'}`;
   // ΧΡΟΝΟΣΗΜΑΝΣΗ, ΟΧΙ ΗΜΕΡΟΛΟΓΙΑΚΗ ΗΜΕΡΑ: το `iso` κουβαλά ώρα (η ίδια
-  // συνάρτηση μετράει «πριν 3 ώρες» από πάνω). Η τοπική ώρα ΕΙΝΑΙ το ζητούμενο.
-  return new Date(iso).toLocaleDateString('el-GR');
+  // συνάρτηση μετράει «πριν 3 ώρες» από πάνω). Η τοπική ώρα ΕΙΝΑΙ το ζητούμενο·
+  // το `fd` τη γράφει ηη/μμ/εεεε, όπως κάθε ημερομηνία της εφαρμογής (ήταν «2/11/2026»).
+  return fd(iso);
 }
 
 export default function ActivityLog() {

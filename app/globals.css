@@ -1071,25 +1071,31 @@ body {
    οπότε στοιχίζονται είτε τύλιξε κάποια ετικέτα είτε όχι — και το αυλάκι παίρνει
    ύψος μόνο όταν κάτι πράγματι το ζητήσει. */
 .stat-cells > * { display: grid; grid-template-rows: subgrid; grid-row: span 2; align-content: start; min-width: 0; }
-/* ΚΑΘΕ ΜΕΓΕΘΟΣ ΣΤΟ ΚΕΝΤΡΟ ΤΟΥ ΚΕΛΙΟΥ ΤΟΥ. Στοιχισμένα αριστερά, δύο νούμερα
-   μονοψήφια σε λωρίδα 640 άφηναν το δεξί μισό κάθε κελιού άδειο και η λωρίδα
-   έγερνε αριστερά. Στο κέντρο ετικέτα και αριθμός διαβάζονται ως ζεύγος και η
-   λωρίδα ζυγίζει, όσα κελιά κι αν έχει. */
-.stat-cells > * { justify-items: center; text-align: center; }
+/* ΑΡΙΣΤΕΡΑ, ΟΠΩΣ ΚΑΘΕ ΑΛΛΟΣ ΑΡΙΘΜΟΣ ΜΕ ΕΤΙΚΕΤΑ (02.11.2026). Στο κέντρο, με
+   τρία μεγέθη σε δύο στήλες (2 + 1 πλατύ), το τρίτο κελί καθόταν στη μέση της
+   κάρτας, κάτω από το κενό ανάμεσα στα δύο πάνω: τρεις αριθμοί σε τρεις
+   διαφορετικούς άξονες. Αριστερά, κάθε στήλη έχει μία ευθεία και η λωρίδα
+   διαβάζεται όπως τα πλακίδια KPI της ίδιας οθόνης. */
+.stat-cells > * { justify-items: start; text-align: left; }
 /* Το κελί ΔΕΝ φορά `.kpi-plain` (βλ. StatStrip στο Theme.tsx), οπότε ο κανόνας
    των δύο γραμμών του στενού πλακιδίου δεν το αγγίζει και το subgrid κάνει τη
    δουλειά της στοίχισης. */
 /* Τα σκαλιά βγαίνουν από μέτρηση, όχι από στρογγυλά νούμερα: η μακρύτερη
    ΛΕΞΗ ετικέτας θέλει 100 εικονοστοιχεία και το κενό στηλών είναι 14. Δύο
    στήλες θέλουν 214, τρεις 328, τέσσερις 442 — σε `em` των 11. */
+/* ΤΡΕΙΣ ΣΤΗΛΕΣ ΑΠΟ ΤΑ 24em (02.11.2026). Το σκαλί των δύο στηλών έβγαζε τα
+   τρία μεγέθη 2 + 1, με το τρίτο απλωμένο σε όλο το πλάτος: ορφανό που
+   διαβαζόταν ως σύνολο των δύο από πάνω. Οι ετικέτες της λωρίδας είναι μία
+   λέξη ή δύο και τυλίγουν μέσα στο κελί τους (το subgrid κρατά τους αριθμούς
+   στην ίδια ευθεία), οπότε τρεις στήλες χωρούν ήδη σε τηλέφωνο. */
 @container (min-width: 19.5em) {
   .stat-cells { grid-template-columns: repeat(var(--sc-2, 2), minmax(0, 1fr)); }
-  /* Το ορφανό των δύο στηλών απλώνεται, όπως και στο `.kpi-row`: τρία μεγέθη
-     γίνονται 2 + 1 πλατύ, όχι 2 + 1 με τρύπα. Στα πλατύτερα σκαλιά ο διαιρέτης
-     του `balancedCols` δεν αφήνει ορφανό, οπότε ο κανόνας αναιρείται. */
+  /* Κάτω από τα 24em (στενό τηλέφωνο, 320) οι τρεις στήλες δεν χωρούν ποσό
+     «5.935,00€» στο κελί του· εκεί μόνο το τρίτο κελί πιάνει τη σειρά του,
+     στοιχισμένο αριστερά, ώστε να μη μένει τρύπα δίπλα του. */
   .stat-cells > :last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
-@container (min-width: 29.9em) {
+@container (min-width: 24em) {
   .stat-cells { grid-template-columns: repeat(var(--sc-3, 3), minmax(0, 1fr)); }
   .stat-cells > :last-child:nth-child(odd) { grid-column: auto; }
 }
@@ -1464,17 +1470,9 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 .cash-sides { display: grid; grid-template-columns: minmax(0, 1fr); }
 .cash-side { display: flex; flex-direction: column; min-width: 0; }
 .cash-divider { height: 1px; margin: 0 20px; background: var(--border-subtle); }
-/* ΤΟ «0,00€» ΤΗΣ ΑΔΕΙΑΣ ΠΛΕΥΡΑΣ ΥΠΑΡΧΕΙ ΓΙΑ ΤΗ ΖΥΓΙΣΗ ΚΑΙ ΜΟΝΟ ΕΚΕΙ ΦΑΙΝΕΤΑΙ.
-   Δίπλα δίπλα κρατά τις δύο πλευρές στις ίδιες γραμμές (CashHero). Η μία κάτω
-   από την άλλη δεν ζυγίζει τίποτα: εκεί θα ήταν εξήντα εικονοστοιχεία για την
-   απουσία είδησης, οπότε η πλευρά μένει ετικέτα και φράση, όπως πριν. */
-.cash-figure-empty { display: none; }
-.cash-note-empty { font-size: var(--fs-md); }
 @container (min-width: 520px) {
   .cash-sides[data-pair] { grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr); }
   .cash-sides[data-pair] > .cash-divider { height: auto; margin: 14px 0; }
-  .cash-sides[data-pair] .cash-figure-empty { display: block; }
-  .cash-sides[data-pair] .cash-note-empty { font-size: 12px; }
 }
 
 /* KPI / Metric card — ταυτίζεται με το KPIGrid του Theme.tsx (μία αισθητική) */
@@ -1510,8 +1508,11 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
    ετικέτα που κρατούσε ΜΙΑ γραμμή: το «Προμήθειες πλατφορμών» τύλιγε σε δύο και
    το νούμερό του έπεφτε πιο κάτω από τα διπλανά. Ο χρήστης το φωτογράφισε. */
 .kpi-card.compact { padding: 10px 12px; --kpi-max: 18px; }
-.kpi-card.nested { border-color: transparent; box-shadow: var(--highlight-inset), var(--elev-1); }
-.kpi-card.nested:hover { border-color: transparent; box-shadow: var(--highlight-inset-strong), var(--elev-2); }
+.kpi-card.nested { border-color: transparent; box-shadow: var(--highlight-inset); }
+/* ΧΩΡΙΣ ΣΚΙΑ ΚΑΙ ΧΩΡΙΣ ΑΝΑΣΗΚΩΜΑ (02.11.2026). Το πλακίδιο μέσα σε κάρτα
+   σήκωνε σκιά και ανέβαινε στην αιώρηση: τρίτο επίπεδο βάθους πάνω στην κάρτα
+   που ήδη έχει δικό της· και κίνηση σε κάτι που δεν πατιέται. */
+.kpi-card.nested:hover { border-color: transparent; box-shadow: var(--highlight-inset); transform: none; }
 .kpi-value {
   font-family: 'Inter', system-ui, sans-serif;
   /* Κλιμακώνεται με το πλάτος ΤΗΣ ΚΑΡΤΑΣ (cqi), όχι του παραθύρου: σε δύο
@@ -1662,8 +1663,15 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
    μακρύ πλακίδιο, το νούμερό του θα έπεφτε πιο χαμηλά από τα διπλανά — δηλαδή
    ακριβώς το σφάλμα που αποφεύγουμε. Το `:has()` τη δίνει σε ΟΛΑ τα αδέλφια.
    Το ερώτημα δοχείου αποτιμάται πάνω στο ίδιο το `.kpi-label`, άρα το δοχείο
-   είναι πάντα το πλακίδιο του — και στους τρεις επιλογείς. */
-@container (max-width: 26em) {
+   είναι πάντα το πλακίδιο του — και στους τρεις επιλογείς.
+
+   02.11.2026, 26em → 22em. Σε σειρά τεσσάρων στα 1.280 το δοχείο της ετικέτας
+   είναι ~258 (23,5em) και το 26em κρατούσε δεύτερη γραμμή σε ΟΛΗ τη σειρά για
+   ετικέτα που χωρά σε μία: άνισο κενό ετικέτας-τιμής ανάμεσα σε σειρές. Η
+   μακρύτερη ετικέτα της εφαρμογής («Εκτιμώμενη υπολειπόμενη αξία», 11/600/
+   0.08em) θέλει ~240, άρα κάτω από τα 22em (242) μπορεί να τυλίξει και πάνω
+   από αυτά όχι. Η Απογραφή στα 820 μένει κάτω από το κατώφλι. */
+@container (max-width: 22em) {
   .kpi-card[data-long] .kpi-label,
   .kpi-plain[data-long] .kpi-label,
   .fixed-cols:has(> .kpi-card[data-long]) > .kpi-card .kpi-label,
@@ -6531,8 +6539,15 @@ tr.po-row-more { display: none; }
    διακόπτης παίρνει όλο το πλάτος: μία δεξιά άκρη για όλη την απόφαση. */
 .bill-plans { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
 .bill-cycle { margin-top: 2px; max-width: 260px; }
+/* ΚΑΙ ΟΧΙ «ΟΣΟ ΒΓΕΙ» (02.11.2026). Με `flex: 1 1 auto` κάθε πλακίδιο έπαιρνε
+   πλάτος ανάλογο του ονόματός του: στα 390 το «Ιδιοκτήτης με Νόα» έβγαινε
+   πλατύτερο από το «Ιδιοκτήτης+» και το «Επαγγελματίας» στενότερο από το
+   «Επαγγελματίας+», δηλαδή δύο σειρές 2+2 με δύο διαφορετικές τομές στη μέση.
+   Πλέγμα δύο ίσων στηλών: τέσσερα ίσα κουτιά, μία κάθετη γραμμή. Το όνομα
+   τυλίγει μέσα στο κουτί του αντί να το φαρδύνει. */
 @media (max-width: 559px) {
-  .bill-plans > * { flex: 1 1 auto; }
+  .bill-plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bill-plans > * { min-width: 0; white-space: normal; text-align: center; }
   .bill-cycle { max-width: none; }
 }
 

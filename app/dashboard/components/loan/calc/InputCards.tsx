@@ -119,7 +119,7 @@ export function LoanCard({
             <NumberInput label={rateType==='variable'?'Περιθώριο τράπεζας':'Ετήσιο επιτόκιο'} value={rate} onChange={v=>{setRate(v);setActivePreset(null)}} suffix="%"/>
             {rateType==='variable'&&(
               <div style={{marginTop: 8,padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
-                <p style={{fontSize:12,fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums',color:'var(--text-secondary)'}}><span title="Διατραπεζικό επιτόκιο ευρώ: βάση κυμαινόμενων δανείων">Euribor</span> {fmtPct(market.euribor_3m)} + {fmtPct(R)} = <strong>{fmtPct(effRate)}</strong></p>
+                <p style={{fontSize:12,fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-secondary)'}}><span title="Διατραπεζικό επιτόκιο ευρώ: βάση κυμαινόμενων δανείων">Euribor</span> {fmtPct(market.euribor_3m)} + {fmtPct(R)} = <strong>{fmtPct(effRate)}</strong></p>
                 {/* Η ΛΕΖΑΝΤΑ ΔΙΑΒΑΖΕΤΑΙ, ΔΕΝ ΓΡΑΦΕΤΑΙ. Εδώ έλεγε «Αυτόματη ενημέρωση
                     από την ΕΚΤ κάθε πρωί» — υπόσχεση που η ΕΚΤ δεν δίνει: το Euribor
                     το δημοσιεύει μηνιαία, όχι ημερήσια (lib/market/ecb.ts). Τώρα λέει

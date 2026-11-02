@@ -3,7 +3,7 @@
 // ΟΙ ΕΞΑΓΩΓΕΣ ΤΩΝ ΕΠΑΦΩΝ: ΚΑΡΤΑ ΓΙΑ ΕΚΤΥΠΩΣΗ, EXCEL, PDF
 // ═══════════════════════════════════════════════════════════════════════════
 import { downloadWorkbook } from '../sheets'
-import { ABSENT, ABSENT_SHORT } from '@/components/Theme'
+import { ABSENT, ABSENT_SHORT, fd } from '@/components/Theme'
 import type { ReportBranding } from '@/lib/reportBranding'
 import {
   reportHead, reportHeader, reportSection, reportKpi, reportDisclaimer, openReport, rEsc,
@@ -42,7 +42,7 @@ export function printContactCard(contact: Contact, branding?: ReportBranding | n
   const meta = roleMeta(contact.role)
   const extra = contact._extra || {}
   const row = (label: string, value: string, mono = false) =>
-    `<div class="crow"><span class="clabel">${rEsc(label)}</span><span${mono ? ' style="font-family:\'Roboto Mono\',monospace"' : ''}>${value}</span></div>`
+    `<div class="crow"><span class="clabel">${rEsc(label)}</span><span${mono ? ' style="font-variant-numeric:tabular-nums"' : ''}>${value}</span></div>`
   const badge = (text: string) => `<span class="cbadge">${rEsc(text)}</span>`
 
   const html = reportHead(`Επαφή · ${contact.full_name}`, CONTACT_CARD_CSS)
@@ -71,7 +71,7 @@ export function printContactCard(contact: Contact, branding?: ReportBranding | n
 // ─── Excel Export (SheetJS, ίδιο μοτίβο με τα υπόλοιπα φύλλα) ───────────────
 export async function exportContactsExcel(contacts: Contact[]) {
   const XLSX = (await import('xlsx-js-style')).default
-  const today = new Date().toLocaleDateString('el-GR')
+  const today = fd(new Date())
   const wb = XLSX.utils.book_new()
 
   // ── Sheet 1: Σύνοψη ──────────────────────────────────────────────────────
@@ -88,13 +88,13 @@ export async function exportContactsExcel(contacts: Contact[]) {
   const withAfm = contacts.filter(c => c._extra?.afm).length
 
   const summaryData: (string | number)[][] = [
-    ['PROPERWISE, Κατάσταση Επαφών', ''],
+    ['PROPERWISE, κατάσταση επαφών', ''],
     ['Ημερομηνία εξαγωγής:', today],
     ['Σύνολο εγγραφών:', contacts.length],
     [''],
     ['ΓΕΝΙΚΗ ΣΤΑΤΙΣΤΙΚΗ', ''],
-    ['Σύνολο Επαφών', contacts.length],
-    ['Προτιμώμενες Επαφές', preferred],
+    ['Σύνολο επαφών', contacts.length],
+    ['Προτιμώμενες επαφές', preferred],
     ['Με WhatsApp', withWhatsApp],
     ['Με Viber', withViber],
     ['Με IBAN', withIBAN],
@@ -102,7 +102,7 @@ export async function exportContactsExcel(contacts: Contact[]) {
     ['Με ΑΦΜ (ταιριάζουν με παραστατικά)', withAfm],
     [''],
     ['ΚΑΤΑΝΟΜΗ ΑΝΑ ΚΑΤΗΓΟΡΙΑ', '', ''],
-    ['Κατηγορία', 'Αριθμός Επαφών', 'Ποσοστό %'],
+    ['Κατηγορία', 'Αριθμός επαφών', 'Ποσοστό %'],
     ...GROUPS.filter(g => byGroup[g.id]).map(g => [
       g.label,
       byGroup[g.id] || 0,
@@ -117,18 +117,18 @@ export async function exportContactsExcel(contacts: Contact[]) {
   // ── Sheet 2: Αναλυτικές Επαφές ─────────────────────────────────────────
   const headers = [
     'Ονοματεπώνυμο', 'Κατηγορία', 'Ρόλος',
-    'Κύριο Τηλέφωνο', 'WhatsApp', 'Viber', 'Κινητό', 'Ηλεκτρονικό ταχυδρομείο',
-    'Ιστοσελίδα', 'Διεύθυνση Γραφείου',
+    'Κύριο τηλέφωνο', 'WhatsApp', 'Viber', 'Κινητό', 'Ηλεκτρονικό ταχυδρομείο',
+    'Ιστοσελίδα', 'Διεύθυνση γραφείου',
     'ΑΦΜ', 'IBAN', 'IRIS',
-    'Επόμενο Ραντεβού',
-    'Ετικέτες', 'Αρχεία', 'Ελεύθερες Σημειώσεις', 'Σημειώσεις (log)',
+    'Επόμενο ραντεβού',
+    'Ετικέτες', 'Αρχεία', 'Ελεύθερες σημειώσεις', 'Ιστορικό σημειώσεων',
   ]
   const detailRows: (string | number)[][] = [headers]
 
   GROUPS.forEach(g => {
     const grpContacts = contacts.filter(c => roleMeta(c.role).groupId === g.id)
     if (grpContacts.length === 0) return
-    detailRows.push([g.label, `${grpContacts.length} επαφές`, ...Array(headers.length - 2).fill('')])
+    detailRows.push([g.label, (grpContacts.length === 1 ? '1 επαφή' : `${grpContacts.length} επαφές`), ...Array(headers.length - 2).fill('')])
     grpContacts.sort((a, b) => a.full_name.localeCompare(b.full_name, 'el')).forEach(c => {
       const ex = c._extra || {}
       detailRows.push([
@@ -145,11 +145,11 @@ export async function exportContactsExcel(contacts: Contact[]) {
         ex.afm || '',
         ex.iban || '',
         ex.iris ? 'ΝΑΙ' : 'ΟΧΙ',
-        ex.next_appointment ? new Date(ex.next_appointment + 'T00:00:00').toLocaleDateString('el-GR') : '',
+        ex.next_appointment ? fd(ex.next_appointment) : '',
         (ex.tags || []).join('; '),
         (ex.files || []).length,
         c._freeNotes || '',
-        (ex.notes_log || []).map((n: {ts: string; text: string}) => `[${new Date(n.ts).toLocaleDateString('el-GR')}] ${n.text}`).join(' | '),
+        (ex.notes_log || []).map((n: {ts: string; text: string}) => `[${fd(n.ts)}] ${n.text}`).join(' | '),
       ])
     })
     detailRows.push(Array(headers.length).fill(''))
@@ -164,7 +164,7 @@ export async function exportContactsExcel(contacts: Contact[]) {
     { wch: 16 },
     { wch: 26 }, { wch: 8 }, { wch: 32 }, { wch: 48 },
   ]
-  XLSX.utils.book_append_sheet(wb, ws2, 'Αναλυτικές Επαφές')
+  XLSX.utils.book_append_sheet(wb, ws2, 'Αναλυτικές επαφές')
 
   // ── Sheet 3: Κατάλογος Επαφών (ταχεία αναφορά) ─────────────────────────
   const dirHeaders = ['Ονοματεπώνυμο', 'Ρόλος', 'Τηλέφωνο', 'Ηλεκτρονικό ταχυδρομείο', 'ΑΦΜ', 'WhatsApp', 'IRIS']
@@ -242,17 +242,17 @@ export function exportContactsPDF(contacts: Contact[], branding?: ReportBranding
         + `<td class="tnum">${iban}</td>`
         + `</tr>`
     }).join('')
-    return reportSection(`${g.label} · ${byGroup[g.id].length} επαφές`)
+    return reportSection(`${g.label} · ${byGroup[g.id].length === 1 ? '1 επαφή' : `${byGroup[g.id].length} επαφές`}`)
       + `<table><thead><tr>`
       +   `<th>Ονοματεπώνυμο</th><th>Τηλέφωνο</th><th>Ηλεκτρονικό ταχυδρομείο</th>`
       +   `<th>ΑΦΜ</th><th>IBAN</th>`
       + `</tr></thead><tbody>${rows}</tbody></table>`
   }).join('')
 
-  const title = 'Κατάσταση Επαφών'
+  const title = 'Κατάσταση επαφών'
   const html = reportHead(title)
     + `<body><div class="page">`
-    + reportHeader(branding, 'Κατάλογος επαφών', { rightNote: `${contacts.length} επαφές` })
+    + reportHeader(branding, 'Κατάλογος επαφών', { rightNote: contacts.length === 1 ? '1 επαφή' : `${contacts.length} επαφές` })
     + `<h1>${rEsc(title)}</h1>`
     + `<div class="sub">Κατάλογος συνεργατών, παρόχων και υπηρεσιών ακινήτου</div>`
     + reportSection('Σύνοψη')

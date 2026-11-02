@@ -357,7 +357,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                       <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 50, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, boxShadow: 'var(--elev-3)', padding: 6, minWidth: 96, maxHeight: 220, overflowY: 'auto' }}>
                         {yearsAvail.map(y => (
                           <button key={y} type="button" onClick={() => { setReportYear(y); setReportYearMenu(false); }}
-                            style={{ display: 'block', width: '100%', padding: '7px 10px', borderRadius: T.radius.chip, border: 'none', background: y === reportYear ? 'var(--accent-dim)' : 'transparent', color: y === reportYear ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.mono, fontSize: 'var(--fs-base)', fontWeight: y === reportYear ? 700 : 500, cursor: 'pointer', textAlign: 'left' }}>{y}</button>
+                            style={{ display: 'block', width: '100%', padding: '7px 10px', borderRadius: T.radius.chip, border: 'none', background: y === reportYear ? 'var(--accent-dim)' : 'transparent', color: y === reportYear ? 'var(--accent)' : 'var(--text-primary)', fontFamily: T.font.num, fontSize: 'var(--fs-base)', fontWeight: y === reportYear ? 700 : 500, cursor: 'pointer', textAlign: 'left' }}>{y}</button>
                         ))}
                       </div>
                     </>
@@ -459,13 +459,24 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <div style={{ ...lbl, marginBottom: 8 }}>Ανά μήνα</div>
                 <div style={{ flex: 1, background: 'var(--surface-raised)', border: '1px solid var(--border-raised)', borderRadius: T.radius.card, padding: 14, boxShadow: 'var(--highlight-inset), var(--elev-1)' }}>
-                  <MonthBars
-                    points={months.map((v, i) => ({ key: `${reportYear}-${String(i + 1).padStart(2, '0')}`, label: `${MONTHS_NOM[i]} ${reportYear}`, total: v }))}
-                    currentKey={`${reportYear}-${String(new Date().getMonth() + 1).padStart(2, '0')}`}
-                    restLabel={`Δηλωτέα ακαθάριστα ${reportYear}`}
-                    format={fe}
-                    height={104}
-                  />
+                  {(() => {
+                    // ΤΟ ΙΔΙΟ ΓΡΑΦΗΜΑ ΜΕ ΤΟ ΙΣΤΟΡΙΚΟ ΤΩΝ ΔΑΠΑΝΩΝ: χρώματα σειράς,
+                    // μέσος όρος των μηνών ΜΕ έσοδα (οι κενοί μήνες δεν είναι
+                    // μηδέν, είναι μήνες χωρίς διαμονή) και το ποσό πάνω από την
+                    // ψηλότερη ράβδο και τον τρέχοντα μήνα.
+                    const pts = months.map((v, i) => ({ key: `${reportYear}-${String(i + 1).padStart(2, '0')}`, label: `${MONTHS_NOM[i]} ${reportYear}`, total: v }));
+                    const cur = `${reportYear}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+                    const filled = pts.filter(p => p.total > 0);
+                    const avg = filled.length >= 2 ? filled.reduce((a, p) => a + p.total, 0) / filled.length : undefined;
+                    const peak = filled.reduce<typeof pts[number] | null>((b, p) => (!b || p.total > b.total ? p : b), null);
+                    return (
+                      <MonthBars series points={pts} currentKey={cur}
+                        restLabel={`Δηλωτέα ακαθάριστα ${reportYear}`}
+                        format={fe} height={104}
+                        avg={avg} avgLabel={filled.length < 12 ? `μέσος όρος σε ${filled.length}\u00a0μήνες` : 'μέσος όρος'}
+                        valueKeys={[...(peak ? [peak.key] : []), cur]} />
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -589,7 +600,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                         βγαίνει null στην πράξη. Αν όμως έβγαινε, το `new Date(null)`
                         δίνει την εποχή Unix: «01 Ιαν 1970» δίπλα στο όνομα του
                         επισκέπτη. Το ABSENT_DATE είναι η καθιερωμένη ένδειξη. */}
-                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.mono }}>{ci.created_at ? fd(ci.created_at) : ABSENT_DATE}</span>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{ci.created_at ? fd(ci.created_at) : ABSENT_DATE}</span>
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.5 }}>
                     {[ci.id_number && `Ταυτότητα ${ci.id_number}`, ci.nationality, ci.birth_date && `γεν. ${fd(ci.birth_date)}`, ci.phone, ci.arrival_date && `άφιξη ${fd(ci.arrival_date)}`, ci.guests_count && `${ci.guests_count} άτομα`, ci.accepts_rules && 'αποδοχή κανόνων'].filter(Boolean).join(' · ')}
@@ -907,7 +918,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                           γιατί καμία από τις τρεις εξόδους δεν είναι πιο κύρια. */}
                       <Btn href={whatsappLink(dc.phone ? msgDigits(dc.phone) : '', text)} newTab>WhatsApp</Btn>
                       <Btn href={viberTextLink(text)}>Viber</Btn>
-                      <Btn onClick={() => { navigator.clipboard?.writeText(text); setMsgCopied(true); }}>{msgCopied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</Btn>
+                      <Btn onClick={async () => { try { await navigator.clipboard.writeText(text); setMsgCopied(true); } catch { /* χωρίς πρόσβαση στο πρόχειρο: το κουμπί μένει «Αντιγραφή» */ } }}>{msgCopied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</Btn>
                       {!dc.phone && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Χωρίς αποθηκευμένο τηλέφωνο θα διαλέξεις επαφή μέσα στην εφαρμογή.</span>}
                     </div>
                   </div>

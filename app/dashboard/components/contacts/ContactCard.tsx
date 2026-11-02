@@ -68,7 +68,7 @@ export function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense,
 
          ΚΑΙ ΤΟ ΠΕΡΙΓΡΑΜΜΑ ΓΙΝΕΤΑΙ ΕΝΟΣ ΕΙΚΟΝΟΣΤΟΙΧΕΙΟΥ. Το 1,5 ήταν το μόνο
          της εφαρμογής: κάθε άλλη κάρτα, εδώ και παντού, γράφει 1. */
-      style={{ background: selected ? 'color-mix(in srgb, var(--accent) 6%, var(--surface-raised))' : 'var(--surface-raised)', border: '1px solid ' + (selected ? 'var(--accent)' : hov ? 'var(--accent-border)' : overdue ? 'var(--negative-border)' : 'var(--border-raised)'), borderLeft: overdue && !bulkMode ? '3px solid var(--negative)' : undefined, borderRadius: T.radius.card, padding: bulkMode ? '18px 18px 16px 46px' : '18px 18px 16px', position: 'relative', boxShadow: selected ? '0 0 0 3px var(--accent-soft)' : hov ? 'var(--highlight-inset-strong), var(--elev-2)' : 'var(--highlight-inset), var(--elev-1)', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s', cursor: bulkMode ? 'pointer' : 'default' }}>
+      style={{ background: selected ? 'color-mix(in srgb, var(--accent) 6%, var(--surface-raised))' : 'var(--surface-raised)', border: '1px solid ' + (selected ? 'var(--accent)' : hov ? 'var(--accent-border)' : overdue ? 'var(--negative-border)' : 'var(--border-raised)'), borderLeft: overdue && !bulkMode ? '3px solid var(--negative)' : undefined, borderRadius: T.radius.card, padding: bulkMode ? '18px 18px 16px 46px' : '18px 18px 16px', position: 'relative', alignSelf: 'start', boxShadow: selected ? '0 0 0 3px var(--accent-soft)' : hov ? 'var(--highlight-inset-strong), var(--elev-2)' : 'var(--highlight-inset), var(--elev-1)', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s', cursor: bulkMode ? 'pointer' : 'default' }}>
       {/* Η ΑΡΙΣΤΕΡΗ ΛΩΡΙΔΑ ΕΓΙΝΕ ΠΕΡΙΓΡΑΜΜΑ. Ηταν απόλυτο κουτί τριών
           εικονοστοιχείων μέσα σε κάρτα με περίγραμμα ενός, με δική του
           καμπύλη: άφηνε σκούρα εγκοπή στη γωνία σε ΚΑΘΕ κάρτα· και χωρίς
@@ -129,8 +129,15 @@ export function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense,
           )}
         </div>
       )}
-      <div style={{ paddingLeft: 10, pointerEvents: bulkMode ? 'none' : undefined }}>
-        <div {...pressable(() => onOpen && !bulkMode && onOpen())} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, paddingRight: bulkMode ? 0 : 100, cursor: onOpen && !bulkMode ? 'pointer' : 'default' }}>
+      {/* ═══ ΤΟ ΥΨΟΣ ΤΟ ΟΡΙΖΕΙ ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ═══════════════════════════════
+          Κάθε ενότητα της κάρτας κρατούσε δικό της κάτω περιθώριο (10, 10, 10,
+          12) ΚΑΙ αποδιδόταν ακόμη κι όταν ήταν άδεια: επαφή με ένα τηλέφωνο
+          έκλεινε με δύο κενά κουτιά και ~40 εικονοστοιχεία λευκό κάτω από το
+          τελευταίο στοιχείο. Τώρα οι ενότητες είναι στήλη με ενιαίο κενό και
+          όσες δεν έχουν τίποτα δεν υπάρχουν. Και η κάρτα δεν τεντώνεται στο
+          ύψος της διπλανής της (`alignSelf: start`). */}
+      <div style={{ paddingLeft: 10, pointerEvents: bulkMode ? 'none' : undefined, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div {...pressable(() => onOpen && !bulkMode && onOpen())} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 2, paddingRight: bulkMode ? 0 : 100, cursor: onOpen && !bulkMode ? 'pointer' : 'default' }}>
           {extra.avatar_url ? <RuntimeImg src={extra.avatar_url} alt="" style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-border)', flexShrink: 0 }} />
             : <div style={{ width: 50, height: 50, borderRadius: '50%', background: 'var(--accent-soft)', border: '2px solid var(--accent-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>{initials || <GroupIcon size={20} />}</div>}
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -139,20 +146,20 @@ export function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense,
             {extra.specialty && <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{extra.specialty}</div>}
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+        {(extra.preferred || scopeLabel) && <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {extra.preferred && <span style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)', fontWeight: 700 }}>Προτιμώμενη</span>}
           {scopeLabel && (
             <span title={scopePortfolio ? 'Ισχύει για όλο το χαρτοφυλάκιο' : 'Ανήκει σε συγκεκριμένο ακίνητο'} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: scopePortfolio ? 'var(--accent-soft)' : 'var(--bg-elevated)', border: '1px solid ' + (scopePortfolio ? 'var(--accent-border)' : 'var(--border-subtle)'), color: scopePortfolio ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: 500, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {scopePortfolio ? <Globe size={10} style={{ flexShrink: 0 }} /> : <Building2 size={10} style={{ flexShrink: 0 }} />}{scopeLabel}
             </span>
           )}
-        </div>
+        </div>}
         {(extra.tags || []).length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {(extra.tags || []).map(t => <span key={t} style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)' }}>{t}</span>)}
           </div>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
+        {(contact.phone || extra.phone2 || contact.email || extra.website || extra.office_address) && <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {contact.phone && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Phone size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} />
@@ -165,14 +172,14 @@ export function ContactCard({ contact, onOpen, onEdit, onDelete, onQuickExpense,
           {contact.email && <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}><Mail size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} /><span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contact.email}</span></div>}
           {extra.website && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Globe size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} /><span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{extra.website}</span></div>}
           {extra.office_address && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><MapPin size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} /><span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{extra.office_address}</span></div>}
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
-          {extra.afm && <span title="Αριθμός Φορολογικού Μητρώου" style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', fontFamily: T.font.mono }}>ΑΦΜ {extra.afm}</span>}
-          {extra.iban && <span title="Διεθνής Αριθμός Τραπεζικού Λογαριασμού (IBAN)" style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', fontFamily: T.font.mono }}>IBAN ···{extra.iban.slice(-4)}{extra.iris && <span title="Σύστημα άμεσων πληρωμών σε πραγματικό χρόνο (IRIS)" style={{ color: 'var(--text-secondary)', fontWeight: 700, marginLeft: 4 }}>IRIS</span>}</span>}
-          {extra.next_appointment && <span style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: overdue ? 'var(--negative-soft)' : 'var(--accent-soft)', border: '1px solid ' + (overdue ? 'var(--negative-border)' : 'var(--accent-border)'), color: overdue ? 'var(--negative)' : 'var(--accent)' }}>{overdue ? `Ραντεβού ${Math.abs(dueDays || 0)} ημέρες πριν` : `Ραντεβού ${fmtDate(extra.next_appointment)}`}</span>}
-          {(extra.notes_log || []).length > 0 && <span style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)' }}>{(extra.notes_log || []).length} σημειώσεις</span>}
-          {(extra.files || []).length > 0 && <span style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>{(extra.files || []).length} αρχεία</span>}
-        </div>
+        </div>}
+        {(extra.afm || extra.iban || extra.next_appointment || (extra.notes_log || []).length > 0 || (extra.files || []).length > 0) && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {extra.afm && <span title="Αριθμός Φορολογικού Μητρώου" style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>ΑΦΜ {extra.afm}</span>}
+          {extra.iban && <span title="Διεθνής Αριθμός Τραπεζικού Λογαριασμού (IBAN)" style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>IBAN ···{extra.iban.slice(-4)}{extra.iris && <span title="Σύστημα άμεσων πληρωμών σε πραγματικό χρόνο (IRIS)" style={{ color: 'var(--text-secondary)', fontWeight: 700, marginLeft: 4 }}>IRIS</span>}</span>}
+          {extra.next_appointment && <span style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: overdue ? 'var(--negative-soft)' : 'var(--accent-soft)', border: '1px solid ' + (overdue ? 'var(--negative-border)' : 'var(--accent-border)'), color: overdue ? 'var(--negative)' : 'var(--accent)' }}>{overdue ? `Ραντεβού πριν από ${Math.abs(dueDays || 0)} ${Math.abs(dueDays || 0) === 1 ? 'ημέρα' : 'ημέρες'}` : `Ραντεβού ${fmtDate(extra.next_appointment)}`}</span>}
+          {(extra.notes_log || []).length > 0 && <span style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent)' }}>{(extra.notes_log || []).length === 1 ? '1 σημείωση' : `${(extra.notes_log || []).length} σημειώσεις`}</span>}
+          {(extra.files || []).length > 0 && <span style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: T.radius.pill, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>{(extra.files || []).length === 1 ? '1 αρχείο' : `${(extra.files || []).length} αρχεία`}</span>}
+        </div>}
         {contact._freeNotes && <div style={{ fontSize: 12, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', borderRadius: T.radius.badge, padding: '7px 11px', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{contact._freeNotes}</div>}
       </div>
     </div>
@@ -211,7 +218,7 @@ export function CompactRow({ contact, onOpen, onEdit, onDelete, selected, onSele
         <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{contact.full_name}</div>
         <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>{meta.label}{scopePortfolio && <span title="Όλο το χαρτοφυλάκιο" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--accent)' }}><Globe size={10} /></span>}</div>
       </div>
-      <div style={{ width: 140, minWidth: 100, flexShrink: 1, fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.mono, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contact.phone || ABSENT}</div>
+      <div style={{ width: 140, minWidth: 100, flexShrink: 1, fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contact.phone || ABSENT}</div>
       <div title={contact.email || undefined} style={{ flex: 1, minWidth: 160, fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contact.email || ABSENT}</div>
       {/* ΤΟ maxWidth ΔΕΝ ΕΙΝΑΙ ΠΛΑΤΟΣ. Η κεφαλίδα δίνει στις «Ετικέτες» στήλη
           120, η γραμμή όμως έδινε `maxWidth:160` χωρίς `width` — δηλαδή πλάτος
@@ -223,7 +230,7 @@ export function CompactRow({ contact, onOpen, onEdit, onDelete, selected, onSele
         {(extra.tags || []).slice(0, 1).map(t => <span key={t} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 'var(--fs-xs)', padding: '2px 7px', borderRadius: T.radius.pill, background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}>{t}</span>)}
         {(extra.tags || []).length > 1 && <span style={{ flexShrink: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>+{(extra.tags || []).length - 1}</span>}
       </div>
-      <div style={{ width: 120, minWidth: 90, flexShrink: 1, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.mono, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{extra.afm ? 'ΑΦΜ ' + extra.afm : ''}</div>
+      <div style={{ width: 120, minWidth: 90, flexShrink: 1, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{extra.afm ? 'ΑΦΜ ' + extra.afm : ''}</div>
       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', width: CONTACT_ACTIONS_W, opacity: bulkMode ? 0 : (hov || coarse) ? 1 : 0, pointerEvents: bulkMode || !(hov || coarse) ? 'none' : undefined, transition: 'opacity 0.15s', flexShrink: 0 }}>
         {contact.phone && <a href={'tel:' + contact.phone} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', padding: 4, color: 'var(--text-secondary)' }}><Phone size={14} /></a>}
         {extra.whatsapp && contact.phone && <a href={'https://wa.me/' + contact.phone.replace(/\D/g, '')} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', padding: '4px 6px', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-soft)', borderRadius: T.radius.xs }}>WA</a>}

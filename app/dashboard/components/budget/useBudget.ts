@@ -19,6 +19,7 @@ import * as tenantStore from '@/lib/data/tenants'
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
 import { feAuto } from '@/components/Theme'
+import { fpRate } from '@/lib/core/format'
 import { waterMonthly } from '@/lib/energy/tariff'
 import { monthAcc, monthYearLabel } from '@/lib/core/months'
 import { randomSuffix } from '@/lib/core/uploadPath'
@@ -779,7 +780,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
     }
     if (monthTrend.avgPrior > 0 && Math.abs(monthTrend.deltaPct) >= 8) {
       // Ακέραιο ποσοστό: είναι πρόβλεψη με ρυθμό, όχι μέτρηση στο εκατοστό.
-      out.push(`Με τον ρυθμό ως τώρα, ο μήνας θα κλείσει ${Math.round(Math.abs(monthTrend.deltaPct))}% ${monthTrend.direction === 'up' ? 'πάνω από' : 'κάτω από'} τον μέσο όρο του τριμήνου.`);
+      out.push(`Με τον ρυθμό ως τώρα, ο μήνας θα κλείσει ${fpRate(Math.round(Math.abs(monthTrend.deltaPct)))} ${monthTrend.direction === 'up' ? 'πάνω από' : 'κάτω από'} τον μέσο όρο του τριμήνου.`);
     }
     const biggest = activeCats.map(c => ({ label: c.label, v: actuals[c.key] || 0 })).filter(x => x.v > 0).sort((a, b) => b.v - a.v)[0];
     if (biggest && out.length < 3) out.push(`Η μεγαλύτερη δαπάνη του μήνα είναι στην κατηγορία «${biggest.label}», με ${feAuto(biggest.v)}.`);

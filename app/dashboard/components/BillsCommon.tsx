@@ -6,7 +6,7 @@ import * as expenses from '@/lib/data/expenses';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
 import { NumberInput, TextInput, DatePicker, CustomSelect } from './UIComponents';
-import { T, fe, formGrid, fieldRow, fixedCols, InfoBanner, Card, EmptyState, fp, histInputStyle, localDay, ABSENT_SHORT, Bar, Btn, IconBtn } from '@/components/Theme';
+import { T, fe, fd, fn, formGrid, fieldRow, fixedCols, InfoBanner, Card, EmptyState, fp, histInputStyle, ABSENT_SHORT, Bar, Btn, IconBtn } from '@/components/Theme';
 import { notifyOk } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { HandCoins, BarChart3 } from 'lucide-react';
@@ -293,7 +293,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
       {(mgmtMonthly > 0 || parseFloat(fundMonthly) > 0 || monthlyAvg > 0) && (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 10, marginBottom: 16 }}>
         {[
-          { label: 'Διαχείριση τον μήνα',  value: mgmtMonthly > 0 ? fe(mgmtMonthly) : 'Δωρεάν' },
+          { label: 'Διαχείριση τον μήνα',  value: mgmtMonthly > 0 ? fe(mgmtMonthly) : 'Χωρίς κόστος' },
           { label: 'Ταμείο τον μήνα',      value: parseFloat(fundMonthly) > 0 ? fe(parseFloat(fundMonthly)) : ABSENT_SHORT },
           { label: 'Μέσος όρος κοινοχρήστων',  value: monthlyAvg > 0 ? fe(monthlyAvg) : ABSENT_SHORT },
         ].map((k, i) => (
@@ -312,7 +312,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
 
       {/* ── Ανάλυση Κοινοχρήστων ανά Κατηγορία (χιλιοστά, Billys logic) ──── */}
       <Card pad="lg">
-        {secHdr('Ανάλυση Κοινοχρήστων ανά Κατηγορία')}
+        {secHdr('Ανάλυση κοινοχρήστων ανά κατηγορία')}
 
         <div style={{ ...formGrid(), marginBottom: 16 }}>
           <NumberInput label="Τα χιλιοστά μου (‰)" value={millesimi} onChange={sMill} suffix="‰" max={1000}/>
@@ -402,7 +402,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
                         className="po-field"
                         style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: `8px ${FIELD_PAD}px`, fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', textAlign: 'right', outline: 'none' }}/>
                     </td>
-                    <td className="num" style={{ ...CELL_MID, fontWeight: 600, color: r.myShare > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', fontFamily: T.font.mono }}>{r.myShare > 0 ? fe(r.myShare) : ''}</td>
+                    <td className="num" style={{ ...CELL_MID, fontWeight: 600, color: r.myShare > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{r.myShare > 0 ? fe(r.myShare) : ''}</td>
                   </tr>
                 ))}
               </tbody>
@@ -486,7 +486,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
             <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' as const }}>
               {[
                 { label: 'Μερίδιό σου',     value: fe(myFundShare),                              color: 'var(--text-primary)' },
-                { label: 'Απόθεμα (μήνες)', value: `${fundMonths} μήνες`,                         color: fundMonths >= 6 ? 'var(--positive)' : 'var(--warning)' },
+                { label: 'Απόθεμα (μήνες)', value: fundMonths === 1 ? '1 μήνας' : `${fn(fundMonths)} μήνες`,                         color: fundMonths >= 6 ? 'var(--positive)' : 'var(--warning)' },
                 { label: 'Εισφορά / έτος',  value: fe((parseFloat(fundMonthly) || 0) * 12),       color: 'var(--text-primary)' },
               ].map((k, i) => (
                 <div key={i}>
@@ -537,7 +537,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: '1px solid var(--border-subtle)', opacity: e.transferredToExpenses ? 0.5 : 1 }}>
             <div>
               <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>{e.reason}</span>
-              {e.date && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginLeft: 12, fontFamily: T.font.sans }}>{localDay(e.date).toLocaleDateString('el-GR')}</span>}
+              {e.date && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginLeft: 12, fontFamily: T.font.sans }}>{fd(e.date)}</span>}
               {e.transferredToExpenses && (
                 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginLeft: 12, background: 'var(--bg-elevated)', padding: '2px 8px', borderRadius: T.radius.pill, fontFamily: T.font.sans }}>
                   Στις Δαπάνες ✓
@@ -545,7 +545,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
               )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums' }}>{fe(parseFloat(e.amount))}</span>
+              <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fe(parseFloat(e.amount))}</span>
               {!e.transferredToExpenses && (
                 <Btn variant="secondary" onClick={() => transferToExpenses(i)} disabled={transferring === i}>
                   {transferring === i ? 'Μεταφορά…' : 'Μεταφορά στις Δαπάνες'}
@@ -561,14 +561,14 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
         {totalExtras > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 12 }}>
             <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans }}>Σύνολο έκτακτων εισφορών</span>
-            <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums' }}>{fe(totalExtras)}</span>
+            <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fe(totalExtras)}</span>
           </div>
         )}
       </Card>
 
       {/* ── Ιστορικό Κοινοχρήστων ────────────────────────────────────────── */}
       <Card pad="lg">
-        {secHdr('Ιστορικό Κοινοχρήστων ανά Μήνα')}
+        {secHdr('Ιστορικό κοινοχρήστων ανά μήνα')}
 
         {/* ΤΟ ΑΔΕΙΟ ΓΡΑΦΗΜΑ ΔΕΝ ΕΙΝΑΙ ΓΡΑΦΗΜΑ, ΕΙΝΑΙ ΔΩΔΕΚΑ ΓΡΑΜΜΕΣ. Ο άδειος μήνας
             παίρνει στήλη δύο εικονοστοιχείων ώστε να υπάρχει η θέση του· με ΟΛΟΥΣ
@@ -589,8 +589,8 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
         <div className="po-year" style={{ position: 'relative', alignItems: 'flex-end', height: 64, marginBottom: 0, padding: '4px 0 0' }}>
           {monthlyAvg > 0 && (
             <div style={{ position: 'absolute', left: 0, right: 0, bottom: `${(monthlyAvg / maxH) * 54}px`, borderTop: '1px dashed color-mix(in srgb, var(--accent) 40%, transparent)', pointerEvents: 'none' }}>
-              <span style={{ position: 'absolute', right: 0, top: -11, fontSize: 'var(--fs-xs)', color: 'var(--accent)', background: 'var(--bg-surface)', padding: '0 4px', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', borderRadius: 3 }}>
-                μέσος όρος {monthlyAvg.toFixed(0)}
+              <span style={{ position: 'absolute', right: 0, top: -11, fontSize: 'var(--fs-xs)', color: 'var(--accent)', background: 'var(--bg-surface)', padding: '0 4px', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', borderRadius: 3 }}>
+                μέσος όρος {fe(monthlyAvg)}
               </span>
             </div>
           )}
@@ -607,7 +607,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
                 style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 1, cursor: 'pointer' }}
                 onMouseEnter={() => setHoveredMonth(i)}
                 onMouseLeave={() => setHoveredMonth(null)}>
-                <div style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.mono, fontVariantNumeric: 'tabular-nums', height: 14, display: 'flex', alignItems: 'flex-end', color: isHigh ? 'var(--negative)' : isCur ? 'var(--accent)' : isHov ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>
+                <div style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', height: 14, display: 'flex', alignItems: 'flex-end', color: isHigh ? 'var(--negative)' : isCur ? 'var(--accent)' : isHov ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>
                   {val > 0 ? Math.round(val) : ''}
                 </div>
                 <div style={{ width: '100%', height: `${Math.max(pct * 48, 2)}px`, background: barBg, borderRadius: '3px 3px 0 0', transition: 'background 0.15s' }}/>

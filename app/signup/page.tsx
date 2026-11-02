@@ -793,7 +793,7 @@ export default function SignupPage() {
                     {/* Η ΤΙΜΗ ΛΕΕΙ ΚΑΙ ΤΗΝ ΠΕΡΙΟΔΟ. Σκέτο «79,90€» δεν έλεγε αν είναι
                         τον μήνα ή τον χρόνο. */}
                     {fe(chosenCycle === 'annual' ? PLANS[chosenPlan].priceAnnual : PLANS[chosenPlan].priceMonthly)}
-                    <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{chosenCycle === 'annual' ? ' τον χρόνο' : ' τον μήνα'}</span>
+                    <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{chosenCycle === 'annual' ? '/χρόνο' : '/μήνα'}</span>
                   </span>
                   <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.45, color: 'var(--text-tertiary)' }}>
                     {planTerms ?? (chosenCycle === 'annual' ? 'Ετήσια χρέωση' : 'Μηνιαία χρέωση')}

@@ -78,7 +78,7 @@ function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed+
   ok('ημέρα εβδομάδας (Τρίτη = 2)', p.weekday === 2)
   ok('ελληνικό όνομα ημέρας', athensWeekdayName(t) === 'Τρίτη')
   ok('εργάσιμη', isAthensWorkday(t))
-  ok('πλήρης ετικέτα', athensNowLabel(t) === 'Τρίτη 4/08/2026, 17:34')
+  ok('πλήρης ετικέτα', athensNowLabel(t) === 'Τρίτη 04/08/2026, 17:34')
 }
 {
   // Μεσάνυχτα ακριβώς: το «24» κάποιων runtimes πρέπει να γίνεται 0.

@@ -40,10 +40,21 @@ export const TOOL_FIELD: CSSProperties = {
   fontVariantNumeric: 'tabular-nums', boxSizing: 'border-box',
 };
 
+// Η ΜΟΝΑΔΑ ΣΕ ΔΙΚΟ ΤΗΣ ΚΟΥΤΙ, ΟΠΩΣ ΣΤΗΝ ΕΦΑΡΜΟΓΗ (02.11.2026). Ηταν γυμνό
+// «€» μέσα στο πεδίο, ενώ ο πίνακας ελέγχου (NumberInput) τη βάζει σε κουτί με
+// δεύτερη επιφάνεια και τρίχα αριστερά: ο ίδιος άνθρωπος έβλεπε δύο πεδία ποσού.
+// Το κουτί κάθεται ΜΕΣΑ στο πεδίο, οπότε το δαχτυλίδι εστίασης του πεδίου τα
+// περικλείει και τα δύο, όπως το περίβλημα της εφαρμογής.
 const UNIT: CSSProperties = {
-  position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-  color: 'var(--text-tertiary)', fontSize: 15, pointerEvents: 'none',
+  position: 'absolute', top: 1, right: 1, bottom: 1,
+  display: 'flex', alignItems: 'center', padding: '0 12px',
+  background: 'var(--bg-elevated)', borderLeft: '1px solid var(--border-subtle)',
+  borderRadius: `0 ${T.radius.btn - 1}px ${T.radius.btn - 1}px 0`,
+  color: 'var(--text-secondary)', fontSize: 14, fontFamily: T.font.sans,
+  whiteSpace: 'nowrap', pointerEvents: 'none',
 };
+/** Το κουτί της μονάδας πιάνει το γέμισμά του (2×12) πέρα από το κείμενο. */
+const UNIT_BOX_EXTRA = 14;
 
 /**
  * Το ποσό με διαχωριστικό χιλιάδων, για όσο το πεδίο δεν έχει εστίαση.
@@ -89,7 +100,7 @@ export function ToolNumField({ id, label, value, onChange, unit, unitPad = 34, m
           onFocus={() => setDraft(grouped(value))}
           onChange={e => { setDraft(e.target.value); onChange(e.target.value); }}
           onBlur={() => setDraft(null)}
-          style={{ ...TOOL_FIELD, paddingRight: unit ? unitPad : 14 }}
+          style={{ ...TOOL_FIELD, paddingRight: unit ? unitPad + UNIT_BOX_EXTRA : 14 }}
           aria-describedby={described}/>
         {unit && <span id={`${id}-unit`} aria-hidden style={UNIT}>{unit}</span>}
       </div>
@@ -149,8 +160,9 @@ export function ToolHint({ id, children, span, flush }: {
  * μέσα σε κάθε κουμπί: δύο ύψη, δύο διατάξεις για το ίδιο στοιχείο. Και το
  * επιλεγμένο τμήμα ξεχώριζε από τη ράγα μόνο με μια σκιά, που στο ναυτικό
  * φόντο δεν φαίνεται. Τώρα και τα δύο είναι πεδίο του πλέγματος: ετικέτα από
- * πάνω, ράγα στο ύψος των πεδίων, βοήθεια από κάτω· και το επιλεγμένο τμήμα
- * γεμίζει με το χρώμα έμφασης (λόγος πάνω από 3:1 με τη ράγα, `.po-tool-seg`).
+ * πάνω, ράγα στο ύψος των πεδίων, βοήθεια από κάτω. Το επιλεγμένο τμήμα
+ * γεμιζόταν με το χρώμα έμφασης· από 02.11.2026 έχει την όψη του τμηματικού
+ * επιλογέα της εφαρμογής (επιφάνεια, σκιά, γράμματα έμφασης), βλ. παρακάτω.
  */
 export function ToolSeg<V extends string>({ label, value, onChange, options, hint, span = 2 }: {
   label: string; value: V; onChange: (v: V) => void;
@@ -162,7 +174,16 @@ export function ToolSeg<V extends string>({ label, value, onChange, options, hin
     <div className={spanClass(span)} role="group" aria-labelledby={`${id}-l`}
       aria-describedby={hint ? `${id}-h` : undefined}>
       <span id={`${id}-l`} style={TOOL_LABEL}>{label}</span>
-      <div className="po-tool-seg">
+      {/* Η ΡΑΓΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ, ΟΧΙ ΓΕΜΑΤΟ ΧΑΠΙ (02.11.2026). Η κλάση
+          `.po-tool-seg` γέμιζε το επιλεγμένο τμήμα με το χρώμα έμφασης, ενώ σε
+          κάθε τμηματικό επιλογέα του πίνακα ελέγχου (LeaseModal, Αναπροσαρμογή)
+          το ενεργό ανασηκώνεται με επιφάνεια, σκιά και γράμματα έμφασης
+          (`.po-chip[data-shape="seg"]`). Ιδια ράγα εδώ: ύψος των πεδίων
+          (3 γέμισμα + 1 περίγραμμα γύρω από το πλακίδιο) και το περίγραμμά τους. */}
+      <div style={{
+        display: 'flex', gap: 4, padding: 3, background: 'var(--bg-base)',
+        border: '1px solid var(--border-default)', borderRadius: T.radius.btn,
+      }}>
         {options.map(o => (
           <ChipToggle key={o.value} shape="seg" grow on={value === o.value} onClick={() => onChange(o.value)}>
             {o.label}

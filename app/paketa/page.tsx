@@ -28,7 +28,7 @@ import { publicMetadata } from '../publicMetadata';
 import { shareImage } from '../og/share';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { PlanMatrix } from '@/components/PlanMatrix';
-import { ASSISTANT_TO } from '@/lib/assistant/identity';
+import { ASSISTANT_TO, ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { PaymentsBadge } from './PaymentsBadge';
 
 const TITLE = 'Τι περιλαμβάνει κάθε πακέτο · PROPERWISE';
@@ -92,9 +92,14 @@ export default function Page() {
             την έκοβε στα δύο τρίτα του πίνακα από κάτω της. Μένει ο
             συλλαβισμός: πλήρης στοίχιση χωρίς αυτόν τεντώνει τα κενά
             (guard-justify-hyphen). */}
-        <p className="po-just" style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px' }}>{hy(<>
-          {TRIAL_OFFER} {billingWords().firstCharge} {PRICES_VAT} {CANCEL_ANYTIME} {billingWords().moneyBack}
-        </>)}</p>
+        {/* ΔΥΟ ΠΡΟΤΑΣΕΙΣ ΠΑΝΩ, ΟΙ ΟΡΟΙ ΚΑΤΩ (02.11.2026). Οι πέντε προτάσεις των
+            όρων (δοκιμή, κάρτα, ΦΠΑ, ακύρωση, εγγύηση) έπιαναν έντεκα γραμμές στα
+            390, πριν φανεί ένα πακέτο. Πάνω μένει τι κερδίζεις ανεβαίνοντας
+            σκαλί· οι όροι πάνε κάτω από τον πίνακα ως ψιλά γράμματα, όπως στην
+            αρχική, από τις ίδιες πηγές. */}
+        <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 6px', textWrap: 'pretty' }}>
+          {`Ένα ακίνητο χωρίς συνδρομή, με όλα τα φορολογικά. Τα μεγαλύτερα πακέτα προσθέτουν ακίνητα, ${ASSISTANT_ACC} και εργαλεία ομάδας.`}
+        </p>
         {/* Η ΙΔΙΑ ΠΡΟΤΑΣΗ ΜΕ ΤΗΝ ΑΡΧΙΚΗ. Χωρίς προτεινόμενη στήλη ο πίνακας έδειχνε
             τέσσερα ίδια κύρια κουμπιά, ενώ η αρχική προτείνει ρητά ένα πακέτο.
             Οι κάρτες του κινητού κάθονται κάτω από τον <h1>, άρα είναι <h2>. */}
@@ -104,6 +109,9 @@ export default function Page() {
             «Powered by» στο κάτω μέρος ενός ταμείου (28.09.2026). Μόνο όταν το
             ταμείο είναι ανοιχτό· κείμενο και όνομα από το billingWords. */}
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'clamp(14px,2vw,22px)' }}><PaymentsBadge /></div>
+        <p className="fineprint po-just" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: 'var(--text-tertiary)', margin: '22px 0 0' }}>{hy(<>
+          {TRIAL_OFFER} {billingWords().firstCharge} {PRICES_VAT} {CANCEL_ANYTIME} {billingWords().moneyBack}
+        </>)}</p>
       </main>
       <PublicFooter />
     </div>

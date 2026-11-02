@@ -62,12 +62,12 @@
 // ακίνητο, χωρίς να απαιτείται νέος πίνακας στη βάση.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { T, TT, Btn, ChipToggle, Card, SecHdr, PageTitle, fixedCols, settingsField, feAuto, pageShell, Bar } from '@/components/Theme';
+import { T, TT, Btn, ChipToggle, Card, SecHdr, PageTitle, fixedCols, feAuto, pageShell, Bar } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
 import { InfoHint, HintedText } from './InfoHint';
-import { SegmentControl, fieldLabelStyle } from './UIComponents';
+import { SegmentControl, NumberInput, fieldLabelStyle } from './UIComponents';
 import { createClient } from '@/lib/supabase/client';
 import * as checklist from '@/lib/data/checklist';
 import * as planData from '@/lib/data/plan';
@@ -320,32 +320,22 @@ const quietBtn: CSSProperties = {
 function MoneyField({ label, hint, value, onChange }: {
   label: string; hint?: string; value: number | null | undefined; onChange: (v: number | undefined) => void;
 }) {
+  // ΤΟ ΙΔΙΟ ΠΕΔΙΟ ΠΟΣΟΥ ΜΕ ΚΑΘΕ ΑΛΛΗ ΟΘΟΝΗ. Ηταν εγγενές αριθμητικό πεδίο με
+  // ένα «€» ζωγραφισμένο από πάνω: τελεία αντί για κόμμα («84.5»), βελάκια
+  // αύξησης στον υπολογιστή, άλλο ύψος και άλλη θέση συμβόλου από τα ποσά των
+  // Λογαριασμών και του Καθολικού. Το `NumberInput` έχει το «€» στη θήκη του,
+  // ελληνική υποδιαστολή και ποσό σε πλήρη μορφή όταν δεν γράφεις.
+  // `optional`: το άδειασμα σημαίνει «δεν ξέρω», όχι μηδέν.
+  const id = useId();
   return (
-    <label style={{ display: 'block' }}>
-      {/* Η ΕΤΙΚΕΤΑ ΤΩΝ ΠΕΔΙΩΝ ΤΗΣ ΕΦΑΡΜΟΓΗΣ, ΟΧΙ ΚΕΦΑΛΑΙΑ ΕΝΟΤΗΤΑΣ. Ηταν
-          `TT.label` (κεφαλαία, αραιά γράμματα) και το κενό ετικέτας-πεδίου ίσο
-          με το κενό υπόδειξης-επόμενης ετικέτας, οπότε στο κινητό τα τέσσερα
-          πεδία δεν χωρίζονταν σε ομάδες. Η ετικέτα κάθεται στο κάτω άκρο του
-          ύψους των δύο σειρών, 6 πάνω από το κουτί της. */}
-      <span style={{ ...fieldLabelStyle, minHeight: 33 }}>{label}</span>
-      <span style={{ position: 'relative', display: 'block' }}>
-        {/* ΤΟ placeholder ΗΤΑΝ «0» ΚΑΙ ΤΑ ΠΕΔΙΑ ΔΙΑΒΑΖΟΝΤΑΝ ΩΣ ΜΗΔΕΝΙΚΑ. Το ίδιο
-            σφάλμα είχε ήδη βρεθεί στο ιστορικό κατανάλωσης του ρεύματος: κενή
-            φόρμα που δηλώνει «ΕΝΦΙΑ μηδέν» δεν είναι κενή, είναι λάθος απάντηση.
-            Το άγνωστο δεν γράφεται μηδέν. */}
-        <input type="number" min={0} inputMode="decimal" className="po-field" placeholder=""
-          value={value ?? ''}
-          onChange={e => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-          style={{ ...settingsField, height: T.h.md, fontSize: 'var(--fs-base)',
-            // Ο χώρος του «€» δεξιά: απόσταση 11 συν το πλάτος του συμβόλου συν κενό ως τον αριθμό.
-            paddingRight: 30 }} />
-        <span aria-hidden style={{
-          position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)',
-          fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.num, pointerEvents: 'none',
-        }}>€</span>
-      </span>
+    <div>
+      {/* Η ΕΤΙΚΕΤΑ ΤΩΝ ΠΕΔΙΩΝ ΤΗΣ ΕΦΑΡΜΟΓΗΣ, ΟΧΙ ΚΕΦΑΛΑΙΑ ΕΝΟΤΗΤΑΣ, σε σταθερό
+          ύψος δύο σειρών ώστε τα κουτιά της σειράς να στοιχίζονται. */}
+      <label htmlFor={id} style={{ ...fieldLabelStyle, minHeight: 33 }}>{label}</label>
+      <NumberInput id={id} value={value == null ? '' : String(value)} suffix="€" optional
+        onChange={v => onChange(v === '' ? undefined : Number(v))} />
       {hint && <span style={{ ...TT.caption, color: 'var(--text-tertiary)', display: 'block', marginTop: 4 }}>{hint}</span>}
-    </label>
+    </div>
   );
 }
 
@@ -723,7 +713,7 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
   };
 
   return (
-    <div style={pageShell(920)}>
+    <div style={pageShell('form')}>
       {/* ── Η ΚΕΦΑΛΙΔΑ ────────────────────────────────────────────────────
           ΗΤΑΝ ΔΥΟ ΚΕΦΑΛΙΔΕΣ ΚΑΙ Η ΚΑΤΑΣΤΑΣΗ ΓΡΑΦΟΤΑΝ ΔΥΟ ΦΟΡΕΣ. Η σελίδα
           τύπωνε από πάνω «ΑΞΙΟΠΟΙΗΣΗ ΑΚΙΝΗΤΟΥ / Κενό· πώς θα μισθωθεί ή θα

@@ -31,7 +31,8 @@ export const TRIAL_OFFER =
 //
 // Ο ΚΑΝΟΝΑΣ, ΜΙΑ ΦΟΡΑ:
 //   · Πακέτο χωρίς τιμή (ή κανένα πακέτο: η εγγραφή χωρίς `?plan=` ανοίγει
-//     λογαριασμό στο δωρεάν, βλ. `normalizePlan`)      → «Ξεκίνα δωρεάν».
+//     λογαριασμό στο δωρεάν, βλ. `normalizePlan`)      → «Ξεκίνα χωρίς συνδρομή»
+//     (02.11.2026: όχι «δωρεάν» δίπλα σε πακέτο, κανόνας ιδιοκτήτη).
 //   · Πακέτο με τιμή που η δοκιμή το δίνει ολόκληρο     → «Ξεκίνα τη δοκιμή».
 //   · Πακέτο με τιμή πάνω από το TRIAL_PLAN ή χωρίς ημέρες δοκιμής →
 //     «Κάνε εγγραφή». Η δοκιμή δίνει μόνο όσα έχει το TRIAL_PLAN: όποιος
@@ -51,6 +52,6 @@ const trialCovers = (id: PlanId): boolean => PLANS[id].trialDays > 0 && planAtLe
  */
 export function signupCta(plan: PlanId | null = null): string {
   const id = plan ?? normalizePlan(null);
-  if (!isPayingPlan(id)) return 'Ξεκίνα δωρεάν';
+  if (!isPayingPlan(id)) return 'Ξεκίνα χωρίς συνδρομή';
   return trialCovers(id) ? 'Ξεκίνα τη δοκιμή' : 'Κάνε εγγραφή';
 }

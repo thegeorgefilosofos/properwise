@@ -183,7 +183,7 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
 
   const footerInfo = results
     ? 'Οι απαντήσεις των πελατών θα έρθουν στο email σου.'
-    : <>{selCount} παραλήπτ{selCount === 1 ? 'ης' : 'ες'} · reply-to το email σου</>;
+    : <>{selCount} παραλήπτ{selCount === 1 ? 'ης' : 'ες'} · οι απαντήσεις έρχονται στο email σου</>;
 
   const footer = results ? (
     <>
@@ -228,7 +228,7 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
                       {r.name && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginLeft: 8 }}>{r.email}</span>}
                     </span>
                     <Badge tone={r.status === 'sent' ? 'positive' : r.status === 'failed' ? 'negative' : 'neutral'}>
-                      {r.status === 'sent' ? 'Εστάλη' : r.status === 'failed' ? 'Απέτυχε' : 'Εκκρεμεί'}
+                      {r.status === 'sent' ? 'Στάλθηκε' : r.status === 'failed' ? 'Απέτυχε' : 'Εκκρεμεί'}
                     </Badge>
                   </div>
                 ))}

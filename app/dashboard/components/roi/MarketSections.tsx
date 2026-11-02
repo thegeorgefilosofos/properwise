@@ -11,6 +11,7 @@
 import { T, fe, fp, ABSENT_SHORT, fixedCols, widestOf, Stat, Btn } from '@/components/Theme';
 import { NumberInput, fieldLabelStyle, SegmentControl } from '../UIComponents';
 import { TrendingUp, Landmark, Layers } from 'lucide-react';
+import { fpRate } from '@/lib/core/format';
 import type { ComparisonRow, YieldBreakdown } from '@/lib/market/returns';
 import {
   BENCHMARKS_ASOF, HISTORY_ANCHORS, GREECE_AVG_GROSS_YIELD, ATHENS_AVG_GROSS_YIELD, MARKET_DATA_ASOF,
@@ -84,7 +85,7 @@ export function AreaSection({ term, y, stRef, reg, stBasis, verdictLabel, stExac
             // Η κόκκινη ζώνη δεν ξαναγράφεται εδώ ως γενική απαγόρευση: ισχύει
             // σε συγκεκριμένα δημοτικά διαμερίσματα και το λέει η σημείωση
             // της περιοχής από πάνω, από την ίδια πηγή δεδομένων.
-            ? <>Δεδομένα αναφοράς περιοχής: πληρότητα περίπου {stExact.occupancy}%, μέση τιμή {fe(stExact.adr)} ανά νύχτα. </>
+            ? <>Δεδομένα αναφοράς περιοχής: πληρότητα περίπου {fpRate(stExact.occupancy)}, μέση τιμή {fe(stExact.adr)} ανά νύχτα. </>
             : <>Στη βραχυχρόνια τα μεικτά έσοδα είναι συνήθως υψηλότερα, με έντονη όμως εποχικότητα. </>}
           {/* Η ΠΑΡΕΝΘΕΣΗ ΜΕ ΤΑ ΤΕΣΣΕΡΑ ΠΑΡΑΔΕΙΓΜΑΤΑ ΕΦΥΓΕ. Τρεις σειρές για μια
               πρόταση· τα «καθαρισμοί, διαχείριση, τέλος ανθεκτικότητας,

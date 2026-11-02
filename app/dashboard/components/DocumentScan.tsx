@@ -494,7 +494,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                 {afm && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
                     <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>ΑΦΜ</span>
-                    <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.mono }}>{afm}</span>
+                    <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{afm}</span>
                   </div>
                 )}
               </div>
@@ -863,7 +863,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                       {(edited.custom || []).map((c, i) => (
                         <div key={i} className="scan-custom">
                           <div style={{ gridArea: 'name', minWidth: 0 }}>
-                            <TextInput id={`${uid}-cf-${i}`} ariaLabel="Όνομα πεδίου" placeholder="π.χ. Αρ. πρωτοκόλλου" value={c.label}
+                            <TextInput id={`${uid}-cf-${i}`} ariaLabel="Όνομα πεδίου" placeholder="π.χ. αριθμός πρωτοκόλλου" value={c.label}
                               onChange={val => setEdited(p => { if (!p) return p; const cs = [...(p.custom || [])]; cs[i] = { ...cs[i], label: val }; return { ...p, custom: cs }; })} />
                           </div>
                           <div style={{ gridArea: 'value', minWidth: 0 }}>
@@ -915,7 +915,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                           Καταχώρησέ το ούτως ή άλλως
                         </Btn>
                         <Btn variant="secondary" size="lg" onClick={() => { setDuplicate(''); setStep('upload'); }}>
-                          Άκυρο
+                          Ακύρωση
                         </Btn>
                       </div>
                     </div>

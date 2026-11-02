@@ -265,7 +265,7 @@ export function GuideCta({ title, href, action, children }: {
           {action}
         </Link>
         <p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--text-tertiary)' }}>
-          Με τα δικά σου δεδομένα. Δωρεάν, χωρίς εγγραφή.
+          Με τα δικά σου δεδομένα, χωρίς εγγραφή.
         </p>
       </div>
     </section>

@@ -731,7 +731,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               {/* Το κόκκινο της αιώρησης ήταν χειρόγραφο και δεν ήξερε ούτε εστίαση ούτε αφή. Το `disabled` λέει πλέον μόνο του ότι δεν υπάρχει ενεργό φίλτρο. */}
-              <Btn onClick={()=>{setFilterCat('all');setFilterStatus('all');setSearchQ('');setDateFrom('');setDateTo('')}} disabled={!anyActive}><RotateCcw size={12}/>Καθάρισε</Btn>
+              <Btn onClick={()=>{setFilterCat('all');setFilterStatus('all');setSearchQ('');setDateFrom('');setDateTo('')}} disabled={!anyActive}><RotateCcw size={12}/>Εκκαθάριση</Btn>
               <IconBtn label="Κλείσιμο φίλτρων" onClick={()=>setShowFilters(false)}><X size={16}/></IconBtn>
             </div>
           </div>
@@ -775,7 +775,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
                 {presets.map(p=>{ const on=dateFrom===p.from&&dateTo===p.to; return (
                   <ChipToggle key={p.label} on={on} onClick={()=>{setDateFrom(on?'':p.from);setDateTo(on?'':p.to)}}>{p.label}</ChipToggle>
                 )})}
-                {(dateFrom||dateTo)&&<Btn variant="ghost" onClick={()=>{setDateFrom('');setDateTo('')}}><X size={12}/>Καθαρισμός</Btn>}
+                {(dateFrom||dateTo)&&<Btn variant="ghost" onClick={()=>{setDateFrom('');setDateTo('')}}><X size={12}/>Εκκαθάριση</Btn>}
               </div>
             )})()}
           </div>

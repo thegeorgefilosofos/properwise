@@ -18,7 +18,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { AssistantMark } from './AssistantMark';
-import { T, TT, Modal, Btn, IconBtn, LinkBtn, fe, ABOVE_ASSISTANT_Z } from '@/components/Theme';
+import { T, TT, Modal, Btn, IconBtn, LinkBtn, fe, fd, ABOVE_ASSISTANT_Z } from '@/components/Theme';
 import Feedback from './Feedback';
 import {
   savePrefs,
@@ -437,7 +437,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                       <Btn variant="secondary" disabled={used} onClick={() => { if (used) return; setConsumedActions(s => new Set(s).add(i)); runAction(m.action); }}>
                         {m.action.type === 'add-property' ? 'Πρόσθεσε το ακίνητό σου'
                           : m.action.type === 'scan' ? 'Σάρωσε έγγραφο'
-                          : m.action.type === 'book' ? `Κλείσε ραντεβού: ${new Date(m.action.date).toLocaleDateString('el-GR')}`
+                          : m.action.type === 'book' ? `Κλείσε ραντεβού: ${fd(m.action.date)}`
                           : m.action.type === 'client' ? `Καταχώρησε: ${m.action.name}`
                           : m.action.type === 'expense' ? `Κατέγραψε δαπάνη: ${eur(m.action.amount)}`
                           : m.action.type === 'checkin' ? `Σύνδεσμος άφιξης: ${m.action.who}`

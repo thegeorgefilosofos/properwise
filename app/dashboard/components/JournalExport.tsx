@@ -376,7 +376,7 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
                     <tbody>
                       {preview.map(r => (
                         <tr key={r.code}>
-                          <th scope="row" style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><span style={{ fontFamily: T.font.mono, fontSize: 12, color: 'var(--text-tertiary)', marginRight: 10 }}>{r.code}</span>{r.account}</th>
+                          <th scope="row" style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--text-tertiary)', marginRight: 10 }}>{r.code}</span>{r.account}</th>
                           <td className="num">{r.debit ? eur(r.debit) : ''}</td>
                           <td className="num">{r.credit ? eur(r.credit) : ''}</td>
                         </tr>

@@ -200,8 +200,8 @@ export function ContactDossier({ contact, propertyId, onClose, onEdit, onDelete,
 
       {(extra.afm || extra.iban) && (
         <DossierSection title="Επαγγελματικά και πληρωμές">
-          {extra.afm && <DossierRow icon={FileText} onCopy={() => copy(extra.afm!, 'Το ΑΦΜ')}><span title="Αριθμός Φορολογικού Μητρώου">ΑΦΜ</span> <span style={{ fontFamily: T.font.mono }}>{extra.afm}</span></DossierRow>}
-          {extra.iban && <DossierRow icon={Landmark} onCopy={() => copy(extra.iban!, 'Το IBAN')}><span style={{ fontFamily: T.font.mono, fontSize: 12 }}>{extra.iban}</span>{extra.iris && <span title="Σύστημα άμεσων πληρωμών σε πραγματικό χρόνο (IRIS)" style={{ marginLeft: 6, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)' }}>IRIS</span>}</DossierRow>}
+          {extra.afm && <DossierRow icon={FileText} onCopy={() => copy(extra.afm!, 'Το ΑΦΜ')}><span title="Αριθμός Φορολογικού Μητρώου">ΑΦΜ</span> <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{extra.afm}</span></DossierRow>}
+          {extra.iban && <DossierRow icon={Landmark} onCopy={() => copy(extra.iban!, 'Το IBAN')}><span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>{extra.iban}</span>{extra.iris && <span title="Σύστημα άμεσων πληρωμών σε πραγματικό χρόνο (IRIS)" style={{ marginLeft: 6, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--accent)' }}>IRIS</span>}</DossierRow>}
         </DossierSection>
       )}
 

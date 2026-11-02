@@ -9,6 +9,7 @@
 import { useState, useRef } from 'react'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import { T, Modal, Btn, IconBtn, LinkBtn, fe, feRate, fn, pressable, formGrid, RuntimeImg } from '@/components/Theme'
+import { fpRate } from '@/lib/core/format'
 import { NOT_TAX_DEPRECIATION_NOTE } from '@/lib/inventory/depreciation'
 import { CustomSelect, NumberInput, TextInput, DatePicker, Textarea } from '../UIComponents'
 import { formFields, INVENTORY_FIELDS, type FieldContext, type FieldDecision } from '@/lib/property/fields'
@@ -310,11 +311,11 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 130px), 1fr))',gap:8}}>
             {[
               {label:'Εκτιμώμενη υπολειπόμενη αξία',value:fe(calcCurrentValue({...form,id:'',user_id:''} as InventoryItem))},
-              {label:'Ποσοστό που μένει',value:`${Math.max(0,100-calcDepreciationPct({...form,id:'',user_id:''} as InventoryItem))}%`},
+              {label:'Ποσοστό που μένει',value:fpRate(Math.max(0,100-calcDepreciationPct({...form,id:'',user_id:''} as InventoryItem)))},
               {label:'Εκτιμώμενα χρόνια ζωής',value:`περίπου ${calcYearsLeft({...form,id:'',user_id:''} as InventoryItem)} χρόνια`},
             ].map((k,i)=>(
               <div key={i} style={{textAlign:'center'}}>
-                <p style={{fontSize:14,fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',marginBottom:2}}>{k.value}</p>
+                <p style={{fontSize:14,fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',marginBottom:2}}>{k.value}</p>
                 <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',textTransform:'uppercase',letterSpacing:'0.5px',fontFamily:T.font.sans}}>{k.label}</p>
               </div>
             ))}
@@ -439,7 +440,7 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
                 {label:'Κόστος/μήνα',value:kwhPrice>0?fe(liveKwh*kwhPrice):fe(0)},
                 {label:'Κόστος/έτος',value:kwhPrice>0?fe(liveKwh*kwhPrice*12):fe(0)}].map((k,i)=>(
                 <div key={i} style={{textAlign:'center'}}>
-                  <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.mono,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',marginBottom:2}}>{k.value}</p>
+                  <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',marginBottom:2}}>{k.value}</p>
                   <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',textTransform:'uppercase',letterSpacing:'0.5px',fontFamily:T.font.sans}}>{k.label}</p>
                 </div>
               ))}

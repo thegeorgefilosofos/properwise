@@ -279,7 +279,7 @@ export function PropertyRow({ row, index, known, onToggle, onPatch, rowId, force
           <div className="mya-fields mya-fields-3">
             {isNew(row) && <div className="mya-span mya-full"><TextInput label="Όνομα" value={row.name} onChange={v => onPatch({ name: v })} /></div>}
             <div className="mya-span mya-two"><TextInput label="Διεύθυνση" value={row.address} onChange={v => onPatch({ address: v })} /></div>
-            <div className="mya-span"><TextInput label="ΑΤΑΚ" value={row.atak} onChange={v => onPatch({ atak: atakDigits(v) })} placeholder={`${ATAK_DIGITS} ψηφία`} mono inputMode="numeric" /></div>
+            <div className="mya-span"><TextInput label="ΑΤΑΚ" value={row.atak} onChange={v => onPatch({ atak: atakDigits(v) })} placeholder={`${ATAK_DIGITS} ψηφία`} inputMode="numeric" /></div>
             <NumberInput label="Επιφάνεια" suffix="τ.μ." value={row.sqm} onChange={v => onPatch({ sqm: v })} />
             <NumberInput label="Ποσοστό" suffix="%" value={row.pct} onChange={v => onPatch({ pct: v })} max={100} />
             <TextInput label="Όροφος" value={row.floor} onChange={v => onPatch({ floor: v })} />

@@ -146,7 +146,7 @@ export function DashboardView({ tenant, payments, propertyCount }:{ tenant:Tenan
           </div>
         ):(
           <div style={{ fontSize:14, color:'var(--text-primary)', fontFamily:T.font.sans, lineHeight:1.8 }}>
-            <strong style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fn(paidPay.length)}/{fn(payments.length)}</strong> δόσεις πληρωμένες
+            <strong style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fn(paidPay.length)} από {fn(payments.length)}</strong> δόσεις πληρωμένες
             {late.length>0
               ? <> · <strong style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fn(late.length)}</strong> με καθυστέρηση, μέση καθυστέρηση <strong style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fn(avgLate)}</strong> ημέρες</>
               : <> · καμία καθυστέρηση</>}
@@ -170,11 +170,11 @@ export function DashboardView({ tenant, payments, propertyCount }:{ tenant:Tenan
 
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
         <SectionTitle>Οικονομική ανάλυση ενοικιαστή</SectionTitle>
-        <DataRow label="Ακαθάριστα ενοίκια ανά έτος" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(annualRent)}</span>}/>
-        <DataRow label="Κόστη ιδιοκτήτη ανά έτος" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{feSigned(-totalCosts)}</span>}/>
-        <DataRow label="Καθαρό εισόδημα ανά έτος" value={<span style={{ color:'var(--accent)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:700, fontSize:15 }}>{fmt(netIncome)}</span>}/>
-        <DataRow label="Εισπραχθέντα σύνολο" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(totalReceived)}</span>}/>
-        <DataRow label="Εκκρεμή σύνολο" value={<span style={{ color:unpaidAmt>0?'var(--negative)':'var(--text-tertiary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(unpaidAmt)}</span>}/>
+        <DataRow label="Ακαθάριστα ενοίκια ανά έτος" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(annualRent)}</span>}/>
+        <DataRow label="Κόστη ιδιοκτήτη ανά έτος" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{feSigned(-totalCosts)}</span>}/>
+        <DataRow label="Καθαρό εισόδημα ανά έτος" value={<span style={{ color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700, fontSize:15 }}>{fmt(netIncome)}</span>}/>
+        <DataRow label="Εισπραχθέντα σύνολο" value={<span style={{ color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(totalReceived)}</span>}/>
+        <DataRow label="Εκκρεμή σύνολο" value={<span style={{ color:unpaidAmt>0?'var(--negative)':'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{fmt(unpaidAmt)}</span>}/>
       </div>
     </div>
   );
@@ -664,7 +664,7 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
           <div key={g.label} style={{ marginBottom:T.sp.lg }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
               <span style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-secondary)', fontFamily:T.font.sans }}>{g.label}</span>
-              <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' }}>{fmt(g.items.reduce((a,d)=>a+(d.cost||0),0))}</span>
+              <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fmt(g.items.reduce((a,d)=>a+(d.cost||0),0))}</span>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {g.items.map(d=>(
@@ -680,7 +680,7 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
                       {d.notes&&<div style={{ fontSize:12, color:'var(--text-tertiary)', marginTop:6, fontFamily:T.font.sans, lineHeight:1.5 }}>{d.notes}</div>}
                     </div>
                     <div style={{ textAlign:'right' as const, flexShrink:0 }}>
-                      <div style={{ fontSize:14, fontWeight:700, fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums', color:'var(--text-primary)' }}>{fmt(d.cost)}</div>
+                      <div style={{ fontSize:14, fontWeight:700, fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', color:'var(--text-primary)' }}>{fmt(d.cost)}</div>
                       {/* Δύο κείμενα χωρίς κουτί κάτω από το ποσό: `LinkBtn` και όχι
                           `Btn`. Το μέγεθος γράφεται στο δοχείο γιατί ο σύνδεσμος
                           κληρονομεί τη γραμματοσειρά της πρότασης που τον περιέχει. */}

@@ -9,7 +9,7 @@ import * as calendar from '@/lib/data/calendar'
 import { X, FileText, QrCode, History, Receipt, CalendarPlus } from 'lucide-react'
 import { DatePicker } from '../UIComponents'
 import {
-  T, Btn, IconBtn, EmptyState, fe, Skeleton, SkeletonKPIs, ABSENT_SHORT, Modal, RuntimeImg,
+  T, Btn, IconBtn, EmptyState, fe, fd, Skeleton, SkeletonKPIs, ABSENT_SHORT, Modal, RuntimeImg,
 } from '@/components/Theme'
 import { notifyError } from '@/components/Toast'
 import { saved } from '@/components/dbWrite'
@@ -84,7 +84,7 @@ export function FileUploader({ files, onChange, contactId }: { files: ContactFil
             <FileText size={16} color="var(--text-tertiary)" style={{ flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
-              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.mono }}>{f.size} · {new Date(f.uploaded).toLocaleDateString('el-GR')}</div>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{f.size} · {fd(f.uploaded)}</div>
             </div>
             <Btn variant="ghost" onClick={() => open(f)}>Άνοιγμα</Btn>
             <IconBtn label={`Αφαίρεση αρχείου: ${f.name}`} title="Αφαίρεση" onClick={() => drop(i)}><X size={15} /></IconBtn>
@@ -95,7 +95,7 @@ export function FileUploader({ files, onChange, contactId }: { files: ContactFil
           δεν υπάρχει σε καμία παραλλαγή του Btn ούτε περνά className. */}
       <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 16px', borderRadius: T.radius.inner, border: '1px dashed var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 'var(--fs-base)', width: '100%' }}>
-        {uploading ? 'Ανέβασμα…' : '+ Προσθήκη Αρχείου (PDF, DOC, JPG, Excel)'}
+        {uploading ? 'Ανέβασμα…' : '+ Προσθήκη αρχείου (PDF, DOC, JPG, Excel)'}
       </button>
       <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls,.csv" onChange={handleFile} style={{ display: 'none' }} />
     </div>
@@ -108,7 +108,7 @@ export function QRCodeModal({ contact, onClose }: { contact: Contact; onClose: (
   // QR τοπικά: η κάρτα επαφής (όνομα, τηλέφωνο, email) δεν φεύγει από τη συσκευή.
   const qrUrl = qrDataUrl(vcard, { size: 240 })
   return (
-    <Modal open onClose={onClose} title="QR Επαφής" subtitle="Σάρωσε για να αποθηκεύσεις τα στοιχεία"
+    <Modal open onClose={onClose} title="QR επαφής" subtitle="Σάρωσε για να αποθηκεύσεις τα στοιχεία"
       icon={<QrCode size={17} />} size="sm" footer={<Btn onClick={onClose}>Κλείσιμο</Btn>}>
       <div style={{ textAlign: 'center' }}>
         {/* ΤΟ ΜΟΝΟ ΚΥΡΙΟΛΕΚΤΙΚΟ ΛΕΥΚΟ ΤΟΥ ΑΡΧΕΙΟΥ ΚΑΙ ΜΕ ΛΟΓΟ: ο κώδικας QR
@@ -119,7 +119,7 @@ export function QRCodeModal({ contact, onClose }: { contact: Contact; onClose: (
           <RuntimeImg src={qrUrl} alt="QR" style={{ width: 190, height: 190, borderRadius: T.radius.xs, display: 'block' }} />
         </div>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginTop: T.sp.lg }}>{contact.full_name}</div>
-        {contact.phone && <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.mono, marginTop: 4 }}>{contact.phone}</div>}
+        {contact.phone && <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', marginTop: 4 }}>{contact.phone}</div>}
       </div>
     </Modal>
   )
@@ -161,7 +161,7 @@ export function HistoryModal({ contact, propertyId, onClose }: { contact: Contac
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 10 }}>
-            {[{ label: 'Συνολικές Δαπάνες', value: totalExpenses > 0 ? fe(totalExpenses) : fe(0), color: 'var(--text-primary)' },
+            {[{ label: 'Συνολικές δαπάνες', value: totalExpenses > 0 ? fe(totalExpenses) : fe(0), color: 'var(--text-primary)' },
               { label: 'Παραστατικά με το ΑΦΜ του', value: docs.length > 0 ? `${docs.length}${docsTotal > 0 ? ' · ' + fe(docsTotal) : ''}` : (afm.length === 9 ? '0' : ABSENT_SHORT), color: 'var(--text-primary)' },
               { label: 'Σημειώσεις', value: notesLog.length > 0 ? `${notesLog.length}` : '0', color: 'var(--text-primary)' }].map(s => (
               <div key={s.label} style={{ background: 'var(--bg-surface)', borderRadius: T.radius.inner, padding: '14px', border: '1px solid var(--border-subtle)' }}>
@@ -184,7 +184,7 @@ export function HistoryModal({ contact, propertyId, onClose }: { contact: Contac
                     <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'color-mix(in srgb, ' + item.color + ' 14%, transparent)', border: '1px solid color-mix(in srgb, ' + item.color + ' 34%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1 }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color }} /></div>
                     <div style={{ flex: 1, background: 'var(--bg-surface)', borderRadius: T.radius.inner, padding: '9px 13px', border: '1px solid var(--border-subtle)' }}>
                       <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontWeight: 500, marginBottom: 2 }}>{item.title}</div>
-                      <div style={{ display: 'flex', gap: 10 }}><span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.mono }}>{fmtDate(item.date)}</span><span style={{ fontSize: 'var(--fs-xs)', color: item.color, fontWeight: 600 }}>{item.sub}</span></div>
+                      <div style={{ display: 'flex', gap: 10 }}><span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fmtDate(item.date)}</span><span style={{ fontSize: 'var(--fs-xs)', color: item.color, fontWeight: 600 }}>{item.sub}</span></div>
                     </div>
                   </div>
                 ))}

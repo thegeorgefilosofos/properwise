@@ -109,7 +109,7 @@ export default function BudgetImport({ propertyId, userId = '', cats, onImported
         <div style={{ marginTop: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>{fileName}</span>
-            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{rows.length} εγγραφές αναγνωρίστηκαν</span>
+            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{rows.length === 1 ? '1 εγγραφή αναγνωρίστηκε' : `${rows.length} εγγραφές αναγνωρίστηκαν`}</span>
             <span style={{ flex: 1 }} />
             {/* ghost: κάθεται σε γραμμή εργαλείων δίπλα στο όνομα αρχείου, όχι μέσα σε πρόταση */}
             <Btn variant="ghost" onClick={reset}>Ακύρωση</Btn>
@@ -139,7 +139,7 @@ export default function BudgetImport({ propertyId, userId = '', cats, onImported
           {rows.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 }}>
               <Btn variant="primary" onClick={doImport} disabled={busy || !selectedCount}>
-                {busy ? 'Εισαγωγή…' : `Εισαγωγή ${selectedCount} δαπανών`}
+                {busy ? 'Εισαγωγή…' : (selectedCount === 1 ? 'Εισαγωγή 1 δαπάνης' : `Εισαγωγή ${selectedCount} δαπανών`)}
               </Btn>
               {selectedCount > 0 && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Σύνολο <span style={{ fontFamily: T.font.num, color: 'var(--text-secondary)' }}>{feAuto(selectedTotal)}</span></span>}
             </div>

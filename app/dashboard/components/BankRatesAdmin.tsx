@@ -5,7 +5,7 @@ import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { NumberInput, TextInput, Toggle, InfoDot } from './UIComponents'
 import { athensToday } from '@/lib/core/time';
-import { grDate } from '@/lib/core/format';
+import { grDate, fpRate } from '@/lib/core/format';
 import { useLoad } from '@/app/hooks/useLoad';
 
 // ── Διαχείριση επιτοκίων τραπεζών (μόνο διαχειριστές) ──────────────────────────
@@ -112,7 +112,7 @@ export default function BankRatesAdmin({ onSaved }:{
     }
     const { error } = await supabase.from('bank_rates').update(patch).eq('bank_id',edit.bank_id)
     setSaving(false)
-    if (error) { notifyError('Η αποθήκευση απέτυχε: ελέγξτε δικαιώματα διαχειριστή'); return }
+    if (error) { notifyError('Τα επιτόκια δεν αποθηκεύτηκαν. Έλεγξε ότι ο λογαριασμός έχει δικαιώματα διαχειριστή.'); return }
     notifyOk(`Ενημερώθηκαν τα επιτόκια: ${edit.bank_name}`)
     setSelId(null); setEdit(null)
     await load(); onSaved?.()
@@ -183,7 +183,7 @@ export default function BankRatesAdmin({ onSaved }:{
                 <div key={b.bank_id} style={{border:`1px solid ${on?'var(--border-accent)':'var(--border-subtle)'}`,borderRadius:10,background:'var(--bg-elevated)',overflow:'hidden'}}>
                   <button onClick={()=>pick(b)} className="acc-toggle acc-row" style={{ '--acc-pad': '8px 12px' }}>
                     <span style={{flex:1,fontSize: 'var(--fs-base)',fontWeight:600,color:'var(--text-primary)',fontFamily: T.font.sans}}>{b.bank_name}</span>
-                    <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.mono,fontVariantNumeric:'tabular-nums'}}>από {String(b.fixed_min).replace('.',',')}%</span>
+                    <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.num,fontVariantNumeric:'tabular-nums'}}>από {fpRate(Number(b.fixed_min))}</span>
                     <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{grDate(b.verified_at)}</span>
                   </button>
 
@@ -218,7 +218,7 @@ export default function BankRatesAdmin({ onSaved }:{
             })}
             {ratesErr && (
               <p style={{fontSize:12,color:'var(--negative)',fontFamily: T.font.sans,padding:'4px 2px',lineHeight:1.5}}>
-                Ο κατάλογος επιτοκίων δεν διαβάστηκε: δεν ξέρουμε τι ισχύει αυτή τη στιγμή. Κλείστε κι ανοίξτε ξανά τη διαχείριση.
+                Ο κατάλογος επιτοκίων δεν διαβάστηκε: δεν ξέρουμε τι ισχύει αυτή τη στιγμή. Κλείσε και άνοιξε ξανά τη διαχείριση.
               </p>
             )}
             {!ratesErr && rows.length===0 && <p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,padding:'4px 2px'}}>Καμία ζωντανή εγγραφή επιτοκίων ακόμη</p>}

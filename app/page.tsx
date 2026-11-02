@@ -226,7 +226,7 @@ export default async function Landing() {
               Ενα σημάδι «Νέο», μία πρόταση, ένας σύνδεσμος στα πακέτα. */}
           <Link href="#pricing" className="lp-rise lp-news">
             <span className="lp-news-tag">Νέο</span>
-            <span>Ο «{PLANS.free.name}» είναι πλέον δωρεάν για ένα ακίνητο</span>
+            <span>Το πακέτο «{PLANS.free.name}» είναι πλέον χωρίς συνδρομή</span>
             <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </Link>
           <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.15, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
@@ -309,7 +309,7 @@ export default async function Landing() {
               αναβάθμιση να μη χρειάζεται δεύτερο βήμα. Υπόσχεση που θα έπαυε να
               ισχύει την ημέρα του λανσαρίσματος δεν μπαίνει στην πρώτη οθόνη. */}
           <ul className="lp-rise-4 lp-facts" aria-label="Χωρίς ρίσκο">
-            <li>Δωρεάν για ένα ακίνητο</li>
+            <li>Χωρίς συνδρομή για ένα ακίνητο</li>
             <li>Δοκιμή {TRIAL_DAYS} ημερών με {ASSISTANT_ACC}</li>
           </ul>
 
@@ -625,7 +625,7 @@ export default async function Landing() {
                 nameColor={id === FEATURED_PLAN ? ACCENT : TEXT}
                 sub={plan.tagline}
                 price={fe(plan.priceMonthly)}
-                per="τον μήνα"
+                per="/μήνα"
                 // ΤΟ ΔΩΡΟ ΤΗΣ ΕΤΗΣΙΑΣ ΥΠΟΛΟΓΙΖΕΤΑΙ, ΔΕΝ ΓΡΑΦΕΤΑΙ. Ήταν σταθερό
                 // «12 μήνες στην τιμή των 10» σε κάθε κάρτα, ενώ το φθηνότερο
                 // πακέτο δίνει έναν μήνα. Μία τιμή που αλλάζει και μια ταμπέλα

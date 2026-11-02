@@ -52,7 +52,7 @@ import { ledgerYearTotal, type LedgerBill, type LedgerExpense } from '@/lib/expe
 import { notify, notifyOk, notifyError } from '@/components/Toast';
 import { saved } from '@/components/dbWrite';
 import { Tag } from 'lucide-react';
-import { NumberInput } from './UIComponents';
+import { NumberInput, WEEKDAYS_SHORT } from './UIComponents';
 import { exportPricingWorkbook } from './sheets';
 import {
   recommendPrices, summarize, suggestBase, suggestGuardrails, bookedDatesFromStays,
@@ -80,7 +80,6 @@ interface Props {
 
 type PriceStay = PricingStay & StayAmountLike;
 
-const WEEKDAYS = ['Δε', 'Τρ', 'Τε', 'Πε', 'Πα', 'Σα', 'Κυ'];
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΠΟΣΟ ΦΑΡΔΙΑ ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ Η ΚΑΡΤΑ ΤΟΥ ΜΗΝΑ ΓΙΑ ΝΑ ΜΗΝ ΚΟΠΕΙ Η ΚΥΡΙΑΚΗ
@@ -379,11 +378,32 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
   const seasonsShown = useMemo(() => {
     const s = new Set<Season>(); rows.forEach(r => s.add(r.season)); return [...s];
   }, [rows]);
-  const measuredOcc = useMemo(() => {
-    const vals = seasonsShown.map(s => occ.occ[s]).filter((v): v is number => v != null);
-    if (!vals.length) return null;
-    return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100);
+  // ═══ ΤΟ ΠΟΣΟΣΤΟ ΚΑΙ Ο ΥΠΟΤΙΤΛΟΣ ΜΕΤΡΟΥΝ ΤΟ ΙΔΙΟ ΠΡΑΓΜΑ ═══════════════════
+  // ΗΤΑΝ: ποσοστό = ο ΜΕΣΟΣ ΟΡΟΣ των ποσοστών κάθε εποχής (χωρίς βάρη) και
+  // υπότιτλος = οι νύχτες όλου του ιστορικού στις εποχές του πίνακα «από τις»
+  // νύχτες ΤΟΥ ΤΡΕΧΟΝΤΟΣ ΕΤΟΥΣ. Στην οθόνη «21%» πάνω από «32 από τις 71
+  // νύχτες», που ο αναγνώστης διαιρεί και βγάζει 45%. Τρία διαφορετικά μεγέθη
+  // σε ένα πλακίδιο.
+  //
+  // ΤΩΡΑ: ΚΛΕΙΣΜΕΝΕΣ ΝΥΧΤΕΣ ΔΙΑ ΔΙΑΘΕΣΙΜΕΣ ΝΥΧΤΕΣ, στις εποχές του πίνακα που
+  // έχουν αρκετό ιστορικό. «Διαθέσιμες» είναι οι ημέρες των μηνών που είχαν
+  // έστω μία κράτηση, ο ίδιος παρονομαστής με τον οποίο μετρά κάθε εποχή το
+  // `estimateSeasonalOccupancy`· εδώ απλώς αθροίζονται αντί να βγαίνει μέσος
+  // όρος ποσοστών. Ο υπότιτλος λέει τους δύο αριθμούς και η διαίρεσή τους
+  // ΕΙΝΑΙ το ποσοστό. Η εποχή που έπιασε το ταβάνι του 100% μετρά τις νύχτες
+  // της ως διαθέσιμες, όπως το ταβάνι την έχει ήδη μετρήσει.
+  const occMeasure = useMemo(() => {
+    let booked = 0, open = 0;
+    for (const s of seasonsShown) {
+      const rate = occ.occ[s];
+      if (rate == null || !(rate > 0)) continue;
+      const n = occ.nights[s];
+      booked += n;
+      open += rate >= 1 ? n : Math.round(n / rate);
+    }
+    return open > 0 ? { booked, open } : null;
   }, [seasonsShown, occ]);
+  const measuredOcc = occMeasure ? Math.round((occMeasure.booked / occMeasure.open) * 100) : null;
   const occNights = useMemo(() => seasonsShown.reduce((a, s) => a + occ.nights[s], 0), [seasonsShown, occ]);
 
   // ═══ Η ΑΠΑΝΤΗΣΗ ΣΤΟ «ΠΟΣΑ ΜΕΝΟΥΝ ΣΕ ΕΜΕΝΑ» ═══════════════════════════════
@@ -404,19 +424,16 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     { label: 'Υψηλότερη πρόταση', value: base > 0 ? fe(sum.max) : fe(0), sub: 'Ακριβότερη ημέρα' },
     {
       label: 'Πληρότητα από το ιστορικό',
-      // Χωρίς μέτρηση η τιμή είναι «Εκκρεμεί», όχι «0,00%»: το μηδέν είναι μέτρηση.
-      value: measuredOcc != null ? measuredOcc + '%' : ABSENT_SHORT,
-      // Οι νύχτες ΜΟΝΟ των εποχών του πίνακα· ο υπότιτλος της κάρτας πιο κάτω
-      // μετρά όλη τη χρονιά, γι' αυτό λέμε ποιες είναι.
-      // ΤΟ ΣΥΝΟΛΟ ΤΗΣ ΧΡΟΝΙΑΣ ΛΕΓΕΤΑΙ ΔΙΠΛΑ. Το «64 νύχτες» καθόταν πάνω από το
-      // «Από 71 διανυκτερεύσεις» της κάρτας από κάτω και έμοιαζε με λάθος.
-      sub: measuredOcc != null
-        ? (taxSummary.totalNights > occNights
-          ? `${fn(occNights)} από τις ${fn(taxSummary.totalNights)} νύχτες του ${nowYear}, στις εποχές του πίνακα`
-          : `${fn(occNights)} νύχτες στις εποχές του πίνακα`)
+      // Χωρίς μέτρηση η τιμή είναι «Εκκρεμεί», όχι «0%»: το μηδέν είναι μέτρηση.
+      value: measuredOcc != null ? fpRate(measuredOcc) : ABSENT_SHORT,
+      // Ο υπότιτλος είναι η ΔΙΑΙΡΕΣΗ που δίνει το ποσοστό, όχι άλλο μέγεθος.
+      // Οι νύχτες είναι όλου του ιστορικού, όχι μόνο του έτους: γι' αυτό δεν
+      // γράφεται έτος, που θα τις διάβαζε ως νύχτες του τρέχοντος έτους.
+      sub: occMeasure
+        ? `${fn(occMeasure.booked)} κλεισμένες από ${fn(occMeasure.open)} νύχτες, στους μήνες με κρατήσεις`
         : `Χρειάζονται τουλάχιστον ${MIN_NIGHTS_FOR_OCCUPANCY} νύχτες ανά εποχή`,
     },
-  ], [sum, base, measuredOcc, occNights, taxSummary.totalNights, nowYear]);
+  ], [sum, base, measuredOcc, occMeasure]);
 
   // ═══ Ο ΦΟΡΟΣ ΕΙΣΟΔΗΜΑΤΟΣ ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ ΜΕ ΤΗΝ ΑΠΟΔΟΣΗ ═══════════════
   // Το `taxSummary.incomeTax` φορολογεί ΜΟΝΟ αυτό το ακίνητο με την κλίμακα
@@ -557,9 +574,12 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
     notifyOk('Προστέθηκε στο Ημερολόγιο');
   };
   // Ενέργεια: αντιγραφή κειμένου προσφοράς last minute.
-  const copyOffer = (g: Gap) => {
+  // Το «αντιγράφηκε» ΜΕΤΑ την αντιγραφή: το `writeText` είναι υπόσχεση και ο
+  // φυλλομετρητής μπορεί να την αρνηθεί (χωρίς άδεια, χωρίς εστίαση, http).
+  const copyOffer = async (g: Gap) => {
     const txt = `Τελευταία διαθεσιμότητα ${fd(g.start)} – ${fd(g.end)} (${g.nights} ${g.nights === 1 ? 'νύχτα' : 'νύχτες'}) σε ειδική τιμή ${fe(g.fillPrice)} ανά νύχτα${minStay > 1 ? `, ελάχιστη διαμονή ${minStay} νύχτες` : ''}. Κλείσε τώρα, οι ημερομηνίες είναι περιορισμένες.`;
-    navigator.clipboard?.writeText(txt);
+    try { await navigator.clipboard.writeText(txt); }
+    catch { notifyError('Το κείμενο δεν αντιγράφηκε. Ο φυλλομετρητής δεν έδωσε πρόσβαση στο πρόχειρο.'); return; }
     notifyOk('Το κείμενο προσφοράς αντιγράφηκε');
   };
 
@@ -570,7 +590,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
       year: pyear,
       settings: { base, min, max, weekendPremiumPct: wknd, minStay },
       summary: sum,
-      occupancy: measuredOcc != null ? { pct: measuredOcc, nights: occNights } : null,
+      occupancy: occMeasure && measuredOcc != null ? { pct: measuredOcc, nights: occMeasure.booked } : null,
       realizedAdr: adr,
       rows: rows.map(r => ({ date: r.date, dow: r.dow, season: r.season, isWeekend: r.isWeekend, holidayName: r.holidayName, price: r.price, booked: r.booked })),
     });
@@ -890,7 +910,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                           τυλίγει ήδη, αλλά έριχνε ολόκληρο το ζευγάρι σε δική
                           του σειρά, όπου πάλι δεν χωρούσε. */}
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <Btn variant="secondary" onClick={() => copyOffer(g)}>Αντιγραφή προσφοράς</Btn>
+                        <Btn variant="secondary" onClick={() => { void copyOffer(g) }}>Αντιγραφή προσφοράς</Btn>
                         <Btn variant="secondary" onClick={() => toggleGap(g)}>{gapTitles.has(gapTitle(g)) ? 'Προστέθηκε στο Ημερολόγιο' : 'Υπενθύμιση'}</Btn>
                       </div>
                     </div>
@@ -946,7 +966,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
                         Το ίδιο σφάλμα είναι ήδη γραμμένο και διορθωμένο στο
                         `TabCalendar.tsx`, με το ίδιο σχόλιο. Εδώ είχε μείνει. */}
                     <div role="grid" aria-label={`${MONTHS_NOM[mm - 1]} ${yy}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 4 }}>
-                      {WEEKDAYS.map(w => <div key={w} role="columnheader" style={{ textAlign: 'center', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', paddingBottom: 4 }}>{w}</div>)}
+                      {WEEKDAYS_SHORT.map(w => <div key={w} role="columnheader" style={{ textAlign: 'center', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', paddingBottom: 4 }}>{w}</div>)}
                       {Array.from({ length: lead }).map((_, i) => <div key={'b' + i} role="gridcell" />)}
                       {Array.from({ length: daysInMonth }).map((_, i) => {
                         const dayNum = i + 1;

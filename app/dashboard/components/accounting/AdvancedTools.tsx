@@ -138,7 +138,7 @@ export function AdvisoryCard({
         <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius: T.radius.chip, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)', flexShrink:0 }}><Lightbulb size={15}/></span>
         <div style={{ flex:1, minWidth:0 }}>
           <p style={{ ...cardTitle, margin:0 }}>Συμβουλευτική</p>
-          <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'2px 0 0', fontFamily: T.font.sans }}>{advisory.length} ιδέες φορολογίας, χρηματοδότησης και αξιοποίησης, από τα δικά σου δεδομένα.</p>
+          <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'2px 0 0', fontFamily: T.font.sans }}>{advisory.length === 1 ? 'Μία ιδέα' : `${advisory.length} ιδέες`} φορολογίας, χρηματοδότησης και αξιοποίησης, από τα δικά σου δεδομένα.</p>
         </div>
         <ChevronRight size={17} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:advisoryOpen?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
       </button>
@@ -203,7 +203,7 @@ export function ChangesCard({
         <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius: T.radius.chip, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', color:'var(--text-secondary)', flexShrink:0 }}><Landmark size={15}/></span>
         <div style={{ flex:1, minWidth:0 }}>
           <p style={{ ...cardTitle, margin:0 }}>Τι άλλαξε το 2026</p>
-          <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'2px 0 0', fontFamily: T.font.sans }}>{relevantChanges.length} επίκαιροι κανόνες για το προφίλ σου.</p>
+          <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'2px 0 0', fontFamily: T.font.sans }}>{relevantChanges.length === 1 ? 'Ένας επίκαιρος κανόνας' : `${relevantChanges.length} επίκαιροι κανόνες`} για το προφίλ σου.</p>
         </div>
         <ChevronRight size={17} style={{ color:'var(--text-tertiary)', flexShrink:0, transform:changesOpen?'rotate(90deg)':'none', transition:'transform 0.18s' }}/>
       </button>
@@ -334,7 +334,7 @@ export function TransferCostCard({
             </div>
           ))}
           <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 0 0', marginTop:4, borderTop:'1px solid var(--border-subtle)' }}>
-            <span style={{ flex:1, fontSize:14, fontWeight:600, color:'var(--text-primary)', fontFamily: T.font.sans }}>Σύνολο εξόδων &amp; φόρων</span>
+            <span style={{ flex:1, fontSize:14, fontWeight:600, color:'var(--text-primary)', fontFamily: T.font.sans }}>Σύνολο εξόδων και φόρων</span>
             <span style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)', fontVariantNumeric:'tabular-nums', fontFamily: T.font.sans }}>{eur(xfer.totalCosts)} <span style={{ fontSize:12, fontWeight:500, color:'var(--text-tertiary)' }}>({pct(xfer.costPct)})</span></span>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 0 0' }}>

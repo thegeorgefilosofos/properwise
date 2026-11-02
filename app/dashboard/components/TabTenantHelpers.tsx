@@ -158,7 +158,7 @@ export const s = {
   // σε κάθε πλακίδιο δικό του αριστερό άκρο, οπότε μια σειρά τεσσάρων δεν έχει
   // καμία κάθετη ευθεία να διαβαστεί.
   kpi:      { background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:'16px', padding:'14px 16px' } as React.CSSProperties,
-  kpiV:     { fontSize:'22px', fontWeight:700, letterSpacing:'-0.5px', lineHeight:1, fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' } as React.CSSProperties,
+  kpiV:     { fontSize:'22px', fontWeight:700, letterSpacing:'-0.5px', lineHeight:1, fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' } as React.CSSProperties,
   kpiL:     { fontSize:'9px', letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'var(--text-secondary)', marginTop:T.sp.xs } as React.CSSProperties,
   // ══ ΤΑ `th`, `td` ΚΑΙ `tdM` ΕΦΥΓΑΝ ΚΑΙ ΓΡΑΦΕΤΑΙ ΓΙΑΤΙ ══════════════════════
   // Ηταν ΔΕΥΤΕΡΟ σύστημα πίνακα, παράλληλο με την `.po-table` του globals.css
@@ -247,7 +247,7 @@ export function ServicesEditor({ value, onChange }: { value: ServiceLine[] | nul
             { label:'Πληρώνει ο ενοικιαστής / μήνα', val:fmt(tenant) },
           ].map(({ label, val }) => (
             <div key={label}>
-              <div style={{ fontSize:'15px', fontWeight:700, color:'var(--text-primary)', fontFamily:T.font.mono, fontVariantNumeric:'tabular-nums' }}>{val}</div>
+              <div style={{ fontSize:'15px', fontWeight:700, color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{val}</div>
               <div style={{ fontSize:'9px', color:'var(--text-secondary)', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:T.sp.xs }}>{label}</div>
             </div>
           ))}

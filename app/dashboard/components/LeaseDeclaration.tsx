@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import * as properties from '@/lib/data/properties';
 import * as tenantStore from '@/lib/data/tenants';
-import { T, TT, Btn, IconBtn, Modal, Spinner } from '@/components/Theme';
+import { T, TT, Btn, IconBtn, Modal, Spinner, fd } from '@/components/Theme';
 import { Copy, Check, ExternalLink, Printer, AlertTriangle, Clock } from 'lucide-react';
 import { notifyError } from '@/components/Toast';
 import { must } from '@/lib/supabase/must';
@@ -213,7 +213,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
         <span style={{ minWidth: 0 }}>
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{f.label}</div>
           {f.value
-            ? <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.mono, marginTop: 1 }}>{f.value}</div>
+            ? <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>{f.value}</div>
             : <div style={{ fontSize: 'var(--fs-base)', color: c, fontWeight: 600, marginTop: 1, fontFamily: T.font.sans }}>Λείπει</div>}
           {f.hint && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.45 }}>
             {f.hint}{f.fixIn && <> <span style={{ color: 'var(--accent)', fontWeight: 600 }}>Συμπληρώνεται στην καρτέλα {TAB_LABEL[f.fixIn]}</span></>}
@@ -288,7 +288,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 15px', borderRadius: T.radius.inner, background: 'var(--positive-soft)', border: '1px solid var(--positive-border)' }}>
               <Check size={15} style={{ color: 'var(--positive)', flexShrink: 0 }} />
               <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)' }}>
-                Καταγράφηκε στις {new Date(submitted.at).toLocaleDateString('el-GR')}
+                Καταγράφηκε στις {fd(submitted.at)}
                 {submitted.ref && <> · αρ. δήλωσης <strong style={{ fontFamily: T.font.num }}>{submitted.ref}</strong></>}
               </span>
             </div>

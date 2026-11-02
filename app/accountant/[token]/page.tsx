@@ -174,7 +174,7 @@ export default function AccountantPortal() {
   const row = (k: string, v: string, strong?: boolean) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, padding: '9px 0', borderBottom: '1px solid var(--border-subtle)' }}>
       <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{k}</span>
-      <span style={{ fontSize: 14, fontWeight: strong ? 700 : 600, color: 'var(--text-primary)', fontFamily: T.font.mono, whiteSpace: 'nowrap' }}>{v}</span>
+      <span style={{ fontSize: 14, fontWeight: strong ? 700 : 600, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{v}</span>
     </div>
   );
 
@@ -226,7 +226,16 @@ export default function AccountantPortal() {
             <PortalTitle
               over="Οικονομική εικόνα ακινήτων"
               title={owner}
-              meta={`Χρήση 01/01/${year} έως 31/12/${year} · ${props.length === 1 ? '1 ακίνητο' : `${props.length} ακίνητα`} · Ημερομηνία έκδοσης ${issued}`}
+              /* ΚΑΘΕ ΣΤΟΙΧΕΙΟ ΜΕΝΕΙ ΟΛΟΚΛΗΡΟ ΣΤΗ ΓΡΑΜΜΗ ΤΟΥ. Ως μία συμβολοσειρά
+                 έσπαγε όπου τύχαινε και στο κινητό η δεύτερη γραμμή ξεκινούσε με
+                 «·». Το διαχωριστικό κολλά στο τέλος του προηγούμενου. */
+              meta={[
+                `Χρήση 01/01/${year} έως 31/12/${year}`,
+                props.length === 1 ? '1 ακίνητο' : `${props.length} ακίνητα`,
+                `Ημερομηνία έκδοσης ${issued}`,
+              ].map((part, i, all) => (
+                <span key={part} style={{ whiteSpace: 'nowrap' }}>{part}{i < all.length - 1 ? '\u00A0· ' : ''}</span>
+              ))}
               right={props.length > 0 ? (
                 /* ΤΟ ΑΡΧΕΙΟ ΕΙΝΑΙ ΤΟ ΠΑΡΑΔΟΤΕΟ, ΑΡΑ ΚΑΘΕΤΑΙ ΣΤΗΝ ΤΑΥΤΟΤΗΤΑ ΤΟΥ
                    ΕΓΓΡΑΦΟΥ. Δίπλα στο ποιος και για πότε, όχι στο τέλος της
@@ -276,7 +285,7 @@ export default function AccountantPortal() {
                       ΚΑΘΕΤΑΙ ΣΤΗΝ ΙΔΙΑ ΤΑΞΗ ΜΕ ΤΑ ΔΥΟ ΑΠΟ ΠΑΝΩ. */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, paddingTop: 12 }}>
                     <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Ενδεικτικός φόρος εισοδήματος</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.mono, whiteSpace: 'nowrap' }}>{feAuto(estTax)}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{feAuto(estTax)}</span>
                   </div>
                   <p style={{ ...meta, margin: '10px 0 0' }}>
                     Ενοίκια της χρήσης όπως στο Ε2, δηλαδή όσα οφείλονται ανεξάρτητα από την είσπραξη, όχι συμβατικό μίσθωμα επί δώδεκα. {bracketsLabelForYear(year)}. {deductionNote(est, year)} {totals.hasShare ? 'Υπολογίζεται στην αναλογία του ιδιοκτήτη, όχι στο σύνολο του ακινήτου. ' : ''}{est.bankMatters ? '' : PRESUMPTIVE_RULE}
@@ -356,7 +365,7 @@ export default function AccountantPortal() {
                           {byCategory.map(([cat, amt]) => (
                             <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0', fontSize: 12 }}>
                               <span style={{ color: 'var(--text-secondary)' }}>{cat}</span>
-                              <span style={{ fontFamily: T.font.mono, color: 'var(--text-primary)' }}>{feAuto(amt)}</span>
+                              <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>{feAuto(amt)}</span>
                             </div>
                           ))}
                         </div>

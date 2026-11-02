@@ -346,7 +346,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
   const detail = detailId ? (contacts.find(c => c.id === detailId) || null) : null   // ζωντανό (ανανεώνεται μετά από edit/refresh)
 
   return (
-    <div style={pageShell(1080)}>
+    <div style={pageShell('wide')}>
 
 
       <input ref={cardRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) runCardScan(f); e.currentTarget.value = '' }} />
@@ -635,7 +635,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
       ) : processed.length === 0 ? (
         <EmptyState icon={<SearchX size={20} />} title="Δεν βρέθηκαν επαφές"
           hint={letter ? `Καμία επαφή στο «${letter}» με τα ενεργά φίλτρα.` : 'Ο συνδυασμός αναζήτησης, κατηγορίας και φίλτρων δεν αφήνει καμία επαφή.'}
-          action={<Btn variant="secondary" onClick={() => { setSearch(''); setFilterGroup('all'); setFilterTag(''); setLetterFilter(null); setAttention(null) }}>Καθαρισμός φίλτρων</Btn>} />
+          action={<Btn variant="secondary" onClick={() => { setSearch(''); setFilterGroup('all'); setFilterTag(''); setLetterFilter(null); setAttention(null) }}>Εκκαθάριση φίλτρων</Btn>} />
       ) : viewMode === 'compact' ? (
         <div style={{ background: 'var(--bg-surface)', borderRadius: T.radius.card, border: '1px solid var(--border-subtle)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ minWidth: CONTACT_ROW_MIN }}>
@@ -656,7 +656,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
           </div>
         </div>
       ) : letter || sortMode === 'alpha' ? (
-        <div data-list style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 310px), 1fr))', gap: 14 }}>
+        <div data-list style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 310px), 1fr))', gap: 14 }}>
           {processed.map(c => (
             <ContactCard key={c.id} contact={c} onOpen={() => setDetailId(c.id)} onEdit={() => openEdit(c)} onDelete={() => askDelete(c)} onQuickExpense={() => setQuickExpense(c)} onQuickCalendar={() => setQuickCalendar(c)} onShowHistory={() => setHistoryContact(c)} onShowQR={() => setQrContact(c)} selected={selected.has(c.id)} onSelect={() => toggleSelect(c.id)} bulkMode={bulkMode} branding={branding} scopeLabel={scopeLabelFor(c)} scopePortfolio={scopeIsPortfolio(c)} />
           ))}
@@ -666,7 +666,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
           {GROUPS.filter(g => groupedFiltered[g.id]?.length).map(g => (
             <div key={g.id}>
               <GroupDivider group={g} count={groupedFiltered[g.id].length} />
-              <div data-list style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 310px), 1fr))', gap: 14 }}>
+              <div data-list style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 310px), 1fr))', gap: 14 }}>
                 {groupedFiltered[g.id].map(c => (
                   <ContactCard key={c.id} contact={c} onOpen={() => setDetailId(c.id)} onEdit={() => openEdit(c)} onDelete={() => askDelete(c)} onQuickExpense={() => setQuickExpense(c)} onQuickCalendar={() => setQuickCalendar(c)} onShowHistory={() => setHistoryContact(c)} onShowQR={() => setQrContact(c)} selected={selected.has(c.id)} onSelect={() => toggleSelect(c.id)} bulkMode={bulkMode} branding={branding} scopeLabel={scopeLabelFor(c)} scopePortfolio={scopeIsPortfolio(c)} />
                 ))}

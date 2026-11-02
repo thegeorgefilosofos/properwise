@@ -5,9 +5,9 @@ import {
   annuityMonthly, rankLoans, type UserLoanNeeds, type BankInput,
 } from '@/lib/loans/recommend'
 import { T } from '@/components/tokens'
-import { Bar, LinkBtn, fixedCols } from '@/components/Theme'
+import { Bar, LinkBtn, fixedCols, fd } from '@/components/Theme'
 import { athensToday } from '@/lib/core/time'
-import { feWhole } from '@/lib/core/format'
+import { feWhole, fpRate } from '@/lib/core/format'
 
 // ── «Σπίτι μου ΙΙ — για σένα» ────────────────────────────────────────────────
 // Συγκεντρώνει σε μία εικόνα: το 50/50 σκέλος (άτοκο/τραπεζικό), την πραγματική
@@ -88,7 +88,7 @@ export default function SpitiMouPanel({
   // κάθε απόδοση δίνει άλλη τιμή και ο διακομιστής διαφωνεί με τον περιηγητή.
   const [nowMs] = useState(() => Date.now())
   const daysLeft = Math.ceil((deadline.getTime() - nowMs) / 86400000)
-  const deadlineStr = deadline.toLocaleDateString('el-GR', { day: '2-digit', month: 'long', year: 'numeric' })
+  const deadlineStr = fd(deadline)
 
   // ══ ΚΛΕΙΣΤΟ ΠΡΟΓΡΑΜΜΑ, ΜΙΑ ΓΡΑΜΜΗ ════════════════════════════════════════
   // Το πάνελ έγραφε σήμα «Έκλεισε» και αμέσως κάτω μέσο επιτόκιο με το μισό
@@ -150,8 +150,8 @@ export default function SpitiMouPanel({
         <Bar height={12} track="var(--bg-elevated)" style={{ border: '1px solid var(--border-subtle)' }}
           parts={[{ pct: elig.interestFreeShare * 100, title: 'Άτοκο σκέλος' }]} />
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: FONT }}>{Math.round(elig.interestFreeShare * 100)}% άτοκο · {fmtEur(amount * elig.interestFreeShare)}</span>
-          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: FONT }}>{100 - Math.round(elig.interestFreeShare * 100)}% τραπεζικό · {fmtEur(amount - amount * elig.interestFreeShare)}</span>
+          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: FONT }}>{fpRate(Math.round(elig.interestFreeShare * 100))} άτοκο · {fmtEur(amount * elig.interestFreeShare)}</span>
+          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: FONT }}>{fpRate(100 - Math.round(elig.interestFreeShare * 100))} τραπεζικό · {fmtEur(amount - amount * elig.interestFreeShare)}</span>
         </div>
       </div>
 

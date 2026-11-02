@@ -17,7 +17,7 @@ import { groupSeries, rowCount, type SeriesRow } from '@/lib/calendar/series'
 import { taxKindOfEventSource, taxObligationOfEventSource, CONFIDENCE_LABEL, CONFIDENCE_HINT } from '@/lib/tax/greekTaxCalendar'
 import { WHO_LABEL } from '@/lib/accounting/dossier'
 import { downloadFile } from '@/lib/core/download'
-import { type CalEvent, CATEGORIES, TAX_META, fmt, fmtShort, daysUntil, isOverdue } from './model'
+import { type CalEvent, CATEGORIES, TAX_META, fmt, daysUntil, isOverdue } from './model'
 import { Tooltip, StatusDot } from './Bits'
 import { dueTextStart } from '@/lib/facts/deadlines'
 
@@ -92,19 +92,16 @@ function AddToCalendarMenu({ event, onEdit, onDelete, onOpenChange }: { event: C
 }
 
 // ═══ Η ΧΡΟΝΙΑ ΓΡΑΦΕΤΑΙ ΜΙΑ ΦΟΡΑ, ΟΧΙ ΔΕΚΑΕΞΙ ══════════════════════════════════
-// Στην προβολή Μήνα ο επιλογέας από πάνω γράφει «Αύγουστος 2026» και κάθε κάρτα
-// από κάτω ξανάγραφε ολόκληρη την ημερομηνία, «12/08/2026». Με δεκαπέντε
-// γεγονότα, το «2026» εμφανιζόταν δεκαέξι φορές στην ίδια οθόνη — και ήταν
-// ΕΓΓΥΗΜΕΝΑ το ίδιο, γιατί το `monthEvents` κόβεται στα όρια του μήνα που
-// δείχνει ο επιλογέας.
-//
-// Στην Ατζέντα η ίδια κάρτα ΧΡΕΙΑΖΕΤΑΙ τη χρονιά: εκεί δεν υπάρχει επιλογέας
-// και ο κατάλογος περνά από μήνα σε μήνα. Γι' αυτό το κρίνει ο καλών, με το
-// `sameMonth`· δεν το κρίνει η κάρτα μόνη της.
-export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, onSelect, bulkMode, sameMonth }: {
+// ΜΙΑ ΓΡΑΦΗ ΗΜΕΡΟΜΗΝΙΑΣ ΚΑΙ ΣΤΗΝ ΠΡΟΒΟΛΗ ΜΗΝΑ. Η κάρτα έγραφε «25 Νοε» όταν
+// ο κατάλογος ήταν κλεισμένος σε έναν μήνα, για να μην επαναλαμβάνεται η
+// χρονιά. Στην ίδια οθόνη όμως η ράγα «Επόμενα» γράφει «25/11/2026» για το ίδιο
+// γεγονός και ο οπτικός έλεγχος το βρήκε ως δύο γραφές της μίας μέρας. Η
+// ημερομηνία γράφεται πια παντού ηη/μμ/εεεε (`fmt` → `grDate`). Το `sameMonth`
+// μένει στην υπογραφή ώστε να μην αλλάξουν οι καλούντες.
+export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, onSelect, bulkMode }: {
   event: CalEvent; onToggleStatus:(e:CalEvent)=>void; onEdit:(e:CalEvent)=>void
   onDelete:(id:string)=>void; selected?:boolean; onSelect?:(id:string)=>void; bulkMode?:boolean
-  /** Ο κατάλογος είναι ήδη κλεισμένος σε έναν μήνα, οπότε η χρονιά περισσεύει. */
+  /** Δεν αλλάζει πια τη γραφή της ημερομηνίας· βλ. το σχόλιο πάνω από την κάρτα. */
   sameMonth?:boolean
 }) {
   const overdue = isOverdue(event)
@@ -206,7 +203,7 @@ export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, o
             κάτω: σε μία σειρά έκοβε τον τίτλο του γεγονότος στα 390. */}
         {overdue && <span style={{ fontSize:12, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-primary)' }}>Ληξιπρόθεσμο</span>}
         <span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', fontWeight:due===0?600:400, color:due===0?'var(--text-primary)':'var(--text-secondary)' }}>
-          {overdue||due===0||due===1?dueTextStart(due):(sameMonth?fmtShort:fmt)(event.event_date)}{event.event_time?` · ${event.event_time}`:''}
+          {overdue||due===0||due===1?dueTextStart(due):fmt(event.event_date)}{event.event_time?` · ${event.event_time}`:''}
         </span>
         {!bulkMode&&(
           /* ΚΡΥΒΕΤΑΙ Η ΟΨΗ, ΟΧΙ Η ΕΝΕΡΓΕΙΑ. Με `opacity: 0` από αιώρηση σε

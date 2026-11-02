@@ -9,7 +9,7 @@ import { NumberInput, CustomSelect, DatePicker } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
 import { usePropertyHeating } from './usePropertyHeating';
 import { usesGas } from '@/lib/property/heating';
-import { T, fe, feRate, Spinner, fixedCols, ChipToggle } from '@/components/Theme';
+import { T, fe, fn, feRate, Spinner, fixedCols, ChipToggle } from '@/components/Theme';
 import { canRecommend, freshness, RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy/freshness';
 // Ο κατάλογος είναι δεδομένα και ζει στο lib, όπως και του ρεύματος. Η οθόνη
 // τον διαβάζει, δεν τον φιλοξενεί: 130 γραμμές τιμών μέσα σε React component
@@ -255,7 +255,7 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
           </div>
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '16px 18px' }}>
             <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 10, fontFamily: T.font.sans }}>Δίκτυο διανομής</div>
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.mono, lineHeight: 1.2 }}>{NETWORK_OPERATORS.find(n => n.value === s.networkOperator)?.label}</div>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, lineHeight: 1.2 }}>{NETWORK_OPERATORS.find(n => n.value === s.networkOperator)?.label}</div>
           </div>
         </div>
       </div>
@@ -332,9 +332,9 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
             </div>
             <div style={{ display: 'flex', gap: 20, marginTop: 10, flexWrap: 'wrap' as const }}>
               <span title="Κιλοβατώρα, μονάδα μέτρησης κατανάλωσης ενέργειας" style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>Χρέωση kWh:{'  '}<strong style={{ color: 'var(--text-primary)' }}>{tariff.kwh != null ? `${fk(tariff.kwh)} / kWh` : 'χωρίς γνωστή τιμή'}</strong></span>
-              <span style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>Πάγιο:{'  '}<strong>{fe(tariff.fixed)} / μήνα</strong></span>
+              <span style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>Πάγιο:{' '}<strong>{fe(tariff.fixed)} / μήνα</strong></span>
               {tariff.contract_months != null && (
-                <span style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>Δέσμευση:{'  '}<strong>{tariff.contract_months} μήνες</strong></span>
+                <span style={{ fontSize: 'var(--fs-xs)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>Δέσμευση:{' '}<strong>{tariff.contract_months} μήνες</strong></span>
               )}
             </div>
           </div>
@@ -346,8 +346,8 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
         <div style={card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, flexWrap: 'wrap' as const, gap: 10 }}>
             {secHdr('Σύγκριση παρόχων', ownInView === 0
-              ? `${allTariffs.length} τιμολόγια της ΡΑΑΕΥ σε ${kwh} kWh τον μήνα, χρέωση προμήθειας`
-              : `${allTariffs.length} τιμολόγια σε ${kwh} kWh τον μήνα, χρέωση προμήθειας: ${allTariffs.length - ownInView} της ΡΑΑΕΥ και ${ownInView} με τιμή από τον τιμοκατάλογο του παρόχου`)}
+              ? `${allTariffs.length} τιμολόγια της ΡΑΑΕΥ σε ${fn(kwh)} kWh τον μήνα, χρέωση προμήθειας`
+              : `${allTariffs.length} τιμολόγια σε ${fn(kwh)} kWh τον μήνα, χρέωση προμήθειας: ${allTariffs.length - ownInView} της ΡΑΑΕΥ και ${ownInView} με τιμή από τον τιμοκατάλογο του παρόχου`)}
             <div style={{ display: 'flex', background: 'var(--bg-base)', borderRadius: T.radius.pill, padding: 4, border: '1px solid var(--border-default)' }}>
               {/* shape="seg" και όχι "chip": η ράγα από πάνω έχει ήδη δικό της περίγραμμα. */}
               {(['residential', 'business'] as const).map(seg => (
@@ -458,7 +458,7 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
           hints.push({ text: 'Είμαστε σε περίοδο θέρμανσης και δεν έχεις καταχωρήσει ακόμη κατανάλωση ή κόστος αερίου. Συμπλήρωσε τα στοιχεία για ακριβή παρακολούθηση.', severity: 'warning' });
         }
         if (tariff?.type === 'variable' && kwh > 800) {
-          hints.push({ text: `Με ${kwh} kWh/μήνα, ένα σταθερό τιμολόγιο θα σε προστάτευε από διακυμάνσεις TTF τον χειμώνα, τότε οι τιμές συνήθως ανεβαίνουν.`, severity: 'tip' });
+          hints.push({ text: `Με ${fn(kwh)} kWh/μήνα, ένα σταθερό τιμολόγιο θα σε προστάτευε από διακυμάνσεις TTF τον χειμώνα, τότε οι τιμές συνήθως ανεβαίνουν.`, severity: 'tip' });
         }
         if (heatingType === 'central_gas') {
           hints.push({ text: 'Με κεντρική θέρμανση, το κόστος αερίου μοιράζεται στους ενοίκους/ιδιοκτήτες βάσει χιλιοστών. Έλεγξε τον κανονισμό κοινοχρήστων.', severity: 'info' });

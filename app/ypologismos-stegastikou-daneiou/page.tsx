@@ -242,7 +242,7 @@ export default async function Page() {
         {/* Ο υπολογιστής διαβάζει τη διεύθυνση, άρα θέλει όριο αναμονής: χωρίς
             αυτό ολόκληρη η σελίδα βγαίνει από τη στατική απόδοση. */}
         <Suspense fallback={<div style={{ minHeight: 560 }} aria-hidden/>}>
-          <MortgageCalculator market={market} today={today} cta={
+          <MortgageCalculator market={market} today={today} exampleRate={EX.rate} cta={
             <ToolCta
               title="Θέλεις να βλέπεις τι χρωστάς ακόμη, κάθε μήνα;"
               body="Το PROPERWISE κρατά το δάνειο μαζί με το ακίνητο: τη δόση, το υπόλοιπο και τους τόκους κάθε χρονιάς. Δεν εγκρίνει δάνεια και δεν μιλά για λογαριασμό καμίας τράπεζας."

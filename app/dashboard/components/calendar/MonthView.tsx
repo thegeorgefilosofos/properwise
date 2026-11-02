@@ -267,6 +267,17 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
                .sort((a,b)=>a.event_date.localeCompare(b.event_date))
   ).slice(0,7)
   const monthPendingAmt=events.filter(e=>e.status==='pending').reduce((s,e)=>s+(e.amount||0),0)
+  // ═══ Η ΜΕΤΡΗΣΗ ΜΕΤΡΑ Ο,ΤΙ ΔΕΙΧΝΕΙ ΤΟ ΠΛΕΓΜΑ ═════════════════════════════
+  // Η κεφαλίδα έγραφε «1 γεγονός» πάνω από μήνα με δύο μπάρες κράτησης: μετρούσε
+  // ΟΛΑ τα γεγονότα, μαζί με τα «booking:» που το πλέγμα κρύβει (τα δείχνει
+  // ως μπάρα) και καμία κράτηση. Τώρα λέει τα δύο χωριστά, όπως φαίνονται.
+  const gridEventCount=events.filter(e=>!(e.source||'').startsWith('booking:')).length
+  const monthFirst=`${year}-${p2(month+1)}-01`, monthLast=`${year}-${p2(month+1)}-${p2(new Date(year,month+1,0).getDate())}`
+  const monthStayCount=stays.filter(s=>s.start<=monthLast&&s.end>=monthFirst).length
+  const countLine=[
+    gridEventCount>0?(gridEventCount===1?'1 γεγονός':`${gridEventCount} γεγονότα`):null,
+    monthStayCount>0?(monthStayCount===1?'1 κράτηση':`${monthStayCount} κρατήσεις`):null,
+  ].filter(Boolean).join(' · ')
   const monthPaid=events.filter(e=>e.status==='paid')
 
   return (
@@ -289,7 +300,7 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
                 και από κάτω με ολόκληρη κενή κατάσταση. Ο ίδιος συλλογισμός που
                 έβγαλε το «0 πληρωμένα» δίπλα του — η μέτρηση έχει νόημα όταν
                 υπάρχει κάτι να μετρηθεί. */}
-            {events.length>0&&<span style={{ fontSize:12, fontFamily: T.font.sans, color:'var(--text-secondary)', letterSpacing:'0.4px' }}>{events.length===1?'1 γεγονός':`${events.length} γεγονότα`}</span>}
+            {countLine&&<span style={{ fontSize:12, fontFamily: T.font.sans, color:'var(--text-secondary)', letterSpacing:'0.4px' }}>{countLine}</span>}
             {monthPendingAmt>0&&<span title="Άθροισμα των εκκρεμών ποσών, μόνο αυτού του μήνα" style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--accent)' }}>{fe(monthPendingAmt)} εκκρεμή</span>}
             {/* ΤΟ «0 ΠΛΗΡΩΜΕΝΑ» ΔΙΠΛΑ ΣΤΟ «0 ΓΕΓΟΝΟΤΑ» ΔΕΝ ΛΕΕΙ ΤΙΠΟΤΑ. Σε άδειο
                 μήνα η γραμμή έγραφε δύο μηδενικά στη σειρά — δύο μετρήσεις για το
@@ -483,6 +494,17 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
                 {segments.filter(g=>g.lane<MAX_LANES).map(g=>{
                   const cc=channelColor(g.stay.channel)
                   const L=g.openLeft?0:BAR_INSET, R=g.openRight?0:BAR_INSET
+                  // ═══ Η ΕΤΙΚΕΤΑ ΤΗΣ ΜΠΑΡΑΣ ΧΩΡΑΕΙ Ή ΔΕΝ ΓΡΑΦΕΤΑΙ ═════════════
+                  // «Κράτηση · 4 ν.» κοβόταν στα 320 και στα 390: μπάρα δύο
+                  // ημερών στο τέλος της εβδομάδας, με το «ν.» να ακουμπά την
+                  // άκρη της κάρτας. Οι νύχτες γράφονται πια ολόκληρες
+                  // («4 νύχτες») και ΜΟΝΟ όταν χωρούν δίπλα στο όνομα — μετρημένες
+                  // στη γραμματοσειρά της μπάρας, όπως οι αργίες. Αλλιώς μένει το
+                  // όνομα· οι νύχτες λέγονται στην επεξήγηση της μπάρας.
+                  const barInner=gridW*(g.span/7)-L-R-(g.openRight?4:8)-(g.openLeft?4:9)-(g.openLeft?0:14)
+                  const nightsTxt=!g.openLeft&&g.nights!==null&&g.nights>1?` · ${g.nights} νύχτες`:''
+                  const barFont='600 11px '+T.font.sans
+                  const barLabel=nightsTxt&&gridW>0&&textWidth(g.stay.guest+nightsTxt,barFont)<=barInner?g.stay.guest+nightsTxt:g.stay.guest
                   return (
                     <div key={g.stay.id} style={{ position:'absolute', top:g.lane*(BAR_H+BAR_GAP), left:`calc(${(g.startCol/7)*100}% + ${L}px)`, width:`calc(${(g.span/7)*100}% - ${L+R}px)`, height:BAR_H, pointerEvents:'auto' }}>
                       {/* ΤΟ ΑΓΝΩΣΤΟ ΓΡΑΦΕΤΑΙ ΩΣ ΑΓΝΩΣΤΟ. Οταν λείπει η αναχώρηση, το
@@ -491,11 +513,11 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
                           «1 Αυγ έως 1 Αυγ · 1 νύχτα» για κράτηση που δεν ξέρουμε
                           πόσο κράτησε. Τώρα λέει τι λείπει και ποιος το συμπληρώνει. */}
                       <Tooltip fill text={g.nights === null
-                        ? `${g.stay.guest} · ${cc.label}\nΆφιξη ${g.stay.start} · χωρίς καταχωρημένη αναχώρηση${g.stay.total?`\n${fe(g.stay.total)}`:''}`
-                        : `${g.stay.guest} · ${cc.label}\n${g.stay.start} έως ${g.stay.end} · ${g.nights} ${g.nights===1?'νύχτα':'νύχτες'}${g.stay.total?`\n${fe(g.stay.total)}`:''}`}>
+                        ? `${g.stay.guest} · ${cc.label}\nΆφιξη ${grDate(g.stay.start)} · χωρίς καταχωρημένη αναχώρηση${g.stay.total?`\n${fe(g.stay.total)}`:''}`
+                        : `${g.stay.guest} · ${cc.label}\n${grDate(g.stay.start)} έως ${grDate(g.stay.end)} · ${g.nights} ${g.nights===1?'νύχτα':'νύχτες'}${g.stay.total?`\n${fe(g.stay.total)}`:''}`}>
                         <div onClick={e=>e.stopPropagation()} style={{ width:'100%', height:BAR_H, boxSizing:'border-box', display:'flex', alignItems:'center', gap:4, padding:`0 ${g.openRight?4:8}px 0 ${g.openLeft?4:9}px`, background:cc.solid, color:'var(--on-tone)', fontSize: 'var(--fs-xs)', fontWeight:600, fontFamily: T.font.sans, letterSpacing:'0.1px', borderTopLeftRadius:g.openLeft?2:BAR_H/2, borderBottomLeftRadius:g.openLeft?2:BAR_H/2, borderTopRightRadius:g.openRight?2:BAR_H/2, borderBottomRightRadius:g.openRight?2:BAR_H/2, overflow:'hidden', whiteSpace:'nowrap', cursor:'default' }}>
                           {!g.openLeft&&<User size={10} style={{ flexShrink:0, opacity:0.9 }}/>}
-                          <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{g.stay.guest}{!g.openLeft&&g.nights!==null&&g.nights>1?` · ${g.nights} ν.`:''}</span>
+                          <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{barLabel}</span>
                         </div>
                       </Tooltip>
                     </div>

@@ -49,7 +49,13 @@ export function PortalBar({ year, onYear, back }: {
   return (
     <header style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
       <div style={{ ...portalWrap, minHeight: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+        {/* ΣΤΟ ΚΙΝΗΤΟ ΔΕΝ ΧΩΡΑΝΕ ΤΕΣΣΕΡΑ ΠΡΑΓΜΑΤΑ ΣΕ ΜΙΑ ΓΡΑΜΜΗ. Επιστροφή, σήμα,
+            όνομα και επιλογέας έπεφταν το ένα πάνω στο άλλο στα 390: το όνομα
+            κοβόταν κάτω από τον επιλογέα και ο επιλογέας έγραφε «Χρήση …».
+            Κάτω από 560 μένει το βέλος της επιστροφής (με το όνομά του για τον
+            αναγνώστη οθόνης) και το σήμα· ο επιλογέας κρατά ολόκληρο το πλάτος του. */}
+        <style>{`@media (max-width:560px){.pb-label{display:none}}`}</style>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
           {/* Η ΕΞΟΔΟΣ ΠΡΩΤΗ, ΑΡΙΣΤΕΡΑ ΤΟΥ ΣΗΜΑΤΟΣ. Η κατάσταση ενός πελάτη
               ανοίγει σε δική της διεύθυνση και δεν είχε ΚΑΜΙΑ επιστροφή: ο
               λογιστής που ερχόταν από τη λίστα των πελατών του έμενε εκεί, με
@@ -64,16 +70,16 @@ export function PortalBar({ year, onYear, back }: {
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
               </svg>
-              {back.label}
+              <span className="pb-label">{back.label}</span>
             </a>
           )}
           <BrandMark />
-          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>
+          <span className="pb-label" style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {PORTAL_NAME}
           </span>
         </div>
         {year !== undefined && onYear && (
-          <div style={{ minWidth: 138 }}>
+          <div style={{ minWidth: 152, flex: '0 0 auto' }}>
             <CustomSelect ariaLabel="Χρήση" value={String(year)} onChange={v => onYear(parseInt(v, 10))}
               options={portalYears().map(y => ({ value: String(y), label: `Χρήση ${y}` }))} />
           </div>

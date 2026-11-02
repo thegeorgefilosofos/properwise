@@ -12,7 +12,7 @@ import * as contactStore from '@/lib/data/contacts'
 import {
   Users, Building2, Wrench, Trees, UserCheck, Zap, Wifi, Landmark, Briefcase, Shield,
 } from 'lucide-react'
-import { localDay } from '@/components/Theme'
+import { fd } from '@/components/Theme'
 import type { ContactFile } from '@/lib/storage/contactFiles'
 import { daysUntilOrNull } from '@/lib/core/time'
 // Το Αρχείο έχει ένα σπίτι: lib/data/documents.
@@ -287,7 +287,7 @@ export const EMPTY_FORM = { full_name: '', role: 'other', phone: '', email: '', 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 export function fmtDate(d: string) {
   if (!d) return ''
-  try { return localDay(d).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric' }) } catch { return d }
+  try { return fd(d) } catch { return d }
 }
 // Η πολιτική «null όταν λείπει, 0 όταν είναι άκυρη» ζει στο lib/core/time.
 export const daysUntil = daysUntilOrNull
