@@ -598,7 +598,7 @@ export default function SignupPage() {
                 </label>
                 <label htmlFor="su-consent-oauth" style={consentText}>
                   Αποδέχομαι τους{' '}
-                  <Link href="/terms" className="lp-link po-tap-inline" style={consentLink}>Όρους</Link>. Διάβασα την{' '}
+                  <Link href="/terms" className="lp-link po-tap-inline" style={consentLink}>Όρους</Link> και την{' '}
                   <Link href="/privacy" className="lp-link po-tap-inline" style={consentLink}>Πολιτική απορρήτου</Link>.
                 </label>
               </div>
@@ -898,7 +898,7 @@ export default function SignupPage() {
                       κουτί, οπότε ο φόβος του σχολίου από πάνω δεν ισχύει. */}
                   <label htmlFor="su-consent" style={consentText}>
                     Αποδέχομαι τους{' '}
-                    <Link href="/terms" className="lp-link po-tap-inline" style={consentLink}>Όρους</Link>. Διάβασα την{' '}
+                    <Link href="/terms" className="lp-link po-tap-inline" style={consentLink}>Όρους</Link> και την{' '}
                     <Link href="/privacy" className="lp-link po-tap-inline" style={consentLink}>Πολιτική απορρήτου</Link>.
                   </label>
                 </div>
