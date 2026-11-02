@@ -7608,7 +7608,7 @@ h1, h2, h3, h4, details > summary, th, dt { text-wrap: balance; }
 .pw-lang { position: relative; flex-shrink: 0; }
 .pw-lang-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  min-width: 64px; height: 36px; padding: 0 10px; margin: 0;
+  min-width: 64px; height: 44px; padding: 0 10px; margin: 0;
   border: none; border-radius: 999px; background: transparent;
   color: var(--text-secondary); font: inherit; font-size: 13px; font-weight: 600;
   letter-spacing: 0.02em; cursor: pointer;
@@ -7641,10 +7641,9 @@ h1, h2, h3, h4, details > summary, th, dt { text-wrap: balance; }
    παίρνει όλο το ύψος αφής των 44. */
 .pw-lang-foot .pw-lang-btn { margin-left: -10px; color: var(--text-tertiary); }
 .pw-lang-foot .pw-lang-btn:hover, .pw-lang-foot .pw-lang-btn[aria-expanded="true"] { color: var(--text-primary); }
-@media (max-width: 640px) {
-  .pw-lang-btn { height: 44px; }
-  .pw-lang-item { min-height: 44px; }
-}
+/* Στόχος αφής 44 σε κάθε πλάτος: και στην επιφάνεια εργασίας δείχνει κανείς
+   με δάχτυλο (ταμπλέτα με πληκτρολόγιο, οθόνη αφής), e2e-layout. */
+.pw-lang-item { min-height: 44px; }
 /* Η γραμμή του μενού του κινητού: γλώσσα αριστερά, σημάδι δεξιά. */
 .pw-lang-row { justify-content: space-between; gap: 16px; }
 .pw-lang-row svg { color: var(--accent); flex-shrink: 0; }

@@ -15,10 +15,20 @@
 // και το `/tameio` (ανακατεύθυνση προς τον έμπορο, χωρίς δική της οθόνη).
 // Το `/logistes` μπήκε μαζί με τη σελίδα (03.10.2026): δημόσια, στον χάρτη και
 // στο υποσέλιδο, με λίστα αρχείων και κάρτα παραδείγματος που θέλουν μέτρημα.
+// ΟΙ ΑΓΓΛΙΚΕΣ ΣΕΛΙΔΕΣ (/en) ΕΧΟΥΝ ΑΛΛΟ ΜΗΚΟΣ ΛΕΞΕΩΝ: ίδια συστατικά, άλλες
+// αναδιπλώσεις. Μία από κάθε είδος (αρχική, τιμές, εγγραφή, κόμβος, ο πιο
+// πυκνός υπολογιστής, νομικό κείμενο, οδηγός), όχι όλες, για να μη διπλασιαστεί
+// ο χρόνος του CI.
+export const EN_PUBLIC = [
+  '/en', '/en/pricing', '/en/signup', '/en/tools', '/en/mortgage-calculator', '/en/privacy',
+  '/en/guides/how-enfia-is-calculated',
+];
+
 export const PUBLIC = [
   '/', '/signup', '/login', '/reset-password', '/trust', '/privacy', '/terms',
   '/paketa', '/ypologismos-enfia', '/ypologismos-forou-enoikion',
   '/kathari-apodosi', '/vraxyxronia-i-makroxronia', '/sygkrisi-timologion-revmatos', '/logistes',
+  ...EN_PUBLIC,
 ];
 
 // ΟΙ ΟΚΤΩ ΕΓΙΝΑΝ ΕΙΚΟΣΙ ΜΙΑ, ΟΣΕΣ ΚΑΙ ΤΟΥ ΣΑΡΩΤΗ ΔΙΑΤΑΞΗΣ. Οι δύο σαρωτές
