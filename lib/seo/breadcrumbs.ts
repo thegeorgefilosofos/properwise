@@ -30,8 +30,11 @@ export const crumbUrl = (path: string): string => (path === '/' ? SITE : SITE + 
  * Ο κόμβος `BreadcrumbList` για το `@graph` μιας σελίδας. Η διαδρομή ξεκινά
  * πάντα από την αρχική: όποιος τη δώσει χωρίς αυτήν, την παίρνει μπροστά.
  */
-export function breadcrumbJsonLd(trail: readonly Crumb[]) {
-  const full = trail[0]?.path === '/' ? trail : [HOME_CRUMB, ...trail]
+/** Η αρχή της διαδρομής στις αγγλικές σελίδες (/en). */
+export const HOME_CRUMB_EN: Crumb = { name: 'Home', path: '/en' }
+
+export function breadcrumbJsonLd(trail: readonly Crumb[], home: Crumb = HOME_CRUMB) {
+  const full = trail[0]?.path === home.path ? trail : [home, ...trail]
   return {
     '@type': 'BreadcrumbList',
     itemListElement: full.map((c, i) => ({

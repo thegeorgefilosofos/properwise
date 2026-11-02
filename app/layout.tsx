@@ -12,6 +12,8 @@ import JustifyPolish from "@/components/JustifyPolish";
 import { ConfirmHost } from "@/components/ConfirmDialog";
 import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE } from "@/lib/core/site";
 import { THEME_COLOR } from "@/lib/core/themeColor";
+import { LOCALE_HEADER, SUGGEST_HEADER, browserLacksGreek, type Locale } from "@/lib/i18n/locale";
+import LangSuggest from "./LangSuggest";
 
 const TITLE = PRODUCT_NAME;
 const DESCRIPTION = PRODUCT_TAGLINE;
@@ -183,9 +185,20 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   // nonce από το middleware (proxy.ts) για το inline theme-init script υπό CSP.
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const h = await headers();
+  const nonce = h.get("x-nonce") ?? undefined;
+  // ── Η ΓΛΩΣΣΑ ΤΟΥ ΕΓΓΡΑΦΟΥ ΑΠΟ ΤΗ ΔΙΑΔΡΟΜΗ ─────────────────────────────
+  // Το proxy.ts γράφει τη γλώσσα της σελίδας (lib/i18n/locale.ts): «en» κάτω
+  // από το /en, «el» παντού αλλού. Μία ρίζα για τις δύο γλώσσες, όχι δύο
+  // ρίζες σε ομάδες διαδρομών: αυτό θα μετακινούσε ΚΑΘΕ ελληνική σελίδα σε
+  // νέο φάκελο, με τις διαδρομές, τους φύλακες και τα σχόλια που την
+  // αναφέρουν. Η ρίζα διαβάζει ήδη κεφαλίδες (το nonce), οπότε δεν χάνεται
+  // στατική απόδοση. Χωρίς κεφαλίδα (π.χ. ο διαμεσολαβητής δεν έτρεξε),
+  // ελληνικά, όπως πάντα.
+  const locale: Locale = h.get(LOCALE_HEADER) === "en" ? "en" : "el";
+  const suggestEn = locale === "el" && browserLacksGreek(h.get("accept-language")) ? h.get(SUGGEST_HEADER) : null;
   return (
-    <html lang="el" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         {/* Κειμενικές γραμματοσειρές: self-hosted (βλ. globals.css @font-face).
             Preload τα δύο βασικά υποσύνολα του Inter ώστε να μη «τρεμοπαίζει» το
@@ -211,6 +224,10 @@ export default async function RootLayout({
               ταμπλό αποδίδεται μέσα στο περιεχόμενο (βλ. CookieConsent.tsx). Και
               μένει πρώτο στη σειρά Tab, όπως πριν. */}
           <CookieConsent />
+          {/* Η ΔΙΑΚΡΙΤΙΚΗ ΠΡΟΤΑΣΗ ΓΙΑ ΤΑ ΑΓΓΛΙΚΑ. Μόνο σε ελληνική σελίδα που έχει
+              αγγλική, σε περιηγητή χωρίς ελληνικά και χωρίς επιλογή γλώσσας
+              (proxy.ts). Στη ροή, όπως το πλαίσιο cookies: δεν σκεπάζει τίποτα. */}
+          {suggestEn && <LangSuggest href={suggestEn} />}
           {children}
           <ToastHost />
           <ConfirmHost />

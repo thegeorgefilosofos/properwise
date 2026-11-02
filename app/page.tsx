@@ -28,6 +28,7 @@ import {
 } from './landingContent'
 import { FaqList, NoaFeature, SectionHead, OwnerPlanCard, PlanCard } from './LandingParts'
 import { LandingStyles } from './LandingStyles'
+import { languageAlternates } from '@/lib/i18n/paths'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Landing. Χτισμένη γύρω από τα δύο μοναδικά μας: (1) μία φωτογραφία → αυτόματη
@@ -63,12 +64,12 @@ export const metadata = {
   // ρητό εδώ ώστε η αρχική να δηλώνει το σήμα ΑΚΡΙΒΩΣ μία φορά στη Google.
   title: { absolute: `${TAB_TITLE} · ${PRODUCT_NAME}` },
   description: OG_DESC,
-  alternates: { canonical: SITE },
+  alternates: { canonical: SITE, languages: languageAlternates('/') ?? undefined },
   // Η ΕΙΚΟΝΑ ΞΑΝΑΓΡΑΦΕΤΑΙ ΕΔΩ. Ο δικός μας `openGraph` ΑΝΤΙΚΑΘΙΣΤΑ ολόκληρο
   // το αντίστοιχο της ρίζας, δεν το συμπληρώνει: χωρίς `images` η αρχική ήταν
   // η μόνη σελίδα χωρίς og:image και κάθε κοινοποίηση του properwise.gr έβγαινε
   // χωρίς εικόνα (28.09.2026, το βράδυ πριν την πρώτη ανάρτηση).
-  openGraph: { title: OG_TITLE, description: OG_DESC, url: SITE, type: 'website', locale: 'el_GR', siteName: 'PROPERWISE', images: [SHARE_IMAGE] },
+  openGraph: { title: OG_TITLE, description: OG_DESC, url: SITE, type: 'website', locale: 'el_GR', alternateLocale: ['en_US'], siteName: 'PROPERWISE', images: [SHARE_IMAGE] },
   twitter: { card: 'summary_large_image', title: OG_TITLE, description: OG_DESC, images: [SHARE_IMAGE] },
 };
 

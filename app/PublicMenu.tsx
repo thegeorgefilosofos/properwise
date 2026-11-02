@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { T } from '@/components/tokens'
+import LangSwitcher from './LangSwitcher'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΤΟ ΜΕΝΟΥ ΤΗΣ ΔΗΜΟΣΙΑΣ ΚΕΦΑΛΙΔΑΣ ΣΤΟ ΤΗΛΕΦΩΝΟ
@@ -36,13 +37,15 @@ export interface MenuGroup {
   links: readonly (readonly [string, string])[]
 }
 
-export default function PublicMenu({ groups, current }: {
+export default function PublicMenu({ groups, current, label = 'Μενού' }: {
   groups: readonly MenuGroup[]
   current?: string
+  /** Το όνομα του κουμπιού στη γλώσσα της σελίδας. */
+  label?: string
 }) {
   return (
     <details className="pub-menu lp-only-sm">
-      <summary className="pub-menu-btn" aria-label="Μενού">
+      <summary className="pub-menu-btn" aria-label={label}>
         <svg aria-hidden="true" className="pub-menu-ic-open" width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
           <path d="M4 7h16M4 12h16M4 17h16" />
         </svg>
@@ -64,6 +67,8 @@ export default function PublicMenu({ groups, current }: {
             </ul>
           </div>
         ))}
+        {/* Η ΓΛΩΣΣΑ, ΤΕΛΕΥΤΑΙΑ ΟΜΑΔΑ ΤΟΥ ΦΥΛΛΟΥ (app/LangSwitcher.tsx). */}
+        <LangSwitcher place="list" />
       </div>
     </details>
   )

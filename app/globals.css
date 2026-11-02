@@ -7596,3 +7596,82 @@ h1, h2, h3, h4, details > summary, th, dt { text-wrap: balance; }
   .atak-row > label { flex-basis: 100% !important; }
   .atak-row > input { flex: 1 1 0; min-width: 0; width: auto !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Ο ΕΠΙΛΟΓΕΑΣ ΓΛΩΣΣΑΣ (app/LangSwitcher.tsx) ΚΑΙ Η ΠΡΟΤΑΣΗ ΓΙΑ ΤΑ ΑΓΓΛΙΚΑ
+   ─────────────────────────────────────────────────────────────────────────
+   Ησυχος έλεγχος κειμένου: υδρόγειος και «EN»/«ΕΛ» στο δευτερεύον χρώμα,
+   χωρίς πλαίσιο, με απαλό φόντο στο πέρασμα. Σταθερό πλάτος και ύψος, ώστε
+   η αλλαγή «ΕΛ»↔«EN» να μη μετακινεί τίποτα δίπλα του. Μόνο tokens: δουλεύει
+   ίδια σε σκούρο και φωτεινό θέμα.
+   ══════════════════════════════════════════════════════════════════════════ */
+.pw-lang { position: relative; flex-shrink: 0; }
+.pw-lang-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: 64px; height: 36px; padding: 0 10px; margin: 0;
+  border: none; border-radius: 999px; background: transparent;
+  color: var(--text-secondary); font: inherit; font-size: 13px; font-weight: 600;
+  letter-spacing: 0.02em; cursor: pointer;
+  transition: color .15s, background .15s;
+}
+.pw-lang-btn:hover, .pw-lang-btn[aria-expanded="true"] { color: var(--text-primary); background: var(--bg-hover); }
+.pw-lang-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pw-lang-short { min-width: 2.2ch; text-align: left; font-variant-numeric: tabular-nums; }
+.pw-lang-menu {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 70;
+  min-width: 180px; margin: 0; padding: 6px; list-style: none;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: 12px; box-shadow: var(--shadow-lg);
+}
+.pw-lang-menu[hidden] { display: none; }
+.pw-lang-foot .pw-lang-menu { top: auto; bottom: calc(100% + 8px); left: 0; right: auto; }
+.pw-lang-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  min-height: 40px; padding: 0 12px; border-radius: 8px;
+  color: var(--text-primary); text-decoration: none; font-size: 14px; font-weight: 500;
+}
+.pw-lang-item:hover, .pw-lang-item:focus-visible { background: var(--bg-hover); outline: none; }
+.pw-lang-item[aria-checked="true"] { font-weight: 600; }
+.pw-lang-check { display: inline-flex; width: 16px; color: var(--accent); }
+/* Στην κεφαλίδα από τα 768 και πάνω. Πιο κάτω η κεφαλίδα δεν χωρά άλλο
+   στοιχείο (e2e:hscroll) και η γλώσσα ζει στο μενού και στο υποσέλιδο. */
+.pw-lang-head { display: none; }
+@media (min-width: 768px) { .pw-lang-head { display: block; } }
+/* Στο υποσέλιδο το κουμπί κάθεται στη γραμμή των ψιλών γραμμάτων. Στο κινητό
+   παίρνει όλο το ύψος αφής των 44. */
+.pw-lang-foot .pw-lang-btn { margin-left: -10px; color: var(--text-tertiary); }
+.pw-lang-foot .pw-lang-btn:hover, .pw-lang-foot .pw-lang-btn[aria-expanded="true"] { color: var(--text-primary); }
+@media (max-width: 640px) {
+  .pw-lang-btn { height: 44px; }
+  .pw-lang-item { min-height: 44px; }
+}
+/* Η γραμμή του μενού του κινητού: γλώσσα αριστερά, σημάδι δεξιά. */
+.pw-lang-row { justify-content: space-between; gap: 16px; }
+.pw-lang-row svg { color: var(--accent); flex-shrink: 0; }
+
+/* Η πρόταση «View in English»: μία γραμμή στη ροή, πάνω από τη σελίδα, όπως
+   το πλαίσιο cookies. Δεν σκεπάζει τίποτα και κλείνει με «×». */
+.pw-lang-suggest {
+  display: flex; align-items: center; gap: 8px;
+  width: calc(100% - 24px); max-width: 720px; margin: 10px auto; padding: 6px 6px 6px 16px;
+  background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 14px;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+.pw-lang-suggest p { flex: 1; min-width: 0; margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.pw-lang-suggest a { color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+.pw-lang-suggest-x {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 44px; height: 44px; border: none; border-radius: 50%; background: transparent;
+  color: var(--text-tertiary); cursor: pointer;
+}
+.pw-lang-suggest-x:hover { background: var(--bg-hover); color: var(--text-primary); }
+.pw-lang-suggest-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+body:has(.lp-root) .pw-lang-suggest,
+body:has(.pub-root) .pw-lang-suggest,
+body:has(.po-tool-page) .pw-lang-suggest {
+  --bg-elevated: var(--mkt-bg-elevated);
+  --text-primary: var(--mkt-text-primary);
+  --text-secondary: var(--mkt-text-secondary);
+  --border-subtle: var(--mkt-border-default);
+  --accent: var(--mkt-accent);
+}

@@ -18,13 +18,14 @@
 // ένα λουκέτο που δεν διαβάζεται από αναγνώστη οθόνης. Ανοίγει τον ιστότοπο
 // του εμπόρου σε νέα καρτέλα. Η απόδοση ζει στο SecuredBy.tsx, κοινή με το ταμείο.
 // ═══════════════════════════════════════════════════════════════════════════
-import { billingWords } from '@/lib/legal/billingWords';
+import { billingWords, billingWordsEn } from '@/lib/legal/billingWords';
+import type { Locale } from '@/lib/i18n/locale';
 import { merchant } from '@/lib/billing/merchant';
 import { SecuredBy } from './SecuredBy';
 import { SellerLine } from './SellerLine';
 
-export function PaymentsBadge() {
-  const { live, securedBy, securedByLead, seller } = billingWords();
+export function PaymentsBadge({ locale = 'el' }: { locale?: Locale } = {}) {
+  const { live, securedBy, securedByLead, seller } = locale === 'en' ? billingWordsEn() : billingWords();
   if (!live || !securedBy) return null;
   const m = merchant();
   // Ο ΠΩΛΗΤΗΣ ΔΙΠΛΑ ΣΤΙΣ ΤΙΜΕΣ (απόφαση George 21/10/2026): ο επισκέπτης

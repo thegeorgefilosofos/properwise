@@ -44,6 +44,11 @@ import { fpRate, grDate, grDateOf } from '@/lib/core/format';
 import { COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
 import { COMMERCIAL_STAMP_DUTY } from '@/lib/billing/commercialLease';
 import { TRANSFER_TAX_MAIN_RATE, MUNICIPAL_SURCHARGE_RATE, NEW_BUILD_VAT_RATE, NEW_BUILD_VAT_SUSPENDED_UNTIL } from '@/lib/accounting/transfer';
+import type { Locale } from '@/lib/i18n/locale';
+import { CHROME_EN, enLinks } from '@/lib/i18n/en/chrome';
+import { enTools } from '@/lib/i18n/en/tools';
+import { signupCtaEn } from '@/lib/billing/trialOffer';
+import LangSwitcher from './LangSwitcher';
 
 /**
  * ΕΝΑ ΜΕΤΡΟ ΓΙΑ ΟΛΕΣ ΤΙΣ ΔΗΜΟΣΙΕΣ ΣΕΛΙΔΕΣ — ΤΟ ΙΔΙΟ ΜΕ ΤΗΣ ΑΡΧΙΚΗΣ.
@@ -103,13 +108,35 @@ export const READING = 720;
  * αυτό το αρχείο το ελέγχει ο guard-public-routes ως δημόσια διαδρομή· ο
  * σύνδεσμος προς τον πίνακα ζει στη σελίδα που ξέρει ότι υπάρχει συνεδρία.
  */
-export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current?: 'paketa' | 'odigos' }) {
+// ΟΙ ΣΥΝΔΕΣΜΟΙ ΤΗΣ ΚΕΦΑΛΙΔΑΣ ΑΝΑ ΓΛΩΣΣΑ. Τα ελληνικά είναι ΑΥΤΟΥΣΙΑ όσα
+// έγραφε η κεφαλίδα· τα αγγλικά ζουν στο lib/i18n/en/chrome.ts και δείχνουν
+// ΜΟΝΟ σελίδες που υπάρχουν στα αγγλικά (lib/i18n/paths.ts).
+const NAV_EL = {
+  guides: ['/odigos', 'Οδηγοί'] as [string, string],
+  pricing: ['/paketa', 'Τιμές'] as [string, string],
+  about: ['/trust', 'Ποιοι είμαστε'] as [string, string],
+  login: ['/login', 'Σύνδεση'] as [string, string],
+  signup: '/signup', calcs: 'Υπολογισμοί', allTools: 'Όλα τα εργαλεία', start: 'Ξεκίνα',
+};
+function navFor(locale: Locale) {
+  if (locale === 'el') return { ...NAV_EL, cta: signupCta(), tools: PUBLIC_TOOLS.map(t => [t.href, t.label] as [string, string]), hub: TOOLS_HUB.href };
+  const e = CHROME_EN.nav;
+  return {
+    guides: enLinks([e.guides])[0] ?? null, pricing: enLinks([e.pricing])[0] ?? null,
+    about: enLinks([e.about])[0] ?? null, login: enLinks([e.login])[0] ?? null,
+    signup: enLinks([['/signup', '']])[0]?.[0] ?? '/signup', calcs: e.calcs, allTools: e.allTools, start: e.start,
+    cta: signupCtaEn(), tools: enTools().map(t => [t.href, t.label] as [string, string]), hub: enLinks([['/ergaleia', '']])[0]?.[0] ?? null,
+  };
+}
+
+export function PublicNav({ signedIn, current, locale = 'el' }: { signedIn?: ReactNode; current?: 'paketa' | 'odigos'; locale?: Locale }) {
   const link = { color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '8px 10px', whiteSpace: 'nowrap' } as const;
-  const pages: [string, string][] = [['/odigos', 'Οδηγοί'], ['/paketa', 'Τιμές'], ['/trust', 'Ποιοι είμαστε']];
-  if (!signedIn) pages.push(['/login', 'Σύνδεση']);
+  const t = navFor(locale);
+  const pages: [string, string][] = [t.guides, t.pricing, t.about].filter((x): x is [string, string] => !!x);
+  if (!signedIn && t.login) pages.push(t.login);
   const menu: MenuGroup[] = [
     { links: pages },
-    { label: 'Υπολογισμοί', links: [...PUBLIC_TOOLS.map(t => [t.href, t.label] as const), [TOOLS_HUB.href, 'Όλα τα εργαλεία'] as const] },
+    { label: t.calcs, links: [...t.tools, ...(t.hub ? [[t.hub, t.allTools] as const] : [])] },
   ];
   return (
     <div className="lp-nav-row" style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm }}>
@@ -121,37 +148,39 @@ export function PublicNav({ signedIn, current }: { signedIn?: ReactNode; current
           υποσέλιδο και στον κόμβο /odigos, που δεν τον έδειχνε καμία κεφαλίδα:
           όποιος προσγειωνόταν σε έναν υπολογιστή δεν μάθαινε ότι υπάρχουν. Στο
           τηλέφωνο ζει στο μενού (βλ. πιο κάτω) και στο υποσέλιδο. */}
-      <Link href="/odigos" aria-current={current === 'odigos' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-sm" data-xs-elsewhere="/odigos"
-        style={current === 'odigos' ? { ...link, color: 'var(--text-primary)', textDecoration: undefined } : link}>Οδηγοί</Link>
-      <Link href="/paketa" aria-current={current === 'paketa' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-sm" data-xs-elsewhere="/paketa"
-        style={current === 'paketa' ? { ...link, color: 'var(--text-primary)', textDecoration: undefined } : link}>Τιμές</Link>
+      {t.guides && <Link href={t.guides[0]} aria-current={current === 'odigos' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-sm" data-xs-elsewhere="/odigos"
+        style={current === 'odigos' ? { ...link, color: 'var(--text-primary)', textDecoration: undefined } : link}>{t.guides[1]}</Link>}
+      {t.pricing && <Link href={t.pricing[0]} aria-current={current === 'paketa' ? 'page' : undefined} className="lp-link lp-nav-link lp-hide-sm" data-xs-elsewhere="/paketa"
+        style={current === 'paketa' ? { ...link, color: 'var(--text-primary)', textDecoration: undefined } : link}>{t.pricing[1]}</Link>}
+      {/* Η ΓΛΩΣΣΑ (app/LangSwitcher.tsx): από τα 768 εδώ, πιο κάτω στο μενού. */}
+      <LangSwitcher place="head" />
       {!signedIn ? (<>
-        <Link href="/login" className="lp-link lp-nav-link lp-hide-sm" data-xs-elsewhere="/login" style={link}>
-          Σύνδεση
-        </Link>
+        {t.login && <Link href={t.login[0]} className="lp-link lp-nav-link lp-hide-sm" data-xs-elsewhere="/login" style={link}>
+          {t.login[1]}
+        </Link>}
         {/* Το σχήμα του κοινού κουμπιού της δημόσιας πλευράς (`--btn-*` στο
             globals.css): χάπι, 44, λεκτικό 15. Μένει `Link` για την πλοήγηση
             χωρίς επαναφόρτωση· τη γεωμετρία την παίρνει από τις ίδιες τιμές. */}
-        <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 'var(--btn-h, 44px)', textDecoration: 'none', fontSize: 'var(--btn-fs, 15px)', fontWeight: 700, padding: '0 20px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>
-          <span className="lp-hide-xs">{signupCta()}</span><span className="lp-only-xs">Ξεκίνα</span>
+        <Link href={t.signup} className="lp-cta lp-primary" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 'var(--btn-h, 44px)', textDecoration: 'none', fontSize: 'var(--btn-fs, 15px)', fontWeight: 700, padding: '0 20px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>
+          <span className="lp-hide-xs">{t.cta}</span><span className="lp-only-xs">{t.start}</span>
         </Link>
       </>) : signedIn}
       {/* ΟΔΗΓΟΙ ΚΑΙ ΤΙΜΕΣ ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ (06/10/2026). Κάτω από τα 640 οι τρεις
           σύνδεσμοι κείμενου φεύγουν από τη σειρά και μπαίνουν, ίδιοι και με την
           ίδια σειρά, στο φύλλο ενός κουμπιού 44 (app/PublicMenu.tsx). */}
-      <PublicMenu current={current} groups={menu} />
+      <PublicMenu current={current} groups={menu} label={locale === 'en' ? CHROME_EN.menu : undefined} />
     </div>
   );
 }
 
-export function PublicHeader({ current }: { current?: 'paketa' | 'odigos' } = {}) {
+export function PublicHeader({ current, locale = 'el' }: { current?: 'paketa' | 'odigos'; locale?: Locale } = {}) {
   return (
     <header style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
       <div style={{ ...WRAP, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-        <Link href="/" className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'var(--text-primary)' }}>
+        <Link href={locale === 'en' ? '/en' : '/'} className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'var(--text-primary)' }}>
           <BrandLogo />
         </Link>
-        <PublicNav current={current} />
+        <PublicNav current={current} locale={locale} />
       </div>
     </header>
   );
@@ -179,13 +208,50 @@ function FootCol({ label, links }: { label: string; links: [string, string][] })
   );
 }
 
-export function PublicFooter() {
+// ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ΤΟΥ ΥΠΟΣΕΛΙΔΟΥ ΑΝΑ ΓΛΩΣΣΑ. Τα ελληνικά αυτούσια, με τη σειρά
+// και τα σχόλια που εξηγούν κάθε στήλη στο σώμα του PublicFooter· τα αγγλικά από το
+// lib/i18n/en/chrome.ts, μόνο με σελίδες που υπάρχουν στα αγγλικά.
+function footFor(locale: Locale) {
+  if (locale === 'en') {
+    const e = CHROME_EN.foot;
+    return {
+      home: '/en', about: e.about, db: e.db,
+      privacy: enLinks([e.privacy])[0] ?? null,
+      social: e.social,
+      cols: [
+        { label: e.product, links: enLinks([['/', e.home], ['/signup', signupCtaEn()], ['/paketa', e.pricing], ['/#faq', e.faq]]) },
+        { label: CHROME_EN.nav.calcs, links: [...enTools().map(t => [t.href, t.label] as [string, string]), ...enLinks([['/ergaleia', CHROME_EN.nav.allTools]])] },
+        { label: e.guides, links: enLinks(e.guideLinks) },
+        // Η ΥΠΑΝΑΧΩΡΗΣΗ ΜΕΝΕΙ ΚΑΙ ΣΤΑ ΑΓΓΛΙΚΑ. Το άρθ. 11α της Οδηγίας 2011/83/ΕΕ
+        // θέλει τη λειτουργία εμφανή σε κάθε σελίδα· η φόρμα υπάρχει στα
+        // ελληνικά και ο σύνδεσμος το λέει.
+        { label: e.trust, links: [...enLinks(e.trustLinks), ['/ypanaxorisi', e.withdraw] as [string, string]] },
+      ],
+    };
+  }
+  return {
+    home: '/',
+    about: ['Έξοδα, φόροι και προθεσμίες ακινήτων στην Ελλάδα.', 'Για ιδιοκτήτες και επαγγελματίες.'],
+    db: 'Βάση δεδομένων στην ΕΕ (Φρανκφούρτη)',
+    privacy: ['/privacy', 'Πολιτική απορρήτου'] as [string, string] | null,
+    social: (net: string, newTab: boolean) => newTab ? `Το PROPERWISE στο ${net} (ανοίγει σε νέα καρτέλα)` : `Το PROPERWISE στο ${net}`,
+    cols: [
+      { label: 'Προϊόν', links: [['/', 'Αρχική'], ['/signup', signupCta()], ['/paketa', 'Πακέτα και τιμές'], ['/logistes', 'Για λογιστές'], ['/#faq', 'Συχνές ερωτήσεις']] as [string, string][] },
+      { label: 'Υπολογισμοί', links: [...PUBLIC_TOOLS.map(t => [t.href, t.label] as [string, string]), [TOOLS_HUB.href, 'Όλα τα εργαλεία']] as [string, string][] },
+      { label: 'Οδηγοί', links: [['/odigos/pos-ypologizetai-o-enfia', 'Πώς υπολογίζεται ο ΕΝΦΙΑ'], ['/odigos/forologia-enoikion-2026', 'Φορολογία ενοικίων 2026'], ['/odigos/kathari-apodosi-akinitou', 'Καθαρή απόδοση ακινήτου'], ['/odigos/airbnb-takk-2026', 'Φορολογία Airbnb 2026'], ['/odigos', 'Όλοι οι οδηγοί']] as [string, string][] },
+      { label: 'Εμπιστοσύνη', links: [['/trust', 'Ποιοι είμαστε'], ['/privacy', 'Απόρρητο'], ['/terms', 'Όροι χρήσης'], ['/ypanaxorisi', 'Υπαναχώρηση από τη σύμβαση εδώ'], ['/trust#epikoinonia', 'Επικοινωνία']] as [string, string][] },
+    ],
+  };
+}
+
+export function PublicFooter({ locale = 'el' }: { locale?: Locale } = {}) {
+  const f = footFor(locale);
   return (
     <footer style={{ borderTop: '1px solid var(--border-subtle)' }}>
       <div style={{ ...WRAP, padding: `clamp(36px,5vw,56px) ${WRAP_PAD} calc(clamp(24px,3vw,32px) + env(safe-area-inset-bottom, 0px))` }}>
         <div className="lp-foot">
           <div>
-            <Link href="/" className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, textDecoration: 'none', color: 'var(--text-primary)', width: 'fit-content' }}>
+            <Link href={f.home} className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, textDecoration: 'none', color: 'var(--text-primary)', width: 'fit-content' }}>
               <BrandLogo />
             </Link>
             {/* ΔΥΟ ΠΡΟΤΑΣΕΙΣ, ΔΥΟ ΓΡΑΜΜΕΣ ΚΑΙ Η ΑΛΛΑΓΗ ΕΙΝΑΙ ΡΗΤΗ.
@@ -199,8 +265,8 @@ export function PublicFooter() {
                 «…στην Ελλά- / δα.» στα 390 — χειρότερο από το ορφανό «Ελλάδα.».
                 Με ισορροπημένη αναδίπλωση σπάει σε «…προθεσμίες / ακινήτων στην Ελλάδα.». */}
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>
-              <span style={{ display: 'block', textWrap: 'balance' }}>Έξοδα, φόροι και προθεσμίες ακινήτων στην Ελλάδα.</span>
-              <span style={{ display: 'block' }}>Για ιδιοκτήτες και επαγγελματίες.</span>
+              <span style={{ display: 'block', textWrap: 'balance' }}>{f.about[0]}</span>
+              <span style={{ display: 'block' }}>{f.about[1]}</span>
             </p>
           </div>
           {/* ΤΡΕΙΣ ΣΤΗΛΕΣ ΤΩΝ ΤΡΙΩΝ. Η μεσαία είχε δύο συνδέσμους και έμοιαζε
@@ -215,13 +281,12 @@ export function PublicFooter() {
           {/* ΚΑΙ Ο ΛΟΓΙΣΤΗΣ ΕΧΕΙ ΠΟΡΤΑ (03.10.2026). Το «Για ιδιοκτήτες και
               επαγγελματίες» από αριστερά δεν έδειχνε πουθενά τον άνθρωπο που
               παίρνει τον φάκελο· η σελίδα του μπαίνει δίπλα στα πακέτα. */}
-          <FootCol label="Προϊόν" links={[['/', 'Αρχική'], ['/signup', signupCta()], ['/paketa', 'Πακέτα και τιμές'], ['/logistes', 'Για λογιστές'], ['/#faq', 'Συχνές ερωτήσεις']]} />
+          {f.cols.map(c => c.links.length > 0 && <FootCol key={c.label} label={c.label} links={c.links} />)}
           {/* Υπολογισμοί χωρίς εγγραφή: απαντούν «πόσο» πριν μας γνωρίσει κανείς. */}
           {/* Ο ΠΕΜΠΤΟΣ ΚΑΙ Ο ΕΚΤΟΣ ΜΠΑΙΝΟΥΝ ΤΕΛΕΥΤΑΙΟΙ. Η δόση στεγαστικού και η σύγκριση
               ρεύματος δεν έχουν ακόμη οδηγό στη διπλανή στήλη, οπότε στέκουν κάτω από τα τέσσερα
               ζευγάρια και δεν σπάνε τη στοίχιση «πόσο / γιατί» από πάνω. */}
           {/* ΚΑΙ Ο ΚΟΜΒΟΣ ΤΟΥΣ ΤΕΛΕΥΤΑΙΟΣ (27.10.2026), όπως το «Όλοι οι οδηγοί» δίπλα. */}
-          <FootCol label="Υπολογισμοί" links={[...PUBLIC_TOOLS.map(t => [t.href, t.label] as [string, string]), [TOOLS_HUB.href, 'Όλα τα εργαλεία']]} />
           {/* ΟΙ ΟΔΗΓΟΙ ΘΕΛΟΥΝ ΔΙΚΗ ΤΟΥΣ ΣΤΗΛΗ, ΜΕ ΤΟ ΟΝΟΜΑ ΤΟΥ ΚΑΘΕΝΟΣ. Ενας
               σύνδεσμος «Οδηγοί» κρυμμένος στο τέλος των εργαλείων διαβαζόταν ως
               πάρεργο. Ξεχωριστή στήλη απαντά στο «γιατί» δίπλα στο «πόσο» και
@@ -232,7 +297,6 @@ export function PublicFooter() {
               να διαβάζεται οριζόντια. */}
           {/* ΚΑΙ Ο ΚΟΜΒΟΣ ΕΧΕΙ ΣΥΝΔΕΣΜΟ (05/10/2026): τέσσερις από τους δέκα
               φαίνονταν εδώ και κανένας δρόμος προς τους άλλους έξι. */}
-          <FootCol label="Οδηγοί" links={[['/odigos/pos-ypologizetai-o-enfia', 'Πώς υπολογίζεται ο ΕΝΦΙΑ'], ['/odigos/forologia-enoikion-2026', 'Φορολογία ενοικίων 2026'], ['/odigos/kathari-apodosi-akinitou', 'Καθαρή απόδοση ακινήτου'], ['/odigos/airbnb-takk-2026', 'Φορολογία Airbnb 2026'], ['/odigos', 'Όλοι οι οδηγοί']]} />
           {/* ΚΑΜΙΑ ΔΗΜΟΣΙΑ ΣΕΛΙΔΑ ΔΕΝ ΕΔΙΝΕ ΤΡΟΠΟ ΝΑ ΜΑΣ ΜΙΛΗΣΕΙ ΚΑΝΕΙΣ. Η
               διεύθυνση υποστήριξης υπήρχε στο μητρώο νομικής ταυτότητας και
               δεν την τύπωνε καμία σελίδα εκτός από το «Ποιοι είμαστε». Ο
@@ -252,10 +316,11 @@ export function PublicFooter() {
               «Υπαναχώρηση από τη σύμβαση εδώ»: το άρθ. 11α της Οδηγίας
               2011/83/ΕΕ θέλει τη λειτουργία εμφανή και διαθέσιμη σε όλη την
               προθεσμία, όχι κρυμμένη στους Όρους (lib/legal/withdrawal.ts). */}
-          <FootCol label="Εμπιστοσύνη" links={[['/trust', 'Ποιοι είμαστε'], ['/privacy', 'Απόρρητο'], ['/terms', 'Όροι χρήσης'], ['/ypanaxorisi', 'Υπαναχώρηση από τη σύμβαση εδώ'], ['/trust#epikoinonia', 'Επικοινωνία']]} />
         </div>
         <div className="po-foot-bar" style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: T.sp.lg, borderTop: '1px solid var(--border-subtle)', fontSize: 12, color: 'var(--text-tertiary)' }}>
           <span>© {new Date().getFullYear()} PROPERWISE</span>
+          {/* Η ΓΛΩΣΣΑ ΚΑΙ ΣΤΟ ΥΠΟΣΕΛΙΔΟ, σε κάθε πλάτος (app/LangSwitcher.tsx). */}
+          <LangSwitcher place="foot" />
           {/* ΤΟ «ΣΧΕΔΙΑΣΜΕΝΟ ΓΙΑ GDPR» ΔΕΝ ΕΛΕΓΕ ΤΙΠΟΤΑ ΕΛΕΓΞΙΜΟ. Ο τόπος της βάσης
               είναι αυτός του μητρώου εκτελούντων (lib/legal/subprocessors) και
               το απόρρητο είναι σελίδα που διαβάζεται. Ούτε το «Απόρρητο κατά
@@ -267,9 +332,11 @@ export function PublicFooter() {
                 και το «·» έμενε μόνο στο τέλος της πρώτης σειράς. Κάτω από τα 440
                 τα δύο στοιχεία μπαίνουν το ένα κάτω από το άλλο και το σημάδι
                 που τα χωρίζει φεύγει (`.po-foot-sep`, globals.css). */}
-            <span style={{ whiteSpace: 'nowrap' }}>Βάση δεδομένων στην ΕΕ (Φρανκφούρτη)</span>
+            <span style={{ whiteSpace: 'nowrap' }}>{f.db}</span>
+            {f.privacy && <>
             <span className="po-foot-sep" aria-hidden="true"> · </span>
-            <Link href="/privacy" className="lp-link" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>
+            <Link href={f.privacy[0]} className="lp-link" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}>{f.privacy[1]}</Link>
+            </>}
           </span>
           {/* ΤΑ ΣΗΜΑΤΑ ΣΤΟ ΤΕΛΟΣ ΤΗΣ ΤΕΛΕΥΤΑΙΑΣ ΓΡΑΜΜΗΣ, ΟΠΟΥ ΤΑ ΨΑΧΝΕΙ ΤΟ ΜΑΤΙ. Εκεί
                 το βάζουν όσοι στήνουν υποσέλιδα με συνέπεια: μονόχρωμο, στο χρώμα
@@ -278,7 +345,7 @@ export function PublicFooter() {
                 δεν χάνει τη θέση του στον υπολογισμό που είχε ανοιχτό. */}
             <span className="po-socials">
               <a href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer me" className="po-social"
-                aria-label="Το PROPERWISE στο LinkedIn (ανοίγει σε νέα καρτέλα)" title="Το PROPERWISE στο LinkedIn">
+                aria-label={f.social('LinkedIn', true)} title={f.social('LinkedIn', false)}>
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden focusable="false">
                   <path fill="currentColor" d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13ZM7.12 20.45H3.56V9h3.56v11.45ZM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0Z" />
                 </svg>
@@ -288,7 +355,7 @@ export function PublicFooter() {
                   είναι το γεμάτο τετράγωνο δίπλα του. Ούτε το ροζ-πορτοκαλί της
                   πλατφόρμας: μονόχρωμο, όπως ο γείτονάς του. */}
               <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer me" className="po-social"
-                aria-label="Το PROPERWISE στο Instagram (ανοίγει σε νέα καρτέλα)" title="Το PROPERWISE στο Instagram">
+                aria-label={f.social('Instagram', true)} title={f.social('Instagram', false)}>
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden focusable="false" fill="none" stroke="currentColor" strokeWidth="2.1">
                   <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.4" />
                   <circle cx="12" cy="12" r="4.4" />
@@ -299,7 +366,7 @@ export function PublicFooter() {
                   LinkedIn, το «f» κομμένο μέσα στον κύκλο, χωρίς το μπλε της
                   πλατφόρμας. */}
               <a href={FACEBOOK_URL} target="_blank" rel="noopener noreferrer me" className="po-social"
-                aria-label="Το PROPERWISE στο Facebook (ανοίγει σε νέα καρτέλα)" title="Το PROPERWISE στο Facebook">
+                aria-label={f.social('Facebook', true)} title={f.social('Facebook', false)}>
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden focusable="false">
                   <path fill="currentColor" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07Z" />
                 </svg>
@@ -308,7 +375,7 @@ export function PublicFooter() {
                   μονόχρωμο γεμάτο σχήμα με το LinkedIn, το «play» κομμένο μέσα του,
                   χωρίς το κόκκινο της πλατφόρμας. */}
               <a href={YOUTUBE_URL} target="_blank" rel="noopener noreferrer me" className="po-social"
-                aria-label="Το PROPERWISE στο YouTube (ανοίγει σε νέα καρτέλα)" title="Το PROPERWISE στο YouTube">
+                aria-label={f.social('YouTube', true)} title={f.social('YouTube', false)}>
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden focusable="false">
                   <path fill="currentColor" fillRule="evenodd" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1c.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" />
                 </svg>

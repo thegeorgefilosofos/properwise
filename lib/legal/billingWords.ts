@@ -448,3 +448,158 @@ function sellerOf(port: MerchantPort): BillingWords['seller'] {
     termsLabel: `Όροι αγοραστή της ${s.name}`,
   };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΤΑ ΙΔΙΑ ΛΟΓΙΑ ΣΤΑ ΑΓΓΛΙΚΑ (σελίδες /en), ΑΠΟ ΤΗΝ ΙΔΙΑ ΣΥΝΘΗΚΗ
+// ─────────────────────────────────────────────────────────────────────────
+// Η αγγλική βιτρίνα λέει για δοκιμή, κάρτα και χρέωση ΑΚΡΙΒΩΣ ό,τι η
+// ελληνική και το διαβάζει από το ίδιο `checkoutState`. Ιδιο σχήμα
+// (`BillingWords`), ίδιες περιπτώσεις, ίδιοι αριθμοί από τον κώδικα· αλλάζει
+// μόνο η γλώσσα. Μεταφορά, όχι παράφραση: οι υποχρεώσεις λέγονται όπως στα
+// ελληνικά. Δεσμευτικό κείμενο μένει το ελληνικό (βλ. τις νομικές σελίδες).
+//
+// ΚΑΝΕΝΑ «FREE» ΔΙΠΛΑ ΣΕ ΠΑΚΕΤΟ Η ΤΙΜΗ: το πακέτο χωρίς συνδρομή λέγεται
+// «no-subscription», όπως ο ελληνικός κανόνας για το «δωρεάν».
+// ═══════════════════════════════════════════════════════════════════════════
+const PLAN_EN_FREE = 'Owner';
+const NOA_EN = 'Noa';
+
+const AFTER_TRIAL_EN =
+  `When the trial ends, if you have no subscription, your account continues on the no-subscription “${PLAN_EN_FREE}” plan: one property, the tax tools and ${SCAN_LIMITS.free} scans a month, without ${NOA_EN}. Your data stays. Properties beyond the first are not deleted, but you cannot add new ones or use the tools of the larger plans until you choose a subscription.`;
+const KEPT_UNTIL_YOU_DELETE_EN =
+  'It stays yours for as long as your account exists, and your account exists without a subscription too, on the no-subscription plan. You can export it whenever you like and delete the account with one button, without asking anyone. Deleting it erases everything, except what the law requires us to keep.';
+
+export const PRICES_VAT_EN = 'Prices apply to consumers in Greece and include VAT.';
+export const NO_COMMITMENT_EN = 'No commitment and no exit fee.';
+export const CANCEL_ANYTIME_EN = 'Cancel whenever you like.';
+
+const moneyBackLiveEn = (mor: string): string =>
+  `If the app does not work for you within 14 days of the first charge, write to us and the full amount is refunded through ${mor}, with no questions asked.`;
+const MONEY_BACK_SOON_EN =
+  'Once billing is switched on, our own guarantee will apply: a full refund if the app does not work for you within 14 days of the first charge.';
+const TRIAL_BADGE_EN = `${TRIAL_DAYS}-day trial, no card`;
+
+const liveWordsEn = (mor: string): Omit<BillingWords, 'live' | 'saleClosedReason' | 'seller'> => ({
+  chargingToday:
+    `Subscriptions are charged through ${mor}, which acts as merchant of record: it sells the subscription in its own name, issues the receipt and remits the VAT of your country.`,
+  afterTrial:
+    `The trial requires no card and involves no charge. The no-subscription “${PLAN_EN_FREE}” plan never asks for a payment method. You can buy a subscription whenever you like: you enter a payment method at the ${mor} checkout and the first charge is made at the moment of purchase, for the plan and billing cycle you chose. It repeats at every renewal until you cancel. ${AFTER_TRIAL_EN}`,
+  afterTrialShort:
+    `The ${TRIAL_DAYS}-day trial does not ask for a card. A card is requested only when you buy a subscription, and the charge is made at the moment of purchase. Without a subscription you continue on the “${PLAN_EN_FREE}” plan, with one property and without ${NOA_EN}.`,
+  cardData:
+    `Card details are handled exclusively by ${mor} and never pass through our servers: payment takes place in its own environment and we receive only the confirmation.`,
+  compMonths:
+    'Rewards are product value, meaning subscription months without charge and extra property slots. They are credited to your account and cannot be exchanged for cash.',
+  withdrawal:
+    `A subscription is charged at the moment of purchase, which is also when the contract is concluded, and the withdrawal period runs from then. Withdrawing within that period costs you nothing, not even for the days you used the app. ${moneyBackLiveEn(mor)} The refund is made by ${mor}, which issued the receipt, using the same payment method and within 14 days of your notice.`,
+  moneyBack: moneyBackLiveEn(mor),
+  howWeArePaid:
+    'Our revenue comes from subscriptions.',
+  paymentMethodAsked:
+    `A payment method is requested only for a subscription, explicitly, at the ${mor} checkout: right after you confirm your email if you chose a subscription at sign-up, otherwise whenever you buy one from “Account”. You see the amount and the period before you pay. The charge is made at the moment of purchase and you are notified before every renewal.`,
+  planChange:
+    'You can change plans at any time from within the app. An upgrade takes effect immediately and is charged pro rata: you pay only the difference for the days left until the next renewal, with credit for what you have already paid on the previous plan. A downgrade does not refund money: you keep the plan you paid for until the end of the current period, and the new, lower price applies from the next renewal.',
+  subscriptionPlace:
+    'Receipts, your payment method and the subscription itself are in subscription management, under your Account.',
+  renewal:
+    'A subscription renews at the end of each period unless you cancel before the renewal. For annual subscriptions we send a reminder at least 30 days ahead, and for monthly ones at least 3, with the amount and the date.',
+  merchantRow:
+    `Card details are handled exclusively by ${mor} and never pass through our servers.`,
+  lapsedRetention:
+    `An account without an active subscription continues on the no-subscription “${PLAN_EN_FREE}” plan and is kept, with its data, until you delete it yourself. It is not deleted automatically for not paying.`,
+  lapsedRetentionShort: KEPT_UNTIL_YOU_DELETE_EN,
+  pricingNotice: null,
+  contractSteps:
+    `For the no-subscription “${PLAN_EN_FREE}” plan there are two steps: you complete the sign-up form and confirm your email address. For a subscription there are four: you complete the sign-up form and choose a plan, confirm your email address, enter a payment method at checkout and confirm the purchase. The account is activated when you confirm your email, and the subscription contract is concluded when you confirm at checkout.`,
+  firstCharge:
+    'The trial does not ask for a card. With a subscription, the charge is made at the moment of purchase.',
+  partnerTarget: null,
+  signupPlanTerms: null,
+  trialBadge: TRIAL_BADGE_EN,
+  securedBy: `Payments secured by ${mor}`,
+  securedByLead: 'Payments secured by',
+  contractParties:
+    `You buy the subscription from ${mor}, which sells it in its own name; its own terms also apply to the payment itself. We provide the Service to you under these Terms and are responsible to you for it.`,
+  withdrawalVia:
+    `You can also send it directly to ${mor}, using the contact details on the receipt it sent you. If we receive it, we forward it to ${mor}, which makes the refund.`,
+  withdrawalTo:
+    `${mor}, seller of the subscription (contact details on its receipt)`,
+});
+
+const NOT_LIVE_EN: Omit<BillingWords, 'live' | 'saleClosedReason' | 'seller'> = {
+  chargingToday:
+    'Subscription billing has not been switched on, and no payment is made through the Service today.',
+  afterTrial:
+    `No payment method is requested at sign-up and no charge is made, either during the trial or after it: subscription billing has not been switched on. ${AFTER_TRIAL_EN}`,
+  afterTrialShort:
+    `No card is requested and no charge is made, either during the ${TRIAL_DAYS}-day trial or after it: subscription billing has not been switched on. After the trial you continue on the “${PLAN_EN_FREE}” plan, with no subscription, one property and without ${NOA_EN}.`,
+  cardData:
+    'Card billing has not been switched on, so no card data is processed today. Once it is, card details will be handled exclusively by the payment provider and will never pass through our servers.',
+  compMonths:
+    'Rewards are product value, meaning subscription months without charge and extra property slots. They are credited to your account and cannot be exchanged for cash. Until subscription billing is switched on, these months are given as equivalent access without payment.',
+  withdrawal:
+    `There is no charge today, so if you withdraw you owe nothing. Once billing is switched on, a subscription will be charged at the moment of purchase and the withdrawal period will run from then. ${MONEY_BACK_SOON_EN}`,
+  moneyBack: MONEY_BACK_SOON_EN,
+  howWeArePaid:
+    'Our revenue will come from subscriptions. Subscription billing has not been switched on today.',
+  paymentMethodAsked:
+    'Once billing is switched on, a payment method will be requested explicitly at checkout and only for a subscription, with the amount and the period shown clearly before you pay. The charge will be made at the moment of purchase.',
+  planChange:
+    'You can change plans at any time from within the app, and today the change costs nothing. Once billing is switched on, an upgrade will be charged pro rata, only for the days until the next renewal. A downgrade will apply from the next renewal, with no refund for the period you have already paid.',
+  subscriptionPlace:
+    'Once billing is switched on, receipts, your payment method and the subscription will be in subscription management, under your Account.',
+  renewal:
+    'Once billing is switched on, a subscription will renew at the end of each period unless you cancel before the renewal. For annual subscriptions we will send a reminder at least 30 days ahead, and for monthly ones at least 3, with the amount and the date.',
+  merchantRow:
+    'Not switched on. Once it is, card details will be handled only by this provider and will not pass through our servers.',
+  lapsedRetention:
+    `An account without an active subscription continues on the no-subscription “${PLAN_EN_FREE}” plan and is kept, with its data, until you delete it yourself. It is not deleted automatically for not paying.`,
+  lapsedRetentionShort: KEPT_UNTIL_YOU_DELETE_EN,
+  pricingNotice: {
+    title: 'Subscriptions are not open yet.',
+    body: `Today you start with the ${TRIAL_DAYS}-day trial, with no card and no charge. Before any charge, you will be asked explicitly for a payment method.`,
+  },
+  contractSteps:
+    'There are three steps: you complete the sign-up form and choose a plan, you confirm your email address, and the account is activated. The contract is concluded on activation.',
+  firstCharge:
+    'No card is requested and no charge is made: subscription billing has not been switched on yet.',
+  partnerTarget:
+    'The target counts subscribers, so it applies from the day subscription billing is switched on.',
+  signupPlanTerms: 'No charge for now',
+  trialBadge: TRIAL_BADGE_EN,
+  securedBy: null,
+  securedByLead: null,
+  contractParties: null,
+  withdrawalVia: null,
+  withdrawalTo: null,
+};
+
+const SELLER_FIELD_EN: Record<ReturnType<typeof sellerIdentityGaps>[number], (id: LegalIdentity) => string> = {
+  legalName: id => (id.kind === 'company' ? 'company name' : 'full name'),
+  address: id => (id.kind === 'company' ? 'registered address' : 'address'),
+  afm: () => 'tax number (AFM)',
+  phone: () => 'phone number',
+  gemi: () => 'business registry number (GEMI)',
+};
+const listOfEn = (xs: string[]): string =>
+  xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
+
+/** Οι ίδιες δηλώσεις με το `billingWords`, στα αγγλικά. Ιδια συνθήκη, ίδιοι αριθμοί. */
+export function billingWordsEn(
+  env: BillingEnv = process.env, id: LegalIdentity = IDENTITY, port: MerchantPort = merchant(env),
+): BillingWords {
+  const { live } = checkoutState(env, id, port);
+  const gaps = sellerIdentityGaps(id);
+  const s = port.sellerOfRecord;
+  return {
+    live,
+    ...(live ? liveWordsEn(port.name) : NOT_LIVE_EN),
+    saleClosedReason: live || !gaps.length ? null
+      : `Subscription purchases stay closed until we publish here the operator details the law requires for every distance sale: ${listOfEn(gaps.map(f => SELLER_FIELD_EN[f](id)))}. We do not want you to pay without knowing who you are buying from. Once they are published, subscriptions open and the details are shown before purchase.`,
+    seller: live && morSellerDisclosed(s) ? {
+      line: `Seller: ${s.name} (merchant of record). It collects the payment, issues the receipt and remits the VAT.`,
+      termsUrl: s.buyerTermsUrl,
+      termsLabel: `${s.name} buyer terms`,
+    } : null,
+  };
+}

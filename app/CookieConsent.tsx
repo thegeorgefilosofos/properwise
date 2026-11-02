@@ -14,9 +14,11 @@ import { Btn } from '@/components/Theme';
 // cookies: όποιος είχε δει την παλιά ενημέρωση δεν έβλεπε ποτέ τη νέα.
 import { POLICY_VERSION } from '@/lib/legal/identity';
 import { COOKIE_NOTICE_KEY as KEY, acknowledged } from './cookieNotice';
+import { localeOfPath } from '@/lib/i18n/locale';
+import { localHref } from '@/lib/i18n/paths';
 
 /** Οι φόρμες όπου το πλαίσιο δεν εμφανίζεται· το κουτάκι των Όρων προηγείται. */
-const AUTH_PATHS = new Set(['/signup', '/login', '/reset-password']);
+const AUTH_PATHS = new Set(['/signup', '/login', '/reset-password', '/en/signup', '/en/login', '/en/reset-password']);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΓΙΑΤΙ `useSyncExternalStore` ΚΑΙ ΟΧΙ `useEffect` ΜΕ `setState`
@@ -60,6 +62,8 @@ export default function CookieConsent({ inline = false }: { inline?: boolean }) 
   // απόφαση, οπότε μπορεί να περιμένει την επόμενη σελίδα· η εγγραφή όχι.
   const pathname = usePathname();
   const inDashboard = (pathname ?? '').startsWith('/dashboard');
+  const locale = localeOfPath(pathname);
+  const en = locale === 'en';
   const show = pending && !AUTH_PATHS.has(pathname ?? '') && (inline ? inDashboard : !inDashboard);
 
 
@@ -99,7 +103,8 @@ export default function CookieConsent({ inline = false }: { inline?: boolean }) 
     // Το `--float-z` (950) μπαίνει για τον ίδιο λόγο: το 2000 το έβαζε πάνω
     // ΚΑΙ από τα μηνύματα επιβεβαίωσης, δηλαδή μια ενημέρωση χωρίς επείγον
     // σκέπαζε ό,τι ο χρήστης μόλις ζήτησε.
-    <div role="region" aria-label="Ενημέρωση για cookies" className="po-noprint po-cookie">
+    // Η ΓΛΩΣΣΑ ΤΗΣ ΣΕΛΙΔΑΣ: στα αγγλικά (/en) η ίδια ενημέρωση, ίδιο νόημα.
+    <div role="region" aria-label={en ? 'Cookie notice' : 'Ενημέρωση για cookies'} className="po-noprint po-cookie">
       {/* ΓΙΑΤΙ ΤΟΣΟ ΣΥΝΤΟΜΟ: το κείμενο ήταν τέσσερις σειρές σε desktop και έξι σε
           κινητό, οπότε το πλαίσιο σκέπαζε το προϊόν ακριβώς στην πρώτη οθόνη —
           δηλαδή το πρώτο πράγμα που έβλεπε ένας υποψήφιος πελάτης ήταν νομικό
@@ -120,16 +125,18 @@ export default function CookieConsent({ inline = false }: { inline?: boolean }) 
           συγκατάθεση· ζητά να ειπωθεί. Κείμενο αριστερά, δευτερεύον κουμπί
           δεξιά, μία σειρά στον υπολογιστή και δύο στο τηλέφωνο. */}
       <p style={{ flex: 1, minWidth: 0, margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, textWrap: 'pretty' }}>
-        Μόνο <strong style={{ color: 'var(--text-primary)' }}>απαραίτητα cookies</strong>. Ανώνυμη μέτρηση χωρίς cookies.{' '}
+        {en
+          ? <>Only <strong style={{ color: 'var(--text-primary)' }}>essential cookies</strong>. Anonymous analytics without cookies.{' '}</>
+          : <>Μόνο <strong style={{ color: 'var(--text-primary)' }}>απαραίτητα cookies</strong>. Ανώνυμη μέτρηση χωρίς cookies.{' '}</>}
         {/* ΥΠΟΓΡΑΜΜΙΣΜΕΝΟΣ, ΓΙΑΤΙ ΤΟ ΧΡΩΜΑ ΜΟΝΟ ΤΟΥ ΔΕΝ ΕΙΝΑΙ ΣΥΝΔΕΣΜΟΣ. Με
             `textDecoration: none` το «Απόρρητο» ξεχώριζε ΜΟΝΟ από το χρώμα:
             όποιος δεν ξεχωρίζει το γαλάζιο από το γκρι —δαλτωνισμός, φως ήλιου
             στην οθόνη, ασπρόμαυρη εκτύπωση— διάβαζε έμφαση, όχι σύνδεσμο. Είναι
             ο μοναδικός δρόμος προς την πολιτική απορρήτου μέσα από αυτό το
             πλαίσιο. */}
-        <Link href="/privacy" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 2, fontWeight: 600 }}>Απόρρητο</Link>
+        <Link href={localHref(locale, '/privacy')} style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 2, fontWeight: 600 }}>{en ? 'Privacy' : 'Απόρρητο'}</Link>
       </p>
-      <Btn variant="secondary" onClick={acknowledge} className="po-cookie-cta">Το κατάλαβα</Btn>
+      <Btn variant="secondary" onClick={acknowledge} className="po-cookie-cta">{en ? 'Got it' : 'Το κατάλαβα'}</Btn>
     </div>
   );
 }

@@ -6,11 +6,16 @@
 import Link from 'next/link'
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans'
 import { aiLimitsFor, TRIAL_LIMITS, SCAN_LIMITS, TRIAL_SCANS_PER_MONTH } from '@/lib/billing/aiLimits'
-import { fe, feWhole } from '@/lib/core/format'
+import { fe } from '@/lib/core/format'
 import { T } from '@/components/tokens'
 import { hy } from '@/components/Hyphen'
 import { ASSISTANT_NAME, ASSISTANT_ACC } from '@/lib/assistant/identity'
-import { signupCta } from '@/lib/billing/trialOffer'
+import { signupCta, signupCtaEn } from '@/lib/billing/trialOffer'
+import type { Locale } from '@/lib/i18n/locale'
+import { localHref } from '@/lib/i18n/paths'
+import { PARTS_EN } from '@/lib/i18n/en/landing'
+import { planCopy } from '@/lib/i18n/en/plans'
+import { fmtFor } from '@/lib/core/format'
 import { ACCENT, PANEL, TEXT, MUTED, FAINT, LINE, GAP, wrap, check } from './landingKit'
 import { FaqPlus } from './FaqPlus'
 
@@ -85,30 +90,49 @@ const trialLine = (): string =>
 /** Το όριο ακινήτων από τα PLANS, σε λέξεις για το ένα. */
 const propertiesLine = (n: number): string => n === 1 ? 'Ένα ακίνητο' : `Έως ${n} ακίνητα`;
 
+// ΤΑ ΙΔΙΑ ΣΤΙΣ ΔΥΟ ΓΛΩΣΣΕΣ. Τα ελληνικά αυτούσια· τα αγγλικά από το
+// lib/i18n/en/landing.ts. Ιδιοι αριθμοί από τις ίδιες πηγές.
+const PARTS_EL = {
+  perMonth: '/μήνα',
+  orYear: (amount: string) => `ή ${amount} τον χρόνο`,
+  annual: (paid: number) => `Ετήσια: ${paid} μήνες αντί για 12`,
+  includes: 'Περιλαμβάνει:',
+  questions: (ai: number, day: number) => `${ai} ερωτήσεις τον μήνα, έως ${day} την ημέρα`,
+  recommended: 'Προτεινόμενο',
+  without: `Χωρίς ${ASSISTANT_NAME}`,
+  with: `Με ${ASSISTANT_NAME}`,
+  allTax: (props: number) => `${propertiesLine(props)}, όλα τα φορολογικά`,
+  scanLine,
+  trialLine,
+}
+const partsFor = (locale: Locale) => (locale === 'en' ? PARTS_EN : PARTS_EL)
+
 const NOA_ASKS = [
   'Πόσα έδωσα σε κοινόχρηστα φέτος;',
   'Ποιος ενοικιαστής μου χρωστά ακόμη;',
   'Τι λήγει αυτόν τον μήνα;',
 ] as const;
 
-export function NoaFeature() {
+export function NoaFeature({ locale = 'el' }: { locale?: Locale } = {}) {
   const noa = PLANS.solo, ai = aiLimitsFor('solo');
+  const en = locale === 'en', P = partsFor(locale), N = PARTS_EN.noa, money = fmtFor(locale).fe;
   const does = [
-    { t: 'Ρωτάς όπως μιλάς', d: 'Γραπτά ή με τη φωνή σου, στα ελληνικά.' },
+    ...(en ? N.does : [{ t: 'Ρωτάς όπως μιλάς', d: 'Γραπτά ή με τη φωνή σου, στα ελληνικά.' },
     { t: 'Απαντά με τα δικά σου', d: 'Βασίζεται στις καταχωρήσεις σου, όχι σε γενικές συμβουλές.' },
     { t: 'Σε πάει εκεί που πρέπει', d: 'Ανοίγει την οθόνη που χρειάζεσαι για το επόμενο βήμα.' },
+  ]),
   ];
   return (
     <section className="lp-reveal" aria-labelledby="noa-title" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
       <hr className="lp-hair" />
       <div className="nf-band">
         <div className="nf-copy">
-          <div className="lp-eyebrow">Στα ελληνικά</div>
+          <div className="lp-eyebrow">{en ? N.over : 'Στα ελληνικά'}</div>
           <h2 id="noa-title" className="nf-title">
             <span className="nf-mono" aria-hidden="true">N</span>
-            Γνώρισε {ASSISTANT_ACC}.
+            {en ? N.title : <>Γνώρισε {ASSISTANT_ACC}.</>}
           </h2>
-          <p className="nf-lead po-just">{hy('Ρωτάς για το ακίνητό σου στα ελληνικά και απαντά με τα δικά σου νούμερα. Ό,τι θα ρωτούσες τον λογιστή, πριν τον πάρεις τηλέφωνο.')}</p>
+          <p className="nf-lead po-just">{hy(en ? N.lead : 'Ρωτάς για το ακίνητό σου στα ελληνικά και απαντά με τα δικά σου νούμερα. Ό,τι θα ρωτούσες τον λογιστή, πριν τον πάρεις τηλέφωνο.')}</p>
           <ul className="nf-does">
             {does.map(x => (
               <li key={x.t}><strong>{x.t}</strong><span>{hy(x.d)}</span></li>
@@ -116,36 +140,38 @@ export function NoaFeature() {
           </ul>
           <div className="nf-offer">
             <div className="nf-price">
-              <span className="nf-amount">{fe(noa.priceMonthly)}<span className="nf-per" style={{ marginLeft: 2, letterSpacing: 0, fontWeight: 400 }}>/μήνα</span></span>
-              <span className="nf-per">{`ή ${fe(noa.priceAnnual)} τον χρόνο`}</span>
+              <span className="nf-amount">{money(noa.priceMonthly)}<span className="nf-per" style={{ marginLeft: 2, letterSpacing: 0, fontWeight: 400 }}>{P.perMonth}</span></span>
+              <span className="nf-per">{P.orYear(money(noa.priceAnnual))}</span>
             </div>
             {/* ΤΟ ΠΑΚΕΤΟ ΚΑΙ Η ΔΟΚΙΜΗ ΕΧΟΥΝ ΑΛΛΑ ΟΡΙΑ. Η γραμμή έλεγε τις ερωτήσεις
                 του πληρωμένου δίπλα στο «δοκιμή 30 ημερών» και κάτω από το κουμπί
                 της δοκιμής· η δοκιμή όμως μετρά με τα TRIAL_LIMITS (effectiveAiLimits).
                 Η πρώτη γραμμή είναι το πακέτο, δίπλα στην τιμή του· η δεύτερη η δοκιμή. */}
-            <div className="nf-terms">{ai.perMonth} ερωτήσεις τον μήνα · {scanLine(SCAN_LIMITS.solo)}</div>
-            <div className="nf-terms">{trialLine()}</div>
+            <div className="nf-terms">{en ? `${ai.perMonth} questions a month` : <>{ai.perMonth} ερωτήσεις τον μήνα</>} · {P.scanLine(SCAN_LIMITS.solo)}</div>
+            <div className="nf-terms">{P.trialLine()}</div>
+            {en && <div className="nf-terms">{N.disclosure}</div>}
           </div>
           <div className="nf-cta">
-            <Link href="/signup?plan=solo&cycle=monthly" className="lp-cta lp-primary lp-press" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '13px 24px', borderRadius: T.radius.pill }}>Δοκίμασε {ASSISTANT_ACC}</Link>
-            <span className="nf-free">{`Ο «${PLANS.free.name}» χωρίς ${ASSISTANT_ACC} δεν θέλει συνδρομή.`}</span>
+            <Link href={localHref(locale, '/signup?plan=solo&cycle=monthly')} className="lp-cta lp-primary lp-press" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '13px 24px', borderRadius: T.radius.pill }}>{en ? N.cta : <>Δοκίμασε {ASSISTANT_ACC}</>}</Link>
+            <span className="nf-free">{en ? N.noSub : `Ο «${PLANS.free.name}» χωρίς ${ASSISTANT_ACC} δεν θέλει συνδρομή.`}</span>
           </div>
         </div>
-        <div className="nf-stage" aria-label={`Παραδείγματα ερωτήσεων προς ${ASSISTANT_ACC}`}>
+        <div className="nf-stage" aria-label={en ? N.stage : `Παραδείγματα ερωτήσεων προς ${ASSISTANT_ACC}`}>
           <div className="nf-halo" aria-hidden="true" />
           <div className="nf-card">
             <div className="nf-head">
               <span className="nf-avatar" aria-hidden="true">N</span>
-              <span><strong>{ASSISTANT_NAME}</strong><small>Για τα ακίνητά σου</small></span>
+              <span><strong>{en ? N.name : ASSISTANT_NAME}</strong><small>{en ? N.sub : 'Για τα ακίνητά σου'}</small></span>
             </div>
             <ul className="nf-asks">
-              {NOA_ASKS.map(q => <li key={q}>{q}</li>)}
+              {(en ? N.asks : NOA_ASKS).map(q => <li key={q}>{q}</li>)}
             </ul>
             <div className="nf-input" aria-hidden="true">
-              <span>Ρώτα κάτι για το ακίνητό σου…</span>
+              <span>{en ? N.input : 'Ρώτα κάτι για το ακίνητό σου…'}</span>
               <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v4" /></svg>
             </div>
           </div>
+          {en && <p style={{ position: 'relative', margin: '12px 0 0', fontSize: 12, color: FAINT, textAlign: 'center' }}>{N.asksNote}</p>}
         </div>
       </div>
     </section>
@@ -188,7 +214,9 @@ export function SectionHead({ over, title, sub }: { over: string; title: string;
 //
 // ΤΑ ΝΟΥΜΕΡΑ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΗ ΜΗΧΑΝΗ: τιμή από το PLANS, ερωτήσεις από το
 // aiLimits, σαρώσεις από το SCAN_LIMITS. Καμία γραμμή δεν γράφεται δεύτερη φορά.
-export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
+export function OwnerPlanCard({ billingLive, locale = 'el' }: { billingLive: boolean; locale?: Locale }) {
+  const P = partsFor(locale), money = fmtFor(locale).fe, whole = fmtFor(locale).feWhole;
+  const freeCopy = planCopy(locale, 'free'), noaCopy = planCopy(locale, 'solo');
   const free = PLANS.free, noa = PLANS.solo;
   const ai = aiLimitsFor('solo');
   const paidMonths = Math.round(noa.priceAnnual / noa.priceMonthly);
@@ -197,9 +225,12 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
   );
   // Οι γραμμές του δωρεάν, με τη σάρωση στη θέση της· στη «Νόα» η ίδια θέση
   // λέει «χωρίς όριο», ώστε το μάτι να βλέπει τι αλλάζει στο ίδιο σημείο.
-  const shared = free.features.filter(f => !f.startsWith('Σάρωση'));
-  const freeScan = free.features.find(f => f.startsWith('Σάρωση')) ?? '';
-  const noaScan = noa.features.find(f => f.startsWith('Σάρωση')) ?? '';
+  // Η ΣΑΡΩΣΗ ΒΡΙΣΚΕΤΑΙ ΑΠΟ ΤΗΝ ΕΛΛΗΝΙΚΗ ΓΡΑΜΜΗ ΚΑΙ ΠΑΙΡΝΕΙ ΤΗ ΘΕΣΗ ΤΗΣ: η αγγλική
+  // λίστα έχει την ίδια σειρά (lib/i18n/en/plans.test.ts).
+  const isScan = (f: string) => f.startsWith('Σάρωση');
+  const shared = freeCopy.features.filter((_, i) => !isScan(free.features[i]));
+  const freeScan = freeCopy.features[free.features.findIndex(isScan)] ?? '';
+  const noaScan = noaCopy.features[noa.features.findIndex(isScan)] ?? '';
   const noaMark = (
     <svg width={13} height={13} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M4 3 H8.5 L15.5 14.5 V3 H20 V21 H15.5 L8.5 9.5 V21 H4 Z" /></svg>
   );
@@ -219,7 +250,7 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
     <div className="lp-card pc-card" style={{ position: 'relative', background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(16px, 1.6vw, 20px)' }}>
       <input type="radio" name="pc-noa" id="pc-noa-off" className="pc-radio" defaultChecked />
       <input type="radio" name="pc-noa" id="pc-noa-on" className="pc-radio" />
-      <h3 style={{ fontSize: 14, fontWeight: 700, color: TEXT, margin: '0 0 4px' }}>{free.name}</h3>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: TEXT, margin: '0 0 4px' }}>{freeCopy.name}</h3>
       {/* ΥΠΟΤΙΤΛΟΣ ΚΑΙ ΔΙΑΚΟΠΤΗΣ ΣΕ ΜΙΑ ΓΡΑΜΜΗ ΤΟΥ SUBGRID. Οι κάρτες του
           `.lp-plans` μοιράζονται επτά γραμμές (τίτλος, υπότιτλος, τιμή,
           σημείωση, λίστα, κουμπί, ετήσια)· ο διακόπτης ως χωριστό παιδί έσπρωχνε
@@ -230,13 +261,13 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
           Ο ΔΙΑΚΟΠΤΗΣ. Δύο ετικέτες για τα δύο κουμπιά· το πάτημα οπουδήποτε στην
           ετικέτα αλλάζει επιλογή και τα βέλη του πληκτρολογίου κάνουν το ίδιο. */}
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 12, color: FAINT, marginBottom: 12, lineHeight: 1.35 }}>{free.tagline}</div>
+        <div style={{ fontSize: 12, color: FAINT, marginBottom: 12, lineHeight: 1.35 }}>{freeCopy.tagline}</div>
         <div className="pc-seg" role="presentation">
           {/* ΙΔΙΑ ΛΕΞΗ ΜΕ ΤΟ ΠΑΚΕΤΟ ΚΑΙ ΜΕ ΤΟΝ ΠΙΝΑΚΑ. Το πακέτο λέγεται «Ιδιοκτήτης
               με Νόα» και ο πίνακας του /paketa γράφει «με Νόα»· ο διακόπτης
               έγραφε άλλο όνομα στο κάθε κουμπί, δηλαδή τρία ονόματα για το ίδιο. */}
-          <label htmlFor="pc-noa-off">{`Χωρίς ${ASSISTANT_NAME}`}</label>
-          <label htmlFor="pc-noa-on"><span className="pc-mark">{noaMark}</span>{`Με ${ASSISTANT_NAME}`}</label>
+          <label htmlFor="pc-noa-off">{P.without}</label>
+          <label htmlFor="pc-noa-on"><span className="pc-mark">{noaMark}</span>{P.with}</label>
         </div>
       </div>
       <div className="pc-off">
@@ -246,40 +277,41 @@ export function OwnerPlanCard({ billingLive }: { billingLive: boolean }) {
         {/* ΙΔΙΑ ΜΟΝΑΔΑ ΜΕ ΚΑΘΕ ΑΛΛΗ ΤΙΜΗ (02.11.2026). Εγραφε «0€ χωρίς συνδρομή»
             εδώ και «0,00€/μήνα» στο /paketa: δύο όψεις για το ίδιο μηδέν. Τώρα
             «0€/μήνα» και στα δύο, το «χωρίς συνδρομή» το λέει ο υπότιτλος. */}
-        {price(free.priceMonthly === 0 ? feWhole(free.priceMonthly) : fe(free.priceMonthly), '/μήνα')}
-        <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>{`${propertiesLine(free.maxProperties)}, όλα τα φορολογικά`}</div>
+        {price(free.priceMonthly === 0 ? whole(free.priceMonthly) : money(free.priceMonthly), P.perMonth)}
+        <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>{P.allTax(free.maxProperties)}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left', margin: '14px 0 16px' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>Περιλαμβάνει:</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>{P.includes}</div>
           {[...shared, freeScan].map(line)}
         </div>
-        {cta('/signup', signupCta())}
+        {cta(localHref(locale, '/signup'), locale === 'en' ? signupCtaEn() : signupCta())}
       </div>
       <div className="pc-on">
-        {price(fe(noa.priceMonthly), '/μήνα')}
-        <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>ή <strong style={{ color: TEXT }}>{fe(noa.priceAnnual)} τον χρόνο</strong></div>
+        {price(money(noa.priceMonthly), P.perMonth)}
+        <div style={{ fontSize: 12, color: FAINT, marginTop: 4 }}>{locale === 'en' ? <>or <strong style={{ color: TEXT }}>{money(noa.priceAnnual)} a year</strong></> : <>ή <strong style={{ color: TEXT }}>{fe(noa.priceAnnual)} τον χρόνο</strong></>}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left', margin: '14px 0 16px' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>Περιλαμβάνει:</div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: ACCENT }}>{bubble}<span className="lp-even" style={{ fontSize: 13, color: TEXT, lineHeight: 1.45 }}>{glue(`${ai.perMonth} ερωτήσεις τον μήνα, έως ${ai.perDay} την ημέρα`)}</span></div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>{P.includes}</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: ACCENT }}>{bubble}<span className="lp-even" style={{ fontSize: 13, color: TEXT, lineHeight: 1.45 }}>{glue(P.questions(ai.perMonth, ai.perDay))}</span></div>
           {[...shared, noaScan].map(line)}
           {/* Ακριβώς πάνω από το κουμπί της δοκιμής, τα όρια της δοκιμής: οι
               ερωτήσεις στην κορυφή της λίστας είναι του πληρωμένου πακέτου.
               Μέσα στη λίστα και όχι δίπλα της, για να μη γίνει όγδοη γραμμή
               του subgrid που μοιράζονται οι κάρτες. */}
-          <div style={{ fontSize: 12, color: FAINT, lineHeight: 1.4, marginTop: 2 }}>{trialLine()}</div>
+          <div style={{ fontSize: 12, color: FAINT, lineHeight: 1.4, marginTop: 2 }}>{P.trialLine()}</div>
         </div>
-        {cta(`/signup?plan=solo&cycle=monthly`, signupCta('solo'))}
-        {billingLive && <Link href="/signup?plan=solo&cycle=annual" className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{`Ετήσια: ${paidMonths} μήνες αντί για 12`}</Link>}
+        {cta(localHref(locale, `/signup?plan=solo&cycle=monthly`), locale === 'en' ? signupCtaEn('solo') : signupCta('solo'))}
+        {billingLive && <Link href={localHref(locale, '/signup?plan=solo&cycle=annual')} className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{P.annual(paidMonths)}</Link>}
       </div>
     </div>
   );
 }
 
-export function PlanCard({ planId, name, nameColor, sub, price, per, note, annual, inherits, ai, aiDay, items, cta, ctaGhost, featured }: {
+export function PlanCard({ planId, name, nameColor, sub, price, per, note, annual, inherits, ai, aiDay, items, cta, ctaGhost, featured, locale = 'el' }: {
+  locale?: Locale;
   planId: string; name: string; nameColor: string; sub: string; price: string; per: string; note: React.ReactNode; annual?: string; inherits?: string; ai: number; aiDay: number; items: string[]; cta: string; ctaGhost?: boolean; featured: boolean;
 }) {
   return (
     <div className="lp-card" style={{ position: 'relative', background: PANEL, border: featured ? `1.5px solid color-mix(in srgb, var(--accent) 50%, transparent)` : `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(16px, 1.6vw, 20px)', boxShadow: featured ? '0 24px 60px -30px color-mix(in srgb, var(--accent) 60%, transparent)' : 'none' }}>
-      {featured && <span style={{ position: 'absolute', top: -9, left: 16, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)', background: PANEL, border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: T.radius.pill, padding: '2px 9px', whiteSpace: 'nowrap' }}>Προτεινόμενο</span>}
+      {featured && <span style={{ position: 'absolute', top: -9, left: 16, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)', background: PANEL, border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: T.radius.pill, padding: '2px 9px', whiteSpace: 'nowrap' }}>{partsFor(locale).recommended}</span>}
       {/* Τίτλος, για να πηγαίνει ο αναγνώστης οθόνης από πακέτο σε πακέτο. */}
       <h3 style={{ fontSize: 14, fontWeight: 700, color: nameColor, margin: '0 0 4px' }}>{name}</h3>
       <div style={{ fontSize: 12, color: FAINT, marginBottom: 14, lineHeight: 1.35 }}>{sub}</div>
@@ -313,7 +345,7 @@ export function PlanCard({ planId, name, nameColor, sub, price, per, note, annua
           {/* ΚΑΙ ΤΟ ΗΜΕΡΗΣΙΟ, ΠΡΙΝ ΤΗΝ ΑΓΟΡΑ. Μέσα σε ένα απόγευμα δεσμεύει αυτό
               και όχι το μηνιαίο· το να το μάθει κανείς τη στιγμή που το χτυπά
               είναι η έκπληξη που ακυρώνει συνδρομές. */}
-          <span className="lp-even" style={{ fontSize: 13, color: TEXT, lineHeight: 1.45 }}>{glue(`${ai} ερωτήσεις τον μήνα, έως ${aiDay} την ημέρα`)}</span>
+          <span className="lp-even" style={{ fontSize: 13, color: TEXT, lineHeight: 1.45 }}>{glue(partsFor(locale).questions(ai, aiDay))}</span>
         </div>
         {items.map((t, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>{check}<span className="lp-even" style={{ fontSize: 13, color: TEXT, lineHeight: 1.45 }}>{glue(t)}</span></div>
@@ -351,10 +383,10 @@ export function PlanCard({ planId, name, nameColor, sub, price, per, note, annua
           το --bg-elevated είναι ένα σκαλί πάνω από την κάρτα και το
           --border-default μια γραμμή που φαίνεται. Και τα τέσσερα πιάνουν 44
           εικονοστοιχεία ύψος, όσο ζητά το δάχτυλο. */}
-      <Link href={`/signup?plan=${planId}&cycle=monthly`} className={ctaGhost ? 'lp-ghost lp-press' : 'lp-cta lp-primary lp-press'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, textAlign: 'center', background: ctaGhost ? 'var(--bg-elevated)' : undefined, color: ctaGhost ? TEXT : undefined, textDecoration: 'none', fontSize: 13, fontWeight: 700, padding: '10px', borderRadius: T.radius.pill, border: ctaGhost ? '1px solid var(--border-default)' : 'none' }}>{cta}</Link>
+      <Link href={localHref(locale, `/signup?plan=${planId}&cycle=monthly`)} className={ctaGhost ? 'lp-ghost lp-press' : 'lp-cta lp-primary lp-press'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, textAlign: 'center', background: ctaGhost ? 'var(--bg-elevated)' : undefined, color: ctaGhost ? TEXT : undefined, textDecoration: 'none', fontSize: 13, fontWeight: 700, padding: '10px', borderRadius: T.radius.pill, border: ctaGhost ? '1px solid var(--border-default)' : 'none' }}>{cta}</Link>
       {/* ΣΥΝΔΕΣΜΟΣ ΠΟΥ ΜΟΙΑΖΕΙ ΣΥΝΔΕΣΜΟΣ. Γκρι, δώδεκα εικονοστοιχεία, χωρίς
           υπογράμμιση: διαβαζόταν ως λεζάντα και όχι ως επιλογή. */}
-      {annual && <Link href={`/signup?plan=${planId}&cycle=annual`} className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{annual}</Link>}
+      {annual && <Link href={localHref(locale, `/signup?plan=${planId}&cycle=annual`)} className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{annual}</Link>}
     </div>
   );
 }

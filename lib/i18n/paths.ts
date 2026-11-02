@@ -1,0 +1,79 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// ΕΝΑΣ ΧΑΡΤΗΣ: ΕΛΛΗΝΙΚΗ ΔΙΑΔΡΟΜΗ ↔ ΑΓΓΛΙΚΗ ΔΙΑΔΡΟΜΗ
+// ─────────────────────────────────────────────────────────────────────────
+// Από εδώ διαβάζουν ΟΛΟΙ: ο επιλογέας γλώσσας (σε ποια σελίδα πηγαίνει), οι
+// ετικέτες hreflang (app/publicMetadata.ts), ο χάρτης του ιστότοπου
+// (app/sitemap.ts), το proxy.ts (η πρόταση «View in English» και η μνήμη της
+// επιλογής) και ο φύλακας scripts/guard-i18n-pairs.mjs, που ελέγχει ότι κάθε
+// ζεύγος έχει ΚΑΙ τις δύο σελίδες.
+//
+// ΤΑ ΑΓΓΛΙΚΑ SLUGS ΕΙΝΑΙ ΑΓΓΛΙΚΑ. Ο Αμερικανός ψάχνει «enfia calculator», όχι
+// «ypologismos enfia»· η διεύθυνση είναι κι αυτή κείμενο που διαβάζεται.
+//
+// ΝΕΑ ΑΓΓΛΙΚΗ ΣΕΛΙΔΑ = ΜΙΑ ΓΡΑΜΜΗ ΕΔΩ. Χωρίς αυτήν ο φύλακας κόβει: μια
+// αγγλική σελίδα χωρίς ζεύγος δεν έχει hreflang και ο επιλογέας δεν ξέρει πού
+// να γυρίσει.
+// ═══════════════════════════════════════════════════════════════════════════
+import { SITE } from '@/lib/core/site';
+import { EN_PREFIX, isEnPath, type Locale } from './locale';
+
+/** [ελληνική, αγγλική]. Η σειρά είναι η σειρά του χάρτη του ιστότοπου. */
+export const PAGE_PAIRS = [
+  ['/', EN_PREFIX],
+  ['/paketa', '/en/pricing'],
+  ['/ergaleia', '/en/tools'],
+] as const satisfies readonly (readonly [string, string])[];
+
+const EL_TO_EN = new Map<string, string>(PAGE_PAIRS.map(([el, en]) => [el, en]));
+const EN_TO_EL = new Map<string, string>(PAGE_PAIRS.map(([el, en]) => [en, el]));
+
+/** Χωρίς τελική κάθετο, χωρίς ερώτημα και άγκυρα. Η ρίζα μένει «/». */
+const clean = (path: string): string => {
+  const p = path.split(/[?#]/)[0] || '/';
+  return p.length > 1 ? p.replace(/\/+$/, '') : p;
+};
+
+/** Η αγγλική διαδρομή μιας ελληνικής σελίδας, ή null αν δεν έχει. */
+export const enPathFor = (elPath: string): string | null => EL_TO_EN.get(clean(elPath)) ?? null;
+
+/** Η ελληνική διαδρομή μιας αγγλικής σελίδας, ή null αν δεν έχει. */
+export const elPathFor = (enPath: string): string | null => EN_TO_EL.get(clean(enPath)) ?? null;
+
+/**
+ * Πού οδηγεί ο επιλογέας από τη σελίδα `path` προς τη γλώσσα `to`: στην
+ * αντίστοιχη σελίδα, αλλιώς στην αρχική της γλώσσας. Ποτέ σε 404.
+ */
+export function pathIn(path: string, to: Locale): string {
+  const p = clean(path);
+  const here: Locale = isEnPath(p) ? 'en' : 'el';
+  if (here === to) return p;
+  return to === 'en' ? (enPathFor(p) ?? EN_PREFIX) : (elPathFor(p) ?? '/');
+}
+
+const abs = (path: string): string => (path === '/' ? SITE : SITE + path);
+
+/**
+ * Οι ετικέτες hreflang μιας σελίδας με ζεύγος, ΙΔΙΕΣ και στις δύο πλευρές:
+ * el, en και x-default προς τα ελληνικά (η κύρια αγορά). Null αν η σελίδα
+ * δεν έχει ζεύγος — τότε δεν τυπώνεται τίποτα.
+ */
+export function languageAlternates(path: string): Record<'el' | 'en' | 'x-default', string> | null {
+  const p = clean(path);
+  const el = isEnPath(p) ? elPathFor(p) : (enPathFor(p) ? p : null);
+  const en = el ? enPathFor(el) : null;
+  if (!el || !en) return null;
+  return { el: abs(el), en: abs(en), 'x-default': abs(el) };
+}
+
+/**
+ * Ο σύνδεσμος προς μια σελίδα, στη γλώσσα της τρέχουσας: γράφεται με την
+ * ελληνική διαδρομή (π.χ. «/signup?plan=solo») και στα αγγλικά γίνεται η
+ * αγγλική, με το ίδιο ερώτημα και την ίδια άγκυρα. Αν η σελίδα δεν έχει
+ * ακόμη αγγλική, μένει η ελληνική: ποτέ σύνδεσμος σε σελίδα που δεν υπάρχει.
+ */
+export function localHref(locale: Locale, elHref: string): string {
+  if (locale === 'el') return elHref;
+  const m = /^([^?#]*)(.*)$/.exec(elHref);
+  const en = enPathFor(m?.[1] || '/');
+  return en ? en + (m?.[2] ?? '') : elHref;
+}

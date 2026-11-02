@@ -23,6 +23,8 @@
 //      ημερομηνία γραμμένη εκεί με το χέρι θα έβγαινε ίδια και στις δύο θέσεις
 //      και θα περνούσε. Όσες γραμμές μένουν με το χέρι δεν τυπώνουν ημερομηνία.
 // ═══════════════════════════════════════════════════════════════════════════
+import { isEnPath } from '@/lib/i18n/locale';
+import { elPathFor } from '@/lib/i18n/paths';
 import { createElement, type ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync, existsSync } from 'node:fs';
@@ -133,7 +135,10 @@ async function main() {
   let withDate = 0;
 
   for (const row of map) {
-    const path = row.url === SITE ? '/' : row.url.slice(SITE.length);
+    // Η ΑΓΓΛΙΚΗ ΓΡΑΜΜΗ ΠΑΙΡΝΕΙ ΤΗΝ ΗΜΕΡΟΜΗΝΙΑ ΤΗΣ ΕΛΛΗΝΙΚΗΣ ΤΗΣ (app/sitemap.ts):
+    // ίδιο περιεχόμενο, ίδια ενημέρωση, μία πηγή.
+    const raw = row.url === SITE ? '/' : row.url.slice(SITE.length);
+    const path = isEnPath(raw) ? (elPathFor(raw) ?? raw) : raw;
     const lm = typeof row.lastModified === 'string' ? row.lastModified : '';
     seen.add(path);
 

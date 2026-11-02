@@ -13,7 +13,7 @@
 // κενό. Εκατόν σαράντα ένα γραμμές, χωρίς έναν έλεγχο.
 import {
   fpRate, feSigned,
-  fe, feRate, fp, fn, feOr, fpOr, DASH, ABSENT, ABSENT_DATE, ABSENT_SHORT, isBlankMetric, grUpper,
+  fe, feRate, fp, fn, feOr, fpOr, DASH, ABSENT, ABSENT_DATE, ABSENT_SHORT, isBlankMetric, grUpper, grDate, fmtFor,
 } from './format'
 
 let pass = 0, fail = 0
@@ -146,6 +146,31 @@ ok('χαλασμένος αριθμός δεν γράφει NaN', !/NaN/.test(fn
   eq('τελικό σίγμα', grUpper('ιδιοκτήτης'), 'ΙΔΙΟΚΤΗΤΗΣ')
   // Το ωμό toUpperCase() κρατά τον τόνο: αυτός είναι ο λόγος που υπάρχει η grUpper.
   ok('το toUpperCase() της JavaScript ΔΕΝ αρκεί', 'Στοιχεία'.toUpperCase() !== grUpper('Στοιχεία'))
+}
+
+
+// ═══ ΑΓΓΛΙΚΕΣ ΣΕΛΙΔΕΣ: ΟΙ ΑΡΙΘΜΟΙ ΤΟΥ ΑΓΓΛΟΦΩΝΟΥ, ΤΑ ΕΛΛΗΝΙΚΑ ΑΘΙΚΤΑ ═══════
+{
+  const en = fmtFor('en'), el = fmtFor('el')
+  eq('en: ποσό', en.fe(1234.5), '€1,234.50')
+  eq('en: αρνητικό ποσό', en.feSigned(-1234.5), '−€1,234.50')
+  eq('en: ακέραιο ποσό', en.feWhole(1234.5), '€1,235')
+  eq('en: τιμή μονάδας', en.feRate(0.12345), '€0.12345')
+  eq('en: ποσοστό', en.fpRate(12), '12%')
+  eq('en: ποσοστό με δεκαδικό', en.fpRate(0.5), '0.5%')
+  eq('en: ποσοστό δύο δεκαδικών', en.fp(12), '12.00%')
+  eq('en: αριθμός', en.fn(1234.567, 1), '1,234.6')
+  eq('en: ημερομηνία', en.date('2026-11-02'), '2 Nov 2026')
+  eq('en: σφραγίδα χρόνου', en.date('2026-08-14T09:12:00Z'), '14 Aug 2026')
+  eq('en: ό,τι δεν αναγνωρίζεται μένει αυτούσιο', en.date('σύντομα'), 'σύντομα')
+  eq('en: η ίδια στρογγυλοποίηση με τα ελληνικά', en.fe(2.675), '€2.68')
+  eq('el: ίδιο ποσό, ίδια ψηφία', el.fe(2.675), '2,68€')
+  // Η ΕΛΛΗΝΙΚΗ ΓΡΑΦΗ ΔΕΝ ΑΛΛΑΖΕΙ: οι ίδιες συναρτήσεις, όχι αντίγραφα.
+  ok('el: fe είναι η ίδια συνάρτηση', el.fe === fe)
+  ok('el: fpRate είναι η ίδια συνάρτηση', el.fpRate === fpRate)
+  ok('el: date είναι το grDate', el.date === grDate)
+  eq('el: ποσό αμετάβλητο', el.fe(1234.5), '1.234,50€')
+  eq('el: ημερομηνία αμετάβλητη', el.date('2026-11-02'), '02/11/2026')
 }
 
 console.log(fail === 0 ? `✓ format: ${pass} έλεγχοι πέρασαν` : `✗ format: ${fail} απέτυχαν από ${pass + fail}`)

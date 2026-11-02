@@ -55,3 +55,17 @@ export function signupCta(plan: PlanId | null = null): string {
   if (!isPayingPlan(id)) return 'Ξεκίνα χωρίς συνδρομή';
   return trialCovers(id) ? 'Ξεκίνα τη δοκιμή' : 'Κάνε εγγραφή';
 }
+
+// ── ΤΑ ΙΔΙΑ ΣΤΑ ΑΓΓΛΙΚΑ (σελίδες /en) ─────────────────────────────────────
+// Ιδια λογική, ίδιοι αριθμοί· τα ονόματα των πακέτων από το lib/i18n/en/plans.ts.
+// Το κουμπί λέει «Get started» για το πακέτο χωρίς συνδρομή: το «χωρίς
+// συνδρομή» το λέει η γραμμή κάτω από αυτό, όχι μια λέξη «free» στο κουμπί.
+export function signupCtaEn(plan: PlanId | null = null): string {
+  const id = plan ?? normalizePlan(null);
+  if (!isPayingPlan(id)) return 'Get started';
+  return trialCovers(id) ? 'Start your trial' : 'Sign up';
+}
+
+/** Το `TRIAL_OFFER` στα αγγλικά, με το όνομα του πακέτου στα αγγλικά. */
+export const trialOfferEn = (trialPlanName: string): string =>
+  `Every new account starts with a ${TRIAL_DAYS}-day trial: everything in “${trialPlanName}”, ${TRIAL_LIMITS.perMonth} questions to Noa and ${TRIAL_SCANS_PER_MONTH} scans a month.`;

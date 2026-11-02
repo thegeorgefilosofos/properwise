@@ -462,6 +462,9 @@ export const MUTATIONS = {
     // γράφεις» αλλά «γράψε τον σωστό»: ο πάροχος που δεν εισέπραξε ποτέ δεν
     // επιτρέπεται να ξαναγίνει εκτελών στο μητρώο.
     { add: 'docs/legal/__mut__.md', content: '# Δοκιμή\n\nΧρέωση μέσω Lemon Squeezy ως merchant of record.\n' },
+    // ΚΑΙ ΣΤΑ ΑΓΓΛΙΚΑ (02.11.2026): σελίδα που λέει μόνη της «no card
+    // required» για τη δοκιμή, αντί να το πάρει από το billingWordsEn.
+    { add: 'lib/core/__mut4__.tsx', content: tsx('    <p>Start your 30-day trial. No card required.</p>') },
   ] },
   // Η ΣΥΝΑΙΝΕΣΗ ΠΟΥ ΓΙΝΕΤΑΙ «ΝΑΙ» ΑΠΟ ΑΠΟΤΥΧΙΑ. Ακριβώς η γραμμή που έστελνε
   // το δελτίο σε όσους είχαν απεγγραφεί, σε νέα συνάρτηση άκρης.
@@ -762,5 +765,21 @@ export const MUTATIONS = {
   'secret-path-analytics': { every: [
     { file: 'lib/analytics/pageUrl.ts', from: '|epivevaiosi-email|plirosa|auth)', to: '|epivevaiosi-email|auth)' },
     { add: 'app/odigos/[token]/page.tsx', content: tsx('    <p>κλειδί</p>') },
+  ] },
+
+  // ══ Η ΑΓΓΛΙΚΗ ΒΙΤΡΙΝΑ (02.11.2026) ════════════════════════════════════════
+  // Αγγλική σελίδα που μπήκε στο app/en/ χωρίς γραμμή στο PAGE_PAIRS: ακριβώς
+  // η μισή σελίδα, χωρίς hreflang και με επιλογέα που γυρίζει στην αρχική.
+  // Και ζεύγος στον χάρτη χωρίς τη σελίδα του: σύνδεσμος σε 404.
+  'i18n-pairs': { every: [
+    { add: 'app/en/mut-orphan/page.tsx', content: tsx('    <p>Orphan</p>') },
+    { file: 'lib/i18n/paths.ts', from: "['/ergaleia', '/en/tools'],", to: "['/ergaleia', '/en/tools'],\n  ['/logistes', '/en/accountants']," },
+  ] },
+  // Το κουμπί «Start free» δίπλα σε τιμή, ένα ελληνικό «ή» μέσα σε αγγλική
+  // φράση τιμής και η Νόα με φύλο: τα τρία λάθη που ο φύλακας υπάρχει να κόβει.
+  'en-copy': { every: [
+    { add: 'lib/i18n/en/__mut__.ts', content: "export const cta = { label: 'Start free', price: '€0/month' }\n" },
+    { add: 'lib/i18n/en/__mut__.ts', content: "export const per = (a: string) => `ή ${a} a year`\n" },
+    { add: 'lib/i18n/en/__mut__.ts', content: "export const noa = 'Noa reads your bills and she answers in Greek.'\n" },
   ] },
 }
