@@ -11,9 +11,9 @@ import PasswordStrength from '@/components/PasswordStrength'
 import { failed as failedEl } from '@/lib/core/dbError';
 import { BackLink } from '../BackLink'
 import MailSent from '../MailSent'
-import { useLocale } from '@/lib/i18n/useLocale'
+import type { Locale } from '@/lib/i18n/locale'
 import { localHref } from '@/lib/i18n/paths'
-import { AUTH_EN, authFailedEn } from '@/lib/i18n/en/auth'
+import { useAuthEn } from '@/lib/i18n/authEn'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Επαναφορά κωδικού, δύο καταστάσεις:
@@ -43,9 +43,11 @@ const readLink = (): Link => {
 
 export default function ResetPasswordPage() {
   // Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/reset-password): ίδια ροή, άλλο κείμενο.
-  const locale = useLocale(), en = locale === 'en', A = AUTH_EN, R = AUTH_EN.reset
-  const failed = (el: string, en_: string, e: unknown) => en ? authFailedEn(en_, e) : failedEl(el, e)
-  const MISMATCH = en ? R.mismatch : MISMATCH_EL
+  // Το κείμενο το δίνει το layout του /en (lib/i18n/authEn.ts): `null` = ελληνικά.
+  const A = useAuthEn(), R = A?.reset
+  const locale: Locale = A ? 'en' : 'el'
+  const failed = (el: string, en_: string | undefined, e: unknown) => A ? A.failed(en_ ?? el, e) : failedEl(el, e)
+  const MISMATCH = R ? R.mismatch : MISMATCH_EL
   // Ο ΣΥΝΔΕΣΜΟΣ ΤΟΥ EMAIL ΛΕΕΙ ΗΔΗ ΣΕ ΠΟΙΑ ΟΘΟΝΗ ΕΙΜΑΣΤΕ. Ηταν
   // `setMode('update')` μέσα σε effect: ο χρήστης που πάτησε τον σύνδεσμο
   // επαναφοράς έβλεπε για ένα καρέ τη φόρμα «στείλε μου σύνδεσμο», δηλαδή τη
@@ -99,7 +101,7 @@ export default function ResetPasswordPage() {
     const redirectTo = `${window.location.origin}${localHref(locale, '/reset-password')}`
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
     setLoading(false)
-    if (error) setError(failed('Το μήνυμα επαναφοράς δεν στάλθηκε', R.notSent, error)); else setMode('sent')
+    if (error) setError(failed('Το μήνυμα επαναφοράς δεν στάλθηκε', R?.notSent, error)); else setMode('sent')
   }
 
   const [leakedPw, setLeakedPw] = useState<string | null>(null)
@@ -111,12 +113,12 @@ export default function ResetPasswordPage() {
 
   async function updatePassword(e: React.FormEvent) {
     e.preventDefault(); setError('')
-    if (!pwOk) { setError(leakedPw === password ? (en ? A.pw.leaked : PASSWORD_MSG.leaked) : (en ? A.pw.weak : PASSWORD_MSG.weak)); return }
+    if (!pwOk) { setError(leakedPw === password ? (A ? A.pw.leaked : PASSWORD_MSG.leaked) : (A ? A.pw.weak : PASSWORD_MSG.weak)); return }
     if (password !== confirm) { setError(MISMATCH); return }
     setLoading(true)
     const supabase = await authClient()
     const { error } = await supabase.auth.updateUser({ password })
-    if (error) { setLoading(false); setError(failed('Ο κωδικός δεν άλλαξε', R.notChanged, error)); return }
+    if (error) { setLoading(false); setError(failed('Ο κωδικός δεν άλλαξε', R?.notChanged, error)); return }
     // ═══ ΟΙ ΑΛΛΕΣ ΣΥΣΚΕΥΕΣ ΚΛΕΙΝΟΥΝ ΜΑΖΙ ΜΕ ΤΟΝ ΠΑΛΙΟ ΚΩΔΙΚΟ ═══════════════
     // Η οθόνη έλεγε «ο νέος κωδικός ισχύει σε όλες τις συσκευές σου» και
     // καμία συνεδρία δεν έκλεινε. Οποιος αλλάζει κωδικό επειδή υποψιάζεται
@@ -176,8 +178,8 @@ export default function ResetPasswordPage() {
         {mode === 'checking' && (
           <>
             <BackLink home locale={locale} />
-            <h1 style={h2s}>{en ? R.title : 'Επαναφορά κωδικού'}</h1>
-            <p role="status" style={subs}>{en ? R.checking : 'Έλεγχος συνδέσμου…'}</p>
+            <h1 style={h2s}>{R ? R.title : 'Επαναφορά κωδικού'}</h1>
+            <p role="status" style={subs}>{R ? R.checking : 'Έλεγχος συνδέσμου…'}</p>
           </>
         )}
 
@@ -186,25 +188,25 @@ export default function ResetPasswordPage() {
             {/* Ο ίδιος δρόμος πίσω με κάθε άλλη κατάσταση της Σύνδεσης και της
                 Εγγραφής: εδώ και στο «sent» έλειπε. */}
             <BackLink home locale={locale} />
-            <h1 style={h2s}>{en ? R.title : 'Επαναφορά κωδικού'}</h1>
+            <h1 style={h2s}>{R ? R.title : 'Επαναφορά κωδικού'}</h1>
             {linkFailed && (
               <div role="alert" style={{ background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: T.radius.inner, padding: '12px 14px', fontSize: 13, lineHeight: 1.6, color: 'var(--text-primary)', marginBottom: 16 }}>
-                {en ? R.linkFailed : 'Ο σύνδεσμος έληξε ή άνοιξε σε άλλη συσκευή. Ζήτησε νέο εδώ και άνοιξέ τον στην ίδια συσκευή.'}
+                {R ? R.linkFailed : 'Ο σύνδεσμος έληξε ή άνοιξε σε άλλη συσκευή. Ζήτησε νέο εδώ και άνοιξέ τον στην ίδια συσκευή.'}
               </div>
             )}
-            <p style={subs}>{en ? R.intro : 'Δώσε το email σου και θα σου στείλουμε έναν σύνδεσμο για να ορίσεις νέο κωδικό.'}</p>
+            <p style={subs}>{R ? R.intro : 'Δώσε το email σου και θα σου στείλουμε έναν σύνδεσμο για να ορίσεις νέο κωδικό.'}</p>
             <form onSubmit={sendReset} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <label htmlFor="rp-email" style={label}>{en ? A.email : 'Ηλεκτρονικό ταχυδρομείο'}</label>
-                <input id="rp-email" name="email" autoComplete="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder={en ? A.emailPlaceholder : 'onoma@email.com'} style={field}
+                <label htmlFor="rp-email" style={label}>{A ? A.email : 'Ηλεκτρονικό ταχυδρομείο'}</label>
+                <input id="rp-email" name="email" autoComplete="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder={A ? A.emailPlaceholder : 'onoma@email.com'} style={field}
                   onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
               </div>
               {errBox}
               {/* `field` γιατί η υποβολή κρατά όλο το πλάτος της φόρμας, όπως πριν. */}
-              <Btn variant="primary" type="submit" field disabled={loading}>{loading ? (en ? R.sending : 'Αποστολή…') : (en ? R.send : 'Στείλε σύνδεσμο')}</Btn>
+              <Btn variant="primary" type="submit" field disabled={loading}>{loading ? (R ? R.sending : 'Αποστολή…') : (R ? R.send : 'Στείλε σύνδεσμο')}</Btn>
             </form>
             <p style={{ fontSize: 13, marginTop: T.sp.xxl }}>
-              <Link href={localHref(locale, '/login')} className="lp-link po-tap" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{en ? R.back : 'Επιστροφή στη σύνδεση'}</Link>
+              <Link href={localHref(locale, '/login')} className="lp-link po-tap" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{R ? R.back : 'Επιστροφή στη σύνδεση'}</Link>
             </p>
           </>
         )}
@@ -216,14 +218,14 @@ export default function ResetPasswordPage() {
                 είναι στο ίδιο το «σου στείλαμε»: η επαναφορά δεν λέει ποτέ αν
                 υπάρχει λογαριασμός, ώστε να μη γίνεται μηχανή ελέγχου email. */}
             <MailSent
-              title={en ? A.signup.mailTitle : 'Άνοιξε το email σου'}
+              title={A ? A.signup.mailTitle : 'Άνοιξε το email σου'}
               email={email.trim()}
-              body={en ? R.mailBody : <>Αν υπάρχει λογαριασμός με αυτή τη διεύθυνση, σου στείλαμε σύνδεσμο επαναφοράς. Πάτησέ τον για να ορίσεις νέο κωδικό. Δες και τον φάκελο με <span style={{ whiteSpace: 'nowrap' }}>τα ανεπιθύμητα.</span></>}
+              body={R ? R.mailBody : <>Αν υπάρχει λογαριασμός με αυτή τη διεύθυνση, σου στείλαμε σύνδεσμο επαναφοράς. Πάτησέ τον για να ορίσεις νέο κωδικό. Δες και τον φάκελο με <span style={{ whiteSpace: 'nowrap' }}>τα ανεπιθύμητα.</span></>}
               footer={<>
-                {en ? A.signup.wrongAddress : 'Λάθος διεύθυνση;'}{' '}
-                <LinkBtn onClick={() => setMode('request')}>{en ? A.signup.other : 'Γράψε άλλη'}</LinkBtn>
+                {A ? A.signup.wrongAddress : 'Λάθος διεύθυνση;'}{' '}
+                <LinkBtn onClick={() => setMode('request')}>{A ? A.signup.other : 'Γράψε άλλη'}</LinkBtn>
                 {' · '}
-                <Link href={localHref(locale, '/login')} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{en ? A.signup.login : 'Σύνδεση'}</Link>
+                <Link href={localHref(locale, '/login')} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{A ? A.signup.login : 'Σύνδεση'}</Link>
               </>}
             />
           </>
@@ -238,28 +240,28 @@ export default function ResetPasswordPage() {
                 ούτε αρχική. Οποιος άνοιξε τον σύνδεσμο κατά λάθος έμενε
                 μπροστά σε μια φόρμα που δεν ζήτησε. */}
             <BackLink home locale={locale} />
-            <h1 style={h2s}>{en ? R.updateTitle : 'Όρισε νέο κωδικό'}</h1>
-            <p style={subs}>{en ? R.updateIntro : `Διάλεξε έναν ισχυρό κωδικό, ${PASSWORD_MIN_LABEL.toLowerCase()}.`}</p>
+            <h1 style={h2s}>{R ? R.updateTitle : 'Όρισε νέο κωδικό'}</h1>
+            <p style={subs}>{R ? R.updateIntro : `Διάλεξε έναν ισχυρό κωδικό, ${PASSWORD_MIN_LABEL.toLowerCase()}.`}</p>
             <form onSubmit={updatePassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <label htmlFor="rp-password" style={label}>{en ? R.newPassword : 'Νέος κωδικός'}</label>
+                <label htmlFor="rp-password" style={label}>{R ? R.newPassword : 'Νέος κωδικός'}</label>
                 <div style={{ position: 'relative' }}>
-                  <input id="rp-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder={en ? A.passwordHint : PASSWORD_MIN_HINT} aria-describedby={password ? 'rp-pw-req' : undefined} style={{ ...field, paddingRight: 48 }}
+                  <input id="rp-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder={A ? A.passwordHint : PASSWORD_MIN_HINT} aria-describedby={password ? 'rp-pw-req' : undefined} style={{ ...field, paddingRight: 48 }}
                     onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
                   {eye}
                 </div>
                 {password && <PasswordStrength password={password} id="rp-pw-req" onLeaked={setLeakedPw} />}
               </div>
               <div>
-                <label htmlFor="rp-confirm" style={label}>{en ? R.confirm : 'Επιβεβαίωση'}</label>
-                <input id="rp-confirm" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={confirm} onChange={e => setConfirm(e.target.value)} placeholder={en ? R.confirmPlaceholder : 'Ξαναγράψε τον κωδικό'} aria-invalid={mismatch || undefined} aria-describedby={mismatch ? 'rp-confirm-err' : undefined} style={field}
+                <label htmlFor="rp-confirm" style={label}>{R ? R.confirm : 'Επιβεβαίωση'}</label>
+                <input id="rp-confirm" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={confirm} onChange={e => setConfirm(e.target.value)} placeholder={R ? R.confirmPlaceholder : 'Ξαναγράψε τον κωδικό'} aria-invalid={mismatch || undefined} aria-describedby={mismatch ? 'rp-confirm-err' : undefined} style={field}
                   onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
                 {mismatch && <p id="rp-confirm-err" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: '6px 0 0', lineHeight: 1.5 }}>{MISMATCH}</p>}
               </div>
               {errBox}
               {/* Πατήσιμο πάντα, όπως στην Εγγραφή: το σβηστό κουμπί δεν έλεγε
                   γιατί. Ο λόγος έρχεται από τον updatePassword, στο πλαίσιο. */}
-              <Btn variant="primary" type="submit" field disabled={loading}>{loading ? (en ? R.saving : 'Αποθήκευση…') : (en ? R.save : 'Αποθήκευση κωδικού')}</Btn>
+              <Btn variant="primary" type="submit" field disabled={loading}>{loading ? (R ? R.saving : 'Αποθήκευση…') : (R ? R.save : 'Αποθήκευση κωδικού')}</Btn>
             </form>
           </>
         )}
@@ -267,13 +269,13 @@ export default function ResetPasswordPage() {
         {mode === 'done' && (
           <div style={{ textAlign: 'center' }} role="status">
             {successIcon}
-            <h1 style={h2s}>{en ? R.doneTitle : 'Ο κωδικός άλλαξε'}</h1>
-            <p style={subs}>{en ? (othersOut ? R.doneOthersOut : R.doneOthersIn) : othersOut
+            <h1 style={h2s}>{R ? R.doneTitle : 'Ο κωδικός άλλαξε'}</h1>
+            <p style={subs}>{R ? (othersOut ? R.doneOthersOut : R.doneOthersIn) : othersOut
               ? 'Αποσυνδέσαμε κάθε άλλη συσκευή όπου ήταν ανοιχτός ο λογαριασμός σου.'
               : 'Ο νέος κωδικός ισχύει, αλλά οι άλλες συσκευές δεν αποσυνδέθηκαν. Κλείσ’ τες με την «Αποσύνδεση από όλες τις συσκευές», στον «Λογαριασμό», ενότητα «Ασφάλεια».'}</p>
             {/* Προορισμός και όχι ενέργεια: με `href` γίνεται σύνδεσμος που ανοίγει
                 και σε νέα καρτέλα, με την ίδια ακριβώς όψη. */}
-            <Btn variant="primary" href="/dashboard" field>{en ? R.toApp : 'Συνέχεια στην εφαρμογή'}</Btn>
+            <Btn variant="primary" href="/dashboard" field>{R ? R.toApp : 'Συνέχεια στην εφαρμογή'}</Btn>
           </div>
         )}
       </div>

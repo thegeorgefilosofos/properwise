@@ -11,6 +11,7 @@ import { PLAN_COPY_EN } from '@/lib/i18n/en/plans';
 import { publicMetadata } from '../../publicMetadata';
 import { PlanTermsProvider, type SignupCtas } from '../../signup/PlanTerms';
 import AuthAside from '../../AuthAside';
+import AuthEnProvider from '../AuthEnProvider';
 
 // Η εγγραφή στα αγγλικά: η ίδια οθόνη (app/signup/page.tsx) με τα αγγλικά
 // λόγια χρέωσης (billingWordsEn) και τα αγγλικά κουμπιά. Και μία ήσυχη γραμμή:
@@ -36,7 +37,7 @@ export default function SignupLayoutEn({ children }: { children: ReactNode }) {
       <div data-mode="dark" className="auth-split auth-top" style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex', fontFamily: T.font.sans }}>
         <a href="#main" className="skip-link">{ASIDE_EN.skip}</a>
         <AuthAside headline={a.headline} accent={a.accent} oneLine sub={a.sub} pillars={ASIDE_EN.login.pillars()} foot={ASIDE_EN.foot} />
-        {children}
+        <AuthEnProvider>{children}</AuthEnProvider>
       </div>
     </PlanTermsProvider>
   );
