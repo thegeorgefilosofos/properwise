@@ -5415,6 +5415,11 @@ body:has(.po-tool-page) .po-cookie {
    στέκεται πάνω από την κεφαλίδα και στα 568 ύψος το φύλλο ξεκινά 101 πιο
    χαμηλά. Η σελίδα κυλά, η κεφαλίδα κολλά στην κορυφή και φαίνεται όλο. */
 .pub-menu-sheet { max-height: calc(100vh - 90px); max-height: calc(100dvh - 90px); overflow-y: auto; }
+/* Η ΓΡΑΜΜΗ «View in English» (app/LangSuggest.tsx) στέκεται πάνω από την
+   κεφαλίδα και κατεβάζει το φύλλο ~52px. Στο CI, με περιηγητή χωρίς ελληνικά,
+   το φύλλο έβγαινε κάτω από την οθόνη (620 σε 568). Όσο φαίνεται η γραμμή,
+   το φύλλο κονταίνει ανάλογα. */
+body:has(.pw-lang-suggest) .pub-menu-sheet { max-height: calc(100vh - 162px); max-height: calc(100dvh - 162px); }
 .pub-menu-sheet ul { margin: 0; padding: 0; list-style: none; }
 .pub-menu-group + .pub-menu-group { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-subtle); }
 .pub-menu-label {
