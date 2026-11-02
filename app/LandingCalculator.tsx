@@ -12,7 +12,7 @@ import { roundHalfUp } from '@/lib/core/money';
 import { fmtFor } from '@/lib/core/format'
 import type { Locale } from '@/lib/i18n/locale'
 import { localHref } from '@/lib/i18n/paths'
-import { PARTS_EN } from '@/lib/i18n/en/landing'
+import { PARTS_EN } from '@/lib/i18n/en/landingParts'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Ζωντανό εργαλείο απόδοσης μέσα στο landing. Τρέχει την ΙΔΙΑ ακριβή φορολογική
