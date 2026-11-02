@@ -15,6 +15,10 @@
 // λεξικό της. Ο υπολογιστής ρωτά `useToolEn()`: `null` σημαίνει ελληνικά.
 // Εδώ ζουν μόνο οι τύποι — `import type`, που δεν φτάνει στο πακέτο.
 //
+// ΤΟ ΙΔΙΟ ΓΙΑ ΚΑΘΕ ΔΙΓΛΩΣΣΟ COMPONENT ΠΕΛΑΤΗ ΕΚΤΟΣ ΕΙΣΟΔΟΥ (03.11.2026): οι
+// υπολογιστές του δεύτερου κύματος (αναπροσαρμογή, ρεύμα, Ε2) και η φόρμα
+// υπαναχώρησης παίρνουν κι αυτοί τα αγγλικά τους από εδώ.
+//
 // Ο φύλακας scripts/guard-en-client.mjs κόβει κάθε component πελάτη έξω από
 // το app/en που εισάγει τιμή από το lib/i18n/en/**.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -28,6 +32,10 @@ import type { MORTGAGE_EN } from './en/tools/mortgage';
 import type { RENO_EN } from './en/tools/reno';
 import type { BUY_EN, ledgerRowsEn, missingSentenceEn } from './en/tools/buy';
 import type { PARTS_EN } from './en/landingParts';
+import type { RAISE_EN } from './en/tools/raise';
+import type { E2_EN } from './en/tools/e2';
+import type { POWER_EN } from './en/tools/power';
+import type { WITHDRAWAL_EN } from './en/legal/withdrawal';
 
 /** Ενα κλειδί ανά υπολογιστή· ο πάροχος κάθε σελίδας δίνει μόνο το δικό του. */
 export type ToolEn = {
@@ -42,6 +50,10 @@ export type ToolEn = {
   reno?: { E: typeof RENO_EN };
   buy?: { E: typeof BUY_EN; ledgerRows: typeof ledgerRowsEn; missing: typeof missingSentenceEn };
   landing?: { C: typeof PARTS_EN.calc };
+  raise?: { E: typeof RAISE_EN };
+  e2?: { E: typeof E2_EN };
+  power?: { E: typeof POWER_EN };
+  withdrawal?: { E: typeof WITHDRAWAL_EN };
 };
 
 export const ToolEnContext = createContext<ToolEn | null>(null);

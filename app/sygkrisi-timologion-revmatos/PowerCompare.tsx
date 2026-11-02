@@ -18,7 +18,7 @@ import { bindRefs } from '@/lib/core/hyphenate';
 import { Fragment, useId, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { T, fdLong } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
-import { fe, feRate, fn, fpRate } from '@/lib/core/format';
+import { feRate as feRateEl, fn as fnEl, fmtFor } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { athensToday } from '@/lib/core/time';
 import { comparePower, staleCatalogueNote, POWER_COLOURS, UNRANKED_WHY, type PowerColour, type PowerRow } from '@/lib/tools/revma';
@@ -30,6 +30,10 @@ import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolS
 import { ToolNumField, ToolFields, ToolHero, ToolSeg } from '@/app/ToolParts';
 import { ToolSelect } from '@/app/ToolSelect';
 import LiveResult from '@/components/LiveResult';
+import { useToolDict, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
+import { localHref } from '@/lib/i18n/paths';
+
+type PowerEn = NonNullable<ToolEn['power']>['E'];
 
 /** Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. */
 const SPEC = { kwh: '300', periodos: 'mina', nychta: '0', ebill: 'nai', xroma: 'ola' } as const;
@@ -45,14 +49,14 @@ const noSubscribe = () => () => {};
 export function facts(t: PowerRow['t'], ebill: boolean): string[] {
   const out: string[] = [];
   if (t.type === 'fixed_monthly') {
-    out.push(t.flat_annual_kwh ? `Πακέτο ${fn(t.flat_annual_kwh)} κιλοβατώρες τον χρόνο` : 'Χωρίς δημοσιευμένο όριο κιλοβατωρών');
+    out.push(t.flat_annual_kwh ? `Πακέτο ${fnEl(t.flat_annual_kwh)} κιλοβατώρες τον χρόνο` : 'Χωρίς δημοσιευμένο όριο κιλοβατωρών');
   } else {
     // Στα αναδρομικά ο αριθμός του καταλόγου είναι η ΒΑΣΙΚΗ τιμή, όχι η τελική.
     out.push(t.kwh_day == null ? (t.priceUnsupported ? 'Κλιμακωτό σε περισσότερες από δύο κλίμακες' : 'Χωρίς γνωστή τιμή')
-      : t.priceStatus !== 'retro' ? `${feRate(t.kwh_day)} ανά κιλοβατώρα${t.kwh_tier2 != null && t.tier2_threshold != null ? (t.tier2_scope === 'all' ? `, ${feRate(t.kwh_tier2)} για όλες πάνω από ${fn(t.tier2_threshold)} kWh` : `, ${feRate(t.kwh_tier2)} από την ${fn(t.tier2_threshold + 1)}η`) : ''}`
-      : t.kwh_day > 0 ? `${feRate(t.kwh_day)} βασική τιμή, κλείνει αναδρομικά`
+      : t.priceStatus !== 'retro' ? `${feRateEl(t.kwh_day)} ανά κιλοβατώρα${t.kwh_tier2 != null && t.tier2_threshold != null ? (t.tier2_scope === 'all' ? `, ${feRateEl(t.kwh_tier2)} για όλες πάνω από ${fnEl(t.tier2_threshold)} kWh` : `, ${feRateEl(t.kwh_tier2)} από την ${fnEl(t.tier2_threshold + 1)}η`) : ''}`
+      : t.kwh_day > 0 ? `${feRateEl(t.kwh_day)} βασική τιμή, κλείνει αναδρομικά`
       : 'Η τιμή του μήνα ανακοινώνεται τον επόμενο');
-    if (t.kwh_night) out.push(`Νυχτερινή ${feRate(t.kwh_night)}`);
+    if (t.kwh_night) out.push(`Νυχτερινή ${feRateEl(t.kwh_night)}`);
     // ΤΟ ΠΑΓΙΟ ΓΡΑΦΟΤΑΝ ΜΟΝΟ ΜΕ ΤΗΝ ΚΑΤΩ ΚΛΙΜΑΚΑ (12/10/2026). Όπου το πάγιο
     // ανεβαίνει πάνω από ένα όριο κιλοβατωρών, το ποσό του μήνα (`monthlyCost`)
     // το χρεώνει· η σελίδα έγραφε μόνο το κάτω. Η πρόταση βγαίνει από το
@@ -73,7 +77,11 @@ export function PowerCompare({ serverToday, cta }: {
   /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
   cta: ReactNode;
 }) {
-  const [v, set] = useToolState(SPEC, PATH);
+  // Τα αγγλικά από τον πάροχο του /en (lib/i18n/toolEn.ts)· εδώ δεν εισάγεται
+  // κανένα αγγλικό λεξικό, ώστε να μην κατεβαίνει στα ελληνικά.
+  const { en: X, locale } = useToolDict('power'), en = X !== undefined, E = (X?.E ?? NO_EN) as PowerEn, path = localHref(locale, PATH);
+  const { fe, feRate, fn, fpRate, date } = fmtFor(locale);
+  const [v, set] = useToolState(SPEC, path);
   const ids = { kwh: useId(), night: useId() };
   const [all, setAll] = useState(false);
 
@@ -90,7 +98,7 @@ export function PowerCompare({ serverToday, cta }: {
   ), [v.kwh, period, nightIn, ebill, colour, today]);
 
   const hasUsage = r.kwhMonthly > 0;
-  const kwhLine = period === 'year'
+  const kwhLine = en ? E.kwhLine(fn(r.kwhMonthly), period === 'year' ? fn(amount(v.kwh)) : undefined) : period === 'year'
     ? `${fn(r.kwhMonthly)} κιλοβατώρες τον μήνα (${fn(amount(v.kwh))} τον χρόνο)`
     : `${fn(r.kwhMonthly)} κιλοβατώρες τον μήνα`;
   const priced = r.rows.filter(x => x.monthly !== null).map(x => x.monthly as number);
@@ -98,9 +106,10 @@ export function PowerCompare({ serverToday, cta }: {
   const high = priced.length ? Math.max(...priced) : 0;
   const shown = all ? r.rows : r.rows.slice(0, VISIBLE);
   const best = r.cheapest;
-  const colourLabel = POWER_COLOURS.find(c => c.value === colour)?.label ?? '';
+  const colourLabel = en ? E.colour(colour) : POWER_COLOURS.find(c => c.value === colour)?.label ?? '';
   // Η πρόταση του ληγμένου καταλόγου, με τις ημερομηνίες του (lib/tools/revma.ts).
-  const stale = staleCatalogueNote();
+  const stale = en ? E.stale(r.rankUntil) : staleCatalogueNote();
+  const providerName = (x: PowerRow) => (en ? E.provider(PROVIDERS.find(p => p.label === x.t.providerLabel)?.value ?? '', x.t.providerLabel) : x.t.providerLabel);
 
   return (
     <div style={{ fontFamily: T.font.sans }}>
@@ -109,24 +118,30 @@ export function PowerCompare({ serverToday, cta }: {
           Πρώτη σειρά η κατανάλωση, που αλλάζει το αποτέλεσμα· δεύτερη οι
           επιλογές, που το περιορίζουν. */}
       <ToolFields>
-        <ToolNumField id={ids.kwh} label={period === 'year' ? 'Κατανάλωση τον χρόνο' : 'Κατανάλωση τον μήνα'}
+        <ToolNumField id={ids.kwh} label={en ? (period === 'year' ? E.usageYear : E.usageMonth) : period === 'year' ? 'Κατανάλωση τον χρόνο' : 'Κατανάλωση τον μήνα'}
           value={v.kwh} onChange={x => set('kwh', x)} unit="kWh" unitPad={52}
-          hint="Από τον λογαριασμό σου, στις κιλοβατώρες της περιόδου."/>
-        <ToolSeg label="Ο αριθμός αφορά" value={period === 'year' ? 'xronos' : 'mina'}
+          hint={en ? E.usageHint : 'Από τον λογαριασμό σου, στις κιλοβατώρες της περιόδου.'}/>
+        <ToolSeg label={en ? E.per : 'Ο αριθμός αφορά'} value={period === 'year' ? 'xronos' : 'mina'}
           onChange={x => set('periodos', x)}
-          options={[{ value: 'mina', label: 'Τον μήνα' }, { value: 'xronos', label: 'Τον χρόνο' }]}
-          hint={period === 'year' ? 'Μοιράζεται ισόποσα στους δώδεκα μήνες.' : undefined}/>
-        <ToolNumField id={ids.night} label="Νυχτερινή κατανάλωση" value={v.nychta}
-          onChange={x => set('nychta', x)} unit="%" hint="Μόνο με νυχτερινό μετρητή. Αλλιώς 0."/>
-        <ToolSeg label="Ηλεκτρονικός λογαριασμός" value={ebill ? 'nai' : 'oxi'}
+          options={[{ value: 'mina', label: en ? E.perMonth : 'Τον μήνα' }, { value: 'xronos', label: en ? E.perYear : 'Τον χρόνο' }]}
+          hint={period === 'year' ? (en ? E.perYearHint : 'Μοιράζεται ισόποσα στους δώδεκα μήνες.') : undefined}/>
+        <ToolNumField id={ids.night} label={en ? E.night : 'Νυχτερινή κατανάλωση'} value={v.nychta}
+          onChange={x => set('nychta', x)} unit="%" hint={en ? E.nightHint : 'Μόνο με νυχτερινό μετρητή. Αλλιώς 0.'}/>
+        <ToolSeg label={en ? E.ebill : 'Ηλεκτρονικός λογαριασμός'} value={ebill ? 'nai' : 'oxi'}
           onChange={x => set('ebill', x)}
-          options={[{ value: 'nai', label: 'Ναι' }, { value: 'oxi', label: 'Όχι' }]}
-          hint="Σε κάποια τιμολόγια, μαζί με πάγια εντολή, το πάγιο μειώνεται."/>
-        <ToolSelect label="Είδος τιμολογίου" value={colour} onChange={x => set('xroma', x)}
-          options={POWER_COLOURS} span={2}/>
+          options={[{ value: 'nai', label: en ? E.yes : 'Ναι' }, { value: 'oxi', label: en ? E.no : 'Όχι' }]}
+          hint={en ? E.ebillHint : 'Σε κάποια τιμολόγια, μαζί με πάγια εντολή, το πάγιο μειώνεται.'}/>
+        <ToolSelect label={en ? E.kind : 'Είδος τιμολογίου'} value={colour} onChange={x => set('xroma', x)}
+          options={en ? E.colours : POWER_COLOURS} span={2}/>
       </ToolFields>
 
-      <ToolPaper title="Σύγκριση τιμολογίων ρεύματος" on={today} inputs={[
+      <ToolPaper title={en ? E.paper : 'Σύγκριση τιμολογίων ρεύματος'} on={today} inputs={en ? [
+        { k: E.pUsage, v: kwhLine },
+        { k: E.pNight, v: fpRate(Math.min(100, nightIn)) },
+        { k: E.pEbill, v: ebill ? E.yes : E.no },
+        { k: E.pKind, v: colourLabel },
+        { k: E.pChecked, v: date(TARIFFS_VERIFIED) },
+      ] : [
         { k: 'Κατανάλωση', v: kwhLine },
         { k: 'Νυχτερινή', v: fpRate(Math.min(100, nightIn)) },
         { k: 'Ηλεκτρονικός λογαριασμός', v: ebill ? 'Ναι' : 'Όχι' },
@@ -141,36 +156,39 @@ export function PowerCompare({ serverToday, cta }: {
       }}>
         {/* ΜΙΑ ΗΜΕΡΟΜΗΝΙΑ ΠΑΝΩ ΑΠΟ ΚΑΘΕ ΑΡΙΘΜΟ. Χωρίς αυτήν, μια τιμή που ήταν
             σωστή τον Αύγουστο διαβάζεται ως σωστή και τον Δεκέμβριο. */}
-        <p style={{ margin: '0 0 16px', fontSize: 13, lineHeight: 1.55, color: 'var(--text-secondary)', textWrap: 'pretty' }}>
+        {en ? <p style={{ margin: '0 0 16px', fontSize: 13, lineHeight: 1.55, color: 'var(--text-secondary)', textWrap: 'pretty' }}>
+          <strong style={{ color: 'var(--text-primary)' }}>{E.updated}</strong>. {E.source}{E.catalogue(r.fresh.canRank)}
+          {r.recommend && E.rankUntil(date(r.rankUntil))}
+        </p> : <p style={{ margin: '0 0 16px', fontSize: 13, lineHeight: 1.55, color: 'var(--text-secondary)', textWrap: 'pretty' }}>
           <strong style={{ color: 'var(--text-primary)' }}>{PRICES_UPDATED_LINE}</strong>. Πηγή: {PRICES_SOURCE}.
           Τιμές {CATALOGUE_MONTH_GEN}, εκτός όπου γράφεται άλλος μήνας{r.fresh.canRank ? '· μόνο αυτές μπαίνουν στη σειρά.' : '.'}
           {r.recommend && <> Η σειρά ισχύει έως τις {fdLong(r.rankUntil)}· μετά, αν δεν ενημερωθούν οι τιμές, ο πίνακας μένει ενδεικτικός.</>}
-        </p>
+        </p>}
 
         {!hasUsage ? (
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-            Γράψε την κατανάλωσή σου για να δεις τι θα πλήρωνες με κάθε τιμολόγιο.
+            {en ? E.empty : 'Γράψε την κατανάλωσή σου για να δεις τι θα πλήρωνες με κάθε τιμολόγιο.'}
           </p>
         ) : r.recommend && !(best && best.monthly !== null) ? (
           <>
             <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-              Σε αυτό το είδος κανένα τιμολόγιο δεν μπαίνει σε σειρά για {kwhLine}. Ο λόγος
-              γράφεται κάτω από το καθένα.
+              {en ? E.noneRanked(kwhLine) : <>Σε αυτό το είδος κανένα τιμολόγιο δεν μπαίνει σε σειρά για {kwhLine}. Ο λόγος
+              γράφεται κάτω από το καθένα.</>}
             </p>
-            <LiveResult say="Κανένα τιμολόγιο αυτού του είδους δεν μπαίνει σε σειρά."/>
+            <LiveResult say={en ? E.sayNone : 'Κανένα τιμολόγιο αυτού του είδους δεν μπαίνει σε σειρά.'}/>
           </>
         ) : best && best.monthly !== null ? (
           <>
             {/* ΤΟ «ΦΘΗΝΟΤΕΡΟ» ΛΕΕΙ ΜΟΝΟ ΟΣΑ ΔΕΙΧΝΟΥΝ ΤΑ ΝΟΥΜΕΡΑ: για αυτή την
                 κατανάλωση, σε αυτό το είδος, με αυτές τις τιμές. Ούτε «καλύτερο»
                 ούτε «προτείνουμε». */}
-            <ToolHero primary={{ label: 'Φθηνότερο τον μήνα', value: fe(best.monthly) }}
-              secondary={[{ label: 'Τον χρόνο', value: fe(best.annual ?? 0) }]}/>
+            <ToolHero primary={{ label: en ? E.cheapest : 'Φθηνότερο τον μήνα', value: fe(best.monthly) }}
+              secondary={[{ label: en ? E.perYearShort : 'Τον χρόνο', value: fe(best.annual ?? 0) }]}/>
             <p style={{ margin: '12px 0 0', fontSize: 14, lineHeight: 1.55, color: 'var(--text-secondary)', textWrap: 'pretty' }}>
-              <strong style={{ color: 'var(--text-primary)' }}>{best.t.providerLabel} {best.t.name}</strong>
-              {' '}για {kwhLine}. {BADGE_MEANING[best.t.badge] ?? ''}.
+              <strong style={{ color: 'var(--text-primary)' }}>{providerName(best)} {best.t.name}</strong>
+              {en ? <>{E.forUsage(kwhLine)}{E.meaning(best.t.badge)}.</> : <>{' '}για {kwhLine}. {BADGE_MEANING[best.t.badge] ?? ''}.</>}
             </p>
-            <LiveResult say={`Φθηνότερο τον μήνα ${fe(best.monthly)}, με ${best.t.providerLabel} ${best.t.name}. Τον χρόνο ${fe(best.annual ?? 0)}.`}/>
+            <LiveResult say={en ? E.sayBest(fe(best.monthly), `${providerName(best)} ${best.t.name}`, fe(best.annual ?? 0)) : `Φθηνότερο τον μήνα ${fe(best.monthly)}, με ${best.t.providerLabel} ${best.t.name}. Τον χρόνο ${fe(best.annual ?? 0)}.`}/>
           </>
         ) : (
           <>
@@ -183,20 +201,21 @@ export function PowerCompare({ serverToday, cta }: {
             }}>
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: 'var(--text-primary)', textWrap: 'pretty' }}>
                 <strong>{stale.lead}</strong>{' '}
-                {stale.body} Τις τρέχουσες τιμές τις δημοσιεύει η{' '}
-                <a href={RAAEY_COMPARE} target="_blank" rel="noopener noreferrer" title={RAAEY_NAME}
+                {stale.body} {en ? E.staleLink[0] : <>Τις τρέχουσες τιμές τις δημοσιεύει η{' '}</>}
+                <a href={RAAEY_COMPARE} target="_blank" rel="noopener noreferrer" title={en ? undefined : RAAEY_NAME}
                   className="lp-link" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
-                  ΡΑΑΕΥ στο επίσημο εργαλείο σύγκρισης
-                </a>.
+                  {en ? E.staleLink[1] : 'ΡΑΑΕΥ στο επίσημο εργαλείο σύγκρισης'}
+                </a>{en ? E.staleLink[2] : '.'}
               </p>
             </div>
             {priced.length > 0 && (
               <p style={{ margin: '14px 0 0', fontSize: 14, lineHeight: 1.55, color: 'var(--text-secondary)' }}>
+                {en ? <>{E.range(fe(low), fe(high), kwhLine)[0]}<strong style={{ fontFamily: T.font.num, color: 'var(--text-primary)' }}>{fe(low)}</strong>{E.range(fe(low), fe(high), kwhLine)[2]}<strong style={{ fontFamily: T.font.num, color: 'var(--text-primary)' }}>{fe(high)}</strong>{E.range(fe(low), fe(high), kwhLine)[4]}</> : <>
                 Ενδεικτικά, από <strong style={{ fontFamily: T.font.num, color: 'var(--text-primary)' }}>{fe(low)}</strong> έως{' '}
-                <strong style={{ fontFamily: T.font.num, color: 'var(--text-primary)' }}>{fe(high)}</strong> τον μήνα για {kwhLine}.
+                <strong style={{ fontFamily: T.font.num, color: 'var(--text-primary)' }}>{fe(high)}</strong> τον μήνα για {kwhLine}.</>}
               </p>
             )}
-            <LiveResult say={priced.length > 0
+            <LiveResult say={en ? E.sayRange(stale.lead, priced.length > 0 ? fe(low) : undefined, priced.length > 0 ? fe(high) : undefined) : priced.length > 0
               ? `${stale.lead} Ενδεικτικά, χωρίς κατάταξη: από ${fe(low)} έως ${fe(high)} τον μήνα.`
               : `${stale.lead} Ενδεικτικά, χωρίς κατάταξη.`}/>
           </>
@@ -206,8 +225,8 @@ export function PowerCompare({ serverToday, cta }: {
           <>
             <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 8px' }}/>
             <p style={{ margin: '0 0 4px', fontSize: 13, color: 'var(--text-tertiary)' }}>
-              {r.rows.length} τιμολόγια για {kwhLine}
-              {r.recommend ? ', με σειρά από το φθηνότερο.' : ', αλφαβητικά κατά πάροχο.'}
+              {en ? E.count(r.rows.length, kwhLine, r.recommend) : <>{r.rows.length} τιμολόγια για {kwhLine}
+              {r.recommend ? ', με σειρά από το φθηνότερο.' : ', αλφαβητικά κατά πάροχο.'}</>}
             </p>
             {/* ΜΙΑ ΓΡΑΜΜΗ ΑΝΑ ΤΙΜΟΛΟΓΙΟ, ΤΟ ΠΟΣΟ ΔΕΞΙΑ. Ιδια διάταξη με την
                 κατάταξη του πίνακα ελέγχου (`.tariff-row`): στο κινητό οι δύο
@@ -226,27 +245,27 @@ export function PowerCompare({ serverToday, cta }: {
                   </span>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {x.t.providerLabel}
+                      {providerName(x)}
                       <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>{' '}{x.t.name}</span>
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.5 }}>
-                      <span title={BADGE_MEANING[x.t.badge]} style={{ color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em' }}>{x.t.badge}</span>
-                      {' · '}{bindRefs(facts(x.t, ebill).join(' · '))}
+                      <span title={en ? E.meaning(x.t.badge) : BADGE_MEANING[x.t.badge]} style={{ color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.05em' }}>{en ? E.badge(x.t.badge) : x.t.badge}</span>
+                      {' · '}{en ? E.facts(x.t, ebill).join(' · ') : bindRefs(facts(x.t, ebill).join(' · '))}
                     </div>
                     {x.unranked && (
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.5 }}>
-                        {UNRANKED_WHY[x.unranked]}.
+                        {en ? E.unranked(x.unranked) : UNRANKED_WHY[x.unranked]}.
                       </div>
                     )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 15, fontWeight: x.rank === 1 ? 700 : 600, fontFamily: T.font.num,
                       fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', lineHeight: 1.2 }}>
-                      {x.monthly !== null ? fe(x.monthly) : 'Χωρίς ποσό'}
+                      {x.monthly !== null ? fe(x.monthly) : (en ? E.noAmount : 'Χωρίς ποσό')}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4, fontFamily: T.font.num,
                       fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                      {x.annual !== null ? `${fe(x.annual)} τον χρόνο` : 'Εκτός σειράς'}
+                      {x.annual !== null ? (en ? E.perYearOf(fe(x.annual)) : `${fe(x.annual)} τον χρόνο`) : (en ? E.outOfRank : 'Εκτός σειράς')}
                     </div>
                   </div>
                 </li>
@@ -265,20 +284,21 @@ export function PowerCompare({ serverToday, cta }: {
                 (globals.css), όπως το `.po-secured`· η γραμμή ψηλώνει, οπότε οι
                 στόχοι δεν επικαλύπτονται. Στο ποντίκι η πρόταση μένει ίδια. */}
             <p style={{ margin: '14px 0 0', fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)', textWrap: 'pretty' }}>
-              Πριν υπογράψεις, επιβεβαίωσε την τιμή στη σελίδα του παρόχου:{' '}
+              {en ? E.confirm : <>Πριν υπογράψεις, επιβεβαίωσε την τιμή στη σελίδα του παρόχου:{' '}</>}
               {PROVIDERS.map((pr, i) => (
                 <Fragment key={pr.value}>
                   {i > 0 && ', '}
                   <a href={pr.url} target="_blank" rel="noopener noreferrer" className="lp-link po-tap"
-                    title={`Οι τιμές του παρόχου ${pr.label}, στη σελίδα του`}
-                    style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{pr.label}</a>
+                    title={en ? E.providerTitle(E.provider(pr.value, pr.label)) : `Οι τιμές του παρόχου ${pr.label}, στη σελίδα του`}
+                    style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{en ? E.provider(pr.value, pr.label) : pr.label}</a>
                 </Fragment>
               ))}.
             </p>
             {r.rows.length > VISIBLE && (
               <div className="po-noprint" style={{ marginTop: 12 }}>
                 <Btn field onClick={() => setAll(s => !s)} expanded={all}>
-                  {all ? `Δείξε μόνο τα πρώτα ${VISIBLE}` : `Δείξε και τα υπόλοιπα ${r.rows.length - VISIBLE} τιμολόγια`}
+                  {en ? (all ? E.showFirst(VISIBLE) : E.showRest(r.rows.length - VISIBLE))
+                    : (all ? `Δείξε μόνο τα πρώτα ${VISIBLE}` : `Δείξε και τα υπόλοιπα ${r.rows.length - VISIBLE} τιμολόγια`)}
                 </Btn>
               </div>
             )}
@@ -286,7 +306,7 @@ export function PowerCompare({ serverToday, cta }: {
         )}
       </div>
 
-      <ToolActions path={PATH} spec={SPEC} values={v}/>
+      <ToolActions path={path} spec={SPEC} values={v}/>
 
       {/* ── ΤΙ ΜΕΤΡΑΕΙ ΤΟ ΠΟΣΟ ΚΑΙ ΤΙ ΟΧΙ ─────────────────────────────────────
           Γράφει ΑΚΡΙΒΩΣ ό,τι κάνει ο τύπος του lib/energy/tariff.ts: προμήθεια,
@@ -296,7 +316,10 @@ export function PowerCompare({ serverToday, cta }: {
         marginTop: T.sp.xl, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
-        <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+        {en ? <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+          <strong style={{ color: 'var(--text-primary)' }}>{E.scopeLead}</strong>{' '}
+          {E.scope(feRate(ETMEAR), fpRate(ELECTRICITY_VAT_PCT))}<strong>{E.scopeStrong}</strong>{E.scopeEnd}
+        </p> : <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
           <strong style={{ color: 'var(--text-primary)' }}>Τι περιλαμβάνει και τι όχι.</strong>{' '}
           Το ποσό είναι η χρέωση του προμηθευτή (πάγιο και ενέργεια) μαζί με το ΕΤΜΕΑΡ
           ({feRate(ETMEAR)} ανά κιλοβατώρα), με ΦΠΑ {fpRate(ELECTRICITY_VAT_PCT)} και στα δύο. Στα πακέτα σταθερού ποσού
@@ -308,10 +331,10 @@ export function PowerCompare({ serverToday, cta }: {
           προωθητικές τιμές δεν μετρούν. Δεν συγκρίνονται τα δυναμικά τιμολόγια, τα φοιτητικά
           και όσα εκκαθαρίζονται δύο φορές τον χρόνο. Είναι <strong>εκτίμηση</strong> για να ξέρεις
           την τάξη μεγέθους· πριν υπογράψεις, επιβεβαίωσε την τιμή στη σελίδα του παρόχου.
-        </p>
+        </p>}
       </div>
 
-      <ToolPaperFoot path={PATH} spec={SPEC} values={v}/>
+      <ToolPaperFoot path={path} spec={SPEC} values={v}/>
 
       {cta}
     </div>

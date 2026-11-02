@@ -225,9 +225,9 @@ function footFor(locale: Locale) {
         { label: CHROME_EN.nav.calcs, links: [...enTools().map(t => [t.href, t.label] as [string, string]), ...enLinks([['/ergaleia', CHROME_EN.nav.allTools]])] },
         { label: e.guides, links: enLinks(e.guideLinks) },
         // Η ΥΠΑΝΑΧΩΡΗΣΗ ΜΕΝΕΙ ΚΑΙ ΣΤΑ ΑΓΓΛΙΚΑ. Το άρθ. 11α της Οδηγίας 2011/83/ΕΕ
-        // θέλει τη λειτουργία εμφανή σε κάθε σελίδα· η φόρμα υπάρχει στα
-        // ελληνικά και ο σύνδεσμος το λέει.
-        { label: e.trust, links: [...enLinks(e.trustLinks), ['/ypanaxorisi', e.withdraw] as [string, string]] },
+        // θέλει τη λειτουργία εμφανή σε κάθε σελίδα· από 03.11.2026 η φόρμα
+        // υπάρχει και στα αγγλικά (/en/withdrawal, ζεύγος στο PAGE_PAIRS).
+        { label: e.trust, links: enLinks([...e.trustLinks, ['/ypanaxorisi', e.withdraw]]) },
       ],
     };
   }

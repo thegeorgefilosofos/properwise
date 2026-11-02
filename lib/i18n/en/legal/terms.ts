@@ -20,6 +20,7 @@ import { TRIAL_PLAN, EARLY_ACCESS_DAYS, PROFESSIONAL_MIN_PLAN } from '@/lib/bill
 import { fmtFor } from '@/lib/core/format';
 import { billingWordsEn } from '@/lib/legal/billingWords';
 import { WITHDRAWAL_PATH } from '@/lib/legal/withdrawalLabels';
+import { enPathFor } from '@/lib/i18n/paths';
 import { activeSubprocessors, plannedSubprocessors, type Subprocessor } from '@/lib/legal/subprocessors';
 import { siteUrl } from '@/lib/core/site';
 import { INVITE_LIMITS } from '@/lib/data/accountantInvites';
@@ -109,7 +110,7 @@ export function termsSectionsEn(): LegalSection[] {
     { h: 'Right of withdrawal', id: 'ypanachorisi', p: [
       'As a consumer you have the right to withdraw within 14 days of the conclusion of the contract, without giving a reason, under Greek Law 2251/1994 and Directive 2011/83/EU.',
       words.withdrawal,
-      `The simplest way is the “${WITHDRAW_EN}” function on the page ${siteUrl(WITHDRAWAL_PATH)} (in Greek), which also appears in the footer of every page and in your Account, under Subscription. It works without signing in too. You fill in your name, your email and the contract, see the whole declaration and submit it with “${WITHDRAW_CONFIRM_EN}”. You immediately receive by email an acknowledgement with the content of the declaration and the date and time of submission. If you have a subscription and are signed in, its renewal is cancelled immediately.`,
+      `The simplest way is the “${WITHDRAW_EN}” function on the page ${siteUrl(enPathFor(WITHDRAWAL_PATH) ?? WITHDRAWAL_PATH)}, which also appears in the footer of every page and in your Account, under Subscription. It works without signing in too. You fill in your name, your email and the contract, see the whole declaration and submit it with “${WITHDRAW_CONFIRM_EN}”. You immediately receive by email an acknowledgement with the content of the declaration and the date and time of submission. If you have a subscription and are signed in, its renewal is cancelled immediately.`,
       `You can also send us a clear statement at ${support} before the period expires, preferably from your account’s email address so that we can find it immediately.${words.withdrawalVia ? ` ${words.withdrawalVia}` : ''} No reason or special form is needed. For example: “I withdraw from the PROPERWISE subscription contract I concluded on [date], with the account [email].” The deadline is met if the statement is sent before it expires, even if we read it later.`,
       'You can also use the model withdrawal form provided by law. Complete it and send it only if you wish to withdraw from the contract:',
     ], form: {
