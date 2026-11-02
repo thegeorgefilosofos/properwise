@@ -418,7 +418,7 @@ export default function LoanDocScan({ banks, euribor, defaultPropertyValue, onAp
                 <div style={{ minWidth: 0 }}>
                   <p style={{ ...TT.label, color: 'var(--accent)', marginBottom: 4 }}>Προτεινόμενο δάνειο</p>
                   <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', fontFamily: font, letterSpacing: '-0.01em' }}>{best.bankName}{best.spitiMouApplied ? ' · Σπίτι μου ΙΙ' : ''}</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, fontFamily: font, lineHeight: 1.5 }}>{best.eligible ? best.why : best.blockers.join(' · ')}</p>
+                  <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', marginTop: 4, fontFamily: font, lineHeight: 1.5 }}>{best.eligible ? best.why : best.blockers.join(' · ')}</p>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent)', fontFamily: font, fontVariantNumeric: 'tabular-nums', lineHeight: 1, letterSpacing: '-0.02em' }}>{fmtPct(best.effectiveRatePct)}</p>

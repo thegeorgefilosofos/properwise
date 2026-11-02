@@ -122,7 +122,7 @@ export function InputsCard({
           </div>
           {!empty && y.grossYield > MAX_ST_GROSS_YIELD_WARN && (
             <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', fontFamily: SANS, lineHeight: 1.5 }}>
+              <p style={{ margin: 0, fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', fontFamily: SANS, lineHeight: 1.5 }}>
                 Η μεικτή απόδοση προκύπτει <strong style={{ color: 'var(--text-primary)' }}>{fp(y.grossYield)}</strong>, ασυνήθιστα υψηλή. Σε ισχυρές τουριστικές αγορές μπορεί να είναι πραγματική· διαφορετικά έλεγξε την αξία και τη μέση τιμή ανά νύχτα.
               </p>
             </div>

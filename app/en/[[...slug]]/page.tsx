@@ -6,10 +6,15 @@ import * as tools from '../tools/view';
 import * as pricing from '../pricing/view';
 import * as privacy from '../privacy/view';
 import * as terms from '../terms/view';
+import * as trust from '../trust/view';
+import * as withdrawal from '../withdrawal/view';
 import * as guides from '../guides/view';
 import * as guideEnfia from '../guides/how-enfia-is-calculated/view';
 import * as guideNetYield from '../guides/net-rental-yield/view';
 import * as guideRentalTax from '../guides/greek-rental-income-tax-2026/view';
+import * as guideAirbnb from '../guides/airbnb-tax-greece-2026/view';
+import * as guideStr from '../guides/short-term-rental-registry-greece/view';
+import * as guideEnfiaPay from '../guides/enfia-payment-instalments-certificate/view';
 import * as enfia from '../enfia-calculator/view';
 import * as mortgage from '../mortgage-calculator/view';
 import * as purchase from '../property-purchase-costs/view';
@@ -17,6 +22,10 @@ import * as reno from '../renovation-tax-credit-calculator/view';
 import * as rentTax from '../rental-income-tax-calculator/view';
 import * as rentYield from '../rental-yield-calculator/view';
 import * as shortLong from '../short-term-vs-long-term-rental/view';
+import * as raise from '../rent-increase-calculator/view';
+import * as e2 from '../form-e2-guide/view';
+import * as power from '../electricity-tariffs/view';
+import * as deadlines from '../tax-deadlines/view';
 import * as login from '../login/view';
 import * as loginFrame from '../login/frame';
 import * as signup from '../signup/view';
@@ -56,10 +65,15 @@ const PAGES = new Map<string, { view: View; frame?: Frame }>([
   ['/en/pricing', { view: pricing }],
   ['/en/privacy', { view: privacy }],
   ['/en/terms', { view: terms }],
+  ['/en/trust', { view: trust }],
+  ['/en/withdrawal', { view: withdrawal }],
   ['/en/guides', { view: guides }],
   ['/en/guides/how-enfia-is-calculated', { view: guideEnfia }],
   ['/en/guides/net-rental-yield', { view: guideNetYield }],
   ['/en/guides/greek-rental-income-tax-2026', { view: guideRentalTax }],
+  ['/en/guides/airbnb-tax-greece-2026', { view: guideAirbnb }],
+  ['/en/guides/short-term-rental-registry-greece', { view: guideStr }],
+  ['/en/guides/enfia-payment-instalments-certificate', { view: guideEnfiaPay }],
   ['/en/enfia-calculator', { view: enfia }],
   ['/en/mortgage-calculator', { view: mortgage }],
   ['/en/property-purchase-costs', { view: purchase }],
@@ -67,6 +81,10 @@ const PAGES = new Map<string, { view: View; frame?: Frame }>([
   ['/en/rental-income-tax-calculator', { view: rentTax }],
   ['/en/rental-yield-calculator', { view: rentYield }],
   ['/en/short-term-vs-long-term-rental', { view: shortLong }],
+  ['/en/rent-increase-calculator', { view: raise }],
+  ['/en/form-e2-guide', { view: e2 }],
+  ['/en/electricity-tariffs', { view: power }],
+  ['/en/tax-deadlines', { view: deadlines }],
   ['/en/login', { view: login, frame: loginFrame }],
   ['/en/signup', { view: signup, frame: signupFrame }],
   ['/en/reset-password', { view: reset, frame: resetFrame }],

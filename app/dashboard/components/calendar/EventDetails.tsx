@@ -75,7 +75,7 @@ export function EventDetails({ event, interactive = false, header = true }: {
         </div>
       )}
       {p.summary && (
-        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textWrap: 'pretty' }}>{p.summary}</p>
+        <p style={{ margin: 0, fontSize: 'var(--fs-note)', lineHeight: 1.5, color: 'var(--text-secondary)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textWrap: 'pretty' }}>{p.summary}</p>
       )}
       {rows.length > 0 && (
         <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', columnGap: 12, rowGap: 4, fontSize: 12, lineHeight: 1.5, paddingTop: 8, borderTop: '1px solid var(--border-subtle)' }}>

@@ -155,7 +155,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
         </ul>
       )}
       {incomplete && items.length > 0 && (
-        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-tertiary)', margin: '4px 0 8px' }}>Η λίστα μπορεί να μην είναι πλήρης.</p>
+        <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '4px 0 8px' }}>Η λίστα μπορεί να μην είναι πλήρης.</p>
       )}
 
       {/* Το υπόλοιπο της λίστας ΔΕΝ ξαναγράφεται εδώ: ζει στις «Εκκρεμότητες»,

@@ -36,7 +36,7 @@ export function Section({title,sub,children,defaultOpen=false,badge}:{title:stri
             <p style={{fontSize:14,color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:600}}>{title}</p>
             {badge&&<span style={{fontSize: 'var(--fs-xs)',padding:'2px 7px',borderRadius: T.radius.chip,background:'var(--bg-surface)',color:'var(--text-secondary)',border:'1px solid var(--border-subtle)',fontFamily: T.font.sans,fontWeight:500}}>{badge}</span>}
           </div>
-          {sub&&<p style={{fontSize:12,color:'var(--text-secondary)',marginTop: 4,lineHeight:1.4,fontFamily: T.font.sans}}>{sub}</p>}
+          {sub&&<p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',marginTop: 4,lineHeight:1.4,fontFamily: T.font.sans}}>{sub}</p>}
         </div>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" aria-hidden="true" style={{transform:open?'rotate(180deg)':'none',transition:'transform 0.2s',flexShrink:0}}><polyline points="6 9 12 15 18 9"/></svg>
       </button>

@@ -648,7 +648,7 @@ export default function Dashboard() {
                       <SecHdr label="Σύγκριση ακινήτων"/>
                       {canCompare(properties)
                         ? <TabComparison properties={properties} userId={user.id} onNavigate={(t)=>setNav(t)} profileType={effProfileType}/>
-                        : <p style={{fontSize:'var(--fs-sm)',color:'var(--text-secondary)',fontFamily:T.font.sans,lineHeight:1.55}}>Δεν υπάρχουν δύο ακίνητα ίδιου τύπου για σύγκριση. Η σύγκριση βάζει δίπλα-δίπλα ακίνητα της ίδιας αγοράς.</p>}
+                        : <p style={{fontSize:'var(--fs-note)',color:'var(--text-secondary)',fontFamily:T.font.sans,lineHeight:1.55}}>Δεν υπάρχουν δύο ακίνητα ίδιου τύπου για σύγκριση. Η σύγκριση βάζει δίπλα-δίπλα ακίνητα της ίδιας αγοράς.</p>}
                       {/* Η ΠΡΟΣΚΛΗΣΗ ΜΟΝΟ ΣΕ ΟΠΟΙΟΝ ΜΠΟΡΕΙ ΝΑ ΤΗ ΔΕΧΤΕΙ. Ο ιδιώτης
                           δεν αγοράζει το πακέτο της συγκεντρωτικής εικόνας με
                           κανένα πλάνο του προφίλ του· γι' αυτόν η γραμμή ήταν
@@ -801,7 +801,7 @@ export default function Dashboard() {
                       style={{display:'flex',alignItems:'center',gap:12,width:'100%',textAlign:'left',padding:'14px 16px',borderRadius: T.radius.popup,border:'1px solid var(--border-subtle)',background:'var(--bg-elevated)',cursor:'pointer',fontFamily:'inherit'}}>
                       <div style={{minWidth:0,flex:1}}>
                         <p style={{fontSize:14,fontWeight:500,color:'var(--text-primary)',marginBottom:2}}>Άνοιγμα απογραφής</p>
-                        <p style={{fontSize:12,color:'var(--text-tertiary)',lineHeight:1.5}}>Ό,τι υπάρχει μέσα στο ακίνητο, με την αξία του, την εγγύησή του και το πρωτόκολλο παράδοσης.</p>
+                        <p style={{fontSize: 'var(--fs-note)',color:'var(--text-tertiary)',lineHeight:1.5}}>Ό,τι υπάρχει μέσα στο ακίνητο, με την αξία του, την εγγύησή του και το πρωτόκολλο παράδοσης.</p>
                       </div>
                       <svg aria-hidden="true" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M9 18l6-6-6-6"/></svg>
                     </button>

@@ -223,19 +223,19 @@ function Row({ r, checked, onToggle, attribute, fromData }: {
           <span style={{ fontSize: 14, fontWeight: 600, fontFamily: T.font.sans, lineHeight: 1.35, color: checked ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{r.title}</span>
           {r.blocking && !checked && <Badge>Απαραίτητο</Badge>}
         </div>
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>{r.why}</p>
+        <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>{r.why}</p>
         {/* ΑΠΟ ΠΟΙΟ ΑΚΙΝΗΤΟ. Ο φάκελος είναι ένας για όλο το χαρτοφυλάκιο και ζει
             στη σελίδα ενός ακινήτου· χωρίς το όνομα, η δήλωση μίσθωσης ενός
             άλλου διαμερίσματος διαβαζόταν ως δική του. */}
         {fromData && (
-          <p style={{ fontSize: 12, color: checked ? 'var(--text-tertiary)' : 'var(--text-secondary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>
+          <p style={{ fontSize: 'var(--fs-note)', color: checked ? 'var(--text-tertiary)' : 'var(--text-secondary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>
             {checked
               ? 'Από τα στοιχεία των ακινήτων σου.'
               : `Λείπει από τα στοιχεία: ${(fromData.missingFor ?? []).join(', ')}. Συμπλήρωσέ το στα στοιχεία του ακινήτου.`}
           </p>
         )}
         {attribute && r.forProperties && r.forProperties.length > 0 && (
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>Για: {r.forProperties.join(', ')}</p>
+          <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>Για: {r.forProperties.join(', ')}</p>
         )}
         {/* ΤΟ «ΠΟΥ» ΕΓΙΝΕ ΔΡΟΜΟΣ, ΟΧΙ ΟΝΟΜΑ ΠΥΛΗΣ ΚΑΙ ΓΡΑΦΕΤΑΙ ΙΔΙΑ ΠΑΝΤΟΥ. Η
             διαδρομή του myAADE καθόταν μέσα σε πιλούλα που στο κινητό γινόταν
@@ -243,7 +243,7 @@ function Row({ r, checked, onToggle, attribute, fromData }: {
             σχήματα για την ίδια πληροφορία. Τώρα η διαδρομή είναι κείμενο και ο
             σύνδεσμος μια ενέργεια στο τέλος της. */}
         {(r.aade || r.source) && (
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>
+          <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>
             Πού: {r.aade ? aadePath(r.aade) : r.source}
             {r.aade && (
               <>{' · '}<a className="po-tap-inline" href={AADE_DESTINATIONS[r.aade].url} target="_blank" rel="noopener noreferrer" title={aadeTitle(r.aade)}
@@ -469,7 +469,7 @@ export default function AccountantDossier({
             κάνει κάτι γι' αυτό. ═════════════════════════════════════ */}
 
         {appIds.length > 0 && (
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '12px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '12px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
             {/* Τα έτοιμα ΜΕΤΡΟΥΝ ήδη στο «x / y» από πάνω· όσα περιμένουν δεδομένα
                 λένε τι περιμένουν, αντί να μετρηθούν ως έτοιμα. */}
             {appDone.length > 0 && <>{appDone.length === 1 ? `Το ένα από τα ${ready.total} το βγάζουμε` : `Τα ${appDone.length} από τα ${ready.total} τα βγάζουμε`} ήδη από τα δεδομένα σου.</>}
@@ -526,7 +526,7 @@ export default function AccountantDossier({
 
         {error && (
           <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', margin: '12px 0 0' }}>
-            <p style={{ flex: 1, minWidth: 220, fontSize: 12, color: 'var(--negative)', margin: 0, fontFamily: T.font.sans, lineHeight: 1.5 }}>
+            <p style={{ flex: 1, minWidth: 220, fontSize: 'var(--fs-note)', color: 'var(--negative)', margin: 0, fontFamily: T.font.sans, lineHeight: 1.5 }}>
               {error}
             </p>
             <Btn variant="secondary" onClick={retry}>Δοκίμασε ξανά</Btn>
@@ -565,7 +565,7 @@ export default function AccountantDossier({
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, paddingBottom: 4 }}>
               <div style={{ minWidth: 0 }}>
                 <p style={eyebrow}>{g.label}</p>
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '5px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+                <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '5px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
                   {g.who === 'owner'
                     ? 'Τα μόνα που ζητούν ενέργεια από εσένα. Σημείωσε ό,τι έχεις ήδη βρει.'
                     : 'Τα ετοιμάζει ο λογιστής από όσα του δίνεις. Σημείωσε ό,τι έχει ήδη γίνει.'}
@@ -587,7 +587,7 @@ export default function AccountantDossier({
       {warnings.length > 0 && (
         <div style={card}>
           <p style={eyebrow}>Πριν τον στείλεις</p>
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '5px 0 14px', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '5px 0 14px', fontFamily: T.font.sans, lineHeight: 1.5 }}>
             {warnings.length === 1 ? 'Ένα σημείο που κοστίζει όταν πάει στραβά.' : `${warnings.length} σημεία που κοστίζουν όταν πάνε στραβά.`}
           </p>
           {/* ΤΡΕΙΣ ΣΤΗΛΕΣ, ΣΤΑΘΕΡΑ. Με ελάχιστο 210 το πλέγμα έβγαζε τέσσερις
@@ -601,7 +601,7 @@ export default function AccountantDossier({
             {warnings.map(t => (
               <div key={t.title} style={{ paddingLeft: 12, borderLeft: '2px solid var(--border-default)' }}>
                 <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', margin: 0, fontFamily: T.font.sans, lineHeight: 1.4 }}>{t.title}</p>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '4px 0 0', fontFamily: T.font.sans, lineHeight: 1.55 }}>{t.trap}</p>
+                <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', margin: '4px 0 0', fontFamily: T.font.sans, lineHeight: 1.55 }}>{t.trap}</p>
               </div>
             ))}
           </div>
@@ -614,7 +614,7 @@ export default function AccountantDossier({
           <ChevronRight size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0, transform: assumptionsOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s' }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={eyebrow}>Από τι βγαίνει αυτή η λίστα</p>
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0', fontFamily: T.font.sans }}>
+            <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '4px 0 0', fontFamily: T.font.sans }}>
               {LEGAL_FORM_LABEL[profile.form]} · {BOOKS_LABEL[profile.books]}
               {properties.length > 0 && ` · ${properties.length === 1 ? '1 ακίνητο' : `${properties.length} ακίνητα`}`}
             </p>
@@ -624,7 +624,7 @@ export default function AccountantDossier({
         {assumptionsOpen && (
           <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: T.font.sans }}>Νομική μορφή</p>
+              <p style={{ fontSize: 'var(--fs-note)', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: T.font.sans }}>Νομική μορφή</p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {(Object.keys(LEGAL_FORM_LABEL) as LegalForm[]).map(f => (
                   <ChipToggle key={f} on={profile.form === f} onClick={() => setProfile({ form: f })}>{LEGAL_FORM_LABEL[f]}</ChipToggle>
@@ -635,20 +635,20 @@ export default function AccountantDossier({
             {/* Τα βιβλία υπάρχουν μόνο όπου υπάρχουν. Ο ιδιώτης δεν βλέπει τη λέξη. */}
             {profile.form !== 'individual' && (
               <div>
-                <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: T.font.sans }}>Βιβλία</p>
+                <p style={{ fontSize: 'var(--fs-note)', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: T.font.sans }}>Βιβλία</p>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {(['single_entry', 'double_entry'] as BookKeeping[]).map(b => (
                     <ChipToggle key={b} on={profile.books === b} onClick={() => setProfile({ books: b })}>{BOOKS_LABEL[b]}</ChipToggle>
                   ))}
                 </div>
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '8px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+                <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '8px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
                   Ο ισολογισμός και το προσάρτημα υπάρχουν μόνο στα διπλογραφικά. Οι ΟΕ/ΕΕ περνούν σε διπλογραφικά πάνω από όριο τζίρου.
                 </p>
               </div>
             )}
 
             <div>
-              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: T.font.sans }}>Μέσα στο {year}</p>
+              <p style={{ fontSize: 'var(--fs-note)', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: T.font.sans }}>Μέσα στο {year}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {([
                   ['hasRenovation', 'Έγιναν εργασίες ανακαίνισης ή βελτίωσης', 'Προσθέτει τα τιμολόγια και τις άδειες που ζητά ο λογιστής.'],
@@ -659,7 +659,7 @@ export default function AccountantDossier({
                     <SelectBox checked={!!profile[key]} onChange={() => setProfile({ [key]: !profile[key] } as Partial<DossierProfile>)} label={label} />
                     <div style={{ minWidth: 0 }}>
                       <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', margin: 0, fontFamily: T.font.sans, lineHeight: 1.4 }}>{label}</p>
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '2px 0 0', fontFamily: T.font.sans, lineHeight: 1.45 }}>{hint}</p>
+                      <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '2px 0 0', fontFamily: T.font.sans, lineHeight: 1.45 }}>{hint}</p>
                     </div>
                   </div>
                 ))}
@@ -668,7 +668,7 @@ export default function AccountantDossier({
 
             {properties.length > 0 && (
               <div>
-                <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: T.font.sans }}>Τα ακίνητά σου</p>
+                <p style={{ fontSize: 'var(--fs-note)', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: T.font.sans }}>Τα ακίνητά σου</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {properties.map((p, i) => (
                     <div key={`${p.name}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--fs-base)', fontFamily: T.font.sans }}>
@@ -677,7 +677,7 @@ export default function AccountantDossier({
                     </div>
                   ))}
                 </div>
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '8px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+                <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '8px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
                   Η κατάσταση κάθε ακινήτου ορίζει τι ζητά ο λογιστής. Αλλάζει από την Επισκόπηση του ακινήτου.
                 </p>
               </div>

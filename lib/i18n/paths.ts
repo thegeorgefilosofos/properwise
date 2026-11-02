@@ -27,6 +27,8 @@ export const PAGE_PAIRS = [
   ['/reset-password', '/en/reset-password'],
   ['/privacy', '/en/privacy'],
   ['/terms', '/en/terms'],
+  ['/trust', '/en/trust'],
+  ['/ypanaxorisi', '/en/withdrawal'],
   ['/ypologismos-enfia', '/en/enfia-calculator'],
   ['/ypologismos-forou-enoikion', '/en/rental-income-tax-calculator'],
   ['/kathari-apodosi', '/en/rental-yield-calculator'],
@@ -34,10 +36,17 @@ export const PAGE_PAIRS = [
   ['/ypologismos-stegastikou-daneiou', '/en/mortgage-calculator'],
   ['/exoda-agoras-akinitou', '/en/property-purchase-costs'],
   ['/ypologismos-ekptosis-anakainisis', '/en/renovation-tax-credit-calculator'],
+  ['/anaprosarmogi-enoikiou', '/en/rent-increase-calculator'],
+  ['/symplirosi-e2', '/en/form-e2-guide'],
+  ['/sygkrisi-timologion-revmatos', '/en/electricity-tariffs'],
+  ['/prothesmies', '/en/tax-deadlines'],
   ['/odigos', '/en/guides'],
   ['/odigos/forologia-enoikion-2026', '/en/guides/greek-rental-income-tax-2026'],
   ['/odigos/pos-ypologizetai-o-enfia', '/en/guides/how-enfia-is-calculated'],
   ['/odigos/kathari-apodosi-akinitou', '/en/guides/net-rental-yield'],
+  ['/odigos/airbnb-takk-2026', '/en/guides/airbnb-tax-greece-2026'],
+  ['/odigos/vraxyxronia-ama-prodiagrafes-2026', '/en/guides/short-term-rental-registry-greece'],
+  ['/odigos/enfia-2026-pliromi-doseis-pistopoiitiko', '/en/guides/enfia-payment-instalments-certificate'],
 ] as const satisfies readonly (readonly [string, string])[];
 
 const EL_TO_EN = new Map<string, string>(PAGE_PAIRS.map(([el, en]) => [el, en]));

@@ -141,7 +141,7 @@ export function SavedLoans({ savedLoans, exportSavedLoans, deleteLoan }: Pick<Lo
                 ))}
               </div>
               {combinedLtv>0&&(
-                <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,marginTop:10}}>
+                <p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily: T.font.sans,marginTop:10}}>
                   Συνολικό δάνειο προς αξία σήμερα <strong style={{color:'var(--text-primary)',fontVariantNumeric:'tabular-nums'}}>{fp(combinedLtv)}</strong>
                 </p>
               )}
@@ -193,7 +193,7 @@ export function SavedLoans({ savedLoans, exportSavedLoans, deleteLoan }: Pick<Lo
                   {LOAN_TYPES[loan.loan_type as LoanType]&&<span style={{fontSize: 'var(--fs-xs)',padding:'2px 8px',borderRadius: T.radius.chip,background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',color:'var(--text-secondary)',fontFamily:T.font.sans}}>{LOAN_TYPES[loan.loan_type as LoanType].label}</span>}
                   {loan.status!=='active'&&<span style={{fontSize: 'var(--fs-xs)',padding:'2px 8px',borderRadius: T.radius.chip,background:'var(--bg-elevated)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>Ανενεργό</span>}
                 </div>
-                {loan.notes&&<p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>{loan.notes}</p>}
+                {loan.notes&&<p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily:T.font.sans}}>{loan.notes}</p>}
               </div>
               {/* Ήταν «×» — το σύμβολο του κλεισίματος, πάνω δεξιά, εκεί ακριβώς
                   όπου ο χρήστης το πατά για να ΦΥΓΕΙ. Διέγραφε το δάνειο. */}
@@ -286,7 +286,7 @@ export function SavedLoans({ savedLoans, exportSavedLoans, deleteLoan }: Pick<Lo
                   {meta.map(([k,v,strong])=>(
                     <div key={k} style={{minWidth:0}}>
                       <p style={{...labelStyle,marginBottom:2}}>{k}</p>
-                      <p style={{fontSize:12,color:strong?'var(--text-primary)':'var(--text-secondary)',fontWeight:strong?600:400,fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums'}}>{v}</p>
+                      <p style={{fontSize: 'var(--fs-note)',color:strong?'var(--text-primary)':'var(--text-secondary)',fontWeight:strong?600:400,fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums'}}>{v}</p>
                     </div>
                   ))}
                 </div>

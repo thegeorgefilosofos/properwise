@@ -134,7 +134,7 @@ export function Kpi({ label, value, note, hot, onHover, muted = false }:{
       <p style={muted
         ? { ...TT.kpi, fontWeight:500, color:'var(--text-secondary)', margin:'11px 0 0' }
         : { ...TT.kpi, fontSize:24, color:hot?'var(--accent)':'var(--text-primary)', margin:'11px 0 0', transition:'color 0.15s' }}>{value}</p>
-      <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:'9px 0 0', fontFamily: T.font.sans, lineHeight:1.5 }}>{note}</p>
+      <p style={{ fontSize: 'var(--fs-note)', color:'var(--text-tertiary)', margin:'9px 0 0', fontFamily: T.font.sans, lineHeight:1.5 }}>{note}</p>
     </div>
   )
 }

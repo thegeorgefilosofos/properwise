@@ -159,7 +159,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
         <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'10px 13px',marginTop:-4,
           background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:10}}>
           <svg aria-hidden="true" className="po-lead-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.9" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
-          <p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>
+          <p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>
             Η τροφοδοσία επιτοκίων χρειάζεται έλεγχο: {feedHealth.reason}. Οι τιμές που βλέπεις είναι οι τελευταίες που ήρθαν, με τη δική τους ημερομηνία η καθεμία.
           </p>
         </div>
@@ -247,7 +247,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
           {banksStale&&(
             <div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'11px 14px',background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:10}}>
               <svg aria-hidden="true" className="po-lead-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.9" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
-              <p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{feed.checked && !feed.ok ? `Ο αυτόματος έλεγχος επιτοκίων δεν τρέχει (${feed.reason}). ` : ''}Τα επιτόκια επιβεβαιώθηκαν πριν από {banksAgeDays} ημέρες και ενδέχεται να έχουν αλλάξει. Για δεσμευτική προσφορά επιβεβαίωσε απευθείας με την τράπεζα, στο δελτίο επιτοκίων της που δίνει η σύγκριση παρακάτω.</p>
+              <p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{feed.checked && !feed.ok ? `Ο αυτόματος έλεγχος επιτοκίων δεν τρέχει (${feed.reason}). ` : ''}Τα επιτόκια επιβεβαιώθηκαν πριν από {banksAgeDays} ημέρες και ενδέχεται να έχουν αλλάξει. Για δεσμευτική προσφορά επιβεβαίωσε απευθείας με την τράπεζα, στο δελτίο επιτοκίων της που δίνει η σύγκριση παρακάτω.</p>
             </div>
           )}
           <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
@@ -331,14 +331,14 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                 <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,flexWrap:'wrap',marginBottom:16}}>
                   <div>
                     <p style={{fontSize:16,fontWeight:600,fontFamily: T.font.sans,color:'var(--text-primary)',letterSpacing:'-0.01em'}}>{bank.name}</p>
-                    {bank.note&&<p style={{fontSize:12,color:'var(--text-tertiary)',marginTop: 4,fontFamily: T.font.sans}}>{bank.note}</p>}
+                    {bank.note&&<p style={{fontSize: 'var(--fs-note)',color:'var(--text-tertiary)',marginTop: 4,fontFamily: T.font.sans}}>{bank.note}</p>}
                     {/* ΑΠΟ ΠΟΥ ΕΡΧΟΝΤΑΙ ΤΑ ΝΟΥΜΕΡΑ ΚΑΙ ΠΟΣΟ ΠΑΛΙΟ ΕΙΝΑΙ ΤΟ ΕΓΓΡΑΦΟ.
                         Το δελτίο της Optima είναι του Νοεμβρίου 2025· χωρίς την
                         ημερομηνία του, το «επιβεβαιωμένα» της κεφαλίδας θα το
                         έκανε να μοιάζει σημερινό. Και ο σύνδεσμος βγαίνει μόνο
                         όταν δείχνει στην ίδια την τράπεζα: ένας συγκριτικός
                         ιστότοπος δεν είναι δελτίο της. */}
-                    <p style={{fontSize:12,color:'var(--text-tertiary)',marginTop: 4,fontFamily: T.font.sans}}>
+                    <p style={{fontSize: 'var(--fs-note)',color:'var(--text-tertiary)',marginTop: 4,fontFamily: T.font.sans}}>
                       {isOfficialSource(bank.id, bank.source_url)
                         ? <><a href={bank.source_url} target="_blank" rel="noreferrer" style={{color:'var(--accent)',textDecoration:'none',fontWeight:500}}>Δελτίο επιτοκίων της τράπεζας</a>{bank.source_doc_date ? ` · ισχύς ${grDate(bank.source_doc_date)}` : ' · χωρίς ημερομηνία δελτίου'}</>
                         : 'Δεν βρέθηκε επίσημο δελτίο επιτοκίων'}
@@ -460,7 +460,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
       {openSec==='programs' && (<LensPanel title="Κρατικά προγράμματα" subtitle={openPrograms>0 ? `${openPrograms} ${openPrograms===1?'δέχεται αιτήσεις':'δέχονται αιτήσεις'} από ${activePrograms.length}` : `Κανένα από τα ${activePrograms.length} δεν δέχεται αιτήσεις σήμερα`}>
         <div style={{display:'flex',flexDirection:'column',gap:12}}>
           <div style={{padding:'2px 2px 4px'}}>
-            <p style={{fontSize:12,color:'var(--text-tertiary)',lineHeight:1.6,fontFamily: T.font.sans}}>
+            <p style={{fontSize: 'var(--fs-note)',color:'var(--text-tertiary)',lineHeight:1.6,fontFamily: T.font.sans}}>
               Στοιχεία από επίσημες πηγές{' · '}
               <a href="https://greece20.gov.gr/home-loans/" target="_blank" rel="noreferrer" style={{color:'inherit',textDecoration:'none',fontWeight:500,borderBottom:'1px solid var(--border-default)'}}>greece20.gov.gr</a>{', '}
               {/* ΕΔΩ ΚΑΘΟΤΑΝ ΗΜΕΡΟΜΗΝΙΑ ΠΟΥ ΑΝΗΚΕ ΣΕ ΑΛΛΑ ΔΕΔΟΜΕΝΑ. Ηταν η
@@ -504,8 +504,8 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               {/* Κείμενο αντί για ημερομηνία («Έναρξη αρχές Ιανουαρίου 2027, κατά την
                   ΕΑΤ») δεν χωρά στη γραμμή της κεφαλίδας: στα 320 ξέφευγε 7px.
                   Μπαίνει εδώ, όπου αναδιπλώνεται. */}
-              {deadStr&&!deadIsDate&&<p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,margin:'0 0 8px'}}>{deadStr}</p>}
-              {st.note&&<p className="po-prose po-just" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,marginBottom:12,padding:'9px 12px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:10}}>{hy(<>{st.note}</>)}</p>}
+              {deadStr&&!deadIsDate&&<p style={{fontSize: 'var(--fs-note)',color:'var(--text-tertiary)',fontFamily: T.font.sans,margin:'0 0 8px'}}>{deadStr}</p>}
+              {st.note&&<p className="po-prose po-just" style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily: T.font.sans,marginBottom:12,padding:'9px 12px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:10}}>{hy(<>{st.note}</>)}</p>}
               {/* ΚΛΕΙΣΤΟ ΠΡΟΓΡΑΜΜΑ: Η ΚΑΤΑΣΤΑΣΗ ΚΑΙ Η ΠΗΓΗ, ΟΧΙ ΟΙ ΟΡΟΙ. Η κάρτα
                   έγραφε σήμα «Έκλεισε» και από κάτω «άτοκο 50%», κριτήρια,
                   τράπεζες και «εξοικονόμηση δεκάδων χιλιάδων €»: όροι για κάτι
@@ -539,9 +539,9 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
               </div>
               {(prog.howItWorks||prog.extra||prog.savingsExample)&&(
                 <div style={{padding:'12px 14px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10,marginBottom:12,display:'flex',flexDirection:'column',gap: 8}}>
-                  {prog.howItWorks&&<p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.6,fontFamily: T.font.sans}}>{prog.howItWorks}</p>}
-                  {prog.extra&&<p className="po-prose po-just" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans}}>{hy(<>{prog.extra}</>)}</p>}
-                  {prog.savingsExample&&<p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{prog.savingsExample}</p>}
+                  {prog.howItWorks&&<p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',lineHeight:1.6,fontFamily: T.font.sans}}>{prog.howItWorks}</p>}
+                  {prog.extra&&<p className="po-prose po-just" style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily: T.font.sans}}>{hy(<>{prog.extra}</>)}</p>}
+                  {prog.savingsExample&&<p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{prog.savingsExample}</p>}
                 </div>
               )}
               <div style={{display:'flex',gap: 4,flexWrap:'wrap',marginBottom:14}}>

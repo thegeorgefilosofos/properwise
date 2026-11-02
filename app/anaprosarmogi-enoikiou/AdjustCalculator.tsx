@@ -20,7 +20,7 @@ import { useId, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { T } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
-import { fe, fn, fpRate, grDate } from '@/lib/core/format';
+import { fn as fnEl, fmtFor } from '@/lib/core/format';
 import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { COMMERCIAL_STAMP_DUTY } from '@/lib/billing/commercialLease';
 import { COMMERCIAL_RENT_CAP_2026 as CAP } from '@/lib/documents/rentAdjustment';
@@ -36,6 +36,8 @@ import { ToolNumField, ToolFields, ToolSeg, ToolHero, ToolLedger, ToolStats } fr
 import { ToolSelect } from '@/app/ToolSelect';
 import { SPEC as RENT_SPEC } from '@/app/ypologismos-forou-enoikion/spec';
 import LiveResult from '@/components/LiveResult';
+import { useToolDict, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
+import { localHref } from '@/lib/i18n/paths';
 
 /**
  * Τα πεδία όπως ταξιδεύουν στη διεύθυνση. Ο μήνας και ο ΔΤΚ ξεκινούν κενοί:
@@ -60,15 +62,17 @@ const YEARS_SHOWN = 5;
 
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
+type RaiseEn = NonNullable<ToolEn['raise']>['E'];
+
 /** Οι μήνες του επιλογέα: από τον πρώτο δείκτη του πίνακα ως τον Δεκέμβριο του επόμενου έτους. */
-function monthOptions(today: string): { value: string; label: string }[] {
+function monthOptions(today: string, label: (ym: string) => string = indexMonthLabel): { value: string; label: string }[] {
   const out: { value: string; label: string }[] = [];
   const last = `${Number(today.slice(0, 4)) + 1}-12`;
   let [y, m] = FIRST_MONTH.split('-').map(Number);
   for (;;) {
     const ym = `${y}-${String(m).padStart(2, '0')}`;
     if (ym > last) break;
-    out.push({ value: ym, label: indexMonthLabel(ym) });
+    out.push({ value: ym, label: label(ym) });
     if (++m > 12) { m = 1; y++; }
   }
   return out;
@@ -99,10 +103,10 @@ function ResultCard({ children }: { children: ReactNode }) {
 const NOTE = { margin: '12px 0 0', fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', textWrap: 'pretty' } as const;
 
 /** Η σημείωση κάτω από το ποσοστό μιας γραμμής του πίνακα. */
-function rowFlag(r: AdjustRow): string | null {
-  if (r.capped) return `όριο ${CAP_YEAR}`;
-  if (r.index && !r.index.official) return 'υπόθεση';
-  if (r.index) return 'ΕΛΣΤΑΤ';
+function rowFlag(r: AdjustRow, E?: RaiseEn): string | null {
+  if (r.capped) return E ? E.flagCap(CAP_YEAR) : `όριο ${CAP_YEAR}`;
+  if (r.index && !r.index.official) return E ? E.flagAssumed : 'υπόθεση';
+  if (r.index) return E ? E.flagElstat : 'ΕΛΣΤΑΤ';
   return null;
 }
 
@@ -111,12 +115,17 @@ export function AdjustCalculator({ today, cta }: {
   /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα (`ToolCta`). */
   cta: ReactNode;
 }) {
-  const months = useMemo(() => monthOptions(today), [today]);
+  // Τα αγγλικά από τον πάροχο του /en (lib/i18n/toolEn.ts)· εδώ δεν εισάγεται
+  // κανένα αγγλικό λεξικό, ώστε να μην κατεβαίνει στα ελληνικά.
+  const { en: X, locale } = useToolDict('raise'), en = X !== undefined, E = (X?.E ?? NO_EN) as RaiseEn;
+  const { fe, fn, fpRate, date: grDate } = fmtFor(locale);
+  const monthLabel = en ? E.month : indexMonthLabel;
+  const months = useMemo(() => monthOptions(today, monthLabel), [today, monthLabel]);
   const thisMonth = today.slice(0, 7);
-  const [v, set] = useToolState(SPEC, PATH, x => ({
+  const [v, set] = useToolState(SPEC, localHref(locale, PATH), x => ({
     ...x,
     apo: months.some(o => o.value === x.apo) ? x.apo : (months.some(o => o.value === thisMonth) ? thisMonth : months[months.length - 1].value),
-    dtk: x.dtk || fn(RENT_INDEX[RENT_INDEX_LATEST], 1),
+    dtk: x.dtk || fnEl(RENT_INDEX[RENT_INDEX_LATEST], 1),
   }));
   const ids = { enoikio: useId(), pososto: useId(), dtk: useId(), eti: useId() };
   const [allYears, setAllYears] = useState(false);
@@ -137,75 +146,78 @@ export function AdjustCalculator({ today, cta }: {
 
   const first = plan.rows[0];
   const ready = rent > 0 && !!first && (typedPct !== null || (cpi && plan.rows.every(r => r.index?.official)));
-  const startLabel = indexMonthLabel(v.apo);
+  const startLabel = monthLabel(v.apo);
 
   // ΤΟ ΝΕΟ ΜΙΣΘΩΜΑ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ ΦΟΡΟΥ. Δώδεκα μήνες με το νέο ποσό· η χρονιά
   // μπαίνει μόνο αν είναι μία από όσες προσφέρει εκείνος σήμερα, αλλιώς
   // ανοίγει στη δική του.
   const taxYear = Number(v.apo.slice(0, 4));
-  const taxHref = first ? RENT_TAX + toolQuery(RENT_SPEC, {
-    ...RENT_SPEC, enoikio: fn(first.to, 2), mines: '12',
+  const taxHref = first ? localHref(locale, RENT_TAX) + toolQuery(RENT_SPEC, {
+    ...RENT_SPEC, enoikio: fnEl(first.to, 2), mines: '12',
     etos: offeredIncomeYears(today, FIRST_YEAR_NEW_BRACKETS - 1).includes(taxYear) ? String(taxYear) : '',
-  }) : RENT_TAX;
+  }) : localHref(locale, RENT_TAX);
 
   const clauseRows = (r: AdjustRow) => [
-    { k: 'Τρέχον μίσθωμα', v: fe(r.from) },
+    { k: en ? E.rowCurrent : 'Τρέχον μίσθωμα', v: fe(r.from) },
     r.index && { k: r.index.official
-        ? `ΔΤΚ ${indexMonthLabel(r.ym)} (ΕΛΣΤΑΤ)`
-        : 'ΔΤΚ (υπόθεση, χωρίς ανακοίνωση ακόμη)', v: fpRate(r.index.pct), kind: 'param' as const },
-    r.index && share75 && { k: '75% της μεταβολής, στο δέκατο', v: fpRate(r.clausePct), kind: 'param' as const },
-    !r.index && { k: 'Όρος της σύμβασης', v: fpRate(r.clausePct), kind: 'param' as const },
-    r.capped && r.capPct !== null && { k: `Όριο ${CAP_YEAR}, επαγγελματική μίσθωση`, v: fpRate(r.capPct), kind: 'param' as const },
-    { k: 'Αύξηση τον μήνα', v: fe(r.increase) },
-    { k: `Νέο μίσθωμα από ${grDate(`${r.ym}-01`)}`, v: fe(r.to), kind: 'total' as const },
+        ? (en ? E.rowCpi(monthLabel(r.ym)) : `ΔΤΚ ${indexMonthLabel(r.ym)} (ΕΛΣΤΑΤ)`)
+        : (en ? E.rowCpiAssumed : 'ΔΤΚ (υπόθεση, χωρίς ανακοίνωση ακόμη)'), v: fpRate(r.index.pct), kind: 'param' as const },
+    r.index && share75 && { k: en ? E.row75 : '75% της μεταβολής, στο δέκατο', v: fpRate(r.clausePct), kind: 'param' as const },
+    !r.index && { k: en ? E.rowClause : 'Όρος της σύμβασης', v: fpRate(r.clausePct), kind: 'param' as const },
+    r.capped && r.capPct !== null && { k: en ? E.rowCap(CAP_YEAR) : `Όριο ${CAP_YEAR}, επαγγελματική μίσθωση`, v: fpRate(r.capPct), kind: 'param' as const },
+    { k: en ? E.rowIncrease : 'Αύξηση τον μήνα', v: fe(r.increase) },
+    { k: en ? E.rowNew(grDate(`${r.ym}-01`)) : `Νέο μίσθωμα από ${grDate(`${r.ym}-01`)}`, v: fe(r.to), kind: 'total' as const },
   ];
 
   return (
     <div style={{ fontFamily: T.font.sans }}>
       {/* ── Η ΜΙΣΘΩΣΗ ───────────────────────────────────────────────────── */}
-      <Group title="Η μίσθωση" first>
+      <Group title={en ? E.lease : 'Η μίσθωση'} first>
         <ToolFields>
-          <ToolNumField id={ids.enoikio} label="Τρέχον μίσθωμα" value={v.enoikio}
+          <ToolNumField id={ids.enoikio} label={en ? E.rent : 'Τρέχον μίσθωμα'} value={v.enoikio}
             onChange={x => set('enoikio', x)} unit="€"
-            hint="Το μηνιαίο μίσθωμα πριν από την αναπροσαρμογή."/>
-          <ToolSeg label="Τύπος μίσθωσης" value={v.misthosi} onChange={x => set('misthosi', x)}
-            options={[{ value: 'katoikia', label: 'Κατοικία' }, { value: 'epaggelmatiki', label: 'Επαγγελματική' }]}
+            hint={en ? E.rentHint : 'Το μηνιαίο μίσθωμα πριν από την αναπροσαρμογή.'}/>
+          <ToolSeg label={en ? E.type : 'Τύπος μίσθωσης'} value={v.misthosi} onChange={x => set('misthosi', x)}
+            options={[{ value: 'katoikia', label: en ? E.residential : 'Κατοικία' }, { value: 'epaggelmatiki', label: en ? E.commercial : 'Επαγγελματική' }]}
             hint={commercial
-              ? `Το όριο ${fpRate(CAP.pct)} του ${CAP_YEAR} ισχύει μόνο σε υφιστάμενες επαγγελματικές μισθώσεις.`
-              : 'Η κατοικία δεν έχει κρατικό όριο αναπροσαρμογής: εφαρμόζεται ο όρος της σύμβασης.'}/>
+              ? (en ? E.typeHintCommercial(fpRate(CAP.pct), CAP_YEAR) : `Το όριο ${fpRate(CAP.pct)} του ${CAP_YEAR} ισχύει μόνο σε υφιστάμενες επαγγελματικές μισθώσεις.`)
+              : (en ? E.typeHintResidential : 'Η κατοικία δεν έχει κρατικό όριο αναπροσαρμογής: εφαρμόζεται ο όρος της σύμβασης.')}/>
           {commercial && (
-            <ToolSeg label={`Υπογράφηκε πριν από ${grDate(CAP.from)};`} value={v.yfistameni} onChange={x => set('yfistameni', x)}
-              options={[{ value: 'nai', label: 'Ναι' }, { value: 'oxi', label: 'Όχι' }]}
-              hint={`Σε μίσθωση που υπογράφηκε μέσα στο ${CAP_YEAR} το μίσθωμα διαμορφώνεται ελεύθερα.`}/>
+            <ToolSeg label={en ? E.signedBefore(grDate(CAP.from)) : `Υπογράφηκε πριν από ${grDate(CAP.from)};`} value={v.yfistameni} onChange={x => set('yfistameni', x)}
+              options={[{ value: 'nai', label: en ? E.yes : 'Ναι' }, { value: 'oxi', label: en ? E.no : 'Όχι' }]}
+              hint={en ? E.signedHint(CAP_YEAR) : `Σε μίσθωση που υπογράφηκε μέσα στο ${CAP_YEAR} το μίσθωμα διαμορφώνεται ελεύθερα.`}/>
           )}
         </ToolFields>
       </Group>
 
       {/* ── Ο ΟΡΟΣ ΑΝΑΠΡΟΣΑΡΜΟΓΗΣ ───────────────────────────────────────── */}
-      <Group title="Ο όρος αναπροσαρμογής">
+      <Group title={en ? E.clause : 'Ο όρος αναπροσαρμογής'}>
         <ToolFields>
-          <ToolSeg label="Τι ορίζει η σύμβαση" value={v.vasi} onChange={x => set('vasi', x)}
-            options={[{ value: 'pososto', label: 'Σταθερό ποσοστό' }, { value: 'dtk', label: 'ΔΤΚ ΕΛΣΤΑΤ' }]}/>
+          <ToolSeg label={en ? E.basis : 'Τι ορίζει η σύμβαση'} value={v.vasi} onChange={x => set('vasi', x)}
+            options={[{ value: 'pososto', label: en ? E.fixed : 'Σταθερό ποσοστό' }, { value: 'dtk', label: en ? E.cpi : 'ΔΤΚ ΕΛΣΤΑΤ' }]}/>
           {cpi ? (
-            <ToolSeg label="Ποιο μέρος του ΔΤΚ" value={v.meros} onChange={x => set('meros', x)}
-              options={[{ value: 'olo', label: 'Όλη η μεταβολή' }, { value: '75', label: '75% της μεταβολής' }]}
-              hint="Η ΕΛΣΤΑΤ δημοσιεύει και τα δύο κάθε μήνα. Ισχύει ό,τι γράφει η σύμβαση."/>
+            <ToolSeg label={en ? E.share : 'Ποιο μέρος του ΔΤΚ'} value={v.meros} onChange={x => set('meros', x)}
+              options={[{ value: 'olo', label: en ? E.whole : 'Όλη η μεταβολή' }, { value: '75', label: en ? E.share75 : '75% της μεταβολής' }]}
+              hint={en ? E.shareHint : 'Η ΕΛΣΤΑΤ δημοσιεύει και τα δύο κάθε μήνα. Ισχύει ό,τι γράφει η σύμβαση.'}/>
           ) : (
-            <ToolNumField id={ids.pososto} label="Ποσοστό ανά έτος" value={v.pososto}
+            <ToolNumField id={ids.pososto} label={en ? E.rate : 'Ποσοστό ανά έτος'} value={v.pososto}
               onChange={x => set('pososto', x)} unit="%" span={2}
-              hint="Όπως το γράφει ο όρος της σύμβασης."/>
+              hint={en ? E.rateHint : 'Όπως το γράφει ο όρος της σύμβασης.'}/>
           )}
         </ToolFields>
         <div style={{ marginTop: T.sp.lg }}>
           <ToolFields>
-            <ToolSelect label="Μήνας αναπροσαρμογής" value={v.apo} onChange={x => set('apo', x)} options={months}
-              hint="Ο μήνας που ισχύει το νέο μίσθωμα. Τα επόμενα έτη, τον ίδιο μήνα."/>
-            <ToolNumField id={ids.eti} label="Έτη" value={v.eti} onChange={x => set('eti', x)}
-              mode="numeric" unit="έτη" unitPad={48}/>
+            <ToolSelect label={en ? E.monthField : 'Μήνας αναπροσαρμογής'} value={v.apo} onChange={x => set('apo', x)} options={months}
+              hint={en ? E.monthHint : 'Ο μήνας που ισχύει το νέο μίσθωμα. Τα επόμενα έτη, τον ίδιο μήνα.'}/>
+            <ToolNumField id={ids.eti} label={en ? E.years : 'Έτη'} value={v.eti} onChange={x => set('eti', x)}
+              mode="numeric" unit={en ? E.yearsUnit : 'έτη'} unitPad={48}/>
             {cpi && (
-              <ToolNumField id={ids.dtk} label="ΔΤΚ όπου δεν ανακοινώθηκε" value={v.dtk}
+              <ToolNumField id={ids.dtk} label={en ? E.cpiAssumed : 'ΔΤΚ όπου δεν ανακοινώθηκε'} value={v.dtk}
                 onChange={x => set('dtk', x)} unit="%" span={2}
-                hint={<>
+                hint={en ? <>
+                  {startIndex !== null ? E.cpiHintKnown(startLabel, fpRate(startIndex)) : E.cpiHintUnknown(startLabel)}
+                  {E.cpiHintRest(monthLabel(RENT_INDEX_LATEST), fpRate(RENT_INDEX[RENT_INDEX_LATEST]))}
+                </> : <>
                   {startIndex !== null
                     ? `Για τον μήνα ${startLabel} η ΕΛΣΤΑΤ ανακοίνωσε ${fpRate(startIndex)} και εφαρμόζεται αυτό. `
                     : `Για τον μήνα ${startLabel} η ΕΛΣΤΑΤ δεν έχει ανακοινώσει ακόμη δείκτη. `}
@@ -215,11 +227,17 @@ export function AdjustCalculator({ today, cta }: {
           </ToolFields>
         </div>
         <ToolClampNote notes={[
-          yearsTyped > YEARS_MAX && `Μέχρι ${YEARS_MAX} έτη· υπολογίστηκε με ${YEARS_MAX}.`,
+          yearsTyped > YEARS_MAX && (en ? E.clampYears(YEARS_MAX) : `Μέχρι ${YEARS_MAX} έτη· υπολογίστηκε με ${YEARS_MAX}.`),
         ]}/>
       </Group>
 
-      <ToolPaper title="Αναπροσαρμογή ενοικίου" on={today} inputs={[
+      <ToolPaper title={en ? E.paper : 'Αναπροσαρμογή ενοικίου'} on={today} inputs={en ? [
+        { k: E.rent, v: fe(rent) },
+        { k: E.paperLease, v: commercial ? (v.yfistameni === 'oxi' ? E.paperCommercialNew(CAP_YEAR) : E.commercial) : E.residential },
+        { k: E.paperClause, v: cpi ? `${E.cpi}${share75 ? E.paperShare75 : ''}` : (typedPct === null ? E.paperNoRate : E.paperPerYear(fpRate(typedPct))) },
+        { k: E.paperFrom, v: startLabel },
+        { k: E.years, v: fn(years) },
+      ] : [
         { k: 'Τρέχον μίσθωμα', v: fe(rent) },
         { k: 'Μίσθωση', v: commercial ? `Επαγγελματική${v.yfistameni === 'oxi' ? `, νέα του ${CAP_YEAR}` : ''}` : 'Κατοικία' },
         { k: 'Όρος', v: cpi ? `ΔΤΚ ΕΛΣΤΑΤ${share75 ? ', 75%' : ''}` : (typedPct === null ? 'δεν δόθηκε' : `${fpRate(typedPct)} τον χρόνο`) },
@@ -231,24 +249,24 @@ export function AdjustCalculator({ today, cta }: {
       <ResultCard>
         {!ready || !first ? (
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-            {rent <= 0 ? 'Γράψε το τρέχον μηνιαίο μίσθωμα για να βγει το νέο.'
-              : 'Γράψε το ποσοστό της αναπροσαρμογής για να βγει το νέο μίσθωμα.'}
+            {rent <= 0 ? (en ? E.emptyRent : 'Γράψε το τρέχον μηνιαίο μίσθωμα για να βγει το νέο.')
+              : (en ? E.emptyRate : 'Γράψε το ποσοστό της αναπροσαρμογής για να βγει το νέο μίσθωμα.')}
           </p>
         ) : (
           <>
-            <ToolHero primary={{ label: 'Νέο μίσθωμα', value: fe(first.to) }}
+            <ToolHero primary={{ label: en ? E.newRent : 'Νέο μίσθωμα', value: fe(first.to) }}
               secondary={[
-                { label: 'Αύξηση τον μήνα', value: fe(first.increase) },
+                { label: en ? E.increase : 'Αύξηση τον μήνα', value: fe(first.increase) },
                 plan.rows.length > 1
-                  ? { label: `Σε ${fn(plan.rows.length)} έτη`, value: fe(plan.final) }
-                  : { label: 'Ποσοστό', value: fpRate(first.appliedPct) },
+                  ? { label: en ? E.inYears(fn(plan.rows.length)) : `Σε ${fn(plan.rows.length)} έτη`, value: fe(plan.final) }
+                  : { label: en ? E.pct : 'Ποσοστό', value: fpRate(first.appliedPct) },
               ]}/>
-            <LiveResult say={`Νέο μίσθωμα ${fe(first.to)}, αύξηση ${fe(first.increase)} τον μήνα.`}/>
+            <LiveResult say={en ? E.say(fe(first.to), fe(first.increase)) : `Νέο μίσθωμα ${fe(first.to)}, αύξηση ${fe(first.increase)} τον μήνα.`}/>
 
             {first.capped && (
               <p style={NOTE}>
-                {`Ο όρος δίνει ${fe(first.uncapped)}. Από ${grDate(CAP.from)} έως ${grDate(CAP.to)} η αναπροσαρμογή υφιστάμενης επαγγελματικής μίσθωσης δεν ξεπερνά το ${fpRate(CAP.pct)} (άρθρο 59 ν.5255/2025), οπότε το μίσθωμα σταματά στα ${fe(first.to)}. `}
-                <Link href={PLAFON_GUIDE} className="lp-link" style={LINK}>Ποιους αφορά το όριο</Link>
+                {en ? E.capped(fe(first.uncapped), grDate(CAP.from), grDate(CAP.to), fpRate(CAP.pct), fe(first.to)) : `Ο όρος δίνει ${fe(first.uncapped)}. Από ${grDate(CAP.from)} έως ${grDate(CAP.to)} η αναπροσαρμογή υφιστάμενης επαγγελματικής μίσθωσης δεν ξεπερνά το ${fpRate(CAP.pct)} (άρθρο 59 ν.5255/2025), οπότε το μίσθωμα σταματά στα ${fe(first.to)}. `}
+                {!en && <Link href={PLAFON_GUIDE} className="lp-link" style={LINK}>Ποιους αφορά το όριο</Link>}
               </p>
             )}
 
@@ -256,23 +274,23 @@ export function AdjustCalculator({ today, cta }: {
 
             <ToolLedger rows={clauseRows(first)}/>
             <ToolStats items={[
-              { k: 'Ετήσιο μίσθωμα', v: fe(first.to * 12) },
-              { k: 'Επιπλέον τον χρόνο', v: fe(first.increase * 12) },
+              { k: en ? E.annual : 'Ετήσιο μίσθωμα', v: fe(first.to * 12) },
+              { k: en ? E.extra : 'Επιπλέον τον χρόνο', v: fe(first.increase * 12) },
               ...(commercial
-                ? [{ k: `Ψηφιακό τέλος ${fpRate(COMMERCIAL_STAMP_DUTY * 100)} τον μήνα`, v: fe(first.to * COMMERCIAL_STAMP_DUTY) }]
+                ? [{ k: en ? E.duty(fpRate(COMMERCIAL_STAMP_DUTY * 100)) : `Ψηφιακό τέλος ${fpRate(COMMERCIAL_STAMP_DUTY * 100)} τον μήνα`, v: fe(first.to * COMMERCIAL_STAMP_DUTY) }]
                 : []),
             ]}/>
           </>
         )}
       </ResultCard>
 
-      <ToolActions path={PATH} spec={SPEC} values={v}/>
+      <ToolActions path={localHref(locale, PATH)} spec={SPEC} values={v}/>
 
       {/* ── Ο ΦΟΡΟΣ ΜΕ ΤΟ ΝΕΟ ΜΙΣΘΩΜΑ ───────────────────────────────────── */}
       {ready && first && (
         <p className="po-noprint" style={{ ...NOTE, marginTop: T.sp.lg }}>
-          {`Με ${fe(first.to)} τον μήνα το ενοίκιο φτάνει τα ${fe(first.to * 12)} τον χρόνο. `}
-          <Link href={taxHref} className="lp-link po-tap" style={LINK}>Τι φόρο θα πληρώσεις με το νέο μίσθωμα</Link>
+          {en ? E.taxLead(fe(first.to), fe(first.to * 12)) : `Με ${fe(first.to)} τον μήνα το ενοίκιο φτάνει τα ${fe(first.to * 12)} τον χρόνο. `}
+          <Link href={taxHref} className="lp-link po-tap" style={LINK}>{en ? E.taxLink : 'Τι φόρο θα πληρώσεις με το νέο μίσθωμα'}</Link>
         </p>
       )}
 
@@ -288,7 +306,7 @@ export function AdjustCalculator({ today, cta }: {
                 στη μέση. Με 340 χωρά, χωρίς να στενέψει το «Ποσοστό». Κάτω από
                 αυτό ο πίνακας κυλά μέσα στο πλαίσιό του, όπως και πριν. */}
             <table className="po-table po-tool-table tbl-fixed" style={{ '--tbl-min': '340px' }}>
-              <caption>Το μίσθωμα ανά έτος</caption>
+              <caption>{en ? E.table : 'Το μίσθωμα ανά έτος'}</caption>
               <colgroup>
                 <col style={{ width: '28%' }} />
                 <col style={{ width: '20%' }} />
@@ -297,15 +315,15 @@ export function AdjustCalculator({ today, cta }: {
               </colgroup>
               <thead>
                 <tr>
-                  <th scope="col">Από</th>
-                  <th scope="col" className="num">Ποσοστό</th>
-                  <th scope="col" className="num">Μηνιαίο</th>
-                  <th scope="col" className="num">Ετήσιο</th>
+                  <th scope="col">{en ? E.from : 'Από'}</th>
+                  <th scope="col" className="num">{en ? E.rateCol : 'Ποσοστό'}</th>
+                  <th scope="col" className="num">{en ? E.monthly : 'Μηνιαίο'}</th>
+                  <th scope="col" className="num">{en ? E.yearly : 'Ετήσιο'}</th>
                 </tr>
               </thead>
               <tbody>
                 {plan.rows.map((r, i) => {
-                  const flag = rowFlag(r);
+                  const flag = rowFlag(r, en ? E : undefined);
                   return (
                     <tr key={r.ym} className={allYears || i < YEARS_SHOWN ? undefined : 'po-row-more'}>
                       <th scope="row" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 400, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{grDate(`${r.ym}-01`)}</th>
@@ -325,13 +343,14 @@ export function AdjustCalculator({ today, cta }: {
           {plan.rows.length > YEARS_SHOWN && (
             <div className="po-noprint" style={{ marginTop: 10 }}>
               <Btn onClick={() => setAllYears(a => !a)} expanded={allYears}>
-                {allYears ? `Μόνο τα πρώτα ${YEARS_SHOWN} έτη` : `Όλα τα ${plan.rows.length} έτη`}
+                {en ? (allYears ? E.firstYears(YEARS_SHOWN) : E.allYears(plan.rows.length))
+                  : (allYears ? `Μόνο τα πρώτα ${YEARS_SHOWN} έτη` : `Όλα τα ${plan.rows.length} έτη`)}
               </Btn>
             </div>
           )}
           {plan.assumed && (
             <p style={{ ...NOTE, fontSize: 13, color: 'var(--text-tertiary)' }}>
-              {`«Υπόθεση»: η ΕΛΣΤΑΤ δεν έχει ανακοινώσει ακόμη τον δείκτη αυτού του μήνα. Η γραμμή υπολογίστηκε με ${fpRate(typedPct ?? 0)}${share75 ? ', στο 75%' : ''}. Το πραγματικό ποσό θα βγει με τον δείκτη που θα ανακοινωθεί.`}
+              {en ? E.assumedNote(fpRate(typedPct ?? 0), share75) : `«Υπόθεση»: η ΕΛΣΤΑΤ δεν έχει ανακοινώσει ακόμη τον δείκτη αυτού του μήνα. Η γραμμή υπολογίστηκε με ${fpRate(typedPct ?? 0)}${share75 ? ', στο 75%' : ''}. Το πραγματικό ποσό θα βγει με τον δείκτη που θα ανακοινωθεί.`}
             </p>
           )}
         </div>
@@ -342,15 +361,22 @@ export function AdjustCalculator({ today, cta }: {
         marginTop: T.sp.xl, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
+        {en ? (
+          <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+            <strong style={{ color: 'var(--text-primary)' }}>{E.scopeLead}</strong>{' '}
+            {E.scope(CAP_YEAR)}<strong>{E.scopeStrong}</strong>{E.scopeEnd}
+          </p>
+        ) : (
         <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
           <strong style={{ color: 'var(--text-primary)' }}>Τι περιλαμβάνει και τι όχι.</strong>{' '}
           Μία αναπροσαρμογή τον χρόνο, τον ίδιο μήνα, πάνω στο μίσθωμα που άφησε η προηγούμενη και
           στρογγυλή στο λεπτό. Δεν ξέρει αν ο εκμισθωτής ανήκει σε όσους εξαιρούνται από το όριο του{' '}
           {CAP_YEAR} ούτε ελέγχει τη διατύπωση του όρου. Είναι <strong>ενημερωτικό</strong>, όχι νομική συμβουλή.
         </p>
+        )}
       </div>
 
-      <ToolPaperFoot path={PATH} spec={SPEC} values={v}/>
+      <ToolPaperFoot path={localHref(locale, PATH)} spec={SPEC} values={v}/>
 
       {cta}
     </div>

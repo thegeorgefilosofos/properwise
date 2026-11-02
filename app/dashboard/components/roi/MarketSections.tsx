@@ -64,13 +64,13 @@ export function AreaSection({ term, y, stRef, reg, stBasis, verdictLabel, stExac
           const note = term === 'short'
             ? (stExact?.note ?? (reg ? `Μακροχρόνια μίσθωση: ${reg.note}` : null))
             : reg?.note ?? null;
-          return note ? <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-tertiary)', fontFamily: SANS, lineHeight: 1.5 }}>{note}</p> : null;
+          return note ? <p style={{ margin: '4px 0 0', fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', fontFamily: SANS, lineHeight: 1.5 }}>{note}</p> : null;
         })()}
       </div>
       {commStat && (
         <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-primary)', fontFamily: SANS, fontWeight: 600, display: 'flex', alignItems: 'center' }}>Δεδομένα κοινότητας PROPERWISE<TermInfo term="Δεδομένα κοινότητας" text={G.community} /></p>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-tertiary)', fontFamily: SANS, lineHeight: 1.5 }}>
+          <p style={{ margin: 0, fontSize: 'var(--fs-note)', color: 'var(--text-primary)', fontFamily: SANS, fontWeight: 600, display: 'flex', alignItems: 'center' }}>Δεδομένα κοινότητας PROPERWISE<TermInfo term="Δεδομένα κοινότητας" text={G.community} /></p>
+          <p style={{ margin: '4px 0 0', fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', fontFamily: SANS, lineHeight: 1.5 }}>
             Ταχυδρομικός κώδικας {commStat.postal}: διάμεση μεικτή απόδοση <strong style={{ color: 'var(--text-secondary)' }}>{fp(commStat.median)}</strong> (εύρος {fp(commStat.p25)} έως {fp(commStat.p75)}), από {commStat.count} πραγματικά ακίνητα χρηστών. Ανώνυμα και συγκεντρωτικά.
           </p>
         </div>

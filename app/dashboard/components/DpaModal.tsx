@@ -84,7 +84,7 @@ export default function DpaModal() {
             style={{ width: 16, height: 16, accentColor: 'var(--accent)', flexShrink: 0 }} />
           <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.sans }}>Αποδέχομαι τη σύμβαση επεξεργασίας (έκδοση {DPA_VERSION})</span>
         </label>
-        {err && <p role="alert" style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--negative)', fontFamily: T.font.sans }}>{err}</p>}
+        {err && <p role="alert" style={{ margin: 0, fontSize: 'var(--fs-note)', color: 'var(--negative)', fontFamily: T.font.sans }}>{err}</p>}
       </Modal>
     </div>
   );

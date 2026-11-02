@@ -94,3 +94,19 @@ export function subprocessorLineEn(s: Subprocessor): string {
 /** Η κατάσταση των εγγυήσεων των διαβιβάσεων (TRANSFER_SAFEGUARDS), στα αγγλικά. */
 export const TRANSFER_SAFEGUARDS_EN =
   'Data processing agreements containing the Standard Contractual Clauses (SCCs) of Article 46 GDPR were signed with Supabase, Resend and Anthropic on 23 Sep 2026. A data processing agreement has also been signed with GitHub, where the encrypted backup is kept; the backup key is kept with the same provider. With Vercel, which hosts the app, no data processing agreement has been signed yet: the hosting plan in use today does not provide for one. It is pending, together with the move to a professional hosting plan. Signing in with Google takes place with Google as an independent controller.';
+
+/**
+ * Ο πάροχος ως γραμμή του πίνακα του «About us» (/en/trust): όνομα, νομικό
+ * πρόσωπο, τι κάνει και πού. Ιδιες προσθήκες ανά περιβάλλον με το
+ * `subprocessorLineEn`, χωρίς τον ρόλο, που τον λέει η Πολιτική απορρήτου.
+ */
+export function subprocessorRowEn(s: Subprocessor): { name: string; entity: string | null; what: string; where: string; planned: boolean } {
+  const c = copyOf(s);
+  let what = c?.purpose ?? s.purpose;
+  if (s.name === 'Sentry' && !s.active) what += ' It is switched on only if a key is set, and none is set today.';
+  if (s.name === PUSH_SERVICES && !s.active) what += ' Not switched on.';
+  if (s.name === 'Resend' && inboundDomain(process.env.NEXT_PUBLIC_INBOUND_DOMAIN) !== '') what += ' Receiving email: what you forward to your account’s receiving address, so that it can be suggested as expenses; and what you send to our contact addresses.';
+  if (s.role === 'mixed') what += ` ${billingWordsEn().merchantRow}`;
+  const entity = c?.entity ?? (s.entity && !/\p{Script=Greek}/u.test(s.entity) ? s.entity : null);
+  return { name: subprocessorNameEn(s), entity, what, where: c?.where ?? s.where, planned: !s.active };
+}

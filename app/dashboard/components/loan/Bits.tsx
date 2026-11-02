@@ -33,7 +33,7 @@ export function LensPanel({title,subtitle,right,children}:{title:string;subtitle
       {(subtitle||right)&&(
       <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:12,flexWrap:'wrap',padding:'2px 2px 0'}}>
         {subtitle
-          ? <p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,minWidth:0}}>{subtitle}</p>
+          ? <p style={{fontSize: 'var(--fs-note)',color:'var(--text-tertiary)',fontFamily: T.font.sans,minWidth:0}}>{subtitle}</p>
           : <span/>}
         {right}
       </div>
@@ -108,7 +108,7 @@ export function FindingRow({lead,title,body,right,last}:{lead?:React.ReactNode;t
             σειρά να φαίνεται δύο φορές ψηλότερη απ' όσο χρειάζεται. Το
             `pretty` μοιράζει τις τελευταίες δύο γραμμές ώστε να μη μένει
             ορφανή λέξη, χωρίς να κόψει τίποτα από το νόημα. */}
-        {body&&<p className="po-prose po-just" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,marginTop: 4}}>{hy(<>{body}</>)}</p>}
+        {body&&<p className="po-prose po-just" style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily: T.font.sans,marginTop: 4}}>{hy(<>{body}</>)}</p>}
       </div>
       {right}
     </div>
@@ -127,7 +127,7 @@ export function CatRow({title,desc,url,linkLabel,last}:{title:string;desc:string
         <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" style={{flexShrink:0,transform:open?'rotate(180deg)':'none',transition:'transform 0.2s'}}><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       {open&&(
-        <p className="po-prose po-just" style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,padding:'0 2px 12px'}}>{hy(<>{desc}{url&&<> <InlineLink href={url}>{linkLabel}</InlineLink></>}</>)}</p>
+        <p className="po-prose po-just" style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily: T.font.sans,padding:'0 2px 12px'}}>{hy(<>{desc}{url&&<> <InlineLink href={url}>{linkLabel}</InlineLink></>}</>)}</p>
       )}
     </div>
   )

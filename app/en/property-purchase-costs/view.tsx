@@ -12,6 +12,7 @@ import { shareImage } from '../../og/share';
 import { PAGE_UPDATED } from '../../pageUpdated';
 import { PurchaseCostsCalculator } from '../../exoda-agoras-akinitou/PurchaseCostsCalculator';
 import { ToolPageEn } from '../ToolPageEn';
+import BuyEn from './en';
 
 // Τα έξοδα αγοράς στα αγγλικά: ο ίδιος υπολογιστής, οι ίδιες πηγές. Η λήξη της
 // αναστολής ΦΠΑ από το ίδιο μητρώο ισχύος (lib/legal/validity.ts).
@@ -30,7 +31,7 @@ export default function Page() {
       h1={D.h1} lede={D.lede} lawYear={athensParts().year}
       sources={{ kind: 'buy', checked: null, updated: PAGE_UPDATED[EL] }} faq={buyFaqEn({ vatUntil })}>
       <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
-        <PurchaseCostsCalculator today={athensToday()} vatUntil={vatUntil} cta={<ToolCta locale="en" title={D.ctaTitle} body={D.ctaBody} />}/>
+        <BuyEn><PurchaseCostsCalculator today={athensToday()} vatUntil={vatUntil} cta={<ToolCta locale="en" title={D.ctaTitle} body={D.ctaBody} />}/></BuyEn>
       </Suspense>
     </ToolPageEn>
   );

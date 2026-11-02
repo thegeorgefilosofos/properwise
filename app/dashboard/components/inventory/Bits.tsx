@@ -93,7 +93,7 @@ export function BulkPicker({label,icon,options,onPick,labelOf}:{label:string;ico
       {open&&rect&&typeof document!=='undefined'&&createPortal(
         <div ref={menuRef} style={{position:'fixed',top:rect.top,left:rect.left,background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:T.radius.card,padding: 4,zIndex:9000,minWidth:180,maxHeight:300,overflowY:'auto',boxShadow:'var(--shadow-xl)'}}>
           {options.length===0
-            ?<p style={{fontSize:12,color:'var(--text-tertiary)',fontFamily:T.font.sans,padding:'8px 12px'}}>Καμία επιλογή</p>
+            ?<p style={{fontSize: 'var(--fs-note)',color:'var(--text-tertiary)',fontFamily:T.font.sans,padding:'8px 12px'}}>Καμία επιλογή</p>
             :options.map(o=>(
               <div key={o} {...pressable(()=>{onPick(o);setOpen(false)})} style={{padding:'8px 12px',cursor:'pointer',borderRadius: T.radius.chip,fontSize: 'var(--fs-base)',fontFamily:T.font.sans,color:'var(--text-primary)'}}
                 onMouseEnter={e=>e.currentTarget.style.background='var(--bg-hover)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>{labelOf?labelOf(o):o}</div>

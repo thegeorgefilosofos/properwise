@@ -34,9 +34,8 @@ import { ToolSelect } from '@/app/ToolSelect';
 import LiveResult from '@/components/LiveResult';
 import { SPEC } from './spec';
 import { roundHalfUp } from '@/lib/core/money';
-import { useLocale } from '@/lib/i18n/useLocale';
+import { useToolDict, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
 import { localHref } from '@/lib/i18n/paths';
-import { SHORT_EN } from '@/lib/i18n/en/tools/short';
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
 
@@ -74,7 +73,9 @@ export function ShortVsLongCalculator({ today, cta }: {
   cta: ReactNode;
 }) {
   // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/short-term-vs-long-term-rental) ──────────
-  const locale = useLocale(), en = locale === 'en', E = SHORT_EN, path = localHref(locale, PATH);
+  // Τα αγγλικά έρχονται από τον πάροχο του /en (lib/i18n/toolEn.ts)· εδώ δεν
+  // εισάγεται κανένα αγγλικό λεξικό, ώστε να μην κατεβαίνει στα ελληνικά.
+  const { en: X, locale } = useToolDict('short'), en = X !== undefined, E = (X?.E ?? NO_EN) as NonNullable<ToolEn['short']>['E'], path = localHref(locale, PATH);
   const { fe, fn, fpRate, feSigned, feWhole } = fmtFor(locale);
   const feAuto = fe, wholeSigned = signedWith(fe), delta = deltaWith(fe);
   const types = en ? TYPES.map(t => ({ ...t, label: E.types[t.value] ?? t.label })) : TYPES;
@@ -460,6 +461,7 @@ export function ShortVsLongCalculator({ today, cta }: {
 // λιγότερο από 250 εικονοστοιχεία οριζόντιας κύλισης.
 function Line({ k, a, b, strong, en }: { k: string; a: number | null; b: number; strong?: boolean; en: boolean }) {
   const { feSigned } = fmtFor(en ? 'en' : 'el');
+  const na = useToolDict('short').en?.E.na;
   const weight = strong ? 700 : 400;
   const ink = strong ? 'var(--text-primary)' : 'var(--text-secondary)';
   // ── Η ΕΤΙΚΕΤΑ ΤΗΣ ΓΡΑΜΜΗΣ ΕΙΝΑΙ ΚΕΦΑΛΙΔΑ, ΟΧΙ ΚΕΛΙ ─────────────────────────
@@ -475,7 +477,7 @@ function Line({ k, a, b, strong, en }: { k: string; a: number | null; b: number;
     <tr className={strong ? 'is-total' : undefined}>
       <th scope="row" style={{ fontWeight: strong ? 600 : 400, color: ink }}>{k}</th>
       {a === null
-        ? <td className="num" style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>{en ? SHORT_EN.na : 'δεν ισχύει'}</td>
+        ? <td className="num" style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>{na ?? 'δεν ισχύει'}</td>
         : <td className="num" style={{ fontWeight: weight, color: ink }}>{feSigned(a)}</td>}
       <td className="num" style={{ fontWeight: weight, color: ink }}>{feSigned(b)}</td>
     </tr>

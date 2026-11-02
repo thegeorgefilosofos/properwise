@@ -502,7 +502,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                         είναι, πιο σβηστό. */}
                     {hasValue && (hasDate
                       ? <p style={{fontSize:14,fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',lineHeight:1.2,flexShrink:0}}>{fe(curVal)}</p>
-                      : <p style={{fontSize:12,fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)',lineHeight:1.2,flexShrink:0}}>Αγορά {fe(curVal)}</p>
+                      : <p style={{fontSize: 'var(--fs-note)',fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)',lineHeight:1.2,flexShrink:0}}>Αγορά {fe(curVal)}</p>
                     )}
                   </div>
                   <DepBar pct={depPct} left={left} hasData={hasDate} hasValue={hasValue} compact/>
@@ -602,10 +602,10 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                         {hasValue && hasDate
                           ? <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(curVal)}</p>
                           : hasValue
-                          ? <p style={{fontSize:12,fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)'}}>Αγορά {fe(curVal)}</p>
-                          : <p style={{fontSize:12,fontFamily:T.font.sans,color:'var(--text-tertiary)'}}>Χωρίς αξία</p>}
+                          ? <p style={{fontSize: 'var(--fs-note)',fontFamily:T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)'}}>Αγορά {fe(curVal)}</p>
+                          : <p style={{fontSize: 'var(--fs-note)',fontFamily:T.font.sans,color:'var(--text-tertiary)'}}>Χωρίς αξία</p>}
                       </td>
-                      <td className="num" style={{verticalAlign:'middle'}}>{mc>0&&<p style={{fontSize:12,fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(mc)}</p>}</td>
+                      <td className="num" style={{verticalAlign:'middle'}}>{mc>0&&<p style={{fontSize: 'var(--fs-note)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700}}>{fe(mc)}</p>}</td>
                       <td style={{verticalAlign:'middle'}}><div style={{display:'flex',justifyContent:'flex-end'}}><OverflowMenu actions={itemActions(item)}/></div></td>
                     </tr>
                   )

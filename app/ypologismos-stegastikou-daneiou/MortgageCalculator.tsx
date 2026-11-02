@@ -40,9 +40,8 @@ import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolS
 import { EstimateNote, ToolClampNote } from '@/app/ToolNotes';
 import { ToolNumField, ToolFields, ToolSeg, ToolHero, ToolLedger, ToolStats } from '@/app/ToolParts';
 import LiveResult from '@/components/LiveResult';
-import { useLocale } from '@/lib/i18n/useLocale';
+import { useToolDict, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
 import { localHref } from '@/lib/i18n/paths';
-import { MORTGAGE_EN } from '@/lib/i18n/en/tools/mortgage';
 
 /**
  * Τα πεδία όπως ταξιδεύουν στη διεύθυνση. Τα επιτόκια ξεκινούν κενά: τα
@@ -101,7 +100,9 @@ export function MortgageCalculator({ market, today, cta, exampleRate }: {
   // ΑΛΛΗ. Παλιά τιμή δεν προτείνεται ως αφετηρία· γράφεται από κάτω με τη
   // δική της ημερομηνία, για αναφορά.
   // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/mortgage-calculator) ────────────────────
-  const locale = useLocale(), en = locale === 'en', E = MORTGAGE_EN, path = localHref(locale, PATH);
+  // Τα αγγλικά έρχονται από τον πάροχο του /en (lib/i18n/toolEn.ts)· εδώ δεν
+  // εισάγεται κανένα αγγλικό λεξικό, ώστε να μην κατεβαίνει στα ελληνικά.
+  const { en: X, locale } = useToolDict('mortgage'), en = X !== undefined, E = (X?.E ?? NO_EN) as NonNullable<ToolEn['mortgage']>['E'], path = localHref(locale, PATH);
   const { fe, fn, fp, fpRate } = fmtFor(locale);
   const fixed = freshFact(market.fixed);
   const euribor = freshFact(market.euribor);

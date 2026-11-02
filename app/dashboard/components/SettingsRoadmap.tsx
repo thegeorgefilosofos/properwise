@@ -190,7 +190,7 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
               </Chip>
             </div>
 
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: '8px 0 0' }}>
+            <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: '8px 0 0' }}>
               Φωτογραφίζεις ένα παραστατικό και καταχωρείται μόνο του, όπου κι αν βρίσκεσαι.
             </p>
 

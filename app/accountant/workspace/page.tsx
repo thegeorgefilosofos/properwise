@@ -377,7 +377,7 @@ export default function AccountantWorkspace() {
           </Btn>
         </div>
         {notice && (
-          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '10px 0 0', fontFamily: T.font.sans }}>{notice}</p>
+          <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', margin: '10px 0 0', fontFamily: T.font.sans }}>{notice}</p>
         )}
       </Card>
 
@@ -395,7 +395,7 @@ export default function AccountantWorkspace() {
             placeholder="Όνομα ή ΑΦΜ"
           />
           {find.trim() && (
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '8px 0 0', fontFamily: T.font.sans }}>
+            <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '8px 0 0', fontFamily: T.font.sans }}>
               {shown.length === 0 ? 'Κανένας πελάτης με αυτό το όνομα ή ΑΦΜ.'
                 : shown.length === 1 ? '1 πελάτης' : `${shown.length} πελάτες`}
             </p>
@@ -446,7 +446,7 @@ export default function AccountantWorkspace() {
                         </a>
                       ) : c.name}
                     </h2>
-                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0', fontFamily: T.font.sans }}>
+                    <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '4px 0 0', fontFamily: T.font.sans }}>
                       {c.properties === 1 ? '1 ακίνητο' : `${c.properties} ακίνητα`}
                       {c.afm ? ` · ΑΦΜ ${c.afm}` : ''}
                       {!c.token ? ' · ο σύνδεσμός του δεν ισχύει πια' : ''}
@@ -454,7 +454,7 @@ export default function AccountantWorkspace() {
                     {/* ΠΟΤΕ ΚΙΝΗΘΗΚΕ ΤΕΛΕΥΤΑΙΑ ΦΟΡΑ. Δύο πελάτες με τα ίδια κενά
                         είναι εντελώς διαφορετική δουλειά όταν ο ένας καταχώρησε
                         χθες και ο άλλος τον Μάρτιο. */}
-                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '3px 0 0', fontFamily: T.font.sans }}>
+                    <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '3px 0 0', fontFamily: T.font.sans }}>
                       {lastMove(c.lastActivity)}
                     </p>
                     {/* ΤΟ ΜΗΔΕΝ ΔΕΝ ΓΡΑΦΕΤΑΙ ΩΣ ΠΟΣΟ. Πελάτης χωρίς καμία

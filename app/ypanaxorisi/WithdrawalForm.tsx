@@ -13,10 +13,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState } from 'react';
 import { T, Btn } from '@/components/Theme';
-import { grDate } from '@/lib/core/format';
+import { fmtFor } from '@/lib/core/format';
+import { useToolEn, NO_EN, type ToolEn } from '@/lib/i18n/toolEn';
 import { validateWithdrawal, withdrawalLastDay, WITHDRAWAL_CONFIRM_LABEL, type WithdrawalClean } from '@/lib/legal/withdrawal';
 
 type Step = 'form' | 'confirm' | 'done';
+type WithdrawalEn = NonNullable<ToolEn['withdrawal']>['E'];
 
 const field: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box', background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
@@ -53,6 +55,10 @@ export default function WithdrawalForm({ signedIn, prefill }: {
   signedIn: boolean;
   prefill: { name: string; email: string; contract: string };
 }) {
+  // Τα αγγλικά από τον πάροχο του /en/withdrawal (lib/i18n/toolEn.ts)· εδώ δεν
+  // εισάγεται κανένα αγγλικό λεξικό, ώστε να μην κατεβαίνει στα ελληνικά.
+  const X = useToolEn()?.withdrawal, en = X !== undefined, E = (X?.E ?? NO_EN) as WithdrawalEn;
+  const grDate = fmtFor(en ? 'en' : 'el').date;
   const [step, setStep] = useState<Step>('form');
   const [name, setName] = useState(prefill.name);
   const [email, setEmail] = useState(prefill.email);
@@ -66,7 +72,7 @@ export default function WithdrawalForm({ signedIn, prefill }: {
 
   const next = () => {
     const r = validateWithdrawal({ name, email, contract, purchaseDate });
-    if (!r.ok) { setError(r.error); return; }
+    if (!r.ok) { setError(en ? E.error(r.error) : r.error); return; }
     setError(''); setClean(r.value); setStep('confirm');
   };
 
@@ -80,25 +86,46 @@ export default function WithdrawalForm({ signedIn, prefill }: {
         body: JSON.stringify({ name, email, contract, purchaseDate, website }),
       });
       const j = await res.json().catch(() => ({}));
-      if (!res.ok || !j.ok) { setError(String(j.error || 'Η δήλωση δεν καταγράφηκε. Δοκίμασε ξανά ή γράψε μας με email.')); return; }
-      setDone({ reference: j.reference, lines: j.lines, ackSent: !!j.ackSent });
+      if (!res.ok || !j.ok) { setError(en ? E.error(String(j.error || '')) : String(j.error || 'Η δήλωση δεν καταγράφηκε. Δοκίμασε ξανά ή γράψε μας με email.')); return; }
+      // Στα αγγλικά οι γραμμές γράφονται από τη δήλωση που μόλις ελέγχθηκε· ο
+      // διακομιστής τις επιστρέφει στα ελληνικά, όπως και το αποδεικτικό.
+      setDone({ reference: j.reference, lines: en ? [[E.reference, String(j.reference ?? '')], ...confirmRows()] : j.lines, ackSent: !!j.ackSent });
       setStep('done');
     } catch {
-      setError('Δεν υπάρχει σύνδεση με τον διακομιστή. Δοκίμασε ξανά ή στείλε τη δήλωση με email.');
+      setError(en ? E.offline : 'Δεν υπάρχει σύνδεση με τον διακομιστή. Δοκίμασε ξανά ή στείλε τη δήλωση με email.');
     } finally {
       setBusy(false);
     }
   };
+
+  function confirmRows(): [string, string][] {
+    if (!clean) return [];
+    return en ? [
+      [E.statement, E.statementText],
+      [E.name, clean.name],
+      [E.email, clean.email],
+      [E.contract, clean.contract],
+      [E.purchaseDate, clean.purchaseIso ? grDate(clean.purchaseIso) : E.notGiven],
+      ...(clean.purchaseIso ? [[E.lastDay, grDate(withdrawalLastDay(clean.purchaseIso))] as [string, string]] : []),
+    ] : [
+      ['Δήλωση', 'Υπαναχωρώ από τη σύμβαση.'],
+      ['Ονοματεπώνυμο', clean.name],
+      ['Ηλεκτρονικό ταχυδρομείο για το αποδεικτικό', clean.email],
+      ['Σύμβαση', clean.contract],
+      ['Ημερομηνία αγοράς', clean.purchaseIso ? grDate(clean.purchaseIso) : 'δεν δηλώθηκε'],
+      ...(clean.purchaseIso ? [['Τελευταία ημέρα προθεσμίας', grDate(withdrawalLastDay(clean.purchaseIso))] as [string, string]] : []),
+    ];
+  }
 
   const err = error && <p role="alert" style={{ color: 'var(--negative)', fontSize: 14, margin: '12px 0 0' }}>{error}</p>;
 
   if (step === 'done' && done) {
     return (
       <div style={box} aria-live="polite">
-        <p style={{ fontSize: 18, fontWeight: 600, margin: '0 0 12px', color: 'var(--text-primary)' }}>Η δήλωσή σου καταγράφηκε.</p>
+        <p style={{ fontSize: 18, fontWeight: 600, margin: '0 0 12px', color: 'var(--text-primary)' }}>{en ? E.done : 'Η δήλωσή σου καταγράφηκε.'}</p>
         <Lines rows={done.lines} />
         <p className="lg-p" style={{ margin: 0 }}>
-          {done.ackSent
+          {en ? (done.ackSent ? E.ackSent : E.ackPending) : done.ackSent
             ? 'Σου στείλαμε το αποδεικτικό στο email σου, με το ίδιο περιεχόμενο. Κράτησέ το.'
             : 'Το αποδεικτικό δεν έφυγε ακόμη με email. Η δήλωση ισχύει από τη στιγμή που καταγράφηκε· κράτησε τον κωδικό της και θα σου το στείλουμε.'}
         </p>
@@ -107,21 +134,14 @@ export default function WithdrawalForm({ signedIn, prefill }: {
   }
 
   if (step === 'confirm' && clean) {
-    const rows: [string, string][] = [
-      ['Δήλωση', 'Υπαναχωρώ από τη σύμβαση.'],
-      ['Ονοματεπώνυμο', clean.name],
-      ['Ηλεκτρονικό ταχυδρομείο για το αποδεικτικό', clean.email],
-      ['Σύμβαση', clean.contract],
-      ['Ημερομηνία αγοράς', clean.purchaseIso ? grDate(clean.purchaseIso) : 'δεν δηλώθηκε'],
-      ...(clean.purchaseIso ? [['Τελευταία ημέρα προθεσμίας', grDate(withdrawalLastDay(clean.purchaseIso))] as [string, string]] : []),
-    ];
+    const rows = confirmRows();
     return (
       <div style={box}>
-        <p style={{ fontSize: 16, fontWeight: 600, margin: '0 0 12px', color: 'var(--text-primary)' }}>Έλεγξε τη δήλωση πριν την υποβάλεις</p>
+        <p style={{ fontSize: 16, fontWeight: 600, margin: '0 0 12px', color: 'var(--text-primary)' }}>{en ? E.check : 'Έλεγξε τη δήλωση πριν την υποβάλεις'}</p>
         <Lines rows={rows} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-          <Btn variant="primary" onClick={confirm} disabled={busy}>{busy ? 'Υποβολή…' : WITHDRAWAL_CONFIRM_LABEL}</Btn>
-          <Btn variant="secondary" onClick={() => setStep('form')} disabled={busy}>Πίσω για διόρθωση</Btn>
+          <Btn variant="primary" onClick={confirm} disabled={busy}>{en ? (busy ? E.submitting : E.confirm) : busy ? 'Υποβολή…' : WITHDRAWAL_CONFIRM_LABEL}</Btn>
+          <Btn variant="secondary" onClick={() => setStep('form')} disabled={busy}>{en ? E.back : 'Πίσω για διόρθωση'}</Btn>
         </div>
         {err}
       </div>
@@ -132,34 +152,34 @@ export default function WithdrawalForm({ signedIn, prefill }: {
     <form style={box} onSubmit={e => { e.preventDefault(); next(); }} noValidate>
       <div style={{ display: 'grid', gap: 16 }}>
         <div>
-          <label htmlFor="wd-name" style={label}>Ονοματεπώνυμο</label>
+          <label htmlFor="wd-name" style={label}>{en ? E.name : 'Ονοματεπώνυμο'}</label>
           <input id="wd-name" name="name" autoComplete="name" value={name} onChange={e => setName(e.target.value)} style={field} required />
         </div>
         <div>
-          <label htmlFor="wd-email" style={label}>Ηλεκτρονικό ταχυδρομείο για το αποδεικτικό</label>
+          <label htmlFor="wd-email" style={label}>{en ? E.email : 'Ηλεκτρονικό ταχυδρομείο για το αποδεικτικό'}</label>
           <input id="wd-email" name="email" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} style={field} required
             aria-describedby="wd-email-hint" />
           <p id="wd-email-hint" style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '6px 0 0' }}>
-            {signedIn ? 'Από τον λογαριασμό σου. Αν θέλεις το αποδεικτικό αλλού, άλλαξέ το.' : 'Κατά προτίμηση αυτό του λογαριασμού σου, ώστε να βρούμε αμέσως τη συνδρομή.'}
+            {en ? (signedIn ? E.emailHintSignedIn : E.emailHintGuest) : signedIn ? 'Από τον λογαριασμό σου. Αν θέλεις το αποδεικτικό αλλού, άλλαξέ το.' : 'Κατά προτίμηση αυτό του λογαριασμού σου, ώστε να βρούμε αμέσως τη συνδρομή.'}
           </p>
         </div>
         <div>
-          <label htmlFor="wd-contract" style={label}>Ποια σύμβαση</label>
+          <label htmlFor="wd-contract" style={label}>{en ? E.whichContract : 'Ποια σύμβαση'}</label>
           <input id="wd-contract" name="contract" value={contract} onChange={e => setContract(e.target.value)} style={field} required
-            placeholder="Πακέτο ή αριθμός παραστατικού" />
+            placeholder={en ? E.contractPlaceholder : 'Πακέτο ή αριθμός παραστατικού'} />
         </div>
         <div>
-          <label htmlFor="wd-date" style={label}>Ημερομηνία αγοράς (προαιρετικό)</label>
+          <label htmlFor="wd-date" style={label}>{en ? E.dateOptional : 'Ημερομηνία αγοράς (προαιρετικό)'}</label>
           <input id="wd-date" name="purchase-date" inputMode="numeric" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} style={field}
-            placeholder="ΗΗ/ΜΜ/ΕΕΕΕ" />
+            placeholder={en ? E.datePlaceholder : 'ΗΗ/ΜΜ/ΕΕΕΕ'} />
         </div>
         {/* Το κρυφό πεδίο: το γεμίζουν μόνο ρομπότ. Εκτός ροής και εκτός αναγνωστών οθόνης. */}
         <div aria-hidden="true" style={{ position: 'absolute', left: -10000, width: 1, height: 1, overflow: 'hidden' }}>
-          <label htmlFor="wd-website">Ιστότοπος</label>
+          <label htmlFor="wd-website">{en ? E.website : 'Ιστότοπος'}</label>
           <input id="wd-website" name="website" tabIndex={-1} autoComplete="off" value={website} onChange={e => setWebsite(e.target.value)} />
         </div>
         <div>
-          <Btn variant="primary" type="submit">Συνέχεια</Btn>
+          <Btn variant="primary" type="submit">{en ? E.next : 'Συνέχεια'}</Btn>
         </div>
       </div>
       {err}

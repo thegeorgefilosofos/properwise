@@ -94,7 +94,7 @@ export function TaxLens({
               ))}
               <div style={{marginTop:10,padding:'11px 12px',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius:10}}>
                 {/* ΤΟ ΕΝΟΙΚΙΟ ΤΟΥ ΥΠΟΛΟΓΙΣΜΟΥ ΓΡΑΦΕΤΑΙ ΣΤΗΝ ΟΘΟΝΗ. */}
-                <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,lineHeight:1.6,marginBottom:10}}>
+                <p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily: T.font.sans,lineHeight:1.6,marginBottom:10}}>
                   Υποθετικό ετήσιο ενοίκιο: <strong style={{color:'var(--text-primary)'}}>{fmtEur(renInc)}</strong>. {rentAssumptionText}
                 </p>
                 {/* Η έκπτωση 5% ΔΕΝ είναι «αυτόματη» — είναι όρος και ο όρος είναι
@@ -104,7 +104,7 @@ export function TaxLens({
                   Τα ενοίκια θα εισπράττονται μέσω τράπεζας
                 </label>
                 <p className="po-prose po-just" style={{margin:'4px 0 0 23px',fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{hy(<>{PRESUMPTIVE_RULE}</>)}</p>
-                <p style={{margin:'10px 0 0',fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,lineHeight:1.6}}>
+                <p style={{margin:'10px 0 0',fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily: T.font.sans,lineHeight:1.6}}>
                   Φορολογητέο {fmtEur(taxableRental(renInc, rentsBank))} · <strong style={{color:'var(--text-primary)'}}>εκτιμώμενος φόρος {fmtEur(renTax)} τον χρόνο</strong>. Ο φόρος ενοικίων είναι προοδευτικός στο σύνολο των ακινήτων σου: αν έχεις κι άλλα, δες το πραγματικό ποσό στη Λογιστική.
                 </p>
               </div>
@@ -140,7 +140,7 @@ export function TaxLens({
         </table>
          </div>
         </div>
-        {rateType==='fixed'&&<div style={{marginTop:10,padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p style={{fontSize:12,color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:500}}>Σταθερό για {fixedPeriod} χρόνια: ως τότε η δόση δεν αλλάζει με το Euribor{Number(fixedPeriod)<Y?'· μετά το επιτόκιο αλλάζει':''}.</p></div>}
+        {rateType==='fixed'&&<div style={{marginTop:10,padding:'9px 12px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10}}><p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily: T.font.sans,fontWeight:500}}>Σταθερό για {fixedPeriod} χρόνια: ως τότε η δόση δεν αλλάζει με το Euribor{Number(fixedPeriod)<Y?'· μετά το επιτόκιο αλλάζει':''}.</p></div>}
       </Section>
 
       <Section title="Ανάλυση αναχρηματοδότησης" sub="Σημείο απόσβεσης, πότε αξίζει η μεταφορά">

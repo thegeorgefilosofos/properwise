@@ -12,7 +12,7 @@ import { roundHalfUp } from '@/lib/core/money';
 import { fmtFor } from '@/lib/core/format'
 import type { Locale } from '@/lib/i18n/locale'
 import { localHref } from '@/lib/i18n/paths'
-import { PARTS_EN } from '@/lib/i18n/en/landingParts'
+import { useToolEn, type ToolEn, NO_EN } from '@/lib/i18n/toolEn'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Ζωντανό εργαλείο απόδοσης μέσα στο landing. Τρέχει την ΙΔΙΑ ακριβή φορολογική
@@ -126,7 +126,10 @@ function Stat({ label, value, big, tone }: { label: string; value: string; big?:
 export default function LandingCalculator({ cta, locale = 'el' }: { cta: string; locale?: Locale }) {
   // ΙΔΙΟΣ ΥΠΟΛΟΓΙΣΜΟΣ ΣΕ ΚΑΘΕ ΓΛΩΣΣΑ· αλλάζουν μόνο οι λέξεις και η γραφή των
   // αριθμών (lib/core/format.ts, `fmtFor`). Τα ελληνικά μένουν αυτούσια.
-  const en = locale === 'en', C = PARTS_EN.calc, F = fmtFor(locale)
+  // Τα αγγλικά από τον πάροχο του /en (lib/i18n/toolEn.ts): το λεξικό δεν
+  // κατεβαίνει με την ελληνική αρχική.
+  const landing = useToolEn()?.landing
+  const en = locale === 'en' && landing !== undefined, C = (landing?.C ?? NO_EN) as NonNullable<ToolEn['landing']>['C'], F = fmtFor(en ? 'en' : 'el')
   const money = F.fe, share = (n: number) => F.fp(n * 100)
   // Ο συντελεστής του νόμου, όπως τον γράφει ο νόμος (ένα δεκαδικό μόνο όπου υπάρχει).
   const statutoryIn = (rate: number) => en ? F.fpRate(Math.round(rate * 1000) / 10) : statutory(rate)

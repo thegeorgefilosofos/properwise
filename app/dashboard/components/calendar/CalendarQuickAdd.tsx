@@ -59,7 +59,7 @@ export function CalendarQuickAdd({ userId, framed = false }: {
     <div style={{ ...box, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 220px', minWidth: 0 }}>
         <CalendarPlus size={15} color="var(--accent)" aria-hidden="true" style={{ flexShrink: 0 }} />
-        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
+        <p style={{ margin: 0, fontSize: 'var(--fs-note)', lineHeight: 1.5, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
           Βάλε τις προθεσμίες στο ημερολόγιο του κινητού σου. Μία φορά, μετά ενημερώνεται μόνο του.
         </p>
       </div>

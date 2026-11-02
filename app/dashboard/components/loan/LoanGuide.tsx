@@ -104,7 +104,7 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
                     ΠΕΡΙΓΡΑΦΗΣ. Ίδιο γκρι, ίδια στοίχιση, ένα εικονοστοιχείο
                     διαφορά στο μέγεθος: τίποτα δεν έλεγε ότι εδώ μπλοκάρει η
                     αίτηση. Μία λέξη μπροστά κάνει τη διαφορά. */}
-                <p style={{fontSize:12,color:'var(--text-tertiary)',lineHeight:1.55,marginTop:6,fontFamily: T.font.sans}}><strong style={{color:'var(--text-secondary)',fontWeight:600}}>Προσοχή:</strong> {step.warning}{step.url&&<> · <InlineLink href={step.url}>πηγή</InlineLink></>}</p>
+                <p style={{fontSize: 'var(--fs-note)',color:'var(--text-tertiary)',lineHeight:1.55,marginTop:6,fontFamily: T.font.sans}}><strong style={{color:'var(--text-secondary)',fontWeight:600}}>Προσοχή:</strong> {step.warning}{step.url&&<> · <InlineLink href={step.url}>πηγή</InlineLink></>}</p>
               </div>
             </div>
           ))}
@@ -168,7 +168,7 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
               </div>
             ))}
           </div>
-          <p style={{fontSize:12,color:'var(--text-tertiary)',lineHeight:1.6,fontFamily: T.font.sans,marginTop:14}}>
+          <p style={{fontSize: 'var(--fs-note)',color:'var(--text-tertiary)',lineHeight:1.6,fontFamily: T.font.sans,marginTop:14}}>
             Δάνεια που δόθηκαν το 2021 με Euribor −0,55% έχουν σήμερα πραγματικό επιτόκιο περίπου {fmtPct(market.euribor_3m+1.5)}. Η Ευρωπαϊκή Κεντρική Τράπεζα μείωσε το επιτόκιο 8 φορές από τον Ιούνιο 2024.
           </p>
         </MiniSection>
@@ -213,7 +213,7 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
                     κλείνει τη δεξιά άκρη και στις τρεις κάρτες μαζί· το `hy()`
                     μπαίνει εδώ, στην απόδοση, ώστε ο ορισμός στο TabLoanData
                     να μείνει καθαρό κείμενο. */}
-                <p className="po-just" style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans,marginBottom:10}}>{hy(t.d)}</p>
+                <p className="po-just" style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans,marginBottom:10}}>{hy(t.d)}</p>
                 <div style={{display:'flex',flexDirection:'column',gap: 4,marginBottom:10}}>
                   {t.facts.map((f,i)=>(
                     <div key={i} style={{display:'flex',alignItems:'flex-start',gap: 8}}>
@@ -232,7 +232,7 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
             {SERVICERS_GUIDE.redFlags.map((f,i)=>(
               <div key={i} style={{display:'flex',gap:10,padding:'10px 14px',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderLeft:'3px solid var(--border-default)',borderRadius: T.radius.chip}}>
                 <svg aria-hidden="true" className="po-lead-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                <p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{f}</p>
+                <p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',lineHeight:1.55,fontFamily: T.font.sans}}>{f}</p>
               </div>
             ))}
           </div>
@@ -248,7 +248,7 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
         <MiniSection title="Γλωσσάρι όρων" meta={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{profile==='business'?'Πλήρες':'Βασικοί όροι'}</span>}>
           <Glossary items={[...GLOSSARY.filter(g=>profile==='business'||g.level==='basic')].sort((a,b)=>a.term.localeCompare(b.term,'el'))}/>
           {profile!=='business'&&(
-            <p style={{fontSize:12,color:'var(--text-tertiary)',marginTop:14,lineHeight:1.55,fontFamily: T.font.sans}}>
+            <p style={{fontSize: 'var(--fs-note)',color:'var(--text-tertiary)',marginTop:14,lineHeight:1.55,fontFamily: T.font.sans}}>
               Περισσότεροι, πιο εξειδικευμένοι όροι εμφανίζονται στη λειτουργία «Επαγγελματίας», που ανοίγει από τον «Λογαριασμό».
             </p>
           )}

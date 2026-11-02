@@ -274,7 +274,7 @@ export function DealSection({
             ['Επιτόκιο προεξόφλησης', fp(parseFloat(discountRate) || 0), 'για την καθαρή παρούσα αξία'],
           ].map(([l, v, sub]) => (
             <div key={l}>
-              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0, fontFamily: SANS }}>{l}</p>
+              <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: 0, fontFamily: SANS }}>{l}</p>
               <p className="po-fig" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '2px 0 0', fontFamily: SANS, fontVariantNumeric: 'tabular-nums' }}>{v}</p>
               <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '1px 0 0', fontFamily: SANS, lineHeight: 1.4 }}>{sub}</p>
             </div>
@@ -373,7 +373,7 @@ export function SensitivitySection({ scenarios, term, breakEvenOcc }: {
           <p style={{ margin: 0, fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: SANS, fontWeight: 600, display: 'flex', alignItems: 'center' }}>
             Πληρότητα ισοσκελισμού: {isFinite(breakEvenOcc) ? fp(Math.min(100, breakEvenOcc)) : 'μη εφικτή'}<TermInfo term="Πληρότητα ισοσκελισμού" text={G.break_even} />
           </p>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-tertiary)', fontFamily: SANS, lineHeight: 1.5 }}>
+          <p style={{ margin: '4px 0 0', fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', fontFamily: SANS, lineHeight: 1.5 }}>
             {isFinite(breakEvenOcc) && breakEvenOcc <= 100
               ? `Πάνω από αυτό το ποσοστό πληρότητας, τα καθαρά έσοδα της βραχυχρόνιας ξεπερνούν τα καθαρά της μακροχρόνιας μίσθωσης (προ φόρου).`
               : `Με τα τρέχοντα δεδομένα, η βραχυχρόνια δύσκολα ξεπερνά τη μακροχρόνια: η μακροχρόνια μίσθωση φαίνεται προτιμότερη.`}

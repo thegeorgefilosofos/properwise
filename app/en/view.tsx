@@ -20,6 +20,7 @@ import {
   PRICING_HEAD_EN, FAQ_HEAD_EN, FINAL_EN, FAQ_PRICE_Q_EN, faqEn, PARTS_EN,
 } from '@/lib/i18n/en/landing';
 import LandingCalculator from '../LandingCalculator';
+import LandingCalcEn from './landingEn';
 import Spotlight from '../Spotlight';
 import FaqMore from '../FaqMore';
 import { FaqPlus } from '../FaqPlus';
@@ -181,7 +182,7 @@ export default async function LandingEn() {
 
       <section className="lp-reveal" style={{ ...wrap, ...LAYER, paddingBottom: GAP }}>
         <SectionHead {...CALC_HEAD_EN(FIRST_YEAR_NEW_BRACKETS)} />
-        <LandingCalculator cta={signupCtaEn()} locale="en" />
+        <LandingCalcEn><LandingCalculator cta={signupCtaEn()} locale="en" /></LandingCalcEn>
       </section>
 
       <section className="lp-reveal" style={{ ...wrap, ...LAYER, paddingBottom: GAP }}>

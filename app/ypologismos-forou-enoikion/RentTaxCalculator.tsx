@@ -58,9 +58,8 @@ import LiveResult from '@/components/LiveResult';
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { SPEC } from './spec';
-import { useLocale } from '@/lib/i18n/useLocale';
+import { useToolDict, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
 import { localHref } from '@/lib/i18n/paths';
-import { RENT_EN, filingNoteEn, rateScaleEn } from '@/lib/i18n/en/tools/rent';
 const PATH = '/ypologismos-forou-enoikion';
 
 // ═══ Η ΧΡΟΝΙΑ ΠΟΥ ΑΝΟΙΓΕΙ Ο ΥΠΟΛΟΓΙΣΤΗΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗ ΣΗΜΕΡΙΝΗ ΗΜΕΡΟΜΗΝΙΑ ═══
@@ -115,7 +114,9 @@ export function RentTaxCalculator({ today, cta }: {
   // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/rental-income-tax-calculator) ─────────────
   // Ιδιος υπολογισμός· αλλάζουν οι λέξεις (lib/i18n/en/tools/rent.ts) και η
   // γραφή των αριθμών (`fmtFor`). Στα ελληνικά οι μορφοποιητές είναι οι ίδιοι.
-  const locale = useLocale(), en = locale === 'en', E = RENT_EN, path = localHref(locale, PATH);
+  // Τα αγγλικά έρχονται από τον πάροχο του /en (lib/i18n/toolEn.ts)· εδώ δεν
+  // εισάγεται κανένα αγγλικό λεξικό, ώστε να μην κατεβαίνει στα ελληνικά.
+  const { en: X, locale } = useToolDict('rent'), en = X !== undefined, E = (X?.E ?? NO_EN) as NonNullable<ToolEn['rent']>['E'], path = localHref(locale, PATH);
   const { fe, fn, fp, fpRate, feSigned, feWhole, date } = fmtFor(locale);
   const feAuto = fe;
   const dateOf = (y: number, m: number) => (en ? date(`${y}-${String(m).padStart(2, '0')}-01`) : grDateOf(y, m));
@@ -191,7 +192,7 @@ export function RentTaxCalculator({ today, cta }: {
             ράγα ψηλότερη από τα πεδία δίπλα της· μένει στη βοήθεια από κάτω. */}
         <ToolSeg label={en ? E.year : 'Εισόδημα ποιας χρονιάς'} value={String(year)} onChange={x => set('etos', x)}
           options={offeredIncomeYears(today, FIRST_DOCUMENTED_YEAR).map(y => ({ value: String(y), label: String(y) }))}
-          hint={en ? E.yearHint(year, filingNoteEn(year, today), rateScaleEn(rentalBracketsForYear(year))) : <>Του {year}, {filingNote(year, today)}. {year >= FIRST_YEAR_NEW_BRACKETS
+          hint={X ? E.yearHint(year, X.filingNote(year, today), X.rateScale(rentalBracketsForYear(year))) : <>Του {year}, {filingNote(year, today)}. {year >= FIRST_YEAR_NEW_BRACKETS
             ? `Κλίμακα ${rateScale(rentalBracketsForYear(year))} (ν.5246/2025).`
             : `Κλίμακα ${rateScale(rentalBracketsForYear(year))}, χωρίς το ενδιάμεσο κλιμάκιο.`}</>}/>
       </ToolFields>

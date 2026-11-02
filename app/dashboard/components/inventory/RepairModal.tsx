@@ -64,7 +64,7 @@ export function RepairModal({item,repairs,onAdd,onClose,propertyId,userId}:{item
           στον χρήστη «μπράβο που ξόδεψες», που δεν το εννοούσε κανείς. */}
       {totalCost>0&&curVal>0&&(
         <div style={{padding:'10px 14px',background:totalCost>curVal*0.5?'var(--warning-soft)':'var(--bg-elevated)',borderRadius:T.radius.inner,border:`1px solid ${totalCost>curVal*0.5?'var(--warning-border)':'var(--border-subtle)'}`}}>
-          <p style={{fontSize:12,color:totalCost>curVal*0.5?'var(--warning)':'var(--text-secondary)',fontWeight:500,fontFamily:T.font.sans}}>{totalCost>curVal*0.5?`Οι επισκευές (${fe(totalCost)}) ξεπερνούν το μισό της τρέχουσας αξίας (${fe(curVal)}). Σκέψου αντικατάσταση.`:`Επισκευές ${fe(totalCost)} σε αξία ${fe(curVal)}.`}</p>
+          <p style={{fontSize: 'var(--fs-note)',color:totalCost>curVal*0.5?'var(--warning)':'var(--text-secondary)',fontWeight:500,fontFamily:T.font.sans}}>{totalCost>curVal*0.5?`Οι επισκευές (${fe(totalCost)}) ξεπερνούν το μισό της τρέχουσας αξίας (${fe(curVal)}). Σκέψου αντικατάσταση.`:`Επισκευές ${fe(totalCost)} σε αξία ${fe(curVal)}.`}</p>
         </div>
       )}
       {/* Ιδιος κανόνας με τις κάρτες: χωρίς τιμή ή ημερομηνία αγοράς η μπάρα δεν

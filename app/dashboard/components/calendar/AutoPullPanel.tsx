@@ -294,7 +294,7 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
             {mode&&<span style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--accent)', background:'var(--accent-soft)', border:'1px solid var(--accent-border)', borderRadius: T.radius.modal, padding:'2px 9px', fontFamily: T.font.sans }}>{mode==='short_term'?'Βραχυχρόνια':'Μακροχρόνια'}</span>}
           </div>
           <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily: T.font.sans, marginTop:4, lineHeight:1.45 }}>{modeHint} Πάτησε μια πηγή για να την τραβήξεις.</p>
-          {lastSync&&<p style={{ fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, marginTop:4 }}>Τελευταίος συγχρονισμός: {lastSync}</p>}
+          {lastSync&&<p style={{ fontSize: 'var(--fs-note)', color:'var(--text-tertiary)', fontFamily: T.font.sans, marginTop:4 }}>Τελευταίος συγχρονισμός: {lastSync}</p>}
         </div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 210px), 1fr))', gap:10 }}>
@@ -306,7 +306,7 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
               <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:36, height:36, borderRadius:10, flexShrink:0, background:isBusy?'linear-gradient(135deg, var(--accent), var(--accent-hover))':'var(--bg-elevated)', color:isBusy?'var(--accent-text)':'var(--text-tertiary)', border:isBusy?'none':'1px solid var(--border-subtle)', boxShadow:isBusy?'0 4px 12px -6px var(--accent)':'none' }}>{isBusy?<RefreshCw size={16} style={{ animation:'spin 1s linear infinite' }}/>:meta.icon}</span>
               <div style={{ flex:1, minWidth:0 }}>
                 <p style={{ fontSize:14, fontFamily: T.font.sans, fontWeight:600, color:isBusy?'var(--accent)':'var(--text-primary)' }}>{meta.label}</p>
-                <p className="po-subline" style={{ fontSize:12, color:d?'var(--positive)':'var(--text-tertiary)', fontFamily: T.font.sans }}>{isBusy?'Συγχρονισμός…':d?`Ενημερώθηκε · ${d.n}`:counts===null?'…':has?meta.unit(c!):meta.empty}</p>
+                <p className="po-subline" style={{ fontSize: 'var(--fs-note)', color:d?'var(--positive)':'var(--text-tertiary)', fontFamily: T.font.sans }}>{isBusy?'Συγχρονισμός…':d?`Ενημερώθηκε · ${d.n}`:counts===null?'…':has?meta.unit(c!):meta.empty}</p>
               </div>
               {has&&!isBusy&&(d?<Check size={17} style={{ color:'var(--positive)', flexShrink:0 }}/>:<RefreshCw size={15} style={{ color:'var(--text-tertiary)', flexShrink:0 }}/>)}
             </button>
@@ -317,7 +317,7 @@ export function AutoPullPanel({ propertyId, userId, onRefresh, onClose }: { prop
           σύμβαση διεπαφής («δεν πατιέται»), όχι εξήγηση. Χωρίς αυτήν τη γραμμή ο
           χρήστης βλέπει τρία σβηστά κουτιά και συμπεραίνει ότι κάτι έσπασε. */}
       {counts!==null&&visible.some(k=>(counts[k]||0)===0)&&(
-        <p style={{ marginTop:12, fontSize:12, color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5 }}>
+        <p style={{ marginTop:12, fontSize: 'var(--fs-note)', color:'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight:1.5 }}>
           Οι θαμπές πηγές δεν έχουν ακόμη δεδομένα να τραβήξουν. Μόλις καταχωρήσεις την πρώτη εγγραφή, ανάβουν μόνες τους.
         </p>
       )}

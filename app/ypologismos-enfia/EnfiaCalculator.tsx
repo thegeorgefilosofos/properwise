@@ -41,13 +41,13 @@ import LiveResult from '@/components/LiveResult';
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
 import { SPEC } from './spec';
-import { useLocale } from '@/lib/i18n/useLocale';
+import { useToolDict, useToolEn, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
 import { localHref } from '@/lib/i18n/paths';
 import { fmtFor } from '@/lib/core/format';
-import { ENFIA_EN, ENFIA_FLOOR_EN, ENFIA_FLOOR_SHORT_EN, enfiaAgeChoicesEn, smallSettlementReliefEn } from '@/lib/i18n/en/tools/enfia';
 import { enfiaInputs, enfiaPublicEstimate, enfiaSignupHref } from '@/lib/tools/enfiaCarry';
 import { ToolCtaHref } from '@/app/ToolCtaLink';
 const PATH = '/ypologismos-enfia';
+type EnfiaEn = NonNullable<ToolEn['enfia']>;
 
 // Οι ετικέτες αντλούνται από τα ΚΛΕΙΔΙΑ του lib, ώστε αν προστεθεί συντελεστής
 // να μη μείνει η οθόνη πίσω σιωπηλά.
@@ -75,7 +75,9 @@ export function EnfiaCalculator({ year, today, cta }: {
   // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/enfia-calculator) ──────────────────────
   // Ιδιος υπολογισμός· αλλάζουν οι λέξεις (lib/i18n/en/tools/enfia.ts) και η
   // γραφή των αριθμών (`fmtFor`). Στα ελληνικά οι μορφοποιητές είναι οι ίδιοι.
-  const locale = useLocale(), en = locale === 'en', E = ENFIA_EN, path = localHref(locale, PATH);
+  // Τα αγγλικά έρχονται από τον πάροχο του /en (lib/i18n/toolEn.ts)· εδώ δεν
+  // εισάγεται κανένα αγγλικό λεξικό, ώστε να μην κατεβαίνει στα ελληνικά.
+  const { en: X, locale } = useToolDict('enfia'), en = X !== undefined, E = (X?.E ?? NO_EN) as EnfiaEn['E'], path = localHref(locale, PATH);
   const { fe, fn, fpRate, feRate, feSigned, feWhole } = fmtFor(locale);
   const feAuto = fe;
   const [v, set] = useToolState(SPEC, path);
@@ -85,9 +87,9 @@ export function EnfiaCalculator({ year, today, cta }: {
   // Ο ΚΑΝΟΝΑΣ ΤΟΥ ΠΟΣΟΣΤΟΥ ΓΡΑΦΕΤΑΙ ΜΙΑ ΦΟΡΑ: τον διαβάζουν ο υπολογισμός, το
   // χαρτί και η σημείωση που λέει ότι η τιμή του πεδίου δεν πέρασε ως έχει.
   const own = Math.min(100, Math.max(1, amount(ownership) || 100));
-  const smallRelief = en ? smallSettlementReliefEn(year) : smallSettlementRelief(year, true);
-  const ages = useMemo(() => (en ? enfiaAgeChoicesEn(year) : enfiaAgeChoices(year)), [year, en]);
-  const floorLabel = (k: string) => (en ? ENFIA_FLOOR_EN : ENFIA_FLOOR_LABEL)[k as keyof typeof ENFIA_FLOOR_LABEL];
+  const smallRelief = X ? X.smallRelief(year) : smallSettlementRelief(year, true);
+  const ages = useMemo(() => (X ? X.ageChoices(year) : enfiaAgeChoices(year)), [year, X]);
+  const floorLabel = (k: string) => (X ? X.floor : ENFIA_FLOOR_LABEL)[k as keyof typeof ENFIA_FLOOR_LABEL];
 
   // ΤΑ ΠΕΔΙΑ ΔΙΑΒΑΖΟΝΤΑΙ ΣΤΟ lib/tools/enfiaCarry.ts (`enfiaInputs`), κοινά με τη
   // συνέχεια της εγγραφής: το πρώτο ακίνητο στον πίνακα παίρνει τις ίδιες
@@ -213,7 +215,7 @@ export function EnfiaCalculator({ year, today, cta }: {
         { k: en ? E.zone : 'Τιμή ζώνης', v: `${feAuto(amount(zonePrice))}/${en ? E.sqmUnit : 'τ.μ.'}` },
         // «Όροφος 2ος», όχι «Όροφος 2ος όροφος» (#398): δίπλα στο κλειδί η σύντομη
         // ετικέτα, από το ίδιο αρχείο με τις ετικέτες του μενού.
-        { k: en ? E.floor : 'Όροφος', v: (en ? ENFIA_FLOOR_SHORT_EN : ENFIA_FLOOR_SHORT)[floor as keyof typeof ENFIA_FLOOR_SHORT] ?? floor },
+        { k: en ? E.floor : 'Όροφος', v: (X ? X.floorShort : ENFIA_FLOOR_SHORT)[floor as keyof typeof ENFIA_FLOOR_SHORT] ?? floor },
         { k: en ? E.age : 'Παλαιότητα', v: ageLabel(ages, age) },
         { k: en ? E.share : 'Ποσοστό ιδιοκτησίας', v: fpRate(own) },
         ...(r.aux > 0 ? [{ k: en ? E.aux : 'Βοηθητικοί χώροι', v: `${fn(r.aux, Number.isInteger(r.aux) ? 0 : 2)}${en ? ' ' + E.sqmUnit : ' τ.μ.'}` }] : []),
@@ -370,7 +372,7 @@ export function EnfiaCalculator({ year, today, cta }: {
 // με χρώμα. Σε χαρτί τυπώνονται και οι δώδεκα.
 function Instalments({ annual, year, today, en = false }: { annual: number; year: number; today: string; en?: boolean }) {
   const [all, setAll] = useState(false);
-  const E = ENFIA_EN, F = fmtFor(en ? 'en' : 'el');
+  const E = (useToolEn()?.enfia?.E ?? NO_EN) as EnfiaEn['E'], F = fmtFor(en ? 'en' : 'el');
   const rows = enfiaInstalments(annual, year);
   if (!rows.length) return null;
 

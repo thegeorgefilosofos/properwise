@@ -556,7 +556,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
                   <span style={{ width:7, height:7, borderRadius:3, background:cat.color, flexShrink:0 }}/>
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:14, fontFamily: T.font.sans, color:'var(--text-primary)', margin:0, letterSpacing:'0.1px' }}>{e.title}</p>
-                    <p style={{ fontSize:12, fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:'2px 0 0' }}>{fmt(e.event_date)}{e.event_time?` · ${e.event_time}`:''}</p>
+                    <p style={{ fontSize: 'var(--fs-note)', fontFamily: T.font.sans, color:'var(--text-tertiary)', margin:'2px 0 0' }}>{fmt(e.event_date)}{e.event_time?` · ${e.event_time}`:''}</p>
                   </div>
                   {/* ΠΟΣΟ ΚΑΙ ΑΠΟΣΤΑΣΗ ΣΕ ΜΙΑ ΣΤΗΛΗ (05.10.2026). Δίπλα δίπλα, με την
                       ενιαία διατύπωση «Πριν από 36 ημέρες», στα 320 έσφιγγαν τη στήλη

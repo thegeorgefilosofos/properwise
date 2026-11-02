@@ -486,7 +486,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
                   <p style={{ margin: 0, fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>
                     Το μητρώο εγγράφων δεν απάντησε.
                   </p>
-                  <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
+                  <p style={{ margin: '4px 0 0', fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
                     Δεν μπορούμε να δούμε αν έχει ήδη εκδοθεί ειδοποίηση για αυτόν τον μήνα. Έλεγξε το «Τρέχον μίσθωμα» πιο κάτω πριν προχωρήσεις.
                   </p>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, cursor: 'pointer', minHeight: 44 }}>
@@ -502,13 +502,13 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
                   <p style={{ margin: 0, fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>
                     Έχει ήδη εκδοθεί ειδοποίηση για αυτόν τον μήνα ισχύος.
                   </p>
-                  <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
+                  <p style={{ margin: '4px 0 0', fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
                     {grDate(priorSameMonth.issued_at.slice(0, 10))}
                     {typeof priorSameMonth.summary?.currentRent === 'number' && typeof priorSameMonth.summary?.newRent === 'number'
                       ? `: ${pEur(priorSameMonth.summary.currentRent)} σε ${pEur(priorSameMonth.summary.newRent)}` : ''}
                     {' · '}αριθμός {priorSameMonth.id}
                   </p>
-                  <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
+                  <p style={{ margin: '8px 0 0', fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
                     Το «Τρέχον μίσθωμα» πιο κάτω είναι ΗΔΗ το αναπροσαρμοσμένο. Δεύτερη ειδοποίηση θα το ανεβάσει ξανά.
                   </p>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, cursor: 'pointer', minHeight: 44 }}>

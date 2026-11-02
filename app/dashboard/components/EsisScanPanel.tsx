@@ -151,7 +151,7 @@ export default function EsisScanPanel({
         style={{background:'var(--bg-surface)',border:`1px solid ${vhE?'var(--border-default)':'var(--border-subtle)'}`,borderRadius: T.radius.card,padding:'16px',transition:'border-color 0.15s'}}>
         <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:14,flexWrap:'wrap',marginBottom:14}}>
           <p style={{fontSize:16,fontWeight:700,fontFamily:font,color:res.verdict==='expensive'?'var(--negative)':vhE?'var(--accent)':'var(--text-primary)',letterSpacing:'-0.01em',transition:'color 0.15s'}}>{esisVerdictLabel(res.verdict)}</p>
-          {res.vsMarketPct!=null && <p style={{fontSize:12,fontFamily:font,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)',fontWeight:600}}>{res.vsMarketPct<=0?'στα επίπεδα αγοράς':`+${fn(res.vsMarketPct,2)} μονάδες έναντι αγοράς`}</p>}
+          {res.vsMarketPct!=null && <p style={{fontSize: 'var(--fs-note)',fontFamily:font,fontVariantNumeric:'tabular-nums',color:'var(--text-tertiary)',fontWeight:600}}>{res.vsMarketPct<=0?'στα επίπεδα αγοράς':`+${fn(res.vsMarketPct,2)} μονάδες έναντι αγοράς`}</p>}
         </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 110px), 1fr))',gap:12}}>
         {/* ═══ ΕΒΔΟΜΗ ΓΡΑΦΗ ΤΗΣ ΓΡΑΜΜΗΣ ΣΤΟΙΧΕΙΩΝ, ΜΕ ΔΥΟ ΜΕΓΕΘΗ ΚΑΙ ΕΝΑ ΚΟΚΚΙΝΟ

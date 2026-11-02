@@ -112,7 +112,7 @@ export function BulkImportModal({propertyId,userId,onImported,onClose}:{property
               από τον μεταγλωττιστή και ξυπνά τα σφάλματα των διπλανών χειριστών. */}
           <div role="button" tabIndex={0} onClick={openFilePicker} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openFilePicker()}}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)handleFile(f)}} style={{border:'2px dashed var(--border-accent)',borderRadius:T.radius.card,padding:'40px 20px',textAlign:'center',cursor:'pointer',background:'var(--accent-dim)'}}>
             <p style={{fontSize:14,fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)',marginBottom:8}}>Σύρε εδώ το αρχείο ή πάτησε για να το επιλέξεις</p>
-            <p style={{fontSize:12,color:'var(--text-secondary)',fontFamily:T.font.sans}}>Excel ή CSV</p>
+            <p style={{fontSize: 'var(--fs-note)',color:'var(--text-secondary)',fontFamily:T.font.sans}}>Excel ή CSV</p>
           </div>
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)handleFile(f)}}/>
           {errors.length>0&&<div style={{padding:'10px 14px',background:'var(--negative-dim)',borderRadius: T.radius.chip,border:'1px solid var(--negative-border)'}}>{errors.map((e,i)=><p key={i} style={{fontSize: 'var(--fs-xs)',color:'var(--negative)',fontFamily:T.font.sans}}>{e}</p>)}</div>}
