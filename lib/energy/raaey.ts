@@ -188,7 +188,7 @@ export function raaeyText(s: string): string {
     .replace(/(?<![\p{L}])[Kk][Ww][Hh](?![\p{L}])/gu, 'kWh')
     // Λατινικό κεφαλαίο που μοιάζει με ελληνικό, στην αρχή ελληνικής λέξης
     // («Eπιπλέον») ή μόνο του πριν από ελληνική λέξη («H τιμή»).
-    .replace(/(?<![\p{L}])([ABEHIKMNOPTXYZ])(?=[α-ωά-ώ]|\s[\u0370-\u03FF])/gu, (c: string) => LATIN_TO_GREEK[c] ?? c)
+    .replace(/(?<![\p{L}])([ABEHIKMNOPTXYZ])(?=[\u03AC-\u03CE]|\s[\u0370-\u03FF])/gu, (c: string) => LATIN_TO_GREEK[c] ?? c)
     .replace(/(?<![\p{L}])Έντολή(?![\p{L}])/gu, 'Εντολή')
     // Η ίδια φράση γραμμένη δύο φορές στο ίδιο κελί («Συνέπεια Συνέπεια»).
     .replace(/(?<![\p{L}])(\p{L}[\p{L} ]*?\p{L})\s+\1(?![\p{L}])/gu, '$1');
