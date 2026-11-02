@@ -780,6 +780,13 @@ export const MUTATIONS = {
   ] },
   // Το κουμπί «Start free» δίπλα σε τιμή, ένα ελληνικό «ή» μέσα σε αγγλική
   // φράση τιμής και η Νόα με φύλο: τα τρία λάθη που ο φύλακας υπάρχει να κόβει.
+  // Ο υπολογιστής ΕΝΦΙΑ ξαναεισάγει το αγγλικό λεξικό του: κατεβαίνει πάλι στο
+  // /ypologismos-enfia (+9,7 KB, 03.11.2026). Και component πελάτη με σχετική
+  // διαδρομή προς το λεξικό, που δεν γράφει «@/».
+  'en-client': { every: [
+    { file: 'app/ypologismos-enfia/EnfiaCalculator.tsx', from: "import { SPEC } from './spec';", to: "import { SPEC } from './spec';\nimport { ENFIA_EN } from '@/lib/i18n/en/tools/enfia';" },
+    { add: 'components/__mut__.tsx', content: "'use client';\nimport { RENT_EN } from '../lib/i18n/en/tools/rent';\n" + tsx('    <p>{RENT_EN.year}</p>') },
+  ] },
   'en-copy': { every: [
     { add: 'lib/i18n/en/__mut__.ts', content: "export const cta = { label: 'Start free', price: '€0/month' }\n" },
     { add: 'lib/i18n/en/__mut__.ts', content: "export const per = (a: string) => `ή ${a} a year`\n" },

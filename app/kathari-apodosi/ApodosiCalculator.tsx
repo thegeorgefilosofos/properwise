@@ -33,10 +33,8 @@ import { EstimateNote, ToolClampNote } from '@/app/ToolNotes';
 import { ToolNumField, ToolFields, ToolHero, ToolLedger, ToolStats, TOOL_LABEL, TOOL_FIELD } from '@/app/ToolParts';
 
 import LiveResult from '@/components/LiveResult';
-import { useLocale } from '@/lib/i18n/useLocale';
+import { useToolDict, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
 import { localHref } from '@/lib/i18n/paths';
-import { YIELD_EN } from '@/lib/i18n/en/tools/yield';
-import { rateScaleEn } from '@/lib/i18n/en/tools/rent';
 /** Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. */
 const SPEC = {
   axia: '200000', enoikio: '700', mines: '12',
@@ -76,7 +74,9 @@ export function ApodosiCalculator({ year, today, cta }: {
   cta: ReactNode;
 }) {
   // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/rental-yield-calculator) ──────────────────
-  const locale = useLocale(), en = locale === 'en', E = YIELD_EN, path = localHref(locale, PATH);
+  // Τα αγγλικά έρχονται από τον πάροχο του /en (lib/i18n/toolEn.ts)· εδώ δεν
+  // εισάγεται κανένα αγγλικό λεξικό, ώστε να μην κατεβαίνει στα ελληνικά.
+  const { en: X, locale } = useToolDict('yield'), en = X !== undefined, E = (X?.E ?? NO_EN) as NonNullable<ToolEn['yield']>['E'], path = localHref(locale, PATH);
   const { fe, fn, fp, fpRate, feSigned, date } = fmtFor(locale);
   const feAuto = fe, wholeSigned = signedWith(fe);
   const fpSigned = (n: number) => (n < 0 ? `−${fp(-n)}` : fp(n));
@@ -311,7 +311,7 @@ export function ApodosiCalculator({ year, today, cta }: {
               Ο αναγνώστης καταλάβαινε ότι η κλίμακα και το 5% ΔΕΝ εφαρμόζονται.
               Δύο προτάσεις, με τη σειρά που τις ρωτά. */}
           {en ? <><strong style={{ color: 'var(--text-primary)' }}>{E.notLead}</strong>{' '}
-            {E.not(year, rateScaleEn(rentalBracketsForYear(year)), fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100), bankFrom)} <EstimateNote investment en /></> : <>
+            {E.not(year, X!.rateScale(rentalBracketsForYear(year)), fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100), bankFrom)} <EstimateNote investment en /></> : <>
           <strong style={{ color: 'var(--text-primary)' }}>Τι περιλαμβάνει και τι όχι.</strong>{' '}
           Ο φόρος βγαίνει με την κλίμακα ενοικίων {year}
           {` (${rateScale(rentalBracketsForYear(year))})`} και

@@ -16,9 +16,8 @@ import {
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { ToolNumField, ToolFields, ToolHero, ToolLedger } from '@/app/ToolParts';
 import LiveResult from '@/components/LiveResult';
-import { useLocale } from '@/lib/i18n/useLocale';
+import { useToolDict, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
 import { localHref } from '@/lib/i18n/paths';
-import { RENO_EN } from '@/lib/i18n/en/tools/reno';
 import { SPEC, PATH, TAX_KEYS } from './spec';
 
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
@@ -40,7 +39,9 @@ const SHARE_TEXT = `το ${fn(1)}/${fn(Math.round(1 / RENO_39B_MATERIALS_SHARE))
 
 export function RenoCalculator({ today, cta }: { today: string; cta: ReactNode }) {
   // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/renovation-tax-credit-calculator) ───────
-  const locale = useLocale(), en = locale === 'en', E = RENO_EN, path = localHref(locale, PATH);
+  // Τα αγγλικά έρχονται από τον πάροχο του /en (lib/i18n/toolEn.ts)· εδώ δεν
+  // εισάγεται κανένα αγγλικό λεξικό, ώστε να μην κατεβαίνει στα ελληνικά.
+  const { en: X, locale } = useToolDict('reno'), en = X !== undefined, E = (X?.E ?? NO_EN) as NonNullable<ToolEn['reno']>['E'], path = localHref(locale, PATH);
   const { fe } = fmtFor(locale);
   const [v, set] = useToolState(SPEC, path);
   const ids = { ypiresies: useId(), ylika: useId(), f: [useId(), useId(), useId(), useId(), useId()] };

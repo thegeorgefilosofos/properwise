@@ -12,6 +12,7 @@ import { shareImage } from '../../og/share';
 import { MortgageCalculator } from '../../ypologismos-stegastikou-daneiou/MortgageCalculator';
 import { readMortgageMarket } from '../../ypologismos-stegastikou-daneiou/marketRates';
 import { ToolPageEn } from '../ToolPageEn';
+import MortgageEn from './en';
 
 // Ο υπολογιστής στεγαστικού στα αγγλικά: ο ίδιος υπολογιστής, οι ίδιες τιμές
 // αγοράς (μία ανάγνωση ανά ώρα, όπως η ελληνική σελίδα).
@@ -36,7 +37,7 @@ export default async function Page() {
       h1={D.h1} lede={D.lede}
       sources={{ kind: 'loan', checked: null }} faq={faq}>
       <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
-        <MortgageCalculator market={market} today={today} cta={<ToolCta locale="en" title={D.ctaTitle} body={D.ctaBody} />}/>
+        <MortgageEn><MortgageCalculator market={market} today={today} cta={<ToolCta locale="en" title={D.ctaTitle} body={D.ctaBody} />}/></MortgageEn>
       </Suspense>
     </ToolPageEn>
   );

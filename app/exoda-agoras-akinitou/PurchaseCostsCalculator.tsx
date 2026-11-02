@@ -21,9 +21,8 @@ import { ToolNumField, ToolFields, ToolSeg, ToolHero, ToolLedger } from '@/app/T
 import LiveResult from '@/components/LiveResult';
 import { SPEC, PATH, purchaseInputOf } from './spec';
 import { ledgerRows, missingSentence, VAT_PCT, SERVICES_VAT_PCT, CADASTRE_HOME } from './lines';
-import { useLocale } from '@/lib/i18n/useLocale';
+import { useToolDict, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
 import { localHref } from '@/lib/i18n/paths';
-import { BUY_EN, ledgerRowsEn, missingSentenceEn } from '@/lib/i18n/en/tools/buy';
 
 const MORTGAGE = '/ypologismos-stegastikou-daneiou';
 const LINK = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 } as const;
@@ -61,7 +60,9 @@ export function PurchaseCostsCalculator({ today, vatUntil, cta }: {
   cta: ReactNode;
 }) {
   // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/property-purchase-costs) ─────────────────
-  const locale = useLocale(), en = locale === 'en', E = BUY_EN, path = localHref(locale, PATH);
+  // Τα αγγλικά έρχονται από τον πάροχο του /en (lib/i18n/toolEn.ts)· εδώ δεν
+  // εισάγεται κανένα αγγλικό λεξικό, ώστε να μην κατεβαίνει στα ελληνικά.
+  const { en: X, locale } = useToolDict('buy'), en = X !== undefined, E = (X?.E ?? NO_EN) as NonNullable<ToolEn['buy']>['E'], path = localHref(locale, PATH);
   const { fe, fp, feSigned } = fmtFor(locale);
   const yesNo = en ? [{ value: 'nai', label: E.yes }, { value: 'oxi', label: E.no }] : YES_NO;
   const [v, set] = useToolState(SPEC, path);
@@ -73,7 +74,7 @@ export function PurchaseCostsCalculator({ today, vatUntil, cta }: {
   const input = purchaseInputOf(v);
   const r = purchaseCosts(input);
   const newBuild = v.neodmito === 'nai';
-  const missing = en ? missingSentenceEn(r) : missingSentence(r);
+  const missing = X ? X.missing(r) : missingSentence(r);
   const mortgageHref = `${localHref(locale, MORTGAGE)}?poso=${Math.round(r.loan)}`;
 
   return (
@@ -172,7 +173,7 @@ export function PurchaseCostsCalculator({ today, vatUntil, cta }: {
             ]}/>
           <LiveResult say={en ? E.say(fe(r.total), fe(r.cashNeeded)) : `Έξοδα αγοράς ${fe(r.total)}. Μετρητά εκτός δανείου ${fe(r.cashNeeded)}.`}/>
           <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
-          <ToolLedger rows={(en ? ledgerRowsEn : ledgerRows)(r, input.agentPct ?? 0)}/>
+          <ToolLedger rows={(X ? X.ledgerRows : ledgerRows)(r, input.agentPct ?? 0)}/>
           {missing && <p style={NOTE}>{missing}</p>}
         </>)}
       </ResultCard>

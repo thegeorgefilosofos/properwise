@@ -16,6 +16,7 @@ import { PAGE_UPDATED, limitsChecked } from '../../pageUpdated';
 import { RentTaxCalculator } from '../../ypologismos-forou-enoikion/RentTaxCalculator';
 import { rentPageYear, rentExample } from '../../ypologismos-forou-enoikion/seo';
 import { ToolPageEn } from '../ToolPageEn';
+import RentEn from './en';
 
 // Ο υπολογιστής φόρου ενοικίων στα αγγλικά. Ο ίδιος υπολογιστής (locale από τη
 // διαδρομή), το ίδιο λυμένο παράδειγμα (seo.ts), οι ίδιες πηγές.
@@ -87,7 +88,7 @@ export default function Page() {
       h1={D.h1(year)} lede={D.lede(deduction)} lawYear={year}
       sources={{ kind: 'rent', checked: limitsChecked(EL), updated: PAGE_UPDATED[EL] }} faq={faq} after={after}>
       <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
-        <RentTaxCalculator today={today} cta={<ToolCta locale="en" title={D.ctaTitle} body={D.ctaBody} />}/>
+        <RentEn><RentTaxCalculator today={today} cta={<ToolCta locale="en" title={D.ctaTitle} body={D.ctaBody} />}/></RentEn>
       </Suspense>
     </ToolPageEn>
   );

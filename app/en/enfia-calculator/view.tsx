@@ -14,6 +14,7 @@ import { PAGE_UPDATED, limitsChecked } from '../../pageUpdated';
 import { EnfiaCalculator } from '../../ypologismos-enfia/EnfiaCalculator';
 import { SPEC } from '../../ypologismos-enfia/spec';
 import { ToolPageEn } from '../ToolPageEn';
+import EnfiaEn from './en';
 
 // Ο υπολογιστής ΕΝΦΙΑ στα αγγλικά. Ο ίδιος υπολογιστής (locale από τη διαδρομή),
 // οι ίδιες πηγές και ημερομηνίες ελέγχου με το /ypologismos-enfia.
@@ -48,9 +49,11 @@ export default function Page() {
       h1={D.h1(year)} lede={D.lede} lawYear={year}
       sources={{ kind: 'enfia', checked: limitsChecked(EL), updated: PAGE_UPDATED[EL] }} faq={faq}>
       <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
-        <EnfiaCalculator year={year} today={athensToday()} cta={
-          <ToolCta locale="en" href={enfiaSignupHref(SPEC)} title={D.ctaTitle} body={D.ctaBody} />
-        }/>
+        <EnfiaEn>
+          <EnfiaCalculator year={year} today={athensToday()} cta={
+            <ToolCta locale="en" href={enfiaSignupHref(SPEC)} title={D.ctaTitle} body={D.ctaBody} />
+          }/>
+        </EnfiaEn>
       </Suspense>
     </ToolPageEn>
   );

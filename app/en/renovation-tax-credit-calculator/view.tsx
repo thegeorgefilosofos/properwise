@@ -11,6 +11,7 @@ import { shareImage } from '../../og/share';
 import { PAGE_UPDATED } from '../../pageUpdated';
 import { RenoCalculator } from '../../ypologismos-ekptosis-anakainisis/RenoCalculator';
 import { ToolPageEn } from '../ToolPageEn';
+import RenoEn from './en';
 
 // Η έκπτωση φόρου ανακαίνισης στα αγγλικά: ο ίδιος υπολογιστής, οι ίδιες πηγές
 // και ο ίδιος έλεγχος του μητρώου ισχύος (renovation-39b).
@@ -28,7 +29,7 @@ export default function Page() {
       h1={D.h1} lede={D.lede} lawYear={athensParts().year}
       sources={{ kind: 'reno', checked: regulated('renovation-39b').checkedAt, updated: PAGE_UPDATED[EL] }} faq={renoFaqEn()}>
       <Suspense fallback={<div style={{ minHeight: 560 }} aria-hidden/>}>
-        <RenoCalculator today={athensToday()} cta={<ToolCta locale="en" title={D.ctaTitle} body={D.ctaBody} />}/>
+        <RenoEn><RenoCalculator today={athensToday()} cta={<ToolCta locale="en" title={D.ctaTitle} body={D.ctaBody} />}/></RenoEn>
       </Suspense>
     </ToolPageEn>
   );

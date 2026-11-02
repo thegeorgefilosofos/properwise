@@ -14,6 +14,7 @@ import { shareImage } from '../../og/share';
 import { PAGE_UPDATED, limitsChecked } from '../../pageUpdated';
 import { ApodosiCalculator } from '../../kathari-apodosi/ApodosiCalculator';
 import { ToolPageEn } from '../ToolPageEn';
+import YieldEn from './en';
 
 // Η καθαρή απόδοση στα αγγλικά: ο ίδιος υπολογιστής, οι ίδιες πηγές.
 const PATH = '/en/rental-yield-calculator';
@@ -33,7 +34,7 @@ export default function Page() {
       h1={D.h1} lede={D.lede} lawYear={year}
       sources={{ kind: 'yield', checked: limitsChecked(EL), updated: PAGE_UPDATED[EL] }} faq={faq}>
       <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
-        <ApodosiCalculator year={year} today={athensToday()} cta={<ToolCta locale="en" title={D.ctaTitle} body={D.ctaBody} />}/>
+        <YieldEn><ApodosiCalculator year={year} today={athensToday()} cta={<ToolCta locale="en" title={D.ctaTitle} body={D.ctaBody} />}/></YieldEn>
       </Suspense>
     </ToolPageEn>
   );
