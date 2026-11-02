@@ -17,7 +17,7 @@
 // <a>, όχι <Link>): το `<html lang>` το γράφει η ρίζα στον διακομιστή και μια
 // πλοήγηση πελάτη θα κρατούσε τη γλώσσα της προηγούμενης σελίδας.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, LOCALE_NAME, LOCALE_SHORT, localeOfPath, type Locale,
@@ -149,4 +149,16 @@ function LangPopover({ place, current, hrefOf }: {
       </ul>
     </div>
   );
+}
+
+/**
+ * Σύνδεσμος προς την ίδια σελίδα στην άλλη γλώσσα, με μνήμη της επιλογής. Τον
+ * χρησιμοποιεί η σημείωση της μετάφρασης στις αγγλικές νομικές σελίδες
+ * («Read the Greek version»): χωρίς το cookie, το proxy.ts θα γύριζε τον
+ * επισκέπτη που έχει διαλέξει αγγλικά πίσω στην αγγλική σελίδα.
+ */
+export function LocaleLink({ to, href, className, children }: {
+  to: Locale; href: string; className?: string; children: ReactNode;
+}) {
+  return <a href={href} lang={to} hrefLang={to} className={className} onClick={() => rememberLocale(to)}>{children}</a>;
 }

@@ -25,6 +25,8 @@ export const PAGE_PAIRS = [
   ['/login', '/en/login'],
   ['/signup', '/en/signup'],
   ['/reset-password', '/en/reset-password'],
+  ['/privacy', '/en/privacy'],
+  ['/terms', '/en/terms'],
 ] as const satisfies readonly (readonly [string, string])[];
 
 const EL_TO_EN = new Map<string, string>(PAGE_PAIRS.map(([el, en]) => [el, en]));

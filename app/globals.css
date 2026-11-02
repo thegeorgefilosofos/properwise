@@ -7675,3 +7675,9 @@ body:has(.po-tool-page) .pw-lang-suggest {
   --border-subtle: var(--mkt-border-default);
   --accent: var(--mkt-accent);
 }
+
+/* ΤΑ ΑΓΓΛΙΚΑ ΝΟΜΙΚΑ ΣΤΟΙΧΙΖΟΝΤΑΙ ΑΡΙΣΤΕΡΑ. Η πλήρης στοίχιση των νομικών
+   κειμένων στέκει στα ελληνικά επειδή έχει μαλακά ενωτικά από κάτω (`hy()`)·
+   ο συλλαβισμός δεν κόβει αγγλικές λέξεις, οπότε η ίδια στοίχιση άνοιγε
+   ποτάμια λευκού. Στα αγγλικά: αριστερά και `pretty`, όπως οι οδηγοί. */
+html[lang="en"] :is(.lg-p, .lg-ul li, .lg-note, .lg-just, .lg-lede > p) { text-align: start; text-wrap-style: pretty; }
