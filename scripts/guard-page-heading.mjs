@@ -20,9 +20,11 @@
 // email δεν είχαν καμία επικεφαλίδα. Η Λογιστική είχε τίτλο, γραμμένο ως `h2`.
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync, globSync, existsSync } from 'node:fs'
+import { join, dirname } from 'node:path'
 
 /** Κελύφη που παρέχουν `h1` για λογαριασμό του καλούντος. */
-const SHELLS = ['<PageTitle', '<LegalShell', '<LegalLayout', '<AlreadySignedIn', '<PortalTitle']
+// Το `<ToolPageEn` (app/en/ToolPageEn.tsx) αποδίδει το `<h1>` κάθε αγγλικού υπολογιστή.
+const SHELLS = ['<PageTitle', '<LegalShell', '<LegalLayout', '<AlreadySignedIn', '<PortalTitle', '<ToolPageEn']
 
 /**
  * Οθόνες που ΔΕΝ είναι σελίδες με δικό τους όνομα και ο λόγος τους.
@@ -59,6 +61,16 @@ for (const file of files) {
   // ΑΥΤΗΣ της οθόνης: ζει σε συμβολοσειρά μαζί με το `</h1>` του.
   const dom = src.replace(/`[^`]*`/gs, '').replace(/'[^'\n]*'/g, '')
   if (/<h1[\s>]/.test(dom)) continue
+  // Σελίδα που ξαναεξάγει άλλη σελίδα (οι αγγλικές είσοδος, εγγραφή, επαναφορά
+  // ξαναχρησιμοποιούν τις ελληνικές): η επικεφαλίδα κρίνεται στο αρχείο-πηγή.
+  const re = /^export \{ default \} from '(\.[^']+)';?\s*$/m.exec(src)
+  if (re) {
+    const target = join(dirname(file), re[1]) + '.tsx'
+    if (existsSync(target)) {
+      const t = readFileSync(target, 'utf8').replace(/`[^`]*`/gs, '').replace(/'[^'\n]*'/g, '')
+      if (/<h1[\s>]/.test(t) || SHELLS.some(sh => t.includes(sh))) continue
+    }
+  }
   if (SHELLS.some(s => src.includes(s))) continue
   naked.push(file)
 }

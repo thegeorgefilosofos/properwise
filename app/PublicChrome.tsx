@@ -481,7 +481,7 @@ export function JsonLd({ data }: { data: unknown }) {
  */
 export function ToolLede({ children, locale = 'el', lawYear }: { children: ReactNode; locale?: Locale; lawYear?: number }) {
   if (locale === 'en') {
-    // ΣΤΑ ΑΓΓΛΙΚΑ: αριστερή στοίχιση χωρίς συλλαβισμό, και μία ήσυχη γραμμή
+    // ΣΤΑ ΑΓΓΛΙΚΑ: αριστερή στοίχιση χωρίς συλλαβισμό· επιπλέον μία ήσυχη γραμμή
     // ότι ο υπολογισμός εφαρμόζει το ελληνικό φορολογικό δίκαιο του έτους.
     const E = TOOL_SHELL_EN;
     return (

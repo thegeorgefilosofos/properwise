@@ -6,7 +6,7 @@
 // σταθερές του lib/billing. Οσα η ελληνική σελίδα γράφει με το χέρι (ΦΠΑ, όριο
 // τετραγωνικών) εδώ λέγονται χωρίς αριθμό.
 // ═══════════════════════════════════════════════════════════════════════════
-import { STR_INDIVIDUAL_MAX_PROPERTIES, MUNICIPAL_ACCOM_TAX_RATE } from '@/lib/billing/greekTax';
+import { STR_INDIVIDUAL_MAX_PROPERTIES, MUNICIPAL_ACCOM_TAX_RATE, CLIMATE_LEVY_FROM_2025 } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { fmtFor } from '@/lib/core/format';
 
@@ -71,7 +71,11 @@ export const SHORT_PAGE_EN = {
   ctaBody: 'PROPERWISE keeps rents, bills and expenses per property and prepares the figures for form E2 (the Greek schedule of property income) for your accountant.',
 };
 
-export function shortFaqEn(x: { deduction: string; levyHigh: string; levyLow: string }) {
+export function shortFaqEn() {
+  const x = {
+    deduction: f.fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100),
+    levyHigh: f.feWhole(CLIMATE_LEVY_FROM_2025.small.high), levyLow: f.feWhole(CLIMATE_LEVY_FROM_2025.small.low),
+  };
   return [
     {
       q: 'How is short-term rental income taxed in Greece?',

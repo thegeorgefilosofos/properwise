@@ -1,3 +1,4 @@
+import { T } from '@/components/tokens';
 import { LEGAL_UI_EN } from '@/lib/i18n/en/legal/ui';
 import { LocaleLink } from './LangSwitcher';
 
@@ -10,7 +11,7 @@ import { LocaleLink } from './LangSwitcher';
 export function TranslationNotice({ greekHref }: { greekHref: string }) {
   return (
     <p role="note" className="lg-translation" style={{
-      margin: '0 0 18px', padding: '10px 14px', borderRadius: 10, fontSize: 14, lineHeight: 1.55,
+      margin: '0 0 18px', padding: '10px 14px', borderRadius: T.radius.inner, fontSize: 14, lineHeight: 1.55,
       color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
     }}>
       {LEGAL_UI_EN.notice}{' '}

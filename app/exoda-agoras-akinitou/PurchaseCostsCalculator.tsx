@@ -13,7 +13,7 @@
 import { useId, type ReactNode } from 'react';
 import Link from 'next/link';
 import { T } from '@/components/tokens';
-import { fe, fp, feSigned } from '@/lib/core/format';
+import { fmtFor } from '@/lib/core/format';
 import { purchaseCosts } from '@/lib/tools/exodaAgoras';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { EstimateNote } from '@/app/ToolNotes';
@@ -21,6 +21,9 @@ import { ToolNumField, ToolFields, ToolSeg, ToolHero, ToolLedger } from '@/app/T
 import LiveResult from '@/components/LiveResult';
 import { SPEC, PATH, purchaseInputOf } from './spec';
 import { ledgerRows, missingSentence, VAT_PCT, SERVICES_VAT_PCT, CADASTRE_HOME } from './lines';
+import { useLocale } from '@/lib/i18n/useLocale';
+import { localHref } from '@/lib/i18n/paths';
+import { BUY_EN, ledgerRowsEn, missingSentenceEn } from '@/lib/i18n/en/tools/buy';
 
 const MORTGAGE = '/ypologismos-stegastikou-daneiou';
 const LINK = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 } as const;
@@ -57,7 +60,11 @@ export function PurchaseCostsCalculator({ today, vatUntil, cta }: {
   /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα (`ToolCta`). */
   cta: ReactNode;
 }) {
-  const [v, set] = useToolState(SPEC, PATH);
+  // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/property-purchase-costs) ─────────────────
+  const locale = useLocale(), en = locale === 'en', E = BUY_EN, path = localHref(locale, PATH);
+  const { fe, fp, feSigned } = fmtFor(locale);
+  const yesNo = en ? [{ value: 'nai', label: E.yes }, { value: 'oxi', label: E.no }] : YES_NO;
+  const [v, set] = useToolState(SPEC, path);
   const ids = {
     timi: useId(), antikeimeniki: useId(), paidia: useId(), ktimatologio: useId(), mesitis: useId(),
     symvolaiografos: useId(), dikigoros: useId(), alla: useId(), daneio: useId(),
@@ -66,28 +73,28 @@ export function PurchaseCostsCalculator({ today, vatUntil, cta }: {
   const input = purchaseInputOf(v);
   const r = purchaseCosts(input);
   const newBuild = v.neodmito === 'nai';
-  const missing = missingSentence(r);
-  const mortgageHref = `${MORTGAGE}?poso=${Math.round(r.loan)}`;
+  const missing = en ? missingSentenceEn(r) : missingSentence(r);
+  const mortgageHref = `${localHref(locale, MORTGAGE)}?poso=${Math.round(r.loan)}`;
 
   return (
     <div style={{ fontFamily: T.font.sans }}>
       {/* ── ΤΟ ΑΚΙΝΗΤΟ ───────────────────────────────────────────────────── */}
-      <Group title="Το ακίνητο" first>
+      <Group title={en ? E.property : 'Το ακίνητο'} first>
         <ToolFields>
-          <ToolNumField id={ids.timi} label="Τίμημα" value={v.timi} onChange={x => set('timi', x)} unit="€"
-            hint="Το ποσό του συμβολαίου."/>
-          <ToolNumField id={ids.antikeimeniki} label="Αντικειμενική αξία" value={v.antikeimeniki}
+          <ToolNumField id={ids.timi} label={en ? E.price : 'Τίμημα'} value={v.timi} onChange={x => set('timi', x)} unit="€"
+            hint={en ? E.priceHint : 'Το ποσό του συμβολαίου.'}/>
+          <ToolNumField id={ids.antikeimeniki} label={en ? E.objective : 'Αντικειμενική αξία'} value={v.antikeimeniki}
             onChange={x => set('antikeimeniki', x)} unit="€"
-            hint="Αν είναι μεγαλύτερη από το τίμημα, ο φόρος βγαίνει σε αυτήν. Κενό: ίδια με το τίμημα."/>
-          <ToolSeg label="Νεόδμητο από κατασκευαστή;" value={v.neodmito} onChange={x => set('neodmito', x)}
-            options={YES_NO}/>
+            hint={en ? E.objectiveHint : 'Αν είναι μεγαλύτερη από το τίμημα, ο φόρος βγαίνει σε αυτήν. Κενό: ίδια με το τίμημα.'}/>
+          <ToolSeg label={en ? E.newBuild : 'Νεόδμητο από κατασκευαστή;'} value={v.neodmito} onChange={x => set('neodmito', x)}
+            options={yesNo}/>
         </ToolFields>
         {newBuild && (
           <div style={{ marginTop: T.sp.lg }}>
             <ToolFields>
-              <ToolSeg label="Ο κατασκευαστής είναι σε αναστολή ΦΠΑ;" value={v.anastoli} onChange={x => set('anastoli', x)}
-                options={YES_NO} span="row"
-                hint={`Η αναστολή δίνεται με αίτηση του κατασκευαστή και ισχύει έως ${vatUntil}: τότε πληρώνεις φόρο μεταβίβασης. Χωρίς αναστολή πληρώνεις ΦΠΑ ${VAT_PCT} στο τίμημα. Ρώτα τον πωλητή τι ισχύει.`}/>
+              <ToolSeg label={en ? E.suspended : 'Ο κατασκευαστής είναι σε αναστολή ΦΠΑ;'} value={v.anastoli} onChange={x => set('anastoli', x)}
+                options={yesNo} span="row"
+                hint={en ? E.suspendedHint(vatUntil) : `Η αναστολή δίνεται με αίτηση του κατασκευαστή και ισχύει έως ${vatUntil}: τότε πληρώνεις φόρο μεταβίβασης. Χωρίς αναστολή πληρώνεις ΦΠΑ ${VAT_PCT} στο τίμημα. Ρώτα τον πωλητή τι ισχύει.`}/>
             </ToolFields>
           </div>
         )}
@@ -96,15 +103,15 @@ export function PurchaseCostsCalculator({ today, vatUntil, cta }: {
       {/* ── ΠΡΩΤΗ ΚΑΤΟΙΚΙΑ ──────────────────────────────────────────────────
           Μόνο όπου υπάρχει φόρος μεταβίβασης: ο ΦΠΑ δεν έχει αυτή την απαλλαγή. */}
       {r.transferTaxApplies && (
-        <Group title="Πρώτη κατοικία">
+        <Group title={en ? E.firstHome : 'Πρώτη κατοικία'}>
           <ToolFields>
-            <ToolSeg label="Απαλλαγή πρώτης κατοικίας;" value={v.proti} onChange={x => set('proti', x)}
-              options={YES_NO}
-              hint="Έχει προϋποθέσεις, ανάμεσά τους να μην έχεις ήδη κατοικία που καλύπτει τις ανάγκες σου και να κρατήσεις το ακίνητο πέντε χρόνια."/>
+            <ToolSeg label={en ? E.exemption : 'Απαλλαγή πρώτης κατοικίας;'} value={v.proti} onChange={x => set('proti', x)}
+              options={yesNo}
+              hint={en ? E.exemptionHint : "Έχει προϋποθέσεις, ανάμεσά τους να μην έχεις ήδη κατοικία που καλύπτει τις ανάγκες σου και να κρατήσεις το ακίνητο πέντε χρόνια."}/>
             {v.proti === 'nai' && (<>
-              <ToolSeg label="Έγγαμος ή σύμφωνο συμβίωσης;" value={v.gamos} onChange={x => set('gamos', x)}
-                options={YES_NO}/>
-              <ToolNumField id={ids.paidia} label="Τέκνα" value={v.paidia} onChange={x => set('paidia', x)}
+              <ToolSeg label={en ? E.married : 'Έγγαμος ή σύμφωνο συμβίωσης;'} value={v.gamos} onChange={x => set('gamos', x)}
+                options={yesNo}/>
+              <ToolNumField id={ids.paidia} label={en ? E.children : 'Τέκνα'} value={v.paidia} onChange={x => set('paidia', x)}
                 mode="numeric"/>
             </>)}
           </ToolFields>
@@ -112,34 +119,39 @@ export function PurchaseCostsCalculator({ today, vatUntil, cta }: {
       )}
 
       {/* ── ΟΣΑ ΣΥΜΦΩΝΕΙΣ ΕΣΥ ─────────────────────────────────────────────── */}
-      <Group title="Τέλη και αμοιβές">
+      <Group title={en ? E.fees : 'Τέλη και αμοιβές'}>
         <ToolFields>
-          <ToolNumField id={ids.ktimatologio} label="Κτηματολόγιο" value={v.ktimatologio}
+          <ToolNumField id={ids.ktimatologio} label={en ? E.cadastre : 'Κτηματολόγιο'} value={v.ktimatologio}
             onChange={x => set('ktimatologio', x)} unit="€"
-            hint={<>Το ποσό που δίνει το{' '}
+            hint={en ? <>{E.cadastreHint[0]}<a href={CADASTRE_HOME} target="_blank" rel="noopener noreferrer" hrefLang="el" className="lp-link" style={LINK}>{E.cadastreHint[1]}</a>{E.cadastreHint[2]}</> : <>Το ποσό που δίνει το{' '}
               <a href={CADASTRE_HOME} target="_blank" rel="noopener noreferrer" className="lp-link" style={LINK}>Κτηματολόγιο</a>
               {' '}ή ο συμβολαιογράφος. Ο υπολογιστής δεν βάζει δικό του ποσό.</>}/>
-          <ToolNumField id={ids.mesitis} label="Μεσιτική αμοιβή" value={v.mesitis} onChange={x => set('mesitis', x)}
-            unit="%" hint={`Ποσοστό του τιμήματος χωρίς ΦΠΑ· προστίθεται ΦΠΑ ${SERVICES_VAT_PCT}. Μηδέν χωρίς μεσίτη.`}/>
-          <ToolNumField id={ids.symvolaiografos} label="Συμβολαιογράφος" value={v.symvolaiografos}
+          <ToolNumField id={ids.mesitis} label={en ? E.agent : 'Μεσιτική αμοιβή'} value={v.mesitis} onChange={x => set('mesitis', x)}
+            unit="%" hint={en ? E.agentHint : `Ποσοστό του τιμήματος χωρίς ΦΠΑ· προστίθεται ΦΠΑ ${SERVICES_VAT_PCT}. Μηδέν χωρίς μεσίτη.`}/>
+          <ToolNumField id={ids.symvolaiografos} label={en ? E.notary : 'Συμβολαιογράφος'} value={v.symvolaiografos}
             onChange={x => set('symvolaiografos', x)} unit="€"
-            hint="Το ποσό της προσφοράς χωρίς ΦΠΑ. Ο υπολογιστής δεν βάζει δικό του ποσό."/>
-          <ToolNumField id={ids.dikigoros} label="Δικηγόρος" value={v.dikigoros} onChange={x => set('dikigoros', x)}
-            unit="€" hint="Χωρίς ΦΠΑ. Μηδέν αν δεν πάρεις δικηγόρο."/>
-          <ToolNumField id={ids.alla} label="Λοιπά έξοδα" value={v.alla} onChange={x => set('alla', x)} unit="€"
-            hint="Πιστοποιητικά, μηχανικός, εκτίμηση, όπως τα πληρώνεις."/>
+            hint={en ? E.notaryHint : 'Το ποσό της προσφοράς χωρίς ΦΠΑ. Ο υπολογιστής δεν βάζει δικό του ποσό.'}/>
+          <ToolNumField id={ids.dikigoros} label={en ? E.lawyer : 'Δικηγόρος'} value={v.dikigoros} onChange={x => set('dikigoros', x)}
+            unit="€" hint={en ? E.lawyerHint : 'Χωρίς ΦΠΑ. Μηδέν αν δεν πάρεις δικηγόρο.'}/>
+          <ToolNumField id={ids.alla} label={en ? E.other : 'Λοιπά έξοδα'} value={v.alla} onChange={x => set('alla', x)} unit="€"
+            hint={en ? E.otherHint : 'Πιστοποιητικά, μηχανικός, εκτίμηση, όπως τα πληρώνεις.'}/>
         </ToolFields>
       </Group>
 
       {/* ── ΧΡΗΜΑΤΟΔΟΤΗΣΗ ───────────────────────────────────────────────── */}
-      <Group title="Χρηματοδότηση">
+      <Group title={en ? E.finance : 'Χρηματοδότηση'}>
         <ToolFields>
-          <ToolNumField id={ids.daneio} label="Δάνειο" value={v.daneio} onChange={x => set('daneio', x)} unit="€"
-            hint="Μηδέν αν αγοράζεις με μετρητά."/>
+          <ToolNumField id={ids.daneio} label={en ? E.loan : 'Δάνειο'} value={v.daneio} onChange={x => set('daneio', x)} unit="€"
+            hint={en ? E.loanHint : 'Μηδέν αν αγοράζεις με μετρητά.'}/>
         </ToolFields>
       </Group>
 
-      <ToolPaper title="Έξοδα αγοράς ακινήτου" on={today} inputs={[
+      <ToolPaper title={en ? E.paper : 'Έξοδα αγοράς ακινήτου'} on={today} inputs={en ? [
+        { k: E.price, v: fe(r.price) },
+        { k: E.pBase, v: fe(r.taxBase) },
+        { k: E.pKind, v: !newBuild ? E.used : r.transferTaxApplies ? E.newSuspended : E.newVat },
+        { k: E.loan, v: fe(r.loan) },
+      ] : [
         { k: 'Τίμημα', v: fe(r.price) },
         { k: 'Βάση φόρου', v: fe(r.taxBase) },
         { k: 'Είδος', v: !newBuild ? 'Μεταχειρισμένο' : r.transferTaxApplies ? 'Νεόδμητο, σε αναστολή ΦΠΑ' : 'Νεόδμητο, με ΦΠΑ' },
@@ -147,20 +159,20 @@ export function PurchaseCostsCalculator({ today, vatUntil, cta }: {
       ]}/>
 
       {/* ── ΤΑ ΕΞΟΔΑ ──────────────────────────────────────────────────────── */}
-      <ResultCard label="Έξοδα αγοράς">
+      <ResultCard label={en ? E.costs : 'Έξοδα αγοράς'}>
         {r.price <= 0 ? (
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-            Γράψε το τίμημα για να βγουν τα έξοδα.
+            {en ? E.needPrice : 'Γράψε το τίμημα για να βγουν τα έξοδα.'}
           </p>
         ) : (<>
-          <ToolHero primary={{ label: 'Έξοδα αγοράς', value: fe(r.total) }}
+          <ToolHero primary={{ label: en ? E.costs : 'Έξοδα αγοράς', value: fe(r.total) }}
             secondary={[
-              { label: 'Επί του τιμήματος', value: fp(r.costShare * 100) },
-              { label: 'Μετρητά εκτός δανείου', value: fe(r.cashNeeded) },
+              { label: en ? E.share : 'Επί του τιμήματος', value: fp(r.costShare * 100) },
+              { label: en ? E.cash : 'Μετρητά εκτός δανείου', value: fe(r.cashNeeded) },
             ]}/>
-          <LiveResult say={`Έξοδα αγοράς ${fe(r.total)}. Μετρητά εκτός δανείου ${fe(r.cashNeeded)}.`}/>
+          <LiveResult say={en ? E.say(fe(r.total), fe(r.cashNeeded)) : `Έξοδα αγοράς ${fe(r.total)}. Μετρητά εκτός δανείου ${fe(r.cashNeeded)}.`}/>
           <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
-          <ToolLedger rows={ledgerRows(r, input.agentPct ?? 0)}/>
+          <ToolLedger rows={(en ? ledgerRowsEn : ledgerRows)(r, input.agentPct ?? 0)}/>
           {missing && <p style={NOTE}>{missing}</p>}
         </>)}
       </ResultCard>
@@ -169,39 +181,48 @@ export function PurchaseCostsCalculator({ today, vatUntil, cta }: {
           Η ερώτηση που φέρνει τον αγοραστή εδώ από τον υπολογιστή δόσης: πόσα
           χρήματα πρέπει να έχω, πέρα από όσα δίνει η τράπεζα. */}
       {r.price > 0 && (
-        <ResultCard label="Μετρητά εκτός δανείου">
-          <ToolLedger rows={[
+        <ResultCard label={en ? E.cash : 'Μετρητά εκτός δανείου'}>
+          <ToolLedger rows={en ? [
+            { k: E.price, v: fe(r.price) },
+            { k: E.loan, v: feSigned(-r.loan) },
+            { k: E.downPayment, v: fe(r.downPayment), kind: 'param' },
+            { k: E.costs, v: fe(r.total) },
+            { k: E.cashNeeded, v: fe(r.cashNeeded), kind: 'total' },
+          ] : [
             { k: 'Τίμημα', v: fe(r.price) },
             { k: 'Δάνειο', v: feSigned(-r.loan) },
             { k: 'Ίδια συμμετοχή', v: fe(r.downPayment), kind: 'param' },
             { k: 'Έξοδα αγοράς', v: fe(r.total) },
             { k: 'Μετρητά που χρειάζεσαι', v: fe(r.cashNeeded), kind: 'total' },
           ]}/>
-          <p style={NOTE}>
+          {en ? <p style={NOTE}>{E.cashNote}
+            {r.loan > 0 && <>{' '}{E.cashMortgage(fe(r.loan))[0]}<a href={mortgageHref} className="lp-link" style={LINK}>{E.cashMortgage(fe(r.loan))[1]}</a>{E.cashMortgage(fe(r.loan))[2]}</>}
+          </p> : <p style={NOTE}>
             Ο υπολογισμός υποθέτει ότι το δάνειο πηγαίνει μόνο στο τίμημα και ότι τα έξοδα πληρώνονται από
             τα δικά σου χρήματα. Δεν περιλαμβάνει έξοδα του δανείου (φάκελος, εκτίμηση, προσημείωση).
             {r.loan > 0 && <>{' '}Τη μηνιαία δόση για τα {fe(r.loan)} τη δείχνει ο{' '}
               <Link href={mortgageHref} className="lp-link" style={LINK}>υπολογισμός στεγαστικού δανείου</Link>.</>}
-          </p>
+          </p>}
         </ResultCard>
       )}
 
-      <ToolActions path={PATH} spec={SPEC} values={v}/>
+      <ToolActions path={path} spec={SPEC} values={v}/>
 
       <div className="po-tool-note" style={{
         marginTop: T.sp.xl, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
         <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+          {en ? <><strong style={{ color: 'var(--text-primary)' }}>{E.notLead}</strong>{' '}{E.not} <EstimateNote en /></> : <>
           <strong style={{ color: 'var(--text-primary)' }}>Τι περιλαμβάνει και τι όχι.</strong>{' '}
           Ο φόρος μεταβίβασης και ο ΦΠΑ του νεόδμητου βγαίνουν από τους συντελεστές του νόμου, με
           την πηγή κάτω από κάθε γραμμή. Τα τέλη του Κτηματολογίου και οι αμοιβές μεσίτη,
           συμβολαιογράφου και δικηγόρου μπαίνουν όπως τις γράφεις. Δεν περιλαμβάνονται τα όρια απαλλαγής για αναπηρία
-          ούτε η αγορά οικοπέδου. <EstimateNote />
+          ούτε η αγορά οικοπέδου. <EstimateNote /></>}
         </p>
       </div>
 
-      <ToolPaperFoot path={PATH} spec={SPEC} values={v}/>
+      <ToolPaperFoot path={path} spec={SPEC} values={v}/>
 
       {cta}
     </div>

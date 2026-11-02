@@ -29,7 +29,7 @@
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { T } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
-import { fe, fn, fp, fpRate } from '@/lib/core/format';
+import { fmtFor } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { DSTI_LIMIT } from '@/lib/loans/affordability';
 import {
@@ -40,6 +40,9 @@ import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolS
 import { EstimateNote, ToolClampNote } from '@/app/ToolNotes';
 import { ToolNumField, ToolFields, ToolSeg, ToolHero, ToolLedger, ToolStats } from '@/app/ToolParts';
 import LiveResult from '@/components/LiveResult';
+import { useLocale } from '@/lib/i18n/useLocale';
+import { localHref } from '@/lib/i18n/paths';
+import { MORTGAGE_EN } from '@/lib/i18n/en/tools/mortgage';
 
 /**
  * Τα πεδία όπως ταξιδεύουν στη διεύθυνση. Τα επιτόκια ξεκινούν κενά: τα
@@ -97,10 +100,13 @@ export function MortgageCalculator({ market, today, cta, exampleRate }: {
   // Η ΤΙΜΗ ΑΓΟΡΑΣ ΜΠΑΙΝΕΙ ΜΟΝΟ ΑΝ ΕΙΝΑΙ ΦΡΕΣΚΙΑ ΚΑΙ ΜΟΝΟ ΑΝ Η ΔΙΕΥΘΥΝΣΗ ΔΕΝ ΕΙΠΕ
   // ΑΛΛΗ. Παλιά τιμή δεν προτείνεται ως αφετηρία· γράφεται από κάτω με τη
   // δική της ημερομηνία, για αναφορά.
+  // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/mortgage-calculator) ────────────────────
+  const locale = useLocale(), en = locale === 'en', E = MORTGAGE_EN, path = localHref(locale, PATH);
+  const { fe, fn, fp, fpRate } = fmtFor(locale);
   const fixed = freshFact(market.fixed);
   const euribor = freshFact(market.euribor);
   const start = startRates(market);
-  const [v, set] = useToolState(SPEC, PATH, x => {
+  const [v, set] = useToolState(SPEC, path, x => {
     // Ο,τι διαφέρει από την προεπιλογή ήρθε από τη διεύθυνση: ένας παλιός
     // σύνδεσμος χωρίς `typos` εννοούσε «Σταθερό», την τότε προεπιλογή.
     const fromLink = (Object.keys(SPEC) as (keyof typeof SPEC)[]).some(k => x[k] !== SPEC[k]);
@@ -112,7 +118,7 @@ export function MortgageCalculator({ market, today, cta, exampleRate }: {
       perithorio: x.perithorio || start.spread,
     };
   });
-  const marketSpreadHint = spreadHint(market);
+  const marketSpreadHint = en ? E.marginMarket(market) : spreadHint(market);
   const ids = {
     poso: useId(), eti: useId(), epitokio: useId(), euribor: useId(), perithorio: useId(),
     eisodima: useId(), doseis: useId(),
@@ -145,8 +151,8 @@ export function MortgageCalculator({ market, today, cta, exampleRate }: {
   const over = cap ? burden - cap.maxMonthly : 0;
 
   const hasLoan = loan > 0 && years > 0;
-  const rateHint = (typed: string, fact: typeof fixed, label: string) => fact && typed === rateField(fact.value)
-    ? `${label} ${fact.period}, ${fact.source}. Αν η προσφορά σου γράφει άλλο, γράψε εκείνο.`
+  const rateHint = (typed: string, fact: typeof fixed, label: string, enHint?: (f: NonNullable<typeof fixed>) => string) => fact && typed === rateField(fact.value)
+    ? (en && enHint ? enHint(fact) : `${label} ${fact.period}, ${fact.source}. Αν η προσφορά σου γράφει άλλο, γράψε εκείνο.`)
     : null;
 
   const schedule = plan?.schedule ?? [];
@@ -158,42 +164,51 @@ export function MortgageCalculator({ market, today, cta, exampleRate }: {
   return (
     <div style={{ fontFamily: T.font.sans }}>
       {/* ── ΤΟ ΔΑΝΕΙΟ ───────────────────────────────────────────────────── */}
-      <Group title="Το δάνειο" first>
+      <Group title={en ? E.loan : 'Το δάνειο'} first>
         <ToolFields>
-          <ToolNumField id={ids.poso} label="Ποσό δανείου" value={v.poso} onChange={x => set('poso', x)} unit="€"/>
-          <ToolNumField id={ids.eti} label="Διάρκεια" value={v.eti} onChange={x => set('eti', x)}
-            mode="numeric" unit="έτη" unitPad={48}/>
-          <ToolSeg label="Επιτόκιο" value={v.typos} onChange={x => set('typos', x)}
-            options={[{ value: 'stathero', label: 'Σταθερό' }, { value: 'kymainomeno', label: 'Κυμαινόμενο' }]}/>
+          <ToolNumField id={ids.poso} label={en ? E.amount : 'Ποσό δανείου'} value={v.poso} onChange={x => set('poso', x)} unit="€"/>
+          <ToolNumField id={ids.eti} label={en ? E.term : 'Διάρκεια'} value={v.eti} onChange={x => set('eti', x)}
+            mode="numeric" unit={en ? E.years : 'έτη'} unitPad={48}/>
+          <ToolSeg label={en ? E.rate : 'Επιτόκιο'} value={v.typos} onChange={x => set('typos', x)}
+            options={en ? [{ value: 'stathero', label: E.fixed }, { value: 'kymainomeno', label: E.floating }]
+              : [{ value: 'stathero', label: 'Σταθερό' }, { value: 'kymainomeno', label: 'Κυμαινόμενο' }]}/>
         </ToolFields>
         <div style={{ marginTop: T.sp.lg }}>
           <ToolFields>
             {kind === 'fixed' ? (
-              <ToolNumField id={ids.epitokio} label="Σταθερό επιτόκιο" value={v.epitokio}
+              <ToolNumField id={ids.epitokio} label={en ? E.fixedRate : 'Σταθερό επιτόκιο'} value={v.epitokio}
                 onChange={x => set('epitokio', x)} unit="%" span={2}
-                hint={rateHint(v.epitokio, fixed, `${fixed?.label ?? ''}, μέσος όρος νέων στεγαστικών`)
+                hint={rateHint(v.epitokio, fixed, `${fixed?.label ?? ''}, μέσος όρος νέων στεγαστικών`, E.fixedMarket)
                   ?? (exampleField && v.epitokio === exampleField
                     ? 'Επιτόκιο του παραδείγματος, όχι τιμή αγοράς. Γράψε αυτό της προσφοράς σου.'
-                    : 'Το ονομαστικό επιτόκιο που γράφει η προσφορά της τράπεζας.')}/>
+                    : en ? E.fixedHint : 'Το ονομαστικό επιτόκιο που γράφει η προσφορά της τράπεζας.')}/>
             ) : (<>
               <ToolNumField id={ids.euribor} label="Euribor" value={v.euribor}
                 onChange={x => set('euribor', x)} unit="%"
-                hint={rateHint(v.euribor, euribor, 'Euribor τριμήνου, μέσος όρος')
-                  ?? 'Ο δείκτης της σύμβασης, συνήθως τριμήνου.'}/>
-              <ToolNumField id={ids.perithorio} label="Περιθώριο τράπεζας" value={v.perithorio}
+                hint={rateHint(v.euribor, euribor, 'Euribor τριμήνου, μέσος όρος', E.euriborMarket)
+                  ?? (en ? E.euriborHint : 'Ο δείκτης της σύμβασης, συνήθως τριμήνου.')}/>
+              <ToolNumField id={ids.perithorio} label={en ? E.margin : 'Περιθώριο τράπεζας'} value={v.perithorio}
                 onChange={x => set('perithorio', x)} unit="%"
                 hint={(marketSpreadHint && v.perithorio === start.spread ? marketSpreadHint : null)
-                  ?? 'Το περιθώριο που γράφει η προσφορά, πάνω από το Euribor.'}/>
+                  ?? (en ? E.marginHint : 'Το περιθώριο που γράφει η προσφορά, πάνω από το Euribor.')}/>
             </>)}
           </ToolFields>
         </div>
         <ToolClampNote notes={[
-          yearsTyped > YEARS_CAP && `Μέγιστη διάρκεια ${YEARS_CAP} έτη· υπολογίστηκε με ${YEARS_CAP}.`,
-          typedRate !== null && typedRate > RATE_CAP && `Μέγιστο επιτόκιο ${fpRate(RATE_CAP)}· υπολογίστηκε με ${fpRate(RATE_CAP)}.`,
+          yearsTyped > YEARS_CAP && en && E.clampYears(YEARS_CAP),
+          typedRate !== null && typedRate > RATE_CAP && en && E.clampRate(fpRate(RATE_CAP)),
+          yearsTyped > YEARS_CAP && !en && `Μέγιστη διάρκεια ${YEARS_CAP} έτη· υπολογίστηκε με ${YEARS_CAP}.`,
+          typedRate !== null && typedRate > RATE_CAP && !en && `Μέγιστο επιτόκιο ${fpRate(RATE_CAP)}· υπολογίστηκε με ${fpRate(RATE_CAP)}.`,
         ]}/>
       </Group>
 
-      <ToolPaper title="Δόση στεγαστικού δανείου" on={today} inputs={[
+      <ToolPaper title={en ? E.paper : 'Δόση στεγαστικού δανείου'} on={today} inputs={en ? [
+        { k: E.pAmount, v: fe(loan) },
+        { k: E.term, v: E.yearsOf(fn(years)) },
+        { k: kind === 'fixed' ? E.fixedRate : E.pFloating, v: rate === null ? E.notGiven : fp(rate) },
+        { k: E.pIncome, v: fe(income) },
+        { k: E.pDebts, v: fe(debts) },
+      ] : [
         { k: 'Ποσό', v: fe(loan) },
         { k: 'Διάρκεια', v: `${fn(years)} έτη` },
         { k: kind === 'fixed' ? 'Σταθερό επιτόκιο' : 'Κυμαινόμενο', v: rate === null ? 'δεν δόθηκε' : fp(rate) },
@@ -204,40 +219,44 @@ export function MortgageCalculator({ market, today, cta, exampleRate }: {
       {/* ── Η ΔΟΣΗ ─────────────────────────────────────────────────────── */}
       <ResultCard>
         {!hasLoan ? (
-          <Empty>Η δόση χρειάζεται ποσό και διάρκεια.</Empty>
+          <Empty>{en ? E.needLoan : 'Η δόση χρειάζεται ποσό και διάρκεια.'}</Empty>
         ) : !plan || rate === null ? (
           <>
             <Empty>
-              {kind === 'fixed'
+              {en ? (kind === 'fixed' ? E.needFixed : E.needFloating) : kind === 'fixed'
                 ? 'Γράψε το επιτόκιο της προσφοράς σου για να βγει η δόση. Το βρίσκεις στην προσφορά της τράπεζας ή στο δελτίο επιτοκίων της.'
                 : 'Γράψε το Euribor και το περιθώριο της τράπεζας για να βγει η δόση.'}
             </Empty>
             {kind === 'fixed' && exampleRate != null && exampleField && (
               <div className="po-noprint" style={{ marginTop: 14 }}>
                 <Btn variant="secondary" onClick={() => set('epitokio', exampleField)}>
-                  {`Δες ένα παράδειγμα με ${fp(exampleRate)}`}
+                  {en ? `See an example at ${fp(exampleRate)}` : `Δες ένα παράδειγμα με ${fp(exampleRate)}`}
                 </Btn>
               </div>
             )}
           </>
         ) : (
           <>
-            <ToolHero primary={{ label: 'Μηνιαία δόση', value: fe(plan.monthly) }}
+            <ToolHero primary={{ label: en ? E.monthly : 'Μηνιαία δόση', value: fe(plan.monthly) }}
               secondary={[
-                { label: 'Σύνολο τόκων', value: fe(plan.totalInterest) },
-                { label: 'Επιτόκιο', value: fp(rate) },
+                { label: en ? E.totalInterest : 'Σύνολο τόκων', value: fe(plan.totalInterest) },
+                { label: en ? E.rate : 'Επιτόκιο', value: fp(rate) },
               ]}/>
-            <LiveResult say={`Μηνιαία δόση ${fe(plan.monthly)}. Σύνολο τόκων ${fe(plan.totalInterest)}.`}/>
+            <LiveResult say={en ? E.say(fe(plan.monthly), fe(plan.totalInterest)) : `Μηνιαία δόση ${fe(plan.monthly)}. Σύνολο τόκων ${fe(plan.totalInterest)}.`}/>
             {plus1 && (
               <p style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)', textWrap: 'pretty' }}>
-                Η δόση ισχύει όσο το Euribor μένει στο {fp(parseRate(v.euribor) ?? 0)}. Αν ανέβει μία μονάδα,
-                γίνεται {fe(plus1.monthly)}.
+                {en ? E.plus1(fp(parseRate(v.euribor) ?? 0), fe(plus1.monthly)) : <>Η δόση ισχύει όσο το Euribor μένει στο {fp(parseRate(v.euribor) ?? 0)}. Αν ανέβει μία μονάδα,
+                γίνεται {fe(plus1.monthly)}.</>}
               </p>
             )}
 
             <div style={{ height: 1, background: 'var(--border-subtle)', margin: '20px 0 16px' }}/>
 
-            <ToolLedger rows={[
+            <ToolLedger rows={en ? [
+              { k: E.principal, v: fe(loan) },
+              { k: E.interest, v: fe(plan.totalInterest) },
+              { k: E.total(fn(plan.months)), v: fe(plan.totalPaid), kind: 'total' },
+            ] : [
               { k: 'Κεφάλαιο', v: fe(loan) },
               { k: 'Τόκοι', v: fe(plan.totalInterest) },
               { k: `Σύνολο ${fn(plan.months)} δόσεων`, v: fe(plan.totalPaid), kind: 'total' },
@@ -245,16 +264,16 @@ export function MortgageCalculator({ market, today, cta, exampleRate }: {
             {/* Ο ΠΡΩΤΟΣ ΧΡΟΝΟΣ ΕΙΝΑΙ ΤΟ ΝΟΥΜΕΡΟ ΠΟΥ ΞΑΦΝΙΑΖΕΙ: το μεγαλύτερο μέρος
                 της δόσης είναι τόκος. Δύο ποσά και το μερίδιο, χωρίς σχόλιο. */}
             <ToolStats items={[
-              { k: 'Τόκοι πρώτου έτους', v: fe(plan.firstYear.interest) },
-              { k: 'Κεφάλαιο πρώτου έτους', v: fe(plan.firstYear.principal) },
-              { k: 'Μερίδιο τόκου πρώτου έτους', v: fp(plan.firstYear.interest + plan.firstYear.principal > 0
+              { k: en ? E.y1Interest : 'Τόκοι πρώτου έτους', v: fe(plan.firstYear.interest) },
+              { k: en ? E.y1Principal : 'Κεφάλαιο πρώτου έτους', v: fe(plan.firstYear.principal) },
+              { k: en ? E.y1Share : 'Μερίδιο τόκου πρώτου έτους', v: fp(plan.firstYear.interest + plan.firstYear.principal > 0
                 ? (plan.firstYear.interest / (plan.firstYear.interest + plan.firstYear.principal)) * 100 : 0) },
             ]}/>
           </>
         )}
       </ResultCard>
 
-      <ToolActions path={PATH} spec={SPEC} values={v}/>
+      <ToolActions path={path} spec={SPEC} values={v}/>
 
       {/* ── Η ΑΠΟΣΒΕΣΗ ΑΝΑ ΕΤΟΣ ──────────────────────────────────────────
           Πέντε χρόνια στην οθόνη, όλα με ένα πάτημα και όλα στο χαρτί. Ο
@@ -264,7 +283,7 @@ export function MortgageCalculator({ market, today, cta, exampleRate }: {
           <div className="po-table-box">
            <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
             <table className="po-table po-tool-table tbl-fixed" style={{ '--tbl-min': '300px' }}>
-              <caption>Τόκοι και κεφάλαιο ανά έτος</caption>
+              <caption>{en ? E.schedule : 'Τόκοι και κεφάλαιο ανά έτος'}</caption>
               <colgroup>
                 <col style={{ width: '16%' }} />
                 <col style={{ width: '28%' }} />
@@ -273,10 +292,10 @@ export function MortgageCalculator({ market, today, cta, exampleRate }: {
               </colgroup>
               <thead>
                 <tr>
-                  <th scope="col">Έτος</th>
-                  <th scope="col" className="num">Τόκοι</th>
-                  <th scope="col" className="num">Κεφάλαιο</th>
-                  <th scope="col" className="num">Υπόλοιπο</th>
+                  <th scope="col">{en ? E.colYear : 'Έτος'}</th>
+                  <th scope="col" className="num">{en ? E.colInterest : 'Τόκοι'}</th>
+                  <th scope="col" className="num">{en ? E.colPrincipal : 'Κεφάλαιο'}</th>
+                  <th scope="col" className="num">{en ? E.colBalance : 'Υπόλοιπο'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -295,7 +314,7 @@ export function MortgageCalculator({ market, today, cta, exampleRate }: {
           {schedule.length > YEARS_SHOWN && (
             <div className="po-noprint" style={{ marginTop: 10 }}>
               <Btn onClick={() => setAllYears(a => !a)} expanded={allYears}>
-                {allYears ? `Μόνο τα πρώτα ${YEARS_SHOWN} έτη` : `Όλα τα ${schedule.length} έτη`}
+                {en ? (allYears ? E.onlyFirst(YEARS_SHOWN) : E.allYears(schedule.length)) : allYears ? `Μόνο τα πρώτα ${YEARS_SHOWN} έτη` : `Όλα τα ${schedule.length} έτη`}
               </Btn>
             </div>
           )}
@@ -307,40 +326,42 @@ export function MortgageCalculator({ market, today, cta, exampleRate }: {
           Ελλάδος): η βοήθεια τον διαβάζει από εκεί, ώστε η σελίδα να μη λέει
           άλλο ποσοστό από αυτό που εφαρμόζει. */}
       <div style={{ marginTop: T.sp.xxl }}>
-        <Group title="Πόσο δάνειο μπορώ να πάρω" first>
+        <Group title={en ? E.howMuch : 'Πόσο δάνειο μπορώ να πάρω'} first>
           <ToolFields>
-            <ToolNumField id={ids.eisodima} label="Καθαρό εισόδημα τον μήνα" value={v.eisodima}
+            <ToolNumField id={ids.eisodima} label={en ? E.income : 'Καθαρό εισόδημα τον μήνα'} value={v.eisodima}
               onChange={x => set('eisodima', x)} unit="€"
-              hint="Του νοικοκυριού, μετά από φόρους και εισφορές."/>
-            <ToolNumField id={ids.doseis} label="Άλλες δόσεις τον μήνα" value={v.doseis}
+              hint={en ? E.incomeHint : 'Του νοικοκυριού, μετά από φόρους και εισφορές.'}/>
+            <ToolNumField id={ids.doseis} label={en ? E.debts : 'Άλλες δόσεις τον μήνα'} value={v.doseis}
               onChange={x => set('doseis', x)} unit="€"
-              hint="Καταναλωτικά, κάρτες, άλλο στεγαστικό."/>
-            <ToolSeg label="Δανείζεσαι πρώτη φορά;" value={v.proti} onChange={x => set('proti', x)}
-              options={[{ value: 'nai', label: 'Ναι' }, { value: 'oxi', label: 'Όχι' }]}
-              hint={`Όλες οι δόσεις μαζί έως ${fpRate(DSTI_LIMIT.firstTimeBuyer * 100)} του καθαρού εισοδήματος την πρώτη φορά· έως ${fpRate(DSTI_LIMIT.other * 100)} αν έχεις ήδη ακίνητο ή είχες στεγαστικό.`}/>
+              hint={en ? E.debtsHint : 'Καταναλωτικά, κάρτες, άλλο στεγαστικό.'}/>
+            <ToolSeg label={en ? E.first : 'Δανείζεσαι πρώτη φορά;'} value={v.proti} onChange={x => set('proti', x)}
+              options={en ? [{ value: 'nai', label: E.yes }, { value: 'oxi', label: E.no }] : [{ value: 'nai', label: 'Ναι' }, { value: 'oxi', label: 'Όχι' }]}
+              hint={en ? E.firstHint(fpRate(DSTI_LIMIT.firstTimeBuyer * 100), fpRate(DSTI_LIMIT.other * 100)) : `Όλες οι δόσεις μαζί έως ${fpRate(DSTI_LIMIT.firstTimeBuyer * 100)} του καθαρού εισοδήματος την πρώτη φορά· έως ${fpRate(DSTI_LIMIT.other * 100)} αν έχεις ήδη ακίνητο ή είχες στεγαστικό.`}/>
           </ToolFields>
         </Group>
 
         <ResultCard>
           {!cap || rate === null ? (
-            <Empty>Το ανώτατο δάνειο βγαίνει με το επιτόκιο και τη διάρκεια από πάνω. Συμπλήρωσέ τα πρώτα.</Empty>
+            <Empty>{en ? E.capNeedRate : 'Το ανώτατο δάνειο βγαίνει με το επιτόκιο και τη διάρκεια από πάνω. Συμπλήρωσέ τα πρώτα.'}</Empty>
           ) : income <= 0 ? (
-            <Empty>Γράψε το καθαρό μηνιαίο εισόδημα για να δεις ως πόσο δάνειο χωρά.</Empty>
+            <Empty>{en ? E.capNeedIncome : 'Γράψε το καθαρό μηνιαίο εισόδημα για να δεις ως πόσο δάνειο χωρά.'}</Empty>
           ) : (
             <>
-              <ToolHero primary={{ label: 'Δάνειο έως', value: fe(cap.maxLoan) }}
-                secondary={[{ label: 'Δόση έως', value: fe(cap.maxMonthly) }]}/>
-              <LiveResult say={`Δάνειο έως ${fe(cap.maxLoan)}, με δόση έως ${fe(cap.maxMonthly)}.`}/>
+              <ToolHero primary={{ label: en ? E.upTo : 'Δάνειο έως', value: fe(cap.maxLoan) }}
+                secondary={[{ label: en ? E.payUpTo : 'Δόση έως', value: fe(cap.maxMonthly) }]}/>
+              <LiveResult say={en ? E.sayCap(fe(cap.maxLoan), fe(cap.maxMonthly)) : `Δάνειο έως ${fe(cap.maxLoan)}, με δόση έως ${fe(cap.maxMonthly)}.`}/>
               {plan && share !== null && loan > 0 && (
                 <p style={{ margin: '14px 0 0', fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', textWrap: 'pretty' }}>
-                  {over <= 0.005
+                  {en ? (over <= 0.005 ? E.within(fe(loan), fe(burden), fp(share), fpRate(cap.limitPct * 100))
+                    : E.overBy(fe(loan), fe(burden), fp(share), fpRate(cap.limitPct * 100), fe(over)))
+                  : over <= 0.005
                     ? <>Το δάνειο των {fe(loan)} θέλει {fe(burden)} τον μήνα μαζί με τις άλλες δόσεις, δηλαδή το {fp(share)} του εισοδήματος: μέσα στο όριο του {fpRate(cap.limitPct * 100)}.</>
                     : <>Το δάνειο των {fe(loan)} θέλει {fe(burden)} τον μήνα μαζί με τις άλλες δόσεις, δηλαδή το {fp(share)} του εισοδήματος: ξεπερνά το όριο του {fpRate(cap.limitPct * 100)} κατά {fe(over)} τον μήνα.</>}
                 </p>
               )}
               <p style={{ margin: '12px 0 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-tertiary)', textWrap: 'pretty' }}>
-                Είναι το ανώτατο που επιτρέπει ο δείκτης δόσης προς εισόδημα, όχι έγκριση. Η τράπεζα
-                ελέγχει και ίδια συμμετοχή, σταθερότητα εισοδήματος και ιστορικό πληρωμών.
+                {en ? E.capNote : <>Είναι το ανώτατο που επιτρέπει ο δείκτης δόσης προς εισόδημα, όχι έγκριση. Η τράπεζα
+                ελέγχει και ίδια συμμετοχή, σταθερότητα εισοδήματος και ιστορικό πληρωμών.</>}
               </p>
             </>
           )}
@@ -353,15 +374,16 @@ export function MortgageCalculator({ market, today, cta, exampleRate }: {
         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
       }}>
         <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+          {en ? <><strong style={{ color: 'var(--text-primary)' }}>{E.notLead}</strong>{' '}{E.not} <EstimateNote loan en /></> : <>
           <strong style={{ color: 'var(--text-primary)' }}>Τι περιλαμβάνει και τι όχι.</strong>{' '}
           Η δόση βγαίνει με τον τύπο του τοκοχρεολυτικού δανείου, ίδια κάθε μήνα για όλη τη
           διάρκεια. Δεν περιλαμβάνει έξοδα φακέλου, εκτίμησης και προσημείωσης, ασφάλιστρα ούτε
           αλλαγές του Euribor. Για να συγκρίνεις προσφορές, κοίτα το ΣΕΠΠΕ (συνολικό ετήσιο
-          πραγματικό ποσοστό επιβάρυνσης) που γράφει κάθε προσφορά. <EstimateNote loan />
+          πραγματικό ποσοστό επιβάρυνσης) που γράφει κάθε προσφορά. <EstimateNote loan /></>}
         </p>
       </div>
 
-      <ToolPaperFoot path={PATH} spec={SPEC} values={v}/>
+      <ToolPaperFoot path={path} spec={SPEC} values={v}/>
 
       {cta}
     </div>

@@ -2,9 +2,6 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { siteUrl } from '@/lib/core/site';
 import { athensParts, athensToday } from '@/lib/core/time';
-import { fmtFor } from '@/lib/core/format';
-import { CLIMATE_LEVY_FROM_2025 } from '@/lib/billing/greekTax';
-import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { SHORT_PAGE_EN, shortFaqEn } from '@/lib/i18n/en/tools/short';
 import { enToolLabel } from '@/lib/i18n/en/tools';
 import { ToolCta } from '../../PublicChrome';
@@ -24,11 +21,7 @@ export function generateMetadata(): Metadata {
 }
 
 export default function Page() {
-  const f = fmtFor('en');
-  const faq = shortFaqEn({
-    deduction: f.fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100),
-    levyHigh: f.feWhole(CLIMATE_LEVY_FROM_2025.small.high), levyLow: f.feWhole(CLIMATE_LEVY_FROM_2025.small.low),
-  });
+  const faq = shortFaqEn();
   return (
     <ToolPageEn path={PATH} name={D.title} label={enToolLabel(EL)} description={D.description}
       h1={D.h1} lede={D.lede} lawYear={athensParts().year}

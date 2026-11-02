@@ -59,7 +59,7 @@ export function ToolPageEn({ path, name, label, description, h1, lede, lawYear, 
                 <summary style={{ cursor: 'pointer', listStyle: 'none', padding: '17px 0', fontSize: 15,
                   fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                   {f.q}
-                  <span className="lp-plus" style={{ color: 'var(--accent)', fontSize: 20, fontWeight: 450,
+                  <span className="lp-plus" style={{ color: 'var(--accent)', fontSize: 20, fontWeight: T.weight.body,
                     lineHeight: 1, transition: 'transform .2s', flexShrink: 0 }}>+</span>
                 </summary>
                 <p style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)', textWrap: 'pretty' }}>{f.a}</p>

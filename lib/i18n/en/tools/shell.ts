@@ -40,7 +40,7 @@ export const TOOL_SHELL_EN = {
 
 /** Οι πηγές κάθε υπολογιστή (TOOL_SOURCES του PublicChrome), στα αγγλικά. */
 export const TOOL_SOURCES_EN = {
-  // Ο ίδιος νόμος και η ίδια ΚΥΑ με το RENO_39B_LAW / RENO_39B_KYA (lib/accounting/renovation39b.ts).
+  // Ο ίδιος νόμος και η ίδια υπουργική απόφαση με το RENO_39B_LAW / RENO_39B_KYA (lib/accounting/renovation39b.ts).
   reno: 'Article 39B of the Income Tax Code (Law 4172/2013), as replaced by Law 5073/2023 · Joint Ministerial Decision A.1153/2025 (Government Gazette B 5933/05.11.2025)',
   e2: 'Form E2 and the E1 codes it feeds, as applied by the app’s E2 engine',
   enfia: 'ENFIA: Article 4 of Law 4223/2013, as amended by Law 4916/2022 and codified in Law 5219/2025 · AADE objective values',

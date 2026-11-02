@@ -22,6 +22,10 @@ export const EN_SHARE_CARDS: Record<string, ShareCard> = {
     chips: ['Property value', 'Rent', 'ENFIA', 'Expenses'], path: '/en/rental-yield-calculator' },
   'en-short-term-vs-long-term-rental': { kind: 'calc', over: 'Calculator', title: 'Short-term or long-term rental in Greece',
     chips: ['Nightly rate', 'Occupancy', 'Resilience fee', 'Break-even'], path: '/en/short-term-vs-long-term-rental' },
+  'en-mortgage-calculator': { kind: 'calc', over: 'Calculator', title: 'Mortgage payment and how much you can borrow',
+    chips: ['Monthly payment', 'Total interest', 'Fixed or floating', 'Income limit'], path: '/en/mortgage-calculator' },
+  'en-property-purchase-costs': { kind: 'calc', over: 'Calculator', title: 'What it costs to buy a property in Greece',
+    chips: ['Transfer tax', 'VAT on new builds', 'Fees', 'Cash needed'], path: '/en/property-purchase-costs' },
   'en-tools': { kind: 'calc', over: 'Tools', title: 'Calculators for property owners in Greece',
     chips: enTools().map(t => t.label).slice(0, 4), path: '/en/tools' },
 };

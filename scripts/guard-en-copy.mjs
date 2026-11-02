@@ -20,7 +20,7 @@
 import { readFileSync } from 'node:fs'
 import { projectFiles } from './lib/git-files.mjs'
 
-const files = projectFiles("'lib/i18n/en/**/*.ts' 'app/en/**/*.tsx' 'app/en/**/*.ts' 'app/og/shareEn.ts'")
+const files = projectFiles("'lib/i18n/en/**/*.ts' 'lib/i18n/en/**/*.tsx' 'app/en/**/*.tsx' 'app/en/**/*.ts' 'app/og/shareEn.ts'")
   .filter(f => !/\.test\.ts$/.test(f))
 if (!files.length) {
   console.error('✗ Κανένα αγγλικό αρχείο δεν βρέθηκε. Αν μετακινήθηκαν, άλλαξε και ο φύλακας.')

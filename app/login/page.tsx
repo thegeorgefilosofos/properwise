@@ -61,6 +61,9 @@ async function failed(what: string, e: unknown): Promise<string> {
 
 /** Η ανταλλαγή του διακριτικού απέτυχε και μας έστειλε εδώ. */
 // Μέσα σε effect η γλώσσα διαβάζεται από τη διεύθυνση, όχι από το render.
+// Η ετικέτα του κουμπιού επαναποστολής: τη δείχνει η οδηγία του σφάλματος
+// επιβεβαίωσης («Ξαναστείλε το email επιβεβαίωσης»), άρα ζει σε μία σταθερά.
+const RESEND_LABEL = 'Ξαναστείλε το email επιβεβαίωσης'
 const isEnPage = () => localeOfPath(window.location.pathname) === 'en'
 
 const failedConfirm = () => {
@@ -401,7 +404,7 @@ export default function LoginPage() {
             </div>
           )}
           {!factorId && unconfirmed && !resent && (
-            <Btn variant="secondary" field onClick={resendConfirmation}>{en ? L.resend : 'Ξαναστείλε το email επιβεβαίωσης'}</Btn>
+            <Btn variant="secondary" field onClick={resendConfirmation}>{en ? L.resend : RESEND_LABEL}</Btn>
           )}
           {!factorId && resent && (
             <p role="status" style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
