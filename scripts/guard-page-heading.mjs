@@ -20,9 +20,12 @@
 // email δεν είχαν καμία επικεφαλίδα. Η Λογιστική είχε τίτλο, γραμμένο ως `h2`.
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync, globSync, existsSync } from 'node:fs'
+import { join, dirname } from 'node:path'
 
 /** Κελύφη που παρέχουν `h1` για λογαριασμό του καλούντος. */
-const SHELLS = ['<PageTitle', '<LegalShell', '<LegalLayout', '<AlreadySignedIn', '<PortalTitle']
+// Το `<ToolPageEn` (app/en/ToolPageEn.tsx) αποδίδει το `<h1>` κάθε αγγλικού υπολογιστή
+// και το `<GuideShellEn` (app/en/guides/GuideShellEn.tsx) κάθε αγγλικού οδηγού.
+const SHELLS = ['<PageTitle', '<LegalShell', '<LegalLayout', '<AlreadySignedIn', '<PortalTitle', '<ToolPageEn', '<GuideShellEn']
 
 /**
  * Οθόνες που ΔΕΝ είναι σελίδες με δικό τους όνομα και ο λόγος τους.
@@ -31,6 +34,7 @@ const SHELLS = ['<PageTitle', '<LegalShell', '<LegalLayout', '<AlreadySignedIn',
 const EXEMPT = {
   'app/dashboard/page.tsx': 'κέλυφος του πίνακα· την επικεφαλίδα τη δίνει η ενεργή καρτέλα',
   'app/dashboard/components/TabBoundary.tsx': 'όριο σφάλματος γύρω από την καρτέλα· δεν είναι οθόνη',
+  'app/en/[[...slug]]/page.tsx': 'διανομέας του /en· την επικεφαλίδα τη δίνει το `view.tsx` κάθε σελίδας, που ελέγχεται μόνο του',
 }
 
 /**
@@ -50,7 +54,8 @@ const tabFiles = [...tabComponents]
   .map(name => `app/dashboard/components/${name}.tsx`)
   .filter(f => existsSync(f))
 
-const files = [...globSync('app/**/page.tsx'), ...tabFiles].filter(f => !(f in EXEMPT))
+// Οι αγγλικές σελίδες είναι `view.tsx`, όχι `page.tsx` (app/en/[[...slug]]/page.tsx).
+const files = [...globSync('app/**/page.tsx'), ...globSync('app/en/**/view.tsx'), ...tabFiles].filter(f => !(f in EXEMPT))
 
 const naked = []
 for (const file of files) {
@@ -59,6 +64,16 @@ for (const file of files) {
   // ΑΥΤΗΣ της οθόνης: ζει σε συμβολοσειρά μαζί με το `</h1>` του.
   const dom = src.replace(/`[^`]*`/gs, '').replace(/'[^'\n]*'/g, '')
   if (/<h1[\s>]/.test(dom)) continue
+  // Σελίδα που ξαναεξάγει άλλη σελίδα (οι αγγλικές είσοδος, εγγραφή, επαναφορά
+  // ξαναχρησιμοποιούν τις ελληνικές): η επικεφαλίδα κρίνεται στο αρχείο-πηγή.
+  const re = /^export \{ default \} from '(\.[^']+)';?\s*$/m.exec(src)
+  if (re) {
+    const target = join(dirname(file), re[1]) + '.tsx'
+    if (existsSync(target)) {
+      const t = readFileSync(target, 'utf8').replace(/`[^`]*`/gs, '').replace(/'[^'\n]*'/g, '')
+      if (/<h1[\s>]/.test(t) || SHELLS.some(sh => t.includes(sh))) continue
+    }
+  }
   if (SHELLS.some(s => src.includes(s))) continue
   naked.push(file)
 }

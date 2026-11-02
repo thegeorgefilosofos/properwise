@@ -128,6 +128,28 @@ const TRIAL_CLAIMS = [
 // που μένει κόκκινη και δύο δοκιμές για υπογραφή και μητρώο. Ενας φύλακας που
 // κοκκινίζει εκεί είναι φύλακας που θα παρακαμφθεί. Η υπόσχεση υπάρχει μόνο
 // όταν η ίδια γραμμή μιλά για τιμή ή για πακέτο.
+// ── ΚΑΙ ΣΤΑ ΑΓΓΛΙΚΑ (σελίδες /en, 02.11.2026) ──────────────────────────────
+// Οι ίδιες δηλώσεις, ίδιος κανόνας: λέγονται μόνο από το ${WORDS}
+// (`billingWordsEn`). Χωρίς αυτές τις γραμμές μια αγγλική σελίδα μπορούσε να
+// γράψει «no card required» δίπλα σε ταμείο που ζητά κάρτα· κανείς δεν θα το
+// έβλεπε, γιατί οι ελληνικές λίστες δεν ταιριάζουν ποτέ σε αγγλικό κείμενο.
+const EN_SUBJECT = /charg|subscription|payment|card|billing/;
+const EN_CLAIMS = [
+  'has not been switched on',
+  'no payment is made',
+  'no charge is made',
+  'no card data',
+];
+const EN_TRIAL_SUBJECT = /trial|subscription|sign-up|sign up|charg/;
+const EN_TRIAL_CLAIMS = [
+  'no card',
+  'no credit card',
+  'without a card',
+  'will not be charged',
+  "won't be charged",
+];
+const EN_FOREVER = /\bforever\b|\bfor life\b/;
+const EN_FOREVER_SUBJECT = /\bfree\b|price|plan|subscription/;
 const FOREVER = /για παντα|παντοτινα|εσαει/;
 const FOREVER_SUBJECT = /δωρεαν|price|πακετο|συνδρομ/;
 
@@ -262,6 +284,17 @@ for (const file of projectFiles(SCOPE)) {
       }
     }
 
+    if (EN_FOREVER.test(low) && EN_FOREVER_SUBJECT.test(low)) {
+      problems.push(`${at}: υπόσχεται κάτι «forever». Ο ίδιος κανόνας με το «για πάντα».`);
+    }
+    if (EN_TRIAL_SUBJECT.test(low)) {
+      const c = EN_TRIAL_CLAIMS.find(x => low.includes(x));
+      if (c) problems.push(`${at}: λέει μόνο του πότε ζητείται κάρτα («${c}»). Η φράση ζει στο ${WORDS} (billingWordsEn).`);
+    }
+    if (EN_SUBJECT.test(low)) {
+      const c = EN_CLAIMS.find(x => low.includes(x));
+      if (c) problems.push(`${at}: δηλώνει κατάσταση χρέωσης («${c}»). Η φράση ζει στο ${WORDS} (billingWordsEn).`);
+    }
     if (!SUBJECT.test(low)) return;
     for (const c of CLAIMS) {
       if (low.includes(plain(c))) {

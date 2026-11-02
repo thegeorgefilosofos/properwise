@@ -4,6 +4,8 @@ import { sessionNeedsSecondStep } from "@/lib/auth/mfa";
 import { loginSearch } from "@/lib/auth/continuation";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase/env";
 import { resilientFetch } from "@/lib/supabase/resilientFetch";
+import { LOCALE_COOKIE, LOCALE_HEADER, SUGGEST_HEADER, localeOfPath } from "@/lib/i18n/locale";
+import { enPathFor, elPathFor } from "@/lib/i18n/paths";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -54,6 +56,25 @@ function buildCsp(nonce: string): string {
 }
 
 export async function proxy(request: NextRequest) {
+  // ── Η ΓΛΩΣΣΑ ΠΟΥ ΔΙΑΛΕΞΕ Ο ΕΠΙΣΚΕΠΤΗΣ ΤΟΝ ΑΚΟΛΟΥΘΕΙ ───────────────────────
+  // Η γλώσσα της σελίδας βγαίνει από τη διαδρομή (/en/… αγγλικά, όλα τα άλλα
+  // ελληνικά: lib/i18n/locale.ts). Οποιος όμως διάλεξε ρητά γλώσσα από τον
+  // επιλογέα έχει το cookie `pw_lang` και, αν ανοίξει σύνδεσμο προς σελίδα που
+  // υπάρχει και στη γλώσσα του, πηγαίνει εκεί. ΜΟΝΟ με ρητή επιλογή: χωρίς
+  // cookie καμία ανακατεύθυνση, ούτε από το Accept-Language (οδηγία Google),
+  // οπότε η μηχανή αναζήτησης βλέπει πάντα τη σελίδα που ζήτησε.
+  const pagePath = request.nextUrl.pathname;
+  const pageLocale = localeOfPath(pagePath);
+  const chosen = request.cookies.get(LOCALE_COOKIE)?.value;
+  if (request.method === "GET" && (chosen === "en" || chosen === "el") && chosen !== pageLocale) {
+    const target = chosen === "en" ? enPathFor(pagePath) : elPathFor(pagePath);
+    if (target) {
+      const url = request.nextUrl.clone();
+      url.pathname = target;
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Νonce με Web Crypto (δουλεύει σε edge & node runtime, χωρίς Buffer).
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
@@ -65,6 +86,15 @@ export async function proxy(request: NextRequest) {
   // Περνάμε το nonce + το CSP στα request headers ώστε το Next να «περάσει» το
   // nonce στα δικά του inline scripts κατά το render.
   const requestHeaders = new Headers(request.headers);
+  // Η ρίζα (app/layout.tsx) γράφει από εδώ το `<html lang>` και την πρόταση
+  // «View in English». Η κεφαλίδα ΓΡΑΦΕΤΑΙ ΠΑΝΤΑ, ώστε να μην την ορίζει ο
+  // επισκέπτης στέλνοντάς τη μόνος του.
+  requestHeaders.set(LOCALE_HEADER, pageLocale);
+  requestHeaders.delete(SUGGEST_HEADER);
+  // Η αγγλική διαδρομή της σελίδας, μόνο όσο ο επισκέπτης δεν έχει διαλέξει
+  // γλώσσα. Αν ο περιηγητής του μιλά ελληνικά το κρίνει η ρίζα.
+  const suggestEn = pageLocale === "el" && !chosen ? enPathFor(pagePath) : null;
+  if (suggestEn) requestHeaders.set(SUGGEST_HEADER, suggestEn);
   if (isProd) {
     requestHeaders.set("x-nonce", nonce);
     requestHeaders.set("Content-Security-Policy", csp);
@@ -208,6 +238,10 @@ export async function proxy(request: NextRequest) {
     // δημόσιο· το σκέτο «/verify», που πληκτρολογεί όποιος έχει μόνο το χαρτί,
     // έστελνε στη σύνδεση. Εκεί ζει πλέον η φόρμα του κωδικού.
     "/verify",
+    // Η ΑΓΓΛΙΚΗ ΒΙΤΡΙΝΑ (lib/i18n/paths.ts): αρχική, τιμές, εργαλεία, οδηγοί,
+    // είσοδος, εγγραφή, νομικά. Ολα δημόσια, όπως τα ελληνικά τους ζεύγη· οι
+    // υπόλοιπες σελίδες περνούν με πρόθεμα, πιο κάτω.
+    "/en",
   ]);
   // Σελίδες με capability-token (/portal, /accountant, /checkin, /verify) είναι
   // δημόσιες by-design — η πρόσβαση ελέγχεται από το ίδιο το token, όχι από login.
@@ -225,6 +259,7 @@ export async function proxy(request: NextRequest) {
     // εξ ορισμού δημόσιο περιεχόμενο· ο κανόνας γίνεται πρόθεμα.
     || pathname.startsWith("/odigos/")
     || pathname.startsWith("/prothesmies/")
+    || pathname.startsWith("/en/")
     // Η διπλή συναίνεση της διεύθυνσης υπενθυμίσεων φτάνει σε ΤΡΙΤΟ πρόσωπο που
     // δεν έχει λογαριασμό. Χωρίς αυτή τη γραμμή ο σύνδεσμος επιβεβαίωσης
     // γυρνούσε σε οθόνη εισόδου και ο έλεγχος που μπήκε για να προστατεύει

@@ -25,7 +25,10 @@ import Link from 'next/link';
 import { useSyncExternalStore } from 'react';
 
 const HOME = { href: '/', label: 'Αρχική' } as const;
+// Στα αγγλικά: η αγγλική αρχική και η ίδια (ελληνική) εφαρμογή.
+const HOME_EN = { href: '/en', label: 'Home' } as const;
 const APP = { href: '/dashboard', label: 'Επιστροφή στην εφαρμογή' } as const;
+const APP_EN = { href: '/dashboard', label: 'Back to the app' } as const;
 
 /** Ο referrer δεν αλλάζει όσο ζει η σελίδα, οπότε δεν υπάρχει τι να ακούσουμε. */
 const noSubscribe = () => () => {};
@@ -52,16 +55,24 @@ function cameFromApp(): boolean {
  * τον Λογαριασμό του επειδή ΕΛΗΞΕ η συνεδρία του, οπότε ένα κουμπί «Επιστροφή
  * στην εφαρμογή» θα τον έστελνε πίσω στη σελίδα που μόλις τον έδιωξε.
  */
-export function BackLink({ home = false, parent = HOME }: {
-  home?: boolean; parent?: { href: string; label: string };
+export function BackLink({ home = false, parent, locale = 'el' }: {
+  home?: boolean; parent?: { href: string; label: string }; locale?: 'el' | 'en';
 } = {}) {
   // Χωρίς useEffect: το `useSyncExternalStore` δίνει στον διακομιστή την
   // ουδέτερη απάντηση και στον περιηγητή την πραγματική, χωρίς δεύτερη απόδοση
   // που να «διορθώνει» την πρώτη.
   const fromApp = useSyncExternalStore(noSubscribe, cameFromApp, () => false);
-  const to = fromApp && !home ? APP : parent;
+  const to = fromApp && !home ? (locale === 'en' ? APP_EN : APP) : (parent ?? (locale === 'en' ? HOME_EN : HOME));
 
   return (
+    // Από αγγλική σελίδα στην (ελληνική) εφαρμογή: πλήρης πλοήγηση, ώστε η
+    // ρίζα να ξαναγράψει το `<html lang>`.
+    to === APP_EN ? <a href={to.href} className="lg-back">
+      <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M19 12H5M12 19l-7-7 7-7" />
+      </svg>
+      {to.label}
+    </a> :
     <Link href={to.href} className="lg-back">
       <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M19 12H5M12 19l-7-7 7-7" />

@@ -5,6 +5,7 @@ import { PAGE_UPDATED, TOOLS_UPDATED, type DatedPage } from './pageUpdated'
 import { TOOLS_HUB } from '@/lib/core/publicTools'
 import { PROTHESMIES_PATH, PROTHESMIES_UPDATED, monthPath, upcomingMonths } from '@/lib/seo/prothesmies'
 import { athensToday } from '@/lib/core/time'
+import { languageAlternates } from '@/lib/i18n/paths'
 
 // Χάρτης της δημόσιας σελίδας για τις μηχανές αναζήτησης. Μόνο δημόσιες
 // διαδρομές: το dashboard, τα portals και οι σελίδες με token μένουν εκτός.
@@ -21,7 +22,7 @@ const at = (path: DatedPage) => ({ url: SITE + (path === '/' ? '' : path), lastM
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = SITE
-  return [
+  const rows: MetadataRoute.Sitemap = [
     { ...at('/'), changeFrequency: 'weekly', priority: 1 },
     // Δωρεάν εργαλείο χωρίς εγγραφή. Υψηλή προτεραιότητα επειδή είναι η μόνη
     // σελίδα που απαντά σε ερώτηση που ο ιδιοκτήτης ψάχνει ΠΡΙΝ μας ξέρει.
@@ -70,4 +71,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { ...at('/privacy'), changeFrequency: 'yearly', priority: 0.3 },
     { ...at('/terms'), changeFrequency: 'yearly', priority: 0.3 },
   ]
+  // ── ΚΑΙ ΟΙ ΑΓΓΛΙΚΕΣ, ΖΕΥΓΑΡΙΑ ΜΕ ΤΙΣ ΕΛΛΗΝΙΚΕΣ (lib/i18n/paths.ts) ─────────
+  // Κάθε σελίδα με ζεύγος δηλώνει και τις δύο γλώσσες της (hreflang στον
+  // χάρτη, όπως και στο <head>) και η αγγλική μπαίνει ως δική της γραμμή, με
+  // την ημερομηνία και την προτεραιότητα της ελληνικής. Ο χάρτης δεν κρατά
+  // δεύτερο κατάλογο: ό,τι μπει στο PAGE_PAIRS μπαίνει και εδώ.
+  const withLanguages = rows.map(r => {
+    const languages = languageAlternates(r.url.slice(base.length) || '/')
+    return languages ? { ...r, alternates: { languages } } : r
+  })
+  const english = withLanguages.flatMap(r => {
+    const en = r.alternates?.languages?.en
+    return en && en !== r.url ? [{ ...r, url: en }] : []
+  })
+  return [...withLanguages, ...english]
 }

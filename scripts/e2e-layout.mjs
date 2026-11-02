@@ -41,6 +41,7 @@ import { benchUrl } from './lib/paths.mjs'
 import { MODE, applyMode } from './lib/bench-mode.mjs'
 import { cpus } from 'node:os'
 import { SEED_CONSENT } from './lib/consent.mjs'
+import { EN_PUBLIC } from './rendered/targets.mjs'
 
 const PROBE = () => {
   const out = []
@@ -71,6 +72,10 @@ const PROBE = () => {
     if (cs.clipPath && cs.clipPath !== 'none') continue
     if (b.width <= 2 || b.height <= 2) continue
     if (el.closest('[aria-live], .sr-only, [class*="skip"]')) continue
+    // Το ίδιο μοτίβο «μόνο για αναγνώστη οθόνης» χωρίς την κλάση: η κεφαλίδα του
+    // στοιβαγμένου πίνακα (`.po-stack thead`, globals.css) κρύβεται κάτω από τα
+    // 480 με `clip-path: inset(50%)`. Τα κελιά της δεν φαίνονται, άρα δεν ξεφεύγουν.
+    if (el.closest('.po-stack thead') && getComputedStyle(el.closest('thead')).clipPath !== 'none') continue
     const txt = (el.textContent || '').trim()
     // ΤΟ ΧΕΙΡΙΣΤΗΡΙΟ ΧΩΡΙΣ ΛΕΞΕΙΣ ΗΤΑΝ ΑΟΡΑΤΟ ΣΤΟΝ ΕΛΕΓΧΟ ΑΦΗΣ. Ζητούσε κείμενο
     // για να ονομάσει το εύρημα, οπότε κάθε κουμπί που είναι μόνο εικονίδιο (το
@@ -844,7 +849,7 @@ const OPENERS = { tenant: ['Νέος ενοικιαστής'] }
 // Ούτε το /imerologio: δεν είναι σελίδα, είναι μόνο η ροή iCal κάτω από το
 // /imerologio/[token] (route.ts). Χωρίς κουπόνι δίνει 404 και η μέτρηση
 // ζύγιζε τη σελίδα «δεν βρέθηκε» με το όνομα ημερολογίου.
-const PAGES = ['/', '/login', '/signup', '/paketa', '/ypologismos-forou-enoikion', '/ypologismos-enfia', '/vraxyxronia-i-makroxronia', '/kathari-apodosi', '/privacy', '/terms', '/trust', '/logistes']
+const PAGES = ['/', '/login', '/signup', '/paketa', '/ypologismos-forou-enoikion', '/ypologismos-enfia', '/vraxyxronia-i-makroxronia', '/kathari-apodosi', '/privacy', '/terms', '/trust', '/logistes', ...EN_PUBLIC]
 const BASE = process.env.E2E_BASE || 'http://localhost:3100'
 // Για να δουλεύεται μία σκηνή χωρίς να τρέχουν και οι 120: E2E_ONLY=roi
 const ONLY = process.env.E2E_ONLY ? process.env.E2E_ONLY.split(',') : null

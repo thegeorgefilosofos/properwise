@@ -21,6 +21,7 @@ import { ASSISTANT_TO } from '@/lib/assistant/identity';
 import { PUBLIC_TOOLS, TOOLS_HUB } from '@/lib/core/publicTools';
 import { COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
 import { TRANSFER_TAX_RATE } from '@/lib/accounting/transfer';
+import { EN_SHARE_CARDS } from './shareEn';
 
 export type ShareCard = {
   /** Οδηγός, υπολογιστής ή σελίδα που μιλά σε ένα κοινό (π.χ. /logistes). */
@@ -101,6 +102,8 @@ export const SHARE_CARDS: Record<string, ShareCard> = {
     chips: ['ΕΝΦΙΑ', 'Βραχυχρόνια μίσθωση', 'Δηλώσεις', 'Με την επίσημη πηγή'], path: '/prothesmies' },
   'trust': { kind: 'page', over: 'Εμπιστοσύνη', title: 'Ποιοι είμαστε και τι γίνεται με τα δεδομένα σου',
     chips: ['Πού φυλάσσονται', 'Ποιος τα βλέπει', 'Τι δεν κάνουμε ποτέ'], path: '/trust' },
+  // ΚΑΙ ΟΙ ΑΓΓΛΙΚΕΣ (app/og/shareEn.ts), με κλειδί «en-…».
+  ...EN_SHARE_CARDS,
   ...Object.fromEntries(GUIDES.map(g => [guideSlug(g), {
     kind: 'guide' as const, over: 'Οδηγός', title: g.title,
     chips: [g.kicker, `Ενημερώθηκε ${grDate(g.updated)}`, 'Με τις πηγές του νόμου'], path: g.href,

@@ -16,6 +16,8 @@
 import type { Metadata } from 'next';
 import { PRODUCT_NAME, SHARE_IMAGE, SITE } from '@/lib/core/site';
 import { isHiddenGuide } from './odigos/guides';
+import { OG_LOCALE, isEnPath, type Locale } from '@/lib/i18n/locale';
+import { elPathFor, languageAlternates } from '@/lib/i18n/paths';
 
 
 /**
@@ -35,15 +37,25 @@ export function publicMetadata({ title, description, url, type = 'website', imag
   // ΟΔΗΓΟΣ ΕΚΤΟΣ ΚΑΤΑΛΟΓΟΥ, ΕΚΤΟΣ ΕΥΡΕΤΗΡΙΟΥ (27.10.2026). Η ίδια συνθήκη με τον
   // κόμβο και τον χάρτη (`isHiddenGuide`, app/odigos/guides.ts): όσο ο οδηγός
   // περιμένει υπογραφή, η σελίδα του απαντά αλλά δεν ευρετηριάζεται.
-  const hidden = url.startsWith(SITE) && isHiddenGuide(url.slice(SITE.length));
+  //
+  // ΚΑΙ Η ΓΛΩΣΣΑ ΒΓΑΙΝΕΙ ΑΠΟ ΤΗ ΔΙΕΥΘΥΝΣΗ (lib/i18n/locale.ts). Η αγγλική
+  // εκδοχή ενός κρυφού οδηγού είναι κι αυτή κρυφή: ακολουθεί το ζεύγος της.
+  const path = url.startsWith(SITE) ? (url.slice(SITE.length) || '/') : null;
+  const locale: Locale = path && isEnPath(path) ? 'en' : 'el';
+  const elPath = path && locale === 'en' ? elPathFor(path) : path;
+  const hidden = !!elPath && isHiddenGuide(elPath);
+  // ΤΟ ΖΕΥΓΟΣ ΤΗΣ ΣΕΛΙΔΑΣ ΣΤΗΝ ΑΛΛΗ ΓΛΩΣΣΑ (hreflang), ίδιο και στις δύο
+  // πλευρές, με x-default τα ελληνικά. Σελίδα χωρίς ζεύγος: τίποτα.
+  const languages = path ? languageAlternates(path) : null;
   return {
     title: { absolute: title },
     description,
     ...(hidden && { robots: { index: false, follow: true } }),
-    alternates: { canonical: url },
+    alternates: { canonical: url, ...(languages && { languages }) },
     openGraph: {
       title, description, url, type,
-      siteName: PRODUCT_NAME, locale: 'el_GR', images,
+      siteName: PRODUCT_NAME, locale: OG_LOCALE[locale], images,
+      ...(languages && { alternateLocale: [OG_LOCALE[locale === 'en' ? 'el' : 'en']] }),
     },
     twitter: { card: 'summary_large_image', title, description, images },
   };

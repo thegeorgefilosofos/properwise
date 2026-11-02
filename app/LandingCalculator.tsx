@@ -9,6 +9,10 @@ import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive'
 import LiveResult from '@/components/LiveResult'
 import { hy } from '@/components/Hyphen'
 import { roundHalfUp } from '@/lib/core/money';
+import { fmtFor } from '@/lib/core/format'
+import type { Locale } from '@/lib/i18n/locale'
+import { localHref } from '@/lib/i18n/paths'
+import { PARTS_EN } from '@/lib/i18n/en/landingParts'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Ζωντανό εργαλείο απόδοσης μέσα στο landing. Τρέχει την ΙΔΙΑ ακριβή φορολογική
@@ -68,7 +72,8 @@ const BANDS = RENTAL_TAX_BRACKETS_2026.map(b => ({
 // δίπλα στην ετικέτα είναι πλέον πεδίο: δείχνει τη μορφοποιημένη τιμή, δέχεται
 // ό,τι γράψεις («180.000» ή «180000») και στο φύγιμο κρατά την τιμή μέσα στα
 // όρια του ολισθητή.
-function Control({ label, hint, value, set, min, max, step, format }: {
+function Control({ label, hint, value, set, min, max, step, format, amountWord = 'ποσό' }: {
+  amountWord?: string;
   label: string; hint: string; value: number; set: (n: number) => void; min: number; max: number; step: number; format: (n: number) => string
 }) {
   const id = useId()
@@ -87,7 +92,7 @@ function Control({ label, hint, value, set, min, max, step, format }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
         <label htmlFor={id} style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>{label}</label>
-        <input inputMode="decimal" aria-label={`${label}, ποσό`} value={draft ?? format(value)}
+        <input inputMode="decimal" aria-label={`${label}, ${amountWord}`} value={draft ?? format(value)}
           onFocus={e => { setDraft(String(value)); requestAnimationFrame(() => e.target.select()) }}
           onChange={e => setDraft(e.target.value)}
           onBlur={commit}
@@ -118,7 +123,14 @@ function Stat({ label, value, big, tone }: { label: string; value: string; big?:
 
 // ΤΟ ΛΕΚΤΙΚΟ ΕΡΧΕΤΑΙ ΑΠΟ ΤΗΝ ΑΡΧΙΚΗ (`signupCta`, lib/billing/trialOffer.ts),
 // ώστε ο κανόνας να μη φορτώνεται στον περιηγητή για ένα σταθερό κείμενο.
-export default function LandingCalculator({ cta }: { cta: string }) {
+export default function LandingCalculator({ cta, locale = 'el' }: { cta: string; locale?: Locale }) {
+  // ΙΔΙΟΣ ΥΠΟΛΟΓΙΣΜΟΣ ΣΕ ΚΑΘΕ ΓΛΩΣΣΑ· αλλάζουν μόνο οι λέξεις και η γραφή των
+  // αριθμών (lib/core/format.ts, `fmtFor`). Τα ελληνικά μένουν αυτούσια.
+  const en = locale === 'en', C = PARTS_EN.calc, F = fmtFor(locale)
+  const money = F.fe, share = (n: number) => F.fp(n * 100)
+  // Ο συντελεστής του νόμου, όπως τον γράφει ο νόμος (ένα δεκαδικό μόνο όπου υπάρχει).
+  const statutoryIn = (rate: number) => en ? F.fpRate(Math.round(rate * 1000) / 10) : statutory(rate)
+  const bandRate = (b: { rate: string }, i: number) => en ? statutoryIn(RENTAL_TAX_BRACKETS_2026[i].rate) : b.rate
   const [rent, setRent] = useState(650)
   const [value, setValue] = useState(180000)
   const [costs, setCosts] = useState(1200)
@@ -172,9 +184,9 @@ export default function LandingCalculator({ cta }: { cta: string }) {
 
       {/* Αριστερά: τα δικά σου δεδομένα */}
       <div className="calc-panel" style={{ display: 'flex', flexDirection: 'column', gap: T.sp.xxl }}>
-        <Control label="Μηνιαίο ενοίκιο" hint="Το μεικτό μηνιαίο μίσθωμα" value={rent} set={setRent} min={100} max={5000} step={10} format={fe} />
-        <Control label="Αξία ακινήτου" hint="Τρέχουσα εμπορική αξία, για τον υπολογισμό απόδοσης" value={value} set={setValue} min={2000} max={1000000} step={1000} format={fe} />
-        <Control label="Ετήσιες δαπάνες" hint="ΕΝΦΙΑ, ασφάλεια, συντήρηση, κοινόχρηστα ιδιοκτήτη" value={costs} set={setCosts} min={0} max={10000} step={100} format={fe} />
+        <Control label={en ? C.rent : 'Μηνιαίο ενοίκιο'} hint={en ? C.rentHint : 'Το μεικτό μηνιαίο μίσθωμα'} value={rent} set={setRent} min={100} max={5000} step={10} format={money} amountWord={en ? C.amount : undefined} />
+        <Control label={en ? C.value : 'Αξία ακινήτου'} hint={en ? C.valueHint : 'Τρέχουσα εμπορική αξία, για τον υπολογισμό απόδοσης'} value={value} set={setValue} min={2000} max={1000000} step={1000} format={money} amountWord={en ? C.amount : undefined} />
+        <Control label={en ? C.costs : 'Ετήσιες δαπάνες'} hint={en ? C.costsHint : 'ΕΝΦΙΑ, ασφάλεια, συντήρηση, κοινόχρηστα ιδιοκτήτη'} value={costs} set={setCosts} min={0} max={10000} step={100} format={money} amountWord={en ? C.amount : undefined} />
 
         {/* Πού πέφτεις στην κλίμακα ενοικίων. Η χρονιά της είναι του νόμου
             (FIRST_YEAR_NEW_BRACKETS), όχι του ημερολογίου: την επόμενη
@@ -183,8 +195,8 @@ export default function LandingCalculator({ cta }: { cta: string }) {
           {/* ΣΤΑ 360 Η ΣΕΙΡΑ ΣΤΡΙΜΩΧΝΟΤΑΝ: τίτλος και ποσό κολλούσαν χωρίς
               αέρα ανάμεσα. Τυλίγεται και το ποσό μένει ακέραιο. */}
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '2px 12px', fontSize: 12, color: 'var(--text-tertiary)' }}>
-            <span>Κλίμακα ενοικίων {FIRST_YEAR_NEW_BRACKETS}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>φορολογητέο {fe(taxable)}</span>
+            <span>{en ? C.scale(FIRST_YEAR_NEW_BRACKETS) : <>Κλίμακα ενοικίων {FIRST_YEAR_NEW_BRACKETS}</>}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{en ? C.taxable : 'φορολογητέο'} {money(taxable)}</span>
           </div>
           <div className="calc-track">
             <div className="calc-band">
@@ -198,25 +210,25 @@ export default function LandingCalculator({ cta }: { cta: string }) {
               `space-between` το «45%» καθόταν στη δεξιά άκρη, μακριά από τη
               ζώνη του· και στα 360 οι τέσσερις ετικέτες στριμώχνονταν. */}
           <div style={{ display: 'flex', fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
-            {BANDS.map((b, i) => <span key={i} style={{ flex: (b.to - (BANDS[i - 1]?.to ?? 0)), minWidth: 0, whiteSpace: 'nowrap' }}>{b.rate}</span>)}
+            {BANDS.map((b, i) => <span key={i} style={{ flex: (b.to - (BANDS[i - 1]?.to ?? 0)), minWidth: 0, whiteSpace: 'nowrap' }}>{bandRate(b, i)}</span>)}
           </div>
         </div>
       </div>
 
       {/* Δεξιά: το αποτέλεσμα, ζωντανά */}
       <div className="calc-panel" style={{ display: 'flex', flexDirection: 'column', gap: T.sp.xxl, background: 'var(--bg-elevated)' }}>
-        <Stat label="Καθαρή απόδοση, μετά τον φόρο" value={pct(netYield)} big />
-        <LiveResult say={`Καθαρή απόδοση μετά τον φόρο ${pct(netYield)}. Καθαρά τον μήνα ${fe(monthlyNet)}.`} />
+        <Stat label={en ? C.netYield : 'Καθαρή απόδοση, μετά τον φόρο'} value={share(netYield)} big />
+        <LiveResult say={en ? C.say(share(netYield), money(monthlyNet)) : `Καθαρή απόδοση μετά τον φόρο ${pct(netYield)}. Καθαρά τον μήνα ${fe(monthlyNet)}.`} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: T.sp.lg, paddingTop: 4, borderTop: '1px solid var(--border-subtle)' }}>
-          <Stat label="Καθαρά τον μήνα" value={fe(monthlyNet)} />
-          <Stat label="Ακαθάριστη απόδοση" value={pct(grossYield)} />
+          <Stat label={en ? C.monthly : 'Καθαρά τον μήνα'} value={money(monthlyNet)} />
+          <Stat label={en ? C.gross : 'Ακαθάριστη απόδοση'} value={share(grossYield)} />
           {/* ΛΕΞΕΙΣ ΠΟΥ ΔΕΝ ΜΠΕΡΔΕΥΟΝΤΑΙ ΜΕ ΤΗΝ ΚΛΙΜΑΚΑ. Ο «Μέσος συντελεστής»
               καθόταν κάτω από τη ζώνη του 15% και έγραφε 14,25%: διαβαζόταν ως
               λάθος συντελεστής, ενώ είναι ο φόρος διά το μεικτό ενοίκιο. Και το
               «Ετήσιος φόρος ενοικίων» έσπαγε στα 390, χαμηλώνοντας την τιμή του
               σε σχέση με τη διπλανή. */}
-          <Stat label="Φόρος τον χρόνο" value={fe(tax)} />
-          <Stat label="Φόρος στο ενοίκιο" value={pct(effRate)} />
+          <Stat label={en ? C.taxYear : 'Φόρος τον χρόνο'} value={money(tax)} />
+          <Stat label={en ? C.taxShare : 'Φόρος στο ενοίκιο'} value={share(effRate)} />
         </div>
         <div style={{ flex: 1 }} />
         {/* Η ΕΠΙΦΥΛΑΞΗ ΔΙΑΒΑΖΕΤΑΙ ΣΑΝ ΟΡΟΣ, ΑΡΑ ΚΛΕΙΝΕΙ ΚΑΙ ΔΕΞΙΑ. Το πλέγμα των 1140
@@ -227,9 +239,9 @@ export default function LandingCalculator({ cta }: { cta: string }) {
             συλλαβισμός συνοδεύει τη στοίχιση — μόνη της τεντώνει τα κενά. Το
             ποσοστό κι οι ημερομηνίες είναι ψηφία: μένουν ακέραια. */}
         <p className="po-just" style={{ fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)', lineHeight: 1.6, margin: 0 }}>
-          {hy(<>Ενδεικτικός υπολογισμός για ένα ακίνητο χωρίς άλλο εισόδημα από ενοίκια, με την κλίμακα ενοικίων {FIRST_YEAR_NEW_BRACKETS} (ν.5246/2025) και τεκμαρτή έκπτωση {statutory(PRESUMPTIVE_DEDUCTION_RATE)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
+          {en ? C.note(FIRST_YEAR_NEW_BRACKETS, statutoryIn(PRESUMPTIVE_DEDUCTION_RATE)) : hy(<>Ενδεικτικός υπολογισμός για ένα ακίνητο χωρίς άλλο εισόδημα από ενοίκια, με την κλίμακα ενοικίων {FIRST_YEAR_NEW_BRACKETS} (ν.5246/2025) και τεκμαρτή έκπτωση {statutory(PRESUMPTIVE_DEDUCTION_RATE)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
         </p>
-        <Link href="/signup" className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
+        <Link href={localHref(locale, '/signup')} className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
           {/* ΕΝΑ ΚΕΙΜΕΝΟ ΕΓΓΡΑΦΗΣ ΣΕ ΟΛΗ ΤΗΝ ΑΡΧΙΚΗ (28/10/2026). Εδώ έγραφε «… με
               το ακίνητό σου», ενώ η κορυφή και το τέλος της σελίδας γράφουν σκέτο
               το λεκτικό του `signupCta()`: δύο κουμπιά προς την ίδια εγγραφή με

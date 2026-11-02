@@ -145,7 +145,10 @@ for (const file of FILES) {
   });
 
   // ── Κανόνας 2: καμία αγγλική λέξη που έχει ελληνικό όνομα ─────────────
-  lines.forEach((line, i) => {
+  // Μόνο για ελληνικό κείμενο. Στις αγγλικές σελίδες (app/en) και στα αγγλικά
+  // λεξικά τους (lib/i18n/en) το «Email» ΕΙΝΑΙ η σωστή λέξη· την αγγλική
+  // διατύπωση τη φυλάει το guard-en-copy.mjs.
+  if (!/^(?:app\/en|lib\/i18n\/en)\//.test(file)) lines.forEach((line, i) => {
     const t = line.trim();
     if (t.startsWith('//') || t.startsWith('*')) return;
     for (const [re, msg] of ENGLISH) {

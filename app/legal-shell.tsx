@@ -9,6 +9,9 @@ import { transliterate } from '@/lib/core/uploadPath';
 import { grDate } from '@/lib/core/format';
 import { LegalForm } from './LegalForm';
 import { TocSpy } from './TocSpy';
+import type { Locale } from '@/lib/i18n/locale';
+import { localHref } from '@/lib/i18n/paths';
+import { LEGAL_UI_EN } from '@/lib/i18n/en/legal/ui';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΤΟ ΚΕΛΥΦΟΣ ΤΩΝ ΤΡΙΩΝ ΣΕΛΙΔΩΝ ΕΜΠΙΣΤΟΣΥΝΗΣ
@@ -85,6 +88,13 @@ export function MailLink({ to }: { to: string }) {
 /** Οι τρεις σελίδες με το όνομα που τις λέει το κείμενο, μέσα σε εισαγωγικά. */
 const PAGE_BY_NAME: Record<string, string> = Object.fromEntries(TRUST_PAGES.map(([href, label]) => [label, href]));
 
+// ── ΟΙ ΙΔΙΕΣ ΣΕΛΙΔΕΣ ΣΤΑ ΑΓΓΛΙΚΑ ─────────────────────────────────────────────
+// Ιδια ονόματα σε εισαγωγικά, ίδια παραπομπή σε ενότητα («section “…”»). Η
+// σελίδα που δεν έχει ακόμη αγγλική εκδοχή οδηγεί στην ελληνική της.
+const TRUST_PAGES_EN: [string, string][] = TRUST_PAGES.map(([href], i) => [localHref('en', href), LEGAL_UI_EN.pages[i]]);
+const PAGE_BY_NAME_EN: Record<string, string> = Object.fromEntries(TRUST_PAGES_EN.map(([href, label]) => [label, href]));
+const trustPages = (locale: Locale) => (locale === 'en' ? TRUST_PAGES_EN : TRUST_PAGES);
+
 /**
  * ΚΑΘΕ ΠΑΡΑΠΟΜΠΗ ΠΑΤΙΕΤΑΙ. Τα κείμενα έγραφαν «βλ. ενότητα «Δεδομένα τρίτων
  * που καταχωρείς»» και «στη σελίδα «Ποιοι είμαστε»» ως σκέτο κείμενο: ο
@@ -105,6 +115,10 @@ const PAGE_BY_NAME: Record<string, string> = Object.fromEntries(TRUST_PAGES.map(
  */
 const TECH_TERMS = ['localStorage'];
 
+const REF_IN_TEXT_EN = new RegExp(
+  `(${MAIL_IN_TEXT.source})|(section “)([^“”]+)(”)|“(${Object.keys(PAGE_BY_NAME_EN).join('|')})”|\\b(${TECH_TERMS.join('|')})\\b`,
+  'giu',
+);
 const REF_IN_TEXT = new RegExp(
   `(${MAIL_IN_TEXT.source})|(ενότητα «)([^«»]+)(»)|«(${Object.keys(PAGE_BY_NAME).join('|')})»|\\b(${TECH_TERMS.join('|')})\\b`,
   'giu',
@@ -116,6 +130,8 @@ interface RefContext {
   self: string;
   /** Τίτλος ενότητας → άγκιστρο. */
   anchors: ReadonlyMap<string, string>;
+  /** Η γλώσσα του κειμένου: ποια εισαγωγικά και ποια ονόματα σελίδων. */
+  locale?: Locale;
 }
 
 const REF_STYLE = LINK_STYLE;
@@ -124,16 +140,17 @@ const REF_STYLE = LINK_STYLE;
 function withRefs(text: string, ctx: RefContext): ReactNode {
   const parts: ReactNode[] = [];
   let last = 0;
-  for (const m of text.matchAll(REF_IN_TEXT)) {
+  const en = ctx.locale === 'en';
+  for (const m of text.matchAll(en ? REF_IN_TEXT_EN : REF_IN_TEXT)) {
     const [whole, mail, secOpen, secTitle, secClose, page, tech] = m;
     const at = m.index;
     const anchor = secTitle ? ctx.anchors.get(secTitle) : undefined;
-    const href = page ? PAGE_BY_NAME[page] : undefined;
+    const href = page ? (en ? PAGE_BY_NAME_EN : PAGE_BY_NAME)[page] : undefined;
     let node: ReactNode = null;
     if (mail) node = <MailLink key={at} to={mail} />;
     else if (tech) node = <code key={at} className="lg-code">{tech}</code>;
     else if (anchor) node = <span key={at}>{secOpen}<a href={`#${anchor}`} className="lp-link po-tap-inline" style={REF_STYLE}>{secTitle}</a>{secClose}</span>;
-    else if (href && href !== ctx.self) node = <span key={at}>«<Link href={href} className="lp-link po-tap-inline" style={REF_STYLE}>{page}</Link>»</span>;
+    else if (href && href !== ctx.self) node = <span key={at}>{en ? '“' : '«'}<Link href={href} className="lp-link po-tap-inline" style={REF_STYLE}>{page}</Link>{en ? '”' : '»'}</span>;
     if (!node) continue;
     parts.push(text.slice(last, at), node);
     last = at + whole.length;
@@ -206,7 +223,11 @@ export interface LegalBlock {
  * Ήταν «1. Ορισμοί» μέσα στο ίδιο κείμενο, οπότε ένας τίτλος δύο γραμμών
  * τύλιγε κάτω από τον αριθμό και η δεύτερη σειρά ξεκινούσε από άλλο σημείο.
  */
-export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, closing, self, guideHeads }: {
+export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, closing, self, guideHeads, locale = 'el', notice }: {
+  /** Η γλώσσα της σελίδας: κεφαλίδα, υποσέλιδο, «Περιεχόμενα». */
+  locale?: Locale;
+  /** Μία γραμμή στην κορυφή, πάνω από τον τίτλο (η σημείωση της μετάφρασης). */
+  notice?: ReactNode;
   /**
    * ΤΟ «ΠΟΙΟΙ ΕΙΜΑΣΤΕ» ΜΙΛΑ ΤΗ ΓΛΩΣΣΑ ΤΩΝ ΟΔΗΓΩΝ, ΟΧΙ ΤΩΝ ΣΥΜΒΑΣΕΩΝ.
    *
@@ -247,6 +268,7 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
 }) {
   // Ενα άγκιστρο ανά ενότητα· αν δύο τίτλοι δώσουν το ίδιο, ο δεύτερος παίρνει αριθμό.
   const ids = sectionAnchors(blocks);
+  const contents = locale === 'en' ? LEGAL_UI_EN.contents : 'Περιεχόμενα';
   // ΤΑ ΑΛΜΑΤΑ ΣΕ ΕΝΟΤΗΤΑ ΞΑΝΑΜΠΑΙΝΟΥΝ, ΜΕΣΑ ΣΤΗ ΣΤΗΛΗ ΚΑΙ ΟΧΙ ΣΤΟ ΠΛΑΙ. Χωρίς
   // αυτά, είκοσι οκτώ ενότητες σε δεκαπέντε χιλιάδες εικονοστοιχεία κινητού
   // διαβάζονταν μόνο με κύλιση. Ο ίδιος κατάλογος δύο φορές: ανοιχτός στον
@@ -281,15 +303,15 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
     const overs = blocks.map((_, i) => `${i + 1}. ${partOf(i)}`);
     return (
       <div className="pub-root min-h-dvh" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: T.font.sans }}>
-        <PublicHeader />
+        <PublicHeader locale={locale} />
         <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(48px,6vw,80px)` }}>
           <div className="gd-layout">
-            <nav aria-label="Περιεχόμενα" className="lg-toc gd-rail">
-              <div className="lg-toc-d"><div className="lg-toc-h">Περιεχόμενα</div>{toc}</div>
+            <nav aria-label={contents} className="lg-toc gd-rail">
+              <div className="lg-toc-d"><div className="lg-toc-h">{contents}</div>{toc}</div>
               <TocSpy />
             </nav>
             <div className="gd">
-              <BackLink />
+              <BackLink locale={locale} />
               <div className="lp-eyebrow">{eyebrow}</div>
               <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
                 {title}
@@ -297,9 +319,9 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
               {/* Μία γραμμή στοιχείων κάτω από τον τίτλο, όπως η ημερομηνία των
                   οδηγών: η έκδοση την περιέχει ήδη, οπότε δεν γράφεται δεύτερη. */}
               {(version ?? meta) && <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 18px' }}>{version ?? meta}</p>}
-              <nav aria-label="Περιεχόμενα" className="lg-toc" style={{ margin: '0 0 clamp(24px,3vw,32px)' }}>
-                <details className="lg-toc-m"><summary>Περιεχόμενα ({blocks.length})</summary>{toc}</details>
-                <div className="lg-toc-d"><div className="lg-toc-h">Περιεχόμενα</div>{toc}</div>
+              <nav aria-label={contents} className="lg-toc" style={{ margin: '0 0 clamp(24px,3vw,32px)' }}>
+                <details className="lg-toc-m"><summary>{contents} ({blocks.length})</summary>{toc}</details>
+                <div className="lg-toc-d"><div className="lg-toc-h">{contents}</div>{toc}</div>
               </nav>
               <p className="lg-p">{hy(intro)}</p>
               {blocks.map((b, i) => (
@@ -310,14 +332,14 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
               ))}
               {hy(closing)}
               <div className="lg-siblings" style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: 20, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'baseline' }}>
-                {TRUST_PAGES.filter(([href]) => href !== self).map(([href, label]) => (
+                {trustPages(locale).filter(([href]) => href !== self).map(([href, label]) => (
                   <Link key={href} href={href} className="lp-link po-tap" style={{ color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600 }}>{label}</Link>
                 ))}
               </div>
             </div>
           </div>
         </main>
-        <PublicFooter />
+        <PublicFooter locale={locale} />
       </div>
     );
   }
@@ -326,11 +348,12 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
     // `pub-root`: η παλέτα της αρχικής και εδώ (globals.css), ώστε το «Ποιοι
     // είμαστε», οι Όροι και το Απόρρητο να μην αλλάζουν χρώμα από την αρχική.
     <div className="pub-root min-h-dvh" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: T.font.sans }}>
-      <PublicHeader />
+      <PublicHeader locale={locale} />
 
       <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(48px,6vw,80px)` }}>
         <div className="lg-head">
-        <BackLink />
+        <BackLink locale={locale} />
+        {notice}
         <div className="lp-eyebrow">{eyebrow}</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
           {title}
@@ -368,9 +391,9 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
           {/* ΣΤΗΝ ΜΕΓΑΛΗ ΟΘΟΝΗ ΤΟ ΕΥΡΕΤΗΡΙΟ ΓΙΝΕΤΑΙ ΔΕΞΙΑ ΣΤΗΛΗ. Βγήκε από το
               `lg-body` ώστε το πλέγμα να το στείλει στο πλάι· στο DOM μένει
               πρώτο, για το πληκτρολόγιο και το κινητό (globals.css, `.lg-grid`). */}
-          <nav aria-label="Περιεχόμενα" className="lg-toc">
-            <details className="lg-toc-m"><summary>Περιεχόμενα ({blocks.length})</summary>{toc}</details>
-            <div className="lg-toc-d"><div className="lg-toc-h">Περιεχόμενα</div>{toc}</div>
+          <nav aria-label={contents} className="lg-toc">
+            <details className="lg-toc-m"><summary>{contents} ({blocks.length})</summary>{toc}</details>
+            <div className="lg-toc-d"><div className="lg-toc-h">{contents}</div>{toc}</div>
             <TocSpy />
           </nav>
           <div className="lg-body">
@@ -398,7 +421,7 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
                 διαδρομή σε ΟΛΟΚΛΗΡΟ το HTML — και την έβρισκε στο υποσέλιδο,
                 που δείχνει και στις τρεις. Περνούσε ή έπεφτε για λάθος λόγο. */}
             <div className="lg-siblings" style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: 20, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'baseline' }}>
-              {TRUST_PAGES.filter(([href]) => href !== self).map(([href, label]) => (
+              {trustPages(locale).filter(([href]) => href !== self).map(([href, label]) => (
                 <Link key={href} href={href} className="lp-link po-tap" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>{label}</Link>
               ))}
               {/* Η ΗΜΕΡΟΜΗΝΙΑ ΣΤΟ ΚΕΝΟ ΔΕΞΙΑ ΤΗΣ ΣΕΙΡΑΣ. Οι δύο αδελφοί σύνδεσμοι
@@ -411,7 +434,7 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
         </div>
       </main>
 
-      <PublicFooter />
+      <PublicFooter locale={locale} />
     </div>
   );
 }
@@ -428,7 +451,8 @@ export interface LegalSection {
 }
 
 /** Απόρρητο και Όροι: μόνο κείμενο, άρα δηλώνονται ως δεδομένα, όχι ως JSX. */
-export function LegalShell({ title, updated, version, intro, sections, disclaimer, self }: {
+export function LegalShell({ title, updated, version, intro, sections, disclaimer, self, locale = 'el', notice }: {
+  locale?: Locale; notice?: ReactNode;
   title: string; updated: string; intro: string; sections: LegalSection[]; disclaimer?: string;
   /** Η έκδοση που γράφεται στην απόδειξη συγκατάθεσης (`POLICY_VERSION`). */
   version?: string;
@@ -436,16 +460,19 @@ export function LegalShell({ title, updated, version, intro, sections, disclaime
   self: string;
 }) {
   const ids = sectionAnchors(sections);
-  const ctx: RefContext = { self, anchors: new Map(sections.map((s, i) => [s.h, ids[i]])) };
+  const ctx: RefContext = { self, locale, anchors: new Map(sections.map((s, i) => [s.h, ids[i]])) };
+  const en = locale === 'en', U = LEGAL_UI_EN;
   const refs = (t: string) => withRefs(t, ctx);
   return (
     <LegalLayout
       self={self}
-      eyebrow="Νομικά"
+      locale={locale}
+      notice={notice}
+      eyebrow={en ? U.eyebrow : 'Νομικά'}
       title={title}
       intro={intro}
-      meta={`Τελευταία ενημέρωση: ${updated}`}
-      version={version ? `Έκδοση ${grDate(version)} · Τελευταία ενημέρωση: ${updated}` : undefined}
+      meta={en ? U.updated(updated) : `Τελευταία ενημέρωση: ${updated}`}
+      version={version ? (en ? U.version(version, updated) : `Έκδοση ${grDate(version)} · Τελευταία ενημέρωση: ${updated}`) : undefined}
       blocks={sections.map(s => ({
         id: s.id,
         h: s.h,

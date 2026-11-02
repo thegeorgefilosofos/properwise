@@ -54,7 +54,8 @@ for (const row of sitemap()) {
   }
   let file: string | null = null
   let desc: string | null = null
-  for (const f of [dir + '/page.tsx', dir + '/layout.tsx']) {
+  // Οι αγγλικές σελίδες: view.tsx και frame.tsx (app/en/[[...slug]]/page.tsx).
+  for (const f of [dir + '/page.tsx', dir + '/layout.tsx', dir + '/view.tsx', dir + '/frame.tsx']) {
     if (!existsSync(f)) continue
     const m = await import('../' + f)
     const md = m.metadata ?? (typeof m.generateMetadata === 'function'

@@ -12,7 +12,8 @@
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { T } from '@/components/tokens';
 import { ChipToggle } from '@/components/Theme';
-import { fn } from '@/lib/core/format';
+import { fn, fmtFor } from '@/lib/core/format';
+import { useLocale } from '@/lib/i18n/useLocale';
 import { parseAmount } from '@/lib/core/greek';
 // ΧΩΡΙΣ `CustomSelect` ΕΔΩ. Ο επιλογέας ζει στο app/ToolSelect.tsx: το
 // UIComponents της εφαρμογής μπαίνει ολόκληρο στο πακέτο όποιου το εισάγει
@@ -64,10 +65,12 @@ const UNIT_BOX_EXTRA = 14;
  * αλλάζει μόνο αυτό που βλέπει. Κάτω από το χίλια δεν υπάρχει τίποτα να
  * ομαδοποιηθεί και ό,τι δεν διαβάζεται ως ποσό μένει ως έχει.
  */
-function grouped(raw: string): string {
+// ΣΤΑ ΑΓΓΛΙΚΑ ΤΟ ΙΔΙΟ ΠΟΣΟ ΓΡΑΦΕΤΑΙ «200,000» (fmtFor('en')): η τελεία θα
+// διαβαζόταν δεκαδικό. Το `parseAmount` διαβάζει και τις δύο γραφές.
+function grouped(raw: string, num: (n: number, d?: number) => string = fn): string {
   const n = parseAmount(raw);
   if (n === null || Math.abs(n) < 1000) return raw;
-  return fn(n, Number.isInteger(n) ? 0 : 2);
+  return num(n, Number.isInteger(n) ? 0 : 2);
 }
 
 /**
@@ -91,13 +94,14 @@ export function ToolNumField({ id, label, value, onChange, unit, unitPad = 34, m
   // ούτε χαρακτήρα και ο γονέας διαβάζει το κείμενο με το parseAmount, που
   // καταλαβαίνει τα ελληνικά χιλιάδες («1.400» = 1400).
   const [draft, setDraft] = useState<string | null>(null);
+  const num = fmtFor(useLocale()).fn;
   const described = [unit && `${id}-unit`, hint && `${id}-hint`].filter(Boolean).join(' ') || undefined;
   return (
     <div className={spanClass(span)}>
       <label htmlFor={id} style={TOOL_LABEL}>{label}</label>
       <div style={{ position: 'relative' }}>
-        <input id={id} inputMode={mode} value={draft ?? grouped(value)}
-          onFocus={() => setDraft(grouped(value))}
+        <input id={id} inputMode={mode} value={draft ?? grouped(value, num)}
+          onFocus={() => setDraft(grouped(value, num))}
           onChange={e => { setDraft(e.target.value); onChange(e.target.value); }}
           onBlur={() => setDraft(null)}
           style={{ ...TOOL_FIELD, paddingRight: unit ? unitPad + UNIT_BOX_EXTRA : 14 }}

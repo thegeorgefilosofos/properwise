@@ -29,6 +29,11 @@ import { readTool, toolQuery, toolLink, type ToolSpec, type ToolValues } from '@
 import { SITE_HOST } from '@/lib/core/site';
 import { T, fdLong } from '@/components/tokens';
 import { Btn } from '@/components/Theme';
+import { useLocale } from '@/lib/i18n/useLocale';
+import { fmtFor } from '@/lib/core/format';
+
+// Τα κουμπιά στα αγγλικά (σελίδες /en). Ιδια λειτουργία.
+const SHARE_EN = { share: 'Share', copied: 'Link copied', copy: 'Copy link', print: 'Print', link: 'Link to this calculation' };
 
 /**
  * Τα πεδία ενός εργαλείου, με τη διεύθυνση να τα ακολουθεί.
@@ -104,6 +109,7 @@ export function ToolActions<S extends ToolSpec>(
   },
 ) {
   const [copied, setCopied] = useState(false);
+  const en = useLocale() === 'en';
   // ΟΤΑΝ ΤΟ ΠΡΟΧΕΙΡΟ ΕΙΝΑΙ ΚΛΕΙΣΤΟ, Ο ΣΥΝΔΕΣΜΟΣ ΦΑΙΝΕΤΑΙ. Σε ασφαλή περιβάλλοντα
   // χωρίς άδεια —παλιός περιηγητής, ιδιωτική περιήγηση, ενσωματωμένο webview—
   // το `writeText` απορρίπτεται. Ένα κουμπί που δεν κάνει τίποτα και δεν το λέει
@@ -152,21 +158,21 @@ export function ToolActions<S extends ToolSpec>(
       }}>
         <Btn onClick={copy}>
           <IconLink/>
-          {canShare ? 'Κοινοποίηση' : copied ? 'Ο σύνδεσμος αντιγράφηκε' : 'Αντιγραφή συνδέσμου'}
+          {en ? (canShare ? SHARE_EN.share : copied ? SHARE_EN.copied : SHARE_EN.copy) : canShare ? 'Κοινοποίηση' : copied ? 'Ο σύνδεσμος αντιγράφηκε' : 'Αντιγραφή συνδέσμου'}
         </Btn>
         {/* Η ΑΛΛΑΓΗ ΤΟΥ ΛΕΚΤΙΚΟΥ ΔΕΝ ΑΚΟΥΓΕΤΑΙ. Ο αναγνώστης οθόνης δεν ξαναδιαβάζει
             το όνομα ενός κουμπιού που έχει ήδη την εστίαση· η επιβεβαίωση
             ανακοινώνεται από περιοχή κατάστασης. */}
-        <span role="status" className="sr-only">{copied ? 'Ο σύνδεσμος αντιγράφηκε' : ''}</span>
+        <span role="status" className="sr-only">{copied ? (en ? SHARE_EN.copied : 'Ο σύνδεσμος αντιγράφηκε') : ''}</span>
         <Btn onClick={() => window.print()}>
           <IconPrint/>
-          Εκτύπωση
+          {en ? SHARE_EN.print : 'Εκτύπωση'}
         </Btn>
       </div>
 
       {manual !== null && (
         <input readOnly value={manual} onFocus={e => e.currentTarget.select()} autoFocus
-          aria-label="Ο σύνδεσμος του υπολογισμού"
+          aria-label={en ? SHARE_EN.link : 'Ο σύνδεσμος του υπολογισμού'}
           className="po-noprint"
           style={{
             marginTop: 10, width: '100%', height: T.h.md, padding: '0 12px',
@@ -234,11 +240,12 @@ export interface PaperInput { k: string; v: string }
 export function ToolPaper(
   { title, on, inputs }: { title: string; on: string; inputs: readonly PaperInput[] },
 ) {
+  const en = useLocale() === 'en';
   return (
     <header className="po-printonly po-paper">
       <div className="po-paper-top">
         <span>PROPERWISE</span>
-        <span>{fdLong(on)}</span>
+        <span>{en ? fmtFor('en').date(on) : fdLong(on)}</span>
       </div>
       <h2 className="po-paper-title">{title}</h2>
       <p className="po-paper-inputs">
