@@ -5,6 +5,8 @@ import { Btn } from '@/components/Theme'
 import { hy } from '@/components/Hyphen'
 import { BackLink } from './BackLink'
 import { HOME } from '@/lib/auth/redirect'
+import { useLocale } from '@/lib/i18n/useLocale'
+import { AUTH_EN } from '@/lib/i18n/en/auth'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AlreadySignedIn, ευγενική κατάσταση όταν ο επισκέπτης είναι ήδη συνδεδεμένος
@@ -33,11 +35,13 @@ export default function AlreadySignedIn({
   next?: string
 }) {
   const home = next === HOME
+  const en = useLocale() === 'en', E = AUTH_EN.signedIn
+  const enBody = E.body(home, mode === 'signup')
   return (
     <div>
-      <BackLink home />
+      <BackLink home locale={en ? 'en' : 'el'} />
       <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 8px' }}>
-        Έχεις ήδη συνδεθεί
+        {en ? E.title : 'Έχεις ήδη συνδεθεί'}
       </h1>
       {/* ΤΡΕΙΣ ΓΡΑΜΜΕΣ ΜΕ ΡΙΓΜΕΝΗ ΔΕΞΙΑ ΑΚΡΗ, ΣΕ ΣΤΗΛΗ 400 — το `maxWidth: 400`
           της Σύνδεσης και της Εγγραφής που καλούν αυτή την κατάσταση. Μέτρο ~61
@@ -45,14 +49,16 @@ export default function AlreadySignedIn({
           δύο διατυπώσεις (σύνδεση - εγγραφή). Η στοίχιση κλείνει τη δεξιά άκρη,
           ο συλλαβισμός κρατά τα κενά στο φυσικό τους πλάτος αντί να τα τεντώσει.
           Η διεύθυνση μέσα στο `<strong>` είναι λατινική, μένει ακέραιη. */}
-      <p className="po-just" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, margin: '0 0 28px' }}>
+      {en ? <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, margin: '0 0 28px', textWrap: 'pretty' }}>
+        {enBody[0]}<strong style={{ color: 'var(--text-primary)' }}>{email}</strong>{enBody[1]}
+      </p> : <p className="po-just" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, margin: '0 0 28px' }}>
         {hy(<>Ο λογαριασμός <strong style={{ color: 'var(--text-primary)' }}>{email}</strong> είναι ενεργός σε αυτή τη συσκευή. Μπορείς να συνεχίσεις {home ? 'στον πίνακά σου' : 'εκεί που πήγαινες'}{mode === 'signup'
           ? ' ή, αν θέλεις, να αποσυνδεθείς για να δημιουργήσεις νέο λογαριασμό'
           : ' ή να αποσυνδεθείς για να συνδεθείς με άλλον λογαριασμό'}.</>)}
-      </p>
+      </p>}
 
       <Link href={next} className="auth-cta" style={{ display: 'block', textAlign: 'center', padding: '12px', background: 'var(--accent)', borderRadius: T.radius.pill, color: 'var(--accent-text)', fontSize: 14, fontWeight: 700, textDecoration: 'none', letterSpacing: '-0.01em' }}>
-        {home ? 'Άνοιξε τον πίνακά σου' : 'Συνέχισε'}
+        {home ? (en ? E.open : 'Άνοιξε τον πίνακά σου') : (en ? E.go : 'Συνέχισε')}
       </Link>
 
       {/* `field` γιατί η ενέργεια κρατά όλο το πλάτος κάτω από το κύριο κουμπί, όπως πριν.
@@ -61,8 +67,8 @@ export default function AlreadySignedIn({
       <div style={{ marginTop: 12 }}>
         <Btn variant="secondary" field onClick={onSignOut} disabled={signingOut}>
           {signingOut
-            ? 'Αποσύνδεση…'
-            : mode === 'signup' ? 'Αποσύνδεση και δημιουργία νέου λογαριασμού' : 'Αποσύνδεση και αλλαγή λογαριασμού'}
+            ? (en ? E.signingOut : 'Αποσύνδεση…')
+            : mode === 'signup' ? (en ? E.outNew : 'Αποσύνδεση και δημιουργία νέου λογαριασμού') : (en ? E.outSwitch : 'Αποσύνδεση και αλλαγή λογαριασμού')}
         </Btn>
       </div>
     </div>

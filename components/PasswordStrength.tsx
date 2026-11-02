@@ -15,6 +15,8 @@
 
 import { useEffect, useState } from 'react'
 import { checkPassword, PASSWORD_MSG } from '@/lib/auth/password'
+import { useLocale } from '@/lib/i18n/useLocale'
+import { AUTH_EN } from '@/lib/i18n/en/auth'
 // ΜΟΝΟ ΤΥΠΟΣ ΣΤΗΝ ΚΟΡΥΦΗ. Ο ίδιος ο έλεγχος (SHA-1, αίτημα k-anonymity,
 // ανάλυση απάντησης) φορτώνεται μέσα στο effect, την πρώτη φορά που ο κωδικός
 // πληροί την πολιτική: ως τότε δεν χρειάζεται. Στατική εισαγωγή σήμαινε 0,6 KB
@@ -60,6 +62,8 @@ export default function PasswordStrength({ password, id, onLeaked }: {
   onLeaked?: (leakedPassword: string | null) => void;
 }) {
   const pw = checkPassword(password)
+  // Ιδιοι έλεγχοι σε κάθε γλώσσα· στα αγγλικά αλλάζει μόνο η ετικέτα, ανά κλειδί.
+  const en = useLocale() === 'en', E = AUTH_EN.pw
   // ΤΟ ΑΠΟΤΕΛΕΣΜΑ ΚΟΥΒΑΛΑ ΤΟΝ ΚΩΔΙΚΟ ΠΟΥ ΑΦΟΡΑ και αυτό δεν είναι λεπτομέρεια:
   // αλλιώς η προειδοποίηση για τον προηγούμενο κωδικό μένει στην οθόνη όσο ο
   // χρήστης πληκτρολογεί τον επόμενο — του λέει ότι ο ΝΕΟΣ διέρρευσε, που είναι
@@ -80,7 +84,8 @@ export default function PasswordStrength({ password, id, onLeaked }: {
         .then(async ({ checkLeakedPassword, leakMessage }) => {
           const result: LeakCheck | null = await checkLeakedPassword(password, ctl.signal)
           if (ctl.signal.aborted) return
-          setLeak({ for: password, message: leakMessage(result) })
+          const msg = leakMessage(result)
+          setLeak({ for: password, message: en && msg ? (result && result.count >= 100_000 ? E.leakedMany : E.leaked) : msg })
           // Η ειδοποίηση φεύγει από ΕΔΩ, μέσα στην ασύγχρονη απάντηση και όχι
           // από effect που παρακολουθεί το αποτέλεσμα: το δεύτερο θα ήταν
           // setState μέσα σε effect, ακριβώς το μοτίβο που ο linter μετρά ήδη
@@ -90,7 +95,7 @@ export default function PasswordStrength({ password, id, onLeaked }: {
         .catch(() => {})
     }, 450)
     return () => { clearTimeout(t); ctl.abort() }
-  }, [password, pw.ok, onLeaked])
+  }, [password, pw.ok, onLeaked, en, E])
 
   const leaked = leak?.for === password ? leak.message : null
   const barColor = pw.score <= 2 ? 'var(--negative)'
@@ -116,7 +121,7 @@ export default function PasswordStrength({ password, id, onLeaked }: {
                 ? <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                 : <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--text-tertiary)' }} />}
             </span>
-            {c.label}
+            {en ? (E.checks[c.key] ?? c.label) : c.label}
           </li>
         ))}
         {pw.common && (
@@ -124,7 +129,7 @@ export default function PasswordStrength({ password, id, onLeaked }: {
             <span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>
               <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
             </span>
-            {PASSWORD_MSG.common}
+            {en ? E.common : PASSWORD_MSG.common}
           </li>
         )}
         {leaked && (

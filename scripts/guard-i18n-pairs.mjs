@@ -17,6 +17,7 @@
 //      `publicMetadata(` (στη σελίδα ή στο layout του φακέλου): εκεί μπαίνουν
 //      αυτόματα οι ετικέτες hreflang και η γλώσσα του Open Graph. Η αρχική
 //      γράφει τα δικά της και πρέπει να καλεί ρητά το `languageAlternates(`.
+//      Σελίδα `noindexPage(` δεν θέλει hreflang: δεν ευρετηριάζεται.
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
@@ -37,8 +38,10 @@ if (!pairs.length) {
 
 const dirOf = (route) => (route === '/' ? 'app' : join('app', route))
 const pageOf = (route) => join(dirOf(route), 'page.tsx')
+// Σελίδα noindex (π.χ. η επαναφορά κωδικού) δεν δηλώνει hreflang: δεν
+// ευρετηριάζεται σε καμία γλώσσα. Αρκεί να είναι noindex και οι ΔΥΟ πλευρές.
 const metaOk = (route, call) => [pageOf(route), join(dirOf(route), 'layout.tsx')]
-  .some(f => existsSync(f) && readFileSync(f, 'utf8').includes(call))
+  .some(f => existsSync(f) && (readFileSync(f, 'utf8').includes(call) || readFileSync(f, 'utf8').includes('noindexPage(')))
 
 const problems = []
 for (const { el, en } of pairs) {

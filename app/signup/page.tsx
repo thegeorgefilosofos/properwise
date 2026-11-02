@@ -13,7 +13,7 @@ import { BackLink } from '../BackLink'
 import MailSent from '../MailSent'
 import { checkPassword, PASSWORD_MIN_HINT, PASSWORD_MIN_LABEL, PASSWORD_MIN_LENGTH, PASSWORD_MSG } from '@/lib/auth/password'
 import { hy } from '@/components/Hyphen'
-import { SAY, failed } from '@/lib/core/dbError';
+import { SAY, failed as failedEl } from '@/lib/core/dbError';
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
 // Καθαρή λογική, χωρίς React/Supabase: ασφαλής σε 'use client'.
 import { planFromParam, cycleFromParam, planAtLeast, TRIAL_PLAN } from '@/lib/billing/entitlements';
@@ -24,6 +24,12 @@ import { fe } from '@/lib/core/format';
 import { isReferralCode } from '@/lib/referral/code';
 import { POLICY_VERSION as CONSENT_VERSION } from '@/lib/legal/identity'
 import { usePlanTerms, useTrialBadge, useSignupCta } from './PlanTerms'
+import { useLocale } from '@/lib/i18n/useLocale'
+import { localeOfPath } from '@/lib/i18n/locale'
+import { localHref } from '@/lib/i18n/paths'
+import { AUTH_EN, authFailedEn } from '@/lib/i18n/en/auth'
+import { PLAN_COPY_EN } from '@/lib/i18n/en/plans'
+import { fmtFor } from '@/lib/core/format'
 
 // Η έκδοση των Όρων που δέχεται ο χρήστης. Ήταν καρφωτή εδώ ως «2026-07», ενώ
 // οι δύο σελίδες που υπογράφει γράφουν «Αύγουστος 2026»: η απόδειξη
@@ -80,7 +86,7 @@ const confirmRedirect = (query: string) =>
  */
 async function land(supabase: Awaited<ReturnType<typeof authClient>>, query: string) {
   const { data: levels, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-  if (error || secondStepPending(levels)) { window.location.replace(`/login${carried(query)}`); return }
+  if (error || secondStepPending(levels)) { window.location.replace(`${localHref(localeOfPath(window.location.pathname), '/login')}${carried(query)}`); return }
   window.location.replace(continuation(query))
 }
 
@@ -151,17 +157,27 @@ async function newsOffNow(supabase: Awaited<ReturnType<typeof authClient>>, user
   return error
 }
 
-function OrDivider() {
+// Μέσα σε effect η γλώσσα διαβάζεται από τη διεύθυνση, όχι από το render.
+const failedHere = (el: string, en: string, e?: unknown) =>
+  localeOfPath(window.location.pathname) === 'en' ? authFailedEn(en, e) : failedEl(el, e)
+
+function OrDivider({ word = 'ή' }: { word?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
       <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
-      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>ή</span>
+      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>{word}</span>
       <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
     </div>
   )
 }
 
 export default function SignupPage() {
+  // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/signup) ──────────────────────────────
+  // Ιδια ροή, ίδια συναίνεση, ίδιοι έλεγχοι· αλλάζει μόνο το κείμενο. Η
+  // εφαρμογή μετά την εγγραφή είναι ελληνική και η οθόνη το λέει.
+  const locale = useLocale(), en = locale === 'en', A = AUTH_EN, S = AUTH_EN.signup
+  const failed = (el: string, en_: string, e?: unknown) => en ? authFailedEn(en_, e) : failedEl(el, e)
+  const PW_MSG = en ? { leaked: A.pw.leaked, weak: A.pw.weak, common: A.pw.common } : PASSWORD_MSG
   // Από το billingWords, στον διακομιστή (layout.tsx): `null` όσο το ταμείο χρεώνει.
   const planTerms = usePlanTerms()
   const trialBadge = useTrialBadge()
@@ -224,10 +240,10 @@ export default function SignupPage() {
   const leaked = leakedPw !== null && leakedPw === password
   const pw = checkPassword(password)
   const trans = (m: string) =>
-    /already registered|already exists/i.test(m) ? 'Υπάρχει ήδη λογαριασμός με αυτό το email.'
-    : /weak|at least|6 char/i.test(m) ? `Ο κωδικός είναι πολύ αδύναμος. Χρησιμοποίησε ${PASSWORD_MIN_LABEL.toLowerCase()}.`
-    : /rate limit|too many/i.test(m) ? SAY.tooManyTries
-    : /valid email/i.test(m) ? 'Το email δεν φαίνεται έγκυρο.'
+    /already registered|already exists/i.test(m) ? (en ? S.exists : 'Υπάρχει ήδη λογαριασμός με αυτό το email.')
+    : /weak|at least|6 char/i.test(m) ? (en ? S.weak : `Ο κωδικός είναι πολύ αδύναμος. Χρησιμοποίησε ${PASSWORD_MIN_LABEL.toLowerCase()}.`)
+    : /rate limit|too many/i.test(m) ? (en ? S.tooMany : SAY.tooManyTries)
+    : /valid email/i.test(m) ? (en ? S.invalidEmail : 'Το email δεν φαίνεται έγκυρο.')
     : m
   // Η ΚΟΡΥΦΗ ΤΟΥ ΧΩΝΙΟΥ, ανώνυμα (lib/analytics/signupFunnel.ts). Οι επιστροφές
   // από την Google (`oauth=…`) δεν είναι νέα επίσκεψη και δεν μετρώνται.
@@ -283,7 +299,7 @@ export default function SignupPage() {
           // απόδειξη. Τώρα ο χρήστης μένει εδώ, βλέπει τι έγινε και ξαναδοκιμάζει.
           const { error } = await supabase.auth.updateUser({ data: patch })
           if (error) {
-            setError(failed('Η αποδοχή δεν καταχωρήθηκε', error))
+            setError(failedHere('Η αποδοχή δεν καταχωρήθηκε', AUTH_EN.signup.acceptFailed, error))
             setConsent(true)
             setFreshAccount(!!u.created_at && Date.now() - Date.parse(u.created_at) < FRESH_MS)
             setNeedsConsent(u.email ?? '')
@@ -292,7 +308,7 @@ export default function SignupPage() {
         }
         const newsError = patch.marketing_opt_out ? await newsOffNow(supabase, u.id) : null
         if (newsError) {
-          setError(failed('Η άρνηση των ενημερωτικών δεν καταχωρήθηκε', newsError))
+          setError(failedHere('Η άρνηση των ενημερωτικών δεν καταχωρήθηκε', AUTH_EN.signup.newsFailed, newsError))
           setConsent(true)
           setNews(false)
           setNeedsConsent(u.email ?? '')
@@ -324,13 +340,13 @@ export default function SignupPage() {
     // Το προφίλ διαβάζεται ώστε να συμπληρωθεί ΜΟΝΟ ό,τι λείπει. Αν δεν
     // διαβαστεί, δεν γράφουμε στα τυφλά πάνω σε ό,τι υπάρχει.
     const { data, error: readError } = await supabase.auth.getUser()
-    if (readError) { setError(failed('Η αποδοχή δεν καταχωρήθηκε', readError)); return }
+    if (readError) { setError(failed('Η αποδοχή δεν καταχωρήθηκε', S.acceptFailed, readError)); return }
     const meta = (data.user?.user_metadata ?? {}) as Record<string, unknown>
     const patch = oauthPatch(meta, new URLSearchParams(window.location.search), !news)
     const { error } = await supabase.auth.updateUser({ data: patch })
-    if (error) { setError(failed('Η αποδοχή δεν καταχωρήθηκε', error)); return }
+    if (error) { setError(failed('Η αποδοχή δεν καταχωρήθηκε', S.acceptFailed, error)); return }
     const newsError = patch.marketing_opt_out && data.user ? await newsOffNow(supabase, data.user.id) : null
-    if (newsError) { setError(failed('Η άρνηση των ενημερωτικών δεν καταχωρήθηκε', newsError)); return }
+    if (newsError) { setError(failed('Η άρνηση των ενημερωτικών δεν καταχωρήθηκε', S.newsFailed, newsError)); return }
     // Από το created_at και όχι από το freshAccount: ο κλάδος του oauth=1 με
     // σφάλμα στα ενημερωτικά φέρνει εδώ νέο λογαριασμό χωρίς να το ορίσει.
     if (data.user?.created_at && Date.now() - Date.parse(data.user.created_at) < FRESH_MS) await countSignup(supabase)
@@ -351,7 +367,7 @@ export default function SignupPage() {
       const res = await fetch('/api/account/delete', { method: 'POST' }).catch(() => null)
       if (!res?.ok) {
         const body = await res?.json().catch(() => null) as { error?: string } | null
-        setError(body?.error || failed('Ο λογαριασμός δεν διαγράφηκε'))
+        setError(body?.error || failed('Ο λογαριασμός δεν διαγράφηκε', S.notDeleted))
         setSigningOut(false)
         return
       }
@@ -412,9 +428,9 @@ export default function SignupPage() {
     if (!news) back.set('news', '0')
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/signup?${back.toString()}` },
+      options: { redirectTo: `${window.location.origin}${localHref(locale, '/signup')}?${back.toString()}` },
     })
-    if (error) setError(failed('Η εγγραφή δεν ολοκληρώθηκε', error))
+    if (error) setError(failed('Η εγγραφή δεν ολοκληρώθηκε', S.failed, error))
   }
 
   // ═══ Η ΕΠΑΝΑΠΟΣΤΟΛΗ ΠΟΥ ΔΕΝ ΕΓΙΝΕ ΚΑΙ ΚΛΕΙΔΩΣΕ ΤΟ ΚΟΥΜΠΙ ═══════════════════
@@ -436,7 +452,7 @@ export default function SignupPage() {
       type: 'signup', email: email.trim(),
       options: { emailRedirectTo: confirmRedirect(query) },
     })
-    if (error) { setResendErr(failed('Το email δεν ξαναστάλθηκε', error)); return }
+    if (error) { setResendErr(failed('Το email δεν ξαναστάλθηκε', S.notResent, error)); return }
     setResent(true)
   }
 
@@ -458,13 +474,13 @@ export default function SignupPage() {
     }
     if (leaked) {
       setPwTouched(true)
-      setError(PASSWORD_MSG.leaked)
+      setError(PW_MSG.leaked)
       countSignupStep('invalid')
       return
     }
     if (!pw.ok) {
       setPwTouched(true)
-      setError(pw.common ? PASSWORD_MSG.common : PASSWORD_MSG.weak)
+      setError(pw.common ? PW_MSG.common : PW_MSG.weak)
       countSignupStep('invalid')
       return
     }
@@ -501,7 +517,7 @@ export default function SignupPage() {
     // ανανέωση της σελίδας και ο χρήστης δεν είχε τρόπο να το μαντέψει.
     setLoading(false)
     countSignupStep(error ? 'error' : 'sent')
-    if (error) setError(failed('Η εγγραφή δεν ολοκληρώθηκε', error))
+    if (error) setError(failed('Η εγγραφή δεν ολοκληρώθηκε', S.failed, error))
     else setDone(true)
   }
 
@@ -541,7 +557,7 @@ export default function SignupPage() {
           className="po-check" />
       </label>
       <label htmlFor={id} style={consentText}>
-        Να μου στέλνετε νέα της εφαρμογής και της αγοράς ακινήτων. Σταματούν από τον σύνδεσμο σε κάθε email.
+        {en ? S.news : 'Να μου στέλνετε νέα της εφαρμογής και της αγοράς ακινήτων. Σταματούν από τον σύνδεσμο σε κάθε email.'}
       </label>
     </div>
   )
@@ -556,11 +572,11 @@ export default function SignupPage() {
    * με τρία «λείπει» δεν λέει από πού να αρχίσει.
    */
   const why = loading ? ''
-    : leaked ? 'Ο κωδικός βρίσκεται σε γνωστή διαρροή. Διάλεξε άλλον.'
+    : leaked ? (en ? S.whyLeaked : 'Ο κωδικός βρίσκεται σε γνωστή διαρροή. Διάλεξε άλλον.')
     // Με άδειο πεδίο δεν λέγεται «δεν πληροί» (02.10.2026): ο αναγνώστης οθόνης
     // το ανακοίνωνε πριν γραφτεί ούτε ένας χαρακτήρας. Λέγεται τι λείπει.
-    : !pw.ok ? (password ? 'Ο κωδικός δεν πληροί ακόμη τις προϋποθέσεις.' : 'Γράψε κωδικό για να συνεχίσεις.')
-    : !consent ? 'Χρειάζεται αποδοχή των Όρων και της Πολιτικής απορρήτου.'
+    : !pw.ok ? (password ? (en ? S.whyWeak : 'Ο κωδικός δεν πληροί ακόμη τις προϋποθέσεις.') : (en ? S.whyEmpty : 'Γράψε κωδικό για να συνεχίσεις.'))
+    : !consent ? (en ? S.whyConsent : 'Χρειάζεται αποδοχή των Όρων και της Πολιτικής απορρήτου.')
     : ''
 
   return (
@@ -580,10 +596,10 @@ export default function SignupPage() {
                   Δεν είναι όμως δρόμος πίσω στην ΑΡΧΙΚΗ: όποιος μπήκε με
                   Google μόνο και μόνο για να δει τι είναι αυτό, χρειάζεται
                   έξοδο που δεν του ζητά να αποφασίσει τίποτα. */}
-              <BackLink home />
-              <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 8px' }}>Ένα βήμα ακόμη</h1>
+              <BackLink home locale={locale} />
+              <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 8px' }}>{en ? S.oneMore : 'Ένα βήμα ακόμη'}</h1>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 20px' }}>
-                Πριν συνεχίσεις με το <strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{needsConsent}</strong>, χρειάζεται να αποδεχθείς τους Όρους χρήσης και την Πολιτική απορρήτου.
+                {en ? S.oauthConsent[0] : 'Πριν συνεχίσεις με το '}<strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{needsConsent}</strong>{en ? S.oauthConsent[1] : ', χρειάζεται να αποδεχθείς τους Όρους χρήσης και την Πολιτική απορρήτου.'}
               </p>
               {/* ΤΟ ΙΔΙΟ ΠΛΑΙΣΙΟ, ΜΕ ΤΟ ΙΔΙΟ ΙΔΙΩΜΑ. Εδώ το τετράγωνο ήταν γυμνό
                   16 × 16, ενώ το αδελφό του παρακάτω έχει ετικέτα 44 × 44 γύρω
@@ -593,18 +609,18 @@ export default function SignupPage() {
                 <label htmlFor="su-consent-oauth" style={{ ...TAP, margin: '-12px -14px -14px -14px' }}>
                   <input id="su-consent-oauth" type="checkbox" checked={consent}
                     onChange={e => { setConsent(e.target.checked); if (e.target.checked) setConsentTouched(false) }}
-                    aria-label="Αποδοχή των Όρων χρήσης, με ενημέρωση για την Πολιτική απορρήτου"
+                    aria-label={en ? S.consentAria : 'Αποδοχή των Όρων χρήσης, με ενημέρωση για την Πολιτική απορρήτου'}
                     className="po-check" />
                 </label>
                 <label htmlFor="su-consent-oauth" style={consentText}>
-                  Αποδέχομαι τους{' '}
-                  <Link href="/terms" className="lp-link po-tap-inline" style={consentLink}>Όρους</Link> και την{' '}
-                  <Link href="/privacy" className="lp-link po-tap-inline" style={consentLink}>Πολιτική απορρήτου</Link>.
+                  {en ? S.consent[0] : <>Αποδέχομαι τους{' '}</>}
+                  <Link href={localHref(locale, '/terms')} className="lp-link po-tap-inline" style={consentLink}>{en ? A.terms : 'Όρους'}</Link>{en ? S.consent[1] : <> και την{' '}</>}
+                  <Link href={localHref(locale, '/privacy')} className="lp-link po-tap-inline" style={consentLink}>{en ? A.privacy : 'Πολιτική απορρήτου'}</Link>{en ? S.consent[2] : '.'}
                 </label>
               </div>
               {consentTouched && !consent && (
                 <p role="alert" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: '0 0 12px', lineHeight: 1.5 }}>
-                  Χρειάζεται να αποδεχθείς τους Όρους χρήσης για να συνεχίσεις.
+                  {en ? S.consentNeeded : 'Χρειάζεται να αποδεχθείς τους Όρους χρήσης για να συνεχίσεις.'}
                 </p>
               )}
               {newsRow('su-news-oauth')}
@@ -613,16 +629,16 @@ export default function SignupPage() {
               )}
               {/* `field` γιατί και τα δύο έπιαναν όλο το πλάτος της κάρτας. */}
               <Btn variant="primary" field onClick={acceptOauthConsent}>
-                Συνέχεια
+                {en ? S.continue : 'Συνέχεια'}
               </Btn>
               <div style={{ marginTop: 10 }}>
                 <Btn variant="secondary" field onClick={declineOauthConsent} disabled={signingOut}>
-                  {signingOut ? 'Ακύρωση…' : 'Ακύρωση'}
+                  {signingOut ? (en ? S.cancelling : 'Ακύρωση…') : (en ? S.cancel : 'Ακύρωση')}
                 </Btn>
               </div>
               {freshAccount && (
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5, margin: '10px 0 0' }}>
-                  Αν ακυρώσεις, ο λογαριασμός που μόλις δημιουργήθηκε διαγράφεται.
+                  {en ? S.freshDeleted : 'Αν ακυρώσεις, ο λογαριασμός που μόλις δημιουργήθηκε διαγράφεται.'}
                 </p>
               )}
             </div>
@@ -641,16 +657,16 @@ export default function SignupPage() {
                   ταυτότητας απαντά «επιτυχία» και για διεύθυνση που έχει ήδη
                   λογαριασμό, χωρίς να στείλει τίποτα· γι' αυτό λέγονται και οι
                   δύο δρόμοι. Και η «συνδρομή» λέγεται μόνο όσο το ταμείο χρεώνει. */}
-              <BackLink home />
+              <BackLink home locale={locale} />
               <MailSent
-                title="Άνοιξε το email σου"
+                title={en ? S.mailTitle : 'Άνοιξε το email σου'}
                 email={email.trim()}
-                body={<>Αν δεν υπάρχει ήδη λογαριασμός με αυτή τη διεύθυνση, σου στείλαμε σύνδεσμο επιβεβαίωσης. Πάτησέ τον για να μπεις{chosenPlan && !planTerms ? ' και να ολοκληρώσεις τη συνδρομή σου' : ''}. Αν υπάρχει ήδη, <Link href={`/login${carried(query)}`} className="lp-link" style={consentLink}>συνδέσου</Link>. Δες και τον φάκελο με <span style={{ whiteSpace: 'nowrap' }}>τα ανεπιθύμητα.</span></>}
+                body={en ? <>{S.mailBody(!!chosenPlan && !planTerms)[0]}<Link href={`${localHref(locale, '/login')}${carried(query)}`} className="lp-link" style={consentLink}>{S.mailBody(false)[1]}</Link>{S.mailBody(false)[2]}</> : <>Αν δεν υπάρχει ήδη λογαριασμός με αυτή τη διεύθυνση, σου στείλαμε σύνδεσμο επιβεβαίωσης. Πάτησέ τον για να μπεις{chosenPlan && !planTerms ? ' και να ολοκληρώσεις τη συνδρομή σου' : ''}. Αν υπάρχει ήδη, <Link href={`/login${carried(query)}`} className="lp-link" style={consentLink}>συνδέσου</Link>. Δες και τον φάκελο με <span style={{ whiteSpace: 'nowrap' }}>τα ανεπιθύμητα.</span></>}
                 action={
                   /* Η σβηστή όψη μετά την αποστολή είναι το disabled του .po-btn. */
                   <>
                     <Btn variant="primary" field onClick={resend} disabled={resent}>
-                      {resent ? 'Το ξαναστείλαμε' : 'Ξαναστείλε το email'}
+                      {resent ? (en ? S.resent : 'Το ξαναστείλαμε') : (en ? S.resend : 'Ξαναστείλε το email')}
                     </Btn>
                     {/* Η αποτυχία κάθεται ΚΑΤΩ από το κουμπί που την προκάλεσε, με
                         το κουμπί ακόμη πατήσιμο. */}
@@ -660,10 +676,10 @@ export default function SignupPage() {
                   </>
                 }
                 footer={<>
-                  Λάθος διεύθυνση;{' '}
-                  <LinkBtn onClick={() => { setDone(false); setResent(false); setResendErr(''); }}>Γράψε άλλη</LinkBtn>
+                  {en ? S.wrongAddress : 'Λάθος διεύθυνση;'}{' '}
+                  <LinkBtn onClick={() => { setDone(false); setResent(false); setResendErr(''); }}>{en ? S.other : 'Γράψε άλλη'}</LinkBtn>
                   {' · '}
-                  <Link href={`/login${carried(query)}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
+                  <Link href={`${localHref(locale, '/login')}${carried(query)}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{en ? S.login : 'Σύνδεση'}</Link>
                 </>}
               />
             </>
@@ -672,7 +688,7 @@ export default function SignupPage() {
               {/* ΣΕ ΚΙΝΗΤΟ ΔΕΝ ΥΠΗΡΧΕ ΚΑΝΕΝΑΣ ΔΡΟΜΟΣ ΠΙΣΩ. Το λογότυπο ζει στο
                   αριστερό πάνελ, που κρύβεται κάτω από τις 900 και δεν ήταν καν
                   σύνδεσμος. */}
-              <BackLink home />
+              <BackLink home locale={locale} />
               {/* Η ΔΟΚΙΜΗ ΕΙΝΑΙ ΠΡΟΣΦΩΝΗΣΗ ΠΑΝΩ ΑΠΟ ΤΟΝ ΤΙΤΛΟ (01.10.2026). Ως σήμα
                   δίπλα στον τίτλο δεν χωρούσε στη στήλη των 400 και κατέβαινε
                   μόνο του σε δική του σειρά, ανάμεσα στον τίτλο και στο «Έχεις
@@ -682,11 +698,13 @@ export default function SignupPage() {
                   μένουν ζευγάρι. Λέγεται ΜΙΑ φορά: με διαλεγμένο πακέτο τη λέει
                   η κάρτα του πακέτου. Το κείμενο έρχεται από το billingWords. */}
               {!chosenPlan && trialBadge && <div className="lp-eyebrow" style={{ marginBottom: 10 }}>{trialBadge}</div>}
-              <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2, margin: '0 0 8px' }}>Δημιουργία λογαριασμού</h1>
+              <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2, margin: '0 0 8px' }}>{en ? S.title : 'Δημιουργία λογαριασμού'}</h1>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px' }}>
-                Έχεις ήδη λογαριασμό;{' '}
-                <Link href={`/login${carried(query)}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Σύνδεση</Link>
+                {en ? S.haveAccount : 'Έχεις ήδη λογαριασμό;'}{' '}
+                <Link href={`${localHref(locale, '/login')}${carried(query)}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{en ? S.login : 'Σύνδεση'}</Link>
               </p>
+              {/* Η ΕΦΑΡΜΟΓΗ ΕΙΝΑΙ ΕΛΛΗΝΙΚΗ: η αγγλική εγγραφή το λέει πριν, ήσυχα. */}
+              {en && <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.5, margin: '-14px 0 24px' }}>{S.appLanguage}</p>}
 
               {/* ══ Η ΠΡΟΣΚΛΗΣΗ ΛΕΓΕΤΑΙ ΚΑΙ ΛΕΓΕΤΑΙ ΜΟΝΟ ΟΣΟ ΕΙΝΑΙ ΑΛΗΘΕΙΑ ══
                   Το `?ref=` διαβαζόταν σε κατάσταση, ταξίδευε στη Google και
@@ -720,7 +738,7 @@ export default function SignupPage() {
                       χωρίς. Ο κωδικός είναι PO με επτά λατινικά ή ψηφία: ο συλλαβισμός
                       δεν αγγίζει λατινικά, οπότε μένει ακέραιος. */}
                   <span className="po-just" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                    {hy(<>Ήρθες με πρόσκληση. Ο κωδικός <strong style={{ color: 'var(--text-primary)' }}>{refCode.trim()}</strong> καταγράφεται με την εγγραφή και μετράει σε εκείνον που σε κάλεσε. Η δοκιμή των {TRIAL_DAYS} ημερών είναι ίδια για όλους.</>)}
+                    {en ? <>{S.referral(refCode.trim())[0]}<strong style={{ color: 'var(--text-primary)' }}>{refCode.trim()}</strong>{S.referral(refCode.trim())[2]}</> : hy(<>Ήρθες με πρόσκληση. Ο κωδικός <strong style={{ color: 'var(--text-primary)' }}>{refCode.trim()}</strong> καταγράφεται με την εγγραφή και μετράει σε εκείνον που σε κάλεσε. Η δοκιμή των {TRIAL_DAYS} ημερών είναι ίδια για όλους.</>)}
                   </span>
                 </div>
               )}
@@ -787,21 +805,21 @@ export default function SignupPage() {
                   background: 'var(--accent-dim)', border: '1px solid var(--accent-border)',
                 }}>
                   <span style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.45, color: 'var(--text-primary)', letterSpacing: '-0.015em' }}>
-                    {PLANS[chosenPlan].name}
+                    {en ? PLAN_COPY_EN[chosenPlan].name : PLANS[chosenPlan].name}
                   </span>
                   <span style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.45, color: 'var(--text-primary)', textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                     {/* Η ΤΙΜΗ ΛΕΕΙ ΚΑΙ ΤΗΝ ΠΕΡΙΟΔΟ. Σκέτο «79,90€» δεν έλεγε αν είναι
                         τον μήνα ή τον χρόνο. */}
-                    {fe(chosenCycle === 'annual' ? PLANS[chosenPlan].priceAnnual : PLANS[chosenPlan].priceMonthly)}
-                    <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{chosenCycle === 'annual' ? '/χρόνο' : '/μήνα'}</span>
+                    {(en ? fmtFor('en').fe : fe)(chosenCycle === 'annual' ? PLANS[chosenPlan].priceAnnual : PLANS[chosenPlan].priceMonthly)}
+                    <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{chosenCycle === 'annual' ? (en ? S.perYear : '/χρόνο') : (en ? S.perMonth : '/μήνα')}</span>
                   </span>
                   <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.45, color: 'var(--text-tertiary)' }}>
-                    {planTerms ?? (chosenCycle === 'annual' ? 'Ετήσια χρέωση' : 'Μηνιαία χρέωση')}
+                    {planTerms ?? (chosenCycle === 'annual' ? (en ? S.annual : 'Ετήσια χρέωση') : (en ? S.monthly : 'Μηνιαία χρέωση'))}
                   </span>
                   {/* Η ΔΟΚΙΜΗ ΔΙΝΕΙ ΤΟ TRIAL_PLAN, ΟΧΙ ΟΠΟΙΟ ΠΑΚΕΤΟ ΔΙΑΛΕΞΕΣ. Πάνω από
                       αυτό η ταμπέλα λέει σε ποιο πακέτο τρέχει η δοκιμή. */}
                   <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.45, color: 'var(--text-tertiary)', textAlign: 'right', whiteSpace: planAtLeast(TRIAL_PLAN, chosenPlan) ? 'nowrap' : undefined }}>
-                    Δοκιμή {TRIAL_DAYS} ημερών{!planAtLeast(TRIAL_PLAN, chosenPlan) && <> στο «{PLANS[TRIAL_PLAN].name}»</>}
+                    {en ? <>{S.trial}{!planAtLeast(TRIAL_PLAN, chosenPlan) && S.trialOn(PLAN_COPY_EN[TRIAL_PLAN].name)}</> : <>Δοκιμή {TRIAL_DAYS} ημερών{!planAtLeast(TRIAL_PLAN, chosenPlan) && <> στο «{PLANS[TRIAL_PLAN].name}»</>}</>}
                   </span>
                 </div>
               )}
@@ -809,22 +827,22 @@ export default function SignupPage() {
               {/* Η αιώρηση ερχόταν από την `.auth-hov`· τώρα τη δίνει το `.po-btn`. */}
               {!emailFirst && <>
                 <GoogleButton onClick={signInWithGoogle} funnel />
-                <OrDivider />
+                <OrDivider word={en ? A.or : undefined} />
               </>}
 
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <label htmlFor="su-name" className="po-field-label">Ονοματεπώνυμο <span className="po-field-opt">(προαιρετικό)</span></label>
-                  <input id="su-name" name="name" autoComplete="name" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Όνομα και επώνυμο" style={field} onFocus={focus} onBlur={blur} />
+                  <label htmlFor="su-name" className="po-field-label">{en ? S.name : 'Ονοματεπώνυμο'} <span className="po-field-opt">{en ? S.optional : '(προαιρετικό)'}</span></label>
+                  <input id="su-name" name="name" autoComplete="name" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder={en ? S.namePlaceholder : 'Όνομα και επώνυμο'} style={field} onFocus={focus} onBlur={blur} />
                 </div>
                 <div>
-                  <label htmlFor="su-email" className="po-field-label">Ηλεκτρονικό ταχυδρομείο</label>
-                  <input id="su-email" name="email" autoComplete="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="onoma@email.com" required style={field} onFocus={focus} onBlur={blur} />
+                  <label htmlFor="su-email" className="po-field-label">{en ? A.email : 'Ηλεκτρονικό ταχυδρομείο'}</label>
+                  <input id="su-email" name="email" autoComplete="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={en ? A.emailPlaceholder : 'onoma@email.com'} required style={field} onFocus={focus} onBlur={blur} />
                 </div>
                 <div>
-                  <label htmlFor="su-password" className="po-field-label">Κωδικός</label>
+                  <label htmlFor="su-password" className="po-field-label">{en ? A.password : 'Κωδικός'}</label>
                   <div style={{ position: 'relative' }}>
-                    <input id="su-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={PASSWORD_MIN_HINT} required minLength={PASSWORD_MIN_LENGTH} aria-describedby={(password || pwTouched) ? "su-pw-req" : undefined} style={{ ...field, paddingRight: 48 }} onFocus={focus} onBlur={e => { blur(e); setPwTouched(true) }} />
+                    <input id="su-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={en ? A.passwordHint : PASSWORD_MIN_HINT} required minLength={PASSWORD_MIN_LENGTH} aria-describedby={(password || pwTouched) ? "su-pw-req" : undefined} style={{ ...field, paddingRight: 48 }} onFocus={focus} onBlur={e => { blur(e); setPwTouched(true) }} />
                     <PasswordEye show={show} onToggle={() => setShow(s => !s)} />
                   </div>
 
@@ -883,7 +901,7 @@ export default function SignupPage() {
                         οθόνης εξακολουθεί να λέει «υποχρεωτικό». */}
                     <input id="su-consent" type="checkbox" checked={consent}
                       onChange={e => { setConsent(e.target.checked); if (e.target.checked) setConsentTouched(false) }}
-                      aria-required="true" aria-label="Αποδοχή των Όρων χρήσης, με ενημέρωση για την Πολιτική απορρήτου"
+                      aria-required="true" aria-label={en ? S.consentAria : 'Αποδοχή των Όρων χρήσης, με ενημέρωση για την Πολιτική απορρήτου'}
                       className="po-check" />
                   </label>
                   {/* ΑΠΟΔΟΧΗ ΓΙΑ ΤΟΥΣ ΟΡΟΥΣ, ΕΝΗΜΕΡΩΣΗ ΓΙΑ ΤΗΝ ΠΟΛΙΤΙΚΗ. Εγραφε
@@ -897,14 +915,14 @@ export default function SignupPage() {
                       σε ετικέτα ακολουθεί τον σύνδεσμο και ΔΕΝ τσεκάρει το
                       κουτί, οπότε ο φόβος του σχολίου από πάνω δεν ισχύει. */}
                   <label htmlFor="su-consent" style={consentText}>
-                    Αποδέχομαι τους{' '}
-                    <Link href="/terms" className="lp-link po-tap-inline" style={consentLink}>Όρους</Link> και την{' '}
-                    <Link href="/privacy" className="lp-link po-tap-inline" style={consentLink}>Πολιτική απορρήτου</Link>.
+                    {en ? S.consent[0] : <>Αποδέχομαι τους{' '}</>}
+                    <Link href={localHref(locale, '/terms')} className="lp-link po-tap-inline" style={consentLink}>{en ? A.terms : 'Όρους'}</Link>{en ? S.consent[1] : <> και την{' '}</>}
+                    <Link href={localHref(locale, '/privacy')} className="lp-link po-tap-inline" style={consentLink}>{en ? A.privacy : 'Πολιτική απορρήτου'}</Link>{en ? S.consent[2] : '.'}
                   </label>
                 </div>
                 {consentTouched && !consent && (
                   <p role="alert" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: 0, lineHeight: 1.5 }}>
-                    Χρειάζεται να αποδεχθείς τους Όρους χρήσης για να συνεχίσεις.
+                    {en ? S.consentNeeded : 'Χρειάζεται να αποδεχθείς τους Όρους χρήσης για να συνεχίσεις.'}
                   </p>
                 )}
                 {newsRow('su-news')}
@@ -942,11 +960,11 @@ export default function SignupPage() {
                     αρχική διάβαζε εδώ ότι ξεκινά δοκιμή. Ο ίδιος κανόνας με την
                     κάρτα που πάτησε (lib/billing/trialOffer.ts), έτοιμος από το layout. */}
                 <Btn variant="primary" type="submit" field describedBy={why ? 'su-cta-why' : undefined}>
-                  {loading ? 'Δημιουργία…' : cta}
+                  {loading ? (en ? S.creating : 'Δημιουργία…') : cta}
                 </Btn>
               </form>
               {emailFirst && <>
-                <OrDivider />
+                <OrDivider word={en ? A.or : undefined} />
                 <GoogleButton onClick={signInWithGoogle} funnel />
               </>}
             </>

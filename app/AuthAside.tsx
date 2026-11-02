@@ -55,6 +55,7 @@ export default function AuthAside({
   note,
   pillars = defaultPillars(),
   oneLine = false,
+  foot = 'Σχεδιασμένο για την ελληνική αγορά ακινήτων',
 }: {
   headline?: string
   accent?: string
@@ -68,6 +69,8 @@ export default function AuthAside({
    * όσους χωρά το μέγεθος που δένεται στο πάνελ (βλ. πιο κάτω).
    */
   oneLine?: boolean
+  /** Η γραμμή του υποσέλιδου· στα αγγλικά τη δίνει το layout του /en. */
+  foot?: string
 }) {
   return (
     <div className="auth-aside" style={{ width: '45%', minWidth: 400, background: AUTH_ASIDE_BG, borderRight: '1px solid var(--mkt-border-subtle)', display: 'flex', flexDirection: 'column', padding: '48px 48px', overflow: 'hidden', position: 'relative', fontFamily: T.font.sans }}>
@@ -155,7 +158,7 @@ export default function AuthAside({
         {/* ΣΕ ΔΕΥΤΕΡΟ ΤΟΝΟ, ΟΧΙ ΣΤΟ ΜΠΛΕ ΤΩΝ ΣΥΝΔΕΣΜΩΝ (01.10.2026). Στο χρώμα
             της έμφασης και σε έντονα διαβαζόταν ως σύνδεσμος που δεν πάει
             πουθενά. Είναι υπογραφή, όχι ενέργεια. */}
-        <p style={{ fontSize: 14, color: 'var(--mkt-text-secondary)', fontWeight: 500, margin: 0 }}>Σχεδιασμένο για την ελληνική αγορά ακινήτων</p>
+        <p style={{ fontSize: 14, color: 'var(--mkt-text-secondary)', fontWeight: 500, margin: 0 }}>{foot}</p>
         {note && <p style={{ fontSize: 13, color: 'var(--mkt-text-tertiary)', margin: 0 }}>{note}</p>}
       </div>
     </div>

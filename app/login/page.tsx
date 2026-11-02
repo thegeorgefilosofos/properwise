@@ -4,7 +4,7 @@ import { useState, useEffect, useSyncExternalStore } from 'react'
 import { leaveDevice } from '@/lib/localPrivacy'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/supabase/lazy';
-import { secondStepPending, MFA_SAY } from '@/lib/auth/mfa';
+import { secondStepPending, MFA_SAY as MFA_SAY_EL } from '@/lib/auth/mfa';
 import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
 import { AuthMobileBrand } from '../AuthMobileBrand'
@@ -13,6 +13,10 @@ import GoogleButton, { useEmailFirst } from '../GoogleButton'
 import { BackLink } from '../BackLink'
 import { IDENTITY } from '@/lib/legal/identity';
 import { continuation, carried } from '@/lib/auth/continuation';
+import { useLocale } from '@/lib/i18n/useLocale';
+import { localeOfPath } from '@/lib/i18n/locale';
+import { localHref } from '@/lib/i18n/paths';
+import { AUTH_EN, authFailedEn } from '@/lib/i18n/en/auth';
 
 // ΤΟ ΠΑΚΕΤΟ ΠΟΥ ΤΑΞΙΔΕΨΕ ΩΣ ΕΔΩ ΔΕΝ ΧΑΝΕΤΑΙ ΣΤΗΝ ΠΟΡΤΑ. Ο διαμεσολαβητής στέλνει
 // το ανώνυμο «/tameio?plan=…&cycle=…» στη σύνδεση κρατώντας τη διεύθυνση· η
@@ -56,16 +60,19 @@ async function failed(what: string, e: unknown): Promise<string> {
 }
 
 /** Η ανταλλαγή του διακριτικού απέτυχε και μας έστειλε εδώ. */
+// Μέσα σε effect η γλώσσα διαβάζεται από τη διεύθυνση, όχι από το render.
+const isEnPage = () => localeOfPath(window.location.pathname) === 'en'
+
 const failedConfirm = () => {
   try { return new URLSearchParams(window.location.search).get('confirm') === 'failed' }
   catch { return false }
 }
 
-function OrDivider() {
+function OrDivider({ word = 'ή' }: { word?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
       <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
-      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>ή</span>
+      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 500 }}>{word}</span>
       <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
     </div>
   )
@@ -73,6 +80,11 @@ function OrDivider() {
 
 export default function LoginPage() {
   const router = useRouter()
+  // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/login) ───────────────────────────────
+  // Ιδια ροή, ίδιοι έλεγχοι· αλλάζει μόνο το κείμενο (lib/i18n/en/auth.ts).
+  const locale = useLocale(), en = locale === 'en', A = AUTH_EN, L = AUTH_EN.login
+  const MFA_SAY = en ? AUTH_EN.mfa : MFA_SAY_EL
+  const fail = (el: string, en_: string, e: unknown) => en ? Promise.resolve(authFailedEn(en_, e)) : failed(el, e)
   const [email, setEmail] = useState('')
   // Μέσα σε Instagram, Facebook ή TikTok χωρίς κουμπί προς Safari ή Chrome η
   // φόρμα του email έρχεται πρώτη και η σημείωση για τη Google από κάτω.
@@ -120,7 +132,7 @@ export default function LoginPage() {
     if (!device) {
       await supabase.auth.signOut()
       setSessionEmail(null); setFactorId(null)
-      setError(MFA_SAY.stuck)
+      setError((isEnPage() ? AUTH_EN.mfa : MFA_SAY_EL).stuck)
       return
     }
     setCode(''); setError('')
@@ -160,7 +172,7 @@ export default function LoginPage() {
       // βρόχος, χωρίς κανένα σημείο να δώσει τον εξαψήφιο κωδικό.
       if (data.user) {
         const { data: levels, error: levelError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-        if (levelError) { setError(MFA_SAY.stuck); return }
+        if (levelError) { setError((isEnPage() ? AUTH_EN.mfa : MFA_SAY_EL).stuck); return }
         if (secondStepPending(levels)) await askSecondStep(supabase)
       }
       // Ο ΣΥΝΔΕΣΜΟΣ ΕΠΙΒΕΒΑΙΩΣΗΣ ΠΟΥ ΔΕΝ ΔΟΥΛΕΨΕ ΛΕΓΕΤΑΙ ΜΕ ΛΕΞΕΙΣ. Η
@@ -180,7 +192,7 @@ export default function LoginPage() {
       // κωδικού (PKCE) θέλει το ίδιο πρόγραμμα. Το μήνυμα έλεγε «δεν ισχύει πια»
       // και έστελνε σε επαναποστολή άνθρωπο που μπορούσε απλώς να συνδεθεί.
       if (!data.user && failedConfirm()) {
-        setError('Αν άνοιξες τον σύνδεσμο σε άλλη συσκευή ή άλλο πρόγραμμα περιήγησης, το email σου είναι συνήθως ήδη επιβεβαιωμένο: απλώς συνδέσου. Αλλιώς γράψε το email σου και πάτησε «Ξαναστείλε το email επιβεβαίωσης».')
+        setError(isEnPage() ? AUTH_EN.login.confirmFailed : 'Αν άνοιξες τον σύνδεσμο σε άλλη συσκευή ή άλλο πρόγραμμα περιήγησης, το email σου είναι συνήθως ήδη επιβεβαιωμένο: απλώς συνδέσου. Αλλιώς γράψε το email σου και πάτησε «Ξαναστείλε το email επιβεβαίωσης».')
         setUnconfirmed(true)
       }
     })
@@ -207,7 +219,7 @@ export default function LoginPage() {
     const supabase = await authClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      const message = await failed('Η σύνδεση δεν έγινε', error)
+      const message = await fail('Η σύνδεση δεν έγινε', L.failed, error)
       setError(message)
       setUnconfirmed(error.code === 'email_not_confirmed')
       setLoading(false); return
@@ -251,14 +263,14 @@ export default function LoginPage() {
     const back = new URLSearchParams(carried(window.location.search))
     back.set('oauth', 'login')
     const supabase = await authClient()
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/signup?${back.toString()}` } })
-    if (error) setError(await failed('Η σύνδεση δεν έγινε', error))
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}${localHref(locale, '/signup')}?${back.toString()}` } })
+    if (error) setError(await fail('Η σύνδεση δεν έγινε', L.failed, error))
   }
 
   /** Νέος σύνδεσμος επιβεβαίωσης, με την ίδια επιστροφή που δίνει η εγγραφή. */
   async function resendConfirmation() {
     if (!email.trim()) {
-      setError('Γράψε πρώτα το email του λογαριασμού σου.')
+      setError(en ? L.needEmail : 'Γράψε πρώτα το email του λογαριασμού σου.')
       document.getElementById('login-email')?.focus()
       return
     }
@@ -267,7 +279,7 @@ export default function LoginPage() {
       type: 'signup', email: email.trim(),
       options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(afterSignIn())}` },
     })
-    if (error) { setError(await failed('Το email δεν ξαναστάλθηκε', error)); return }
+    if (error) { setError(await fail('Το email δεν ξαναστάλθηκε', L.notResent, error)); return }
     setError(''); setResent(true)
   }
 
@@ -312,14 +324,14 @@ export default function LoginPage() {
         {/* ΣΕ ΚΙΝΗΤΟ ΔΕΝ ΥΠΗΡΧΕ ΚΑΝΕΝΑΣ ΔΡΟΜΟΣ ΠΙΣΩ. Το λογότυπο ζει στο
             αριστερό πάνελ, που κρύβεται κάτω από τις 900 και δεν ήταν καν
             σύνδεσμος. Όποιος άνοιγε τη Σύνδεση από την αρχική έμενε εκεί. */}
-        <BackLink home />
+        <BackLink home locale={locale} />
         <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 6px' }}>
-          {factorId ? 'Επαλήθευση δύο βημάτων' : 'Καλώς όρισες ξανά'}
+          {factorId ? (en ? L.mfaTitle : 'Επαλήθευση δύο βημάτων') : (en ? L.title : 'Καλώς όρισες ξανά')}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px', lineHeight: 1.5 }}>
           {factorId ? MFA_SAY.ask : (<>
-            Δεν έχεις λογαριασμό;{' '}
-            <Link href={`/signup${carry}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Δημιούργησε λογαριασμό</Link>
+            {en ? L.noAccount : 'Δεν έχεις λογαριασμό;'}{' '}
+            <Link href={`${localHref(locale, '/signup')}${carry}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>{en ? L.create : 'Δημιούργησε λογαριασμό'}</Link>
           </>)}
         </p>
 
@@ -331,13 +343,13 @@ export default function LoginPage() {
             Το `.auth-hov` έφυγε μαζί με το στυλ: την αιώρηση τη δίνει πλέον το
             `.po-btn[data-variant=secondary]`, που ξέρει και εστίαση με πληκτρολόγιο. */}
         <GoogleButton onClick={signInWithGoogle} />
-        <OrDivider />
+        <OrDivider word={en ? A.or : undefined} />
         </>)}
 
         <form onSubmit={factorId ? verifySecondStep : handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {factorId ? (
             <div>
-              <label htmlFor="login-mfa-code" className="po-field-label">Εξαψήφιος κωδικός</label>
+              <label htmlFor="login-mfa-code" className="po-field-label">{en ? L.code : 'Εξαψήφιος κωδικός'}</label>
               <input id="login-mfa-code" name="one-time-code" inputMode="numeric" maxLength={6} autoComplete="one-time-code"
                 value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="123456"
                 style={{ ...field, maxWidth: 200, fontFamily: T.font.mono, letterSpacing: '0.3em' }}
@@ -350,14 +362,14 @@ export default function LoginPage() {
                   email του λογαριασμού είναι το πρώτο στοιχείο ταυτότητας
                   που μπορεί να ελεγχθεί. */}
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '12px 0 0' }}>
-                Δεν έχεις πρόσβαση στην εφαρμογή επαλήθευσης;{' '}
-                <a href={`mailto:${IDENTITY.supportEmail}?subject=${encodeURIComponent('Επαναφορά δεύτερου βήματος')}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Γράψε μας από το email του λογαριασμού σου</a>.
+                {en ? L.noDevice : 'Δεν έχεις πρόσβαση στην εφαρμογή επαλήθευσης;'}{' '}
+                <a href={`mailto:${IDENTITY.supportEmail}?subject=${encodeURIComponent(en ? L.noDeviceSubject : 'Επαναφορά δεύτερου βήματος')}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{en ? L.noDeviceLink : 'Γράψε μας από το email του λογαριασμού σου'}</a>.
               </p>
             </div>
           ) : (<>
           <div>
-            <label htmlFor="login-email" className="po-field-label">Ηλεκτρονικό ταχυδρομείο</label>
-            <input id="login-email" name="email" autoComplete="email" type="email" value={email} required onChange={e => setEmail(e.target.value)} placeholder="onoma@email.com" style={field}
+            <label htmlFor="login-email" className="po-field-label">{en ? A.email : 'Ηλεκτρονικό ταχυδρομείο'}</label>
+            <input id="login-email" name="email" autoComplete="email" type="email" value={email} required onChange={e => setEmail(e.target.value)} placeholder={en ? A.emailPlaceholder : 'onoma@email.com'} style={field}
               onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
               onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
           </div>
@@ -371,11 +383,11 @@ export default function LoginPage() {
                 Ύψος γραμμής ακέραιο (18, όχι 1,4 × 13 = 18,2): με το δεκαδικό ο
                 στόχος έβγαινε 43,99 και ο σαρωτής αφής τον έκοβε. */}
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
-              <label htmlFor="login-password" className="po-field-label" style={{ marginBottom: 0 }}>Κωδικός</label>
-              <Link href="/reset-password" className="lp-link po-tap-inline" style={{ fontSize: 13, lineHeight: '18px', color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Ξέχασες τον κωδικό;</Link>
+              <label htmlFor="login-password" className="po-field-label" style={{ marginBottom: 0 }}>{en ? A.password : 'Κωδικός'}</label>
+              <Link href={localHref(locale, '/reset-password')} className="lp-link po-tap-inline" style={{ fontSize: 13, lineHeight: '18px', color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{en ? L.forgot : 'Ξέχασες τον κωδικό;'}</Link>
             </div>
             <div style={{ position: 'relative' }}>
-              <input id="login-password" name="password" autoComplete="current-password" type={show ? 'text' : 'password'} value={password} required onChange={e => setPassword(e.target.value)} placeholder="Ο κωδικός σου" style={{ ...field, paddingRight: 48 }}
+              <input id="login-password" name="password" autoComplete="current-password" type={show ? 'text' : 'password'} value={password} required onChange={e => setPassword(e.target.value)} placeholder={en ? A.passwordPlaceholder : 'Ο κωδικός σου'} style={{ ...field, paddingRight: 48 }}
                 onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
               <PasswordEye show={show} onToggle={() => setShow(s => !s)} />
@@ -389,23 +401,23 @@ export default function LoginPage() {
             </div>
           )}
           {!factorId && unconfirmed && !resent && (
-            <Btn variant="secondary" field onClick={resendConfirmation}>Ξαναστείλε το email επιβεβαίωσης</Btn>
+            <Btn variant="secondary" field onClick={resendConfirmation}>{en ? L.resend : 'Ξαναστείλε το email επιβεβαίωσης'}</Btn>
           )}
           {!factorId && resent && (
             <p role="status" style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-              Σου στείλαμε νέο σύνδεσμο επιβεβαίωσης στο <strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{email.trim()}</strong>. Δες και τον φάκελο ανεπιθύμητων.
+              {en ? L.resent(email.trim())[0] : 'Σου στείλαμε νέο σύνδεσμο επιβεβαίωσης στο '}<strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{email.trim()}</strong>{en ? L.resent(email.trim())[2] : '. Δες και τον φάκελο ανεπιθύμητων.'}
             </p>
           )}
 
           <Btn variant="primary" type="submit" field disabled={busy}>
             {factorId
-              ? (verifying ? 'Επαλήθευση…' : 'Επαλήθευση')
-              : (loading ? 'Σύνδεση…' : 'Σύνδεση')}
+              ? (verifying ? (en ? L.verifying : 'Επαλήθευση…') : (en ? L.verify : 'Επαλήθευση'))
+              : (loading ? (en ? L.signingIn : 'Σύνδεση…') : (en ? L.signIn : 'Σύνδεση'))}
           </Btn>
         </form>
 
         {!factorId && emailFirst && (<>
-          <OrDivider />
+          <OrDivider word={en ? A.or : undefined} />
           <GoogleButton onClick={signInWithGoogle} />
         </>)}
 
@@ -417,7 +429,7 @@ export default function LoginPage() {
         {factorId ? (
           <div style={{ marginTop: 24, textAlign: 'center' }}>
             <Btn variant="ghost" onClick={signOut} disabled={signingOut}>
-              {signingOut ? 'Αποσύνδεση…' : 'Αποσύνδεση'}
+              {signingOut ? (en ? L.signingOut : 'Αποσύνδεση…') : (en ? L.signOut : 'Αποσύνδεση')}
             </Btn>
           </div>
         ) : (
@@ -455,9 +467,9 @@ export default function LoginPage() {
            λέξεις χωρίς καμία ένδειξη ότι πατιούνται. Ιδια γραμμή με το
            `.po-link`: 1px, 3px κάτω από τα γράμματα. */
         <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 20, marginBottom: 0, lineHeight: 1.6, textWrap: 'pretty' }}>
-          Συνεχίζοντας, αποδέχεσαι τους{' '}
-          <Link href="/terms" className="lp-link" style={LEGAL_LINK}>Όρους</Link>. Δες και την{' '}
-          <Link href="/privacy" className="lp-link" style={LEGAL_LINK}>Πολιτική απορρήτου</Link>.
+          {en ? L.legal[0] : <>Συνεχίζοντας, αποδέχεσαι τους{' '}</>}
+          <Link href={localHref(locale, '/terms')} className="lp-link" style={LEGAL_LINK}>{en ? A.terms : 'Όρους'}</Link>{en ? L.legal[1] : <>. Δες και την{' '}</>}
+          <Link href={localHref(locale, '/privacy')} className="lp-link" style={LEGAL_LINK}>{en ? A.privacy : 'Πολιτική απορρήτου'}</Link>{en ? L.legal[2] : '.'}
         </p>
         )}
         </>)}
