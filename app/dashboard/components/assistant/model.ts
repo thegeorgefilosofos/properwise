@@ -110,29 +110,13 @@ export const NO_MEMORIES: Memory[] = [];
 // περιθώριο του .app-content που κρατά το περιεχόμενο μακριά από εδώ.
 export const FAB_H = 52;
 
-/** Η θέση ανάπαυσης του κουμπιού, όπως τη λέει το CSS αυτής της οθόνης. */
-const fabHome = () => {
-  const probe = document.createElement('div');
-  probe.className = 'pa-fab-home';
-  document.body.appendChild(probe);
-  const r = probe.getBoundingClientRect();
-  probe.remove();
-  // Και το ΥΨΟΣ μετριέται: στο κινητό το κουμπί είναι 48, όχι τα 52 του
-  // υπολογιστή (globals.css, --fab-h). Το `FAB_H` μένει μόνο ως δίχτυ, αν ο
-  // περιηγητής δεν δώσει ύψος.
-  return { side: window.innerWidth - r.right, bottom: window.innerHeight - r.bottom, h: r.height || FAB_H };
-};
-
-// Η ΓΩΝΙΑ ΜΕΤΡΙΕΤΑΙ, ΔΕΝ ΜΑΝΤΕΥΕΤΑΙ. Πρώτη γραφή: `parseFloat` πάνω στο
-// `--float-bottom`. Στο κινητό η τιμή είναι `calc(… + env(...) + …)` και το
-// `parseFloat` επιστρέφει NaN, οπότε έπεφτε στα 24 — το κουμπί κούμπωνε 58
-// εικονοστοιχεία ΧΑΜΗΛΟΤΕΡΑ από το σπίτι του, πάνω στην κάτω πλοήγηση. Δηλαδή
-// το κούμπωμα προκαλούσε ακριβώς το σφάλμα που ήρθε να λύσει. Μόνο ο πάγκος
-// αφής με αληθινά αγγίγματα το είδε.
-export const snapCorner = (x: number, w: number) => {
-  if (typeof window === 'undefined') return null;
-  const { side, bottom, h } = fabHome();
-  const vw = window.innerWidth, vh = window.innerHeight;
-  const right = x + w / 2 > vw / 2;
-  return { x: right ? vw - w - side : side, y: vh - h - bottom };
+// ΤΟ ΚΟΥΜΠΙ ΜΕΝΕΙ ΟΠΟΥ ΤΟ ΑΦΗΝΕΙΣ (03/11/2026). Ως τότε κούμπωνε σε μία από
+// τις δύο κάτω γωνίες· ο ιδιοκτήτης ζήτησε ελεύθερη θέση, όπως παλιά. Μένει
+// μόνο ο περιορισμός μέσα στην οθόνη, με περιθώριο 8.
+export const clampToView = (x: number, y: number, w: number, h: number, m = 8) => {
+  if (typeof window === 'undefined') return { x, y };
+  return {
+    x: Math.max(m, Math.min(x, window.innerWidth - w - m)),
+    y: Math.max(m, Math.min(y, window.innerHeight - h - m)),
+  };
 };

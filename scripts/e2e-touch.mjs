@@ -53,6 +53,11 @@
 // συγκρίνεται με τύπο (θα ήταν ταυτολογία με τον κώδικα) αλλά με τη ΘΕΣΗ ΠΟΥ
 // ΕΙΧΕ ΤΟ ΚΟΥΜΠΙ ΠΡΙΝ ΤΟ ΑΓΓΙΞΕΙ ΚΑΝΕΙΣ, όπως την έβαλε το CSS.
 //
+// ── ΚΑΙ ΞΑΝΑ ΑΛΛΑΞΕ, 03/11/2026 ─────────────────────────────────────────
+// Ο ιδιοκτήτης ζήτησε ελεύθερη θέση, όπως παλιά: το κουμπί μένει όπου το
+// αφήνει το δάχτυλο, μέσα στην οθόνη. Οι έλεγχοι της γωνίας έγιναν έλεγχοι
+// «έμεινε εκεί που το άφησα»· ο έλεγχος ΟΣΟ το δάχτυλο είναι κάτω μένει.
+//
 //     npm run e2e:touch
 // ═══════════════════════════════════════════════════════════════════════════
 import { chromePath } from './lib/chrome.mjs'
@@ -182,12 +187,12 @@ for (const d of DEVICES) {
   ok(`το κάθετο σύρσιμο μετακινεί το κουμπί (μετακινήθηκε ${Math.round(moved)}px από 220)`, moved > 180)
   ok(`και ΔΕΝ κυλά τη σελίδα (κύλησε ${Math.round(scrollAfter - scrollBefore)}px)`, Math.abs(scrollAfter - scrollBefore) < 4)
 
-  // ── 2β. ΚΑΙ ΜΟΛΙΣ ΦΥΓΕΙ ΤΟ ΔΑΧΤΥΛΟ, ΚΟΥΜΠΩΝΕΙ ΣΤΟ ΣΠΙΤΙ ΤΟΥ ────────────
+  // ── 2β. ΚΑΙ ΜΟΛΙΣ ΦΥΓΕΙ ΤΟ ΔΑΧΤΥΛΟ, ΜΕΝΕΙ ΕΚΕΙ ΠΟΥ ΤΟ ΑΦΗΣΕ ─────────────
   await fingerLift(cdp)
   await p.waitForTimeout(150)
   const parked = await box(p, '.pa-fab')
-  ok(`το σήκωμα του δαχτύλου το γυρίζει στην κάτω δεξιά γωνία (${Math.round(parked.x)},${Math.round(parked.y)} έναντι ${Math.round(home.x)},${Math.round(home.y)})`,
-    Math.abs(parked.x - home.x) < 3 && Math.abs(parked.y - home.y) < 3)
+  ok(`το σήκωμα του δαχτύλου το αφήνει εκεί που ήταν (${Math.round(parked.x)},${Math.round(parked.y)} έναντι ${Math.round(held.x)},${Math.round(held.y)})`,
+    Math.abs(parked.x - held.x) < 3 && Math.abs(parked.y - held.y) < 3)
 
   // ── 3. ΤΟ ΣΥΡΣΙΜΟ ΔΕΝ ΑΝΟΙΓΕΙ ΤΟΝ ΒΟΗΘΟ ────────────────────────────────
   ok('το σύρσιμο δεν άνοιξε το παράθυρο', !(await p.$('.pa-panel')))
@@ -210,27 +215,22 @@ for (const d of DEVICES) {
     await p.waitForTimeout(60)
     const cbHeld = await box(p, '.pa-fab-close')
     ok(`και το κλείσιμο σέρνεται (${Math.round(cb.x - cbHeld.x)}px από 140)`, cb.x - cbHeld.x > 110)
-    // ΚΑΙ ΚΟΥΜΠΩΝΕΙ ΚΙ ΑΥΤΟ, ΣΤΗ ΓΩΝΙΑ ΤΟΥ ΜΙΣΟΥ ΟΠΟΥ ΤΟ ΑΦΗΣΕ ΤΟ ΔΑΧΤΥΛΟ.
-    // Τα 140 δεν περνούν τη μέση της οθόνης σε καμία από τις δύο συσκευές, άρα
-    // η σωστή γωνία είναι η ΔΕΞΙΑ — και το πλάτος του είναι το μικρό (μόνο το
-    // σήμα), οπότε η γωνία του δεν είναι η γωνία του ανοιχτού κουμπιού.
+    // ΚΑΙ ΜΕΝΕΙ ΚΙ ΑΥΤΟ ΕΚΕΙ ΠΟΥ ΤΟ ΑΦΗΣΕ ΤΟ ΔΑΧΤΥΛΟ.
     await fingerLift(cdp)
     await p.waitForTimeout(150)
     const cbParked = await box(p, '.pa-fab-close')
-    const side = view.vw - (home.x + home.w)
-    const closeRight = view.vw - cbParked.w - side
-    ok(`και μετά κουμπώνει κι αυτό (${Math.round(cbParked.x)},${Math.round(cbParked.y)} έναντι ${Math.round(closeRight)},${Math.round(home.y)})`,
-      Math.abs(cbParked.x - closeRight) < 3 && Math.abs(cbParked.y - home.y) < 3)
+    ok(`και μετά μένει κι αυτό εκεί (${Math.round(cbParked.x)},${Math.round(cbParked.y)} έναντι ${Math.round(cbHeld.x)},${Math.round(cbHeld.y)})`,
+      Math.abs(cbParked.x - cbHeld.x) < 3 && Math.abs(cbParked.y - cbHeld.y) < 3)
 
-    // ── 5β. Η ΓΩΝΙΑ ΤΗ ΔΙΑΛΕΓΕΙ Ο ΧΡΗΣΤΗΣ, ΑΛΛΙΩΣ ΤΟ ΣΥΡΣΙΜΟ ΕΙΝΑΙ ΨΕΥΤΙΚΟ
-    // Χωρίς αυτόν τον έλεγχο, ένα κουμπί που αγνοεί ΕΝΤΕΛΩΣ το σύρσιμο και
-    // γυρίζει πάντα στην ίδια γωνία θα περνούσε πράσινο κάθε έλεγχο πιο πάνω.
+    // ── 5β. ΟΠΟΥΔΗΠΟΤΕ ΣΤΗΝ ΟΘΟΝΗ, ΟΧΙ ΜΟΝΟ ΣΤΙΣ ΓΩΝΙΕΣ ────────────────────
+    // Ψηλά αριστερά, μακριά από κάθε γωνία: εκεί πρέπει να βρεθεί το κέντρο του.
     const pk = await box(p, '.pa-fab-close')
-    await fingerDrag(cdp, { x: pk.cx, y: pk.cy }, { x: 40, y: pk.cy - 120 })
+    const to = { x: 80, y: Math.round(view.vh / 3) }
+    await fingerDrag(cdp, { x: pk.cx, y: pk.cy }, to)
     await p.waitForTimeout(150)
     const left = await box(p, '.pa-fab-close')
-    ok(`σύρσιμο στο αριστερό μισό το κουμπώνει αριστερά (${Math.round(left.x)},${Math.round(left.y)} έναντι ${Math.round(side)},${Math.round(home.y)})`,
-      Math.abs(left.x - side) < 3 && Math.abs(left.y - home.y) < 3)
+    ok(`σύρσιμο ψηλά αριστερά το αφήνει εκεί (${Math.round(left.cx)},${Math.round(left.cy)} έναντι ${to.x},${to.y})`,
+      Math.abs(left.cx - to.x) < 4 && Math.abs(left.cy - to.y) < 4)
 
     // Και πίσω δεξιά, ώστε οι έλεγχοι 6 και 7 να ξεκινούν από γνωστή θέση.
     const lb = await box(p, '.pa-fab-close')
