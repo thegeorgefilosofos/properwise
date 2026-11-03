@@ -47,7 +47,7 @@ export const WITHDRAWAL_EN = {
 
 export const WITHDRAWAL_PAGE_EN = {
   title: 'Withdraw from the contract',
-  metaTitle: 'Withdraw from the contract · PROPERWISE',
+  metaTitle: 'Withdraw from the contract',
   description: `Withdraw from your PROPERWISE contract within ${WITHDRAWAL_DAYS} days, with confirmation and an acknowledgement sent to your email.`,
   intro: (trade: string) => `From here you withdraw from your contract with ${trade}, whether or not you are signed in to your account.`,
   declaration: 'Your declaration',

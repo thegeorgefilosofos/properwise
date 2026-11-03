@@ -89,7 +89,7 @@ export default async function WithdrawalPage() {
       h: 'Άλλοι τρόποι',
       body: (
         <p className="lg-p">
-          Μπορείς επίσης να στείλεις τη δήλωση στο <MailLink to={IDENTITY.supportEmail} />{words.withdrawalVia ? ` ${words.withdrawalVia}` : ''}{' '}
+          Μπορείς επίσης να στείλεις τη δήλωση στο <MailLink to={IDENTITY.supportEmail} />.{words.withdrawalVia ? ` ${words.withdrawalVia}` : ''}{' '}
           Το υπόδειγμα εντύπου υπαναχώρησης βρίσκεται στους <Link href="/terms#ypanachorisi" style={LINK_STYLE}>Όρους χρήσης</Link>.
         </p>
       ),
