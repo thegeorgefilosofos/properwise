@@ -90,13 +90,16 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   // ΣΤΟ ΤΗΛΕΦΩΝΟ ΓΥΡΙΖΕΙ ΚΑΙ ΜΟΛΙΣ ΣΤΑΜΑΤΗΣΕΙ Η ΚΥΛΙΣΗ (02/11/2026). Εκεί η
   // στήλη του περιεχομένου τελειώνει πάνω από το κουμπί (globals.css,
   // --fab-lane), οπότε σε ηρεμία δεν σκεπάζει τίποτα σε καμία θέση και δεν
-  // υπάρχει λόγος να περιμένει κίνηση προς τα πάνω. Στον υπολογιστή πλέει πάνω
-  // από τη στήλη, άρα μένει κρυμμένο ώς την πρώτη κίνηση προς τα πάνω.
+  // υπάρχει λόγος να περιμένει κίνηση προς τα πάνω.
+  // ΚΑΙ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (03/11/2026). Εκεί έμενε κρυμμένο ώς την πρώτη κίνηση
+  // προς τα πάνω· σε μακριά σελίδα ο ιδιοκτήτης κυλούσε μόνο προς τα κάτω και
+  // ανέφερε ότι η Νόα «δεν φαίνεται πουθενά». Ενα κουμπί που χάνεται μέχρι να
+  // μαντέψεις την κίνηση που το φέρνει πίσω δεν υπάρχει για τον χρήστη. Γυρίζει
+  // σε ηρεμία παντού· το περιθώριο του .app-content προστατεύει το τέλος.
   const [away, setAway] = useState(false);
   useEffect(() => {
     const el = document.querySelector('.app-content');
     if (!(el instanceof HTMLElement)) return;
-    const phone = window.matchMedia('(max-width: 768px)');
     let last = el.scrollTop;
     let rest: ReturnType<typeof setTimeout> | undefined;
     const read = () => {
@@ -108,7 +111,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       else if (y < last - 6) setAway(false);
       last = y;
       clearTimeout(rest);
-      if (phone.matches) rest = setTimeout(() => setAway(false), 600);
+      rest = setTimeout(() => setAway(false), 600);
     };
     read();
     el.addEventListener('scroll', read, { passive: true });
