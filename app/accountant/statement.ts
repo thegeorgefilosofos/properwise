@@ -22,6 +22,7 @@ import { rentalIncomeTax, rentalBracketsForYear, bankReceiptPenaltyShare, FIRST_
 import { fpRate, grDateOf } from '@/lib/core/format';
 import type { XlsxSheet } from '@/app/dashboard/components/exportXlsx';
 import { roundHalfUp } from '@/lib/core/money';
+import { propertyTypeLabel } from '@/lib/property/types';
 
 export interface PortalExpense { category: string; amount: number; date: string }
 
@@ -347,7 +348,7 @@ export function statementSheets(inp: StatementFileInput): XlsxSheet[] {
       l.p.name,
       l.p.atak || BLANK,
       l.p.address || BLANK,
-      l.p.prop_type || BLANK,
+      propertyTypeLabel(l.p.prop_type) || BLANK,
       Number(l.p.sqm) > 0 ? Number(l.p.sqm) : null,
       Number(l.p.ownership) > 0 ? Number(l.p.ownership) : null,
       l.rentAnnual,
