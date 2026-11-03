@@ -39,6 +39,8 @@ import { GuideH2 as H2 } from '../../odigos/GuideParts';
 // ελληνικά, όπως είναι μέσα στο zip, με αγγλική εξήγηση δίπλα.
 // ═══════════════════════════════════════════════════════════════════════════
 const PATH = '/en/for-accountants';
+/** Ο χώρος του λογιστή, στα ελληνικά: σκέτο <a>, για πλήρη πλοήγηση. */
+const WORKSPACE = '/accountant/workspace';
 const URL = siteUrl(PATH);
 const H1 = 'For accountants: your clients’ rent and form E2, in Excel';
 const TITLE = `For accountants: rent and form E2 in Excel · ${PRODUCT_NAME}`;
@@ -239,8 +241,7 @@ export default function Page() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                 <Link href="/en/signup" className="lp-cta lp-primary lp-press" style={cta}>{signupCtaEn()}</Link>
                 {/* Πλήρης πλοήγηση: ο χώρος του λογιστή είναι ελληνικός και το `<html lang>` το γράφει ο διακομιστής. */}
-                {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-                <a href="/accountant/workspace" hrefLang="el" className="lp-cta lp-press" style={{ ...cta, border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>Your clients</a>
+                <a href={WORKSPACE} hrefLang="el" className="lp-cta lp-press" style={{ ...cta, border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>Your clients</a>
               </div>
               <p style={{ margin: '16px 0 0', fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)' }}>{'For a firm with many clients, or a question before you start, write to us at '}<MailLink to={IDENTITY.supportEmail} />{'.'}</p>
             </div>
