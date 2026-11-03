@@ -17,8 +17,11 @@ import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { T, Btn, feAuto, feOr, fdLong, ABSENT_DATE } from '@/components/Theme';
 import { MONTHS_NOM } from '@/lib/core/months';
+import { fmtFor } from '@/lib/core/format';
 import { callPortalWrite, portalWriteMessage, portalWriteOutcome, PORTAL_SAY, type RpcCall } from '@/lib/portal/writes';
 import { linkLoad, LINK_SAY } from '@/lib/portal/linkLoad';
+import { useToolDict } from '@/lib/i18n/toolEn';
+import LangSwitcher from '@/app/LangSwitcher';
 
 interface DueItem { id: string; year: number; month: number; amount: number; due_date: string | null; declared: boolean }
 
@@ -38,6 +41,18 @@ export default function TenantPortal() {
   const params = useParams();
   const token = String(params?.token || '');
   const supabase = createClient();
+  // ΤΑ ΑΓΓΛΙΚΑ ΑΠΟ ΤΟΝ ΠΑΡΟΧΟ, ΑΝ ΤΟΝ ΕΒΑΛΕ ΤΟ LAYOUT (app/RecipientCopy.tsx).
+  // Χωρίς πάροχο, ελληνικά, με τα ίδια ακριβώς λόγια.
+  const R = useToolDict('recipient').en;
+  const E = R?.portal;
+  const L = R?.link;
+  const fx = fmtFor('en');
+  const money = E ? (n: number | null) => (n == null ? E.noAmount : fx.fe(n)) : eur;
+  const day = E ? (d: string | null) => (d ? fx.date(d) : E.noDate) : gdate;
+  const monthOf = E ? (m: number, y: number) => `${E.months[m - 1] ?? ''} ${y}`.trim() : monthLabel;
+  const writeMsg = (o: Exclude<ReturnType<typeof portalWriteOutcome>, 'ok'>, refused: string, refusedEn: string, limit: string, limitEn: string) =>
+    !E ? portalWriteMessage(o, refused, limit)
+      : o === 'pin' ? E.writePin : o === 'locked' ? E.writeLocked : o === 'rate_limited' ? limitEn : refusedEn;
 
   const [data, setData] = useState<PortalData | null>(null);
   // ═══ Η ΑΠΟΤΥΧΙΑ ΔΙΚΤΥΟΥ ΔΕΝ ΕΙΝΑΙ ΑΚΥΡΟΣ ΣΥΝΔΕΣΜΟΣ ══════════════════════════
@@ -116,10 +131,10 @@ export default function TenantPortal() {
     setPinErr(''); setPinChecking(true);
     const { data: d, error } = await supabase.rpc('get_portal_data', { p_token: token, p_pin: pin });
     setPinChecking(false);
-    if (error) { setPinErr('Δεν φτάσαμε ως τον διακομιστή. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.'); return; }
+    if (error) { setPinErr(L ? L.noServer : 'Δεν φτάσαμε ως τον διακομιστή. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.'); return; }
     if (!d || (d as { locked?: boolean }).locked) {
       const rl = (d as { rate_limited?: boolean } | null)?.rate_limited;
-      setPinErr(rl ? 'Πολλές αποτυχημένες προσπάθειες. Δοκίμασε ξανά σε λίγα λεπτά.' : 'Ο κωδικός δεν ταιριάζει. Έλεγξέ τον και δοκίμασε ξανά.');
+      setPinErr(E ? (rl ? E.pinRateLimited : E.pinWrong) : rl ? 'Πολλές αποτυχημένες προσπάθειες. Δοκίμασε ξανά σε λίγα λεπτά.' : 'Ο κωδικός δεν ταιριάζει. Έλεγξέ τον και δοκίμασε ξανά.');
       return;
     }
     applyData(d);
@@ -135,7 +150,7 @@ export default function TenantPortal() {
     setDeclareBusyId(null);
     const outcome = portalWriteOutcome(res);
     if (outcome !== 'ok') {
-      setDeclareErr(portalWriteMessage(outcome, 'Δεν ήταν δυνατή η δήλωση. Δοκίμασε ξανά.', PORTAL_SAY.declareLimit));
+      setDeclareErr(writeMsg(outcome, 'Δεν ήταν δυνατή η δήλωση. Δοκίμασε ξανά.', E?.declareFailed ?? '', PORTAL_SAY.declareLimit, E?.declareLimit ?? ''));
       return;
     }
     // Οπτιμιστική ενημέρωση, μαρκάρουμε ΜΟΝΟ ως δηλωμένο (όχι εξοφλημένο).
@@ -157,9 +172,9 @@ export default function TenantPortal() {
     setPhotos(prev => {
       const next = [...prev];
       for (const f of list) {
-        if (next.length >= MAX_PHOTOS) { note = `Μπορείς να προσθέσεις έως ${MAX_PHOTOS} φωτογραφίες.`; break; }
-        if (!f.type.startsWith('image/')) { note = 'Επιτρέπονται μόνο εικόνες.'; continue; }
-        if (f.size > MAX_BYTES) { note = 'Κάποιες εικόνες ξεπερνούν τα 8 MB και παραλείφθηκαν.'; continue; }
+        if (next.length >= MAX_PHOTOS) { note = E ? E.maxPhotos.replace('{n}', String(MAX_PHOTOS)) : `Μπορείς να προσθέσεις έως ${MAX_PHOTOS} φωτογραφίες.`; break; }
+        if (!f.type.startsWith('image/')) { note = E ? E.imagesOnly : 'Επιτρέπονται μόνο εικόνες.'; continue; }
+        if (f.size > MAX_BYTES) { note = E ? E.tooLarge : 'Κάποιες εικόνες ξεπερνούν τα 8 MB και παραλείφθηκαν.'; continue; }
         // προεπισκόπηση-blob: δεν κατεβάζει τίποτα, δείχνει την εικόνα που
         // διάλεξε ο ενοικιαστής πριν την ανεβάσει. Η διεύθυνση ανακαλείται
         // όταν αφαιρεθεί η φωτογραφία ή φύγει η οθόνη.
@@ -234,7 +249,7 @@ export default function TenantPortal() {
       if ('lost' in r && r.lost === 'net') r = await uploadPhoto(file);
       if ('stop' in r) {
         setSending(false);
-        setErr(portalWriteMessage(r.stop, '', ''));
+        setErr(writeMsg(r.stop, '', '', '', ''));
         return;
       }
       if ('lost' in r) { lost++; if (r.lost === 'limit') limitHit = true; continue; }
@@ -248,7 +263,7 @@ export default function TenantPortal() {
     setSending(false);
     const outcome = portalWriteOutcome(res);
     if (outcome !== 'ok') {
-      setErr(portalWriteMessage(outcome, 'Δεν ήταν δυνατή η αποστολή. Δοκίμασε ξανά.', PORTAL_SAY.requestLimit));
+      setErr(writeMsg(outcome, 'Δεν ήταν δυνατή η αποστολή. Δοκίμασε ξανά.', E?.requestFailed ?? '', PORTAL_SAY.requestLimit, E?.requestLimit ?? ''));
       return;
     }
     photos.forEach(p => URL.revokeObjectURL(p.url));
@@ -299,17 +314,19 @@ export default function TenantPortal() {
               Τα γνωρίσματα είναι αυτούσια αυτά του `span`, συν `margin:0` που
               ακυρώνει το προεπιλεγμένο περιθώριο του `h1`: η εμφάνιση δεν
               αλλάζει ούτε κατά ένα εικονοστοιχείο. */}
-          <h1 style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', margin: 0 }}>Πύλη ενοικιαστή</h1>
+          <h1 style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', margin: 0 }}>{E ? E.title : 'Πύλη ενοικιαστή'}</h1>
+          {/* Η ΓΛΩΣΣΑ ΑΛΛΑΖΕΙ ΣΤΗΝ ΙΔΙΑ ΔΙΕΥΘΥΝΣΗ: ο σύνδεσμος είναι το κλειδί. */}
+          <LangSwitcher place="bar" here={E ? 'en' : 'el'} />
         </div>
       </header>
 
       <div style={wrap}>
-        {state === 'loading' && <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 60 }}>Φόρτωση…</div>}
+        {state === 'loading' && <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 60 }}>{L ? L.loading : 'Φόρτωση…'}</div>}
 
         {state === 'notfound' && (
           <div style={{ ...card, textAlign: 'center' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{LINK_SAY.notFoundTitle}</div>
-            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>Ζήτησε από τον ιδιοκτήτη έναν ενημερωμένο σύνδεσμο πύλης.</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{L ? L.notFoundTitle : LINK_SAY.notFoundTitle}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>{E ? E.askOwner : 'Ζήτησε από τον ιδιοκτήτη έναν ενημερωμένο σύνδεσμο πύλης.'}</div>
           </div>
         )}
 
@@ -319,21 +336,21 @@ export default function TenantPortal() {
             χωρίς να χρειάζεται ο ενοικιαστής να ψάξει το email από την αρχή. */}
         {state === 'offline' && (
           <div style={{ ...card, textAlign: 'center' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{LINK_SAY.offlineTitle}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{L ? L.offlineTitle : LINK_SAY.offlineTitle}</div>
             <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: 16 }}>
-              {LINK_SAY.offlineBody}
+              {L ? L.offlineBody : LINK_SAY.offlineBody}
             </div>
             {/* Το κοινό κουμπί, όχι ζωγραφισμένο στο χέρι: ίδια όψη, ίδιες
                 καταστάσεις αιώρησης και εστίασης, ίδιο ύψος αφής με όλη την
                 εφαρμογή. */}
-            <Btn variant="primary" onClick={() => setTries(t => t + 1)}>{LINK_SAY.retry}</Btn>
+            <Btn variant="primary" onClick={() => setTries(t => t + 1)}>{L ? L.retry : LINK_SAY.retry}</Btn>
           </div>
         )}
 
         {state === 'locked' && (
           <div style={{ ...card, textAlign: 'center' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Απαιτείται κωδικός</div>
-            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: T.sp.lg }}>Ζήτησε τον κωδικό από τον ιδιοκτήτη.</div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>{E ? E.pinTitle : 'Απαιτείται κωδικός'}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: T.sp.lg }}>{E ? E.pinBody : 'Ζήτησε τον κωδικό από τον ιδιοκτήτη.'}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 280, margin: '0 auto' }}>
               <input
                 type="password"
@@ -343,17 +360,17 @@ export default function TenantPortal() {
                 value={pin}
                 onChange={e => { setPin(e.target.value); if (pinErr) setPinErr(''); }}
                 onKeyDown={e => { if (e.key === 'Enter') submitPin(); }}
-                placeholder="Κωδικός"
+                placeholder={E ? E.pinPlaceholder : 'Κωδικός'}
                 // ΤΟ PLACEHOLDER ΔΕΝ ΕΙΝΑΙ ΟΝΟΜΑ. Εξαφανίζεται μόλις γραφτεί ο
                 // πρώτος χαρακτήρας, οπότε ο αναγνώστης οθόνης ανακοινώνει «πεδίο
                 // κειμένου» σε κάθε διόρθωση. Το πεδίο έχει και ορατό τίτλο από
                 // πάνω («Απαιτείται κωδικός»), αλλά τίποτα δεν τα συνδέει.
-                aria-label="Κωδικός πύλης"
+                aria-label={E ? E.pinLabel : 'Κωδικός πύλης'}
                 style={{ ...field, textAlign: 'center', letterSpacing: '0.3em' }}
               />
               {pinErr && <div style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 16px', fontSize: 13, color: 'var(--negative)' }}>{pinErr}</div>}
               {/* size="lg" γιατί είναι δημόσια σελίδα κινητού: το ύψος πεδίου φτάνει τα 44 στο δάχτυλο. */}
-              <Btn variant="primary" size="lg" onClick={submitPin} disabled={pinChecking || !pin.trim()}>{pinChecking ? 'Έλεγχος…' : 'Είσοδος'}</Btn>
+              <Btn variant="primary" size="lg" onClick={submitPin} disabled={pinChecking || !pin.trim()}>{pinChecking ? (E ? E.pinChecking : 'Έλεγχος…') : (E ? E.pinEnter : 'Είσοδος')}</Btn>
             </div>
           </div>
         )}
@@ -372,30 +389,30 @@ export default function TenantPortal() {
                       της μίσθωσης από κάτω: ετικέτα αριστερά, τιμή δεξιά. */}
                   {!hasDue ? (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-                      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Οφειλή</span>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.num }}>Καμία εκκρεμής</span>
+                      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{E ? E.due : 'Οφειλή'}</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.num }}>{E ? E.nothingDue : 'Καμία εκκρεμής'}</span>
                     </div>
                   ) : (
                     <>
-                      <div style={{ ...label, marginBottom: 12 }}>Οφειλή</div>
-                      <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', marginBottom: 4 }}>{eur(data.total_due)}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: T.sp.lg }}>Συνολικό εκκρεμές ποσό προς εξόφληση</div>
+                      <div style={{ ...label, marginBottom: 12 }}>{E ? E.due : 'Οφειλή'}</div>
+                      <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', marginBottom: 4 }}>{money(data.total_due)}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: T.sp.lg }}>{E ? E.dueTotal : 'Συνολικό εκκρεμές ποσό προς εξόφληση'}</div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 4 }}>
                         {data.due.map(item => (
                           <div key={item.id} style={{ border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 16px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-                              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{monthLabel(item.month, item.year)}</span>
-                              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{eur(item.amount)}</span>
+                              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{monthOf(item.month, item.year)}</span>
+                              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{money(item.amount)}</span>
                             </div>
-                            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>Λήξη προθεσμίας: {gdate(item.due_date)}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>{E ? E.dueBy : 'Λήξη προθεσμίας'}: {day(item.due_date)}</div>
                             <div style={{ marginTop: 12 }}>
                               {item.declared ? (
                                 <span style={{ display: 'inline-block', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', color: 'var(--warning)', fontSize: 12, fontWeight: 600, borderRadius: T.radius.pill, padding: '6px 12px' }}>
-                                  Δηλώθηκε, σε επιβεβαίωση από τον ιδιοκτήτη
+                                  {E ? E.declared : 'Δηλώθηκε, σε επιβεβαίωση από τον ιδιοκτήτη'}
                                 </span>
                               ) : (
-                                <Btn variant="secondary" onClick={() => declarePayment(item.id)} disabled={declareBusyId === item.id}>{declareBusyId === item.id ? 'Αποστολή…' : 'Δήλωσα την πληρωμή'}</Btn>
+                                <Btn variant="secondary" onClick={() => declarePayment(item.id)} disabled={declareBusyId === item.id}>{declareBusyId === item.id ? (L ? L.sending : 'Αποστολή…') : (E ? E.declare : 'Δήλωσα την πληρωμή')}</Btn>
                               )}
                             </div>
                           </div>
@@ -426,22 +443,24 @@ export default function TenantPortal() {
               if (!hasLink && !hasIban) return null;
               return (
                 <div style={card}>
-                  <div style={label}>Τρόπος πληρωμής</div>
+                  <div style={label}>{E ? E.payMethod : 'Τρόπος πληρωμής'}</div>
                   {hasLink && (
                     <div style={{ marginBottom: hasIban ? 18 : 0 }}>
                       <a href={link as string} target="_blank" rel="noopener noreferrer"
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, borderRadius: T.radius.pill, background: 'var(--accent)', color: 'var(--accent-text)', fontSize: 15, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}>
-                        Πληρωμή τώρα
+                        {E ? E.payNow : <>
+                          Πληρωμή τώρα
+                        </>}
                       </a>
-                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>Η πληρωμή γίνεται στον πάροχο του ιδιοκτήτη.</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>{E ? E.payNowNote : 'Η πληρωμή γίνεται στον πάροχο του ιδιοκτήτη.'}</div>
                     </div>
                   )}
                   {hasIban && (
                     <>
-                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10, lineHeight: 1.5 }}>Τραπεζικό έμβασμα στον IBAN και μετά δήλωσε την πληρωμή.</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10, lineHeight: 1.5 }}>{E ? E.ibanNote : 'Τραπεζικό έμβασμα στον IBAN και μετά δήλωσε την πληρωμή.'}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all', flex: 1 }}>{data.tenant.rent_iban}</span>
-                        <Btn variant="secondary" onClick={() => copyIban(data.tenant.rent_iban as string)}>{copied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</Btn>
+                        <Btn variant="secondary" onClick={() => copyIban(data.tenant.rent_iban as string)}>{copied ? (E ? E.copied : 'Αντιγράφηκε') : (E ? E.copy : 'Αντιγραφή')}</Btn>
                       </div>
                     </>
                   )}
@@ -456,18 +475,18 @@ export default function TenantPortal() {
                 αντί για τέσσερις που μοιάζουν με απάντηση. */}
             {(() => {
               const rows = [
-                rowIf('Μηνιαίο ενοίκιο', data.tenant.rent, eur),
-                rowIf('Έναρξη μίσθωσης', data.tenant.lease_start, gdate),
-                rowIf('Λήξη μίσθωσης', data.tenant.lease_end, gdate),
-                rowIf('Εγγύηση', data.tenant.deposit, eur),
+                rowIf(E ? E.rent : 'Μηνιαίο ενοίκιο', data.tenant.rent, money),
+                rowIf(E ? E.leaseStart : 'Έναρξη μίσθωσης', data.tenant.lease_start, day),
+                rowIf(E ? E.leaseEnd : 'Λήξη μίσθωσης', data.tenant.lease_end, day),
+                rowIf(E ? E.deposit : 'Εγγύηση', data.tenant.deposit, money),
               ].filter(Boolean);
               return (
                 <div style={card}>
                   <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 2 }}>{data.property.name}</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16 }}>{[data.property.type, data.property.address].filter(Boolean).join(' · ') || 'Ακίνητο'}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16 }}>{[data.property.type, data.property.address].filter(Boolean).join(' · ') || (E ? E.property : 'Ακίνητο')}</div>
                   {rows.length > 0 ? rows : (
                     <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
-                      Τα στοιχεία της μίσθωσης δεν έχουν συμπληρωθεί ακόμη.
+                      {E ? E.noLease : 'Τα στοιχεία της μίσθωσης δεν έχουν συμπληρωθεί ακόμη.'}
                     </div>
                   )}
                 </div>
@@ -479,18 +498,21 @@ export default function TenantPortal() {
                   «Αίτημα βλάβης / επικοινωνία» ζητά από τον ενοικιαστή να
                   διαλέξει κατηγορία πριν γράψει· το «πάνελ διαχείρισης» είναι
                   λέξη του ιδιοκτήτη, όχι δική του. */}
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Στείλε αίτημα στον ιδιοκτήτη</div>
-              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 16, lineHeight: 1.5 }}>Βλάβη, ερώτηση ή ό,τι χρειάζεσαι. Το βλέπει αμέσως.</div>
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{E ? E.requestTitle : 'Στείλε αίτημα στον ιδιοκτήτη'}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 16, lineHeight: 1.5 }}>{E ? E.requestSub : 'Βλάβη, ερώτηση ή ό,τι χρειάζεσαι. Το βλέπει αμέσως.'}</div>
 
               {sent ? (
                 <div style={{ background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: 10, padding: '14px 16px', color: 'var(--positive)', fontSize: 14, fontWeight: 600 }}>
-                  Το αίτημα στάλθηκε. Ευχαριστούμε!
+                  {E ? E.sent : 'Το αίτημα στάλθηκε. Ευχαριστούμε!'}
                   {/* Η ΕΠΙΒΕΒΑΙΩΣΗ ΛΕΕΙ ΚΑΙ ΤΙ ΔΕΝ ΕΓΙΝΕ. Ενα «στάλθηκε» που
                       κρύβει τις φωτογραφίες που χάθηκαν είναι χειρότερο από
                       σφάλμα: ο ενοικιαστής φεύγει ήσυχος. */}
                   {lostPhotos > 0 && (
                     <div style={{ marginTop: 8, fontWeight: 500, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                      {photoLimitHit
+                      {E ? (photoLimitHit
+                        ? `${(lostPhotos === 1 ? E.photosLostOne : E.photosLostMany).replace('{n}', String(lostPhotos))} ${E.photoLimit}`
+                        : `${(lostPhotos === 1 ? E.photosLostNetOne : E.photosLostNetMany).replace('{n}', String(lostPhotos))} ${E.photosResend}`)
+                      : photoLimitHit
                         ? `${lostPhotos === 1 ? 'Μία φωτογραφία δεν ανέβηκε' : `${lostPhotos} φωτογραφίες δεν ανέβηκαν`}. ${PORTAL_SAY.photoLimit}`
                         : <>
                             {lostPhotos === 1
@@ -503,27 +525,27 @@ export default function TenantPortal() {
                 </div>
               ) : (
                 <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <div><label htmlFor="portal-title" style={label}>Θέμα</label><input id="portal-title" required value={title} onChange={e => setTitle(e.target.value)} placeholder="Διαρροή στο μπάνιο" style={field} /></div>
-                  <div><label htmlFor="portal-desc" style={label}>Περιγραφή</label><textarea id="portal-desc" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Περίγραψε το πρόβλημα…" rows={4} style={{ ...field, resize: 'vertical' }} /></div>
-                  <div><label htmlFor="portal-contact" style={label}>Τηλέφωνο επικοινωνίας (προαιρετικό)</label><input id="portal-contact" value={contact} onChange={e => setContact(e.target.value)} placeholder="69XXXXXXXX" style={field} /></div>
+                  <div><label htmlFor="portal-title" style={label}>{E ? E.subject : 'Θέμα'}</label><input id="portal-title" required value={title} onChange={e => setTitle(e.target.value)} placeholder={E ? E.subjectPlaceholder : 'Διαρροή στο μπάνιο'} style={field} /></div>
+                  <div><label htmlFor="portal-desc" style={label}>{E ? E.description : 'Περιγραφή'}</label><textarea id="portal-desc" value={desc} onChange={e => setDesc(e.target.value)} placeholder={E ? E.descriptionPlaceholder : 'Περίγραψε το πρόβλημα…'} rows={4} style={{ ...field, resize: 'vertical' }} /></div>
+                  <div><label htmlFor="portal-contact" style={label}>{E ? E.phone : 'Τηλέφωνο επικοινωνίας (προαιρετικό)'}</label><input id="portal-contact" value={contact} onChange={e => setContact(e.target.value)} placeholder="69XXXXXXXX" style={field} /></div>
 
                   <div>
-                    <label style={label}>Φωτογραφίες (προαιρετικό)</label>
+                    <label style={label}>{E ? E.photos : 'Φωτογραφίες (προαιρετικό)'}</label>
                     <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, borderRadius: T.radius.chip, padding: '9px 14px', cursor: photos.length >= MAX_PHOTOS ? 'not-allowed' : 'pointer', opacity: photos.length >= MAX_PHOTOS ? 0.6 : 1, fontFamily: 'inherit' }}>
-                      Προσθήκη φωτογραφιών
-                      <input type="file" accept="image/*" multiple aria-label="Φωτογραφίες του προβλήματος" disabled={photos.length >= MAX_PHOTOS} onChange={onPickFiles} style={{ display: 'none' }} />
+                      {E ? E.addPhotos : 'Προσθήκη φωτογραφιών'}
+                      <input type="file" accept="image/*" multiple aria-label={E ? E.photosLabel : 'Φωτογραφίες του προβλήματος'} disabled={photos.length >= MAX_PHOTOS} onChange={onPickFiles} style={{ display: 'none' }} />
                     </label>
                     {photos.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
                         {photos.map((p, i) => (
                           <div key={p.url} style={{ position: 'relative', width: 72, height: 72, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={p.url} alt="Προεπισκόπηση φωτογραφίας" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                            <img src={p.url} alt={E ? E.photoPreview : 'Προεπισκόπηση φωτογραφίας'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                             {/* Μένει χειροποίητο: κύκλος 20×20 απόλυτα τοποθετημένος πάνω σε μικρογραφία 72×72.
                                 Το IconBtn έχει κουτί T.h.sm που στο δάχτυλο γίνεται 44, δηλαδή θα σκέπαζε τη φωτογραφία. */}
                             <button
                               type="button"
-                              aria-label="Αφαίρεση φωτογραφίας"
+                              aria-label={E ? E.removePhoto : 'Αφαίρεση φωτογραφίας'}
                               onClick={() => removePhoto(i)}
                               style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: T.radius.pill, border: 'none', background: 'var(--bg-base)', color: 'var(--text-primary)', fontSize: 13, lineHeight: 1, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit', boxShadow: 'var(--elev-1)' }}
                             >
@@ -537,12 +559,12 @@ export default function TenantPortal() {
                   </div>
 
                   {err && <div style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 16px', fontSize: 13, color: 'var(--negative)' }}>{err}</div>}
-                  <Btn variant="primary" size="lg" type="submit" disabled={sending || !title.trim()}>{sending ? 'Αποστολή…' : 'Αποστολή αιτήματος'}</Btn>
+                  <Btn variant="primary" size="lg" type="submit" disabled={sending || !title.trim()}>{sending ? (L ? L.sending : 'Αποστολή…') : (E ? E.send : 'Αποστολή αιτήματος')}</Btn>
                 </form>
               )}
             </div>
 
-            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>Με το PROPERWISE · <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'underline' }}>Απόρρητο</a></div>
+            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>{L ? L.poweredBy : 'Με το PROPERWISE'} · <a href={L ? '/en/privacy' : '/privacy'} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'underline' }}>{L ? L.privacy : 'Απόρρητο'}</a></div>
           </>
         )}
       </div>

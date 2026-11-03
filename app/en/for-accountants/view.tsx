@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { T } from '@/components/tokens';
 import { SITE, siteUrl, PRODUCT_NAME, ORG_ID } from '@/lib/core/site';
 import { athensParts } from '@/lib/core/time';
@@ -153,7 +154,7 @@ export default function Page() {
           <p className="lg-p" style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>{LANDING_EN.appLanguage}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, margin: '22px 0 0' }}>
             <a href={`#${S.folder.id}`} className="lp-cta lp-primary lp-press" style={cta}>See what the file looks like</a>
-            <a href="/en/signup" className="lp-cta lp-press" style={{ ...cta, border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>{signupCtaEn()}</a>
+            <Link href="/en/signup" className="lp-cta lp-press" style={{ ...cta, border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>{signupCtaEn()}</Link>
           </div>
 
           <H2 {...S.link} />
@@ -229,14 +230,16 @@ export default function Page() {
             <li><strong style={strong}>From then on,</strong>{` every month that hits the target gives you ${months(PARTNER_MONTHLY_FREE_MONTHS)} of subscription without charge, with priority access to new features.`}</li>
           </ul>
           <p className="lg-p">{`${words.compMonths}${words.partnerTarget ? ` ${words.partnerTarget}` : ''} The person you invite starts with the ${TRIAL_DAYS}-day trial, like every new account; the link gives them no extra benefit.`}</p>
-          <p className="lg-p"><a href="/en/terms#systaseis" className="lp-link po-tap" style={LINK_STYLE}>The program terms</a></p>
+          <p className="lg-p"><Link href="/en/terms#systaseis" className="lp-link po-tap" style={LINK_STYLE}>The program terms</Link></p>
 
           <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
             <div style={box}>
               <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Start with your first client</h2>
               <p style={{ margin: '0 0 16px', fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)' }}>Create an account and paste the link the owner sent you. If you already have an account, your clients are one tap away.</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                <a href="/en/signup" className="lp-cta lp-primary lp-press" style={cta}>{signupCtaEn()}</a>
+                <Link href="/en/signup" className="lp-cta lp-primary lp-press" style={cta}>{signupCtaEn()}</Link>
+                {/* Πλήρης πλοήγηση: ο χώρος του λογιστή είναι ελληνικός και το `<html lang>` το γράφει ο διακομιστής. */}
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
                 <a href="/accountant/workspace" hrefLang="el" className="lp-cta lp-press" style={{ ...cta, border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}>Your clients</a>
               </div>
               <p style={{ margin: '16px 0 0', fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)' }}>{'For a firm with many clients, or a question before you start, write to us at '}<MailLink to={IDENTITY.supportEmail} />{'.'}</p>

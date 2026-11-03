@@ -36,6 +36,7 @@ import type { RAISE_EN } from './en/tools/raise';
 import type { E2_EN } from './en/tools/e2';
 import type { POWER_EN } from './en/tools/power';
 import type { WITHDRAWAL_EN } from './en/legal/withdrawal';
+import type { RECIPIENT_COPY_EN } from './en/recipients';
 
 /** Ενα κλειδί ανά υπολογιστή· ο πάροχος κάθε σελίδας δίνει μόνο το δικό του. */
 export type ToolEn = {
@@ -54,6 +55,8 @@ export type ToolEn = {
   e2?: { E: typeof E2_EN };
   power?: { E: typeof POWER_EN };
   withdrawal?: { E: typeof WITHDRAWAL_EN };
+  /** Οι σελίδες του παραλήπτη συνδέσμου (lib/i18n/locale.ts, isRecipientPath). */
+  recipient?: typeof RECIPIENT_COPY_EN;
 };
 
 export const ToolEnContext = createContext<ToolEn | null>(null);

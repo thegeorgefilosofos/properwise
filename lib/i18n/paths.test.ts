@@ -3,7 +3,7 @@
 // Ο ΧΑΡΤΗΣ ΤΩΝ ΓΛΩΣΣΩΝ: κάθε ζεύγος πηγαίνει και γυρίζει, ο επιλογέας δεν
 // οδηγεί ποτέ σε 404 και οι ετικέτες hreflang είναι ίδιες και στις δύο πλευρές.
 import { PAGE_PAIRS, enPathFor, elPathFor, pathIn, languageAlternates, localHref } from './paths'
-import { isEnPath, localeOfPath, browserLacksGreek } from './locale'
+import { isEnPath, localeOfPath, browserLacksGreek, isRecipientPath, recipientLocale } from './locale'
 import { SITE } from '@/lib/core/site'
 
 let pass = 0, fail = 0
@@ -64,6 +64,18 @@ ok('el-GR: όχι', !browserLacksGreek('el-GR,el;q=0.9,en;q=0.8'))
 ok('αγγλικά πρώτα, ελληνικά δεύτερα: όχι', !browserLacksGreek('en-US,el;q=0.5'))
 ok('χωρίς κεφαλίδα (μηχανή αναζήτησης): όχι', !browserLacksGreek(null) && !browserLacksGreek(''))
 ok('μόνο «*»: όχι', !browserLacksGreek('*'))
+
+// ── Οι σελίδες παραλήπτη: ίδια διεύθυνση, γλώσσα από τον άνθρωπο ─────────────
+for (const p of ['/portal/abc', '/checkin/abc', '/plirosa/abc', '/unsubscribe/abc', '/epivevaiosi-email/abc', '/verify', '/verify/PO-1', '/offline']) {
+  ok(`${p}: σελίδα παραλήπτη`, isRecipientPath(p))
+}
+for (const p of ['/', '/odigos', '/portal', '/verifyx', '/en/verify', '/dashboard']) ok(`${p}: όχι σελίδα παραλήπτη`, !isRecipientPath(p))
+eq('επιλογή en κερδίζει τον περιηγητή', recipientLocale('en', 'el-GR,el;q=0.9'), 'en')
+eq('επιλογή el κερδίζει τον περιηγητή', recipientLocale('el', 'en-GB,en;q=0.9'), 'el')
+eq('χωρίς επιλογή, περιηγητής χωρίς ελληνικά', recipientLocale(undefined, 'en-GB,en;q=0.9'), 'en')
+eq('χωρίς επιλογή, περιηγητής με ελληνικά', recipientLocale(undefined, 'en-GB,el;q=0.5'), 'el')
+eq('χωρίς επιλογή και κεφαλίδα', recipientLocale(undefined, null), 'el')
+eq('άκυρη τιμή cookie', recipientLocale('de', null), 'el')
 
 console.log(fail === 0 ? `✓ i18n paths: ${pass} έλεγχοι πέρασαν` : `✗ i18n paths: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

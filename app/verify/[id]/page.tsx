@@ -26,6 +26,10 @@ import { useLoad } from '@/app/hooks/useLoad';
 import { normalizeVerifyCode, fingerprintLabel } from '@/lib/documents/verifyCode';
 import { grDate } from '@/lib/core/format';
 import { athensToday, athensTime } from '@/lib/core/time';
+import { useToolDict } from '@/lib/i18n/toolEn';
+import LangSwitcher from '@/app/LangSwitcher';
+import type { VERIFY_EN } from '@/lib/i18n/en/recipients';
+import { fmtFor } from '@/lib/core/format';
 
 interface Verified {
   id: string; doc_type: string; subject: string; period: string; issued_at: string; issuer: string;
@@ -36,17 +40,17 @@ interface Verified {
 }
 
 /** Ημερομηνία και ώρα Ελλάδας, όπως τις γράφει όλη η εφαρμογή: «07/10/2026, 14:05». */
-const issuedOn = (iso: string): { date: string; time: string } | null => {
+const issuedOn = (iso: string, E?: typeof VERIFY_EN): { date: string; time: string } | null => {
   const d = new Date(iso);
-  return isNaN(d.getTime()) ? null : { date: grDate(athensToday(d)), time: athensTime(d) };
+  return isNaN(d.getTime()) ? null : { date: (E ? fmtFor('en').date : grDate)(athensToday(d)), time: athensTime(d) };
 };
 
 const label: React.CSSProperties = { fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 700 };
 const value: React.CSSProperties = { fontSize: 14, color: 'var(--text-primary)', fontWeight: 600, marginTop: 4 };
 
 /** Η απάντηση για έγγραφο που βρέθηκε στο μητρώο. */
-function RegisteredDoc({ doc }: { doc: Verified }) {
-  const on = issuedOn(doc.issued_at);
+function RegisteredDoc({ doc, E }: { doc: Verified; E?: typeof VERIFY_EN }) {
+  const on = issuedOn(doc.issued_at, E);
   const fingerprint = fingerprintLabel(doc.checksum);
   // ΤΡΕΙΣ ΑΠΑΝΤΗΣΕΙΣ, ΟΧΙ ΔΥΟ. Άθικτη καταχώρηση· παλιά καταχώρηση, από πριν
   // σφραγίσει το μητρώο, που ούτε βεβαιώνεται ούτε κατηγορείται· και
@@ -67,27 +71,33 @@ function RegisteredDoc({ doc }: { doc: Verified }) {
             γραμμής δεν κάθεται στο ίδιο οπτικό ύψος και έχει άλλο βάρος. */}
         <Icon size={18} strokeWidth={2.5} style={{ color: verdict === 'legacy' ? 'var(--text-secondary)' : tone.ink, flexShrink: 0 }} aria-hidden="true" />
         <span style={{ fontSize: 14, fontWeight: 600, color: tone.ink }}>
-          {verdict === 'intact' ? 'Καταχωρημένο έγγραφο, χωρίς αλλαγές από την έκδοση'
+          {E ? E[verdict] : verdict === 'intact' ? 'Καταχωρημένο έγγραφο, χωρίς αλλαγές από την έκδοση'
             : verdict === 'changed' ? 'Η καταχώρηση δεν ταιριάζει με το αποτύπωμά της'
             : 'Καταχωρημένο έγγραφο παλαιότερης μορφής'}
         </span>
       </div>
 
+      {E ? (
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 16 }}>
+          {(on ? E.issuedOn.replace('{date}', on.date) : E.issuedNoDate).replace('{issuer}', doc.issuer)}{E[`${verdict}Body` as 'intactBody' | 'changedBody' | 'legacyBody']}
+        </p>
+      ) : (
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 16 }}>
         Εκδόθηκε μέσω PROPERWISE{on ? <> στις {on.date}</> : null} από τον εκδότη «{doc.issuer}», όπως δήλωσε ο ίδιος.{' '}
         {verdict === 'intact' && <>Η καταχώρηση δεν έχει αλλάξει από τότε. Σύγκρινε το αποτύπωμα παρακάτω με αυτό που είναι τυπωμένο στο κάτω μέρος του εγγράφου.</>}
         {verdict === 'changed' && <>Τα στοιχεία της καταχώρησης δεν συμφωνούν πια με το αποτύπωμα που γράφτηκε στην έκδοση. Μη βασιστείς σε αυτό το έγγραφο χωρίς επιβεβαίωση από τον εκδότη.</>}
         {verdict === 'legacy' && <>Καταχωρήθηκε πριν το μητρώο αποκτήσει αποτύπωμα από τον διακομιστή, οπότε δεν μπορούμε να βεβαιώσουμε ότι δεν άλλαξε από τότε.</>}
       </p>
+      )}
 
       <div style={{ display: 'grid', gap: 16, marginTop: T.sp.xl }}>
-        <div><div style={label}>Τύπος εγγράφου</div><div style={value}>{doc.doc_type}</div></div>
-        {doc.subject && <div><div style={label}>Αντικείμενο</div><div style={value}>{doc.subject}</div></div>}
-        {doc.period && <div><div style={label}>Περίοδος</div><div style={value}>{doc.period}</div></div>}
-        <div><div style={label}>Ημερομηνία έκδοσης</div><div style={value}>{on ? `${on.date}, ${on.time}` : ABSENT}</div></div>
-        <div><div style={label}>Εκδότης, όπως δηλώθηκε</div><div style={value}>{doc.issuer}</div></div>
-        <div><div style={label}>Αριθμός εγγράφου</div><div style={{ ...value, fontVariantNumeric: 'tabular-nums', letterSpacing: '.02em' }}>{doc.id}</div></div>
-        {fingerprint && <div><div style={label}>Αποτύπωμα</div><div style={{ ...value, fontVariantNumeric: 'tabular-nums', letterSpacing: '.02em' }}>{fingerprint}</div></div>}
+        <div><div style={label}>{E ? E.docType : 'Τύπος εγγράφου'}</div><div style={value}>{doc.doc_type}</div></div>
+        {doc.subject && <div><div style={label}>{E ? E.subject : 'Αντικείμενο'}</div><div style={value}>{doc.subject}</div></div>}
+        {doc.period && <div><div style={label}>{E ? E.period : 'Περίοδος'}</div><div style={value}>{doc.period}</div></div>}
+        <div><div style={label}>{E ? E.issuedAt : 'Ημερομηνία έκδοσης'}</div><div style={value}>{on ? `${on.date}, ${on.time}` : E ? E.absent : ABSENT}</div></div>
+        <div><div style={label}>{E ? E.issuer : 'Εκδότης, όπως δηλώθηκε'}</div><div style={value}>{doc.issuer}</div></div>
+        <div><div style={label}>{E ? E.number : 'Αριθμός εγγράφου'}</div><div style={{ ...value, fontVariantNumeric: 'tabular-nums', letterSpacing: '.02em' }}>{doc.id}</div></div>
+        {fingerprint && <div><div style={label}>{E ? E.fingerprint : 'Αποτύπωμα'}</div><div style={{ ...value, fontVariantNumeric: 'tabular-nums', letterSpacing: '.02em' }}>{fingerprint}</div></div>}
       </div>
 
       {/* ΤΑ ΨΙΛΑ ΓΡΑΜΜΑΤΑ ΤΗΣ ΕΠΑΛΗΘΕΥΣΗΣ ΚΛΕΙΝΟΥΝ ΚΑΙ ΔΕΞΙΑ. Η κάρτα κόβει στα
@@ -101,7 +111,7 @@ function RegisteredDoc({ doc }: { doc: Verified }) {
           ποσά δεν φαίνονται εδώ, οπότε ένα χαρτί με αλλαγμένα ποσά θα
           ταίριαζε με την ίδια καταχώρηση. Ο αναγνώστης πρέπει να το ξέρει. */}
       <p className="po-just" style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.6, marginTop: 24, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-        {hy(<>Το περιεχόμενο του εγγράφου και η επωνυμία του εκδότη είναι δηλώσεις του εκδότη. Το PROPERWISE καταγράφει την έκδοση και δεν βεβαιώνει την ακρίβεια των στοιχείων ούτε την ταυτότητα του εκδότη.
+        {E ? E.fine : hy(<>Το περιεχόμενο του εγγράφου και η επωνυμία του εκδότη είναι δηλώσεις του εκδότη. Το PROPERWISE καταγράφει την έκδοση και δεν βεβαιώνει την ακρίβεια των στοιχείων ούτε την ταυτότητα του εκδότη.
         Η σελίδα δεν δείχνει ποσά ή ευαίσθητα στοιχεία: αν το χαρτί που κρατάς γράφει ποσά, επιβεβαίωσέ τα με τον εκδότη.</>)}
       </p>
     </div>
@@ -117,6 +127,10 @@ export default function VerifyDocument() {
   // κι αυτός το έγγραφο.
   const id = normalizeVerifyCode(safeDecode(String(params?.id || '')));
   const supabase = createClient();
+  // Τα αγγλικά από τον πάροχο του layout (app/RecipientCopy.tsx)· χωρίς αυτόν, ελληνικά.
+  const R = useToolDict('recipient').en;
+  const E = R?.verify;
+  const L = R?.link;
   // Η ΚΑΤΑΣΤΑΣΗ ΤΗΣ ΟΘΟΝΗΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟ ΑΠΟΤΕΛΕΣΜΑ, ΔΕΝ ΓΡΑΦΕΤΑΙ ΔΙΠΛΑ ΤΟΥ.
   // Ηταν δύο καταστάσεις με `setState('loading')` σύγχρονα μέσα σε effect: μία
   // περιττή απόδοση και δύο πηγές αλήθειας που μπορούσαν να διαφωνήσουν. Τώρα
@@ -152,16 +166,16 @@ export default function VerifyDocument() {
   const codeInline: React.CSSProperties = { color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '.02em', display: 'inline-block', maxWidth: '100%', overflowWrap: 'anywhere' };
 
   return (
-    <StandaloneCard>
+    <StandaloneCard aside={<LangSwitcher place="bar" here={E ? 'en' : 'el'} />}>
         {/* Ο ΤΙΤΛΟΣ ΤΗΣ ΣΕΛΙΔΑΣ ΕΙΝΑΙ ΑΥΤΗ Η ΓΡΑΜΜΗ, ΟΧΙ ΤΟ ΟΝΟΜΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ.
             Η σελίδα δεν είχε καμία επικεφαλίδα και ο αναγνώστης οθόνης την
             ανακοίνωνε χωρίς όνομα. Η κάρτα είναι η κοινή του ταμείου και της
             φόρμας επαλήθευσης (app/StandaloneCard.tsx): ίδιο λογότυπο, ίδιος
             τίτλος, ίδιο πλάτος. Πριν, εδώ ο τίτλος ήταν 16 και στο ταμείο 24. */}
-        <h1 style={CARD_TITLE}>Επαλήθευση εγγράφου</h1>
+        <h1 style={CARD_TITLE}>{E ? E.title : 'Επαλήθευση εγγράφου'}</h1>
 
         {state === 'loading' && (
-          <div style={{ padding: '34px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>Έλεγχος εγγράφου…</div>
+          <div style={{ padding: '34px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>{E ? E.checking : 'Έλεγχος εγγράφου…'}</div>
         )}
 
         {/* ΟΙ ΔΥΟ ΑΠΑΝΤΗΣΕΙΣ ΜΙΛΟΥΣΑΝ ΔΙΑΦΟΡΕΤΙΚΗ ΓΛΩΣΣΑ. Το «γνήσιο» ήταν
@@ -187,12 +201,18 @@ export default function VerifyDocument() {
           <div style={{ paddingTop: T.sp.xl }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: 10, padding: '11px 14px' }}>
               <TriangleAlert size={18} strokeWidth={2.5} style={{ color: 'var(--warning)', flexShrink: 0 }} aria-hidden="true" />
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--warning)' }}>Δεν βρέθηκε έγγραφο με αυτόν τον κωδικό</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--warning)' }}>{E ? E.notFound : 'Δεν βρέθηκε έγγραφο με αυτόν τον κωδικό'}</span>
             </div>
+            {E ? (
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 16 }}>
+                {E.notFoundBody[0]}<strong style={codeInline}>{id || E.absent}</strong>{E.notFoundBody[1]}
+              </p>
+            ) : (
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 16 }}>
               Ο κωδικός <strong style={codeInline}>{id || ABSENT}</strong> δεν αντιστοιχεί σε έγγραφο καταχωρημένο στο μητρώο του PROPERWISE.
               Έλεγξε ότι σάρωσες σωστά το QR ή ζήτησε νέο αντίγραφο από τον εκδότη.
             </p>
+            )}
           </div>
         )}
 
@@ -205,24 +225,30 @@ export default function VerifyDocument() {
           <div style={{ paddingTop: T.sp.xl }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 10, padding: '11px 14px' }}>
               <TriangleAlert size={18} strokeWidth={2.5} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} aria-hidden="true" />
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Ο έλεγχος δεν ολοκληρώθηκε</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{E ? E.error : 'Ο έλεγχος δεν ολοκληρώθηκε'}</span>
             </div>
+            {E ? (
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 16 }}>
+                {E.errorBody[0]}<strong style={codeInline}>{id || E.absent}</strong>{E.errorBody[1]}
+              </p>
+            ) : (
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 16 }}>
               Δεν λάβαμε απάντηση για τον κωδικό <strong style={codeInline}>{id || ABSENT}</strong>.
               Αυτό δεν λέει τίποτα για το έγγραφο: δεν προλάβαμε να το ελέγξουμε.
             </p>
+            )}
             <div style={{ marginTop: 16 }}>
-              <Btn onClick={() => { setResult(null); void check(); }}>Νέα προσπάθεια</Btn>
+              <Btn onClick={() => { setResult(null); void check(); }}>{E ? E.retry : 'Νέα προσπάθεια'}</Btn>
             </div>
           </div>
         )}
 
-        {state === 'ok' && doc && <RegisteredDoc doc={doc} />}
+        {state === 'ok' && doc && <RegisteredDoc doc={doc} E={E} />}
 
         {/* Δημόσια σελίδα που ανοίγει άνθρωπος χωρίς λογαριασμό: ο δρόμος προς
             το τι κρατάμε και γιατί υπάρχει σε κάθε κατάσταση, όχι μόνο στην επιτυχία. */}
         <p style={{ fontSize: 12, lineHeight: 1.6, margin: '20px 0 0' }}>
-          <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Πολιτική απορρήτου</Link>
+          <Link href={L ? '/en/privacy' : '/privacy'} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none' }}>{L ? L.privacyPolicy : 'Πολιτική απορρήτου'}</Link>
         </p>
     </StandaloneCard>
   );

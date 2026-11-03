@@ -10,7 +10,9 @@
 // ΤΡΕΙΣ ΘΕΣΕΙΣ, ΕΝΑ ΣΥΣΤΑΤΙΚΟ:
 //   · «head»: στην κεφαλίδα, από τα 768 και πάνω·
 //   · «foot»: στο υποσέλιδο, σε κάθε πλάτος· το αναδυόμενο ανοίγει προς τα πάνω·
-//   · «list»: μέσα στο μενού του κινητού, ως δύο γραμμές με σημάδι.
+//   · «list»: μέσα στο μενού του κινητού, ως δύο γραμμές με σημάδι·
+//   · «bar»: στη μπάρα των σελίδων παραλήπτη (πύλη ενοικιαστή, επαλήθευση…),
+//     σε κάθε πλάτος, με `here`: η γλώσσα αλλάζει στην ΙΔΙΑ διεύθυνση.
 //
 // Η ΑΛΛΑΓΗ ΚΡΑΤΑ ΤΗ ΣΕΛΙΔΑ (lib/i18n/paths.ts) ΚΑΙ ΘΥΜΑΤΑΙ ΤΗΝ ΕΠΙΛΟΓΗ στο
 // cookie `pw_lang`, που διαβάζει το proxy.ts. Η πλοήγηση είναι ΠΛΗΡΗΣ (σκέτο
@@ -57,10 +59,19 @@ function Check() {
   );
 }
 
-export default function LangSwitcher({ place }: { place: 'head' | 'foot' | 'list' }) {
+export default function LangSwitcher({ place, here }: {
+  place: 'head' | 'foot' | 'list' | 'bar';
+  /**
+   * Η γλώσσα μιας σελίδας παραλήπτη, που δεν βγαίνει από τη διαδρομή
+   * (lib/i18n/locale.ts, isRecipientPath). Με αυτήν η επιλογή μένει στην ίδια
+   * διεύθυνση: γράφεται το cookie και η σελίδα ξαναφορτώνει στη νέα γλώσσα.
+   */
+  here?: Locale;
+}) {
   const pathname = usePathname() ?? '/';
-  const current = localeOfPath(pathname);
-  const hrefOf = (to: Locale) => pathIn(pathname, to);
+  const current = here ?? localeOfPath(pathname);
+  // Κενό href: ο ίδιος ο σύνδεσμος της σελίδας, με το ερώτημά του.
+  const hrefOf = (to: Locale) => (here ? '' : pathIn(pathname, to));
 
   if (place === 'list') {
     return (
@@ -85,7 +96,7 @@ export default function LangSwitcher({ place }: { place: 'head' | 'foot' | 'list
 }
 
 function LangPopover({ place, current, hrefOf }: {
-  place: 'head' | 'foot'; current: Locale; hrefOf: (l: Locale) => string;
+  place: 'head' | 'foot' | 'bar'; current: Locale; hrefOf: (l: Locale) => string;
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);

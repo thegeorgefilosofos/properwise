@@ -8,7 +8,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { normalizeVerifyCode } from '@/lib/documents/verifyCode';
 
-export default function VerifyLookup() {
+/** Οι λέξεις της φόρμας στα αγγλικά· τις δίνει ο διακομιστής μόνο στα αγγλικά. */
+export type VerifyLookupEn = { printed: string; label: string; missing: string; check: string };
+
+export default function VerifyLookup({ en }: { en?: VerifyLookupEn }) {
   const router = useRouter();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -18,7 +21,7 @@ export default function VerifyLookup() {
     // Κενά, πεζά, ελληνικό «ΡΟ» και «P0» δεν αλλάζουν τον κωδικό
     // (lib/documents/verifyCode.ts).
     const id = normalizeVerifyCode(code);
-    if (!id) { setError('Γράψε τον κωδικό όπως είναι τυπωμένος στο έγγραφο.'); return; }
+    if (!id) { setError(en ? en.missing : 'Γράψε τον κωδικό όπως είναι τυπωμένος στο έγγραφο.'); return; }
     router.push(`/verify/${encodeURIComponent(id)}`);
   };
 
@@ -29,11 +32,11 @@ export default function VerifyLookup() {
   return (
     <form onSubmit={submit} style={{ paddingTop: T.sp.md }}>
       <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 20px', textWrap: 'pretty' }}>
-        Ο κωδικός είναι τυπωμένος δίπλα στο QR του εγγράφου.
+        {en ? en.printed : 'Ο κωδικός είναι τυπωμένος δίπλα στο QR του εγγράφου.'}
       </p>
       {/* Ετικέτα σε πεζά 13, όπως στη σύνδεση και στην εγγραφή. */}
       <label htmlFor="verify-code" className="po-field-label">
-        Κωδικός εγγράφου
+        {en ? en.label : 'Κωδικός εγγράφου'}
       </label>
       <input id="verify-code" name="code" value={code} autoComplete="off" autoCapitalize="characters" spellCheck={false}
         onChange={e => { setCode(e.target.value); if (error) setError(''); }}
@@ -42,7 +45,7 @@ export default function VerifyLookup() {
       {error && <p id="verify-code-err" role="alert" style={{ fontSize: 13, color: 'var(--negative-on-container)', margin: '6px 0 0', lineHeight: 1.5 }}>{error}</p>}
       {/* Ολο το πλάτος, κάτω από το πεδίο, όπως η υποβολή κάθε άλλης φόρμας της
           δημόσιας πλευράς. Ηταν 36 ψηλό και όσο το λεκτικό, δίπλα σε πεδίο 40. */}
-      <div style={{ marginTop: 16, display: 'grid' }}><Btn variant="primary" type="submit" field>Έλεγχος</Btn></div>
+      <div style={{ marginTop: 16, display: 'grid' }}><Btn variant="primary" type="submit" field>{en ? en.check : 'Έλεγχος'}</Btn></div>
     </form>
   );
 }

@@ -7653,6 +7653,8 @@ h1, h2, h3, h4, details > summary, th, dt { text-wrap: balance; }
    στοιχείο (e2e:hscroll) και η γλώσσα ζει στο μενού και στο υποσέλιδο. */
 .pw-lang-head { display: none; }
 @media (min-width: 768px) { .pw-lang-head { display: block; } }
+/* Στη μπάρα των σελίδων παραλήπτη: σε κάθε πλάτος, στη δεξιά άκρη. */
+.pw-lang-bar { margin-left: auto; }
 /* Στο υποσέλιδο το κουμπί κάθεται στη γραμμή των ψιλών γραμμάτων. Στο κινητό
    παίρνει όλο το ύψος αφής των 44. */
 .pw-lang-foot .pw-lang-btn { margin-left: -10px; color: var(--text-tertiary); }
