@@ -192,7 +192,7 @@ export default function Page() {
       <main style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
         {/* Η ΣΤΗΛΗ ΤΩΝ ΟΔΗΓΩΝ (`.gd`, 720): σελίδα κειμένου, με το ίδιο μέτρο
             ανάγνωσης και την ίδια δεξιά άκρη. Όλο το σώμα συλλαβίζεται μία φορά. */}
-        <div className="gd">
+        <div className="gd gd-wide">
           <BackLink />
           {hy(<>
             <div className="lp-eyebrow">Για λογιστές</div>

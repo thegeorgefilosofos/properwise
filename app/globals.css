@@ -5922,6 +5922,10 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 .lg-grid > .lg-body, .lg-head, .gd { --lg-measure: 100%; }
 .gd { max-width: 720px; }
 .gd .lg-p, .gd .lg-ul, .gd .lg-toc { max-width: none; }
+/* Η σελίδα για λογιστές απλώνει σε όλο το πλάτος της σελίδας, με πλήρη στοίχιση
+   και συλλαβισμό (οι μαλακές παύλες τις βάζει το hy() της σελίδας). */
+.gd.gd-wide { max-width: none; }
+@media (min-width: 641px) { .gd.gd-wide .lg-p, .gd.gd-wide .lg-ul > li, .gd.gd-wide .lg-note { text-align: justify; hyphens: auto; -webkit-hyphens: auto; text-wrap: wrap; } }
 /* ΠΙΝΑΚΑΣ ΔΥΟ ΣΤΗΛΩΝ ΣΤΑ 480, ΟΧΙ ΣΤΑ 715. Απλωμένος σε όλη τη στήλη άφηνε
    πεντακόσια εικονοστοιχεία ανάμεσα στο «έως 750€» και στο «2,00€». Η ετικέτα
    της γραμμής γράφεται στο δεύτερο χρώμα, η τιμή στο πρώτο: διαβάζεις τιμές. */
