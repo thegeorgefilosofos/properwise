@@ -35,6 +35,32 @@ export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 export const isEnPath = (path: string): boolean => path === EN_PREFIX || path.startsWith(EN_PREFIX + '/');
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ΟΙ ΣΕΛΙΔΕΣ ΤΟΥ ΠΑΡΑΛΗΠΤΗ: ΙΔΙΑ ΔΙΕΥΘΥΝΣΗ, ΓΛΩΣΣΑ ΑΠΟ ΤΟΝ ΑΝΘΡΩΠΟ
+// ─────────────────────────────────────────────────────────────────────────
+// Η πύλη του ενοικιαστή, τα στοιχεία διαμονής του επισκέπτη, το «Πλήρωσα»,
+// η απεγγραφή, η επιβεβαίωση διεύθυνσης, η επαλήθευση εγγράφου και η σελίδα
+// χωρίς σύνδεση ανοίγουν από σύνδεσμο που στάλθηκε με email ή SMS. Η
+// διεύθυνση δεν αλλάζει (είναι το κλειδί), δεν ευρετηριάζονται ποτέ και
+// πολλοί ενοικιαστές και επισκέπτες στην Ελλάδα δεν διαβάζουν ελληνικά.
+// Εδώ και μόνο εδώ η γλώσσα βγαίνει από τον άνθρωπο: πρώτα η ρητή επιλογή
+// του (cookie `pw_lang`), αλλιώς ο περιηγητής του (αγγλικά μόνο όταν δεν
+// μιλά καθόλου ελληνικά). Ο κανόνας «η γλώσσα από τη διαδρομή» μένει για
+// κάθε σελίδα που ευρετηριάζεται.
+// ═══════════════════════════════════════════════════════════════════════════
+const RECIPIENT_EXACT = new Set(['/verify', '/offline']);
+const RECIPIENT_PREFIXES = ['/portal/', '/checkin/', '/plirosa/', '/unsubscribe/', '/epivevaiosi-email/', '/verify/'];
+
+/** Σελίδα παραλήπτη συνδέσμου: ίδια διεύθυνση και στις δύο γλώσσες. */
+export const isRecipientPath = (path: string): boolean =>
+  RECIPIENT_EXACT.has(path) || RECIPIENT_PREFIXES.some(p => path.startsWith(p));
+
+/** Η γλώσσα μιας σελίδας παραλήπτη: η επιλογή του, αλλιώς ο περιηγητής του. */
+export function recipientLocale(chosen: string | null | undefined, acceptLanguage: string | null | undefined): Locale {
+  if (chosen === 'en' || chosen === 'el') return chosen;
+  return browserLacksGreek(acceptLanguage) ? 'en' : 'el';
+}
+
 export const localeOfPath = (path: string | null | undefined): Locale => (path && isEnPath(path) ? 'en' : 'el');
 
 /** Η μορφή του Open Graph για κάθε γλώσσα. */

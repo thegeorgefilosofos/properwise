@@ -20,13 +20,31 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   commitScannedDoc, withAnswer, scanDocument, scanMime, folderMime, notForFolder, unreadableFormat, SCAN_ACCEPT,
-  openQuestion, failedNotice, pendingAnswers,
+  openQuestion, failedNotice, pendingAnswers, fitWithin, SCAN_MAX_SEND_BYTES, SCAN_MAX_EDGE,
   type CommitInput, type CommitAnswers, type ReconcileQuestion,
 } from './scanDoc';
 import type { ScannedDoc } from '@/lib/billing/documents';
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
+
+// ── Η ΦΩΤΟΓΡΑΦΙΑ ΤΟΥ ΚΙΝΗΤΟΥ ΧΩΡΑ ΣΤΟ ΑΙΤΗΜΑ (03/11/2026) ─────────────────────
+// Φωτογραφία 4,4 MB → ~5,9 MB σε base64 > 4,5 MB του διακομιστή: κοβόταν πριν
+// από τη συνάρτηση και ο χρήστης διάβαζε «η υπηρεσία δεν είναι διαθέσιμη».
+{
+  const PLATFORM_BODY = 4.5 * 1024 * 1024;
+  ok('το παλιό: 4,4 MB σε base64 ξεπερνούσε το όριο', 4.4e6 * 4 / 3 > PLATFORM_BODY);
+  ok('το νέο όριο αποστολής χωρά σε base64 με περιθώριο', SCAN_MAX_SEND_BYTES * 4 / 3 + 200_000 < PLATFORM_BODY);
+  const big = fitWithin(4032, 3024, SCAN_MAX_EDGE);
+  ok('η φωτογραφία iPhone μικραίνει με την αναλογία της', big.w === SCAN_MAX_EDGE && big.h === 1500);
+  const portrait = fitWithin(3024, 4032, SCAN_MAX_EDGE);
+  ok('και κάθετη', portrait.h === SCAN_MAX_EDGE && portrait.w === 1500);
+  const small = fitWithin(1200, 900, SCAN_MAX_EDGE);
+  ok('η μικρή μένει ως έχει', small.w === 1200 && small.h === 900);
+  const src = readFileSync(join(__dirname, 'scanDoc.ts'), 'utf8');
+  const i413 = src.indexOf('res.status === 413'), iJson = src.indexOf('await res.json()');
+  ok('το 413 κρίνεται πριν από το res.json()', i413 > 0 && iJson > 0 && i413 < iJson);
+}
 
 // ── Η βάση στη μνήμη ───────────────────────────────────────────────────────
 type Row = Record<string, unknown>;

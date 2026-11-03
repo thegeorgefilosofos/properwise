@@ -3,7 +3,8 @@
 // ΤΙ ΦΥΛΑΓΕΤΑΙ. Οι τρεις σελίδες με κουπόνι (πύλη ενοικιαστή, στοιχεία
 // διαμονής, πύλη λογιστή) ξεχωρίζουν «δεν βρέθηκε» από «δεν απάντησε» και
 // στο δεύτερο δεν βεβαιώνουν τίποτα για τον σύνδεσμο. Ελέγχει και ότι κάθε
-// σελίδα χρησιμοποιεί τα κοινά λόγια και έχει κουμπί που ξαναρωτά.
+// σελίδα χρησιμοποιεί τα κοινά λόγια και έχει κουμπί που ξαναρωτά (στα
+// αγγλικά, με το ίδιο κουμπί: `L ? L.retry : LINK_SAY.retry`).
 import { readFileSync } from 'node:fs'
 import { linkLoad, LINK_SAY } from './linkLoad'
 
@@ -32,7 +33,7 @@ for (const page of ['app/portal/[token]/page.tsx', 'app/checkin/[token]/page.tsx
   const src = readFileSync(page, 'utf8')
   ok(`${page}: δεν λέει ότι ο σύνδεσμος είναι εντάξει`, !/σύνδεσμός σου είναι εντάξει|σύνδεσμος δεν έχει πρόβλημα/u.test(src))
   ok(`${page}: κοινά λόγια σφάλματος`, src.includes('LINK_SAY.offlineBody') && src.includes('LINK_SAY.notFoundTitle'))
-  ok(`${page}: κουμπί που ξαναρωτά`, /onClick=\{\(\) => setTries\(t => t \+ 1\)\}>\{LINK_SAY\.retry\}/.test(src))
+  ok(`${page}: κουμπί που ξαναρωτά`, /onClick=\{\(\) => setTries\(t => t \+ 1\)\}>\{(?:L \? L\.retry : )?LINK_SAY\.retry\}/.test(src))
 }
 
 console.log(`linkLoad: ✓ ${pass} · ✗ ${fail}`)

@@ -152,7 +152,7 @@ export default function Page() {
         'Zone prices: AADE tables of objective values.',
         'Automatic reduction by total value and surcharge on large holdings: Articles 7 and 4 of Law 4223/2013, as amended by Law 4916/2022.',
         'Reductions and exemptions with criteria: Article 7 of Law 4223/2013.',
-        'Insured home reduction: AADE decision A.1005/2026.',
+        'Insured home reduction: AADE Decision A.1005/2026.',
       ]}
       faq={FAQ} faqTitle="What people ask about ENFIA"
       cta={{ title: 'ENFIA on your own property', href: '/en/enfia-calculator', action: 'Calculate your ENFIA',

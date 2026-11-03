@@ -8,6 +8,7 @@ import { publicMetadata } from '../../publicMetadata';
 import { shareImage } from '../../og/share';
 import { BackLink } from '../../BackLink';
 import { LocaleLink } from '../../LangSwitcher';
+import { LISTED_GUIDES } from '../../odigos/guides';
 
 // Ο κόμβος των αγγλικών οδηγών: μόνο οδηγοί με αγγλική σελίδα, με το θέμα τους.
 const PATH = '/en/guides';
@@ -37,7 +38,7 @@ export default function Page() {
           ))}
         </ul>
         <p style={{ margin: 'clamp(28px,4vw,40px) 0 0', fontSize: 14, color: 'var(--text-tertiary)' }}>
-          {D.more}{' '}<LocaleLink to="el" href="/odigos" className="lp-link">{D.greekHub}</LocaleLink>
+          {guides.length < LISTED_GUIDES.length ? D.more : D.allInGreek}{' '}<LocaleLink to="el" href="/odigos" className="lp-link">{D.greekHub}</LocaleLink>
         </p>
       </main>
       <PublicFooter locale="en" />

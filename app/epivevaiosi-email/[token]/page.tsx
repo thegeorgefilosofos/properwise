@@ -29,10 +29,16 @@ import { CircleCheckBig } from 'lucide-react';
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useToolDict } from '@/lib/i18n/toolEn';
+import LangSwitcher from '@/app/LangSwitcher';
 
 export default function ConfirmReminderEmail() {
   const token = String(useParams()?.token || '');
   const supabase = createClient();
+  // Τα αγγλικά από τον πάροχο του layout (app/RecipientCopy.tsx)· χωρίς αυτόν, ελληνικά.
+  const R = useToolDict('recipient').en;
+  const E = R?.confirm;
+  const L = R?.link;
   // ═══ Η ΠΤΩΣΗ ΔΙΚΤΥΟΥ ΕΛΕΓΕ «Ο ΣΥΝΔΕΣΜΟΣ ΔΕΝ ΕΙΝΑΙ ΕΓΚΥΡΟΣ» ═══════════════
   // `setState(!error && data === true ? 'ok' : 'invalid')`: το σφάλμα της
   // κλήσης και η απόρριψη του κουπονιού κατέληγαν στην ίδια οθόνη. Ο χρήστης
@@ -70,32 +76,33 @@ export default function ConfirmReminderEmail() {
                 11px γκρι κάτω από το σήμα, ενώ η ερώτηση από κάτω ήταν σώμα
                 κειμένου, δηλαδή ιεραρχία ανάποδα. Τώρα το σήμα είναι μικρή
                 ετικέτα και ο τίτλος 16px. */}
-            <h1 style={{ fontSize: 16, color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.3, margin: '2px 0 0', textWrap: 'balance' }}>Επιβεβαίωση διεύθυνσης υπενθυμίσεων</h1>
+            <h1 style={{ fontSize: 16, color: 'var(--text-primary)', fontWeight: 700, lineHeight: 1.3, margin: '2px 0 0', textWrap: 'balance' }}>{E ? E.title : 'Επιβεβαίωση διεύθυνσης υπενθυμίσεων'}</h1>
           </div>
+          <LangSwitcher place="bar" here={E ? 'en' : 'el'} />
         </div>
 
         {state === 'ask' && (
           <div style={{ paddingTop: T.sp.xl }}>
             <p style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.6, margin: 0 }}>
-              Θέλεις να λαμβάνεις τις υπενθυμίσεις του PROPERWISE σε αυτή τη διεύθυνση;
+              {E ? E.ask : 'Θέλεις να λαμβάνεις τις υπενθυμίσεις του PROPERWISE σε αυτή τη διεύθυνση;'}
             </p>
             {/* ΠΟΙΟΣ ΕΔΩΣΕ ΤΗ ΔΙΕΥΘΥΝΣΗ ΚΑΙ ΠΟΥ ΛΕΓΕΤΑΙ ΤΙ ΚΡΑΤΑΜΕ. Ο παραλήπτης δεν
                 τη μοιράστηκε ο ίδιος: τη γράφει ένας χρήστης. Οταν τα στοιχεία
                 δεν συλλέγονται από το υποκείμενο, το άρθρο 14 GDPR ζητά να
                 μάθει την πηγή τους και πού διαβάζει την ενημέρωση. */}
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '12px 0 0' }}>
-              Αυτή τη διεύθυνση την όρισε χρήστης του PROPERWISE για να λαμβάνεις υπενθυμίσεις. Δες την{' '}
-              <Link href="/privacy" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Πολιτική απορρήτου</Link>.
+              {E ? E.whyBefore : 'Αυτή τη διεύθυνση την όρισε χρήστης του PROPERWISE για να λαμβάνεις υπενθυμίσεις. Δες την '}
+              <Link href={E ? '/en/privacy' : '/privacy'} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>{E ? E.whyLink : 'Πολιτική απορρήτου'}</Link>.
             </p>
-            <div style={{ marginTop: 16 }}><Btn variant="primary" onClick={confirm}>Ναι, επιβεβαιώνω</Btn></div>
+            <div style={{ marginTop: 16 }}><Btn variant="primary" onClick={confirm}>{E ? E.yes : 'Ναι, επιβεβαιώνω'}</Btn></div>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '16px 0 0' }}>
-              Αν δεν το ζήτησες, κλείσε τη σελίδα. Δεν θα λάβεις τίποτα.
+              {E ? E.notYou : 'Αν δεν το ζήτησες, κλείσε τη σελίδα. Δεν θα λάβεις τίποτα.'}
             </p>
           </div>
         )}
 
         {state === 'loading' && (
-          <div style={{ padding: '34px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>Γίνεται επιβεβαίωση…</div>
+          <div style={{ padding: '34px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>{E ? E.confirming : 'Γίνεται επιβεβαίωση…'}</div>
         )}
 
         {state === 'ok' && (
@@ -104,7 +111,7 @@ export default function ConfirmReminderEmail() {
               {/* Το εικονίδιο της αδελφής /verify: ένα «✓» κειμένου δεν κάθεται
                   στο ίδιο οπτικό ύψος με τη γραμμή και αλλάζει ανά γραμματοσειρά. */}
               <CircleCheckBig size={18} strokeWidth={2.5} aria-hidden="true" style={{ color: 'var(--positive)', flexShrink: 0 }} />
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--positive)' }}>Η διεύθυνση επιβεβαιώθηκε.</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--positive)' }}>{E ? E.done : 'Η διεύθυνση επιβεβαιώθηκε.'}</span>
             </div>
             {/* ΤΕΣΣΕΡΙΣ ΓΡΑΜΜΕΣ ΜΕ ΤΥΧΑΙΑ ΤΕΛΗ, ΣΕ ΚΑΡΤΑ 384. Η κάρτα είναι 440
                 μείον 2×28 γέμισμα, δηλαδή μέτρο ~58 χαρακτήρων στα 13 — στενή
@@ -112,7 +119,7 @@ export default function ConfirmReminderEmail() {
                 πέρα πέρα με δικά μας μαλακά ενωτικά: χωρίς αυτά η ίδια στοίχιση
                 θα τέντωνε τα κενά αντί να σπάσει λέξη. */}
             <p className="po-just" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              {hy(<>Από εδώ και πέρα οι υπενθυμίσεις για λογαριασμούς, ενοίκια και γεγονότα του ημερολογίου θα φτάνουν σε αυτή τη διεύθυνση. Αν θέλεις να σταματήσουν, η διεύθυνση αλλάζει ή σβήνεται από τον λογαριασμό που την όρισε.</>)}
+              {E ? E.doneBody : hy(<>Από εδώ και πέρα οι υπενθυμίσεις για λογαριασμούς, ενοίκια και γεγονότα του ημερολογίου θα φτάνουν σε αυτή τη διεύθυνση. Αν θέλεις να σταματήσουν, η διεύθυνση αλλάζει ή σβήνεται από τον λογαριασμό που την όρισε.</>)}
             </p>
           </div>
         )}
@@ -123,7 +130,7 @@ export default function ConfirmReminderEmail() {
             νόημα η μία να κλείνει δεξιά κι η άλλη όχι. */}
         {state === 'invalid' && (
           <p className="po-just" style={{ paddingTop: T.sp.xl, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            {hy(<>Ο σύνδεσμος δεν είναι έγκυρος, έχει λήξει ή χρησιμοποιήθηκε ήδη. Νέα επιβεβαίωση στέλνεται από τον λογαριασμό που όρισε αυτή τη διεύθυνση, στις Ειδοποιήσεις.</>)}
+            {E ? E.invalid : hy(<>Ο σύνδεσμος δεν είναι έγκυρος, έχει λήξει ή χρησιμοποιήθηκε ήδη. Νέα επιβεβαίωση στέλνεται από τον λογαριασμό που όρισε αυτή τη διεύθυνση, στις Ειδοποιήσεις.</>)}
           </p>
         )}
 
@@ -132,9 +139,9 @@ export default function ConfirmReminderEmail() {
         {state === 'offline' && (
           <div style={{ paddingTop: T.sp.xl }}>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-              Δεν λάβαμε απάντηση, οπότε ο σύνδεσμος δεν ελέγχθηκε. Μπορεί να είναι έγκυρος.
+              {E ? E.offline : 'Δεν λάβαμε απάντηση, οπότε ο σύνδεσμος δεν ελέγχθηκε. Μπορεί να είναι έγκυρος.'}
             </p>
-            <div style={{ marginTop: 16 }}><Btn onClick={confirm}>Δοκίμασε ξανά</Btn></div>
+            <div style={{ marginTop: 16 }}><Btn onClick={confirm}>{L ? L.retry : 'Δοκίμασε ξανά'}</Btn></div>
           </div>
         )}
       </div>

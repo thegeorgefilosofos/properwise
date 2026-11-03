@@ -323,6 +323,16 @@ const prop = (over: Partial<PortalProperty> = {}): PortalProperty => ({
   eq('το φορολογητέο είναι στο μερίδιο', indicativeTax(propertyLines([half], 2025), 2025).taxable, 5700);
 }
 
+// ── ΤΟ ΕΙΔΟΣ ΓΡΑΦΕΤΑΙ ΣΤΑ ΕΛΛΗΝΙΚΑ, ΟΧΙ ΩΣ ΚΛΕΙΔΙ ΤΗΣ ΒΑΣΗΣ ──────────────────
+// Η στήλη «Είδος» της Κατάστασης έγραφε «apartment»: το κλειδί της βάσης
+// περνούσε αυτούσιο στο αρχείο που ανοίγει ο λογιστής.
+{
+  const lines = linesOf([prop({ prop_type: 'apartment' })]);
+  const sheets = statementSheets({ owner: 'Ι', year: 2025, issued: '18/08/2026', lines });
+  const cols = sheets[0].columns.map(c => c.header);
+  eq('το είδος γράφεται με το ελληνικό του όνομα', sheets[0].rows[0][cols.indexOf('Είδος')], 'Διαμέρισμα');
+}
+
 console.log(`\nstatement.ts — ${passed} passed, ${failed} failed`);
 if (failed) { console.log('FAILED:\n' + fails.map(f => '  ✗ ' + f).join('\n')); process.exit(1); }
 console.log('✓ όλα πέρασαν');

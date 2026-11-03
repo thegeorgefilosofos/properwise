@@ -32,7 +32,7 @@ export const CHROME_EN = {
   },
   foot: {
     about: ['Costs, taxes and deadlines for property in Greece.', 'For owners and professionals.'] as [string, string],
-    product: 'Product', home: 'Home', pricing: 'Plans and pricing', faq: 'FAQ',
+    product: 'Product', home: 'Home', pricing: 'Plans and pricing', accountants: 'For accountants', faq: 'FAQ',
     guides: 'Guides',
     guideLinks: [
       ['/odigos/pos-ypologizetai-o-enfia', 'How ENFIA is calculated'],

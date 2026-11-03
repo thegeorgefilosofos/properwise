@@ -1,3 +1,4 @@
+import { resolveStaged } from '@/lib/assistant/stagedFile';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireSecondStep } from '@/lib/auth/secondStep';
@@ -156,6 +157,13 @@ export async function POST(req: NextRequest) {
   // Claude με χρέωση δική μας). Μηνύματα πρέπει να υπάρχουν.
   if (!Array.isArray(body?.messages) || body.messages.length === 0) {
     return NextResponse.json({ error: 'Λείπουν μηνύματα.' }, { status: 400 });
+  }
+  // ── ΤΟ ΜΕΓΑΛΟ PDF ΕΡΧΕΤΑΙ ΑΠΟ ΤΟΝ ΧΩΡΟ ΑΡΧΕΙΩΝ ΤΟΥ ΧΡΗΣΤΗ ─────
+  // lib/assistant/stagedFile.ts: μόνο `<uid>/scan-tmp/<uuid>.pdf` του ίδιου
+  // χρήστη, με τη δική του συνεδρία (RLS). Κρίνεται πριν από τον μετρητή, ώστε
+  // η χρέωση και το αποτύπωμα να βλέπουν το πραγματικό αρχείο.
+  if (!(await resolveStaged(body, user.id, supabase.storage))) {
+    return NextResponse.json({ error: 'Το αρχείο δεν διαβάστηκε. Ανέβασέ το ξανά.' }, { status: 400 });
   }
   // ── Η ΓΝΩΣΗ ΤΗΣ ΝΟΑΣ ΤΗ ΒΑΖΕΙ Ο ΔΙΑΚΟΜΙΣΤΗΣ ─────────────────────
   // Με `persona: 'noa'` ο πελάτης στέλνει μόνο το προσωπικό κείμενο και το

@@ -221,7 +221,7 @@ function footFor(locale: Locale) {
       privacy: enLinks([e.privacy])[0] ?? null,
       social: e.social,
       cols: [
-        { label: e.product, links: enLinks([['/', e.home], ['/signup', signupCtaEn()], ['/paketa', e.pricing], ['/#faq', e.faq]]) },
+        { label: e.product, links: enLinks([['/', e.home], ['/signup', signupCtaEn()], ['/paketa', e.pricing], ['/logistes', e.accountants], ['/#faq', e.faq]]) },
         { label: CHROME_EN.nav.calcs, links: [...enTools().map(t => [t.href, t.label] as [string, string]), ...enLinks([['/ergaleia', CHROME_EN.nav.allTools]])] },
         { label: e.guides, links: enLinks(e.guideLinks) },
         // Η ΥΠΑΝΑΧΩΡΗΣΗ ΜΕΝΕΙ ΚΑΙ ΣΤΑ ΑΓΓΛΙΚΑ. Το άρθ. 11α της Οδηγίας 2011/83/ΕΕ

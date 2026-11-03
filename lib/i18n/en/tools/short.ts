@@ -65,7 +65,7 @@ export const SHORT_EN = {
 export const SHORT_PAGE_EN = {
   title: 'Short-term vs long-term rental in Greece: which pays more',
   h1: 'Short-term or long-term rental: which leaves you more in Greece',
-  description: 'Compare an Airbnb-style short-term let with a long-term lease in Greece, after income tax, the climate resilience fee, platform fees and running costs.',
+  description: 'Compare an Airbnb-style short-term let with a long-term lease in Greece, after income tax, the climate crisis resilience fee, platform fees and running costs.',
   lede: 'What each option leaves you with after Greek tax, the climate crisis resilience fee, the platform fee and running costs, and the occupancy at which short-term starts to pay.',
   ctaTitle: 'Whichever you choose, the costs need keeping in order.',
   ctaBody: 'PROPERWISE keeps rents, bills and expenses per property and prepares the figures for form E2 (the Greek schedule of property income) for your accountant.',

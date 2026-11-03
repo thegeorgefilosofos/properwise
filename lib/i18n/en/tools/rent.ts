@@ -104,7 +104,7 @@ export function rentFaqEn(x: {
     {
       q: 'What changes if I collect rent in cash?',
       a: `Under Law 5222/2025 (Article 210), the ${x.deduction} standard deduction applies only if rent is paid electronically or through a bank; in cash, tax is calculated on 100% instead of ${x.taxedShare}. `
-        + `The penalty starts on ${x.bankFrom} (AADE decision A.1187/2026): for ${x.bankYear - 2} and ${x.bankYear - 1} income the deduction applies however the rent is collected.`,
+        + `The penalty starts on ${x.bankFrom} (AADE Decision A.1187/2026): for ${x.bankYear - 2} and ${x.bankYear - 1} income the deduction applies however the rent is collected.`,
     },
     {
       q: 'Is ENFIA included?',

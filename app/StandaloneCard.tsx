@@ -44,8 +44,10 @@ export const CARD_NOTE: CSSProperties = {
   fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.55, margin: '14px 0 0',
 };
 
-export function StandaloneCard({ children, themed = false }: {
+export function StandaloneCard({ children, themed = false, aside }: {
   children: ReactNode;
+  /** Ό,τι κάθεται δεξιά από το σήμα (ο επιλογέας γλώσσας των σελίδων παραλήπτη). */
+  aside?: ReactNode;
   /** Ακολουθεί το θέμα του χρήστη, όπως η σύνδεση και η εγγραφή (το ταμείο). */
   themed?: boolean;
 }) {
@@ -57,8 +59,9 @@ export function StandaloneCard({ children, themed = false }: {
       style={themed ? { ...shell, background: 'var(--bg-base)', color: 'var(--text-primary)' } : shell}>
       <div className="po-standalone-card">
         {/* Το σήμα με τη λέξη, όπως στην κεφαλίδα: όχι τίτλος, απλό στοιχείο. */}
-        <div style={{ paddingBottom: T.sp.lg, borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+        <div style={{ paddingBottom: T.sp.lg, borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-primary)', ...(aside ? { display: 'flex', alignItems: 'center', gap: 12 } : null) }}>
           <BrandLogo />
+          {aside}
         </div>
         {children}
       </div>

@@ -13,6 +13,8 @@ import { createClient } from '@/lib/supabase/client';
 import { T, Btn, formGrid } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
 import { linkLoad, LINK_SAY } from '@/lib/portal/linkLoad';
+import { useToolDict } from '@/lib/i18n/toolEn';
+import LangSwitcher from '@/app/LangSwitcher';
 
 interface CheckinContext { property: { name: string; address: string | null } }
 
@@ -20,6 +22,10 @@ export default function GuestCheckin() {
   const params = useParams();
   const token = String(params?.token || '');
   const supabase = createClient();
+  // Τα αγγλικά από τον πάροχο του layout (app/RecipientCopy.tsx)· χωρίς αυτόν, ελληνικά.
+  const R = useToolDict('recipient').en;
+  const E = R?.checkin;
+  const L = R?.link;
 
   const [ctx, setCtx] = useState<CheckinContext | null>(null);
   // Ιδιος διαχωρισμός με την πύλη μισθωτή: άκυρο κουπόνι και πεσμένο δίκτυο
@@ -66,8 +72,8 @@ export default function GuestCheckin() {
     setSending(false);
     // Το σφάλμα δικτύου λέει «ξαναδοκίμασε»· η άρνηση της βάσης λέει «κοίτα τα
     // στοιχεία». Ενα μήνυμα για τα δύο στέλνει τον μισό κόσμο να ψάχνει λάθος.
-    if (error) { setErr('Δεν φτάσαμε ως τον διακομιστή. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.'); return; }
-    if (!ok) { setErr('Δεν ήταν δυνατή η υποβολή. Έλεγξε τα στοιχεία και δοκίμασε ξανά.'); return; }
+    if (error) { setErr(L ? L.noServer : 'Δεν φτάσαμε ως τον διακομιστή. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.'); return; }
+    if (!ok) { setErr(E ? E.refused : 'Δεν ήταν δυνατή η υποβολή. Έλεγξε τα στοιχεία και δοκίμασε ξανά.'); return; }
     setSent(true);
   };
 
@@ -89,17 +95,18 @@ export default function GuestCheckin() {
               Τα γνωρίσματα είναι αυτούσια αυτά του `span`, συν `margin:0` που
               ακυρώνει το προεπιλεγμένο περιθώριο του `h1`: η εμφάνιση δεν
               αλλάζει ούτε κατά ένα εικονοστοιχείο. */}
-          <h1 style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', margin: 0 }}>Στοιχεία διαμονής</h1>
+          <h1 style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', margin: 0 }}>{E ? E.title : 'Στοιχεία διαμονής'}</h1>
+          <LangSwitcher place="bar" here={E ? 'en' : 'el'} />
         </div>
       </header>
 
       <div style={wrap}>
-        {state === 'loading' && <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 60 }}>Φόρτωση…</div>}
+        {state === 'loading' && <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 60 }}>{L ? L.loading : 'Φόρτωση…'}</div>}
 
         {state === 'notfound' && (
           <div style={{ ...card, textAlign: 'center' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6 }}>{LINK_SAY.notFoundTitle}</div>
-            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>Ζήτησε από τον οικοδεσπότη έναν ενημερωμένο σύνδεσμο.</div>
+            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6 }}>{L ? L.notFoundTitle : LINK_SAY.notFoundTitle}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>{E ? E.askHost : 'Ζήτησε από τον οικοδεσπότη έναν ενημερωμένο σύνδεσμο.'}</div>
           </div>
         )}
 
@@ -107,14 +114,14 @@ export default function GuestCheckin() {
             δεν βεβαιώνουμε τίποτα (lib/portal/linkLoad.ts). */}
         {state === 'offline' && (
           <div style={{ ...card, textAlign: 'center' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6 }}>{LINK_SAY.offlineTitle}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6 }}>{L ? L.offlineTitle : LINK_SAY.offlineTitle}</div>
             <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: 16 }}>
-              {LINK_SAY.offlineBody}
+              {L ? L.offlineBody : LINK_SAY.offlineBody}
             </div>
             {/* Το κοινό κουμπί, όχι ζωγραφισμένο στο χέρι: ίδια όψη, ίδιες
                 καταστάσεις αιώρησης και εστίασης, ίδιο ύψος αφής με όλη την
                 εφαρμογή. */}
-            <Btn variant="primary" onClick={() => setTries(t => t + 1)}>{LINK_SAY.retry}</Btn>
+            <Btn variant="primary" onClick={() => setTries(t => t + 1)}>{L ? L.retry : LINK_SAY.retry}</Btn>
           </div>
         )}
 
@@ -122,33 +129,33 @@ export default function GuestCheckin() {
           <>
             <div style={card}>
               <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 2 }}>{ctx.property.name}</div>
-              <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{ctx.property.address || 'Καλωσόρισες! Συμπλήρωσε τα στοιχεία σου για γρήγορη άφιξη.'}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{ctx.property.address || (E ? E.welcome : 'Καλωσόρισες! Συμπλήρωσε τα στοιχεία σου για γρήγορη άφιξη.')}</div>
             </div>
 
             {sent ? (
               <div style={{ ...card, textAlign: 'center' }}>
-                <div style={{ background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: 10, padding: '16px', color: 'var(--positive)', fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>✓ Ευχαριστούμε! Τα στοιχεία στάλθηκαν στον οικοδεσπότη.</div>
-                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12, lineHeight: 1.6 }}>Καλό ταξίδι και καλή διαμονή!</div>
+                <div style={{ background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: 10, padding: '16px', color: 'var(--positive)', fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>✓ {E ? E.sentTitle : 'Ευχαριστούμε! Τα στοιχεία στάλθηκαν στον οικοδεσπότη.'}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12, lineHeight: 1.6 }}>{E ? E.sentSub : 'Καλό ταξίδι και καλή διαμονή!'}</div>
               </div>
             ) : (
               <div style={card}>
-                <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 4 }}>Τα στοιχεία σου</div>
-                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 16, lineHeight: 1.5 }}>Χρειάζονται για τη νόμιμη δήλωση διαμονής. Μένουν ιδιωτικά, τα βλέπει μόνο ο οικοδεσπότης.</div>
+                <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 4 }}>{E ? E.formTitle : 'Τα στοιχεία σου'}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 16, lineHeight: 1.5 }}>{E ? E.formSub : 'Χρειάζονται για τη νόμιμη δήλωση διαμονής. Μένουν ιδιωτικά, τα βλέπει μόνο ο οικοδεσπότης.'}</div>
                 <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {/* ΣΤΑΘΕΡΑ id, ΟΧΙ useId: η σελίδα είναι ΕΝΑ στιγμιότυπο ανά
                       σύνδεσμο, οπότε δεν υπάρχει δεύτερη φόρμα να συγκρουστεί.
                       Οι οκτώ ετικέτες ήταν αδελφοί των πεδίων χωρίς htmlFor:
                       ο αναγνώστης οθόνης άκουγε οκτώ φορές «επεξεργασία
                       κειμένου», σε φόρμα που ζητά διαβατήριο και γέννηση. */}
-                  <div><label htmlFor="ci-name" style={label}>Ονοματεπώνυμο *</label><input id="ci-name" required value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Όπως στην ταυτότητα/διαβατήριο" style={field} /></div>
+                  <div><label htmlFor="ci-name" style={label}>{E ? E.fullName : 'Ονοματεπώνυμο *'}</label><input id="ci-name" required value={fullName} onChange={e => setFullName(e.target.value)} placeholder={E ? E.fullNamePlaceholder : 'Όπως στην ταυτότητα/διαβατήριο'} style={field} /></div>
                   <div style={{ ...formGrid(200, 270), gap: 14 }}>
-                    <div><label htmlFor="ci-id" style={label}>Αριθμός ταυτότητας / διαβατηρίου</label><input id="ci-id" value={idNumber} onChange={e => setIdNumber(e.target.value)} style={field} /></div>
-                    <div><label htmlFor="ci-nat" style={label}>Εθνικότητα</label><input id="ci-nat" value={nationality} onChange={e => setNationality(e.target.value)} placeholder="Ελληνική" style={field} /></div>
-                    <div><label htmlFor="ci-birth" style={label}>Ημερομηνία γέννησης</label><input id="ci-birth" type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} style={field} /></div>
-                    <div><label htmlFor="ci-arrival" style={label}>Ημερομηνία άφιξης</label><input id="ci-arrival" type="date" value={arrival} onChange={e => setArrival(e.target.value)} style={field} /></div>
-                    <div><label htmlFor="ci-phone" style={label}>Τηλέφωνο (προαιρετικό)</label><input id="ci-phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+30…" style={field} /></div>
-                    <div><label htmlFor="ci-email" style={label}>Ηλεκτρονικό ταχυδρομείο (προαιρετικό)</label><input id="ci-email" type="email" value={email} onChange={e => setEmail(e.target.value)} style={field} /></div>
-                    <div><label htmlFor="ci-guests" style={label}>Αριθμός ατόμων</label><input id="ci-guests" inputMode="numeric" value={guests} onChange={e => setGuests(e.target.value.replace(/[^\d]/g, ''))} placeholder="2" style={field} /></div>
+                    <div><label htmlFor="ci-id" style={label}>{E ? E.idNumber : 'Αριθμός ταυτότητας / διαβατηρίου'}</label><input id="ci-id" value={idNumber} onChange={e => setIdNumber(e.target.value)} style={field} /></div>
+                    <div><label htmlFor="ci-nat" style={label}>{E ? E.nationality : 'Εθνικότητα'}</label><input id="ci-nat" value={nationality} onChange={e => setNationality(e.target.value)} placeholder={E ? E.nationalityPlaceholder : 'Ελληνική'} style={field} /></div>
+                    <div><label htmlFor="ci-birth" style={label}>{E ? E.birthDate : 'Ημερομηνία γέννησης'}</label><input id="ci-birth" type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} style={field} /></div>
+                    <div><label htmlFor="ci-arrival" style={label}>{E ? E.arrival : 'Ημερομηνία άφιξης'}</label><input id="ci-arrival" type="date" value={arrival} onChange={e => setArrival(e.target.value)} style={field} /></div>
+                    <div><label htmlFor="ci-phone" style={label}>{E ? E.phone : 'Τηλέφωνο (προαιρετικό)'}</label><input id="ci-phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+30…" style={field} /></div>
+                    <div><label htmlFor="ci-email" style={label}>{E ? E.email : 'Ηλεκτρονικό ταχυδρομείο (προαιρετικό)'}</label><input id="ci-email" type="email" value={email} onChange={e => setEmail(e.target.value)} style={field} /></div>
+                    <div><label htmlFor="ci-guests" style={label}>{E ? E.guests : 'Αριθμός ατόμων'}</label><input id="ci-guests" inputMode="numeric" value={guests} onChange={e => setGuests(e.target.value.replace(/[^\d]/g, ''))} placeholder="2" style={field} /></div>
                   </div>
                   {/* GDPR: ΔΥΟ ΒΑΣΕΙΣ, ΟΠΩΣ ΤΙΣ ΓΡΑΦΕΙ ΚΑΙ Η ΠΟΛΙΤΙΚΗ ΑΠΟΡΡΗΤΟΥ. Ολα
                       ζητούνταν «με συγκατάθεση», ενώ τα στοιχεία της δήλωσης
@@ -168,7 +175,7 @@ export default function GuestCheckin() {
                           Το po-just δεν πάει ποτέ μόνο του: χωρίς συλλαβισμό η στοίχιση τεντώνει
                           τα κενά αντί να σπάσει λέξη. */}
                       <span className="po-just">
-                        {hy(<>Τα στοιχεία ταυτότητας τα ζητά ο οικοδεσπότης επειδή τα απαιτεί ο νόμος για τη δήλωση διαμονής. Αν έδωσα τηλέφωνο ή email, συναινώ να τα χρησιμοποιήσει μόνο για την επικοινωνία της κράτησης. Έλαβα γνώση της{' '}
+                        {E ? <>{E.consentBefore}<a href="/en/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'underline' }}>{E.consentLink}</a>{E.consentAfter}</> : hy(<>Τα στοιχεία ταυτότητας τα ζητά ο οικοδεσπότης επειδή τα απαιτεί ο νόμος για τη δήλωση διαμονής. Αν έδωσα τηλέφωνο ή email, συναινώ να τα χρησιμοποιήσει μόνο για την επικοινωνία της κράτησης. Έλαβα γνώση της{' '}
                         <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'underline' }}>Πολιτικής απορρήτου</a>.</>)}
                       </span>
                     </label>
@@ -178,15 +185,15 @@ export default function GuestCheckin() {
                   {/* `field` γιατί η φόρμα είναι μία στήλη: το κουμπί παίρνει το πλάτος
                       και το ύψος των πεδίων από πάνω του, όπως είχε. */}
                   <Btn variant="primary" type="submit" field disabled={sending || !fullName.trim() || !privacyConsent}>
-                    {sending ? 'Αποστολή…' : 'Αποστολή στοιχείων'}
+                    {sending ? (L ? L.sending : 'Αποστολή…') : (E ? E.send : 'Αποστολή στοιχείων')}
                   </Btn>
                   <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.5 }}>
-                    Τα στοιχεία σου διαβιβάζονται κρυπτογραφημένα και τα βλέπει μόνο ο οικοδεσπότης. Μπορείς να ζητήσεις διαγραφή τους όποτε θέλεις.
+                    {E ? E.footnote : 'Τα στοιχεία σου διαβιβάζονται κρυπτογραφημένα και τα βλέπει μόνο ο οικοδεσπότης. Μπορείς να ζητήσεις διαγραφή τους όποτε θέλεις.'}
                   </div>
                 </form>
               </div>
             )}
-            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>Με το PROPERWISE</div>
+            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>{L ? L.poweredBy : 'Με το PROPERWISE'}</div>
           </>
         )}
       </div>

@@ -25,7 +25,7 @@ import {
 import { navLabel } from '@/lib/nav/labels';
 import { athensToday } from '@/lib/core/time';
 import {
-  scanDocument, commitScannedDoc, MAX_SCAN_MB, SYSTEM_PROMPT as SCAN_SYSTEM_PROMPT,
+  scanDocument, commitScannedDoc, SCAN_FILE_MAX_MB, SYSTEM_PROMPT as SCAN_SYSTEM_PROMPT,
   SCAN_ACCEPT, unreadableFormat, withAnswer, failedNotice, openQuestion,
   type ReconcileQuestion, type CommitAnswers,
 } from './scanDoc';
@@ -289,9 +289,9 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
     if (unreadable) { setError(unreadable); return; }
     // Όριο μεγέθους: προστατεύει και την αποθήκευση και την πληρωμένη κλήση AI από
     // τεράστια αρχεία (το base64 φουσκώνει ~33%, οπότε 10MB ≈ 13MB payload).
-    if (f.size > MAX_SCAN_MB * 1024 * 1024) {
+    if (f.size > SCAN_FILE_MAX_MB * 1024 * 1024) {
       // Ο ίδιος μορφοποιητής με τη γραμμή του αρχείου: «9,5 MB», όχι «9.5MB».
-      setError(`Το αρχείο είναι πολύ μεγάλο (${sizeLabel(f.size)}). Όριο ${MAX_SCAN_MB} MB.`); return;
+      setError(`Το αρχείο είναι πολύ μεγάλο (${sizeLabel(f.size)}). Όριο ${SCAN_FILE_MAX_MB} MB.`); return;
     }
     // προεπισκόπηση-blob: δείχνει το αρχείο και το ανοίγει σε νέα καρτέλα, δεν κατεβάζει.
     setFile(f); setFileUrl(URL.createObjectURL(f)); setEdited(null); setError(''); setAsk(null); setDuplicate(''); setAnswers({});
@@ -647,6 +647,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
         : error === 'key_missing' ? 'Η αυτόματη ανάγνωση δεν είναι ενεργή ακόμη'
         : error === 'save' ? 'Κάτι πήγε στραβά στην αποθήκευση'
         : error === 'format' ? 'Αυτός ο τύπος αρχείου δεν διαβάζεται'
+        : error === 'big' ? 'Το αρχείο είναι πολύ μεγάλο για ανάγνωση'
         : 'Η υπηρεσία ανάγνωσης δεν είναι διαθέσιμη τώρα';
       const tips = error === 'unreadable'
         ? ['Τράβα τη φωτογραφία με καλό φως, ίσια, να χωράει όλο το έγγραφο', 'Αν έχεις PDF από τον πάροχο/φορέα, ανέβασέ το, διαβάζεται καλύτερα']
@@ -655,6 +656,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
         : error === 'save' ? ['Δοκίμασε ξανά, τα στοιχεία σου διατηρούνται']
         : error === 'quota' ? [errorText || SAY.scanQuotaSpent, 'Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά']
         : error === 'format' ? [errorText || 'Διαβάζονται φωτογραφίες και αρχεία PDF', 'Συμπλήρωσε τα πεδία χειροκίνητα και αποθήκευσε κανονικά']
+        : error === 'big' ? ['Ανέβασε φωτογραφία του εγγράφου ή μικρότερο PDF', 'Συμπλήρωσε τα πεδία χειροκίνητα']
         : ['Δοκίμασε ξανά σε λίγο', 'Συμπλήρωσε τα πεδία χειροκίνητα'];
       return { tone: 'warning', body: <><strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{title}.</strong> {tips.map(sentence).join(' ')}</> };
     }

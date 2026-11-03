@@ -47,6 +47,12 @@ export const PAGE_PAIRS = [
   ['/odigos/airbnb-takk-2026', '/en/guides/airbnb-tax-greece-2026'],
   ['/odigos/vraxyxronia-ama-prodiagrafes-2026', '/en/guides/short-term-rental-registry-greece'],
   ['/odigos/enfia-2026-pliromi-doseis-pistopoiitiko', '/en/guides/enfia-payment-instalments-certificate'],
+  ['/odigos/ekptosi-forou-anakainisis', '/en/guides/renovation-tax-credit-greece'],
+  ['/odigos/enoikio-meso-trapezas', '/en/guides/rent-paid-through-a-bank'],
+  ['/odigos/forologikes-prothesmies-idioktiton', '/en/guides/greek-property-tax-calendar'],
+  ['/odigos/plafon-3-emporikes-misthoseis-2026', '/en/guides/commercial-rent-cap-greece-2026'],
+  ['/odigos/spiti-mou-3-ti-allazei', '/en/guides/spiti-mou-3-greek-home-loan-program'],
+  ['/logistes', '/en/for-accountants'],
 ] as const satisfies readonly (readonly [string, string])[];
 
 const EL_TO_EN = new Map<string, string>(PAGE_PAIRS.map(([el, en]) => [el, en]));

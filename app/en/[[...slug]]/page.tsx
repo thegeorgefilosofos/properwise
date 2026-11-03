@@ -15,6 +15,12 @@ import * as guideRentalTax from '../guides/greek-rental-income-tax-2026/view';
 import * as guideAirbnb from '../guides/airbnb-tax-greece-2026/view';
 import * as guideStr from '../guides/short-term-rental-registry-greece/view';
 import * as guideEnfiaPay from '../guides/enfia-payment-instalments-certificate/view';
+import * as guideReno from '../guides/renovation-tax-credit-greece/view';
+import * as guideBank from '../guides/rent-paid-through-a-bank/view';
+import * as guideCalendar from '../guides/greek-property-tax-calendar/view';
+import * as guideRentCap from '../guides/commercial-rent-cap-greece-2026/view';
+import * as guideSpiti from '../guides/spiti-mou-3-greek-home-loan-program/view';
+import * as accountants from '../for-accountants/view';
 import * as enfia from '../enfia-calculator/view';
 import * as mortgage from '../mortgage-calculator/view';
 import * as purchase from '../property-purchase-costs/view';
@@ -74,6 +80,12 @@ const PAGES = new Map<string, { view: View; frame?: Frame }>([
   ['/en/guides/airbnb-tax-greece-2026', { view: guideAirbnb }],
   ['/en/guides/short-term-rental-registry-greece', { view: guideStr }],
   ['/en/guides/enfia-payment-instalments-certificate', { view: guideEnfiaPay }],
+  ['/en/guides/renovation-tax-credit-greece', { view: guideReno }],
+  ['/en/guides/rent-paid-through-a-bank', { view: guideBank }],
+  ['/en/guides/greek-property-tax-calendar', { view: guideCalendar }],
+  ['/en/guides/commercial-rent-cap-greece-2026', { view: guideRentCap }],
+  ['/en/guides/spiti-mou-3-greek-home-loan-program', { view: guideSpiti }],
+  ['/en/for-accountants', { view: accountants }],
   ['/en/enfia-calculator', { view: enfia }],
   ['/en/mortgage-calculator', { view: mortgage }],
   ['/en/property-purchase-costs', { view: purchase }],

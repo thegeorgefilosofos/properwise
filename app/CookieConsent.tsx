@@ -14,7 +14,7 @@ import { Btn } from '@/components/Theme';
 // cookies: όποιος είχε δει την παλιά ενημέρωση δεν έβλεπε ποτέ τη νέα.
 import { POLICY_VERSION } from '@/lib/legal/identity';
 import { COOKIE_NOTICE_KEY as KEY, acknowledged } from './cookieNotice';
-import { localeOfPath } from '@/lib/i18n/locale';
+import { localeOfPath, isRecipientPath, type Locale } from '@/lib/i18n/locale';
 import { localHref } from '@/lib/i18n/paths';
 
 /** Οι φόρμες όπου το πλαίσιο δεν εμφανίζεται· το κουτάκι των Όρων προηγείται. */
@@ -53,7 +53,11 @@ function subscribe(l: () => void) {
 // και καθόταν πάνω σε κουμπιά και νούμερα της πρώτης οθόνης. Τώρα πιάνει τον
 // δικό του χώρο: στις δημόσιες σελίδες στο τέλος του layout, στο ταμπλό στην
 // κορυφή του περιεχομένου (`inline`), ώστε να φαίνεται χωρίς να σκεπάζει.
-export default function CookieConsent({ inline = false }: { inline?: boolean }) {
+export default function CookieConsent({ inline = false, pageLocale }: {
+  inline?: boolean;
+  /** Η γλώσσα του αιτήματος από τη ρίζα: μετρά μόνο στις σελίδες παραλήπτη, που κρατούν τη διεύθυνσή τους (lib/i18n/locale.ts). */
+  pageLocale?: Locale;
+}) {
   const pending = useSyncExternalStore(subscribe, needsNotice, () => true);
   // ΟΧΙ ΣΤΙΣ ΦΟΡΜΕΣ ΕΙΣΟΔΟΥ (28.09.2026). Στα 390 εικονοστοιχεία το πλαίσιο
   // καθόταν πάνω στο κουτάκι των Όρων της εγγραφής και στο κάτω μέρος της
@@ -62,7 +66,7 @@ export default function CookieConsent({ inline = false }: { inline?: boolean }) 
   // απόφαση, οπότε μπορεί να περιμένει την επόμενη σελίδα· η εγγραφή όχι.
   const pathname = usePathname();
   const inDashboard = (pathname ?? '').startsWith('/dashboard');
-  const locale = localeOfPath(pathname);
+  const locale = isRecipientPath(pathname ?? '') ? (pageLocale ?? 'el') : localeOfPath(pathname);
   const en = locale === 'en';
   const show = pending && !AUTH_PATHS.has(pathname ?? '') && (inline ? inDashboard : !inDashboard);
 

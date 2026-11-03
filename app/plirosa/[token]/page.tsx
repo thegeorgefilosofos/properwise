@@ -11,6 +11,9 @@ import { T } from '@/components/tokens';
 import { fe } from '@/lib/core/format';
 import { peekForPage } from '@/lib/reminders/payPage';
 import { PAY_UNDO_HOURS } from '@/lib/reminders/payLink';
+import { requestLocale } from '@/lib/i18n/serverLocale';
+import { PAY_EN } from '@/lib/i18n/en/recipients';
+import LangSwitcher from '../../LangSwitcher';
 import { PayActions } from './PayActions';
 
 export const dynamic = 'force-dynamic';
@@ -20,27 +23,35 @@ const BOX = { maxWidth: 480, margin: '0 auto', padding: 'clamp(28px,6vw,48px) 20
 export default async function Page({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const peek = await peekForPage(token, new Date());
+  // ΙΔΙΑ ΔΙΕΥΘΥΝΣΗ ΚΑΙ ΣΤΑ ΑΓΓΛΙΚΑ (lib/i18n/locale.ts, isRecipientPath). Ο
+  // τίτλος της προθεσμίας είναι δεδομένο της εφαρμογής και μένει όπως είναι.
+  const E = (await requestLocale()) === 'en' ? PAY_EN : null;
   return (
     <div data-mode="dark" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
       <main style={BOX}>
-        <div style={{ marginBottom: 28 }}><BrandMark /></div>
+        <div style={{ marginBottom: 28, display: 'flex', alignItems: 'center' }}><BrandMark /><LangSwitcher place="bar" here={E ? 'en' : 'el'} /></div>
         {!peek.ok ? (
           <>
             <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 10px' }}>
-              {peek.kind === 'expired' ? 'Ο σύνδεσμος έληξε' : peek.kind === 'error' ? 'Δεν φορτώθηκε τώρα' : 'Ο σύνδεσμος δεν ισχύει'}
+              {E ? (peek.kind === 'expired' ? E.expired : peek.kind === 'error' ? E.error : E.invalid)
+                : peek.kind === 'expired' ? 'Ο σύνδεσμος έληξε' : peek.kind === 'error' ? 'Δεν φορτώθηκε τώρα' : 'Ο σύνδεσμος δεν ισχύει'}
             </h1>
             <p style={{ margin: 0, fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-              {peek.kind === 'error' ? 'Δοκίμασε ξανά σε λίγο. ' : ''}Μπορείς να σημειώσεις την πληρωμή και από το Ημερολόγιο του ακινήτου σου στην εφαρμογή.
+              {E ? `${peek.kind === 'error' ? E.tryAgain : ''}${E.fromApp}`
+                : <>{peek.kind === 'error' ? 'Δοκίμασε ξανά σε λίγο. ' : ''}Μπορείς να σημειώσεις την πληρωμή και από το Ημερολόγιο του ακινήτου σου στην εφαρμογή.</>}
             </p>
           </>
         ) : (
           <>
             <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 10px', textWrap: 'balance' }}>{peek.title}</h1>
             {peek.amount != null && peek.amount > 0 && (
-              <p style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fe(peek.amount)}</p>
+              <p style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{E ? E.money(peek.amount) : fe(peek.amount)}</p>
             )}
             <PayActions token={token} used={peek.used} undoable={peek.undoable} undoHours={PAY_UNDO_HOURS} expenseEligible={peek.expenseEligible}
-              expenseDuplicate={peek.expenseDuplicate} expenseDefault={peek.expenseDefault} />
+              expenseDuplicate={peek.expenseDuplicate} expenseDefault={peek.expenseDefault}
+              en={E ? { ask: E.ask, withExpense: E.withExpense, duplicate: E.duplicate, paid: E.paid, paidPlain: E.paidDone(false),
+                paidExpense: E.paidDone(true), undo: E.undo, undoWindow: E.undoWindow(PAY_UNDO_HOURS), undone: E.undone(false),
+                undoneExpense: E.undone(true), used: E.used, failed: E.failed } : undefined} />
           </>
         )}
       </main>

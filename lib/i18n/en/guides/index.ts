@@ -28,18 +28,43 @@ const GUIDES_EN: readonly EnGuide[] = [
   },
   {
     el: '/odigos/enfia-2026-pliromi-doseis-pistopoiitiko', topic: 'enfia',
-    title: 'ENFIA 2026: payment, instalments and the certificate',
-    desc: 'When each instalment is due, where to pay on myAADE, how to get an ENFIA certificate for a sale and who finalizes it.',
+    title: 'ENFIA 2026: payment, installments and the certificate',
+    desc: 'When each installment is due, where to pay on myAADE, how to get an ENFIA certificate for a sale and who finalizes it.',
   },
   {
     el: '/odigos/airbnb-takk-2026', topic: 'enoikia',
     title: 'Airbnb tax in Greece in 2026',
-    desc: 'The climate resilience fee per night, what changes on November 1, how to file it on myAADE and how the income is taxed.',
+    desc: 'The climate crisis resilience fee per night, what changes on 1 November, how to file it on myAADE and how the income is taxed.',
   },
   {
     el: '/odigos/vraxyxronia-ama-prodiagrafes-2026', topic: 'enoikia',
     title: 'Short-term rentals in Greece: the AMA registry and requirements',
     desc: 'The freeze on new registrations in central Athens and Thessaloniki, why the AMA doesn’t transfer, safety requirements and fines.',
+  },
+  {
+    el: '/odigos/forologikes-prothesmies-idioktiton', topic: 'enfia',
+    title: 'Greek property tax calendar for owners',
+    desc: 'When ENFIA is paid, when form E9 is needed, when the income tax return is due and what short-term rentals file every month.',
+  },
+  {
+    el: '/odigos/ekptosi-forou-anakainisis', topic: 'enfia',
+    title: 'Greek renovation tax credit',
+    desc: 'How the Article 39B credit cuts your income tax, the conditions on payment and invoices, and how it differs from Anakainizo 2026.',
+  },
+  {
+    el: '/odigos/enoikio-meso-trapezas', topic: 'enoikia',
+    title: 'Rent through a bank in Greece',
+    desc: 'Why rent collected in cash loses the standard deduction, from when, what counts as a bank payment and what it costs in euros.',
+  },
+  {
+    el: '/odigos/plafon-3-emporikes-misthoseis-2026', topic: 'enoikia',
+    title: 'The cap on commercial rent increases in 2026',
+    desc: 'Which existing commercial leases the cap covers, which landlords are exempt and how much the rent changes, with an example.',
+  },
+  {
+    el: '/odigos/spiti-mou-3-ti-allazei', topic: 'agora',
+    title: 'Spiti mou III: Greece’s state-backed home loans',
+    desc: 'What Spiti mou I and II offered, what is official so far for the new round and what has only been reported.',
   },
 ];
 
@@ -56,6 +81,7 @@ export const GUIDES_HUB_EN = {
   lede: 'What Greek law says about rent, property tax and yield, in plain English, with every figure from the same code our calculators use.',
   eyebrow: 'Guides',
   more: 'More guides are available in Greek.',
+  allInGreek: 'Every guide is also available in Greek.',
   greekHub: 'All guides (Greek)',
 };
 

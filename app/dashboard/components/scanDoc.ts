@@ -19,6 +19,7 @@
 // 100% δοκιμασμένη. Εδώ μένουν μόνο οι κλήσεις δικτύου/βάσης.
 // ═══════════════════════════════════════════════════════════════════════════
 import { createClient } from '@/lib/supabase/client';
+import { STAGE_BUCKET, STAGE_MAX_BYTES, stagePathFor } from '@/lib/assistant/stagedFile';
 import { ensureDpa } from '@/lib/legal/dpa';
 import * as properties from '@/lib/data/properties';
 import * as billStore from '@/lib/data/bills';
@@ -175,6 +176,97 @@ function readFile(file: File): Promise<{ base64: string; mime: string }> {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// Η ΦΩΤΟΓΡΑΦΙΑ ΤΟΥ ΚΙΝΗΤΟΥ ΔΕΝ ΧΩΡΟΥΣΕ ΣΤΟ ΑΙΤΗΜΑ (03/11/2026)
+//
+// Λογαριασμός φυσικού αερίου, φωτογραφία iPhone 4,4 MB: σε base64 γίνεται
+// ~5,9 MB, ενώ ο διακομιστής δέχεται σώμα αιτήματος έως 4,5 MB. Το αίτημα
+// κοβόταν πριν φτάσει στη συνάρτηση (κανένα log), η απάντηση δεν ήταν JSON και
+// ο χρήστης διάβαζε «Η υπηρεσία ανάγνωσης δεν είναι διαθέσιμη τώρα».
+//
+// Τώρα η εικόνα μικραίνει στη συσκευή πριν φύγει: μακρύτερη πλευρά έως
+// SCAN_MAX_EDGE, JPEG. Για ανάγνωση εγγράφου αρκεί και το αίτημα μένει πολύ
+// κάτω από το όριο. Το PDF δεν μικραίνει εδώ· πάνω από SCAN_MAX_SEND_BYTES
+// επιστρέφει «big» με σαφές μήνυμα αντί για ψευδή βλάβη.
+// ══════════════════════════════════════════════════════════════════════════
+/** Τα bytes που στέλνονται: σε base64 ×4/3, μαζί με το prompt, κάτω από τα 4,5 MB. */
+export const SCAN_MAX_SEND_BYTES = 3_000_000;
+/** Η μακρύτερη πλευρά της εικόνας που στέλνεται για ανάγνωση. */
+export const SCAN_MAX_EDGE = 2000;
+
+/** Οι διαστάσεις μετά τη σμίκρυνση, με τη μακρύτερη πλευρά έως `edge`. */
+export function fitWithin(w: number, h: number, edge: number): { w: number; h: number } {
+  const long = Math.max(w, h);
+  if (long <= edge || long <= 0) return { w, h };
+  const k = edge / long;
+  return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)) };
+}
+
+/** Μικραίνει μια εικόνα σε JPEG. Επιστρέφει null όπου ο περιηγητής δεν μπορεί. */
+async function shrinkImage(file: File, edge: number, quality: number): Promise<{ base64: string; mime: string } | null> {
+  if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') return null;
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const { w, h } = fitWithin(bmp.width, bmp.height, edge);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { bmp.close?.(); return null; }
+    ctx.fillStyle = 'white'; // λευκό χαρτί πίσω από διαφανή PNG, όχι χρώμα θέματος
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(bmp, 0, 0, w, h);
+    bmp.close?.();
+    const blob: Blob | null = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+    if (!blob) return null;
+    const base64 = await new Promise<string>((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result || '').split(',')[1] || '');
+      r.onerror = () => rej(new Error('read'));
+      r.readAsDataURL(blob);
+    });
+    return { base64, mime: 'image/jpeg' };
+  } catch { return null; }
+}
+
+/** Το μεγαλύτερο αρχείο που δέχεται η σάρωση εγγράφου (το όριο του Φακέλου). */
+export const SCAN_FILE_MAX_MB = 20;
+
+/** Ανεβάζει PDF στον προσωρινό φάκελο του χρήστη· ο διακομιστής το σβήνει μόλις το διαβάσει. */
+async function stagePdf(file: File): Promise<string | null> {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const path = stagePathFor(user.id, crypto.randomUUID());
+    const { error } = await supabase.storage.from(STAGE_BUCKET)
+      .upload(path, file, { upsert: false, contentType: 'application/pdf' });
+    return error ? null : path;
+  } catch { return null; }
+}
+
+type Sendable = { base64: string; mime: string } | { staged: string };
+
+/**
+ * Το αρχείο όπως θα σταλεί: η εικόνα μικραίνει στη συσκευή· το PDF που δεν
+ * χωρά στο αίτημα περνά από τον χώρο αρχείων. `null` μόνο αν δεν γίνεται τίποτα.
+ */
+async function readForScan(file: File): Promise<Sendable | null> {
+  const mime = scanMime(file);
+  const isRaster = mime === 'image/jpeg' || mime === 'image/png' || mime === 'image/webp';
+  if (isRaster) {
+    for (const [edge, q] of [[SCAN_MAX_EDGE, 0.85], [1600, 0.75]] as const) {
+      const out = await shrinkImage(file, edge, q);
+      if (out && out.base64.length * 0.75 <= SCAN_MAX_SEND_BYTES) return out;
+    }
+  }
+  if (file.size <= SCAN_MAX_SEND_BYTES) return readFile(file);
+  if (mime === 'application/pdf' && file.size <= STAGE_MAX_BYTES) {
+    const staged = await stagePdf(file);
+    return staged ? { staged } : null;
+  }
+  return null;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // ΤΟ ΟΡΙΟ ΕΡΩΤΗΣΕΩΝ ΔΕΝ ΕΙΝΑΙ ΒΛΑΒΗ ΚΑΙ ΔΕΝ ΕΠΙΤΡΕΠΕΤΑΙ ΝΑ ΛΕΓΕΤΑΙ ΕΤΣΙ
 //
 // Το /api/anthropic απαντά 429 με προσεγμένο ελληνικό μήνυμα («Εφτασες τις 7
@@ -215,11 +307,11 @@ async function ask(body: unknown, timeoutMs = 45000): Promise<ScanFailure & { da
       // μήνα στο δωρεάν πακέτο, χωρίς όριο στα πληρωμένα), όχι στις ερωτήσεις της Νόας.
       body: JSON.stringify({ kind: 'scan', ...(body as object) }), signal: ctrl.signal,
     });
-    const data = await res.json();
+    // Το 413 το γράφει η πλατφόρμα πριν από τη συνάρτηση και ΔΕΝ είναι JSON:
+    // κρίνεται πριν από το res.json(), αλλιώς η ανάγνωση σκάει και γίνεται «βλάβη».
+    if (res.status === 413) return { error: 'big' };
+    const data = await res.json().catch(() => null);
     if (!res.ok || data?.error) {
-      // Το 413 έχει δική του, χρήσιμη απάντηση: «μίκρυνε το αρχείο», όχι
-      // «χάλασε η υπηρεσία». Ο τύπος `big` υπήρχε ήδη και δεν τον έφτανε τίποτα.
-      if (res.status === 413) return { error: 'big' };
       // 429: εξαντλημένο πακέτο ερωτήσεων. Δεν λύνεται με επανάληψη.
       if (res.status === 429) {
         return { error: 'quota', errorText: typeof data?.error === 'string' ? data.error : undefined };
@@ -240,13 +332,19 @@ const contentPartOf = (base64: string, mime: string) => mime === 'application/pd
   ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
   : { type: 'image', source: { type: 'base64', media_type: mime, data: base64 } };
 
+/** Το μπλοκ του αρχείου: base64, ή διαδρομή προσωρινού PDF (lib/assistant/stagedFile.ts). */
+const partOf = (s: Sendable) => 'staged' in s
+  ? { type: 'document', source: { type: 'staged', path: s.staged } }
+  : contentPartOf(s.base64, s.mime);
+
 /** Σκανάρει ένα αρχείο ως ΕΓΓΡΑΦΟ και επιστρέφει το δομημένο παραστατικό. */
 export async function scanDocument(file: File): Promise<ScanFailure & { doc?: ScannedDoc }> {
-  if (file.size > MAX_SCAN_MB * 1024 * 1024) return { error: 'big' };
+  if (file.size > SCAN_FILE_MAX_MB * 1024 * 1024) return { error: 'big' };
   if (!scanMime(file)) return { error: 'format', errorText: unreadableFormat(file) };
-  let base64 = '', mime = 'image/jpeg';
-  try { ({ base64, mime } = await readFile(file)); } catch { return { error: 'unreadable' }; }
-  const part = contentPartOf(base64, mime);
+  let sent: Sendable | null;
+  try { sent = await readForScan(file); } catch { return { error: 'unreadable' }; }
+  if (!sent) return { error: 'big' };
+  const part = partOf(sent);
 
   const attempt = async (hint: string): Promise<ScanFailure & { doc?: ScannedDoc }> => {
     const r = await ask({
@@ -323,8 +421,10 @@ export async function scanPhoto(file: File): Promise<ScanFailure & { photo?: { c
   if (file.size > MAX_SCAN_MB * 1024 * 1024) return { error: 'big' };
   const mimeOk = scanMime(file);
   if (!mimeOk.startsWith('image/')) return mimeOk ? { error: 'unreadable' } : { error: 'format', errorText: unreadableFormat(file) };
-  let base64 = '', mime = 'image/jpeg';
-  try { ({ base64, mime } = await readFile(file)); } catch { return { error: 'unreadable' }; }
+  let sent: Sendable | null;
+  try { sent = await readForScan(file); } catch { return { error: 'unreadable' }; }
+  if (!sent || 'staged' in sent) return { error: 'big' };
+  const { base64, mime } = sent;
   const r = await ask({
     model: 'claude-sonnet-5', max_tokens: 200, system: PHOTO_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: [contentPartOf(base64, mime), { type: 'text', text: 'Κατηγοριοποίησε αυτή τη φωτογραφία ακινήτου.' }] }],

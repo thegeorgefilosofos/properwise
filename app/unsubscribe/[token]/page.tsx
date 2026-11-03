@@ -13,10 +13,16 @@ import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useLoad } from '@/app/hooks/useLoad';
 import { IDENTITY } from '@/lib/legal/identity';
+import { useToolDict } from '@/lib/i18n/toolEn';
+import LangSwitcher from '@/app/LangSwitcher';
 
 export default function Unsubscribe() {
   const token = String(useParams()?.token || '');
   const supabase = createClient();
+  // Τα αγγλικά από τον πάροχο του layout (app/RecipientCopy.tsx)· χωρίς αυτόν, ελληνικά.
+  const R = useToolDict('recipient').en;
+  const E = R?.unsub;
+  const L = R?.link;
   const [state, setState] = useState<'loading' | 'ok' | 'notfound' | 'error'>('loading');
   const [product, setProduct] = useState(true);
   const [market, setMarket] = useState(true);
@@ -74,16 +80,16 @@ export default function Unsubscribe() {
     const { data, error } = await supabase.rpc('unsubscribe_email', { p_token: token, p_kind: kind });
     setBusy(false);
     if (error) {
-      setFailed('Η απεγγραφή δεν ολοκληρώθηκε. Δοκίμασε ξανά σε λίγο, ή στείλε μας μήνυμα και θα τη διαγράψουμε εμείς.');
+      setFailed(E ? E.failed : 'Η απεγγραφή δεν ολοκληρώθηκε. Δοκίμασε ξανά σε λίγο, ή στείλε μας μήνυμα και θα τη διαγράψουμε εμείς.');
       return;
     }
     if (!data) {
-      setFailed('Ο σύνδεσμος δεν είναι πλέον έγκυρος. Χρησιμοποίησε τον σύνδεσμο του τελευταίου email ή τον «Λογαριασμό» μέσα στην εφαρμογή.');
+      setFailed(E ? E.expired : 'Ο σύνδεσμος δεν είναι πλέον έγκυρος. Χρησιμοποίησε τον σύνδεσμο του τελευταίου email ή τον «Λογαριασμό» μέσα στην εφαρμογή.');
       return;
     }
     if (kind === 'product' || kind === 'all') setProduct(false);
     if (kind === 'market' || kind === 'all') setMarket(false);
-    setDone(kind === 'all' ? 'Απεγγράφηκες από όλα τα ενημερωτικά email.'
+    setDone(E ? (kind === 'all' ? E.doneAll : kind === 'product' ? E.doneProduct : E.doneMarket) : kind === 'all' ? 'Απεγγράφηκες από όλα τα ενημερωτικά email.'
       : kind === 'product' ? 'Απεγγράφηκες από τα προϊοντικά νέα.' : 'Απεγγράφηκες από τα δεδομένα αγοράς.');
   };
 
@@ -99,24 +105,25 @@ export default function Unsubscribe() {
               σήμα. Χωρίς `h1` η σελίδα ανακοινωνόταν ανώνυμη. */}
           {/* Ο ΤΙΤΛΟΣ ΕΙΝΑΙ Ο ΤΙΤΛΟΣ. Ηταν 11px κάτω από ένα «PROPERWISE» 15/700 και
               διαβαζόταν σαν υπότιτλος· τώρα το σήμα είναι η μικρή γραμμή από πάνω. */}
-          <div><div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>PROPERWISE</div><h1 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Απεγγραφή από ενημερωτικά email</h1></div>
+          <div><div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>PROPERWISE</div><h1 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{E ? E.title : 'Απεγγραφή από ενημερωτικά email'}</h1></div>
+          <LangSwitcher place="bar" here={E ? 'en' : 'el'} />
         </div>
 
-        {state === 'loading' && <div style={{ padding: '34px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>Φόρτωση…</div>}
-        {state === 'notfound' && <p style={{ paddingTop: T.sp.xl, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>Ο σύνδεσμος δεν είναι έγκυρος ή έχει λήξει. Τις προτιμήσεις σου τις αλλάζεις από τον «Λογαριασμό» μέσα στην εφαρμογή.</p>}
+        {state === 'loading' && <div style={{ padding: '34px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>{L ? L.loading : 'Φόρτωση…'}</div>}
+        {state === 'notfound' && <p style={{ paddingTop: T.sp.xl, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{E ? E.notFound : 'Ο σύνδεσμος δεν είναι έγκυρος ή έχει λήξει. Τις προτιμήσεις σου τις αλλάζεις από τον «Λογαριασμό» μέσα στην εφαρμογή.'}</p>}
         {/* Ο σύνδεσμος δεν κρίθηκε: δεν πήραμε απάντηση. Το λέμε με αυτά τα
             λόγια και δίνουμε το κουμπί, γιατί η μόνη σωστή ενέργεια είναι να
             ξαναρωτήσεις — όχι να φύγεις νομίζοντας ότι έχασες το δικαίωμά σου. */}
         {state === 'error' && (
           <div style={{ paddingTop: T.sp.xl }}>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-              Δεν καταφέραμε να διαβάσουμε τις προτιμήσεις σου. Ο σύνδεσμος δεν ελέγχθηκε, οπότε μπορεί κάλλιστα να είναι έγκυρος.
+              {E ? E.error : 'Δεν καταφέραμε να διαβάσουμε τις προτιμήσεις σου. Ο σύνδεσμος δεν ελέγχθηκε, οπότε μπορεί κάλλιστα να είναι έγκυρος.'}
             </p>
-            <div style={{ marginTop: 16 }}><Btn onClick={retry}>Δοκίμασε ξανά</Btn></div>
+            <div style={{ marginTop: 16 }}><Btn onClick={retry}>{L ? L.retry : 'Δοκίμασε ξανά'}</Btn></div>
             {/* Η ΑΠΕΓΓΡΑΦΗ ΔΕΝ ΕΞΑΡΤΑΤΑΙ ΑΠΟ ΤΟ ΔΙΚΤΥΟ ΜΑΣ. Αν ούτε η δεύτερη
                 προσπάθεια πετύχει, υπάρχει δρόμος που δεν περνά από αυτή τη σελίδα. */}
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '16px 0 0' }}>
-              Αν δεν γίνει, γράψε στο <a href={`mailto:${IDENTITY.privacyEmail}`} style={{ color: 'var(--accent)' }}>{IDENTITY.privacyEmail}</a> και σε απεγγράφουμε εμείς.
+              {E ? E.ifNot[0] : 'Αν δεν γίνει, γράψε στο '}<a href={`mailto:${IDENTITY.privacyEmail}`} style={{ color: 'var(--accent)' }}>{IDENTITY.privacyEmail}</a>{E ? E.ifNot[1] : ' και σε απεγγράφουμε εμείς.'}
             </p>
           </div>
         )}
@@ -127,13 +134,13 @@ export default function Unsubscribe() {
               ? <div role="alert" style={{ background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: T.radius.inner, padding: '12px 16px', marginBottom: 16 }}><span style={{ fontSize: 13, fontWeight: 600, color: 'var(--negative)', lineHeight: 1.6 }}>{failed}</span></div>
               : done
               ? <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--positive-soft)', border: '1px solid var(--positive-border)', borderRadius: 10, padding: '11px 14px', marginBottom: 16 }}><span style={{ color: 'var(--positive)', fontWeight: 700 }}>✓</span><span style={{ fontSize: 13, fontWeight: 600, color: 'var(--positive)' }}>{done}</span></div>
-              : <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 16 }}>Διάλεξε από τι θέλεις να απεγγραφείς. Τα λειτουργικά email (υπενθυμίσεις, καταστάσεις) δεν επηρεάζονται.</p>}
+              : <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 16 }}>{E ? E.choose : 'Διάλεξε από τι θέλεις να απεγγραφείς. Τα λειτουργικά email (υπενθυμίσεις, καταστάσεις) δεν επηρεάζονται.'}</p>}
             <div style={{ display: 'grid', gap: 10 }}>
               {/* `field` γιατί η στοίβα είναι πλήρους πλάτους, όπως ήταν και το τοπικό btn(). */}
-              {product && <Btn field variant="secondary" disabled={busy} onClick={() => unsubscribe('product')}>Απεγγραφή από προϊοντικά νέα</Btn>}
-              {market && <Btn field variant="secondary" disabled={busy} onClick={() => unsubscribe('market')}>Απεγγραφή από δεδομένα αγοράς</Btn>}
-              {(product || market) && <Btn field variant="primary" disabled={busy} onClick={() => unsubscribe('all')}>Απεγγραφή από όλα</Btn>}
-              {!product && !market && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Έχεις απεγγραφεί από όλα τα ενημερωτικά email.</p>}
+              {product && <Btn field variant="secondary" disabled={busy} onClick={() => unsubscribe('product')}>{E ? E.product : 'Απεγγραφή από προϊοντικά νέα'}</Btn>}
+              {market && <Btn field variant="secondary" disabled={busy} onClick={() => unsubscribe('market')}>{E ? E.market : 'Απεγγραφή από δεδομένα αγοράς'}</Btn>}
+              {(product || market) && <Btn field variant="primary" disabled={busy} onClick={() => unsubscribe('all')}>{E ? E.all : 'Απεγγραφή από όλα'}</Btn>}
+              {!product && !market && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{E ? E.none : 'Έχεις απεγγραφεί από όλα τα ενημερωτικά email.'}</p>}
             </div>
           </div>
         )}
