@@ -211,7 +211,7 @@ async function shrinkImage(file: File, edge: number, quality: number): Promise<{
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext('2d');
     if (!ctx) { bmp.close?.(); return null; }
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = 'white'; // λευκό χαρτί πίσω από διαφανή PNG, όχι χρώμα θέματος
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(bmp, 0, 0, w, h);
     bmp.close?.();
