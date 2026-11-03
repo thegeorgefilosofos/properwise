@@ -72,9 +72,9 @@ export const ENFIA_EN = {
   empty: 'Enter the floor area and zone price to see the estimate.',
   annual: 'ENFIA per year',
   perMonth: 'Per month',
-  perInstalment: (n: number) => `Per instalment, ${n} instalments`,
+  perInstalment: (n: number) => `Per installment, ${n} installments`,
   sayMonthly: (a: string, m: string) => `ENFIA ${a} a year, ${m} a month.`,
-  sayInstalments: (a: string, n: number, i: string) => `ENFIA ${a} a year, in ${n} instalments of ${i}.`,
+  sayInstalments: (a: string, n: number, i: string) => `ENFIA ${a} a year, in ${n} installments of ${i}.`,
   sayOnce: (a: string) => `ENFIA ${a} a year, paid at once.`,
   value: 'Objective value of the property (estimate)',
   yourShare: (pct: string) => `Your share (${pct})`,
@@ -90,13 +90,13 @@ export const ENFIA_EN = {
   notIncluded: (relief: string | null) =>
     `The estimate covers one building and assumes your total real estate equals that building. If you own other properties, plots or storage units, the reduction and the surcharge change, so the amount on your assessment will differ. It does not include the legal reductions and exemptions that depend on criteria (low income, families with three or more children, disability), the reduction for an insured home${relief ? `, ${relief}` : ''}, or the special coefficients for plots and frontage. If you think you qualify for a reduction or exemption, check with your accountant.`,
   estimate: 'It is an estimate to give you the order of magnitude, not tax advice.',
-  caption: (n: number, year: number) => n === 1 ? `The ${year} instalment` : `The ${n} instalments of ${year}`,
-  upcoming: 'Upcoming instalments',
-  colNo: 'Instalment', colDue: 'Due', colAmount: 'Amount',
+  caption: (n: number, year: number) => n === 1 ? `The ${year} installment` : `The ${n} installments of ${year}`,
+  upcoming: 'Upcoming installments',
+  colNo: 'Installment', colDue: 'Due', colAmount: 'Amount',
   next: 'next', past: 'past due',
-  onlyNext: 'Upcoming only', all: (n: number) => `All ${n} instalments`,
+  onlyNext: 'Upcoming only', all: (n: number) => `All ${n} installments`,
   schedule: (max: number, min: string, year: number, confirmed: boolean) =>
-    `ENFIA is paid at once or in up to ${max} monthly instalments, the last one at the latest in February of the following year, as the law provides. Each instalment must be at least ${min}, so for a small amount there are fewer instalments. The exact dates are on the assessment; ${confirmed ? `for ${year} they are those in the table, the last working day of each month.` : `for ${year} they have not been announced, and the table shows the last working day of each month, as in recent years.`} The last instalment takes the rounding difference, so the instalments add up exactly to the annual amount.`,
+    `ENFIA is paid at once or in up to ${max} monthly installments, the last one at the latest in February of the following year, as the law provides. Each installment must be at least ${min}, so for a small amount there are fewer installments. The exact dates are on the assessment; ${confirmed ? `for ${year} they are those in the table, the last working day of each month.` : `for ${year} they have not been announced, and the table shows the last working day of each month, as in recent years.`} The last installment takes the rounding difference, so the installments add up exactly to the annual amount.`,
 };
 
 /** Η μείωση των μικρών οικισμών (lib/tools/enfiaRelief.ts), στα αγγλικά. Ιδια πηγή, ίδιοι αριθμοί. */
@@ -118,7 +118,7 @@ export const ENFIA_PAGE_EN = {
   description: 'Estimate ENFIA, Greece’s annual property tax, from your property’s floor area, zone price, floor and age. No sign-up.',
   lede: 'ENFIA is Greece’s annual tax on real estate. It depends on the floor area, the zone price, the floor and the age of the building.',
   ctaTitle: 'Own more than one property?',
-  ctaBody: 'PROPERWISE estimates ENFIA for all your properties together, with the reduction that matches your total real estate, and reminds you of every instalment before it falls due.',
+  ctaBody: 'PROPERWISE estimates ENFIA for all your properties together, with the reduction that matches your total real estate, and reminds you of every installment before it falls due.',
   official: ['The official amount is on the AADE assessment. On ', ', with your TAXISnet credentials: '] as const,
 };
 

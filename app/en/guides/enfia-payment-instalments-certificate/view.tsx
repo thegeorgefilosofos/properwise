@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { siteUrl } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
 import { fmtFor } from '@/lib/core/format';
+import { longDateEn, dayMonthEn, monthNameEn } from '@/lib/i18n/en/dates';
 import { AADE_DESTINATIONS } from '@/lib/tax/aade';
 import { AADE_CALENDAR_URL } from '@/lib/tax/greekTaxCalendar';
 import { ENFIA_INSTALMENTS, ENFIA_MIN_INSTALMENT } from '@/lib/tools/enfiaSchedule';
@@ -22,7 +23,7 @@ import { GuideShellEn, type EnFaq } from '../GuideShellEn';
 const PATH = '/en/guides/enfia-payment-instalments-certificate';
 const EL = '/odigos/enfia-2026-pliromi-doseis-pistopoiitiko';
 const f = fmtFor('en');
-const long = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return `${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][m - 1]} ${d}, ${y}`; };
+const long = longDateEn;
 
 /** Ο οδηγός αφορά το εκκαθαριστικό αυτού του έτους, όπως ο ελληνικός. */
 const YEAR = 2026;
@@ -38,23 +39,23 @@ const AUTOFILE = obligationOf(YEAR, 'income-autofile').date;
 const PORTAL = AADE_DESTINATIONS.enfia;
 const ENFIA_PATH = PORTAL.steps.slice(0, -1);
 const PATH_TEXT = ENFIA_PATH.map(s => `“${s}”`).join(' › ');
-const RULE = `up to ${ENFIA_INSTALMENTS} monthly instalments, the last one no later than ${long(LAST).split(' ')[0]} of the following year, as the law provides. Each instalment must be at least ${f.feWhole(ENFIA_MIN_INSTALMENT)}, so a small amount means fewer instalments.`;
+const RULE = `up to ${ENFIA_INSTALMENTS} monthly installments, the last one no later than ${monthNameEn(Number(LAST.slice(5, 7)))} of the following year, as the law provides. Each installment must be at least ${f.feWhole(ENFIA_MIN_INSTALMENT)}, so a small amount means fewer installments.`;
 const RANGE = ISSUED
   ? `The exact dates are on the assessment notice; for ${YEAR} they run from ${long(FIRST)} to ${long(LAST)}.`
   : `The exact dates are on the assessment notice; for ${YEAR} they haven’t been announced yet and, as in recent years, are expected to run from ${long(FIRST)} to ${long(LAST)}.`;
 const MITOS_CERT = 'https://mitos.gov.gr/index.php/%CE%94%CE%94:%CE%A0%CE%B9%CF%83%CF%84%CE%BF%CF%80%CE%BF%CE%B9%CE%B7%CF%84%CE%B9%CE%BA%CF%8C_%CE%95%CE%9D.%CE%A6.%CE%99.%CE%91.';
 const GOV_FINALIZE = 'https://www.gov.gr/arxes/anexartete-arkhe-demosion-esodon-aade/anexartete-arkhe-demosion-esodon-aade/egkuroteta-oristikopoiese-pistopoietikou-enphia';
 
-const H1 = `ENFIA ${YEAR}: payment, instalments, the ENFIA certificate and its finalization`;
-const DESC = `When each ${YEAR} ENFIA instalment is due, where to click on myAADE to pay, how to get an ENFIA certificate for a sale and who finalizes it.`;
+const H1 = `ENFIA ${YEAR}: payment, installments, the ENFIA certificate and its finalization`;
+const DESC = `When each ${YEAR} ENFIA installment is due, where to click on myAADE to pay, how to get an ENFIA certificate for a sale and who finalizes it.`;
 
 export function generateMetadata(): Metadata {
   return publicMetadata({ title: H1, description: DESC, url: siteUrl(PATH), type: 'article', image: shareImage('en-guide-enfia-payment') });
 }
 
 const FAQ: EnFaq[] = [
-  { q: `When is ENFIA ${YEAR} paid?`, a: `In one payment or in ${RULE} ${RANGE} Each instalment is due on the last working day of its month. If the last day of the month falls on a weekend or holiday, the instalment is due on the previous working day.` },
-  { q: 'In how many instalments can ENFIA be paid?', a: `In one payment or in ${RULE} With ${N} instalments, the first is due on ${long(FIRST)} and the last on ${long(LAST)}.` },
+  { q: `When is ENFIA ${YEAR} paid?`, a: `In one payment or in ${RULE} ${RANGE} Each installment is due on the last working day of its month. If the last day of the month falls on a weekend or holiday, the installment is due on the previous working day.` },
+  { q: 'In how many installments can ENFIA be paid?', a: `In one payment or in ${RULE} With ${N} installments, the first is due on ${long(FIRST)} and the last on ${long(LAST)}.` },
   { q: 'How do I pay ENFIA?', a: `Sign in to ${PORTAL.portal} with your TAXISnet credentials and go to ${PATH_TEXT}. The assessment notice shows a payment ID. You pay with it through your bank’s web banking.` },
   { q: 'How do I get an ENFIA certificate?', a: `Online, at no cost, from ${PORTAL.portal}: ${PATH_TEXT}, then Certificates, where you enter the property’s ATAK number. For a sale, the certificate only confirms that the property appears on form E9 for the previous five years (six, including the year of transfer, if it is issued after that year’s assessment). You don’t need to have paid overdue ENFIA to get it.` },
   { q: 'What is finalizing the ENFIA certificate?', a: 'It is the final use of the certificate in a deed, and the notary does it, not the owner. The notary checks that the certificate is valid and finalizes it by citing it in and attaching it to the deed. After that it can’t be used again: a second deed needs a new certificate.' },
@@ -68,22 +69,22 @@ export default function Page() {
   const { left, next } = instalmentStatus(DATES, today);
   const sections = [
     {
-      id: 'instalments', over: '1. Instalments', title: `When each ${YEAR} instalment is due`,
+      id: 'installments', over: '1. Installments', title: `When each ${YEAR} installment is due`,
       body: <>
-        <p className="lg-p">Each instalment is due on the last working day of its month. If the last day of the month falls on a weekend or holiday, it is due on the previous working day: the dates in the table already allow for that.</p>
+        <p className="lg-p">Each installment is due on the last working day of its month. If the last day of the month falls on a weekend or holiday, it is due on the previous working day: the dates in the table already allow for that.</p>
         <p className="lg-p">{next
-          ? `Today, ${long(today)}, ${left} of the ${N} instalments remain. The next one is due on ${long(next)}.`
-          : `All ${YEAR} ENFIA instalments are past due. The next assessment and its first instalment are on the tax deadlines page.`}</p>
+          ? `Today, ${long(today)}, ${left} of the ${N} installments remain. The next one is due on ${long(next)}.`
+          : `All ${YEAR} ENFIA installments are past due. The next assessment and its first installment are on the tax deadlines page.`}</p>
         <div className="po-table-box gd-table gd-table-wide" style={{ marginTop: 14 }}>
           <div className="po-scroll-x" style={{ overflowX: 'auto' }}>
             <table className="po-table" style={{ ['--tbl-min' as string]: '300px' }}>
-              <caption>{`ENFIA ${YEAR} instalments`}</caption>
-              <thead><tr><th scope="col">Instalment</th><th scope="col">Due</th></tr></thead>
+              <caption>{`ENFIA ${YEAR} installments`}</caption>
+              <thead><tr><th scope="col">Installment</th><th scope="col">Due</th></tr></thead>
               <tbody>
                 {DATES.map((d, i) => (
                   <tr key={d}>
                     <th scope="row">
-                      <span style={{ display: 'block', fontWeight: 600, color: 'var(--text-primary)' }}>{`Instalment ${i + 1}`}</span>
+                      <span style={{ display: 'block', fontWeight: 600, color: 'var(--text-primary)' }}>{`Installment ${i + 1}`}</span>
                       <span style={{ display: 'block', marginTop: 2, fontSize: 13, color: 'var(--text-tertiary)' }}>
                         {d < today ? 'Past due' : d === next ? 'Next' : FIRST_OBL.confidence === 'statutory' ? 'Date set by law' : 'Last year’s date'}
                       </span>
@@ -106,7 +107,7 @@ export default function Page() {
           <li>The assessment notice shows a payment ID.</li>
           <li>Pay through your bank’s web banking, with that payment ID.</li>
         </ol>
-        <div className="lg-note lg-note-tip" style={{ marginTop: 16 }}>If you pay in instalments, each one is due on the date in the table above. When the end of the month falls on a weekend or holiday, the instalment is due earlier, not later.</div>
+        <div className="lg-note lg-note-tip" style={{ marginTop: 16 }}>If you pay in installments, each one is due on the date in the table above. When the end of the month falls on a weekend or holiday, the installment is due earlier, not later.</div>
       </>,
     },
     {
@@ -121,7 +122,7 @@ export default function Page() {
       body: <>
         <p className="lg-p">The ENFIA certificate (Article 60 of the Tax Procedure Code, Law 5104/2024) is required by the notary when a property is transferred or a right is created over it, such as a mortgage or a pre-notation. The owner gets it online, at no cost, with TAXISnet credentials. Only for the property of a deceased person, on acceptance of an inheritance, can the notary issue it digitally with the heir’s authorization.</p>
         <p className="lg-p">For a sale, the certificate only confirms that the property appears on the ENFIA return (form E9) for the previous five years. If it is issued after that year’s assessment, it covers six years, including the year of transfer. You don’t need to have paid overdue ENFIA to get it: this applies from 01.06.2023, under Article 16 of Law 5036/2023.</p>
-        <p className="lg-p">A certificate issued after that year’s assessment is valid until December 31 of the year of issue. Before the assessment is out, it is valid until it is cited in and attached to the deed (AADE Decision A.1085/2023, Article 3).</p>
+        <p className="lg-p">A certificate issued after that year’s assessment is valid until 31 December of the year of issue. Before the assessment is out, it is valid until it is cited in and attached to the deed (AADE Decision A.1085/2023, Article 3).</p>
         <ol className="lg-ul">
           <li>Sign in to <a href={PORTAL.url} {...EXT}>{PORTAL.portal}</a>{` and go to ${PATH_TEXT}.`}</li>
           <li>From the available actions choose Certificates.</li>
@@ -134,23 +135,23 @@ export default function Page() {
       id: 'finalization', over: '5. Finalization', title: 'The notary does it',
       body: <>
         <p className="lg-p">“Finalizing ENFIA” concerns the certificate, not the tax. The notary, as a certified user, checks on TAXISnet that the certificate you provided is “in force” and finalizes it by citing it in and attaching it to the deed. After that the same certificate can’t be used again: a second deed needs a new one. A year’s certificates are finalized by the end of January of the following year.</p>
-        <p className="lg-p">{`It has nothing to do with the automatic finalization of the income tax return: pre-filled returns left unchanged until ${long(AUTOFILE).replace(/, \d{4}$/, '')} are finalized by AADE. See the `}<Link href="/en/tax-deadlines" className="lp-link" style={LINK}>tax deadlines for property owners</Link>.</p>
+        <p className="lg-p">{`It has nothing to do with the automatic finalization of the income tax return: pre-filled returns left unchanged until ${dayMonthEn(AUTOFILE)} are finalized by AADE. See the `}<Link href="/en/tax-deadlines" className="lp-link" style={LINK}>tax deadlines for property owners</Link>.</p>
       </>,
     },
   ];
   return (
-    <GuideShellEn el={EL} path={PATH} h1={H1} description={DESC} about={`ENFIA ${YEAR}: payment, instalments, the ENFIA certificate and its finalization`}
+    <GuideShellEn el={EL} path={PATH} h1={H1} description={DESC} about={`ENFIA ${YEAR}: payment, installments, the ENFIA certificate and its finalization`}
       intro={<>
         <p className="lg-p">{ISSUED
           ? `The ${YEAR} ENFIA assessment notices are posted on ${PORTAL.portal}, the online portal of AADE, the Greek tax authority. ENFIA, Greece’s annual property tax, is paid in one payment or in ${RULE} ${RANGE}`
           : `The ${YEAR} ENFIA assessment hasn’t been issued yet. The dates on this page follow last year’s schedule and will be confirmed when it is issued.`}</p>
-        <p className="lg-p">This guide answers what people look for when it is time to act: when each instalment is due, where to click to pay, how to get an ENFIA certificate for a sale and what finalizing it means.</p>
+        <p className="lg-p">This guide answers what people look for when it is time to act: when each installment is due, where to click to pay, how to get an ENFIA certificate for a sale and what finalizing it means.</p>
       </>}
       sections={sections}
       sources={[
         BASIS
-          ? `ENFIA ${YEAR} assessment: AADE Decision A.${DECISION}. Instalments and deadlines: Law 4223/2013, Article 6, as codified in Law 5219/2025 (each instalment by the last working day of its month).`
-          : `ENFIA instalments and deadlines: Law 4223/2013, Article 6, as codified in Law 5219/2025. The ${YEAR} assessment is announced by AADE.`,
+          ? `ENFIA ${YEAR} assessment: AADE Decision A.${DECISION}. Installments and deadlines: Law 4223/2013, Article 6, as codified in Law 5219/2025 (each installment by the last working day of its month).`
+          : `ENFIA installments and deadlines: Law 4223/2013, Article 6, as codified in Law 5219/2025. The ${YEAR} assessment is announced by AADE.`,
         `Access to the assessment (${ENFIA_PATH.map(s => `“${s}”`).join(' › ')}) and payment with the payment ID through web banking: AADE press releases of ${f.date(`${YEAR}-03-15`)} and ${f.date(`${YEAR}-05-08`)}.`,
         'ENFIA certificate, legal basis: Article 60 of Law 5104/2024 (Tax Procedure Code), formerly Article 54A of Law 4987/2022 as amended by Article 16 of Law 5036/2023. From 01.06.2023, for a sale it only confirms that the property appears on the ENFIA return for the previous five years (six, including the year of transfer, if it is issued after that year’s assessment). Start: AADE press release of 31.05.2023.',
         <>{'Form, content, validity and issuing procedure of the certificate: AADE Decision A.1085/2023 (Government Gazette B 3617/31.05.2023), as amended by A.1082/2024 (validity for deceased persons) and A.1114/2024 (Government Gazette B 4293/22.07.2024, new templates and digital issue by the notary on acceptance of an inheritance) · '}<a href={MITOS_CERT} {...EXT}>ENFIA certificate in the National Register of Administrative Procedures</a>.</>,

@@ -35,7 +35,7 @@ const f = fmtFor('en');
 const eur = (n: number) => (Number.isInteger(n) ? f.feWhole(n) : f.fe(n));
 const pct = (rate: number) => f.fpRate(rate * 100);
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as const;
-const dayMonth = (iso: string) => { const [, m, d] = iso.split('-').map(Number); return `${MONTHS[m - 1].slice(0, 3)} ${d}`; };
+const dayMonth = (iso: string) => { const [, m, d] = iso.split('-').map(Number); return `${d} ${MONTHS[m - 1].slice(0, 3)}`; };
 
 const SQM = CLIMATE_LEVY_AREA_SQM;
 const SMALL = CLIMATE_LEVY_FROM_2025.small;
@@ -74,21 +74,21 @@ const LEVY_LABEL: Record<ClimateLevyCategory, string> = {
   'furnished-rooms': 'Furnished rooms and apartments to let',
 };
 
-const H1 = `Airbnb tax in Greece in ${FIRST_YEAR_NEW_BRACKETS}: the climate resilience fee, income tax and local fees`;
-const DESC = 'How much the climate resilience fee is per night in 2026, what changes on November 1, how it is filed on myAADE and how Airbnb income is taxed in Greece.';
+const H1 = `Airbnb tax in Greece in ${FIRST_YEAR_NEW_BRACKETS}: the climate crisis resilience fee, income tax and local fees`;
+const DESC = 'How much the climate crisis resilience fee is per night in 2026, what changes on 1 November, how it is filed on myAADE and how Airbnb income is taxed in Greece.';
 
 export function generateMetadata(): Metadata {
-  return publicMetadata({ title: `Greek climate resilience fee on Airbnb in ${FIRST_YEAR_NEW_BRACKETS}: amounts, filing, tax`, description: DESC, url: siteUrl(PATH), type: 'article', image: shareImage('en-guide-airbnb-tax') });
+  return publicMetadata({ title: `Greek climate crisis resilience fee on Airbnb in ${FIRST_YEAR_NEW_BRACKETS}: amounts, filing, tax`, description: DESC, url: siteUrl(PATH), type: 'article', image: shareImage('en-guide-airbnb-tax') });
 }
 
 const FAQ: EnFaq[] = [
-  { q: 'Who pays the climate resilience fee?', a: 'The guest, per night. The host is responsible for collecting it and paying it over to AADE every month. If you charge it to the guest, it is not your cost; it becomes one only if you don’t collect it.' },
+  { q: 'Who pays the climate crisis resilience fee?', a: 'The guest, per night. The host is responsible for collecting it and paying it over to AADE every month. If you charge it to the guest, it is not your cost; it becomes one only if you don’t collect it.' },
   { q: 'How much is the fee per night?', a: `For a short-term rental apartment (any size) or a detached house up to ${SQM} m²: ${eur(SMALL.high)} in the high season (April to October) and ${eur(SMALL.low)} in the low season (November to March). For detached houses over ${SQM} m²: ${eur(LARGE.high)} and ${eur(LARGE.low)}. A ${EXAMPLE_SQM} m² apartment pays ${eur(APARTMENT.high)} / ${eur(APARTMENT.low)}.` },
   { q: 'Do I owe the municipal visitor fee?', a: `The municipal visitor fee is ${RESIDENT_FEE} of the rent (Article 30, Law 5143/2024); according to AADE’s short-term rental FAQ it is charged on the net rent, before VAT and the climate fee. According to the same FAQ (Q. 26), an individual with ${MAX} and no registered business doesn’t owe it; the law itself doesn’t state this exemption.` },
   { q: 'Do I need to charge VAT?', a: `No, if you only let the property (property income with the ${DEDUCTION} standard deduction). If you provide any service beyond bed linen (such as cleaning during the stay, breakfast or a reception), the activity counts as a business, is subject to VAT and loses the standard deduction. Your accountant decides this.` },
   { q: 'Do I need a property registry number (AMA)?', a: `Yes. Every short-term rental is registered in AADE’s Short-Term Rental Property Registry, and the registry number (AMA) must appear in every listing (Airbnb, Booking). In ${ATHENS_AREA}, no new AMA numbers are issued until ${f.date(ATHENS.to)}. The same applies in ${THESS_AREA} from ${f.date(THESS.from)} to ${f.date(THESS.to)}.` },
   { q: 'How is short-term rental income taxed?', a: `Without services, on the same progressive rental brackets (${SCALE_SHORT}) from tax year ${FIRST_YEAR_NEW_BRACKETS}, after a ${DEDUCTION} standard deduction. The climate fee and the visitor fee are separate from income tax.` },
-  { q: 'How much is the fee from November 1, 2026?', a: `From November 1 through March the low rate applies: ${eur(SMALL.low)} per night for a short-term rental apartment (${eur(LARGE.low)} for a detached house over ${SQM} m²). From April 1 through October the high rate applies (${eur(SMALL.high)} / ${eur(LARGE.high)}).` },
+  { q: 'How much is the fee from 1 November 2026?', a: `From 1 November through March the low rate applies: ${eur(SMALL.low)} per night for a short-term rental apartment (${eur(LARGE.low)} for a detached house over ${SQM} m²). From April 1 through October the high rate applies (${eur(SMALL.high)} / ${eur(LARGE.high)}).` },
   { q: 'A stay from October into November: how many receipts?', a: `Two special receipts, one per month, when the stay covers months with different rates; not one at departure. For a stay from ${dayMonth(SPLIT_STAY.arrival)} to ${dayMonth(SPLIT_STAY.departure)} (${OCT.nights}+${NOV.nights} nights) the total is ${eur(SPLIT_APARTMENT.total)} for an apartment or ${eur(SPLIT_LARGE_HOUSE.total)} for a detached house over ${SQM} m². Each month goes into its own monthly return.` },
   { q: 'Do I file a return for a month with no bookings?', a: 'No. There is no nil return when there were no stays and no special receipts were issued for the month.' },
 ];
@@ -139,9 +139,9 @@ export default function Page() {
       </>,
     },
     {
-      id: 'november', over: '2. From November 1', title: 'What changes on November 1: stays that run from October into November',
+      id: 'november', over: '2. From 1 November', title: 'What changes on 1 November: stays that run from October into November',
       body: <>
-        <p className="lg-p">From November 1 through March the low rate applies. When a stay covers months with different rates, the special receipt is issued separately for each month, not at departure (AADE FAQ, Q. 7; Decision A.1202/2024).</p>
+        <p className="lg-p">From 1 November through March the low rate applies. When a stay covers months with different rates, the special receipt is issued separately for each month, not at departure (AADE FAQ, Q. 7; Decision A.1202/2024).</p>
         <p className="lg-p">{`Example: a ${OCT.nights + NOV.nights}-night booking, arriving ${dayMonth(SPLIT_STAY.arrival)} and leaving ${dayMonth(SPLIT_STAY.departure)}: ${OCT.nights} nights in ${MONTHS[OCT.month0]} (${OCT.firstNight}–${OCT.lastNight}) and ${NOV.nights} in ${MONTHS[NOV.month0]} (${NOV.firstNight}–${NOV.lastNight}). Two special receipts, one per month.`}</p>
         <Table caption={`Stay ${dayMonth(SPLIT_STAY.arrival)}–${dayMonth(SPLIT_STAY.departure)}, one receipt per month`} min="600px"
           head={['Type', `${MONTHS[OCT.month0].slice(0, 3)} · ${OCT.nights} ${OCT.nights === 1 ? 'night' : 'nights'}`, `${MONTHS[NOV.month0].slice(0, 3)} · ${NOV.nights} ${NOV.nights === 1 ? 'night' : 'nights'}`, 'Total']}
@@ -231,7 +231,7 @@ export default function Page() {
             <li>{`Short-term rental rates from ${LEVY_FROM}: ${eur(SMALL.high)} (Apr–Oct) and ${eur(SMALL.low)} (Nov–Mar) for an apartment of any size or a detached house up to ${SQM} m²; ${eur(LARGE.high)} and ${eur(LARGE.low)} only for a detached house over ${SQM} m².`}</li>
             <li>Who pays: the guest; you collect it and pay it over.</li>
             <li>Return on myAADE: by the last day of the month after the month the special receipt was issued.</li>
-            <li>{`From November 1: the rate drops to ${eur(SMALL.low)} (or ${eur(LARGE.low)} for a detached house over ${SQM} m²); a stay that spans months needs a separate receipt per month.`}</li>
+            <li>{`From 1 November: the rate drops to ${eur(SMALL.low)} (or ${eur(LARGE.low)} for a detached house over ${SQM} m²); a stay that spans months needs a separate receipt per month.`}</li>
             <li>{`Income tax (individual, ${MAX}, no services): from tax year ${FIRST_YEAR_NEW_BRACKETS}, the rental brackets ${SCALE_SHORT} (${pct(TOP.rate)} above ${eur(TOP.from)}) after the ${DEDUCTION} standard deduction.`}</li>
           </ul>
         </div>

@@ -28,7 +28,7 @@ const TOOL_EN: Record<string, { label: string; desc: string }> = {
   },
   '/vraxyxronia-i-makroxronia': {
     label: 'Short-term or long-term',
-    desc: 'What a short-term and a long-term let leave you with, after tax, the climate resilience fee and platform commission.',
+    desc: 'What a short-term and a long-term let leave you with, after tax, the climate crisis resilience fee and platform commission.',
   },
   '/anaprosarmogi-enoikiou': {
     label: 'Rent increase',

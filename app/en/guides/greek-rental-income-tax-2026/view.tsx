@@ -29,7 +29,7 @@ const TOP = pct(NEW[NEW.length - 1].rate);
 const DEDUCTION = pct(PRESUMPTIVE_DEDUCTION_RATE);
 const TAXED = f.fpRate((1 - PRESUMPTIVE_DEDUCTION_RATE) * 100);
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const BANK_FROM = `${MONTHS[FIRST_MONTH_BANK_RECEIPT - 1]} 1, ${FIRST_YEAR_BANK_RECEIPT}`;
+const BANK_FROM = `1 ${MONTHS[FIRST_MONTH_BANK_RECEIPT - 1]} ${FIRST_YEAR_BANK_RECEIPT}`;
 const words = (year: number) => {
   const parts = rentalBracketsForYear(year).map(b => (b.to === Infinity ? `${pct(b.rate)} over ${f.feWhole(b.from)}` : `${pct(b.rate)} up to ${f.feWhole(b.to)}`));
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
@@ -73,7 +73,7 @@ const FAQ: EnFaq[] = [
   },
   {
     q: `When do I lose the ${DEDUCTION} if I collect rent in cash?`,
-    a: `The bank requirement was introduced by Article 210 of Law 5222/2025, but the penalty was postponed to ${BANK_FROM} (AADE decision A.1187/2026). For ${FIRST_YEAR_BANK_RECEIPT - 2} and ${FIRST_YEAR_BANK_RECEIPT - 1} income, the deduction applies however the rent is collected.`,
+    a: `The bank requirement was introduced by Article 210 of Law 5222/2025, but the penalty was postponed to ${BANK_FROM} (AADE Decision A.1187/2026). For ${FIRST_YEAR_BANK_RECEIPT - 2} and ${FIRST_YEAR_BANK_RECEIPT - 1} income, the deduction applies however the rent is collected.`,
   },
   {
     q: 'Does the same apply to short-term rentals?',
@@ -137,7 +137,7 @@ export default function Page() {
         <h3 style={h3}>{`Example 3: gross rent of ${f.feWhole(EX3_GROSS)}, with and without the deduction`}</h3>
         <GuideTable caption={`Example 3, with the ${DEDUCTION} deduction`} head={['Step', 'Result']} min="260px" rows={rows(EX3)} />
         <GuideTable caption="Example 3, rent collected in cash (no deduction)" head={['Step', 'Result']} min="260px" rows={rows(EX3_CASH)} />
-        <p className="lg-p" style={{ marginTop: 16 }}>{`Difference: ${f.feWhole(EX3_CASH.tax - EX3.tax)}. The cash case shows the tax when a whole year’s rent is collected in cash, as from ${FIRST_YEAR_BANK_RECEIPT + 1}; in ${FIRST_YEAR_BANK_RECEIPT} the penalty covers only rent collected from ${MONTHS[FIRST_MONTH_BANK_RECEIPT - 1]} 1.`}</p>
+        <p className="lg-p" style={{ marginTop: 16 }}>{`Difference: ${f.feWhole(EX3_CASH.tax - EX3.tax)}. The cash case shows the tax when a whole year’s rent is collected in cash, as from ${FIRST_YEAR_BANK_RECEIPT + 1}; in ${FIRST_YEAR_BANK_RECEIPT} the penalty covers only rent collected from 1 ${MONTHS[FIRST_MONTH_BANK_RECEIPT - 1]}.`}</p>
       </>,
     },
   ];
@@ -152,7 +152,7 @@ export default function Page() {
       sources={[
         <>{`Rental income brackets ${FIRST_YEAR_NEW_BRACKETS} (${SCALE}): Article 8 of `}<a href={LAW_5246_PDF} target="_blank" rel="noopener noreferrer" hrefLang="el" className="lp-link" style={LINK}>Law 5246/2025 (Government Gazette A 198/11.11.2025)</a>{', in force under Article 47(3).'}</>,
         `Standard deduction ${DEDUCTION}: Article 39(3)(a) of Law 4172/2013 (Income Tax Code).`,
-        <>{'Collecting rent through a bank: Article 210 of '}<a href={LAW_5222_PDF} target="_blank" rel="noopener noreferrer" hrefLang="el" className="lp-link" style={LINK}>Law 5222/2025 (Government Gazette A 134/28.07.2025)</a>{`; start postponed to ${BANK_FROM} by AADE decision A.1187/2026.`}</>,
+        <>{'Collecting rent through a bank: Article 210 of '}<a href={LAW_5222_PDF} target="_blank" rel="noopener noreferrer" hrefLang="el" className="lp-link" style={LINK}>Law 5222/2025 (Government Gazette A 134/28.07.2025)</a>{`; start postponed to ${BANK_FROM} by AADE Decision A.1187/2026.`}</>,
       ]}
       faq={FAQ} faqTitle="What people ask about rental income tax"
       cta={{ title: 'Your own rental income tax', href: '/en/rental-income-tax-calculator', action: 'Calculate your tax',

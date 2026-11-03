@@ -47,7 +47,7 @@ const FAQ: EnFaq[] = [
   { q: 'Does the same apply to a gift or an inheritance?', a: 'To a gift, yes: it is a transfer between living persons, like a sale. In the freeze zones the property is removed from the registry and the recipient can’t register it again while the restriction lasts. Inheritance is not covered by that removal. For your own case, ask your accountant or notary.' },
   { q: 'Is having an AMA enough, or must it appear in the listing?', a: `It must appear in every listing, on Airbnb, Booking or any other platform. Not showing the AMA is penalized like not registering: a fine of ${SHARE} of the year’s gross income, at least ${FINE}, doubled for a new violation within a year of the fine being imposed.` },
   { q: 'What is the fine for a missing safety requirement?', a: `${FINE}. If a new inspection within a year of the fine being served finds another violation, the fine doubles; for each further identical violation it quadruples.` },
-  { q: 'What do I file every month?', a: 'The Short-Term Stay Declaration for the previous month’s departures, by the 20th. You also pay over to AADE the climate resilience fee you collected, by the end of the following month.' },
+  { q: 'What do I file every month?', a: 'The Short-Term Stay Declaration for the previous month’s departures, by the 20th. You also pay over to AADE the climate crisis resilience fee you collected, by the end of the following month.' },
 ];
 
 const P = { color: 'var(--text-primary)' } as const;
@@ -118,7 +118,7 @@ export default function Page() {
     <GuideShellEn el={EL} path={PATH} h1={H1} description={DESC} about="Greek short-term rental registry (AMA), suitability requirements and fines"
       intro={<>
         <p className="lg-p">{`Before the taxes on short-term letting come the rules: whether the property can be registered with AADE, the Greek tax authority, what it must have to count as suitable, and what you file every month. Two rules also matter to anyone thinking of buying: the freeze on new registrations in central Athens (and, from ${THESS_FROM}, in ${THESS_AREA}) and, from ${SPECS_FROM}, the suitability requirements for every property.`}</p>
-        <p className="lg-p">This guide explains the rules and the fines, with sources. The climate resilience fee, the municipal visitor fee and income tax are covered in the guide {taxGuide}.</p>
+        <p className="lg-p">This guide explains the rules and the fines, with sources. The climate crisis resilience fee, the municipal visitor fee and income tax are covered in the guide {taxGuide}.</p>
       </>}
       sections={sections}
       sources={[
@@ -129,7 +129,7 @@ export default function Page() {
         `Fine for not registering or not showing the AMA: Article 111(5)(a) of Law 4446/2016, as replaced by Law 5073/2023 (Government Gazette A 204/12.12.2023) · ${SHARE} of the tax year’s gross income, at least ${FINE}, doubled for a new violation within one year of the fine being imposed.`,
         `Suitability requirements: Article 3 of Law 5170/2025 (${gazetteEn(STR_SPECS_FEK)}), cases a to d, from ${SPECS_FROM} · implementing details: Ministry of Tourism circular 19567/25.09.2025.`,
         `Fines for breaching the requirements: Article 3 of Law 5170/2025, paragraphs 5 and 6 · ${FINE}, doubled for a new violation within one year, quadrupled for each further one · on-site inspection by Ministry of Tourism staff (para. 2).`,
-        'Short-Term Stay Declaration: by the 20th of the month after departure (AADE FAQ, 23.09.2025) · payment of the climate resilience fee: by the last day of the following month (Article 53(2) of Law 4389/2016, as replaced by Article 30 of Law 5073/2023).',
+        'Short-Term Stay Declaration: by the 20th of the month after departure (AADE FAQ, 23.09.2025) · payment of the climate crisis resilience fee: by the last day of the following month (Article 53(2) of Law 4389/2016, as replaced by Article 30 of Law 5073/2023).',
       ]}
       faq={FAQ} faqTitle="What people ask before they let or buy"
       cta={{ title: 'Short-term or long-term?', href: '/en/short-term-vs-long-term-rental', action: 'Compare short-term and long-term',

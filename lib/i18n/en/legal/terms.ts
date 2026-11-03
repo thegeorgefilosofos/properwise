@@ -79,12 +79,12 @@ export function termsSectionsEn(): LegalSection[] {
       'If you use the Service in the course of a professional activity, that is, if you manage third parties’ properties or invoice related services, the contract is a business contract and the consumer protection provisions do not apply. Everything else applies in full in both cases.',
     ] },
     { h: 'The Service', p: [
-      'PROPERWISE is an app for organising and managing property, for owners and small offices. It provides data entry, calculations (taxes, yields, costs), reports, provider comparison, lease management and Noa, which answers questions about your properties using artificial intelligence.',
+      'PROPERWISE is an app for organizing and managing property, for owners and small offices. It provides data entry, calculations (taxes, yields, costs), reports, provider comparison, lease management and Noa, which answers questions about your properties using artificial intelligence.',
       'The Service evolves continuously and some features may change, be added or be withdrawn. We change something included in your subscription only for a valid reason, at no extra cost to you. If the change affects you negatively more than minimally, we inform you in good time and clearly before it takes effect, and you can terminate the contract without charge.',
     ] },
     { h: 'Eligibility and account', p: [
       'To use the Service you must be at least 18 years old and have legal capacity. You declare that the details you enter are accurate and up to date.',
-      'You are responsible for the security of your sign-in details and for every action taken from your account. Notify us immediately if you suspect unauthorised access.',
+      'You are responsible for the security of your sign-in details and for every action taken from your account. Notify us immediately if you suspect unauthorized access.',
     ] },
     { h: 'How the contract is concluded', p: [
       `Article 9 of Greek Presidential Decree 131/2003 on electronic commerce requires that you know in advance exactly how you become bound. ${words.contractSteps}`,
@@ -110,7 +110,7 @@ export function termsSectionsEn(): LegalSection[] {
     { h: 'Right of withdrawal', id: 'ypanachorisi', p: [
       'As a consumer you have the right to withdraw within 14 days of the conclusion of the contract, without giving a reason, under Greek Law 2251/1994 and Directive 2011/83/EU.',
       words.withdrawal,
-      `The simplest way is the “${WITHDRAW_EN}” function on the page ${siteUrl(enPathFor(WITHDRAWAL_PATH) ?? WITHDRAWAL_PATH)}, which also appears in the footer of every page and in your Account, under Subscription. It works without signing in too. You fill in your name, your email and the contract, see the whole declaration and submit it with “${WITHDRAW_CONFIRM_EN}”. You immediately receive by email an acknowledgement with the content of the declaration and the date and time of submission. If you have a subscription and are signed in, its renewal is cancelled immediately.`,
+      `The simplest way is the “${WITHDRAW_EN}” function on the page ${siteUrl(enPathFor(WITHDRAWAL_PATH) ?? WITHDRAWAL_PATH)}, which also appears in the footer of every page and in your Account, under Subscription. It works without signing in too. You fill in your name, your email and the contract, see the whole declaration and submit it with “${WITHDRAW_CONFIRM_EN}”. You immediately receive by email an acknowledgement with the content of the declaration and the date and time of submission. If you have a subscription and are signed in, its renewal is canceled immediately.`,
       `You can also send us a clear statement at ${support} before the period expires, preferably from your account’s email address so that we can find it immediately.${words.withdrawalVia ? ` ${words.withdrawalVia}` : ''} No reason or special form is needed. For example: “I withdraw from the PROPERWISE subscription contract I concluded on [date], with the account [email].” The deadline is met if the statement is sent before it expires, even if we read it later.`,
       'You can also use the model withdrawal form provided by law. Complete it and send it only if you wish to withdraw from the contract:',
     ], form: {
@@ -153,16 +153,16 @@ export function termsSectionsEn(): LegalSection[] {
     ] },
     { h: 'Acceptable use', part: 'D. What is allowed and who owns what', p: ['You agree not to use the Service to:'], list: [
       'breach laws or the rights of third parties, or enter their data without a legal basis,',
-      'attempt unauthorised access, overloading or interference with the security of the systems,',
+      'attempt unauthorized access, overloading or interference with the security of the systems,',
       'send requests for access to a file to people with whom you have no professional relationship, or to obtain information by deception,',
       'copy, resell or exploit the Service beyond its intended use.',
     ], note: `Inviting clients by email (a request for access to their file) is available from the “${name(PROFESSIONAL_MIN_PLAN)}” plan (up to ${INVITE_LIMITS.paidPerDay} a day) and during the trial (up to ${INVITE_LIMITS.trialPerDay} a day and ${INVITE_LIMITS.trialTotal} in total). The message is sent with your account’s confirmed address as sender; abuse is a material breach (see “Suspension and termination”).` },
-    { h: 'Your content and licence', p: [
-      'The data and files you enter remain yours. You grant us a limited, non-exclusive licence to store and process them solely so that the Service works for you. You can export or delete them at any time.',
+    { h: 'Your content and license', p: [
+      'The data and files you enter remain yours. You grant us a limited, non-exclusive license to store and process them solely so that the Service works for you. You can export or delete them at any time.',
     ] },
     { h: 'Processing agreement for third-party data', id: 'epexergasia', p: [
       'When you enter details of third parties, such as a tenant’s name, tax number (AFM) or lease, you are the controller and we are the processor under Article 28 of Regulation (EU) 2016/679. This section is the processing agreement between us.',
-      'Its subject matter is storing and processing these details solely so that the Service works for you (lease records, instalments, documents, declarations). Its duration is for as long as you keep an account and the details have not been deleted. The categories of data subjects are your tenants and partners; the categories of data are the identity, contact and lease details you enter.',
+      'Its subject matter is storing and processing these details solely so that the Service works for you (lease records, installments, documents, declarations). Its duration is for as long as you keep an account and the details have not been deleted. The categories of data subjects are your tenants and partners; the categories of data are the identity, contact and lease details you enter.',
       'Acceptance is requested within the app before the first time such details are saved, and is recorded with version and date. Without acceptance the details are not saved. As processor we undertake to:',
     ], list: [
       'process the details only on your documented instructions, that is, those you give by using the Service;',
