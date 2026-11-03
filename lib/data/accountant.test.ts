@@ -36,7 +36,7 @@ eq('και το λέει με μία λέξη', readinessOf(gapsOf(base)).label,
   const empty = { ...base, properties: 0, expenses: 0, afm: null };
   eq('ένα ακίνητο λείπει, μία γραμμή', gapsOf(empty).length, 1);
   eq('και είναι η σωστή', gapsOf(empty)[0].key, 'no_properties');
-  eq('μπλοκάρει', readinessOf(gapsOf(empty)).label, 'Δεν κλείνει');
+  eq('μπλοκάρει', readinessOf(gapsOf(empty)).label, 'Με εκκρεμότητες');
 }
 
 // ── Οι αριθμοί συμφωνούν με τη γλώσσα ──────────────────────────────────────
@@ -61,7 +61,7 @@ eq('και το λέει με μία λέξη', readinessOf(gapsOf(base)).label,
   const firstNonBlocking = messy.findIndex(g => !g.blocking);
   const lastBlocking = messy.map(g => g.blocking).lastIndexOf(true);
   ok('κανένα μπλοκαριστικό μετά από μη μπλοκαριστικό', lastBlocking < firstNonBlocking);
-  eq('η κατάσταση το λέει', readinessOf(messy).label, 'Δεν κλείνει');
+  eq('η κατάσταση το λέει', readinessOf(messy).label, 'Με εκκρεμότητες');
   eq('και μετρά πόσα', readinessOf(messy).blocking, 1);
 }
 

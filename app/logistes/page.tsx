@@ -197,7 +197,7 @@ export default function Page() {
           {hy(<>
             <div className="lp-eyebrow">Για λογιστές</div>
             <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 700, letterSpacing: '-0.035em',
-              lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
+              lineHeight: 1.1, margin: '0 0 14px', textWrap: 'pretty' }}>
               {H1}
             </h1>
             <p className="lg-p">

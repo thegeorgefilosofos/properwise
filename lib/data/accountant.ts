@@ -215,7 +215,7 @@ export function readinessOf(gaps: readonly Gap[]): { label: string; blocking: nu
   const blocking = gaps.filter(g => g.blocking).length;
   if (gaps.length === 0) return { label: 'Έτοιμος', blocking: 0 };
   if (blocking === 0) return { label: 'Σχεδόν έτοιμος', blocking: 0 };
-  return { label: 'Δεν κλείνει', blocking };
+  return { label: 'Με εκκρεμότητες', blocking };
 }
 
 // ── ΟΙ ΤΕΣΣΕΡΙΣ ΚΛΗΣΕΙΣ ────────────────────────────────────────────────────
