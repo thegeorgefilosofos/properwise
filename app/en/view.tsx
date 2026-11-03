@@ -144,7 +144,10 @@ export default async function LandingEn() {
         <SectionHead over={HOW_EN.over} title={HOW_EN.title} sub={HOW_EN.sub} />
         {/* Τρεις κάρτες που δεν κόβουν το κείμενό τους: το .lp-feat κρατά τις
             λεζάντες σε δύο γραμμές στο κινητό, τα βήματα θέλουν όλη τη φράση. */}
-        <ol style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: CARD_GAP, listStyle: 'none', margin: 0, padding: 0 }}>
+        {/* ΤΡΕΙΣ Ή ΜΙΑ, ΠΟΤΕ ΔΥΟ ΚΑΙ ΜΙΑ. Με `auto-fit` και ελάχιστο 260 τα τρία
+            βήματα έπεφταν 2+1 στα 768–834 (e2e:layout, ορφανό πλακίδιο): κάτω από
+            τα 3 × 220 του περιεχομένου η στήλη παίρνει όλο το πλάτος. */}
+        <ol style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, max(calc((100% - ${2 * CARD_GAP}px) / 3), (${3 * 220 + 2 * CARD_GAP}px - 100%) * 999)), 1fr))`, gap: CARD_GAP, listStyle: 'none', margin: 0, padding: 0 }}>
           {HOW_EN.steps.map((s, i) => (
             <li key={s.t} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 24px)' }}>
               <div aria-hidden="true" style={{ width: 38, aspectRatio: '1', borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: T.sp.lg, fontSize: 15, fontWeight: 700, color: ACCENT, fontVariantNumeric: 'tabular-nums' }}>{i + 1}</div>
