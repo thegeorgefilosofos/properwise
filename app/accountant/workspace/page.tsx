@@ -325,7 +325,7 @@ export default function AccountantWorkspace() {
               Χρήση 01/01/{year} έως 31/12/{year}
               {ordered.length > 0 && (
                 <> · <strong style={{ color: stuck > 0 ? 'var(--text-primary)' : 'inherit' }}>
-                  {stuck === 0 ? 'κανένας δεν μπλοκάρει' : stuck === 1 ? '1 δεν κλείνει' : `${stuck} δεν κλείνουν`}
+                  {stuck === 0 ? 'κανένας δεν μπλοκάρει' : stuck === 1 ? '1 με εκκρεμότητες' : `${stuck} με εκκρεμότητες`}
                 </strong> · {done === 1 ? '1 έτοιμος' : `${done} έτοιμοι`}</>
               )}
             </>
