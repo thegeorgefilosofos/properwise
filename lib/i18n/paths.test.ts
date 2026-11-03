@@ -43,7 +43,8 @@ eq('en: χωρίς ζεύγος μένει η ελληνική, όχι 404', loc
 eq('υπολογιστής με ερώτημα', localHref('en', '/ypologismos-stegastikou-daneiou?poso=150000'), '/en/mortgage-calculator?poso=150000')
 eq('οδηγός → αγγλικός οδηγός', enPathFor('/odigos/pos-ypologizetai-o-enfia'), '/en/guides/how-enfia-is-calculated')
 eq('αγγλικός οδηγός → ελληνικός', elPathFor('/en/guides/net-rental-yield'), '/odigos/kathari-apodosi-akinitou')
-eq('οδηγός χωρίς αγγλική σελίδα μένει ελληνικός', localHref('en', '/odigos/spiti-mou-3-ti-allazei'), '/odigos/spiti-mou-3-ti-allazei')
+eq('σελίδα χωρίς αγγλική μένει ελληνική', localHref('en', '/prothesmies/2026-11'), '/prothesmies/2026-11')
+eq('ο οδηγός «Σπίτι μου ΙΙΙ» έχει πια αγγλική σελίδα', localHref('en', '/odigos/spiti-mou-3-ti-allazei'), '/en/guides/spiti-mou-3-greek-home-loan-program')
 eq('ο οδηγός Airbnb έχει πια αγγλική σελίδα', localHref('en', '/odigos/airbnb-takk-2026'), '/en/guides/airbnb-tax-greece-2026')
 eq('η υπαναχώρηση έχει αγγλική σελίδα', enPathFor('/ypanaxorisi'), '/en/withdrawal')
 
