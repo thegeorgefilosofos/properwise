@@ -108,7 +108,7 @@ export function printRoiReport(r: RoiReport): void {
       ? `Ετήσια ανατίμηση: ${rPct(nAppr)}· υπόθεση του χρήστη (η τεκμηριωμένη τιμή είναι ${rPct(apprRef.pct)})`
       : `Ετήσια ανατίμηση: ${rPct(nAppr)}· δείκτης τιμών κατοικιών Τράπεζας της Ελλάδος, ${apprRef.fromYear} ως ${apprRef.toYear}`,
     `Φορολογικό καθεστώς: ${regimeLabel}`,
-    `Είσπραξη ενοικίων μέσω τράπεζας: ${rentsBank ? 'ναι' : `όχι (η τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)} ισχύει· η προϋπόθεση τραπεζικής είσπραξης αρχίζει ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)}, ν.5222/2025)`}`,
+    `Είσπραξη ενοικίων μέσω τράπεζας: ${rentsBank ? 'ναι' : `όχι (η τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)} ισχύει· η προϋπόθεση τραπεζικής είσπραξης αρχίζει ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)}, ν. 5222/2025)`}`,
     // Η ΔΕΥΤΕΡΗ ΠΑΡΑΔΟΧΗ ΤΑΞΙΔΕΥΕΙ ΚΙ ΑΥΤΗ. Οποιος διαβάσει την αναφορά χωρίς
     // να έχει την οθόνη μπροστά του πρέπει να ξέρει ποιο σενάριο διαβάζει.
     ...(term === 'short'
@@ -187,7 +187,7 @@ export async function officialRoiReport(supabase: Parameters<typeof issueDocumen
       ? `Ετήσια ανατίμηση: ${pPct(nAppr)}· υπόθεση του χρήστη (η τεκμηριωμένη τιμή είναι ${pPct(apprRef.pct)})`
       : `Ετήσια ανατίμηση: ${pPct(nAppr)}· δείκτης τιμών κατοικιών Τράπεζας της Ελλάδος, ${apprRef.fromYear} ως ${apprRef.toYear}`,
     `Φορολογικό καθεστώς: ${regimeLabel}`,
-    `Είσπραξη ενοικίων μέσω τράπεζας: ${rentsBank ? 'ναι' : `όχι (η τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)} ισχύει· η προϋπόθεση τραπεζικής είσπραξης αρχίζει ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)}, ν.5222/2025)`}`,
+    `Είσπραξη ενοικίων μέσω τράπεζας: ${rentsBank ? 'ναι' : `όχι (η τεκμαρτή έκπτωση ${fpRate(PRESUMPTIVE_DEDUCTION_RATE * 100)} ισχύει· η προϋπόθεση τραπεζικής είσπραξης αρχίζει ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)}, ν. 5222/2025)`}`,
   // Η ΔΕΥΤΕΡΗ ΠΑΡΑΔΟΧΗ ΤΑΞΙΔΕΥΕΙ ΚΙ ΑΥΤΗ. Οποιος διαβάσει την αναφορά χωρίς
   // να έχει την οθόνη μπροστά του πρέπει να ξέρει ποιο σενάριο διαβάζει.
   ...(term === 'short'

@@ -404,7 +404,7 @@ export function ShortVsLongCalculator({ today, cta }: {
           {feWhole(LEVY.small.high)} και {feWhole(LEVY.small.low)} τη διανυκτέρευση για
           διαμερίσματα, {feWhole(LEVY.large.high)} και {feWhole(LEVY.large.low)} για
           μονοκατοικίες άνω των 80 τ.μ., με υψηλή περίοδο Απρίλιο ως Οκτώβριο
-          (ν.5162/2024). Απ’ έξω: ΕΝΦΙΑ, ασφάλιση, έπιπλα και εξοπλισμός, κενά
+          (ν. 5162/2024). Απ’ έξω: ΕΝΦΙΑ, ασφάλιση, έπιπλα και εξοπλισμός, κενά
           ανακαίνισης, ο χρόνος σου. <EstimateNote /></>}
         </p>
       </div>

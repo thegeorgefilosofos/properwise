@@ -53,7 +53,7 @@ export const RAISE_EN = {
   emptyRent: 'Enter the current monthly rent to see the new one.',
   emptyRate: 'Enter the increase rate to see the new rent.',
   newRent: 'New rent', increase: 'Increase per month',
-  inYears: (n: string) => `In ${n} years`, pct: 'Rate',
+  inYears: (n: string) => `Rent in year ${n}`, pct: 'Rate',
   say: (to: string, inc: string) => `New rent ${to}, an increase of ${inc} a month.`,
   capped: (uncapped: string, from: string, to: string, cap: string, capped: string) =>
     `The clause gives ${uncapped}. From ${from} to ${to}, an increase on an existing commercial lease cannot exceed ${cap} (Article 59, Law 5255/2025), so the rent stops at ${capped}. `,

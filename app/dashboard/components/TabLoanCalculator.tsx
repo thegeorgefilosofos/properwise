@@ -117,7 +117,7 @@ export default function TabLoanCalculator({propertyId,userId,market,initial,appl
   const [actualRent, setActualRent] = useState(0)         // πραγματικό μηνιαίο ενοίκιο, από τη βάση
   const [monthlyRent, setMonthlyRent] = useState('')      // κενό = ακολουθεί το ενοίκιο-αναφορά
   const [rentTouched, setRentTouched] = useState(false)
-  // Είσπραξη μέσω τράπεζας: προϋπόθεση της τεκμαρτής έκπτωσης 5% από 1.7.2027 (ν.5222/2025).
+  // Είσπραξη μέσω τράπεζας: προϋπόθεση της τεκμαρτής έκπτωσης 5% από 1.7.2027 (ν. 5222/2025).
   const [rentsBank, setRentsBank] = useState(true)
   const [marital,     setMarital]     = useState<'single'|'married'>('single')
   const [children,    setChildren]    = useState('0')

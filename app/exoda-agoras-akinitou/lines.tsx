@@ -32,7 +32,7 @@ export const CADASTRE_HOME = 'https://www.ktimatologio.gr';
 
 /** Η επίσημη πηγή κάθε είδους γραμμής, σε λέξεις και σύνδεσμο. */
 export const SOURCES: Record<Exclude<SourceKey, 'user'>, { text: string; href: string }> = {
-  transferTax: { text: 'ν.5219/2025, άρθρα 25 και 27', href: LAW_5219_PDF },
+  transferTax: { text: 'ν. 5219/2025, άρθρα 25 και 27', href: LAW_5219_PDF },
   newBuildVat: { text: 'Κώδικας ΦΠΑ, άρθρα 24 και 26', href: LAW_5144_PDF },
   servicesVat: { text: 'Κώδικας ΦΠΑ, άρθρο 26', href: LAW_5144_PDF },
 };

@@ -2,39 +2,39 @@
   "σημείωση": "Παράγεται από το npm run guides:stamp. Μην το γράφεις με το χέρι. Το φυλάει ο scripts/guard-guide-updated.mjs.",
   "guides": {
     "/odigos/airbnb-takk-2026": {
-      "hash": "2c3263f4c76e60eb",
+      "hash": "11eac68941aa7afb",
       "updated": "2026-10-20"
     },
     "/odigos/ekptosi-forou-anakainisis": {
-      "hash": "2631d077867336c6",
+      "hash": "a9d6abc443471c59",
       "updated": "2026-10-20"
     },
     "/odigos/enfia-2026-pliromi-doseis-pistopoiitiko": {
-      "hash": "5a407266678408a6",
+      "hash": "1468c097908fe3f0",
       "updated": "2026-10-20"
     },
     "/odigos/enoikio-meso-trapezas": {
-      "hash": "5f62c807429cc75b",
+      "hash": "a4e085cb6bcb4550",
       "updated": "2026-10-20"
     },
     "/odigos/forologia-enoikion-2026": {
-      "hash": "5e775ed8285122ed",
+      "hash": "a492044d4787d73d",
       "updated": "2026-10-20"
     },
     "/odigos/forologikes-prothesmies-idioktiton": {
-      "hash": "15f85ce9f5622d5b",
+      "hash": "c38f67ccf1ae5535",
       "updated": "2026-10-20"
     },
     "/odigos/kathari-apodosi-akinitou": {
-      "hash": "443f02186b199ff2",
+      "hash": "fcdf6b816ece42fc",
       "updated": "2026-10-20"
     },
     "/odigos/plafon-3-emporikes-misthoseis-2026": {
-      "hash": "17ac74d45f52cd84",
+      "hash": "66ef506d604b0198",
       "updated": "2026-10-20"
     },
     "/odigos/pos-ypologizetai-o-enfia": {
-      "hash": "bc3019c2ee663afa",
+      "hash": "aadc50f8530e1cdf",
       "updated": "2026-10-20"
     },
     "/odigos/spiti-mou-3-ti-allazei": {
@@ -42,7 +42,7 @@
       "updated": "2026-10-20"
     },
     "/odigos/vraxyxronia-ama-prodiagrafes-2026": {
-      "hash": "cfb5bb932966fabb",
+      "hash": "1697e5fee2eef989",
       "updated": "2026-10-27"
     }
   }

@@ -165,7 +165,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
     // ντυμένο ως το πρώτο — ο παραλήπτης είναι άλλος άνθρωπος και το κρατά.
     const basisLine=hasCustom
       ? `Σας γνωστοποιούμε ότι το μηνιαίο μίσθωμα αναπροσαρμόζεται με ποσοστό <strong>${rPct(pct)}</strong>, όπως προβλέπεται στη σύμβαση μίσθωσης, ως εξής:`
-      : `Σας γνωστοποιούμε ότι, βάσει ${share75?'του 75% ':''}της δωδεκάμηνης μεταβολής του Δείκτη Τιμών Καταναλωτή (ΔΤΚ), ${rEsc(idx?indexPeriodLabel(idx.ym):'')} (${rEsc(cpiConfirmedLabel())}), το μηνιαίο μίσθωμα αναπροσαρμόζεται από τον ${rEsc(monthAccYear(ym))} ως εξής:`;
+      : `Σας γνωστοποιούμε ότι, βάσει ${share75?'του 75% ':''}της ${idx?'':'δωδεκάμηνης '}μεταβολής του Δείκτη Τιμών Καταναλωτή (ΔΤΚ)${idx?` για το δωδεκάμηνο ${rEsc(indexPeriodLabel(idx.ym))}`:''} (${rEsc(cpiConfirmedLabel())}), το μηνιαίο μίσθωμα αναπροσαρμόζεται από τον ${rEsc(monthAccYear(ym))} ως εξής:`;
     const html=reportHead('Ειδοποίηση αναπροσαρμογής μισθώματος')
       + `<body><div class="page">`
       + reportHeader(branding, 'Αναπροσαρμογή μισθώματος', { rightLabel:'Ημερομηνία', rightValue:today_str, rightNote:hasCustom?'Συμβατικό ποσοστό':`ΔΤΚ ${idx?indexMonthLabel(idx.ym):''}` })
@@ -1095,7 +1095,7 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
   const suggested=hasMarket?Math.round(marketRent):(legalNew!==null?Math.round(legalNew):null);
   const basis=hasMarket
     ?`βάσει της μέσης τιμής ${fmt(avgPerSqm)}/τ.μ. στην περιοχή επί τα ${fn(sqm||0)} τ.μ. του ακινήτου`
-    :`βάσει της δωδεκάμηνης μεταβολής του ΔΤΚ ${idxNow?indexPeriodLabel(idxNow.ym):''}`;
+    :`βάσει της ${idxNow?'':'δωδεκάμηνης '}μεταβολής του ΔΤΚ${idxNow?` για το δωδεκάμηνο ${indexPeriodLabel(idxNow.ym)}`:''}`;
   const phoneDigits=msgDigits(tenant.phone);
   const proposalText=suggested!==null
     ?`Πρόταση ανανέωσης μίσθωσης. Τρέχον μηνιαίο μίσθωμα ${fmt(rent)}. Προτεινόμενο νέο μίσθωμα ${fmt(suggested)}, ${basis}. Παραμένω στη διάθεσή σας για συζήτηση.`

@@ -42,7 +42,7 @@ import LiveResult from '@/components/LiveResult';
 // ─────────────────────────────────────────────────────────────────────────
 // Ο υπολογιστής εφάρμοζε πάντα την τεκμαρτή έκπτωση 5%, με μια σταθερά γραμμένη
 // εδώ μέσα. Η έκπτωση ΘΑ ΠΡΟΫΠΟΘΕΤΕΙ ότι το ενοίκιο κατοικίας εισπράττεται με
-// ηλεκτρονικό ή τραπεζικό μέσο (ν.5222/2025, άρθρο 210) — με μετρητά ο φόρος
+// ηλεκτρονικό ή τραπεζικό μέσο (ν. 5222/2025, άρθρο 210) — με μετρητά ο φόρος
 // στο 100% αντί για το 95%. Η κύρωση όμως ξεκινά την 1.7.2027 (Α.1187/2026):
 // για εισοδήματα 2025 και 2026 η έκπτωση δίνεται ανεξάρτητα από τον τρόπο.
 //
@@ -126,7 +126,7 @@ export function RentTaxCalculator({ today, cta }: {
   const monthly = v.enoikio, months = v.mines, viaBank = v.trapeza !== '0';
   const year = incomeYearFor(v.etos, today, FIRST_DOCUMENTED_YEAR);
   const brackets = rentalBracketsForYear(year);
-  // Η ΚΥΡΩΣΗ ΤΗΣ ΤΡΑΠΕΖΙΚΗΣ ΕΙΣΠΡΑΞΗΣ ΞΕΚΙΝΑ ΤΗΝ 1.7.2027 (ν.5222/2025). Για
+  // Η ΚΥΡΩΣΗ ΤΗΣ ΤΡΑΠΕΖΙΚΗΣ ΕΙΣΠΡΑΞΗΣ ΞΕΚΙΝΑ ΤΗΝ 1.7.2027 (ν. 5222/2025). Για
   // εισοδήματα 2025 και 2026 η τεκμαρτή έκπτωση 5% δίνεται ανεξάρτητα από τον
   // τρόπο είσπραξης, οπότε η ερώτηση δεν έχει νόημα εκεί και δεν εμφανίζεται:
   // μια ερώτηση που δεν αλλάζει τίποτα διδάσκει τον χρήστη ότι οι ερωτήσεις μας
@@ -143,7 +143,7 @@ export function RentTaxCalculator({ today, cta }: {
     // Τεκμαρτή έκπτωση: ο νόμος τη δίνει χωρίς αποδείξεις, οπότε είναι το
     // ρεαλιστικό ελάχιστο για κάθε ιδιοκτήτη — και ο φόρος υπολογίζεται πάνω σε
     // αυτό, όχι στο μεικτό. Από 1.7.2027 προϋποθέτει τραπεζική είσπραξη
-    // (ν.5222/2025)· τότε ο συντελεστής μηδενίζει όταν ο χρήστης πει «μετρητά».
+    // (ν. 5222/2025)· τότε ο συντελεστής μηδενίζει όταν ο χρήστης πει «μετρητά».
     const rate = presumptiveDeductionRateForYear(year, viaBank);
     const taxable = gross * (1 - rate);
     const tax = rentalIncomeTax(taxable, brackets);
@@ -193,7 +193,7 @@ export function RentTaxCalculator({ today, cta }: {
         <ToolSeg label={en ? E.year : 'Εισόδημα ποιας χρονιάς'} value={String(year)} onChange={x => set('etos', x)}
           options={offeredIncomeYears(today, FIRST_DOCUMENTED_YEAR).map(y => ({ value: String(y), label: String(y) }))}
           hint={X ? E.yearHint(year, X.filingNote(year, today), X.rateScale(rentalBracketsForYear(year))) : <>Του {year}, {filingNote(year, today)}. {year >= FIRST_YEAR_NEW_BRACKETS
-            ? `Κλίμακα ${rateScale(rentalBracketsForYear(year))} (ν.5246/2025).`
+            ? `Κλίμακα ${rateScale(rentalBracketsForYear(year))} (ν. 5246/2025).`
             : `Κλίμακα ${rateScale(rentalBracketsForYear(year))}, χωρίς το ενδιάμεσο κλιμάκιο.`}</>}/>
       </ToolFields>
       <ToolClampNote notes={[
@@ -221,12 +221,12 @@ export function RentTaxCalculator({ today, cta }: {
                 ? E.bankOffFirst(dateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT), feAuto(r.cashCost), year)
                 : E.bankOff(feAuto(r.cashCost)))
             : viaBank
-              ? `Προϋπόθεση για την τεκμαρτή έκπτωση ${ratePct(PRESUMPTIVE_DEDUCTION_RATE)}, από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν.5222/2025).`
+              ? `Προϋπόθεση για την τεκμαρτή έκπτωση ${ratePct(PRESUMPTIVE_DEDUCTION_RATE)}, από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν. 5222/2025).`
               : year === FIRST_YEAR_BANK_RECEIPT
                 // Η ΠΡΩΤΗ ΧΡΟΝΙΑ ΕΙΝΑΙ ΜΙΣΗ (20.10.2026): το 100% πιάνει μόνο ό,τι
                 // εισπράττεται μετρητά από τον Ιούλιο, όχι όλο το ενοίκιο της χρονιάς.
-                ? `Ό,τι εισπράττεται μετρητά από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} φορολογείται στο 100% (ν.5222/2025). Η έκπτωση που χάνεται κοστίζει ${feAuto(r.cashCost)} για το ${year}.`
-                : `Με μετρητά φορολογείται το 100% του ενοικίου (ν.5222/2025). Η έκπτωση που χάνεται κοστίζει ${feAuto(r.cashCost)} τον χρόνο.`}
+                ? `Ό,τι εισπράττεται μετρητά από ${grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} φορολογείται στο 100% (ν. 5222/2025). Η έκπτωση που χάνεται κοστίζει ${feAuto(r.cashCost)} για το ${year}.`
+                : `Με μετρητά φορολογείται το 100% του ενοικίου (ν. 5222/2025). Η έκπτωση που χάνεται κοστίζει ${feAuto(r.cashCost)} τον χρόνο.`}
           </p>
         </div>
         <Toggle on={viaBank} onChange={on => set('trapeza', on ? '1' : '0')}

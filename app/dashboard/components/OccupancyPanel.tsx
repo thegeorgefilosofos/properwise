@@ -85,7 +85,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
   // ΤΟ ΤΕΛΟΣ ΠΑΡΕΠΙΔΗΜΟΥΝΤΩΝ ΕΞΑΡΤΑΤΑΙ ΑΠΟ ΤΟ ΠΛΗΘΟΣ ΤΩΝ ΒΡΑΧΥΧΡΟΝΙΩΝ. Χωρίς
   // αυτό, το `shortTermYearSummary` έπαιρνε την προεπιλογή «φυσικό πρόσωπο, ένα
   // ακίνητο» και έβγαζε πάντα μηδέν. Με ΟΛΑ τα ακίνητα όμως έβγαζε το αντίθετο
-  // λάθος: η εξαίρεση του ν.5073/2023 μετρά όσα εκμισθώνονται ΒΡΑΧΥΧΡΟΝΙΑ, όχι
+  // λάθος: η εξαίρεση του ν. 5073/2023 μετρά όσα εκμισθώνονται ΒΡΑΧΥΧΡΟΝΙΑ, όχι
   // το σπίτι που μένει ο ιδιοκτήτης ούτε τα μακροχρόνια.
   const [shortTermCount, setShortTermCount] = useState<number | null>(null);
   const [open, setOpen] = useState(false);

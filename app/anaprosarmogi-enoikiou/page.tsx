@@ -10,7 +10,7 @@
 //   · Το όριο του 2026, η περίοδός του και ποιους αφορά: `COMMERCIAL_RENT_CAP_2026`
 //     και `rentCapPct` (lib/documents/rentAdjustment.ts), όπως τα εφαρμόζει η
 //     ειδοποίηση της εφαρμογής και τα εξηγεί ο οδηγός του πλαφόν. Νομική βάση
-//     άρθρο 59 ν.5255/2025 · άρθρο 96 ν.5007/2022 (lib/accounting/updates2026.ts).
+//     άρθρο 59 ν. 5255/2025 · άρθρο 96 ν. 5007/2022 (lib/accounting/updates2026.ts).
 //   · Κατοικία χωρίς γενικό κρατικό πλαφόν το 2026, αύξηση μόνο με ρητό όρο ή
 //     νέα συμφωνία: ο οδηγός του πλαφόν και το TabTenantCare.tsx, ίδια διατύπωση.
 //   · Ο ΔΤΚ, το 75% και η στρογγυλοποίησή του: lib/market/cpi.ts (μηνιαίο
@@ -99,7 +99,7 @@ const FAQ: FaqItem[] = [
     q: 'Ποιον ΔΤΚ χρησιμοποιώ;',
     a: 'Τη δωδεκάμηνη μεταβολή του Δείκτη Τιμών Καταναλωτή που ανακοινώνει κάθε μήνα η ΕΛΣΤΑΤ για την '
      + `αναπροσαρμογή των μισθωμάτων. Για αναπροσαρμογή τον ${indexMonthAcc(RENT_INDEX_LATEST)} είναι ${fpRate(LATEST)}, `
-     + `δηλαδή η μεταβολή ${indexPeriodLabel(RENT_INDEX_LATEST)}. Το ίδιο δελτίο δίνει και το 75% της (${fpRate(LATEST_75)}) `
+     + `δηλαδή η μεταβολή του δωδεκαμήνου ${indexPeriodLabel(RENT_INDEX_LATEST)}. Το ίδιο δελτίο δίνει και το 75% της (${fpRate(LATEST_75)}) `
      + 'για συμβάσεις που ορίζουν αυτό. Ο Εναρμονισμένος Δείκτης (ΕνΔΤΚ) της Eurostat είναι άλλος δείκτης.',
   },
   {
@@ -129,7 +129,7 @@ function IndexNote() {
       <span className="po-src-txt">
         Για αναπροσαρμογή τον {indexMonthAcc(RENT_INDEX_LATEST)}:{' '}
         <strong style={NUM}>{fpRate(LATEST)}</strong> (75%: <strong style={NUM}>{fpRate(LATEST_75)}</strong>),
-        {' '}μεταβολή {indexPeriodLabel(RENT_INDEX_LATEST)}.{' '}
+        {' '}μεταβολή δωδεκαμήνου {indexPeriodLabel(RENT_INDEX_LATEST)}.{' '}
         <a href={CPI_SOURCE_URL} rel="noopener noreferrer" className="lp-link" style={SRC_LINK}>ΕΛΣΤΑΤ</a>,
         {' '}ελέγχθηκε {grDate(CPI_CONFIRMED_AT)}.
       </span>

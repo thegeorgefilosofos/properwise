@@ -47,7 +47,7 @@ ok('zero current → pct 0', z.pctApplied === 0 && z.newRent === 400)
   ok('ισχύς 2027: η πηγή δεν ορίζει όριο', rentCapPct({ leaseCategory: 'commercial', leaseStart: '2022-03-01', effectiveDate: '2027-01-01' }) === null)
   ok('ισχύς 2025: κανένα όριο', rentCapPct({ leaseCategory: 'commercial', leaseStart: '2022-03-01', effectiveDate: '2025-12-31' }) === null)
   const txt = adjustmentNoticeText({ effectiveDate: '01/04/2026', method: 'percent', res: x })
-  ok('η ειδοποίηση εξηγεί το όριο', txt.includes('άρθρου 59 ν.5255/2025') && txt.includes('1.545,00€'))
+  ok('η ειδοποίηση εξηγεί το όριο', txt.includes('άρθρου 59 ν. 5255/2025') && txt.includes('1.545,00€'))
   ok('χωρίς όριο ο υπολογισμός μένει ίδιος', computeRentAdjustment({ currentRent: 1500, method: 'percent', percent: 5 }).newRent === 1575)
 }
 
@@ -61,12 +61,13 @@ ok('notice mentions effective date', txt.includes('01/09/2026'))
 // Ο μισθωτής παίρνει υπογεγραμμένο έγγραφο με ένα ποσοστό. Χωρίς αυτά τα τρία
 // δεν έχει κανέναν τρόπο να το επαληθεύσει στην ΕΛΣΤΑΤ — και δύο διαφορετικές
 // βάσεις δίνουν δύο διαφορετικά νούμερα από τον ΙΔΙΟ δείκτη.
-const PERIOD = 'από τον Ιούλιο 2025 ως τον Ιούνιο 2026'
+const PERIOD = 'Ιουλίου 2025 – Ιουνίου 2026'
 {
   const full = adjustmentNoticeText({ effectiveDate: '01/09/2026', method: 'cpi', res: c, cpiPeriod: PERIOD })
   ok('η ειδοποίηση ΔΤΚ γράφει το δωδεκάμηνο', full.includes(PERIOD))
   ok('…ονομάζει την ΕΛΣΤΑΤ', full.includes('ΕΛΣΤΑΤ'))
-  ok('…και λέει ότι είναι η ΔΩΔΕΚΑΜΗΝΗ μεταβολή', full.includes('δωδεκάμηνης μεταβολής'))
+  ok('…και λέει ότι είναι η ΔΩΔΕΚΑΜΗΝΗ μεταβολή', full.includes('για το δωδεκάμηνο') && !full.includes('δωδεκάμηνης μεταβολής'))
+  ok('…με το δωδεκάμηνο χωρίς κόμματα γύρω του', full.includes(`(ΕΛΣΤΑΤ) για το δωδεκάμηνο ${PERIOD},`))
   ok('…και δεν αναφέρει 75% όταν δεν εφαρμόστηκε', !full.includes('75%'))
 
   const share = adjustmentNoticeText({ effectiveDate: '01/09/2026', method: 'cpi', res: c, cpiPeriod: PERIOD, cpiShare75: true })
@@ -92,7 +93,13 @@ const PERIOD = 'από τον Ιούλιο 2025 ως τον Ιούνιο 2026'
   // έγραφε «του ακινήτου επί της οδού Παγκράτι».
   const res = computeRentAdjustment({ currentRent: 700, method: 'percent', percent: 3 })
   const t = (address: string) => adjustmentNoticeText({ address, effectiveDate: '01/07/2026', method: 'percent', res })
-  ok('οδός με αριθμό: «επί της οδού»', t('Υμηττού 112, Αθήνα').includes('του ακινήτου επί της οδού Υμηττού 112, Αθήνα '))
+  ok('οδός με αριθμό: «επί της οδού», με την πόλη ανάμεσα σε κόμματα', t('Υμηττού 112, Αθήνα').includes('του ακινήτου επί της οδού Υμηττού 112, Αθήνα, αναπροσαρμόζεται'))
+  ok('διεύθυνση χωρίς πόλη: κανένα κόμμα πριν από το ρήμα', t('Υμηττού 112').includes('επί της οδού Υμηττού 112 αναπροσαρμόζεται'))
+  // Η ΦΩΝΗ ΤΟΥ ΕΓΓΡΑΦΟΥ (04/11/2026): «Παρακαλώ όπως» είναι μεταφορά ξένης
+  // σύνταξης· «τον/την μισθωτή» έχει περιττό -ν πριν από μ και καθόλου θηλυκό.
+  const plain = t('Υμηττού 112')
+  ok('«Παρακαλώ να καταβάλλετε», όχι «όπως»', plain.includes('Παρακαλώ να καταβάλλετε') && !plain.includes('Παρακαλώ όπως'))
+  ok('«Προς τον/τη μισθωτή/-τρια»', plain.startsWith('Προς τον/τη μισθωτή/-τρια'))
   ok('περιοχή: όχι «επί της οδού»', !t('Παγκράτι').includes('επί της οδού') && t('Παγκράτι').includes('του ακινήτου στη διεύθυνση Παγκράτι '))
   ok('λεωφόρος: χωρίς διπλό «οδού»', !t('Λεωφόρος Συγγρού 12, Αθήνα').includes('οδού Λεωφόρος'))
   ok('κενή διεύθυνση: τίποτα', t('  ').includes('του ακινήτου αναπροσαρμόζεται'))
