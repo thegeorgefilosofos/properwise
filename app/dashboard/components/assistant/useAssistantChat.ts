@@ -19,7 +19,7 @@ import { NAV_MAP, buildPersonalPrompt, parseAction, cleanForSpeech, addMemory } 
 import { assistantLockedMessage } from '@/lib/billing/aiLimits'
 import { modelFor } from '@/lib/assistant/model'
 import { numberMatchLine } from '@/lib/assistant/roster'
-import { scanFile, MAX_SCAN_MB } from '../scanDoc'
+import { scanFile, scanContentPart, MAX_SCAN_MB } from '../scanDoc'
 import { DOC_TYPE_LABELS } from '@/lib/billing/documents'
 import { parseAmount } from '@/lib/core/greek'
 import { athensToday, athensNowLabel } from '@/lib/core/time'
@@ -305,8 +305,8 @@ export function useAssistantChat({
 
     // ── 2) Δεν είναι χαρτί: τι αντικείμενο δείχνει; ────────────────────────
     try {
-      const b64: string | null = await new Promise(res => { const r = new FileReader(); r.onload = () => res((r.result as string).split(',')[1] || null); r.onerror = () => res(null); r.readAsDataURL(file); });
-      if (!b64) { setBusy(false); return; }
+      const part = await scanContentPart(file);
+      if (!part) { setBusy(false); return; }
       const { data: { session } } = await supabase.auth.getSession();
       const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 30000);
       const res = await fetch('/api/anthropic', {
@@ -315,11 +315,11 @@ export function useAssistantChat({
         // ΣΑΡΩΣΗ, ΟΧΙ ΕΡΩΤΗΣΗ: η ίδια φωτογραφία με το βήμα 1, άρα ο διακομιστής
         // τη μετρά μία φορά (route.tsx, scanKey) και δεν τρώει ερώτηση της Νόας.
         body: JSON.stringify({ kind: 'scan', model: 'claude-sonnet-5', max_tokens: 500, system: IMG_ITEM_SCAN_SYSTEM,
-          messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: file.type || 'image/jpeg', data: b64 } }, { type: 'text', text: 'Διάβασε το αντικείμενο/συσκευή από τη φωτογραφία.' }] }] }),
+          messages: [{ role: 'user', content: [part, { type: 'text', text: 'Διάβασε το αντικείμενο/συσκευή από τη φωτογραφία.' }] }] }),
       });
       clearTimeout(timer);
       readQuota(res);
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok || data?.error) { setMsgs(m => [...m, { role: 'assistant', text: res.status === 429 && typeof data?.error === 'string' ? data.error : 'Δεν μπόρεσα να διαβάσω τη φωτογραφία τώρα. Δοκίμασε ξανά ή πες μου τα στοιχεία.' }]); setBusy(false); return; }
       const txt: string = data?.content?.find((c: { type: string }) => c.type === 'text')?.text || '{}';
       let d: Record<string, string> = {};

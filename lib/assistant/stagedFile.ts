@@ -5,7 +5,7 @@
 // base64 το ξεπερνά και κοβόταν πριν φτάσει εδώ: ο χρήστης διάβαζε «η υπηρεσία
 // ανάγνωσης δεν είναι διαθέσιμη». Τώρα η εφαρμογή ανεβάζει το PDF στον δικό
 // του φάκελο του χρήστη (`<uid>/scan-tmp/<uuid>.pdf`, bucket property-files,
-// όριο 20 MB) και στέλνει μόνο τη διαδρομή. Ο διακομιστής το διαβάζει με τη
+// όριο 50 MB) και στέλνει μόνο τη διαδρομή. Ο διακομιστής το διαβάζει με τη
 // συνεδρία του ίδιου χρήστη (RLS), το σβήνει αμέσως και το βάζει στο αίτημα
 // ως base64· από εκεί και πέρα μετρητής και αποτύπωμα δουλεύουν όπως πριν.
 //
@@ -15,10 +15,34 @@
 
 /** Ο φάκελος των προσωρινών PDF προς ανάγνωση. */
 export const STAGE_DIR = 'scan-tmp';
-/** Το bucket, το ίδιο με τον Φάκελο του ακινήτου (όριο 20 MB, δέχεται PDF). */
+/** Το bucket, το ίδιο με τον Φάκελο του ακινήτου (όριο 50 MB, δέχεται PDF). */
 export const STAGE_BUCKET = 'property-files';
 /** Το μεγαλύτερο PDF που διαβάζεται, ίσο με το όριο του bucket. */
-export const STAGE_MAX_BYTES = 20 * 1024 * 1024;
+export const STAGE_MAX_BYTES = 50 * 1024 * 1024;
+
+// ── ΤΟ ΠΟΛΥΣΕΛΙΔΟ PDF ΚΡΑΤΑ ΤΙΣ ΠΡΩΤΕΣ ΣΕΛΙΔΕΣ ─────────────────────────────
+// Ο πάροχος δέχεται έως 100 σελίδες ανά αίτημα και κάθε σελίδα διαβάζεται ως
+// εικόνα· ένα σκαναρισμένο αρχείο 300 σελίδων δεν θα απαντούσε ποτέ μέσα στο
+// χρονικό όριο της συνάρτησης. Ό,τι χρειάζεται η ανάγνωση (εκδότης, ποσό,
+// περίοδος, ΑΤΑΚ, ο πίνακας του Ε9) βρίσκεται στις πρώτες σελίδες. Πάνω από
+// SCAN_MAX_PAGES κρατάμε αυτές και ο χρήστης δεν βλέπει σφάλμα.
+export const SCAN_MAX_PAGES = 30;
+
+/** Τα πρώτα `max` φύλλα του PDF. Αν δεν ανοίγει (κρυπτογραφημένο, χαλασμένο), επιστρέφει το αρχικό. */
+export async function firstPages(bytes: Uint8Array, max = SCAN_MAX_PAGES): Promise<{ bytes: Uint8Array; pages: number | null; trimmed: boolean }> {
+  try {
+    const { PDFDocument } = await import('pdf-lib');
+    const src = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
+    const pages = src.getPageCount();
+    if (pages <= max) return { bytes, pages, trimmed: false };
+    const out = await PDFDocument.create();
+    const copied = await out.copyPages(src, Array.from({ length: max }, (_, i) => i));
+    copied.forEach(p => out.addPage(p));
+    return { bytes: await out.save(), pages, trimmed: true };
+  } catch {
+    return { bytes, pages: null, trimmed: false };
+  }
+}
 
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const PATH_RE = new RegExp(`^(${UUID})/${STAGE_DIR}/${UUID}\\.pdf$`);
@@ -69,9 +93,10 @@ export async function resolveStaged(body: { messages?: unknown }, uid: string, s
     const { data, error } = await bucket.download(path);
     void Promise.resolve(bucket.remove([path])).catch(() => {});
     if (error || !data || data.size === 0 || data.size > STAGE_MAX_BYTES) return false;
-    const bytes = Buffer.from(await data.arrayBuffer());
-    if (bytes.subarray(0, 5).toString('latin1') !== '%PDF-') return false;
-    b.source = { type: 'base64', media_type: 'application/pdf', data: bytes.toString('base64') };
+    const raw = Buffer.from(await data.arrayBuffer());
+    if (raw.subarray(0, 5).toString('latin1') !== '%PDF-') return false;
+    const { bytes } = await firstPages(raw);
+    b.source = { type: 'base64', media_type: 'application/pdf', data: Buffer.from(bytes).toString('base64') };
   }
   return true;
 }

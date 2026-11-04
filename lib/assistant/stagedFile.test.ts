@@ -1,6 +1,7 @@
 // Το μεγάλο PDF περνά από τον χώρο αρχείων: μόνο του ίδιου χρήστη, μόνο PDF,
 // σβήνεται μόλις διαβαστεί και γίνεται base64 πριν από τον μετρητή.
-import { stagedPathOk, stagePathFor, resolveStaged, STAGE_MAX_BYTES } from './stagedFile';
+import { stagedPathOk, stagePathFor, resolveStaged, firstPages, STAGE_MAX_BYTES, SCAN_MAX_PAGES } from './stagedFile';
+import { PDFDocument } from 'pdf-lib';
 import { meterKind, fileHash } from '@/lib/billing/aiUnits';
 
 let pass = 0, fail = 0;
@@ -60,6 +61,40 @@ const bodyWith = (path: string) => ({
   {
     const plain = { messages: [{ role: 'user', content: [{ type: 'text', text: 'γεια' }] }] };
     ok('αίτημα χωρίς προσωρινό αρχείο μένει ίδιο', await resolveStaged(plain, UID, fake({}, [])) && JSON.stringify(plain).includes('γεια'));
+  }
+
+  {
+    // Το όριο του bucket είναι 50 MB: τόσο φτάνει και ο διακομιστής.
+    ok('ο διακομιστής δέχεται έως 50 MB', STAGE_MAX_BYTES === 50 * 1024 * 1024);
+    // ΤΡΙΑ ΣΗΜΕΙΑ, ΕΝΑ ΟΡΙΟ: ο κάδος (τελευταίο migration που τον αγγίζει), η
+    // οθόνη και ο διακομιστής. Ηταν 8, 10 και 20 σε διαφορετικές οθόνες.
+    const { readdirSync, readFileSync } = await import('node:fs');
+    const dir = 'supabase/migrations';
+    const last = readdirSync(dir).sort().reverse()
+      .map(f => readFileSync(`${dir}/${f}`, 'utf8'))
+      .find(t => /property-files/.test(t) && /file_size_limit\s*=\s*\d+/.test(t)) || '';
+    const bucket = Number(last.match(/file_size_limit\s*=\s*(\d+)/)?.[1]);
+    const scan = readFileSync('app/dashboard/components/scanDoc.ts', 'utf8');
+    const mb = Number(scan.match(/export const MAX_SCAN_MB = (\d+)/)?.[1]);
+    ok(`κάδος, οθόνη και διακομιστής λένε το ίδιο όριο (${bucket} · ${mb} MB · ${STAGE_MAX_BYTES})`,
+      bucket === STAGE_MAX_BYTES && mb * 1024 * 1024 === STAGE_MAX_BYTES);
+    // Πολυσέλιδο PDF: κρατά τις πρώτες SCAN_MAX_PAGES, χωρίς σφάλμα.
+    const make = async (n: number) => { const d = await PDFDocument.create(); for (let i = 0; i < n; i++) d.addPage([200, 200]); return d.save(); };
+    const long = await firstPages(await make(SCAN_MAX_PAGES + 12));
+    const kept = (await PDFDocument.load(long.bytes)).getPageCount();
+    ok(`το πολυσέλιδο κρατά ${SCAN_MAX_PAGES} σελίδες (κράτησε ${kept})`, long.trimmed && kept === SCAN_MAX_PAGES && long.pages === SCAN_MAX_PAGES + 12);
+    const short = await firstPages(await make(3));
+    ok('το σύντομο μένει όπως είναι', !short.trimmed && short.pages === 3);
+    const broken = await firstPages(new Uint8Array(Buffer.from('%PDF-1.7 χαλασμένο')));
+    ok('το χαλασμένο περνά όπως είναι, χωρίς σφάλμα', !broken.trimmed && broken.pages === null);
+    // Και ολόκληρη η διαδρομή: το staged πολυσέλιδο φτάνει στο αίτημα κομμένο.
+    const removed: string[] = [];
+    const body = bodyWith(good);
+    const blob = new Blob([Buffer.from(await make(SCAN_MAX_PAGES + 5))]);
+    ok('το πολυσέλιδο διαβάζεται', await resolveStaged(body, UID, fake({ [good]: blob }, removed)));
+    const src = (body.messages[0].content[0] as { source: { data?: string } }).source;
+    const sent = (await PDFDocument.load(Buffer.from(src.data || '', 'base64'))).getPageCount();
+    ok(`και στέλνεται με ${SCAN_MAX_PAGES} σελίδες (${sent})`, sent === SCAN_MAX_PAGES);
   }
 
   console.log(`stagedFile: ${pass} ✓ · ${fail} ✗`);

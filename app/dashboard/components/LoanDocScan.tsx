@@ -3,7 +3,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { T, TT, Spinner, Btn } from '@/components/Theme'
 import { rankLoans, type UserLoanNeeds, type BankInput } from '@/lib/loans/recommend'
 import { fmtEur, fmtPct, type SavedLoan } from './TabLoanData'
-import { MAX_SCAN_MB } from './scanDoc'
+import { MAX_SCAN_MB, scanContentPart } from './scanDoc'
 import { athensToday } from '@/lib/core/time';
 import { SAY } from '@/lib/core/dbError';
 import { hy } from '@/components/Hyphen';
@@ -198,13 +198,9 @@ export function useDocScan<T>(opts: {
     if (!mime.startsWith('image/') && mime !== 'application/pdf') { setError('type'); return }
     if (file.size > MAX_SCAN_MB * 1024 * 1024) { setError('big'); return }
     setError(''); setErrorText(undefined); setScanning(true); opts.onStart?.()
-    const reader = new FileReader()
-    reader.onerror = () => { setError('unreadable'); setScanning(false) }
-    reader.onload = async () => {
-      const base64 = String(reader.result || '').split(',')[1] || ''
-      const part = mime === 'application/pdf'
-        ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
-        : { type: 'image', source: { type: 'base64', media_type: mime, data: base64 } }
+    void (async () => {
+      const part = await scanContentPart(file)
+      if (!part) { setError('unreadable'); setScanning(false); return }
       try {
         const res = await fetch('/api/anthropic', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -214,7 +210,7 @@ export function useDocScan<T>(opts: {
             messages: [{ role: 'user', content: [part, { type: 'text', text: opts.ask }] }],
           }),
         })
-        const data = await res.json()
+        const data = await res.json().catch(() => null)
         if (res.status === 429) {
           setError('quota')
           if (typeof data?.error === 'string') setErrorText(data.error)
@@ -225,8 +221,7 @@ export function useDocScan<T>(opts: {
         opts.onResult(JSON.parse(text.replace(/```json?|```/g, '').trim()) as T)
       } catch { setError('unreadable') }
       finally { setScanning(false) }
-    }
-    reader.readAsDataURL(file)
+    })()
   }
 
   return { scanning, error, errorText, scanFile }
