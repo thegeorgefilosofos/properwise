@@ -156,9 +156,6 @@ export const CPI_YEARS: number[] = [...new Set([
   ...INDEX_MONTHS.filter(m => m.endsWith('-01')).map(m => Number(m.slice(0, 4)) - 1),
 ])].sort((a, b) => a - b);
 
-/** Το πιο πρόσφατο έτος με ΠΡΑΓΜΑΤΙΚΗ τιμή. */
-export const CPI_LATEST_YEAR = CPI_YEARS[CPI_YEARS.length - 1];
-
 /** Ο πίνακας ετών, για οθόνες που τον δείχνουν ολόκληρο. */
 export const CPI_BY_YEAR: Readonly<Record<number, number>> =
   Object.fromEntries(CPI_YEARS.map(y => [y, cpiFor(y) as number]));
@@ -175,6 +172,16 @@ export const cpiConfirmedLabel = (): string =>
 export const indexMonthLabel = (ym: string): string => {
   const [y, m] = ym.split('-').map(Number);
   return `${monthNom(m - 1)} ${y}`;
+};
+
+/**
+ * «Ιούλιο 2026», σε αιτιατική: μετά από «τον» ή «για τον». Το παράθυρο της
+ * αναπροσαρμογής έγραφε «όπως τη δημοσίευσε η ΕΛΣΤΑΤ για τον Ιούλιος 2026»
+ * (03/11/2026), σε κείμενο που ο ιδιοκτήτης υπογράφει.
+ */
+export const indexMonthAcc = (ym: string): string => {
+  const [y, m] = ym.split('-').map(Number);
+  return `${monthAcc(m - 1)} ${y}`;
 };
 
 /**

@@ -86,5 +86,17 @@ const PERIOD = 'από τον Ιούλιο 2025 ως τον Ιούνιο 2026'
   ok('η χειροκίνητη μέθοδος δεν επικαλείται την ΕΛΣΤΑΤ', !man.includes('ΕΛΣΤΑΤ'))
 }
 
+
+{
+  // «ΕΠΙ ΤΗΣ ΟΔΟΥ» ΜΟΝΟ ΜΠΡΟΣΤΑ ΣΕ ΟΔΟ (03/11/2026): με «Παγκράτι» το έγγραφο
+  // έγραφε «του ακινήτου επί της οδού Παγκράτι».
+  const res = computeRentAdjustment({ currentRent: 700, method: 'percent', percent: 3 })
+  const t = (address: string) => adjustmentNoticeText({ address, effectiveDate: '01/07/2026', method: 'percent', res })
+  ok('οδός με αριθμό: «επί της οδού»', t('Υμηττού 112, Αθήνα').includes('του ακινήτου επί της οδού Υμηττού 112, Αθήνα '))
+  ok('περιοχή: όχι «επί της οδού»', !t('Παγκράτι').includes('επί της οδού') && t('Παγκράτι').includes('του ακινήτου στη διεύθυνση Παγκράτι '))
+  ok('λεωφόρος: χωρίς διπλό «οδού»', !t('Λεωφόρος Συγγρού 12, Αθήνα').includes('οδού Λεωφόρος'))
+  ok('κενή διεύθυνση: τίποτα', t('  ').includes('του ακινήτου αναπροσαρμόζεται'))
+}
+
 console.log(`rentAdjustment.test.ts: ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

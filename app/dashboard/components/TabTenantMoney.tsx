@@ -17,8 +17,10 @@ import {
   setRentDueOccurrencePaid,
 } from './TabTenantHelpers';
 import {
-  CPI_BY_YEAR, CPI_SOURCE_URL, CPI_LATEST_YEAR, cpiFor, cpiConfirmedLabel,
+  RENT_INDEX, RENT_INDEX_LATEST, CPI_SOURCE_URL, rentIndexFor, rentAdjustmentPct,
+  indexMonthLabel, indexPeriodLabel, cpiConfirmedLabel,
 } from '@/lib/market/cpi';
+import { monthYearLabel, monthAcc } from '@/lib/core/months';
 import {
   Toggle,
   NumberInput,
@@ -51,7 +53,7 @@ import { classifyDocType, DOC_TYPE_LABELS, type ScannedDoc } from '@/lib/billing
 import { hasFeature } from '@/lib/billing/entitlements';
 import type { PlanId } from '@/lib/billing/plans';
 import {
-  daysUntil, isoYear, isoMonth, localDay,
+  daysUntil, isoYear, isoMonth, localDay, athensMonth,
 } from '@/lib/core/time';
 import { MONTHS_NOM, MONTHS_SHORT, monthNom, monthGen } from '@/lib/core/months';
 import { INK, INK_MUTED, RULE } from '@/lib/print/ink';
@@ -104,23 +106,32 @@ import {
 
 // ─── Design tokens, shared source of truth (components/Theme) ────────────────
 const labelStyle = { ...TT.label, marginBottom: 8 };
+/** «Νοέμβριο 2026», για «από τον …». */
+const monthAccYear = (ym: string) => { const [y, m] = ym.split('-').map(Number); return `${monthAcc(m - 1)} ${y}`; };
+/** «Σεπτεμβρίου 2026», για «του …». */
+const indexMonthGenYear = (ym: string) => { const [y, m] = ym.split('-').map(Number); return `${monthGen(m - 1)} ${y}`; };
 
 // ─── HTML escaping for values interpolated into document.write() templates ────
 
 export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string }) {
   const branding = useReportBranding(userId);
-  const TDE=CPI_BY_YEAR;
   const fmtE = fe;
   const fmtDate=(d:string|null)=>d?new Date(d+'T00:00:00').toLocaleDateString('el-GR',{day:'2-digit',month:'long',year:'numeric'}):ABSENT_DATE;
   const rent=tenant.monthly_rent||0;
   const daysExp=tenant.lease_end?(daysUntil(tenant.lease_end) ?? 0):null;
-  const thisYear=new Date().getFullYear();
-  // Προεπιλογή το ΤΡΕΧΟΝ έτος: αν δεν έχει τιμή, ο χρήστης το βλέπει αμέσως και
-  // δίνει το ποσοστό ο ίδιος, αντί να στείλει σιωπηλά τον περσινό δείκτη.
-  const [yr,setYr]=useState(String(thisYear));
-  const [useCustom,setUseCustom]=useState(cpiFor(thisYear)===null);
+  // ═══ ΙΔΙΟΣ ΔΕΙΚΤΗΣ ΜΕ ΤΟ ΠΑΡΑΘΥΡΟ ΤΗΣ ΑΝΑΠΡΟΣΑΡΜΟΓΗΣ (03/11/2026) ═══════
+  // Η καρτέλα υπολόγιζε με τη ΜΕΣΗ ΕΤΗΣΙΑ μεταβολή ενός έτους (cpiFor), ενώ το
+  // παράθυρο της ειδοποίησης και ο δημόσιος υπολογιστής με τη δωδεκάμηνη
+  // μεταβολή του μήνα ισχύος (rentIndexFor), όπως τη δημοσιεύει η ΕΛΣΤΑΤ για τα
+  // μισθώματα. Ίδιο ενοίκιο, δύο ποσά σε δύο οθόνες. Τώρα διαλέγεις μήνα ισχύος
+  // και ο δείκτης βγαίνει από την ίδια συνάρτηση με το παράθυρο.
+  const thisYm=athensMonth();
+  const [ym,setYm]=useState(thisYm);
+  const [share75,setShare75]=useState(false);
+  const idx=rentIndexFor(ym);
+  const [useCustom,setUseCustom]=useState(rentIndexFor(thisYm)===null);
   const [customPct,setCustomPct]=useState('');
-  const official=cpiFor(parseInt(yr));            // null = δεν το ξέρουμε
+  const official=idx?rentAdjustmentPct(idx.pct,share75):null;   // null = δεν το ξέρουμε
   const custom=parseFloat(customPct);
   const hasCustom=useCustom&&Number.isFinite(custom);
   const pct=hasCustom?custom:(official??0);
@@ -131,12 +142,14 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
   const diff=newRent-rent;
   const isExpired=daysExp!==null&&daysExp<0;
   const isExpiring=daysExp!==null&&daysExp>=0&&daysExp<=60;
-  // Λίστα ετών: όσα έχουν τιμή, συν το τρέχον όταν δεν έχει (για να μπορεί να επιλεγεί).
-  const years=useMemo(()=>{
-    const ys=Object.keys(TDE).map(Number);
-    if(!ys.includes(thisYear)) ys.push(thisYear);
-    return ys.sort((a,b)=>b-a);
-  },[TDE,thisYear]);
+  // Μήνες ισχύος: όσοι έχουν δημοσιευμένο δείκτη, συν ο τρέχων και οι δύο
+  // επόμενοι (που παίρνουν τον τελευταίο δημοσιευμένο, όπως στο παράθυρο).
+  const months=useMemo(()=>{
+    const ms=new Set(Object.keys(RENT_INDEX));
+    const [y,m]=thisYm.split('-').map(Number);
+    for(let k=0;k<3;k++){ const d=new Date(Date.UTC(y,m-1+k,1)); ms.add(d.toISOString().slice(0,7)); }
+    return [...ms].sort().reverse();
+  },[thisYm]);
 
   // 42 ήταν off-scale: κάθε άλλο πεδίο του app (UIComponents.FIELD_HEIGHT, settingsField)
   // είναι 40, οπότε αυτό το select καθόταν 2px ψηλότερα από τα διπλανά του.
@@ -152,19 +165,19 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
     // ντυμένο ως το πρώτο — ο παραλήπτης είναι άλλος άνθρωπος και το κρατά.
     const basisLine=hasCustom
       ? `Σας γνωστοποιούμε ότι το μηνιαίο μίσθωμα αναπροσαρμόζεται με ποσοστό <strong>${rPct(pct)}</strong>, όπως προβλέπεται στη σύμβαση μίσθωσης, ως εξής:`
-      : `Σας γνωστοποιούμε ότι, βάσει της μέσης ετήσιας μεταβολής του Δείκτη Τιμών Καταναλωτή (ΔΤΚ) έτους <strong>${rEsc(yr)}</strong> (${rEsc(cpiConfirmedLabel())}), το μηνιαίο μίσθωμα αναπροσαρμόζεται ως εξής:`;
+      : `Σας γνωστοποιούμε ότι, βάσει ${share75?'του 75% ':''}της δωδεκάμηνης μεταβολής του Δείκτη Τιμών Καταναλωτή (ΔΤΚ), ${rEsc(idx?indexPeriodLabel(idx.ym):'')} (${rEsc(cpiConfirmedLabel())}), το μηνιαίο μίσθωμα αναπροσαρμόζεται από τον ${rEsc(monthAccYear(ym))} ως εξής:`;
     const html=reportHead('Ειδοποίηση αναπροσαρμογής μισθώματος')
       + `<body><div class="page">`
-      + reportHeader(branding, 'Αναπροσαρμογή μισθώματος', { rightLabel:'Ημερομηνία', rightValue:today_str, rightNote:hasCustom?'Συμβατικό ποσοστό':`ΔΤΚ ${yr}` })
+      + reportHeader(branding, 'Αναπροσαρμογή μισθώματος', { rightLabel:'Ημερομηνία', rightValue:today_str, rightNote:hasCustom?'Συμβατικό ποσοστό':`ΔΤΚ ${idx?indexMonthLabel(idx.ym):''}` })
       + `<h1>Ειδοποίηση αναπροσαρμογής μισθώματος</h1>`
-      + `<div class="sub">${hasCustom?'Βάσει του ποσοστού αναπροσαρμογής της σύμβασης':`Βάσει Δείκτη Τιμών Καταναλωτή (ΔΤΚ) ${rEsc(yr)}`}${rEsc(brandTag)}</div>`
+      + `<div class="sub">${hasCustom?'Βάσει του ποσοστού αναπροσαρμογής της σύμβασης':`Βάσει Δείκτη Τιμών Καταναλωτή (ΔΤΚ) ${rEsc(idx?indexMonthLabel(idx.ym):'')}`}${rEsc(brandTag)}</div>`
       + `<div class="note"><strong>Ημερομηνία:</strong> ${rEsc(today_str)}</div>`
       + `<div class="note">Προς: <strong>${rEsc(tenant.full_name)}</strong>${rEsc(afmInline)}</div>`
       + `<div class="note">${basisLine}</div>`
       + reportSection('Αναπροσαρμογή μισθώματος')
       + `<table><tbody>`
         + reportRow('Τρέχον μηνιαίο μίσθωμα', rEur(rent))
-        + reportRow(hasCustom?'Ποσοστό αναπροσαρμογής (σύμβαση)':`ΔΤΚ ${yr}`, rPct(pct))
+        + reportRow(hasCustom?'Ποσοστό αναπροσαρμογής (σύμβαση)':`ΔΤΚ ${idx?indexMonthLabel(idx.ym):''}${share75?' (75%)':''}`, rPct(pct))
         + reportRow('Αύξηση μισθώματος', rSigned(diff))
         + reportRow('Νέο μηνιαίο μίσθωμα', rEur(newRent), 'result')
       + `</tbody></table>`
@@ -176,7 +189,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
       + `</div>`
       + reportDisclaimer(hasCustom
         ? 'Το ποσοστό αναπροσαρμογής δηλώθηκε από τον εκμισθωτή και δεν αποτελεί επίσημο στατιστικό στοιχείο. Το παρόν έχει ενημερωτικό χαρακτήρα· για νομικές υποθέσεις συμβουλευτείτε δικηγόρο.'
-        : `Η αναπροσαρμογή βασίζεται στη μέση ετήσια μεταβολή του ΔΤΚ (${cpiConfirmedLabel()}) και στο άρθρο 288 ΑΚ. Επιβεβαιώστε την τιμή στην πηγή πριν την κοινοποίηση. Το παρόν έχει ενημερωτικό χαρακτήρα· για νομικές υποθέσεις συμβουλευτείτε δικηγόρο.`, branding)
+        : `Η αναπροσαρμογή βασίζεται στη δωδεκάμηνη μεταβολή του ΔΤΚ (${cpiConfirmedLabel()}) και στο άρθρο 288 ΑΚ. Επιβεβαιώστε την τιμή στην πηγή πριν την κοινοποίηση. Το παρόν έχει ενημερωτικό χαρακτήρα· για νομικές υποθέσεις συμβουλευτείτε δικηγόρο.`, branding)
       + `</div></body></html>`;
     openReport(html);
   };
@@ -190,7 +203,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
           Ο <strong style={{ color:'var(--text-primary)' }}>Δείκτης Τιμών Καταναλωτή (ΔΤΚ)</strong> είναι ο επίσημος δείκτης που χρησιμοποιεί η ΕΛΣΤΑΤ για να μετρήσει τη μεταβολή του κόστους ζωής σε ετήσια βάση. Βάσει του Αστικού Κώδικα (άρθρο 288 ΑΚ), ο εκμισθωτής έχει δικαίωμα να αναπροσαρμόσει το μίσθωμα μία φορά τον χρόνο, εφόσον αυτό προβλέπεται στη σύμβαση.
         </p>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap:10 }}>
-          {[{label:'Νομική βάση',value:'Αρ. 288 ΑΚ'},{label:'Συχνότητα',value:'Μία φορά/έτος'},{label:'Τελευταίος δείκτης',value:String(CPI_LATEST_YEAR)}].map((item,i)=>(
+          {[{label:'Νομική βάση',value:'Αρ. 288 ΑΚ'},{label:'Συχνότητα',value:'Μία φορά/έτος'},{label:'Τελευταίος δείκτης',value:indexMonthLabel(RENT_INDEX_LATEST)}].map((item,i)=>(
             <div key={i} style={{ background:'var(--bg-elevated)', borderRadius:T.radius.inner, padding:'12px 14px' }}>
               <div style={{ fontSize:14, fontWeight:700, color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', marginBottom:4 }}>{item.value}</div>
               <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', textTransform:'uppercase' as const, letterSpacing:'0.1em', fontFamily:T.font.sans }}>{item.label}</div>
@@ -231,9 +244,9 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
           </div>
 
           <div style={{ marginBottom:16 }}>
-            <div style={{ ...labelStyle, marginBottom:8 }}>Έτος αναπροσαρμογής</div>
-            <SelectField ariaLabel="Έτος αναπροσαρμογής" value={yr} onChange={v=>{ setYr(v); setUseCustom(cpiFor(parseInt(v))===null); }}
-              options={years.map(y=>{ const v=cpiFor(y); return { value:String(y), label:`${y}${v===null?', χωρίς δείκτη ακόμη':`, ΔΤΚ: ${v>=0?'+':''}${fpSigned(v)}`}` }; })}/>
+            <div style={{ ...labelStyle, marginBottom:8 }}>Μήνας ισχύος</div>
+            <SelectField ariaLabel="Μήνας ισχύος" value={ym} onChange={v=>{ setYm(v); setUseCustom(rentIndexFor(v)===null); }}
+              options={months.map(m=>{ const i=rentIndexFor(m); return { value:m, label:`${monthYearLabel(m)}${i===null?', χωρίς δείκτη':`, ΔΤΚ ${indexMonthLabel(i.ym)}: ${i.pct>=0?'+':''}${fpSigned(i.pct)}`}` }; })}/>
           </div>
 
           {/* Έτος χωρίς δείκτη: το λέμε, δεν το μπαλώνουμε */}
@@ -245,13 +258,18 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
                Τώρα κλείνουν και δεξιά· τα μαλακά ενωτικά του hy() κρατούν τα
                κενά στο φυσικό τους μέγεθος αντί να τα τεντώσει η στοίχιση. */
             <div className="po-just" style={{ background:'var(--warning-dim)', border:'1px solid color-mix(in srgb, var(--warning) 26%, transparent)', borderLeft:'3px solid var(--warning)', borderRadius:T.radius.inner, padding:'11px 14px', marginBottom:16, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-              {hy(<>Για το {yr} δεν έχουμε επιβεβαιωμένη μέση ετήσια μεταβολή ΔΤΚ. Ο τελευταίος δείκτης που έχουμε είναι του {CPI_LATEST_YEAR}. Δώσε το ποσοστό που προβλέπει η σύμβασή σου. Θα γραφτεί στο έγγραφο ως ποσοστό που όρισες εσύ, όχι ως στοιχείο της ΕΛΣΤΑΤ.</>)}
+              {hy(<>Για ισχύ τον {monthAccYear(ym)} δεν έχουμε δημοσιευμένο δείκτη. Ο τελευταίος που έχουμε είναι του {indexMonthGenYear(RENT_INDEX_LATEST)}. Δώσε το ποσοστό που προβλέπει η σύμβασή σου. Θα γραφτεί στο έγγραφο ως ποσοστό που όρισες εσύ, όχι ως στοιχείο της ΕΛΣΤΑΤ.</>)}
             </div>
           )}
 
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, padding:'12px 14px', background:'var(--bg-elevated)', borderRadius:T.radius.inner }}>
             <Toggle on={useCustom} onChange={setUseCustom} label="Ποσοστό της σύμβασης"/>
           </div>
+          {!useCustom&&idx&&(
+            <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, padding:'12px 14px', background:'var(--bg-elevated)', borderRadius:T.radius.inner }}>
+              <Toggle on={share75} onChange={setShare75} label="75% της μεταβολής (επαγγελματική μίσθωση)"/>
+            </div>
+          )}
           {useCustom&&(
             <div style={{ marginBottom:16 }}>
               <div style={{ ...labelStyle, marginBottom:8 }}>Ποσοστό αναπροσαρμογής (%)</div>
@@ -270,13 +288,13 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
           {/* Ιστορικό ΔΤΚ */}
           <div title="ΔΤΚ: Δείκτης Τιμών Καταναλωτή, βάση αναπροσαρμογής ενοικίου" style={{ ...labelStyle, marginBottom:10 }}>Ιστορικό ΔΤΚ</div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 105px), 1fr))', gap: 4 }}>
-            {Object.entries(TDE).sort(([a],[b])=>parseInt(b)-parseInt(a)).map(([year,rate])=>{
-              const active=parseInt(year)===parseInt(yr);
+            {Object.entries(RENT_INDEX).sort(([a],[b])=>b.localeCompare(a)).map(([m,rate])=>{
+              const active=!!idx&&idx.ym===m;
               return (
-                <div key={year} {...pressable(()=>{setYr(year);setUseCustom(false);})}
+                <div key={m} {...pressable(()=>{setYm(m);setUseCustom(false);})}
                   style={{ background:active?'var(--accent-dim)':'var(--bg-elevated)', border:`1px solid ${active?'var(--accent)':'var(--border-subtle)'}`, borderRadius:T.radius.badge, padding:'7px 4px', textAlign:'center' as const, cursor:'pointer', transition: 'background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s' }}>
                   <div style={{ fontSize: 'var(--fs-xs)', fontWeight:700, color:active?'var(--accent)':'var(--text-secondary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{rate>=0?'+':''}{fpSigned(rate)}</div>
-                  <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:2 }}>{year}</div>
+                  <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:2 }}>{monthYearLabel(m)}</div>
                 </div>
               );
             })}
@@ -298,7 +316,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
               </div>
 
               <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg, marginBottom:14 }}>
-                {[{label:hasCustom?'Ποσοστό σύμβασης':`ΔΤΚ ${yr}`,value:`${pct>=0?'+':''}${fpSigned(pct)}`},
+                {[{label:hasCustom?'Ποσοστό σύμβασης':`ΔΤΚ ${idx?indexMonthLabel(idx.ym):''}${share75?' (75%)':''}`,value:`${pct>=0?'+':''}${fpSigned(pct)}`},
                   {label:'Μεταβολή ανά μήνα',value:`${diff>=0?'+':''}${feSigned(diff)}`},
                   {label:'Μεταβολή ανά έτος',value:`${diff>=0?'+':''}${feSigned(diff*12)}`}
                 ].map((row,i)=>(
@@ -327,7 +345,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
                   τα ενωτικά του hy(), ώστε το κείμενο να κάθεται στο ίδιο ορθογώνιο
                   με το πλαίσιο που το κρατά. */}
               <div className="po-just" style={{ marginTop:10, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
-                {hy(<>Η ειδοποίηση φεύγει σε άλλον άνθρωπο και μένει στα χαρτιά του. Δεν την εκτυπώνουμε με νούμερο που δεν έχει προέλευση. Συμπλήρωσε το ποσοστό της σύμβασης ή επίλεξε έτος με επιβεβαιωμένο δείκτη.</>)}
+                {hy(<>Η ειδοποίηση φεύγει σε άλλον άνθρωπο και μένει στα χαρτιά του. Δεν την εκτυπώνουμε με νούμερο που δεν έχει προέλευση. Συμπλήρωσε το ποσοστό της σύμβασης ή επίλεξε μήνα ισχύος με δημοσιευμένο δείκτη.</>)}
               </div>
             </div>
           )}
@@ -1069,13 +1087,15 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
   const hasMarket=marketRent>0;
   const marketDiff=hasMarket?rent-marketRent:0;
   const marketDiffPct=hasMarket&&marketRent>0?(marketDiff/marketRent)*100:0;
-  const cpiPct=cpiFor(CPI_LATEST_YEAR);
+  // Ο ίδιος δείκτης με την αναπροσαρμογή: ο τελευταίος δημοσιευμένος δωδεκάμηνος.
+  const idxNow=rentIndexFor(athensMonth());
+  const cpiPct=idxNow?idxNow.pct:null;
   const legalNew=cpiPct!==null?rent*(1+cpiPct/100):null;
   // Η πρόταση που ΦΕΥΓΕΙ σε άλλον άνθρωπο: αγορά αν υπάρχει βάση, αλλιώς ΔΤΚ, αλλιώς τίποτα.
   const suggested=hasMarket?Math.round(marketRent):(legalNew!==null?Math.round(legalNew):null);
   const basis=hasMarket
     ?`βάσει της μέσης τιμής ${fmt(avgPerSqm)}/τ.μ. στην περιοχή επί τα ${fn(sqm||0)} τ.μ. του ακινήτου`
-    :`βάσει της ετήσιας αναπροσαρμογής ΔΤΚ ${CPI_LATEST_YEAR}`;
+    :`βάσει της δωδεκάμηνης μεταβολής του ΔΤΚ ${idxNow?indexPeriodLabel(idxNow.ym):''}`;
   const phoneDigits=msgDigits(tenant.phone);
   const proposalText=suggested!==null
     ?`Πρόταση ανανέωσης μίσθωσης. Τρέχον μηνιαίο μίσθωμα ${fmt(rent)}. Προτεινόμενο νέο μίσθωμα ${fmt(suggested)}, ${basis}. Παραμένω στη διάθεσή σας για συζήτηση.`
@@ -1083,7 +1103,7 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
 
   return (
     <div>
-      {/* Δύο βάσεις πρότασης: νόμος (ΔΤΚ) και αγορά/περιοχή */}
+      {/* Δύο βάσεις πρότασης: ΔΤΚ και αγορά/περιοχή */}
       {/* ΤΟ ΚΑΤΩΦΛΙ ΕΙΝΑΙ 380, ΟΧΙ 260. ΜΕΤΡΗΘΗΚΕ στον πάγκο, μέσα στο πλαϊνό
           φύλλο του ντοσιέ (size xl: min(980, οθόνη) με γέμισμα 24 ανά πλευρά),
           οπότε το πλέγμα παίρνει οθόνη μείον 49, με ταβάνι 931.
@@ -1098,10 +1118,10 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
           πάει από 250,5 σε 377 · το ύψος κύλισης του φύλλου από 4634 σε 4761. */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap:16, marginBottom:16 }}>
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24 }}>
-          <SectionTitle>Με βάση τον νόμο (ΔΤΚ)</SectionTitle>
+          <SectionTitle>Με βάση τον ΔΤΚ</SectionTitle>
           <DataRow label="Τρέχον μίσθωμα" value={<span style={{ fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(rent)}</span>}/>
           {legalNew!==null&&cpiPct!==null
-            ?<DataRow label={`Με ΔΤΚ ${CPI_LATEST_YEAR} (${cpiPct>=0?'+':''}${fpSigned(cpiPct)})`} value={<span style={{ color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(legalNew)}</span>}/>
+            ?<DataRow label={`Με ΔΤΚ ${idxNow?indexMonthLabel(idxNow.ym):''} (${cpiPct>=0?'+':''}${fpSigned(cpiPct)})`} value={<span style={{ color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:700 }}>{fmt(legalNew)}</span>}/>
             :<DataRow label="Με ΔΤΚ" value="δεν υπάρχει επιβεβαιωμένος δείκτης"/>}
           {/* ΤΡΕΙΣ ΓΡΑΜΜΕΣ ΟΡΙΣΜΟΥ ΣΕ ΣΤΗΛΗ 409. Το πάνελ δίνει 333 ωφέλιμα στα 430
               της οθόνης και 409 στα 1024 (στήλη 457,5 μείον 48 γέμισμα): τα ~200

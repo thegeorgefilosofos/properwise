@@ -30,7 +30,7 @@ import { athensToday } from '@/lib/core/time';
 import { fe, feWhole, fpRate, grDate } from '@/lib/core/format';
 import { COMMERCIAL_RENT_CAP_2026 as CAP } from '@/lib/documents/rentAdjustment';
 import {
-  RENT_INDEX, RENT_INDEX_LATEST, CPI_SOURCE_URL, CPI_CONFIRMED_AT, rentAdjustmentPct, indexMonthLabel, indexPeriodLabel,
+  RENT_INDEX, RENT_INDEX_LATEST, CPI_SOURCE_URL, CPI_CONFIRMED_AT, rentAdjustmentPct, indexMonthAcc, indexPeriodLabel,
 } from '@/lib/market/cpi';
 import { adjustPlan } from '@/lib/tools/anaprosarmogi';
 import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, ToolCta, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
@@ -98,7 +98,7 @@ const FAQ: FaqItem[] = [
   {
     q: 'Ποιον ΔΤΚ χρησιμοποιώ;',
     a: 'Τη δωδεκάμηνη μεταβολή του Δείκτη Τιμών Καταναλωτή που ανακοινώνει κάθε μήνα η ΕΛΣΤΑΤ για την '
-     + `αναπροσαρμογή των μισθωμάτων. Για αναπροσαρμογή τον μήνα ${indexMonthLabel(RENT_INDEX_LATEST)} είναι ${fpRate(LATEST)}, `
+     + `αναπροσαρμογή των μισθωμάτων. Για αναπροσαρμογή τον ${indexMonthAcc(RENT_INDEX_LATEST)} είναι ${fpRate(LATEST)}, `
      + `δηλαδή η μεταβολή ${indexPeriodLabel(RENT_INDEX_LATEST)}. Το ίδιο δελτίο δίνει και το 75% της (${fpRate(LATEST_75)}) `
      + 'για συμβάσεις που ορίζουν αυτό. Ο Εναρμονισμένος Δείκτης (ΕνΔΤΚ) της Eurostat είναι άλλος δείκτης.',
   },
@@ -127,7 +127,7 @@ function IndexNote() {
     <aside className="po-tool-sources" aria-label="Ο δείκτης της ΕΛΣΤΑΤ" style={{ margin: '0 0 clamp(20px,3vw,28px)' }}>
       <span className="po-src-badge">ΔΤΚ ΕΛΣΤΑΤ</span>
       <span className="po-src-txt">
-        Για αναπροσαρμογή τον μήνα {indexMonthLabel(RENT_INDEX_LATEST)}:{' '}
+        Για αναπροσαρμογή τον {indexMonthAcc(RENT_INDEX_LATEST)}:{' '}
         <strong style={NUM}>{fpRate(LATEST)}</strong> (75%: <strong style={NUM}>{fpRate(LATEST_75)}</strong>),
         {' '}μεταβολή {indexPeriodLabel(RENT_INDEX_LATEST)}.{' '}
         <a href={CPI_SOURCE_URL} rel="noopener noreferrer" className="lp-link" style={SRC_LINK}>ΕΛΣΤΑΤ</a>,
