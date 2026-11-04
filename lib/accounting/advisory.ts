@@ -40,7 +40,7 @@ export type ReferProfessional = 'accountant' | 'lawyer' | 'notary' | 'bank'
 export interface AdvisoryInput {
   regime: TaxRegime
   businessForm?: 'sole' | 'company'
-  /** Ηλικία, για τη μειωμένη κλίμακα νέων (ν.5246/2025). */
+  /** Ηλικία, για τη μειωμένη κλίμακα νέων (ν. 5246/2025). */
   age?: number | null
   grossIncome: number
   taxableIncome: number
@@ -110,7 +110,7 @@ export function buildAdvisory(input: AdvisoryInput, limit = 6): AdvisoryItem[] {
       items.push({
         id: 'youth-business', tone: 'opportunity',
         title: `Μειωμένη κλίμακα νέων, ${age <= 25 ? 'έως 25' : '26–30'} ετών`,
-        body: `Ως επιχειρηματίας ${age <= 25 ? 'έως 25' : '26–30'} ετών (ατομική επιχείρηση, άρθρο 15), φορολογείσαι με ${rate} (ν.5246/2025). Ο υπολογισμός εδώ ήδη το εφαρμόζει, για την οριστική εκκαθάριση χρειάζεται δήλωση με τη σωστή ηλικιακή ένδειξη.`,
+        body: `Ως επιχειρηματίας ${age <= 25 ? 'έως 25' : '26–30'} ετών (ατομική επιχείρηση, άρθρο 15), φορολογείσαι με ${rate} (ν. 5246/2025). Ο υπολογισμός εδώ ήδη το εφαρμόζει, για την οριστική εκκαθάριση χρειάζεται δήλωση με τη σωστή ηλικιακή ένδειξη.`,
         refer: 'accountant', linkLabel: 'Φορολογία εισοδήματος (ΑΑΔΕ)', linkHref: SRC.aadeIncome,
       })
     } else {
@@ -134,7 +134,7 @@ export function buildAdvisory(input: AdvisoryInput, limit = 6): AdvisoryItem[] {
   }
 
   // 3) Έκπτωση φόρου δαπανών ανακαίνισης/αναβάθμισης (άρθρο 39Β ΚΦΕ).
-  // Έλεγε «κατά 40%», τον κανόνα του 2020. Από 1.1.2024 (ν.5073/2023, ΚΥΑ
+  // Έλεγε «κατά 40%», τον κανόνα του 2020. Από 1.1.2024 (ν. 5073/2023, ΚΥΑ
   // Α.1153/2025) η μείωση ισούται με τη δαπάνη, έως το όριο, σε πέντε έτη.
   items.push({
     id: 'renovation-credit', tone: 'action',

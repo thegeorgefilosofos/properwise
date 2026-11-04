@@ -23,6 +23,7 @@ const tsx = (body) => `export default function MutationProbe() {\n  return (\n${
 
 export const MUTATIONS = {
   // Οθόνη που ξαναπαίρνει τη μέση ετήσια μεταβολή για αναπροσαρμογή (03/11/2026).
+  'law-abbrev': { add: 'components/__mut_law__.tsx', content: tsx('    <p>Άρθρο 59 ν.5255/2025</p>') },
   'cpi-one-source': { add: 'components/__mut_cpi__.tsx', content: "import { cpiFor } from '@/lib/market/cpi'\nexport default function MutationProbe({ rent }: { rent: number }) {\n  return <span>{rent * (1 + (cpiFor(2025) ?? 0) / 100)}</span>\n}\n" },
   // Η διαφορά ξανά με δύο τελείες, από το origin/main στο HEAD: ακριβώς το
   // patch που θα έσβηνε τις ~1.200 γραμμές των #451/#452 (29/10/2026).

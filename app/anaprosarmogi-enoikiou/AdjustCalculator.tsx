@@ -257,15 +257,17 @@ export function AdjustCalculator({ today, cta }: {
             <ToolHero primary={{ label: en ? E.newRent : 'Νέο μίσθωμα', value: fe(first.to) }}
               secondary={[
                 { label: en ? E.increase : 'Αύξηση τον μήνα', value: fe(first.increase) },
+                // Το plan.final είναι το ΜΗΝΙΑΙΟ μίσθωμα του τελευταίου έτους, όχι
+                // σύνολο: το «Σε 3 έτη» διαβαζόταν και ως άθροισμα (04/11/2026).
                 plan.rows.length > 1
-                  ? { label: en ? E.inYears(fn(plan.rows.length)) : `Σε ${fn(plan.rows.length)} έτη`, value: fe(plan.final) }
+                  ? { label: en ? E.inYears(fn(plan.rows.length)) : `Μίσθωμα ${fn(plan.rows.length)}ου έτους`, value: fe(plan.final) }
                   : { label: en ? E.pct : 'Ποσοστό', value: fpRate(first.appliedPct) },
               ]}/>
             <LiveResult say={en ? E.say(fe(first.to), fe(first.increase)) : `Νέο μίσθωμα ${fe(first.to)}, αύξηση ${fe(first.increase)} τον μήνα.`}/>
 
             {first.capped && (
               <p style={NOTE}>
-                {en ? E.capped(fe(first.uncapped), grDate(CAP.from), grDate(CAP.to), fpRate(CAP.pct), fe(first.to)) : `Ο όρος δίνει ${fe(first.uncapped)}. Από ${grDate(CAP.from)} έως ${grDate(CAP.to)} η αναπροσαρμογή υφιστάμενης επαγγελματικής μίσθωσης δεν ξεπερνά το ${fpRate(CAP.pct)} (άρθρο 59 ν.5255/2025), οπότε το μίσθωμα σταματά στα ${fe(first.to)}. `}
+                {en ? E.capped(fe(first.uncapped), grDate(CAP.from), grDate(CAP.to), fpRate(CAP.pct), fe(first.to)) : `Ο όρος δίνει ${fe(first.uncapped)}. Από ${grDate(CAP.from)} έως ${grDate(CAP.to)} η αναπροσαρμογή υφιστάμενης επαγγελματικής μίσθωσης δεν ξεπερνά το ${fpRate(CAP.pct)} (άρθρο 59 ν. 5255/2025), οπότε το μίσθωμα περιορίζεται στα ${fe(first.to)}. `}
                 {!en && <Link href={PLAFON_GUIDE} className="lp-link" style={LINK}>Ποιους αφορά το όριο</Link>}
               </p>
             )}
