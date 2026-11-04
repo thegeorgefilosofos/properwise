@@ -22,6 +22,9 @@
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
 export const MUTATIONS = {
+  // Το README ξαναγράφει πλήθος με το χέρι: ακριβώς τα «130+ guard scripts» και
+  // «250+ suites» που είχαν μείνει πίσω από τα 165 και τα 405 (04/11/2026).
+  'readme-counts': { file: 'README.md', from: 'Rules that matter are code, not convention.', to: 'Rules that matter are code, not convention: 130+ guard scripts and 250+ suites.' },
   // Οθόνη που ξαναπαίρνει τη μέση ετήσια μεταβολή για αναπροσαρμογή (03/11/2026).
   'law-abbrev': { add: 'components/__mut_law__.tsx', content: tsx('    <p>Άρθρο 59 ν.5255/2025</p>') },
   'cpi-one-source': { add: 'components/__mut_cpi__.tsx', content: "import { cpiFor } from '@/lib/market/cpi'\nexport default function MutationProbe({ rent }: { rent: number }) {\n  return <span>{rent * (1 + (cpiFor(2025) ?? 0) / 100)}</span>\n}\n" },
