@@ -191,6 +191,12 @@ if ! fpout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-probe.sql" 2>&1); then
   exit 1
 fi
 probes=$((probes + $(echo "$fpout" | grep -c 'probe:' || true)))
+if ! fwout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-write-probe.sql" 2>&1); then
+  echo "🔴 Τα επίπεδα εγγραφής των γραφείων δεν κρατούν:"
+  echo "$fwout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΠΑΡΑΒΙΑΣΗ|ΠΙΝΑΚΑΣ|STORAGE' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$fwout" | grep -c 'probe:' || true)))
 
 # ── ΔΕΧΕΤΑΙ Η ΒΑΣΗ ΤΙΣ ΓΡΑΜΜΕΣ ΟΠΩΣ ΤΙΣ ΧΤΙΖΕΙ Η ΕΦΑΡΜΟΓΗ; ─────────────────────
 # Το rls-probe γράφει γραμμές με το χέρι. Οι γραμμές της εφαρμογής όμως τις
