@@ -25,7 +25,8 @@ import {
   missingItems, packTotals, aadeStatusLine, packEntries, coverModel, PACK_FILES,
   type MeetingPackInput, type PackProperty, type PackPaper, type PackRequirement,
 } from '@/lib/accounting/meetingPack';
-import { filePapers, WHO_LABEL, type DossierContext } from '@/lib/accounting/dossier';
+import { WHO_LABEL, type DossierContext } from '@/lib/accounting/dossier';
+import { filePapers } from '@/lib/accounting/dossierFiles';
 import { dossierCompleteness, type CompletenessProperty, type YearData } from '@/lib/facts/completeness';
 import { FIX_LABEL } from '@/lib/billing/e2Reconcile';
 import { e2CategoryLabel } from '@/lib/billing/e2';

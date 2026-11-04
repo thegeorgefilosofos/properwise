@@ -189,26 +189,69 @@ export function PublicHeader({ current, locale = 'el' }: { current?: 'paketa' | 
 }
 
 /** Μία στήλη συνδέσμων. Ίδια γεωμετρία σε κάθε δημόσια σελίδα. */
-function FootCol({ label, links }: { label: string; links: [string, string][] }) {
+// ΠΕΝΤΕ ΑΝΑ ΣΤΗΛΗ, ΤΑ ΥΠΟΛΟΙΠΑ ΣΕ «ΕΠΙΠΛΕΟΝ» (04/11/2026). Οι υπολογισμοί
+// είχαν φτάσει τους έντεκα και η στήλη έπεφτε δύο φορές πιο χαμηλά από τις
+// διπλανές. Ο ιδιοκτήτης ζήτησε πέντε σε κάθε στήλη και τα υπόλοιπα σε
+// αναδιπλούμενη λίστα. Εγγενές <details>: δουλεύει χωρίς JavaScript, με
+// πληκτρολόγιο και αναγνώστη οθόνης· δεν βαραίνει καμία σελίδα.
+export const FOOT_VISIBLE = 5;
+type FootMore = { label: string; links: [string, string][] };
+
+function FootCol({ label, links, more }: { label: string; links: [string, string][]; more?: FootMore }) {
+  // ΤΟ ΚΕΝΟ ΗΤΑΝ 12 ΠΑΝΤΟΥ, ΑΡΑ Η ΚΕΦΑΛΙΔΑ ΔΕΝ ΑΝΗΚΕ ΠΟΥΘΕΝΑ. Δέκα ανάμεσα στους
+  // συνδέσμους και δεκαοκτώ κάτω από την κεφαλίδα (.lp-foothead, .lp-footlinks).
+  // ΔΥΟ ΤΙΤΛΟΙ, ΕΝΑΣ ΑΝΑ ΠΛΑΤΟΣ, ΧΩΡΙΣ JAVASCRIPT (04/11/2026). Στον υπολογιστή
+  // ο τίτλος είναι τίτλος και η λίστα φαίνεται πάντα· ως τα 1024 η στήλη είναι
+  // σειρά που ανοίγει. Ενα συστατικό του πελάτη γι' αυτό ανέβαζε το βάρος του
+  // διακομιστή πάνω από το όριο (server-weight, 190,1 στα 189,9 MB).
+  // Ενας κώδικας για τους συνδέσμους και ένα εικονίδιο, όχι δύο: το κομμάτι
+  // ανεβαίνει σε 49 συναρτήσεις και κάθε byte του μετρά 49 φορές (server-weight).
+  const list = (l: [string, string][]) => l.map(([href, text]) => <Link key={href} href={href} className="lp-link lp-footlink">{text}</Link>);
   return (
-    // ΤΟ ΚΕΝΟ ΗΤΑΝ 12 ΠΑΝΤΟΥ, ΑΡΑ Η ΚΕΦΑΛΙΔΑ ΔΕΝ ΑΝΗΚΕ ΠΟΥΘΕΝΑ. Με ίδια
-    // απόσταση από τον πρώτο σύνδεσμο όση έχουν οι σύνδεσμοι μεταξύ τους,
-    // διαβαζόταν ως πέμπτη καταχώρηση της λίστας — απλώς πιο μικρή. Δέκα
-    // ανάμεσα στους συνδέσμους και δεκαοκτώ κάτω από την κεφαλίδα: η ομάδα
-    // δένει και οι τρεις ομάδες ξεχωρίζουν μεταξύ τους χωρίς γραμμή.
-    <div className="lp-footcol" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 8 }}>{label}</span>
-      {/* ΤΟ `nowrap` ΕΣΠΡΩΧΝΕ ΤΗ ΣΕΛΙΔΑ ΔΕΞΙΑ. Στα 390 εικονοστοιχεία η στήλη
-          πιάνει 163 και το «Βραχυχρόνια ή μακροχρόνια» θέλει 193: ο σύνδεσμος
-          δεν έσπαγε, οπότε ολόκληρη η σελίδα αποκτούσε οριζόντια κύλιση δέκα
-          εικονοστοιχείων, μετρημένη σε Chromium και στους τρεις υπολογιστές.
-          Ο σύνδεσμος σπάει σε δύο γραμμές· η σελίδα δεν κουνιέται. */}
-      {links.map(([href, text]) => (
-        <Link key={href} href={href} className="lp-link" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, lineHeight: 1.3, textWrap: 'balance' }}>{text}</Link>
-      ))}
+    <div className="lp-footcol">
+      <p className="lp-foothead lp-foot-wide">{label}</p>
+      <details className="lp-footacc">
+        <summary className="lp-foothead lp-foot-narrow">{label}{FOOT_I}</summary>
+        <div className="lp-footlinks">
+          {list(links)}
+          {more && more.links.length > 0 && (
+            <details className="lp-footmore">
+              <summary className="lp-link lp-footmore-s">{more.label}{FOOT_I}</summary>
+              <div className="lp-footmore-list">{list(more.links)}</div>
+            </details>
+          )}
+        </div>
+      </details>
     </div>
   );
 }
+const FOOT_I = <span aria-hidden className="lp-foot-i" />;
+
+/** Οι πρώτοι FOOT_VISIBLE φαίνονται· οι υπόλοιποι και ο κόμβος πάνε στο «Επιπλέον». */
+function splitFoot(links: [string, string][], hub: [string, string] | null, moreLabel: string): { links: [string, string][]; more?: FootMore } {
+  const shown = links.slice(0, FOOT_VISIBLE);
+  const rest = [...links.slice(FOOT_VISIBLE), ...(hub ? [hub] : [])];
+  return rest.length ? { links: shown, more: { label: moreLabel, links: rest } } : { links: shown };
+}
+
+// Η ΣΕΙΡΑ ΤΩΝ ΟΔΗΓΩΝ ΚΑΘΡΕΦΤΙΖΕΙ ΤΟΥΣ ΠΕΝΤΕ ΠΡΩΤΟΥΣ ΥΠΟΛΟΓΙΣΜΟΥΣ: ΕΝΦΙΑ,
+// έκπτωση ανακαίνισης, φορολογία ενοικίων, καθαρή απόδοση, βραχυχρόνια. Η λίστα
+// είναι γραμμένη εδώ επίτηδες: ο κατάλογος των οδηγών δεν μπαίνει στο κέλυφος
+// (~6 KB gzip σε κάθε δημόσια σελίδα) και ο οδηγός ΑΜΑ δεν συνδέεται από κοινά
+// κομμάτια (απόφαση 13/10). Το guides.test ελέγχει ότι κάθε σύνδεσμος εδώ είναι
+// δημοσιευμένος οδηγός.
+const FOOT_GUIDES: [string, string][] = [
+  ['/odigos/pos-ypologizetai-o-enfia', 'Πώς υπολογίζεται ο ΕΝΦΙΑ'],
+  ['/odigos/ekptosi-forou-anakainisis', 'Έκπτωση φόρου για ανακαίνιση'],
+  ['/odigos/forologia-enoikion-2026', 'Φορολογία ενοικίων 2026'],
+  ['/odigos/kathari-apodosi-akinitou', 'Καθαρή απόδοση ακινήτου'],
+  ['/odigos/airbnb-takk-2026', 'Φορολογία Airbnb 2026'],
+  ['/odigos/forologikes-prothesmies-idioktiton', 'Φορολογικές προθεσμίες ιδιοκτήτη'],
+  ['/odigos/enfia-2026-pliromi-doseis-pistopoiitiko', 'ΕΝΦΙΑ 2026: πληρωμή και δόσεις'],
+  ['/odigos/enoikio-meso-trapezas', 'Ενοίκιο μέσω τράπεζας'],
+  ['/odigos/plafon-3-emporikes-misthoseis-2026', 'Πλαφόν επαγγελματικών μισθώσεων'],
+  ['/odigos/spiti-mou-3-ti-allazei', 'Σπίτι μου ΙΙΙ: τι αλλάζει'],
+];
 
 // ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ΤΟΥ ΥΠΟΣΕΛΙΔΟΥ ΑΝΑ ΓΛΩΣΣΑ. Τα ελληνικά αυτούσια, με τη σειρά
 // και τα σχόλια που εξηγούν κάθε στήλη στο σώμα του PublicFooter· τα αγγλικά από το
@@ -222,8 +265,8 @@ function footFor(locale: Locale) {
       social: e.social,
       cols: [
         { label: e.product, links: enLinks([['/', e.home], ['/signup', signupCtaEn()], ['/paketa', e.pricing], ['/logistes', e.accountants], ['/#faq', e.faq]]) },
-        { label: CHROME_EN.nav.calcs, links: [...enTools().map(t => [t.href, t.label] as [string, string]), ...enLinks([['/ergaleia', CHROME_EN.nav.allTools]])] },
-        { label: e.guides, links: enLinks(e.guideLinks) },
+        { label: CHROME_EN.nav.calcs, ...splitFoot(enTools().map(t => [t.href, t.label] as [string, string]), enLinks([['/ergaleia', CHROME_EN.nav.allTools]])[0] ?? null, e.moreTools) },
+        { label: e.guides, ...splitFoot(enLinks(e.guideLinks.filter(([h]) => h !== '/odigos')), enLinks([['/odigos', e.allGuides]])[0] ?? null, e.moreGuides) },
         // Η ΥΠΑΝΑΧΩΡΗΣΗ ΜΕΝΕΙ ΚΑΙ ΣΤΑ ΑΓΓΛΙΚΑ. Το άρθ. 11α της Οδηγίας 2011/83/ΕΕ
         // θέλει τη λειτουργία εμφανή σε κάθε σελίδα· από 03.11.2026 η φόρμα
         // υπάρχει και στα αγγλικά (/en/withdrawal, ζεύγος στο PAGE_PAIRS).
@@ -239,8 +282,8 @@ function footFor(locale: Locale) {
     social: (net: string, newTab: boolean) => newTab ? `Το PROPERWISE στο ${net} (ανοίγει σε νέα καρτέλα)` : `Το PROPERWISE στο ${net}`,
     cols: [
       { label: 'Προϊόν', links: [['/', 'Αρχική'], ['/signup', signupCta()], ['/paketa', 'Πακέτα και τιμές'], ['/logistes', 'Για λογιστές'], ['/#faq', 'Συχνές ερωτήσεις']] as [string, string][] },
-      { label: 'Υπολογισμοί', links: [...PUBLIC_TOOLS.map(t => [t.href, t.label] as [string, string]), [TOOLS_HUB.href, 'Όλα τα εργαλεία']] as [string, string][] },
-      { label: 'Οδηγοί', links: [['/odigos/pos-ypologizetai-o-enfia', 'Πώς υπολογίζεται ο ΕΝΦΙΑ'], ['/odigos/forologia-enoikion-2026', 'Φορολογία ενοικίων 2026'], ['/odigos/kathari-apodosi-akinitou', 'Καθαρή απόδοση ακινήτου'], ['/odigos/airbnb-takk-2026', 'Φορολογία Airbnb 2026'], ['/odigos', 'Όλοι οι οδηγοί']] as [string, string][] },
+      { label: 'Υπολογισμοί', ...splitFoot(PUBLIC_TOOLS.map(t => [t.href, t.label] as [string, string]), [TOOLS_HUB.href, 'Όλα τα εργαλεία'], 'Επιπλέον εργαλεία') },
+      { label: 'Οδηγοί', ...splitFoot(FOOT_GUIDES, ['/odigos', 'Όλοι οι οδηγοί'], 'Επιπλέον οδηγοί') },
       { label: 'Εμπιστοσύνη', links: [['/trust', 'Ποιοι είμαστε'], ['/privacy', 'Απόρρητο'], ['/terms', 'Όροι χρήσης'], ['/ypanaxorisi', 'Υπαναχώρηση από τη σύμβαση εδώ'], ['/trust#epikoinonia', 'Επικοινωνία']] as [string, string][] },
     ],
   };
@@ -283,7 +326,7 @@ export function PublicFooter({ locale = 'el' }: { locale?: Locale } = {}) {
           {/* ΚΑΙ Ο ΛΟΓΙΣΤΗΣ ΕΧΕΙ ΠΟΡΤΑ (03.10.2026). Το «Για ιδιοκτήτες και
               επαγγελματίες» από αριστερά δεν έδειχνε πουθενά τον άνθρωπο που
               παίρνει τον φάκελο· η σελίδα του μπαίνει δίπλα στα πακέτα. */}
-          {f.cols.map(c => c.links.length > 0 && <FootCol key={c.label} label={c.label} links={c.links} />)}
+          {f.cols.map(c => c.links.length > 0 && <FootCol key={c.label} label={c.label} links={c.links} more={'more' in c ? c.more : undefined} />)}
           {/* Υπολογισμοί χωρίς εγγραφή: απαντούν «πόσο» πριν μας γνωρίσει κανείς. */}
           {/* Ο ΠΕΜΠΤΟΣ ΚΑΙ Ο ΕΚΤΟΣ ΜΠΑΙΝΟΥΝ ΤΕΛΕΥΤΑΙΟΙ. Η δόση στεγαστικού και η σύγκριση
               ρεύματος δεν έχουν ακόμη οδηγό στη διπλανή στήλη, οπότε στέκουν κάτω από τα τέσσερα

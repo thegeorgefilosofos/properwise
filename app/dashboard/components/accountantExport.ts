@@ -41,10 +41,8 @@ import { CATEGORIES } from '@/lib/expenses/taxonomy';
 import { resolveCategory } from '@/lib/expenses/taxonomy';
 import { isValidAfm } from '@/lib/core/greek';
 import { buildZip, type ZipFile } from '@/lib/accounting/zip';
-import {
-  WHO_LABEL, missingAfmGroups, filePapers,
-  type Requirement, type FiledPaper, type DossierPaper,
-} from '@/lib/accounting/dossier';
+import { WHO_LABEL, missingAfmGroups, type Requirement } from '@/lib/accounting/dossier';
+import { filePapers, type FiledPaper, type DossierPaper } from '@/lib/accounting/dossierFiles';
 import { downloadFile } from '@/lib/core/download';
 import { grDate } from '@/lib/core/format';
 import { roundHalfUp } from '@/lib/core/money';
