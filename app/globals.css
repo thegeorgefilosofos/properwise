@@ -7737,10 +7737,11 @@ html[lang="en"] :is(.lg-p, .lg-ul li, .lg-note, .lg-just, .lg-lede > p) { text-a
 .fb-file-page { fill: var(--bg-surface); stroke: var(--border-default); stroke-width: 1.2; }
 .fb-file-fold { fill: none; stroke: var(--border-default); stroke-width: 1.2; }
 .fb-file-tag {
-  position: absolute; left: -2px; bottom: 12%; padding: 0 3px; border-radius: 3px;
-  font-size: 7px; font-weight: 700; letter-spacing: .02em; line-height: 1.5;
+  position: absolute; left: -4px; bottom: 14%; padding: 1px 5px; border-radius: 4px;
+  font-size: 11px; font-weight: 700; letter-spacing: .02em; line-height: 1.3;
   color: var(--accent-text); background: var(--accent);
 }
+.fb-file-tag[data-small] { left: -2px; bottom: 16%; width: 60%; height: 4px; padding: 0; border-radius: 2px; }
 .fb-file-tag[data-ext="PDF"] { background: var(--negative); }
 .fb-year-dot { width: 18px; height: 18px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
 .fb-year-dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary); }
@@ -7771,7 +7772,7 @@ span.fb-crumb { color: var(--text-primary); font-weight: 600; cursor: default; }
 .fb-col { display: flex; flex-direction: column; gap: 1px; padding: 8px 6px 12px; border-right: 1px solid var(--border-subtle); min-width: 0; }
 .fb-col-files { border-right: none; }
 .fb-col-head {
-  margin: 0 0 4px; padding: 0 8px; font-size: 10px; font-weight: 700; letter-spacing: .08em;
+  margin: 0 0 4px; padding: 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .08em;
   text-transform: uppercase; color: var(--text-tertiary);
 }
 .fb-row {
@@ -7782,7 +7783,10 @@ span.fb-crumb { color: var(--text-primary); font-weight: 600; cursor: default; }
 .fb-row[aria-selected="true"] { background: var(--accent-soft); font-weight: 600; }
 .fb-row:focus { outline: none; }
 .fb-row:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
-.fb-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Τα ονόματα αναδιπλώνονται, δεν κόβονται: το κοινό όνομα κρατά έτος και
+   ποσό στο τέλος του, ακριβώς εκεί που θα έπεφτε το αποσιωπητικό. */
+.fb-row { padding-block: 6px; }
+.fb-row-name { flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.35; }
 .fb-row-meta { flex-shrink: 0; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 .fb-row-sum { flex-shrink: 0; min-width: 0; color: var(--text-secondary); font-variant-numeric: tabular-nums; text-align: right; }
 .fb-row-date { flex-shrink: 0; width: 76px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; text-align: right; }
@@ -7811,7 +7815,7 @@ span.fb-crumb { color: var(--text-primary); font-weight: 600; cursor: default; }
   min-height: 36px; border-top: 1px solid var(--border-subtle); font-size: var(--fs-xs);
 }
 .fb-tr:first-child { border-top: none; }
-.fb-th { min-height: 32px; background: var(--bg-overlay); color: var(--text-tertiary); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.fb-th { min-height: 32px; background: var(--bg-overlay); color: var(--text-tertiary); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .fb-td-name { min-width: 0; padding-left: calc(10px + var(--fb-indent, 0px)); }
 .fb-th .fb-td-name { padding-left: 14px; }
 .fb-tr[data-depth="1"] { --fb-indent: 20px; }
@@ -7848,7 +7852,7 @@ span.fb-crumb { color: var(--text-primary); font-weight: 600; cursor: default; }
 .fb-phone-row:active { background: var(--bg-overlay); }
 .fb-phone-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 8px; }
 .fb-phone-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.fb-phone-name { font-size: var(--fs-base); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fb-phone-name { font-size: var(--fs-base); font-weight: 600; overflow-wrap: anywhere; }
 .fb-phone-name.fb-wrap { white-space: normal; overflow-wrap: anywhere; font-size: var(--fs-xs); }
 .fb-phone-meta { font-size: var(--fs-xs); color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 .fb-phone-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }

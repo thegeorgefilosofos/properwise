@@ -6,7 +6,7 @@
 // και σε λογική macOS». Η λογική, όχι η εμφάνιση: κανένα εικονίδιο της Apple,
 // δικά μας σχήματα με τα tokens της εφαρμογής.
 //
-//   ≥1024  Στήλες: Είδος | Πάροχος | Έτος | Αρχεία και προεπισκόπηση δεξιά.
+//   ≥1280  Στήλες: Είδος | Πάροχος | Έτος | Αρχεία και προεπισκόπηση δεξιά.
 //          Η επιλογή ανοίγει την επόμενη στήλη. Πληκτρολόγιο: ↑↓ μέσα στη
 //          στήλη, → ή Enter μπαίνει, ← βγαίνει, Space ανοίγει την προεπισκόπηση.
 //   ≥768   Λίστα: πίνακας με τρίγωνα ανοίγματος (Όνομα · Ποσό · Ημερομηνία ·
@@ -91,7 +91,9 @@ function FileIcon({ ext, size = 20 }: { ext: string; size?: number }) {
         <path className="fb-file-page" d="M3 1.5h9.5L18 7v14a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 2 21V3a1.5 1.5 0 0 1 1-1.5z"/>
         <path className="fb-file-fold" d="M12.5 1.5V6a1 1 0 0 0 1 1H18"/>
       </svg>
-      <span className="fb-file-tag" data-ext={label}>{label}</span>
+      {/* Το γράμμα του τύπου μόνο όπου χωρά σε μέγεθος που διαβάζεται (11 και
+          πάνω)· στα μικρά εικονίδια ο τύπος λέγεται με το χρώμα της λωρίδας. */}
+      <span className="fb-file-tag" data-ext={label} data-small={size < 40 || undefined}>{size < 40 ? '' : label}</span>
     </span>
   );
 }
@@ -148,7 +150,9 @@ interface FolderBrowserProps<F extends BrowserFile> {
 }
 
 export function FolderBrowser<F extends BrowserFile>(props: FolderBrowserProps<F>) {
-  const desktop = useMedia('(min-width: 1024px)');
+  // Στις 1024 τέσσερις στήλες και προεπισκόπηση δεν χωρούσαν ονόματα· οι
+  // στήλες ανοίγουν από τις 1280, κάτω από αυτό η λίστα.
+  const desktop = useMedia('(min-width: 1280px)');
   const phone = useMedia('(max-width: 767px)');
   const [layout, setLayout] = useRemembered<'columns' | 'list'>('pw.archive.layout', parseLayout, saveLayout, 'columns');
   const nodes = props.nodes as unknown as TreeNode<BrowserFile>[];
@@ -282,7 +286,7 @@ function Columns({ nodes, focused, rootLabel, onOpen, tools }: Inner) {
                   {f.isImage && f.url
                     ? <RuntimeImg src={f.url} alt="" className="fb-thumb-sm"/>
                     : <FileIcon ext={extOfFile(f)} size={16}/>}
-                  <span className="fb-row-name">{f.fileName}</span>
+                  <span className="fb-row-name"><Breakable name={f.fileName}/></span>
                   <span className="fb-row-sum">{f.value != null ? fe(f.value) : ''}</span>
                   <span className="fb-row-date">{f.date ? fd(f.date) : ''}</span>
                 </div>
@@ -374,7 +378,7 @@ function ListTable({ nodes, focused, rootLabel, onOpen, tools }: Inner) {
         <div role="gridcell" className="fb-td-name">
           <button type="button" className="fb-file-open" onClick={() => onOpen(f)} title={f.fileName} disabled={!f.url}>
             <FileIcon ext={extOfFile(f)} size={14}/>
-            <span className="fb-row-name">{f.fileName}</span>
+            <span className="fb-row-name"><Breakable name={f.fileName}/></span>
           </button>
         </div>
         <div role="gridcell" className="fb-td-num">{f.value != null ? fe(f.value) : ''}</div>
