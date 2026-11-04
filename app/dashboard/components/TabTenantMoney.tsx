@@ -20,6 +20,8 @@ import {
   RENT_INDEX, RENT_INDEX_LATEST, CPI_SOURCE_URL, rentIndexFor, rentAdjustmentPct,
   indexMonthLabel, indexPeriodLabel, cpiConfirmedLabel,
 } from '@/lib/market/cpi';
+import { rentCapPct } from '@/lib/documents/rentAdjustment';
+import { commercialCapPhrase } from '@/lib/documents/rentCapNote';
 import { monthYearLabel, monthAcc } from '@/lib/core/months';
 import {
   Toggle,
@@ -140,6 +142,16 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
   const hasPct=hasCustom||official!==null;
   const newRent=rent*(1+pct/100);
   const diff=newRent-rent;
+  // ═══ Η ΝΟΜΙΚΗ ΒΑΣΗ ΕΙΝΑΙ Ο ΟΡΟΣ ΤΟΥ ΜΙΣΘΩΤΗΡΙΟΥ (04/11/2026) ═════════════
+  // Η καρτέλα και η ειδοποίηση έγραφαν «Νομική βάση: Αρ. 288 ΑΚ» και «μία φορά
+  // τον χρόνο». Το 288 ΑΚ είναι η καλή πίστη: δεν δίνει δικαίωμα αύξησης και
+  // καμία διάταξη δεν ορίζει συχνότητα. Η αύξηση γίνεται όπως και όποτε τη λέει
+  // το μισθωτήριο· από πάνω μόνο το όριο της υφιστάμενης επαγγελματικής μίσθωσης,
+  // που δείχνεται όταν ισχύει ή όταν το είδος της μίσθωσης δεν είναι γνωστό.
+  const capIfCommercial=rentCapPct({ leaseCategory:'commercial', leaseStart:tenant.lease_start, effectiveDate:`${ym}-01` });
+  const capNote=capIfCommercial===null||tenant.lease_category==='residential' ? ''
+    : tenant.lease_category==='commercial' ? ` Στην υφιστάμενη επαγγελματική μίσθωση ισχύει επιπλέον ${commercialCapPhrase(capIfCommercial)}.`
+    : ` Για υφιστάμενη επαγγελματική μίσθωση ισχύει επιπλέον ${commercialCapPhrase(capIfCommercial)}.`;
   const isExpired=daysExp!==null&&daysExp<0;
   const isExpiring=daysExp!==null&&daysExp>=0&&daysExp<=60;
   // Μήνες ισχύος: όσοι έχουν δημοσιευμένο δείκτη, συν ο τρέχων και οι δύο
@@ -188,8 +200,8 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
         + `<div style="border-top:1px solid ${RULE};padding-top:10px;font-size:11px;color:${INK_MUTED}"><div style="font-weight:600;margin-bottom:4px;color:${INK}">Ο μισθωτής</div><div style="margin-bottom:2px;color:${INK}">${rEsc(tenant.full_name)}</div>${tenant.afm?`<div>ΑΦΜ: ${rEsc(tenant.afm)}</div>`:''}</div>`
       + `</div>`
       + reportDisclaimer(hasCustom
-        ? 'Το ποσοστό αναπροσαρμογής δηλώθηκε από τον εκμισθωτή και δεν αποτελεί επίσημο στατιστικό στοιχείο. Το παρόν έχει ενημερωτικό χαρακτήρα· για νομικές υποθέσεις συμβουλευτείτε δικηγόρο.'
-        : `Η αναπροσαρμογή βασίζεται στη δωδεκάμηνη μεταβολή του ΔΤΚ (${cpiConfirmedLabel()}) και στο άρθρο 288 ΑΚ. Επιβεβαιώστε την τιμή στην πηγή πριν την κοινοποίηση. Το παρόν έχει ενημερωτικό χαρακτήρα· για νομικές υποθέσεις συμβουλευτείτε δικηγόρο.`, branding)
+        ? `Το ποσοστό αναπροσαρμογής δηλώθηκε από τον εκμισθωτή και δεν αποτελεί επίσημο στατιστικό στοιχείο.${capNote} Το παρόν έχει ενημερωτικό χαρακτήρα· για νομικές υποθέσεις συμβουλευτείτε δικηγόρο.`
+        : `Η αναπροσαρμογή βασίζεται στον όρο αναπροσαρμογής του μισθωτηρίου και στη δωδεκάμηνη μεταβολή του ΔΤΚ (${cpiConfirmedLabel()}).${capNote} Επιβεβαιώστε την τιμή στην πηγή πριν την κοινοποίηση. Το παρόν έχει ενημερωτικό χαρακτήρα· για νομικές υποθέσεις συμβουλευτείτε δικηγόρο.`, branding)
       + `</div></body></html>`;
     openReport(html);
   };
@@ -200,10 +212,10 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24, marginBottom:16 }}>
         <SectionTitle>Τι είναι ο Δείκτης Τιμών Καταναλωτή (ΔΤΚ)</SectionTitle>
         <p style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', lineHeight:1.8, fontFamily:T.font.sans, marginBottom:14 }}>
-          Ο <strong style={{ color:'var(--text-primary)' }}>Δείκτης Τιμών Καταναλωτή (ΔΤΚ)</strong> είναι ο επίσημος δείκτης που χρησιμοποιεί η ΕΛΣΤΑΤ για να μετρήσει τη μεταβολή του κόστους ζωής σε ετήσια βάση. Βάσει του Αστικού Κώδικα (άρθρο 288 ΑΚ), ο εκμισθωτής έχει δικαίωμα να αναπροσαρμόσει το μίσθωμα μία φορά τον χρόνο, εφόσον αυτό προβλέπεται στη σύμβαση.
+          Ο <strong style={{ color:'var(--text-primary)' }}>Δείκτης Τιμών Καταναλωτή (ΔΤΚ)</strong> είναι ο επίσημος δείκτης που χρησιμοποιεί η ΕΛΣΤΑΤ για να μετρήσει τη μεταβολή του κόστους ζωής σε ετήσια βάση. Το μίσθωμα αναπροσαρμόζεται όπως και όποτε ορίζει ο όρος αναπροσαρμογής του μισθωτηρίου, που λέει το ποσοστό ή τον δείκτη και τη συχνότητα.{capNote}
         </p>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap:10 }}>
-          {[{label:'Νομική βάση',value:'Αρ. 288 ΑΚ'},{label:'Συχνότητα',value:'Μία φορά/έτος'},{label:'Τελευταίος δείκτης',value:indexMonthLabel(RENT_INDEX_LATEST)}].map((item,i)=>(
+          {[{label:'Νομική βάση',value:'Όρος μισθωτηρίου'},{label:'Συχνότητα',value:'Όπως ορίζει το μισθωτήριο'},{label:'Τελευταίος δείκτης',value:indexMonthLabel(RENT_INDEX_LATEST)}].map((item,i)=>(
             <div key={i} style={{ background:'var(--bg-elevated)', borderRadius:T.radius.inner, padding:'12px 14px' }}>
               <div style={{ fontSize:14, fontWeight:700, color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', marginBottom:4 }}>{item.value}</div>
               <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-secondary)', textTransform:'uppercase' as const, letterSpacing:'0.1em', fontFamily:T.font.sans }}>{item.label}</div>
