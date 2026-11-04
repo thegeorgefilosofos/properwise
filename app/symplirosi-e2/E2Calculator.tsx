@@ -86,7 +86,7 @@ export function E2Calculator({ today, cta }: { today: string; cta: ReactNode }) 
         </ToolFields>
       </Group>
 
-      <ToolPaper title={en ? E.paper : 'Ε2: τι γράφω πού'} on={today} inputs={en ? [
+      <ToolPaper title={en ? E.paper : 'Ε2: συμπλήρωση εντύπου'} on={today} inputs={en ? [
         { k: E.year, v: String(year) },
         { k: E.type, v: propTypes.find(p => p.value === v.typos)?.label ?? '' },
         { k: E.use, v: use === 'lease' ? E.leased : use === 'own_use' ? E.ownUse : E.vacant },
