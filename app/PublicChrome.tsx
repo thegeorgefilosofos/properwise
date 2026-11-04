@@ -49,6 +49,7 @@ import { CHROME_EN, enLinks } from '@/lib/i18n/en/chrome';
 import { enTools } from '@/lib/i18n/en/tools';
 import { signupCtaEn } from '@/lib/billing/trialOffer';
 import LangSwitcher from './LangSwitcher';
+import { FootAccordion } from './FootAccordion';
 import { TOOL_SHELL_EN, TOOL_SOURCES_EN } from '@/lib/i18n/en/tools/shell';
 import { localHref } from '@/lib/i18n/paths';
 
@@ -198,33 +199,30 @@ export const FOOT_VISIBLE = 5;
 type FootMore = { label: string; links: [string, string][] };
 
 function FootCol({ label, links, more }: { label: string; links: [string, string][]; more?: FootMore }) {
+  // ΤΟ ΚΕΝΟ ΗΤΑΝ 12 ΠΑΝΤΟΥ, ΑΡΑ Η ΚΕΦΑΛΙΔΑ ΔΕΝ ΑΝΗΚΕ ΠΟΥΘΕΝΑ. Δέκα ανάμεσα στους
+  // συνδέσμους και δεκαοκτώ κάτω από την κεφαλίδα: η ομάδα δένει και οι ομάδες
+  // ξεχωρίζουν χωρίς γραμμή (.lp-foothead, .lp-footlinks στο globals.css).
+  // ΤΟ `nowrap` ΕΣΠΡΩΧΝΕ ΤΗ ΣΕΛΙΔΑ ΔΕΞΙΑ στα 390: κάτω από τα 1025 ο σύνδεσμος
+  // σπάει σε δύο γραμμές· η σελίδα δεν κουνιέται.
+  // Η ΣΤΗΛΗ ΕΙΝΑΙ <details> ΑΝΟΙΧΤΟ: στον υπολογιστή τίτλος και σύνδεσμοι,
+  // ως τα 1024 σειρά που ανοίγει (app/FootAccordion.tsx).
   return (
-    // ΤΟ ΚΕΝΟ ΗΤΑΝ 12 ΠΑΝΤΟΥ, ΑΡΑ Η ΚΕΦΑΛΙΔΑ ΔΕΝ ΑΝΗΚΕ ΠΟΥΘΕΝΑ. Με ίδια
-    // απόσταση από τον πρώτο σύνδεσμο όση έχουν οι σύνδεσμοι μεταξύ τους,
-    // διαβαζόταν ως πέμπτη καταχώρηση της λίστας — απλώς πιο μικρή. Δέκα
-    // ανάμεσα στους συνδέσμους και δεκαοκτώ κάτω από την κεφαλίδα: η ομάδα
-    // δένει και οι τρεις ομάδες ξεχωρίζουν μεταξύ τους χωρίς γραμμή.
-    <div className="lp-footcol" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 8 }}>{label}</span>
-      {/* ΤΟ `nowrap` ΕΣΠΡΩΧΝΕ ΤΗ ΣΕΛΙΔΑ ΔΕΞΙΑ. Στα 390 εικονοστοιχεία η στήλη
-          πιάνει 163 και το «Βραχυχρόνια ή μακροχρόνια» θέλει 193: ο σύνδεσμος
-          δεν έσπαγε, οπότε ολόκληρη η σελίδα αποκτούσε οριζόντια κύλιση δέκα
-          εικονοστοιχείων, μετρημένη σε Chromium και στους τρεις υπολογιστές.
-          Ο σύνδεσμος σπάει σε δύο γραμμές· η σελίδα δεν κουνιέται. */}
-      {links.map(([href, text]) => (
-        <Link key={href} href={href} className="lp-link" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, lineHeight: 1.3, textWrap: 'balance' }}>{text}</Link>
-      ))}
-      {more && more.links.length > 0 && (
-        <details className="lp-footmore">
-          <summary className="lp-link">{more.label}<span aria-hidden className="lp-footmore-i" /></summary>
-          <div className="lp-footmore-list">
-            {more.links.map(([href, text]) => (
-              <Link key={href} href={href} className="lp-link" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, lineHeight: 1.3, textWrap: 'balance' }}>{text}</Link>
-            ))}
-          </div>
-        </details>
-      )}
-    </div>
+    <details className="lp-footcol" open>
+      <summary className="lp-foothead">{label}<span aria-hidden className="lp-foot-i" /></summary>
+      <div className="lp-footlinks">
+        {links.map(([href, text]) => <Link key={href} href={href} className="lp-link lp-footlink">{text}</Link>)}
+        {more && more.links.length > 0 && (
+          <details className="lp-footmore">
+            <summary className="lp-link lp-footmore-s">{more.label}<span aria-hidden className="lp-foot-i" /></summary>
+            <div className="lp-footmore-list">
+              {more.links.map(([href, text]) => (
+                <Link key={href} href={href} className="lp-link lp-footlink">{text}</Link>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
+    </details>
   );
 }
 
@@ -247,10 +245,10 @@ const FOOT_GUIDES: [string, string][] = [
   ['/odigos/forologia-enoikion-2026', 'Φορολογία ενοικίων 2026'],
   ['/odigos/kathari-apodosi-akinitou', 'Καθαρή απόδοση ακινήτου'],
   ['/odigos/airbnb-takk-2026', 'Φορολογία Airbnb 2026'],
-  ['/odigos/forologikes-prothesmies-idioktiton', 'Φορολογικές προθεσμίες'],
-  ['/odigos/enfia-2026-pliromi-doseis-pistopoiitiko', 'ΕΝΦΙΑ 2026: δόσεις'],
+  ['/odigos/forologikes-prothesmies-idioktiton', 'Φορολογικές προθεσμίες ιδιοκτήτη'],
+  ['/odigos/enfia-2026-pliromi-doseis-pistopoiitiko', 'ΕΝΦΙΑ 2026: πληρωμή και δόσεις'],
   ['/odigos/enoikio-meso-trapezas', 'Ενοίκιο μέσω τράπεζας'],
-  ['/odigos/plafon-3-emporikes-misthoseis-2026', 'Πλαφόν στα επαγγελματικά'],
+  ['/odigos/plafon-3-emporikes-misthoseis-2026', 'Πλαφόν επαγγελματικών μισθώσεων'],
   ['/odigos/spiti-mou-3-ti-allazei', 'Σπίτι μου ΙΙΙ: τι αλλάζει'],
 ];
 
@@ -295,7 +293,7 @@ export function PublicFooter({ locale = 'el' }: { locale?: Locale } = {}) {
   return (
     <footer style={{ borderTop: '1px solid var(--border-subtle)' }}>
       <div style={{ ...WRAP, padding: `clamp(36px,5vw,56px) ${WRAP_PAD} calc(clamp(24px,3vw,32px) + env(safe-area-inset-bottom, 0px))` }}>
-        <div className="lp-foot">
+        <FootAccordion>
           <div>
             <Link href={f.home} className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, textDecoration: 'none', color: 'var(--text-primary)', width: 'fit-content' }}>
               <BrandLogo />
@@ -362,7 +360,7 @@ export function PublicFooter({ locale = 'el' }: { locale?: Locale } = {}) {
               «Υπαναχώρηση από τη σύμβαση εδώ»: το άρθ. 11α της Οδηγίας
               2011/83/ΕΕ θέλει τη λειτουργία εμφανή και διαθέσιμη σε όλη την
               προθεσμία, όχι κρυμμένη στους Όρους (lib/legal/withdrawal.ts). */}
-        </div>
+        </FootAccordion>
         <div className="po-foot-bar" style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: T.sp.lg, borderTop: '1px solid var(--border-subtle)', fontSize: 12, color: 'var(--text-tertiary)' }}>
           <span>© {new Date().getFullYear()} PROPERWISE</span>
           {/* Η ΓΛΩΣΣΑ ΚΑΙ ΣΤΟ ΥΠΟΣΕΛΙΔΟ, σε κάθε πλάτος (app/LangSwitcher.tsx). */}
