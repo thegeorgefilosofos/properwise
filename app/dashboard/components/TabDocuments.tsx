@@ -42,6 +42,7 @@ import { folderTree, type TreeNode } from '@/lib/archive/tree';
 import { useRemembered } from '@/components/useRememberedFlag';
 import { FolderBrowser } from './archive/FolderBrowser';
 import { ArchiveFilters, ActiveFilterTags } from './archive/ArchiveFilters';
+import { ARCHIVE_CSS } from './archive/styles';
 import { SAY } from '@/lib/core/dbError';
 import { useLoad } from '@/app/hooks/useLoad';
 import { toggleIn } from '@/lib/core/toggleSet';
@@ -771,6 +772,8 @@ export default function TabDocuments({
 
   return (
     <div style={{ fontFamily: T.font.sans, color: 'var(--text-primary)' }}>
+      {/* Τα στυλ του Αρχείου: μόνο εδώ, όχι σε κάθε σελίδα (archive/styles.ts). */}
+      <style>{ARCHIVE_CSS}</style>
       {/* ΤΟ ΟΝΟΜΑ ΕΛΕΓΕ ΤΟ ΕΝΑ ΤΡΙΤΟ. Η καρτέλα λεγόταν «Αρχείο» και κάτω από
           τα χαρτιά στέκουν οι επαφές του ακινήτου και ο εξοπλισμός του: ο
           συνεργάτης που άλλαξε τον λέβητα, η εγγύηση του πλυντηρίου, το
