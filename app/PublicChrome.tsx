@@ -49,7 +49,6 @@ import { CHROME_EN, enLinks } from '@/lib/i18n/en/chrome';
 import { enTools } from '@/lib/i18n/en/tools';
 import { signupCtaEn } from '@/lib/billing/trialOffer';
 import LangSwitcher from './LangSwitcher';
-import { FootAccordion } from './FootAccordion';
 import { TOOL_SHELL_EN, TOOL_SOURCES_EN } from '@/lib/i18n/en/tools/shell';
 import { localHref } from '@/lib/i18n/paths';
 
@@ -200,29 +199,29 @@ type FootMore = { label: string; links: [string, string][] };
 
 function FootCol({ label, links, more }: { label: string; links: [string, string][]; more?: FootMore }) {
   // ΤΟ ΚΕΝΟ ΗΤΑΝ 12 ΠΑΝΤΟΥ, ΑΡΑ Η ΚΕΦΑΛΙΔΑ ΔΕΝ ΑΝΗΚΕ ΠΟΥΘΕΝΑ. Δέκα ανάμεσα στους
-  // συνδέσμους και δεκαοκτώ κάτω από την κεφαλίδα: η ομάδα δένει και οι ομάδες
-  // ξεχωρίζουν χωρίς γραμμή (.lp-foothead, .lp-footlinks στο globals.css).
-  // ΤΟ `nowrap` ΕΣΠΡΩΧΝΕ ΤΗ ΣΕΛΙΔΑ ΔΕΞΙΑ στα 390: κάτω από τα 1025 ο σύνδεσμος
-  // σπάει σε δύο γραμμές· η σελίδα δεν κουνιέται.
-  // Η ΣΤΗΛΗ ΕΙΝΑΙ <details> ΑΝΟΙΧΤΟ: στον υπολογιστή τίτλος και σύνδεσμοι,
-  // ως τα 1024 σειρά που ανοίγει (app/FootAccordion.tsx).
+  // συνδέσμους και δεκαοκτώ κάτω από την κεφαλίδα (.lp-foothead, .lp-footlinks).
+  // ΔΥΟ ΤΙΤΛΟΙ, ΕΝΑΣ ΑΝΑ ΠΛΑΤΟΣ, ΧΩΡΙΣ JAVASCRIPT (04/11/2026). Στον υπολογιστή
+  // ο τίτλος είναι τίτλος και η λίστα φαίνεται πάντα· ως τα 1024 η στήλη είναι
+  // σειρά που ανοίγει. Ενα συστατικό του πελάτη γι' αυτό ανέβαζε το βάρος του
+  // διακομιστή πάνω από το όριο (server-weight, 190,1 στα 189,9 MB).
   return (
-    <details className="lp-footcol" open>
-      <summary className="lp-foothead">{label}<span aria-hidden className="lp-foot-i" /></summary>
-      <div className="lp-footlinks">
-        {links.map(([href, text]) => <Link key={href} href={href} className="lp-link lp-footlink">{text}</Link>)}
-        {more && more.links.length > 0 && (
-          <details className="lp-footmore">
-            <summary className="lp-link lp-footmore-s">{more.label}<span aria-hidden className="lp-foot-i" /></summary>
-            <div className="lp-footmore-list">
-              {more.links.map(([href, text]) => (
-                <Link key={href} href={href} className="lp-link lp-footlink">{text}</Link>
-              ))}
-            </div>
-          </details>
-        )}
-      </div>
-    </details>
+    <div className="lp-footcol">
+      <p className="lp-foothead lp-foot-wide">{label}</p>
+      <details className="lp-footacc">
+        <summary className="lp-foothead lp-foot-narrow">{label}<span aria-hidden className="lp-foot-i" /></summary>
+        <div className="lp-footlinks">
+          {links.map(([href, text]) => <Link key={href} href={href} className="lp-link lp-footlink">{text}</Link>)}
+          {more && more.links.length > 0 && (
+            <details className="lp-footmore">
+              <summary className="lp-link lp-footmore-s">{more.label}<span aria-hidden className="lp-foot-i" /></summary>
+              <div className="lp-footmore-list">
+                {more.links.map(([href, text]) => <Link key={href} href={href} className="lp-link lp-footlink">{text}</Link>)}
+              </div>
+            </details>
+          )}
+        </div>
+      </details>
+    </div>
   );
 }
 
@@ -293,7 +292,7 @@ export function PublicFooter({ locale = 'el' }: { locale?: Locale } = {}) {
   return (
     <footer style={{ borderTop: '1px solid var(--border-subtle)' }}>
       <div style={{ ...WRAP, padding: `clamp(36px,5vw,56px) ${WRAP_PAD} calc(clamp(24px,3vw,32px) + env(safe-area-inset-bottom, 0px))` }}>
-        <FootAccordion>
+        <div className="lp-foot">
           <div>
             <Link href={f.home} className="lp-link lp-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, textDecoration: 'none', color: 'var(--text-primary)', width: 'fit-content' }}>
               <BrandLogo />
@@ -360,7 +359,7 @@ export function PublicFooter({ locale = 'el' }: { locale?: Locale } = {}) {
               «Υπαναχώρηση από τη σύμβαση εδώ»: το άρθ. 11α της Οδηγίας
               2011/83/ΕΕ θέλει τη λειτουργία εμφανή και διαθέσιμη σε όλη την
               προθεσμία, όχι κρυμμένη στους Όρους (lib/legal/withdrawal.ts). */}
-        </FootAccordion>
+        </div>
         <div className="po-foot-bar" style={{ marginTop: 'clamp(32px,4vw,48px)', paddingTop: T.sp.lg, borderTop: '1px solid var(--border-subtle)', fontSize: 12, color: 'var(--text-tertiary)' }}>
           <span>© {new Date().getFullYear()} PROPERWISE</span>
           {/* Η ΓΛΩΣΣΑ ΚΑΙ ΣΤΟ ΥΠΟΣΕΛΙΔΟ, σε κάθε πλάτος (app/LangSwitcher.tsx). */}

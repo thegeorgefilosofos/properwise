@@ -7713,12 +7713,12 @@ html[lang="en"] :is(.lg-p, .lg-ul li, .lg-note, .lg-just, .lg-lede > p) { text-a
    των 10 εικονοστοιχείων. Το «Επιπλέον» είναι σύνδεσμος της στήλης, όχι
    κουμπί: ίδιο μέγεθος, ίδιος τόνος, μόνο το + που γίνεται −. Το έντονο λευκό
    έκοβε τη στήλη στα δύο και φώναζε πιο δυνατά από τον τίτλο της. */
-.lp-footcol > summary { list-style: none; }
-.lp-footcol > summary::-webkit-details-marker, .lp-footmore > summary::-webkit-details-marker { display: none; }
+.lp-footacc > summary { list-style: none; }
+.lp-footacc > summary::-webkit-details-marker, .lp-footmore > summary::-webkit-details-marker { display: none; }
 .lp-foothead {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
-  color: var(--text-tertiary); margin-bottom: 18px; cursor: default;
+  color: var(--text-tertiary); margin: 0 0 18px; cursor: default;
 }
 .lp-foothead > .lp-foot-i { display: none; }
 .lp-footlinks { display: flex; flex-direction: column; gap: 10px; }
@@ -7752,7 +7752,7 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 /* ΣΤΟ ΤΗΛΕΦΩΝΟ ΚΑΙ ΣΤΗΝ ΤΑΜΠΛΕΤΑ: ΜΙΑ ΣΤΗΛΗ, ΚΑΘΕ ΟΜΑΔΑ ΣΕΙΡΑ ΠΟΥ ΑΝΟΙΓΕΙ. Ο τίτλος γίνεται
    κουμπί πλήρους πλάτους των 52, με λεπτή γραμμή ανάμεσα στις ομάδες. Μέσα
    φαίνονται όλοι οι σύνδεσμοι: το «Επιπλέον» δεν χρειάζεται δεύτερο πάτημα
-   (app/FootAccordion.tsx το ανοίγει, εδώ κρύβεται ο τίτλος του). */
+   (πιο κάτω, όπου ο περιηγητής δέχεται το ::details-content). */
 @media (max-width: 1024px) {
   .lp-foot { grid-template-columns: minmax(0, 1fr) !important; row-gap: 0; }
   .lp-foot > :first-child { margin-bottom: 24px; }
@@ -7763,10 +7763,27 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
   }
   .lp-foothead > .lp-foot-i { display: block; }
   .lp-footlinks { padding-bottom: 12px; }
-  .lp-footmore > .lp-footmore-s { display: none; }
+  .lp-foot-wide { display: none; }
   .lp-footmore-list { padding-top: 0; }
   /* Η γραμμή του τέλους κλείνει και την τελευταία ομάδα: όχι δεύτερη από πάνω της. */
   footer .po-foot-bar { margin-top: 0 !important; }
+}
+/* ΔΥΟ ΤΙΤΛΟΙ ΣΤΗ ΣΕΛΙΔΑ, ΕΝΑΣ ΦΑΙΝΕΤΑΙ. Στον υπολογιστή ο <p> είναι ο τίτλος
+   και η στήλη ανοιχτή από το CSS· η σειρά που ανοίγει κρύβεται. Οπου ο
+   περιηγητής δεν δέχεται το ::details-content, ο τίτλος μένει ο ίδιος
+   πατήσιμος και το περιεχόμενο ανοίγει με ένα πάτημα: τίποτα δεν χάνεται. */
+@supports selector(::details-content) {
+  @media (min-width: 1025px) {
+    .lp-foot-narrow { display: none; }
+    .lp-footacc::details-content { content-visibility: visible; display: block; }
+  }
+  @media (max-width: 1024px) {
+    .lp-footmore > .lp-footmore-s { display: none; }
+    .lp-footmore::details-content { block-size: auto; visibility: visible; }
+  }
+}
+@supports not selector(::details-content) {
+  .lp-foot-wide { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .lp-foot-i::before, .lp-foot-i::after, .lp-footmore::details-content { transition: none; }
