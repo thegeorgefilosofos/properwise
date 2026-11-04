@@ -1,4 +1,4 @@
-import { resolveStaged } from '@/lib/assistant/stagedFile';
+import { resolveStaged } from '@/lib/assistant/stagedResolve';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireSecondStep } from '@/lib/auth/secondStep';

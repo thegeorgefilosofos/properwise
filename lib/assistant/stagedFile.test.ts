@@ -1,6 +1,7 @@
 // Το μεγάλο PDF περνά από τον χώρο αρχείων: μόνο του ίδιου χρήστη, μόνο PDF,
 // σβήνεται μόλις διαβαστεί και γίνεται base64 πριν από τον μετρητή.
-import { stagedPathOk, stagePathFor, resolveStaged, firstPages, STAGE_MAX_BYTES, SCAN_MAX_PAGES } from './stagedFile';
+import { stagedPathOk, stagePathFor, STAGE_MAX_BYTES } from './stagedFile';
+import { resolveStaged, firstPages, SCAN_MAX_PAGES } from './stagedResolve';
 import { PDFDocument } from 'pdf-lib';
 import { meterKind, fileHash } from '@/lib/billing/aiUnits';
 
