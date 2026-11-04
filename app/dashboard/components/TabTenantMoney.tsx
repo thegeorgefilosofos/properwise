@@ -53,7 +53,7 @@ import { classifyDocType, DOC_TYPE_LABELS, type ScannedDoc } from '@/lib/billing
 import { hasFeature } from '@/lib/billing/entitlements';
 import type { PlanId } from '@/lib/billing/plans';
 import {
-  daysUntil, isoYear, isoMonth, localDay,
+  daysUntil, isoYear, isoMonth, localDay, athensMonth,
 } from '@/lib/core/time';
 import { MONTHS_NOM, MONTHS_SHORT, monthNom, monthGen } from '@/lib/core/months';
 import { INK, INK_MUTED, RULE } from '@/lib/print/ink';
@@ -125,7 +125,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
   // μεταβολή του μήνα ισχύος (rentIndexFor), όπως τη δημοσιεύει η ΕΛΣΤΑΤ για τα
   // μισθώματα. Ίδιο ενοίκιο, δύο ποσά σε δύο οθόνες. Τώρα διαλέγεις μήνα ισχύος
   // και ο δείκτης βγαίνει από την ίδια συνάρτηση με το παράθυρο.
-  const thisYm=new Date().toISOString().slice(0,7);
+  const thisYm=athensMonth();
   const [ym,setYm]=useState(thisYm);
   const [share75,setShare75]=useState(false);
   const idx=rentIndexFor(ym);
@@ -1089,7 +1089,7 @@ export function RenewalView({ tenant, userId, comps, sqm }:{ tenant:Tenant; user
   const marketDiff=hasMarket?rent-marketRent:0;
   const marketDiffPct=hasMarket&&marketRent>0?(marketDiff/marketRent)*100:0;
   // Ο ίδιος δείκτης με την αναπροσαρμογή: ο τελευταίος δημοσιευμένος δωδεκάμηνος.
-  const idxNow=rentIndexFor(new Date().toISOString().slice(0,7));
+  const idxNow=rentIndexFor(athensMonth());
   const cpiPct=idxNow?idxNow.pct:null;
   const legalNew=cpiPct!==null?rent*(1+cpiPct/100):null;
   // Η πρόταση που ΦΕΥΓΕΙ σε άλλον άνθρωπο: αγορά αν υπάρχει βάση, αλλιώς ΔΤΚ, αλλιώς τίποτα.
