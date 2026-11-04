@@ -314,6 +314,14 @@ begin
        end $x$ $q$, o, p, probe_w.u('O2'), p2, o, p)) <> 'ok' then
     raise exception 'ΠΑΡΑΒΙΑΣΗ: στήλη εκτός λίστας γράφτηκε από το γραφείο';
   end if;
+  if (select x->>'myLevel' from json_array_elements(public.firm_client_levels()) x where (x->>'ownerId')::uuid = o) <> 'keep' then
+    raise exception 'Το firm_client_levels δεν δίνει το επίπεδο του πελάτη';
+  end if;
+  perform probe_w.as_('S');
+  if (select x->>'myLevel' from json_array_elements(public.firm_client_levels()) x where (x->>'ownerId')::uuid = o) is not null then
+    raise exception 'Ο συνεργάτης φαίνεται να έχει επίπεδο εγγραφής';
+  end if;
+  perform probe_w.as_('L');
   raise notice 'probe: ξένο ακίνητο, ξένος πελάτης, νέα υποχρέωση, γεγονός, σειρά και στήλη εκτός λίστας κόβονται';
 end $probe$;
 

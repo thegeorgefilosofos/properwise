@@ -587,6 +587,33 @@ begin
   ), '[]'::json);
 end $$;
 
+/* Για τον χώρο του γραφείου: ανά πελάτη, τι επίπεδο έδωσε και αν τον έχω αναλάβει. */
+create or replace function public.firm_client_levels()
+returns json
+language plpgsql stable security definer
+set search_path = 'public', 'pg_temp'
+as $$
+declare v_me uuid := auth.uid(); v_firm uuid := private.firm_of(auth.uid());
+begin
+  if not private.mfa_satisfied() then
+    raise exception 'mfa_required' using errcode = '42501';
+  end if;
+  if v_me is null or v_firm is null then return '[]'::json; end if;
+  return coalesce((
+    select json_agg(json_build_object(
+      'ownerId', o.owner_id,
+      'level', o.level,
+      'mine', exists (select 1 from firm_client_assignees fa where fa.firm_id = v_firm and fa.owner_id = o.owner_id and fa.user_id = v_me),
+      'myLevel', private.firm_level(v_me, o.owner_id)))
+      from (select ac.owner_id,
+                   (array_agg(ac.access_level order by case ac.access_level when 'keep' then 3 when 'upload' then 2 else 1 end desc))[1] as level
+              from accountant_clients ac
+             where ac.firm_id = v_firm and ac.active
+             group by ac.owner_id) o
+     where private.firm_reads_owner(v_me, o.owner_id)
+  ), '[]'::json);
+end $$;
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- 7. Η ΠΛΕΥΡΑ ΤΟΥ ΙΔΙΟΚΤΗΤΗ
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -765,6 +792,7 @@ begin
     'public.firm_mark_paid(text, uuid, date, text)',
     'public.firm_open_items(uuid)',
     'public.firm_client_properties(uuid)',
+    'public.firm_client_levels()',
     'public.owner_set_firm_level(uuid, text)',
     'public.owner_firm_day(date)',
     'public.owner_undo_firm_day(uuid, date)'
