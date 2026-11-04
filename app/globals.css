@@ -7703,40 +7703,180 @@ body:has(.po-tool-page) .pw-lang-suggest {
    ποτάμια λευκού. Στα αγγλικά: αριστερά και `pretty`, όπως οι οδηγοί. */
 html[lang="en"] :is(.lg-p, .lg-ul li, .lg-note, .lg-just, .lg-lede > p) { text-align: start; text-wrap-style: pretty; }
 
-/* ═══ ΑΡΧΕΙΟ: ΤΟ ΔΕΝΤΡΟ ΤΩΝ ΦΑΚΕΛΩΝ (TabDocuments, FolderTreeView) ═══════
-   Είδος → Πάροχος → Έτος. Κάθε επίπεδο είναι κουμπί `acc-toggle acc-row`·
-   εδώ ζει μόνο το σχήμα του δέντρου, όπως η `.acc-month` για τους μήνες:
-   ενσωματωμένο style σε <button> δεν παίρνει :hover ούτε :focus-visible.
-   Η εσοχή κάθε επιπέδου είναι 20 και μια λεπτή γραμμή οδηγός δείχνει ποιος
-   φάκελος περιέχει ποιον, όπως σε κάθε σύστημα αρχείων. */
-.arc-tree { display: flex; flex-direction: column; gap: 2px; }
-.arc-branch[data-level="2"], .arc-branch[data-level="3"] {
-  margin-left: 9px; padding-left: 11px; border-left: 1px solid var(--border-subtle);
+/* ═══ ΑΡΧΕΙΟ: ΦΑΚΕΛΟΙ (archive/FolderBrowser.tsx) ════════════════════════
+   Στήλες στον υπολογιστή, λίστα με τρίγωνα, μία λίστα τη φορά στο κινητό.
+   Λεπτές γραμμές αντί για κάρτες μέσα σε κάρτες· ίδιο ύψος γραμμής (34)
+   παντού στις στήλες, 52 στο κινητό. Νούμερα σε ίσα ψηφία. */
+.fb-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 0 2px 10px; }
+.fb-head .fb-crumbs { padding: 0; }
+.fb-card { border: 1px solid var(--border-subtle); border-radius: 14px; background: var(--bg-surface); padding: 12px 12px 0; overflow: hidden; }
+.fb-card .fb-table { border: none; border-radius: 0; margin: 0 -12px; }
+.fb-count {
+  flex-shrink: 0; min-width: 22px; padding: 1px 6px; border-radius: 999px; text-align: center;
+  font-size: 11px; font-weight: 600; color: var(--text-secondary); background: var(--bg-overlay); font-variant-numeric: tabular-nums;
 }
-.arc-node { min-height: 44px; border-radius: 10px; color: var(--text-secondary); }
-.arc-node:hover { background: var(--bg-overlay); color: var(--text-primary); }
-.arc-node-chevron { flex-shrink: 0; color: var(--text-tertiary); transition: transform .18s; }
-.arc-node[data-open="true"] .arc-node-chevron { transform: rotate(90deg); }
-.arc-node-icon { flex-shrink: 0; color: var(--accent); }
-/* Το όνομα του φακέλου ΑΝΑΔΙΠΛΩΝΕΤΑΙ, δεν κόβεται: «Υδραυλικές Εργασίες»
-   στα 320 έχανε 58 εικονοστοιχεία πίσω από αποσιωπητικά (e2e-layout). */
-.arc-node { flex-wrap: wrap; row-gap: 2px; padding-block: 6px; }
-.arc-node-label {
-  min-width: 0; overflow-wrap: anywhere;
-  font-size: var(--fs-base); font-weight: 600; color: var(--text-primary);
+.fb-row[aria-selected="true"] .fb-count { background: var(--bg-surface); }
+.fb-seg {
+  display: inline-flex; padding: 2px; gap: 2px; border-radius: 9px;
+  background: var(--bg-overlay); border: 1px solid var(--border-subtle);
 }
-.arc-node[data-level="3"] .arc-node-label { font-variant-numeric: tabular-nums; }
-.arc-node-count { flex-shrink: 0; font-size: var(--fs-xs); color: var(--text-tertiary); white-space: nowrap; }
-.arc-node-total {
-  margin-left: auto; flex-shrink: 0; font-size: var(--fs-xs); font-weight: 700;
-  color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap;
+.fb-seg-btn {
+  min-height: 30px; padding: 0 12px; border: none; border-radius: 7px; background: none; cursor: pointer;
+  font-family: inherit; font-size: var(--fs-xs); font-weight: 600; color: var(--text-secondary);
 }
-.arc-files { padding: 4px 0 14px 20px; }
-.arc-path { margin: 0 0 10px; font-size: var(--fs-xs); color: var(--text-tertiary); }
-@media (max-width: 640px) {
-  .arc-branch[data-level="2"], .arc-branch[data-level="3"] { margin-left: 6px; padding-left: 8px; }
-  .arc-files { padding-left: 4px; }
+.fb-seg-btn[aria-pressed="true"] { background: var(--bg-surface); color: var(--text-primary); box-shadow: var(--elev-1); }
+.fb-seg-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fb-seg-small { align-self: flex-start; margin: 4px 0 12px; }
+
+/* Εικονογραφία: ο φάκελος με την καρτέλα του, στο χρώμα της εφαρμογής. */
+.fb-folder { flex-shrink: 0; }
+.fb-folder-back { fill: var(--accent); opacity: .55; }
+.fb-folder-front { fill: var(--accent); opacity: .22; }
+.fb-folder-glyph { color: var(--accent); }
+.fb-file { position: relative; display: inline-flex; flex-shrink: 0; }
+.fb-file-page { fill: var(--bg-surface); stroke: var(--border-default); stroke-width: 1.2; }
+.fb-file-fold { fill: none; stroke: var(--border-default); stroke-width: 1.2; }
+.fb-file-tag {
+  position: absolute; left: -2px; bottom: 12%; padding: 0 3px; border-radius: 3px;
+  font-size: 7px; font-weight: 700; letter-spacing: .02em; line-height: 1.5;
+  color: var(--accent-text); background: var(--accent);
 }
+.fb-file-tag[data-ext="PDF"] { background: var(--negative); }
+.fb-year-dot { width: 18px; height: 18px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+.fb-year-dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary); }
+
+/* Γραμμή διαδρομής: κάθε κομμάτι πατήσιμο. */
+.fb-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 0 2px 10px; font-size: var(--fs-xs); }
+.fb-crumb-wrap { display: inline-flex; align-items: center; gap: 2px; }
+.fb-crumb {
+  border: none; background: none; padding: 4px 6px; border-radius: 6px; font-family: inherit;
+  font-size: var(--fs-xs); color: var(--text-secondary); cursor: pointer;
+}
+button.fb-crumb:hover { background: var(--bg-overlay); color: var(--text-primary); }
+button.fb-crumb:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+span.fb-crumb { color: var(--text-primary); font-weight: 600; cursor: default; }
+.fb-crumb-sep { color: var(--text-tertiary); }
+
+/* ── Στήλες ── */
+.fb-columns-wrap { border: 1px solid var(--border-subtle); border-radius: 14px; background: var(--bg-surface); padding: 12px 12px 0; }
+/* Τέσσερις θέσεις πάντα, όπως στο Finder: οι στήλες δεν αλλάζουν πλάτος
+   καθώς προχωράς· η προεπισκόπηση προστίθεται δεξιά. */
+.fb-columns {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--border-subtle); min-height: 340px;
+}
+.fb-columns[data-preview="true"] { grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(260px, 1.15fr); }
+.fb-col-files { grid-column: 4; }
+.fb-preview { grid-column: 5; }
+.fb-col { display: flex; flex-direction: column; gap: 1px; padding: 8px 6px 12px; border-right: 1px solid var(--border-subtle); min-width: 0; }
+.fb-col-files { border-right: none; }
+.fb-col-head {
+  margin: 0 0 4px; padding: 0 8px; font-size: 10px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-tertiary);
+}
+.fb-row {
+  display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 8px; border-radius: 8px;
+  cursor: pointer; color: var(--text-primary); font-size: var(--fs-xs); user-select: none;
+}
+.fb-row:hover { background: var(--bg-overlay); }
+.fb-row[aria-selected="true"] { background: var(--accent-soft); font-weight: 600; }
+.fb-row:focus { outline: none; }
+.fb-row:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.fb-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fb-row-meta { flex-shrink: 0; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.fb-row-sum { flex-shrink: 0; min-width: 0; color: var(--text-secondary); font-variant-numeric: tabular-nums; text-align: right; }
+.fb-row-date { flex-shrink: 0; width: 76px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; text-align: right; }
+.fb-row-chev { flex-shrink: 0; color: var(--text-tertiary); }
+.fb-row[aria-selected="true"] .fb-row-chev { color: var(--accent); }
+.fb-thumb-sm { width: 18px; height: 22px; object-fit: cover; border-radius: 3px; flex-shrink: 0; border: 1px solid var(--border-subtle); }
+
+/* Πάνελ προεπισκόπησης. */
+.fb-preview { display: flex; flex-direction: column; gap: 12px; padding: 14px 14px 16px; border-left: 1px solid var(--border-subtle); min-width: 0; }
+.fb-preview-media {
+  display: flex; align-items: center; justify-content: center; height: 150px; border-radius: 10px;
+  background: var(--bg-overlay); overflow: hidden;
+}
+.fb-preview-img { width: 100%; height: 100%; object-fit: cover; }
+.fb-preview-name { margin: 0; font-size: var(--fs-base); font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
+.fb-preview-dl { margin: 0; display: flex; flex-direction: column; }
+.fb-preview-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--border-subtle); font-size: var(--fs-xs); }
+.fb-preview-row dt { color: var(--text-tertiary); flex-shrink: 0; }
+.fb-preview-row dd { margin: 0; color: var(--text-primary); text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.fb-preview-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Λίστα με τρίγωνα ── */
+.fb-table { border: 1px solid var(--border-subtle); border-radius: 14px; background: var(--bg-surface); overflow: hidden; }
+.fb-tr {
+  display: grid; grid-template-columns: minmax(0, 1fr) 110px 100px 80px; align-items: center;
+  min-height: 36px; border-top: 1px solid var(--border-subtle); font-size: var(--fs-xs);
+}
+.fb-tr:first-child { border-top: none; }
+.fb-th { min-height: 32px; background: var(--bg-overlay); color: var(--text-tertiary); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.fb-td-name { min-width: 0; padding-left: calc(10px + var(--fb-indent, 0px)); }
+.fb-th .fb-td-name { padding-left: 14px; }
+.fb-tr[data-depth="1"] { --fb-indent: 20px; }
+.fb-tr[data-depth="2"] { --fb-indent: 40px; }
+.fb-tr[data-depth="3"] { --fb-indent: 64px; }
+.fb-td-num, .fb-td-date, .fb-td-size { padding-right: 14px; text-align: right; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fb-disclose, .fb-file-open {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 0 4px; border: none;
+  background: none; cursor: pointer; font-family: inherit; font-size: var(--fs-xs); color: var(--text-primary); text-align: left;
+}
+.fb-file-open:disabled { cursor: default; }
+.fb-tr:hover { background: var(--bg-overlay); }
+.fb-file-open:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
+.fb-tri { flex-shrink: 0; color: var(--text-tertiary); transition: transform .15s; }
+.fb-disclose[aria-expanded="true"] .fb-tri { transform: rotate(90deg); }
+.fb-disclose .fb-row-name { font-weight: 600; }
+
+/* ── Κινητό ── */
+.fb-phone { border: 1px solid var(--border-subtle); border-radius: 14px; background: var(--bg-surface); padding: 6px 12px 12px; overflow: hidden; }
+.fb-back {
+  display: inline-flex; align-items: center; gap: 2px; min-height: 44px; padding: 0 4px 0 0; border: none; background: none;
+  font-family: inherit; font-size: var(--fs-base); color: var(--accent); cursor: pointer; max-width: 100%;
+}
+.fb-back:focus-visible { outline: 2px solid var(--accent); border-radius: 8px; }
+.fb-phone-head { padding: 4px 0 10px; }
+.fb-phone-title { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.01em; color: var(--text-primary); overflow-wrap: anywhere; }
+.fb-phone-sub { margin: 2px 0 0; font-size: var(--fs-xs); color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.fb-phone-list { list-style: none; margin: 0; padding: 0; }
+.fb-phone-list li + li { border-top: 1px solid var(--border-subtle); }
+.fb-phone-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 6px 2px; border: none; background: none;
+  font-family: inherit; text-align: left; color: var(--text-primary); cursor: pointer;
+}
+.fb-phone-row:active { background: var(--bg-overlay); }
+.fb-phone-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 8px; }
+.fb-phone-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fb-phone-name { font-size: var(--fs-base); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fb-phone-name.fb-wrap { white-space: normal; overflow-wrap: anywhere; font-size: var(--fs-xs); }
+.fb-phone-meta { font-size: var(--fs-xs); color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.fb-phone-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.fb-phone-tile {
+  display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 0 0 8px; border: 1px solid var(--border-subtle);
+  border-radius: 12px; background: var(--bg-elevated); font-family: inherit; text-align: left; color: var(--text-primary); cursor: pointer; overflow: hidden;
+}
+.fb-phone-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fb-phone-thumb { display: flex; align-items: center; justify-content: center; height: 96px; background: var(--bg-overlay); }
+.fb-phone-tile-name {
+  padding: 0 10px; font-size: var(--fs-xs); font-weight: 600; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
+}
+.fb-phone-tile .fb-phone-meta { padding: 0 10px; }
+.fb-phone-pane { animation: fb-in .22s cubic-bezier(.2,0,0,1); }
+.fb-phone-pane[data-dir="out"] { animation-name: fb-out; }
+@keyframes fb-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes fb-out { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .fb-phone-pane { animation: none; } .fb-tri { transition: none; } }
+
+/* Κενή κατάσταση. */
+.fb-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 20px; text-align: center;
+  border: 1px solid var(--border-subtle); border-radius: 14px; background: var(--bg-surface);
+}
+.fb-empty-title { margin: 6px 0 0; font-size: var(--fs-base); font-weight: 700; color: var(--text-primary); }
+.fb-empty-hint { margin: 0 0 8px; max-width: 420px; font-size: var(--fs-xs); color: var(--text-secondary); }
+
 /* Το κοινό όνομα είναι μακρύ (Ασφαλιστήριο_Ασφάλειες Ελλάς_2026_06_240,00.pdf)
    και η κάτω παύλα δεν είναι σημείο αλλαγής γραμμής: σε στενή κάρτα κοβόταν
    στο «Ασφάλειες Ελλ…» και χανόταν ακριβώς το έτος και το ποσό. Δύο γραμμές,

@@ -29,6 +29,8 @@
 // Καθαρή λογική, χωρίς React ή Supabase.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { isValidAfm } from '../core/greek';
+
 /** Το λεξιλόγιο των ειδών. Καμία άλλη λέξη δεν γίνεται φάκελος ή αρχή ονόματος. */
 export const KINDS = [
   'Ρεύμα', 'Νερό', 'Φυσικό αέριο', 'Internet', 'Κοινόχρηστα', 'Δημοτικά τέλη', 'Συνδρομές',
@@ -152,6 +154,14 @@ const LEGAL = [
 ];
 const LEGAL_RE = new RegExp(`(?:[\\s,.-]+(?:${LEGAL.join('|')}))+\\s*$`, 'iu');
 
+/** Η γνωστή επωνυμία που αναγνωρίζεται στο όνομα, ή null. */
+export function knownBrand(raw: string | null | undefined): string | null {
+  const folded = foldKey(raw || '');
+  if (!folded) return null;
+  for (const [re, name] of KNOWN) if (re.test(folded)) return name;
+  return null;
+}
+
 /** Το καθαρό όνομα ενός παρόχου· `null` αν δεν υπάρχει ή είναι εσωτερική ετικέτα. */
 export function cleanProvider(raw: string | null | undefined): string | null {
   let s = (raw || '').replace(/\s+/g, ' ').trim();
@@ -178,7 +188,10 @@ export function providerNames(rows: readonly ProviderSource[]): Map<string, stri
   for (const r of rows) {
     const afm = (r.afm || '').replace(/\D/g, '');
     const name = cleanProvider(r.provider);
-    if (afm.length !== 9 || !name) continue;
+    // ΜΟΝΟ ΕΓΚΥΡΟ ΑΦΜ. Ενα ΑΦΜ που διαβάστηκε λάθος από τη σάρωση δεν περνά το
+    // ψηφίο ελέγχου· χωρίς αυτόν τον έλεγχο, ένα λάθος ψηφίο θα έβαζε τη ΔΕΗ
+    // στον υποφάκελο της ασφαλιστικής που έτυχε να έχει το ίδιο λάθος ΑΦΜ.
+    if (!isValidAfm(afm) || !name) continue;
     const m = byAfm.get(afm) ?? new Map();
     const e = m.get(name) ?? { n: 0, first: r.createdAt || '9999' };
     e.n++; if ((r.createdAt || '9999') < e.first) e.first = r.createdAt || '9999';
@@ -186,14 +199,26 @@ export function providerNames(rows: readonly ProviderSource[]): Map<string, stri
   }
   const out = new Map<string, string>();
   for (const [afm, m] of byAfm) {
+    // ΣΥΓΚΡΟΥΣΗ: αν μία από τις γραφές είναι γνωστή επωνυμία και κάποια άλλη
+    // δεν είναι η ίδια επωνυμία, τα χαρτιά δεν είναι του ίδιου παρόχου — κάτι
+    // διαβάστηκε λάθος. Τότε το ΑΦΜ δεν ενώνει τίποτα και κάθε χαρτί κρατά το
+    // δικό του καθαρό όνομα.
+    const brands = new Set([...m.keys()].map(n => knownBrand(n)));
+    if ([...brands].some(Boolean) && brands.size > 1) continue;
     out.set(afm, [...m.entries()].sort((a, b) => b[1].n - a[1].n || a[1].first.localeCompare(b[1].first) || a[0].localeCompare(b[0], 'el'))[0][0]);
   }
   return out;
 }
 
-/** Ο πάροχος ενός χαρτιού: πρώτα με το ΑΦΜ, αλλιώς με το καθάρισμα. */
-export const resolveProvider = (names: Map<string, string>, provider: string | null | undefined, afm?: string | null): string | null =>
-  names.get((afm || '').replace(/\D/g, '')) ?? cleanProvider(provider);
+/** Τα έντυπα της ΑΑΔΕ: χωρίς πάροχο στο χαρτί, ο εκδότης είναι η ΑΑΔΕ. */
+const AADE_KINDS = new Set<string>(['ΕΝΦΙΑ', 'Ε1', 'Ε2', 'Ε3', 'Ε9', 'Εκκαθαριστικό φόρου']);
+/** Ο πάροχος που εννοείται από το είδος, όταν το χαρτί δεν γράφει. */
+export const defaultProvider = (kind: string | null | undefined): string | null =>
+  kind && AADE_KINDS.has(kind) ? 'ΑΑΔΕ' : null;
+
+/** Ο πάροχος ενός χαρτιού: πρώτα με το ΑΦΜ, μετά με το καθάρισμα, τέλος από το είδος (ΑΑΔΕ). */
+export const resolveProvider = (names: Map<string, string>, provider: string | null | undefined, afm?: string | null, kind?: string | null): string | null =>
+  names.get((afm || '').replace(/\D/g, '')) ?? cleanProvider(provider) ?? defaultProvider(kind);
 
 // ── Ο ΜΗΝΑΣ ──────────────────────────────────────────────────────────────
 /** Η πρώτη έγκυρη ημερομηνία ISO από τη σειρά προτίμησης. */
@@ -208,7 +233,8 @@ export const nameDateOf = (d: { period_to?: string | null; period_from?: string 
 /** «1250,00»: δύο δεκαδικά, κόμμα, χωρίς τελεία χιλιάδων (μοιάζει με κατάληξη), χωρίς €. */
 export function amountPart(v: number | string | null | undefined): string {
   const n = typeof v === 'string' ? Number(v) : v;
-  if (n == null || !Number.isFinite(n)) return '';
+  // Το μηδέν δεν είναι ποσό: ένα «0,00» στο όνομα λέει ψέματα για το χαρτί.
+  if (n == null || !Number.isFinite(n) || Math.abs(n) < 0.005) return '';
   return Math.abs(n).toFixed(2).replace('.', ',');
 }
 

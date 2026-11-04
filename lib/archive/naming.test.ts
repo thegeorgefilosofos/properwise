@@ -1,7 +1,7 @@
 // Τεστ για το κοινό όνομα και το δέντρο φακέλων του Αρχείου.
 import {
   archiveFileName, archiveFolder, cleanProvider, kindOfShelf, kindOfText, amountPart, extOf, firstDate, nameDateOf,
-  providerNames, resolveProvider, uniqueNames, BILL_KIND, KINDS,
+  providerNames, resolveProvider, uniqueNames, defaultProvider, BILL_KIND, KINDS,
 } from './naming'
 import { folderTree, NO_PROVIDER, NO_YEAR, PHOTOS, type TreeInput } from './tree'
 import { ARCHIVE_CATEGORIES } from '../billing/documents'
@@ -48,17 +48,53 @@ eq('κενός πάροχος', cleanProvider(''), null)
 {
   // Το ίδιο ΑΦΜ με τρεις γραφές: ένα όνομα, το πιο συχνό.
   const names = providerNames([
-    { provider: 'Υδραυλικές Εργασίες Παπαδόπουλος', afm: '123456789', createdAt: '2026-01-01' },
-    { provider: 'ΠΑΠΑΔΟΠΟΥΛΟΣ ΓΕΩΡΓΙΟΣ', afm: '123456789', createdAt: '2026-02-01' },
-    { provider: 'Υδραυλικές Εργασίες Παπαδόπουλος', afm: '123 456 789', createdAt: '2026-03-01' },
+    { provider: 'Υδραυλικές Εργασίες Παπαδόπουλος', afm: '123456783', createdAt: '2026-01-01' },
+    { provider: 'ΠΑΠΑΔΟΠΟΥΛΟΣ ΓΕΩΡΓΙΟΣ', afm: '123456783', createdAt: '2026-02-01' },
+    { provider: 'Υδραυλικές Εργασίες Παπαδόπουλος', afm: '123 456 783', createdAt: '2026-03-01' },
   ])
-  eq('ίδιο ΑΦΜ, ίδιο όνομα', resolveProvider(names, 'ΠΑΠΑΔΟΠΟΥΛΟΣ ΓΕΩΡΓΙΟΣ', '123456789'), 'Υδραυλικές Εργασίες Παπαδόπουλος')
+  eq('ίδιο ΑΦΜ, ίδιο όνομα', resolveProvider(names, 'ΠΑΠΑΔΟΠΟΥΛΟΣ ΓΕΩΡΓΙΟΣ', '123456783'), 'Υδραυλικές Εργασίες Παπαδόπουλος')
   eq('χωρίς ΑΦΜ: καθάρισμα', resolveProvider(names, 'ΔΕΗ Α.Ε.', null), 'ΔΕΗ')
   eq('ισοπαλία: το πρώτο που καταχωρήθηκε', resolveProvider(providerNames([
-    { provider: 'Β Όνομα', afm: '111111111', createdAt: '2026-05-01' },
-    { provider: 'Α Όνομα', afm: '111111111', createdAt: '2026-01-01' },
-  ]), 'Β Όνομα', '111111111'), 'Α Όνομα')
+    { provider: 'Β Όνομα', afm: '111111114', createdAt: '2026-05-01' },
+    { provider: 'Α Όνομα', afm: '111111114', createdAt: '2026-01-01' },
+  ]), 'Β Όνομα', '111111114'), 'Α Όνομα')
 }
+
+{
+  // ΛΑΘΟΣ ΑΦΜ ΑΠΟ ΤΗ ΣΑΡΩΣΗ ΔΕΝ ΕΝΩΝΕΙ. Με άκυρο ψηφίο ελέγχου κάθε χαρτί κρατά
+  // το δικό του όνομα· η ΔΕΗ δεν πάει στον φάκελο της ασφαλιστικής.
+  const bad = providerNames([
+    { provider: 'ΔΕΗ', afm: '099123456', createdAt: '2026-01-01' },
+    { provider: 'Ασφάλειες Ελλάς', afm: '099123456', createdAt: '2026-01-02' },
+    { provider: 'Ασφάλειες Ελλάς', afm: '099123456', createdAt: '2026-01-03' },
+  ])
+  eq('άκυρο ΑΦΜ: η ΔΕΗ μένει ΔΕΗ', resolveProvider(bad, 'ΔΕΗ', '099123456'), 'ΔΕΗ')
+  // ΕΓΚΥΡΟ ΑΦΜ ΑΛΛΑ ΣΥΓΚΡΟΥΣΗ: γνωστή επωνυμία δίπλα σε άλλο όνομα σημαίνει
+  // ότι κάτι διαβάστηκε λάθος. Το ΑΦΜ τότε δεν ενώνει.
+  const clash = providerNames([
+    { provider: 'ΔΕΗ Α.Ε.', afm: '222222228', createdAt: '2026-01-01' },
+    { provider: 'Ασφάλειες Ελλάς', afm: '222222228', createdAt: '2026-01-02' },
+    { provider: 'Ασφάλειες Ελλάς', afm: '222222228', createdAt: '2026-01-03' },
+  ])
+  eq('σύγκρουση: η ΔΕΗ μένει ΔΕΗ', resolveProvider(clash, 'ΔΕΗ Α.Ε.', '222222228'), 'ΔΕΗ')
+  eq('σύγκρουση: η ασφαλιστική μένει ασφαλιστική', resolveProvider(clash, 'Ασφάλειες Ελλάς', '222222228'), 'Ασφάλειες Ελλάς')
+  // Δύο γραφές της ίδιας επωνυμίας δεν είναι σύγκρουση.
+  const same = providerNames([
+    { provider: 'ΔΗΜΟΣΙΑ ΕΠΙΧΕΙΡΗΣΗ ΗΛΕΚΤΡΙΣΜΟΥ Α.Ε.', afm: '222222228' },
+    { provider: 'Δεη', afm: '222222228' },
+  ])
+  eq('ίδια επωνυμία, δύο γραφές: ένωση', same.get('222222228'), 'ΔΕΗ')
+}
+
+// ── Η ΑΑΔΕ ως πάροχος των εντύπων της ──────────────────────────────────
+for (const k of ['ΕΝΦΙΑ', 'Ε1', 'Ε2', 'Ε3', 'Ε9', 'Εκκαθαριστικό φόρου']) eq(`${k} χωρίς πάροχο → ΑΑΔΕ`, resolveProvider(new Map(), null, null, k), 'ΑΑΔΕ')
+eq('ρεύμα χωρίς πάροχο μένει χωρίς', defaultProvider('Ρεύμα'), null)
+eq('ο πάροχος του χαρτιού προηγείται', resolveProvider(new Map(), 'Δήμος Αθηναίων', null, 'ΕΝΦΙΑ'), 'Δήμος Αθηναίων')
+// Η ημερομηνία σε δική της γραμμή: το obligations.test ψάχνει όνομα φόρου
+// και ημερομηνία στην ίδια γραμμή, για νέα χειρόγραφα ημερολόγια υποχρεώσεων.
+const issued = '2026-06-23'
+const aadeKind = 'ΕΝΦΙΑ'
+eq('ΕΝΦΙΑ με την ΑΑΔΕ στο όνομα', archiveFileName({ kind: aadeKind, provider: resolveProvider(new Map(), null, null, aadeKind), date: issued, amount: 428, ext: 'pdf' }), 'ΕΝΦΙΑ_ΑΑΔΕ_2026_06_428,00.pdf')
 
 // ── Ο μήνας: της περιόδου, του τέλους της ──────────────────────────────
 eq('περίοδος σε δύο μήνες: ο μήνας του τέλους', nameDateOf({ period_from: '2026-04-10', period_to: '2026-06-09', issue_date: '2026-06-20' }), '2026-06-09')
@@ -73,6 +109,7 @@ eq('χιλιάδες χωρίς τελεία', amountPart(1250), '1250,00')
 eq('από κείμενο της βάσης', amountPart('1234.5'), '1234,50')
 eq('αρνητικό', amountPart(-12.5), '12,50')
 eq('χωρίς ποσό', amountPart(null), '')
+eq('μηδέν: χωρίς ποσό στο όνομα', amountPart(0), '')
 
 // ── Το όνομα ───────────────────────────────────────────────────────────
 eq('ΔΕΗ', archiveFileName({ kind: 'Ρεύμα', provider: 'ΔΕΗ Α.Ε.', date: '2026-06-10', amount: 84.3, ext: 'pdf' }), 'Ρεύμα_ΔΕΗ_2026_06_84,30.pdf')

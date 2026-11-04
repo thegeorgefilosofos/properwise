@@ -37,9 +37,10 @@ import { isValidAfm } from '@/lib/billing/parse';
 import { navLabel } from '@/lib/nav/labels';
 import { monthShort } from '@/lib/core/months';
 import { applyFilters, facetOptions, toggleValue, clearAll, groupByMonth, sumValues, isSelectionEmpty, sameGrouping, FACET_KEYS, FACET_LABEL, type Selection, type TimeGroup } from '@/lib/archive/facets';
-import { archiveFileName, cleanProvider, extOf, firstDate, nameDateOf, kindOfShelf, kindOfText, providerNames, resolveProvider, uniqueNames, BILL_KIND } from '@/lib/archive/naming';
+import { archiveFileName, cleanProvider, defaultProvider, extOf, firstDate, nameDateOf, kindOfShelf, kindOfText, providerNames, resolveProvider, uniqueNames, BILL_KIND } from '@/lib/archive/naming';
 import { folderTree, type TreeNode } from '@/lib/archive/tree';
 import { useRemembered } from '@/components/useRememberedFlag';
+import { FolderBrowser } from './archive/FolderBrowser';
 import { SAY } from '@/lib/core/dbError';
 import { useLoad } from '@/app/hooks/useLoad';
 import { toggleIn } from '@/lib/core/toggleSet';
@@ -148,7 +149,9 @@ const ORIGIN_LABEL: Record<Source, string | null> = { document: null, expense: n
 // Οι τέσσερις πηγές χτίζουν το κοινό σχήμα ΧΩΡΙΣ τα πεδία των όψεων· τα
 // συμπληρώνει το enrich παρακάτω, μία φορά για όλες.
 type RawItem = Omit<Item, 'categoryLabel' | 'sourceLabel' | 'afm' | 'fileName' | 'originalName' | 'downloadUrl'>;
-const enrich = (i: RawItem): Item => {
+const enrich = (raw: RawItem): Item => {
+  // Τα έντυπα της ΑΑΔΕ χωρίς πάροχο στο χαρτί: πάροχος η ΑΑΔΕ, όχι «Χωρίς πάροχο».
+  const i = raw.isPhoto ? raw : { ...raw, folderProvider: raw.folderProvider ?? defaultProvider(raw.kind) };
   const fileName = archiveFileName({
     kind: i.kind, provider: i.folderProvider, date: i.nameDate,
     amount: i.isPhoto ? null : i.value, ext: extOf(i.raw?.mime, i.raw?.file_name || i.url),
@@ -705,7 +708,13 @@ export default function TabDocuments({
   // του. Ξέρει περίπου πότε ήρθε ένα χαρτί, ακόμη κι όταν δεν θυμάται πώς το είπε.
   // Το `now` παράγεται εδώ και όχι μέσα στη συνάρτηση, ώστε εκείνη να είναι καθαρή.
   const groups = useMemo(() => groupByMonth(visible, new Date()), [visible]);
-  const tree = useMemo(() => folderTree(visible), [visible]);
+  // Το δέντρο διαβάζει τον πάροχο του ΦΑΚΕΛΟΥ (με ΑΦΜ και ΑΑΔΕ), όχι την
+  // ετικέτα του chip: ένας λογαριασμός χωρίς πάροχο γράφει «Ρεύμα» στο chip.
+  // ΜΟΝΟ ΑΡΧΕΙΑ. Οι λογαριασμοί και τα έπιπλα χωρίς χαρτί είναι εγγραφές, όχι
+  // αρχεία: στη θέα των φακέλων θα έμοιαζαν με έγγραφα που δεν ανοίγουν.
+  const tree = useMemo(() => folderTree(visible.filter(i => i.raw || i.url).map(i => ({
+    ...i, provider: i.folderProvider, periodLabel: i.raw ? periodLabel(i.raw) || null : null,
+  }))), [visible]);
 
   // Οι διαθέσιμες επιλογές κάθε όψης, με μετρητές. Κρύβουμε όψη που δεν προσφέρει
   // πραγματική επιλογή: με μία μόνη τιμή, το φίλτρο δεν φιλτράρει τίποτα και θα
@@ -964,7 +973,7 @@ export default function TabDocuments({
           ))}
         </div>
         )}
-        {showTool('view', items.length) && (
+        {showTool('view', items.length) && arrange === 'month' && (
         <div style={{ display: 'flex', gap: 0, height: T.h.lg, alignItems: 'stretch', border: '1px solid var(--border-subtle)', borderRadius: T.radius.badge, overflow: 'hidden', boxSizing: 'border-box' }}>
           {([['grid', 'Πλέγμα', <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>],
              ['list', 'Λίστα', <><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></>]] as const).map(([k, title, ic]) => (
@@ -1049,6 +1058,7 @@ export default function TabDocuments({
       ) : (
         <FileList items={visible} groups={arrange === 'month' ? groups : undefined}
           tree={arrange === 'folder' ? tree : undefined} openAll={filtering} a={fileActions(arrange === 'month')}
+          onUpload={() => setShowUpload(true)}
           empty={<EmptyState icon={<SearchX size={20}/>}
             title="Δεν βρέθηκαν έγγραφα"
             hint={q ? `Καμία αντιστοιχία για «${query}». Η αναζήτηση καλύπτει πάροχο, ποσό και ΑΦΜ.`
@@ -1133,9 +1143,16 @@ const canPreview = (i: Item) => !!i.url && (i.isImage || isPdfItem(i));
 // που είναι καθαρή λογική με τεστ — πριν, η ομαδοποίηση ανά μήνα ήταν γραμμένη
 // και εδώ, με δικό της τρόπο ονομασίας. Δύο υλοποιήσεις του ίδιου πράγματος
 // σημαίνει ότι μια διόρθωση σε μία δεν φτάνει ποτέ στην άλλη.
-function FileList({ items, groups, tree, openAll = false, empty, a }: { items: Item[]; groups?: TimeGroup<Item>[]; tree?: TreeNode<Item>[]; openAll?: boolean; empty: React.ReactNode; a: FileActions }) {
+function FileList({ items, groups, tree, openAll = false, empty, a, onUpload }: { items: Item[]; groups?: TimeGroup<Item>[]; tree?: TreeNode<Item & { periodLabel: string | null }>[]; openAll?: boolean; empty: React.ReactNode; a: FileActions; onUpload?: () => void }) {
   if (items.length === 0) return <div className="card">{empty}</div>;
-  if (tree) return <FolderTreeView nodes={tree} openAll={openAll} a={a}/>;
+  if (tree) {
+    // Ανοίγει την προεπισκόπηση της εφαρμογής όπου γίνεται, αλλιώς τον σύνδεσμο.
+    const open = (f: { id: string }) => {
+      const it = items.find(x => x.id === f.id); if (!it) return;
+      if (canPreview(it)) a.onOpenLightbox(it); else if (it.url) window.open(it.url, '_blank', 'noopener');
+    };
+    return <FolderBrowser nodes={tree} focused={openAll} rootLabel={navLabel('documents')} onOpen={open} onUpload={onUpload ?? (() => {})}/>;
+  }
   if (groups) {
     return <MonthGroups groups={groups} a={a}/>;
   }
@@ -1202,63 +1219,6 @@ function MonthGroups({ groups, a }: { groups: readonly { key: string; label: str
           </section>
         );
       })}
-    </div>
-  );
-}
-
-/* ═══ ΦΑΚΕΛΟΙ: ΕΙΔΟΣ → ΠΑΡΟΧΟΣ → ΕΤΟΣ (04/11/2026) ═════════════════════════
-   Ο ιδιοκτήτης ζήτησε τη θέα ενός φακέλου στον υπολογιστή του: Ρεύμα → ΔΕΗ →
-   2026 και μέσα τα αρχεία με το κοινό όνομα. Το δέντρο το χτίζει το
-   lib/archive/tree.ts από το ΙΔΙΟ φιλτραρισμένο σύνολο με τους μήνες, οπότε η
-   αναζήτηση και οι όψεις ισχύουν κι εδώ.
-
-   Κάθε επίπεδο είναι `acc-toggle`: ίδια εστίαση και ίδιο aria-expanded με τους
-   μήνες και ο σαρωτής διάταξης τα ανοίγει πριν μετρήσει. Κλειστά από
-   προεπιλογή, εκτός αν φιλτράρεις ή ψάχνεις: τότε ανοίγουν όλα, γιατί ό,τι
-   απέμεινε είναι ακριβώς αυτό που ζήτησες. */
-function FolderTreeView({ nodes, openAll, a }: { nodes: TreeNode<Item>[]; openAll: boolean; a: FileActions }) {
-  const [open, setOpen] = useState<Record<string, boolean>>({});
-  const isOpen = (k: string) => open[k] ?? (openAll || nodes.length === 1);
-  const flip = (k: string) => setOpen(prev => ({ ...prev, [k]: !isOpen(k) }));
-  const files = (n: number) => `${fn(n)} ${n === 1 ? 'αρχείο' : 'αρχεία'}`;
-  const head = (n: TreeNode<Item>, level: 1 | 2 | 3, path: string) => (
-    <button type="button" className="acc-toggle acc-row arc-node" data-level={level} data-open={isOpen(n.key)}
-      aria-expanded={isOpen(n.key)} aria-label={`${path}, ${files(n.count)}`} onClick={() => flip(n.key)}>
-      <svg aria-hidden="true" className="arc-node-chevron" width={14} height={14} viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 6 6 6-6 6"/></svg>
-      {level < 3
-        ? <svg aria-hidden="true" className="arc-node-icon" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-        : null}
-      <span className="arc-node-label">{n.label}</span>
-      <span className="arc-node-count">{files(n.count)}</span>
-      {/* Το σύνολο μόνο όταν λέει κάτι: τα 0,00€ ενός φακέλου χωρίς ποσά είναι θόρυβος. */}
-      {!!n.total && <span className="arc-node-total">{fe(n.total)}</span>}
-    </button>
-  );
-  return (
-    <div className="card arc-tree" data-list>
-      {nodes.map(top => (
-        <section key={top.key} className="arc-branch" data-level={1}>
-          {head(top, 1, top.label)}
-          {isOpen(top.key) && top.children.map(sub => (
-            <section key={sub.key} className="arc-branch" data-level={2}>
-              {head(sub, 2, `${top.label} › ${sub.label}`)}
-              {isOpen(sub.key) && sub.children.map(year => (
-                <section key={year.key} className="arc-branch" data-level={3}>
-                  {head(year, 3, `${top.label} › ${sub.label} › ${year.label}`)}
-                  {isOpen(year.key) && (
-                    <div className="arc-files">
-                      {/* Η διαδρομή, γραμμένη όπως σε κάθε σύστημα αρχείων. */}
-                      <p className="arc-path">{top.label} <span aria-hidden="true">›</span> {sub.label} <span aria-hidden="true">›</span> {year.label}</p>
-                      <FileInner items={year.items} a={a}/>
-                    </div>
-                  )}
-                </section>
-              ))}
-            </section>
-          ))}
-        </section>
-      ))}
     </div>
   );
 }

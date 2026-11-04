@@ -856,7 +856,7 @@ export function filePapers<P extends DossierPaper>(
   const names = providerNames(sorted.map(p => ({ provider: p.supplier, afm: p.afm, createdAt: p.createdAt })));
   const placed = sorted.map((p, i) => {
     const kind = kindOfShelf(p.category, p.title, p.supplier);
-    const provider = resolveProvider(names, p.supplier, p.afm);
+    const provider = resolveProvider(names, p.supplier, p.afm, kind);
     const date = firstDate(p.periodTo, p.periodFrom, p.docDate);
     const dir = archiveFolder(kind, provider, date).join('/');
     const name = archiveFileName({ kind, provider, date, amount: p.amount, ext: extOfName(null, p.fileName) });
