@@ -99,6 +99,12 @@ const GAP = "(?:\\s|\\{' '\\}|\\{\" \"\\})*";
 const PRE_ACC = '(?:τον|την|τη|στον|στην|στη|από|σε|ως|έως|μέχρι|για τον|από τον|ως τον)';
 const LABEL_AFTER = new RegExp(`(?<![\\p{L}])(${PRE_ACC}|του|έναντι)${GAP}\\$?\\{?\\s*(indexMonthLabel|monthYearLabel)\\s*\\(`, 'gu');
 const NOM_SPLIT = new RegExp(`(?<![\\p{L}])(?:τον|την|τη|στον|στην|στη)\\s*\\{' '\\}\\s*\\n\\s*\\{\\s*monthNom\\s*\\(`, 'gu');
+// «ΤΟΝ ΜΗΝΑ Αύγουστος» (04/11/2026). Ο υπολογιστής της αναπροσαρμογής έγραφε
+// «Για τον μήνα ${startLabel} η ΕΛΣΤΑΤ ανακοίνωσε…», με μεταβλητή που κρατούσε
+// την ονομαστική. Οι κανόνες πάνω κοιτούν μόνο κλήσεις συναρτήσεων· εδώ πιάνεται
+// το «μήνα» μπροστά σε ό,τι λέγεται …Label/…Nom, ή σε μήνα γραμμένο σε ονομαστική.
+const NOM_MONTHS = 'Ιανουάριος|Φεβρουάριος|Μάρτιος|Απρίλιος|Μάιος|Ιούνιος|Ιούλιος|Αύγουστος|Σεπτέμβριος|Οκτώβριος|Νοέμβριος|Δεκέμβριος'
+const MONTH_WORD = new RegExp(`(?<![\\p{L}])μήνα${GAP}(?:\\$?\\{\\s*[\\w.]*(?:Label|Nom)\\b|(?:${NOM_MONTHS})(?![\\p{L}]))`, 'gu');
 const stripComments = src => src
   .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
   .replace(/(^|[^:'"`\\])\/\/[^\n]*/g, (m, p) => p + ' '.repeat(m.length - p.length));
@@ -106,7 +112,7 @@ for (const f of files) {
   const rel = f.split('\\').join('/');
   if (rel === SELF || rel.endsWith('.test.ts') || rel.endsWith('.test.tsx')) continue;
   const src = stripComments(readFileSync(f, 'utf8'));
-  for (const re of [LABEL_AFTER, NOM_SPLIT]) {
+  for (const re of [LABEL_AFTER, NOM_SPLIT, MONTH_WORD]) {
     re.lastIndex = 0;
     for (const m of src.matchAll(re)) {
       const line = src.slice(0, m.index).split('\n').length;

@@ -26,7 +26,7 @@ import { COMMERCIAL_STAMP_DUTY } from '@/lib/billing/commercialLease';
 import { COMMERCIAL_RENT_CAP_2026 as CAP } from '@/lib/documents/rentAdjustment';
 import { offeredIncomeYears } from '@/lib/core/declarationYear';
 import { parseAmount } from '@/lib/core/greek';
-import { RENT_INDEX, RENT_INDEX_LATEST, indexMonthLabel } from '@/lib/market/cpi';
+import { RENT_INDEX, RENT_INDEX_LATEST, indexMonthLabel, indexMonthAcc } from '@/lib/market/cpi';
 import { adjustPlan, officialIndex, clampYears, YEARS_MAX, type AdjustRow } from '@/lib/tools/anaprosarmogi';
 import { parseRate } from '@/lib/tools/stegastiko';
 import { toolQuery } from '@/lib/tools/permalink';
@@ -196,8 +196,8 @@ export function AdjustCalculator({ today, cta }: {
           <ToolSeg label={en ? E.basis : 'Τι ορίζει η σύμβαση'} value={v.vasi} onChange={x => set('vasi', x)}
             options={[{ value: 'pososto', label: en ? E.fixed : 'Σταθερό ποσοστό' }, { value: 'dtk', label: en ? E.cpi : 'ΔΤΚ ΕΛΣΤΑΤ' }]}/>
           {cpi ? (
-            <ToolSeg label={en ? E.share : 'Ποιο μέρος του ΔΤΚ'} value={v.meros} onChange={x => set('meros', x)}
-              options={[{ value: 'olo', label: en ? E.whole : 'Όλη η μεταβολή' }, { value: '75', label: en ? E.share75 : '75% της μεταβολής' }]}
+            <ToolSeg label={en ? E.share : 'Ποιο μέρος της μεταβολής'} value={v.meros} onChange={x => set('meros', x)}
+              options={[{ value: 'olo', label: en ? E.whole : 'Ολόκληρη η μεταβολή' }, { value: '75', label: en ? E.share75 : '75% της μεταβολής' }]}
               hint={en ? E.shareHint : 'Η ΕΛΣΤΑΤ δημοσιεύει και τα δύο κάθε μήνα. Ισχύει ό,τι γράφει η σύμβαση.'}/>
           ) : (
             <ToolNumField id={ids.pososto} label={en ? E.rate : 'Ποσοστό ανά έτος'} value={v.pososto}
@@ -208,19 +208,19 @@ export function AdjustCalculator({ today, cta }: {
         <div style={{ marginTop: T.sp.lg }}>
           <ToolFields>
             <ToolSelect label={en ? E.monthField : 'Μήνας αναπροσαρμογής'} value={v.apo} onChange={x => set('apo', x)} options={months}
-              hint={en ? E.monthHint : 'Ο μήνας που ισχύει το νέο μίσθωμα. Τα επόμενα έτη, τον ίδιο μήνα.'}/>
+              hint={en ? E.monthHint : 'Ο μήνας από τον οποίο ισχύει το νέο μίσθωμα. Τα επόμενα έτη, τον ίδιο μήνα.'}/>
             <ToolNumField id={ids.eti} label={en ? E.years : 'Έτη'} value={v.eti} onChange={x => set('eti', x)}
-              mode="numeric" unit={en ? E.yearsUnit : 'έτη'} unitPad={48}/>
+              mode="numeric" unit={en ? E.yearsUnit : (yearsTyped === 1 ? 'έτος' : 'έτη')} unitPad={48}/>
             {cpi && (
-              <ToolNumField id={ids.dtk} label={en ? E.cpiAssumed : 'ΔΤΚ όπου δεν ανακοινώθηκε'} value={v.dtk}
+              <ToolNumField id={ids.dtk} label={en ? E.cpiAssumed : 'Υπόθεση ΔΤΚ, όπου λείπει δείκτης'} value={v.dtk}
                 onChange={x => set('dtk', x)} unit="%" span={2}
                 hint={en ? <>
                   {startIndex !== null ? E.cpiHintKnown(startLabel, fpRate(startIndex)) : E.cpiHintUnknown(startLabel)}
                   {E.cpiHintRest(monthLabel(RENT_INDEX_LATEST), fpRate(RENT_INDEX[RENT_INDEX_LATEST]))}
                 </> : <>
                   {startIndex !== null
-                    ? `Για τον μήνα ${startLabel} η ΕΛΣΤΑΤ ανακοίνωσε ${fpRate(startIndex)} και εφαρμόζεται αυτό. `
-                    : `Για τον μήνα ${startLabel} η ΕΛΣΤΑΤ δεν έχει ανακοινώσει ακόμη δείκτη. `}
+                    ? `Για τον ${indexMonthAcc(v.apo)} η ΕΛΣΤΑΤ ανακοίνωσε ${fpRate(startIndex)} και εφαρμόζεται αυτό. `
+                    : `Για τον ${indexMonthAcc(v.apo)} η ΕΛΣΤΑΤ δεν έχει ανακοινώσει ακόμη δείκτη. `}
                   {`Για όποιο έτος δεν έχει ανακοινωθεί, ο υπολογισμός παίρνει αυτό το ποσοστό ως υπόθεση. Τελευταίος δημοσιευμένος: ${indexMonthLabel(RENT_INDEX_LATEST)}, ${fpRate(RENT_INDEX[RENT_INDEX_LATEST])}.`}
                 </>}/>
             )}

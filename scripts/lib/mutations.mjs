@@ -222,6 +222,7 @@ export const MUTATIONS = {
   'month-case': { every: [
     { add: 'lib/core/__mut__.ts', content: "import { monthNom } from '@/lib/core/months'\nexport const d = (i: number) => `Μεταφορά από ${monthNom(i)}`\n" },
     { add: 'components/__mut_month__.tsx', content: tsx("    <p>Όπως τη δημοσίευσε η ΕΛΣΤΑΤ για τον{' '}\n      {indexMonthLabel('2026-07')}.</p>") },
+    { add: 'components/__mut_month2__.tsx', content: "export const P = ({ startLabel }: { startLabel: string }) => <p>{`Για τον μήνα ${startLabel} η ΕΛΣΤΑΤ ανακοίνωσε`}</p>\n" },
   ] },
   'raw-errors': { add: 'components/__mut__.tsx', content: 'export function P({ setError, err }: { setError: (s: string) => void; err: Error }) {\n  return <button onClick={() => setError(err.message)}>Δοκιμή</button>\n}\n' },
   'rendered-zero': { add: 'components/__mut__.tsx', content: 'export function P({ n }: { n: number }) {\n  return <div>{n && <span>{n}</span>}</div>\n}\n' },

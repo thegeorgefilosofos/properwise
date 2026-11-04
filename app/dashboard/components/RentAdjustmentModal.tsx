@@ -336,6 +336,11 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
       : <>
           Μεταβολή του δωδεκαμήνου {indexPeriodLabel(index.ym)}, όπως τη δημοσίευσε η ΕΛΣΤΑΤ για τον{' '}
           {indexMonthAcc(index.ym)}. Τελευταία ενημέρωση {cpiConfirmedDate()}.{' '}
+          {/* ΔΕΙΚΤΗΣ ΑΛΛΟΥ ΜΗΝΑ, ΓΡΑΜΜΕΝΟΣ (04/11/2026). Το rentIndexFor παίρνει
+              τον τελευταίο δημοσιευμένο μήνα που δεν ξεπερνά την ισχύ. Οταν ο
+              δείκτης του μήνα ισχύος δεν έχει βγει, το έλεγε μόνο η περίοδος·
+              τώρα το λέει και η οθόνη, πριν υπογράψει ο εκμισθωτής. */}
+          {index.ym !== effective.slice(0, 7) && <>Ο δείκτης για τον {indexMonthAcc(effective.slice(0, 7))} δεν έχει ανακοινωθεί ακόμη· πριν στείλεις, έλεγξε στην ΕΛΣΤΑΤ αν βγήκε.{' '}</>}
           <a href={CPI_SOURCE_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Έλεγχος στην πηγή</a>
         </>,
     manual: 'Όρισε απευθείας το νέο μίσθωμα, όπως το συμφωνήσατε.',
@@ -545,7 +550,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
                   Ουδέτερο μελάνι παντού, χρώμα μόνο όταν το μίσθωμα ΜΕΙΩΝΕΤΑΙ. */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', padding: '13px 16px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card }}>
                 <div>
-                  <div style={TT.label}>Τρέχον</div>
+                  <div style={TT.label}>Τρέχον μίσθωμα</div>
                   <div style={{ ...TT.h2, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', marginTop: 4 }}>{pEur(res.currentRent)}</div>
                 </div>
                 <svg aria-hidden="true" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M5 12h14M13 6l6 6-6 6" /></svg>

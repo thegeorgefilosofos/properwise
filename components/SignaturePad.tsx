@@ -116,7 +116,7 @@ export default function SignaturePad({ onChange, height = 116 }: { onChange: (da
         <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
           {/* shape="seg" επειδή η ράγα από πάνω έχει ήδη δικό της περίγραμμα: δεύτερο
               περίγραμμα ανά πλακίδιο θα έδινε διπλή γραμμή. */}
-          <ChipToggle on={mode === 'draw'} onClick={() => setMode('draw')} shape="seg">Σχέδιο</ChipToggle>
+          <ChipToggle on={mode === 'draw'} onClick={() => setMode('draw')} shape="seg">Σχεδίαση</ChipToggle>
           <ChipToggle on={mode === 'type'} onClick={() => setMode('type')} shape="seg">Πληκτρολόγηση</ChipToggle>
         </div>
         {signed && <Btn variant="ghost" onClick={clear}>Καθαρισμός</Btn>}
