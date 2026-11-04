@@ -20,6 +20,7 @@
 // όλα στο lib/accounting/dossier.ts, δοκιμασμένα. Εδώ μόνο η εικόνα τους.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { FirmDaySummary } from './FirmAccess'
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { T, TT, Badge, SelectBox, Bar, Btn, ChipToggle } from '@/components/Theme'
@@ -503,6 +504,7 @@ export default function AccountantDossier({
             «τι θέλει από μένα ο λογιστής μου». */}
         {userId && <AccountantInvites userId={userId} canShare={canShareLink} />}
         <AccountantAsks />
+        <FirmDaySummary />
 
         {/* ΙΣΑ ΠΛΑΤΗ ΣΤΗ ΣΤΟΙΒΑ ΤΟΥ ΤΗΛΕΦΩΝΟΥ. Στα 390 οι ενέργειες τυλίγονται
             η μία κάτω από την άλλη και η καθεμία κρατούσε το πλάτος του

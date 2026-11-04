@@ -93,6 +93,11 @@ export function makeFakeDb(respond: Responder = () => undefined) {
       channel: () => channelDouble(),
       removeChannel: () => {},
       functions: { invoke: async () => ({ data: null, error: null }) },
+      // ΟΙ ΣΥΝΑΡΤΗΣΕΙΣ ΤΗΣ ΒΑΣΗΣ. Χωρίς `rpc`, κάθε οθόνη που ρωτά τη βάση με
+      // συνάρτηση (γραφεία, πύλη λογιστή) έσκαγε και η σκηνή έβγαινε κενή. Η
+      // απάντηση ανά σκηνή έρχεται από το `window.__rpc`· χωρίς αυτό, κενό.
+      rpc: async (fn: string, args?: unknown) =>
+        ((globalThis as { __rpc?: (fn: string, args?: unknown) => Answer | undefined }).__rpc?.(fn, args)) ?? { data: null, error: null },
       // ═══ Ο ΑΠΟΘΗΚΕΥΤΙΚΟΣ ΧΩΡΟΣ ΕΛΕΙΠΕ ΚΑΙ ΕΡΙΧΝΕ ΟΛΟΚΛΗΡΗ ΤΗΝ ΟΘΟΝΗ ══════
       // Μόλις ο πάγκος απέκτησε έγγραφα, ο Φάκελος Ακινήτου έσκασε με «Cannot
       // read properties of undefined (reading 'from')»: ζητά υπογεγραμμένους

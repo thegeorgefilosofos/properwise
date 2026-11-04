@@ -197,6 +197,12 @@ if ! fwout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-write-probe.sql" 2>&1); th
   exit 1
 fi
 probes=$((probes + $(echo "$fwout" | grep -c 'probe:' || true)))
+if ! dlout=$($PSQL -d posdb -f "$ROOT/scripts/db/demo-logistis-probe.sql" 2>&1); then
+  echo "🔴 Το scripts/db/demo-logistis.sql δεν τρέχει πάνω στο σχήμα:"
+  echo "$dlout" | grep -m3 -E 'ERROR|DEMO' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$dlout" | grep -c 'probe:' || true)))
 
 # ── ΔΕΧΕΤΑΙ Η ΒΑΣΗ ΤΙΣ ΓΡΑΜΜΕΣ ΟΠΩΣ ΤΙΣ ΧΤΙΖΕΙ Η ΕΦΑΡΜΟΓΗ; ─────────────────────
 # Το rls-probe γράφει γραμμές με το χέρι. Οι γραμμές της εφαρμογής όμως τις

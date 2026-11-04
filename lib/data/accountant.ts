@@ -46,6 +46,13 @@ export interface ClientCounts {
    * ζητήθηκε ούτε πότε, ούτε επιτρέπει να παρθεί πίσω.
    */
   requests: SentRequest[];
+  /**
+   * Μπορώ να ενεργήσω για αυτόν τον πελάτη (αίτημα, Ε2, φάκελος); Ο Συνεργάτης
+   * του γραφείου διαβάζει μόνο (20261104120000). Λείπει σε παλιότερη γραφή.
+   */
+  canAct?: boolean;
+  /** Τα μέλη του γραφείου που έχουν αναλάβει τον πελάτη. */
+  assignees?: { userId: string; name: string }[];
   properties: number;
   expenses: number;
   uncategorised: number;

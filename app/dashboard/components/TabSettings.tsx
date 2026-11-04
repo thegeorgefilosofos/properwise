@@ -5,6 +5,7 @@
 // ειδοποιήσεις, δεδομένα & απόρρητο). Στυλ fintech: κάρτες, SecHdr, tokens.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { FirmAccess } from './FirmAccess';
 import { useState, useEffect, useRef, useId, useCallback } from 'react';
 import { leaveDevice } from '@/lib/localPrivacy';
 import { createClient } from '@/lib/supabase/client';
@@ -1015,6 +1016,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
             {sheetNote && <div style={{ ...TT.bodySm }}>{sheetNote}</div>}
           </SetRow>
           <AccountantAccess userId={userId} />
+          <FirmAccess />
           <MarketDataSharing userId={userId} />
           {/* Η εμπιστοσύνη δεν είναι μόνο για τη σελίδα πωλήσεων: ο υπάρχων χρήστης
               πρέπει να βρίσκει με ένα κλικ πού ζουν τα δεδομένα του και ποιοι είμαστε. */}

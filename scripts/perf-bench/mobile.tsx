@@ -78,6 +78,7 @@ import TabRentROI from '@/app/dashboard/components/TabRentROI';
 // ακριβώς οι δύο μορφές που σπάνε πρώτες σε στενή οθόνη. Το ότι δεν είχαν
 // μετρηθεί ΔΕΝ σήμαινε ότι ήταν εντάξει· σήμαινε ότι δεν το ξέραμε.
 import TabAccounting from '@/app/dashboard/components/TabAccounting';
+import { FIRM_VIEWS, firmRpc } from './firms';
 import TabSettings from '@/app/dashboard/components/TabSettings';
 import TabCalendar from '@/app/dashboard/components/TabCalendar';
 import { DaySheet } from '@/app/dashboard/components/calendar/MonthView';
@@ -170,6 +171,8 @@ const respond: Responder = (call) => {
   return { data: call.single ? (kept[0] ?? null) : kept, error: null };
 };
 window.__respond = respond;
+// Οι συναρτήσεις της βάσης: για τα γραφεία, οι απαντήσεις του scripts/perf-bench/firms.tsx.
+(window as unknown as { __rpc: (fn: string) => unknown }).__rpc = (fn: string) => firmRpc(which, fn);
 window.__t = {};
 window.__rows = () => document.querySelectorAll('tbody tr').length;
 
@@ -385,6 +388,8 @@ function ScanReviewScene() {
 }
 
 const VIEWS: Record<string, () => React.ReactElement> = {
+  // Τα λογιστικά γραφεία (scripts/perf-bench/firms.tsx).
+  ...FIRM_VIEWS,
   // Η εισαγωγή από το myAADE, σε όλες τις καταστάσεις της. Το ίδιο το
   // παράθυρο για την επιλογή αρχείου και την προεπισκόπηση· για το «Έτοιμο» και
   // το σφάλμα αρχείου οι ίδιες οθόνες του MyaadeSteps, με σταθερά δεδομένα.

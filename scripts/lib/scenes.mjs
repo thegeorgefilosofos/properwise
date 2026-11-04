@@ -20,6 +20,9 @@ export const SCENES = [
   'calendar', 'calendarDay', 'clients', 'documents', 'inventory', 'settings', 'settingsPro',
   'billing', 'branding', 'referral', 'referralPro', 'plan', 'planReno', 'planSale',
   'myaade', 'myaadeReview', 'myaadeDone', 'myaadeError',
+  // Τα λογιστικά γραφεία (scripts/perf-bench/firms.tsx).
+  'firm', 'firmNew', 'firmInvite', 'firmWorkspace', 'firmWorkspaceAssociate', 'firmWorkspaceInvite',
+  'firmEntryDocument', 'firmEntryBill', 'firmEntryTax', 'firmEntryLoan', 'firmEntryRent', 'firmEntryTenant', 'firmOwner',
 ];
 
 /** Οι σκηνές που ζητά η `E2E_ONLY`, αλλιώς όλες. */
