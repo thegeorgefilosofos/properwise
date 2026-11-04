@@ -7778,4 +7778,12 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 @media (min-width: 721px) and (max-width: 1024px) {
   .po-foot-bar { grid-template-columns: auto 1fr auto; grid-template-areas: "copy lang social" "legal legal legal"; }
 }
+/* ΣΕ ΔΙΚΗ ΤΟΥ ΓΡΑΜΜΗ Ο ΣΥΝΔΕΣΜΟΣ ΠΑΙΡΝΕΙ ΤΟ ΥΨΟΣ ΤΟΥ, ΔΕΝ ΤΟ ΔΑΝΕΙΖΕΤΑΙ. Το
+   αρνητικό περιθώριο των 44 έστελνε τη ζώνη του «Πολιτική απορρήτου» 14
+   εικονοστοιχεία μέσα στη γραμμή από πάνω, πάνω στο κουμπί της γλώσσας
+   (σαρωτής επικαλύψεων, 768×1024 και 844×390, 04/11/2026). Ως τα 1024 η
+   γραμμή απλώς ψηλώνει. */
+@media (max-width: 1024px) and (pointer: coarse) {
+  .po-foot-legal > a { margin-block: 0; }
+}
 
