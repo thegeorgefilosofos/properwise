@@ -7792,6 +7792,10 @@ span.fb-crumb { color: var(--text-primary); font-weight: 600; cursor: default; }
 .fb-row-date { flex-shrink: 0; width: 76px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; text-align: right; }
 .fb-row-chev { flex-shrink: 0; color: var(--text-tertiary); }
 .fb-row[aria-selected="true"] .fb-row-chev { color: var(--accent); }
+.fb-file-row { align-items: flex-start; }
+.fb-file-row .fb-file, .fb-file-row .fb-thumb-sm { margin-top: 2px; }
+.fb-file-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fb-file-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; font-weight: 400; }
 .fb-thumb-sm { width: 18px; height: 22px; object-fit: cover; border-radius: 3px; flex-shrink: 0; border: 1px solid var(--border-subtle); }
 
 /* Πάνελ προεπισκόπησης. */

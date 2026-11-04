@@ -286,9 +286,15 @@ function Columns({ nodes, focused, rootLabel, onOpen, tools }: Inner) {
                   {f.isImage && f.url
                     ? <RuntimeImg src={f.url} alt="" className="fb-thumb-sm"/>
                     : <FileIcon ext={extOfFile(f)} size={16}/>}
-                  <span className="fb-row-name"><Breakable name={f.fileName}/></span>
-                  <span className="fb-row-sum">{f.value != null ? fe(f.value) : ''}</span>
-                  <span className="fb-row-date">{f.date ? fd(f.date) : ''}</span>
+                  {/* Όνομα στην πρώτη γραμμή, ποσό και ημερομηνία από κάτω: σε
+                      στήλη 270 τα τρία στη σειρά έσπαγαν το όνομα σε πέντε γραμμές. */}
+                  <span className="fb-file-text">
+                    <span className="fb-row-name"><Breakable name={f.fileName}/></span>
+                    <span className="fb-file-meta">
+                      <span>{f.value != null ? fe(f.value) : ''}</span>
+                      <span>{f.date ? fd(f.date) : ''}</span>
+                    </span>
+                  </span>
                 </div>
               );
             })}
