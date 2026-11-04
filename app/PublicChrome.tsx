@@ -204,19 +204,20 @@ function FootCol({ label, links, more }: { label: string; links: [string, string
   // ο τίτλος είναι τίτλος και η λίστα φαίνεται πάντα· ως τα 1024 η στήλη είναι
   // σειρά που ανοίγει. Ενα συστατικό του πελάτη γι' αυτό ανέβαζε το βάρος του
   // διακομιστή πάνω από το όριο (server-weight, 190,1 στα 189,9 MB).
+  // Ενας κώδικας για τους συνδέσμους και ένα εικονίδιο, όχι δύο: το κομμάτι
+  // ανεβαίνει σε 49 συναρτήσεις και κάθε byte του μετρά 49 φορές (server-weight).
+  const list = (l: [string, string][]) => l.map(([href, text]) => <Link key={href} href={href} className="lp-link lp-footlink">{text}</Link>);
   return (
     <div className="lp-footcol">
       <p className="lp-foothead lp-foot-wide">{label}</p>
       <details className="lp-footacc">
-        <summary className="lp-foothead lp-foot-narrow">{label}<span aria-hidden className="lp-foot-i" /></summary>
+        <summary className="lp-foothead lp-foot-narrow">{label}{FOOT_I}</summary>
         <div className="lp-footlinks">
-          {links.map(([href, text]) => <Link key={href} href={href} className="lp-link lp-footlink">{text}</Link>)}
+          {list(links)}
           {more && more.links.length > 0 && (
             <details className="lp-footmore">
-              <summary className="lp-link lp-footmore-s">{more.label}<span aria-hidden className="lp-foot-i" /></summary>
-              <div className="lp-footmore-list">
-                {more.links.map(([href, text]) => <Link key={href} href={href} className="lp-link lp-footlink">{text}</Link>)}
-              </div>
+              <summary className="lp-link lp-footmore-s">{more.label}{FOOT_I}</summary>
+              <div className="lp-footmore-list">{list(more.links)}</div>
             </details>
           )}
         </div>
@@ -224,6 +225,7 @@ function FootCol({ label, links, more }: { label: string; links: [string, string
     </div>
   );
 }
+const FOOT_I = <span aria-hidden className="lp-foot-i" />;
 
 /** Οι πρώτοι FOOT_VISIBLE φαίνονται· οι υπόλοιποι και ο κόμβος πάνε στο «Επιπλέον». */
 function splitFoot(links: [string, string][], hub: [string, string] | null, moreLabel: string): { links: [string, string][]; more?: FootMore } {
