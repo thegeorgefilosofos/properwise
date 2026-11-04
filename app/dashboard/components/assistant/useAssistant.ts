@@ -80,39 +80,18 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   // πλωτό κουμπί. Και σε οθόνη κάτω από 1.280 μένει σήμα από την αρχή: εκεί
   // το περιεχόμενο φτάνει ως την άκρη και δεν υπάρχει άδεια γωνία να καθίσει.
   const [scrolled, setScrolled] = useState(false);
-  // ═══ ΚΑΙ ΦΕΥΓΕΙ ΟΣΟ ΔΙΑΒΑΖΕΙΣ ΠΡΟΣ ΤΑ ΚΑΤΩ ════════════════════════════
-  // Το σήμα των 52 εικονοστοιχείων σκέπαζε ακόμη ό,τι περνούσε από τη γωνία:
-  // ο ιδιοκτήτης το φωτογράφισε πάνω στον τελευταίο μήνα («Σεπ») του γραφήματος
-  // «Οι επόμενοι 12 μήνες» (21/10/2026). Το περιθώριο του .app-content
-  // προστατεύει μόνο το ΤΕΛΟΣ της κύλισης. Οσο ο χρήστης κυλά προς τα κάτω το
-  // κουμπί αποσύρεται, με την πρώτη κίνηση προς τα πάνω, στην κορυφή ή στο
-  // τέλος της σελίδας ξαναγυρίζει — όπως κάθε πλωτό κουμπί κινητού.
-  // ΣΤΟ ΤΗΛΕΦΩΝΟ ΓΥΡΙΖΕΙ ΚΑΙ ΜΟΛΙΣ ΣΤΑΜΑΤΗΣΕΙ Η ΚΥΛΙΣΗ (02/11/2026). Εκεί η
-  // στήλη του περιεχομένου τελειώνει πάνω από το κουμπί (globals.css,
-  // --fab-lane), οπότε σε ηρεμία δεν σκεπάζει τίποτα σε καμία θέση και δεν
-  // υπάρχει λόγος να περιμένει κίνηση προς τα πάνω. Στον υπολογιστή πλέει πάνω
-  // από τη στήλη, άρα μένει κρυμμένο ώς την πρώτη κίνηση προς τα πάνω.
-  const [away, setAway] = useState(false);
+  // ΔΕΝ ΚΡΥΒΕΤΑΙ ΠΙΑ ΣΤΗΝ ΚΥΛΙΣΗ (03/11/2026). Επί δύο εβδομάδες το κουμπί
+  // έφευγε όσο κυλούσες προς τα κάτω· στον υπολογιστή δεν ξαναγύριζε χωρίς
+  // κίνηση προς τα πάνω και ο ιδιοκτήτης δεν έβρισκε τη Νόα πουθενά. Ζήτησε
+  // να γυρίσει όπως πριν: πάντα ορατή και να τη μετακινεί όπου θέλει. Η
+  // κύλιση μαζεύει μόνο την πρόσκληση στο σήμα.
   useEffect(() => {
     const el = document.querySelector('.app-content');
     if (!(el instanceof HTMLElement)) return;
-    const phone = window.matchMedia('(max-width: 768px)');
-    let last = el.scrollTop;
-    let rest: ReturnType<typeof setTimeout> | undefined;
-    const read = () => {
-      const y = el.scrollTop;
-      setScrolled(y > 4);
-      const atEnd = y + el.clientHeight >= el.scrollHeight - 8;
-      if (y <= 4 || atEnd) setAway(false);
-      else if (y > last + 6) setAway(true);
-      else if (y < last - 6) setAway(false);
-      last = y;
-      clearTimeout(rest);
-      if (phone.matches) rest = setTimeout(() => setAway(false), 600);
-    };
+    const read = () => setScrolled(el.scrollTop > 4);
     read();
     el.addEventListener('scroll', read, { passive: true });
-    return () => { el.removeEventListener('scroll', read); clearTimeout(rest); };
+    return () => el.removeEventListener('scroll', read);
   }, []);
   // ΟΙ ΠΡΟΤΙΜΗΣΕΙΣ ΤΟΥ ΒΟΗΘΟΥ ΖΟΥΝ ΣΤΟΝ ΠΕΡΙΗΓΗΤΗ. Ηταν προεπιλογή που ένα
   // effect αντικαθιστούσε μετά την πρώτη απόδοση: όποιος είχε ζητήσει πληθυντικό
@@ -772,7 +751,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   useLoad(bootContext);
 
   return {
-    supabase, open, setOpen, fabPos, setFabPos, dragging, setDragging, scrolled, away, prefs, setPrefs,
+    supabase, open, setOpen, fabPos, setFabPos, dragging, setDragging, scrolled, prefs, setPrefs,
     reconcile, setReconcile, editing, setEditing, msgs, setMsgs, input, setInput, busy, setBusy,
     consumedActions, setConsumedActions, feedbackOpen, setFeedbackOpen, answeredRef, nudgedRef,
     imgRef, err, setErr, limitMsg, setLimitMsg, errDetail, setErrDetail, quota, setQuota, ctxStr,

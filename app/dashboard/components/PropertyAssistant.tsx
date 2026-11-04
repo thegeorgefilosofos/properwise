@@ -38,7 +38,7 @@ import { remainingLine } from '@/lib/billing/aiLimits';
 import {
   type Props,
   eur, navLabel, reachLabel, NO_MEMORIES, FAB_H,
-  snapCorner,
+  clampToView,
 } from './assistant/model'
 import { AssistantSettings } from './assistant/AssistantSettings'
 import { useAssistant } from './assistant/useAssistant'
@@ -47,7 +47,7 @@ import { useAssistantChat } from './assistant/useAssistantChat'
 
 export default function PropertyAssistant({ propertyId, userId, propContext, allProperties = [], onNavigate, onScan, onAddProperty, canNavigate, planBrief, assistantLocked = false }: Props) {
   const {
-    supabase, open, setOpen, fabPos, setFabPos, dragging, setDragging, scrolled, away, prefs, setPrefs,
+    supabase, open, setOpen, fabPos, setFabPos, dragging, setDragging, scrolled, prefs, setPrefs,
     reconcile, setReconcile, editing, setEditing, msgs, setMsgs, input, setInput, busy, setBusy,
     consumedActions, setConsumedActions, feedbackOpen, setFeedbackOpen, answeredRef, nudgedRef,
     imgRef, err, setErr, limitMsg, setLimitMsg, errDetail, setErrDetail, quota, setQuota, ctxStr,
@@ -139,7 +139,10 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   // δεν είναι θέμα του πού το άφησε ο χρήστης, είναι ότι δεν υπάρχει άλλη
   // ασφαλής θέση να το αφήσει.
   //
-  // Η ΔΙΟΡΘΩΣΗ ΕΙΝΑΙ ΤΟ ΚΟΥΜΠΩΜΑ, ΟΧΙ Η ΑΦΑΙΡΕΣΗ ΤΟΥ ΣΥΡΣΙΜΑΤΟΣ. Το σύρσιμο
+  // ΤΟ ΚΟΥΜΠΩΜΑ ΒΓΗΚΕ (03/11/2026). Ο ιδιοκτήτης ζήτησε ξανά ελεύθερη θέση:
+  // το κουμπί μένει όπου το αφήνεις, μέσα στην οθόνη. Η ιστορία από κάτω
+  // μένει για να ξέρει ο επόμενος τι αντάλλαξε.
+  // ΠΑΛΙΑ: Η ΔΙΟΡΘΩΣΗ ΕΙΝΑΙ ΤΟ ΚΟΥΜΠΩΜΑ, ΟΧΙ Η ΑΦΑΙΡΕΣΗ ΤΟΥ ΣΥΡΣΙΜΑΤΟΣ. Το σύρσιμο
   // υπάρχει για έναν πραγματικό λόγο: «το κουμπί μου κρύβει κάτι εδώ κάτω, θέλω
   // να το πάω αλλού». Κρατιέται ΟΛΟ, αλλά ο προορισμός είναι πάντα μία από τις
   // δύο ΚΑΤΩ γωνίες — οι μόνες δύο θέσεις που η διάταξη έχει κρατήσει άδειες.
@@ -183,10 +186,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
         && p.x >= m && p.y >= m
         && p.x <= window.innerWidth - w - m
         && p.y <= window.innerHeight - h - m;
-      // Η αποθηκευμένη τιμή ΚΟΥΜΠΩΝΕΙ, δεν εφαρμόζεται όπως είναι: όποιος έχει
-      // ήδη αφήσει το κουμπί πάνω σε περιεχόμενο το βρίσκει διορθωμένο στην
-      // επόμενη φόρτωση, χωρίς να χρειαστεί να κάνει τίποτα.
-      if (inView) setFabPos(snapCorner(p.x, w) ?? p);
+      // Η αποθηκευμένη θέση εφαρμόζεται όπως είναι: ο χρήστης τη διάλεξε.
+      if (inView) setFabPos(p);
       else localStorage.removeItem('pa_fab_pos');
     } catch { /* ignore */ }
     });
@@ -201,7 +202,11 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   // βρίσκεται στη μέση της σελίδας μόλις γυρίσει η συσκευή.
   useEffect(() => {
     if (!fabPos) return;
-    const onResize = () => setFabPos(prev => (prev ? snapCorner(prev.x, fabBox().w) ?? prev : prev));
+    const onResize = () => setFabPos(prev => {
+      if (!prev) return prev;
+      const { w, h } = fabBox();
+      return clampToView(prev.x, prev.y, w, h);
+    });
     window.addEventListener('resize', onResize);
     window.addEventListener('orientationchange', onResize);
     return () => {
@@ -216,11 +221,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       if (!d.moved && Math.hypot(dx, dy) < d.slop) return;
       d.moved = true; if (!dragging) setDragging(true);
       if (e.cancelable) e.preventDefault();
-      const m = 8;
       const { w, h } = fabBox();
-      const x = Math.max(m, Math.min(d.ox + dx, window.innerWidth - w - m));
-      const y = Math.max(m, Math.min(d.oy + dy, window.innerHeight - h - m));
-      setFabPos({ x, y });
+      setFabPos(clampToView(d.ox + dx, d.oy + dy, w, h));
     };
     // ΤΟ ΤΕΛΟΣ ΕΙΝΑΙ ΤΟ ΙΔΙΟ ΕΙΤΕ ΣΗΚΩΘΗΚΕ ΤΟ ΔΑΧΤΥΛΟ ΕΙΤΕ ΤΟ ΠΗΡΕ ΤΟ ΣΥΣΤΗΜΑ.
     // Το `pointercancel` έρχεται σε εισερχόμενη κλήση, σε δεύτερο δάχτυλο, σε
@@ -237,9 +239,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       // άγγιγμα αμέσως μετά ανοίγει κανονικά τον βοηθό.
       if (d?.moved) {
         justDragged.current = true;
-        // Το κουμπί πέφτει στην πλησιέστερη ΚΑΤΩ γωνία: εκεί — μόνο εκεί —
-        // η διάταξη έχει κρατήσει χώρο γι' αυτό.
-        setFabPos(prev => (prev ? snapCorner(prev.x, fabBox().w) ?? prev : prev));
+        // Το κουμπί μένει όπου το άφησε ο χρήστης (03/11/2026): το σύρσιμο
+        // υπάρχει για να το πάει εκεί που δεν του κρύβει τίποτα.
       }
       setDragging(false);
     };
@@ -288,7 +289,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
           Ονομαστικό, όχι διακοσμητικό: λέει ΠΟΙΑ είναι και ΤΙ κάνεις μαζί της,
           γιατί ένα ανώνυμο πλωτό κουκκί δεν το πατά κανείς δεύτερη φορά. */}
       {!open && !overlayOpen && (
-        <div className="pa-fab-wrap" style={fabFixed} data-scrolled={scrolled ? '1' : undefined} data-away={away && !dragging ? '1' : undefined}>
+        <div className="pa-fab-wrap" style={fabFixed} data-scrolled={scrolled ? '1' : undefined}>
           <button ref={fabRef} className="pa-fab" onPointerDown={startFabDrag} onClick={fabToggle(true)}
             aria-label={openAria()} title={dragHint}
             style={{ cursor: dragging ? 'grabbing' : 'pointer' }}>
@@ -650,10 +651,6 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
            η μέτρηση είναι γραμμένα πάνω από την κατάσταση scrolled πιο πάνω. */
         .pa-fab-wrap[data-scrolled] .pa-fab{padding:0 8px;gap:0}
         .pa-fab-wrap[data-scrolled] .pa-fab-cta{display:none}
-        /* Αποσύρεται όσο κυλά η σελίδα προς τα κάτω (useAssistant, away). Με
-           εστίαση πληκτρολογίου μένει: δεν εξαφανίζεται ό,τι έχει την εστίαση. */
-        .pa-fab-wrap{transition:transform .2s ${T.ease.standard},opacity .2s ${T.ease.standard}}
-        .pa-fab-wrap[data-away]:not(:focus-within){transform:translateY(calc(var(--fab-h) + var(--fab-bottom)));opacity:0;pointer-events:none}
         @media (max-width:1279px){
           .pa-fab{padding:0 8px;gap:0}
           .pa-fab-cta{display:none}
