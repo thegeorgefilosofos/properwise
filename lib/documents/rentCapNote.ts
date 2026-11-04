@@ -1,4 +1,4 @@
-import { fpRate } from '../core/format';
+import { fp, fpRate } from '../core/format';
 import { COMMERCIAL_RENT_CAP_2026 } from './rentAdjustment';
 // ═══════════════════════════════════════════════════════════════════════════
 // Η ΝΟΜΙΚΗ ΒΑΣΗ ΤΗΣ ΑΝΑΠΡΟΣΑΡΜΟΓΗΣ ΕΙΝΑΙ Ο ΟΡΟΣ ΤΟΥ ΜΙΣΘΩΤΗΡΙΟΥ
@@ -21,3 +21,15 @@ export const COMMERCIAL_RENT_CAP_LAW = 'άρθρου 59 ν. 5255/2025';
 /** «το όριο 3% του άρθρου 59 ν. 5255/2025 για το 2026». */
 export const commercialCapPhrase = (pct: number = COMMERCIAL_RENT_CAP_2026.pct) =>
   `το όριο ${fpRate(pct)} του ${COMMERCIAL_RENT_CAP_LAW} για το ${COMMERCIAL_RENT_CAP_2026.from.slice(0, 4)}`;
+
+/**
+ * «ΔΤΚ 3,80%: εφαρμόζεται το όριο 3% του άρθρου 59 ν. 5255/2025 για το 2026».
+ * Η γραμμή που λέει στον παραλήπτη ΓΙΑΤΙ το νέο μίσθωμα δεν βγαίνει από το
+ * ποσοστό του δείκτη ή του όρου. Χωρίς βέλος: το απαγορεύει ο guard-no-arrows.
+ *
+ * @param basis «ΔΤΚ», «75% ΔΤΚ» ή «Ποσοστό σύμβασης»
+ * @param pct   το ποσοστό πριν από το όριο, όπως το δίνει ο δείκτης ή ο όρος
+ * @param cap   το όριο, από το `rentCapPct`
+ */
+export const capAppliedLine = (basis: string, pct: number, cap: number) =>
+  `${basis} ${fp(pct)}: εφαρμόζεται ${commercialCapPhrase(cap)}`;

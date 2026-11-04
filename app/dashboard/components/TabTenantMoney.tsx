@@ -20,8 +20,8 @@ import {
   RENT_INDEX, RENT_INDEX_LATEST, CPI_SOURCE_URL, rentIndexFor, rentAdjustmentPct,
   indexMonthLabel, indexPeriodLabel, cpiConfirmedLabel,
 } from '@/lib/market/cpi';
-import { rentCapPct } from '@/lib/documents/rentAdjustment';
-import { commercialCapPhrase } from '@/lib/documents/rentCapNote';
+import { rentCapPct, computeRentAdjustment } from '@/lib/documents/rentAdjustment';
+import { commercialCapPhrase, capAppliedLine } from '@/lib/documents/rentCapNote';
 import { monthYearLabel, monthAcc } from '@/lib/core/months';
 import {
   Toggle,
@@ -115,7 +115,7 @@ const indexMonthGenYear = (ym: string) => { const [y, m] = ym.split('-').map(Num
 
 // ─── HTML escaping for values interpolated into document.write() templates ────
 
-export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string }) {
+export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; userId:string; /** Μήνας ισχύος στην πρώτη απόδοση· για τις δοκιμές. */ initialYm?:string }) {
   const branding = useReportBranding(userId);
   const fmtE = fe;
   const fmtDate=(d:string|null)=>d?new Date(d+'T00:00:00').toLocaleDateString('el-GR',{day:'2-digit',month:'long',year:'numeric'}):ABSENT_DATE;
@@ -128,10 +128,10 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
   // μισθώματα. Ίδιο ενοίκιο, δύο ποσά σε δύο οθόνες. Τώρα διαλέγεις μήνα ισχύος
   // και ο δείκτης βγαίνει από την ίδια συνάρτηση με το παράθυρο.
   const thisYm=athensMonth();
-  const [ym,setYm]=useState(thisYm);
+  const [ym,setYm]=useState(initialYm??thisYm);
   const [share75,setShare75]=useState(false);
   const idx=rentIndexFor(ym);
-  const [useCustom,setUseCustom]=useState(rentIndexFor(thisYm)===null);
+  const [useCustom,setUseCustom]=useState(rentIndexFor(initialYm??thisYm)===null);
   const [customPct,setCustomPct]=useState('');
   const official=idx?rentAdjustmentPct(idx.pct,share75):null;   // null = δεν το ξέρουμε
   const custom=parseFloat(customPct);
@@ -140,8 +140,6 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
   // Χωρίς επίσημο δείκτη ΚΑΙ χωρίς δικό του ποσοστό, δεν υπάρχει αναπροσαρμογή
   // να δείξουμε — και σίγουρα δεν υπάρχει έγγραφο να εκτυπωθεί.
   const hasPct=hasCustom||official!==null;
-  const newRent=rent*(1+pct/100);
-  const diff=newRent-rent;
   // ═══ Η ΝΟΜΙΚΗ ΒΑΣΗ ΕΙΝΑΙ Ο ΟΡΟΣ ΤΟΥ ΜΙΣΘΩΤΗΡΙΟΥ (04/11/2026) ═════════════
   // Η καρτέλα και η ειδοποίηση έγραφαν «Νομική βάση: Αρ. 288 ΑΚ» και «μία φορά
   // τον χρόνο». Το 288 ΑΚ είναι η καλή πίστη: δεν δίνει δικαίωμα αύξησης και
@@ -152,6 +150,23 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
   const capNote=capIfCommercial===null||tenant.lease_category==='residential' ? ''
     : tenant.lease_category==='commercial' ? ` Στην υφιστάμενη επαγγελματική μίσθωση ισχύει επιπλέον ${commercialCapPhrase(capIfCommercial)}.`
     : ` Για υφιστάμενη επαγγελματική μίσθωση ισχύει επιπλέον ${commercialCapPhrase(capIfCommercial)}.`;
+  // ═══ ΤΟ ΟΡΙΟ ΕΦΑΡΜΟΖΕΤΑΙ ΚΑΙ ΕΔΩ, ΜΕ ΤΙΣ ΙΔΙΕΣ ΣΥΝΑΡΤΗΣΕΙΣ (04/11/2026) ═══
+  // Η καρτέλα υπολόγιζε `rent*(1+pct/100)` χωρίς όριο: επαγγελματική των
+  // 1.500€ με ΔΤΚ 3,80% έβγαζε 1.557,00€ σε υπογεγραμμένη ειδοποίηση, ενώ ο
+  // νόμος επιτρέπει 1.545,00€. Το παράθυρο της αναπροσαρμογής έκοβε σωστά. Τώρα
+  // και οι δύο οθόνες καλούν `rentCapPct` και `computeRentAdjustment`.
+  // ΑΓΝΩΣΤΟ ΕΙΔΟΣ ΜΙΣΘΩΣΗΣ: δεν κόβουμε σιωπηλά, ούτε αφήνουμε να τυπωθεί ποσό
+  // που ίσως παραβιάζει το όριο. Η οθόνη δείχνει και τα δύο ποσά και το έγγραφο
+  // περιμένει το είδος, μόνο όταν το όριο θα άλλαζε το ποσό.
+  const calc=(cap:number|null)=>computeRentAdjustment({ currentRent:rent, method:hasCustom?'percent':'cpi', percent:pct, cpiPct:pct, capPct:cap });
+  const res=calc(rentCapPct({ leaseCategory:tenant.lease_category, leaseStart:tenant.lease_start, effectiveDate:`${ym}-01` }));
+  const unknownType=tenant.lease_category!=='commercial'&&tenant.lease_category!=='residential';
+  const ifCommercial=unknownType&&capIfCommercial!==null ? calc(capIfCommercial) : null;
+  const needsType=!!ifCommercial?.capped;
+  const newRent=res.newRent;
+  const diff=res.increase;
+  const basisWord=hasCustom?'Ποσοστό σύμβασης':share75?'75% ΔΤΚ':'ΔΤΚ';
+  const capLine=res.capped ? capAppliedLine(basisWord, pct, res.pctApplied) : '';
   const isExpired=daysExp!==null&&daysExp<0;
   const isExpiring=daysExp!==null&&daysExp>=0&&daysExp<=60;
   // Μήνες ισχύος: όσοι έχουν δημοσιευμένο δείκτη, συν ο τρέχων και οι δύο
@@ -168,7 +183,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
   const selectStyle:React.CSSProperties={width:'100%',height:T.h.lg,background:'var(--bg-elevated)',border:'1px solid var(--border-control)',borderRadius:T.radius.inner,padding:'0 14px',color:'var(--text-primary)',fontSize:14,letterSpacing:0,fontFamily:T.font.sans,outline:'none',cursor:'pointer'};
 
   const genLetter=()=>{
-    if(!hasPct) return;   // δεν παράγεται έγγραφο χωρίς ποσοστό με προέλευση
+    if(!hasPct||needsType) return;   // δεν παράγεται έγγραφο χωρίς ποσοστό με προέλευση ή με ποσό που ίσως παραβιάζει το όριο
     const today_str=rDate();
     const afmInline=tenant.afm?` · ΑΦΜ ${tenant.afm}`:'';
     const brandTag=branding?.companyName?` · ${brandName(branding)}`:' · PROPERWISE';
@@ -190,9 +205,11 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
       + `<table><tbody>`
         + reportRow('Τρέχον μηνιαίο μίσθωμα', rEur(rent))
         + reportRow(hasCustom?'Ποσοστό αναπροσαρμογής (σύμβαση)':`ΔΤΚ ${idx?indexMonthLabel(idx.ym):''}${share75?' (75%)':''}`, rPct(pct))
+        + (res.capped?reportRow('Εφαρμοζόμενο ποσοστό (νόμιμο όριο)', rPct(res.pctApplied)):'')
         + reportRow('Αύξηση μισθώματος', rSigned(diff))
         + reportRow('Νέο μηνιαίο μίσθωμα', rEur(newRent), 'result')
       + `</tbody></table>`
+      + (res.capped?`<div class="note"><strong>${rEsc(capLine)}.</strong> Το νέο μίσθωμα διαμορφώνεται σε ${rEur(newRent)} αντί για ${rEur(res.uncappedRent)}.</div>`:'')
       + `<div class="note">Η αναπροσαρμογή ισχύει από την επόμενη μισθωτική περίοδο μετά την κοινοποίηση της παρούσας ειδοποίησης.</div>`
       + (hasCustom?'':`<div class="note">Πηγή ποσοστού: ${rEsc(cpiConfirmedLabel())}.</div>`)
       + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:64px">`
@@ -329,6 +346,7 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
 
               <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:T.sp.lg, marginBottom:14 }}>
                 {[{label:hasCustom?'Ποσοστό σύμβασης':`ΔΤΚ ${idx?indexMonthLabel(idx.ym):''}${share75?' (75%)':''}`,value:`${pct>=0?'+':''}${fpSigned(pct)}`},
+                  ...(res.capped?[{label:'Εφαρμόζεται (νόμιμο όριο)',value:`+${fpSigned(res.pctApplied)}`}]:[]),
                   {label:'Μεταβολή ανά μήνα',value:`${diff>=0?'+':''}${feSigned(diff)}`},
                   {label:'Μεταβολή ανά έτος',value:`${diff>=0?'+':''}${feSigned(diff*12)}`}
                 ].map((row,i)=>(
@@ -337,11 +355,23 @@ export function RentAdjustView({ tenant, userId }:{ tenant:Tenant; userId:string
                 <div style={{ marginTop:10, fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
                   {hasCustom?'Ποσοστό που όρισες εσύ βάσει της σύμβασης. Το έγγραφο θα το αναφέρει ως τέτοιο.':cpiConfirmedLabel()}
                 </div>
+                {res.capped&&(
+                  <div className="po-just" style={{ marginTop:10, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
+                    {hy(<>{`${capLine}. Το νέο μίσθωμα είναι ${fe(newRent)} αντί για ${fe(res.uncappedRent)}. Το ίδιο γράφει και η ειδοποίηση.`}</>)}
+                  </div>
+                )}
               </div>
 
+              {needsType&&ifCommercial&&(
+                <div className="po-just" style={{ background:'var(--warning-dim)', border:'1px solid color-mix(in srgb, var(--warning) 26%, transparent)', borderLeft:'3px solid var(--warning)', borderRadius:T.radius.inner, padding:'11px 14px', marginBottom:14, fontSize:12, color:'var(--text-secondary)', fontFamily:T.font.sans, lineHeight:1.6 }}>
+                  {hy(<>{`Δεν έχει οριστεί αν η μίσθωση είναι κατοικίας ή επαγγελματική. Για κατοικία το νέο μίσθωμα είναι ${fe(newRent)}. Αν είναι υφιστάμενη επαγγελματική, ${capAppliedLine(basisWord, pct, ifCommercial.pctApplied)} και το νέο μίσθωμα είναι ${fe(ifCommercial.newRent)}. Όρισε τον τύπο μίσθωσης στα στοιχεία του ενοικιαστή για να εκτυπωθεί η ειδοποίηση.`}</>)}
+                </div>
+              )}
               {/* Το περιτύλιγμα κρατά ΜΟΝΟ την απόσταση από τα επόμενα: το Btn δεν δέχεται style. */}
               <div style={{ marginBottom:12 }}>
-                <Btn variant="primary" field onClick={genLetter}>Εκτύπωση ειδοποίησης αναπροσαρμογής</Btn>
+                {needsType
+                  ? <Btn variant="secondary" field disabled title="Όρισε πρώτα τον τύπο μίσθωσης">Εκτύπωση ειδοποίησης αναπροσαρμογής</Btn>
+                  : <Btn variant="primary" field onClick={genLetter}>Εκτύπωση ειδοποίησης αναπροσαρμογής</Btn>}
               </div>
             </>
           )}
