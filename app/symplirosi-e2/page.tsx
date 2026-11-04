@@ -28,7 +28,7 @@ import { E2Calculator } from './E2Calculator';
 import { PATH } from './spec';
 
 const URL = siteUrl(PATH);
-const H1 = 'Ε2: τι γράφω πού';
+const H1 = 'Ε2: συμπλήρωση εντύπου';
 const TITLE = 'Συμπλήρωση Ε2 βήμα βήμα: τι γράφεις σε κάθε στήλη και σε ποιον κωδικό του Ε1';
 const DESC = 'Δώσε τύπο ακινήτου, χρήση, μίσθωμα και μήνες: η σελίδα δείχνει τι γράφεις σε κάθε στήλη του Ε2 και σε ποιον κωδικό του Ε1 πηγαίνει το ποσό.';
 
@@ -74,7 +74,7 @@ const LINK = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }
 export default function Page() {
   const today = athensToday();
   const guide = guideAt('/odigos/forologia-enoikion-2026');
-  const jsonLd = toolJsonLd({ name: 'Ε2: τι γράφω πού', url: URL, description: DESC, faq: FAQ });
+  const jsonLd = toolJsonLd({ name: 'Ε2: συμπλήρωση εντύπου', url: URL, description: DESC, faq: FAQ });
   return (
     <div className="po-tool-page" data-mode="dark" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
       <JsonLd data={jsonLd} />
