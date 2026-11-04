@@ -30,6 +30,7 @@
 import { readStatus, type PropertyStatus, type StatusRow } from '@/lib/property/status';
 import { type AadeAction } from '@/lib/tax/aade';
 import { LEASE_DECLARATION_NAME } from '@/lib/tax/leaseDeclaration';
+import { archiveFileName, archiveFolder, extOf as extOfName, firstDate, kindOfShelf, providerNames, resolveProvider, uniqueNames } from '@/lib/archive/naming';
 
 /** Ποιος φέρνει το κάθε πράγμα. Το σημαντικότερο πεδίο του αρχείου. */
 export type Who =
@@ -770,6 +771,11 @@ export interface DossierPaper {
   supplier?: string | null;
   afm?: string | null;
   amount?: number | null;
+  /** Η περίοδος που αφορά: ο μήνας του τέλους της δίνει το όνομα (lib/archive/naming.ts). */
+  periodFrom?: string | null;
+  periodTo?: string | null;
+  /** Πότε καταχωρήθηκε: λύνει τα διπλότυπα ονόματα (_2, _3) με σταθερή σειρά. */
+  createdAt?: string | null;
 }
 
 /** Μια κίνηση, όσο χρειάζεται για να αναγνωριστεί το χαρτί της. */
@@ -792,7 +798,12 @@ export interface FiledPaper<P extends DossierPaper = DossierPaper> {
   no: number;
   /** Ο αριθμός με τα μηδενικά μπροστά, όπως γράφεται παντού: «07». */
   label: string;
-  /** Το όνομα του αρχείου μέσα στον υποφάκελο. */
+  /**
+   * Η διαδρομή του αρχείου: Είδος/Πάροχος/Έτος/Είδος_Πάροχος_ΕΕΕΕ_ΜΜ_Ποσό.ext.
+   * ΙΔΙΟ ΟΝΟΜΑ ΚΑΙ ΙΔΙΟΙ ΦΑΚΕΛΟΙ ΜΕ ΤΟ ΑΡΧΕΙΟ ΤΗΣ ΕΦΑΡΜΟΓΗΣ (04/11/2026): ο
+   * λογιστής βλέπει στον δίσκο του ό,τι βλέπει ο ιδιοκτήτης στην οθόνη. Ο
+   * αριθμός (`label`) μένει στο φύλλο, όπου δένει το χαρτί με την κίνησή του.
+   */
   file: string;
   /** Η γραμμή στο φύλλο «Κινήσεις», ή null όταν δεν ταυτίζεται μία μόνο. */
   row: number | null;
@@ -809,11 +820,6 @@ const clean = (s: string, max: number): string =>
   [...String(s)].map(ch => (ch < ' ' || FORBIDDEN.has(ch) ? ' ' : ch)).join('')
     .replace(/\s+/g, ' ').trim().slice(0, max).trim();
 
-/** Η κατάληξη του αρχείου, πεζή. Κενή όταν το όνομα δεν έχει. */
-const extOf = (name: string): string => {
-  const m = /\.([A-Za-z0-9]{1,8})$/.exec(String(name || '').trim());
-  return m ? `.${m[1].toLowerCase()}` : '';
-};
 
 /** Με τι λέγεται το χαρτί: ο εκδότης του, αλλιώς ο τίτλος, αλλιώς το όνομά του. */
 const nameOf = (p: DossierPaper): string => {
@@ -845,6 +851,19 @@ export function filePapers<P extends DossierPaper>(
 
   const width = Math.max(2, String(sorted.length).length);
 
+  // Το κοινό όνομα, με τις ίδιες συναρτήσεις με το Αρχείο: είδος από το ράφι,
+  // πάροχος από το ΑΦΜ όπου υπάρχει, μήνας της περιόδου, ποσό με κόμμα.
+  const names = providerNames(sorted.map(p => ({ provider: p.supplier, afm: p.afm, createdAt: p.createdAt })));
+  const placed = sorted.map((p, i) => {
+    const kind = kindOfShelf(p.category, p.title, p.supplier);
+    const provider = resolveProvider(names, p.supplier, p.afm);
+    const date = firstDate(p.periodTo, p.periodFrom, p.docDate);
+    const dir = archiveFolder(kind, provider, date).join('/');
+    const name = archiveFileName({ kind, provider, date, amount: p.amount, ext: extOfName(null, p.fileName) });
+    return { id: String(i), dir, name: `${dir}/${name}`, createdAt: p.createdAt || p.docDate || String(i).padStart(6, '0') };
+  });
+  const unique = uniqueNames(placed);
+
   return sorted.map((p, i) => {
     const amount = Number(p.amount);
     const date = String(p.docDate || '');
@@ -863,7 +882,7 @@ export function filePapers<P extends DossierPaper>(
     return {
       no,
       label,
-      file: `${label} ${date || 'χωρίς ημερομηνία'} ${nameOf(p)}${extOf(p.fileName)}`,
+      file: unique.get(String(i)) ?? placed[i].name,
       row: hits.length === 1 ? hits[0].no : null,
       paper: p,
     };

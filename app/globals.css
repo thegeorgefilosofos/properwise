@@ -7702,3 +7702,46 @@ body:has(.po-tool-page) .pw-lang-suggest {
    ο συλλαβισμός δεν κόβει αγγλικές λέξεις, οπότε η ίδια στοίχιση άνοιγε
    ποτάμια λευκού. Στα αγγλικά: αριστερά και `pretty`, όπως οι οδηγοί. */
 html[lang="en"] :is(.lg-p, .lg-ul li, .lg-note, .lg-just, .lg-lede > p) { text-align: start; text-wrap-style: pretty; }
+
+/* ═══ ΑΡΧΕΙΟ: ΤΟ ΔΕΝΤΡΟ ΤΩΝ ΦΑΚΕΛΩΝ (TabDocuments, FolderTreeView) ═══════
+   Είδος → Πάροχος → Έτος. Κάθε επίπεδο είναι κουμπί `acc-toggle acc-row`·
+   εδώ ζει μόνο το σχήμα του δέντρου, όπως η `.acc-month` για τους μήνες:
+   ενσωματωμένο style σε <button> δεν παίρνει :hover ούτε :focus-visible.
+   Η εσοχή κάθε επιπέδου είναι 20 και μια λεπτή γραμμή οδηγός δείχνει ποιος
+   φάκελος περιέχει ποιον, όπως σε κάθε σύστημα αρχείων. */
+.arc-tree { display: flex; flex-direction: column; gap: 2px; }
+.arc-branch[data-level="2"], .arc-branch[data-level="3"] {
+  margin-left: 9px; padding-left: 11px; border-left: 1px solid var(--border-subtle);
+}
+.arc-node { min-height: 44px; border-radius: 10px; color: var(--text-secondary); }
+.arc-node:hover { background: var(--bg-overlay); color: var(--text-primary); }
+.arc-node-chevron { flex-shrink: 0; color: var(--text-tertiary); transition: transform .18s; }
+.arc-node[data-open="true"] .arc-node-chevron { transform: rotate(90deg); }
+.arc-node-icon { flex-shrink: 0; color: var(--accent); }
+/* Το όνομα του φακέλου ΑΝΑΔΙΠΛΩΝΕΤΑΙ, δεν κόβεται: «Υδραυλικές Εργασίες»
+   στα 320 έχανε 58 εικονοστοιχεία πίσω από αποσιωπητικά (e2e-layout). */
+.arc-node { flex-wrap: wrap; row-gap: 2px; padding-block: 6px; }
+.arc-node-label {
+  min-width: 0; overflow-wrap: anywhere;
+  font-size: var(--fs-base); font-weight: 600; color: var(--text-primary);
+}
+.arc-node[data-level="3"] .arc-node-label { font-variant-numeric: tabular-nums; }
+.arc-node-count { flex-shrink: 0; font-size: var(--fs-xs); color: var(--text-tertiary); white-space: nowrap; }
+.arc-node-total {
+  margin-left: auto; flex-shrink: 0; font-size: var(--fs-xs); font-weight: 700;
+  color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.arc-files { padding: 4px 0 14px 20px; }
+.arc-path { margin: 0 0 10px; font-size: var(--fs-xs); color: var(--text-tertiary); }
+@media (max-width: 640px) {
+  .arc-branch[data-level="2"], .arc-branch[data-level="3"] { margin-left: 6px; padding-left: 8px; }
+  .arc-files { padding-left: 4px; }
+}
+/* Το κοινό όνομα είναι μακρύ (Ασφαλιστήριο_Ασφάλειες Ελλάς_2026_06_240,00.pdf)
+   και η κάτω παύλα δεν είναι σημείο αλλαγής γραμμής: σε στενή κάρτα κοβόταν
+   στο «Ασφάλειες Ελλ…» και χανόταν ακριβώς το έτος και το ποσό. Δύο γραμμές,
+   σπάσιμο οπουδήποτε, ολόκληρο στο `title`. */
+.arc-filename {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; overflow-wrap: anywhere;
+}

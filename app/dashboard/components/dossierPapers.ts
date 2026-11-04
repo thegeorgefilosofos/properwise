@@ -33,7 +33,7 @@ const MAX_TOTAL = 60 * 1024 * 1024
 /** Πόσα κατεβαίνουν ταυτόχρονα. Περισσότερα δεν είναι πιο γρήγορα. */
 const BATCH = 4
 
-const COLUMNS = 'file_path,file_name,title,category,doc_date,issue_date,supplier,provider_afm,amount,size_bytes,kind'
+const COLUMNS = 'file_path,file_name,title,category,doc_date,issue_date,supplier,provider_afm,amount,size_bytes,kind,period_from,period_to,created_at'
 
 interface PaperRow {
   file_path: string
@@ -47,6 +47,9 @@ interface PaperRow {
   amount: number | null
   size_bytes: number | null
   kind: string | null
+  period_from?: string | null
+  period_to?: string | null
+  created_at?: string | null
 }
 
 /**
@@ -145,6 +148,9 @@ export async function fetchDossierPapers(
         supplier: issuerOf(r.supplier),
         afm: r.provider_afm,
         amount: r.amount,
+        periodFrom: r.period_from ?? null,
+        periodTo: r.period_to ?? null,
+        createdAt: r.created_at ?? null,
       })
     })
   }
