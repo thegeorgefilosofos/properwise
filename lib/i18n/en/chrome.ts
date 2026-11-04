@@ -42,6 +42,9 @@ export const CHROME_EN = {
       ['/odigos/enfia-2026-pliromi-doseis-pistopoiitiko', 'Paying ENFIA in 2026'],
       ['/odigos', 'All guides'],
     ] as L[],
+    allGuides: 'All guides',
+    moreTools: 'More tools',
+    moreGuides: 'More guides',
     trust: 'Trust',
     trustLinks: [
       ['/trust', 'About us'],
