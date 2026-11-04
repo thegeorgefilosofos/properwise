@@ -80,7 +80,12 @@ export const PHOTO_SYSTEM_PROMPT = `Είσαι σύστημα ταξινόμησ
 // κινητού — περνούσε τον έλεγχο, γύριζε 413 από τον διακομιστή και ο χρήστης
 // διάβαζε «η υπηρεσία σάρωσης δεν είναι διαθέσιμη» για αρχείο που ήταν απλώς
 // μεγάλο. Ξαναδοκίμαζε το ίδιο αρχείο, στο άπειρο.
-export const MAX_SCAN_MB = 8;
+// ΚΑΙ ΜΕΤΑ ΕΓΙΝΑΝ ΔΥΟ ΟΡΙΑ (04/11/2026). Το 8 έμεινε εδώ όταν η σάρωση έμαθε
+// να στέλνει το μεγάλο PDF μέσω του χώρου αρχείων: η οθόνη έγραφε «όριο 20 MB»
+// και το scanDocument απέρριπτε κάθε αρχείο πάνω από 8 ως «πολύ μεγάλο». Πλέον
+// το όριο είναι ΕΝΑ, το SCAN_FILE_MAX_MB· η εικόνα μικραίνει στη συσκευή, το
+// PDF περνά από τον χώρο αρχείων και το ταβάνι των 12 MiB δεν το αγγίζει κανείς.
+export const MAX_SCAN_MB = 50;
 
 // Τα αριθμητικά κλειδιά ζουν δίπλα στο σχήμα (lib/billing/documents.ts:
 // SCAN_NUM_KEYS), δεμένα στον τύπο του ScannedDoc: ένα λάθος όνομα σκάει στη
@@ -228,7 +233,7 @@ async function shrinkImage(file: File, edge: number, quality: number): Promise<{
 }
 
 /** Το μεγαλύτερο αρχείο που δέχεται η σάρωση εγγράφου (το όριο του Φακέλου). */
-export const SCAN_FILE_MAX_MB = 20;
+export const SCAN_FILE_MAX_MB = MAX_SCAN_MB;
 
 /** Ανεβάζει PDF στον προσωρινό φάκελο του χρήστη· ο διακομιστής το σβήνει μόλις το διαβάσει. */
 async function stagePdf(file: File): Promise<string | null> {
@@ -253,7 +258,7 @@ async function readForScan(file: File): Promise<Sendable | null> {
   const mime = scanMime(file);
   const isRaster = mime === 'image/jpeg' || mime === 'image/png' || mime === 'image/webp';
   if (isRaster) {
-    for (const [edge, q] of [[SCAN_MAX_EDGE, 0.85], [1600, 0.75]] as const) {
+    for (const [edge, q] of [[SCAN_MAX_EDGE, 0.85], [1600, 0.75], [1200, 0.7]] as const) {
       const out = await shrinkImage(file, edge, q);
       if (out && out.base64.length * 0.75 <= SCAN_MAX_SEND_BYTES) return out;
     }
@@ -336,6 +341,21 @@ const contentPartOf = (base64: string, mime: string) => mime === 'application/pd
 const partOf = (s: Sendable) => 'staged' in s
   ? { type: 'document', source: { type: 'staged', path: s.staged } }
   : contentPartOf(s.base64, s.mime);
+
+/**
+ * Το μπλοκ περιεχομένου για ΟΠΟΙΑΔΗΠΟΤΕ σάρωση: η εικόνα μικραίνει στη συσκευή,
+ * το μεγάλο PDF περνά από τον χώρο αρχείων. `null` αν το αρχείο δεν στέλνεται.
+ *
+ * ΤΡΕΙΣ ΟΘΟΝΕΣ ΕΣΤΕΛΝΑΝ ΤΟ ΑΡΧΕΙΟ ΟΠΩΣ ΗΤΑΝ (04/11/2026): η σάρωση στην
+ * καρτέλα του μισθωτή, η σάρωση δανείου και η φωτογραφία συσκευής της Νόας
+ * διάβαζαν το αρχείο με FileReader και το έβαζαν ολόκληρο στο αίτημα. Μια
+ * φωτογραφία κινητού 4 MB ξεπερνούσε το όριο των 4,5 MB του σώματος και ο
+ * χρήστης έβλεπε «η σάρωση δεν ολοκληρώθηκε». Περνούν πλέον από εδώ.
+ */
+export async function scanContentPart(file: File): Promise<object | null> {
+  if (file.size > SCAN_FILE_MAX_MB * 1024 * 1024 || !scanMime(file)) return null;
+  try { const s = await readForScan(file); return s ? partOf(s) : null; } catch { return null; }
+}
 
 /** Σκανάρει ένα αρχείο ως ΕΓΓΡΑΦΟ και επιστρέφει το δομημένο παραστατικό. */
 export async function scanDocument(file: File): Promise<ScanFailure & { doc?: ScannedDoc }> {

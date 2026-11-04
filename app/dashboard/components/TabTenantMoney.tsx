@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { MAX_SCAN_MB } from './scanDoc'
+import { MAX_SCAN_MB, scanContentPart } from './scanDoc'
 import { qrDataUrl } from '@/lib/qr';
 import { createClient } from '@/lib/supabase/client';
 import * as properties from '@/lib/data/properties';
@@ -661,11 +661,10 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     const ctrl=new AbortController();
     const timer=setTimeout(()=>ctrl.abort(),45000);
     try{
-      const dataUrl:string=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result as string);r.onerror=rej;r.readAsDataURL(file);});
-      const base64=dataUrl.split(',')[1]; const mime=file.type||'image/jpeg'; const isPdf=mime==='application/pdf';
-      const contentPart=isPdf?{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}}:{type:'image',source:{type:'base64',media_type:mime,data:base64}};
+      const contentPart=await scanContentPart(file);
+      if(!contentPart){ setScan({stage:'error',msg:'Αυτό το αρχείο δεν διαβάζεται. Ανέβασε φωτογραφία (JPG, PNG) ή PDF.'}); return; }
       const res=await fetch('/api/anthropic',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctrl.signal,body:JSON.stringify({kind:'scan',model:'claude-sonnet-5',max_tokens:1500,system:SYSTEM_PROMPT,messages:[{role:'user',content:[contentPart,{type:'text',text:'Αναγνώρισε και ανάλυσε αυτό το έγγραφο. Διάβασε κάθε στοιχείο με ακρίβεια.'}]}]})});
-      const data=await res.json();
+      const data=await res.json().catch(()=>null);
       // Ο διακομιστής επιστρέφει ήδη ελληνικό, χρήσιμο μήνυμα. Το πετούσαμε και
       // βάζαμε στη θέση του «η υπηρεσία δεν είναι διαθέσιμη» — δηλαδή λέγαμε
       // «χαλάσαμε εμείς» για αρχείο που ήταν απλώς μεγάλο ή για όριο που
