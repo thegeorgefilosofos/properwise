@@ -1,10 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // ΤΑ ΣΤΥΛ ΤΟΥ ΑΡΧΕΙΟΥ ΖΟΥΝ ΕΔΩ, ΟΧΙ ΣΤΟ globals.css (04/11/2026)
 // ─────────────────────────────────────────────────────────────────────────
-// Γραμμένα στο globals.css φόρτωναν σε ΚΑΘΕ σελίδα, και στις δημόσιες: το
-// /ypologismos-enfia ανέβηκε από το όριο των 185,6 KB στα 201,7 KB στο κρίσιμο
-// μονοπάτι (perf:budget) για φακέλους που δεν εμφανίζονται ποτέ εκεί.
-// Τώρα τα αποδίδει μόνο το Αρχείο (TabDocuments), με ένα <style>.
+// Το globals.css φορτώνει σε κάθε σελίδα, μαζί με τις δημόσιες, όπου οι
+// φάκελοι δεν εμφανίζονται ποτέ. Εδώ τα αποδίδει μόνο το Αρχείο
+// (TabDocuments), με ένα <style>.
 // Οι κλάσεις: .fb-* οι φάκελοι, .af-* τα φίλτρα, .ad-* η γραμμή εργαλείων.
 // ═══════════════════════════════════════════════════════════════════════════
 export const ARCHIVE_CSS = String.raw`
@@ -69,7 +68,7 @@ button.fb-crumb { display: inline-flex; align-items: center; }
 /* Τέσσερις θέσεις πάντα, όπως στο Finder: οι στήλες δεν αλλάζουν πλάτος
    καθώς προχωράς· η προεπισκόπηση προστίθεται δεξιά. */
 /* Το ύψος ακολουθεί το περιεχόμενο: από 360 ώς 70% της οθόνης, με κύλιση
-   ανά στήλη. Ηταν σταθερό κουτί 340+ που έμενε άδειο με λίγα αρχεία. */
+   ανά στήλη. Ήταν σταθερό κουτί 340+ που έμενε άδειο με λίγα αρχεία. */
 .fb-columns {
   display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, .9fr) minmax(0, 1.35fr);
   border-top: 1px solid var(--border-subtle); min-height: 360px; max-height: 70vh;
@@ -132,11 +131,11 @@ button.fb-crumb { display: inline-flex; align-items: center; }
 }
 .fb-tr:first-child { border-top: none; }
 .fb-th { min-height: 32px; background: var(--bg-overlay); color: var(--text-tertiary); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.fb-td-name { min-width: 0; padding-left: calc(10px + var(--fb-indent, 0px)); }
+.fb-td-name { min-width: 0; padding-left: 10px; }
 .fb-th .fb-td-name { padding-left: 14px; }
-.fb-tr[data-depth="1"] { --fb-indent: 20px; }
-.fb-tr[data-depth="2"] { --fb-indent: 40px; }
-.fb-tr[data-depth="3"] { --fb-indent: 64px; }
+.fb-tr[data-depth="1"] .fb-td-name { padding-left: 30px; }
+.fb-tr[data-depth="2"] .fb-td-name { padding-left: 50px; }
+.fb-tr[data-depth="3"] .fb-td-name { padding-left: 74px; }
 .fb-td-num, .fb-td-date, .fb-td-size { padding-right: 14px; text-align: right; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .fb-disclose, .fb-file-open {
   display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 0 4px; border: none;
