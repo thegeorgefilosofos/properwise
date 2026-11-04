@@ -18,6 +18,8 @@
 
 reset role;
 set session "probe.uid" = '';
+-- Τα μέλη γραφείου χρειάζονται δεύτερο βήμα (20261104150000): εδώ το έχουν.
+select set_config('request.jwt.claims', '{"aal":"aal2"}', false);
 
 create schema if not exists probe_w;
 grant usage on schema probe_w to authenticated, anon;
