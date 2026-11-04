@@ -140,6 +140,7 @@ begin
 end $probe$;
 reset role;
 do $probe$
+declare who_tok text;
 begin
   perform set_config('probe.uid', probe_s.u('L')::text, false);
   if private.accountant_sees_file(probe_s.u('O')::text || '/accountant-pack/2026.zip', false) then
@@ -152,6 +153,17 @@ begin
     raise exception 'Η αφαίρεση του L έκοψε τα αρχεία του K';
   end if;
   perform set_config('probe.uid', '', false);
+  -- Ο ιδιοκτήτης μαθαίνει γιατί άλλαξε ο σύνδεσμός του.
+  if coalesce((select rotated_reason from public.accountant_links where user_id = probe_s.u('O')), '') <> 'member_left' then
+    raise exception 'Ο σύνδεσμος άλλαξε χωρίς να γραφτεί ότι αποχώρησε μέλος';
+  end if;
+  -- Και αν τον αλλάξει ο ίδιος, ο λόγος δεν μένει.
+  update public.accountant_links set token = 'security-probe-self' where user_id = probe_s.u('O')
+   returning token into strict who_tok;
+  if (select rotated_reason from public.accountant_links where user_id = probe_s.u('O')) is not null then
+    raise exception 'Ο ιδιοκτήτης άλλαξε μόνος τον σύνδεσμο και η οθόνη θα έλεγε ακόμη ότι αποχώρησε μέλος';
+  end if;
+  update public.accountant_clients set claimed_token = 'security-probe-self' where owner_id = probe_s.u('O') and active;
   raise notice 'probe: το αφαιρεμένο μέλος χάνει αμέσως φάκελο, αρχεία και σύνδεσμο, οι άλλοι κρατούν';
 end $probe$;
 

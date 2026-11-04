@@ -114,7 +114,40 @@ end $$;
 -- παλιό (άλλα γραφεία, το ίδιο το γραφείο όταν φεύγει μόνο ένα μέλος) τον
 -- ακολουθούν· τα αντίγραφα του παλιού συνδέσμου παύουν να ανοίγουν. Ιδια
 -- μορφή κλειδιού με την προεπιλογή του πίνακα.
-create or replace function private.firm_rotate_link(p_owner uuid)
+-- ΤΟ ΓΙΑΤΙ ΓΡΑΦΕΤΑΙ ΣΤΟΝ ΣΥΝΔΕΣΜΟ. Ο ιδιοκτήτης βλέπει νέο σύνδεσμο που δεν
+-- ζήτησε: η οθόνη του λέει «ο σύνδεσμος ανανεώθηκε επειδή αποχώρησε μέλος»
+-- αντί να τον αφήσει να αναρωτιέται (απόφαση 04/11/2026).
+alter table public.accountant_links add column if not exists rotated_at timestamptz;
+alter table public.accountant_links add column if not exists rotated_reason text;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'accountant_links_rotated_reason_chk') then
+    alter table public.accountant_links add constraint accountant_links_rotated_reason_chk
+      check (rotated_reason is null or rotated_reason in ('member_left', 'firm_revoked', 'client_dropped'));
+  end if;
+end $$;
+
+-- Οταν ο ιδιοκτήτης αλλάξει μόνος του τον σύνδεσμο, ο παλιός λόγος σβήνει: η
+-- οθόνη δεν λέει «αποχώρησε μέλος» για κάτι που έκανε ο ίδιος.
+create or replace function private.accountant_link_reason_clear()
+returns trigger
+language plpgsql security definer
+set search_path = 'public', 'pg_temp'
+as $$
+begin
+  if new.token is distinct from old.token and new.rotated_at is not distinct from old.rotated_at then
+    new.rotated_at := null;
+    new.rotated_reason := null;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists accountant_links_reason_clear on public.accountant_links;
+create trigger accountant_links_reason_clear before update on public.accountant_links
+  for each row execute function private.accountant_link_reason_clear();
+
+drop function if exists private.firm_rotate_link(uuid);
+create or replace function private.firm_rotate_link(p_owner uuid, p_reason text)
 returns void
 language plpgsql security definer
 set search_path = 'public', 'pg_temp'
@@ -125,7 +158,7 @@ declare
 begin
   select al.token into v_old from accountant_links al where al.user_id = p_owner for update;
   if v_old is null then return; end if;
-  update accountant_links set token = v_new where user_id = p_owner;
+  update accountant_links set token = v_new, rotated_at = now(), rotated_reason = p_reason where user_id = p_owner;
   update accountant_clients set claimed_token = v_new
    where owner_id = p_owner and claimed_token = v_old and active;
 end $$;
@@ -314,7 +347,7 @@ begin
   delete from accountant_clients where owner_id = v_me and firm_id = p_firm;
   delete from firm_client_assignees where owner_id = v_me and firm_id = p_firm;
   -- Ο σύνδεσμος που ήξερε το γραφείο πεθαίνει· όσοι άλλοι έχουν πρόσβαση την κρατούν.
-  perform private.firm_rotate_link(v_me);
+  perform private.firm_rotate_link(v_me, 'firm_revoked');
   return json_build_object('ok', true);
 end $$;
 
@@ -335,7 +368,7 @@ begin
   end if;
   delete from accountant_clients where firm_id = v_firm and owner_id = p_owner;
   delete from firm_client_assignees where firm_id = v_firm and owner_id = p_owner;
-  perform private.firm_rotate_link(p_owner);
+  perform private.firm_rotate_link(p_owner, 'client_dropped');
   return json_build_object('ok', true);
 end $$;
 
@@ -354,7 +387,7 @@ declare o uuid;
 begin
   if old.status <> 'active' or (tg_op = 'UPDATE' and new.status = 'active') then return null; end if;
   for o in select distinct ac.owner_id from accountant_clients ac where ac.firm_id = old.firm_id and ac.active loop
-    perform private.firm_rotate_link(o);
+    perform private.firm_rotate_link(o, 'member_left');
   end loop;
   return null;
 end $$;
@@ -997,7 +1030,8 @@ begin
     execute format('grant execute on function %s to authenticated', f);
   end loop;
   foreach f in array array[
-    'private.firm_rotate_link(uuid)',
+    'private.firm_rotate_link(uuid, text)',
+    'private.accountant_link_reason_clear()',
     'private.firm_member_exit()',
     'private.firm_log_names()',
     'private.firm_log(uuid, uuid, uuid, text, text, uuid, text, jsonb, jsonb)',
