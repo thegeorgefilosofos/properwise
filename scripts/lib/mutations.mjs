@@ -22,6 +22,12 @@
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
 export const MUTATIONS = {
+  // Το README ξαναγράφει πλήθος με το χέρι: ακριβώς τα «130+ guard scripts» και
+  // «250+ suites» που είχαν μείνει πίσω από τα 165 και τα 405 (04/11/2026).
+  'readme-counts': { file: 'README.md', from: 'Rules that matter are code, not convention.', to: 'Rules that matter are code, not convention: 130+ guard scripts and 250+ suites.' },
+  // Οθόνη που ξαναπαίρνει τη μέση ετήσια μεταβολή για αναπροσαρμογή (03/11/2026).
+  'law-abbrev': { add: 'components/__mut_law__.tsx', content: tsx('    <p>Άρθρο 59 ν.5255/2025</p>') },
+  'cpi-one-source': { add: 'components/__mut_cpi__.tsx', content: "import { cpiFor } from '@/lib/market/cpi'\nexport default function MutationProbe({ rent }: { rent: number }) {\n  return <span>{rent * (1 + (cpiFor(2025) ?? 0) / 100)}</span>\n}\n" },
   // Η διαφορά ξανά με δύο τελείες, από το origin/main στο HEAD: ακριβώς το
   // patch που θα έσβηνε τις ~1.200 γραμμές των #451/#452 (29/10/2026).
   'rebranch': { file: 'scripts/rebranch.sh', from: 'git diff --binary "$TARGET" "$TREE" > "$PATCH"', to: 'git diff --binary "$TARGET" HEAD > "$PATCH"' },
@@ -214,7 +220,13 @@ export const MUTATIONS = {
     { add: 'components/__mut__.tsx', content: tsx('    <p>Έκδοση 2026-10-04 · Τελευταία ενημέρωση</p>') },
     { add: 'lib/core/__mut__.ts', content: "const FIRST_YEAR_BANK_RECEIPT = 2027\nexport const s = `Από 1.7.${FIRST_YEAR_BANK_RECEIPT} με τράπεζα`\n" },
   ] },
-  'month-case': { add: 'lib/core/__mut__.ts', content: "import { monthNom } from '@/lib/core/months'\nexport const d = (i: number) => `Μεταφορά από ${monthNom(i)}`\n" },
+  // Και σε δύο γραμμές, με την ετικέτα του δείκτη, όπως στο παράθυρο της
+  // αναπροσαρμογής («για τον Ιούλιος 2026», 03/11/2026).
+  'month-case': { every: [
+    { add: 'lib/core/__mut__.ts', content: "import { monthNom } from '@/lib/core/months'\nexport const d = (i: number) => `Μεταφορά από ${monthNom(i)}`\n" },
+    { add: 'components/__mut_month__.tsx', content: tsx("    <p>Όπως τη δημοσίευσε η ΕΛΣΤΑΤ για τον{' '}\n      {indexMonthLabel('2026-07')}.</p>") },
+    { add: 'components/__mut_month2__.tsx', content: "export const P = ({ startLabel }: { startLabel: string }) => <p>{`Για τον μήνα ${startLabel} η ΕΛΣΤΑΤ ανακοίνωσε`}</p>\n" },
+  ] },
   'raw-errors': { add: 'components/__mut__.tsx', content: 'export function P({ setError, err }: { setError: (s: string) => void; err: Error }) {\n  return <button onClick={() => setError(err.message)}>Δοκιμή</button>\n}\n' },
   'rendered-zero': { add: 'components/__mut__.tsx', content: 'export function P({ n }: { n: number }) {\n  return <div>{n && <span>{n}</span>}</div>\n}\n' },
   'terminology': { every: [

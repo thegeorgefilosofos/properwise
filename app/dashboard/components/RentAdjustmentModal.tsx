@@ -20,7 +20,7 @@ import ScanButton from './ScanButton';
 import SignaturePad from '@/components/SignaturePad';
 import { grDate, todayIso, num, archivePdfToProperty } from './docUtils';
 import { fn, fpRate } from '@/lib/core/format';
-import { computeRentAdjustment, adjustmentNoticeText, rentCapPct, type AdjMethod } from '@/lib/documents/rentAdjustment';
+import { computeRentAdjustment, adjustmentNoticeText, rentCapPct, RENT_CAP_EXEMPT, type AdjMethod } from '@/lib/documents/rentAdjustment';
 import { issueDocument } from '@/lib/documents/issue';
 import { generateReportPdf, reportPdfBlob, pEur, pPct, type PdfReportModel } from '@/lib/pdf/pdfReport';
 import type { ReportBranding } from '@/lib/reportBranding';
@@ -28,7 +28,7 @@ import { MYAADE } from '@/lib/tax/aade';
 import { aadeTitle } from '@/components/AadeLink';
 import { SAY, failed } from '@/lib/core/dbError';
 import { acceptNumeric, PCT_MAX } from '@/lib/core/numInput';
-import { rentIndexFor, rentAdjustmentPct, indexMonthLabel, indexPeriodLabel, CPI_SOURCE_URL, cpiConfirmedDate } from '@/lib/market/cpi';
+import { rentIndexFor, rentAdjustmentPct, indexMonthAcc, indexPeriodLabel, CPI_SOURCE_URL, cpiConfirmedDate } from '@/lib/market/cpi';
 
 interface Prop { id: string; name: string; address: string | null }
 
@@ -244,18 +244,22 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
         branding: branding ?? null, docType: 'Ειδοποίηση αναπροσαρμογής μισθώματος',
         title: 'Ειδοποίηση αναπροσαρμογής μισθώματος',
         subtitle: [prop.name, prop.address].filter(Boolean).join(' · '),
-        meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, checksum: issued.checksum, asOfLabel: 'Ημερομηνία', note: `Ισχύς από ${grDate(effective)}` },
+        meta: { id: issued.id, issuedAt: issued.issuedAt, verifyUrl: issued.verifyUrl, checksum: issued.checksum, asOfLabel: 'Ημερομηνία', asOfValue: grDate(todayIso()), note: `Ισχύς από ${grDate(effective)}` },
         sections: [
           { type: 'note', text: notice },
           { type: 'rows', title: 'Στοιχεία αναπροσαρμογής', rows: [
             { label: 'Τρέχον μηνιαίο μίσθωμα', value: pEur(res.currentRent) },
-            { label: method === 'cpi' && index ? `Μεταβολή ΔΤΚ, ${indexPeriodLabel(index.ym)}` : 'Μεταβολή', value: pPct(res.pctApplied) },
+            { label: method === 'cpi' && index ? `Μεταβολή ΔΤΚ, δωδεκάμηνο ${indexPeriodLabel(index.ym)}` : 'Μεταβολή', value: pPct(res.pctApplied) },
             { label: 'Νέο μηνιαίο μίσθωμα', value: pEur(res.newRent), kind: 'result' },
             { label: 'Ισχύς από', value: grDate(effective) },
           ] },
           { type: 'sign', signers: [{ role: 'Ο/Η εκμισθωτής', name: ownerName.trim() || undefined, image: sig, place: place.trim() || undefined, date: grDate(todayIso()) }] },
         ],
-        disclaimer: 'Έγγραφη ειδοποίηση αναπροσαρμογής μισθώματος. Επιβεβαιώστε τους όρους με το μισθωτήριο και τον νομικό/λογιστικό σας σύμβουλο.',
+        // ΚΑΜΙΑ ΣΥΜΒΟΥΛΗ ΠΡΟΣ ΤΟΝ ΕΚΜΙΣΘΩΤΗ ΜΕΣΑ ΣΤΟ ΕΓΓΡΑΦΟ (04/11/2026). Το
+        // «Επιβεβαιώστε τους όρους με τον σύμβουλό σας» τυπωνόταν στο χαρτί που
+        // παίρνει ο ΜΙΣΘΩΤΗΣ. Η συμβουλή μένει στην οθόνη του εκμισθωτή, πάνω
+        // από την υπογραφή. Και η ημερομηνία γράφεται dd/mm/yyyy, ίδια με της
+        // υπογραφής, όχι «01 Ιουλίου 2026».
       };
       const fname = `Αναπροσαρμογή_${prop.name}_${grDate(effective)}`.replace(/[\/\s]+/g, '_');
       await generateReportPdf(model, fname);
@@ -330,8 +334,13 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
     cpi: !index
       ? 'Για τον μήνα που διάλεξες δεν υπάρχει δημοσιευμένος δείκτης. Διάλεξε μεταγενέστερη ημερομηνία ισχύος ή όρισε το ποσοστό της σύμβασης με τη μέθοδο «Ποσοστό».'
       : <>
-          Δωδεκάμηνη μεταβολή {indexPeriodLabel(index.ym)}, όπως τη δημοσίευσε η ΕΛΣΤΑΤ για τον{' '}
-          {indexMonthLabel(index.ym)}. Τελευταία ενημέρωση {cpiConfirmedDate()}.{' '}
+          Μεταβολή του δωδεκαμήνου {indexPeriodLabel(index.ym)}, όπως τη δημοσίευσε η ΕΛΣΤΑΤ για τον{' '}
+          {indexMonthAcc(index.ym)}. Τελευταία ενημέρωση {cpiConfirmedDate()}.{' '}
+          {/* ΔΕΙΚΤΗΣ ΑΛΛΟΥ ΜΗΝΑ, ΓΡΑΜΜΕΝΟΣ (04/11/2026). Το rentIndexFor παίρνει
+              τον τελευταίο δημοσιευμένο μήνα που δεν ξεπερνά την ισχύ. Οταν ο
+              δείκτης του μήνα ισχύος δεν έχει βγει, το έλεγε μόνο η περίοδος·
+              τώρα το λέει και η οθόνη, πριν υπογράψει ο εκμισθωτής. */}
+          {index.ym !== effective.slice(0, 7) && <>Ο δείκτης για τον {indexMonthAcc(effective.slice(0, 7))} δεν έχει ανακοινωθεί ακόμη· πριν στείλεις, έλεγξε στην ΕΛΣΤΑΤ αν βγήκε.{' '}</>}
           <a href={CPI_SOURCE_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Έλεγχος στην πηγή</a>
         </>,
     manual: 'Όρισε απευθείας το νέο μίσθωμα, όπως το συμφωνήσατε.',
@@ -470,7 +479,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
                       <ChipToggle shape="seg" grow on={cpiShare75 === true} onClick={() => setCpiShare75(true)}>75% της μεταβολής</ChipToggle>
                     </div>
                     <div style={{ ...TT.bodySm, marginTop: 8, lineHeight: 1.5 }}>
-                      Το 75% ισχύει τυπικά στις επαγγελματικές μισθώσεις. Ο όρος του μισθωτηρίου αποφασίζει.
+                      Το 75% ισχύει συνήθως στις επαγγελματικές μισθώσεις. Ο όρος του μισθωτηρίου αποφασίζει.
                     </div>
                   </>
                 )}
@@ -541,7 +550,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
                   Ουδέτερο μελάνι παντού, χρώμα μόνο όταν το μίσθωμα ΜΕΙΩΝΕΤΑΙ. */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', padding: '13px 16px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card }}>
                 <div>
-                  <div style={TT.label}>Τρέχον</div>
+                  <div style={TT.label}>Τρέχον μίσθωμα</div>
                   <div style={{ ...TT.h2, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', marginTop: 4 }}>{pEur(res.currentRent)}</div>
                 </div>
                 <svg aria-hidden="true" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
@@ -557,7 +566,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
 
               {res.capped && capPct != null && (
                 <InfoBanner tone="warning">
-                  {`Πλαφόν ${fpRate(capPct)} για το 2026 στις υφιστάμενες επαγγελματικές μισθώσεις (άρθρο 59 ν.5255/2025). Το νέο μίσθωμα περιορίστηκε σε ${pEur(res.newRent)} αντί για ${pEur(res.uncappedRent)}. Δεν ισχύει για εκμισθωτές που εξαιρεί ο νόμος (ΑΕΕΑΠ, εταιρείες που ανήκουν κατά πλειοψηφία σε ΟΕΕ, εμπορικά κέντρα τουλάχιστον 15.000 τ.μ., εταιρείες του Δημοσίου).`}
+                  {`Πλαφόν ${fpRate(capPct)} για το 2026 στις υφιστάμενες επαγγελματικές μισθώσεις (άρθρο 59 ν. 5255/2025). Το νέο μίσθωμα περιορίστηκε σε ${pEur(res.newRent)} αντί για ${pEur(res.uncappedRent)}. Δεν ισχύει για εκμισθωτές που εξαιρεί ο νόμος: ${RENT_CAP_EXEMPT}.`}
                 </InfoBanner>
               )}
 
@@ -574,7 +583,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '11px 13px', borderRadius: T.radius.inner, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
                 <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="po-lead-ico"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55, fontFamily: T.font.sans }}>
-                  Ιδιωτική ειδοποίηση με ισχύ έγγραφης απόδειξης. Η <strong style={{ color: 'var(--text-primary)' }}>αλλαγή μισθώματος</strong> δηλώνεται επίσημα στη «Δήλωση Πληροφοριακών Στοιχείων Μίσθωσης» στο <a href={MYAADE} target="_blank" rel="noreferrer" title={aadeTitle('lease')} style={{ color: 'var(--accent)', textDecoration: 'none' }}>myAADE</a>.
+                  Ιδιωτικό έγγραφο, για να έχεις γραπτή ειδοποίηση προς τον μισθωτή. Έλεγξε τους όρους με το μισθωτήριο και, αν χρειάζεται, με τον λογιστή ή τον δικηγόρο σου. Η <strong style={{ color: 'var(--text-primary)' }}>αλλαγή μισθώματος</strong> δηλώνεται επίσημα στη «Δήλωση Πληροφοριακών Στοιχείων Μίσθωσης» στο <a href={MYAADE} target="_blank" rel="noreferrer" title={aadeTitle('lease')} style={{ color: 'var(--accent)', textDecoration: 'none' }}>myAADE</a>.
                 </div>
               </div>
 

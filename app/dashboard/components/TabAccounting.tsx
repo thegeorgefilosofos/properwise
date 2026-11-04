@@ -514,7 +514,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
                 <div>
                   <div style={{ display:'flex', alignItems:'center', gap: 8, flexWrap:'wrap' }}>
                     <Check checked={rentsBank} onChange={v=>setRentsBankOverride(v===collection.viaBank?null:v)} label={<span style={{ fontSize:12, color:'var(--text-secondary)' }}>Τα ενοίκια εισπράττονται <strong style={{ color:'var(--text-primary)' }}>μέσω τράπεζας</strong>.</span>}/>
-                    <InfoHint>Από {grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν.5222/2025, άρθρο 210· έναρξη με την απόφαση ΑΑΔΕ Α.1187/2026) τα μισθώματα κατοικίας θα πρέπει να εισπράττονται με τραπεζικό ή ηλεκτρονικό μέσο (κατάθεση, IRIS, έμβασμα). Με μετρητά θα χάνεται η τεκμαρτή έκπτωση {fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} και θα φορολογείσαι στο 100% του ενοικίου. Για τις χρήσεις 2025-2026 η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης.</InfoHint>
+                    <InfoHint>Από {grDateOf(FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT)} (ν. 5222/2025, άρθρο 210· έναρξη με την απόφαση ΑΑΔΕ Α.1187/2026) τα μισθώματα κατοικίας θα πρέπει να εισπράττονται με τραπεζικό ή ηλεκτρονικό μέσο (κατάθεση, IRIS, έμβασμα). Με μετρητά θα χάνεται η τεκμαρτή έκπτωση {fpRate(PRESUMPTIVE_DEDUCTION_RATE*100)} και θα φορολογείσαι στο 100% του ενοικίου. Για τις χρήσεις 2025-2026 η έκπτωση δίνεται ανεξάρτητα από τον τρόπο είσπραξης.</InfoHint>
                   </div>
                   {/* ΑΠΟ ΠΟΥ ΤΟ ΞΕΡΕΙ. Χωρίς αυτή τη γραμμή, ο χρήστης βλέπει ένα
                       τσεκαρισμένο κουτάκι και δεν έχει λόγο να το ελέγξει — που
@@ -632,7 +632,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             <div style={{ display:'flex', flexDirection:'column', gap: 4, minWidth:150 }}>
               <span style={{ fontSize:12, color:'var(--text-secondary)', fontFamily: T.font.sans, fontWeight:500 }}>Ηλικία</span>
               <input aria-label="Ηλικία" type="number" inputMode="numeric" min={16} max={99} value={age} onChange={e=>updateAge(e.target.value===''?'':Math.max(0,Number(e.target.value)))} placeholder="Παράδειγμα: 30"
-                title="Προαιρετικό. Ενεργοποιεί τη μειωμένη κλίμακα νέων (ν.5246/2025) στην ατομική επιχείρηση."
+                title="Προαιρετικό. Ενεργοποιεί τη μειωμένη κλίμακα νέων (ν. 5246/2025) στην ατομική επιχείρηση."
                 onFocus={e=>e.currentTarget.style.borderColor='var(--accent)'} onBlur={e=>e.currentTarget.style.borderColor='var(--border-default)'}
                 style={{ width:90, height:T.h.lg, padding:'10px 16px', borderRadius:10, border:'1px solid var(--border-default)', background:'var(--bg-elevated)', color:'var(--text-primary)', fontSize:14, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', textAlign:'right', outline:'none', transition:'border-color 0.14s' }}/>
               <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily: T.font.sans }}>Μειωμένη κλίμακα νέων (έως 30 ετών).</span>

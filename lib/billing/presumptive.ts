@@ -14,12 +14,12 @@ import { FIRST_YEAR_BANK_RECEIPT, bankReceiptPenaltyShare, rentalIncomeTax, type
 export const PRESUMPTIVE_DEDUCTION_RATE = 0.05
 
 /** Τεκμαρτή έκπτωση φυσικού προσώπου: 5% (άρθρο 39 §3 ΚΦΕ). Η προϋπόθεση της
- *  τραπεζικής είσπραξης (ν.5222/2025) ξεκινά την 1.7.2027: δες `bankReceiptMatters`. */
+ *  τραπεζικής είσπραξης (ν. 5222/2025) ξεκινά την 1.7.2027: δες `bankReceiptMatters`. */
 export function presumptiveDeductionRate(rentsPaidViaBank = true): number {
   return rentsPaidViaBank ? PRESUMPTIVE_DEDUCTION_RATE : 0
 }
 
-/** Μετράει ο τρόπος είσπραξης σε αυτή τη χρήση; (Κύρωση από 1.7.2027 · ν.5222/2025.) */
+/** Μετράει ο τρόπος είσπραξης σε αυτή τη χρήση; (Κύρωση από 1.7.2027 · ν. 5222/2025.) */
 export function bankReceiptMatters(year?: number | null): boolean {
   return year != null && isFinite(year) && year >= FIRST_YEAR_BANK_RECEIPT
 }

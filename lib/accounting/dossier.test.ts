@@ -1,10 +1,11 @@
 // npx tsx lib/accounting/dossier.test.ts
 import {
   requirementsFor, readiness, groupByWho, traps, defaultBookkeeping,
-  statusForAccountant, statusesOf, WHO_LABEL, missingAfmGroups, filePapers,
+  statusForAccountant, statusesOf, WHO_LABEL, missingAfmGroups,
   statusesForYear, yearStatusLabel,
-  type DossierContext, type Requirement, type LegalForm, type DossierPaper,
+  type DossierContext, type Requirement, type LegalForm,
 } from './dossier';
+import { filePapers, type DossierPaper } from './dossierFiles';
 import type { PropertyStatus } from '../property/status';
 import { aadePath } from '@/lib/tax/aade';
 
@@ -402,7 +403,7 @@ eq('καταστάσεις από γραμμές βάσης', statusesOf([{ stat
   // Το βιβλίο ταξινομείται μέσα στη `filePapers`: 15/01, 10/03, 02/05, 02/05.
   const papers: DossierPaper[] = [
     { fileName: 'ΔΕΗ.pdf', supplier: 'ΔΕΗ', docDate: '2026-01-15', amount: 95 },
-    { fileName: 'scan_0042.PDF', supplier: 'Υδραυλικός', docDate: '2026-03-10', amount: 120 },
+    { fileName: 'scan_0042.PDF', supplier: 'Παπαδόπουλος Ι.Κ.Ε.', category: 'plumber', docDate: '2026-03-10', amount: 120 },
     { fileName: 'διφορούμενο.pdf', supplier: 'Κοινόχρηστα', docDate: '2026-05-02', amount: 300 },
     { fileName: 'με ΑΦΜ.pdf', supplier: 'Συνεργείο', docDate: '2026-05-02', amount: 300, afm: '999999999' },
     { fileName: 'άγνωστο.jpg', title: 'Χωρίς στοιχεία' },
@@ -419,8 +420,10 @@ eq('καταστάσεις από γραμμές βάσης', statusesOf([{ stat
   // ΧΩΡΙΣ ΗΜΕΡΟΜΗΝΙΑ: στο τέλος, χωρίς γραμμή και το λέει το όνομά του.
   eq('το αχρονολόγητο τελευταίο', filed[4].paper.fileName, 'άγνωστο.jpg');
   eq('χωρίς γραμμή', filed[4].row, null);
-  eq('και το γράφει', filed[4].file, '05 χωρίς ημερομηνία Χωρίς στοιχεία.jpg');
-  eq('η κατάληξη πεζή', filed[1].file, '02 2026-03-10 Υδραυλικός.pdf');
+  // ΤΟ ΚΟΙΝΟ ΟΝΟΜΑ ΚΑΙ ΟΙ ΦΑΚΕΛΟΙ ΤΟΥ ΑΡΧΕΙΟΥ (lib/archive/naming.ts): ό,τι
+  // λείπει γράφεται ως «Χωρίς πάροχο» / «Χωρίς έτος» στη διαδρομή.
+  eq('και το γράφει', filed[4].file, 'Έγγραφο/Χωρίς πάροχο/Χωρίς έτος/Έγγραφο.jpg');
+  eq('είδος/πάροχος/έτος και η κατάληξη πεζή', filed[1].file, 'Υδραυλικός/Παπαδόπουλος/2026/Υδραυλικός_Παπαδόπουλος_2026_03_120,00.pdf');
   // Η ΣΕΙΡΑ ΕΙΣΑΓΩΓΗΣ ΔΕΝ ΑΛΛΑΖΕΙ ΤΙΠΟΤΑ: δύο εξαγωγές, ίδιος φάκελος.
   eq('ίδια δεδομένα, ίδιος φάκελος',
     filePapers([...papers].reverse(), book).map(f => f.file).join('|'),
@@ -434,7 +437,16 @@ eq('καταστάσεις από γραμμές βάσης', statusesOf([{ stat
     [{ fileName: 'a.pdf', supplier: 'ΔΕΗ / ΕΥΔΑΠ: λογαριασμοί' }],
     [],
   );
-  eq('καθαρό όνομα', filed[0].file, '01 χωρίς ημερομηνία ΔΕΗ ΕΥΔΑΠ λογαριασμοί.pdf');
+  // Χωρίς ράφι, ο γνωστός πάροχος δίνει το είδος (ΔΕΗ → Ρεύμα, naming.ts).
+  eq('καθαρό όνομα, κάθετος όχι υποφάκελος', filed[0].file, 'Ρεύμα/ΔΕΗ/Χωρίς έτος/Ρεύμα_ΔΕΗ.pdf');
+  // Ο ΜΗΝΑΣ ΤΗΣ ΠΕΡΙΟΔΟΥ, ΤΟ ΙΔΙΟ ΑΦΜ ΕΝΑ ΟΝΟΜΑ, ΤΑ ΔΙΠΛΑ _2.
+  const two = filePapers([
+    { fileName: 'a.pdf', category: 'Λογαριασμός Ρεύματος', supplier: 'ΔΗΜΟΣΙΑ ΕΠΙΧΕΙΡΗΣΗ ΗΛΕΚΤΡΙΣΜΟΥ Α.Ε.', afm: '090000045', docDate: '2026-07-02', periodFrom: '2026-05-05', periodTo: '2026-06-30', amount: 84.3, createdAt: '2026-07-02T10:00:00Z' },
+    { fileName: 'b.pdf', category: 'Λογαριασμός Ρεύματος', supplier: 'ΔΕΗ', afm: '090000045', docDate: '2026-07-02', periodTo: '2026-06-30', amount: 84.3, createdAt: '2026-07-03T10:00:00Z' },
+  ], []);
+  const byFile = (n: string) => two.find(f => f.paper.fileName === n)!.file;
+  eq('μήνας του τέλους της περιόδου, το πρώτο που καταχωρήθηκε', byFile('a.pdf'), 'Ρεύμα/ΔΕΗ/2026/Ρεύμα_ΔΕΗ_2026_06_84,30.pdf');
+  eq('το δεύτερο ίδιο: _2', byFile('b.pdf'), 'Ρεύμα/ΔΕΗ/2026/Ρεύμα_ΔΕΗ_2026_06_84,30_2.pdf');
   eq('χωρίς κίνηση, καμία γραμμή', filed[0].row, null);
 }
 {

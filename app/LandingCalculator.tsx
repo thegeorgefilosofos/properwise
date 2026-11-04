@@ -242,7 +242,7 @@ export default function LandingCalculator({ cta, locale = 'el' }: { cta: string;
             συλλαβισμός συνοδεύει τη στοίχιση — μόνη της τεντώνει τα κενά. Το
             ποσοστό κι οι ημερομηνίες είναι ψηφία: μένουν ακέραια. */}
         <p className="po-just" style={{ fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)', lineHeight: 1.6, margin: 0 }}>
-          {en ? C.note(FIRST_YEAR_NEW_BRACKETS, statutoryIn(PRESUMPTIVE_DEDUCTION_RATE)) : hy(<>Ενδεικτικός υπολογισμός για ένα ακίνητο χωρίς άλλο εισόδημα από ενοίκια, με την κλίμακα ενοικίων {FIRST_YEAR_NEW_BRACKETS} (ν.5246/2025) και τεκμαρτή έκπτωση {statutory(PRESUMPTIVE_DEDUCTION_RATE)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
+          {en ? C.note(FIRST_YEAR_NEW_BRACKETS, statutoryIn(PRESUMPTIVE_DEDUCTION_RATE)) : hy(<>Ενδεικτικός υπολογισμός για ένα ακίνητο χωρίς άλλο εισόδημα από ενοίκια, με την κλίμακα ενοικίων {FIRST_YEAR_NEW_BRACKETS} (ν. 5246/2025) και τεκμαρτή έκπτωση {statutory(PRESUMPTIVE_DEDUCTION_RATE)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
         </p>
         <Link href={localHref(locale, '/signup')} className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
           {/* ΕΝΑ ΚΕΙΜΕΝΟ ΕΓΓΡΑΦΗΣ ΣΕ ΟΛΗ ΤΗΝ ΑΡΧΙΚΗ (28/10/2026). Εδώ έγραφε «… με
