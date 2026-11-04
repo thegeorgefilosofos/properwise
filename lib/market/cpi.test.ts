@@ -9,8 +9,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import {
   RENT_INDEX, RENT_INDEX_LATEST, RENT_ADJUSTMENT_SHARE,
-  rentIndexFor, rentAdjustmentPct, indexMonthLabel, indexPeriodLabel,
-  cpiFor, CPI_YEARS, CPI_LATEST_YEAR, CPI_BY_YEAR,
+  rentIndexFor, rentAdjustmentPct, indexMonthLabel, indexMonthAcc, indexPeriodLabel,
+  cpiFor, CPI_YEARS, CPI_BY_YEAR,
   cpiConfirmedDate, cpiConfirmedLabel,
 } from './cpi'
 
@@ -94,6 +94,7 @@ function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed+
   ok('Φεβρουάριος 2026 μετρά Φεβρουαρίου 2025 ως Ιανουαρίου 2026',
      indexPeriodLabel('2026-02') === 'από τον Φεβρουάριο 2025 ως τον Ιανουάριο 2026')
   ok('ο μήνας διαβάζεται σε ονομαστική', indexMonthLabel('2026-07') === 'Ιούλιος 2026')
+  ok('μετά από «τον» ο μήνας μπαίνει σε αιτιατική', indexMonthAcc('2026-07') === 'Ιούλιο 2026')
 }
 
 // ── ΜΙΑ ΠΗΓΗ ΓΙΑ ΤΗ ΜΕΣΗ ΕΤΗΣΙΑ ΜΕΤΑΒΟΛΗ ──────────────────────────────────
@@ -106,7 +107,7 @@ function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed+
   ok('το μηδέν είναι τιμή, όχι κενό', cpiFor(2016) === 0)
   ok('άγνωστο μελλοντικό έτος δίνει null', cpiFor(2099) === null)
   ok('άγνωστο παλιό έτος δίνει null', cpiFor(1990) === null)
-  ok('το τελευταίο έτος είναι το 2025', CPI_LATEST_YEAR === 2025)
+  ok('το τελευταίο έτος είναι το 2025', CPI_YEARS[CPI_YEARS.length - 1] === 2025)
   ok('τα έτη είναι σε αύξουσα σειρά, χωρίς διπλά',
      CPI_YEARS.every((y, i) => i === 0 || y > CPI_YEARS[i - 1]))
   ok('κάθε έτος του πίνακα έχει τιμή', CPI_YEARS.every(y => cpiFor(y) !== null))

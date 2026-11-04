@@ -89,6 +89,32 @@ for (const f of files) {
   });
 }
 
+// ── ΚΑΙ ΣΕ ΔΥΟ ΓΡΑΜΜΕΣ ΚΑΙ ΜΕ ΤΙΣ ΕΤΙΚΕΤΕΣ ΜΗΝΑ (03/11/2026) ─────────────
+// Το παράθυρο της αναπροσαρμογής έγραφε «για τον Ιούλιος 2026». Το άρθρο ήταν
+// στο τέλος μιας γραμμής JSX («για τον{' '}») και ο μήνας ερχόταν στην επόμενη
+// από το `indexMonthLabel()`, που δίνει ονομαστική. Ο έλεγχος ανά γραμμή δεν
+// το έβλεπε. Εδώ κρίνεται ολόκληρο το αρχείο χωρίς σχόλια και οι ετικέτες
+// `indexMonthLabel`/`monthYearLabel` μετρούν ως ονομαστική.
+const GAP = "(?:\\s|\\{' '\\}|\\{\" \"\\})*";
+const PRE_ACC = '(?:τον|την|τη|στον|στην|στη|από|σε|ως|έως|μέχρι|για τον|από τον|ως τον)';
+const LABEL_AFTER = new RegExp(`(?<![\\p{L}])(${PRE_ACC}|του|έναντι)${GAP}\\$?\\{?\\s*(indexMonthLabel|monthYearLabel)\\s*\\(`, 'gu');
+const NOM_SPLIT = new RegExp(`(?<![\\p{L}])(?:τον|την|τη|στον|στην|στη)\\s*\\{' '\\}\\s*\\n\\s*\\{\\s*monthNom\\s*\\(`, 'gu');
+const stripComments = src => src
+  .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
+  .replace(/(^|[^:'"`\\])\/\/[^\n]*/g, (m, p) => p + ' '.repeat(m.length - p.length));
+for (const f of files) {
+  const rel = f.split('\\').join('/');
+  if (rel === SELF || rel.endsWith('.test.ts') || rel.endsWith('.test.tsx')) continue;
+  const src = stripComments(readFileSync(f, 'utf8'));
+  for (const re of [LABEL_AFTER, NOM_SPLIT]) {
+    re.lastIndex = 0;
+    for (const m of src.matchAll(re)) {
+      const line = src.slice(0, m.index).split('\n').length;
+      bad.push(`${rel}:${line}  ετικέτα μήνα σε ονομαστική μετά από άρθρο ή πρόθεση → indexMonthAcc/monthAcc\n      ${m[0].replace(/\s+/g, ' ').slice(0, 100)}`);
+    }
+  }
+}
+
 if (bad.length) {
   console.log(`🔴 Πτώση μήνα: ${bad.length} ${bad.length === 1 ? 'σημείο' : 'σημεία'}.\n`);
   bad.forEach(b => console.log(`   ${b}\n`));

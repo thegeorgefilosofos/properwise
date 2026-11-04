@@ -28,7 +28,7 @@ import { MYAADE } from '@/lib/tax/aade';
 import { aadeTitle } from '@/components/AadeLink';
 import { SAY, failed } from '@/lib/core/dbError';
 import { acceptNumeric, PCT_MAX } from '@/lib/core/numInput';
-import { rentIndexFor, rentAdjustmentPct, indexMonthLabel, indexPeriodLabel, CPI_SOURCE_URL, cpiConfirmedDate } from '@/lib/market/cpi';
+import { rentIndexFor, rentAdjustmentPct, indexMonthAcc, indexPeriodLabel, CPI_SOURCE_URL, cpiConfirmedDate } from '@/lib/market/cpi';
 
 interface Prop { id: string; name: string; address: string | null }
 
@@ -331,7 +331,7 @@ export default function RentAdjustmentModal({ open, onClose, userId, supabase, b
       ? 'Για τον μήνα που διάλεξες δεν υπάρχει δημοσιευμένος δείκτης. Διάλεξε μεταγενέστερη ημερομηνία ισχύος ή όρισε το ποσοστό της σύμβασης με τη μέθοδο «Ποσοστό».'
       : <>
           Δωδεκάμηνη μεταβολή {indexPeriodLabel(index.ym)}, όπως τη δημοσίευσε η ΕΛΣΤΑΤ για τον{' '}
-          {indexMonthLabel(index.ym)}. Τελευταία ενημέρωση {cpiConfirmedDate()}.{' '}
+          {indexMonthAcc(index.ym)}. Τελευταία ενημέρωση {cpiConfirmedDate()}.{' '}
           <a href={CPI_SOURCE_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Έλεγχος στην πηγή</a>
         </>,
     manual: 'Όρισε απευθείας το νέο μίσθωμα, όπως το συμφωνήσατε.',
