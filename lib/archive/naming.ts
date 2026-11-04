@@ -106,6 +106,40 @@ function taxKind(title: string | null | undefined): ArchiveKind {
   return 'Φορολογικά';
 }
 
+// ── ΤΑ ΓΕΝΙΚΑ ΕΙΔΗ ΣΤΕΝΕΥΟΥΝ ΟΠΟΥ ΥΠΑΡΧΕΙ ΣΤΟΙΧΕΙΟ ──────────────────────────
+// «Λογαριασμός», «Τιμολόγιο», «Έγγραφο», «Λοιπά» δεν λένε στον λογιστή τι
+// είναι το χαρτί. Οταν ο πάροχος είναι γνωστός (ΔΕΗ → Ρεύμα) ή η επωνυμία ή
+// ο τίτλος γράφει ρητά την εργασία («Υδραυλικές Εργασίες», «Τιμολόγιο
+// υδραυλικού»), το είδος γίνεται το συγκεκριμένο του λεξιλογίου. Πίνακας
+// λέξεων-κλειδιών, όχι συμπερασμός: ίδιο κείμενο, ίδιο είδος, πάντα.
+const GENERIC = new Set<ArchiveKind>(['Λογαριασμός', 'Τιμολόγιο', 'Έγγραφο', 'Λοιπά']);
+const PROVIDER_KIND: Record<string, ArchiveKind> = { 'ΔΕΗ': 'Ρεύμα', 'ΕΥΔΑΠ': 'Νερό', 'ΕΥΑΘ': 'Νερό', 'ΑΑΔΕ': 'Φορολογικά' };
+const KEYWORD_KIND: [RegExp, ArchiveKind][] = [
+  [/υδραυλικ/u, 'Υδραυλικός'],
+  [/ηλεκτρολογ/u, 'Ηλεκτρολόγος'],
+  [/ανελκυστηρ|ασανσερ/u, 'Συντήρηση ασανσέρ'],
+  [/πισιν/u, 'Συντήρηση πισίνας'],
+  [/κηπουρ/u, 'Κηπουρός'],
+  [/απεντομωσ|μυοκτονι/u, 'Απεντόμωση'],
+  [/κλιματιστικ|ψυκτικ/u, 'Κλιματισμός'],
+  [/κοινοχρηστ/u, 'Κοινόχρηστα'],
+  [/φυσικο αεριο|φυσικου αεριου/u, 'Φυσικό αέριο'],
+  [/(λογαριασμος|καταναλωση) ρευματος|ηλεκτρικη ενεργεια/u, 'Ρεύμα'],
+  [/(λογαριασμος|καταναλωση) νερου|υδρευσ/u, 'Νερό'],
+];
+/** Το συγκεκριμένο είδος για ένα γενικό, από τον πάροχο και τον τίτλο· αλλιώς το ίδιο. */
+export function refineKind(kind: ArchiveKind, provider?: string | null, title?: string | null): ArchiveKind {
+  if (!GENERIC.has(kind)) return kind;
+  const p = cleanProvider(provider);
+  if (p && PROVIDER_KIND[p]) {
+    const k = PROVIDER_KIND[p];
+    return k === 'Φορολογικά' ? taxKind(title) : k;
+  }
+  const text = foldKey(`${provider || ''} ${title || ''}`);
+  for (const [re, k] of KEYWORD_KIND) if (re.test(text)) return k;
+  return kind;
+}
+
 /** Οι πλατφόρμες βραχυχρόνιας: η χρέωσή τους είναι προμήθεια, όχι λογαριασμός. */
 const PLATFORMS = new Set(['Airbnb', 'Booking.com', 'Expedia', 'Vrbo']);
 
@@ -118,7 +152,7 @@ export function kindOfShelf(shelf: string | null | undefined, title?: string | n
   if (k === 'Φορολογικά') return taxKind(title);
   const p = cleanProvider(provider);
   if (p && PLATFORMS.has(p) && k !== 'Είσπραξη ενοικίου') return 'Προμήθεια πλατφόρμας';
-  return k;
+  return refineKind(k, provider, title);
 }
 
 /** Το είδος από κατηγορία δαπάνης ή κλειδί λογαριασμού· ό,τι δεν αναγνωρίζεται → `fallback`. */

@@ -154,7 +154,9 @@ export function FolderBrowser<F extends BrowserFile>(props: FolderBrowserProps<F
   // στήλες ανοίγουν από τις 1280, κάτω από αυτό η λίστα.
   const desktop = useMedia('(min-width: 1280px)');
   const phone = useMedia('(max-width: 767px)');
-  const [layout, setLayout] = useRemembered<'columns' | 'list'>('pw.archive.layout', parseLayout, saveLayout, 'columns');
+  // Ο διακόπτης «Στήλες | Λίστα» ζει στη γραμμή εργαλείων του Αρχείου, με το
+  // ίδιο κλειδί· εδώ μόνο διαβάζεται.
+  const [layout] = useRemembered<'columns' | 'list'>('pw.archive.layout', parseLayout, saveLayout, 'columns');
   const nodes = props.nodes as unknown as TreeNode<BrowserFile>[];
 
   if (nodes.length === 0) {
@@ -169,22 +171,12 @@ export function FolderBrowser<F extends BrowserFile>(props: FolderBrowserProps<F
   }
   if (phone) return <FilesPhone {...props} nodes={nodes} onOpen={props.onOpen as (f: BrowserFile) => void}/>;
   const columns = desktop && layout === 'columns';
-  // Ο διακόπτης ζει στην κεφαλίδα της ίδιας κάρτας, δεξιά της διαδρομής.
-  const tools = desktop ? (
-    <div role="group" aria-label="Προβολή φακέλων" className="fb-seg">
-      {(['columns', 'list'] as const).map(k => (
-        <button key={k} type="button" className="fb-seg-btn" aria-pressed={layout === k} onClick={() => setLayout(k)}>
-          {k === 'columns' ? 'Στήλες' : 'Λίστα'}
-        </button>
-      ))}
-    </div>
-  ) : null;
   return columns
-    ? <Columns {...props} nodes={nodes} tools={tools} onOpen={props.onOpen as (f: BrowserFile) => void}/>
-    : <ListTable {...props} nodes={nodes} tools={tools} onOpen={props.onOpen as (f: BrowserFile) => void}/>;
+    ? <Columns {...props} nodes={nodes} onOpen={props.onOpen as (f: BrowserFile) => void}/>
+    : <ListTable {...props} nodes={nodes} onOpen={props.onOpen as (f: BrowserFile) => void}/>;
 }
 
-type Inner = Omit<FolderBrowserProps<BrowserFile>, 'nodes'> & { nodes: TreeNode<BrowserFile>[]; tools?: React.ReactNode };
+type Inner = Omit<FolderBrowserProps<BrowserFile>, 'nodes'> & { nodes: TreeNode<BrowserFile>[] };
 
 /** Η διαδρομή που θυμάται η συσκευή, ή η αυτόματη όταν χρειάζεται. */
 function usePath(nodes: TreeNode<BrowserFile>[], focused: boolean): [Path, (p: Path) => void] {
@@ -196,8 +188,17 @@ function usePath(nodes: TreeNode<BrowserFile>[], focused: boolean): [Path, (p: P
 }
 
 // ═══ ΣΤΗΛΕΣ ═════════════════════════════════════════════════════════════
-function Columns({ nodes, focused, rootLabel, onOpen, tools }: Inner) {
-  const [path, setPath] = usePath(nodes, focused);
+function Columns({ nodes, focused, rootLabel, onOpen }: Inner) {
+  const [chosen, setPath] = usePath(nodes, focused);
+  // ΜΙΑ ΕΠΙΛΟΓΗ ΔΕΝ ΕΙΝΑΙ ΕΠΙΛΟΓΗ. Οταν η επόμενη στήλη έχει ένα μόνο στοιχείο
+  // (ένας πάροχος, ένα έτος), ανοίγει μόνη της ως το επόμενο επίπεδο: αλλιώς
+  // ο χρήστης πατούσε δύο φορές για να δει ένα αρχείο. Οι στήλες μένουν.
+  const path = (() => {
+    const p = [...chosen];
+    let level = walk(nodes, p).at(-1)?.children ?? (p.length ? [] : nodes);
+    while (p.length > 0 && p.length < 3 && level.length === 1) { p.push(level[0].key); level = level[0].children; }
+    return p;
+  })();
   const trail = walk(nodes, path);
   const [fileId, setFileId] = useState<string | null>(null);
   const [preview, setPreview] = useState(true);
@@ -247,7 +248,6 @@ function Columns({ nodes, focused, rootLabel, onOpen, tools }: Inner) {
     <div className="fb-columns-wrap">
       <div className="fb-head">
         <Breadcrumb rootLabel={rootLabel} trail={trail} onGo={i => { setPath(path.slice(0, i)); setFileId(null); }}/>
-        {tools}
       </div>
       <div ref={box} className="fb-columns" data-preview={!!file && preview}>
         {levels.map((lv, depth) => {
@@ -346,14 +346,14 @@ function Preview({ f, onOpen }: { f: BrowserFile; onOpen: (f: BrowserFile) => vo
       </dl>
       <div className="fb-preview-actions">
         {f.url && <Btn variant="secondary" onClick={() => onOpen(f)}>Άνοιγμα</Btn>}
-        {f.downloadUrl && <Btn variant="primary" href={f.downloadUrl} newTab>Λήψη</Btn>}
+        {(f.downloadUrl || f.url) && <Btn variant="primary" href={(f.downloadUrl || f.url)!} newTab>Λήψη</Btn>}
       </div>
     </aside>
   );
 }
 
 // ═══ ΛΙΣΤΑ ΜΕ ΤΡΙΓΩΝΑ ═══════════════════════════════════════════════════
-function ListTable({ nodes, focused, rootLabel, onOpen, tools }: Inner) {
+function ListTable({ nodes, focused, rootLabel, onOpen }: Inner) {
   const [saved, setSaved] = useRemembered<Record<string, boolean>>('pw.archive.open', parseOpen, saveOpen, {});
   const auto = focused || nodes.length === 1;
   const isOpen = (k: string) => saved[k] ?? auto;
@@ -398,7 +398,6 @@ function ListTable({ nodes, focused, rootLabel, onOpen, tools }: Inner) {
     <div className="fb-card">
     <div className="fb-head">
       <span className="fb-crumb" aria-current="location">{rootLabel}</span>
-      {tools}
     </div>
     <div role="treegrid" aria-label="Φάκελοι" className="fb-table">
       <div role="row" className="fb-tr fb-th">

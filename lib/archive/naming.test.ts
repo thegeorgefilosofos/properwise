@@ -1,7 +1,7 @@
 // Τεστ για το κοινό όνομα και το δέντρο φακέλων του Αρχείου.
 import {
   archiveFileName, archiveFolder, cleanProvider, kindOfShelf, kindOfText, amountPart, extOf, firstDate, nameDateOf,
-  providerNames, resolveProvider, uniqueNames, defaultProvider, BILL_KIND, KINDS,
+  providerNames, resolveProvider, uniqueNames, defaultProvider, refineKind, BILL_KIND, KINDS,
 } from './naming'
 import { folderTree, NO_PROVIDER, NO_YEAR, PHOTOS, type TreeInput } from './tree'
 import { ARCHIVE_CATEGORIES } from '../billing/documents'
@@ -33,6 +33,14 @@ eq('προμήθεια πλατφόρμας', kindOfShelf('Άλλο Έγγραφ
 eq('η απόδοση της πλατφόρμας μένει είσπραξη', kindOfShelf('Είσπραξη ενοικίου', 'Payout', 'Airbnb'), 'Είσπραξη ενοικίου')
 eq('παλιό κλειδί contract', kindOfShelf('contract'), 'Μισθωτήριο')
 eq('παλιό κλειδί tax με ΕΝΦΙΑ', kindOfShelf('tax', 'Εκκαθαριστικό ΕΝΦΙΑ'), 'ΕΝΦΙΑ')
+
+// ── Τα γενικά είδη στενεύουν ────────────────────────────────────────────
+eq('λογαριασμός της ΔΕΗ → Ρεύμα', kindOfShelf('bill', 'Λογαριασμός Ιουλίου', 'ΔΕΗ'), 'Ρεύμα')
+eq('τιμολόγιο υδραυλικού → Υδραυλικός', kindOfShelf('invoice', 'Τιμολόγιο υδραυλικού', 'Υδραυλικές Εργασίες ΑΕ'), 'Υδραυλικός')
+eq('έγγραφο ΑΑΔΕ με Ε9 στον τίτλο → Ε9', kindOfShelf('Άλλο Έγγραφο', 'Δήλωση Ε9', 'ΑΑΔΕ'), 'Ε9')
+eq('δαπάνη «Λοιπά» με ηλεκτρολόγο', refineKind(kindOfText('Κάτι'), 'Ηλεκτρολογικές Εγκαταστάσεις Παππάς', null), 'Ηλεκτρολόγος')
+eq('χωρίς στοιχείο μένει γενικό', kindOfShelf('invoice', 'Τιμολόγιο 4411', 'Άλφα Βήτα'), 'Τιμολόγιο')
+eq('συγκεκριμένο είδος δεν αλλάζει', kindOfShelf('Λογαριασμός Νερού', 'Λογαριασμός', 'ΔΕΗ'), 'Νερό')
 
 // ── Ο πάροχος: ο ίδιος πάντα με το ίδιο όνομα ──────────────────────────
 for (const v of ['ΔΕΗ', 'ΔΕΗ Α.Ε.', 'Δεη ΑΕ', 'ΔΗΜΟΣΙΑ ΕΠΙΧΕΙΡΗΣΗ ΗΛΕΚΤΡΙΣΜΟΥ Α.Ε.', 'Δημόσια Επιχείρηση Ηλεκτρισμού'])

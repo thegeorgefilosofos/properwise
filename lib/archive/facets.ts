@@ -64,9 +64,9 @@ export const FACET_OF: Record<FacetKey, (i: FacetableItem) => string[]> = {
 }
 
 export const FACET_LABEL: Record<FacetKey, string> = {
-  category: 'Κατηγορία',
+  category: 'Είδος',
   provider: 'Πάροχος',
-  year:     'Χρονιά',
+  year:     'Έτος',
   source:   'Προέλευση',
 }
 
