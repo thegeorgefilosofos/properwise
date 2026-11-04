@@ -183,6 +183,15 @@ if ! out=$($PSQL -d posdb -f "$ROOT/scripts/db/rls-probe.sql" 2>&1); then
 fi
 probes=$(( $(echo "$out" | grep -c 'probe:' || true) + eprobes ))
 
+# ── ΤΑ ΛΟΓΙΣΤΙΚΑ ΓΡΑΦΕΙΑ: ΚΑΝΕΝΑ ΔΕΝ ΒΛΕΠΕΙ ΤΑ ΤΟΥ ΑΛΛΟΥ ───────────────────
+# Στην ίδια βάση, μετά το rls-probe: διαβάζει ήδη το `probe.uid`.
+if ! fpout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-probe.sql" 2>&1); then
+  echo "🔴 Τα λογιστικά γραφεία δεν κρατούν όσα υπόσχονται:"
+  echo "$fpout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΑΠΩΛΕΙΑ|ΠΑΡΑΒΙΑΣΗ|ΚΛΕΙΔΩΜΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$fpout" | grep -c 'probe:' || true)))
+
 # ── ΔΕΧΕΤΑΙ Η ΒΑΣΗ ΤΙΣ ΓΡΑΜΜΕΣ ΟΠΩΣ ΤΙΣ ΧΤΙΖΕΙ Η ΕΦΑΡΜΟΓΗ; ─────────────────────
 # Το rls-probe γράφει γραμμές με το χέρι. Οι γραμμές της εφαρμογής όμως τις
 # χτίζει το lib/data· από εκεί ήρθαν τα null σε NOT NULL που έφτασαν στην
