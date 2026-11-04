@@ -22,7 +22,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { buildWorkbook, dossierFiles, type DossierAttachment } from './accountantExport';
 import { type AccountantMovement } from './accountantTypes';
-import { filePapers } from '@/lib/accounting/dossier';
+import { filePapers } from '@/lib/accounting/dossierFiles';
 import { buildRegister } from '@/lib/accounting/fixedAssets';
 import { XLSX, workbookBytes } from './xlsxStyle';
 import { type Cell } from './sheetFormat';

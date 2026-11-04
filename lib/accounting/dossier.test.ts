@@ -1,10 +1,11 @@
 // npx tsx lib/accounting/dossier.test.ts
 import {
   requirementsFor, readiness, groupByWho, traps, defaultBookkeeping,
-  statusForAccountant, statusesOf, WHO_LABEL, missingAfmGroups, filePapers,
+  statusForAccountant, statusesOf, WHO_LABEL, missingAfmGroups,
   statusesForYear, yearStatusLabel,
-  type DossierContext, type Requirement, type LegalForm, type DossierPaper,
+  type DossierContext, type Requirement, type LegalForm,
 } from './dossier';
+import { filePapers, type DossierPaper } from './dossierFiles';
 import type { PropertyStatus } from '../property/status';
 import { aadePath } from '@/lib/tax/aade';
 
