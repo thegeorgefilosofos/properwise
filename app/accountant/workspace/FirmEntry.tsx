@@ -100,6 +100,10 @@ export default function FirmEntry({ db, ownerId, ownerName, kind, onClose }: {
       if (!file || !property) return fail('error');
       if (!TYPES.includes(file.type)) return fail('type');
       if (file.size > MAX_BYTES) return fail('size');
+      // Η ΣΥΜΒΑΣΗ ΠΡΙΝ ΑΠΟ ΤΟ ΑΝΕΒΑΣΜΑ (20261105100000): η πολιτική του storage
+      // αρνείται έτσι κι αλλιώς, αλλά με γενικό μήνυμα. Εδώ λέγεται ο λόγος.
+      const dpa = await db.rpc('firm_owner_dpa_ok', { p_owner: ownerId });
+      if (!dpa.error && dpa.data === false) return fail('dpa');
       const path = docPath(ownerId, property, file.name);
       const up = await db.storage.from('property-files').upload(path, file, { upsert: false, contentType: file.type });
       if (up.error) return fail('not_allowed');
