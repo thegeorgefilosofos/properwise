@@ -108,7 +108,7 @@ function CollapsibleSection({ title, hint, defaultOpen = false, delay, children 
             σειρά με `flex-wrap`, οπότε στα 390 έπεφτε μόνο του κάτω από το
             «Εμφάνιση και γλώσσα». Τίτλος και υπόδειξη ζουν τώρα σε δικό τους
             μπλοκ που τυλίγει όσο χρειάζεται· το βελάκι στέκεται δεξιά του. */}
-        <span style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: 2, columnGap: 10 }}>
+        <span style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: 4, columnGap: 10 }}>
         <span style={{ ...TT.label, flex: '999 1 auto', minWidth: 0 }}>{title}</span>
         {/* ═══ Η ΥΠΟΣΗΜΕΙΩΣΗ ΠΑΕΙ ΣΕ ΔΕΥΤΕΡΗ ΓΡΑΜΜΗ ΑΝΤΙ ΝΑ ΚΟΠΕΙ ══════════════
             Με τη γραμματοσειρά στα 12 σε δάχτυλο, το «Κωδικός και επαλήθευση δύο
