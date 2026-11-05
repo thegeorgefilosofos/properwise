@@ -21,24 +21,20 @@
 // κάθε πελάτη, γραμμένος μία φορά και δοκιμασμένος χωριστά.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { T, Card, Btn, Skeleton, fixedCols } from '@/components/Theme';
+import { T, Card, Btn, Skeleton } from '@/components/Theme';
 import { TextInput, CustomSelect } from '@/app/dashboard/components/UIComponents';
 import { ActionMenu } from '@/components/ActionMenu';
 import {
-  myFirm, myFirmInvites, answerInvite, clientLevels, assign, openClient, dropFirmClient, saveFirm,
+  myFirm, myFirmInvites, answerInvite, clientLevels, assign, dropFirmClient, saveFirm,
   filterClients, entryKinds, canAct, canManage, reasonText, ENTRY_LABEL, ROLE_LABEL,
   type Firm, type FirmInvite, type ClientLevel, type Scope, type StatusFilter, type FirmKind,
 } from '@/lib/data/firms';
 import FirmEntry, { type EntryKind } from './FirmEntry';
 import FirmView from './FirmView';
-
-// Η διεύθυνση δεν αλλάζει χωρίς πλοήγηση: δεν υπάρχει τι να ακούσει η συνδρομή.
-const SEARCH_NEVER_CHANGES = () => () => {};
-const readView = () => new URLSearchParams(window.location.search).get('view');
+import SecondStep from './SecondStep';
 import { PortalBar, PortalTitle, portalWrap } from '../Chrome';
-import { claim, clients, request, withdrawRequest, dropClient, gapsOf, readinessOf, aadeStateOf, aadeStateLabel, type ClientCounts } from '@/lib/data/accountant';
+import { claim, clients, clientData, request, withdrawRequest, dropClient, gapsOf, readinessOf, aadeStateOf, aadeStateLabel, type ClientCounts } from '@/lib/data/accountant';
 import { fileBytes } from '@/lib/data/e2Prefilled';
 import { PACK_FILES } from '@/lib/accounting/meetingPack';
 import { downloadFile } from '@/lib/core/download';
@@ -54,6 +50,14 @@ import { notify, notifyError } from '@/components/Toast';
 import { confirmDialog } from '@/components/confirmBus';
 import { fe, fd } from '@/components/Theme';
 import { useRememberedFlag } from '@/components/useRememberedFlag';
+
+// ΤΑ ΤΟΥ ΓΡΑΦΕΙΟΥ ΦΟΡΤΩΝΟΝΤΑΙ ΜΟΝΟ ΣΤΟΝ ΠΕΡΙΗΓΗΤΗ. Η όψη του γραφείου ανοίγει
+// από το `?view=firm` και η καταχώρηση από κλικ: ο διακομιστής δεν αποδίδει
+// ποτέ κανένα από τα δύο, οπότε δεν χρειάζεται να κουβαλά τον κώδικά τους.
+
+// Η διεύθυνση δεν αλλάζει χωρίς πλοήγηση: δεν υπάρχει τι να ακούσει η συνδρομή.
+const SEARCH_NEVER_CHANGES = () => () => {};
+const readView = () => new URLSearchParams(window.location.search).get('view');
 
 /** Η προτίμηση «δείξε ποσά» ζει στον περιηγητή του λογιστή, όχι στη βάση. */
 const MONEY_KEY = 'properwise.accountant.money';
@@ -71,7 +75,6 @@ const defaultYear = () => declarationYear(athensToday());
 
 export default function AccountantWorkspace() {
   const supabase = useMemo(() => createClient(), []);
-  const router = useRouter();
   const view = useSyncExternalStore(SEARCH_NEVER_CHANGES, readView, () => null);
   const [email, setEmail] = useState<string | null | undefined>(undefined);
   const [year, setYear] = useState(defaultYear);
@@ -120,6 +123,10 @@ export default function AccountantWorkspace() {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [assignTo, setAssignTo] = useState('');
   const [entry, setEntry] = useState<{ c: ClientCounts; kind: EntryKind } | null>(null);
+  // ── ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ────────────────────────────────────────────────────
+  // Το κρίνει η βάση (20261104150000): ενεργό μέλος γραφείου χωρίς `aal2`
+  // παίρνει `mfa_required` σε κάθε κλήση. `null` όσο δεν έχει απαντήσει.
+  const [secondStep, setSecondStep] = useState<boolean | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
@@ -127,6 +134,7 @@ export default function AccountantWorkspace() {
 
   const loadFirm = useCallback(async () => {
     const [f, inv, lv] = await Promise.all([myFirm(supabase), myFirmInvites(supabase), clientLevels(supabase)]);
+    if (!f.ok && f.secondStep) { setSecondStep(true); return; }
     let current = f.ok ? f.data : null;
     // Η ΕΓΓΡΑΦΗ ΩΣ ΓΡΑΦΕΙΟ ΟΛΟΚΛΗΡΩΝΕΤΑΙ ΕΔΩ. Η φόρμα της εγγραφής κρατά τα
     // στοιχεία στο προφίλ (δεν υπάρχει ακόμη συνεδρία για να γραφτεί γραφείο)·
@@ -140,9 +148,15 @@ export default function AccountantWorkspace() {
           name: m.firm_name, afm: String(m.firm_afm ?? ''), kind: (m.firm_kind === 'tax' ? 'tax' : 'accounting') as FirmKind,
           phone: String(m.firm_phone ?? ''), address: String(m.firm_address ?? ''),
         });
-        if (r.ok) { const again = await myFirm(supabase); current = again.ok ? again.data : null; }
+        if (r.ok) {
+          // ΤΟ ΝΕΟ ΓΡΑΦΕΙΟ ΕΧΕΙ ΗΔΗ ΕΝΕΡΓΟ ΜΕΛΟΣ: από εδώ η βάση ζητά δεύτερο βήμα.
+          const again = await myFirm(supabase);
+          if (!again.ok && again.secondStep) { setSecondStep(true); return; }
+          current = again.ok ? again.data : null;
+        }
       }
     }
+    setSecondStep(false);
     setFirm(current);
     setInvites(inv);
     setLevels(new Map((lv.ok ? lv.data : []).map(l => [l.ownerId, l])));
@@ -158,6 +172,7 @@ export default function AccountantWorkspace() {
 
   const load = useCallback(async (y: number) => {
     const r = await clients(supabase, y);
+    if (r.secondStep) { setSecondStep(true); return; }
     setReadFailed(r.failed);
     if (!r.failed) setRows(r.rows);
   }, [supabase]);
@@ -170,9 +185,15 @@ export default function AccountantWorkspace() {
   useEffect(() => {
     if (!email) return;
     let alive = true;
-    clients(supabase, year).then(r => { if (!alive) return; setReadFailed(r.failed); if (!r.failed) setRows(r.rows); });
+    if (secondStep) return;
+    clients(supabase, year).then(r => {
+      if (!alive) return;
+      if (r.secondStep) { setSecondStep(true); return; }
+      setReadFailed(r.failed);
+      if (!r.failed) setRows(r.rows);
+    });
     return () => { alive = false; };
-  }, [supabase, email, year]);
+  }, [supabase, email, year, secondStep]);
 
   // ΑΠΟ ΤΟΝ ΣΥΝΔΕΣΜΟ, ΟΧΙ ΜΟΝΟ ΑΠΟ ΤΟ TOKEN. Ο ιδιοκτήτης στέλνει ολόκληρη τη
   // διεύθυνση· το να ζητάμε από τον λογιστή να ψαλιδίσει το τελευταίο κομμάτι
@@ -220,7 +241,7 @@ export default function AccountantWorkspace() {
     setPackBusy(path);
     const bytes = await fileBytes(supabase, path);
     setPackBusy('');
-    if (!bytes) { notifyError('Ο φάκελος δεν κατέβηκε. Αν ο πελάτης ανακάλεσε τον σύνδεσμο, ζήτησε νέο.'); return; }
+    if (!bytes) { notifyError('Ο φάκελος δεν κατέβηκε. Αν ο πελάτης ανακάλεσε την πρόσβαση, δεν είναι πια διαθέσιμος· αλλιώς δοκίμασε ξανά.'); return; }
     downloadFile(new Blob([bytes.slice().buffer as ArrayBuffer], { type: 'application/zip' }), `${c.name} · ${PACK_FILES.zip(year, afm)}`, 'application/zip');
   };
 
@@ -233,7 +254,7 @@ export default function AccountantWorkspace() {
     setPackBusy(k);
     const bytes = await fileBytes(supabase, path);
     setPackBusy('');
-    if (!bytes) { notifyError('Ο φάκελος δεν κατέβηκε. Αν ο πελάτης ανακάλεσε τον σύνδεσμο, ζήτησε νέο.'); return; }
+    if (!bytes) { notifyError('Ο φάκελος δεν κατέβηκε. Αν ο πελάτης ανακάλεσε την πρόσβαση, δεν είναι πια διαθέσιμος· αλλιώς δοκίμασε ξανά.'); return; }
     const sheet = readZipEntry(bytes, PACK_FILES.codes);
     if (!sheet) { notifyError('Ο φάκελος στάλθηκε πριν μπει το φύλλο κωδικών. Ζήτησε από τον πελάτη να τον ξαναστείλει.'); return; }
     downloadFile(new Blob([sheet.slice().buffer as ArrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
@@ -243,15 +264,12 @@ export default function AccountantWorkspace() {
   // Οι ΑΤΑΚ των ακινήτων του πελάτη, από την ίδια ανάγνωση που ανοίγει την
   // κατάστασή του, για να ξεκινά η καταχώρηση με το χέρι από αυτούς.
   const openImport = async (c: ClientCounts) => {
-    let known: KnownProperty[] = [];
-    if (c.token) {
-      // Η αποτυχία εδώ δεν γίνεται ποσό: απλώς η καταχώρηση με το χέρι ξεκινά
-      // χωρίς έτοιμους ΑΤΑΚ. Και το λέμε.
-      const { data, error } = await supabase.rpc('get_accountant_data', { p_token: c.token, p_year: year });
-      if (error) notifyError('Οι ΑΤΑΚ του πελάτη δεν διαβάστηκαν· η καταχώρηση με το χέρι ξεκινά κενή.');
-      const props = ((data as { properties?: { name?: string | null; atak?: string | null }[] } | null)?.properties) ?? [];
-      known = props.map(p => ({ atak: p.atak ?? null, name: p.name || 'Ακίνητο' }));
-    }
+    // Η αποτυχία εδώ δεν γίνεται ποσό: απλώς η καταχώρηση με το χέρι ξεκινά
+    // χωρίς έτοιμους ΑΤΑΚ. Και το λέμε. Ο φάκελος έρχεται με το πρόσωπο, όχι
+    // με token (20261104150000).
+    const got = await clientData<{ properties?: { name?: string | null; atak?: string | null }[] }>(supabase, c.ownerId, year);
+    if (!got.data) notifyError('Οι ΑΤΑΚ του πελάτη δεν διαβάστηκαν· η καταχώρηση με το χέρι ξεκινά κενή.');
+    const known: KnownProperty[] = (got.data?.properties ?? []).map(p => ({ atak: p.atak ?? null, name: p.name || 'Ακίνητο' }));
     setImportFor({ owner: c, known });
   };
 
@@ -272,15 +290,6 @@ export default function AccountantWorkspace() {
     if (!r.ok) { notifyError(reasonText(r.reason)); return; }
     notify(accept ? 'Μπήκες στο γραφείο.' : 'Η πρόσκληση απορρίφθηκε.');
     await Promise.all([loadFirm(), load(year)]);
-  };
-
-  // ΤΟ ΑΝΟΙΓΜΑ ΓΡΑΦΕΤΑΙ ΣΤΟ ΙΣΤΟΡΙΚΟ. Ο υπεύθυνος και ο ιδιοκτήτης βλέπουν
-  // ποιος άνοιξε ποιον φάκελο και πότε· το token έρχεται φρέσκο από τη βάση.
-  const open = async (e: React.MouseEvent, c: ClientCounts) => {
-    if (!firm || e.metaKey || e.ctrlKey || e.shiftKey) return;
-    e.preventDefault();
-    const tok = await openClient(supabase, c.ownerId);
-    router.push(`/accountant/${tok ?? c.token}?year=${year}`);
   };
 
   const assignPicked = async (on: boolean) => {
@@ -321,13 +330,12 @@ export default function AccountantWorkspace() {
   }, [team, shown, levels, scope, assignee, status]);
   const activeMembers = firm?.members.filter(m => m.status === 'active' && m.userId) ?? [];
   // ΤΑ ΦΙΛΤΡΑ: ΟΛΑ ΣΤΗ ΣΕΙΡΑ Ή ΕΝΑ ΑΝΑ ΣΕΙΡΑ, ΠΟΤΕ ΔΥΟ ΚΑΙ ΕΝΑ ΜΟΝΟ ΤΟΥ.
-  const filterCols = fixedCols(manager ? 3 : 2, T.sp.sm, 'end', 'po-noprint', manager ? 3 : 2);
 
   const stuck = ordered.filter(x => x.ready.blocking > 0).length;
   const done = ordered.filter(x => x.gaps.length === 0).length;
 
   const bulk = useCallback((): BulkClient[] =>
-    (rows ?? []).map(c => ({ ownerId: c.ownerId, name: c.name, token: c.token })), [rows]);
+    (rows ?? []).map(c => ({ ownerId: c.ownerId, name: c.name })), [rows]);
 
   const fetchMoney = useCallback(async () => {
     if (money || !rows?.length) return money;
@@ -388,8 +396,12 @@ export default function AccountantWorkspace() {
     color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0,
   };
 
+  // Το δεύτερο βήμα πριν από οτιδήποτε του γραφείου: η βάση δεν απαντά χωρίς αυτό.
+  if (secondStep) return <SecondStep onDone={() => { setSecondStep(null); void loadFirm(); }} />;
+
   // Το γραφείο, τα μέλη και το ιστορικό: ίδια διαδρομή, άλλη όψη (FirmView.tsx).
-  if (view === 'firm') return <FirmView />;
+  // Μόνο αφού η βάση πει ότι δεν λείπει δεύτερο βήμα.
+  if (view === 'firm') return secondStep === false || email === null ? <FirmView /> : <main style={{ ...wrap, padding: '64px 24px' }} />;
 
   if (email === undefined) return <main style={{ ...wrap, padding: '64px 24px' }} />;
 
@@ -509,7 +521,7 @@ export default function AccountantWorkspace() {
       {/* ΤΑ ΦΙΛΤΡΑ ΤΟΥ ΓΡΑΦΕΙΟΥ. Τρία dropdown σε μία γραμμή, ίδια με της
           υπόλοιπης εφαρμογής· εμφανίζονται μόνο όταν το γραφείο έχει δεύτερο μέλος. */}
       {team && (rows?.length ?? 0) > 0 && (
-        <div className={filterCols.className} style={{ ...filterCols.style, marginTop: T.sp.lg }}>
+        <div className={`form-row form-row-${manager ? 3 : 2} po-noprint`} style={{ gap: T.sp.sm, marginTop: T.sp.lg }}>
           <CustomSelect ariaLabel="Ποιοι πελάτες" value={scope} onChange={v => setScope(v as Scope)}
             options={[{ value: 'all', label: 'Όλοι οι πελάτες' }, { value: 'mine', label: 'Οι πελάτες μου' }]} />
           {manager && (
@@ -616,16 +628,16 @@ export default function AccountantWorkspace() {
                         λογιστής γύριζε στο μήνυμα με τον σύνδεσμο. Δηλαδή στους
                         ογδόντα σελιδοδείκτες που αυτή η οθόνη ήρθε να καταργήσει. */}
                     <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)', fontFamily: T.font.sans }}>
-                      {c.token ? (
-                        <a href={`/accountant/${c.token}?year=${year}`} onClick={e => void open(e, c)} className="po-tap-inline" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>
-                          {c.name}
-                        </a>
-                      ) : c.name}
+                      {/* Η ΔΙΕΥΘΥΝΣΗ ΕΙΝΑΙ ΤΟΥ ΠΕΛΑΤΗ, ΟΧΙ ΤΟΥ ΣΥΝΔΕΣΜΟΥ ΤΟΥ. Ανοίγει
+                          μόνο σε όποιον η βάση κρίνει ότι τον βλέπει ακόμη
+                          (`firm_client_data`)· αντιγραμμένη αλλού δεν ανοίγει τίποτα. */}
+                      <a href={`/accountant/${c.ownerId}?year=${year}`} className="po-tap-inline" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>
+                        {c.name}
+                      </a>
                     </h2>
                     <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '4px 0 0', fontFamily: T.font.sans }}>
                       {c.properties === 1 ? '1 ακίνητο' : `${c.properties} ακίνητα`}
                       {c.afm ? ` · ΑΦΜ ${c.afm}` : ''}
-                      {!c.token ? ' · ο σύνδεσμός του δεν ισχύει πια' : ''}
                     </p>
                     {/* ΠΟΤΕ ΚΙΝΗΘΗΚΕ ΤΕΛΕΥΤΑΙΑ ΦΟΡΑ. Δύο πελάτες με τα ίδια κενά
                         είναι εντελώς διαφορετική δουλειά όταν ο ένας καταχώρησε
@@ -818,7 +830,7 @@ export default function AccountantWorkspace() {
       )}
 
       <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '26px 0 0', lineHeight: 1.7, fontFamily: T.font.sans }}>
-          Βλέπεις μόνο όσους σε εξουσιοδότησαν και μόνο όσο κρατά ο σύνδεσμός τους. Ο ιδιοκτήτης μπορεί να τον ανακαλέσει οποτεδήποτε.
+          Βλέπεις μόνο όσους σε εξουσιοδότησαν. Όταν ο ιδιοκτήτης ανακαλέσει την πρόσβαση ή φύγεις από το γραφείο, ο φάκελός του κλείνει αμέσως.
         </p>
       </main>
     </div>

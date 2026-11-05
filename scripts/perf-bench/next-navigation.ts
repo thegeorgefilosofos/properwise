@@ -9,6 +9,7 @@ const router = { push: () => {}, replace: () => {}, back: () => {}, forward: () 
 export const useRouter = () => router;
 export const usePathname = () => location.pathname;
 export const useSearchParams = () => new URLSearchParams(location.search);
-export const useParams = () => ({});
+// Η πύλη του λογιστή διαβάζει το `token` της διαδρομής· ο πάγκος το δίνει στο `?token=`.
+export const useParams = () => ({ token: new URLSearchParams(location.search).get('token') ?? '' });
 export const redirect = () => {};
 export const notFound = () => {};

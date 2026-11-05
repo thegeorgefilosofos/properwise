@@ -2,7 +2,8 @@
 // ΤΑ ΛΟΓΙΣΤΙΚΑ ΓΡΑΦΕΙΑ — ΤΟ ΣΤΡΩΜΑ ΔΕΔΟΜΕΝΩΝ
 // ─────────────────────────────────────────────────────────────────────────
 // Κάθε κίνηση του γραφείου περνά από συνάρτηση της βάσης που ελέγχει ρόλο,
-// ανάθεση και επίπεδο (supabase/migrations/20261104120000, 20261104130000).
+// ανάθεση και επίπεδο (supabase/migrations/20261104120000, 20261104130000,
+// 20261104150000). Το token του ιδιοκτήτη δεν περνά ποτέ από εδώ.
 // Εδώ ζει η μία πλευρά αυτής της συνομιλίας: τα σχήματα των απαντήσεων, οι
 // λέξεις των ρόλων και των επιπέδων και οι κανόνες που κρίνουν τι δείχνεται.
 //
@@ -106,11 +107,13 @@ export interface ClientProperty { id: string; name: string; hasLoan: boolean }
 
 // ── ΟΙ ΚΛΗΣΕΙΣ ─────────────────────────────────────────────────────────────
 /** «Δεν διαβάστηκε» δεν είναι «δεν υπάρχει»: το `failed` το κρατά χωριστό. */
-type Read<T> = { ok: true; data: T } | { ok: false };
+// Το `secondStep` ξεχωρίζει την άρνηση «λείπει το δεύτερο βήμα» (20261104150000):
+// η οθόνη τότε ζητά συσκευή αντί να πει «δεν διαβάστηκε».
+type Read<T> = { ok: true; data: T } | { ok: false; secondStep?: boolean };
 
 async function rpcRead<T>(db: Db, fn: string, args?: Record<string, unknown>): Promise<Read<T>> {
   const { data, error } = await db.rpc(fn, args);
-  if (error) return { ok: false };
+  if (error) return { ok: false, secondStep: reasonOf(error.message) === 'mfa_required' };
   return { ok: true, data: data as T };
 }
 
@@ -158,10 +161,6 @@ export const assign = (db: Db, owners: string[], userId: string, on: boolean) =>
   rpcDo(db, 'firm_assign', { p_owners: owners, p_user: userId, p_on: on });
 /** Ο υπεύθυνος βγάζει πελάτη από τη λίστα του γραφείου (τακτοποίηση, όχι ανάκληση). */
 export const dropFirmClient = (db: Db, ownerId: string) => rpcDo(db, 'firm_drop_client', { p_owner: ownerId });
-export const openClient = async (db: Db, ownerId: string): Promise<string | null> => {
-  const r = await rpcDo(db, 'firm_open_client', { p_owner: ownerId });
-  return r.ok ? String(r.data?.token ?? '') || null : null;
-};
 
 // Οι καταχωρήσεις (20261104130000).
 export const record = (db: Db, ownerId: string, propertyId: string, kind: Exclude<RecordKind, 'event'>, row: Record<string, unknown>) =>
@@ -233,6 +232,57 @@ export function daySentence(d: FirmDay): string {
   if (parts.length === 0) return '';
   const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} και ${parts[parts.length - 1]}`;
   return `«${d.firmName}»: σήμερα καταχώρησε ${list}.`;
+}
+
+/**
+ * Μία γραμμή του ημερολογίου κινήσεων όπως τη διαβάζει ο ιδιοκτήτης.
+ *
+ * ΤΟ ΗΜΕΡΟΛΟΓΙΟ ΚΡΑΤΑ ΜΟΝΟ ΤΙ ΚΑΙ ΠΟΙΑ ΠΕΔΙΑ (20261104150000). Το «πριν/μετά»
+ * ζει στην αναίρεση, που ο περιηγητής δεν βλέπει· για μισθωτή δεν κρατά ούτε
+ * ετικέτα. Το ποσό ζει στη γραμμή, όχι εδώ.
+ */
+export interface LogEntry {
+  id: string;
+  kind: string;
+  action: 'insert' | 'update' | 'delete' | 'mark_paid' | string;
+  label: string | null;
+  fields: string[] | null;
+  member_name: string | null;
+  at: string;
+}
+
+const KIND_WORD: Record<string, string> = {
+  document: 'Παραστατικό', tenant: 'Μισθωτής', bill: 'Λογαριασμός', rent: 'Είσπραξη ενοικίου', expense: 'Δαπάνη', event: 'Δόση',
+};
+
+/** Τα πεδία που αλλάζουν συχνότερα, με το όνομα που έχουν στις φόρμες. */
+const FIELD_WORD: Record<string, string> = {
+  amount: 'ποσό', date: 'ημερομηνία', doc_date: 'ημερομηνία', issue_date: 'ημερομηνία έκδοσης', due_date: 'λήξη',
+  payment_date: 'ημερομηνία πληρωμής', paid_date: 'ημερομηνία πληρωμής', paid_at: 'ημερομηνία πληρωμής',
+  title: 'τίτλος', name: 'όνομα', description: 'περιγραφή', category: 'κατηγορία', notes: 'σημειώσεις',
+  period: 'περίοδος', period_month: 'μήνας', period_year: 'έτος', method: 'τρόπος πληρωμής', payment_method: 'τρόπος πληρωμής',
+  full_name: 'ονοματεπώνυμο', phone: 'τηλέφωνο', email: 'email', afm: 'ΑΦΜ', lease_start: 'έναρξη μίσθωσης',
+  lease_end: 'λήξη μίσθωσης', monthly_rent: 'μίσθωμα', deposit: 'εγγύηση', status: 'κατάσταση', paid: 'πληρωμή',
+  supplier: 'προμηθευτής', store_vendor: 'προμηθευτής', vat_rate: 'ΦΠΑ', vat_amount: 'ΦΠΑ',
+};
+
+/** «άλλαξε ποσό και λήξη» ή, για πεδία χωρίς όνομα, «άλλαξαν 3 πεδία». */
+function changed(fields: string[] | null): string {
+  const words = [...new Set((fields ?? []).map(f => FIELD_WORD[f]).filter(Boolean))];
+  const n = fields?.length ?? 0;
+  if (words.length === 0) return n === 1 ? 'άλλαξε 1 πεδίο' : n > 1 ? `άλλαξαν ${n} πεδία` : 'άλλαξε';
+  const list = words.length === 1 ? words[0] : `${words.slice(0, -1).join(', ')} και ${words[words.length - 1]}`;
+  return `άλλαξε ${list}`;
+}
+
+const ACTION_WORD: Record<string, string> = {
+  insert: 'καταχωρήθηκε', delete: 'αφαιρέθηκε', mark_paid: 'σημειώθηκε πληρωμένο', revert: 'επανήλθε',
+};
+
+/** «Λογαριασμός «ΔΕΗ Μάρτιος» · άλλαξε ποσό και λήξη». */
+export function logLine(r: Pick<LogEntry, 'kind' | 'action' | 'label' | 'fields'>): string {
+  const what = r.label ? `${KIND_WORD[r.kind] ?? r.kind} «${r.label}»` : (KIND_WORD[r.kind] ?? r.kind);
+  return `${what} · ${r.action === 'update' ? changed(r.fields) : ACTION_WORD[r.action] ?? r.action}`;
 }
 
 /** Τα σφάλματα των καταχωρήσεων σε μία πρόταση που λέει τι να κάνεις. */

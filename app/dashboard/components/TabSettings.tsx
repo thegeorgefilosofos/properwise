@@ -5,7 +5,7 @@
 // ειδοποιήσεις, δεδομένα & απόρρητο). Στυλ fintech: κάρτες, SecHdr, tokens.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { FirmAccess } from './FirmAccess';
+import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef, useId, useCallback } from 'react';
 import { leaveDevice } from '@/lib/localPrivacy';
 import { createClient } from '@/lib/supabase/client';
@@ -45,6 +45,9 @@ import { SAY, failed } from '@/lib/core/dbError';
 import { useLoad } from '@/app/hooks/useLoad';
 import { useRememberedFlag } from '@/components/useRememberedFlag';
 import { useBillingWords } from './useBillingWords';
+
+// Φαίνεται μόνο σε όποιον έχει δώσει πρόσβαση σε γραφείο· φορτώνεται στον περιηγητή.
+const FirmAccess = dynamic(() => import('./FirmAccess').then(m => m.FirmAccess), { ssr: false });
 
 type ProfileType = 'individual' | 'professional';
 
@@ -148,13 +151,15 @@ function CollapsibleSection({ title, hint, defaultOpen = false, delay, children 
 // Σωστό όταν αλλάζεις λογιστή· δεν είναι ανάκληση όταν θέλεις απλώς να πάψει
 // να βλέπει κανείς. Μέχρι σήμερα η πύλη δεν έκλεινε ποτέ, μόνο άλλαζε κλειδαριά.
 // ═══════════════════════════════════════════════════════════════════════════
-function AccountantAccess({ userId }: { userId: string }) {
+export function AccountantAccess({ userId }: { userId: string }) {
   const supabase = createClient();
   const [link, setLink] = useState<accountantLink.AccountantLink | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [rotated, setRotated] = useState('');
   useEffect(() => {
     accountantLink.current(supabase, userId).then(l => { setLink(l); setLoaded(true); });
+    accountantLink.rotation(supabase, userId).then(r => setRotated(r ? accountantLink.rotatedSentence(r) : ''));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
@@ -181,6 +186,9 @@ function AccountantAccess({ userId }: { userId: string }) {
         <div style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>
           {state}{!link?.live && ' Ο σύνδεσμος βγαίνει από τη Λογιστική, στον φάκελο για τον λογιστή.'}
         </div>
+      )}
+      {rotated && link?.live && (
+        <div role="status" style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: 6 }}>{rotated}</div>
       )}
     </SetRow>
   );

@@ -21,6 +21,7 @@ import { buildZip, type ZipFile } from '@/lib/accounting/zip';
 import { downloadFile, safeFilename } from '@/lib/core/download';
 import { csvCell } from '@/lib/core/csv';
 import { PACK_FILES } from '@/lib/accounting/meetingPack';
+import { clientData } from '@/lib/data/accountant';
 import {
   propertyLines, statementTotals, statementSheets, type PortalData, type PropertyLine,
 } from './statement';
@@ -53,7 +54,7 @@ async function inLanes<T, R>(items: readonly T[], fn: (item: T) => Promise<R>): 
   return out;
 }
 
-export interface BulkClient { ownerId: string; name: string; token: string | null }
+export interface BulkClient { ownerId: string; name: string }
 
 /**
  * Οι καταστάσεις όλων των πελατών για μια χρήση.
@@ -65,11 +66,15 @@ export interface BulkClient { ownerId: string; name: string; token: string | nul
 export async function loadStatements(
   db: SupabaseClient, clients: readonly BulkClient[], year: number,
 ): Promise<Map<string, ClientStatement>> {
-  const withToken = clients.filter(c => c.token);
-  const results = await inLanes(withToken, async (c) => {
-    const { data, error } = await db.rpc('get_accountant_data', { p_token: c.token, p_year: year });
-    if (error || !data) return null;
-    const d = data as PortalData;
+  // ΜΕ ΤΟ ΠΡΟΣΩΠΟ, ΟΧΙ ΜΕ ΤΟ TOKEN (20261104150000). Η βάση κρίνει σε κάθε
+  // κλήση αν ο συνδεδεμένος βλέπει ακόμη τον πελάτη· το token του ιδιοκτήτη δεν
+  // φτάνει ποτέ ως εδώ. Οποιος ανακλήθηκε στο μεταξύ απλώς δεν απαντά.
+  const results = await inLanes(clients, async (c) => {
+    // Ο,ΤΙ ΔΕΝ ΗΡΘΕ ΛΕΙΠΕΙ ΑΠΟ ΤΟΝ ΧΑΡΤΗ: η οθόνη γράφει «Τα ποσά δεν
+    // διαβάστηκαν» γι' αυτόν τον πελάτη, ποτέ «0,00€».
+    const got = await clientData<PortalData>(db, c.ownerId, year);
+    if (got.failed || got.secondStep || got.gone || !got.data) return null;
+    const d = got.data;
     const lines = propertyLines(d.properties || [], year);
     const totals = statementTotals(lines);
     return {

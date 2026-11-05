@@ -23,6 +23,7 @@ export const SCENES = [
   // Τα λογιστικά γραφεία (scripts/perf-bench/firms.tsx).
   'firm', 'firmNew', 'firmInvite', 'firmWorkspace', 'firmWorkspaceAssociate', 'firmWorkspaceInvite',
   'firmEntryDocument', 'firmEntryBill', 'firmEntryTax', 'firmEntryLoan', 'firmEntryRent', 'firmEntryTenant', 'firmOwner',
+  'firmSecondStep', 'firmOwnerDay', 'firmOwnerLink', 'firmOwnerUndo', 'firmOwnerRevoke', 'firmClientGone', 'firmClientSecondStep',
 ];
 
 /** Οι σκηνές που ζητά η `E2E_ONLY`, αλλιώς όλες. */

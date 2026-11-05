@@ -8,8 +8,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import {
   ROLE_LABEL, LEVEL_LABEL, KIND_LABEL, canAct, canManage, entryKinds, daySentence, reasonOf, reasonText,
-  filterClients, type ClientLevel,
+  filterClients, logLine, type ClientLevel,
 } from './firms';
+import { rotatedSentence } from './accountantLink';
 
 let pass = 0, fail = 0;
 const fails: string[] = [];
@@ -82,6 +83,22 @@ ok('κάθε λόγος έχει φράση με τελεία', ['not_allowed', 
   eq('χωρίς υπεύθυνο', ids({ scope: 'all', assignee: '-', status: 'all' }), ['c']);
   eq('με εκκρεμότητες', ids({ scope: 'all', assignee: '', status: 'blocked' }), ['a']);
   eq('έτοιμοι', ids({ scope: 'all', assignee: '', status: 'ready' }), ['b', 'c']);
+}
+
+// ── Το ημερολόγιο όπως το διαβάζει ο ιδιοκτήτης (20261104150000) ─────────
+{
+  eq('νέος λογαριασμός με ετικέτα', logLine({ kind: 'bill', action: 'insert', label: 'ΔΕΗ Μάρτιος', fields: null }), 'Λογαριασμός «ΔΕΗ Μάρτιος» · καταχωρήθηκε');
+  eq('μισθωτής χωρίς ετικέτα', logLine({ kind: 'tenant', action: 'insert', label: null, fields: null }), 'Μισθωτής · καταχωρήθηκε');
+  eq('αλλαγή δύο πεδίων, χωρίς κόμμα πριν από το «και»',
+    logLine({ kind: 'bill', action: 'update', label: null, fields: ['amount', 'due_date'] }), 'Λογαριασμός · άλλαξε ποσό και λήξη');
+  eq('τρία πεδία', logLine({ kind: 'expense', action: 'update', label: null, fields: ['amount', 'date', 'category'] }), 'Δαπάνη · άλλαξε ποσό, ημερομηνία και κατηγορία');
+  eq('πεδία χωρίς όνομα', logLine({ kind: 'rent', action: 'update', label: null, fields: ['base_rent', 'services_charge'] }), 'Είσπραξη ενοικίου · άλλαξαν 2 πεδία');
+  eq('πληρωμή δόσης', logLine({ kind: 'event', action: 'mark_paid', label: 'ΕΝΦΙΑ 3/5', fields: ['status'] }), 'Δόση «ΕΝΦΙΑ 3/5» · σημειώθηκε πληρωμένο');
+  ok('καμία γραμμή χωρίς «βοηθός»', !/βοηθ/i.test(logLine({ kind: 'document', action: 'delete', label: null, fields: null })));
+  const s = rotatedSentence({ at: '2026-11-04T10:00:00Z', reason: 'member_left' });
+  ok('η ανανέωση λέει την ημερομηνία dd/mm/yyyy', s.includes('04/11/2026'));
+  ok('η ανανέωση λέει τον λόγο', s.includes('αποχώρησε μέλος'));
+  ok('η ανανέωση χωρίς κόμμα πριν από το «και»', !s.includes([',', 'και'].join(' ')));
 }
 
 console.log(`\nfirms: ${fail === 0 ? `✓ ${pass} έλεγχοι` : `✗ ${fail} απέτυχαν από ${pass + fail}`}`);

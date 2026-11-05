@@ -78,7 +78,7 @@ import TabRentROI from '@/app/dashboard/components/TabRentROI';
 // ακριβώς οι δύο μορφές που σπάνε πρώτες σε στενή οθόνη. Το ότι δεν είχαν
 // μετρηθεί ΔΕΝ σήμαινε ότι ήταν εντάξει· σήμαινε ότι δεν το ξέραμε.
 import TabAccounting from '@/app/dashboard/components/TabAccounting';
-import { FIRM_VIEWS, firmRpc } from './firms';
+import { FIRM_VIEWS, firmRpc, firmRespond } from './firms';
 import TabSettings from '@/app/dashboard/components/TabSettings';
 import TabCalendar from '@/app/dashboard/components/TabCalendar';
 import { DaySheet } from '@/app/dashboard/components/calendar/MonthView';
@@ -165,6 +165,8 @@ const respond: Responder = (call) => {
   if (which.startsWith('myaade') && call.table === 'user_properties') return { data: MYAADE_KNOWN, error: null };
   if (which.startsWith('myaade') && call.table === 'clients') return { data: MYAADE_OWNERS, error: null };
   if (call.table === 'inbound_messages') return { data: inboundRows, error: null };
+  const firmRows = firmRespond(which, call.table);
+  if (firmRows) return firmRows;
   const rows = bench.rows[call.table];
   if (!rows) return { data: call.single ? null : [], error: null };
   const kept = which === 'portfolio' ? rows : applyEq(rows, call.filters);

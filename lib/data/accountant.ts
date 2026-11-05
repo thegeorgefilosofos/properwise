@@ -24,15 +24,6 @@ export interface ClientCounts {
   afm: string | null;
   linkedAt: string;
   /**
-   * Το τρέχον αναγνωριστικό της κατάστασης, για να ανοίγει η κάρτα.
-   *
-   * ΓΙΑΤΙ ΕΡΧΕΤΑΙ ΜΕ ΤΗ ΛΙΣΤΑ ΚΑΙ ΔΕΝ ΚΡΑΤΙΕΤΑΙ. Ο ιδιοκτήτης μπορεί να
-   * περιστρέψει τον σύνδεσμό του· ένας σελιδοδείκτης θα κρατούσε τον παλιό και
-   * θα οδηγούσε σε «δεν είναι έγκυρος». Εδώ έρχεται φρέσκο σε κάθε φόρτωση.
-   * Κενό σημαίνει ανακλημένος ή ληγμένος σύνδεσμος.
-   */
-  token: string | null;
-  /**
    * Πότε κινήθηκε τελευταία φορά ο φάκελος: η νεότερη καταχώρηση σε δαπάνες,
    * εισπράξεις, διαμονές ή έγγραφα.
    *
@@ -247,10 +238,38 @@ export async function claim(db: Db, token: string): Promise<{ ok: boolean; owner
  * Το ίδιο μοτίβο με το `profileOutcome` της χρέωσης: μία ανάγνωση, δύο
  * αποτελέσματα που ΔΕΝ συγχέονται.
  */
-export async function clients(db: Db, year: number): Promise<{ rows: ClientCounts[]; failed: boolean }> {
+/**
+ * Η άρνηση της βάσης όταν λείπει το δεύτερο βήμα (`mfa_required`). Τα μέλη
+ * γραφείου τη συναντούν σε κάθε κλήση ώσπου να δηλώσουν συσκευή
+ * (20261104150000): δεν είναι «δεν διαβάστηκε», είναι «κάνε πρώτα αυτό».
+ */
+export const secondStepAsked = (error: { message?: string } | null | undefined) =>
+  /mfa_required/.test(error?.message ?? '');
+
+export async function clients(db: Db, year: number): Promise<{ rows: ClientCounts[]; failed: boolean; secondStep?: boolean }> {
   const { data, error } = await db.rpc('accountant_clients_overview', { p_year: year });
-  if (error) return { rows: [], failed: true };
+  if (error) return { rows: [], failed: !secondStepAsked(error), secondStep: secondStepAsked(error) };
   return { rows: Array.isArray(data) ? (data as ClientCounts[]) : [], failed: false };
+}
+
+/**
+ * Ο φάκελος ενός πελάτη για τον συνδεδεμένο λογιστή ή το μέλος γραφείου.
+ *
+ * Η ΑΔΕΙΑ ΚΡΙΝΕΤΑΙ ΑΠΟ ΤΟ ΠΡΟΣΩΠΟ, ΣΕ ΚΑΘΕ ΚΛΗΣΗ (`firm_client_data`,
+ * 20261104150000). Πριν, ο περιηγητής του μέλους κρατούσε το token του
+ * ιδιοκτήτη και το πρώην μέλος διάβαζε ως τη λήξη του. Τώρα η αφαίρεση από το
+ * γραφείο ή η ανάκληση κόβουν από την επόμενη κλήση.
+ *
+ *   data        ο φάκελος
+ *   gone        η βάση απάντησε «όχι πια»: ανάκληση, αποχώρηση, ληγμένος σύνδεσμος
+ *   secondStep  λείπει το δεύτερο βήμα
+ *   failed      δεν πήραμε απάντηση
+ */
+export async function clientData<T = unknown>(db: Db, ownerId: string, year: number):
+  Promise<{ data: T | null; gone: boolean; secondStep: boolean; failed: boolean }> {
+  const { data, error } = await db.rpc('firm_client_data', { p_owner: ownerId, p_year: year });
+  if (error) return { data: null, gone: false, secondStep: secondStepAsked(error), failed: !secondStepAsked(error) };
+  return { data: (data as T) ?? null, gone: data == null, secondStep: false, failed: false };
 }
 
 /** «Ζήτησέ το»: γράφει εκκρεμότητα που ο ιδιοκτήτης βλέπει στον πίνακά του. */

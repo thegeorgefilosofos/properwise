@@ -14,9 +14,11 @@ import type React from 'react';
 import { useEffect } from 'react';
 import FirmPage from '@/app/accountant/workspace/FirmView';
 import AccountantWorkspace from '@/app/accountant/workspace/page';
+import AccountantPortal from '@/app/accountant/[token]/page';
 import FirmEntry, { type EntryKind } from '@/app/accountant/workspace/FirmEntry';
 import { FirmAccess, FirmDaySummary } from '@/app/dashboard/components/FirmAccess';
 import { SetList } from '@/app/dashboard/components/SettingsKit';
+import { AccountantAccess } from '@/app/dashboard/components/TabSettings';
 import { Card } from '@/components/Theme';
 import { createClient } from '@/lib/supabase/client';
 
@@ -44,7 +46,7 @@ const HISTORY = [
 ];
 
 const client = (ownerId: string, name: string, canAct: boolean, assignees: { userId: string; name: string }[], gaps: Partial<Record<string, number>> = {}) => ({
-  ownerId, name, afm: '000000012', linkedAt: AT, token: `tok-${ownerId}`, lastActivity: '2026-11-03T10:00:00Z',
+  ownerId, name, afm: '000000012', linkedAt: AT, lastActivity: '2026-11-03T10:00:00Z',
   canAct, assignees, requests: [],
   properties: 2, expenses: 24, uncategorised: 0, noSupplierAfm: 0, rentsUnpaid: 0, stays: 0, staysNoFee: 0, openRequests: 0,
   ...gaps,
@@ -80,13 +82,48 @@ const OWNER_FIRMS = [{
 }];
 const FIRM_DAY = [{ firmId: 'f1', firmName: 'Λογιστικό Γραφείο Παράδειγμα', total: 4, counts: { bill: 2, event: 1, tenant: 1 } }];
 
+// ΤΟ ΗΜΕΡΟΛΟΓΙΟ ΤΗΣ ΗΜΕΡΑΣ, ΟΠΩΣ ΤΟ ΚΡΑΤΑ Η ΒΑΣΗ (20261104150000): τι, ποια
+// πεδία, ποιο μέλος. Οι ώρες είναι «σήμερα», όπως τις φιλτράρει η οθόνη.
+const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
+const FIRM_LOG = () => [
+  { id: 'l1', kind: 'bill', action: 'insert', label: 'ΔΕΗ Οκτωβρίου', fields: null, member_name: 'Νίκος Δοκιμής', at: minutesAgo(12) },
+  { id: 'l2', kind: 'bill', action: 'update', label: 'ΔΕΗ Οκτωβρίου', fields: ['amount', 'due_date'], member_name: 'Νίκος Δοκιμής', at: minutesAgo(10) },
+  { id: 'l3', kind: 'event', action: 'mark_paid', label: 'ΕΝΦΙΑ 9η δόση', fields: ['status'], member_name: 'Ελένη Παραδείγματος', at: minutesAgo(8) },
+  { id: 'l4', kind: 'tenant', action: 'insert', label: null, fields: null, member_name: 'Ελένη Παραδείγματος', at: minutesAgo(5) },
+  { id: 'l5', kind: 'document', action: 'delete', label: null, fields: null, member_name: 'Νίκος Δοκιμής', at: minutesAgo(2) },
+];
+
+/** Οι αναγνώσεις πινάκων των σκηνών του ιδιοκτήτη: ημερολόγιο και σύνδεσμος. */
+export function firmRespond(which: string, table: string): { data: unknown; error: null } | undefined {
+  if (!which.startsWith('firmOwner')) return undefined;
+  if (table === 'firm_record_log') return { data: FIRM_LOG(), error: null };
+  if (table === 'accountant_links') {
+    return { data: { token: '0123456789abcdef0123456789abcdef', active: true, expires_at: '2027-05-03T09:00:00Z',
+      rotated_at: '2026-11-04T09:30:00Z', rotated_reason: 'member_left' }, error: null };
+  }
+  return undefined;
+}
+
 /** Η απάντηση της βάσης ανά σκηνή και συνάρτηση. */
-export function firmRpc(which: string, fn: string): { data: unknown; error: null } | undefined {
+export function firmRpc(which: string, fn: string): { data: unknown; error: { message: string } | null } | undefined {
+  // ΜΟΝΟ ΟΙ ΣΚΗΝΕΣ ΤΟΥ ΓΡΑΦΕΙΟΥ ΕΧΟΥΝ ΓΡΑΦΕΙΟ. Αν απαντούσαμε παντού, ο φάκελος
+  // λογιστή όλων των άλλων σκηνών θα έδειχνε σύνοψη γραφείου και οι σαρωτές θα
+  // μετρούσαν άλλη οθόνη από εκείνη που έχει καταγράψει η βάση τους.
+  if (!which.startsWith('firm')) return undefined;
+  // ΜΕΛΟΣ ΓΡΑΦΕΙΟΥ ΧΩΡΙΣ ΔΕΥΤΕΡΟ ΒΗΜΑ: η βάση αρνείται με `mfa_required`.
+  if ((which === 'firmSecondStep' && fn !== 'my_firm_invites') || (which === 'firmClientSecondStep' && fn === 'firm_client_data')) {
+    return { data: null, error: { message: 'mfa_required' } };
+  }
+  // Ο ΙΔΙΟΚΤΗΤΗΣ ΑΝΑΚΑΛΕΣΕ: η βάση απαντά κενό στην επόμενη κλήση.
+  if (which === 'firmClientGone' && fn === 'firm_client_data') return { data: null, error: null };
   const role = which === 'firmWorkspaceAssociate' ? 'associate' : 'manager';
   const answers: Record<string, unknown> = {
-    my_firm: which === 'firmNew' ? null : firmOf(role),
+    // Ο προσκεκλημένος δεν έχει ακόμη γραφείο: η βάση κρατά ένα ενεργό γραφείο
+    // ανά χρήστη (firm_members_one_active_firm), οπότε πρόσκληση σε μέλος άλλου
+    // γραφείου δεν θα έφτανε ποτέ στην οθόνη του.
+    my_firm: which === 'firmNew' || which === 'firmWorkspaceInvite' ? null : firmOf(role),
     my_firm_invites: which === 'firmWorkspaceInvite' ? [{ id: 'i1', firmName: 'Φοροτεχνικό Γραφείο Υπόδειγμα', role: 'accountant', invitedAt: AT }] : [],
-    firm_client_levels: LEVELS(role),
+    firm_client_levels: which === 'firmWorkspaceInvite' ? [] : LEVELS(role),
     firm_access_history: HISTORY,
     accountant_clients_overview: CLIENTS(role !== 'associate'),
     firm_client_properties: PROPERTIES,
@@ -97,16 +134,53 @@ export function firmRpc(which: string, fn: string): { data: unknown; error: null
   return fn in answers ? { data: answers[fn], error: null } : undefined;
 }
 
-/** Ανοίγει το παράθυρο της πρόσκλησης όπως θα το άνοιγε ο υπεύθυνος. */
-function InviteOpen() {
+/** Πατά το κουμπί με αυτό το κείμενο μόλις εμφανιστεί, όπως θα το πατούσε άνθρωπος. */
+function useClickWhenReady(text: string) {
   useEffect(() => {
     const t = setInterval(() => {
-      const b = [...document.querySelectorAll('button')].find(x => x.textContent?.trim() === 'Πρόσκληση μέλους');
+      const b = [...document.querySelectorAll('button')].find(x => x.textContent?.trim() === text);
+      if (b) { b.click(); clearInterval(t); }
+    }, 50);
+    return () => clearInterval(t);
+  }, [text]);
+}
+
+/** Ανοίγει το παράθυρο της πρόσκλησης όπως θα το άνοιγε ο υπεύθυνος. */
+function InviteOpen() {
+  useClickWhenReady('Πρόσκληση μέλους');
+  return <FirmPage />;
+}
+
+/** Η πύλη του λογιστή για πελάτη από τη λίστα (αναγνωριστικό ιδιοκτήτη, όχι token). */
+function ClientByOwner() {
+  // Πριν από την πρώτη απόδοση: το `useParams` του πάγκου διαβάζει τη διεύθυνση.
+  const u = new URL(location.href);
+  if (!u.searchParams.get('token')) { u.searchParams.set('token', 'f1000000-0000-4000-8000-000000000001'); history.replaceState(null, '', u); }
+  return <AccountantPortal />;
+}
+
+/** Ο ιδιοκτήτης πάτησε «Αναίρεση όλων» και βλέπει την επιβεβαίωση. */
+function OwnerUndoAsk() {
+  useClickWhenReady('Αναίρεση όλων');
+  return <Card><FirmDaySummary /></Card>;
+}
+
+/** Ο ιδιοκτήτης πάτησε «Ανάκληση πρόσβασης» και βλέπει την επιβεβαίωση. */
+function OwnerRevokeAsk() {
+  useEffect(() => {
+    const t = setInterval(() => {
+      const b = [...document.querySelectorAll('button')].find(x => x.textContent?.trim() === 'Ανάκληση του γραφείου' && !x.closest('[role="dialog"]'));
       if (b) { b.click(); clearInterval(t); }
     }, 50);
     return () => clearInterval(t);
   }, []);
-  return <FirmPage />;
+  return <Card><SetList><FirmAccess /></SetList></Card>;
+}
+
+/** Ο ιδιοκτήτης πάτησε «Δες» στη σύνοψη της ημέρας. */
+function OwnerDayOpen() {
+  useClickWhenReady('Δες');
+  return <Card><FirmDaySummary /></Card>;
 }
 
 const entry = (kind: EntryKind) => {
@@ -128,6 +202,13 @@ export const FIRM_VIEWS: Record<string, () => React.ReactElement> = {
   firmEntryLoan: entry('loan'),
   firmEntryRent: entry('rent'),
   firmEntryTenant: entry('tenant'),
+  firmSecondStep: () => <AccountantWorkspace />,
+  firmOwnerDay: () => <OwnerDayOpen />,
+  firmOwnerUndo: () => <OwnerUndoAsk />,
+  firmOwnerRevoke: () => <OwnerRevokeAsk />,
+  firmClientGone: () => <ClientByOwner />,
+  firmClientSecondStep: () => <ClientByOwner />,
+  firmOwnerLink: () => <Card><SetList><AccountantAccess userId="u1" /><FirmAccess /></SetList></Card>,
   firmOwner: () => (
     <div style={{ display: 'grid', gap: 16 }}>
       <Card><SetList><FirmAccess /></SetList></Card>

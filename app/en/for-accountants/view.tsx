@@ -57,7 +57,7 @@ const PARTNER = { fromOwner: plan(partnerWelcomeTier('owner')), otherwise: plan(
 
 // Το παράδειγμα της λίστας: ίδιοι αριθμοί και ίδιος κριτής με την ελληνική σελίδα.
 const SAMPLE: ClientCounts = {
-  ownerId: 'example', name: 'Example', afm: 'example', linkedAt: '', token: null,
+  ownerId: 'example', name: 'Example', afm: 'example', linkedAt: '',
   lastActivity: null, requests: [], properties: 2, expenses: 18, uncategorised: 2,
   noSupplierAfm: 3, rentsUnpaid: 0, stays: 24, staysNoFee: 1, openRequests: 0,
   e2: { aadeRows: 0, aadeChangedAt: null, packs: [] },

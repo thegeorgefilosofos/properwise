@@ -20,7 +20,7 @@
 // όλα στο lib/accounting/dossier.ts, δοκιμασμένα. Εδώ μόνο η εικόνα τους.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { FirmDaySummary } from './FirmAccess'
+import dynamic from 'next/dynamic'
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { T, TT, Badge, SelectBox, Bar, Btn, ChipToggle } from '@/components/Theme'
@@ -47,6 +47,9 @@ import { PLANS } from '@/lib/billing/plans';
 import { aadeTitle } from '@/components/AadeLink';
 import { aadePath, AADE_DESTINATIONS } from '@/lib/tax/aade';
 import MeetingPackCard from './MeetingPackCard';
+
+// Φαίνεται μόνο σε όποιον έχει δώσει πρόσβαση σε γραφείο· φορτώνεται στον περιηγητή.
+const FirmDaySummary = dynamic(() => import('./FirmAccess').then(m => m.FirmDaySummary), { ssr: false })
 
 // ── Οι παραδοχές που ορίζουν τη λίστα ──────────────────────────────────────
 export interface DossierProfile {
