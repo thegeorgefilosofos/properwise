@@ -11,7 +11,7 @@
 // Όταν η χρέωση είναι ενεργή, όλη η δουλειά γίνεται στον περιηγητή και ο λόγος
 // γράφεται στο CheckoutLanding.tsx.
 // ═══════════════════════════════════════════════════════════════════════════
-import { Btn } from '@/components/Theme';
+import { Btn } from '@/components/BtnClient';
 import { billingWords } from '@/lib/legal/billingWords';
 import { merchant } from '@/lib/billing/merchant';
 import CheckoutLanding from './CheckoutLanding';

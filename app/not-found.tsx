@@ -4,7 +4,7 @@
 // found»): η μόνη αγγλική οθόνη της εφαρμογής, την ώρα που κάτι ήδη πήγε
 // στραβά. Εδώ λέμε τι έγινε και δίνουμε τους δύο δρόμους που χρειάζονται.
 import type { Metadata } from 'next';
-import { Btn } from '@/components/Theme';
+import { Btn } from '@/components/BtnClient';
 import { T } from '@/components/tokens';
 import { PublicHeader, PublicFooter, WRAP, WRAP_PAD } from './PublicChrome';
 
