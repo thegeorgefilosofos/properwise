@@ -10,7 +10,7 @@
 // γενική ρήτρα καλής πίστης· δεν δίνει δικαίωμα αύξησης και καμία διάταξη δεν
 // ορίζει «μία φορά τον χρόνο». Η αύξηση γίνεται όπως και όποτε την ορίζει το
 // μισθωτήριο· για υφιστάμενη επαγγελματική μίσθωση το 2026 ισχύει από πάνω το
-// όριο του `commercialCapPhrase` στο lib/documents/rentCapNote.ts.
+// όριο του `commercialCapPhrase` στο app/dashboard/components/TabTenantMoney.tsx.
 //
 // ΤΙ ΕΛΕΓΧΕΤΑΙ. Γραμμές κώδικα (όχι σχόλια) σε app/, lib/, components/ και
 // scripts/marketing/ (.ts, .tsx, .mjs) που
@@ -57,7 +57,7 @@ if (provlimata.length) {
   if (provlimata.length > 30) console.error(`  … και ${provlimata.length - 30} ακόμη`)
   console.error(`\n  ΤΙ ΝΑ ΚΑΝΕΙΣ: το 288 ΑΚ είναι η καλή πίστη, όχι δικαίωμα αύξησης. Γράψε «όπως ορίζει ο όρος`
     + `\n  αναπροσαρμογής του μισθωτηρίου» και, για επαγγελματική μίσθωση, το όριο από το commercialCapPhrase`
-    + `\n  του lib/documents/rentCapNote.ts. Συχνότητα νόμου δεν υπάρχει: τη λέει η σύμβαση.\n`)
+    + `\n  του app/dashboard/components/TabTenantMoney.tsx. Συχνότητα νόμου δεν υπάρχει: τη λέει η σύμβαση.\n`)
   process.exit(1)
 }
 console.log(`✓ η αναπροσαρμογή μισθώματος στηρίζεται στον όρο του μισθωτηρίου σε ${files.length} αρχεία`)

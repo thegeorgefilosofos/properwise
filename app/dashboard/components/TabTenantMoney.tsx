@@ -20,8 +20,7 @@ import {
   RENT_INDEX, RENT_INDEX_LATEST, CPI_SOURCE_URL, rentIndexFor, rentAdjustmentPct,
   indexMonthLabel, indexPeriodLabel, cpiConfirmedLabel,
 } from '@/lib/market/cpi';
-import { rentCapPct, computeRentAdjustment } from '@/lib/documents/rentAdjustment';
-import { commercialCapPhrase, capAppliedLine } from '@/lib/documents/rentCapNote';
+import { rentCapPct, computeRentAdjustment, COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
 import { monthYearLabel, monthAcc } from '@/lib/core/months';
 import {
   Toggle,
@@ -32,7 +31,43 @@ import {
 } from './UIComponents';
 import { T, InfoBanner, Badge, Btn, EmptyState, Modal, fe, fd, fdLong, fn, Spinner, ExportButton, ABSENT, ABSENT_DATE, TT, pressable, RuntimeImg } from '@/components/Theme';
 import { navLabel } from '@/lib/nav/labels';
-import { feSigned, fpSigned } from '@/lib/core/format';
+import { feSigned, fpSigned, fp, fpRate } from '@/lib/core/format';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Η ΝΟΜΙΚΗ ΒΑΣΗ ΤΗΣ ΑΝΑΠΡΟΣΑΡΜΟΓΗΣ ΕΙΝΑΙ Ο ΟΡΟΣ ΤΟΥ ΜΙΣΘΩΤΗΡΙΟΥ
+// ─────────────────────────────────────────────────────────────────────────
+// Η καρτέλα της αναπροσαρμογής έγραφε «Νομική βάση: Αρ. 288 ΑΚ» και «Συχνότητα:
+// Μία φορά/έτος» και η ειδοποίηση προς μισθωτή επικαλούνταν το 288 ΑΚ
+// (04/11/2026). Το 288 ΑΚ είναι η καλή πίστη: δεν δίνει δικαίωμα αύξησης και η
+// συχνότητα είναι όρος της σύμβασης, όχι του νόμου. Από πάνω από τον όρο υπάρχει
+// μόνο το όριο της υφιστάμενης επαγγελματικής μίσθωσης· γράφεται από εδώ.
+//
+// ΓΙΑΤΙ ΕΔΩ ΚΑΙ ΟΧΙ ΣΕ ΔΙΚΟ ΤΟΥΣ ΑΡΧΕΙΟ: το rentAdjustment.ts το φορτώνει το
+// κέλυφος των δημόσιων σελίδων, κάθε byte του μετρά σε κάθε διαδρομή· και ένα νέο
+// αρχείο που φορτώνει ο πελάτης γράφεται σε κάθε manifest στοιχείων πελάτη
+// (server-weight +1.633 bytes, 05/11/2026). Η φράση χρειάζεται μόνο εδώ. Το ίδιο άρθρο γράφει και το
+// adjustmentNoticeText· η δοκιμή του rentAdjustment.test.ts κρατά τα δύο ίδια.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Η διάταξη του ορίου, σε γενική («του άρθρου …»). */
+export const COMMERCIAL_RENT_CAP_LAW = 'άρθρου 59 ν. 5255/2025';
+
+/** «το όριο 3% του άρθρου 59 ν. 5255/2025 για το 2026». */
+export const commercialCapPhrase = (pct: number = COMMERCIAL_RENT_CAP_2026.pct) =>
+  `το όριο ${fpRate(pct)} του ${COMMERCIAL_RENT_CAP_LAW} για το ${COMMERCIAL_RENT_CAP_2026.from.slice(0, 4)}`;
+
+/**
+ * «ΔΤΚ 3,80%: εφαρμόζεται το όριο 3% του άρθρου 59 ν. 5255/2025 για το 2026».
+ * Η γραμμή που λέει στον παραλήπτη ΓΙΑΤΙ το νέο μίσθωμα δεν βγαίνει από το
+ * ποσοστό του δείκτη ή του όρου. Χωρίς βέλος: το απαγορεύει ο guard-no-arrows.
+ *
+ * @param basis «ΔΤΚ», «75% ΔΤΚ» ή «Ποσοστό σύμβασης»
+ * @param pct   το ποσοστό πριν από το όριο, όπως το δίνει ο δείκτης ή ο όρος
+ * @param cap   το όριο, από το `rentCapPct`
+ */
+export const capAppliedLine = (basis: string, pct: number, cap: number) =>
+  `${basis} ${fp(pct)}: εφαρμόζεται ${commercialCapPhrase(cap)}`;
+
 
 // ΤΟ «ΑΝΤΙΓΡΑΦΗΚΕ» ΕΡΧΕΤΑΙ ΜΕΤΑ ΤΗΝ ΑΝΤΙΓΡΑΦΗ, ΟΧΙ ΠΡΙΝ. Το `writeText` είναι
 // υπόσχεση: χωρίς αναμονή, το try δεν έπιανε ποτέ την άρνηση του φυλλομετρητή

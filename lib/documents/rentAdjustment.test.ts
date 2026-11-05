@@ -1,6 +1,6 @@
 // Τεστ για τον υπολογισμό αναπροσαρμογής μισθώματος (rentAdjustment.ts).
 import { computeRentAdjustment, adjustmentNoticeText, rentCapPct } from './rentAdjustment'
-import { commercialCapPhrase, COMMERCIAL_RENT_CAP_LAW } from './rentCapNote'
+import { commercialCapPhrase, COMMERCIAL_RENT_CAP_LAW } from '../../app/dashboard/components/TabTenantMoney'
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }
