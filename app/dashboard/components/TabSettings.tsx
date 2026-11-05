@@ -5,6 +5,7 @@
 // ειδοποιήσεις, δεδομένα & απόρρητο). Στυλ fintech: κάρτες, SecHdr, tokens.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef, useId, useCallback } from 'react';
 import { leaveDevice } from '@/lib/localPrivacy';
 import { createClient } from '@/lib/supabase/client';
@@ -44,6 +45,9 @@ import { SAY, failed } from '@/lib/core/dbError';
 import { useLoad } from '@/app/hooks/useLoad';
 import { useRememberedFlag } from '@/components/useRememberedFlag';
 import { useBillingWords } from './useBillingWords';
+
+// Φαίνεται μόνο σε όποιον έχει δώσει πρόσβαση σε γραφείο· φορτώνεται στον περιηγητή.
+const FirmAccess = dynamic(() => import('./FirmAccess').then(m => m.FirmAccess), { ssr: false });
 
 type ProfileType = 'individual' | 'professional';
 
@@ -104,7 +108,7 @@ function CollapsibleSection({ title, hint, defaultOpen = false, delay, children 
             σειρά με `flex-wrap`, οπότε στα 390 έπεφτε μόνο του κάτω από το
             «Εμφάνιση και γλώσσα». Τίτλος και υπόδειξη ζουν τώρα σε δικό τους
             μπλοκ που τυλίγει όσο χρειάζεται· το βελάκι στέκεται δεξιά του. */}
-        <span style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: 2, columnGap: 10 }}>
+        <span style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: 4, columnGap: 10 }}>
         <span style={{ ...TT.label, flex: '999 1 auto', minWidth: 0 }}>{title}</span>
         {/* ═══ Η ΥΠΟΣΗΜΕΙΩΣΗ ΠΑΕΙ ΣΕ ΔΕΥΤΕΡΗ ΓΡΑΜΜΗ ΑΝΤΙ ΝΑ ΚΟΠΕΙ ══════════════
             Με τη γραμματοσειρά στα 12 σε δάχτυλο, το «Κωδικός και επαλήθευση δύο
@@ -147,13 +151,15 @@ function CollapsibleSection({ title, hint, defaultOpen = false, delay, children 
 // Σωστό όταν αλλάζεις λογιστή· δεν είναι ανάκληση όταν θέλεις απλώς να πάψει
 // να βλέπει κανείς. Μέχρι σήμερα η πύλη δεν έκλεινε ποτέ, μόνο άλλαζε κλειδαριά.
 // ═══════════════════════════════════════════════════════════════════════════
-function AccountantAccess({ userId }: { userId: string }) {
+export function AccountantAccess({ userId }: { userId: string }) {
   const supabase = createClient();
   const [link, setLink] = useState<accountantLink.AccountantLink | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [rotated, setRotated] = useState('');
   useEffect(() => {
     accountantLink.current(supabase, userId).then(l => { setLink(l); setLoaded(true); });
+    accountantLink.rotation(supabase, userId).then(r => setRotated(r ? accountantLink.rotatedSentence(r) : ''));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
@@ -180,6 +186,9 @@ function AccountantAccess({ userId }: { userId: string }) {
         <div style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>
           {state}{!link?.live && ' Ο σύνδεσμος βγαίνει από τη Λογιστική, στον φάκελο για τον λογιστή.'}
         </div>
+      )}
+      {rotated && link?.live && (
+        <div role="status" style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: 6 }}>{rotated}</div>
       )}
     </SetRow>
   );
@@ -1015,6 +1024,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
             {sheetNote && <div style={{ ...TT.bodySm }}>{sheetNote}</div>}
           </SetRow>
           <AccountantAccess userId={userId} />
+          <FirmAccess />
           <MarketDataSharing userId={userId} />
           {/* Η εμπιστοσύνη δεν είναι μόνο για τη σελίδα πωλήσεων: ο υπάρχων χρήστης
               πρέπει να βρίσκει με ένα κλικ πού ζουν τα δεδομένα του και ποιοι είμαστε. */}

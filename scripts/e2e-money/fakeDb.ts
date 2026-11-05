@@ -44,6 +44,23 @@ function channelDouble() {
   return ch;
 }
 
+/** Ενας σταθερός κωδικός QR για τον πάγκο: τρία σημάδια θέσης και σταθερός θόρυβος, όχι πραγματικός. */
+const qrCell = (x: number, y: number) => {
+  const finder = (fx: number, fy: number) => {
+    const dx = x - fx, dy = y - fy;
+    if (dx < 0 || dy < 0 || dx > 6 || dy > 6) return null;
+    return Math.max(Math.abs(dx - 3), Math.abs(dy - 3)) !== 2;
+  };
+  const f = finder(0, 0) ?? finder(14, 0) ?? finder(0, 14);
+  if (f !== null) return f;
+  if ((x < 8 && y < 8) || (x > 12 && y < 8) || (x < 8 && y > 12)) return false;
+  return ((x * 73 + y * 151 + x * y * 7) % 11) < 5;
+};
+const FAKE_QR = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 23 23" shape-rendering="crispEdges"><rect x="-1" y="-1" width="23" height="23" fill="white"/>${
+    Array.from({ length: 441 }, (_, i) => (qrCell(i % 21, Math.floor(i / 21)) ? `<rect x="${i % 21}" y="${Math.floor(i / 21)}" width="1" height="1"/>` : '')).join('')
+  }</svg>`);
+
 export function makeFakeDb(respond: Responder = () => undefined) {
   const calls: DbCall[] = [];
 
@@ -85,7 +102,20 @@ export function makeFakeDb(respond: Responder = () => undefined) {
   return {
     db: {
       from,
-      auth: { getUser: async () => ({ data: { user: { id: 'u1', email: 'dokimi@example.com' } }, error: null }) },
+      auth: {
+        getUser: async () => ({ data: { user: { id: 'u1', email: 'dokimi@example.com' } }, error: null }),
+        // ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ΤΩΝ ΓΡΑΦΕΙΩΝ (app/accountant/workspace/SecondStep.tsx).
+        // Χωρίς συσκευή· η εγγραφή δίνει σταθερό, ψεύτικο κωδικό QR, ώστε η
+        // σκηνή να έχει το ίδιο ύψος σε κάθε μέτρηση.
+        mfa: {
+          listFactors: async () => ({ data: { totp: [], all: [] }, error: null }),
+          enroll: async () => ({ data: { id: 'factor-1', totp: { qr_code: FAKE_QR, secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP', uri: '' } }, error: null }),
+          unenroll: async () => ({ data: null, error: null }),
+          challenge: async () => ({ data: { id: 'challenge-1' }, error: null }),
+          verify: async () => ({ data: null, error: null }),
+          getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: 'aal1', nextLevel: 'aal1' }, error: null }),
+        },
+      },
       // ΤΟ `on` ΕΠΙΣΤΡΕΦΕΙ ΤΟ ΙΔΙΟ ΤΟ ΚΑΝΑΛΙ, γιατί έτσι κάνει το Supabase και
       // έτσι το γράφει ο κώδικας: το PortfolioTab αλυσιδώνει πέντε `.on()`.
       // Η πρώτη εκδοχή επέστρεφε `{subscribe}`, οπότε το δεύτερο `.on()` έσκαγε
@@ -93,6 +123,11 @@ export function makeFakeDb(respond: Responder = () => undefined) {
       channel: () => channelDouble(),
       removeChannel: () => {},
       functions: { invoke: async () => ({ data: null, error: null }) },
+      // ΟΙ ΣΥΝΑΡΤΗΣΕΙΣ ΤΗΣ ΒΑΣΗΣ. Χωρίς `rpc`, κάθε οθόνη που ρωτά τη βάση με
+      // συνάρτηση (γραφεία, πύλη λογιστή) έσκαγε και η σκηνή έβγαινε κενή. Η
+      // απάντηση ανά σκηνή έρχεται από το `window.__rpc`· χωρίς αυτό, κενό.
+      rpc: async (fn: string, args?: unknown) =>
+        ((globalThis as { __rpc?: (fn: string, args?: unknown) => Answer | undefined }).__rpc?.(fn, args)) ?? { data: null, error: null },
       // ═══ Ο ΑΠΟΘΗΚΕΥΤΙΚΟΣ ΧΩΡΟΣ ΕΛΕΙΠΕ ΚΑΙ ΕΡΙΧΝΕ ΟΛΟΚΛΗΡΗ ΤΗΝ ΟΘΟΝΗ ══════
       // Μόλις ο πάγκος απέκτησε έγγραφα, ο Φάκελος Ακινήτου έσκασε με «Cannot
       // read properties of undefined (reading 'from')»: ζητά υπογεγραμμένους

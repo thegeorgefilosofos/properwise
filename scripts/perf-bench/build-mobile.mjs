@@ -45,6 +45,8 @@ await build({
   loader: { '.css': 'text' },
   alias: {
     '@/lib/supabase/client': join(here, '../e2e-money/fakeClient.ts'),
+    // Ο χώρος του γραφείου πλοηγείται με `useRouter`· ο πάγκος δεν έχει Next.
+    'next/navigation': join(here, 'next-navigation.ts'),
     '@': root,
   },
 });
