@@ -84,6 +84,14 @@ export interface BillingWords {
   cardData: string;
   /** Οι δωρεάν μήνες των προσκλήσεων. */
   compMonths: string;
+  /**
+   * Ο λογαριασμός λογιστικού ή φοροτεχνικού γραφείου και η χρέωση.
+   *
+   * ΕΔΩ ΚΑΙ ΟΧΙ ΣΤΟΥΣ ΟΡΟΥΣ (απόφαση ιδιοκτήτη 05/11/2026: τα γραφεία δεν
+   * πληρώνουν). Καμία πύλη των γραφείων δεν ρωτά πακέτο ή συνδρομή
+   * (20261104120000, 20261104130000, 20261104150000).
+   */
+  firmAccount: string;
   /** Το δικαίωμα υπαναχώρησης, στον χρόνο που ισχύει. */
   withdrawal: string;
   /**
@@ -302,6 +310,8 @@ const liveWords = (mor: string): Omit<BillingWords, 'live' | 'saleClosedReason' 
     `Τα στοιχεία της κάρτας τα χειρίζεται αποκλειστικά η ${mor} και δεν περνούν ποτέ από τους δικούς μας διακομιστές: η πληρωμή γίνεται στο δικό της περιβάλλον και εμείς λαμβάνουμε μόνο την επιβεβαίωση.`,
   compMonths:
     'Οι ανταμοιβές είναι αξία προϊόντος, δηλαδή μήνες συνδρομής χωρίς χρέωση και επιπλέον θέσεις ακινήτων· πιστώνονται στον λογαριασμό σου και δεν εξαργυρώνονται σε μετρητά.',
+  firmAccount:
+    'Ο λογαριασμός γραφείου δεν χρεώνεται: το γραφείο και τα μέλη του δεν πληρώνουν συνδρομή για να βλέπουν ή να καταχωρούν στους λογαριασμούς των πελατών τους. Τη συνδρομή του λογαριασμού του την επιλέγει και την πληρώνει, αν θέλει, μόνο ο πελάτης.',
   // Η ΣΥΝΔΡΟΜΗ ΧΡΕΩΝΕΤΑΙ ΣΤΗΝ ΑΓΟΡΑ, ΑΡΑ ΟΙ 14 ΗΜΕΡΕΣ ΚΑΛΥΠΤΟΥΝ ΧΡΗΜΑΤΑ.
   // Η επιστροφή είναι ΟΛΟΚΛΗΡΗ, όχι αναλογική: δεν χρειάζεται δήλωση για
   // «άμεση έναρξη της παροχής», που θα έπρεπε να ζητηθεί στο ταμείο και δεν
@@ -362,6 +372,8 @@ const NOT_LIVE: Omit<BillingWords, 'live' | 'saleClosedReason' | 'seller'> = {
     'Η χρέωση με κάρτα δεν έχει ενεργοποιηθεί, οπότε σήμερα δεν υπάρχει καμία επεξεργασία στοιχείων κάρτας. Όταν ενεργοποιηθεί, τα στοιχεία της κάρτας θα τα χειρίζεται αποκλειστικά ο πάροχος πληρωμών και δεν θα περνούν ποτέ από τους δικούς μας διακομιστές.',
   compMonths:
     'Οι ανταμοιβές είναι αξία προϊόντος, δηλαδή μήνες συνδρομής χωρίς χρέωση και επιπλέον θέσεις ακινήτων· πιστώνονται στον λογαριασμό σου και δεν εξαργυρώνονται σε μετρητά. Όσο δεν έχει ενεργοποιηθεί η χρέωση συνδρομών, οι μήνες αυτοί δίνονται ως αντίστοιχη πρόσβαση χωρίς πληρωμή.',
+  firmAccount:
+    'Ο λογαριασμός γραφείου δεν χρεώνεται: το γραφείο και τα μέλη του δεν πληρώνουν για να βλέπουν ή να καταχωρούν στους λογαριασμούς των πελατών τους. Σήμερα άλλωστε καμία χρέωση δεν γίνεται μέσα από την Υπηρεσία.',
   withdrawal:
     `Σήμερα δεν υπάρχει καμία χρέωση, οπότε αν υπαναχωρήσεις δεν οφείλεις τίποτα. Όταν ενεργοποιηθεί η χρέωση, η συνδρομή θα χρεώνεται τη στιγμή της αγοράς και η προθεσμία θα μετρά από τότε. ${MONEY_BACK_SOON}`,
   moneyBack: MONEY_BACK_SOON,
@@ -490,6 +502,8 @@ const liveWordsEn = (mor: string): Omit<BillingWords, 'live' | 'saleClosedReason
     `Card details are handled exclusively by ${mor} and never pass through our servers: payment takes place in its own environment and we receive only the confirmation.`,
   compMonths:
     'Rewards are product value, meaning subscription months without charge and extra property slots. They are credited to your account and cannot be exchanged for cash.',
+  firmAccount:
+    'A firm account is not charged: the firm and its members do not pay a subscription to view or record in their clients’ accounts. Only the client chooses, and pays for if they wish, the subscription of their own account.',
   withdrawal:
     `A subscription is charged at the moment of purchase, which is also when the contract is concluded, and the withdrawal period runs from then. Withdrawing within that period costs you nothing, not even for the days you used the app. ${moneyBackLiveEn(mor)} The refund is made by ${mor}, which issued the receipt, using the same payment method and within 14 days of your notice.`,
   moneyBack: moneyBackLiveEn(mor),
@@ -537,6 +551,8 @@ const NOT_LIVE_EN: Omit<BillingWords, 'live' | 'saleClosedReason' | 'seller'> = 
     'Card billing has not been switched on, so no card data is processed today. Once it is, card details will be handled exclusively by the payment provider and will never pass through our servers.',
   compMonths:
     'Rewards are product value, meaning subscription months without charge and extra property slots. They are credited to your account and cannot be exchanged for cash. Until subscription billing is switched on, these months are given as equivalent access without payment.',
+  firmAccount:
+    'A firm account is not charged: the firm and its members do not pay to view or record in their clients’ accounts. In any case, no charge is made through the Service today.',
   withdrawal:
     `There is no charge today, so if you withdraw you owe nothing. Once billing is switched on, a subscription will be charged at the moment of purchase and the withdrawal period will run from then. ${MONEY_BACK_SOON_EN}`,
   moneyBack: MONEY_BACK_SOON_EN,
