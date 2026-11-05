@@ -94,7 +94,13 @@ const nextConfig: NextConfig = {
     // προεπισκόπηση (app-page-turbo.runtime.prod.js), οπότε η έλλειψη του αρθρώματος
     // δεν ρίχνει σελίδα. Η εξοικονόμηση κάλυψε τις δύο νέες συναρτήσεις της
     // υπαναχώρησης (/ypanaxorisi, /api/withdrawal), περίπου 4,8 MB.
-    '**/*': ['node_modules/@img/**', 'node_modules/sharp/**', 'node_modules/react/cjs/react.development.js', 'node_modules/next/dist/compiled/jsonwebtoken/**'],
+    //
+    // ΚΑΙ ΟΙ ΔΥΟ ΑΔΕΙΕΣ ΤΟΥ @vercel/og (2 × 16.725 bytes, 05/11/2026). Τα LICENSE
+    // του og και του satori ανέβαιναν μαζί με τις συναρτήσεις των εικόνων
+    // κοινοποίησης· κείμενο που δεν διαβάζει κανείς κατά την εκτέλεση (το og
+    // φορτώνει μόνο .js, .wasm και γραμματοσειρές). Η εξοικονόμηση κάλυψε την
+    // αλλαγή στα κομμάτια του πελάτη από τη διόρθωση της αναπροσαρμογής (#484).
+    '**/*': ['node_modules/@img/**', 'node_modules/sharp/**', 'node_modules/react/cjs/react.development.js', 'node_modules/next/dist/compiled/jsonwebtoken/**', 'node_modules/next/dist/compiled/@vercel/og/**/LICENSE'],
   },
   // ── ΟΙ ΔΙΕΥΘΥΝΣΕΙΣ ΠΟΥ ΠΛΗΚΤΡΟΛΟΓΕΙ Ο ΚΟΣΜΟΣ ─────────────────────────────
   // Τα αγγλικά ονόματα που δοκιμάζει όποιος ψάχνει τιμές, εργαλεία ή cookies.
