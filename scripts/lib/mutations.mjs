@@ -26,6 +26,7 @@ export const MUTATIONS = {
   // «250+ suites» που είχαν μείνει πίσω από τα 165 και τα 405 (04/11/2026).
   'readme-counts': { file: 'README.md', from: 'Rules that matter are code, not convention.', to: 'Rules that matter are code, not convention: 130+ guard scripts and 250+ suites.' },
   // Οθόνη που ξαναπαίρνει τη μέση ετήσια μεταβολή για αναπροσαρμογή (03/11/2026).
+  'rent-adjust-basis': { file: 'app/dashboard/components/TabTenantMoney.tsx', from: "{label:'Νομική βάση',value:'Όρος μισθωτηρίου'}", to: "{label:'Νομική βάση',value:'Αρ. 288 ΑΚ'}" },
   'law-abbrev': { add: 'components/__mut_law__.tsx', content: tsx('    <p>Άρθρο 59 ν.5255/2025</p>') },
   'cpi-one-source': { add: 'components/__mut_cpi__.tsx', content: "import { cpiFor } from '@/lib/market/cpi'\nexport default function MutationProbe({ rent }: { rent: number }) {\n  return <span>{rent * (1 + (cpiFor(2025) ?? 0) / 100)}</span>\n}\n" },
   // Η διαφορά ξανά με δύο τελείες, από το origin/main στο HEAD: ακριβώς το

@@ -1,5 +1,6 @@
 // Τεστ για τον υπολογισμό αναπροσαρμογής μισθώματος (rentAdjustment.ts).
 import { computeRentAdjustment, adjustmentNoticeText, rentCapPct } from './rentAdjustment'
+import { commercialCapPhrase, COMMERCIAL_RENT_CAP_LAW } from '../../app/dashboard/components/TabTenantMoney'
 
 let passed = 0, failed = 0
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }
@@ -103,6 +104,16 @@ const PERIOD = 'Ιουλίου 2025 – Ιουνίου 2026'
   ok('περιοχή: όχι «επί της οδού»', !t('Παγκράτι').includes('επί της οδού') && t('Παγκράτι').includes('του ακινήτου στη διεύθυνση Παγκράτι '))
   ok('λεωφόρος: χωρίς διπλό «οδού»', !t('Λεωφόρος Συγγρού 12, Αθήνα').includes('οδού Λεωφόρος'))
   ok('κενή διεύθυνση: τίποτα', t('  ').includes('του ακινήτου αναπροσαρμόζεται'))
+}
+
+// ── Η ΒΑΣΗ ΕΙΝΑΙ Ο ΟΡΟΣ ΤΟΥ ΜΙΣΘΩΤΗΡΙΟΥ· ΤΟ ΟΡΙΟ ΓΡΑΦΕΤΑΙ ΑΠΟ ΜΙΑ ΠΗΓΗ ─────
+// Η καρτέλα έγραφε «Αρ. 288 ΑΚ» (καλή πίστη) ως νομική βάση (04/11/2026).
+{
+  ok('όριο: ποσοστό, διάταξη και έτος', commercialCapPhrase() === 'το όριο 3% του άρθρου 59 ν. 5255/2025 για το 2026')
+  ok('όριο: χωρίς 288 ΑΚ', !/288/.test(commercialCapPhrase()) && !/288/.test(COMMERCIAL_RENT_CAP_LAW))
+  // Οθόνη και υπογεγραμμένη ειδοποίηση γράφουν την ΙΔΙΑ διάταξη.
+  const capped = computeRentAdjustment({ currentRent: 1500, method: 'percent', percent: 5, capPct: 3 })
+  ok('όριο: ίδια διάταξη στην ειδοποίηση', adjustmentNoticeText({ effectiveDate: '01/03/2026', method: 'percent', res: capped }).includes(`του ${COMMERCIAL_RENT_CAP_LAW}`))
 }
 
 console.log(`rentAdjustment.test.ts: ${passed} passed, ${failed} failed`)
