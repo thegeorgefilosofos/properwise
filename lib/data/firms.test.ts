@@ -94,6 +94,7 @@ ok('κάθε λόγος έχει φράση με τελεία', ['not_allowed', 
   eq('τρία πεδία', logLine({ kind: 'expense', action: 'update', label: null, fields: ['amount', 'date', 'category'] }), 'Δαπάνη · άλλαξε ποσό, ημερομηνία και κατηγορία');
   eq('πεδία χωρίς όνομα', logLine({ kind: 'rent', action: 'update', label: null, fields: ['base_rent', 'services_charge'] }), 'Είσπραξη ενοικίου · άλλαξαν 2 πεδία');
   eq('πληρωμή δόσης', logLine({ kind: 'event', action: 'mark_paid', label: 'ΕΝΦΙΑ 3/5', fields: ['status'] }), 'Δόση «ΕΝΦΙΑ 3/5» · σημειώθηκε πληρωμένο');
+  ok('η άρνηση της σύμβασης λέει τι να γίνει', reasonText(reasonOf('firm_record:dpa')).startsWith('Ο πελάτης πρέπει πρώτα να αποδεχτεί τους όρους επεξεργασίας'));
   ok('καμία γραμμή χωρίς «βοηθός»', !/βοηθ/i.test(logLine({ kind: 'document', action: 'delete', label: null, fields: null })));
   const s = rotatedSentence({ at: '2026-11-04T10:00:00Z', reason: 'member_left' });
   ok('η ανανέωση λέει την ημερομηνία dd/mm/yyyy', s.includes('04/11/2026'));

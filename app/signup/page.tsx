@@ -729,7 +729,8 @@ export default function SignupPage() {
                   δημόσια σελίδα (βλ. `lp-eyebrow`) και τίτλος και υπότιτλος
                   μένουν ζευγάρι. Λέγεται ΜΙΑ φορά: με διαλεγμένο πακέτο τη λέει
                   η κάρτα του πακέτου. Το κείμενο έρχεται από το billingWords. */}
-              {!chosenPlan && trialBadge && <div className="lp-eyebrow" style={{ marginBottom: 10 }}>{trialBadge}</div>}
+              {/* Το γραφείο δεν πληρώνει και δεν έχει δοκιμή: η ετικέτα της δοκιμής δεν το αφορά. */}
+              {!chosenPlan && !firm && trialBadge && <div className="lp-eyebrow" style={{ marginBottom: 10 }}>{trialBadge}</div>}
               <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2, margin: '0 0 8px' }}>{S ? S.title : 'Δημιουργία λογαριασμού'}</h1>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px' }}>
                 {S ? S.haveAccount : 'Έχεις ήδη λογαριασμό;'}{' '}
@@ -1028,7 +1029,7 @@ export default function SignupPage() {
                     αρχική διάβαζε εδώ ότι ξεκινά δοκιμή. Ο ίδιος κανόνας με την
                     κάρτα που πάτησε (lib/billing/trialOffer.ts), έτοιμος από το layout. */}
                 <Btn variant="primary" type="submit" field describedBy={why ? 'su-cta-why' : undefined}>
-                  {loading ? (S ? S.creating : 'Δημιουργία…') : cta}
+                  {loading ? (S ? S.creating : 'Δημιουργία…') : firm ? 'Δημιουργία γραφείου' : cta}
                 </Btn>
               </form>
               {emailFirst && !firm && <>

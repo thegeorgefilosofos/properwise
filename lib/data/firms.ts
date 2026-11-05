@@ -289,6 +289,8 @@ export function logLine(r: Pick<LogEntry, 'kind' | 'action' | 'label' | 'fields'
 export function reasonText(reason: string): string {
   switch (reason) {
     case 'not_allowed': return 'Ο πελάτης δεν έχει δώσει αυτή την άδεια στο γραφείο.';
+    // Το γραφείο γράφει ως εκτελών την επεξεργασία (20261105090000).
+    case 'dpa': return 'Ο πελάτης πρέπει πρώτα να αποδεχτεί τους όρους επεξεργασίας. Μόλις τους αποδεχτεί στην εφαρμογή, η καταχώρηση ανοίγει.';
     case 'property': return 'Το ακίνητο δεν ανήκει σε αυτόν τον πελάτη.';
     case 'type': return 'Δεκτά είναι PDF, JPG και PNG.';
     case 'size': return 'Το αρχείο ξεπερνά τα 50 MB.';
