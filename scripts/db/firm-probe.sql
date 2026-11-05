@@ -24,6 +24,8 @@
 
 reset role;
 set session "probe.uid" = '';
+-- Τα μέλη γραφείου χρειάζονται δεύτερο βήμα (20261104150000): εδώ το έχουν.
+select set_config('request.jwt.claims', '{"aal":"aal2"}', false);
 do $probe$
 begin
   insert into auth.users(id, email) values

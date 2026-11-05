@@ -197,6 +197,14 @@ if ! fwout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-write-probe.sql" 2>&1); th
   exit 1
 fi
 probes=$((probes + $(echo "$fwout" | grep -c 'probe:' || true)))
+# Ο ανεξάρτητος έλεγχος των γραφείων (04/11/2026): πρόσωπο, όχι token·
+# ημερολόγιο χωρίς στοιχεία τρίτων· ιστορικό που μένει· δεύτερο βήμα.
+if ! fsout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-security-probe.sql" 2>&1); then
+  echo "🔴 Τα γραφεία δεν περνούν τον έλεγχο ασφάλειας:"
+  echo "$fsout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΑΠΩΛΕΙΑ|ΑΝΟΙΧΤΗ ΠΟΡΤΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$fsout" | grep -c 'probe:' || true)))
 if ! dlout=$($PSQL -d posdb -f "$ROOT/scripts/db/demo-logistis-probe.sql" 2>&1); then
   echo "🔴 Το scripts/db/demo-logistis.sql δεν τρέχει πάνω στο σχήμα:"
   echo "$dlout" | grep -m3 -E 'ERROR|DEMO' | sed 's/^/    /'
