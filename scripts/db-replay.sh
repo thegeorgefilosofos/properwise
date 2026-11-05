@@ -205,6 +205,13 @@ if ! fsout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-security-probe.sql" 2>&1);
   exit 1
 fi
 probes=$((probes + $(echo "$fsout" | grep -c 'probe:' || true)))
+# Πόσο κρατιούνται τα δύο ημερολόγια των γραφείων (20261105090000).
+if ! frout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-retention-probe.sql" 2>&1); then
+  echo "🔴 Τα ημερολόγια των γραφείων δεν κρατούν το όριο διατήρησης:"
+  echo "$frout" | grep -m3 -E 'ERROR|ΔΙΑΤΗΡΗΣΗ|ΑΝΟΙΧΤΗ ΠΟΡΤΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$frout" | grep -c 'probe:' || true)))
 
 # ── ΔΕΧΕΤΑΙ Η ΒΑΣΗ ΤΙΣ ΓΡΑΜΜΕΣ ΟΠΩΣ ΤΙΣ ΧΤΙΖΕΙ Η ΕΦΑΡΜΟΓΗ; ─────────────────────
 # Το rls-probe γράφει γραμμές με το χέρι. Οι γραμμές της εφαρμογής όμως τις
