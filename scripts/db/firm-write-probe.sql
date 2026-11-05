@@ -85,6 +85,8 @@ begin
   insert into public.accountant_links(user_id, token, active) values
     (probe_w.u('O'), 'write-probe-o', true), (probe_w.u('O2'), 'write-probe-o2', true);
 end $probe$;
+-- Οι ιδιοκτήτες του ελέγχου έχουν αποδεχτεί την τρέχουσα σύμβαση επεξεργασίας (20261105090000).
+update auth.users set raw_user_meta_data = coalesce(raw_user_meta_data, '{}') || jsonb_build_object('dpa_version', private.firm_dpa_version());
 
 create table probe_w.ids(k text primary key, id uuid);
 grant select, insert, update on probe_w.ids to authenticated;
