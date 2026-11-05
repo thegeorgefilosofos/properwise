@@ -3880,13 +3880,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .auth-aside-pl { font-size: 14px; }
 .auth-aside-pt { font-size: 13px; }
 .auth-form { width: 100%; max-width: 400px; }
+/* 460 από τα 768: η γραμμή των Όρων στα 12px θέλει 452 (app/login/page.tsx). */
+@media (min-width: 768px) { .auth-form { max-width: 460px; } }
 @media (min-width: 1440px) {
   .auth-aside-h { font-size: clamp(38px, calc(2.2vw + 2px), 44px); }
   .auth-aside-sub { font-size: 17px; }
   .auth-aside-pillars { gap: 28px; }
   .auth-aside-pl { font-size: 16px; }
   .auth-aside-pt { font-size: 15px; }
-  .auth-form { max-width: 440px; }
 }
 .po-subline  { margin-top: 1px; }
 
