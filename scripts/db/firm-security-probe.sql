@@ -53,6 +53,8 @@ begin
   insert into public.firm_client_assignees(firm_id, owner_id, user_id, assigned_by)
     values (f, probe_s.u('O'), probe_s.u('K'), probe_s.u('M'));
 end $probe$;
+-- Οι ιδιοκτήτες του ελέγχου έχουν αποδεχτεί την τρέχουσα σύμβαση επεξεργασίας (20261105090000).
+update auth.users set raw_user_meta_data = coalesce(raw_user_meta_data, '{}') || jsonb_build_object('dpa_version', private.firm_dpa_version());
 
 set role authenticated;
 
