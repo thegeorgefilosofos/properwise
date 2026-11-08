@@ -19,6 +19,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { rowFromForm } from '@/lib/core/rowFromForm'
 import { Send } from 'lucide-react'
 import { TT, Btn, settingsField } from '@/components/Theme'
 import { Toggle } from './UIComponents'
@@ -65,6 +66,13 @@ const DEFAULT: NotifPrefs = {
   legal_updates: true,
 }
 
+/** Τα πεδία της φόρμας και τίποτα άλλο: όσα κλειδιά έχει η προεπιλογή. */
+function prefsOnly(p: NotifPrefs): NotifPrefs {
+  const out = {} as Record<string, unknown>
+  for (const k of Object.keys(DEFAULT) as (keyof NotifPrefs)[]) out[k] = p[k]
+  return out as unknown as NotifPrefs
+}
+
 export default function NotificationSettings({ userId }: { userId: string }) {
   const supabase = createClient()
   const [prefs, setPrefs] = useState<NotifPrefs>(DEFAULT)
@@ -72,7 +80,12 @@ export default function NotificationSettings({ userId }: { userId: string }) {
   const [testing, setTesting] = useState(false)
 
   const persist = useCallback(async (next: NotifPrefs): Promise<boolean> => {
-    const row = { ...next, user_id: userId, updated_at: new Date().toISOString() }
+    // ΜΟΝΟ ΟΣΑ ΑΛΛΑΖΕΙ Η ΟΘΟΝΗ. Η κατάσταση γεμίζει από `select('*')`, άρα κουβαλά
+    // και στήλες που γράφει ΜΟΝΟ η βάση: `reminder_email_verified`,
+    // `reminder_email_token`, `reminder_email_token_at`. Με `...next` γράφονταν
+    // πίσω όπως διαβάστηκαν: ο παραλήπτης που επιβεβαίωνε τη διεύθυνση ενώ η
+    // σελίδα ήταν ανοιχτή «ξε-επιβεβαιωνόταν» στην επόμενη αυτόματη αποθήκευση.
+    const row = { ...rowFromForm(prefsOnly(next)), user_id: userId, updated_at: new Date().toISOString() }
     let { error } = await supabase.from('notification_preferences').upsert(row, { onConflict: 'user_id' })
     // ΑΜΥΝΤΙΚΗ ΓΡΑΦΗ: η στήλη `legal_updates` προστίθεται με migration
     // (supabase/migrations/20260730092000_checklist_actuals.sql). Αν δεν έχει

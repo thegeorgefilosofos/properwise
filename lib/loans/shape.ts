@@ -126,6 +126,9 @@ export const toLoanViews = (rows: LoanRow[] | null | undefined): LoanView[] =>
 export function toLoanRow(v: Partial<LoanView>): LoanRow {
   const { amount, rate, ...rest } = v
   const row: LoanRow = { ...rest }
+  // Η έναρξη έρχεται από επιλογέα με «Εκκαθάριση»: το '' στη στήλη `start_date`
+  // (date) απέρριπτε ολόκληρο το δάνειο (22007). Κενό σημαίνει «δεν δηλώθηκε».
+  if (typeof row.start_date === 'string' && !row.start_date.trim()) row.start_date = null
   if (amount != null) row.loan_amount = amount
   if (rate != null) {
     if (v.rate_type === 'variable') {

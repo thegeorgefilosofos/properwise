@@ -9,6 +9,10 @@
 //                                        ημερολόγιο απορριπτόταν (#423)
 //    user_properties.sqm                 «Το ακίνητο δεν αποθηκεύτηκε» με κενό
 //                                        εμβαδόν (PROPERWISE-9)
+//    property_settings.insurance_expiry  '' σε date: οι επαφές νέου ακινήτου δεν
+//                                        γράφονταν με κενή λήξη ασφάλισης (22007,
+//                                        06/11/2026)· το ίδιο σε επισκευές,
+//                                        συντηρήσεις, εισπράξεις και δάνεια
 //
 //  Κανένα δεν φαινόταν σε δοκιμή μονάδας, γιατί η δοκιμή μονάδας δεν ξέρει τι
 //  δέχεται η βάση· και κανένα στο rls-probe, γιατί εκεί η γραμμή είναι γραμμένη
@@ -27,7 +31,11 @@
 //    · η RLS στη γραφή (WITH CHECK): ο χρήστης γράφει στα δικά του, όχι σε ξένα·
 //    · η RLS του `bills` για τρίτους: το μέλος του οργανισμού βλέπει και
 //      διορθώνει λογαριασμό του ιδιοκτήτη, ο ξένος και ο ανώνυμος τίποτα·
-//    · τα triggers που τρέχουν πάνω σε αυτές τις εγγραφές.
+//    · τα triggers που τρέχουν πάνω σε αυτές τις εγγραφές·
+//    · οι κανονικοποιήσεις της φόρμας (settingsRow, rowFromForm, paidFields,
+//      toLoanRow) με τα προαιρετικά κενά — και ένα ΑΡΝΗΤΙΚΟ: το '' χωρίς
+//      κανονικοποίηση ΠΡΕΠΕΙ να απορρίπτεται (22007), αλλιώς το probe δεν πιάνει
+//      πια την κατηγορία.
 //
 //  ΧΡΗΣΗ: npx tsx scripts/db/write-flows.ts > ροές.sql   (το καλεί το db-replay)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -39,6 +47,12 @@ import * as tenants from '@/lib/data/tenants';
 import * as bills from '@/lib/data/bills';
 import * as rent from '@/lib/data/rent';
 import * as documents from '@/lib/data/documents';
+import * as inventory from '@/lib/data/inventory';
+import * as loans from '@/lib/data/loans';
+import { settingsRow, hasAnySetting } from '@/lib/property/settingsRow';
+import { rowFromForm } from '@/lib/core/rowFromForm';
+import { itemPayload } from '@/app/dashboard/components/inventory/payload';
+import { toLoanRow } from '@/lib/loans/shape';
 import { newPropertyRow, statementDocRow } from '@/lib/myaade/commit';
 import { matchProperty } from '@/lib/myaade/match';
 import { planStatement } from '@/lib/myaade/statement';
@@ -49,7 +63,9 @@ import type { Tenant } from '@/app/dashboard/components/TabTenantTypes';
 type Row = Record<string, unknown>;
 interface Write {
   label: string;
-  expect: 'ok' | 'deny';
+  /** ok: γράφεται· deny: η RLS το κόβει· reject: η βάση το απορρίπτει με `sqlstate`. */
+  expect: 'ok' | 'deny' | 'reject';
+  sqlstate?: string;
   /** Ποιος είναι συνδεδεμένος όταν στέλνεται η εγγραφή. */
   uid: string;
   table: string;
@@ -80,7 +96,7 @@ const IATAK = fakeAtak(1);
 const writes: Write[] = [];
 /** Σήμα για το `.is(στήλη, null)`: γίνεται `στήλη is null`, όχι `= null`. */
 const IS_NULL = Symbol('is null');
-let current: Pick<Write, 'label' | 'expect' | 'uid'> = { label: '', expect: 'ok', uid: A };
+let current: Pick<Write, 'label' | 'expect' | 'uid' | 'sqlstate'> = { label: '', expect: 'ok', uid: A };
 
 /** Πελάτης που δεν στέλνει τίποτα: γράφει τι θα έστελνε. */
 function recorder(): SupabaseClient {
@@ -108,8 +124,8 @@ function recorder(): SupabaseClient {
   return { from } as unknown as SupabaseClient;
 }
 
-async function flow(label: string, fn: () => PromiseLike<unknown>, expect: 'ok' | 'deny' = 'ok', uid = A) {
-  current = { label, expect, uid };
+async function flow(label: string, fn: () => PromiseLike<unknown>, expect: 'ok' | 'deny' | 'reject' = 'ok', uid = A, sqlstate?: string) {
+  current = { label, expect, uid, sqlstate };
   const before = writes.length;
   await fn();
   if (writes.length === before) throw new Error(`η ροή «${label}» δεν έγραψε τίποτα`);
@@ -159,6 +175,58 @@ async function flows() {
 
   await flow('νέος λογαριασμός', () => bills.add(db, PA, A, { id: BILL, name: 'ΔΕΗ', type: 'electricity', amount: 84.5, due_date: '2026-11-15', paid: false }));
   await flow('ο λογαριασμός πληρώθηκε', () => bills.update(db, BILL, { paid: true }));
+
+  // ── ΟΙ ΦΟΡΜΕΣ ΜΕ ΤΑ ΠΡΟΑΙΡΕΤΙΚΑ ΚΕΝΑ ─────────────────────────────────────
+  // 06/11/2026: ο οδηγός έστελνε '' στο property_settings.insurance_expiry
+  // (date) και οι επαφές του νέου ακινήτου δεν γράφονταν ΠΟΤΕ, όταν έμενε κενή
+  // η λήξη ασφάλισης (Postgres 22007, PR #489). Η ίδια σάρωση βρήκε το '' σε
+  // επισκευές, συντηρήσεις, εισπράξεις και δάνεια. Εδώ περνά κάθε μία από τις
+  // ΠΡΑΓΜΑΤΙΚΕΣ κανονικοποιήσεις, με ό,τι αφήνει κενό ο χρήστης.
+  //
+  // Το σχήμα της φόρμας είναι του οδηγού (INIT_SETTINGS, AddPropertyWizard.tsx):
+  // όλα κείμενο, το κενό ''. Μόνο το όνομα ιδιοκτήτη είναι συμπληρωμένο.
+  const wizardSettings = {
+    owner_name: 'Λογιστής Δοκιμής', owner_afm: '', owner_phone: '', owner_email: '',
+    electricity_provider: '', water_provider: '', internet_provider: '',
+    property_manager: '', property_manager_phone: '',
+    insurance_company: '', insurance_policy: '', insurance_expiry: '', notes: '',
+  };
+  if (!hasAnySetting(wizardSettings)) throw new Error('ο οδηγός θα παρέλειπε τις επαφές με συμπληρωμένο όνομα ιδιοκτήτη');
+  await flow('επαφές νέου ακινήτου: μόνο όνομα ιδιοκτήτη, κενή λήξη ασφάλισης (06/11/2026)', () =>
+    db.from('property_settings').upsert({ ...settingsRow(wizardSettings), property_id: PA, user_id: A }, { onConflict: 'property_id' }));
+  // ΤΟ ΑΡΝΗΤΙΚΟ: χωρίς την κανονικοποίηση, η βάση ΠΡΕΠΕΙ να το απορρίπτει.
+  // Αν περάσει, το probe δεν πιάνει πια την κατηγορία και δεν αποδεικνύει τίποτα.
+  await flow('ΧΩΡΙΣ κανονικοποίηση: το \'\' στη λήξη ασφάλισης απορρίπτεται', () =>
+    db.from('property_settings').upsert({ ...wizardSettings, property_id: PA, user_id: A }, { onConflict: 'property_id' }), 'reject', A, '22007');
+  await flow('ασφάλεια ακινήτου: εταιρεία και ποσό, χωρίς ημερομηνία ανανέωσης', () =>
+    properties.update(db, PA, { insurance_company: 'Ασφαλιστική Δοκιμής', insurance_amount: 240, insurance_expiry: null }, A));
+  await flow('ασφάλεια στις επαφές: ασφαλιστήριο με λήξη', () =>
+    db.from('property_settings').upsert({ ...settingsRow({ ...wizardSettings, insurance_company: 'Ασφαλιστική Δοκιμής', insurance_expiry: '2027-03-31' }), property_id: PA, user_id: A }, { onConflict: 'property_id' }));
+
+  await flow('μισθωτής με τα ελάχιστα (όνομα και τύπος μίσθωσης)', () => tenants.add(db, PA, A, rowFromForm({
+    full_name: 'Ελάχιστος Μισθωτής', lease_category: 'residential', email: '', phone: '', afm: '',
+    lease_start: '', lease_end: '', monthly_rent: parseFloat(''), deposit_amount: parseFloat(''), deposit_paid_on: '',
+    deposit_return_date: '', rent_due_day: 1, custom_lease_days: parseFloat(''),
+  })));
+
+  // Η είσπραξη με σβησμένη ημερομηνία (ο επιλογέας έχει «Εκκαθάριση»).
+  await flow('είσπραξη του Φεβρουαρίου με σβησμένη ημερομηνία', () => rent.upsertPeriod(db, {
+    tenant_id: TA, property_id: PA, user_id: A, period_year: 2026, period_month: 2, amount: 500,
+    ...rent.paidFields('2026-02-05', '', 'Μετρητά'),
+  }));
+
+  const ITEM = '7e570000-0000-4000-8000-0000000000a9';
+  await flow('αντικείμενο απογραφής χωρίς ημερομηνίες αγοράς και εγγύησης', () =>
+    inventory.add(db, PA, A, [{ ...itemPayload({ name: 'Θερμοσίφωνας', purchase_date: '', warranty_expiry: '' }), id: ITEM } as never]));
+  await flow('επισκευή χωρίς ημερομηνία (η προεπιλογή της φόρμας)', () =>
+    db.from('inventory_repairs').insert({ ...rowFromForm({ repair_date: '', cost: 80, technician: '', description: 'Αλλαγή αντίστασης' }), item_id: ITEM, user_id: A }));
+  await flow('συντήρηση χωρίς «τελευταία εκτέλεση»', () =>
+    db.from('inventory_maintenance').insert({ property_id: PA, user_id: A, item_id: ITEM, item_name: 'Θερμοσίφωνας', task: 'Καθαρισμός', interval_months: 12, last_done: null, next_due: '2027-11-08', notes: '', est_cost: 0 }));
+  await flow('δάνειο με σβησμένη ημερομηνία έναρξης', () =>
+    loans.add(db, PA, A, toLoanRow({ amount: 100000, rate: 3.5, rate_type: 'fixed', years: 20, start_date: '', status: 'active', bank: 'Τράπεζα Δοκιμής' })));
+  await flow('δαπάνη με τα ελάχιστα (χωρίς σημειώσεις, ΑΦΜ, συχνότητα)', () =>
+    expenses.insert(db, [expenses.row(scope, { amount: 15, description: 'Λάμπες', date: '2026-11-08', category: 'other' })]));
+  await flow('λογαριασμός με τα ελάχιστα', () => bills.add(db, PA, A, { name: 'Νερό', type: 'water', amount: 22, due_date: '2026-12-01' }));
 
   // ── Ο Α ΔΕΝ ΓΡΑΦΕΙ ΣΤΑ ΤΟΥ Β ─────────────────────────────────────────────
   const foreign = { propertyId: PB, userId: B };
@@ -255,6 +323,15 @@ function block(w: Write, i: number): string {
   const name = `${i + 1}. ${w.label}`.replace(/'/g, "''");
   const s = statement(w);
   const who = `set session "probe.uid" = ${lit(w.uid)};\n`;
+  if (w.expect === 'reject') {
+    if (!w.sqlstate || !/^[0-9A-Z]{5}$/.test(w.sqlstate)) throw new Error(`η ροή «${w.label}» περιμένει απόρριψη χωρίς sqlstate`);
+    return who + `do $w$ begin
+  ${s};
+  raise exception 'ΡΟΗ «${name}»: η βάση ΔΕΧΤΗΚΕ ό,τι έπρεπε να απορρίψει (${w.sqlstate}): το probe δεν πιάνει πια την κατηγορία';
+exception when sqlstate '${w.sqlstate}' then
+  raise notice 'write-flow: ${name} (απορρίφθηκε με ${w.sqlstate}, σωστά)';
+end $w$;`;
+  }
   if (w.expect === 'ok') {
     return who + `do $w$ declare n int; begin
   ${s};
@@ -391,6 +468,18 @@ end $w$;`,
   end if;
   if (select count(*) from public.rent_payments where tenant_id = ${lit(TA)} and period_year = 2026 and period_month = 1 and paid) <> 1 then
     raise exception 'ΡΟΗ «είσπραξη»: ο Ιανουάριος δεν είναι μία πληρωμένη δόση';
+  end if;
+  if not exists (select 1 from public.property_settings where property_id = ${lit(PA)} and owner_name = 'Λογιστής Δοκιμής' and insurance_expiry = '2027-03-31' and owner_afm is null) then
+    raise exception 'ΡΟΗ «επαφές»: οι επαφές του νέου ακινήτου δεν γράφτηκαν όπως τις έστειλε ο οδηγός';
+  end if;
+  if (select count(*) from public.inventory_repairs where user_id = ${lit(A)} and repair_date is null) <> 1 then
+    raise exception 'ΡΟΗ «επισκευή»: η επισκευή χωρίς ημερομηνία δεν γράφτηκε';
+  end if;
+  if (select count(*) from public.rent_payments where tenant_id = ${lit(TA)} and period_year = 2026 and period_month = 2 and paid and paid_date is not null) <> 1 then
+    raise exception 'ΡΟΗ «είσπραξη»: η είσπραξη με σβησμένη ημερομηνία δεν έχει ημερομηνία';
+  end if;
+  if (select count(*) from public.loans where user_id = ${lit(A)} and start_date is null) <> 1 then
+    raise exception 'ΡΟΗ «δάνειο»: το δάνειο χωρίς έναρξη δεν γράφτηκε';
   end if;
   if (select name from public.user_properties where id = ${lit(PB)}) <> 'Του Β' then
     raise exception 'ΔΙΑΡΡΟΗ: ο Α άλλαξε το ακίνητο του Β';

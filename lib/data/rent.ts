@@ -29,6 +29,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { RentPaymentsRow } from '@/lib/supabase/tables';
 // ΤΑ `rows`/`row` ΠΑΙΡΝΟΥΝ ΨΕΥΔΩΝΥΜΟ: το αρχείο έχει ήδη παραμέτρους με αυτά τα
 // ονόματα (`collectedIn(rows, …)`, `upsertPeriod(db, row, …)`).
+import { athensToday } from '@/lib/core/time';
 import { read, rows as readRows, row as readRow, type ReadResult } from './read';
 
 const TABLE = 'rent_payments';
@@ -232,9 +233,14 @@ export type RentPatch = { [K in keyof RentPaymentsRow]?: RentPaymentsRow[K] | nu
  * μπαίνει στη βεβαίωση και η σημαία κρίνει αν το ποσό μετράει ως έσοδο. Όποιος
  * έγραφε μόνο τη σημαία άφηνε δόση «πληρωμένη» χωρίς ημερομηνία — και μηδέν
  * ημέρες καθυστέρησης σε πληρωμή που άργησε τρεις μήνες.
+ *
+ * ΚΑΙ Η ΗΜΕΡΟΜΗΝΙΑ ΕΙΝΑΙ ΠΑΝΤΑ ΗΜΕΡΟΜΗΝΙΑ. Ο επιλογέας έχει «Εκκαθάριση»: το ''
+ * έφτανε στη στήλη `paid_date` (date) και η είσπραξη απορριπτόταν (22007).
+ * Είσπραξη χωρίς ημερομηνία είναι είσπραξη σήμερα.
  */
 export function paidFields(dueDate: string | null | undefined, paidDate: string, method: string | null) {
-  return { paid: true, paid_date: paidDate, method, days_late: daysLate(dueDate, paidDate) };
+  const when = paidDate?.trim() || athensToday();
+  return { paid: true, paid_date: when, method, days_late: daysLate(dueDate, when) };
 }
 
 /** Και οι τέσσερις πίσω στο απλήρωτο. Καμία δεν επιβιώνει της ακύρωσης. */
