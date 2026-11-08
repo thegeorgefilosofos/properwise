@@ -1,5 +1,6 @@
 'use client';
 
+import { settingsRow, hasAnySetting } from '@/lib/property/settingsRow';
 import { useState, useEffect, useId, cloneElement, isValidElement, Children, Fragment } from 'react';
 import { track, trackOnboarding, PRODUCT_EVENTS } from '@/lib/analytics/events';
 import { HEATING_TYPES, heatingLabel, normalizeHeating } from '@/lib/property/heating';
@@ -708,9 +709,11 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     }
 
     // property_settings: αποθήκευση μόνο αν έχει συμπληρωθεί κάτι (αποφυγή κενής γραμμής)
-    if (propertyId && Object.values(settings).some(v => (v ?? '').toString().trim() !== '')) {
+    // ΤΟ ΚΕΝΟ ΓΙΝΕΤΑΙ null (lib/property/settingsRow.ts): το '' στη λήξη
+    // ασφάλισης, που είναι στήλη ημερομηνίας, απέρριπτε όλη τη γραμμή.
+    if (propertyId && hasAnySetting(settings)) {
       const { error: sErr } = await supabase.from('property_settings')
-        .upsert({ ...settings, property_id: propertyId, user_id: userId }, { onConflict: 'property_id' });
+        .upsert({ ...settingsRow(settings), property_id: propertyId, user_id: userId }, { onConflict: 'property_id' });
       // Το ακίνητο έχει ήδη αποθηκευτεί — λέμε ρητά τι έμεινε πίσω, ώστε το
       // «δοκίμασε ξανά» να μη διαβάζεται ως «ξαναφτιάξ' το από την αρχή».
       if (sErr) { setSaving(false); setError(failed('Το ακίνητο αποθηκεύτηκε, αλλά οι επαφές και οι σημειώσεις του δεν καταχωρήθηκαν', sErr)); return; }
@@ -783,6 +786,10 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     if (saving) return;
     if (dirty && !(await confirmDiscard())) return;
     clearDraft(formKey);
+    // ΤΟ ΑΚΙΝΗΤΟ ΥΠΑΡΧΕΙ ΗΔΗ: η λίστα ανανεώνεται. Αν έσκαγε το δεύτερο βήμα και
+    // ο χρήστης έκλεινε τον οδηγό, η σελίδα δεν ξαναδιάβαζε τα ακίνητα και το
+    // νέο ακίνητο φαινόταν να μην αποθηκεύτηκε ποτέ (αναφορά λογιστή, 06/11/2026).
+    if (createdId && !isEdit) { onSaved(createdId); return; }
     if (!isEdit && !createdId) void trackOnboarding(supabase, { event: PRODUCT_EVENTS.wizard_closed, step: step + 1 });
     onClose();
   };
