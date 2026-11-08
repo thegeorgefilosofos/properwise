@@ -58,8 +58,10 @@ alter table public.accountant_clients enable trigger accountant_clients_assign;
 do $probe$
 declare p uuid := 'f1000000-0000-4000-8000-0000000000c1'; o2 uuid := 'f1000000-0000-4000-8000-000000000002';
 begin
-  if not public.accountant_link_live(p, o2) then
-    raise exception 'Η παλιά άδεια χωρίς γραφείο δεν κρατά πριν από τη μεταφορά';
+  -- Χωρίς γραφείο δεν υπάρχει αποδοχή των όρων επεξεργασίας (20261108090000):
+  -- η παλιά άδεια δεν ανοίγει μόνη της. Η μεταφορά τη δίνει στο γραφείο του.
+  if public.accountant_link_live(p, o2) then
+    raise exception 'ΔΙΑΡΡΟΗ: η παλιά άδεια χωρίς γραφείο ανοίγει χωρίς αποδοχή των όρων';
   end if;
   -- Το ίδιο βήμα με τη μετανάστευση.
   update public.accountant_clients set firm_id = private.firm_ensure(accountant_id)
