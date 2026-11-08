@@ -3,6 +3,7 @@
 import { formatNavHash } from '@/lib/nav/history'
 import { navLabel } from '@/lib/nav/labels'
 import { fpRate } from '@/lib/core/format'
+import { rowFromForm } from '@/lib/core/rowFromForm'
 import { useState, useCallback, useMemo } from 'react'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import * as tenantStore from '@/lib/data/tenants'
@@ -753,7 +754,10 @@ export default function TabInventory({propertyId,userId,profileType='individual'
   // απλώς δεν έφερνε τίποτα νέο, η άλλη επειδή η οθόνη ενημερωνόταν αισιόδοξα.
   const handleAddRepair=async(data:Partial<InventoryRepair>)=>{
     if(!repairItem)return
-    const {error}=await supabase.from('inventory_repairs').insert({...data,item_id:repairItem.id,user_id:userId})
+    // Η ημερομηνία επισκευής είναι προαιρετική και η φόρμα την κρατά ως ''· η
+    // στήλη είναι ημερομηνία, οπότε το '' απέρριπτε κάθε επισκευή χωρίς ημερομηνία
+    // (22007). Η `rowFromForm` κάνει το κενό null πριν φτάσει στη βάση.
+    const {error}=await supabase.from('inventory_repairs').insert({...rowFromForm({repair_date:data.repair_date,cost:data.cost,technician:data.technician,description:data.description}),item_id:repairItem.id,user_id:userId})
     if(error){notifyError(failed('Η επισκευή δεν καταχωρήθηκε',error));return}
     fetchData()
   }

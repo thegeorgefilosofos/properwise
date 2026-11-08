@@ -228,7 +228,9 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
 
   useLoad(loadLogs);
   const saveLog=async()=>{
-    if(!form.summary.trim())return;setSaving(true);
+    // Η ημερομηνία είναι NOT NULL στη βάση και ο επιλογέας έχει «Εκκαθάριση»:
+    // το '' απέρριπτε την καταγραφή (22007). Το κουμπί μένει κλειστό χωρίς αυτήν.
+    if(!form.summary.trim()||!form.date)return;setSaving(true);
     const ok=await saved('Η καταγραφή επικοινωνίας δεν αποθηκεύτηκε', supabase.from('tenant_comm_log').insert({tenant_id:tenant.id,property_id:propertyId,user_id:userId,type:form.type,summary:form.summary.trim(),date:form.date,outcome:form.outcome||null}));
     setSaving(false);
     // ΤΟ ΓΡΑΨΙΜΟ ΤΟΥ ΧΡΗΣΤΗ ΔΕΝ ΣΒΗΝΕΤΑΙ ΟΤΑΝ Η ΑΠΟΘΗΚΕΥΣΗ ΑΠΕΤΥΧΕ. Η φόρμα
@@ -318,7 +320,7 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
               <Btn variant="secondary" onClick={()=>setShowAdd(false)}>Ακύρωση</Btn>
-              <Btn variant="primary" onClick={saveLog} disabled={saving}>{saving?'Αποθήκευση…':'Αποθήκευση'}</Btn>
+              <Btn variant="primary" onClick={saveLog} disabled={saving||!form.summary.trim()||!form.date}>{saving?'Αποθήκευση…':'Αποθήκευση'}</Btn>
             </div>
           </div>
         )}

@@ -1225,8 +1225,11 @@ function EditExpense({ row, userId, counts, onCountsChange, onClose, onSaved }: 
   const afmOk = afm.trim() === '' || isValidAfm(afm);
   // Το ΑΦΜ λέει μόνο του τι του φταίει, δίπλα στο πεδίο. Εδώ μένει ό,τι δεν
   // φαίνεται αλλού, ώστε το κλειδωμένο κουμπί να μην είναι ποτέ ανεξήγητο.
+  // Η ημερομηνία είναι NOT NULL στη βάση και ο επιλογέας έχει «Εκκαθάριση»:
+  // το '' γύριζε «Δεν αποθηκεύτηκε» χωρίς να λέει γιατί (22007).
   const missing = !what.trim() ? 'Θέλει περιγραφή.'
     : (amt === null || amt <= 0) ? 'Θέλει ποσό μεγαλύτερο από μηδέν.'
+    : !date ? 'Θέλει ημερομηνία.'
     : null;
   const ready = !missing && afmOk;
 
@@ -1414,6 +1417,10 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
     // διαβάζει σωστά και στις δύο γραφές, με 19 ελέγχους από πίσω.
     const amt = parseAmount(amount);
     if (!what.trim() || amt === null || amt <= 0 || !afmOk) return;
+    // Η ΗΜΕΡΟΜΗΝΙΑ ΛΕΓΕΤΑΙ, ΔΕΝ ΑΠΟΡΡΙΠΤΕΤΑΙ ΑΠΟ ΤΗ ΒΑΣΗ. Ο επιλογέας έχει
+    // «Εκκαθάριση»· το '' έφτανε στη στήλη (date, NOT NULL) και ο χρήστης έβλεπε
+    // «Δεν αποθηκεύτηκε. Δοκίμασε ξανά.», που δεν θα πετύχαινε ποτέ.
+    if (!(paid ? date : (due || date))) { notifyError('Συμπλήρωσε ημερομηνία.'); return; }
     setSaving(true);
     try {
       // Ο SUPABASE ΔΕΝ ΠΕΤΑΕΙ ΕΞΑΙΡΕΣΗ ΣΕ ΣΦΑΛΜΑ ΒΑΣΗΣ — ΕΠΙΣΤΡΕΦΕΙ { error }.

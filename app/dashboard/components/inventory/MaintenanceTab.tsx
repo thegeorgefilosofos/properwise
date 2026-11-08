@@ -89,7 +89,9 @@ export function MaintenanceTab({items,schedules,propertyId,userId,onSaved}:{item
     if(!form.task.trim()){notifyError('Η εργασία είναι υποχρεωτική.');return}
     setSaving(true)
     const base=form.last_done||today(); const nextDue=addMonths(base,form.interval_months); const est=form.est_cost||0
-    const {data:sched,error:schedErr}=await supabase.from('inventory_maintenance').insert({property_id:propertyId,user_id:userId,item_id:form.item_id||'',item_name:form.item_name,task:form.task,interval_months:form.interval_months,last_done:form.last_done,next_due:nextDue,notes:form.notes,est_cost:est}).select('id').single()
+    // Η «τελευταία εκτέλεση» είναι προαιρετική και η φόρμα την κρατά ως ''. Η στήλη
+    // είναι ημερομηνία: το '' απέρριπτε ΚΑΘΕ νέα συντήρηση χωρίς ιστορικό (22007).
+    const {data:sched,error:schedErr}=await supabase.from('inventory_maintenance').insert({property_id:propertyId,user_id:userId,item_id:form.item_id||'',item_name:form.item_name,task:form.task,interval_months:form.interval_months,last_done:form.last_done||null,next_due:nextDue,notes:form.notes,est_cost:est}).select('id').single()
     // Αν αποτύχει η εγγραφή (π.χ. δεν έχει τρέξει η migration), μην δημιουργήσεις ορφανές εγγραφές στο κύκλωμα.
     if(schedErr){notifyError(failed('Η συντήρηση δεν προγραμματίστηκε',schedErr));setSaving(false);return}
     // Αν έχει ήδη γίνει (δηλωμένη τελευταία εκτέλεση) κατέγραψε πληρωμένη δαπάνη για το ιστορικό.

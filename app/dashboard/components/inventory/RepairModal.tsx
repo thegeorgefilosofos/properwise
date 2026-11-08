@@ -38,7 +38,8 @@ export function RepairModal({item,repairs,onAdd,onClose,propertyId,userId}:{item
   const handleAdd = async() => {
     if(!form.description.trim()){notifyError('Η περιγραφή είναι υποχρεωτική.');return}
     setSaving(true)
-    await onAdd(form)
+    // Ιδια ημερομηνία στην επισκευή και στη δαπάνη που γεννά: χωρίς επιλογή, σήμερα.
+    await onAdd({...form,repair_date:form.repair_date||athensToday()})
     if(pushExpenses&&form.cost>0){
       const {error}=await expenses.insert(supabase,[expenses.row({propertyId,userId},{description:`Επισκευή: ${item.name}${form.technician?` (${form.technician})`:''}${form.description?`, ${form.description}`:''}`,amount:form.cost,category:'Συντήρηση & Επισκευές',date:form.repair_date||athensToday(),paid:true,notes:`Αυτόματη εισαγωγή από ${navLabel('inventory')}, ${item.name}`})])
       // Ο διακόπτης υπόσχεται ρητά ότι η επισκευή περνά στις δαπάνες. Αν δεν
