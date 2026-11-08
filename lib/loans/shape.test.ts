@@ -65,6 +65,8 @@ ok('λίστα μεταφράζεται όλη', toLoanViews([{ loan_amount: 1 }
   ok('κυμαινόμενο → spread = rate − euribor', near(r.spread ?? -1, 1.5))
   ok('δεν πειράζει το fixed_rate', r.fixed_rate === undefined)
 }
+ok('η σβησμένη έναρξη γίνεται null, όχι "" (22007)', toLoanRow({ amount: 1, start_date: '' }).start_date === null)
+ok('η δηλωμένη έναρξη μένει', toLoanRow({ amount: 1, start_date: '2026-11-01' }).start_date === '2026-11-01')
 ok('αρνητικό spread δεν γράφεται', (toLoanRow({ rate: 1, rate_type: 'variable', euribor: 3 }).spread ?? -1) === 0)
 
 // ── Η λίστα στηλών δεν περιέχει ανύπαρκτες ─────────────────────────────────

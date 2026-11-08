@@ -594,7 +594,9 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     // μόνο τόνο για τα πάντα. Τώρα ο τόνος λέει την αλήθεια.
     if(!payF.amount){notify('Συμπλήρωσε ποσό',{tone:'warning'});return;}
     setBusy(true);
-    const paidDate=payF.paid?payF.paid_date:null;
+    // «Πληρώθηκε» με σβησμένη ημερομηνία αποθηκευόταν ΑΠΛΗΡΩΤΗ, χωρίς λέξη:
+    // το '' έστελνε τη ροή στα unpaidFields. Πληρωμή χωρίς ημερομηνία είναι σήμερα.
+    const paidDate=payF.paid?(payF.paid_date||todayISO()):null;
     const due=`${payF.period_year}-${String(payF.period_month).padStart(2,'0')}-${String(Math.min(Math.max(1,rentDueDay),28)).padStart(2,'0')}`;
     const{error:payErr}=await rentStore.upsertPeriod(supabase,{
       tenant_id:tenant.id,property_id:propertyId,user_id:userId,

@@ -117,13 +117,17 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
 
   if (!open) return null;
 
-  const ready = !!prop && num(rent) > 0 && !!tenant.trim() && !!sigL && !!sigT;
+  const ready = !!prop && num(rent) > 0 && !!tenant.trim() && !!res.start && !!sigL && !!sigT;
 
   const generate = async () => {
     setErr('');
     if (!prop) { setErr('Διάλεξε ακίνητο.'); return; }
     if (num(rent) <= 0) { setErr('Συμπλήρωσε το μηνιαίο μίσθωμα.'); return; }
     if (!tenant.trim()) { setErr('Συμπλήρωσε το ονοματεπώνυμο του μισθωτή.'); return; }
+    // Χωρίς έναρξη το μισθωτήριο έβγαινε χωρίς διάρκεια και, στην αρχειοθέτηση,
+    // το '' έφτανε στο `tenants.lease_start` (date): το έγγραφο αρχειοθετούνταν
+    // και η καρτέλα του μισθωτή απέρριπτε την ενημέρωση (22007).
+    if (!res.start) { setErr('Συμπλήρωσε την ημερομηνία έναρξης της μίσθωσης.'); return; }
     if (!sigL || !sigT) { setErr('Χρειάζονται οι υπογραφές και των δύο μερών.'); return; }
     setBusy(true);
     try {
