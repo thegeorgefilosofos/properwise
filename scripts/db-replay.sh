@@ -173,6 +173,17 @@ fi
 $PSQL -c "drop database if exists emailprobe" >/dev/null
 eprobes=$(echo "$eout" | grep -c 'probe:' || true)
 
+# ── ΤΑ ΔΟΚΙΜΑΣΤΙΚΑ ΓΡΑΦΕΙΑ ΕΧΟΥΝ ΑΠΟΔΕΧΤΕΙ ΤΟΥΣ ΟΡΟΥΣ ───────────────────────
+# Χωρίς αποδοχή των όρων επεξεργασίας (20261108090000) κανένα γραφείο δεν βλέπει
+# πελάτη. Τα παρακάτω σενάρια ελέγχουν άλλα πράγματα, οπότε εδώ τα γραφεία και
+# τα μέλη τους γεννιούνται με την τρέχουσα αποδοχή. Το firm-terms-probe τη
+# βγάζει και ελέγχει την άρνηση. Μόνο στη βάση της δοκιμής· καμία μετανάστευση
+# δεν το κάνει.
+if $PSQL -d posdb -tAc "select to_regprocedure('private.firm_terms_version()') is not null" | grep -q t; then
+  $PSQL -d posdb -c "alter table public.firms alter column terms_version set default private.firm_terms_version();
+    alter table public.firm_members alter column terms_version set default private.firm_terms_version();" >/dev/null
+fi
+
 # ── ΒΛΕΠΕΙ Ο Α ΤΑ ΔΕΔΟΜΕΝΑ ΤΟΥ Β; ───────────────────────────────────────────
 # Ο μόνος έλεγχος του αποθετηρίου που ρωτά το ίδιο το Postgres. Κάθε αποτυχία
 # μέσα στο αρχείο σηκώνει exception, οπότε το ON_ERROR_STOP το κάνει κόκκινο.
@@ -218,6 +229,13 @@ if ! dlout=$($PSQL -d posdb -f "$ROOT/scripts/db/demo-logistis-probe.sql" 2>&1);
   exit 1
 fi
 probes=$((probes + $(echo "$dlout" | grep -c 'probe:' || true)))
+# Χωρίς αποδοχή των όρων επεξεργασίας, κανένας πελάτης (20261108090000).
+if ! ftout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-terms-probe.sql" 2>&1); then
+  echo "🔴 Γραφείο χωρίς αποδοχή των όρων βλέπει πελάτες:"
+  echo "$ftout" | grep -m3 -E 'ERROR|ΑΝΟΙΧΤΗ ΠΟΡΤΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$ftout" | grep -c 'probe:' || true)))
 
 # ── ΔΕΧΕΤΑΙ Η ΒΑΣΗ ΤΙΣ ΓΡΑΜΜΕΣ ΟΠΩΣ ΤΙΣ ΧΤΙΖΕΙ Η ΕΦΑΡΜΟΓΗ; ─────────────────────
 # Το rls-probe γράφει γραμμές με το χέρι. Οι γραμμές της εφαρμογής όμως τις
