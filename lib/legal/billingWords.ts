@@ -50,6 +50,8 @@ import { checkoutState } from '@/lib/legal/checkout';
 import { IDENTITY, sellerIdentityGaps, sellerFieldLabel, type LegalIdentity } from '@/lib/legal/identity';
 import { TRIAL_DAYS, PLANS } from '@/lib/billing/plans';
 import { SCAN_LIMITS } from '@/lib/billing/aiLimits';
+import { INVITE_LIMITS } from '@/lib/billing/inviteLimits';
+import { PROFESSIONAL_MIN_PLAN } from '@/lib/billing/entitlements';
 
 // ── ΜΕΤΑ ΤΗ ΔΟΚΙΜΗ: ΤΟ ΔΩΡΕΑΝ ΠΑΚΕΤΟ, ΟΧΙ ΔΙΑΓΡΑΦΗ ────────────────────────
 // ΑΠΟΦΑΣΗ ΙΔΙΟΚΤΗΤΗ (25.09.2026). Ως τώρα, χωρίς συνδρομή ο λογαριασμός
@@ -276,6 +278,24 @@ export const PRICES_VAT = 'Οι τιμές αφορούν καταναλωτές
 export const NO_COMMITMENT = 'Χωρίς δέσμευση ή ποινή αποχώρησης.';
 /** Η ίδια υπόσχεση με το ρήμα, για τα ψιλά του τιμοκαταλόγου. */
 export const CANCEL_ANYTIME = 'Ακυρώνεις όποτε θέλεις.';
+
+/**
+ * Ποιος στέλνει πρόσκληση πελατών με email και με ποια όρια στη δοκιμή.
+ *
+ * ΗΤΑΝ ΓΡΑΜΜΕΝΗ ΣΤΗΝ ΟΘΟΝΗ. Η κάρτα «Πρόσκληση πελατών» (BulkInvite) έλεγε
+ * με δικά της λόγια τι επιτρέπει η δοκιμή, δηλαδή δήλωση για τη δοκιμή έξω
+ * από αυτό το αρχείο. Οι αριθμοί είναι αυτοί που επιβάλλει η βάση
+ * (`send_quota_rule`, 20261021120000) μέσω του `INVITE_LIMITS`, που το
+ * accountantInvites.test.ts κρατά ίσο με τη μετάβαση.
+ *
+ * Η οθόνη ζει στον περιηγητή και ΔΕΝ εισάγει αυτό το αρχείο (θα έσερνε τον
+ * έμπορο και το `node:crypto` στον πελάτη): τα παίρνει από το
+ * /api/billing/words, όπως κάθε άλλη οθόνη του πίνακα.
+ */
+const INVITE_TRIAL = `στη δοκιμή έως ${INVITE_LIMITS.trialPerDay} τη μέρα και ${INVITE_LIMITS.trialTotal} συνολικά`;
+export const INVITE_ACCESS = `Για πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω· ${INVITE_TRIAL}.`;
+/** Η άρνηση της βάσης (`plan_required`), με τα ίδια όρια. */
+export const INVITE_PLAN_REFUSAL = `Η πρόσκληση με email ανοίγει στο πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω· ${INVITE_TRIAL}.`;
 
 /** Η εγγύηση, μία φορά, ώστε να τη δανείζονται και τα δύο πεδία που τη λένε. */
 // «Η ΕΦΑΡΜΟΓΗ», ΟΧΙ «Η ΥΠΗΡΕΣΙΑ». Η πρόταση διαβάζεται και στα ψιλά του

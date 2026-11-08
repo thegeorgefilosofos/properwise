@@ -20,6 +20,10 @@ export interface ClientBillingWords {
   live: boolean;
   afterTrialShort: string;
   partnerTarget: string | null;
+  /** Πακέτο και όρια δοκιμής της πρόσκλησης πελατών (BulkInvite). */
+  inviteAccess?: string;
+  /** Η άρνηση `plan_required` της ίδιας πρόσκλησης. */
+  invitePlanRefusal?: string;
 }
 
 let pending: Promise<ClientBillingWords | null> | null = null;

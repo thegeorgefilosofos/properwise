@@ -10,7 +10,8 @@ import { subprocessors, subprocessors as subprocessors0, activeSubprocessors, pl
 import { MERCHANT_NAMES, KNOWN_MERCHANTS, merchantId, PROVIDER_ENV } from './merchant'
 import { TRIAL_DAYS, PLANS } from '../billing/plans'
 import { checkoutIsLive as gateIsLive, checkoutIsLive as gateIsLive0, checkoutState as checkoutState0 } from './checkout'
-import { billingWords, billingWords as billingWords0 } from './billingWords'
+import { billingWords, billingWords as billingWords0, INVITE_ACCESS, INVITE_PLAN_REFUSAL } from './billingWords'
+import { INVITE_LIMITS } from '../billing/inviteLimits'
 import type { MerchantPort } from '../billing/merchant'
 import { IDENTITY, sellerIdentityGaps, sellerIdentityComplete, type LegalIdentity } from './identity'
 
@@ -329,6 +330,18 @@ ok('χάρτης με ζεύγος που λείπει δεν μετράει',
     reg2.some(s => s.name === MERCHANT_NAMES.creem && s.active))
   ok('και δεν γράφει άλλον πάροχο πληρωμών',
     !reg2.some(s => FOREIGN.test(s.name) || others.includes(s.name)))
+}
+
+// ── ΤΑ ΟΡΙΑ ΤΗΣ ΠΡΟΣΚΛΗΣΗΣ ΣΤΗ ΔΟΚΙΜΗ: ΟΙ ΑΡΙΘΜΟΙ ΤΗΣ ΒΑΣΗΣ ─────────────────
+// Το INVITE_LIMITS το κρατά ίσο με τη `send_quota_rule` το accountantInvites.test.ts.
+// Εδώ: η πρόταση της οθόνης τους λέει ΑΥΤΟΥΣ και κανέναν άλλον αριθμό.
+{
+  const nums = (t: string) => (t.match(/\d+/g) ?? []).map(Number)
+  for (const [name, line] of [['κάρτα', INVITE_ACCESS], ['άρνηση', INVITE_PLAN_REFUSAL]] as const) {
+    ok(`πρόσκληση (${name}): λέει τα όρια της βάσης`,
+      JSON.stringify(nums(line)) === JSON.stringify([INVITE_LIMITS.trialPerDay, INVITE_LIMITS.trialTotal]))
+    ok(`πρόσκληση (${name}): χωρίς κόμμα πριν από το «και»`, !/,\s*και\s/.test(line))
+  }
 }
 
 console.log(fail === 0 ? `✓ billingWords: ${pass} έλεγχοι πέρασαν` : `✗ billingWords: ${fail} απέτυχαν από ${pass + fail}`)
