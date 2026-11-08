@@ -183,6 +183,42 @@ if ! out=$($PSQL -d posdb -f "$ROOT/scripts/db/rls-probe.sql" 2>&1); then
 fi
 probes=$(( $(echo "$out" | grep -c 'probe:' || true) + eprobes ))
 
+# ── ΤΑ ΛΟΓΙΣΤΙΚΑ ΓΡΑΦΕΙΑ: ΚΑΝΕΝΑ ΔΕΝ ΒΛΕΠΕΙ ΤΑ ΤΟΥ ΑΛΛΟΥ ───────────────────
+# Στην ίδια βάση, μετά το rls-probe: διαβάζει ήδη το `probe.uid`.
+if ! fpout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-probe.sql" 2>&1); then
+  echo "🔴 Τα λογιστικά γραφεία δεν κρατούν όσα υπόσχονται:"
+  echo "$fpout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΑΠΩΛΕΙΑ|ΠΑΡΑΒΙΑΣΗ|ΚΛΕΙΔΩΜΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$fpout" | grep -c 'probe:' || true)))
+if ! fwout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-write-probe.sql" 2>&1); then
+  echo "🔴 Τα επίπεδα εγγραφής των γραφείων δεν κρατούν:"
+  echo "$fwout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΠΑΡΑΒΙΑΣΗ|ΠΙΝΑΚΑΣ|STORAGE' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$fwout" | grep -c 'probe:' || true)))
+# Ο ανεξάρτητος έλεγχος των γραφείων (04/11/2026): πρόσωπο, όχι token·
+# ημερολόγιο χωρίς στοιχεία τρίτων· ιστορικό που μένει· δεύτερο βήμα.
+if ! fsout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-security-probe.sql" 2>&1); then
+  echo "🔴 Τα γραφεία δεν περνούν τον έλεγχο ασφάλειας:"
+  echo "$fsout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΑΠΩΛΕΙΑ|ΑΝΟΙΧΤΗ ΠΟΡΤΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$fsout" | grep -c 'probe:' || true)))
+# Πόσο κρατιούνται τα δύο ημερολόγια των γραφείων (20261105090000).
+if ! frout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-retention-probe.sql" 2>&1); then
+  echo "🔴 Τα ημερολόγια των γραφείων δεν κρατούν το όριο διατήρησης:"
+  echo "$frout" | grep -m3 -E 'ERROR|ΔΙΑΤΗΡΗΣΗ|ΑΝΟΙΧΤΗ ΠΟΡΤΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$frout" | grep -c 'probe:' || true)))
+if ! dlout=$($PSQL -d posdb -f "$ROOT/scripts/db/demo-logistis-probe.sql" 2>&1); then
+  echo "🔴 Το scripts/db/demo-logistis.sql δεν τρέχει πάνω στο σχήμα:"
+  echo "$dlout" | grep -m3 -E 'ERROR|DEMO' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$dlout" | grep -c 'probe:' || true)))
+
 # ── ΔΕΧΕΤΑΙ Η ΒΑΣΗ ΤΙΣ ΓΡΑΜΜΕΣ ΟΠΩΣ ΤΙΣ ΧΤΙΖΕΙ Η ΕΦΑΡΜΟΓΗ; ─────────────────────
 # Το rls-probe γράφει γραμμές με το χέρι. Οι γραμμές της εφαρμογής όμως τις
 # χτίζει το lib/data· από εκεί ήρθαν τα null σε NOT NULL που έφτασαν στην

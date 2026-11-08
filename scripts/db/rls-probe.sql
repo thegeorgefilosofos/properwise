@@ -24,6 +24,16 @@
 create or replace function auth.uid() returns uuid language sql stable as
 $$ select nullif(current_setting('probe.uid', true), '')::uuid $$;
 
+-- ── Και το διακριτικό του, με δεύτερο βήμα ────────────────────────────────
+-- Από το 20261104150000 το μέλος λογιστικού γραφείου (κάθε λογιστής που
+-- διεκδίκησε πελάτη) χρειάζεται `aal2`. Ο έλεγχος τρέχει με αυτό από την
+-- αρχή· για όποιον δεν είναι μέλος δεν αλλάζει τίποτα, γιατί χωρίς συσκευή
+-- περνούσε έτσι κι αλλιώς. Το τμήμα του δεύτερου βήματος πιο κάτω αλλάζει
+-- ρητά το επίπεδο και το επαναφέρει σε αυτό.
+create or replace function auth.jwt() returns jsonb language sql stable as
+$$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+set session "request.jwt.claims" = '{"aal":"aal2"}';
+
 -- Το Supabase δίνει στους ρόλους του API πρόσβαση στους πίνακες· η RLS είναι
 -- αυτή που κόβει, όχι η έλλειψη GRANT. Η σκαλωσιά έδινε μόνο στον service_role,
 -- οπότε χωρίς αυτό ο έλεγχος θα περνούσε για λάθος λόγο.
@@ -3445,7 +3455,7 @@ end $probe$;
 
 reset role;
 set session "probe.uid" = '';
-set session "request.jwt.claims" = '';
+set session "request.jwt.claims" = '{"aal":"aal2"}';
 
 -- ── Ο ΚΑΤΑΛΟΓΟΣ: ΚΑΘΕ ΠΟΡΤΑ ΠΡΟΣ ΔΕΔΟΜΕΝΑ ΕΧΕΙ ΤΗΝ ΠΥΛΗ ──────────────────────
 -- Οι εξαιρέσεις γράφονται ΟΝΟΜΑΣΤΙΚΑ με τον λόγο τους. Γραμμή που περισσεύει
@@ -3551,7 +3561,7 @@ end $probe$;
 -- ═══════════════════════════════════════════════════════════════════════════
 reset role;
 set session "probe.uid" = '';
-set session "request.jwt.claims" = '';
+set session "request.jwt.claims" = '{"aal":"aal2"}';
 
 do $probe$
 declare
@@ -3872,7 +3882,7 @@ end $probe$;
 -- ═══════════════════════════════════════════════════════════════════════════
 reset role;
 set session "probe.uid" = '';
-set session "request.jwt.claims" = '';
+set session "request.jwt.claims" = '{"aal":"aal2"}';
 
 do $probe$
 declare
@@ -3969,7 +3979,7 @@ update public.report_branding set company_name = 'Τράπεζα Πειραιώ�
 -- 6. Ο ανώνυμος επαληθεύει, δεν εκδίδει.
 set role anon;
 set session "probe.uid" = '';
-set session "request.jwt.claims" = '';
+set session "request.jwt.claims" = '{"aal":"aal2"}';
 do $probe$
 declare v record;
 begin
@@ -4011,7 +4021,7 @@ end $probe$;
 
 reset role;
 set session "probe.uid" = '';
-set session "request.jwt.claims" = '';
+set session "request.jwt.claims" = '{"aal":"aal2"}';
 do $probe$
 begin
   perform public.erase_account('f4f4f4f4-0000-4000-8000-0000000000a1');
@@ -4028,7 +4038,7 @@ end $probe$;
 -- ═══════════════════════════════════════════════════════════════════════════
 reset role;
 set session "probe.uid" = '';
-set session "request.jwt.claims" = '';
+set session "request.jwt.claims" = '{"aal":"aal2"}';
 do $probe$
 begin
   insert into auth.users(id, email, email_confirmed_at) values

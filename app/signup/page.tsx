@@ -1,5 +1,6 @@
 'use client'
-import { T, Btn, LinkBtn } from '@/components/Theme'
+import { T, Btn, LinkBtn, ChipToggle } from '@/components/Theme'
+import { KIND_LABEL, type FirmKind } from '@/lib/data/firmWords'
 import { useState, useEffect, useSyncExternalStore, type ReactNode } from 'react'
 import { leaveDevice } from '@/lib/localPrivacy'
 import { authClient } from '@/lib/supabase/lazy';
@@ -70,6 +71,14 @@ const readSearch = () => window.location.search
 // ΚΑΙ ΚΟΥΒΑΛΑ ΤΟ «next». Γραφόταν μόνο το ταμείο ή ο πίνακας, οπότε ο λογιστής
 // που ερχόταν από τον χώρο του και επιβεβαίωνε το email του κατέληγε στον
 // πίνακα. Ο προορισμός βγαίνει από το lib/auth/continuation.ts.
+/** Το γραφείο προσγειώνεται στον χώρο του, όχι στον πίνακα του ιδιοκτήτη. */
+const firmQuery = (query: string) => {
+  const q = new URLSearchParams(query)
+  q.delete('plan'); q.delete('cycle')
+  q.set('next', '/accountant/workspace')
+  return `?${q.toString()}`
+}
+
 const confirmRedirect = (query: string) =>
   `${window.location.origin}/auth/callback?next=${encodeURIComponent(continuation(query))}`
 
@@ -184,6 +193,17 @@ export default function SignupPage() {
   const planTerms = usePlanTerms()
   const trialBadge = useTrialBadge()
   const [fullName, setFullName] = useState('')
+  // ── ΙΔΙΟΚΤΗΤΗΣ Ή ΓΡΑΦΕΙΟ ───────────────────────────────────────────────
+  // Ο τύπος του λογαριασμού ορίζεται εδώ και δεν αλλάζει: ο λογαριασμός
+  // γραφείου βλέπει πελάτες και δεν καταχωρεί ακίνητα (20261104120000). Το
+  // γραφείο το γράφει η πρώτη συνδεδεμένη επίσκεψη στον χώρο του, από τα
+  // στοιχεία που κρατά εδώ το προφίλ: πριν από την επιβεβαίωση δεν υπάρχει
+  // συνεδρία. Πέντε πεδία συνολικά, σε ένα βήμα. Μόνο στα ελληνικά: ΑΦΜ και
+  // λογιστικό γραφείο δεν έχουν νόημα για τον ξενόγλωσσο ιδιοκτήτη.
+  const [accountKind, setAccountKind] = useState<'owner' | 'firm'>('owner')
+  const [firmName, setFirmName] = useState('')
+  const [firmAfm, setFirmAfm] = useState('')
+  const [firmKind, setFirmKind] = useState<FirmKind>('accounting')
   // Μέσα σε Instagram, Facebook ή TikTok χωρίς κουμπί προς Safari ή Chrome η
   // φόρμα του email έρχεται πρώτη και η σημείωση για τη Google από κάτω.
   const emailFirst = useEmailFirst()
@@ -216,7 +236,9 @@ export default function SignupPage() {
   // σελίδα χανόταν στη μετάβαση και η εγγραφή ξεκινούσε σαν να μην είχε
   // επιλέξει ποτέ τίποτα. Κρατιέται στο προφίλ, ώστε στη λήξη της δοκιμής να
   // ξέρουμε ΚΑΙ εμείς ΚΑΙ ο χρήστης ποιο πακέτο περιμένει.
-  const chosenPlan = planFromParam(new URLSearchParams(query).get('plan'))
+  const firm = accountKind === 'firm'
+  // Το γραφείο δεν διαλέγει πακέτο: πληρώνουν οι πελάτες του.
+  const chosenPlan = firm ? null : planFromParam(new URLSearchParams(query).get('plan'))
   // ΚΑΙ Ο ΚΥΚΛΟΣ ΤΑΞΙΔΕΥΕΙ ΜΑΖΙ ΤΟΥ. Το πακέτο έφτανε μόνο του, οπότε η
   // επιλογή «ετήσια, με δύο μήνες δωρεάν» —η ακριβώς μισή απόφαση και η πιο
   // ακριβή— χανόταν στη μετάβαση: ο χρήστης κατέληγε στο ταμείο με μηνιαία
@@ -475,6 +497,12 @@ export default function SignupPage() {
       countSignupStep('invalid')
       return
     }
+    // Ο έλεγχος ψηφίου φορτώνει μόνο για το γραφείο: ο ιδιοκτήτης δεν τον πληρώνει σε βάρος σελίδας.
+    if (firm && (!firmName.trim() || !(await import('@/lib/core/greek')).isValidAfm(firmAfm))) {
+      setError(!firmName.trim() ? 'Γράψε την επωνυμία του γραφείου.' : 'Ο ΑΦΜ του γραφείου δεν περνά τον έλεγχο ψηφίου.')
+      countSignupStep('invalid')
+      return
+    }
     if (leaked) {
       setPwTouched(true)
       setError(PW_MSG.leaked)
@@ -502,9 +530,10 @@ export default function SignupPage() {
         // διαμεσολαβητής έστελνε τον νέο χρήστη στη φόρμα εισόδου, κρατώντας το
         // διακριτικό στη διεύθυνση: ο λογαριασμός άνοιγε, αλλά ο άνθρωπος
         // κατέληγε να κοιτά «Σύνδεση» αντί για την εφαρμογή του.
-        emailRedirectTo: confirmRedirect(query),
+        emailRedirectTo: confirmRedirect(firm ? firmQuery(query) : query),
         data: {
           full_name: fullName.trim(),
+          ...(firm ? { account_kind: 'firm', firm_name: firmName.trim(), firm_afm: firmAfm, firm_kind: firmKind } : {}),
           consent_terms_accepted_at: new Date().toISOString(),
           consent_policy_version: CONSENT_VERSION,
           ...(news ? {} : { marketing_opt_out: true }),
@@ -565,8 +594,8 @@ export default function SignupPage() {
     </div>
   )
   const errorBox: React.CSSProperties = { background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--negative)' }
-  const focus = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--accent)' }
-  const blur = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = 'var(--border-default)' }
+  const focus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.currentTarget.style.borderColor = 'var(--accent)' }
+  const blur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.currentTarget.style.borderColor = 'var(--border-default)' }
 
   /**
    * Τι λείπει, σε μία φράση. Κενό όταν η φόρμα είναι έτοιμη.
@@ -700,7 +729,8 @@ export default function SignupPage() {
                   δημόσια σελίδα (βλ. `lp-eyebrow`) και τίτλος και υπότιτλος
                   μένουν ζευγάρι. Λέγεται ΜΙΑ φορά: με διαλεγμένο πακέτο τη λέει
                   η κάρτα του πακέτου. Το κείμενο έρχεται από το billingWords. */}
-              {!chosenPlan && trialBadge && <div className="lp-eyebrow" style={{ marginBottom: 10 }}>{trialBadge}</div>}
+              {/* Το γραφείο δεν πληρώνει και δεν έχει δοκιμή: η ετικέτα της δοκιμής δεν το αφορά. */}
+              {!chosenPlan && !firm && trialBadge && <div className="lp-eyebrow" style={{ marginBottom: 10 }}>{trialBadge}</div>}
               <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2, margin: '0 0 8px' }}>{S ? S.title : 'Δημιουργία λογαριασμού'}</h1>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px' }}>
                 {S ? S.haveAccount : 'Έχεις ήδη λογαριασμό;'}{' '}
@@ -828,16 +858,52 @@ export default function SignupPage() {
               )}
 
               {/* Η αιώρηση ερχόταν από την `.auth-hov`· τώρα τη δίνει το `.po-btn`. */}
-              {!emailFirst && <>
+              {/* ΙΔΙΟΚΤΗΤΗΣ Ή ΓΡΑΦΕΙΟ: η πρώτη επιλογή, πάνω από όλα τα πεδία. */}
+              {!A && (
+                <div role="group" aria-label="Τύπος λογαριασμού" className="po-seg" style={{
+                  display: 'flex', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                  borderRadius: T.radius.chip, padding: 4, gap: 2, marginBottom: 20, flexWrap: 'wrap',
+                }}>
+                  <ChipToggle shape="seg" grow on={!firm} onClick={() => { setAccountKind('owner'); setError('') }}>Ιδιοκτήτης</ChipToggle>
+                  <ChipToggle shape="seg" grow on={firm} onClick={() => { setAccountKind('firm'); setError('') }}>Λογιστής ή γραφείο</ChipToggle>
+                </div>
+              )}
+
+              {!emailFirst && !firm && <>
                 <GoogleButton onClick={signInWithGoogle} funnel />
                 <OrDivider word={A ? A.or : undefined} />
               </>}
 
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
+                {firm && <>
+                  <div>
+                    <label htmlFor="su-firm" className="po-field-label">Επωνυμία γραφείου</label>
+                    <input id="su-firm" name="organization" autoComplete="organization" type="text" value={firmName} onChange={e => setFirmName(e.target.value)} required style={field} onFocus={focus} onBlur={blur} />
+                  </div>
+                  <div>
+                    <div>
+                      <label htmlFor="su-afm" className="po-field-label">ΑΦΜ</label>
+                      <input id="su-afm" name="afm" inputMode="numeric" type="text" value={firmAfm} onChange={e => setFirmAfm(e.target.value.replace(/\D/g, '').slice(0, 9))} placeholder="123456789" required style={{ ...field, fontVariantNumeric: 'tabular-nums' }} onFocus={focus} onBlur={blur} />
+                    </div>
+                  </div>
+                  {/* ΔΥΟ ΕΙΔΗ, ΔΥΟ ΚΟΥΜΠΙΑ. Ίδια ράγα με τον τύπο λογαριασμού: ένα
+                      dropdown για δύο επιλογές κρύβει τη μία από τις δύο. */}
+                  <div>
+                    <span id="su-kind" className="po-field-label">Είδος</span>
+                    <div role="group" aria-labelledby="su-kind" className="po-seg" style={{
+                      display: 'flex', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                      borderRadius: T.radius.chip, padding: 4, gap: 2, flexWrap: 'wrap',
+                    }}>
+                      {(Object.keys(KIND_LABEL) as FirmKind[]).map(k => (
+                        <ChipToggle key={k} shape="seg" grow on={firmKind === k} onClick={() => setFirmKind(k)}>{KIND_LABEL[k]}</ChipToggle>
+                      ))}
+                    </div>
+                  </div>
+                </>}
+                {!firm && <div>
                   <label htmlFor="su-name" className="po-field-label">{S ? S.name : 'Ονοματεπώνυμο'} <span className="po-field-opt">{S ? S.optional : '(προαιρετικό)'}</span></label>
                   <input id="su-name" name="name" autoComplete="name" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder={S ? S.namePlaceholder : 'Όνομα και επώνυμο'} style={field} onFocus={focus} onBlur={blur} />
-                </div>
+                </div>}
                 <div>
                   <label htmlFor="su-email" className="po-field-label">{A ? A.email : 'Ηλεκτρονικό ταχυδρομείο'}</label>
                   <input id="su-email" name="email" autoComplete="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={A ? A.emailPlaceholder : 'onoma@email.com'} required style={field} onFocus={focus} onBlur={blur} />
@@ -963,10 +1029,10 @@ export default function SignupPage() {
                     αρχική διάβαζε εδώ ότι ξεκινά δοκιμή. Ο ίδιος κανόνας με την
                     κάρτα που πάτησε (lib/billing/trialOffer.ts), έτοιμος από το layout. */}
                 <Btn variant="primary" type="submit" field describedBy={why ? 'su-cta-why' : undefined}>
-                  {loading ? (S ? S.creating : 'Δημιουργία…') : cta}
+                  {loading ? (S ? S.creating : 'Δημιουργία…') : firm ? 'Δημιουργία γραφείου' : cta}
                 </Btn>
               </form>
-              {emailFirst && <>
+              {emailFirst && !firm && <>
                 <OrDivider word={A ? A.or : undefined} />
                 <GoogleButton onClick={signInWithGoogle} funnel />
               </>}

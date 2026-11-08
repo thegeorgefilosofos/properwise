@@ -46,17 +46,27 @@ import { downloadXlsx } from '@/app/dashboard/components/sheets';
 import { PortalBar, PortalTitle, portalWrap, portalYears } from '../Chrome';
 import { declarationYear } from '@/lib/core/declarationYear';
 import { linkLoad, LINK_SAY } from '@/lib/portal/linkLoad';
+import { clientData } from '@/lib/data/accountant';
 import { athensToday } from '@/lib/core/time';
 import {
   propertyLines, statementTotals, statementGaps, statementSheets, indicativeTax, deductionNote,
   type PortalData,
 } from '../statement';
 
+// ΔΥΟ ΠΟΡΤΕΣ ΣΤΗΝ ΙΔΙΑ ΣΕΛΙΔΑ. Ο σύνδεσμος του ιδιοκτήτη (32 δεκαεξαδικά, χωρίς
+// παύλες) ανοίγει για όποιον τον κρατά. Ο πελάτης από τη λίστα του λογιστή
+// ανοίγει με το αναγνωριστικό του ιδιοκτήτη (uuid, με παύλες) και η βάση κρίνει
+// ΤΟ ΠΡΟΣΩΠΟ σε κάθε κλήση (`firm_client_data`, 20261104150000): το token δεν
+// φτάνει ποτέ στον περιηγητή του μέλους. Ιδια σελίδα, όχι νέα διαδρομή: κάθε
+// διαδρομή είναι νέα συνάρτηση διακομιστή (scripts/server-weight.mjs).
+const OWNER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const dateEl = (d: Date) => d.toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 export default function AccountantPortal() {
   const params = useParams();
   const token = String(params?.token || '');
+  const ownerId = OWNER_ID.test(token) ? token : null;
   const supabase = useMemo(() => createClient(), []);
 
   // Ο λογιστής δουλεύει σχεδόν πάντα την προηγούμενη χρήση.
@@ -79,10 +89,25 @@ export default function AccountantPortal() {
   // `tries` και η παλιά αποτυχία παύει να είναι φρέσκια, οπότε η οθόνη δείχνει
   // «Φόρτωση…» ως την επόμενη απάντηση αντί να μένει στο ίδιο μήνυμα.
   const [tries, setTries] = useState(0);
-  const [result, setResult] = useState<{ year: number; tries: number; data: PortalData | null; failed: boolean } | null>(null);
+  const [result, setResult] = useState<{ year: number; tries: number; data: PortalData | null; failed: boolean; secondStep?: boolean } | null>(null);
+
+  // ΤΟ ΑΝΟΙΓΜΑ ΓΡΑΦΕΤΑΙ ΣΤΟ ΙΣΤΟΡΙΚΟ, ΜΙΑ ΦΟΡΑ ΑΝΑ ΕΠΙΣΚΕΨΗ. Ο υπεύθυνος του
+  // γραφείου και ο ιδιοκτήτης βλέπουν ποιος άνοιξε ποιον φάκελο και πότε· και
+  // από νέα καρτέλα, που η λίστα δεν έπιανε.
+  useEffect(() => {
+    // Το ιστορικό δεν σταματά την ανάγνωση: η άδεια κρίνεται ξανά στην `firm_client_data`.
+    if (ownerId) void supabase.rpc('firm_open_client', { p_owner: ownerId });
+  }, [supabase, ownerId]);
 
   useEffect(() => {
     let alive = true;
+    if (ownerId) {
+      clientData<PortalData>(supabase, ownerId, year).then(r => {
+        if (!alive) return;
+        setResult({ year, tries, data: r.data, failed: r.failed, secondStep: r.secondStep });
+      });
+      return () => { alive = false; };
+    }
     supabase.rpc('get_accountant_data', { p_token: token, p_year: year }).then(res => {
       if (!alive) return;
       // ΤΟ ΣΦΑΛΜΑ ΔΕΝ ΕΙΝΑΙ «ΑΚΥΡΟΣ ΣΥΝΔΕΣΜΟΣ». Και τα δύο κατέληγαν στην ίδια
@@ -93,7 +118,7 @@ export default function AccountantPortal() {
       setResult({ year, tries, data: got === 'ok' ? (res.data as PortalData) : null, failed: got === 'offline' });
     });
     return () => { alive = false; };
-  }, [supabase, token, year, tries]);
+  }, [supabase, token, ownerId, year, tries]);
 
   // ── ΠΟΥ ΓΥΡΝΑΕΙ Ο ΑΝΘΡΩΠΟΣ ΑΠΟ ΕΔΩ ──────────────────────────────────────
   // Η οθόνη δεν είχε ΚΑΜΙΑ έξοδο. Ο λογιστής που ερχόταν από τη λίστα των
@@ -110,6 +135,8 @@ export default function AccountantPortal() {
       // λογιστής που άνοιξε τον σύνδεσμο χωρίς λογαριασμό είναι η συνηθισμένη
       // περίπτωση: μια έξοδος προς οθόνη σύνδεσης θα ήταν πόρτα, όχι έξοδος.
       if (authFailed || !u.user) { setBack(undefined); return; }
+      // Από τη λίστα του λογιστή: εκεί γυρίζει.
+      if (ownerId) { setBack({ href: '/accountant/workspace', label: 'Οι πελάτες σου' }); return; }
       // Ο ΙΔΙΟΚΤΗΤΗΣ ΠΡΟΕΠΙΣΚΟΠΕΙ ΤΟΝ ΔΙΚΟ ΤΟΥ ΣΥΝΔΕΣΜΟ. Η RLS του πίνακα τον
       // αφήνει να διαβάσει μόνο τη δική του γραμμή, οπότε η σύγκριση αρκεί.
       const { data: mine, error } = await supabase
@@ -124,11 +151,11 @@ export default function AccountantPortal() {
         : { href: '/accountant/workspace', label: 'Οι πελάτες σου' });
     })();
     return () => { alive = false; };
-  }, [supabase, token]);
+  }, [supabase, token, ownerId]);
 
   const fresh = result && result.year === year && result.tries === tries ? result : null;
-  const state: 'loading' | 'ok' | 'notfound' | 'failed' =
-    !fresh ? 'loading' : fresh.failed ? 'failed' : fresh.data ? 'ok' : 'notfound';
+  const state: 'loading' | 'ok' | 'notfound' | 'failed' | 'secondStep' =
+    !fresh ? 'loading' : fresh.secondStep ? 'secondStep' : fresh.failed ? 'failed' : fresh.data ? 'ok' : 'notfound';
   const data = fresh?.data ?? null;
 
   const props = useMemo(() => data?.properties || [], [data]);
@@ -214,10 +241,23 @@ export default function AccountantPortal() {
 
         {state === 'notfound' && (
           <Card style={{ marginTop: 32, textAlign: 'center' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>{LINK_SAY.notFoundTitle}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>{ownerId ? 'Ο φάκελος δεν είναι πια ανοιχτός για σένα' : LINK_SAY.notFoundTitle}</div>
             <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.7, maxWidth: 460, margin: '0 auto' }}>
-              Έχει ανακληθεί ή έχει λήξει. Ένας ενημερωμένος σύνδεσμος βγαίνει από τη Λογιστική του ιδιοκτήτη.
+              {/* Η ΑΝΑΚΛΗΣΗ ΚΟΒΕΙ ΑΜΕΣΩΣ ΚΑΙ ΤΟ ΛΕΜΕ ΕΤΣΙ. Δεν υπάρχει «ως τη λήξη». */}
+              {ownerId
+                ? 'Ο ιδιοκτήτης ανακάλεσε την πρόσβαση ή δεν είσαι πια μέλος του γραφείου που τον βλέπει.'
+                : 'Έχει ανακληθεί ή έχει λήξει. Ένας ενημερωμένος σύνδεσμος βγαίνει από τη Λογιστική του ιδιοκτήτη.'}
             </div>
+          </Card>
+        )}
+
+        {state === 'secondStep' && (
+          <Card style={{ marginTop: 32, textAlign: 'center' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Λείπει η επαλήθευση δύο βημάτων</div>
+            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.7, maxWidth: 460, margin: '0 auto 16px' }}>
+              Τους φακέλους των πελατών τους ανοίγει μόνο μέλος γραφείου με εφαρμογή επαλήθευσης. Η ενεργοποίηση γίνεται μία φορά.
+            </div>
+            <Btn variant="primary" href="/accountant/workspace">Ενεργοποίηση</Btn>
           </Card>
         )}
 
