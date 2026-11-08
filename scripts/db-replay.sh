@@ -277,6 +277,18 @@ if ! pout=$($PSQL -d posdb -f "$ROOT/scripts/db/pay-token-probe.sql" 2>&1); then
 fi
 probes=$((probes + $(echo "$pout" | grep -c 'probe:' || true)))
 
+# ── ΟΙ ΣΤΗΛΕΣ ΤΟΥ ΔΙΑΚΟΜΙΣΤΗ ΔΕΝ ΓΡΑΦΟΝΤΑΙ ΑΠΟ ΤΟΝ ΠΕΛΑΤΗ ──────────────────
+# Επιβεβαίωση email υπενθυμίσεων, κύκλος χρέωσης, προθεσμία διαγραφής, θέση
+# στην ομάδα, αίτημα και σύνδεση λογιστή: ο `authenticated` τα στέλνει και η
+# βάση τα αγνοεί· η νόμιμη ροή (συναρτήσεις, service_role) γράφει
+# (scripts/db/server-columns-probe.sql).
+if ! cout=$($PSQL -d posdb -f "$ROOT/scripts/db/server-columns-probe.sql" 2>&1); then
+  echo "🔴 Ο πελάτης γράφει στήλη που ανήκει στον διακομιστή, ή η νόμιμη ροή δεν γράφει πια:"
+  echo "$cout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΡΟΗ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$cout" | grep -c 'probe:' || true)))
+
 # ── ΞΕΡΕΙ Η ΥΓΕΙΑ ΤΗΣ ΤΡΟΦΟΔΟΣΙΑΣ ΤΙ ΔΕΝ ΗΡΘΕ; ──────────────────────────────
 # Η `market_feed_health()` έλεγε «εντάξει, 8 από 8» στις 18/10/2026 πάνω σε
 # γραμμή χωρίς δύο σειρές του καταλόγου. Το scripts/db/market-feed-probe.sql τη
