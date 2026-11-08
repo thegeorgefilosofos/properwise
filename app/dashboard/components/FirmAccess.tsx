@@ -155,7 +155,15 @@ export function FirmDaySummary() {
     <div style={{ margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--border-subtle)', display: 'grid', gap: T.sp.md }}>
       {days.map(d => (
         <div key={d.firmId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: T.sp.md, flexWrap: 'wrap' }}>
-          <span style={{ ...TT.body, color: 'var(--text-primary)', flex: '1 1 260px', fontVariantNumeric: 'tabular-nums' }}>{daySentence(d)}</span>
+          <span style={{ ...TT.body, color: 'var(--text-primary)', flex: '1 1 260px', fontVariantNumeric: 'tabular-nums' }}>
+            {daySentence(d)}
+            {/* ΑΡΘΡΟ 14 ΓΚΠΔ: ο μισθωτής ενημερώνεται από τον ιδιοκτήτη, όποιος κι αν τον καταχώρησε (Πολιτική #grafeia). */}
+            {(d.counts.tenant ?? 0) > 0 && (
+              <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', display: 'block', marginTop: T.sp.xs }}>
+                Το γραφείο πρόσθεσε μισθωτή. Ενημέρωσε τον μισθωτή για την επεξεργασία των στοιχείων του.
+              </span>
+            )}
+          </span>
           <div style={{ display: 'flex', gap: T.sp.sm }}>
             <Btn variant="secondary" onClick={() => void see(d)}>Δες</Btn>
             <Btn variant="ghost" onClick={() => void undo(d)} disabled={busy === d.firmId}>Αναίρεση όλων</Btn>

@@ -26,11 +26,13 @@ import { T, Card, Btn, Skeleton } from '@/components/Theme';
 import { TextInput, CustomSelect } from '@/app/dashboard/components/UIComponents';
 import { ActionMenu } from '@/components/ActionMenu';
 import {
-  myFirm, myFirmInvites, answerInvite, clientLevels, assign, dropFirmClient, saveFirm,
+  myFirm, myFirmInvites, answerInvite, acceptFirmTerms, termsGap, clientLevels, assign, dropFirmClient, saveFirm,
   filterClients, entryKinds, canAct, canManage, reasonText, ENTRY_LABEL, ROLE_LABEL,
   type Firm, type FirmInvite, type ClientLevel, type Scope, type StatusFilter, type FirmKind,
 } from '@/lib/data/firms';
 import FirmEntry, { type EntryKind } from './FirmEntry';
+import FirmTermsCheck, { FIRM_TERMS_NEEDED } from './FirmTerms';
+import { FIRM_TERMS_VERSION } from '@/lib/legal/firms';
 import FirmView from './FirmView';
 import SecondStep from './SecondStep';
 import { PortalBar, PortalTitle, portalWrap } from '../Chrome';
@@ -127,6 +129,12 @@ export default function AccountantWorkspace() {
   // Το κρίνει η βάση (20261104150000): ενεργό μέλος γραφείου χωρίς `aal2`
   // παίρνει `mfa_required` σε κάθε κλήση. `null` όσο δεν έχει απαντήσει.
   const [secondStep, setSecondStep] = useState<boolean | null>(null);
+  // ── Η ΑΠΟΔΟΧΗ ΤΩΝ ΟΡΩΝ ΕΠΕΞΕΡΓΑΣΙΑΣ (20261108090000) ────────────────────
+  // Ενα τικ ανά πρόσκληση και ένα για την ανανέωση. Χωρίς αποδοχή του μέλους
+  // και του γραφείου η βάση δεν δείχνει κανέναν πελάτη.
+  const [inviteTerms, setInviteTerms] = useState<Record<string, boolean>>({});
+  const [termsTick, setTermsTick] = useState(false);
+  const [termsBusy, setTermsBusy] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
@@ -149,6 +157,9 @@ export default function AccountantWorkspace() {
           phone: String(m.firm_phone ?? ''), address: String(m.firm_address ?? ''),
         });
         if (r.ok) {
+          // ΤΟ ΤΙΚ ΤΗΣ ΕΓΓΡΑΦΗΣ ΓΙΝΕΤΑΙ ΑΠΟΔΟΧΗ ΤΟΥ ΓΡΑΦΕΙΟΥ, μόνο αν είναι η
+          // έκδοση που ισχύει τώρα. Αλλιώς τη ζητά η κάρτα των όρων πιο κάτω.
+          if (m.firm_terms_version === FIRM_TERMS_VERSION) await acceptFirmTerms(supabase);
           // ΤΟ ΝΕΟ ΓΡΑΦΕΙΟ ΕΧΕΙ ΗΔΗ ΕΝΕΡΓΟ ΜΕΛΟΣ: από εδώ η βάση ζητά δεύτερο βήμα.
           const again = await myFirm(supabase);
           if (!again.ok && again.secondStep) { setSecondStep(true); return; }
@@ -286,11 +297,25 @@ export default function AccountantWorkspace() {
 
   // ── ΟΙ ΚΙΝΗΣΕΙΣ ΤΟΥ ΓΡΑΦΕΙΟΥ ────────────────────────────────────────────
   const reply = async (id: string, accept: boolean) => {
+    if (accept && !inviteTerms[id]) { notifyError(FIRM_TERMS_NEEDED); return; }
     const r = await answerInvite(supabase, id, accept);
     if (!r.ok) { notifyError(reasonText(r.reason)); return; }
+    // Αν η αποδοχή των όρων δεν γραφτεί, η κάρτα των όρων τη ζητά ξανά.
+    if (accept) await acceptFirmTerms(supabase);
     notify(accept ? 'Μπήκες στο γραφείο.' : 'Η πρόσκληση απορρίφθηκε.');
     await Promise.all([loadFirm(), load(year)]);
   };
+
+  const acceptTerms = async () => {
+    if (!termsTick) { notifyError(FIRM_TERMS_NEEDED); return; }
+    setTermsBusy(true);
+    const r = await acceptFirmTerms(supabase);
+    setTermsBusy(false);
+    if (!r.ok) { notifyError(reasonText(r.reason)); return; }
+    setTermsTick(false);
+    await Promise.all([loadFirm(), load(year)]);
+  };
+  const gap = termsGap(firm);
 
   const assignPicked = async (on: boolean) => {
     if (!assignTo || picked.size === 0) return;
@@ -480,11 +505,36 @@ export default function AccountantWorkspace() {
             </p>
             <div style={{ display: 'flex', gap: T.sp.sm }}>
               <Btn variant="ghost" onClick={() => void reply(i.id, false)}>Απόρριψη</Btn>
-              <Btn variant="primary" onClick={() => void reply(i.id, true)}>Αποδοχή</Btn>
+              <Btn variant="primary" onClick={() => void reply(i.id, true)} disabled={!inviteTerms[i.id]}>Αποδοχή</Btn>
             </div>
+          </div>
+          <div style={{ marginTop: T.sp.md }}>
+            <FirmTermsCheck id={`firm-terms-${i.id}`} checked={!!inviteTerms[i.id]} onChange={on => setInviteTerms(t => ({ ...t, [i.id]: on }))} />
           </div>
         </Card>
       ))}
+
+      {/* ΧΩΡΙΣ ΑΠΟΔΟΧΗ ΤΩΝ ΟΡΩΝ, ΚΑΝΕΝΑΣ ΠΕΛΑΤΗΣ. Η βάση τους κρύβει· εδώ λέμε
+          γιατί και τι κάνεις. Το μέλος δέχεται για τον εαυτό του, ο Υπεύθυνος
+          και για το γραφείο. */}
+      {gap && (
+        <Card style={{ marginTop: T.sp.xl }} className="po-noprint">
+          <p style={label}>Όροι επεξεργασίας</p>
+          <p style={{ fontSize: 14, margin: `${T.sp.sm}px 0 ${T.sp.md}px`, color: 'var(--text-primary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+            {gap === 'mine'
+              ? 'Οι πελάτες του γραφείου εμφανίζονται αφού αποδεχτείς τους όρους επεξεργασίας για λογαριασμό τους.'
+              : canManage(firm?.role)
+                ? 'Οι πελάτες του γραφείου εμφανίζονται αφού αποδεχτείς τους όρους επεξεργασίας για λογαριασμό του γραφείου.'
+                : 'Οι πελάτες του γραφείου εμφανίζονται αφού ο Υπεύθυνος του γραφείου αποδεχτεί τους όρους επεξεργασίας.'}
+          </p>
+          {(gap === 'mine' || canManage(firm?.role)) && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: T.sp.md, flexWrap: 'wrap' }}>
+              <FirmTermsCheck id="firm-terms-renew" checked={termsTick} onChange={setTermsTick} />
+              <Btn variant="primary" onClick={() => void acceptTerms()} disabled={!termsTick || termsBusy}>Αποδοχή</Btn>
+            </div>
+          )}
+        </Card>
+      )}
 
       {actor && <>
       <Card style={{ marginTop: T.sp.xl }} className="po-noprint">

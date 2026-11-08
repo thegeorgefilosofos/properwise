@@ -1,6 +1,8 @@
 'use client'
 import { T, Btn, LinkBtn, ChipToggle } from '@/components/Theme'
 import { KIND_LABEL, type FirmKind } from '@/lib/data/firmWords'
+import { FIRM_TERMS_VERSION } from '@/lib/legal/firms'
+import FirmTermsCheck, { FIRM_TERMS_NEEDED } from '@/app/accountant/workspace/FirmTerms'
 import { useState, useEffect, useSyncExternalStore, type ReactNode } from 'react'
 import { leaveDevice } from '@/lib/localPrivacy'
 import { authClient } from '@/lib/supabase/lazy';
@@ -204,6 +206,9 @@ export default function SignupPage() {
   const [firmName, setFirmName] = useState('')
   const [firmAfm, setFirmAfm] = useState('')
   const [firmKind, setFirmKind] = useState<FirmKind>('accounting')
+  // Οι όροι επεξεργασίας για λογαριασμό των πελατών (Οροι #grafeia). Η έκδοση
+  // ταξιδεύει στο προφίλ και γίνεται αποδοχή του γραφείου όταν αυτό στηθεί.
+  const [firmTerms, setFirmTerms] = useState(false)
   // Μέσα σε Instagram, Facebook ή TikTok χωρίς κουμπί προς Safari ή Chrome η
   // φόρμα του email έρχεται πρώτη και η σημείωση για τη Google από κάτω.
   const emailFirst = useEmailFirst()
@@ -498,6 +503,11 @@ export default function SignupPage() {
       return
     }
     // Ο έλεγχος ψηφίου φορτώνει μόνο για το γραφείο: ο ιδιοκτήτης δεν τον πληρώνει σε βάρος σελίδας.
+    if (firm && !firmTerms) {
+      setError(FIRM_TERMS_NEEDED)
+      countSignupStep('invalid')
+      return
+    }
     if (firm && (!firmName.trim() || !(await import('@/lib/core/greek')).isValidAfm(firmAfm))) {
       setError(!firmName.trim() ? 'Γράψε την επωνυμία του γραφείου.' : 'Ο ΑΦΜ του γραφείου δεν περνά τον έλεγχο ψηφίου.')
       countSignupStep('invalid')
@@ -533,7 +543,7 @@ export default function SignupPage() {
         emailRedirectTo: confirmRedirect(firm ? firmQuery(query) : query),
         data: {
           full_name: fullName.trim(),
-          ...(firm ? { account_kind: 'firm', firm_name: firmName.trim(), firm_afm: firmAfm, firm_kind: firmKind } : {}),
+          ...(firm ? { account_kind: 'firm', firm_name: firmName.trim(), firm_afm: firmAfm, firm_kind: firmKind, firm_terms_version: FIRM_TERMS_VERSION } : {}),
           consent_terms_accepted_at: new Date().toISOString(),
           consent_policy_version: CONSENT_VERSION,
           ...(news ? {} : { marketing_opt_out: true }),
@@ -994,6 +1004,7 @@ export default function SignupPage() {
                     {S ? S.consentNeeded : 'Χρειάζεται να αποδεχθείς τους Όρους χρήσης για να συνεχίσεις.'}
                   </p>
                 )}
+                {firm && <FirmTermsCheck id="su-firm-terms" checked={firmTerms} onChange={on => { setFirmTerms(on); setError('') }} />}
                 {newsRow('su-news')}
 
                 {/* ── ΤΟ ΑΝΕΝΕΡΓΟ ΚΟΥΜΠΙ ΠΟΥ ΔΕΝ ΕΛΕΓΕ ΓΙΑΤΙ ───────────────────

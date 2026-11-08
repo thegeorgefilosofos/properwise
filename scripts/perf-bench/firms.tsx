@@ -21,6 +21,7 @@ import { SetList } from '@/app/dashboard/components/SettingsKit';
 import { AccountantAccess } from '@/app/dashboard/components/TabSettings';
 import { Card } from '@/components/Theme';
 import { createClient } from '@/lib/supabase/client';
+import { FIRM_TERMS_VERSION } from '@/lib/legal/firms';
 
 const AT = '2026-09-01T09:00:00Z';
 const member = (id: string, userId: string | null, email: string, role: string, name: string | null, clients: number, status = 'active') =>
@@ -28,7 +29,7 @@ const member = (id: string, userId: string | null, email: string, role: string, 
 
 const firmOf = (role: 'manager' | 'accountant' | 'associate') => ({
   id: 'f1', name: 'Λογιστικό Γραφείο Παράδειγμα', afm: '000000012', kind: 'accounting',
-  phone: '2100000000', address: 'Οδός Παραδείγματος 1, Αθήνα', role, firmOnly: true,
+  phone: '2100000000', address: 'Οδός Παραδείγματος 1, Αθήνα', role, firmOnly: true, termsVersion: FIRM_TERMS_VERSION, myTermsVersion: FIRM_TERMS_VERSION,
   members: [
     member('m1', 'u1', 'dokimi@example.com', role, 'Ελένη Παραδείγματος', 18),
     member('m2', 'u2', 'nikos@example.com', 'accountant', 'Νίκος Δοκιμής', 12),

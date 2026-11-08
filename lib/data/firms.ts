@@ -12,6 +12,7 @@
 // ιστορικό· τέσσερις γραφές θα απέκλιναν την πρώτη φορά που άλλαζε μία.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { FIRM_TERMS_VERSION } from '@/lib/legal/firms';
 
 type Db = SupabaseClient;
 
@@ -76,6 +77,9 @@ export interface Firm {
   address: string | null;
   role: FirmRole;
   firmOnly: boolean;
+  /** Η έκδοση των όρων που αποδέχτηκε το γραφείο (ο Υπεύθυνος) και το μέλος (20261108090000). */
+  termsVersion: string | null;
+  myTermsVersion: string | null;
   members: FirmMember[];
 }
 
@@ -155,6 +159,19 @@ export const saveFirm = (db: Db, f: FirmFields) =>
   rpcDo(db, 'firm_save', { p_name: f.name, p_afm: f.afm, p_kind: f.kind, p_phone: f.phone, p_address: f.address });
 export const invite = (db: Db, email: string, role: FirmRole) => rpcDo(db, 'firm_invite', { p_email: email, p_role: role });
 export const answerInvite = (db: Db, id: string, accept: boolean) => rpcDo(db, 'firm_invite_answer', { p_id: id, p_accept: accept });
+/**
+ * Αποδοχή των όρων επεξεργασίας (Οροι `#grafeia`) στην έκδοση που δείχνει η
+ * οθόνη. Η βάση τη γράφει μόνο αν είναι η τρέχουσα· ως τότε δεν δείχνει πελάτη.
+ */
+export const acceptFirmTerms = (db: Db) => rpcDo(db, 'firm_accept_terms', { p_version: FIRM_TERMS_VERSION });
+
+/** Τι λείπει για να δει το μέλος πελάτες: η δική του αποδοχή, του γραφείου ή τίποτα. */
+export function termsGap(f: Pick<Firm, 'termsVersion' | 'myTermsVersion'> | null): 'mine' | 'firm' | null {
+  if (!f) return null;
+  if (f.myTermsVersion !== FIRM_TERMS_VERSION) return 'mine';
+  if (f.termsVersion !== FIRM_TERMS_VERSION) return 'firm';
+  return null;
+}
 export const setRole = (db: Db, memberId: string, role: FirmRole) => rpcDo(db, 'firm_member_update', { p_id: memberId, p_role: role, p_remove: false });
 export const removeMember = (db: Db, memberId: string) => rpcDo(db, 'firm_member_update', { p_id: memberId, p_role: null, p_remove: true });
 export const assign = (db: Db, owners: string[], userId: string, on: boolean) =>
@@ -309,6 +326,7 @@ export function reasonText(reason: string): string {
     case 'name': return 'Γράψε την επωνυμία του γραφείου.';
     case 'in_other_firm': return 'Είσαι ήδη μέλος άλλου γραφείου με πελάτες. Αποχώρησε πρώτα από εκείνο.';
     case 'firm_account': return FIRM_NO_PROPERTIES;
+    case 'terms_version': return 'Οι όροι άλλαξαν στο μεταξύ. Ανανέωσε τη σελίδα και διάβασέ τους ξανά.';
     case 'owner_account': return 'Ο λογαριασμός σου έχει δικά του ακίνητα. Για το γραφείο χρησιμοποίησε άλλη διεύθυνση email.';
     default: return 'Δεν ολοκληρώθηκε. Δοκίμασε ξανά.';
   }

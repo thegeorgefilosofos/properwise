@@ -85,7 +85,7 @@ begin
   if (select terms_accepted_by from public.firms where id = f) is distinct from m then
     raise exception 'Η αποδοχή μέλους που δεν είναι Υπεύθυνος άλλαξε την αποδοχή του γραφείου';
   end if;
-  raise notice 'probe: βλέπει μόνο όποιος δέχτηκε, και μόνο αν έχει δεχτεί και το γραφείο';
+  raise notice 'probe: βλέπει μόνο όποιος δέχτηκε εφόσον έχει δεχτεί και το γραφείο';
 
   -- ── 4. Νέα έκδοση: κόβεται ─────────────────────────────────────────────
   update public.firms set terms_version = '2020-01' where id = f;

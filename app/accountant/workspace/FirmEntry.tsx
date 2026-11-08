@@ -34,6 +34,13 @@ function docPath(ownerId: string, propertyId: string, name: string): string {
   return `${ownerId}/${propertyId}/document/${Date.now()}_${name.replace(/[^\w.\-]+/g, '_')}`;
 }
 
+/**
+ * ΤΟ ΚΕΝΟ ΓΙΝΕΤΑΙ null, ΟΧΙ ''. Η Postgres απορρίπτει το '' ως ημερομηνία ή
+ * αριθμό και στο κείμενο δεν λέει τίποτα παραπάνω από το null. Ιδια λογική με
+ * το `settingsRow` του οδηγού νέου ακινήτου: κόβεται στις άκρες, το κενό φεύγει.
+ */
+const orNull = (v: string): string | null => (v.trim() === '' ? null : v.trim());
+
 /** Η ετικέτα του dropdown των εκκρεμοτήτων, ανά είδος. */
 const ITEM_LABEL: Partial<Record<EntryKind, string>> = { bill: 'Λογαριασμός', rent: 'Ενοίκιο', tax: 'Δόση φόρου', loan: 'Δόση δανείου' };
 
@@ -109,7 +116,7 @@ export default function FirmEntry({ db, ownerId, ownerName, kind, onClose }: {
       if (up.error) return fail('not_allowed');
       const r = await record(db, ownerId, property, 'document', {
         file_path: path, file_name: file.name, mime: file.type, size_bytes: file.size,
-        title: title.trim() || file.name, doc_date: docDate || null,
+        title: title.trim() || file.name, doc_date: orNull(docDate),
       });
       if (!r.ok) { await db.storage.from('property-files').remove([path]); return fail(r.reason); }
       done('Το παραστατικό αποθηκεύτηκε στο Αρχείο του πελάτη.', 'document', String(r.data?.id ?? ''));
@@ -120,15 +127,17 @@ export default function FirmEntry({ db, ownerId, ownerName, kind, onClose }: {
       if (t.afm && !isValidAfm(t.afm)) return fail('afm');
       const rent = parseAmount(t.monthly_rent);
       const r = await record(db, ownerId, property, 'tenant', {
-        full_name: t.full_name.trim(), afm: t.afm || null, phone: t.phone || null, email: t.email || null,
-        lease_start: t.lease_start || null, lease_end: t.lease_end || null,
+        full_name: t.full_name.trim(), afm: orNull(t.afm), phone: orNull(t.phone), email: orNull(t.email),
+        lease_start: orNull(t.lease_start), lease_end: orNull(t.lease_end),
         monthly_rent: rent && rent > 0 ? rent : null, status: 'active',
       });
       if (!r.ok) return fail(r.reason);
       done('Ο μισθωτής καταχωρήθηκε.', 'tenant', String(r.data?.id ?? ''));
       return;
     }
-    // Πληρωμή: σε εκκρεμότητα, ή νέος πληρωμένος λογαριασμός.
+    // Πληρωμή: σε εκκρεμότητα, ή νέος πληρωμένος λογαριασμός. Χωρίς ημερομηνία
+    // δεν φεύγει τίποτα: η βάση θα έπαιρνε '' ως ημερομηνία πληρωμής.
+    if (!orNull(paidOn)) return fail('paid_at');
     if (itemId && itemId !== NEW) {
       const it = choices.find(i => i.id === itemId);
       if (!it) return fail('error');
@@ -228,6 +237,8 @@ export default function FirmEntry({ db, ownerId, ownerName, kind, onClose }: {
               <TextInput label="Ηλεκτρονικό ταχυδρομείο" type="email" inputMode="email" value={t.email} onChange={v => setT(s => ({ ...s, email: v }))} />
               <DatePicker label="Έναρξη μίσθωσης" value={t.lease_start} onChange={v => setT(s => ({ ...s, lease_start: v }))} />
               <DatePicker label="Λήξη μίσθωσης" value={t.lease_end} onChange={v => setT(s => ({ ...s, lease_end: v }))} />
+              {/* ΑΡΘΡΟ 14 ΓΚΠΔ: υπεύθυνος μένει ο ιδιοκτήτης, το γραφείο εκτελεί (Πολιτική #grafeia). */}
+              <p style={{ ...note, gridColumn: '1 / -1' }}>Ο ιδιοκτήτης ενημερώνει τον μισθωτή για την επεξεργασία.</p>
             </div>
           )}
 
