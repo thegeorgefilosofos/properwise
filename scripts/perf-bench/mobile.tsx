@@ -238,7 +238,7 @@ function ModalDemo() {
       <PageTitle title="Δοκιμή παραθύρου" sub="Modal στα 375" right={<Btn variant="primary" onClick={() => setOpen(true)}>Άνοιγμα</Btn>} />
       <Modal open={open} onClose={() => setOpen(false)} title="Καταστάσεις ιδιοκτήτη"
         subtitle="Ανά ακίνητο, για την περίοδο που θα επιλέξεις"
-        footer={<><Btn variant="ghost" onClick={() => setOpen(false)}>Άκυρο</Btn><Btn variant="primary" onClick={() => {}}>Έκδοση</Btn></>}
+        footer={<><Btn variant="ghost" onClick={() => setOpen(false)}>Ακύρωση</Btn><Btn variant="primary" onClick={() => {}}>Έκδοση</Btn></>}
         footerInfo="Η κατάσταση εκδίδεται σε PDF">
         <InfoBanner tone="warning">Ένα μήνυμα που εξηγεί τι θα γίνει, αρκετά μακρύ ώστε να τυλιχτεί σε στενή οθόνη κινητού.</InfoBanner>
         <div {...fieldRow(170)}>
