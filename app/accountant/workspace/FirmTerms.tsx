@@ -15,8 +15,11 @@ export default function FirmTermsCheck({ id, checked, onChange }: { id: string; 
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
       <input id={id} type="checkbox" className="po-check" checked={checked} aria-required="true"
-        onChange={e => onChange(e.target.checked)} style={{ marginTop: 2, flexShrink: 0 }} />
-      <label htmlFor={id} style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer' }}>
+        onChange={e => onChange(e.target.checked)} style={{ marginTop: 6, flexShrink: 0 }} />
+      {/* Ο ΣΤΟΧΟΣ ΕΙΝΑΙ ΚΟΥΤΙ ΚΑΙ ΕΤΙΚΕΤΑ ΜΑΖΙ· ΧΡΕΙΑΖΕΤΑΙ 44. Δύο γραμμές των
+          13 με διάστιχο 1,5 έδιναν 39 στα 390· τα 4 πάνω και κάτω τον φέρνουν
+          στο δάπεδο χωρίς να αλλάξει το κείμενο. */}
+      <label htmlFor={id} style={{ display: 'block', padding: '4px 0', fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', lineHeight: 1.5, cursor: 'pointer' }}>
         Αποδέχομαι τους{' '}
         <Link href="/terms#grafeia" className="lp-link po-tap-inline" target="_blank"
           style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 3, fontWeight: 600 }}>

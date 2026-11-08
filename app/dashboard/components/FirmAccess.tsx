@@ -71,7 +71,7 @@ export function FirmAccess() {
             <>
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>
                 {`${f.firmKind ? KIND_LABEL[f.firmKind] : 'Λογιστής'} · από ${fd(f.linkedAt)}`}
-                {f.lastOpenedAt ? ` · άνοιξε τον φάκελό σου ${fd(f.lastOpenedAt)}` : ''}
+                {f.lastOpenedAt ? ` · άνοιξε τον φάκελό σου στις ${fd(f.lastOpenedAt)}` : ''}
               </span>
               {f.members.length > 0 && (
                 <span style={{ display: 'block', marginTop: 2 }}>
@@ -164,19 +164,19 @@ export function FirmDaySummary() {
               </span>
             )}
           </span>
-          <div style={{ display: 'flex', gap: T.sp.sm }}>
+          <div className="act-row" style={{ display: 'flex', gap: T.sp.sm }}>
             <Btn variant="secondary" onClick={() => void see(d)}>Δες</Btn>
-            <Btn variant="ghost" onClick={() => void undo(d)} disabled={busy === d.firmId}>Αναίρεση όλων</Btn>
+            <Btn variant="ghost" className="po-btn-keep" onClick={() => void undo(d)} disabled={busy === d.firmId}>Αναίρεση όλων</Btn>
           </div>
         </div>
       ))}
       <Modal open={!!seeing} onClose={() => setSeeing(null)} title={seeing?.firm.firmName ?? ''}
         subtitle={`Σήμερα, ${fd(today)}${seeing ? ` · ${seeing.rows.length === 1 ? '1 κίνηση' : `${seeing.rows.length} κινήσεις`}` : ''}`} size="sm"
         footer={seeing ? (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: T.sp.sm }}>
-            <Btn variant="ghost" onClick={() => void undo(seeing.firm)}>Αναίρεση όλων</Btn>
+          <>
+            <Btn variant="ghost" className="po-btn-keep" onClick={() => void undo(seeing.firm)}>Αναίρεση όλων</Btn>
             <Btn variant="primary" onClick={() => setSeeing(null)}>Εντάξει</Btn>
-          </div>
+          </>
         ) : undefined}>
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {(seeing?.rows ?? []).map((r, i) => (

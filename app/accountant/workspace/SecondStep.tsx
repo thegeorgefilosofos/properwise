@@ -99,14 +99,14 @@ export default function SecondStep({ onDone }: { onDone: () => void }) {
   const enrolling = step.kind === 'enroll';
 
   return (
-    <div style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: 72 }}>
+    <div className="po-floor" style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: 72 }}>
       <PortalBar />
       <main style={portalWrap}>
         <PortalTitle
           over={enrolling ? 'Πριν από τον πρώτο πελάτη' : 'Δεύτερο βήμα'}
           title="Επαλήθευση δύο βημάτων"
           meta={enrolling
-            ? 'Το γραφείο βλέπει φακέλους άλλων ανθρώπων. Γι’ αυτό κάθε μέλος του μπαίνει με τον κωδικό του και με την εφαρμογή επαλήθευσης του κινητού του.'
+            ? 'Το γραφείο βλέπει φακέλους άλλων ανθρώπων. Γι’ αυτό κάθε μέλος μπαίνει με τον κωδικό του και με την εφαρμογή επαλήθευσης στο κινητό.'
             : MFA_SAY.ask}
         />
 
@@ -140,13 +140,17 @@ export default function SecondStep({ onDone }: { onDone: () => void }) {
                 {step.kind === 'enroll' && (
                   <div style={{ display: 'grid', gap: T.sp.sm }}>
                     <p style={quiet}>Δεν σαρώνεται; Γράψε στην εφαρμογή αυτόν τον κωδικό:</p>
-                    <div style={{ ...TT.mono, userSelect: 'all', wordBreak: 'break-all', padding: '9px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
-                      {step.secret}
+                    {/* ΣΕ ΤΕΤΡΑΔΕΣ, ΟΠΩΣ ΤΟΝ ΔΕΙΧΝΕΙ Η ΙΔΙΑ Η ΕΦΑΡΜΟΓΗ ΕΠΑΛΗΘΕΥΣΗΣ. Με
+                        `break-all` στα 360 ο κωδικός έσπαγε όπου έτυχε και άφηνε ένα
+                        γράμμα μόνο του στη δεύτερη γραμμή. Τα κενά δεν πειράζουν: οι
+                        εφαρμογές τα αγνοούν. */}
+                    <div style={{ ...TT.mono, userSelect: 'all', overflowWrap: 'anywhere', letterSpacing: '0.04em', padding: '9px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
+                      {step.secret.replace(/(.{4})(?=.)/g, '$1 ')}
                     </div>
                   </div>
                 )}
                 <div style={{ display: 'grid', gap: T.sp.sm }}>
-                  <p style={caption}>{step.kind === 'enroll' ? '2. Ο εξαψήφιος κωδικός της εφαρμογής' : 'Ο εξαψήφιος κωδικός της εφαρμογής'}</p>
+                  <p style={caption}>{step.kind === 'enroll' ? '2. Γράψε τον εξαψήφιο κωδικό της εφαρμογής' : 'Ο εξαψήφιος κωδικός της εφαρμογής'}</p>
                   <div style={{ display: 'flex', gap: T.sp.sm, flexWrap: 'wrap', alignItems: 'center' }}>
                     <div style={{ flex: '0 1 200px', minWidth: 160 }}>
                       <TextInput ariaLabel="Εξαψήφιος κωδικός" inputMode="numeric" mono placeholder="123456"
@@ -160,7 +164,7 @@ export default function SecondStep({ onDone }: { onDone: () => void }) {
                   {err && <p role="alert" style={{ ...TT.bodySm, color: 'var(--negative)', margin: 0 }}>{err}</p>}
                 </div>
                 {step.kind === 'enroll' && (
-                  <p style={quiet}>Από εδώ και πέρα κάθε σύνδεσή σου ζητά και τον εξαψήφιο κωδικό της εφαρμογής.</p>
+                  <p style={quiet}>Από εδώ και πέρα, κάθε σύνδεση θα ζητά και τον εξαψήφιο κωδικό.</p>
                 )}
               </div>
             </div>

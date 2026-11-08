@@ -37,7 +37,7 @@ import { bracketsLabelForYear } from '@/lib/billing/greekTax';
 import { asOfLine } from '@/lib/facts/prices';
 import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 import { PRESUMPTIVE_RULE } from '@/lib/billing/consolidate';
-import { T, feAuto, fn, Card, Btn } from '@/components/Theme';
+import { T, TT, feAuto, fn, Card, Btn } from '@/components/Theme';
 import { fpRate } from '@/lib/core/format';
 // Η ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ ΕΙΝΑΙ ΔΙΚΗ ΤΗΣ ΔΙΑΔΡΟΜΗ ΚΑΙ ΚΟΥΒΑΛΟΥΣΕ ΚΙ ΕΚΕΙΝΗ ΤΑ
 // 2,5 MB: ο λογιστής ανοίγει έναν σύνδεσμο, κοιτάζει και συνήθως δεν κατεβάζει
@@ -206,7 +206,7 @@ export default function AccountantPortal() {
   );
 
   return (
-    <div style={{ background: 'var(--bg-base)', minHeight: '100vh', color: 'var(--text-primary)', fontFamily: T.font.sans, paddingBottom: 48 }}>
+    <div className="po-floor" style={{ background: 'var(--bg-base)', minHeight: '100vh', color: 'var(--text-primary)', fontFamily: T.font.sans, paddingBottom: 48 }}>
       {/* Το έγγραφο τυπώνεται. Η μπάρα, ο επιλογέας και το κουμπί λήψης δεν
           έχουν νόημα σε χαρτί· τα υπόλοιπα μένουν ακριβώς όπως στην οθόνη.
           Η κλάση είναι η ΚΟΙΝΗ «po-noprint» του globals.css, που ξέρει ήδη και
@@ -241,8 +241,8 @@ export default function AccountantPortal() {
 
         {state === 'notfound' && (
           <Card style={{ marginTop: 32, textAlign: 'center' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>{ownerId ? 'Ο φάκελος δεν είναι πια ανοιχτός για σένα' : LINK_SAY.notFoundTitle}</div>
-            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.7, maxWidth: 460, margin: '0 auto' }}>
+            <div style={{ ...TT.h2, marginBottom: 6 }}>{ownerId ? 'Ο φάκελος δεν είναι πια ανοιχτός για σένα' : LINK_SAY.notFoundTitle}</div>
+            <div style={{ ...TT.body, color: 'var(--text-tertiary)', maxWidth: 460, margin: '0 auto' }}>
               {/* Η ΑΝΑΚΛΗΣΗ ΚΟΒΕΙ ΑΜΕΣΩΣ ΚΑΙ ΤΟ ΛΕΜΕ ΕΤΣΙ. Δεν υπάρχει «ως τη λήξη». */}
               {ownerId
                 ? 'Ο ιδιοκτήτης ανακάλεσε την πρόσβαση ή δεν είσαι πια μέλος του γραφείου που τον βλέπει.'
@@ -253,9 +253,9 @@ export default function AccountantPortal() {
 
         {state === 'secondStep' && (
           <Card style={{ marginTop: 32, textAlign: 'center' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Λείπει η επαλήθευση δύο βημάτων</div>
-            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.7, maxWidth: 460, margin: '0 auto 16px' }}>
-              Τους φακέλους των πελατών τους ανοίγει μόνο μέλος γραφείου με εφαρμογή επαλήθευσης. Η ενεργοποίηση γίνεται μία φορά.
+            <div style={{ ...TT.h2, marginBottom: 6 }}>Λείπει η επαλήθευση δύο βημάτων</div>
+            <div style={{ ...TT.body, color: 'var(--text-tertiary)', maxWidth: 460, margin: '0 auto 16px' }}>
+              Οι φάκελοι των πελατών ανοίγουν μόνο σε μέλη γραφείου με εφαρμογή επαλήθευσης. Τη ρυθμίζεις μία φορά.
             </div>
             <Btn variant="primary" href="/accountant/workspace">Ενεργοποίηση</Btn>
           </Card>

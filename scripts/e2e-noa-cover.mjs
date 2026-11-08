@@ -40,7 +40,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { chromePath } from './lib/chrome.mjs'
 import { sweep } from './lib/sweep.mjs'
-import { scenesToRun } from './lib/scenes.mjs'
+import { scenesToRun, PORTAL_SCENES } from './lib/scenes.mjs'
 import { createRequire } from 'node:module'
 import { readFileSync } from 'node:fs'
 const require = createRequire(import.meta.url)
@@ -107,7 +107,7 @@ const browser = await chromium.launch({ executablePath: chromePath(), args: ['--
 // πλάτους × σκηνής, με τις παράλληλες θέσεις του, ζει στο scripts/lib/sweep.mjs.
 const ALL_WIDTHS = [...new Set([...WIDTHS, ...PHONES])].sort((a, b) => a - b)
 const swept = await sweep(browser, {
-  widths: ALL_WIDTHS, height: (w) => (w < 700 ? 800 : 1000), scenes: scenesToRun(),
+  widths: ALL_WIDTHS, height: (w) => (w < 700 ? 800 : 1000), scenes: scenesToRun().filter(s => !PORTAL_SCENES.has(s)),
   suffix: '&noa=1', settle: 400,
   visit: async (page, { width }) => {
     // ═══ ΠΕΡΙΜΕΝΕ ΤΟ ΚΟΥΜΠΙ, ΟΧΙ ΤΟΝ ΧΡΟΝΟ ══════════════════════════════════

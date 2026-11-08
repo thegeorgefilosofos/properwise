@@ -192,5 +192,5 @@ export async function rotation(db: SupabaseClient, userId: string): Promise<{ at
 /** «Ο σύνδεσμος ανανεώθηκε στις 04/11/2026 επειδή αποχώρησε μέλος…». */
 export function rotatedSentence(r: { at: string; reason: RotatedReason }): string {
   const day = new Date(r.at).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  return `Ο σύνδεσμος ανανεώθηκε στις ${day} επειδή ${ROTATED_WHY[r.reason]}. Ο παλιός δεν ανοίγει πια· όσοι σε βλέπουν με λογαριασμό συνεχίζουν κανονικά.`;
+  return `Ο σύνδεσμος ανανεώθηκε στις ${day} επειδή ${ROTATED_WHY[r.reason]}. Ο παλιός δεν ανοίγει πια. Όσοι σε βλέπουν με δικό τους λογαριασμό συνεχίζουν κανονικά.`;
 }

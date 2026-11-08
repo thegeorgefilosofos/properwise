@@ -13,9 +13,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { T, Btn, Modal, Skeleton, fe, fd, formGrid } from '@/components/Theme';
+import { T, TT, Btn, Modal, Skeleton, fe, fd, fieldRow } from '@/components/Theme';
 import { TextInput, CustomSelect, NumberInput, DatePicker } from '@/app/dashboard/components/UIComponents';
 import { notify } from '@/components/Toast';
+import { DropZone } from '@/app/dashboard/components/DropZone';
+import { fmtBytes } from '@/lib/core/bytes';
 import { isValidAfm, parseAmount } from '@/lib/core/greek';
 import { athensToday } from '@/lib/core/time';
 import {
@@ -25,7 +27,7 @@ import {
 
 export type EntryKind = keyof typeof ENTRY_LABEL;
 
-const note: React.CSSProperties = { fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans, lineHeight: 1.6 };
+const note: React.CSSProperties = { ...TT.bodySm, color: 'var(--text-tertiary)', margin: 0 };
 const MAX_BYTES = 52428800;
 const TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 
@@ -174,30 +176,34 @@ export default function FirmEntry({ db, ownerId, ownerName, kind, onClose }: {
 
   return (
     <Modal open onClose={onClose} title={ENTRY_LABEL[kind]} subtitle={ownerName} size="sm"
+      /* ΤΑ ΚΟΥΜΠΙΑ ΚΑΤΕΥΘΕΙΑΝ ΣΤΟ ΥΠΟΣΕΛΙΔΟ, ΟΧΙ ΣΕ ΔΙΚΟ ΤΟΥΣ ΚΟΥΤΙ. Το Modal τα
+         μοιράζει ίσα στο τηλέφωνο (`.act-row`)· τυλιγμένα σε ένα `<div>` γίνονταν
+         «μοναδικό παιδί» και κάθονταν δεξιά με το πλάτος του λεκτικού τους. */
       footer={
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: T.sp.sm }}>
-          <Btn variant="ghost" onClick={onClose}>Άκυρο</Btn>
+        <>
+          <Btn variant="ghost" onClick={onClose}>Ακύρωση</Btn>
           <Btn variant="primary" onClick={() => void save()} disabled={!canSave}>{busy ? 'Αποθήκευση…' : 'Καταχώρηση'}</Btn>
-        </div>
+        </>
       }>
       {props === null ? <Skeleton h={120} /> : propList.length === 0 ? (
-        <p style={note}>{kind === 'loan' ? 'Κανένα ακίνητο του πελάτη δεν έχει δάνειο.' : 'Ο πελάτης δεν έχει ακόμη ακίνητο. Ακίνητα καταχωρεί ο ιδιοκτήτης.'}</p>
+        <p style={note}>{kind === 'loan' ? 'Κανένα ακίνητο του πελάτη δεν έχει δάνειο.' : 'Ο πελάτης δεν έχει ακόμη ακίνητα. Τα ακίνητα τα προσθέτει ο ίδιος.'}</p>
       ) : (
-        <div style={{ display: 'grid', gap: T.sp.lg }}>
+        // ΜΙΑ ΣΤΗΛΗ ΠΟΥ ΔΕΝ ΦΑΡΔΑΙΝΕΙ ΑΠΟ ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ΤΗΣ. Χωρίς `minmax(0, 1fr)`
+        // το πλέγμα έπαιρνε το ελάχιστο πλάτος του φαρδύτερου παιδιού και τα πεδία
+        // έβγαιναν 36 εικονοστοιχεία έξω από το παράθυρο στα 390.
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: T.sp.lg }}>
           <CustomSelect label="Ακίνητο" value={property} onChange={v => { setProperty(v); setItemId(''); }}
             placeholder="Διάλεξε ακίνητο"
             options={propList.map(p => ({ value: p.id, label: p.name }))} />
 
           {kind === 'document' && (
             <>
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: T.sp.xs + 2, fontFamily: T.font.sans }} htmlFor="firm-entry-file">Αρχείο</label>
-                <input id="firm-entry-file" type="file" accept="application/pdf,image/jpeg,image/png"
-                  onChange={e => { setFile(e.target.files?.[0] ?? null); setErr(''); }}
-                  style={{ fontSize: 13, fontFamily: T.font.sans, color: 'var(--text-secondary)', maxWidth: '100%' }} />
-                <p style={{ ...note, marginTop: T.sp.xs }}>PDF, JPG ή PNG, έως 50 MB.</p>
-              </div>
-              <TextInput label="Τίτλος" value={title} onChange={setTitle} placeholder="Λογαριασμός ΔΕΗ Οκτωβρίου" />
+              <DropZone inputId="firm-entry-file" disabled={busy}
+                onFile={f => { if (f) { setFile(f); setErr(''); } }}
+                title="Διάλεξε το αρχείο" hint="PDF, JPG ή PNG, έως 50 MB" accept="application/pdf,image/jpeg,image/png"
+                inputLabel="Το αρχείο του παραστατικού"
+                picked={file ? `${file.name} · ${fmtBytes(file.size)}` : null} />
+              <TextInput label="Τίτλος" value={title} onChange={setTitle} placeholder="ΔΕΗ Οκτωβρίου" />
               <DatePicker label="Ημερομηνία παραστατικού" value={docDate} onChange={setDocDate} />
             </>
           )}
@@ -207,16 +213,16 @@ export default function FirmEntry({ db, ownerId, ownerName, kind, onClose }: {
               <>
                 {choices.length > 0 ? (
                   <CustomSelect label={ITEM_LABEL[kind] ?? 'Εκκρεμότητα'} value={itemId} onChange={setItemId}
-                    placeholder="Διάλεξε"
+                    placeholder="Διάλεξε εκκρεμότητα"
                     options={[
                       ...choices.map(i => ({ value: i.id, label: `${i.name} · ${fe(i.amount)} · ${fd(i.due)}` })),
-                      ...(kind === 'bill' ? [{ value: NEW, label: 'Άλλος λογαριασμός, πληρωμένος' }] : []),
+                      ...(kind === 'bill' ? [{ value: NEW, label: 'Άλλος λογαριασμός, ήδη πληρωμένος' }] : []),
                     ]} />
                 ) : (
                   <p style={note}>{kind === 'bill' ? 'Καμία ανοιχτή εκκρεμότητα. Γράψε τον λογαριασμό που πληρώθηκε και το ποσό του.' : 'Καμία ανοιχτή εκκρεμότητα σε αυτό το ακίνητο.'}</p>
                 )}
                 {kind === 'bill' && newOne && (
-                  <div style={{ ...formGrid(160, 240), gap: T.sp.lg }}>
+                  <div {...fieldRow(160, T.sp.lg)}>
                     <TextInput label="Λογαριασμός" value={newBill.name} onChange={v => setNewBill(s => ({ ...s, name: v }))} placeholder="ΔΕΗ" />
                     <NumberInput label="Ποσό" value={newBill.amount} onChange={v => setNewBill(s => ({ ...s, amount: v }))} suffix="€" />
                   </div>
@@ -227,8 +233,11 @@ export default function FirmEntry({ db, ownerId, ownerName, kind, onClose }: {
           )}
 
           {kind === 'tenant' && (
-            <div style={{ ...formGrid(180, 240), gap: T.sp.lg }}>
-              <div style={{ gridColumn: '1 / -1' }}>
+            // Η ΣΕΙΡΑ ΓΕΜΙΖΕΙ ΤΟ ΠΛΑΤΟΣ. Το `formGrid(180, 240)` έκοβε κάθε πεδίο στα
+            // 240: στο τηλέφωνο έμεναν 68 εικονοστοιχεία κενά δεξιά κάθε κουτιού, με
+            // μόνο το «Ακίνητο» από πάνω να φτάνει ως την άκρη.
+            <div {...fieldRow(180, T.sp.lg)}>
+              <div style={{ flexBasis: '100%' }}>
                 <TextInput label="Ονοματεπώνυμο" value={t.full_name} onChange={v => setT(s => ({ ...s, full_name: v }))} />
               </div>
               <TextInput label="ΑΦΜ" value={t.afm} onChange={v => setT(s => ({ ...s, afm: v.replace(/\D/g, '').slice(0, 9) }))} inputMode="numeric" mono />
@@ -238,7 +247,7 @@ export default function FirmEntry({ db, ownerId, ownerName, kind, onClose }: {
               <DatePicker label="Έναρξη μίσθωσης" value={t.lease_start} onChange={v => setT(s => ({ ...s, lease_start: v }))} />
               <DatePicker label="Λήξη μίσθωσης" value={t.lease_end} onChange={v => setT(s => ({ ...s, lease_end: v }))} />
               {/* ΑΡΘΡΟ 14 ΓΚΠΔ: υπεύθυνος μένει ο ιδιοκτήτης, το γραφείο εκτελεί (Πολιτική #grafeia). */}
-              <p style={{ ...note, gridColumn: '1 / -1' }}>Ο ιδιοκτήτης ενημερώνει τον μισθωτή για την επεξεργασία.</p>
+              <p style={{ ...note, flexBasis: '100%' }}>Ο ιδιοκτήτης ενημερώνει τον μισθωτή για την επεξεργασία.</p>
             </div>
           )}
 

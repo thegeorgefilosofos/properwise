@@ -22,7 +22,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, Card, Btn, Skeleton } from '@/components/Theme';
+import { T, TT, Card, Btn, Skeleton } from '@/components/Theme';
 import { TextInput, CustomSelect } from '@/app/dashboard/components/UIComponents';
 import { ActionMenu } from '@/components/ActionMenu';
 import {
@@ -416,10 +416,9 @@ export default function AccountantWorkspace() {
   };
 
   const wrap = portalWrap;
-  const label: React.CSSProperties = {
-    fontSize: 11, letterSpacing: '0.5px', textTransform: 'uppercase',
-    color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0,
-  };
+  // Η ΕΤΙΚΕΤΑ ΕΝΟΤΗΤΑΣ ΤΗΣ ΕΦΑΡΜΟΓΗΣ (TT.label), όχι δική της: ήταν 11 με κανονικό
+  // βάρος και άλλο διάστιχο από κάθε «ΝΕΟΣ ΠΕΛΑΤΗΣ» του πίνακα.
+  const label: React.CSSProperties = { ...TT.label, color: 'var(--text-tertiary)', margin: 0 };
 
   // Το δεύτερο βήμα πριν από οτιδήποτε του γραφείου: η βάση δεν απαντά χωρίς αυτό.
   if (secondStep) return <SecondStep onDone={() => { setSecondStep(null); void loadFirm(); }} />;
@@ -432,7 +431,7 @@ export default function AccountantWorkspace() {
 
   if (email === null) {
     return (
-      <div style={{ background: 'var(--bg-base)', minHeight: '100vh' }}>
+      <div className="po-floor" style={{ background: 'var(--bg-base)', minHeight: '100vh' }}>
         <PortalBar />
         {/* ΤΟ ΙΔΙΟ ΠΕΡΙΓΡΑΜΜΑ ΜΕ ΤΗ ΣΥΝΔΕΔΕΜΕΝΗ ΟΘΟΝΗ. Ο τίτλος ήταν γραμμένος με
             το χέρι, με άλλο μέγεθος και χωρίς την υπερκείμενη γραμμή: ο ίδιος
@@ -450,7 +449,7 @@ export default function AccountantWorkspace() {
   }
 
   return (
-    <div style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: 72 }}>
+    <div className="po-floor" style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: 72 }}>
       <PortalBar year={year} onYear={setYear} />
       <main style={wrap}>
         {/* Η ΣΥΝΟΨΗ ΛΕΕΙ ΤΙ ΑΞΙΖΕΙ ΝΑ ΚΟΙΤΑΞΕΙΣ ΠΡΩΤΑ. Ο τίτλος έλεγε μόνο πόσοι
@@ -463,20 +462,23 @@ export default function AccountantWorkspace() {
               Χρήση 01/01/{year} έως 31/12/{year}
               {ordered.length > 0 && (
                 <> · <strong style={{ color: stuck > 0 ? 'var(--text-primary)' : 'inherit' }}>
-                  {stuck === 0 ? 'κανένας δεν μπλοκάρει' : stuck === 1 ? '1 με εκκρεμότητες' : `${stuck} με εκκρεμότητες`}
+                  {stuck === 0 ? 'κανένας με εκκρεμότητες' : stuck === 1 ? '1 με εκκρεμότητες' : `${stuck} με εκκρεμότητες`}
                 </strong> · {done === 1 ? '1 έτοιμος' : `${done} έτοιμοι`}</>
               )}
             </>
           }
           right={ordered.length > 0 || firm ? (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {firm && <Btn variant="ghost" href="/accountant/workspace?view=firm">{team ? 'Το γραφείο' : 'Το γραφείο μου'}</Btn>}
+            <>
+              {/* ΙΔΙΟ ΣΧΗΜΑ ΓΙΑ ΤΙΣ ΙΣΟΤΙΜΕΣ ΕΝΕΡΓΕΙΕΣ. Τα δύο πρώτα ήταν «ghost»,
+                  χωρίς περίγραμμα, δίπλα σε δύο με περίγραμμα: στο τηλέφωνο
+                  έμοιαζαν με λεζάντες που αιωρούνται πάνω από τα κουμπιά. */}
+              {firm && <Btn variant="secondary" href="/accountant/workspace?view=firm">{team ? 'Το γραφείο' : 'Το γραφείο μου'}</Btn>}
               {ordered.length > 0 && actor && <>
-              <Btn variant="ghost" onClick={() => void toggleMoney()} disabled={busy === 'money'}>
+              <Btn variant="secondary" onClick={() => void toggleMoney()} disabled={busy === 'money'}>
                 {busy === 'money' ? 'Φόρτωση…' : showMoney ? 'Κρύψε ποσά' : 'Δείξε ποσά'}
               </Btn>
               <Btn variant="secondary" onClick={() => void downloadEverything()} disabled={busy !== null}>
-                {busy === 'zip' ? 'Ετοιμάζεται…' : 'Κατέβασε τα όλα'}
+                {busy === 'zip' ? 'Ετοιμάζεται…' : 'Κατέβασε τα βιβλία'}
               </Btn>
               {/* ΟΙ ΦΑΚΕΛΟΙ ΚΑΙ ΟΧΙ ΤΑ ΒΙΒΛΙΑ. Το «Κατέβασε τα όλα» δίνει τις
                   καταστάσεις εσόδων και δαπανών· αυτό δίνει ό,τι έστειλε κάθε
@@ -488,7 +490,7 @@ export default function AccountantWorkspace() {
                 </Btn>
               )}
               </>}
-            </div>
+            </>
           ) : undefined} />
 
       {/* Η ΠΡΟΣΘΗΚΗ ΚΑΘΕΤΑΙ ΠΑΝΩ, ΓΙΑΤΙ ΕΙΝΑΙ Η ΠΡΩΤΗ ΚΙΝΗΣΗ ΠΟΥ ΚΑΝΕΙΣ ΕΔΩ.
@@ -500,11 +502,11 @@ export default function AccountantWorkspace() {
       {invites.map(i => (
         <Card key={i.id} style={{ marginTop: T.sp.xl }} className="po-noprint">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: T.sp.md, flexWrap: 'wrap' }}>
-            <p style={{ fontSize: 14, margin: 0, color: 'var(--text-primary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-              <strong>{i.firmName}</strong>{` σε προσκαλεί ως ${ROLE_LABEL[i.role]}.`}
+            <p style={{ fontSize: 'var(--fs-md)', margin: 0, color: 'var(--text-primary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+              <strong>{i.firmName}</strong>{` σε προσκαλεί στο γραφείο. Ρόλος: ${ROLE_LABEL[i.role]}.`}
             </p>
-            <div style={{ display: 'flex', gap: T.sp.sm }}>
-              <Btn variant="ghost" onClick={() => void reply(i.id, false)}>Απόρριψη</Btn>
+            <div className="act-row" style={{ display: 'flex', gap: T.sp.sm }}>
+              <Btn variant="secondary" onClick={() => void reply(i.id, false)}>Απόρριψη</Btn>
               <Btn variant="primary" onClick={() => void reply(i.id, true)} disabled={!inviteTerms[i.id]}>Αποδοχή</Btn>
             </div>
           </div>
@@ -520,7 +522,7 @@ export default function AccountantWorkspace() {
       {gap && (
         <Card style={{ marginTop: T.sp.xl }} className="po-noprint">
           <p style={label}>Όροι επεξεργασίας</p>
-          <p style={{ fontSize: 14, margin: `${T.sp.sm}px 0 ${T.sp.md}px`, color: 'var(--text-primary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 'var(--fs-md)', margin: `${T.sp.sm}px 0 ${T.sp.md}px`, color: 'var(--text-primary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
             {gap === 'mine'
               ? 'Οι πελάτες του γραφείου εμφανίζονται αφού αποδεχτείς τους όρους επεξεργασίας για λογαριασμό τους.'
               : canManage(firm?.role)
@@ -590,7 +592,7 @@ export default function AccountantWorkspace() {
       {team && manager && picked.size > 0 && (
         <Card style={{ marginTop: T.sp.md }} className="po-noprint">
           <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.md, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums' }}>
               {picked.size === 1 ? '1 επιλεγμένος' : `${picked.size} επιλεγμένοι`}
             </span>
             <div style={{ flex: '1 1 200px', maxWidth: 280 }}>
@@ -599,7 +601,7 @@ export default function AccountantWorkspace() {
             </div>
             <Btn variant="secondary" onClick={() => void assignPicked(true)} disabled={!assignTo}>Ανάθεση</Btn>
             <Btn variant="ghost" onClick={() => void assignPicked(false)} disabled={!assignTo}>Αφαίρεση ανάθεσης</Btn>
-            <Btn variant="ghost" onClick={() => setPicked(new Set())}>Καθαρισμός</Btn>
+            <Btn variant="ghost" onClick={() => setPicked(new Set())}>Ακύρωση επιλογής</Btn>
           </div>
         </Card>
       )}
@@ -629,8 +631,8 @@ export default function AccountantWorkspace() {
            και έστελνε τον λογιστή να ζητήσει σύνδεσμο από ιδιοκτήτες που τον
            έχουν ήδη εξουσιοδοτήσει. */
         <Card style={{ marginTop: 16 }}>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 14px', lineHeight: 1.7, fontFamily: T.font.sans }}>
-            Η λίστα των πελατών σου δεν διαβάστηκε. Δεν σημαίνει ότι είναι άδεια: δεν πήραμε απάντηση.
+          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: '0 0 14px', lineHeight: 1.7, fontFamily: T.font.sans }}>
+            Δεν φόρτωσε η λίστα των πελατών σου. Δεν σημαίνει ότι είναι άδεια· απλώς δεν πήραμε απάντηση.
           </p>
           <Btn onClick={() => void load(year)}>Δοκίμασε ξανά</Btn>
         </Card>
@@ -645,14 +647,14 @@ export default function AccountantWorkspace() {
         </div>
       ) : rows.length === 0 ? (
         <Card style={{ marginTop: 16 }}>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.7, fontFamily: T.font.sans }}>
-            Κανένας πελάτης στη λίστα. Ο ιδιοκτήτης βγάζει τον σύνδεσμο από τη Λογιστική του, στον φάκελο για τον λογιστή και σου τον στέλνει.
+          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.7, fontFamily: T.font.sans }}>
+            Κανένας πελάτης στη λίστα. Ο ιδιοκτήτης σού στέλνει τον σύνδεσμο που βγάζει από τη Λογιστική του, στον φάκελο για τον λογιστή.
           </p>
         </Card>
       ) : (
         <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
           {listed.length === 0 && (
-            <Card><p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, fontFamily: T.font.sans }}>Κανένας πελάτης με αυτά τα φίλτρα.</p></Card>
+            <Card><p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0, fontFamily: T.font.sans }}>Κανένας πελάτης με αυτά τα φίλτρα.</p></Card>
           )}
           {listed.map(({ c, gaps, ready }) => {
             // Ο ΣΥΝΕΡΓΑΤΗΣ ΔΙΑΒΑΖΕΙ: χωρίς αιτήματα, ανεβάσματα και εξαγωγές.
@@ -694,13 +696,13 @@ export default function AccountantWorkspace() {
                         χθες και ο άλλος τον Μάρτιο. */}
                     <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '3px 0 0', fontFamily: T.font.sans }}>
                       {lastMove(c.lastActivity)}
-                      {team && ` · Υπεύθυνος: ${(c.assignees ?? []).length ? (c.assignees ?? []).map(a => a.name).join(', ') : 'κανένας'}`}
+                      {team && ` · ${(c.assignees ?? []).length === 0 ? 'Χωρίς υπεύθυνο' : `${(c.assignees ?? []).length === 1 ? 'Υπεύθυνος' : 'Υπεύθυνοι'}: ${(c.assignees ?? []).map(a => a.name).join(', ')}`}`}
                     </p>
                     {/* ΤΟ ΜΗΔΕΝ ΔΕΝ ΓΡΑΦΕΤΑΙ ΩΣ ΠΟΣΟ. Πελάτης χωρίς καμία
                         καταχώρηση δεν έχει έσοδα «0,00€»: δεν έχει μέτρηση. Και
                         όποιος δεν απάντησε λείπει, δεν μηδενίζεται. */}
                     {showMoney && money && (
-                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '6px 0 0', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>
+                      <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '6px 0 0', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>
                         {(() => {
                           const m = money.get(c.ownerId);
                           if (!m) return <span style={{ fontFamily: T.font.sans, color: 'var(--text-tertiary)' }}>Τα ποσά δεν διαβάστηκαν</span>;
@@ -715,7 +717,7 @@ export default function AccountantWorkspace() {
                       το βάρος και τη θέση: όποιος δεν κλείνει, το λέει δυνατά. */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
                     <p style={{
-                      fontSize: 13, margin: 0, fontFamily: T.font.sans,
+                      fontSize: 'var(--fs-base)', margin: 0, fontFamily: T.font.sans,
                       fontWeight: ready.blocking > 0 ? 700 : 500,
                       color: ready.blocking > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)',
                     }}>{ready.label}</p>
@@ -748,7 +750,7 @@ export default function AccountantWorkspace() {
                   <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
                     <p style={label}>Ε2 {year} και φάκελος</p>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
-                      <span style={{ fontSize: 13, fontFamily: T.font.sans, lineHeight: 1.5, color: aadeStateOf(c.e2).kind === 'differences' ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: aadeStateOf(c.e2).kind === 'differences' ? 600 : 400 }}>
+                      <span style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, lineHeight: 1.5, color: aadeStateOf(c.e2).kind === 'differences' ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: aadeStateOf(c.e2).kind === 'differences' ? 600 : 400 }}>
                         {aadeStateLabel(aadeStateOf(c.e2))}
                       </span>
                       {act && (
@@ -759,7 +761,7 @@ export default function AccountantWorkspace() {
                     </div>
                     {c.e2.packs.filter(p => p.filePath).map(p => (
                       <div key={p.ownerAfm} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
-                        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+                        <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
                           {`Φάκελος ΑΦΜ ${p.ownerAfm}${p.sharedAt ? ` · στάλθηκε ${fd(p.sharedAt)}` : ''}${p.sizeBytes ? ` · ${fmtBytes(p.sizeBytes)}` : ''}${p.missingCount ? ` · λείπουν ${p.missingCount}` : ' · πλήρης'}`}
                         </span>
                         {act && <span className="po-noprint" style={{ flexShrink: 0, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -788,7 +790,7 @@ export default function AccountantWorkspace() {
                         <li key={g.key} style={{ padding: '9px 0', borderTop: '1px solid var(--border-subtle)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
                             <span style={{
-                              fontSize: 13, fontFamily: T.font.sans, lineHeight: 1.5,
+                              fontSize: 'var(--fs-base)', fontFamily: T.font.sans, lineHeight: 1.5,
                               color: g.blocking ? 'var(--text-primary)' : 'var(--text-secondary)',
                               fontWeight: g.blocking ? 600 : 400,
                             }}>{g.item}</span>
@@ -802,7 +804,7 @@ export default function AccountantWorkspace() {
                                 variant="secondary"
                                 onClick={() => (writing ? void ask(c.ownerId, g.key, g.item) : setOpenNote(k))}
                                 disabled={sent}
-                              >{sent ? 'Ζητήθηκε' : writing ? 'Στείλ᾽ το' : 'Ζήτησέ το'}</Btn>
+                              >{sent ? 'Ζητήθηκε' : writing ? 'Στείλ’ το' : 'Ζήτησέ το'}</Btn>
                             </span>}
                           </div>
                           {/* Η ΣΗΜΕΙΩΣΗ ΕΙΝΑΙ ΤΟ ΠΡΑΓΜΑΤΙΚΟ ΜΗΝΥΜΑ. Το εργαλείο
@@ -839,13 +841,13 @@ export default function AccountantWorkspace() {
                         <li key={r.id} style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, padding: '6px 0',
                         }}>
-                          <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+                          <span style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
                             {r.item}
                             <span style={{ color: 'var(--text-tertiary)' }}>{` · στάλθηκε ${fd(r.createdAt)}`}</span>
                             {r.note ? <span style={{ display: 'block', color: 'var(--text-tertiary)' }}>{`«${r.note}»`}</span> : null}
                           </span>
                           {act && <span className="po-noprint" style={{ flexShrink: 0 }}>
-                            <Btn variant="ghost" onClick={() => void unask(r.id)}>Πάρ᾽ το πίσω</Btn>
+                            <Btn variant="ghost" onClick={() => void unask(r.id)}>Πάρ’ το πίσω</Btn>
                           </span>}
                         </li>
                       ))}
@@ -879,7 +881,7 @@ export default function AccountantWorkspace() {
         />
       )}
 
-      <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '26px 0 0', lineHeight: 1.7, fontFamily: T.font.sans }}>
+      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '26px 0 0', lineHeight: 1.7, fontFamily: T.font.sans }}>
           Βλέπεις μόνο όσους σε εξουσιοδότησαν. Όταν ο ιδιοκτήτης ανακαλέσει την πρόσβαση ή φύγεις από το γραφείο, ο φάκελός του κλείνει αμέσως.
         </p>
       </main>

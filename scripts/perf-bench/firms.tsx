@@ -184,11 +184,22 @@ function OwnerDayOpen() {
   return <Card><FirmDaySummary /></Card>;
 }
 
+// ΤΟ ΠΑΡΑΘΥΡΟ ΑΝΟΙΓΕΙ ΠΑΝΩ ΑΠΟ ΤΗ ΛΙΣΤΑ ΤΩΝ ΠΕΛΑΤΩΝ, ΟΠΩΣ ΣΤΗΝ ΕΦΑΡΜΟΓΗ. Μόνο
+// του, πάνω από τον πίνακα του ιδιοκτήτη, έδειχνε στο στιγμιότυπο φόντο που ο
+// λογιστής δεν βλέπει ποτέ.
 const entry = (kind: EntryKind) => {
-  const Scene = () => <FirmEntry db={createClient()} ownerId="o1" ownerName="Γιώργος Παραδείγματος" kind={kind} onClose={() => {}} />;
+  const Scene = () => <><AccountantWorkspace /><FirmEntry db={createClient()} ownerId="o1" ownerName="Γιώργος Παραδείγματος" kind={kind} onClose={() => {}} /></>;
   Scene.displayName = `FirmEntry:${kind}`;
   return Scene;
 };
+
+// ═══ ΟΙ ΣΚΗΝΕΣ ΤΗΣ ΠΥΛΗΣ ΤΟΥ ΛΟΓΙΣΤΗ ΔΕΝ ΕΧΟΥΝ ΤΟ ΠΕΡΙΓΡΑΜΜΑ ΤΟΥ ΙΔΙΟΚΤΗΤΗ ═══
+// Ο πάγκος τις τύλιγε στην μπάρα ακινήτου και στην κάτω πλοήγηση του πίνακα:
+// στο στιγμιότυπο φαίνονταν δύο μπάρες η μία κάτω από την άλλη και μια
+// πλοήγηση που ο λογιστής δεν έχει. Ο κατάλογος ζει στο scripts/lib/scenes.mjs,
+// όπου τον διαβάζουν και οι σαρωτές. Οι σκηνές του ιδιοκτήτη (firmOwner*) μένουν
+// μέσα στον πίνακα, όπου ζουν.
+export { PORTAL_SCENES as FIRM_PORTAL_SCENES } from '../lib/scenes.mjs';
 
 export const FIRM_VIEWS: Record<string, () => React.ReactElement> = {
   firm: () => <FirmPage />,

@@ -22,7 +22,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { T, Card, Btn, Modal, Skeleton, fd, ABSENT, formGrid } from '@/components/Theme';
+import { T, TT, Card, Btn, Modal, Skeleton, fd, ABSENT, fieldRow } from '@/components/Theme';
 import { ActionMenu } from '@/components/ActionMenu';
 import { TextInput, Textarea, CustomSelect } from '@/app/dashboard/components/UIComponents';
 import { notify, notifyError } from '@/components/Toast';
@@ -35,10 +35,7 @@ import {
   type Firm, type FirmFields, type FirmKind, type FirmRole, type AccessEntry,
 } from '@/lib/data/firms';
 
-const label: React.CSSProperties = {
-  fontSize: 11, letterSpacing: '0.5px', textTransform: 'uppercase',
-  color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0,
-};
+const label: React.CSSProperties = { ...TT.label, color: 'var(--text-tertiary)', margin: 0 };
 const note: React.CSSProperties = { fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans, lineHeight: 1.6 };
 const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
 const HISTORY_SHOWN = 20;
@@ -124,7 +121,7 @@ export default function FirmView() {
 
   const remove = async (id: string, who: string, invited: boolean, self: boolean) => {
     const ok = await confirmDialog({
-      title: self ? 'Αποχώρηση από το γραφείο' : invited ? 'Ακύρωση πρόσκλησης' : `Αφαίρεση: ${who}`,
+      title: self ? 'Αποχώρηση από το γραφείο' : invited ? 'Ακύρωση πρόσκλησης' : `Αφαίρεση μέλους: ${who}`,
       message: self
         ? 'Δεν θα βλέπεις πια τους πελάτες του γραφείου.'
         : invited ? 'Η πρόσκληση παύει να ισχύει.' : 'Χάνει αμέσως την πρόσβαση στους πελάτες του γραφείου. Οι αναθέσεις του σβήνονται.',
@@ -141,12 +138,12 @@ export default function FirmView() {
   const wrap = portalWrap;
 
   return (
-    <div style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: 72 }}>
+    <div className="po-floor" style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: 72 }}>
       <PortalBar back={{ href: '/accountant/workspace', label: 'Οι πελάτες' }} />
       <main style={wrap}>
         {failed ? (
           <Card style={{ marginTop: T.sp.xl }}>
-            <p style={{ ...note, color: 'var(--text-secondary)', marginBottom: T.sp.md }}>Το γραφείο δεν διαβάστηκε. Δεν σημαίνει ότι δεν υπάρχει: δεν πήραμε απάντηση.</p>
+            <p style={{ ...note, color: 'var(--text-secondary)', marginBottom: T.sp.md }}>Δεν φόρτωσαν τα στοιχεία του γραφείου. Δεν σημαίνει ότι λείπουν· απλώς δεν πήραμε απάντηση.</p>
             <Btn onClick={() => void load()}>Δοκίμασε ξανά</Btn>
           </Card>
         ) : firm === undefined ? (
@@ -176,6 +173,11 @@ export default function FirmView() {
             />
 
             {/* ── ΜΕΛΗ ── */}
+            {/* ΣΤΟ ΤΗΛΕΦΩΝΟ Ο ΡΟΛΟΣ ΠΙΑΝΕΙ ΤΗ ΣΕΙΡΑ ΤΟΥ (08/11/2026). Η στήλη των
+                236 στοιχίζει τους ρόλους σε φαρδιά οθόνη· στα 390, όταν πέφτει
+                κάτω από το όνομα, άφηνε ένα dropdown ως τη μέση και το «σε
+                αναμονή» της πρόσκλησης 16 εικονοστοιχεία πιο μέσα από τα ονόματα. */}
+            <style>{`@media (max-width:560px){.firm-role-side{flex:1 1 100%!important}.firm-role-col{flex:1 1 auto!important;width:auto!important;padding-left:0!important}}`}</style>
             <section aria-labelledby="firm-members">
               <h2 id="firm-members" style={{ ...label, margin: `0 0 ${T.sp.sm}px` }}>Μέλη</h2>
               <Card style={{ padding: 0 }}>
@@ -192,24 +194,24 @@ export default function FirmView() {
                         borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)',
                       }}>
                         <div style={{ minWidth: 0, flex: '1 1 240px' }}>
-                          <p style={{ fontSize: 14, fontWeight: 600, margin: 0, color: 'var(--text-primary)', fontFamily: T.font.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{who}</p>
+                          <p style={{ fontSize: 'var(--fs-md)', fontWeight: 600, margin: 0, color: 'var(--text-primary)', fontFamily: T.font.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{who}</p>
                           <p style={{ ...note, marginTop: 2 }}>
                             {m.name ? `${m.email} · ` : ''}
                             {invited
-                              ? <span style={num}>{`Πρόσκληση ${fd(m.invitedAt)}`}</span>
+                              ? <span style={num}>{`Πρόσκληση στις ${fd(m.invitedAt)}`}</span>
                               : <span style={num}>{`${m.clients === 1 ? '1 πελάτης' : `${m.clients} πελάτες`}${m.joinedAt ? ` · από ${fd(m.joinedAt)}` : ''}`}</span>}
                           </p>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm, flex: '0 1 auto', minWidth: 0 }}>
+                        <div className="firm-role-side" style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm, flex: '0 1 auto', minWidth: 0 }}>
                           {manager && !invited ? (
-                            <div style={{ width: ROLE_COL }}>
+                            <div className="firm-role-col" style={{ width: ROLE_COL }}>
                               <CustomSelect ariaLabel={`Ρόλος: ${who}`} value={m.role}
                                 onChange={v => void changeRole(m.id, v as FirmRole)}
                                 options={ROLES.map(r => ({ value: r, label: ROLE_LABEL[r] }))} />
                             </div>
                           ) : (
                             /* Ίδιο πλάτος με το dropdown: η στήλη των ρόλων στοιχίζεται και χωρίς αυτό. */
-                            <span style={{ width: manager ? ROLE_COL : undefined, paddingLeft: manager ? 16 : 0, boxSizing: 'border-box', fontSize: 13, color: 'var(--text-secondary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>
+                            <span className="firm-role-col" style={{ flex: '0 1 auto', width: manager ? ROLE_COL : undefined, paddingLeft: manager ? 16 : 0, boxSizing: 'border-box', fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>
                               {invited ? `${ROLE_LABEL[m.role]} · σε αναμονή` : ROLE_LABEL[m.role]}
                             </span>
                           )}
@@ -258,7 +260,7 @@ export default function FirmView() {
                           <li key={`${h.at}-${i}`} style={{
                             display: 'grid', gridTemplateColumns: '96px minmax(0, 1fr)', gap: T.sp.md,
                             padding: `${T.sp.sm + 2}px ${T.sp.lg}px`, borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)',
-                            fontSize: 13, fontFamily: T.font.sans, color: 'var(--text-secondary)', lineHeight: 1.5,
+                            fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color: 'var(--text-secondary)', lineHeight: 1.5,
                           }}>
                             <span style={{ ...num, color: 'var(--text-tertiary)' }}>{fd(h.at)}</span>
                             <span style={{ minWidth: 0 }}>
@@ -284,10 +286,10 @@ export default function FirmView() {
 
       <Modal open={inviting} onClose={() => setInviting(false)} title="Πρόσκληση μέλους" size="sm"
         footer={
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: T.sp.sm }}>
-            <Btn variant="ghost" onClick={() => setInviting(false)}>Άκυρο</Btn>
-            <Btn variant="primary" onClick={() => void sendInvite()} disabled={!inv.email.trim()}>Πρόσκληση</Btn>
-          </div>
+          <>
+            <Btn variant="ghost" onClick={() => setInviting(false)}>Ακύρωση</Btn>
+            <Btn variant="primary" onClick={() => void sendInvite()} disabled={!inv.email.trim()}>Αποστολή</Btn>
+          </>
         }>
         <div style={{ display: 'grid', gap: T.sp.lg }}>
           <TextInput label="Ηλεκτρονικό ταχυδρομείο" type="email" inputMode="email" value={inv.email}
@@ -316,7 +318,7 @@ function FirmFacts({ firm }: { firm: Firm }) {
       {rows.map(([k, v]) => (
         <div key={k} style={{ display: 'contents' }}>
           <dt style={{ ...note, color: 'var(--text-secondary)' }}>{k}</dt>
-          <dd style={{ margin: 0, fontSize: 14, color: v ? 'var(--text-primary)' : 'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' }}>{v || ABSENT}</dd>
+          <dd style={{ margin: 0, fontSize: 'var(--fs-md)', color: v ? 'var(--text-primary)' : 'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' }}>{v || ABSENT}</dd>
         </div>
       ))}
     </dl>
@@ -329,21 +331,26 @@ export function FirmForm({ fields, onChange, afmBad, disabled }: {
 }) {
   const set = <K extends keyof FirmFields>(k: K) => (v: FirmFields[K]) => onChange({ ...fields, [k]: v });
   return (
-    <div style={{ ...formGrid(240, 380), gap: T.sp.lg }}>
+    // ΣΕΙΡΑ ΠΕΔΙΩΝ ΠΟΥ ΓΕΜΙΖΕΙ ΤΟ ΠΛΑΤΟΣ (fieldRow), ΟΧΙ ΣΤΗΛΕΣ ΜΕ ΤΑΒΑΝΙ. Το
+    // `formGrid(240, 380)` κρατούσε στήλες 380 το πολύ: στα 768 έβγαινε ΜΙΑ στήλη
+    // 380 με τη μισή κάρτα άδεια δεξιά.
+    <div {...fieldRow(240, T.sp.lg)}>
       {/* ΕΠΩΝΥΜΙΑ ΚΑΙ ΔΙΕΥΘΥΝΣΗ ΤΥΛΙΓΟΝΤΑΙ. Είναι μακριές στην πράξη και σε
           μονόγραμμο πεδίο κόβονταν στα 320 και στα 390. */}
-      <div style={{ gridColumn: '1 / -1' }}>
+      <div style={{ flexBasis: '100%' }}>
         <Textarea label="Επωνυμία" value={fields.name} onChange={set('name')} rows={1} autoGrow />
       </div>
       <div>
         <TextInput label="ΑΦΜ" value={fields.afm} onChange={v => set('afm')(v.replace(/\D/g, '').slice(0, 9))}
           inputMode="numeric" disabled={disabled} placeholder="123456789" />
-        {afmBad && <p role="alert" style={{ ...note, color: 'var(--negative)', marginTop: T.sp.xs }}>Ο ΑΦΜ δεν περνά τον έλεγχο ψηφίου.</p>}
+        {afmBad && <p role="alert" style={{ ...note, color: 'var(--negative)', marginTop: T.sp.xs }}>Ο ΑΦΜ δεν είναι έγκυρος. Έλεγξε τα ψηφία.</p>}
       </div>
       <CustomSelect label="Είδος" value={fields.kind} onChange={v => set('kind')(v as FirmKind)} disabled={disabled}
         options={(Object.keys(KIND_LABEL) as FirmKind[]).map(k => ({ value: k, label: KIND_LABEL[k] }))} />
       <TextInput label="Τηλέφωνο" type="tel" inputMode="tel" value={fields.phone} onChange={set('phone')} disabled={disabled} />
-      <Textarea label="Διεύθυνση" value={fields.address} onChange={set('address')} rows={1} autoGrow />
+      <div style={{ flexBasis: '100%' }}>
+        <Textarea label="Διεύθυνση" value={fields.address} onChange={set('address')} rows={1} autoGrow />
+      </div>
     </div>
   );
 }

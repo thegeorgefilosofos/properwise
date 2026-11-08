@@ -180,8 +180,7 @@ export function AccountantAccess({ userId }: { userId: string }) {
 
   return (
     <SetRow title="Πρόσβαση λογιστή"
-      desc="Ένας σύνδεσμος μόνο ανάγνωσης δίνει στον λογιστή σου την εικόνα εσόδων και δαπανών ανά χρήση. Χωρίς πελατολόγιο και χωρίς στοιχεία τρίτων."
-      control={link?.live ? <Btn variant="secondary" onClick={cut} disabled={busy}>{busy ? 'Ανάκληση…' : 'Ανάκληση πρόσβασης'}</Btn> : undefined}>
+      desc="Ένας σύνδεσμος μόνο ανάγνωσης δίνει στον λογιστή σου την εικόνα εσόδων και δαπανών ανά χρήση. Χωρίς πελατολόγιο και χωρίς στοιχεία τρίτων.">
       {state && (
         <div style={{ ...TT.bodySm, color: 'var(--text-secondary)' }}>
           {state}{!link?.live && ' Ο σύνδεσμος βγαίνει από τη Λογιστική, στον φάκελο για τον λογιστή.'}
@@ -189,6 +188,15 @@ export function AccountantAccess({ userId }: { userId: string }) {
       )}
       {rotated && link?.live && (
         <div role="status" style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: 6 }}>{rotated}</div>
+      )}
+      {/* Η ΑΝΑΚΛΗΣΗ ΚΑΤΩ ΑΠΟ ΤΗΝ ΚΑΤΑΣΤΑΣΗ, ΟΧΙ ΔΙΠΛΑ ΣΤΗΝ ΠΕΡΙΓΡΑΦΗ (08/11/2026).
+          Ως `control` το κουμπί των 170 εικονοστοιχείων άφηνε στα 390 μια στήλη
+          δεκαπέντε γραμμάτων για την περιγραφή, που έσπαγε σε επτά σειρές. Ιδια
+          θέση με την «Ανάκληση του γραφείου» από κάτω. */}
+      {link?.live && (
+        <div style={{ marginTop: T.sp.md }}>
+          <Btn variant="secondary" onClick={cut} disabled={busy}>{busy ? 'Ανάκληση…' : 'Ανάκληση πρόσβασης'}</Btn>
+        </div>
       )}
     </SetRow>
   );

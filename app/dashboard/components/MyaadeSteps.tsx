@@ -15,7 +15,8 @@
 //   · οι εξηγήσεις ζουν πίσω από ⓘ (`InfoDot`, `labelInfo`) ή σε tooltip, όπως
 //     στα πλακίδια KPI. Στην οθόνη μένει μία γραμμή, όχι παράγραφος.
 // ═══════════════════════════════════════════════════════════════════════════
-import { Fragment, useId, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useId, useState, type ReactNode } from 'react';
+import { DropZone as FileDropZone } from './DropZone';
 import { CheckCircle2, ChevronDown, ChevronRight, Info, Lock, AlertTriangle, XCircle } from 'lucide-react';
 import { T, TT, Btn, Badge, fe, fp, SelectBox } from '@/components/Theme';
 import type { Tone } from '@/components/tokens';
@@ -41,8 +42,6 @@ export const MYAADE_CSS = `
 .mya-fields-3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .mya-fields-3 > .mya-full{grid-column:1/-1}
 .mya-fields-3 > .mya-two{grid-column:span 2}
-.mya-tile{transition:background-color .2s,border-color .2s}
-.mya-tile:hover,.mya-tile[data-drag="true"]{border-color:var(--accent)!important;background:var(--accent-dim)!important}
 .po-btn.mya-disclose{padding-left:0!important;padding-right:0!important;background:transparent!important}
 .po-btn.mya-disclose:hover{color:var(--accent)!important}
 @media (max-width:560px){
@@ -121,35 +120,18 @@ export function MyaadeSteps() {
   );
 }
 
-/** Το πλακίδιο του αρχείου: ίδιο σχήμα με το «Ανέβασε αρχείο» της Σάρωσης και με σύρσιμο. */
+/** Το πλακίδιο του αρχείου (DropZone.tsx) με τα λεκτικά της πράξης ΕΝΦΙΑ. */
 export function DropZone({ onFile, disabled, inputId }: { onFile: (f: File | undefined) => void; disabled: boolean; inputId: string }) {
-  const ref = useRef<HTMLInputElement>(null);
-  const [drag, setDrag] = useState(false);
-  const open = () => { if (!disabled) ref.current?.click(); };
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.md }}>
-      <div role="button" tabIndex={disabled ? -1 : 0} aria-disabled={disabled} aria-describedby={`${inputId}-hint`}
-        onClick={open} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }}
-        onDragOver={e => { e.preventDefault(); if (!disabled) setDrag(true); }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={e => { e.preventDefault(); setDrag(false); if (!disabled) onFile(e.dataTransfer.files?.[0]); }}
-        className="pick-tile mya-tile" data-drag={drag ? 'true' : 'false'}
-        style={{
-          border: '1px solid var(--border-default)', borderRadius: T.radius.card, minHeight: 172, cursor: disabled ? 'default' : 'pointer',
-          background: 'var(--bg-elevated)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: T.sp.lg,
-        }}>
-        <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: T.sp.md }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
-        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: T.sp.xs }}>{drag ? 'Άφησέ το εδώ' : 'Ανέβασε την πράξη'}</div>
-        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>PDF από το myAADE</div>
-      </div>
-      <input id={inputId} ref={ref} type="file" accept="application/pdf,.pdf" className="sr-only" tabIndex={-1} aria-label="Η πράξη ΕΝΦΙΑ σε PDF"
-        onChange={e => { onFile(e.target.files?.[0]); e.currentTarget.value = ''; }} />
-      <div id={`${inputId}-hint`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: T.sp.xs, ...TT.caption }}>
-        <Lock size={13} aria-hidden />
-        <span>Διαβάζεται μόνο στη συσκευή σου</span>
-        <InfoDot text="Το PDF διαβάζεται στον περιηγητή σου και δεν ανεβαίνει πουθενά. Δεν αποθηκεύεται. Κρατάμε μόνο ό,τι επιβεβαιώσεις: τα ακίνητα και το ποσό του ΕΝΦΙΑ. Το ΑΦΜ της πράξης δεν αποθηκεύεται." />
-      </div>
-    </div>
+    <FileDropZone onFile={onFile} disabled={disabled} inputId={inputId}
+      title="Ανέβασε την πράξη" hint="PDF από το myAADE" accept="application/pdf,.pdf" inputLabel="Η πράξη ΕΝΦΙΑ σε PDF"
+      foot={
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: T.sp.xs, ...TT.caption }}>
+          <Lock size={13} aria-hidden />
+          <span>Διαβάζεται μόνο στη συσκευή σου</span>
+          <InfoDot text="Το PDF διαβάζεται στον περιηγητή σου και δεν ανεβαίνει πουθενά. Δεν αποθηκεύεται. Κρατάμε μόνο ό,τι επιβεβαιώσεις: τα ακίνητα και το ποσό του ΕΝΦΙΑ. Το ΑΦΜ της πράξης δεν αποθηκεύεται." />
+        </div>
+      } />
   );
 }
 

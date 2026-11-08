@@ -2577,10 +2577,14 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
      ψηλώσει, οπότε το δάπεδο μένει. Ο σύνδεσμος που ζει σε πρόταση το δηλώνει
      με `className="po-tap-inline"` στο LinkBtn και παίρνει τα 44 από το
      ψευδοστοιχείο, όπως κάθε άλλος στόχος μέσα σε κείμενο. */
-  .app-content button:not(.po-box):not(.po-tap-inline),
-  .app-content [role="button"]:not(.po-box):not(.po-tap-inline),
-  .app-content select,
-  .app-content input:not(.po-field-inner):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) { min-height: 44px; }
+  /* ΚΑΙ Η ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ (08/11/2026). Ζει έξω από το κέλυφος του πίνακα, άρα
+     έξω από την `.app-content`: στο τηλέφωνο τα πεδία της έβγαιναν 40 ψηλά και
+     το βέλος της επιστροφής 37 φαρδύ. Η `.po-floor` φέρνει το ίδιο δάπεδο σε
+     σελίδα που δεν έχει το κέλυφος. */
+  :is(.app-content, .po-floor) button:not(.po-box):not(.po-tap-inline),
+  :is(.app-content, .po-floor) [role="button"]:not(.po-box):not(.po-tap-inline),
+  :is(.app-content, .po-floor) select,
+  :is(.app-content, .po-floor) input:not(.po-field-inner):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) { min-height: 44px; }
 
   /* ═══ ΤΟ ΔΑΠΕΔΟ ΕΧΕΙ ΔΥΟ ΔΙΑΣΤΑΣΕΙΣ ΚΑΙ Η ΜΙΑ ΕΛΕΙΠΕ ════════════════════
      Ο κανόνας από πάνω δίνει ΥΨΟΣ. Το κουμπί χωρίς λεκτικό —ένα βελάκι, ένα
@@ -2610,7 +2614,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
      αντίφαση δεν λύνεται με βιασύνη μέσα σε διόρθωση διάταξης. Μένει το 44,
      που είναι το αυστηρότερο. Γράφεται εδώ ώστε να μη βρεθεί ξανά από την
      αρχή ο επόμενος. */
-  .app-content button:not(.po-box):not(.po-tap-inline) { min-width: 44px; }
+  :is(.app-content, .po-floor) button:not(.po-box):not(.po-tap-inline) { min-width: 44px; }
 
   /* ═══ ΤΑ ΤΕΤΡΑΓΩΝΑ ΣΗΜΑΔΙΑ ΚΡΑΤΟΥΝ ΤΟ ΣΧΗΜΑ ΤΟΥΣ ═════════════════════════
      Εξι χειριστήρια είναι ΣΧΗΜΑ και όχι κουμπί με λεκτικό: το πλαίσιο επιλογής
@@ -2621,8 +2625,8 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
      Η περιοχή αφής μεγαλώνει ΑΟΡΑΤΑ, με ψευδοστοιχείο που απλώνεται έξω από το
      σχήμα. Η διάταξη δεν κουνιέται ούτε ένα εικονοστοιχείο και το δάχτυλο
      πιάνει 44 × 44 γύρω από ένα σημάδι των 18. */
-  .app-content .po-box { position: relative; }
-  .app-content .po-box::after { content: ''; position: absolute; inset: -13px; }
+  :is(.app-content, .po-floor) .po-box { position: relative; }
+  :is(.app-content, .po-floor) .po-box::after { content: ''; position: absolute; inset: -13px; }
 }
 
 /* Το δαχτυλίδι εστίασης ζει ΕΔΩ και όχι σε handler κάθε αντιγράφου. Ηταν
