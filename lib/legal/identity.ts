@@ -56,7 +56,7 @@ import { monthYearLabel } from '../core/months';
  */
 export const MAIL_DOMAIN = 'properwise.gr';
 
-export const POLICY_VERSION = '2026-10-04';
+export const POLICY_VERSION = '2026-11-05';
 
 /**
  * Ο ίδιος μήνας, όπως τον διαβάζει άνθρωπος στο υποσέλιδο των νομικών σελίδων.
