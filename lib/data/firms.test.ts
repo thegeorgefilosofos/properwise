@@ -8,8 +8,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import {
   ROLE_LABEL, LEVEL_LABEL, KIND_LABEL, canAct, canManage, entryKinds, daySentence, reasonOf, reasonText,
-  filterClients, logLine, undoRecord, itemsFor, type ClientLevel, type OpenItem,
+  filterClients, logLine, undoRecord, itemsFor, undoDaysFrom, inAthensDay, undoFirmDay,
+  type ClientLevel, type OpenItem,
 } from './firms';
+import { readdirSync, readFileSync } from 'node:fs';
+import { FIRM_UNDO_DAYS } from '@/lib/legal/firms';
+import { athensToday } from '@/lib/core/time';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { rotatedSentence } from './accountantLink';
 
@@ -123,6 +127,40 @@ ok('κάθε λόγος έχει φράση με τελεία', ['not_allowed', 
   eq('ενοίκια', names('rent'), ['Ενοίκιο Νοεμβρίου']);
 }
 
+// ── Σήμερα και χθες, ημερολογιακές μέρες Αθήνας ─────────────────────────
+// Η Πολιτική υπόσχεται αναίρεση μέσα σε FIRM_UNDO_DAYS ημέρες· η οθόνη δείχνει
+// τόσες μέρες, με τη μέρα της Αθήνας και όχι του UTC ή του περιηγητή.
+{
+  const undoDays = (now = new Date()) => undoDaysFrom(athensToday(now));
+  const days = (iso: string) => undoDays(new Date(iso)).map(d => `${d.word}:${d.day}`);
+  eq('όσες μέρες λέει η Πολιτική', undoDays().length, FIRM_UNDO_DAYS);
+  eq('χειμώνας 23:59:59 Αθήνας: ακόμη η ίδια μέρα', days('2026-11-08T21:59:59Z'), ['Σήμερα:2026-11-08', 'Χθες:2026-11-07']);
+  eq('χειμώνας 00:00 Αθήνας: νέα μέρα, ενώ στο UTC είναι ακόμη χθες', days('2026-11-08T22:00:00Z'), ['Σήμερα:2026-11-09', 'Χθες:2026-11-08']);
+  eq('χειμώνας 01:59 Αθήνας', days('2026-11-08T23:59:00Z'), ['Σήμερα:2026-11-09', 'Χθες:2026-11-08']);
+  eq('καλοκαίρι 23:59 Αθήνας (UTC+3)', days('2026-07-31T20:59:00Z'), ['Σήμερα:2026-07-31', 'Χθες:2026-07-30']);
+  eq('καλοκαίρι 00:00 Αθήνας: αλλάζει και ο μήνας', days('2026-07-31T21:00:00Z'), ['Σήμερα:2026-08-01', 'Χθες:2026-07-31']);
+  eq('πρωτοχρονιά 00:00 Αθήνας: χθες είναι πέρσι', days('2026-12-31T22:00:00Z'), ['Σήμερα:2027-01-01', 'Χθες:2026-12-31']);
+  eq('1η Μαρτίου μη δίσεκτου έτους', days('2027-02-28T22:30:00Z'), ['Σήμερα:2027-03-01', 'Χθες:2027-02-28']);
+  eq('μέρα αλλαγής σε θερινή ώρα (29/03/2026)', days('2026-03-28T22:30:00Z'), ['Σήμερα:2026-03-29', 'Χθες:2026-03-28']);
+  eq('μέρα επιστροφής στη χειμερινή ώρα (25/10/2026), 23:30 Αθήνας', days('2026-10-25T21:30:00Z'), ['Σήμερα:2026-10-25', 'Χθες:2026-10-24']);
+  eq('από το «σήμερα» σε κείμενο', undoDaysFrom('2026-03-01').map(d => d.day), ['2026-03-01', '2026-02-28']);
+  ok('στιγμή 23:59 Αθήνας ανήκει στο χθες', inAthensDay('2026-11-08T21:59:00Z', '2026-11-08'));
+  ok('στιγμή 00:01 Αθήνας ανήκει στο σήμερα', inAthensDay('2026-11-08T22:01:00Z', '2026-11-09') && !inAthensDay('2026-11-08T22:01:00Z', '2026-11-08'));
+  eq('η πρόταση του χθες', daySentence({ firmId: 'f', firmName: 'Α', total: 1, counts: { rent: 1 } }, 'χθες'), '«Α»: χθες καταχώρησε 1 είσπραξη.');
+  eq('ο λόγος «window»', reasonText('window'), 'Η αναίρεση γίνεται για σήμερα και χθες. Ανανέωσε τη σελίδα.');
+
+  // Η ΒΑΣΗ ΚΡΑΤΑ ΤΟ ΙΔΙΟ ΠΑΡΑΘΥΡΟ. Η τελευταία μετανάστευση που ορίζει την
+  // owner_undo_firm_day πρέπει να αρνείται ό,τι είναι πριν από FIRM_UNDO_DAYS - 1
+  // μέρες και να κρίνει με τη μέρα της Αθήνας.
+  const dir = 'supabase/migrations';
+  const last = readdirSync(dir).filter(f => f.endsWith('.sql')).sort()
+    .filter(f => /create or replace function public\.owner_undo_firm_day/.test(readFileSync(`${dir}/${f}`, 'utf8'))).pop() ?? '';
+  const sql = readFileSync(`${dir}/${last}`, 'utf8');
+  const body = sql.slice(sql.indexOf('create or replace function public.owner_undo_firm_day'));
+  ok('η βάση: παράθυρο FIRM_UNDO_DAYS', body.includes(`v_day < v_today - ${FIRM_UNDO_DAYS - 1}`));
+  ok('η βάση: χωρίς current_date', !/current_date/.test(body.slice(0, body.indexOf('end $$'))));
+}
+
 // ── Η «Αναίρεση» του μηνύματος σβήνει και το αρχείο ───────────────────────
 // Η firm_record_delete σβήνει τη γραμμή και επιστρέφει το `filePath`. Πριν, το
 // PDF του παραστατικού έμενε στον φάκελο του πελάτη μετά την αναίρεση.
@@ -146,6 +184,23 @@ void (async () => {
   const r3 = await undoRecord(late.db, 'document', 'id-3');
   eq('αναίρεση που αρνείται η βάση: λέει τον λόγο', r3.ok ? null : r3.reason, 'not_allowed');
   eq('αναίρεση που αρνείται η βάση: το αρχείο μένει', late.removed, []);
+
+  // Η «Αναίρεση όλων» της μέρας: με τη βάση του 20261109100000 σβήνει και τα
+  // αρχεία· με την παλιά (χωρίς `filePaths`) αναιρεί όπως πριν, χωρίς σφάλμα.
+  const day = fake({ data: { ok: true, undone: 2, skipped: 0, filePaths: ['o/p/document/a.pdf', 'o/p/document/b.pdf'] } });
+  const d1 = await undoFirmDay(day.db, 'f1', '2026-11-08');
+  ok('αναίρεση μέρας: πετυχαίνει', d1.ok);
+  eq('αναίρεση μέρας: σβήνει τα αρχεία των παραστατικών', day.removed, [['o/p/document/a.pdf', 'o/p/document/b.pdf']]);
+  const old = fake({ data: { ok: true, undone: 1, skipped: 0 } });
+  ok('αναίρεση μέρας, παλιά βάση: πετυχαίνει', (await undoFirmDay(old.db, 'f1', '2026-11-08')).ok);
+  eq('αναίρεση μέρας, παλιά βάση: δεν αγγίζει αρχεία', old.removed, []);
+  const none = fake({ data: { ok: true, undone: 1, skipped: 0, filePaths: [] } });
+  await undoFirmDay(none.db, 'f1', '2026-11-08');
+  eq('αναίρεση μέρας χωρίς παραστατικά: καμία κλήση στο storage', none.removed, []);
+  const win = fake({ data: { ok: false, reason: 'window' } });
+  const d4 = await undoFirmDay(win.db, 'f1', '2026-11-01');
+  eq('αναίρεση έξω από το παράθυρο: ο λόγος', d4.ok ? null : d4.reason, 'window');
+  eq('αναίρεση έξω από το παράθυρο: κανένα αρχείο', win.removed, []);
 
   console.log(`\nfirms: ${fail === 0 ? `✓ ${pass} έλεγχοι` : `✗ ${fail} απέτυχαν από ${pass + fail}`}`);
   if (fail) { console.log(fails.map(f => '  ✗ ' + f).join('\n')); process.exit(1); }

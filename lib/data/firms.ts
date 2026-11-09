@@ -12,7 +12,8 @@
 // ιστορικό· τέσσερις γραφές θα απέκλιναν την πρώτη φορά που άλλαζε μία.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { FIRM_TERMS_VERSION } from '@/lib/legal/firms';
+import { FIRM_TERMS_VERSION, FIRM_UNDO_DAYS } from '@/lib/legal/firms';
+import { athensToday } from '@/lib/core/time';
 
 type Db = SupabaseClient;
 
@@ -225,7 +226,45 @@ export const firmDay = async (db: Db, day: string): Promise<Read<FirmDay[]>> => 
   const r = await rpcRead<FirmDay[]>(db, 'owner_firm_day', { p_day: day });
   return r.ok ? { ok: true, data: Array.isArray(r.data) ? r.data : [] } : r;
 };
-export const undoFirmDay = (db: Db, firmId: string, day: string) => rpcDo(db, 'owner_undo_firm_day', { p_firm: firmId, p_day: day });
+
+/**
+ * Η «Αναίρεση όλων» μιας μέρας, ολόκληρη: οι γραμμές ΚΑΙ τα αρχεία.
+ *
+ * Από το 20261109100000 η `owner_undo_firm_day` επιστρέφει τις διαδρομές των
+ * παραστατικών που έσβησε (`filePaths`)· τα αρχεία τα σβήνει ο περιηγητής, όπως
+ * στο `undoRecord`. Η βάση πριν από εκείνη τη μετανάστευση δεν τις στέλνει: τότε
+ * η αναίρεση γίνεται όπως πριν και το αρχείο μένει, χωρίς σφάλμα.
+ */
+export async function undoFirmDay(db: Db, firmId: string, day: string): Promise<Done> {
+  const r = await rpcDo(db, 'owner_undo_firm_day', { p_firm: firmId, p_day: day });
+  if (!r.ok) return r;
+  const paths = Array.isArray(r.data?.filePaths) ? (r.data.filePaths as unknown[]).filter((p): p is string => typeof p === 'string' && p !== '') : [];
+  if (paths.length > 0) await db.storage.from('property-files').remove(paths);
+  return r;
+}
+
+/** Μία μέρα που ο ιδιοκτήτης βλέπει και αναιρεί: «Σήμερα», «Χθες». */
+export interface UndoDay { day: string; word: string; lower: string }
+
+const DAY_WORD = [['Σήμερα', 'σήμερα'], ['Χθες', 'χθες'], ['Προχθές', 'προχθές']] as const;
+
+/**
+ * Οι μέρες της αναίρεσης, νεότερη πρώτη: `FIRM_UNDO_DAYS` ημερολογιακές μέρες
+ * Αθήνας, όπως τις υπόσχεται η Πολιτική απορρήτου και τις ελέγχει η βάση
+ * (20261109100000). Ημερολογιακές, όχι 24ωρα: στις 00:10 το «χθες» είναι η
+ * μέρα που τελείωσε πριν από δέκα λεπτά. Δέχεται το «σήμερα» της Αθήνας
+ * (`athensToday()`) σε «YYYY-MM-DD», σταθερό κλειδί για τα hooks.
+ */
+export function undoDaysFrom(today: string): UndoDay[] {
+  const base = Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1, Number(today.slice(8, 10)));
+  return Array.from({ length: FIRM_UNDO_DAYS }, (_, i) => {
+    const [word, lower] = DAY_WORD[i] ?? DAY_WORD[DAY_WORD.length - 1];
+    return { day: new Date(base - i * 86_400_000).toISOString().slice(0, 10), word, lower };
+  });
+}
+
+/** Ανήκει η στιγμή του ημερολογίου σε αυτή τη μέρα της Αθήνας; */
+export const inAthensDay = (at: string, day: string) => athensToday(new Date(at)) === day;
 
 // ── ΟΙ ΚΑΝΟΝΕΣ ─────────────────────────────────────────────────────────────
 
@@ -275,7 +314,7 @@ export function itemsFor(kind: string, all: OpenItem[]): OpenItem[] {
  * Μία πρόταση ανά γραφείο, όχι μία ειδοποίηση ανά εγγραφή. Οι λογαριασμοί, οι
  * δόσεις και οι δαπάνες είναι για τον ιδιοκτήτη το ίδιο πράγμα: «πληρωμές».
  */
-export function daySentence(d: FirmDay): string {
+export function daySentence(d: FirmDay, when = 'σήμερα'): string {
   const c = d.counts;
   const pay = (c.bill ?? 0) + (c.event ?? 0) + (c.expense ?? 0);
   const parts: string[] = [];
@@ -286,7 +325,7 @@ export function daySentence(d: FirmDay): string {
   say(c.document ?? 0, 'παραστατικό', 'παραστατικά');
   if (parts.length === 0) return '';
   const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} και ${parts[parts.length - 1]}`;
-  return `«${d.firmName}»: σήμερα καταχώρησε ${list}.`;
+  return `«${d.firmName}»: ${when} καταχώρησε ${list}.`;
 }
 
 /**
@@ -360,6 +399,7 @@ export function reasonText(reason: string): string {
     case 'amount': return 'Γράψε το ποσό που πληρώθηκε.';
     case 'too_late': return 'Πέρασαν 24 ώρες. Την αφαίρεση την κάνει πλέον ο ιδιοκτήτης.';
     case 'not_ours': return 'Αλλάζεις μόνο ό,τι καταχώρησε το γραφείο σου.';
+    case 'window': return 'Η αναίρεση γίνεται για σήμερα και χθες. Ανανέωσε τη σελίδα.';
     case 'mfa_required': return 'Χρειάζεται ο δεύτερος κωδικός σύνδεσης.';
     case 'not_manager': return 'Μόνο ο υπεύθυνος του γραφείου το κάνει αυτό.';
     case 'last_manager': return 'Το γραφείο χρειάζεται τουλάχιστον έναν υπεύθυνο.';

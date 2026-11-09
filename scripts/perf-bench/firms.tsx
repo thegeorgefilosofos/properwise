@@ -22,6 +22,7 @@ import { AccountantAccess } from '@/app/dashboard/components/TabSettings';
 import { Card } from '@/components/Theme';
 import { createClient } from '@/lib/supabase/client';
 import { FIRM_TERMS_VERSION } from '@/lib/legal/firms';
+import { athensDatePlus } from '@/lib/core/time';
 
 const AT = '2026-09-01T09:00:00Z';
 const member = (id: string, userId: string | null, email: string, role: string, name: string | null, clients: number, status = 'active') =>
@@ -82,6 +83,11 @@ const OWNER_FIRMS = [{
   members: [{ userId: 'u9', name: 'Ελένη Παραδείγματος', role: 'manager' }, { userId: 'u2', name: 'Νίκος Δοκιμής', role: 'accountant' }],
 }];
 const FIRM_DAY = [{ firmId: 'f1', firmName: 'Λογιστικό Γραφείο Παράδειγμα', total: 4, counts: { bill: 2, event: 1, tenant: 1 } }];
+// Το χθες (20261109100000): άλλο γραφείο, άλλα είδη, ώστε οι δύο μέρες να ξεχωρίζουν.
+const FIRM_YESTERDAY = [
+  { firmId: 'f1', firmName: 'Λογιστικό Γραφείο Παράδειγμα', total: 2, counts: { rent: 1, document: 1 } },
+  { firmId: 'f2', firmName: 'Φοροτεχνικό Γραφείο Υπόδειγμα', total: 1, counts: { expense: 1 } },
+];
 
 // ΤΟ ΗΜΕΡΟΛΟΓΙΟ ΤΗΣ ΗΜΕΡΑΣ, ΟΠΩΣ ΤΟ ΚΡΑΤΑ Η ΒΑΣΗ (20261104150000): τι, ποια
 // πεδία, ποιο μέλος. Οι ώρες είναι «σήμερα», όπως τις φιλτράρει η οθόνη.
@@ -92,6 +98,9 @@ const FIRM_LOG = () => [
   { id: 'l3', kind: 'event', action: 'mark_paid', label: 'ΕΝΦΙΑ 9η δόση', fields: ['status'], member_name: 'Ελένη Παραδείγματος', at: minutesAgo(8) },
   { id: 'l4', kind: 'tenant', action: 'insert', label: null, fields: null, member_name: 'Ελένη Παραδείγματος', at: minutesAgo(5) },
   { id: 'l5', kind: 'document', action: 'delete', label: null, fields: null, member_name: 'Νίκος Δοκιμής', at: minutesAgo(2) },
+  // Χθες, μεσημέρι Αθήνας: η οθόνη τα δείχνει μόνο κάτω από το «Χθες».
+  { id: 'l6', kind: 'rent', action: 'insert', label: '10/2026', fields: null, member_name: 'Ελένη Παραδείγματος', at: `${athensDatePlus(-1)}T10:15:00Z` },
+  { id: 'l7', kind: 'document', action: 'insert', label: 'Τιμολόγιο ΔΕΗ', fields: null, member_name: 'Νίκος Δοκιμής', at: `${athensDatePlus(-1)}T09:40:00Z` },
 ];
 
 /** Οι αναγνώσεις πινάκων των σκηνών του ιδιοκτήτη: ημερολόγιο και σύνδεσμος. */
@@ -106,7 +115,7 @@ export function firmRespond(which: string, table: string): { data: unknown; erro
 }
 
 /** Η απάντηση της βάσης ανά σκηνή και συνάρτηση. */
-export function firmRpc(which: string, fn: string): { data: unknown; error: { message: string } | null } | undefined {
+export function firmRpc(which: string, fn: string, args?: unknown): { data: unknown; error: { message: string } | null } | undefined {
   // ΜΟΝΟ ΟΙ ΣΚΗΝΕΣ ΤΟΥ ΓΡΑΦΕΙΟΥ ΕΧΟΥΝ ΓΡΑΦΕΙΟ. Αν απαντούσαμε παντού, ο φάκελος
   // λογιστή όλων των άλλων σκηνών θα έδειχνε σύνοψη γραφείου και οι σαρωτές θα
   // μετρούσαν άλλη οθόνη από εκείνη που έχει καταγράψει η βάση τους.
@@ -130,7 +139,7 @@ export function firmRpc(which: string, fn: string): { data: unknown; error: { me
     firm_client_properties: PROPERTIES,
     firm_open_items: OPEN_ITEMS,
     my_accountants: OWNER_FIRMS,
-    owner_firm_day: FIRM_DAY,
+    owner_firm_day: (args as { p_day?: string } | undefined)?.p_day === athensDatePlus(-1) ? FIRM_YESTERDAY : FIRM_DAY,
   };
   return fn in answers ? { data: answers[fn], error: null } : undefined;
 }
