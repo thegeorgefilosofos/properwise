@@ -11,6 +11,7 @@
 // εγγράφηκε δεχόμενος ήδη αυτή την έκδοση (`consent_policy_version`).
 // ═══════════════════════════════════════════════════════════════════════════
 import { POLICY_VERSION } from './identity'
+import { athensToday } from '@/lib/core/time'
 
 /**
  * Τι άλλαξε στην τρέχουσα έκδοση (2026-11-09), σε δύο προτάσεις: μία για τους
@@ -60,4 +61,63 @@ export function policyNoticeDue(meta: PolicyMeta | null | undefined, seenLocally
   if (meta?.policy_notice_seen === version) return false
   if (meta?.consent_policy_version === version) return false
   return true
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΤΑ ΛΟΓΙΣΤΙΚΑ ΓΡΑΦΕΙΑ: Η ΜΙΑ ΕΝΗΜΕΡΩΣΗ ΓΙΑ ΤΟΥΣ ΥΠΑΡΧΟΝΤΕΣ ΙΔΙΟΚΤΗΤΕΣ
+// ─────────────────────────────────────────────────────────────────────────
+// ΑΠΟΦΑΣΗ ΙΔΙΟΚΤΗΤΗ ΑΠ-11. Η έκδοση 2026-11-05 πρόσθεσε στην Πολιτική
+// απορρήτου την ενότητα «Λογιστικά και φοροτεχνικά γραφεία» (`#grafeia`). Ο
+// ιδιοκτήτης που είχε λογαριασμό πριν από τότε βλέπει μία φορά τι σημαίνει
+// αυτό για εκείνον, σε δύο προτάσεις και με σύνδεσμο στην ενότητα.
+//
+// ΠΡΩΤΑ ΑΥΤΗ, ΜΕΤΑ Η ΓΕΝΙΚΗ ΓΡΑΜΜΗ, ΠΟΤΕ ΔΙΠΛΑ. Δύο πλαίσια μαζί θα ήταν
+// θόρυβος. Οσο η ενημέρωση των γραφείων εκκρεμεί, δείχνεται αυτή· το
+// «Εντάξει» κλείνει ΜΟΝΟ αυτή. Η έκδοση 2026-11-09 (νομικός έλεγχος) ήρθε πριν
+// βγει η κάρτα και άλλαξε άλλα πράγματα (υπαναχώρηση, συγκαταθέσεις)· αν το
+// «Εντάξει» έκλεινε και τη γενική γραμμή, ο ιδιοκτήτης δεν θα μάθαινε ποτέ γι'
+// αυτά. Μετά την κάρτα εμφανίζεται η γενική γραμμή, αν εκκρεμεί.
+//
+// ΔΙΚΟ ΤΗΣ ΙΧΝΟΣ (`firm_notice_seen`). Οποιος έκλεισε ήδη τη γενική γραμμή της
+// 2026-11-05 δεν είχε μάθει τίποτα για τα γραφεία: με το ίδιο ίχνος δεν θα
+// έβλεπε ποτέ την ενημέρωση που αποφασίστηκε για όλους.
+//
+// ΜΟΝΟ ΣΤΙΣ ΕΚΔΟΣΕΙΣ ΤΗΣ (`FIRM_NOTICE_POLICIES`). Η 2026-11-05 την έφερε και η
+// 2026-11-09 μπήκε πριν δημοσιευτεί η κάρτα, οπότε κανείς δεν την είδε ακόμη.
+// Οταν αλλάξει ξανά το POLICY_VERSION, η ενημέρωση δεν ξαναβγαίνει, εκτός αν
+// κάποιος προσθέσει συνειδητά τη νέα έκδοση στη λίστα.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Η έκδοση της πολιτικής που έφερε τα λογιστικά γραφεία· και η ημέρα της. */
+export const FIRM_NOTICE_VERSION = '2026-11-05'
+/** Οι εκδόσεις της πολιτικής στις οποίες ζει η κάρτα. */
+export const FIRM_NOTICE_POLICIES: readonly string[] = [FIRM_NOTICE_VERSION, '2026-11-09']
+export const FIRM_NOTICE_TITLE = 'Νέο: πρόσβαση λογιστικού γραφείου'
+export const FIRM_NOTICE_BODY = 'Μπορείς να δώσεις στο λογιστικό γραφείο σου πρόσβαση στον φάκελό σου: εσύ διαλέγεις το επίπεδο, βλέπεις κάθε μέρα τι καταχώρησε και την ανακαλείς όποτε θέλεις. Γι’ αυτό ενημερώσαμε την Πολιτική απορρήτου.'
+/** Η ενότητα της Πολιτικής απορρήτου (`id: 'grafeia'`, app/privacy/page.tsx). */
+export const FIRM_NOTICE_HREF = '/privacy#grafeia'
+/** Το τοπικό αντίγραφο, για όσο η εγγραφή στον λογαριασμό δεν έχει φτάσει. */
+export const FIRM_NOTICE_KEY = 'po_firm_notice_seen'
+
+export interface NoticeUser {
+  created_at?: string | null
+  user_metadata?: (PolicyMeta & { account_kind?: unknown; firm_notice_seen?: unknown }) | null
+}
+
+/**
+ * Πρέπει να δει την ενημέρωση των γραφείων;
+ *   · μόνο στις εκδόσεις της (`FIRM_NOTICE_POLICIES`)·
+ *   · μόνο ιδιοκτήτης: ο λογαριασμός γραφείου τα έχει ήδη στους δικούς του όρους·
+ *   · μόνο λογαριασμός από πριν (ημέρα Αθήνας)· άγνωστη ημερομηνία = όχι·
+ *   · όχι αν την έκλεισε, σε αυτή ή σε άλλη συσκευή.
+ */
+export function firmNoticeDue(user: NoticeUser | null | undefined, seenLocally: string | null, version = POLICY_VERSION): boolean {
+  if (!FIRM_NOTICE_POLICIES.includes(version)) return false
+  if (!user) return false
+  const meta = user.user_metadata ?? {}
+  if (meta.account_kind === 'firm') return false
+  if (seenLocally === FIRM_NOTICE_VERSION || meta.firm_notice_seen === FIRM_NOTICE_VERSION) return false
+  const created = user.created_at ? new Date(user.created_at) : null
+  if (!created || Number.isNaN(created.getTime())) return false
+  return athensToday(created) < FIRM_NOTICE_VERSION
 }

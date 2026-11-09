@@ -175,6 +175,13 @@ const respond: Responder = (call) => {
 window.__respond = respond;
 // Οι συναρτήσεις της βάσης: για τα γραφεία, οι απαντήσεις του scripts/perf-bench/firms.tsx.
 (window as unknown as { __rpc: (fn: string, args?: unknown) => unknown }).__rpc = (fn: string, args?: unknown) => firmRpc(which, fn, args);
+// Η ΕΝΗΜΕΡΩΣΗ ΤΩΝ ΓΡΑΦΕΙΩΝ (ΑΠ-11). Ο ψεύτικος λογαριασμός δεν έχει ημερομηνία
+// δημιουργίας, οπότε η Επισκόπηση δείχνει τη γενική γραμμή. Εδώ είναι
+// ιδιοκτήτης από πριν από την έκδοση των γραφείων και βλέπει την κάρτα.
+if (which === 'overviewFirmNotice') {
+  const auth = (createClient() as unknown as { auth: { getUser: () => Promise<unknown> } }).auth;
+  auth.getUser = async () => ({ data: { user: { id: 'u1', email: 'dokimi@example.com', created_at: '2026-09-01T09:00:00Z', user_metadata: {} } }, error: null });
+}
 window.__t = {};
 window.__rows = () => document.querySelectorAll('tbody tr').length;
 
@@ -415,6 +422,7 @@ const VIEWS: Record<string, () => React.ReactElement> = {
     </Modal>
   ),
   overview: () => <OverviewTab prop={OVERVIEW_PROPERTY as never} properties={OVERVIEW_PROPERTIES as never} userId="u1" onNavigate={() => {}} tabVisible={() => true} />,
+  overviewFirmNotice: () => <OverviewTab prop={OVERVIEW_PROPERTY as never} properties={OVERVIEW_PROPERTIES as never} userId="u1" onNavigate={() => {}} tabVisible={() => true} />,
   portfolio: () => <PortfolioTab properties={bench.properties} userId="u1" onSelectProperty={() => {}} />,
   cash: () => <CashHero cash={cash} showIncome onNavigate={() => {}} onRecordRent={() => {}} />,
   rent: () => <RentReceived onClose={() => {}} lines={lines} supabase={supabase} propertyId={null} tenantId={null} leaseViaBank today="2026-08-23" onSaved={() => {}} />,
