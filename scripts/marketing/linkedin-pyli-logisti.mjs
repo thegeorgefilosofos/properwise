@@ -2,14 +2,15 @@
 // LINKEDIN · ΤΡΙΤΗ 10.11.2026 · «Η ΠΥΛΗ ΤΩΝ ΛΟΓΙΣΤΙΚΩΝ ΓΡΑΦΕΙΩΝ»
 // ─────────────────────────────────────────────────────────────────────────
 // Έξι κάθετες διαφάνειες 4:5 (1080×1350, αποδίδονται ×2) και ένα PDF για το
-// «Add a document». Ένα σημείο εστίασης ανά διαφάνεια:
+// «Add a document». Αφήγηση πρόβλημα → λύση → απόδειξη → κλείσιμο· κάθε
+// τίτλος στέκει μόνος του και οι έξι μαζί λένε όλη την ιστορία:
 //
-//   1. «Στείλε μου τα χαρτιά ως την Παρασκευή.»  MacBook με iPhone μπροστά
-//   2. Όλοι οι πελάτες, μία λίστα                  MacBook, όλο το πλάτος
-//   3. Ζήτησέ το, χωρίς τηλέφωνο                   iPhone σε κοντινό
-//   4. Το κλειδί το κρατά ο ιδιοκτήτης             iPhone και τα τρία επίπεδα
-//   5. Η ομάδα, με ρόλους                          MacBook, όλο το πλάτος
-//   6. Η πύλη για λογιστικά γραφεία                σύνδεσμος και χρέωση
+//   1. «Στείλε μου τα χαρτιά ως την Παρασκευή.»   το πρόβλημα · MacBook και iPhone
+//   2. Τι λείπει, το βλέπεις αμέσως.               η λίστα · MacBook
+//   3. Ζητάς ό,τι λείπει. Χωρίς τηλέφωνο.          το αίτημα · iPhone
+//   4. Ο ιδιοκτήτης κρατά το κλειδί.               επίπεδα, ανάκληση · iPhone
+//   5. Όλη η ομάδα, ο καθένας στον ρόλο του.       ρόλοι · MacBook
+//   6. Η πύλη για λογιστικά γραφεία.               σύνδεσμος και χρέωση
 //
 // ΤΟ ΣΥΣΤΗΜΑ. Φωτεινό, με τα tokens του φωτεινού θέματος της εφαρμογής
 // (app/globals.css): καμβάς #f5f7fa (--bg-base), επιφάνεια #ffffff, μελάνι
@@ -233,6 +234,22 @@ const listPrep = async p => {
   await p.waitForTimeout(300);
 };
 
+// Τα μέλη του γραφείου, από την ετικέτα «Μέλη» ως την τελευταία γραμμή, στο
+// ίδιο στενότερο laptop.
+const teamPrep = async p => {
+  const ok = await p.evaluate(() => {
+    const leaf = [...document.querySelectorAll('*')].find(e => e.childElementCount === 0 && /^Μέλη$/i.test(e.textContent.trim()));
+    if (!leaf) return false;
+    const dy = leaf.getBoundingClientRect().top - 24;
+    let sc = leaf.parentElement;
+    while (sc && !(sc.scrollHeight > sc.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+    (sc ?? document.scrollingElement).scrollBy(0, dy);
+    return Math.abs(leaf.getBoundingClientRect().top - 24) < 2;
+  });
+  if (!ok) throw new Error('Δεν βρέθηκε η ενότητα «Μέλη»· οι οθόνες άλλαξαν.');
+  await p.waitForTimeout(300);
+};
+
 // ── Οι συσκευές ──────────────────────────────────────────────────────────
 const b64 = p => fs.readFileSync(p).toString('base64');
 const LOGO = `data:image/svg+xml;base64,${b64(`${R}/brand/properwise-logotypo-skouro.svg`)}`;
@@ -393,12 +410,12 @@ const page = (n, { who, h1, sub, stage, example = true }) => `<!doctype html><ht
 
 // ── Οι οθόνες ────────────────────────────────────────────────────────────
 const S = {
-  ws: await screen('firmWorkspace', { device: 'laptop', width: 780 }),
+  ws: await screen('firmWorkspace', { device: 'laptop', width: 780, vw: LIST_VW }),
   owner: await screen('firmOwner', { device: 'phone', width: 286 }),
   list: await screen('firmWorkspace', { device: 'laptop', width: 816, vw: LIST_VW, prep: listPrep }),
   ask: await screen('firmAsk', { device: 'phone', width: 330, prep: askPrep }),
   access: await screen('firmOwner', { device: 'phone', width: 330 }),
-  team: await screen('firm', { device: 'laptop', width: 816 }),
+  team: await screen('firm', { device: 'laptop', width: 816, vw: LIST_VW, prep: teamPrep }),
 };
 for (const a of MUST) if (!seen.has(a)) throw new Error(`Το όνομα «${a}» δεν βρέθηκε στον πάγκο· οι σκηνές άλλαξαν.`);
 
@@ -419,27 +436,27 @@ const slides = [
 page(1, {
   who: 'Για λογιστικά γραφεία και ιδιοκτήτες',
   h1: '<span>«Στείλε μου τα χαρτιά</span><em>ως την Παρασκευή.»</em>',
-  sub: 'Τώρα το γραφείο βλέπει μόνο του <b>τι λείπει από κάθε πελάτη.</b>',
+  sub: 'Φωτογραφίες από το κινητό, ένα αρχείο που λείπει πάντα <b>και ένα τηλέφωνο για κάθε απόδειξη.</b>',
   stage: cover(S.ws, S.owner),
 }),
 // 2 · Η λίστα των πελατών και το «Τι λείπει»
 page(2, {
   who: 'Για το γραφείο',
-  h1: '<span>Όλοι οι πελάτες.</span><em>Μία λίστα.</em>',
-  sub: 'Τι λείπει από τον καθένα, <b>δίπλα στο όνομά του.</b>',
+  h1: '<span>Τι λείπει,</span><em>το βλέπεις αμέσως.</em>',
+  sub: 'Μία λίστα για όλους τους πελάτες, <b>με τις ελλείψεις δίπλα στο όνομα.</b>',
   stage: heroMac(S.list),
 }),
 // 3 · Ζήτησέ το: το φύλλο του αιτήματος, μόνο στην εφαρμογή
 page(3, {
   who: 'Για το γραφείο',
-  h1: '<span>Ζήτησέ το.</span><em>Χωρίς τηλέφωνο.</em>',
+  h1: '<span>Ζητάς ό,τι λείπει.</span><em>Χωρίς τηλέφωνο.</em>',
   sub: 'Το αίτημα φτάνει στη Λογιστική του πελάτη, <b>μαζί με τη σημείωσή σου.</b>',
   stage: (() => { const p = phoneBox(S.ask); return iphone(S.ask, { x: Math.round((1080 - p.W) / 2), y: midY(p.H) }); })(),
 }),
 // 4 · Ο ιδιοκτήτης: τρία επίπεδα, αναίρεση, ανάκληση
 page(4, {
   who: 'Για τον ιδιοκτήτη',
-  h1: '<span>Το κλειδί το κρατά</span><em>ο ιδιοκτήτης.</em>',
+  h1: '<span>Ο ιδιοκτήτης</span><em>κρατά το κλειδί.</em>',
   sub: `Αναιρεί ό,τι γράφτηκε σήμερα ή χθες <b>και ανακαλεί την πρόσβαση όποτε θέλει.</b>`,
   stage: (() => {
     const p = phoneBox(S.access);
@@ -454,7 +471,7 @@ page(4, {
 // 5 · Η ομάδα του γραφείου: ρόλοι και δεύτερο βήμα
 page(5, {
   who: 'Για το γραφείο',
-  h1: '<span>Η ομάδα,</span><em>με ρόλους.</em>',
+  h1: '<span>Όλη η ομάδα,</span><em>ο καθένας στον ρόλο του.</em>',
   sub: `${ROLE_LABEL[ROLES[0]]}, ${lc(ROLE_LABEL[ROLES[1]])}, ${lc(ROLE_LABEL[ROLES[2]])}. <b>Όλοι με επαλήθευση δύο βημάτων.</b>`,
   stage: heroMac(S.team),
 }),
