@@ -34,12 +34,23 @@ export interface AskContact { email?: string | null; phone?: string | null }
 /** Πού βλέπει ο ιδιοκτήτης τα αιτήματα του λογιστή του. */
 export const OWNER_REQUESTS_PATH = '/dashboard?tab=accounting';
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/**
+ * Απλός έλεγχος μορφής email, χωρίς κανονική έκφραση: η `[^\s@]+\.[^\s@]+`
+ * έχει πολυωνυμικό χρόνο σε μεγάλη είσοδο (CodeQL js/polynomial-redos).
+ */
+function looksLikeEmail(v: string): boolean {
+  if (v.length > 254 || /\s/.test(v)) return false;
+  const at = v.indexOf('@');
+  if (at < 1 || at !== v.lastIndexOf('@')) return false;
+  const domain = v.slice(at + 1);
+  const dot = domain.lastIndexOf('.');
+  return dot > 0 && dot < domain.length - 1;
+}
 
 /** Ποια κανάλια έχουν το στοιχείο που χρειάζονται. Η εφαρμογή πάντα πρώτη. */
 export function askChannels(c: AskContact | null | undefined): AskChannel[] {
   const out: AskChannel[] = ['app'];
-  if (c?.email && EMAIL.test(c.email.trim())) out.push('email');
+  if (c?.email && looksLikeEmail(c.email.trim())) out.push('email');
   if (grMobileDigits(c?.phone)) out.push('whatsapp', 'viber', 'sms');
   return out;
 }
@@ -90,7 +101,7 @@ export function askText(o: { key: string; item: string; year: number; note?: str
   const lines = [
     greeting(o.now),
     `για να κλείσουμε το Ε2 ${o.year}, σας παρακαλώ ${what}.`,
-    ...(note ? [note.replace(/\s*$/, '').replace(/([^.!;…])$/, '$1.')] : []),
+    ...(note ? [note.trimEnd().replace(/([^.!;…])$/, '$1.')] : []),
     `Μπορείτε να το συμπληρώσετε εδώ: ${siteUrl(OWNER_REQUESTS_PATH)}`,
   ];
   const sign = o.from?.trim();
@@ -103,7 +114,7 @@ export function askHref(ch: AskChannel, c: AskContact | null | undefined, t: Ask
   switch (ch) {
     case 'email': {
       const to = c?.email?.trim();
-      return to && EMAIL.test(to) ? `mailto:${encodeURIComponent(to).replace('%40', '@')}?subject=${encodeURIComponent(t.subject)}&body=${encodeURIComponent(t.body)}` : null;
+      return to && looksLikeEmail(to) ? `mailto:${encodeURIComponent(to).replace(/%40/g, '@')}?subject=${encodeURIComponent(t.subject)}&body=${encodeURIComponent(t.body)}` : null;
     }
     case 'whatsapp': {
       const d = grMobileDigits(c?.phone);

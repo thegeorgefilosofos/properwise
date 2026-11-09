@@ -20,7 +20,6 @@
 // Κληρονομεί και το `noindex` του χώρου (workspace/layout.tsx).
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { T, TT, Card, Btn, Modal, Skeleton, EmptyState, fd, ABSENT, fieldRow } from '@/components/Theme';
 import { ActionMenu } from '@/components/ActionMenu';
@@ -55,7 +54,6 @@ const emptyFields = (f?: Firm | null): FirmFields => ({
 
 export default function FirmView() {
   const supabase = useMemo(() => createClient(), []);
-  const router = useRouter();
   const [firm, setFirm] = useState<Firm | null | undefined>(undefined);
   const [failed, setFailed] = useState(false);
   const [fields, setFields] = useState<FirmFields>(emptyFields());
