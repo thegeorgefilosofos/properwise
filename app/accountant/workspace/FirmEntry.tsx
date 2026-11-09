@@ -21,7 +21,7 @@ import { fmtBytes } from '@/lib/core/bytes';
 import { isValidAfm, parseAmount } from '@/lib/core/greek';
 import { athensToday } from '@/lib/core/time';
 import {
-  record, markPaid, undoRecord, openItems, clientProperties, reasonText, ENTRY_LABEL,
+  record, markPaid, undoRecord, openItems, clientProperties, reasonText, itemsFor, ENTRY_LABEL,
   type OpenItem, type ClientProperty,
 } from '@/lib/data/firms';
 
@@ -45,17 +45,6 @@ const orNull = (v: string): string | null => (v.trim() === '' ? null : v.trim())
 
 /** Η ετικέτα του dropdown των εκκρεμοτήτων, ανά είδος. */
 const ITEM_LABEL: Partial<Record<EntryKind, string>> = { bill: 'Λογαριασμός', rent: 'Ενοίκιο', tax: 'Δόση φόρου', loan: 'Δόση δανείου' };
-
-/** Ποια εκκρεμότητα ανήκει σε ποιο είδος του μενού. */
-const isTax = (i: OpenItem) => /ΕΝΦΙΑ|ενφια|φόρ|φορ/i.test(i.name);
-const isLoan = (i: OpenItem) => /δάνει|δανει/i.test(i.name);
-function itemsFor(kind: EntryKind, all: OpenItem[]): OpenItem[] {
-  if (kind === 'rent') return all.filter(i => i.kind === 'rent');
-  if (kind === 'tax') return all.filter(i => i.kind !== 'rent' && isTax(i));
-  if (kind === 'loan') return all.filter(i => i.kind === 'event' && isLoan(i));
-  if (kind === 'bill') return all.filter(i => i.kind === 'bill' && !isTax(i));
-  return [];
-}
 
 export default function FirmEntry({ db, ownerId, ownerName, kind, onClose, onUndone }: {
   db: SupabaseClient; ownerId: string; ownerName: string; kind: EntryKind; onClose: () => void;

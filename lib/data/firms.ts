@@ -250,6 +250,25 @@ export const ENTRY_LABEL = {
 } as const;
 
 /**
+ * Ποια εκκρεμότητα ανήκει σε ποιο είδος του μενού «Καταχώρηση».
+ *
+ * ΛΕΞΗ ΠΟΥ ΑΡΧΙΖΕΙ ΑΠΟ «ΦΟΡ», ΟΧΙ ΟΠΟΙΑ ΤΟ ΠΕΡΙΕΧΕΙ. Ο έλεγχος ήταν
+ * `/ΕΝΦΙΑ|φόρ|φορ/i` οπουδήποτε στο όνομα: «Προμήθεια πλατφόρμας», «Μεταφορά
+ * επίπλων», «Διαφορά κοινοχρήστων» έβγαιναν δόσεις φόρου, έφευγαν από την
+ * «Πληρωμή λογαριασμού» και εμφανίζονταν στη «Δόση φόρου».
+ */
+const TAX_WORD = /(?<!\p{L})(ενφια|φ[οό]ρ(ος|ου|ο|οι|ων|ολογ))/iu;
+const LOAN_WORD = /(?<!\p{L})δ[αά]νει/iu;
+export function itemsFor(kind: string, all: OpenItem[]): OpenItem[] {
+  const isTax = (i: OpenItem) => TAX_WORD.test(i.name);
+  if (kind === 'rent') return all.filter(i => i.kind === 'rent');
+  if (kind === 'tax') return all.filter(i => i.kind !== 'rent' && isTax(i));
+  if (kind === 'loan') return all.filter(i => i.kind === 'event' && LOAN_WORD.test(i.name));
+  if (kind === 'bill') return all.filter(i => i.kind === 'bill' && !isTax(i));
+  return [];
+}
+
+/**
  * «Λογιστικό Γραφείο Παπαδόπουλος»: σήμερα καταχώρησε 3 πληρωμές και 1 μισθωτή.
  * Το όνομα πρώτο, σε εισαγωγικά: «Το γραφείο Λογιστικό Γραφείο …» το έλεγε δύο φορές.
  *

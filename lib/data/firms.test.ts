@@ -8,7 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import {
   ROLE_LABEL, LEVEL_LABEL, KIND_LABEL, canAct, canManage, entryKinds, daySentence, reasonOf, reasonText,
-  filterClients, logLine, undoRecord, type ClientLevel,
+  filterClients, logLine, undoRecord, itemsFor, type ClientLevel, type OpenItem,
 } from './firms';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { rotatedSentence } from './accountantLink';
@@ -103,6 +103,21 @@ ok('κάθε λόγος έχει φράση με τελεία', ['not_allowed', 
   ok('η ανανέωση λέει την ημερομηνία dd/mm/yyyy', s.includes('04/11/2026'));
   ok('η ανανέωση λέει τον λόγο', s.includes('αποχώρησε μέλος'));
   ok('η ανανέωση χωρίς κόμμα πριν από το «και»', !s.includes([',', 'και'].join(' ')));
+}
+
+// ── Ποια εκκρεμότητα πάει σε ποιο είδος του μενού ─────────────────────────
+{
+  const it = (kind: OpenItem['kind'], name: string): OpenItem => ({ kind, id: name, propertyId: 'p', property: 'Π', name, amount: 10, due: '2026-11-30' });
+  const all = [
+    it('event', 'ΕΝΦΙΑ, 9η δόση'), it('event', 'Φόρος εισοδήματος, 2η δόση'), it('bill', 'Δόση φόρου ακινήτων'),
+    it('event', 'Δάνειο Εθνικής, δόση Νοεμβρίου'), it('rent', 'Ενοίκιο Νοεμβρίου'),
+    it('bill', 'ΔΕΗ Οκτωβρίου'), it('bill', 'Προμήθεια πλατφόρμας'), it('bill', 'Μεταφορά επίπλων'), it('bill', 'Διαφορά κοινοχρήστων'),
+  ];
+  const names = (k: string) => itemsFor(k, all).map(i => i.name);
+  eq('δόσεις φόρου', names('tax'), ['ΕΝΦΙΑ, 9η δόση', 'Φόρος εισοδήματος, 2η δόση', 'Δόση φόρου ακινήτων']);
+  eq('λογαριασμοί: η «πλατφόρμα», η «μεταφορά» και η «διαφορά» δεν είναι φόρος', names('bill'), ['ΔΕΗ Οκτωβρίου', 'Προμήθεια πλατφόρμας', 'Μεταφορά επίπλων', 'Διαφορά κοινοχρήστων']);
+  eq('δόσεις δανείου', names('loan'), ['Δάνειο Εθνικής, δόση Νοεμβρίου']);
+  eq('ενοίκια', names('rent'), ['Ενοίκιο Νοεμβρίου']);
 }
 
 // ── Η «Αναίρεση» του μηνύματος σβήνει και το αρχείο ───────────────────────
