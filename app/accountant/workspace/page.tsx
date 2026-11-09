@@ -350,7 +350,7 @@ export default function AccountantWorkspace() {
   const actor = !firm || canAct(firm.role);
   const listed = useMemo(() => {
     if (!team) return shown;
-    const keyed = shown.map(x => ({ ...x, ownerId: x.c.ownerId, assignees: x.c.assignees, blocking: x.ready.blocking > 0 }));
+    const keyed = shown.map(x => ({ ...x, ownerId: x.c.ownerId, assignees: x.c.assignees, blocking: x.ready.blocking > 0, complete: x.gaps.length === 0 }));
     return filterClients(keyed, levels, { scope, assignee, status });
   }, [team, shown, levels, scope, assignee, status]);
   const activeMembers = firm?.members.filter(m => m.status === 'active' && m.userId) ?? [];

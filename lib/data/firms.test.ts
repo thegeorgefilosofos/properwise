@@ -84,6 +84,9 @@ ok('κάθε λόγος έχει φράση με τελεία', ['not_allowed', 
   eq('χωρίς υπεύθυνο', ids({ scope: 'all', assignee: '-', status: 'all' }), ['c']);
   eq('με εκκρεμότητες', ids({ scope: 'all', assignee: '', status: 'blocked' }), ['a']);
   eq('έτοιμοι', ids({ scope: 'all', assignee: '', status: 'ready' }), ['b', 'c']);
+  // Ο «Σχεδόν έτοιμος» (κενά χωρίς μπλοκάρισμα) δεν είναι «Έτοιμος»: ίδιο μέτρο με τη σύνοψη.
+  const almost = rows.map(r => ({ ...r, complete: r.ownerId === 'c' }));
+  eq('έτοιμοι = όσοι δεν έχουν κανένα κενό', filterClients(almost, meta, { scope: 'all', assignee: '', status: 'ready' }).map(r => r.ownerId), ['c']);
 }
 
 // ── Το ημερολόγιο όπως το διαβάζει ο ιδιοκτήτης (20261104150000) ─────────

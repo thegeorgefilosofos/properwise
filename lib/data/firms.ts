@@ -382,7 +382,14 @@ export type StatusFilter = 'all' | 'blocked' | 'ready';
  * ανατέθηκαν· ο υπεύθυνος που δεν έχει αναθέσει κανέναν στον εαυτό του τα
  * βλέπει όλα στο «Όλοι». Το «Υπεύθυνος» κρατά όσους έχει αναλάβει το μέλος.
  */
-export function filterClients<T extends { ownerId: string; assignees?: { userId: string }[]; blocking: boolean }>(
+/*
+ * «ΕΤΟΙΜΟΙ» ΕΙΝΑΙ ΟΣΟΙ Η ΚΑΡΤΑ ΓΡΑΦΕΙ «ΕΤΟΙΜΟΣ». Το φίλτρο κρατούσε όποιον δεν
+ * είχε εκκρεμότητα που μπλοκάρει, δηλαδή και τους «Σχεδόν έτοιμους», ενώ η
+ * σύνοψη από πάνω μετρά μόνο όσους δεν έχουν κανένα κενό: «1 έτοιμος» στον
+ * τίτλο και δύο κάρτες στο φίλτρο «Έτοιμοι». Το `complete` (κανένα κενό) το
+ * δίνει ο καλών· όπου λείπει, ισχύει ο παλιός κανόνας.
+ */
+export function filterClients<T extends { ownerId: string; assignees?: { userId: string }[]; blocking: boolean; complete?: boolean }>(
   rows: T[], meta: Map<string, ClientLevel>, f: { scope: Scope; assignee: string; status: StatusFilter },
 ): T[] {
   return rows.filter(r => {
@@ -390,7 +397,7 @@ export function filterClients<T extends { ownerId: string; assignees?: { userId:
     if (f.assignee === '-') { if ((r.assignees?.length ?? 0) > 0) return false; }
     else if (f.assignee && !(r.assignees ?? []).some(a => a.userId === f.assignee)) return false;
     if (f.status === 'blocked' && !r.blocking) return false;
-    if (f.status === 'ready' && r.blocking) return false;
+    if (f.status === 'ready' && (r.blocking || r.complete === false)) return false;
     return true;
   });
 }
