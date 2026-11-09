@@ -107,7 +107,7 @@ function mainRow(line: string): MainRow | null {
   // ΜΕΤΑ ΤΗΝ ΕΠΙΦΑΝΕΙΑ: βοηθητικοί χώροι (και μήκος πρόσοψης), έτος, δικαίωμα, ποσοστό.
   let k = si + 1;
   const decimals: number[] = [];
-  while (k < toks.length && area(toks[k]) !== null) decimals.push(area(toks[k]) as number), k++;
+  while (k < toks.length && area(toks[k]) !== null) { decimals.push(area(toks[k]) as number); k++; }
   if (decimals.length > 1) check = true;
   const yearBuilt = RE_YEAR.test(toks[k] ?? '') ? Number(toks[k++]) : null;
   const right = /^\d$/.test(toks[k] ?? '') && yearBuilt !== null ? toks[k++] : null;
@@ -123,7 +123,7 @@ function mainRow(line: string): MainRow | null {
 
 /** Το ποσοστό από τα κομμάτια του: «100,» + «0000» + «0». Μόνο αν βγαίνει αριθμός 0–100. */
 function joinPct(top: string | null, mid: string | null, bottom: string | null): number | null {
-  if (mid && /^\d{1,3},\d+$/.test(mid)) top = mid, mid = null;
+  if (mid && /^\d{1,3},\d+$/.test(mid)) { top = mid; mid = null; }
   if (!top) return null;
   const s = `${top}${mid ?? ''}${bottom ?? ''}`;
   if (!/^\d{1,3},\d+$/.test(s) && !/^\d{1,3},$/.test(s)) return null;
