@@ -209,7 +209,7 @@ export function FirmDaySummary() {
               </span>
               <div className="act-row" style={{ display: 'flex', gap: T.sp.sm }}>
                 <Btn variant="secondary" onClick={() => void see(d, g)}>Δες</Btn>
-                <Btn variant="ghost" className="po-btn-keep" onClick={() => void undo(d, g)} disabled={busy === `${d.firmId}:${g.day}`}>Αναίρεση όλων</Btn>
+                <Btn variant="secondary" className="po-btn-keep" onClick={() => void undo(d, g)} disabled={busy === `${d.firmId}:${g.day}`}>Αναίρεση όλων</Btn>
               </div>
             </div>
           ))}
@@ -219,7 +219,7 @@ export function FirmDaySummary() {
         subtitle={seeing ? `${seeing.when.word}, ${fd(seeing.when.day)} · ${seeing.rows.length === 1 ? '1 κίνηση' : `${seeing.rows.length} κινήσεις`}` : ''} size="sm"
         footer={seeing ? (
           <>
-            <Btn variant="ghost" className="po-btn-keep" onClick={() => void undo(seeing.firm, seeing.when)} disabled={busy === `${seeing.firm.firmId}:${seeing.when.day}`}>Αναίρεση όλων</Btn>
+            <Btn variant="secondary" className="po-btn-keep" onClick={() => void undo(seeing.firm, seeing.when)} disabled={busy === `${seeing.firm.firmId}:${seeing.when.day}`}>Αναίρεση όλων</Btn>
             <Btn variant="primary" onClick={() => setSeeing(null)}>Εντάξει</Btn>
           </>
         ) : undefined}>

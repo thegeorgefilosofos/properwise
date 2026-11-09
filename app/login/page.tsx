@@ -362,7 +362,7 @@ export default function LoginPage() {
               <label htmlFor="login-mfa-code" className="po-field-label">{L ? L.code : 'Εξαψήφιος κωδικός'}</label>
               <input id="login-mfa-code" name="one-time-code" inputMode="numeric" maxLength={6} autoComplete="one-time-code"
                 value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="123456"
-                style={{ ...field, fontFamily: T.font.mono, fontSize: 18, letterSpacing: '0.3em' }}
+                style={{ ...field, fontFamily: T.font.mono, fontSize: 18, letterSpacing: code ? '0.3em' : 'normal' }}
                 onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
             </div>
