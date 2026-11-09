@@ -26,6 +26,8 @@ export const SCENES = [
   'firmSecondStep', 'firmOwnerDay', 'firmOwnerLink', 'firmOwnerUndo', 'firmOwnerRevoke', 'firmClientGone', 'firmClientSecondStep',
   // Η άδεια λίστα, το γραφείο χωρίς ιστορικό και το «Ζήτησέ το» (RequestSheet.tsx).
   'firmWorkspaceEmpty', 'firmQuiet', 'firmAsk', 'firmAskChannels', 'firmAskSent', 'firmBulkPick', 'firmAccount',
+  // Η Επισκόπηση με την ενημέρωση των γραφείων (ΑΠ-11, lib/legal/policyNotice.ts).
+  'overviewFirmNotice',
 ];
 
 // ═══ ΟΙ ΣΚΗΝΕΣ ΤΗΣ ΠΥΛΗΣ ΤΟΥ ΛΟΓΙΣΤΗ ════════════════════════════════════════

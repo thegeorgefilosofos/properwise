@@ -9,7 +9,7 @@
 import {
   ROLE_LABEL, LEVEL_LABEL, KIND_LABEL, canAct, canManage, entryKinds, daySentence, reasonOf, reasonText,
   filterClients, logLine, undoRecord, itemsFor, undoDaysFrom, inAthensDay, undoFirmDay,
-  type ClientLevel, type OpenItem,
+  sendInviteEmail, inviteOutcome, type ClientLevel, type OpenItem,
 } from './firms';
 import { readdirSync, readFileSync } from 'node:fs';
 import { FIRM_UNDO_DAYS } from '@/lib/legal/firms';
@@ -201,6 +201,42 @@ void (async () => {
   const d4 = await undoFirmDay(win.db, 'f1', '2026-11-01');
   eq('αναίρεση έξω από το παράθυρο: ο λόγος', d4.ok ? null : d4.reason, 'window');
   eq('αναίρεση έξω από το παράθυρο: κανένα αρχείο', win.removed, []);
+
+  // ── Το email της πρόσκλησης: «στάλθηκε» μόνο όταν όντως στάλθηκε ──
+  const fn = (answer: { data?: unknown; error?: unknown; throws?: boolean }) => {
+    const calls: unknown[] = [];
+    const db = { functions: { invoke: async (name: string, o: unknown) => {
+      calls.push([name, o]);
+      if (answer.throws) throw new Error('δίκτυο');
+      return { data: answer.data ?? null, error: answer.error ?? null };
+    } } } as unknown as SupabaseClient;
+    return { db, calls };
+  };
+  const sent = fn({ data: { sent: true } });
+  eq('email: στάλθηκε', await sendInviteEmail(sent.db, 'a@b.gr'), 'sent');
+  eq('email: καλεί τη σωστή συνάρτηση με τη διεύθυνση', sent.calls, [['send-firm-invite', { body: { email: 'a@b.gr' } }]]);
+  eq('email: άρνηση της συνάρτησης (403/404/429/502) = δεν στάλθηκε', await sendInviteEmail(fn({ error: { message: 'Edge Function returned a non-2xx status code' } }).db, 'a@b.gr'), 'failed');
+  eq('email: πεσμένο δίκτυο = δεν στάλθηκε', await sendInviteEmail(fn({ throws: true }).db, 'a@b.gr'), 'failed');
+  eq('email: απάντηση χωρίς sent = δεν στάλθηκε', await sendInviteEmail(fn({ data: {} }).db, 'a@b.gr'), 'failed');
+
+  const off = fn({ error: { message: 'Edge Function returned a non-2xx status code', context: { json: async () => ({ error: 'no_resend_key' }) } } });
+  eq('email: χωρίς πάροχο = ανενεργή αποστολή', await sendInviteEmail(off.db, 'a@b.gr'), 'off');
+  const P = 'properwise.gr/accountant/workspace';
+  const base = { existing: false, member: false, email: 'a@b.gr', portal: P };
+  eq('οθόνη: νέα πρόσκληση με email', inviteOutcome({ ...base, mail: 'sent' }),
+    'Η πρόσκληση καταχωρήθηκε. Στάλθηκε email στο a@b.gr.');
+  const noMail = inviteOutcome({ ...base, mail: 'failed' });
+  ok('οθόνη: χωρίς email δεν λέει «στάλθηκε email»', !/Στάλθηκε/.test(noMail));
+  eq('οθόνη: αποτυχία email λέει πού και με ποια διεύθυνση μπαίνει', noMail,
+    `Η πρόσκληση καταχωρήθηκε. Το email δεν στάλθηκε. Για να την αποδεχτεί, το μέλος συνδέεται στο ${P} με τη διεύθυνση a@b.gr.`);
+  const offMail = inviteOutcome({ ...base, mail: 'off' });
+  ok('οθόνη: ανενεργή αποστολή δεν λέει «στάλθηκε email»', !/Στάλθηκε/.test(offMail) && offMail.includes('Η αποστολή email δεν είναι ενεργή.') && offMail.includes(P));
+  eq('οθόνη: ξανά σε εκκρεμή πρόσκληση', inviteOutcome({ ...base, existing: true, mail: 'sent' }),
+    'Η διεύθυνση είχε ήδη πρόσκληση. Στάλθηκε ξανά email στο a@b.gr.');
+  ok('οθόνη: ξανά χωρίς email λέει πού μπαίνει', inviteOutcome({ ...base, existing: true, mail: 'failed' }).startsWith('Η διεύθυνση είχε ήδη πρόσκληση. Το email δεν στάλθηκε.'));
+  eq('οθόνη: ενεργό μέλος, κανένα email', inviteOutcome({ ...base, existing: true, member: true, mail: null }),
+    'Η διεύθυνση ανήκει ήδη σε μέλος του γραφείου.');
+  ok('οθόνη: κανένα κόμμα πριν από «και»', (['sent', 'failed', 'off'] as const).every(m => !/,\s+και\s/.test(inviteOutcome({ ...base, mail: m }))));
 
   console.log(`\nfirms: ${fail === 0 ? `✓ ${pass} έλεγχοι` : `✗ ${fail} απέτυχαν από ${pass + fail}`}`);
   if (fail) { console.log(fails.map(f => '  ✗ ' + f).join('\n')); process.exit(1); }
