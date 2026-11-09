@@ -85,7 +85,9 @@ const ONOMATA = [
 // Όσα πρέπει να βρεθούν σε κάποια σκηνή· τα υπόλοιπα είναι δίχτυ.
 const MUST = ['Λογιστικό Γραφείο Παράδειγμα', 'Γιώργος Παραδείγματος', 'Ελένη Παραδείγματος', 'Νίκος Δοκιμής', 'maria.ypodeigmatos@example.com', 'Οδός Παραδείγματος'];
 // Υπόλειμμα του πάγκου που δεν πρέπει να φανεί σε καμία φωτογραφία.
-const LEFTOVER = /Παράδειγ|Υπόδειγ|Υποδείγ|Δοκιμ|example\.com|ΑΦΜ\s*\d|Νέοι Όροι/;
+// Ούτε κανάλι τρίτου: στην παραγωγή το γραφείο δεν παίρνει τηλέφωνα πελατών,
+// οπότε το «Ζήτησέ το» στέλνει μόνο στην εφαρμογή.
+const LEFTOVER = /Παράδειγ|Υπόδειγ|Υποδείγ|Δοκιμ|example\.com|ΑΦΜ\s*\d|Νέοι Όροι|WhatsApp|Viber|SMS/;
 
 const browser = await chromium.launch({ executablePath: chromePath() });
 const seen = new Set();
@@ -177,6 +179,15 @@ const typeNote = async p => {
   await p.fill('textarea', 'Και τις αποδείξεις του Οκτωβρίου, όποτε μπορείς.');
   await p.evaluate(() => document.activeElement?.blur?.());
 };
+// Η επιβεβαίωση όπως τη βλέπει σήμερα το γραφείο: σημείωση, «Στείλε», μόνο
+// στην εφαρμογή. Η σκηνή firmAskSent του πάγκου διαλέγει WhatsApp, που στην
+// παραγωγή δεν εμφανίζεται· γι' αυτό η αποστολή γίνεται εδώ, χωρίς κανάλι.
+const sendInApp = async p => {
+  await typeNote(p);
+  await p.getByRole('dialog').getByRole('button', { name: 'Στείλε', exact: true }).click();
+  await p.getByText(/^Στάλθηκε στην εφαρμογή/).first().waitFor({ timeout: 5000 });
+  await p.waitForTimeout(400);
+};
 // Η μεγέθυνση της διαφάνειας 2: η κάρτα του πρώτου πελάτη, με το «Τι λείπει».
 const firstClientCard = () => {
   const leaf = [...document.querySelectorAll('*')].find(e => e.childElementCount === 0 && e.textContent.trim() === 'Τι λείπει');
@@ -199,7 +210,7 @@ const S = {
   wsZoom: await screen('firmWorkspace', { device: 'laptop', clip: { scale: 0.7, find: firstClientCard } }),
   owner: await screen('firmOwner', { device: 'phone', width: PH_A }),
   ask: await screen('firmAsk', { device: 'phone', width: PH_B, prep: typeNote }),
-  sent: await screen('firmAskSent', { device: 'phone', width: PH_B }),
+  sent: await screen('firmAsk', { device: 'phone', width: PH_B, prep: sendInApp }),
   revoke: await screen('firmOwnerRevoke', { device: 'phone', width: PH_C }),
   day: await screen('firmOwnerDay', { device: 'phone', width: PH_C }),
   firm: await screen('firm', { device: 'laptop', width: LAP_A }),
@@ -350,8 +361,9 @@ h1 em{display:block;font-style:normal;background:linear-gradient(90deg,#a9c8ff,#
 .zoom img{display:block;border-radius:16px}
 /* Επίπεδα */
 .levels{position:absolute;left:${M}px;right:${M}px;display:flex;justify-content:space-between;gap:12px}
-.lvl{flex:auto;padding:0 20px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:19px;font-weight:600;letter-spacing:-.01em;color:#c9d4e6;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)}
-.lvl.on{color:#f4f7fb;background:rgba(111,156,240,.16);box-shadow:inset 0 0 0 1.5px rgba(138,180,248,.7),0 0 24px rgba(111,156,240,.25)}
+.lvl{flex:auto;padding:0 20px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:19px;font-weight:600;letter-spacing:-.01em;color:#c9d4e6;background:rgba(255,255,255,.06)}
+.lvl.on{color:#06090f;background:linear-gradient(180deg,#b9d1ff,#8ab4f8);box-shadow:0 10px 28px rgba(111,156,240,.35)}
+.lvl.on i{opacity:1}
 .lvl i{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.7}
 /* Τέλος */
 .cta{position:absolute;left:${M}px;right:${M}px;height:${STAGE.bottom - STAGE.top}px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
