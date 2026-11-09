@@ -42,6 +42,13 @@ export interface ClientCounts {
    * του γραφείου διαβάζει μόνο (20261104120000). Λείπει σε παλιότερη γραφή.
    */
   canAct?: boolean;
+  /**
+   * Τα στοιχεία επικοινωνίας του πελάτη για το «Ζήτησέ το» με email, WhatsApp,
+   * Viber ή SMS. ΔΕΝ ΤΑ ΣΤΕΛΝΕΙ ΑΚΟΜΗ Η ΒΑΣΗ: το `accountant_clients_overview`
+   * δίνει μόνο όνομα και ΑΦΜ. Οσο λείπουν, το αίτημα φεύγει μόνο στην εφαρμογή.
+   */
+  email?: string | null;
+  phone?: string | null;
   /** Τα μέλη του γραφείου που έχουν αναλάβει τον πελάτη. */
   assignees?: { userId: string; name: string }[];
   properties: number;

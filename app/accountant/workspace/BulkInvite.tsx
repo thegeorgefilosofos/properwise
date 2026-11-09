@@ -106,7 +106,7 @@ export default function BulkInvite({ db, label }: { db: SupabaseClient; label: R
   const waiting = history?.filter(h => h.status === 'sent') ?? [];
 
   return (
-    <Card style={{ marginTop: 10 }} className="po-noprint">
+    <Card gap={false} className="po-noprint">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
           <p style={label}>Πρόσκληση πελατών</p>

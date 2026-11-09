@@ -53,8 +53,11 @@ const client = (ownerId: string, name: string, canAct: boolean, assignees: { use
   ...gaps,
 });
 
-const CLIENTS = (canAct: boolean) => [
-  client('o1', 'Γιώργος Παραδείγματος', canAct, [{ userId: 'u2', name: 'Νίκος Δοκιμής' }], { uncategorised: 3 }),
+// ΤΑ ΣΤΟΙΧΕΙΑ ΕΠΙΚΟΙΝΩΝΙΑΣ ΔΕΝ ΤΑ ΣΤΕΛΝΕΙ ΣΗΜΕΡΑ Η ΒΑΣΗ. Η σκηνή `firmAskChannels`
+// δείχνει το «Ζήτησέ το» όπως θα είναι όταν τα στείλει (lib/data/accountant.ts).
+const CONTACT = { email: 'pelatis@example.com', phone: '694 000 0000' };
+const CLIENTS = (canAct: boolean, contact = false) => [
+  { ...client('o1', 'Γιώργος Παραδείγματος', canAct, [{ userId: 'u2', name: 'Νίκος Δοκιμής' }], { uncategorised: 3 }), ...(contact ? CONTACT : {}) },
   client('o2', 'Άννα Υποδείγματος', canAct, [{ userId: 'u1', name: 'Ελένη Παραδείγματος' }, { userId: 'u3', name: 'Μαρία Υποδείγματος' }]),
   client('o3', 'Κώστας Δοκιμαστής', canAct, [], { rentsUnpaid: 2 }),
 ];
@@ -125,8 +128,9 @@ export function firmRpc(which: string, fn: string): { data: unknown; error: { me
     my_firm: which === 'firmNew' || which === 'firmWorkspaceInvite' ? null : firmOf(role),
     my_firm_invites: which === 'firmWorkspaceInvite' ? [{ id: 'i1', firmName: 'Φοροτεχνικό Γραφείο Υπόδειγμα', role: 'accountant', invitedAt: AT }] : [],
     firm_client_levels: which === 'firmWorkspaceInvite' ? [] : LEVELS(role),
-    firm_access_history: HISTORY,
-    accountant_clients_overview: CLIENTS(role !== 'associate'),
+    firm_access_history: which === 'firmQuiet' ? [] : HISTORY,
+    accountant_clients_overview: which === 'firmWorkspaceEmpty' ? [] : CLIENTS(role !== 'associate', which === 'firmAskChannels' || which === 'firmAskSent'),
+    accountant_request_item: { ok: true },
     firm_client_properties: PROPERTIES,
     firm_open_items: OPEN_ITEMS,
     my_accountants: OWNER_FIRMS,
@@ -144,6 +148,29 @@ function useClickWhenReady(text: string) {
     }, 50);
     return () => clearInterval(t);
   }, [text]);
+}
+
+/**
+ * «Ζήτησέ το» για την πρώτη εκκρεμότητα· με `channel`, διαλέγει κανάλι και
+ * στέλνει, για να φανεί η επιβεβαίωση μετά την αποστολή.
+ */
+function AskOpen({ channel }: { channel?: string }) {
+  useEffect(() => {
+    const press = (text: string, inDialog: boolean) => {
+      const b = [...document.querySelectorAll('button')].find(x => x.textContent?.trim() === text && !!x.closest('[role="dialog"]') === inDialog);
+      if (b) b.click();
+      return !!b;
+    };
+    let step = 0;
+    const t = setInterval(() => {
+      if (step === 0 && press('Ζήτησέ το', false)) step = channel ? 1 : 9;
+      else if (step === 1 && press(channel as string, true)) step = 2;
+      else if (step === 2 && press(`Στείλε με ${channel}`, true)) step = 9;
+      if (step === 9) clearInterval(t);
+    }, 50);
+    return () => clearInterval(t);
+  }, [channel]);
+  return <AccountantWorkspace />;
 }
 
 /** Ανοίγει το παράθυρο της πρόσκλησης όπως θα το άνοιγε ο υπεύθυνος. */
@@ -208,6 +235,11 @@ export const FIRM_VIEWS: Record<string, () => React.ReactElement> = {
   firmWorkspace: () => <AccountantWorkspace />,
   firmWorkspaceAssociate: () => <AccountantWorkspace />,
   firmWorkspaceInvite: () => <AccountantWorkspace />,
+  firmWorkspaceEmpty: () => <AccountantWorkspace />,
+  firmQuiet: () => <FirmPage />,
+  firmAsk: () => <AskOpen />,
+  firmAskChannels: () => <AskOpen />,
+  firmAskSent: () => <AskOpen channel="WhatsApp" />,
   firmEntryDocument: entry('document'),
   firmEntryBill: entry('bill'),
   firmEntryTax: entry('tax'),

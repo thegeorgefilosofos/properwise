@@ -11,7 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, MoreHorizontal } from 'lucide-react';
-import { T } from '@/components/Theme';
+import { T, quietFocus } from '@/components/Theme';
 
 export interface ActionMenuItem {
   key: string;
@@ -60,6 +60,10 @@ export function ActionMenu({
   const [shown, setShown] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  // ΑΝΟΙΧΤΗΚΕ ΜΕ ΠΟΝΤΙΚΙ; Τότε το Escape που το κλείνει δεν ανάβει δαχτυλίδι
+  // στο κουμπί: ο Chrome θεωρεί κάθε πλήκτρο «πλοήγηση με πληκτρολόγιο» και
+  // άφηνε το «Καταχώρηση» με μπλε περίγραμμα ώσπου να γίνει κλικ αλλού.
+  const byPointer = useRef(false);
 
   // ══════════════════════════════════════════════════════════════════════════
   // ΤΟ ΜΕΝΟΥ ΕΒΓΑΙΝΕ 111 ΕΙΚΟΝΟΣΤΟΙΧΕΙΑ ΕΞΩ ΑΠΟ ΤΗΝ ΟΘΟΝΗ
@@ -123,7 +127,11 @@ export function ActionMenu({
     // rAF and cleanup run outside the effect body, so no synchronous setState here.
     const raf = requestAnimationFrame(() => setShown(true));
     const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      if (byPointer.current && btnRef.current && document.activeElement === btnRef.current) quietFocus(btnRef.current);
+    };
     // Ανοιχτό μενού σε συντεταγμένες οθόνης πρέπει να ακολουθεί ό,τι το μετακινεί.
     const onMove = () => place();
     document.addEventListener('mousedown', onDoc);
@@ -149,6 +157,8 @@ export function ActionMenu({
         aria-expanded={open}
         aria-label={iconOnly ? label : undefined}
         ref={btnRef}
+        onPointerDown={() => { byPointer.current = true; }}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') byPointer.current = false; }}
         onClick={() => { place(); setOpen(o => !o); }}
         className="po-hov-accent"
         style={{

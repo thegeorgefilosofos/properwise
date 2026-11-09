@@ -28,7 +28,7 @@ import { TextInput, Textarea, CustomSelect } from '@/app/dashboard/components/UI
 import { notify, notifyError } from '@/components/Toast';
 import { confirmDialog } from '@/components/confirmBus';
 import { isValidAfm } from '@/lib/core/greek';
-import { PortalBar, PortalTitle, portalWrap } from '../Chrome';
+import { PortalBar, PortalTitle, PortalEmpty, portalWrap } from '../Chrome';
 import {
   myFirm, saveFirm, invite, setRole, removeMember, accessHistory, reasonText,
   ROLE_LABEL, ROLE_HINT, ROLES, KIND_LABEL, ACTION_LABEL, canManage,
@@ -39,8 +39,12 @@ const label: React.CSSProperties = { ...TT.label, color: 'var(--text-tertiary)',
 const note: React.CSSProperties = { fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans, lineHeight: 1.6 };
 const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
 const HISTORY_SHOWN = 20;
-/** Η στήλη των ρόλων: χωρά το «Υπεύθυνος γραφείου» χωρίς αποκοπή. */
-const ROLE_COL = 236;
+/**
+ * Η στήλη των ρόλων: χωρά το «Υπεύθυνος γραφείου» με το βέλος του και τίποτα
+ * παραπάνω. Ηταν 236 και στον υπολογιστή το dropdown έμοιαζε με πεδίο φόρμας
+ * σε μια λίστα ανθρώπων.
+ */
+const ROLE_COL = 220;
 
 const emptyFields = (f?: Firm | null): FirmFields => ({
   name: f?.name ?? '', afm: f?.afm ?? '', kind: f?.kind ?? 'accounting', phone: f?.phone ?? '', address: f?.address ?? '',
@@ -61,7 +65,18 @@ export default function FirmView() {
   const [allHistory, setAllHistory] = useState(false);
   // Ο συνδεδεμένος, για να δείχνεται η «Αποχώρηση» στη δική του γραμμή.
   const [me, setMe] = useState<string | null>(null);
-  useEffect(() => { supabase.auth.getUser().then(({ data }) => setMe(data.user?.id ?? null)); }, [supabase]);
+  // ΤΟ ΟΝΟΜΑ ΤΟΥ ΛΟΓΑΡΙΑΣΜΟΥ ΜΟΥ, ΟΤΑΝ ΤΟ ΠΡΟΦΙΛ ΔΕΝ ΕΧΕΙ. Η βάση δίνει όνομα μόνο
+  // από το προφίλ τιμολόγησης· ο λογαριασμός γραφείου συχνά δεν έχει. Η
+  // δική μου γραμμή έδειχνε σκέτο email.
+  const [myName, setMyName] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setMe(data.user?.id ?? null);
+      const m = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
+      const n = [m.full_name, m.name].find(v => typeof v === 'string' && v.trim()) as string | undefined;
+      setMyName(n?.trim() ?? null);
+    });
+  }, [supabase]);
 
   const load = useCallback(async () => {
     const r = await myFirm(supabase);
@@ -186,11 +201,12 @@ export default function FirmView() {
             <style>{`@media (max-width:560px){.firm-role-side{flex:1 1 100%!important}.firm-role-col{flex:1 1 auto!important;width:auto!important;padding-left:0!important}}`}</style>
             <section aria-labelledby="firm-members">
               <h2 id="firm-members" style={{ ...label, margin: `0 0 ${T.sp.sm}px` }}>Μέλη</h2>
-              <Card style={{ padding: 0 }}>
+              <Card gap={false} style={{ padding: 0 }}>
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                   {firm.members.map((m, i) => {
-                    const who = m.name || m.email;
                     const self = m.status === 'active' && m.userId != null && m.userId === me;
+                    const name = m.name || (self ? myName : null);
+                    const who = name || m.email;
                     const invited = m.status === 'invited';
                     const menu = manager || self;
                     return (
@@ -202,7 +218,7 @@ export default function FirmView() {
                         <div style={{ minWidth: 0, flex: '1 1 240px' }}>
                           <p style={{ fontSize: 'var(--fs-md)', fontWeight: 600, margin: 0, color: 'var(--text-primary)', fontFamily: T.font.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{who}</p>
                           <p style={{ ...note, marginTop: 2 }}>
-                            {m.name ? `${m.email} · ` : ''}
+                            {name ? `${m.email} · ` : ''}
                             {invited
                               ? <span style={num}>{`Πρόσκληση στις ${fd(m.invitedAt)}`}</span>
                               : <span style={num}>{`${m.clients === 1 ? '1 πελάτης' : `${m.clients} πελάτες`}${m.joinedAt ? ` · από ${fd(m.joinedAt)}` : ''}`}</span>}
@@ -240,7 +256,7 @@ export default function FirmView() {
             {/* ── ΣΤΟΙΧΕΙΑ ── */}
             <section aria-labelledby="firm-details" style={{ marginTop: T.sp.section }}>
               <h2 id="firm-details" style={{ ...label, margin: `0 0 ${T.sp.sm}px` }}>Στοιχεία γραφείου</h2>
-              <Card>
+              <Card gap={false}>
                 {manager ? <FirmForm fields={fields} onChange={setFields} afmBad={afmBad} disabled={saving} /> : <FirmFacts firm={firm} />}
                 {manager && (
                   <div style={{ marginTop: T.sp.xl }}>
@@ -256,10 +272,12 @@ export default function FirmView() {
             {manager && (
               <section aria-labelledby="firm-history" style={{ marginTop: T.sp.section }}>
                 <h2 id="firm-history" style={{ ...label, margin: `0 0 ${T.sp.sm}px` }}>Ιστορικό πρόσβασης</h2>
-                <Card style={{ padding: history && history.length > 0 ? 0 : undefined }}>
-                  {history === null ? <Skeleton h={48} /> : history.length === 0 ? (
-                    <p style={note}>Κανένα μέλος δεν έχει ανοίξει ακόμη φάκελο πελάτη.</p>
-                  ) : (
+                {history !== null && history.length === 0 ? (
+                  <PortalEmpty title="Κανένα άνοιγμα ακόμη"
+                    hint="Εδώ φαίνεται ποιο μέλος άνοιξε ποιον πελάτη και πότε, μόλις ανοίξει ο πρώτος φάκελος." />
+                ) : (
+                <Card gap={false} style={history && history.length > 0 ? { padding: 0 } : undefined}>
+                  {history === null ? <Skeleton h={48} /> : (
                     <>
                       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                         {(allHistory ? history : history.slice(0, HISTORY_SHOWN)).map((h, i) => (
@@ -284,6 +302,7 @@ export default function FirmView() {
                     </>
                   )}
                 </Card>
+                )}
               </section>
             )}
           </>

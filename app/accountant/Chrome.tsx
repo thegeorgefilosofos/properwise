@@ -91,36 +91,68 @@ export function PortalBar({ year, onYear, back }: {
   );
 }
 
-/** Ο τίτλος του εγγράφου: πού είσαι, τι κοιτάς, από πότε ισχύει. */
+/**
+ * Ο τίτλος του εγγράφου: πού είσαι, τι κοιτάς, από πότε ισχύει.
+ *
+ * ΕΝΑ ΣΧΗΜΑ ΣΕ ΚΑΘΕ ΟΨΗ ΤΗΣ ΠΥΛΗΣ (09/11/2026). Με `flex-wrap` και
+ * `align-items: flex-end` το ίδιο component έβγαζε τρεις διατάξεις: στο γραφείο
+ * το «Πρόσκληση μέλους» κρεμόταν δεξιά στο κέντρο όλου του μπλοκ, στη λίστα με
+ * δύο κουμπιά κάθονταν δεξιά, με τέσσερα έπεφταν κάτω από το meta. Δηλαδή η
+ * θέση των ενεργειών εξαρτιόταν από το πόσο μακρύ ήταν το κείμενο.
+ *
+ * ΤΩΡΑ: η υπερκείμενη γραμμή μόνη της, από κάτω πλέγμα δύο στηλών. Στον
+ * υπολογιστή οι ενέργειες ξεκινούν στην ίδια ευθεία με την κορυφή του τίτλου
+ * και το meta τυλίγει στον χώρο που μένει. Κάτω από 720 οι ενέργειες πέφτουν
+ * ΠΑΝΤΑ κάτω από το meta, αριστερά.
+ */
 export function PortalTitle({ over, title, meta, right }: {
   over: string; title: string; meta?: ReactNode; right?: ReactNode;
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap', margin: '28px 0 22px' }}>
-      <div style={{ minWidth: 0 }}>
-        <p style={{ ...TT.label, color: 'var(--text-tertiary)', margin: 0 }}>
-          {over}
-        </p>
-        <h1 style={{ ...TT.displaySm, margin: '6px 0 0' }}>
-          {title}
-        </h1>
-        {meta && (
-          <p style={{ ...TT.bodySm, color: 'var(--text-tertiary)', margin: '8px 0 0', fontVariantNumeric: 'tabular-nums' }}>
-            {meta}
-          </p>
-        )}
+    <div style={{ margin: `${T.sp.section}px 0 ${T.sp.xxl}px` }}>
+      {/* ΟΙ ΕΝΕΡΓΕΙΕΣ ΚΛΕΙΝΟΥΝ ΤΗ ΓΡΑΜΜΗ ΤΟΥΣ ΣΤΟ ΤΗΛΕΦΩΝΟ. Κάθε κουμπί ξεκινά
+          από το πλάτος του λεκτικού του και μεγαλώνει ώσπου η σειρά να γεμίσει·
+          όποιο δεν χωρά, πέφτει ολόκληρο στην επόμενη. Οχι η `.act-row`: εκεί τα
+          ίσα μερίδια στένευαν το «Κατέβασε τα βιβλία» κάτω από το λεκτικό του. */}
+      <style>{`.pb-head{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:${T.sp.xxl}px;row-gap:${T.sp.lg}px;align-items:start;margin-top:${T.sp.xs + 2}px}
+.pb-acts{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:${T.sp.sm}px;max-width:min(560px,60vw)}
+@media (max-width:720px){.pb-head{grid-template-columns:minmax(0,1fr)}.pb-acts{justify-content:flex-start;max-width:none}}
+@media (max-width:560px){.pb-acts>*{flex:1 1 auto;white-space:nowrap}}`}</style>
+      <p style={{ ...TT.label, color: 'var(--text-tertiary)', margin: 0 }}>
+        {over}
+      </p>
+      <div className="pb-head">
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ ...TT.displaySm, margin: 0 }}>
+            {title}
+          </h1>
+          {meta && (
+            <p style={{ ...TT.bodySm, color: 'var(--text-tertiary)', margin: `${T.sp.sm}px 0 0`, fontVariantNumeric: 'tabular-nums' }}>
+              {meta}
+            </p>
+          )}
+        </div>
+        {right && <div className="pb-acts po-noprint">{right}</div>}
       </div>
-      {/* ΟΙ ΕΝΕΡΓΕΙΕΣ ΚΛΕΙΝΟΥΝ ΤΗ ΓΡΑΜΜΗ ΤΟΥΣ ΣΤΟ ΤΗΛΕΦΩΝΟ. Στα 390 το «Το
-          γραφείο» και το «Δείξε ποσά» κάθονταν αριστερά με το πλάτος του
-          λεκτικού τους και το «Κατέβασε τα όλα» έπεφτε μόνο του από κάτω: τρία
-          κουμπιά, τρία πλάτη, καμία ακμή. Κάθε κουμπί ξεκινά από το πλάτος του
-          λεκτικού του και μεγαλώνει ώσπου η σειρά να γεμίσει· όποιο δεν χωρά,
-          πέφτει ολόκληρο στην επόμενη. Οχι η `.act-row`: εκεί τα ίσα μερίδια
-          στένευαν το «Κατέβασε τα βιβλία» κάτω από το λεκτικό του στα 390. */}
-      {right && <>
-        <style>{`@media (max-width:560px){.pb-acts{width:100%}.pb-acts>*{flex:1 1 auto;white-space:nowrap}}`}</style>
-        <div className="pb-acts" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{right}</div>
-      </>}
+    </div>
+  );
+}
+
+/**
+ * Η ΑΔΕΙΑ ΚΑΤΑΣΤΑΣΗ ΤΗΣ ΠΥΛΗΣ, ΜΙΑ ΦΟΡΑ. Το «Ιστορικό πρόσβασης» έδειχνε τη
+ * φράση του σε κάρτα ΧΩΡΙΣ γέμισμα (`padding: undefined` στο style έσβηνε το
+ * εσωτερικό περιθώριο της `Card`): ένα λεπτό χάπι με το κείμενο κολλημένο στο
+ * περίγραμμα. Η λίστα των πελατών είχε άλλη γραφή, με άλλο μέγεθος.
+ */
+export function PortalEmpty({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
+  return (
+    <div style={{
+      padding: T.sp.lg, borderRadius: T.radius.card, background: 'var(--surface-raised)',
+      border: '1px solid var(--border-raised)', boxShadow: 'var(--highlight-inset), var(--elev-1)',
+    }}>
+      <p style={{ ...TT.body, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{title}</p>
+      {hint && <p style={{ ...TT.bodySm, color: 'var(--text-tertiary)', margin: `${T.sp.xs}px 0 0`, maxWidth: 560 }}>{hint}</p>}
+      {action && <div style={{ marginTop: T.sp.md }}>{action}</div>}
     </div>
   );
 }
