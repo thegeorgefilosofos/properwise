@@ -1,6 +1,6 @@
 // npx tsx lib/legal/policyNotice.test.ts
 import { readFileSync } from 'node:fs'
-import { policyNoticeDue, POLICY_CHANGE_SUMMARY, policyChangeSummary, firmNoticeDue, FIRM_NOTICE_VERSION, FIRM_NOTICE_BODY, FIRM_NOTICE_TITLE, FIRM_NOTICE_HREF, FIRM_NOTICE_POLICIES } from './policyNotice'
+import { policyNoticeDue, policyNoticeCopy, sawLegalReview, LEGAL_REVIEW_VERSION, firmNoticeDue, FIRM_NOTICE_VERSION, FIRM_NOTICE_BODY, FIRM_NOTICE_TITLE, FIRM_NOTICE_HREF, FIRM_NOTICE_POLICIES } from './policyNotice'
 import { POLICY_VERSION } from './identity'
 import { MERCHANT_NAMES } from './merchant'
 
@@ -13,15 +13,26 @@ ok('την έκλεισε σε αυτή τη συσκευή: όχι', !policyNot
 ok('την έκλεισε σε άλλη συσκευή: όχι', !policyNoticeDue({ policy_notice_seen: POLICY_VERSION }, null))
 ok('εγγράφηκε με αυτή την έκδοση: όχι', !policyNoticeDue({ consent_policy_version: POLICY_VERSION }, null))
 ok('έκλεισε παλιότερη ενημέρωση: τη βλέπει', policyNoticeDue({ policy_notice_seen: '2026-09' }, '2026-09'))
-// Η ΕΚΔΟΣΗ 2026-11-10 (απόφαση ιδιοκτήτη 09/11/2026): η περίληψη λέει ΜΟΝΟ
-// την προσθήκη για τη μαζική καταχώρηση και δεν γράφει ποσό ή προθεσμία.
-ok('η πρόταση λέει ότι η φωτογραφία δεν αποθηκεύεται', POLICY_CHANGE_SUMMARY.includes('δεν αποθηκεύεται'))
-ok('η πρόταση λέει ότι το PDF μένει στη συσκευή', POLICY_CHANGE_SUMMARY.includes('PDF διαβάζεται μόνο στη συσκευή'))
-ok('η πρόταση λέει μόνο την προσθήκη', !POLICY_CHANGE_SUMMARY.includes('υπαναχώρησης') && !POLICY_CHANGE_SUMMARY.includes('συγκαταθέσεις'))
-ok('η πρόταση δεν λέει «εγγύηση»', !/εγγύηση/i.test(POLICY_CHANGE_SUMMARY))
-ok('η πρόταση δεν γράφει αριθμούς', !/\d/.test(policyChangeSummary()))
+// ── Τι λέει η ειδοποίηση: ανάλογα με το τι έχει ήδη δει (09/11/2026) ──
+// Η νομική ενημέρωση της 2026-11-09 δεν χάνεται επειδή ήρθε η 2026-11-10.
+const sawReview = policyNoticeCopy({ policy_notice_seen: '2026-11-09' }, null)
+const missedReview = policyNoticeCopy({ policy_notice_seen: '2026-10-03', consent_policy_version: '2026-09' }, '2026-10-03')
+const never = policyNoticeCopy(null, null)
+const all = [sawReview, missedReview, never]
+ok('είδε την 2026-11-09 (λογαριασμός): μόνο η προσθήκη', sawReview.summary.includes('δεν αποθηκεύεται') && sawReview.summary.includes('PDF διαβάζεται μόνο στη συσκευή') && !sawReview.summary.includes('υπαναχώρησης') && !sawReview.summary.includes('συγκαταθέσεις'))
+ok('είδε την 2026-11-09: «Ενημερώσαμε την Πολιτική απορρήτου.»', sawReview.headline === 'Ενημερώσαμε την Πολιτική απορρήτου.' && !sawReview.short.includes('Όροι') && sawReview.href === '/privacy')
+ok('είδε την 2026-11-09 σε αυτή τη συσκευή: μόνο η προσθήκη', policyNoticeCopy({}, LEGAL_REVIEW_VERSION).headline === sawReview.headline)
+ok('εγγράφηκε με την 2026-11-09: μόνο η προσθήκη', sawLegalReview({ consent_policy_version: '2026-11-09' }, null))
+ok('έκλεισε ήδη την 2026-11-10 αλλού: η δική της περίληψη', sawLegalReview({ policy_notice_seen: POLICY_VERSION }, null))
+ok('δεν είδε την 2026-11-09: πρώτα ο νομικός έλεγχος, μετά η προσθήκη', missedReview.summary.includes('δικαίωμα υπαναχώρησης του νόμου') && missedReview.summary.includes('χωριστές συγκαταθέσεις')
+  && missedReview.summary.indexOf('υπαναχώρησης') < missedReview.summary.indexOf('δεν αποθηκεύεται') && missedReview.summary.includes('PDF διαβάζεται μόνο στη συσκευή'))
+ok('δεν είδε την 2026-11-09: «Ενημερώσαμε τους Όρους και την Πολιτική απορρήτου.»', missedReview.headline === 'Ενημερώσαμε τους Όρους και την Πολιτική απορρήτου.' && missedReview.href === '/terms')
+ok('χωρίς κανένα ίχνος: όπως όποιος δεν την είδε', never.summary === missedReview.summary && never.headline === missedReview.headline)
+ok('άκυρο ίχνος δεν μετρά ως «είδε»', !sawLegalReview({ policy_notice_seen: 'x', consent_policy_version: 20261109 }, 'ναι'))
+ok('η περίληψη δεν λέει «εγγύηση»', all.every(c => !/εγγύηση/i.test(c.summary)))
+ok('η περίληψη δεν γράφει αριθμούς', all.every(c => !/\d/.test(c.summary + c.headline + c.short)))
+ok('δεν ονομάζει πωλητή που ίσως δεν πουλά', all.every(c => !Object.values(MERCHANT_NAMES).some(n => c.summary.includes(n))))
 ok('όποιος έκλεισε την ειδοποίηση της 2026-11-09 βλέπει τη νέα', (POLICY_VERSION as string) !== '2026-11-09' && policyNoticeDue({ policy_notice_seen: '2026-11-09' }, '2026-11-09'))
-ok('δεν ονομάζει πωλητή που ίσως δεν πουλά', !Object.values(MERCHANT_NAMES).some(n => POLICY_CHANGE_SUMMARY.includes(n)))
 ok('η ενημέρωση της 3.10 δεν καλύπτει τη νέα έκδοση', policyNoticeDue({ policy_notice_seen: '2026-10-03' }, '2026-10-03'))
 
 // ── Η ενημέρωση των γραφείων (ΑΠ-11): μία φορά, μόνο σε ιδιοκτήτη από πριν ──
