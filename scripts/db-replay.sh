@@ -236,6 +236,13 @@ if ! ftout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-terms-probe.sql" 2>&1); th
   exit 1
 fi
 probes=$((probes + $(echo "$ftout" | grep -c 'probe:' || true)))
+# Η αναίρεση του ιδιοκτήτη: σήμερα και χθες, με τη μέρα της Αθήνας (20261109100000).
+if ! fuout=$($PSQL -d posdb -f "$ROOT/scripts/db/owner-undo-day-probe.sql" 2>&1); then
+  echo "🔴 Η αναίρεση του ιδιοκτήτη δεν κρατά το σήμερα και το χθες της Αθήνας:"
+  echo "$fuout" | grep -m3 -E 'ERROR|ΩΡΑ UTC|ΠΑΡΑΘΥΡΟ|ΑΡΧΕΙΟ|ΠΑΡΑΒΙΑΣΗ|ΗΜΕΡΟΜΗΝΙΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$fuout" | grep -c 'probe:' || true)))
 
 # ── ΔΕΧΕΤΑΙ Η ΒΑΣΗ ΤΙΣ ΓΡΑΜΜΕΣ ΟΠΩΣ ΤΙΣ ΧΤΙΖΕΙ Η ΕΦΑΡΜΟΓΗ; ─────────────────────
 # Το rls-probe γράφει γραμμές με το χέρι. Οι γραμμές της εφαρμογής όμως τις
