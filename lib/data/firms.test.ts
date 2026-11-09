@@ -8,8 +8,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import {
   ROLE_LABEL, LEVEL_LABEL, KIND_LABEL, canAct, canManage, entryKinds, daySentence, reasonOf, reasonText,
-  filterClients, logLine, type ClientLevel,
+  filterClients, logLine, undoRecord, type ClientLevel,
 } from './firms';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { rotatedSentence } from './accountantLink';
 
 let pass = 0, fail = 0;
@@ -93,8 +94,10 @@ ok('κάθε λόγος έχει φράση με τελεία', ['not_allowed', 
     logLine({ kind: 'bill', action: 'update', label: null, fields: ['amount', 'due_date'] }), 'Λογαριασμός · άλλαξε ποσό και λήξη');
   eq('τρία πεδία', logLine({ kind: 'expense', action: 'update', label: null, fields: ['amount', 'date', 'category'] }), 'Δαπάνη · άλλαξε ποσό, ημερομηνία και κατηγορία');
   eq('πεδία χωρίς όνομα', logLine({ kind: 'rent', action: 'update', label: null, fields: ['base_rent', 'services_charge'] }), 'Είσπραξη ενοικίου · άλλαξαν 2 πεδία');
-  eq('πληρωμή δόσης', logLine({ kind: 'event', action: 'mark_paid', label: 'ΕΝΦΙΑ 3/5', fields: ['status'] }), 'Δόση «ΕΝΦΙΑ 3/5» · σημειώθηκε πληρωμένο');
+  eq('πληρωμή δόσης', logLine({ kind: 'event', action: 'mark_paid', label: 'ΕΝΦΙΑ 3/5', fields: ['status'] }), 'Δόση «ΕΝΦΙΑ 3/5» · σημειώθηκε η πληρωμή');
+  ok('η πληρωμή χωρίς επίθετο που δεν συμφωνεί σε γένος', !/πληρωμέν/.test(logLine({ kind: 'bill', action: 'mark_paid', label: null, fields: null })));
   ok('η άρνηση της σύμβασης λέει τι να γίνει', reasonText(reasonOf('firm_record:dpa')).startsWith('Ο πελάτης πρέπει πρώτα να αποδεχτεί τους όρους επεξεργασίας'));
+  ok('μηδενικό ποσό: λέει τι λείπει, όχι «δοκίμασε ξανά»', reasonText('amount') === 'Γράψε το ποσό που πληρώθηκε.');
   ok('καμία γραμμή χωρίς «βοηθός»', !/βοηθ/i.test(logLine({ kind: 'document', action: 'delete', label: null, fields: null })));
   const s = rotatedSentence({ at: '2026-11-04T10:00:00Z', reason: 'member_left' });
   ok('η ανανέωση λέει την ημερομηνία dd/mm/yyyy', s.includes('04/11/2026'));
@@ -102,5 +105,30 @@ ok('κάθε λόγος έχει φράση με τελεία', ['not_allowed', 
   ok('η ανανέωση χωρίς κόμμα πριν από το «και»', !s.includes([',', 'και'].join(' ')));
 }
 
-console.log(`\nfirms: ${fail === 0 ? `✓ ${pass} έλεγχοι` : `✗ ${fail} απέτυχαν από ${pass + fail}`}`);
-if (fail) { console.log(fails.map(f => '  ✗ ' + f).join('\n')); process.exit(1); }
+// ── Η «Αναίρεση» του μηνύματος σβήνει και το αρχείο ───────────────────────
+// Η firm_record_delete σβήνει τη γραμμή και επιστρέφει το `filePath`. Πριν, το
+// PDF του παραστατικού έμενε στον φάκελο του πελάτη μετά την αναίρεση.
+void (async () => {
+  const fake = (answer: { data?: unknown; error?: { message: string } | null }) => {
+    const removed: string[][] = [];
+    const db = {
+      rpc: async () => ({ data: answer.data ?? null, error: answer.error ?? null }),
+      storage: { from: () => ({ remove: async (p: string[]) => { removed.push(p); return { data: null, error: null }; } }) },
+    } as unknown as SupabaseClient;
+    return { db, removed };
+  };
+  const doc = fake({ data: { ok: true, filePath: 'o/p/document/1_a.pdf' } });
+  const r1 = await undoRecord(doc.db, 'document', 'id-1');
+  ok('αναίρεση παραστατικού: πετυχαίνει', r1.ok);
+  eq('αναίρεση παραστατικού: σβήνει και το αρχείο', doc.removed, [['o/p/document/1_a.pdf']]);
+  const ten = fake({ data: { ok: true, filePath: null } });
+  await undoRecord(ten.db, 'tenant', 'id-2');
+  eq('αναίρεση μισθωτή: δεν αγγίζει αρχεία', ten.removed, []);
+  const late = fake({ error: { message: 'firm_record:not_allowed' } });
+  const r3 = await undoRecord(late.db, 'document', 'id-3');
+  eq('αναίρεση που αρνείται η βάση: λέει τον λόγο', r3.ok ? null : r3.reason, 'not_allowed');
+  eq('αναίρεση που αρνείται η βάση: το αρχείο μένει', late.removed, []);
+
+  console.log(`\nfirms: ${fail === 0 ? `✓ ${pass} έλεγχοι` : `✗ ${fail} απέτυχαν από ${pass + fail}`}`);
+  if (fail) { console.log(fails.map(f => '  ✗ ' + f).join('\n')); process.exit(1); }
+})();

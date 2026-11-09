@@ -184,6 +184,25 @@ export const record = (db: Db, ownerId: string, propertyId: string, kind: Exclud
   rpcDo(db, 'firm_record', { p_owner: ownerId, p_property: propertyId, p_kind: kind, p_row: row });
 export const removeRecord = (db: Db, kind: Exclude<RecordKind, 'event'>, id: string) =>
   rpcDo(db, 'firm_record_delete', { p_kind: kind, p_id: id });
+
+/**
+ * Η «Αναίρεση» του μηνύματος, ολόκληρη: η γραμμή ΚΑΙ το αρχείο.
+ *
+ * Η `firm_record_delete` σβήνει μόνο τη γραμμή του παραστατικού και επιστρέφει
+ * τη διαδρομή του αρχείου (`filePath`). Το αρχείο το είχε ανεβάσει το ίδιο το
+ * μέλος, και μόνο αυτό μπορεί να το σβήσει (property_files_firm_unupload).
+ * Οσο η αναίρεση έσβηνε μόνο τη γραμμή, το PDF έμενε στον φάκελο του πελάτη,
+ * αόρατο από την εφαρμογή και χωρίς τρόπο να βρεθεί ξανά.
+ */
+export async function undoRecord(db: Db, kind: Exclude<RecordKind, 'event'>, id: string): Promise<Done> {
+  const r = await removeRecord(db, kind, id);
+  if (!r.ok) return r;
+  const path = r.data?.filePath;
+  if (kind === 'document' && typeof path === 'string' && path) {
+    await db.storage.from('property-files').remove([path]);
+  }
+  return r;
+}
 export const markPaid = (db: Db, kind: OpenItem['kind'], id: string, paidOn: string, method: string | null) =>
   rpcDo(db, 'firm_mark_paid', { p_kind: kind, p_id: id, p_paid_on: paidOn, p_method: method });
 export const openItems = async (db: Db, ownerId: string): Promise<Read<OpenItem[]>> => {
@@ -292,8 +311,11 @@ function changed(fields: string[] | null): string {
   return `άλλαξε ${list}`;
 }
 
+// Η ΠΛΗΡΩΜΗ ΧΩΡΙΣ ΓΕΝΟΣ. Το «σημειώθηκε πληρωμένο» έμπαινε δίπλα σε «Δόση»,
+// «Είσπραξη ενοικίου» (θηλυκά) και «Λογαριασμός» (αρσενικό): ουδέτερο επίθετο
+// που δεν συμφωνούσε με κανένα από τα τρία.
 const ACTION_WORD: Record<string, string> = {
-  insert: 'καταχωρήθηκε', delete: 'αφαιρέθηκε', mark_paid: 'σημειώθηκε πληρωμένο', revert: 'επανήλθε',
+  insert: 'καταχωρήθηκε', delete: 'αφαιρέθηκε', mark_paid: 'σημειώθηκε η πληρωμή', revert: 'επανήλθε',
 };
 
 /** «Λογαριασμός «ΔΕΗ Μάρτιος» · άλλαξε ποσό και λήξη». */
@@ -316,6 +338,7 @@ export function reasonText(reason: string): string {
     case 'future': return 'Η ημερομηνία πληρωμής δεν μπορεί να είναι μελλοντική.';
     case 'not_payable': return 'Αυτό δεν είναι μία δόση που κλείνει με πληρωμή.';
     case 'paid_at': return 'Γράψε πότε πληρώθηκε ο λογαριασμός.';
+    case 'amount': return 'Γράψε το ποσό που πληρώθηκε.';
     case 'too_late': return 'Πέρασαν 24 ώρες. Την αφαίρεση την κάνει πλέον ο ιδιοκτήτης.';
     case 'not_ours': return 'Αλλάζεις μόνο ό,τι καταχώρησε το γραφείο σου.';
     case 'mfa_required': return 'Χρειάζεται ο δεύτερος κωδικός σύνδεσης.';

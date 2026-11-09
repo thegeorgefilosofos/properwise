@@ -862,7 +862,7 @@ export default function AccountantWorkspace() {
 
       {entry && (
         <FirmEntry db={supabase} ownerId={entry.c.ownerId} ownerName={entry.c.name} kind={entry.kind}
-          onClose={() => { setEntry(null); void load(year); }} />
+          onClose={() => { setEntry(null); void load(year); }} onUndone={() => void load(year)} />
       )}
 
       {importFor && (
