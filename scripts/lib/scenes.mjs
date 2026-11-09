@@ -24,6 +24,8 @@ export const SCENES = [
   'firm', 'firmNew', 'firmInvite', 'firmWorkspace', 'firmWorkspaceAssociate', 'firmWorkspaceInvite',
   'firmEntryDocument', 'firmEntryBill', 'firmEntryTax', 'firmEntryLoan', 'firmEntryRent', 'firmEntryTenant', 'firmOwner',
   'firmSecondStep', 'firmOwnerDay', 'firmOwnerLink', 'firmOwnerUndo', 'firmOwnerRevoke', 'firmClientGone', 'firmClientSecondStep',
+  // Η άδεια λίστα, το γραφείο χωρίς ιστορικό και το «Ζήτησέ το» (RequestSheet.tsx).
+  'firmWorkspaceEmpty', 'firmQuiet', 'firmAsk', 'firmAskChannels', 'firmAskSent', 'firmBulkPick', 'firmAccount',
 ];
 
 // ═══ ΟΙ ΣΚΗΝΕΣ ΤΗΣ ΠΥΛΗΣ ΤΟΥ ΛΟΓΙΣΤΗ ════════════════════════════════════════
@@ -35,6 +37,7 @@ export const PORTAL_SCENES = new Set([
   'firm', 'firmNew', 'firmInvite', 'firmWorkspace', 'firmWorkspaceAssociate', 'firmWorkspaceInvite',
   'firmEntryDocument', 'firmEntryBill', 'firmEntryTax', 'firmEntryLoan', 'firmEntryRent', 'firmEntryTenant',
   'firmSecondStep', 'firmClientGone', 'firmClientSecondStep',
+  'firmWorkspaceEmpty', 'firmQuiet', 'firmAsk', 'firmAskChannels', 'firmAskSent', 'firmBulkPick', 'firmAccount',
 ]);
 
 /** Οι σκηνές που ζητά η `E2E_ONLY`, αλλιώς όλες. */

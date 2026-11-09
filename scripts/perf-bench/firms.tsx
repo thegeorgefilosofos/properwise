@@ -34,7 +34,8 @@ const firmOf = (role: 'manager' | 'accountant' | 'associate') => ({
   members: [
     member('m1', 'u1', 'dokimi@example.com', role, 'Ελένη Παραδείγματος', 18),
     member('m2', 'u2', 'nikos@example.com', 'accountant', 'Νίκος Δοκιμής', 12),
-    member('m3', 'u3', 'maria@example.com', 'associate', 'Μαρία Υποδείγματος', 5),
+    // ΧΩΡΙΣ ΟΝΟΜΑ ΣΤΟ ΠΡΟΦΙΛ, όπως τα περισσότερα μέλη στην παραγωγή: η βάση δίνει το email.
+    member('m3', 'u3', 'maria.ypodeigmatos@example.com', 'associate', null, 5),
     member('m4', null, 'neo.melos@example.com', 'accountant', null, 0, 'invited'),
   ],
 });
@@ -43,7 +44,7 @@ const HISTORY = [
   { at: '2026-11-04T10:12:00Z', action: 'open', ownerId: 'o1', member: 'Νίκος Δοκιμής', owner: 'Γιώργος Παραδείγματος' },
   { at: '2026-11-04T09:40:00Z', action: 'record', ownerId: 'o1', member: 'Νίκος Δοκιμής', owner: 'Γιώργος Παραδείγματος' },
   { at: '2026-11-03T16:05:00Z', action: 'upload', ownerId: 'o2', member: 'Ελένη Παραδείγματος', owner: 'Άννα Υποδείγματος' },
-  { at: '2026-11-03T11:20:00Z', action: 'open', ownerId: 'o3', member: 'Μαρία Υποδείγματος', owner: 'Κώστας Δοκιμαστής' },
+  { at: '2026-11-03T11:20:00Z', action: 'open', ownerId: 'o3', member: 'maria.ypodeigmatos@example.com', owner: 'Κώστας Δοκιμαστής' },
   { at: '2026-11-02T08:55:00Z', action: 'open', ownerId: 'o2', member: 'Ελένη Παραδείγματος', owner: 'Άννα Υποδείγματος' },
 ];
 
@@ -54,9 +55,24 @@ const client = (ownerId: string, name: string, canAct: boolean, assignees: { use
   ...gaps,
 });
 
-const CLIENTS = (canAct: boolean) => [
-  client('o1', 'Γιώργος Παραδείγματος', canAct, [{ userId: 'u2', name: 'Νίκος Δοκιμής' }], { uncategorised: 3 }),
-  client('o2', 'Άννα Υποδείγματος', canAct, [{ userId: 'u1', name: 'Ελένη Παραδείγματος' }, { userId: 'u3', name: 'Μαρία Υποδείγματος' }]),
+// ΤΑ ΣΤΟΙΧΕΙΑ ΕΠΙΚΟΙΝΩΝΙΑΣ ΔΕΝ ΤΑ ΣΤΕΛΝΕΙ ΣΗΜΕΡΑ Η ΒΑΣΗ. Η σκηνή `firmAskChannels`
+// δείχνει το «Ζήτησέ το» όπως θα είναι όταν τα στείλει (lib/data/accountant.ts).
+const CONTACT = { email: 'pelatis@example.com', phone: '694 000 0000' };
+const CLIENTS = (canAct: boolean, contact = false) => [
+  // Η ΚΑΡΤΑ ΠΟΥ ΕΙΔΕ Ο ΙΔΙΟΚΤΗΤΗΣ ΣΤΗΝ ΠΑΡΑΓΩΓΗ (09/11/2026): χωρίς προσυμπληρωμένο
+  // και χωρίς φάκελο, με ένα αίτημα για τον φάκελο κι ένα για τις δαπάνες χωρίς
+  // ΑΦΜ που στάλθηκε όταν ήταν 25 (τώρα 26).
+  { ...client('o1', 'Γιώργος Παραδείγματος', canAct, [{ userId: 'u2', name: 'Νίκος Δοκιμής' }], { uncategorised: 3, noSupplierAfm: 26 }),
+    e2: { aadeRows: 0, aadeChangedAt: null, packs: [] },
+    requests: [
+      { id: 'q1', item: '25 δαπάνες χωρίς ΑΦΜ προμηθευτή', note: null, createdAt: '2026-11-02T09:00:00Z' },
+      { id: 'q2', item: 'Δεν έχει στείλει τον φάκελο για τον λογιστή', note: 'Τον θέλω πριν από τις 20/11.', createdAt: '2026-11-05T09:00:00Z' },
+    ],
+    ...(contact ? CONTACT : {}) },
+  { ...client('o2', 'Άννα Υποδείγματος', canAct, [{ userId: 'u1', name: 'Ελένη Παραδείγματος' }, { userId: 'u3', name: 'maria.ypodeigmatos@example.com' }]),
+    e2: { aadeRows: 14, aadeChangedAt: '2026-10-20T09:00:00Z', packs: [
+      { ownerAfm: '000000012', differences: 0, checkedAt: '2026-10-21T09:00:00Z', missingCount: 0, missingTop: [], filePath: 'o2/2026/fakelos.zip', sizeBytes: 1843200, sharedAt: '2026-10-21T09:00:00Z' },
+    ] } },
   client('o3', 'Κώστας Δοκιμαστής', canAct, [], { rentsUnpaid: 2 }),
 ];
 
@@ -134,8 +150,9 @@ export function firmRpc(which: string, fn: string, args?: unknown): { data: unkn
     my_firm: which === 'firmNew' || which === 'firmWorkspaceInvite' ? null : firmOf(role),
     my_firm_invites: which === 'firmWorkspaceInvite' ? [{ id: 'i1', firmName: 'Φοροτεχνικό Γραφείο Υπόδειγμα', role: 'accountant', invitedAt: AT }] : [],
     firm_client_levels: which === 'firmWorkspaceInvite' ? [] : LEVELS(role),
-    firm_access_history: HISTORY,
-    accountant_clients_overview: CLIENTS(role !== 'associate'),
+    firm_access_history: which === 'firmQuiet' ? [] : HISTORY,
+    accountant_clients_overview: which === 'firmWorkspaceEmpty' ? [] : CLIENTS(role !== 'associate', which === 'firmAskChannels' || which === 'firmAskSent'),
+    accountant_request_item: { ok: true },
     firm_client_properties: PROPERTIES,
     firm_open_items: OPEN_ITEMS,
     my_accountants: OWNER_FIRMS,
@@ -153,6 +170,67 @@ function useClickWhenReady(text: string) {
     }, 50);
     return () => clearInterval(t);
   }, [text]);
+}
+
+/**
+ * «Ζήτησέ το» για την πρώτη εκκρεμότητα· με `channel`, διαλέγει κανάλι και
+ * στέλνει, για να φανεί η επιβεβαίωση μετά την αποστολή.
+ */
+function AskOpen({ channel }: { channel?: string }) {
+  useEffect(() => {
+    const press = (text: string, inDialog: boolean) => {
+      const b = [...document.querySelectorAll('button')].find(x => x.textContent?.trim() === text && !!x.closest('[role="dialog"]') === inDialog);
+      if (b) b.click();
+      return !!b;
+    };
+    let step = 0;
+    const t = setInterval(() => {
+      if (step === 0 && press('Ζήτησέ το', false)) step = channel ? 1 : 9;
+      else if (step === 1 && press(channel as string, true)) step = 2;
+      else if (step === 2 && press(`Στείλε με ${channel}`, true)) step = 9;
+      if (step === 9) clearInterval(t);
+    }, 50);
+    return () => clearInterval(t);
+  }, [channel]);
+  return <AccountantWorkspace />;
+}
+
+/** Ο υπεύθυνος επιλέγει τον πρώτο πελάτη και ανοίγει το «Ανάθεση σε…». */
+function BulkOpen() {
+  useEffect(() => {
+    let step = 0;
+    const t = setInterval(() => {
+      if (step === 0) {
+        const box = document.querySelector<HTMLInputElement>('input[type="checkbox"][aria-label^="Επιλογή"]');
+        if (box) { box.click(); step = 1; }
+      } else {
+        // Η ΛΙΣΤΑ ΑΝΟΙΓΕΙ ΜΟΝΟ ΜΕ `open=1` (στιγμιότυπα). Ο σαρωτής αντίθεσης δεν
+        // συνθέτει το ημιδιάφανο φόντο της φωτισμένης επιλογής (rgba 8%) και
+        // μετρά 1,1:1 για κείμενο που στην οθόνη είναι λευκό σε σκούρο.
+        if (new URLSearchParams(location.search).get('open') !== '1') { clearInterval(t); return; }
+        const sel = document.querySelector<HTMLElement>('[role="combobox"][aria-label="Ανάθεση σε"]');
+        if (sel) { sel.click(); clearInterval(t); }
+      }
+    }, 50);
+    return () => clearInterval(t);
+  }, []);
+  return <AccountantWorkspace />;
+}
+
+/** Ανοίγει το μενού «Λογαριασμός» της μπάρας. */
+function AccountOpen() {
+  useClickWhenReadyLabel('Λογαριασμός');
+  return <AccountantWorkspace />;
+}
+
+function useClickWhenReadyLabel(label: string) {
+  useEffect(() => {
+    const t = setInterval(() => {
+      const b = document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+      if (b) { b.click(); clearInterval(t); }
+    }, 50);
+    return () => clearInterval(t);
+  }, [label]);
 }
 
 /** Ανοίγει το παράθυρο της πρόσκλησης όπως θα το άνοιγε ο υπεύθυνος. */
@@ -217,6 +295,13 @@ export const FIRM_VIEWS: Record<string, () => React.ReactElement> = {
   firmWorkspace: () => <AccountantWorkspace />,
   firmWorkspaceAssociate: () => <AccountantWorkspace />,
   firmWorkspaceInvite: () => <AccountantWorkspace />,
+  firmWorkspaceEmpty: () => <AccountantWorkspace />,
+  firmQuiet: () => <FirmPage />,
+  firmAsk: () => <AskOpen />,
+  firmAskChannels: () => <AskOpen />,
+  firmAskSent: () => <AskOpen channel="WhatsApp" />,
+  firmBulkPick: () => <BulkOpen />,
+  firmAccount: () => <AccountOpen />,
   firmEntryDocument: entry('document'),
   firmEntryBill: entry('bill'),
   firmEntryTax: entry('tax'),

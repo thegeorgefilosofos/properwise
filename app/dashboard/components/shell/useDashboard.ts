@@ -11,6 +11,7 @@ import { useNavHistory } from '../useNavHistory'
 import { useEffect, useState, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { hardNavigate } from '@/lib/core/navigate'
+import { endSession, SIGN_OUT_FAILED } from '@/lib/auth/endSession'
 import * as propertyStore from '@/lib/data/properties'
 import * as documentStore from '@/lib/data/documents'
 import * as feedStore from '@/lib/data/calendarFeed'
@@ -20,8 +21,6 @@ import { enfiaCarrySettings, type EnfiaCarry } from '@/lib/tools/enfiaCarry'
 import { athensToday } from '@/lib/core/time'
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing'
-import * as pushDevices from '@/lib/data/pushSubscriptions'
-import { unsubscribeDevice, setDeviceNotify } from '@/lib/push/client'
 import type { User } from '@supabase/supabase-js'
 import { writeStatus, type PropertyStatus } from '@/lib/property/status'
 import type { OwnerContext } from '@/lib/property/visibility'
@@ -29,7 +28,6 @@ import { LEGAL_FORMS, type LegalForm } from '@/lib/accounting/dossier'
 import { confirmDialog, confirmDiscard } from '@/components/ConfirmDialog'
 import { notifyError } from '@/components/Toast'
 import { clearHistory as clearAssistantHistory } from '../assistantPersona'
-import { leaveDevice } from '@/lib/localPrivacy'
 import {
   effectivePlan, livePlan, canAddProperty, planAtLeast, trialState, PROFESSIONAL_MIN_PLAN, type EntitlementInput,
 } from '@/lib/billing/entitlements'
@@ -669,21 +667,14 @@ export function useDashboard() {
     // προθεσμίες του προηγούμενου χρήστη — και σε κοινή συσκευή αυτό είναι
     // διαρροή, όχι ενόχληση. Το σβήσιμο της γραμμής ΘΕΛΕΙ τη συνεδρία που
     // πρόκειται να λήξει: μετά την αποσύνδεση, η RLS δεν θα το επέτρεπε ποτέ.
-    try {
-      const gone = await unsubscribeDevice();
-      if (gone) await pushDevices.remove(supabase, gone);
-      setDeviceNotify(false);
-    } catch { /* η αποσύνδεση δεν σταματά για μια συνδρομή */ }
-
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+    // Τα τρία βήματα (ειδοποιήσεις, συνεδρία, περιηγητής) ζουν στο
+    // lib/auth/endSession: τα μοιράζεται με την πύλη του λογιστή.
+    if (!await endSession(supabase)) {
       // duration 0 = μένει ώσπου να το κλείσει ο χρήστης, ίδιο βάρος με το alert που
-      // αντικατέστησε. Οι δύο προτάσεις ενώθηκαν σε μία παράγραφο: το toast δεν
-      // αποδίδει αλλαγές γραμμής και το «\n\n» θα κολλούσε τις προτάσεις μεταξύ τους.
-      notifyError('Δεν έγινε η αποσύνδεση. Δες τη σύνδεσή σου στο δίκτυο και δοκίμασε ξανά. Τα δεδομένα σου στη συσκευή δεν πειράχτηκαν.', { duration: 0 });
+      // αντικατέστησε.
+      notifyError(SIGN_OUT_FAILED, { duration: 0 });
       return;
     }
-    leaveDevice();
     // ΠΛΗΡΗΣ ΦΟΡΤΩΣΗ, ΟΧΙ ΠΛΟΗΓΗΣΗ ΤΟΥ ROUTER: μετά την αποσύνδεση θέλουμε να
     // πεθάνει ΟΛΗ η μνήμη της εφαρμογής, όχι να μείνει ζωντανή με άδειο χρήστη.
     // Η σκληρή πλοήγηση (πλήρες reload) ζει στο lib/core/navigate.

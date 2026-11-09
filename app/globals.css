@@ -2875,10 +2875,27 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   border: 0;
 }
 
+/* ΟΙ ΓΡΑΜΜΕΣ ΤΗΣ ΚΑΡΤΑΣ ΠΕΛΑΤΗ ΣΤΗΝ ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ. Στο τηλέφωνο τα κουμπιά
+   πέφτουν κάτω από το κείμενο· χωρίς γραμμή ανάμεσα δεν φαινόταν σε ποια
+   εκκρεμότητα ανήκει το «Ζήτησέ το». */
+.po-item-rows > li + li { border-top: 1px solid var(--border-subtle); }
+.po-item-rows > li { padding: 8px 0; }
+.po-item-rows > li:last-child { padding-bottom: 0; }
+
 /* Google-style focus ring for all interactive elements */
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+/* Η ΕΣΤΙΑΣΗ ΠΟΥ ΓΥΡΙΣΕ ΜΕΤΑ ΑΠΟ ΚΛΙΚ ΔΕΝ ΔΕΙΧΝΕΙ ΔΑΧΤΥΛΙΔΙ. Το κουμπί που άνοιξε
+   ένα παράθυρο ξαναπαίρνει την εστίαση όταν αυτό κλείσει (useOverlayShell)· αν
+   το παράθυρο έκλεισε με ποντίκι ή δάχτυλο, η επιστροφή φέρει `data-quiet-focus`
+   ως το πρώτο πλήκτρο. Χωρίς αυτό ο Chrome άναβε το δαχτυλίδι στο κουμπί και το
+   άφηνε εκεί, σαν κουμπί κολλημένο σε επιλογή. */
+[data-quiet-focus]:focus-visible { outline: none; }
+.po-hov-accent[data-quiet-focus]:focus-visible:not([aria-expanded="true"]) {
+  border-color: var(--hov-edge-rest, var(--border-default));
+  color: var(--hov-ink-rest, var(--text-secondary));
 }
 /* ═══ Η ΠΤΥΣΣΟΜΕΝΗ ΚΕΦΑΛΙΔΑ, ΓΡΑΜΜΕΝΗ ΜΙΑ ΦΟΡΑ ═══════════════════════════
    Το σχήμα —σειρά σε πλήρες πλάτος, χωρίς πλαίσιο, χωρίς φόντο, κείμενο

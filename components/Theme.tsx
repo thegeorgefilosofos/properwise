@@ -171,6 +171,52 @@ export function Card({ children, style, className, pad = 'sm', gap = true, eleva
 // είχαν ΤΟ ΙΔΙΟ 1000 και κέρδιζε όποιο έτυχε να γραφτεί τελευταίο στο DOM.
 // Η φόρμα επεξεργασίας ζωγραφιζόταν ΚΑΤΩ από το πέπλο του ντοσιέ: ο χρήστης
 // πατούσε «Επεξεργασία» και δεν έβλεπε τίποτα.
+// ── Η ΕΠΙΣΤΡΟΦΗ ΤΗΣ ΕΣΤΙΑΣΗΣ ΔΕΝ ΑΝΑΒΕΙ ΔΑΧΤΥΛΙΔΙ ΜΕΤΑ ΑΠΟ ΚΛΙΚ ────────────
+// ΤΟ ΣΦΑΛΜΑ (09/11/2026, πύλη λογιστή). Ο λογιστής πατούσε με το ποντίκι
+// «Καταχώρηση», έγραφε στη φόρμα, πατούσε «Αποθήκευση» και το παράθυρο
+// έκλεινε: η εστίαση γύριζε με `focus()` στο κουμπί που το άνοιξε και ο
+// Chrome έβαζε το μπλε δαχτυλίδι του `:focus-visible`, γιατί το τελευταίο
+// εστιασμένο στοιχείο (το πεδίο) το είχε. Το δαχτυλίδι έμενε ώσπου να κάνει
+// κλικ αλλού: μοιάζει με κουμπί κολλημένο σε επιλογή.
+//
+// Η ΕΠΙΣΤΡΟΦΗ ΜΕΝΕΙ (ο χρήστης πληκτρολογίου συνεχίζει από εκεί που ήταν). Αν
+// όμως το τελευταίο που άγγιξε ήταν ποντίκι ή δάχτυλο, το στοιχείο παίρνει
+// `data-quiet-focus`, που σβήνει το δαχτυλίδι (globals.css)· το χάνει στο
+// πρώτο πλήκτρο ή μόλις φύγει η εστίαση. Πατάς Tab, το δαχτυλίδι γυρίζει.
+let lastInputPointer = false;
+let lastKey = '';
+let pointerWatched = false;
+function watchPointer() {
+  if (pointerWatched || typeof document === 'undefined') return;
+  pointerWatched = true;
+  document.addEventListener('pointerdown', () => { lastInputPointer = true; }, true);
+  document.addEventListener('keydown', e => { lastInputPointer = false; lastKey = e.key; }, true);
+}
+// Από τη φόρτωση και όχι από το πρώτο παράθυρο: αλλιώς το κλικ που άνοιξε το
+// ΠΡΩΤΟ παράθυρο δεν μετρούσε.
+watchPointer();
+function restoreFocus(el: HTMLElement, openedByPointer: boolean) {
+  // Ανοιξε με κλικ και έκλεισε με κλικ ή με Escape: κανένα δαχτυλίδι. Με Tab
+  // μέσα στο παράθυρο ο άνθρωπος πλοηγείται με πληκτρολόγιο και το δαχτυλίδι μένει.
+  if (lastInputPointer || (openedByPointer && lastKey === 'Escape')) quietFocus(el);
+  el.focus();
+}
+/**
+ * Σβήνει το δαχτυλίδι εστίασης ενός στοιχείου ώσπου να πατηθεί πλήκτρο ή να
+ * φύγει η εστίαση. Για ό,τι άνοιξε με ποντίκι και έκλεισε χωρίς Tab (π.χ. το
+ * μενού του ActionMenu που κλείνει με Escape).
+ */
+export function quietFocus(el: HTMLElement) {
+  el.setAttribute('data-quiet-focus', '');
+  const done = () => {
+    el.removeAttribute('data-quiet-focus');
+    el.removeEventListener('blur', done);
+    document.removeEventListener('keydown', done, true);
+  };
+  el.addEventListener('blur', done);
+  document.addEventListener('keydown', done, true);
+}
+
 const overlayStack: symbol[] = [];
 const overlayWatchers = new Set<() => void>();
 const notifyOverlays = () => overlayWatchers.forEach(fn => fn());
@@ -288,12 +334,14 @@ export function useOverlayShell(open: boolean, onClose: () => void) {
   // ήδη την εστίαση, δεν του την παίρνουμε.
   useEffect(() => {
     if (!open) return;
+    watchPointer();
+    const openedByPointer = lastInputPointer;
     returnTo.current = (document.activeElement as HTMLElement | null) ?? null;
     const panel = panelRef.current;
     const inside = panel && returnTo.current && panel.contains(returnTo.current);
     if (!inside) panel?.focus();
     const back = inside ? null : returnTo.current;
-    return () => { if (back?.isConnected) back.focus(); };
+    return () => { if (back?.isConnected) restoreFocus(back, openedByPointer); };
   }, [open]);
 
   // ── ΤΟ ΦΟΝΤΟ ΔΕΝ ΚΥΛΑ ───────────────────────────────────────────────────
