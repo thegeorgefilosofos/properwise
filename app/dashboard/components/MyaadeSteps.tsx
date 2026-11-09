@@ -175,8 +175,14 @@ export function CenterState({ tone, title, info, children, action }: {
       <div style={{ width: 56, height: 56, borderRadius: T.radius.pill, background: `var(--${tone}-soft)`, border: `1px solid var(--${tone}-border)`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: T.sp.xl }}>
         <svg aria-hidden="true" width={24} height={24} viewBox="0 0 24 24" fill="none" stroke={`var(--${tone})`} strokeWidth="2.5" strokeLinecap="round">{icon}</svg>
       </div>
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: T.sp.xs, fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-        <span>{title}</span>{info && <InfoDot text={info} />}
+      {/* Το ⓘ κολλά στην ΤΕΛΕΥΤΑΙΑ λέξη του τίτλου. Με inline-flex ο τίτλος που
+          τυλίγεται («Αυτό δεν είναι Ε9 ούτε πράξη ΕΝΦΙΑ», 09/11/2026) έπιανε όλο το
+          πλάτος και το ⓘ έμενε μόνο του στη δεξιά άκρη, στη μέση των δύο γραμμών. */}
+      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', textWrap: 'balance' }}>
+        {info ? (() => {
+          const cut = title.lastIndexOf(' ');
+          return <>{title.slice(0, cut + 1)}<span style={{ whiteSpace: 'nowrap' }}>{title.slice(cut + 1)}<InfoDot text={info} /></span></>;
+        })() : title}
       </div>
       {children && <div style={{ marginTop: T.sp.lg, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: T.sp.lg }}>{children}</div>}
       {action && <div style={{ marginTop: T.sp.xl }}><Btn variant="secondary" onClick={action.onClick}>{action.label}</Btn></div>}

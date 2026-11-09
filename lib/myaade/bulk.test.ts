@@ -217,6 +217,19 @@ async function commitChecks() {
     && !fake.calls.some(c => c.table === 'property_documents' && c.op === 'insert'), { out, imp: imp?.payload });
 }
 
+// ── 8. Η διεύθυνση μένει σε κεφαλαία, όπως την τυπώνει η ΑΑΔΕ ────────
+// Τα πεζά θα ήθελαν τόνους που δεν βγαίνουν από τα κεφαλαία (review.ts, suggestName).
+{
+  const doc = okDoc(parseE9(fakeE9Lines([{ n: 1, street: ['ΟΔΟΣ', 'ΠΑΡΑΔΕΙΓΜΑΤΟΣ', '(ΑΝΩΝΥΜΟΣ)'], floor: '2' }]))) as MyAadeImport;
+  const want = 'ΟΔΟΣ ΠΑΡΑΔΕΙΓΜΑΤΟΣ (ΑΝΩΝΥΜΟΣ) 11';
+  const d = buildDrafts(doc, [], Infinity)[0];
+  ok('κεφαλαία: η διεύθυνση της γραμμής όπως στο έγγραφο', d?.address === want, d?.address);
+  ok('κεφαλαία: το όνομα κρατά τη διεύθυνση αυτούσια, χωρίς πεζά χωρίς τόνο', d?.name.includes(want) && !/Ανωνυμος|Οδος|Παραδειγματος/.test(d.name), d?.name);
+  const db = newPropertyRow('u', commitRowOf(d));
+  ok('κεφαλαία: έτσι φτάνει και στη βάση', db.address === want && String(db.name).includes(want), db);
+  ok('κεφαλαία: ο δήμος μένει «ΑΘΗΝΑΙΩΝ» (όχι «Αθηναιων»)', doc.properties[0].municipality === 'ΑΘΗΝΑΙΩΝ', doc.properties[0].municipality);
+}
+
 commitChecks().then(() => {
   console.log(fail === 0 ? `✓ μαζική καταχώρηση: ${pass} έλεγχοι πέρασαν` : `✗ μαζική καταχώρηση: ${fail} απέτυχαν από ${pass + fail}`);
   process.exit(fail ? 1 : 0);
