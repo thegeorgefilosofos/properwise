@@ -967,7 +967,7 @@ export default function AccountantWorkspace() {
       <div style={{ margin: `${T.sp.section}px 0 0`, maxWidth: '65ch' }}>
         <p style={{ ...TT.label, color: 'var(--text-tertiary)', margin: 0 }}>Ποιους βλέπεις</p>
       <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', margin: `${T.sp.xs}px 0 0`, lineHeight: 1.6, fontFamily: T.font.sans }}>
-          Βλέπεις μόνο τους πελάτες που έχουν εξουσιοδοτήσει το γραφείο. Η πρόσβαση τερματίζεται αμέσως αν ο ιδιοκτήτης την ανακαλέσει ή αν πάψεις να είσαι μέλος του γραφείου.
+          Βλέπεις μόνο τους πελάτες που έχουν εξουσιοδοτήσει το γραφείο. Η πρόσβαση λήγει αμέσως με την ανάκλησή της από τον πελάτη ή με την αποχώρησή σου από το γραφείο.
         </p>
       </div>
       </main>

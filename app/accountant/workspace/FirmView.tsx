@@ -140,7 +140,7 @@ export default function FirmView() {
     const who = inv.email.trim();
     notify(r.data?.existing
       ? 'Η διεύθυνση είχε ήδη πρόσκληση.'
-      : `Η πρόσκληση καταχωρήθηκε. Πες στο ${who} να συνδεθεί με αυτό το email στο ${SITE_HOST}${PORTAL_HOME} για να την αποδεχτεί.`, { duration: 9000 });
+      : `Η πρόσκληση καταχωρήθηκε. Για να την αποδεχτεί, το μέλος συνδέεται στο ${SITE_HOST}${PORTAL_HOME} με τη διεύθυνση ${who}.`, { duration: 9000 });
     await load();
   };
 
