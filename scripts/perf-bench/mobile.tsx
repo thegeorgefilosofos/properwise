@@ -174,7 +174,7 @@ const respond: Responder = (call) => {
 };
 window.__respond = respond;
 // Οι συναρτήσεις της βάσης: για τα γραφεία, οι απαντήσεις του scripts/perf-bench/firms.tsx.
-(window as unknown as { __rpc: (fn: string) => unknown }).__rpc = (fn: string) => firmRpc(which, fn);
+(window as unknown as { __rpc: (fn: string, args?: unknown) => unknown }).__rpc = (fn: string, args?: unknown) => firmRpc(which, fn, args);
 window.__t = {};
 window.__rows = () => document.querySelectorAll('tbody tr').length;
 

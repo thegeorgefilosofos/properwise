@@ -466,11 +466,11 @@ declare
   day json; res json; fcount int;
 begin
   perform probe_w.as_('O');
-  day := public.owner_firm_day(current_date);
+  day := public.owner_firm_day((now() at time zone 'Europe/Athens')::date);
   select (x->>'total')::int into fcount from json_array_elements(day) x where (x->>'firmId')::uuid = f;
   if coalesce(fcount, 0) < 3 or json_array_length(day) <> 2 then raise exception 'Η σύνοψη της ημέρας λάθος: %', day; end if;
 
-  res := public.owner_undo_firm_day(f, current_date);
+  res := public.owner_undo_firm_day(f, (now() at time zone 'Europe/Athens')::date);
   if not (res->>'ok')::boolean then raise exception 'Αναίρεση: %', res; end if;
 
   -- Του Φ, σήμερα: πίσω.
@@ -495,7 +495,7 @@ begin
   end if;
   -- Και ξένος δεν αναιρεί για λογαριασμό του ιδιοκτήτη.
   perform probe_w.as_('X');
-  if (public.owner_undo_firm_day((select id from probe_w.firm x where x.k = 'G'), current_date)->>'undone')::int <> 0 then
+  if (public.owner_undo_firm_day((select id from probe_w.firm x where x.k = 'G'), (now() at time zone 'Europe/Athens')::date)->>'undone')::int <> 0 then
     raise exception 'ΠΑΡΑΒΙΑΣΗ: το γραφείο αναίρεσε σαν ιδιοκτήτης';
   end if;
   raise notice 'probe: η «Αναίρεση όλων» αγγίζει μόνο εκείνο το γραφείο, εκείνη τη μέρα';

@@ -11,7 +11,7 @@
 // μία πρόταση (LEVEL_HINT). Τίποτε περισσότερο δεν υπόσχεται.
 //
 // Η ΣΥΝΟΨΗ ΤΗΣ ΗΜΕΡΑΣ: μία πρόταση ανά γραφείο, όχι μία ειδοποίηση ανά
-// εγγραφή, με «Δες» και «Αναίρεση όλων των σημερινών».
+// εγγραφή, για σήμερα και χθες, με «Δες» και «Αναίρεση όλων» ανά μέρα.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -21,26 +21,35 @@ import { SetRow } from './SettingsKit';
 import { notify, notifyError } from '@/components/Toast';
 import { confirmDialog } from '@/components/confirmBus';
 import { athensToday, athensTime } from '@/lib/core/time';
+import { FIRMS_CHANGED } from '@/lib/data/accountantLink';
 import {
-  ownerFirms, setLevel, revokeFirm, firmDay, undoFirmDay, daySentence, reasonText, logLine,
+  ownerFirms, setLevel, revokeFirm, firmDay, undoFirmDay, undoDaysFrom, inAthensDay, daySentence, reasonText, logLine,
   LEVELS, LEVEL_LABEL, LEVEL_HINT, ROLE_LABEL, KIND_LABEL,
-  type OwnerFirm, type AccessLevel, type FirmDay, type LogEntry,
+  type OwnerFirm, type AccessLevel, type FirmDay, type LogEntry, type UndoDay,
 } from '@/lib/data/firms';
 
 export function FirmAccess() {
   const supabase = useMemo(() => createClient(), []);
   const [firms, setFirms] = useState<OwnerFirm[] | null>(null);
+  // «ΔΕΝ ΔΙΑΒΑΣΤΗΚΕ» ΔΕΝ ΕΙΝΑΙ «ΚΑΝΕΝΑ ΓΡΑΦΕΙΟ». Η αποτυχία έκρυβε όλη την
+  // ενότητα μαζί με την «Ανάκληση του γραφείου»: ο ιδιοκτήτης δεν είχε πού
+  // να κόψει την πρόσβαση τη στιγμή που ίσως το ήθελε.
+  const [failed, setFailed] = useState(false);
 
   const load = useCallback(async () => {
     const r = await ownerFirms(supabase);
+    setFailed(!r.ok);
     setFirms(r.ok ? r.data.filter(f => f.firmId) : []);
   }, [supabase]);
 
   useEffect(() => {
     let alive = true;
-    ownerFirms(supabase).then(r => { if (alive) setFirms(r.ok ? r.data.filter(f => f.firmId) : []); });
-    return () => { alive = false; };
-  }, [supabase]);
+    ownerFirms(supabase).then(r => { if (!alive) return; setFailed(!r.ok); setFirms(r.ok ? r.data.filter(f => f.firmId) : []); });
+    // Η ανάκληση του συνδέσμου λογιστή (TabSettings) κόβει και τα γραφεία.
+    const again = () => { void load(); };
+    window.addEventListener(FIRMS_CHANGED, again);
+    return () => { alive = false; window.removeEventListener(FIRMS_CHANGED, again); };
+  }, [supabase, load]);
 
   const change = async (f: OwnerFirm, level: AccessLevel) => {
     const r = await setLevel(supabase, f.firmId as string, level);
@@ -61,6 +70,15 @@ export function FirmAccess() {
     await load();
   };
 
+  if (failed) {
+    return (
+      <SetRow title="Λογιστικά γραφεία" desc="Τα γραφεία που σε βλέπουν δεν διαβάστηκαν. Η πρόσβασή τους δεν άλλαξε.">
+        <div style={{ marginTop: T.sp.md }}>
+          <Btn variant="secondary" onClick={() => void load()}>Δοκίμασε ξανά</Btn>
+        </div>
+      </SetRow>
+    );
+  }
   if (!firms || firms.length === 0) return null;
 
   return (
@@ -100,81 +118,108 @@ export function FirmAccess() {
   );
 }
 
-/** Από πότε ψάχνουμε: δύο μέρες πίσω καλύπτουν κάθε «σήμερα» στην ώρα Αθήνας. */
-const sinceTwoDays = () => new Date(Date.now() - 2 * 86_400_000).toISOString();
+/**
+ * Από πότε ψάχνουμε στο ημερολόγιο: τρεις μέρες πίσω καλύπτουν πάντα την αρχή
+ * του «χθες» στην ώρα Αθήνας (ως 48 ώρες πριν, συν τη θερινή ώρα). Το φίλτρο
+ * της μέρας γίνεται μετά, με `inAthensDay`.
+ */
+const sinceThreeDays = () => new Date(Date.now() - 3 * 86_400_000).toISOString();
 
+interface DayGroup extends UndoDay { firms: FirmDay[] }
+
+/**
+ * ΣΗΜΕΡΑ ΚΑΙ ΧΘΕΣ, ΟΠΩΣ ΤΑ ΥΠΟΣΧΕΤΑΙ Η ΠΟΛΙΤΙΚΗ. Η Πολιτική απορρήτου (#grafeia)
+ * λέει ότι ο ιδιοκτήτης βλέπει τη σύνοψη κάθε ημέρας και αναιρεί μέσα σε
+ * `FIRM_UNDO_DAYS` ημέρες. Η οθόνη έδειχνε μόνο το σήμερα: ό,τι καταχώρησε το
+ * γραφείο στις 23:50 χανόταν από την οθόνη δέκα λεπτά μετά, ενώ η αναίρεσή του
+ * ήταν ακόμη δυνατή. Κάθε μέρα έχει τις δικές της γραμμές και τη δική της
+ * «Αναίρεση όλων»· η βάση ελέγχει ξανά ότι η μέρα είναι μέσα στο παράθυρο.
+ */
 export function FirmDaySummary() {
   const supabase = useMemo(() => createClient(), []);
   const today = athensToday();
-  const [days, setDays] = useState<FirmDay[]>([]);
-  const [seeing, setSeeing] = useState<{ firm: FirmDay; rows: LogEntry[] } | null>(null);
+  const [groups, setGroups] = useState<DayGroup[]>([]);
+  const [seeing, setSeeing] = useState<{ firm: FirmDay; when: UndoDay; rows: LogEntry[] } | null>(null);
   const [busy, setBusy] = useState('');
 
-  const load = useCallback(async () => {
-    const r = await firmDay(supabase, today);
-    setDays(r.ok ? r.data : []);
+  const fetchAll = useCallback(async (): Promise<DayGroup[]> => {
+    const days = undoDaysFrom(today);
+    const read = await Promise.all(days.map(d => firmDay(supabase, d.day)));
+    return days.map((d, i) => ({ ...d, firms: read[i].ok ? read[i].data : [] }));
   }, [supabase, today]);
+
+  const load = useCallback(async () => { setGroups(await fetchAll()); }, [fetchAll]);
 
   useEffect(() => {
     let alive = true;
-    firmDay(supabase, today).then(r => { if (alive) setDays(r.ok ? r.data : []); });
+    fetchAll().then(g => { if (alive) setGroups(g); });
     return () => { alive = false; };
-  }, [supabase, today]);
+  }, [fetchAll]);
 
-  const see = async (d: FirmDay) => {
+  const see = async (d: FirmDay, when: UndoDay) => {
     // ΟΛΑ ΟΣΑ ΘΑ ΑΓΓΙΞΕΙ Η «ΑΝΑΙΡΕΣΗ ΟΛΩΝ»: νέες, αλλαγές, αφαιρέσεις,
     // πληρωμές. Το ημερολόγιο κρατά ποια πεδία άλλαξαν, όχι τις τιμές τους
     // (20261104150000)· τις τιμές τις βλέπει ο ιδιοκτήτης στις καρτέλες του.
     const { data, error } = await supabase.from('firm_record_log')
       .select('id,kind,action,label,fields,member_name,at').eq('firm_id', d.firmId).is('undone_at', null)
-      .in('action', ['insert', 'update', 'delete', 'mark_paid']).gte('at', sinceTwoDays()).order('at', { ascending: false });
+      .in('action', ['insert', 'update', 'delete', 'mark_paid']).gte('at', sinceThreeDays()).order('at', { ascending: false });
     // «Δεν διαβάστηκε» δεν είναι «δεν καταχώρησε τίποτα».
-    if (error) { notifyError('Οι σημερινές καταχωρήσεις δεν διαβάστηκαν. Δοκίμασε ξανά.'); return; }
-    const rows = ((data ?? []) as LogEntry[]).filter(r => athensToday(new Date(r.at)) === today);
-    setSeeing({ firm: d, rows });
+    if (error) { notifyError('Οι καταχωρήσεις δεν διαβάστηκαν. Δοκίμασε ξανά.'); return; }
+    const rows = ((data ?? []) as LogEntry[]).filter(r => inAthensDay(r.at, when.day));
+    setSeeing({ firm: d, when, rows });
   };
 
-  const undo = async (d: FirmDay) => {
+  const undo = async (d: FirmDay, when: UndoDay) => {
+    const adj = when.lower === 'σήμερα' ? 'σημερινές' : when.lower === 'χθες' ? 'χθεσινές' : `της ${fd(when.day)}`;
     if (!await confirmDialog({
-      title: 'Αναίρεση όλων των σημερινών καταχωρήσεων',
-      message: `Ό,τι καταχώρησε σήμερα το γραφείο ${d.firmName} φεύγει και οι πληρωμές που σημείωσε ξανανοίγουν. Ό,τι άλλαξες εσύ στο μεταξύ μένει.`,
+      title: `Αναίρεση όλων: ${when.lower}, ${fd(when.day)}`,
+      message: `Ό,τι καταχώρησε ${when.lower} το γραφείο ${d.firmName} φεύγει και οι πληρωμές που σημείωσε ξανανοίγουν. Ό,τι άλλαξες εσύ στο μεταξύ μένει.`,
       confirmLabel: 'Αναίρεση όλων', tone: 'negative',
     })) return;
-    setBusy(d.firmId);
-    const r = await undoFirmDay(supabase, d.firmId, today);
+    const key = `${d.firmId}:${when.day}`;
+    setBusy(key);
+    const r = await undoFirmDay(supabase, d.firmId, when.day);
     setBusy('');
     if (!r.ok) { notifyError(reasonText(r.reason)); return; }
     setSeeing(null);
-    notify('Οι σημερινές καταχωρήσεις του γραφείου αναιρέθηκαν.');
+    notify(`Οι ${adj} καταχωρήσεις του γραφείου αναιρέθηκαν.`);
     await load();
   };
 
-  if (days.length === 0) return null;
+  const shown = groups.filter(g => g.firms.length > 0);
+  if (shown.length === 0) return null;
 
   return (
-    <div style={{ margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--border-subtle)', display: 'grid', gap: T.sp.md }}>
-      {days.map(d => (
-        <div key={d.firmId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: T.sp.md, flexWrap: 'wrap' }}>
-          <span style={{ ...TT.body, color: 'var(--text-primary)', flex: '1 1 260px', fontVariantNumeric: 'tabular-nums' }}>
-            {daySentence(d)}
-            {/* ΑΡΘΡΟ 14 ΓΚΠΔ: ο μισθωτής ενημερώνεται από τον ιδιοκτήτη, όποιος κι αν τον καταχώρησε (Πολιτική #grafeia). */}
-            {(d.counts.tenant ?? 0) > 0 && (
-              <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', display: 'block', marginTop: T.sp.xs }}>
-                Το γραφείο πρόσθεσε μισθωτή. Ενημέρωσε τον μισθωτή για την επεξεργασία των στοιχείων του.
+    <div style={{ margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--border-subtle)', display: 'grid', gap: T.sp.lg }}>
+      {shown.map(g => (
+        <section key={g.day} aria-label={`${g.word}, ${fd(g.day)}`} style={{ display: 'grid', gap: T.sp.md }}>
+          <h3 style={{ ...TT.label, margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+            {g.word}<span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>{` · ${fd(g.day)}`}</span>
+          </h3>
+          {g.firms.map(d => (
+            <div key={d.firmId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: T.sp.md, flexWrap: 'wrap' }}>
+              <span style={{ ...TT.body, color: 'var(--text-primary)', flex: '1 1 260px', fontVariantNumeric: 'tabular-nums' }}>
+                {daySentence(d, g.lower)}
+                {/* ΑΡΘΡΟ 14 ΓΚΠΔ: ο μισθωτής ενημερώνεται από τον ιδιοκτήτη, όποιος κι αν τον καταχώρησε (Πολιτική #grafeia). */}
+                {(d.counts.tenant ?? 0) > 0 && (
+                  <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', display: 'block', marginTop: T.sp.xs }}>
+                    Το γραφείο πρόσθεσε μισθωτή. Ενημέρωσε τον μισθωτή για την επεξεργασία των στοιχείων του.
+                  </span>
+                )}
               </span>
-            )}
-          </span>
-          <div className="act-row" style={{ display: 'flex', gap: T.sp.sm }}>
-            <Btn variant="secondary" onClick={() => void see(d)}>Δες</Btn>
-            <Btn variant="ghost" className="po-btn-keep" onClick={() => void undo(d)} disabled={busy === d.firmId}>Αναίρεση όλων</Btn>
-          </div>
-        </div>
+              <div className="act-row" style={{ display: 'flex', gap: T.sp.sm }}>
+                <Btn variant="secondary" onClick={() => void see(d, g)}>Δες</Btn>
+                <Btn variant="secondary" className="po-btn-keep" onClick={() => void undo(d, g)} disabled={busy === `${d.firmId}:${g.day}`}>Αναίρεση όλων</Btn>
+              </div>
+            </div>
+          ))}
+        </section>
       ))}
       <Modal open={!!seeing} onClose={() => setSeeing(null)} title={seeing?.firm.firmName ?? ''}
-        subtitle={`Σήμερα, ${fd(today)}${seeing ? ` · ${seeing.rows.length === 1 ? '1 κίνηση' : `${seeing.rows.length} κινήσεις`}` : ''}`} size="sm"
+        subtitle={seeing ? `${seeing.when.word}, ${fd(seeing.when.day)} · ${seeing.rows.length === 1 ? '1 κίνηση' : `${seeing.rows.length} κινήσεις`}` : ''} size="sm"
         footer={seeing ? (
           <>
-            <Btn variant="ghost" className="po-btn-keep" onClick={() => void undo(seeing.firm)} disabled={busy === seeing.firm.firmId}>Αναίρεση όλων</Btn>
+            <Btn variant="secondary" className="po-btn-keep" onClick={() => void undo(seeing.firm, seeing.when)} disabled={busy === `${seeing.firm.firmId}:${seeing.when.day}`}>Αναίρεση όλων</Btn>
             <Btn variant="primary" onClick={() => setSeeing(null)}>Εντάξει</Btn>
           </>
         ) : undefined}>

@@ -35,6 +35,7 @@ import ActivityLog from './ActivityLog';
 import OrgTeam from './OrgTeam';
 import { exportAllData } from '@/lib/dataExport';
 import * as accountantLink from '@/lib/data/accountantLink';
+import { confirmDialog } from '@/components/confirmBus';
 import { PLANS, PLAN_ORDER, normalizePlan, type PlanId } from '@/lib/billing/plans';
 import { hasVerifiedFactor } from '@/lib/auth/mfa';
 
@@ -163,11 +164,24 @@ export function AccountantAccess({ userId }: { userId: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  // Η ΑΝΑΚΛΗΣΗ ΤΟΥ ΣΥΝΔΕΣΜΟΥ ΚΟΒΕΙ ΚΑΙ ΤΑ ΓΡΑΦΕΙΑ. Γινόταν με ένα πάτημα,
+  // χωρίς ερώτηση· η οθόνη έλεγε ακόμη «Σε βλέπουν: …» από κάτω. Τώρα
+  // ρωτά, λέει ονομαστικά τι κόβεται και η ενότητα των γραφείων ξαναδιαβάζει.
   const cut = async () => {
+    const firms = await import('@/lib/data/firms').then(m => m.ownerFirms(supabase));
+    const names = firms.ok ? [...new Set(firms.data.filter(f => f.firmId).map(f => f.firmName ?? f.name))] : [];
+    const list = names.length <= 1 ? names[0] : `${names.slice(0, -1).join(', ')} και ${names[names.length - 1]}`;
+    if (!await confirmDialog({
+      title: 'Ανάκληση πρόσβασης λογιστή',
+      message: 'Ο σύνδεσμος του λογιστή σταματά να ανοίγει.'
+        + (names.length ? ` Κόβεται και η πρόσβαση ${names.length === 1 ? 'του γραφείου' : 'των γραφείων'} ${list}: κανένα μέλος δεν βλέπει πια τα στοιχεία σου.` : '')
+        + ' Ό,τι έχει ήδη καταχωρηθεί μένει στον λογαριασμό σου.',
+      confirmLabel: 'Ανάκληση πρόσβασης', tone: 'negative',
+    })) return;
     setBusy(true);
     const ok = await accountantLink.revoke(supabase, userId);
     setBusy(false);
-    if (ok) setLink(l => (l ? { ...l, live: false } : l));
+    if (ok) { setLink(l => (l ? { ...l, live: false } : l)); window.dispatchEvent(new Event(accountantLink.FIRMS_CHANGED)); }
     else notifyError('Η πρόσβαση δεν ανακλήθηκε');
   };
 

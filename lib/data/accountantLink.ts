@@ -194,3 +194,9 @@ export function rotatedSentence(r: { at: string; reason: RotatedReason }): strin
   const day = new Date(r.at).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   return `Ο σύνδεσμος ανανεώθηκε στις ${day} επειδή ${ROTATED_WHY[r.reason]}. Ο παλιός δεν ανοίγει πια. Όσοι σε βλέπουν με δικό τους λογαριασμό συνεχίζουν κανονικά.`;
 }
+
+/**
+ * Το σήμα «άλλαξαν τα γραφεία που σε βλέπουν». Η ανάκληση του συνδέσμου κόβει
+ * και τα γραφεία· η ενότητα των γραφείων (FirmAccess) ακούει και ξαναδιαβάζει.
+ */
+export const FIRMS_CHANGED = 'po:firms-changed';
