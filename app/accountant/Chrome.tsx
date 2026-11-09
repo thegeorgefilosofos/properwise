@@ -199,7 +199,7 @@ export function PortalTitle({ over, title, meta, right }: {
           ΠΑΝΤΑ ΔΥΟ ΣΤΗΛΕΣ ΚΑΙ ΤΟ ΜΟΝΟ ΤΕΛΕΥΤΑΙΟ ΑΠΛΩΝΕΤΑΙ. Με «auto-fit» τρία
           κουμπιά έβγαιναν 2 + 1, με το τρίτο μόνο του και κενό δεξιά του
           (σαρωτής διάταξης, 375 έως 440). */}
-      <style>{`.pb-head{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:${T.sp.xxl}px;row-gap:${T.sp.lg}px;align-items:start;margin-top:${T.sp.xs + 2}px}
+      <style>{`.pb-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:${T.sp.xl}px;align-items:start;margin-top:${T.sp.xs + 2}px}
 .pb-acts{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:${T.sp.sm}px;max-width:min(560px,60vw)}
 @media (max-width:960px){.pb-head{grid-template-columns:minmax(0,1fr)}.pb-acts{justify-content:flex-start;max-width:none}}
 @media (max-width:560px){.pb-acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.pb-acts>*{white-space:nowrap}.pb-acts>:last-child:nth-child(odd){grid-column:1/-1}}`}</style>

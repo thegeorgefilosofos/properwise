@@ -665,7 +665,7 @@ export default function AccountantWorkspace() {
               κείμενο. Τώρα: κύριο (ανοίγει μόλις διαλεχτεί μέλος), δευτερεύον,
               ήσυχο στο τέλος, ίδιο ύψος με τον επιλογέα. Στο τηλέφωνο πλήθος και
               επιλογέας σε μία σειρά, οι κινήσεις από κάτω σε όλο το πλάτος. */}
-          <style>{`.bulk-bar{display:flex;flex-wrap:wrap;align-items:center;gap:${T.sp.sm}px ${T.sp.lg}px}
+          <style>{`.bulk-bar{display:flex;flex-wrap:wrap;align-items:center;gap:${T.sp.xs}px ${T.sp.lg}px}
 .bulk-pick{display:flex;align-items:center;gap:${T.sp.md}px;flex:1 1 320px;min-width:0}
 .bulk-acts{display:flex;align-items:center;gap:${T.sp.sm}px;margin-left:auto}
 @media (max-width:560px){.bulk-acts{width:100%;margin-left:0}.bulk-acts>*{flex:1 1 auto}}`}</style>
@@ -750,7 +750,7 @@ export default function AccountantWorkspace() {
                     στοιχιζόταν στη βασική γραμμή του ονόματος και τα κουμπιά 36
                     κρέμονταν από κάτω της· τώρα η πρώτη γραμμή έχει το ύψος του
                     κουμπιού (T.h.md) και όλα κάθονται στο κέντρο της. */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: `${T.sp.sm}px ${T.sp.lg}px`, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: `${T.sp.xs}px ${T.sp.lg}px`, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', gap: T.sp.md, alignItems: 'flex-start', minWidth: 0, flex: '1 1 260px' }}>
                   {team && manager && (
                     /* Ο ΣΤΟΧΟΣ ΕΙΝΑΙ 44, ΤΟ ΚΟΥΤΙ 18. Η ετικέτα γύρω του δίνει το
