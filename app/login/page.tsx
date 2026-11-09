@@ -1,5 +1,5 @@
 'use client'
-import { T, Btn } from '@/components/Theme'
+import { T, Btn, LinkBtn } from '@/components/Theme'
 import { useState, useEffect, useSyncExternalStore } from 'react'
 import { leaveDevice } from '@/lib/localPrivacy'
 import { useRouter } from 'next/navigation'
@@ -312,7 +312,12 @@ export default function LoginPage() {
   // παρουσίασης κάθε φορά.
   return (
     <main id="main" className="auth-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
-      <div className="auth-form">
+      {/* ── ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ΣΕ ΜΙΑ ΣΤΗΛΗ (09/11/2026) ─────────────────────
+          Στον υπολογιστή το πεδίο του κωδικού είχε 200 πλάτος και το κουμπί
+          από κάτω 460: δύο δεξιές ακμές, η μία στη μέση της στήλης. Τώρα η
+          στήλη του βήματος είναι 420 και πεδίο, κουμπί και βοήθεια πιάνουν
+          όλο το πλάτος της, όπως στο βήμα κωδικού της Google ή της Apple. */}
+      <div className="auth-form" style={factorId ? { maxWidth: 420 } : undefined}>
         <AuthMobileBrand />
         {/* ── ΤΡΕΙΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΜΙΑ ΦΟΡΜΑ ─────────────────────────────────
             ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ΔΕΝ ΠΗΡΕ ΔΙΚΗ ΤΟΥ ΦΟΡΜΑ, ΕΠΙΤΗΔΕΣ. Μια δεύτερη θα
@@ -357,19 +362,9 @@ export default function LoginPage() {
               <label htmlFor="login-mfa-code" className="po-field-label">{L ? L.code : 'Εξαψήφιος κωδικός'}</label>
               <input id="login-mfa-code" name="one-time-code" inputMode="numeric" maxLength={6} autoComplete="one-time-code"
                 value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="123456"
-                style={{ ...field, maxWidth: 200, fontFamily: T.font.mono, letterSpacing: '0.3em' }}
+                style={{ ...field, fontFamily: T.font.mono, fontSize: 18, letterSpacing: '0.3em' }}
                 onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
-              {/* ── Ο ΔΡΟΜΟΣ ΓΙΑ ΟΠΟΙΟΝ ΑΛΛΑΞΕ ΤΗΛΕΦΩΝΟ ─────────────────────
-                  Κωδικοί ανάκτησης δεν υπάρχουν, οπότε όποιος έχασε τη
-                  συσκευή με την εφαρμογή επαλήθευσης έβλεπε μόνο την
-                  «Έξοδο»: κλειδωμένος, χωρίς να ξέρει σε ποιον να γράψει. Το
-                  email του λογαριασμού είναι το πρώτο στοιχείο ταυτότητας
-                  που μπορεί να ελεγχθεί. */}
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '12px 0 0' }}>
-                {L ? L.noDevice : 'Δεν έχεις πρόσβαση στην εφαρμογή επαλήθευσης;'}{' '}
-                <a href={`mailto:${IDENTITY.supportEmail}?subject=${encodeURIComponent(L ? L.noDeviceSubject : 'Επαναφορά δεύτερου βήματος')}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{L ? L.noDeviceLink : 'Γράψε μας από το email του λογαριασμού σου'}</a>.
-              </p>
             </div>
           ) : (<>
           <div>
@@ -432,10 +427,30 @@ export default function LoginPage() {
             κουμπί να την κλείσει. Η έξοδος δεν παρακάμπτει τίποτα — σβήνει
             τη μισή συνεδρία αντί να την αφήσει ζωντανή. */}
         {factorId ? (
-          <div style={{ marginTop: 24, textAlign: 'center' }}>
-            <Btn variant="ghost" onClick={signOut} disabled={signingOut}>
+          /* ── Ο ΔΡΟΜΟΣ ΓΙΑ ΟΠΟΙΟΝ ΑΛΛΑΞΕ ΤΗΛΕΦΩΝΟ ─────────────────────────
+             Κωδικοί ανάκτησης δεν υπάρχουν, οπότε όποιος έχασε τη συσκευή
+             με την εφαρμογή επαλήθευσης έβλεπε μόνο την «Έξοδο»: κλειδωμένος,
+             χωρίς να ξέρει σε ποιον να γράψει. Το email του λογαριασμού είναι
+             το πρώτο στοιχείο ταυτότητας που μπορεί να ελεγχθεί.
+
+             ΚΑΤΩ ΑΠΟ ΤΟ ΚΟΥΜΠΙ, Η ΕΡΩΤΗΣΗ ΣΕ ΜΙΑ ΣΕΙΡΑ ΚΑΙ Ο ΣΥΝΔΕΣΜΟΣ ΣΤΗΝ
+             ΕΠΟΜΕΝΗ (09/11/2026). Μέσα στη φόρμα, ανάμεσα στο πεδίο και στο
+             κουμπί, η πρόταση έπιανε δύο σειρές και ο σύνδεσμος κοβόταν στη
+             μέση. Χωριστά, ο σύνδεσμος χωράει ολόκληρος σε μία σειρά.
+
+             ΧΩΡΙΣ ΑΥΤΟ, Η ΟΘΟΝΗ ΕΙΝΑΙ ΑΔΙΕΞΟΔΟ: η συνεδρία «aal1» ζει, ο
+             διαμεσολαβητής τον γυρίζει εδώ από κάθε σελίδα και δεν υπάρχει
+             κουμπί να την κλείσει. Η έξοδος δεν παρακάμπτει τίποτα: σβήνει τη
+             μισή συνεδρία αντί να την αφήσει ζωντανή. Ήσυχη, αριστερά στη
+             στήλη, όπως κάθε άλλο στοιχείο της· ήταν το μόνο κεντραρισμένο. */
+          <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 16 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+              <span style={{ display: 'block' }}>{L ? L.noDevice : 'Δεν έχεις πρόσβαση στην εφαρμογή επαλήθευσης;'}</span>
+              <a href={`mailto:${IDENTITY.supportEmail}?subject=${encodeURIComponent(L ? L.noDeviceSubject : 'Επαναφορά δεύτερου βήματος')}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}>{L ? L.noDeviceLink : 'Γράψε μας από το email του λογαριασμού σου'}</a>
+            </p>
+            <LinkBtn tone="quiet" onClick={signOut} disabled={signingOut}>
               {signingOut ? (L ? L.signingOut : 'Αποσύνδεση…') : (L ? L.signOut : 'Αποσύνδεση')}
-            </Btn>
+            </LinkBtn>
           </div>
         ) : (
         /* ═══ Η ΓΡΑΜΜΗ ΤΩΝ ΟΡΩΝ ΕΣΠΑΓΕ ΓΙΑ ΕΝΑ ΚΟΜΜΑ ΚΑΙ ΜΙΑ ΤΕΛΕΙΑ ═════════
