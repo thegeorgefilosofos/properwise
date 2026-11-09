@@ -2,32 +2,44 @@
 // LINKEDIN · ΤΡΙΤΗ 10.11.2026 · «Η ΠΥΛΗ ΤΩΝ ΛΟΓΙΣΤΙΚΩΝ ΓΡΑΦΕΙΩΝ»
 // ─────────────────────────────────────────────────────────────────────────
 // Έξι κάθετες διαφάνειες 4:5 (1080×1350, αποδίδονται ×2) και ένα PDF για το
-// «Add a document». Μία ιδέα ανά διαφάνεια: τίτλος δύο γραμμών, μία γραμμή
-// εξήγησης, μία συσκευή.
+// «Add a document». Ένα σημείο εστίασης ανά διαφάνεια:
 //
-//   1. «Στείλε μου τα χαρτιά ως την Παρασκευή.»  MacBook και iPhone
-//   2. Όλοι οι πελάτες, μία λίστα                  MacBook και μεγέθυνση
-//   3. Ζήτησέ το, χωρίς τηλέφωνο                   δύο iPhone
-//   4. Το κλειδί το κρατά ο ιδιοκτήτης             τρία επίπεδα, δύο iPhone
-//   5. Η ομάδα, με ρόλους                          MacBook και iPhone
+//   1. «Στείλε μου τα χαρτιά ως την Παρασκευή.»  MacBook με iPhone μπροστά
+//   2. Όλοι οι πελάτες, μία λίστα                  MacBook, όλο το πλάτος
+//   3. Ζήτησέ το, χωρίς τηλέφωνο                   iPhone σε κοντινό
+//   4. Το κλειδί το κρατά ο ιδιοκτήτης             iPhone και τα τρία επίπεδα
+//   5. Η ομάδα, με ρόλους                          MacBook, όλο το πλάτος
 //   6. Η πύλη για λογιστικά γραφεία                σύνδεσμος και χρέωση
 //
-// ΤΟ ΥΦΟΣ ΕΙΝΑΙ ΤΟΥ ΕΞΩΦΥΛΛΟΥ (Facebook, 09.11): σκούρο μπλε, μαλακό μπλε φως,
-// πλέγμα που σβήνει, Inter Tight 800 με μπλε τόνο στις λέξεις-κλειδιά, το
-// αληθινό λογότυπο. Οι συσκευές ζωγραφίζονται σε CSS, ΧΩΡΙΣ στροφή σε τρεις
-// διαστάσεις (θολώνει το κείμενο) και χωρίς σήμα τρίτου.
+// ΤΟ ΣΥΣΤΗΜΑ. Φωτεινό, με τα tokens του φωτεινού θέματος της εφαρμογής
+// (app/globals.css): καμβάς #f5f7fa (--bg-base), επιφάνεια #ffffff, μελάνι
+// #0f1b2e (--text-primary), δεύτερο μελάνι #536075 (--text-tertiary), τόνος
+// #1356c2 (--accent). Οι οθόνες είναι κι αυτές στο φωτεινό θέμα: μαύρο σε
+// λευκό διαβάζεται σε μικρογραφία, οι μαύρες συσκευές ξεχωρίζουν στον ανοιχτό
+// καμβά και η διαφάνεια δεν μοιάζει με τις σκοτεινές που γεμίζουν τη ροή.
+// Τυπογραφία Inter Tight σε τέσσερα μεγέθη: 76 τίτλος, 30 εξήγηση, 22 κείμενο,
+// 16 υποσέλιδο. Περιθώρια 96· ετικέτα κοινού στο 88, τίτλος στο 128, εξήγηση
+// στο 312, σκηνή 440–1182, υποσέλιδο (λογότυπο, «Παράδειγμα…», «n / 6») στο
+// 1232. Ίδιες θέσεις σε κάθε διαφάνεια.
 //
-// ΚΑΘΑΡΕΣ ΟΘΟΝΕΣ. Κάθε οθόνη φωτογραφίζεται με deviceScaleFactor τέτοιο ώστε
-// ένα εικονοστοιχείο της φωτογραφίας να πέφτει ακριβώς σε ένα εικονοστοιχείο
-// της διαφάνειας ×2. Καμία εικόνα δεν μικραίνει ή μεγαλώνει μέσα στη σελίδα·
-// το κείμενο της εφαρμογής το ραστεροποιεί ο Chromium στο τελικό μέγεθος.
+// ΕΥΑΝΑΓΝΩΣΤΕΣ ΟΘΟΝΕΣ. Το κινητό φωτογραφίζεται σε πλάτος 330 (όπως το
+// «Display Zoom» του iPhone) και μπαίνει στη διαφάνεια σχεδόν 1:1· το laptop
+// σε 900×562 (16:10, σαν «μεγαλύτερο κείμενο» του macOS). Το κείμενο της
+// εφαρμογής διαβάζεται σε μικρογραφία της ροής.
+//
+// ΚΑΘΑΡΑ ΕΙΚΟΝΟΣΤΟΙΧΕΙΑ. Κάθε οθόνη φωτογραφίζεται με deviceScaleFactor τέτοιο
+// ώστε ένα εικονοστοιχείο της φωτογραφίας να πέφτει σε ένα της διαφάνειας ×2·
+// καμία εικόνα δεν αλλάζει μέγεθος μέσα στη σελίδα. Οι συσκευές είναι CSS,
+// χωρίς στροφή και χωρίς σήμα τρίτου. Τα φύλλα («Ζήτησέ το») κάθονται πάνω σε
+// καθαρό περιεχόμενο: χωρίς θόλωμα και χωρίς σκίαση από πίσω.
 //
 // ΟΙ ΟΘΟΝΕΣ ΕΙΝΑΙ ΟΙ ΑΛΗΘΙΝΕΣ: ο πάγκος (scripts/perf-bench/firms.tsx) αποδίδει
 // τα ίδια components με την εφαρμογή. Πριν τη φωτογραφία αλλάζουν μόνο τα
-// επινοημένα ονόματα του πάγκου σε ρεαλιστικά ελληνικά (ΟΝΟΜΑΤΑ), φεύγουν ΑΦΜ,
-// διευθύνσεις email και τα στοιχεία του γραφείου, σβήνει κάθε περίγραμμα
-// εστίασης. Αν ένα όνομα του πάγκου δεν βρεθεί ή μείνει υπόλειμμά του, η
-// μηχανή σταματά: οι οθόνες άλλαξαν.
+// επινοημένα ονόματα σε ρεαλιστικά ελληνικά (ΟΝΟΜΑΤΑ), φεύγουν ΑΦΜ, email και
+// τα στοιχεία του γραφείου, σβήνει κάθε περίγραμμα εστίασης. Το «Ζήτησέ το»
+// στέλνει μόνο στην εφαρμογή, όπως στην παραγωγή: το γραφείο δεν παίρνει
+// τηλέφωνα πελατών. Αν μείνει υπόλειμμα του πάγκου ή φανεί κανάλι τρίτου
+// (WhatsApp, Viber, SMS), η μηχανή σταματά.
 //
 // ΚΑΝΕΝΑ ΚΕΙΜΕΝΟ ΤΗΣ ΕΦΑΡΜΟΓΗΣ ΜΕ ΤΟ ΧΕΡΙ. Ρόλοι και επίπεδα από το
 // lib/data/firms.ts· οι μέρες της αναίρεσης από το lib/legal/firms.ts· η
@@ -84,9 +96,7 @@ const ONOMATA = [
 ];
 // Όσα πρέπει να βρεθούν σε κάποια σκηνή· τα υπόλοιπα είναι δίχτυ.
 const MUST = ['Λογιστικό Γραφείο Παράδειγμα', 'Γιώργος Παραδείγματος', 'Ελένη Παραδείγματος', 'Νίκος Δοκιμής', 'maria.ypodeigmatos@example.com', 'Οδός Παραδείγματος'];
-// Υπόλειμμα του πάγκου που δεν πρέπει να φανεί σε καμία φωτογραφία.
-// Ούτε κανάλι τρίτου: στην παραγωγή το γραφείο δεν παίρνει τηλέφωνα πελατών,
-// οπότε το «Ζήτησέ το» στέλνει μόνο στην εφαρμογή.
+// Υπόλειμμα του πάγκου ή κανάλι τρίτου που δεν πρέπει να φανεί σε φωτογραφία.
 const LEFTOVER = /Παράδειγ|Υπόδειγ|Υποδείγ|Δοκιμ|example\.com|ΑΦΜ\s*\d|Νέοι Όροι|WhatsApp|Viber|SMS/;
 
 const browser = await chromium.launch({ executablePath: chromePath() });
@@ -144,129 +154,131 @@ const clean = map => {
   return { found, top: `rgb(${col.map(Math.round).join(',')})`, text: document.body.innerText };
 };
 
+// Το φύλλο κάθεται πάνω σε καθαρό περιεχόμενο: χωρίς θόλωμα και σκίαση από
+// πίσω, με μια μαλακή σκιά για να ξεχωρίζει.
+const flatSheet = () => {
+  for (const el of document.querySelectorAll('body *')) {
+    const cs = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    if (cs.position === 'fixed' && r.width >= innerWidth - 1 && r.height >= innerHeight - 1) {
+      el.style.background = 'transparent';
+      el.style.backdropFilter = 'none';
+      el.style.webkitBackdropFilter = 'none';
+    }
+    if (/blur/.test(cs.filter)) el.style.filter = 'none';
+    if (/blur/.test(cs.backdropFilter)) el.style.backdropFilter = 'none';
+  }
+  const d = document.querySelector('[role="dialog"]');
+  if (d) d.style.boxShadow = '0 -10px 40px rgba(15,27,46,.14), 0 -1px 0 rgba(15,27,46,.06)';
+};
+
+// Οι διαστάσεις λήψης. Κινητό: πλάτος 330, όπως το «Display Zoom» του iPhone,
+// με ύψος οθόνης στην αναλογία του iPhone (852/393) μείον τη γραμμή κατάστασης.
+const PHONE_VW = 330;
+const PHONE_SB = Math.round(54 * PHONE_VW / 393);
+const PHONE_VH = Math.round(PHONE_VW * 852 / 393) - PHONE_SB;
+const LAPTOP_VW = 900;
+const LAPTOP_VH = 562;
+
 /**
- * Μία οθόνη του πάγκου, φωτογραφημένη στο τελικό της πλάτος.
- * `width` είναι το πλάτος της οθόνης ΜΕΣΑ στη διαφάνεια (px διαφάνειας).
- * Η διαφάνεια αποδίδεται ×2, άρα η φωτογραφία βγαίνει 2·width εικονοστοιχεία.
+ * Μία οθόνη του πάγκου, φωτογραφημένη στο τελικό της πλάτος (`width`, σε px
+ * της διαφάνειας). Η διαφάνεια αποδίδεται ×2, άρα η φωτογραφία βγαίνει
+ * 2·width εικονοστοιχεία και μπαίνει χωρίς καμία αλλαγή μεγέθους.
  */
-async function screen(scene, { device, width, prep, clip }) {
-  const vp = device === 'phone' ? { width: 393, height: 798 } : { width: 1440, height: 900 };
-  const scale = clip?.scale ?? width / vp.width;
-  const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 2 * scale, locale: 'el-GR', colorScheme: 'dark' });
+async function screen(scene, { device, width, prep }) {
+  const vp = device === 'phone' ? { width: PHONE_VW, height: PHONE_VH } : { width: LAPTOP_VW, height: LAPTOP_VH };
+  const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 2 * width / vp.width, locale: 'el-GR', colorScheme: 'light' });
   const p = await ctx.newPage();
   await p.goto(`file://${BENCH}?c=${scene}`, { waitUntil: 'networkidle' });
+  // Το φωτεινό θέμα της εφαρμογής (ο πάγκος χτίζεται σκούρος για τους σαρωτές).
+  await p.evaluate(() => document.documentElement.setAttribute('data-mode', 'light'));
   await p.waitForTimeout(1200);
   if (prep) await prep(p);
   const res = await p.evaluate(clean, ONOMATA);
   res.found.forEach(h => seen.add(h));
   const left = res.text.match(LEFTOVER);
-  if (left) throw new Error(`Σκηνή ${scene}: έμεινε «${left[0]}» του πάγκου στην οθόνη.`);
+  if (left) throw new Error(`Σκηνή ${scene}: έμεινε «${left[0]}» στην οθόνη.`);
   await p.evaluate(() => document.activeElement?.blur?.());
   await p.waitForTimeout(300);
-  let box;
-  if (clip) {
-    box = await p.evaluate(clip.find);
-    if (!box) throw new Error(`Σκηνή ${scene}: δεν βρέθηκε η περιοχή της μεγέθυνσης.`);
-  }
-  const buf = await p.screenshot(box ? { clip: box } : {});
+  const buf = await p.screenshot();
   await ctx.close();
   const { w, h } = pngSize(buf);
   return { src: `data:image/png;base64,${buf.toString('base64')}`, w: w / 2, h: h / 2, top: res.top };
 }
 
 // Η σημείωση του λογιστή στο «Ζήτησέ το», όπως θα τη γράφαμε.
-const typeNote = async p => {
+const askPrep = async p => {
   await p.fill('textarea', 'Και τις αποδείξεις του Οκτωβρίου, όποτε μπορείς.');
   await p.evaluate(() => document.activeElement?.blur?.());
+  await p.evaluate(flatSheet);
 };
-// Η επιβεβαίωση όπως τη βλέπει σήμερα το γραφείο: σημείωση, «Στείλε», μόνο
-// στην εφαρμογή. Η σκηνή firmAskSent του πάγκου διαλέγει WhatsApp, που στην
-// παραγωγή δεν εμφανίζεται· γι' αυτό η αποστολή γίνεται εδώ, χωρίς κανάλι.
-const sendInApp = async p => {
-  await typeNote(p);
-  await p.getByRole('dialog').getByRole('button', { name: 'Στείλε', exact: true }).click();
-  await p.getByText(/^Στάλθηκε στην εφαρμογή/).first().waitFor({ timeout: 5000 });
-  await p.waitForTimeout(400);
+// Η λίστα από τα φίλτρα και κάτω: ο πρώτος πελάτης με όλο το «Τι λείπει».
+// (Η κεφαλίδα της σελίδας κυλά μαζί· στην κορυφή μένει ο καμβάς της.)
+const listPrep = async p => {
+  const ok = await p.evaluate(() => {
+    const leaf = [...document.querySelectorAll('*')].find(e => e.childElementCount === 0 && /^Νέος πελάτης$/i.test(e.textContent.trim()));
+    let c = leaf;
+    while (c && !(parseFloat(getComputedStyle(c).borderTopLeftRadius) >= 12)) c = c.parentElement;
+    if (!c) return false;
+    const dy = c.getBoundingClientRect().bottom - 12;
+    // Η σελίδα κυλά είτε στο παράθυρο είτε σε δικό της στοιχείο.
+    let sc = c.parentElement;
+    while (sc && !(sc.scrollHeight > sc.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+    (sc ?? document.scrollingElement).scrollBy(0, dy);
+    return Math.abs(c.getBoundingClientRect().bottom - 12) < 2;
+  });
+  if (!ok) throw new Error('Δεν βρέθηκε η κάρτα «Νέος πελάτης»· οι οθόνες άλλαξαν.');
+  await p.waitForTimeout(300);
 };
-// Η μεγέθυνση της διαφάνειας 2: η κάρτα του πρώτου πελάτη, με το «Τι λείπει».
-const firstClientCard = () => {
-  const leaf = [...document.querySelectorAll('*')].find(e => e.childElementCount === 0 && e.textContent.trim() === 'Τι λείπει');
-  let c = leaf;
-  while (c && !(parseFloat(getComputedStyle(c).borderTopLeftRadius) >= 12 && getComputedStyle(c).borderTopStyle !== 'none')) c = c.parentElement;
-  if (!c) return null;
-  const r = c.getBoundingClientRect();
-  return { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) };
-};
-
-const LAP_A = 800; // MacBook με iPhone μπροστά (1, 5)
-const LAP_B = 832; // MacBook μόνο του, σε όλο το πλάτος (2)
-const PH_A = 286; // iPhone μπροστά από MacBook
-const PH_B = 318; // δύο iPhone δίπλα δίπλα (3)
-const PH_C = 286; // δύο iPhone κάτω από τα επίπεδα (4)
-
-const S = {
-  ws: await screen('firmWorkspace', { device: 'laptop', width: LAP_A }),
-  wsBig: await screen('firmWorkspace', { device: 'laptop', width: LAP_B }),
-  wsZoom: await screen('firmWorkspace', { device: 'laptop', clip: { scale: 0.7, find: firstClientCard } }),
-  owner: await screen('firmOwner', { device: 'phone', width: PH_A }),
-  ask: await screen('firmAsk', { device: 'phone', width: PH_B, prep: typeNote }),
-  sent: await screen('firmAsk', { device: 'phone', width: PH_B, prep: sendInApp }),
-  revoke: await screen('firmOwnerRevoke', { device: 'phone', width: PH_C }),
-  day: await screen('firmOwnerDay', { device: 'phone', width: PH_C }),
-  firm: await screen('firm', { device: 'laptop', width: LAP_A }),
-  mfa: await screen('firmSecondStep', { device: 'phone', width: PH_A }),
-};
-for (const a of MUST) if (!seen.has(a)) throw new Error(`Το όνομα «${a}» δεν βρέθηκε στον πάγκο· οι σκηνές άλλαξαν.`);
 
 // ── Οι συσκευές ──────────────────────────────────────────────────────────
 const b64 = p => fs.readFileSync(p).toString('base64');
-const f = n => `data:font/woff2;base64,${b64(`${R}/fonts/${n}`)}`;
-const LOGO = `data:image/svg+xml;base64,${b64(`${R}/brand/properwise-logotypo-lefko.svg`)}`;
-const MARK = `data:image/svg+xml;base64,${b64(`${R}/brand/properwise-simvolo-lefko.svg`)}`;
+const LOGO = `data:image/svg+xml;base64,${b64(`${R}/brand/properwise-logotypo-skouro.svg`)}`;
+const MARK = `data:image/svg+xml;base64,${b64(`${R}/brand/properwise-simvolo-skouro.svg`)}`;
 const N = 6;
-
-const tag = '<span class="tag">Παράδειγμα</span>';
 
 // Η γραμμή κατάστασης του iPhone: ώρα, σήμα, Wi-Fi, μπαταρία. Μόνο σχήματα CSS
 // (ο φύλακας brand-mark δεν θέλει χειρόγραφες διαδρομές SVG σε σενάρια).
-const statusBar = (k, bg) => {
+const statusBar = (k, bg, h) => {
   const u = v => `${Math.round(v * k * 100) / 100}px`;
-  return `<div class="sb" style="height:${Math.round(54 * k)}px;background:${bg};padding:0 ${u(30)} 0 ${u(50)};font-size:${u(17)}">
+  return `<div class="sb" style="height:${h}px;background:${bg};padding:0 ${u(26)} 0 ${u(42)};font-size:${u(15)}">
   <span>9:41</span>
-  <span class="ic" style="gap:${u(6)}">
-   <i class="sig" style="gap:${u(2)};height:${u(12)}">${[4, 6.5, 9, 12].map(h => `<b style="width:${u(3)};height:${u(h)};border-radius:${u(1)}"></b>`).join('')}</i>
-   <i class="wifi" style="width:${u(17)};height:${u(12)}">${[17, 11, 5].map(d => `<b style="width:${u(d)};height:${u(d)};border-width:${u(2.2)};left:${u((17 - d) / 2)};top:${u((17 - d) / 2 + 1.2)}"></b>`).join('')}</i>
-   <i class="bat" style="width:${u(25)};height:${u(12)};border-radius:${u(4)};padding:${u(2)}"><b style="border-radius:${u(2)}"></b><s style="width:${u(1.6)};height:${u(4)};right:${u(-3.2)}"></s></i>
+  <span class="ic" style="gap:${u(5)}">
+   <i class="sig" style="gap:${u(1.7)};height:${u(10.5)}">${[3.5, 5.5, 8, 10.5].map(v => `<b style="width:${u(2.7)};height:${u(v)};border-radius:${u(0.8)}"></b>`).join('')}</i>
+   <i class="wifi" style="width:${u(15)};height:${u(10.5)}">${[15, 9.6, 4.4].map(d => `<b style="width:${u(d)};height:${u(d)};border-width:${u(2)};left:${u((15 - d) / 2)};top:${u((15 - d) / 2 + 1)}"></b>`).join('')}</i>
+   <i class="bat" style="width:${u(23)};height:${u(11)};border-radius:${u(3.4)};padding:${u(1.8)}"><b style="border-radius:${u(1.8)}"></b><s style="width:${u(1.4)};height:${u(3.8)};right:${u(-2.8)}"></s></i>
   </span></div>`;
 };
 
-/** iPhone: τιτάνιο, μαύρο πλαίσιο, Dynamic Island, γραμμή κατάστασης, οθόνη. */
-const iphone = (shot, { x, y, label = true, z = 2 }) => {
-  const k = shot.w / 393;
-  const sb = Math.round(54 * k);
-  const bez = Math.round(11 * k);
-  const ri = Math.round(55 * k);
-  const W = shot.w + 2 * (bez + 3);
-  const H = sb + shot.h + 2 * (bez + 3);
-  return `<div class="phone" style="left:${x}px;top:${y}px;width:${W}px;height:${H}px;border-radius:${ri + bez + 3}px;z-index:${z}">
-  <i class="btn" style="left:-3px;top:${Math.round(H * 0.17)}px;height:${Math.round(H * 0.045)}px"></i>
-  <i class="btn" style="left:-3px;top:${Math.round(H * 0.25)}px;height:${Math.round(H * 0.08)}px"></i>
-  <i class="btn" style="left:-3px;top:${Math.round(H * 0.35)}px;height:${Math.round(H * 0.08)}px"></i>
-  <i class="btn" style="right:-3px;top:${Math.round(H * 0.28)}px;height:${Math.round(H * 0.12)}px"></i>
+/** Οι διαστάσεις ενός iPhone για μια οθόνη. */
+const phoneBox = shot => {
+  const k = shot.w / PHONE_VW;
+  const sb = Math.round(PHONE_SB * k);
+  const bez = Math.round(10 * k);
+  const ri = Math.round(46 * k);
+  return { k, sb, bez, ri, W: shot.w + 2 * (bez + 3), H: sb + shot.h + 2 * (bez + 3) };
+};
+/** iPhone: μαύρο τιτάνιο, μαύρο πλαίσιο, Dynamic Island, γραμμή κατάστασης. */
+const iphone = (shot, { x, y, z = 2 }) => {
+  const { k, sb, bez, ri, W, H } = phoneBox(shot);
+  return `<div class="floor" style="left:${x + W * 0.08}px;top:${y + H - 26}px;width:${W * 0.84}px;height:46px"></div>
+ <div class="phone" style="left:${x}px;top:${y}px;width:${W}px;height:${H}px;border-radius:${ri + bez + 3}px;z-index:${z}">
+  <i class="btn" style="left:-2px;top:${Math.round(H * 0.17)}px;height:${Math.round(H * 0.04)}px"></i>
+  <i class="btn" style="left:-2px;top:${Math.round(H * 0.24)}px;height:${Math.round(H * 0.075)}px"></i>
+  <i class="btn" style="left:-2px;top:${Math.round(H * 0.33)}px;height:${Math.round(H * 0.075)}px"></i>
+  <i class="btn" style="right:-2px;top:${Math.round(H * 0.27)}px;height:${Math.round(H * 0.11)}px"></i>
   <div class="bez" style="padding:${bez}px;border-radius:${ri + bez}px">
    <div class="scr" style="border-radius:${ri}px">
-    <i class="island" style="width:${Math.round(124 * k)}px;height:${Math.round(36 * k)}px;top:${Math.round(11 * k)}px;margin-left:${-Math.round(62 * k)}px"></i>
-    ${statusBar(k, shot.top)}
+    <i class="island" style="width:${Math.round(104 * k)}px;height:${Math.round(31 * k)}px;top:${Math.round(9 * k)}px;margin-left:${-Math.round(52 * k)}px"></i>
+    ${statusBar(k, shot.top, sb)}
     <img src="${shot.src}" style="width:${shot.w}px;height:${shot.h}px" alt="">
-    <i class="glare"></i>
    </div>
   </div>
-  ${label ? tag : ''}
  </div>`;
 };
 
-/** MacBook: λεπτό μαύρο πλαίσιο, εγκοπή, άρθρωση, αλουμινένια βάση με την εσοχή. */
-const macbook = (shot, { x, y, label = true }) => {
+/** Οι διαστάσεις ενός MacBook για μια οθόνη. */
+const macBox = shot => {
   const sw = shot.w;
   const band = Math.round(sw * 0.026);
   const side = Math.round(sw * 0.016);
@@ -276,140 +288,128 @@ const macbook = (shot, { x, y, label = true }) => {
   const lidH = band + shot.h + top + bottom + 4;
   const baseW = Math.round(lidW * 1.05 / 2) * 2;
   const baseH = Math.round(sw * 0.022);
+  const hinge = Math.max(4, Math.round(sw * 0.006));
+  return { sw, band, side, top, bottom, lidW, lidH, baseW, baseH, hinge, H: lidH + hinge + baseH };
+};
+/** MacBook: λεπτό μαύρο πλαίσιο, εγκοπή, άρθρωση, αλουμινένια βάση με την εσοχή. */
+const macbook = (shot, { x, y }) => {
+  const { sw, band, side, top, bottom, lidW, lidH, baseW, baseH, hinge, H } = macBox(shot);
   const notchW = Math.round(sw * 0.075);
-  return `<div class="mac" style="left:${x}px;top:${y}px;width:${baseW}px">
-  <div class="lid" style="width:${lidW}px;height:${lidH}px;margin:0 auto;border-radius:${Math.round(sw * 0.026)}px ${Math.round(sw * 0.026)}px ${Math.round(sw * 0.008)}px ${Math.round(sw * 0.008)}px">
-   <div class="lbez" style="padding:${top}px ${side}px ${bottom}px;border-radius:${Math.round(sw * 0.024)}px ${Math.round(sw * 0.024)}px ${Math.round(sw * 0.006)}px ${Math.round(sw * 0.006)}px">
+  const r1 = Math.round(sw * 0.024);
+  return `<div class="floor" style="left:${x + baseW * 0.04}px;top:${y + H - 22}px;width:${baseW * 0.92}px;height:44px"></div>
+ <div class="mac" style="left:${x}px;top:${y}px;width:${baseW}px">
+  <div class="lid" style="width:${lidW}px;height:${lidH}px;margin:0 auto;border-radius:${r1 + 2}px ${r1 + 2}px ${Math.round(sw * 0.008)}px ${Math.round(sw * 0.008)}px">
+   <div class="lbez" style="padding:${top}px ${side}px ${bottom}px;border-radius:${r1}px ${r1}px ${Math.round(sw * 0.006)}px ${Math.round(sw * 0.006)}px">
     <div class="lscr" style="border-radius:${Math.round(sw * 0.011)}px ${Math.round(sw * 0.011)}px 0 0">
      <div style="height:${band}px;background:${shot.top}"></div>
      <i class="notch" style="width:${notchW}px;height:${band}px;margin-left:${-notchW / 2}px;border-radius:0 0 ${Math.round(band * 0.4)}px ${Math.round(band * 0.4)}px"></i>
      <img src="${shot.src}" style="width:${shot.w}px;height:${shot.h}px" alt="">
-     <i class="glare"></i>
     </div>
    </div>
   </div>
-  <div class="hinge" style="width:${Math.round(lidW * 0.94)}px;height:${Math.max(4, Math.round(sw * 0.006))}px"></div>
+  <div class="hinge" style="width:${Math.round(lidW * 0.94)}px;height:${hinge}px"></div>
   <div class="base" style="height:${baseH}px;border-radius:0 0 ${Math.round(baseW * 0.06)}px ${Math.round(baseW * 0.06)}px / 0 0 ${baseH}px ${baseH}px">
    <i class="lip" style="width:${Math.round(baseW * 0.15)}px;height:${Math.round(baseH * 0.42)}px;margin-left:${-Math.round(baseW * 0.075)}px"></i>
   </div>
-  ${label ? tag : ''}
  </div>`;
 };
-/** Ύψος MacBook για ένα πλάτος οθόνης, για να στοιχίζονται οι συνθέσεις. */
-const macH = shot => {
-  const sw = shot.w;
-  return Math.round(sw * 0.026) + shot.h + Math.round(sw * 0.018) + Math.round(sw * 0.02) + 4 + Math.max(4, Math.round(sw * 0.006)) + Math.round(sw * 0.022);
-};
-const phoneW = shot => shot.w + 2 * (Math.round(11 * shot.w / 393) + 3);
-const phoneH = shot => Math.round(54 * shot.w / 393) + shot.h + 2 * (Math.round(11 * shot.w / 393) + 3);
 
-// ── Η σελίδα ─────────────────────────────────────────────────────────────
-// Πλέγμα 8px. Περιθώρια 88. Λογότυπο και πρόοδος στο 72, ετικέτα κοινού στο
-// 168, τίτλος στο 208, εξήγηση από κάτω· η σκηνή από το 544 ως το 1262.
-const M = 88;
-const STAGE = { top: 544, bottom: 1350 - M };
+// ── Το σύστημα ───────────────────────────────────────────────────────────
+const C = { canvas: '#f5f7fa', surface: '#ffffff', ink: '#0f1b2e', ink2: '#536075', accent: '#1356c2' };
+const M = 96;
+const STAGE = { top: 440, bottom: 1182 };
+const W_IN = 1080 - 2 * M;
 const css = `
-@font-face{font-family:Inter;font-weight:100 900;src:url(${f('inter-greek.woff2')})}
-@font-face{font-family:Inter;font-weight:100 900;src:url(${f('inter-latin.woff2')})}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:1080px;height:1350px;overflow:hidden}
-body{font-family:'Inter Tight',Inter,sans-serif;color:#f4f7fb;-webkit-font-smoothing:antialiased;position:relative;background:#06090f}
+body{font-family:'Inter Tight',sans-serif;color:${C.ink};-webkit-font-smoothing:antialiased;position:relative;background:${C.canvas}}
 .bg{position:absolute;inset:0}
-.grid{position:absolute;inset:0;opacity:.4;background-image:linear-gradient(rgba(138,180,248,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(138,180,248,.06) 1px,transparent 1px);background-size:48px 48px;background-position:${M % 48}px 0}
-.noise{position:absolute;inset:0;opacity:.06;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
-.head{position:absolute;left:${M}px;right:${M}px;top:72px;height:32px;display:flex;justify-content:space-between;align-items:center}
-.head img{height:26px;display:block}
-.dots{display:flex;gap:8px;align-items:center}.dots b{width:8px;height:8px;border-radius:4px;background:rgba(255,255,255,.18)}.dots b.on{width:28px;background:#8ab4f8;box-shadow:0 0 12px rgba(138,180,248,.6)}
-.who{position:absolute;left:${M}px;top:168px;height:24px;display:flex;align-items:center;gap:12px;font-size:20px;font-weight:600;letter-spacing:.01em;color:#8ab4f8}
-.who:before{content:'';width:8px;height:8px;border-radius:50%;background:#8ab4f8;box-shadow:0 0 10px rgba(138,180,248,.8)}
-h1{position:absolute;left:${M}px;top:208px;width:${1080 - 2 * M}px;font-size:80px;line-height:84px;font-weight:800;letter-spacing:-.035em;white-space:nowrap}
-h1 span{display:block}
-h1 em{display:block;font-style:normal;background:linear-gradient(90deg,#a9c8ff,#6f9cf0);-webkit-background-clip:text;background-clip:text;color:transparent;padding-bottom:4px;margin-bottom:-4px}
-.sub{position:absolute;left:${M}px;top:400px;width:${1080 - 2 * M}px;font-size:28px;line-height:40px;font-weight:500;color:#9fabbf;letter-spacing:-.005em;text-wrap:pretty}
-.sub b{color:#e8eefb;font-weight:600}
-.stage{position:absolute;left:0;top:0;width:1080px;height:1350px}
-.floor{position:absolute;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.7),rgba(0,0,0,0));filter:blur(12px)}
-.tag{position:absolute;top:-12px;right:-10px;z-index:5;font:600 13px/1 'Inter Tight',Inter,sans-serif;letter-spacing:.02em;color:#f0d08f;padding:6px 11px;border-radius:99px;background:rgba(32,26,12,.92);box-shadow:inset 0 0 0 1px rgba(240,208,143,.35),0 6px 16px rgba(0,0,0,.5)}
+.who{position:absolute;left:${M}px;top:88px;font-size:22px;line-height:24px;font-weight:600;letter-spacing:-.005em;color:${C.accent}}
+h1{position:absolute;left:${M}px;top:128px;width:${W_IN}px;font-size:76px;line-height:80px;font-weight:800;letter-spacing:-.04em;white-space:nowrap}
+h1 span,h1 em{display:block}
+h1 em{font-style:normal;color:${C.accent}}
+.sub{position:absolute;left:${M}px;top:312px;width:${W_IN}px;font-size:30px;line-height:40px;font-weight:500;letter-spacing:-.012em;color:${C.ink2};text-wrap:pretty}
+.sub b{color:${C.ink};font-weight:600}
+.stage{position:absolute;inset:0}
+.foot{position:absolute;left:${M}px;right:${M}px;top:1232px;height:24px;display:flex;align-items:center;justify-content:space-between;font-size:16px;line-height:24px;font-weight:600;color:${C.ink2}}
+.foot img{height:22px;display:block}
+.foot .ex{position:absolute;left:0;right:0;text-align:center;font-weight:500;pointer-events:none}
+.foot .n{color:${C.ink};font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.floor{position:absolute;border-radius:50%;background:radial-gradient(closest-side,rgba(15,27,46,.22),rgba(15,27,46,.08) 55%,rgba(15,27,46,0))}
 /* iPhone */
-.phone{position:absolute;padding:3px;background:linear-gradient(150deg,#3a4252,#1a202b 40%,#10151d 70%,#2a3140);
- box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 50px 90px rgba(0,0,0,.65),0 14px 30px rgba(0,0,0,.45)}
-.phone .btn{position:absolute;width:3px;border-radius:2px;background:linear-gradient(90deg,#2a3242,#3e4758)}
+.phone{position:absolute;padding:3px;background:linear-gradient(145deg,#4a4d54,#1d1e22 22%,#0d0e10 60%,#2c2e33);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 2px 4px rgba(15,27,46,.10),0 16px 32px -6px rgba(15,27,46,.22),0 36px 56px -18px rgba(15,27,46,.30)}
+.phone .btn{position:absolute;width:3px;border-radius:2px;background:linear-gradient(90deg,#1d1e22,#4a4d54)}
 .phone .bez{background:#000;height:100%}
-.phone .scr{position:relative;overflow:hidden;height:100%;background:#000}
+.phone .scr{position:relative;overflow:hidden;height:100%;background:#fff}
 .phone img,.mac img{display:block}
 .phone .island{position:absolute;left:50%;border-radius:99px;background:#000;z-index:3}
-.sb{display:flex;align-items:center;justify-content:space-between;font-weight:600;letter-spacing:-.01em;color:#f4f7fb}
+.sb{display:flex;align-items:center;justify-content:space-between;font-weight:600;letter-spacing:-.01em;color:${C.ink}}
 .sb .ic{display:flex;align-items:center}
 .sb i{display:block;position:relative}
-.sig{display:flex!important;align-items:flex-end}.sig b{display:block;background:#f4f7fb}
-.wifi{overflow:hidden}.wifi b{position:absolute;border-radius:50%;border-style:solid;border-color:#f4f7fb transparent transparent transparent;transform:rotate(0deg)}
-.wifi b:last-child{border-color:#f4f7fb;background:#f4f7fb}
-.bat{box-shadow:inset 0 0 0 1px rgba(244,247,251,.5)}.bat b{display:block;width:80%;height:100%;background:#f4f7fb}.bat s{position:absolute;top:50%;transform:translateY(-50%);border-radius:0 2px 2px 0;background:rgba(244,247,251,.5)}
-.glare{position:absolute;inset:0;background:linear-gradient(115deg,rgba(255,255,255,.06),rgba(255,255,255,0) 32%);pointer-events:none;z-index:4}
+.sig{display:flex!important;align-items:flex-end}.sig b{display:block;background:${C.ink}}
+.wifi{overflow:hidden}.wifi b{position:absolute;border-radius:50%;border-style:solid;border-color:${C.ink} transparent transparent transparent}
+.wifi b:last-child{border-color:${C.ink};background:${C.ink}}
+.bat{box-shadow:inset 0 0 0 1px rgba(15,27,46,.45)}.bat b{display:block;width:80%;height:100%;background:${C.ink}}.bat s{position:absolute;top:50%;transform:translateY(-50%);border-radius:0 2px 2px 0;background:rgba(15,27,46,.45)}
 /* MacBook */
-.mac{position:absolute}
-.lid{padding:2px;background:linear-gradient(180deg,#4b505a,#2a2d33 30%,#1d1f24)}
-.lbez{background:#030304;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);height:100%}
-.lscr{position:relative;overflow:hidden;background:#000}
-.notch{position:absolute;left:50%;top:0;background:#030304;z-index:3}
-.hinge{margin:0 auto;background:linear-gradient(180deg,#0c0d10,#3a3d44 60%,#5a5e66);border-radius:0 0 3px 3px}
-.base{position:relative;background:linear-gradient(180deg,#eef0f3 0%,#c9ccd2 18%,#a9adb4 60%,#7d8189 100%);box-shadow:0 30px 60px rgba(0,0,0,.6),0 10px 20px rgba(0,0,0,.4)}
-.base .lip{position:absolute;left:50%;top:0;border-radius:0 0 10px 10px;background:linear-gradient(180deg,#80848c,#b6b9bf)}
-/* Κάρτα μεγέθυνσης */
-.zoom{position:absolute;z-index:4;padding:10px;border-radius:26px;background:rgba(14,20,32,.72);backdrop-filter:blur(18px);
- box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 40px 80px rgba(0,0,0,.6),0 12px 28px rgba(0,0,0,.45)}
-.zoom img{display:block;border-radius:16px}
-/* Επίπεδα */
-.levels{position:absolute;left:${M}px;right:${M}px;display:flex;justify-content:space-between;gap:12px}
-.lvl{flex:auto;padding:0 20px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:19px;font-weight:600;letter-spacing:-.01em;color:#c9d4e6;background:rgba(255,255,255,.06)}
-.lvl.on{color:#06090f;background:linear-gradient(180deg,#b9d1ff,#8ab4f8);box-shadow:0 10px 28px rgba(111,156,240,.35)}
-.lvl.on i{opacity:1}
-.lvl i{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.7}
-/* Τέλος */
-.cta{position:absolute;left:${M}px;right:${M}px;height:${STAGE.bottom - STAGE.top}px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-.markt{width:136px;height:136px;border-radius:36px;display:grid;place-items:center;background:linear-gradient(150deg,#1d3566,#0f1c36);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 30px 70px rgba(46,98,204,.45)}
-.markt img{width:76px;height:76px}
-.url{margin-top:48px;display:inline-flex;align-items:center;gap:14px;padding:20px 34px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);font-size:36px;font-weight:700;letter-spacing:-.01em;color:#f4f7fb}
-.url b{width:12px;height:12px;border-radius:50%;background:#5fd38d;box-shadow:0 0 12px #5fd38d}
-.bill{margin-top:48px;max-width:760px;font-size:24px;line-height:36px;color:#9fabbf;font-weight:500}
-.bill:before{content:'';display:block;width:56px;height:2px;margin:0 auto 28px;background:rgba(138,180,248,.6)}
+.mac{position:absolute;z-index:1}
+.lid{padding:2px;background:linear-gradient(180deg,#d4d7dc,#a9adb4 40%,#8f939a);box-shadow:0 2px 4px rgba(15,27,46,.08),0 24px 48px -16px rgba(15,27,46,.24)}
+.lbez{background:#0a0a0b;height:100%}
+.lscr{position:relative;overflow:hidden;background:#fff}
+.notch{position:absolute;left:50%;top:0;background:#0a0a0b;z-index:3}
+.hinge{margin:0 auto;background:linear-gradient(180deg,#5d6168,#9a9ea5 70%,#c4c7cc);border-radius:0 0 3px 3px}
+.base{position:relative;background:linear-gradient(180deg,#f3f4f6 0%,#dcdfe3 22%,#c3c7cd 62%,#9599a1 100%);box-shadow:0 24px 40px -12px rgba(15,27,46,.35)}
+.base .lip{position:absolute;left:50%;top:0;border-radius:0 0 10px 10px;background:linear-gradient(180deg,#a6aab1,#d2d5da)}
+/* Τα τρία επίπεδα (4) */
+.levels{position:absolute;left:${M}px;width:440px}
+.levels .k{font-size:22px;line-height:32px;font-weight:600;color:${C.ink2}}
+.levels .lv{margin-top:20px;font-size:30px;line-height:40px;font-weight:600;letter-spacing:-.015em;color:#9aa4b4;display:flex;align-items:center;gap:16px}
+.levels .lv i{width:10px;height:10px;border-radius:50%;background:#c9d0da;flex:none}
+.levels .lv.on{color:${C.ink}}
+.levels .lv.on i{background:${C.accent}}
+.levels .h{margin-top:28px;font-size:22px;line-height:32px;font-weight:500;color:${C.ink2}}
+/* Τέλος (6) */
+.cta{position:absolute;left:${M}px;right:${M}px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.cta .mk{width:112px;height:112px;border-radius:30px;background:${C.surface};display:grid;place-items:center;box-shadow:0 2px 4px rgba(15,27,46,.06),0 24px 48px -12px rgba(15,27,46,.20)}
+.cta .mk img{width:60px;height:60px}
+.cta .url{margin-top:48px;display:inline-flex;align-items:center;padding:24px 44px;border-radius:999px;background:${C.ink};color:#fff;font-size:30px;line-height:40px;font-weight:700;letter-spacing:-.01em;box-shadow:0 24px 48px -16px rgba(15,27,46,.45)}
+.cta .bill{margin-top:40px;max-width:720px;font-size:22px;line-height:34px;font-weight:500;color:${C.ink2}}
 `;
-const light = (x, y, w = 620, h = 520) => `background:
- radial-gradient(ellipse ${w}px ${h}px at ${x}px ${y}px,rgba(46,98,204,.32),rgba(46,98,204,0) 70%),
- radial-gradient(ellipse 900px 420px at 160px 0px,rgba(30,60,120,.20),rgba(0,0,0,0) 70%),
- linear-gradient(180deg,#0a0f19 0%,#06090f 100%)`;
-const gridMask = (x, y) => `-webkit-mask-image:radial-gradient(ellipse 560px 480px at ${x}px ${y}px,#000 20%,transparent 75%)`;
+// Καμβάς χωρίς διαβαθμίσεις: οι σκιές των συσκευών κάνουν όλο το βάθος.
+const glow = () => `background:${C.canvas}`;
 
-const page = (n, { who, h1, sub, stage, lx = 540, ly = 900 }) => `<!doctype html><html lang="el"><head><meta charset="utf-8">
+const page = (n, { who, h1, sub, stage, example = true }) => `<!doctype html><html lang="el"><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&display=block" rel="stylesheet">
 <style>${css}</style></head><body>
-<div class="bg" style="${light(lx, ly)}"></div><div class="grid" style="${gridMask(lx, ly)}"></div>
-<div class="stage">${stage}</div>
-<div class="noise"></div>
-<div class="head"><img src="${LOGO}" alt="PROPERWISE"><div class="dots">${Array.from({ length: N }, (_, i) => `<b class="${i + 1 === n ? 'on' : ''}"></b>`).join('')}</div></div>
+<div class="bg" style="${glow()}"></div>
 <div class="who">${who}</div>
 <h1>${h1}</h1>
 <div class="sub">${sub}</div>
+<div class="stage">${stage}</div>
+<div class="foot"><img src="${LOGO}" alt="PROPERWISE">${example ? '<span class="ex">Παράδειγμα με φανταστικά στοιχεία</span>' : ''}<span class="n">${n} / ${N}</span></div>
 </body></html>`;
 
-// ── Οι συνθέσεις ─────────────────────────────────────────────────────────
-// Α: MacBook αριστερά στο περιθώριο, iPhone μπροστά δεξιά στο περιθώριο.
-const comboA = (lap, ph) => {
-  const mh = macH(lap), pw = phoneW(ph), phH = phoneH(ph);
-  const phBottom = STAGE.bottom;
-  const macTop = STAGE.top;
-  return `<div class="floor" style="left:${M}px;top:${macTop + mh - 30}px;width:${lap.w + 60}px;height:70px"></div>
- ${macbook(lap, { x: M, y: macTop, label: false })}
- <div class="floor" style="left:${1080 - M - pw}px;top:${phBottom - 30}px;width:${pw}px;height:60px"></div>
- ${iphone(ph, { x: 1080 - M - pw, y: phBottom - phH })}`;
+// ── Οι οθόνες ────────────────────────────────────────────────────────────
+const S = {
+  ws: await screen('firmWorkspace', { device: 'laptop', width: 780 }),
+  owner: await screen('firmOwner', { device: 'phone', width: 286 }),
+  list: await screen('firmWorkspace', { device: 'laptop', width: 816, prep: listPrep }),
+  ask: await screen('firmAsk', { device: 'phone', width: 330, prep: askPrep }),
+  access: await screen('firmOwner', { device: 'phone', width: 330 }),
+  team: await screen('firm', { device: 'laptop', width: 816 }),
 };
-// Δύο iPhone, κεντραρισμένα, με κοινό κάτω όριο.
-const pair = (a, b, bottom, gap = 56) => {
-  const wa = phoneW(a), wb = phoneW(b);
-  const x0 = Math.round((1080 - wa - wb - gap) / 2);
-  return `<div class="floor" style="left:${x0 - 20}px;top:${bottom - 30}px;width:${wa + wb + gap + 40}px;height:60px"></div>
- ${iphone(a, { x: x0, y: bottom - phoneH(a), label: false })}
- ${iphone(b, { x: x0 + wa + gap, y: bottom - phoneH(b) })}`;
+for (const a of MUST) if (!seen.has(a)) throw new Error(`Το όνομα «${a}» δεν βρέθηκε στον πάγκο· οι σκηνές άλλαξαν.`);
+
+// ── Οι συνθέσεις ─────────────────────────────────────────────────────────
+const midY = h => Math.round(STAGE.top + (STAGE.bottom - STAGE.top - h) / 2);
+const heroMac = shot => {
+  const b = macBox(shot);
+  return macbook(shot, { x: Math.round((1080 - b.baseW) / 2), y: midY(b.H) - 16 });
+};
+const cover = (lap, ph) => {
+  const p = phoneBox(ph);
+  return `${macbook(lap, { x: M, y: STAGE.top + 8 })}
+ ${iphone(ph, { x: 1080 - M - p.W, y: STAGE.bottom - p.H })}`;
 };
 
 const slides = [
@@ -418,58 +418,55 @@ page(1, {
   who: 'Για λογιστικά γραφεία και ιδιοκτήτες',
   h1: '<span>«Στείλε μου τα χαρτιά</span><em>ως την Παρασκευή.»</em>',
   sub: 'Τώρα το γραφείο βλέπει μόνο του <b>τι λείπει από κάθε πελάτη.</b>',
-  stage: comboA(S.ws, S.owner), lx: 560, ly: 900,
+  stage: cover(S.ws, S.owner),
 }),
-
 // 2 · Η λίστα των πελατών και το «Τι λείπει»
 page(2, {
   who: 'Για το γραφείο',
   h1: '<span>Όλοι οι πελάτες.</span><em>Μία λίστα.</em>',
   sub: 'Τι λείπει από τον καθένα, <b>δίπλα στο όνομά του.</b>',
-  stage: (() => {
-    const mh = macH(S.wsBig);
-    const z = { w: S.wsZoom.w + 20, h: S.wsZoom.h + 20 };
-    return `<div class="floor" style="left:${M}px;top:${STAGE.top + mh - 30}px;width:${1080 - 2 * M}px;height:70px"></div>
- ${macbook(S.wsBig, { x: M - Math.round((Math.round((S.wsBig.w + 2 * Math.round(S.wsBig.w * 0.016) + 4) * 1.05 / 2) * 2 - (1080 - 2 * M)) / 2), y: STAGE.top, label: false })}
- <div class="zoom" style="left:${1080 - M - z.w}px;top:${STAGE.bottom - z.h}px"><img src="${S.wsZoom.src}" style="width:${S.wsZoom.w}px;height:${S.wsZoom.h}px" alt="">${tag}</div>`;
-  })(), lx: 540, ly: 860,
+  stage: heroMac(S.list),
 }),
-
-// 3 · Ζήτησέ το: το φύλλο του αιτήματος και η επιβεβαίωση
+// 3 · Ζήτησέ το: το φύλλο του αιτήματος, μόνο στην εφαρμογή
 page(3, {
   who: 'Για το γραφείο',
   h1: '<span>Ζήτησέ το.</span><em>Χωρίς τηλέφωνο.</em>',
   sub: 'Το αίτημα φτάνει στη Λογιστική του πελάτη, <b>μαζί με τη σημείωσή σου.</b>',
-  stage: pair(S.ask, S.sent, STAGE.bottom), lx: 540, ly: 920,
+  stage: (() => { const p = phoneBox(S.ask); return iphone(S.ask, { x: Math.round((1080 - p.W) / 2), y: midY(p.H) }); })(),
 }),
-
-// 4 · Ο ιδιοκτήτης: τρία επίπεδα, η μέρα του γραφείου, η ανάκληση
+// 4 · Ο ιδιοκτήτης: τρία επίπεδα, αναίρεση, ανάκληση
 page(4, {
   who: 'Για τον ιδιοκτήτη',
   h1: '<span>Το κλειδί το κρατά</span><em>ο ιδιοκτήτης.</em>',
-  sub: 'Βλέπει κάθε μέρα τι γράφτηκε. <b>Αναιρεί ό,τι μπήκε σήμερα ή χθες</b> και ανακαλεί την πρόσβαση όποτε θέλει.',
-  stage: `<div class="levels" style="top:${STAGE.top}px">${LEVELS.map(l => `<div class="lvl${l === 'keep' ? ' on' : ''}"><i></i>${LEVEL_LABEL[l]}</div>`).join('')}</div>
- ${pair(S.revoke, S.day, STAGE.bottom)}`, lx: 540, ly: 960,
+  sub: `Αναιρεί ό,τι γράφτηκε σήμερα ή χθες <b>και ανακαλεί την πρόσβαση όποτε θέλει.</b>`,
+  stage: (() => {
+    const p = phoneBox(S.access);
+    const y = midY(p.H);
+    return `${iphone(S.access, { x: 1080 - M - p.W, y })}
+ <div class="levels" style="top:${y + 150}px">
+  <div class="k">Διαλέγει τι κάνει το γραφείο</div>
+  ${LEVELS.map(l => `<div class="lv${l === 'keep' ? ' on' : ''}"><i></i>${LEVEL_LABEL[l]}</div>`).join('')}
+ </div>`;
+  })(),
 }),
-
 // 5 · Η ομάδα του γραφείου: ρόλοι και δεύτερο βήμα
 page(5, {
   who: 'Για το γραφείο',
   h1: '<span>Η ομάδα,</span><em>με ρόλους.</em>',
-  sub: `${ROLE_LABEL[ROLES[0]]}, ${lc(ROLE_LABEL[ROLES[1]])}, ${lc(ROLE_LABEL[ROLES[2]])}. <b>Κάθε μέλος μπαίνει με επαλήθευση δύο βημάτων.</b>`,
-  stage: comboA(S.firm, S.mfa), lx: 560, ly: 900,
+  sub: `${ROLE_LABEL[ROLES[0]]}, ${lc(ROLE_LABEL[ROLES[1]])}, ${lc(ROLE_LABEL[ROLES[2]])}. <b>Όλοι με επαλήθευση δύο βημάτων.</b>`,
+  stage: heroMac(S.team),
 }),
-
 // 6 · Ο σύνδεσμος και η χρέωση του γραφείου
 page(6, {
   who: 'Για λογιστικά γραφεία',
   h1: '<span>Η πύλη για</span><em>λογιστικά γραφεία.</em>',
   sub: 'Ο σύνδεσμος είναι <b>στο πρώτο σχόλιο.</b>',
-  stage: `<div class="cta" style="top:${STAGE.top}px">
-  <div class="markt"><img src="${MARK}" alt=""></div>
-  <div class="url"><b></b>properwise.gr/logistes</div>
+  stage: `<div class="cta" style="top:${STAGE.top}px;height:${STAGE.bottom - STAGE.top}px">
+  <div class="mk"><img src="${MARK}" alt=""></div>
+  <div class="url">properwise.gr/logistes</div>
   <div class="bill">${BILLING}</div>
- </div>`, lx: 540, ly: 860,
+ </div>`,
+  example: false,
 }),
 ];
 
@@ -482,26 +479,27 @@ for (const [i, html] of slides.entries()) {
   await p.evaluate(() => document.fonts.ready);
   const bad = await p.evaluate(({ M, STAGE }) => {
     const out = [];
-    if (!document.fonts.check('800 80px "Inter Tight"', 'Στείλε')) out.push('δεν φορτώθηκε η Inter Tight');
+    if (!document.fonts.check('800 76px "Inter Tight"', 'Στείλε')) out.push('δεν φορτώθηκε η Inter Tight');
     const h1 = document.querySelector('h1').getBoundingClientRect();
     const sub = document.querySelector('.sub').getBoundingClientRect();
-    if (h1.height > 2 * 84 + 1) out.push('ο τίτλος πιάνει πάνω από δύο γραμμές');
+    if (h1.height > 2 * 80 + 1) out.push('ο τίτλος πιάνει πάνω από δύο γραμμές');
     if (sub.height > 2 * 40 + 1) out.push('η εξήγηση πιάνει πάνω από δύο γραμμές');
-    if (sub.bottom > STAGE.top - 24) out.push('η εξήγηση πέφτει πάνω στη σκηνή');
-    for (const el of document.querySelectorAll('h1 span, h1 em, .who, .sub, .head')) {
-      const r = el.getBoundingClientRect();
+    if (sub.bottom > STAGE.top - 32) out.push('η εξήγηση πέφτει πάνω στη σκηνή');
+    for (const el of document.querySelectorAll('h1 span, h1 em, .who, .sub, .levels > *')) {
       const range = document.createRange(); range.selectNodeContents(el);
       const t = range.getBoundingClientRect();
-      if (Math.max(r.right, t.right) > 1080 - M + 1) out.push(`βγαίνει από το περιθώριο: «${el.textContent.trim().slice(0, 40)}»`);
+      if (t.right > 1080 - M + 1) out.push(`βγαίνει από το περιθώριο: «${el.textContent.trim().slice(0, 40)}»`);
     }
-    for (const el of document.querySelectorAll('.phone, .mac, .zoom, .levels, .cta')) {
+    for (const el of document.querySelectorAll('.phone, .mac, .cta, .levels')) {
       const r = el.getBoundingClientRect();
-      if (r.left < M - 24 || r.right > 1080 - M + 24 || r.top < STAGE.top - 1 || r.bottom > STAGE.bottom + 1) out.push(`η συσκευή βγαίνει από τη σκηνή (${Math.round(r.left)},${Math.round(r.top)} – ${Math.round(r.right)},${Math.round(r.bottom)})`);
+      if (r.left < M - 24 || r.right > 1080 - M + 24 || r.top < STAGE.top - 1 || r.bottom > STAGE.bottom + 1) out.push(`βγαίνει από τη σκηνή (${Math.round(r.left)},${Math.round(r.top)} – ${Math.round(r.right)},${Math.round(r.bottom)})`);
     }
+    // Επίπεδα δίπλα στο κινητό: δεν το αγγίζουν.
+    const lv = document.querySelector('.levels'), ph = document.querySelector('.phone');
+    if (lv && ph && lv.getBoundingClientRect().right > ph.getBoundingClientRect().left - 32) out.push('τα επίπεδα ακουμπούν το κινητό');
     // Κάθε οθόνη σε ακέραιο εικονοστοιχείο: αλλιώς ο Chromium την ξαναδειγματίζει.
-    for (const img of document.querySelectorAll('.stage img')) {
+    for (const img of document.querySelectorAll('.phone img, .mac img')) {
       const r = img.getBoundingClientRect();
-      if (img.closest('.cta')) continue;
       const on = v => Math.abs(v * 2 - Math.round(v * 2)) < 0.01;
       if (!on(r.left) || !on(r.top) || r.width * 2 !== img.naturalWidth || r.height * 2 !== img.naturalHeight) out.push(`οθόνη εκτός πλέγματος: ${r.left},${r.top} ${r.width}×${r.height} (${img.naturalWidth}×${img.naturalHeight})`);
     }
