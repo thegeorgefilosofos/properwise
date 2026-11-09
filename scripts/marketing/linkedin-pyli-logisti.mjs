@@ -185,8 +185,8 @@ const LAPTOP_VH = 562;
  * της διαφάνειας). Η διαφάνεια αποδίδεται ×2, άρα η φωτογραφία βγαίνει
  * 2·width εικονοστοιχεία και μπαίνει χωρίς καμία αλλαγή μεγέθους.
  */
-async function screen(scene, { device, width, prep }) {
-  const vp = device === 'phone' ? { width: PHONE_VW, height: PHONE_VH } : { width: LAPTOP_VW, height: LAPTOP_VH };
+async function screen(scene, { device, width, prep, vw }) {
+  const vp = device === 'phone' ? { width: PHONE_VW, height: PHONE_VH } : vw ? { width: vw, height: Math.round(vw * 10 / 16) } : { width: LAPTOP_VW, height: LAPTOP_VH };
   const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 2 * width / vp.width, locale: 'el-GR', colorScheme: 'light' });
   const p = await ctx.newPage();
   await p.goto(`file://${BENCH}?c=${scene}`, { waitUntil: 'networkidle' });
@@ -212,22 +212,24 @@ const askPrep = async p => {
   await p.evaluate(() => document.activeElement?.blur?.());
   await p.evaluate(flatSheet);
 };
-// Η λίστα από τα φίλτρα και κάτω: ο πρώτος πελάτης με όλο το «Τι λείπει».
-// (Η κεφαλίδα της σελίδας κυλά μαζί· στην κορυφή μένει ο καμβάς της.)
+// Η κάρτα του πρώτου πελάτη, από το όνομα ως το τέλος του «Τι λείπει».
+// Τραβιέται σε στενότερο laptop (LIST_VW), ώστε το UI να διαβάζεται στη ροή.
+const LIST_VW = 680;
 const listPrep = async p => {
   const ok = await p.evaluate(() => {
-    const leaf = [...document.querySelectorAll('*')].find(e => e.childElementCount === 0 && /^Νέος πελάτης$/i.test(e.textContent.trim()));
+    const leaf = [...document.querySelectorAll('*')].find(e => e.childElementCount === 0 && /^Τι λείπει$/i.test(e.textContent.trim()));
     let c = leaf;
-    while (c && !(parseFloat(getComputedStyle(c).borderTopLeftRadius) >= 12)) c = c.parentElement;
+    while (c && !(parseFloat(getComputedStyle(c).borderTopLeftRadius) >= 12 && getComputedStyle(c).borderTopStyle !== 'none')) c = c.parentElement;
     if (!c) return false;
-    const dy = c.getBoundingClientRect().bottom - 12;
+    const dy = c.getBoundingClientRect().top - 16;
     // Η σελίδα κυλά είτε στο παράθυρο είτε σε δικό της στοιχείο.
     let sc = c.parentElement;
     while (sc && !(sc.scrollHeight > sc.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
     (sc ?? document.scrollingElement).scrollBy(0, dy);
-    return Math.abs(c.getBoundingClientRect().bottom - 12) < 2;
+    const r = c.getBoundingClientRect();
+    return Math.abs(r.top - 16) < 2 && r.bottom <= innerHeight;
   });
-  if (!ok) throw new Error('Δεν βρέθηκε η κάρτα «Νέος πελάτης»· οι οθόνες άλλαξαν.');
+  if (!ok) throw new Error('Η κάρτα του πρώτου πελάτη δεν χωρά ολόκληρη στην οθόνη του laptop· οι οθόνες άλλαξαν.');
   await p.waitForTimeout(300);
 };
 
@@ -393,7 +395,7 @@ const page = (n, { who, h1, sub, stage, example = true }) => `<!doctype html><ht
 const S = {
   ws: await screen('firmWorkspace', { device: 'laptop', width: 780 }),
   owner: await screen('firmOwner', { device: 'phone', width: 286 }),
-  list: await screen('firmWorkspace', { device: 'laptop', width: 816, prep: listPrep }),
+  list: await screen('firmWorkspace', { device: 'laptop', width: 816, vw: LIST_VW, prep: listPrep }),
   ask: await screen('firmAsk', { device: 'phone', width: 330, prep: askPrep }),
   access: await screen('firmOwner', { device: 'phone', width: 330 }),
   team: await screen('firm', { device: 'laptop', width: 816 }),
