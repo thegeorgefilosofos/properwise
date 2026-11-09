@@ -16,9 +16,10 @@ import { createClient } from '@/lib/supabase/server';
 import { localHref } from '@/lib/i18n/paths';
 import { PLAN_COPY_EN } from '@/lib/i18n/en/plans';
 import {
-  LANDING_EN, statsEn, HOW_EN, featuresEn, FEATURES_HEAD_EN, WORKS_EN, CALC_HEAD_EN, SECURITY_EN, WHY_EN,
+  LANDING_EN, HOW_EN, featuresEn, FEATURES_HEAD_EN, WORKS_EN, CALC_HEAD_EN, SECURITY_EN, WHY_EN,
   PRICING_HEAD_EN, FAQ_HEAD_EN, FINAL_EN, FAQ_PRICE_Q_EN, faqEn, PARTS_EN,
 } from '@/lib/i18n/en/landing';
+import { statsEn } from '@/lib/i18n/en/landingStats';
 import LandingCalculator from '../LandingCalculator';
 import LandingCalcEn from './landingEn';
 import Spotlight from '../Spotlight';

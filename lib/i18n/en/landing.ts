@@ -7,15 +7,12 @@
 //
 // ΚΑΝΕΝΑΣ ΑΡΙΘΜΟΣ ΓΡΑΜΜΕΝΟΣ ΜΕ ΤΟ ΧΕΡΙ. Τιμές, όρια, πλήθη και ποσοστά
 // έρχονται από τον κώδικα, όπως και στην ελληνική αρχική (και οι τέσσερις
-// μετρήσεις της ζώνης: από τις ίδιες πηγές που ελέγχει ο guard-landing-stats).
+// μετρήσεις της ζώνης, στο landingStats.ts: από τις ίδιες πηγές που ελέγχει ο
+// guard-landing-stats).
 // ═══════════════════════════════════════════════════════════════════════════
 import { PLANS, PLAN_ORDER, TRIAL_DAYS, TEAM_LINE, firstPlanWith } from '@/lib/billing/plans';
 import { FEATURE_MIN_PLAN } from '@/lib/billing/entitlements';
 import { aiLimitsFor, SCAN_LIMITS, TRIAL_SCANS_PER_MONTH } from '@/lib/billing/aiLimits';
-import { RENTAL_TAX_BRACKETS_2026 } from '@/lib/billing/greekTax';
-import { DOC_TYPES } from '@/lib/billing/documents';
-import { PROVIDERS } from '@/lib/energy/catalogue';
-import { READ_INSURERS } from '@/app/dashboard/components/insurance/catalog';
 import { billingWordsEn } from '@/lib/legal/billingWords';
 import { ASSISTANT_NAME_EN as NOA, AI_DISCLOSURE_EN } from '@/lib/i18n/en/noa';
 import { fmtFor } from '@/lib/core/format';
@@ -23,7 +20,6 @@ import { PLAN_COPY_EN } from './plans';
 
 const f = fmtFor('en');
 const name = (id: keyof typeof PLAN_COPY_EN) => PLAN_COPY_EN[id].name;
-const rate = (r: number) => f.fpRate(r * 100);
 
 export const LANDING_EN = {
   title: 'Run your Greek property from a single photo',
@@ -42,19 +38,6 @@ export const LANDING_EN = {
   facts: ['No subscription for one property', `${TRIAL_DAYS}-day trial with ${NOA}`] as const,
   appLanguage: 'The app is in Greek today. English is on the way.',
 };
-
-/** Η ζώνη των τεσσάρων μετρήσεων. Ολα από την πηγή τους. */
-export function statsEn() {
-  const docKinds = DOC_TYPES.filter(d => d.id !== 'other').length;
-  const low = rate(RENTAL_TAX_BRACKETS_2026[0].rate);
-  const high = rate(RENTAL_TAX_BRACKETS_2026[RENTAL_TAX_BRACKETS_2026.length - 1].rate);
-  return [
-    { n: String(docKinds), u: 'document types', l: 'Bills, leases and government documents.' },
-    { n: String(PROVIDERS.length), u: 'power providers', l: 'Their tariffs, with the month last checked.' },
-    { n: String(READ_INSURERS), u: 'insurers', l: 'Home and commercial cover, compared by coverage.' },
-    { n: String(RENTAL_TAX_BRACKETS_2026.length), u: 'tax brackets', l: `On rental income, ${low} to ${high} (Law 5246/2025).` },
-  ];
-}
 
 export const HOW_EN = {
   over: 'How it works',

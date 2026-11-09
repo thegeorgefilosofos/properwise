@@ -694,8 +694,14 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
           <aside className="scan-preview" aria-label="Το έγγραφο">
             <a href={fileUrl} target="_blank" rel="noopener noreferrer" aria-label="Άνοιγμα εγγράφου"
               style={{ display: 'block', borderRadius: T.radius.card, overflow: 'hidden', border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
-              {/* Το ύψος του παραθύρου (92dvh) μείον κεφαλίδα, μπάρα και γέμισμα. */}
-              <RuntimeImg src={fileUrl} alt="" style={{ display: 'block', width: '100%', maxHeight: 'calc(92dvh - 190px)', objectFit: 'contain', objectPosition: 'top' }} />
+              {/* Το ύψος του παραθύρου (92dvh) μείον κεφαλίδα, μπάρα και γέμισμα.
+                  ΤΟ ΚΟΥΤΙ ΥΠΑΡΧΕΙ ΠΡΙΝ ΑΠΟ ΤΗΝ ΕΙΚΟΝΑ. Η εικόνα είναι `lazy`: ώσπου
+                  να αποκωδικοποιηθεί είχε ύψος 0 και το «Άλλο αρχείο» καθόταν
+                  στην κορυφή της στήλης, δίπλα στο πρώτο πεδίο, για να πέσει
+                  358 εικονοστοιχεία πιο κάτω μόλις φόρτωνε (μετρημένο στα 1280:
+                  κορυφή 132 → 490). Το `auto 210 / 297` κρατά σελίδα Α4 μέχρι τότε
+                  και μετά παίρνει τις αναλογίες της ίδιας της εικόνας. */}
+              <RuntimeImg src={fileUrl} alt="" style={{ display: 'block', width: '100%', aspectRatio: 'auto 210 / 297', maxHeight: 'calc(92dvh - 190px)', objectFit: 'contain', objectPosition: 'top' }} />
             </a>
             <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm, minWidth: 0 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
