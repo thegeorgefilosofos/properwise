@@ -17,6 +17,7 @@ import { T, TT, Btn, settingsField, Spinner, ABSENT, ABSENT_DATE, fixedCols, Inf
 import { SetList, SetRow, SetFact } from './SettingsKit';
 import { logActivity } from '@/lib/activity';
 import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password';
+import { MFA_NAME_CONFLICT, pendingTotpIds, totpFriendlyName } from '@/lib/auth/mfa';
 import PasswordStrength from '@/components/PasswordStrength';
 import PasswordEye from '@/app/PasswordEye';
 import { failed } from '@/lib/core/dbError';
@@ -166,13 +167,14 @@ export default function SecuritySettings() {
       // του λάθος και ξαναπατούσε το ίδιο κουμπί για πάντα.
       const { data: list, error: listErr } = await supabase.auth.mfa.listFactors();
       if (listErr) { setMfaErr(failed('Η επαλήθευση δύο βημάτων δεν ενεργοποιήθηκε', listErr)); return; }
-      const totp = (list?.totp ?? []) as MfaFactor[];
-      for (const f of totp) {
-        if (f.status === 'unverified') {
-          try { await supabase.auth.mfa.unenroll({ factorId: f.id }); } catch { /* αγνόησε */ }
-        }
+      // Οι μισές συσκευές ζουν στο `all`, όχι στο `totp` (lib/auth/mfa.ts, pendingTotpIds).
+      for (const id of pendingTotpIds(list)) {
+        try { await supabase.auth.mfa.unenroll({ factorId: id }); } catch { /* αγνόησε */ }
       }
-      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'PROPERWISE' });
+      let { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: totpFriendlyName(false) });
+      if (error?.code === MFA_NAME_CONFLICT) {
+        ({ data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: totpFriendlyName(true) }));
+      }
       if (error) {
         const msg = (error.message || '').toLowerCase();
         if (msg.includes('disabled') || msg.includes('not enabled') || msg.includes('unsupported') || msg.includes('mfa')) {
@@ -182,6 +184,7 @@ export default function SecuritySettings() {
         }
         return;
       }
+      if (!data) { setMfaErr(failed('Η επαλήθευση δύο βημάτων δεν ενεργοποιήθηκε', new Error('enroll'))); return; }
       setEnrollFactor({ id: data.id, qr: data.totp.qr_code, secret: data.totp.secret });
       setCode('');
       setMfaState('enrolling');

@@ -81,6 +81,30 @@ export function hasVerifiedFactor(factors: readonly FactorLike[] | null | undefi
 }
 
 /**
+ * ΟΙ ΜΙΣΟΤΕΛΕΙΩΜΕΝΕΣ ΣΥΣΚΕΥΕΣ TOTP, ΑΠΟ ΤΟ `all` ΚΑΙ ΟΧΙ ΑΠΟ ΤΟ `totp`.
+ *
+ * Το `mfa.listFactors()` του Supabase βάζει στο `totp` ΜΟΝΟ τις επαληθευμένες
+ * (auth-js `_listFactors`: `factor.status === 'verified'`). Οι μισές ζουν μόνο
+ * στο `all`. Ο κώδικας που τις έψαχνε στο `totp` δεν τις έβρισκε ποτέ, δεν τις
+ * έσβηνε και το επόμενο `enroll` έσκαγε με `mfa_factor_name_conflict`: στις
+ * 09/11/2026 ο λογαριασμός λογιστή έμεινε κολλημένος στο «Δεν μπορούμε να
+ * ολοκληρώσουμε το δεύτερο βήμα» μετά από τρεις λάθος εξαψήφιους.
+ */
+export function pendingTotpIds(
+  list: { all?: readonly { id: string; factor_type?: string; status?: string }[] } | null | undefined,
+): string[] {
+  return (list?.all ?? []).filter(f => f.factor_type === 'totp' && f.status !== 'verified').map(f => f.id);
+}
+
+/** Ο κωδικός του Supabase όταν υπάρχει ήδη συσκευή με το ίδιο όνομα. */
+export const MFA_NAME_CONFLICT = 'mfa_factor_name_conflict';
+
+/** Το όνομα της συσκευής· με χρονοσφραγίδα όταν το σκέτο είναι πιασμένο. */
+export function totpFriendlyName(conflict: boolean, now: Date = new Date()): string {
+  return conflict ? `PROPERWISE ${now.toISOString().slice(0, 19).replace('T', ' ')}` : 'PROPERWISE';
+}
+
+/**
  * Λείπει το δεύτερο βήμα από ΑΥΤΗ τη συνεδρία;
  *
  * Η απάντηση είναι «ναι» μόνο όταν ο χρήστης ΜΠΟΡΕΙ να φτάσει στο `aal2` και
