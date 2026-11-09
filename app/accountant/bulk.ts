@@ -20,6 +20,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildZip, type ZipFile } from '@/lib/accounting/zip';
 import { downloadFile, safeFilename } from '@/lib/core/download';
 import { csvCell } from '@/lib/core/csv';
+import { athensToday, daysBetweenIso } from '@/lib/core/time';
 import { PACK_FILES } from '@/lib/accounting/meetingPack';
 import { clientData } from '@/lib/data/accountant';
 import {
@@ -268,15 +269,20 @@ export async function downloadPacks(
 // και μετά, όπου η φράση παύει να είναι αρκετή.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const DAY = 86400000;
-
-/** Πόσο παλιά είναι η τελευταία καταχώρηση, με λόγια. */
+/**
+ * Πόσο παλιά είναι η τελευταία καταχώρηση, με λόγια.
+ *
+ * ΗΜΕΡΟΛΟΓΙΑΚΕΣ ΗΜΕΡΕΣ ΑΘΗΝΑΣ, ΟΧΙ ΔΙΑΣΤΗΜΑΤΑ 24 ΩΡΩΝ. Το `floor((now − t) / 24h)`
+ * έλεγε «σήμερα» για καταχώρηση στις 23:00 της προηγούμενης μέρας όταν ο
+ * λογιστής άνοιγε τη λίστα στις 09:00, και «χθες» για καταχώρηση προχθές το
+ * βράδυ. Το «χθες» του ανθρώπου είναι η προηγούμενη ημερομηνία στο ημερολόγιο.
+ */
 export function lastMove(iso: string | null, now: number = Date.now()): string {
   const t = iso ? Date.parse(iso) : NaN;
   // ΚΑΜΙΑ ΚΑΤΑΧΩΡΗΣΗ ΔΕΝ ΕΙΝΑΙ «ΠΡΙΝ ΑΠΟ ΠΟΛΥ ΚΑΙΡΟ». Ο πελάτης που δεν
   // καταχώρησε ΠΟΤΕ τίποτα είναι άλλη περίπτωση από εκείνον που σταμάτησε.
   if (!isFinite(t)) return 'Καμία καταχώρηση ακόμη';
-  const days = Math.floor((now - t) / DAY);
+  const days = daysBetweenIso(athensToday(new Date(t)), athensToday(new Date(now)));
   const when = days <= 0 ? 'σήμερα'
     : days === 1 ? 'χθες'
       : days < 30 ? `πριν από ${days} ημέρες`
