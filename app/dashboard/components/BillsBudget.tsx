@@ -4,6 +4,7 @@ import { TextInput, Toggle, ToggleTrack, InfoDot } from './UIComponents';
 import { T, fe, feAuto, fp, fn, fd, ABSENT_SHORT, KPIGrid, Skeleton, SkeletonKPIs, pressable, Btn, IconBtn, ChipToggle, LinkBtn } from '@/components/Theme';
 import { feSigned, fpSigned, fpRate } from '@/lib/core/format';
 import { monthGen } from '@/lib/core/months';
+import { parseAmount } from '@/lib/core/greek';
 import { notify } from '@/components/Toast';
 import { categoryStatus, RecurringCharge } from '@/lib/billing/budget';
 import BudgetImport from './BudgetImport';
@@ -1028,7 +1029,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                         <span style={{ flexShrink: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginLeft: 4 }}>Εξαιρείται</span>
                         <div style={{ position: 'relative', width: 92, flexShrink: 0 }}>
                           <input aria-label="Ποσό που εξαιρείται" inputMode="decimal" value={amtVal}
-                            onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setExclAmtDraft(d => ({ ...d, [it.id]: raw })); const n = parseFloat(raw.replace(',', '.')); patchExcl(it.id, { amount: isFinite(n) && n > 0 ? n : undefined }); }}
+                            onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setExclAmtDraft(d => ({ ...d, [it.id]: raw })); const n = parseAmount(raw) ?? NaN; patchExcl(it.id, { amount: isFinite(n) && n > 0 ? n : undefined }); }}
                             placeholder="όλο"
                             style={{ width: '100%', height: 28, padding: '0 22px 0 10px', borderRadius: T.radius.xs, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', outline: 'none', transition: 'border-color 0.15s' }}
                             onFocus={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-accent)'; }}

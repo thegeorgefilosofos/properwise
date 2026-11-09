@@ -184,6 +184,25 @@ export const record = (db: Db, ownerId: string, propertyId: string, kind: Exclud
   rpcDo(db, 'firm_record', { p_owner: ownerId, p_property: propertyId, p_kind: kind, p_row: row });
 export const removeRecord = (db: Db, kind: Exclude<RecordKind, 'event'>, id: string) =>
   rpcDo(db, 'firm_record_delete', { p_kind: kind, p_id: id });
+
+/**
+ * Η «Αναίρεση» του μηνύματος, ολόκληρη: η γραμμή ΚΑΙ το αρχείο.
+ *
+ * Η `firm_record_delete` σβήνει μόνο τη γραμμή του παραστατικού και επιστρέφει
+ * τη διαδρομή του αρχείου (`filePath`). Το αρχείο το είχε ανεβάσει το ίδιο το
+ * μέλος· μόνο αυτό μπορεί να το σβήσει (property_files_firm_unupload).
+ * Οσο η αναίρεση έσβηνε μόνο τη γραμμή, το PDF έμενε στον φάκελο του πελάτη,
+ * αόρατο από την εφαρμογή και χωρίς τρόπο να βρεθεί ξανά.
+ */
+export async function undoRecord(db: Db, kind: Exclude<RecordKind, 'event'>, id: string): Promise<Done> {
+  const r = await removeRecord(db, kind, id);
+  if (!r.ok) return r;
+  const path = r.data?.filePath;
+  if (kind === 'document' && typeof path === 'string' && path) {
+    await db.storage.from('property-files').remove([path]);
+  }
+  return r;
+}
 export const markPaid = (db: Db, kind: OpenItem['kind'], id: string, paidOn: string, method: string | null) =>
   rpcDo(db, 'firm_mark_paid', { p_kind: kind, p_id: id, p_paid_on: paidOn, p_method: method });
 export const openItems = async (db: Db, ownerId: string): Promise<Read<OpenItem[]>> => {
@@ -229,6 +248,25 @@ export const ENTRY_LABEL = {
   loan: 'Δόση δανείου',
   tenant: 'Μισθωτής',
 } as const;
+
+/**
+ * Ποια εκκρεμότητα ανήκει σε ποιο είδος του μενού «Καταχώρηση».
+ *
+ * ΛΕΞΗ ΠΟΥ ΑΡΧΙΖΕΙ ΑΠΟ «ΦΟΡ», ΟΧΙ ΟΠΟΙΑ ΤΟ ΠΕΡΙΕΧΕΙ. Ο έλεγχος ήταν
+ * `/ΕΝΦΙΑ|φόρ|φορ/i` οπουδήποτε στο όνομα: «Προμήθεια πλατφόρμας», «Μεταφορά
+ * επίπλων», «Διαφορά κοινοχρήστων» έβγαιναν δόσεις φόρου, έφευγαν από την
+ * «Πληρωμή λογαριασμού» και εμφανίζονταν στη «Δόση φόρου».
+ */
+const TAX_WORD = /(?<!\p{L})(ενφια|φ[οό]ρ(ος|ου|ο|οι|ων|ολογ))/iu;
+const LOAN_WORD = /(?<!\p{L})δ[αά]νει/iu;
+export function itemsFor(kind: string, all: OpenItem[]): OpenItem[] {
+  const isTax = (i: OpenItem) => TAX_WORD.test(i.name);
+  if (kind === 'rent') return all.filter(i => i.kind === 'rent');
+  if (kind === 'tax') return all.filter(i => i.kind !== 'rent' && isTax(i));
+  if (kind === 'loan') return all.filter(i => i.kind === 'event' && LOAN_WORD.test(i.name));
+  if (kind === 'bill') return all.filter(i => i.kind === 'bill' && !isTax(i));
+  return [];
+}
 
 /**
  * «Λογιστικό Γραφείο Παπαδόπουλος»: σήμερα καταχώρησε 3 πληρωμές και 1 μισθωτή.
@@ -292,8 +330,11 @@ function changed(fields: string[] | null): string {
   return `άλλαξε ${list}`;
 }
 
+// Η ΠΛΗΡΩΜΗ ΧΩΡΙΣ ΓΕΝΟΣ. Το «σημειώθηκε πληρωμένο» έμπαινε δίπλα σε «Δόση»,
+// «Είσπραξη ενοικίου» (θηλυκά) και «Λογαριασμός» (αρσενικό): ουδέτερο επίθετο
+// που δεν συμφωνούσε με κανένα από τα τρία.
 const ACTION_WORD: Record<string, string> = {
-  insert: 'καταχωρήθηκε', delete: 'αφαιρέθηκε', mark_paid: 'σημειώθηκε πληρωμένο', revert: 'επανήλθε',
+  insert: 'καταχωρήθηκε', delete: 'αφαιρέθηκε', mark_paid: 'σημειώθηκε η πληρωμή', revert: 'επανήλθε',
 };
 
 /** «Λογαριασμός «ΔΕΗ Μάρτιος» · άλλαξε ποσό και λήξη». */
@@ -316,6 +357,7 @@ export function reasonText(reason: string): string {
     case 'future': return 'Η ημερομηνία πληρωμής δεν μπορεί να είναι μελλοντική.';
     case 'not_payable': return 'Αυτό δεν είναι μία δόση που κλείνει με πληρωμή.';
     case 'paid_at': return 'Γράψε πότε πληρώθηκε ο λογαριασμός.';
+    case 'amount': return 'Γράψε το ποσό που πληρώθηκε.';
     case 'too_late': return 'Πέρασαν 24 ώρες. Την αφαίρεση την κάνει πλέον ο ιδιοκτήτης.';
     case 'not_ours': return 'Αλλάζεις μόνο ό,τι καταχώρησε το γραφείο σου.';
     case 'mfa_required': return 'Χρειάζεται ο δεύτερος κωδικός σύνδεσης.';
@@ -340,7 +382,14 @@ export type StatusFilter = 'all' | 'blocked' | 'ready';
  * ανατέθηκαν· ο υπεύθυνος που δεν έχει αναθέσει κανέναν στον εαυτό του τα
  * βλέπει όλα στο «Όλοι». Το «Υπεύθυνος» κρατά όσους έχει αναλάβει το μέλος.
  */
-export function filterClients<T extends { ownerId: string; assignees?: { userId: string }[]; blocking: boolean }>(
+/*
+ * «ΕΤΟΙΜΟΙ» ΕΙΝΑΙ ΟΣΟΙ Η ΚΑΡΤΑ ΓΡΑΦΕΙ «ΕΤΟΙΜΟΣ». Το φίλτρο κρατούσε όποιον δεν
+ * είχε εκκρεμότητα που μπλοκάρει, δηλαδή και τους «Σχεδόν έτοιμους», ενώ η
+ * σύνοψη από πάνω μετρά μόνο όσους δεν έχουν κανένα κενό: «1 έτοιμος» στον
+ * τίτλο και δύο κάρτες στο φίλτρο «Έτοιμοι». Το `complete` (κανένα κενό) το
+ * δίνει ο καλών· όπου λείπει, ισχύει ο παλιός κανόνας.
+ */
+export function filterClients<T extends { ownerId: string; assignees?: { userId: string }[]; blocking: boolean; complete?: boolean }>(
   rows: T[], meta: Map<string, ClientLevel>, f: { scope: Scope; assignee: string; status: StatusFilter },
 ): T[] {
   return rows.filter(r => {
@@ -348,7 +397,7 @@ export function filterClients<T extends { ownerId: string; assignees?: { userId:
     if (f.assignee === '-') { if ((r.assignees?.length ?? 0) > 0) return false; }
     else if (f.assignee && !(r.assignees ?? []).some(a => a.userId === f.assignee)) return false;
     if (f.status === 'blocked' && !r.blocking) return false;
-    if (f.status === 'ready' && r.blocking) return false;
+    if (f.status === 'ready' && (r.blocking || r.complete === false)) return false;
     return true;
   });
 }

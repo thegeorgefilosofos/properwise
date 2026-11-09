@@ -567,8 +567,11 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
     <div className="pf-head">
       {/* ΣΤΟ ΤΗΛΕΦΩΝΟ ΟΙ ΕΝΕΡΓΕΙΕΣ ΣΕ ΜΙΑ ΣΤΗΛΗ. Το κοινό πλέγμα δύο στηλών της
           `.act-row` έκοβε το «Είσπραξη ενοικίων · 2» και το «Καταστάσεις
-          ιδιοκτήτη» σε δύο σειρές το καθένα, σε μισό πλάτος. */}
-      <style>{`@media (max-width: 480px) { .pf-head .act-row { grid-template-columns: 1fr; } }`}</style>
+          ιδιοκτήτη» σε δύο σειρές το καθένα, σε μισό πλάτος.
+          09/11/2026: ο κανόνας ήταν γραμμένος για πλέγμα και η `.act-row` είναι
+          flex από τις 29/10, οπότε δεν έπιανε: στα 360 τα τρία κουμπιά έμεναν
+          στην ίδια σειρά, όπου το καθένα έσπαγε σε δύο γραμμές. */}
+      <style>{`@media (max-width: 480px) { .pf-head .act-row > * { flex: 1 1 100%; } }`}</style>
       <PageTitle title="Χαρτοφυλάκιο" sub={`${properties.length} ${properties.length === 1 ? 'ακίνητο' : 'ακίνητα'} · έσοδα και εκκρεμότητες ${year}`}
         right={<>
           {/* ΤΟ ΚΟΥΜΠΙ ΥΠΑΡΧΕΙ ΜΟΝΟ ΟΤΑΝ ΕΧΕΙ ΤΙ ΝΑ ΓΡΑΨΕΙ. Χωρίς δόση που να

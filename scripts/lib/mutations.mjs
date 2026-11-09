@@ -24,6 +24,7 @@ const tsx = (body) => `export default function MutationProbe() {\n  return (\n${
 export const MUTATIONS = {
   // Ο οδηγός «Νέο ακίνητο» ξανά με τη φόρμα απλωμένη αυτούσια: ακριβώς το
   // '' στο property_settings.insurance_expiry (Postgres 22007, 06/11/2026).
+  'act-row-grid': { file: 'app/dashboard/components/RentReceived.tsx', from: '.act-row:has(.rr-cta) > * { flex: 1 1 100%; }', to: '.act-row:has(.rr-cta) { grid-template-columns: 1fr; }' },
   'form-spread-write': { file: 'app/dashboard/components/AddPropertyWizard.tsx', from: '.upsert({ ...settingsRow(settings), property_id', to: '.upsert({ ...settings, property_id' },
   // Το README ξαναγράφει πλήθος με το χέρι: ακριβώς τα «130+ guard scripts» και
   // «250+ suites» που είχαν μείνει πίσω από τα 165 και τα 405 (04/11/2026).

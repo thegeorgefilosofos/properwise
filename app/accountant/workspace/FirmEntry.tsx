@@ -15,13 +15,13 @@ import { useEffect, useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { T, TT, Btn, Modal, Skeleton, fe, fd, fieldRow } from '@/components/Theme';
 import { TextInput, CustomSelect, NumberInput, DatePicker } from '@/app/dashboard/components/UIComponents';
-import { notify } from '@/components/Toast';
+import { notify, notifyError } from '@/components/Toast';
 import { DropZone } from '@/app/dashboard/components/DropZone';
 import { fmtBytes } from '@/lib/core/bytes';
 import { isValidAfm, parseAmount } from '@/lib/core/greek';
 import { athensToday } from '@/lib/core/time';
 import {
-  record, markPaid, removeRecord, openItems, clientProperties, reasonText, ENTRY_LABEL,
+  record, markPaid, undoRecord, openItems, clientProperties, reasonText, itemsFor, ENTRY_LABEL,
   type OpenItem, type ClientProperty,
 } from '@/lib/data/firms';
 
@@ -46,19 +46,10 @@ const orNull = (v: string): string | null => (v.trim() === '' ? null : v.trim())
 /** Η ετικέτα του dropdown των εκκρεμοτήτων, ανά είδος. */
 const ITEM_LABEL: Partial<Record<EntryKind, string>> = { bill: 'Λογαριασμός', rent: 'Ενοίκιο', tax: 'Δόση φόρου', loan: 'Δόση δανείου' };
 
-/** Ποια εκκρεμότητα ανήκει σε ποιο είδος του μενού. */
-const isTax = (i: OpenItem) => /ΕΝΦΙΑ|ενφια|φόρ|φορ/i.test(i.name);
-const isLoan = (i: OpenItem) => /δάνει|δανει/i.test(i.name);
-function itemsFor(kind: EntryKind, all: OpenItem[]): OpenItem[] {
-  if (kind === 'rent') return all.filter(i => i.kind === 'rent');
-  if (kind === 'tax') return all.filter(i => i.kind !== 'rent' && isTax(i));
-  if (kind === 'loan') return all.filter(i => i.kind === 'event' && isLoan(i));
-  if (kind === 'bill') return all.filter(i => i.kind === 'bill' && !isTax(i));
-  return [];
-}
-
-export default function FirmEntry({ db, ownerId, ownerName, kind, onClose }: {
+export default function FirmEntry({ db, ownerId, ownerName, kind, onClose, onUndone }: {
   db: SupabaseClient; ownerId: string; ownerName: string; kind: EntryKind; onClose: () => void;
+  /** Μετά από επιτυχή αναίρεση: η λίστα των πελατών ξαναδιαβάζεται. */
+  onUndone?: () => void;
 }) {
   const today = athensToday();
   const [props, setProps] = useState<ClientProperty[] | null>(null);
@@ -150,7 +141,9 @@ export default function FirmEntry({ db, ownerId, ownerName, kind, onClose }: {
     }
     if (kind === 'bill' && (itemId === NEW || choices.length === 0) && property && newBill.name.trim()) {
       const amount = parseAmount(newBill.amount);
-      if (!amount || amount <= 0) return fail('error');
+      // Το κενό ποσό γίνεται «0» μόλις φύγει η εστίαση (NumberInput): το «Δοκίμασε
+      // ξανά» δεν θα πετύχαινε ποτέ. Λέγεται τι λείπει.
+      if (!amount || amount <= 0) return fail('amount');
       const r = await record(db, ownerId, property, 'bill', {
         type: newBill.name.trim(), name: newBill.name.trim(), amount, due_date: paidOn, paid_at: paidOn,
       });
@@ -162,10 +155,18 @@ export default function FirmEntry({ db, ownerId, ownerName, kind, onClose }: {
   };
 
   // Η ΑΝΑΙΡΕΣΗ ΣΤΟ ΙΔΙΟ ΤΟ ΜΗΝΥΜΑ. Λάθος ακίνητο ή λάθος αρχείο διορθώνεται
-  // αμέσως, χωρίς να ψάξει κανείς την εγγραφή.
+  // αμέσως, χωρίς να ψάξει κανείς την εγγραφή. Το αποτέλεσμα λέγεται: πριν,
+  // μια αναίρεση που απέτυχε (π.χ. η πρόσβαση ανακλήθηκε στο μεταξύ) δεν έλεγε
+  // τίποτα και η εγγραφή έμενε, ενώ ο λογιστής νόμιζε ότι έφυγε.
+  const undo = async (k: 'document' | 'tenant' | 'bill', id: string) => {
+    const r = await undoRecord(db, k, id);
+    if (!r.ok) { notifyError(reasonText(r.reason)); return; }
+    notify('Η καταχώρηση αναιρέθηκε.');
+    onUndone?.();
+  };
   const done = (msg: string, k?: 'document' | 'tenant' | 'bill', id?: string) => {
     setBusy(false);
-    notify(msg, k && id ? { action: { label: 'Αναίρεση', onClick: () => { void removeRecord(db, k, id); } } } : undefined);
+    notify(msg, k && id ? { action: { label: 'Αναίρεση', onClick: () => { void undo(k, id); } } } : undefined);
     onClose();
   };
 

@@ -267,8 +267,15 @@ export default function RentReceived({
           χωρούν και στοιβάζονται, το καθένα σε όλο το πλάτος.
 
           ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΑ ΚΟΥΜΠΙΑ ΣΕ ΔΙΚΗ ΤΟΥΣ ΣΕΙΡΑ ΤΟ ΚΑΘΕΝΑ. Στο μισό
-          πλάτος το «Καταχώρηση · 400,00€» έσπαγε σε δύο γραμμές. */}
-      <style>{`@media (max-width: 480px) { .act-row:has(.rr-cta) { grid-template-columns: 1fr; } } .rr-cta, .rr-nowrap { white-space: nowrap; }`}</style>
+          πλάτος το «Καταχώρηση · 400,00€» έσπαγε σε δύο γραμμές.
+
+          09/11/2026: Ο ΚΑΝΟΝΑΣ ΗΤΑΝ ΝΕΚΡΟΣ. Η `.act-row` έγινε flex στις 29/10
+          (globals.css) και το `grid-template-columns` δεν έπιανε πια: στα 360
+          τα δύο κουμπιά έμεναν δίπλα δίπλα στα 135 εικονοστοιχεία και το
+          «Καταχώρηση · 400,00€» (με nowrap) έβγαινε έξω από το κουμπί του,
+          κολλητά στις άκρες· το «Καταχώρηση 6 δόσεων · 3.150,00€» ούτε στα 390.
+          Τώρα κάθε κουμπί παίρνει όλη τη σειρά με `flex-basis`. */}
+      <style>{`@media (max-width: 480px) { .act-row:has(.rr-cta) > * { flex: 1 1 100%; } } .rr-cta, .rr-nowrap { white-space: nowrap; }`}</style>
       <div {...fieldRow(200)}>
         <DatePicker label="Ημερομηνία είσπραξης" value={paidDate} onChange={setPaidDate} />
         <CustomSelect label="Τρόπος είσπραξης" value={method} onChange={v => setMethod(v as PayMethod)}
