@@ -83,7 +83,7 @@ export default async function LandingEn() {
       <LandingStyles />
       <a href="#main" className="skip-link">{LANDING_EN.skip}</a>
       <div className="lp-readbar" aria-hidden="true" />
-      <div className="lp-atmos" aria-hidden="true"><div className="lp-orb" /></div>
+      <div className="lp-atmos" aria-hidden="true" />
 
       <header className="lp-head" style={{ position: 'sticky', top: 0, zIndex: 50, paddingTop: 'env(safe-area-inset-top, 0px)', background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)', borderBottom: `1px solid ${LINE}` }}>
         <nav style={{ ...wrap, height: 64, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -98,7 +98,6 @@ export default async function LandingEn() {
       <Spotlight>
 
       <section className="lp-hero" style={{ position: 'relative', overflow: 'hidden' }}>
-        <div className="lp-aurora" aria-hidden="true" />
         <div style={{ ...wrap, ...LAYER, paddingTop: 'clamp(40px, 5.5vw, 68px)', paddingBottom: GAP, textAlign: 'center' }}>
           <Link href="#pricing" className="lp-rise lp-news">
             <span className="lp-news-tag">{LANDING_EN.news.tag}</span>
@@ -301,7 +300,6 @@ export default async function LandingEn() {
       </section>
 
       <section className="lp-hero lp-reveal lp-final" style={{ position: 'relative', overflow: 'hidden', borderBottom: 'none' }}>
-        <div className="lp-aurora" aria-hidden="true" />
         <div style={{ ...wrap, ...LAYER, textAlign: 'center', paddingTop: GAP, paddingBottom: GAP }}>
           <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>{FINAL_EN.title}</h2>
           <p data-nohy="" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 30px', maxWidth: 640, textWrap: 'balance' }}>

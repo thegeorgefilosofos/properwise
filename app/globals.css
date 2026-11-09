@@ -5144,8 +5144,10 @@ body:has(.po-tool-page) .po-cookie {
    margin-bottom απλώς δεν θα ίσχυε και ο τίτλος θα κολλούσε στην ετικέτα. */
 .lp-eyebrow {
   display: flex; width: fit-content; align-items: center; gap: 8px;
-  font-size: 12px; font-weight: 700; letter-spacing: 0.13em;
-  text-transform: uppercase; color: var(--text-tertiary);
+  /* Πεζά πρότασης σε κανονικό μέγεθος (έλεγχος UX 09/11/2026): τα μικρά
+     αραιωμένα κεφαλαία σε κάθε ενότητα ήταν θόρυβος προτύπου. */
+  font-size: 14px; font-weight: 600;
+  color: var(--text-secondary);
   margin-bottom: 13px;
 }
 .lp-eyebrow::before {
@@ -5503,7 +5505,7 @@ body:has(.pw-lang-suggest) .pub-menu-sheet { max-height: calc(100vh - 162px); ma
 .pub-menu-group + .pub-menu-group { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-subtle); }
 .pub-menu-label {
   margin: 0; padding: 8px 14px 4px;
-  font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  font-size: 13px; font-weight: 600;
   color: var(--text-tertiary);
 }
 /* Το «Σύγκριση τιμολογίων ρεύματος» στα 320 θέλει όλο το πλάτος του φύλλου:
@@ -7246,7 +7248,6 @@ tr.po-row-more { display: none; }
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 0.82em; font-weight: 700; letter-spacing: -0.02em;
   background: var(--accent); color: var(--accent-text);
-  box-shadow: 0 10px 34px -10px color-mix(in srgb, var(--accent) 70%, transparent);
 }
 .nf-lead { margin: 18px 0 0; font-size: clamp(16px, 1.7vw, 18px); line-height: 1.6; color: var(--text-secondary); }
 .nf-does { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 14px; }
@@ -7286,11 +7287,6 @@ tr.po-row-more { display: none; }
 /* Η κάρτα ξεκινά στη γραμμή του τίτλου, όχι της ταμπέλας από πάνω του: η
    ταμπέλα πιάνει 31 εικονοστοιχεία (μετρημένο στα 1.100 και στα 1.440). */
 @media (min-width: 901px) { .nf-stage { margin-top: 31px; } }
-.nf-halo {
-  position: absolute; inset: 8% 6%; border-radius: 40%; pointer-events: none;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 26%, transparent), transparent);
-  filter: blur(28px);
-}
 .nf-card {
   position: relative; padding: 18px; border-radius: 22px; background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -7783,8 +7779,8 @@ html[lang="en"] :is(.lg-p, .lg-ul li, .lg-note, .lg-just, .lg-lede > p) { text-a
 .lp-footacc > summary::-webkit-details-marker, .lp-footmore > summary::-webkit-details-marker { display: none; }
 .lp-foothead {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
-  color: var(--text-tertiary); margin: 0 0 18px; cursor: default;
+  font-size: 14px; font-weight: 600;
+  color: var(--text-secondary); margin: 0 0 18px; cursor: default;
 }
 .lp-foothead > .lp-foot-i { display: none; }
 .lp-footlinks { display: flex; flex-direction: column; gap: 10px; }
