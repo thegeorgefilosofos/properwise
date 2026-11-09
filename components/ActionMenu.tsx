@@ -213,6 +213,10 @@ export function ActionMenu({
           )}
           {items.map(it => {
             const inert = it.disabled || it.busy;
+            // ΜΙΑ ΚΑΙ ΜΟΝΗ ΕΝΕΡΓΕΙΑ, ΧΩΡΙΣ ΕΙΚΟΝΙΔΙΟ ΚΑΙ ΠΕΡΙΓΡΑΦΗ, ΔΙΑΒΑΖΕΤΑΙ ΩΣ ΚΟΥΜΠΙ.
+            // Στοιχισμένη αριστερά έμενε κολλημένη στη μία άκρη ενός φαρδιού
+            // πλαισίου («Αφαίρεση από τη λίστα» στην πύλη λογιστή).
+            const lone = items.length === 1 && !heading && !it.icon && !it.description;
             return (
               <button
                 key={it.key}
@@ -222,7 +226,7 @@ export function ActionMenu({
                 onClick={() => { if (inert) return; setOpen(false); it.onClick(); }}
                 className="po-hov-row"
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '9px 10px',
+                  display: 'flex', alignItems: 'center', justifyContent: lone ? 'center' : undefined, gap: 12, width: '100%', textAlign: lone ? 'center' : 'left', padding: '9px 10px',
                   // Το `background: transparent` το δίνει η `po-hov-row`· γραμμένο εδώ
                   // ακύρωνε το άναμμα της γραμμής σε αιώρηση και σε εστίαση.
                   borderRadius: T.radius.chip, border: 'none', cursor: inert ? 'default' : 'pointer',
