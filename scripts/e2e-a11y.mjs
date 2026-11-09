@@ -230,7 +230,7 @@ for (const path of ['/login', '/signup']) {
   await cta.click()
   await p.waitForTimeout(700)
   const said = (await p.locator('[role="alert"]').allInnerTexts()).map(t => t.trim()).filter(Boolean)
-  ok('εγγραφή: η υποβολή χωρίς όρους εξηγείται', said.some(t => /αποδεχθείς|αποδοχή/i.test(t)))
+  ok('εγγραφή: η υποβολή χωρίς όρους εξηγείται', said.some(t => /αποδεχ[θτ]είς|αποδοχή/i.test(t)))
   ok(`εγγραφή: εξηγείται ΜΙΑ φορά${said.length > 1 ? ' — ειπώθηκε ' + said.length : ''}`, said.length === 1)
   await ctx.close()
 }

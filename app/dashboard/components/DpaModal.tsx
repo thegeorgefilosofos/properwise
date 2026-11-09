@@ -73,8 +73,8 @@ export default function DpaModal() {
         </>}>
         <p style={{ margin: 0, fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', lineHeight: 1.6, fontFamily: T.font.sans }}>
           Τα στοιχεία των ενοικιαστών και των συνεργατών σου (ταυτότητας, επικοινωνίας και μίσθωσης, όπως όνομα, ΑΦΜ ή μισθωτήριο) τα καταχωρείς εσύ, ως υπεύθυνος επεξεργασίας.
-          Το PROPERWISE τα επεξεργάζεται μόνο για λογαριασμό σου, με τους όρους του άρθρου 28 του GDPR.
-          Η σύμβαση ζητείται μία φορά, πριν από την πρώτη αποθήκευση.
+          Το PROPERWISE τα επεξεργάζεται μόνο για λογαριασμό σου, με τους όρους του άρθρου 28 του ΓΚΠΔ.
+          Η σύμβαση ζητείται πριν από την πρώτη αποθήκευση και ξανά όταν αλλάξει.
         </p>
         <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.6, fontFamily: T.font.sans }}>
           <a href={DPA_HREF} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 2, fontWeight: 600 }}>Διάβασε τη σύμβαση στους Όρους</a>

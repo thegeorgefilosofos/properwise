@@ -24,7 +24,7 @@ import { enPathFor } from '@/lib/i18n/paths';
 import { activeSubprocessors, plannedSubprocessors, type Subprocessor } from '@/lib/legal/subprocessors';
 import { siteUrl } from '@/lib/core/site';
 import { INVITE_LIMITS } from '@/lib/data/accountantInvites';
-import { FIRM_UNDO_DAYS } from '@/lib/legal/firms';
+import { FIRM_ACCESS_LOG_MONTHS, FIRM_UNDO_DAYS } from '@/lib/legal/firms';
 import {
   INDIV_VOLUME_TARGET, INDIV_VOLUME_BONUS_MONTHS, PRO_PAID_TARGET, PRO_PAID_BONUS_MONTHS,
   STREAK_TARGET_MONTHS, PARTNER_WELCOME_MONTHS, PARTNER_MONTHLY_FREE_MONTHS,
@@ -55,7 +55,7 @@ export const TERMS_EN = {
   title: 'Terms of use',
   metaTitle: 'Terms of use · PROPERWISE',
   description: `The terms of a PROPERWISE subscription: prices, the ${TRIAL_DAYS}-day trial, withdrawal, cancellation and your rights.`,
-  intro: 'By creating an account you enter into a contract with us and accept these Terms. They are written as simply as possible, with respect for your rights as a consumer, and we suggest you read them before you start.',
+  intro: 'By creating an account you enter into a contract with us and accept these Terms. They are written as simply as possible, with respect for your rights as a consumer. We suggest you read them before you start.',
 };
 
 export function termsSectionsEn(): LegalSection[] {
@@ -71,7 +71,7 @@ export function termsSectionsEn(): LegalSection[] {
   return [
     { h: 'Definitions', part: 'A. Our agreement', labelled: true, list: [
       '“Service” or “PROPERWISE”: the property management app and all its features.',
-      '“We”: the operator of the Service.',
+      `“We”: the operator of the Service. You can contact us at ${IDENTITY.supportEmail}.`,
       '“You” or “User”: the natural or legal person using the Service.',
       '“Subscription”: paid access to a plan of the Service beyond the no-subscription plan, bought at checkout and charged at the moment of purchase.',
     ] },
@@ -88,8 +88,8 @@ export function termsSectionsEn(): LegalSection[] {
       'You are responsible for the security of your sign-in details and for every action taken from your account. Notify us immediately if you suspect unauthorized access.',
     ] },
     { h: 'How the contract is concluded', p: [
-      `Article 9 of Greek Presidential Decree 131/2003 on electronic commerce requires that you know in advance exactly how you become bound. ${words.contractSteps}`,
-      'Before every submission you see what you entered and can correct it, by going back or correcting the field in place; every detail of your account remains correctable after sign-up as well. The contract is concluded in Greek, is stored by us and you can read it whenever you like on this page, and every material change to it is notified to you in advance. We have not subscribed to any industry code of conduct.',
+      `The Greek law on electronic commerce (Presidential Decree 131/2003) requires that you know in advance exactly how you become bound. ${words.contractSteps}`,
+      'Before every submission you see what you entered and can correct it, by going back or correcting the field in place; every detail of your account remains correctable after sign-up as well. The contract is concluded in Greek; if this English translation differs, the Greek text prevails. It is stored by us and you can read it whenever you like on this page, and every material change to it is notified to you in advance. We have not subscribed to any industry code of conduct.',
     ] },
     { h: 'Subscription, prices and trial', part: 'B. Subscription and money', p: [
       `The “${name('free')}” plan is provided at no charge, without a subscription: ${propertiesFor('free')}, the tax tools, ${SCAN_LIMITS.free} document scans a month, without Noa. There are four subscriptions, with no minimum term: “${name('solo')}” for ${propertiesFor('solo')}, with Noa and scanning with no monthly limit (${price('solo')}), “${name('owner')}” for ${propertiesFor('owner')} (${price('owner')}), “${name('agency')}” for ${propertiesFor('agency')} with team management (${price('agency')}) and “${name('office')}” for ${propertiesFor('office')} (${price('office')}). The prices shown apply to consumers in Greece and include the applicable VAT; for customers outside Greece, VAT follows their country. In every case, you see the amount you will be charged at checkout before you confirm, and the VAT breakdown appears on the receipt.`,
@@ -97,7 +97,7 @@ export function termsSectionsEn(): LegalSection[] {
       words.planChange,
       words.afterTrial,
       `${words.paymentMethodAsked} No charge is ever made using details you have not given yourself for that purpose.`,
-      'We reserve the right to adjust prices in the future. Any change will be notified to you in advance and will apply only from the next billing period, so that you can decide freely whether to continue.',
+      'We reserve the right to adjust prices in the future. Any price change is notified to you by email before the renewal it applies to, in good time for you to decide whether to continue. The new price never applies to a period you have already paid for. Until the renewal you can cancel the subscription or terminate the contract without charge or penalty.',
       'Today there is no charge beyond the plan price. If an optional feature with its own cost is added, it will be switched on only by you, will appear as a separate line before you confirm, and will be listed here with its price before it becomes available.',
     ] },
     { h: 'Payments and billing', p: [
@@ -132,7 +132,7 @@ export function termsSectionsEn(): LegalSection[] {
     } },
     { h: 'Cancellation and refunds', p: [
       'You can cancel your subscription at any time from within the app, under subscription management in your Account, without needing to contact us. Cancellation applies from the next billing period and you keep access until the end of the period you have already paid for.',
-      'Beyond the rights the law gives you (e.g. in case of defective performance) and the 14-day guarantee from the first charge described above, paid periods are not refunded pro rata. If you run into a problem, contact us and we will deal with it in good faith.',
+      'Beyond the rights the law gives you (e.g. withdrawal, or your rights in case of defective performance) and the refund commitment for businesses in the section “Right of withdrawal”, paid periods are not refunded pro rata. If you run into a problem, contact us and we will deal with it in good faith.',
     ] },
     { h: 'Invitation and partner program', id: 'systaseis', part: 'C. Programs and benefits', p: [
       `The Service offers an invitation program: you share your personal link and, when a new owner starts and activates their account (adds a property and scans a document), you earn one extra property for ${months(REFERRER_SLOT_MONTHS)}, whatever plan you have. If the new user becomes a “${name('agency')}” subscriber, you earn instead ${months(individualReferrerReward(false, 'agency').months)} of “${reward.proOutcome}”. The new user starts with the ${TRIAL_DAYS}-day trial, like every new account; the link gives them no additional benefit.`,
@@ -179,18 +179,29 @@ export function termsSectionsEn(): LegalSection[] {
       'End of access: when the client revokes access or the firm removes a member, access stops immediately within the Service. The firm does not keep copies of what it saw beyond what the work entrusted to it or the law requires.',
       'Breach: misuse of access to a client’s account is a material breach (see “Suspension and termination”).',
     ] },
+    { h: 'Obligations of the firm as a processor', id: 'grafeia-ekteloun', p: [
+      'This section supplements the undertakings in the section “Accounting or tax firm account” for what the firm records in the client’s account as a processor (Article 28 GDPR). The firm takes on these obligations directly towards the client, who may rely on them independently. The firm:',
+    ], list: [
+      'takes appropriate technical and organisational security measures (Article 32 GDPR) for whatever it views, records or downloads from the client’s account, such as the second sign-in step for every member and the safekeeping of every file it downloads;',
+      'assists the client, with the information available to it, with the obligations under Articles 32 to 36 GDPR: security of processing, notification and communication of a breach, impact assessment and prior consultation;',
+      'does not engage another processor for these records without the client’s prior written authorisation. If the authorisation is general, it informs the client before adding or replacing one, so that the client can object. It binds anyone it engages by contract to the same data protection obligations and remains liable to the client for them;',
+      'transfers client data outside the European Economic Area only as the section “Accounting or tax firm account” provides for members outside the EEA, with the safeguards of Chapter V GDPR;',
+      'informs the client immediately if, in its opinion, an instruction infringes the GDPR or other data protection provisions;',
+      `at the end of the access, what it recorded stays in the client’s account, which the client controls. It deletes copies it kept outside the Service, unless it needs them for the work it was given or the law requires them to be kept. Within the Service the firm continues to see only its own access history for the client, for ${FIRM_ACCESS_LOG_MONTHS} months from each action, not the activity log or the client’s data;`,
+      'makes available to the client all information necessary to demonstrate compliance with Article 28 GDPR and allows audits by the client or an auditor the client appoints, at a reasonable time and with reasonable notice.',
+    ] },
     { h: 'Your content and license', p: [
       'The data and files you enter remain yours. You grant us a limited, non-exclusive license to store and process them solely so that the Service works for you. You can export or delete them at any time.',
     ] },
     { h: 'Processing agreement for third-party data', id: 'epexergasia', p: [
-      'When you enter details of third parties, such as a tenant’s name, tax number (AFM) or lease, you are the controller and we are the processor under Article 28 of Regulation (EU) 2016/679. This section is the processing agreement between us.',
+      'When you enter details of third parties, such as a tenant’s name, tax number (AFM) or lease, you are the controller and we are the processor under Article 28 of the General Data Protection Regulation (Regulation (EU) 2016/679, “GDPR”). This section is the processing agreement between us.',
       'Its subject matter is storing and processing these details solely so that the Service works for you (lease records, installments, documents, declarations). Its duration is for as long as you keep an account and the details have not been deleted. The categories of data subjects are your tenants and partners; the categories of data are the identity, contact and lease details you enter.',
       'Acceptance is requested within the app before the first time such details are saved, and is recorded with version and date. Without acceptance the details are not saved. As processor we undertake to:',
     ], list: [
-      'process the details only on your documented instructions, that is, those you give by using the Service;',
+      'process the details only on your documented instructions, that is, those you give by using the Service. These include transfers to third countries, which take place only as described in the Privacy Policy (“International transfers”). If the law requires us to carry out other processing, we inform you before it, unless that law prohibits it. We inform you immediately if, in our opinion, an instruction of yours infringes the GDPR;',
       'bind anyone with access to them on our side to confidentiality; members of an accounting firm to which you grant access are bound by the firm itself (see “Accounting or tax firm account”);',
       'take the security measures of Article 32, such as encryption in transit and access control per account;',
-      'use sub-processors only as listed on the “About us” page, and inform you before adding a new one;',
+      'engage other processors only as listed on the “About us” page. We bind them by contract to the data protection obligations of Article 28 GDPR and remain liable to you for them; the Privacy Policy (“International transfers”) states with whom a contract has been concluded and with whom it is pending. Before adding or replacing one we inform you by email, in good time for you to object. If you object on reasonable grounds and no solution is found, you may terminate the contract without charge;',
       'help you respond to data subjects’ requests, with export and deletion from within the app;',
       'assist you with the obligations of Articles 32 to 36 and inform you without undue delay of a personal data breach;',
       'delete the details when you delete them or close your account, except those the law requires to be kept;',
@@ -203,11 +214,11 @@ export function termsSectionsEn(): LegalSection[] {
       'The Service, its design, code, trademarks and our content belong to us and are protected by intellectual property law. You acquire no right in them beyond the right to use the Service under these Terms.',
     ] },
     { h: 'Third-party services', p: [
-      `The Service relies on third-party providers: ${namesOf(activeSubprocessors())}. Planned but processing no data today: ${namesOf(plannedSubprocessors())}. What each one does and where is on the “About us” page. Their use is also governed by their own terms. We are not liable for actions or interruptions by third parties beyond our control.`,
+      `The Service relies on third-party providers: ${namesOf(activeSubprocessors())}. Planned but processing no data today: ${namesOf(plannedSubprocessors())}. What each one does and where is on the “About us” page. For the providers we use, we are liable to you as for our own acts, in accordance with the law. We are not liable for third-party services that you choose and connect yourself, such as your Google account, which are governed by their own terms.`,
     ] },
     { h: 'Artificial intelligence, not professional advice', part: 'E. What we guarantee and our liability', p: [
       'Calculations (taxes, yields, costs) and the answers to your questions to Noa are supportive and indicative. They do not constitute tax, legal, accounting, insurance or investment advice. For binding decisions, always consult the appropriate professional (accountant, lawyer, notary, insurance or investment adviser) or the competent authority.',
-      `The no-subscription plan does not include questions to Noa and has a monthly limit on document scans; on subscriptions, scanning has no monthly limit, apart from a per-minute limit against automated abuse. During the trial and in months without charge (months from the invitation program, partner status), scanning is limited to ${TRIAL_SCANS_PER_MONTH} documents a month. Each subscription includes a set number of questions to Noa per day and per month. The limit is in line with the subscription and is shown in the plan comparison within the app; accounts on trial, and those with a temporarily higher level without charge (months from the invitation program, partner status), have a lower limit. When it runs out, questions renew in the next cycle and all other features continue normally. We reserve the right to adjust the limits if the provider’s cost changes significantly, with prior notice.`,
+      `The no-subscription plan does not include questions to Noa and has a monthly limit on document scans; on subscriptions, scanning has no monthly limit, apart from a per-minute limit against automated abuse. During the trial and in months without charge (months from the invitation program, partner status), scanning is limited to ${TRIAL_SCANS_PER_MONTH} documents a month. Each subscription includes a set number of questions to Noa per day and per month. The limit is in line with the subscription and is shown in the plan comparison within the app; accounts on trial, and those with a temporarily higher level without charge (months from the invitation program, partner status), have a lower limit. When it runs out, questions renew in the next cycle and all other features continue normally. We reserve the right to adjust the limits if the provider’s cost changes significantly, with prior notice. Reducing a limit is a change to the Service: the section “The Service” applies, including your right to terminate the contract without charge.`,
     ] },
     { h: 'Availability and maintenance', p: [
       'We make every reasonable effort to ensure high availability. There may be scheduled or unscheduled interruptions for maintenance or technical reasons; we announce scheduled ones in advance within the app where feasible.',
@@ -221,27 +232,32 @@ export function termsSectionsEn(): LegalSection[] {
     { h: 'Limitation of liability', p: [
       'We are liable for damage caused by our own fault, in accordance with the law. We keep a daily backup and, if data is lost through a fault of ours, we restore it from the latest one.',
       'If you use the Service as a professional, we are not liable for indirect or consequential loss or for loss of profit, except in cases of intent or gross negligence.',
-      'Nothing in these Terms limits your mandatory rights as a consumer.',
+      'No limitation in these Terms excludes or limits our liability for intent or gross negligence (Article 332 of the Greek Civil Code), or your rights as a consumer under Greek Laws 2251/1994 and 4967/2022. All limitations of liability in these Terms apply subject to mandatory law.',
     ] },
     { h: 'Indemnity', p: [
       'If you use the Service as a professional, you agree to indemnify us against third-party claims arising from unlawful or contract-breaching use of it, in particular from entering their data without a legal basis.',
     ] },
     { h: 'Transfer of the Service', p: [
-      'In the future the Service may, in whole or in part, be transferred to another company, through acquisition, merger, demerger or sale of assets. In that case your contract, your subscription and your data pass to the successor, which is bound by these Terms and by the Privacy Policy as in force at the time of the transfer.',
+      'In the future the Service may, in whole or in part, be transferred to another natural or legal person, by sale, contribution or another form of transfer. In that case your contract, your subscription and your data pass to the successor, which is bound by these Terms and by the Privacy Policy as in force at the time of the transfer.',
       'We will inform you in good time and in any case before the transfer takes effect in respect of your data, within the app and by message to your address. If you do not wish to continue with the successor, you can terminate the subscription and download all your data with one button, as you can today; any prepaid and unearned amount is refunded pro rata.',
       'You may not assign your contract or your account to a third party without our consent. The account is personal and is linked to the property data and third-party data you have entered.',
     ] },
     { h: 'Force majeure', p: [
-      'We are not liable for failure to perform obligations due to events beyond our reasonable control (e.g. network outages, failures of third-party providers, natural disasters).',
+      'We are not liable for failure to perform caused by an event that is unforeseeable and unavoidable even with the utmost care, such as a natural disaster, war, a general internet outage or an act of public authority. A failure of a provider we use is not in itself force majeure. If the failure continues, you may terminate the contract without charge and you are refunded the corresponding prepaid price for the period you did not use. All this applies subject to mandatory law and your rights as a consumer (Greek Law 2251/1994).',
     ] },
     { h: 'Complaints and out-of-court resolution', part: 'F. If something goes wrong', p: [
       `Before any other step, write to us at ${support}. We reply to every complaint without delay and within fourteen (14) days at the latest, with a reasoned position: what we found, what we propose and by when.`,
       'If we do not agree, as a consumer you can turn to the Hellenic Consumer Ombudsman (synigoroskatanaloti.gr), an independent authority that mediates at no cost to you. For a cross-border dispute, the European Consumer Centre Greece (eccgreece.gr) does the same.',
       'The European Online Dispute Resolution (ODR) platform, to which most websites used to refer, ceased operating on 20 July 2025 under Regulation (EU) 2024/3228.',
     ] },
+    { h: 'Point of contact and notice of illegal content', id: 'anafora', p: [
+      `The single point of contact, for authorities and for users, under Articles 11 and 12 of Regulation (EU) 2022/2065 on digital services, is ${IDENTITY.supportEmail}. You can write to us in Greek or in English.`,
+      'If you find content in the Service that you consider illegal, write to us at the same address (Article 16 of the Regulation). Say exactly where the content is, why you consider it illegal, your name and email, and that the notice is made in good faith. We acknowledge receipt, examine the notice without undue delay and objectively, and inform you of our decision.',
+      'We do not monitor the content users store in advance and we do not use automated means to review it or decide on it. If we restrict content or suspend an account, the statement of reasons in the section “Suspension and termination” applies.',
+    ] },
     { h: 'Suspension and termination', p: [
-      'We may suspend or terminate your account in the event of a material breach of the Terms, with prior notice where feasible. You may also delete your account at any time.',
-      'Deleting your account also cancels your subscription: no further charge is made. The period you have already paid for is not refunded pro rata, beyond what the law provides and the 14-day guarantee from the first charge.',
+      `We may suspend or terminate your account, or restrict content you stored, in the event of a material breach of the Terms or if the content is illegal, with prior notice where feasible. We send you by email, at the latest when the restriction takes effect, a clear and specific statement of reasons: what we restricted and for how long, the facts, the provision of the Terms or of the law we rely on, and whether the decision followed a notice from a third party. You can contest it by writing to ${IDENTITY.supportEmail}, without losing your right to go to court. You may also delete your account at any time.`,
+      'Deleting your account also cancels your subscription: no further charge is made. The period you have already paid for is not refunded pro rata, beyond what the law provides and the refund commitment for businesses in the section “Right of withdrawal”.',
     ] },
     { h: 'Changes to the Terms', p: [
       'We may update the Terms. For material changes we notify you before they take effect and tell you what changes. If you do not agree, you terminate the contract at no cost, download your data and receive a refund of the corresponding amount for the period you did not use.',

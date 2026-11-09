@@ -30,6 +30,7 @@ import type { EmailOtpType } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { continuation } from '@/lib/auth/continuation';
 import { track, PRODUCT_EVENTS } from '@/lib/analytics/events';
+import { applyNews, pendingNews } from '@/lib/auth/signupNews';
 
 /** Οι μορφές διακριτικού που στέλνει το ταχυδρομείο του παρόχου. */
 const OTP_TYPES = ['signup', 'email', 'invite', 'magiclink', 'recovery', 'email_change'] as const;
@@ -65,6 +66,16 @@ export async function GET(request: NextRequest) {
   // μικρότερο απ' ό,τι είναι.
   if (!problem) {
     await track(supabase, PRODUCT_EVENTS.signed_up);
+    // Η ΕΠΙΛΟΓΗ ΤΩΝ ΕΝΗΜΕΡΩΤΙΚΩΝ ΤΗΣ ΕΓΓΡΑΦΗΣ, ΤΩΡΑ ΠΟΥ ΥΠΑΡΧΕΙ ΣΥΝΕΔΡΙΑ
+    // (lib/auth/signupNews.ts). Μία φορά ανά λογαριασμό (`consent_news_applied_at`).
+    // Αν αποτύχει, μένει η ασφαλής βάση: ο trigger κρατά κλειστό ό,τι δεν
+    // τσεκαρίστηκε και τα δύο· η είσοδος δεν σταματά γι' αυτό.
+    const { data: who, error: whoError } = await supabase.auth.getUser();
+    const pending = !whoError && who.user ? pendingNews((who.user.user_metadata ?? {}) as Record<string, unknown>) : null;
+    if (pending && who.user) {
+      const newsError = await applyNews(supabase, who.user.id, pending);
+      if (newsError) console.info('[auth] η επιλογή των ενημερωτικών δεν γράφτηκε:', newsError);
+    }
   }
 
   if (problem) {

@@ -117,8 +117,10 @@ export default function CookieConsent({ inline = false, pageLocale }: {
           τις θέλει. Καμία πληροφορία δεν χάθηκε: η δήλωση «μόνο απαραίτητα, καμία
           παρακολούθηση» είναι ακριβώς το ουσιώδες περιεχόμενο της προηγούμενης.
           ΚΑΙ Η ΜΕΤΡΗΣΗ ΛΕΓΕΤΑΙ. Το «καμία παρακολούθηση» διαβαζόταν ως «δεν
-          μετράται τίποτα», ενώ το layout φορτώνει ανώνυμη μέτρηση επισκέψεων
-          χωρίς cookies, όπως τη γράφει η Πολιτική απορρήτου. */}
+          μετράται τίποτα», ενώ το layout φορτώνει μέτρηση επισκέψεων χωρίς
+          cookies, όπως τη γράφει η Πολιτική απορρήτου. ΟΧΙ «ΑΝΩΝΥΜΗ» (νομικός
+          έλεγχος 09/11/2026, Π-4): ο πάροχος σχηματίζει ημερήσιο αναγνωριστικό
+          κατακερματισμού από το αίτημα· σωστό είναι «χωρίς ταυτοποίηση». */}
       {/* ΠΑΡΑΓΡΑΦΟΣ, ΟΧΙ ΚΟΥΤΙ. Είναι μία πρόταση με σύνδεσμο μέσα της· ως <div>
           ο σύνδεσμος διαβαζόταν ως χειριστήριο μόνο του, 63×16, κάτω από τα 44
           του κανόνα αφής. Μέσα σε <p> είναι λέξη της πρότασης, όπως ορίζει το
@@ -130,8 +132,8 @@ export default function CookieConsent({ inline = false, pageLocale }: {
           δεξιά, μία σειρά στον υπολογιστή και δύο στο τηλέφωνο. */}
       <p style={{ flex: 1, minWidth: 0, margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, textWrap: 'pretty' }}>
         {en
-          ? <>Only <strong style={{ color: 'var(--text-primary)' }}>essential cookies</strong>. Anonymous analytics without cookies.{' '}</>
-          : <>Μόνο <strong style={{ color: 'var(--text-primary)' }}>απαραίτητα cookies</strong>. Ανώνυμη μέτρηση χωρίς cookies.{' '}</>}
+          ? <>Only <strong style={{ color: 'var(--text-primary)' }}>essential cookies</strong>. Visit counts without cookies or identification.{' '}</>
+          : <>Μόνο <strong style={{ color: 'var(--text-primary)' }}>απαραίτητα cookies</strong>. Μέτρηση επισκέψεων χωρίς cookies και χωρίς ταυτοποίηση.{' '}</>}
         {/* ΥΠΟΓΡΑΜΜΙΣΜΕΝΟΣ, ΓΙΑΤΙ ΤΟ ΧΡΩΜΑ ΜΟΝΟ ΤΟΥ ΔΕΝ ΕΙΝΑΙ ΣΥΝΔΕΣΜΟΣ. Με
             `textDecoration: none` το «Απόρρητο» ξεχώριζε ΜΟΝΟ από το χρώμα:
             όποιος δεν ξεχωρίζει το γαλάζιο από το γκρι —δαλτωνισμός, φως ήλιου

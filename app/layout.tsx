@@ -234,7 +234,7 @@ export default async function RootLayout({
           <PwaProvider />
           {/* Κλείνει τις τρύπες της πλήρους στοίχισης (βλ. JustifyPolish.tsx). */}
           <JustifyPolish />
-          {/* Ανώνυμη μέτρηση επισκεψιμότητας χωρίς cookies (βλ. VercelAnalytics.tsx). */}
+          {/* Μέτρηση επισκεψιμότητας χωρίς cookies και χωρίς ταυτοποίηση (βλ. VercelAnalytics.tsx). */}
           <VercelAnalytics />
         </ThemeProvider>
       </body>
