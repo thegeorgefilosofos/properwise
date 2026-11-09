@@ -22,7 +22,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, TT, Card, Btn, Skeleton, Chip } from '@/components/Theme';
+import { T, TT, Card, Btn, Skeleton, Chip, EmptyState } from '@/components/Theme';
 import { TextInput, CustomSelect } from '@/app/dashboard/components/UIComponents';
 import { ActionMenu } from '@/components/ActionMenu';
 import {
@@ -36,7 +36,8 @@ import { FIRM_TERMS_VERSION } from '@/lib/legal/firms';
 import FirmView from './FirmView';
 import SecondStep from './SecondStep';
 import RequestSheet, { type AskTarget } from './RequestSheet';
-import { PortalBar, PortalTitle, PortalEmpty, portalWrap } from '../Chrome';
+import { PortalBar, PortalTitle, portalWrap } from '../Chrome';
+import { Users, Filter } from 'lucide-react';
 import { claim, clients, clientData, request, withdrawRequest, dropClient, gapsOf, readinessOf, aadeStateOf, aadeStateLabel, joinRequests, type ClientCounts } from '@/lib/data/accountant';
 import { fileBytes } from '@/lib/data/e2Prefilled';
 import { PACK_FILES } from '@/lib/accounting/meetingPack';
@@ -496,7 +497,7 @@ export default function AccountantWorkspace() {
 
   return (
     <div className="po-floor" style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: 72 }}>
-      <PortalBar year={year} onYear={setYear} />
+      <PortalBar year={year} onYear={setYear} firmOnly={firm?.firmOnly} />
       <main style={wrap}>
         {/* Η ΣΥΝΟΨΗ ΛΕΕΙ ΤΙ ΑΞΙΖΕΙ ΝΑ ΚΟΙΤΑΞΕΙΣ ΠΡΩΤΑ. Ο τίτλος έλεγε μόνο πόσοι
             είναι: με ογδόντα πελάτες, ο αριθμός «80» δεν οδηγεί σε καμία κίνηση,
@@ -504,12 +505,17 @@ export default function AccountantWorkspace() {
         <PortalTitle over={`${rows?.length ?? 0} ${(rows?.length ?? 0) === 1 ? 'πελάτης' : 'πελάτες'}`}
           title="Οι πελάτες σου"
           meta={
+            /* ΔΥΟ ΓΡΑΜΜΕΣ ΑΠΟ ΠΡΟΘΕΣΗ, ΟΧΙ ΑΠΟ ΤΥΧΗ. Σε μία γραμμή, δίπλα σε τέσσερα
+               κουμπιά, το meta έσπαγε όπου τύχαινε και το «·» έμενε μόνο του στο
+               τέλος της σειράς. Η χρήση πάνω, η εικόνα της λίστας από κάτω. */
             <>
-              Χρήση 01/01/{year} έως 31/12/{year}
+              <span style={{ display: 'block' }}>Χρήση 01/01/{year} έως 31/12/{year}</span>
               {ordered.length > 0 && (
-                <> · <strong style={{ color: stuck > 0 ? 'var(--text-primary)' : 'inherit' }}>
-                  {stuck === 0 ? 'κανένας με εκκρεμότητες' : stuck === 1 ? '1\u00a0με\u00a0εκκρεμότητες' : `${stuck}\u00a0με\u00a0εκκρεμότητες`}
-                </strong> · {done === 1 ? '1 έτοιμος' : `${done} έτοιμοι`}</>
+                <span style={{ display: 'block' }}>
+                  <strong style={{ color: stuck > 0 ? 'var(--text-primary)' : 'inherit' }}>
+                    {stuck === 0 ? 'Κανένας με εκκρεμότητες' : stuck === 1 ? '1\u00a0με\u00a0εκκρεμότητες' : `${stuck}\u00a0με\u00a0εκκρεμότητες`}
+                  </strong>{` · ${done === 1 ? '1\u00a0έτοιμος' : `${done}\u00a0έτοιμοι`}`}
+                </span>
               )}
             </>
           }
@@ -605,9 +611,13 @@ export default function AccountantWorkspace() {
               placeholder="Ο σύνδεσμος του ιδιοκτήτη"
             />
           </div>
-          <Btn variant="primary" size="lg" onClick={() => void addClient()} disabled={adding || !token.trim()}>
-            {adding ? 'Προσθήκη…' : 'Πρόσθεσε'}
-          </Btn>
+          {/* Στο τηλέφωνο, όταν πέφτει κάτω από το πεδίο, πιάνει όλο το πλάτος του. */}
+          <style>{`@media (max-width:560px){.np-add{flex:1 1 100%;display:grid}}`}</style>
+          <div className="np-add">
+            <Btn variant="primary" size="lg" onClick={() => void addClient()} disabled={adding || !token.trim()}>
+              {adding ? 'Προσθήκη…' : 'Πρόσθεσε'}
+            </Btn>
+          </div>
         </div>
         {notice && (
           <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', margin: '10px 0 0', fontFamily: T.font.sans }}>{notice}</p>
@@ -641,17 +651,35 @@ export default function AccountantWorkspace() {
           σε δεύτερη οθόνη. */}
       {team && manager && picked.size > 0 && (
         <Card gap={false} className="po-noprint">
-          <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.md, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums' }}>
-              {picked.size === 1 ? '1 επιλεγμένος' : `${picked.size} επιλεγμένοι`}
-            </span>
-            <div style={{ flex: '1 1 200px', maxWidth: 280 }}>
-              <CustomSelect ariaLabel="Ανάθεση σε" value={assignTo} onChange={setAssignTo} placeholder="Ανάθεση σε…"
-                options={activeMembers.map(m => ({ value: m.userId as string, label: `${memberName(m.userId as string, m.email)} · ${ROLE_LABEL[m.role]}` }))} />
+          {/* ΜΙΑ ΟΜΑΔΑ ΚΙΝΗΣΕΩΝ, ΟΧΙ ΤΡΙΑ ΣΧΗΜΑΤΑ. Ηταν «Ανάθεση» με περίγραμμα,
+              «Αφαίρεση ανάθεσης» σβηστό κείμενο και «Ακύρωση επιλογής» έντονο
+              κείμενο. Τώρα: κύριο (ανοίγει μόλις διαλεχτεί μέλος), δευτερεύον,
+              ήσυχο στο τέλος, ίδιο ύψος με τον επιλογέα. Στο τηλέφωνο πλήθος και
+              επιλογέας σε μία σειρά, οι κινήσεις από κάτω σε όλο το πλάτος. */}
+          <style>{`.bulk-bar{display:flex;flex-wrap:wrap;align-items:center;gap:${T.sp.sm}px ${T.sp.lg}px}
+.bulk-pick{display:flex;align-items:center;gap:${T.sp.md}px;flex:1 1 320px;min-width:0}
+.bulk-acts{display:flex;align-items:center;gap:${T.sp.sm}px;margin-left:auto}
+@media (max-width:560px){.bulk-acts{width:100%;margin-left:0}.bulk-acts>*{flex:1 1 auto}}`}</style>
+          <div className="bulk-bar">
+            <div className="bulk-pick">
+              <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                {picked.size === 1 ? '1\u00a0επιλεγμένος' : `${picked.size}\u00a0επιλεγμένοι`}
+              </span>
+              <div style={{ flex: '1 1 auto', minWidth: 0, maxWidth: 320 }}>
+                {/* ΤΟ ΟΝΟΜΑ ΠΡΩΤΟ, Ο ΡΟΛΟΣ ΑΠΟ ΚΑΤΩ. Το «email · ρόλος» σε μία γραμμή
+                    ήταν πλατύτερο από τη λίστα και κοβόταν. */}
+                <CustomSelect ariaLabel="Ανάθεση σε" value={assignTo} onChange={setAssignTo} placeholder="Ανάθεση σε…"
+                  options={activeMembers.map(m => {
+                    const name = memberName(m.userId as string, m.email);
+                    return { value: m.userId as string, label: name, description: name === m.email ? ROLE_LABEL[m.role] : `${ROLE_LABEL[m.role]} · ${m.email}` };
+                  })} />
+              </div>
             </div>
-            <Btn variant="secondary" onClick={() => void assignPicked(true)} disabled={!assignTo}>Ανάθεση</Btn>
-            <Btn variant="ghost" onClick={() => void assignPicked(false)} disabled={!assignTo}>Αφαίρεση ανάθεσης</Btn>
-            <Btn variant="ghost" onClick={() => setPicked(new Set())}>Ακύρωση επιλογής</Btn>
+            <div className="bulk-acts">
+              <Btn size="lg" variant="primary" onClick={() => void assignPicked(true)} disabled={!assignTo}>Ανάθεση</Btn>
+              <Btn size="lg" variant="secondary" onClick={() => void assignPicked(false)} disabled={!assignTo}>Αφαίρεση ανάθεσης</Btn>
+              <Btn size="lg" variant="ghost" onClick={() => setPicked(new Set())}>Ακύρωση επιλογής</Btn>
+            </div>
           </div>
         </Card>
       )}
@@ -696,12 +724,12 @@ export default function AccountantWorkspace() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <PortalEmpty title="Κανένας πελάτης στη λίστα"
+        <EmptyState page icon={<Users size={20} />} title="Κανένας πελάτης στη λίστα"
           hint="Ο ιδιοκτήτης σού στέλνει τον σύνδεσμο που βγάζει από τη Λογιστική του, στον φάκελο για τον λογιστή. Τον επικολλάς στο «Νέος πελάτης»." />
       ) : (
         <div style={{ display: 'grid', gap: T.sp.md }}>
           {listed.length === 0 && (
-            <PortalEmpty title="Κανένας πελάτης με αυτά τα φίλτρα" hint="Άλλαξε τον υπεύθυνο ή την κατάσταση για να δεις περισσότερους." />
+            <EmptyState page icon={<Filter size={20} />} title="Κανένας πελάτης με αυτά τα φίλτρα" hint="Άλλαξε τον υπεύθυνο ή την κατάσταση για να δεις περισσότερους." />
           )}
           {listed.map(({ c, gaps, ready }) => {
             // Ο ΣΥΝΕΡΓΑΤΗΣ ΔΙΑΒΑΖΕΙ: χωρίς αιτήματα, ανεβάσματα και εξαγωγές.

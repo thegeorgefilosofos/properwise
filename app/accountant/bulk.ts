@@ -285,10 +285,12 @@ export function lastMove(iso: string | null, now: number = Date.now()): string {
   const days = daysBetweenIso(athensToday(new Date(t)), athensToday(new Date(now)));
   const when = days <= 0 ? 'σήμερα'
     : days === 1 ? 'χθες'
-      : days < 30 ? `πριν από ${days} ημέρες`
+      : days < 30 ? `πριν από ${days}\u00a0ημέρες`
         : days < 60 ? 'πριν από έναν μήνα'
-          : days < 365 ? `πριν από ${Math.floor(days / 30)} μήνες`
+          : days < 365 ? `πριν από ${Math.floor(days / 30)}\u00a0μήνες`
             : days < 730 ? 'πριν από έναν χρόνο'
-              : `πριν από ${Math.floor(days / 365)} χρόνια`;
+              : `πριν από ${Math.floor(days / 365)}\u00a0χρόνια`;
+  // Ο ΑΡΙΘΜΟΣ ΜΕ ΤΗ ΜΟΝΑΔΑ ΤΟΥ ΣΕ ΜΙΑ ΛΕΞΗ: στα 360 το «6» έμενε στο τέλος της
+  // σειράς και το «ημέρες» έπεφτε μόνο του στην επόμενη.
   return `Τελευταία καταχώρηση ${when}`;
 }

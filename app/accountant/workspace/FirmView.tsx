@@ -22,13 +22,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { T, TT, Card, Btn, Modal, Skeleton, fd, ABSENT, fieldRow } from '@/components/Theme';
+import { T, TT, Card, Btn, Modal, Skeleton, EmptyState, fd, ABSENT, fieldRow } from '@/components/Theme';
 import { ActionMenu } from '@/components/ActionMenu';
 import { TextInput, Textarea, CustomSelect } from '@/app/dashboard/components/UIComponents';
 import { notify, notifyError } from '@/components/Toast';
 import { confirmDialog } from '@/components/confirmBus';
 import { isValidAfm } from '@/lib/core/greek';
-import { PortalBar, PortalTitle, PortalEmpty, portalWrap } from '../Chrome';
+import { PortalBar, PortalTitle, portalWrap } from '../Chrome';
+import { History } from 'lucide-react';
 import {
   myFirm, saveFirm, invite, setRole, removeMember, accessHistory, reasonText,
   ROLE_LABEL, ROLE_HINT, ROLES, KIND_LABEL, ACTION_LABEL, canManage,
@@ -160,7 +161,7 @@ export default function FirmView() {
 
   return (
     <div className="po-floor" style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: 72 }}>
-      <PortalBar back={{ href: '/accountant/workspace', label: 'Οι πελάτες' }} />
+      <PortalBar back={{ href: '/accountant/workspace', label: 'Οι πελάτες' }} firmOnly={firm?.firmOnly} />
       <main style={wrap}>
         {failed ? (
           <Card style={{ marginTop: T.sp.xl }}>
@@ -216,7 +217,7 @@ export default function FirmView() {
                         borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)',
                       }}>
                         <div style={{ minWidth: 0, flex: '1 1 240px' }}>
-                          <p style={{ fontSize: 'var(--fs-md)', fontWeight: 600, margin: 0, color: 'var(--text-primary)', fontFamily: T.font.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{who}</p>
+                          <p style={{ fontSize: 'var(--fs-md)', fontWeight: 600, margin: 0, color: 'var(--text-primary)', fontFamily: T.font.sans, overflowWrap: 'anywhere' }}>{who}</p>
                           <p style={{ ...note, marginTop: 2 }}>
                             {name ? `${m.email} · ` : ''}
                             {invited
@@ -273,7 +274,7 @@ export default function FirmView() {
               <section aria-labelledby="firm-history" style={{ marginTop: T.sp.section }}>
                 <h2 id="firm-history" style={{ ...label, margin: `0 0 ${T.sp.sm}px` }}>Ιστορικό πρόσβασης</h2>
                 {history !== null && history.length === 0 ? (
-                  <PortalEmpty title="Κανένα άνοιγμα ακόμη"
+                  <EmptyState page icon={<History size={20} />} title="Κανένα άνοιγμα ακόμη"
                     hint="Εδώ φαίνεται ποιο μέλος άνοιξε ποιον πελάτη και πότε, μόλις ανοίξει ο πρώτος φάκελος." />
                 ) : (
                 <Card gap={false} style={history && history.length > 0 ? { padding: 0 } : undefined}>
@@ -287,7 +288,7 @@ export default function FirmView() {
                             fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color: 'var(--text-secondary)', lineHeight: 1.5,
                           }}>
                             <span style={{ ...num, color: 'var(--text-tertiary)' }}>{fd(h.at)}</span>
-                            <span style={{ minWidth: 0 }}>
+                            <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                               <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{h.member}</strong>
                               {` · ${ACTION_LABEL[h.action] ?? h.action} · ${h.owner}`}
                             </span>

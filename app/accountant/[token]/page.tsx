@@ -216,7 +216,7 @@ export default function AccountantPortal() {
         {/* Η ΧΡΟΝΙΑ ΜΕΝΕΙ ΚΑΙ ΣΤΗΝ ΑΠΟΤΥΧΙΑ. Μπορεί να έφταιγε η χρήση που
             ζητήθηκε· ο λογιστής αλλάζει χρονιά ή ξαναδοκιμάζει χωρίς να χάσει
             τη μπάρα. Στο «δεν βρέθηκε» δεν έχει νόημα: ο σύνδεσμος δεν υπάρχει. */}
-        <PortalBar year={state === 'ok' || state === 'failed' ? year : undefined} onYear={setYear} back={back} />
+        <PortalBar year={state === 'ok' || state === 'failed' ? year : undefined} onYear={setYear} back={back} home={back?.href === '/dashboard?tab=accounting' ? back.href : undefined} />
       </div>
 
       <div style={portalWrap}>

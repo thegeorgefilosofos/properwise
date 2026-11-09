@@ -33,7 +33,8 @@ const firmOf = (role: 'manager' | 'accountant' | 'associate') => ({
   members: [
     member('m1', 'u1', 'dokimi@example.com', role, 'Ελένη Παραδείγματος', 18),
     member('m2', 'u2', 'nikos@example.com', 'accountant', 'Νίκος Δοκιμής', 12),
-    member('m3', 'u3', 'maria@example.com', 'associate', 'Μαρία Υποδείγματος', 5),
+    // ΧΩΡΙΣ ΟΝΟΜΑ ΣΤΟ ΠΡΟΦΙΛ, όπως τα περισσότερα μέλη στην παραγωγή: η βάση δίνει το email.
+    member('m3', 'u3', 'maria.ypodeigmatos@example.com', 'associate', null, 5),
     member('m4', null, 'neo.melos@example.com', 'accountant', null, 0, 'invited'),
   ],
 });
@@ -42,7 +43,7 @@ const HISTORY = [
   { at: '2026-11-04T10:12:00Z', action: 'open', ownerId: 'o1', member: 'Νίκος Δοκιμής', owner: 'Γιώργος Παραδείγματος' },
   { at: '2026-11-04T09:40:00Z', action: 'record', ownerId: 'o1', member: 'Νίκος Δοκιμής', owner: 'Γιώργος Παραδείγματος' },
   { at: '2026-11-03T16:05:00Z', action: 'upload', ownerId: 'o2', member: 'Ελένη Παραδείγματος', owner: 'Άννα Υποδείγματος' },
-  { at: '2026-11-03T11:20:00Z', action: 'open', ownerId: 'o3', member: 'Μαρία Υποδείγματος', owner: 'Κώστας Δοκιμαστής' },
+  { at: '2026-11-03T11:20:00Z', action: 'open', ownerId: 'o3', member: 'maria.ypodeigmatos@example.com', owner: 'Κώστας Δοκιμαστής' },
   { at: '2026-11-02T08:55:00Z', action: 'open', ownerId: 'o2', member: 'Ελένη Παραδείγματος', owner: 'Άννα Υποδείγματος' },
 ];
 
@@ -67,7 +68,7 @@ const CLIENTS = (canAct: boolean, contact = false) => [
       { id: 'q2', item: 'Δεν έχει στείλει τον φάκελο για τον λογιστή', note: 'Τον θέλω πριν από τις 20/11.', createdAt: '2026-11-05T09:00:00Z' },
     ],
     ...(contact ? CONTACT : {}) },
-  { ...client('o2', 'Άννα Υποδείγματος', canAct, [{ userId: 'u1', name: 'Ελένη Παραδείγματος' }, { userId: 'u3', name: 'Μαρία Υποδείγματος' }]),
+  { ...client('o2', 'Άννα Υποδείγματος', canAct, [{ userId: 'u1', name: 'Ελένη Παραδείγματος' }, { userId: 'u3', name: 'maria.ypodeigmatos@example.com' }]),
     e2: { aadeRows: 14, aadeChangedAt: '2026-10-20T09:00:00Z', packs: [
       { ownerAfm: '000000012', differences: 0, checkedAt: '2026-10-21T09:00:00Z', missingCount: 0, missingTop: [], filePath: 'o2/2026/fakelos.zip', sizeBytes: 1843200, sharedAt: '2026-10-21T09:00:00Z' },
     ] } },
@@ -185,6 +186,40 @@ function AskOpen({ channel }: { channel?: string }) {
   return <AccountantWorkspace />;
 }
 
+/** Ο υπεύθυνος επιλέγει τον πρώτο πελάτη και ανοίγει το «Ανάθεση σε…». */
+function BulkOpen() {
+  useEffect(() => {
+    let step = 0;
+    const t = setInterval(() => {
+      if (step === 0) {
+        const box = document.querySelector<HTMLInputElement>('input[type="checkbox"][aria-label^="Επιλογή"]');
+        if (box) { box.click(); step = 1; }
+      } else {
+        const sel = document.querySelector<HTMLElement>('[role="combobox"][aria-label="Ανάθεση σε"]');
+        if (sel) { sel.click(); clearInterval(t); }
+      }
+    }, 50);
+    return () => clearInterval(t);
+  }, []);
+  return <AccountantWorkspace />;
+}
+
+/** Ανοίγει το μενού «Λογαριασμός» της μπάρας. */
+function AccountOpen() {
+  useClickWhenReadyLabel('Λογαριασμός');
+  return <AccountantWorkspace />;
+}
+
+function useClickWhenReadyLabel(label: string) {
+  useEffect(() => {
+    const t = setInterval(() => {
+      const b = document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+      if (b) { b.click(); clearInterval(t); }
+    }, 50);
+    return () => clearInterval(t);
+  }, [label]);
+}
+
 /** Ανοίγει το παράθυρο της πρόσκλησης όπως θα το άνοιγε ο υπεύθυνος. */
 function InviteOpen() {
   useClickWhenReady('Πρόσκληση μέλους');
@@ -252,6 +287,8 @@ export const FIRM_VIEWS: Record<string, () => React.ReactElement> = {
   firmAsk: () => <AskOpen />,
   firmAskChannels: () => <AskOpen />,
   firmAskSent: () => <AskOpen channel="WhatsApp" />,
+  firmBulkPick: () => <BulkOpen />,
+  firmAccount: () => <AccountOpen />,
   firmEntryDocument: entry('document'),
   firmEntryBill: entry('bill'),
   firmEntryTax: entry('tax'),

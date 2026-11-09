@@ -796,7 +796,12 @@ export function CustomSelect({
     const hi = frame ? frame.right - MARGIN : vw - MARGIN;
     // `clientWidth`: χωρίς το περίγραμμα της κάρτας, όπως το πλάτος των πεδίων της.
     const room = frameEl ? frameEl.clientWidth - 2 * T.sp.xxl : window.innerWidth * 0.86;
-    const maxW = Math.max(r.width, Math.min(340, window.innerWidth * 0.86, room));
+    // ΤΑΒΑΝΙ 400 ΑΝΤΙ ΓΙΑ 340 ΚΑΙ ΤΟ ΚΕΙΜΕΝΟ ΤΥΛΙΓΕΙ (09/11/2026). Μια επιλογή
+    // «όνομα · ρόλος» στη μαζική ανάθεση της πύλης ξεπερνούσε τα 340: η γραμμή
+    // ήταν `nowrap`, κοβόταν στο «Υπεύθυνος γραφ…» και η λίστα αποκτούσε οριζόντια
+    // κύλιση. Τώρα η λίστα μεγαλώνει ως το περιεχόμενο και, πέρα από το ταβάνι,
+    // η επιλογή σπάει σε δεύτερη γραμμή αντί να κόβεται.
+    const maxW = Math.max(r.width, Math.min(400, window.innerWidth * 0.86, room));
     const left = Math.max(lo, Math.min(r.left, hi - maxW));
     setMenuPos({ top: up ? r.top - GAP : r.bottom + GAP, left, minWidth: r.width, maxW, maxH, up });
   };
@@ -929,6 +934,7 @@ export function CustomSelect({
           border: '1px solid var(--border-default)',
           maxHeight: menuPos.maxH,
           overflowY: 'auto',
+          overflowX: 'hidden',
           padding: '6px',
         }}>
           {options.map((opt, i) => (
@@ -967,7 +973,7 @@ export function CustomSelect({
               {opt.dot && <div style={{ width: 8, height: 8, borderRadius: '50%', background: opt.dot, flexShrink: 0 }}/>}
               {opt.color && <div style={{ width: 10, height: 10, borderRadius: 3, background: opt.color, flexShrink: 0 }}/>}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ whiteSpace: 'nowrap' }}>{opt.label}</div>
+                <div style={{ overflowWrap: 'anywhere', textWrap: 'balance' }}>{opt.label}</div>
                 {opt.description && (
                   <div className="po-subline" style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', letterSpacing: '0.4px', textWrap: 'pretty', overflowWrap: 'anywhere' }}>{opt.description}</div>
                 )}

@@ -43,6 +43,9 @@ export function ActionMenu({
   align = 'right',
   title,
   iconOnly = false,
+  glyph,
+  heading,
+  size = 'md',
 }: {
   label: string;
   icon?: React.ReactNode;
@@ -55,6 +58,12 @@ export function ActionMenu({
    * Για τις δευτερεύουσες ενέργειες που δεν πρέπει να τραβούν το μάτι.
    */
   iconOnly?: boolean;
+  /** Το σχήμα του στρογγυλού κουμπιού αντί για «⋯» (π.χ. αρχικά του λογαριασμού). */
+  glyph?: React.ReactNode;
+  /** Κείμενο στην κορυφή του μενού, χωρίς πάτημα (π.χ. ποιος είναι συνδεδεμένος). */
+  heading?: React.ReactNode;
+  /** `lg` όταν κάθεται δίπλα σε πεδίο ή επιλογέα (T.h.lg), για ίσα ύψη στη σειρά. */
+  size?: 'md' | 'lg';
 }) {
   const [open, setOpen] = useState(false);
   const [shown, setShown] = useState(false);
@@ -165,8 +174,8 @@ export function ActionMenu({
           // ΤΟ ΜΕΝΟΥ ΕΙΝΑΙ ΚΟΥΜΠΙ, ΟΧΙ ΚΟΥΜΠΑΚΙ. Με `T.h.sm` έβγαινε 32 ενώ το
           // `Btn` δίπλα του είναι 36: μετρημένο στις Επαφές, «Περισσότερα» και
           // «Σάρωση κάρτας» στην ίδια σειρά με τέσσερα εικονοστοιχεία διαφορά.
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: T.h.md,
-          ...(iconOnly ? { width: T.h.md, padding: 0, borderRadius: T.radius.pill } : { padding: '0 13px', borderRadius: T.radius.modal }),
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: size === 'lg' ? T.h.lg : T.h.md,
+          ...(iconOnly ? { width: size === 'lg' ? T.h.lg : T.h.md, padding: 0, borderRadius: T.radius.pill } : { padding: '0 13px', borderRadius: T.radius.modal }),
           // ΤΟ ΧΡΩΜΑ ΤΟΥ ΠΕΡΙΓΡΑΜΜΑΤΟΣ ΚΑΙ ΤΟΥ ΚΕΙΜΕΝΟΥ ΤΑ ΔΙΝΕΙ Η ΚΛΑΣΗ. Ηταν
           // γραμμένα εδώ ως τριαδικοί πάνω στο `open`· επειδή το ενσωματωμένο
           // στυλ νικά κάθε κανόνα κλάσης, η `po-hov-accent` ΔΕΝ ίσχυε ποτέ: ούτε
@@ -177,7 +186,7 @@ export function ActionMenu({
           fontFamily: T.font.sans, transition: 'background-color 0.13s, border-color 0.13s, color 0.13s, box-shadow 0.13s, transform 0.13s, opacity 0.13s', whiteSpace: 'nowrap',
         }}
       >
-        {iconOnly ? <MoreHorizontal size={18} aria-hidden="true" /> : <>
+        {iconOnly ? (glyph ?? <MoreHorizontal size={18} aria-hidden="true" />) : <>
           {icon}
           {label}
           <ChevronDown size={14} style={{ transition: 'transform 0.18s ease', transform: open ? 'rotate(180deg)' : 'none', opacity: 0.7 }} />
@@ -197,6 +206,11 @@ export function ActionMenu({
             transition: 'opacity 0.14s ease, transform 0.14s ease',
           }}
         >
+          {heading && (
+            <div style={{ padding: '8px 10px 10px', margin: '0 0 6px', borderBottom: '1px solid var(--border-subtle)', fontFamily: T.font.sans, minWidth: 0, overflowWrap: 'anywhere' }}>
+              {heading}
+            </div>
+          )}
           {items.map(it => {
             const inert = it.disabled || it.busy;
             return (
