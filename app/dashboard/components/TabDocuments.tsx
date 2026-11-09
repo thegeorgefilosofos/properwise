@@ -1162,7 +1162,7 @@ function FileInner({ items, a }: { items: Item[]; a: FileActions }) {
 // media βάφει λευκό 0,14 χωρίς θόλωμα, εδώ είναι το σκίαστρο 0,55 με blur(2px).
 const OverlayBtn = ({ title, onClick, children }: { title: string; onClick: (e: React.MouseEvent) => void; children: React.ReactNode }) => (
   <button onClick={onClick} title={title} className="po-box"
-    style={{ width: 26, height: 26, borderRadius: '50%', border: 'none', background: 'var(--scrim-media)', color: 'var(--on-media)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2px)' }}>{children}</button>
+    style={{ width: 26, height: 26, borderRadius: '50%', border: 'none', background: 'var(--scrim-media)', color: 'var(--on-media)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{children}</button>
 );
 
 function FileCard({ i, a }: { i: Item; a: FileActions }) {

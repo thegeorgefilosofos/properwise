@@ -468,7 +468,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                     ?<RuntimeImg src={displayPhoto} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
                     :null}
                   {selectMode
-                    ?<div style={{position:'absolute',top:8,left:8,background:'var(--scrim-media)',borderRadius: T.radius.chip,padding: 4,backdropFilter:'blur(4px)'}} onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></div>
+                    ?<div style={{position:'absolute',top:8,left:8,background:'var(--scrim-media)',borderRadius: T.radius.chip,padding: 4}} onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></div>
                     :<>
                       <div style={{position:'absolute',top:8,left:8}} onClick={e=>e.stopPropagation()}>
                         <InlineConditionEdit item={item} onUpdate={onUpdateCondition}/>

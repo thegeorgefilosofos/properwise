@@ -463,7 +463,7 @@ export function SideSheet({ open, onClose, ariaLabel, size = 'md', header, foote
   if (!open) return null;
   return (
     <div {...backdrop} role="dialog" aria-modal="true" aria-label={ariaLabel}
-      style={{ position: 'fixed', inset: 0, background: T.scrim, backdropFilter: 'blur(2px)', display: 'flex', justifyContent: 'flex-end', zIndex: z, overscrollBehavior: 'contain' }}>
+      style={{ position: 'fixed', inset: 0, background: T.scrim, display: 'flex', justifyContent: 'flex-end', zIndex: z, overscrollBehavior: 'contain' }}>
       <div ref={panelRef} tabIndex={-1} onClick={e => e.stopPropagation()}
         style={{ width: `min(${MODAL_WIDTH[size]}px, 100%)`, height: '100%', background: 'var(--bg-surface)', borderLeft: '1px solid var(--border-subtle)', boxShadow: 'var(--elev-3)', display: 'flex', flexDirection: 'column', overflow: 'hidden', outline: 'none', overscrollBehavior: 'contain', animation: 'sheetIn 0.22s cubic-bezier(0.2,0,0,1) both' }}>
         <style>{`@keyframes sheetIn{from{transform:translateX(28px);opacity:0}to{transform:none;opacity:1}}
@@ -553,7 +553,7 @@ export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 
   return (
     <div ref={scrimRef} className="po-modal-scrim" {...backdrop} role="dialog" aria-modal="true" aria-label={ariaLabel}
       aria-labelledby={ariaLabel ? undefined : titleId} aria-describedby={subtitle ? subId : undefined}
-      style={{ position: 'fixed', inset: 0, background: T.scrim, backdropFilter: 'blur(2px)', zIndex: z, overscrollBehavior: 'contain' }}>
+      style={{ position: 'fixed', inset: 0, background: T.scrim, zIndex: z, overscrollBehavior: 'contain' }}>
       <div ref={panelRef} tabIndex={-1} onClick={e => e.stopPropagation()} className="po-modal"
         style={{ '--modal-w': `${MODAL_WIDTH[size]}px`, '--modal-r': `${T.radius.modal}px`, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--elev-3)', outline: 'none', overscrollBehavior: 'contain' } as CSSProperties}>
         {/* Λαβή: μόνο σήμα «φύλλο», στο τηλέφωνο. Δεν σέρνεται· κλείνεις με ×, φόντο ή Escape. */}
@@ -594,7 +594,7 @@ export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 
   );
 }
 
-// ═══ SecHdr, επικεφαλίδα ενότητας (η τελεία + uppercase label των Bills) ══
+// ═══ SecHdr, επικεφαλίδα ενότητας (η τελεία + ετικέτα των Bills) ══
 export function SecHdr({ label, sub, info, right }: { label: string; sub?: string; info?: ReactNode; right?: ReactNode }) {
   return (
     // ═══ Η ΕΝΕΡΓΕΙΑ ΠΕΦΤΕΙ ΚΑΤΩ ΑΝΤΙ ΝΑ ΣΤΥΨΕΙ ΤΟΝ ΤΙΤΛΟ ═══════════════════
