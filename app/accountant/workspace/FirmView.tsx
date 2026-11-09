@@ -54,6 +54,7 @@ export default function FirmView() {
   const [fields, setFields] = useState<FirmFields>(emptyFields());
   const [saving, setSaving] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [sending, setSending] = useState(false);
   const [inv, setInv] = useState<{ email: string; role: FirmRole }>({ email: '', role: 'accountant' });
   const [invErr, setInvErr] = useState('');
   const [history, setHistory] = useState<AccessEntry[] | null>(null);
@@ -104,8 +105,13 @@ export default function FirmView() {
   };
 
   const sendInvite = async () => {
-    setInvErr('');
+    // ΕΝΑ ΠΑΤΗΜΑ, ΜΙΑ ΠΡΟΣΚΛΗΣΗ. Το κουμπί έμενε ενεργό όσο έτρεχε η κλήση: το
+    // διπλό πάτημα στο τηλέφωνο έβγαζε «Η πρόσκληση στάλθηκε.» και αμέσως
+    // «Η διεύθυνση είχε ήδη πρόσκληση.», δύο αντιφατικά μηνύματα για μία πράξη.
+    if (sending) return;
+    setInvErr(''); setSending(true);
     const r = await invite(supabase, inv.email.trim(), inv.role);
+    setSending(false);
     if (!r.ok) { setInvErr(reasonText(r.reason)); return; }
     setInviting(false);
     setInv({ email: '', role: 'accountant' });
@@ -288,7 +294,7 @@ export default function FirmView() {
         footer={
           <>
             <Btn variant="ghost" onClick={() => setInviting(false)}>Ακύρωση</Btn>
-            <Btn variant="primary" onClick={() => void sendInvite()} disabled={!inv.email.trim()}>Αποστολή</Btn>
+            <Btn variant="primary" onClick={() => void sendInvite()} disabled={sending || !inv.email.trim()}>Αποστολή</Btn>
           </>
         }>
         <div style={{ display: 'grid', gap: T.sp.lg }}>

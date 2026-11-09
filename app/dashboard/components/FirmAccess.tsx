@@ -174,7 +174,7 @@ export function FirmDaySummary() {
         subtitle={`Σήμερα, ${fd(today)}${seeing ? ` · ${seeing.rows.length === 1 ? '1 κίνηση' : `${seeing.rows.length} κινήσεις`}` : ''}`} size="sm"
         footer={seeing ? (
           <>
-            <Btn variant="ghost" className="po-btn-keep" onClick={() => void undo(seeing.firm)}>Αναίρεση όλων</Btn>
+            <Btn variant="ghost" className="po-btn-keep" onClick={() => void undo(seeing.firm)} disabled={busy === seeing.firm.firmId}>Αναίρεση όλων</Btn>
             <Btn variant="primary" onClick={() => setSeeing(null)}>Εντάξει</Btn>
           </>
         ) : undefined}>
