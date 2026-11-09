@@ -42,11 +42,11 @@ export interface AsOf {
 /** Οι τιμές αγοράς που δείχνει η εφαρμογή. Ζευγάρι με το data/price-sources.json. */
 export const PRICE_FACTS = {
   electricity: {
-    label: 'Τιμολόγια ρεύματος', checkedAt: '2026-10-05', period: 'Οκτώβριος 2026', maxAgeDays: 40,
+    label: 'Τιμολόγια ρεύματος', checkedAt: '2026-11-09', period: 'Νοέμβριος 2026', maxAgeDays: 40,
     source: 'ΡΑΑΕΥ, energycost.gr', url: 'https://energycost.gr/',
   },
   gas: {
-    label: 'Τιμολόγια φυσικού αερίου', checkedAt: '2026-10-05', period: 'Οκτώβριος 2026', maxAgeDays: 40,
+    label: 'Τιμολόγια φυσικού αερίου', checkedAt: '2026-11-09', period: 'Νοέμβριος 2026', maxAgeDays: 40,
     source: 'ΡΑΑΕΥ, energycost.gr', url: 'https://energycost.gr/',
   },
   // Ενδεικτικά, όχι προσφορές: η πραγματική τιμή βγαίνει από την ασφαλιστική.

@@ -16,7 +16,7 @@ import { GUIDES, guideSlug } from '../odigos/guides';
 import { RENTAL_TAX_BRACKETS_2026, FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { fpRate, grDate } from '@/lib/core/format';
 import { DSTI_LIMIT } from '@/lib/loans/affordability';
-import { TARIFFS_VERIFIED } from '@/lib/energy/catalogue';
+import { PRICE_FACTS } from '@/lib/facts/prices';
 import { ASSISTANT_TO } from '@/lib/assistant/identity';
 import { PUBLIC_TOOLS, TOOLS_HUB } from '@/lib/core/publicTools';
 import { COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
@@ -70,7 +70,7 @@ export const SHARE_CARDS: Record<string, ShareCard> = {
   // Η ΗΜΕΡΟΜΗΝΙΑ ΕΛΕΓΧΟΥ ΚΑΙ ΟΧΙ ΤΙΜΗ: η πλατφόρμα κρατά την εικόνα εβδομάδες
   // και μια τιμή θα έμενε πίσω από τον κατάλογο. Η μέρα του ελέγχου μένει αληθής.
   'sygkrisi-timologion-revmatos': { kind: 'calc', over: 'Σύγκριση', title: 'Τι θα πλήρωνες με κάθε τιμολόγιο ρεύματος',
-    chips: ['Σταθερά, κυμαινόμενα, πράσινα', 'Με τις κιλοβατώρες σου', `Τιμές ελεγμένες ${grDate(TARIFFS_VERIFIED)}`],
+    chips: ['Σταθερά, κυμαινόμενα, πράσινα', 'Με τις κιλοβατώρες σου', `Τιμές ελεγμένες ${grDate(PRICE_FACTS.electricity.checkedAt)}`],
     path: '/sygkrisi-timologion-revmatos' },
   // Το όριο και το έτος από τη σταθερά που εφαρμόζει ο υπολογισμός. Κανένας
   // δείκτης στην κάρτα: αλλάζει κάθε μήνα και η πλατφόρμα κρατά την εικόνα εβδομάδες.
