@@ -6,6 +6,7 @@
 // έλεγχος εδώ θα ΕΠΕΦΤΕ πριν, γιατί το αρχείο που ελέγχει δεν υπήρχε.
 import {
   AAL2, MFA_SAY, aalOfToken, hasVerifiedFactor, secondStepPending, sessionNeedsSecondStep,
+  pendingTotpIds, totpFriendlyName,
 } from './mfa'
 
 let pass = 0, fail = 0
@@ -106,6 +107,26 @@ ok('χρήστης χωρίς συσκευή δεν εμποδίζεται απ�
 // Γραμμένα δύο φορές, θα απέκλιναν: η σύνδεση θα εξηγούσε αλλιώς το ίδιο βήμα
 // από ό,τι οι Ρυθμίσεις.
 ok('κανένα μήνυμα δεν είναι κενό', Object.values(MFA_SAY).every(v => v.length > 20))
+
+// ── ΜΙΣΕΣ ΣΥΣΚΕΥΕΣ: ΑΠΟ ΤΟ `all`, ΟΧΙ ΑΠΟ ΤΟ `totp` ──────────────────────────
+// Το σχήμα του auth-js: το `totp` κρατά μόνο τις επαληθευμένες. Με τον παλιό
+// κώδικα (`list.totp`) η μισή συσκευή δεν βρισκόταν ποτέ: ο έλεγχος θα έπεφτε.
+{
+  const list = {
+    all: [
+      { id: 'v', factor_type: 'totp', status: 'verified' },
+      { id: 'u', factor_type: 'totp', status: 'unverified' },
+      { id: 'p', factor_type: 'phone', status: 'unverified' },
+    ],
+    totp: [{ id: 'v', factor_type: 'totp', status: 'verified' }],
+  }
+  const ids = pendingTotpIds(list)
+  ok('η μισή TOTP βρίσκεται στο all', ids.length === 1 && ids[0] === 'u')
+  ok('το totp μόνο του δεν τη δείχνει (γι\' αυτό χανόταν)', pendingTotpIds({ all: list.totp }).length === 0)
+  ok('χωρίς κατάλογο: κενό', pendingTotpIds(null).length === 0)
+  ok('όνομα χωρίς σύγκρουση', totpFriendlyName(false) === 'PROPERWISE')
+  ok('όνομα με σύγκρουση: διαφορετικό', totpFriendlyName(true, new Date('2026-11-09T09:20:00Z')) === 'PROPERWISE 2026-11-09 09:20:00')
+}
 
 console.log(fail === 0 ? `✓ auth/mfa: ${pass} έλεγχοι πέρασαν` : `✗ auth/mfa: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

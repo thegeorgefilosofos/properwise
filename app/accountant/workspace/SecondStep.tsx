@@ -22,7 +22,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { T, TT, Card, Btn, Skeleton } from '@/components/Theme';
 import { TextInput } from '@/app/dashboard/components/UIComponents';
-import { MFA_SAY } from '@/lib/auth/mfa';
+import { MFA_SAY, MFA_NAME_CONFLICT, pendingTotpIds, totpFriendlyName } from '@/lib/auth/mfa';
 import { logActivity } from '@/lib/activity';
 import { PortalBar, PortalTitle, portalWrap } from '../Chrome';
 
@@ -106,12 +106,16 @@ export default function SecondStep({ onDone }: { onDone: () => void }) {
       const totp = (list?.totp ?? []) as Factor[];
       const verified = totp.find(f => f.status === 'verified');
       if (verified) { setStep({ kind: 'challenge', id: verified.id }); return; }
-      // Ο,ΤΙ ΕΜΕΙΝΕ ΜΙΣΟ ΦΕΥΓΕΙ ΠΡΩΤΑ. Αλλιώς το `enroll` σκάει με «factor
-      // already exists» και ο άνθρωπος ξαναπατά για πάντα (όπως στις Ρυθμίσεις).
-      for (const f of totp) {
-        if (f.status !== 'verified') { try { await supabase.auth.mfa.unenroll({ factorId: f.id }); } catch { /* αγνόησε */ } }
+      // Ο,ΤΙ ΕΜΕΙΝΕ ΜΙΣΟ ΦΕΥΓΕΙ ΠΡΩΤΑ, από το `all` (lib/auth/mfa.ts,
+      // pendingTotpIds). Αν το σβήσιμο δεν πέτυχε, το όνομα παίρνει χρονοσφραγίδα
+      // αντί να κολλήσει ο άνθρωπος στο «δοκίμασε ξανά».
+      for (const id of pendingTotpIds(list)) {
+        try { await supabase.auth.mfa.unenroll({ factorId: id }); } catch { /* αγνόησε */ }
       }
-      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'PROPERWISE' });
+      let { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: totpFriendlyName(false) });
+      if (error?.code === MFA_NAME_CONFLICT) {
+        ({ data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: totpFriendlyName(true) }));
+      }
       if (!alive) return;
       if (error || !data) { setStep({ kind: 'unavailable' }); return; }
       setStep({ kind: 'enroll', id: data.id, qr: data.totp.qr_code, secret: data.totp.secret });
