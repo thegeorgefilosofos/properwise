@@ -26,6 +26,7 @@ import { fe } from '@/lib/core/format';
 // Η μορφή του κωδικού πρόσκλησης ζει δίπλα στη γεννήτριά του, όχι εδώ.
 import { isReferralCode } from '@/lib/referral/code';
 import { POLICY_VERSION as CONSENT_VERSION } from '@/lib/legal/identity'
+import { applyNews, newsDecided, newsFromParam, newsMeta, newsParam, pendingNews, type NewsChoice } from '@/lib/auth/signupNews'
 import { usePlanTerms, useTrialBadge, useSignupCta } from './PlanTerms'
 import { localeOfPath, type Locale } from '@/lib/i18n/locale'
 import { localHref } from '@/lib/i18n/paths'
@@ -137,10 +138,12 @@ const countSignup = (supabase: Awaited<ReturnType<typeof authClient>>) => Promis
  * συγκατάθεσης, η πρόσκληση και το πακέτο. Συμπληρώνει ΜΟΝΟ ό,τι λείπει: η
  * απόδειξη που μετράει είναι η ΠΡΩΤΗ, όχι η σημερινή.
  */
-function oauthPatch(meta: Record<string, unknown>, q: URLSearchParams, newsOff = q.get('news') === '0'): Record<string, unknown> {
+function oauthPatch(meta: Record<string, unknown>, q: URLSearchParams, news: NewsChoice = newsFromParam(q.get('news'))): Record<string, unknown> {
   const patch: Record<string, unknown> = {}
-  // Η άρνηση των ενημερωτικών ταξιδεύει όπως το πακέτο, στη διεύθυνση επιστροφής.
-  if (newsOff && meta.marketing_opt_out === undefined) patch.marketing_opt_out = true
+  // Η επιλογή των ενημερωτικών ταξιδεύει όπως το πακέτο, στη διεύθυνση
+  // επιστροφής· γράφεται μόνο για λογαριασμό που δεν έχει ακόμη ούτε
+  // συγκατάθεση ούτε απόφαση. Υπάρχων χρήστης κρατά τις προτιμήσεις του.
+  if (!meta.consent_terms_accepted_at && !newsDecided(meta)) Object.assign(patch, newsMeta(news))
   if (!meta.consent_terms_accepted_at) {
     patch.consent_terms_accepted_at = new Date().toISOString()
     patch.consent_policy_version = CONSENT_VERSION
@@ -152,18 +155,17 @@ function oauthPatch(meta: Record<string, unknown>, q: URLSearchParams, newsOff =
 }
 
 /**
- * ΤΑ ΕΝΗΜΕΡΩΤΙΚΑ, ΑΜΕΣΑ ΚΛΕΙΣΤΑ. Η βάση τα κλείνει όταν δημιουργεί τη γραμμή
- * των προτιμήσεων (migration 20260925120000)· εδώ γράφεται και ρητά, για την
- * περίπτωση που η γραμμή υπάρχει ήδη. Η πολιτική `own_marketing_prefs`
- * επιτρέπει στον χρήστη μόνο τη δική του.
+ * ΤΑ ΕΝΗΜΕΡΩΤΙΚΑ, ΟΠΩΣ ΤΑ ΔΙΑΛΕΞΕ. Η βάση κλείνει και τα δύο όταν δημιουργεί
+ * τη γραμμή για όποιον δεν τσέκαρε και τα δύο (migration 20260925120000)· εδώ
+ * γράφεται ρητά η επιλογή, για την περίπτωση που η γραμμή υπάρχει ήδη ή που
+ * τσεκάρθηκε μόνο το ένα (lib/auth/signupNews.ts).
  */
-async function newsOffNow(supabase: Awaited<ReturnType<typeof authClient>>, userId: string) {
-  // Η ΑΡΝΗΣΗ ΠΟΥ ΔΕΝ ΓΡΑΦΤΗΚΕ ΔΕΝ ΠΕΡΝΑ ΣΙΩΠΗΛΑ. Ο χρήστης που είπε «όχι» και
+async function newsNow(supabase: Awaited<ReturnType<typeof authClient>>, userId: string, meta: Record<string, unknown>) {
+  // Η ΕΠΙΛΟΓΗ ΠΟΥ ΔΕΝ ΓΡΑΦΤΗΚΕ ΔΕΝ ΠΕΡΝΑ ΣΙΩΠΗΛΑ. Ο χρήστης που είπε «όχι» και
   // λαμβάνει ενημερωτικό είναι ακριβώς αυτό που ο νόμος απαγορεύει· επιστρέφεται
   // το σφάλμα και η οθόνη το δείχνει, με τη διέξοδο να ξαναδοκιμάσει.
-  const { error } = await supabase.from('email_marketing_prefs')
-    .upsert({ user_id: userId, product_news: false, market_news: false }, { onConflict: 'user_id' })
-  return error
+  const pending = pendingNews(meta)
+  return pending ? applyNews(supabase, userId, pending) : null
 }
 
 // «Τι δεν έγινε. Γιατί.» στη γλώσσα της σελίδας: το αγγλικό κείμενο το δίνει
@@ -224,7 +226,8 @@ export default function SignupPage() {
   // που δεν είναι «δικά μας παρόμοια προϊόντα»: γι' αυτό το μέρος χρειάζεται
   // συγκατάθεση· συγκατάθεση με προτσεκαρισμένο κουτί δεν είναι έγκυρη.
   // Την παραμονή της πρώτης μαζικής επισκεψιμότητας η ασφαλής πλευρά κερδίζει.
-  const [news, setNews] = useState(false)
+  // ΚΑΙ ΔΥΟ ΚΟΥΤΙΑ ΑΠΟ 09/11/2026, ένα για κάθε σκοπό (lib/auth/signupNews.ts).
+  const [news, setNews] = useState<NewsChoice>({ product: false, market: false })
   // Το κουμπί της Google δεν έχει «υποβολή» για να δείξει το πρόβλημα. Χωρίς
   // αυτό, το πάτημα χωρίς αποδοχή δεν έκανε τίποτα και έμοιαζε με βλάβη.
   const [consentTouched, setConsentTouched] = useState(false)
@@ -335,11 +338,10 @@ export default function SignupPage() {
             return
           }
         }
-        const newsError = patch.marketing_opt_out ? await newsOffNow(supabase, u.id) : null
+        const newsError = await newsNow(supabase, u.id, { ...meta, ...patch })
         if (newsError) {
-          setError(failedIn(A, 'Η άρνηση των ενημερωτικών δεν καταχωρήθηκε', S?.newsFailed, newsError))
+          setError(failedIn(A, 'Η επιλογή των ενημερωτικών δεν καταχωρήθηκε', S?.newsFailed, newsError))
           setConsent(true)
-          setNews(false)
           setNeedsConsent(u.email ?? '')
           return
         }
@@ -372,11 +374,11 @@ export default function SignupPage() {
     const { data, error: readError } = await supabase.auth.getUser()
     if (readError) { setError(failed('Η αποδοχή δεν καταχωρήθηκε', S?.acceptFailed, readError)); return }
     const meta = (data.user?.user_metadata ?? {}) as Record<string, unknown>
-    const patch = oauthPatch(meta, new URLSearchParams(window.location.search), !news)
+    const patch = oauthPatch(meta, new URLSearchParams(window.location.search), news)
     const { error } = await supabase.auth.updateUser({ data: patch })
     if (error) { setError(failed('Η αποδοχή δεν καταχωρήθηκε', S?.acceptFailed, error)); return }
-    const newsError = patch.marketing_opt_out && data.user ? await newsOffNow(supabase, data.user.id) : null
-    if (newsError) { setError(failed('Η άρνηση των ενημερωτικών δεν καταχωρήθηκε', S?.newsFailed, newsError)); return }
+    const newsError = data.user ? await newsNow(supabase, data.user.id, { ...meta, ...patch }) : null
+    if (newsError) { setError(failed('Η επιλογή των ενημερωτικών δεν καταχωρήθηκε', S?.newsFailed, newsError)); return }
     // Από το created_at και όχι από το freshAccount: ο κλάδος του oauth=1 με
     // σφάλμα στα ενημερωτικά φέρνει εδώ νέο λογαριασμό χωρίς να το ορίσει.
     if (data.user?.created_at && Date.now() - Date.parse(data.user.created_at) < FRESH_MS) await countSignup(supabase)
@@ -455,7 +457,7 @@ export default function SignupPage() {
     const back = new URLSearchParams(carried(query))
     back.set('oauth', '1')
     if (refCode) back.set('ref', refCode)
-    if (!news) back.set('news', '0')
+    back.set('news', newsParam(news))
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}${localHref(locale, '/signup')}?${back.toString()}` },
@@ -546,7 +548,7 @@ export default function SignupPage() {
           ...(firm ? { account_kind: 'firm', firm_name: firmName.trim(), firm_afm: firmAfm, firm_kind: firmKind, firm_terms_version: FIRM_TERMS_VERSION } : {}),
           consent_terms_accepted_at: new Date().toISOString(),
           consent_policy_version: CONSENT_VERSION,
-          ...(news ? {} : { marketing_opt_out: true }),
+          ...newsMeta(news),
           ...(refCode ? { referred_by: refCode } : {}),
           ...(chosenPlan ? { chosen_plan: chosenPlan, chosen_cycle: chosenCycle } : {}),
         },
@@ -590,18 +592,23 @@ export default function SignupPage() {
   // Υπογραμμισμένοι, ίδια γραμμή με το `.po-link` και τη σύνδεση (20.10.2026):
   // το χρώμα μόνο του δεν λέει «πατιέται» σε όποιον δεν ξεχωρίζει τόνους.
   const consentLink: React.CSSProperties = { color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1, fontWeight: 600, whiteSpace: 'nowrap' }
-  // Το δεύτερο κουτί, με το ίδιο ιδίωμα αφής με το πρώτο. Προαιρετικό: η
-  // εγγραφή προχωρά ό,τι κι αν διαλέξεις.
-  const newsRow = (id: string) => (
+  // Τα κουτιά των ενημερωτικών, με το ίδιο ιδίωμα αφής με το πρώτο. Δύο, ένα
+  // για κάθε σκοπό, ατσεκάριστα και προαιρετικά: η εγγραφή προχωρά ό,τι κι
+  // αν διαλέξεις (νομικός έλεγχος 09/11/2026, Π-5).
+  const newsBox = (id: string, key: keyof NewsChoice, text: string) => (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, paddingBottom: CONSENT_TAP_ROOM }}>
       <label htmlFor={id} style={{ ...TAP, margin: -14 }}>
-        <input id={id} type="checkbox" checked={news} onChange={e => setNews(e.target.checked)}
+        <input id={id} type="checkbox" checked={news[key]} onChange={e => { const on = e.target.checked; setNews(n => ({ ...n, [key]: on })) }}
           className="po-check" />
       </label>
-      <label htmlFor={id} style={consentText}>
-        {S ? S.news : 'Να μου στέλνετε νέα της εφαρμογής και της αγοράς ακινήτων. Σταματούν από τον σύνδεσμο σε κάθε email.'}
-      </label>
+      <label htmlFor={id} style={consentText}>{text}</label>
     </div>
+  )
+  const newsRow = (id: string) => (
+    <>
+      {newsBox(`${id}-product`, 'product', S ? S.newsProduct : 'Να μου στέλνετε νέα για τις λειτουργίες του PROPERWISE. Σταματούν από τον σύνδεσμο σε κάθε email.')}
+      {newsBox(`${id}-market`, 'market', S ? S.newsMarket : 'Να μου στέλνετε το ενημερωτικό για την αγορά ακινήτων. Σταματά από τον σύνδεσμο σε κάθε email.')}
+    </>
   )
   const errorBox: React.CSSProperties = { background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--negative)' }
   const focus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.currentTarget.style.borderColor = 'var(--accent)' }
@@ -618,7 +625,7 @@ export default function SignupPage() {
     // Με άδειο πεδίο δεν λέγεται «δεν πληροί» (02.10.2026): ο αναγνώστης οθόνης
     // το ανακοίνωνε πριν γραφτεί ούτε ένας χαρακτήρας. Λέγεται τι λείπει.
     : !pw.ok ? (password ? (S ? S.whyWeak : 'Ο κωδικός δεν πληροί ακόμη τις προϋποθέσεις.') : (S ? S.whyEmpty : 'Γράψε κωδικό για να συνεχίσεις.'))
-    : !consent ? (S ? S.whyConsent : 'Χρειάζεται αποδοχή των Όρων και της Πολιτικής απορρήτου.')
+    : !consent ? (S ? S.whyConsent : 'Χρειάζεται αποδοχή των Όρων χρήσης.')
     : ''
 
   return (
@@ -641,7 +648,7 @@ export default function SignupPage() {
               <BackLink home locale={locale} />
               <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 8px' }}>{S ? S.oneMore : 'Ένα βήμα ακόμη'}</h1>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 20px' }}>
-                {S ? S.oauthConsent[0] : 'Πριν συνεχίσεις με το '}<strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{needsConsent}</strong>{S ? S.oauthConsent[1] : ', χρειάζεται να αποδεχθείς τους Όρους χρήσης και την Πολιτική απορρήτου.'}
+                {S ? S.oauthConsent[0] : 'Πριν συνεχίσεις με το '}<strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{needsConsent}</strong>{S ? S.oauthConsent[1] : ', χρειάζεται να αποδεχτείς τους Όρους χρήσης και να διαβάσεις την Πολιτική απορρήτου.'}
               </p>
               {/* ΤΟ ΙΔΙΟ ΠΛΑΙΣΙΟ, ΜΕ ΤΟ ΙΔΙΟ ΙΔΙΩΜΑ. Εδώ το τετράγωνο ήταν γυμνό
                   16 × 16, ενώ το αδελφό του παρακάτω έχει ετικέτα 44 × 44 γύρω
@@ -651,18 +658,18 @@ export default function SignupPage() {
                 <label htmlFor="su-consent-oauth" style={{ ...TAP, margin: '-12px -14px -14px -14px' }}>
                   <input id="su-consent-oauth" type="checkbox" checked={consent}
                     onChange={e => { setConsent(e.target.checked); if (e.target.checked) setConsentTouched(false) }}
-                    aria-label={S ? S.consentAria : 'Αποδοχή των Όρων χρήσης, με ενημέρωση για την Πολιτική απορρήτου'}
+                    aria-label={S ? S.consentAria : 'Αποδέχομαι τους Όρους χρήσης και διάβασα την Πολιτική απορρήτου'}
                     className="po-check" />
                 </label>
                 <label htmlFor="su-consent-oauth" style={consentText}>
                   {S ? S.consent[0] : <>Αποδέχομαι τους{' '}</>}
-                  <Link href={localHref(locale, '/terms')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.consent[1] : <> και την{' '}</>}
+                  <Link href={localHref(locale, '/terms')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.consent[1] : <> και διάβασα την{' '}</>}
                   <Link href={localHref(locale, '/privacy')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.privacy : 'Πολιτική απορρήτου'}</Link>{S ? S.consent[2] : '.'}
                 </label>
               </div>
               {consentTouched && !consent && (
                 <p role="alert" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: '0 0 12px', lineHeight: 1.5 }}>
-                  {S ? S.consentNeeded : 'Χρειάζεται να αποδεχθείς τους Όρους χρήσης για να συνεχίσεις.'}
+                  {S ? S.consentNeeded : 'Χρειάζεται να αποδεχτείς τους Όρους χρήσης για να συνεχίσεις.'}
                 </p>
               )}
               {newsRow('su-news-oauth')}
@@ -980,7 +987,7 @@ export default function SignupPage() {
                         οθόνης εξακολουθεί να λέει «υποχρεωτικό». */}
                     <input id="su-consent" type="checkbox" checked={consent}
                       onChange={e => { setConsent(e.target.checked); if (e.target.checked) setConsentTouched(false) }}
-                      aria-required="true" aria-label={S ? S.consentAria : 'Αποδοχή των Όρων χρήσης, με ενημέρωση για την Πολιτική απορρήτου'}
+                      aria-required="true" aria-label={S ? S.consentAria : 'Αποδέχομαι τους Όρους χρήσης και διάβασα την Πολιτική απορρήτου'}
                       className="po-check" />
                   </label>
                   {/* ΑΠΟΔΟΧΗ ΓΙΑ ΤΟΥΣ ΟΡΟΥΣ, ΕΝΗΜΕΡΩΣΗ ΓΙΑ ΤΗΝ ΠΟΛΙΤΙΚΗ. Εγραφε
@@ -995,13 +1002,13 @@ export default function SignupPage() {
                       κουτί, οπότε ο φόβος του σχολίου από πάνω δεν ισχύει. */}
                   <label htmlFor="su-consent" style={consentText}>
                     {S ? S.consent[0] : <>Αποδέχομαι τους{' '}</>}
-                    <Link href={localHref(locale, '/terms')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.consent[1] : <> και την{' '}</>}
+                    <Link href={localHref(locale, '/terms')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.consent[1] : <> και διάβασα την{' '}</>}
                     <Link href={localHref(locale, '/privacy')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.privacy : 'Πολιτική απορρήτου'}</Link>{S ? S.consent[2] : '.'}
                   </label>
                 </div>
                 {consentTouched && !consent && (
                   <p role="alert" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: 0, lineHeight: 1.5 }}>
-                    {S ? S.consentNeeded : 'Χρειάζεται να αποδεχθείς τους Όρους χρήσης για να συνεχίσεις.'}
+                    {S ? S.consentNeeded : 'Χρειάζεται να αποδεχτείς τους Όρους χρήσης για να συνεχίσεις.'}
                   </p>
                 )}
                 {firm && <FirmTermsCheck id="su-firm-terms" checked={firmTerms} onChange={on => { setFirmTerms(on); setError('') }} />}
