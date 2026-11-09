@@ -83,8 +83,10 @@ const all = GAS_PROVIDERS.flatMap(p => p.tariffs.map(t => ({ ...t, provider: p.l
 // ΡΑΑΕΥ σιωπά, με έγγραφο, ημέρα και κελί. Και ότι η οθόνη έχει από πού να
 // τη μετρήσει και να την πει.
 {
+  // ΜΠΟΡΕΙ ΝΑ ΜΗΝ ΥΠΑΡΧΕΙ ΚΑΜΙΑ. Τον Νοέμβριο 2026 ο τιμοκατάλογος της ΦΑΕ ήταν
+  // του Οκτωβρίου και το `providerPrice` έφυγε (gas.ts, `FAE_PRICES_2026_10`).
+  // Οι κανόνες πιο κάτω ισχύουν για όσες υπάρχουν.
   const own = all.filter(t => t.providerPrice);
-  ok('υπάρχει τιμή παρόχου στον κατάλογο', own.length > 0);
   eq('τιμή παρόχου μόνο σε γραμμή όπου η ΡΑΑΕΥ δεν έχει τιμή',
     own.filter(t => !(t.raaeyUnknown && t.raaey)).map(t => t.id), []);
   eq('το έγγραφο του παρόχου είναι σε https',
@@ -125,15 +127,20 @@ const all = GAS_PROVIDERS.flatMap(p => p.tariffs.map(t => ({ ...t, provider: p.l
   // παλαιότητας (`GAS_VERIFIED`) και αυτήν έχουν όλα εκτός από τα τιμολόγια
   // του παρόχου· η ημέρα του παρόχου μπαίνει μετά, με το πλήθος.
   const line = gasSourceLine(all);
-  ok('η γραμμή ενημέρωσης αρχίζει από την ημέρα της ΡΑΑΕΥ, την ίδια με της πύλης παλαιότητας',
-    asOfDate(GAS_VERIFIED) === asOfDate(RAAEY_READ_AT) && line.startsWith(`Τελευταία ενημέρωση ΡΑΑΕΥ: ${asOfDate(RAAEY_READ_AT)}. Πηγή: ${PRICE_FACTS.gas.source}· `));
-  ok('και πόσα τιμολόγια είναι του παρόχου', line.includes(`για ${own.length} από τα ${all.length} τιμολόγια τιμοκατάλογος του παρόχου`));
-  ok('και την ημέρα του τιμοκαταλόγου του παρόχου, μετά από της ΡΑΑΕΥ',
-    own.every(t => line.indexOf(`ανάγνωση ${asOfDate(t.providerPrice!.readAt)}`) > line.indexOf(asOfDate(RAAEY_READ_AT))));
+  ok('η πύλη παλαιότητας μετρά από την ημέρα της ΡΑΑΕΥ', asOfDate(GAS_VERIFIED) === asOfDate(RAAEY_READ_AT));
   eq('χωρίς τιμή παρόχου είναι η γραμμή του πίνακα, ίδια με πριν',
     gasSourceLine(all.filter(t => !t.providerPrice)), `Τελευταία ενημέρωση: ${asOfDate(RAAEY_READ_AT)}. Πηγή: ${PRICE_FACTS.gas.source}`);
-  eq('ένα τιμολόγιο του παρόχου μόνο του λέει μόνο τον πάροχο',
-    gasSourceLine(own.slice(0, 1)), `Τελευταία ενημέρωση: ${asOfDate(own[0].providerPrice!.readAt)}. Πηγή: τιμοκατάλογος του παρόχου`);
+  if (own.length) {
+    ok('η γραμμή ενημέρωσης αρχίζει από την ημέρα της ΡΑΑΕΥ, την ίδια με της πύλης παλαιότητας',
+      line.startsWith(`Τελευταία ενημέρωση ΡΑΑΕΥ: ${asOfDate(RAAEY_READ_AT)}. Πηγή: ${PRICE_FACTS.gas.source}· `));
+    ok('και πόσα τιμολόγια είναι του παρόχου', line.includes(`για ${own.length} από τα ${all.length} τιμολόγια τιμοκατάλογος του παρόχου`));
+    ok('και την ημέρα του τιμοκαταλόγου του παρόχου, μετά από της ΡΑΑΕΥ',
+      own.every(t => line.indexOf(`ανάγνωση ${asOfDate(t.providerPrice!.readAt)}`) > line.indexOf(asOfDate(RAAEY_READ_AT))));
+    eq('ένα τιμολόγιο του παρόχου μόνο του λέει μόνο τον πάροχο',
+      gasSourceLine(own.slice(0, 1)), `Τελευταία ενημέρωση: ${asOfDate(own[0].providerPrice!.readAt)}. Πηγή: τιμοκατάλογος του παρόχου`);
+  } else {
+    eq('χωρίς τιμή παρόχου, η γραμμή όλου του καταλόγου είναι η γραμμή του πίνακα', line, `Τελευταία ενημέρωση: ${asOfDate(RAAEY_READ_AT)}. Πηγή: ${PRICE_FACTS.gas.source}`);
+  }
 
   // Για το «Πλήρες Extra» δεν βρέθηκε τιμή Οκτωβρίου στο ίδιο έγγραφο: μένει στον
   // Αύγουστο, εκτός σειράς και η σημείωση το λέει μη επαληθευμένο.
@@ -144,9 +151,18 @@ const all = GAS_PROVIDERS.flatMap(p => p.tariffs.map(t => ({ ...t, provider: p.l
   // Ο ΜΗΝΑΣ ΤΗΣ ΣΗΜΕΙΩΣΗΣ ΕΙΝΑΙ ΤΟΥ ΕΓΓΡΑΦΟΥ ΚΑΙ ΤΟ ΕΓΓΡΑΦΟ ΕΙΝΑΙ ΤΟΥ ΜΗΝΑ ΤΟΥ
   // ΠΙΝΑΚΑ. Με πίνακα της ΡΑΑΕΥ άλλου μήνα ο έλεγχος κοκκινίζει και ζητά νέα
   // ανάγνωση του τιμοκαταλόγου, αντί η σημείωση να μιλά για παλιό μήνα.
-  eq('ο τιμοκατάλογος του παρόχου είναι του μήνα του πίνακα', FAE_PRICES_2026_10.month, GAS_MONTH_GEN);
-  ok('«Πλήρες Extra»: η σημείωση λέει τον μήνα και την ημέρα ανάγνωσης του εγγράφου',
-    (extra?.desc ?? '').includes(`Στον τιμοκατάλογο ${GAS_MONTH_GEN} του παρόχου (ανάγνωση ${asOfDate(FAE_PRICES_2026_10.readAt)}) δεν βρέθηκε`));
+  // Τιμοκατάλογος άλλου μήνα: καμία τιμή του δεν μετρά ως τιμή παρόχου και
+  // καμία σημείωση δεν μιλά γι' αυτόν ως τρέχοντα.
+  if (FAE_PRICES_2026_10.month === GAS_MONTH_GEN) {
+    ok('«Πλήρες Extra»: η σημείωση λέει τον μήνα και την ημέρα ανάγνωσης του εγγράφου',
+      (extra?.desc ?? '').includes(`Στον τιμοκατάλογο ${GAS_MONTH_GEN} του παρόχου (ανάγνωση ${asOfDate(FAE_PRICES_2026_10.readAt)}) δεν βρέθηκε`));
+  } else {
+    eq('ο τιμοκατάλογος του παρόχου είναι άλλου μήνα: καμία τιμή του ως τιμή παρόχου',
+      own.filter(t => t.providerPrice!.url === FAE_PRICES_2026_10.url).map(t => t.id), []);
+    eq('και οι τιμές του γράφουν τον μήνα του εγγράφου, εκτός σειράς',
+      all.filter(t => t.id === 'fae_pliris' || t.id === 'fae_kouzina').map(t => [t.priceMonth, t.raaeyUnknown]),
+      [[FAE_PRICES_2026_10.month, true], [FAE_PRICES_2026_10.month, true]]);
+  }
   const MONTHS_GEN = /(Ιανουαρίου|Φεβρουαρίου|Μαρτίου|Απριλίου|Μαΐου|Ιουνίου|Ιουλίου|Αυγούστου|Σεπτεμβρίου|Οκτωβρίου|Νοεμβρίου|Δεκεμβρίου) \d{4}/gu;
   eq('σημείωση της ΦΑΕ που λέει μήνα λέει τον μήνα του πίνακα',
     all.filter(t => t.id.startsWith('fae_')).flatMap(t => [...(t.desc ?? '').matchAll(MONTHS_GEN)].map(m => m[0]).filter(m => m !== GAS_MONTH_GEN).map(m => `${t.id}: ${m}`)), []);

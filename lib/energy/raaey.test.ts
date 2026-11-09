@@ -4,15 +4,19 @@
 //
 // Τρία πράγματα ελέγχονται εδώ:
 //   1. ο αναγνώστης διαβάζει σωστά κάθε μορφή τιμής που γράφει η ΡΑΑΕΥ
-//   2. το αντίγραφο της εφαρμογής (raaeyData.json) λέει ό,τι η μεταγραφή στο data/
+//   2. τα αντίγραφα της εφαρμογής (raaeyData.json, ο πλήρης πίνακας και
+//      raaeyUpdate.json, η αριθμομηχανή του μήνα) λένε ό,τι οι μεταγραφές στο
+//      data/ και η αριθμομηχανή μπαίνει πάνω στον πίνακα ΜΟΝΟ με ίδιο πάροχο
+//      και ίδιο όνομα
 //   3. κάθε τιμολόγιο του καταλόγου με `raaey` έχει ΑΚΡΙΒΩΣ τις τιμές της
 //      γραμμής του, ή, όταν η ΡΑΑΕΥ δεν έχει ακόμη τιμή, κρατά την παλιά με
 //      τον δικό της μήνα και δεν λέει ότι είναι του νέου, εκτός αν φέρει
 //      τιμή του παρόχου με το έγγραφό της (`providerPrice`, μόνο στο αέριο)
 import { readFileSync } from 'node:fs';
-import { RAAEY_BADGE, parseRaaeyPrice, parseRaaeyFixed, parseRaaeyDuration, raaeyText, type RaaeyRow, type RaaeySheet } from './raaey';
-import { RAAEY_COLUMNS, RAAEY_MONTH, RAAEY_READ_AT, RAAEY_ROWS } from './raaeyCatalogue';
-import { RAAEY_MONTH_GEN, RAAEY_REJECTED, raaeyGasPrices, raaeyPrices, raaeyRows, type RaaeyCells } from './raaeyCatalogue';
+import RAAEY_DATA from './raaeyData.json';
+import { RAAEY_BADGE, parseRaaeyPrice, parseRaaeyFixed, parseRaaeyDuration, raaeyMonthGen, raaeyText, type RaaeyRow, type RaaeySheet } from './raaey';
+import { RAAEY_BASE_MONTH, RAAEY_COLUMNS, RAAEY_MONTH, RAAEY_READ_AT, RAAEY_ROWS, RAAEY_UPDATE_COLUMNS, RAAEY_UPDATE_OFFSET, RAAEY_UPDATE_ROWS } from './raaeyCatalogue';
+import { RAAEY_MONTH_GEN, RAAEY_REJECTED, raaeyBaseRows, raaeyGasPrices, raaeyKey, raaeyPrices, raaeyRows, raaeyUpdateRows, type RaaeyCells } from './raaeyCatalogue';
 import { PROVIDERS, ALL_TARIFFS, COMPARABLE_TARIFFS } from './catalogue';
 import { GAS_PROVIDERS } from './gas';
 
@@ -77,31 +81,62 @@ function throws(name: string, f: () => unknown) {
 
 // ── 2. ΚΑΘΕ ΓΡΑΜΜΗ ΔΙΑΒΑΖΕΤΑΙ, ΤΟ ΑΝΤΙΓΡΑΦΟ ΣΥΜΦΩΝΕΙ ΜΕ ΤΗ ΜΕΤΑΓΡΑΦΗ ──────
 const SHEETS: RaaeySheet[] = ['power-residential', 'power-business', 'gas-residential', 'gas-business'];
-{
-  const src = JSON.parse(readFileSync(`data/raaey/energycost-${RAAEY_MONTH}.json`, 'utf8')) as
-    { month: string; readAt: string; source: string; sheets: Record<string, { rows: RaaeyRow[] }> };
-  eq('μήνας', src.month, RAAEY_MONTH);
-  eq('ημέρα ανάγνωσης', src.readAt, RAAEY_READ_AT);
-  eq('πηγή', src.source, 'ΡΑΑΕΥ, energycost.gr');
+type Source = { month: string; readAt: string; source: string; scope?: string; sheets: Record<string, { rows: (RaaeyRow & { colourFrom?: string })[] }> };
+for (const [label, month, readAt, columns, rows, scope] of [
+  ['πίνακας', RAAEY_BASE_MONTH, RAAEY_DATA.readAt, RAAEY_COLUMNS, RAAEY_ROWS, undefined],
+  ['αριθμομηχανή', RAAEY_MONTH, RAAEY_READ_AT, RAAEY_UPDATE_COLUMNS, RAAEY_UPDATE_ROWS, 'calculator'],
+] as const) {
+  const src = JSON.parse(readFileSync(`data/raaey/energycost-${month}.json`, 'utf8')) as Source;
+  eq(`${label}: μήνας`, src.month, month);
+  eq(`${label}: ημέρα ανάγνωσης`, src.readAt, readAt);
+  eq(`${label}: πηγή`, src.source, 'ΡΑΑΕΥ, energycost.gr');
+  eq(`${label}: εύρος`, src.scope, scope);
   for (const s of SHEETS) {
-    const full = src.sheets[s].rows, app = RAAEY_ROWS[s];
-    eq(`${s}: ίδιο πλήθος γραμμών`, app.length, full.length);
+    const full = src.sheets[s].rows, app = rows[s];
+    eq(`${label} ${s}: ίδιο πλήθος γραμμών`, app.length, full.length);
     let same = true;
     full.forEach((r, i) => {
       const a = app[i];
-      if (RAAEY_COLUMNS.some((c, j) => String(a[j]) !== String(r[c as keyof RaaeyRow]))) same = false;
-      if ((a[RAAEY_COLUMNS.length] === 1) !== notCommerciallyAvailable(r)) same = false;
-      if (`${r.year}-${r.month.padStart(2, '0')}` !== RAAEY_MONTH) same = false;
+      if (columns.some((c, j) => String(a[j]) !== String(r[c as keyof RaaeyRow]))) same = false;
+      if ((a[columns.length] === 1) !== notCommerciallyAvailable(r)) same = false;
+      if (`${r.year}-${r.month.padStart(2, '0')}` !== month) same = false;
+      if (!RAAEY_BADGE[r.colour]) same = false;
+      // Η αριθμομηχανή δεν δίνει χρώμα: κάθε γραμμή λέει από πού ήρθε.
+      if (scope && !r.colourFrom?.trim()) same = false;
     });
-    ok(`${s}: κάθε κελί ίδιο με τη μεταγραφή`, same);
-    let parsed = 0;
-    for (const r of raaeyRows(s)) {
-      try { raaeyPrices(r); raaeyPrices(r, 'base'); parseRaaeyDuration(r.duration); parsed++; }
-      catch (e) { console.error(`  ${s}:${r.row}: ${(e as Error).message}`); }
-    }
-    eq(`${s}: κάθε γραμμή διαβάζεται`, parsed, full.length);
+    ok(`${label} ${s}: κάθε κελί ίδιο με τη μεταγραφή`, same);
   }
 }
+
+// Η ΑΡΙΘΜΟΜΗΧΑΝΗ ΠΑΝΩ ΣΤΟΝ ΠΙΝΑΚΑ. Ίδιος πάροχος και ίδιο όνομα: τα κελιά του
+// μήνα, ο αριθμός και το χρώμα της γραμμής του πίνακα. Αλλιώς τα κελιά του
+// πίνακα με τον μήνα τους. Οι γραμμές της αριθμομηχανής που δεν ταιριάζουν
+// μπαίνουν μετά το 1000 και καμία δεν χάνεται.
+const CELLS = ['provider', 'name', 'fixed', 'price', 'fixedDiscounted', 'fixedCondition', 'priceDiscounted', 'priceCondition', 'duration', 'notAvailable'] as const;
+const sameCells = (a: RaaeyCells, b: RaaeyCells) => CELLS.every(c => a[c] === b[c]);
+for (const s of SHEETS) {
+  const merged = raaeyRows(s), base = raaeyBaseRows(s), upd = raaeyUpdateRows(s);
+  const byKey = new Map(upd.map(u => [raaeyKey(u), u]));
+  let overlay = true;
+  for (const b of base) {
+    const m = merged.find(x => x.row === b.row)!, u = byKey.get(raaeyKey(b));
+    if (u) { if (!sameCells(m, u) || m.month !== RAAEY_MONTH || m.colour !== b.colour || m.update !== u.row) overlay = false; }
+    else if (!sameCells(m, b) || m.month !== RAAEY_BASE_MONTH || m.update !== undefined) overlay = false;
+  }
+  ok(`${s}: η αριθμομηχανή μπαίνει μόνο σε ίδιο πάροχο και όνομα`, overlay);
+  const added = merged.filter(m => m.row >= RAAEY_UPDATE_OFFSET);
+  ok(`${s}: οι νέες γραμμές δεν υπάρχουν στον πίνακα`, added.every(m => !base.some(b => raaeyKey(b) === raaeyKey(m)) && m.row === RAAEY_UPDATE_OFFSET + (m.update as number)));
+  eq(`${s}: καμία γραμμή της αριθμομηχανής δεν χάνεται`, [...new Set(merged.filter(m => m.update != null).map(m => m.update))].sort((a, b) => (a as number) - (b as number)), upd.map(u => u.row));
+  ok(`${s}: ο πίνακας ήταν μεγαλύτερος από την αριθμομηχανή`, base.length > upd.length);
+  let parsed = 0;
+  for (const r of merged) {
+    try { raaeyPrices(r); raaeyPrices(r, 'base'); parseRaaeyDuration(r.duration); parsed++; }
+    catch (e) { console.error(`  ${s}:${r.row}: ${(e as Error).message}`); }
+  }
+  eq(`${s}: κάθε γραμμή διαβάζεται`, parsed, merged.length);
+}
+eq('η αντιστοίχιση: «Blue Generous Max HOME 5» είναι νέα γραμμή, όχι η HOME 4',
+  raaeyRows('power-residential').filter(r => r.name === 'Blue Generous Max HOME 5').map(r => r.row >= RAAEY_UPDATE_OFFSET), [true]);
 
 // ── 3. Ο ΚΑΤΑΛΟΓΟΣ ΤΟΥ ΡΕΥΜΑΤΟΣ ─────────────────────────────────────────────
 const power = PROVIDERS.flatMap(p => p.tariffs);
@@ -132,7 +167,7 @@ const NO_NIGHT = new Set(['dei_prasino']);
     if (t.raaeyUnknown) {
       // Η ΡΑΑΕΥ δεν έχει ακόμη τιμή: μένει η παλιά, με τον δικό της μήνα.
       ok(`${t.id}: άγνωστη στη ΡΑΑΕΥ`, !p.known);
-      ok(`${t.id}: η παλιά τιμή δεν δείχνεται ως του νέου μήνα`, t.priceMonth !== RAAEY_MONTH_GEN);
+      ok(`${t.id}: η παλιά τιμή δεν δείχνεται ως του μήνα της γραμμής`, t.priceMonth !== raaeyMonthGen(r.month));
       ok(`${t.id}: το κείμενο της ΡΑΑΕΥ`, t.priceText === p.priceText);
       continue;
     }
@@ -143,11 +178,20 @@ const NO_NIGHT = new Set(['dei_prasino']);
     eq(`${t.id}: χωρίς έκπτωση`, t.undiscounted, p.undiscounted);
     eq(`${t.id}: προϋποθέσεις`, t.conditions ?? {}, p.conditions);
     eq(`${t.id}: διάρκεια`, t.contract_months, parseRaaeyDuration(r.duration));
-    if (p.known) eq(`${t.id}: μήνας`, t.priceMonth, RAAEY_MONTH_GEN);
-    else ok(`${t.id}: χωρίς τιμή, όχι του νέου μήνα`, t.kwh_day == null && t.priceMonth !== RAAEY_MONTH_GEN);
+    if (p.known) eq(`${t.id}: μήνας`, t.priceMonth, raaeyMonthGen(r.month));
+    else ok(`${t.id}: χωρίς τιμή, όχι του μήνα της γραμμής`, t.kwh_day == null && t.priceMonth !== raaeyMonthGen(r.month));
     if (r.notAvailable) ok(`${t.id}: μη εμπορικά διαθέσιμο`, t.notAvailable === true);
   }
   ok('τιμολόγια ρεύματος συνδεδεμένα με τη ΡΑΑΕΥ', linked > 300);
+
+  // ΟΣΑ ΔΕΝ ΕΙΝΑΙ ΣΤΗΝ ΑΡΙΘΜΟΜΗΧΑΝΗ ΔΕΝ ΚΑΤΑΤΑΣΣΟΝΤΑΙ. Η αριθμομηχανή δείχνει
+  // όσα διατίθενται τον μήνα του καταλόγου· μια γραμμή του πίνακα που λείπει
+  // από αυτήν κρατά τιμή άλλου μήνα και μένει εκτός σειράς.
+  const rowOf = (t: { raaey?: string }) => (t.raaey ? raaeyRow(t.raaey) : null);
+  eq('καμία τιμή γραμμής εκτός αριθμομηχανής στη σειρά',
+    ALL_TARIFFS().filter(t => t.current && rowOf(t) && rowOf(t)!.month !== RAAEY_MONTH).map(t => t.id), []);
+  ok('υπάρχουν τιμολόγια ρεύματος που έμειναν στον προηγούμενο μήνα', ALL_TARIFFS().some(t => rowOf(t)?.month === RAAEY_BASE_MONTH && t.priceMonth === raaeyMonthGen(RAAEY_BASE_MONTH)));
+  ok('και τιμολόγια ρεύματος του μήνα στη σύγκριση', COMPARABLE_TARIFFS().filter(t => t.current).length >= 40);
 
   // Κανένα νέο τιμολόγιο από γραμμή εκτός αγοράς.
   const added = power.filter(t => t.id.startsWith('rx_'));
@@ -183,13 +227,13 @@ const gas = GAS_PROVIDERS.flatMap(p => p.tariffs);
         // διάρκεια) μένει όπως το γράφει. Η ΤΙΜΗ ΔΕΝ ΣΥΓΚΡΙΝΕΤΑΙ ΕΔΩ: η γραμμή
         // της ΡΑΑΕΥ δεν έχει τιμή. Την ελέγχει το gas.test.ts απέναντι στο
         // κελί του εγγράφου (`providerPrice.cell`), μαζί με την πηγή.
-        ok(`${t.id}: τιμή παρόχου του μήνα του πίνακα`, t.priceMonth === RAAEY_MONTH_GEN);
+        ok(`${t.id}: τιμή παρόχου του μήνα της γραμμής`, t.priceMonth === raaeyMonthGen(r.month) && r.month === RAAEY_MONTH);
         ok(`${t.id}: διαβάστηκε όχι πριν από τον πίνακα`, t.providerPrice.readAt >= RAAEY_READ_AT);
         eq(`${t.id}: πάγιο της ΡΑΑΕΥ`, t.fixed, p.fixed);
         eq(`${t.id}: διάρκεια της ΡΑΑΕΥ`, t.contract_months, parseRaaeyDuration(r.duration));
         continue;
       }
-      ok(`${t.id}: η παλιά τιμή με τον δικό της μήνα`, !!t.priceMonth && t.priceMonth !== RAAEY_MONTH_GEN);
+      ok(`${t.id}: η παλιά τιμή με τον δικό της μήνα`, !!t.priceMonth && t.priceMonth !== raaeyMonthGen(r.month));
       continue;
     }
     ok(`${t.id}: τιμή παρόχου μόνο όπου η ΡΑΑΕΥ δεν έχει τιμή`, !t.providerPrice);
@@ -197,10 +241,12 @@ const gas = GAS_PROVIDERS.flatMap(p => p.tariffs);
     eq(`${t.id}: πάγιο`, t.fixed, p.fixed);
     eq(`${t.id}: χωρίς έκπτωση`, t.undiscounted, p.undiscounted);
     eq(`${t.id}: προϋποθέσεις`, t.conditions ?? {}, p.conditions ?? {});
-    if (p.known) eq(`${t.id}: μήνας`, t.priceMonth, RAAEY_MONTH_GEN);
-    else ok(`${t.id}: χωρίς τιμή, όχι του νέου μήνα`, t.kwh == null && t.priceMonth !== RAAEY_MONTH_GEN);
+    if (p.known) eq(`${t.id}: μήνας`, t.priceMonth, raaeyMonthGen(r.month));
+    else ok(`${t.id}: χωρίς τιμή, όχι του μήνα της γραμμής`, t.kwh == null && t.priceMonth !== raaeyMonthGen(r.month));
     if (r.notAvailable) ok(`${t.id}: μη εμπορικά διαθέσιμο`, t.notAvailable === true);
   }
+  eq('αέριο: καμία τιμή γραμμής εκτός αριθμομηχανής με τον μήνα του καταλόγου',
+    gas.filter(t => t.raaey && t.priceMonth === RAAEY_MONTH_GEN && raaeyRow(t.raaey).month !== RAAEY_MONTH).map(t => t.id), []);
   const added = gas.filter(t => t.id.startsWith('rx_'));
   ok('προστέθηκαν τιμολόγια αερίου', added.length > 0);
   ok('κανένα προστιθέμενο αερίου μη εμπορικά διαθέσιμο', added.every(t => !raaeyRow(t.raaey!).notAvailable));

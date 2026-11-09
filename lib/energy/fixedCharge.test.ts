@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { fixedBase, fixedTier2, fixedChargeText } from './fixedCharge';
 import { monthlyCost } from './tariff';
 import { ALL_TARIFFS } from './catalogue';
-import { RAAEY_COLUMNS, RAAEY_ROWS } from './raaeyCatalogue';
+import { raaeyRows } from './raaeyCatalogue';
 import { parseRaaeyFixed } from './raaey';
 import { fe, fn } from '@/lib/core/format';
 import { facts } from '@/app/sygkrisi-timologion-revmatos/PowerCompare';
@@ -30,10 +30,9 @@ const tiered = all.filter(t => t.fixed_tier2 != null);
 
 // ── ΠΟΙΑ ΤΙΜΟΛΟΓΙΑ: ΟΣΑ ΓΡΑΦΕΙ Η ΡΑΑΕΥ ΜΕ ΔΥΟ ΚΛΙΜΑΚΕΣ ───────────────────────
 {
-  const col = (name: string) => (RAAEY_COLUMNS as readonly string[]).indexOf(name);
-  const refs = Object.entries(RAAEY_ROWS).flatMap(([sheet, rows]) => sheet.startsWith('power-')
-    ? rows.filter(r => parseRaaeyFixed(String(r[col('fixedDiscounted')])).tier2).map(r => `${sheet}:${r[col('row')]}`)
-    : []);
+  // Οι γραμμές του καταλόγου: ο πίνακας μαζί με την αριθμομηχανή του μήνα.
+  const refs = (['power-residential', 'power-business'] as const).flatMap(sheet =>
+    raaeyRows(sheet).filter(r => parseRaaeyFixed(r.fixedDiscounted).tier2).map(r => `${sheet}:${r.row}`));
   ok('ο πίνακας της ΡΑΑΕΥ έχει πάγιο σε δύο κλίμακες', refs.length > 0);
   eq('κάθε τέτοια γραμμή που είναι στον κατάλογο κρατά και τις δύο κλίμακες',
     refs.filter(ref => all.some(t => t.raaey === ref) && !tiered.some(t => t.raaey === ref)), []);

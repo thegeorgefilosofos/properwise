@@ -153,26 +153,29 @@ export const NETWORK_OPERATORS = [
  * 12/10/2026 (χάρτης αγοράς 12/10/2026, ενότητα «Φυσικό αέριο»). Το `month`
  * είναι ο μήνας του εγγράφου σε γενική: το gas.test.ts θέλει να είναι ο μήνας
  * του πίνακα της ΡΑΑΕΥ, ώστε ο επόμενος πίνακας να ζητήσει νέα ανάγνωση.
+ *
+ * ΝΟΕΜΒΡΙΟΣ 2026: Η ΤΙΜΗ ΤΟΥ ΕΓΓΡΑΦΟΥ ΕΓΙΝΕ ΤΙΜΗ ΟΚΤΩΒΡΙΟΥ. Η ΡΑΑΕΥ εξακολουθεί
+ * να μη δίνει τιμή για τα «Πλήρες» και «Κουζίνα» (αριθμομηχανή 09/11/2026) και
+ * τιμοκατάλογος του Νοεμβρίου δεν διαβάστηκε. Το `providerPrice` έφυγε: η τιμή
+ * 0,08728 μένει ως τιμή Οκτωβρίου, με τον μήνα της και εκτός σειράς, όπως
+ * κάθε άλλη τιμή που η ΡΑΑΕΥ δεν έχει ακόμη για τον μήνα του καταλόγου.
  */
 export const FAE_PRICES_2026_10 = {
   url: 'https://fysikoaerioellados.gr/sites/default/files/2026-10/%CE%A4%CE%B9%CE%BC%CE%B5%CC%81%CF%82_%CE%99%CE%B4%CE%B9%CF%89%CC%81%CF%84%CE%B5%CF%82_%CE%9F%CE%BA%CF%84%CF%8E%CE%B2%CF%81%CE%B9%CE%BF%CF%82_2026_Updated%20%281%29.pdf',
   readAt: '2026-10-12',
   month: 'Οκτωβρίου 2026',
 } as const;
-/** Μια τιμή του ίδιου εγγράφου: η κατηγορία και το κελί της στήλης «Προμήθεια», αυτούσια. */
-const faePrice = (category: string, cell: string) =>
-  ({ url: FAE_PRICES_2026_10.url, readAt: FAE_PRICES_2026_10.readAt, category, cell });
 
 export const GAS_PROVIDERS: GasProvider[] = addRaaeyGas([
   {
     value: 'nrg', label: 'nrg (Motor Oil)', url: 'https://www.nrg.gr',
     tariffs: [
-      { id: 'nrg_ontime', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:30', name: 'nrg on time GAS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.09117, fixed: 1.8, undiscounted: { kwh: 0.10377, fixed: 4.8 }, conditions: { price: 'Έκπτωση Συνέπειας και Έκπτωση Συνδυαστικής Προσφοράς με Ηλεκτρική Ενέργεια', fixed: 'ebill και πάγια εντολή' } },
-      { id: 'nrg_adapt', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:32', name: 'nrg adapt GAS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.09247, fixed: 1.8, undiscounted: { kwh: 0.10217, fixed: 4.8 }, conditions: { price: 'Οριζόντια Έκπτωση και Έκπτωση Συνδυαστικής Προσφοράς με Ηλεκτρική Ενέργεια', fixed: 'ebill και πάγια εντολή' } },
-      { id: 'nrg_prime', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:31', name: 'nrg prime GAS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.09177, fixed: 2.5, undiscounted: { kwh: 0.09177, fixed: 5.5 }, conditions: { fixed: 'ebill και πάγια εντολή' } },
-      { id: 'nrg_ontime_biz', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-business:14', name: 'nrg on time GAS 4BUSINESS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.08937, fixed: 0, undiscounted: { kwh: 0.09927, fixed: 5 }, conditions: { price: 'Έκπτωση Συνέπειας και Έκπτωση Συνδυαστικής Προσφοράς με Ηλεκτρική Ενέργεια', fixed: 'ebill και πάγια εντολή' } },
-      { id: 'nrg_adapt_biz', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-business:16', name: 'nrg adapt GAS 4BUSINESS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.09027, fixed: 0, undiscounted: { kwh: 0.09777, fixed: 5 }, conditions: { price: 'Οριζόντια Έκπτωση και Έκπτωση Συνδυαστικής Προσφοράς με Ηλεκτρική Ενέργεια', fixed: 'ebill και πάγια εντολή' } },
-      { id: 'nrg_prime_biz', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-business:15', name: 'nrg prime GAS 4BUSINESS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.09177, fixed: 4, undiscounted: { kwh: 0.09177, fixed: 9 }, conditions: { fixed: 'ebill και πάγια εντολή' } },
+      { id: 'nrg_ontime', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-residential:30', name: 'nrg on time GAS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.10224, fixed: 1.8, undiscounted: { kwh: 0.11484, fixed: 4.8 }, conditions: { price: 'Έκπτωση Συνέπειας και Έκπτωση Συνδυαστικής Προσφοράς με Ηλεκτρική Ενέργεια.', fixed: 'ebill και πάγια εντολή' } },
+      { id: 'nrg_adapt', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-residential:32', name: 'nrg adapt GAS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.10354, fixed: 1.8, undiscounted: { kwh: 0.11324, fixed: 4.8 }, conditions: { price: 'Οριζόντια Έκπτωση και Έκπτωση Συνδυαστικής Προσφοράς με Ηλεκτρική Ενέργεια.', fixed: 'ebill και πάγια εντολή' } },
+      { id: 'nrg_prime', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-residential:31', name: 'nrg prime GAS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.10284, fixed: 2.5, undiscounted: { kwh: 0.10284, fixed: 5.5 }, conditions: { fixed: 'ebill και πάγια εντολή' } },
+      { id: 'nrg_ontime_biz', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-business:14', name: 'nrg on time GAS 4BUSINESS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.10044, fixed: 0, undiscounted: { kwh: 0.11034, fixed: 5 }, conditions: { price: 'Έκπτωση Συνέπειας και Έκπτωση Συνδυαστικής Προσφοράς με Ηλεκτρική Ενέργεια.', fixed: 'ebill και πάγια εντολή' } },
+      { id: 'nrg_adapt_biz', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-business:16', name: 'nrg adapt GAS 4BUSINESS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.10134, fixed: 0, undiscounted: { kwh: 0.10884, fixed: 5 }, conditions: { price: 'Οριζόντια Έκπτωση και Έκπτωση Συνδυαστικής Προσφοράς με Ηλεκτρική Ενέργεια.', fixed: 'ebill και πάγια εντολή' } },
+      { id: 'nrg_prime_biz', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-business:15', name: 'nrg prime GAS 4BUSINESS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.10284, fixed: 4, undiscounted: { kwh: 0.10284, fixed: 9 }, conditions: { fixed: 'ebill και πάγια εντολή' } },
     ],
   },
   {
@@ -212,12 +215,12 @@ export const GAS_PROVIDERS: GasProvider[] = addRaaeyGas([
   {
     value: 'elin', label: 'ελίν (ΕΛΙΝΟΙΛ)', url: 'https://energy.elin.gr',
     tariffs: [
-      { id: 'elin_home_easy', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:80', name: 'Gas On! Home Easy', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.07825, fixed: 4.5, undiscounted: { kwh: 0.07825, fixed: 4.5 }, contract_months: 12 },
-      { id: 'elin_koin_easy', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:82', name: 'Gas On! Κοινόχρηστο Easy', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.07825, fixed: 5, undiscounted: { kwh: 0.07825, fixed: 5 }, contract_months: 12 },
+      { id: 'elin_home_easy', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-residential:80', name: 'Gas On! Home Easy', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.08831, fixed: 4.5, undiscounted: { kwh: 0.08831, fixed: 4.5 }, contract_months: 12 },
+      { id: 'elin_koin_easy', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-residential:82', name: 'Gas On! Κοινόχρηστο Easy', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.08831, fixed: 5, undiscounted: { kwh: 0.08831, fixed: 5 }, contract_months: 12 },
       { id: 'elin_f12_dual', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:79', name: 'Gas On! Fixed 12M Αυτόνομη Θέρμανση Dual', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential', kwh: 0.0589, fixed: 4.9, undiscounted: { kwh: 0.0589, fixed: 4.9 }, contract_months: 12, desc: 'Συνδυαστικό Πρόγραμμά' },
-      { id: 'elin_relax', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:81', name: 'Gas On! Relax', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.07925, fixed: 6, undiscounted: { kwh: 0.07925, fixed: 6 }, contract_months: 12 },
+      { id: 'elin_relax', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-residential:81', name: 'Gas On! Relax', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.08931, fixed: 6, undiscounted: { kwh: 0.08931, fixed: 6 }, contract_months: 12 },
       { id: 'elin_f12', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:78', name: 'Gas On! Fixed 12M Αυτόνομη Θέρμανση', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential', kwh: 0.0589, fixed: 9.9, undiscounted: { kwh: 0.0589, fixed: 9.9 }, contract_months: 12 },
-      { id: 'elin_biz_easy', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-business:41', name: 'Gas On! Business Easy', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.07825, fixed: 5, undiscounted: { kwh: 0.07825, fixed: 5 }, contract_months: 12 },
+      { id: 'elin_biz_easy', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-business:41', name: 'Gas On! Business Easy', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.08831, fixed: 5, undiscounted: { kwh: 0.08831, fixed: 5 }, contract_months: 12 },
     ],
   },
   {
@@ -261,20 +264,20 @@ export const GAS_PROVIDERS: GasProvider[] = addRaaeyGas([
       // βγαίνουν από το `FAE_PRICES_2026_10` και το gas.test.ts θέλει τον μήνα
       // του εγγράφου ίσο με τον μήνα του πίνακα: με πίνακα άλλου μήνα ο
       // έλεγχος ζητά νέα ανάγνωση, αντί η σημείωση να μιλά για παλιό μήνα.
-      { id: 'fae_pliris', priceMonth: FAE_PRICES_2026_10.month, raaey: 'gas-residential:114', raaeyUnknown: true, providerPrice: faePrice('Οικιακό με χρήση θέρμανσης', '0,087280'), name: 'Αέριο Οικιακό Πλήρες', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.08728, fixed: 0, contract_months: 12, desc: 'Χωρίς πάγιο. Η τιμή είναι από τον τιμοκατάλογο του παρόχου («Οικιακό με χρήση θέρμανσης»), ανάγνωση 12/10/2026.' },
-      { id: 'fae_kouzina', priceMonth: FAE_PRICES_2026_10.month, raaey: 'gas-residential:115', raaeyUnknown: true, providerPrice: faePrice('Οικιακό άλλων χρήσεων', '0,087280'), name: 'Αέριο Οικιακό Κουζίνα', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.08728, fixed: 0, contract_months: 12, desc: 'Χωρίς πάγιο. Για χρήση κουζίνας και ζεστού νερού. Η τιμή είναι από τον τιμοκατάλογο του παρόχου («Οικιακό άλλων χρήσεων»), ανάγνωση 12/10/2026.' },
-      { id: 'fae_extra', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:113', raaeyUnknown: true, name: 'Αέριο Οικιακό Πλήρες Extra', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.06279, fixed: 4.5, contract_months: 24, raaey100: 10.78, desc: `Πολιτική ορθής χρήσης: έως 13 MWh ανά δωδεκάμηνο. Στον τιμοκατάλογο ${FAE_PRICES_2026_10.month} του παρόχου (ανάγνωση ${asOfDate(FAE_PRICES_2026_10.readAt)}) δεν βρέθηκε τιμή γι’ αυτό: τιμή μη επαληθευμένη.` },
+      { id: 'fae_pliris', priceMonth: FAE_PRICES_2026_10.month, raaey: 'gas-residential:114', raaeyUnknown: true, name: 'Αέριο Οικιακό Πλήρες', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.08728, fixed: 0, contract_months: 12, desc: 'Χωρίς πάγιο. Η τιμή είναι από τον τιμοκατάλογο του παρόχου («Οικιακό με χρήση θέρμανσης»), ανάγνωση 12/10/2026.' },
+      { id: 'fae_kouzina', priceMonth: FAE_PRICES_2026_10.month, raaey: 'gas-residential:115', raaeyUnknown: true, name: 'Αέριο Οικιακό Κουζίνα', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.08728, fixed: 0, contract_months: 12, desc: 'Χωρίς πάγιο. Για χρήση κουζίνας και ζεστού νερού. Η τιμή είναι από τον τιμοκατάλογο του παρόχου («Οικιακό άλλων χρήσεων»), ανάγνωση 12/10/2026.' },
+      { id: 'fae_extra', priceMonth: 'Αυγούστου 2026', raaey: 'gas-residential:113', raaeyUnknown: true, name: 'Αέριο Οικιακό Πλήρες Extra', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.06279, fixed: 4.5, contract_months: 24, raaey100: 10.78, desc: 'Πολιτική ορθής χρήσης: έως 13 MWh ανά δωδεκάμηνο. Τιμή μη επαληθευμένη.' },
       { id: 'fae_biz', priceMonth: 'Αυγούστου 2026', raaey: 'gas-business:48', raaeyUnknown: true, name: 'Αέριο Επαγγελματικό', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.06579, fixed: 0, contract_months: 12, raaey100: 6.58, desc: 'Χωρίς πάγιο.' },
     ],
   },
   {
     value: 'dei', label: 'ΔΕΗ', url: 'https://www.dei.gr',
     tariffs: [
-      { id: 'dei_gas_bld_benefit', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:72', name: 'myBuildingGasBenefit', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.08551, fixed: 0, undiscounted: { kwh: 0.08551, fixed: 0 }, contract_months: 24 },
+      { id: 'dei_gas_bld_benefit', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-residential:72', name: 'myBuildingGasBenefit', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.09586, fixed: 0, undiscounted: { kwh: 0.09586, fixed: 0 }, contract_months: 24 },
       { id: 'dei_gas_bld_control', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:70', name: 'myBuildingGasControl', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential', kwh: 0.049, fixed: 5, undiscounted: { kwh: 0.049, fixed: 5 }, contract_months: 12, desc: 'Τιμολόγιο Κοινοχρήστων. 60€ έκπτωση στον λογαριασμό για αιτήσεις έως 11/10/2026' },
-      { id: 'dei_gas_benefit', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:71', name: 'myHomeGasBenefit', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.08151, fixed: 5, undiscounted: { kwh: 0.08151, fixed: 5 }, contract_months: 24, desc: 'Μηδενική εγγύηση για νέους πελάτες έως 30/11/2026' },
+      { id: 'dei_gas_benefit', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-residential:71', name: 'myHomeGasBenefit', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.09186, fixed: 5, undiscounted: { kwh: 0.09186, fixed: 5 }, contract_months: 24, desc: 'Μηδενική εγγύηση για νέους πελάτες έως 31/12/2026' },
       { id: 'dei_gas_control', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:69', name: 'myHomeGasControl', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential', kwh: 0.052, fixed: 14.9, undiscounted: { kwh: 0.052, fixed: 14.9 }, contract_months: 18, desc: 'Μηδενική εγγύηση για νέους πελάτες έως 30/11/2026' },
-      { id: 'dei_gas_biz', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-business:39', name: 'myBusinessGasBenefit', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.086, fixed: 5, undiscounted: { kwh: 0.086, fixed: 5 }, contract_months: 24, desc: '120€ έκπτωση στον λογαριασμό για αιτήσεις έως 01/11/2026' },
+      { id: 'dei_gas_biz', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-business:39', name: 'myBusinessGasBenefit', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.09616, fixed: 5, undiscounted: { kwh: 0.09616, fixed: 5 }, contract_months: 24 },
     ],
   },
   {
@@ -292,11 +295,11 @@ export const GAS_PROVIDERS: GasProvider[] = addRaaeyGas([
   {
     value: 'heron', label: 'ΗΡΩΝ', url: 'https://www.heron.gr',
     tariffs: [
-      { id: 'heron_gas_share', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:106', name: 'GAS MAX SHARE', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.08299, fixed: 0, undiscounted: { kwh: 0.09128, fixed: 0 }, conditions: { price: 'ΕΠΙΠΛΕΟΝ 5% ΔΩΡΟ ΠΑΡΑΜΟΝΗΣ' } },
-      { id: 'heron_gas_pass', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:104', name: 'GAS PASS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.10625, fixed: 3.4, undiscounted: { kwh: 0.11333, fixed: 3.4 }, conditions: { price: 'ΕΠΙΠΛΕΟΝ 5% ΔΩΡΟ ΠΑΡΑΜΟΝΗΣ' } },
-      { id: 'heron_gas_max_home', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:107', name: 'GAS MAX HOME 2', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.07137, fixed: 4.3, undiscounted: { kwh: 0.07931, fixed: 4.3 }, conditions: { price: 'ΕΠΙΠΛΕΟΝ 5% ΔΩΡΟ ΠΑΡΑΜΟΝΗΣ' } },
+      { id: 'heron_gas_share', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-residential:106', name: 'GAS MAX SHARE', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.10667, fixed: 0, undiscounted: { kwh: 0.11734, fixed: 0 }, conditions: { price: 'ΕΠΙΠΛΕΟΝ 5% ΔΩΡΟ ΠΑΡΑΜΟΝΗΣ' } },
+      { id: 'heron_gas_pass', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-residential:104', name: 'GAS PASS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.14666, fixed: 3.4, undiscounted: { kwh: 0.15644, fixed: 3.4 }, conditions: { price: 'ΕΠΙΠΛΕΟΝ 5% ΔΩΡΟ ΠΑΡΑΜΟΝΗΣ' } },
+      { id: 'heron_gas_max_home', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-residential:107', name: 'GAS MAX HOME 2', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.09534, fixed: 4.3, undiscounted: { kwh: 0.10594, fixed: 4.3 }, conditions: { price: 'ΕΠΙΠΛΕΟΝ 5% ΔΩΡΟ ΠΑΡΑΜΟΝΗΣ' } },
       { id: 'heron_gas_blue_max', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:102', name: 'GAS BLUE MAX HOME', badge: 'ΜΠΛΕ', type: 'fixed', segment: 'residential', kwh: 0.0398, fixed: 7.4, undiscounted: { kwh: 0.0398, fixed: 7.4 }, contract_months: 12, desc: '18ΜΗΝΗ ΙΣΧΥΣ ΣΥΜΒΑΣΗΣ' },
-      { id: 'heron_gas_biz', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-business:46', name: 'GAS MAX BUSINESS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.08099, fixed: 0, undiscounted: { kwh: 0.08908, fixed: 0 }, conditions: { price: 'ΕΠΙΠΛΕΟΝ 5% ΔΩΡΟ ΠΑΡΑΜΟΝΗΣ' } },
+      { id: 'heron_gas_biz', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-business:46', name: 'GAS MAX BUSINESS', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.10647, fixed: 0, undiscounted: { kwh: 0.11711, fixed: 0 }, conditions: { price: 'ΕΠΙΠΛΕΟΝ 5% ΔΩΡΟ ΠΑΡΑΜΟΝΗΣ' } },
     ],
   },
   {
@@ -325,9 +328,9 @@ export const GAS_PROVIDERS: GasProvider[] = addRaaeyGas([
   {
     value: 'volton', label: 'Volton', url: 'https://volton.gr',
     tariffs: [
-      { id: 'vol_stay_home', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:66', name: 'Volton Stay & Win v2 | Αυτόνομες', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.11464, fixed: 6.9, undiscounted: { kwh: 0.12464, fixed: 6.9 }, conditions: { price: 'Συνέπεια' }, contract_months: 24, desc: 'Στο πλαίσιο προωθητικής ενέργειας πραγματοποιείται τμηματική πίστωση συνολικής αξίας 100€ τον πρώτο χρόνο και 50€ κάθε επόμενο χρόνο. Επιπλέον δώρο 50€ τον 1ο χρόνο και κάθε επόμενο στον λογαριασμό του φυσικού αερίου σε συνδυασμό με πρόγραμμα ηλεκτρικής ενέργειας.' },
-      { id: 'vol_stay_koin', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-residential:67', name: 'Volton Stay & Win v2 | Κοινόχρηστες', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.11464, fixed: 8.9, undiscounted: { kwh: 0.12464, fixed: 8.9 }, conditions: { price: 'Συνέπεια' }, contract_months: 24, desc: 'Στο πλαίσιο προωθητικής ενέργειας πραγματοποιείται τμηματική πίστωση συνολικής αξίας 150€ τον πρώτο χρόνο και 100€ κάθε επόμενο χρόνο. Επιπλέον δώρο 100€ τον 1ο χρόνο και κάθε επόμενο στον λογαριασμό του φυσικού αερίου σε συνδυασμό με πρόγραμμα ηλεκτρικής ενέργειας.' },
-      { id: 'vol_stay_biz', priceMonth: 'Οκτωβρίου 2026', raaey: 'gas-business:38', name: 'Volton Stay & Win v2 | Επαγγελματικές', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.11464, fixed: 6.9, undiscounted: { kwh: 0.12464, fixed: 6.9 }, conditions: { price: 'Συνέπεια' }, contract_months: 24, desc: 'Στο πλαίσιο προωθητικής ενέργειας πραγματοποιείται τμηματική πίστωση συνολικής αξίας 150€ τον πρώτο χρόνο και 100€ κάθε επόμενο χρόνο. Επιπλέον δώρο 100€ τον 1ο χρόνο και κάθε επόμενο στον λογαριασμό του φυσικού αερίου σε συνδυασμό με πρόγραμμα ηλεκτρικής ενέργειας.' },
+      { id: 'vol_stay_home', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-residential:66', name: 'Volton Stay & Win v2 | Αυτόνομες', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.12891, fixed: 6.9, undiscounted: { kwh: 0.13891, fixed: 6.9 }, conditions: { price: 'Συνέπεια' }, contract_months: 24, desc: 'Στο πλαίσιο προωθητικής ενέργειας πραγματοποιείται τμηματική πίστωση συνολικής αξίας 100€ τον πρώτο χρόνο και 50€ κάθε επόμενο χρόνο. Επιπλέον δώρο 50€ τον 1ο χρόνο και κάθε επόμενο στον λογαριασμό του φυσικού αερίου σε συνδυασμό με πρόγραμμα ηλεκτρικής ενέργειας.' },
+      { id: 'vol_stay_koin', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-residential:67', name: 'Volton Stay & Win v2 | Κοινόχρηστες', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'residential', kwh: 0.12891, fixed: 8.9, undiscounted: { kwh: 0.13891, fixed: 8.9 }, conditions: { price: 'Συνέπεια' }, contract_months: 24, desc: 'Στο πλαίσιο προωθητικής ενέργειας πραγματοποιείται τμηματική πίστωση συνολικής αξίας 150€ τον πρώτο χρόνο και 100€ κάθε επόμενο χρόνο. Επιπλέον δώρο 100€ τον 1ο χρόνο και κάθε επόμενο στον λογαριασμό του φυσικού αερίου σε συνδυασμό με πρόγραμμα ηλεκτρικής ενέργειας.' },
+      { id: 'vol_stay_biz', priceMonth: 'Νοεμβρίου 2026', raaey: 'gas-business:38', name: 'Volton Stay & Win v2 | Επαγγελματικές', badge: 'ΚΙΤΡΙΝΟ', type: 'variable', segment: 'business', kwh: 0.12891, fixed: 6.9, undiscounted: { kwh: 0.13891, fixed: 6.9 }, conditions: { price: 'Συνέπεια' }, contract_months: 24, desc: 'Στο πλαίσιο προωθητικής ενέργειας πραγματοποιείται τμηματική πίστωση συνολικής αξίας 150€ τον πρώτο χρόνο και 100€ κάθε επόμενο χρόνο. Επιπλέον δώρο 100€ τον 1ο χρόνο και κάθε επόμενο στον λογαριασμό του φυσικού αερίου σε συνδυασμό με πρόγραμμα ηλεκτρικής ενέργειας.' },
     ],
   },
 ]);

@@ -13,22 +13,52 @@
 //   · γραμμές με τιμή που μοιάζει λάθος της πηγής (`RAAEY_REJECTED`).
 //   · δεύτερη ίδια γραμμή: ο πίνακας γράφει μερικά τιμολόγια δύο φορές, με
 //     τα ίδια ακριβώς κελιά.
+//
+// ΜΕΡΙΚΟΣ ΜΗΝΑΣ (Νοέμβριος 2026). Ο πλήρης πίνακας είναι του Οκτωβρίου
+// (raaeyData.json). Για τον Νοέμβριο ο ιδιοκτήτης έδωσε την αριθμομηχανή «Το
+// φθηνότερο τιμολόγιο για εμένα» (raaeyUpdate.json, scripts/energy/
+// raaey-calculator-import.mjs), που δείχνει μόνο τα τιμολόγια που διατίθενται
+// σήμερα: περίπου το ένα τρίτο των γραμμών. Ο κατάλογος τη διαβάζει ΠΑΝΩ από
+// τον πίνακα:
+//   · γραμμή του πίνακα με τον ίδιο πάροχο και το ίδιο όνομα στην αριθμομηχανή
+//     παίρνει τα κελιά του Νοεμβρίου και κρατά τον αριθμό της, ώστε τα
+//     `raaey: 'φύλλο:γραμμή'` και τα `rx_` να μένουν ίδια
+//   · γραμμή του πίνακα που ΔΕΝ είναι στην αριθμομηχανή κρατά τα κελιά του
+//     Οκτωβρίου με τον μήνα τους. Είναι κυρίως προϊόντα που δεν διατίθενται
+//     πια· φαίνονται για όποιον τα έχει, αλλά δεν κατατάσσονται, γιατί μόνο
+//     τιμές του μήνα του καταλόγου μπαίνουν στη σειρά
+//   · γραμμή της αριθμομηχανής που δεν υπάρχει στον πίνακα είναι νέο προϊόν
+//     ή νέα έκδοση: προστίθεται με αριθμό 1000 + η σειρά της στην επικόλληση.
+//     Δεν ταιριάζει ποτέ με παλιά έκδοση από ομοιότητα ονόματος.
+// Το raaey.test.ts ελέγχει και τα τρία.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { LocalTariff, ProviderGroup } from './catalogue';
 import type { GasTariff, GasProvider } from './gas';
 import RAAEY_DATA from './raaeyData.json';
+import RAAEY_UPDATE from './raaeyUpdate.json';
 import {
   RAAEY_BADGE, parseRaaeyDuration, parseRaaeyFixed, parseRaaeyPrice, raaeyMonthGen, raaeyText, type RaaeySheet,
 } from './raaey';
 
-// Η μεταγραφή του πίνακα, όπως τη γράφει το scripts/energy/raaey-import.mjs.
-export const RAAEY_MONTH: string = RAAEY_DATA.month;
-export const RAAEY_READ_AT: string = RAAEY_DATA.readAt;
+// Ο πλήρης πίνακας, όπως τον γράφει το scripts/energy/raaey-import.mjs.
+export const RAAEY_BASE_MONTH: string = RAAEY_DATA.month;
 export const RAAEY_COLUMNS: readonly string[] = RAAEY_DATA.columns;
 const RAAEY_GAS_NOTES: Record<string, string> = RAAEY_DATA.gasNotes;
 export const RAAEY_ROWS: Record<string, (string | number)[][]> = RAAEY_DATA.rows;
 
-/** Ο μήνας του πίνακα σε γενική: «Οκτωβρίου 2026». */
+// Η ενημέρωση του μήνα από την αριθμομηχανή (scripts/energy/raaey-calculator-import.mjs).
+export const RAAEY_UPDATE_COLUMNS: readonly string[] = RAAEY_UPDATE.columns;
+const RAAEY_UPDATE_GAS_NOTES: Record<string, string> = RAAEY_UPDATE.gasNotes;
+export const RAAEY_UPDATE_ROWS: Record<string, (string | number)[][]> = RAAEY_UPDATE.rows;
+
+/** Ο μήνας του καταλόγου: της ενημέρωσης. Μόνο τιμές αυτού του μήνα κατατάσσονται. */
+export const RAAEY_MONTH: string = RAAEY_UPDATE.month;
+/** Η ημέρα της τελευταίας ανάγνωσης της ΡΑΑΕΥ. */
+export const RAAEY_READ_AT: string = RAAEY_UPDATE.readAt;
+/** Οι γραμμές της αριθμομηχανής παίρνουν αριθμό 1000 + η σειρά τους, για να μη συμπέσουν με του πίνακα. */
+export const RAAEY_UPDATE_OFFSET = 1000;
+
+/** Ο μήνας του καταλόγου σε γενική: «Νοεμβρίου 2026». */
 export const RAAEY_MONTH_GEN = raaeyMonthGen(RAAEY_MONTH);
 
 /** Η γραμμή, με τα κελιά που κρατά η εφαρμογή. */
@@ -47,13 +77,48 @@ export interface RaaeyCells {
   colour: string;
   /** Η ΡΑΑΕΥ το γράφει «μη εμπορικά διαθέσιμο». */
   notAvailable: boolean;
+  /** Ο μήνας των κελιών: «2026-10» από τον πίνακα, «2026-11» από την αριθμομηχανή. */
+  month: string;
+  /** Η γραμμή της αριθμομηχανής από την οποία ήρθαν τα κελιά, όπου ήρθαν. */
+  update?: number;
 }
 
-export const raaeyRows = (sheet: RaaeySheet): RaaeyCells[] =>
-  (RAAEY_ROWS[sheet] ?? []).map(r => {
-    const o = Object.fromEntries(RAAEY_COLUMNS.map((c, i) => [c, r[i]])) as Record<string, string | number>;
-    return { ...(o as unknown as Omit<RaaeyCells, 'sheet' | 'notAvailable'>), sheet, row: Number(o.row), notAvailable: r[RAAEY_COLUMNS.length] === 1 };
+const cells = (sheet: RaaeySheet, columns: readonly string[], r: (string | number)[], month: string): RaaeyCells => {
+  const o = Object.fromEntries(columns.map((c, i) => [c, r[i]])) as Record<string, string | number>;
+  return { ...(o as unknown as Omit<RaaeyCells, 'sheet' | 'notAvailable' | 'month'>), sheet, row: Number(o.row), notAvailable: r[columns.length] === 1, month };
+};
+/** Οι γραμμές του πλήρους πίνακα, όπως είναι. */
+export const raaeyBaseRows = (sheet: RaaeySheet): RaaeyCells[] =>
+  (RAAEY_ROWS[sheet] ?? []).map(r => cells(sheet, RAAEY_COLUMNS, r, RAAEY_BASE_MONTH));
+/** Οι γραμμές της αριθμομηχανής, όπως είναι, με τον αριθμό τους στην επικόλληση. */
+export const raaeyUpdateRows = (sheet: RaaeySheet): RaaeyCells[] =>
+  (RAAEY_UPDATE_ROWS[sheet] ?? []).map(r => cells(sheet, RAAEY_UPDATE_COLUMNS, r, RAAEY_MONTH));
+
+/** Πάροχος και όνομα: η μόνη αντιστοίχιση ανάμεσα στους δύο μήνες. */
+export const raaeyKey = (r: Pick<RaaeyCells, 'provider' | 'name'>) => `${r.provider}|${r.name}`;
+
+const MERGED = new Map<RaaeySheet, RaaeyCells[]>();
+/**
+ * Οι γραμμές του καταλόγου: ο πίνακας, με τα κελιά της αριθμομηχανής πάνω
+ * όπου ταιριάζουν και οι νέες γραμμές της αριθμομηχανής στο τέλος.
+ */
+export function raaeyRows(sheet: RaaeySheet): RaaeyCells[] {
+  const hit = MERGED.get(sheet);
+  if (hit) return hit;
+  const upd = raaeyUpdateRows(sheet);
+  const byKey = new Map(upd.map(u => [raaeyKey(u), u]));
+  const used = new Set<number>();
+  const out = raaeyBaseRows(sheet).map(b => {
+    const u = byKey.get(raaeyKey(b));
+    if (!u) return b;
+    used.add(u.row);
+    // Το χρώμα μένει του πίνακα: είναι το ίδιο προϊόν και η αριθμομηχανή δεν το δίνει.
+    return { ...u, row: b.row, colour: b.colour, update: u.row };
   });
+  for (const u of upd) if (!used.has(u.row)) out.push({ ...u, row: RAAEY_UPDATE_OFFSET + u.row, update: u.row });
+  MERGED.set(sheet, out);
+  return out;
+}
 
 /**
  * ΓΡΑΜΜΕΣ ΠΟΥ ΔΕΝ ΠΕΡΝΟΥΝ, ΜΕ ΤΟΝ ΛΟΓΟ ΤΟΥΣ.
@@ -170,7 +235,7 @@ export function addRaaeyPower(providers: ProviderGroup[]): ProviderGroup[] {
         ...(p.priceText ? { priceText: p.priceText, priceUnsupported: p.moreTiers } : {}),
         ...(Object.keys(p.conditions).length ? { conditions: p.conditions } : {}),
         contract_months: parseRaaeyDuration(r.duration),
-        ...(p.known ? { priceStatus: 'verified' as const, priceMonth: RAAEY_MONTH_GEN } : {}),
+        ...(p.known ? { priceStatus: 'verified' as const, priceMonth: raaeyMonthGen(r.month) } : {}),
         // «Student» στο όνομα: απαιτεί φοιτητική ιδιότητα, δεν προτείνεται σε όλους.
         ...(/student/i.test(r.name) ? { studentOnly: true } : {}),
         raaey: `${sheet}:${r.row}`,
@@ -211,7 +276,7 @@ export function addRaaeyGas(providers: GasProvider[]): GasProvider[] {
         kwh: p.kwh, fixed: p.fixed, undiscounted: p.undiscounted,
         ...(p.conditions ? { conditions: p.conditions } : {}),
         contract_months: parseRaaeyDuration(r.duration) || undefined,
-        ...(p.known ? { priceMonth: RAAEY_MONTH_GEN } : {}),
+        ...(p.known ? { priceMonth: raaeyMonthGen(r.month) } : {}),
         raaey: `${sheet}:${r.row}`,
         ...(raaeyGasNote(`${sheet}:${r.row}`) ? { desc: raaeyGasNote(`${sheet}:${r.row}`) } : {}),
       };
@@ -221,8 +286,10 @@ export function addRaaeyGas(providers: GasProvider[]): GasProvider[] {
   return providers;
 }
 
-/** Η σημείωση της ΡΑΑΕΥ για μια γραμμή αερίου, στη γραφή της εφαρμογής. */
+/** Η σημείωση της ΡΑΑΕΥ για μια γραμμή αερίου, στη γραφή της εφαρμογής: του μήνα των κελιών της. */
 export const raaeyGasNote = (ref: string): string | undefined => {
-  const n = RAAEY_GAS_NOTES[ref];
+  const [sheet, row] = ref.split(':');
+  const r = raaeyRows(sheet as RaaeySheet).find(x => x.row === Number(row));
+  const n = r?.update != null ? RAAEY_UPDATE_GAS_NOTES[`${sheet}:${r.update}`] : RAAEY_GAS_NOTES[ref];
   return n ? raaeyText(n) : undefined;
 };
