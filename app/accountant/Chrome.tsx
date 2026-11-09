@@ -15,7 +15,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import type { ReactNode } from 'react';
 import BrandMark from '@/components/BrandMark';
-import { T } from '@/components/Theme';
+import { T, TT } from '@/components/Theme';
 import { CustomSelect } from '@/app/dashboard/components/UIComponents';
 
 /** Ενα πλάτος για τις δύο οθόνες του λογιστή. */
@@ -54,7 +54,9 @@ export function PortalBar({ year, onYear, back }: {
             κοβόταν κάτω από τον επιλογέα και ο επιλογέας έγραφε «Χρήση …».
             Κάτω από 560 μένει το βέλος της επιστροφής (με το όνομά του για τον
             αναγνώστη οθόνης) και το σήμα· ο επιλογέας κρατά ολόκληρο το πλάτος του. */}
-        <style>{`@media (max-width:560px){.pb-label{display:none}}`}</style>
+        {/* ΤΟ ΒΕΛΟΣ ΜΟΝΟ ΤΟΥ ΕΙΝΑΙ ΤΕΤΡΑΓΩΝΟ 44 × 44 (08/11/2026): χωρίς το λεκτικό
+            το γέμισμα 8/12 το άφηνε 37 φαρδύ και ζυγισμένο προς τα δεξιά. */}
+        <style>{`@media (max-width:560px){.pb-label{display:none}.pb-back{padding:0!important}}`}</style>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
           {/* Η ΕΞΟΔΟΣ ΠΡΩΤΗ, ΑΡΙΣΤΕΡΑ ΤΟΥ ΣΗΜΑΤΟΣ. Η κατάσταση ενός πελάτη
               ανοίγει σε δική της διεύθυνση και δεν είχε ΚΑΜΙΑ επιστροφή: ο
@@ -62,10 +64,10 @@ export function PortalBar({ year, onYear, back }: {
               μόνο δρόμο το βελάκι του περιηγητή ή έναν σύνδεσμο θαμμένο στο
               υποσέλιδο. Το ύψος είναι 44, όσο θέλει ένα δάχτυλο. */}
           {back && (
-            <a href={back.href} aria-label={back.label} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8, height: T.h.lg, padding: '0 12px 0 8px',
-              marginLeft: -8, borderRadius: T.radius.btn, color: 'var(--text-secondary)',
-              textDecoration: 'none', fontSize: 13, fontWeight: 600, fontFamily: T.font.sans, whiteSpace: 'nowrap',
+            <a href={back.href} aria-label={back.label} className="pb-back" style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: T.h.lg, minWidth: T.h.lg, padding: '0 12px 0 8px',
+              marginLeft: -8, borderRadius: T.radius.btn, color: 'var(--text-secondary)', boxSizing: 'border-box',
+              textDecoration: 'none', fontSize: 'var(--fs-base)', fontWeight: 600, fontFamily: T.font.sans, whiteSpace: 'nowrap',
             }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
@@ -74,7 +76,7 @@ export function PortalBar({ year, onYear, back }: {
             </a>
           )}
           <BrandMark />
-          <span className="pb-label" style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span className="pb-label" style={{ fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {PORTAL_NAME}
           </span>
         </div>
@@ -96,19 +98,29 @@ export function PortalTitle({ over, title, meta, right }: {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap', margin: '28px 0 22px' }}>
       <div style={{ minWidth: 0 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans }}>
+        <p style={{ ...TT.label, color: 'var(--text-tertiary)', margin: 0 }}>
           {over}
         </p>
-        <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.4px', margin: '6px 0 0', color: 'var(--text-primary)', fontFamily: T.font.sans }}>
+        <h1 style={{ ...TT.displaySm, margin: '6px 0 0' }}>
           {title}
         </h1>
         {meta && (
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '7px 0 0', lineHeight: 1.6, fontFamily: T.font.sans }}>
+          <p style={{ ...TT.bodySm, color: 'var(--text-tertiary)', margin: '8px 0 0', fontVariantNumeric: 'tabular-nums' }}>
             {meta}
           </p>
         )}
       </div>
-      {right}
+      {/* ΟΙ ΕΝΕΡΓΕΙΕΣ ΚΛΕΙΝΟΥΝ ΤΗ ΓΡΑΜΜΗ ΤΟΥΣ ΣΤΟ ΤΗΛΕΦΩΝΟ. Στα 390 το «Το
+          γραφείο» και το «Δείξε ποσά» κάθονταν αριστερά με το πλάτος του
+          λεκτικού τους και το «Κατέβασε τα όλα» έπεφτε μόνο του από κάτω: τρία
+          κουμπιά, τρία πλάτη, καμία ακμή. Κάθε κουμπί ξεκινά από το πλάτος του
+          λεκτικού του και μεγαλώνει ώσπου η σειρά να γεμίσει· όποιο δεν χωρά,
+          πέφτει ολόκληρο στην επόμενη. Οχι η `.act-row`: εκεί τα ίσα μερίδια
+          στένευαν το «Κατέβασε τα βιβλία» κάτω από το λεκτικό του στα 390. */}
+      {right && <>
+        <style>{`@media (max-width:560px){.pb-acts{width:100%}.pb-acts>*{flex:1 1 auto;white-space:nowrap}}`}</style>
+        <div className="pb-acts" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{right}</div>
+      </>}
     </div>
   );
 }

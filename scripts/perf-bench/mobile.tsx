@@ -78,6 +78,7 @@ import TabRentROI from '@/app/dashboard/components/TabRentROI';
 // ακριβώς οι δύο μορφές που σπάνε πρώτες σε στενή οθόνη. Το ότι δεν είχαν
 // μετρηθεί ΔΕΝ σήμαινε ότι ήταν εντάξει· σήμαινε ότι δεν το ξέραμε.
 import TabAccounting from '@/app/dashboard/components/TabAccounting';
+import { FIRM_VIEWS, FIRM_PORTAL_SCENES, firmRpc, firmRespond } from './firms';
 import TabSettings from '@/app/dashboard/components/TabSettings';
 import TabCalendar from '@/app/dashboard/components/TabCalendar';
 import { DaySheet } from '@/app/dashboard/components/calendar/MonthView';
@@ -164,12 +165,16 @@ const respond: Responder = (call) => {
   if (which.startsWith('myaade') && call.table === 'user_properties') return { data: MYAADE_KNOWN, error: null };
   if (which.startsWith('myaade') && call.table === 'clients') return { data: MYAADE_OWNERS, error: null };
   if (call.table === 'inbound_messages') return { data: inboundRows, error: null };
+  const firmRows = firmRespond(which, call.table);
+  if (firmRows) return firmRows;
   const rows = bench.rows[call.table];
   if (!rows) return { data: call.single ? null : [], error: null };
   const kept = which === 'portfolio' ? rows : applyEq(rows, call.filters);
   return { data: call.single ? (kept[0] ?? null) : kept, error: null };
 };
 window.__respond = respond;
+// Οι συναρτήσεις της βάσης: για τα γραφεία, οι απαντήσεις του scripts/perf-bench/firms.tsx.
+(window as unknown as { __rpc: (fn: string) => unknown }).__rpc = (fn: string) => firmRpc(which, fn);
 window.__t = {};
 window.__rows = () => document.querySelectorAll('tbody tr').length;
 
@@ -385,6 +390,8 @@ function ScanReviewScene() {
 }
 
 const VIEWS: Record<string, () => React.ReactElement> = {
+  // Τα λογιστικά γραφεία (scripts/perf-bench/firms.tsx).
+  ...FIRM_VIEWS,
   // Η εισαγωγή από το myAADE, σε όλες τις καταστάσεις της. Το ίδιο το
   // παράθυρο για την επιλογή αρχείου και την προεπισκόπηση· για το «Έτοιμο» και
   // το σφάλμα αρχείου οι ίδιες οθόνες του MyaadeSteps, με σταθερά δεδομένα.
@@ -592,12 +599,25 @@ function BenchBottomNav() {
 }
 
 const shell = document.createElement('div');
-shell.className = 'app-shell';
-shell.innerHTML = '<main class="app-main"><div class="bench-topbar"></div><div class="app-content"></div></main><div class="bench-bottomnav"></div>';
-document.body.appendChild(shell);
-createRoot(shell.querySelector('.bench-topbar') as HTMLElement).render(<BenchTopbar />);
-createRoot(shell.querySelector('.bench-bottomnav') as HTMLElement).render(<BenchBottomNav />);
-const host = shell.querySelector('.app-content') as HTMLElement;
+// Η πύλη του λογιστή αποδίδεται γυμνή, όπως τη σερβίρει η διαδρομή της (δες
+// FIRM_PORTAL_SCENES στο firms.tsx): χωρίς μπάρα ακινήτου, χωρίς κάτω πλοήγηση.
+const portal = FIRM_PORTAL_SCENES.has(which);
+if (portal) {
+  // Η ΚΛΑΣΗ `.app-content` ΜΕΝΕΙ ΓΙΑ ΤΟΥΣ ΣΑΡΩΤΕΣ, ΧΩΡΙΣ ΤΑ ΓΕΜΙΣΜΑΤΑ ΤΗΣ. Οι
+  // σαρωτές περιμένουν και μετρούν μέσα της· τα κενά και το ύψος της όμως είναι
+  // του κελύφους του πίνακα και η πύλη δεν τα έχει. Το δάπεδο αφής της το έχει
+  // και η πύλη, με την `.po-floor`.
+  shell.className = 'app-content bench-portal';
+  shell.setAttribute('style', 'padding:0;margin:0;height:100dvh;overflow-y:auto;display:block');
+  document.body.appendChild(shell);
+} else {
+  shell.className = 'app-shell';
+  shell.innerHTML = '<main class="app-main"><div class="bench-topbar"></div><div class="app-content"></div></main><div class="bench-bottomnav"></div>';
+  document.body.appendChild(shell);
+  createRoot(shell.querySelector('.bench-topbar') as HTMLElement).render(<BenchTopbar />);
+  createRoot(shell.querySelector('.bench-bottomnav') as HTMLElement).render(<BenchBottomNav />);
+}
+const host = portal ? shell : shell.querySelector('.app-content') as HTMLElement;
 
 // ═══ ΑΓΝΩΣΤΗ ΣΚΗΝΗ: ΦΩΝΑΖΕΙ, ΔΕΝ ΓΥΡΝΑΕΙ ΣΙΩΠΗΛΑ ΣΤΟ ΧΑΡΤΟΦΥΛΑΚΙΟ ═══════════
 //
@@ -613,7 +633,8 @@ const View: () => React.ReactElement = VIEWS[which] || (() => (
   </div>
 ));
 window.__t.start = performance.now();
-const withNoa = params.get('noa') === '1';
+// Η Νόα ζει στον πίνακα του ιδιοκτήτη· η πύλη του λογιστή δεν την έχει.
+const withNoa = params.get('noa') === '1' && !portal;
 // Ο ΣΤΟΙΧΕΙΟΘΕΤΗΣ ΤΗΣ ΕΦΑΡΜΟΓΗΣ ΜΠΑΙΝΕΙ ΚΑΙ ΕΔΩ, όπως στο app/dashboard/page.tsx:
 // αλλιώς οι σαρωτές θα μετρούσαν κείμενο που ο χρήστης δεν βλέπει ποτέ έτσι.
 // Και ο υποδοχέας επιβεβαίωσης, όπως στο app/layout.tsx: χωρίς αυτόν το «Να

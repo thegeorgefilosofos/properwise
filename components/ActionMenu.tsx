@@ -10,7 +10,7 @@
 // loose buttons. Reuse this anywhere several related actions crowd a header.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, MoreHorizontal } from 'lucide-react';
 import { T } from '@/components/Theme';
 
 export interface ActionMenuItem {
@@ -42,12 +42,19 @@ export function ActionMenu({
   items,
   align = 'right',
   title,
+  iconOnly = false,
 }: {
   label: string;
   icon?: React.ReactNode;
   items: ActionMenuItem[];
   align?: 'left' | 'right';
   title?: string;
+  /**
+   * Το «⋯» μιας γραμμής: στρογγυλό κουμπί με τρεις τελείες, χωρίς λέξη και
+   * χωρίς βέλος. Το `label` γίνεται το όνομά του για τον αναγνώστη οθόνης.
+   * Για τις δευτερεύουσες ενέργειες που δεν πρέπει να τραβούν το μάτι.
+   */
+  iconOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [shown, setShown] = useState(false);
@@ -140,6 +147,7 @@ export function ActionMenu({
         title={title}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={iconOnly ? label : undefined}
         ref={btnRef}
         onClick={() => { place(); setOpen(o => !o); }}
         className="po-hov-accent"
@@ -147,7 +155,8 @@ export function ActionMenu({
           // ΤΟ ΜΕΝΟΥ ΕΙΝΑΙ ΚΟΥΜΠΙ, ΟΧΙ ΚΟΥΜΠΑΚΙ. Με `T.h.sm` έβγαινε 32 ενώ το
           // `Btn` δίπλα του είναι 36: μετρημένο στις Επαφές, «Περισσότερα» και
           // «Σάρωση κάρτας» στην ίδια σειρά με τέσσερα εικονοστοιχεία διαφορά.
-          display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: T.h.md, padding: '0 13px', borderRadius: T.radius.modal,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: T.h.md,
+          ...(iconOnly ? { width: T.h.md, padding: 0, borderRadius: T.radius.pill } : { padding: '0 13px', borderRadius: T.radius.modal }),
           // ΤΟ ΧΡΩΜΑ ΤΟΥ ΠΕΡΙΓΡΑΜΜΑΤΟΣ ΚΑΙ ΤΟΥ ΚΕΙΜΕΝΟΥ ΤΑ ΔΙΝΕΙ Η ΚΛΑΣΗ. Ηταν
           // γραμμένα εδώ ως τριαδικοί πάνω στο `open`· επειδή το ενσωματωμένο
           // στυλ νικά κάθε κανόνα κλάσης, η `po-hov-accent` ΔΕΝ ίσχυε ποτέ: ούτε
@@ -158,9 +167,11 @@ export function ActionMenu({
           fontFamily: T.font.sans, transition: 'background-color 0.13s, border-color 0.13s, color 0.13s, box-shadow 0.13s, transform 0.13s, opacity 0.13s', whiteSpace: 'nowrap',
         }}
       >
-        {icon}
-        {label}
-        <ChevronDown size={14} style={{ transition: 'transform 0.18s ease', transform: open ? 'rotate(180deg)' : 'none', opacity: 0.7 }} />
+        {iconOnly ? <MoreHorizontal size={18} aria-hidden="true" /> : <>
+          {icon}
+          {label}
+          <ChevronDown size={14} style={{ transition: 'transform 0.18s ease', transform: open ? 'rotate(180deg)' : 'none', opacity: 0.7 }} />
+        </>}
       </button>
 
       {open && pos && (

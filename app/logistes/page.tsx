@@ -78,7 +78,7 @@ const PARTNER = {
 // διατύπωση εκεί, αλλάζει και εδώ· η σελίδα δεν μπορεί να δείξει έλλειψη που
 // η εφαρμογή δεν αναγνωρίζει. Οι αριθμοί είναι του παραδείγματος.
 const SAMPLE: ClientCounts = {
-  ownerId: 'paradeigma', name: 'Παράδειγμα', afm: 'paradeigma', linkedAt: '', token: null,
+  ownerId: 'paradeigma', name: 'Παράδειγμα', afm: 'paradeigma', linkedAt: '',
   lastActivity: null, requests: [], properties: 2, expenses: 18, uncategorised: 2,
   noSupplierAfm: 3, rentsUnpaid: 0, stays: 24, staysNoFee: 1, openRequests: 0,
   e2: { aadeRows: 0, aadeChangedAt: null, packs: [] },

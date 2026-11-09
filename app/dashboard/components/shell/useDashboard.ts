@@ -398,6 +398,9 @@ export function useDashboard() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { hardNavigate('/login'); return; }
+      // Ο ΛΟΓΑΡΙΑΣΜΟΣ ΓΡΑΦΕΙΟΥ ΑΝΟΙΓΕΙ ΣΤΟΝ ΧΩΡΟ ΤΟΥ. Δεν έχει ακίνητα να δει
+      // εδώ ούτε μπορεί να καταχωρήσει (η βάση το αρνείται, 20261104120000).
+      if (user.user_metadata?.account_kind === 'firm') { hardNavigate('/accountant/workspace'); return; }
       setUser(user);
       // Καταγραφή παραπομπής (referral) στην πρώτη σύνδεση, idempotent. Η RPC
       // αναλύει τον κωδικό στον κάτοχο, μπλοκάρει την αυτο-παραπομπή και γράφει

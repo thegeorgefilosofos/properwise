@@ -20,12 +20,23 @@
 // lib/data/accountant.ts κρίνει, εδώ μόνο στοιχίζεται. Ο ίδιος κανόνας για
 // κάθε πελάτη, γραμμένος μία φορά και δοκιμασμένος χωριστά.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, Card, Btn, Skeleton } from '@/components/Theme';
-import { TextInput } from '@/app/dashboard/components/UIComponents';
+import { T, TT, Card, Btn, Skeleton } from '@/components/Theme';
+import { TextInput, CustomSelect } from '@/app/dashboard/components/UIComponents';
+import { ActionMenu } from '@/components/ActionMenu';
+import {
+  myFirm, myFirmInvites, answerInvite, acceptFirmTerms, termsGap, clientLevels, assign, dropFirmClient, saveFirm,
+  filterClients, entryKinds, canAct, canManage, reasonText, ENTRY_LABEL, ROLE_LABEL,
+  type Firm, type FirmInvite, type ClientLevel, type Scope, type StatusFilter, type FirmKind,
+} from '@/lib/data/firms';
+import FirmEntry, { type EntryKind } from './FirmEntry';
+import FirmTermsCheck, { FIRM_TERMS_NEEDED } from './FirmTerms';
+import { FIRM_TERMS_VERSION } from '@/lib/legal/firms';
+import FirmView from './FirmView';
+import SecondStep from './SecondStep';
 import { PortalBar, PortalTitle, portalWrap } from '../Chrome';
-import { claim, clients, request, withdrawRequest, dropClient, gapsOf, readinessOf, aadeStateOf, aadeStateLabel, type ClientCounts } from '@/lib/data/accountant';
+import { claim, clients, clientData, request, withdrawRequest, dropClient, gapsOf, readinessOf, aadeStateOf, aadeStateLabel, type ClientCounts } from '@/lib/data/accountant';
 import { fileBytes } from '@/lib/data/e2Prefilled';
 import { PACK_FILES } from '@/lib/accounting/meetingPack';
 import { downloadFile } from '@/lib/core/download';
@@ -41,6 +52,14 @@ import { notify, notifyError } from '@/components/Toast';
 import { confirmDialog } from '@/components/confirmBus';
 import { fe, fd } from '@/components/Theme';
 import { useRememberedFlag } from '@/components/useRememberedFlag';
+
+// ΤΑ ΤΟΥ ΓΡΑΦΕΙΟΥ ΦΟΡΤΩΝΟΝΤΑΙ ΜΟΝΟ ΣΤΟΝ ΠΕΡΙΗΓΗΤΗ. Η όψη του γραφείου ανοίγει
+// από το `?view=firm` και η καταχώρηση από κλικ: ο διακομιστής δεν αποδίδει
+// ποτέ κανένα από τα δύο, οπότε δεν χρειάζεται να κουβαλά τον κώδικά τους.
+
+// Η διεύθυνση δεν αλλάζει χωρίς πλοήγηση: δεν υπάρχει τι να ακούσει η συνδρομή.
+const SEARCH_NEVER_CHANGES = () => () => {};
+const readView = () => new URLSearchParams(window.location.search).get('view');
 
 /** Η προτίμηση «δείξε ποσά» ζει στον περιηγητή του λογιστή, όχι στη βάση. */
 const MONEY_KEY = 'properwise.accountant.money';
@@ -58,6 +77,7 @@ const defaultYear = () => declarationYear(athensToday());
 
 export default function AccountantWorkspace() {
   const supabase = useMemo(() => createClient(), []);
+  const view = useSyncExternalStore(SEARCH_NEVER_CHANGES, readView, () => null);
   const [email, setEmail] = useState<string | null | undefined>(undefined);
   const [year, setYear] = useState(defaultYear);
   const [rows, setRows] = useState<ClientCounts[] | null>(null);
@@ -93,13 +113,77 @@ export default function AccountantWorkspace() {
   // Το προσυμπληρωμένο που ανεβάζει ο λογιστής για λογαριασμό του πελάτη.
   const [importFor, setImportFor] = useState<{ owner: ClientCounts; known: KnownProperty[] } | null>(null);
   const [packBusy, setPackBusy] = useState('');
+  // ── ΤΟ ΓΡΑΦΕΙΟ ──────────────────────────────────────────────────────────
+  // Ο μεμονωμένος λογιστής είναι γραφείο ενός μέλους (20261104120000): τα
+  // φίλτρα και οι αναθέσεις εμφανίζονται μόνο όταν υπάρχει δεύτερο μέλος.
+  const [firm, setFirm] = useState<Firm | null>(null);
+  const [invites, setInvites] = useState<FirmInvite[]>([]);
+  const [levels, setLevels] = useState<Map<string, ClientLevel>>(new Map());
+  const [scope, setScope] = useState<Scope>('all');
+  const [assignee, setAssignee] = useState('');
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [assignTo, setAssignTo] = useState('');
+  const [entry, setEntry] = useState<{ c: ClientCounts; kind: EntryKind } | null>(null);
+  // ── ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ────────────────────────────────────────────────────
+  // Το κρίνει η βάση (20261104150000): ενεργό μέλος γραφείου χωρίς `aal2`
+  // παίρνει `mfa_required` σε κάθε κλήση. `null` όσο δεν έχει απαντήσει.
+  const [secondStep, setSecondStep] = useState<boolean | null>(null);
+  // ── Η ΑΠΟΔΟΧΗ ΤΩΝ ΟΡΩΝ ΕΠΕΞΕΡΓΑΣΙΑΣ (20261108090000) ────────────────────
+  // Ενα τικ ανά πρόσκληση και ένα για την ανανέωση. Χωρίς αποδοχή του μέλους
+  // και του γραφείου η βάση δεν δείχνει κανέναν πελάτη.
+  const [inviteTerms, setInviteTerms] = useState<Record<string, boolean>>({});
+  const [termsTick, setTermsTick] = useState(false);
+  const [termsBusy, setTermsBusy] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
   }, [supabase]);
 
+  const loadFirm = useCallback(async () => {
+    const [f, inv, lv] = await Promise.all([myFirm(supabase), myFirmInvites(supabase), clientLevels(supabase)]);
+    if (!f.ok && f.secondStep) { setSecondStep(true); return; }
+    let current = f.ok ? f.data : null;
+    // Η ΕΓΓΡΑΦΗ ΩΣ ΓΡΑΦΕΙΟ ΟΛΟΚΛΗΡΩΝΕΤΑΙ ΕΔΩ. Η φόρμα της εγγραφής κρατά τα
+    // στοιχεία στο προφίλ (δεν υπάρχει ακόμη συνεδρία για να γραφτεί γραφείο)·
+    // η πρώτη συνδεδεμένη επίσκεψη τα κάνει γραφείο, μία φορά.
+    if (f.ok && !current && inv.length === 0) {
+      const { data, error } = await supabase.auth.getUser();
+      // Χωρίς χρήστη δεν στήνεται γραφείο: δοκιμάζει ξανά στην επόμενη επίσκεψη.
+      const m = (error ? {} : data.user?.user_metadata ?? {}) as Record<string, unknown>;
+      if (m.account_kind === 'firm' && typeof m.firm_name === 'string' && m.firm_name.trim()) {
+        const r = await saveFirm(supabase, {
+          name: m.firm_name, afm: String(m.firm_afm ?? ''), kind: (m.firm_kind === 'tax' ? 'tax' : 'accounting') as FirmKind,
+          phone: String(m.firm_phone ?? ''), address: String(m.firm_address ?? ''),
+        });
+        if (r.ok) {
+          // ΤΟ ΤΙΚ ΤΗΣ ΕΓΓΡΑΦΗΣ ΓΙΝΕΤΑΙ ΑΠΟΔΟΧΗ ΤΟΥ ΓΡΑΦΕΙΟΥ, μόνο αν είναι η
+          // έκδοση που ισχύει τώρα. Αλλιώς τη ζητά η κάρτα των όρων πιο κάτω.
+          if (m.firm_terms_version === FIRM_TERMS_VERSION) await acceptFirmTerms(supabase);
+          // ΤΟ ΝΕΟ ΓΡΑΦΕΙΟ ΕΧΕΙ ΗΔΗ ΕΝΕΡΓΟ ΜΕΛΟΣ: από εδώ η βάση ζητά δεύτερο βήμα.
+          const again = await myFirm(supabase);
+          if (!again.ok && again.secondStep) { setSecondStep(true); return; }
+          current = again.ok ? again.data : null;
+        }
+      }
+    }
+    setSecondStep(false);
+    setFirm(current);
+    setInvites(inv);
+    setLevels(new Map((lv.ok ? lv.data : []).map(l => [l.ownerId, l])));
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!email) return;
+    let alive = true;
+    // Η κλήση φεύγει από το σώμα του effect: το setState γίνεται στο then.
+    Promise.resolve().then(() => { if (alive) void loadFirm(); });
+    return () => { alive = false; };
+  }, [email, loadFirm]);
+
   const load = useCallback(async (y: number) => {
     const r = await clients(supabase, y);
+    if (r.secondStep) { setSecondStep(true); return; }
     setReadFailed(r.failed);
     if (!r.failed) setRows(r.rows);
   }, [supabase]);
@@ -112,9 +196,15 @@ export default function AccountantWorkspace() {
   useEffect(() => {
     if (!email) return;
     let alive = true;
-    clients(supabase, year).then(r => { if (!alive) return; setReadFailed(r.failed); if (!r.failed) setRows(r.rows); });
+    if (secondStep) return;
+    clients(supabase, year).then(r => {
+      if (!alive) return;
+      if (r.secondStep) { setSecondStep(true); return; }
+      setReadFailed(r.failed);
+      if (!r.failed) setRows(r.rows);
+    });
     return () => { alive = false; };
-  }, [supabase, email, year]);
+  }, [supabase, email, year, secondStep]);
 
   // ΑΠΟ ΤΟΝ ΣΥΝΔΕΣΜΟ, ΟΧΙ ΜΟΝΟ ΑΠΟ ΤΟ TOKEN. Ο ιδιοκτήτης στέλνει ολόκληρη τη
   // διεύθυνση· το να ζητάμε από τον λογιστή να ψαλιδίσει το τελευταίο κομμάτι
@@ -162,7 +252,7 @@ export default function AccountantWorkspace() {
     setPackBusy(path);
     const bytes = await fileBytes(supabase, path);
     setPackBusy('');
-    if (!bytes) { notifyError('Ο φάκελος δεν κατέβηκε. Αν ο πελάτης ανακάλεσε τον σύνδεσμο, ζήτησε νέο.'); return; }
+    if (!bytes) { notifyError('Ο φάκελος δεν κατέβηκε. Αν ο πελάτης ανακάλεσε την πρόσβαση, δεν είναι πια διαθέσιμος· αλλιώς δοκίμασε ξανά.'); return; }
     downloadFile(new Blob([bytes.slice().buffer as ArrayBuffer], { type: 'application/zip' }), `${c.name} · ${PACK_FILES.zip(year, afm)}`, 'application/zip');
   };
 
@@ -175,7 +265,7 @@ export default function AccountantWorkspace() {
     setPackBusy(k);
     const bytes = await fileBytes(supabase, path);
     setPackBusy('');
-    if (!bytes) { notifyError('Ο φάκελος δεν κατέβηκε. Αν ο πελάτης ανακάλεσε τον σύνδεσμο, ζήτησε νέο.'); return; }
+    if (!bytes) { notifyError('Ο φάκελος δεν κατέβηκε. Αν ο πελάτης ανακάλεσε την πρόσβαση, δεν είναι πια διαθέσιμος· αλλιώς δοκίμασε ξανά.'); return; }
     const sheet = readZipEntry(bytes, PACK_FILES.codes);
     if (!sheet) { notifyError('Ο φάκελος στάλθηκε πριν μπει το φύλλο κωδικών. Ζήτησε από τον πελάτη να τον ξαναστείλει.'); return; }
     downloadFile(new Blob([sheet.slice().buffer as ArrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
@@ -185,15 +275,12 @@ export default function AccountantWorkspace() {
   // Οι ΑΤΑΚ των ακινήτων του πελάτη, από την ίδια ανάγνωση που ανοίγει την
   // κατάστασή του, για να ξεκινά η καταχώρηση με το χέρι από αυτούς.
   const openImport = async (c: ClientCounts) => {
-    let known: KnownProperty[] = [];
-    if (c.token) {
-      // Η αποτυχία εδώ δεν γίνεται ποσό: απλώς η καταχώρηση με το χέρι ξεκινά
-      // χωρίς έτοιμους ΑΤΑΚ. Και το λέμε.
-      const { data, error } = await supabase.rpc('get_accountant_data', { p_token: c.token, p_year: year });
-      if (error) notifyError('Οι ΑΤΑΚ του πελάτη δεν διαβάστηκαν· η καταχώρηση με το χέρι ξεκινά κενή.');
-      const props = ((data as { properties?: { name?: string | null; atak?: string | null }[] } | null)?.properties) ?? [];
-      known = props.map(p => ({ atak: p.atak ?? null, name: p.name || 'Ακίνητο' }));
-    }
+    // Η αποτυχία εδώ δεν γίνεται ποσό: απλώς η καταχώρηση με το χέρι ξεκινά
+    // χωρίς έτοιμους ΑΤΑΚ. Και το λέμε. Ο φάκελος έρχεται με το πρόσωπο, όχι
+    // με token (20261104150000).
+    const got = await clientData<{ properties?: { name?: string | null; atak?: string | null }[] }>(supabase, c.ownerId, year);
+    if (!got.data) notifyError('Οι ΑΤΑΚ του πελάτη δεν διαβάστηκαν· η καταχώρηση με το χέρι ξεκινά κενή.');
+    const known: KnownProperty[] = (got.data?.properties ?? []).map(p => ({ atak: p.atak ?? null, name: p.name || 'Ακίνητο' }));
     setImportFor({ owner: c, known });
   };
 
@@ -203,8 +290,41 @@ export default function AccountantWorkspace() {
       message: 'Φεύγει από τη λίστα σου. Δεν σβήνει τίποτα δικό του και μπορεί να ξαναμπεί με τον σύνδεσμό του.',
       confirmLabel: 'Αφαίρεση', tone: 'negative',
     })) return;
-    if (await dropClient(supabase, ownerId)) { await load(year); notify('Ο πελάτης αφαιρέθηκε'); }
+    const ok = firm && canManage(firm.role) ? (await dropFirmClient(supabase, ownerId)).ok : await dropClient(supabase, ownerId);
+    if (ok) { await load(year); notify('Ο πελάτης αφαιρέθηκε'); }
     else notifyError('Ο πελάτης δεν αφαιρέθηκε');
+  };
+
+  // ── ΟΙ ΚΙΝΗΣΕΙΣ ΤΟΥ ΓΡΑΦΕΙΟΥ ────────────────────────────────────────────
+  const reply = async (id: string, accept: boolean) => {
+    if (accept && !inviteTerms[id]) { notifyError(FIRM_TERMS_NEEDED); return; }
+    const r = await answerInvite(supabase, id, accept);
+    if (!r.ok) { notifyError(reasonText(r.reason)); return; }
+    // Αν η αποδοχή των όρων δεν γραφτεί, η κάρτα των όρων τη ζητά ξανά.
+    if (accept) await acceptFirmTerms(supabase);
+    notify(accept ? 'Μπήκες στο γραφείο.' : 'Η πρόσκληση απορρίφθηκε.');
+    await Promise.all([loadFirm(), load(year)]);
+  };
+
+  const acceptTerms = async () => {
+    if (!termsTick) { notifyError(FIRM_TERMS_NEEDED); return; }
+    setTermsBusy(true);
+    const r = await acceptFirmTerms(supabase);
+    setTermsBusy(false);
+    if (!r.ok) { notifyError(reasonText(r.reason)); return; }
+    setTermsTick(false);
+    await Promise.all([loadFirm(), load(year)]);
+  };
+  const gap = termsGap(firm);
+
+  const assignPicked = async (on: boolean) => {
+    if (!assignTo || picked.size === 0) return;
+    const r = await assign(supabase, [...picked], assignTo, on);
+    if (!r.ok) { notifyError(reasonText(r.reason)); return; }
+    const n = Number(r.data?.changed ?? 0);
+    notify(on ? (n === 1 ? 'Ανατέθηκε 1 πελάτης.' : `Ανατέθηκαν ${n} πελάτες.`) : (n === 1 ? 'Αφαιρέθηκε 1 ανάθεση.' : `Αφαιρέθηκαν ${n} αναθέσεις.`));
+    setPicked(new Set());
+    await Promise.all([load(year), loadFirm()]);
   };
 
   // ΟΠΟΙΟΣ ΔΕΝ ΚΛΕΙΝΕΙ, ΠΡΩΤΟΣ. Η λίστα ερχόταν αλφαβητικά και ο λογιστής με
@@ -225,11 +345,22 @@ export default function AccountantWorkspace() {
     return ordered.filter(x => foldName(x.c.name).includes(q) || (x.c.afm || '').includes(q));
   }, [ordered, find]);
 
+  const team = !!firm && firm.members.filter(m => m.status === 'active').length > 1;
+  const manager = canManage(firm?.role);
+  const actor = !firm || canAct(firm.role);
+  const listed = useMemo(() => {
+    if (!team) return shown;
+    const keyed = shown.map(x => ({ ...x, ownerId: x.c.ownerId, assignees: x.c.assignees, blocking: x.ready.blocking > 0 }));
+    return filterClients(keyed, levels, { scope, assignee, status });
+  }, [team, shown, levels, scope, assignee, status]);
+  const activeMembers = firm?.members.filter(m => m.status === 'active' && m.userId) ?? [];
+  // ΤΑ ΦΙΛΤΡΑ: ΟΛΑ ΣΤΗ ΣΕΙΡΑ Ή ΕΝΑ ΑΝΑ ΣΕΙΡΑ, ΠΟΤΕ ΔΥΟ ΚΑΙ ΕΝΑ ΜΟΝΟ ΤΟΥ.
+
   const stuck = ordered.filter(x => x.ready.blocking > 0).length;
   const done = ordered.filter(x => x.gaps.length === 0).length;
 
   const bulk = useCallback((): BulkClient[] =>
-    (rows ?? []).map(c => ({ ownerId: c.ownerId, name: c.name, token: c.token })), [rows]);
+    (rows ?? []).map(c => ({ ownerId: c.ownerId, name: c.name })), [rows]);
 
   const fetchMoney = useCallback(async () => {
     if (money || !rows?.length) return money;
@@ -285,16 +416,22 @@ export default function AccountantWorkspace() {
   };
 
   const wrap = portalWrap;
-  const label: React.CSSProperties = {
-    fontSize: 11, letterSpacing: '0.5px', textTransform: 'uppercase',
-    color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0,
-  };
+  // Η ΕΤΙΚΕΤΑ ΕΝΟΤΗΤΑΣ ΤΗΣ ΕΦΑΡΜΟΓΗΣ (TT.label), όχι δική της: ήταν 11 με κανονικό
+  // βάρος και άλλο διάστιχο από κάθε «ΝΕΟΣ ΠΕΛΑΤΗΣ» του πίνακα.
+  const label: React.CSSProperties = { ...TT.label, color: 'var(--text-tertiary)', margin: 0 };
+
+  // Το δεύτερο βήμα πριν από οτιδήποτε του γραφείου: η βάση δεν απαντά χωρίς αυτό.
+  if (secondStep) return <SecondStep onDone={() => { setSecondStep(null); void loadFirm(); }} />;
+
+  // Το γραφείο, τα μέλη και το ιστορικό: ίδια διαδρομή, άλλη όψη (FirmView.tsx).
+  // Μόνο αφού η βάση πει ότι δεν λείπει δεύτερο βήμα.
+  if (view === 'firm') return secondStep === false || email === null ? <FirmView /> : <main style={{ ...wrap, padding: '64px 24px' }} />;
 
   if (email === undefined) return <main style={{ ...wrap, padding: '64px 24px' }} />;
 
   if (email === null) {
     return (
-      <div style={{ background: 'var(--bg-base)', minHeight: '100vh' }}>
+      <div className="po-floor" style={{ background: 'var(--bg-base)', minHeight: '100vh' }}>
         <PortalBar />
         {/* ΤΟ ΙΔΙΟ ΠΕΡΙΓΡΑΜΜΑ ΜΕ ΤΗ ΣΥΝΔΕΔΕΜΕΝΗ ΟΘΟΝΗ. Ο τίτλος ήταν γραμμένος με
             το χέρι, με άλλο μέγεθος και χωρίς την υπερκείμενη γραμμή: ο ίδιος
@@ -312,7 +449,7 @@ export default function AccountantWorkspace() {
   }
 
   return (
-    <div style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: 72 }}>
+    <div className="po-floor" style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: 72 }}>
       <PortalBar year={year} onYear={setYear} />
       <main style={wrap}>
         {/* Η ΣΥΝΟΨΗ ΛΕΕΙ ΤΙ ΑΞΙΖΕΙ ΝΑ ΚΟΙΤΑΞΕΙΣ ΠΡΩΤΑ. Ο τίτλος έλεγε μόνο πόσοι
@@ -325,18 +462,23 @@ export default function AccountantWorkspace() {
               Χρήση 01/01/{year} έως 31/12/{year}
               {ordered.length > 0 && (
                 <> · <strong style={{ color: stuck > 0 ? 'var(--text-primary)' : 'inherit' }}>
-                  {stuck === 0 ? 'κανένας δεν μπλοκάρει' : stuck === 1 ? '1 με εκκρεμότητες' : `${stuck} με εκκρεμότητες`}
+                  {stuck === 0 ? 'κανένας με εκκρεμότητες' : stuck === 1 ? '1 με εκκρεμότητες' : `${stuck} με εκκρεμότητες`}
                 </strong> · {done === 1 ? '1 έτοιμος' : `${done} έτοιμοι`}</>
               )}
             </>
           }
-          right={ordered.length > 0 ? (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Btn variant="ghost" onClick={() => void toggleMoney()} disabled={busy === 'money'}>
+          right={ordered.length > 0 || firm ? (
+            <>
+              {/* ΙΔΙΟ ΣΧΗΜΑ ΓΙΑ ΤΙΣ ΙΣΟΤΙΜΕΣ ΕΝΕΡΓΕΙΕΣ. Τα δύο πρώτα ήταν «ghost»,
+                  χωρίς περίγραμμα, δίπλα σε δύο με περίγραμμα: στο τηλέφωνο
+                  έμοιαζαν με λεζάντες που αιωρούνται πάνω από τα κουμπιά. */}
+              {firm && <Btn variant="secondary" href="/accountant/workspace?view=firm">{team ? 'Το γραφείο' : 'Το γραφείο μου'}</Btn>}
+              {ordered.length > 0 && actor && <>
+              <Btn variant="secondary" onClick={() => void toggleMoney()} disabled={busy === 'money'}>
                 {busy === 'money' ? 'Φόρτωση…' : showMoney ? 'Κρύψε ποσά' : 'Δείξε ποσά'}
               </Btn>
               <Btn variant="secondary" onClick={() => void downloadEverything()} disabled={busy !== null}>
-                {busy === 'zip' ? 'Ετοιμάζεται…' : 'Κατέβασε τα όλα'}
+                {busy === 'zip' ? 'Ετοιμάζεται…' : 'Κατέβασε τα βιβλία'}
               </Btn>
               {/* ΟΙ ΦΑΚΕΛΟΙ ΚΑΙ ΟΧΙ ΤΑ ΒΙΒΛΙΑ. Το «Κατέβασε τα όλα» δίνει τις
                   καταστάσεις εσόδων και δαπανών· αυτό δίνει ό,τι έστειλε κάθε
@@ -347,7 +489,8 @@ export default function AccountantWorkspace() {
                   {busy === 'packs' ? `Κατεβαίνουν${packProgress ? ` ${packProgress}` : '…'}` : packRefs.length === 1 ? 'Ο φάκελος' : `Οι ${packRefs.length} φάκελοι`}
                 </Btn>
               )}
-            </div>
+              </>}
+            </>
           ) : undefined} />
 
       {/* Η ΠΡΟΣΘΗΚΗ ΚΑΘΕΤΑΙ ΠΑΝΩ, ΓΙΑΤΙ ΕΙΝΑΙ Η ΠΡΩΤΗ ΚΙΝΗΣΗ ΠΟΥ ΚΑΝΕΙΣ ΕΔΩ.
@@ -356,6 +499,46 @@ export default function AccountantWorkspace() {
       {/* ΟΣΑ ΔΕΝ ΠΑΤΙΟΥΝΤΑΙ, ΔΕΝ ΤΥΠΩΝΟΝΤΑΙ. Ο λογιστής τυπώνει τη λίστα για να
           την πάρει μαζί του: η προσθήκη πελάτη, η αναζήτηση και τα κουμπιά είναι
           χειριστήρια, όχι πληροφορία. */}
+      {invites.map(i => (
+        <Card key={i.id} style={{ marginTop: T.sp.xl }} className="po-noprint">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: T.sp.md, flexWrap: 'wrap' }}>
+            <p style={{ fontSize: 'var(--fs-md)', margin: 0, color: 'var(--text-primary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+              <strong>{i.firmName}</strong>{` σε προσκαλεί στο γραφείο. Ρόλος: ${ROLE_LABEL[i.role]}.`}
+            </p>
+            <div className="act-row" style={{ display: 'flex', gap: T.sp.sm }}>
+              <Btn variant="secondary" onClick={() => void reply(i.id, false)}>Απόρριψη</Btn>
+              <Btn variant="primary" onClick={() => void reply(i.id, true)} disabled={!inviteTerms[i.id]}>Αποδοχή</Btn>
+            </div>
+          </div>
+          <div style={{ marginTop: T.sp.md }}>
+            <FirmTermsCheck id={`firm-terms-${i.id}`} checked={!!inviteTerms[i.id]} onChange={on => setInviteTerms(t => ({ ...t, [i.id]: on }))} />
+          </div>
+        </Card>
+      ))}
+
+      {/* ΧΩΡΙΣ ΑΠΟΔΟΧΗ ΤΩΝ ΟΡΩΝ, ΚΑΝΕΝΑΣ ΠΕΛΑΤΗΣ. Η βάση τους κρύβει· εδώ λέμε
+          γιατί και τι κάνεις. Το μέλος δέχεται για τον εαυτό του, ο Υπεύθυνος
+          και για το γραφείο. */}
+      {gap && (
+        <Card style={{ marginTop: T.sp.xl }} className="po-noprint">
+          <p style={label}>Όροι επεξεργασίας</p>
+          <p style={{ fontSize: 'var(--fs-md)', margin: `${T.sp.sm}px 0 ${T.sp.md}px`, color: 'var(--text-primary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+            {gap === 'mine'
+              ? 'Οι πελάτες του γραφείου εμφανίζονται αφού αποδεχτείς τους όρους επεξεργασίας για λογαριασμό τους.'
+              : canManage(firm?.role)
+                ? 'Οι πελάτες του γραφείου εμφανίζονται αφού αποδεχτείς τους όρους επεξεργασίας για λογαριασμό του γραφείου.'
+                : 'Οι πελάτες του γραφείου εμφανίζονται αφού ο Υπεύθυνος του γραφείου αποδεχτεί τους όρους επεξεργασίας.'}
+          </p>
+          {(gap === 'mine' || canManage(firm?.role)) && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: T.sp.md, flexWrap: 'wrap' }}>
+              <FirmTermsCheck id="firm-terms-renew" checked={termsTick} onChange={setTermsTick} />
+              <Btn variant="primary" onClick={() => void acceptTerms()} disabled={!termsTick || termsBusy}>Αποδοχή</Btn>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {actor && <>
       <Card style={{ marginTop: T.sp.xl }} className="po-noprint">
         <p style={label}>Νέος πελάτης</p>
         {/* ΤΟ ΠΕΔΙΟ ΚΑΙ ΤΟ ΚΟΥΜΠΙ ΕΙΝΑΙ ΤΑ ΚΟΙΝΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ. Ηταν ζωγραφισμένα
@@ -369,10 +552,10 @@ export default function AccountantWorkspace() {
               value={token}
               onChange={v => { setToken(v); setNotice(''); }}
               onKeyDown={e => { if (e.key === 'Enter') void addClient(); }}
-              placeholder="Επικόλλησε τον σύνδεσμο που σου έστειλε ο ιδιοκτήτης"
+              placeholder="Ο σύνδεσμος του ιδιοκτήτη"
             />
           </div>
-          <Btn variant="primary" onClick={() => void addClient()} disabled={adding || !token.trim()}>
+          <Btn variant="primary" size="lg" onClick={() => void addClient()} disabled={adding || !token.trim()}>
             {adding ? 'Προσθήκη…' : 'Πρόσθεσε'}
           </Btn>
         </div>
@@ -381,7 +564,47 @@ export default function AccountantWorkspace() {
         )}
       </Card>
 
-      <BulkInvite db={supabase} label={label} />
+      {/* Η ΠΡΟΣΚΛΗΣΗ ΜΕ EMAIL ΖΗΤΑ ΠΑΚΕΤΟ (20261021120000)· ο λογαριασμός
+          γραφείου δεν έχει πακέτο ούτε βλέπει οθόνη αγοράς. Μένει για όσους
+          λογιστές την είχαν πριν από τα γραφεία. */}
+      {!firm?.firmOnly && <BulkInvite db={supabase} label={label} />}
+      </>}
+
+      {/* ΤΑ ΦΙΛΤΡΑ ΤΟΥ ΓΡΑΦΕΙΟΥ. Τρία dropdown σε μία γραμμή, ίδια με της
+          υπόλοιπης εφαρμογής· εμφανίζονται μόνο όταν το γραφείο έχει δεύτερο μέλος. */}
+      {team && (rows?.length ?? 0) > 0 && (
+        <div className={`form-row form-row-${manager ? 3 : 2} po-noprint`} style={{ gap: T.sp.sm, marginTop: T.sp.lg }}>
+          <CustomSelect ariaLabel="Ποιοι πελάτες" value={scope} onChange={v => setScope(v as Scope)}
+            options={[{ value: 'all', label: 'Όλοι οι πελάτες' }, { value: 'mine', label: 'Οι πελάτες μου' }]} />
+          {manager && (
+            <CustomSelect ariaLabel="Υπεύθυνος" value={assignee || 'any'} onChange={v => setAssignee(v === 'any' ? '' : v)}
+              options={[{ value: 'any', label: 'Κάθε υπεύθυνος' },
+                ...activeMembers.map(m => ({ value: m.userId as string, label: m.name || m.email })),
+                { value: '-', label: 'Χωρίς υπεύθυνο' }]} />
+          )}
+          <CustomSelect ariaLabel="Κατάσταση" value={status} onChange={v => setStatus(v as StatusFilter)}
+            options={[{ value: 'all', label: 'Κάθε κατάσταση' }, { value: 'blocked', label: 'Με εκκρεμότητες' }, { value: 'ready', label: 'Έτοιμοι' }]} />
+        </div>
+      )}
+
+      {/* Η ΜΑΖΙΚΗ ΑΝΑΘΕΣΗ. Εμφανίζεται μόλις επιλεγεί πελάτης, στη θέση της, όχι
+          σε δεύτερη οθόνη. */}
+      {team && manager && picked.size > 0 && (
+        <Card style={{ marginTop: T.sp.md }} className="po-noprint">
+          <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.md, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums' }}>
+              {picked.size === 1 ? '1 επιλεγμένος' : `${picked.size} επιλεγμένοι`}
+            </span>
+            <div style={{ flex: '1 1 200px', maxWidth: 280 }}>
+              <CustomSelect ariaLabel="Ανάθεση σε" value={assignTo} onChange={setAssignTo} placeholder="Ανάθεση σε…"
+                options={activeMembers.map(m => ({ value: m.userId as string, label: `${m.name || m.email} · ${ROLE_LABEL[m.role]}` }))} />
+            </div>
+            <Btn variant="secondary" onClick={() => void assignPicked(true)} disabled={!assignTo}>Ανάθεση</Btn>
+            <Btn variant="ghost" onClick={() => void assignPicked(false)} disabled={!assignTo}>Αφαίρεση ανάθεσης</Btn>
+            <Btn variant="ghost" onClick={() => setPicked(new Set())}>Ακύρωση επιλογής</Btn>
+          </div>
+        </Card>
+      )}
 
       {/* Η ΑΝΑΖΗΤΗΣΗ ΕΜΦΑΝΙΖΕΤΑΙ ΟΤΑΝ ΑΡΧΙΖΕΙ ΝΑ ΕΧΕΙ ΝΟΗΜΑ. Πάνω από ένα
           κατέβασμα οθόνης, το μάτι δεν σαρώνει πια: ψάχνει. Κάτω από αυτό,
@@ -408,8 +631,8 @@ export default function AccountantWorkspace() {
            και έστελνε τον λογιστή να ζητήσει σύνδεσμο από ιδιοκτήτες που τον
            έχουν ήδη εξουσιοδοτήσει. */
         <Card style={{ marginTop: 16 }}>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 14px', lineHeight: 1.7, fontFamily: T.font.sans }}>
-            Η λίστα των πελατών σου δεν διαβάστηκε. Δεν σημαίνει ότι είναι άδεια: δεν πήραμε απάντηση.
+          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: '0 0 14px', lineHeight: 1.7, fontFamily: T.font.sans }}>
+            Δεν φόρτωσε η λίστα των πελατών σου. Δεν σημαίνει ότι είναι άδεια· απλώς δεν πήραμε απάντηση.
           </p>
           <Btn onClick={() => void load(year)}>Δοκίμασε ξανά</Btn>
         </Card>
@@ -424,44 +647,62 @@ export default function AccountantWorkspace() {
         </div>
       ) : rows.length === 0 ? (
         <Card style={{ marginTop: 16 }}>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.7, fontFamily: T.font.sans }}>
-            Κανένας πελάτης στη λίστα. Ο ιδιοκτήτης βγάζει τον σύνδεσμο από τη Λογιστική του, στον φάκελο για τον λογιστή και σου τον στέλνει.
+          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.7, fontFamily: T.font.sans }}>
+            Κανένας πελάτης στη λίστα. Ο ιδιοκτήτης σού στέλνει τον σύνδεσμο που βγάζει από τη Λογιστική του, στον φάκελο για τον λογιστή.
           </p>
         </Card>
       ) : (
         <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
-          {shown.map(({ c, gaps, ready }) => {
+          {listed.length === 0 && (
+            <Card><p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0, fontFamily: T.font.sans }}>Κανένας πελάτης με αυτά τα φίλτρα.</p></Card>
+          )}
+          {listed.map(({ c, gaps, ready }) => {
+            // Ο ΣΥΝΕΡΓΑΤΗΣ ΔΙΑΒΑΖΕΙ: χωρίς αιτήματα, ανεβάσματα και εξαγωγές.
+            const act = actor && c.canAct !== false;
+            const kinds = entryKinds(levels.get(c.ownerId)?.myLevel);
             return (
               <Card key={c.ownerId}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
-                  <div>
+                  <div style={{ display: 'flex', gap: T.sp.md, alignItems: 'flex-start', minWidth: 0, flex: '1 1 260px' }}>
+                  {team && manager && (
+                    /* Ο ΣΤΟΧΟΣ ΕΙΝΑΙ 44, ΤΟ ΚΟΥΤΙ 18. Η ετικέτα γύρω του δίνει το
+                       δάπεδο αφής χωρίς να σπρώχνει το όνομα. */
+                    <label className="po-noprint" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: T.h.lg, height: T.h.lg, margin: `calc((18px - ${T.h.lg}) / 2 + 2px) calc((18px - ${T.h.lg}) / 2) calc((18px - ${T.h.lg}) / 2 - 2px)`, flexShrink: 0, cursor: 'pointer' }}>
+                      <input type="checkbox" aria-label={`Επιλογή: ${c.name}`}
+                        checked={picked.has(c.ownerId)}
+                        onChange={e => setPicked(s => { const n = new Set(s); if (e.target.checked) n.add(c.ownerId); else n.delete(c.ownerId); return n; })}
+                        style={{ width: 18, height: 18, margin: 0, accentColor: 'var(--accent)' }} />
+                    </label>
+                  )}
+                  <div style={{ minWidth: 0 }}>
                     {/* ΤΟ ΟΝΟΜΑ ΑΝΟΙΓΕΙ ΤΟΝ ΠΕΛΑΤΗ. Η λίστα έλεγε ποιος δεν
                         κλείνει και δεν είχε κανέναν δρόμο προς τα ποσά του: ο
                         λογιστής γύριζε στο μήνυμα με τον σύνδεσμο. Δηλαδή στους
                         ογδόντα σελιδοδείκτες που αυτή η οθόνη ήρθε να καταργήσει. */}
                     <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)', fontFamily: T.font.sans }}>
-                      {c.token ? (
-                        <a href={`/accountant/${c.token}?year=${year}`} style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>
-                          {c.name}
-                        </a>
-                      ) : c.name}
+                      {/* Η ΔΙΕΥΘΥΝΣΗ ΕΙΝΑΙ ΤΟΥ ΠΕΛΑΤΗ, ΟΧΙ ΤΟΥ ΣΥΝΔΕΣΜΟΥ ΤΟΥ. Ανοίγει
+                          μόνο σε όποιον η βάση κρίνει ότι τον βλέπει ακόμη
+                          (`firm_client_data`)· αντιγραμμένη αλλού δεν ανοίγει τίποτα. */}
+                      <a href={`/accountant/${c.ownerId}?year=${year}`} className="po-tap-inline" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>
+                        {c.name}
+                      </a>
                     </h2>
                     <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '4px 0 0', fontFamily: T.font.sans }}>
                       {c.properties === 1 ? '1 ακίνητο' : `${c.properties} ακίνητα`}
                       {c.afm ? ` · ΑΦΜ ${c.afm}` : ''}
-                      {!c.token ? ' · ο σύνδεσμός του δεν ισχύει πια' : ''}
                     </p>
                     {/* ΠΟΤΕ ΚΙΝΗΘΗΚΕ ΤΕΛΕΥΤΑΙΑ ΦΟΡΑ. Δύο πελάτες με τα ίδια κενά
                         είναι εντελώς διαφορετική δουλειά όταν ο ένας καταχώρησε
                         χθες και ο άλλος τον Μάρτιο. */}
                     <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '3px 0 0', fontFamily: T.font.sans }}>
                       {lastMove(c.lastActivity)}
+                      {team && ` · ${(c.assignees ?? []).length === 0 ? 'Χωρίς υπεύθυνο' : `${(c.assignees ?? []).length === 1 ? 'Υπεύθυνος' : 'Υπεύθυνοι'}: ${(c.assignees ?? []).map(a => a.name).join(', ')}`}`}
                     </p>
                     {/* ΤΟ ΜΗΔΕΝ ΔΕΝ ΓΡΑΦΕΤΑΙ ΩΣ ΠΟΣΟ. Πελάτης χωρίς καμία
                         καταχώρηση δεν έχει έσοδα «0,00€»: δεν έχει μέτρηση. Και
                         όποιος δεν απάντησε λείπει, δεν μηδενίζεται. */}
                     {showMoney && money && (
-                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '6px 0 0', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>
+                      <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '6px 0 0', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>
                         {(() => {
                           const m = money.get(c.ownerId);
                           if (!m) return <span style={{ fontFamily: T.font.sans, color: 'var(--text-tertiary)' }}>Τα ποσά δεν διαβάστηκαν</span>;
@@ -471,11 +712,12 @@ export default function AccountantWorkspace() {
                       </p>
                     )}
                   </div>
+                  </div>
                   {/* Η ΚΑΤΑΣΤΑΣΗ ΕΙΝΑΙ ΛΕΞΗ, ΟΧΙ ΧΡΩΜΑ. Η ιεραρχία βγαίνει από
                       το βάρος και τη θέση: όποιος δεν κλείνει, το λέει δυνατά. */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
                     <p style={{
-                      fontSize: 13, margin: 0, fontFamily: T.font.sans,
+                      fontSize: 'var(--fs-base)', margin: 0, fontFamily: T.font.sans,
                       fontWeight: ready.blocking > 0 ? 700 : 500,
                       color: ready.blocking > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)',
                     }}>{ready.label}</p>
@@ -486,8 +728,19 @@ export default function AccountantWorkspace() {
                     {/* ΛΕΞΗ ΚΑΙ ΟΧΙ ΕΙΚΟΝΙΔΙΟ. Ενα «Χ» δίπλα σε πελάτη διαβάζεται
                         και ως «κόψε του την πρόσβαση»: δύο πολύ διαφορετικά
                         πράγματα με το ίδιο σχήμα. */}
-                    <span className="po-noprint">
-                      <Btn variant="ghost" onClick={() => void removeClient(c.ownerId, c.name)}>Αφαίρεση</Btn>
+                    <span className="po-noprint" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    {kinds.length > 0 && act && (
+                      <span>
+                        <ActionMenu label="Καταχώρηση" title={`Καταχώρηση για ${c.name}`}
+                          items={kinds.map(k => ({ key: k, label: ENTRY_LABEL[k], onClick: () => setEntry({ c, kind: k }) }))} />
+                      </span>
+                    )}
+                    {(firm ? manager : true) && (
+                      <span>
+                        <ActionMenu iconOnly label={`Ενέργειες για ${c.name}`} title={`Ενέργειες για ${c.name}`}
+                          items={[{ key: 'remove', label: 'Αφαίρεση από τη λίστα', danger: true, onClick: () => void removeClient(c.ownerId, c.name) }]} />
+                      </span>
+                    )}
                     </span>
                   </div>
                 </div>
@@ -497,19 +750,21 @@ export default function AccountantWorkspace() {
                   <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
                     <p style={label}>Ε2 {year} και φάκελος</p>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
-                      <span style={{ fontSize: 13, fontFamily: T.font.sans, lineHeight: 1.5, color: aadeStateOf(c.e2).kind === 'differences' ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: aadeStateOf(c.e2).kind === 'differences' ? 600 : 400 }}>
+                      <span style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, lineHeight: 1.5, color: aadeStateOf(c.e2).kind === 'differences' ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: aadeStateOf(c.e2).kind === 'differences' ? 600 : 400 }}>
                         {aadeStateLabel(aadeStateOf(c.e2))}
                       </span>
-                      <span className="po-noprint" style={{ flexShrink: 0 }}>
-                        <Btn variant="ghost" onClick={() => void openImport(c)}>{c.e2.aadeRows ? 'Αντικατάσταση προσυμπληρωμένου' : 'Ανέβασε το προσυμπληρωμένο'}</Btn>
-                      </span>
+                      {act && (
+                        <span className="po-noprint" style={{ flexShrink: 0 }}>
+                          <Btn variant="ghost" onClick={() => void openImport(c)}>{c.e2.aadeRows ? 'Αντικατάσταση προσυμπληρωμένου' : 'Ανέβασε το προσυμπληρωμένο'}</Btn>
+                        </span>
+                      )}
                     </div>
                     {c.e2.packs.filter(p => p.filePath).map(p => (
                       <div key={p.ownerAfm} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
-                        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+                        <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
                           {`Φάκελος ΑΦΜ ${p.ownerAfm}${p.sharedAt ? ` · στάλθηκε ${fd(p.sharedAt)}` : ''}${p.sizeBytes ? ` · ${fmtBytes(p.sizeBytes)}` : ''}${p.missingCount ? ` · λείπουν ${p.missingCount}` : ' · πλήρης'}`}
                         </span>
-                        <span className="po-noprint" style={{ flexShrink: 0, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {act && <span className="po-noprint" style={{ flexShrink: 0, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           {/* ΤΟ ΦΥΛΛΟ ΠΟΥ ΑΝΟΙΓΕΙ ΔΙΠΛΑ ΣΤΟ TAXISNET. Οι κωδικοί του Ε1
                               και οι γραμμές του Ε2, με το «ελέγχθηκε» ή «λείπει» κάθε
                               γραμμής, χωρίς να ανοίξει όλος ο φάκελος. */}
@@ -519,7 +774,7 @@ export default function AccountantWorkspace() {
                           <Btn variant="secondary" onClick={() => void downloadPack(c, p.ownerAfm, p.filePath!)} disabled={packBusy === p.filePath}>
                             {packBusy === p.filePath ? 'Κατεβαίνει…' : 'Κατέβασε τον φάκελο'}
                           </Btn>
-                        </span>
+                        </span>}
                       </div>
                     ))}
                   </div>
@@ -535,7 +790,7 @@ export default function AccountantWorkspace() {
                         <li key={g.key} style={{ padding: '9px 0', borderTop: '1px solid var(--border-subtle)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
                             <span style={{
-                              fontSize: 13, fontFamily: T.font.sans, lineHeight: 1.5,
+                              fontSize: 'var(--fs-base)', fontFamily: T.font.sans, lineHeight: 1.5,
                               color: g.blocking ? 'var(--text-primary)' : 'var(--text-secondary)',
                               fontWeight: g.blocking ? 600 : 400,
                             }}>{g.item}</span>
@@ -544,13 +799,13 @@ export default function AccountantWorkspace() {
                                 τα δίνει μόνη της σε δάχτυλο (T.h.md) και κρατά τα 36 στο
                                 ποντίκι. Το `po-noprint` ζει στο δοχείο — ίδιο μοτίβο με την
                                 «Αφαίρεση» πιο πάνω: το `Btn` δεν δέχεται className. */}
-                            <span className="po-noprint" style={{ flexShrink: 0 }}>
+                            {act && <span className="po-noprint" style={{ flexShrink: 0 }}>
                               <Btn
                                 variant="secondary"
                                 onClick={() => (writing ? void ask(c.ownerId, g.key, g.item) : setOpenNote(k))}
                                 disabled={sent}
-                              >{sent ? 'Ζητήθηκε' : writing ? 'Στείλ᾽ το' : 'Ζήτησέ το'}</Btn>
-                            </span>
+                              >{sent ? 'Ζητήθηκε' : writing ? 'Στείλ’ το' : 'Ζήτησέ το'}</Btn>
+                            </span>}
                           </div>
                           {/* Η ΣΗΜΕΙΩΣΗ ΕΙΝΑΙ ΤΟ ΠΡΑΓΜΑΤΙΚΟ ΜΗΝΥΜΑ. Το εργαλείο
                               έλεγε στον ιδιοκτήτη «λείπει δαπάνη» και τον λογιστή
@@ -586,14 +841,14 @@ export default function AccountantWorkspace() {
                         <li key={r.id} style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, padding: '6px 0',
                         }}>
-                          <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+                          <span style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
                             {r.item}
                             <span style={{ color: 'var(--text-tertiary)' }}>{` · στάλθηκε ${fd(r.createdAt)}`}</span>
                             {r.note ? <span style={{ display: 'block', color: 'var(--text-tertiary)' }}>{`«${r.note}»`}</span> : null}
                           </span>
-                          <span className="po-noprint" style={{ flexShrink: 0 }}>
-                            <Btn variant="ghost" onClick={() => void unask(r.id)}>Πάρ᾽ το πίσω</Btn>
-                          </span>
+                          {act && <span className="po-noprint" style={{ flexShrink: 0 }}>
+                            <Btn variant="ghost" onClick={() => void unask(r.id)}>Πάρ’ το πίσω</Btn>
+                          </span>}
                         </li>
                       ))}
                     </ul>
@@ -603,6 +858,11 @@ export default function AccountantWorkspace() {
             );
           })}
         </div>
+      )}
+
+      {entry && (
+        <FirmEntry db={supabase} ownerId={entry.c.ownerId} ownerName={entry.c.name} kind={entry.kind}
+          onClose={() => { setEntry(null); void load(year); }} />
       )}
 
       {importFor && (
@@ -621,8 +881,8 @@ export default function AccountantWorkspace() {
         />
       )}
 
-      <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '26px 0 0', lineHeight: 1.7, fontFamily: T.font.sans }}>
-          Βλέπεις μόνο όσους σε εξουσιοδότησαν και μόνο όσο κρατά ο σύνδεσμός τους. Ο ιδιοκτήτης μπορεί να τον ανακαλέσει οποτεδήποτε.
+      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '26px 0 0', lineHeight: 1.7, fontFamily: T.font.sans }}>
+          Βλέπεις μόνο όσους σε εξουσιοδότησαν. Όταν ο ιδιοκτήτης ανακαλέσει την πρόσβαση ή φύγεις από το γραφείο, ο φάκελός του κλείνει αμέσως.
         </p>
       </main>
     </div>

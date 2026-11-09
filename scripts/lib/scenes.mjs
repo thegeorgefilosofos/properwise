@@ -20,7 +20,22 @@ export const SCENES = [
   'calendar', 'calendarDay', 'clients', 'documents', 'inventory', 'settings', 'settingsPro',
   'billing', 'branding', 'referral', 'referralPro', 'plan', 'planReno', 'planSale',
   'myaade', 'myaadeReview', 'myaadeDone', 'myaadeError',
+  // Τα λογιστικά γραφεία (scripts/perf-bench/firms.tsx).
+  'firm', 'firmNew', 'firmInvite', 'firmWorkspace', 'firmWorkspaceAssociate', 'firmWorkspaceInvite',
+  'firmEntryDocument', 'firmEntryBill', 'firmEntryTax', 'firmEntryLoan', 'firmEntryRent', 'firmEntryTenant', 'firmOwner',
+  'firmSecondStep', 'firmOwnerDay', 'firmOwnerLink', 'firmOwnerUndo', 'firmOwnerRevoke', 'firmClientGone', 'firmClientSecondStep',
 ];
+
+// ═══ ΟΙ ΣΚΗΝΕΣ ΤΗΣ ΠΥΛΗΣ ΤΟΥ ΛΟΓΙΣΤΗ ════════════════════════════════════════
+// Ο χώρος του λογιστή (/accountant/…) είναι δική του διαδρομή: δική του μπάρα
+// (PortalBar), χωρίς την μπάρα ακινήτου, χωρίς κάτω πλοήγηση ΚΑΙ ΧΩΡΙΣ ΤΗ ΝΟΑ.
+// Ο πάγκος τις αποδίδει γυμνές (perf-bench/mobile.tsx) και ο έλεγχος της Νόας
+// δεν τις μετρά: δεν υπάρχει κουμπί να σκεπάσει κάτι.
+export const PORTAL_SCENES = new Set([
+  'firm', 'firmNew', 'firmInvite', 'firmWorkspace', 'firmWorkspaceAssociate', 'firmWorkspaceInvite',
+  'firmEntryDocument', 'firmEntryBill', 'firmEntryTax', 'firmEntryLoan', 'firmEntryRent', 'firmEntryTenant',
+  'firmSecondStep', 'firmClientGone', 'firmClientSecondStep',
+]);
 
 /** Οι σκηνές που ζητά η `E2E_ONLY`, αλλιώς όλες. */
 export const scenesToRun = () => {

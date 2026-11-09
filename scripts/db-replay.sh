@@ -173,6 +173,17 @@ fi
 $PSQL -c "drop database if exists emailprobe" >/dev/null
 eprobes=$(echo "$eout" | grep -c 'probe:' || true)
 
+# ── ΤΑ ΔΟΚΙΜΑΣΤΙΚΑ ΓΡΑΦΕΙΑ ΕΧΟΥΝ ΑΠΟΔΕΧΤΕΙ ΤΟΥΣ ΟΡΟΥΣ ───────────────────────
+# Χωρίς αποδοχή των όρων επεξεργασίας (20261108090000) κανένα γραφείο δεν βλέπει
+# πελάτη. Τα παρακάτω σενάρια ελέγχουν άλλα πράγματα, οπότε εδώ τα γραφεία και
+# τα μέλη τους γεννιούνται με την τρέχουσα αποδοχή. Το firm-terms-probe τη
+# βγάζει και ελέγχει την άρνηση. Μόνο στη βάση της δοκιμής· καμία μετανάστευση
+# δεν το κάνει.
+if $PSQL -d posdb -tAc "select to_regprocedure('private.firm_terms_version()') is not null" | grep -q t; then
+  $PSQL -d posdb -c "alter table public.firms alter column terms_version set default private.firm_terms_version();
+    alter table public.firm_members alter column terms_version set default private.firm_terms_version();" >/dev/null
+fi
+
 # ── ΒΛΕΠΕΙ Ο Α ΤΑ ΔΕΔΟΜΕΝΑ ΤΟΥ Β; ───────────────────────────────────────────
 # Ο μόνος έλεγχος του αποθετηρίου που ρωτά το ίδιο το Postgres. Κάθε αποτυχία
 # μέσα στο αρχείο σηκώνει exception, οπότε το ON_ERROR_STOP το κάνει κόκκινο.
@@ -182,6 +193,49 @@ if ! out=$($PSQL -d posdb -f "$ROOT/scripts/db/rls-probe.sql" 2>&1); then
   exit 1
 fi
 probes=$(( $(echo "$out" | grep -c 'probe:' || true) + eprobes ))
+
+# ── ΤΑ ΛΟΓΙΣΤΙΚΑ ΓΡΑΦΕΙΑ: ΚΑΝΕΝΑ ΔΕΝ ΒΛΕΠΕΙ ΤΑ ΤΟΥ ΑΛΛΟΥ ───────────────────
+# Στην ίδια βάση, μετά το rls-probe: διαβάζει ήδη το `probe.uid`.
+if ! fpout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-probe.sql" 2>&1); then
+  echo "🔴 Τα λογιστικά γραφεία δεν κρατούν όσα υπόσχονται:"
+  echo "$fpout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΑΠΩΛΕΙΑ|ΠΑΡΑΒΙΑΣΗ|ΚΛΕΙΔΩΜΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$fpout" | grep -c 'probe:' || true)))
+if ! fwout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-write-probe.sql" 2>&1); then
+  echo "🔴 Τα επίπεδα εγγραφής των γραφείων δεν κρατούν:"
+  echo "$fwout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΠΑΡΑΒΙΑΣΗ|ΠΙΝΑΚΑΣ|STORAGE' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$fwout" | grep -c 'probe:' || true)))
+# Ο ανεξάρτητος έλεγχος των γραφείων (04/11/2026): πρόσωπο, όχι token·
+# ημερολόγιο χωρίς στοιχεία τρίτων· ιστορικό που μένει· δεύτερο βήμα.
+if ! fsout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-security-probe.sql" 2>&1); then
+  echo "🔴 Τα γραφεία δεν περνούν τον έλεγχο ασφάλειας:"
+  echo "$fsout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΑΠΩΛΕΙΑ|ΑΝΟΙΧΤΗ ΠΟΡΤΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$fsout" | grep -c 'probe:' || true)))
+# Πόσο κρατιούνται τα δύο ημερολόγια των γραφείων (20261105090000).
+if ! frout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-retention-probe.sql" 2>&1); then
+  echo "🔴 Τα ημερολόγια των γραφείων δεν κρατούν το όριο διατήρησης:"
+  echo "$frout" | grep -m3 -E 'ERROR|ΔΙΑΤΗΡΗΣΗ|ΑΝΟΙΧΤΗ ΠΟΡΤΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$frout" | grep -c 'probe:' || true)))
+if ! dlout=$($PSQL -d posdb -f "$ROOT/scripts/db/demo-logistis-probe.sql" 2>&1); then
+  echo "🔴 Το scripts/db/demo-logistis.sql δεν τρέχει πάνω στο σχήμα:"
+  echo "$dlout" | grep -m3 -E 'ERROR|DEMO' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$dlout" | grep -c 'probe:' || true)))
+# Χωρίς αποδοχή των όρων επεξεργασίας, κανένας πελάτης (20261108090000).
+if ! ftout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-terms-probe.sql" 2>&1); then
+  echo "🔴 Γραφείο χωρίς αποδοχή των όρων βλέπει πελάτες:"
+  echo "$ftout" | grep -m3 -E 'ERROR|ΑΝΟΙΧΤΗ ΠΟΡΤΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$ftout" | grep -c 'probe:' || true)))
 
 # ── ΔΕΧΕΤΑΙ Η ΒΑΣΗ ΤΙΣ ΓΡΑΜΜΕΣ ΟΠΩΣ ΤΙΣ ΧΤΙΖΕΙ Η ΕΦΑΡΜΟΓΗ; ─────────────────────
 # Το rls-probe γράφει γραμμές με το χέρι. Οι γραμμές της εφαρμογής όμως τις

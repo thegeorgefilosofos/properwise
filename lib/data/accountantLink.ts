@@ -162,3 +162,35 @@ export function expiryLabel(link: AccountantLink | null): string {
   if (!link?.expiresAt) return '';
   return `έως ${new Date(link.expiresAt).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
 }
+
+// ═══ ΓΙΑΤΙ ΑΛΛΑΞΕ Ο ΣΥΝΔΕΣΜΟΣ ΧΩΡΙΣ ΝΑ ΤΟ ΖΗΤΗΣΩ ═════════════════════════════
+// Κάθε αποχώρηση μέλους γραφείου, ανάκληση γραφείου ή αποδέσμευση από γραφείο
+// περιστρέφει τον σύνδεσμο (20261104150000): τα αντίγραφα του παλιού δεν
+// ανοίγουν πια. Ο ιδιοκτήτης βλέπει νέο σύνδεσμο που δεν ζήτησε· η οθόνη του
+// λέει γιατί αντί να τον αφήσει να αναρωτιέται. Οταν τον αλλάξει ο ίδιος, η βάση
+// σβήνει τον λόγο.
+export type RotatedReason = 'member_left' | 'firm_revoked' | 'client_dropped';
+
+const ROTATED_WHY: Record<RotatedReason, string> = {
+  member_left: 'αποχώρησε μέλος από το γραφείο που σε βλέπει',
+  firm_revoked: 'ανακάλεσες την πρόσβαση ενός γραφείου',
+  client_dropped: 'ένα γραφείο σε αφαίρεσε από τους πελάτες του',
+};
+
+/**
+ * Ο λόγος της τελευταίας περιστροφής, αν την έκανε η βάση. Κενό σε κάθε
+ * αποτυχία: η πρόταση είναι εξήγηση και όχι κατάσταση· δεν κρύβει τον σύνδεσμο.
+ */
+export async function rotation(db: SupabaseClient, userId: string): Promise<{ at: string; reason: RotatedReason } | null> {
+  const r = await readRow<{ rotated_at: string | null; rotated_reason: string | null }>(
+    db.from(TABLE).select('rotated_at,rotated_reason').eq('user_id', userId).maybeSingle(),
+  );
+  if (!r?.rotated_at || !r.rotated_reason || !(r.rotated_reason in ROTATED_WHY)) return null;
+  return { at: r.rotated_at, reason: r.rotated_reason as RotatedReason };
+}
+
+/** «Ο σύνδεσμος ανανεώθηκε στις 04/11/2026 επειδή αποχώρησε μέλος…». */
+export function rotatedSentence(r: { at: string; reason: RotatedReason }): string {
+  const day = new Date(r.at).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return `Ο σύνδεσμος ανανεώθηκε στις ${day} επειδή ${ROTATED_WHY[r.reason]}. Ο παλιός δεν ανοίγει πια. Όσοι σε βλέπουν με δικό τους λογαριασμό συνεχίζουν κανονικά.`;
+}

@@ -24,6 +24,7 @@ import { enPathFor } from '@/lib/i18n/paths';
 import { activeSubprocessors, plannedSubprocessors, type Subprocessor } from '@/lib/legal/subprocessors';
 import { siteUrl } from '@/lib/core/site';
 import { INVITE_LIMITS } from '@/lib/data/accountantInvites';
+import { FIRM_UNDO_DAYS } from '@/lib/legal/firms';
 import {
   INDIV_VOLUME_TARGET, INDIV_VOLUME_BONUS_MONTHS, PRO_PAID_TARGET, PRO_PAID_BONUS_MONTHS,
   STREAK_TARGET_MONTHS, PARTNER_WELCOME_MONTHS, PARTNER_MONTHLY_FREE_MONTHS,
@@ -155,8 +156,29 @@ export function termsSectionsEn(): LegalSection[] {
       'breach laws or the rights of third parties, or enter their data without a legal basis,',
       'attempt unauthorized access, overloading or interference with the security of the systems,',
       'send requests for access to a file to people with whom you have no professional relationship, or to obtain information by deception,',
+      'use access to a client’s account beyond the level or purpose for which it was granted, or after it has been revoked,',
       'copy, resell or exploit the Service beyond its intended use.',
     ], note: `Inviting clients by email (a request for access to their file) is available from the “${name(PROFESSIONAL_MIN_PLAN)}” plan (up to ${INVITE_LIMITS.paidPerDay} a day) and during the trial (up to ${INVITE_LIMITS.trialPerDay} a day and ${INVITE_LIMITS.trialTotal} in total). The message is sent with your account’s confirmed address as sender; abuse is a material breach (see “Suspension and termination”).` },
+    { h: 'Accounting or tax firm account', id: 'grafeia', p: [
+      'A firm account is an account through which an accounting or tax firm views and, where the client allows it, records data in its clients’ accounts. Its use is professional, so consumer protection provisions do not apply (see “When you are a “consumer” and when you are not”).',
+      words.firmAccount,
+    ], list: [
+      'No properties of its own: a firm account does not record properties, tenants, expenses, documents, rents or stays as an owner. A member who has properties of their own uses another account for them.',
+      'Members and roles: the firm has at least one Firm manager. The Firm manager invites members, sets roles and assigns clients. Each person belongs to only one active firm. Every active member can use the firm’s features only after a second authentication step.',
+      'Responsibility for members: the firm is liable towards us and towards its clients for every action of its members within the Service as for its own. It gives a role and an assignment only to those who need them for their work, removes without delay a member who leaves or no longer needs access and notifies us immediately if it suspects unauthorized access.',
+      'Confidentiality: the firm ensures that each of its members is bound to confidentiality, by contract or by professional duty, for whatever they see in clients’ accounts and that this obligation continues after they leave.',
+      'Purpose: the firm uses what it sees only for the work the client has entrusted to it. It does not use it for advertising, does not sell it and does not disclose it to third parties beyond what the law requires.',
+      'Records on the client’s behalf: at the “Upload receipts” and “Bookkeeping on my behalf” levels the firm records only what the client gave it or what concerns the work entrusted to it and is responsible for its accuracy. Each record bears the name of the firm and of the member and is written to the activity log, which the client sees. The client may correct or delete it, or undo all of a day’s records.',
+      'Acceptance of the terms: before the firm sees any client, the Firm manager accepts the terms of this section within the app on behalf of the firm and each member accepts them on joining the firm. Acceptance is recorded with version and date. When the terms change, access to clients stops until the Firm manager and the member accept the new version.',
+      'Responsibility for records: the firm is responsible for the accuracy of what it records. We do not check the content of the firm’s records and we are liable only if the Service did not record them as they were given. The client sees the firm’s records in the daily summary and can undo them. All of this is without prejudice to mandatory provisions of law: it does not exclude liability for intent or gross negligence (Article 332 of the Greek Civil Code) nor does it limit consumer rights (Greek Law 2251/1994).',
+      'Members outside the EEA: the firm grants access only to members who process clients’ data within the European Economic Area or with the safeguards of Chapter V of Regulation (EU) 2016/679 and is responsible for this.',
+      'Loss of licence or cessation: if the firm loses its licence to practise or ceases its activity, it must stop using the firm account for its clients and inform them. The client can revoke the firm’s access at any time from Settings.',
+      'Special categories of data: neither the firm nor the client uploads or records special categories of data (Article 9 of Regulation (EU) 2016/679), such as health data, unless they are necessary for a legal tax obligation. When they are found without being needed, they are deleted: the client deletes the document or the record and the firm that finds them notifies the client without delay.',
+      `Death of the client: the client’s heirs or legal representative may ask by email to ${support}, with a document proving their capacity, for the account to be closed and the firm’s access to be revoked.`,
+      'Processor for the client: for what it records in the client’s account, the firm acts as a processor on the client’s behalf (Article 28 of Regulation (EU) 2016/679) and undertakes towards the client to record only what the level allows and what the client asked for, to bind its members to confidentiality, to notify the client without undue delay of a breach affecting the client’s data (Article 33(2)), to assist the client with data subjects’ requests and not to engage another processor for these records without the client’s permission. We do not become the firm’s processor; we remain the client’s processor.',
+      'End of access: when the client revokes access or the firm removes a member, access stops immediately within the Service. The firm does not keep copies of what it saw beyond what the work entrusted to it or the law requires.',
+      'Breach: misuse of access to a client’s account is a material breach (see “Suspension and termination”).',
+    ] },
     { h: 'Your content and license', p: [
       'The data and files you enter remain yours. You grant us a limited, non-exclusive license to store and process them solely so that the Service works for you. You can export or delete them at any time.',
     ] },
@@ -166,13 +188,16 @@ export function termsSectionsEn(): LegalSection[] {
       'Acceptance is requested within the app before the first time such details are saved, and is recorded with version and date. Without acceptance the details are not saved. As processor we undertake to:',
     ], list: [
       'process the details only on your documented instructions, that is, those you give by using the Service;',
-      'bind anyone with access to them to confidentiality;',
+      'bind anyone with access to them on our side to confidentiality; members of an accounting firm to which you grant access are bound by the firm itself (see “Accounting or tax firm account”);',
       'take the security measures of Article 32, such as encryption in transit and access control per account;',
       'use sub-processors only as listed on the “About us” page, and inform you before adding a new one;',
       'help you respond to data subjects’ requests, with export and deletion from within the app;',
       'assist you with the obligations of Articles 32 to 36 and inform you without undue delay of a personal data breach;',
       'delete the details when you delete them or close your account, except those the law requires to be kept;',
       'provide you with all information needed to demonstrate compliance with this agreement, and allow audits within a reasonable time.',
+    ], after: [
+      'When you grant access to an accounting or tax firm, the following also applies. Your choice of level (“Read only”, “Upload receipts”, “Bookkeeping on my behalf”) is your documented instruction to us to allow the firm what the level describes and nothing beyond it; you may change or revoke it at any time. For the records the firm makes in your account you remain the controller and the firm acts as a processor on your behalf, under the terms of the section “Accounting or tax firm account”. We remain your processor: we do not become the firm’s processor and we do not process your data on instructions from the firm that go beyond the level you set.',
+      `We keep an access history and an activity log of the firm, so that you can check what happened and undo mistakes. The activity log records which fields changed, not their values; for a tenant it keeps none of their data. The copy of the record before and after the action, needed for the undo, is deleted together with the record and in any event after ${FIRM_UNDO_DAYS} days. The other retention periods are set out in the Privacy Policy, section “Accounting and tax firms”.`,
     ] },
     { h: 'Intellectual property', p: [
       'The Service, its design, code, trademarks and our content belong to us and are protected by intellectual property law. You acquire no right in them beyond the right to use the Service under these Terms.',
