@@ -215,6 +215,53 @@ export function gapsOf(c: ClientCounts): Gap[] {
   return out;
 }
 
+/**
+ * Ποια εκκρεμότητα αφορά ένα αίτημα, από το κείμενο που στάλθηκε.
+ *
+ * ΤΟ ΑΙΤΗΜΑ ΚΡΑΤΑ ΚΕΙΜΕΝΟ, ΟΧΙ ΚΛΕΙΔΙ (`accountant_requests.item`). Η λίστα
+ * ταίριαζε αίτημα και γραμμή με ΙΣΟ κείμενο: το «25 δαπάνες χωρίς ΑΦΜ
+ * προμηθευτή» που στάλθηκε χθες δεν ήταν πια ίσο με το σημερινό «26 …», οπότε
+ * η γραμμή έλεγε «Ζήτησέ το» και το αίτημα έμενε από κάτω, σε δεύτερη λίστα.
+ * Εδώ το κείμενο διαβάζεται ως ΣΧΗΜΑ: ίδια φράση, όποιος κι αν είναι ο αριθμός.
+ */
+const ITEM_KEY: [RegExp, string][] = [
+  [/^Δεν έχει καταχωρήσει κανένα ακίνητο$/, 'no_properties'],
+  [/^Καμία καταχωρημένη δαπάνη για τη χρήση$/, 'no_expenses'],
+  [/^\d+ δαπάν(?:η|ες) χωρίς κατηγορία$/, 'uncategorised'],
+  [/^\d+ δαπάν(?:η|ες) χωρίς ΑΦΜ προμηθευτή$/, 'no_supplier_afm'],
+  [/^\d+ κρατήσ(?:η|εις) πλατφόρμας χωρίς προμήθεια$/, 'stays_no_fee'],
+  [/^\d+ ανείσπρακτ(?:ο μίσθωμα|α μισθώματα)$/, 'rents_unpaid'],
+  [/^Δεν έχει συμπληρώσει ΑΦΜ$/, 'owner_afm'],
+  [/^Δεν έχει ανέβει το προσυμπληρωμένο Ε2$/, 'aade_e2'],
+  [/^(?:Μία διαφορά|\d+ διαφορές) με το προσυμπληρωμένο Ε2$/, 'aade_diff'],
+  [/^Δεν έχει στείλει τον φάκελο για τον λογιστή$/, 'pack'],
+];
+
+export function gapKeyOf(item: string): string | null {
+  const t = item.trim();
+  return ITEM_KEY.find(([re]) => re.test(t))?.[1] ?? null;
+}
+
+/** Μία γραμμή της κάρτας: η εκκρεμότητα και τα ανοιχτά αιτήματά της, νεότερο πρώτο. */
+export interface GapRow { gap: Gap; requests: SentRequest[] }
+
+/**
+ * ΕΝΑ ΓΕΓΟΝΟΣ, ΜΙΑ ΓΡΑΜΜΗ. Η κάρτα είχε δύο πηγές για το «ζητήθηκε»: τη λίστα
+ * των εκκρεμοτήτων (με κουμπί «Ζητήθηκε» από τοπική μνήμη της οθόνης ή από
+ * ίσο κείμενο) και το «Σε εκκρεμότητα» (από τη βάση). Οταν το αίτημα παιρνόταν
+ * πίσω, η τοπική μνήμη κρατούσε το «Ζητήθηκε»· όταν άλλαζε ο αριθμός, το ίδιο
+ * αίτημα έβγαινε δύο φορές. Τώρα και τα δύο βγαίνουν ΑΠΟ ΕΔΩ, από τα αιτήματα
+ * της βάσης: κάθε αίτημα κάθεται στη γραμμή της εκκρεμότητάς του· μόνο όσα
+ * δεν αντιστοιχούν σε καμία σημερινή εκκρεμότητα πάνε στα «άλλα».
+ */
+export function joinRequests(gaps: readonly Gap[], requests: readonly SentRequest[]): { rows: GapRow[]; other: SentRequest[] } {
+  const newest = [...requests].sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
+  const keys = new Set(gaps.map(g => g.key));
+  const rows = gaps.map(gap => ({ gap, requests: newest.filter(r => gapKeyOf(r.item) === gap.key) }));
+  const other = newest.filter(r => { const k = gapKeyOf(r.item); return !k || !keys.has(k); }).reverse();
+  return { rows, other };
+}
+
 /** Πόσο έτοιμος είναι ο φάκελός του, σε μία λέξη που δεν κρύβει τίποτα. */
 export function readinessOf(gaps: readonly Gap[]): { label: string; blocking: number } {
   const blocking = gaps.filter(g => g.blocking).length;

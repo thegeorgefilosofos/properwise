@@ -7,7 +7,7 @@
 // κάθε φράση πρέπει να στέκεται μόνη της, να είναι στον σωστό αριθμό και η
 // σειρά να βάζει μπροστά αυτό που όντως εμποδίζει.
 // ═══════════════════════════════════════════════════════════════════════════
-import { gapsOf, readinessOf, aadeStateOf, aadeStateLabel, type ClientCounts, type ClientPack } from './accountant';
+import { gapsOf, readinessOf, aadeStateOf, aadeStateLabel, gapKeyOf, joinRequests, type ClientCounts, type ClientPack } from './accountant';
 
 let pass = 0, fail = 0;
 const fails: string[] = [];
@@ -111,6 +111,37 @@ eq('και το λέει με μία λέξη', readinessOf(gapsOf(base)).label,
   const none = gapsOf({ ...base, e2: { aadeRows: 0, aadeChangedAt: null, packs: [] } });
   ok('το προσυμπληρωμένο που λείπει λέγεται', none.some(x => x.key === 'aade_e2'));
   eq('έτοιμος πελάτης: σύγκριση που συμφωνεί και φάκελος', gapsOf({ ...base, e2: { aadeRows: 2, aadeChangedAt: '2026-03-09T10:00:00Z', packs: [pack()] } }).length, 0);
+}
+
+// ── Ενα γεγονός, μία γραμμή: αιτήματα και εκκρεμότητες από την ίδια πηγή ───
+{
+  // Κάθε φράση που βγάζει το gapsOf αναγνωρίζεται ως το κλειδί της.
+  const all = gapsOf({ ...base, afm: null, expenses: 3, uncategorised: 1, noSupplierAfm: 26, staysNoFee: 2, rentsUnpaid: 1,
+    e2: { aadeRows: 0, aadeChangedAt: null, packs: [] } });
+  for (const g of all) eq(`κλειδί από φράση: ${g.key}`, gapKeyOf(g.item), g.key);
+  eq('ενικός και πληθυντικός, ίδιο κλειδί', gapKeyOf('1 δαπάνη χωρίς ΑΦΜ προμηθευτή'), 'no_supplier_afm');
+  eq('διαφορές με την ΑΑΔΕ', gapKeyOf('Μία διαφορά με το προσυμπληρωμένο Ε2'), 'aade_diff');
+  eq('ελεύθερο κείμενο: κανένα κλειδί', gapKeyOf('Στείλε μου το συμβόλαιο'), null);
+
+  const gaps = gapsOf({ ...base, noSupplierAfm: 26, e2: { aadeRows: 0, aadeChangedAt: null, packs: [] } });
+  const reqs = [
+    { id: 'q1', item: '25 δαπάνες χωρίς ΑΦΜ προμηθευτή', note: null, createdAt: '2026-11-02T09:00:00Z' },
+    { id: 'q2', item: 'Δεν έχει στείλει τον φάκελο για τον λογιστή', note: 'πριν τις 20/11', createdAt: '2026-11-05T09:00:00Z' },
+    { id: 'q3', item: '24 δαπάνες χωρίς ΑΦΜ προμηθευτή', note: null, createdAt: '2026-10-01T09:00:00Z' },
+    { id: 'q4', item: 'Δεν έχει συμπληρώσει ΑΦΜ', note: null, createdAt: '2026-10-03T09:00:00Z' },
+    { id: 'q5', item: 'Στείλε μου το συμβόλαιο', note: null, createdAt: '2026-10-04T09:00:00Z' },
+  ];
+  const { rows, other } = joinRequests(gaps, reqs);
+  const row = (k: string) => rows.find(r => r.gap.key === k);
+  // Το σφάλμα της παραγωγής: «26 …» έλεγε «Ζήτησέ το» και το αίτημα «25 …» ζούσε σε δεύτερη λίστα.
+  eq('ο αριθμός άλλαξε: το αίτημα μένει στη γραμμή του', row('no_supplier_afm')?.requests.map(r => r.id), ['q1', 'q3']);
+  eq('ο φάκελος: ζητήθηκε, με τη σημείωση', row('pack')?.requests[0]?.note, 'πριν τις 20/11');
+  eq('ό,τι δεν ζητήθηκε μένει χωρίς αίτημα', row('aade_e2')?.requests.length, 0);
+  eq('στα «άλλα» μόνο όσα δεν έχουν σημερινή γραμμή', other.map(r => r.id), ['q4', 'q5']);
+  // Κανένα αίτημα δεν χάνεται και κανένα δεν μετρά δύο φορές.
+  const placed = [...rows.flatMap(r => r.requests.map(q => q.id)), ...other.map(r => r.id)].sort();
+  eq('κάθε αίτημα ακριβώς μία φορά', placed, ['q1', 'q2', 'q3', 'q4', 'q5']);
+  eq('χωρίς αιτήματα: όλες οι γραμμές άδειες', joinRequests(gaps, []).rows.every(r => r.requests.length === 0), true);
 }
 
 console.log(`\naccountant: ${fail === 0 ? `✓ ${pass} έλεγχοι` : `✗ ${fail} απέτυχαν από ${pass + fail}`}`);

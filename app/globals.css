@@ -2875,6 +2875,13 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   border: 0;
 }
 
+/* ΟΙ ΓΡΑΜΜΕΣ ΤΗΣ ΚΑΡΤΑΣ ΠΕΛΑΤΗ ΣΤΗΝ ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ. Στο τηλέφωνο τα κουμπιά
+   πέφτουν κάτω από το κείμενο· χωρίς γραμμή ανάμεσα δεν φαινόταν σε ποια
+   εκκρεμότητα ανήκει το «Ζήτησέ το». */
+.po-item-rows > li + li { border-top: 1px solid var(--border-subtle); }
+.po-item-rows > li { padding: 8px 0; }
+.po-item-rows > li:last-child { padding-bottom: 0; }
+
 /* Google-style focus ring for all interactive elements */
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
   outline: 2px solid var(--accent);

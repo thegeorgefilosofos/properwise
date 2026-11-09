@@ -57,8 +57,20 @@ const client = (ownerId: string, name: string, canAct: boolean, assignees: { use
 // δείχνει το «Ζήτησέ το» όπως θα είναι όταν τα στείλει (lib/data/accountant.ts).
 const CONTACT = { email: 'pelatis@example.com', phone: '694 000 0000' };
 const CLIENTS = (canAct: boolean, contact = false) => [
-  { ...client('o1', 'Γιώργος Παραδείγματος', canAct, [{ userId: 'u2', name: 'Νίκος Δοκιμής' }], { uncategorised: 3 }), ...(contact ? CONTACT : {}) },
-  client('o2', 'Άννα Υποδείγματος', canAct, [{ userId: 'u1', name: 'Ελένη Παραδείγματος' }, { userId: 'u3', name: 'Μαρία Υποδείγματος' }]),
+  // Η ΚΑΡΤΑ ΠΟΥ ΕΙΔΕ Ο ΙΔΙΟΚΤΗΤΗΣ ΣΤΗΝ ΠΑΡΑΓΩΓΗ (09/11/2026): χωρίς προσυμπληρωμένο
+  // και χωρίς φάκελο, με ένα αίτημα για τον φάκελο κι ένα για τις δαπάνες χωρίς
+  // ΑΦΜ που στάλθηκε όταν ήταν 25 (τώρα 26).
+  { ...client('o1', 'Γιώργος Παραδείγματος', canAct, [{ userId: 'u2', name: 'Νίκος Δοκιμής' }], { uncategorised: 3, noSupplierAfm: 26 }),
+    e2: { aadeRows: 0, aadeChangedAt: null, packs: [] },
+    requests: [
+      { id: 'q1', item: '25 δαπάνες χωρίς ΑΦΜ προμηθευτή', note: null, createdAt: '2026-11-02T09:00:00Z' },
+      { id: 'q2', item: 'Δεν έχει στείλει τον φάκελο για τον λογιστή', note: 'Τον θέλω πριν από τις 20/11.', createdAt: '2026-11-05T09:00:00Z' },
+    ],
+    ...(contact ? CONTACT : {}) },
+  { ...client('o2', 'Άννα Υποδείγματος', canAct, [{ userId: 'u1', name: 'Ελένη Παραδείγματος' }, { userId: 'u3', name: 'Μαρία Υποδείγματος' }]),
+    e2: { aadeRows: 14, aadeChangedAt: '2026-10-20T09:00:00Z', packs: [
+      { ownerAfm: '000000012', differences: 0, checkedAt: '2026-10-21T09:00:00Z', missingCount: 0, missingTop: [], filePath: 'o2/2026/fakelos.zip', sizeBytes: 1843200, sharedAt: '2026-10-21T09:00:00Z' },
+    ] } },
   client('o3', 'Κώστας Δοκιμαστής', canAct, [], { rentsUnpaid: 2 }),
 ];
 
