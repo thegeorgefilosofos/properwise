@@ -47,8 +47,36 @@ function cssDataUri(u: string): string {
   return `${u.slice(0, i)},${encodeURIComponent(body)}`;
 }
 
-const caption: React.CSSProperties = { ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 600, margin: 0 };
+const stepTitle: React.CSSProperties = { ...TT.h2, margin: 0 };
+const stepText: React.CSSProperties = { ...TT.bodySm, color: 'var(--text-secondary)', margin: 0 };
 const quiet: React.CSSProperties = { ...TT.bodySm, color: 'var(--text-tertiary)', margin: 0 };
+
+/** Ο κύκλος του αριθμού: πλάτος από την κλίμακα, ύψος από την αναλογία. */
+const MARK = T.sp.xxl + T.sp.xs;
+
+/**
+ * ΕΝΑ ΒΗΜΑ ΤΟΥ ΟΔΗΓΟΥ. Αριθμός αριστερά και γραμμή που τον ενώνει με το
+ * επόμενο· δεξιά τίτλος, μία πρόταση και ό,τι χρειάζεται εκείνη τη στιγμή.
+ * Ο λογιστής που δεν έχει ξαναστήσει δεύτερο βήμα κολλούσε στο «σάρωσε τον
+ * κωδικό»: δεν ήξερε ποια εφαρμογή, ούτε πού είναι το «+».
+ */
+function Stage({ n, title, text, last, children }: { n: number; title: string; text: string; last?: boolean; children?: React.ReactNode }) {
+  return (
+    <li style={{ display: 'grid', gridTemplateColumns: `${MARK}px minmax(0, 1fr)`, columnGap: T.sp.lg }}>
+      <div aria-hidden style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <span style={{ width: MARK, aspectRatio: '1 / 1', borderRadius: T.radius.pill, display: 'grid', placeItems: 'center', background: 'var(--accent-soft)', border: '1px solid var(--border-default)', ...TT.bodySm, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{n}</span>
+        {!last && <span style={{ flex: 1, width: 1, marginBlock: T.sp.sm, background: 'var(--border-default)' }} />}
+      </div>
+      <div style={{ display: 'grid', gap: T.sp.md, paddingBottom: last ? 0 : T.sp.xl, minWidth: 0 }}>
+        <div style={{ display: 'grid', gap: T.sp.xs, paddingTop: T.sp.xs }}>
+          <h2 style={stepTitle}>{title}</h2>
+          <p style={stepText}>{text}</p>
+        </div>
+        {children}
+      </div>
+    </li>
+  );
+}
 
 export default function SecondStep({ onDone }: { onDone: () => void }) {
   const supabase = useMemo(() => createClient(), []);
@@ -57,6 +85,17 @@ export default function SecondStep({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [tries, setTries] = useState(0);
+  const [copied, setCopied] = useState(false);
+
+  const copySecret = async (secret: string) => {
+    try {
+      await navigator.clipboard.writeText(secret);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Χωρίς άδεια στο πρόχειρο ο κωδικός μένει ορατός και επιλέξιμος.
+    }
+  };
 
   useEffect(() => {
     let alive = true;
@@ -96,12 +135,35 @@ export default function SecondStep({ onDone }: { onDone: () => void }) {
     onDone();
   };
 
+  const codeRow = (
+    <div style={{ display: 'grid', gap: T.sp.sm }}>
+      {/* ΣΤΟ ΚΙΝΗΤΟ ΤΟ ΚΟΥΜΠΙ ΠΕΦΤΕΙ ΑΠΟ ΚΑΤΩ ΣΕ ΟΛΟ ΤΟ ΠΛΑΤΟΣ. Πεδίο και κουμπί
+          δίπλα δίπλα δεν χωρούσαν στα 390 και το κουμπί έβγαινε έξω από την κάρτα. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp.sm, alignItems: 'center', maxWidth: 420 }}>
+        <div style={{ flex: '999 1 180px', minWidth: 0 }}>
+          <TextInput ariaLabel="Εξαψήφιος κωδικός" inputMode="numeric" mono placeholder="123456"
+            value={code} onChange={v => { setCode(v.replace(/\D/g, '').slice(0, 6)); setErr(''); }}
+            onKeyDown={e => { if (e.key === 'Enter') void verify(); }} />
+        </div>
+        <div style={{ flex: '1 1 auto', display: 'grid' }}>
+          <Btn variant="primary" size="lg" onClick={() => void verify()} disabled={busy || code.length !== 6}>
+            {busy ? 'Επιβεβαίωση…' : step.kind === 'enroll' ? 'Ενεργοποίηση' : 'Συνέχεια'}
+          </Btn>
+        </div>
+      </div>
+      {err && <p role="alert" style={{ ...TT.bodySm, color: 'var(--negative)', margin: 0 }}>{err}</p>}
+    </div>
+  );
+
   const enrolling = step.kind === 'enroll';
 
   return (
     <div className="po-floor" style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: 72 }}>
       <PortalBar />
       <main style={portalWrap}>
+        {/* ΕΝΑ ΠΛΑΤΟΣ ΓΙΑ ΟΛΗ ΤΗ ΣΕΛΙΔΑ. Τίτλος, εξήγηση και κάρτα τελειώνουν στην
+            ίδια δεξιά άκρη· η εξήγηση δεν σέρνεται πέρα από την κάρτα. */}
+        <div style={{ maxWidth: 640 }}>
         <PortalTitle
           over={enrolling ? 'Πριν από τον πρώτο πελάτη' : 'Δεύτερο βήμα'}
           title="Επαλήθευση δύο βημάτων"
@@ -119,57 +181,52 @@ export default function SecondStep({ onDone }: { onDone: () => void }) {
           </Card>
         )}
 
-        {(step.kind === 'enroll' || step.kind === 'challenge') && (
-          <Card>
-            {/* ΔΥΟ ΣΤΗΛΕΣ ΣΤΗΝ ΟΘΟΝΗ, ΜΙΑ ΣΤΟ ΚΙΝΗΤΟ. Ο κωδικός QR αριστερά, τα
-                βήματα δεξιά: το μάτι διαβάζει «σάρωσε, γράψε, συνέχισε» με
-                τη σειρά που γίνονται. */}
-            <div style={{ display: 'flex', gap: T.sp.xl, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-              {step.kind === 'enroll' && (
-                <div style={{ flex: '0 0 auto', display: 'grid', gap: T.sp.sm }}>
-                  <p style={caption}>1. Σάρωσε τον κωδικό QR</p>
-                  <div style={{ display: 'inline-flex', padding: 10, background: 'var(--bg-surface)', borderRadius: T.radius.inner, border: '1px solid var(--border-default)', width: 'fit-content' }}>
-                    {/* Ο ΚΩΔΙΚΟΣ ΕΙΝΑΙ data: URI ΤΟΥ SUPABASE, όχι εικόνα για βελτιστοποίηση:
-                        φόντο αντί για <img>, χωρίς σίγαση του ESLint. */}
-                    <span role="img" aria-label="Κωδικός QR για την εφαρμογή επαλήθευσης"
-                      style={{ display: 'block', width: 168, height: 168, backgroundImage: `url("${cssDataUri(step.qr)}")`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat' }} />
-                  </div>
-                </div>
-              )}
-              <div style={{ flex: '1 1 280px', minWidth: 0, display: 'grid', gap: T.sp.lg }}>
-                {step.kind === 'enroll' && (
-                  <div style={{ display: 'grid', gap: T.sp.sm }}>
-                    <p style={quiet}>Δεν σαρώνεται; Γράψε στην εφαρμογή αυτόν τον κωδικό:</p>
-                    {/* ΣΕ ΤΕΤΡΑΔΕΣ, ΟΠΩΣ ΤΟΝ ΔΕΙΧΝΕΙ Η ΙΔΙΑ Η ΕΦΑΡΜΟΓΗ ΕΠΑΛΗΘΕΥΣΗΣ. Με
-                        `break-all` στα 360 ο κωδικός έσπαγε όπου έτυχε και άφηνε ένα
-                        γράμμα μόνο του στη δεύτερη γραμμή. Τα κενά δεν πειράζουν: οι
-                        εφαρμογές τα αγνοούν. */}
-                    <div style={{ ...TT.mono, userSelect: 'all', overflowWrap: 'anywhere', letterSpacing: '0.04em', padding: '9px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
-                      {step.secret.replace(/(.{4})(?=.)/g, '$1 ')}
+        {step.kind === 'challenge' && <Card>{codeRow}</Card>}
+
+        {step.kind === 'enroll' && (
+          <div>
+            <Card>
+              {/* ΤΡΙΑ ΒΗΜΑΤΑ ΣΕ ΜΙΑ ΣΤΗΛΗ, ΣΤΗ ΣΕΙΡΑ ΠΟΥ ΓΙΝΟΝΤΑΙ: εφαρμογή, σάρωση,
+                  εξαψήφιος. Το ίδιο πλάτος σε οθόνη και κινητό, ώστε τα κείμενα να
+                  μη σέρνονται σε όλη την οθόνη ούτε να σπάνε σε λέξη μόνη της. */}
+              <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                <Stage n={1} title="Κατέβασε την εφαρμογή"
+                  text="Google Authenticator ή Microsoft Authenticator, στο κινητό σου." />
+                <Stage n={2} title="Σάρωσε τον κωδικό QR"
+                  text="Στην εφαρμογή πάτα «+» και στόχευσε τον κωδικό.">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp.lg, alignItems: 'center' }}>
+                    <div style={{ display: 'inline-flex', padding: T.sp.sm, background: 'var(--bg-surface)', borderRadius: T.radius.inner, border: '1px solid var(--border-default)' }}>
+                      {/* Ο ΚΩΔΙΚΟΣ ΕΙΝΑΙ data: URI ΤΟΥ SUPABASE, όχι εικόνα για βελτιστοποίηση:
+                          φόντο αντί για <img>, χωρίς σίγαση του ESLint. */}
+                      <span role="img" aria-label="Κωδικός QR για την εφαρμογή επαλήθευσης"
+                        style={{ display: 'block', width: 152, aspectRatio: '1 / 1', backgroundImage: `url("${cssDataUri(step.qr)}")`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat' }} />
+                    </div>
+                    <div style={{ flex: '1 1 200px', minWidth: 0, display: 'grid', gap: T.sp.sm }}>
+                      <p style={quiet}>Από το ίδιο κινητό; Αντίγραψε τον κωδικό και επικόλλησέ τον στην εφαρμογή.</p>
+                      {/* ΤΕΣΣΕΡΙΣ ΤΕΤΡΑΔΕΣ ΑΝΑ ΣΕΙΡΑ. Ο κωδικός είναι 32 χαρακτήρες: σε
+                          ελεύθερη ροή έβγαιναν επτά τετράδες και μία μόνη της από κάτω.
+                          Τα κενά δεν πειράζουν: οι εφαρμογές τα αγνοούν. */}
+                      {/* ΚΩΔΙΚΟΣ ΚΑΙ ΚΟΥΜΠΙ ΣΤΟ ΙΔΙΟ ΠΛΑΤΟΣ: μία στήλη `inline-grid`, ώστε οι
+                          δύο ακμές να πέφτουν η μία κάτω από την άλλη. */}
+                      <div style={{ display: 'inline-grid', gap: T.sp.sm, width: 'fit-content', maxWidth: '100%' }}>
+                      <div style={{ ...TT.mono, userSelect: 'all', display: 'grid', gridTemplateColumns: 'repeat(4, max-content)', columnGap: T.sp.md, rowGap: T.sp.xs, letterSpacing: '0.04em', padding: `${T.sp.sm}px ${T.sp.md}px`, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner }}>
+                        {(step.secret.match(/.{1,4}/g) ?? []).map((g, i) => <span key={i}>{g}</span>)}
+                      </div>
+                      <Btn variant="secondary" onClick={() => void copySecret(step.secret)}>{copied ? 'Αντιγράφηκε' : 'Αντιγραφή κωδικού'}</Btn>
+                      </div>
                     </div>
                   </div>
-                )}
-                <div style={{ display: 'grid', gap: T.sp.sm }}>
-                  <p style={caption}>{step.kind === 'enroll' ? '2. Γράψε τον εξαψήφιο κωδικό της εφαρμογής' : 'Ο εξαψήφιος κωδικός της εφαρμογής'}</p>
-                  <div style={{ display: 'flex', gap: T.sp.sm, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <div style={{ flex: '0 1 200px', minWidth: 160 }}>
-                      <TextInput ariaLabel="Εξαψήφιος κωδικός" inputMode="numeric" mono placeholder="123456"
-                        value={code} onChange={v => { setCode(v.replace(/\D/g, '').slice(0, 6)); setErr(''); }}
-                        onKeyDown={e => { if (e.key === 'Enter') void verify(); }} />
-                    </div>
-                    <Btn variant="primary" size="lg" onClick={() => void verify()} disabled={busy || code.length !== 6}>
-                      {busy ? 'Επιβεβαίωση…' : step.kind === 'enroll' ? 'Ενεργοποίηση' : 'Συνέχεια'}
-                    </Btn>
-                  </div>
-                  {err && <p role="alert" style={{ ...TT.bodySm, color: 'var(--negative)', margin: 0 }}>{err}</p>}
-                </div>
-                {step.kind === 'enroll' && (
+                </Stage>
+                <Stage n={3} last title="Γράψε τον εξαψήφιο κωδικό"
+                  text="Αυτόν που δείχνει τώρα η εφαρμογή.">
+                  {codeRow}
                   <p style={quiet}>Από εδώ και πέρα, κάθε σύνδεση θα ζητά και τον εξαψήφιο κωδικό.</p>
-                )}
-              </div>
-            </div>
-          </Card>
+                </Stage>
+              </ol>
+            </Card>
+          </div>
         )}
+        </div>
       </main>
     </div>
   );
