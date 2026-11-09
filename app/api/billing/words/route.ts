@@ -15,7 +15,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireSecondStep } from '@/lib/auth/secondStep';
-import { billingWords } from '@/lib/legal/billingWords';
+import { billingWords, INVITE_ACCESS, INVITE_PLAN_REFUSAL } from '@/lib/legal/billingWords';
 
 export async function GET() {
   const supabase = await createClient();
@@ -28,7 +28,11 @@ export async function GET() {
 
   const w = billingWords();
   return NextResponse.json(
-    { live: w.live, afterTrialShort: w.afterTrialShort, partnerTarget: w.partnerTarget },
+    {
+      live: w.live, afterTrialShort: w.afterTrialShort, partnerTarget: w.partnerTarget,
+      // Η πρόσκληση πελατών του λογιστή (BulkInvite): πακέτο και όρια δοκιμής.
+      inviteAccess: INVITE_ACCESS, invitePlanRefusal: INVITE_PLAN_REFUSAL,
+    },
     { headers: { 'Cache-Control': 'private, max-age=300' } },
   );
 }

@@ -12,26 +12,16 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isPlanRequired } from '@/lib/core/dbError';
+import { INVITE_LIMITS } from '@/lib/billing/inviteLimits';
 
 type Db = SupabaseClient;
 
 /** Πόσες διευθύνσεις δέχεται η βάση στη μία φορά. Ίδιο με τη συνάρτηση. */
 export const INVITE_BATCH = 100;
 
-/**
- * ΤΑ ΟΡΙΑ ΑΠΟΣΤΟΛΗΣ, ΟΠΩΣ ΤΑ ΟΡΙΖΕΙ Η ΒΑΣΗ (`send_quota_rule`, 20261021120000).
- * Η βάση τα επιβάλλει· εδώ επαναλαμβάνονται για τα κείμενα της οθόνης και το
- * accountantInvites.test.ts απαιτεί να είναι ίδια. Η δοκιμή στέλνει με
- * μικρότερα όρια (έγκριση George 21/10/2026).
- */
-export const INVITE_LIMITS = {
-  /** Βαθμός «Επαγγελματίας»: ανά 24 ώρες. */
-  paidPerDay: 50,
-  /** Δοκιμή: ανά 24 ώρες. */
-  trialPerDay: 10,
-  /** Δοκιμή: σε όλη τη διάρκειά της. */
-  trialTotal: 25,
-} as const;
+// Τα όρια αποστολής ζουν στο lib/billing/inviteLimits.ts: τα διαβάζουν και τα
+// λόγια της χρέωσης (lib/legal/billingWords.ts) χωρίς να σέρνουν αυτό το αρχείο.
+export { INVITE_LIMITS };
 
 /** Τι μπορεί να στείλει ακόμη ο συνδεδεμένος, από τη `my_accountant_invite_allowance`. */
 export interface InviteAllowance {

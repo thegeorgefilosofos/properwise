@@ -267,7 +267,8 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
         <>
           {undoable && <Btn variant="ghost" onClick={() => void undo(undoable)} disabled={busy}>Αναίρεση</Btn>}
           {summary?.enfia && onOpenCalendar
-            ? <><Btn variant="secondary" onClick={onClose}>Τέλος</Btn><Btn variant="primary" onClick={onOpenCalendar}>Δες τις δόσεις</Btn></>
+            // Τρία κουμπιά δεν χωρούν στο τηλέφωνο: το «Τέλος» το κάνει ήδη το ×.
+            ? <Btn variant="primary" onClick={onOpenCalendar}>Δες τις δόσεις</Btn>
             : <Btn variant="primary" onClick={onClose}>Τέλος</Btn>}
         </>
       ) : undefined}>

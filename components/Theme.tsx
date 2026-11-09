@@ -448,7 +448,45 @@ export function SideSheet({ open, onClose, ariaLabel, size = 'md', header, foote
 // Κλείνει με Escape ή με πάτημα που ΞΕΚΙΝΗΣΕ και ΤΕΛΕΙΩΣΕ στο φόντο (βλ.
 // `useOverlayShell`). Οποιος έχει αλλαγές ρωτά πρώτα με `confirmDiscard`.
 // Το περιεχόμενο κυλά, header/footer όχι.
+//
+// ── ΣΤΟ ΤΗΛΕΦΩΝΟ, ΦΥΛΛΟ ΑΠΟ ΚΑΤΩ (08/11/2026) ─────────────────────────────
+// Κάτω από τα 560 (το όριο τηλεφώνου του globals.css) το ίδιο παράθυρο
+// κάθεται στον πάτο, σε όλο το πλάτος, με γωνίες μόνο πάνω. Το κεντραρισμένο
+// κουτί έχανε 16 από κάθε πλευρά σε οθόνη 360 και τα κουμπιά του κάθονταν
+// στη μέση του ύψους, μακριά από τον αντίχειρα. Η γεωμετρία ζει στις κλάσεις
+// `.po-modal*` του globals.css· εδώ μένουν τα tokens (πλάτος, ακτίνα) ως
+// μεταβλητές, ώστε οι media queries να φτάνουν εκεί που το inline δεν φτάνει.
+// Η συμπεριφορά (Escape, παγίδα Tab, κλείδωμα κύλισης) είναι ΑΚΡΙΒΩΣ η ίδια:
+// ζει στο useOverlayShell και δεν αγγίχτηκε.
 // ══════════════════════════════════════════════════════════════════════════
+
+// ── ΤΟ ΠΛΗΚΤΡΟΛΟΓΙΟ ΤΗΣ ΟΘΟΝΗΣ ΔΕΝ ΣΚΕΠΑΖΕΙ ΤΟ ΦΥΛΛΟ ──────────────────────
+// Σε iOS και σε Chrome Android το πληκτρολόγιο μικραίνει μόνο το ΟΡΑΤΟ
+// παράθυρο· ένα φύλλο καρφωμένο στον πάτο της διάταξης μένει από κάτω του,
+// μαζί με το πεδίο που γράφεις και τα κουμπιά. Εδώ μετριέται πόσο σκεπάζει
+// (`--kb`) και πόσο ύψος φαίνεται (`--vvh`)· το CSS του τηλεφώνου ανεβάζει το
+// φύλλο πάνω από το πληκτρολόγιο και το χωρά στο ορατό ύψος. Με μεγέθυνση
+// (scale > 1) δεν μετράμε τίποτα: εκεί το ορατό μικραίνει από το τσίμπημα,
+// όχι από πληκτρολόγιο. Σε γραφείο οι μεταβλητές μένουν αδιάβαστες.
+function useKeyboardInset(open: boolean, ref: { current: HTMLElement | null }) {
+  useEffect(() => {
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+    const el = ref.current;
+    if (!open || !vv || !el) return;
+    const sync = () => {
+      const zoomed = vv.scale > 1.01;
+      const kb = zoomed ? 0 : Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      el.style.setProperty('--kb', `${kb}px`);
+      if (zoomed) el.style.removeProperty('--vvh');
+      else el.style.setProperty('--vvh', `${Math.round(vv.height)}px`);
+    };
+    sync();
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    return () => { vv.removeEventListener('resize', sync); vv.removeEventListener('scroll', sync); };
+  }, [open, ref]);
+}
+
 export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 'md', children, footer, footerInfo }: {
   open: boolean; onClose: () => void;
   /** Δέχεται και JSX (π.χ. τίτλος με <InfoHint>). Για τεχνολογίες υποβοήθησης δώσε ariaLabel. */
@@ -456,6 +494,8 @@ export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 
   size?: ModalSize; children: ReactNode; footer?: ReactNode; footerInfo?: ReactNode;
 }) {
   const { panelRef, z, backdrop } = useOverlayShell(open, onClose);
+  const scrimRef = useRef<HTMLDivElement>(null);
+  useKeyboardInset(open, scrimRef);
   // Ο ΤΙΤΛΟΣ ΟΝΟΜΑΖΕΙ ΤΟ ΠΑΡΑΘΥΡΟ, ΟΠΟΙΑ ΜΟΡΦΗ ΚΙ ΑΝ ΕΧΕΙ. Το όνομα έβγαινε
   // από `typeof title === 'string'`, οπότε κάθε τίτλος με JSX (π.χ. με
   // <InfoHint>) άφηνε το dialog ανώνυμο και ο τίτλος δεν ήταν καν επικεφαλίδα.
@@ -463,11 +503,13 @@ export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 
   const subId = useId();
   if (!open) return null;
   return (
-    <div {...backdrop} role="dialog" aria-modal="true" aria-label={ariaLabel}
+    <div ref={scrimRef} className="po-modal-scrim" {...backdrop} role="dialog" aria-modal="true" aria-label={ariaLabel}
       aria-labelledby={ariaLabel ? undefined : titleId} aria-describedby={subtitle ? subId : undefined}
-      style={{ position: 'fixed', inset: 0, background: T.scrim, backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: z, padding: T.sp.lg, overscrollBehavior: 'contain' }}>
-      <div ref={panelRef} tabIndex={-1} onClick={e => e.stopPropagation()}
-        style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.modal, width: `min(${MODAL_WIDTH[size]}px, 100%)`, maxHeight: '92dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--elev-3)', outline: 'none', overscrollBehavior: 'contain' }}>
+      style={{ position: 'fixed', inset: 0, background: T.scrim, backdropFilter: 'blur(2px)', zIndex: z, overscrollBehavior: 'contain' }}>
+      <div ref={panelRef} tabIndex={-1} onClick={e => e.stopPropagation()} className="po-modal"
+        style={{ '--modal-w': `${MODAL_WIDTH[size]}px`, '--modal-r': `${T.radius.modal}px`, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--elev-3)', outline: 'none', overscrollBehavior: 'contain' } as CSSProperties}>
+        {/* Λαβή: μόνο σήμα «φύλλο», στο τηλέφωνο. Δεν σέρνεται· κλείνεις με ×, φόντο ή Escape. */}
+        <span className="po-modal-grip" aria-hidden="true" />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 24px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
           {icon && (
@@ -480,12 +522,12 @@ export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 
           <CloseButton onClose={onClose} style={{ margin: -6 }} />
         </div>
 
-        <div style={{ padding: T.sp.xxl, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: T.sp.xl }}>
+        <div className="po-modal-body" style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: T.sp.xl }}>
           {children}
         </div>
 
         {(footer || footerInfo) && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: T.sp.md, padding: '14px 24px', borderTop: '1px solid var(--border-subtle)', flexShrink: 0, flexWrap: 'wrap' }}>
+          <div className="po-modal-foot" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: T.sp.md, borderTop: '1px solid var(--border-subtle)', flexShrink: 0, flexWrap: 'wrap' }}>
             {footerInfo && <span style={{ ...TT.bodySm, flex: '1 1 240px' }}>{footerInfo}</span>}
             {/* ΤΑ ΚΟΥΜΠΙΑ ΤΟΥ ΥΠΟΣΕΛΙΔΟΥ ΜΟΙΡΑΖΟΝΤΑΙ ΤΗ ΓΡΑΜΜΗ ΣΕ ΤΗΛΕΦΩΝΟ. Το
                 «Ακύρωση» και το «Καταχώρηση» είχαν το πλάτος του λεκτικού τους

@@ -177,6 +177,18 @@ const btnBase: CSSProperties = {
   fontSize: 12, fontWeight: 700, fontFamily: T.font.sans,
   cursor: 'pointer', border: '1px solid transparent',
   transition: `all 0.15s ${T.ease.standard}`,
+  // ΤΟ ΛΕΚΤΙΚΟ ΔΕΝ ΣΠΑΕΙ ΣΤΗ ΜΕΣΗ (08/11/2026). Στο τηλέφωνο η `.act-row` μοιράζει
+  // τη σειρά ίσα και το «Ανάκληση του γραφείου» έβγαινε σε δύο γραμμές, κουμπί
+  // διπλού ύψους δίπλα στο «Ακύρωση», ήδη στα 390. Ενωμένο, το κουμπί κρατά όλο
+  // το λεκτικό του και, όπου δεν χωρούν δίπλα δίπλα (320), πέφτει σε δική του
+  // σειρά ολόκληρο. Τα λεκτικά των επιβεβαιώσεων είναι ρήματα δύο-τριών λέξεων.
+  whiteSpace: 'nowrap',
+  // Βάση το λεκτικό και ΟΧΙ το `1 1 0` της `.act-row`: με εκείνο το κουμπί
+  // στένευε κάτω από το λεκτικό του και στα 320 το κείμενο έβγαινε έξω από το
+  // περίγραμμα. Εδώ μεγαλώνει για να γεμίσει τη σειρά, δεν στενεύει ποτέ. Το
+  // `width: auto` ακυρώνει το `width: 100%` της `.act-row`, που αλλιώς γινόταν
+  // βάση και έστελνε κάθε κουμπί σε δική του σειρά ακόμη κι όταν χωρούσαν.
+  flex: '1 0 auto', width: 'auto',
 };
 const btnSecondary: CSSProperties = { background: 'transparent', border: '1px solid var(--border-default)', color: 'var(--text-secondary)' };
 const btnPrimary: CSSProperties   = { background: 'var(--accent)', color: 'var(--accent-text)' };

@@ -27,9 +27,12 @@ import { Textarea } from '@/app/dashboard/components/UIComponents';
 import { notifyError } from '@/components/Toast';
 import { PLANS } from '@/lib/billing/plans';
 import { PROFESSIONAL_MIN_PLAN } from '@/lib/billing/entitlements';
+// Τα λόγια για τη δοκιμή και τα όριά της ζουν στο lib/legal/billingWords.ts, με
+// τους αριθμούς της βάσης· φτάνουν εδώ από τον διακομιστή (/api/billing/words).
+import { useBillingWords } from '@/app/dashboard/components/useBillingWords';
 import {
   parseEmailList, uniqueCount, inviteClients, myInvitesSent, withdrawInvite,
-  myAllowance, allowanceLine, invitesLeft, INVITE_LIMITS, type InviteAllowance,
+  myAllowance, allowanceLine, invitesLeft, type InviteAllowance,
   INVITE_STATUS_LABEL, type InviteResult, type SentInvite,
 } from '@/lib/data/accountantInvites';
 
@@ -38,7 +41,8 @@ const HISTORY_ROWS = 12;
 
 /** Το μήνυμα της άρνησης, ανά λόγο. Το πακέτο από τη μηχανή, όχι γραμμένο εδώ. */
 const REFUSAL = {
-  plan: `Η πρόσκληση με email ανοίγει στο πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω· στη δοκιμή, με μικρότερα όρια.`,
+  // Χωρίς απάντηση του διακομιστή: μόνο το πακέτο, καμία δήλωση για τη δοκιμή.
+  plan: `Η πρόσκληση με email ανοίγει στο πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω.`,
   unverified: 'Επιβεβαίωσε πρώτα τη διεύθυνσή σου: αυτή βλέπει ο πελάτης ως αποστολέα.',
   error: 'Οι προσκλήσεις δεν στάλθηκαν. Δοκίμασε ξανά σε λίγο.',
 } as const;
@@ -52,6 +56,8 @@ export default function BulkInvite({ db, label }: { db: SupabaseClient; label: R
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<InviteResult[] | null>(null);
   const [history, setHistory] = useState<SentInvite[] | null>(null);
+  const words = useBillingWords();
+  const planRefusal = words?.invitePlanRefusal ?? REFUSAL.plan;
 
   const emails = parseEmailList(text);
   const count = uniqueCount(emails);
@@ -75,7 +81,7 @@ export default function BulkInvite({ db, label }: { db: SupabaseClient; label: R
     setBusy(true);
     const r = await inviteClients(db, emails);
     setBusy(false);
-    if (r.failed) { notifyError(REFUSAL[r.refusal ?? 'error']); return; }
+    if (r.failed) { notifyError(r.refusal === 'plan' ? planRefusal : REFUSAL[r.refusal ?? 'error']); return; }
     setResults(r.rows);
     // Ό,τι στάλθηκε φεύγει από το πεδίο· ό,τι δεν στάλθηκε μένει, για διόρθωση.
     const keep = r.rows.filter(x => x.status === 'invalid' || x.status === 'rate_limited' || x.status === 'over_limit').map(x => x.email);
@@ -105,7 +111,7 @@ export default function BulkInvite({ db, label }: { db: SupabaseClient; label: R
         <div style={{ minWidth: 0 }}>
           <p style={label}>Πρόσκληση πελατών</p>
           <p style={{ ...small, marginTop: 6 }}>
-            {`Στείλε σε όλους μαζί ένα μήνυμα με αποστολέα τη διεύθυνσή σου. Ο καθένας αποφασίζει ο ίδιος· δεν βλέπεις τίποτα δικό του πριν πει «ναι». Για πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω· στη δοκιμή έως ${INVITE_LIMITS.trialPerDay} τη μέρα και ${INVITE_LIMITS.trialTotal} συνολικά.`}
+            {`Στείλε σε όλους μαζί ένα μήνυμα με αποστολέα τη διεύθυνσή σου. Ο καθένας αποφασίζει ο ίδιος· δεν βλέπεις τίποτα δικό του πριν πει «ναι». ${words?.inviteAccess ?? `Για πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω.`}`}
           </p>
         </div>
         {!open && <Btn variant="secondary" onClick={openPanel}>Πρόσκληση με email</Btn>}
@@ -139,7 +145,7 @@ export default function BulkInvite({ db, label }: { db: SupabaseClient; label: R
           {allowance?.mode && (
             <p style={{ ...small, color: invitesLeft(allowance) === 0 ? 'var(--text-secondary)' : small.color }}>{allowanceLine(allowance)}</p>
           )}
-          {allowance && !allowance.mode && <p style={small}>{REFUSAL.plan}</p>}
+          {allowance && !allowance.mode && <p style={small}>{planRefusal}</p>}
           <p style={small}>Η ίδια διεύθυνση ξαναπαίρνει μήνυμα μετά από 7 ημέρες· όποιος απάντησε «όχι» δεν ξαναπαίρνει.</p>
 
           {results && (

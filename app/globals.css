@@ -4181,6 +4181,50 @@ body { hyphens: none; }
   .act-row > .act-fill:only-child { flex: 1 1 100%; width: 100%; }
 }
 
+/* ═══ ΤΟ ΠΑΡΑΘΥΡΟ: ΚΕΝΤΡΟ ΣΤΟ ΓΡΑΦΕΙΟ, ΦΥΛΛΟ ΑΠΟ ΚΑΤΩ ΣΤΟ ΤΗΛΕΦΩΝΟ ═══════════
+   Ενα και μόνο `Modal` (components/Theme.tsx) ανοίγει κάθε παράθυρο της
+   εφαρμογής. Το πλάτος (`--modal-w`) και η ακτίνα (`--modal-r`) έρχονται από
+   τα tokens μέσω inline μεταβλητών· εδώ ζει μόνο η γεωμετρία, γιατί μόνο εδώ
+   φτάνει media query.
+
+   ΤΙ ΕΒΛΕΠΕ Ο ΧΡΗΣΤΗΣ ΣΤΟ ΤΗΛΕΦΩΝΟ. Κουτί κεντραρισμένο με 16 από κάθε πλευρά:
+   σε οθόνη 360 χάνονταν 32 πλάτους, ο τίτλος της επιβεβαίωσης έπιανε τρεις
+   γραμμές και τα κουμπιά κάθονταν στη μέση του ύψους, μακριά από τον αντίχειρα.
+   Κάτω από τα 560 (το όριο τηλεφώνου όλου του αρχείου) γίνεται φύλλο:
+   ακουμπά στον πάτο, όλο το πλάτος, γωνίες μόνο πάνω, ώς 90dvh. Το σώμα κυλά
+   μέσα του, κεφαλίδα και υποσέλιδο μένουν ορατά. Το κάτω γέμισμα κρατά τη
+   μπάρα αφής του iPhone (`env`) μακριά από τα κουμπιά. Ταμπλέτα και γραφείο:
+   ίδια όπως πριν, κεντραρισμένο. */
+.po-modal-scrim { display: flex; align-items: center; justify-content: center; padding: 16px; }
+.po-modal { position: relative; width: min(var(--modal-w, 620px), 100%); max-height: 92dvh; border-radius: var(--modal-r, 18px); }
+.po-modal-body { padding: 24px; }
+.po-modal-foot { padding: 14px 24px; }
+.po-modal-grip { display: none; }
+@keyframes po-sheet-up { from { transform: translateY(100%); } }
+@media (max-width: 560px) {
+  /* `--kb`/`--vvh`: πόσο σκεπάζει το πληκτρολόγιο και πόσο ύψος φαίνεται,
+     από το useKeyboardInset. Χωρίς πληκτρολόγιο είναι 0 και όλο το ύψος. */
+  .po-modal-scrim { align-items: flex-end; padding: 0 0 var(--kb, 0px); }
+  .po-modal {
+    width: 100%;
+    max-height: min(90dvh, calc(var(--vvh, 100dvh) - 16px));
+    border-radius: var(--modal-r, 18px) var(--modal-r, 18px) 0 0;
+    border-bottom: 0 !important;
+    /* Χωρίς `fill-mode`: μετά την είσοδο το transform φεύγει εντελώς, ώστε οι
+       λίστες με position: fixed μέσα στο παράθυρο να μετρούν από την οθόνη. */
+    animation: po-sheet-up 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+  .po-modal-grip {
+    display: block; position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+    width: 36px; height: 4px; border-radius: 2px; background: var(--border-default);
+  }
+  .po-modal-foot { padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
+  .po-modal-body:last-child { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .po-modal { animation: none; }
+}
+
 /* Δύο ισότιμες διαδρομές σε πολύ στενό τηλέφωνο: στοίβα αντί για δύο στήλες.
    Το γιατί είναι γραμμένο πάνω από το `contactRouteGrid` στο TabContacts.tsx. */
 @media (max-width: 340px) { .route-two { grid-template-columns: minmax(0, 1fr) !important; } }

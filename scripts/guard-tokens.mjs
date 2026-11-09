@@ -58,6 +58,13 @@ const RUNTIME = [
   { name: '--plan-limits', why: 'πόσες γραμμές ορίων έχει κάθε κάρτα πακέτου, το γράφει το components/PlanMatrix.tsx για το subgrid της ταμπλέτας' },
   { name: '--tbl-min', why: 'ελάχιστο πλάτος πίνακα πριν κυλήσει, το δηλώνει ο κάθε πίνακας για την .po-table' },
   { name: '--tbl-fs', why: 'μέγεθος κειμένου πίνακα, το δηλώνει η σελίδα για την .po-table' },
+  // Το κοινό Modal: πλάτος και ακτίνα από τα tokens (MODAL_WIDTH, T.radius.modal)
+  // inline, ώστε η media query του φύλλου να τα φτάνει· πληκτρολόγιο και ορατό
+  // ύψος από το visualViewport. Κάθε χρήση στο globals.css έχει εφεδρική τιμή.
+  { name: '--modal-w', why: 'πλάτος παραθύρου από το MODAL_WIDTH, το γράφει το Modal του components/Theme.tsx' },
+  { name: '--modal-r', why: 'ακτίνα παραθύρου από το T.radius.modal, το γράφει το Modal του components/Theme.tsx' },
+  { name: '--kb', why: 'πόσο σκεπάζει το πληκτρολόγιο της οθόνης, το γράφει το useKeyboardInset του Modal' },
+  { name: '--vvh', why: 'ορατό ύψος με ανοιχτό πληκτρολόγιο, το γράφει το useKeyboardInset του Modal' },
   { name: '--sx', why: 'θέση δείκτη, την γράφει το app/Spotlight.tsx ανά καρέ' },
   { name: '--sy', why: 'θέση δείκτη, την γράφει το app/Spotlight.tsx ανά καρέ' },
   // Το ύψος κάθε μπάρας των επόμενων 12 μηνών, ως κλάσμα της ζώνης της (0 ως 1):
