@@ -146,6 +146,9 @@ export default function AccountantWorkspace() {
   const [find, setFind] = useState('');
   // Το «Ζήτησέ το» που είναι ανοιχτό (RequestSheet.tsx): τι, από ποιον, πού.
   const [askFor, setAskFor] = useState<AskTarget | null>(null);
+  // ΚΑΘΕ ΚΙΝΗΣΗ ΜΙΑ ΦΟΡΑ: το δεύτερο πάτημα όσο περιμένει η βάση δεν στέλνει δεύτερη κλήση.
+  const [withdrawing, setWithdrawing] = useState<string | null>(null);
+  const [replying, setReplying] = useState<string | null>(null);
   // Ο συνδεδεμένος και το όνομα του λογαριασμού του, για τη γραμμή «Υπεύθυνος»
   // όταν η βάση δεν έχει όνομα στο προφίλ τιμολόγησης.
   const [me, setMe] = useState<{ id: string; name: string | null } | null>(null);
@@ -255,7 +258,7 @@ export default function AccountantWorkspace() {
   // είναι δουλειά που μπορούμε να κάνουμε εμείς.
   const addClient = async () => {
     const raw = token.trim();
-    if (!raw) return;
+    if (!raw || adding) return;
     setAdding(true);
     const t = raw.includes('/') ? raw.replace(/[?#].*$/, '').split('/').filter(Boolean).pop() ?? raw : raw;
     const res = await claim(supabase, t);
@@ -287,8 +290,11 @@ export default function AccountantWorkspace() {
 
   /** Παίρνει πίσω αίτημα που στάλθηκε κατά λάθος. */
   const unask = async (ids: string[]) => {
+    if (withdrawing) return;
+    setWithdrawing(ids[0]);
     const done = await Promise.all(ids.map(id => withdrawRequest(supabase, id)));
     await load(year);
+    setWithdrawing(null);
     if (done.some(d => !d)) notifyError('Το αίτημα δεν αποσύρθηκε');
   };
 
@@ -345,7 +351,10 @@ export default function AccountantWorkspace() {
   // ── ΟΙ ΚΙΝΗΣΕΙΣ ΤΟΥ ΓΡΑΦΕΙΟΥ ────────────────────────────────────────────
   const reply = async (id: string, accept: boolean) => {
     if (accept && !inviteTerms[id]) { notifyError(FIRM_TERMS_NEEDED); return; }
+    if (replying) return;
+    setReplying(id);
     const r = await answerInvite(supabase, id, accept);
+    setReplying(null);
     if (!r.ok) { notifyError(reasonText(r.reason)); return; }
     // Αν η αποδοχή των όρων δεν γραφτεί, η κάρτα των όρων τη ζητά ξανά.
     if (accept) await acceptFirmTerms(supabase);
@@ -562,8 +571,8 @@ export default function AccountantWorkspace() {
               <strong>{i.firmName}</strong>{` σε προσκαλεί στο γραφείο. Ρόλος: ${ROLE_LABEL[i.role]}.`}
             </p>
             <div className="act-row" style={{ display: 'flex', gap: T.sp.sm }}>
-              <Btn variant="secondary" onClick={() => void reply(i.id, false)}>Απόρριψη</Btn>
-              <Btn variant="primary" onClick={() => void reply(i.id, true)} disabled={!inviteTerms[i.id]}>Αποδοχή</Btn>
+              <Btn variant="secondary" onClick={() => void reply(i.id, false)} disabled={replying !== null}>Απόρριψη</Btn>
+              <Btn variant="primary" onClick={() => void reply(i.id, true)} disabled={!inviteTerms[i.id] || replying !== null}>Αποδοχή</Btn>
             </div>
           </div>
           <div style={{ marginTop: T.sp.md }}>
@@ -634,15 +643,15 @@ export default function AccountantWorkspace() {
           υπόλοιπης εφαρμογής· εμφανίζονται μόνο όταν το γραφείο έχει δεύτερο μέλος. */}
       {team && (rows?.length ?? 0) > 0 && (
         <div className={`form-row form-row-${manager ? 3 : 2} po-noprint`} style={{ gap: T.sp.sm }}>
-          <CustomSelect ariaLabel="Ποιοι πελάτες" value={scope} onChange={v => setScope(v as Scope)}
+          <CustomSelect ariaLabel="Ποιοι πελάτες" value={scope} onChange={v => { setScope(v as Scope); setPicked(new Set()); }}
             options={[{ value: 'all', label: 'Όλοι οι πελάτες' }, { value: 'mine', label: 'Οι πελάτες μου' }]} />
           {manager && (
-            <CustomSelect ariaLabel="Υπεύθυνος" value={assignee || 'any'} onChange={v => setAssignee(v === 'any' ? '' : v)}
+            <CustomSelect ariaLabel="Υπεύθυνος" value={assignee || 'any'} onChange={v => { setAssignee(v === 'any' ? '' : v); setPicked(new Set()); }}
               options={[{ value: 'any', label: 'Κάθε υπεύθυνος' },
                 ...activeMembers.map(m => ({ value: m.userId as string, label: memberName(m.userId as string, m.email) })),
                 { value: '-', label: 'Χωρίς υπεύθυνο' }]} />
           )}
-          <CustomSelect ariaLabel="Κατάσταση" value={status} onChange={v => setStatus(v as StatusFilter)}
+          <CustomSelect ariaLabel="Κατάσταση" value={status} onChange={v => { setStatus(v as StatusFilter); setPicked(new Set()); }}
             options={[{ value: 'all', label: 'Κάθε κατάσταση' }, { value: 'blocked', label: 'Με εκκρεμότητες' }, { value: 'ready', label: 'Έτοιμοι' }]} />
         </div>
       )}
@@ -847,7 +856,7 @@ export default function AccountantWorkspace() {
                     <Btn className="po-noprint" variant="secondary" onClick={() => void openImport(c)}>{label}</Btn>
                   );
                   const withdraw = (ids: string[]) => (
-                    <Btn className="po-noprint" variant="ghost" onClick={() => void unask(ids)}>Πάρ’ το πίσω</Btn>
+                    <Btn className="po-noprint" variant="ghost" onClick={() => void unask(ids)} disabled={withdrawing !== null}>Πάρ’ το πίσω</Btn>
                   );
                   const asked = (at: string) => (
                     <Chip>{`Ζητήθηκε ${fd(at)}`}</Chip>

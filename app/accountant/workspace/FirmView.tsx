@@ -28,7 +28,9 @@ import { TextInput, Textarea, CustomSelect } from '@/app/dashboard/components/UI
 import { notify, notifyError } from '@/components/Toast';
 import { confirmDialog } from '@/components/confirmBus';
 import { isValidAfm } from '@/lib/core/greek';
-import { PortalBar, PortalTitle, portalWrap } from '../Chrome';
+import { PortalBar, PortalTitle, portalWrap, PORTAL_HOME } from '../Chrome';
+import { SITE_HOST } from '@/lib/core/site';
+import { hardNavigate } from '@/lib/core/navigate';
 import { History } from 'lucide-react';
 import {
   myFirm, saveFirm, invite, setRole, removeMember, accessHistory, reasonText,
@@ -62,6 +64,8 @@ export default function FirmView() {
   const [sending, setSending] = useState(false);
   const [inv, setInv] = useState<{ email: string; role: FirmRole }>({ email: '', role: 'accountant' });
   const [invErr, setInvErr] = useState('');
+  // Ο ρόλος που αλλάζει τώρα: το dropdown σβήνει ώσπου να απαντήσει η βάση.
+  const [roleBusy, setRoleBusy] = useState<string | null>(null);
   const [history, setHistory] = useState<AccessEntry[] | null>(null);
   const [allHistory, setAllHistory] = useState(false);
   // Ο συνδεδεμένος, για να δείχνεται η «Αποχώρηση» στη δική του γραμμή.
@@ -131,12 +135,20 @@ export default function FirmView() {
     if (!r.ok) { setInvErr(reasonText(r.reason)); return; }
     setInviting(false);
     setInv({ email: '', role: 'accountant' });
-    notify(r.data?.existing ? 'Η διεύθυνση είχε ήδη πρόσκληση.' : 'Η πρόσκληση στάλθηκε.');
+    // ΔΕΝ ΦΕΥΓΕΙ EMAIL (το `firm_invite` γράφει μόνο την πρόσκληση). Ελεγε «Η
+    // πρόσκληση στάλθηκε» και ο Υπεύθυνος περίμενε ότι το μέλος την έλαβε.
+    const who = inv.email.trim();
+    notify(r.data?.existing
+      ? 'Η διεύθυνση είχε ήδη πρόσκληση.'
+      : `Η πρόσκληση καταχωρήθηκε. Πες στο ${who} να συνδεθεί με αυτό το email στο ${SITE_HOST}${PORTAL_HOME} για να την αποδεχτεί.`, { duration: 9000 });
     await load();
   };
 
   const changeRole = async (id: string, role: FirmRole) => {
+    if (roleBusy) return;
+    setRoleBusy(id);
     const r = await setRole(supabase, id, role);
+    setRoleBusy(null);
     if (!r.ok) notifyError(reasonText(r.reason));
     await load();
   };
@@ -153,7 +165,9 @@ export default function FirmView() {
     if (!ok) return;
     const r = await removeMember(supabase, id);
     if (!r.ok) { notifyError(reasonText(r.reason)); return; }
-    if (self) { router.push('/accountant/workspace'); return; }
+    // ΠΛΗΡΗΣ ΦΟΡΤΩΣΗ: με `router.push` στην ίδια σελίδα η λίστα έμενε με τους
+    // πελάτες του γραφείου που μόλις άφησε.
+    if (self) { hardNavigate(PORTAL_HOME); return; }
     await load();
   };
 
@@ -161,7 +175,7 @@ export default function FirmView() {
 
   return (
     <div className="po-floor" style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: 72 }}>
-      <PortalBar back={{ href: '/accountant/workspace', label: 'Οι πελάτες' }} firmOnly={firm?.firmOnly} />
+      <PortalBar back={{ href: PORTAL_HOME, label: 'Οι πελάτες σου' }} firmOnly={firm?.firmOnly} />
       <main style={wrap}>
         {failed ? (
           <Card style={{ marginTop: T.sp.xl }}>
@@ -228,7 +242,7 @@ export default function FirmView() {
                         <div className="firm-role-side" style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm, flex: '0 1 auto', minWidth: 0 }}>
                           {manager && !invited ? (
                             <div className="firm-role-col" style={{ width: ROLE_COL }}>
-                              <CustomSelect ariaLabel={`Ρόλος: ${who}`} value={m.role}
+                              <CustomSelect ariaLabel={`Ρόλος: ${who}`} value={m.role} disabled={roleBusy !== null}
                                 onChange={v => void changeRole(m.id, v as FirmRole)}
                                 options={ROLES.map(r => ({ value: r, label: ROLE_LABEL[r] }))} />
                             </div>
@@ -314,7 +328,7 @@ export default function FirmView() {
         footer={
           <>
             <Btn variant="ghost" onClick={() => setInviting(false)}>Ακύρωση</Btn>
-            <Btn variant="primary" onClick={() => void sendInvite()} disabled={sending || !inv.email.trim()}>Αποστολή</Btn>
+            <Btn variant="primary" onClick={() => void sendInvite()} disabled={sending || !inv.email.trim()}>{sending ? 'Καταχώρηση…' : 'Καταχώρηση πρόσκλησης'}</Btn>
           </>
         }>
         <div style={{ display: 'grid', gap: T.sp.lg }}>

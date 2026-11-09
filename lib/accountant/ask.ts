@@ -52,16 +52,27 @@ export function askChannels(c: AskContact | null | undefined): AskChannel[] {
  * «χρειάζομαι: Δεν έχει συμπληρώσει ΑΦΜ». Οι γραμμές με πλήθος («3 δαπάνες
  * χωρίς κατηγορία») στέκονται όπως είναι.
  */
-const PHRASE: Record<string, string> = {
-  no_properties: 'να καταχωρήσετε τα ακίνητά σας',
-  no_expenses: 'τις δαπάνες της χρήσης',
-  owner_afm: 'τον ΑΦΜ σας',
-  aade_e2: 'το προσυμπληρωμένο Ε2 από το Taxisnet',
-  pack: 'τον φάκελο για τον λογιστή',
+// ΚΑΘΕ ΦΡΑΣΗ ΛΕΕΙ ΤΙ ΝΑ ΚΑΝΕΙ Ο ΠΕΛΑΤΗΣ. Το «χρειάζομαι: 2 ανείσπρακτα
+// μισθώματα» έλεγε το αντίθετο από αυτό που ζητούσε ο λογιστής (να επιβεβαιωθεί
+// αν εισπράχθηκαν), γιατί έπαιρνε τη γραμμή της λίστας αυτούσια.
+const one = (n: number, a: string, b: string) => (n === 1 ? a : b);
+const PHRASE: Record<string, (n: number) => string> = {
+  no_properties: () => 'να καταχωρήσετε τα ακίνητά σας',
+  no_expenses: () => 'να καταχωρήσετε τις δαπάνες της χρήσης',
+  uncategorised: n => `να βάλετε κατηγορία ${one(n, 'σε 1 δαπάνη', `σε ${n} δαπάνες`)}`,
+  no_supplier_afm: n => `να συμπληρώσετε τον ΑΦΜ του προμηθευτή ${one(n, 'σε 1 δαπάνη', `σε ${n} δαπάνες`)}`,
+  stays_no_fee: n => `να συμπληρώσετε την προμήθεια της πλατφόρμας ${one(n, 'σε 1 κράτηση', `σε ${n} κρατήσεις`)}`,
+  rents_unpaid: n => one(n, 'να επιβεβαιώσετε το 1 μίσθωμα που εμφανίζεται ανείσπρακτο', `να επιβεβαιώσετε τα ${n} μισθώματα που εμφανίζονται ανείσπρακτα`),
+  owner_afm: () => 'να συμπληρώσετε τον ΑΦΜ σας',
+  aade_e2: () => 'να ανεβάσετε το προσυμπληρωμένο Ε2 από το Taxisnet',
+  aade_diff: () => 'να δείτε τις διαφορές με το προσυμπληρωμένο Ε2',
+  pack: () => 'να μου στείλετε τον φάκελο για τον λογιστή',
 };
 
 export function askPhrase(key: string, item: string): string {
-  return PHRASE[key] ?? item.charAt(0).toLocaleLowerCase('el-GR') + item.slice(1);
+  const n = Number(/^\d+/.exec(item.trim())?.[0] ?? 0);
+  const f = PHRASE[key];
+  return f ? f(n) : `να δείτε: ${item.charAt(0).toLocaleLowerCase('el-GR')}${item.slice(1)}`;
 }
 
 /** Καλημέρα ως τις 12:00 ώρα Ελλάδας, Καλησπέρα μετά. */
@@ -78,13 +89,13 @@ export function askText(o: { key: string; item: string; year: number; note?: str
   const note = o.note?.trim();
   const lines = [
     greeting(o.now),
-    `για να κλείσουμε το Ε2 ${o.year} χρειάζομαι: ${what}.`,
+    `για να κλείσουμε το Ε2 ${o.year}, σας παρακαλώ ${what}.`,
     ...(note ? [note.replace(/\s*$/, '').replace(/([^.!;…])$/, '$1.')] : []),
     `Μπορείτε να το συμπληρώσετε εδώ: ${siteUrl(OWNER_REQUESTS_PATH)}`,
   ];
   const sign = o.from?.trim();
   const body = `${lines.join('\n')}${sign ? `\n\n${sign}` : ''}`;
-  return { subject: `Ε2 ${o.year}: ${what}`, body };
+  return { subject: `Ε2 ${o.year}: ${o.item}`, body };
 }
 
 /** Ο σύνδεσμος που ανοίγει την εφαρμογή του καναλιού. `null` για την εφαρμογή ή χωρίς στοιχείο. */

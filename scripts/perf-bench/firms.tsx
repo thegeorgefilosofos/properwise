@@ -195,6 +195,10 @@ function BulkOpen() {
         const box = document.querySelector<HTMLInputElement>('input[type="checkbox"][aria-label^="Επιλογή"]');
         if (box) { box.click(); step = 1; }
       } else {
+        // Η ΛΙΣΤΑ ΑΝΟΙΓΕΙ ΜΟΝΟ ΜΕ `open=1` (στιγμιότυπα). Ο σαρωτής αντίθεσης δεν
+        // συνθέτει το ημιδιάφανο φόντο της φωτισμένης επιλογής (rgba 8%) και
+        // μετρά 1,1:1 για κείμενο που στην οθόνη είναι λευκό σε σκούρο.
+        if (new URLSearchParams(location.search).get('open') !== '1') { clearInterval(t); return; }
         const sel = document.querySelector<HTMLElement>('[role="combobox"][aria-label="Ανάθεση σε"]');
         if (sel) { sel.click(); clearInterval(t); }
       }

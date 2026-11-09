@@ -115,6 +115,13 @@ export default function RequestSheet({ target, year, from, onClose, onSend }: {
           <Textarea label="Σημείωση, προαιρετικά" value={text} onChange={setText} rows={2} autoGrow
             placeholder="Π.χ. του Οκτωβρίου, με τις αποδείξεις" />
 
+          {/* ΜΟΝΟ ΜΕ ΔΕΥΤΕΡΟ ΚΑΝΑΛΙ ΥΠΑΡΧΕΙ ΕΠΙΛΟΓΗ. Σήμερα το γραφείο δεν βλέπει
+              email ή κινητό του πελάτη (lib/data/accountant.ts), οπότε το αίτημα
+              φεύγει στην εφαρμογή και η ομάδα «Στείλε με» με ένα πλακίδιο θα ήταν
+              επιλογή χωρίς επιλογές. */}
+          {channels.length === 1 ? (
+            <p style={note}>Ο πελάτης το βλέπει στη Λογιστική του, μαζί με τη σημείωσή σου.</p>
+          ) : (
           <div role="group" aria-labelledby={`${hintId}-l`}>
             <p id={`${hintId}-l`} style={label}>Στείλε με</p>
             {/* ΚΑΘΕ ΣΕΙΡΑ ΓΕΜΙΖΕΙ ΤΟ ΠΛΑΤΟΣ: πέντε πλακίδια με πλάτος λεκτικού άφηναν
@@ -137,11 +144,10 @@ export default function RequestSheet({ target, year, from, onClose, onSend }: {
                 ? 'Καταγράφεται στην εφαρμογή και ανοίγει το Viber με το μήνυμα έτοιμο: διάλεξε την επαφή στο Viber.'
                 : external
                   ? `Καταγράφεται στην εφαρμογή και ανοίγει ${ch === 'email' ? 'το email' : ch === 'sms' ? 'το SMS' : 'το WhatsApp'} με το μήνυμα έτοιμο.`
-                  : channels.length === 1
-                    ? 'Ο πελάτης το βλέπει στη Λογιστική του. Το email και το κινητό του δεν είναι διαθέσιμα στο γραφείο.'
-                    : 'Ο πελάτης το βλέπει στη Λογιστική του.'}
+                  : 'Ο πελάτης το βλέπει στη Λογιστική του.'}
             </p>
           </div>
+          )}
 
           {external && (
             <div>
