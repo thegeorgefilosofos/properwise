@@ -40,6 +40,17 @@
 // κανένα δικαίωμα επιστροφής. Η εγγύηση των 14 ημερών από την πρώτη χρέωση
 // είναι δική μας δέσμευση, πάνω από τον νόμο και γράφεται εδώ ώστε να τη
 // διαβάζουν και οι Οροι και η σελίδα εμπιστοσύνης από την ίδια πηγή.
+//
+// ── ΟΧΙ ΠΙΑ «ΕΓΓΥΗΣΗ» ΓΙΑ ΤΟΝ ΚΑΤΑΝΑΛΩΤΗ (απόφαση ιδιοκτήτη 09/11/2026) ────
+// Από το μοντέλο της 27.09.2026 η πρώτη χρέωση ΕΙΝΑΙ η σύναψη, οπότε για τον
+// καταναλωτή οι «14 ημέρες από την πρώτη χρέωση» συμπίπτουν ακριβώς με το
+// δικαίωμα υπαναχώρησης του ν. 2251/1994. Η παρουσίασή του ως δικής μας
+// παροχής είναι πρακτική της «μαύρης λίστας» (Οδηγία 2005/29/ΕΚ, Παράρτημα Ι
+// σημ. 10, όπως ενσωματώθηκε στον ν. 2251/1994· νομικός έλεγχος 09/11/2026,
+// εύρημα Ο-1). Ο καταναλωτής διαβάζει πλέον το δικαίωμα ως δικαίωμα του νόμου.
+// Η δέσμευση μένει δική μας μόνο για τον επαγγελματία, που δικαίωμα
+// υπαναχώρησης δεν έχει· και λέγεται «δέσμευση επιστροφής χρημάτων», όχι
+// «εγγύηση», που παραπέμπει στην εμπορική εγγύηση. Η λειτουργία δεν άλλαξε.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { merchant, type BillingEnv, type MerchantPort } from '@/lib/billing/merchant';
@@ -97,7 +108,8 @@ export interface BillingWords {
   /** Το δικαίωμα υπαναχώρησης, στον χρόνο που ισχύει. */
   withdrawal: string;
   /**
-   * Η εγγύηση επιστροφής, σε μία πρόταση.
+   * Το δικαίωμα υπαναχώρησης του καταναλωτή και η δέσμευση επιστροφής για τον
+   * επαγγελματία, σε δύο προτάσεις.
    *
    * ΞΕΧΩΡΙΣΤΟ ΠΕΔΙΟ ΓΙΑΤΙ ΤΟ ΖΗΤΑΝΕ ΔΥΟ ΔΙΑΦΟΡΕΤΙΚΑ ΜΕΡΗ. Οι Οροι θέλουν την
    * ολόκληρη παράγραφο της υπαναχώρησης· ο τιμοκατάλογος θέλει μία γραμμή στα
@@ -297,16 +309,25 @@ export const INVITE_ACCESS = `Για πακέτο «${PLANS[PROFESSIONAL_MIN_PLA
 /** Η άρνηση της βάσης (`plan_required`), με τα ίδια όρια. */
 export const INVITE_PLAN_REFUSAL = `Η πρόσκληση με email ανοίγει στο πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω· ${INVITE_TRIAL}.`;
 
-/** Η εγγύηση, μία φορά, ώστε να τη δανείζονται και τα δύο πεδία που τη λένε. */
+/**
+ * Το δικαίωμα του νόμου για τον καταναλωτή, σε μία πρόταση για τα ψιλά του
+ * τιμοκαταλόγου και του ταμείου. ΔΙΚΑΙΩΜΑ ΤΟΥ ΝΟΜΟΥ, ΟΧΙ ΠΑΡΟΧΗ ΜΑΣ (Ο-1).
+ */
 // «Η ΕΦΑΡΜΟΓΗ», ΟΧΙ «Η ΥΠΗΡΕΣΙΑ». Η πρόταση διαβάζεται και στα ψιλά του
 // τιμοκαταλόγου, όπου ο νομικός όρος με κεφαλαίο ακουγόταν σαν συμβόλαιο.
-// ΤΗΝ ΕΠΙΣΤΡΟΦΗ ΤΗΝ ΚΑΝΕΙ Ο ΕΜΠΟΡΟΣ. Εγραφε «επιστρέφουμε», ενώ η ίδια
-// παράγραφος της υπαναχώρησης έλεγε ότι την εκτελεί ο έμπορος. Το αίτημα
-// έρχεται σε εμάς, τα χρήματα επιστρέφονται από εκείνον.
-const moneyBackLive = (mor: string): string =>
-  `Αν μέσα σε 14 ημέρες από την πρώτη χρέωση δεν σε καλύψει η εφαρμογή, γράψε μας και ολόκληρο το ποσό της σου επιστρέφεται μέσω της ${mor}, χωρίς να χρειάζεται να δικαιολογηθείς.`;
-const MONEY_BACK_SOON =
-  'Όταν ενεργοποιηθεί η χρέωση θα ισχύει η δική μας εγγύηση: επιστροφή ολόκληρου του ποσού αν μέσα σε 14 ημέρες από την πρώτη χρέωση δεν σε καλύψει η εφαρμογή.';
+// ΤΗΝ ΕΠΙΣΤΡΟΦΗ ΤΗΝ ΚΑΝΕΙ Ο ΕΜΠΟΡΟΣ. Το αίτημα έρχεται σε εμάς ή σε εκείνον,
+// τα χρήματα επιστρέφονται από εκείνον.
+const consumerRightLive = (mor: string): string =>
+  `Ως καταναλωτής έχεις από τον νόμο (ν. 2251/1994) δικαίωμα υπαναχώρησης 14 ημερών από την αγορά, με επιστροφή ολόκληρου του ποσού μέσω της ${mor}.`;
+/** Η δέσμευση για τον επαγγελματία, που δικαίωμα υπαναχώρησης δεν έχει. Δική μας, γι' αυτό λέγεται έτσι. */
+const proRefundLive = (mor: string): string =>
+  `Αν αγοράζεις ως επαγγελματίας, οπότε το δικαίωμα αυτό δεν σε καλύπτει, δεσμευόμαστε να σου επιστραφεί ολόκληρο το ποσό της πρώτης χρέωσης μέσω της ${mor}, αν το ζητήσεις μέσα σε 14 ημέρες από αυτήν, χωρίς να χρειάζεται να δικαιολογηθείς.`;
+const moneyBackLive = (mor: string): string => `${consumerRightLive(mor)} ${proRefundLive(mor)}`;
+const CONSUMER_RIGHT_SOON =
+  'Όταν ενεργοποιηθεί η χρέωση, ως καταναλωτής θα έχεις από τον νόμο (ν. 2251/1994) δικαίωμα υπαναχώρησης 14 ημερών από την αγορά, με επιστροφή ολόκληρου του ποσού.';
+const PRO_REFUND_SOON =
+  'Αν αγοράσεις ως επαγγελματίας, οπότε το δικαίωμα αυτό δεν σε καλύπτει, δεσμευόμαστε να σου επιστραφεί ολόκληρο το ποσό της πρώτης χρέωσης, αν το ζητήσεις μέσα σε 14 ημέρες από αυτήν.';
+const MONEY_BACK_SOON = `${CONSUMER_RIGHT_SOON} ${PRO_REFUND_SOON}`;
 
 // ── ΤΟ ΟΝΟΜΑ ΤΟΥ ΕΜΠΟΡΟΥ ΔΕΝ ΓΡΑΦΕΤΑΙ ΕΔΩ ────────────────────────────────
 // ΤΟ ΣΦΑΛΜΑ, ΟΠΩΣ ΗΤΑΝ. Δύο από αυτές τις προτάσεις ονόμαζαν τον έμπορο
@@ -338,10 +359,11 @@ const liveWords = (mor: string): Omit<BillingWords, 'live' | 'saleClosedReason' 
   // ζητείται πουθενά. Και ονομάζεται ποιος την εκτελεί: ο έμπορος που
   // εξέδωσε το παραστατικό, όχι εμείς.
   // Δύο προθεσμίες και όχι τρεις αναφορές στις «14 ημέρες»: η αρχή της
-  // προθεσμίας λέγεται με λέξεις (η στιγμή της αγοράς), η εγγύηση και ο χρόνος
-  // της επιστροφής με τον αριθμό τους.
+  // προθεσμίας λέγεται με λέξεις (η στιγμή της αγοράς), η δέσμευση για τον
+  // επαγγελματία και ο χρόνος της επιστροφής με τον αριθμό τους. Το δικαίωμα
+  // του καταναλωτή το λέει ήδη η πρώτη παράγραφος της ενότητας στους Όρους.
   withdrawal:
-    `Η συνδρομή χρεώνεται τη στιγμή της αγοράς, που είναι και η στιγμή της σύναψης: από εκεί μετρά η προθεσμία. Η υπαναχώρηση μέσα σε αυτήν δεν σου κοστίζει τίποτα, ούτε για τις ημέρες που χρησιμοποίησες την εφαρμογή. ${moneyBackLive(mor)} Την επιστροφή την εκτελεί η ${mor}, που εξέδωσε το παραστατικό, με τον ίδιο τρόπο πληρωμής και μέσα σε 14 ημέρες από τη δήλωσή σου.`,
+    `Η συνδρομή χρεώνεται τη στιγμή της αγοράς, που είναι και η στιγμή της σύναψης: από εκεί μετρά η προθεσμία. Η υπαναχώρηση μέσα σε αυτήν δεν σου κοστίζει τίποτα, ούτε για τις ημέρες που χρησιμοποίησες την εφαρμογή. Την επιστροφή ολόκληρου του ποσού την εκτελεί η ${mor}, που εξέδωσε το παραστατικό, με τον ίδιο τρόπο πληρωμής και μέσα σε 14 ημέρες από τη δήλωσή σου. ${proRefundLive(mor)}`,
   moneyBack: moneyBackLive(mor),
   howWeArePaid:
     'Τα έσοδά μας είναι οι συνδρομές.',
@@ -395,7 +417,7 @@ const NOT_LIVE: Omit<BillingWords, 'live' | 'saleClosedReason' | 'seller'> = {
   firmAccount:
     'Ο λογαριασμός γραφείου δεν χρεώνεται: το γραφείο και τα μέλη του δεν πληρώνουν για να βλέπουν ή να καταχωρούν στους λογαριασμούς των πελατών τους. Σήμερα άλλωστε καμία χρέωση δεν γίνεται μέσα από την Υπηρεσία.',
   withdrawal:
-    `Σήμερα δεν υπάρχει καμία χρέωση, οπότε αν υπαναχωρήσεις δεν οφείλεις τίποτα. Όταν ενεργοποιηθεί η χρέωση, η συνδρομή θα χρεώνεται τη στιγμή της αγοράς και η προθεσμία θα μετρά από τότε. ${MONEY_BACK_SOON}`,
+    `Σήμερα δεν υπάρχει καμία χρέωση, οπότε αν υπαναχωρήσεις δεν οφείλεις τίποτα. Όταν ενεργοποιηθεί η χρέωση, η συνδρομή θα χρεώνεται τη στιγμή της αγοράς και η προθεσμία θα μετρά από τότε. ${PRO_REFUND_SOON}`,
   moneyBack: MONEY_BACK_SOON,
   howWeArePaid:
     'Τα έσοδά μας θα είναι οι συνδρομές. Σήμερα η χρέωση συνδρομών δεν έχει ενεργοποιηθεί.',
@@ -505,10 +527,17 @@ export const PRICES_VAT_EN = 'Prices apply to consumers in Greece and include VA
 export const NO_COMMITMENT_EN = 'No commitment and no exit fee.';
 export const CANCEL_ANYTIME_EN = 'Cancel whenever you like.';
 
-const moneyBackLiveEn = (mor: string): string =>
-  `If the app does not work for you within 14 days of the first charge, write to us and the full amount is refunded through ${mor}, with no questions asked.`;
-const MONEY_BACK_SOON_EN =
-  'Once billing is switched on, our own guarantee will apply: a full refund if the app does not work for you within 14 days of the first charge.';
+// Ο-1, όπως στα ελληνικά: δικαίωμα του νόμου για τον καταναλωτή, δέσμευση μας μόνο για τον επαγγελματία.
+const consumerRightLiveEn = (mor: string): string =>
+  `As a consumer you have a statutory right of withdrawal (Greek Law 2251/1994) for 14 days from purchase, with a full refund through ${mor}.`;
+const proRefundLiveEn = (mor: string): string =>
+  `If you buy as a business, so that this right does not cover you, we undertake that the full amount of the first charge is refunded to you through ${mor} if you ask within 14 days of it, with no questions asked.`;
+const moneyBackLiveEn = (mor: string): string => `${consumerRightLiveEn(mor)} ${proRefundLiveEn(mor)}`;
+const CONSUMER_RIGHT_SOON_EN =
+  'Once billing is switched on, as a consumer you will have a statutory right of withdrawal (Greek Law 2251/1994) for 14 days from purchase, with a full refund.';
+const PRO_REFUND_SOON_EN =
+  'If you buy as a business, so that this right does not cover you, we undertake that the full amount of the first charge is refunded to you if you ask within 14 days of it.';
+const MONEY_BACK_SOON_EN = `${CONSUMER_RIGHT_SOON_EN} ${PRO_REFUND_SOON_EN}`;
 const TRIAL_BADGE_EN = `${TRIAL_DAYS}-day trial, no card`;
 
 const liveWordsEn = (mor: string): Omit<BillingWords, 'live' | 'saleClosedReason' | 'seller'> => ({
@@ -525,7 +554,7 @@ const liveWordsEn = (mor: string): Omit<BillingWords, 'live' | 'saleClosedReason
   firmAccount:
     'A firm account is not charged: the firm and its members do not pay a subscription to view or record in their clients’ accounts. Only the client chooses, and pays for if they wish, the subscription of their own account.',
   withdrawal:
-    `A subscription is charged at the moment of purchase, which is also when the contract is concluded, and the withdrawal period runs from then. Withdrawing within that period costs you nothing, not even for the days you used the app. ${moneyBackLiveEn(mor)} The refund is made by ${mor}, which issued the receipt, using the same payment method and within 14 days of your notice.`,
+    `A subscription is charged at the moment of purchase, which is also when the contract is concluded, and the withdrawal period runs from then. Withdrawing within that period costs you nothing, not even for the days you used the app. The full refund is made by ${mor}, which issued the receipt, using the same payment method and within 14 days of your notice. ${proRefundLiveEn(mor)}`,
   moneyBack: moneyBackLiveEn(mor),
   howWeArePaid:
     'Our revenue comes from subscriptions.',
@@ -574,7 +603,7 @@ const NOT_LIVE_EN: Omit<BillingWords, 'live' | 'saleClosedReason' | 'seller'> = 
   firmAccount:
     'A firm account is not charged: the firm and its members do not pay to view or record in their clients’ accounts. In any case, no charge is made through the Service today.',
   withdrawal:
-    `There is no charge today, so if you withdraw you owe nothing. Once billing is switched on, a subscription will be charged at the moment of purchase and the withdrawal period will run from then. ${MONEY_BACK_SOON_EN}`,
+    `There is no charge today, so if you withdraw you owe nothing. Once billing is switched on, a subscription will be charged at the moment of purchase and the withdrawal period will run from then. ${PRO_REFUND_SOON_EN}`,
   moneyBack: MONEY_BACK_SOON_EN,
   howWeArePaid:
     'Our revenue will come from subscriptions. Subscription billing has not been switched on today.',
