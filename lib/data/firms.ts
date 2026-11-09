@@ -17,16 +17,11 @@ import { FIRM_TERMS_VERSION } from '@/lib/legal/firms';
 type Db = SupabaseClient;
 
 // ── ΟΙ ΛΕΞΕΙΣ ──────────────────────────────────────────────────────────────
-export type FirmRole = 'manager' | 'accountant' | 'associate';
 import type { FirmKind } from './firmWords';
+import type { FirmRole } from './firmRoles';
 export { KIND_LABEL, type FirmKind } from './firmWords';
+export { ROLE_LABEL, type FirmRole } from './firmRoles';
 export type AccessLevel = 'read' | 'upload' | 'keep';
-
-export const ROLE_LABEL: Record<FirmRole, string> = {
-  manager: 'Υπεύθυνος γραφείου',
-  accountant: 'Λογιστής',
-  associate: 'Συνεργάτης',
-};
 
 /** Μία πρόταση ανά ρόλο, για το dropdown της πρόσκλησης: τι κάνει, όχι τι είναι. */
 export const ROLE_HINT: Record<FirmRole, string> = {
@@ -158,6 +153,38 @@ export interface FirmFields { name: string; afm: string; kind: FirmKind; phone: 
 export const saveFirm = (db: Db, f: FirmFields) =>
   rpcDo(db, 'firm_save', { p_name: f.name, p_afm: f.afm, p_kind: f.kind, p_phone: f.phone, p_address: f.address });
 export const invite = (db: Db, email: string, role: FirmRole) => rpcDo(db, 'firm_invite', { p_email: email, p_role: role });
+/**
+ * ΤΟ EMAIL ΤΗΣ ΠΡΟΣΚΛΗΣΗΣ, ΜΕΤΑ ΤΗΝ ΠΡΟΣΚΛΗΣΗ (supabase/functions/send-firm-invite).
+ *
+ * Η `firm_invite` γράφει μόνο τη γραμμή· μήνυμα δεν έφευγε ποτέ, ενώ η οθόνη
+ * έγραφε «Η πρόσκληση στάλθηκε.». Η συνάρτηση ξαναελέγχει στη βάση ότι ο
+ * καλών είναι Υπεύθυνος και ότι η διεύθυνση είναι εκκρεμής πρόσκληση του
+ * γραφείου του. Εδώ λέγεται μόνο αν έφυγε μήνυμα: η πρόσκληση υπάρχει ήδη,
+ * οπότε κάθε αποτυχία (δίκτυο, όριο, πάροχος) είναι απλώς «δεν στάλθηκε».
+ */
+export type InviteMail = 'sent' | 'failed';
+export async function sendInviteEmail(db: Db, email: string): Promise<InviteMail> {
+  try {
+    const { data, error } = await db.functions.invoke('send-firm-invite', { body: { email } });
+    if (error) return 'failed';
+    return (data as { sent?: boolean } | null)?.sent === true ? 'sent' : 'failed';
+  } catch {
+    return 'failed';
+  }
+}
+
+/**
+ * Τι λέει η οθόνη μετά την «Αποστολή». «Στάλθηκε email» μόνο όταν όντως
+ * στάλθηκε· αλλιώς η πρόσκληση καταγράφηκε και το μέλος μπαίνει με αυτή τη
+ * διεύθυνση. `member`: η διεύθυνση ανήκει ήδη σε ενεργό μέλος, οπότε δεν
+ * στέλνεται τίποτα.
+ */
+export function inviteOutcome(o: { existing: boolean; member: boolean; mail: InviteMail | null; email: string }): string {
+  if (o.member) return 'Η διεύθυνση ανήκει ήδη σε μέλος του γραφείου.';
+  const first = o.existing ? 'Η διεύθυνση είχε ήδη πρόσκληση.' : 'Η πρόσκληση καταγράφηκε.';
+  if (o.mail === 'sent') return `${first} ${o.existing ? 'Στάλθηκε ξανά' : 'Στάλθηκε'} email στο ${o.email}.`;
+  return `${first} Το email δεν στάλθηκε: πες στο μέλος να συνδεθεί με το ${o.email} για να τη δει.`;
+}
 export const answerInvite = (db: Db, id: string, accept: boolean) => rpcDo(db, 'firm_invite_answer', { p_id: id, p_accept: accept });
 /**
  * Αποδοχή των όρων επεξεργασίας (Οροι `#grafeia`) στην έκδοση που δείχνει η

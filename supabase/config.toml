@@ -26,6 +26,10 @@ verify_jwt = true
 enabled = true
 verify_jwt = true
 
+[functions.send-firm-invite]
+enabled = true
+verify_jwt = true
+
 [functions.send-test-notification]
 enabled = true
 verify_jwt = true

@@ -24,6 +24,8 @@ export const SCENES = [
   'firm', 'firmNew', 'firmInvite', 'firmWorkspace', 'firmWorkspaceAssociate', 'firmWorkspaceInvite',
   'firmEntryDocument', 'firmEntryBill', 'firmEntryTax', 'firmEntryLoan', 'firmEntryRent', 'firmEntryTenant', 'firmOwner',
   'firmSecondStep', 'firmOwnerDay', 'firmOwnerLink', 'firmOwnerUndo', 'firmOwnerRevoke', 'firmClientGone', 'firmClientSecondStep',
+  // Η Επισκόπηση με την ενημέρωση των γραφείων (ΑΠ-11, lib/legal/policyNotice.ts).
+  'overviewFirmNotice',
 ];
 
 // ═══ ΟΙ ΣΚΗΝΕΣ ΤΗΣ ΠΥΛΗΣ ΤΟΥ ΛΟΓΙΣΤΗ ════════════════════════════════════════
