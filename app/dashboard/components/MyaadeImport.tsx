@@ -1,11 +1,16 @@
 'use client';
 // ═══════════════════════════════════════════════════════════════════════════
-// ΕΙΣΑΓΩΓΗ ΑΠΟ ΤΟ myAADE: ΤΑ ΑΚΙΝΗΤΑ ΚΑΙ Ο ΕΝΦΙΑ ΑΠΟ ΕΝΑ PDF
+// ΕΙΣΑΓΩΓΗ ΑΠΟ ΤΟ myAADE: ΤΑ ΑΚΙΝΗΤΑ (ΚΑΙ Ο ΕΝΦΙΑ) ΑΠΟ ΤΟ Ε9 Ή ΤΗΝ ΠΡΑΞΗ
 // ─────────────────────────────────────────────────────────────────────────
-// Ο χρήστης ανεβάζει την πράξη ΕΝΦΙΑ του myAADE. Το κείμενο βγαίνει ΣΤΗ
-// ΣΥΣΚΕΥΗ του, σε Web Worker (lib/myaade/readPdf.ts). Το διαβάζει ο
-// αναλυτής κανόνων (lib/myaade/enfiaAct.ts): χωρίς AI, χωρίς αποστολή του
-// αρχείου πουθενά. Το PDF δεν αποθηκεύεται.
+// Η «μαζική καταχώρηση ακινήτων» (απόφαση ιδιοκτήτη 09/11/2026). Ο χρήστης
+// ανεβάζει το Ε9 ή την πράξη ΕΝΦΙΑ του myAADE:
+//   · PDF: το κείμενο βγαίνει ΣΤΗ ΣΥΣΚΕΥΗ του, σε Web Worker
+//     (lib/myaade/readPdf.ts). Το διαβάζουν οι αναλυτές κανόνων
+//     (lib/myaade/parse.ts → enfiaAct.ts, e9.ts): χωρίς AI, χωρίς αποστολή.
+//   · ΦΩΤΟΓΡΑΦΙΑ: διαβάζεται με AI στον διακομιστή, μέσα από τη σάρωση
+//     (scanDoc.ts: scanPhotoList). Η απάντηση ελέγχεται αυστηρά
+//     (lib/myaade/photo.ts). Η εικόνα δεν αποθηκεύεται.
+// Έως BULK_MAX ακίνητα ανά εισαγωγή· τα υπόλοιπα με δεύτερη εισαγωγή.
 //
 // ΤΙΠΟΤΑ ΔΕΝ ΓΡΑΦΕΤΑΙ ΠΡΙΝ ΤΟ ΔΕΙ Ο ΧΡΗΣΤΗΣ. Κάθε ακίνητο φαίνεται σε μία
 // συμπαγή γραμμή με την κατάστασή του· τα πεδία ανοίγουν με «Επεξεργασία». Η
@@ -25,7 +30,7 @@ import { createClient } from '@/lib/supabase/client';
 import { T, TT, Btn, Badge, Modal, fe } from '@/components/Theme';
 import { NumberInput, CustomSelect } from './UIComponents';
 import { notify, notifyError } from '@/components/Toast';
-import { MAX_SCAN_MB } from './scanDoc';
+import { MAX_SCAN_MB, scanPhotoList, isPhotoFile } from './scanDoc';
 import * as propertiesData from '@/lib/data/properties';
 import { read } from '@/lib/data/read';
 import { grDate } from '@/lib/core/format';
@@ -33,28 +38,38 @@ import { athensToday, athensParts } from '@/lib/core/time';
 import { plural } from '@/lib/core/greek';
 import { enfiaInstalments } from '@/lib/tools/enfiaSchedule';
 import { track, PRODUCT_EVENTS } from '@/lib/analytics/events';
-import { parseEnfiaAct } from '@/lib/myaade/enfiaAct';
+import { parseMyaadeLines, WRONG_DOC_TITLE, WANT_DOC } from '@/lib/myaade/parse';
+import { parsePhotoReply, PHOTO_PROMPT, PHOTO_ASK } from '@/lib/myaade/photo';
 import { readPdfText, PdfReadError } from '@/lib/myaade/readPdf';
 import type { KnownProperty } from '@/lib/myaade/match';
 import { freeSlots } from '@/lib/myaade/planLimit';
-import { buildDrafts, deriveReview, commitRowOf, preselectOwner, toMoneyText, singleFlight, SELF_OWNER, type Draft, type KnownOwner } from '@/lib/myaade/review';
+import { buildDrafts, bulkWindow, deriveReview, commitRowOf, preselectOwner, toMoneyText, singleFlight, SELF_OWNER, BULK_MAX, type Draft, type KnownOwner } from '@/lib/myaade/review';
 import { commitImport, undoImport, lastUndoable, importsLeft, undoUntilLabel, MYAADE_DAILY_IMPORTS, IMPORT_UNDO_HOURS, type ImportBatch } from '@/lib/myaade/commit';
 import type { MyAadeImport } from '@/lib/myaade/types';
 import { CenterState, DoneView, DropZone, MyaadeSteps, Note, PropertyRow, ReadProgress, SelectAll, MYAADE_CSS, type DoneSummary } from './MyaadeSteps';
 
 // Κάθε αποτυχία: τίτλος μιας γραμμής στην οθόνη, η εξήγηση πίσω από το ⓘ.
 // ΜΙΑ ΠΡΟΤΑΣΗ ΣΤΗΝ ΟΘΟΝΗ, Η ΕΞΗΓΗΣΗ ΣΤΟ ⓘ.
-type Failure = { title: string; hint: string; info?: string };
-const WANT_ACT = 'Χρειαζόμαστε την πράξη ΕΝΦΙΑ, όπως την αποθηκεύεις από το myAADE.';
+export type Failure = { title: string; hint: string; info?: string };
 const PDF_FAILURE: Record<'encrypted' | 'no_text' | 'not_pdf', Failure> = {
-  not_pdf: { title: 'Δεν είναι PDF', hint: WANT_ACT },
+  not_pdf: { title: 'Δεν είναι PDF', hint: WANT_DOC },
   encrypted: { title: 'Το PDF είναι κλειδωμένο', hint: 'Κατέβασέ το ξανά από το myAADE, χωρίς κωδικό.' },
-  no_text: { title: 'Είναι εικόνα, όχι το PDF', hint: 'Χρειαζόμαστε το PDF του myAADE, όχι φωτογραφία ή σάρωση.' },
+  no_text: { title: 'Το PDF είναι σάρωση', hint: 'Ανέβασε το PDF όπως το αποθηκεύεις από το myAADE ή μια φωτογραφία της σελίδας.' },
 };
+/** Η άρνηση εγγράφου: ίδιος τίτλος για PDF και φωτογραφία, ο λόγος πίσω από το ⓘ. */
+export const wrongDoc = (reason: string): Failure => ({ title: WRONG_DOC_TITLE, hint: WANT_DOC, info: reason });
+/** Γιατί δεν διαβάστηκε η φωτογραφία, με το κείμενο του διακομιστή όπου υπάρχει (όριο σαρώσεων). */
+function photoFailure(error: string | undefined, text: string | undefined): Failure {
+  if (error === 'quota') return { title: 'Έφτασες το όριο σαρώσεων', hint: text || 'Ανέβασε το PDF: διαβάζεται στη συσκευή σου.' };
+  if (error === 'format') return { title: 'Δεν διαβάζεται αυτό το αρχείο', hint: text || WANT_DOC };
+  if (error === 'big') return { title: 'Πολύ μεγάλη φωτογραφία', hint: 'Τράβηξέ τη ξανά ή ανέβασε το PDF.' };
+  if (error === 'unreadable') return { title: 'Η φωτογραφία δεν διαβάστηκε', hint: 'Τράβηξέ τη ξανά, ίσια και με καλό φως, ή ανέβασε το PDF.' };
+  return { title: 'Η ανάγνωση δεν είναι διαθέσιμη τώρα', hint: 'Δοκίμασε ξανά σε λίγο ή ανέβασε το PDF.' };
+}
 
 type Step = 'pick' | 'reading' | 'review' | 'saving' | 'done';
 
-export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSaved, onOpenCalendar, initialDoc }: {
+export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSaved, onOpenCalendar, initialDoc, initialFailure }: {
   userId: string;
   /** Το όριο ακινήτων του πακέτου (`propertyLimit`). */
   limit: number;
@@ -71,6 +86,8 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
    * περνούν από ΑΥΤΟ το component και όχι από αντίγραφό του.
    */
   initialDoc?: MyAadeImport;
+  /** Αποτυχία έτοιμη, για τον πάγκο διάταξης (σκηνή «λάθος έγγραφο»). */
+  initialFailure?: Failure;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const inputId = useId();
@@ -78,7 +95,9 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
   const [step, setStep] = useState<Step>('pick');
   const [progress, setProgress] = useState({ page: 0, pages: 0 });
   const [status, setStatus] = useState('');
-  const [failure, setFailure] = useState<Failure | null>(null);
+  const [failure, setFailure] = useState<Failure | null>(initialFailure ?? null);
+  /** Όσα ακίνητα του εγγράφου δεν φαίνονται (πάνω από BULK_MAX) και πόσα έχει συνολικά. */
+  const [cut, setCut] = useState<{ hidden: number; total: number }>({ hidden: 0, total: 0 });
   const [doc, setDoc] = useState<MyAadeImport | null>(null);
   const [rows, setRows] = useState<Draft[]>([]);
   const [year, setYear] = useState('');
@@ -99,7 +118,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
   useEffect(() => {
     let live = true;
     void Promise.all([
-      propertiesData.listWithError<KnownProperty>(supabase, userId, { columns: 'id,name,address,atak,sqm,ownership,floor' }),
+      propertiesData.listWithError<KnownProperty>(supabase, userId, { columns: 'id,name,address,atak,sqm,ownership,floor,postal_code,year_built' }),
       read<{ owner_afm: string | null }>(supabase.from('property_settings').select('owner_afm').eq('user_id', userId)),
       read<{ id: string; full_name: string; afm: string | null }>(supabase.from('clients').select('id,full_name,afm').eq('user_id', userId).eq('type', 'owner')),
       importsLeft(supabase, userId),
@@ -123,6 +142,8 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
 
   // ── ΑΠΟ ΤΟ PDF ΣΤΗΝ ΠΡΟΕΠΙΣΚΟΠΗΣΗ ──────────────────────────────────────
   const applyDoc = (d: MyAadeImport) => {
+    const win = bulkWindow(d, known ?? []);
+    setCut({ hidden: win.hidden, total: win.total });
     setRows(buildDrafts(d, known ?? [], slots));
     setDoc(d);
     setYear(d.year ? String(d.year) : '');
@@ -130,7 +151,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
     const pre = preselectOwner(owners, d.afm);
     setOwnerId(pre); setOwnerFromAfm(!!pre);
     setStep('review');
-    setStatus(`Βρέθηκαν ${d.properties.length} ${plural(d.properties.length, 'ακίνητο', 'ακίνητα')}.`);
+    setStatus(`Βρέθηκαν ${win.total} ${plural(win.total, 'ακίνητο', 'ακίνητα')}.`);
   };
   // Η πράξη που δόθηκε έτοιμη μπαίνει μόλις φορτωθούν τα ακίνητα: το ταίριασμα θέλει να τα ξέρει.
   const [initialApplied, setInitialApplied] = useState(false);
@@ -139,7 +160,17 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
   const readFile = async (f: File | undefined) => {
     if (!f) return;
     setFailure(null);
-    if (f.size > MAX_SCAN_MB * 1024 * 1024) { setFailure({ title: 'Πολύ μεγάλο αρχείο', hint: `Δεχόμαστε έως ${MAX_SCAN_MB} MB.`, info: 'Η πράξη του myAADE είναι λίγες σελίδες.' }); return; }
+    if (f.size > MAX_SCAN_MB * 1024 * 1024) { setFailure({ title: 'Πολύ μεγάλο αρχείο', hint: `Δεχόμαστε έως ${MAX_SCAN_MB} MB.`, info: 'Το Ε9 και η πράξη του myAADE είναι λίγες σελίδες.' }); return; }
+    // ΦΩΤΟΓΡΑΦΙΑ: AI στον διακομιστή, η εικόνα δεν αποθηκεύεται. Η απάντηση περνά τον έλεγχο του photo.ts.
+    if (isPhotoFile(f)) {
+      setStep('reading'); setProgress({ page: 0, pages: 0 }); setStatus('Διαβάζω τη φωτογραφία…');
+      const res = await scanPhotoList(f, PHOTO_PROMPT, PHOTO_ASK);
+      if (res.error || res.reply === undefined) { setFailure(photoFailure(res.error, res.errorText)); setStep('pick'); return; }
+      const parsed = parsePhotoReply(res.reply, athensParts().year);
+      if (parsed.status === 'unrecognized') { setFailure(parsed.kind === 'unknown' ? wrongDoc(parsed.reason) : { title: 'Δεν βρήκαμε ακίνητα', hint: parsed.reason }); setStep('pick'); return; }
+      applyDoc(parsed.doc);
+      return;
+    }
     setStep('reading'); setProgress({ page: 0, pages: 0 }); setStatus('Ανοίγω το PDF…');
     try {
       const res = await readPdfText(f, (page, pages) => {
@@ -147,10 +178,11 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
         setStatus(`Διαβάζω τη σελίδα ${page} από ${pages}…`);
       });
       if (res.failure) { setFailure(PDF_FAILURE[res.failure]); setStep('pick'); return; }
-      setStatus('Αναγνωρίζω τα στοιχεία της πράξης…');
-      const parsed = parseEnfiaAct(res.lines);
+      setStatus('Αναγνωρίζω τα στοιχεία του εγγράφου…');
+      const parsed = parseMyaadeLines(res.lines);
       if (parsed.status === 'unrecognized') {
-        setFailure({ title: parsed.kind === 'e9' ? 'Αυτό είναι το Ε9' : 'Δεν το αναγνωρίσαμε', hint: parsed.kind === 'e9' ? 'Χρειαζόμαστε την πράξη ΕΝΦΙΑ, όχι το Ε9.' : WANT_ACT, info: parsed.reason });
+        setFailure(parsed.kind === 'unknown' ? wrongDoc(parsed.reason)
+          : { title: parsed.kind === 'e9' ? 'Το Ε9 δεν διαβάστηκε' : 'Η πράξη δεν διαβάστηκε', hint: 'Κατέβασέ το ξανά από το myAADE ή ανέβασε μια φωτογραφία του.', info: parsed.reason });
         setStep('pick'); return;
       }
       applyDoc(parsed.doc);
@@ -182,9 +214,9 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
   const doSave = async () => {
     if (step !== 'review' || !doc) return;
     if (review.blockers.length) { showBlocker(); return; }
-    setStep('saving'); setStatus('Αποθηκεύονται τα ακίνητα και ο ΕΝΦΙΑ…');
+    setStep('saving'); setStatus(review.writesTotal ? 'Αποθηκεύονται τα ακίνητα και ο ΕΝΦΙΑ…' : 'Αποθηκεύονται τα ακίνητα…');
     const res = await commitImport(supabase, {
-      userId, year: review.yearN, total: review.writesTotal ? review.totalN : null, foundCount: rows.length,
+      userId, kind: doc.kind, year: review.yearN, total: review.writesTotal ? review.totalN : null, foundCount: rows.length,
       rows: review.chosen.map(commitRowOf), known: known ?? [], docDate: doc.issueDate ?? athensToday(),
       clientId: ownerId && ownerId !== SELF_OWNER ? ownerId : null,
     });
@@ -254,6 +286,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
     return parts.length ? `Καταχώρηση · ${parts.join(' · ')}` : 'Καταχώρηση';
   })();
   const notFit = review.excess || review.leftOut;
+  const isE9 = doc?.kind === 'e9';
 
   return (
     <Modal open onClose={requestClose} size="md" title="Εισαγωγή από το myAADE"
@@ -304,22 +337,23 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
           <>
             {/* Η ΕΠΙΚΕΦΑΛΙΔΑ ΑΠΟ ΤΑ ΜΕΤΡΗΜΕΝΑ: κανένα ψηφίο δεν γράφεται με το χέρι. */}
             <h3 style={{ ...TT.h2, margin: 0 }}>
-              {`Βρήκαμε ${rows.length} ${plural(rows.length, 'ακίνητο', 'ακίνητα')}`}
+              {`Βρήκαμε ${cut.total || rows.length} ${plural(cut.total || rows.length, 'ακίνητο', 'ακίνητα')}`}
               {review.writesTotal ? ` και ΕΝΦΙΑ ${review.yearN}: ${fe(review.totalN as number)}` : ''}
             </h3>
 
-            <section id="mya-act" aria-label="Η πράξη ΕΝΦΙΑ" style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: T.sp.lg, background: 'var(--bg-elevated)', display: 'flex', flexDirection: 'column', gap: T.sp.md }}>
+            <section id="mya-act" aria-label={isE9 ? 'Το Ε9' : 'Η πράξη ΕΝΦΙΑ'} style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: T.sp.lg, background: 'var(--bg-elevated)', display: 'flex', flexDirection: 'column', gap: T.sp.md }}>
               <div style={{ display: 'flex', gap: T.sp.sm, alignItems: 'center' }}>
-                <span style={{ ...TT.bodySm, fontWeight: 600, color: 'var(--text-primary)' }}>Η πράξη ΕΝΦΙΑ</span>
+                <span style={{ ...TT.bodySm, fontWeight: 600, color: 'var(--text-primary)' }}>{isE9 ? `Το Ε9${doc.year ? ` του ${doc.year}` : ''}` : 'Η πράξη ΕΝΦΙΑ'}</span>
                 {doc.corrective && <Badge tone="info">Διορθωτική</Badge>}
                 {/* ΤΟ ΥΠΟΣΕΛΙΔΟ ΚΡΑΤΑ ΜΙΑ ΕΝΕΡΓΕΙΑ: με δύο κουμπιά η υπόδειξη έπεφτε σε δική της γραμμή. */}
                 <span style={{ marginLeft: 'auto' }}><Btn variant="ghost" className="mya-disclose" onClick={() => { setStep('pick'); setDoc(null); setRows([]); setStatus(''); }} disabled={busy}>Άλλο αρχείο</Btn></span>
               </div>
-              {/* ΕΝΑ ΠΛΕΓΜΑ, ΙΣΕΣ ΣΤΗΛΕΣ: έτος, ποσό και ιδιοκτήτης έχουν το ίδιο πλάτος. */}
-              <div className={ownerChoices.length > 1 ? 'mya-fields mya-act mya-fields-3' : 'mya-fields mya-act'}>
-                <NumberInput label="Έτος" value={year} onChange={setYear} min={2014} max={2100} />
-                <NumberInput label="Ποσό για καταβολή" suffix="€" value={total} onChange={setTotal}
-                  labelInfo={`Από αυτό βγαίνουν οι δόσεις, οι υπενθυμίσεις και το «Πλήρωσα». Αντικαθιστά κάθε άλλο σύνολο ΕΝΦΙΑ του ίδιου έτους στην εφαρμογή.${doc.paymentRef ? ` Ταυτότητα οφειλής: ${doc.paymentRef} (δεν αποθηκεύεται).` : ''}`} />
+              {/* ΕΝΑ ΠΛΕΓΜΑ, ΙΣΕΣ ΣΤΗΛΕΣ: έτος, ποσό και ιδιοκτήτης έχουν το ίδιο πλάτος.
+                  ΤΟ Ε9 ΔΕΝ ΕΧΕΙ ΠΟΣΑ: μένει μόνο ο ιδιοκτήτης, όπου χρειάζεται. */}
+              {(!isE9 || ownerChoices.length > 1) && <div className={isE9 ? 'mya-fields' : ownerChoices.length > 1 ? 'mya-fields mya-act mya-fields-3' : 'mya-fields mya-act'}>
+                {!isE9 && <NumberInput label="Έτος" value={year} onChange={setYear} min={2014} max={2100} />}
+                {!isE9 && <NumberInput label="Ποσό για καταβολή" suffix="€" value={total} onChange={setTotal}
+                  labelInfo={`Από αυτό βγαίνουν οι δόσεις, οι υπενθυμίσεις και το «Πλήρωσα». Αντικαθιστά κάθε άλλο σύνολο ΕΝΦΙΑ του ίδιου έτους στην εφαρμογή.${doc.paymentRef ? ` Ταυτότητα οφειλής: ${doc.paymentRef} (δεν αποθηκεύεται).` : ''}`} />}
                 {ownerChoices.length > 1 && (
                   <div id="mya-owner" className="mya-span">
                     <CustomSelect label="Ιδιοκτήτης" value={ownerId ?? ''} onChange={v => { setOwnerId(v || null); setOwnerFromAfm(false); }}
@@ -327,26 +361,43 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
                       options={ownerChoices.map(o => ({ value: o.id, label: o.name }))} />
                   </div>
                 )}
-              </div>
+              </div>}
               <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>
-                {schedule.length > 0 ? `${schedule.length} ${plural(schedule.length, 'δόση', 'δόσεις')} · πρώτη ${grDate(schedule[0].date)}`
+                {isE9 ? 'Το Ε9 δεν έχει ΕΝΦΙΑ · το ποσό μπαίνει από την πράξη' : schedule.length > 0 ? `${schedule.length} ${plural(schedule.length, 'δόση', 'δόσεις')} · πρώτη ${grDate(schedule[0].date)}`
                   : review.noDebt ? 'Χωρίς ποσό για πληρωμή · καμία δόση' : 'Χωρίς ποσό · καμία δόση'}
               </span>
             </section>
 
-            {review.otherYear && review.yearN != null && (
+            {!isE9 && review.otherYear && review.yearN != null && (
               <Note tone="info" info={`Οι δόσεις μπαίνουν με τις ημερομηνίες του ${review.yearN}. Για τον φετινό ΕΝΦΙΑ, κατέβασε την πράξη του ${athensParts().year}.`}>
                 {`Η πράξη είναι του ${review.yearN}.`}
               </Note>
             )}
             {afmClash && (
-              <Note tone="warning" info="Το ΑΦΜ της πράξης δεν είναι κανενός ιδιοκτήτη που έχεις στην εφαρμογή. Αν είναι δική σου, συνιδιοκτήτη ή πελάτη σου, συνέχισε. Αλλιώς διάλεξε άλλο αρχείο.">
-                Η πράξη είναι σε άλλο ΑΦΜ.
+              <Note tone="warning" info={`Το ΑΦΜ ${isE9 ? 'του Ε9' : 'της πράξης'} δεν είναι κανενός ιδιοκτήτη που έχεις στην εφαρμογή. Αν είναι δικό σου, συνιδιοκτήτη ή πελάτη σου, συνέχισε. Αλλιώς διάλεξε άλλο αρχείο.`}>
+                {isE9 ? 'Το Ε9 είναι σε άλλο ΑΦΜ.' : 'Η πράξη είναι σε άλλο ΑΦΜ.'}
+              </Note>
+            )}
+            {doc.source === 'photo' && (
+              <Note tone="info" info="Η φωτογραφία διαβάστηκε με AI στον διακομιστή και δεν αποθηκεύτηκε. Τίποτα δεν γράφεται πριν πατήσεις «Καταχώρηση».">
+                Διαβάστηκε από φωτογραφία. Έλεγξε κάθε γραμμή.
+              </Note>
+            )}
+            {cut.hidden > 0 && (
+              <Note tone="info" info={doc.source === 'photo'
+                ? `Μία εισαγωγή περνά έως ${BULK_MAX} ακίνητα. Για τα υπόλοιπα, τράβηξε δεύτερη φωτογραφία από το σημείο όπου σταματά η λίστα.`
+                : `Μία εισαγωγή περνά έως ${BULK_MAX} ακίνητα. Ανέβασε ξανά το ίδιο αρχείο μετά την καταχώρηση: όσα πέρασαν αναγνωρίζονται από τον ΑΤΑΚ και φαίνονται τα επόμενα.`}>
+                {`Το έγγραφο έχει ${cut.total} ακίνητα. Φαίνονται τα πρώτα ${rows.length}· τα υπόλοιπα ${cut.hidden} με δεύτερη εισαγωγή.`}
+              </Note>
+            )}
+            {(doc.landRows ?? 0) > 0 && (
+              <Note tone="info" info="Τα γήπεδα (Πίνακας 2 του Ε9) έχουν άλλα στοιχεία από τα κτίσματα και δεν περνούν αυτόματα. Πρόσθεσέ τα με το «Νέο ακίνητο».">
+                {`${doc.landRows} ${plural(doc.landRows ?? 0, 'γήπεδο του Πίνακα 2 δεν περνά', 'γήπεδα του Πίνακα 2 δεν περνούν')} αυτόματα.`}
               </Note>
             )}
             {doc.warnings.length > 0 && (
               <Note tone="warning" info={doc.warnings.join(' ')}>
-                {`Έλεγξε ${doc.warnings.length} ${plural(doc.warnings.length, 'σημείο', 'σημεία')} της πράξης.`}
+                {`Έλεγξε ${doc.warnings.length} ${plural(doc.warnings.length, 'σημείο', 'σημεία')} ${isE9 ? 'του Ε9' : 'της πράξης'}.`}
               </Note>
             )}
             {notFit > 0 && Number.isFinite(slots) && (
@@ -356,7 +407,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
             )}
 
             <SelectAll total={rows.length} chosen={review.chosen.length} onAll={on => setRows(rs => rs.map(r => ({ ...r, include: on })))} />
-            <ul aria-label="Ακίνητα της πράξης" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: T.sp.sm }}>
+            <ul aria-label={isE9 ? 'Ακίνητα του Ε9' : 'Ακίνητα της πράξης'} style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: T.sp.sm }}>
               {rows.map((r, i) => (
                 <PropertyRow key={r.key} row={r} index={i} known={known ?? []} rowId={rowDomId(r.key)} forceOpen={openKey === r.key}
                   onToggle={() => setRows(rs => rs.map(x => (x.key === r.key ? { ...x, include: !x.include } : x)))}

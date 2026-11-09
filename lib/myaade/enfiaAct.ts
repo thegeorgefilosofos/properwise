@@ -31,7 +31,7 @@ import { roundHalfUp } from '@/lib/core/money';
 import { fe } from '@/lib/core/format';
 import { enfiaInstalmentCount } from '@/lib/tools/enfiaSchedule';
 import { detectDocKind, HEAD_LINES } from './detect';
-import { HEADER_LABELS, COLUMN_LABELS, CORRECTIVE, FORM_2017, type ColumnField } from './labels';
+import { HEADER_LABELS, COLUMN_LABELS, CORRECTIVE, FORM_2017, FORM_2026, type ColumnField } from './labels';
 import { isValidRf, rfCompact } from './rf';
 import type { MyAadeImport, MyAadeParse, MyAadeProperty } from './types';
 
@@ -112,7 +112,10 @@ function headerValue<T extends number | string>(
   for (const re of labels) {
     const found: T[] = [];
     for (const vals of valuesAfter(lines, re)) {
-      const v = vals.map(PARSERS[kind]).find(x => x !== null);
+      // ΗΜΕΡΟΜΗΝΙΑ ΜΟΝΟ ΑΜΕΣΩΣ ΜΕΤΑ ΤΗΝ ΕΤΙΚΕΤΑ. Στην πράξη του 2026 το «ΠΛΗΡΩΤΕΟ
+      // ΜΕΧΡΙ» τυπώνεται στη γραμμή της 11ης δόσης: η πρώτη ημερομηνία της
+      // γραμμής ήταν η λήξη εκείνης, όχι της πρώτης.
+      const v = (kind === 'date' ? vals.slice(0, 1) : vals).map(PARSERS[kind]).find(x => x !== null);
       if (v !== undefined && v !== null) found.push(v as T);
     }
     const distinct = [...new Set(found)];
@@ -193,16 +196,25 @@ function byShape(cells: string[]): MyAadeProperty {
 const tokensOf = (line: string) => line.split(/[\t ]+/).map(t => t.trim()).filter(Boolean);
 const isForm2017 = (lines: readonly string[]) => lines.some(l => FORM_2017.marker.test(fold(l)));
 
-/** Η γραμμή «ΣΥΝΟΛΑ»: πέντε ποσά με σταθερή σειρά, αλλιώς τίποτα. */
-function form2017Totals(lines: readonly string[]): { main: number; value: number; supp: number; discount: number; owed: number } | null {
+/**
+ * Η γραμμή «ΣΥΝΟΛΑ», σε μία από τις δύο γνωστές διατάξεις, αλλιώς τίποτα:
+ *   · 6.0-2017: πέντε ποσά, κύριος, αξία, συμπληρωματικός, έκπτωση, οφειλή·
+ *   · 2026 (ποσά με «€»): αξία, κύριος, έκπτωση/προσαύξηση, [έκπτωση άρθρου 13],
+ *     ποσό ΕΝΦΙΑ. Συμπληρωματικός φόρος δεν υπάρχει πια: μένει `null`.
+ */
+function formTotals(lines: readonly string[]): { main: number; supp: number | null; owed: number } | null {
   for (const line of lines) {
     const cells = cellsOf(line);
-    const k = cells.findIndex(c => FORM_2017.totalsRow.test(fold(c)));
+    const k = cells.findIndex(c => FORM_2017.totalsRow.test(fold(c)) || FORM_2026.totalsRow.test(fold(c)));
     if (k < 0) continue;
     const money = cells.slice(k + 1).flatMap(tokensOf).map(asMoney).filter((n): n is number => n !== null);
+    if (cells.slice(k + 1).some(c => c.includes('€'))) {
+      if (money.length !== 4 && money.length !== 5) return null;
+      return { main: money[1], supp: null, owed: money[money.length - 1] };
+    }
     if (money.length !== 5) return null;
-    const [main, value, supp, discount, owed] = money;
-    return { main, value, supp, discount, owed };
+    const [main, , supp, , owed] = money;
+    return { main, supp, owed };
   }
   return null;
 }
@@ -219,8 +231,11 @@ function form2017Instalments(lines: readonly string[]): number | null {
 
 /**
  * Μία γραμμή ακινήτου του εντύπου. Τα πεδία αναγνωρίζονται από τη θέση τους ως
- * προς σταθερά σημεία (ΑΤΑΚ, ποσοστό με πέντε δεκαδικά, ένδειξη ηλεκτροδότησης)
- * και όχι από επικεφαλίδες, που το έντυπο τυπώνει σε πολλές γραμμές.
+ * προς σταθερά σημεία (ΑΤΑΚ, Τ.Κ., ποσοστό με πέντε δεκαδικά, ένδειξη
+ * ηλεκτροδότησης) και όχι από επικεφαλίδες, που το έντυπο τυπώνει σε πολλές
+ * γραμμές. Ίδια συνάρτηση για το 6.0-2017 και την πράξη του 2026: στο πρώτο ο
+ * Τ.Κ. ακολουθεί αμέσως τον ΑΤΑΚ, στη δεύτερη πρώτα το υπόλοιπο της οδού και
+ * ο αριθμός («ΟΔΟΣ, 10, 10000»).
  */
 function form2017Property(line: string, prev: string): MyAadeProperty | null {
   const toks = tokensOf(line);
@@ -228,21 +243,42 @@ function form2017Property(line: string, prev: string): MyAadeProperty | null {
   if (ai < 0) return null;
   const p = emptyProperty();
   p.atak = toks[ai];
-  const tk = /^\d{5}$/.test(toks[ai + 1] ?? '') ? toks[ai + 1] : null;
+  let ti = -1;
+  for (let k = ai + 1; k < Math.min(toks.length, ai + 8); k++) {
+    if (/^\d{5}$/.test(toks[k].replace(/,$/, ''))) { ti = k; break; }
+    if (asMoney(toks[k]) !== null) break;
+  }
+  const tk = ti >= 0 ? toks[ti].replace(/,$/, '') : null;
+  // Το υπόλοιπο της οδού και ο αριθμός, χωρίς τα κόμματα του εντύπου.
+  const rest = ti > ai + 1 ? toks.slice(ai + 1, ti).map(t => t.replace(/,$/, '')).filter(Boolean).join(' ') : '';
+  const base = Math.max(ai + 1, ti);
   const addr = clean(prev).replace(/,?\s*T\.?\s*K\.?\s*$/i, '');
   if (addr && /\p{L}{3,}/u.test(addr) && !RE_ATAK.test(prev)) {
-    p.address = tk ? `${addr}, Τ.Κ. ${tk}` : addr;
     const parts = addr.split(',').map(x => x.trim()).filter(Boolean);
-    if (parts.length >= 3) p.municipality = parts[1];
+    if (rest && parts.length >= 3) {
+      // Πράξη 2026: «Νομός, Δήμος, αρχή οδού» από πάνω, «υπόλοιπο, αριθμός, Τ.Κ.» εδώ.
+      p.address = `${parts.slice(2).join(' ')} ${rest}`.trim();
+      p.prefecture = parts[0];
+      p.municipality = parts[1];
+    } else {
+      p.address = tk ? `${addr}, Τ.Κ. ${tk}` : addr;
+      if (parts.length >= 3) p.municipality = parts[1];
+    }
   }
+  if (tk) p.postcode = tk;
   const oi = toks.findIndex(t => FORM_2017.ownership.test(t));
   if (oi >= 0) { const n = asNumber(toks[oi].replace(/(,\d{2})\d+$/, '$1')); if (n !== null && n > 0 && n <= 100) p.ownershipPct = n; }
-  // Η πρώτη επιφάνεια μετά τον ΑΤΑΚ (με δύο δεκαδικά) είναι οι κύριοι χώροι· ο αμέσως προηγούμενος ακέραιος, ο όροφος.
-  const si = toks.findIndex((t, i) => i > ai + 1 && (oi < 0 || i < oi) && asMoney(t) !== null);
+  // Η πρώτη επιφάνεια μετά τον ΑΤΑΚ (με δύο δεκαδικά) είναι οι κύριοι χώροι· ο
+  // αμέσως προηγούμενος ακέραιος ο όροφος, ο πριν από αυτόν η κατηγορία ακινήτου.
+  const si = toks.findIndex((t, i) => i > base && (oi < 0 || i < oi) && asMoney(t) !== null);
   if (si >= 0) {
     const n = asMoney(toks[si]); if (n !== null && n > 0) p.sqm = n;
-    if (/^-?\d{1,2}$/.test(toks[si - 1] ?? '') && si - 1 > ai + 1) p.floor = toks[si - 1];
+    if (/^-?\d{1,2}$/.test(toks[si - 1] ?? '') && si - 1 > base) p.floor = toks[si - 1];
+    if (/^\d{1,2}$/.test(toks[si - 2] ?? '') && si - 2 > base && p.floor != null) p.category = toks[si - 2];
+    const y = Number(toks[si + 1]);
+    if (/^\d{4}$/.test(toks[si + 1] ?? '') && y >= 1800 && y <= 2100 && (oi < 0 || si + 1 < oi)) p.yearBuilt = y;
   }
+  if (oi > 0 && /^\d$/.test(toks[oi - 1]) && (si < 0 || oi - 1 > si + 1)) p.right = toks[oi - 1];
   // Μετά την ένδειξη ηλεκτροδότησης: τιμή ζώνης, κύριος φόρος ακινήτου, αξία ακινήτου.
   const pi = toks.findIndex(t => FORM_2017.powered.test(t));
   const tail = (pi >= 0 ? toks.slice(pi + 1) : []).map(asMoney).filter((n): n is number => n !== null);
@@ -322,9 +358,9 @@ export function parseEnfiaAct(lines: readonly string[]): MyAadeParse {
 
   // Το ποσό: πρώτα «για καταβολή», μετά «συνολικός φόρος». Ποτέ υπολογισμένο.
   const payable = headerValue<number>(lines, HEADER_LABELS.payable, 'money');
-  const form = isForm2017(lines) ? form2017Totals(lines) : null;
+  const form = isForm2017(lines) ? formTotals(lines) : null;
   const grossLabelled = headerValue<number>(lines, HEADER_LABELS.total, 'money');
-  // Το έντυπο 6.0-2017 δεν έχει ετικέτα «συνολικός φόρος»: το «ΠΟΣΟ ΟΦΕΙΛΗΣ» είναι η τελευταία στήλη των ΣΥΝΟΛΩΝ.
+  // Τα έντυπα 6.0-2017 και 2026 δεν έχουν ετικέτα «συνολικός φόρος»: το ποσό είναι η τελευταία στήλη των ΣΥΝΟΛΩΝ.
   const gross = grossLabelled.value == null && !grossLabelled.conflict.length && form ? { value: form.owed, conflict: [] as number[] } : grossLabelled;
   for (const [name, r] of [['ποσό για καταβολή', payable], ['συνολικό φόρο', gross]] as const) {
     if (r.conflict.length) warnings.push(`Βρέθηκαν διαφορετικές τιμές για ${name}: ${r.conflict.map(fe).join(', ')}. Γράψε το σωστό.`);
@@ -340,7 +376,7 @@ export function parseEnfiaAct(lines: readonly string[]): MyAadeParse {
   const mainL = headerValue<number>(lines, HEADER_LABELS.mainTax, 'money');
   const suppL = headerValue<number>(lines, HEADER_LABELS.supplementaryTax, 'money');
   const main = mainL.value == null && form ? { value: form.main } : mainL;
-  const supp = suppL.value == null && form ? { value: form.supp } : suppL;
+  const supp = suppL.value == null && form && form.supp != null ? { value: form.supp } : suppL;
   const countL = headerValue<number>(lines, HEADER_LABELS.instalmentCount, 'int');
   const count = countL.value == null && !countL.conflict.length ? { value: form2017Instalments(lines), conflict: [] as number[] } : countL;
   const each = headerValue<number>(lines, HEADER_LABELS.instalmentAmount, 'money');

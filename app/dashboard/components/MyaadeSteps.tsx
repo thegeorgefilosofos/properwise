@@ -19,13 +19,15 @@ import { Fragment, useId, useState, type ReactNode } from 'react';
 import { DropZone as FileDropZone } from './DropZone';
 import { CheckCircle2, ChevronDown, ChevronRight, Info, Lock, AlertTriangle, XCircle } from 'lucide-react';
 import { T, TT, Btn, Badge, fe, fp, SelectBox } from '@/components/Theme';
+import { fn } from '@/lib/core/format';
 import type { Tone } from '@/components/tokens';
 import { TextInput, NumberInput, CustomSelect, InfoDot } from './UIComponents';
 import { Tooltip } from './calendar/Bits';
 import { AADE_DESTINATIONS } from '@/lib/tax/aade';
 import { atakDigits, isAtak, ATAK_DIGITS } from '@/lib/property/atak';
 import { plural } from '@/lib/core/greek';
-import { isNew, toNumber, type Draft } from '@/lib/myaade/review';
+import { isNew, toNumber, BULK_MAX, type Draft } from '@/lib/myaade/review';
+import { E9_RIGHTS } from '@/lib/myaade/labels';
 import type { KnownProperty } from '@/lib/myaade/match';
 
 // Οι κανόνες που θέλουν media query. Ένα σημείο, με πρόθεμα `mya-`.
@@ -92,7 +94,10 @@ const stepNo: React.CSSProperties = {
   background: 'var(--accent-soft)', color: 'var(--accent)', fontFamily: T.font.num, fontSize: 'var(--fs-xs)', fontWeight: 600,
 };
 
-/** Τα τρία βήματα του myAADE. Η διαδρομή του μενού βγαίνει από το μητρώο (lib/tax/aade.ts). */
+/**
+ * Τα τρία βήματα του myAADE. Η διαδρομή του μενού βγαίνει από το μητρώο
+ * (lib/tax/aade.ts): το Ε9 και ο ΕΝΦΙΑ είναι η ίδια εφαρμογή, με τα ίδια βήματα.
+ */
 export function MyaadeSteps() {
   const d = AADE_DESTINATIONS.enfia;
   const crumbs = d.steps.slice(0, 3);
@@ -106,10 +111,10 @@ export function MyaadeSteps() {
         </Fragment>
       ))}
     </span>,
-    <span key="save">Αποθήκευση της πράξης ως PDF</span>,
+    <span key="save">Αποθήκευση του Ε9 ή της πράξης ως PDF</span>,
   ];
   return (
-    <ol aria-label="Πώς κατεβάζεις την πράξη" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: T.sp.sm }}>
+    <ol aria-label="Πώς κατεβάζεις το Ε9 ή την πράξη" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: T.sp.sm }}>
       {items.map((c, i) => (
         <li key={i} style={{ display: 'flex', gap: T.sp.md, alignItems: 'center' }}>
           <span aria-hidden style={stepNo}>{i + 1}</span>
@@ -120,16 +125,21 @@ export function MyaadeSteps() {
   );
 }
 
-/** Το πλακίδιο του αρχείου (DropZone.tsx) με τα λεκτικά της πράξης ΕΝΦΙΑ. */
+/** Τι δέχεται το πλακίδιο: το PDF του myAADE ή φωτογραφία του (scanDoc.ts: PHOTO_LIST_TYPES). */
+export const MYAADE_ACCEPT = 'application/pdf,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif';
+/** Πώς διαβάζεται κάθε αρχείο. Το ίδιο λέει και η Πολιτική απορρήτου. */
+export const MYAADE_PRIVACY = 'Το PDF διαβάζεται στον περιηγητή σου και δεν ανεβαίνει πουθενά. Η φωτογραφία διαβάζεται με AI στον διακομιστή και δεν αποθηκεύεται. Κρατάμε μόνο ό,τι επιβεβαιώσεις: τα ακίνητα και, από την πράξη, το ποσό του ΕΝΦΙΑ. Το ΑΦΜ του εγγράφου δεν αποθηκεύεται.';
+
+/** Το πλακίδιο του αρχείου (DropZone.tsx) με τα λεκτικά του Ε9 και της πράξης ΕΝΦΙΑ. */
 export function DropZone({ onFile, disabled, inputId }: { onFile: (f: File | undefined) => void; disabled: boolean; inputId: string }) {
   return (
     <FileDropZone onFile={onFile} disabled={disabled} inputId={inputId}
-      title="Ανέβασε την πράξη" hint="PDF από το myAADE" accept="application/pdf,.pdf" inputLabel="Η πράξη ΕΝΦΙΑ σε PDF"
+      title="Ανέβασε Ε9 ή πράξη ΕΝΦΙΑ" hint={`PDF ή φωτογραφία · έως ${BULK_MAX} ακίνητα`} accept={MYAADE_ACCEPT} inputLabel="Το Ε9 ή η πράξη ΕΝΦΙΑ, σε PDF ή φωτογραφία"
       foot={
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: T.sp.xs, ...TT.caption }}>
           <Lock size={13} aria-hidden />
-          <span>Διαβάζεται μόνο στη συσκευή σου</span>
-          <InfoDot text="Το PDF διαβάζεται στον περιηγητή σου και δεν ανεβαίνει πουθενά. Δεν αποθηκεύεται. Κρατάμε μόνο ό,τι επιβεβαιώσεις: τα ακίνητα και το ποσό του ΕΝΦΙΑ. Το ΑΦΜ της πράξης δεν αποθηκεύεται." />
+          <span>Το PDF διαβάζεται μόνο στη συσκευή σου</span>
+          <InfoDot text={MYAADE_PRIVACY} />
         </div>
       } />
   );
@@ -213,7 +223,16 @@ export function PropertyRow({ row, index, known, onToggle, onPatch, rowId, force
     row.municipality,
     isAtak(row.atak) ? `ΑΤΑΚ ${row.atak}` : null,
     toNumber(row.sqm) ? `${row.sqm} τ.μ.` : null,
+    row.floor.trim() ? `όροφος ${row.floor.trim()}` : null,
+    row.yearBuilt.trim() ? `έτος ${row.yearBuilt.trim()}` : null,
     pct != null ? fp(pct) : null,
+  ].filter(Boolean).join(' · ');
+  // Ό,τι τυπώνει το Ε9 και δεν γράφεται: φαίνεται στην Επεξεργασία, για έλεγχο.
+  const extra = [
+    row.district && row.district !== row.municipality ? `Διαμέρισμα ${row.district}` : null,
+    row.category ? `Κατηγορία Ε9: ${row.category}` : null,
+    row.right ? `Δικαίωμα: ${E9_RIGHTS[row.right] ?? `κωδικός ${row.right}`}` : null,
+    row.auxSqm ? `Βοηθητικοί χώροι ${fn(row.auxSqm, 2)} τ.μ.` : null,
   ].filter(Boolean).join(' · ');
   const badges = (
     <>
@@ -265,7 +284,10 @@ export function PropertyRow({ row, index, known, onToggle, onPatch, rowId, force
             <NumberInput label="Επιφάνεια" suffix="τ.μ." value={row.sqm} onChange={v => onPatch({ sqm: v })} />
             <NumberInput label="Ποσοστό" suffix="%" value={row.pct} onChange={v => onPatch({ pct: v })} max={100} />
             <TextInput label="Όροφος" value={row.floor} onChange={v => onPatch({ floor: v })} />
+            <TextInput label="Τ.Κ." value={row.postcode} onChange={v => onPatch({ postcode: v.replace(/\D/g, '').slice(0, 5) })} inputMode="numeric" />
+            <TextInput label="Έτος κατασκευής" value={row.yearBuilt} onChange={v => onPatch({ yearBuilt: v.replace(/\D/g, '').slice(0, 4) })} inputMode="numeric" />
           </div>
+          {extra && <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>{extra}</span>}
           {atakBad && <span style={{ ...TT.caption, color: 'var(--negative)' }}>{`Ο ΑΤΑΚ είναι ${ATAK_DIGITS} ψηφία.`}</span>}
         </div>
       )}

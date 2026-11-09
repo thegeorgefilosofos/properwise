@@ -12,7 +12,7 @@
 import { plural, parseAmount } from '@/lib/core/greek';
 import { atakDigits, isAtak, ATAK_DIGITS } from '@/lib/property/atak';
 import { matchProperty, type KnownProperty, type MatchResult } from './match';
-import { overLimit, excessOf } from './planLimit';
+import { overLimit, excessOf, BULK_MAX } from './planLimit';
 import type { MyAadeImport } from './types';
 
 /** Μία γραμμή όπως τη διορθώνει ο χρήστης, μέχρι να αποθηκευτεί. */
@@ -28,7 +28,16 @@ export interface Draft {
   sqm: string;
   pct: string;
   floor: string;
+  /** Τ.Κ. και έτος κατασκευής: γράφονται στο νέο ακίνητο, στο υπάρχον μόνο αν λείπουν. */
+  postcode: string;
+  yearBuilt: string;
   municipality: string | null;
+  /** Μόνο για την προβολή: δεν γράφονται. */
+  prefecture: string | null;
+  district: string | null;
+  category: string | null;
+  right: string | null;
+  auxSqm: number | null;
   kind: string | null;
   tax: number | null;
   /** Κάποιο πεδίο βγήκε από τη θέση του: «Έλεγξέ το». */
@@ -81,14 +90,38 @@ export const isNew = (d: Draft): boolean => d.match.status === 'new' || (d.match
 export const existingIdOf = (d: Draft): string | null =>
   (d.match.status === 'exists' || (d.match.status === 'maybe' && d.same === true) ? d.match.id : null);
 
-/** Οι γραμμές της πράξης, με ταίριασμα και όριο πακέτου. Οι νέες πέρα από το όριο ξεκινούν ξετσεκαρισμένες. */
+export { BULK_MAX };
+
+/**
+ * Ποια ακίνητα του εγγράφου φαίνονται: έως `max`, με τη σειρά του εγγράφου,
+ * ΠΡΩΤΑ όσα δεν υπάρχουν ήδη (ίδιος ΑΤΑΚ). Έτσι η δεύτερη εισαγωγή του ίδιου
+ * αρχείου δείχνει τα επόμενα και όχι ξανά τα ίδια. `hidden` είναι όσα έμειναν
+ * έξω, μαζί με όσα το έγγραφο έχει αλλά δεν δόθηκαν (`found`, π.χ. φωτογραφία).
+ */
+export function bulkWindow(doc: MyAadeImport, known: readonly KnownProperty[], max = BULK_MAX): { shown: number[]; total: number; hidden: number } {
+  const total = Math.max(doc.found ?? 0, doc.properties.length);
+  const order = doc.properties.map((p, i) => ({ i, exists: matchProperty(p, known).status === 'exists' }));
+  const shown = [...order.filter(o => !o.exists), ...order.filter(o => o.exists)].slice(0, max).map(o => o.i).sort((a, b) => a - b);
+  return { shown, total, hidden: total - shown.length };
+}
+
+/** Το έτος κατασκευής για πεδίο: τέσσερα ψηφία ή κενό. */
+const yearText = (n: number | null | undefined): string => (n != null && Number.isInteger(n) ? String(n) : '');
+
+/** Οι γραμμές του εγγράφου (έως BULK_MAX), με ταίριασμα και όριο πακέτου. Οι νέες πέρα από το όριο ξεκινούν ξετσεκαρισμένες. */
 export function buildDrafts(doc: MyAadeImport, known: readonly KnownProperty[], slots: number): Draft[] {
-  const drafts: Draft[] = doc.properties.map((p, i) => ({
-    key: i, include: true, match: matchProperty(p, known), same: null,
-    name: suggestName(p.kind, p.address, p.floor, i), address: p.address ?? '', atak: p.atak ?? '',
-    sqm: toText(p.sqm), pct: toText(p.ownershipPct), floor: p.floor ?? '',
-    municipality: p.municipality, kind: p.kind, tax: p.tax, check: p.check, overPlan: false,
-  }));
+  const drafts: Draft[] = bulkWindow(doc, known).shown.map(i => {
+    const p = doc.properties[i];
+    return {
+      key: i, include: true, match: matchProperty(p, known), same: null,
+      name: suggestName(p.kind, p.address, p.floor, i), address: p.address ?? '', atak: p.atak ?? '',
+      sqm: toText(p.sqm), pct: toText(p.ownershipPct), floor: p.floor ?? '',
+      postcode: p.postcode ?? '', yearBuilt: yearText(p.yearBuilt),
+      municipality: p.municipality, prefecture: p.prefecture ?? null, district: p.district ?? null,
+      category: p.category ?? null, right: p.right ?? null, auxSqm: p.auxSqm ?? null,
+      kind: p.kind, tax: p.tax, check: p.check, overPlan: false,
+    };
+  });
   const over = new Set(overLimit(drafts.filter(r => r.match.status === 'new').map(r => r.key), slots));
   return drafts.map(r => (over.has(r.key) ? { ...r, include: false, overPlan: true } : r));
 }
@@ -131,7 +164,7 @@ export interface ReviewState {
   /** Η πράξη είναι άλλου έτους από το τρέχον (π.χ. περσινή). */
   otherYear: boolean;
   /** Γιατί δεν γίνεται ακόμη η αποθήκευση, με σειρά προτεραιότητας. Κενό = γίνεται. Σύντομα: χωρούν σε μία γραμμή. */
-  blockers: { id: 'limit' | 'owner' | 'none' | 'maybe' | 'excess' | 'atak' | 'name' | 'total' | 'year'; text: string }[];
+  blockers: { id: 'limit' | 'owner' | 'none' | 'maybe' | 'excess' | 'atak' | 'name' | 'postcode' | 'built' | 'total' | 'year'; text: string }[];
 }
 
 /** Ό,τι χρειάζεται η οθόνη για να ξέρει αν και τι αποθηκεύεται. Καθαρή συνάρτηση. */
@@ -158,6 +191,8 @@ export function deriveReview(i: ReviewInput): ReviewState {
   if (excess) b.push({ id: 'excess', text: `Ξετσέκαρε ${excess} ή δες τα πακέτα.` });
   if (chosen.some(r => r.atak.trim() !== '' && !isAtak(r.atak))) b.push({ id: 'atak', text: `Ο ΑΤΑΚ θέλει ${ATAK_DIGITS} ψηφία.` });
   if (chosen.some(r => isNew(r) && !r.name.trim())) b.push({ id: 'name', text: 'Δώσε όνομα στο νέο ακίνητο.' });
+  if (chosen.some(r => r.postcode.trim() !== '' && !/^\d{5}$/.test(r.postcode.trim()))) b.push({ id: 'postcode', text: 'Ο Τ.Κ. θέλει 5 ψηφία.' });
+  if (chosen.some(r => r.yearBuilt.trim() !== '' && yearBuiltOf(r.yearBuilt, i.currentYear) === null)) b.push({ id: 'built', text: 'Διόρθωσε το έτος κατασκευής.' });
   if (totalBad) b.push({ id: 'total', text: 'Διόρθωσε το ποσό.' });
   if (totalN !== null && totalN > 0 && yearN === null) b.push({ id: 'year', text: 'Συμπλήρωσε το έτος.' });
   return {
@@ -167,10 +202,23 @@ export function deriveReview(i: ReviewInput): ReviewState {
   };
 }
 
-/** Η γραμμή όπως φεύγει για αποθήκευση. */
+/** Έτος κατασκευής από πεδίο: ακέραιος από 1800 ως το επόμενο έτος, αλλιώς `null`. */
+export function yearBuiltOf(s: string, currentYear: number): number | null {
+  const t = s.trim();
+  if (!/^\d{4}$/.test(t)) return null;
+  const n = Number(t);
+  return n >= 1800 && n <= currentYear + 1 ? n : null;
+}
+
+/**
+ * Η γραμμή όπως φεύγει για αποθήκευση. Το έτος κατασκευής το έχει ήδη ελέγξει
+ * το εμπόδιο «built» με το τρέχον έτος· εδώ μένει μόνο το εύρος της μορφής.
+ * (Ένα όρισμα μόνο: καλείται ως `rows.map(commitRowOf)`.)
+ */
 export function commitRowOf(d: Draft) {
   return {
     existingId: existingIdOf(d), name: d.name, address: d.address || null, atak: isAtak(d.atak) ? atakDigits(d.atak) : null,
     sqm: toNumber(d.sqm), ownershipPct: toNumber(d.pct), floor: d.floor || null,
+    postalCode: /^\d{5}$/.test(d.postcode.trim()) ? d.postcode.trim() : null, yearBuilt: yearBuiltOf(d.yearBuilt, 2099),
   };
 }

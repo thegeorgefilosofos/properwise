@@ -56,7 +56,7 @@ interface Props {
   userId: string;
   onAddProperty: () => void;                 // άνοιγμα οδηγού προσθήκης
   onScanCreate: () => void;                  // δημιουργία + άνοιγμα σάρωσης εγγράφου
-  onMyaade?: () => void;                     // εισαγωγή ακινήτων και ΕΝΦΙΑ από το PDF του myAADE
+  onMyaade?: () => void;                     // μαζική καταχώρηση από το Ε9 ή την πράξη ΕΝΦΙΑ (PDF ή φωτογραφία)
   onProfile?: (v: 'individual' | 'professional') => void;
   onClose: () => void;                       // «Αργότερα» / κλείσιμο
 }
@@ -313,7 +313,7 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
                 όχι λέξεις μέσα σε πρόταση. Το accent μελάνι της σάρωσης γίνεται
                 text-secondary — τον ρόλο τον δίνει πλέον η θέση, όχι το χρώμα. */}
             <Btn variant="ghost" onClick={scanCreate}>Σάρωση εγγράφου</Btn>
-            {onMyaade && <Btn variant="ghost" onClick={myaade}>Από το myAADE</Btn>}
+            {onMyaade && <Btn variant="ghost" onClick={myaade}>Από Ε9 ή ΕΝΦΙΑ</Btn>}
             <Btn variant="ghost" onClick={later}>Αργότερα</Btn>
           </div>
         )}

@@ -597,7 +597,7 @@ export default function Dashboard() {
                   πριν δώσει οτιδήποτε. Δευτερεύον, δίπλα στην κύρια ενέργεια. */}
               <div style={{display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap'}}>
                 <Btn variant="primary" onClick={() => tryAddProperty('empty')}>Πρόσθεσε το ακίνητό σου</Btn>
-                <Btn variant="secondary" onClick={() => setMyaadeOpen(true)}>Εισαγωγή από το myAADE</Btn>
+                <Btn variant="secondary" onClick={() => setMyaadeOpen(true)}>Από Ε9 ή ΕΝΦΙΑ</Btn>
                 <Btn variant="secondary" onClick={() => setShowPreview(true)}>Δες ένα παράδειγμα</Btn>
               </div>
             </div>
@@ -949,6 +949,8 @@ export default function Dashboard() {
           ίδιο ποσό (useDashboard, commitEnfiaCarry). */}
       {showAddModal&&user&&<AddPropertyWizard userId={user.id}
         initial={enfiaCarry ? enfiaCarryWizard(enfiaCarry.inputs) : undefined}
+        // ΧΩΡΙΣ ΚΑΝΕΝΑ ΑΚΙΝΗΤΟ, ΠΡΩΤΑ Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ (απόφαση ιδιοκτήτη 09/11/2026).
+        onBulkImport={properties.length === 0 ? ()=>{ setShowAddModal(false); setScanAfterAdd(false); setMyaadeOpen(true); } : undefined}
         onClose={()=>{setShowAddModal(false);setScanAfterAdd(false);dropEnfiaCarry();}} onSaved={async(id)=>{
         setShowAddModal(false);
         await commitEnfiaCarry(id);
