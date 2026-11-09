@@ -21,6 +21,7 @@ import { SetRow } from './SettingsKit';
 import { notify, notifyError } from '@/components/Toast';
 import { confirmDialog } from '@/components/confirmBus';
 import { athensToday, athensTime } from '@/lib/core/time';
+import { FIRMS_CHANGED } from '@/lib/data/accountantLink';
 import {
   ownerFirms, setLevel, revokeFirm, firmDay, undoFirmDay, undoDaysFrom, inAthensDay, daySentence, reasonText, logLine,
   LEVELS, LEVEL_LABEL, LEVEL_HINT, ROLE_LABEL, KIND_LABEL,
@@ -30,17 +31,25 @@ import {
 export function FirmAccess() {
   const supabase = useMemo(() => createClient(), []);
   const [firms, setFirms] = useState<OwnerFirm[] | null>(null);
+  // «ΔΕΝ ΔΙΑΒΑΣΤΗΚΕ» ΔΕΝ ΕΙΝΑΙ «ΚΑΝΕΝΑ ΓΡΑΦΕΙΟ». Η αποτυχία έκρυβε όλη την
+  // ενότητα μαζί με την «Ανάκληση του γραφείου»: ο ιδιοκτήτης δεν είχε πού
+  // να κόψει την πρόσβαση τη στιγμή που ίσως το ήθελε.
+  const [failed, setFailed] = useState(false);
 
   const load = useCallback(async () => {
     const r = await ownerFirms(supabase);
+    setFailed(!r.ok);
     setFirms(r.ok ? r.data.filter(f => f.firmId) : []);
   }, [supabase]);
 
   useEffect(() => {
     let alive = true;
-    ownerFirms(supabase).then(r => { if (alive) setFirms(r.ok ? r.data.filter(f => f.firmId) : []); });
-    return () => { alive = false; };
-  }, [supabase]);
+    ownerFirms(supabase).then(r => { if (!alive) return; setFailed(!r.ok); setFirms(r.ok ? r.data.filter(f => f.firmId) : []); });
+    // Η ανάκληση του συνδέσμου λογιστή (TabSettings) κόβει και τα γραφεία.
+    const again = () => { void load(); };
+    window.addEventListener(FIRMS_CHANGED, again);
+    return () => { alive = false; window.removeEventListener(FIRMS_CHANGED, again); };
+  }, [supabase, load]);
 
   const change = async (f: OwnerFirm, level: AccessLevel) => {
     const r = await setLevel(supabase, f.firmId as string, level);
@@ -61,6 +70,15 @@ export function FirmAccess() {
     await load();
   };
 
+  if (failed) {
+    return (
+      <SetRow title="Λογιστικά γραφεία" desc="Τα γραφεία που σε βλέπουν δεν διαβάστηκαν. Η πρόσβασή τους δεν άλλαξε.">
+        <div style={{ marginTop: T.sp.md }}>
+          <Btn variant="secondary" onClick={() => void load()}>Δοκίμασε ξανά</Btn>
+        </div>
+      </SetRow>
+    );
+  }
   if (!firms || firms.length === 0) return null;
 
   return (
