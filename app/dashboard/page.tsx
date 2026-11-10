@@ -963,7 +963,7 @@ export default function Dashboard() {
         // Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΣΤΟ ΠΡΩΤΟ ΒΗΜΑ, ΠΑΝΤΑ (απόφαση ιδιοκτήτη 10/11/2026).
         // Ως τις 09/11 φαινόταν μόνο χωρίς κανένα ακίνητο· όποιος είχε ένα και
         // ήθελε να περάσει τα υπόλοιπα δεν έβρισκε δρόμο από εδώ.
-        onBulkImport={()=>{ setShowAddModal(false); setScanAfterAdd(false); openMyaade(); }}
+        onBulkImport={()=>{ setShowAddModal(false); setScanAfterAdd(false); dropEnfiaCarry(); openMyaade(); }}
         hasProperties={properties.length > 0}
         onClose={()=>{setShowAddModal(false);setScanAfterAdd(false);dropEnfiaCarry();}} onSaved={async(id)=>{
         setShowAddModal(false);

@@ -111,6 +111,10 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [ownerFromAfm, setOwnerFromAfm] = useState(false);
   const [known, setKnown] = useState<KnownProperty[] | null>(null);
+  // ΧΩΡΙΣ ΤΗ ΛΙΣΤΑ ΤΩΝ ΥΠΑΡΧΟΝΤΩΝ ΔΕΝ ΔΙΑΒΑΖΕΤΑΙ ΑΡΧΕΙΟ (έλεγχος 10/11/2026): με κενή
+  // λίστα κάθε ακίνητο θα έβγαινε «νέο» και θα γραφόταν διπλό. Ούτε το αρχείο της
+  // σάρωσης ούτε αρχείο που διαλέγει ο χρήστης περνά, ώσπου να φορτώσει ξανά.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [owners, setOwners] = useState<KnownOwner[]>([]);
   const [ownerAfms, setOwnerAfms] = useState<string[]>([]);
   const [left, setLeft] = useState<number | null>(null);
@@ -131,8 +135,8 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
       lastUndoable(supabase, userId),
     ]).then(([list, afms, cards, n, last]) => {
       if (!live) return;
-      if (list.error) { setFailure({ title: 'Τα ακίνητά σου δεν φόρτωσαν', hint: 'Κλείσε το παράθυρο και δοκίμασε ξανά.', info: 'Χωρίς αυτά δεν ξέρουμε ποια υπάρχουν ήδη.' }); setKnown([]); }
-      else setKnown(list.rows);
+      if (list.error) { setFailure({ title: 'Τα ακίνητά σου δεν φόρτωσαν', hint: 'Κλείσε το παράθυρο και δοκίμασε ξανά.', info: 'Χωρίς αυτά δεν ξέρουμε ποια υπάρχουν ήδη.' }); setLoadFailed(true); setKnown([]); }
+      else { setLoadFailed(false); setKnown(list.rows); }
       setOwnerAfms([...new Set(afms.rows.map(r => (r.owner_afm ?? '').trim()).filter(Boolean))]);
       setOwners(cards.rows.map(c => ({ id: c.id, name: c.full_name, afm: c.afm })));
       setLeft(n);
@@ -210,10 +214,10 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
   useEffect(() => { readFileRef.current = readFile; });
   const fileTaken = useRef(false);
   useEffect(() => {
-    if (!initialFile || fileTaken.current || known === null || left === 0) return;
+    if (!initialFile || fileTaken.current || known === null || loadFailed || left === 0) return;
     fileTaken.current = true;
     void readFileRef.current(initialFile);
-  }, [initialFile, known, left]);
+  }, [initialFile, known, loadFailed, left]);
 
   const patch = (key: number, p: Partial<Draft>) => setRows(rs => rs.map(r => (r.key === key ? { ...r, ...p, check: false } : r)));
   const rowDomId = (key: number) => `mya-row-${key}`;
@@ -351,7 +355,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
         ))}
         {/* Το πεδίο του αρχείου ζει και στο σφάλμα: το «Δοκίμασε άλλο αρχείο» το ανοίγει. */}
         {step === 'pick' && left !== 0 && (failure ? <input id={inputId} type="file" accept="application/pdf,.pdf" className="sr-only" tabIndex={-1} aria-label="Η πράξη ΕΝΦΙΑ σε PDF" onChange={e => { void readFile(e.target.files?.[0]); e.currentTarget.value = ''; }} />
-          : <DropZone onFile={f => void readFile(f)} disabled={known === null} inputId={inputId} />)}
+          : <DropZone onFile={f => void readFile(f)} disabled={known === null || loadFailed} inputId={inputId} />)}
 
         {step === 'reading' && <ReadProgress page={progress.page} pages={progress.pages} label={status} />}
 

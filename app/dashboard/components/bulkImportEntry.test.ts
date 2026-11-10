@@ -48,7 +48,7 @@ ok('η σάρωση αναγνωρίζει Ε9 και ΕΝΦΙΑ ως πηγή �
 ok('η οθόνη επιτυχίας δίνει «Καταχώρησε όλα τα ακίνητα»', scan.includes('onClick={() => onBulkImport(file)}>Καταχώρησε όλα τα ακίνητα'));
 ok('η σελίδα περνά το αρχείο της σάρωσης στην εισαγωγή', /onBulkImport=\{\(file\)=>\{ closeQuickAdd\(\); openMyaade\(file\); \}\}/.test(page));
 ok('η εισαγωγή δέχεται έτοιμο αρχείο', /initialFile=\{myaadeFile \?\? undefined\}/.test(page) && importer.includes('initialFile?: File;'));
-ok('το έτοιμο αρχείο διαβάζεται αφού φορτωθούν τα ακίνητα', importer.includes('known === null || left === 0) return;'));
+ok('το έτοιμο αρχείο διαβάζεται αφού φορτωθούν τα ακίνητα', importer.includes('known === null || loadFailed || left === 0) return;'));
 ok('το έτοιμο αρχείο διαβάζεται μία φορά', importer.includes('fileTaken.current = true;'));
 
 // ── 5. Το γεγονός: μόνο πραγματικό αρχείο, ποτέ το γεγονός του κλικ ────────
@@ -71,6 +71,14 @@ ok('η καρτέλα ΕΝΦΙΑ δεν περνά το κλικ ως αρχεί
 // ── 6. Η σελίδα ακούει το αρχείο από το γεγονός ────────────────────────────
 ok('ο ακροατής κρατά το αρχείο του γεγονότος', page.includes('(e as CustomEvent<MyaadeOpenDetail>).detail?.file ?? null'));
 ok('το κλείσιμο καθαρίζει το αρχείο', /const closeMyaade = \(\) => \{ setMyaadeOpen\(false\); setMyaadeFile\(null\); \};/.test(page));
+
+// ── 7. Χωρίς τη λίστα των υπαρχόντων δεν διαβάζεται αρχείο (έλεγχος 10/11/2026) ──
+{
+  const imp = readFileSync('app/dashboard/components/MyaadeImport.tsx', 'utf8');
+  ok('η αποτυχία φόρτωσης σημειώνεται', imp.includes('setLoadFailed(true); setKnown([]);'));
+  ok('το αρχείο της σάρωσης περιμένει τη λίστα', /fileTaken\.current \|\| known === null \|\| loadFailed \|\| left === 0\) return;/.test(imp));
+  ok('ούτε αρχείο του χρήστη μετά την αποτυχία', imp.includes('disabled={known === null || loadFailed}'));
+}
 
 console.log(`μαζική καταχώρηση, σημεία εισόδου: ${pass} ✓ · ${fail} ✗`);
 if (fail) process.exit(1);
