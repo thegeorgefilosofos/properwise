@@ -409,7 +409,7 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
         sub="Πόσο είναι ο φόρος του ακινήτου και πόσα να βάζεις στην άκρη κάθε μήνα"
         right={<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Η ΠΡΑΞΗ ΑΠΟ ΤΟ myAADE ΓΡΑΦΕΙ ΤΟ ΣΥΝΟΛΟ: δόσεις και υπενθυμίσεις βγαίνουν από αυτό. */}
-          <Btn variant="secondary" onClick={openMyaadeImport}>Ενημέρωσε από την πράξη</Btn>
+          <Btn variant="secondary" onClick={() => openMyaadeImport()}>Ενημέρωσε από την πράξη</Btn>
           <AadePill action="enfia" label="Ε9 και ΕΝΦΙΑ"/>
         </div>}/>
       {/* Οι συντελεστές και τα όρια του υπολογισμού, με το πότε ελέγχθηκαν (lib/facts/taxLimits). */}
