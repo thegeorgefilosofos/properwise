@@ -22,6 +22,8 @@
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
 export const MUTATIONS = {
+  // Το `.limit(2000)` του προγραμματιστή της ουράς, ξαναφερμένο: ο διακομιστής το κόβει στις 1.000.
+  'server-row-cap': { add: 'lib/__mut__.ts', content: "export const q = (db: any) => db.from('email_outbox').select('id').limit(2000)\n" },
   // Ο οδηγός «Νέο ακίνητο» ξανά με τη φόρμα απλωμένη αυτούσια: ακριβώς το
   // '' στο property_settings.insurance_expiry (Postgres 22007, 06/11/2026).
   'act-row-grid': { file: 'app/dashboard/components/RentReceived.tsx', from: '.act-row:has(.rr-cta) > * { flex: 1 1 100%; }', to: '.act-row:has(.rr-cta) { grid-template-columns: 1fr; }' },

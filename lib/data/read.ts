@@ -62,3 +62,28 @@ export async function rows<T>(q: Query): Promise<T[]> {
 export async function row<T>(q: Query): Promise<T | null> {
   return (await readOne<T>(q)).row;
 }
+
+// ── ΟΛΕΣ ΟΙ ΓΡΑΜΜΕΣ, ΣΕ ΣΕΛΙΔΕΣ ─────────────────────────────────────────────
+// Το PostgREST επιστρέφει το πολύ 1.000 γραμμές ανά αίτημα και δεν λέει ότι
+// έκοψε. Για λίστες που αθροίζονται σε ΠΟΣΟ (καθολικό δαπανών → Λογιστική,
+// Ε2, απόδοση) ή που διασχίζονται ολόκληρες (συσκευές ειδοποιήσεων), μια
+// κομμένη λίστα είναι λάθος αριθμός ή χρήστες χωρίς ειδοποίηση (έλεγχος
+// κλίμακας 10/11/2026). Η σελίδα είναι μικρότερη από το όριο, ώστε η γεμάτη
+// σελίδα να σημαίνει πάντα «υπάρχει κι άλλη». Το `page(from, to)` χτίζει νέο
+// ερώτημα κάθε φορά, με σταθερή ταξινόμηση που τελειώνει σε μοναδικό κλειδί.
+
+export const PAGE_SIZE = 500;
+
+export async function readAll<T>(
+  page: (from: number, to: number) => Query, size = PAGE_SIZE, maxPages = 10_000,
+): Promise<ReadResult<T>> {
+  const out: T[] = [];
+  for (let i = 0; i < maxPages; i++) {
+    const from = i * size;
+    const { rows: got, error } = await read<T>(page(from, from + size - 1));
+    if (error) return { rows: out, error };
+    out.push(...got);
+    if (got.length < size) return { rows: out, error: null };
+  }
+  return { rows: out, error: { message: `readAll: περισσότερες από ${maxPages} σελίδες` } as DbError };
+}

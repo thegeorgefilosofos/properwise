@@ -1,8 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────
 // send-newsletter — αυτόματο newsletter «Νέες δυνατότητες» στους χρήστες. Ο cron
 // το τρέχει· στέλνει branded digest για τις published & αδημοσίευτες (emailed_at
-// null) ανακοινώσεις του πίνακα product_updates σε όλους τους εγγεγραμμένους
-// χρήστες (soft opt-in) που ΔΕΝ έχουν απεγγραφεί (email_marketing_prefs.product_news).
+// null) ανακοινώσεις του πίνακα product_updates σε όσους χρήστες έχουν ρητό
+// «ναι» στο email_marketing_prefs.product_news (_shared/marketingAudience.ts).
 // Κάθε email φέρει μοναδικό link απεγγραφής (GDPR).
 //
 // Ενεργοποίηση: κανένα χειροκίνητο μυστικό δεν χρειάζεται — το pg_cron καλεί τη
@@ -16,6 +16,7 @@ import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { APP_URL } from '../_shared/site.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 import { EMAIL_LIGHT as C } from '../_shared/emailPalette.ts'
+import { audience, batchKey, ensurePrefs, readPrefs } from '../_shared/marketingAudience.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -79,52 +80,77 @@ Deno.serve(async (req) => {
   const users = await listUsers()
   if (!users.length) return json({ message: 'no_users' })
 
-  // Εξασφάλισε γραμμή προτιμήσεων (default: εγγεγραμμένος) → μοναδικό token ανά χρήστη.
-  await supabase.from('email_marketing_prefs').upsert(users.map(u => ({ user_id: u.id })), { onConflict: 'user_id', ignoreDuplicates: true })
-  // ═══ Η ΑΠΟΤΥΧΙΑ ΕΔΩ ΕΣΤΕΛΝΕ ΣΕ ΟΣΟΥΣ ΕΙΧΑΝ ΑΠΕΓΓΡΑΦΕΙ ══════════════════════
-  // ΤΟ ΣΦΑΛΜΑ, ΓΡΑΜΜΗ ΠΡΟΣ ΓΡΑΜΜΗ. Χωρίς το `error`, μια αποτυχία γύριζε
-  // `undefined` και το `|| []` έφτιαχνε ΚΕΝΟ χάρτη προτιμήσεων. Το φίλτρο από
-  // κάτω ρωτά `prefMap.get(u.id)?.product_news !== false`: με κενό χάρτη η
-  // απάντηση είναι `undefined !== false`, δηλαδή ΑΛΗΘΗΣ για ΚΑΘΕ χρήστη.
-  //
-  // Δηλαδή το μήνυμα έφευγε σε ΟΛΟΥΣ, μαζί με όσους είχαν πατήσει απεγγραφή.
-  // Και το `unsubscribe_token` του καθενός ήταν κι αυτό `undefined`, οπότε ο
-  // σύνδεσμος απεγγραφής του email γινόταν «/unsubscribe/undefined»: ο
-  // παραλήπτης που δεν ήθελε το μήνυμα δεν είχε ούτε τρόπο να το σταματήσει.
-  //
-  // Δεν είναι σφάλμα παράδοσης, είναι παράβαση συναίνεσης. Οταν ο κατάλογος
-  // προτιμήσεων δεν διαβάζεται, ΔΕΝ φεύγει τίποτα.
-  const { data: prefs, error: prefsErr } = await supabase.from('email_marketing_prefs').select('user_id,product_news,unsubscribe_token')
+  // ΓΡΑΜΜΗ ΠΡΟΤΙΜΗΣΕΩΝ ΑΝΑ ΧΡΗΣΤΗ, ΣΕ ΠΑΡΤΙΔΕΣ. Η νέα γραμμή περνά από τον
+  // trigger `marketing_prefs_from_signup`, που την κλείνει για όποιον δεν
+  // συναίνεσε στην εγγραφή. Υπάρχουσα γραμμή δεν αγγίζεται.
+  const ensureErr = await ensurePrefs(supabase, users.map(u => u.id))
+  if (ensureErr) {
+    console.error('[send-newsletter] οι γραμμές προτιμήσεων δεν δημιουργήθηκαν:', ensureErr)
+    return json({ error: 'email_marketing_prefs not ensured', detail: ensureErr.message }, 500)
+  }
+  // ΟΛΕΣ ΟΙ ΠΡΟΤΙΜΗΣΕΙΣ, ΣΕ ΣΕΛΙΔΕΣ (έλεγχος κλίμακας 10/11/2026). Σε ΕΝΑ
+  // αίτημα το PostgREST κόβει στις 1.000 και ο χάρτης έμενε μισός. Το φίλτρο
+  // ήταν `!== false`, οπότε όποιος έλειπε έπαιρνε το μήνυμα μαζί με όποιον είχε
+  // κάνει απεγγραφή, με σύνδεσμο «/unsubscribe/». Οταν ο κατάλογος
+  // δεν διαβάζεται ολόκληρος, ΔΕΝ φεύγει τίποτα.
+  const { rows: prefs, error: prefsErr } = await readPrefs(supabase, 'product_news')
   if (prefsErr) {
     console.error('[send-newsletter] οι προτιμήσεις μάρκετινγκ δεν διαβάστηκαν:', prefsErr)
     return json({ error: 'email_marketing_prefs unreadable', detail: prefsErr.message }, 500)
   }
-  // Ο χάρτης προτιμήσεων ανά χρήστη. Το «any» έσβηνε τον έλεγχο του κλειδιού.
-  type PrefRow = { user_id: string } & Record<string, unknown>
-  const prefMap = new Map(((prefs || []) as PrefRow[]).map(p => [p.user_id, p]))
-  const recipients = users.filter(u => prefMap.get(u.id)?.product_news !== false)
-  if (!recipients.length) return json({ message: 'no_subscribers' })
+  // Μόνο ρητό «ναι» με token απεγγραφής (_shared/marketingAudience.ts).
+  const { recipients, skippedNoToken } = audience(users, prefs, 'product_news')
+  if (skippedNoToken) console.error(`[send-newsletter] ${skippedNoToken} παραλήπτες χωρίς token απεγγραφής: δεν στάλθηκε`)
+  if (!recipients.length) return json({ message: 'no_subscribers', skippedNoToken })
 
-  const inner = (updates as Update[]).map(updateBlock).join('')
+  // ΔΕΣΜΕΥΣΗ ΠΡΙΝ ΤΗΝ ΑΠΟΣΤΟΛΗ. Το `emailed_at` γραφόταν στο ΤΕΛΟΣ: μια
+  // κομμένη εκτέλεση (όριο χρόνου, σφάλμα) άφηνε τις ανακοινώσεις «ανεπίδοτες»
+  // και την επόμενη εβδομάδα το μήνυμα ξανάφευγε σε ΟΛΟΥΣ. Τώρα οι
+  // ανακοινώσεις δεσμεύονται πρώτα, με όρο `emailed_at is null`, ώστε και δύο
+  // παράλληλες εκτελέσεις να μη στείλουν δύο φορές. Αν η εκτέλεση κοπεί, όσοι
+  // έμειναν χάνουν ΑΥΤΟ το δελτίο· κανείς δεν το παίρνει δεύτερη φορά. Αν δεν
+  // φύγει τίποτα σε κανέναν, η δέσμευση αίρεται στο τέλος. Για
+  // επανάληψη της ίδιας μέρας, το κλειδί ιδιοδυναμίας του Resend κρατά κάθε
+  // παρτίδα μία φορά.
+  const claimedAt = new Date().toISOString()
+  const { data: claimed, error: claimErr } = await supabase.from('product_updates')
+    .update({ emailed_at: claimedAt }).in('id', (updates as Update[]).map(u => u.id)).is('emailed_at', null).select('id')
+  if (claimErr) {
+    console.error('[send-newsletter] οι ανακοινώσεις δεν δεσμεύτηκαν:', claimErr)
+    return json({ error: 'product_updates not claimed', detail: claimErr.message }, 500)
+  }
+  const claimedIds = new Set(((claimed ?? []) as { id: string }[]).map(c => c.id))
+  const toSend = (updates as Update[]).filter(u => claimedIds.has(u.id))
+  if (!toSend.length) return json({ message: 'already_claimed' })
+
+  const inner = toSend.map(updateBlock).join('')
   // Χωρίς πρόθεμα «PROPERWISE»: το όνομα του αποστολέα το λέει ήδη στη λίστα.
-  const subject = updates.length === 1 ? updates[0].title : `${updates.length} νέες δυνατότητες`
+  const subject = toSend.length === 1 ? toSend[0].title : `${toSend.length} νέες δυνατότητες`
 
   let sent = 0, failed = 0
   for (let i = 0; i < recipients.length; i += 100) {
     const chunk = recipients.slice(i, i + 100)
     const payload = chunk.map(u => {
-      const unsubUrl = `${APP_URL}/unsubscribe/${prefMap.get(u.id)?.unsubscribe_token ?? ''}`
+      const unsubUrl = `${APP_URL}/unsubscribe/${u.token}`
       return { from: FROM_EMAIL, reply_to: REPLY_TO, to: u.email, subject, html: layout(inner, unsubUrl), headers: listUnsubscribeHeaders(unsubUrl) }
     })
     try {
       const res = await fetch('https://api.resend.com/emails/batch', {
-        method: 'POST', headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json', 'Idempotency-Key': await batchKey(`newsletter-${claimedAt.slice(0, 10)}`, chunk, toSend.map(u => u.id).join(',')) },
         body: JSON.stringify(payload),
       })
       if (res.ok) sent += chunk.length; else failed += chunk.length
     } catch { failed += chunk.length }
   }
 
-  await supabase.from('product_updates').update({ emailed_at: new Date().toISOString() }).in('id', (updates as Update[]).map(u => u.id))
-  return json({ sent, failed, updates: updates.length, recipients: recipients.length })
+  // ΟΛΙΚΗ ΑΠΟΤΥΧΙΑ (π.χ. ο πάροχος δεν απαντά): δεν έφυγε τίποτα σε κανέναν,
+  // οπότε η δέσμευση αίρεται και η επόμενη εκτέλεση ξαναδοκιμάζει. Σε ΜΕΡΙΚΗ
+  // αποτυχία μένει: όσοι το πήραν δεν πρέπει να το πάρουν δεύτερη φορά.
+  if (sent === 0 && failed > 0) {
+    const { error: releaseErr } = await supabase.from('product_updates')
+      .update({ emailed_at: null }).in('id', toSend.map(u => u.id)).eq('emailed_at', claimedAt)
+    if (releaseErr) console.error('[send-newsletter] η δέσμευση δεν αποδεσμεύτηκε:', releaseErr)
+  }
+  if (failed) console.error(`[send-newsletter] ${failed} από ${recipients.length} δεν στάλθηκαν`)
+  return json({ sent, failed, updates: toSend.length, recipients: recipients.length, skippedNoToken })
 })
