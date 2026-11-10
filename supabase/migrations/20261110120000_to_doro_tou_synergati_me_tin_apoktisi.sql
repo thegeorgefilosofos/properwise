@@ -6,8 +6,8 @@
 -- "Επαγγελματίας" αν έχεις "Ιδιοκτήτης με Νόα" ή "Ιδιοκτήτης+", αλλιώς 1 μήνα
 -- "Επαγγελματίας+"». Το ίδιο υπόσχεται η οθόνη (TabReferral.tsx, «… δώρο,
 -- μόλις την αποκτήσεις»). Οι αριθμοί είναι του κώδικα: PARTNER_WELCOME_MONTHS
--- = 1 και partnerWelcomeTier() στο lib/referral/referral.ts· η δοκιμή
--- lib/referral/partnerWelcome.test.ts κρατά το SQL ίδιο με αυτά.
+-- = 1 και partnerWelcomeTier() στο lib/referral/referral.ts· η δοκιμή στο
+-- lib/referral/referral.test.ts κρατά το SQL ίδιο με αυτά.
 --
 -- ΤΙ ΕΛΕΙΠΕ. Η ιδιότητα γραφόταν στο referral_partners (get_referral_overview)
 -- και ανέβαζε μόνο το επίπεδο πρόσβασης. Δώρο δεν γραφόταν πουθενά:
