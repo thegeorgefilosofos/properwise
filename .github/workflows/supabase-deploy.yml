@@ -199,7 +199,10 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in 1 2 3; do
-            if supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"; then
+            # --remote=<ref> και --yes: στο CLI 3.x το --project-ref αποσύρεται και
+            # χωρίς τερματικό η ερώτηση επιβεβαίωσης σταματά το deploy
+            # (run 42856799726, 10/11/2026).
+            if supabase functions deploy --remote="$SUPABASE_PROJECT_REF" --yes; then
               exit 0
             fi
             if [ "$attempt" -lt 3 ]; then

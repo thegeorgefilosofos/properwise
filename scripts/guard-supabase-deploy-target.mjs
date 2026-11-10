@@ -13,8 +13,9 @@
 // ΤΙ ΕΛΕΓΧΕΤΑΙ, στο .github/workflows/supabase-deploy.yml:
 //   · το `supabase/setup-cli` έχει συγκεκριμένη έκδοση (Χ.Υ.Ζ), όχι `latest`·
 //   · κάθε εντολή που αγγίζει βάση (`migration list`, `migration repair`,
-//     `db push`) έχει `--remote`· όσες γράφουν (`repair`, `db push`) και `--yes`·
-//   · το `functions deploy` έχει `--project-ref`.
+//     `db push`, `functions deploy`) έχει `--remote`·
+//   · όσες γράφουν (`repair`, `db push`, `functions deploy`) έχουν και `--yes`,
+//     γιατί χωρίς τερματικό το CLI 3.x σταματά στην ερώτηση επιβεβαίωσης.
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
 
@@ -26,20 +27,18 @@ lines.forEach((line, i) => {
   const code = line.replace(/#.*$/, '')
   const m = /^\s*version:\s*(\S+)/.exec(code)
   if (m && !/^\d+\.\d+\.\d+$/.test(m[1])) provlimata.push({ grammi: i + 1, ti: `έκδοση CLI «${m[1]}» αντί για Χ.Υ.Ζ` })
-  if (/\bsupabase\s+(migration\s+(list|repair)|db\s+push)\b/.test(code) && !/--remote\b/.test(code))
+  if (/\bsupabase\s+(migration\s+(list|repair)|db\s+push|functions\s+deploy)\b/.test(code) && !/--remote\b/.test(code))
     provlimata.push({ grammi: i + 1, ti: `εντολή βάσης χωρίς --remote: ${code.trim()}` })
   // Το CLI 3.x ρωτά πριν γράψει και, χωρίς τερματικό, σταματά (run 42856544581).
-  if (/\bsupabase\s+(migration\s+repair|db\s+push)\b/.test(code) && !/--yes\b/.test(code))
+  if (/\bsupabase\s+(migration\s+repair|db\s+push|functions\s+deploy)\b/.test(code) && !/--yes\b/.test(code))
     provlimata.push({ grammi: i + 1, ti: `εντολή εγγραφής χωρίς --yes: ${code.trim()}` })
-  if (/\bsupabase\s+functions\s+deploy\b/.test(code) && !/--project-ref\b/.test(code))
-    provlimata.push({ grammi: i + 1, ti: `functions deploy χωρίς --project-ref: ${code.trim()}` })
 })
 
 if (provlimata.length) {
   console.error(`\n✗ ${provlimata.length} σημεία όπου ο αγωγός της Supabase μπορεί να στοχεύσει λάθος βάση:\n`)
   for (const p of provlimata.slice(0, 30)) console.error(`  ${FILE}:${p.grammi}  «${p.ti}»`)
-  console.error(`\n  ΤΙ ΝΑ ΚΑΝΕΙΣ: κλείδωσε την έκδοση του CLI (π.χ. 3.1.0) και βάλε --remote σε κάθε`)
-  console.error(`  εντολή βάσης και --project-ref στο functions deploy. Χωρίς αυτά, μια νέα έκδοση`)
+  console.error(`\n  ΤΙ ΝΑ ΚΑΝΕΙΣ: κλείδωσε την έκδοση του CLI (π.χ. 3.1.0), βάλε --remote σε κάθε`)
+  console.error(`  εντολή και --yes σε όσες γράφουν. Χωρίς αυτά, μια νέα έκδοση`)
   console.error(`  του CLI αλλάζει σιωπηλά τον στόχο σε τοπική βάση και κάθε deploy αποτυγχάνει.\n`)
   process.exit(1)
 }
