@@ -15,6 +15,7 @@ import { deviceNotifyOn, NOTIFY_EVENT } from '@/lib/push/client';
 import { dueReminders, notifyBody, type NotifiableEvent } from '@/lib/calendar/notify';
 import { expandRecurring, type Recurrable } from '@/lib/calendar/recurrence';
 import { athensToday } from '@/lib/core/time';
+import { randomSuffix } from '@/lib/core/uploadPath';
 
 /** Ώρα Αθήνας ως τοπικό Date, όπως το `athensNow` του ημερολογίου. */
 const athensNow = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Athens' }));
@@ -61,7 +62,10 @@ export function useAppointmentReminders(userId: string | null | undefined): void
     // μπήκε για σε πέντε λεπτά δεν περιμένει την επόμενη πεντάλεπτη ανάγνωση.
     // Ίδιο κανάλι με το ημερολόγιο (TabCalendar), ανά χρήστη αντί για ακίνητο.
     // Και όταν η καρτέλα ξαναγίνει ορατή, γιατί ο περιηγητής παγώνει τους χρονοδιακόπτες της.
-    const ch = supabase.channel(`appt_reminders_${userId}`)
+    // Μοναδικό επίθεμα ανά προσάρτηση, όπως στο AmaStrip: με σταθερό όνομα, μια
+    // ξαναπροσάρτηση πριν καθαρίσει η προηγούμενη πέφτει στο ίδιο κανάλι και το
+    // `.on()` μετά το `subscribe()` πετά εξαίρεση.
+    const ch = supabase.channel(`appt_reminders_${userId}_${randomSuffix(8)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events', filter: `user_id=eq.${userId}` }, () => { void load().then(tick); })
       .subscribe();
     const onVisible = () => { if (document.visibilityState === 'visible') void load().then(tick); };

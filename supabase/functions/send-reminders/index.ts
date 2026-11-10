@@ -192,13 +192,25 @@ function buildDunningEmail(rows: RentPaymentsRow[], tenantMap: Record<string, Te
   return { subject, html }
 }
 
-async function sendEmail(to: string, subject: string, html: string) {
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, reply_to: REPLY_TO, to, subject, html }),
-  })
-  return res.ok
+/**
+ * `true` μόνο αν ο πάροχος δέχτηκε το μήνυμα. ΚΑΜΙΑ ΕΞΑΙΡΕΣΗ ΔΕΝ ΒΓΑΙΝΕΙ ΠΡΟΣ ΤΑ
+ * ΕΞΩ: μια πεσμένη σύνδεση πετούσε μέσα στον βρόχο, άφηνε τη δέσμευση της
+ * όχλησης χωρίς email και σταματούσε την εργασία για όλους τους υπόλοιπους
+ * ιδιοκτήτες. Τώρα είναι απλώς «δεν στάλθηκε»: η δέσμευση σβήνεται και ο
+ * βρόχος συνεχίζει με τον επόμενο.
+ */
+async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: FROM_EMAIL, reply_to: REPLY_TO, to, subject, html }),
+    })
+    return res.ok
+  } catch (err) {
+    console.error('[send-reminders] αποστολή email:', err)
+    return false
+  }
 }
 
 Deno.serve(async (req) => {
@@ -369,7 +381,10 @@ Deno.serve(async (req) => {
       const overdue = pref.reminder_overdue === false ? [] : overdueRows
       if (overdue.length) {
         const { data: sentOD, error: sentODErr } = await supabase.from('notification_log').select('event_id').in('event_id', overdue.map(e=>e.id)).eq('reminder_type','overdue')
-        if (sentODErr) { console.error('[send-reminders] μητρώο ληξιπρόθεσμων:', sentODErr); skipped++ }
+        // ΧΩΡΙΣ ΜΗΤΡΩΟ, ΧΩΡΙΣ EMAIL: όπως στα 7/3/1/σήμερα. Χωρίς το `continue`
+        // η αποτυχία ανάγνωσης γινόταν «δεν έχει σταλεί τίποτα» και το ίδιο
+        // ληξιπρόθεσμο ξανάφευγε. Το πέρασμα των οχλήσεων είναι χωριστό, πιο κάτω.
+        if (sentODErr) { console.error('[send-reminders] μητρώο ληξιπρόθεσμων:', sentODErr); skipped++; continue }
         const sentODIds = new Set(((sentOD||[]) as Pick<NotificationLogRow,'event_id'>[]).map(l=>l.event_id))
         const toSendOD  = overdue.filter(e => !sentODIds.has(e.id))
         if (toSendOD.length) {

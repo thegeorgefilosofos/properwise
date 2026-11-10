@@ -116,5 +116,17 @@ const src = (p: string) => readFileSync(p, 'utf8')
   ok('ραντεβού: και όταν η καρτέλα ξαναγίνει ορατή', hook.includes("'visibilitychange'"))
 }
 
+// ── 8. Δεύτερος γύρος του ανεξάρτητου ελέγχου (10/11/2026) ───────────────
+{
+  const sr = src('supabase/functions/send-reminders/index.ts')
+  const se = sr.slice(sr.indexOf('async function sendEmail('), sr.indexOf('Deno.serve('))
+  ok('αποστολή: εξαίρεση του fetch γίνεται «δεν στάλθηκε», δεν σταματά τον βρόχο', /try \{[\s\S]*await fetch\([\s\S]*\} catch[\s\S]*return false/.test(se))
+  ok('ληξιπρόθεσμα: χωρίς μητρώο, χωρίς email (continue)', /if \(sentODErr\) \{[^}]*skipped\+\+; continue \}/.test(sr))
+  const hook = src('app/dashboard/components/useAppointmentReminders.ts')
+  ok('ραντεβού: μοναδικό κανάλι ανά προσάρτηση', /supabase\.channel\([^)]*randomSuffix\(/.test(hook))
+  const mig = src('supabase/migrations/20261110131000_oi_eidopoiiseis_kanoun_o_ti_lene.sql')
+  ok('η σειρά ανάπτυξης γράφεται σωστά (ανάποδα φεύγει διπλή όχληση)', mig.includes('ΥΠΟΧΡΕΩΤΙΚΗ') && !mig.includes('διπλό email δεν φεύγει'))
+}
+
 console.log(`οι ειδοποιήσεις κάνουν ό,τι λένε: ${passed} ✓ · ${failed} ✗`)
 if (failed) { console.log('Απέτυχαν:\n - ' + fails.join('\n - ')); process.exit(1) }
