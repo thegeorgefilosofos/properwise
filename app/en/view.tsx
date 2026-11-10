@@ -235,7 +235,7 @@ export default async function LandingEn() {
       <NoaFeature locale="en" />
 
       <section id="pricing" className="lp-reveal" style={{ ...wrap, ...LAYER, paddingBottom: GAP }}>
-        <SectionHead over={PRICING_HEAD_EN.over} title={PRICING_HEAD_EN.title} sub={PRICING_HEAD_EN.sub} />
+        <SectionHead title={PRICING_HEAD_EN.title} sub={PRICING_HEAD_EN.sub} />
         {words.pricingNotice && (
           <div role="note" style={{ padding: '14px 16px', marginBottom: 16, borderRadius: T.radius.popup, background: PANEL, border: '1px solid color-mix(in srgb, var(--accent) 35%, transparent)', fontSize: 14, lineHeight: 1.55, color: MUTED }}>
             <strong style={{ color: TEXT, fontWeight: 700 }}>{words.pricingNotice.title}</strong>{' '}{words.pricingNotice.body}

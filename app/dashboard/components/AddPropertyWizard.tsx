@@ -161,6 +161,7 @@ const inputStyle: React.CSSProperties = {
   letterSpacing: 0, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s, box-shadow 0.15s',
 };
 const numInputStyle: React.CSSProperties = { ...inputStyle, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' };
+const fieldCell: React.CSSProperties = { display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' };
 const labelStyle: React.CSSProperties = {
   ...TT.label, display: 'flex', alignItems: 'flex-end', minHeight: 28, lineHeight: 1.3, marginBottom: 6,
 };
@@ -237,7 +238,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   // τρία <input> μέσα σε <div>, καθένα έχει τη ΔΙΚΗ του ετικέτα και δεν
   // επιτρέπεται να δανειστεί αυτή του γονέα.
   const named = nameControl(children, id, label);
-  return <div><label htmlFor={named.native ? id : undefined} style={labelStyle}>{label}</label>{named.node}</div>;
+  // Στο πλέγμα των δύο στηλών μια ετικέτα μπορεί να γίνει δίγραμμη (στα 375 η
+  // «Αριθμός ασφαλιστηρίου» δίπλα στην «Ασφαλιστική»). Το κελί τεντώνει στο
+  // ύψος της σειράς και το πεδίο κάθεται στη βάση του: τα πεδία μιας σειράς
+  // στοιχίζονται χωρίς να μακραίνει κανένα.
+  return <div style={fieldCell}><label htmlFor={named.native ? id : undefined} style={labelStyle}>{label}</label>{named.node}</div>;
 }
 
 
