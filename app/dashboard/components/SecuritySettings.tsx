@@ -19,7 +19,7 @@ import { logActivity } from '@/lib/activity';
 import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password';
 import { MFA_NAME_CONFLICT, pendingTotpIds, totpFriendlyName } from '@/lib/auth/mfa';
 import PasswordStrength from '@/components/PasswordStrength';
-import { leakedAtSubmit } from '@/lib/auth/leakedPassword';
+import { leakedAtSubmit } from '@/lib/auth/leakGate';
 import PasswordEye from '@/app/PasswordEye';
 import { failed } from '@/lib/core/dbError';
 import { grDate } from '@/lib/core/format';
@@ -393,6 +393,7 @@ export default function SecuritySettings() {
               <input
                 id="sec-new-pass" type={showNew ? 'text' : 'password'} autoComplete="new-password" className="po-field"
                 value={newPass} onChange={e => setNewPass(e.target.value)} style={pwField} aria-describedby="sec-pw-req"
+                readOnly={pwBusy}
               />
               <PasswordEye show={showNew} onToggle={() => setShowNew(s => !s)} />
             </div>
@@ -402,6 +403,7 @@ export default function SecuritySettings() {
             <input
               id="sec-confirm-pass" type={showNew ? 'text' : 'password'} autoComplete="new-password" className="po-field"
               value={confirm} onChange={e => setConfirm(e.target.value)} style={field}
+              readOnly={pwBusy}
             />
           </div>
         </div>

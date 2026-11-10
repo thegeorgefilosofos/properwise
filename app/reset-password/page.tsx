@@ -8,7 +8,7 @@ import { AuthMobileBrand } from '../AuthMobileBrand'
 import PasswordEye from '../PasswordEye'
 import { checkPassword, PASSWORD_MIN_HINT, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password'
 import PasswordStrength from '@/components/PasswordStrength'
-import { leakedAtSubmit } from '@/lib/auth/leakedPassword'
+import { leakedAtSubmit } from '@/lib/auth/leakGate'
 import { failed as failedEl } from '@/lib/core/dbError';
 import { BackLink } from '../BackLink'
 import MailSent from '../MailSent'
@@ -250,7 +250,7 @@ export default function ResetPasswordPage() {
               <div>
                 <label htmlFor="rp-password" style={label}>{R ? R.newPassword : 'Νέος κωδικός'}</label>
                 <div style={{ position: 'relative' }}>
-                  <input id="rp-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder={A ? A.passwordHint : PASSWORD_MIN_HINT} aria-describedby={password ? 'rp-pw-req' : undefined} style={{ ...field, paddingRight: 48 }}
+                  <input id="rp-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required readOnly={loading} value={password} onChange={e => setPassword(e.target.value)} placeholder={A ? A.passwordHint : PASSWORD_MIN_HINT} aria-describedby={password ? 'rp-pw-req' : undefined} style={{ ...field, paddingRight: 48 }}
                     onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
                   {eye}
                 </div>
@@ -258,7 +258,7 @@ export default function ResetPasswordPage() {
               </div>
               <div>
                 <label htmlFor="rp-confirm" style={label}>{R ? R.confirm : 'Επιβεβαίωση'}</label>
-                <input id="rp-confirm" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={confirm} onChange={e => setConfirm(e.target.value)} placeholder={R ? R.confirmPlaceholder : 'Ξαναγράψε τον κωδικό'} aria-invalid={mismatch || undefined} aria-describedby={mismatch ? 'rp-confirm-err' : undefined} style={field}
+                <input id="rp-confirm" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required readOnly={loading} value={confirm} onChange={e => setConfirm(e.target.value)} placeholder={R ? R.confirmPlaceholder : 'Ξαναγράψε τον κωδικό'} aria-invalid={mismatch || undefined} aria-describedby={mismatch ? 'rp-confirm-err' : undefined} style={field}
                   onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
                 {mismatch && <p id="rp-confirm-err" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: '6px 0 0', lineHeight: 1.5 }}>{MISMATCH}</p>}
               </div>

@@ -14,7 +14,8 @@
 // διέρρευσε» απορρίπτει ΚΑΘΕ κωδικό.
 //
 // Καμία κλήση δικτύου εδώ: ελέγχεται η ανάλυση, που είναι όλη η λογική.
-import { parseRange, leakMessage, leakedAtSubmit } from './leakedPassword'
+import { parseRange, leakMessage } from './leakedPassword'
+import { leakedAtSubmit } from './leakGate'
 
 let pass = 0, fail = 0
 function ok(name: string, cond: boolean) { if (cond) pass++; else { fail++; console.error('✗ ' + name) } }
@@ -71,14 +72,37 @@ ok('αρνητικό πλήθος επίσης', !parseRange('ABC:-4', 'ABC').le
 // δέχεται και ότι σε σιωπή της υπηρεσίας η υποβολή ΠΡΟΧΩΡΑ.
 async function submitChecks() {
   const real = globalThis.fetch
+  const realErr = console.error
+  const realCrypto = Object.getOwnPropertyDescriptor(globalThis, 'crypto')
+  // Οι αναφορές προς τη Sentry περνούν από το captureError, που γράφει πρώτα
+  // στην κονσόλα. Μετριούνται εκεί, χωρίς DSN και χωρίς δίκτυο.
+  let reports = 0
+  const leaks: string[] = []
+  console.error = (...a: unknown[]) => {
+    const line = a.map(x => x instanceof Error ? x.message : typeof x === 'string' ? x : JSON.stringify(x)).join(' ')
+    if (line.includes('leaked-password check unavailable')) { reports++; leaks.push(line) }
+    else realErr(...a)
+  }
+  const settle = () => new Promise(r => setTimeout(r, 150))
   const seen: { url: string; padding: string | null }[] = []
   const reply = (body: string, status = 200) => async (url: string | URL | Request, init?: RequestInit) => {
     seen.push({ url: String(url), padding: new Headers(init?.headers).get('Add-Padding') })
     return new Response(body, { status })
   }
+  const never = ((_u: unknown, init?: RequestInit) => new Promise((_res, rej) => {
+    init?.signal?.addEventListener('abort', () => rej(new DOMException('aborted', 'AbortError')))
+  })) as typeof fetch
   try {
-    // SHA-1("password") = 5BAA6 1E4C9B93F3F0682250B6CF8331B7EE68FD8
+    // ΠΡΩΤΑ ο περιηγητής χωρίς Web Crypto: δεν είναι βλάβη, καμία αναφορά.
+    Object.defineProperty(globalThis, 'crypto', { value: {}, configurable: true, writable: true })
     globalThis.fetch = reply(BODY) as typeof fetch
+    ok('χωρίς Web Crypto: η υποβολή προχωρά', !(await leakedAtSubmit('password')))
+    if (realCrypto) Object.defineProperty(globalThis, 'crypto', realCrypto)
+    await settle()
+    eq('χωρίς Web Crypto: καμία αναφορά στη Sentry', reports, 0)
+    eq('χωρίς Web Crypto: κανένα αίτημα', seen.length, 0)
+
+    // SHA-1("password") = 5BAA6 1E4C9B93F3F0682250B6CF8331B7EE68FD8
     ok('υποβολή: ο «password» απορρίπτεται', await leakedAtSubmit('password'))
     const last = seen.at(-1)
     eq('υποβολή: φεύγουν ΜΟΝΟ τα 5 πρώτα ψηφία', last?.url, 'https://api.pwnedpasswords.com/range/5BAA6')
@@ -86,6 +110,8 @@ async function submitChecks() {
       !!last && last.url.split('/range/')[1] === '5BAA6' && !last.url.includes('1E4C9B93F3F0682250B6CF8331B7EE68FD8'))
     eq('υποβολή: ζητείται padding', last?.padding, 'true')
     ok('υποβολή: καθαρός κωδικός περνά', !(await leakedAtSubmit('Ζ8!πορτοκαλί-φεγγάρι-2026')))
+    await settle()
+    eq('απάντηση της υπηρεσίας: καμία αναφορά', reports, 0)
 
     globalThis.fetch = reply('', 503) as typeof fetch
     ok('υποβολή: υπηρεσία εκτός (503) → προχωρά', !(await leakedAtSubmit('password')))
@@ -94,14 +120,22 @@ async function submitChecks() {
     ok('υποβολή: σφάλμα δικτύου → προχωρά', !(await leakedAtSubmit('password')))
 
     // Υπηρεσία που δεν απαντά ποτέ: το όριο χρόνου κόβει και η υποβολή συνεχίζει.
-    globalThis.fetch = ((_u: unknown, init?: RequestInit) => new Promise((_res, rej) => {
-      init?.signal?.addEventListener('abort', () => rej(new DOMException('aborted', 'AbortError')))
-    })) as typeof fetch
+    globalThis.fetch = never
     const t0 = Date.now()
     ok('υποβολή: σιωπή της υπηρεσίας → προχωρά', !(await leakedAtSubmit('password', 50)))
     ok('υποβολή: δεν περιμένει πέρα από το όριο', Date.now() - t0 < 1000)
+    ok('υποβολή: δεύτερη σιωπή, ίδιο αποτέλεσμα', !(await leakedAtSubmit('password', 50)))
+
+    // ΘΟΡΥΒΟΣ: τέσσερις αποτυχίες στην ίδια συνεδρία, ΜΙΑ αναφορά.
+    await settle()
+    eq('σιωπές της ίδιας συνεδρίας: μία αναφορά στη Sentry', reports, 1)
+    ok('η αναφορά δεν περιέχει κωδικό ή hash',
+      leaks.every(l => !l.includes('password') || l.includes('leaked-password')) &&
+      leaks.every(l => !/5BAA6|1E4C9B93/i.test(l)))
   } finally {
     globalThis.fetch = real
+    console.error = realErr
+    if (realCrypto) Object.defineProperty(globalThis, 'crypto', realCrypto)
   }
 }
 

@@ -60,19 +60,24 @@ async function sha1Hex(text: string): Promise<string | null> {
 }
 
 /**
- * Είναι ο κωδικός σε γνωστή διαρροή;
- *
- * @param password ο κωδικός — δεν φεύγει από τη συσκευή
- * @param signal   προαιρετική ακύρωση (ο χρήστης συνεχίζει να πληκτρολογεί)
+ * Γιατί ο έλεγχος δεν έδωσε απάντηση. Η υποβολή χρειάζεται τη διάκριση: η
+ * υπηρεσία που σιώπησε αξίζει καταγραφή, ο περιηγητής χωρίς Web Crypto
+ * (σελίδα εκτός HTTPS, πολύ παλιός περιηγητής) όχι, γιατί δεν είναι βλάβη.
  */
-export async function checkLeakedPassword(
+export type LeakOutcome =
+  | { result: LeakCheck; reason: 'checked' }
+  | { result: null; reason: 'skipped' | 'unsupported' | 'unavailable' | 'aborted' }
+
+/** Ο έλεγχος με τον λόγο της αποτυχίας. Ο κωδικός δεν φεύγει από τη συσκευή. */
+export async function checkLeakedPasswordDetailed(
   password: string,
   signal?: AbortSignal,
-): Promise<LeakCheck | null> {
-  if (!password || password.length < 4) return null
+): Promise<LeakOutcome> {
+  if (!password || password.length < 4) return { result: null, reason: 'skipped' }
 
-  const hash = await sha1Hex(password)
-  if (!hash) return null
+  let hash: string | null
+  try { hash = await sha1Hex(password) } catch { hash = null }
+  if (!hash) return { result: null, reason: 'unsupported' }
 
   const prefix = hash.slice(0, 5)
   const suffix = hash.slice(5)
@@ -83,13 +88,27 @@ export async function checkLeakedPassword(
       signal,
       headers: { 'Add-Padding': 'true' },
     })
-    if (!res.ok) return null
+    if (!res.ok) return { result: null, reason: 'unavailable' }
     body = await res.text()
   } catch {
-    return null                       // δίκτυο, ακύρωση ή υπηρεσία εκτός: ανοιχτά
+    // δίκτυο, ακύρωση ή υπηρεσία εκτός: ανοιχτά
+    return { result: null, reason: signal?.aborted ? 'aborted' : 'unavailable' }
   }
 
-  return parseRange(body, suffix)
+  return { result: parseRange(body, suffix), reason: 'checked' }
+}
+
+/**
+ * Είναι ο κωδικός σε γνωστή διαρροή;
+ *
+ * @param password ο κωδικός — δεν φεύγει από τη συσκευή
+ * @param signal   προαιρετική ακύρωση (ο χρήστης συνεχίζει να πληκτρολογεί)
+ */
+export async function checkLeakedPassword(
+  password: string,
+  signal?: AbortSignal,
+): Promise<LeakCheck | null> {
+  return (await checkLeakedPasswordDetailed(password, signal)).result
 }
 
 /**
@@ -109,40 +128,6 @@ export function parseRange(body: string, suffix: string): LeakCheck {
     return { leaked: true, count }
   }
   return { leaked: false, count: 0 }
-}
-
-/** Πόσο περιμένει η υποβολή την υπηρεσία πριν προχωρήσει χωρίς απάντηση. */
-export const SUBMIT_TIMEOUT_MS = 2000
-
-/**
- * Ο ΕΛΕΓΧΟΣ ΤΗΣ ΥΠΟΒΟΛΗΣ. Το PasswordStrength ρωτά 450 ms μετά το τελευταίο
- * πλήκτρο και μετά περιμένει το δίκτυο. Οποιος επικολλούσε κωδικό και πατούσε
- * αμέσως «Εγγραφή» πρόφταινε την απάντηση: το `leakedPw` ήταν ακόμη `null` και
- * ο διαρρεύσας κωδικός γινόταν δεκτός. Γι' αυτό η υποβολή ρωτά η ίδια, με όριο.
- *
- * Επιστρέφει `true` μόνο όταν η υπηρεσία απάντησε «βρέθηκε». Σε σιωπή, σφάλμα ή
- * λήξη χρόνου επιστρέφει `false` (ανοιχτά, όπως όλος ο έλεγχος) και το
- * καταγράφει. Ο κωδικός και ο πλήρης κατακερματισμός δεν φεύγουν ούτε εδώ και
- * δεν καταγράφονται πουθενά.
- */
-export async function leakedAtSubmit(password: string, timeoutMs = SUBMIT_TIMEOUT_MS): Promise<boolean> {
-  const ctl = new AbortController()
-  const timer = setTimeout(() => ctl.abort(), timeoutMs)
-  try {
-    const r = await checkLeakedPassword(password, ctl.signal)
-    // Η σιωπή καταγράφεται, ώστε μια υπηρεσία που έπεσε ή μια CSP που την κόβει
-    // να φανεί. Στην αναφορά μπαίνει ΜΟΝΟ ο λόγος: ούτε κωδικός, ούτε hash.
-    if (r === null) {
-      void import('@/lib/observability/report')
-        .then(m => m.captureError(new Error('leaked-password check unavailable at submit'), {
-          reason: ctl.signal.aborted ? 'timeout' : 'unavailable',
-        }))
-        .catch(() => {})
-    }
-    return r?.leaked === true
-  } finally {
-    clearTimeout(timer)
-  }
 }
 
 /** Πόσο σοβαρά να το πει η οθόνη. Το πλήθος αλλάζει το μήνυμα, όχι μόνο το «ναι». */
