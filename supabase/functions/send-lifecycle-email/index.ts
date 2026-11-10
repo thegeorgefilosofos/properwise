@@ -26,12 +26,15 @@ import { guessGender } from '../_shared/gender.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 import { COMMERCIAL, prefsFromRow, type LifecyclePrefs } from '../_shared/lifecycleConsent.ts'
+import { projectRef, outboxIdempotencyKey, resendErrorName } from '../_shared/outboxKey.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const CRON_SECRET    = Deno.env.get('LIFECYCLE_CRON_SECRET') || ''
 const FROM_EMAIL     = senderFrom(Deno.env.get('RESEND_FROM'))
+// Το περιβάλλον μπαίνει στο κλειδί μοναδικότητας (_shared/outboxKey.ts).
+const PROJECT_REF    = projectRef(SUPABASE_URL)
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } })
@@ -126,12 +129,13 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
   const auth = await authorized(req)
   if (!auth.ok) return json(...cronDenial(auth))
-  if (!RESEND_API_KEY) return json({ error: 'no_resend_key' }, 500)
+  // `definite`: σίγουρα δεν έφυγε τίποτα. Η reconcile αλλάζει τότε γενιά κλειδιού.
+  if (!RESEND_API_KEY) return json({ error: 'no_resend_key', definite: true }, 500)
 
   let event = '', copyId = '', email = '', name = '', params: Record<string, unknown> = {}
   // Η γραμμή της ουράς (drain_email_outbox). Γίνεται κλειδί μοναδικότητας προς
   // τον Resend, ώστε η επανάληψη μετά από λήξη χρόνου να μη στέλνει δεύτερο email.
-  let outboxId = ''
+  let outboxId = '', outboxGen = 0
   try {
     const b = await req.json()
     event = String(b?.event || '').trim()
@@ -140,6 +144,7 @@ Deno.serve(async (req) => {
     name = b?.name ? String(b.name).trim() : ''
     params = (b?.params && typeof b.params === 'object') ? b.params : {}
     outboxId = /^\d{1,19}$/.test(String(b?.outboxId ?? '')) ? String(b.outboxId) : ''
+    outboxGen = /^\d{1,4}$/.test(String(b?.outboxGen ?? '')) ? Number(b.outboxGen) : 0
   } catch { return json({ error: 'bad_body' }, 400) }
 
   if (!event && !copyId) return json({ error: 'no_event' }, 400)
@@ -189,15 +194,19 @@ Deno.serve(async (req) => {
       method: 'POST',
       // Idempotency-Key: ο Resend το κρατά 24 ώρες. Δεύτερη κλήση με το ίδιο
       // κλειδί επιστρέφει την πρώτη απάντηση χωρίς νέα αποστολή· με άλλο σώμα,
-      // 409 (η reconcile το γράφει failed χωρίς επανάληψη).
-      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json', ...(outboxId ? { 'Idempotency-Key': `outbox-${outboxId}` } : {}) },
+      // 409 invalid_idempotent_request, όσο τρέχει η πρώτη, 409
+      // concurrent_idempotent_requests. Η reconcile χειρίζεται το καθένα.
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json', ...(outboxId ? { 'Idempotency-Key': outboxIdempotencyKey(PROJECT_REF, outboxId, outboxGen) } : {}) },
       // Στο εμπορικό μπαίνουν και οι κεφαλίδες απεγγραφής ενός πατήματος (RFC 8058).
       body: JSON.stringify({ from: FROM_EMAIL, reply_to: REPLY_TO, to: email, subject: tpl.subject, html: tpl.html, headers: commercial ? listUnsubscribeHeaders(prefs?.unsubUrl) : undefined }),
     })
-    if (res.status === 409) { const detail = await res.text().catch(() => ''); return json({ error: 'idempotency_conflict', detail: detail.slice(0, 300) }, 409) }
-    if (!res.ok) { const detail = await res.text().catch(() => ''); return json({ error: 'send_failed', detail: detail.slice(0, 300) }, 502) }
+    if (res.status === 409) { const detail = await res.text().catch(() => ''); return json({ error: 'idempotency_conflict', resendCode: resendErrorName(detail), detail: detail.slice(0, 300) }, 409) }
+    // Ο Resend απάντησε με λάθος: σίγουρα δεν έφυγε. Η επόμενη προσπάθεια
+    // παίρνει νέα γενιά κλειδιού, ώστε να μην ξαναπαιχτεί η ίδια απάντηση.
+    if (!res.ok) { const detail = await res.text().catch(() => ''); return json({ error: 'send_failed', definite: true, resendStatus: res.status, detail: detail.slice(0, 300) }, 502) }
     return json({ sent: true, event })
   } catch (err) {
+    // Αβέβαιο: το αίτημα ίσως έφτασε. ΟΧΙ `definite`, η επανάληψη κρατά το κλειδί.
     return json({ error: 'send_error', detail: String(err).slice(0, 300) }, 500)
   }
 })

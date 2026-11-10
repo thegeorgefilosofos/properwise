@@ -228,3 +228,137 @@ begin
   reset role;
   raise notice 'probe: [Μ] η μίσθωση κρατά ένα τρέξιμο, λύνεται με το «άφησα» και λήγει μόνη της';
 end $probe$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+--  [Ο] Η ΣΥΜΦΩΝΙΑ ΤΗΣ ΟΥΡΑΣ ΜΕ ΤΗΝ ΑΠΑΝΤΗΣΗ (20261110132000)
+-- ─────────────────────────────────────────────────────────────────────────
+--  Γραμμές «σε πτήση» με απάντηση του pg_net γραμμένη στο χέρι. Τα
+--  αναγνωριστικά αιτημάτων 9000xx δεν συγκρούονται με τα net.probe_posts.
+-- ═══════════════════════════════════════════════════════════════════════════
+create or replace function pg_temp.probe_inflight(p_key text, p_req bigint, p_copy text default 'probe_copy',
+  p_cat text default 'marketing', p_email text default 'oura@probe.test',
+  p_since interval default interval '0', p_age interval default interval '0') returns bigint language sql as $$
+  insert into public.email_outbox (copy_id, to_email, category, dedup_key, status, request_id,
+                                   dispatched_at, idem_since, attempts, send_window)
+  values (p_copy, p_email, p_cat, p_key, 'dispatched', p_req,
+          now() - p_age, now() - p_since, 1, 'morning')
+  returning id;
+$$;
+create or replace function pg_temp.probe_reply(p_req bigint, p_code int, p_body text) returns void language sql as $$
+  insert into net._http_response (id, status_code, content, timed_out) values (p_req, p_code, p_body, false);
+$$;
+
+do $probe$
+declare
+  a bigint; b bigint; c bigint; d bigint; e bigint; f bigint; g bigint;
+  r record;
+begin
+  -- 409 invalid_idempotent_request: πιθανότατα στάλθηκε. Δεν είναι αποτυχία και
+  -- μετρά στο όριο μάρκετινγκ.
+  a := pg_temp.probe_inflight('oura:a', 900001, p_email := 'oura-a@probe.test');
+  perform pg_temp.probe_reply(900001, 409, '{"error":"idempotency_conflict","resendCode":"invalid_idempotent_request"}');
+  -- 409 concurrent: ξανά, ίδιο κλειδί.
+  b := pg_temp.probe_inflight('oura:b', 900002);
+  perform pg_temp.probe_reply(900002, 409, '{"error":"idempotency_conflict","resendCode":"concurrent_idempotent_requests"}');
+  -- Σίγουρη αποτυχία (ο Resend απάντησε 429): νέα γενιά κλειδιού.
+  c := pg_temp.probe_inflight('oura:c', 900003);
+  perform pg_temp.probe_reply(900003, 502, '{"error":"send_failed","definite":true,"resendStatus":429}');
+  -- Αβέβαιη έκβαση (504 της πύλης): ίδιο κλειδί.
+  d := pg_temp.probe_inflight('oura:d', 900004);
+  perform pg_temp.probe_reply(900004, 504, 'gateway timeout');
+  -- Χαμένη απάντηση μέσα στο παράθυρο: ξανά, ίδιο κλειδί.
+  e := pg_temp.probe_inflight('oura:e', 900005, p_cat := 'transactional', p_since := interval '2 hours', p_age := interval '2 hours');
+  -- Χαμένη απάντηση έξω από το παράθυρο: failed.
+  f := pg_temp.probe_inflight('oura:f', 900006, p_cat := 'transactional', p_since := interval '21 hours', p_age := interval '2 hours');
+  -- Αβέβαιη έκβαση έξω από το παράθυρο: failed, όχι ίδιο κλειδί μετά τις 24 ώρες.
+  g := pg_temp.probe_inflight('oura:g', 900007, p_since := interval '21 hours');
+  perform pg_temp.probe_reply(900007, 504, 'gateway timeout');
+
+  perform public.reconcile_email_outbox();
+
+  select status, last_error into r from public.email_outbox where id = a;
+  if r.status <> 'probably_sent' then raise exception '[Ο] Το 409 invalid_idempotent_request έγινε «%/%» αντί για probably_sent', r.status, r.last_error; end if;
+  if public.can_send_marketing('oura-a@probe.test') then raise exception '[Ο] Το probably_sent δεν μετρά στο όριο μάρκετινγκ'; end if;
+  if not exists (select 1 from public.email_outbox_health() h where h.status = 'probably_sent' and h.n >= 1) then
+    raise exception '[Ο] Η email_outbox_health() δεν δείχνει το probably_sent';
+  end if;
+
+  select status, idem_gen into r from public.email_outbox where id = b;
+  if r.status <> 'pending' or r.idem_gen <> 0 then raise exception '[Ο] Το 409 concurrent έγινε «%» γενιά % (θέλει pending, 0)', r.status, r.idem_gen; end if;
+
+  select status, idem_gen, idem_since into r from public.email_outbox where id = c;
+  if r.status <> 'pending' or r.idem_gen <> 1 or r.idem_since is not null then
+    raise exception '[Ο] Η σίγουρη αποτυχία έγινε «%» γενιά % (θέλει pending, νέα γενιά 1)', r.status, r.idem_gen;
+  end if;
+
+  select status, idem_gen into r from public.email_outbox where id = d;
+  if r.status <> 'pending' or r.idem_gen <> 0 then raise exception '[Ο] Η αβέβαιη έκβαση έγινε «%» γενιά % (θέλει pending, ίδιο κλειδί)', r.status, r.idem_gen; end if;
+
+  select status, idem_gen, last_error into r from public.email_outbox where id = e;
+  if r.status <> 'pending' or r.idem_gen <> 0 then raise exception '[Ο] Η χαμένη απάντηση μέσα στο παράθυρο έγινε «%/%» (θέλει pending, ίδιο κλειδί)', r.status, r.last_error; end if;
+
+  select status, last_error into r from public.email_outbox where id = f;
+  if r.status <> 'failed' or r.last_error <> 'response_lost' then raise exception '[Ο] Η χαμένη απάντηση έξω από το παράθυρο έγινε «%/%»', r.status, r.last_error; end if;
+
+  select status, last_error into r from public.email_outbox where id = g;
+  if r.status <> 'failed' or r.last_error not like 'idempotency_window:%' then raise exception '[Ο] Η αβέβαιη έκβαση μετά τις 20 ώρες έγινε «%/%»', r.status, r.last_error; end if;
+
+  -- Η drain στέλνει τη γενιά και κρατά την ώρα της πρώτης αποστολής.
+  update public.email_outbox set scheduled_for = now() where id in (c, e);
+  perform public.drain_email_outbox(100);
+  if not exists (select 1 from net.probe_posts p join public.email_outbox o on o.request_id = p.id
+                  where o.id = c and (p.body->>'outboxGen')::int = 1) then
+    raise exception '[Ο] Η drain δεν περνά τη νέα γενιά κλειδιού στη function';
+  end if;
+  if (select idem_since from public.email_outbox where id = e) > now() - interval '1 hour' then
+    raise exception '[Ο] Η επανάληψη με το ίδιο κλειδί ξεκίνησε νέο παράθυρο';
+  end if;
+  raise notice 'probe: [Ο] 409, σίγουρη και αβέβαιη αποτυχία, χαμένη απάντηση: κανένα ψεύτικο failed, κανένα διπλό';
+end $probe$;
+
+-- ── [Ο] Η απόσυρση πρόσκλησης πιάνει και ό,τι είναι σε πτήση ─────────────
+create or replace function auth.uid() returns uuid language sql stable as
+$$ select nullif(current_setting('probe.uid', true), '')::uuid $$;
+create or replace function auth.jwt() returns jsonb language sql stable as
+$$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+
+do $probe$
+declare
+  acc uuid := 'e0a00000-0000-4000-8000-0000000000a9';
+  inv uuid;
+  w   bigint;
+  x   bigint;
+  res json;
+  st  text;
+begin
+  insert into auth.users (id, email, email_confirmed_at, created_at) values (acc, 'oura-logistis@probe.test', now(), now());
+  insert into public.accountant_invites (accountant_id, email) values (acc, 'oura-pelatis@probe.test') returning id into inv;
+
+  -- Απόσυρση όσο το μήνυμα είναι σε πτήση και μετά 503.
+  w := pg_temp.probe_inflight('accountant_invite:' || inv || ':1', 900011, 'accountant_invite', 'transactional', 'oura-pelatis@probe.test');
+  perform set_config('probe.uid', acc::text, true);
+  res := public.accountant_invite_withdraw(inv);
+  perform set_config('probe.uid', '', true);
+  if (res->>'ok')::boolean is not true then raise exception '[Ο] Η απόσυρση απέτυχε: %', res; end if;
+  perform pg_temp.probe_reply(900011, 503, '{"error":"send_error"}');
+
+  -- Διαγραφή αποστολέα όσο το μήνυμα είναι σε πτήση και μετά 503.
+  insert into public.email_outbox (copy_id, to_email, category, dedup_key, status, request_id, dispatched_at, idem_since, attempts, params)
+  values ('accountant_invite', 'oura-allos@probe.test', 'transactional', 'oura:x', 'dispatched', 900012, now(), now(), 1,
+          jsonb_build_object('accountantEmail', 'oura-logistis@probe.test'))
+  returning id into x;
+  perform pg_temp.probe_reply(900012, 503, '{"error":"send_error"}');
+  delete from auth.users where id = acc;
+
+  perform public.reconcile_email_outbox();
+
+  select status || '/' || coalesce(last_error, '') into st from public.email_outbox where id = w;
+  if st <> 'skipped/withdrawn:in_flight' then
+    raise exception '[Ο] Πρόσκληση που αποσύρθηκε σε πτήση κατέληξε «%» (θα ξανάφευγε)', st;
+  end if;
+  select status || '/' || coalesce(last_error, '') into st from public.email_outbox where id = x;
+  if st <> 'skipped/sender_erased' then
+    raise exception '[Ο] Πρόσκληση σβησμένου αποστολέα σε πτήση κατέληξε «%» (θα ξανάφευγε)', st;
+  end if;
+  raise notice 'probe: [Ο] η απόσυρση και η διαγραφή αποστολέα κόβουν και το μήνυμα σε πτήση';
+end $probe$;

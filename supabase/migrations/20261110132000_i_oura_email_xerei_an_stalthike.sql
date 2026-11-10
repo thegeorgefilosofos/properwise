@@ -21,15 +21,34 @@
 --        200 {sent:true}      → sent, sent_at = ώρα αποστολής
 --        200 {skipped: λόγος} → skipped, last_error = 'skipped:<λόγος>'
 --        400                  → failed (λάθος αίτημα, η επανάληψη δεν βοηθά)
+--        409 του Resend       → probably_sent (το κλειδί έχει ήδη χρησιμοποιηθεί)
+--                               ή, όσο τρέχει η πρώτη, ξανά με το ίδιο κλειδί
 --        άλλο 2xx             → failed χωρίς επανάληψη (ίσως έφυγε)
---        άλλο / λήξη / σφάλμα → pending ξανά με καθυστέρηση, ως 3 προσπάθειες,
---                               μετά failed
---        καμία απάντηση >60'  → failed 'response_lost'. ΧΩΡΙΣ επανάληψη: ίσως
---                               έφυγε· διπλό email είναι χειρότερο.
+--        σίγουρη αποτυχία     → pending ξανά με ΝΕΑ γενιά κλειδιού
+--        αβέβαιη έκβαση       → pending ξανά με το ΙΔΙΟ κλειδί, μόνο μέσα στο
+--                               παράθυρο των 20 ωρών από την πρώτη αποστολή
+--        καμία απάντηση >60'  → όπως η αβέβαιη έκβαση: ίδιο κλειδί, ίδιο
+--                               παράθυρο. Τα net.* είναι UNLOGGED και χάνονται
+--                               σε κατάρρευση· ο Resend δεν ξαναστέλνει.
+--      Ολα ως 3 προσπάθειες, μετά failed.
 --   3. Χωρίς το μυστικό `email_cron` ή το `functions_base_url` η drain ΣΗΚΩΝΕΙ ΣΦΑΛΜΑ, ώστε το pg_cron
 --      να γράψει failed και να το δει ο έλεγχος υγείας, αντί για «succeeded».
 --   4. Το όριο συχνότητας μάρκετινγκ (can_send_marketing) μετρά και τα
---      `dispatched`: ένα email σε πτήση έχει ήδη φύγει για τον παραλήπτη.
+--      `dispatched` και τα `probably_sent`: ένα email σε πτήση ή με κλειδί που
+--      ο Resend έχει ήδη δει έχει φύγει για τον παραλήπτη.
+--   5. Η ακύρωση πρόσκλησης λογιστή (απόσυρση, διαγραφή αποστολέα) πιάνει και
+--      τα `dispatched`. Αλλιώς μια γραμμή σε πτήση γύριζε σε pending μετά από
+--      5xx και η πρόσκληση που ανακλήθηκε έφευγε.
+--   6. Η email_outbox_health() δίνει στην παρακολούθηση τις καταστάσεις του
+--      τελευταίου 24ώρου, μαζί με τα probably_sent.
+--
+-- ΠΗΓΗ ΓΙΑ ΤΟΝ RESEND (τεκμηρίωση «Idempotency Keys», resend.com/docs/dashboard/
+-- emails/idempotency-keys και changelog/idempotency-keys): το κλειδί κρατιέται
+-- 24 ώρες· 409 `concurrent_idempotent_requests` σημαίνει ότι τρέχει ακόμη
+-- αίτημα με το ίδιο κλειδί και η επανάληψη αργότερα είναι ασφαλής· 409
+-- `invalid_idempotent_request` σημαίνει ότι το κλειδί χρησιμοποιήθηκε ήδη με
+-- άλλο σώμα. Η τεκμηρίωση ΔΕΝ λέει αν κρατά απαντήσεις λάθους για το κλειδί·
+-- γι' αυτό μετά από σίγουρη αποτυχία αλλάζει η γενιά του κλειδιού.
 --
 -- Κανένα δικαίωμα δεν αλλάζει: η drain και η reconcile εκτελούνται μόνο από
 -- το cron (postgres) και το service_role. Δες scripts/guard-http-bridge.mjs.
@@ -37,6 +56,9 @@
 
 alter table public.email_outbox add column if not exists request_id bigint;
 alter table public.email_outbox add column if not exists dispatched_at timestamptz;
+-- Η γενιά του κλειδιού μοναδικότητας και πότε στάλθηκε πρώτη φορά με αυτήν.
+alter table public.email_outbox add column if not exists idem_gen integer not null default 0;
+alter table public.email_outbox add column if not exists idem_since timestamptz;
 
 create index if not exists email_outbox_dispatched_idx
   on public.email_outbox (dispatched_at) where status = 'dispatched';
@@ -100,17 +122,18 @@ begin
     -- ΕΠΑΝΑΛΗΨΗ ΧΩΡΙΣ ΔΙΠΛΟ EMAIL. Το `outboxId` γίνεται στη function
     -- `Idempotency-Key: outbox-<id>` προς τον Resend, που κρατά το κλειδί 24
     -- ώρες και σε δεύτερη κλήση επιστρέφει την πρώτη απάντηση, χωρίς νέα
-    -- αποστολή. Οι 3 προσπάθειες της reconcile χωρούν σε λιγότερο από μία ώρα.
+    -- αποστολή. Το κλειδί έχει περιβάλλον, γραμμή και γενιά (_shared/outboxKey.ts).
     -- Το όριο χρόνου ανεβαίνει από τα 5″ του pg_net στα 30″, ώστε μια αργή αλλά
     -- πετυχημένη αποστολή να μη μετρά ως λήξη χρόνου.
     v_req := net.http_post(
       url     := v_url,
       headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', v_secret),
-      body    := jsonb_build_object('outboxId', r.id, 'copyId', r.copy_id, 'email', r.to_email, 'name', r.to_name, 'params', r.params),
+      body    := jsonb_build_object('outboxId', r.id, 'outboxGen', r.idem_gen, 'copyId', r.copy_id, 'email', r.to_email, 'name', r.to_name, 'params', r.params),
       timeout_milliseconds := 30000
     );
     update public.email_outbox
-       set status = 'dispatched', request_id = v_req, dispatched_at = now(), attempts = attempts + 1
+       set status = 'dispatched', request_id = v_req, dispatched_at = now(), attempts = attempts + 1,
+           idem_since = coalesce(idem_since, now())
      where id = r.id;
     v_sent := v_sent + 1;
   end loop;
@@ -120,6 +143,8 @@ end;
 $function$;
 
 -- ── 2. Η συμφωνία με την απάντηση ──────────────────────────────────────────
+-- Ολες οι ενημερώσεις ρωτούν ξανά `status = 'dispatched'`: μια γραμμή που
+-- ακυρώθηκε στο μεταξύ (απόσυρση πρόσκλησης) δεν ξαναμπαίνει στην ουρά.
 create or replace function public.reconcile_email_outbox()
  returns integer
  language plpgsql
@@ -127,13 +152,18 @@ create or replace function public.reconcile_email_outbox()
  set search_path to 'public'
 as $function$
 declare
-  r      record;
-  v_body jsonb;
-  v_n    int := 0;
-  v_max  constant int := 3;
+  r        record;
+  v_body   jsonb;
+  v_n      int := 0;
+  v_max    constant int := 3;
+  -- Ο Resend κρατά το κλειδί 24 ώρες. Επανάληψη με το ΙΔΙΟ κλειδί μόνο αν
+  -- απέχει με άνεση από το όριο: μετά, ο Resend θα το έστελνε ξανά.
+  v_window constant interval := interval '20 hours';
+  v_why    text;
+  v_same   boolean;   -- επιτρέπεται επανάληψη με το ίδιο κλειδί
 begin
   for r in
-    select o.id, o.attempts, o.dispatched_at,
+    select o.id, o.attempts, o.dispatched_at, o.idem_since,
            h.id as resp_id, h.status_code, h.content, h.timed_out, h.error_msg
       from public.email_outbox o
       left join net._http_response h on h.id = o.request_id
@@ -142,12 +172,23 @@ begin
      limit 500
      for update of o skip locked
   loop
+    v_same := r.attempts < v_max and coalesce(r.idem_since, r.dispatched_at) > now() - v_window;
+
     if r.resp_id is null then
-      -- Δεν ήρθε ακόμη απάντηση. Μετά από μία ώρα δεν θα έρθει (ή σβήστηκε).
+      -- Δεν ήρθε ακόμη απάντηση. Μετά από μία ώρα δεν θα έρθει: τα net.* είναι
+      -- UNLOGGED και χάνονται σε κατάρρευση. Ισως έφυγε, ίσως όχι: επανάληψη
+      -- με το ίδιο κλειδί, που ο Resend δεν στέλνει δεύτερη φορά.
       if r.dispatched_at < now() - interval '60 minutes' then
-        update public.email_outbox
-           set status = 'failed', last_error = 'response_lost'
-         where id = r.id;
+        if v_same then
+          update public.email_outbox
+             set status = 'pending', request_id = null, scheduled_for = now(),
+                 last_error = 'response_lost:retry'
+           where id = r.id and status = 'dispatched';
+        else
+          update public.email_outbox
+             set status = 'failed', last_error = 'response_lost'
+           where id = r.id and status = 'dispatched';
+        end if;
         v_n := v_n + 1;
       end if;
       continue;
@@ -159,51 +200,71 @@ begin
       v_body := null;
     end;
 
+    v_why := left(
+      case when r.timed_out then 'timeout'
+           when r.error_msg is not null then 'net:' || r.error_msg
+           else coalesce(r.status_code::text, '?') || ':' || coalesce(v_body->>'error', r.content, '')
+      end, 300);
+
     if r.status_code = 200 and coalesce(v_body->>'sent', '') = 'true' then
       update public.email_outbox
          set status = 'sent', sent_at = r.dispatched_at, last_error = null
-       where id = r.id;
+       where id = r.id and status = 'dispatched';
     elsif r.status_code = 200 and v_body ? 'skipped' then
       update public.email_outbox
          set status = 'skipped', last_error = left('skipped:' || (v_body->>'skipped'), 200)
-       where id = r.id;
+       where id = r.id and status = 'dispatched';
     elsif r.status_code = 400 then
       update public.email_outbox
          set status = 'failed',
              last_error = left('400:' || coalesce(v_body->>'error', r.content, ''), 300)
-       where id = r.id;
-    elsif r.status_code = 409 then
-      -- Ο Resend αρνήθηκε το ίδιο κλειδί μοναδικότητας: η πρώτη αποστολή είτε
-      -- τρέχει είτε έγινε. Οχι επανάληψη, όχι διπλό email.
+       where id = r.id and status = 'dispatched';
+    elsif r.status_code = 409 and v_body->>'resendCode' = 'concurrent_idempotent_requests' and v_same then
+      -- Τρέχει ακόμη η πρώτη με το ίδιο κλειδί. Ξανά αργότερα, ίδιο κλειδί: ο
+      -- Resend θα γυρίσει την απάντησή της.
       update public.email_outbox
-         set status = 'failed', last_error = left('idempotency:' || coalesce(r.content, ''), 300)
-       where id = r.id;
+         set status = 'pending', request_id = null,
+             scheduled_for = now() + interval '5 minutes',
+             last_error = 'idempotency:concurrent'
+       where id = r.id and status = 'dispatched';
+    elsif r.status_code = 409 then
+      -- Το κλειδί το έχει ήδη δει ο Resend: το email πιθανότατα έφυγε. ΟΧΙ
+      -- failed (δεν είναι αποτυχία) και ΟΧΙ επανάληψη (θα ήταν διπλό). Μετρά
+      -- στο όριο μάρκετινγκ και φαίνεται στην email_outbox_health().
+      update public.email_outbox
+         set status = 'probably_sent', sent_at = coalesce(r.idem_since, r.dispatched_at),
+             last_error = left('idempotency:' || coalesce(nullif(v_body->>'resendCode', ''), 'unknown'), 300)
+       where id = r.id and status = 'dispatched';
     elsif r.status_code between 200 and 299 then
       -- 2xx ΧΩΡΙΣ αναγνωρίσιμο σώμα: ίσως έφυγε. Οχι επανάληψη, όχι διπλό email.
       update public.email_outbox
          set status = 'failed', last_error = left('unexpected_2xx:' || coalesce(r.content, ''), 300)
-       where id = r.id;
-    elsif r.attempts < v_max then
+       where id = r.id and status = 'dispatched';
+    elsif r.attempts < v_max and coalesce(v_body->>'definite', '') = 'true' then
+      -- ΣΙΓΟΥΡΗ αποτυχία (ο Resend απάντησε λάθος ή λείπει το κλειδί του):
+      -- τίποτα δεν έφυγε. Νέα γενιά κλειδιού, ώστε μια απάντηση λάθους που
+      -- ίσως κράτησε ο Resend να μην ξαναπαιχτεί· νέο παράθυρο 24 ωρών.
       update public.email_outbox
-         set status = 'pending',
-             request_id = null,
+         set status = 'pending', request_id = null,
+             idem_gen = idem_gen + 1, idem_since = null,
              scheduled_for = now() + make_interval(mins => 15 * r.attempts),
-             last_error = left(
-               case when r.timed_out then 'timeout'
-                    when r.error_msg is not null then 'net:' || r.error_msg
-                    else coalesce(r.status_code::text, '?') || ':' || coalesce(v_body->>'error', r.content, '')
-               end, 300)
-       where id = r.id;
+             last_error = v_why
+       where id = r.id and status = 'dispatched';
+    elsif v_same then
+      -- ΑΒΕΒΑΙΗ έκβαση (λήξη χρόνου, σφάλμα δικτύου, 5xx χωρίς `definite`):
+      -- ίσως έφυγε. Ιδιο κλειδί, μέσα στο παράθυρο.
+      update public.email_outbox
+         set status = 'pending', request_id = null,
+             scheduled_for = now() + make_interval(mins => 15 * r.attempts),
+             last_error = v_why
+       where id = r.id and status = 'dispatched';
     else
       update public.email_outbox
          set status = 'failed',
              last_error = left(
-               'after ' || r.attempts || ' attempts: ' ||
-               case when r.timed_out then 'timeout'
-                    when r.error_msg is not null then 'net:' || r.error_msg
-                    else coalesce(r.status_code::text, '?') || ':' || coalesce(v_body->>'error', r.content, '')
-               end, 300)
-       where id = r.id;
+               case when r.attempts >= v_max then 'after ' || r.attempts || ' attempts: '
+                    else 'idempotency_window: ' end || v_why, 300)
+       where id = r.id and status = 'dispatched';
     end if;
     v_n := v_n + 1;
   end loop;
@@ -226,10 +287,91 @@ as $function$
     (select max(coalesce(sent_at, dispatched_at))
        from public.email_outbox
       where to_email = lower(trim(p_to_email)) and category = 'marketing'
-        and status in ('sent', 'dispatched'))
+        and status in ('sent', 'dispatched', 'probably_sent'))
       < now() - interval '3 days',
     true);
 $function$;
+
+-- ── 3α. Η ακύρωση πιάνει και ό,τι είναι σε πτήση ──────────────────────────
+-- Ιδιοι ορισμοί με το 20261021120000, με μία διαφορά: `status in ('pending',
+-- 'dispatched')`. Η γραμμή σε πτήση γίνεται skipped, οπότε η reconcile (που
+-- ρωτά `status = 'dispatched'`) δεν την ξαναβάζει στην ουρά μετά από 5xx. Αν
+-- το πρώτο αίτημα έφυγε ήδη, αυτό δεν αναιρείται· η επανάληψη όμως κόβεται.
+create or replace function public.accountant_invite_withdraw(p_id uuid)
+ returns json
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v_me uuid := auth.uid();
+  v_id uuid;
+begin
+  if not private.mfa_satisfied() then
+    raise exception 'mfa_required' using errcode = '42501';
+  end if;
+  if v_me is null then return json_build_object('ok', false, 'reason', 'anonymous'); end if;
+
+  update accountant_invites set status = 'withdrawn', answered_at = now()
+   where id = p_id and accountant_id = v_me and status = 'sent'
+  returning id into v_id;
+  if v_id is null then return json_build_object('ok', false, 'reason', 'invalid'); end if;
+
+  update email_outbox
+     set status = 'skipped',
+         last_error = case when status = 'dispatched' then 'withdrawn:in_flight' else 'withdrawn' end
+   where copy_id = 'accountant_invite' and status in ('pending', 'dispatched')
+     and dedup_key like 'accountant_invite:' || v_id::text || ':%';
+
+  return json_build_object('ok', true, 'status', 'withdrawn');
+end $$;
+
+alter function public.accountant_invite_withdraw(uuid) owner to postgres;
+revoke all     on function public.accountant_invite_withdraw(uuid) from public, anon;
+grant  execute on function public.accountant_invite_withdraw(uuid) to authenticated;
+
+create or replace function private.accountant_invites_forget_email()
+ returns trigger
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $$
+declare v_email text := lower(btrim(coalesce(old.email, '')));
+begin
+  if v_email <> '' then
+    delete from public.accountant_invites where email = v_email;
+    update public.email_outbox
+       set status     = case when status in ('pending', 'dispatched') then 'skipped' else status end,
+           last_error = case when status in ('pending', 'dispatched') then 'sender_erased' else last_error end,
+           params     = params - 'accountantEmail' - 'accountantName'
+     where copy_id = 'accountant_invite'
+       and lower(btrim(coalesce(params->>'accountantEmail', ''))) = v_email;
+  end if;
+  return old;
+end $$;
+
+alter function private.accountant_invites_forget_email() owner to postgres;
+revoke all on function private.accountant_invites_forget_email() from public, anon, authenticated;
+
+-- ── 3β. Η παρακολούθηση ──────────────────────────────────────────────────
+-- Οι καταστάσεις της ουράς στο τελευταίο 24ωρο. Τα `probably_sent` δεν είναι
+-- αποτυχίες, αλλά πολλά μαζί σημαίνουν ότι κάτι ξαναστέλνει με το ίδιο κλειδί.
+create or replace function public.email_outbox_health()
+ returns table (status text, n integer)
+ language sql
+ stable
+ security definer
+ set search_path to 'public'
+as $function$
+  select o.status, count(*)::int
+    from public.email_outbox o
+   where coalesce(o.dispatched_at, o.created_at) > now() - interval '24 hours'
+   group by o.status
+   order by o.status;
+$function$;
+
+revoke all on function public.email_outbox_health() from public, anon, authenticated;
+grant execute on function public.email_outbox_health() to service_role;
 
 -- ── 4. Η εργασία ───────────────────────────────────────────────────────────
 -- Κάθε 5 λεπτά, μετατοπισμένη κατά 2 από τη drain (*/5), ώστε η απάντηση να
