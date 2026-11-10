@@ -38,11 +38,21 @@ export function nextOccurrence(date: string, interval: string): string | null {
   return occurrenceAt(date, interval, 1)
 }
 
+// ΔΕΧΕΤΑΙ ΤΗ ΓΡΑΜΜΗ ΤΗΣ ΒΑΣΗΣ ΟΠΩΣ ΕΙΝΑΙ (10/11/2026). Η send-reminders περνά
+// `CalendarEventsRow`, όπου το `recurring` είναι `boolean | null` και τα
+// `recurrence_exdates` είναι `Json`. Με στενότερο τύπο εδώ, ο έλεγχος Deno
+// έπεφτε και η ανάπτυξη θα χρειαζόταν `as` στον καλούντα.
 export interface Recurrable {
-  id: string; event_date: string; recurring?: boolean; recurring_interval?: string | null
+  id: string; event_date: string; recurring?: boolean | null; recurring_interval?: string | null
   recurrence_until?: string | null           // «YYYY-MM-DD» λήξη σειράς
   recurrence_count?: number | null           // μέγιστο πλήθος εμφανίσεων (base = 1η)
-  recurrence_exdates?: string[] | null        // ημερομηνίες εξαίρεσης «YYYY-MM-DD»
+  /** Ημερομηνίες εξαίρεσης «YYYY-MM-DD». Στη βάση είναι jsonb, γι' αυτό `unknown`: ό,τι δεν είναι ημερομηνία αγνοείται. */
+  recurrence_exdates?: unknown
+}
+
+/** Οι ημερομηνίες εξαίρεσης, μόνο όσες είναι κείμενο. */
+function exdatesOf(v: unknown): Set<string> {
+  return new Set(Array.isArray(v) ? v.filter((d): d is string => typeof d === 'string') : [])
 }
 
 // Επιστρέφει όλες τις εμφανίσεις (base + εικονικές) που πέφτουν στο [rangeStart, rangeEnd]
@@ -57,7 +67,7 @@ export function expandRecurring<T extends Recurrable>(
   for (const e of events) {
     const until = e.recurrence_until || null
     const count = (typeof e.recurrence_count === 'number' && e.recurrence_count > 0) ? e.recurrence_count : null
-    const ex = new Set(e.recurrence_exdates || [])
+    const ex = exdatesOf(e.recurrence_exdates)
     let idx = 0
     // Θεωρεί μια εμφάνιση: ενημερώνει τον μετρητή, την εμφανίζει αν είναι εντός εύρους
     // και δεν εξαιρείται. Επιστρέφει false αν η σειρά έχει εξαντληθεί (until/count).

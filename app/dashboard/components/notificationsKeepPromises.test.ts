@@ -128,5 +128,13 @@ const src = (p: string) => readFileSync(p, 'utf8')
   ok('η σειρά ανάπτυξης γράφεται σωστά (ανάποδα φεύγει διπλή όχληση)', mig.includes('ΥΠΟΧΡΕΩΤΙΚΗ') && !mig.includes('διπλό email δεν φεύγει'))
 }
 
+// ── 9. Ο έλεγχος Deno δέχεται τη γραμμή της βάσης χωρίς `as` (CI, 10/11/2026) ──
+{
+  const sr = src('supabase/functions/send-reminders/index.ts')
+  ok('καμία μετατροπή τύπου προς CalendarEventsRow στις υπενθυμίσεις', !sr.includes('toSend as CalendarEventsRow[]') && !/filter\(e => !e\._virtual\) as /.test(sr))
+  const rec = src('lib/calendar/recurrence.ts')
+  ok('το Recurrable δέχεται recurring null', rec.includes('recurring?: boolean | null'))
+}
+
 console.log(`οι ειδοποιήσεις κάνουν ό,τι λένε: ${passed} ✓ · ${failed} ✗`)
 if (failed) { console.log('Απέτυχαν:\n - ' + fails.join('\n - ')); process.exit(1) }

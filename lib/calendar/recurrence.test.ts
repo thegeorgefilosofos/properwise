@@ -98,6 +98,18 @@ ok('yearly αναπτύσσεται', expandRecurring([{ id: 'y', event_date: '2
   ok('κλειδί μεμονωμένου: όπως πριν', JSON.stringify(reminderKey({ id: 'one', event_date: '2026-11-12' }, 'today')) === JSON.stringify({ event_id: 'one', reminder_type: 'today' }))
 }
 
+// ── 10.11.2026: η γραμμή της βάσης περνά όπως είναι (null, jsonb) ──────────
+{
+  const row = { id: 'r', event_date: '2026-01-10', recurring: true as boolean | null, recurring_interval: 'monthly',
+    recurrence_until: null, recurrence_count: null, recurrence_exdates: ['2026-02-10', 7, null] as unknown }
+  const d = expandRecurring([row], '2026-01-01', '2026-03-31').map(e => e.event_date).join(',')
+  ok('jsonb εξαιρέσεις: μετρά μόνο το κείμενο', d === '2026-01-10,2026-03-10')
+  ok('jsonb που δεν είναι πίνακας: καμία εξαίρεση', expandRecurring([{ ...row, recurrence_exdates: { x: 1 } }], '2026-01-01', '2026-03-31').length === 3)
+  ok('recurring null: μόνο η βάση', expandRecurring([{ ...row, recurring: null }], '2026-01-01', '2026-03-31').length === 1)
+  const r = reminderOccurrences([row], '2026-03-01', '2026-03-31')
+  ok('ο τύπος της γραμμής διατηρείται (χωρίς as)', r.upcoming[0].recurrence_until === null && r.overdue.length === 0)
+}
+
 console.log(`recurrence.ts, ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)
 if (failed) { console.log('Απέτυχαν:\n - ' + fails.join('\n - ')); process.exit(1) }
 else console.log('όλα πέρασαν')

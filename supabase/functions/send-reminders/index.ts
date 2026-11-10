@@ -345,7 +345,7 @@ Deno.serve(async (req) => {
       // «Πλήρωσα» μόνο για αποθηκευμένη γραμμή: το διακριτικό δείχνει σε uuid
       // και η εικονική εμφάνιση δεν έχει δικό της (το ημερολόγιο τη σημειώνει
       // πληρωμένη αποσπώντας την από τη σειρά).
-      const payable = (list: typeof upcoming) => list.filter(e => !e._virtual) as CalendarEventsRow[]
+      const payable = (list: typeof upcoming) => list.filter(e => !e._virtual)
 
       const checks = [
         { type: '7days', enabled: pref.reminder_7days, date: fmt(in7days) },
@@ -369,7 +369,7 @@ Deno.serve(async (req) => {
         if (!sent) { skipped++; continue }
         const toSend = matching.filter(e => { const k = reminderKey(e, check.type); return !sent.has(`${k.event_id}|${k.reminder_type}`) })
         if (!toSend.length) continue
-        const { subject, html } = buildEmail(toSend as CalendarEventsRow[], check.type, await payLinks(pref.user_id, payable(toSend)))
+        const { subject, html } = buildEmail(toSend, check.type, await payLinks(pref.user_id, payable(toSend)))
         const ok = await sendEmail(to, subject, html)
         if (ok) {
           await supabase.from('notification_log').insert(logRows(toSend, check.type))
