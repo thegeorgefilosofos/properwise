@@ -460,6 +460,42 @@ export async function scanPhoto(file: File): Promise<ScanFailure & { photo?: { c
   };
 }
 
+// ── Φωτογραφία Ε9 ή πράξης ΕΝΦΙΑ: η μαζική καταχώρηση (09/11/2026) ─────────
+/** Τι φωτογραφίες δέχεται η μαζική καταχώρηση. Το HEIC μόνο όπου ο περιηγητής το ανοίγει. */
+export const PHOTO_LIST_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'] as const;
+export const isPhotoFile = (file: { type?: string; name?: string }): boolean =>
+  (PHOTO_LIST_TYPES as readonly string[]).includes((file.type || '').toLowerCase()) || /\.(jpe?g|png|webp|hei[cf])$/i.test(file.name || '');
+
+/**
+ * Διαβάζει φωτογραφία εγγράφου με δικό του prompt (lib/myaade/photo.ts) και
+ * επιστρέφει το JSON της απάντησης, ΑΝΕΛΕΓΚΤΟ: τον έλεγχο τον κάνει ο
+ * καλών. Η εικόνα μικραίνει στη συσκευή και μετατρέπεται σε JPEG (έτσι
+ * περνά και το HEIC, όπου ο περιηγητής το ανοίγει). Δεν αποθηκεύεται πουθενά:
+ * φεύγει μόνο μέσα στο αίτημα της σάρωσης και μετρά ως σάρωση.
+ */
+export async function scanPhotoList(file: File, system: string, text: string): Promise<ScanFailure & { reply?: unknown }> {
+  if (file.size > MAX_SCAN_MB * 1024 * 1024) return { error: 'big' };
+  if (!isPhotoFile(file)) return { error: 'format', errorText: 'Διαβάζονται φωτογραφίες JPG, PNG ή HEIC και αρχεία PDF.' };
+  const heic = /hei[cf]/i.test(`${file.type || ''} ${file.name || ''}`);
+  let sent: { base64: string; mime: string } | null = null;
+  for (const [edge, q] of [[SCAN_MAX_EDGE, 0.85], [1600, 0.75], [1200, 0.7]] as const) {
+    const out = await shrinkImage(file, edge, q);
+    if (out && out.base64.length * 0.75 <= SCAN_MAX_SEND_BYTES) { sent = out; break; }
+  }
+  if (!sent) {
+    if (heic) return { error: 'format', errorText: 'Η φωτογραφία HEIC δεν ανοίγει σε αυτόν τον περιηγητή. Αποθήκευσέ τη ως JPG ή ανέβασε το PDF.' };
+    if (file.size > SCAN_MAX_SEND_BYTES) return { error: 'big' };
+    try { sent = await readFile(file); } catch { return { error: 'unreadable' }; }
+  }
+  const r = await ask({
+    model: 'claude-sonnet-5', max_tokens: 1500, system,
+    messages: [{ role: 'user', content: [contentPartOf(sent.base64, sent.mime), { type: 'text', text }] }],
+  });
+  if (r.error) return { error: r.error, errorText: r.errorText };
+  const reply = parseJson<unknown>(r.data);
+  return reply == null ? { error: 'unreadable' } : { reply };
+}
+
 // ── Έγγραφο ή φωτογραφία; Το αποφασίζει το AI, όχι διακόπτης ────────────────
 export interface ScanFileResult extends ScanFailure {
   kind: 'document' | 'photo';

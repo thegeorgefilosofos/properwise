@@ -99,10 +99,13 @@ import { BOTTOM_NAV } from '@/app/dashboard/components/shell/nav';
 import { T, TT, Modal, Btn, PageTitle, InfoBanner, fieldRow } from '@/components/Theme';
 import { ConfirmHost } from '@/components/ConfirmDialog';
 import { createClient } from '@/lib/supabase/client';
-import MyaadeImport from '@/app/dashboard/components/MyaadeImport';
+import MyaadeImport, { wrongDoc } from '@/app/dashboard/components/MyaadeImport';
 import { CenterState, DoneView, MYAADE_CSS } from '@/app/dashboard/components/MyaadeSteps';
 import { parseEnfiaAct } from '@/lib/myaade/enfiaAct';
 import { fakeAtak } from '@/lib/myaade/fixtures';
+import { fakeE9Lines } from './e9Fixture';
+import { parseE9 } from '@/lib/myaade/e9';
+import { INCOME_TAX_REASON } from '@/lib/myaade/parse';
 import type { CashLine, CashPosition } from '@/lib/home/cash';
 
 declare global {
@@ -160,8 +163,20 @@ const MYAADE_KNOWN = [
 ];
 const MYAADE_OWNERS = [{ id: 'o1', full_name: 'Ελένη Παραδείγματος', afm: null, type: 'owner' }, { id: 'o2', full_name: 'Νίκος Δοκιμής', afm: null, type: 'owner' }];
 
+// ── Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ (09/11/2026) ──────────────────────────────────────
+// Νέος χρήστης, κανένα ακίνητο, κανένας «Ιδιοκτήτης». Συνθετικό Ε9 με τη
+// διάταξη της πραγματικής εκτύπωσης (e9Fixture.ts).
+const bulkDoc = (n: number) => {
+  const r = parseE9(fakeE9Lines(Array.from({ length: n }, (_, i) => ({
+    n: i + 1, floor: String(i % 4), sqm: `${48 + i * 7},${i % 2 ? '50' : '20'}`, built: String(1975 + i),
+    ...(i === 0 ? { street: ['ΟΔΟΣ', 'ΠΑΡΑΔΕΙΓΜΑΤΟΣ', '(ΠΡΩΗΝ ΔΟΚΙΜΗΣ)'] as [string, string, string] } : {}),
+  }))));
+  return r.status === 'ok' ? r.doc : undefined;
+};
+
 const respond: Responder = (call) => {
   if (call.op !== 'select') return { data: null, error: null };
+  if (which.startsWith('bulk') && (call.table === 'user_properties' || call.table === 'clients')) return { data: [], error: null };
   if (which.startsWith('myaade') && call.table === 'user_properties') return { data: MYAADE_KNOWN, error: null };
   if (which.startsWith('myaade') && call.table === 'clients') return { data: MYAADE_OWNERS, error: null };
   if (call.table === 'inbound_messages') return { data: inboundRows, error: null };
@@ -421,6 +436,13 @@ const VIEWS: Record<string, () => React.ReactElement> = {
       </CenterState>
     </Modal>
   ),
+  // Η μαζική καταχώρηση: η κάρτα στο «Νέο ακίνητο» του νέου χρήστη, το Ε9 με
+  // τρία ακίνητα, το ταβάνι των 20, το όριο του πακέτου και το λάθος έγγραφο.
+  bulkWizard: () => <AddPropertyWizard userId="u1" onClose={() => {}} onSaved={() => {}} onBulkImport={() => {}} />,
+  bulkE9: () => <MyaadeImport userId="u1" limit={3} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} initialDoc={bulkDoc(3)} />,
+  bulkMany: () => <MyaadeImport userId="u1" limit={Infinity} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} initialDoc={bulkDoc(23)} />,
+  bulkPlan: () => <MyaadeImport userId="u1" limit={1} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} initialDoc={bulkDoc(3)} />,
+  bulkWrongDoc: () => <MyaadeImport userId="u1" limit={3} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} initialFailure={wrongDoc(INCOME_TAX_REASON)} />,
   overview: () => <OverviewTab prop={OVERVIEW_PROPERTY as never} properties={OVERVIEW_PROPERTIES as never} userId="u1" onNavigate={() => {}} tabVisible={() => true} />,
   overviewFirmNotice: () => <OverviewTab prop={OVERVIEW_PROPERTY as never} properties={OVERVIEW_PROPERTIES as never} userId="u1" onNavigate={() => {}} tabVisible={() => true} />,
   portfolio: () => <PortfolioTab properties={bench.properties} userId="u1" onSelectProperty={() => {}} />,

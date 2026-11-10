@@ -53,10 +53,15 @@ export interface CommitRow {
   sqm: number | null;
   ownershipPct: number | null;
   floor: string | null;
+  /** Από το Ε9 ή την πράξη του 2026. Προαιρετικά: η παλιά πράξη δεν τα δίνει. */
+  postalCode?: string | null;
+  yearBuilt?: number | null;
 }
 
 export interface CommitInput {
   userId: string;
+  /** Ποιο έγγραφο: γράφεται στην καταγραφή της εισαγωγής. Λείπει = πράξη ΕΝΦΙΑ. */
+  kind?: 'enfia_act' | 'e9';
   year: number | null;
   total: number | null;
   foundCount: number;
@@ -84,6 +89,8 @@ export function newPropertyRow(userId: string, r: CommitRow, clientId: string | 
   if (r.sqm && r.sqm > 0) row.sqm = r.sqm;
   if (r.ownershipPct && r.ownershipPct > 0 && r.ownershipPct <= 100) row.ownership = r.ownershipPct;
   if (r.floor?.trim()) row.floor = r.floor.trim();
+  if (r.postalCode && /^\d{5}$/.test(r.postalCode)) row.postal_code = r.postalCode;
+  if (r.yearBuilt && Number.isInteger(r.yearBuilt) && r.yearBuilt >= 1800 && r.yearBuilt <= 2100) row.year_built = r.yearBuilt;
   return row;
 }
 
@@ -157,7 +164,7 @@ async function writeStatement(
 /** Γράφει όσα επιβεβαίωσε ο χρήστης. */
 export async function commitImport(db: SupabaseClient, input: CommitInput): Promise<CommitOutcome> {
   const reserved = await db.from(TABLE)
-    .insert({ user_id: input.userId, kind: 'enfia_act', tax_year: input.year, found_count: input.foundCount })
+    .insert({ user_id: input.userId, kind: input.kind ?? 'enfia_act', tax_year: input.year, found_count: input.foundCount })
     .select('id').single();
   if (reserved.error) return { ok: false, reason: reserved.error.code === '54000' || /MYAADE_DAILY_LIMIT/.test(reserved.error.message ?? '') ? 'daily_limit' : 'failed' };
   const batchId = (reserved.data as { id?: string } | null)?.id;
