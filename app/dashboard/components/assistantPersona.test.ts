@@ -29,9 +29,17 @@ import {
 } from './assistantPersona';
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
 import { aiLimitsFor, TRIAL_LIMITS } from '@/lib/billing/aiLimits';
-import { EARLY_ACCESS_DAYS } from '@/lib/billing/entitlements';
+import { EARLY_ACCESS_DAYS, TAB_MIN_PLAN, FEATURE_MIN_PLAN, PROFESSIONAL_ONLY_TABS, effectivePlan } from '@/lib/billing/entitlements';
+import { MIN_PROPERTIES } from '@/lib/property/visibility';
+import { PAY_UNDO_HOURS } from '@/lib/reminders/payLink';
+import { PROTHESMIES_PATH } from '@/lib/seo/prothesmies';
+import { DPA_HREF } from '@/lib/legal/dpa';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { NAV_LABELS } from '@/lib/nav/labels';
+import { readFileSync } from 'node:fs';
+import { LEVEL_LABEL, LEVEL_HINT, LEVELS, ROLE_LABEL, ROLES, undoDaysFrom } from '@/lib/data/firms';
+import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
+import { PRO_PAID_TIER, REFERRAL_COMP_CAP_MONTHS, REWARDS_MERGE_LINE } from '@/lib/referral/referral';
 
 // Ο,ΤΙ ΦΤΑΝΕΙ ΣΤΟ ΜΟΝΤΕΛΟ, ΣΕ ΕΝΑ ΚΕΙΜΕΝΟ. Η παραγωγή στέλνει δύο μπλοκ και
 // τα κρατάει χωριστά για το cache: τη γνώση τη βάζει ο διακομιστής
@@ -290,6 +298,119 @@ for (const prefs of [id(), id({ formal: true }), id({ memory: false }), id({ com
     !/(?:καρτέλα|καρτέλας|στην|στο)\s+«?(?:Πελάτης|Αποδόσεις|Απογραφή)|Το Αρχείο έχει/u.test(p));
   ok('prompt: παραπέμπει σε επαγγελματία', /δικηγόρος|λογιστ/.test(p));
 }
+// Η ΝΟΑ ΞΕΡΕΙ ΟΣΑ ΚΑΝΕΙ ΣΗΜΕΡΑ Η ΕΦΑΡΜΟΓΗ (10/11/2026). Ελεγε «πύλη λογιστή
+// (read-only)» ενώ τα γραφεία καταχωρούν με άδεια του ιδιοκτήτη και δεν ήξερε
+// τη μαζική καταχώρηση, την Πύλη ενοικιαστή, το «Πλήρωσα» από το email, την
+// ιδιωτική διεύθυνση για λογαριασμούς, τα δημόσια εργαλεία ή την ομάδα.
+{
+  const p = buildSystemPrompt(id(), 'x');
+  ok('γνώση: όχι πια «πύλη λογιστή (read-only)»', !/πύλη λογιστή \(read-only\)|πύλη λογιστή είναι μόνο-ανάγνωσης/.test(p));
+  // Το όριο έρχεται από το BULK_MAX: η πηγή το γράφει ως όνομα, το prompt ως αριθμό.
+  ok('γνώση: μαζική καταχώρηση με το όριο από τον κώδικα', p.includes('Όλα τα ακίνητά σου μαζί') && /έως \d+ ακίνητα κάθε φορά/.test(p)
+    && /έως \$\{BULK_MAX\} ακίνητα κάθε φορά/.test(readFileSync('app/dashboard/components/assistantPersona.ts', 'utf8')));
+  ok('γνώση: και τα τρία επίπεδα του γραφείου', LEVELS.every(l => p.includes(`«${LEVEL_LABEL[l]}»: ${LEVEL_HINT[l]}`)));
+  ok('γνώση: και οι τρεις ρόλοι του γραφείου', ROLES.every(r => p.includes(`«${ROLE_LABEL[r]}»`)));
+  ok('γνώση: η αναίρεση από τις μέρες του νόμου', p.includes(`αναιρεί ${undoDaysFrom('2026-11-10').map(d => d.lower).join(' ή ')}`));
+  ok('γνώση: κάθε δημόσιο εργαλείο', PUBLIC_TOOLS.every(t => p.includes(`${t.label} (${t.href})`)));
+  for (const w of ['Πύλη ενοικιαστή', '«Πλήρωσα»', 'ιδιωτική διεύθυνση email για λογαριασμούς', '«Οργανισμός και ομάδα»', '«Λογιστικά γραφεία»', '/logistes', '/en'])
+    ok(`γνώση: ${w}`, p.includes(w));
+  ok('γνώση: καμία τιμή γραφείου από μνήμης', !/γραφεί[^.]{0,60}\d+,\d{2}\s?€/.test(p));
+}
+
+// ΕΛΕΓΧΟΣ ΑΚΡΙΒΕΙΑΣ ΚΑΙ ΠΛΗΡΟΤΗΤΑΣ (10/11/2026). Κάθε πρόταση από κάτω
+// διορθώνει κάτι που η Νόα έλεγε λάθος ή δεν ήξερε, με την οθόνη ως μάρτυρα.
+{
+  const p = buildSystemPrompt(id(), 'x');
+  // «Μαύρη λίστα» έφυγε από τους Επισκέπτες (TabClients.tsx: ιδιωτική σημείωση
+  // χωρίς κατηγοριοποίηση) και δεν φτάνει στο μοντέλο: δεν την προτείνει πια.
+  ok('ακρίβεια: καμία οδηγία για «μαύρη λίστα»', !/Αν είναι στη «μαύρη λίστα»|πελάτη στη μαύρη λίστα/.test(p)
+    && /«Μαύρη λίστα» ή επισήμανση επισκέπτη ΔΕΝ υπάρχει/.test(p));
+  // Το ληξιπρόθεσμο ενοίκιο ειδοποιεί τον ιδιοκτήτη· στον ενοικιαστή η εφαρμογή
+  // δεν στέλνει τίποτα (NotificationSettings.tsx). «Αυτόματες οχλήσεις» έλεγε το αντίθετο.
+  ok('ακρίβεια: όχι «αυτόματες οχλήσεις» προς τον ενοικιαστή', !/αυτόματες οχλήσεις|οχλήσεις ληξιπρόθεσμου/.test(p)
+    && /ΣΤΟΝ ΕΝΟΙΚΙΑΣΤΗ Η ΕΦΑΡΜΟΓΗ ΔΕΝ ΣΤΕΛΝΕΙ ΤΙΠΟΤΑ/.test(p));
+  // Τα ονόματα των κουμπιών όπως είναι στην οθόνη.
+  ok('ακρίβεια: «Σάρωση κάρτας», όχι «Σκάναρε κάρτα»', p.includes('«Σάρωση κάρτας»') && !p.includes('Σκάναρε κάρτα'));
+  ok('ακρίβεια: κανένα κουμπί «Σάρωση με AI»', !p.includes('«Σάρωση με AI»'));
+  ok('ακρίβεια: το πεδίο λέγεται «Ποιος πληρώνει»', p.includes('«Ποιος πληρώνει»') && !p.includes('«Πληρώνει / Διαμοιρασμός»'));
+  ok('ακρίβεια: iCal και email από το «Περισσότερα»', p.includes('«Περισσότερα» → «Σύνδεση ημερολογίου»') && p.includes('«Περισσότερα» → «Εισαγωγή από email»'));
+  // Η Αξιοποίηση αποθηκεύει την πρόοδο ανά ακίνητο (lib/data/plan.ts, πίνακας property_plan).
+  ok('ακρίβεια: η Αξιοποίηση κρατά την πρόοδο', !p.includes('δεν αποθηκεύει τίποτα') && p.includes('η πρόοδος μένει στο ακίνητο'));
+  // Ο σύνδεσμος λογιστή βγαίνει από τη Λογιστική· ο Λογαριασμός δείχνει κατάσταση και ανάκληση.
+  ok('ακρίβεια: ο σύνδεσμος λογιστή δεν βγαίνει από τον Λογαριασμό', !/στην ενότητα «Δεδομένα και απόρρητο», υπάρχει read-only σύνδεσμος/.test(p)
+    && p.includes(`ΣΥΝΔΕΣΜΟΣ ΛΟΓΙΣΤΗ: βγαίνει από τη «${NAV_LABELS.accounting}»`));
+  // Η Πύλη δείχνει λήξη μίσθωσης και εγγύηση (app/portal/[token]), όχι το έγγραφο της σύμβασης.
+  ok('ακρίβεια: η Πύλη δεν δείχνει «σύμβαση»', !/βλέπει ενοίκιο, οφειλή και σύμβαση/.test(p) && p.includes('λήξη μίσθωσης και εγγύηση'));
+  // Η ομάδα: ανά μέλος ακίνητα και οικονομικά (OrgTeam.tsx, «Δικαιώματα»).
+  ok('ακρίβεια: δικαιώματα μέλους ανά ακίνητα και οικονομικά', p.includes('σε ποια ακίνητα έχει πρόσβαση και αν βλέπει τα οικονομικά'));
+  // Η μηνιαία κατάσταση με email (supabase/functions/send-monthly-statements,
+  // cron την 1η του μήνα) φεύγει μόνο σε όσους έχουν ανοιχτές τις υπενθυμίσεις
+  // με email (reminder_recipients). Οι τέσσερις καταστάσεις είναι του email.
+  {
+    const fn = readFileSync('supabase/functions/send-monthly-statements/index.ts', 'utf8');
+    ok('γνώση: μηνιαία κατάσταση με email', p.includes('«Μηνιαία κατάσταση»') && p.includes('όσο είναι ανοιχτές οι «Υπενθυμίσεις με email»')
+      && ['Πλήρης', 'Μερική', 'Ληξιπρόθεσμο', 'Χωρίς μίσθωμα'].every(w => fn.includes(`'${w}'`) && p.includes(`«${w}»`))
+      && fn.includes('Μηνιαία κατάσταση') && fn.includes("rpc('reminder_recipients')")
+      && readFileSync('app/dashboard/components/NotificationSettings.tsx', 'utf8').includes('title="Υπενθυμίσεις με email"'));
+  }
+  // Οι ανταμοιβές του προγράμματος συνεργατών από τις σταθερές του lib/referral,
+  // με «χωρίς χρέωση» όπως η καρτέλα (TabReferral.tsx), όχι «δωρεάν».
+  {
+    const src = readFileSync('app/dashboard/components/assistantPersona.ts', 'utf8');
+    // κυριολεκτικό-πρότυπο: ψάχνει το όνομα της σταθεράς μέσα στην πηγή.
+    ok('συνεργάτες: στόχος και σερί από τον κώδικα', src.includes('${PRO_PAID_TARGET} ΣΥΝΔΡΟΜΗΤΕΣ') && src.includes('${STREAK_TARGET_MONTHS} ΣΥΝΕΧΟΜΕΝΟΥΣ')
+      && !/\b5 ΣΥΝΔΡΟΜΗΤΕΣ|X\/5»|\b3 ΣΥΝΕΧΟΜΕΝΟΥΣ/.test(src));
+    // Η ιδιότητα του Συνεργάτη ανεβάζει μόνο το επίπεδο (effectivePlan, user_plan_rank).
+    // Μήνα δώρο, μήνες ανά επιτυχημένο μήνα και προτεραιότητα δεν τα απονέμει
+    // κανένας κώδικας (καμία εγγραφή στο referral_rewards): η Νόα δεν τα υπόσχεται.
+    ok('συνεργάτες: το επίπεδο της ιδιότητας από τον κώδικα', p.includes(`πρόσβαση τουλάχιστον «${PLANS[effectivePlan({ partner: true })].name}»`));
+    ok('συνεργάτες: καμία υπόσχεση που δεν απονέμεται', !/προτεραιότητα σε νέες κυκλοφορίες|δώρο με την απόκτηση|Κάθε μήνας που πιάνει τον στόχο δίνει/.test(p)
+      && !src.includes('partnerWelcomeTier') && !src.includes('PARTNER_MONTHLY_FREE_MONTHS'));
+    ok('συνεργάτες: για τα υπόλοιπα, παραπομπή στην καρτέλα και στους Όρους', p.includes('τα γράφουν η καρτέλα [[go:referral]] και οι Όροι (/terms#systaseis)'));
+    ok('συνεργάτες: όχι «ΕΙΣΟΔΗΜΑ», καμία ανταμοιβή δεν είναι χρήματα', !p.includes('ΕΙΣΟΔΗΜΑ και ΕΡΓΑΛΕΙΟ') && !p.includes('milestones'));
+    ok('συνεργάτες: η μπάρα του στόχου όσο η χρέωση είναι κλειστή', p.includes('ο στόχος μετρά από τη μέρα που θα ανοίξει'));
+    ok('συνεργάτες: μήνας στόχου στο πακέτο του κώδικα', p.includes(`«${PLANS[PRO_PAID_TIER].name}» χωρίς χρέωση`));
+    ok('συνεργάτες: τα δώρα ενώνονται, με ταβάνι', p.includes(REWARDS_MERGE_LINE) && p.includes(`έως ${REFERRAL_COMP_CAP_MONTHS}`));
+    // Η ταυτότητα (lib/assistant/identity.ts) λέει «δεν λες ποτέ ότι είσαι
+    // δωρεάν»· εδώ κρίνεται το κείμενο του persona, όπου ζουν πακέτα και τιμές.
+    ok('χρέωση: κανένα «δωρεάν» στο persona', !/δωρεάν|ΔΩΡΕΑΝ/.test(src.replace(/^\s*(\/\/|\*|\/\*).*$/gm, '')));
+  }
+  // Το «Πλήρωσα» αναιρείται, με τις ώρες από τον κώδικα.
+  ok('πληρότητα: αναίρεση του «Πλήρωσα» από το PAY_UNDO_HOURS', p.includes(`αναιρείται μέσα σε ${PAY_UNDO_HOURS} ώρες`));
+  // Ό,τι υπάρχει και η Νόα δεν ήξερε: μία λέξη-μάρτυρας ανά δυνατότητα.
+  for (const w of ['«Μαζικό μήνυμα»', '«Εξαγωγή διαμονών»', '«Δηλώθηκε στο myAADE»', '«Μπλοκάρισμα σε Airbnb ή Booking»',
+    '«Συνδρομή σε ζωντανό ημερολόγιο»', '«Ειδοποιήσεις στη συσκευή»', '«Σύνταξη μισθωτηρίου»', '«Πρωτόκολλο παράδοσης»',
+    '«Αίτημα πληρωμής»', '«Δήλωση μίσθωσης»', '«Υπολογισμός ΕΝΦΙΑ»', '«Κατανομή σε ιδιοκτήτες»', '«Βεβαίωση ενοικίου»',
+    '«Κλείδωμα έτους»', '«Κόστος αγοράς και πώλησης»', '«Καταστάσεις ιδιοκτήτη»', '«Νέα εργασία σε επιλεγμένα»',
+    '«Συμβόλαια»', '«Κενές νύχτες για κράτηση»', '«Αντιγραφή προσφοράς»', '«Υπενθύμιση εγγύησης»', '«Μαζική εισαγωγή»',
+    '«Επαφές στο κινητό»', '«Πρότυπα»', '«Σου οφείλουν»', '«Τι χρειάζεται τώρα»', '/verify', '/trust', '/paketa', '/ypanaxorisi'])
+    ok(`πληρότητα: ${w}`, p.includes(w));
+  ok('πληρότητα: οι προθεσμίες από τη διαδρομή του κώδικα', p.includes(`Προθεσμίες ιδιοκτήτη ανά μήνα στο ${PROTHESMIES_PATH}`));
+  ok('πληρότητα: το PDF του Ε9 διαβάζεται στη συσκευή', p.includes('Το PDF διαβάζεται στη συσκευή του χωρίς AI'));
+  ok('πληρότητα: τα αγγλικά των τρίτων', p.includes('Πύλη ενοικιαστή, pre-check-in, «Πλήρωσα» και επαλήθευση εγγράφου'));
+  // Δεύτερος και τρίτος γύρος σάρωσης: ανά φάκελο, ανά διαδρομή και ανά component.
+  for (const w of ['«Ανάλυση προσφοράς ESIS»', 'πιθανότητα έγκρισης', '«Δες ένα παράδειγμα»', '«Από πού ξεκινάς»',
+    '«Σάρωσε έγγραφο»', '«Όλες οι καρτέλες»', 'Ctrl+K', '«Νόα · Προτάσεις»', '«Διεύθυνση αποστολής»', '«Αποδέχομαι»', 'σύνδεσμο απεγγραφής'])
+    ok(`πληρότητα: ${w}`, p.includes(w));
+  ok('πληρότητα: η σύμβαση επεξεργασίας με τη διαδρομή του κώδικα', p.includes(`σύμβαση επεξεργασίας των Όρων (${DPA_HREF})`));
+}
+
+// ΤΟ «ΧΑΡΤΟΦΥΛΑΚΙΟ» ΔΕΝ ΕΙΝΑΙ ΜΟΝΟ ΤΩΝ ΕΠΑΓΓΕΛΜΑΤΙΩΝ. Η παλιά πρόταση «το
+// Χαρτοφυλάκιο και το Πελατολόγιο εμφανίζονται ΜΟΝΟ στους επαγγελματίες» ήταν
+// λάθος για το πρώτο: η καρτέλα ανοίγει με πακέτο ιδιώτη (TAB_MIN_PLAN) και από
+// τόσα ακίνητα όσα λέει το MIN_PROPERTIES· επαγγελματική είναι μόνο η καρτέλα
+// των επισκεπτών (PROFESSIONAL_ONLY_TABS). Η πρόταση βγαίνει πλέον από αυτά.
+{
+  const p = buildSystemPrompt(id(), 'x');
+  ok('χαρτοφυλάκιο: όχι πια «ΜΟΝΟ στους επαγγελματίες»', !/«Χαρτοφυλάκιο» και το «Πελατολόγιο» εμφανίζονται ΜΟΝΟ/.test(p));
+  ok('χαρτοφυλάκιο: η καρτέλα ανοίγει με πακέτο ιδιώτη', PLANS[TAB_MIN_PLAN.portfolio] !== undefined
+    && p.includes(`Το «${NAV_LABELS.portfolio}» εμφανίζεται με ${MIN_PROPERTIES.portfolio} ακίνητα και πάνω: με «${PLANS[TAB_MIN_PLAN.portfolio].name}» δείχνει τη «Σύγκριση ακινήτων», με «${PLANS[FEATURE_MIN_PLAN.portfolio].name}» τη συγκεντρωτική εικόνα όλων.`));
+  ok('επισκέπτες: επαγγελματική καρτέλα, με το όνομα του μενού', PROFESSIONAL_ONLY_TABS.has('clients')
+    && p.includes(`Οι «${NAV_LABELS.clients}» (το πελατολόγιο της βραχυχρόνιας) εμφανίζονται μόνο στους επαγγελματίες`));
+  const nav = NAV_MAP.find(n => n.id === 'portfolio')!;
+  ok('χαρτοφυλάκιο: η περιγραφή της καρτέλας δεν λέει «για επαγγελματίες»', !/για επαγγελματίες/.test(nav.what) && nav.what.includes(PLANS[TAB_MIN_PLAN.portfolio].name));
+}
+
 // ΤΑΥΤΟΤΗΤΑ: χωρίς φύλο, με άρθρο όπου το θέλει η πρόταση, χωρίς «είμαι AI»,
 // χωρίς «βοηθός» και «δωρεάν» — και χωρίς να κρύβεται.
 {
@@ -592,7 +713,9 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   // ΑΠΟ 25.09.2026 ΥΠΑΡΧΕΙ ΔΩΡΕΑΝ ΠΑΚΕΤΟ, ΜΕ ΤΟ ΟΝΟΜΑ ΤΟΥ ΚΑΙ ΧΩΡΙΣ ΤΗ ΝΟΑ. Το
   // prompt το λέει με το όνομα του PLANS, όχι ως «Δωρεάν»· και λέει ότι ο
   // λογαριασμός χωρίς συνδρομή συνεχίζει εκεί αντί να διαγράφεται.
-  ok('gating: το δωρεάν πακέτο με το όνομά του', !/«Δωρεάν»/.test(p) && p.includes(`«${PLANS.free.name}» δωρεάν`)
+  // 10/11/2026: «χωρίς συνδρομή» αντί για «δωρεάν», όπως η οθόνη των πακέτων
+  // (PlanMatrix «χωρίς συνδρομή»): κανόνας ιδιοκτήτη, κανένα «δωρεάν» δίπλα σε τιμές.
+  ok('gating: το πακέτο χωρίς συνδρομή με το όνομά του', !/«Δωρεάν»/.test(p) && p.includes(`«${PLANS.free.name}» χωρίς συνδρομή (${PLANS.free.maxProperties} ακίνητο`)
     && /ΔΕΝ διαγράφεται/.test(p) && p.includes('ΧΩΡΙΣ εμένα'));
   // Οι τιμές/όρια διαβάζονται από τα PLANS: το τεστ πιάνει απόκλιση prompt↔τιμολόγησης.
   ok('gating: solo price from PLANS', p.includes(`${PLANS.solo.priceMonthly.toFixed(2).replace('.', ',')}€/μήνα`));
@@ -635,7 +758,7 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   ok('gating: πρόωρη πρόσβαση', /ΠΡΟΩΡΗ ΠΡΟΣΒΑΣΗ/.test(p) && p.includes(`${EARLY_ACCESS_DAYS} ημέρες νωρίτερα`));
 
   // profile ↔ plan
-  ok('gating: Ιδιώτης → τα δικά του', p.includes(`ο «Ιδιώτης» έχει τον δωρεάν «${PLANS.free.name}» ή παίρνει «${PLANS.solo.name}» ή «${PLANS.owner.name}»`));
+  ok('gating: Ιδιώτης → τα δικά του', p.includes(`ο «Ιδιώτης» έχει τον «${PLANS.free.name}» χωρίς συνδρομή ή παίρνει «${PLANS.solo.name}» ή «${PLANS.owner.name}»`));
   ok('gating: Επαγγελματίας → τα δύο δικά του', p.includes(`Ο «Επαγγελματίας» παίρνει «${PLANS.agency.name}» ή «${PLANS.office.name}»`));
   ok('gating: Ιδιώτης θέλει pro → switch mode', /χρειάζεται να γυρίσει τον τρόπο σε «Επαγγελματίας»/.test(p));
 
@@ -653,7 +776,7 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   ok('gating: honest if not needed', /Αν κάποιος δεν το χρειάζεται, πες το ειλικρινά/.test(p));
 
   // δωρεάν μήνες / comp μπορούν να καλύψουν την αναβάθμιση
-  ok('gating: free months cover it', /δωρεάν μήνες από το Πρόγραμμα πρόσκλησης/.test(p) && /μπορούν να το καλύψουν/.test(p));
+  ok('gating: free months cover it', /μήνες χωρίς χρέωση από το Πρόγραμμα πρόσκλησης/.test(p) && /μπορούν να το καλύψουν/.test(p));
   ok('gating: partner comp mentioned', /ιδιότητα Συνεργάτη/.test(p));
 
   // routing στην ενότητα «Συνδρομή»
@@ -661,7 +784,10 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
 
   // κλειδωμένες καρτέλες / FeatureLock / professional-only
   ok('gating: lock icon + FeatureLock', /λουκέτο/.test(p) && /FeatureLock/.test(p));
-  ok('gating: Χαρτοφυλάκιο & Πελατολόγιο pro-only', /«Χαρτοφυλάκιο» και το «Πελατολόγιο» εμφανίζονται ΜΟΝΟ στους επαγγελματίες/.test(p));
+  // Ηταν «Χαρτοφυλάκιο & Πελατολόγιο pro-only» και κλείδωνε λάθος πρόταση: το
+  // Χαρτοφυλάκιο ανοίγει και σε ιδιώτη (TAB_MIN_PLAN). Μένει επαγγελματική μόνο
+  // η καρτέλα των επισκεπτών· οι δύο προτάσεις ελέγχονται στο μπλοκ «ΤΟ ΧΑΡΤΟΦΥΛΑΚΙΟ».
+  ok('gating: επισκέπτες pro-only', new RegExp(`«${NAV_LABELS.clients}» \\(το πελατολόγιο της βραχυχρόνιας\\) εμφανίζονται μόνο στους επαγγελματίες`).test(p));
 
   // σύντομοι / greeklish / χωρίς-τόνους triggers
   ok('gating: trigger «συγκριση» (no accent)', /«συγκριση»/.test(p));
@@ -674,7 +800,9 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   // Κινητό: ΔΥΟ αλήθειες ταυτόχρονα — εγκαθίσταται ήδη ως PWA, native δεν υπάρχει.
   ok('gating: PWA εγκαθίσταται ήδη', /ΕΓΚΑΘΙΣΤΑΤΑΙ ΗΔΗ στην αρχική οθόνη/.test(p));
   ok('gating: οδηγία Android', /«Εγκατάσταση εφαρμογής»/.test(p));
-  ok('gating: οδηγία iPhone', /«Πρόσθεση στην αρχική οθόνη»/.test(p));
+  // Το κουμπί όπως το γράφει η ίδια η εφαρμογή (InstallBanner, DeviceNotifications).
+  ok('gating: οδηγία iPhone', /«Προσθήκη στην οθόνη Αφετηρίας»/.test(p) && !p.includes('Πρόσθεση στην αρχική οθόνη')
+    && readFileSync('app/InstallBanner.tsx', 'utf8').includes('«Προσθήκη στην οθόνη Αφετηρίας»'));
   ok('gating: native δεν υπάρχει ακόμη', /δεν υπάρχει ακόμη/.test(p) && /App Store \/ Google Play/.test(p));
   ok('gating: mobile roadmap «Τι έρχεται»', /roadmap «Τι έρχεται»/.test(p));
   ok('gating: mobile waitlist «Ειδοποίησέ με»', /«Ειδοποίησέ με»/.test(p));
@@ -865,6 +993,33 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
      parseAction(SETUP_CONTEXT.replace('[[scan]]', ''), null).action?.type === 'add-property');
   ok('πλαίσιο πρώτου βήματος: φτάνει στο μοντέλο',
      buildPersonalPrompt(DEFAULT_PREFS, SETUP_CONTEXT).includes(SETUP_CONTEXT));
+}
+
+// ΤΕΛΕΥΤΑΙΟΣ ΕΛΕΓΧΟΣ ΠΡΙΝ ΤΗΝ ΠΑΡΑΓΩΓΗ (10/11/2026). Κάθε πρόταση από κάτω
+// διορθώνει κάτι που η Νόα θα έλεγε αλλιώς από τον κώδικα.
+{
+  const p = buildSystemPrompt(DEFAULT_PREFS, 'x');
+  const page = readFileSync('app/dashboard/page.tsx', 'utf8');
+  // Η μαζική καταχώρηση ανοίγει οποιαδήποτε στιγμή (απόφαση ιδιοκτήτη 10/11/2026):
+  // οδηγός, Ctrl+K, ΕΝΦΙΑ και σάρωση. Η Νόα λέει όλους τους δρόμους που υπάρχουν στον κώδικα.
+  const scan = readFileSync('app/dashboard/components/DocumentScan.tsx', 'utf8');
+  ok('μαζική: οποιαδήποτε στιγμή, από τέσσερις δρόμους', !page.includes('onBulkImport={properties.length === 0 ?')
+    && p.includes('Ανοίγει οποιαδήποτε στιγμή') && p.includes('«Όλα τα ακίνητά σου μαζί»') && p.includes('«Ενημέρωσε από την πράξη»')
+    && p.includes('«Μαζική καταχώρηση από Ε9 ή ΕΝΦΙΑ»') && page.includes("label: 'Μαζική καταχώρηση από Ε9 ή ΕΝΦΙΑ'")
+    && p.includes('«Καταχώρησε όλα τα ακίνητα»') && scan.includes('>Καταχώρησε όλα τα ακίνητα</Btn>')
+    && readFileSync('app/dashboard/components/EnfiaPanel.tsx', 'utf8').includes('Ενημέρωσε από την πράξη</Btn>') && page.includes('>Από Ε9 ή ΕΝΦΙΑ</Btn>')
+    && !p.includes('δεν διπλασιάζονται'));
+  // Το «Πλήρωσα» της συσκευής σημειώνει κατευθείαν (public/sw.js)· του email περνά από σελίδα.
+  ok('πλήρωσα: η συσκευή σημειώνει αμέσως', readFileSync('public/sw.js', 'utf8').includes("fetch('/api/plirosa'")
+    && p.includes('στη συσκευή τη σημειώνει αμέσως') && p.includes('μετά από το Ημερολόγιο'));
+  // Η μηνιαία κατάσταση δεν φεύγει χωρίς δόσεις ενοικίου (send-monthly-statements).
+  ok('μηνιαία κατάσταση: μόνο με δόσεις ενοικίου', readFileSync('supabase/functions/send-monthly-statements/index.ts', 'utf8').includes('if (!rents.length) { skipped++; continue }')
+    && p.includes('αν ο προηγούμενος μήνας είχε δόσεις ενοικίου'));
+  // Χωρίς φύλο: κανένα έμφυλο επίθετο για τον εαυτό της.
+  ok('ταυτότητα: όχι «δεν είμαι διαθέσιμη»', !/είμαι διαθέσιμ[ηο]ς?/.test(p));
+  // Το Χαρτοφυλάκιο ανοίγει με πακέτο ιδιώτη· η συγκεντρωτική εικόνα με επαγγελματικό.
+  ok('χαρτοφυλάκιο: η λέξη-κλειδί με το σωστό πακέτο', p.includes(`«χαρτοφυλάκιο»/«xartofylakio» ανοίγουν με «${PLANS[TAB_MIN_PLAN.portfolio].name}» (η συγκεντρωτική εικόνα με «${PLANS[FEATURE_MIN_PLAN.portfolio].name}»)`));
+  ok('ύφος: καμία παύλη «—» στην ταυτότητα', !/ταυτότητα — |καθαρά — /.test(p));
 }
 
 console.log(`\nassistantPersona.ts, ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`);

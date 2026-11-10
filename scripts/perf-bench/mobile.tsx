@@ -436,9 +436,11 @@ const VIEWS: Record<string, () => React.ReactElement> = {
       </CenterState>
     </Modal>
   ),
-  // Η μαζική καταχώρηση: η κάρτα στο «Νέο ακίνητο» του νέου χρήστη, το Ε9 με
-  // τρία ακίνητα, το ταβάνι των 20, το όριο του πακέτου και το λάθος έγγραφο.
-  bulkWizard: () => <AddPropertyWizard userId="u1" onClose={() => {}} onSaved={() => {}} onBulkImport={() => {}} />,
+  // Η μαζική καταχώρηση: η κάρτα στο «Νέο ακίνητο», το Ε9 με τρία ακίνητα, το
+  // ταβάνι των 20, το όριο του πακέτου και το λάθος έγγραφο. Η κάρτα φαίνεται
+  // πλέον σε κάθε νέα καταχώρηση (10/11/2026)· η σκηνή δείχνει τη μακρύτερη
+  // εκδοχή της, με ακίνητα, ώστε οι σαρωτές να κρίνουν και τη δεύτερη πρόταση.
+  bulkWizard: () => <AddPropertyWizard userId="u1" onClose={() => {}} onSaved={() => {}} onBulkImport={() => {}} hasProperties />,
   bulkE9: () => <MyaadeImport userId="u1" limit={3} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} initialDoc={bulkDoc(3)} />,
   bulkMany: () => <MyaadeImport userId="u1" limit={Infinity} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} initialDoc={bulkDoc(23)} />,
   bulkPlan: () => <MyaadeImport userId="u1" limit={1} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} initialDoc={bulkDoc(3)} />,

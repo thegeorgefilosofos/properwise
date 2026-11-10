@@ -168,7 +168,7 @@ const BY_STATUS: Record<string, readonly PropertyStatus[]> = {
 };
 
 /** Καρτέλες που εξαρτώνται από τον ΑΡΙΘΜΟ των ακινήτων. */
-const MIN_PROPERTIES: Record<string, number> = {
+export const MIN_PROPERTIES: Readonly<Record<string, number>> = {
   // Από δύο ακίνητα: εκεί ζει και η σύγκριση του Ιδιοκτήτης+, που δεν
   // εξαρτάται από την κατάσταση του επιλεγμένου ακινήτου. Με τρία, όπως ήταν,
   // ο ιδιοκτήτης δύο διαμερισμάτων δεν έβρισκε ποτέ τη σύγκριση που πλήρωσε

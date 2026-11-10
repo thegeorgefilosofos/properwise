@@ -45,7 +45,7 @@ import { planBriefing } from './components/assistantPersona';
 import UpgradeModal from './components/UpgradeModal';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
-import { MYAADE_OPEN_EVENT } from './components/myaadeOpen';
+import { MYAADE_OPEN_EVENT, type MyaadeOpenDetail } from './components/myaadeOpen';
 import FeatureLock, { LockBadge } from './components/FeatureLock';
 import { PLANS } from '@/lib/billing/plans';
 import { isTabAllowed, isTabPurchasable, canAddProperty, hasFeature, planAtLeast, paidPlanForProfile, requiredPlanForFeature, propertyLimit } from '@/lib/billing/entitlements';
@@ -98,12 +98,18 @@ export default function Dashboard() {
   // στο υπάρχον gate, για να ΚΩΔΙΚΟΠΟΙΗΣΕΙ την αναλλοίωτη μία φορά και να
   // στενέψει τον τύπο για ΟΛΗ την απόδοση — αντί για 20 `!` ή cast στα σημεία
   // χρήσης, που θα σιώπαγαν τον έλεγχο αντί να τον ικανοποιήσουν.
-  // ── Η ΕΙΣΑΓΩΓΗ ΑΠΟ ΤΟ myAADE ΑΝΟΙΓΕΙ ΑΠΟ ΤΡΙΑ ΣΗΜΕΙΑ ───────────────────
-  // Η κενή οθόνη και η υποδοχή την ανοίγουν απευθείας· η καρτέλα ΕΝΦΙΑ, που
-  // ζει βαθιά μέσα στη Λογιστική, στέλνει γεγονός (όπως το «pos:ask»).
+  // ── Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΑΝΟΙΓΕΙ ΟΠΟΙΑΔΗΠΟΤΕ ΣΤΙΓΜΗ (απόφαση ιδιοκτήτη 10/11/2026)
+  // Σημεία εισόδου: η κενή οθόνη, η υποδοχή, η κάρτα στο πρώτο βήμα του «Νέο
+  // ακίνητο» (με ή χωρίς ακίνητα), το Ctrl+K, η καρτέλα ΕΝΦΙΑ και η «Σάρωση
+  // εγγράφου» όταν το έγγραφο είναι Ε9 ή εκκαθαριστικό ΕΝΦΙΑ. Η καρτέλα ΕΝΦΙΑ,
+  // βαθιά μέσα στη Λογιστική, στέλνει γεγονός (όπως το «pos:ask»). Η σάρωση
+  // περνά και το αρχείο, ώστε να μην ανεβαίνει δεύτερη φορά.
   const [myaadeOpen, setMyaadeOpen] = useState(false);
+  const [myaadeFile, setMyaadeFile] = useState<File | null>(null);
+  const openMyaade = (file: File | null = null) => { setMyaadeFile(file); setMyaadeOpen(true); };
+  const closeMyaade = () => { setMyaadeOpen(false); setMyaadeFile(null); };
   useEffect(() => {
-    const open = () => setMyaadeOpen(true);
+    const open = (e: Event) => { setMyaadeFile((e as CustomEvent<MyaadeOpenDetail>).detail?.file ?? null); setMyaadeOpen(true); };
     window.addEventListener(MYAADE_OPEN_EVENT, open);
     return () => window.removeEventListener(MYAADE_OPEN_EVENT, open);
   }, []);
@@ -234,6 +240,10 @@ export default function Dashboard() {
     { id: 'act-ask', label: `Ρώτα τη ${ASSISTANT_NAME}`, hint: 'Ενέργεια', keywords: 'noa βοηθός assistant ρώτα σάρωσε',
       action: () => askAssistant() },
     { id: 'act-add', label: 'Προσθήκη ακινήτου', hint: 'Ενέργεια', keywords: 'new property add', action: () => tryAddProperty() },
+    // ΧΩΡΙΣ ΕΛΕΓΧΟ ΟΡΙΟΥ, ΕΠΙΤΗΔΕΣ: στο όριο του πακέτου ο οδηγός δεν ανοίγει,
+    // αλλά η εισαγωγή μένει χρήσιμη (ταιριάζει τα υπάρχοντα, φέρνει τις δόσεις
+    // ΕΝΦΙΑ) και δείχνει η ίδια ποια νέα είναι «Εκτός πακέτου».
+    { id: 'act-bulk', label: 'Μαζική καταχώρηση από Ε9 ή ΕΝΦΙΑ', hint: 'Ενέργεια', keywords: 'e9 ε9 enfia ενφια μαζική εισαγωγή πράξη εκκαθαριστικό myaade pdf φωτογραφία bulk import', action: () => openMyaade() },
     { id: 'act-signout', label: 'Αποσύνδεση', hint: 'Ενέργεια', keywords: 'logout sign out exit', action: () => signOut() },
   ];
 
@@ -597,7 +607,7 @@ export default function Dashboard() {
                   πριν δώσει οτιδήποτε. Δευτερεύον, δίπλα στην κύρια ενέργεια. */}
               <div style={{display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap'}}>
                 <Btn variant="primary" onClick={() => tryAddProperty('empty')}>Πρόσθεσε το ακίνητό σου</Btn>
-                <Btn variant="secondary" onClick={() => setMyaadeOpen(true)}>Από Ε9 ή ΕΝΦΙΑ</Btn>
+                <Btn variant="secondary" onClick={() => openMyaade()}>Από Ε9 ή ΕΝΦΙΑ</Btn>
                 <Btn variant="secondary" onClick={() => setShowPreview(true)}>Δες ένα παράδειγμα</Btn>
               </div>
             </div>
@@ -922,6 +932,7 @@ export default function Dashboard() {
         {user&&selected&&<DocumentScan propertyId={selected.id} userId={user.id} properties={properties} onBusyChange={setScanBusy} onDirtyChange={setScanDirty}
           onManual={()=>{ closeQuickAdd(); setNav('finances'); setManualExpense(n=>n+1); }}
           onOpenAccounting={()=>{ closeQuickAdd(); setNav('accounting'); }}
+          onBulkImport={(file)=>{ closeQuickAdd(); openMyaade(file); }}
           onSaved={async()=>{await fetchProperties(user.id);}}/>}
       </Modal>
 
@@ -935,7 +946,7 @@ export default function Dashboard() {
         // κατάσταση, όνομα· «Αποθήκευση τώρα» υπάρχει από το δεύτερο βήμα) και η
         // σάρωση ξεκινά πάνω στο ακίνητο που αποθηκεύτηκε.
         onScanCreate={()=>{ setShowWelcome(false); setScanAfterAdd(true); openWizard('scan'); }}
-        onMyaade={()=>{ setShowWelcome(false); setMyaadeOpen(true); }}
+        onMyaade={()=>{ setShowWelcome(false); openMyaade(); }}
         onProfile={setProfileType}
         onClose={()=>setShowWelcome(false)} />}
       {/* ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΔΕΝ ΓΡΑΦΕΙ ΤΙΠΟΤΑ. Ήταν ακίνητο μέσα στον λογαριασμό, με
@@ -949,8 +960,11 @@ export default function Dashboard() {
           ίδιο ποσό (useDashboard, commitEnfiaCarry). */}
       {showAddModal&&user&&<AddPropertyWizard userId={user.id}
         initial={enfiaCarry ? enfiaCarryWizard(enfiaCarry.inputs) : undefined}
-        // ΧΩΡΙΣ ΚΑΝΕΝΑ ΑΚΙΝΗΤΟ, ΠΡΩΤΑ Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ (απόφαση ιδιοκτήτη 09/11/2026).
-        onBulkImport={properties.length === 0 ? ()=>{ setShowAddModal(false); setScanAfterAdd(false); setMyaadeOpen(true); } : undefined}
+        // Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΣΤΟ ΠΡΩΤΟ ΒΗΜΑ, ΠΑΝΤΑ (απόφαση ιδιοκτήτη 10/11/2026).
+        // Ως τις 09/11 φαινόταν μόνο χωρίς κανένα ακίνητο· όποιος είχε ένα και
+        // ήθελε να περάσει τα υπόλοιπα δεν έβρισκε δρόμο από εδώ.
+        onBulkImport={()=>{ setShowAddModal(false); setScanAfterAdd(false); dropEnfiaCarry(); openMyaade(); }}
+        hasProperties={properties.length > 0}
         onClose={()=>{setShowAddModal(false);setScanAfterAdd(false);dropEnfiaCarry();}} onSaved={async(id)=>{
         setShowAddModal(false);
         await commitEnfiaCarry(id);
@@ -960,12 +974,12 @@ export default function Dashboard() {
         if (added) { setSelected(added); setNav('overview'); setQuickAddOpen(true); }
       }}/>}
       {editProperty&&user&&<AddPropertyWizard userId={user.id} existing={editProperty} focus={editFocus} onClose={()=>{setEditProperty(null);setEditFocus(null);}} onSaved={async()=>{setEditProperty(null);setEditFocus(null);await fetchProperties(user.id);}}/>}
-      {myaadeOpen&&<MyaadeImport userId={user.id} limit={propertyLimit(ent)}
-        onUpgrade={()=>{ setMyaadeOpen(false); setShowUpgrade(true); }}
-        onClose={()=>setMyaadeOpen(false)}
+      {myaadeOpen&&<MyaadeImport userId={user.id} limit={propertyLimit(ent)} initialFile={myaadeFile ?? undefined}
+        onUpgrade={()=>{ closeMyaade(); setShowUpgrade(true); }}
+        onClose={closeMyaade}
         onSaved={async()=>{ await fetchProperties(user.id); }}
         // Οι δόσεις ζουν στο ημερολόγιο ακινήτου: χωρίς επιλεγμένο, το πρώτο της λίστας.
-        onOpenCalendar={async()=>{ setMyaadeOpen(false); const list = await fetchProperties(user.id); if (!selected && list?.[0]) setSelected(list[0]); setNav('calendar'); }}/>}
+        onOpenCalendar={async()=>{ closeMyaade(); const list = await fetchProperties(user.id); if (!selected && list?.[0]) setSelected(list[0]); setNav('calendar'); }}/>}
       {showUpgrade&&<UpgradeModal currentCount={properties.length} planId={effPlan} onClose={()=>setShowUpgrade(false)} onManage={()=>{setShowUpgrade(false);setNav('settings');}}/>}
       <DpaModal />
     </div>
