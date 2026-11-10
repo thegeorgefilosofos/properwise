@@ -1,6 +1,6 @@
 import { emailShell, eyebrow, h, p, bullets, button, greeting, note, heroStat } from '../emailTemplates.ts'
 import { eur } from '../format.ts'
-import { dash, esc, has, plural, NOTE, type CopyFn } from './kit.ts'
+import { app, dash, esc, has, packageName, plural, NOTE, type CopyFn } from './kit.ts'
 
 // ── Φάση 10: Προϊόν & Εξέλιξη (Product, evolution, value) ─────────────────────
 // Ο πυρήνας της αφοσίωσης: δείχνουν έναν ζωντανό οργανισμό που δεν σταματά να
@@ -143,6 +143,35 @@ export const PRODUCT: Record<string, CopyFn> = {
         + note(NOTE.reply),
     }),
   }),
+
+  // 76γ. Νίκη στην κλήρωση αξιολόγησης (συναλλακτικό)
+  // ΤΟ ΖΗΤΟΥΝ ΟΙ ΟΡΟΙ (app/terms, #klirosi): «ειδοποιείται με email στη
+  // διεύθυνση του λογαριασμού του. Αν δεν απαντήσει μέσα σε 14 ημέρες, το δώρο
+  // κληρώνεται εκ νέου.» Η «απάντηση» είναι το «Αποδέχομαι το δώρο», με δήλωση
+  // «Είμαι άνω των 18» (20261110133000). Το δώρο πιστώνεται με την αποδοχή.
+  feedback_prize_won: (c) => {
+    const token = typeof c.token === 'string' && /^[A-Za-z0-9_-]{43}$/.test(c.token) ? c.token : '';
+    if (!token) return null;
+    const pkg = packageName('agency');
+    const until = typeof c.expiresOn === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(c.expiresOn) ? c.expiresOn : '';
+    // Οι ημέρες έρχονται από τη βάση (feedback_prize_offer_new, PRIZE_ACCEPT_DAYS), όχι γραμμένες εδώ.
+    const days = typeof c.acceptDays === 'number' && Number.isInteger(c.acceptDays) && c.acceptDays > 0 ? c.acceptDays : 0;
+    if (!until && !days) return null;
+    return {
+      subject: `Κέρδισες έναν χρόνο «${pkg}» στο PROPERWISE`,
+      html: emailShell({
+        preheader: until ? `Αποδέξου το δώρο ως τις ${until}.` : `Αποδέξου το δώρο μέσα σε ${days}\u00A0ημέρες.`,
+        bodyHtml: eyebrow('Κλήρωση αξιολόγησης') + h('Κέρδισες στην κλήρωση του μήνα') + greeting(c.name)
+          + p(`Ευχαριστούμε για τη γνώμη σου. Η συμμετοχή σου κληρώθηκε και κερδίζεις <b>έναν χρόνο συνδρομής «${pkg}»</b>.`)
+          + p(`Για να το πάρεις, πάτησε «Αποδέχομαι το δώρο» και επιβεβαίωσε ότι είσαι άνω των 18. Ο χρόνος πιστώνεται στον λογαριασμό σου τη στιγμή της αποδοχής.`)
+          + button('Αποδέχομαι το δώρο', `${app(c)}/doro/${token}`)
+          + p(until
+              ? `Ο σύνδεσμος ισχύει ως τις <b>${until}</b>. Αν δεν αποδεχτείς ως τότε, το δώρο κληρώνεται ξανά ανάμεσα στους υπόλοιπους συμμετέχοντες του μήνα.`
+              : `Ο σύνδεσμος ισχύει ${days}\u00A0ημέρες. Αν δεν αποδεχτείς ως τότε, το δώρο κληρώνεται ξανά ανάμεσα στους υπόλοιπους συμμετέχοντες του μήνα.`)
+          + note(`Μπορείς να το αποδεχτείς και μέσα στην εφαρμογή, από τη φόρμα «Η γνώμη σου». Το δώρο δεν εξαργυρώνεται σε μετρητά και δεν μεταβιβάζεται.`),
+      }),
+    };
+  },
 
   // 77. Συμβουλή της εβδομάδας (αξία)
   best_practice_tip: (c) => {

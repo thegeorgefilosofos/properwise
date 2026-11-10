@@ -12,7 +12,8 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, Btn, Spinner } from '@/components/Theme';
+import { T, TT, Btn, Spinner } from '@/components/Theme';
+import { grDate } from '@/lib/core/format';
 import { PLANS } from '@/lib/billing/plans';
 
 const MIN_WORDS = 12;
@@ -22,7 +23,7 @@ const realWords = (s: string) =>
   (s.trim().match(/\S+/g) || []).filter(w => /[A-Za-zΑ-Ωα-ωΆΈΉΊΌΎΏϊϋΐΰ]/.test(w)).length;
 
 type Target = 'general' | 'assistant' | 'app';
-type Status = { submitted_this_month?: boolean; campaign_active?: boolean } | null;
+type Status = { submitted_this_month?: boolean; campaign_active?: boolean; prize_expires_at?: string | null } | null;
 
 export default function Feedback({ target = 'general', onDone, embedded }: {
   target?: Target;
@@ -37,6 +38,10 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
   const [done, setDone] = useState<{ in_pool: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
+  // Η ΚΛΗΡΩΣΗ ΑΞΙΟΛΟΓΗΣΗΣ (Όροι, #klirosi): ο νικητής αποδέχεται και από εδώ,
+  // όχι μόνο από το email. Υποχρεωτικό «Είμαι άνω των 18» (20261110133000).
+  const [adult, setAdult] = useState(false);
+  const [prize, setPrize] = useState<'ask' | 'busy' | 'done' | 'failed'>('ask');
 
   useEffect(() => {
     let alive = true;
@@ -87,6 +92,42 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
         borderRadius: T.radius.card, boxShadow: 'var(--highlight-inset), var(--elev-1)',
         padding: T.sp.lg,
       };
+
+  const acceptPrize = async () => {
+    if (!adult || prize === 'busy') return;
+    setPrize('busy');
+    try {
+      const { data, error: e } = await supabase.rpc('accept_my_feedback_prize', { p_adult: true });
+      setPrize(!e && (data as { ok?: boolean } | null)?.ok ? 'done' : 'failed');
+    } catch { setPrize('failed'); }
+  };
+
+  // ── Κέρδισες στην κλήρωση: η αποδοχή πρώτα, γιατί έχει προθεσμία ─────────────
+  if (status?.prize_expires_at || prize === 'done') {
+    const until = status?.prize_expires_at
+      ? grDate(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(status.prize_expires_at)))
+      : '';
+    return (
+      <div style={shell}>
+        <div style={{ ...TT.label, color: 'var(--accent)', marginBottom: T.sp.xs }}>Κλήρωση αξιολόγησης</div>
+        {prize === 'done' ? (
+          <p role="status" style={{ ...TT.bodySm, margin: 0, color: 'var(--text-primary)' }}>{`Έγινε. Ο χρόνος «${PLANS.agency.name}» πιστώθηκε στον λογαριασμό σου και τον βλέπεις στη Συνδρομή.`}</p>
+        ) : (
+          <>
+            <p style={{ ...TT.bodySm, margin: `0 0 ${T.sp.md}px`, color: 'var(--text-primary)' }}>
+              {`Κέρδισες έναν χρόνο συνδρομής «${PLANS.agency.name}». Πιστώνεται τη στιγμή της αποδοχής.${until ? ` Προθεσμία αποδοχής: ${until}.` : ''}`}
+            </p>
+            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: T.sp.md, cursor: 'pointer', ...TT.bodySm, color: 'var(--text-primary)' }}>
+              <input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} style={{ marginTop: 2, width: 18, height: 18, flexShrink: 0 }} />
+              <span>Είμαι άνω των 18</span>
+            </label>
+            <Btn variant="primary" onClick={acceptPrize} disabled={!adult || prize === 'busy'}>Αποδέχομαι το δώρο</Btn>
+            {prize === 'failed' && <p role="alert" style={{ ...TT.caption, margin: `${T.sp.sm}px 0 0` }}>Δεν ολοκληρώθηκε τώρα. Δοκίμασε ξανά σε λίγο.</p>}
+          </>
+        )}
+      </div>
+    );
+  }
 
   // ── Ολοκληρωμένο (ευχαριστία) ──────────────────────────────────────────────
   if (done || alreadyThisMonth) {

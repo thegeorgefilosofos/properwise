@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { siteUrl } from '@/lib/core/site'
+import { PRIZE_PATH } from '@/lib/feedback/prize';
 
 // Οι μηχανές αναζήτησης βλέπουν μόνο τις δημόσιες σελίδες. Οι ιδιωτικές
 // περιοχές (πίνακας, portals ενοικιαστών/κρατήσεων, σελίδες με token,
@@ -15,7 +16,7 @@ export default function robots(): MetadataRoute.Robots {
       // ταχυδρομείου στη διεύθυνση της σελίδας. Ούτε η ροή ημερολογίου, που
       // σερβίρει τις προθεσμίες ενός ιδιοκτήτη σε διεύθυνση με κλειδί, ούτε το
       // ταμείο, που είναι `noindex` αλλά οι μηχανές το επισκέπτονταν κανονικά.
-      disallow: ['/dashboard', '/portal/', '/checkin/', '/accountant/', '/unsubscribe/', '/plirosa/', '/verify/', '/epivevaiosi-email/', '/reset-password', '/imerologio/', '/tameio'],
+      disallow: ['/dashboard', '/portal/', '/checkin/', '/accountant/', '/unsubscribe/', '/plirosa/', `${PRIZE_PATH}/`, '/verify/', '/epivevaiosi-email/', '/reset-password', '/imerologio/', '/tameio'],
     },
     sitemap: siteUrl('/sitemap.xml'),
   }
