@@ -13,7 +13,7 @@ import * as calendar from '@/lib/data/calendar'
 import * as expenseStore from '@/lib/data/expenses'
 import { athensToday, monthEndIso } from '@/lib/core/time'
 import { monthNom } from '@/lib/core/months'
-import { notify } from '@/components/Toast'
+import { notify, notifyError } from '@/components/Toast'
 import { saved } from '@/components/dbWrite'
 import { NumberInput, CustomSelect, TextInput, DatePicker } from './UIComponents';
 import { useBillsSettings } from './BillsSettings';
@@ -184,7 +184,10 @@ export default function BillsInsurance({ propertyId, userId = '', only, legalFor
             monthlyRent:  activeRent || Number(p.target_rent) || null,
           });
         }
-      } catch (_) {}
+      } catch (e) {
+        console.error('[BillsInsurance] στοιχεία ακινήτου:', e);
+        notifyError('Τα στοιχεία του ακινήτου δεν φορτώθηκαν. Δοκίμασε ανανέωση.');
+      }
     })();
   }, [propertyId, supabase, userId]);
 

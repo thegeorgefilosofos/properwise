@@ -27,7 +27,9 @@
 // Και οι τρεις γράφουν ρητά ό,τι πρέπει να γραφτεί. Καμία σιωπηλή προεπιλογή.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { row as readRow } from './read';
+import { row as readRow, readOne } from './read';
+import type { DbError } from '@/lib/supabase/writeResult';
+import { MFA_REQUIRED } from '@/lib/auth/mfa';
 import { siteUrl } from '@/lib/core/site';
 
 const TABLE = 'accountant_links';
@@ -75,6 +77,31 @@ const shape = (row: Row | null | undefined): AccountantLink | null => {
   };
 };
 
+// ═══ ΟΤΑΝ Η ΒΑΣΗ ΑΡΝΕΙΤΑΙ ΓΙΑ ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ, ΤΟ ΛΕΜΕ ═══════════════════════
+// ΤΙ ΜΕΤΡΗΘΗΚΕ (09/11/2026, edge_logs της παραγωγής): επτά φορές σε πέντε λεπτά
+// `POST 403 /rest/v1/accountant_links`. Η restrictive πολιτική
+// `mfa_accountant_links` ζητά aal2 από ενεργό μέλος γραφείου ακόμη κι όταν δεν
+// έχει συσκευή (private.mfa_satisfied). Η εγγραφή περνούσε από το `row()`, που
+// πετά το σφάλμα, οπότε η οθόνη έλεγε μόνο «Ο σύνδεσμος δεν δημιουργήθηκε» και ο
+// χρήστης ξαναπατούσε. Τώρα η άρνηση αυτή επιστρέφει ως `MFA_REQUIRED` και η
+// οθόνη λέει τι να κάνει.
+//
+// Η ΑΝΑΓΝΩΡΙΣΗ ΘΕΛΕΙ ΚΑΙ ΤΟ ΜΗΝΥΜΑ, ΟΧΙ ΜΟΝΟ ΤΟΝ ΚΩΔΙΚΟ. Το 42501 σημαίνει
+// γενικά «χωρίς δικαίωμα». Μετρά ως δεύτερο βήμα μόνο όταν λέει ρητά
+// `mfa_required` (RPC) ή όταν η άρνηση RLS αφορά τον πίνακα `accountant_links`,
+// όπου σε δική του γραμμή η μόνη πολιτική που αρνείται είναι η restrictive του
+// δεύτερου βήματος. Οποιο άλλο 42501 μένει γενικό σφάλμα.
+export const isMfaDenied = (e: DbError | null | undefined): boolean => {
+  if (!e) return false;
+  const msg = e.message || '';
+  if (/mfa_required/i.test(msg)) return true;
+  return e.code === '42501' && /row-level security/i.test(msg) && /"accountant_links"/.test(msg);
+};
+
+/** Η φράση της οθόνης όταν λείπει το δεύτερο βήμα. */
+export const MFA_LINK_SAY =
+  'Για να δοθεί πρόσβαση σε λογιστή χρειάζεται επαλήθευση δύο βημάτων. Ενεργοποίησέ την στον Λογαριασμό, στην ενότητα «Ασφάλεια» και δοκίμασε ξανά.';
+
 /** Ο σύνδεσμος όπως είναι τώρα, χωρίς να δημιουργηθεί κανένας. */
 export async function current(db: SupabaseClient, userId: string): Promise<AccountantLink | null> {
   return shape(await readRow<Row>(
@@ -88,7 +115,7 @@ export async function current(db: SupabaseClient, userId: string): Promise<Accou
  * Το `expires_at` γράφεται ΠΑΝΤΑ: η προεπιλογή της βάσης δεν εφαρμόζεται σε
  * update και χωρίς αυτή τη γραμμή ένας παλιός σύνδεσμος ξαναμοιραζόταν ληγμένος.
  */
-export async function issue(db: SupabaseClient, userId: string): Promise<AccountantLink | null> {
+export async function issue(db: SupabaseClient, userId: string): Promise<AccountantLink | null | typeof MFA_REQUIRED> {
   // ── Η ΑΝΑΚΛΗΣΗ ΔΕΝ ΞΕΓΙΝΕΤΑΙ ─────────────────────────────────────────────
   // ΤΙ ΕΚΑΝΕ ΠΡΙΝ, ΒΗΜΑ ΒΗΜΑ. Η `revoke` έγραφε ΜΟΝΟ `active = false` κι άφηνε
   // το token ανέπαφο. Αυτό εδώ έγραφε `active = true` χωρίς να αγγίξει το
@@ -112,11 +139,13 @@ export async function issue(db: SupabaseClient, userId: string): Promise<Account
     // καλύτερα να μη βγει σύνδεσμος παρά να βγει ο σύνδεσμος του διωγμένου.
     return fresh === 'insecure' ? null : fresh;
   }
-  return shape(await readRow<Row>(
+  const { row, error } = await readOne<Row>(
     db.from(TABLE)
       .upsert({ user_id: userId, active: true, expires_at: expiry() }, { onConflict: 'user_id' })
       .select('token,active,expires_at').maybeSingle(),
-  ));
+  );
+  if (isMfaDenied(error)) return MFA_REQUIRED;
+  return shape(row);
 }
 
 /**
@@ -127,14 +156,16 @@ export async function issue(db: SupabaseClient, userId: string): Promise<Account
  * ώρα είναι γνωστή. Καλύτερα να αποτύχει η περιστροφή παρά να γίνει με
  * προβλέψιμο κλειδί και να το πει.
  */
-export async function rotate(db: SupabaseClient, userId: string): Promise<AccountantLink | null | 'insecure'> {
+export async function rotate(db: SupabaseClient, userId: string): Promise<AccountantLink | null | 'insecure' | typeof MFA_REQUIRED> {
   const fresh = globalThis.crypto?.randomUUID?.();
   if (!fresh) return 'insecure';
-  return shape(await readRow<Row>(
+  const { row, error } = await readOne<Row>(
     db.from(TABLE)
       .upsert({ user_id: userId, token: fresh, active: true, expires_at: expiry() }, { onConflict: 'user_id' })
       .select('token,active,expires_at').maybeSingle(),
-  ));
+  );
+  if (isMfaDenied(error)) return MFA_REQUIRED;
+  return shape(row);
 }
 
 /**
