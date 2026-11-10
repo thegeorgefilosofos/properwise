@@ -23,7 +23,7 @@ export const DossierRow = ({ icon: Ic, children, onCopy }: { icon: React.Compone
 )
 export const DossierSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '15px 16px', boxShadow: 'var(--elev-1)' }}>
-    <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>{title}</div>
+    <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 12 }}>{title}</div>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{children}</div>
   </div>
 )
@@ -88,7 +88,7 @@ export function CField({ d, required, children }: { d?: FieldDecision; required?
   )
 }
 export function FL({ children }: { children: React.ReactNode }) {
-  return <label style={{ display: 'flex', alignItems: 'center', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font.sans }}>{children}</label>
+  return <label style={{ display: 'flex', alignItems: 'center', fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, fontFamily: T.font.sans }}>{children}</label>
 }
 // ΕΔΩ ΗΤΑΝ ΤΟ AddressAutocomplete (52 γραμμές). Έστελνε ΚΑΘΕ πληκτρολόγηση του
 // χρήστη σε τρίτο εξυπηρετητή (nominatim.openstreetmap.org) για να προτείνει
@@ -103,7 +103,7 @@ export function FL({ children }: { children: React.ReactNode }) {
 export function SecHead({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '4px 0 2px' }}>
-      <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>{children}</span>
+      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>{children}</span>
       <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
     </div>
   )

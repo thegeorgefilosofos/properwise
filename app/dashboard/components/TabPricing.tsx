@@ -749,7 +749,7 @@ export default function TabPricing({ propertyId, userId, propertyName, propertyS
           <div className="card" style={{ marginBottom: T.sp.lg }}>
             <div className="po-disclosure" {...pressable(() => setCompsOpen(o => !o))}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>Βαθμονόμηση από τον ανταγωνισμό</div>
+                <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)' }}>Βαθμονόμηση από τον ανταγωνισμό</div>
                 <div className="po-subline" style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Βάλε τις τιμές ανά νύχτα παρόμοιων ακινήτων της περιοχής για να δεις μια προτεινόμενη βάση.</div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>

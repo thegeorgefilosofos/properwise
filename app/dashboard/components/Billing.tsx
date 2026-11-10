@@ -612,7 +612,7 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
       {/* Η ΤΙΜΗ ΛΕΕΙ ΤΗ ΜΟΝΑΔΑ ΤΗΣ. Το ετήσιο δείχνεται ανά μήνα, όπως και στη
           σύγκριση πακέτων, ώστε τα δύο νούμερα να συγκρίνονται μεταξύ τους. */}
       <div style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{plan.name}</div>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{plan.name}</div>
         <div style={{ fontFamily: T.font.num, fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', lineHeight: 1.1, marginTop: 4 }}>{fe(price)}</div>
         <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, marginTop: 2 }}>
           {/* ΜΕ ΦΠΑ ΜΟΝΟ ΟΠΟΥ ΙΣΧΥΕΙ. Οι τιμές του τιμοκαταλόγου είναι για

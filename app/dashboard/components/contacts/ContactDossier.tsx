@@ -169,7 +169,7 @@ export function ContactDossier({ contact, propertyId, onClose, onEdit, onDelete,
       {(exp.count > 0 || exp.docs > 0) && (
         <button type="button" onClick={onShowHistory} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '14px 16px', cursor: 'pointer', textAlign: 'left', boxShadow: 'var(--elev-1)', fontFamily: T.font.sans }}>
           <div>
-            <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Πληρωμές</div>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)' }}>Πληρωμές</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', marginTop: 4 }}>{fe(exp.total)}</div>
             <div className="po-subline" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{exp.count} {exp.count === 1 ? 'καταχώρηση' : 'καταχωρήσεις'}{exp.docs > 0 ? ` · ${exp.docs} ${exp.docs === 1 ? 'παραστατικό' : 'παραστατικά'} με το ΑΦΜ του` : ''}</div>
           </div>

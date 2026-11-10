@@ -316,7 +316,7 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
             ].map((k,i)=>(
               <div key={i} style={{textAlign:'center'}}>
                 <p style={{fontSize:14,fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',marginBottom:2}}>{k.value}</p>
-                <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',textTransform:'uppercase',letterSpacing:'0.5px',fontFamily:T.font.sans}}>{k.label}</p>
+                <p style={{fontWeight: 600, fontSize: 'var(--fs-base)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{k.label}</p>
               </div>
             ))}
           </div>
@@ -441,7 +441,7 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
                 {label:'Κόστος/έτος',value:kwhPrice>0?fe(liveKwh*kwhPrice*12):fe(0)}].map((k,i)=>(
                 <div key={i} style={{textAlign:'center'}}>
                   <p style={{fontSize: 'var(--fs-base)',fontFamily:T.font.num,fontVariantNumeric:'tabular-nums',fontWeight:700,color:'var(--text-primary)',marginBottom:2}}>{k.value}</p>
-                  <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',textTransform:'uppercase',letterSpacing:'0.5px',fontFamily:T.font.sans}}>{k.label}</p>
+                  <p style={{fontWeight: 600, fontSize: 'var(--fs-base)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{k.label}</p>
                 </div>
               ))}
               <p style={{gridColumn:'1/-1',fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,lineHeight:1.45}}>

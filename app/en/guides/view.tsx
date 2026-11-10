@@ -31,7 +31,7 @@ export default function Page() {
         <ul style={{ listStyle: 'none', margin: 'clamp(28px,4vw,40px) 0 0', padding: 0, display: 'grid', gap: T.sp.lg }}>
           {guides.map(g => (
             <li key={g.href} style={{ padding: 'clamp(16px,3vw,22px)', borderRadius: T.radius.card, background: 'var(--surface-raised)', border: '1px solid var(--border-raised)' }}>
-              <div style={{ fontSize: 12, fontWeight: T.weight.emphasis, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>{TOPIC_EN[g.topic]}</div>
+              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)' }}>{TOPIC_EN[g.topic]}</div>
               <a href={g.href} className="lp-link" style={{ display: 'block', marginTop: 6, fontSize: 18, fontWeight: T.weight.emphasis, color: 'var(--text-primary)', textDecoration: 'none' }}>{g.title}</a>
               <p style={{ margin: '6px 0 0', fontSize: 15, lineHeight: 1.6, color: 'var(--text-secondary)' }}>{g.desc}</p>
             </li>

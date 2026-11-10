@@ -150,7 +150,7 @@ export default function ApprovalPanel({
               ματιά και το μπλοκ χάνει μια γραμμή σε κάθε μέγεθος. */}
           {metrics.map((m,i)=>(
             <div key={m.l} onMouseEnter={()=>setHm(i)} onMouseLeave={()=>setHm(null)} onTouchStart={()=>setHm(i)} onTouchEnd={()=>setHm(null)}>
-              <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',textTransform:'uppercase' as const,letterSpacing:'0.06em',fontWeight:700,fontFamily: T.font.sans,marginBottom: 4}}>{m.l}</p>
+              <p style={{fontSize: 'var(--fs-base)',color:'var(--text-tertiary)',fontWeight: 600,fontFamily: T.font.sans,marginBottom: 4}}>{m.l}</p>
               <p style={{display:'flex',alignItems:'baseline',gap: 8,flexWrap:'wrap' as const,lineHeight:1.1}}>
                 <span style={{fontSize:16,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',fontWeight:700,color:m.over?'var(--negative)':hm===i?'var(--accent)':'var(--text-primary)',transition:'color 0.15s'}}>{m.v}</span>
                 <span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums'}}>{m.sub}</span>

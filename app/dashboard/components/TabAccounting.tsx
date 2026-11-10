@@ -843,7 +843,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
             </div>
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:104, height:76, borderRadius: T.radius.popup, background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', flexShrink:0 }}>
               <span style={{ fontSize:28, fontWeight:700, color:'var(--text-primary)', fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', lineHeight:1 }}>{fpRate(CORPORATE_TAX_RATE_2026*100)}</span>
-              <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', letterSpacing:'0.5px', textTransform:'uppercase', fontFamily: T.font.sans, marginTop: 4 }}>Συντελεστής</span>
+              <span style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color:'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 4 }}>Συντελεστής</span>
             </div>
           </div>
         )}

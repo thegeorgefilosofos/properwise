@@ -43,7 +43,7 @@ export function TaxSection({
         {!empty && (
           <div style={{ marginTop: 0, padding: '12px 14px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-              <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', fontFamily: SANS }}>Τέλη βραχυχρόνιας, τον χρόνο</span>
+              <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: SANS }}>Τέλη βραχυχρόνιας, τον χρόνο</span>
             </div>
             <div {...fixedCols(2, 16, 'start')}>
               <div>
@@ -99,7 +99,7 @@ export function TaxSection({
         αντί να δείχνει απώλεια που δεν συμβαίνει ακόμη. */}
     {!empty && (
       <div style={{ marginTop: 12, padding: '12px 14px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-        <span style={{ display: 'block', fontSize: 'var(--fs-xs)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', fontFamily: SANS, marginBottom: 10 }}>Φορολογικές παραδοχές</span>
+        <span style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: SANS, marginBottom: 10 }}>Φορολογικές παραδοχές</span>
         <Toggle checked={rentsBank} onChange={setRentsBank}
           label="Τα ενοίκια εισπράττονται μέσω τράπεζας"
           note={PRESUMPTIVE_RULE} />

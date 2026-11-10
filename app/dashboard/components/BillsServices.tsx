@@ -189,7 +189,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
   const secHdr = (label: string, sub?: string, link?: { url: string; text: string }) => (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
       <div style={{ flex: '1 1 12em' }}>
-        <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontFamily: T.font.sans }}>{label}</div>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</div>
         {sub && <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{sub}</div>}
       </div>
       {link?.url && (
@@ -211,7 +211,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
   const svcHdr = (label: string, active: boolean, onToggle: (v: boolean) => void, cost?: number) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: active ? 16 : 0, paddingBottom: active ? 10 : 0, borderBottom: active ? '1px solid var(--border-subtle)' : 'none' }}>
       <Toggle on={active} onChange={onToggle} ariaLabel={label}/>
-      <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: active ? 'var(--text-primary)' : 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</span>
+      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: active ? 'var(--text-primary)' : 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</span>
       {active && typeof cost === 'number' && cost > 0 && (
         <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fe(cost)} / μήνα</span>
       )}
@@ -254,7 +254,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: 10, marginBottom: 16 }}>
             {kpis.map(k => (
               <div key={k.label} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '16px 18px' }}>
-                <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 10, fontFamily: T.font.sans }}>{k.label}</div>
+                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 10, fontFamily: T.font.sans }}>{k.label}</div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{k.value}</div>
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 6 }}>{k.sub}</div>
               </div>
@@ -334,7 +334,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
               : `Συνήθως ${fp(TYPICAL_SHARE.min)} έως ${fp(TYPICAL_SHARE.max)} του λογαριασμού`}
           </div>
         </div>
-        <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 10, fontFamily: T.font.sans }}>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10, fontFamily: T.font.sans }}>
           Ο χρόνος σε μήνες{dimotikaAvg > 0 ? `, μέσος όρος ${fe(dimotikaAvg)}` : ''}
         </div>
         {/* ΙΔΙΑ ΚΛΑΣΗ ΜΕ ΤΑ ΠΕΔΙΑ ΑΠΟ ΚΑΤΩ, ώστε η στήλη κάθε μήνα να πέφτει

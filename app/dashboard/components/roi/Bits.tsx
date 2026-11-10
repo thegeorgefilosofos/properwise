@@ -36,7 +36,7 @@ export const roiGrow: React.CSSProperties = { flex: '1 0 12px' };
 // της, ώστε οι τίτλοι δύο καρτών να είναι στην ίδια γραμμή με ή χωρίς αυτό.
 export const roiHead: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12, flexWrap: 'wrap', minHeight: T.h.md };
 
-export const roiFootLabel: React.CSSProperties = { ...toolNote, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 };
+export const roiFootLabel: React.CSSProperties = { ...toolNote, fontWeight: 600 };
 export const roiFootValue: React.CSSProperties = { fontSize: 12, fontFamily: SANS, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', margin: '2px 0 0' };
 
 // ── Επεξήγηση όρου (διακριτικό εικονίδιο· επαγγελματικός ορισμός) ─────────────

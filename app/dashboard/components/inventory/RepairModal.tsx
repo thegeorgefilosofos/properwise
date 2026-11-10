@@ -101,7 +101,7 @@ export function RepairModal({item,repairs,onAdd,onClose,propertyId,userId}:{item
                 <Btn size="lg" onClick={()=>setShowContactPicker(s=>!s)}>Επαφές</Btn>
                 {showContactPicker&&(
                   <div style={{position:'absolute',top:'calc(100% + 6px)',right:0,background:'var(--bg-surface)',border:'1px solid var(--border-accent)',borderRadius:T.radius.card,padding:8,zIndex:700,minWidth:200,maxHeight:200,overflowY:'auto',boxShadow:'var(--shadow-lg)'}}>
-                    <div style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',padding:'4px 8px 8px',textTransform:'uppercase',letterSpacing:'0.5px',fontWeight:500,fontFamily:T.font.sans,borderBottom:'1px solid var(--border-subtle)',marginBottom:4}}>Επιλογή επαφής</div>
+                    <div style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',padding:'4px 8px 8px',fontWeight: 600,fontFamily:T.font.sans,borderBottom:'1px solid var(--border-subtle)',marginBottom:4}}>Επιλογή επαφής</div>
                     {contacts.map(c=>(
                       <div key={c.id} {...pressable(()=>{setForm(f=>({...f,technician:c.full_name}));setShowContactPicker(false)})} style={{padding:'8px 12px',cursor:'pointer',borderRadius: T.radius.chip,fontSize: 'var(--fs-base)',fontFamily:T.font.sans,color:'var(--text-primary)'}} onMouseEnter={e=>(e.currentTarget.style.background='var(--bg-elevated)')} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>{c.full_name}</div>
                     ))}

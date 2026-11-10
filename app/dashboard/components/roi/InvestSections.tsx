@@ -263,7 +263,7 @@ export function DealSection({
           διαβάσεις πενήντα λέξεις. Ό,τι είναι ζευγάρι «όνομα, τιμή» δεν
           είναι πρόταση, είναι γραμμή. */}
       <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-        <p style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', fontFamily: SANS, margin: '0 0 10px' }}>Οι παραδοχές του υπολογισμού</p>
+        <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: SANS, margin: '0 0 10px' }}>Οι παραδοχές του υπολογισμού</p>
         <div {...fixedCols(3, 14, 'start')}>
           {[
             ['Ανατίμηση ακινήτου', fp(nAppr), apprTouched ? 'δική σου υπόθεση' : `δείκτης ΤτΕ ${apprRef.fromYear} ως ${apprRef.toYear}`],

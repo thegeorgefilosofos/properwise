@@ -67,7 +67,7 @@ export default function MonthlyFeedbackNudge() {
 
       {/* Η επικεφαλίδα κρατά δεξιά περιθώριο όσο το κουμπί· μόνο αυτή, γιατί
           μόνο αυτή περνά από κάτω του. */}
-      <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--accent)', paddingRight: 40 }}>Η γνώμη σου</div>
+      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--accent)', paddingRight: 40 }}>Η γνώμη σου</div>
       <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.015em', color: 'var(--text-primary)', marginTop: 4, paddingRight: 40, textWrap: 'balance' as const }}>Μια κουβέντα, μία φορά τον μήνα</div>
       <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', lineHeight: 1.55, margin: '7px 0 0' }}>
         Πες μας τη γνώμη σου για το PROPERWISE και μπες στην κλήρωση για <b style={{ color: 'var(--text-primary)', fontWeight: 600 }}>έναν χρόνο συνδρομής «{PLANS.agency.name}»</b>. Ένα λεπτό φτάνει.

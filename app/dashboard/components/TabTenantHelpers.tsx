@@ -133,7 +133,7 @@ export const calcEnd = (start: string, type: LeaseType, days: number): string =>
 export const s = {
   card:     { background:'var(--bg-surface)',  border:'1px solid var(--border-subtle)',  borderRadius: T.radius.card, padding:'16px', marginBottom:'16px' } as React.CSSProperties,
   cardGold: { background:'var(--bg-surface)',  border:'1px solid var(--border-accent)',  borderRadius: T.radius.card, padding:'16px', marginBottom:'16px' } as React.CSSProperties,
-  sec:      { fontSize:'10px', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-secondary)', marginBottom:'14px', display:'flex', alignItems:'center', gap:'8px' },
+  sec:      { fontSize: 'var(--fs-base)', fontWeight: 600, color:'var(--text-secondary)', marginBottom:'14px', display:'flex', alignItems:'center', gap:'8px' },
   dot:      (c='var(--accent)') => ({ width:'6px', height:'6px', borderRadius:'50%', background:c, flexShrink:0 } as React.CSSProperties),
   // ══ Ο ΚΑΤΑΚΟΡΥΦΟΣ ΡΥΘΜΟΣ ΤΗΣ ΦΟΡΜΑΣ, ΜΕΤΡΗΜΕΝΟΣ ═══════════════════════════
   // Απόσταση από το τελευταίο πεδίο μιας ενότητας ως το πρώτο της επόμενης: 73
@@ -159,7 +159,7 @@ export const s = {
   // καμία κάθετη ευθεία να διαβαστεί.
   kpi:      { background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:'16px', padding:'14px 16px' } as React.CSSProperties,
   kpiV:     { fontSize:'22px', fontWeight:700, letterSpacing:'-0.5px', lineHeight:1, fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' } as React.CSSProperties,
-  kpiL:     { fontSize:'9px', letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'var(--text-secondary)', marginTop:T.sp.xs } as React.CSSProperties,
+  kpiL:     { fontWeight: 600, fontSize: 'var(--fs-base)', color:'var(--text-secondary)', marginTop:T.sp.xs } as React.CSSProperties,
   // ══ ΤΑ `th`, `td` ΚΑΙ `tdM` ΕΦΥΓΑΝ ΚΑΙ ΓΡΑΦΕΤΑΙ ΓΙΑΤΙ ══════════════════════
   // Ηταν ΔΕΥΤΕΡΟ σύστημα πίνακα, παράλληλο με την `.po-table` του globals.css
   // και ασύμφωνο μαζί της σε κάθε νούμερο: κεφαλίδα 9 εικονοστοιχείων αντί για
@@ -248,7 +248,7 @@ export function ServicesEditor({ value, onChange }: { value: ServiceLine[] | nul
           ].map(({ label, val }) => (
             <div key={label}>
               <div style={{ fontSize:'15px', fontWeight:700, color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{val}</div>
-              <div style={{ fontSize:'9px', color:'var(--text-secondary)', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:T.sp.xs }}>{label}</div>
+              <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color:'var(--text-secondary)', marginTop:T.sp.xs }}>{label}</div>
             </div>
           ))}
         </div>

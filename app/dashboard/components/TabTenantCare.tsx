@@ -665,7 +665,7 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
         ):groups.map(g=>(
           <div key={g.label} style={{ marginBottom:T.sp.lg }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-              <span style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-secondary)', fontFamily:T.font.sans }}>{g.label}</span>
+              <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color:'var(--text-secondary)', fontFamily:T.font.sans }}>{g.label}</span>
               <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fmt(g.items.reduce((a,d)=>a+(d.cost||0),0))}</span>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -847,7 +847,7 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
                       </div>
                       {savedContacts.length>0&&(
                         <div style={{ marginBottom:10 }}>
-                          <div style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-tertiary)', fontFamily:T.font.sans, marginBottom:6 }}>Από τις επαφές σου</div>
+                          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color:'var(--text-tertiary)', fontFamily:T.font.sans, marginBottom:6 }}>Από τις επαφές σου</div>
                           <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
                             {savedContacts.slice(0,8).map(c=>(
                               // Μοιάζει με πλακίδιο αλλά δεν κρατά κατάσταση: συμπληρώνει τη

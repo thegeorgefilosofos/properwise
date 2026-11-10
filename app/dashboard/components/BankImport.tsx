@@ -171,7 +171,7 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
           <EmptyState icon={<SearchX size={20}/>} title="Δεν βρέθηκαν νέες αντιστοιχίσεις" hint={skipped>0?`${skipped} ${skipped===1?'κίνηση είχε':'κινήσεις είχαν'} ήδη εισαχθεί.`:'Καμία νέα κίνηση στο αρχείο.'}/>
         ):(<>
           {rentMatches.length>0&&(<>
-            <p style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-secondary)', margin:'0 0 8px', fontFamily: T.font.sans }}>Ενοίκια που εισπράχθηκαν</p>
+            <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color:'var(--text-secondary)', margin:'0 0 8px', fontFamily: T.font.sans }}>Ενοίκια που εισπράχθηκαν</p>
             <div style={{ display:'flex', flexDirection:'column', gap: 8, marginBottom:16 }}>
               {rentMatches.map((m,i)=>(
                 <div key={i} style={row}>
@@ -186,7 +186,7 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
             </div>
           </>)}
           {expenses.length>0&&(<>
-            <p style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-secondary)', margin:'0 0 8px', fontFamily: T.font.sans }}>Πιθανές δαπάνες</p>
+            <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color:'var(--text-secondary)', margin:'0 0 8px', fontFamily: T.font.sans }}>Πιθανές δαπάνες</p>
             <div style={{ display:'flex', flexDirection:'column', gap: 8 }}>
               {expenses.map((e,i)=>(
                 <div key={i} style={row}>
@@ -205,7 +205,7 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
               χρήστης πατήσει «Καταχώρηση»: το dedup της ανάλυσης θα τις έκρυβε
               στην επόμενη εισαγωγή, δηλαδή το ίδιο σφάλμα με άλλο τρόπο. */}
           {unmatched.length>0&&(<>
-            <p style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-secondary)', margin:'16px 0 8px', fontFamily: T.font.sans }}>Κινήσεις χωρίς αντιστοίχιση</p>
+            <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color:'var(--text-secondary)', margin:'16px 0 8px', fontFamily: T.font.sans }}>Κινήσεις χωρίς αντιστοίχιση</p>
             <p style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', margin:'0 0 8px', fontFamily: T.font.sans, lineHeight:1.5 }}>Δεν ταιριάζουν σε ανεξόφλητο ενοίκιο του {year} και δεν καταχωρούνται από εδώ. Επανεμφανίζονται σε κάθε εισαγωγή, μέχρι να τακτοποιηθούν.</p>
             <div style={{ display:'flex', flexDirection:'column', gap: 8 }}>
               {unmatched.map((t,i)=>(

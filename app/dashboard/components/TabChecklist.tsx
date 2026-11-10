@@ -920,7 +920,7 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
               <div key={cat.id}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: cat.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{cat.label}</span>
+                  <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{cat.label}</span>
                   <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, var(--border-default), transparent)' }} />
                   {/* ΔΥΟ ΔΙΟΡΘΩΣΕΙΣ ΣΕ ΜΙΑ ΓΡΑΜΜΗ.
                       ΤΟ ΛΕΚΤΙΚΟ ΕΣΠΑΓΕ ΣΕ ΠΕΝΤΕ ΣΕΙΡΕΣ. Χωρίς `nowrap` και

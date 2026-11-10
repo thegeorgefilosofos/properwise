@@ -1030,7 +1030,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
                     παίρνει ΟΛΟ το πλάτος της στήλης και τυλίγεται όσο χρειάζεται.
                     Ιδιο ιδίωμα με τη γραμμή στοιχείων της κάρτας δανείου: όνομα
                     πάνω, μέγεθος κάτω, τίποτα κρυμμένο πίσω από τελείες. */}
-                <span style={{display:'block',fontFamily:T.font.sans,color:'var(--text-tertiary)',fontSize: 'var(--fs-xs)',textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:600,marginBottom: 4}}>{k}</span>
+                <span style={{display:'block',fontFamily:T.font.sans,color:'var(--text-tertiary)',fontSize: 'var(--fs-base)',fontWeight:600,marginBottom: 4}}>{k}</span>
                 <span style={{display:'block',fontFamily:T.font.sans,color:'var(--text-primary)',fontSize: 'var(--fs-base)',letterSpacing:'0.25px',minWidth:0,overflowWrap:'anywhere'}}>{v}</span>
               </div>
             ))}
