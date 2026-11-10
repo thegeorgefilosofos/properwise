@@ -4195,6 +4195,59 @@ begin
   raise notice 'probe: στο ταβάνι των 12 μηνών η βαθμίδα ανεβαίνει';
 end $probe$;
 
+-- Δώρο μετά τη λήξη παλιών μηνών (20261110120500): οι νέοι μήνες μετρούν από
+-- σήμερα. Πριν, το comp_until έβγαινε από την παλιά έναρξη και έπεφτε στο παρελθόν.
+reset role;
+do $probe$
+begin
+  delete from public.referral_rewards where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  insert into public.referral_rewards (user_id, kind, months, tier, reason, status)
+    values ('1a1a1a1a-0000-4000-8000-0000000000b0', 'months', 1, 'owner', 'per_referral_pro', 'pending');
+  update public.billing_profiles
+     set comp_plan = 'owner', comp_months_granted = 1,
+         comp_started_at = now() - interval '6 months', comp_until = now() - interval '5 months'
+   where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  insert into public.referral_rewards (user_id, kind, months, tier, reason, status)
+    values ('1a1a1a1a-0000-4000-8000-0000000000b0', 'months', 1, 'agency', 'pro_paid', 'pending');
+end $probe$;
+set role authenticated;
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000b0';
+do $probe$
+declare cu timestamptz; cp text;
+begin
+  perform public.sync_comp_from_referrals();
+  select comp_until, comp_plan into cu, cp from public.billing_profiles where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  if cu is null or cu < now() + interval '1 month' - interval '1 minute' or cu > now() + interval '1 month' + interval '1 minute' then
+    raise exception 'Δώρο μετά από ληγμένους μήνες: comp_until = %, αναμενόταν σήμερα + 1 μήνας', cu;
+  end if;
+  if cp is distinct from 'agency' then raise exception 'Δώρο μετά τη λήξη: comp_plan = %', cp; end if;
+  raise notice 'probe: δώρο μετά τη λήξη μετρά από σήμερα';
+end $probe$;
+
+-- Ενεργό comp που επεκτείνεται: ο νέος μήνας μπαίνει στο τέλος, όχι από σήμερα.
+reset role;
+do $probe$
+begin
+  update public.billing_profiles
+     set comp_until = now() + interval '10 days'
+   where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  insert into public.referral_rewards (user_id, kind, months, tier, reason, status)
+    values ('1a1a1a1a-0000-4000-8000-0000000000b0', 'months', 1, 'agency', 'pro_paid', 'pending');
+end $probe$;
+set role authenticated;
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000b0';
+do $probe$
+declare cu timestamptz;
+begin
+  perform public.sync_comp_from_referrals();
+  select comp_until into cu from public.billing_profiles where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  if cu is null or cu < now() + interval '10 days' + interval '1 month' - interval '1 minute'
+     or cu > now() + interval '10 days' + interval '1 month' + interval '1 minute' then
+    raise exception 'Ενεργό comp: comp_until = %, αναμενόταν τέλος + 1 μήνας', cu;
+  end if;
+  raise notice 'probe: ενεργό comp επεκτείνεται από το τέλος του';
+end $probe$;
+
 -- ── Ο λογιστής στέλνει ─────────────────────────────────────────────────────
 set role authenticated;
 set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000ac';

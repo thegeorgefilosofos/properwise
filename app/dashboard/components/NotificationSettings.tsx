@@ -212,7 +212,7 @@ export default function NotificationSettings({ userId }: { userId: string }) {
           Ο διακόπτης του ενοικίου καθόταν έξω από εδώ, με προεπιλογή αναμμένη:
           με σβηστό το email έδειχνε αναμμένο κάτι που δεν έστελνε ποτέ τίποτα.
           Οσο δεν φεύγει email, δεν φαίνεται ρύθμιση email. */}
-      <SetRow title="Υπενθυμίσεις με email" desc="Για τα γεγονότα του ημερολογίου σου και για το ληξιπρόθεσμο ενοίκιο."
+      <SetRow title="Υπενθυμίσεις με email" desc="Για τα γεγονότα του ημερολογίου σου, για το ληξιπρόθεσμο ενοίκιο και για τη μηνιαία κατάσταση εισπράξεων."
         control={<Toggle ariaLabel="Υπενθυμίσεις με email" on={prefs.email_enabled} onChange={v => update({ email_enabled: v })} />}>
         {prefs.email_enabled && (
           <SetList>
