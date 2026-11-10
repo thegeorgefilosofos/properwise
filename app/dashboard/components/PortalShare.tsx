@@ -16,7 +16,7 @@ import { T, fd, fe, EmptyState, Skeleton, pressable, Btn, InfoBanner } from '@/c
 import { notify, notifyOk, notifyError } from '@/components/Toast';
 import { athensToday } from '@/lib/core/time';
 import { parseAmount } from '@/lib/core/greek';
-import { saved, savedData } from '@/components/dbWrite';
+import { saved } from '@/components/dbWrite';
 import { failed } from '@/lib/core/dbError';
 import { photosKey, signMaintenancePhotos } from '@/lib/maintenance/photos';
 import { useLoad } from '@/app/hooks/useLoad';
@@ -63,7 +63,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
   // συνεδρία, για να το αντιγράψει. Στη βάση υπάρχει μόνο το hash του.
   const [withPin, setWithPin] = useState(true);
   const [freshPin, setFreshPin] = useState<string | null>(null);
-  const [pinCopied, setPinCopied] = useState(false);
+  const [pinCopy, setPinCopy] = useState<'idle' | 'done' | 'failed'>('idle');
   const [cfgOpen, setCfgOpen] = useState(false);     // πτυσσόμενες ρυθμίσεις πύλης
   const [synced, setSynced] = useState<Set<string>>(new Set());   // αιτήματα που πήγαν στο Ημερολόγιο (τρέχουσα συνεδρία)
   const [costFor, setCostFor] = useState<string | null>(null);    // ποιο αίτημα καταχωρεί δαπάνη
@@ -160,13 +160,17 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
     if (!token) return false;
     const what = pin ? 'Ο κωδικός πύλης δεν ορίστηκε' : 'Ο κωδικός πύλης δεν καταργήθηκε';
     setBusy(true);
-    const ok = await savedData<boolean>(what, supabase.rpc('set_portal_pin', { p_token: token, p_pin: pin }));
+    const r = await portalStore.writePin(supabase, token, pin);
     setBusy(false);
-    // `null` σημαίνει σφάλμα και ο χρήστης το έχει ήδη δει. `false` σημαίνει
-    // ότι η κλήση πέτυχε αλλά δεν βρέθηκε δική σου γραμμή με αυτό το token.
-    if (ok === null) return false;
-    if (!ok) { notifyError(failed(what)); return false; }
-    return true;
+    return pinOutcome(r, what);
+  };
+  // `none`: η κλήση πέτυχε αλλά δεν βρέθηκε δική σου γραμμή με αυτό το token.
+  // `mfa`: λείπει η επαλήθευση δύο βημάτων και το μήνυμα λέει πού ανοίγει.
+  const pinOutcome = (r: { result: portalStore.PinWrite; error: unknown }, what: string): boolean => {
+    if (r.result === 'ok') return true;
+    if (r.result === 'mfa') notifyError(portalStore.MFA_PIN_SAY);
+    else notifyError(failed(what, r.error ?? undefined));
+    return false;
   };
   const savePin = async () => {
     const pin = pinInput.trim();
@@ -184,14 +188,23 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
     const pin = portalStore.newPin();
     const what = 'Ο κωδικός πύλης δεν ορίστηκε';
     setBusy(true);
-    const ok = await savedData<boolean>(what, supabase.rpc('set_portal_pin', { p_token: forToken, p_pin: pin }));
+    const r = await portalStore.writePin(supabase, forToken, pin);
     setBusy(false);
-    if (ok === null) return false;
-    if (!ok) { notifyError(failed(what)); return false; }
-    setPinSet(true); setFreshPin(pin); setPinCopied(false);
+    if (!pinOutcome(r, what)) return false;
+    setPinSet(true); setFreshPin(pin); setPinCopy('idle');
     return true;
   };
-  const copyPin = () => { if (freshPin) { navigator.clipboard?.writeText(freshPin); setPinCopied(true); setTimeout(() => setPinCopied(false), 2000); } };
+  // Η ΑΝΤΙΓΡΑΦΗ ΛΕΕΙ ΤΗΝ ΑΛΗΘΕΙΑ. Το «Αντιγράφηκε» φαίνεται μόνο όταν το
+  // πρόχειρο το δέχτηκε. Χωρίς πρόχειρο (μη ασφαλές πλαίσιο, άρνηση άδειας) η
+  // οθόνη λέει να σημειωθεί και το PIN μένει ορατό και επιλέξιμο ως κείμενο.
+  const copyPin = async () => {
+    if (!freshPin) return;
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('no clipboard');
+      await navigator.clipboard.writeText(freshPin);
+      setPinCopy('done'); setTimeout(() => setPinCopy('idle'), 2000);
+    } catch { setPinCopy('failed'); }
+  };
 
   useLoad(load);
 
@@ -241,6 +254,13 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
     setBusy(false);
     if (error) { notifyError(failed('Η ρύθμιση της πύλης δεν αποθηκεύτηκε', error)); return; }
     setToken(t); setLinkTenant(tenant.id); setCopied(false);
+    // ΝΕΟΣ ΕΝΟΙΚΙΑΣΤΗΣ, ΝΕΟ PIN. Ο προηγούμενος ήξερε το παλιό. Ο σύνδεσμός του
+    // πέθανε ήδη με το νέο token, όμως ο νέος ενοικιαστής χρειάζεται κωδικό
+    // που να τον έχει ο ιδιοκτήτης στο χέρι, όχι έναν που ίσως έχει ξεχάσει.
+    if (pinSet) {
+      if (await addRandomPin(t)) notifyOk('Νέος σύνδεσμος και νέος κωδικός PIN. Ο παλιός σύνδεσμος έπαψε να ισχύει· στείλε τα νέα στον ενοικιαστή.');
+      return;
+    }
     notifyOk('Νέος σύνδεσμος. Ο παλιός έπαψε να ισχύει· στείλε τον νέο στον ενοικιαστή.');
   };
 
@@ -400,11 +420,12 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
               {freshPin && (
                 <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '10px 12px', marginBottom: 14 }}>
                   <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1, minWidth: 200 }}>
-                    Κωδικός PIN: <strong style={{ fontFamily: T.font.num, fontSize: 'var(--fs-base)', color: 'var(--text-primary)', letterSpacing: '0.08em' }}>{freshPin}</strong>
+                    Κωδικός PIN: <strong style={{ fontFamily: T.font.num, fontSize: 'var(--fs-base)', color: 'var(--text-primary)', letterSpacing: '0.08em', userSelect: 'all' }}>{freshPin}</strong>
+                    {pinCopy === 'failed' && <><br /><span role="alert" style={{ color: 'var(--warning-on-container)' }}>Δεν αντιγράφηκε, σημείωσέ το.</span></>}
                     <br />Δώσ&apos; τον στον ενοικιαστή μαζί με τον σύνδεσμο. Δεν θα τον ξαναδείς εδώ· αν χαθεί, όρισε νέο στις ρυθμίσεις.
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <Btn variant="secondary" onClick={copyPin}>{pinCopied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</Btn>
+                    <Btn variant="secondary" onClick={() => { void copyPin(); }}>{pinCopy === 'done' ? 'Αντιγράφηκε' : 'Αντιγραφή'}</Btn>
                     <Btn variant="secondary" onClick={() => setFreshPin(null)}>Το κράτησα</Btn>
                   </div>
                 </div>

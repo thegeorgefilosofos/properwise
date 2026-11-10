@@ -13,7 +13,7 @@
 // Μια μελλοντική «αυστηροποίηση» που θα το γύριζε σε «έληξε» θα έκοβε κάθε
 // παλιά γραμμή, σιωπηλά, από την πλευρά του μισθωτή. Εδώ σπάει.
 // ═══════════════════════════════════════════════════════════════════════════
-import { daysLeft, needsRenewal, renew, LIFETIME_DAYS, RENEW_UNDER_DAYS, newPin, PIN_DIGITS } from './portal';
+import { daysLeft, needsRenewal, renew, LIFETIME_DAYS, RENEW_UNDER_DAYS, newPin, PIN_DIGITS, writePin, isMfaDenied, MFA_PIN_SAY } from './portal';
 import { readFileSync } from 'node:fs';
 
 let pass = 0, fail = 0;
@@ -40,8 +40,15 @@ const inDays = (n: number) => new Date(NOW.getTime() + n * 86_400_000).toISOStri
   ok('η πύλη γεννιέται με PIN από προεπιλογή', ui.includes('const [withPin, setWithPin] = useState(true);') && ui.includes('if (withPin) await addRandomPin(data.token)'));
   ok('το «Χωρίς κωδικό» λέει τι εκτίθεται', ui.includes('όποιος έχει τον σύνδεσμο βλέπει το IBAN πληρωμής και τα στοιχεία της μίσθωσης'));
   ok('ο παλιός σύνδεσμος χωρίς PIN παίρνει σύσταση με κουμπί', ui.includes('>Πρόσθεσε PIN</Btn>'));
-  ok('το καθαρό PIN πάει μόνο στη set_portal_pin', !/from\(['"]portal_links['"]\)[^;]*pin_hash/.test(ui) && ui.includes("rpc('set_portal_pin'"));
+  const data = readFileSync('lib/data/portal.ts', 'utf8');
+  ok('το καθαρό PIN πάει μόνο στη set_portal_pin', !/pin_hash\s*:/.test(ui) && data.includes("db.rpc('set_portal_pin'"));
+  ok('«Αντιγράφηκε» μόνο αφού το δεχτεί το πρόχειρο', ui.includes('await navigator.clipboard.writeText(freshPin)') && ui.includes("setPinCopy('failed')") && ui.includes('Δεν αντιγράφηκε, σημείωσέ το.'));
+  ok('το PIN μένει επιλέξιμο ως κείμενο', ui.includes("userSelect: 'all'"));
+  ok('νέος ενοικιαστής, νέο PIN', /if \(pinSet\) \{\s*if \(await addRandomPin\(t\)\)/.test(ui));
+  ok('χωρίς δεύτερο βήμα, το μήνυμα λέει πού ανοίγει', ui.includes('notifyError(portalStore.MFA_PIN_SAY)') && MFA_PIN_SAY.includes('«Ασφάλεια»'));
+  ok('42501 είναι άρνηση δεύτερου βήματος', isMfaDenied({ code: '42501', message: 'x' }) && isMfaDenied({ message: 'mfa_required' }) && !isMfaDenied({ code: '23505' }) && !isMfaDenied(null));
 }
+
 
 // ── ΠΟΣΕΣ ΗΜΕΡΕΣ ΜΕΝΟΥΝ ────────────────────────────────────────────────────
 ok('εκατό ημέρες μπροστά', daysLeft(inDays(100), NOW) === 100);
@@ -78,6 +85,15 @@ void (async () => {
   ok('κι το παράθυρο ξαναγεμίζει ολόκληρο', daysLeft(patch?.expires_at ?? null, NOW) === LIFETIME_DAYS);
   ok('η γραφή δένεται σε ακίνητο ΚΑΙ χρήστη', where.includes('prop-1') && where.includes('user-1'));
 
+  const fake = (res: { data?: unknown; error?: unknown }, thrown = false) => ({
+    rpc: async () => { if (thrown) throw new Error('δίκτυο'); return res; },
+  });
+  const w = (f: unknown) => writePin(f as Parameters<typeof writePin>[0], 't', '123456');
+  ok('PIN γράφτηκε', (await w(fake({ data: true, error: null }))).result === 'ok');
+  ok('καμία δική σου γραμμή', (await w(fake({ data: false, error: null }))).result === 'none');
+  ok('χωρίς δεύτερο βήμα', (await w(fake({ data: null, error: { code: '42501', message: 'mfa_required' } }))).result === 'mfa');
+  ok('άλλο σφάλμα', (await w(fake({ data: null, error: { code: '23505', message: 'x' } }))).result === 'error');
+  ok('δίκτυο που πέφτει', (await w(fake({}, true))).result === 'error');
   console.log(fail === 0 ? `✓ portal: ${pass} έλεγχοι πέρασαν` : `✗ portal: ${fail} απέτυχαν από ${pass + fail}\n  ${fails.join('\n  ')}`);
   if (fail > 0) process.exit(1);
 })();

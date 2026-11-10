@@ -167,3 +167,34 @@ export function newPin(rand: (buf: Uint8Array) => Uint8Array = b => crypto.getRa
   }
   return out;
 }
+
+// ── ΧΩΡΙΣ ΔΕΥΤΕΡΟ ΒΗΜΑ, ΤΟ PIN ΔΕΝ ΓΡΑΦΕΤΑΙ ─────────────────────────────────
+// Η set_portal_pin απαιτεί private.mfa_satisfied() και σηκώνει 42501
+// `mfa_required` όταν η συνεδρία δεν έχει περάσει τον έλεγχο δύο βημάτων.
+// Το γενικό «δεν ορίστηκε» δεν λέει στον ιδιοκτήτη τι να κάνει· αυτό λέει.
+
+/** Αρνήθηκε η βάση επειδή λείπει η επαλήθευση δύο βημάτων; */
+export const isMfaDenied = (e: { code?: string | null; message?: string | null } | null | undefined): boolean =>
+  !!e && (e.code === '42501' || /mfa_required/i.test(e.message || ''));
+
+/** Η φράση της οθόνης όταν λείπει το δεύτερο βήμα. */
+export const MFA_PIN_SAY =
+  'Για να οριστεί κωδικός πύλης χρειάζεται επαλήθευση δύο βημάτων. Ενεργοποίησέ την στον Λογαριασμό, στην ενότητα «Ασφάλεια» και δοκίμασε ξανά.';
+
+export type PinWrite = 'ok' | 'none' | 'mfa' | 'error';
+
+/**
+ * Γράφει ή σβήνει το PIN μέσω της set_portal_pin (bcrypt στη βάση). `none`:
+ * καμία δική σου γραμμή με αυτό το token. Το σφάλμα επιστρέφεται για μήνυμα.
+ */
+export async function writePin(
+  db: Db, token: string, pin: string,
+): Promise<{ result: PinWrite; error: DbError | null }> {
+  try {
+    const { data, error } = await db.rpc('set_portal_pin', { p_token: token, p_pin: pin });
+    if (error) return { result: isMfaDenied(error) ? 'mfa' : 'error', error };
+    return { result: data ? 'ok' : 'none', error: null };
+  } catch (e) {
+    return { result: 'error', error: { message: e instanceof Error ? e.message : 'Σφάλμα δικτύου' } as DbError };
+  }
+}
