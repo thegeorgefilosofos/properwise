@@ -18,6 +18,16 @@
 //   · κάτι δεν ελέγχθηκε πάνω από 12 μήνες
 //   · κάποιο `where` δείχνει σε αρχείο που δεν υπάρχει πια
 //
+// Η ΜΙΑ ΕΞΑΙΡΕΣΗ: ΝΟΜΟΣ ΠΟΥ ΕΚΚΡΕΜΕΙ (`pendingLaw`). Στις 10/11/2026, 18
+// κανόνες έληγαν στις 31/12/2026 και ο νόμος που θα τους ανανέωνε (μέτρα της
+// 90ής ΔΕΘ) δεν είχε ψηφιστεί. Κανείς δεν μπορούσε να γράψει νέο validTo πριν
+// από το ΦΕΚ, οπότε ο φύλακας θα κοκκίνιζε κάθε PR από τις 16/11 χωρίς να
+// υπάρχει τίποτα να διορθώσει. Απόφαση ιδιοκτήτη: όσο εκκρεμεί ο νόμος, ο
+// κανόνας ΠΡΟΕΙΔΟΠΟΙΕΙ πριν και μετά τη λήξη. Πρώτα έλεγχος στο
+// διαδίκτυο, όχι κόκκινο. Το δίχτυ: 90 ημέρες μετά το `since` η εξαίρεση
+// λήγει και ο φύλακας κόβει, ώστε να μη γίνει μόνιμη. Κανόνας χωρίς
+// `pendingLaw` κόβει όπως πάντα.
+//
 // ΤΟ ΤΕΛΕΥΤΑΙΟ ΕΙΝΑΙ ΤΟ ΠΙΟ ΥΠΟΥΛΟ. Μια μετακίνηση αρχείου αφήνει το μητρώο να
 // δείχνει στο κενό: εξακολουθεί να λέει «ελεγμένο», ενώ κανείς δεν ξέρει πού
 // ζει πια η τιμή.
@@ -44,7 +54,7 @@ const probe = `
 import { REGULATED, needsAttention, daysLeft, statusOf } from '@/lib/legal/validity'
 const today = ${JSON.stringify(today)}
 const rows = REGULATED.map(r => ({ id: r.id, label: r.label, where: r.where, source: r.source,
-  recheck: r.recheck, status: statusOf(r, today), days: daysLeft(r, today) }))
+  recheck: r.recheck, status: statusOf(r, today), days: daysLeft(r, today), pendingLaw: r.pendingLaw ?? null }))
 process.stdout.write(JSON.stringify({ rows, attention: needsAttention(today).map(x => x.r.id) }))
 `
 const tmp = 'scripts/__validity-probe.ts'
@@ -60,10 +70,26 @@ try {
   process.exit(1)
 }
 
+/** Πόσες ημέρες κρατά η εξαίρεση του νόμου που εκκρεμεί. Μετά κόβει. */
+const PENDING_MAX_DAYS = 90
+const dayDiff = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000)
+
 const findings = []
+const warnings = []
 for (const r of out.rows) {
+  const p = r.pendingLaw
+  if (p) {
+    if (!/^https:\/\//.test(p.href)) findings.push({ kind: 'ΧΩΡΙΣ ΠΗΓΗ', r, why: 'ο νόμος που εκκρεμεί δεν έχει σύνδεσμο https' })
+    const age = dayDiff(p.since, today)
+    if (age >= PENDING_MAX_DAYS) {
+      findings.push({ kind: 'ΕΚΚΡΕΜΟΤΗΤΑ ΠΑΝΩ ΑΠΟ 90 ΗΜΕΡΕΣ', r, why: `το «${p.title}» εκκρεμεί από ${p.since} (${age} ημέρες): ή βγήκε ΦΕΚ και ο κανόνας θέλει ενημέρωση, ή η εξαίρεση πρέπει να ξανακριθεί από άνθρωπο` })
+      continue
+    }
+  }
   if (!existsSync(r.where)) findings.push({ kind: 'ΧΑΜΕΝΟ ΑΡΧΕΙΟ', r, why: `το «${r.where}» δεν υπάρχει` })
+  else if (r.status === 'expired' && p) warnings.push({ kind: 'ΕΛΗΞΕ, ΕΚΚΡΕΜΕΙ ΦΕΚ', r, why: `πριν από ${-r.days} ημέρες· έλεγχος στο διαδίκτυο αν ψηφίστηκε το «${p.title}»` })
   else if (r.status === 'expired') findings.push({ kind: 'ΕΛΗΞΕ', r, why: `πριν από ${-r.days} ημέρες` })
+  else if (r.status === 'expiring' && p) warnings.push({ kind: 'ΛΗΓΕΙ, ΕΚΚΡΕΜΕΙ ΝΟΜΟΣ', r, why: `σε ${r.days} ημέρες· το «${p.title}» δεν έχει ψηφιστεί` })
   else if (r.status === 'expiring') findings.push({ kind: 'ΛΗΓΕΙ', r, why: `σε ${r.days} ημέρες` })
   else if (r.status === 'stale') findings.push({ kind: 'ΑΝΕΛΕΓΚΤΟ', r, why: 'πάνω από 12 μήνες χωρίς ανθρώπινο έλεγχο' })
 }
@@ -132,6 +158,26 @@ if (unguarded.length) {
   process.exit(1)
 }
 
+if (warnings.length) {
+  console.warn(`⚠ ${warnings.length} κανόνες περιμένουν νόμο που δεν έχει ψηφιστεί (σήμερα ${today}). Δεν κόβουν· θέλουν έλεγχο στο διαδίκτυο:\n`)
+  const laws = new Map()
+  for (const w of warnings) {
+    const p = w.r.pendingLaw
+    if (!laws.has(p.href)) laws.set(p.href, { p, items: [] })
+    laws.get(p.href).items.push(w)
+  }
+  for (const { p, items } of laws.values()) {
+    const cut = new Date(Date.parse(p.since) + PENDING_MAX_DAYS * 86_400_000).toISOString().slice(0, 10)
+    console.warn(`  ${p.title}`)
+    console.warn(`     ${p.href}`)
+    console.warn(`     εκκρεμεί από ${p.since} · κόβει από ${cut} αν δεν ενημερωθεί`)
+    for (const w of items) console.warn(`     · ${w.kind}  ${w.r.label} (${w.why.split('·')[0].trim()})`)
+    console.warn('')
+  }
+  console.warn('  ΟΤΑΝ ΒΓΕΙ ΤΟ ΦΕΚ: για κάθε κανόνα, νέο validTo και νέο checkedAt στο')
+  console.warn('  lib/legal/validity.ts, πηγή το ΦΕΚ· μετά αφαίρεση του pendingLaw. Αν ο νόμος')
+  console.warn('  άλλαξε τιμή, πρώτα ο κώδικας που την κρατά (με την πηγή στο PR).\n')
+}
 if (findings.length) {
   console.error(`✗ ${findings.length} ρυθμιζόμενα μεγέθη θέλουν ανθρώπινο μάτι (σήμερα ${today}):\n`)
   for (const f of findings) {
@@ -145,4 +191,4 @@ if (findings.length) {
   console.error('  αρκεί το checkedAt: αυτό είναι η υπογραφή ότι κάποιος κοίταξε.')
   process.exit(1)
 }
-console.log(`✓ και τα ${out.rows.length} ρυθμιζόμενα μεγέθη είναι εν ισχύι και ελεγμένα (σήμερα ${today}), κανένας κανόνας εκτός μητρώου`)
+console.log(`✓ τα ${out.rows.length} ρυθμιζόμενα μεγέθη δεν έχουν τίποτα που να κόβει (σήμερα ${today}${warnings.length ? `, ${warnings.length} με εκκρεμή νόμο` : ''}), κανένας κανόνας εκτός μητρώου`)

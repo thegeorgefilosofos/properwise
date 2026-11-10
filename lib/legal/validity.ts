@@ -62,7 +62,27 @@ export type Regulated = {
   checkedAt: string;
   /** Τι πρέπει να κοιτάξει ο άνθρωπος όταν έρθει η ώρα. Μία πρόταση. */
   recheck: string;
+  /**
+   * Νόμος που εκκρεμεί και θα ανανεώσει ή θα αλλάξει τον κανόνα. Οσο υπάρχει,
+   * ο φύλακας ΠΡΟΕΙΔΟΠΟΙΕΙ αντί να κόβει πριν και μετά τη λήξη, γιατί
+   * κανείς δεν μπορεί να γράψει νέο validTo πριν βγει το ΦΕΚ (απόφαση
+   * ιδιοκτήτη 10/11/2026: πρώτα έλεγχος στο διαδίκτυο, όχι κόκκινο). Η
+   * εξαίρεση λήγει μόνη της 90 ημέρες μετά το `since`: από εκεί κόβει.
+   * Οταν βγει το ΦΕΚ: νέο validTo, νέο checkedAt, πηγή το ΦΕΚ· το πεδίο φεύγει.
+   */
+  pendingLaw?: { title: string; href: string; since: string };
 };
+
+/**
+ * Ο νόμος που εκκρεμεί για τους κανόνες του 2027 (μέτρα της 90ής ΔΕΘ). Το
+ * `since` είναι η κατάθεσή του στη Βουλή (04/11/2026)· η εξαίρεση κόβει από
+ * 02/02/2027. Πηγή: η ανακοίνωση του Υπουργείου για τη διαβούλευση.
+ */
+const DETH_2026_BILL = {
+  title: 'Νομοσχέδιο με τα μέτρα της 90ής ΔΕΘ για τα έτη 2026 και 2027',
+  href: 'https://minfin.gov.gr/anartithike-se-dimosia-diavoulefsi-to-nomoschedio-me-ta-metra-pou-anakoinothikan-stin-90i-diethni-ekthesi-thessalonikis-kai-efarmozontai-kata-ta-eti-2026-kai-2027/',
+  since: '2026-11-04',
+} as const;
 
 /**
  * ΤΟ ΜΗΤΡΩΟ.
@@ -74,6 +94,7 @@ export const REGULATED: readonly Regulated[] = [
   // ── Φόρος εισοδήματος από ακίνητα ────────────────────────────────────────
   {
     id: 'rental-brackets',
+    pendingLaw: DETH_2026_BILL,
     label: 'Κλίμακα φόρου εισοδήματος από ακίνητα',
     where: 'lib/billing/greekTax.ts',
     validFrom: '2026-01-01',
@@ -117,6 +138,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'business-brackets',
+    pendingLaw: DETH_2026_BILL,
     label: 'Κλίμακα φόρου επιχειρηματικής δραστηριότητας',
     where: 'lib/billing/greekTax.ts',
     validFrom: '2026-01-01',
@@ -173,6 +195,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'enfia-thresholds',
+    pendingLaw: DETH_2026_BILL,
     label: 'Όριο συμπληρωματικού ΕΝΦΙΑ και αφορολόγητο περιουσίας',
     where: 'lib/billing/enfia.ts',
     validFrom: '2026-01-01',
@@ -300,6 +323,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'transfer-tax',
+    pendingLaw: DETH_2026_BILL,
     label: 'Φόρος μεταβίβασης ακινήτου και απαλλαγή πρώτης κατοικίας',
     // ΤΟ `where` ΕΔΕΙΧΝΕ ΣΤΟΝ ΚΑΤΑΝΑΛΩΤΗ, ΟΧΙ ΣΤΗΝ ΠΗΓΗ. Ο υπολογιστής δανείου
     // ΕΙΣΑΓΕΙ τους συντελεστές· δεν τους ορίζει. Ο φύλακας ελέγχει ότι το αρχείο
@@ -345,6 +369,7 @@ export const REGULATED: readonly Regulated[] = [
     // 18.10.2026 στο κείμενο του ΦΕΚ (legalize-dev/legalize-gr,
     // gr/FEK-A-198-2025.md), από εργαλείο.
     id: 'vacant-rental-exemption',
+    pendingLaw: DETH_2026_BILL,
     label: 'Τριετής απαλλαγή ενοικίου για κενές κατοικίες που νοικιάζονται μακροχρόνια: παράθυρο σύναψης μίσθωσης',
     where: 'lib/accounting/updates2026.ts',
     validFrom: '2024-09-08',
@@ -360,6 +385,7 @@ export const REGULATED: readonly Regulated[] = [
     // 18.10.2026· ο διακομιστής δεν το άφησε να ανοιχτεί. Το `checkedAt` είναι
     // του data/accounting-sources.json (`renovation_39b`).
     id: 'renovation-39b',
+    pendingLaw: DETH_2026_BILL,
     label: 'Μείωση φόρου για δαπάνες αναβάθμισης κτιρίων (άρθρο 39Β ΚΦΕ): παράθυρο δαπανών',
     where: 'lib/accounting/renovation39b.ts',
     validFrom: '2024-01-01',
@@ -417,6 +443,7 @@ export const REGULATED: readonly Regulated[] = [
   // λήξης. Εδώ αποκτούν ημερομηνία που κοκκινίζει.
   {
     id: 'new-build-vat-suspension',
+    pendingLaw: DETH_2026_BILL,
     label: 'Αναστολή ΦΠΑ 24% στα νεόδμητα (οπότε επιβάλλεται ΦΜΑ 3,09%)',
     where: 'lib/accounting/transfer.ts',
     validFrom: '2026-01-01',
@@ -427,6 +454,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'capital-gains-suspension',
+    pendingLaw: DETH_2026_BILL,
     label: 'Αναστολή φόρου υπεραξίας 15% στη μεταβίβαση ακινήτων',
     where: 'lib/accounting/transfer.ts',
     validFrom: '2026-01-01',
