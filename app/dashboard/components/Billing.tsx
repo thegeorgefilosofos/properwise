@@ -24,6 +24,7 @@ import { createClient } from '@/lib/supabase/client';
 import * as properties from '@/lib/data/properties';
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing';
+import { nameDaysLeft, NAME_LOCKED_TEXT } from './nameLock';
 import { TextInput, CustomSelect, FIELD_LABEL_ROW } from './UIComponents';
 import { T, Btn, LinkBtn, InfoBanner, Spinner, Card, SecHdr, ChipToggle, fixedCols, fe, fd } from '@/components/Theme';
 import { PLANS, PLAN_ORDER, normalizePlan, annualPerMonth, type PlanId, type BillingCycle } from '@/lib/billing/plans';
@@ -77,6 +78,9 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
   const [saved, setSaved] = useState(false);
   const [saveErr, setSaveErr] = useState(false);
   const [prefilled, setPrefilled] = useState(false);
+  // ΤΟ ΟΝΟΜΑ ΚΛΕΙΔΩΝΕΙ ΚΑΙ ΕΔΩ (nameLock.ts). Ως τις 10/11/2026 αυτή η φόρμα το
+  // άλλαζε ελεύθερα, παρότι ο Λογαριασμός και η σελίδα trust λένε «μία φορά τον μήνα».
+  const [nameLockDays, setNameLockDays] = useState(0);
   // Ζωντανή χρέωση; Το λέει ο ίδιος έλεγχος που δείχνει το κουμπί του ταμείου.
   const [billingLive, setBillingLive] = useState<boolean | null>(null);
   const set = (k: keyof BillingData, v: string) => setD(p => ({ ...p, [k]: v }));
@@ -105,6 +109,8 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
       setWishPlan(planFromParam(meta.chosen_plan));
       setWishCycle(cycleFromParam(meta.chosen_cycle));
       const base: BillingData = { ...INIT, ...(data || {}) };
+      const changedAt = (data as { full_name_changed_at?: string | null } | null)?.full_name_changed_at;
+      setNameLockDays(String(data?.full_name || '').trim() ? nameDaysLeft(changedAt, Date.now()) : 0);
 
       // Έξυπνη προσυμπλήρωση: αντλούμε ό,τι ήδη ξέρουμε από το ακίνητο και τις
       // ρυθμίσεις του, ώστε ο χρήστης να μη βρίσκει άδεια φόρμα (αλλιώς δεν τη
@@ -230,7 +236,9 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
             options={[{ value: 'receipt', label: 'Απόδειξη (ιδιώτης)' }, { value: 'invoice', label: 'Τιμολόγιο (επιχείρηση)' }]} />
           <CustomSelect label="Χώρα" value={country} onChange={v => set('country', v)}
             options={ALL_COUNTRIES.map(c => ({ value: c.code, label: c.name }))} />
-          <TextInput label="Ονοματεπώνυμο" value={d.full_name} onChange={v => set('full_name', v)} placeholder="Όνομα και επώνυμο" />
+          <TextInput label="Ονοματεπώνυμο" value={d.full_name} onChange={v => set('full_name', v)} placeholder="Όνομα και επώνυμο"
+            disabled={nameLockDays > 0}
+            labelInfo={nameLockDays > 0 ? `${NAME_LOCKED_TEXT} Ξανά σε ${nameLockDays} ${nameLockDays === 1 ? 'ημέρα' : 'ημέρες'}.` : undefined} />
           {isInvoice && <TextInput label="Επωνυμία εταιρείας" value={d.company_name} onChange={v => set('company_name', v)} placeholder="Παράδειγμα Ε.Ε." />}
           {/* Φορολογικό αναγνωριστικό: ΑΦΜ για Ελλάδα, κοινοτικό VAT (VIES) για ΕΕ, μητρώο για εκτός ΕΕ */}
           {isInvoice && isGr && <TextInput label="ΑΦΜ" value={d.afm} onChange={v => set('afm', v)} placeholder="123456789" />}

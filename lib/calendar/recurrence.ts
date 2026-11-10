@@ -83,3 +83,46 @@ export function expandRecurring<T extends Recurrable>(
   }
   return out
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΟΙ ΥΠΕΝΘΥΜΙΣΕΙΣ ΤΟΥ ΔΙΑΚΟΜΙΣΤΗ ΒΛΕΠΟΥΝ ΤΗ ΣΕΙΡΑ ΟΠΩΣ ΤΗ ΒΛΕΠΕΙ Ο ΧΡΗΣΤΗΣ
+// ─────────────────────────────────────────────────────────────────────────
+// Ως τις 10/11/2026 η send-reminders και το /api/push διάβαζαν μόνο τις
+// αποθηκευμένες γραμμές. Μια μηνιαία σειρά είναι ΜΙΑ γραμμή (η βάση), οπότε
+// υπενθύμιση έπαιρνε μόνο η πρώτη ημερομηνία· μετά η βάση έμενε `pending` με
+// παλιά ημερομηνία και έφευγε κάθε μέρα και «ληξιπρόθεσμο» γι' αυτήν. Η οθόνη
+// ρυθμίσεων όμως υπόσχεται υπενθυμίσεις «για τα γεγονότα του ημερολογίου σου»
+// και το ημερολόγιο δείχνει κάθε εμφάνιση.
+//
+// Οι δύο συναρτήσεις εδώ δεν έχουν εισαγωγές, ώστε να τις διαβάζει και η Deno
+// (supabase/functions/send-reminders) χωρίς δεύτερο αντίγραφο της λογικής.
+
+/**
+ * Ό,τι πρέπει να ελεγχθεί για υπενθύμιση: οι εμφανίσεις μέσα στο [today,
+ * horizonEnd] με ακριβώς τους κανόνες της `expandRecurring` που δείχνει το
+ * ημερολόγιο· επίσης τα ληξιπρόθεσμα. Ληξιπρόθεσμο είναι μόνο γεγονός ΧΩΡΙΣ
+ * επανάληψη: η βάση μιας σειράς δεν «λήγει», συνεχίζει με την επόμενη εμφάνιση,
+ * που υπενθυμίζεται κανονικά.
+ */
+export function reminderOccurrences<T extends Recurrable>(
+  events: T[], today: string, horizonEnd: string,
+): { upcoming: (T & { _virtual?: boolean; _seriesId?: string })[]; overdue: T[] } {
+  return {
+    upcoming: expandRecurring(events, today, horizonEnd),
+    overdue: events.filter(e => e.event_date < today && !(e.recurring && e.recurring_interval)),
+  }
+}
+
+/**
+ * Το κλειδί του μητρώου απεσταλμένων (`notification_log`). Το `event_id` είναι
+ * uuid, άρα μια εικονική εμφάνιση γράφεται με το id της βάσης και η ημερομηνία
+ * μπαίνει στο είδος: «1day@2026-12-01». Τα μεμονωμένα γεγονότα κρατούν το
+ * παλιό κλειδί, οπότε όσα έχουν ήδη σταλεί δεν ξαναφεύγουν.
+ */
+export function reminderKey(
+  e: { id: string; event_date: string; _virtual?: boolean; _seriesId?: string }, type: string,
+): { event_id: string; reminder_type: string } {
+  return e._virtual && e._seriesId
+    ? { event_id: e._seriesId, reminder_type: `${type}@${e.event_date}` }
+    : { event_id: e.id, reminder_type: type }
+}

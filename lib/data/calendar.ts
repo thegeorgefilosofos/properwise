@@ -252,18 +252,29 @@ export async function all(db: Db, propertyId: string): Promise<CalendarEventsRow
  * ακίνητα σε ένα ημερολόγιο. Με ερώτημα ανά ακίνητο, ένας ιδιοκτήτης με δέκα
  * ακίνητα θα πλήρωνε δέκα ταξίδια στη βάση σε κάθε ανανέωση.
  */
-export async function ofUserInRange<T = CalendarEventsRow>(
-  db: Db, userId: string, from: string, to: string, columns = '*',
-): Promise<T[]> {
-  return (await ofUserInRangeWithError<T>(db, userId, from, to, columns)).rows;
-}
-
+// (Η `ofUserInRange` χωρίς σφάλμα έφυγε στις 10/11/2026: τη χρησιμοποιούσε
+// μόνο το /api/push, που διαβάζει πλέον και τις σειρές με την `ofUserWithSeries`.)
 /** Τα ίδια γεγονότα, με το σφάλμα ορατό (για τη συνδρομή ημερολογίου). */
 export async function ofUserInRangeWithError<T = CalendarEventsRow>(
   db: Db, userId: string, from: string, to: string, columns = '*',
 ): Promise<ReadResult<T>> {
   return read<T>(db.from(TABLE).select(columns)
     .eq('user_id', userId).gte('event_date', from).lte('event_date', to)
+    .order('event_date'));
+}
+
+/**
+ * Τα γεγονότα του εύρους ΚΑΙ οι σειρές που ξεκίνησαν πριν από αυτό. Μια
+ * μηνιαία σειρά είναι μία γραμμή με την πρώτη ημερομηνία· χωρίς το δεύτερο
+ * σκέλος, μια σειρά που άρχισε τον Μάρτιο δεν υπάρχει για καμία υπενθύμιση
+ * του Νοεμβρίου. Την ανάπτυξη την κάνει ο καλών με την `expandRecurring`.
+ */
+export async function ofUserWithSeries<T = CalendarEventsRow>(
+  db: Db, userId: string, from: string, to: string, columns = '*',
+): Promise<ReadResult<T>> {
+  return read<T>(db.from(TABLE).select(columns)
+    .eq('user_id', userId)
+    .or(`and(event_date.gte.${from},event_date.lte.${to}),and(recurring.eq.true,event_date.lt.${from})`)
     .order('event_date'));
 }
 

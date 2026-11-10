@@ -1,5 +1,5 @@
 // Τεστ για την επέκταση επαναλαμβανόμενων (recurrence.ts). Τρέξε: npx tsx lib/calendar/recurrence.test.ts
-import { nextOccurrence, occurrenceAt, expandRecurring } from './recurrence'
+import { nextOccurrence, occurrenceAt, expandRecurring, reminderOccurrences, reminderKey } from './recurrence'
 
 let passed = 0, failed = 0
 const fails: string[] = []
@@ -77,6 +77,26 @@ ok('occurrenceAt εβδομαδιαία', occurrenceAt('2026-07-01', 'weekly', 4
 // Πριν: άγνωστο interval, η σειρά έδειχνε μόνο την πρώτη εμφάνιση.
 ok('yearly = annual', nextOccurrence('2026-05-20', 'yearly') === '2027-05-20')
 ok('yearly αναπτύσσεται', expandRecurring([{ id: 'y', event_date: '2026-03-01', recurring: true, recurring_interval: 'yearly' }], '2026-01-01', '2028-12-31').length === 3)
+
+// ── 10.11.2026: οι υπενθυμίσεις του διακομιστή αναπτύσσουν τις σειρές ──────
+{
+  const evs = [
+    { id: 's', event_date: '2026-09-01', recurring: true, recurring_interval: 'monthly' },
+    { id: 'one', event_date: '2026-11-12' },
+    { id: 'late', event_date: '2026-11-01' },
+    { id: 'gone', event_date: '2026-09-15', recurring: true, recurring_interval: 'weekly', recurrence_until: '2026-10-01' },
+  ]
+  const { upcoming, overdue } = reminderOccurrences(evs, '2026-11-10', '2026-12-05')
+  ok('σειρά: εμφανίζονται οι εμφανίσεις μέσα στο παράθυρο', upcoming.filter(e => e._seriesId === 's').map(e => e.event_date).join(',') === '2026-12-01')
+  ok('μεμονωμένο μέσα στο παράθυρο', upcoming.some(e => e.id === 'one' && !e._virtual))
+  ok('ληξιπρόθεσμο μόνο το μεμονωμένο', overdue.map(e => e.id).join(',') === 'late')
+  ok('η βάση της σειράς δεν γίνεται ληξιπρόθεσμη', !overdue.some(e => e.id === 's'))
+  ok('σειρά που έληξε δεν φέρνει τίποτα', !upcoming.some(e => e.id.startsWith('gone')))
+  ok('ίδιες εμφανίσεις με το ημερολόγιο', JSON.stringify(upcoming.map(e => e.id)) === JSON.stringify(expandRecurring(evs, '2026-11-10', '2026-12-05').map(e => e.id)))
+  const v = upcoming.find(e => e._seriesId === 's')!
+  ok('κλειδί εμφάνισης: id της βάσης και ημερομηνία στο είδος', JSON.stringify(reminderKey(v, '1day')) === JSON.stringify({ event_id: 's', reminder_type: '1day@2026-12-01' }))
+  ok('κλειδί μεμονωμένου: όπως πριν', JSON.stringify(reminderKey({ id: 'one', event_date: '2026-11-12' }, 'today')) === JSON.stringify({ event_id: 'one', reminder_type: 'today' }))
+}
 
 console.log(`recurrence.ts, ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)
 if (failed) { console.log('Απέτυχαν:\n - ' + fails.join('\n - ')); process.exit(1) }

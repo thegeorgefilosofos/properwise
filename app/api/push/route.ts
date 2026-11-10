@@ -41,6 +41,7 @@ import { createServiceClient, serviceClientError, SERVICE_CLIENT_LOG } from '@/l
 import { cronSecretOk, CRON_SECRET_ENV } from '@/lib/api/cronSecret';
 import * as devices from '@/lib/data/pushSubscriptions';
 import * as properties from '@/lib/data/properties';
+import { reminderOccurrences, type Recurrable } from '@/lib/calendar/recurrence';
 import * as calendar from '@/lib/data/calendar';
 import * as checklist from '@/lib/data/checklist';
 import * as bills from '@/lib/data/bills';
@@ -129,9 +130,13 @@ export async function POST(request: Request) {
     skipped += subs.length - due.length;
     if (!due.length) continue;
 
-    const [props, events, tasks, unpaidBills, dues] = await Promise.all([
+    const [props, eventRead, tasks, unpaidBills, dues] = await Promise.all([
       properties.list<DeadlineProperty>(db, userId, { columns: 'id,name' }),
-      calendar.ofUserInRange<DeadlineEvent>(db, userId, from, to, 'id,property_id,title,event_date,amount,notes,status,source'),
+      // ΚΑΙ ΟΙ ΣΕΙΡΕΣ ΠΟΥ ΞΕΚΙΝΗΣΑΝ ΠΡΙΝ ΑΠΟ ΤΟ ΕΥΡΟΣ (10/11/2026). Ως τότε η
+      // ειδοποίηση έβλεπε μόνο αποθηκευμένες γραμμές, οπότε μια μηνιαία σειρά
+      // ειδοποιούσε μόνο την πρώτη της ημερομηνία.
+      calendar.ofUserWithSeries<DeadlineEvent & Recurrable>(db, userId, from, to,
+        'id,property_id,title,event_date,amount,notes,status,source,recurring,recurring_interval,recurrence_until,recurrence_count,recurrence_exdates'),
       checklist.openOfUser<DeadlineTask>(db, userId, 'id,property_id,description,due_date,note'),
       bills.ofUser<DeadlineBill>(db, userId, 'id,property_id,name,type,amount,due_date,paid',
         { unpaid: true, dueFrom: from, dueTo: to }),
@@ -139,6 +144,10 @@ export async function POST(request: Request) {
         { unpaid: true, dueFrom: from, dueTo: to }),
     ]);
 
+    // Οι εμφανίσεις της σειράς με τους κανόνες του ημερολογίου· ληξιπρόθεσμο
+    // μόνο το μεμονωμένο γεγονός, όπως στο email (lib/calendar/recurrence.ts).
+    const occ = reminderOccurrences(eventRead.rows, today, to);
+    const events: DeadlineEvent[] = [...occ.overdue.filter(e => e.event_date >= from), ...occ.upcoming];
     const msg = dailyPush(
       deadlineItems({ properties: props, events, tasks, bills: unpaidBills, rent: dues, from, to }),
       today,

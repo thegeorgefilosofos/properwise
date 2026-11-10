@@ -633,8 +633,14 @@ export function useClients({ userId }: ClientsProps) {
   };
   const delDoc = async (d: ClientDoc) => {
     if (!(await confirmDialog('Να διαγραφεί οριστικά το έγγραφο;', { tone: 'negative', confirmLabel: 'Διαγραφή' }))) return;
-    await supabase.storage.from('property-files').remove([d.file_path]);
-    if (await saved('Το έγγραφο δεν διαγράφηκε', supabase.from('client_documents').delete().eq('id', d.id)) && openId) loadDocs(openId);
+    // ΠΡΩΤΑ Η ΓΡΑΜΜΗ, ΜΕΤΑ ΤΟ ΑΡΧΕΙΟ. Ανάποδα, μια αποτυχημένη διαγραφή γραμμής
+    // άφηνε το έγγραφο στη λίστα με το αρχείο ήδη σβησμένο: ταυτότητα που φαίνεται
+    // αλλά δεν ανοίγει. Αν τώρα αποτύχει το αρχείο, μένει ορφανό και το μαζεύει το
+    // `purge-orphan-files`· ο χρήστης δεν βλέπει τίποτα σπασμένο.
+    if (!await saved('Το έγγραφο δεν διαγράφηκε', supabase.from('client_documents').delete().eq('id', d.id))) return;
+    const { error: rmErr } = await supabase.storage.from('property-files').remove([d.file_path]);
+    if (rmErr) console.warn('[clients] το αρχείο θα το μαζέψει το purge-orphan-files:', rmErr.message);
+    if (openId) loadDocs(openId);
   };
 
   // ── Εισαγωγή iCal ─────────────────────────────────────────────────────────
