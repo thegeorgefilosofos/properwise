@@ -39,6 +39,7 @@ import { NAV_LABELS } from '@/lib/nav/labels';
 import { readFileSync } from 'node:fs';
 import { LEVEL_LABEL, LEVEL_HINT, LEVELS, ROLE_LABEL, ROLES, undoDaysFrom } from '@/lib/data/firms';
 import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
+import { PRO_PAID_TIER, REFERRAL_COMP_CAP_MONTHS, REWARDS_MERGE_LINE, partnerWelcomeTier } from '@/lib/referral/referral';
 
 // Ο,ΤΙ ΦΤΑΝΕΙ ΣΤΟ ΜΟΝΤΕΛΟ, ΣΕ ΕΝΑ ΚΕΙΜΕΝΟ. Η παραγωγή στέλνει δύο μπλοκ και
 // τα κρατάει χωριστά για το cache: τη γνώση τη βάζει ο διακομιστής
@@ -342,6 +343,30 @@ for (const prefs of [id(), id({ formal: true }), id({ memory: false }), id({ com
   ok('ακρίβεια: η Πύλη δεν δείχνει «σύμβαση»', !/βλέπει ενοίκιο, οφειλή και σύμβαση/.test(p) && p.includes('λήξη μίσθωσης και εγγύηση'));
   // Η ομάδα: ανά μέλος ακίνητα και οικονομικά (OrgTeam.tsx, «Δικαιώματα»).
   ok('ακρίβεια: δικαιώματα μέλους ανά ακίνητα και οικονομικά', p.includes('σε ποια ακίνητα έχει πρόσβαση και αν βλέπει τα οικονομικά'));
+  // Η μηνιαία κατάσταση με email (supabase/functions/send-monthly-statements,
+  // cron την 1η του μήνα) φεύγει μόνο σε όσους έχουν ανοιχτές τις υπενθυμίσεις
+  // με email (reminder_recipients). Οι τέσσερις καταστάσεις είναι του email.
+  {
+    const fn = readFileSync('supabase/functions/send-monthly-statements/index.ts', 'utf8');
+    ok('γνώση: μηνιαία κατάσταση με email', p.includes('«Μηνιαία κατάσταση»') && p.includes('όσο είναι ανοιχτές οι «Υπενθυμίσεις με email»')
+      && ['Πλήρης', 'Μερική', 'Ληξιπρόθεσμο', 'Χωρίς μίσθωμα'].every(w => fn.includes(`'${w}'`) && p.includes(`«${w}»`))
+      && fn.includes('Μηνιαία κατάσταση') && fn.includes("rpc('reminder_recipients')")
+      && readFileSync('app/dashboard/components/NotificationSettings.tsx', 'utf8').includes('title="Υπενθυμίσεις με email"'));
+  }
+  // Οι ανταμοιβές του προγράμματος συνεργατών από τις σταθερές του lib/referral,
+  // με «χωρίς χρέωση» όπως η καρτέλα (TabReferral.tsx), όχι «δωρεάν».
+  {
+    const src = readFileSync('app/dashboard/components/assistantPersona.ts', 'utf8');
+    // κυριολεκτικό-πρότυπο: ψάχνει το όνομα της σταθεράς μέσα στην πηγή.
+    ok('συνεργάτες: στόχος και σερί από τον κώδικα', src.includes('${PRO_PAID_TARGET} ΣΥΝΔΡΟΜΗΤΕΣ') && src.includes('${STREAK_TARGET_MONTHS} ΣΥΝΕΧΟΜΕΝΟΥΣ')
+      && !/\b5 ΣΥΝΔΡΟΜΗΤΕΣ|X\/5»|\b3 ΣΥΝΕΧΟΜΕΝΟΥΣ/.test(src));
+    ok('συνεργάτες: το δώρο ακολουθεί το πακέτο', p.includes(`«${PLANS[partnerWelcomeTier('owner')].name}» αν έχει «${PLANS.solo.name}» ή «${PLANS.owner.name}», αλλιώς «${PLANS[partnerWelcomeTier('agency')].name}»`));
+    ok('συνεργάτες: μήνας στόχου στο πακέτο του κώδικα', p.includes(`«${PLANS[PRO_PAID_TIER].name}» χωρίς χρέωση`));
+    ok('συνεργάτες: τα δώρα ενώνονται, με ταβάνι', p.includes(REWARDS_MERGE_LINE) && p.includes(`έως ${REFERRAL_COMP_CAP_MONTHS}`));
+    // Η ταυτότητα (lib/assistant/identity.ts) λέει «δεν λες ποτέ ότι είσαι
+    // δωρεάν»· εδώ κρίνεται το κείμενο του persona, όπου ζουν πακέτα και τιμές.
+    ok('χρέωση: κανένα «δωρεάν» στο persona', !/δωρεάν|ΔΩΡΕΑΝ/.test(src.replace(/^\s*(\/\/|\*|\/\*).*$/gm, '')));
+  }
   // Το «Πλήρωσα» αναιρείται, με τις ώρες από τον κώδικα.
   ok('πληρότητα: αναίρεση του «Πλήρωσα» από το PAY_UNDO_HOURS', p.includes(`αναιρείται μέσα σε ${PAY_UNDO_HOURS} ώρες`));
   // Ό,τι υπάρχει και η Νόα δεν ήξερε: μία λέξη-μάρτυρας ανά δυνατότητα.
@@ -680,7 +705,9 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   // ΑΠΟ 25.09.2026 ΥΠΑΡΧΕΙ ΔΩΡΕΑΝ ΠΑΚΕΤΟ, ΜΕ ΤΟ ΟΝΟΜΑ ΤΟΥ ΚΑΙ ΧΩΡΙΣ ΤΗ ΝΟΑ. Το
   // prompt το λέει με το όνομα του PLANS, όχι ως «Δωρεάν»· και λέει ότι ο
   // λογαριασμός χωρίς συνδρομή συνεχίζει εκεί αντί να διαγράφεται.
-  ok('gating: το δωρεάν πακέτο με το όνομά του', !/«Δωρεάν»/.test(p) && p.includes(`«${PLANS.free.name}» δωρεάν`)
+  // 10/11/2026: «χωρίς συνδρομή» αντί για «δωρεάν», όπως η οθόνη των πακέτων
+  // (PlanMatrix «χωρίς συνδρομή»): κανόνας ιδιοκτήτη, κανένα «δωρεάν» δίπλα σε τιμές.
+  ok('gating: το πακέτο χωρίς συνδρομή με το όνομά του', !/«Δωρεάν»/.test(p) && p.includes(`«${PLANS.free.name}» χωρίς συνδρομή (${PLANS.free.maxProperties} ακίνητο`)
     && /ΔΕΝ διαγράφεται/.test(p) && p.includes('ΧΩΡΙΣ εμένα'));
   // Οι τιμές/όρια διαβάζονται από τα PLANS: το τεστ πιάνει απόκλιση prompt↔τιμολόγησης.
   ok('gating: solo price from PLANS', p.includes(`${PLANS.solo.priceMonthly.toFixed(2).replace('.', ',')}€/μήνα`));
@@ -723,7 +750,7 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   ok('gating: πρόωρη πρόσβαση', /ΠΡΟΩΡΗ ΠΡΟΣΒΑΣΗ/.test(p) && p.includes(`${EARLY_ACCESS_DAYS} ημέρες νωρίτερα`));
 
   // profile ↔ plan
-  ok('gating: Ιδιώτης → τα δικά του', p.includes(`ο «Ιδιώτης» έχει τον δωρεάν «${PLANS.free.name}» ή παίρνει «${PLANS.solo.name}» ή «${PLANS.owner.name}»`));
+  ok('gating: Ιδιώτης → τα δικά του', p.includes(`ο «Ιδιώτης» έχει τον «${PLANS.free.name}» χωρίς συνδρομή ή παίρνει «${PLANS.solo.name}» ή «${PLANS.owner.name}»`));
   ok('gating: Επαγγελματίας → τα δύο δικά του', p.includes(`Ο «Επαγγελματίας» παίρνει «${PLANS.agency.name}» ή «${PLANS.office.name}»`));
   ok('gating: Ιδιώτης θέλει pro → switch mode', /χρειάζεται να γυρίσει τον τρόπο σε «Επαγγελματίας»/.test(p));
 
@@ -741,7 +768,7 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   ok('gating: honest if not needed', /Αν κάποιος δεν το χρειάζεται, πες το ειλικρινά/.test(p));
 
   // δωρεάν μήνες / comp μπορούν να καλύψουν την αναβάθμιση
-  ok('gating: free months cover it', /δωρεάν μήνες από το Πρόγραμμα πρόσκλησης/.test(p) && /μπορούν να το καλύψουν/.test(p));
+  ok('gating: free months cover it', /μήνες χωρίς χρέωση από το Πρόγραμμα πρόσκλησης/.test(p) && /μπορούν να το καλύψουν/.test(p));
   ok('gating: partner comp mentioned', /ιδιότητα Συνεργάτη/.test(p));
 
   // routing στην ενότητα «Συνδρομή»
