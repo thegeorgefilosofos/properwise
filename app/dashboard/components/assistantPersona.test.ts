@@ -1000,11 +1000,15 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
 {
   const p = buildSystemPrompt(DEFAULT_PREFS, 'x');
   const page = readFileSync('app/dashboard/page.tsx', 'utf8');
-  // Η κάρτα της μαζικής καταχώρησης φαίνεται μόνο χωρίς ακίνητα· με ακίνητα,
-  // η ίδια εισαγωγή ανοίγει από τον Υπολογισμό ΕΝΦΙΑ (EnfiaPanel.tsx).
-  ok('μαζική: η κάρτα μόνο χωρίς ακίνητα, αλλιώς από τον ΕΝΦΙΑ', page.includes('onBulkImport={properties.length === 0 ?')
-    && p.includes('Χωρίς κανένα ακίνητο ακόμη: η κάρτα «Όλα τα ακίνητά σου μαζί»') && p.includes('«Ενημέρωσε από την πράξη»')
-    && readFileSync('app/dashboard/components/EnfiaPanel.tsx', 'utf8').includes('Ενημέρωσε από την πράξη</Btn>') && page.includes('>Από Ε9 ή ΕΝΦΙΑ</Btn>'));
+  // Η μαζική καταχώρηση ανοίγει οποιαδήποτε στιγμή (απόφαση ιδιοκτήτη 10/11/2026):
+  // οδηγός, Ctrl+K, ΕΝΦΙΑ και σάρωση. Η Νόα λέει όλους τους δρόμους που υπάρχουν στον κώδικα.
+  const scan = readFileSync('app/dashboard/components/DocumentScan.tsx', 'utf8');
+  ok('μαζική: οποιαδήποτε στιγμή, από τέσσερις δρόμους', !page.includes('onBulkImport={properties.length === 0 ?')
+    && p.includes('Ανοίγει οποιαδήποτε στιγμή') && p.includes('«Όλα τα ακίνητά σου μαζί»') && p.includes('«Ενημέρωσε από την πράξη»')
+    && p.includes('«Μαζική καταχώρηση από Ε9 ή ΕΝΦΙΑ»') && page.includes("label: 'Μαζική καταχώρηση από Ε9 ή ΕΝΦΙΑ'")
+    && p.includes('«Καταχώρησε όλα τα ακίνητα»') && scan.includes('>Καταχώρησε όλα τα ακίνητα</Btn>')
+    && readFileSync('app/dashboard/components/EnfiaPanel.tsx', 'utf8').includes('Ενημέρωσε από την πράξη</Btn>') && page.includes('>Από Ε9 ή ΕΝΦΙΑ</Btn>')
+    && !p.includes('δεν διπλασιάζονται'));
   // Το «Πλήρωσα» της συσκευής σημειώνει κατευθείαν (public/sw.js)· του email περνά από σελίδα.
   ok('πλήρωσα: η συσκευή σημειώνει αμέσως', readFileSync('public/sw.js', 'utf8').includes("fetch('/api/plirosa'")
     && p.includes('στη συσκευή τη σημειώνει αμέσως') && p.includes('μετά από το Ημερολόγιο'));
