@@ -102,7 +102,8 @@ declare
   v_winner  uuid;
   v_email   text;
   v_token   text;
-  v_expires timestamptz := now() + interval '14 days';
+  v_days    int := 14;  -- PRIZE_ACCEPT_DAYS (lib/feedback/prize.ts) και οι Όροι
+  v_expires timestamptz := now() + make_interval(days => v_days);
 begin
   select f.user_id into v_winner
     from public.user_feedback f
@@ -128,6 +129,7 @@ begin
   values ('feedback_prize_won', v_email, null,
           jsonb_build_object(
             'token', v_token,
+            'acceptDays', v_days,
             -- Η λήξη σε dd/mm/yyyy, ώρα Αθήνας: τη διαβάζει άνθρωπος.
             'expiresOn', to_char(timezone('Europe/Athens', v_expires), 'DD/MM/YYYY')),
           'transactional',
@@ -153,6 +155,12 @@ begin
   if p_campaign is null then return null; end if;
   if exists (select 1 from public.feedback_prize_offers
               where campaign_id = p_campaign and status in ('pending', 'accepted')) then
+    return null;
+  end if;
+  -- Ο ΜΗΝΑΣ ΚΛΕΙΝΕΙ ΜΕ ΤΗΝ ΑΠΟΔΟΧΗ. Αν ο νικητής σβήσει μετά τον λογαριασμό του,
+  -- η πρόσκλησή του φεύγει (cascade) αλλά η γραμμή του νικητή μένει
+  -- (feedback_campaign_winners: on delete set null): δεύτερη κλήρωση δεν γίνεται.
+  if exists (select 1 from public.feedback_campaign_winners where campaign_id = p_campaign) then
     return null;
   end if;
   return private.feedback_prize_offer_new(p_campaign);
@@ -217,15 +225,31 @@ begin
   values (o.campaign_id, o.user_id, o.drawn_at)
   on conflict (campaign_id) do nothing;
 
-  -- Ο χρόνος «Επαγγελματίας», με την ίδια πίστωση που έκανε ως τώρα η
-  -- draw_feedback_winner (baseline): το definer παρακάμπτει το lock_billing_plan.
-  insert into public.billing_profiles (user_id, comp_plan, comp_until, comp_started_at, comp_months_granted)
-  values (o.user_id, 'agency', now() + interval '12 months', now(), 12)
+  -- Ο ΧΡΟΝΟΣ «ΕΠΑΓΓΕΛΜΑΤΙΑΣ» ΠΡΟΣΤΙΘΕΤΑΙ, ΔΕΝ ΑΝΤΙΚΑΘΙΣΤΑ. Τρεις κανόνες:
+  --  · 12 μήνες πάνω στο greatest(comp_until, now()), όπως οι νέοι μήνες της
+  --    sync_comp_from_referrals (20261110120500): ενεργό comp επεκτείνεται,
+  --    ληγμένο ξεκινά από σήμερα·
+  --  · το πακέτο μένει το ανώτερο (plan_rank): ενεργό «Επαγγελματίας+» δεν
+  --    χαμηλώνει σε «Επαγγελματίας»·
+  --  · το comp_months_granted ΔΕΝ αγγίζεται. Είναι ο μετρητής του Προγράμματος
+  --    Πρόσκλησης, με όριο 12 εφ' όρου ζωής· το δώρο της κλήρωσης είναι άλλο δώρο
+  --    και δεν πρέπει ούτε να το περιορίζει ούτε να «τρώει» μήνες πρόσκλησης.
+  --    Η ίδια η πίστωση καταγράφεται στη γραμμή της πρόσκλησης (accepted_at).
+  -- Το definer παρακάμπτει το lock_billing_plan, όπως η sync.
+  insert into public.billing_profiles (user_id, comp_plan, comp_until, comp_started_at)
+  values (o.user_id, 'agency', now() + interval '12 months', now())
   on conflict (user_id) do update set
-    comp_plan           = 'agency',
-    comp_until          = greatest(coalesce(billing_profiles.comp_until, now()), now() + interval '12 months'),
-    comp_started_at     = coalesce(billing_profiles.comp_started_at, now()),
-    comp_months_granted = coalesce(billing_profiles.comp_months_granted, 0) + 12;
+    comp_plan       = case
+                        when billing_profiles.comp_until > now()
+                         and public.plan_rank(billing_profiles.comp_plan) > public.plan_rank('agency')
+                        then billing_profiles.comp_plan
+                        else 'agency'
+                      end,
+    comp_started_at = case
+                        when billing_profiles.comp_until is null or billing_profiles.comp_until < now() then now()
+                        else coalesce(billing_profiles.comp_started_at, now())
+                      end,
+    comp_until      = greatest(coalesce(billing_profiles.comp_until, now()), now()) + interval '12 months';
 
   return jsonb_build_object('ok', true);
 end;
@@ -325,6 +349,90 @@ begin
                             'prize_expires_at', v_prize);
 end;
 $$;
+
+-- ── 7α. Η sync των δώρων πρόσκλησης δεν χαμηλώνει το δώρο της κλήρωσης ─────
+-- Ίδια με τη μορφή του 20261110120500 (#514), με μία αλλαγή: το comp_plan
+-- έγραφε πάντα τη βαθμίδα της ανταμοιβής. Νικητής της κλήρωσης («Επαγγελματίας»
+-- για έναν χρόνο) που έπαιρνε μετά έναν μήνα πρόσκλησης «Ιδιοκτήτης+» έπεφτε
+-- σε «Ιδιοκτήτης+» για όλο το υπόλοιπο. Τώρα όσο το comp είναι ενεργό κρατιέται
+-- το ανώτερο. Το comp_until μόνο μεγαλώνει (greatest + νέοι μήνες ή ίδιο).
+create or replace function public.sync_comp_from_referrals()
+ returns void
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_uid    uuid := auth.uid();
+  v_months int;
+  v_slots  int;
+  v_target text;
+  v_cap    int := 12;
+begin
+  if not private.mfa_satisfied() then
+    raise exception 'mfa_required' using errcode = '42501';
+  end if;
+  if v_uid is null then return; end if;
+
+  select coalesce(sum(months) filter (where kind = 'months'), 0),
+         coalesce(sum(months) filter (where kind = 'slot'), 0)
+    into v_months, v_slots
+    from referral_rewards
+   where user_id = v_uid;
+
+  select t.tier into v_target
+    from (select coalesce(nullif(btrim(rr.tier), ''), 'owner') as tier
+            from referral_rewards rr
+           where rr.user_id = v_uid and rr.kind = 'months') t
+   order by public.plan_rank(t.tier) desc
+   limit 1;
+  v_target := coalesce(v_target, 'owner');
+
+  v_months := least(v_months, v_cap);
+  if v_months > 0 then
+    update billing_profiles
+       set comp_started_at     = case
+                                   when v_months > coalesce(comp_months_granted, 0)
+                                    and (comp_until is null or comp_until < now())
+                                   then now()
+                                   else coalesce(comp_started_at, now())
+                                 end,
+           comp_until          = case
+                                   when v_months > coalesce(comp_months_granted, 0)
+                                   then greatest(coalesce(comp_until, now()), now())
+                                        + ((v_months - coalesce(comp_months_granted, 0)) || ' months')::interval
+                                   else comp_until
+                                 end,
+           comp_months_granted = greatest(coalesce(comp_months_granted, 0), v_months),
+           -- Ενεργό ανώτερο πακέτο (π.χ. ο χρόνος της κλήρωσης) δεν χαμηλώνει.
+           comp_plan           = case
+                                   when comp_until > now()
+                                    and public.plan_rank(comp_plan) > public.plan_rank(v_target)
+                                   then comp_plan
+                                   else v_target
+                                 end
+     where user_id = v_uid
+       and (v_months > coalesce(comp_months_granted, 0)
+            or public.plan_rank(v_target) > public.plan_rank(coalesce(comp_plan, 'owner')));
+  end if;
+
+  v_slots := least(v_slots, 500);
+  if v_slots > 0 then
+    update billing_profiles
+       set bonus_properties       = greatest(coalesce(bonus_properties, 0), v_slots),
+           bonus_properties_until = greatest(coalesce(bonus_properties_until, now()), now() + interval '1 month')
+     where user_id = v_uid
+       and v_slots > coalesce(bonus_properties, 0);
+  end if;
+end;
+$function$;
+
+-- ── 7β. Μετάβαση: όσες συμμετοχές του τρέχοντος μήνα γράφτηκαν με την παλιά
+-- καμπάνια (C<n>) πριν από αυτό το migration μετρούν στον μήνα τους.
+update public.user_feedback f
+   set campaign_id = (select c.campaign_id from public.feedback_campaign(f.created_at) c)
+ where f.campaign_id !~ '^M'
+   and f.created_at >= date_trunc('month', timezone('UTC', now())) at time zone 'UTC';
 
 -- ── 8. Το cron τρέχει κάθε μέρα: οι 14 ημέρες λήγουν όποια μέρα πέσουν ─────
 do $$

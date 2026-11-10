@@ -191,7 +191,7 @@ npm run katalogos
 | `nps_survey` | Θα μας πρότεινες σε έναν φίλο; | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `feedback_lottery` | Ένα λεπτό για τη γνώμη σου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `feedback_prize_won` | Κέρδισες έναν χρόνο «${pkg}» στο PROPERWISE | `app/doro/[token]/page.tsx`, `lib/feedback/prize.test.ts` (+3) |
-| `best_practice_tip` | c.headline ? esc(c.headline) : 'Η συμβουλή της εβδομάδας', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
+| `best_practice_tip` | c.headline ? esc(c.headline) : 'Η συμβουλή της εβδομάδας', html: emailShell({ | `lib/feedback/prize.test.ts`, `supabase/functions/_shared/emailPolicy.ts` (+1) |
 | `webinar_invite` | Πρόσκληση σε συνάντηση για ιδιοκτήτες | `supabase/functions/_shared/emailPolicy.ts` |
 
 ## CONVERSION

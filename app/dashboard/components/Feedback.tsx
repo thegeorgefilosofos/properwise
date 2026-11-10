@@ -115,7 +115,7 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
         ) : (
           <>
             <p style={{ ...TT.bodySm, margin: `0 0 ${T.sp.md}px`, color: 'var(--text-primary)' }}>
-              {`Κέρδισες έναν χρόνο συνδρομής «${PLANS.agency.name}». Πιστώνεται τη στιγμή της αποδοχής${until ? `, ως τις ${until}` : ''}.`}
+              {`Κέρδισες έναν χρόνο συνδρομής «${PLANS.agency.name}». Πιστώνεται τη στιγμή της αποδοχής.${until ? ` Προθεσμία αποδοχής: ${until}.` : ''}`}
             </p>
             <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: T.sp.md, cursor: 'pointer', ...TT.bodySm, color: 'var(--text-primary)' }}>
               <input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} style={{ marginTop: 2, width: 18, height: 18, flexShrink: 0 }} />

@@ -33,7 +33,10 @@ async function main() {
   ok(TERMS.includes('στο τέλος κάθε ημερολογιακού μήνα') && /Αν δεν απαντήσει μέσα σε 14[\s\u00A0]ημέρες, το δώρο κληρώνεται εκ νέου/.test(TERMS),
     'οι Όροι γράφουν μηνιαία κλήρωση και 14 ημέρες (αν άλλαξαν, ξαναδές τον κώδικα)');
   eq(PRIZE_ACCEPT_DAYS, 14, 'οι ημέρες αποδοχής είναι όσες οι Όροι');
-  ok(CODE.includes(`interval '${PRIZE_ACCEPT_DAYS} days'`), 'η βάση βάζει λήξη 14 ημερών');
+  ok(CODE.includes(`v_days    int := ${PRIZE_ACCEPT_DAYS};`) && CODE.includes('make_interval(days => v_days)') && CODE.includes("'acceptDays', v_days"),
+    'η βάση βάζει λήξη 14 ημερών και στέλνει τις ίδιες ημέρες στο email');
+  ok(!/\b14\b/.test(COPY.slice(COPY.indexOf('feedback_prize_won:'), COPY.indexOf('best_practice_tip'))) && !COPY.slice(COPY.indexOf('feedback_prize_won:'), COPY.indexOf('best_practice_tip')).includes('χωρίς χρέωση'),
+    'το email δεν γράφει με το χέρι ημέρες ούτε «χωρίς χρέωση»');
   ok(/'M' \|\| extract\(year from timezone\('UTC', p_ts\)\)/.test(CODE) && !/floor\(m::numeric \/ 4\)/.test(CODE),
     'η καμπάνια είναι ο ημερολογιακός μήνας, όχι τετράμηνο');
   ok(CODE.includes("'0 3 * * *'") && CODE.includes("cron.unschedule('feedback-draw-monthly')"),
@@ -56,6 +59,13 @@ async function main() {
   ok(/unique \(campaign_id, user_id\)/.test(CODE) && /on public\.feedback_prize_offers \(campaign_id\) where status in \('pending', 'accepted'\)/.test(CODE),
     'κανείς δεν κληρώνεται δύο φορές για τον ίδιο μήνα· ο μήνας έχει το πολύ έναν ενεργό νικητή');
   ok(/set status = 'expired'\s+where status = 'pending' and expires_at <= now\(\)/.test(CODE), 'όσα έληξαν σημειώνονται και ξανακληρώνονται');
+  ok(/from public\.feedback_campaign_winners where campaign_id = p_campaign\) then\s+return null;/.test(CODE),
+    'ο μήνας κλείνει με την αποδοχή: σβησμένος λογαριασμός δεν φέρνει δεύτερη κλήρωση');
+  ok(/update public\.user_feedback f\s+set campaign_id = \(select c\.campaign_id from public\.feedback_campaign\(f\.created_at\) c\)\s+where f\.campaign_id !~ '\^M'/.test(CODE),
+    'οι συμμετοχές του μήνα με την παλιά καμπάνια περνούν στον μήνα τους');
+  ok(!accept.includes('comp_months_granted') && accept.includes("greatest(coalesce(billing_profiles.comp_until, now()), now()) + interval '12 months'")
+    && accept.includes("public.plan_rank(billing_profiles.comp_plan) > public.plan_rank('agency')"),
+    'η πίστωση προστίθεται, κρατά το ανώτερο πακέτο και δεν αγγίζει τον μετρητή της πρόσκλησης');
 
   // ── Το διακριτικό: μίας χρήσης, μη προβλέψιμο, μόνο το SHA-256 στη βάση ─────
   ok(offerNew.includes('gen_random_bytes(32)') && offerNew.includes("encode(sha256(convert_to(v_token, 'UTF8')), 'hex')"),

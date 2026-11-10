@@ -21,6 +21,13 @@ declare
   c  text := 'M1999-01';
   c2 text := 'M1999-02';
   w uuid; w2 uuid; other uuid; tok text; tok2 text; r jsonb; n int;
+  ux uuid := 'fb000000-0000-4000-8000-0000000000a1';  -- ενεργό «Επαγγελματίας+»
+  ua uuid := 'fb000000-0000-4000-8000-0000000000a2';  -- ενεργό comp, επεκτείνεται
+  ue uuid := 'fb000000-0000-4000-8000-0000000000a3';  -- ληγμένο comp, από σήμερα
+  ud uuid := 'fb000000-0000-4000-8000-0000000000a4';  -- σβήνει τον λογαριασμό του
+  uo uuid := 'fb000000-0000-4000-8000-0000000000a5';  -- δεύτερος του ίδιου μήνα
+  c3 text := 'M1999-03'; c4 text := 'M1999-04'; c5 text := 'M1999-05'; c6 text := 'M1999-06';
+  t3 text; t4 text; t5 text; before timestamptz; bp record;
 begin
   insert into auth.users(id, email) values
     (u1, 'u1@prize.test'), (u2, 'u2@prize.test'), (u3, 'u3@prize.test');
@@ -67,7 +74,7 @@ begin
   if public.accept_feedback_prize_token(tok, true)->>'kind' <> 'used' then raise exception 'ΚΛΗΡΩΣΗ: το διακριτικό δέχτηκε δεύτερη χρήση'; end if;
   if public.peek_feedback_prize_token(tok)->>'kind' <> 'used' then raise exception 'ΚΛΗΡΩΣΗ: η σελίδα δεν λέει ότι έγινε αποδεκτό'; end if;
   if not exists (select 1 from public.billing_profiles
-                  where user_id = w and comp_plan = 'agency' and comp_months_granted = 12 and comp_until > now() + interval '364 days') then
+                  where user_id = w and comp_plan = 'agency' and coalesce(comp_months_granted, 0) = 0 and comp_until > now() + interval '364 days') then
     raise exception 'ΚΛΗΡΩΣΗ: η αποδοχή δεν πίστωσε έναν χρόνο agency';
   end if;
   if not exists (select 1 from public.feedback_prize_offers
@@ -118,6 +125,79 @@ begin
   if (select accepted_via from public.feedback_prize_offers where campaign_id = c and user_id = other) <> 'app' then raise exception 'ΚΛΗΡΩΣΗ: δεν γράφτηκε ότι η αποδοχή έγινε στην εφαρμογή'; end if;
   perform set_config('probe.uid', '', true);
   raise notice 'probe: στην εφαρμογή ο νικητής αποδέχεται μόνο το δικό του δώρο';
+
+  -- ── 5α. Η πίστωση ΠΡΟΣΤΙΘΕΤΑΙ και ΔΕΝ ΧΑΜΗΛΩΝΕΙ ───────────────────────────
+  insert into auth.users(id, email) values
+    (ux, 'ux@prize.test'), (ua, 'ua@prize.test'), (ue, 'ue@prize.test'), (ud, 'ud@prize.test'), (uo, 'uo@prize.test');
+  insert into public.user_feedback(user_id, email, body, word_count, target, campaign_id, in_pool) values
+    (ux, 'ux@prize.test', 'Σχόλιο δοκιμής', 2, 'general', c3, true),
+    (ua, 'ua@prize.test', 'Σχόλιο δοκιμής', 2, 'general', c4, true),
+    (ue, 'ue@prize.test', 'Σχόλιο δοκιμής', 2, 'general', c5, true),
+    (ud, 'ud@prize.test', 'Σχόλιο δοκιμής', 2, 'general', c6, true),
+    (uo, 'uo@prize.test', 'Σχόλιο δοκιμής', 2, 'general', c6, true);
+  insert into public.billing_profiles(user_id, comp_plan, comp_until, comp_started_at, comp_months_granted) values
+    (ux, 'office', now() + interval '3 months', now() - interval '1 month', 4),
+    (ua, 'owner',  now() + interval '2 months', now() - interval '1 month', 3),
+    (ue, 'owner',  now() - interval '1 month',  now() - interval '4 months', 3)
+  on conflict (user_id) do update set comp_plan = excluded.comp_plan, comp_until = excluded.comp_until,
+    comp_started_at = excluded.comp_started_at, comp_months_granted = excluded.comp_months_granted;
+
+  perform public.draw_feedback_winner(c3); select params->>'token' into t3 from public.email_outbox where dedup_key = 'feedback_prize_won:' || c3 || ':' || ux;
+  perform public.draw_feedback_winner(c4); select params->>'token' into t4 from public.email_outbox where dedup_key = 'feedback_prize_won:' || c4 || ':' || ua;
+  perform public.draw_feedback_winner(c5); select params->>'token' into t5 from public.email_outbox where dedup_key = 'feedback_prize_won:' || c5 || ':' || ue;
+  if t3 is null or t4 is null or t5 is null or (select params->>'acceptDays' from public.email_outbox where dedup_key = 'feedback_prize_won:' || c3 || ':' || ux) <> '14' then
+    raise exception 'ΚΛΗΡΩΣΗ: λείπει πρόσκληση ή οι ημέρες στο email';
+  end if;
+
+  select comp_until into before from public.billing_profiles where user_id = ux;
+  perform public.accept_feedback_prize_token(t3, true);
+  select * into bp from public.billing_profiles where user_id = ux;
+  if bp.comp_plan <> 'office' then raise exception 'ΚΛΗΡΩΣΗ: η αποδοχή χαμήλωσε «Επαγγελματίας+» σε %', bp.comp_plan; end if;
+  if bp.comp_until <> before + interval '12 months' then raise exception 'ΚΛΗΡΩΣΗ: ο χρόνος δεν προστέθηκε στο ενεργό comp (%, ήταν %)', bp.comp_until, before; end if;
+  if bp.comp_months_granted <> 4 then raise exception 'ΚΛΗΡΩΣΗ: η αποδοχή άγγιξε τον μετρητή του Προγράμματος Πρόσκλησης (%)', bp.comp_months_granted; end if;
+
+  select comp_until into before from public.billing_profiles where user_id = ua;
+  perform public.accept_feedback_prize_token(t4, true);
+  select * into bp from public.billing_profiles where user_id = ua;
+  if bp.comp_plan <> 'agency' or bp.comp_until <> before + interval '12 months' or bp.comp_months_granted <> 3 then
+    raise exception 'ΚΛΗΡΩΣΗ: ενεργό comp δεν επεκτάθηκε κατά 12 μήνες «Επαγγελματίας»: % % %', bp.comp_plan, bp.comp_until, bp.comp_months_granted;
+  end if;
+
+  perform public.accept_feedback_prize_token(t5, true);
+  select * into bp from public.billing_profiles where user_id = ue;
+  if bp.comp_plan <> 'agency' or bp.comp_until not between now() + interval '12 months' - interval '1 minute' and now() + interval '12 months' + interval '1 minute'
+     or bp.comp_started_at < now() - interval '1 minute' then
+    raise exception 'ΚΛΗΡΩΣΗ: ληγμένο comp δεν ξεκίνησε από σήμερα: % % %', bp.comp_plan, bp.comp_until, bp.comp_started_at;
+  end if;
+  raise notice 'probe: η πίστωση προστίθεται στο comp, κρατά το ανώτερο πακέτο και δεν αγγίζει τον μετρητή της πρόσκλησης';
+
+  -- ── 5β. Η sync της πρόσκλησης δεν χαμηλώνει το δώρο της κλήρωσης ─────────────
+  -- Ο ua έχει «Επαγγελματίας» ως +14 μήνες· παίρνει 4 μήνες «Ιδιοκτήτης+» (3 είχε ήδη).
+  select comp_until into before from public.billing_profiles where user_id = ua;
+  insert into public.referral_rewards (user_id, kind, months, tier, reason, status) values
+    (ua, 'months', 4, 'owner', 'pro_paid', 'pending');
+  perform set_config('probe.uid', ua::text, true);
+  perform public.sync_comp_from_referrals();
+  perform set_config('probe.uid', '', true);
+  select * into bp from public.billing_profiles where user_id = ua;
+  if bp.comp_plan <> 'agency' then raise exception 'ΚΛΗΡΩΣΗ: η sync χαμήλωσε το δώρο της κλήρωσης σε %', bp.comp_plan; end if;
+  if bp.comp_until < before then raise exception 'ΚΛΗΡΩΣΗ: η sync μίκρυνε το comp_until (%, ήταν %)', bp.comp_until, before; end if;
+  if bp.comp_until <> before + interval '1 month' or bp.comp_months_granted <> 4 then
+    raise exception 'ΚΛΗΡΩΣΗ: ο νέος μήνας πρόσκλησης δεν προστέθηκε μετά το δώρο: % %', bp.comp_until, bp.comp_months_granted;
+  end if;
+  raise notice 'probe: η sync της πρόσκλησης προσθέτει χωρίς να χαμηλώνει ή να μικραίνει το δώρο της κλήρωσης';
+
+  -- ── 5γ. Σβησμένος λογαριασμός μετά την αποδοχή: ο μήνας μένει κλειστός ──────
+  perform public.draw_feedback_winner(c6);
+  select user_id into w from public.feedback_prize_offers where campaign_id = c6;
+  perform set_config('probe.uid', w::text, true);
+  perform public.accept_my_feedback_prize(true);
+  perform set_config('probe.uid', '', true);
+  delete from auth.users where id = w;
+  if public.draw_feedback_winner(c6) is not null then raise exception 'ΚΛΗΡΩΣΗ: δεύτερη κλήρωση στον ίδιο μήνα επειδή ο νικητής έσβησε τον λογαριασμό του'; end if;
+  perform public.draw_due_feedback_winners();
+  if exists (select 1 from public.feedback_prize_offers where campaign_id = c6) then raise exception 'ΚΛΗΡΩΣΗ: νέα πρόσκληση σε κλειστό μήνα'; end if;
+  raise notice 'probe: ο μήνας κλείνει με την αποδοχή, ακόμη κι αν ο νικητής σβήσει τον λογαριασμό του';
 
   -- ── 6. Δικαιώματα ────────────────────────────────────────────────────────
   -- Ο ΠΙΝΑΚΑΣ: εδώ το rls-probe έχει δώσει επίτηδες SELECT σε όλους τους πίνακες,
