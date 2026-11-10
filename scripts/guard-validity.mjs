@@ -18,15 +18,18 @@
 //   · κάτι δεν ελέγχθηκε πάνω από 12 μήνες
 //   · κάποιο `where` δείχνει σε αρχείο που δεν υπάρχει πια
 //
-// Η ΜΙΑ ΕΞΑΙΡΕΣΗ: ΝΟΜΟΣ ΠΟΥ ΕΚΚΡΕΜΕΙ (`pendingLaw`). Στις 10/11/2026, 18
-// κανόνες έληγαν στις 31/12/2026 και ο νόμος που θα τους ανανέωνε (μέτρα της
-// 90ής ΔΕΘ) δεν είχε ψηφιστεί. Κανείς δεν μπορούσε να γράψει νέο validTo πριν
-// από το ΦΕΚ, οπότε ο φύλακας θα κοκκίνιζε κάθε PR από τις 16/11 χωρίς να
-// υπάρχει τίποτα να διορθώσει. Απόφαση ιδιοκτήτη: όσο εκκρεμεί ο νόμος, ο
-// κανόνας ΠΡΟΕΙΔΟΠΟΙΕΙ πριν και μετά τη λήξη. Πρώτα έλεγχος στο
-// διαδίκτυο, όχι κόκκινο. Το δίχτυ: 90 ημέρες μετά το `since` η εξαίρεση
-// λήγει και ο φύλακας κόβει, ώστε να μη γίνει μόνιμη. Κανόνας χωρίς
-// `pendingLaw` κόβει όπως πάντα.
+// Η ΜΙΑ ΕΞΑΙΡΕΣΗ: ΝΟΜΟΣ Ή ΑΠΟΦΑΣΗ ΠΟΥ ΕΚΚΡΕΜΕΙ (`pending`). Στις 10/11/2026,
+// 17 κανόνες έληγαν στις 31/12/2026 και κανείς δεν μπορούσε να γράψει νέο
+// validTo πριν δημοσιευτεί το κείμενο που θα τους ανανέωνε: για 7 το
+// νομοσχέδιο της 90ής ΔΕΘ, για 1 διάταξη νόμου, για 9 απόφαση (ΚΥΑ, ΑΑΔΕ,
+// κατώτατος μισθός). Ο φύλακας θα κοκκίνιζε κάθε PR από τις 16/11 χωρίς να
+// υπάρχει τίποτα να διορθώσει. Απόφαση ιδιοκτήτη: όσο εκκρεμεί, ο κανόνας
+// ΠΡΟΕΙΔΟΠΟΙΕΙ πριν και μετά τη λήξη. Πρώτα έλεγχος στο διαδίκτυο, όχι
+// κόκκινο.
+//
+// ΤΑ ΔΙΧΤΥΑ, ΩΣΤΕ Η ΕΞΑΙΡΕΣΗ ΝΑ ΜΗ ΓΙΝΕΙ ΜΟΝΙΜΗ: 90 ημέρες μετά το `since`
+// κόβει· `since` άκυρο ή μελλοντικό κόβει· το `href` δείχνει μόνο σε επίσημη
+// πηγή (OFFICIAL πιο κάτω). Κανόνας χωρίς `pending` κόβει όπως πάντα.
 //
 // ΤΟ ΤΕΛΕΥΤΑΙΟ ΕΙΝΑΙ ΤΟ ΠΙΟ ΥΠΟΥΛΟ. Μια μετακίνηση αρχείου αφήνει το μητρώο να
 // δείχνει στο κενό: εξακολουθεί να λέει «ελεγμένο», ενώ κανείς δεν ξέρει πού
@@ -54,7 +57,7 @@ const probe = `
 import { REGULATED, needsAttention, daysLeft, statusOf } from '@/lib/legal/validity'
 const today = ${JSON.stringify(today)}
 const rows = REGULATED.map(r => ({ id: r.id, label: r.label, where: r.where, source: r.source,
-  recheck: r.recheck, status: statusOf(r, today), days: daysLeft(r, today), pendingLaw: r.pendingLaw ?? null }))
+  recheck: r.recheck, status: statusOf(r, today), days: daysLeft(r, today), pending: r.pending ?? null }))
 process.stdout.write(JSON.stringify({ rows, attention: needsAttention(today).map(x => x.r.id) }))
 `
 const tmp = 'scripts/__validity-probe.ts'
@@ -70,6 +73,19 @@ try {
   process.exit(1)
 }
 
+/**
+ * Οπου επιτρέπεται να δείχνει μια εκκρεμότητα: εκεί που θα δημοσιευτεί το
+ * κείμενο. Ενα δημοσίευμα δεν είναι πηγή για να μη γίνεται κάτι κόκκινο.
+ */
+const OFFICIAL = ['*.gov.gr', 'hellenicparliament.gr', 'et.gr', 'aade.gr', 'opengov.gr', 'elstat.gr', 'bankofgreece.gr']
+function officialHref(href) {
+  let u
+  try { u = new URL(href) } catch { return false }
+  if (u.protocol !== 'https:') return false
+  const h = u.hostname.toLowerCase()
+  return OFFICIAL.some(d => d.startsWith('*.') ? h.endsWith(d.slice(1)) : h === d || h.endsWith('.' + d))
+}
+
 /** Πόσες ημέρες κρατά η εξαίρεση του νόμου που εκκρεμεί. Μετά κόβει. */
 const PENDING_MAX_DAYS = 90
 const dayDiff = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000)
@@ -77,19 +93,25 @@ const dayDiff = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86_400_00
 const findings = []
 const warnings = []
 for (const r of out.rows) {
-  const p = r.pendingLaw
+  const p = r.pending
   if (p) {
-    if (!/^https:\/\//.test(p.href)) findings.push({ kind: 'ΧΩΡΙΣ ΠΗΓΗ', r, why: 'ο νόμος που εκκρεμεί δεν έχει σύνδεσμο https' })
+    // Η ΕΞΑΙΡΕΣΗ ΔΕΝ ΓΙΝΕΤΑΙ ΜΟΝΙΜΗ ΜΕ ΠΑΡΑΘΥΡΑΚΙ. Ενα άκυρο ή μελλοντικό
+    // `since` θα έκανε το όριο των 90 ημερών να μη φτάνει ποτέ.
+    const validSince = /^\d{4}-\d{2}-\d{2}$/.test(p.since ?? '') && !Number.isNaN(Date.parse(p.since))
+      && new Date(Date.parse(p.since)).toISOString().slice(0, 10) === p.since
+    if (!validSince) { findings.push({ kind: 'ΑΚΥΡΗ ΕΚΚΡΕΜΟΤΗΤΑ', r, why: `το since «${p.since}» δεν είναι ημερομηνία YYYY-MM-DD` }); continue }
+    if (p.since > today) { findings.push({ kind: 'ΑΚΥΡΗ ΕΚΚΡΕΜΟΤΗΤΑ', r, why: `το since ${p.since} είναι μετά το σήμερα` }); continue }
+    if (!officialHref(p.href)) findings.push({ kind: 'ΧΩΡΙΣ ΕΠΙΣΗΜΗ ΠΗΓΗ', r, why: `η εκκρεμότητα δείχνει σε «${p.href}», όχι σε επίσημη πηγή (${OFFICIAL.join(', ')})` })
     const age = dayDiff(p.since, today)
     if (age >= PENDING_MAX_DAYS) {
-      findings.push({ kind: 'ΕΚΚΡΕΜΟΤΗΤΑ ΠΑΝΩ ΑΠΟ 90 ΗΜΕΡΕΣ', r, why: `το «${p.title}» εκκρεμεί από ${p.since} (${age} ημέρες): ή βγήκε ΦΕΚ και ο κανόνας θέλει ενημέρωση, ή η εξαίρεση πρέπει να ξανακριθεί από άνθρωπο` })
+      findings.push({ kind: 'ΕΚΚΡΕΜΟΤΗΤΑ ΠΑΝΩ ΑΠΟ 90 ΗΜΕΡΕΣ', r, why: `«${p.title}» εκκρεμεί από ${p.since} (${age} ημέρες): ή δημοσιεύτηκε και ο κανόνας θέλει ενημέρωση, ή η εξαίρεση πρέπει να ξανακριθεί από άνθρωπο` })
       continue
     }
   }
   if (!existsSync(r.where)) findings.push({ kind: 'ΧΑΜΕΝΟ ΑΡΧΕΙΟ', r, why: `το «${r.where}» δεν υπάρχει` })
-  else if (r.status === 'expired' && p) warnings.push({ kind: 'ΕΛΗΞΕ, ΕΚΚΡΕΜΕΙ ΦΕΚ', r, why: `πριν από ${-r.days} ημέρες· έλεγχος στο διαδίκτυο αν ψηφίστηκε το «${p.title}»` })
+  else if (r.status === 'expired' && p) warnings.push({ kind: p.kind === 'law' ? 'ΕΛΗΞΕ, ΕΚΚΡΕΜΕΙ ΦΕΚ' : 'ΕΛΗΞΕ, ΕΚΚΡΕΜΕΙ ΑΠΟΦΑΣΗ', r, why: `πριν από ${-r.days} ημέρες· έλεγχος στο διαδίκτυο αν δημοσιεύτηκε: ${p.title}` })
   else if (r.status === 'expired') findings.push({ kind: 'ΕΛΗΞΕ', r, why: `πριν από ${-r.days} ημέρες` })
-  else if (r.status === 'expiring' && p) warnings.push({ kind: 'ΛΗΓΕΙ, ΕΚΚΡΕΜΕΙ ΝΟΜΟΣ', r, why: `σε ${r.days} ημέρες· το «${p.title}» δεν έχει ψηφιστεί` })
+  else if (r.status === 'expiring' && p) warnings.push({ kind: p.kind === 'law' ? 'ΛΗΓΕΙ, ΕΚΚΡΕΜΕΙ ΝΟΜΟΣ' : 'ΛΗΓΕΙ, ΕΚΚΡΕΜΕΙ ΑΠΟΦΑΣΗ', r, why: `σε ${r.days} ημέρες· δεν έχει δημοσιευτεί ακόμη: ${p.title}` })
   else if (r.status === 'expiring') findings.push({ kind: 'ΛΗΓΕΙ', r, why: `σε ${r.days} ημέρες` })
   else if (r.status === 'stale') findings.push({ kind: 'ΑΝΕΛΕΓΚΤΟ', r, why: 'πάνω από 12 μήνες χωρίς ανθρώπινο έλεγχο' })
 }
@@ -159,12 +181,13 @@ if (unguarded.length) {
 }
 
 if (warnings.length) {
-  console.warn(`⚠ ${warnings.length} κανόνες περιμένουν νόμο που δεν έχει ψηφιστεί (σήμερα ${today}). Δεν κόβουν· θέλουν έλεγχο στο διαδίκτυο:\n`)
+  console.warn(`⚠ ${warnings.length} κανόνες περιμένουν νόμο ή απόφαση που δεν έχει δημοσιευτεί (σήμερα ${today}). Δεν κόβουν· θέλουν έλεγχο στο διαδίκτυο:\n`)
   const laws = new Map()
   for (const w of warnings) {
-    const p = w.r.pendingLaw
-    if (!laws.has(p.href)) laws.set(p.href, { p, items: [] })
-    laws.get(p.href).items.push(w)
+    const p = w.r.pending
+    const key = p.title + p.href
+    if (!laws.has(key)) laws.set(key, { p, items: [] })
+    laws.get(key).items.push(w)
   }
   for (const { p, items } of laws.values()) {
     const cut = new Date(Date.parse(p.since) + PENDING_MAX_DAYS * 86_400_000).toISOString().slice(0, 10)
@@ -174,8 +197,8 @@ if (warnings.length) {
     for (const w of items) console.warn(`     · ${w.kind}  ${w.r.label} (${w.why.split('·')[0].trim()})`)
     console.warn('')
   }
-  console.warn('  ΟΤΑΝ ΒΓΕΙ ΤΟ ΦΕΚ: για κάθε κανόνα, νέο validTo και νέο checkedAt στο')
-  console.warn('  lib/legal/validity.ts, πηγή το ΦΕΚ· μετά αφαίρεση του pendingLaw. Αν ο νόμος')
+  console.warn('  ΟΤΑΝ ΔΗΜΟΣΙΕΥΤΕΙ: για κάθε κανόνα, νέο validTo και νέο checkedAt στο')
+  console.warn('  lib/legal/validity.ts, πηγή το ΦΕΚ ή η απόφαση· μετά αφαίρεση του pending. Αν')
   console.warn('  άλλαξε τιμή, πρώτα ο κώδικας που την κρατά (με την πηγή στο PR).\n')
 }
 if (findings.length) {
@@ -191,4 +214,4 @@ if (findings.length) {
   console.error('  αρκεί το checkedAt: αυτό είναι η υπογραφή ότι κάποιος κοίταξε.')
   process.exit(1)
 }
-console.log(`✓ τα ${out.rows.length} ρυθμιζόμενα μεγέθη δεν έχουν τίποτα που να κόβει (σήμερα ${today}${warnings.length ? `, ${warnings.length} με εκκρεμή νόμο` : ''}), κανένας κανόνας εκτός μητρώου`)
+console.log(`✓ τα ${out.rows.length} ρυθμιζόμενα μεγέθη δεν έχουν τίποτα που να κόβει (σήμερα ${today}${warnings.length ? `, ${warnings.length} με εκκρεμή νόμο ή απόφαση` : ''}), κανένας κανόνας εκτός μητρώου`)
