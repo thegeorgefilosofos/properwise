@@ -361,7 +361,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
     gap: 4px 12px; padding: 14px 18px 12px; border-bottom: 1px solid var(--border-subtle);
   }
   .fc-title {
-    margin: 0; font-family: ${T.font.sans}; font-size: 13px; font-weight: 600; color: var(--text-secondary);
+    margin: 0; font-family: ${T.font.sans}; font-size: var(--fs-base); font-weight: 600; color: var(--text-secondary);
   }
   .fc-sub { font-family: ${T.font.sans}; font-size: 12px; color: var(--text-tertiary); min-width: 0; }
   .fc-body { padding: 16px 18px 12px; }
@@ -371,7 +371,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
   .fc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .fc-lead { min-width: 0; flex: 1 1 320px; }
   .fc-kicker {
-    display: block; font-family: ${T.font.sans}; font-size: 13px; font-weight: 600; color: var(--text-tertiary); margin-bottom: 4px;
+    display: block; font-family: ${T.font.sans}; font-size: var(--fs-base); font-weight: 600; color: var(--text-tertiary); margin-bottom: 4px;
   }
   .fc-lead-row { display: flex; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
   .fc-month {

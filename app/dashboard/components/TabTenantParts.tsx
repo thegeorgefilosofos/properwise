@@ -148,7 +148,7 @@ export function KpiCard({ label, value, color='var(--text-primary)', sub }: { la
     <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:'16px 14px', display:'flex', flexDirection:'column', gap:4 }}>
       <div style={{ fontSize:'18px', fontWeight:700, color, fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', letterSpacing:'-0.5px', lineHeight:1 }}>{value}</div>
       {sub && <div style={{ fontSize:'10px', color:'var(--text-secondary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{sub}</div>}
-      <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginTop:2 }}>{label}</div>
+      <div style={{ fontWeight: 600, fontSize: 'var(--fs-sm)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginTop:2 }}>{label}</div>
     </div>
   );
 }

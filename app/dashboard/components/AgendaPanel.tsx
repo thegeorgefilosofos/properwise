@@ -200,7 +200,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
         }
         .agenda-title {
           margin: 0;
-          font-family: ${T.font.sans}; font-size: 13px; font-weight: 600; color: var(--text-secondary);
+          font-family: ${T.font.sans}; font-size: var(--fs-base); font-weight: 600; color: var(--text-secondary);
         }
         .agenda-count {
           font-family: ${T.font.sans}; font-size: 12px; color: var(--text-tertiary);
