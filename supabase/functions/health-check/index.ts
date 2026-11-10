@@ -218,5 +218,10 @@ Deno.serve(async (req) => {
   })
   if (error) return json({ ok, kind, alert, feeds_alert: feedsAlert, write_error: error.message }, 502)
 
-  return json({ ok, kind, checked: results.length, failed: failed.length, alert, feeds: feeds.map(f => `${f.path}:${f.ok ? 'ok' : 'σπασμένη'}`), feeds_alert: feedsAlert })
+  // ΤΟ `ok` ΜΕΝΕΙ «ΟΙ ΣΕΛΙΔΕΣ ΑΠΑΝΤΟΥΝ»: το διαβάζει η `health_status()`. Δίπλα
+  // του όμως η απάντηση λέει πλέον ρητά αν σπάει τροφοδοσία. Στις 10/11/2026
+  // διαβαζόταν `"ok":true,"kind":"ok"` με το `feed:market:σπασμένη` χωμένο σε
+  // λίστα, δηλαδή ακριβώς το «όλα καλά» που δεν ίσχυε.
+  const feedsOk = feeds.every(f => f.ok)
+  return json({ ok, feeds_ok: feedsOk, kind, checked: results.length, failed: failed.length, alert, feeds: feeds.map(f => `${f.path}:${f.ok ? 'ok' : 'σπασμένη'}`), feeds_alert: feedsAlert })
 })

@@ -109,7 +109,7 @@ npm run katalogos
 
 | Αναγνωριστικό | Θέμα | Πυροδοτείται από |
 |---|---|---|
-| `referral_invite` | Σύστησε το PROPERWISE σε έναν ιδιοκτήτη | `supabase/functions/send-lifecycle-email/index.ts` |
+| `referral_invite` | Σύστησε το PROPERWISE σε έναν ιδιοκτήτη | `supabase/functions/_shared/lifecycleConsent.test.ts`, `supabase/functions/_shared/lifecycleConsent.ts` (+1) |
 | `referral_reminder` | Ο σύνδεσμος πρόσκλησής σου περιμένει | `supabase/functions/_shared/verify-policy.ts`, `supabase/migrations/20260723091000_lifecycle_enqueue.sql` (+4) |
 | `referral_reward` | Η ανταμοιβή σου είναι έτοιμη | `supabase/functions/_shared/emailPolicy.ts` |
 | `referral_friend_activated` | Η σύστασή σου μόλις ενεργοποιήθηκε | `supabase/functions/_shared/emailPolicy.ts` |
@@ -127,7 +127,7 @@ npm run katalogos
 | `accountant_request_answered` | ${esc(c.clientName \|\| 'Ο πελάτης σου')}: ήρθε αυτό που ζήτησες | `supabase/functions/_shared/emailPolicy.ts`, `supabase/migrations/20260825150000_i_pyli_logisti_kleinei_ton_kyklo.sql` |
 | `accountant_invite` | mail ? `${mail} ζητά πρόσβαση στον φάκελό σου στο PROPERWISE` : 'Αίτημα πρόσβασης στον φάκελό σου στο PROPERWISE' | `app/privacy/page.tsx`, `lib/data/accountantInvites.test.ts` (+4) |
 | `reply_ack` | Λάβαμε το μήνυμά σου | `supabase/functions/_shared/emailPolicy.ts` |
-| `mobile_launch` | Έρχεται το PROPERWISE στο κινητό σου | `supabase/functions/send-lifecycle-email/index.ts` |
+| `mobile_launch` | Έρχεται το PROPERWISE στο κινητό σου | `supabase/functions/_shared/lifecycleConsent.test.ts`, `supabase/functions/_shared/lifecycleConsent.ts` (+1) |
 | `legislation_update` | Νομοθεσία ακινήτων: ${head} | **με το χέρι** · Νομοθετική αλλαγή. Το τι άλλαξε το γράφει άνθρωπος, δεν το μαντεύει σαρωτής. |
 
 ## WINBACK

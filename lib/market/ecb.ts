@@ -581,8 +581,16 @@ export function greekDay(iso: string): string {
 // σφαλμάτων θα ήταν να πέσει αληθινά η ΕΚΤ.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Οσο περιμένουμε μία σειρά πριν την προσπεράσουμε. */
+/** Οσο περιμένουμε μία σειρά στην πρώτη προσπάθεια. */
 export const FETCH_TIMEOUT_MS = 10000;
+/**
+ * Η ΔΕΥΤΕΡΗ ΠΡΟΣΠΑΘΕΙΑ, ΜΕ ΠΕΡΙΣΣΟΤΕΡΗ ΥΠΟΜΟΝΗ. Μετρημένο στην παραγωγή
+ * (10/11/2026, net._http_response της εργασίας 08:00): «fetched 6, expected 10»
+ * και τα τέσσερα προβλήματα ήταν όλα «Signal timed out». Δηλαδή η ΕΚΤ ήταν
+ * αργή, όχι κάτω. Μία επανάληψη μόνο σε σφάλμα δικτύου ή 5xx/429, ποτέ σε
+ * 4xx (λάθος σειρά δεν διορθώνεται ξαναρωτώντας).
+ */
+export const RETRY_TIMEOUT_MS = 25000;
 
 export interface FeedOutcome {
   /** Ο,τι ήρθε, με ταυτότητα. Κλειδιά που λείπουν σημαίνουν «δεν ήρθε». */
@@ -596,18 +604,29 @@ type Getter = (url: string, init?: { headers?: Record<string, string>; signal?: 
   ok: boolean; status: number; json: () => Promise<unknown>;
 }>;
 
+/** Σφάλμα που αξίζει δεύτερη προσπάθεια: δίκτυο, λήξη χρόνου, 5xx, 429. */
+const retryable = (status: number | null): boolean => status === null || status >= 500 || status === 429;
+
 /** Κατεβάζει μία σειρά και τη διαβάζει. Ποτέ δεν πετά: γυρίζει λόγο. */
 async function oneSeries(spec: SeriesSpec, c: SeriesCandidate, get: Getter): Promise<ParseResult> {
   let res;
-  try {
-    res = await get(seriesUrl(c), {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-  } catch (e) {
-    return { ok: false, reason: `η κλήση απέτυχε: ${e instanceof Error ? e.message : String(e)}` };
+  let lastReason = '';
+  for (const timeout of [FETCH_TIMEOUT_MS, RETRY_TIMEOUT_MS]) {
+    try {
+      res = await get(seriesUrl(c), {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(timeout),
+      });
+    } catch (e) {
+      res = undefined;
+      lastReason = `η κλήση απέτυχε: ${e instanceof Error ? e.message : String(e)}`;
+      continue;
+    }
+    if (res.ok || !retryable(res.status)) break;
+    lastReason = `η πηγή απάντησε ${res.status}`;
   }
-  if (!res.ok) return { ok: false, reason: `η πηγή απάντησε ${res.status}` };
+  if (!res) return { ok: false, reason: `${lastReason} (και στη δεύτερη προσπάθεια)` };
+  if (!res.ok) return { ok: false, reason: retryable(res.status) ? `η πηγή απάντησε ${res.status} (και στη δεύτερη προσπάθεια)` : `η πηγή απάντησε ${res.status}` };
   let body: unknown;
   try { body = await res.json(); }
   catch { return { ok: false, reason: 'η απάντηση δεν ήταν JSON' }; }

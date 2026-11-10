@@ -25,6 +25,7 @@ import { CATALOG, DIGESTS } from '../_shared/emailCopy.ts'
 import { guessGender } from '../_shared/gender.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
+import { COMMERCIAL, prefsFromRow, type LifecyclePrefs } from '../_shared/lifecycleConsent.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -62,9 +63,8 @@ async function authorized(req: Request): Promise<CronAuth> {
 // του) και το εμπορικό ΔΕΝ φεύγει. Το λάθος προς τα εκεί κοστίζει ένα χαμένο
 // διαφημιστικό· προς την άλλη κατεύθυνση κοστίζει παραβίαση.
 // ═══════════════════════════════════════════════════════════════════════════
-const COMMERCIAL = new Set([
-  'upsell', 'seasonal', 'legislation', 'feedback', 'referral_invite', 'mobile_launch',
-]);
+// Ο κατάλογος των εμπορικών και ο κανόνας της συναίνεσης (ρητό `true`) ζουν
+// στο _shared/lifecycleConsent.ts, για να ελέγχονται με δοκιμή.
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΜΗΝΥΜΑΤΑ ΠΟΥ ΠΟΥΛΑΝΕ ΣΥΝΔΡΟΜΗ: ΦΕΥΓΟΥΝ ΜΟΝΟ ΟΤΑΝ ΜΠΟΡΟΥΝ ΝΑ ΤΗΡΗΘΟΥΝ
@@ -93,13 +93,11 @@ const isCommercial = (event: string, copyId: string): boolean =>
  * Επιστρέφει `null` όταν δεν βρεθεί χρήστης ή αποτύχει η ανάγνωση: ο καλών
  * αποφασίζει τι σημαίνει αυτό ανά είδος μηνύματος.
  */
-async function marketingPrefs(email: string): Promise<{ optedIn: boolean; unsubUrl: string } | null> {
+async function marketingPrefs(email: string): Promise<LifecyclePrefs | null> {
   try {
     const { data, error } = await supabase.rpc('marketing_prefs_for_email', { p_email: email });
     if (error || !data) return null;
-    const row = Array.isArray(data) ? data[0] : data;
-    if (!row?.unsubscribe_token) return null;
-    return { optedIn: row.product_news !== false, unsubUrl: `${APP_URL}/unsubscribe/${row.unsubscribe_token}` };
+    return prefsFromRow(data, APP_URL);
   } catch { return null; }
 }
 
@@ -131,6 +129,9 @@ Deno.serve(async (req) => {
   if (!RESEND_API_KEY) return json({ error: 'no_resend_key' }, 500)
 
   let event = '', copyId = '', email = '', name = '', params: Record<string, unknown> = {}
+  // Η γραμμή της ουράς (drain_email_outbox). Γίνεται κλειδί μοναδικότητας προς
+  // τον Resend, ώστε η επανάληψη μετά από λήξη χρόνου να μη στέλνει δεύτερο email.
+  let outboxId = ''
   try {
     const b = await req.json()
     event = String(b?.event || '').trim()
@@ -138,6 +139,7 @@ Deno.serve(async (req) => {
     email = String(b?.email || '').trim().toLowerCase()
     name = b?.name ? String(b.name).trim() : ''
     params = (b?.params && typeof b.params === 'object') ? b.params : {}
+    outboxId = /^\d{1,19}$/.test(String(b?.outboxId ?? '')) ? String(b.outboxId) : ''
   } catch { return json({ error: 'bad_body' }, 400) }
 
   if (!event && !copyId) return json({ error: 'no_event' }, 400)
@@ -185,10 +187,14 @@ Deno.serve(async (req) => {
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      // Idempotency-Key: ο Resend το κρατά 24 ώρες. Δεύτερη κλήση με το ίδιο
+      // κλειδί επιστρέφει την πρώτη απάντηση χωρίς νέα αποστολή· με άλλο σώμα,
+      // 409 (η reconcile το γράφει failed χωρίς επανάληψη).
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json', ...(outboxId ? { 'Idempotency-Key': `outbox-${outboxId}` } : {}) },
       // Στο εμπορικό μπαίνουν και οι κεφαλίδες απεγγραφής ενός πατήματος (RFC 8058).
       body: JSON.stringify({ from: FROM_EMAIL, reply_to: REPLY_TO, to: email, subject: tpl.subject, html: tpl.html, headers: commercial ? listUnsubscribeHeaders(prefs?.unsubUrl) : undefined }),
     })
+    if (res.status === 409) { const detail = await res.text().catch(() => ''); return json({ error: 'idempotency_conflict', detail: detail.slice(0, 300) }, 409) }
     if (!res.ok) { const detail = await res.text().catch(() => ''); return json({ error: 'send_failed', detail: detail.slice(0, 300) }, 502) }
     return json({ sent: true, event })
   } catch (err) {

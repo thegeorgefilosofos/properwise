@@ -46,6 +46,17 @@ $$ insert into net.probe_posts (url, body) values (url, body) returning id $$;
 insert into public.cron_secrets (name, secret) values ('email_cron', 'probe'), ('emails_live', '1')
 on conflict (name) do update set secret = excluded.secret;
 
+-- Η drain δεν μαντεύει πια διεύθυνση (20261110132000): τη διαβάζει από το vault.
+insert into vault.decrypted_secrets (name, decrypted_secret)
+select 'functions_base_url', 'http://probe.invalid'
+ where not exists (select 1 from vault.decrypted_secrets where name = 'functions_base_url');
+
+-- Η απάντηση του pg_net. Στην παραγωγή τη γράφει ο worker του pg_net· εδώ
+-- απαντά η send-lifecycle-email «στάλθηκε» σε κάθε αίτημα του πρωινού.
+create table if not exists net._http_response (
+  id bigint primary key, status_code int, content text, timed_out boolean,
+  error_msg text, created timestamptz not null default now());
+
 -- Μία ημέρα περνά για τους δοκιμαστικούς χρήστες.
 create or replace function pg_temp.probe_day_passes(p_users uuid[]) returns void language sql as $$
   update public.email_outbox o
@@ -74,6 +85,11 @@ begin
   perform public.lifecycle_enqueue();
   perform pg_temp.probe_plan(p_users);
   perform public.drain_email_outbox(100);
+  -- Η ουρά γράφει «dispatched»· «sent» γίνεται μόνο αφού έρθει η απάντηση.
+  insert into net._http_response (id, status_code, content, timed_out)
+  select p.id, 200, '{"sent":true}', false from net.probe_posts p
+   where not exists (select 1 from net._http_response h where h.id = p.id);
+  perform public.reconcile_email_outbox();
 end $$;
 
 -- Πώς κατέληξε ένα κείμενο για έναν παραλήπτη: «sent», «skipped/frequency_cap»…
