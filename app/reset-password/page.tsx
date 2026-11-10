@@ -146,8 +146,7 @@ export default function ResetPasswordPage() {
     borderRadius: T.radius.btn, padding: '10px 16px', minHeight: T.h.lg, color: 'var(--text-primary)', fontSize: 14, fontFamily: 'inherit', transition: 'border-color .15s',
   }
   const label: React.CSSProperties = {
-    fontSize: 12, color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: 8,
-    textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: T.font.sans,
+    fontSize: 'var(--fs-base)', lineHeight: 1.3, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 8, fontFamily: T.font.sans,
   }
   const eye = (
     <PasswordEye show={show} onToggle={() => setShow(s => !s)} />

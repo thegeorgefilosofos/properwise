@@ -141,7 +141,7 @@ function ContractTile({ card, active, onOpen }: { card: ContractCard; active: bo
           Ο τίτλος δεν παλεύει ποτέ με τον αριθμό και οι δύο μορφές κάρτας
           διαβάζονται ως ένα πράγμα. ══ */}
       <span style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', lineHeight: 1.35 }}>
           {card.label}
         </span>
         {/* Η ΙΕΡΑΡΧΙΑ ΒΓΑΙΝΕΙ ΑΠΟ ΜΕΓΕΘΟΣ ΚΑΙ ΒΑΡΟΣ, ΟΧΙ ΑΠΟ ΧΡΩΜΑ. Το ποσό

@@ -33,7 +33,7 @@ export default function DocChecklist({ docs, storageKey, title = 'Δικαιολ
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: compact ? 10 : 12 }}>
-        <p style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-secondary)', fontFamily: font, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{title}</p>
+        <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: font }}>{title}</p>
         <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 500, color: complete ? 'var(--accent)' : 'var(--text-tertiary)', fontFamily: font, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{count}/{total} έτοιμα</span>
       </div>
       <Bar pct={pct} height={4} track="var(--bg-surface)" label="Έτοιμα δικαιολογητικά" style={{ marginBottom: compact ? 10 : 12 }} />

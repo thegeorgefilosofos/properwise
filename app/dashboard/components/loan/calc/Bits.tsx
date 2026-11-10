@@ -21,7 +21,7 @@ export const labelStyle: React.CSSProperties = { ...TT.label, display:'block', m
 // ανάλυση κόστους απόκτησης» έβγαινε μία λέξη ανά γραμμή, κολλητά στο διπλανό.
 export const SectionLabel = ({label,right}:{label:string;right?:React.ReactNode}) => (
   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:14}}>
-    <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.06em',fontWeight:700,fontFamily: T.font.sans}}>{label}</p>
+    <p style={{fontSize: 'var(--fs-base)', lineHeight: 1.3,color:'var(--text-secondary)',fontWeight: 600,fontFamily: T.font.sans}}>{label}</p>
     {right}
   </div>
 )

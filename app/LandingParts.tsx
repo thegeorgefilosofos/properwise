@@ -157,7 +157,6 @@ export function NoaFeature({ locale = 'el' }: { locale?: Locale } = {}) {
           </div>
         </div>
         <div className="nf-stage" aria-label={en ? N.stage : `Παραδείγματα ερωτήσεων προς ${ASSISTANT_ACC}`}>
-          <div className="nf-halo" aria-hidden="true" />
           <div className="nf-card">
             <div className="nf-head">
               <span className="nf-avatar" aria-hidden="true">N</span>
@@ -185,11 +184,12 @@ export function NoaFeature({ locale = 'el' }: { locale?: Locale } = {}) {
  */
 const glue = (t: string) => t.replace(/(\d+)\s+(?=\S)/g, '$1\u00A0');
 
-export function SectionHead({ over, title, sub }: { over: string; title: string; sub?: string }) {
+export function SectionHead({ over, title, sub }: { over?: string; title: string; sub?: string }) {
   return (
     <div style={{ marginBottom: 'clamp(24px, 3.4vw, 40px)' }}>
       <hr className="lp-hair" />
-      <div className="lp-eyebrow">{over}</div>
+      {/* Χωρίς ετικέτα όταν θα επαναλάμβανε τον τίτλο (έλεγχος UX 09/11/2026). */}
+      {over && <div className="lp-eyebrow">{over}</div>}
       <h2 style={{ fontSize: 'clamp(25px, 3.4vw, 40px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0, textWrap: 'balance' }}>{title}</h2>
       {/* Ο υπότιτλος παίρνει όλο το πλάτος της στήλης και ΚΑΘΕ κείμενο κόπηκε ώστε
           να χωρά σε μία γραμμή. Δύο γραμμές υπότιτλου κάτω από μονόγραμμο τίτλο
@@ -310,8 +310,8 @@ export function PlanCard({ planId, name, nameColor, sub, price, per, note, annua
   planId: string; name: string; nameColor: string; sub: string; price: string; per: string; note: React.ReactNode; annual?: string; inherits?: string; ai: number; aiDay: number; items: string[]; cta: string; ctaGhost?: boolean; featured: boolean;
 }) {
   return (
-    <div className="lp-card" style={{ position: 'relative', background: PANEL, border: featured ? `1.5px solid color-mix(in srgb, var(--accent) 50%, transparent)` : `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(16px, 1.6vw, 20px)', boxShadow: featured ? '0 24px 60px -30px color-mix(in srgb, var(--accent) 60%, transparent)' : 'none' }}>
-      {featured && <span style={{ position: 'absolute', top: -9, left: 16, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)', background: PANEL, border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: T.radius.pill, padding: '2px 9px', whiteSpace: 'nowrap' }}>{partsFor(locale).recommended}</span>}
+    <div className="lp-card" style={{ position: 'relative', background: PANEL, border: featured ? `1.5px solid color-mix(in srgb, var(--accent) 50%, transparent)` : `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(16px, 1.6vw, 20px)', boxShadow: featured ? '0 24px 60px -30px color-mix(in srgb, var(--shadow-ink) 60%, transparent)' : 'none' }}>
+      {featured && <span style={{ position: 'absolute', top: -9, left: 16, fontSize: 12, fontWeight: 600, color: 'var(--accent)', background: PANEL, border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: T.radius.pill, padding: '2px 9px', whiteSpace: 'nowrap' }}>{partsFor(locale).recommended}</span>}
       {/* Τίτλος, για να πηγαίνει ο αναγνώστης οθόνης από πακέτο σε πακέτο. */}
       <h3 style={{ fontSize: 14, fontWeight: 700, color: nameColor, margin: '0 0 4px' }}>{name}</h3>
       <div style={{ fontSize: 12, color: FAINT, marginBottom: 14, lineHeight: 1.35 }}>{sub}</div>

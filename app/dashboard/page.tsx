@@ -469,7 +469,7 @@ export default function Dashboard() {
                           πληκτρολόγιο κλείνει με Escape. */}
                       <div aria-hidden onClick={()=>setStatusDropdown(false)} style={{position:'fixed',inset:0,zIndex:99}}/>
                       <div role="menu" style={{position:'absolute',top:'calc(100% + 8px)',left:0,maxHeight:'min(440px, calc(100vh - 96px))',overflowY:'auto',overscrollBehavior:'contain',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10,padding:'6px 0',zIndex:100,minWidth:224,boxShadow:'var(--shadow-lg)'}}>
-                        <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-xs)',fontWeight:600,letterSpacing:'0.06em',textTransform:'uppercase',color:'var(--text-tertiary)',padding:'6px 16px 4px'}}>Κατάσταση</div>
+                        <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)', lineHeight: 1.3,fontWeight:600,color:'var(--text-tertiary)',padding:'6px 16px 4px'}}>Κατάσταση</div>
                         {STATUSES.map(({ key: k, label: v, hint }) => {
                           const active = readStatus(selected)===k;
                           return (
@@ -488,7 +488,7 @@ export default function Dashboard() {
                           );
                         })}
                         <div style={{height:1,background:'var(--border-subtle)',margin:'6px 12px'}}/>
-                        <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-xs)',fontWeight:600,letterSpacing:'0.06em',textTransform:'uppercase',color:'var(--text-tertiary)',padding:'6px 16px 4px'}}>Εργαλεία ακινήτου</div>
+                        <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)', lineHeight: 1.3,fontWeight:600,color:'var(--text-tertiary)',padding:'6px 16px 4px'}}>Εργαλεία ακινήτου</div>
                         <button className="po-hov-fill" role="menuitem" onClick={()=>{setStatusDropdown(false);setEditProperty(selected);}} style={{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'9px 16px',border:'none',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,color:'var(--text-primary)',textAlign:'left'}} >
                           <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                           Επεξεργασία στοιχείων

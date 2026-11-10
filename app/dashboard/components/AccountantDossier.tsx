@@ -198,7 +198,7 @@ export function useAccountantDossier(userId: string, year: number, seed?: Partia
 // ═══ Εικόνα ════════════════════════════════════════════════════════════════
 
 const card: React.CSSProperties = { position: 'relative', background: 'var(--surface-raised)', border: 'none', borderRadius: T.radius.card, padding: T.sp.lg, boxShadow: 'var(--elev-1)' }
-const eyebrow: React.CSSProperties = { fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0 }
+const eyebrow: React.CSSProperties = { fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0 }
 const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFamily: T.font.sans }
 
 /** Μία γραμμή καταλόγου: τι, γιατί, πού και αν μπλοκάρει. */
@@ -747,7 +747,7 @@ function AccountantInvites({ userId, canShare }: { userId: string; canShare: boo
 
   return (
     <div style={{ margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-      <p style={{ fontSize: 'var(--fs-xs)', letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans }}>
+      <p style={{ fontWeight: 600, fontSize: 'var(--fs-base)', lineHeight: 1.3, color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans }}>
         {invites.length === 1 ? 'Αίτημα πρόσβασης στον φάκελό σου' : `${invites.length} αιτήματα πρόσβασης στον φάκελό σου`}
       </p>
       <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '6px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
@@ -800,7 +800,7 @@ function AccountantAsks() {
 
   return (
     <div style={{ margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-      <p style={{ fontSize: 'var(--fs-xs)', letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans }}>
+      <p style={{ fontWeight: 600, fontSize: 'var(--fs-base)', lineHeight: 1.3, color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans }}>
         {asks.length === 1 ? 'Ο λογιστής σου ζήτησε' : `Ο λογιστής σου ζήτησε ${asks.length} πράγματα`}
       </p>
       <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0', display: 'grid', gap: 0 }}>

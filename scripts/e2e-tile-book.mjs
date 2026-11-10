@@ -15,7 +15,8 @@
 // κουτί. Εδώ ανοίγει ο περιηγητής και ρωτά την ίδια την οθόνη.
 //
 // ΤΙ ΨΑΧΝΕΙ: κείμενο που ΜΟΙΑΖΕΙ αριθμός (ποσό, ποσοστό, πολλαπλασιαστής), σε
-// μέγεθος 15 και πάνω με βάρος 600 και πάνω, με ετικέτα κεφαλαίων από πάνω του,
+// μέγεθος 15 και πάνω με βάρος 600 και πάνω, με ετικέτα από πάνω του (μικρά
+// κεφαλαία ή, από το #509, πεζά στο --fs-base με βάρος 600),
 // ΕΞΩ από `.kpi-card` και `.kpi-plain`.
 //
 // ΟΙ ΕΞΑΙΡΕΣΕΙΣ ΕΙΝΑΙ ΟΝΟΜΑΣΤΙΚΕΣ ΚΑΙ ΕΧΟΥΝ ΛΟΓΟ. Δεν είναι «δεν πρόλαβα»:
@@ -48,6 +49,12 @@ const ALLOWED = new Map([
 const PROBE = () => {
   const NUM = /^[+\-−]?[\d.]{1,15}(,\d+)?\s?(€|%|×)?$/
   const out = []
+  // Το --fs-base όπως το λύνει η σελίδα (13px, 14px σε οθόνη αφής).
+  const probe = document.createElement('span')
+  probe.style.fontSize = 'var(--fs-base)'
+  document.body.appendChild(probe)
+  const BASE = parseFloat(getComputedStyle(probe).fontSize)
+  probe.remove()
   for (const el of document.querySelectorAll('body *')) {
     if (el.children.length) continue
     const t = (el.textContent || '').trim()
@@ -63,7 +70,13 @@ const PROBE = () => {
     const prev = el.previousElementSibling || (el.parentElement && el.parentElement.previousElementSibling)
     if (!prev) continue
     const pcs = getComputedStyle(prev)
-    if (pcs.textTransform !== 'uppercase' || parseFloat(pcs.fontSize) > 13) continue
+    // Η ετικέτα του πλακιδίου: παλιά μικρά κεφαλαία (ως 13px) ή, από το
+    // σύστημα ετικετών του #509, πεζά στο μέγεθος του --fs-base με βάρος 600
+    // και πάντα μικρότερη από τον αριθμό από κάτω της.
+    const lfs = parseFloat(pcs.fontSize)
+    const caps = pcs.textTransform === 'uppercase' && lfs <= 13
+    const label = Math.abs(lfs - BASE) < 0.5 && Number(pcs.fontWeight) >= 600 && lfs < parseFloat(cs.fontSize)
+    if (!caps && !label) continue
     out.push({ label: (prev.textContent || '').trim(), value: t, fs: Math.round(parseFloat(cs.fontSize) * 10) / 10 })
   }
   return out

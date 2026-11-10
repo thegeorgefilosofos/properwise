@@ -74,11 +74,6 @@ export default function AuthAside({
 }) {
   return (
     <div className="auth-aside" style={{ width: '45%', minWidth: 400, background: AUTH_ASIDE_BG, borderRight: '1px solid var(--mkt-border-subtle)', display: 'flex', flexDirection: 'column', padding: '48px 48px', overflow: 'hidden', position: 'relative', fontFamily: T.font.sans }}>
-      <style>{`
-        .auth-aside::before { content: ''; position: absolute; top: -18%; left: -22%; width: 78%; aspect-ratio: 1; border-radius: 50%; filter: blur(90px); background: radial-gradient(circle, var(--mkt-accent), transparent 64%); opacity: .18; pointer-events: none; animation: authDrift 30s ease-in-out infinite alternate; }
-        @keyframes authDrift { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(4vw, 4vh, 0) scale(1.12); } }
-        @media (prefers-reduced-motion: reduce) { .auth-aside::before { animation: none; } }
-      `}</style>
 
       {/* logo lockup */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 56 }}>
