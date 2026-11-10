@@ -173,6 +173,17 @@ fi
 $PSQL -c "drop database if exists emailprobe" >/dev/null
 eprobes=$(echo "$eout" | grep -c 'probe:' || true)
 
+# ── Ο ANON ΔΕΝ ΑΓΓΙΖΕΙ ΠΙΝΑΚΑ ΧΡΗΣΤΗ ───────────────────────────────────────
+# Πριν από το rls-probe, για τον ίδιο λόγο με το email-activation-probe: εκείνο
+# δίνει σκόπιμα GRANT σε όλους τους πίνακες. Εδώ ελέγχονται τα δικαιώματα όπως
+# τα αφήνουν τα migrations (20261110140000).
+if ! aout=$($PSQL -d posdb -f "$ROOT/scripts/db/anon-grants-probe.sql" 2>&1); then
+  echo "🔴 Ο anon έχει δικαίωμα εκεί που δεν πρέπει:"
+  echo "$aout" | grep -m3 -E 'ERROR|ΕΚΘΕΣΗ' | sed 's/^/    /'
+  exit 1
+fi
+eprobes=$(( eprobes + $(echo "$aout" | grep -c 'probe:' || true) ))
+
 # ── ΤΑ ΔΟΚΙΜΑΣΤΙΚΑ ΓΡΑΦΕΙΑ ΕΧΟΥΝ ΑΠΟΔΕΧΤΕΙ ΤΟΥΣ ΟΡΟΥΣ ───────────────────────
 # Χωρίς αποδοχή των όρων επεξεργασίας (20261108090000) κανένα γραφείο δεν βλέπει
 # πελάτη. Τα παρακάτω σενάρια ελέγχουν άλλα πράγματα, οπότε εδώ τα γραφεία και

@@ -45,6 +45,7 @@ import { MaintenanceTab } from './inventory/MaintenanceTab'
 import { inventoryExports } from './inventory/exports'
 import { useLoad } from '@/app/hooks/useLoad';
 import { toggleIn } from '@/lib/core/toggleSet';
+import { useInventoryPhotoUrls } from '@/lib/storage/inventoryPhotos'
 
 export { INVENTORY_CATEGORIES }
 export type { HandoverIntent }
@@ -285,8 +286,8 @@ function HandoverCard({handovers,onOpenHandover}:{handovers:InventoryHandover[];
 
 type SortKey = 'name'|'value'|'energy'|'age'|'depreciation'
 
-function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCondition,onWarrantyReminder,onBulkDelete,onBulkRoom}:{
-  items:InventoryItem[];kwhPrice:number
+function ItemsTab({items,photoUrls,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCondition,onWarrantyReminder,onBulkDelete,onBulkRoom}:{
+  items:InventoryItem[];photoUrls:Record<string,string>;kwhPrice:number
   onAdd:()=>void;onEdit:(i:InventoryItem)=>void;onDelete:(id:string)=>void
   onRepair:(i:InventoryItem)=>void;onQR:(i:InventoryItem)=>void
   onUpdateCondition:(id:string,c:string)=>void
@@ -447,7 +448,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
             // επιτρέπεται να μιλήσουμε για υπολειπόμενη αξία και χρόνια.
             const hasValue=(item.purchase_value||0)>0; const hasDate=!!item.purchase_date
             const mc=calcMonthlyCost(item,kwhPrice)
-            const photos=(item.photos||[]).filter(Boolean); const displayPhoto=item.photo_url||(photos[0]||'')
+            const photos=(item.photos||[]).filter(Boolean); const displayPhoto=item.photo_url||(photos[0]||''); const photoSrc=photoUrls[displayPhoto]||''
             const ws=item.warranty_expiry?warrantyStatus(item.warranty_expiry):null
             const repl=replacementSuggestion(item)
             const sel=selected.has(item.id)
@@ -465,7 +466,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                     χωρίς εικόνα μένει λωρίδα που κρατά μόνο τα χειριστήρια. */}
                 <div style={{height:displayPhoto?118:52,background:'var(--bg-elevated)',position:'relative',overflow:'hidden',flexShrink:0}}>
                   {displayPhoto
-                    ?<RuntimeImg src={displayPhoto} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
+                    ?(photoSrc&&<RuntimeImg src={photoSrc} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>)
                     :null}
                   {selectMode
                     ?<div style={{position:'absolute',top:8,left:8,background:'var(--scrim-media)',borderRadius: T.radius.chip,padding: 4}} onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></div>
@@ -818,7 +819,10 @@ export default function TabInventory({propertyId,userId,profileType='individual'
     notifyOk(`Προστέθηκε υπενθύμιση εγγύησης στο ημερολόγιο για «${item.name}».`)
     return true
   }
-  const exportActions = inventoryExports({items,repairs,kwhPrice})
+  // Ιδιωτικό bucket: μία υπογραφή για όλες τις φωτογραφίες, που τη μοιράζονται
+  // οι κάρτες και η έκθεση για τον ασφαλιστή (lib/storage/inventoryPhotos).
+  const photoUrls = useInventoryPhotoUrls(supabase, useMemo(()=>items.flatMap(i=>[i.photo_url,...(i.photos||[])]).filter(Boolean),[items])).urls
+  const exportActions = inventoryExports({items,repairs,kwhPrice,photoUrls})
   // ΔΥΟ ΕΞΑΓΩΓΕΣ CSV ΤΩΝ ΙΔΙΩΝ ΔΕΔΟΜΕΝΩΝ ΔΕΝ ΥΠΑΡΧΟΥΝ ΠΙΑ. Η κεφαλίδα είχε
   // δική της, με εννέα στήλες· το μενού έχει την πλήρη, με είκοσι. Ο χρήστης
   // κατέβαζε «την απογραφή» και έπαιρνε άλλο αρχείο ανάλογα με το πού πάτησε.
@@ -1079,7 +1083,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
             ?<><SkeletonKPIs n={4}/><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:14}}>{[0,1,2,3,4,5].map(i=><Skeleton key={i} h={180} r={14}/>)}</div></>
             :<>
               <AttentionCard items={items} onEdit={item=>{setEditingItem(item);setShowItemForm(true)}} onWarrantyReminder={handleWarrantyReminder}/>
-              <ItemsTab items={items} kwhPrice={kwhPrice} onAdd={()=>{setEditingItem(null);setShowItemForm(true)}} onEdit={item=>{setEditingItem(item);setShowItemForm(true)}} onDelete={handleDelete} onRepair={item=>setRepairItem(item)} onQR={item=>setQrItem(item)} onUpdateCondition={handleUpdateCondition} onWarrantyReminder={handleWarrantyReminder} onBulkDelete={handleBulkDelete} onBulkRoom={handleBulkRoom}/>
+              <ItemsTab items={items} photoUrls={photoUrls} kwhPrice={kwhPrice} onAdd={()=>{setEditingItem(null);setShowItemForm(true)}} onEdit={item=>{setEditingItem(item);setShowItemForm(true)}} onDelete={handleDelete} onRepair={item=>setRepairItem(item)} onQR={item=>setQrItem(item)} onUpdateCondition={handleUpdateCondition} onWarrantyReminder={handleWarrantyReminder} onBulkDelete={handleBulkDelete} onBulkRoom={handleBulkRoom}/>
               <MaintenanceTab items={items} schedules={schedules} propertyId={propertyId} userId={userId} onSaved={fetchData}/>
               <AnalysisCards items={items} repairs={repairs} kwhPrice={kwhPrice} kwhControl={kwhControl}/>
               <HandoverCard handovers={handovers} onOpenHandover={()=>setPage('handover')}/>

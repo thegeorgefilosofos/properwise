@@ -7,7 +7,7 @@
 // παγιώνεται σε στιγμιότυπο με ημερομηνία και το έντυπο τυπώνεται με θέσεις
 // υπογραφής: δεν είναι λογιστική κατάσταση, είναι έγγραφο που υπογράφεται.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useState, useId } from 'react'
+import { useState, useId, useMemo } from 'react'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import { T, Btn, ChipToggle, EmptyState, ABSENT, formGrid, fieldRow, RuntimeImg } from '@/components/Theme'
 import { CustomSelect, TextInput, DatePicker } from '../UIComponents'
@@ -15,6 +15,7 @@ import { ClipboardCheck } from 'lucide-react'
 import { notifyError } from '@/components/Toast'
 import { uploadPath } from '@/lib/core/uploadPath'
 import { uploadUserScoped } from '@/lib/storage/scopedUpload'
+import { INVENTORY_PHOTOS_BUCKET, useInventoryPhotoUrls } from '@/lib/storage/inventoryPhotos'
 import { reportHead, reportHeader, reportDisclaimer, openReport, rEsc, rDate } from '../reportPdf'
 import { INK, INK_FAINT, INK_MUTED, PAPER_ALT, RULE } from '@/lib/print/ink'
 import { athensToday } from '@/lib/core/time'
@@ -55,12 +56,20 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
   const [fromTenant,setFromTenant] = useState('')
   const uploadCondPhoto = async(itemId:string,file:File) => {
     setUploadingId(itemId)
-    const {path,error}=await uploadUserScoped(supabase,'inventory-photos',uploadPath(file.name,'handover'),file,{upsert:true})
+    const {path,error}=await uploadUserScoped(supabase,INVENTORY_PHOTOS_BUCKET,uploadPath(file.name,'handover'),file,{upsert:true})
     if(error){notifyError(failed(MSG.upload));setUploadingId(null);return}
-    const {data}=supabase.storage.from('inventory-photos').getPublicUrl(path)
-    setItemConds(p=>({...p,[itemId]:{...p[itemId],photo:data.publicUrl}}))
+    // Ιδιωτικό bucket: στο πρωτόκολλο γράφεται η ΔΙΑΔΡΟΜΗ, η προβολή υπογράφεται.
+    setItemConds(p=>({...p,[itemId]:{...p[itemId],photo:path}}))
     setUploadingId(null)
   }
+  // Μία υπογραφή για ό,τι δείχνει η καρτέλα: φωτογραφίες αντικειμένων, φωτογραφίες
+  // κατάστασης του πρωτοκόλλου που γράφεται και των αποθηκευμένων. Η εκτύπωση
+  // ανοίγει συγχρονικά (φύλακας αναδυόμενων), οπότε παίρνει έτοιμους συνδέσμους.
+  const photoUrls = useInventoryPhotoUrls(supabase, useMemo(()=>[
+    ...items.map(i=>i.photo_url),
+    ...Object.values(itemConds).map(c=>c.photo||''),
+    ...handovers.flatMap(h=>(h.items_snapshot||[]).flatMap(x=>[x.condition_photo||'',x.photo_url||''])),
+  ].filter(Boolean),[items,itemConds,handovers])).urls
   // ΤΡΕΙΣ ΠΡΟΣΑΡΜΟΓΕΣ ΚΑΤΑ ΤΗΝ ΑΠΟΔΟΣΗ, ΟΧΙ ΤΡΙΑ EFFECT. Ολες ήταν «όταν αλλάξει
   // αυτό, γράψε εκείνο»: ως effect, η οθόνη ζωγραφιζόταν πρώτα με τα ΠΑΛΙΑ και
   // μετά με τα νέα. Σε πρωτόκολλο παράδοσης, το ενδιάμεσο καρέ δείχνει
@@ -119,7 +128,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
     <h1>${rEsc(h.tenant_name)}</h1>
     <div class="sub">${[h.tenant_phone, fmtDate(h.handover_date)].filter(Boolean).map(x=>rEsc(String(x))).join(' · ')}</div>
     <table class="grid"><thead><tr><th>Αντικείμενο</th><th>Κατηγορία</th><th>Κατάσταση</th><th>Παρατηρήσεις</th><th>Φωτογραφία κατάστασης</th></tr></thead><tbody>
-    ${snap.map(s=>`<tr><td>${rEsc(s.name)}</td><td>${rEsc(s.category)}</td><td>${rEsc(conditionLabel(s.condition_at_handover))}</td><td>${rEsc(s.condition_notes||ABSENT)}</td><td>${s.condition_photo?`<img src="${rEsc(s.condition_photo)}" class="shot"/>${s.captured_at?`<br><span class="shot-at">${rEsc(fmtDate(s.captured_at))}</span>`:''}`:rEsc(ABSENT)}</td></tr>`).join('')}
+    ${snap.map(s=>`<tr><td>${rEsc(s.name)}</td><td>${rEsc(s.category)}</td><td>${rEsc(conditionLabel(s.condition_at_handover))}</td><td>${rEsc(s.condition_notes||ABSENT)}</td><td>${s.condition_photo&&photoUrls[s.condition_photo]?`<img src="${rEsc(photoUrls[s.condition_photo])}" class="shot"/>${s.captured_at?`<br><span class="shot-at">${rEsc(fmtDate(s.captured_at))}</span>`:''}`:s.condition_photo?'Η φωτογραφία δεν φορτώθηκε· άνοιξε ξανά την εκτύπωση':rEsc(ABSENT)}</td></tr>`).join('')}
     </tbody></table>
     <div class="sig"><div class="sig-box">Υπογραφή ιδιοκτήτη</div><div class="sig-box">Υπογραφή ενοικιαστή</div><div class="sig-box">Ημερομηνία</div></div>
     ${reportDisclaimer('Πρωτόκολλο παράδοσης και παραλαβής εξοπλισμού. Ισχύει με τις υπογραφές και των δύο μερών.')}
@@ -237,9 +246,9 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
               {(()=>{const cp=itemConds[item.id]?.photo;const busy=uploadingId===item.id;return (
                 <label title={cp?'Φωτογραφία κατάστασης (πάτησε για αλλαγή)':'Τράβα φωτογραφία της τρέχουσας κατάστασης'} style={{position:'relative',width:44,height:44,borderRadius:10,overflow:'hidden',flexShrink:0,cursor:'pointer',display:'block',border:cp?'2px solid var(--accent)':'1px solid var(--border-subtle)'}}>
                   {cp
-                    ?<RuntimeImg src={cp} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
+                    ?(photoUrls[cp]?<RuntimeImg src={photoUrls[cp]} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>:null)
                     :item.photo_url
-                      ?<RuntimeImg src={item.photo_url} style={{width:'100%',height:'100%',objectFit:'cover',opacity:0.5}} alt=""/>
+                      ?(photoUrls[item.photo_url]?<RuntimeImg src={photoUrls[item.photo_url]} style={{width:'100%',height:'100%',objectFit:'cover',opacity:0.5}} alt=""/>:null)
                       :<div style={{width:'100%',height:'100%',background:'var(--accent-soft)',color:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center'}}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>}
                   <span style={{position:'absolute',right:2,bottom:2,width:16,height:16,borderRadius: T.radius.xs,background:cp?'var(--accent)':'rgba(0,0,0,0.55)',display:'flex',alignItems:'center',justifyContent:'center'}}>
                     {busy?<span style={{width:9,height:9,border:`1.5px solid ${cp?'var(--accent-text)':'#fff'}`,borderTopColor:'transparent',borderRadius:'50%',animation:'invSpin 0.7s linear infinite'}}/>:<svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={cp?'var(--accent-text)':'#fff'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg>}

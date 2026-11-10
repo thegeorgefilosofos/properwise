@@ -39,7 +39,11 @@ const INSURANCE_CSS = `
   .crow span:last-child{font-variant-numeric:tabular-nums;font-weight:600;color:${INK}}
 `
 
-export function inventoryExports({items,repairs,kwhPrice}:{items:InventoryItem[];repairs:InventoryRepair[];kwhPrice:number}) {
+// `photoUrls`: οι υπογεγραμμένοι σύνδεσμοι του ιδιωτικού bucket, ανά αποθηκευμένη
+// διαδρομή (lib/storage/inventoryPhotos). Η έκθεση ανοίγει σε νέο παράθυρο
+// συγχρονικά, για να μην την κόψει ο φύλακας αναδυόμενων, οπότε η υπογραφή
+// έχει γίνει ήδη από την οθόνη.
+export function inventoryExports({items,repairs,kwhPrice,photoUrls={}}:{items:InventoryItem[];repairs:InventoryRepair[];kwhPrice:number;photoUrls?:Record<string,string>}) {
   const totalCurrent=items.reduce((s,i)=>s+calcCurrentValue(i),0)
   const totalRepairs=repairs.reduce((s,r)=>s+(r.cost||0),0)
   const electricItems=items.filter(hasEnergy)
@@ -95,7 +99,7 @@ export function inventoryExports({items,repairs,kwhPrice}:{items:InventoryItem[]
   const insurableOf=(i:InventoryItem)=> (i.replacement_cost||0)>0?i.replacement_cost:0
   const totalInsurable=totalDeclaredRepl
   const exportInsurancePDF=()=>{
-    const card=(i:InventoryItem)=>{const ph=i.photo_url||((i.photos||[]).filter(Boolean)[0]||'')
+    const card=(i:InventoryItem)=>{const ph=photoUrls[i.photo_url||((i.photos||[]).filter(Boolean)[0]||'')]||''
       return `<div class="c">
         <div class="ph">${ph?`<img src="${rEsc(ph)}"/>`:'<div class="noph">Χωρίς φωτογραφία</div>'}</div>
         <div class="cb"><div class="nm">${rEsc(i.name)}</div>
