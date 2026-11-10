@@ -17,7 +17,21 @@ let passed = 0, failed = 0
 function ok(name: string, cond: boolean, got?: unknown) {
   if (cond) passed++; else { failed++; console.log(`  ✗ ${name}${got === undefined ? '' : `\n     πήρε ${JSON.stringify(got)}`}`) }
 }
-const text = (r: unknown) => ((r as { html: string }).html).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
+// ΤΟ ΟΡΑΤΟ ΚΕΙΜΕΝΟ ΧΩΡΙΣ «ΚΑΘΑΡΙΣΜΑ» ΜΕ REGEX. Ενα `.replace(/<[^>]+>/g, '')`
+// είναι ελλιπής απολύμανση (CodeQL js/incomplete-multi-character-sanitization).
+// Εδώ δεν απολυμαίνεται τίποτα: διαβάζεται χαρακτήρας χαρακτήρας και ό,τι είναι
+// ανάμεσα σε `<` και `>` απλώς δεν κρατιέται. Η έξοδος χρησιμοποιείται μόνο για
+// σύγκριση μέσα στη δοκιμή, ποτέ ως HTML.
+function visible(html: string): string {
+  let out = '', inTag = false
+  for (const ch of html) {
+    if (ch === '<') { inTag = true; out += ' '; continue }
+    if (ch === '>' && inTag) { inTag = false; continue }
+    if (!inTag) out += ch
+  }
+  return out.split(/\s+/).filter(Boolean).join(' ')
+}
+const text = (r: unknown) => visible((r as { html: string }).html)
 
 // 1. Ενοικιαστής
 ok('κανένα κείμενο tenant_welcome', !('tenant_welcome' in RELATIONSHIP))
@@ -57,7 +71,8 @@ ok('winback_downgrade: δεν υποθέτει ότι το νέο πακέτο �
 // πώλησης. Ενα νέο κείμενο στο UPSELL μπαίνει αυτόματα στον έλεγχο.
 const FREE_THING = /PDF|QR|υπενθυμίσ|καταστάσ|βεβαιώσ/i
 const SELLS_FREE = /αυτόματες υπενθυμίσεις|επίσημες αναφορές|απεριόριστες καταστάσεις|έρχονται[^.]*(υπενθυμίσ|αναφορές PDF|καταστάσ)/i
-const bulletsOf = (html: string) => [...html.matchAll(/<td class="tx"[^>]*>([\s\S]*?)<\/td>/g)].map(m => m[1].replace(/<[^>]+>/g, ''))
+// Κάθε κουκκίδα ζει σε <td class="tx"> (emailTemplates.ts, `bullets`).
+const bulletsOf = (html: string) => html.split('<td class="tx"').slice(1).map(cell => visible(cell.slice(cell.indexOf('>') + 1, cell.indexOf('</td>'))))
 const full = { ...ctx, collected: 1200, discountPct: 20, offerCode: 'X', offerExpires: '30/11/2026', plan: 'individual' }
 const sources: Array<[string, { html: string } | null]> = [
   ...Object.entries(UPSELL).map(([id, fn]) => [id, fn(full as never)] as [string, { html: string } | null]),
