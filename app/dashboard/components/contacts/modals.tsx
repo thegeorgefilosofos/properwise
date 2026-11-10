@@ -166,7 +166,7 @@ export function HistoryModal({ contact, propertyId, onClose }: { contact: Contac
               { label: 'Σημειώσεις', value: notesLog.length > 0 ? `${notesLog.length}` : '0', color: 'var(--text-primary)' }].map(s => (
               <div key={s.label} style={{ background: 'var(--bg-surface)', borderRadius: T.radius.inner, padding: '14px', border: '1px solid var(--border-subtle)' }}>
                 <div style={{ fontSize: 20, fontWeight: 700, color: s.color, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', marginBottom: 4 }}>{s.value}</div>
-                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', lineHeight: 1.3, color: 'var(--text-secondary)' }}>{s.label}</div>
               </div>
             ))}
           </div>

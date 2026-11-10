@@ -69,7 +69,7 @@ function photoFailure(error: string | undefined, text: string | undefined): Fail
 
 type Step = 'pick' | 'reading' | 'review' | 'saving' | 'done';
 
-export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSaved, onOpenCalendar, initialDoc, initialFailure }: {
+export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSaved, onOpenCalendar, initialDoc, initialFailure, initialFile }: {
   userId: string;
   /** Το όριο ακινήτων του πακέτου (`propertyLimit`). */
   limit: number;
@@ -88,6 +88,12 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
   initialDoc?: MyAadeImport;
   /** Αποτυχία έτοιμη, για τον πάγκο διάταξης (σκηνή «λάθος έγγραφο»). */
   initialFailure?: Failure;
+  /**
+   * Αρχείο που ο χρήστης ανέβασε ήδη αλλού (η «Σάρωση εγγράφου» αναγνώρισε Ε9
+   * ή εκκαθαριστικό ΕΝΦΙΑ). Διαβάζεται μόλις φορτωθούν τα ακίνητα, όπως αν
+   * είχε πέσει στη ζώνη αποθέσεως: ίδιοι έλεγχοι, ίδια προεπισκόπηση.
+   */
+  initialFile?: File;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const inputId = useId();
@@ -192,6 +198,22 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
       setStep('pick');
     }
   };
+
+  // ── ΤΟ ΑΡΧΕΙΟ ΠΟΥ ΔΟΘΗΚΕ ΕΤΟΙΜΟ ───────────────────────────────────────
+  // Διαβάζεται μία φορά, αφού φορτωθούν τα ακίνητα: το ταίριασμα και οι
+  // ελεύθερες θέσεις του πακέτου θέλουν να τα ξέρουν. Με εξαντλημένες τις
+  // εισαγωγές της ημέρας (`left === 0`) δεν διαβάζεται· το παράθυρο το λέει.
+  // Τα `known` και `left` γράφονται στην ίδια φόρτωση: όταν υπάρχει το πρώτο,
+  // υπάρχει και το δεύτερο (αριθμός, ή `null` αν η μέτρηση απέτυχε).
+  // Η αναφορά κρατά την τρέχουσα readFile χωρίς να ξανατρέχει το εφέ σε κάθε απόδοση.
+  const readFileRef = useRef(readFile);
+  useEffect(() => { readFileRef.current = readFile; });
+  const fileTaken = useRef(false);
+  useEffect(() => {
+    if (!initialFile || fileTaken.current || known === null || left === 0) return;
+    fileTaken.current = true;
+    void readFileRef.current(initialFile);
+  }, [initialFile, known, left]);
 
   const patch = (key: number, p: Partial<Draft>) => setRows(rs => rs.map(r => (r.key === key ? { ...r, ...p, check: false } : r)));
   const rowDomId = (key: number) => `mya-row-${key}`;

@@ -83,6 +83,12 @@ interface Props {
    * πάτημα αντί να τον περιγράφει.
    */
   onOpenAccounting?: () => void;
+  /**
+   * Ανοίγει τη μαζική καταχώρηση με το ίδιο αρχείο. Το Ε9 και το εκκαθαριστικό
+   * ΕΝΦΙΑ έχουν συχνά πολλά ακίνητα, ενώ η σάρωση τα αρχειοθετεί σε ένα: η
+   * οθόνη επιτυχίας δίνει τον δρόμο για όλα, χωρίς δεύτερο ανέβασμα.
+   */
+  onBulkImport?: (file: File | null) => void;
 }
 
 // ΚΑΤΩ ΑΠΟ ΑΥΤΟ Η ΣΑΡΩΣΗ ΔΕΝ ΕΙΝΑΙ ΣΙΓΟΥΡΗ ΓΙΑ ΤΟΝ ΤΥΠΟ. Η βεβαιότητα είναι
@@ -184,7 +190,10 @@ const DocIcon = ({ size }: { size: number }) => (
   <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
 );
 
-export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyChange, onDirtyChange, onManual, onOpenAccounting, properties }: Props) {
+/** Τα είδη εγγράφου που διαβάζει η μαζική καταχώρηση (lib/myaade): Ε9 και εκκαθαριστικό ΕΝΦΙΑ. */
+const isBulkSource = (kind: string | undefined): boolean => kind === 'e9' || kind === 'enfia';
+
+export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyChange, onDirtyChange, onManual, onOpenAccounting, onBulkImport, properties }: Props) {
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -488,12 +497,12 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
               </div>
               <div style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '10px 12px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Όνομα</span>
+                  <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)' }}>Όνομα</span>
                   <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontWeight: 600, textAlign: 'right', wordBreak: 'break-word' }}>{supplierName}</span>
                 </div>
                 {afm && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                    <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>ΑΦΜ</span>
+                    <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)' }}>ΑΦΜ</span>
                     <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{afm}</span>
                   </div>
                 )}
@@ -516,10 +525,18 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
           );
         })()}
 
-        {/* ΤΟ Ε2 ΣΥΝΕΧΙΖΕΙ ΣΤΗ ΛΟΓΙΣΤΙΚΗ. Η σύγκριση με τα μισθώματα ζει εκεί·
+        {/* ΤΟ Ε9 ΚΑΙ Ο ΕΝΦΙΑ ΣΥΝΕΧΙΖΟΥΝ ΣΤΗ ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ (10/11/2026). Η σάρωση
+            τα αρχειοθέτησε στο τρέχον ακίνητο· τα υπόλοιπα ακίνητα του ίδιου
+            εγγράφου περνούν από την εισαγωγή, με το ίδιο αρχείο.
+            ΤΟ Ε2 ΣΥΝΕΧΙΖΕΙ ΣΤΗ ΛΟΓΙΣΤΙΚΗ. Η σύγκριση με τα μισθώματα ζει εκεί·
             η οθόνη έλεγε «ανέβασέ το και εκεί» χωρίς δρόμο. Τώρα ο δρόμος είναι
             η κύρια ενέργεια και η νέα σάρωση η δεύτερη. */}
-        {kindOf(edited)?.value === 'e2' && onOpenAccounting ? (
+        {isBulkSource(kindOf(edited)?.value) && onBulkImport ? (
+          <div className="act-center" style={{ display: 'flex', gap: T.sp.sm, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Btn variant="secondary" onClick={reset}>Σάρωσε νέο έγγραφο</Btn>
+            <Btn variant="primary" onClick={() => onBulkImport(file)}>Καταχώρησε όλα τα ακίνητα</Btn>
+          </div>
+        ) : kindOf(edited)?.value === 'e2' && onOpenAccounting ? (
           <div className="act-center" style={{ display: 'flex', gap: T.sp.sm, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Btn variant="secondary" onClick={reset}>Σάρωσε νέο έγγραφο</Btn>
             <Btn variant="primary" onClick={onOpenAccounting}>Άνοιγμα στη {navLabel('accounting')}</Btn>

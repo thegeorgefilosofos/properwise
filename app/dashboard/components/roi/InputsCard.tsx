@@ -107,7 +107,7 @@ export function InputsCard({
       {term === 'short' && (
         <div style={{ marginTop: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', fontFamily: SANS }}>Παράμετροι βραχυχρόνιας</span>
+            <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: SANS }}>Παράμετροι βραχυχρόνιας</span>
             <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: SANS }}>
               {fromBookings && booked
                 ? `· πληρότητα και τιμή από ${fn(booked.nights, 0)} νύχτες των τελευταίων 12 μηνών`

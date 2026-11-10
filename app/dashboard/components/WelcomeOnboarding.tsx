@@ -217,7 +217,7 @@ export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate,
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Καλωσόρισμα"
-      style={{ position: 'fixed', inset: 0, background: T.scrim, backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: T.sp.lg, overflowY: 'auto' }}>
+      style={{ position: 'fixed', inset: 0, background: T.scrim, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: T.sp.lg, overflowY: 'auto' }}>
       <style>{`@keyframes welcomeIn{from{opacity:0;transform:translateY(8px) scale(0.98)}to{opacity:1;transform:none}}`}</style>
       <div ref={panelRef} tabIndex={-1} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.modal, width: 'min(460px, 100%)', boxShadow: 'var(--elev-3)', fontFamily: T.font.sans, animation: `welcomeIn 0.3s ${T.ease.standard}`, padding: '26px 26px 22px', outline: 'none' }}>
 

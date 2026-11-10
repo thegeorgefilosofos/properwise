@@ -36,6 +36,11 @@ const ok=(n,c)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+n) } }
 async function page(ctx, path){ const p=await ctx.newPage(); await p.goto(B+path,{waitUntil:'networkidle'});
   await p.getByRole('button',{name:/κατάλαβα/i}).click().catch(()=>{}); await p.waitForTimeout(300); return p }
 const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',','.'))
+// ΟΙ ΕΤΙΚΕΤΕΣ ΔΕΝ ΕΙΝΑΙ ΠΙΑ ΚΕΦΑΛΑΙΑ (PR #509): το innerText έδινε «ΦΟΡΟΣ» επειδή
+// το CSS έκανε uppercase και τώρα δίνει «Φόρος». Ο έλεγχος ψάχνει την ετικέτα σε
+// κείμενο χωρίς τόνους και σε κεφαλαία, ώστε να μην εξαρτάται από το πώς
+// ζωγραφίζεται. Οι αριθμοί δεν αλλάζουν από αυτό.
+const fold = s => String(s).normalize('NFD').replace(/\p{M}/gu, '').toUpperCase()
 
 // ── ΦΟΡΟΣ ΕΝΟΙΚΙΩΝ, σαν χρήστης ────────────────────────────────────────────
 {
@@ -44,7 +49,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   const inputs = p.locator('input')
   const read = async () => {
     const txt = await p.locator('body').innerText().then(plain)
-    const m = txt.match(/ΦΟΡΟΣ\s*\n\s*([\d.,]+)\s*€/); return m ? num(m[1]) : null
+    const m = fold(txt).match(/ΦΟΡΟΣ\s*\n\s*([\d.,]+)\s*€/); return m ? num(m[1]) : null
   }
   ok('αρχική κατάσταση δείχνει 1.026 € (600×12)', await read() === 1026)
 
@@ -100,7 +105,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   const p = await page(ctx,'/ypologismos-enfia')
   const read = async () => {
     const txt = await p.locator('body').innerText().then(plain)
-    const m = txt.match(/ΕΝΦΙΑ ΕΤΗΣΙΩΣ\s*\n\s*([\d.,]+)\s*€/); return m ? num(m[1]) : null
+    const m = fold(txt).match(/ΕΝΦΙΑ ΕΤΗΣΙΩΣ\s*\n\s*([\d.,]+)\s*€/); return m ? num(m[1]) : null
   }
   ok('αρχική κατάσταση δείχνει 180,28 € (85τμ, ζώνη 1400)', Math.abs((await read()) - 180.28) < 0.02)
 
@@ -156,12 +161,12 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   const p = await page(ctx,'/kathari-apodosi')
   const pct = async label => {
     const txt = await p.locator('body').innerText().then(plain)
-    const m = txt.match(new RegExp(label + '\\s*\\n\\s*([\\d.,]+)\\s*%'))
+    const m = fold(txt).match(new RegExp(fold(label) + '\\s*\\n\\s*([\\d.,]+)\\s*%'))
     return m ? num(m[1]) : null
   }
   const eur = async label => {
     const txt = await p.locator('body').innerText().then(plain)
-    const m = txt.match(new RegExp(label + '\\s+[−-]?([\\d.,]+)\\s*€'))
+    const m = fold(txt).match(new RegExp(fold(label) + '\\s+[−-]?([\\d.,]+)\\s*€'))
     return m ? num(m[1]) : null
   }
 
@@ -189,7 +194,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   // ── ΧΩΡΙΣ ΑΞΙΑ ΔΕΝ ΓΡΑΦΕΤΑΙ ΠΟΣΟΣΤΟ ────────────────────────────────────
   await inputs.nth(0).fill('0'); await p.waitForTimeout(300)
   const body0 = await p.locator('body').innerText().then(plain)
-  ok('χωρίς αξία δεν εμφανίζεται απόδοση', !body0.includes(NET) && !body0.includes('ΚΑΘΑΡΗ ΑΠΟΔΟΣΗ'))
+  ok('χωρίς αξία δεν εμφανίζεται απόδοση', !new RegExp(NET + '\\s*\\n\\s*\\d').test(fold(body0)) && !/ΚΑΘΑΡΗ ΑΠΟΔΟΣΗ\s*\n\s*\d/.test(fold(body0)))
   ok('…και δεν εμφανίζεται Infinity ή NaN', !/Infinity|NaN/.test(body0))
   await inputs.nth(0).fill('200000'); await p.waitForTimeout(250)
 
@@ -215,7 +220,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   const p = await page(ctx,'/ypologismos-stegastikou-daneiou?epitokio=3%2C5')
   const eur = async label => {
     const txt = await p.locator('body').innerText().then(plain)
-    const m = txt.match(new RegExp(label + '\\s*\\n\\s*([\\d.,]+)\\s*€'))
+    const m = fold(txt).match(new RegExp(fold(label) + '\\s*\\n\\s*([\\d.,]+)\\s*€'))
     return m ? num(m[1]) : null
   }
   ok('δόση 150.000 € στο 3,5% για 25 έτη → 750,94 €', Math.abs((await eur('ΜΗΝΙΑΙΑ ΔΟΣΗ')) - 750.94) < 0.02)
@@ -239,7 +244,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   // ── ΧΩΡΙΣ ΕΠΙΤΟΚΙΟ ΔΕΝ ΒΓΑΙΝΕΙ ΔΟΣΗ ΜΕ ΜΗΔΕΝ ────────────────────────────
   await p.getByLabel('Περιθώριο τράπεζας').fill(''); await p.waitForTimeout(300)
   const noRate = await p.locator('body').innerText().then(plain)
-  ok('χωρίς περιθώριο δεν εμφανίζεται δόση', !noRate.includes('ΜΗΝΙΑΙΑ ΔΟΣΗ') && noRate.includes('Γράψε το Euribor'))
+  ok('χωρίς περιθώριο δεν εμφανίζεται δόση', !/ΜΗΝΙΑΙΑ ΔΟΣΗ\s*\n\s*\d/.test(fold(noRate)) && noRate.includes('Γράψε το Euribor'))
   await p.getByRole('button', { name: /^Σταθερό$/ }).click(); await p.waitForTimeout(250)
 
   // ── ΣΚΟΥΠΙΔΙΑ ───────────────────────────────────────────────────────────
@@ -248,7 +253,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   ok('σκουπίδια στο ποσό δεν σπάνε τη σελίδα', !/Infinity|NaN/.test(junk))
   ok('…και ζητούν ποσό', junk.includes('Η δόση χρειάζεται ποσό'))
 
-  ok('η τιμή αγοράς ή η απουσία της λέγεται πάνω από τη φόρμα', junk.includes('ΜΕΣΟ ΕΠΙΤΟΚΙΟ ΑΓΟΡΑΣ') || junk.includes('Μέσο επιτόκιο αγοράς'))
+  ok('η τιμή αγοράς ή η απουσία της λέγεται πάνω από τη φόρμα', fold(junk).includes('ΜΕΣΟ ΕΠΙΤΟΚΙΟ ΑΓΟΡΑΣ'))
   ok('υπάρχει σύνδεσμος εγγραφής', await p.locator('a[href="/signup"]').count() > 0)
   await ctx.close()
 }
@@ -282,10 +287,10 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   if (stale) {
     // Ο κατάλογος έχει ήδη παλιώσει τη μέρα που τρέχει ο έλεγχος: ισχύει η
     // ενδεικτική εκδοχή και αυτή ελέγχεται.
-    ok('ρεύμα (παλιός κατάλογος): κανένα φθηνότερο', !HERO.test(t0))
+    ok('ρεύμα (παλιός κατάλογος): κανένα φθηνότερο', !HERO.test(fold(t0)))
   } else {
-    const hero = Number(t0.match(HERO)?.[1] ? num(t0.match(HERO)[1]) : NaN)
-    const year = Number(t0.match(YEAR)?.[1] ? num(t0.match(YEAR)[1]) : NaN)
+    const hero = Number(fold(t0).match(HERO)?.[1] ? num(fold(t0).match(HERO)[1]) : NaN)
+    const year = Number(fold(t0).match(YEAR)?.[1] ? num(fold(t0).match(YEAR)[1]) : NaN)
     const rows = await rowAmounts(p)
     ok('ρεύμα: η κορυφή δείχνει φθηνότερο τον μήνα', Number.isFinite(hero) && hero > 0)
     ok('ρεύμα: και είναι το ποσό της πρώτης γραμμής', rows.length > 0 && Math.abs(rows[0][0] - hero) < 0.005)
@@ -297,7 +302,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
     await p.getByRole('button', { name: 'Τον χρόνο' }).click()
     await p.locator('input').first().fill('3600'); await p.waitForTimeout(300)
     const t1 = await text(p)
-    ok('ρεύμα: 3.600 τον χρόνο δίνουν την ίδια κορυφή με 300 τον μήνα', num(t1.match(HERO)?.[1] ?? 'x') === hero)
+    ok('ρεύμα: 3.600 τον χρόνο δίνουν την ίδια κορυφή με 300 τον μήνα', num(fold(t1).match(HERO)?.[1] ?? 'x') === hero)
     await p.getByRole('button', { name: 'Τον μήνα' }).click()
     await p.locator('input').first().fill('300'); await p.waitForTimeout(250)
 
@@ -328,7 +333,7 @@ const num = t => Number(String(t).replace(/[^\d,.-]/g,'').replace(/\./g,'').repl
   await lp.getByRole('button',{name:/κατάλαβα/i}).click().catch(()=>{}); await lp.waitForTimeout(400)
   const ts = await text(lp)
   ok('ρεύμα, παλιός κατάλογος: λέει ότι οι τιμές μπορεί να άλλαξαν', ts.includes(STALE))
-  ok('ρεύμα, παλιός κατάλογος: δεν ονομάζει φθηνότερο', !HERO.test(ts) && !ts.includes('από το φθηνότερο'))
+  ok('ρεύμα, παλιός κατάλογος: δεν ονομάζει φθηνότερο', !HERO.test(fold(ts)) && !ts.includes('από το φθηνότερο'))
   const ranks = await lp.locator('li.tariff-row > span:first-child').allInnerTexts()
   ok('ρεύμα, παλιός κατάλογος: καμία γραμμή με θέση', ranks.length > 0 && ranks.every(x => x.trim() === ''))
   ok('ρεύμα, παλιός κατάλογος: σύνδεσμος προς τη ΡΑΑΕΥ', await lp.locator('a[href*="gov.gr"]').count() > 0)

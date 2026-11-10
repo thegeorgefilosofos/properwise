@@ -265,7 +265,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
 
         {/* Πεδία στη σειρά της φόρμας */}
         <div>
-          <div style={{ ...TT.label, marginBottom: 8 }}>ΣΤΟΙΧΕΙΑ ΔΗΛΩΣΗΣ</div>
+          <div style={{ ...TT.label, marginBottom: 8 }}>Στοιχεία δήλωσης</div>
           <div style={{ ...TT.caption, marginBottom: 10, lineHeight: 1.5 }}>
             Με τη σειρά που τα ζητά η φόρμα. Πάτα το εικονίδιο για αντιγραφή και επικόλλησέ τα ένα-ένα.
           </div>
@@ -283,7 +283,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
 
         {/* Καταγραφή υποβολής */}
         <div>
-          <div style={{ ...TT.label, marginBottom: 8 }}>ΜΕΤΑ ΤΗΝ ΥΠΟΒΟΛΗ</div>
+          <div style={{ ...TT.label, marginBottom: 8 }}>Μετά την υποβολή</div>
           {submitted ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 15px', borderRadius: T.radius.inner, background: 'var(--positive-soft)', border: '1px solid var(--positive-border)' }}>
               <Check size={15} style={{ color: 'var(--positive)', flexShrink: 0 }} />

@@ -162,6 +162,7 @@ const inputStyle: React.CSSProperties = {
   letterSpacing: 0, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s, box-shadow 0.15s',
 };
 const numInputStyle: React.CSSProperties = { ...inputStyle, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' };
+const fieldCell: React.CSSProperties = { display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' };
 const labelStyle: React.CSSProperties = {
   ...TT.label, display: 'flex', alignItems: 'flex-end', minHeight: 28, lineHeight: 1.3, marginBottom: 6,
 };
@@ -238,7 +239,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   // τρία <input> μέσα σε <div>, καθένα έχει τη ΔΙΚΗ του ετικέτα και δεν
   // επιτρέπεται να δανειστεί αυτή του γονέα.
   const named = nameControl(children, id, label);
-  return <div><label htmlFor={named.native ? id : undefined} style={labelStyle}>{label}</label>{named.node}</div>;
+  // Στο πλέγμα των δύο στηλών μια ετικέτα μπορεί να γίνει δίγραμμη (στα 375 η
+  // «Αριθμός ασφαλιστηρίου» δίπλα στην «Ασφαλιστική»). Το κελί τεντώνει στο
+  // ύψος της σειράς και το πεδίο κάθεται στη βάση του: τα πεδία μιας σειράς
+  // στοιχίζονται χωρίς να μακραίνει κανένα.
+  return <div style={fieldCell}><label htmlFor={named.native ? id : undefined} style={labelStyle}>{label}</label>{named.node}</div>;
 }
 
 
@@ -341,7 +346,7 @@ function StepBody({ rows, place, after, moreTitle = 'Περισσότερα', le
   );
 }
 
-export default function AddPropertyWizard({ userId, onClose, onSaved, existing, focus, initial, onBulkImport }: {
+export default function AddPropertyWizard({ userId, onClose, onSaved, existing, focus, initial, onBulkImport, hasProperties = false }: {
   userId: string; onClose: () => void; onSaved: (propertyId: string | null) => void; existing?: ExistingProperty | null;
   /**
    * Ο,ΤΙ ΕΓΡΑΨΕ ΗΔΗ Ο ΕΠΙΣΚΕΠΤΗΣ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ ΕΝΦΙΑ (lib/tools/enfiaCarry.ts):
@@ -357,11 +362,14 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
    */
   focus?: 'owner_afm' | null;
   /**
-   * Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΩΣ ΠΡΩΤΗ ΕΠΙΛΟΓΗ (απόφαση ιδιοκτήτη 09/11/2026). Το
-   * δίνει ο πίνακας μόνο όταν ο χρήστης δεν έχει κανένα ακίνητο: η κάρτα στέκει
-   * πάνω από τον τύπο ακινήτου και ανοίγει την εισαγωγή από Ε9 ή πράξη ΕΝΦΙΑ.
+   * Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΩΣ ΠΡΩΤΗ ΕΠΙΛΟΓΗ. Ο πίνακας τη δίνει σε ΚΑΘΕ νέα
+   * καταχώρηση, με ή χωρίς ακίνητα (απόφαση ιδιοκτήτη 10/11/2026· ως τις
+   * 09/11 μόνο χωρίς κανένα). Η κάρτα στέκει πάνω από τον τύπο ακινήτου και
+   * ανοίγει την εισαγωγή από Ε9 ή πράξη ΕΝΦΙΑ. Στην επεξεργασία δεν φαίνεται.
    */
   onBulkImport?: () => void;
+  /** Ο χρήστης έχει ήδη ακίνητα: η κάρτα λέει πώς τα βρίσκει η εισαγωγή. */
+  hasProperties?: boolean;
 }) {
   const supabase = createClient();
   const isEdit = !!existing?.id;
@@ -918,7 +926,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
       {/* STEP 1, Τύπος & Κατάσταση */}
       {step === 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {!isEdit && onBulkImport && <BulkImportCard onStart={onBulkImport} />}
+          {!isEdit && onBulkImport && <BulkImportCard onStart={onBulkImport} hasProperties={hasProperties} />}
           <div>
             <div id={typeGroupId} style={labelStyle}>Τύπος ακινήτου</div>
             {/* ΟΛΑ ΤΑ ΠΛΑΚΙΔΙΑ ΙΣΑ ΚΑΙ ΟΤΑΝ ΤΟ ΟΝΟΜΑ ΠΙΑΝΕΙ ΔΥΟ ΣΕΙΡΕΣ.
@@ -1153,7 +1161,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
           ]}
           after={grossYield != null && (
             <div style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.card, padding: 16 }}>
-              <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent)', marginBottom: 6 }}>Εκτιμώμενη μεικτή απόδοση</div>
+              <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--accent)', marginBottom: 6 }}>Εκτιμώμενη μεικτή απόδοση</div>
               <div style={{ fontFamily: T.font.num, fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{fp(grossYield)}</div>
               <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>
                 {`Ετήσια έσοδα ${fe(annualRent!)} επί ${valueN != null ? 'εμπορικής' : 'αντικειμενικής'} αξίας ${fe(effValueN!)}`}

@@ -176,7 +176,7 @@ export default async function Landing() {
       {/* Το σταθερό στρώμα ατμόσφαιρας: πλέγμα, τρίτη αύρα, κόκκος, βινιέτα.
           Είναι `fixed` ώστε να μην υπάρχει ραφή ανάμεσα στις ενότητες καθώς
           κυλά η σελίδα — αν ήταν ανά ενότητα, κάθε όριο θα φαινόταν. */}
-      <div className="lp-atmos" aria-hidden="true"><div className="lp-orb" /></div>
+      <div className="lp-atmos" aria-hidden="true" />
 
       {/* ── Nav ── */}
       <header className="lp-head" style={{ position: 'sticky', top: 0, zIndex: 50, paddingTop: 'env(safe-area-inset-top, 0px)', background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)', borderBottom: `1px solid ${LINE}` }}>
@@ -207,7 +207,6 @@ export default async function Landing() {
 
       {/* ── Hero: κινηματογραφικό, πάντα σκοτεινό, με το προϊόν φωτισμένο σαν έκθεμα ── */}
       <section className="lp-hero" style={{ position: 'relative', overflow: 'hidden' }}>
-        <div className="lp-aurora" aria-hidden="true" />
         {/* ΓΙΑΤΙ ΤΟΣΟ ΣΦΙΧΤΟ: το hero κατανάλωνε ΟΛΟ το πρώτο viewport (112px πάνω,
             τίτλος έως 78px, 84px κάτω) και το προϊόν ξεκινούσε στα ~1080px — δηλαδή
             ο επισκέπτης έβλεπε μόνο κείμενο και έπρεπε να κυλήσει για να δει τι
@@ -580,7 +579,7 @@ export default async function Landing() {
 
       {/* ── Pricing ── */}
       <section id="pricing" className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
-        <SectionHead over="Τιμολόγηση" title="Τι κοστίζει κάθε πακέτο" sub="Κάθε πακέτο περιλαμβάνει ό,τι έχει το προηγούμενο." />
+        <SectionHead title="Τι κοστίζει κάθε πακέτο" sub="Κάθε πακέτο περιλαμβάνει ό,τι έχει το προηγούμενο." />
         {/* ΜΙΑ ΠΗΓΗ ΓΙΑ ΤΙΣ ΤΙΜΕΣ ΚΑΙ ΤΑ ΧΑΡΑΚΤΗΡΙΣΤΙΚΑ.
             Οι κάρτες ήταν γραμμένες με το χέρι: τιμές, ετήσιες τιμές και λίστες
             χαρακτηριστικά αντιγραμμένα από το lib/billing/plans.ts. Είχαν ήδη
@@ -698,7 +697,7 @@ export default async function Landing() {
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(22px, 2.6vw, 30px)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                 <div style={{ width: 44, height: 44, borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{ic(r.i)}</div>
-                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: ACCENT }}>{r.tag}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: ACCENT }}>{r.tag}</span>
               </div>
               <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{r.t}</h3>
               <p className="po-just" style={{ fontSize: 15, color: MUTED, lineHeight: 1.6, margin: '0 0 18px' }}>{r.d}</p>
@@ -796,7 +795,6 @@ export default async function Landing() {
           τόνου κάτω από την τελευταία ερώτηση. Η `lp-final` σβήνει το σέλας
           προς τα πάνω, ώστε το φως να ανεβαίνει από τη μέση και όχι από τη γραμμή. */}
       <section className="lp-hero lp-reveal lp-final" style={{ position: 'relative', overflow: 'hidden', borderBottom: 'none' }}>
-        <div className="lp-aurora" aria-hidden="true" />
         <div style={{ ...wrap, position: 'relative', zIndex: 1, textAlign: 'center', paddingTop: GAP, paddingBottom: GAP }}>
           <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>Το ακίνητό σου, υπό έλεγχο.</h2>
           {/* ΤΟ ΚΛΕΙΣΙΜΟ ΛΕΕΙ ΤΙ ΚΕΡΔΙΖΕΙΣ, ΟΧΙ ΤΙ ΚΟΣΤΙΖΕΙ (02.10.2026, απόφαση

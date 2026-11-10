@@ -362,7 +362,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
   const secHdr = (label: string, sub?: string) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
       <div>
-        <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</div>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</div>
         {sub && <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{sub}</div>}
       </div>
     </div>
@@ -639,7 +639,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
               { label: 'Διαφορά από το καλύτερο', value: canRank ? (savings > 0.5 ? `+${fe(savings)}` : fn(0)) : ABSENT_SHORT, color: 'var(--text-primary)' },
             ].map((k, i) => (
               <div key={i} style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: '12px 14px', border: '1px solid var(--border-subtle)' }}>
-                <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 8, fontFamily: T.font.sans }}>{k.label}</div>
+                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 8, fontFamily: T.font.sans }}>{k.label}</div>
                 <div style={{ fontSize: i === 0 ? 20 : 14, fontWeight: 700, color: k.color, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{k.value}</div>
               </div>
             ))}
@@ -648,7 +648,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
 
         {/* kWh history */}
         <div>
-          <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 8, fontFamily: T.font.sans }}>Ιστορικό κατανάλωσης, <span title="κιλοβατώρα, μονάδα μέτρησης κατανάλωσης ηλεκτρικής ενέργειας">kWh</span> ανά μήνα</div>
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 8, fontFamily: T.font.sans }}>Ιστορικό κατανάλωσης, <span title="κιλοβατώρα, μονάδα μέτρησης κατανάλωσης ηλεκτρικής ενέργειας">kWh</span> ανά μήνα</div>
           {/* ΤΟ ΕΤΟΣ ΔΕΝ ΚΥΛΑ ΠΛΑΓΙΑ. Ηταν δώδεκα στήλες των 44 μέσα σε δοχείο που
               κυλούσε οριζόντια: σε ταμπλέτα φαινόταν ως τον Σεπτέμβριο και οι
               τρεις τελευταίοι μήνες υπήρχαν μόνο για όποιον σκεφτόταν να σύρει.

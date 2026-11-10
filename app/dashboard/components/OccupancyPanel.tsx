@@ -126,8 +126,7 @@ export default function OccupancyPanel({ propertyId, userId, profileType = 'indi
   if (!loading && !isShort) return null;
 
   const label: React.CSSProperties = {
-    fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700,
-    textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)',
+    fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)',
   };
   const note: React.CSSProperties = {
     fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.65,
