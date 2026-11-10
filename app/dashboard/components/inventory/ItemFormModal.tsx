@@ -196,8 +196,9 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
   const photoUrls = useInventoryPhotoUrls(supabase, form.photos||[]).urls
   const addPhotoFile = async(file:File) => {
     setPhotoBusy(true)
-    // Ιδιωτικό bucket: γράφεται η ΔΙΑΔΡΟΜΗ, η προβολή υπογράφεται (lib/storage/inventoryPhotos).
-    const {path,error}=await uploadUserScoped(supabase,INVENTORY_PHOTOS_BUCKET,uploadPath(file.name),file,{upsert:true})
+    // Ιδιωτικό bucket: γράφεται η ΔΙΑΔΡΟΜΗ «<uid>/<ακίνητο>/…», η προβολή υπογράφεται.
+    // Το ακίνητο στη διαδρομή κρίνει ποιος βλέπει (private.inventory_photo_visible).
+    const {path,error}=await uploadUserScoped(supabase,INVENTORY_PHOTOS_BUCKET,uploadPath(file.name,propertyId),file,{upsert:true})
     if(!error){ setForm(f=>{const photos=[...(f.photos||[]),path]; return {...f,photos,photo_url:f.photo_url||path}}) }
     else notifyError(failed(MSG.upload))
     setPhotoBusy(false)

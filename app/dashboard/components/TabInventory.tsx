@@ -45,7 +45,7 @@ import { MaintenanceTab } from './inventory/MaintenanceTab'
 import { inventoryExports } from './inventory/exports'
 import { useLoad } from '@/app/hooks/useLoad';
 import { toggleIn } from '@/lib/core/toggleSet';
-import { useInventoryPhotoUrls } from '@/lib/storage/inventoryPhotos'
+import { signInventoryPhotos, useInventoryPhotoUrls } from '@/lib/storage/inventoryPhotos'
 
 export { INVENTORY_CATEGORIES }
 export type { HandoverIntent }
@@ -819,10 +819,11 @@ export default function TabInventory({propertyId,userId,profileType='individual'
     notifyOk(`Προστέθηκε υπενθύμιση εγγύησης στο ημερολόγιο για «${item.name}».`)
     return true
   }
-  // Ιδιωτικό bucket: μία υπογραφή για όλες τις φωτογραφίες, που τη μοιράζονται
-  // οι κάρτες και η έκθεση για τον ασφαλιστή (lib/storage/inventoryPhotos).
+  // Ιδιωτικό bucket: μία υπογραφή για όλες τις φωτογραφίες των καρτών
+  // (lib/storage/inventoryPhotos). Η έκθεση ασφαλιστή υπογράφει ξανά τη στιγμή
+  // που ανοίγει, γιατί οι σύνδεσμοι της οθόνης λήγουν.
   const photoUrls = useInventoryPhotoUrls(supabase, useMemo(()=>items.flatMap(i=>[i.photo_url,...(i.photos||[])]).filter(Boolean),[items])).urls
-  const exportActions = inventoryExports({items,repairs,kwhPrice,photoUrls})
+  const exportActions = inventoryExports({items,repairs,kwhPrice,signPhotos:s=>signInventoryPhotos(supabase,s).then(r=>r.urls)})
   // ΔΥΟ ΕΞΑΓΩΓΕΣ CSV ΤΩΝ ΙΔΙΩΝ ΔΕΔΟΜΕΝΩΝ ΔΕΝ ΥΠΑΡΧΟΥΝ ΠΙΑ. Η κεφαλίδα είχε
   // δική της, με εννέα στήλες· το μενού έχει την πλήρη, με είκοσι. Ο χρήστης
   // κατέβαζε «την απογραφή» και έπαιρνε άλλο αρχείο ανάλογα με το πού πάτησε.

@@ -15,8 +15,8 @@ import { ClipboardCheck } from 'lucide-react'
 import { notifyError } from '@/components/Toast'
 import { uploadPath } from '@/lib/core/uploadPath'
 import { uploadUserScoped } from '@/lib/storage/scopedUpload'
-import { INVENTORY_PHOTOS_BUCKET, useInventoryPhotoUrls } from '@/lib/storage/inventoryPhotos'
-import { reportHead, reportHeader, reportDisclaimer, openReport, rEsc, rDate } from '../reportPdf'
+import { INVENTORY_PHOTOS_BUCKET, signInventoryPhotos, useInventoryPhotoUrls } from '@/lib/storage/inventoryPhotos'
+import { reportHead, reportHeader, reportDisclaimer, openReportAsync, rEsc, rDate } from '../reportPdf'
 import { INK, INK_FAINT, INK_MUTED, PAPER_ALT, RULE } from '@/lib/print/ink'
 import { athensToday } from '@/lib/core/time'
 import { CONDITIONS, CONDITION_COLOR, inventoryLabel, conditionLabel, type InventoryItem, type InventoryHandover, type HandoverIntent } from './model'
@@ -56,9 +56,10 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
   const [fromTenant,setFromTenant] = useState('')
   const uploadCondPhoto = async(itemId:string,file:File) => {
     setUploadingId(itemId)
-    const {path,error}=await uploadUserScoped(supabase,INVENTORY_PHOTOS_BUCKET,uploadPath(file.name,'handover'),file,{upsert:true})
+    const {path,error}=await uploadUserScoped(supabase,INVENTORY_PHOTOS_BUCKET,uploadPath(file.name,`${propertyId}/handover`),file,{upsert:true})
     if(error){notifyError(failed(MSG.upload));setUploadingId(null);return}
-    // Ιδιωτικό bucket: στο πρωτόκολλο γράφεται η ΔΙΑΔΡΟΜΗ, η προβολή υπογράφεται.
+    // Ιδιωτικό bucket: στο πρωτόκολλο γράφεται η ΔΙΑΔΡΟΜΗ «<uid>/<ακίνητο>/handover/…».
+    // Το ακίνητο στη διαδρομή κρίνει ποιος βλέπει (private.inventory_photo_visible).
     setItemConds(p=>({...p,[itemId]:{...p[itemId],photo:path}}))
     setUploadingId(null)
   }
@@ -119,6 +120,9 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
   // εκτύπωση.
   const printHandover = (h:InventoryHandover) => {
     const snap=h.items_snapshot||[]
+    // Φρέσκες υπογραφές ακριβώς πριν την εκτύπωση: της οθόνης μπορεί να έχουν λήξει.
+    openReportAsync(async()=>{
+    const urls=(await signInventoryPhotos(supabase, snap.map(x=>x.condition_photo||''))).urls
     const html = reportHead('Πρωτόκολλο παράδοσης και παραλαβής', HANDOVER_CSS)
       + `<body><div class="page">`
       + reportHeader(null, `Πρωτόκολλο ${h.handover_type==='check_in'?'παράδοσης':'παραλαβής'}`, {
@@ -128,12 +132,13 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
     <h1>${rEsc(h.tenant_name)}</h1>
     <div class="sub">${[h.tenant_phone, fmtDate(h.handover_date)].filter(Boolean).map(x=>rEsc(String(x))).join(' · ')}</div>
     <table class="grid"><thead><tr><th>Αντικείμενο</th><th>Κατηγορία</th><th>Κατάσταση</th><th>Παρατηρήσεις</th><th>Φωτογραφία κατάστασης</th></tr></thead><tbody>
-    ${snap.map(s=>`<tr><td>${rEsc(s.name)}</td><td>${rEsc(s.category)}</td><td>${rEsc(conditionLabel(s.condition_at_handover))}</td><td>${rEsc(s.condition_notes||ABSENT)}</td><td>${s.condition_photo&&photoUrls[s.condition_photo]?`<img src="${rEsc(photoUrls[s.condition_photo])}" class="shot"/>${s.captured_at?`<br><span class="shot-at">${rEsc(fmtDate(s.captured_at))}</span>`:''}`:s.condition_photo?'Η φωτογραφία δεν φορτώθηκε· άνοιξε ξανά την εκτύπωση':rEsc(ABSENT)}</td></tr>`).join('')}
+    ${snap.map(s=>`<tr><td>${rEsc(s.name)}</td><td>${rEsc(s.category)}</td><td>${rEsc(conditionLabel(s.condition_at_handover))}</td><td>${rEsc(s.condition_notes||ABSENT)}</td><td>${s.condition_photo&&urls[s.condition_photo]?`<img src="${rEsc(urls[s.condition_photo])}" class="shot"/>${s.captured_at?`<br><span class="shot-at">${rEsc(fmtDate(s.captured_at))}</span>`:''}`:s.condition_photo?'Η φωτογραφία δεν φορτώθηκε· άνοιξε ξανά την εκτύπωση':rEsc(ABSENT)}</td></tr>`).join('')}
     </tbody></table>
     <div class="sig"><div class="sig-box">Υπογραφή ιδιοκτήτη</div><div class="sig-box">Υπογραφή ενοικιαστή</div><div class="sig-box">Ημερομηνία</div></div>
     ${reportDisclaimer('Πρωτόκολλο παράδοσης και παραλαβής εξοπλισμού. Ισχύει με τις υπογραφές και των δύο μερών.')}
     </div></body></html>`
-    openReport(html)
+    return html
+    })
   }
   if(mode==='compare') {
     const hA=handovers.find(h=>h.id===cmpA); const hB=handovers.find(h=>h.id===cmpB)

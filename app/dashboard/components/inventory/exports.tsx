@@ -11,7 +11,7 @@
 // παρουσιάζεται ως πλήρες είναι υπασφάλιση που φαίνεται μόνο μετά τη ζημιά.
 // ═══════════════════════════════════════════════════════════════════════════
 import { downloadTableXlsx } from '../exportCsv'
-import { reportHead, reportHeader, reportSection, reportRow, reportKpi, reportDisclaimer, openReport, rEur, rPct, rEsc } from '../reportPdf'
+import { reportHead, reportHeader, reportSection, reportRow, reportKpi, reportDisclaimer, openReport, openReportAsync, rEur, rPct, rEsc } from '../reportPdf'
 import { ENERGY_MODE_LABEL } from '@/lib/property/energy'
 import { NOT_TAX_DEPRECIATION_NOTE } from '@/lib/inventory/depreciation'
 import { ABSENT, ABSENT_DATE } from '@/components/Theme'
@@ -39,11 +39,10 @@ const INSURANCE_CSS = `
   .crow span:last-child{font-variant-numeric:tabular-nums;font-weight:600;color:${INK}}
 `
 
-// `photoUrls`: οι υπογεγραμμένοι σύνδεσμοι του ιδιωτικού bucket, ανά αποθηκευμένη
-// διαδρομή (lib/storage/inventoryPhotos). Η έκθεση ανοίγει σε νέο παράθυρο
-// συγχρονικά, για να μην την κόψει ο φύλακας αναδυόμενων, οπότε η υπογραφή
-// έχει γίνει ήδη από την οθόνη.
-export function inventoryExports({items,repairs,kwhPrice,photoUrls={}}:{items:InventoryItem[];repairs:InventoryRepair[];kwhPrice:number;photoUrls?:Record<string,string>}) {
+// `signPhotos`: φέρνει φρέσκους υπογεγραμμένους συνδέσμους του ιδιωτικού bucket
+// (lib/storage/inventoryPhotos) ακριβώς πριν γραφτεί η έκθεση, γιατί της οθόνης
+// μπορεί να έχουν λήξει. Το παράθυρο ανοίγει συγχρονικά (openReportAsync).
+export function inventoryExports({items,repairs,kwhPrice,signPhotos=async()=>({})}:{items:InventoryItem[];repairs:InventoryRepair[];kwhPrice:number;signPhotos?:(stored:string[])=>Promise<Record<string,string>>}) {
   const totalCurrent=items.reduce((s,i)=>s+calcCurrentValue(i),0)
   const totalRepairs=repairs.reduce((s,r)=>s+(r.cost||0),0)
   const electricItems=items.filter(hasEnergy)
@@ -98,8 +97,10 @@ export function inventoryExports({items,repairs,kwhPrice,photoUrls={}}:{items:In
   // ο ασφαλιστής πρέπει να δει το κενό, όχι ένα νούμερο που φτιάξαμε εμείς.
   const insurableOf=(i:InventoryItem)=> (i.replacement_cost||0)>0?i.replacement_cost:0
   const totalInsurable=totalDeclaredRepl
-  const exportInsurancePDF=()=>{
-    const card=(i:InventoryItem)=>{const ph=photoUrls[i.photo_url||((i.photos||[]).filter(Boolean)[0]||'')]||''
+  const mainPhoto=(i:InventoryItem)=>i.photo_url||((i.photos||[]).filter(Boolean)[0]||'')
+  const exportInsurancePDF=()=>openReportAsync(async()=>{
+    const photoUrls=await signPhotos(items.map(mainPhoto).filter(Boolean))
+    const card=(i:InventoryItem)=>{const ph=photoUrls[mainPhoto(i)]||''
       return `<div class="c">
         <div class="ph">${ph?`<img src="${rEsc(ph)}"/>`:'<div class="noph">Χωρίς φωτογραφία</div>'}</div>
         <div class="cb"><div class="nm">${rEsc(i.name)}</div>
@@ -124,8 +125,8 @@ export function inventoryExports({items,repairs,kwhPrice,photoUrls={}}:{items:In
     <div class="cards">${items.map(card).join('')}</div>
     ${reportDisclaimer(`Η ασφαλιστέα αξία εξοπλισμού είναι το κόστος αντικατάστασης με καινούργιο, όχι η υπολειπόμενη αξία. Εδώ αθροίζονται μόνο τα ποσά που δήλωσε ο ιδιοκτήτης· ${missingRepl>0?`για ${missingRepl} από ${items.length} αντικείμενα δεν έχει δηλωθεί, οπότε δεν έχουν υπολογιστεί. Η κάλυψη πρέπει να συμπληρωθεί πριν την ασφάλιση.`:'έχει δηλωθεί για όλα τα αντικείμενα.'} Οι φωτογραφίες αποτελούν τεκμηρίωση του ιδιοκτήτη κατά την ημερομηνία έκδοσης.`)}
     </div></body></html>`
-    openReport(html)
-  }
+    return html
+  })
   // ═══════════════════════════════════════════════════════════════════════════
   // ΤΡΕΙΣ ΕΞΑΓΩΓΕΣ, ΟΧΙ ΤΡΕΙΣ ΚΑΡΤΕΣ ΥΨΟΥΣ ΔΙΑΚΟΣΙΩΝ ΕΙΚΟΝΟΣΤΟΙΧΕΙΩΝ
   // ─────────────────────────────────────────────────────────────────────────

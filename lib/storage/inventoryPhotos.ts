@@ -7,9 +7,13 @@
 // ανακαλούνταν (έλεγχος ασφάλειας 10/11/2026). Από το migration
 // 20261110140000 το bucket είναι ιδιωτικό.
 //
-// Αποθηκεύεται πλέον η ΔΙΑΔΡΟΜΗ («<uid>/…»). Η προβολή, η εκτύπωση και η
-// έκθεση για τον ασφαλιστή ζητούν προσωρινό σύνδεσμο με μία κλήση δικτύου για
-// όλες τις φωτογραφίες της οθόνης, όπως το lib/maintenance/photos.ts.
+// Αποθηκεύεται πλέον η ΔΙΑΔΡΟΜΗ «<uid όποιου ανεβάζει>/<ακίνητο>/…». Το
+// ακίνητο στη διαδρομή κρίνει ποιος βλέπει (private.inventory_photo_visible):
+// ο ιδιοκτήτης και τα μέλη του οργανισμού του που βλέπουν αυτό το ακίνητο.
+// Η προβολή ζητά προσωρινό σύνδεσμο με μία κλήση δικτύου για όλες τις
+// φωτογραφίες της οθόνης, όπως το lib/maintenance/photos.ts. Τον ανανεώνει
+// πριν λήξει. Η εκτύπωση και η έκθεση ασφαλιστή υπογράφουν ξανά τη στιγμή που
+// ανοίγουν (openReportAsync), ώστε να μη βγουν ποτέ με σπασμένες εικόνες.
 //
 // Παλιά εγγραφή με ολόκληρο δημόσιο URL αυτού του bucket μετατρέπεται σε
 // διαδρομή και υπογράφεται κι αυτή. Στις 10/11/2026 το bucket είχε 0 αρχεία
@@ -21,8 +25,11 @@ import { failed } from '@/lib/core/dbError';
 
 export const INVENTORY_PHOTOS_BUCKET = 'inventory-photos';
 
-/** Μία ώρα: αρκεί για μια συνεδρία και για την εκτύπωση που ανοίγει αμέσως. */
+/** Μία ώρα ζωή για κάθε σύνδεσμο. */
 const SIGN_SECONDS = 3600;
+
+/** Ανανέωση στα 50 λεπτά: δέκα λεπτά πριν λήξει ο σύνδεσμος που δείχνει η οθόνη. */
+const REFRESH_MS = 50 * 60 * 1000;
 
 /** Η διαδρομή μέσα στο bucket, από διαδρομή ή από παλιό δημόσιο URL του. */
 export function inventoryPhotoPath(stored: string): string {
@@ -62,8 +69,9 @@ export async function signInventoryPhotos(supabase: SupabaseClient, stored: read
 }
 
 /**
- * Οι σύνδεσμοι προβολής για ό,τι δείχνει η οθόνη. Ξαναζητά υπογραφή μόνο όταν
- * αλλάξει το σύνολο των φωτογραφιών, όχι σε κάθε απόδοση.
+ * Οι σύνδεσμοι προβολής για ό,τι δείχνει η οθόνη. Ξαναζητά υπογραφή όταν
+ * αλλάξει το σύνολο των φωτογραφιών και κάθε REFRESH_MS όσο η οθόνη μένει
+ * ανοιχτή, ώστε μια καρτέλα ανοιχτή για ώρες να μη δείχνει σπασμένες εικόνες.
  */
 export function useInventoryPhotoUrls(supabase: SupabaseClient, stored: readonly string[]): SignedInventoryPhotos {
   const key = useMemo(() => [...new Set(stored.filter(Boolean))].sort().join('\n'), [stored]);
@@ -71,8 +79,10 @@ export function useInventoryPhotoUrls(supabase: SupabaseClient, stored: readonly
   useEffect(() => {
     if (!key) return;
     let alive = true;
-    signInventoryPhotos(supabase, key.split('\n')).then(r => { if (alive) setState({ ...r, key }); });
-    return () => { alive = false; };
+    const sign = () => { signInventoryPhotos(supabase, key.split('\n')).then(r => { if (alive) setState({ ...r, key }); }); };
+    sign();
+    const timer = setInterval(sign, REFRESH_MS);
+    return () => { alive = false; clearInterval(timer); };
   }, [supabase, key]);
   return key ? state : { urls: {}, error: '' };
 }

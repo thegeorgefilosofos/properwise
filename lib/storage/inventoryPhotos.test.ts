@@ -63,7 +63,21 @@ async function main() {
     ok(`${f}: χωρίς getPublicUrl`, !src.includes('getPublicUrl'));
     ok(`${f}: προβολή με υπογραφή`, src.includes('useInventoryPhotoUrls'));
   }
-  ok('η έκθεση ασφαλιστή παίρνει υπογεγραμμένους', readFileSync('app/dashboard/components/inventory/exports.tsx', 'utf8').includes('photoUrls['));
+  // ── ΤΟ ΑΚΙΝΗΤΟ ΣΤΗ ΔΙΑΔΡΟΜΗ: ΑΠΟ ΑΥΤΟ ΚΡΙΝΕΙ Η ΠΟΛΙΤΙΚΗ ΠΟΙΟΣ ΒΛΕΠΕΙ ──────
+  ok('φωτογραφία αντικειμένου: <uid>/<ακίνητο>/…', readFileSync('app/dashboard/components/inventory/ItemFormModal.tsx', 'utf8').includes('uploadPath(file.name,propertyId)'));
+  // κυριολεκτικό-πρότυπο: ψάχνει το κείμενο της πηγής, όχι αντικατάσταση.
+  ok('φωτογραφία παράδοσης: <uid>/<ακίνητο>/handover/…', readFileSync('app/dashboard/components/inventory/HandoverTab.tsx', 'utf8').includes('uploadPath(file.name,`${propertyId}/handover`)'));
+
+  // ── ΟΙ ΣΥΝΔΕΣΜΟΙ ΔΕΝ ΛΗΓΟΥΝ ΜΠΡΟΣΤΑ ΣΤΟΝ ΧΡΗΣΤΗ ───────────────────────────
+  const lib = readFileSync('lib/storage/inventoryPhotos.ts', 'utf8');
+  const life = Number(/const SIGN_SECONDS = (\d+)/.exec(lib)?.[1]) * 1000;
+  const every = /const REFRESH_MS = (\d+) \* (\d+) \* (\d+)/.exec(lib);
+  const refresh = every ? Number(every[1]) * Number(every[2]) * Number(every[3]) : NaN;
+  ok('η οθόνη ανανεώνει πριν λήξει ο σύνδεσμος', refresh > 0 && refresh < life && lib.includes('setInterval(sign, REFRESH_MS)'));
+  const exp = readFileSync('app/dashboard/components/inventory/exports.tsx', 'utf8');
+  ok('η έκθεση ασφαλιστή υπογράφει τη στιγμή που ανοίγει', exp.includes('openReportAsync(async()=>') && exp.includes('await signPhotos('));
+  const ho = readFileSync('app/dashboard/components/inventory/HandoverTab.tsx', 'utf8');
+  ok('το πρωτόκολλο υπογράφει τη στιγμή που τυπώνεται', ho.includes('openReportAsync(async()=>') && ho.includes('await signInventoryPhotos('));
   ok('ο φάκελος ακινήτου υπογράφει', readFileSync('app/dashboard/components/TabDocuments.tsx', 'utf8').includes('signInventoryPhotos('));
 }
 

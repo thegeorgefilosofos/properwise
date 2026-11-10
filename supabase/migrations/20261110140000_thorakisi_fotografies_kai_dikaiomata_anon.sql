@@ -18,22 +18,58 @@
 -- υπογεγραμμένος σύνδεσμος (lib/storage/inventoryPhotos.ts).
 update storage.buckets set public = false where id = 'inventory-photos';
 
--- Ο ΟΡΓΑΝΙΣΜΟΣ ΒΛΕΠΕΙ ΟΤΙ ΕΒΛΕΠΕ. Με το δημόσιο bucket, τα μέλη οργανισμού
--- έβλεπαν τις φωτογραφίες της απογραφής που τους δείχνει η sel_inventory_items
--- (μέσω private.org_owner_ids). Η πολιτική κρατά και τις δύο κατευθύνσεις: το
--- μέλος βλέπει τον φάκελο του ιδιοκτήτη και ο ιδιοκτήτης τον φάκελο του μέλους,
--- γιατί το ανέβασμα γράφει στον φάκελο όποιου ανεβάζει (lib/storage/scopedUpload).
+-- ΤΟ ΑΚΙΝΗΤΟ ΑΠΟΦΑΣΙΖΕΙ, ΟΧΙ Ο ΦΑΚΕΛΟΣ. Η διαδρομή είναι πλέον
+-- «<uid όποιου ανεβάζει>/<property_id>/…» (ItemFormModal, HandoverTab). Το
+-- bucket είχε 0 αρχεία, οπότε δεν υπάρχουν παλιές διαδρομές προς μετάπτωση.
+-- Ο βοηθός private.inventory_photo_visible δίνει την ίδια ορατότητα με τους
+-- πίνακες της απογραφής:
+--   α) ο φάκελός σου, πάντα·
+--   β) αλλιώς, βλέπεις το ακίνητο (ιδιοκτήτης ή ενεργό μέλος οργανισμού του
+--      ιδιοκτήτη, με κενό property_scope ή με το ακίνητο μέσα του, όπως η
+--      member_sees_property) ΚΑΙ όποιος ανέβασε ανήκει στον κύκλο του
+--      ιδιοκτήτη (ο ίδιος ή ενεργό μέλος οργανισμού του).
+-- Ετσι ο ιδιοκτήτης βλέπει ό,τι ανέβασε μέλος του, το μέλος με scope δεν
+-- βλέπει άλλο ακίνητο και ο άσχετος δεν βλέπει τίποτα. Ελέγχει απευθείας τους
+-- πίνακες: η private.org_owner_ids απαντά μόνο για τον ίδιο τον καλούντα.
+create or replace function private.inventory_photo_visible(p_name text)
+ returns boolean
+ language sql
+ stable security definer
+ set search_path to 'public'
+as $function$
+  with f as (
+    select (storage.foldername(p_name))[1] as uploader,
+           (storage.foldername(p_name))[2] as prop
+  ), p as (
+    select up.id, up.user_id
+      from user_properties up, f
+     where f.prop ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+       and up.id = f.prop::uuid
+  )
+  select auth.uid() is not null and (
+    exists (select 1 from f where f.uploader = auth.uid()::text)
+    or exists (
+      select 1 from p, f
+       where (p.user_id = auth.uid()
+              or exists (select 1 from organization_members m
+                           join organizations o on o.id = m.org_id
+                          where o.owner_user_id = p.user_id and m.user_id = auth.uid()
+                            and m.status = 'active'
+                            and (m.property_scope is null or coalesce(array_length(m.property_scope, 1), 0) = 0
+                                 or p.id = any (m.property_scope))))
+         and (f.uploader = p.user_id::text
+              or exists (select 1 from organization_members m2
+                           join organizations o2 on o2.id = m2.org_id
+                          where o2.owner_user_id = p.user_id and m2.user_id::text = f.uploader
+                            and m2.status = 'active'))));
+$function$;
+revoke execute on function private.inventory_photo_visible(text) from public, anon;
+grant execute on function private.inventory_photo_visible(text) to authenticated;
+
 drop policy if exists inventory_photos_select_own on storage.objects;
 create policy inventory_photos_select_own on storage.objects
   for select to authenticated
-  using (bucket_id = 'inventory-photos' and (
-           (storage.foldername(name))[1] = (select auth.uid())::text
-        or (storage.foldername(name))[1] in (select o::text from private.org_owner_ids((select auth.uid())) o)
-        -- Το cast γίνεται μόνο σε φάκελο με μορφή uuid: όνομα αντικειμένου με
-        -- άλλη μορφή δεν σηκώνει σφάλμα μέσα στην πολιτική.
-        or (case when (storage.foldername(name))[1] ~ '^[0-9a-fA-F-]{36}$'
-                 then (select auth.uid()) in (select private.org_owner_ids(((storage.foldername(name))[1])::uuid))
-                 else false end)));
+  using (bucket_id = 'inventory-photos' and (select private.inventory_photo_visible(name)));
 
 -- ── 2. ΟΙ ΚΡΑΤΗΜΕΝΕΣ ΑΛΛΑΓΕΣ ΕΠΙΤΟΚΙΩΝ ΜΟΝΟ ΣΕ ADMIN ──────────────────────
 -- Η bank_feed_held() είναι security definer και την εκτελούσε κάθε
