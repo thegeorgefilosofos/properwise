@@ -261,7 +261,8 @@ begin
   b := pg_temp.probe_inflight('oura:b', 900002);
   perform pg_temp.probe_reply(900002, 409, '{"error":"idempotency_conflict","resendCode":"concurrent_idempotent_requests"}');
   -- Σίγουρη αποτυχία (ο Resend απάντησε 429): νέα γενιά κλειδιού.
-  c := pg_temp.probe_inflight('oura:c', 900003);
+  -- Δικός του παραλήπτης: οι αβέβαιες γραμμές του oura@ μετρούν στο όριο.
+  c := pg_temp.probe_inflight('oura:c', 900003, p_email := 'oura-c@probe.test');
   perform pg_temp.probe_reply(900003, 502, '{"error":"send_failed","definite":true,"resendStatus":429}');
   -- Αβέβαιη έκβαση (504 της πύλης): ίδιο κλειδί.
   d := pg_temp.probe_inflight('oura:d', 900004);
@@ -361,4 +362,79 @@ begin
     raise exception '[Ο] Πρόσκληση σβησμένου αποστολέα σε πτήση κατέληξε «%» (θα ξανάφευγε)', st;
   end if;
   raise notice 'probe: [Ο] η απόσυρση και η διαγραφή αποστολέα κόβουν και το μήνυμα σε πτήση';
+end $probe$;
+
+-- ── [Ο] Η σημαία της αβέβαιης έκβασης ────────────────────────────────────
+--  Μια γενιά με αβέβαιη προσπάθεια δεν αλλάζει κλειδί, η drain δεν στέλνει
+--  με το ίδιο κλειδί έξω από το παράθυρο, το όριο μάρκετινγκ μετρά ό,τι ίσως
+--  έφυγε και οι επαναλήψεις δεν χτυπούν όλες μαζί.
+create or replace function pg_temp.probe_row(p_key text, p_status text, p_req bigint, p_uncertain boolean,
+  p_attempts int default 1, p_cat text default 'transactional', p_email text default 'oura@probe.test',
+  p_since interval default interval '0', p_age interval default interval '0') returns bigint language sql as $$
+  insert into public.email_outbox (copy_id, to_email, category, dedup_key, status, request_id, dispatched_at,
+                                   idem_since, idem_uncertain, attempts, send_window, scheduled_for)
+  values ('probe_copy', p_email, p_cat, p_key, p_status, p_req, now() - p_age, now() - p_since,
+          p_uncertain, p_attempts, 'morning', now())
+  returning id;
+$$;
+
+do $probe$
+declare
+  h bigint; i bigint; j bigint; n int;
+  r record;
+begin
+  if not (select idem_uncertain from public.email_outbox where dedup_key = 'oura:d') then
+    raise exception '[Ο] Η αβέβαιη έκβαση δεν σήκωσε τη σημαία idem_uncertain';
+  end if;
+  if not (select idem_uncertain from public.email_outbox where dedup_key = 'oura:f') then
+    raise exception '[Ο] Η χαμένη απάντηση δεν σήκωσε τη σημαία idem_uncertain';
+  end if;
+
+  -- Σίγουρη αποτυχία μετά από αβέβαιη: ίδιο κλειδί.
+  h := pg_temp.probe_row('oura:h', 'dispatched', 900021, true);
+  perform pg_temp.probe_reply(900021, 502, '{"error":"send_failed","definite":true,"resendStatus":500}');
+  -- Το ίδιο στην τελευταία προσπάθεια: failed, χωρίς νέα γενιά, η σημαία μένει.
+  i := pg_temp.probe_row('oura:i', 'dispatched', 900022, true, 3);
+  perform pg_temp.probe_reply(900022, 502, '{"error":"send_failed","definite":true,"resendStatus":500}');
+  -- Ριπή 429: είκοσι γραμμές με την ίδια απάντηση.
+  for n in 1..20 loop
+    perform pg_temp.probe_row('oura:burst:' || n, 'dispatched', 900100 + n, false);
+    perform pg_temp.probe_reply(900100 + n, 502, '{"error":"send_failed","definite":true,"resendStatus":429}');
+  end loop;
+
+  perform public.reconcile_email_outbox();
+
+  select status, idem_gen into r from public.email_outbox where id = h;
+  if r.status <> 'pending' or r.idem_gen <> 0 then
+    raise exception '[Ο] Σίγουρη αποτυχία μετά από αβέβαιη έγινε «%» γενιά % (θέλει pending, ίδιο κλειδί)', r.status, r.idem_gen;
+  end if;
+  select status, idem_gen, idem_uncertain into r from public.email_outbox where id = i;
+  if r.status <> 'failed' or r.idem_gen <> 0 or not r.idem_uncertain then
+    raise exception '[Ο] Τέλος προσπαθειών μετά από αβέβαιη έγινε «%» γενιά % σημαία %', r.status, r.idem_gen, r.idem_uncertain;
+  end if;
+  select count(distinct scheduled_for) into n from public.email_outbox where dedup_key like 'oura:burst:%';
+  if n < 5 then raise exception '[Ο] Η ριπή 429 ξαναπρογραμματίστηκε σε % στιγμές (χωρίς τυχαίο μέρος)', n; end if;
+  if exists (select 1 from public.email_outbox where dedup_key like 'oura:burst:%'
+              and (scheduled_for < now() + interval '15 minutes' or scheduled_for > now() + interval '20 minutes')) then
+    raise exception '[Ο] Η καθυστέρηση της ριπής βγήκε έξω από τα 15 έως 20 λεπτά';
+  end if;
+
+  -- Η drain δεν στέλνει με το ίδιο κλειδί μετά τις 20 ώρες.
+  j := pg_temp.probe_row('oura:j', 'pending', null, true, 1, p_since := interval '21 hours', p_age := interval '19 hours');
+  perform public.drain_email_outbox(100);
+  select status, last_error, request_id into r from public.email_outbox where id = j;
+  if r.status <> 'failed' or r.last_error <> 'idempotency_window' or r.request_id is not null then
+    raise exception '[Ο] Η drain έστειλε με το ίδιο κλειδί έξω από το παράθυρο: «%/%»', r.status, r.last_error;
+  end if;
+
+  -- Το όριο μάρκετινγκ μετρά ό,τι ίσως έφυγε.
+  perform pg_temp.probe_row('oura:k', 'failed', null, true, 3, 'marketing', 'oura-k@probe.test', p_age := interval '1 hour');
+  perform pg_temp.probe_row('oura:l', 'failed', null, false, 3, 'marketing', 'oura-l@probe.test', p_age := interval '1 hour');
+  if public.can_send_marketing('oura-k@probe.test') then
+    raise exception '[Ο] Το όριο μάρκετινγκ αγνοεί email που ίσως έφυγε (failed με αβέβαιη έκβαση)';
+  end if;
+  if not public.can_send_marketing('oura-l@probe.test') then
+    raise exception '[Ο] Το όριο μάρκετινγκ μετρά σίγουρη αποτυχία σαν αποστολή';
+  end if;
+  raise notice 'probe: [Ο] η αβέβαιη έκβαση κρατά το κλειδί, κόβεται στο παράθυρο και μετρά στο όριο· η ριπή 429 σκορπίζει';
 end $probe$;

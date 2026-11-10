@@ -31,6 +31,7 @@ import { authorizeCron, cronDenial } from '../_shared/auth.ts'
 import { runHealth, diagnose } from '../_shared/probe.mjs'
 import { FEEDS, feedEntry, previousFeeds, feedAlert } from '../_shared/feedAlert.mjs'
 import { senderFrom } from '../_shared/sender.mjs'
+import { outboxVerdict } from '../_shared/outboxHealth.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -223,5 +224,10 @@ Deno.serve(async (req) => {
   // διαβαζόταν `"ok":true,"kind":"ok"` με το `feed:market:σπασμένη` χωμένο σε
   // λίστα, δηλαδή ακριβώς το «όλα καλά» που δεν ίσχυε.
   const feedsOk = feeds.every(f => f.ok)
-  return json({ ok, feeds_ok: feedsOk, kind, checked: results.length, failed: failed.length, alert, feeds: feeds.map(f => `${f.path}:${f.ok ? 'ok' : 'σπασμένη'}`), feeds_alert: feedsAlert })
+  // Η ουρά των email, χωριστά όπως οι τροφοδοσίες: failed ή probably_sent
+  // πάνω από το κατώφλι του 24ώρου (_shared/outboxHealth.ts).
+  const { data: outboxRows, error: outboxErr } = await supabase.rpc('email_outbox_health')
+  const email = outboxVerdict(outboxRows, outboxErr)
+  if (!email.ok) console.error('[health-check] ουρά email:', email.why)
+  return json({ ok, feeds_ok: feedsOk, email_ok: email.ok, email: email.why, email_counts: email.counts, kind, checked: results.length, failed: failed.length, alert, feeds: feeds.map(f => `${f.path}:${f.ok ? 'ok' : 'σπασμένη'}`), feeds_alert: feedsAlert })
 })

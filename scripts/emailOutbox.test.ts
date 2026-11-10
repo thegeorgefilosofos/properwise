@@ -11,6 +11,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectRef, outboxIdempotencyKey, resendErrorName } from '../supabase/functions/_shared/outboxKey';
+import { outboxVerdict, OUTBOX_LIMITS } from '../supabase/functions/_shared/outboxHealth';
 
 const DIR = 'supabase/migrations';
 let pass = 0; const fails: string[] = [];
@@ -60,6 +61,14 @@ const rec = latest('reconcile_email_outbox');
 ok('το 409 γράφεται probably_sent, όχι failed', /status_code = 409 then\s*(--[^\n]*\n\s*)*update public\.email_outbox\s*set status = 'probably_sent'/.test(rec));
 ok('το 409 concurrent ξαναπροσπαθεί με το ίδιο κλειδί', /concurrent_idempotent_requests' and v_same then\s*(--[^\n]*\n\s*)*update public\.email_outbox\s*set status = 'pending'(?![^;]*idem_gen)/.test(rec));
 ok('η σίγουρη αποτυχία αλλάζει γενιά κλειδιού', /->>'definite'[^;]*then\s*(--[^\n]*\n\s*)*update public\.email_outbox[^;]*idem_gen = idem_gen \+ 1/.test(rec));
+ok('νέα γενιά ΜΟΝΟ αν καμία προσπάθεια της γενιάς δεν ήταν αβέβαιη', /'true' and not r\.idem_uncertain then\s*(--[^\n]*\n\s*)*update public\.email_outbox[^;]*idem_gen = idem_gen \+ 1/.test(rec)
+  && (rec.match(/idem_gen = idem_gen \+ 1/g) || []).length === 1);
+ok('η αβέβαιη έκβαση σηκώνει τη σημαία', /'response_lost:retry'/.test(rec) && /idem_uncertain = true, last_error = 'response_lost:retry'/.test(rec)
+  && /idem_uncertain = true, last_error = v_why/.test(rec) && /idem_uncertain = true, last_error = 'response_lost'\s/.test(rec));
+ok('οι επαναλήψεις έχουν τυχαίο μέρος στην καθυστέρηση', /v_jitter\s*:=\s*make_interval\(secs => floor\(random\(\)/.test(rec)
+  && (rec.match(/make_interval\(mins => 15 \* r\.attempts\) \+ v_jitter/g) || []).length === 3);
+ok('η drain δεν στέλνει με το ίδιο κλειδί έξω από το παράθυρο', /if r\.idem_uncertain and [^\n]*< now\(\) - interval '20 hours' then\s*update public\.email_outbox set status = 'failed', last_error = 'idempotency_window'/.test(drain));
+ok('η drain δεν κόβει με το όριο την επανάληψη ίδιου κλειδιού', /'marketing' and not r\.idem_uncertain and not public\.can_send_marketing/.test(drain));
 ok('η drain περνά τη γενιά του κλειδιού', /'outboxGen',\s*r\.idem_gen/.test(drain));
 ok('η drain κρατά την ώρα της πρώτης αποστολής με το κλειδί', /idem_since = coalesce\(idem_since, now\(\)\)/.test(drain));
 const win = /v_window\s+constant\s+interval\s*:=\s*interval\s*'(\d+) hours'/.exec(rec);
@@ -83,6 +92,16 @@ ok('χωρίς απάντηση δεν ξαναστέλνει', /response_lost/.
 const cap = latest('can_send_marketing');
 ok('το όριο μάρκετινγκ μετρά και τα dispatched', /'dispatched'/.test(cap));
 ok('το όριο μάρκετινγκ μετρά και τα probably_sent', /'probably_sent'/.test(cap));
+ok('το όριο μάρκετινγκ μετρά και όσα ίσως έφυγαν', /idem_uncertain and status in \('pending', 'failed', 'expired'\)/.test(cap));
+
+// ── Η παρακολούθηση: το health-check διαβάζει την ουρά ───────────────────
+const hc = readFileSync('supabase/functions/health-check/index.ts', 'utf8');
+ok('το health-check διαβάζει την email_outbox_health', /rpc\('email_outbox_health'\)/.test(hc));
+ok('το health-check απαντά email_ok δίπλα στο ok', /email_ok:\s*email\.ok/.test(hc) && /return json\(\{ ok, feeds_ok/.test(hc));
+ok('ήσυχη ουρά: εντάξει', outboxVerdict([{ status: 'sent', n: 120 }, { status: 'failed', n: 1 }], null).ok);
+ok('failed πάνω από το κατώφλι: όχι εντάξει', !outboxVerdict([{ status: 'failed', n: OUTBOX_LIMITS.failed }], null).ok);
+ok('probably_sent πάνω από το κατώφλι: όχι εντάξει', !outboxVerdict([{ status: 'probably_sent', n: OUTBOX_LIMITS.probably_sent }], null).ok);
+ok('σφάλμα ανάγνωσης: όχι εντάξει', !outboxVerdict(null, { message: 'x' }).ok);
 
 const all = readdirSync(DIR).filter(x => x.endsWith('.sql')).map(f => readFileSync(join(DIR, f), 'utf8')).join('\n');
 ok('η reconcile τρέχει από cron', /cron\.schedule\('email-outbox-reconcile'/.test(all));

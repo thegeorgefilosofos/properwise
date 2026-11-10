@@ -24,23 +24,29 @@
 --        409 του Resend       → probably_sent (το κλειδί έχει ήδη χρησιμοποιηθεί)
 --                               ή, όσο τρέχει η πρώτη, ξανά με το ίδιο κλειδί
 --        άλλο 2xx             → failed χωρίς επανάληψη (ίσως έφυγε)
---        σίγουρη αποτυχία     → pending ξανά με ΝΕΑ γενιά κλειδιού
+--        σίγουρη αποτυχία     → pending ξανά με ΝΕΑ γενιά κλειδιού, μόνο αν
+--                               καμία προσπάθεια της γενιάς δεν ήταν αβέβαιη
+--                               (`idem_uncertain`)· αλλιώς ίδιο κλειδί
 --        αβέβαιη έκβαση       → pending ξανά με το ΙΔΙΟ κλειδί, μόνο μέσα στο
 --                               παράθυρο των 20 ωρών από την πρώτη αποστολή
 --        καμία απάντηση >60'  → όπως η αβέβαιη έκβαση: ίδιο κλειδί, ίδιο
 --                               παράθυρο. Τα net.* είναι UNLOGGED και χάνονται
 --                               σε κατάρρευση· ο Resend δεν ξαναστέλνει.
---      Ολα ως 3 προσπάθειες, μετά failed.
+--      Ολα ως 3 προσπάθειες, μετά failed. Η καθυστέρηση έχει τυχαίο μέρος
+--      (ως 5 λεπτά), ώστε μια ριπή 429 να μην ξαναχτυπήσει όλη μαζί.
+--      Η drain ελέγχει κι αυτή το παράθυρο πριν στείλει με το ίδιο κλειδί.
 --   3. Χωρίς το μυστικό `email_cron` ή το `functions_base_url` η drain ΣΗΚΩΝΕΙ ΣΦΑΛΜΑ, ώστε το pg_cron
 --      να γράψει failed και να το δει ο έλεγχος υγείας, αντί για «succeeded».
 --   4. Το όριο συχνότητας μάρκετινγκ (can_send_marketing) μετρά και τα
 --      `dispatched` και τα `probably_sent`: ένα email σε πτήση ή με κλειδί που
---      ο Resend έχει ήδη δει έχει φύγει για τον παραλήπτη.
+--      ο Resend έχει ήδη δει έχει φύγει για τον παραλήπτη. Και όσα ίσως
+--      έφυγαν (pending, failed, expired με `idem_uncertain`).
 --   5. Η ακύρωση πρόσκλησης λογιστή (απόσυρση, διαγραφή αποστολέα) πιάνει και
 --      τα `dispatched`. Αλλιώς μια γραμμή σε πτήση γύριζε σε pending μετά από
 --      5xx και η πρόσκληση που ανακλήθηκε έφευγε.
 --   6. Η email_outbox_health() δίνει στην παρακολούθηση τις καταστάσεις του
---      τελευταίου 24ώρου, μαζί με τα probably_sent.
+--      τελευταίου 24ώρου, μαζί με τα probably_sent. Τη διαβάζει το
+--      health-check και απαντά `email_ok` (_shared/outboxHealth.ts).
 --
 -- ΠΗΓΗ ΓΙΑ ΤΟΝ RESEND (τεκμηρίωση «Idempotency Keys», resend.com/docs/dashboard/
 -- emails/idempotency-keys και changelog/idempotency-keys): το κλειδί κρατιέται
@@ -59,6 +65,9 @@ alter table public.email_outbox add column if not exists dispatched_at timestamp
 -- Η γενιά του κλειδιού μοναδικότητας και πότε στάλθηκε πρώτη φορά με αυτήν.
 alter table public.email_outbox add column if not exists idem_gen integer not null default 0;
 alter table public.email_outbox add column if not exists idem_since timestamptz;
+-- Μια προσπάθεια της τρέχουσας γενιάς είχε αβέβαιη έκβαση (ίσως έφυγε). Οσο
+-- ισχύει, η γενιά ΔΕΝ αλλάζει: νέο κλειδί θα μπορούσε να στείλει δεύτερο email.
+alter table public.email_outbox add column if not exists idem_uncertain boolean not null default false;
 
 create index if not exists email_outbox_dispatched_idx
   on public.email_outbox (dispatched_at) where status = 'dispatched';
@@ -114,7 +123,17 @@ begin
       continue;
     end if;
 
-    if r.category = 'marketing' and not public.can_send_marketing(r.to_email) then
+    -- ΤΟ ΙΔΙΟ ΚΛΕΙΔΙ ΜΟΝΟ ΜΕΣΑ ΣΤΟ ΠΑΡΑΘΥΡΟ. Μετά από αβέβαιη έκβαση η γραμμή
+    -- ξαναφεύγει με το ίδιο κλειδί· αν πέρασαν 20 ώρες από την πρώτη αποστολή
+    -- (ο Resend κρατά το κλειδί 24), δεν φεύγει: θα μπορούσε να είναι δεύτερο.
+    if r.idem_uncertain and coalesce(r.idem_since, r.dispatched_at, r.created_at) < now() - interval '20 hours' then
+      update public.email_outbox set status = 'failed', last_error = 'idempotency_window' where id = r.id;
+      continue;
+    end if;
+
+    -- Το όριο συχνότητας ΟΧΙ στην επανάληψη αβέβαιης έκβασης: με το ίδιο
+    -- κλειδί δεν γίνεται δεύτερο email. Και η ίδια η γραμμή μετρά ήδη στο όριο.
+    if r.category = 'marketing' and not r.idem_uncertain and not public.can_send_marketing(r.to_email) then
       update public.email_outbox set status = 'skipped', last_error = 'frequency_cap' where id = r.id;
       continue;
     end if;
@@ -161,9 +180,11 @@ declare
   v_window constant interval := interval '20 hours';
   v_why    text;
   v_same   boolean;   -- επιτρέπεται επανάληψη με το ίδιο κλειδί
+  -- Τυχαίο μέρος στην καθυστέρηση: μια ριπή 429 δεν ξαναχτυπά όλη μαζί.
+  v_jitter interval;
 begin
   for r in
-    select o.id, o.attempts, o.dispatched_at, o.idem_since,
+    select o.id, o.attempts, o.dispatched_at, o.idem_since, o.idem_uncertain,
            h.id as resp_id, h.status_code, h.content, h.timed_out, h.error_msg
       from public.email_outbox o
       left join net._http_response h on h.id = o.request_id
@@ -173,6 +194,7 @@ begin
      for update of o skip locked
   loop
     v_same := r.attempts < v_max and coalesce(r.idem_since, r.dispatched_at) > now() - v_window;
+    v_jitter := make_interval(secs => floor(random() * 300)::int);
 
     if r.resp_id is null then
       -- Δεν ήρθε ακόμη απάντηση. Μετά από μία ώρα δεν θα έρθει: τα net.* είναι
@@ -181,12 +203,12 @@ begin
       if r.dispatched_at < now() - interval '60 minutes' then
         if v_same then
           update public.email_outbox
-             set status = 'pending', request_id = null, scheduled_for = now(),
-                 last_error = 'response_lost:retry'
+             set status = 'pending', request_id = null, scheduled_for = now() + v_jitter,
+                 idem_uncertain = true, last_error = 'response_lost:retry'
            where id = r.id and status = 'dispatched';
         else
           update public.email_outbox
-             set status = 'failed', last_error = 'response_lost'
+             set status = 'failed', idem_uncertain = true, last_error = 'response_lost'
            where id = r.id and status = 'dispatched';
         end if;
         v_n := v_n + 1;
@@ -224,8 +246,8 @@ begin
       -- Resend θα γυρίσει την απάντησή της.
       update public.email_outbox
          set status = 'pending', request_id = null,
-             scheduled_for = now() + interval '5 minutes',
-             last_error = 'idempotency:concurrent'
+             scheduled_for = now() + interval '5 minutes' + v_jitter,
+             idem_uncertain = true, last_error = 'idempotency:concurrent'
        where id = r.id and status = 'dispatched';
     elsif r.status_code = 409 then
       -- Το κλειδί το έχει ήδη δει ο Resend: το email πιθανότατα έφυγε. ΟΧΙ
@@ -238,29 +260,42 @@ begin
     elsif r.status_code between 200 and 299 then
       -- 2xx ΧΩΡΙΣ αναγνωρίσιμο σώμα: ίσως έφυγε. Οχι επανάληψη, όχι διπλό email.
       update public.email_outbox
-         set status = 'failed', last_error = left('unexpected_2xx:' || coalesce(r.content, ''), 300)
+         set status = 'failed', idem_uncertain = true,
+             last_error = left('unexpected_2xx:' || coalesce(r.content, ''), 300)
        where id = r.id and status = 'dispatched';
-    elsif r.attempts < v_max and coalesce(v_body->>'definite', '') = 'true' then
-      -- ΣΙΓΟΥΡΗ αποτυχία (ο Resend απάντησε λάθος ή λείπει το κλειδί του):
-      -- τίποτα δεν έφυγε. Νέα γενιά κλειδιού, ώστε μια απάντηση λάθους που
-      -- ίσως κράτησε ο Resend να μην ξαναπαιχτεί· νέο παράθυρο 24 ωρών.
+    elsif r.attempts < v_max and coalesce(v_body->>'definite', '') = 'true' and not r.idem_uncertain then
+      -- ΣΙΓΟΥΡΗ αποτυχία (ο Resend απάντησε λάθος ή λείπει το κλειδί του) και
+      -- καμία προηγούμενη προσπάθεια της γενιάς δεν ήταν αβέβαιη: τίποτα δεν
+      -- έφυγε. Νέα γενιά κλειδιού, ώστε μια απάντηση λάθους που ίσως κράτησε
+      -- ο Resend να μην ξαναπαιχτεί· νέο παράθυρο 24 ωρών.
       update public.email_outbox
          set status = 'pending', request_id = null,
              idem_gen = idem_gen + 1, idem_since = null,
-             scheduled_for = now() + make_interval(mins => 15 * r.attempts),
+             scheduled_for = now() + make_interval(mins => 15 * r.attempts) + v_jitter,
+             last_error = v_why
+       where id = r.id and status = 'dispatched';
+    elsif v_same and coalesce(v_body->>'definite', '') = 'true' then
+      -- Σίγουρη αποτυχία ΤΩΡΑ, αλλά μια παλιότερη προσπάθεια της γενιάς ίσως
+      -- έφυγε: νέο κλειδί θα μπορούσε να στείλει δεύτερο email. Ιδιο κλειδί.
+      update public.email_outbox
+         set status = 'pending', request_id = null,
+             scheduled_for = now() + make_interval(mins => 15 * r.attempts) + v_jitter,
              last_error = v_why
        where id = r.id and status = 'dispatched';
     elsif v_same then
       -- ΑΒΕΒΑΙΗ έκβαση (λήξη χρόνου, σφάλμα δικτύου, 5xx χωρίς `definite`):
-      -- ίσως έφυγε. Ιδιο κλειδί, μέσα στο παράθυρο.
+      -- ίσως έφυγε. Ιδιο κλειδί μέσα στο παράθυρο. Η σημαία μένει.
       update public.email_outbox
          set status = 'pending', request_id = null,
-             scheduled_for = now() + make_interval(mins => 15 * r.attempts),
-             last_error = v_why
+             scheduled_for = now() + make_interval(mins => 15 * r.attempts) + v_jitter,
+             idem_uncertain = true, last_error = v_why
        where id = r.id and status = 'dispatched';
     else
+      -- Τέλος προσπαθειών ή παραθύρου. Χωρίς νέα γενιά. Αν αυτή η τελευταία
+      -- έκβαση ήταν αβέβαιη, η σημαία μένει και η γραμμή μετρά στο όριο.
       update public.email_outbox
          set status = 'failed',
+             idem_uncertain = idem_uncertain or coalesce(v_body->>'definite', '') <> 'true',
              last_error = left(
                case when r.attempts >= v_max then 'after ' || r.attempts || ' attempts: '
                     else 'idempotency_window: ' end || v_why, 300)
@@ -283,11 +318,14 @@ create or replace function public.can_send_marketing(p_to_email text)
  stable
  set search_path to 'public'
 as $function$
+  -- Μετρά ό,τι έφυγε ή ίσως έφυγε: και τις γραμμές με αβέβαιη έκβαση που
+  -- περιμένουν επανάληψη, απέτυχαν ή έληξαν.
   select coalesce(
     (select max(coalesce(sent_at, dispatched_at))
        from public.email_outbox
       where to_email = lower(trim(p_to_email)) and category = 'marketing'
-        and status in ('sent', 'dispatched', 'probably_sent'))
+        and (status in ('sent', 'dispatched', 'probably_sent')
+             or (idem_uncertain and status in ('pending', 'failed', 'expired'))))
       < now() - interval '3 days',
     true);
 $function$;
