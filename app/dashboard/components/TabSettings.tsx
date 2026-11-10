@@ -16,6 +16,7 @@ import * as properties from '@/lib/data/properties';
 import * as settings from '@/lib/data/settings';
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing';
+import { nameDaysLeft, nameLockedError, NAME_LOCKED_TEXT } from './nameLock';
 import NotificationSettings from './NotificationSettings';
 import { CustomSelect, Toggle } from './UIComponents';
 import { T, TT, Card, SecHdr, Btn, LinkBtn, PageTitle, fdLong, fn, settingsField, ABSENT, pageShell, Bar } from '@/components/Theme';
@@ -469,7 +470,7 @@ function ProfileCard({ userId, email }: { userId: string; email: string }) {
 
   // Το ρολόι διαβάζεται ΜΙΑ φορά, στην προσάρτηση — όχι σε κάθε απόδοση.
   const [nowMs] = useState(() => Date.now());
-  const daysLeft = changedAt ? Math.max(0, 30 - Math.floor((nowMs - new Date(changedAt).getTime()) / 86400000)) : 0;
+  const daysLeft = nameDaysLeft(changedAt, nowMs);
   const nameLocked = daysLeft > 0;
 
   const saveEmail = async (v: string) => {
@@ -479,10 +480,12 @@ function ProfileCard({ userId, email }: { userId: string; email: string }) {
       : { ok: true, text: 'Σου στείλαμε σύνδεσμο επιβεβαίωσης στη νέα διεύθυνση.' };
   };
   const saveName = async (v: string) => {
-    const nowIso = new Date().toISOString();
-    const { error } = await billing.save(supabase, userId, { full_name: v, full_name_changed_at: nowIso });
-    if (error) return { ok: false, text: failed('Το όνομα δεν αποθηκεύτηκε', error) };
-    setName(v); setChangedAt(nowIso);
+    // ΤΗ ΣΦΡΑΓΙΔΑ ΤΗ ΓΡΑΦΕΙ Η ΒΑΣΗ (20261110131000, lock_full_name_change). Ως
+    // τις 10/11/2026 τη γραφε αυτή η οθόνη, οπότε ο κανόνας «μία φορά τον μήνα»
+    // παρακαμπτόταν με απευθείας κλήση. Τώρα η βάση αρνείται με `full_name_locked`.
+    const { error } = await billing.save(supabase, userId, { full_name: v });
+    if (error) return { ok: false, text: nameLockedError(error) ? NAME_LOCKED_TEXT : failed('Το όνομα δεν αποθηκεύτηκε', error) };
+    setName(v); if (name.trim()) setChangedAt(new Date().toISOString());
     return null;
   };
 
@@ -496,7 +499,7 @@ function ProfileCard({ userId, email }: { userId: string; email: string }) {
           placeholder="Το όνομά σου" locked={nameLocked} onSave={saveName}
           hint={nameLocked
             ? `Το όνομα αλλάζει μία φορά τον μήνα. Ξανά σε ${daysLeft} ${daysLeft === 1 ? 'ημέρα' : 'ημέρες'}.`
-            : 'Το όνομα αλλάζει μία φορά τον μήνα.'} />
+            : NAME_LOCKED_TEXT} />
       </SetList>
     </Card>
   );

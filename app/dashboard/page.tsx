@@ -46,6 +46,7 @@ import UpgradeModal from './components/UpgradeModal';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { MYAADE_OPEN_EVENT, type MyaadeOpenDetail } from './components/myaadeOpen';
+import { useAppointmentReminders } from './components/useAppointmentReminders';
 import FeatureLock, { LockBadge } from './components/FeatureLock';
 import { PLANS } from '@/lib/billing/plans';
 import { isTabAllowed, isTabPurchasable, canAddProperty, hasFeature, planAtLeast, paidPlanForProfile, requiredPlanForFeature, propertyLimit } from '@/lib/billing/entitlements';
@@ -113,6 +114,9 @@ export default function Dashboard() {
     window.addEventListener(MYAADE_OPEN_EVENT, open);
     return () => window.removeEventListener(MYAADE_OPEN_EVENT, open);
   }, []);
+
+  // «ΔΕΚΑ ΛΕΠΤΑ ΠΡΙΝ ΑΠΟ ΚΑΘΕ ΡΑΝΤΕΒΟΥ»: σε κάθε καρτέλα, για όλα τα ακίνητα.
+  useAppointmentReminders(user?.id);
 
   if (loading || !user) return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--bg-base)'}}>
