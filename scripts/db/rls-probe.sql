@@ -2656,6 +2656,11 @@ begin
        values (pr, o, 'Βραχυχρόνιο', 'short_term');
   insert into public.tenants (id, user_id, property_id, full_name, email, lease_start, monthly_rent)
        values (te, o, pr, 'Νέος Ενοικιαστής', 'enoikiastis@properwise.gr', current_date, 480.00);
+  -- Ενοικιαστής που έφυγε, με μίσθωση που «λήγει» σε δέκα μέρες: όπως τον
+  -- γράφει η εφαρμογή (lib/data/tenants.ts), status 'past' και move_out_date.
+  insert into public.tenants (id, user_id, property_id, full_name, lease_start, lease_end, monthly_rent, status, move_out_date)
+       values ('44444444-0000-0000-0000-000000000003', o, pr, 'Πρώην Ενοικιαστής',
+               current_date - 300, current_date + 10, 450.00, 'past', current_date - 5);
 
   perform public.lifecycle_enqueue();
 
@@ -2667,21 +2672,24 @@ begin
    where copy_id = 'connect_calendar' and to_email = 'adranis@properwise.gr';
   if n <> 1 then raise exception 'Η σύνδεση ημερολογίου δεν μπήκε στην ουρά: % γραμμές', n; end if;
 
-  -- ΠΑΕΙ ΣΤΟΝ ΕΝΟΙΚΙΑΣΤΗ ΚΑΙ ΕΙΝΑΙ ΛΕΙΤΟΥΡΓΙΚΟ. Αν έφευγε ως εμπορικό, θα
-  -- ήταν μήνυμα μάρκετινγκ σε άνθρωπο που δεν έδωσε ποτέ συγκατάθεση.
+  -- ΣΤΟΝ ΕΝΟΙΚΙΑΣΤΗ ΔΕΝ ΦΕΥΓΕΙ ΤΙΠΟΤΑ (απόφαση ιδιοκτήτη 10/11/2026). Οι
+  -- Ρυθμίσεις το υπόσχονται: «Στον ενοικιαστή δεν στέλνει τίποτα η εφαρμογή».
+  select count(*) into n from public.email_outbox where to_email = 'enoikiastis@properwise.gr';
+  if n <> 0 then raise exception 'Μπήκε στην ουρά email προς ενοικιαστή: % γραμμές', n; end if;
+
+  -- ΚΑΙ Ο ΙΔΙΟΚΤΗΤΗΣ ΔΕΝ ΠΑΙΡΝΕΙ «ΛΗΓΕΙ Η ΜΙΣΘΩΣΗ» ΓΙΑ ΕΝΟΙΚΙΑΣΤΗ ΠΟΥ ΕΦΥΓΕ.
   select count(*) into n from public.email_outbox
-   where copy_id = 'tenant_welcome' and to_email = 'enoikiastis@properwise.gr'
-     and category = 'operational';
-  if n <> 1 then raise exception 'Το καλωσόρισμα ενοικιαστή δεν έφυγε σωστά: % γραμμές', n; end if;
+   where copy_id = 'lease_ending' and to_email = 'adranis@properwise.gr';
+  if n <> 0 then raise exception 'Ειδοποίηση λήξης για ενοικιαστή που έφυγε: % γραμμές', n; end if;
 
   -- ΚΑΙ ΔΕΥΤΕΡΗ ΕΚΤΕΛΕΣΗ ΔΕΝ ΞΑΝΑΣΤΕΛΝΕΙ ΤΙΠΟΤΑ.
   perform public.lifecycle_enqueue();
   select count(*) into n from public.email_outbox
-   where copy_id in ('inactive_30', 'connect_calendar', 'tenant_welcome')
-     and to_email in ('adranis@properwise.gr', 'enoikiastis@properwise.gr');
-  if n <> 3 then raise exception 'Δεύτερο πέρασμα ξαναέστειλε: % γραμμές αντί για 3', n; end if;
+   where copy_id in ('inactive_30', 'connect_calendar')
+     and to_email = 'adranis@properwise.gr';
+  if n <> 2 then raise exception 'Δεύτερο πέρασμα ξαναέστειλε: % γραμμές αντί για 2', n; end if;
 
-  raise notice 'probe: τα έξι κείμενα φεύγουν και δεν ξαναφεύγουν στο δεύτερο πέρασμα';
+  raise notice 'probe: τα κείμενα φεύγουν μία φορά, τίποτα στον ενοικιαστή, καμία λήξη για όποιον έφυγε';
 end $probe$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
