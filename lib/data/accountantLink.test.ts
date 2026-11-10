@@ -13,7 +13,11 @@
 // ξαναβάζει το `upsert` θα ξανάνοιγε την πόρτα χωρίς να το δει κανείς — δεν
 // σπάει καμία οθόνη, δεν κοκκινίζει κανένας σαρωτής. Εδώ σπάει.
 // ═══════════════════════════════════════════════════════════════════════════
-import { issue, revoke } from './accountantLink';
+import { issue, revoke, rotate, isMfaDenied, MFA_LINK_SAY, type AccountantLink } from './accountantLink';
+import { MFA_REQUIRED } from '@/lib/auth/mfa';
+
+/** Ο σύνδεσμος, ή null όταν η απάντηση ήταν άρνηση (π.χ. MFA_REQUIRED). */
+const L = (x: AccountantLink | null | string): AccountantLink | null => (x && typeof x === 'object' ? x : null);
 
 let pass = 0, fail = 0;
 const fails: string[] = [];
@@ -65,7 +69,7 @@ void (async () => {
     ok('και σβήνει την πρόσβαση', db.row?.active === false);
     ok('ΚΑΙ ΤΟ ΚΛΕΙΔΙ ΔΕΝ ΕΙΝΑΙ ΠΙΑ ΤΟ ΠΑΛΙΟ', db.row?.token !== 'παλιό-κλειδί');
 
-    const again = await issue(client, 'u1');
+    const again = L(await issue(client, 'u1'));
     ok('η νέα πύλη βγαίνει', again !== null);
     ok('ΚΑΙ ΔΕΝ ΔΙΝΕΙ ΤΟ ΠΑΛΙΟ ΚΛΕΙΔΙ', again?.token !== 'παλιό-κλειδί');
     ok('ο νέος σύνδεσμος είναι ζωντανός', again?.live === true);
@@ -78,7 +82,7 @@ void (async () => {
   {
     const db = fakeDb({ ...LIVE, active: false });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const link = await issue(db as any, 'u1');
+    const link = L(await issue(db as any, 'u1'));
     ok('ανενεργή γραμμή δεν ανασταίνεται με το ίδιο κλειδί', link?.token !== 'παλιό-κλειδί');
   }
 
@@ -88,9 +92,29 @@ void (async () => {
   {
     const db = fakeDb(LIVE);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const link = await issue(db as any, 'u1');
+    const link = L(await issue(db as any, 'u1'));
     eq('ενεργός σύνδεσμος κρατά το κλειδί του', link?.token, 'παλιό-κλειδί');
     ok('και μένει ζωντανός', link?.live === true);
+  }
+
+  // ── Η ΑΡΝΗΣΗ ΓΙΑ ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ΛΕΓΕΤΑΙ (09/11/2026: επτά 403 σε πέντε λεπτά) ──
+  // Η βάση αρνείται την εγγραφή με 42501. Η `issue` και η `rotate` πρέπει να
+  // επιστρέψουν MFA_REQUIRED, όχι σκέτο null, ώστε η οθόνη να πει τι να κάνει.
+  {
+    const denied = { code: '42501', message: 'new row violates row-level security policy for table "accountant_links"' };
+    const api = {
+      from() { return api; }, select() { return api; }, eq() { return api; },
+      upsert() { return { select: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: denied }) }) }; },
+      maybeSingle() { return Promise.resolve({ data: { user_id: 'u1', token: 'κ', active: true, expires_at: null }, error: null }); },
+    };
+    const db = api as unknown as Parameters<typeof issue>[0];
+    eq('issue: άρνηση MFA επιστρέφει MFA_REQUIRED', await issue(db, 'u1'), MFA_REQUIRED);
+    eq('rotate: άρνηση MFA επιστρέφει MFA_REQUIRED', await rotate(db, 'u1'), MFA_REQUIRED);
+    ok('το mfa_required της RPC αναγνωρίζεται', isMfaDenied({ code: 'P0001', message: 'mfa_required' } as never));
+    ok('άλλο σφάλμα δεν βαφτίζεται MFA', !isMfaDenied({ code: '23505', message: 'duplicate key' } as never));
+    ok('42501 άλλου πίνακα δεν βαφτίζεται MFA', !isMfaDenied({ code: '42501', message: 'new row violates row-level security policy for table "tenants"' } as never));
+    ok('σκέτο 42501 χωρίς μήνυμα δεν βαφτίζεται MFA', !isMfaDenied({ code: '42501', message: 'permission denied for function x' } as never));
+    ok('η φράση λέει πού ενεργοποιείται', /«Ασφάλεια»/.test(MFA_LINK_SAY) && /επαλήθευση δύο βημάτων/.test(MFA_LINK_SAY));
   }
 
   console.log(fail === 0 ? `✓ accountantLink: ${pass} έλεγχοι πέρασαν` : `✗ accountantLink: ${fail} απέτυχαν από ${pass + fail}\n  ${fails.join('\n  ')}`);

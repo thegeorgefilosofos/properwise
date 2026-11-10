@@ -41,6 +41,7 @@ import { openRequests, answerRequest, type OpenRequest } from '@/lib/data/accoun
 import { invitesForMe, answerInvite, inviteSender, type ReceivedInvite } from '@/lib/data/accountantInvites';
 import { confirmDialog } from '@/components/confirmBus';
 import * as accountantLink from '@/lib/data/accountantLink';
+import { MFA_REQUIRED } from '@/lib/auth/mfa';
 import { notify, notifyError } from '@/components/Toast';
 import { FEATURE_MIN_PLAN } from '@/lib/billing/entitlements';
 import { PLANS } from '@/lib/billing/plans';
@@ -734,6 +735,7 @@ function AccountantInvites({ userId, canShare }: { userId: string; canShare: boo
         // Ο ΣΥΝΔΕΣΜΟΣ ΠΡΩΤΑ. Η σύνδεση γράφεται με τον ζωντανό σύνδεσμο του
         // πελάτη· η `issue` τον φτιάχνει ή ανανεώνει τη λήξη του υπάρχοντος.
         const link = await accountantLink.issue(supabase, userId)
+        if (link === MFA_REQUIRED) { notifyError(accountantLink.MFA_LINK_SAY); return }
         if (!link?.live) { notifyError('Ο σύνδεσμος για τον λογιστή δεν δημιουργήθηκε'); return }
       }
       const r = await answerInvite(supabase, inv.id, accept)

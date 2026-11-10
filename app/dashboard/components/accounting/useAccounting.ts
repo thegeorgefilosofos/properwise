@@ -31,6 +31,7 @@ import type {
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventoryStore from '@/lib/data/inventory'
 import * as accountantLink from '@/lib/data/accountantLink'
+import { MFA_REQUIRED } from '@/lib/auth/mfa'
 import type { LoanView } from '@/lib/loans/shape'
 import type { TaxStay } from '@/lib/tax/shortTermTax'
 import { saved } from '@/components/dbWrite'
@@ -1033,6 +1034,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
       // lib/data/accountantLink.ts. Εδώ ήταν γραμμένες δεύτερη φορά και η
       // εκδοχή των Ρυθμίσεων είχε ήδη αποκλίνει.
       const link = await accountantLink.issue(supabase, userId)
+      if(link === MFA_REQUIRED){ notifyError(accountantLink.MFA_LINK_SAY); return }
       if(!link){ notifyError('Ο σύνδεσμος για τον λογιστή δεν δημιουργήθηκε'); return }
       setAcctLink(link.url)
       setAcctUntil(accountantLink.expiryLabel(link))
@@ -1055,6 +1057,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     try{
       const link = await accountantLink.rotate(supabase, userId)
       if(link === 'insecure'){ notifyError('Ο περιηγητής δεν μπορεί να παραγάγει ασφαλή σύνδεσμο. Δοκίμασε από ασφαλή σύνδεση (https).'); return }
+      if(link === MFA_REQUIRED){ notifyError(accountantLink.MFA_LINK_SAY); return }
       if(!link){ notifyError('Ο σύνδεσμος δεν ανακλήθηκε'); return }
       setAcctLink(link.url)
       setAcctUntil(accountantLink.expiryLabel(link))

@@ -49,6 +49,7 @@ import { type LegalForm } from '@/lib/accounting/dossier';
 import BillsServices     from './BillsServices';
 import ExpenseSwitchAlert from './ExpenseSwitchAlert';
 import { useLoad } from '@/app/hooks/useLoad';
+import { notifyError } from '@/components/Toast';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Props {
@@ -212,7 +213,11 @@ export default function TabBills({
       // και μπορούσε να μη συμφωνεί με το άθροισμα των γραμμών από κάτω — δύο
       // απαντήσεις στην ίδια ερώτηση, στην ίδια οθόνη.
       setStrip({ recurringPerMonth: totalMonthly(cards) || null, cards });
-    } catch (_) {} finally { setStripLoading(false); }
+    } catch (e) {
+      // Οχι κενή λωρίδα σαν να μην υπάρχουν πάγια: λέμε ότι δεν διαβάστηκαν.
+      console.error('[TabBills] λωρίδα παγίων:', e);
+      notifyError('Τα πάγια δεν φορτώθηκαν. Δοκίμασε ανανέωση.');
+    } finally { setStripLoading(false); }
   }, [propertyId, supabase, userId]);
 
   useEffect(() => {
