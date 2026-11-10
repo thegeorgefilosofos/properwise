@@ -24,7 +24,7 @@ import type { DossierContext } from '@/lib/accounting/dossier';
 import type { CompletenessProperty, YearData } from '@/lib/facts/completeness';
 
 const card: React.CSSProperties = { background: 'var(--surface-raised)', borderRadius: T.radius.card, padding: T.sp.lg, boxShadow: 'var(--elev-1)' };
-const eyebrow: React.CSSProperties = { fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0 };
+const eyebrow: React.CSSProperties = { fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0 };
 
 export default function MeetingPackCard({ userId, year, ownerName, dossier, onEditProperty }: {
   userId: string;

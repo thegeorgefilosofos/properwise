@@ -559,7 +559,7 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
           δεν υπήρχε. */}
       {isPro && scopeKinds > 1 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)' }}>Εμβέλεια</span>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)' }}>Εμβέλεια</span>
           {([
             { id: 'all' as const, label: 'Όλες', Icon: Users },
             { id: 'portfolio' as const, label: 'Όλο το χαρτοφυλάκιο', Icon: Globe },

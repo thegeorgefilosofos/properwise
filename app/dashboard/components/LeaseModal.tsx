@@ -257,7 +257,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
   );
   const stat = (label: string, value: string, strong = false) => (
     <div>
-      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{label}</div>
+      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{label}</div>
       {/* Ήταν 13.5 — μισό εικονοστοιχείο, εκτός της κλίμακας μεγεθών. */}
       <div style={{ fontSize: strong ? 16 : 13, fontWeight: strong ? 700 : 600, color: strong ? 'var(--text-primary)' : 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', marginTop: 4, fontFamily: T.font.sans }}>{value}</div>
     </div>

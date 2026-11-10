@@ -740,7 +740,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
             </div>
           </div>
           <div>
-            <p style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight:600, color:'var(--text-secondary)', marginBottom: 8 }}>Κατηγορία</p>
+            <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-secondary)', marginBottom: 8 }}>Κατηγορία</p>
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
               <Chip active={filterCat==='all'} color="var(--accent)" onClick={()=>setFilterCat('all')} label="Όλες" count={catBase.length}/>
               {Object.entries(CATEGORIES).map(([k,v])=>(
@@ -749,7 +749,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
             </div>
           </div>
           <div>
-            <p style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight:600, color:'var(--text-secondary)', marginBottom: 8 }}>Κατάσταση</p>
+            <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-secondary)', marginBottom: 8 }}>Κατάσταση</p>
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
               <Chip active={filterStatus==='all'} color="var(--accent)" onClick={()=>setFilterStatus('all')} label="Όλες" count={statBase.length}/>
               {Object.entries(STATUSES).map(([k,v])=>(
@@ -759,7 +759,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
           </div>
           <div>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:10 }}>
-              <p style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight:600, color:'var(--text-secondary)', margin:0 }}>Εύρος ημερομηνιών</p>
+              <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-secondary)', margin:0 }}>Εύρος ημερομηνιών</p>
               {(dateFrom||dateTo)&&(()=>{ const f=(d:string)=>d?new Date(d+'T00:00:00').toLocaleDateString('el-GR',{day:'2-digit',month:'2-digit',year:'numeric'}):'…'; return (
                 <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--accent)', background:'var(--accent-soft)', border:'1px solid var(--accent-border)', borderRadius: T.radius.modal, padding:'2px 10px' }}>{f(dateFrom)}<ArrowRight size={11}/>{f(dateTo)}</span>
               )})()}
@@ -809,7 +809,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
           {monthEvents.length>0&&(
             <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
               {/* Ο μήνας τον λέει ο επιλογέας από πάνω, μαζί με τη χρονιά του. */}
-              <p style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight: 600, color:'var(--text-secondary)' }}>Γεγονότα</p>
+              <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, fontFamily: T.font.sans, fontWeight: 600, color:'var(--text-secondary)' }}>Γεγονότα</p>
               {monthEvents.map(e=>(<EventCard key={e.id} event={e} onToggleStatus={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} selected={selectedIds.has(e.id)} onSelect={toggleSelect} bulkMode={bulkMode} sameMonth/>))}
             </div>
           )}

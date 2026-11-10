@@ -44,7 +44,7 @@ export const InfoBlock = ({ title, children, tone }: { title: string; children: 
 export function SectionTitle({ children, info }: { children: React.ReactNode; info?: string }) {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-      <span style={{ fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, fontWeight: 600 }}>{children}</span>
+      <span style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, color:'var(--text-secondary)', fontFamily:T.font.sans, fontWeight: 600 }}>{children}</span>
       {info&&<InfoDot text={info} label={typeof children==='string'?children:undefined}/>}
     </div>
   );

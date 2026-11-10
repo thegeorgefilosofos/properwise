@@ -33,7 +33,7 @@ export const iStyle: React.CSSProperties = {
   fontFamily: T.font.sans, boxSizing: 'border-box', transition: 'border-color 0.15s',
 }
 export function FL({ children }: { children: React.ReactNode }) {
-  return <label style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, fontFamily: T.font.sans }}>{children}</label>
+  return <label style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', marginBottom: 6, fontFamily: T.font.sans }}>{children}</label>
 }
 // Το `min` περνά μέχρι το πεδίο: χωρίς αυτό, τα ποσά και οι εκτιμήσεις κόστους
 // δέχονταν αρνητικούς αριθμούς — δαπάνη μείον διακοσίων ευρώ δεν υπάρχει.

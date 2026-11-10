@@ -252,7 +252,7 @@ export function ShortVsLongCalculator({ today, cta }: {
             πρόβλεψή του: το συγκρίνει με ό,τι ξέρει για τη γειτονιά του και
             απαντά μόνος του. */}
         <div>
-          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600,
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3,
             color: 'var(--text-tertiary)', marginBottom: 8 }}>
             {en ? E.breakEven : 'Πληρότητα ισορροπίας'}
           </div>
@@ -425,7 +425,7 @@ export function ShortVsLongCalculator({ today, cta }: {
           marginTop: 20, padding: 'clamp(14px,2.6vw,18px)', borderRadius: T.radius.inner,
           background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
         }}>
-          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600,
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3,
             color: 'var(--text-tertiary)', marginBottom: 8 }}>
             {en ? E.amaOver : 'Πριν αποφασίσεις'}
           </div>

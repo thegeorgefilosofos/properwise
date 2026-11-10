@@ -45,7 +45,7 @@ const issuedOn = (iso: string, E?: typeof VERIFY_EN): { date: string; time: stri
   return isNaN(d.getTime()) ? null : { date: (E ? fmtFor('en').date : grDate)(athensToday(d)), time: athensTime(d) };
 };
 
-const label: React.CSSProperties = { fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontWeight: 600 };
+const label: React.CSSProperties = { fontSize: 'var(--fs-base)', lineHeight: 1.3, color: 'var(--text-secondary)', fontWeight: 600 };
 const value: React.CSSProperties = { fontSize: 14, color: 'var(--text-primary)', fontWeight: 600, marginTop: 4 };
 
 /** Η απάντηση για έγγραφο που βρέθηκε στο μητρώο. */

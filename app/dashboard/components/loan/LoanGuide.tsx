@@ -162,7 +162,7 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
               {l:'Μείωση από το ανώτατο',v:`-${fmtPct(Math.max(...EURIBOR_HISTORY.map(p=>p.val))-market.euribor_3m)}`,s:'από το 2023'},
             ].map(item=>(
               <div key={item.l} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10,padding:'11px 13px'}}>
-                <p style={{fontSize: 'var(--fs-base)',color:'var(--text-tertiary)',fontWeight:600,fontFamily: T.font.sans,marginBottom:6}}>{item.l}</p>
+                <p style={{fontSize: 'var(--fs-base)', lineHeight: 1.3,color:'var(--text-tertiary)',fontWeight:600,fontFamily: T.font.sans,marginBottom:6}}>{item.l}</p>
                 <p style={{fontSize:16,fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:'var(--text-primary)',fontWeight:700,lineHeight:1}}>{item.v}</p>
                 <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,fontFamily: T.font.sans}}>{item.s}</p>
               </div>

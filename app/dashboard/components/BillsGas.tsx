@@ -35,7 +35,7 @@ const card: React.CSSProperties = { background: 'var(--bg-surface)', border: '1p
 const secHdr = (label: string, sub?: string) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
     <div>
-      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</div>
+      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</div>
       {sub && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 2, fontFamily: T.font.sans }}>{sub}</div>}
     </div>
   </div>
@@ -245,16 +245,16 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
                 αριθμός που ο ιδιοκτήτης θα σύγκρινε με τον πίνακα παρόχων
                 ήταν 20 έως 30% μεγαλύτερος από ό,τι ο πίνακας μετρά. Τώρα η
                 ετικέτα λέει ποιο από τα δύο βλέπει. ══ */}
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 10, fontFamily: T.font.sans }}>{manual > 0 ? 'Ο λογαριασμός σου' : 'Μηνιαίο κόστος προμήθειας'}</div>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 10, fontFamily: T.font.sans }}>{manual > 0 ? 'Ο λογαριασμός σου' : 'Μηνιαίο κόστος προμήθειας'}</div>
             <div style={{ fontSize: 22, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--accent)', lineHeight: 1 }}>{fe(effective)}</div>
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 6, fontFamily: T.font.sans }}>{manual > 0 ? 'Με δίκτυο, ΕΦΚ και ΦΠΑ' : 'Χωρίς δίκτυο, ΕΦΚ και ΦΠΑ'}</div>
           </div>
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '16px 18px' }}>
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 10, fontFamily: T.font.sans }}>Ετήσιο κόστος, εκτίμηση</div>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 10, fontFamily: T.font.sans }}>Ετήσιο κόστος, εκτίμηση</div>
             <div style={{ fontSize: 22, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', lineHeight: 1 }}>{fe(effective * 12)}</div>
           </div>
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '16px 18px' }}>
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 10, fontFamily: T.font.sans }}>Δίκτυο διανομής</div>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 10, fontFamily: T.font.sans }}>Δίκτυο διανομής</div>
             <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, lineHeight: 1.2 }}>{NETWORK_OPERATORS.find(n => n.value === s.networkOperator)?.label}</div>
           </div>
         </div>
@@ -404,7 +404,7 @@ export default function BillsGas({ propertyId, userId = '' }: Props) {
                       style={{ '--row-bg': t.isCurrent ? 'var(--accent-soft)' : isBest ? 'var(--bg-elevated)' : 'var(--bg-surface)',
                         background: t.isCurrent ? undefined : isBest ? 'var(--bg-elevated)' : 'transparent' }}>
                       <td style={{ fontWeight: 600 }}>
-                        {canRank && !t.isCurrent && isBest && <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)', marginRight: 6, fontWeight: 600 }}>Φθηνότερο</span>}
+                        {canRank && !t.isCurrent && isBest && <span style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, color: 'var(--text-tertiary)', marginRight: 6, fontWeight: 600 }}>Φθηνότερο</span>}
                         {t.providerLabel}
                       </td>
                       <td>{t.name}</td>

@@ -942,7 +942,7 @@ export function CustomSelect({
             {opt.header && (
               <div style={{
                 padding: '10px 12px 5px', fontFamily: T.font.sans, fontSize: 'var(--fs-base)',
-                fontWeight: 600,
+                fontWeight: 600, lineHeight: 1.3,
                 color: 'var(--text-tertiary)', userSelect: 'none', pointerEvents: 'none',
               }}>{opt.header}</div>
             )}

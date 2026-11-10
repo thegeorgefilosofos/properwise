@@ -133,7 +133,7 @@ export const calcEnd = (start: string, type: LeaseType, days: number): string =>
 export const s = {
   card:     { background:'var(--bg-surface)',  border:'1px solid var(--border-subtle)',  borderRadius: T.radius.card, padding:'16px', marginBottom:'16px' } as React.CSSProperties,
   cardGold: { background:'var(--bg-surface)',  border:'1px solid var(--border-accent)',  borderRadius: T.radius.card, padding:'16px', marginBottom:'16px' } as React.CSSProperties,
-  sec:      { fontSize: 'var(--fs-base)', fontWeight: 600, color:'var(--text-secondary)', marginBottom:'14px', display:'flex', alignItems:'center', gap:'8px' },
+  sec:      { fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color:'var(--text-secondary)', marginBottom:'14px', display:'flex', alignItems:'center', gap:'8px' },
   dot:      (c='var(--accent)') => ({ width:'6px', height:'6px', borderRadius:'50%', background:c, flexShrink:0 } as React.CSSProperties),
   // ══ Ο ΚΑΤΑΚΟΡΥΦΟΣ ΡΥΘΜΟΣ ΤΗΣ ΦΟΡΜΑΣ, ΜΕΤΡΗΜΕΝΟΣ ═══════════════════════════
   // Απόσταση από το τελευταίο πεδίο μιας ενότητας ως το πρώτο της επόμενης: 73

@@ -73,14 +73,14 @@ function AddToCalendarMenu({ event, onEdit, onDelete, onOpenChange }: { event: C
       </button>
       {open&&createPortal(
         <div ref={popRef} style={{ position:'fixed',top:pos.top,left:pos.left,transform:pos.up?'translateY(-100%)':'none',width:232,maxHeight:pos.maxH,overflowY:'auto',overscrollBehavior:'contain',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.popup,boxShadow:'var(--elev-3)',padding:6,zIndex:2000 }}>
-          <div style={{ fontSize: 'var(--fs-base)',fontWeight: 600,color:'var(--text-tertiary)',padding:'6px 12px 4px',fontFamily: T.font.sans }}>Πρόσθεσε σε ημερολόγιο</div>
+          <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3,fontWeight: 600,color:'var(--text-tertiary)',padding:'6px 12px 4px',fontFamily: T.font.sans }}>Πρόσθεσε σε ημερολόγιο</div>
           {row('Google Calendar',()=>openExt(links.google),<Calendar size={15}/>)}
           {row('Outlook',()=>openExt(links.outlook),<Calendar size={15}/>)}
           {row('Office 365',()=>openExt(links.office),<Calendar size={15}/>)}
           {row('Apple / λήψη .ics',()=>downloadEventIcs(event),<Download size={15}/>)}
           {row('Yahoo',()=>openExt(links.yahoo),<Calendar size={15}/>)}
           <div style={{ height:1,background:'var(--border-subtle)',margin:'6px 8px' }}/>
-          <div style={{ fontSize: 'var(--fs-base)',fontWeight: 600,color:'var(--text-tertiary)',padding:'2px 12px 4px',fontFamily: T.font.sans }}>Κοινοποίηση</div>
+          <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3,fontWeight: 600,color:'var(--text-tertiary)',padding:'2px 12px 4px',fontFamily: T.font.sans }}>Κοινοποίηση</div>
           {row('WhatsApp',()=>openExt(links.whatsapp),<Share2 size={15}/>)}
           {row('Viber',()=>openExt(links.viber),<Share2 size={15}/>)}
           {(onEdit||onDelete)&&<div style={{ height:1,background:'var(--border-subtle)',margin:'6px 8px' }}/>}
@@ -300,7 +300,7 @@ export function Section({ title, color, events, onToggle, onEdit, onDelete, coll
     <div>
       <button onClick={()=>setOpen(o=>!o)} style={{ display:'flex', alignItems:'center', gap:8, background:'none', border:'none', cursor:'pointer', marginBottom:open?11:0, padding:0 }}>
         <span style={{ width:6, height:6, borderRadius:3, background:color, flexShrink:0, opacity:0.9 }}/>
-        <span style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight:600, color:'var(--text-primary)' }}>{title}</span>
+        <span style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-primary)' }}>{title}</span>
         <span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--text-tertiary)', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:10, padding:'0 7px', lineHeight:'17px' }}>{shown}</span>
         <ChevronDown size={13} color="var(--text-tertiary)" style={{ transform:open?'rotate(180deg)':'none', transition:'transform 0.2s' }}/>
       </button>

@@ -126,7 +126,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                τροφοδοσίας) δεν γράφεται τίποτα στη θέση της: ούτε παύλα ούτε
                «σήμερα». Η απουσία λέγεται με απουσία. */
             <span key={item.l} style={{display:'inline-flex',alignItems:'baseline',gap:6,whiteSpace:'nowrap' as const}}>
-              <span style={{fontSize: 'var(--fs-base)',color:'var(--text-tertiary)',fontWeight:600,fontFamily: T.font.sans}}>{item.l}</span>
+              <span style={{fontSize: 'var(--fs-base)', lineHeight: 1.3,color:'var(--text-tertiary)',fontWeight:600,fontFamily: T.font.sans}}>{item.l}</span>
               <span style={{fontSize: 'var(--fs-base)',fontFamily: T.font.sans,fontVariantNumeric:'tabular-nums',color:ratesPending?'var(--border-default)':ratesMissing||!Number.isFinite(item.v)?'var(--text-tertiary)':'var(--text-primary)',fontWeight:ratesMissing||!Number.isFinite(item.v)?500:700,letterSpacing:'-0.01em'}}>
                 {ratesPending?'…':ratesMissing||!Number.isFinite(item.v)?'Μη διαθέσιμο':fmtPct(item.v)}
               </span>
@@ -376,7 +376,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                     ...(spitiOpen ? [{label:'Σπίτι μου ΙΙ',value:bank.spiti_mou?'Ναι':'Όχι',sub:bank.spiti_mou?'Συμμετέχει στο πρόγραμμα':'Δεν συμμετέχει'}] : []),
                   ].map(s=>(
                     <div key={s.label} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10,padding:'11px 13px'}}>
-                      <p style={{fontSize: 'var(--fs-base)',color:'var(--text-tertiary)',fontWeight:600,fontFamily: T.font.sans,marginBottom:6}}>{s.label}</p>
+                      <p style={{fontSize: 'var(--fs-base)', lineHeight: 1.3,color:'var(--text-tertiary)',fontWeight:600,fontFamily: T.font.sans,marginBottom:6}}>{s.label}</p>
                       {/* ΤΙΜΗ ΚΑΙ ΒΑΣΗ ΤΗΣ ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ ΚΑΙ ΤΑ ΤΕΣΣΕΡΑ ΙΔΙΑ.
                           Το `flex-wrap` τα κρατά δίπλα όσο χωρούν και ρίχνει τη βάση
                           κάτω από την τιμή όταν το πλακίδιο στενέψει — καθαρά, χωρίς
@@ -513,7 +513,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
                   Το «Επερχόμενο» κρατά την περιγραφή του: λέει το ίδιο ότι δεν
                   δέχεται αιτήσεις και γιατί. */}
               {!(st.state==='closed'||st.state==='applications-closed')&&(<>
-              <p style={{fontSize: 'var(--fs-base)',color:'var(--text-tertiary)',marginBottom:10,fontWeight:600,fontFamily: T.font.sans}}>{prog.type}</p>
+              <p style={{fontSize: 'var(--fs-base)', lineHeight: 1.3,color:'var(--text-tertiary)',marginBottom:10,fontWeight:600,fontFamily: T.font.sans}}>{prog.type}</p>
               <p className="po-prose po-just" style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',fontFamily: T.font.sans,marginBottom:16}}>{hy(<>{prog.desc}</>)}</p>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',gap:14,marginBottom:12}}>
                 <div>

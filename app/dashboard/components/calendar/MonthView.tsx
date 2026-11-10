@@ -554,7 +554,7 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
               δίπλα της αλλάζει μήνα με τα βελάκια· η ράγα μετρά πάντα από
               σήμερα και δεν κουνιέται. Δύο μονάδες χρόνου κολλητά, με τον
               επιλογέα να κυβερνά μόνο τη μία: αυτό λέγεται, δεν μαντεύεται. */}
-          <p style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight: 600, color:'var(--accent)', marginBottom:10 }}>Επόμενα από σήμερα</p>
+          <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, fontFamily: T.font.sans, fontWeight: 600, color:'var(--accent)', marginBottom:10 }}>Επόμενα από σήμερα</p>
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {upcomingRows.map(row=>{
               const ev=row.kind==='series'?row.lead:row.event

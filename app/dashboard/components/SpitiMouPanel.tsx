@@ -138,7 +138,7 @@ export default function SpitiMouPanel({
           { k: 'Εξοικονόμηση τον μήνα', v: fmtEur(saveMonthly), s: `${fmtEur(saveTotal)} συνολικά` },
         ].map(t => (
           <div key={t.k} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16 }}>
-            <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', fontFamily: FONT }}>{t.k}</p>
+            <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', fontFamily: FONT }}>{t.k}</p>
             <p style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1, marginTop: 8, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', fontFamily: FONT }}>{t.v}</p>
             <p style={{ fontSize: 'var(--fs-xs)', marginTop: 4, color: 'var(--text-tertiary)', fontFamily: FONT }}>{t.s}</p>
           </div>
@@ -157,7 +157,7 @@ export default function SpitiMouPanel({
 
       {/* Κριτήρια ένα-ένα */}
       <div>
-        <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: FONT, marginBottom: 8 }}>Κριτήρια ένταξης</p>
+        <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: FONT, marginBottom: 8 }}>Κριτήρια ένταξης</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 8 }}>
           {crit.map(c => (
             <div key={c.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 10 }}>
@@ -180,7 +180,7 @@ export default function SpitiMouPanel({
       {/* Συμμετέχουσες τράπεζες */}
       {ranked.length > 0 && (
         <div>
-          <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: FONT, marginBottom: 8 }}>Συμμετέχουσες τράπεζες, κατά συνολικό κόστος</p>
+          <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: FONT, marginBottom: 8 }}>Συμμετέχουσες τράπεζες, κατά συνολικό κόστος</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {ranked.map((r, i) => (
               <div key={r.bankId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: 'var(--bg-surface)', border: `1px solid ${i === 0 ? 'var(--border-accent)' : 'var(--border-subtle)'}`, borderRadius: 10 }}>

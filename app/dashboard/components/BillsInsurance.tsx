@@ -674,7 +674,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
 
   const secHdr = (label: string) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
-      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</span>
+      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</span>
     </div>
   );
 
@@ -856,7 +856,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
             {(insPlan || noPlanToPick) && (
               <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: 14, border: '1px solid var(--border-subtle)', marginTop: 4, containerType: 'inline-size' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>Καλύψεις προγράμματος</div>
+                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>Καλύψεις προγράμματος</div>
                   {/* ΤΟ «ΕΠΕΞΕΡΓΑΣΙΑ» ΕΦΥΓΕ, ΤΟ «ΕΠΑΝΑΦΟΡΑ» ΕΜΕΙΝΕ. Δεν χρειάζεται
                       άδεια για να πατήσεις μια κάλυψη· χρειάζεται όμως δρόμος
                       πίσω, όταν τα άλλαξες και θέλεις ό,τι λέει ο κατάλογος. */}
@@ -958,7 +958,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
               όχι στο από πάνω, γιατί εκείνο ζει μέσα σε συνθήκη: όταν δεν
               εμφανίζεται, το περιθώριό του θα έλειπε μαζί του. */}
           <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: 14, marginTop: 14, marginBottom: 14, border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12, fontFamily: T.font.sans }}>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', marginBottom: 12, fontFamily: T.font.sans }}>
               Στοιχεία ακινήτου για συγκριτική εκτίμηση ασφαλίστρων
             </div>
             {crossProperty.sqm && !insSqm && (
@@ -1026,7 +1026,7 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                   είναι ελέγξιμο. Ένα σκορ χωρίς αιτιολογία δεν είναι. */}
               {!quotesLoading && needs.length > 0 && (
                 <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '12px 14px', marginBottom: 10 }}>
-                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.sans, marginBottom: 8 }}>
+                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans, marginBottom: 8 }}>
                     Τι χρειάζεται αυτό το ακίνητο
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>

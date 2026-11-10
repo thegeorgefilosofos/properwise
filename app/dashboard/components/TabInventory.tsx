@@ -885,7 +885,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
   // Ο έλεγχος τιμής kWh ζει εκεί που έχει νόημα — στην ενότητα κατανάλωσης ρεύματος, όχι στο header.
   const kwhControl=(
     <div title="kWh = κιλοβατώρα· τιμή ρεύματος σε € ανά kWh, για τον υπολογισμό κόστους" style={{display:'inline-flex',alignItems:'center',height:28,background:'var(--bg-surface)',border:'1px solid var(--border-default)',borderRadius:T.radius.pill,overflow:'hidden'}}>
-      <span style={{fontWeight: 600, padding:'0 8px',fontSize: 'var(--fs-base)',color:'var(--text-tertiary)',borderRight:'1px solid var(--border-subtle)',alignSelf:'stretch',display:'flex',alignItems:'center',whiteSpace:'nowrap',fontFamily:T.font.sans}}>€/kWh</span>
+      <span style={{fontWeight: 600, padding:'0 8px',fontSize: 'var(--fs-base)', lineHeight: 1.3,color:'var(--text-tertiary)',borderRight:'1px solid var(--border-subtle)',alignSelf:'stretch',display:'flex',alignItems:'center',whiteSpace:'nowrap',fontFamily:T.font.sans}}>€/kWh</span>
       <input type="text" inputMode="decimal" value={kwInput} placeholder="" aria-label="Τιμή ρεύματος σε ευρώ ανά kWh, από τον λογαριασμό σου"
         onChange={e=>{const raw=e.target.value.replace(',','.');setKwInput(raw);if(/^\d*\.?\d*$/.test(raw)&&raw!=='')setKwhPrice(parseFloat(raw)||0)}}
         onFocus={e=>{e.target.select()}}

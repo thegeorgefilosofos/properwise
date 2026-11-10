@@ -529,7 +529,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
   // όταν δεν χωρούν και τα δύο, η πιλούλα πάει στη δική της σειρά.
   const secHdr = (label: string, link?: { url: string; text: string }) => (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
-      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.sans, flex: '1 1 14em' }}>{label}</span>
+      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans, flex: '1 1 14em' }}>{label}</span>
       {link?.url && (
         <a href={link.url} target="_blank" rel="noopener noreferrer" className="tap-link"
           style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, fontFamily: T.font.sans, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.pill, padding: '3px 10px', whiteSpace: 'nowrap' as const }}>
@@ -649,7 +649,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                 return (
                   <div style={{ background: good ? 'color-mix(in srgb, var(--positive) 7%, transparent)' : 'color-mix(in srgb, var(--warning) 7%, transparent)', border: `1px solid ${good ? 'color-mix(in srgb, var(--positive) 25%, transparent)' : 'color-mix(in srgb, var(--warning) 25%, transparent)'}`, borderRadius: T.radius.inner, padding: '10px 14px' }}>
                     <div style={{ fontSize: 18, fontWeight: 700, color: good ? 'var(--positive)' : 'var(--warning)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{pct}%</div>
-                    <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{good ? 'Καλή απόδοση' : 'Μειωμένη ταχύτητα'}</div>
+                    <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{good ? 'Καλή απόδοση' : 'Μειωμένη ταχύτητα'}</div>
                   </div>
                 );
               })()}
@@ -682,7 +682,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
 
           {s.internetPhone && (
             <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: 14, marginBottom: 12, border: '1px solid var(--border-subtle)' }}>
-              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10, fontFamily: T.font.sans }}>Τι περιλαμβάνει το σταθερό τηλέφωνο</div>
+              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', marginBottom: 10, fontFamily: T.font.sans }}>Τι περιλαμβάνει το σταθερό τηλέφωνο</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 10 }}>
                 {phoneFeatures.map(f => (
                   <div key={f.key} {...pressable(f.toggle)} title={f.tip}
@@ -704,7 +704,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                   επιβεβαιώθηκε» και του i_300_24 «Η σελίδα της Inalan δεν δείχνει
                   αυτό το πρόγραμμα». Ίδιος λόγος με το «(επίσημες τιμές)» του
                   πεδίου πιο πάνω: ο τίτλος λέει τι είναι ο πίνακας. */}
-              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10, fontFamily: T.font.sans }}>Προγράμματα {provData?.label}</div>
+              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', marginBottom: 10, fontFamily: T.font.sans }}>Προγράμματα {provData?.label}</div>
               {/* Η πρώτη στήλη μένει όσο ο πίνακας κυλά: ο λόγος είναι γραμμένος
                   στην `.pin-1` του globals.css. Χωρίς αυτό, μόλις ο χρήστης
                   σύρει για να δει τιμή, το όνομα του προγράμματος φεύγει.
@@ -794,7 +794,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
           {/* FIX: "Συνδρομητική τηλεόραση" (was "PAY TV") */}
           <div style={{ marginTop: 16, borderTop: '1px solid var(--border-subtle)', paddingTop: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.sans, flex: 1 }}>Συνδρομητική τηλεόραση</span>
+              <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans, flex: 1 }}>Συνδρομητική τηλεόραση</span>
               <Toggle on={s.hasTV} onChange={v => upd({ hasTV: v })} ariaLabel="Συνδρομητική τηλεόραση"/>
             </div>
             {/* ΤΑ ΑΘΛΗΤΙΚΑ ΕΙΝΑΙ ΙΔΙΟΤΗΤΑ ΤΟΥ ΠΑΚΕΤΟΥ, ΟΧΙ ΞΕΧΩΡΙΣΤΗ ΕΡΩΤΗΣΗ.
@@ -917,7 +917,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
               <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' as const, marginBottom: 6 }}>
                 {[{ label: 'Μέσο μηνιαίο', value: fe(heatingM) },{ label: 'Εκτιμώμενο ετήσιο', value: fe(heatingM * 12) }].map((k, i) => (
                   <div key={i}>
-                    <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 4, fontFamily: T.font.sans }}>{k.label}</div>
+                    <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 4, fontFamily: T.font.sans }}>{k.label}</div>
                     <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{k.value}</div>
                   </div>
                 ))}

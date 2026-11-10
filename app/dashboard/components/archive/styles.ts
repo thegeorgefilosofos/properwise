@@ -79,7 +79,7 @@ button.fb-crumb { display: inline-flex; align-items: center; }
 .fb-col { display: flex; flex-direction: column; gap: 2px; padding: 10px 8px 14px; border-right: 1px solid var(--border-subtle); min-width: 0; overflow-y: auto; }
 .fb-col-files { border-right: none; }
 .fb-col-head {
-  margin: 0 0 4px; padding: 0 8px; font-size: var(--fs-base); font-weight: 600; color: var(--text-secondary);
+  margin: 0 0 4px; padding: 0 8px; font-size: var(--fs-base); font-weight: 600; line-height: 1.3; color: var(--text-secondary);
 }
 .fb-row {
   display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 8px; border-radius: 8px;

@@ -291,7 +291,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
       <div className="po-disclosure" {...pressable(() => setOpen(o => !o))}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)' }}>Πύλη ενοικιαστή</div>
+            <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)' }}>Πύλη ενοικιαστή</div>
             <div className="po-subline" style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Κοινοποίηση συνδέσμου και αιτήματα βλάβης</div>
           </div>
         </div>
@@ -374,7 +374,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                 {cfgOpen && (
                   <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
                     <div>
-                      <div style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Σύνδεσμος πληρωμής (προαιρετικό)</div>
+                      <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, fontFamily: T.font.sans, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Σύνδεσμος πληρωμής (προαιρετικό)</div>
                       <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 8, lineHeight: 1.5 }}>Επικόλλησε τον σύνδεσμο του παρόχου σου (Stripe, Viva, PayPal, Revolut). Ο ενοικιαστής βλέπει κουμπί «Πληρωμή τώρα» και πληρώνει εκεί, όχι εδώ.</div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <input aria-label="Σύνδεσμος πληρωμής" value={payLink} onChange={e => setPayLink(e.target.value)} placeholder="https://..." style={{ flex: 1, minWidth: 180, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '9px 12px', fontSize: 12, color: 'var(--text-primary)', fontFamily: T.font.mono, outline: 'none' }} />
@@ -382,7 +382,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 'var(--fs-base)', fontFamily: T.font.sans, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Κωδικός προστασίας</div>
+                      <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, fontFamily: T.font.sans, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Κωδικός προστασίας</div>
                       <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginBottom: 8, lineHeight: 1.5 }}>Χωρίς αυτόν δεν ανοίγει η πύλη. Δώσ&apos; τον μόνο στον ενοικιαστή σου.</div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <input aria-label="Κωδικός PIN" value={pinInput} onChange={e => setPinInput(e.target.value)} inputMode="numeric" placeholder={pinSet ? 'Νέος κωδικός' : 'π.χ. 4 ψηφία'} style={{ flex: 1, minWidth: 140, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: T.radius.xs, padding: '9px 12px', fontSize: 12, color: 'var(--text-primary)', fontFamily: T.font.num, outline: 'none' }} />
@@ -394,7 +394,7 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                 )}
               </div>
 
-              <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 8 }}>Αιτήματα{reqsErr ? '' : ` (${pending.length} εκκρεμή)`}</div>
+              <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 8 }}>Αιτήματα{reqsErr ? '' : ` (${pending.length} εκκρεμή)`}</div>
               {/* ΜΙΑ ΦΟΡΑ ΠΑΝΩ ΑΠΟ ΤΗ ΛΙΣΤΑ, ΟΧΙ ΜΙΑ ΑΝΑ ΑΙΤΗΜΑ: η υπογραφή γίνεται
                   με ΜΙΑ κλήση για όλες τις φωτογραφίες όλων των αιτημάτων, οπότε η
                   αποτυχία είναι επίσης μία. */}

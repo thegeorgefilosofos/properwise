@@ -267,7 +267,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
 
   const secHdr = (label: string) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
-      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</span>
+      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</span>
     </div>
   );
 
@@ -298,7 +298,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
           { label: 'Μέσος όρος κοινοχρήστων',  value: monthlyAvg > 0 ? fe(monthlyAvg) : ABSENT_SHORT },
         ].map((k, i) => (
           <div key={i} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '16px 18px' }}>
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 10, fontFamily: T.font.sans }}>{k.label}</div>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 10, fontFamily: T.font.sans }}>{k.label}</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{k.value}</div>
           </div>
         ))}
@@ -317,7 +317,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
         <div style={{ ...formGrid(), marginBottom: 16 }}>
           <NumberInput label="Τα χιλιοστά μου (‰)" value={millesimi} onChange={sMill} suffix="‰" max={1000}/>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, fontFamily: T.font.sans }}>Το μερίδιό μου</div>
+            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 6, fontFamily: T.font.sans }}>Το μερίδιό μου</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fp((millRatio * 100))}</div>
           </div>
         </div>
@@ -420,7 +420,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
               { label: 'Βαρύνει εσένα',          value: fe(ownerBurden),  color: 'var(--text-primary)' },
             ].map((k, i) => (
               <div key={i} style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: '12px 16px', border: '1px solid var(--border-subtle)' }}>
-                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 8, fontFamily: T.font.sans }}>{k.label}</div>
+                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 8, fontFamily: T.font.sans }}>{k.label}</div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: k.color, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{k.value}</div>
               </div>
             ))}
@@ -490,7 +490,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
                 { label: 'Εισφορά / έτος',  value: fe((parseFloat(fundMonthly) || 0) * 12),       color: 'var(--text-primary)' },
               ].map((k, i) => (
                 <div key={i}>
-                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 4, fontFamily: T.font.sans }}>{k.label}</div>
+                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 4, fontFamily: T.font.sans }}>{k.label}</div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: k.color, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{k.value}</div>
                 </div>
               ))}
@@ -664,7 +664,7 @@ export default function BillsCommon({ propertyId, userId = '' }: Props) {
               { label: 'Ετήσιο εκτιμώμενο', value: fe(monthlyAvg * 12),                                    color: 'var(--text-primary)' },
             ].map((k, i) => (
               <div key={i} style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: '10px 14px', border: '1px solid var(--border-subtle)' }}>
-                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, fontFamily: T.font.sans }}>{k.label}</div>
+                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 6, fontFamily: T.font.sans }}>{k.label}</div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: k.color, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{k.value}</div>
               </div>
             ))}

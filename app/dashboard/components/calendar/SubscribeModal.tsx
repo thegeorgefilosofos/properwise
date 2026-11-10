@@ -26,7 +26,7 @@ function FeedLink({ label, hint, url, onCopy, copied }: {
   return (
     <div>
       <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:12, marginBottom:6 }}>
-        <span style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</span>
+        <span style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, fontWeight:600, color:'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</span>
         <Btn onClick={onCopy}>{copied?'Αντιγράφηκε':'Αντιγραφή'}</Btn>
       </div>
       <p style={{ fontSize: 'var(--fs-note)', color:'var(--text-tertiary)', margin:'0 0 8px', lineHeight:1.5, fontFamily: T.font.sans }}>{hint}</p>

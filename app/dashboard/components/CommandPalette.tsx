@@ -126,7 +126,7 @@ export function CommandPalette({ open, onClose, items }: { open: boolean; onClos
             groups.map((g, gi) => (
               <div key={gi}>
                 {g.label && (
-                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', padding: '10px 16px 4px', fontFamily: T.font.sans }}>{g.label}</div>
+                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', padding: '10px 16px 4px', fontFamily: T.font.sans }}>{g.label}</div>
                 )}
                 {g.items.map(it => {
                   idx++;

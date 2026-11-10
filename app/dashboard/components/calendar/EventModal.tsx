@@ -85,7 +85,7 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
   // Το βέλος-εικόνα και το στυλ του ντόπιου <select> έφυγαν μαζί με τα ίδια τα
   // <select>: ήταν καρφωμένο γκρι που δεν άλλαζε ποτέ με το θέμα, δίπλα σε
   // λίστα επιλογών που τη ζωγράφιζε το λειτουργικό με δικά του χρώματα.
-  const lbl: React.CSSProperties = { fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-secondary)', display:'block', marginBottom:6 }
+  const lbl: React.CSSProperties = { fontFamily: T.font.sans, fontSize: 'var(--fs-base)', lineHeight: 1.3, fontWeight:600, color:'var(--text-secondary)', display:'block', marginBottom:6 }
   const amt=parseFloat(form.amount)
   const canSave=!!form.title.trim()&&!!form.event_date
   return (

@@ -132,7 +132,7 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
       {/* Επικεφαλίδα ενότητας */}
       <div className="acc-section" style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
             Τι έρχεται
           </span>
         </div>

@@ -270,7 +270,7 @@ export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; us
           {[{label:'Νομική βάση',value:'Όρος μισθωτηρίου'},{label:'Συχνότητα',value:'Όπως ορίζει το μισθωτήριο'},{label:'Τελευταίος δείκτης',value:indexMonthLabel(RENT_INDEX_LATEST)}].map((item,i)=>(
             <div key={i} style={{ background:'var(--bg-elevated)', borderRadius:T.radius.inner, padding:'12px 14px' }}>
               <div style={{ fontSize:14, fontWeight:700, color:'var(--accent)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', marginBottom:4 }}>{item.value}</div>
-              <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans }}>{item.label}</div>
+              <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', lineHeight: 1.3, color:'var(--text-secondary)', fontFamily:T.font.sans }}>{item.label}</div>
             </div>
           ))}
         </div>
@@ -302,7 +302,7 @@ export function RentAdjustView({ tenant, userId, initialYm }:{ tenant:Tenant; us
           <SectionTitle>Υπολογιστής αναπροσαρμογής</SectionTitle>
 
           <div style={{ background:'var(--bg-elevated)', borderRadius:T.radius.inner, padding:'16px 18px', marginBottom:T.sp.lg }}>
-            <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:6 }}>Τρέχον μηνιαίο μίσθωμα</div>
+            <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', lineHeight: 1.3, color:'var(--text-secondary)', fontFamily:T.font.sans, marginBottom:6 }}>Τρέχον μηνιαίο μίσθωμα</div>
             <div style={{ fontSize:28, fontWeight:700, color:'var(--text-primary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', lineHeight:1 }}>{fmtE(rent)}</div>
             {tenant.lease_end&&<div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans, marginTop:4 }}>Λήξη: {fmtDate(tenant.lease_end)}</div>}
           </div>

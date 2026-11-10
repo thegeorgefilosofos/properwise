@@ -22,7 +22,7 @@ import { parseAmount } from '@/lib/core/greek';
 
 /** Η ετικέτα πεδίου: μικρά κεφαλαία, όπως σε όλες τις φόρμες του προϊόντος. */
 export const TOOL_LABEL: CSSProperties = {
-  display: 'block', fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 8,
+  display: 'block', fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 8,
 };
 
 /**
