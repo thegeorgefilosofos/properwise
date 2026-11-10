@@ -306,46 +306,52 @@ export default function SecuritySettings() {
     }
     setPwBusy(true);
     setPwMsg(null);
-    // Η υποβολή ρωτά η ίδια: ο έλεγχος του πεδίου μπορεί να μην έχει απαντήσει ακόμη.
-    if (await leakedAtSubmit(newPass)) {
-      setLeakedPw(newPass);
+    // Ο ΔΙΑΚΟΠΤΗΣ ΣΒΗΝΕΙ ΣΕ ΚΑΘΕ ΕΞΟΔΟ ΑΚΟΜΗ ΚΑΙ ΣΕ ΕΞΑΙΡΕΣΗ (π.χ. δίκτυο που κόπηκε):
+    // αλλιώς τα πεδία έμεναν κλειδωμένα και το κουμπί σβηστό ως την ανανέωση.
+    try {
+      // Η υποβολή ρωτά η ίδια: ο έλεγχος του πεδίου μπορεί να μην έχει απαντήσει ακόμη.
+      if (await leakedAtSubmit(newPass)) {
+        setLeakedPw(newPass);
+        setPwBusy(false);
+        setPwMsg({ ok: false, text: PASSWORD_MSG.leaked });
+        return;
+      }
+      // Ο τρέχων κωδικός ταξιδεύει ΜΟΝΟ όταν η οθόνη τον ζήτησε. Το
+      // `current_password` είναι το όνομα που διαβάζει ο διακομιστής και που
+      // δηλώνει το `UserAttributes` του @supabase/auth-js 2.116: η βιβλιοθήκη
+      // στέλνει τα πεδία αυτούσια, χωρίς μετονομασία.
+      const { error } = await supabase.auth.updateUser(
+        needCurrent ? { password: newPass, current_password: currentPass } : { password: newPass },
+      );
+      if (error) {
+        setPwBusy(false);
+        if (error.code === 'current_password_required') setAskCurrent(true);
+        const refused = error.code ? PW_REFUSED[error.code] : undefined;
+        setPwMsg({ ok: false, text: refused ?? failed('Ο κωδικός δεν άλλαξε', error) });
+        return;
+      }
+      void logActivity(supabase, 'password_changed', 'security');
+      // ═══ ΟΙ ΑΛΛΕΣ ΣΥΣΚΕΥΕΣ ΚΛΕΙΝΟΥΝ ΜΑΖΙ ΜΕ ΤΟΝ ΠΑΛΙΟ ΚΩΔΙΚΟ ═══════════════
+      // Ίδιο με την επαναφορά (app/reset-password): όποιος αλλάζει κωδικό επειδή
+      // υποψιάζεται διαρροή πρέπει να βγάλει έξω και όποιον κρατά ήδη συνεδρία.
+      // Μένει ανοιχτή μόνο αυτή η συσκευή. Αν το κλείσιμο αποτύχει, το λέμε και
+      // δείχνουμε το κουμπί που το κάνει, αντί να υποσχεθούμε κάτι που δεν έγινε.
+      const { error: outError } = await supabase.auth.signOut({ scope: 'others' });
       setPwBusy(false);
-      setPwMsg({ ok: false, text: PASSWORD_MSG.leaked });
-      return;
-    }
-    // Ο τρέχων κωδικός ταξιδεύει ΜΟΝΟ όταν η οθόνη τον ζήτησε. Το
-    // `current_password` είναι το όνομα που διαβάζει ο διακομιστής και που
-    // δηλώνει το `UserAttributes` του @supabase/auth-js 2.116: η βιβλιοθήκη
-    // στέλνει τα πεδία αυτούσια, χωρίς μετονομασία.
-    const { error } = await supabase.auth.updateUser(
-      needCurrent ? { password: newPass, current_password: currentPass } : { password: newPass },
-    );
-    if (error) {
+      setCurrentPass('');
+      setNewPass('');
+      setConfirm('');
+      setShowCurrent(false);
+      setShowNew(false);
+      setPwMsg({
+        ok: true,
+        text: outError
+          ? 'Ο κωδικός ενημερώθηκε, αλλά οι άλλες συσκευές δεν αποσυνδέθηκαν. Κλείσ’ τες με την «Αποσύνδεση από όλες τις συσκευές», παρακάτω.'
+          : 'Ο κωδικός ενημερώθηκε. Αποσυνδέσαμε κάθε άλλη συσκευή όπου ήταν ανοιχτός ο λογαριασμός σου.',
+      });
+    } finally {
       setPwBusy(false);
-      if (error.code === 'current_password_required') setAskCurrent(true);
-      const refused = error.code ? PW_REFUSED[error.code] : undefined;
-      setPwMsg({ ok: false, text: refused ?? failed('Ο κωδικός δεν άλλαξε', error) });
-      return;
     }
-    void logActivity(supabase, 'password_changed', 'security');
-    // ═══ ΟΙ ΑΛΛΕΣ ΣΥΣΚΕΥΕΣ ΚΛΕΙΝΟΥΝ ΜΑΖΙ ΜΕ ΤΟΝ ΠΑΛΙΟ ΚΩΔΙΚΟ ═══════════════
-    // Ίδιο με την επαναφορά (app/reset-password): όποιος αλλάζει κωδικό επειδή
-    // υποψιάζεται διαρροή πρέπει να βγάλει έξω και όποιον κρατά ήδη συνεδρία.
-    // Μένει ανοιχτή μόνο αυτή η συσκευή. Αν το κλείσιμο αποτύχει, το λέμε και
-    // δείχνουμε το κουμπί που το κάνει, αντί να υποσχεθούμε κάτι που δεν έγινε.
-    const { error: outError } = await supabase.auth.signOut({ scope: 'others' });
-    setPwBusy(false);
-    setCurrentPass('');
-    setNewPass('');
-    setConfirm('');
-    setShowCurrent(false);
-    setShowNew(false);
-    setPwMsg({
-      ok: true,
-      text: outError
-        ? 'Ο κωδικός ενημερώθηκε, αλλά οι άλλες συσκευές δεν αποσυνδέθηκαν. Κλείσ’ τες με την «Αποσύνδεση από όλες τις συσκευές», παρακάτω.'
-        : 'Ο κωδικός ενημερώθηκε. Αποσυνδέσαμε κάθε άλλη συσκευή όπου ήταν ανοιχτός ο λογαριασμός σου.',
-    });
   }
 
   async function signOutEverywhere() {
@@ -379,7 +385,7 @@ export default function SecuritySettings() {
               <div style={{ position: 'relative' }}>
                 <input
                   id="sec-current-pass" type={showCurrent ? 'text' : 'password'} autoComplete="current-password" className="po-field"
-                  required value={currentPass} onChange={e => setCurrentPass(e.target.value)} style={pwField}
+                  required value={currentPass} onChange={e => setCurrentPass(e.target.value)} style={pwField} readOnly={pwBusy}
                 />
                 <PasswordEye show={showCurrent} onToggle={() => setShowCurrent(s => !s)} />
               </div>

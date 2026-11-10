@@ -33,19 +33,38 @@
 // στέλνει `password` πρέπει να έχει, ΣΤΗΝ ΙΔΙΑ ΣΥΝΑΡΤΗΣΗ και ΠΡΙΝ από αυτήν,
 // `await leakedAtSubmit(…)` που το αποτέλεσμά του διαβάζεται (σε `if`,
 // ανάθεση ή `return`). Μια οθόνη χωρίς το PasswordStrength ξέφευγε αλλιώς.
+// Το ίδιο ισχύει για `admin.createUser` και `admin.updateUserById`.
 //
 // ΓΙΑΤΙ ΜΕ ΤΟΝ ΑΝΑΛΥΤΗ ΤΟΥ TYPESCRIPT ΚΑΙ ΟΧΙ ΜΕ REGEX. Η πρώτη εκδοχή έψαχνε
 // το κείμενο `leakedAtSubmit(`. Δεχόταν σχόλιο που το ανέφερε ή
 // `void leakedAtSubmit(…)` που πετά την απάντηση. Και τα δύο δείχνουν
 // προστασία χωρίς να προστατεύουν. Ο αναλυτής δεν βλέπει σχόλια και ξέρει
 // πού καταλήγει η τιμή.
+//
+// ΤΙ ΔΕΝ ΠΙΑΝΕΙ, ΓΡΑΜΜΕΝΟ ΡΗΤΑ. Ο φύλακας κοιτά το σχήμα του κώδικα, όχι τη
+// ροή των τιμών. Γνωστά ψευδώς ΠΡΑΣΙΝΑ, που απαιτούν να τα προσέχει ο κριτής:
+//   • Δεν ελέγχει πού πηγαίνει η τιμή: `const x = await leakedAtSubmit(p)` που
+//     μετά δεν διαβάζεται περνά.
+//   • Η πύλη μπορεί να εφαρμόζεται σε ΑΛΛΗ μεταβλητή από αυτήν που στέλνεται.
+//   • Η πύλη μπορεί να είναι μέσα σε `if` που δεν τρέχει πάντα.
+//   • Κλειδί σε εισαγωγικά (`{ 'password': p }`), spread (`{ ...creds }`) ή
+//     όρισμα που περνά μέσα από μεταβλητή δεν αναγνωρίζεται ως κωδικός.
+//   • Ο φάκελος `supabase/` (edge functions, Deno) δεν σαρώνεται: εκεί η πύλη
+//     του περιηγητή δεν υπάρχει, οπότε μια κλήση `admin.*` με κωδικό θέλει
+//     δικό της έλεγχο.
+// Γνωστά ψευδώς ΚΟΚΚΙΝΑ, που λύνονται γράφοντας την πύλη στο ίδιο σημείο:
+//   • πύλη μέσα σε βοηθητική συνάρτηση που την καλεί η υποβολή·
+//   • κλήση μέσα σε `.then(…)` αντί για `await`.
+// Η σύγκριση `=== true` / `!== false` γίνεται δεκτή (10/11/2026).
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
 import ts from 'typescript'
 import { findSources } from './lib/find-tests.mjs'
 
 
-const PASSWORD_CALLS = new Set(['signUp', 'updateUser'])
+// Και οι κλήσεις διαχειριστή: `admin.updateUserById(id, { password })` έχει
+// τον κωδικό στο ΔΕΥΤΕΡΟ όρισμα, γι' αυτό ελέγχονται όλα τα ορίσματα.
+const PASSWORD_CALLS = new Set(['signUp', 'updateUser', 'createUser', 'updateUserById'])
 
 /** Περιέχει το όρισμα αντικείμενο με πεδίο `password` (και μέσα σε τριαδικό); */
 function sendsPassword(node) {
@@ -79,6 +98,9 @@ function resultUsed(call) {
     if (ts.isBinaryExpression(p)) {
       const op = p.operatorToken.kind
       if (op === ts.SyntaxKind.AmpersandAmpersandToken || op === ts.SyntaxKind.BarBarToken) continue
+      // Σύγκριση (`=== true`, `!== false`): η τιμή διαβάζεται, ανεβαίνουμε.
+      if (op === ts.SyntaxKind.EqualsEqualsEqualsToken || op === ts.SyntaxKind.ExclamationEqualsEqualsToken ||
+          op === ts.SyntaxKind.EqualsEqualsToken || op === ts.SyntaxKind.ExclamationEqualsToken) continue
       return op === ts.SyntaxKind.EqualsToken && p.right === child
     }
     if (ts.isIfStatement(p)) return p.expression === child
@@ -99,7 +121,7 @@ function scan(file, src) {
       const callee = n.expression
       const name = ts.isIdentifier(callee) ? callee.text : ts.isPropertyAccessExpression(callee) ? callee.name.text : null
       if (name === 'leakedAtSubmit') (resultUsed(n) ? gates : ignored).push(n)
-      else if (name && PASSWORD_CALLS.has(name) && ts.isPropertyAccessExpression(callee) && n.arguments[0] && sendsPassword(n.arguments[0])) sets.push(n)
+      else if (name && PASSWORD_CALLS.has(name) && ts.isPropertyAccessExpression(callee) && n.arguments.some(sendsPassword)) sets.push(n)
     }
     ts.forEachChild(n, visit)
   }
@@ -115,7 +137,7 @@ for (const file of findSources()) {
   if (file.includes('.test.') || file.endsWith(COMPONENT) || file.startsWith('supabase/') || file.startsWith('scripts/')) continue
   const src = readFileSync(file, 'utf8')
   const renders = file.endsWith('.tsx') && /<PasswordStrength\b/.test(src)
-  if (!renders && !/\b(signUp|updateUser)\s*\(/.test(src)) continue
+  if (!renders && !/\b(signUp|updateUser|createUser|updateUserById)\s*\(/.test(src)) continue
   const { gates, sets, ignored, line } = scan(file, src)
 
   for (const n of ignored) {

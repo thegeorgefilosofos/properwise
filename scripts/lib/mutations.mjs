@@ -400,6 +400,8 @@ export const MUTATIONS = {
     { add: "lib/__mut__.ts", content: "type C = { auth: { updateUser(a: object): Promise<unknown> } }\nexport async function setPw(c: C, password: string) {\n  return c.auth.updateUser({ password })\n}\n" },
     // Η πύλη υπάρχει, αλλά ΜΕΤΑ την εγγραφή.
     { add: "lib/__mut__.ts", content: "import { leakedAtSubmit } from '@/lib/auth/leakGate'\ntype C = { auth: { signUp(a: object): Promise<unknown> } }\nexport async function join(c: C, email: string, password: string) {\n  await c.auth.signUp({ email, password })\n  if (await leakedAtSubmit(password)) return false\n  return true\n}\n" },
+    // Κλήση διαχειριστή με τον κωδικό στο δεύτερο όρισμα, χωρίς πύλη.
+    { add: "lib/__mut__.ts", content: "type A = { auth: { admin: { updateUserById(id: string, a: object): Promise<unknown> } } }\nexport async function reset(c: A, id: string, password: string) {\n  return c.auth.admin.updateUserById(id, { password })\n}\n" },
   ] },
   // Δύο κανόνες, δύο αποδείξεις: διαδρομή χωρίς καμία ταυτότητα και
   // διαδρομή με συνεδρία που δεν ζητά το δεύτερο βήμα (03.10.2026).

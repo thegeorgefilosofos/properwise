@@ -498,7 +498,9 @@ export default function SignupPage() {
     e.preventDefault()
     if (loading || submitting.current) return
     submitting.current = true
-    try { await submitForm() } finally { submitting.current = false }
+    // Το `loading` σβήνει σε κάθε έξοδο ακόμη και όταν πεταχτεί εξαίρεση (δίκτυο που
+    // κόπηκε στο `signUp`): αλλιώς η φόρμα έμενε κλειδωμένη ως την ανανέωση.
+    try { await submitForm() } finally { submitting.current = false; setLoading(false) }
   }
 
   async function submitForm() {
@@ -948,7 +950,7 @@ export default function SignupPage() {
                 </div>}
                 <div>
                   <label htmlFor="su-email" className="po-field-label">{A ? A.email : 'Ηλεκτρονικό ταχυδρομείο'}</label>
-                  <input id="su-email" name="email" autoComplete="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={A ? A.emailPlaceholder : 'onoma@email.com'} required style={field} onFocus={focus} onBlur={blur} />
+                  <input id="su-email" name="email" autoComplete="email" type="email" value={email} onChange={e => setEmail(e.target.value)} readOnly={loading} placeholder={A ? A.emailPlaceholder : 'onoma@email.com'} required style={field} onFocus={focus} onBlur={blur} />
                 </div>
                 <div>
                   <label htmlFor="su-password" className="po-field-label">{A ? A.password : 'Κωδικός'}</label>

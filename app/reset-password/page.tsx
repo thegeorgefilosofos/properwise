@@ -117,27 +117,33 @@ export default function ResetPasswordPage() {
     if (!pwOk) { setError(leakedPw === password ? (A ? A.pw.leaked : PASSWORD_MSG.leaked) : (A ? A.pw.weak : PASSWORD_MSG.weak)); return }
     if (password !== confirm) { setError(MISMATCH); return }
     setLoading(true)
-    // Η υποβολή ρωτά η ίδια: ο έλεγχος του πεδίου μπορεί να μην έχει απαντήσει ακόμη.
-    if (await leakedAtSubmit(password)) {
-      setLeakedPw(password); setLoading(false); setError(A ? A.pw.leaked : PASSWORD_MSG.leaked); return
+    // ΤΟ `loading` ΣΒΗΝΕΙ ΣΕ ΚΑΘΕ ΕΞΟΔΟ ΑΚΟΜΗ ΚΑΙ ΣΕ ΕΞΑΙΡΕΣΗ (π.χ. δίκτυο που κόπηκε):
+    // αλλιώς τα πεδία έμεναν κλειδωμένα και το κουμπί σβηστό ως την ανανέωση.
+    try {
+      // Η υποβολή ρωτά η ίδια: ο έλεγχος του πεδίου μπορεί να μην έχει απαντήσει ακόμη.
+      if (await leakedAtSubmit(password)) {
+        setLeakedPw(password); setLoading(false); setError(A ? A.pw.leaked : PASSWORD_MSG.leaked); return
+      }
+      const supabase = await authClient()
+      const { error } = await supabase.auth.updateUser({ password })
+      if (error) { setLoading(false); setError(failed('Ο κωδικός δεν άλλαξε', R?.notChanged, error)); return }
+      // ═══ ΟΙ ΑΛΛΕΣ ΣΥΣΚΕΥΕΣ ΚΛΕΙΝΟΥΝ ΜΑΖΙ ΜΕ ΤΟΝ ΠΑΛΙΟ ΚΩΔΙΚΟ ═══════════════
+      // Η οθόνη έλεγε «ο νέος κωδικός ισχύει σε όλες τις συσκευές σου» και
+      // καμία συνεδρία δεν έκλεινε. Οποιος αλλάζει κωδικό επειδή υποψιάζεται
+      // διαρροή νόμιζε ότι προστατεύτηκε, ενώ όποιος κρατούσε συνεδρία έμενε
+      // μέσα. Κλείνουν όλες εκτός από αυτή· αν αποτύχει, το λέμε και δείχνουμε
+      // πού γίνεται με το χέρι, αντί να υποσχεθούμε κάτι που δεν έγινε.
+      // ΚΑΙ ΟΙ ΤΟΠΙΚΕΣ ΚΟΠΙΕΣ ΑΥΤΗΣ ΤΗΣ ΣΥΣΚΕΥΗΣ ΦΕΥΓΟΥΝ. Η επαναφορά είναι
+      // γεγονός ασφαλείας και ο σύνδεσμος μπορεί να άνοιξε σε κοινόχρηστο
+      // μηχάνημα· ο πίνακας τα ξαναφορτώνει από τον διακομιστή.
+      const { error: outError } = await supabase.auth.signOut({ scope: 'others' })
+      leaveDevice()
+      setLoading(false)
+      setOthersOut(!outError)
+      setMode('done')
+    } finally {
+      setLoading(false)
     }
-    const supabase = await authClient()
-    const { error } = await supabase.auth.updateUser({ password })
-    if (error) { setLoading(false); setError(failed('Ο κωδικός δεν άλλαξε', R?.notChanged, error)); return }
-    // ═══ ΟΙ ΑΛΛΕΣ ΣΥΣΚΕΥΕΣ ΚΛΕΙΝΟΥΝ ΜΑΖΙ ΜΕ ΤΟΝ ΠΑΛΙΟ ΚΩΔΙΚΟ ═══════════════
-    // Η οθόνη έλεγε «ο νέος κωδικός ισχύει σε όλες τις συσκευές σου» και
-    // καμία συνεδρία δεν έκλεινε. Οποιος αλλάζει κωδικό επειδή υποψιάζεται
-    // διαρροή νόμιζε ότι προστατεύτηκε, ενώ όποιος κρατούσε συνεδρία έμενε
-    // μέσα. Κλείνουν όλες εκτός από αυτή· αν αποτύχει, το λέμε και δείχνουμε
-    // πού γίνεται με το χέρι, αντί να υποσχεθούμε κάτι που δεν έγινε.
-    // ΚΑΙ ΟΙ ΤΟΠΙΚΕΣ ΚΟΠΙΕΣ ΑΥΤΗΣ ΤΗΣ ΣΥΣΚΕΥΗΣ ΦΕΥΓΟΥΝ. Η επαναφορά είναι
-    // γεγονός ασφαλείας και ο σύνδεσμος μπορεί να άνοιξε σε κοινόχρηστο
-    // μηχάνημα· ο πίνακας τα ξαναφορτώνει από τον διακομιστή.
-    const { error: outError } = await supabase.auth.signOut({ scope: 'others' })
-    leaveDevice()
-    setLoading(false)
-    setOthersOut(!outError)
-    setMode('done')
   }
 
   // Ο ΛΟΓΟΣ ΛΕΓΕΤΑΙ ΠΑΝΩ ΣΤΟ ΠΕΔΙΟ, ΟΧΙ ΣΕ ΣΒΗΣΤΟ ΚΟΥΜΠΙ. Η ασυμφωνία δεν
