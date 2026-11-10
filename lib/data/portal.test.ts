@@ -13,7 +13,8 @@
 // Μια μελλοντική «αυστηροποίηση» που θα το γύριζε σε «έληξε» θα έκοβε κάθε
 // παλιά γραμμή, σιωπηλά, από την πλευρά του μισθωτή. Εδώ σπάει.
 // ═══════════════════════════════════════════════════════════════════════════
-import { daysLeft, needsRenewal, renew, LIFETIME_DAYS, RENEW_UNDER_DAYS } from './portal';
+import { daysLeft, needsRenewal, renew, LIFETIME_DAYS, RENEW_UNDER_DAYS, newPin, PIN_DIGITS } from './portal';
+import { readFileSync } from 'node:fs';
 
 let pass = 0, fail = 0;
 const fails: string[] = [];
@@ -21,6 +22,26 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; fails.push
 
 const NOW = new Date('2026-09-10T12:00:00Z');
 const inDays = (n: number) => new Date(NOW.getTime() + n * 86_400_000).toISOString();
+
+
+// ── PIN ΑΠΟ ΠΡΟΕΠΙΛΟΓΗ (απόφαση ιδιοκτήτη 10/11/2026) ──────────────────────
+{
+  const p = newPin();
+  ok('το PIN έχει PIN_DIGITS ψηφία', p.length === PIN_DIGITS && /^\d+$/.test(p));
+  ok('έξι ψηφία, όχι τέσσερα', PIN_DIGITS === 6);
+  // Οι τιμές ≥ 250 απορρίπτονται: με πηγή που δίνει μόνο 255 και μετά 3,
+  // το αποτέλεσμα είναι μόνο τριάρια.
+  let calls = 0;
+  const skewed = (b: Uint8Array) => { b.fill(calls++ === 0 ? 255 : 3); return b; };
+  ok('η απόρριψη κρατά τα ψηφία ισοπίθανα', newPin(skewed) === '333333' && calls === 2);
+  const seen = new Set(Array.from({ length: 200 }, () => newPin()));
+  ok('δεν επαναλαμβάνεται το ίδιο PIN', seen.size > 190);
+  const ui = readFileSync('app/dashboard/components/PortalShare.tsx', 'utf8');
+  ok('η πύλη γεννιέται με PIN από προεπιλογή', ui.includes('const [withPin, setWithPin] = useState(true);') && ui.includes('if (withPin) await addRandomPin(data.token)'));
+  ok('το «Χωρίς κωδικό» λέει τι εκτίθεται', ui.includes('όποιος έχει τον σύνδεσμο βλέπει το IBAN πληρωμής και τα στοιχεία της μίσθωσης'));
+  ok('ο παλιός σύνδεσμος χωρίς PIN παίρνει σύσταση με κουμπί', ui.includes('>Πρόσθεσε PIN</Btn>'));
+  ok('το καθαρό PIN πάει μόνο στη set_portal_pin', !/from\(['"]portal_links['"]\)[^;]*pin_hash/.test(ui) && ui.includes("rpc('set_portal_pin'"));
+}
 
 // ── ΠΟΣΕΣ ΗΜΕΡΕΣ ΜΕΝΟΥΝ ────────────────────────────────────────────────────
 ok('εκατό ημέρες μπροστά', daysLeft(inDays(100), NOW) === 100);

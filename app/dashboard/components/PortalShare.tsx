@@ -20,6 +20,7 @@ import { saved, savedData } from '@/components/dbWrite';
 import { failed } from '@/lib/core/dbError';
 import { photosKey, signMaintenancePhotos } from '@/lib/maintenance/photos';
 import { useLoad } from '@/app/hooks/useLoad';
+import { Toggle } from './UIComponents';
 
 interface Req { id: string; title: string; description: string | null; contact: string | null; status: string; created_at: string; photos?: string[] | null; }
 
@@ -56,6 +57,13 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
   const [payLink, setPayLink] = useState('');       // σύνδεσμος πληρωμής ιδιοκτήτη
   const [pinSet, setPinSet] = useState(false);       // αν έχει οριστεί PIN πύλης
   const [pinInput, setPinInput] = useState('');
+  // ΤΟ PIN ΕΙΝΑΙ ΑΝΟΙΧΤΟ ΑΠΟ ΠΡΟΕΠΙΛΟΓΗ (απόφαση ιδιοκτήτη 10/11/2026). Ο
+  // ιδιοκτήτης μπορεί να το κλείσει πριν από την ενεργοποίηση. Το `freshPin`
+  // είναι το καθαρό PIN που μόλις γράφτηκε: φαίνεται μία φορά, μόνο σε αυτή τη
+  // συνεδρία, για να το αντιγράψει. Στη βάση υπάρχει μόνο το hash του.
+  const [withPin, setWithPin] = useState(true);
+  const [freshPin, setFreshPin] = useState<string | null>(null);
+  const [pinCopied, setPinCopied] = useState(false);
   const [cfgOpen, setCfgOpen] = useState(false);     // πτυσσόμενες ρυθμίσεις πύλης
   const [synced, setSynced] = useState<Set<string>>(new Set());   // αιτήματα που πήγαν στο Ημερολόγιο (τρέχουσα συνεδρία)
   const [costFor, setCostFor] = useState<string | null>(null);    // ποιο αίτημα καταχωρεί δαπάνη
@@ -163,13 +171,27 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
   const savePin = async () => {
     const pin = pinInput.trim();
     if (!await writePin(pin)) return;
-    setPinSet(!!pin); setPinInput('');
+    setPinSet(!!pin); setPinInput(''); setFreshPin(null);
     notifyOk(pin ? 'Ο κωδικός πύλης ορίστηκε' : 'Ο κωδικός πύλης καταργήθηκε');
   };
   const clearPin = async () => {
     if (!await writePin('')) return;
-    setPinSet(false); setPinInput(''); notifyOk('Ο κωδικός πύλης καταργήθηκε');
+    setPinSet(false); setPinInput(''); setFreshPin(null); notifyOk('Ο κωδικός πύλης καταργήθηκε');
   };
+  // Τυχαίο PIN: γράφεται hash στη βάση και το καθαρό φαίνεται μία φορά.
+  const addRandomPin = async (forToken = token): Promise<boolean> => {
+    if (!forToken) return false;
+    const pin = portalStore.newPin();
+    const what = 'Ο κωδικός πύλης δεν ορίστηκε';
+    setBusy(true);
+    const ok = await savedData<boolean>(what, supabase.rpc('set_portal_pin', { p_token: forToken, p_pin: pin }));
+    setBusy(false);
+    if (ok === null) return false;
+    if (!ok) { notifyError(failed(what)); return false; }
+    setPinSet(true); setFreshPin(pin); setPinCopied(false);
+    return true;
+  };
+  const copyPin = () => { if (freshPin) { navigator.clipboard?.writeText(freshPin); setPinCopied(true); setTimeout(() => setPinCopied(false), 2000); } };
 
   useLoad(load);
 
@@ -188,8 +210,11 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
     // ιδιοκτήτης θα δει το κουμπί δεσίματος μόλις καταχωρήσει τον πρώτο.
     const { data, error } = await portalStore.create(supabase, propertyId, userId, tenant?.id ?? null);
     setBusy(false);
-    if (!error && data) { setToken(data.token); setLinkTenant(data.tenant_id || null); }
-    else if (error) notifyError(failed('Η ρύθμιση της πύλης δεν αποθηκεύτηκε', error));
+    if (error || !data) { if (error) notifyError(failed('Η ρύθμιση της πύλης δεν αποθηκεύτηκε', error)); return; }
+    setToken(data.token); setLinkTenant(data.tenant_id || null);
+    // Αν το PIN δεν γραφτεί, ο σύνδεσμος υπάρχει χωρίς PIN: το σφάλμα έχει ήδη
+    // φανεί και από κάτω μένει η σύσταση «Πρόσθεσε PIN» με ένα κουμπί.
+    if (withPin) await addRandomPin(data.token);
   };
 
   // Δέσιμο σε ενοικιαστή που δεν είχε δεθεί ποτέ. Ο σύνδεσμος ήδη έδειχνε αυτόν
@@ -322,8 +347,16 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
             <InfoBanner tone="negative">{linkErr} Ανανέωσε τη σελίδα· ώσπου να διαβαστεί, δεν ξέρουμε αν η πύλη είναι ήδη ενεργή· η ενεργοποίηση μένει κλειστή ώστε να μη χαθεί ο σύνδεσμος που ίσως έχει ήδη ο ενοικιαστής.</InfoBanner>
           ) : !token ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, flex: 1, minWidth: 200 }}>Ενεργοποίησε έναν ασφαλή σύνδεσμο για τον ενοικιαστή σου: βλέπει ενοίκιο και σύμβαση και στέλνει αιτήματα βλάβης.</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, flex: 1, minWidth: 200 }}>Ενεργοποίησε έναν ασφαλή σύνδεσμο για τον ενοικιαστή σου: βλέπει ενοίκιο και στοιχεία μίσθωσης και στέλνει αιτήματα βλάβης.</div>
               <Btn variant="primary" onClick={enable} disabled={busy}>{busy ? 'Ενεργοποίηση…' : 'Ενεργοποίηση πύλης'}</Btn>
+              <div style={{ flexBasis: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <Toggle on={withPin} onChange={setWithPin} label="Με κωδικό PIN" />
+                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+                  {withPin
+                    ? 'Η πύλη ανοίγει μόνο με τον κωδικό, που θα τον δεις μία φορά για να τον δώσεις στον ενοικιαστή.'
+                    : 'Χωρίς κωδικό, όποιος έχει τον σύνδεσμο βλέπει το IBAN πληρωμής και τα στοιχεία της μίσθωσης.'}
+                </div>
+              </div>
             </div>
           ) : (
             <>
@@ -360,6 +393,29 @@ export default function PortalShare({ propertyId, userId }: { propertyId: string
                 <p style={{ margin: '-8px 0 14px', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
                   {expiryNote}
                 </p>
+              )}
+
+              {/* ΤΟ PIN ΦΑΙΝΕΤΑΙ ΜΙΑ ΦΟΡΑ. Στη βάση ζει μόνο το hash, οπότε αν χαθεί
+                  ο ιδιοκτήτης ορίζει νέο από τις ρυθμίσεις. */}
+              {freshPin && (
+                <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.inner, padding: '10px 12px', marginBottom: 14 }}>
+                  <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1, minWidth: 200 }}>
+                    Κωδικός PIN: <strong style={{ fontFamily: T.font.num, fontSize: 'var(--fs-base)', color: 'var(--text-primary)', letterSpacing: '0.08em' }}>{freshPin}</strong>
+                    <br />Δώσ&apos; τον στον ενοικιαστή μαζί με τον σύνδεσμο. Δεν θα τον ξαναδείς εδώ· αν χαθεί, όρισε νέο στις ρυθμίσεις.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Btn variant="secondary" onClick={copyPin}>{pinCopied ? 'Αντιγράφηκε' : 'Αντιγραφή'}</Btn>
+                    <Btn variant="secondary" onClick={() => setFreshPin(null)}>Το κράτησα</Btn>
+                  </div>
+                </div>
+              )}
+              {!pinSet && !freshPin && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '10px 12px', marginBottom: 14 }}>
+                  <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1, minWidth: 200 }}>
+                    Η πύλη ανοίγει χωρίς κωδικό: όποιος έχει τον σύνδεσμο βλέπει το IBAN πληρωμής και τα στοιχεία της μίσθωσης.
+                  </div>
+                  <Btn variant="secondary" onClick={() => { void addRandomPin(); }} disabled={busy}>Πρόσθεσε PIN</Btn>
+                </div>
               )}
 
               {/* Ρυθμίσεις πύλης: κωδικός προστασίας + σύνδεσμος πληρωμής */}
