@@ -13,7 +13,7 @@
 // ΤΙ ΕΛΕΓΧΕΤΑΙ, στο .github/workflows/supabase-deploy.yml:
 //   · το `supabase/setup-cli` έχει συγκεκριμένη έκδοση (Χ.Υ.Ζ), όχι `latest`·
 //   · κάθε εντολή που αγγίζει βάση (`migration list`, `migration repair`,
-//     `db push`) έχει `--remote`·
+//     `db push`) έχει `--remote`· όσες γράφουν (`repair`, `db push`) και `--yes`·
 //   · το `functions deploy` έχει `--project-ref`.
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
@@ -28,6 +28,9 @@ lines.forEach((line, i) => {
   if (m && !/^\d+\.\d+\.\d+$/.test(m[1])) provlimata.push({ grammi: i + 1, ti: `έκδοση CLI «${m[1]}» αντί για Χ.Υ.Ζ` })
   if (/\bsupabase\s+(migration\s+(list|repair)|db\s+push)\b/.test(code) && !/--remote\b/.test(code))
     provlimata.push({ grammi: i + 1, ti: `εντολή βάσης χωρίς --remote: ${code.trim()}` })
+  // Το CLI 3.x ρωτά πριν γράψει και, χωρίς τερματικό, σταματά (run 42856544581).
+  if (/\bsupabase\s+(migration\s+repair|db\s+push)\b/.test(code) && !/--yes\b/.test(code))
+    provlimata.push({ grammi: i + 1, ti: `εντολή εγγραφής χωρίς --yes: ${code.trim()}` })
   if (/\bsupabase\s+functions\s+deploy\b/.test(code) && !/--project-ref\b/.test(code))
     provlimata.push({ grammi: i + 1, ti: `functions deploy χωρίς --project-ref: ${code.trim()}` })
 })

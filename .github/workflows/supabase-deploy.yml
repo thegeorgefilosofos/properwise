@@ -124,7 +124,9 @@ jobs:
             echo "⚠️ Reconcile reverted orphaned remote versions on **$SUPABASE_PROJECT_REF**: \`$orphans\` (bookkeeping only, no schema change)." >> "$GITHUB_STEP_SUMMARY"
             # --remote: χωρίς αυτό το CLI 3.x πάει στην τοπική βάση και σκάει
             # με ECONNREFUSED 127.0.0.1:54322 (run 42623896297, 09/11/2026).
-            supabase migration repair --remote --status reverted $orphans
+            # --yes: το CLI 3.x ζητά επιβεβαίωση και, χωρίς τερματικό, σταματά
+            # χωρίς να αλλάξει τίποτα (run 42856544581, 10/11/2026).
+            supabase migration repair --remote --yes --status reverted $orphans
           else
             echo "Migration history is clean — nothing to reconcile."
             echo "✅ Migration history clean on $SUPABASE_PROJECT_REF — nothing to reconcile." >> "$GITHUB_STEP_SUMMARY"
@@ -210,8 +212,9 @@ jobs:
           exit 1
 
       # --remote ρητά: στο CLI 3.x το `db push` χωρίς σημαία πάει στην τοπική βάση.
+      # --yes: χωρίς τερματικό το CLI 3.x σταματά στην ερώτηση επιβεβαίωσης.
       - name: Apply database migrations
-        run: supabase db push --remote --include-all
+        run: supabase db push --remote --yes --include-all
 
   # Ένα ειδοποιητικό που ανοίγει αλλά δεν κλείνει ποτέ, παύει να είναι
   # ειδοποιητικό: μετά την πρώτη αποτυχία το κόκκινο μένει για πάντα και το
