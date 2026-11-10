@@ -57,6 +57,19 @@ export function useAppointmentReminders(userId: string | null | undefined): void
     void load().then(tick);
     const iv = setInterval(tick, 60_000);
     const rl = setInterval(() => { void load(); }, RELOAD_MS);
-    return () => { alive = false; clearInterval(iv); clearInterval(rl); };
+    // ΚΑΘΕ ΑΛΛΑΓΗ ΣΤΑ ΓΕΓΟΝΟΤΑ ΤΟΥ ΧΡΗΣΤΗ ΞΑΝΑΔΙΑΒΑΖΕΙ ΑΜΕΣΩΣ: ένα ραντεβού που
+    // μπήκε για σε πέντε λεπτά δεν περιμένει την επόμενη πεντάλεπτη ανάγνωση.
+    // Ίδιο κανάλι με το ημερολόγιο (TabCalendar), ανά χρήστη αντί για ακίνητο.
+    // Και όταν η καρτέλα ξαναγίνει ορατή, γιατί ο περιηγητής παγώνει τους χρονοδιακόπτες της.
+    const ch = supabase.channel(`appt_reminders_${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events', filter: `user_id=eq.${userId}` }, () => { void load().then(tick); })
+      .subscribe();
+    const onVisible = () => { if (document.visibilityState === 'visible') void load().then(tick); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      alive = false; clearInterval(iv); clearInterval(rl);
+      document.removeEventListener('visibilitychange', onVisible);
+      void supabase.removeChannel(ch);
+    };
   }, [on, userId]);
 }

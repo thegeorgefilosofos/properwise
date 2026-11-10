@@ -89,5 +89,32 @@ const src = (p: string) => readFileSync(p, 'utf8')
   ok('αποτυχία γραμμής: το αρχείο μένει', /if \(!await saved\([^)]*client_documents[^\n]*\) return/.test(body))
 }
 
+// ── 7. Ευρήματα του ανεξάρτητου ελέγχου (10/11/2026) ──────────────────────
+{
+  const sr = src('supabase/functions/send-reminders/index.ts')
+  const fix = src('supabase/migrations/20261110131500_to_mitroo_ton_ochliseon_grafei_sosta.sql')
+  const i = sr.indexOf('ΠΡΩΤΑ ΤΟ ΜΗΤΡΩΟ, ΜΕΤΑ ΤΟ EMAIL')
+  const dun = sr.slice(i, i + 2200)
+  ok('όχληση: γράφει στη δική της στήλη, όχι στο event_id του ημερολογίου', dun.includes('rent_payment_id: r.id') && dun.includes('event_id: null') && !sr.includes("event_id: r.id, reminder_type: 'rent_overdue'"))
+  ok('όχληση: το ιστορικό διαβάζεται από την ίδια στήλη', sr.includes(".in('rent_payment_id', overdueIds)"))
+  ok('όχληση: μητρώο πριν από το email, χωρίς μητρώο δεν στέλνει', dun.indexOf('claimErr') > -1 && dun.indexOf('claimErr') < dun.indexOf('sendEmail(') && /if \(claimErr\)[^\n]*continue/.test(dun))
+  ok('όχληση: email που δεν έφυγε σβήνει το μητρώο', dun.includes(".delete().in('id', ids)"))
+  // κυριολεκτικό-πρότυπο: ψάχνουμε το κείμενο της πηγής, όχι τιμή.
+  ok('όχληση: μία ειδοποίηση ανά στάδιο και δόση', fix.includes('notification_log_rent_payment_key') && fix.includes('(rent_payment_id, reminder_type)') && dun.includes('rent_overdue:${'))
+  ok('η διαγραφή γεγονότος σβήνει το log του (CASCADE)', /references public\.calendar_events\(id\) on delete cascade/.test(fix))
+  ok('το μηνιαίο μοναδικό αφορά μόνο τα μηνιαία', fix.includes('where event_id is null and rent_payment_id is null'))
+  const mig = src('supabase/migrations/20261110131000_oi_eidopoiiseis_kanoun_o_ti_lene.sql')
+  const t = mig.indexOf('if new.full_name is distinct from old.full_name then')
+  const body = mig.slice(t, t + 900)
+  ok('όνομα: ο έλεγχος του μήνα ισχύει και από κενό (Α → κενό → Β)', body.indexOf("raise exception 'full_name_locked'") > -1 && body.indexOf("raise exception 'full_name_locked'") < body.indexOf("coalesce(btrim(old.full_name), '') <> ''"))
+  const bill = src('app/dashboard/components/Billing.tsx')
+  ok('τιμολόγηση: αναγνωρίζει την άρνηση της βάσης', bill.includes('nameLockedError(error) ? NAME_LOCKED_TEXT'))
+  ok('τιμολόγηση: κλειδώνει αμέσως μετά από αλλαγή', bill.includes('setNameLockDays(NAME_LOCK_DAYS)'))
+  const hook = src('app/dashboard/components/useAppointmentReminders.ts')
+  // κυριολεκτικό-πρότυπο: ψάχνουμε το κείμενο της πηγής, όχι τιμή.
+  ok('ραντεβού: ξαναδιαβάζει σε κάθε αλλαγή γεγονότος', hook.includes("table: 'calendar_events', filter: `user_id=eq.${userId}`") && hook.includes('removeChannel(ch)'))
+  ok('ραντεβού: και όταν η καρτέλα ξαναγίνει ορατή', hook.includes("'visibilitychange'"))
+}
+
 console.log(`οι ειδοποιήσεις κάνουν ό,τι λένε: ${passed} ✓ · ${failed} ✗`)
 if (failed) { console.log('Απέτυχαν:\n - ' + fails.join('\n - ')); process.exit(1) }

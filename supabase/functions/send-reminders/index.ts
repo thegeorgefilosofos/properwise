@@ -419,9 +419,12 @@ Deno.serve(async (req) => {
       const overdueIds = overdue.map(r => r.id)
       if (!overdueIds.length) continue
       // ΟΛΑ τα προηγούμενα dunning logs για αυτές τις δόσεις με μία query.
+      // Η ΟΧΛΗΣΗ ΕΧΕΙ ΔΙΚΗ ΤΗΣ ΣΤΗΛΗ (20261110131500). Ως τις 10/11/2026 γραφόταν
+      // στο `event_id`, που δείχνει στο calendar_events: η εισαγωγή αποτύγχανε,
+      // το ιστορικό έμενε άδειο και κάθε εκτέλεση έστελνε ξανά «πρώτη» όχληση.
       const { data: priorLogs, error: priorErr } = await supabase.from('notification_log')
-        .select('event_id, created_at').eq('reminder_type', 'rent_overdue')
-        .in('event_id', overdueIds)
+        .select('rent_payment_id, created_at').like('reminder_type', 'rent_overdue%')
+        .in('rent_payment_id', overdueIds)
       // Ιδιο σκεπτικό: χωρίς το ιστορικό, ΚΑΘΕ ληξιπρόθεσμη δόση θα φαινόταν
       // ανειδοποίητη και η όχληση θα ξανάφευγε από την αρχή, με τον αριθμό
       // ειδοποίησης μηδενισμένο. Καλύτερα καμία όχληση σήμερα.
@@ -430,8 +433,8 @@ Deno.serve(async (req) => {
       // Per-instalment: COUNT προηγούμενων ειδοποιήσεων + MAX(created_at) (πιο πρόσφατη).
       const priorCount: Record<string, number> = {}
       const lastNotice: Record<string, number> = {}
-      for (const l of priorLogs || []) {
-        const id = l.event_id
+      for (const l of (priorLogs || []) as { rent_payment_id: string; created_at: string | null }[]) {
+        const id = l.rent_payment_id
         priorCount[id] = (priorCount[id] || 0) + 1
         const t = l.created_at ? new Date(l.created_at).getTime() : NaN
         if (Number.isFinite(t) && (lastNotice[id] === undefined || t > lastNotice[id])) lastNotice[id] = t
@@ -477,13 +480,24 @@ Deno.serve(async (req) => {
         for (const p of (pRows || []) as PropertyName[]) propMap[p.id] = p
       }
 
+      // ΠΡΩΤΑ ΤΟ ΜΗΤΡΩΟ, ΜΕΤΑ ΤΟ EMAIL. Αν το μητρώο δεν γραφτεί, δεν στέλνουμε:
+      // μια όχληση που λείπει σήμερα φεύγει αύριο, μια διπλή όχληση σε οφειλέτη
+      // δεν ξαναπαίρνεται πίσω. Το μοναδικό (rent_payment_id, είδος) κόβει και
+      // δεύτερη ταυτόχρονη εκτέλεση. Αν το email δεν φύγει, το μητρώο σβήνεται.
+      const { data: claimed, error: claimErr } = await supabase.from('notification_log').insert(toNotify.map(r => ({
+        user_id: pref.user_id, event_id: null, rent_payment_id: r.id,
+        reminder_type: `rent_overdue:${(priorCount[r.id] || 0) + 1}`, created_at: new Date().toISOString(),
+      }))).select('id')
+      if (claimErr) { console.error('[send-reminders] μητρώο οχλήσεων:', claimErr); skipped++; continue }
       const { subject, html } = buildDunningEmail(toNotify, tenantMap, propMap, today, noticeLabel, noticeNumber)
       const ok = await sendEmail(to, subject, html)
-      if (ok) {
-        await supabase.from('notification_log').insert(toNotify.map(r => ({
-          user_id: pref.user_id, event_id: r.id, reminder_type: 'rent_overdue', created_at: new Date().toISOString(),
-        })))
-        dunningSent++
+      if (ok) dunningSent++
+      else {
+        const ids = ((claimed || []) as { id: string }[]).map(c => c.id)
+        if (ids.length) {
+          const { error: undoErr } = await supabase.from('notification_log').delete().in('id', ids)
+          if (undoErr) console.error('[send-reminders] αναίρεση μητρώου οχλήσεων:', undoErr)
+        }
       }
     }
 

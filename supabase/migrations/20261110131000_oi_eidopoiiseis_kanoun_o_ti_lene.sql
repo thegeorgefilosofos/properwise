@@ -62,11 +62,13 @@ begin
     return new;
   end if;
   if new.full_name is distinct from old.full_name then
+    -- Ο ΕΛΕΓΧΟΣ ΙΣΧΥΕΙ ΚΑΙ ΟΤΑΝ ΤΟ ΠΑΛΙΟ ΕΙΝΑΙ ΚΕΝΟ. Αλλιώς Α → κενό → Β σε δύο
+    -- βήματα παρέκαμπτε τον μήνα. Η πρώτη συμπλήρωση περνά, γιατί δεν έχει σφραγίδα.
+    if old.full_name_changed_at is not null and old.full_name_changed_at > now() - interval '30 days' then
+      raise exception 'full_name_locked' using errcode = 'P0001',
+        hint = 'Το όνομα αλλάζει μία φορά τον μήνα.';
+    end if;
     if coalesce(btrim(old.full_name), '') <> '' then
-      if old.full_name_changed_at is not null and old.full_name_changed_at > now() - interval '30 days' then
-        raise exception 'full_name_locked' using errcode = 'P0001',
-          hint = 'Το όνομα αλλάζει μία φορά τον μήνα.';
-      end if;
       new.full_name_changed_at := now();
     else
       new.full_name_changed_at := old.full_name_changed_at;

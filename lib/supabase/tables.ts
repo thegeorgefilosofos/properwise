@@ -1027,6 +1027,8 @@ export interface NotificationLogRow {
   event_id: string | null;
   reminder_type: string;
   sent_at: string | null;
+  /** Η δόση ενοικίου μιας όχλησης (20261110131500). Κενό για ημερολόγιο και μηνιαία. */
+  rent_payment_id: string | null;
   created_at: string | null;
 }
 
