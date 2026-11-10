@@ -223,6 +223,14 @@ if ! frout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-retention-probe.sql" 2>&1)
   exit 1
 fi
 probes=$((probes + $(echo "$frout" | grep -c 'probe:' || true)))
+# Η κλήρωση αξιολόγησης όπως οι Όροι (20261110133000): αποδοχή με «άνω των 18»,
+# πίστωση με την αποδοχή, νέα κλήρωση στον ίδιο μήνα μετά τις 14 ημέρες.
+if ! kpout=$($PSQL -d posdb -f "$ROOT/scripts/db/feedback-prize-probe.sql" 2>&1); then
+  echo "🔴 Η κλήρωση αξιολόγησης δεν κάνει όσα γράφουν οι Όροι:"
+  echo "$kpout" | grep -m3 -E 'ERROR|ΚΛΗΡΩΣΗ|ΑΝΟΙΧΤΗ ΠΟΡΤΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$kpout" | grep -c 'probe:' || true)))
 if ! dlout=$($PSQL -d posdb -f "$ROOT/scripts/db/demo-logistis-probe.sql" 2>&1); then
   echo "🔴 Το scripts/db/demo-logistis.sql δεν τρέχει πάνω στο σχήμα:"
   echo "$dlout" | grep -m3 -E 'ERROR|DEMO' | sed 's/^/    /'

@@ -39,6 +39,9 @@ const SERVICE_ONLY = [
   'cron_secrets',
   'email_outbox',
   'feedback_campaign_winners',
+  // Προσκλήσεις αποδοχής της κλήρωσης (20261110133000): μόνο το SHA-256 του
+  // διακριτικού. Ο χρήστης περνά από τις accept_* και τη my_feedback_status.
+  'feedback_prize_offers',
   'invoice_counters',
   // Μισθώσεις «ένα τρέξιμο τη φορά» (20261018164200). Τις γράφουν μόνο οι
   // try/release_email_schedule_lock, από την edge function με SERVICE_KEY.

@@ -23,7 +23,7 @@ npm run katalogos
 | WINBACK | 5 | Επανάκτηση χρήστη που σταμάτησε |
 | OPERATIONS | 12 | Λειτουργικά: ενοίκια, λογαριασμοί, συμβόλαια, συντηρήσεις |
 | SHORTTERM | 7 | Βραχυχρόνια μίσθωση: κρατήσεις, ΤΑΚΚ, μητρώο |
-| PRODUCT | 11 | Τι καινούριο υπάρχει στο προϊόν |
+| PRODUCT | 12 | Τι καινούριο υπάρχει στο προϊόν |
 | CONVERSION | 4 | Από δωρεάν σε συνδρομή |
 | COMPLIANCE | 4 | Νομικά και συμμόρφωση |
 | BILLING | 3 | Χρεώσεις και πληρωμές |
@@ -31,7 +31,7 @@ npm run katalogos
 | VALUE | 8 | Απόδειξη αξίας με τα δικά του νούμερα |
 | NEWS | 5 | Ενημερωτικό δελτίο |
 | DIGESTS | 3 | Συνόψεις αγοράς και χαρτοφυλακίου |
-| **ΣΥΝΟΛΟ** | **120** | |
+| **ΣΥΝΟΛΟ** | **121** | |
 
 ## ONBOARDING
 
@@ -190,6 +190,7 @@ npm run katalogos
 | `milestone_reached` | Ένα ορόσημο που αξίζει αναγνώριση | **με το χέρι** · Το ορόσημο δεν είναι ορισμένο πουθενά. Ενα κατώφλι εδώ θα ήταν αυθαίρετο. |
 | `nps_survey` | Θα μας πρότεινες σε έναν φίλο; | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `feedback_lottery` | Ένα λεπτό για τη γνώμη σου | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
+| `feedback_prize_won` | Κέρδισες έναν χρόνο «${pkg}» στο PROPERWISE | `app/doro/[token]/page.tsx`, `lib/feedback/prize.test.ts` (+3) |
 | `best_practice_tip` | c.headline ? esc(c.headline) : 'Η συμβουλή της εβδομάδας', html: emailShell({ | `supabase/functions/_shared/emailPolicy.ts`, `supabase/functions/_shared/verify-policy.ts` |
 | `webinar_invite` | Πρόσκληση σε συνάντηση για ιδιοκτήτες | `supabase/functions/_shared/emailPolicy.ts` |
 
