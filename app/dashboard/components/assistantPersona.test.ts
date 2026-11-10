@@ -32,6 +32,9 @@ import { aiLimitsFor, TRIAL_LIMITS } from '@/lib/billing/aiLimits';
 import { EARLY_ACCESS_DAYS } from '@/lib/billing/entitlements';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { NAV_LABELS } from '@/lib/nav/labels';
+import { readFileSync } from 'node:fs';
+import { LEVEL_LABEL, LEVEL_HINT, LEVELS, ROLE_LABEL, ROLES, undoDaysFrom } from '@/lib/data/firms';
+import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
 
 // Ο,ΤΙ ΦΤΑΝΕΙ ΣΤΟ ΜΟΝΤΕΛΟ, ΣΕ ΕΝΑ ΚΕΙΜΕΝΟ. Η παραγωγή στέλνει δύο μπλοκ και
 // τα κρατάει χωριστά για το cache: τη γνώση τη βάζει ο διακομιστής
@@ -290,6 +293,25 @@ for (const prefs of [id(), id({ formal: true }), id({ memory: false }), id({ com
     !/(?:καρτέλα|καρτέλας|στην|στο)\s+«?(?:Πελάτης|Αποδόσεις|Απογραφή)|Το Αρχείο έχει/u.test(p));
   ok('prompt: παραπέμπει σε επαγγελματία', /δικηγόρος|λογιστ/.test(p));
 }
+// Η ΝΟΑ ΞΕΡΕΙ ΟΣΑ ΚΑΝΕΙ ΣΗΜΕΡΑ Η ΕΦΑΡΜΟΓΗ (10/11/2026). Ελεγε «πύλη λογιστή
+// (read-only)» ενώ τα γραφεία καταχωρούν με άδεια του ιδιοκτήτη και δεν ήξερε
+// τη μαζική καταχώρηση, την Πύλη ενοικιαστή, το «Πλήρωσα» από το email, την
+// ιδιωτική διεύθυνση για λογαριασμούς, τα δημόσια εργαλεία ή την ομάδα.
+{
+  const p = buildSystemPrompt(id(), 'x');
+  ok('γνώση: όχι πια «πύλη λογιστή (read-only)»', !/πύλη λογιστή \(read-only\)|πύλη λογιστή είναι μόνο-ανάγνωσης/.test(p));
+  // Το όριο έρχεται από το BULK_MAX: η πηγή το γράφει ως όνομα, το prompt ως αριθμό.
+  ok('γνώση: μαζική καταχώρηση με το όριο από τον κώδικα', p.includes('Όλα τα ακίνητά σου μαζί') && /έως \d+ ακίνητα κάθε φορά/.test(p)
+    && /έως \$\{BULK_MAX\} ακίνητα κάθε φορά/.test(readFileSync('app/dashboard/components/assistantPersona.ts', 'utf8')));
+  ok('γνώση: και τα τρία επίπεδα του γραφείου', LEVELS.every(l => p.includes(`«${LEVEL_LABEL[l]}»: ${LEVEL_HINT[l]}`)));
+  ok('γνώση: και οι τρεις ρόλοι του γραφείου', ROLES.every(r => p.includes(`«${ROLE_LABEL[r]}»`)));
+  ok('γνώση: η αναίρεση από τις μέρες του νόμου', p.includes(`αναιρεί ${undoDaysFrom('2026-11-10').map(d => d.lower).join(' ή ')}`));
+  ok('γνώση: κάθε δημόσιο εργαλείο', PUBLIC_TOOLS.every(t => p.includes(`${t.label} (${t.href})`)));
+  for (const w of ['Πύλη ενοικιαστή', '«Πλήρωσα»', 'ιδιωτική διεύθυνση email για λογαριασμούς', '«Οργανισμός και ομάδα»', '«Λογιστικά γραφεία»', '/logistes', '/en'])
+    ok(`γνώση: ${w}`, p.includes(w));
+  ok('γνώση: καμία τιμή γραφείου από μνήμης', !/γραφεί[^.]{0,60}\d+,\d{2}\s?€/.test(p));
+}
+
 // ΤΑΥΤΟΤΗΤΑ: χωρίς φύλο, με άρθρο όπου το θέλει η πρόταση, χωρίς «είμαι AI»,
 // χωρίς «βοηθός» και «δωρεάν» — και χωρίς να κρύβεται.
 {
