@@ -23,7 +23,11 @@
 // ΤΙ ΕΛΕΓΧΕΤΑΙ: κάθε αρχείο που αποδίδει `<PasswordStrength …>` οφείλει
 //   1. να περνά `onLeaked`, δηλαδή να ΑΚΟΥΕΙ το εύρημα και
 //   2. να το χρησιμοποιεί κάπου αλλού στο ίδιο αρχείο — αλλιώς το ακούει και
-//      το πετά, που είναι ακριβώς η κατάσταση από την οποία ήρθαμε.
+//      το πετά, που είναι ακριβώς η κατάσταση από την οποία ήρθαμε·
+//   3. να καλεί το `leakedAtSubmit` στην υποβολή. Ο έλεγχος του πεδίου τρέχει
+//      450 ms μετά το τελευταίο πλήκτρο και περιμένει το δίκτυο: κωδικός που
+//      επικολλήθηκε και υποβλήθηκε αμέσως περνούσε πριν έρθει η απάντηση
+//      (10/11/2026).
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
 import { findSources } from './lib/find-tests.mjs'
@@ -35,6 +39,9 @@ for (const file of findSources()) {
   if (!file.endsWith('.tsx') || file.includes('.test.') || file.endsWith(COMPONENT)) continue
   const src = readFileSync(file, 'utf8')
   if (!/<PasswordStrength\b/.test(src)) continue
+  if (!/\bleakedAtSubmit\s*\(/.test(src)) {
+    findings.push({ file, line: src.slice(0, src.search(/<PasswordStrength\b/)).split('\n').length, why: 'η υποβολή δεν καλεί `leakedAtSubmit`: κωδικός που επικολλάται και υποβάλλεται αμέσως περνά πριν απαντήσει το πεδίο' })
+  }
 
   // Κάθε απόδοση του component, με το άνοιγμα της ετικέτας της.
   for (const m of src.matchAll(/<PasswordStrength\b[^>]*\/?>/g)) {
@@ -71,7 +78,8 @@ if (findings.length) {
   console.error('    const [leakedPw, setLeakedPw] = useState<string | null>(null)')
   console.error('    const leaked = leakedPw !== null && leakedPw === password')
   console.error('    <PasswordStrength password={password} onLeaked={setLeakedPw} />')
-  console.error('    …και το `leaked` μπαίνει ΚΑΙ στο disabled ΚΑΙ στον έλεγχο της υποβολής.')
+  console.error('    …και το `leaked` μπαίνει ΚΑΙ στο disabled ΚΑΙ στον έλεγχο της υποβολής,')
+  console.error('    και η υποβολή καλεί `await leakedAtSubmit(password)` πριν στείλει τον κωδικό.')
   process.exit(1)
 }
 console.log('✓ κάθε οθόνη κωδικού ακούει και εφαρμόζει το εύρημα διαρροής')

@@ -527,6 +527,18 @@ export default function SignupPage() {
       countSignupStep('invalid')
       return
     }
+    // Η υποβολή ρωτά η ίδια: ο έλεγχος του πεδίου μπορεί να μην έχει απαντήσει
+    // ακόμη, π.χ. σε κωδικό που επικολλήθηκε (lib/auth/leakedPassword.ts).
+    setLoading(true)
+    const leakedNow = await import('@/lib/auth/leakedPassword').then(m => m.leakedAtSubmit(password), () => false)
+    setLoading(false)
+    if (leakedNow) {
+      setLeakedPw(password)
+      setPwTouched(true)
+      setError(PW_MSG.leaked)
+      countSignupStep('invalid')
+      return
+    }
     countSignupStep('submit')
     setError(''); setLoading(true)
     const supabase = await authClient()

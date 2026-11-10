@@ -111,6 +111,40 @@ export function parseRange(body: string, suffix: string): LeakCheck {
   return { leaked: false, count: 0 }
 }
 
+/** Πόσο περιμένει η υποβολή την υπηρεσία πριν προχωρήσει χωρίς απάντηση. */
+export const SUBMIT_TIMEOUT_MS = 2000
+
+/**
+ * Ο ΕΛΕΓΧΟΣ ΤΗΣ ΥΠΟΒΟΛΗΣ. Το PasswordStrength ρωτά 450 ms μετά το τελευταίο
+ * πλήκτρο και μετά περιμένει το δίκτυο. Οποιος επικολλούσε κωδικό και πατούσε
+ * αμέσως «Εγγραφή» πρόφταινε την απάντηση: το `leakedPw` ήταν ακόμη `null` και
+ * ο διαρρεύσας κωδικός γινόταν δεκτός. Γι' αυτό η υποβολή ρωτά η ίδια, με όριο.
+ *
+ * Επιστρέφει `true` μόνο όταν η υπηρεσία απάντησε «βρέθηκε». Σε σιωπή, σφάλμα ή
+ * λήξη χρόνου επιστρέφει `false` (ανοιχτά, όπως όλος ο έλεγχος) και το
+ * καταγράφει. Ο κωδικός και ο πλήρης κατακερματισμός δεν φεύγουν ούτε εδώ και
+ * δεν καταγράφονται πουθενά.
+ */
+export async function leakedAtSubmit(password: string, timeoutMs = SUBMIT_TIMEOUT_MS): Promise<boolean> {
+  const ctl = new AbortController()
+  const timer = setTimeout(() => ctl.abort(), timeoutMs)
+  try {
+    const r = await checkLeakedPassword(password, ctl.signal)
+    // Η σιωπή καταγράφεται, ώστε μια υπηρεσία που έπεσε ή μια CSP που την κόβει
+    // να φανεί. Στην αναφορά μπαίνει ΜΟΝΟ ο λόγος: ούτε κωδικός, ούτε hash.
+    if (r === null) {
+      void import('@/lib/observability/report')
+        .then(m => m.captureError(new Error('leaked-password check unavailable at submit'), {
+          reason: ctl.signal.aborted ? 'timeout' : 'unavailable',
+        }))
+        .catch(() => {})
+    }
+    return r?.leaked === true
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /** Πόσο σοβαρά να το πει η οθόνη. Το πλήθος αλλάζει το μήνυμα, όχι μόνο το «ναι». */
 export function leakMessage(r: LeakCheck | null): string | null {
   if (!r || !r.leaked) return null

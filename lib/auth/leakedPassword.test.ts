@@ -14,7 +14,7 @@
 // διέρρευσε» απορρίπτει ΚΑΘΕ κωδικό.
 //
 // Καμία κλήση δικτύου εδώ: ελέγχεται η ανάλυση, που είναι όλη η λογική.
-import { parseRange, leakMessage } from './leakedPassword'
+import { parseRange, leakMessage, leakedAtSubmit } from './leakedPassword'
 
 let pass = 0, fail = 0
 function ok(name: string, cond: boolean) { if (cond) pass++; else { fail++; console.error('✗ ' + name) } }
@@ -65,5 +65,48 @@ ok('αρνητικό πλήθος επίσης', !parseRange('ABC:-4', 'ABC').le
     !!many && !/[0-9A-F]{20,}/.test(many))
 }
 
-console.log(fail === 0 ? `✓ leakedPassword: ${pass} έλεγχοι πέρασαν` : `✗ leakedPassword: ${fail} απέτυχαν από ${pass + fail}`)
+// ═══ Ο ΕΛΕΓΧΟΣ ΤΗΣ ΥΠΟΒΟΛΗΣ (10/11/2026) ══════════════════════════════════
+// Κωδικός που επικολλάται και υποβάλλεται αμέσως πρόφταινε τον έλεγχο του
+// πεδίου. Εδώ ελέγχεται το `leakedAtSubmit` με ψεύτικο fetch: τι στέλνει, τι
+// δέχεται και ότι σε σιωπή της υπηρεσίας η υποβολή ΠΡΟΧΩΡΑ.
+async function submitChecks() {
+  const real = globalThis.fetch
+  const seen: { url: string; padding: string | null }[] = []
+  const reply = (body: string, status = 200) => async (url: string | URL | Request, init?: RequestInit) => {
+    seen.push({ url: String(url), padding: new Headers(init?.headers).get('Add-Padding') })
+    return new Response(body, { status })
+  }
+  try {
+    // SHA-1("password") = 5BAA6 1E4C9B93F3F0682250B6CF8331B7EE68FD8
+    globalThis.fetch = reply(BODY) as typeof fetch
+    ok('υποβολή: ο «password» απορρίπτεται', await leakedAtSubmit('password'))
+    const last = seen.at(-1)
+    eq('υποβολή: φεύγουν ΜΟΝΟ τα 5 πρώτα ψηφία', last?.url, 'https://api.pwnedpasswords.com/range/5BAA6')
+    ok('υποβολή: ούτε ο κωδικός ούτε το υπόλοιπο του hash στη διεύθυνση',
+      !!last && last.url.split('/range/')[1] === '5BAA6' && !last.url.includes('1E4C9B93F3F0682250B6CF8331B7EE68FD8'))
+    eq('υποβολή: ζητείται padding', last?.padding, 'true')
+    ok('υποβολή: καθαρός κωδικός περνά', !(await leakedAtSubmit('Ζ8!πορτοκαλί-φεγγάρι-2026')))
+
+    globalThis.fetch = reply('', 503) as typeof fetch
+    ok('υποβολή: υπηρεσία εκτός (503) → προχωρά', !(await leakedAtSubmit('password')))
+
+    globalThis.fetch = (async () => { throw new TypeError('fetch failed') }) as typeof fetch
+    ok('υποβολή: σφάλμα δικτύου → προχωρά', !(await leakedAtSubmit('password')))
+
+    // Υπηρεσία που δεν απαντά ποτέ: το όριο χρόνου κόβει και η υποβολή συνεχίζει.
+    globalThis.fetch = ((_u: unknown, init?: RequestInit) => new Promise((_res, rej) => {
+      init?.signal?.addEventListener('abort', () => rej(new DOMException('aborted', 'AbortError')))
+    })) as typeof fetch
+    const t0 = Date.now()
+    ok('υποβολή: σιωπή της υπηρεσίας → προχωρά', !(await leakedAtSubmit('password', 50)))
+    ok('υποβολή: δεν περιμένει πέρα από το όριο', Date.now() - t0 < 1000)
+  } finally {
+    globalThis.fetch = real
+  }
+}
+
+submitChecks().then(() => {
+  console.log(fail === 0 ? `✓ leakedPassword: ${pass} έλεγχοι πέρασαν` : `✗ leakedPassword: ${fail} απέτυχαν από ${pass + fail}`)
+  if (fail) process.exitCode = 1
+})
 if (fail > 0) process.exit(1)

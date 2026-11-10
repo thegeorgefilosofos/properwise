@@ -19,6 +19,7 @@ import { logActivity } from '@/lib/activity';
 import { checkPassword, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password';
 import { MFA_NAME_CONFLICT, pendingTotpIds, totpFriendlyName } from '@/lib/auth/mfa';
 import PasswordStrength from '@/components/PasswordStrength';
+import { leakedAtSubmit } from '@/lib/auth/leakedPassword';
 import PasswordEye from '@/app/PasswordEye';
 import { failed } from '@/lib/core/dbError';
 import { grDate } from '@/lib/core/format';
@@ -305,6 +306,13 @@ export default function SecuritySettings() {
     }
     setPwBusy(true);
     setPwMsg(null);
+    // Η υποβολή ρωτά η ίδια: ο έλεγχος του πεδίου μπορεί να μην έχει απαντήσει ακόμη.
+    if (await leakedAtSubmit(newPass)) {
+      setLeakedPw(newPass);
+      setPwBusy(false);
+      setPwMsg({ ok: false, text: PASSWORD_MSG.leaked });
+      return;
+    }
     // Ο τρέχων κωδικός ταξιδεύει ΜΟΝΟ όταν η οθόνη τον ζήτησε. Το
     // `current_password` είναι το όνομα που διαβάζει ο διακομιστής και που
     // δηλώνει το `UserAttributes` του @supabase/auth-js 2.116: η βιβλιοθήκη

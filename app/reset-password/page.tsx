@@ -8,6 +8,7 @@ import { AuthMobileBrand } from '../AuthMobileBrand'
 import PasswordEye from '../PasswordEye'
 import { checkPassword, PASSWORD_MIN_HINT, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password'
 import PasswordStrength from '@/components/PasswordStrength'
+import { leakedAtSubmit } from '@/lib/auth/leakedPassword'
 import { failed as failedEl } from '@/lib/core/dbError';
 import { BackLink } from '../BackLink'
 import MailSent from '../MailSent'
@@ -116,6 +117,10 @@ export default function ResetPasswordPage() {
     if (!pwOk) { setError(leakedPw === password ? (A ? A.pw.leaked : PASSWORD_MSG.leaked) : (A ? A.pw.weak : PASSWORD_MSG.weak)); return }
     if (password !== confirm) { setError(MISMATCH); return }
     setLoading(true)
+    // Η υποβολή ρωτά η ίδια: ο έλεγχος του πεδίου μπορεί να μην έχει απαντήσει ακόμη.
+    if (await leakedAtSubmit(password)) {
+      setLeakedPw(password); setLoading(false); setError(A ? A.pw.leaked : PASSWORD_MSG.leaked); return
+    }
     const supabase = await authClient()
     const { error } = await supabase.auth.updateUser({ password })
     if (error) { setLoading(false); setError(failed('Ο κωδικός δεν άλλαξε', R?.notChanged, error)); return }

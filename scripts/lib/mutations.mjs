@@ -387,7 +387,11 @@ export const MUTATIONS = {
   ] },
   'service-role': { add: 'components/__mut__.ts', content: "export const key = process.env.SUPABASE_SERVICE_ROLE_KEY\n" },
   'csv-injection': { add: 'lib/core/__mut__.ts', content: "export const row = (cells: string[]) => cells.join(';')\n" },
-  'password-leak': { add: 'components/__mut__.tsx', content: "import PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  return <PasswordStrength value={v} />\n}\n" },
+  'password-leak': { every: [
+    { add: 'components/__mut__.tsx', content: "import PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  return <PasswordStrength value={v} />\n}\n" },
+    // Ακούει και διαβάζει το εύρημα, αλλά η υποβολή δεν ρωτά η ίδια (10/11/2026).
+    { add: 'components/__mut__.tsx', content: "import { useState } from 'react'\nimport PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  const [leakedPw, setLeakedPw] = useState<string | null>(null)\n  const blocked = leakedPw === v\n  return <><PasswordStrength password={v} onLeaked={setLeakedPw} /><button disabled={blocked}>ok</button></>\n}\n" },
+  ] },
   // Δύο κανόνες, δύο αποδείξεις: διαδρομή χωρίς καμία ταυτότητα και
   // διαδρομή με συνεδρία που δεν ζητά το δεύτερο βήμα (03.10.2026).
   'api-auth': { every: [
