@@ -52,6 +52,11 @@ ok('Φορέας: χωρίς «ενδιάμεσο πρόγραμμα» (δεν �
 // Τα `effective` βγαίνουν από τις ίδιες σταθερές με την περίληψη.
 const VAC = regulated('vacant-rental-exemption')
 const vac = get('longterm-exemption-conditions')
+ok('απαλλαγή: η περίληψη λέει το παράθυρο του μητρώου ισχύος', !!vac && vac.summary.includes(`${grDate(VAC.validFrom)}–${grDate(VAC.validTo)}`))
+// Το δημόσιο εργαλείο φορτώνει το updates2026.ts: κανένα βαρύ module στις εισαγωγές του.
+const updImports = [...readFileSync('lib/accounting/updates2026.ts', 'utf8').matchAll(/from '([^']+)'/g)].map(m => m[1])
+ok('updates2026: δεν εισάγει μητρώο ισχύος, affordability ή rentAdjustment',
+  !updImports.some(m => /legal\/validity|loans\/affordability|documents\/rentAdjustment/.test(m)))
 ok('απαλλαγή: το effective από το μητρώο', !!vac && vac.effective === yearSpan(VAC.validFrom, VAC.validTo) && vac.effective === `${VAC.validFrom.slice(0, 4)}–${(VAC.validTo ?? '').slice(0, 4)}`)
 ok('yearSpan: με λήξη «2024–2026»', yearSpan('2024-09-08', '2026-12-31') === '2024–2026')
 ok('yearSpan: χωρίς λήξη «από 2024», όχι «2024–»', yearSpan('2024-09-08', null) === 'από 2024' && yearSpan('2024-09-08', undefined) === 'από 2024')
@@ -84,6 +89,13 @@ ok('Νόα: ο Φορέας χωρίς «~12 έτη», «12 ετών» και «
 ok('Νόα: χωρίς «ενδιάμεσο πρόγραμμα» για τον Φορέα', !/ενδιάμεσο πρόγραμμα/.test(noa))
 ok('Νόα: το πλαφόν δεν γράφεται «3%» με το χέρι', !/πλαφόν[^·\n]{0,40}\b3%/.test(noa) && !/πλαφόν αναπροσαρμογής 3%/.test(noa))
 ok('Νόα: το πλαφόν από το COMMERCIAL_RENT_CAP_2026 με fpRate', noa.includes('fpRate(COMMERCIAL_RENT_CAP_2026.pct)'))
+
+// Το δημόσιο εργαλείο βραχυχρόνιας παίρνει τον κανόνα ΑΜΑ ως δεδομένα από τη σελίδα:
+// καμία εισαγωγή του updates2026 στον browser, μόνο τύπος.
+const tool = readFileSync('app/vraxyxronia-i-makroxronia/ShortVsLongCalculator.tsx', 'utf8')
+ok('εργαλείο βραχυχρόνιας: το updates2026 μόνο ως τύπος', !/^import \{[^}]*\} from '@\/lib\/accounting\/updates2026'/m.test(tool) && /^import type \{ RegulatoryUpdate \} from '@\/lib\/accounting\/updates2026'/m.test(tool))
+for (const f of ['app/vraxyxronia-i-makroxronia/page.tsx', 'app/en/short-term-vs-long-term-rental/view.tsx'])
+  ok(`${f}: δίνει τον κανόνα ΑΜΑ στον υπολογιστή`, /amaRule=\{AMA_RULE\}/.test(readFileSync(f, 'utf8')))
 
 console.log(fail ? `✗ updates2026 στοιχεία: ${fail} απέτυχαν, ${pass} πέρασαν` : `✓ updates2026 στοιχεία: ${pass} έλεγχοι πέρασαν`)
 if (fail) process.exit(1)

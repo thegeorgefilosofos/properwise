@@ -8,10 +8,9 @@
 import type { Who } from './dossier'
 import { MYAADE, GOV_SHORT_TERM } from '@/lib/tax/aade';
 import { feWhole, fpRate, grDate, grDateOf } from '@/lib/core/format';
-import { COMMERCIAL_RENT_CAP_2026 as RENT_CAP } from '@/lib/documents/rentAdjustment';
+import { COMMERCIAL_RENT_CAP_2026 as RENT_CAP } from '@/lib/documents/rentCap';
 import { ATHENS_STR_FREEZE as ATHENS, THESS_STR_FREEZE as THESS } from '@/lib/market/greekMarket';
-import { DSTI_LIMIT } from '@/lib/loans/affordability';
-import { regulated } from '@/lib/legal/validity';
+import { DSTI_LIMIT } from '@/lib/loans/dstiLimit';
 import { SALE_LEASE_BACK_STATUS, SALE_LEASE_BACK_HREF } from './saleLeaseBack';
 import { FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
@@ -32,7 +31,10 @@ const TAXED_SHARE = fpRate((1 - PRESUMPTIVE_DEDUCTION_RATE) * 100)
 // σταθερά και το κείμενο θα έμενε πίσω. Οι τιμές που φαίνονται δεν αλλάζουν.
 const CAP_FROM = grDate(RENT_CAP.from), CAP_TO = grDate(RENT_CAP.to)
 const CAP_YEAR = Number(RENT_CAP.from.slice(0, 4))
-const VACANT = regulated('vacant-rental-exemption')
+// Το παράθυρο της τριετούς απαλλαγής, όπως η εγγραφή `vacant-rental-exemption` του
+// μητρώου ισχύος, που δείχνει σε αυτό το αρχείο. Δεν διαβάζεται από το μητρώο, για να
+// μη φτάνει όλο στον browser· η δοκιμή updates2026.facts κρατά τα δύο ίδια.
+const VACANT = { validFrom: '2024-09-08', validTo: '2026-12-31' } as const
 const VACANT_WINDOW = `${grDate(VACANT.validFrom)}–${grDate(VACANT.validTo)}`
 const pct = (r: number) => fpRate(r * 100)
 
