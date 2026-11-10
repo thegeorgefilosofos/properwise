@@ -19,6 +19,8 @@ export interface KnownProperty {
   sqm?: number | null;
   ownership?: number | null;
   floor?: string | null;
+  postal_code?: string | null;
+  year_built?: number | null;
 }
 
 export type MatchResult =
@@ -64,12 +66,16 @@ export function matchProperty(
  * Τίποτα που έγραψε ο χρήστης δεν αλλάζει. Το 0 στο εμβαδόν σημαίνει «δεν δόθηκε».
  */
 export function fillOnlyEmpty(
-  current: KnownProperty, found: { atak: string | null; sqm: number | null; floor: string | null; address: string | null },
+  current: KnownProperty,
+  found: { atak: string | null; sqm: number | null; floor: string | null; address: string | null; postalCode?: string | null; yearBuilt?: number | null },
 ): Record<string, string | number> {
   const patch: Record<string, string | number> = {};
   if (!isAtak(current.atak) && isAtak(found.atak)) patch.atak = atakDigits(found.atak);
   if (!(Number(current.sqm) > 0) && found.sqm && found.sqm > 0) patch.sqm = found.sqm;
   if (!String(current.floor ?? '').trim() && found.floor?.trim()) patch.floor = found.floor.trim();
   if (!String(current.address ?? '').trim() && found.address?.trim()) patch.address = found.address.trim();
+  // Τ.Κ. και έτος: μόνο όταν το ακίνητο τα φορτώθηκε και τα έχει κενά (`undefined` = δεν ξέρουμε, δεν αγγίζεται).
+  if (current.postal_code !== undefined && !String(current.postal_code ?? '').trim() && found.postalCode && /^\d{5}$/.test(found.postalCode)) patch.postal_code = found.postalCode;
+  if (current.year_built !== undefined && !(Number(current.year_built) > 0) && found.yearBuilt) patch.year_built = found.yearBuilt;
   return patch;
 }

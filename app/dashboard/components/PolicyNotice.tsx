@@ -21,7 +21,7 @@ import { createClient } from '@/lib/supabase/client';
 import { T, IconBtn, LinkBtn, Card, Btn } from '@/components/Theme';
 import { POLICY_VERSION } from '@/lib/legal/identity';
 import {
-  POLICY_CHANGE_SUMMARY, POLICY_NOTICE_HEADLINE, POLICY_NOTICE_LEDE, POLICY_NOTICE_SHORT, POLICY_NOTICE_KEY, policyNoticeDue, type PolicyMeta,
+  POLICY_NOTICE_LEDE, POLICY_NOTICE_KEY, policyNoticeDue, policyNoticeCopy, type PolicyMeta, type PolicyNoticeCopy,
   FIRM_NOTICE_TITLE, FIRM_NOTICE_BODY, FIRM_NOTICE_HREF, FIRM_NOTICE_KEY, FIRM_NOTICE_VERSION, firmNoticeDue, type NoticeUser,
 } from '@/lib/legal/policyNotice';
 
@@ -31,6 +31,8 @@ export default function PolicyNotice() {
   const [firm, setFirm] = useState(false);
   const [line, setLine] = useState(false);
   const [open, setOpen] = useState(false);
+  // Τι λέει η γραμμή: εξαρτάται από το τι έχει ήδη δει ο χρήστης (lib/legal/policyNotice.ts).
+  const [copy, setCopy] = useState<PolicyNoticeCopy | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -45,8 +47,9 @@ export default function PolicyNotice() {
         const { data, error } = await supabase.auth.getUser();
         if (error || !alive) return;
         const card = firmNoticeDue(data.user as NoticeUser | null, localFirm);
-        const due = policyNoticeDue(data.user?.user_metadata as PolicyMeta | undefined, local);
-        setFirm(card); setLine(due);
+        const meta = data.user?.user_metadata as PolicyMeta | undefined;
+        const due = policyNoticeDue(meta, local);
+        setFirm(card); setLine(due); setCopy(policyNoticeCopy(meta, local));
         if (card || due) setShow(true);
       } catch { /* σιωπηλά: χωρίς λογαριασμό δεν υπάρχει ενημέρωση */ }
     })();
@@ -54,7 +57,7 @@ export default function PolicyNotice() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!show) return null;
+  if (!show || !copy) return null;
 
   const dismiss = () => {
     try { localStorage.setItem(POLICY_NOTICE_KEY, POLICY_VERSION); } catch { /* noop */ }
@@ -92,9 +95,9 @@ export default function PolicyNotice() {
   );
 
   return (
-    // ΜΙΑ ΓΡΑΜΜΗ ΚΑΙ ΤΟ «×» (20/10/2026): η γραμμή λέει ότι άλλαξαν Όροι και
-    // Απόρρητο, το «Τι άλλαξε» ανοίγει από κάτω την πλήρη πρόταση, την
-    // περίληψη και τον σύνδεσμο των Όρων. Ούτε κρυμμένη ούτε τρεις γραμμές
+    // ΜΙΑ ΓΡΑΜΜΗ ΚΑΙ ΤΟ «×» (20/10/2026): η γραμμή λέει τι άλλαξε (Όροι και
+    // Απόρρητο, ή μόνο Απόρρητο), το «Τι άλλαξε» ανοίγει από κάτω την πλήρη
+    // πρόταση, την περίληψη και τον σύνδεσμο στο κείμενο. Ούτε κρυμμένη ούτε τρεις γραμμές
     // πάνω από το ποσό: κάθεται κάτω από την κεφαλίδα της Επισκόπησης.
     <section aria-label="Τι άλλαξε στους όρους χρήσης" style={{
       display: 'flex', alignItems: 'flex-start', gap: 12,
@@ -106,15 +109,15 @@ export default function PolicyNotice() {
       <span aria-hidden style={{ width: 6, height: 6, borderRadius: T.radius.pill, background: 'var(--text-tertiary)', flexShrink: 0, marginTop: 'calc((1.5 * var(--fs-base) - 6px) / 2)' }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: 0 }}>
-          <strong style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{POLICY_NOTICE_SHORT}</strong>{' '}
+          <strong style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{copy.short}</strong>{' '}
           {/* `po-tap-inline`: μέσα σε πρόταση, άρα τα 44 της αφής από ψευδοστοιχείο
               και όχι από δάπεδο ύψους που θα άνοιγε τη γραμμή (app/globals.css). */}
           <LinkBtn className="po-tap-inline" onClick={() => setOpen(o => !o)}>{open ? 'Απόκρυψη' : 'Τι άλλαξε'}</LinkBtn>
         </p>
         {open && (
           <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.6, margin: '8px 0 0', maxWidth: '78ch' }}>
-            {POLICY_NOTICE_HEADLINE} {POLICY_NOTICE_LEDE} {POLICY_CHANGE_SUMMARY}{' '}
-            <a href="/terms" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1 }}>Δες τους Όρους</a>
+            {copy.headline} {POLICY_NOTICE_LEDE} {copy.summary}{' '}
+            <a href={copy.href} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1 }}>{copy.hrefLabel}</a>
           </p>
         )}
       </div>

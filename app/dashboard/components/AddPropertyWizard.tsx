@@ -25,6 +25,7 @@ import { PEA_CLASSES } from '@/lib/property/pea';
 import type { EnfiaWizardInitial } from '@/lib/tools/enfiaCarry';
 import { draftKey, readDraft, writeDraft, clearDraft, sameDraft, restoreDraft } from '@/lib/ui/dismiss';
 import { confirmDiscard } from '@/components/ConfirmDialog';
+import { BulkImportCard } from './BulkImportCard';
 
 // Η ενεργειακή κλάση (ΠΕΑ) ζει στο lib/property/pea.ts: τη γράφει και η σάρωση
 // του πιστοποιητικού, με το ίδιο λεξιλόγιο.
@@ -345,7 +346,7 @@ function StepBody({ rows, place, after, moreTitle = 'Περισσότερα', le
   );
 }
 
-export default function AddPropertyWizard({ userId, onClose, onSaved, existing, focus, initial }: {
+export default function AddPropertyWizard({ userId, onClose, onSaved, existing, focus, initial, onBulkImport }: {
   userId: string; onClose: () => void; onSaved: (propertyId: string | null) => void; existing?: ExistingProperty | null;
   /**
    * Ο,ΤΙ ΕΓΡΑΨΕ ΗΔΗ Ο ΕΠΙΣΚΕΠΤΗΣ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ ΕΝΦΙΑ (lib/tools/enfiaCarry.ts):
@@ -360,6 +361,12 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
    * κέρσορα στο ΑΦΜ, αντί ο χρήστης να περάσει τρία βήματα για να το βρει.
    */
   focus?: 'owner_afm' | null;
+  /**
+   * Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΩΣ ΠΡΩΤΗ ΕΠΙΛΟΓΗ (απόφαση ιδιοκτήτη 09/11/2026). Το
+   * δίνει ο πίνακας μόνο όταν ο χρήστης δεν έχει κανένα ακίνητο: η κάρτα στέκει
+   * πάνω από τον τύπο ακινήτου και ανοίγει την εισαγωγή από Ε9 ή πράξη ΕΝΦΙΑ.
+   */
+  onBulkImport?: () => void;
 }) {
   const supabase = createClient();
   const isEdit = !!existing?.id;
@@ -916,6 +923,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
       {/* STEP 1, Τύπος & Κατάσταση */}
       {step === 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {!isEdit && onBulkImport && <BulkImportCard onStart={onBulkImport} />}
           <div>
             <div id={typeGroupId} style={labelStyle}>Τύπος ακινήτου</div>
             {/* ΟΛΑ ΤΑ ΠΛΑΚΙΔΙΑ ΙΣΑ ΚΑΙ ΟΤΑΝ ΤΟ ΟΝΟΜΑ ΠΙΑΝΕΙ ΔΥΟ ΣΕΙΡΕΣ.

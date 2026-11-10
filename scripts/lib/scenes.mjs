@@ -20,6 +20,8 @@ export const SCENES = [
   'calendar', 'calendarDay', 'clients', 'documents', 'inventory', 'settings', 'settingsPro',
   'billing', 'branding', 'referral', 'referralPro', 'plan', 'planReno', 'planSale',
   'myaade', 'myaadeReview', 'myaadeDone', 'myaadeError',
+  // Η μαζική καταχώρηση από Ε9 ή πράξη ΕΝΦΙΑ (09/11/2026).
+  'bulkWizard', 'bulkE9', 'bulkMany', 'bulkPlan', 'bulkWrongDoc',
   // Τα λογιστικά γραφεία (scripts/perf-bench/firms.tsx).
   'firm', 'firmNew', 'firmInvite', 'firmWorkspace', 'firmWorkspaceAssociate', 'firmWorkspaceInvite',
   'firmEntryDocument', 'firmEntryBill', 'firmEntryTax', 'firmEntryLoan', 'firmEntryRent', 'firmEntryTenant', 'firmOwner',

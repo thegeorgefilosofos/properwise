@@ -2,15 +2,21 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="public/brand/properwise-logotypo-lefko.png">
-  <img src="public/brand/properwise-logotypo-skouro.png" alt="PROPERWISE" width="320">
+  <img src="public/brand/properwise-logotypo-skouro.png" alt="PROPERWISE" width="300">
 </picture>
 
-**Property management for Greek owners, managers and their accountants.**<br/>
-Photograph a bill, a lease or a receipt; income, expenses, tenants, tax and deadlines follow.
+### The paperwork of owning property in Greece, kept by one app.
 
-_Διαχείριση ακινήτων με μία φωτογραφία._
+Photograph a bill, a lease or a receipt. Income, expenses, tenants, tax and deadlines follow,<br/>
+and the accountant gets a year that is ready to file.
 
-[properwise.gr](https://properwise.gr) · [Calculators](https://properwise.gr/ergaleia) · [Guides](https://properwise.gr/odigos) · [For accountants](https://properwise.gr/logistes)
+[**properwise.gr**](https://properwise.gr) · [English](https://properwise.gr/en) · [For accountants](https://properwise.gr/en/for-accountants) · [Calculators](https://properwise.gr/en/tools) · [Pricing](https://properwise.gr/en/pricing) · [Trust](https://properwise.gr/en/trust)
+
+<br/>
+
+<img src="docs/readme/hero.png" alt="PROPERWISE on a laptop and a phone: the owner's overview with the next tax deadlines, and a scanned electricity bill being filed" width="880">
+
+<sub>The app in its light theme, with sample data. Interface in Greek.</sub>
 
 </div>
 
@@ -18,82 +24,88 @@ _Διαχείριση ακινήτων με μία φωτογραφία._
 > service that holds customer data. The public face of the product is
 > [properwise.gr](https://properwise.gr).
 
----
+## The problem
 
-<table>
-<tr>
-<td width="62%"><img src="docs/screenshots/scan.png" alt="A scanned electricity bill: period, consumption, due date and amount, filed into bills, expenses, calendar and the property folder"></td>
-<td width="38%"><img src="docs/screenshots/noa.png" alt="Noa answering a question about this year's electricity spend and linking to the tariff comparison"></td>
-</tr>
-<tr>
-<td><sub>One photo of a bill fills the record and files it in four places.</sub></td>
-<td><sub>Noa answers from the owner's own numbers, in Greek, by text or voice.</sub></td>
-</tr>
-</table>
+A Greek landlord with one flat deals with the same state systems as a small
+business. Every lease is declared to ΑΑΔΕ, the tax authority, and repeated on
+form Ε2 with the yearly return. ΕΝΦΙΑ, the property tax, arrives as an act in
+myAADE and is paid in instalments. Short stays need a registry number and their
+own declarations. Utility bills, repair receipts, common charges and platform
+payouts pile up in email, on paper and in photos on a phone.
 
-<sub>Public pages of properwise.gr, dark theme, captured 04/11/2026. No user data.</sub>
+When tax season opens, the accountant asks for all of it, sorted, and works out
+the tax from whatever arrives.
 
-## Contents
-
-[What it does](#what-it-does) · [How quality is held](#how-quality-is-held) · [Architecture](#architecture) · [Repository layout](#repository-layout) · [Local development](#local-development) · [CI/CD](#cicd) · [Documentation](#documentation)
+PROPERWISE turns each document into a record the moment it arrives, keeps the
+deadlines in one calendar, and gives the accountant a direct view of the year.
 
 ## What it does
 
-### For owners
+### One photo, filed in four places
 
-- **Scan anything the property produces.** Utility bills from any provider,
-  professionals' receipts (ΑΠΥ/ΤΠΥ) with the category taken from the work done,
-  common charges (κοινόχρηστα), tax documents (Ε1, Ε2, Ε9, ΕΝΦΙΑ), payout and
-  commission statements from short-stay platforms, multi-page PDFs and files
-  that hold several documents. Photo or PDF, with one size limit shared by the
-  screen, the server and the storage bucket and held equal by a test
-  (`lib/billing/scanPrompt.ts`).
-- **An archive an accountant can file.** Every document lives in
-  _kind → provider → year_ and downloads under one name,
-  `Είδος_Πάροχος_ΕΕΕΕ_ΜΜ_Ποσό.ext`. The name is computed, not stored, so old
-  files follow every correction (`lib/archive/`).
-- **Rent and tenants.** Lease ledger, statements and receipts, a tenant portal,
-  one-tap «Πλήρωσα» from a reminder. Rent adjustment by a fixed rate or by the
-  ΕΛΣΤΑΤ consumer price index, with the commercial-lease cap where it applies,
-  and a signed PDF notice to the tenant (`lib/documents/rentAdjustment.ts`).
-- **Tax and deadlines.** Rental income tax, ΕΝΦΙΑ and its instalments, the
-  owner's deadlines month by month, all pushed into the calendar, reminders and
-  the phone. The ΕΝΦΙΑ act imports straight from myAADE (`lib/myaade/`).
-- **Bills, loans, short stays.** Tariff comparison with the date prices were
-  checked, mortgage instalments, iCal sync with Airbnb and Booking, dynamic
-  pricing and occupancy.
-- **Noa.** Answers questions about the owner's own properties in Greek, from the
-  owner's own data, and opens the screen that does the job. Tax examples come
-  from the same calculators as the rest of the app; answers are scored against
-  a fixed question set (`npm run noa:eval`).
+<img src="docs/readme/scan.png" alt="Left: a scanned electricity bill with property, document type and folder already chosen. Right: the expenses screen it feeds" width="880">
 
-### For managers
+A photo or PDF of any bill, receipt, lease or tax document is read by the model
+and turned into a draft: provider, period, amount, due date, property and
+folder. The owner checks it and taps once. The same record updates bills,
+expenses, the calendar and the property folder. Professionals' receipts get
+their expense category from the work described on them
+(`lib/billing/scanPrompt.ts`).
 
-Portfolio view across properties, organizations with team permissions, a client
-and guest CRM with stay history, co-owner splits, branded investor reports,
-guest check-in links and Excel/CSV export everywhere.
+### Tax and deadlines that come to you
 
-### For accountants
+<img src="docs/readme/tax.png" alt="Left: the owner's overview listing what is due next, in days. Right: the accounting tab showing how much of the tax return is already prepared" width="880">
 
-A read-only, revocable link to each client's year: one row per property, what is
-missing listed first, an Ε1/Ε2 code sheet and an Excel workbook that opens in
-their own software. Bulk invitations and all client folders in one download.
-Public page: [/logistes](https://properwise.gr/logistes).
+Rental income tax, ΕΝΦΙΑ and its instalments, the short-stay registry and the
+owner's other deadlines, month by month, pushed to the calendar and the phone.
+The accounting tab says how much of the return is already covered by the
+owner's own data and what is still missing. Every figure comes from the same
+calculators as the public tools (`lib/tax/`, `lib/facts/`).
 
-### In public, without an account
+### Rent and tenants
 
-<img src="docs/screenshots/tools.png" alt="The calculators hub, grouped by topic" width="100%">
+<img src="docs/readme/rent.png" alt="Left: tenants with current rent, overdue balance and deposit. Right: recording January rent across several properties in one step" width="880">
 
-Calculators for ΕΝΦΙΑ, rental tax, rent adjustment, purchase costs, yield,
-mortgage, electricity tariffs and more, plus long-form guides that explain the
-rules behind each figure. Every calculator runs the same engine as the app and
-cites its sources. Each list is written once: `lib/core/publicTools.ts` feeds
-the footer, the hub and `llms.txt`; `app/odigos/guides.ts` feeds the guides
-index, the sitemap dates and the related-guide links.
+A ledger per lease, overdue balances, deposits, receipts and a tenant portal.
+Rent for many properties is recorded in one step. Rent adjustment follows a
+fixed rate or the ΕΛΣΤΑΤ consumer price index, with the commercial-lease cap
+where it applies, and produces a signed notice for the tenant
+(`lib/documents/rentAdjustment.ts`).
 
-The public shell is bilingual: Greek first, English under `/en` for the home
-page, pricing, sign-in, legal pages, calculators and guides, paired route by
-route with `hreflang` (`lib/i18n/paths.ts`). The app itself is Greek.
+### Straight from myAADE
+
+<img src="docs/readme/myaade.png" alt="Importing the ΕΝΦΙΑ act from myAADE: properties found, the yearly total and instalments, and which ones are new" width="880">
+
+The ΕΝΦΙΑ act downloaded from myAADE is read in the browser, in a web worker,
+by rule-based parsers written against the real forms. No model is involved.
+Properties are matched to the ones already in the account, the tax becomes
+instalments in the calendar, and nothing is saved until the owner confirms
+(`lib/myaade/`).
+
+### A portal for accounting firms
+
+<img src="docs/readme/accountants.png" alt="Left: an accounting firm's client list with what is missing per client. Right: the owner's view of the firm, its access level and a revoke link" width="880">
+
+Owners give their accounting firm access and choose how far it goes:
+read only, upload documents, or keep the books on their behalf. Firm members
+work under roles and must use two-step verification. The firm sees what is
+missing from each client and asks for it inside the app, without a phone call.
+The owner sees every change the firm made, can undo what was written today or
+yesterday, and can revoke access at any time
+([/for-accountants](https://properwise.gr/en/for-accountants)).
+
+### And more
+
+Noa, an assistant that answers from the owner's own numbers in Greek, by text
+or voice, and opens the screen that does the job; answers are scored against a
+fixed question set (`npm run noa:eval`). Tariff comparison with the date prices
+were checked, mortgage tracking, iCal sync with short-stay platforms, a
+portfolio view for managers, co-owner splits and Excel export everywhere.
+Public calculators for ΕΝΦΙΑ, rental tax, rent adjustment, purchase costs and
+yield run the same engine as the app and cite their sources. The public site is
+bilingual, Greek first and English under `/en`; the app itself is Greek.
+
+<sub>Screens above: the app's own components rendered from the bench in `scripts/perf-bench/`, light theme, sample data. Regenerate with `node scripts/perf-bench/build-mobile.mjs && node scripts/readme/screens.mjs`.</sub>
 
 ## How quality is held
 
@@ -137,6 +149,10 @@ flowchart TB
     GH -.->|"migrations · functions"| Supabase
 ```
 
+- **Stack.** Next.js (App Router) and TypeScript on Vercel; Supabase for
+  Postgres, storage, auth and Deno edge functions, with pg_cron for schedules;
+  the Anthropic API for reading documents and for Noa; Resend for email;
+  Sentry for errors and uptime.
 - **Two trust boundaries.** The browser reaches Postgres only with the public key
   and the user's session, so Row-Level Security decides every read and write.
   Privileged work runs in edge functions and in the few server routes RLS
@@ -144,6 +160,9 @@ flowchart TB
   imported from server files (`lib/supabase/service.ts`, held by a guard).
 - **Strict CSP.** A per-request nonce with `strict-dynamic`, no inline scripts
   (`proxy.ts`). Webhooks are verified in constant time.
+- **Sensitive by default.** Accounting-firm members cannot act without
+  two-step verification, enforced in the database. The myAADE ΕΝΦΙΑ act is
+  parsed on the device. Server keys stay in server files, held by a guard.
 - **No tracking.** No advertising or analytics cookies; traffic is measured
   anonymously and without cookies.
 
