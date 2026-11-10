@@ -65,9 +65,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # ΚΛΕΙΔΩΜΕΝΗ ΕΚΔΟΣΗ, ΟΧΙ `latest` (περιστατικό 04/11/2026, issue #478).
+      # Με `latest` ο αγωγός πήρε μόνος του το CLI 3.x. Στην 3.x οι εντολές της
+      # βάσης (`migration repair`, `db push`) στοχεύουν από προεπιλογή την
+      # ΤΟΠΙΚΗ βάση 127.0.0.1:54322, που δεν υπάρχει στον runner. Το CLI 2.x το
+      # είχε προαναγγείλει στο log της 02/11/2026 (run 41433776939): «supabase
+      # db push will target the local database by default in the next major
+      # version». Από τις 04/11 απέτυχε κάθε deploy σε main και staging. Η
+      # παραγωγή ενημερωνόταν μόνο με το χέρι. Νέα έκδοση μπαίνει εδώ ρητά, με
+      # δοκιμή σε staging, ποτέ σιωπηλά.
       - uses: supabase/setup-cli@v3
         with:
-          version: latest
+          version: 3.1.0
 
       - name: Show deploy target
         run: |
@@ -89,6 +98,12 @@ jobs:
       # `reverted` in the *bookkeeping* table — this only edits history, never the
       # live schema, so nothing is dropped. Idempotent: on a clean history this is a
       # no-op. This keeps the pipeline green through any future drift, untouched.
+      # ΠΡΟΣΟΧΗ, ΠΡΟΛΗΨΗ: ορφανό γεννιέται όταν ένα migration εφαρμοστεί στην
+      # παραγωγή απευθείας (π.χ. apply_migration μέσω MCP), που γράφει ΔΙΚΗ ΤΟΥ
+      # έκδοση. Ετσι έγινε με το 20261104080724_o_fakelos_dechetai_50_mb, ενώ
+      # το αρχείο του repo ήταν 20261104090000. Ο κανόνας είναι στο
+      # docs/infra/migrations.md: όποιος εφαρμόζει με το χέρι, δίνει την ΙΔΙΑ
+      # έκδοση με το αρχείο, ή μετονομάζει το αρχείο στην έκδοση της παραγωγής.
       - name: Reconcile migration history
         run: |
           set -euo pipefail
@@ -97,7 +112,7 @@ jobs:
           # stderr visible (a `migration list` failure must not be swallowed) and
           # record every action to the job summary so an unattended repair on
           # production is never silent.
-          listing="$(supabase migration list --linked)"
+          listing="$(supabase migration list --remote)"
           orphans="$(
             printf '%s\n' "$listing" \
               | awk -F'|' 'NR>2 { gsub(/[^0-9]/,"",$1); gsub(/[^0-9]/,"",$2);
@@ -107,7 +122,9 @@ jobs:
           if [ -n "${orphans// /}" ]; then
             echo "Reverting orphaned remote migration versions: $orphans"
             echo "⚠️ Reconcile reverted orphaned remote versions on **$SUPABASE_PROJECT_REF**: \`$orphans\` (bookkeeping only, no schema change)." >> "$GITHUB_STEP_SUMMARY"
-            supabase migration repair --status reverted $orphans
+            # --remote: χωρίς αυτό το CLI 3.x πάει στην τοπική βάση και σκάει
+            # με ECONNREFUSED 127.0.0.1:54322 (run 42623896297, 09/11/2026).
+            supabase migration repair --remote --status reverted $orphans
           else
             echo "Migration history is clean — nothing to reconcile."
             echo "✅ Migration history clean on $SUPABASE_PROJECT_REF — nothing to reconcile." >> "$GITHUB_STEP_SUMMARY"
@@ -180,7 +197,7 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in 1 2 3; do
-            if supabase functions deploy; then
+            if supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"; then
               exit 0
             fi
             if [ "$attempt" -lt 3 ]; then
@@ -192,8 +209,9 @@ jobs:
           echo "::error::functions deploy απέτυχε και στις 3 προσπάθειες"
           exit 1
 
+      # --remote ρητά: στο CLI 3.x το `db push` χωρίς σημαία πάει στην τοπική βάση.
       - name: Apply database migrations
-        run: supabase db push --include-all
+        run: supabase db push --remote --include-all
 
   # Ένα ειδοποιητικό που ανοίγει αλλά δεν κλείνει ποτέ, παύει να είναι
   # ειδοποιητικό: μετά την πρώτη αποτυχία το κόκκινο μένει για πάντα και το

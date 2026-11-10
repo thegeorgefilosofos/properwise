@@ -317,6 +317,8 @@ export const MUTATIONS = {
   // Λεζάντα με ποσό που δεν βγήκε από τη μηχανή. Το «480» είναι ακριβώς το λάθος
   // που έγινε κάποτε στ' αλήθεια — η έκπτωση που χάνεται, γραμμένη ως φόρος. Ο
   // πραγματικός φόρος ήταν 72 €.
+  // Το deploy της Supabase χωρίς --remote: έτσι απέτυχε από 04/11 ως 10/11/2026 (#478).
+  'supabase-deploy-target': { file: '.github/workflows/supabase-deploy.yml', from: 'supabase db push --remote --include-all', to: 'supabase db push --include-all' },
   'post-numbers': { add: 'docs/marketing/keimena/__mut__.md', content: 'Από το Ε9: με ενοίκιο 9.600 € χάνεις 480 € τον χρόνο.\n' },
   // Το «Ε9» περνά ως όνομα εντύπου· τα ποσά δίπλα του πρέπει να κόβονται.
   // Η λεζάντα που έλεγε ψέματα, ξαναφερμένη αυτούσια: ήταν στο
