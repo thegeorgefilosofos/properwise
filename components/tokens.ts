@@ -110,7 +110,7 @@ export const TT = {
   h2:      { fontFamily: T.font.sans, fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1.3,  color: 'var(--text-primary)', ...BALANCE },
   // Ετικέτα ενότητας. Πεζά πρότασης σε μέγεθος σώματος (έλεγχος UX 09/11/2026):
   // τα μικρά αραιωμένα κεφαλαία σε κάθε ενότητα ήταν θόρυβος προτύπου.
-  label:   { fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', ...BALANCE },
+  label:   { fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', ...BALANCE },
   body:    { fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 400, lineHeight: 1.55, color: 'var(--text-primary)', ...PRETTY },
   bodySm:  { fontFamily: T.font.sans, fontSize: 'var(--fs-note)', fontWeight: 400, lineHeight: 1.5,  color: 'var(--text-secondary)', ...PRETTY },
   caption: { fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 400, lineHeight: 1.45, color: 'var(--text-tertiary)', ...PRETTY },

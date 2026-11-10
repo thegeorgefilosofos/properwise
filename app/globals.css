@@ -1602,6 +1602,9 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   font-family: 'Inter', sans-serif;
   font-size: 13px;
   font-weight: 600;
+  /* Πεζά στα 13 με διάστιχο 1,25: οι δύο γραμμές πιάνουν 32,5, όσο πριν οι
+     δύο γραμμές των 11 με αραιωμένα κεφαλαία (33). Το πλακίδιο δεν ψηλώνει. */
+  line-height: 1.25;
   color: var(--text-secondary);
 }
 /* ═══ Η ΕΤΙΚΕΤΑ ΚΡΑΤΑΕΙ ΔΥΟ ΓΡΑΜΜΕΣ ΟΤΑΝ ΤΟ ΠΛΑΚΙΔΙΟ ΕΙΝΑΙ ΣΤΕΝΟ ═════════════
