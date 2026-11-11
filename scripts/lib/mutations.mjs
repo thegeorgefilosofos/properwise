@@ -858,6 +858,11 @@ export const MUTATIONS = {
     { add: MUT_WF, content: wfRun('set -o errexit -o xtrace') },
     { add: MUT_WF, content: wfRun('set -o pipefail; set -eo xtrace') },
     { add: 'scripts/backup/__mut__.sh', content: '#!/usr/bin/env bash\nset -euxo pipefail\necho ok\n' },
+    // Το db push της παραγωγής χωρίς quiet-db: `DETAIL: Key (…)=(…)` στο log.
+    { file: '.github/workflows/supabase-deploy.yml', from: 'run: bash scripts/ci/quiet-db.sh "supabase db push" -- supabase db push --remote --yes --include-all', to: 'run: supabase db push --remote --yes --include-all' },
+    { file: '.github/workflows/supabase-deploy.yml', from: 'listing="$(bash scripts/ci/quiet-db.sh "migration list" --stdout -- supabase migration list --remote)"', to: 'listing="$(supabase migration list --remote)"' },
+    { file: '.github/workflows/db-backup.yml', from: 'bash scripts/ci/quiet-db.sh "dump δεδομένων" -- supabase db dump', to: 'supabase db dump' },
+    { add: MUT_WF, content: wfRun('supabase db push --remote --yes >/dev/null 2>&1 | tee push.log') },
     { file: 'scripts/db-replay.sh', from: 'PSQL="psql -h $WORK -U postgres', to: 'PSQL="psql $DATABASE_URL -h $WORK -U postgres' },
     { file: 'scripts/backup/vault.mjs', from: "import { pathToFileURL } from 'node:url'\n", to: "import { pathToFileURL } from 'node:url'\nimport { spawnSync } from 'node:child_process'\nexport const probe = () => spawnSync('pg_dump --data-only', { shell: true })\n" },
   ] },
