@@ -19,7 +19,12 @@ export async function authClient() {
         return { data: { user: null } }
       },
       getSession: async () => ({ data: { session: null } }),
-      signUp: async (): Promise<Ok> => ({ error: null }),
+      // Κάθε εγγραφή μετριέται: δύο πατήματα δεν επιτρέπεται να δώσουν δύο.
+      signUp: async (): Promise<Ok> => {
+        const w = window as { __signups?: number }
+        w.__signups = (w.__signups ?? 0) + 1
+        return { error: null }
+      },
       resend: async (): Promise<Ok> => ({ error: null }),
       updateUser: async (): Promise<Ok> => ({ error: null }),
       signInWithOAuth: async (): Promise<Ok> => ({ error: null }),
