@@ -3,51 +3,51 @@
   "slack": 0.08,
   "routes": {
     "/": {
-      "initial": 180070,
-      "js": 180355,
-      "total": 342431,
+      "initial": 179891,
+      "js": 182741,
+      "total": 339531,
       "what": "αρχική, η πρώτη οθόνη κάθε επισκέπτη"
     },
     "/ypologismos-forou-enoikion": {
-      "initial": 179022,
-      "js": 179325,
-      "total": 279538,
+      "initial": 180424,
+      "js": 183257,
+      "total": 313930,
       "what": "φόρος ενοικίων, το βαρύτερο δημόσιο εργαλείο"
     },
     "/ypologismos-enfia": {
-      "initial": 190032,
-      "js": 190353,
-      "total": 290613,
+      "initial": 199050,
+      "js": 201919,
+      "total": 334589,
       "what": "ΕΝΦΙΑ"
     },
     "/vraxyxronia-i-makroxronia": {
-      "initial": 185557,
-      "js": 185860,
-      "total": 287715,
+      "initial": 182603,
+      "js": 185436,
+      "total": 314677,
       "what": "βραχυχρόνια ή μακροχρόνια"
     },
     "/kathari-apodosi": {
-      "initial": 171760,
-      "js": 172045,
-      "total": 273923,
+      "initial": 174504,
+      "js": 177337,
+      "total": 301175,
       "what": "καθαρή απόδοση"
     },
     "/login": {
-      "initial": 167351,
-      "js": 234979,
-      "total": 330340,
+      "initial": 174675,
+      "js": 180277,
+      "total": 288947,
       "what": "σύνδεση"
     },
     "/signup": {
-      "initial": 174655,
-      "js": 242301,
-      "total": 333973,
+      "initial": 184238,
+      "js": 256983,
+      "total": 368121,
       "what": "εγγραφή"
     },
     "/privacy": {
-      "initial": 158537,
-      "js": 158786,
-      "total": 274963,
+      "initial": 163357,
+      "js": 166171,
+      "total": 328649,
       "what": "πολιτική απορρήτου"
     }
   }
