@@ -242,7 +242,7 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
               χρήστης δεν ξέρει ποια από τις δύο λίστες είναι «οι πηγές» και
               σε ποια να ψάξει. Μαζεύτηκαν όλες στη μία κάρτα, ταξινομημένες,
               με τη ρύθμιση οφειλών πρώτη ενότητα. */}
-          <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',lineHeight:1.6,fontFamily: T.font.sans}}>Ενημερωτικές πληροφορίες με βάση το ισχύον πλαίσιο (Ιούλιος 2026), όχι νομική ή χρηματοοικονομική συμβουλή. Για την περίπτωσή σου συμβουλέψου δικηγόρο ή πιστοποιημένο σύμβουλο αναδιάρθρωσης.</p>
+          <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',lineHeight:1.6,fontFamily: T.font.sans}}>Ενημερωτικές πληροφορίες με βάση το ισχύον πλαίσιο, όχι νομική ή χρηματοοικονομική συμβουλή. Για την περίπτωσή σου συμβουλέψου δικηγόρο ή πιστοποιημένο σύμβουλο αναδιάρθρωσης.</p>
         </MiniSection>
 
         <MiniSection title="Γλωσσάρι όρων" meta={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily: T.font.sans}}>{profile==='business'?'Πλήρες':'Βασικοί όροι'}</span>}>
@@ -267,7 +267,8 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
               {label:'Αναβαθμίζω το Σπίτι μου',sub:'Ελληνική Αναπτυξιακή Τράπεζα, επίσημη πλατφόρμα',url:'https://hdb.gr/anavathmizo-to-spiti-mou/'},
               {label:'Εξοικονομώ 2025',sub:'Επιδότηση ενεργειακής αναβάθμισης',url:'https://exoikonomo2025.gov.gr/'},
               {label:'Ανακαινίζω 2026 · Ανακαίνιση Κατοικίας',sub:'Επιδότηση ανακαίνισης παλιών κατοικιών',url:ANAK_HREF},
-              {label:'Γέφυρα 3 · κάλυψη αύξησης δόσης',sub:'Πρωτοβουλία τραπεζών για ευάλωτους οφειλέτες',url:'https://gefyra3.gr'},
+              // Η «ΓΕΦΥΡΑ 3» ΕΦΥΓΕ (έλεγχος 10/11/2026): πρωτοβουλία τραπεζών, όχι
+              // κρατικό πρόγραμμα, με προθεσμία αιτήσεων 31/07/2023 (TabLoanData.tsx).
             ]},
             {category:'Τράπεζες και επιτόκια',links:[
               {label:'Τράπεζα Ελλάδος · επιτόκια',sub:'Επίσημα μέσα επιτόκια αγοράς',url:'https://www.bankofgreece.gr/el/statistiki/nomismatiki-kai-trapeziki-statistiki/epitokia-katatheseon-kai-daneion'},
