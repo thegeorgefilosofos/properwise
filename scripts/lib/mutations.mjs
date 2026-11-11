@@ -305,9 +305,9 @@ export const MUTATIONS = {
   'chromium-path': { every: [
     { add: 'scripts/__mut__.mjs', content: "import { chromium } from 'playwright-core';\nawait chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });\n" },
     { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install', to: 'playwright@1.40.0 install' },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install --with-deps webkit', to: 'playwright@1.63.0 install --with-deps webkit' },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install --with-deps webkit', to: 'playwright install --with-deps webkit' },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install --with-deps webkit', to: 'playwright@latest install --with-deps webkit' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install webkit', to: 'playwright@1.63.0 install webkit' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install webkit', to: 'playwright install webkit' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install webkit', to: 'playwright@latest install webkit' },
   ] },
   'email-audience': {
     file: 'supabase/functions/_shared/emailTemplates.ts',
@@ -387,7 +387,22 @@ export const MUTATIONS = {
   ] },
   'service-role': { add: 'components/__mut__.ts', content: "export const key = process.env.SUPABASE_SERVICE_ROLE_KEY\n" },
   'csv-injection': { add: 'lib/core/__mut__.ts', content: "export const row = (cells: string[]) => cells.join(';')\n" },
-  'password-leak': { add: 'components/__mut__.tsx', content: "import PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  return <PasswordStrength value={v} />\n}\n" },
+  'password-leak': { every: [
+    // Χωρίς onLeaked.
+    { add: "components/__mut__.tsx", content: "import PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  return <PasswordStrength value={v} />\n}\n" },
+    // Ακούει το εύρημα, αλλά η υποβολή δεν ρωτά η ίδια (10/11/2026).
+    { add: "components/__mut__.tsx", content: "import { useState } from 'react'\nimport PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  const [leakedPw, setLeakedPw] = useState<string | null>(null)\n  const blocked = leakedPw === v\n  return <><PasswordStrength password={v} onLeaked={setLeakedPw} /><button disabled={blocked}>ok</button></>\n}\n" },
+    // Η πύλη μόνο σε σχόλιο.
+    { add: "components/__mut__.tsx", content: "import { useState } from 'react'\nimport PasswordStrength from '@/components/PasswordStrength'\nimport { leakedAtSubmit } from '@/lib/auth/leakGate'\nexport function P({ v }: { v: string }) {\n  const [leakedPw, setLeakedPw] = useState<string | null>(null)\n  const blocked = leakedPw === v\n  // if (await leakedAtSubmit(v)) return null\n  void leakedAtSubmit\n  return <><PasswordStrength password={v} onLeaked={setLeakedPw} /><button disabled={blocked}>ok</button></>\n}\n" },
+    // Η πύλη καλείται και η απάντηση πετιέται.
+    { add: "components/__mut__.tsx", content: "import { useState } from 'react'\nimport PasswordStrength from '@/components/PasswordStrength'\nimport { leakedAtSubmit } from '@/lib/auth/leakGate'\nexport function P({ v }: { v: string }) {\n  const [leakedPw, setLeakedPw] = useState<string | null>(null)\n  const blocked = leakedPw === v\n  void leakedAtSubmit(v)\n  return <><PasswordStrength password={v} onLeaked={setLeakedPw} /><button disabled={blocked}>ok</button></>\n}\n" },
+    // Κλήση που ορίζει κωδικό, χωρίς PasswordStrength και χωρίς πύλη.
+    { add: "lib/__mut__.ts", content: "type C = { auth: { updateUser(a: object): Promise<unknown> } }\nexport async function setPw(c: C, password: string) {\n  return c.auth.updateUser({ password })\n}\n" },
+    // Η πύλη υπάρχει, αλλά ΜΕΤΑ την εγγραφή.
+    { add: "lib/__mut__.ts", content: "import { leakedAtSubmit } from '@/lib/auth/leakGate'\ntype C = { auth: { signUp(a: object): Promise<unknown> } }\nexport async function join(c: C, email: string, password: string) {\n  await c.auth.signUp({ email, password })\n  if (await leakedAtSubmit(password)) return false\n  return true\n}\n" },
+    // Κλήση διαχειριστή με τον κωδικό στο δεύτερο όρισμα, χωρίς πύλη.
+    { add: "lib/__mut__.ts", content: "type A = { auth: { admin: { updateUserById(id: string, a: object): Promise<unknown> } } }\nexport async function reset(c: A, id: string, password: string) {\n  return c.auth.admin.updateUserById(id, { password })\n}\n" },
+  ] },
   // Δύο κανόνες, δύο αποδείξεις: διαδρομή χωρίς καμία ταυτότητα και
   // διαδρομή με συνεδρία που δεν ζητά το δεύτερο βήμα (03.10.2026).
   'api-auth': { every: [
