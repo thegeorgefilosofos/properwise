@@ -63,7 +63,7 @@ BROWSER="${1:?δώσε περιηγητή: chromium ή webkit}"
 CLI=(node node_modules/playwright-core/cli.js)
 
 # Ανεξάρτητοι καθρέφτες του αρχείου του Ubuntu, εκτός ubuntu.com.
-MIRRORS="${BROWSER_DEPS_MIRRORS:-https://mirrors.edge.kernel.org/ubuntu https://mirrors.mit.edu/ubuntu https://mirror.us.leaseweb.net/ubuntu https://ftp.halifax.rwth-aachen.de/ubuntu http://mirror.math.princeton.edu/pub/ubuntu https://ftp.acc.umu.se/ubuntu}"
+MIRRORS="${BROWSER_DEPS_MIRRORS:-https://mirrors.edge.kernel.org/ubuntu https://mirrors.mit.edu/ubuntu https://mirror.us.leaseweb.net/ubuntu https://ftp.halifax.rwth-aachen.de/ubuntu https://ftp.acc.umu.se/ubuntu}"
 
 APT=(sudo apt-get -q -o Acquire::Retries=5 -o DPkg::Lock::Timeout=120)
 SUDO=sudo
@@ -88,10 +88,10 @@ primary_reachable() {
   local hosts h
   hosts=$( { cat /etc/apt/apt-mirrors.txt 2>/dev/null
              cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources 2>/dev/null; } |
-           grep -oE 'https?://[^/[:space:]]+' | sed -E 's#https?://##' | grep -i ubuntu | sort -u)
+           grep -v '^[[:space:]]*#' | grep -oE 'https?://[^/[:space:]]+' | sed -E 's#https?://##' | grep -i ubuntu | sort -u)
   [ -z "$hosts" ] && return 0
   for h in $hosts; do
-    if timeout 10 getent hosts "$h" >/dev/null 2>&1; then return 0; fi
+    if timeout 3 getent hosts "$h" >/dev/null 2>&1; then return 0; fi
   done
   echo "  κανένα όνομα δεν λύνεται: $(echo $hosts)"
   return 1
@@ -102,17 +102,46 @@ try_primary() {
   primary_reachable || return 1
   timeout 120 "${APT[@]}" update || echo "  (το update απέτυχε· συνεχίζω με τους καταλόγους της εικόνας)"
   # shellcheck disable=SC2086
-  timeout 180 "${APT[@]}" install -y --no-install-recommends $PKGS
+  timeout 180 "${APT[@]}" install -y --no-install-recommends $PKGS && return 0
+  # Ενα apt που σκοτώθηκε από το timeout μπορεί να αφήσει μισοστημένα πακέτα.
+  $SUDO dpkg --configure -a || true
+  return 1
 }
 
 # Ενα αρχείο από μία πηγή, κρατημένο ΜΟΝΟ αν ταιριάζει το SHA256.
 fetch_verified() {
-  local url=$1 out=$2 hex=$3
-  curl -fsSL --retry 2 --retry-delay 3 --retry-all-errors --connect-timeout 15 --max-time 300 \
-       -o "$out.part" "$url" 2>/dev/null &&
-    echo "$hex  $out.part" | sha256sum -c --quiet - >/dev/null 2>&1 &&
-    mv "$out.part" "$out" && return 0
+  local url=$1 out=$2 hex=$3 code
+  # Χωρίς --retry-all-errors: ένα 404 δεν διορθώνεται με αναμονή, πάμε αμέσως
+  # στην επόμενη πηγή. Το --retry μένει για τα παροδικά (timeout, 5xx). Μόνο
+  # https, ακόμη και στις ανακατευθύνσεις. Τυπώνεται ο κωδικός HTTP, ποτέ το σώμα.
+  code=$(curl -sSL --proto '=https' --proto-redir '=https' --retry 2 --retry-delay 2 \
+           --connect-timeout 5 --max-time 60 -w '%{http_code}' -o "$out.part" "$url" 2>/dev/null) || true
+  if [ "$code" = 200 ] && echo "$hex  $out.part" | sha256sum -c --quiet - >/dev/null 2>&1; then
+    mv "$out.part" "$out"
+    return 0
+  fi
   rm -f "$out.part"
+  [ "$code" = 200 ] && code="200 με λάθος SHA256"
+  echo "${code:-000}"
+  return 1
+}
+
+# Ενα αρχείο, όλες οι πηγές με τη σειρά: πρώτα οι καθρέφτες, μετά το
+# Launchpad, που κρατά και builds που αντικαταστάθηκαν (το +files
+# ανακατευθύνει στο launchpadlibrarian.net). Γράφει ΜΟΝΟ στο δικό του
+# $DEBS/<αρχείο>(.part)· στην cache του apt δεν αγγίζει τίποτα.
+fetch_one() {
+  local file=$1 hex=$2 path=$3 name=$4 m u host why=() code
+  for m in $MIRRORS "https://launchpad.net/ubuntu/+archive/primary/+files"; do
+    if [[ "$m" == *launchpad.net* ]]; then u="$m/$name"; else u="$m/$path"; fi
+    host=${m#*://}; host=${host%%/*}
+    if code=$(fetch_verified "$u" "$DEBS/$file" "$hex"); then
+      echo "  ✓ $file ← $host"; return 0
+    fi
+    why+=("$host $code")
+  done
+  local IFS=,
+  echo "  ✗ $file: καμία πηγή (${why[*]})"
   return 1
 }
 
@@ -124,30 +153,36 @@ trap 'rm -rf "$DEBS"' EXIT
 # Ενα πέρασμα: για κάθε αρχείο που ζητά ο κατάλογος, όλες οι πηγές με τη
 # σειρά. Τα ορίσματα είναι επιπλέον επιλογές του apt (ο κατάλογος που διαβάζει).
 fetch_pass() {
-  local uris line uri file name sum hex path m u src failed=0
+  local uris line uri file sum todo rc=0
   # shellcheck disable=SC2086
   uris=$("${APT[@]}" "$@" -o Acquire::ForceHash=SHA256 install -y --no-install-recommends --print-uris -qq $PKGS) || return 1
+  todo=$(mktemp)
   while read -r line; do
     [ -n "$line" ] || continue
     uri=$(cut -d"'" -f2 <<<"$line")
     read -r _ file _ sum <<<"$line"
-    hex=${sum#*:}
-    [ "${sum%%:*}" = SHA256 ] || { echo "  ✗ $file: χωρίς SHA256 («$sum»)"; return 1; }
-    [[ "$uri" == */pool/* ]] || { echo "  ✗ $file: χωρίς διαδρομή pool ($uri)"; return 1; }
+    [ "${sum%%:*}" = SHA256 ] || { echo "  ✗ $file: χωρίς SHA256 («$sum»)"; rm -f "$todo"; return 1; }
+    [[ "$uri" == */pool/* ]] || { echo "  ✗ $file: χωρίς διαδρομή pool ($uri)"; rm -f "$todo"; return 1; }
     [ -f "$DEBS/$file" ] && continue
-    path="pool/${uri#*/pool/}"
-    name=${uri##*/}
-    src=
-    # Πρώτα οι καθρέφτες, μετά το Launchpad, που κρατά και builds που
-    # αντικαταστάθηκαν. Το +files ανακατευθύνει στο launchpadlibrarian.net.
-    for m in $MIRRORS "https://launchpad.net/ubuntu/+archive/primary/+files"; do
-      if [[ "$m" == *launchpad.net* ]]; then u="$m/$name"; else u="$m/$path"; fi
-      if fetch_verified "$u" "$DEBS/$file" "$hex"; then src=${m#*://}; break; fi
-    done
-    if [ -n "$src" ]; then echo "  ✓ $file ← ${src%%/*}"
-    else echo "  ✗ $file: καμία πηγή"; failed=1; fi
+    echo "$file ${sum#*:} pool/${uri#*/pool/} ${uri##*/}" >> "$todo"
   done <<<"$uris"
-  [ "$failed" = 0 ] || return 1
+  if [ -s "$todo" ]; then
+    echo "  $(wc -l < "$todo") αρχεία, οκτώ παράλληλα"
+    # Ομάδες των οκτώ. Κάθε εργάτης περιμένεται με το δικό του PID και ο
+    # κωδικός του μετρά· στην cache του apt δεν μπαίνει τίποτα πριν τελειώσουν
+    # ΟΛΟΙ και πετύχουν ΟΛΟΙ.
+    local pids=() pid f h p n
+    while read -r f h p n; do
+      fetch_one "$f" "$h" "$p" "$n" & pids+=($!)
+      if [ "${#pids[@]}" -ge 8 ]; then
+        for pid in "${pids[@]}"; do wait "$pid" || rc=1; done
+        pids=()
+      fi
+    done < "$todo"
+    for pid in "${pids[@]}"; do wait "$pid" || rc=1; done
+  fi
+  rm -f "$todo"
+  [ "$rc" = 0 ] || return 1
   if compgen -G "$DEBS/*.deb" >/dev/null; then $SUDO cp "$DEBS"/*.deb /var/cache/apt/archives/; fi
   # shellcheck disable=SC2086
   "${APT[@]}" "$@" install -y --no-install-recommends --no-download $PKGS
@@ -222,7 +257,7 @@ if [ -n "$LEFT" ]; then
 fi
 
 # Η ελληνική κάλυψη, που κρίνεται στις σαρώσεις διάταξης.
-if ! fc-list :lang=el family | grep -q .; then
+if [ -z "$(fc-list :lang=el family)" ]; then
   echo "::error::Καμία γραμματοσειρά του συστήματος δεν καλύπτει ελληνικά"
   exit 1
 fi
