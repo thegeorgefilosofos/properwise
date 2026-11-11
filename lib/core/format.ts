@@ -25,6 +25,21 @@ const finite = (n: unknown): number => (typeof n === 'number' && Number.isFinite
  *  563,925 (563,92499…) σε «563,92». Περνώντας πρώτα από εδώ γράφεται «563,93». */
 const rd = (n: unknown, d: number): number => roundHalfUp(finite(n), d);
 
+// ── ΕΝΑΣ ΜΟΡΦΟΠΟΙΗΤΗΣ ΑΝΑ ΓΛΩΣΣΑ ΚΑΙ ΔΕΚΑΔΙΚΑ, ΟΧΙ ΕΝΑΣ ΑΝΑ ΚΛΗΣΗ (11/11/2026) ──
+// Το `x.toLocaleString(locale, επιλογές)` στήνει καινούριο `Intl.NumberFormat`
+// σε ΚΑΘΕ κλήση. Μετρημένο σε κινητό (επεξεργαστής /4) με 200 ακίνητα: το
+// άνοιγμα της «Είσπραξης ενοικίων» έδινε εργασία 1,4 δευτερολέπτου και τα 357
+// χιλιοστά ήταν μόνο το `fe`. Ο ίδιος μορφοποιητής, φτιαγμένος μία φορά, γράφει
+// το ΙΔΙΟ κείμενο (το ορίζει η ίδια προδιαγραφή, ECMA-402) πενήντα φορές
+// γρηγορότερα.
+const NF = new Map<string, Intl.NumberFormat>();
+const nf = (locale: string, o: { minimumFractionDigits?: number; maximumFractionDigits?: number }): Intl.NumberFormat => {
+  const k = `${locale}|${o.minimumFractionDigits ?? ''}|${o.maximumFractionDigits ?? ''}`;
+  let f = NF.get(k);
+  if (!f) { f = new Intl.NumberFormat(locale, o); NF.set(k, f); }
+  return f;
+};
+
 // ── ΔΥΟ ΨΗΦΙΑ. ΠΑΝΤΑ. ─────────────────────────────────────────────────────
 // Οι στήλες μιας οικονομικής κατάστασης στοιχίζονται στην υποδιαστολή. Όταν η
 // μία γραμμή γράφει «751€» και η επόμενη «19,25€», η υποδιαστολή κάθεται σε
@@ -58,7 +73,7 @@ const MONEY = { minimumFractionDigits: 2, maximumFractionDigits: 2 } as const;
  * `fe(1234.5)` → «1.234,50€». Πάντα δύο δεκαδικά.
  */
 export const fe = (n: number) =>
-  `${rd(n, 2).toLocaleString(LOCALE, MONEY)}€`;
+  `${nf(LOCALE, MONEY).format(rd(n, 2))}€`;
 
 /**
  * Ήταν τα «έξυπνα» δεκαδικά — ακέραιο χωρίς υποδιαστολή, αλλιώς δύο ψηφία.
@@ -69,7 +84,7 @@ export const feAuto = fe;
 
 /** Ποσοστό: `fp(4.25)` → «4,25%». Πάντα δύο δεκαδικά, για τον ίδιο λόγο. */
 export const fp = (n: number) =>
-  `${rd(n, 2).toLocaleString(LOCALE, MONEY)}%`;
+  `${nf(LOCALE, MONEY).format(rd(n, 2))}%`;
 
 /**
  * ΣΥΝΤΕΛΕΣΤΗΣ ΤΟΥ ΝΟΜΟΥ Ή ΤΙΜΗ ΠΟΥ ΠΛΗΚΤΡΟΛΟΓΗΘΗΚΕ, ΟΧΙ ΑΠΟΤΕΛΕΣΜΑ ΔΙΑΙΡΕΣΗΣ.
@@ -82,7 +97,7 @@ export const fp = (n: number) =>
  * `fpRate(25)` → «25%», `fpRate(12.5)` → «12,5%».
  */
 export const fpRate = (n: number) =>
-  `${rd(n, 2).toLocaleString(LOCALE, { maximumFractionDigits: 2 })}%`;
+  `${nf(LOCALE, { maximumFractionDigits: 2 }).format(rd(n, 2))}%`;
 
 // ── ΤΟ ΛΟΓΙΣΤΙΚΟ ΠΡΟΣΗΜΟ ───────────────────────────────────────────────────
 // Σε κατάσταση αποτελεσμάτων το αρνητικό γράφεται με ΤΥΠΟΓΡΑΦΙΚΟ μείον (U+2212),
@@ -135,7 +150,7 @@ export const fpSigned = (n: number | null | undefined): string => {
 // βλέπει άλλη τιμή.
 /** Μοναδιαία τιμή: `feRate(0.115)` → «0,115€». Δύο έως πέντε δεκαδικά. */
 export const feRate = (n: number) =>
-  `${rd(n, 5).toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 5 })}€`;
+  `${nf(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 5 }).format(rd(n, 5))}€`;
 
 /**
  * ΣΥΜΠΑΓΕΣ ΠΟΣΟ ΓΙΑ ΣΤΕΝΟ ΧΩΡΟ — ετικέτες ράβδων, tooltips, άξονες γραφημάτων.
@@ -150,7 +165,7 @@ export const feRate = (n: number) =>
 export const feCompact = (n: number): string => {
   const v = finite(n), a = Math.abs(v);
   const u = (x: number, label: string) =>
-    `${(v / x).toLocaleString(LOCALE, { maximumFractionDigits: 1 })}\u00A0${label}€`;
+    `${nf(LOCALE, { maximumFractionDigits: 1 }).format(v / x)}\u00A0${label}€`;
   if (a >= 1e12) return u(1e12, 'τρισ.');
   if (a >= 1e9) return u(1e9, 'δισ.');
   if (a >= 1e6) return u(1e6, 'εκατ.');
@@ -177,11 +192,11 @@ export const feCompact = (n: number): string => {
  * `feWhole(205)` → «205€».
  */
 export const feWhole = (n: number) =>
-  `${rd(n, 0).toLocaleString(LOCALE, { maximumFractionDigits: 0 })}€`;
+  `${nf(LOCALE, { maximumFractionDigits: 0 }).format(rd(n, 0))}€`;
 
 /** Αριθμός χωρίς μονάδα: `fn(1234.5, 1)` → «1.234,5». */
 export const fn = (n: number, d = 0) =>
-  rd(n, d).toLocaleString(LOCALE, { minimumFractionDigits: d, maximumFractionDigits: d });
+  nf(LOCALE, { minimumFractionDigits: d, maximumFractionDigits: d }).format(rd(n, d));
 
 // ── ΚΑΜΙΑ ΠΑΥΛΑ ΜΕΣΑ ΣΕ ΣΤΗΛΗ ΑΡΙΘΜΩΝ ─────────────────────────────────────
 // Η παύλα είναι τυπογραφικά ένα ΣΥΜΒΟΛΟ, όχι αριθμός: δεν έχει υποδιαστολή, δεν
@@ -350,7 +365,7 @@ export const grDateOf = (year: number, month: number, day = 1): string =>
 // ═══════════════════════════════════════════════════════════════════════════
 const LOCALE_EN = 'en-US';
 const MINUS = '−';
-const enAbs = (v: number, opts: Intl.NumberFormatOptions) => Math.abs(v).toLocaleString(LOCALE_EN, opts);
+const enAbs = (v: number, opts: { minimumFractionDigits?: number; maximumFractionDigits?: number }) => nf(LOCALE_EN, opts).format(Math.abs(v));
 const enSigned = (v: number, body: string) => (v < 0 ? `${MINUS}${body}` : body);
 
 const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
@@ -383,9 +398,9 @@ const EN_FORMATTERS: Formatters = {
   feWhole: (n) => { const v = rd(n, 0); return enSigned(v, `€${enAbs(v, { maximumFractionDigits: 0 })}`); },
   feSigned: (n) => enFe(finite(n) || 0),
   feRate: (n) => { const v = rd(n, 5); return enSigned(v, `€${enAbs(v, { minimumFractionDigits: 2, maximumFractionDigits: 5 })}`); },
-  fn: (n, d = 0) => rd(n, d).toLocaleString(LOCALE_EN, { minimumFractionDigits: d, maximumFractionDigits: d }),
-  fp: (n) => `${rd(n, 2).toLocaleString(LOCALE_EN, MONEY)}%`,
-  fpRate: (n) => `${rd(n, 2).toLocaleString(LOCALE_EN, { maximumFractionDigits: 2 })}%`,
+  fn: (n, d = 0) => nf(LOCALE_EN, { minimumFractionDigits: d, maximumFractionDigits: d }).format(rd(n, d)),
+  fp: (n) => `${nf(LOCALE_EN, MONEY).format(rd(n, 2))}%`,
+  fpRate: (n) => `${nf(LOCALE_EN, { maximumFractionDigits: 2 }).format(rd(n, 2))}%`,
   date: (iso) => {
     const m = iso ? ISO_DATE_HEAD.exec(iso) : null;
     return m ? `${Number(m[3])} ${EN_MONTHS[Number(m[2]) - 1]} ${m[1]}` : (iso ?? '');

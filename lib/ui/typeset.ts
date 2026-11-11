@@ -62,9 +62,35 @@ export function isFactsLine(text: string): boolean {
   return (text.match(/ · /g) || []).length >= 2;
 }
 
+/** Το δικό του κείμενο, ή −1 αν έχει παιδί που δεν είναι μέσα στη σειρά (δοχείο). */
+function ownText(el: HTMLElement): number {
+  let own = 0;
+  for (const n of Array.from(el.childNodes)) {
+    if (n.nodeType === Node.TEXT_NODE) own += (n.textContent || '').trim().length;
+    else if (n.nodeType === Node.ELEMENT_NODE) {
+      const d = getComputedStyle(n as HTMLElement).display;
+      // ΜΟΝΟ ΚΕΙΜΕΝΟ ΜΕΣΑ ΣΕ ΣΕΙΡΑ. Ο,τι δεν είναι inline (μπλοκ, πλέγμα,
+      // πίνακας και το `contents` που κρύβει μπλοκ από κάτω του) σημαίνει ότι
+      // το στοιχείο είναι δοχείο, όχι παράγραφος: με τον πίνακα η στοίχιση
+      // περνούσε στα κελιά, με το `contents` σε ολόκληρο το `main`.
+      if (d !== 'inline' && d !== 'inline-block' && d !== 'none') return -1;
+      own += ((n as HTMLElement).textContent || '').trim().length;
+    }
+  }
+  return own;
+}
+
 function isProse(el: HTMLElement): boolean {
   // Δομικά στοιχεία δεν είναι ποτέ παράγραφος, ό,τι κι αν περιέχουν.
   if (/^(MAIN|SECTION|ARTICLE|BODY|HEADER|FOOTER|NAV|ASIDE)$/.test(el.tagName)) return false;
+  // ΠΡΩΤΑ ΟΙ ΦΘΗΝΟΙ ΕΛΕΓΧΟΙ (11/11/2026). Οι όροι είναι όλοι «και» και κανένας
+  // δεν γράφει τίποτα, οπότε η σειρά δεν αλλάζει την απάντηση· αλλάζει μόνο το
+  // κόστος. Πρώτα έτρεχε το `textContent` ολόκληρου του υποδέντρου και το
+  // `closest` με τριάντα επιλογείς, για ΚΑΘΕ div της σελίδας: σε χαρτοφυλάκιο
+  // διακοσίων ακινήτων, σε κινητό με επεξεργαστή /4, ένα πέρασμα κρατούσε το
+  // κύριο νήμα 400 χιλιοστά. Ενα δοχείο απορρίπτεται στο πρώτο παιδί-μπλοκ.
+  const own = ownText(el);
+  if (own < MIN_CHARS) return false;
   if (el.closest(SKIP_BLOCK)) return false;
   if (isFactsLine(el.textContent || '')) return false;
   const cs = getComputedStyle(el);
@@ -86,21 +112,7 @@ function isProse(el: HTMLElement): boolean {
   const fs = parseFloat(cs.fontSize);
   const cpl = el.clientWidth / (fs * 0.52);
   const lines = Math.round(el.clientHeight / (parseFloat(cs.lineHeight) || fs * 1.5));
-  if (cpl < MIN_CPL || (lines < 3 && cpl < WIDE_CPL)) return false;
-  let own = 0;
-  for (const n of Array.from(el.childNodes)) {
-    if (n.nodeType === Node.TEXT_NODE) own += (n.textContent || '').trim().length;
-    else if (n.nodeType === Node.ELEMENT_NODE) {
-      const d = getComputedStyle(n as HTMLElement).display;
-      // ΜΟΝΟ ΚΕΙΜΕΝΟ ΜΕΣΑ ΣΕ ΣΕΙΡΑ. Ο,τι δεν είναι inline (μπλοκ, πλέγμα,
-      // πίνακας και το `contents` που κρύβει μπλοκ από κάτω του) σημαίνει ότι
-      // το στοιχείο είναι δοχείο, όχι παράγραφος: με τον πίνακα η στοίχιση
-      // περνούσε στα κελιά, με το `contents` σε ολόκληρο το `main`.
-      if (d !== 'inline' && d !== 'inline-block' && d !== 'none') return false;
-      own += ((n as HTMLElement).textContent || '').trim().length;
-    }
-  }
-  return own >= MIN_CHARS;
+  return cpl >= MIN_CPL && (lines >= 3 || cpl >= WIDE_CPL);
 }
 
 function hyphenateTextIn(el: HTMLElement) {
@@ -132,9 +144,70 @@ function visit(el: HTMLElement) {
   }
 }
 
-function set(root: HTMLElement) {
-  visit(root);
-  root.querySelectorAll<HTMLElement>('p, li, dd, div, span').forEach(visit);
+// ═══ ΕΝΑΣ ΣΤΟΙΧΕΙΟΘΕΤΗΣ, ΣΕ ΚΟΜΜΑΤΙΑ, ΜΟΝΟ ΣΤΗΝ ΑΛΛΑΓΗ ΠΛΑΤΟΥΣ (11/11/2026) ═══
+// ΤΙ ΜΕΤΡΗΘΗΚΕ, σε κινητό με επεξεργαστή /4 και αφή:
+//   · ΚΑΘΕ `resize` ξανάτρεχε όλη τη σελίδα. Στο τηλέφωνο το `resize` έρχεται
+//     κάθε φορά που η μπάρα διευθύνσεων μαζεύεται ή ανοίγει, δηλαδή σε κάθε
+//     αλλαγή φοράς της κύλισης. Στην αρχική 60 ως 77 χιλιοστά, στο
+//     χαρτοφυλάκιο των διακοσίων ακινήτων 200 ως 420, κάθε φορά. Το πλάτος
+//     όμως δεν άλλαζε· και η αλλαγή γραμμής εξαρτάται μόνο από το πλάτος.
+//   · Στον πίνακα έτρεχαν ΔΥΟ στοιχειοθέτες στο ίδιο δέντρο: ένας στο
+//     `.app-content` (Typesetter) και ένας στο `main` (JustifyPolish), που το
+//     περιέχει. Ο,τι άλλαζε κρινόταν δύο φορές.
+//   · Ολο το πέρασμα γινόταν σε μία εργασία, οπότε ένα άγγιγμα την ώρα που
+//     έτρεχε περίμενε να τελειώσει.
+// ΤΩΡΑ: ένας παρατηρητής για όλα τα πεδία, πέρασμα στην αλλαγή ΠΛΑΤΟΥΣ μόνο και
+// δουλειά σε κομμάτια των SLICE_MS, με επιστροφή στον περιηγητή ανάμεσα.
+const SLICE_MS = 8;
+const scopes = new Map<string, number>();
+const dirty = new Set<HTMLElement>();
+const work: HTMLElement[] = [];
+let mo: MutationObserver | null = null;
+let pending = false;
+let lastWidth = 0;
+const scopeSel = () => [...scopes.keys()].join(',');
+const inScope = (el: HTMLElement) => scopes.size > 0 && !!el.closest(scopeSel());
+
+function expand() {
+  // Ο ίδιος κόμβος μία φορά, ακόμη κι αν βρίσκεται κάτω από δύο βρώμικες ρίζες.
+  const seen = new Set<HTMLElement>(work);
+  for (const root of dirty) {
+    if (!root.isConnected || !inScope(root)) continue;
+    if (!seen.has(root)) { seen.add(root); work.push(root); }
+    root.querySelectorAll<HTMLElement>('p, li, dd, div, span').forEach(el => {
+      if (!seen.has(el)) { seen.add(el); work.push(el); }
+    });
+  }
+  dirty.clear();
+}
+
+function run() {
+  pending = false;
+  expand();
+  const until = performance.now() + SLICE_MS;
+  let i = 0;
+  // Τουλάχιστον ένα στοιχείο ανά κομμάτι, ώστε η ουρά να αδειάζει πάντα.
+  do { const el = work[i++]; if (el?.isConnected) visit(el); } while (i < work.length && performance.now() < until);
+  work.splice(0, i);
+  if (work.length || dirty.size) schedule();
+}
+
+function schedule() {
+  if (pending) return;
+  pending = true;
+  const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+  if (ric) ric(run, { timeout: 400 }); else setTimeout(run, 120);
+}
+
+function all() {
+  if (scopes.size) document.querySelectorAll<HTMLElement>(scopeSel()).forEach(el => dirty.add(el));
+  schedule();
+}
+
+function onResize() {
+  if (window.innerWidth === lastWidth) return;
+  lastWidth = window.innerWidth;
+  all();
 }
 
 /** Ξεκινά τον στοιχειοθέτη στο `selector`· επιστρέφει τη συνάρτηση που τον σταματά. */
@@ -142,31 +215,27 @@ export function startTypesetter(selector: string): () => void {
   // ΜΟΝΟ Ο,ΤΙ ΑΛΛΑΞΕ. Μια πληκτρολόγηση σε πεδίο ξαναζωγραφίζει μια κάρτα, όχι
   // όλη την εφαρμογή· το πλήρες πέρασμα γίνεται μία φορά και στην αλλαγή
   // πλάτους, όπου μπορεί να αλλάξει ποιο κουτί είναι παράγραφος.
-  const dirty = new Set<HTMLElement>();
-  let pending = false;
-  const inScope = (el: HTMLElement) => !!el.closest(selector);
-  const run = () => {
-    pending = false;
-    const roots = [...dirty];
-    dirty.clear();
-    for (const el of roots) if (el.isConnected && inScope(el)) set(el);
+  scopes.set(selector, (scopes.get(selector) || 0) + 1);
+  if (!mo) {
+    lastWidth = window.innerWidth;
+    mo = new MutationObserver(records => {
+      for (const r of records) {
+        if (r.type === 'characterData') { const p = r.target.parentElement; if (p) dirty.add(p.parentElement || p); continue; }
+        if (r.target instanceof HTMLElement) dirty.add(r.target);
+      }
+      schedule();
+    });
+    mo.observe(document.body, { childList: true, subtree: true, characterData: true });
+    window.addEventListener('resize', onResize);
+  }
+  document.querySelectorAll<HTMLElement>(selector).forEach(el => dirty.add(el));
+  schedule();
+  return () => {
+    const n = (scopes.get(selector) || 1) - 1;
+    if (n > 0) scopes.set(selector, n); else scopes.delete(selector);
+    if (scopes.size || !mo) return;
+    mo.disconnect(); mo = null;
+    window.removeEventListener('resize', onResize);
+    dirty.clear(); work.length = 0;
   };
-  const schedule = () => {
-    if (pending) return;
-    pending = true;
-    const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
-    if (ric) ric(run, { timeout: 400 }); else setTimeout(run, 120);
-  };
-  const all = () => { document.querySelectorAll<HTMLElement>(selector).forEach(el => dirty.add(el)); schedule(); };
-  all();
-  const mo = new MutationObserver(records => {
-    for (const r of records) {
-      if (r.type === 'characterData') { const p = r.target.parentElement; if (p) dirty.add(p.parentElement || p); continue; }
-      if (r.target instanceof HTMLElement) dirty.add(r.target);
-    }
-    schedule();
-  });
-  mo.observe(document.body, { childList: true, subtree: true, characterData: true });
-  window.addEventListener('resize', all);
-  return () => { mo.disconnect(); window.removeEventListener('resize', all); };
 }
