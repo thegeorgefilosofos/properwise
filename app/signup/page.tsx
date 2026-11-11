@@ -528,25 +528,21 @@ export default function SignupPage() {
       countSignupStep('invalid')
       return
     }
-    if (leaked) {
-      setPwTouched(true)
-      setError(PW_MSG.leaked)
-      countSignupStep('invalid')
-      return
-    }
     if (!pw.ok) {
       setPwTouched(true)
       setError(pw.common ? PW_MSG.common : PW_MSG.weak)
       countSignupStep('invalid')
       return
     }
-    // Η υποβολή ρωτά η ίδια: ο έλεγχος του πεδίου μπορεί να μην έχει απαντήσει
-    // ακόμη, π.χ. σε κωδικό που επικολλήθηκε (lib/auth/leakedPassword.ts).
-    // Το `loading` κλειδώνει και το πεδίο του κωδικού: αλλιώς ο χρήστης τον
+    // ΔΙΑΡΡΟΗ: ό,τι ξέρει ήδη το πεδίο, αλλιώς ρωτά η ίδια η υποβολή, γιατί ο
+    // έλεγχος του πεδίου μπορεί να μην έχει απαντήσει (κωδικός που επικολλήθηκε,
+    // lib/auth/leakGate.ts). Ένα μπλοκ για τις δύο περιπτώσεις: το /signup είναι
+    // στο όριο βάρους του (docs/perf/budget.json). Ένας κωδικός που διέρρευσε
+    // περνά ήδη την πολιτική ισχύος, οπότε η σειρά μετά το `pw.ok` δεν αλλάζει
+    // κανένα μήνυμα. Το `loading` κλειδώνει και το πεδίο: αλλιώς ο χρήστης τον
     // άλλαζε όσο περίμενε και αποθηκευόταν ο προηγούμενος, που δεν τον ξέρει.
     setLoading(true)
-    const leakedNow = await leakedAtSubmit(password)
-    if (leakedNow) {
+    if (leaked || await leakedAtSubmit(password)) {
       setLoading(false)
       setLeakedPw(password)
       setPwTouched(true)
