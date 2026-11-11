@@ -305,9 +305,9 @@ export const MUTATIONS = {
   'chromium-path': { every: [
     { add: 'scripts/__mut__.mjs', content: "import { chromium } from 'playwright-core';\nawait chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });\n" },
     { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install', to: 'playwright@1.40.0 install' },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install --with-deps webkit', to: 'playwright@1.63.0 install --with-deps webkit' },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install --with-deps webkit', to: 'playwright install --with-deps webkit' },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install --with-deps webkit', to: 'playwright@latest install --with-deps webkit' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install webkit', to: 'playwright@1.63.0 install webkit' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install webkit', to: 'playwright install webkit' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install webkit', to: 'playwright@latest install webkit' },
   ] },
   'email-audience': {
     file: 'supabase/functions/_shared/emailTemplates.ts',
