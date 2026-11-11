@@ -21,6 +21,10 @@
 /** Σκελετός component οθόνης, για φύλακες που σαρώνουν .tsx. */
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
+/** Ροή-δόλωμα για τον φύλακα των logs: ένα βήμα με το σενάριο `body`. */
+const MUT_WF = '.github/workflows/__mut_backup_logs__.yml'
+const wfRun = (body) => `name: m\non: workflow_dispatch\njobs:\n  m:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n${body.split('\n').map(l => `          ${l}`).join('\n')}\n`
+
 export const MUTATIONS = {
   // Ο οδηγός «Νέο ακίνητο» ξανά με τη φόρμα απλωμένη αυτούσια: ακριβώς το
   // '' στο property_settings.insurance_expiry (Postgres 22007, 06/11/2026).
@@ -836,5 +840,62 @@ export const MUTATIONS = {
     { add: 'lib/i18n/en/__mut__.ts', content: "export const cta = { label: 'Start free', price: '€0/month' }\n" },
     { add: 'lib/i18n/en/__mut__.ts', content: "export const per = (a: string) => `ή ${a} a year`\n" },
     { add: 'lib/i18n/en/__mut__.ts', content: "export const noa = 'Noa reads your bills and she answers in Greek.'\n" },
+  ] },
+
+  // ══ Η ΔΙΑΡΡΟΗ ΤΗΣ ΔΟΚΙΜΗΣ ΕΠΑΝΑΦΟΡΑΣ (11/11/2026) ═══════════════════════════
+  // Ακριβώς το #521: Postgres ως `services:`, που το GitHub τυπώνει το log του.
+  // Και κάθε τείχος χωριστά, μαζί με κάθε παράκαμψη που βρήκε η αξιολόγηση του
+  // #538: άλλη εικόνα ή γραφή YAML, άλλος τρόπος εκκίνησης container, stderr
+  // που ενώνεται σε σωλήνα ή τυπώνεται αργότερα, psql πίσω από `bash -c` ή
+  // μεταβλητή, xtrace σε κάθε γραφή, σενάριο που καλεί μια ροή.
+  'backup-logs': { every: [
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs:\n  drill:\n    runs-on: ubuntu-latest\n    services:\n      postgres:\n        image: postgres:17.6\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs:\n  d:\n    runs-on: ubuntu-latest\n    env:\n      K: ${{ secrets.K }}\n    services:\n      db:\n        image: ${{ vars.DB_IMAGE }}\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs: {d: {runs-on: ubuntu-latest, services: {db: {image: 'postgres:17'}}, steps: [{run: echo}]}}\n" },
+    { file: '.github/workflows/backup-restore-drill.yml', from: 'docker run -d --name drill-pg --log-driver none --network none', to: 'docker run -d --name drill-pg --network none' },
+    { file: '.github/workflows/backup-restore-drill.yml', from: '-c log_min_error_statement=panic -c log_min_messages=panic', to: '-c log_min_messages=panic' },
+    { add: MUT_WF, content: wfRun('docker container run -d --name x redis:7 >/dev/null 2>&1') },
+    { add: MUT_WF, content: wfRun('docker create --name x redis:7 >/dev/null') },
+    { add: MUT_WF, content: wfRun('docker start x >/dev/null') },
+    { add: MUT_WF, content: wfRun('docker compose -f db.yml up -d') },
+    { add: MUT_WF, content: wfRun('docker-compose up -d') },
+    { add: MUT_WF, content: wfRun('supabase start') },
+    { file: '.github/workflows/backup-restore-drill.yml', from: 'pg -d drill -v ON_ERROR_STOP=1 -f - < scripts/db/platform-stub.sql >/dev/null 2>&1', to: 'pg -d drill -v ON_ERROR_STOP=1 -f - < scripts/db/platform-stub.sql' },
+    { add: MUT_WF, content: wfRun('pg_dump -f dump.sql') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql >/dev/null 2>&1 | tee psql.log') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql 2>&1 >/dev/null | sed 1q') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql >/dev/null 2>psql.err || true\ntail -5 psql.err') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql >/dev/null 2>psql.err || cat psql.err') },
+    { add: MUT_WF, content: wfRun("bash -c 'psql -f data.sql'") },
+    { add: MUT_WF, content: wfRun('PSQL="psql -h localhost -q"\n$PSQL -f data.sql >/dev/null') },
+    { add: MUT_WF, content: wfRun('out=$(psql -f data.sql 2>&1) || true\necho "$out"') },
+    { add: MUT_WF, content: wfRun('n="$(psql -tAc \'select 1\')"') },
+    { add: MUT_WF, content: wfRun('set -o errexit -o xtrace') },
+    { add: MUT_WF, content: wfRun('set -o pipefail; set -eo xtrace') },
+    { add: 'scripts/backup/__mut__.sh', content: '#!/usr/bin/env bash\nset -euxo pipefail\necho ok\n' },
+    // Αξιολόγηση του #538 στο d793fa5: stderr σε αρχείο ή μεταβλητή, stdout σε
+    // αρχείο που ξαναδιαβάζεται, μεταβλητή που τυπώνεται με άλλους τρόπους,
+    // eval / node -e / python -c, services με μόνο GITHUB_TOKEN και εικόνα ${{ }},
+    // synthetic-db κάτω από τη 10η γραμμή, με PG* ή καλούμενο με secret, allow
+    // πάνω σε πραγματική βάση.
+    { add: MUT_WF, content: wfRun('psql -f d.sql >/dev/null 2>psql.err\nsed -n 1p psql.err') },
+    { add: MUT_WF, content: wfRun('err=$(psql -f d.sql 2>&1 >/dev/null) || true') },
+    { add: MUT_WF, content: wfRun("psql -tAc 'select email from t' >out.txt 2>/dev/null\ncat out.txt") },
+    { add: MUT_WF, content: wfRun("psql -tAc 'select email from t' >out.txt 2>/dev/null\njq -R . out.txt") },
+    { add: MUT_WF, content: wfRun("n=$(psql -tAc 'select email from t' 2>/dev/null)\ncat <<<\"$n\"") },
+    { add: MUT_WF, content: wfRun("n=$(psql -tAc 'select email from t' 2>/dev/null)\necho \"::notice::$n\"") },
+    { add: MUT_WF, content: wfRun("n=$(psql -tAc 'select email from t' 2>/dev/null)\necho \"$n\" >> \"$GITHUB_STEP_SUMMARY\"") },
+    { add: MUT_WF, content: wfRun("n=$(psql -tAc 'select email from t' 2>/dev/null)\necho \"$n\" >&2") },
+    { add: MUT_WF, content: wfRun('eval "psql -f d.sql"') },
+    { add: MUT_WF, content: wfRun("node -e \"require('child_process').execSync('psql -f d.sql', { stdio: 'inherit' })\"") },
+    { add: MUT_WF, content: wfRun("python3 -c \"import os; os.system('pg_dump -f x.sql')\"") },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs:\n  d:\n    runs-on: ubuntu-latest\n    env:\n      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n    services:\n      db:\n        image: ${{ vars.DB_IMAGE }}\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs:\n  d:\n    runs-on: ubuntu-latest\n    env:\n      PW: ${{ secrets.DB_PASSWORD }}\n    services:\n      cache:\n        image: redis:7\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: wfRun('# log-guard: allow — δοκιμή\npsql "$DATABASE_URL" -f d.sql') },
+    { file: 'scripts/db-replay.sh', from: '#!/usr/bin/env bash\n# log-guard: synthetic-db', to: '#!/usr/bin/env bash\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n# log-guard: synthetic-db' },
+    { file: 'scripts/db-replay.sh', from: 'PSQL="psql -h $WORK -U postgres', to: 'export PGHOST="$WORK"\nPSQL="psql -h $WORK -U postgres' },
+    { file: '.github/workflows/ci.yml', from: '        run: bash scripts/db-replay.sh', to: '        env:\n          DB_PW: ${{ secrets.DB_PASSWORD }}\n        run: bash scripts/db-replay.sh' },
+    { file: 'scripts/db-replay.sh', from: 'PSQL="psql -h $WORK -U postgres', to: 'PSQL="psql $DATABASE_URL -h $WORK -U postgres' },
+    { file: 'scripts/backup/vault.mjs', from: "import { pathToFileURL } from 'node:url'\n", to: "import { pathToFileURL } from 'node:url'\nimport { spawnSync } from 'node:child_process'\nexport const probe = () => spawnSync('pg_dump --data-only', { shell: true })\n" },
   ] },
 }
