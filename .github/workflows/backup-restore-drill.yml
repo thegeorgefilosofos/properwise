@@ -1,0 +1,145 @@
+name: Backup restore drill
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ΔΟΚΙΜΗ ΕΠΑΝΑΦΟΡΑΣ, ΜΙΑ ΦΟΡΑ ΤΟ ΜΗΝΑ
+# ─────────────────────────────────────────────────────────────────────────
+# Ένα αντίγραφο που δεν έχει επαναφερθεί ποτέ είναι υπόθεση, όχι αντίγραφο.
+# Ο φύλακας (backup-watchdog.yml) λέει ότι τα αρχεία ΥΠΑΡΧΟΥΝ. Αυτή η ροή
+# λέει ότι ΑΝΟΙΓΟΥΝ και ότι η βάση ΞΑΝΑΣΤΗΝΕΤΑΙ από αυτά:
+#   1. κατεβάζει το τελευταίο αντίγραφο από τον ιδιωτικό χώρο `db-backups`
+#   2. το αποκρυπτογραφεί με το BACKUP_PASSPHRASE (λάθος φράση = κόκκινο)
+#   3. το επαναφέρει σε προσωρινό Postgres μέσα στον runner
+#   4. μετρά τις γραμμές των πινάκων-κλειδιών στο dump και στη βάση. Κοκκινίζει
+#      σε κάθε διαφορά ή σε άδειο αντίγραφο
+#
+# ΤΑ LOGS ΕΙΝΑΙ ΔΗΜΟΣΙΑ. Η έξοδος του psql πάει σε αρχείο που δεν τυπώνεται·
+# στο log γράφεται μόνο το πλήθος των σφαλμάτων και ✓/✗ ανά πίνακα, χωρίς
+# αριθμούς γραμμών. Η προσωρινή βάση σβήνει μαζί με τον runner.
+#
+# Σφάλματα στο auth/storage είναι αναμενόμενα: ο γυμνός Postgres έχει μόνο τη
+# σκαλωσιά (scripts/db/platform-stub.sql), όχι όλες τις στήλες της πλατφόρμας.
+# Γι' αυτό η κρίση γίνεται στα πλήθη των πινάκων του `public`, όχι στο μηδέν
+# σφαλμάτων.
+# ═══════════════════════════════════════════════════════════════════════════
+
+on:
+  schedule:
+    - cron: '0 6 3 * *'      # 3η κάθε μήνα, 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_PROJECT_REF: aromvduuxtcrzmwwvnej
+  # Οι πίνακες που δεν επιτρέπεται να χαθούν.
+  KEY_TABLES: 'user_properties tenants calendar_events billing_profiles expenses rent_payments'
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # Βάση μιας χρήσης, χωρίς δίκτυο προς τα έξω: δεν χρειάζεται κωδικός.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      PGHOST: localhost
+      PGUSER: postgres
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            scripts/backup
+            scripts/db/platform-stub.sql
+          sparse-checkout-cone-mode: false
+
+      - name: Check secrets
+        run: |
+          if [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::error::Λείπει το BACKUP_PASSPHRASE: χωρίς αυτό κανένα αντίγραφο δεν ανοίγει."
+            exit 1
+          fi
+
+      - name: Service role key (masked)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: bash scripts/backup/service-key.sh
+
+      - name: Download and decrypt latest backup
+        id: dl
+        run: |
+          set -euo pipefail
+          umask 077
+          day=$(node scripts/backup/vault.mjs latest)
+          if [ -z "$day" ]; then
+            echo "::error::Δεν υπάρχει κανένα αντίγραφο στον ιδιωτικό χώρο."
+            exit 1
+          fi
+          echo "day=$day" >> "$GITHUB_OUTPUT"
+          mkdir -p drill
+          for f in roles schema data; do
+            node scripts/backup/vault.mjs get "$day/$f.sql.gpg" "drill/$f.sql.gpg"
+            gpg --batch --yes --quiet --decrypt --passphrase "$BACKUP_PASSPHRASE" \
+                -o "drill/$f.sql" "drill/$f.sql.gpg" 2>/dev/null \
+              || { echo "::error::Το $f.sql.gpg της $day δεν αποκρυπτογραφείται με το τρέχον BACKUP_PASSPHRASE."; exit 1; }
+            rm -f "drill/$f.sql.gpg"
+          done
+          echo "✓ αντίγραφο της $day: κατέβηκε και άνοιξε"
+
+      - name: Restore into a throwaway Postgres
+        run: |
+          set -euo pipefail
+          psql -q -c 'create database drill' >/dev/null
+          psql -q -d drill -v ON_ERROR_STOP=1 -f scripts/db/platform-stub.sql >/dev/null
+          # Οι επεκτάσεις της πλατφόρμας δεν υπάρχουν σε γυμνό Postgres (όπως στο scripts/db-replay.sh).
+          sed -E -i 's/^([[:space:]]*)(CREATE EXTENSION[^;]*"(pg_cron|pg_net|pg_stat_statements|supabase_vault|pg_graphql|pgsodium)"[^;]*;)/\1-- [drill] \2/I' drill/schema.sql
+          errors=0
+          for f in roles schema data; do
+            # Τα δεδομένα μπαίνουν με τα triggers των ξένων κλειδιών σβηστά, όπως στο pg_dump.
+            opts=''; [ "$f" = data ] && opts='-c session_replication_role=replica'
+            PGOPTIONS="$opts" psql -d drill -f "drill/$f.sql" > "drill/$f.log" 2>&1 || true
+            n=$(grep -c 'ERROR' "drill/$f.log" || true)
+            echo "$f.sql: $n σφάλματα (η έξοδος δεν τυπώνεται)"
+            errors=$((errors + n))
+          done
+          rm -f drill/*.log
+          echo "errors=$errors" >> "$GITHUB_ENV"
+
+      - name: Compare row counts
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2086
+          node scripts/backup/vault.mjs count drill/data.sql $KEY_TABLES > drill/expected.json
+          printf '{' > drill/actual.json
+          sep=''
+          for t in $KEY_TABLES; do
+            n=$(psql -d drill -tAc "select count(*) from public.\"$t\"" 2>/dev/null || echo -1)
+            printf '%s"%s":%s' "$sep" "$t" "$n" >> drill/actual.json
+            sep=','
+          done
+          printf '}' >> drill/actual.json
+          node scripts/backup/vault.mjs compare drill/expected.json drill/actual.json
+
+      - name: Clean up
+        if: always()
+        run: rm -rf drill
+
+      - name: Summary
+        run: |
+          {
+            echo "## ✅ Δοκιμή επαναφοράς: πέρασε"
+            echo
+            echo "Αντίγραφο της ${{ steps.dl.outputs.day }}: αποκρυπτογραφήθηκε, επαναφέρθηκε σε προσωρινή βάση."
+            echo "Οι πίνακες-κλειδιά έχουν όσες γραμμές έχει το dump."
+            echo
+            echo "Σφάλματα psql (κυρίως σκαλωσιά auth/storage): $errors"
+          } >> "$GITHUB_STEP_SUMMARY"

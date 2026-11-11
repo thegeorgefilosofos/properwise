@@ -43,13 +43,43 @@ in its home; edge functions pick up the service-role key automatically.
 
 ## Backups & restore
 
-- `Database backup` workflow (`.github/workflows/db-backup.yml`) runs daily at 02:00
-  UTC and on demand: a logical dump (roles + schema + data) uploaded as a private,
-  90-day GitHub artifact — an off-site net on the current plan.
-- **Restore**: download the artifact, then `psql "<connection>" -f schema.sql` then
-  `-f data.sql` (roles first if restoring to a fresh project).
-- ⚠ The artifact contains real customer data — keep the repo private. Move to Supabase
-  **Pro** (daily managed backups + 7-day PITR) before onboarding real customers.
+The repository is **public**, so Actions artifacts and logs are public too. Backups
+therefore never go to artifacts: they live in a private Supabase Storage bucket.
+
+- **Where.** Bucket `db-backups`, private, with no storage policy for `anon` or
+  `authenticated` (only the service role reads it). One folder per day:
+  `YYYY-MM-DD/roles.sql.gpg`, `schema.sql.gpg`, `data.sql.gpg`, and on Sundays
+  `files.tar.gpg.part-*` (the user buckets `lease-documents`, `property-files`,
+  `inventory-docs`, `maintenance-photos`, `inventory-photos`).
+- **Who writes.** `Database backup` (`.github/workflows/db-backup.yml`), daily 02:00
+  UTC and on demand. Encrypts with gpg AES256 before upload; no
+  `BACKUP_PASSPHRASE`, no backup. Keeps 30 days and deletes older folders. Each run
+  also deletes any leftover `supabase-backup-*` artifact from the old public setup.
+- **Who checks.** `Backup watchdog` (05:00 UTC) opens an issue if the latest folder
+  is older than 48 h, incomplete, or holds any unencrypted `.sql`. `Backup restore
+  drill` (3rd of each month) decrypts the latest backup, restores it into a
+  throwaway Postgres and compares row counts of the key tables with the dump.
+- **Keys.** No extra secret: the service-role key is fetched at run time from the
+  Management API with `SUPABASE_ACCESS_TOKEN` (`scripts/backup/service-key.sh`) and
+  masked in the log. Logs print counts and sizes only, never object paths.
+- **Restore.**
+  1. Get the service-role key (Dashboard → Project Settings → API keys) and run
+     `SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SERVICE_KEY=… node scripts/backup/vault.mjs latest`.
+  2. `node scripts/backup/vault.mjs get <day>/data.sql.gpg data.sql.gpg` (same for
+     `roles`, `schema`).
+  3. `gpg --decrypt -o data.sql data.sql.gpg` with `BACKUP_PASSPHRASE`.
+  4. `psql "<connection>" -f roles.sql`, then `-f schema.sql`, then
+     `-f data.sql` (roles only on a fresh project).
+  5. Files: download every `files.tar.gpg.part-*`, `cat` them in order into
+     `files.tar.gpg`, decrypt, untar, and upload per bucket.
+- ⚠ **Same provider.** The backup lives in the same Supabase project as the
+  database. It covers a bad migration or an accidental delete, not the loss of the
+  project or the account. Next step: a second destination with another provider
+  (Cloudflare R2 or AWS S3), which needs an account the owner opens. Supabase
+  **Pro** adds managed daily backups and point-in-time recovery.
+- **Passphrase.** After the move from public artifacts (10/11/2026) the
+  `BACKUP_PASSPHRASE` must be rotated: the old encrypted files were downloadable by
+  anyone. Backups made before the rotation open only with the old phrase.
 
 ## Incident response — leaked secret
 
