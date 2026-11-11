@@ -17,38 +17,46 @@
 // ίδιο δημόσιο log με τη ροή.
 //
 // ΤΙ ΕΛΕΓΧΕΤΑΙ
-//   1. `services:`: σε ροή που διαβάζει `secrets.` καθόλου, όποια κι αν είναι η
-//      εικόνα ή η γραφή του YAML· αλλού όχι με Postgres. Το log ενός service
-//      container το τυπώνει το GitHub και δεν κλείνει με καμία ρύθμιση.
+//   1. `services:` σε ροή με secrets εκτός του GITHUB_TOKEN ή με δείκτες
+//      πραγματικής βάσης· και παντού όταν η εικόνα μοιάζει με Postgres, ή είναι
+//      `${{ … }}` σε ροή με οποιοδήποτε secret. Το log ενός service container το
+//      τυπώνει το GitHub και δεν κλείνει με καμία ρύθμιση.
 //   2. Κάθε εκκίνηση container: `docker [container] run|create` θέλει
 //      `--log-driver none`· με Postgres και `log_min_error_statement=panic`,
 //      `log_statement=none`. Το `docker start`, το `docker compose up` και το
 //      `supabase start` δεν παίρνουν οδηγό log: θέλουν ρητή εξαίρεση (κάτω).
 //   3. psql / pg_restore / pg_dump / pg_dumpall και ό,τι τα καλεί: συνάρτηση-
 //      περιτύλιγμα, μεταβλητή (`PSQL="psql …"; $PSQL …`), `bash -c '… psql …'`,
-//      `su … -c "…"`. Το stderr πάει κάπου (`2>`, `&>`), το stdout σε
-//      ανακατεύθυνση ή σε `$( )`. Και το stderr ΔΕΝ ΦΑΙΝΕΤΑΙ μετά:
-//        · `2>&1 | …` μόνο προς μετρητή (`wc -l`, `grep -c`, `awk` που τυπώνει
-//          μόνο έναν αριθμό)
-//        · `2>αρχείο` και μετά `cat`/`tail`/`head`/`less`/`tee` του αρχείου
-//        · `|| cat …` στην ίδια εντολή
-//        · `x=$(psql … 2>&1)` και μετά `echo "$x"` ή `printf … "$x"`
+//      `su … -c "…"`, `eval "psql …"`, `node -e`/`python -c` που τα αναφέρουν.
+//        · stderr ΜΟΝΟ στο /dev/null ή σε σωλήνα προς μετρητή (`wc -l`,
+//          `grep -c`, `awk` που τυπώνει μόνο έναν αριθμό). Όχι σε αρχείο, όχι σε
+//          μεταβλητή, όχι `|| cat`.
+//        · stdout στο /dev/null, σε `$( )` ή σε αρχείο. Αρχείο που διαβάζεται
+//          αργότερα από οτιδήποτε εκτός από μετρητή (`wc -l`, `grep -c`,
+//          `test -s`) είναι διαρροή· μεταβλητή που τυπώνεται (`echo`, `printf`,
+//          `cat <<<`, `tee`, `>&2`, `::notice::`, `$GITHUB_STEP_SUMMARY`,
+//          `$GITHUB_OUTPUT`, `$GITHUB_ENV`) επίσης.
+//        · Ελεύθερα: `--version`, `--help`, `which`, `command -v`.
 //   4. Όχι xtrace σε καμία μορφή (`set -x`, `set -euxo`, `set -o xtrace`,
-//      `bash -x`, `SHELLOPTS`), όχι `docker logs`, όχι `supabase --debug`, όχι
-//      `pg_dump --verbose`.
+//      `bash -x script`, `shell: bash -x {0}`, `SHELLOPTS`), όχι `docker logs`,
+//      όχι `supabase --debug`, όχι `pg_dump --verbose`. Το `set`/`bash` κρίνεται
+//      μόνο ως λέξη-εντολή: `find -name *.sh -exec`, `git config set -x` δεν
+//      μετρούν.
 //   5. Σενάριο JS/TS που καλεί μια ροή και τρέχει psql/pg_dump/pg_restore ή
 //      `supabase db|start` ως υποδιεργασία: θέλει ρητή εξαίρεση.
 //
 // ΡΗΤΗ ΕΞΑΙΡΕΣΗ, ΜΕ ΛΟΓΟ. `# log-guard: allow — <γιατί>` (ή `//` σε JS) στην
-// ίδια γραμμή ή στην αμέσως προηγούμενη ισχύει για τους κανόνες 2, 3 και 5.
-// `# log-guard: synthetic-db — <γιατί>` στην αρχή ενός σεναρίου εξαιρεί όλο
-// το αρχείο από τον κανόνα 3, ΜΟΝΟ αν δεν αγγίζει πραγματική βάση (κανένα
-// `--linked`, `--db-url`, `--remote`, `PGPASSWORD`, `DATABASE_URL`,
-// `SUPABASE_DB_PASSWORD`, `.supabase.co`, `secrets.`). Οι κανόνες 1 και 4 δεν
+// ίδια γραμμή ή στην αμέσως προηγούμενη ισχύει για τους κανόνες 2, 3 και 5,
+// ΠΟΤΕ για εντολή με δείκτη πραγματικής βάσης (REAL_DB). Το πλήθος τους
+// τυπώνεται σε κάθε πράσινο.
+// `# log-guard: synthetic-db — <γιατί>` στις 10 πρώτες γραμμές ενός σεναρίου
+// εξαιρεί όλο το αρχείο από τον κανόνα 3, μόνο αν: το αρχείο δεν έχει κανέναν
+// δείκτη πραγματικής βάσης ΚΑΙ καμία δουλειά ροής που το καλεί δεν έχει
+// secret (πλην GITHUB_TOKEN) ή μεταβλητή PG*. Οι κανόνες 1 και 4 δεν
 // εξαιρούνται ποτέ.
 //
 // Σχόλια (#) και κείμενα μέσα σε εισαγωγικά δεν μετρούν ως εντολές, εκτός από
-// το όρισμα ενός `-c` (κανόνας 3).
+// το όρισμα ενός `-c`, ένα `$( )` και ό,τι δίνεται σε `eval`.
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync, existsSync } from 'node:fs'
 import { projectFiles } from './lib/git-files.mjs'
@@ -116,7 +124,11 @@ const openDashC = s => s.replace(/(\b(?:ba|da|z)?sh\b[^'"\n]*?\s-[a-z]*c|\bsu\b[
 const indent = s => s.length - s.trimStart().length
 const ALLOW = /log-guard:\s*allow\s*[—–-]+\s*\S/
 const SYNTHETIC = /log-guard:\s*synthetic-db\s*[—–-]+\s*\S/
-const REAL_DB = /--linked\b|--db-url\b|--remote\b|\bPGPASSWORD\b|\bDATABASE_URL\b|\bSUPABASE_DB_PASSWORD\b|\.supabase\.co\b|\bsecrets\./
+/** Δείκτες ότι μια εντολή ή ένα αρχείο αγγίζει πραγματική βάση. */
+const REAL_DB = /--linked\b|--db-url\b|--remote\b|\bPG(HOST|PASSWORD|SERVICE|USER|DATABASE)\b|DATABASE_URL|_DB_URL\b|\bSUPABASE_DB_PASSWORD\b|supabase\.com?\b|pooler\.supabase|postgres(ql)?:\/\/|\bsecrets\.(?!GITHUB_TOKEN\b)/
+/** Secret εκτός του GITHUB_TOKEN, ή μεταβλητή PG*: η δουλειά μιλά με αληθινή βάση. */
+const SECRETISH = /\bsecrets\.(?!GITHUB_TOKEN\b)\w|^\s*PG[A-Z]+\s*:/m
+const DB_TOOLS_RE = '\\b(psql|pg_restore|pg_dump|pg_dumpall)\\b|\\bsupabase\\s+(db|migration)\\b'
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /** Τα κομμάτια ενός σωλήνα, έξω από εισαγωγικά, χωρίς να σπάει το `||`. */
@@ -141,49 +153,104 @@ const counter = seg => /^\s*wc\s+-l\b/.test(seg) || /^\s*grep\s+-[a-zA-Z]*c/.tes
     return !/\$\d|\$NF|\$0/.test(prog) && prints.length > 0 && prints.every(p => /^print\s+[A-Za-z_]\w*\s*(\+\s*0)?\s*$/.test(p.trim()))
   })())
 
+/** Λέξη-εντολή: αρχή γραμμής (και `run:` του YAML), μετά από ; & | ( ` $( ή από exec/sudo/env/time/nohup. */
+const CMD = String.raw`(?:^\s*(?:-\s+)?(?:run:\s*)?|[;&|(\x60]\s*|\$\(\s*|\b(?:exec|sudo|env|time|nohup|command)\s+)`
+// Το `set` κρατά όλα του τα ορίσματα ως το `--`· ένα shell μόνο τις επιλογές
+// πριν από το σενάριο (`sh ./install.sh -x` δεν είναι xtrace).
+const XTRACE_SET = new RegExp(`${CMD}set\\b([^;&|]*)`, 'g')
+const XTRACE_SH = new RegExp(`${CMD}(?:\\/usr)?(?:\\/bin\\/)?(?:ba|da|z)?sh((?:\\s+[-+][a-zA-Z]*o\\s+\\w+|\\s+[-+][a-zA-Z]+)*)`, 'g')
+const traces = opts => {
+  const o = opts.split(/\s--(\s|$)/)[0]
+  return /(^|\s)-[a-wyzA-Z]*x/.test(o) || /(^|\s)-[a-zA-Z]*o\s+xtrace\b/.test(o)
+}
+
+/** Η δουλειά (job) μιας ροής που περιέχει τη γραμμή `i`: από τον τίτλο της ως την επόμενη. */
+function jobBlock(lines, i) {
+  const jobsAt = lines.findIndex(l => /^jobs:\s*$/.test(l))
+  if (jobsAt < 0 || i < jobsAt) return lines.join('\n')
+  let start = i
+  while (start > jobsAt && !/^ {2}[\w-]+:\s*$/.test(lines[start])) start--
+  let end = i + 1
+  while (end < lines.length && !/^ {2}[\w-]+:\s*$/.test(lines[end]) && !/^\S/.test(lines[end])) end++
+  const top = lines.slice(0, jobsAt).join('\n')
+  return `${top}\n${lines.slice(start, end).join('\n')}`
+}
+
+/** Οι ροές που καλούν ένα σενάριο: έχει κάποια από αυτές secret ή PG* στη δουλειά της; */
+function calledWithSecrets(script) {
+  for (const wf of workflows) {
+    const lines = readFileSync(wf, 'utf8').split('\n')
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes(script) && !lines[i].trim().startsWith('#') && SECRETISH.test(jobBlock(lines, i))) return `${wf}:${i + 1}`
+    }
+  }
+  return null
+}
+
+const allows = new Set()
+
 for (const arxeio of files) {
   const raw = readFileSync(arxeio, 'utf8')
   const lines = raw.split('\n')
   const workflow = arxeio.startsWith('.github/')
-  const allowed = i => ALLOW.test(lines[i] ?? '') || ALLOW.test(lines[i - 1] ?? '')
+  // Η εξαίρεση δεν ισχύει ποτέ για εντολή με δείκτη πραγματικής βάσης.
+  const allowed = (i, text = lines[i] ?? '') => {
+    const hit = (ALLOW.test(lines[i] ?? '') || ALLOW.test(lines[i - 1] ?? '')) && !REAL_DB.test(text.replace(/#.*$/, ''))
+    if (hit) allows.add(`${arxeio}:${ALLOW.test(lines[i] ?? '') ? i : i - 1}`)
+    return hit
+  }
 
   // 5. JS/TS: υποδιεργασία που μιλά με βάση
   if (/\.(mjs|cjs|js|ts|mts)$/.test(arxeio)) {
     lines.forEach((l, i) => {
-      if (/^\s*(\/\/|\*)/.test(l) || allowed(i)) return
+      if (/^\s*(\/\/|\*)/.test(l)) return
       const spawnsDb = new RegExp(`(['"\`])\\s*(${DB_TOOLS.join('|')})(\\s|\\1)`).test(l) || /(['"`])supabase\1\s*,\s*\[\s*(['"`])(db|start)\2/.test(l)
-      if (spawnsDb && /\b(exec|execSync|execFile|execFileSync|spawn|spawnSync|\$)\b|`/.test(l)) add(arxeio, i + 1, 'υποδιεργασία βάσης από σενάριο ροής χωρίς ρητή εξαίρεση')
+      if (spawnsDb && /\b(exec|execSync|execFile|execFileSync|spawn|spawnSync|\$)\b|`/.test(l) && !allowed(i)) add(arxeio, i + 1, 'υποδιεργασία βάσης από σενάριο ροής χωρίς ρητή εξαίρεση')
     })
     continue
   }
 
   // 1. services:
   if (workflow) {
-    const secretful = lines.some(l => !l.trim().startsWith('#') && /\bsecrets\./.test(l))
+    const code = lines.filter(l => !l.trim().startsWith('#')).join('\n')
+    const secretful = REAL_DB.test(code)
+    const anySecret = /\bsecrets\./.test(code)
     lines.forEach((l, i) => {
       if (l.trim().startsWith('#') || !/(^|[\s{,])services\s*:/.test(bare(l))) return
-      if (secretful) { add(arxeio, i + 1, 'services: σε ροή με secrets (το GitHub τυπώνει το log κάθε service container)'); return }
-      let pg = /postgres/i.test(l)
+      let block = l
       const base = indent(l)
-      for (let j = i + 1; !pg && j < lines.length; j++) {
+      for (let j = i + 1; j < lines.length; j++) {
         if (lines[j].trim() === '' || lines[j].trim().startsWith('#')) continue
         if (indent(lines[j]) <= base) break
-        pg = /postgres/i.test(lines[j])
+        block += '\n' + lines[j]
       }
-      if (pg) add(arxeio, i + 1, 'services: με Postgres (το GitHub τυπώνει το log του)')
+      if (/postgres|postgis|timescale|pgvector|supabase\/postgres|\bpg\b/i.test(block)) add(arxeio, i + 1, 'services: με Postgres (το GitHub τυπώνει το log του)')
+      else if (secretful) add(arxeio, i + 1, 'services: σε ροή με secrets ή πραγματική βάση (το GitHub τυπώνει το log κάθε service container)')
+      else if (anySecret && /image\s*:\s*['"]?\$\{\{/.test(block)) add(arxeio, i + 1, 'services: με εικόνα ${{ … }} σε ροή με secrets')
     })
   }
 
-  const synthetic = SYNTHETIC.test(raw) && !REAL_DB.test(raw)
+  let synthetic = false
+  if (SYNTHETIC.test(raw)) {
+    const at = lines.findIndex(l => SYNTHETIC.test(l))
+    const caller = calledWithSecrets(arxeio)
+    if (at >= 10) add(arxeio, at + 1, 'synthetic-db πέρα από τις 10 πρώτες γραμμές: δεν ισχύει')
+    else if (REAL_DB.test(raw)) add(arxeio, at + 1, 'synthetic-db σε αρχείο με δείκτη πραγματικής βάσης: δεν ισχύει')
+    else if (caller) add(arxeio, at + 1, `synthetic-db, αλλά το καλεί δουλειά με secret ή PG* (${caller})`)
+    else synthetic = true
+  }
 
   // Εντολές κελύφους: συνέχειες γραμμής (\) ενωμένες, σχόλια έξω.
+  // Σε ροή, κάθε βήμα είναι δικό του κέλυφος: μια μεταβλητή δεν περνά στο επόμενο.
   const cmds = []
+  let step = 0
   for (let i = 0; i < lines.length; i++) {
     const start = i
     let text = lines[i]
+    if (workflow && /^\s*-\s+[\w-]+\s*:/.test(text)) step++
     while (/\\\s*$/.test(text) && i + 1 < lines.length) text = text.replace(/\\\s*$/, ' ') + lines[++i]
     if (text.trim().startsWith('#')) continue
-    cmds.push({ line: start + 1, idx: start, text, code: bare(openDashC(text)) })
+    cmds.push({ line: start + 1, idx: start, step, text, code: bare(openDashC(text)) })
   }
 
   // Τα ονόματα που καλούν εργαλείο βάσης: τα ίδια, μεταβλητές που τα κρατούν,
@@ -203,57 +270,80 @@ for (const arxeio of files) {
   }
   const tool = toolRe()
 
-  const captured = new Set()
-  const errFiles = new Set()
+  const captured = new Map()
+  const outFiles = new Map()
 
   for (const c of cmds) {
     const { code, text } = c
-    const ok = allowed(c.idx)
 
     // 2. εκκίνηση container ή τοπικής στοίβας
     if (/\b(docker|podman)\s+(container\s+)?(run|create)\b/.test(code)) {
-      if (!/--log-driver[ =]none\b/.test(code) && !ok) add(arxeio, c.line, 'docker run/create χωρίς --log-driver none')
+      if (!/--log-driver[ =]none\b/.test(code) && !allowed(c.idx, text)) add(arxeio, c.line, 'docker run/create χωρίς --log-driver none')
       if (/postgres|PG_IMAGE/i.test(text)) {
         for (const g of ['log_min_error_statement=panic', 'log_statement=none']) {
           if (!text.includes(g)) add(arxeio, c.line, `Postgres χωρίς -c ${g}`)
         }
       }
     }
-    if (!ok && (/\b(docker|podman)\s+(container\s+)?start\b/.test(code) || /\bdocker[\s-]compose\b[^;|&]*\bup\b/.test(code) || /\bsupabase\s+start\b/.test(code))) {
+    if ((/\b(docker|podman)\s+(container\s+)?start\b/.test(code) || /\bdocker[\s-]compose\b[^;|&]*\bup\b/.test(code) || /\bsupabase\s+start\b/.test(code)) && !allowed(c.idx, text)) {
       add(arxeio, c.line, 'εκκίνηση container/στοίβας χωρίς οδηγό log: θέλει «log-guard: allow — λόγος»')
     }
 
-    // 3. εργαλείο βάσης χωρίς σίγαση
+    if (synthetic) continue
+
+    // 3α. eval / node -e / python -c με εργαλείο βάσης: δεν κρίνονται, απαγορεύονται.
+    const dbIn = new RegExp(DB_TOOLS_RE)
+    if (/(^|[\s;&|(])eval\s/.test(code) && dbIn.test(text) && !allowed(c.idx, text)) add(arxeio, c.line, 'eval με εργαλείο βάσης: δεν ελέγχεται τι τυπώνει')
+    if (/\b(node|deno|bun)\s+(-e|--eval|-p|--print)\b|\bpython3?\s+-c\b|\bperl\s+-e\b|\bruby\s+-e\b/.test(code) && dbIn.test(text) && !allowed(c.idx, text)) add(arxeio, c.line, 'εργαλείο βάσης μέσα σε node -e / python -c: δεν ελέγχεται τι τυπώνει')
+
+    // 3. εργαλείο βάσης
     const isDef = /^\s*(?:function\s+)?[A-Za-z_][\w-]*\s*\(\)\s*\{/.test(code)
     const isAssign = /^\s*(?:export\s+|local\s+|readonly\s+)?[A-Za-z_]\w*=(["'(])/.test(text) && !/\$\(/.test(text)
-    if (!isDef && !isAssign && tool.test(code)) {
+    const harmless = new RegExp(`\\b(which|command\\s+-[vV]|type(\\s+-[a-zA-Z]+)?)\\s+(${DB_TOOLS.join('|')})\\b|(${DB_TOOLS.join('|')})\\s+(--version|-V|--help|-\\?)\\s*($|[;&|)])`).test(code)
+    if (!isDef && !isAssign && !harmless && tool.test(code) && !allowed(c.idx, text)) {
       const what = code.match(tool)[2].replace(/\\/g, '')
       const merge = /2>&1|\|&/.exec(text)
       const piped = merge ? pipeSegments(openDashC(text).slice(merge.index)).slice(1) : []
-      const cap = /([A-Za-z_]\w*)=\$\([^)]*(2>&1|\|&)/.exec(code)
-      if (cap && !(piped.length && piped.every(counter))) captured.add(cap[1])
-      for (const m of code.matchAll(/(?:^|[^0-9&])(?:2>|&>)\s*("?)([^\s"&;|)<>]+)\1/g)) if (m[2] !== '/dev/null') errFiles.add(m[2])
-      const out2 = /(?:^|[\s;])1?>\s*("?)([^\s"&;|)<>]+)\1[^|;]*2>&1/.exec(code)
-      if (out2 && out2[2] !== '/dev/null') errFiles.add(out2[2])
-      if (!synthetic && !ok) {
-        const err = /(^|[^0-9&>])(2>|&>)/.test(code) || /\|&/.test(code)
-        const out = /\$\(/.test(code) || /(^|[\s;])(1?>|&>)\s*\S/.test(code.replace(/2>(&1|\s*\S+)/g, ''))
-        if (!err || !out) add(arxeio, c.line, `${what} χωρίς ${!err ? 'stderr' : 'stdout'} σε ανακατεύθυνση`)
-        if (piped.some(s => !counter(s))) add(arxeio, c.line, `${what}: το stderr ενώνεται σε σωλήνα που δεν είναι μετρητής`)
-        if (/\|\|\s*\{?\s*(cat|tail|head|less|more)\b/.test(code)) add(arxeio, c.line, `${what}: «|| cat» τυπώνει την έξοδο σε αποτυχία`)
+      const counted = piped.length > 0 && piped.every(counter)
+      const cap = /([A-Za-z_]\w*)=\$\(/.exec(code)
+      const errTo = [...code.matchAll(/(?:^|[^0-9&>])(?:2>|&>)\s*("?)([^\s"&;|)<>]+)\1/g)].map(m => m[2]).filter(f => f !== '&1')
+      const errOk = /(^|[^0-9&>])(2>|&>)\s*\/dev\/null\b/.test(code) || (merge && counted)
+      // stderr: μόνο /dev/null ή μετρητής
+      if (!errOk) {
+        if (errTo.some(f => f !== '/dev/null')) add(arxeio, c.line, `${what}: stderr σε αρχείο (μόνο /dev/null ή μετρητής)`)
+        else if (merge && cap && !piped.length) add(arxeio, c.line, `${what}: stderr σε μεταβλητή (μόνο /dev/null ή μετρητής)`)
+        else if (merge && piped.length) add(arxeio, c.line, `${what}: το stderr ενώνεται σε σωλήνα που δεν είναι μετρητής`)
+        else if (merge) {
+          const o = /(?:^|[\s;])1?>\s*("?)([^\s"&;|)<>]+)\1/.exec(code.replace(/2>&1/g, ''))
+          if (!o || o[2] !== '/dev/null') add(arxeio, c.line, `${what}: stderr ενωμένο με stdout που δεν πάει στο /dev/null`)
+        } else add(arxeio, c.line, `${what} χωρίς stderr σε ανακατεύθυνση`)
       }
+      // stdout: /dev/null, $( ) ή αρχείο που δεν διαβάζεται μετά
+      const stripped = code.replace(/(?:^|[^0-9&>])(2>|&>)(&1|\s*\S+)/g, ' ')
+      const o = /(?:^|[\s;])1?>>?\s*("?)([^\s"&;|)<>]+)\1/.exec(stripped)
+      const outOk = /\$\(/.test(code) || !!o || /&>/.test(code) || (merge && counted)
+      if (!outOk) add(arxeio, c.line, `${what} χωρίς stdout σε ανακατεύθυνση`)
+      if (o && o[2] !== '/dev/null' && !o[2].startsWith('&')) outFiles.set(o[2], c.idx)
+      if (cap && !(merge && counted)) captured.set(`${c.step}:${cap[1]}`, cap[1])
+      if (/\|\|\s*\{?\s*(cat|tail|head|less|more)\b/.test(code)) add(arxeio, c.line, `${what}: «|| cat» τυπώνει την έξοδο σε αποτυχία`)
     }
   }
 
-  // 3β. ό,τι κρατήθηκε από εργαλείο βάσης και τυπώνεται μετά
+  // 3β. ό,τι κρατήθηκε από εργαλείο βάσης και τυπώνεται ή διαβάζεται μετά
   if (!synthetic) {
+    const PRINTS = /\b(echo|printf|cat|tee)\b|<<<|::(notice|warning|error|debug|group)::|GITHUB_STEP_SUMMARY|GITHUB_OUTPUT|GITHUB_ENV|>&2/
+    const toPlainFile = t => { const m = />>?\s*"?([^\s"&;|)]+)"?\s*$/.exec(t.trim()); return m && !/GITHUB_|^&|\/dev\/std/.test(m[1]) }
     for (const c of cmds) {
-      if (allowed(c.idx)) continue
-      for (const v of captured) {
-        if (new RegExp(`\\b(echo|printf)\\b[^;|&]*\\$\\{?${v}\\b`).test(c.text)) add(arxeio, c.line, `η έξοδος σφάλματος του εργαλείου βάσης (${v}) τυπώνεται`)
+      for (const [key, v] of captured) {
+        if (!key.startsWith(`${c.step}:`)) continue
+        if (new RegExp(`\\$\\{?${v}\\b`).test(c.text) && PRINTS.test(c.text) && !toPlainFile(c.text) && !allowed(c.idx, c.text)) add(arxeio, c.line, `η έξοδος του εργαλείου βάσης ($${v}) τυπώνεται`)
       }
-      for (const f of errFiles) {
-        if (new RegExp(`\\b(cat|tail|head|less|more|tee)\\b[^;|&]*${esc(f)}|\\$\\(<\\s*"?${esc(f)}`).test(c.text)) add(arxeio, c.line, `το stderr του εργαλείου βάσης (${f}) τυπώνεται`)
+      for (const [f, at] of outFiles) {
+        if (c.idx === at) continue
+        const t = c.text.replace(new RegExp(`>>?\\s*"?${esc(f)}"?`, 'g'), ' ').replace(new RegExp(`\\brm\\s+(-[a-z]+\\s+)*[^;&|]*${esc(f)}`, 'g'), ' ')
+        if (!new RegExp(`(^|[\\s"'=<(/])${esc(f)}($|[\\s"';)|&])`).test(t)) continue
+        const counterRead = new RegExp(`\\b(wc\\s+-l|grep\\s+-[a-zA-Z]*c[a-zA-Z]*\\b[^;&|]*|test\\s+-s|\\[\\s+-s)\\s*<?\\s*"?${esc(f)}`).test(t)
+        if (!counterRead && !allowed(c.idx, c.text)) add(arxeio, c.line, `η έξοδος του εργαλείου βάσης (${f}) διαβάζεται ξανά`)
       }
     }
   }
@@ -261,8 +351,8 @@ for (const arxeio of files) {
   // 4. ό,τι τυπώνει εντολές ή περιεχόμενο. Χωρίς εξαίρεση.
   for (const c of cmds) {
     const code = openDashC(c.code)
-    if (/(^|[\s;&|(])set\b[^;&|]*?(\s-[a-wyzA-Z]*x[a-zA-Z]*\b|\bxtrace\b)/.test(` ${code}`)
-      || /\b(ba|da|z)?sh\s+(-[a-zA-Z]*\s+)*(-[a-wyzA-Z]*x[a-zA-Z]*|-o\s+xtrace)\b/.test(code)
+    const sets = [...code.matchAll(XTRACE_SET), ...code.matchAll(XTRACE_SH)].some(m => traces(m[1]))
+    if (sets || /^\s*shell\s*:\s*(ba|da|z)?sh\b[^#\n]*\s-[a-wyzA-Z]*x/.test(code)
       || /\bSHELLOPTS=[^\s;]*xtrace|\bBASH_XTRACEFD\b/.test(c.text)) add(arxeio, c.line, 'xtrace τυπώνει κάθε εντολή με τις τιμές της')
     if (/\b(docker|podman)\s+(container\s+)?logs\b|\bdocker[\s-]compose\b[^;|&]*\blogs\b/.test(code)) add(arxeio, c.line, 'docker logs')
     if (/\bsupabase\b[^;|&]*\s--debug\b/.test(code)) add(arxeio, c.line, 'supabase --debug τυπώνει τις εντολές SQL')
@@ -278,10 +368,10 @@ if (provlimata.length) {
   ΤΙ ΝΑ ΚΑΝΕΙΣ: ο Postgres μιας ροής τρέχει με \`docker run -d --log-driver none
   --network none\` και \`-c log_min_error_statement=panic -c log_statement=none\`
   (δες το backup-restore-drill.yml), ποτέ ως \`services:\`. Κάθε psql/pg_dump/
-  pg_restore: stdout στο /dev/null (ή σε $( ) για ένα πλήθος), stderr στο
-  /dev/null ή σε μετρητή· τίποτε από τα δύο δεν τυπώνεται μετά. Στο log
-  μόνο πλήθη και ✓/✗. Αν κάτι πρέπει να μείνει όπως είναι: «# log-guard: allow —
-  λόγος» στη γραμμή ή από πάνω της.\n`)
+  pg_restore: stderr ΜΟΝΟ στο /dev/null ή σε μετρητή· stdout στο /dev/null, σε
+  $( ) ή σε αρχείο· τίποτε από αυτά δεν τυπώνεται ούτε ξαναδιαβάζεται μετά.
+  Στο log μόνο πλήθη και ✓/✗. Αν κάτι πρέπει να μείνει όπως είναι: «# log-guard:
+  allow — λόγος» στη γραμμή ή από πάνω της (όχι σε εντολή με πραγματική βάση).\n`)
   process.exit(1)
 }
-console.log(`✓ καμία βάση δεν γράφει στο δημόσιο log (${files.length} αρχεία ροών και σεναρίων τους)`)
+console.log(`✓ καμία βάση δεν γράφει στο δημόσιο log (${files.length} αρχεία ροών και σεναρίων τους, ${allows.size} ρητές εξαιρέσεις)`)
