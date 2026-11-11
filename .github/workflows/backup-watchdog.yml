@@ -41,6 +41,8 @@ permissions:
 env:
   # Παράθυρο ανοχής. 48 ώρες = «δεν έγινε δύο μέρες στη σειρά».
   MAX_AGE_HOURS: '48'
+  # Τα αρχεία των χρηστών γράφονται κάθε Κυριακή: 8 ημέρες = χάθηκε μία εβδομάδα.
+  FILES_MAX_DAYS: '8'
   SUPABASE_PROJECT_REF: aromvduuxtcrzmwwvnej
   ALARM_TITLE: '🔴 Το αντίγραφο ασφαλείας της βάσης δεν γίνεται'
 
@@ -52,8 +54,9 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       REPO: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
+          persist-credentials: false
           sparse-checkout: scripts/backup
 
       - name: Κλειδί service role (κρυμμένο)
@@ -69,20 +72,22 @@ jobs:
         run: |
           set -euo pipefail
           # Δεν εμπιστεύεται το «success» της ροής: κοιτά τι ΥΠΑΡΧΕΙ στο bucket.
-          # Το τελευταίο αντίγραφο πρέπει να είναι μέσα στο παράθυρο ανοχής, να
-          # έχει ρόλους, σχήμα και δεδομένα. Και να είναι ΜΟΝΟ .gpg.
+          # Η τελευταία σφραγισμένη ημέρα (με manifest) πρέπει να είναι μέσα στο
+          # παράθυρο ανοχής, με κάθε κομμάτι στη θέση του και ΜΟΝΟ .gpg. Το πιο
+          # πρόσφατο σετ αρχείων χρηστών πρέπει να είναι πλήρες και φρέσκο.
           if [ -z "${SUPABASE_SERVICE_KEY:-}" ]; then
             echo "healthy=false" >> "$GITHUB_OUTPUT"
             echo "reason=Ο φύλακας δεν πήρε κλειδί για τον ιδιωτικό χώρο: το SUPABASE_ACCESS_TOKEN λείπει ή έληξε. Με το ίδιο token τρέχει και το αντίγραφο." >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          verdict=$(node scripts/backup/vault.mjs check "$MAX_AGE_HOURS") \
+          verdict=$(node scripts/backup/vault.mjs check "$MAX_AGE_HOURS" "$FILES_MAX_DAYS") \
             || verdict='{"ok":false,"reason":"Ο ιδιωτικός χώρος των αντιγράφων δεν απάντησε."}'
           if [ "$(echo "$verdict" | jq -r '.ok')" = "true" ]; then
             day=$(echo "$verdict" | jq -r '.day')
             echo "healthy=true" >> "$GITHUB_OUTPUT"
             echo "finished=$day" >> "$GITHUB_OUTPUT"
-            echo "detail=αντίγραφο της $day στο db-backups, κρυπτογραφημένο (.gpg)" >> "$GITHUB_OUTPUT"
+            fday=$(echo "$verdict" | jq -r '.filesDay')
+            echo "detail=αντίγραφο της $day στο db-backups, πλήρες και κρυπτογραφημένο· αρχεία χρηστών της $fday" >> "$GITHUB_OUTPUT"
           else
             echo "healthy=false" >> "$GITHUB_OUTPUT"
             echo "reason=$(echo "$verdict" | jq -r '.reason')" >> "$GITHUB_OUTPUT"

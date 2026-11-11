@@ -47,31 +47,42 @@ The repository is **public**, so Actions artifacts and logs are public too. Back
 therefore never go to artifacts: they live in a private Supabase Storage bucket.
 
 - **Where.** Bucket `db-backups`, private, with no storage policy for `anon` or
-  `authenticated` (only the service role reads it). One folder per day:
-  `YYYY-MM-DD/roles.sql.gpg`, `schema.sql.gpg`, `data.sql.gpg`, and on Sundays
-  `files.tar.gpg.part-*` (the user buckets `lease-documents`, `property-files`,
-  `inventory-docs`, `maintenance-photos`, `inventory-photos`).
+  `authenticated` (only the service role reads it), in the database's region
+  (`eu-central-1`, Frankfurt). One folder per day. Every file is stored as parts of
+  at most 45 MB (`roles.sql.gpg.part-000`, …), because the free plan accepts up to
+  50 MB per object. On Sundays the user buckets `lease-documents`,
+  `property-files`, `inventory-docs`, `maintenance-photos`, `inventory-photos` go
+  in as `files.tar.gpg.part-*`. `manifest.json` is uploaded **last** and lists
+  every part with size and sha256. A folder without a manifest is not a backup.
 - **Who writes.** `Database backup` (`.github/workflows/db-backup.yml`), daily 02:00
-  UTC and on demand. Encrypts with gpg AES256 before upload; no
-  `BACKUP_PASSPHRASE`, no backup. Keeps 30 days and deletes older folders. Each run
-  also deletes any leftover `supabase-backup-*` artifact from the old public setup.
-- **Who checks.** `Backup watchdog` (05:00 UTC) opens an issue if the latest folder
-  is older than 48 h, incomplete, or holds any unencrypted `.sql`. `Backup restore
-  drill` (3rd of each month) decrypts the latest backup, restores it into a
-  throwaway Postgres and compares row counts of the key tables with the dump.
+  UTC and on demand, in three jobs:
+  - `backup` (database secrets, no `actions: write`): dump, health check (key
+    tables in the schema; every file decrypts back byte for byte; data dump not
+    below half of the last good one), upload, manifest last.
+  - `retention` (always, even if `backup` failed): deletes days that reached 30
+    days, never the last day with a manifest.
+  - `artifacts` (always, only `actions: write`, no secrets): deletes leftover
+    `supabase-backup-*` artifacts from the old public setup.
+- **Who checks.** `Backup watchdog` (05:00 UTC) opens an issue if the last sealed
+  day is older than 48 h, misses a part or holds any unencrypted `.sql`, or if the
+  latest set of user files is incomplete or older than 8 days. `Backup restore
+  drill` (3rd of each month, Postgres 17.6) checks every part against the
+  manifest, decrypts the latest day, restores it into a throwaway Postgres,
+  compares row counts of the key tables and checks the latest files set.
 - **Keys.** No extra secret: the service-role key is fetched at run time from the
   Management API with `SUPABASE_ACCESS_TOKEN` (`scripts/backup/service-key.sh`) and
-  masked in the log. Logs print counts and sizes only, never object paths.
+  masked in the log. Supabase has no read-only storage key, so the drill runs with
+  `VAULT_READONLY=1` and `vault.mjs` refuses anything but download and list. Logs
+  print counts and sizes only, never object paths.
 - **Restore.**
   1. Get the service-role key (Dashboard → Project Settings → API keys) and run
      `SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SERVICE_KEY=… node scripts/backup/vault.mjs latest`.
-  2. `node scripts/backup/vault.mjs get <day>/data.sql.gpg data.sql.gpg` (same for
-     `roles`, `schema`).
+  2. `node scripts/backup/vault.mjs get-joined <day> data.sql.gpg data.sql.gpg` (same
+     for `roles`, `schema`, and `files.tar.gpg`). It checks every part's sha256.
   3. `gpg --decrypt -o data.sql data.sql.gpg` with `BACKUP_PASSPHRASE`.
   4. `psql "<connection>" -f roles.sql`, then `-f schema.sql`, then
      `-f data.sql` (roles only on a fresh project).
-  5. Files: download every `files.tar.gpg.part-*`, `cat` them in order into
-     `files.tar.gpg`, decrypt, untar, and upload per bucket.
+  5. Files: decrypt `files.tar.gpg`, untar, and upload per bucket.
 - ⚠ **Same provider.** The backup lives in the same Supabase project as the
   database. It covers a bad migration or an accidental delete, not the loss of the
   project or the account. Next step: a second destination with another provider

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { IDENTITY, POLICY_VERSION } from '@/lib/legal/identity';
 import { DISCLOSURE } from '@/lib/legal/disclosure';
-import { subprocessors, ANTHROPIC_CONTRACT } from '@/lib/legal/subprocessors';
+import { subprocessors, ANTHROPIC_CONTRACT, BACKUP_RETENTION_DAYS } from '@/lib/legal/subprocessors';
 import { billingWordsEn } from '@/lib/legal/billingWords';
 import { siteUrl, SITE, ORG_ID, SOCIAL_PROFILES } from '@/lib/core/site';
 import { breadcrumbJsonLd, HOME_CRUMB_EN } from '@/lib/seo/breadcrumbs';
@@ -137,7 +137,7 @@ export default function TrustPageEn() {
             stays in the EU; we would rather you read it here than discover it:
           </p>
           <ul className="lg-ul">
-            <li><strong>The encrypted backup</strong> is kept on US infrastructure (GitHub). It is encrypted with AES-256 and can’t be read without the key. You should also know this: the key is kept as a secret with the same provider, so the encryption doesn’t keep the backup closed to the provider itself.</li>
+            <li><strong>The backup key</strong> is kept on US infrastructure, in GitHub Secrets. The backup itself is encrypted with AES-256 and kept in a private Supabase storage space, in Frankfurt like the database, for {BACKUP_RETENTION_DAYS} days. It can’t be read without the key.</li>
             <li><strong>{`Your questions to ${ASSISTANT_NAME_EN}`}</strong>{`, together with a summary of your property, tenant, client and contact data (names and history, without phone numbers or tax numbers), and any document or photo you upload to be read (Anthropic: contract with ${ANTHROPIC_CONTRACT}, processing in the US).`}</li>
             <li><strong>The emails the service sends</strong> (reminders, notifications, monthly statements). They contain tenant names and amounts and pass through the sending provider (Resend, US).</li>
             <li><strong>The app itself</strong> is served from a global network (Vercel, US), so each of your requests passes through it on the way to the database.</li>

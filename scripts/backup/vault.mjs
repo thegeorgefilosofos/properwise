@@ -10,40 +10,66 @@
 //
 // ΤΙ ΚΑΝΕΙ. Μιλά με το Storage της Supabase ως service role και κρατά τα
 // αντίγραφα σε ιδιωτικό bucket (`db-backups`), χωρίς καμία πολιτική για
-// `anon` ή `authenticated`: το βλέπει μόνο ο service role. Η κρυπτογράφηση με
-// gpg μένει, ως δεύτερη άμυνα.
+// `anon` ή `authenticated`. Η κρυπτογράφηση με gpg μένει, ως δεύτερη άμυνα.
+//
+// Η ΜΟΡΦΗ ΜΙΑΣ ΗΜΕΡΑΣ. Φάκελος `YYYY-MM-DD/`. Κάθε αρχείο ανεβαίνει σε κομμάτια
+// `<όνομα>.part-000`, `-001` … των 45 MB το πολύ, γιατί το δωρεάν πακέτο
+// δέχεται ως 50 MB ανά αρχείο. Τελευταίο ανεβαίνει το `manifest.json`: λέει
+// ποια κομμάτια ανήκουν σε ποιο αρχείο, με μέγεθος και sha256. ΧΩΡΙΣ manifest η
+// ημέρα δεν μετρά ως αντίγραφο: ούτε για τον φύλακα ούτε για την επαναφορά. Ούτε
+// προστατεύεται από τον καθαρισμό.
 //
 // ΤΙ ΔΕΝ ΓΡΑΦΕΙ ΠΟΤΕ ΣΤΟ LOG. Τα logs ενός δημόσιου αποθετηρίου είναι
 // δημόσια. Οι διαδρομές των αρχείων των χρηστών έχουν uid και ονόματα
 // εγγράφων, οπότε εδώ τυπώνονται ΜΟΝΟ πλήθη και μεγέθη. Το κλειδί δεν τυπώνεται
 // ποτέ· η ροή το κρύβει με `::add-mask::` πριν το δει οτιδήποτε.
 //
-// ΧΡΗΣΗ (μεταβλητές SUPABASE_URL και SUPABASE_SERVICE_KEY):
-//   node scripts/backup/vault.mjs ensure
-//   node scripts/backup/vault.mjs put <τοπικό αρχείο> <διαδρομή στο bucket>
-//   node scripts/backup/vault.mjs get <διαδρομή στο bucket> <τοπικό αρχείο>
-//   node scripts/backup/vault.mjs prune <ημέρες>
-//   node scripts/backup/vault.mjs latest            → η πιο πρόσφατη ημέρα
-//   node scripts/backup/vault.mjs check <ώρες>      → JSON για τον φύλακα
-//   node scripts/backup/vault.mjs snapshot <φάκελος> <bucket> [<bucket> …]
-//   node scripts/backup/vault.mjs count <data.sql> <πίνακας> [<πίνακας> …]  → JSON
-//   node scripts/backup/vault.mjs compare <αναμενόμενα.json> <πραγματικά.json>
+// ΧΡΗΣΗ (μεταβλητές SUPABASE_URL και SUPABASE_SERVICE_KEY· με VAULT_READONLY=1
+// αρνείται κάθε κλήση που γράφει ή σβήνει):
+//   ensure                                   φτιάχνει το bucket, ιδιωτικό
+//   put-split <αρχείο> <ημέρα> <όνομα> <manifest>   ανεβάζει σε κομμάτια
+//   seal <manifest> <ημέρα>                  ανεβάζει το manifest, τελευταίο
+//   size-check <data.sql.gpg>                όχι κάτω από το μισό του προηγούμενου
+//   prune <ημέρες>                           κράτηση· η τελευταία καλή ημέρα μένει
+//   check <ώρες> <ημέρες αρχείων>            JSON για τον φύλακα
+//   latest                                   η τελευταία ημέρα με manifest
+//   get-joined <ημέρα> <όνομα> <αρχείο>      κατεβάζει, ελέγχει sha256, ενώνει
+//   verify-files                             το πιο πρόσφατο σετ αρχείων είναι πλήρες
+//   snapshot <φάκελος> <bucket> [<bucket> …]
+//   tables <schema.sql> <πίνακας> …          λείπει πίνακας-κλειδί από το σχήμα;
+//   count <data.sql> <πίνακας> …             → JSON
+//   compare <αναμενόμενα.json> <πραγματικά.json>
 // ═══════════════════════════════════════════════════════════════════════════
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, openSync, readSync, closeSync, statSync, appendFileSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { createHash } from 'node:crypto'
 import { pathToFileURL } from 'node:url'
 
 export const BUCKET = 'db-backups'
+export const MANIFEST = 'manifest.json'
+/** 45 MB: κάτω από το όριο των 50 MB ανά αρχείο (supabase.com/docs/guides/storage/uploads/file-limits). */
+export const PART_BYTES = 45 * 1024 * 1024
+/** Τα αρχεία που πρέπει να έχει κάθε ημέρα. */
+export const REQUIRED = ['roles.sql.gpg', 'schema.sql.gpg', 'data.sql.gpg']
+/** Το σετ των αρχείων χρηστών, που γράφεται την Κυριακή. */
+export const FILES_SET = 'files.tar.gpg'
+/** Ελάχιστο μέγεθος νέου dump δεδομένων, ως μέρος του προηγούμενου καλού. */
+export const MIN_SIZE_RATIO = 0.5
 
 // ── ΚΑΘΑΡΕΣ ΣΥΝΑΡΤΗΣΕΙΣ (ελέγχονται στο lib/backup/vault.test.ts) ────────────
 
 /** Ημέρα του αντιγράφου: ο φάκελος πρώτου επιπέδου, YYYY-MM-DD. */
 export const DAY = /^\d{4}-\d{2}-\d{2}$/
 
-/** Οι ημέρες που πρέπει να σβηστούν: παλαιότερες από `keepDays` πριν από `today`. */
-export function daysToPrune(days, today, keepDays) {
+/**
+ * Οι ημέρες που πρέπει να σβηστούν: όσες έχουν κλείσει `keepDays` ημέρες. Το
+ * αντίγραφο της 11/10 σβήνεται στις 10/11, όχι μία μέρα αργότερα. Οι ημέρες του
+ * `protect` (η τελευταία καλή) δεν σβήνονται ΠΟΤΕ: αν τα αντίγραφα σταματήσουν,
+ * ο καθαρισμός δεν αδειάζει τον χώρο.
+ */
+export function daysToPrune(days, today, keepDays, protect = []) {
   const cutoff = Date.parse(today + 'T00:00:00Z') - keepDays * 86400000
-  return days.filter(d => DAY.test(d) && Date.parse(d + 'T00:00:00Z') < cutoff).sort()
+  return days.filter(d => DAY.test(d) && !protect.includes(d) && Date.parse(d + 'T00:00:00Z') <= cutoff).sort()
 }
 
 /** Η πιο πρόσφατη ημέρα, ή null. Αγνοεί ό,τι δεν είναι ημερομηνία. */
@@ -52,20 +78,64 @@ export function latestDay(days) {
   return ok.length ? ok[ok.length - 1] : null
 }
 
+/** Το όνομα του κομματιού `i` ενός αρχείου. */
+export const partName = (name, i) => `${name}.part-${String(i).padStart(3, '0')}`
+
+/** Τα όρια των κομματιών για αρχείο `total` bytes. Ένα κενό αρχείο έχει ένα κενό κομμάτι. */
+export function splitPlan(total, partBytes = PART_BYTES) {
+  const out = []
+  for (let start = 0; start < total || out.length === 0; start += partBytes) out.push({ start, end: Math.min(total, start + partBytes) })
+  return out
+}
+
+/** Κομμάτια που γράφει το manifest για ένα αρχείο αλλά λείπουν από τον χώρο. */
+export function missingParts(entry, objects) {
+  return (entry?.parts ?? []).map(p => p.name).filter(n => !objects.includes(n))
+}
+
 /**
- * Κρίνει αν το τελευταίο αντίγραφο είναι υγιές: πρόσφατο, πλήρες και ΜΟΝΟ
- * κρυπτογραφημένο. Ένα .sql σε καθαρό κείμενο είναι αποτυχία, όχι προειδοποίηση.
+ * Κρίνει αν το τελευταίο αντίγραφο είναι υγιές: πρόσφατο, σφραγισμένο με
+ * manifest, πλήρες σε κομμάτια και ΜΟΝΟ κρυπτογραφημένο.
  */
-export function judge(day, files, nowMs, maxHours) {
-  if (!day) return { ok: false, reason: 'Δεν βρέθηκε ΚΑΝΕΝΑ αντίγραφο στον ιδιωτικό χώρο.' }
+export function judge({ day, manifest, objects, nowMs, maxHours }) {
+  if (!day || !manifest) return { ok: false, reason: 'Δεν βρέθηκε ΚΑΝΕΝΑ ολοκληρωμένο αντίγραφο (με manifest) στον ιδιωτικό χώρο.' }
   // Το αντίγραφο γράφεται στις 02:00 UTC· η ηλικία μετρά από το τέλος της ημέρας του.
   const ageH = Math.floor((nowMs - (Date.parse(day + 'T00:00:00Z') + 86400000)) / 3600000)
-  if (ageH > maxHours) return { ok: false, reason: `Το τελευταίο αντίγραφο είναι της ${day}, πάνω από ${maxHours} ώρες πριν.` }
-  if (files.some(f => /\.sql$/.test(f))) return { ok: false, reason: 'Το αντίγραφο περιέχει ΜΗ κρυπτογραφημένο .sql.' }
-  const need = ['roles.sql.gpg', 'schema.sql.gpg', 'data.sql.gpg']
-  const missing = need.filter(n => !files.includes(n))
-  if (missing.length) return { ok: false, reason: `Λείπουν από το αντίγραφο της ${day}: ${missing.join(', ')}.` }
-  return { ok: true, day, files: files.length }
+  if (ageH > maxHours) return { ok: false, reason: `Το τελευταίο ολοκληρωμένο αντίγραφο είναι της ${day}, πάνω από ${maxHours} ώρες πριν.` }
+  if (objects.some(f => /\.sql$/.test(f))) return { ok: false, reason: 'Το αντίγραφο περιέχει ΜΗ κρυπτογραφημένο .sql.' }
+  if (manifest.verified !== true) return { ok: false, reason: `Το manifest της ${day} δεν γράφει ότι πέρασε τον έλεγχο υγείας.` }
+  const absent = REQUIRED.filter(n => !manifest.files?.[n])
+  if (absent.length) return { ok: false, reason: `Λείπουν από το αντίγραφο της ${day}: ${absent.join(', ')}.` }
+  const lost = Object.values(manifest.files).flatMap(e => missingParts(e, objects))
+  if (lost.length) return { ok: false, reason: `Το αντίγραφο της ${day} έχει ${lost.length} κομμάτια στο manifest που λείπουν από τον χώρο.` }
+  return { ok: true, day }
+}
+
+/** Το πιο πρόσφατο σετ αρχείων χρηστών: υπάρχει, είναι πλήρες και όχι παλιότερο από `maxDays`. */
+export function judgeFiles({ day, manifest, objects, nowMs, maxDays }) {
+  const entry = manifest?.files?.[FILES_SET]
+  if (!day || !entry) return { ok: false, reason: 'Δεν βρέθηκε κανένα αντίγραφο των αρχείων των χρηστών.' }
+  const ageD = Math.floor((nowMs - Date.parse(day + 'T00:00:00Z')) / 86400000)
+  if (ageD > maxDays) return { ok: false, reason: `Το τελευταίο αντίγραφο των αρχείων χρηστών είναι της ${day}, πάνω από ${maxDays} ημέρες πριν.` }
+  const lost = missingParts(entry, objects)
+  if (lost.length) return { ok: false, reason: `Το αντίγραφο αρχείων της ${day} είναι ελλιπές: λείπουν ${lost.length} κομμάτια.` }
+  return { ok: true, day }
+}
+
+/** Το νέο dump δεδομένων δεν είναι ύποπτα μικρό σε σχέση με το προηγούμενο καλό. */
+export function sizeOk(curr, prev, ratio = MIN_SIZE_RATIO) {
+  if (!(curr > 0)) return false
+  return !(prev > 0) || curr >= prev * ratio
+}
+
+/** Οι πίνακες-κλειδιά που δεν δημιουργεί το σχήμα. */
+export function missingTables(schemaSql, tables) {
+  return tables.filter(t => !new RegExp(`CREATE TABLE (?:IF NOT EXISTS )?(?:"public"|public)\\.(?:"${t}"|${t})[\\s(]`, 'i').test(schemaSql))
+}
+
+/** Σε λειτουργία μόνο ανάγνωσης επιτρέπονται λήψη και λίστα, τίποτε άλλο. */
+export function readonlyAllows(method, path) {
+  return method === 'GET' || (method === 'POST' && path.startsWith('object/list/'))
 }
 
 /** Κωδικοποίηση διαδρομής στο URL του Storage, ανά τμήμα. */
@@ -124,6 +194,9 @@ function env() {
 }
 
 async function call(method, path, { body, json, raw } = {}) {
+  if (process.env.VAULT_READONLY === '1' && !readonlyAllows(method, path)) {
+    throw new Error(`άρνηση σε λειτουργία μόνο ανάγνωσης: ${method}`)
+  }
   const { url, key } = env()
   const headers = { Authorization: `Bearer ${key}`, apikey: key }
   let payload
@@ -174,36 +247,123 @@ async function ensure() {
   console.log(`✓ ιδιωτικός χώρος ${BUCKET} έτοιμος`)
 }
 
-async function put(local, remote) {
-  const buf = readFileSync(local)
+async function upload(remote, buf) {
   const r = await call('POST', `object/${BUCKET}/${encPath(remote)}`, { body: buf })
   if (r.status !== 200) throw new Error(`upload: HTTP ${r.status}`)
-  console.log(`✓ ανέβηκε ένα αρχείο (${(buf.length / 1024).toFixed(0)} KB)`)
 }
 
-async function get(remote, local) {
-  const res = await call('GET', `object/authenticated/${BUCKET}/${encPath(remote)}`, { raw: true })
+async function download(bucket, remote) {
+  const res = await call('GET', `object/authenticated/${bucket}/${encPath(remote)}`, { raw: true })
   if (res.status !== 200) throw new Error(`download: HTTP ${res.status}`)
-  mkdirSync(dirname(local), { recursive: true })
-  writeFileSync(local, Buffer.from(await res.arrayBuffer()))
+  return Buffer.from(await res.arrayBuffer())
+}
+
+const sha256 = buf => createHash('sha256').update(buf).digest('hex')
+
+/** Το manifest μιας ημέρας, ή null αν η ημέρα δεν σφραγίστηκε. */
+async function manifestOf(day) {
+  const res = await call('GET', `object/authenticated/${BUCKET}/${day}/${MANIFEST}`, { raw: true })
+  if (res.status !== 200) return null
+  try { return JSON.parse(await res.text()) } catch { return null }
+}
+
+/** Η πιο πρόσφατη ημέρα με manifest που πέρασε τον έλεγχο, με το manifest της. */
+async function latestGood(filter = () => true) {
+  const days = (await topFolders()).filter(d => DAY.test(d)).sort().reverse()
+  for (const day of days) {
+    const manifest = await manifestOf(day)
+    if (manifest?.verified === true && filter(manifest)) return { day, manifest }
+  }
+  return { day: null, manifest: null }
+}
+
+/** Ανεβάζει ένα αρχείο σε κομμάτια και το γράφει στο τοπικό manifest. */
+async function putSplit(local, day, name, manifestPath) {
+  const total = statSync(local).size
+  const fd = openSync(local, 'r')
+  const parts = []
+  try {
+    for (const [i, { start, end }] of splitPlan(total).entries()) {
+      const buf = Buffer.alloc(end - start)
+      readSync(fd, buf, 0, buf.length, start)
+      const pn = partName(name, i)
+      await upload(`${day}/${pn}`, buf)
+      parts.push({ name: pn, bytes: buf.length, sha256: sha256(buf) })
+    }
+  } finally { closeSync(fd) }
+  const m = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : { files: {} }
+  m.files[name] = { bytes: total, parts }
+  writeFileSync(manifestPath, JSON.stringify(m))
+  console.log(`✓ ανέβηκε ένα αρχείο: ${parts.length} κομμάτια, ${(total / 1048576).toFixed(1)} MB`)
+}
+
+/** Σφραγίζει την ημέρα. ΤΕΛΕΥΤΑΙΟ βήμα: πριν από αυτό η ημέρα δεν μετρά. */
+async function seal(manifestPath, day) {
+  const m = JSON.parse(readFileSync(manifestPath, 'utf8'))
+  const absent = REQUIRED.filter(n => !m.files?.[n])
+  if (absent.length) throw new Error(`δεν σφραγίζεται: λείπουν ${absent.join(', ')}`)
+  m.day = day
+  m.verified = true
+  await upload(`${day}/${MANIFEST}`, Buffer.from(JSON.stringify(m)))
+  console.log(`✓ η ημέρα ${day} σφραγίστηκε (${Object.keys(m.files).length} αρχεία)`)
+}
+
+async function sizeCheck(local) {
+  const { day, manifest } = await latestGood()
+  const prev = manifest?.files?.['data.sql.gpg']?.bytes ?? 0
+  if (!sizeOk(statSync(local).size, prev)) {
+    throw new Error(`το νέο dump δεδομένων είναι κάτω από το ${MIN_SIZE_RATIO * 100}% του τελευταίου καλού (${day}). Δεν ανεβαίνει.`)
+  }
+  console.log(prev ? `✓ μέγεθος εντάξει σε σχέση με το αντίγραφο της ${day}` : '✓ πρώτο αντίγραφο: δεν υπάρχει προηγούμενο για σύγκριση')
 }
 
 async function prune(keepDays) {
   const days = await topFolders()
-  const old = daysToPrune(days, new Date().toISOString().slice(0, 10), keepDays)
+  const { day: good } = await latestGood()
+  const old = daysToPrune(days, new Date().toISOString().slice(0, 10), keepDays, good ? [good] : [])
   for (const d of old) {
     const files = await listAll(BUCKET, d)
     if (!files.length) continue
     const r = await call('DELETE', `object/${BUCKET}`, { json: { prefixes: files.map(f => f.path) } })
     if (r.status !== 200) throw new Error(`delete: HTTP ${r.status}`)
   }
-  console.log(`✓ καθαρισμός: ${old.length} ημέρες παλαιότερες από ${keepDays}`)
+  console.log(`✓ καθαρισμός: σβήστηκαν ${old.length} ημέρες· η τελευταία καλή (${good ?? 'καμία'}) μένει`)
 }
 
-async function check(maxHours) {
-  const day = latestDay(await topFolders())
-  const files = day ? (await listAll(BUCKET, day)).map(f => f.path.split('/').pop()) : []
-  process.stdout.write(JSON.stringify(judge(day, files, Date.now(), maxHours)))
+async function check(maxHours, filesDays) {
+  const now = Date.now()
+  const g = await latestGood()
+  const objects = g.day ? (await listAll(BUCKET, g.day)).map(f => f.path.split('/').pop()) : []
+  const db = judge({ ...g, objects, nowMs: now, maxHours })
+  if (!db.ok) return process.stdout.write(JSON.stringify(db))
+  const f = await latestGood(m => !!m.files?.[FILES_SET])
+  const fobjects = f.day ? (await listAll(BUCKET, f.day)).map(x => x.path.split('/').pop()) : []
+  const files = judgeFiles({ ...f, objects: fobjects, nowMs: now, maxDays: filesDays })
+  process.stdout.write(JSON.stringify(files.ok ? { ok: true, day: db.day, filesDay: files.day } : files))
+}
+
+/** Κατεβάζει όλα τα κομμάτια ενός αρχείου, ελέγχει μέγεθος και sha256, τα ενώνει. */
+async function getJoined(day, name, local) {
+  const m = await manifestOf(day)
+  const entry = m?.files?.[name]
+  if (!entry) throw new Error(`το ${name} δεν υπάρχει στο manifest της ${day}`)
+  if (local) { mkdirSync(dirname(local), { recursive: true }); rmSync(local, { force: true }) }
+  let bytes = 0
+  for (const p of entry.parts) {
+    const buf = await download(BUCKET, `${day}/${p.name}`)
+    if (buf.length !== p.bytes || sha256(buf) !== p.sha256) throw new Error(`κομμάτι του ${name} της ${day} αλλοιωμένο`)
+    if (local) appendFileSync(local, buf)
+    bytes += buf.length
+  }
+  if (bytes !== entry.bytes) throw new Error(`το ${name} της ${day} δεν έχει το μέγεθος του manifest`)
+  console.log(`✓ ${name}: ${entry.parts.length} κομμάτια, sha256 εντάξει`)
+}
+
+async function verifyFiles() {
+  const f = await latestGood(m => !!m.files?.[FILES_SET])
+  if (!f.day) throw new Error('δεν υπάρχει κανένα αντίγραφο των αρχείων των χρηστών')
+  await getJoined(f.day, FILES_SET, null)
+  console.log(`✓ το πιο πρόσφατο σετ αρχείων (${f.day}) είναι πλήρες`)
 }
 
 /**
@@ -229,17 +389,26 @@ async function snapshot(outDir, buckets) {
 
 // ── ΓΡΑΜΜΗ ΕΝΤΟΛΩΝ ───────────────────────────────────────────────────────
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  const [cmd, a, b, ...rest] = process.argv.slice(2)
+  const [cmd, a, b, c, d, ...rest] = process.argv.slice(2)
+  const list = [b, c, d, ...rest].filter(Boolean)
   const run = {
     ensure: () => ensure(),
-    put: () => put(a, b),
-    get: () => get(a, b),
+    'put-split': () => putSplit(a, b, c, d),
+    seal: () => seal(a, b),
+    'size-check': () => sizeCheck(a),
     prune: () => prune(Number(a)),
-    latest: async () => { process.stdout.write(latestDay(await topFolders()) ?? '') },
-    check: () => check(Number(a)),
-    snapshot: () => snapshot(a, [b, ...rest].filter(Boolean)),
-    // Για τη δοκιμή επαναφοράς. Δεν μιλούν με το Storage.
-    count: async () => { process.stdout.write(JSON.stringify(countRows(readFileSync(a, 'utf8'), [b, ...rest].filter(Boolean)))) },
+    check: () => check(Number(a), Number(b)),
+    latest: async () => { process.stdout.write((await latestGood()).day ?? '') },
+    'get-joined': () => getJoined(a, b, c),
+    'verify-files': () => verifyFiles(),
+    snapshot: () => snapshot(a, list),
+    // Δεν μιλούν με το Storage.
+    tables: async () => {
+      const missing = missingTables(readFileSync(a, 'utf8'), list)
+      if (missing.length) { console.error(`::error::Το σχήμα δεν έχει τους πίνακες: ${missing.join(', ')}`); process.exit(1) }
+      console.log(`✓ το σχήμα έχει και τους ${list.length} πίνακες-κλειδιά`)
+    },
+    count: async () => { process.stdout.write(JSON.stringify(countRows(readFileSync(a, 'utf8'), list))) },
     compare: async () => {
       const r = compareCounts(JSON.parse(readFileSync(a, 'utf8')), JSON.parse(readFileSync(b, 'utf8')))
       for (const x of r.rows) console.log(`${x.ok ? '✓' : '✗'} ${x.table}`)
