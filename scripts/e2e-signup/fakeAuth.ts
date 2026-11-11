@@ -22,3 +22,10 @@ export async function authClient() {
     },
   }
 }
+
+// Πάντα «ίσως»: ο πάγκος περνά από τον ψεύτικο `getUser()` όπως πριν, ώστε να
+// ελέγχεται και η διαδρομή «είσαι ήδη συνδεδεμένος». Η πραγματική απόφαση
+// (cookie και διεύθυνση) ελέγχεται στο lib/supabase/lazy.test.ts.
+export function mayHaveSession(): boolean {
+  return true
+}

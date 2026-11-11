@@ -1,9 +1,10 @@
 'use client'
-import { T, Btn, LinkBtn } from '@/components/Theme'
+import { Btn, LinkBtn } from '@/components/ThemeCore'
+import { T } from '@/components/tokens'
 import { useState, useEffect, useSyncExternalStore } from 'react'
 import { leaveDevice } from '@/lib/localPrivacy'
 import { useRouter } from 'next/navigation'
-import { authClient } from '@/lib/supabase/lazy';
+import { authClient, mayHaveSession } from '@/lib/supabase/lazy';
 import { secondStepPending, MFA_SAY as MFA_SAY_EL } from '@/lib/auth/mfa';
 import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
@@ -165,6 +166,9 @@ export default function LoginPage() {
     // Ο πελάτης φορτώνεται μετά το πρώτο σχεδίασμα, οπότε το effect ξετυλίγεται
     // μέσα σε ασύγχρονη συνάρτηση: το ίδιο το effect ΔΕΝ επιτρέπεται να
     // επιστρέψει υπόσχεση, γιατί η React διαβάζει την επιστροφή ως καθαρισμό.
+    // Χωρίς cookie συνεδρίας και χωρίς επιστροφή στη διεύθυνση, η απάντηση
+    // είναι ήδη γνωστή: κανένας χρήστης. Ο πελάτης δεν φορτώνει (lib/supabase/lazy.ts).
+    if (!mayHaveSession()) return
     void (async () => {
     const supabase = await authClient()
     supabase.auth.getUser().then(async ({ data }) => {
