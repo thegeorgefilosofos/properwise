@@ -40,6 +40,7 @@
 //   snapshot <φάκελος> <bucket> [<bucket> …]
 //   tables <schema.sql> <πίνακας> …          λείπει πίνακας-κλειδί από το σχήμα;
 //   count <data.sql> <πίνακας> …             → JSON
+//   restorable <data.sql> <έξοδος> [σχήμα …]  μόνο τα δεδομένα της εφαρμογής (public)
 //   compare <αναμενόμενα.json> <πραγματικά.json>
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync, writeFileSync, mkdirSync, existsSync, openSync, readSync, closeSync, statSync, appendFileSync, rmSync } from 'node:fs'
@@ -198,33 +199,162 @@ const reLit = t => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 /** Κωδικοποίηση διαδρομής στο URL του Storage, ανά τμήμα. */
 export const encPath = p => p.split('/').map(encodeURIComponent).join('/')
 
+// ── Η ΑΝΑΓΝΩΣΗ ΤΟΥ DUMP ΔΕΔΟΜΕΝΩΝ ────────────────────────────────────────
+//
+// ΤΟ ΠΕΡΙΣΤΑΤΙΚΟ (11/11/2026). Η πρώτη δοκιμή επαναφοράς έριξε το dump σε γυμνό
+// Postgres ως `services:` container. Οι εντολές του auth/storage απέτυχαν (ο
+// γυμνός Postgres δεν έχει τις στήλες της πλατφόρμας) και ο ΔΙΑΚΟΜΙΣΤΗΣ έγραψε
+// κάθε αποτυχημένη εντολή ολόκληρη στο δικό του log, που το GitHub τυπώνει στο
+// «Stop containers» ενός δημόσιου αποθετηρίου. Το `supabase db dump --data-only`
+// γράφει `--column-inserts --rows-per-insert 100000`: ΜΙΑ εντολή INSERT με όλες
+// τις γραμμές ενός πίνακα. Μία αποτυχία = ολόκληρος ο πίνακας στο log.
+//
+// Από τότε η επαναφορά παίρνει ΜΟΝΟ τα σχήματα της εφαρμογής (`restorable`): το
+// auth, το storage και ό,τι άλλο ανήκει στην πλατφόρμα δεν φτάνει ποτέ στη
+// βάση της δοκιμής. Και η μέτρηση γραμμών μετρά πλειάδες, όχι εντολές: με μία
+// εντολή ανά πίνακα, η παλιά μέτρηση «μία INSERT = μία γραμμή» έβγαζε 1.
+
+const IDENT = /[A-Za-z0-9_$]/
+
 /**
- * Γραμμές ανά πίνακα του `public`, όπως τις γράφει το dump δεδομένων: μία
- * `INSERT INTO "public"."x"` ανά γραμμή (η προεπιλογή του `supabase db dump`)
- * ή μπλοκ `COPY "public"."x" … FROM stdin;` ως το `\.`. Η μέτρηση γίνεται στην
- * αρχή κάθε γραμμής του αρχείου, οπότε ένα κείμενο με αλλαγή γραμμής μέσα σε
- * τιμή δεν μετριέται δύο φορές στο INSERT.
+ * Οι εντολές ενός dump δεδομένων, μία-μία, με τα όριά τους στο κείμενο. Ξέρει
+ * από κείμενα σε '…' (και E'…'), ονόματα σε "…", $tag$…$tag$, σχόλια -- και
+ * /* *\/ και τα μπλοκ `COPY … FROM stdin;` ως το `\.`. Ένα «;» ή μια γραμμή
+ * «INSERT INTO» μέσα σε τιμή δεν κόβουν εντολή.
+ *
+ * @returns {{start:number,end:number,kind:'insert'|'copy'|'setval'|'set'|'meta'|'other',schema:string|null,table:string|null,rows:number}[]}
+ */
+export function dumpStatements(sql) {
+  const out = []
+  const n = sql.length
+  let i = 0
+  const skipGap = () => {
+    for (;;) {
+      while (i < n && /\s/.test(sql[i])) i++
+      if (sql.startsWith('--', i)) { const e = sql.indexOf('\n', i); i = e < 0 ? n : e + 1; continue }
+      if (sql.startsWith('/*', i)) { const e = sql.indexOf('*/', i + 2); i = e < 0 ? n : e + 2; continue }
+      return
+    }
+  }
+  for (;;) {
+    skipGap()
+    if (i >= n) break
+    const start = i
+    // ΕΝΤΟΛΗ ΤΟΥ psql (`\restrict <κλειδί>`, `\unrestrict …`): το pg_dump από τις
+    // 17.6/16.10 τις γράφει στην αρχή και στο τέλος. Δεν είναι SQL· τελειώνουν
+    // στην αλλαγή γραμμής, όχι σε «;». Μια INSERT αμέσως μετά δεν κολλά πάνω τους.
+    if (sql[i] === '\\') {
+      const e = sql.indexOf('\n', i)
+      i = e < 0 ? n : e + 1
+      out.push({ start, end: i, kind: 'meta', schema: null, table: null, rows: 0 })
+      continue
+    }
+    let depth = 0, groups = 0, afterValues = false
+    while (i < n) {
+      const c = sql[i]
+      if (c === "'") {
+        const esc = (sql[i - 1] === 'E' || sql[i - 1] === 'e') && !IDENT.test(sql[i - 2] ?? '')
+        i++
+        while (i < n) {
+          if (esc && sql[i] === '\\') { i += 2; continue }
+          if (sql[i] === "'") { if (sql[i + 1] === "'") { i += 2; continue } break }
+          i++
+        }
+        i++
+        continue
+      }
+      if (c === '"') {
+        i++
+        while (i < n) { if (sql[i] === '"') { if (sql[i + 1] === '"') { i += 2; continue } break } i++ }
+        i++
+        continue
+      }
+      if (c === '$' && !IDENT.test(sql[i - 1] ?? '')) {
+        const m = /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/.exec(sql.slice(i, i + 64))
+        if (m) { const e = sql.indexOf(m[0], i + m[0].length); i = e < 0 ? n : e + m[0].length; continue }
+      }
+      if (sql.startsWith('--', i)) { const e = sql.indexOf('\n', i); i = e < 0 ? n : e; continue }
+      if (sql.startsWith('/*', i)) { const e = sql.indexOf('*/', i + 2); i = e < 0 ? n : e + 2; continue }
+      if (c === '(') { if (depth === 0 && afterValues) groups++; depth++ }
+      else if (c === ')') depth--
+      else if (depth === 0 && (c === 'V' || c === 'v') && !IDENT.test(sql[i - 1] ?? '')
+        && /^values(?![A-Za-z0-9_$])/i.test(sql.slice(i, i + 7))) { afterValues = true; i += 6; continue }
+      else if (c === ';') { i++; break }
+      i++
+    }
+    // Αρκεί η αρχή για να αναγνωριστεί η εντολή. Η κεφαλίδα του COPY κρίνεται
+    // ολόκληρη: με πολλές στήλες ξεπερνά εύκολα τους 512 χαρακτήρες.
+    const head = /^COPY\s/i.test(sql.slice(start, start + 5)) ? sql.slice(start, i) : sql.slice(start, Math.min(i, start + 512))
+    const st = { start, end: i, kind: 'other', schema: null, table: null, rows: 0 }
+    const q = '("(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_$]*)'
+    const unq = s => s.startsWith('"') ? s.slice(1, -1).replace(/""/g, '"') : s.toLowerCase()
+    let m
+    if ((m = new RegExp(`^INSERT\\s+INTO\\s+${q}\\.${q}`, 'i').exec(head))) {
+      Object.assign(st, { kind: 'insert', schema: unq(m[1]), table: unq(m[2]), rows: groups })
+    } else if ((m = new RegExp(`^COPY\\s+${q}\\.${q}[^;]*\\sFROM\\s+stdin\\s*;$`, 'i').exec(head))) {
+      Object.assign(st, { kind: 'copy', schema: unq(m[1]), table: unq(m[2]) })
+      // Οι γραμμές του COPY: μία ανά γραμμή αρχείου ως το «\.». Μέσα σε τιμή η
+      // αλλαγή γραμμής γράφεται «\n», οπότε εδώ η γραμμή είναι πάντα γραμμή.
+      let j = sql.indexOf('\n', i)
+      j = j < 0 ? n : j + 1
+      while (j < n) {
+        const e = sql.indexOf('\n', j)
+        const line = sql.slice(j, e < 0 ? n : e)
+        j = e < 0 ? n : e + 1
+        if (line === '\\.') break
+        st.rows++
+      }
+      st.end = i = j
+    } else if ((m = /^SELECT\s+pg_catalog\.setval\(\s*'((?:[^']|'')*)'/i.exec(head))) {
+      const name = m[1].replace(/''/g, "'")
+      const sm = new RegExp(`^${q}\\.`).exec(name)
+      Object.assign(st, { kind: 'setval', schema: sm ? unq(sm[1]) : null })
+    } else if (/^(SET|RESET)\s/i.test(head) || /^SELECT\s+pg_catalog\.set_config\(/i.test(head)) {
+      st.kind = 'set'
+    }
+    out.push(st)
+  }
+  return out
+}
+
+/**
+ * Γραμμές ανά πίνακα του `public`, όπως τις γράφει το dump δεδομένων: πλειάδες
+ * κάθε `INSERT INTO "public"."x" … VALUES (…), (…);` (το `supabase db dump`
+ * βάζει ως 100.000 σε μία εντολή) ή γραμμές ενός `COPY "public"."x" … FROM stdin;`.
  */
 export function countRows(sql, tables) {
   const out = Object.fromEntries(tables.map(t => [t, 0]))
-  const name = t => new RegExp(`^(?:"public"|public)\\.(?:"${reLit(t)}"|${reLit(t)})[\\s(]`)
-  let copying = null
-  for (const line of sql.split('\n')) {
-    if (copying) {
-      if (line === '\\.') copying = null
-      else out[copying]++
-      continue
-    }
-    const ins = /^INSERT INTO (.*)$/.exec(line)
-    const cp = /^COPY (.*) FROM stdin;$/.exec(line)
-    const rest = ins?.[1] ?? cp?.[1]
-    if (!rest) continue
-    const t = tables.find(t => name(t).test(rest + ' '))
-    if (!t) continue
-    if (ins) out[t]++
-    else copying = t
+  for (const st of dumpStatements(sql)) {
+    if ((st.kind === 'insert' || st.kind === 'copy') && st.schema === 'public' && st.table in out) out[st.table] += st.rows
   }
   return out
+}
+
+/**
+ * Το κομμάτι του dump που επαναφέρει η δοκιμή: οι ρυθμίσεις της συνεδρίας και
+ * τα δεδομένα (INSERT, COPY, setval) ΜΟΝΟ των σχημάτων `schemas`. Τίποτε άλλο
+ * δεν περνά: ούτε το auth, ούτε το storage, ούτε εντολή που δεν αναγνωρίζεται.
+ * Επιστρέφει πλήθη ανά σχήμα που έμεινε έξω, χωρίς ονόματα πινάκων.
+ *
+ * @returns {{sql: string, kept: number, left: Record<string, number>}}
+ */
+export function restorable(sql, schemas = ['public']) {
+  const keep = new Set(schemas)
+  const parts = []
+  /** @type {Record<string, number>} */
+  const left = {}
+  let kept = 0
+  for (const st of dumpStatements(sql)) {
+    const data = st.kind === 'insert' || st.kind === 'copy' || st.kind === 'setval'
+    if (st.kind === 'set' || (data && keep.has(st.schema))) {
+      parts.push(sql.slice(st.start, st.end).replace(/\n?$/, '\n'))
+      if (data) kept++
+    } else {
+      const k = data ? (st.schema ?? '?') : st.kind === 'meta' ? 'εντολή psql' : 'άλλη εντολή'
+      left[k] = (left[k] ?? 0) + 1
+    }
+  }
+  return { sql: parts.join(''), kept, left }
 }
 
 /**
@@ -504,6 +634,15 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       console.log(`✓ το σχήμα έχει και τους ${list.length} πίνακες-κλειδιά`)
     },
     count: async () => { process.stdout.write(JSON.stringify(countRows(readFileSync(a, 'utf8'), list))) },
+    // Μόνο πλήθη στο log: καμία εντολή, κανένα όνομα πίνακα εκτός σχήματος.
+    restorable: async () => {
+      const schemas = [c, d, ...rest].filter(Boolean)
+      const r = restorable(readFileSync(a, 'utf8'), schemas.length ? schemas : ['public'])
+      writeFileSync(b, r.sql, { mode: 0o600 })
+      const left = Object.entries(r.left).map(([k, v]) => `${k} (${v})`).join(', ')
+      console.log(`✓ για επαναφορά: ${r.kept} εντολές δεδομένων${left ? `· έμειναν έξω: ${left}` : ''}`)
+      if (!r.kept) { console.error('::error::Το dump δεν έχει καμία εντολή δεδομένων για τα σχήματα της εφαρμογής.'); process.exit(1) }
+    },
     compare: async () => {
       const r = compareCounts(JSON.parse(readFileSync(a, 'utf8')), JSON.parse(readFileSync(b, 'utf8')))
       for (const x of r.rows) console.log(`${x.ok ? '✓' : '✗'} ${x.table}`)

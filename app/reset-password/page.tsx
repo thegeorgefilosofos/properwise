@@ -15,6 +15,8 @@ import MailSent from '../MailSent'
 import type { Locale } from '@/lib/i18n/locale'
 import { localHref } from '@/lib/i18n/paths'
 import { useAuthEn } from '@/lib/i18n/authEn'
+import { useCaptcha } from '../useCaptcha'
+import { captchaOptions } from '@/lib/auth/captcha'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Επαναφορά κωδικού, δύο καταστάσεις:
@@ -49,6 +51,7 @@ export default function ResetPasswordPage() {
   const locale: Locale = A ? 'en' : 'el'
   const failed = (el: string, en_: string | undefined, e: unknown) => A ? A.failed(en_ ?? el, e) : failedEl(el, e)
   const MISMATCH = R ? R.mismatch : MISMATCH_EL
+  const captcha = useCaptcha(locale)
   // Ο ΣΥΝΔΕΣΜΟΣ ΤΟΥ EMAIL ΛΕΕΙ ΗΔΗ ΣΕ ΠΟΙΑ ΟΘΟΝΗ ΕΙΜΑΣΤΕ. Ηταν
   // `setMode('update')` μέσα σε effect: ο χρήστης που πάτησε τον σύνδεσμο
   // επαναφοράς έβλεπε για ένα καρέ τη φόρμα «στείλε μου σύνδεσμο», δηλαδή τη
@@ -100,7 +103,10 @@ export default function ResetPasswordPage() {
     e.preventDefault(); setError(''); setLoading(true)
     const supabase = await authClient()
     const redirectTo = `${window.location.origin}${localHref(locale, '/reset-password')}`
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
+    const captchaToken = await captcha.token()
+    if (captchaToken === null) { setLoading(false); setError(captcha.failMessage()); return }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo, ...captchaOptions(captchaToken) })
+    captcha.reset()
     setLoading(false)
     if (error) setError(failed('Το μήνυμα επαναφοράς δεν στάλθηκε', R?.notSent, error)); else setMode('sent')
   }
@@ -212,6 +218,7 @@ export default function ResetPasswordPage() {
                   onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
               </div>
               {errBox}
+              {captcha.slot}
               {/* `field` γιατί η υποβολή κρατά όλο το πλάτος της φόρμας, όπως πριν. */}
               <Btn variant="primary" type="submit" field disabled={loading}>{loading ? (R ? R.sending : 'Αποστολή…') : (R ? R.send : 'Στείλε σύνδεσμο')}</Btn>
             </form>

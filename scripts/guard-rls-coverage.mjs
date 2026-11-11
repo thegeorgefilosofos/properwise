@@ -43,7 +43,7 @@ const DIR = 'supabase/migrations'
  * κανέναν. Κάθε ΑΛΛΟΣ πίνακας με `using (true)` είναι διαρροή.
  */
 const PUBLIC_REFERENCE = new Set([
-  'bank_rates', 'energy_tariffs', 'loan_programs', 'market_rates',
+  'public.bank_rates', 'public.energy_tariffs', 'public.loan_programs', 'public.market_rates',
 ])
 
 let sql = readdirSync(DIR).filter(f => f.endsWith('.sql')).sort()
@@ -52,8 +52,15 @@ let sql = readdirSync(DIR).filter(f => f.endsWith('.sql')).sort()
 // μέσα σε συνάρτηση ελέγχου δεν είναι δήλωση πίνακα.
 sql = sql.replace(/--[^\n]*/g, '').replace(/'(?:[^']|'')*'/g, "''")
 
-const name = '(?:"?public"?\\.)?"?([a-z_0-9]+)"?'
-const grab = (re) => { const s = new Set(); for (const m of sql.matchAll(re)) s.add(m[1]); return s }
+// ΤΟ ΚΛΕΙΔΙ ΕΙΝΑΙ `schema.πίνακας`, ΜΕ `public` ΟΤΑΝ ΔΕΝ ΓΡΑΦΕΤΑΙ (όπως το
+// search_path των μεταναστεύσεων). Ως τις 10/11/2026 διαβαζόταν μόνο το
+// `public.`: το `private.x` έβγαινε πίνακας με όνομα «private». Και ένα κλειδί
+// μόνο με το όνομα θα μπέρδευε δύο διαφορετικούς πίνακες: `public.x` χωρίς RLS
+// δίπλα σε `private.x` με RLS θα περνούσε, όπως και `drop` του `private.x` θα
+// έσβηνε από τον κατάλογο τον ανοιχτό `public.x`. Οι μεταλλάξεις τα δοκιμάζουν.
+const name = '(?:"?([a-z_][a-z_0-9]*)"?\\.)?"?([a-z_0-9]+)"?'
+const key = (schema, table) => `${(schema || 'public').toLowerCase()}.${table.toLowerCase()}`
+const grab = (re) => { const s = new Set(); for (const m of sql.matchAll(re)) s.add(key(m[1], m[2])); return s }
 
 const created = grab(new RegExp(`create\\s+table\\s+(?:if\\s+not\\s+exists\\s+)?${name}`, 'gi'))
 const dropped = grab(new RegExp(`drop\\s+table\\s+(?:if\\s+exists\\s+)?${name}`, 'gi'))
@@ -68,7 +75,8 @@ for (const t of tables) {
 
 // Ανοιχτή πόρτα: policy που δεν κοιτάζει ποιος ρωτά.
 for (const m of sql.matchAll(new RegExp(`create\\s+policy\\s+"?([^"\\n]+?)"?\\s+on\\s+${name}([\\s\\S]*?);`, 'gi'))) {
-  const [, policy, table, body] = m
+  const [, policy, schema, name_, body] = m
+  const table = key(schema, name_)
   if (!/(using|with\s+check)\s*\(\s*true\s*\)/i.test(body)) continue
   if (PUBLIC_REFERENCE.has(table)) continue
   problems.push(`${table}: η policy «${policy}» επιτρέπει σε ΟΠΟΙΟΝΔΗΠΟΤΕ (using true)`)
