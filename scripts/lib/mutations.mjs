@@ -903,6 +903,16 @@ export const MUTATIONS = {
     { file: 'scripts/db-replay.sh', from: '#!/usr/bin/env bash\n# log-guard: synthetic-db', to: '#!/usr/bin/env bash\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n# log-guard: synthetic-db' },
     { file: 'scripts/db-replay.sh', from: 'PSQL="psql -h $WORK -U postgres', to: 'export PGHOST="$WORK"\nPSQL="psql -h $WORK -U postgres' },
     { file: '.github/workflows/ci.yml', from: '        run: bash scripts/db-replay.sh', to: '        env:\n          DB_PW: ${{ secrets.DB_PASSWORD }}\n        run: bash scripts/db-replay.sh' },
+    // Το db push της παραγωγής χωρίς quiet-db: `DETAIL: Key (…)=(…)` στο log.
+    { file: '.github/workflows/supabase-deploy.yml', from: 'run: bash scripts/ci/quiet-db.sh "supabase db push" -- supabase db push --remote --yes --include-all', to: 'run: supabase db push --remote --yes --include-all' },
+    { file: '.github/workflows/supabase-deploy.yml', from: 'listing="$(bash scripts/ci/quiet-db.sh "migration list" --stdout -- supabase migration list --remote)"', to: 'listing="$(supabase migration list --remote)"' },
+    { file: '.github/workflows/db-backup.yml', from: 'bash scripts/ci/quiet-db.sh "dump δεδομένων" -- supabase db dump', to: 'supabase db dump' },
+    { add: MUT_WF, content: wfRun('supabase db push --remote --yes >/dev/null 2>&1 | tee push.log') },
+    { add: MUT_WF, content: wfRun("supabase db query 'select email from t' >out.txt 2>/dev/null\ncat out.txt") },
+    // Η εξαίρεση του quiet-db καλύπτει μόνο την τυλιγμένη εντολή, όχι τη γραμμή.
+    { add: MUT_WF, content: wfRun('bash scripts/ci/quiet-db.sh "push" -- supabase db push --remote --yes; supabase db push --remote --yes') },
+    { add: MUT_WF, content: wfRun('bash scripts/ci/quiet-db.sh "push" -- supabase link && supabase db query "select 1"') },
+    { add: MUT_WF, content: wfRun('x="$(bash scripts/ci/quiet-db.sh "push" --stdout -- supabase db push --remote)"') },
     { file: 'scripts/db-replay.sh', from: 'PSQL="psql -h $WORK -U postgres', to: 'PSQL="psql $DATABASE_URL -h $WORK -U postgres' },
     { file: 'scripts/backup/vault.mjs', from: "import { pathToFileURL } from 'node:url'\n", to: "import { pathToFileURL } from 'node:url'\nimport { spawnSync } from 'node:child_process'\nexport const probe = () => spawnSync('pg_dump --data-only', { shell: true })\n" },
   ] },
