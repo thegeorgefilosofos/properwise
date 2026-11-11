@@ -21,7 +21,7 @@ const sawReview = policyNoticeCopy({ policy_notice_seen: '2026-11-09' }, null)
 const missedReview = policyNoticeCopy({ policy_notice_seen: '2026-10-03', consent_policy_version: '2026-09' }, '2026-10-03')
 const never = policyNoticeCopy(null, null)
 const all = [sawBulk, sawReview, missedReview, never]
-const backups = (c: { summary: string }) => c.summary.includes('αντίγραφα ασφαλείας φυλάσσονται πλέον στη Φρανκφούρτη') && c.summary.includes('κάθε Κυριακή') && c.summary.includes('μόνο το κλειδί')
+const backups = (c: { summary: string }) => c.summary.includes('αντίγραφα ασφαλείας φυλάσσονται στη Φρανκφούρτη') && c.summary.includes('κάθε Κυριακή') && c.summary.includes('μόνο το κλειδί')
 ok('όλοι μαθαίνουν για τα αντίγραφα ασφαλείας', all.every(backups))
 ok('είδε την 2026-11-10 (λογαριασμός): μόνο τα αντίγραφα', !sawBulk.summary.includes('μαζική καταχώρηση') && !sawBulk.summary.includes('υπαναχώρησης') && sawBulk.headline === 'Ενημερώσαμε την Πολιτική απορρήτου.' && sawBulk.href === '/privacy')
 ok('είδε την 2026-11-10 σε αυτή τη συσκευή: μόνο τα αντίγραφα', policyNoticeCopy({}, BULK_VERSION).summary === sawBulk.summary)
