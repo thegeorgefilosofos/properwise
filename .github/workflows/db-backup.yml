@@ -47,6 +47,8 @@ permissions:
 env:
   SUPABASE_PROJECT_REF: aromvduuxtcrzmwwvnej
   KEEP_DAYS: '30'
+  # Μία γραμμή για κάθε κρυπτογράφηση της ροής (dump και αρχεία χρηστών).
+  GPG_ENCRYPT: '--batch --yes --symmetric --cipher-algo AES256'
   # Τα buckets με έγγραφα και φωτογραφίες χρηστών.
   FILE_BUCKETS: 'lease-documents property-files inventory-docs maintenance-photos inventory-photos'
 
@@ -104,8 +106,8 @@ jobs:
         run: |
           set -euo pipefail
           for f in backup/roles.sql backup/schema.sql backup/data.sql; do
-            gpg --batch --yes --symmetric --cipher-algo AES256 \
-                --passphrase "$BACKUP_PASSPHRASE" -o "$f.gpg" "$f"
+            # shellcheck disable=SC2086
+            gpg $GPG_ENCRYPT --passphrase "$BACKUP_PASSPHRASE" -o "$f.gpg" "$f"
             rm -f "$f"
           done
           echo "🔒 Αντίγραφο κρυπτογραφημένο (AES256)." >> "$GITHUB_STEP_SUMMARY"
@@ -142,8 +144,8 @@ jobs:
           node scripts/backup/vault.mjs snapshot files $FILE_BUCKETS
           tar -C files -cf files.tar .
           rm -rf files
-          gpg --batch --yes --symmetric --cipher-algo AES256 \
-              --passphrase "$BACKUP_PASSPHRASE" -o files.tar.gpg files.tar
+          # shellcheck disable=SC2086
+          gpg $GPG_ENCRYPT --passphrase "$BACKUP_PASSPHRASE" -o files.tar.gpg files.tar
           rm -f files.tar
           # Κομμάτια των 45 MB: το Storage της Supabase δέχεται ως 50 MB ανά αρχείο
           # στο δωρεάν πακέτο (supabase.com/docs/guides/storage/uploads/file-limits).

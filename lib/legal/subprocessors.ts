@@ -292,7 +292,7 @@ export const subprocessorLine = (s: Subprocessor): string =>
   `${s.name} (${s.where}), ${roleInline(s.role)}.${s.entity ? ` Νομικό πρόσωπο: ${s.entity.replace(/\.?$/, '.')}` : ''} ${s.purpose}`;
 
 /**
- * ΠΟΣΟ ΖΕΙ ΤΟ ΑΝΤΙΓΡΑΦΟ ΑΣΦΑΛΕΙΑΣ. Ο αριθμός ορίζεται στο `retention-days`
+ * ΠΟΣΟ ΖΕΙ ΤΟ ΑΝΤΙΓΡΑΦΟ ΑΣΦΑΛΕΙΑΣ. Ο αριθμός ορίζεται στο `KEEP_DAYS`
  * του .github/workflows/db-backup.yml· εδώ γράφεται για να τον διαβάσει η
  * Πολιτική απορρήτου και το τεστ του μητρώου κοκκινίζει αν αποκλίνουν.
  */
