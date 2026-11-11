@@ -28,3 +28,24 @@ export function outboxVerdict(rows: unknown, error: { message: string } | null):
     .map(k => `${k}: ${counts[k]} (όριο ${OUTBOX_LIMITS[k]})`)
   return { ok: over.length === 0, counts, why: over.length ? over.join(' · ') : 'εντάξει' }
 }
+
+/**
+ * Η ΠΡΟΩΘΗΣΗ ΤΩΝ EMAIL ΥΠΟΣΤΗΡΙΞΗΣ (`support_inbox_health()`, 20261110134000).
+ * Δεν είναι εντάξει όταν κάποιο μήνυμα περιμένει πάνω από μία ώρα (το cron τρέχει
+ * κάθε 10 λεπτά, άρα κάτι κολλά) ή όταν κάποιο έγινε failed μέσα στο 24ωρο.
+ */
+export interface SupportVerdict { ok: boolean; stalePending: number; failed24h: number; why: string }
+
+export function supportVerdict(row: unknown, error: { message: string } | null): SupportVerdict {
+  if (error || !row || typeof row !== 'object') {
+    return { ok: false, stalePending: 0, failed24h: 0, why: 'η υποστήριξη δεν διαβάστηκε: ' + (error?.message ?? 'κενή απάντηση') }
+  }
+  const r = row as { stale_pending?: unknown; failed_24h?: unknown }
+  const stalePending = Number(r.stale_pending) || 0
+  const failed24h = Number(r.failed_24h) || 0
+  const why = [
+    stalePending ? `${stalePending} μηνύματα υποστήριξης περιμένουν πάνω από 1 ώρα` : '',
+    failed24h ? `${failed24h} απέτυχαν οριστικά σε 24 ώρες` : '',
+  ].filter(Boolean).join(' · ')
+  return { ok: !stalePending && !failed24h, stalePending, failed24h, why: why || 'εντάξει' }
+}

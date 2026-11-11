@@ -13,6 +13,11 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing';
+import { hasEarlyAccess, FIRST_IN_LINE } from '@/lib/billing/rollout';
+import { PLANS, PLAN_ORDER, type PlanId } from '@/lib/billing/plans';
+
+/** Τα υπόλοιπα πακέτα προτεραιότητας, μετά το πρώτο της σειράς. */
+const EARLY_REST = PLAN_ORDER.filter(p => hasEarlyAccess(p) && p !== FIRST_IN_LINE).map(p => `το «${PLANS[p].name}»`).join(' και ');
 import { T, Btn, Chip, fixedCols } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
 import { canPrompt, runPrompt, onHomeScreen, INSTALL_EVENT } from '@/lib/pwa/install';
@@ -57,7 +62,9 @@ const ITEMS: RoadItem[] = [
   },
 ];
 
-export default function SettingsRoadmap({ userId }: { userId: string }) {
+// `releaseFrom`: το ενεργό πακέτο (effectivePlan) για τη σειρά διάθεσης.
+export default function SettingsRoadmap({ userId, releaseFrom = 'free' }: { userId: string; releaseFrom?: PlanId }) {
+  const mobileEarly = hasEarlyAccess(releaseFrom);
   const supabase = createClient();
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -192,6 +199,11 @@ export default function SettingsRoadmap({ userId }: { userId: string }) {
 
             <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: '8px 0 0' }}>
               Φωτογραφίζεις ένα παραστατικό και καταχωρείται μόνο του, όπου κι αν βρίσκεσαι.
+              {/* ΛΕΜΕ ΜΟΝΟ ΤΗ ΣΕΙΡΑ ΑΝΟΙΓΜΑΤΟΣ (τα κύματα της βάσης, lib/billing/rollout.ts),
+                  όχι μηχανισμό: η εφαρμογή δεν υπάρχει ακόμη. Ημερομηνία δεν υπάρχει, άρα
+                  δεν γράφεται. */}
+              {` Θα ανοίξει πρώτα για το «${PLANS[FIRST_IN_LINE].name}», μετά για ${EARLY_REST} και τους Συνεργάτες και αργότερα για όλους.`}
+              {mobileEarly && ` Το «${PLANS[releaseFrom].name}» είναι μέσα στην προτεραιότητα.`}
             </p>
 
             {/* Μέχρι να βγει η αυτόνομη εφαρμογή, το PROPERWISE εγκαθίσταται ήδη

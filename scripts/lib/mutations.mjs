@@ -375,6 +375,16 @@ export const MUTATIONS = {
   'toggle': { add: 'app/dashboard/components/__mut__.tsx', content: "export function Tog({ on, set }: { on: boolean; set: (v: boolean) => void }) {\n  return (\n    <button type=\"button\" role=\"switch\" aria-checked={on} onClick={() => set(!on)}\n      style={{ width: 46, height: 26, borderRadius: 12, background: on ? 'var(--accent)' : 'var(--border-default)' }}>\n      <span />\n    </button>\n  )\n}\n" },
   'http-bridge': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create or replace function public.mut_probe_call() returns void language sql as $$ select net.http_post(url => \'https://x\') $$;\ngrant execute on function public.mut_probe_call() to authenticated;\n' },
   'sql-types': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create or replace function public.mut_probe() returns void language plpgsql as $$\ndeclare v_row record;\nbegin\n  for v_row in select * from public.bills loop\n    if v_row.property_id = some_text then null; end if;\n  end loop;\nend $$;\n' },
+  // Νέα δυνατότητα που ανακοινώνεται χωρίς να περνά από τη σειρά διάθεσης.
+  // Τρεις κανόνες: νέα δυνατότητα που ανακοινώνεται χωρίς το μητρώο, εγγραφή με
+  // ημερομηνία που δεν την κλειδώνει κανείς και πύλη που δεν καλεί κανείς.
+  'rollout': { every: [
+    { add: 'components/__mut__.tsx', content: tsx('    <span>Νέα δυνατότητα: εξαγωγή σε Excel</span>') },
+    { file: 'lib/billing/rollout.ts', from: 'export const ROLLOUT: Record<string, RolloutEntry> = {\n', to: "export const ROLLOUT: Record<string, RolloutEntry> = {\n  excel_export: { label: 'Εξαγωγή σε Excel', opens: '2027-01-01' },\n" },
+    { file: 'lib/billing/rollout.ts', from: "gate: 'mobile_access', pending: true }", to: "gate: 'mobile_access' }" },
+    // Καλών μόνο σε σχόλιο δεν κλειδώνει τίποτα.
+    { file: 'lib/billing/rollout.ts', from: "gate: 'mobile_access', pending: true }", to: "gate: 'mobile_access' } // rpc('mobile_access', {})" },
+  ] },
   'service-role': { add: 'components/__mut__.ts', content: "export const key = process.env.SUPABASE_SERVICE_ROLE_KEY\n" },
   'csv-injection': { add: 'lib/core/__mut__.ts', content: "export const row = (cells: string[]) => cells.join(';')\n" },
   'password-leak': { add: 'components/__mut__.tsx', content: "import PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  return <PasswordStrength value={v} />\n}\n" },

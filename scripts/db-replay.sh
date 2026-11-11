@@ -243,6 +243,20 @@ if ! fuout=$($PSQL -d posdb -f "$ROOT/scripts/db/owner-undo-day-probe.sql" 2>&1)
   exit 1
 fi
 probes=$((probes + $(echo "$fuout" | grep -c 'probe:' || true)))
+# Σειρά διάθεσης και υποστήριξη, όπως τις λένε οι Όροι (20261110134000).
+if ! eaout=$($PSQL -d posdb -f "$ROOT/scripts/db/early-access-probe.sql" 2>&1); then
+  echo "🔴 Η σειρά διάθεσης της εφαρμογής κινητού δεν κρατά:"
+  echo "$eaout" | grep -m3 -E 'ERROR|ΣΕΙΡΑ|ΔΙΠΛΗ|ΧΑΜΕΝΗ|ΣΗΜΕΙΩΣΗ|ΑΤΕΛΕΙΩΤΗ|ΜΟΝΙΜΗ|ΠΑΡΑΒΙΑΣΗ|ΥΠΟΣΤΗΡΙΞΗ|ΚΛΕΙΔΩΜΑ|ΠΡΟΩΘΗΣΗ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$eaout" | grep -c 'probe:' || true)))
+# Η ίδια μετάβαση πάνω σε βάση με το πρώτο της σχέδιο (το staging, 10/11/2026).
+if ! euout=$($PSQL -d posdb -f "$ROOT/scripts/db/early-access-upgrade-probe.sql" 2>&1); then
+  echo "🔴 Η μετάβαση 20261110134000 δεν εφαρμόζεται πάνω από το πρώτο της σχέδιο:"
+  echo "$euout" | grep -m3 -E 'ERROR|ΑΝΑΒΑΘΜΙΣΗ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$euout" | grep -c 'probe:' || true)))
 
 # ── ΔΕΧΕΤΑΙ Η ΒΑΣΗ ΤΙΣ ΓΡΑΜΜΕΣ ΟΠΩΣ ΤΙΣ ΧΤΙΖΕΙ Η ΕΦΑΡΜΟΓΗ; ─────────────────────
 # Το rls-probe γράφει γραμμές με το χέρι. Οι γραμμές της εφαρμογής όμως τις
