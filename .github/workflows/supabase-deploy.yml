@@ -17,6 +17,13 @@ name: Supabase deploy
 # to any feature branch (claude/**) deploys to the STAGING project, so migrations
 # and functions are validated against a throwaway copy before they reach real
 # customer data. The one Personal Access Token manages both projects.
+#
+# THE LOGS ARE PUBLIC. Every step that talks to a project database (link,
+# migration list/repair, db push) runs through scripts/ci/quiet-db.sh: its output
+# goes to a file that is never printed, the exit code is kept, and a failure
+# shows only the migration file, the SQLSTATE class and a fixed category. A
+# failing migration's `DETAIL: Key (col)=(value)` never reaches the log; read it
+# in Supabase → Logs → Postgres. scripts/guard-backup-logs.mjs enforces this.
 
 on:
   push:
