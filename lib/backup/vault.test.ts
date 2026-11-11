@@ -199,6 +199,32 @@ ok('κωδικοποίηση ανά τμήμα', encPath('2026-11-10/α β.gpg')
   ok('άγνωστη εντολή δεν περνά', odd.kept === 1 && !odd.sql.includes('CREATE') && odd.left['άλλη εντολή'] === 1)
 }
 
+// ── `\restrict` του pg_dump ≥ 17.6 / 16.10 και κεφαλίδα COPY πάνω από 512 ────
+{
+  const cols = Array.from({ length: 60 }, (_, k) => `"column_with_long_name_${k}"`).join(', ')
+  const sql = [
+    '\\restrict AbCdEf0123456789',
+    'INSERT INTO "public"."tenants" ("id") VALUES',
+    '\t(1),',
+    '\t(2);',
+    `COPY "public"."expenses" (${cols}) FROM stdin;`,
+    '1',
+    '2',
+    '3',
+    '\\.',
+    '\\unrestrict AbCdEf0123456789',
+  ].join('\n')
+  const st = dumpStatements(sql)
+  ok('η \\restrict είναι δική της εντολή ως την αλλαγή γραμμής', st[0].kind === 'meta' && sql.slice(st[0].start, st[0].end) === '\\restrict AbCdEf0123456789\n')
+  ok('η INSERT αμέσως μετά αναγνωρίζεται', st[1].kind === 'insert' && st[1].table === 'tenants' && st[1].rows === 2)
+  ok('κεφαλίδα COPY > 512 χαρακτήρες', st[2].kind === 'copy' && st[2].rows === 3)
+  ok('τελική \\unrestrict', st[3].kind === 'meta' && st.length === 4)
+  const r = restorable(sql)
+  ok('η restorable πετά τις εντολές psql', !r.sql.includes('restrict') && r.left['εντολή psql'] === 2 && r.kept === 2)
+  const c = countRows(sql, ['tenants', 'expenses'])
+  ok('πλήθη με \\restrict και μακριά κεφαλίδα', c.tenants === 2 && c.expenses === 3)
+}
+
 // ── Σύγκριση μετά την επαναφορά ─────────────────────────────────────────────
 {
   ok('ίδια πλήθη = εντάξει', compareCounts({ a: 2, b: 0 }, { a: '2', b: '0' }).ok === true)

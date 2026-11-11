@@ -222,7 +222,7 @@ const IDENT = /[A-Za-z0-9_$]/
  * /* *\/ και τα μπλοκ `COPY … FROM stdin;` ως το `\.`. Ένα «;» ή μια γραμμή
  * «INSERT INTO» μέσα σε τιμή δεν κόβουν εντολή.
  *
- * @returns {{start:number,end:number,kind:'insert'|'copy'|'setval'|'set'|'other',schema:string|null,table:string|null,rows:number}[]}
+ * @returns {{start:number,end:number,kind:'insert'|'copy'|'setval'|'set'|'meta'|'other',schema:string|null,table:string|null,rows:number}[]}
  */
 export function dumpStatements(sql) {
   const out = []
@@ -240,6 +240,15 @@ export function dumpStatements(sql) {
     skipGap()
     if (i >= n) break
     const start = i
+    // ΕΝΤΟΛΗ ΤΟΥ psql (`\restrict <κλειδί>`, `\unrestrict …`): το pg_dump από τις
+    // 17.6/16.10 τις γράφει στην αρχή και στο τέλος. Δεν είναι SQL· τελειώνουν
+    // στην αλλαγή γραμμής, όχι σε «;». Μια INSERT αμέσως μετά δεν κολλά πάνω τους.
+    if (sql[i] === '\\') {
+      const e = sql.indexOf('\n', i)
+      i = e < 0 ? n : e + 1
+      out.push({ start, end: i, kind: 'meta', schema: null, table: null, rows: 0 })
+      continue
+    }
     let depth = 0, groups = 0, afterValues = false
     while (i < n) {
       const c = sql[i]
@@ -273,7 +282,9 @@ export function dumpStatements(sql) {
       else if (c === ';') { i++; break }
       i++
     }
-    const head = sql.slice(start, Math.min(i, start + 512))
+    // Αρκεί η αρχή για να αναγνωριστεί η εντολή. Η κεφαλίδα του COPY κρίνεται
+    // ολόκληρη: με πολλές στήλες ξεπερνά εύκολα τους 512 χαρακτήρες.
+    const head = /^COPY\s/i.test(sql.slice(start, start + 5)) ? sql.slice(start, i) : sql.slice(start, Math.min(i, start + 512))
     const st = { start, end: i, kind: 'other', schema: null, table: null, rows: 0 }
     const q = '("(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_$]*)'
     const unq = s => s.startsWith('"') ? s.slice(1, -1).replace(/""/g, '"') : s.toLowerCase()
@@ -339,7 +350,7 @@ export function restorable(sql, schemas = ['public']) {
       parts.push(sql.slice(st.start, st.end).replace(/\n?$/, '\n'))
       if (data) kept++
     } else {
-      const k = data ? (st.schema ?? '?') : 'άλλη εντολή'
+      const k = data ? (st.schema ?? '?') : st.kind === 'meta' ? 'εντολή psql' : 'άλλη εντολή'
       left[k] = (left[k] ?? 0) + 1
     }
   }

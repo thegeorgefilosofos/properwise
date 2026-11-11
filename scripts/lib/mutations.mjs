@@ -21,6 +21,10 @@
 /** Σκελετός component οθόνης, για φύλακες που σαρώνουν .tsx. */
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
+/** Ροή-δόλωμα για τον φύλακα των logs: ένα βήμα με το σενάριο `body`. */
+const MUT_WF = '.github/workflows/__mut_backup_logs__.yml'
+const wfRun = (body) => `name: m\non: workflow_dispatch\njobs:\n  m:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n${body.split('\n').map(l => `          ${l}`).join('\n')}\n`
+
 export const MUTATIONS = {
   // Ο οδηγός «Νέο ακίνητο» ξανά με τη φόρμα απλωμένη αυτούσια: ακριβώς το
   // '' στο property_settings.insurance_expiry (Postgres 22007, 06/11/2026).
@@ -825,13 +829,35 @@ export const MUTATIONS = {
 
   // ══ Η ΔΙΑΡΡΟΗ ΤΗΣ ΔΟΚΙΜΗΣ ΕΠΑΝΑΦΟΡΑΣ (11/11/2026) ═══════════════════════════
   // Ακριβώς το #521: Postgres ως `services:`, που το GitHub τυπώνει το log του.
-  // Και κάθε τείχος της διόρθωσης χωριστά: το log του container, η καταγραφή
-  // του διακομιστή, ένα psql χωρίς σίγαση, ένα `set -x` στα σενάρια αντιγράφων.
+  // Και κάθε τείχος χωριστά, μαζί με κάθε παράκαμψη που βρήκε η αξιολόγηση του
+  // #538: άλλη εικόνα ή γραφή YAML, άλλος τρόπος εκκίνησης container, stderr
+  // που ενώνεται σε σωλήνα ή τυπώνεται αργότερα, psql πίσω από `bash -c` ή
+  // μεταβλητή, xtrace σε κάθε γραφή, σενάριο που καλεί μια ροή.
   'backup-logs': { every: [
-    { add: '.github/workflows/__mut_backup_logs__.yml', content: "name: m\non: workflow_dispatch\njobs:\n  drill:\n    runs-on: ubuntu-latest\n    services:\n      postgres:\n        image: postgres:17.6\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs:\n  drill:\n    runs-on: ubuntu-latest\n    services:\n      postgres:\n        image: postgres:17.6\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs:\n  d:\n    runs-on: ubuntu-latest\n    env:\n      K: ${{ secrets.K }}\n    services:\n      db:\n        image: ${{ vars.DB_IMAGE }}\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs: {d: {runs-on: ubuntu-latest, services: {db: {image: 'postgres:17'}}, steps: [{run: echo}]}}\n" },
     { file: '.github/workflows/backup-restore-drill.yml', from: 'docker run -d --name drill-pg --log-driver none --network none', to: 'docker run -d --name drill-pg --network none' },
     { file: '.github/workflows/backup-restore-drill.yml', from: '-c log_min_error_statement=panic -c log_min_messages=panic', to: '-c log_min_messages=panic' },
+    { add: MUT_WF, content: wfRun('docker container run -d --name x redis:7 >/dev/null 2>&1') },
+    { add: MUT_WF, content: wfRun('docker create --name x redis:7 >/dev/null') },
+    { add: MUT_WF, content: wfRun('docker start x >/dev/null') },
+    { add: MUT_WF, content: wfRun('docker compose -f db.yml up -d') },
+    { add: MUT_WF, content: wfRun('docker-compose up -d') },
+    { add: MUT_WF, content: wfRun('supabase start') },
     { file: '.github/workflows/backup-restore-drill.yml', from: 'pg -d drill -v ON_ERROR_STOP=1 -f - < scripts/db/platform-stub.sql >/dev/null 2>&1', to: 'pg -d drill -v ON_ERROR_STOP=1 -f - < scripts/db/platform-stub.sql' },
+    { add: MUT_WF, content: wfRun('pg_dump -f dump.sql') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql >/dev/null 2>&1 | tee psql.log') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql 2>&1 >/dev/null | sed 1q') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql >/dev/null 2>psql.err || true\ntail -5 psql.err') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql >/dev/null 2>psql.err || cat psql.err') },
+    { add: MUT_WF, content: wfRun("bash -c 'psql -f data.sql'") },
+    { add: MUT_WF, content: wfRun('PSQL="psql -h localhost -q"\n$PSQL -f data.sql >/dev/null') },
+    { add: MUT_WF, content: wfRun('out=$(psql -f data.sql 2>&1) || true\necho "$out"') },
+    { add: MUT_WF, content: wfRun('set -o errexit -o xtrace') },
+    { add: MUT_WF, content: wfRun('set -o pipefail; set -eo xtrace') },
     { add: 'scripts/backup/__mut__.sh', content: '#!/usr/bin/env bash\nset -euxo pipefail\necho ok\n' },
+    { file: 'scripts/db-replay.sh', from: 'PSQL="psql -h $WORK -U postgres', to: 'PSQL="psql $DATABASE_URL -h $WORK -U postgres' },
+    { file: 'scripts/backup/vault.mjs', from: "import { pathToFileURL } from 'node:url'\n", to: "import { pathToFileURL } from 'node:url'\nimport { spawnSync } from 'node:child_process'\nexport const probe = () => spawnSync('pg_dump --data-only', { shell: true })\n" },
   ] },
 }
