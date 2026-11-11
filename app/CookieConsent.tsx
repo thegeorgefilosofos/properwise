@@ -8,7 +8,7 @@
 import { useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Btn } from '@/components/Theme';
+import { Btn } from '@/components/ThemeCore';
 // Η ΕΚΔΟΣΗ ΕΡΧΕΤΑΙ ΑΠΟ ΤΑ ΝΟΜΙΚΑ ΚΕΙΜΕΝΑ, ΟΧΙ ΑΠΟ ΕΔΩ. Ηταν «2026-08»
 // γραμμένο με το χέρι, ενώ η Πολιτική είχε ήδη αλλάξει στις ενότητες για τα
 // cookies: όποιος είχε δει την παλιά ενημέρωση δεν έβλεπε ποτέ τη νέα.

@@ -12,7 +12,12 @@ export async function authClient() {
       return { error: null }
     },
     auth: {
-      getUser: async () => ({ data: { user: null } }),
+      // Μετριέται: χωρίς συνεδρία η σελίδα δεν επιτρέπεται να ρωτήσει καθόλου.
+      getUser: async () => {
+        const w = window as { __getUser?: number }
+        w.__getUser = (w.__getUser ?? 0) + 1
+        return { data: { user: null } }
+      },
       getSession: async () => ({ data: { session: null } }),
       // Κάθε εγγραφή μετριέται: δύο πατήματα δεν επιτρέπεται να δώσουν δύο.
       signUp: async (): Promise<Ok> => {
@@ -26,4 +31,13 @@ export async function authClient() {
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
     },
   }
+}
+
+// Προεπιλογή «ίσως»: ο πάγκος περνά από τον ψεύτικο `getUser()` όπως πριν, ώστε
+// να ελέγχεται και η διαδρομή «είσαι ήδη συνδεδεμένος». Με
+// `window.__mayHaveSession = false` ελέγχεται η διαδρομή του ανώνυμου επισκέπτη,
+// όπου ο πελάτης δεν φορτώνει καθόλου. Η πραγματική απόφαση (cookie και
+// διεύθυνση) ελέγχεται στο lib/supabase/lazy.test.ts.
+export function mayHaveSession(): boolean {
+  return (window as { __mayHaveSession?: boolean }).__mayHaveSession !== false
 }

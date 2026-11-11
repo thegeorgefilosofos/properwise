@@ -9,7 +9,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { T, Z, type Tone } from './tokens';
 import { subscribeToasts, type ToastItem } from './toastBus';
-import { CloseButton, LinkBtn } from './Theme';
+import { CloseButton, LinkBtn } from './ThemeCore';
 
 // Ξανα-εξάγονται εδώ ώστε ένα component να χρειάζεται μία μόνο εισαγωγή.
 export { notify, notifyOk, notifyError, TOAST_MS } from './toastBus';
