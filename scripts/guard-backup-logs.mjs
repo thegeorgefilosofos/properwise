@@ -69,8 +69,48 @@ const DB_TOOLS = ['psql', 'pg_restore', 'pg_dump', 'pg_dumpall']
 const provlimata = []
 const add = (arxeio, grammi, ti) => provlimata.push({ arxeio, grammi, ti })
 
-/** Το κείμενο χωρίς τα περιεχόμενα των εισαγωγικών: εντολές, όχι μηνύματα. */
-const bare = s => s.replace(/"(?:[^"\\]|\\.)*"/g, '""').replace(/'[^']*'/g, "''")
+/** Το κλείσιμο ενός `$(` που ανοίγει στη θέση `i`, με εισαγωγικά και φωλιές. */
+function closeParen(s, i) {
+  let depth = 0
+  for (let j = i; j < s.length; j++) {
+    const c = s[j]
+    if (c === '\\') { j++; continue }
+    if (c === "'") { const e = s.indexOf("'", j + 1); if (e < 0) return s.length; j = e; continue }
+    if (c === '"') {
+      for (j++; j < s.length && s[j] !== '"'; j++) {
+        if (s[j] === '\\') j++
+        else if (s[j] === '$' && s[j + 1] === '(') j = closeParen(s, j + 1)
+      }
+      continue
+    }
+    if (c === '(') depth++
+    else if (c === ')' && --depth === 0) return j
+  }
+  return s.length
+}
+/**
+ * Το κείμενο χωρίς τα περιεχόμενα των εισαγωγικών: εντολές, όχι μηνύματα. Ένα
+ * `$( … )` μέσα σε "…" ΜΕΝΕΙ: είναι εντολή (`x="$(psql …)"`).
+ */
+function bare(s) {
+  let out = ''
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i]
+    if (c === '\\') { out += s.slice(i, i + 2); i++; continue }
+    if (c === "'") { const e = s.indexOf("'", i + 1); out += "''"; i = e < 0 ? s.length : e; continue }
+    if (c === '"') {
+      out += '"'
+      for (i++; i < s.length && s[i] !== '"'; i++) {
+        if (s[i] === '\\') { i++; continue }
+        if (s[i] === '$' && s[i + 1] === '(') { const e = closeParen(s, i + 1); out += `$(${bare(s.slice(i + 2, e))})`; i = e }
+      }
+      out += '"'
+      continue
+    }
+    out += c
+  }
+  return out
+}
 /** Το όρισμα ενός `bash -c '…'` / `su x -c "…"` ανοίγει: είναι κι αυτό εντολή. */
 const openDashC = s => s.replace(/(\b(?:ba|da|z)?sh\b[^'"\n]*?\s-[a-z]*c|\bsu\b[^'"\n]*?\s-c)\s+(['"])((?:\\.|(?!\2).)*)\2/g, (_, pre, _q, body) => `${pre} ${body}`)
 const indent = s => s.length - s.trimStart().length
@@ -185,7 +225,7 @@ for (const arxeio of files) {
 
     // 3. εργαλείο βάσης χωρίς σίγαση
     const isDef = /^\s*(?:function\s+)?[A-Za-z_][\w-]*\s*\(\)\s*\{/.test(code)
-    const isAssign = /^\s*(?:export\s+|local\s+|readonly\s+)?[A-Za-z_]\w*=(["'(])/.test(text) && !/\$\(/.test(code)
+    const isAssign = /^\s*(?:export\s+|local\s+|readonly\s+)?[A-Za-z_]\w*=(["'(])/.test(text) && !/\$\(/.test(text)
     if (!isDef && !isAssign && tool.test(code)) {
       const what = code.match(tool)[2].replace(/\\/g, '')
       const merge = /2>&1|\|&/.exec(text)

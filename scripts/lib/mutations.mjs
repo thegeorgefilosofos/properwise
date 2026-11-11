@@ -854,6 +854,7 @@ export const MUTATIONS = {
     { add: MUT_WF, content: wfRun("bash -c 'psql -f data.sql'") },
     { add: MUT_WF, content: wfRun('PSQL="psql -h localhost -q"\n$PSQL -f data.sql >/dev/null') },
     { add: MUT_WF, content: wfRun('out=$(psql -f data.sql 2>&1) || true\necho "$out"') },
+    { add: MUT_WF, content: wfRun('n="$(psql -tAc \'select 1\')"') },
     { add: MUT_WF, content: wfRun('set -o errexit -o xtrace') },
     { add: MUT_WF, content: wfRun('set -o pipefail; set -eo xtrace') },
     { add: 'scripts/backup/__mut__.sh', content: '#!/usr/bin/env bash\nset -euxo pipefail\necho ok\n' },
