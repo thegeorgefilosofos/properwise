@@ -35,6 +35,12 @@ pass_stdout=0
 if [ "${1:-}" = "--stdout" ]; then pass_stdout=1; shift; fi
 [ "${1:-}" = "--" ] && shift
 [ $# -gt 0 ] || { echo "::error::quiet-db: λείπει η εντολή"; exit 2; }
+# Το stdout περνά στον καλούντα ΜΟΝΟ για τη λίστα μεταναστεύσεων (εκδόσεις και
+# ώρες). Κάθε άλλη εντολή μπορεί να γράψει γραμμές της βάσης στο stdout.
+if [ "$pass_stdout" = 1 ] && ! [[ "$*" =~ ^supabase(\ --[^ ]+)*\ migration\ list(\ |$) ]]; then
+  echo "::error::quiet-db: το --stdout επιτρέπεται μόνο για «supabase migration list»"
+  exit 2
+fi
 
 umask 077
 log=$(mktemp)
@@ -52,7 +58,7 @@ if [ "$pass_stdout" = 1 ]; then exec 3>&2; else exec 3>&1; fi
 
 # Μόνο ονόματα αρχείων μετανάστευσης ΠΟΥ ΥΠΑΡΧΟΥΝ στο supabase/migrations/: ό,τι
 # μοιάζει με όνομα αλλά ήρθε από τιμή της βάσης δεν περνά.
-migrations=$(grep -oE '\b[0-9]{14}_[A-Za-z0-9_]+\.sql\b' "$log" | awk '!seen[$0]++' \
+migrations=$(grep -aoE '\b[0-9]{14}_[A-Za-z0-9_]+\.sql\b' "$log" | awk '!seen[$0]++' \
   | while read -r m; do [ -f "supabase/migrations/$m" ] && printf '%s\n' "$m"; done)
 
 summary() { [ -n "${GITHUB_STEP_SUMMARY:-}" ] && printf '%s\n' "$@" >> "$GITHUB_STEP_SUMMARY"; return 0; }
@@ -67,6 +73,17 @@ if [ "$rc" -eq 0 ]; then
   summary "✅ $label: πέτυχε ($n αρχεία μετανάστευσης στην έξοδο)."
   exit 0
 fi
+
+# Κωδικοί που τυπώνονται αυτούσιοι: σταθερός κατάλογος (PostgreSQL, Appendix A).
+# Οποιοσδήποτε άλλος δίνει μόνο την κατηγορία του.
+known_code() {
+  case "$1" in
+    23505|23503|23502|23514|23P01|42P01|42703|42883|42P07|42710|42701|42501|42601|42804|42P13|\
+    22P02|22001|22003|22007|22008|40P01|40001|55P03|57014|28P01|28000|3D000|53300|08006|08001|\
+    0A000|2BP01|25006|25P02|P0001|XX000) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
 # Η κατηγορία ενός SQLSTATE από τα δύο πρώτα σύμβολα (PostgreSQL, Appendix A).
 class_of() {
@@ -94,24 +111,27 @@ class_of() {
 }
 
 last=$(printf '%s\n' "$migrations" | grep . | tail -1)
-states=$(grep -oE 'SQLSTATE[ :=]*[0-9A-Z]{5}' "$log" | grep -oE '[0-9A-Z]{5}$' | awk '!seen[$0]++')
+# Ο SQLSTATE βγαίνει ΜΟΝΟ από τη γραμμή σφάλματος του ίδιου του CLI ή της
+# σύνδεσης: αρχή γραμμής `ERROR:`/`FATAL:`/`Error:`/`failed to connect`, τέλος
+# γραμμής `(SQLSTATE xxxxx)`. Ποτέ από DETAIL, από τιμή ή από την εντολή SQL.
+states=$(grep -aE '^[[:space:]]*(ERROR|FATAL|Error|error|failed to connect|unexpected error)\b.*\(SQLSTATE [0-9A-Z]{5}\)\)*[[:space:].]*$' "$log" \
+  | grep -aoE '\(SQLSTATE [0-9A-Z]{5}\)\)*[[:space:].]*$' | grep -aoE '[0-9A-Z]{5}' | awk '!seen[$0]++')
 
 echo "::error::$label απέτυχε (κωδικός $rc). Η έξοδος δεν τυπώνεται: τα logs είναι δημόσια." >&3
 [ -n "$last" ] && echo "  τελευταία μετανάστευση στην έξοδο: $last" >&3
 if [ -n "$states" ]; then
-  # Ο κωδικός τυπώνεται μόνο αν η κατηγορία του είναι γνωστή: ένα «SQLSTATE
-  # …» μέσα σε τιμή δεν γίνεται έτσι κανάλι.
+  # Η κατηγορία πάντα από σταθερό πίνακα· ο κωδικός μόνο αν είναι στον κατάλογο.
   for s in $states; do
     c=$(class_of "$s")
-    if [ "$c" = 'άλλη κατηγορία' ]; then echo "  SQLSTATE άλλης κατηγορίας" >&3; else echo "  SQLSTATE $s ($c)" >&3; fi
+    if known_code "$s"; then echo "  SQLSTATE $s ($c)" >&3; else echo "  SQLSTATE κατηγορίας: $c" >&3; fi
   done
 else
   # Σταθερές φράσεις του CLI, χωρίς τιμές: μόνο η κατηγορία τυπώνεται.
   kind='άγνωστη (δες Supabase → Logs → Postgres)'
-  if grep -qiE 'password authentication failed|invalid (access )?token|unauthorized|401' "$log"; then kind='ταυτοποίηση'
-  elif grep -qiE 'connection refused|timeout|no such host|network is unreachable|ECONNREFUSED' "$log"; then kind='σύνδεση'
-  elif grep -qiE 'Remote migration versions not found' "$log"; then kind='ιστορικό μεταναστεύσεων'
-  elif grep -qiE 'include-all' "$log"; then kind='σειρά μεταναστεύσεων'
+  if grep -aqiE 'password authentication failed|invalid (access )?token|unauthorized|status 401|HTTP 401|\b401 Unauthorized\b' "$log"; then kind='ταυτοποίηση'
+  elif grep -aqiE 'connection refused|i/o timeout|timed out|no such host|network is unreachable|ECONNREFUSED' "$log"; then kind='σύνδεση'
+  elif grep -aqiE 'Remote migration versions not found' "$log"; then kind='ιστορικό μεταναστεύσεων'
+  elif grep -aqiE 'include-all' "$log"; then kind='σειρά μεταναστεύσεων'
   fi
   echo "  κατηγορία: $kind" >&3
 fi
