@@ -189,14 +189,16 @@ function run() {
   // Τουλάχιστον ένα στοιχείο ανά κομμάτι, ώστε η ουρά να αδειάζει πάντα.
   do { const el = work[i++]; if (el?.isConnected) visit(el); } while (i < work.length && performance.now() < until);
   work.splice(0, i);
-  if (work.length || dirty.size) schedule();
+  // Συνέχεια περάσματος: χωρίς requestIdleCallback (Safari) το επόμενο κομμάτι
+  // πάει αμέσως, όχι μετά από 120ms, αλλιώς 300ms δουλειάς γίνονται 5 δευτερόλεπτα.
+  if (work.length || dirty.size) schedule(work.length > 0);
 }
 
-function schedule() {
+function schedule(cont = false) {
   if (pending) return;
   pending = true;
   const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
-  if (ric) ric(run, { timeout: 400 }); else setTimeout(run, 120);
+  if (ric) ric(run, { timeout: 400 }); else setTimeout(run, cont ? 0 : 120);
 }
 
 function all() {
