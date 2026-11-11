@@ -148,11 +148,13 @@ jobs:
         run: rm -rf drill
 
       - name: Summary
+        env:
+          DAY: ${{ steps.dl.outputs.day }}
         run: |
           {
             echo "## ✅ Δοκιμή επαναφοράς: πέρασε"
             echo
-            echo "Αντίγραφο της ${{ steps.dl.outputs.day }}: αποκρυπτογραφήθηκε, επαναφέρθηκε σε προσωρινή βάση."
+            echo "Αντίγραφο της $DAY: αποκρυπτογραφήθηκε, επαναφέρθηκε σε προσωρινή βάση."
             echo "Οι πίνακες-κλειδιά έχουν όσες γραμμές έχει το dump."
             echo
             echo "Σφάλματα psql (κυρίως σκαλωσιά auth/storage): $errors"

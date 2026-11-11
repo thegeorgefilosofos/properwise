@@ -158,7 +158,16 @@ jobs:
           echo "🔒 Αντίγραφο κρυπτογραφημένο (AES256) και ελεγμένο ότι ανοίγει." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Health check (size against last good backup)
-        run: node scripts/backup/vault.mjs size-check backup/data.sql.gpg ${{ inputs.allow_shrink && 'allow-shrink' || '' }}
+        # Το input περνά μέσω env, όχι με ${{ }} μέσα στο run (CodeQL actions/code-injection).
+        env:
+          ALLOW_SHRINK: ${{ inputs.allow_shrink }}
+        run: |
+          set -euo pipefail
+          if [ "${ALLOW_SHRINK:-false}" = "true" ]; then
+            node scripts/backup/vault.mjs size-check backup/data.sql.gpg allow-shrink
+          else
+            node scripts/backup/vault.mjs size-check backup/data.sql.gpg
+          fi
 
       - name: Upload dump
         id: up
@@ -176,9 +185,11 @@ jobs:
       # Τα αρχεία των χρηστών: κάθε Κυριακή, ή όταν τρέχει με το χέρι.
       - name: Files snapshot (weekly)
         if: github.event_name == 'schedule' || inputs.files
+        env:
+          DAY: ${{ steps.up.outputs.day }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "schedule" ] && [ "$(date -u +%u)" != "7" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] && [ "$(date -u +%u)" != "7" ]; then
             echo "Όχι Κυριακή: τα αρχεία των χρηστών αντιγράφονται την Κυριακή."
             exit 0
           fi
@@ -191,18 +202,20 @@ jobs:
           # shellcheck disable=SC2086
           gpg $GPG_ENCRYPT --passphrase "$BACKUP_PASSPHRASE" -o files.tar.gpg files.tar
           rm -f files.tar
-          node scripts/backup/vault.mjs put-split files.tar.gpg "${{ steps.up.outputs.day }}" files.tar.gpg manifest.json
+          node scripts/backup/vault.mjs put-split files.tar.gpg "$DAY" files.tar.gpg manifest.json
           rm -f files.tar.gpg
           echo "🔒 Αρχεία χρηστών: κρυπτογραφημένο αντίγραφο στον ιδιωτικό χώρο." >> "$GITHUB_STEP_SUMMARY"
 
       # ΤΕΛΕΥΤΑΙΟ: το manifest σφραγίζει την ημέρα. Πριν από αυτό, ο φύλακας, η
       # επαναφορά και ο καθαρισμός δεν τη θεωρούν αντίγραφο.
       - name: Seal day (manifest last)
+        env:
+          DAY: ${{ steps.up.outputs.day }}
         run: |
           set -euo pipefail
-          node scripts/backup/vault.mjs seal manifest.json "${{ steps.up.outputs.day }}"
+          node scripts/backup/vault.mjs seal manifest.json "$DAY"
           rm -f manifest.json
-          echo "✅ Αντίγραφο της ${{ steps.up.outputs.day }} στον ιδιωτικό χώρο \`db-backups\`." >> "$GITHUB_STEP_SUMMARY"
+          echo "✅ Αντίγραφο της $DAY στον ιδιωτικό χώρο \`db-backups\`." >> "$GITHUB_STEP_SUMMARY"
 
       # ΤΡΕΧΕΙ ΚΑΙ ΟΤΑΝ ΑΠΟΤΥΧΕΙ ΚΑΤΙ ΠΑΡΑΠΑΝΩ. Η Πολιτική απορρήτου λέει ότι τα
       # παλιά αντίγραφα σβήνονται μέσα σε 30 ημέρες. Αυτό δεν εξαρτάται από το αν
@@ -236,11 +249,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          ids=$(gh api --paginate "repos/${{ github.repository }}/actions/artifacts?per_page=100" \
+          ids=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
                 --jq '.artifacts[] | select(.name | startswith("supabase-backup-")) | .id')
           n=0
           for id in $ids; do
-            gh api -X DELETE "repos/${{ github.repository }}/actions/artifacts/$id" >/dev/null
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id" >/dev/null
             n=$((n + 1))
           done
           echo "✓ σβήστηκαν $n παλιά artifacts του αντιγράφου"

@@ -184,13 +184,16 @@ export function rowsHealthy(dump, prod) {
 
 /** Οι πίνακες-κλειδιά που δεν δημιουργεί το σχήμα. */
 export function missingTables(schemaSql, tables) {
-  return tables.filter(t => !new RegExp(`CREATE TABLE (?:IF NOT EXISTS )?(?:"public"|public)\\.(?:"${t}"|${t})[\\s(]`, 'i').test(schemaSql))
+  return tables.filter(t => !new RegExp(`CREATE TABLE (?:IF NOT EXISTS )?(?:"public"|public)\\.(?:"${reLit(t)}"|${reLit(t)})[\\s(]`, 'i').test(schemaSql))
 }
 
 /** Σε λειτουργία μόνο ανάγνωσης επιτρέπονται λήψη και λίστα, τίποτε άλλο. */
 export function readonlyAllows(method, path) {
   return method === 'GET' || (method === 'POST' && path.startsWith('object/list/'))
 }
+
+/** Όνομα πίνακα ως κυριολεκτικό κείμενο μέσα σε regex. */
+const reLit = t => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /** Κωδικοποίηση διαδρομής στο URL του Storage, ανά τμήμα. */
 export const encPath = p => p.split('/').map(encodeURIComponent).join('/')
@@ -204,7 +207,7 @@ export const encPath = p => p.split('/').map(encodeURIComponent).join('/')
  */
 export function countRows(sql, tables) {
   const out = Object.fromEntries(tables.map(t => [t, 0]))
-  const name = t => new RegExp(`^(?:"public"|public)\\.(?:"${t}"|${t})[\\s(]`)
+  const name = t => new RegExp(`^(?:"public"|public)\\.(?:"${reLit(t)}"|${reLit(t)})[\\s(]`)
   let copying = null
   for (const line of sql.split('\n')) {
     if (copying) {

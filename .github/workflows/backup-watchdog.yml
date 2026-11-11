@@ -93,8 +93,13 @@ jobs:
             echo "reason=$(echo "$verdict" | jq -r '.reason')" >> "$GITHUB_OUTPUT"
           fi
 
+      # Οι έξοδοι των βημάτων περνούν ΜΟΝΟ μέσω env, ποτέ με ${{ }} μέσα στο run:
+      # ένα κείμενο με εισαγωγικά ή $( ) θα εκτελούνταν ως εντολή (CodeQL
+      # actions/code-injection).
       - name: Ειδοποίηση όταν το αντίγραφο λείπει
         if: steps.check.outputs.healthy == 'false'
+        env:
+          REASON: ${{ steps.check.outputs.reason }}
         run: |
           set -euo pipefail
           # ΟΧΙ αναζήτηση: το ευρετήριο του GitHub αργεί λεπτά, οπότε ένα φρεσκο-
@@ -107,7 +112,7 @@ jobs:
           body=$(cat <<EOF
           ## Τι συμβαίνει
 
-          ${{ steps.check.outputs.reason }}
+          $REASON
 
           Ελέγχθηκε στις $(date -u '+%d/%m/%Y %H:%M UTC') από το \`backup-watchdog\`.
 
@@ -138,26 +143,29 @@ jobs:
 
           if [ -n "$existing" ]; then
             echo "Το issue #$existing είναι ήδη ανοιχτό — προσθήκη σχολίου αντί για διπλότυπο."
-            gh issue comment "$existing" --repo "$REPO" --body "Εξακολουθεί να ισχύει: ${{ steps.check.outputs.reason }} ($(date -u '+%d/%m %H:%M UTC'))"
+            gh issue comment "$existing" --repo "$REPO" --body "Εξακολουθεί να ισχύει: $REASON ($(date -u '+%d/%m %H:%M UTC'))"
           else
             gh issue create --repo "$REPO" --title "$ALARM_TITLE" --body "$body"
           fi
 
           # Το job αποτυγχάνει επίτηδες: κόκκινο στο Actions ΚΑΙ email από το GitHub.
-          echo "::error::${{ steps.check.outputs.reason }}"
+          echo "::error::$REASON"
           exit 1
 
       - name: Κλείσιμο ειδοποίησης όταν επανέλθει
         if: steps.check.outputs.healthy == 'true'
+        env:
+          DETAIL: ${{ steps.check.outputs.detail }}
+          FINISHED: ${{ steps.check.outputs.finished }}
         run: |
           set -euo pipefail
-          echo "✅ Αντίγραφο ασφαλείας εντάξει — ${{ steps.check.outputs.detail }} " >> "$GITHUB_STEP_SUMMARY"
+          echo "✅ Αντίγραφο ασφαλείας εντάξει: $DETAIL" >> "$GITHUB_STEP_SUMMARY"
 
           existing=$(gh issue list --repo "$REPO" --state open --limit 100 \
                      --json number,title \
                      --jq '[.[] | select(.title | test("αντίγραφο ασφαλείας")) | .number] | first // empty')
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --repo "$REPO" \
-              --body "✅ Επανήλθε. Τελευταίο επιτυχημένο κρυπτογραφημένο αντίγραφο: ${{ steps.check.outputs.finished }} (${{ steps.check.outputs.detail }}). Κλείνει αυτόματα."
+              --body "✅ Επανήλθε. Τελευταίο επιτυχημένο κρυπτογραφημένο αντίγραφο: $FINISHED ($DETAIL). Κλείνει αυτόματα."
             gh issue close "$existing" --repo "$REPO"
           fi
