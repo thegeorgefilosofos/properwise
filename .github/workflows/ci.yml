@@ -233,8 +233,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # ═══ Ο ΠΕΡΙΗΓΗΤΗΣ ΚΑΙ ΟΙ ΕΞΑΡΤΗΣΕΙΣ ΤΟΥ, ΣΕ ΔΥΟ ΒΗΜΑΤΑ ════════════════
+      # ΤΙ ΕΣΠΑΣΕ (11/11/2026, εκτέλεση 43054480232, job 130640146258). Το
+      # `install --with-deps` έσκαγε επειδή ο δρομέας δεν έλυνε τα ονόματα
+      # *.ubuntu.com· το βήμα κράτησε δέκα λεπτά και τα τέσσερα jobs περιηγητή
+      # βγήκαν κόκκινα. Ο ίδιος ο Chromium έρχεται από το CDN του Playwright
+      # και δεν επηρεάστηκε· ελειπαν μόνο εννέα πακέτα γραμματοσειρών.
+      # Ο περιηγητής κατεβαίνει όπως πριν, στην ίδια έκδοση (το
+      # guard-chromium-path το φυλάει). Οι εξαρτήσεις περνούν από το
+      # scripts/browser-deps.sh: κανένα apt αν δεν λείπει τίποτα, retries,
+      # ανεξάρτητοι καθρέφτες με έλεγχο SHA256 και στο τέλος απόδειξη ότι δεν
+      # λείπει ΤΙΠΟΤΑ. Το σύνολο των πακέτων δεν αλλάζει.
       - name: Chromium για τις σουίτες περιηγητή
-        run: npx --yes playwright@1.64.1 install --with-deps chromium
+        run: npx --yes playwright@1.64.1 install chromium
+
+      - name: Βιβλιοθήκες και γραμματοσειρές του Chromium
+        run: bash scripts/browser-deps.sh chromium
 
       - name: Production build
         run: npm run build
@@ -363,7 +377,10 @@ jobs:
         run: npm ci
 
       - name: Chromium για τις σουίτες περιηγητή
-        run: npx --yes playwright@1.64.1 install --with-deps chromium
+        run: npx --yes playwright@1.64.1 install chromium
+
+      - name: Βιβλιοθήκες και γραμματοσειρές του Chromium
+        run: bash scripts/browser-deps.sh chromium
 
       # Ο πίνακας ελέγχου ζει πίσω από σύνδεση, οπότε καμία σουίτα δημόσιων
       # σελίδων δεν τον φτάνει. Ο πάγκος αποδίδει τα ΙΔΙΑ στοιχεία που τρέχουν
@@ -522,7 +539,10 @@ jobs:
         run: npm ci
 
       - name: Chromium για τις σουίτες περιηγητή
-        run: npx --yes playwright@1.64.1 install --with-deps chromium
+        run: npx --yes playwright@1.64.1 install chromium
+
+      - name: Βιβλιοθήκες και γραμματοσειρές του Chromium
+        run: bash scripts/browser-deps.sh chromium
 
       # ΕΔΩ ΕΙΝΑΙ ΜΟΝΟ ΟΣΟΙ ΔΕΝ ΘΕΛΟΥΝ ΔΙΑΚΟΜΙΣΤΗ. Δύο σαρωτές λείπουν από τη
       # λίστα, ο καθένας για δικό του λόγο:
@@ -562,7 +582,10 @@ jobs:
         run: npm ci
 
       - name: Chromium για τις σουίτες περιηγητή
-        run: npx --yes playwright@1.64.1 install --with-deps chromium
+        run: npx --yes playwright@1.64.1 install chromium
+
+      - name: Βιβλιοθήκες και γραμματοσειρές του Chromium
+        run: bash scripts/browser-deps.sh chromium
 
       # ΔΙΑΒΑΖΕΤΑΙ ΤΟ ΚΕΙΜΕΝΟ; Η εφαρμογή είχε ελέγχους για οριζόντια κύλιση,
       # για στόχους αφής και για ύψη πλακιδίων. Κανένας δεν ρωτούσε το
@@ -608,7 +631,10 @@ jobs:
         run: npm ci
 
       - name: WebKit — η μηχανή κάθε περιηγητή του iOS
-        run: npx --yes playwright@1.64.1 install --with-deps webkit
+        run: npx --yes playwright@1.64.1 install webkit
+
+      - name: Βιβλιοθήκες και γραμματοσειρές του WebKit
+        run: bash scripts/browser-deps.sh webkit
 
       - name: Τίποτα κομμένο σε iPhone και iPad — blocking
         env:
