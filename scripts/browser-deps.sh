@@ -40,7 +40,10 @@
 #      έδωσε. ΜΕΤΡΗΜΕΝΟ (εκτέλεση 43059573394, job 130658133719): το WebKit
 #      πήρε 184 από 185 αρχεία από τον kernel.org· το libsoup-3.0-common
 #      3.6.6-1ubuntu0.1 του -security έδινε 404 σε όλους τους καθρέφτες,
-#      γιατί είχε ήδη αντικατασταθεί και σβηστεί από το pool. Κάθε αρχείο ελέγχεται με το SHA256 του υπογεγραμμένου καταλόγου
+#      γιατί είχε ήδη αντικατασταθεί και σβηστεί από το pool. Οταν λείπει
+#      αρχείο, το apt ξαναδιαβάζει τον κατάλογο από τους ίδιους ανεξάρτητους
+#      καθρέφτες (υπογεγραμμένο InRelease) και το πέρασμα ξανατρέχει με τις
+#      τρέχουσες εκδόσεις. Κάθε αρχείο ελέγχεται με το SHA256 του υπογεγραμμένου καταλόγου
 #      του apt της εικόνας, άρα ένας ξένος καθρέφτης δεν μπορεί να περάσει
 #      άλλο περιεχόμενο. Ο έλεγχος γίνεται ΕΔΩ και όχι από το apt: για αρχείο
 #      που βρίσκει ήδη στο /var/cache/apt/archives το apt κοιτά μόνο το μέγεθος
@@ -97,9 +100,9 @@ primary_reachable() {
 try_primary() {
   echo "▸ Καθρέφτες της εικόνας"
   primary_reachable || return 1
-  timeout 180 "${APT[@]}" update || echo "  (το update απέτυχε· συνεχίζω με τους καταλόγους της εικόνας)"
+  timeout 120 "${APT[@]}" update || echo "  (το update απέτυχε· συνεχίζω με τους καταλόγους της εικόνας)"
   # shellcheck disable=SC2086
-  timeout 300 "${APT[@]}" install -y --no-install-recommends $PKGS
+  timeout 180 "${APT[@]}" install -y --no-install-recommends $PKGS
 }
 
 # Ενα αρχείο από μία πηγή, κρατημένο ΜΟΝΟ αν ταιριάζει το SHA256.
@@ -118,11 +121,12 @@ fetch_verified() {
 DEBS=$(mktemp -d)
 trap 'rm -rf "$DEBS"' EXIT
 
-try_mirrors() {
-  echo "▸ Ανεξάρτητες πηγές: $MIRRORS + Launchpad"
+# Ενα πέρασμα: για κάθε αρχείο που ζητά ο κατάλογος, όλες οι πηγές με τη
+# σειρά. Τα ορίσματα είναι επιπλέον επιλογές του apt (ο κατάλογος που διαβάζει).
+fetch_pass() {
   local uris line uri file name sum hex path m u src failed=0
   # shellcheck disable=SC2086
-  uris=$("${APT[@]}" -o Acquire::ForceHash=SHA256 install -y --no-install-recommends --print-uris -qq $PKGS) || return 1
+  uris=$("${APT[@]}" "$@" -o Acquire::ForceHash=SHA256 install -y --no-install-recommends --print-uris -qq $PKGS) || return 1
   while read -r line; do
     [ -n "$line" ] || continue
     uri=$(cut -d"'" -f2 <<<"$line")
@@ -134,10 +138,8 @@ try_mirrors() {
     path="pool/${uri#*/pool/}"
     name=${uri##*/}
     src=
-    # Πρώτα οι καθρέφτες. Μετά το Launchpad, που κρατά ΚΑΘΕ build που
-    # δημοσιεύτηκε ποτέ: ένα πακέτο του -updates/-security που αντικαταστάθηκε
-    # μετά το χτίσιμο της εικόνας σβήνεται από το pool των καθρεφτών (404),
-    # αλλά μένει εκεί. Το +files ανακατευθύνει στο launchpadlibrarian.net.
+    # Πρώτα οι καθρέφτες, μετά το Launchpad, που κρατά και builds που
+    # αντικαταστάθηκαν. Το +files ανακατευθύνει στο launchpadlibrarian.net.
     for m in $MIRRORS "https://launchpad.net/ubuntu/+archive/primary/+files"; do
       if [[ "$m" == *launchpad.net* ]]; then u="$m/$name"; else u="$m/$path"; fi
       if fetch_verified "$u" "$DEBS/$file" "$hex"; then src=${m#*://}; break; fi
@@ -148,7 +150,53 @@ try_mirrors() {
   [ "$failed" = 0 ] || return 1
   if compgen -G "$DEBS/*.deb" >/dev/null; then $SUDO cp "$DEBS"/*.deb /var/cache/apt/archives/; fi
   # shellcheck disable=SC2086
-  "${APT[@]}" install -y --no-install-recommends --no-download $PKGS
+  "${APT[@]}" "$@" install -y --no-install-recommends --no-download $PKGS
+}
+
+# ΚΑΤΑΛΟΓΟΣ ΑΠΟ ΤΟΥΣ ΑΝΕΞΑΡΤΗΤΟΥΣ ΚΑΘΡΕΦΤΕΣ. Οι κατάλογοι της εικόνας είναι
+# όσο παλιοί είναι η εικόνα. Ενα πακέτο του -security που αντικαταστάθηκε στο
+# μεταξύ έχει σβηστεί από το pool και δίνει 404 παντού. Μετρημένο στην εκτέλεση
+# 43062042288 (job 130667071287): το libsoup-3.0 3.6.6-1ubuntu0.1 της εικόνας
+# έλειπε από κάθε καθρέφτη και από το Launchpad. Η τρέχουσα 0ubuntu0.3 ήταν
+# στον kernel.org και κατέβηκε σε ένα δευτερόλεπτο, μόλις το apt διάβασε φρέσκο
+# κατάλογο. Εδώ ο φρέσκος κατάλογος έρχεται από τους ίδιους ανεξάρτητους
+# καθρέφτες. Τις ίδιες πηγές του Ubuntu ξαναγράφει με άλλα URIs και το ίδιο
+# Signed-By, άρα το apt ελέγχει την υπογραφή του InRelease όπως πάντα.
+FB=$(mktemp -d)
+chmod 755 "$FB"
+mkdir -p "$FB/parts"
+trap 'rm -rf "$DEBS" "$FB"' EXIT
+FB_OPTS=(-o Dir::Etc::SourceList=/dev/null -o "Dir::Etc::SourceParts=$FB/parts")
+
+refresh_index() {
+  local f n=0
+  for m in $MIRRORS; do echo "$m"; done > "$FB/mirrors.txt"
+  # Μόνο οι πηγές του ίδιου του Ubuntu (*.ubuntu.com ή η λίστα καθρεφτών του
+  # δρομέα). Ενα «ubuntu» στη διαδρομή δεν αρκεί: το packages.microsoft.com
+  # και το download.docker.com έχουν κι αυτά /ubuntu/.
+  local re='(://[a-z0-9.-]*ubuntu\.com/|mirror\+file:/etc/apt/apt-mirrors\.txt)'
+  for f in /etc/apt/sources.list.d/*.sources; do
+    [ -f "$f" ] && grep -qE "^URIs:.*$re" "$f" || continue
+    sed -E "/^URIs:/{\\%$re%s#^URIs:.*#URIs: mirror+file:$FB/mirrors.txt#}" "$f" > "$FB/parts/$(basename "$f")"
+    n=$((n + 1))
+  done
+  for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
+    [ -f "$f" ] && grep -qE "^deb .*$re" "$f" || continue
+    grep -E "^deb .*$re" "$f" |
+      sed -E "s#^(deb( \[[^]]*\])?) [^ ]+#\1 mirror+file:$FB/mirrors.txt#" > "$FB/parts/$(basename "$f")"
+    n=$((n + 1))
+  done
+  chmod 644 "$FB/mirrors.txt" "$FB"/parts/*
+  [ "$n" -gt 0 ] || { echo "  ✗ καμία πηγή του Ubuntu να ξαναγραφτεί"; return 1; }
+  timeout 240 "${APT[@]}" "${FB_OPTS[@]}" update
+}
+
+try_mirrors() {
+  echo "▸ Ανεξάρτητες πηγές: $MIRRORS + Launchpad"
+  fetch_pass && return 0
+  echo "▸ Φρέσκος κατάλογος από τους ανεξάρτητους καθρέφτες"
+  refresh_index || return 1
+  fetch_pass "${FB_OPTS[@]}"
 }
 
 PKGS=$(missing) || { echo "::error::Το playwright-core δεν μπόρεσε να προσομοιώσει την εγκατάσταση για $BROWSER"; exit 1; }
