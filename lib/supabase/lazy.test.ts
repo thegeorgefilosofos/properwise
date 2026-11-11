@@ -31,6 +31,12 @@ ok('άσχετα cookies → όχι', !mayHaveSession('theme=dark; pos-cookie-co
 ok('πακέτο και κωδικός συνεργάτη στη διεύθυνση → όχι', !mayHaveSession('', '?plan=pro&cycle=year&ref=AB12CD'))
 ok('άλλο cookie που απλώς περιέχει «auth» → όχι', !mayHaveSession('myauth-token=1; sb_session=2', ''))
 ok('παράμετρος που απλώς τελειώνει σε code → όχι', !mayHaveSession('', '?promocode=X'))
+// ΕΠΙΤΗΔΕΣ «όχι»: η αποτυχημένη επιβεβαίωση (app/auth/callback → /login?confirm=failed)
+// έρχεται χωρίς cookie και η σελίδα λέει τι πήγε στραβά ΧΩΡΙΣ τον πελάτη. Το
+// μήνυμα τρέχει πριν από την πρόωρη έξοδο (app/login/page.tsx, `noSession`) και
+// το ελέγχει ο πάγκος (scripts/e2e-signup.mjs, «ανώνυμος, ?confirm=failed»).
+ok('?confirm=failed χωρίς cookie → όχι (το μήνυμα δεν θέλει πελάτη)', !mayHaveSession('', '?confirm=failed'))
+ok('?next=… χωρίς cookie → όχι (διαβάζεται μετά την είσοδο, όχι εδώ)', !mayHaveSession('', '?next=/accountant/workspace'))
 
 ok('έξω από browser, χωρίς ορίσματα → ίσως', mayHaveSession())
 
