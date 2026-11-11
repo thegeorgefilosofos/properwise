@@ -2,6 +2,7 @@
 import {
   daysToPrune, latestDay, judge, judgeFiles, encPath, countRows, compareCounts,
   partName, splitPlan, missingParts, sizeOk, missingTables, readonlyAllows, PART_BYTES,
+  parseManifest, rowsHealthy, runFolder, DAY,
 } from '../../scripts/backup/vault.mjs'
 
 let passed = 0, failed = 0
@@ -10,14 +11,28 @@ function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed+
 // ── Κράτηση: ακριβώς 30 ημέρες· η τελευταία καλή ημέρα δεν σβήνεται ποτέ ──
 {
   const days = ['2026-10-01', '2026-10-10', '2026-10-11', '2026-10-12', '2026-11-09', 'όχι-ημέρα']
-  const old = daysToPrune(days, '2026-11-10', 30)
+  const old = daysToPrune(days, '2026-11-10', 30, ['2026-11-09'])
   ok('σβήνει ό,τι έκλεισε 30 ημέρες', old.join() === '2026-10-01,2026-10-10,2026-10-11')
   ok('κρατά ό,τι δεν έκλεισε 30 ημέρες', !old.includes('2026-10-12'))
   ok('αγνοεί ό,τι δεν είναι ημερομηνία', !old.includes('όχι-ημέρα'))
   ok('κενή λίστα, κενό αποτέλεσμα', daysToPrune([], '2026-11-10', 30).length === 0)
+  // Καμία καλή εκτέλεση (π.χ. τα manifests δεν διαβάστηκαν): δεν σβήνεται τίποτα.
+  ok('χωρίς καλή εκτέλεση δεν σβήνεται τίποτα', daysToPrune(days, '2026-11-10', 30, []).length === 0)
+  // Η τελευταία καλή βάση είναι νέα, τα τελευταία καλά αρχεία είναι παλιά: μένουν και τα δύο.
+  const both = daysToPrune(['2026-09-01', '2026-09-06T020000Z', '2026-11-09T020000Z'], '2026-11-10', 30, ['2026-11-09T020000Z', '2026-09-06T020000Z'])
+  ok('μένει και η τελευταία καλή εκτέλεση με αρχεία', both.join() === '2026-09-01')
+  ok('φάκελοι ανά εκτέλεση σβήνονται με την ημερομηνία τους', daysToPrune(['2026-10-11T020000Z', '2026-10-12T020000Z', '2026-11-09'], '2026-11-10', 30, ['2026-11-09']).join() === '2026-10-11T020000Z')
   // Τα αντίγραφα σταμάτησαν πριν από δύο μήνες: η τελευταία καλή ημέρα μένει.
   const stale = daysToPrune(['2026-09-01', '2026-09-02'], '2026-11-10', 30, ['2026-09-02'])
   ok('η τελευταία καλή ημέρα δεν σβήνεται', stale.join() === '2026-09-01')
+}
+
+// ── Φάκελος ανά εκτέλεση ──────────────────────────────────────────────────────
+{
+  const f = runFolder(Date.parse('2026-11-11T02:03:04.567Z'))
+  ok('όνομα φακέλου εκτέλεσης', f === '2026-11-11T020304Z' && DAY.test(f))
+  ok('δύο εκτελέσεις την ίδια μέρα: δύο φάκελοι', runFolder(Date.parse('2026-11-11T14:00:00Z')) !== f)
+  ok('η νεότερη εκτέλεση ταξινομείται τελευταία', latestDay(['2026-11-11', f, '2026-11-11T140000Z']) === '2026-11-11T140000Z')
 }
 
 // ── Η τελευταία ημέρα ─────────────────────────────────────────────────────────
@@ -40,7 +55,7 @@ function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed+
 // ── Ο φύλακας: manifest, κομμάτια, ηλικία ─────────────────────────────────────
 const entry = (name: string, n = 1) => ({ bytes: n, parts: Array.from({ length: n }, (_, i) => ({ name: partName(name, i), bytes: 1, sha256: 'x' })) })
 const full = { verified: true, files: { 'roles.sql.gpg': entry('roles.sql.gpg'), 'schema.sql.gpg': entry('schema.sql.gpg'), 'data.sql.gpg': entry('data.sql.gpg', 2) } }
-const objectsOf = (m: typeof full) => [...Object.values(m.files).flatMap(e => e.parts.map(p => p.name)), 'manifest.json']
+const objectsOf = (m: typeof full) => [...Object.values(m.files).flatMap(e => e.parts.map(p => ({ name: p.name, size: p.bytes }))), { name: 'manifest.json', size: 9 }]
 {
   const now = Date.parse('2026-11-10T05:00:00Z')
   const base = { day: '2026-11-10', manifest: full, objects: objectsOf(full), nowMs: now, maxHours: 48 }
@@ -49,13 +64,16 @@ const objectsOf = (m: typeof full) => [...Object.values(m.files).flatMap(e => e.
   ok('παλιό: πριν από τρεις ημέρες', judge({ ...base, day: '2026-11-07' }).ok === false)
   ok('χωρίς manifest = κανένα αντίγραφο', judge({ ...base, manifest: null }).ok === false)
   ok('manifest χωρίς έλεγχο υγείας = αποτυχία', judge({ ...base, manifest: { ...full, verified: false } }).ok === false)
-  ok('.sql σε καθαρό κείμενο = αποτυχία', judge({ ...base, objects: [...base.objects, 'data.sql'] }).ok === false)
+  ok('.sql σε καθαρό κείμενο = αποτυχία', judge({ ...base, objects: [...base.objects, { name: 'data.sql', size: 5 }] }).ok === false)
   const noData = { verified: true, files: { 'roles.sql.gpg': full.files['roles.sql.gpg'], 'schema.sql.gpg': full.files['schema.sql.gpg'] } }
   const miss = judge({ ...base, manifest: noData })
   ok('λείπει το data', miss.ok === false && /data\.sql\.gpg/.test(miss.reason ?? ''))
-  const lost = judge({ ...base, objects: base.objects.filter(o => o !== 'data.sql.gpg.part-001') })
+  const lost = judge({ ...base, objects: base.objects.filter(o => o.name !== 'data.sql.gpg.part-001') })
   ok('λείπει κομμάτι του data = αποτυχία', lost.ok === false && /κομμάτια/.test(lost.reason ?? ''))
-  ok('κομμάτια που λείπουν', missingParts(full.files['data.sql.gpg'], ['data.sql.gpg.part-000']).join() === 'data.sql.gpg.part-001')
+  ok('κομμάτια που λείπουν', missingParts(full.files['data.sql.gpg'], [{ name: 'data.sql.gpg.part-000', size: 1 }]).join() === 'data.sql.gpg.part-001')
+  const shrunk = base.objects.map(o => o.name === 'data.sql.gpg.part-000' ? { ...o, size: 0 } : o)
+  ok('κομμάτι με άλλο μέγεθος = αποτυχία', judge({ ...base, objects: shrunk }).ok === false)
+  ok('ηλικία από τον φάκελο εκτέλεσης', judge({ ...base, day: '2026-11-10T020000Z' }).ok === true)
 }
 
 // ── Τα αρχεία των χρηστών: το πιο πρόσφατο σετ, πλήρες ────────────────────────
@@ -64,7 +82,7 @@ const objectsOf = (m: typeof full) => [...Object.values(m.files).flatMap(e => e.
   const m = { ...full, files: { ...full.files, 'files.tar.gpg': entry('files.tar.gpg', 3) } }
   const base = { day: '2026-11-08', manifest: m, objects: objectsOf(m), nowMs: now, maxDays: 8 }
   ok('σετ αρχείων πλήρες', judgeFiles(base).ok === true)
-  ok('σετ χωρίς ένα κομμάτι = αποτυχία', judgeFiles({ ...base, objects: base.objects.filter(o => o !== 'files.tar.gpg.part-002') }).ok === false)
+  ok('σετ χωρίς ένα κομμάτι = αποτυχία', judgeFiles({ ...base, objects: base.objects.filter(o => o.name !== 'files.tar.gpg.part-002') }).ok === false)
   ok('κανένα σετ = αποτυχία', judgeFiles({ ...base, day: null, manifest: null }).ok === false)
   ok('σετ πάνω από 8 ημέρες = αποτυχία', judgeFiles({ ...base, day: '2026-10-30' }).ok === false)
 }
@@ -76,9 +94,27 @@ const objectsOf = (m: typeof full) => [...Object.values(m.files).flatMap(e => e.
   ok('μισό: εντάξει', sizeOk(50, 100) === true)
   ok('κάτω από το μισό: αποτυχία', sizeOk(49, 100) === false)
   ok('κενό: αποτυχία', sizeOk(0, 0) === false)
+  ok('ρητή παράκαμψη: περνά', sizeOk(10, 100, 0.5, true) === true)
+  ok('η παράκαμψη δεν περνά κενό', sizeOk(0, 100, 0.5, true) === false)
+  ok('γραμμές: ίδιες', rowsHealthy({ a: 3, b: 0 }, { a: 3, b: 0 }).ok === true)
+  ok('γραμμές: η εφαρμογή έγραψε στο μεταξύ', rowsHealthy({ a: 3 }, { a: 4 }).ok === true)
+  ok('γραμμές: 0 στο dump ενώ η παραγωγή έχει = αποτυχία', rowsHealthy({ a: 0 }, { a: 5 }).ok === false)
+  ok('γραμμές: η παραγωγή δεν μετρήθηκε = αποτυχία', rowsHealthy({ a: 1 }, { a: -1 }).ok === false && rowsHealthy({ a: 1 }, {}).ok === false)
   const schema = 'CREATE TABLE IF NOT EXISTS "public"."tenants" (\n  "id" uuid\n);\nCREATE TABLE "public"."tenants_archive" ("id" int);'
   ok('ο πίνακας υπάρχει', missingTables(schema, ['tenants']).length === 0)
   ok('λείπει πίνακας με ίδιο πρόθεμα', missingTables(schema, ['tenants', 'tenants_arch']).join() === 'tenants_arch')
+}
+
+// ── Το manifest: «δεν υπάρχει» δεν είναι το ίδιο με «σφάλμα» ─────────────────
+{
+  const throws = (f: () => unknown) => { try { f(); return false } catch { return true } }
+  ok('200: διαβάζεται', parseManifest(200, '{"verified":true}')?.verified === true)
+  ok('404: δεν υπάρχει', parseManifest(404, '') === null)
+  ok('400 με statusCode 404: δεν υπάρχει', parseManifest(400, '{"statusCode":"404","error":"not_found"}') === null)
+  ok('503: σφάλμα', throws(() => parseManifest(503, 'upstream')))
+  ok('429: σφάλμα', throws(() => parseManifest(429, '{}')))
+  ok('400 άλλο: σφάλμα', throws(() => parseManifest(400, '{"statusCode":"400"}')))
+  ok('κακό JSON: σφάλμα', throws(() => parseManifest(200, '{όχι json')))
 }
 
 // ── Μόνο ανάγνωση ─────────────────────────────────────────────────────────────

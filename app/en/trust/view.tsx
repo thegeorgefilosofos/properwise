@@ -137,7 +137,7 @@ export default function TrustPageEn() {
             stays in the EU; we would rather you read it here than discover it:
           </p>
           <ul className="lg-ul">
-            <li><strong>The backup key</strong> is kept on US infrastructure, in GitHub Secrets. The backup itself is encrypted with AES-256 and kept in a private Supabase storage space, in Frankfurt like the database, for {BACKUP_RETENTION_DAYS} days. It can’t be read without the key.</li>
+            <li><strong>The backup key</strong> is kept on US infrastructure, in GitHub Secrets. The backup itself is encrypted with AES-256 and kept in a private Supabase storage space, in Frankfurt like the database. Retention is {BACKUP_RETENTION_DAYS} days, with the exceptions set out in the Privacy Policy. It can’t be read without the key.</li>
             <li><strong>{`Your questions to ${ASSISTANT_NAME_EN}`}</strong>{`, together with a summary of your property, tenant, client and contact data (names and history, without phone numbers or tax numbers), and any document or photo you upload to be read (Anthropic: contract with ${ANTHROPIC_CONTRACT}, processing in the US).`}</li>
             <li><strong>The emails the service sends</strong> (reminders, notifications, monthly statements). They contain tenant names and amounts and pass through the sending provider (Resend, US).</li>
             <li><strong>The app itself</strong> is served from a global network (Vercel, US), so each of your requests passes through it on the way to the database.</li>

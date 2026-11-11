@@ -48,27 +48,47 @@ therefore never go to artifacts: they live in a private Supabase Storage bucket.
 
 - **Where.** Bucket `db-backups`, private, with no storage policy for `anon` or
   `authenticated` (only the service role reads it), in the database's region
-  (`eu-central-1`, Frankfurt). One folder per day. Every file is stored as parts of
-  at most 45 MB (`roles.sql.gpg.part-000`, …), because the free plan accepts up to
-  50 MB per object. On Sundays the user buckets `lease-documents`,
-  `property-files`, `inventory-docs`, `maintenance-photos`, `inventory-photos` go
-  in as `files.tar.gpg.part-*`. `manifest.json` is uploaded **last** and lists
-  every part with size and sha256. A folder without a manifest is not a backup.
+  (`eu-central-1`, Frankfurt). One folder per run, `YYYY-MM-DDTHHMMSSZ`: a second
+  run on the same day never writes into a sealed folder. Every file is stored as
+  parts of at most 45 MB (`roles.sql.gpg.part-000`, …), because the free plan
+  accepts up to 50 MB per object. On Sundays (and on manual runs with `files`) all
+  six buckets of the project go in as `files.tar.gpg.part-*`: `lease-documents`,
+  `property-files`, `inventory-docs`, `maintenance-photos`, `inventory-photos`,
+  `avatars`. `manifest.json` is uploaded **last** and lists every part with size
+  and sha256. A folder without a manifest is not a backup.
 - **Who writes.** `Database backup` (`.github/workflows/db-backup.yml`), daily 02:00
-  UTC and on demand, in three jobs:
-  - `backup` (database secrets, no `actions: write`): dump, health check (key
-    tables in the schema; every file decrypts back byte for byte; data dump not
-    below half of the last good one), upload, manifest last.
-  - `retention` (always, even if `backup` failed): deletes days that reached 30
-    days, never the last day with a manifest.
+  UTC and on demand, one run at a time (`concurrency: db-backup`), in **two jobs**:
+  - `backup` (database secrets, only `contents: read`): dump; health check (key
+    tables in the schema; no key table with 0 rows where production has rows;
+    every file decrypts back byte for byte; data dump not below half of the last
+    good one); upload; manifest last. Its last step, retention, runs **always**,
+    even if a step before it failed: it deletes folders that reached 30 days but
+    never the last good database backup or the last good files set, and deletes
+    nothing if no manifest can be read.
   - `artifacts` (always, only `actions: write`, no secrets): deletes leftover
     `supabase-backup-*` artifacts from the old public setup.
+- **Legitimate shrink.** If data really went down by more than half (bulk delete,
+  cleanup of test accounts), the size check keeps failing. After confirming the
+  cause: **Actions → Database backup → Run workflow** with `allow_shrink` ticked.
+  The log says the override was used. Never tick it to silence a failure you
+  have not explained.
 - **Who checks.** `Backup watchdog` (05:00 UTC) opens an issue if the last sealed
-  day is older than 48 h, misses a part or holds any unencrypted `.sql`, or if the
-  latest set of user files is incomplete or older than 8 days. `Backup restore
-  drill` (3rd of each month, Postgres 17.6) checks every part against the
-  manifest, decrypts the latest day, restores it into a throwaway Postgres,
-  compares row counts of the key tables and checks the latest files set.
+  run is older than 48 h, a part is missing or has the wrong size, a sha256 of
+  the database parts does not match, any unencrypted `.sql` exists, or the latest
+  files set is incomplete or older than 8 days. `Backup restore drill` (3rd of
+  each month, Postgres 17.6) checks every part against the manifest, decrypts the
+  latest run, restores it into a throwaway Postgres, compares row counts of the
+  key tables and checks the latest files set.
+- **60 days without activity.** GitHub disables scheduled workflows in a public
+  repository after 60 days without repository activity (docs.github.com, Actions,
+  «Disabling and enabling a workflow»). It disables the watchdog
+  too, because it is also scheduled, so **the watchdog does not catch this
+  case.** What does: any push to the repository resets the count; the Actions
+  page shows "This scheduled workflow is disabled" next to `Database backup`. If
+  backups stop and no issue appears, check that page first and press **Enable
+  workflow** on all three backup workflows. An external heartbeat (for example a
+  Sentry cron monitor pinged by `db-backup.yml`) would catch it independently; it
+  is not set up yet.
 - **Keys.** No extra secret: the service-role key is fetched at run time from the
   Management API with `SUPABASE_ACCESS_TOKEN` (`scripts/backup/service-key.sh`) and
   masked in the log. Supabase has no read-only storage key, so the drill runs with
@@ -77,7 +97,7 @@ therefore never go to artifacts: they live in a private Supabase Storage bucket.
 - **Restore.**
   1. Get the service-role key (Dashboard → Project Settings → API keys) and run
      `SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SERVICE_KEY=… node scripts/backup/vault.mjs latest`.
-  2. `node scripts/backup/vault.mjs get-joined <day> data.sql.gpg data.sql.gpg` (same
+  2. `node scripts/backup/vault.mjs get-joined <folder> data.sql.gpg data.sql.gpg` (same
      for `roles`, `schema`, and `files.tar.gpg`). It checks every part's sha256.
   3. `gpg --decrypt -o data.sql data.sql.gpg` with `BACKUP_PASSPHRASE`.
   4. `psql "<connection>" -f roles.sql`, then `-f schema.sql`, then

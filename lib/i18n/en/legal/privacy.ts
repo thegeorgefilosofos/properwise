@@ -160,7 +160,7 @@ export function privacySectionsEn(): LegalSection[] {
     { h: 'Retention', labelled: true, p: ['We keep your data only for as long as necessary:'], list: [
       'Account and property data: for as long as your account exists.',
       words.lapsedRetention,
-      `After your account is deleted: the data is deleted from the database immediately. The encrypted backups that contain it are deleted automatically within ${BACKUP_RETENTION_DAYS} days. One exception: if new backups stop being made, the last valid one is not deleted, so that there is always one to restore from. It is deleted at the first clean-up after the next valid backup.`,
+      `After your account is deleted: the data is deleted from the database immediately. The encrypted backups that contain it are deleted automatically within ${BACKUP_RETENTION_DAYS} days. Two exceptions. The last valid backup of the database and the last valid backup of the files are never deleted automatically: they are deleted at the first clean-up after a newer valid one exists, once they are ${BACKUP_RETENTION_DAYS} days old. And if the backup process stops working, old backups are not deleted until it works again.`,
       'Guest check-in details: for as long as the property they belong to exists; they are deleted with the property or with your account.',
       'Maintenance requests from the tenant portal: for as long as the property exists; they are deleted with it or with your account.',
       'Security activity log: at the latest until your account is deleted.',

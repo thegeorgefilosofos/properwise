@@ -93,7 +93,7 @@ export function subprocessorLineEn(s: Subprocessor): string {
 
 /** Η κατάσταση των εγγυήσεων των διαβιβάσεων (TRANSFER_SAFEGUARDS), στα αγγλικά. */
 export const TRANSFER_SAFEGUARDS_EN =
-  `Data processing agreements containing the Standard Contractual Clauses (SCCs) of Article 46 GDPR were signed with Supabase, Resend and Anthropic on 23 Sep 2026. A data processing agreement has also been signed with GitHub, where the decryption key of the backup is kept, in GitHub Secrets. The encrypted backup itself is kept in a private Supabase storage space, in Frankfurt like the database, for ${BACKUP_RETENTION_DAYS} days. With Vercel, which hosts the app, no data processing agreement has been signed yet: the hosting plan in use today does not provide for one. It is pending, together with the move to a professional hosting plan. Signing in with Google takes place with Google as an independent controller.`;
+  `Data processing agreements containing the Standard Contractual Clauses (SCCs) of Article 46 GDPR were signed with Supabase, Resend and Anthropic on 23 Sep 2026. A data processing agreement has also been signed with GitHub, where the decryption key of the backup is kept, in GitHub Secrets. The encrypted backup itself is kept in a private Supabase storage space, in Frankfurt like the database. Retention is ${BACKUP_RETENTION_DAYS} days, with the exceptions set out in the Privacy Policy. With Vercel, which hosts the app, no data processing agreement has been signed yet: the hosting plan in use today does not provide for one. It is pending, together with the move to a professional hosting plan. Signing in with Google takes place with Google as an independent controller.`;
 
 /**
  * Ο πάροχος ως γραμμή του πίνακα του «About us» (/en/trust): όνομα, νομικό
