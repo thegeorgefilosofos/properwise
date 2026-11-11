@@ -755,7 +755,7 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   ok('gating: απεριόριστα → Επαγγελματίας+', new RegExp(`Ο «${PLANS.office.name.replace('+', '\\+')}».*απεριόριστα ακίνητα`).test(p));
 
   // Η υπόσχεση της πρόωρης πρόσβασης λέγεται και με το ΝΟΥΜΕΡΟ της μηχανής.
-  ok('gating: πρόωρη πρόσβαση', /ΠΡΟΩΡΗ ΠΡΟΣΒΑΣΗ/.test(p) && p.includes(`${EARLY_ACCESS_DAYS} ημέρες νωρίτερα`));
+  ok('gating: πρόωρη πρόσβαση', /ΠΡΟΩΡΗ ΠΡΟΣΒΑΣΗ/.test(p) && new RegExp(`${EARLY_ACCESS_DAYS}[ \u00a0]ημέρες νωρίτερα`).test(p));
 
   // profile ↔ plan
   ok('gating: Ιδιώτης → τα δικά του', p.includes(`ο «Ιδιώτης» έχει τον «${PLANS.free.name}» χωρίς συνδρομή ή παίρνει «${PLANS.solo.name}» ή «${PLANS.owner.name}»`));

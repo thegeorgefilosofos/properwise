@@ -28,6 +28,7 @@ import ReportBranding from './ReportBranding';
 import { ThemeToggle } from './ThemeToggle';
 import SettingsRoadmap from './SettingsRoadmap';
 import Feedback from './Feedback';
+import SupportForm from './SupportForm';
 import PlanComparison from './PlanComparison';
 import SecuritySettings from './SecuritySettings';
 import InboundAddress from './InboundAddress';
@@ -512,7 +513,7 @@ function ProfileCard({ userId, email }: { userId: string; email: string }) {
 // `declaredType` είναι αυτό που ΕΠΕΛΕΞΕ ο χρήστης. Ο επιλογέας δούλευε με το
 // πρώτο: δηλωμένος «Επαγγελματίας» χωρίς το πακέτο έβλεπε επιλεγμένο τον
 // «Ιδιώτη» και το πάτημά του δεν αποθήκευε τίποτα, γιατί «ήταν ήδη εκεί».
-export default function TabSettings({ propertyId, userId, profileType = 'individual', declaredType, onProfileChange }: { propertyId: string; userId: string; profileType?: ProfileType; declaredType?: ProfileType; onProfileChange?: (v: ProfileType) => void }) {
+export default function TabSettings({ propertyId, userId, profileType = 'individual', declaredType, onProfileChange, releaseFrom }: { propertyId: string; userId: string; profileType?: ProfileType; declaredType?: ProfileType; onProfileChange?: (v: ProfileType) => void; releaseFrom?: PlanId }) {
   const chosenType: ProfileType = declaredType ?? profileType;
   const supabase = createClient();
 
@@ -1069,7 +1070,13 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           Στο τέλος, όχι επειδή μετρούν λιγότερο, αλλά επειδή δεν είναι
           ρυθμίσεις: κοιτούν μπροστά, ενώ όλα τα παραπάνω ρυθμίζουν το τώρα. */}
       <Card className="acc-section" style={{ animationDelay: '290ms' }}>
-        <SettingsRoadmap userId={userId} />
+        <SettingsRoadmap userId={userId} releaseFrom={releaseFrom} />
+      </Card>
+
+      {/* ΥΠΟΣΤΗΡΙΞΗ ΜΕ ΑΠΟΣΤΟΛΕΑ ΤΗ ΣΥΝΕΔΡΙΑ: η προτεραιότητα του πακέτου
+          είναι εγγυημένη εδώ, όχι στο email (app/api/support). */}
+      <Card className="acc-section" style={{ animationDelay: '305ms' }}>
+        <SupportForm plan={releaseFrom} />
       </Card>
 
       <div className="acc-section" style={{ animationDelay: '320ms', marginBottom: T.sp.lg }}>

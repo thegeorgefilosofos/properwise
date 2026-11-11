@@ -824,7 +824,7 @@ export default function Dashboard() {
                 </>
               )}
               {nav==='referral'  && <TabReferral userId={user.id} plan={plan} profileType={effProfileType}/>}
-              {nav==='settings'  && <TabSettings key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} declaredType={profileType} onProfileChange={setProfileType}/>}
+              {nav==='settings'  && <TabSettings key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} declaredType={profileType} onProfileChange={setProfileType} releaseFrom={effPlan}/>}
             </div>
             </TabBoundary>
           </>
