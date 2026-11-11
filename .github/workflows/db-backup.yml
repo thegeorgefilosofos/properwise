@@ -87,7 +87,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-          sparse-checkout: scripts/backup
+          sparse-checkout: |
+            scripts/backup
+            scripts/ci
 
       # Fail-CLOSED, ΠΡΙΝ από κάθε dump: χωρίς φράση δεν βγαίνει καν αρχείο.
       - name: Check secrets
@@ -114,17 +116,19 @@ jobs:
         with:
           version: 3.1.0
 
+      # Οι εντολές πάνω στη βάση περνούν από το quiet-db: η έξοδός τους δεν
+      # τυπώνεται, μόνο ο κωδικός και η κατηγορία σφάλματος.
       - name: Link project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+        run: bash scripts/ci/quiet-db.sh "supabase link" -- supabase link --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Dump roles, schema and data
         run: |
           set -euo pipefail
           umask 077
           mkdir -p backup
-          supabase db dump --linked --role-only -f backup/roles.sql
-          supabase db dump --linked            -f backup/schema.sql
-          supabase db dump --linked --data-only -f backup/data.sql
+          bash scripts/ci/quiet-db.sh "dump ρόλων" -- supabase db dump --linked --role-only -f backup/roles.sql
+          bash scripts/ci/quiet-db.sh "dump σχήματος" -- supabase db dump --linked -f backup/schema.sql
+          bash scripts/ci/quiet-db.sh "dump δεδομένων" -- supabase db dump --linked --data-only -f backup/data.sql
           ls -lh backup | awk '{print $5, $9}'
 
       - name: Service role key (masked)

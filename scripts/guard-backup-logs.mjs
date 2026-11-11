@@ -42,6 +42,11 @@
 //      όχι `supabase --debug`, όχι `pg_dump --verbose`. Το `set`/`bash` κρίνεται
 //      μόνο ως λέξη-εντολή: `find -name *.sh -exec`, `git config set -x` δεν
 //      μετρούν.
+//   3γ. Το ίδιο για το supabase CLI πάνω σε βάση (`db push|dump|reset|query|…`,
+//      `migration up|repair|list`, `link`, `seed`): σε αποτυχία ο Postgres
+//      γράφει `DETAIL: Key (στήλη)=(τιμή)`. Ο δρόμος είναι το
+//      scripts/ci/quiet-db.sh· εξαιρείται ΜΟΝΟ η εντολή που τυλίγει.
+//      Το `--stdout` του επιτρέπεται μόνο για `supabase migration list`.
 //   5. Σενάριο JS/TS που καλεί μια ροή και τρέχει psql/pg_dump/pg_restore ή
 //      `supabase db|start` ως υποδιεργασία: θέλει ρητή εξαίρεση.
 //
@@ -73,6 +78,19 @@ const files = [...new Set([...workflows, ...projectFiles("'scripts/backup/**'"),
 
 /** Τα εργαλεία που μιλούν με βάση και τυπώνουν εντολές ή τιμές σε σφάλμα. */
 const DB_TOOLS = ['psql', 'pg_restore', 'pg_dump', 'pg_dumpall']
+/**
+ * Εντολές του supabase CLI που μιλούν με τη βάση ενός έργου. Μια μετανάστευση
+ * που σκάει πάνω σε πραγματικά δεδομένα βγάζει `DETAIL: Key (στήλη)=(τιμή)` και
+ * το CLI τυπώνει και την εντολή. Το `gen types` και το `functions deploy` δεν
+ * διαβάζουν γραμμές.
+ */
+const SUPABASE_DB = 'supabase\\s+(?:--\\S+\\s+)*(?:db\\s+(?:push|reset|dump|execute|query|lint|pull)|migration\\s+(?:up|down|repair|list|fetch)|link|seed|inspect\\s+db)\\b'
+/**
+ * Ο εγκεκριμένος δρόμος για εντολή πάνω σε πραγματική βάση από ροή: ΜΟΝΟ η
+ * εντολή που τυλίγει, ως το πρώτο `;`, `&`, `|` ή `)`. Ό,τι ακολουθεί κρίνεται
+ * χωριστά.
+ */
+const QUIET = /\bscripts\/ci\/quiet-db\.sh\s+(?:""|''|\S+)\s+(--stdout\s+)?--\s+(supabase\s+[^;&|)]*)/g
 
 const provlimata = []
 const add = (arxeio, grammi, ti) => provlimata.push({ arxeio, grammi, ti })
@@ -255,7 +273,7 @@ for (const arxeio of files) {
 
   // Τα ονόματα που καλούν εργαλείο βάσης: τα ίδια, μεταβλητές που τα κρατούν,
   // συναρτήσεις που τα τυλίγουν. Δύο περάσματα: περιτύλιγμα πάνω σε περιτύλιγμα.
-  const names = [...DB_TOOLS.map(esc)]
+  const names = [...DB_TOOLS.map(esc), SUPABASE_DB]
   const toolRe = () => new RegExp(`(^|[\\s;|&(\`])(${names.join('|')})(?=\\s|$|;|\\))`)
   for (const c of cmds) {
     const m = /^\s*(?:export\s+|local\s+|readonly\s+|declare\s+\S+\s+)?([A-Za-z_]\w*)=(?:"([^"]*)"|'([^']*)'|\(([^)]*)\)|([^\s$;]+))/.exec(c.text)
@@ -274,7 +292,12 @@ for (const arxeio of files) {
   const outFiles = new Map()
 
   for (const c of cmds) {
-    const { code, text } = c
+    const { text } = c
+    // Η τυλιγμένη εντολή βγαίνει από την κρίση· ό,τι μένει στη γραμμή κρίνεται.
+    for (const m of c.code.matchAll(QUIET)) {
+      if (m[1] && !/^supabase\s+migration\s+list\b/.test(m[2])) add(arxeio, c.line, 'quiet-db --stdout μόνο για `supabase migration list`')
+    }
+    const code = c.code.replace(QUIET, ' quiet_db_wrapped ')
 
     // 2. εκκίνηση container ή τοπικής στοίβας
     if (/\b(docker|podman)\s+(container\s+)?(run|create)\b/.test(code)) {

@@ -29,14 +29,30 @@
 //      πενήντα χιλιάδων.
 //   4. Μόνο κορυφή και τέλος. Το κουμπί ξαναφαίνεται με την πρώτη κύλιση
 //      προς τα πάνω, δηλαδή σε ΟΠΟΙΑΔΗΠΟΤΕ θέση: εκεί σκέπαζε τον φάκελο.
-// ΤΩΡΑ: στο τηλέφωνο η στήλη του περιεχομένου τελειώνει πάνω από το κουμπί
-// (globals.css, --fab-lane). Το κουμπί κρύβεται όσο κυλάς προς τα κάτω και
-// ξαναβγαίνει μόλις σταματήσεις. Μετριέται ΣΕ ΗΡΕΜΙΑ, ορατό: ο έλεγχος
-// περιμένει να γυρίσει και, αν δεν γυρίσει, αυτό είναι σφάλμα. Ο κανόνας είναι
-// μηδέν — καμία τομή, με κείμενο Ή με χειριστήριο, σε κορυφή, μέση και
-// τέλος, σε 360 · 375 · 390 · 430. Η καστάνια εμβαδού μένει όπως ήταν, στα
-// ίδια τρία πλάτη, για το κείμενο του πρώτου κάδρου· τα χειριστήρια κάτω από
-// το κουμπί σε ταμπλέτα και υπολογιστή τυπώνονται χωρίς να μπλοκάρουν.
+// ΤΟΤΕ (02/11): στο τηλέφωνο η στήλη του περιεχομένου τελείωνε πάνω από το
+// κουμπί (μια λωρίδα, --fab-lane) και το κουμπί κρυβόταν στην κύλιση.
+//
+// ═══ Η ΛΩΡΙΔΑ ΕΓΙΝΕ ΝΕΚΡΗ ΖΩΝΗ (11/11/2026) ════════════════════════════
+// Το #473 έκανε τη Νόα ξανά πάντα ορατή (χωρίς `data-away`). Ο κανόνας της
+// λωρίδας ζητούσε `:not([data-away])`, που χωρίς το χαρακτηριστικό ισχύει
+// ΠΑΝΤΑ: η λωρίδα έμεινε μόνιμα ανοιχτή. Ο ιδιοκτήτης φωτογράφισε σε iPhone
+// το περιεχόμενο κομμένο σε σκληρή ακμή στη μέση ενός chip και από κάτω μια
+// άδεια ζώνη ~64 σε όλο το πλάτος. Ο έλεγχος ήταν πράσινος: μετρούσε μόνο
+// ότι ΤΙΠΟΤΑ δεν είναι κάτω από το κουμπί — και μια άδεια ζώνη το εγγυάται.
+//
+// ΤΩΡΑ: καμία λωρίδα. Το περιεχόμενο κυλά ώς κάτω, πίσω από την πλοήγηση· το
+// κουμπί πλέει πάνω του σε μια γωνία. Ο κανόνας γίνεται «τίποτα ΜΟΝΙΜΑ από
+// κάτω του» και μετριέται με τρία μηδενικά όρια στο τηλέφωνο:
+//   · στο τέλος της κύλισης καμία τομή, με κείμενο Ή με χειριστήριο: το κάτω
+//     γέμισμα κρατά το ύψος του κουμπιού, άρα κάθε σειρά βγαίνει από κάτω του
+//     με κύλιση·
+//   · η στήλη φτάνει ώς την πλοήγηση σε κορυφή, μέση και τέλος: καμία άδεια
+//     ζώνη ανάμεσα (αυτό που φωτογραφήθηκε)·
+//   · το μέγιστο της κύλισης είναι ίδιο σε κορυφή, μέση και τέλος: τίποτα
+//     δεν ανοιγοκλείνει με την κύλιση (ο βρόχος του 02/11).
+// Οσα σκεπάζει το κουμπί σε κορυφή και μέση ΤΥΠΩΝΟΝΤΑΙ χωρίς να μπλοκάρουν,
+// όπως ήδη στον υπολογιστή· στο πρώτο κάδρο στα 360 μπαίνουν ξανά στην
+// καστάνια εμβαδού (360 · 820 · 1280), που μόνο κατεβαίνει.
 // ═══════════════════════════════════════════════════════════════════════════
 import { chromePath } from './lib/chrome.mjs'
 import { sweep } from './lib/sweep.mjs'
@@ -63,7 +79,7 @@ const PROBE = (where) => {
   if (!fab && document.querySelector('[aria-modal="true"]')) return { withdrawn: true }
   if (!fab) return { missing: true }
   // ΑΠΟΣΥΡΜΕΝΟ ΣΤΗΝ ΚΥΛΙΣΗ (data-away, αόρατο): δεν σκεπάζει τίποτα.
-  if (getComputedStyle(fab.closest('.pa-fab-wrap') || fab).opacity === '0') return { hits: [], controls: [] }
+  if (getComputedStyle(fab.closest('.pa-fab-wrap') || fab).opacity === '0') return { hits: [], controls: [], frame: null }
   const f = fab.getBoundingClientRect()
   // Ο,ΤΙ ΠΕΡΝΑ ΠΙΣΩ ΑΠΟ ΤΗΝ ΚΑΤΩ ΠΛΟΗΓΗΣΗ Ή ΚΑΤΩ ΑΠΟ ΤΗΝ ΑΚΜΗ ΤΗΣ ΣΤΗΛΗΣ ΔΕΝ
   // ΦΑΙΝΕΤΑΙ ΟΥΤΩΣ Η ΑΛΛΩΣ: το περιεχόμενο κόβεται εκεί πριν μετρηθεί η τομή.
@@ -72,6 +88,11 @@ const PROBE = (where) => {
   const col = document.querySelector('.app-content')
   const colBottom = col ? col.getBoundingClientRect().bottom : Infinity
   const clip = Math.min(navTop, colBottom)
+  // Για τους κανόνες της στήλης: πού τελειώνει, πού αρχίζει η πλοήγηση και
+  // πόσο κυλά. Μια άδεια ζώνη ανάμεσα στη στήλη και την πλοήγηση είναι η
+  // «λωρίδα» που φωτογραφήθηκε· το μέγιστο που αλλάζει με την κύλιση είναι
+  // ο βρόχος του 02/11.
+  const frame = { gap: Number.isFinite(navTop) ? Math.round(navTop - colBottom) : 0, max: col ? col.scrollHeight - col.clientHeight : 0 }
   const cut = (r) => ({ left: r.left, right: r.right, top: r.top, bottom: Math.min(r.bottom, clip) })
   const meet = (r) => {
     const w = Math.min(r.right, f.right) - Math.max(r.left, f.left)
@@ -99,7 +120,7 @@ const PROBE = (where) => {
       controls.push(`${where}: χειριστήριο «${name.slice(0, 26)}» ${Math.round(w)}×${Math.round(h)}`)
     }
   }
-  return { hits: out, controls }
+  return { hits: out, controls, frame }
 }
 
 const browser = await chromium.launch({ executablePath: chromePath(), args: ['--no-sandbox'] })
@@ -130,10 +151,10 @@ const swept = await sweep(browser, {
     if (top.withdrawn) return { withdrawn: true }
     if (top.missing) return { missing: true }
     const scrollTo = (k) => page.evaluate((k) => { const c = document.querySelector('.app-content'); if (c) c.scrollTop = Math.round((c.scrollHeight - c.clientHeight) * k) }, k)
-    // ΣΤΟ ΤΗΛΕΦΩΝΟ ΜΕΤΡΙΕΤΑΙ ΣΕ ΗΡΕΜΙΑ. Μετά την κύλιση το κουμπί κρύβεται και
-    // γυρίζει μόλις σταματήσει η κίνηση· ο έλεγχος περιμένει να ξαναφανεί
-    // ΟΛΟΚΛΗΡΟ (χωρίς data-away, αδιαφάνεια 1). Αν μετρούσε ενώ είναι κρυμμένο
-    // θα έβγαινε πάντα πράσινος. Αν δεν γυρίσει, είναι σφάλμα — και στον
+    // ΣΤΟ ΤΗΛΕΦΩΝΟ ΜΕΤΡΙΕΤΑΙ ΣΕ ΗΡΕΜΙΑ. Από το #473 το κουμπί δεν κρύβεται
+    // στην κύλιση· αν ξαναγίνει ποτέ αποσυρόμενο, ο έλεγχος περιμένει να
+    // φανεί ΟΛΟΚΛΗΡΟ (χωρίς data-away, αδιαφάνεια 1). Αν μετρούσε ενώ είναι
+    // κρυμμένο θα έβγαινε πάντα πράσινος. Αν δεν φανεί, είναι σφάλμα — και στον
     // υπολογιστή: εκεί έμενε κρυμμένο ώς την κίνηση προς τα πάνω και ο
     // ιδιοκτήτης δεν έβρισκε τη Νόα πουθενά (03/11/2026).
     // Πρώτα 150 χιλιοστά ώστε να φτάσει το γεγονός κύλισης: αλλιώς η αναμονή
@@ -157,7 +178,12 @@ const swept = await sweep(browser, {
     if (width <= PHONE_MAX) { if (!(await atRest())) stuck.push('τέλος') } else await page.waitForTimeout(150)
     const end = await page.evaluate(PROBE, 'τέλος')
     const all = [top, ...mids, end]
-    return { hits: all.flatMap(r => r.hits || []), controls: all.flatMap(r => r.controls || []), stuck }
+    // ΚΑΝΟΝΕΣ ΤΗΣ ΣΤΗΛΗΣ, ΜΟΝΟ ΣΤΟ ΤΗΛΕΦΩΝΟ (εκεί υπάρχει κάτω πλοήγηση).
+    const frames = width <= PHONE_MAX ? [['κορυφή', top], ...mids.map(m => ['μέση', m]), ['τέλος', end]].filter(([, r]) => r.frame) : []
+    const lane = frames.filter(([, r]) => r.frame.gap > 1).map(([w, r]) => `${w}: άδεια ζώνη ${r.frame.gap}px ανάμεσα στη στήλη και την πλοήγηση`)
+    const maxes = new Set(frames.map(([, r]) => r.frame.max))
+    const jump = maxes.size > 1 ? [`το μέγιστο της κύλισης αλλάζει με την κύλιση: ${frames.map(([w, r]) => `${w} ${r.frame.max}`).join(' · ')}`] : []
+    return { hits: all.flatMap(r => r.hits || []), controls: all.flatMap(r => r.controls || []), stuck, column: [...lane, ...jump] }
   },
   onError: (e) => ({ broke: String(e.message).slice(0, 60) }),
 })
@@ -171,28 +197,30 @@ const findings = swept.flatMap(({ scene, width, value }) =>
   value.broke ? [`${scene}@${width}  δεν φόρτωσε: ${value.broke}`]
               : (value.hits || []).map(h => `${scene}@${width}  ${h}`))
 const isPhone = (f) => Number(f.match(/@(\d+)/)?.[1]) <= PHONE_MAX
+const column = swept.flatMap(({ scene, width, value }) => (value.column || []).map(c => `${scene}@${width}  ${c}`))
 const allControls = swept.flatMap(({ scene, width, value }) => (value.controls || []).map(h => `${scene}@${width}  ${h}`))
-// Χειριστήρια: μηδέν στο τηλέφωνο. Στον υπολογιστή και στην ταμπλέτα το κουμπί
-// πλέει ακόμη σε γωνία πάνω από τη στήλη και αποσύρεται στην κύλιση· εκεί τα
-// χειριστήρια του πρώτου κάδρου ΤΥΠΩΝΟΝΤΑΙ ώστε να φαίνονται, αλλά δεν
-// μπλοκάρουν ακόμη. Είναι η επόμενη δουλειά, όχι αυτής της αλλαγής.
-const controls = allControls.filter(isPhone)
-const deskControls = allControls.filter(f => !isPhone(f))
+// Χειριστήρια: μηδέν στο ΤΕΛΟΣ της κύλισης, σε κάθε πλάτος — εκεί το γέμισμα
+// υπάρχει ακριβώς γι' αυτό. Σε κορυφή και μέση το κουμπί πλέει σε γωνία πάνω
+// από τη στήλη, σε κάθε πλάτος· ό,τι σκεπάζει εκεί το βγάζει μια μικρή κύλιση,
+// οπότε ΤΥΠΩΝΕΤΑΙ ώστε να φαίνεται, χωρίς να μπλοκάρει.
+const controls = allControls.filter(f => f.includes('τέλος:'))
+const floatControls = allControls.filter(f => !f.includes('τέλος:'))
 
 if (missing) { console.error(`✗ σε ${missing} σκηνές δεν αποδόθηκε το κουμπί της Νόας: ο πάγκος δεν τη φόρτωσε`); process.exit(1) }
-// ΤΡΕΙΣ ΚΑΝΟΝΕΣ ΜΗΔΕΝ ΚΑΙ ΜΙΑ ΚΑΣΤΑΝΙΑ.
+// ΤΕΣΣΕΡΙΣ ΚΑΝΟΝΕΣ ΜΗΔΕΝ ΚΑΙ ΜΙΑ ΚΑΣΤΑΝΙΑ.
 //   · Στο τέλος της κύλισης υπάρχει περιθώριο ακριβώς για το κουμπί: καμία
-//     τομή, σε κανένα πλάτος.
-//   · Στο τηλέφωνο η στήλη τελειώνει πάνω από το κουμπί: σε ηρεμία καμία
-//     τομή, ούτε με κείμενο ούτε με χειριστήριο, σε καμία θέση· και το κουμπί
-//     ΠΡΕΠΕΙ να ξαναφαίνεται όταν σταματά η κύλιση.
+//     τομή, με κείμενο ή χειριστήριο, σε κανένα πλάτος.
+//   · Στο τηλέφωνο η στήλη φτάνει ώς την πλοήγηση: καμία άδεια ζώνη.
+//   · Στο τηλέφωνο το μέγιστο της κύλισης δεν αλλάζει με την κύλιση.
+//   · Το κουμπί ΠΡΕΠΕΙ να φαίνεται όταν σταματά η κύλιση.
 //   · Στο πρώτο κάδρο του υπολογιστή ένα πλωτό κουμπί σε γωνία κάθεται εξ
 //     ορισμού πάνω σε ό,τι φτάνει στη γωνία· εκεί μετριέται και ΔΕΝ επιτρέπεται
 //     να χειροτερέψει (καστάνια, scripts/noa-cover-baseline.json). Πρώτη
 //     μέτρηση 83366 px² σε 64 σημεία με την πρόσκληση ανοιχτή παντού.
 const BASE = JSON.parse(readFileSync(new URL('./noa-cover-baseline.json', import.meta.url), 'utf8'))
 const atEnd = findings.filter(f => f.includes('τέλος:'))
-const onPhone = findings.filter(f => isPhone(f) && !f.includes('δεν φόρτωσε'))
+// Ο,τι σκεπάζει το κουμπί σε κορυφή και μέση στο τηλέφωνο: τυπώνεται.
+const onPhone = findings.filter(f => isPhone(f) && !f.includes('δεν φόρτωσε') && !f.includes('τέλος:'))
 const atTop = findings.filter(f => f.includes('κορυφή:') && WIDTHS.includes(Number(f.match(/@(\d+)/)?.[1])))
 const broken = findings.filter(f => f.includes('δεν φόρτωσε'))
 // ΕΜΒΑΔΟΝ, ΟΧΙ ΠΛΗΘΟΣ. Οταν η πρόσκληση μαζεύτηκε στο σήμα, τα σημεία έμειναν
@@ -212,20 +240,22 @@ const topArea = atTop.reduce((n, f) => { const m = f.match(/(\d+)×(\d+)$/); ret
 // μένει η ίδια όσο κι αν αλλάξει η βάση με τον καιρό.
 const TOLERANCE = 0.01
 const areaCeiling = Math.round(BASE.maxTopArea * (1 + TOLERANCE))
-if (stuck.length || atEnd.length || onPhone.length || controls.length || broken.length || topArea > areaCeiling) {
-  console.error(`\n✗ Το κουμπί της Νόας: ${stuck.length} θέσεις όπου δεν ξαναφάνηκε σε ηρεμία (όριο 0), ${atEnd.length} τομές στο τέλος της κύλισης (όριο 0), ${onPhone.length} τομές με κείμενο στο τηλέφωνο (όριο 0), ${controls.length} χειριστήρια από κάτω του (όριο 0), ${topArea} px² κρυμμένα στο πρώτο κάδρο σε ${atTop.length} σημεία (όριο ${BASE.maxTopArea} px² + 1% ανοχή = ${areaCeiling}), ${broken.length} σκηνές δεν φόρτωσαν:\n`)
-  for (const f of [...stuck, ...findings, ...controls]) console.error('  ' + f)
+if (stuck.length || atEnd.length || column.length || controls.length || broken.length || topArea > areaCeiling) {
+  console.error(`\n✗ Το κουμπί της Νόας: ${stuck.length} θέσεις όπου δεν φάνηκε σε ηρεμία (όριο 0), ${atEnd.length} τομές με κείμενο στο τέλος της κύλισης (όριο 0), ${controls.length} χειριστήρια από κάτω του στο τέλος (όριο 0), ${column.length} παραβάσεις της στήλης στο τηλέφωνο (όριο 0), ${topArea} px² κρυμμένα στο πρώτο κάδρο σε ${atTop.length} σημεία (όριο ${BASE.maxTopArea} px² + 1% ανοχή = ${areaCeiling}), ${broken.length} σκηνές δεν φόρτωσαν:\n`)
+  for (const f of [...stuck, ...column, ...atEnd, ...broken, ...controls, ...atTop]) console.error('  ' + f)
   console.error(`
-  Στο τέλος της κύλισης δεν επιτρέπεται τομή: το .app-content κρατά περιθώριο
-  ακριβώς γι' αυτό. Στο τηλέφωνο (≤${PHONE_MAX}) η στήλη τελειώνει πάνω από
-  το κουμπί (--fab-lane): αν βρέθηκε πάνω σε περιεχόμενο, κάτι έβγαλε το
-  κουμπί από τη λωρίδα του ή κάτι πλέει μέσα της. Στο πρώτο κάδρο ο αριθμός μόνο κατεβαίνει: αν ανέβηκε, κάτι μεγάλωσε
-  το κουμπί ή έφερε κείμενο στη γωνία.`)
+  Στο τέλος της κύλισης δεν επιτρέπεται τομή: το .app-content κρατά κάτω
+  γέμισμα με το ύψος του κουμπιού (--fab-lane) ακριβώς γι' αυτό. Στο τηλέφωνο
+  (≤${PHONE_MAX}) η στήλη φτάνει ώς την πλοήγηση: άδεια ζώνη σημαίνει ότι
+  ξαναγύρισε κάποια «λωρίδα» (margin-bottom στο .app-content)· μέγιστο που
+  αλλάζει σημαίνει ότι το γέμισμα εξαρτάται από την κύλιση. Στο πρώτο κάδρο
+  ο αριθμός μόνο κατεβαίνει: αν ανέβηκε, κάτι μεγάλωσε το κουμπί ή έφερε
+  κείμενο στη γωνία.`)
   process.exit(1)
 }
-if (deskControls.length) {
-  console.log(`   ⓘ ${deskControls.length} χειριστήρια κάτω από το πλωτό κουμπί σε ταμπλέτα/υπολογιστή, στο πρώτο κάδρο (δεν μπλοκάρει):`)
-  for (const f of deskControls) console.log('     ' + f)
+if (onPhone.length || floatControls.length) {
+  console.log(`   ⓘ Σε κορυφή/μέση το πλωτό κουμπί σκεπάζει ${onPhone.length} φύλλα κειμένου στο τηλέφωνο και ${floatControls.length} χειριστήρια σε όλα τα πλάτη· τα βγάζει μια μικρή κύλιση (δεν μπλοκάρει):`)
+  for (const f of floatControls) console.log('     ' + f)
 }
 if (topArea < BASE.maxTopArea) console.log(`   ↓ Πρώτο κάδρο: ${topArea} px² < όριο ${BASE.maxTopArea}. Κατέβασε το "maxTopArea" στο scripts/noa-cover-baseline.json με μέτρηση του CI.`)
-console.log(`✅ Το κουμπί της Νόας δεν σκεπάζει τίποτα στο τηλέφωνο σε ηρεμία (${PHONES.join(' · ')}: κορυφή, μέση, τέλος), σε ${scenes - withdrawn} σκηνές (${withdrawn} με ανοιχτό παράθυρο, όπου αποσύρεται επίτηδες).`)
+console.log(`✅ Το κουμπί της Νόας δεν σκεπάζει τίποτα μόνιμα: μηδέν τομές στο τέλος της κύλισης· στο τηλέφωνο (${PHONES.join(' · ')}) η στήλη φτάνει ώς την πλοήγηση με σταθερό μέγιστο κύλισης, σε ${scenes - withdrawn} σκηνές (${withdrawn} με ανοιχτό παράθυρο, όπου αποσύρεται επίτηδες).`)

@@ -45,6 +45,12 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_BUILD_SHA:
       (process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT_SHA ?? "").slice(0, 7) || "dev",
+    // ΠΑΝΤΑ ΣΤΑΘΕΡΑ ΑΚΟΜΗ ΚΑΙ ΧΩΡΙΣ ΚΛΕΙΔΙ. Μεταβλητή NEXT_PUBLIC_ που δεν υπάρχει
+    // ΔΕΝ αντικαθίσταται: μένει `process.env.X` στον κώδικα του περιηγητή, η
+    // συνθήκη του app/useCaptcha.tsx δεν διπλώνεται και ο έλεγχος κατά των bots
+    // έμπαινε στο /signup χωρίς να κάνει τίποτα (+1,7 KB, 11/11/2026). Με κενό
+    // κείμενο ο minifier τον πετά.
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "").trim(),
   },
   // ══ ΤΟ 83% ΚΑΘΕ ΣΥΝΑΡΤΗΣΗΣ ΗΤΑΝ ΜΙΑ ΒΙΒΛΙΟΘΗΚΗ ΠΟΥ ΔΕΝ ΚΑΛΕΙΤΑΙ ΠΟΤΕ ═══════
   //
