@@ -118,6 +118,59 @@ for (const [name, ua, android] of [['Android', IG, true], ['iPhone', 'Mozilla/5.
   await ctx.close();
 }
 
+// ── Ο ΑΝΩΝΥΜΟΣ ΕΠΙΣΚΕΠΤΗΣ: ΧΩΡΙΣ ΣΥΝΕΔΡΙΑ, Ο ΠΕΛΑΤΗΣ ΔΕΝ ΦΟΡΤΩΝΕΙ ─────────────
+// Το `mayHaveSession()` απαντά «όχι» (lib/supabase/lazy.ts) και το effect της
+// σελίδας βγαίνει νωρίς. Ό,τι η σελίδα έκανε ΧΩΡΙΣ χρήστη πρέπει να γίνεται
+// ακόμη: εδώ ελέγχεται ότι η πρόωρη έξοδος δεν έφαγε τίποτα (12/11/2026).
+{
+  const PAGE_LOGIN = resolve('.e2e-signup/login.html');
+  const anon = async (file, search = '') => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await ctx.addInitScript(() => { window.__mayHaveSession = false; });
+    const p = await ctx.newPage();
+    await p.goto(pathToFileURL(file).href + search);
+    return { ctx, p };
+  };
+
+  // Ο ΣΥΝΔΕΣΜΟΣ ΕΠΙΒΕΒΑΙΩΣΗΣ ΑΠΟ ΑΛΛΗ ΣΥΣΚΕΥΗ. Το app/auth/callback στέλνει
+  // στο /login?confirm=failed ΧΩΡΙΣ cookie συνεδρίας: ακριβώς η περίπτωση
+  // όπου το effect βγαίνει νωρίς. Το μήνυμα και το κουμπί επαναποστολής
+  // χάνονταν (εύρημα του ελέγχου του #534).
+  {
+    const { ctx, p } = await anon(PAGE_LOGIN, '?confirm=failed');
+    await p.waitForSelector('#root form, #root input', { timeout: 6000 });
+    const said = await p.getByText('άλλη συσκευή', { exact: false }).first().waitFor({ timeout: 4000 }).then(() => true).catch(() => false);
+    check('ανώνυμος, ?confirm=failed: λέγεται τι πήγε στραβά', said);
+    const resend = await p.getByRole('button', { name: 'Ξαναστείλε το email επιβεβαίωσης' }).count();
+    check('ανώνυμος, ?confirm=failed: το κουμπί επαναποστολής εμφανίζεται', resend === 1, `κουμπιά=${resend}`);
+    check('ανώνυμος, ?confirm=failed: ο πελάτης δεν ρωτήθηκε', await p.evaluate(() => window.__getUser ?? 0) === 0);
+    await ctx.close();
+  }
+  // Η απλή σύνδεση χωρίς παράμετρο: καμία ειδοποίηση, καμία ερώτηση.
+  {
+    const { ctx, p } = await anon(PAGE_LOGIN);
+    await p.waitForSelector('#root input', { timeout: 6000 });
+    await p.waitForTimeout(300);
+    check('ανώνυμος, /login: κανένα μήνυμα σφάλματος', await p.locator('[role="alert"]').count() === 0);
+    check('ανώνυμος, /login: κανένα κουμπί επαναποστολής', await p.getByRole('button', { name: 'Ξαναστείλε το email επιβεβαίωσης' }).count() === 0);
+    check('ανώνυμος, /login: ο πελάτης δεν ρωτήθηκε', await p.evaluate(() => window.__getUser ?? 0) === 0);
+    await ctx.close();
+  }
+  // Η εγγραφή του ανώνυμου: ίδια φόρμα, ίδια υποβολή, χωρίς ερώτηση συνεδρίας.
+  {
+    const { ctx, p } = await anon(PAGE);
+    await p.waitForSelector('#su-consent');
+    await p.locator('#su-email').fill('anonymos@properwise.gr');
+    await p.locator('#su-password').fill('Dokimastis2026!');
+    await p.locator('#su-consent').check();
+    await p.locator('form button[type="submit"]').click();
+    const sent = await p.waitForSelector('text=Άνοιξε το email σου', { timeout: 6000 }).then(() => true).catch(() => false);
+    check('ανώνυμος, /signup: η εγγραφή ολοκληρώνεται', sent);
+    check('ανώνυμος, /signup: ο πελάτης δεν ρωτήθηκε για συνεδρία', await p.evaluate(() => window.__getUser ?? 0) === 0);
+    await ctx.close();
+  }
+}
+
 await browser.close();
 
 if (fails.length) {

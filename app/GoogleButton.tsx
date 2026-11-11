@@ -17,7 +17,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useSyncExternalStore } from 'react'
 import { useAuthEn } from '@/lib/i18n/authEn'
-import { Btn } from '@/components/Theme'
+import { Btn } from '@/components/ThemeCore'
 import { T } from '@/components/tokens'
 import GoogleG from './GoogleG'
 import { inAppBrowser, chromeIntent, safariLink } from '@/lib/core/inAppBrowser'

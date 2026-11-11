@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { T } from '@/components/tokens'
-import { Btn } from '@/components/Theme'
+import { Btn } from '@/components/ThemeCore'
 import { hy } from '@/components/Hyphen'
 import { BackLink } from './BackLink'
 import { HOME } from '@/lib/auth/redirect'

@@ -22,7 +22,7 @@ import { ERROR_COPY } from '@/lib/core/errorCopy';
 import { useEffect, useState } from 'react';
 import { captureError } from '@/lib/observability/report';
 import { recoverFromStaleBuild, alreadyRecovered } from '@/lib/recovery';
-import { Btn } from '@/components/Theme';
+import { Btn } from '@/components/ThemeCore';
 import { T } from '@/components/tokens';
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
