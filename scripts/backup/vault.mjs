@@ -387,8 +387,14 @@ async function rowsCheck(local, tables) {
   const dump = countRows(readFileSync(local, 'utf8'), tables)
   const prod = Object.fromEntries(await Promise.all(tables.map(async t => [t, await prodCount(t)])))
   const r = rowsHealthy(dump, prod)
-  for (const x of r.rows) console.log(`${x.ok ? '✓' : '✗'} ${x.table}`)
-  if (!r.ok) throw new Error('το dump δεν έχει γραμμές εκεί που η παραγωγή έχει (ή η παραγωγή δεν μετρήθηκε)')
+  for (const x of r.rows) {
+    const why = x.ok ? '' : prod[x.table] < 0
+      ? ' (η παραγωγή δεν μετρήθηκε: PostgREST, service role, schema public)'
+      : ' (0 γραμμές στο dump, ενώ η παραγωγή έχει)'
+    console.log(`${x.ok ? '✓' : '✗'} ${x.table}${why}`)
+  }
+  const bad = r.rows.filter(x => !x.ok).map(x => x.table)
+  if (bad.length) throw new Error(`έλεγχος γραμμών: αποτυχία στους πίνακες ${bad.join(', ')}`)
 }
 
 async function prune(keepDays) {
