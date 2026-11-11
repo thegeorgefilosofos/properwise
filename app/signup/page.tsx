@@ -29,6 +29,8 @@ import { POLICY_VERSION as CONSENT_VERSION } from '@/lib/legal/identity'
 import { applyNews, newsDecided, newsFromParam, newsMeta, newsParam, pendingNews, type NewsChoice } from '@/lib/auth/signupNews'
 import { usePlanTerms, useTrialBadge, useSignupCta } from './PlanTerms'
 import { localeOfPath, type Locale } from '@/lib/i18n/locale'
+import { useCaptcha } from '../useCaptcha'
+import { captchaOptions } from '@/lib/auth/captcha'
 import { localHref } from '@/lib/i18n/paths'
 import { useAuthEn, type AuthEn } from '@/lib/i18n/authEn'
 import { fmtFor } from '@/lib/core/format'
@@ -191,6 +193,7 @@ export default function SignupPage() {
   // σημαίνει ελληνικά και το αγγλικό λεξικό δεν μπαίνει στο πακέτο του /signup.
   const A = useAuthEn(), S = A?.signup
   const locale: Locale = A ? 'en' : 'el'
+  const captcha = useCaptcha(locale)
   const failed = (el: string, en_: string | undefined, e?: unknown) => failedIn(A, el, en_, e)
   const PW_MSG = A ? { leaked: A.pw.leaked, weak: A.pw.weak, common: A.pw.common } : PASSWORD_MSG
   // Από το billingWords, στον διακομιστή (layout.tsx): `null` όσο το ταμείο χρεώνει.
@@ -480,10 +483,15 @@ export default function SignupPage() {
   async function resend() {
     setResendErr('')
     const supabase = await authClient()
+    // Η Supabase ελέγχει διακριτικό και στην επαναποστολή. Το πλαίσιο του
+    // ελέγχου μετακομίζει στην οθόνη «Άνοιξε το email σου» μαζί με το κουμπί.
+    const captchaToken = await captcha.token()
+    if (captchaToken === null) { setResendErr(captcha.failMessage()); return }
     const { error } = await supabase.auth.resend({
       type: 'signup', email: email.trim(),
-      options: { emailRedirectTo: confirmRedirect(query) },
+      options: { emailRedirectTo: confirmRedirect(query), ...captchaOptions(captchaToken) },
     })
+    captcha.reset()
     if (error) { setResendErr(failed('Το email δεν ξαναστάλθηκε', S?.notResent, error)); return }
     setResent(true)
   }
@@ -530,12 +538,15 @@ export default function SignupPage() {
     countSignupStep('submit')
     setError(''); setLoading(true)
     const supabase = await authClient()
+    const captchaToken = await captcha.token()
+    if (captchaToken === null) { setError(captcha.failMessage()); setLoading(false); countSignupStep('error'); return }
     // Αποδεικτικό συγκατάθεσης (GDPR, αρχή λογοδοσίας): καταγράφουμε στο προφίλ
     // του χρήστη ΠΟΤΕ αποδέχθηκε τους Όρους και την Πολιτική και ΠΟΙΑ έκδοσή τους,
     // ώστε η αποδοχή να είναι αποδείξιμη και να ζητηθεί εκ νέου αν αλλάξουν ουσιωδώς.
     const { error } = await supabase.auth.signUp({
       email, password,
       options: {
+        ...captchaOptions(captchaToken),
         // Ο ΣΥΝΔΕΣΜΟΣ ΤΟΥ EMAIL ΠΕΡΝΑΕΙ ΑΠΟ ΤΗΝ ΑΝΤΑΛΛΑΓΗ ΤΟΥ ΔΙΑΚΡΙΤΙΚΟΥ.
         // Εδειχνε κατευθείαν στον πίνακα, ο οποίος ζητά συνεδρία — και συνεδρία
         // δεν υπάρχει ακόμη τη στιγμή που πατιέται ο σύνδεσμος. Ο
@@ -559,6 +570,7 @@ export default function SignupPage() {
     // της: όποιος πατούσε «Γράψε άλλη» γύριζε στη φόρμα και έβρισκε το κουμπί
     // κλειδωμένο στο «Δημιουργία…», για πάντα. Καμία διέξοδος εκτός από
     // ανανέωση της σελίδας και ο χρήστης δεν είχε τρόπο να το μαντέψει.
+    captcha.reset()
     setLoading(false)
     countSignupStep(error ? 'error' : 'sent')
     if (error) setError(failed('Η εγγραφή δεν ολοκληρώθηκε', S?.failed, error))
@@ -714,6 +726,7 @@ export default function SignupPage() {
                 action={
                   /* Η σβηστή όψη μετά την αποστολή είναι το disabled του .po-btn. */
                   <>
+                    {captcha.slot}
                     <Btn variant="primary" field onClick={resend} disabled={resent}>
                       {resent ? (S ? S.resent : 'Το ξαναστείλαμε') : (S ? S.resend : 'Ξαναστείλε το email')}
                     </Btn>
@@ -1046,6 +1059,7 @@ export default function SignupPage() {
                     «Ξεκίνα τη δοκιμή», οπότε όποιος πάτησε «Ξεκίνα δωρεάν» στην
                     αρχική διάβαζε εδώ ότι ξεκινά δοκιμή. Ο ίδιος κανόνας με την
                     κάρτα που πάτησε (lib/billing/trialOffer.ts), έτοιμος από το layout. */}
+                {captcha.slot}
                 <Btn variant="primary" type="submit" field describedBy={why ? 'su-cta-why' : undefined}>
                   {loading ? (S ? S.creating : 'Δημιουργία…') : firm ? 'Δημιουργία γραφείου' : cta}
                 </Btn>

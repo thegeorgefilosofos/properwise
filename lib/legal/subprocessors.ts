@@ -89,6 +89,12 @@ export const PUSH_SERVICES = 'Ειδοποιήσεις περιηγητή (Googl
 /** Το όνομα της καταγραφής σφαλμάτων, για να τη βρίσκει ο κανόνας του περιβάλλοντος. */
 const ERROR_REPORTING = 'Sentry';
 
+/**
+ * Ο έλεγχος κατά των bots στις φόρμες λογαριασμού (lib/auth/captcha.ts). Ενεργός
+ * μόνο με το δημόσιο κλειδί του, όπως η καταγραφή σφαλμάτων με το DSN της.
+ */
+const BOT_CHECK = 'Cloudflare';
+
 /** Το όνομα της αποστολής email, για να της προστεθεί η παραλαβή όταν λειτουργεί. */
 const MAIL_SERVICE = 'Resend';
 
@@ -177,6 +183,21 @@ const base = (mor: string): readonly Subprocessor[] => [
     entity: null,
   },
   {
+    // ΤΑ ΔΕΔΟΜΕΝΑ ΟΠΩΣ ΤΑ ΔΗΛΩΝΕΙ Η ΙΔΙΑ Η CLOUDFLARE (Turnstile Privacy
+    // Addendum, cloudflare.com/turnstile-privacy-policy). Προσθήκη με απόφαση
+    // ιδιοκτήτη, 10/11/2026. Η σελίδα της Cloudflare δεν άνοιξε από το
+    // περιβάλλον ανάπτυξης· το κείμενο στηρίζεται σε απόσπασμά της και θέλει
+    // επαλήθευση πριν μπει το κλειδί.
+    name: BOT_CHECK,
+    short: 'έλεγχος κατά αυτοματοποιημένων λογαριασμών',
+    purpose: 'Έλεγχος κατά αυτοματοποιημένων λογαριασμών (Turnstile) στις σελίδες εγγραφής, σύνδεσης και επαναφοράς κωδικού. Σύμφωνα με την Cloudflare, ο έλεγχος επεξεργάζεται τη διεύθυνση IP, το αποτύπωμα TLS, την κεφαλίδα User-Agent του περιηγητή και το κλειδί του ιστοτόπου μαζί με την προέλευσή του. Δεν λαμβάνει το email ή τον κωδικό σου. Για τη βελτίωση της δικής της ανίχνευσης η Cloudflare δηλώνει ότι ενεργεί ως αυτοτελής υπεύθυνος επεξεργασίας, με βάση το έννομο συμφέρον της. Η εγγύηση της διαβίβασης εκτός ΕΟΧ δεν έχει ακόμη καταγραφεί.',
+    where: 'ΗΠΑ',
+    // Συμπληρώνεται από το περιβάλλον, παρακάτω. Η τιμή εδώ δεν διαβάζεται ποτέ.
+    active: false,
+    role: 'processor',
+    entity: 'Cloudflare, Inc.',
+  },
+  {
     // ΟΧΙ ΟΠΟΙΟΣΔΗΠΟΤΕ ΠΑΡΟΧΟΣ ΚΑΡΤΑΣ. Ο δικός μας είναι «merchant of record»,
     // δηλαδή πουλά αυτός ΣΤΟ ΔΙΚΟ ΤΟΥ όνομα και αναλαμβάνει ΦΠΑ και
     // παραστατικά — άλλη σχέση από έναν απλό επεξεργαστή πληρωμών. Ο κατάλογος
@@ -248,11 +269,17 @@ export function subprocessors(
   // μητρώο θα έκρυβε επεξεργασία που συμβαίνει. Οι δύο μεταβλητές είναι αυτές
   // που διαβάζει η αναφορά σφαλμάτων (lib/observability/report.ts).
   const sentryLive = String(env.NEXT_PUBLIC_SENTRY_DSN || env.SENTRY_DSN || '').trim() !== '';
+  // ΚΑΙ ΓΙΑ ΤΟΝ ΕΛΕΓΧΟ ΚΑΤΑ ΤΩΝ BOTS: η ίδια μεταβλητή που φορτώνει το σενάριο
+  // στις φόρμες (lib/auth/captcha.ts) και ανοίγει την CSP (proxy.ts).
+  const botCheckLive = String(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '').trim() !== '';
   // ΚΑΙ ΓΙΑ ΤΗΝ ΠΑΡΑΛΑΒΗ EMAIL. Χωρίς τομέα παραλαβής καμία διεύθυνση δεν
   // εμφανίζεται και η διαδρομή αρνείται κάθε μήνυμα (lib/inbound/address.ts).
   const inboundLive = inboundDomain(env.NEXT_PUBLIC_INBOUND_DOMAIN) !== '';
   return base(port.name).map(s => {
     if (s.name === ERROR_REPORTING) return sentryLive
+      ? { ...s, active: true }
+      : { ...s, active: false, purpose: `${s.purpose} Ενεργοποιείται μόνο αν οριστεί κλειδί και σήμερα δεν έχει οριστεί.` };
+    if (s.name === BOT_CHECK) return botCheckLive
       ? { ...s, active: true }
       : { ...s, active: false, purpose: `${s.purpose} Ενεργοποιείται μόνο αν οριστεί κλειδί και σήμερα δεν έχει οριστεί.` };
     if (s.name === MAIL_SERVICE) return inboundLive

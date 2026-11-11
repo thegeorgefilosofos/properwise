@@ -53,6 +53,10 @@ export const SUBPROCESSOR_EN: Record<string, { name?: string; where: string; pur
     where: 'United States or European Union',
     purpose: 'Recording app errors.',
   },
+  Cloudflare: {
+    where: 'United States',
+    purpose: 'Check against automated accounts (Turnstile) on the sign-up, sign-in and password reset pages. According to Cloudflare, the check processes the IP address, the TLS fingerprint, the browser’s User-Agent header and the site key together with its origin. It does not receive your email or password. To improve its own detection, Cloudflare states that it acts as an independent controller, on the basis of its legitimate interest. The safeguard for the transfer outside the EEA has not yet been recorded.',
+  },
   mobile: {
     name: 'Mobile messaging (Viber / WhatsApp / Apple Messages)',
     where: 'To be set per provider before activation',
@@ -83,7 +87,7 @@ export function subprocessorLineEn(s: Subprocessor): string {
   const c = copyOf(s);
   let purpose = c?.purpose ?? s.purpose;
   // Οι ίδιες προσθήκες που κάνει το μητρώο ανάλογα με το περιβάλλον.
-  if (s.name === 'Sentry' && !s.active) purpose += ' It is switched on only if a key is set, and none is set today.';
+  if ((s.name === 'Sentry' || s.name === 'Cloudflare') && !s.active) purpose += ' It is switched on only if a key is set, and none is set today.';
   if (s.name === PUSH_SERVICES && !s.active) purpose += ' Not switched on.';
   if (s.name === 'Resend' && inboundDomain(process.env.NEXT_PUBLIC_INBOUND_DOMAIN) !== '') purpose += ' Receiving email: what you forward to your account’s receiving address, so that it can be suggested as expenses; and what you send to our contact addresses.';
   if (s.role === 'mixed') purpose += ` ${billingWordsEn().merchantRow}`;
@@ -103,7 +107,7 @@ export const TRANSFER_SAFEGUARDS_EN =
 export function subprocessorRowEn(s: Subprocessor): { name: string; entity: string | null; what: string; where: string; planned: boolean } {
   const c = copyOf(s);
   let what = c?.purpose ?? s.purpose;
-  if (s.name === 'Sentry' && !s.active) what += ' It is switched on only if a key is set, and none is set today.';
+  if ((s.name === 'Sentry' || s.name === 'Cloudflare') && !s.active) what += ' It is switched on only if a key is set, and none is set today.';
   if (s.name === PUSH_SERVICES && !s.active) what += ' Not switched on.';
   if (s.name === 'Resend' && inboundDomain(process.env.NEXT_PUBLIC_INBOUND_DOMAIN) !== '') what += ' Receiving email: what you forward to your account’s receiving address, so that it can be suggested as expenses; and what you send to our contact addresses.';
   if (s.role === 'mixed') what += ` ${billingWordsEn().merchantRow}`;

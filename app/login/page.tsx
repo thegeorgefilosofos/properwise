@@ -16,6 +16,8 @@ import { continuation, carried } from '@/lib/auth/continuation';
 import type { Locale } from '@/lib/i18n/locale';
 import { localHref } from '@/lib/i18n/paths';
 import { useAuthEn } from '@/lib/i18n/authEn';
+import { useCaptcha } from '../useCaptcha';
+import { captchaOptions } from '@/lib/auth/captcha';
 
 // ΤΟ ΠΑΚΕΤΟ ΠΟΥ ΤΑΞΙΔΕΨΕ ΩΣ ΕΔΩ ΔΕΝ ΧΑΝΕΤΑΙ ΣΤΗΝ ΠΟΡΤΑ. Ο διαμεσολαβητής στέλνει
 // το ανώνυμο «/tameio?plan=…&cycle=…» στη σύνδεση κρατώντας τη διεύθυνση· η
@@ -87,6 +89,7 @@ export default function LoginPage() {
   const A = useAuthEn(), L = A?.login
   const locale: Locale = A ? 'en' : 'el'
   const MFA_SAY = A ? A.mfa : MFA_SAY_EL
+  const captcha = useCaptcha(locale)
   const fail = (el: string, en_: string | undefined, e: unknown) => A ? Promise.resolve(A.failed(en_ ?? el, e)) : failed(el, e)
   const [email, setEmail] = useState('')
   // Μέσα σε Instagram, Facebook ή TikTok χωρίς κουμπί προς Safari ή Chrome η
@@ -222,7 +225,10 @@ export default function LoginPage() {
     setError(''); setUnconfirmed(false); setResent(false)
     setLoading(true)
     const supabase = await authClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const captchaToken = await captcha.token()
+    if (captchaToken === null) { setError(captcha.failMessage()); setLoading(false); return }
+    const { error } = await supabase.auth.signInWithPassword({ email, password, options: captchaOptions(captchaToken) })
+    captcha.reset()
     if (error) {
       const message = await fail('Η σύνδεση δεν έγινε', L?.failed, error)
       setError(message)
@@ -280,10 +286,14 @@ export default function LoginPage() {
       return
     }
     const supabase = await authClient()
+    // Η Supabase ελέγχει διακριτικό και στην επαναποστολή, όχι μόνο στη σύνδεση.
+    const captchaToken = await captcha.token()
+    if (captchaToken === null) { setError(captcha.failMessage()); return }
     const { error } = await supabase.auth.resend({
       type: 'signup', email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(afterSignIn())}` },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(afterSignIn())}`, ...captchaOptions(captchaToken) },
     })
+    captcha.reset()
     if (error) { setError(await fail('Το email δεν ξαναστάλθηκε', L?.notResent, error)); return }
     setError(''); setResent(true)
   }
@@ -409,6 +419,7 @@ export default function LoginPage() {
             </p>
           )}
 
+          {!factorId && captcha.slot}
           <Btn variant="primary" type="submit" field disabled={busy}>
             {factorId
               ? (verifying ? (L ? L.verifying : 'Επαλήθευση…') : (L ? L.verify : 'Επαλήθευση'))
