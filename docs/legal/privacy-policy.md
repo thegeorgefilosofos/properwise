@@ -109,13 +109,13 @@ merchant of record· δεν περνούν ποτέ από τους δικούς
 
 | Υπεργολάβος | Σκοπός | Τοποθεσία | Διαβίβαση |
 |---|---|---|---|
-| **Supabase Pte. Ltd** (Σιγκαπούρη) | Βάση/auth/αποθήκευση/edge functions | **ΕΕ — Frankfurt** | Δεδομένα στην ΕΕ· **SCCs** (Module 2/3) με τον αντισυμβαλλόμενο στη Σιγκαπούρη |
+| **Supabase Pte. Ltd** (Σιγκαπούρη) | Βάση/auth/αποθήκευση/edge functions/κρυπτογραφημένα backups | **ΕΕ, Frankfurt** | Δεδομένα στην ΕΕ· **SCCs** (Module 2/3) με τον αντισυμβαλλόμενο στη Σιγκαπούρη |
 | **Plus Five Five, Inc.** (Resend) | Email | ΗΠΑ | **SCCs** |
 | **Vercel Inc.** | Φιλοξενία και παράδοση της εφαρμογής, μέτρηση επισκεψιμότητας χωρίς cookies | ΗΠΑ, παγκόσμιο δίκτυο | Σύμβαση επεξεργασίας: εκκρεμεί |
 | **Google LLC** | Σύνδεση με Google, εφόσον την επιλέξετε | ΗΠΑ | Αυτοτελής υπεύθυνος επεξεργασίας |
 | **Cloudflare, Inc.** (Turnstile) | Έλεγχος κατά αυτοματοποιημένων λογαριασμών στην εγγραφή, τη σύνδεση και την επαναφορά κωδικού. Κατά την Cloudflare: διεύθυνση IP, αποτύπωμα TLS, User-Agent, κλειδί ιστοτόπου και προέλευση. Ενεργός μόνο με κλειδί (προσθήκη 10/11/2026). Νομική βάση: έννομο συμφέρον για την ασφάλεια (άρθρο 6§1στ) | ΗΠΑ | Εγγύηση διαβίβασης: δεν έχει καταγραφεί ακόμη |
 | **Anthropic Ireland, Ltd** (για πελάτες ΕΟΧ) | Βοηθός AI (χωρίς εκπαίδευση μοντέλων) | ΗΠΑ | **SCCs** |
-| **GitHub, Inc.** | Κώδικας/CI/κρυπτογραφημένα backups | ΗΠΑ | **SCCs** |
+| **GitHub, Inc.** | Κώδικας/CI/κλειδί αποκρυπτογράφησης των backups (GitHub Secrets) | ΗΠΑ | **SCCs** |
 | **Creem** | Χρέωση συνδρομών (merchant of record) | ΗΠΑ/ΕΕ | Μηχανισμός διαβίβασης: δεν έχει καταγραφεί (`docs/compliance/subprocessors.md`) |
 | Πάροχοι μηνυμάτων *(σχεδιαζόμενο)* | Ειδοποιήσεις | Διάφορες | **SCCs** πριν την ενεργοποίηση |
 
@@ -234,7 +234,7 @@ data.
 **6. Retention.** Account: its life; deleted from the database immediately on
 deletion. No automatic deletion for lack of a subscription (the account continues on
 the free plan). Tax: Greek statutory. Backups: 30-day
-encrypted. Deletion effective across the estate within 30 days.
+encrypted, in a private Supabase storage space (Frankfurt); key in GitHub Secrets. Deletion effective across the estate within 30 days.
 
 **7. Rights (15–22).** Export (`export_my_data`), Delete (`delete_my_account`), in-app
 rectification, per-message opt-out, restriction, withdraw consent. Via Settings → Data

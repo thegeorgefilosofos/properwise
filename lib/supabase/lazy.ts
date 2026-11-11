@@ -43,3 +43,34 @@ export async function authClient(): Promise<Client> {
   const { createClient } = await import('./client');
   return createClient();
 }
+
+// ═══ ΧΩΡΙΣ COOKIE ΣΥΝΕΔΡΙΑΣ, ΚΑΝΕΝΑ ΦΟΡΤΩΜΑ ═════════════════════════════════
+// Η εγγραφή και η σύνδεση ρωτούν στο πρώτο καρέ «είναι ήδη συνδεδεμένος;» και
+// για να το ρωτήσουν κατέβαζαν ΟΛΟ τον πελάτη, περίπου 45 KB στο καλώδιο, τον
+// μισό JavaScript της σελίδας πέρα από το React. Ο επισκέπτης της εγγραφής
+// όμως, σχεδόν πάντα, δεν έχει λογαριασμό: η απάντηση ήταν γνωστή εκ των
+// προτέρων και το κόστος πληρωνόταν για το τίποτα.
+//
+// Η συνεδρία του browser ζει στο cookie `sb-<έργο>-auth-token` (ή κομματιασμένο
+// σε `.0`, `.1`, …), όπως το γράφει το `@supabase/ssr`, χωρίς `httpOnly`.
+// Χωρίς αυτό το `getUser()` απαντά πάντα «κανένας χρήστης». Η μόνη άλλη πηγή
+// συνεδρίας είναι η επιστροφή από την Google ή από σύνδεσμο email: εκεί η
+// διεύθυνση φέρνει `code`, `access_token`, `token_hash`, `error` ή `oauth` και
+// ο πελάτης πρέπει να φορτώσει για να κάνει την ανταλλαγή. Σε αυτές τις
+// περιπτώσεις η απάντηση είναι πάντα «ίσως» και όλα γίνονται όπως πριν.
+
+const SESSION_COOKIE = /(?:^|;\s*)sb-[^=;]*-auth-token/
+const SESSION_IN_URL = /[?&#](?:code|access_token|token_hash|error|oauth)=/
+
+/**
+ * Μπορεί να υπάρχει συνεδρία; `false` μόνο όταν είναι βέβαιο ότι δεν υπάρχει.
+ * Χωρίς ορίσματα διαβάζει τον browser· έξω από browser απαντά «ίσως».
+ */
+export function mayHaveSession(cookie?: string, url?: string): boolean {
+  if (cookie === undefined) {
+    if (typeof document === 'undefined') return true
+    cookie = document.cookie
+  }
+  url ??= typeof location === 'undefined' ? '' : location.search + location.hash
+  return SESSION_COOKIE.test(cookie) || SESSION_IN_URL.test(url)
+}

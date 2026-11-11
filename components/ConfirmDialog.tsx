@@ -19,7 +19,7 @@
 
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { T } from './tokens';
-import { Modal } from './Theme';
+import { Modal } from './ThemeCore';
 import { subscribeConfirm, type ConfirmRequest } from './confirmBus';
 import { hy } from './Hyphen';
 

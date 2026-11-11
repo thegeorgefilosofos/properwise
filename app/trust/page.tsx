@@ -20,7 +20,7 @@
 import type { Metadata } from 'next';
 import { IDENTITY, identityLabels, POLICY_UPDATED, POLICY_VERSION } from '@/lib/legal/identity';
 import { DISCLOSURE } from '@/lib/legal/disclosure';
-import { subprocessors, TRANSFER_SAFEGUARDS, ANTHROPIC_CONTRACT } from '@/lib/legal/subprocessors';
+import { subprocessors, TRANSFER_SAFEGUARDS, ANTHROPIC_CONTRACT, BACKUP_RETENTION_DAYS } from '@/lib/legal/subprocessors';
 import { ASSISTANT_ACC, ASSISTANT_TO } from '@/lib/assistant/identity';
 import { hyphenate, bindRefs } from '@/lib/core/hyphenate';
 import { billingWords } from '@/lib/legal/billingWords';
@@ -305,10 +305,10 @@ export default function TrustPage() {
           </p>
           <ul className="lg-ul">
             <li>
-              <strong>Το κρυπτογραφημένο αντίγραφο ασφαλείας</strong> φυλάσσεται σε υποδομή των ΗΠΑ (GitHub). Είναι
-              κρυπτογραφημένο με AES-256 και χωρίς το κλειδί δεν διαβάζεται. Να ξέρεις όμως και το εξής: το κλειδί
-              φυλάσσεται ως μυστικό στον ίδιο πάροχο, οπότε η κρυπτογράφηση δεν κρατά το αντίγραφο κλειστό για τον
-              ίδιο τον πάροχο.
+              <strong>Το κλειδί του αντιγράφου ασφαλείας</strong> φυλάσσεται σε υποδομή των ΗΠΑ, στα Secrets του
+              GitHub. Το ίδιο το αντίγραφο είναι κρυπτογραφημένο με AES-256 και φυλάσσεται σε ιδιωτικό χώρο
+              αποθήκευσης της Supabase, στη Φρανκφούρτη όπως η βάση. Η κράτηση είναι {BACKUP_RETENTION_DAYS} ημέρες, με τις
+              εξαιρέσεις που γράφει η Πολιτική απορρήτου. Χωρίς το κλειδί δεν διαβάζεται.
             </li>
             <li>
               <strong>Τα ερωτήματά σου {ASSISTANT_TO}</strong>, μαζί με μια περίληψη των δεδομένων του ακινήτου, του

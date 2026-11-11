@@ -1,11 +1,12 @@
 'use client'
-import { T, Btn, LinkBtn, ChipToggle } from '@/components/Theme'
+import { Btn, LinkBtn, ChipToggle } from '@/components/ThemeCore'
+import { T } from '@/components/tokens'
 import { KIND_LABEL, type FirmKind } from '@/lib/data/firmWords'
 import { FIRM_TERMS_VERSION } from '@/lib/legal/firms'
 import FirmTermsCheck, { FIRM_TERMS_NEEDED } from '@/app/accountant/workspace/FirmTerms'
 import { useState, useEffect, useSyncExternalStore, type ReactNode } from 'react'
 import { leaveDevice } from '@/lib/localPrivacy'
-import { authClient } from '@/lib/supabase/lazy';
+import { authClient, mayHaveSession } from '@/lib/supabase/lazy';
 import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
 import { AuthMobileBrand } from '../AuthMobileBrand'
@@ -289,6 +290,9 @@ export default function SignupPage() {
   }, [])
   useEffect(() => {
     // Ασύγχρονο ξετύλιγμα: το effect δεν επιστρέφει ποτέ υπόσχεση.
+    // Χωρίς cookie συνεδρίας και χωρίς επιστροφή στη διεύθυνση, η απάντηση
+    // είναι ήδη γνωστή: κανένας χρήστης. Ο πελάτης δεν φορτώνει (lib/supabase/lazy.ts).
+    if (!mayHaveSession()) return
     void (async () => {
     const supabase = await authClient()
     supabase.auth.getUser().then(async ({ data }) => {
