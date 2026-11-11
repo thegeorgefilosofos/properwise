@@ -24,6 +24,7 @@ create table public.support_inbox (
   received_at timestamptz not null default now()
 );
 insert into public.support_inbox(provider_id, from_email) values ('em_old_shape', 'x@probe.test');
+insert into public.support_inbox(provider_id, from_email, forwarded) values ('em_old_sent', 'y@probe.test', true);
 drop table public.release_waves;
 create table public.release_waves (
   feature text not null,
@@ -56,6 +57,9 @@ begin
   end if;
   if (select forward_state from public.support_inbox where provider_id = 'em_old_shape') <> 'pending' then
     raise exception 'ΑΝΑΒΑΘΜΙΣΗ: η παλιά γραμμή δεν μπήκε στην ουρά';
+  end if;
+  if (select forward_state from public.support_inbox where provider_id = 'em_old_sent') <> 'sent' then
+    raise exception 'ΑΝΑΒΑΘΜΙΣΗ: μήνυμα που είχε ήδη προωθηθεί θα ξαναστελνόταν';
   end if;
   insert into public.release_waves(feature, wave) values ('probe_upgrade', 'first');
   if to_regprocedure('public.support_submit(text)') is not null or to_regprocedure('public.user_release_rank(uuid)') is not null then

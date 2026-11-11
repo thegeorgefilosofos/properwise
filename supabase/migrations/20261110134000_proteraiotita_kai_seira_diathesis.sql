@@ -150,7 +150,23 @@ alter table public.support_inbox
   add column if not exists next_attempt_at timestamptz not null default now(),
   add column if not exists forward_claimed_at timestamptz,
   add column if not exists forward_error text,
-  add column if not exists dedupe_key text,
+  add column if not exists dedupe_key text;
+-- ΟΣΑ ΕΙΧΑΝ ΗΔΗ ΠΡΟΩΘΗΘΕΙ ΔΕΝ ΞΑΝΑΣΤΕΛΝΟΝΤΑΙ. Το πρώτο σχέδιο το έγραφε στο
+-- `forwarded` (boolean), το δεύτερο στο `forwarded_at`. Πριν σβηστεί η παλιά
+-- στήλη, οι γραμμές τους γίνονται `sent`, αλλιώς το cron θα τις ξανάστελνε.
+-- Δυναμικό SQL: σε βάση χωρίς τη στήλη `forwarded` η εντολή δεν αναφέρεται σε αυτήν.
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+              where table_schema = 'public' and table_name = 'support_inbox' and column_name = 'forwarded') then
+    execute 'update public.support_inbox set forward_state = ''sent''
+              where forward_state = ''pending'' and (forwarded_at is not null or forwarded is true)';
+  else
+    update public.support_inbox set forward_state = 'sent'
+     where forward_state = 'pending' and forwarded_at is not null;
+  end if;
+end $$;
+alter table public.support_inbox
   drop column if exists priority,
   drop column if exists forwarded;
 alter table public.support_inbox drop constraint if exists support_inbox_forward_state_check;
