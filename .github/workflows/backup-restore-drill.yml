@@ -14,20 +14,34 @@ name: Backup restore drill
 #   5. μετρά τις γραμμές των πινάκων-κλειδιών στο dump και στη βάση. Κοκκινίζει
 #      σε κάθε διαφορά ή σε άδειο αντίγραφο
 #
-# ΤΑ LOGS ΕΙΝΑΙ ΔΗΜΟΣΙΑ. Η έξοδος του psql πάει σε αρχείο που δεν τυπώνεται·
-# στο log γράφεται μόνο το πλήθος των σφαλμάτων και ✓/✗ ανά πίνακα, χωρίς
-# αριθμούς γραμμών. Η προσωρινή βάση σβήνει μαζί με τον runner.
-#
+# ΤΑ LOGS ΕΙΝΑΙ ΔΗΜΟΣΙΑ. ΤΟ ΠΕΡΙΣΤΑΤΙΚΟ (11/11/2026): η πρώτη εκτέλεση έτρεχε
+# τον Postgres ως `services:` container. Ο ΔΙΑΚΟΜΙΣΤΗΣ έγραφε κάθε εντολή που
+# απέτυχε ολόκληρη στο δικό του log. Το GitHub τυπώνει το log ενός service
+# container στο «Stop containers». Το dump γράφει μία INSERT με όλες τις γραμμές
+# κάθε πίνακα, οπότε στο δημόσιο log βγήκαν ολόκληροι πίνακες του auth και του
+# storage. Τα logs της εκτέλεσης σβήστηκαν. Από τότε, τρία τείχη:
+#   1. ο Postgres ξεκινά με `docker run --log-driver none --network none` και
+#      με κάθε καταγραφή εντολών και σφαλμάτων κλειστή (`log_min_error_statement=
+#      panic` κ.λπ.). Δεν υπάρχει `services:` (scripts/guard-backup-logs.mjs)
+#   2. κάθε psql γράφει stdout στο /dev/null και stderr μόνο σε μετρητή
+#   3. τα δεδομένα που επαναφέρονται είναι ΜΟΝΟ του `public` (vault.mjs
+#      restorable): το auth και το storage δεν φτάνουν ποτέ στη βάση της δοκιμής
+# Στο log γράφονται μόνο πλήθη σφαλμάτων και ✓/✗ ανά πίνακα. Η προσωρινή βάση
+# σβήνει μαζί με τον runner.
+
 # ΚΛΕΙΔΙ ΜΟΝΟ ΑΝΑΓΝΩΣΗΣ ΔΕΝ ΥΠΑΡΧΕΙ. Η Supabase δίνει δύο κλειδιά, anon και
 # service role. Ένα κλειδί περιορισμένο στην ανάγνωση του bucket θα ήθελε δικό
 # μας JWT υπογεγραμμένο με το JWT secret του έργου, που είναι ισχυρότερο από το
 # ίδιο το service role. Γι' αυτό η ροή τρέχει με VAULT_READONLY=1: το
 # scripts/backup/vault.mjs αρνείται κάθε κλήση εκτός από λήψη και λίστα.
 #
-# Σφάλματα στο auth/storage είναι αναμενόμενα: ο γυμνός Postgres έχει μόνο τη
-# σκαλωσιά (scripts/db/platform-stub.sql), όχι όλες τις στήλες της πλατφόρμας.
-# Γι' αυτό η κρίση γίνεται στα πλήθη των πινάκων του `public`, όχι στο μηδέν
-# σφαλμάτων.
+# ΓΙΑΤΙ ΜΟΝΟ ΤΟ `public`. Και οι έξι πίνακες-κλειδιά ζουν εκεί. Το auth και το
+# storage τα κρατά η πλατφόρμα, με στήλες που αλλάζουν ανά έκδοση· σε γυμνό
+# Postgres δεν επαναφέρονται, μόνο αποτυγχάνουν. Τα ξένα κλειδιά προς το
+# auth.users δεν ελέγχονται στην επαναφορά (session_replication_role=replica,
+# όπως στο ίδιο το dump). Το σχήμα στήνεται πάνω στη σκαλωσιά
+# scripts/db/platform-stub.sql. Η κρίση: κάθε πίνακας-κλειδί έχει στη βάση
+# ΑΚΡΙΒΩΣ όσες γραμμές γράφει το dump· το dump δεν είναι άδειο.
 # ═══════════════════════════════════════════════════════════════════════════
 
 on:
@@ -47,23 +61,11 @@ jobs:
   drill:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    services:
-      postgres:
-        # Η παραγωγή τρέχει Postgres 17· η έκδοση κλειδώνεται.
-        image: postgres:17.6
-        env:
-          # Βάση μιας χρήσης, χωρίς δίκτυο προς τα έξω: δεν χρειάζεται κωδικός.
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
-      PGHOST: localhost
-      PGUSER: postgres
       VAULT_READONLY: '1'
+      # Η παραγωγή τρέχει Postgres 17· η έκδοση κλειδώνεται.
+      PG_IMAGE: postgres:17.6
     steps:
       - uses: actions/checkout@v7
         with:
@@ -109,43 +111,80 @@ jobs:
       - name: Latest files set is complete
         run: node scripts/backup/vault.mjs verify-files
 
-      - name: Restore into a throwaway Postgres
+      # ΧΩΡΙΣ `services:`: το GitHub τυπώνει το log ενός service container. Εδώ το
+      # container δεν έχει log (--log-driver none) ούτε δίκτυο (--network none)· και
+      # ο διακομιστής δεν καταγράφει ούτε εντολές ούτε σφάλματα.
+      - name: Start a silent Postgres
         run: |
           set -euo pipefail
-          psql -q -c 'create database drill' >/dev/null
-          psql -q -d drill -v ON_ERROR_STOP=1 -f scripts/db/platform-stub.sql >/dev/null
+          docker pull -q "$PG_IMAGE" >/dev/null 2>&1 \
+            || { echo "::error::Η εικόνα $PG_IMAGE δεν κατέβηκε."; exit 1; }
+          docker run -d --name drill-pg --log-driver none --network none \
+            -e POSTGRES_HOST_AUTH_METHOD=trust --tmpfs /var/lib/postgresql/data "$PG_IMAGE" \
+            -c log_min_error_statement=panic -c log_min_messages=panic \
+            -c log_statement=none -c log_min_duration_statement=-1 \
+            -c log_error_verbosity=terse -c log_connections=off \
+            -c log_disconnections=off -c log_checkpoints=off >/dev/null 2>&1
+          # Ο προσωρινός διακομιστής της αρχικοποίησης δεν ακούει σε TCP: έτοιμο
+          # σημαίνει ο κανονικός.
+          for _ in $(seq 60); do
+            docker exec drill-pg pg_isready -q -h 127.0.0.1 -U postgres >/dev/null 2>&1 && break
+            sleep 2
+          done
+          docker exec drill-pg pg_isready -q -h 127.0.0.1 -U postgres >/dev/null 2>&1 \
+            || { echo "::error::Ο προσωρινός Postgres δεν ξεκίνησε."; exit 1; }
+          echo "✓ προσωρινός Postgres έτοιμος (χωρίς log, χωρίς δίκτυο)"
+
+      - name: Restore into the throwaway Postgres
+        run: |
+          set -euo pipefail
+          # Μόνο τα δεδομένα του public. Στο log: πόσες εντολές κρατήθηκαν και πόσες
+          # έμειναν έξω ανά σχήμα, τίποτε άλλο.
+          # Τα αναμενόμενα πλήθη βγαίνουν από το ΑΚΕΡΑΙΟ dump, ώστε να φαίνεται κι αν
+          # το φίλτρο έχανε γραμμή του public.
+          # shellcheck disable=SC2086
+          node scripts/backup/vault.mjs count drill/data.sql $KEY_TABLES > drill/expected.json
+          node scripts/backup/vault.mjs restorable drill/data.sql drill/restore.sql public
+          rm -f drill/data.sql
           # Οι επεκτάσεις της πλατφόρμας δεν υπάρχουν σε γυμνό Postgres (όπως στο scripts/db-replay.sh).
           sed -E -i 's/^([[:space:]]*)(CREATE EXTENSION[^;]*"(pg_cron|pg_net|pg_stat_statements|supabase_vault|pg_graphql|pgsodium)"[^;]*;)/\1-- [drill] \2/I' drill/schema.sql
+          # stdout στο /dev/null, stderr ΜΟΝΟ στον μετρητή: καμία εντολή, καμία τιμή
+          # δεν γράφεται ούτε στο log ούτε στον δίσκο.
+          pg() { docker exec -i -e PGOPTIONS="${PGOPTIONS:-}" drill-pg psql -X -q -h 127.0.0.1 -U postgres -v VERBOSITY=terse -v SHOW_CONTEXT=never "$@"; }
+          pg -c 'create database drill' >/dev/null 2>&1 \
+            || { echo "::error::Η βάση της δοκιμής δεν δημιουργήθηκε."; exit 1; }
+          pg -d drill -v ON_ERROR_STOP=1 -f - < scripts/db/platform-stub.sql >/dev/null 2>&1 \
+            || { echo "::error::Η σκαλωσιά της πλατφόρμας δεν στήθηκε."; exit 1; }
           errors=0
-          for f in roles schema data; do
+          for f in roles schema restore; do
             # Τα δεδομένα μπαίνουν με τα triggers των ξένων κλειδιών σβηστά, όπως στο pg_dump.
-            opts=''; [ "$f" = data ] && opts='-c session_replication_role=replica'
-            PGOPTIONS="$opts" psql -d drill -f "drill/$f.sql" > "drill/$f.log" 2>&1 || true
-            n=$(grep -c 'ERROR' "drill/$f.log" || true)
+            opts=''; [ "$f" = restore ] && opts='-c session_replication_role=replica'
+            n=$(PGOPTIONS="$opts" pg -d drill -f - < "drill/$f.sql" 2>&1 >/dev/null | awk '/ERROR/ { n++ } END { print n + 0 }') \
+              || { echo "::error::Το psql δεν ολοκλήρωσε το $f.sql (σύνδεση;)."; exit 1; }
             echo "$f.sql: $n σφάλματα (η έξοδος δεν τυπώνεται)"
             errors=$((errors + n))
           done
-          rm -f drill/*.log
           echo "errors=$errors" >> "$GITHUB_ENV"
 
       - name: Compare row counts
         run: |
           set -euo pipefail
-          # shellcheck disable=SC2086
-          node scripts/backup/vault.mjs count drill/data.sql $KEY_TABLES > drill/expected.json
           printf '{' > drill/actual.json
           sep=''
           for t in $KEY_TABLES; do
-            n=$(psql -d drill -tAc "select count(*) from public.\"$t\"" 2>/dev/null || echo -1)
-            printf '%s"%s":%s' "$sep" "$t" "$n" >> drill/actual.json
+            n=$(docker exec drill-pg psql -X -h 127.0.0.1 -U postgres -d drill -tAc "select count(*) from public.\"$t\"" 2>/dev/null || echo -1)
+            printf '%s"%s":%s' "$sep" "$t" "${n:--1}" >> drill/actual.json
             sep=','
           done
           printf '}' >> drill/actual.json
           node scripts/backup/vault.mjs compare drill/expected.json drill/actual.json
 
+      # Ούτε εδώ `docker logs`: το container δεν έχει log· δεν ζητείται ποτέ.
       - name: Clean up
         if: always()
-        run: rm -rf drill
+        run: |
+          docker rm -f drill-pg >/dev/null 2>&1 || true
+          rm -rf drill
 
       - name: Summary
         env:
@@ -157,5 +196,5 @@ jobs:
             echo "Αντίγραφο της $DAY: αποκρυπτογραφήθηκε, επαναφέρθηκε σε προσωρινή βάση."
             echo "Οι πίνακες-κλειδιά έχουν όσες γραμμές έχει το dump."
             echo
-            echo "Σφάλματα psql (κυρίως σκαλωσιά auth/storage): $errors"
+            echo "Σφάλματα psql (σχήμα πάνω στη σκαλωσιά και δεδομένα του public): $errors"
           } >> "$GITHUB_STEP_SUMMARY"

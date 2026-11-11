@@ -2,7 +2,7 @@
 import {
   daysToPrune, latestDay, judge, judgeFiles, encPath, countRows, compareCounts,
   partName, splitPlan, missingParts, sizeOk, missingTables, readonlyAllows, PART_BYTES,
-  parseManifest, rowsHealthy, runFolder, DAY,
+  parseManifest, rowsHealthy, runFolder, DAY, restorable, dumpStatements,
 } from '../../scripts/backup/vault.mjs'
 
 let passed = 0, failed = 0
@@ -151,6 +151,52 @@ ok('κωδικοποίηση ανά τμήμα', encPath('2026-11-10/α β.gpg')
   ok('μετά το COPY συνεχίζει', c.rent_payments === 1)
   ok('πίνακας χωρίς γραμμές = 0', c.calendar_events === 0)
   ok('αγνοεί το auth', !('users' in c))
+}
+
+// ── Η μορφή του `supabase db dump --data-only`: μία εντολή ανά πίνακα ──────
+// `--column-inserts --rows-per-insert 100000`. Η παλιά μέτρηση έβγαζε 1 εδώ και
+// η δοκιμή επαναφοράς κοκκίνιζε σε κάθε πίνακα με δύο γραμμές και πάνω.
+{
+  const sql = [
+    'SET session_replication_role = replica;',
+    '--',
+    '-- Data for Name: users; Type: TABLE DATA; Schema: auth; Owner: supabase_auth_admin',
+    '--',
+    'INSERT INTO "auth"."users" ("id", "email") VALUES',
+    '\t(\'u1\', \'a@example.invalid\'),',
+    '\t(\'u2\', \'b@example.invalid\');',
+    'INSERT INTO "storage"."objects" ("name") VALUES',
+    '\t(\'u1/μισθωτήριο.pdf\');',
+    'INSERT INTO "public"."tenants" ("id", "note") VALUES',
+    '\t(1, \'τιμή με ; και ) και (\'),',
+    '\t(2, \'πρώτη γραμμή',
+    'INSERT INTO "auth"."users" VALUES (1);',
+    '\t(9, ψεύτικη πλειάδα)\'),',
+    '\t(3, E\'απόστροφος \\\' μέσα\'),',
+    '\t(4, \'διπλή \'\' απόστροφος\');',
+    'SELECT pg_catalog.setval(\'"public"."tenants_id_seq"\', 4, true);',
+    'SELECT pg_catalog.setval(\'"auth"."refresh_tokens_id_seq"\', 9, true);',
+    'COPY "public"."expenses" ("id") FROM stdin;',
+    '1',
+    '2',
+    '\\.',
+    'RESET ALL;',
+  ].join('\n')
+  const c = countRows(sql, ['tenants', 'expenses'])
+  ok('πλειάδες, όχι εντολές: 4 γραμμές σε μία INSERT', c.tenants === 4)
+  ok('COPY μετά από πολλαπλή INSERT: 2', c.expenses === 2)
+  ok('κάθε εντολή χωριστά: 8', dumpStatements(sql).length === 8)
+
+  const r = restorable(sql)
+  ok('μένει έξω το auth', !r.sql.includes('example.invalid') && !r.sql.includes('refresh_tokens'))
+  ok('μένει έξω το storage', !r.sql.includes('"storage"') && !r.sql.includes('μισθωτήριο'))
+  ok('η τιμή που μοιάζει με εντολή μένει μέσα στη γραμμή της', r.sql.includes('γραμμή\nINSERT INTO "auth"."users" VALUES (1);\n\t(9, ψεύτικη'))
+  ok('κρατά public INSERT, setval, COPY', r.kept === 3)
+  ok('πλήθη έξω ανά σχήμα', r.left.auth === 2 && r.left.storage === 1)
+  ok('κρατά τις ρυθμίσεις της συνεδρίας', r.sql.startsWith('SET session_replication_role = replica;') && r.sql.includes('RESET ALL;'))
+  ok('το φιλτραρισμένο μετρά το ίδιο', JSON.stringify(countRows(r.sql, ['tenants', 'expenses'])) === JSON.stringify(c))
+  const odd = restorable('CREATE TABLE "public"."x" (id int);\nINSERT INTO "public"."x" VALUES (1);')
+  ok('άγνωστη εντολή δεν περνά', odd.kept === 1 && !odd.sql.includes('CREATE') && odd.left['άλλη εντολή'] === 1)
 }
 
 // ── Σύγκριση μετά την επαναφορά ─────────────────────────────────────────────

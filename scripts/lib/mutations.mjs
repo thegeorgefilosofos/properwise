@@ -822,4 +822,16 @@ export const MUTATIONS = {
     { add: 'lib/i18n/en/__mut__.ts', content: "export const per = (a: string) => `ή ${a} a year`\n" },
     { add: 'lib/i18n/en/__mut__.ts', content: "export const noa = 'Noa reads your bills and she answers in Greek.'\n" },
   ] },
+
+  // ══ Η ΔΙΑΡΡΟΗ ΤΗΣ ΔΟΚΙΜΗΣ ΕΠΑΝΑΦΟΡΑΣ (11/11/2026) ═══════════════════════════
+  // Ακριβώς το #521: Postgres ως `services:`, που το GitHub τυπώνει το log του.
+  // Και κάθε τείχος της διόρθωσης χωριστά: το log του container, η καταγραφή
+  // του διακομιστή, ένα psql χωρίς σίγαση, ένα `set -x` στα σενάρια αντιγράφων.
+  'backup-logs': { every: [
+    { add: '.github/workflows/__mut_backup_logs__.yml', content: "name: m\non: workflow_dispatch\njobs:\n  drill:\n    runs-on: ubuntu-latest\n    services:\n      postgres:\n        image: postgres:17.6\n    steps:\n      - run: echo\n" },
+    { file: '.github/workflows/backup-restore-drill.yml', from: 'docker run -d --name drill-pg --log-driver none --network none', to: 'docker run -d --name drill-pg --network none' },
+    { file: '.github/workflows/backup-restore-drill.yml', from: '-c log_min_error_statement=panic -c log_min_messages=panic', to: '-c log_min_messages=panic' },
+    { file: '.github/workflows/backup-restore-drill.yml', from: 'pg -d drill -v ON_ERROR_STOP=1 -f - < scripts/db/platform-stub.sql >/dev/null 2>&1', to: 'pg -d drill -v ON_ERROR_STOP=1 -f - < scripts/db/platform-stub.sql' },
+    { add: 'scripts/backup/__mut__.sh', content: '#!/usr/bin/env bash\nset -euxo pipefail\necho ok\n' },
+  ] },
 }
