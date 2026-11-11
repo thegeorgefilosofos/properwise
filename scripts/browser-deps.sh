@@ -34,8 +34,13 @@
 #   2. Οι καθρέφτες της εικόνας, με `Acquire::Retries=5`. Μόνο αν λύνεται
 #      έστω ένα όνομα τους: με νεκρό DNS κάθε αρχείο περιμένει είκοσι
 #      δευτερόλεπτα ανά καθρέφτη: αυτά ήταν τα δέκα λεπτά.
-#   3. Τα ΙΔΙΑ αρχεία .deb από ανεξάρτητους καθρέφτες (άλλα ονόματα, άλλο
-#      DNS). Κάθε αρχείο ελέγχεται με το SHA256 του υπογεγραμμένου καταλόγου
+#   3. Τα ΙΔΙΑ αρχεία .deb από ανεξάρτητες πηγές (άλλα ονόματα, άλλο DNS):
+#      έξι καθρέφτες και τελευταίο το Launchpad. Κάθε αρχείο δοκιμάζει ΟΛΕΣ
+#      τις πηγές πριν κριθεί χαμένο και το αρχείο καταγραφής λέει ποια το
+#      έδωσε. ΜΕΤΡΗΜΕΝΟ (εκτέλεση 43059573394, job 130658133719): το WebKit
+#      πήρε 184 από 185 αρχεία από τον kernel.org· το libsoup-3.0-common
+#      3.6.6-1ubuntu0.1 του -security έδινε 404 σε όλους τους καθρέφτες,
+#      γιατί είχε ήδη αντικατασταθεί και σβηστεί από το pool. Κάθε αρχείο ελέγχεται με το SHA256 του υπογεγραμμένου καταλόγου
 #      του apt της εικόνας, άρα ένας ξένος καθρέφτης δεν μπορεί να περάσει
 #      άλλο περιεχόμενο. Ο έλεγχος γίνεται ΕΔΩ και όχι από το apt: για αρχείο
 #      που βρίσκει ήδη στο /var/cache/apt/archives το apt κοιτά μόνο το μέγεθος
@@ -55,7 +60,7 @@ BROWSER="${1:?δώσε περιηγητή: chromium ή webkit}"
 CLI=(node node_modules/playwright-core/cli.js)
 
 # Ανεξάρτητοι καθρέφτες του αρχείου του Ubuntu, εκτός ubuntu.com.
-MIRRORS="${BROWSER_DEPS_MIRRORS:-https://mirrors.edge.kernel.org/ubuntu http://mirror.math.princeton.edu/pub/ubuntu https://ftp.acc.umu.se/ubuntu}"
+MIRRORS="${BROWSER_DEPS_MIRRORS:-https://mirrors.edge.kernel.org/ubuntu https://mirrors.mit.edu/ubuntu https://mirror.us.leaseweb.net/ubuntu https://ftp.halifax.rwth-aachen.de/ubuntu http://mirror.math.princeton.edu/pub/ubuntu https://ftp.acc.umu.se/ubuntu}"
 
 APT=(sudo apt-get -q -o Acquire::Retries=5 -o DPkg::Lock::Timeout=120)
 SUDO=sudo
@@ -97,33 +102,51 @@ try_primary() {
   timeout 300 "${APT[@]}" install -y --no-install-recommends $PKGS
 }
 
+# Ενα αρχείο από μία πηγή, κρατημένο ΜΟΝΟ αν ταιριάζει το SHA256.
+fetch_verified() {
+  local url=$1 out=$2 hex=$3
+  curl -fsSL --retry 2 --retry-delay 3 --retry-all-errors --connect-timeout 15 --max-time 300 \
+       -o "$out.part" "$url" 2>/dev/null &&
+    echo "$hex  $out.part" | sha256sum -c --quiet - >/dev/null 2>&1 &&
+    mv "$out.part" "$out" && return 0
+  rm -f "$out.part"
+  return 1
+}
+
+# Τα αρχεία που επαληθεύτηκαν μένουν εδώ από γύρο σε γύρο: ο επόμενος γύρος
+# ψάχνει μόνο όσα έλειψαν, δεν ξανακατεβάζει εκατό πακέτα για ένα.
+DEBS=$(mktemp -d)
+trap 'rm -rf "$DEBS"' EXIT
+
 try_mirrors() {
-  echo "▸ Ανεξάρτητοι καθρέφτες: $MIRRORS"
-  local uris dir line uri file sum algo hex path m ok
+  echo "▸ Ανεξάρτητες πηγές: $MIRRORS + Launchpad"
+  local uris line uri file name sum hex path m u src failed=0
   # shellcheck disable=SC2086
   uris=$("${APT[@]}" -o Acquire::ForceHash=SHA256 install -y --no-install-recommends --print-uris -qq $PKGS) || return 1
-  dir=$(mktemp -d)
   while read -r line; do
     [ -n "$line" ] || continue
     uri=$(cut -d"'" -f2 <<<"$line")
     read -r _ file _ sum <<<"$line"
-    algo=${sum%%:*}; hex=${sum#*:}
-    [ "$algo" = SHA256 ] || { echo "  ✗ $file: χωρίς SHA256 («$sum»)"; rm -rf "$dir"; return 1; }
-    [[ "$uri" == */pool/* ]] || { echo "  ✗ $file: χωρίς διαδρομή pool ($uri)"; rm -rf "$dir"; return 1; }
+    hex=${sum#*:}
+    [ "${sum%%:*}" = SHA256 ] || { echo "  ✗ $file: χωρίς SHA256 («$sum»)"; return 1; }
+    [[ "$uri" == */pool/* ]] || { echo "  ✗ $file: χωρίς διαδρομή pool ($uri)"; return 1; }
+    [ -f "$DEBS/$file" ] && continue
     path="pool/${uri#*/pool/}"
-    ok=
-    for m in $MIRRORS; do
-      if curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors --connect-timeout 15 --max-time 300 \
-           -o "$dir/$file" "$m/$path" &&
-         echo "$hex  $dir/$file" | sha256sum -c --quiet - ; then
-        ok=1; echo "  ✓ $file ← ${m#*://}"; break
-      fi
-      rm -f "$dir/$file"
+    name=${uri##*/}
+    src=
+    # Πρώτα οι καθρέφτες. Μετά το Launchpad, που κρατά ΚΑΘΕ build που
+    # δημοσιεύτηκε ποτέ: ένα πακέτο του -updates/-security που αντικαταστάθηκε
+    # μετά το χτίσιμο της εικόνας σβήνεται από το pool των καθρεφτών (404),
+    # αλλά μένει εκεί. Το +files ανακατευθύνει στο launchpadlibrarian.net.
+    for m in $MIRRORS "https://launchpad.net/ubuntu/+archive/primary/+files"; do
+      if [[ "$m" == *launchpad.net* ]]; then u="$m/$name"; else u="$m/$path"; fi
+      if fetch_verified "$u" "$DEBS/$file" "$hex"; then src=${m#*://}; break; fi
     done
-    [ -n "$ok" ] || { echo "  ✗ $file: κανένας καθρέφτης"; rm -rf "$dir"; return 1; }
+    if [ -n "$src" ]; then echo "  ✓ $file ← ${src%%/*}"
+    else echo "  ✗ $file: καμία πηγή"; failed=1; fi
   done <<<"$uris"
-  if [ -n "$uris" ]; then $SUDO cp "$dir"/*.deb /var/cache/apt/archives/; fi
-  rm -rf "$dir"
+  [ "$failed" = 0 ] || return 1
+  if compgen -G "$DEBS/*.deb" >/dev/null; then $SUDO cp "$DEBS"/*.deb /var/cache/apt/archives/; fi
   # shellcheck disable=SC2086
   "${APT[@]}" install -y --no-install-recommends --no-download $PKGS
 }
@@ -137,10 +160,10 @@ else
   for wait in 0 10 30 60; do
     if [ "$wait" != 0 ]; then echo "… ξανά σε ${wait}΄΄"; sleep "$wait"; fi
     if try_primary; then got=1; break; fi
-    echo "::warning::Οι καθρέφτες της εικόνας δεν έδωσαν τα πακέτα· δοκιμάζω ανεξάρτητους"
+    echo "::warning::Οι καθρέφτες της εικόνας δεν έδωσαν τα πακέτα· δοκιμάζω ανεξάρτητες πηγές"
     if try_mirrors; then got=1; break; fi
   done
-  [ -n "$got" ] || { echo "::error::Οι εξαρτήσεις του $BROWSER δεν εγκαταστάθηκαν από κανέναν καθρέφτη μετά από τέσσερις γύρους"; exit 1; }
+  [ -n "$got" ] || { echo "::error::Οι εξαρτήσεις του $BROWSER δεν εγκαταστάθηκαν από καμία πηγή μετά από τέσσερις γύρους"; exit 1; }
 fi
 
 # Η ΑΠΟΔΕΙΞΗ: ξανά η ίδια ερώτηση και πρέπει να απαντά «τίποτα δεν λείπει».
