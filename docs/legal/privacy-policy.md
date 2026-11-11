@@ -113,14 +113,20 @@ merchant of record· δεν περνούν ποτέ από τους δικούς
 | **Plus Five Five, Inc.** (Resend) | Email | ΗΠΑ | **SCCs** |
 | **Vercel Inc.** | Φιλοξενία και παράδοση της εφαρμογής, μέτρηση επισκεψιμότητας χωρίς cookies | ΗΠΑ, παγκόσμιο δίκτυο | Σύμβαση επεξεργασίας: εκκρεμεί |
 | **Google LLC** | Σύνδεση με Google, εφόσον την επιλέξετε | ΗΠΑ | Αυτοτελής υπεύθυνος επεξεργασίας |
+| **Cloudflare, Inc.** (Turnstile) | Έλεγχος κατά αυτοματοποιημένων λογαριασμών στην εγγραφή, τη σύνδεση και την επαναφορά κωδικού. Κατά την Cloudflare: διεύθυνση IP, αποτύπωμα TLS, User-Agent, κλειδί ιστοτόπου και προέλευση. Ενεργός μόνο με κλειδί (προσθήκη 10/11/2026). Νομική βάση: έννομο συμφέρον για την ασφάλεια (άρθρο 6§1στ) | ΗΠΑ | Εγγύηση διαβίβασης: δεν έχει καταγραφεί ακόμη |
 | **Anthropic Ireland, Ltd** (για πελάτες ΕΟΧ) | Βοηθός AI (χωρίς εκπαίδευση μοντέλων) | ΗΠΑ | **SCCs** |
 | **GitHub, Inc.** | Κώδικας/CI/κλειδί αποκρυπτογράφησης των backups (GitHub Secrets) | ΗΠΑ | **SCCs** |
-| **Creem** | Χρέωση συνδρομών (merchant of record) | ΗΠΑ/ΕΕ | **SCCs** |
+| **Creem** | Χρέωση συνδρομών (merchant of record) | ΗΠΑ/ΕΕ | Μηχανισμός διαβίβασης: δεν έχει καταγραφεί (`docs/compliance/subprocessors.md`) |
 | Πάροχοι μηνυμάτων *(σχεδιαζόμενο)* | Ειδοποιήσεις | Διάφορες | **SCCs** πριν την ενεργοποίηση |
 
-Το **σύστημα καταγραφής παραμένει στην ΕΕ**. Οι υπεργολάβοι εκτός ΕΟΧ λειτουργούν βάσει
-**Τυποποιημένων Συμβατικών Ρητρών (SCCs)** + εκτίμησης επιπτώσεων (TIA). Δεν **πωλούμε**
-δεδομένα.
+Έλεγχος κωδικού για διαρροές (Have I Been Pwned, προσθήκη 10/11/2026): ο περιηγητής στέλνει στο
+`api.pwnedpasswords.com` μόνο τους πέντε πρώτους χαρακτήρες του SHA-1 του κωδικού, με padding. Η υπηρεσία
+δεν λαμβάνει κωδικό, email ή λογαριασμό· βλέπει τη διεύθυνση IP του αιτήματος.
+
+Το **σύστημα καταγραφής παραμένει στην ΕΕ**. Η εγγύηση κάθε διαβίβασης εκτός ΕΟΧ γράφεται
+ανά πάροχο στον πίνακα. Όπου γράφει «εκκρεμεί» ή «δεν έχει καταγραφεί», καταγεγραμμένη εγγύηση
+δεν υπάρχει ακόμη (διόρθωση 10/11/2026: η φράση έλεγε ότι όλοι λειτουργούν με SCCs). Δεν
+**πωλούμε** δεδομένα.
 
 ---
 
@@ -219,8 +225,10 @@ third-party phone/ΑΦΜ, not used for training. (7) Billing — card data held 
 (`docs/legal/dpa.md`).
 
 **5. Subprocessors/transfers.** Supabase Pte. Ltd (data in EU/Frankfurt; SCCs with the Singapore counterparty), Resend (Plus Five
-Five, Inc.)/Anthropic/GitHub/Creem (US/SCCs), Vercel (hosting, US; DPA pending), Google
-(sign-in, independent controller). System of record in the EU. We do not sell personal
+Five, Inc.)/Anthropic/GitHub (US/SCCs), Creem (US/EU; transfer mechanism not recorded), Vercel (hosting, US; DPA pending), Google
+(sign-in, independent controller), Cloudflare, Inc. (Turnstile bot check on sign-up, sign-in
+and password reset; per Cloudflare: IP address, TLS fingerprint, User-Agent, sitekey and origin;
+legitimate interest in security; active only with a key; transfer safeguard not yet recorded). Leaked-password check (Have I Been Pwned): the browser sends api.pwnedpasswords.com only the first five characters of the password's SHA-1, with padding; the service sees the request's IP address, not the password, email or account. System of record in the EU. We do not sell personal
 data.
 
 **6. Retention.** Account: its life; deleted from the database immediately on

@@ -13,10 +13,18 @@ const isProd = process.env.NODE_ENV === "production";
 // 'unsafe-inline' από το script-src: κάθε inline script (και του Next και το δικό
 // μας theme-init) εμπιστεύεται μόνο μέσω του nonce + 'strict-dynamic'. Σε
 // development δεν στέλνουμε CSP (το Next dev χρειάζεται eval/ws/blob).
+// Cloudflare Turnstile (έλεγχος κατά των bots στις φόρμες του λογαριασμού,
+// app/useCaptcha.tsx). Μπαίνει ΜΟΝΟ όταν υπάρχει κλειδί: χωρίς αυτό η πολιτική
+// μένει ακριβώς η ίδια. Στο script-src η διεύθυνση είναι για τους παλιούς
+// περιηγητές· οι νέοι, με το 'strict-dynamic', εμπιστεύονται το σενάριο επειδή
+// το προσθέτει ήδη εμπιστευμένος κώδικας. Το πλαίσιο του ελέγχου είναι iframe.
+const TURNSTILE_ORIGIN = (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '').trim()
+  ? " https://challenges.cloudflare.com" : "";
+
 function buildCsp(nonce: string): string {
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${TURNSTILE_ORIGIN}`,
     "style-src 'self' 'unsafe-inline'",
     // ΠΡΟΣΟΧΗ — αυτό ΔΕΝ καλύπτει τα εκτυπώσιμα έγγραφα. Οι γεννήτριες αναφορών
     // ανοίγουν `window.open('')` και γράφουν HTML σε έγγραφο `about:blank`: δεν
@@ -42,7 +50,7 @@ function buildCsp(nonce: string): string {
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.pwnedpasswords.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io",
     // Η προεπισκόπηση PDF (Supabase storage) στο Αρχείο. Ο χάρτης Google του
     // ντοσιέ επαφής δεν είναι πια iframe: ανοίγει με ρητό κλικ σε νέα καρτέλα.
-    "frame-src 'self' https://*.supabase.co",
+    `frame-src 'self' https://*.supabase.co${TURNSTILE_ORIGIN}`,
     "frame-ancestors 'none'",
     "object-src 'none'",
     // PWA: ο service worker και το manifest είναι δικά μας και μόνο δικά μας.

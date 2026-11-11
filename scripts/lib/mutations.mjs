@@ -256,7 +256,15 @@ export const MUTATIONS = {
   // ── Βάση δεδομένων και ασφάλεια ───────────────────────────────────────
   // Οι μεταναστεύσεις είναι ΠΡΟΣΘΕΤΙΚΕΣ: μια νέα με το σφάλμα μέσα είναι η
   // πιστότερη προσομοίωση του «κάποιος γράφει την επόμενη μετανάστευση».
-  'rls-coverage': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  user_id uuid not null references auth.users(id) on delete cascade\n);\n' },
+  // ΤΡΕΙΣ ΚΑΝΟΝΕΣ, ΤΡΕΙΣ ΑΠΟΔΕΙΞΕΙΣ. Ο πίνακας χωρίς RLS· ο ίδιος με ένα
+  // ομώνυμο `private.` που έχει RLS (κλειδί μόνο με το όνομα θα τον έβγαζε
+  // καλυμμένο)· και `drop` του ομώνυμου σε άλλο schema (θα τον έσβηνε από τον
+  // κατάλογο). Και τα τρία πρέπει να κοκκινίζουν.
+  'rls-coverage': { every: [
+    { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  user_id uuid not null references auth.users(id) on delete cascade\n);\n' },
+    { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (id bigint primary key);\ncreate table if not exists private.mut_probe (id bigint primary key);\nalter table private.mut_probe enable row level security;\n' },
+    { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists mut_probe (id bigint primary key);\ndrop table if exists private.mut_probe;\n' },
+  ] },
   'rls-initplan': { add: 'supabase/migrations/29990101000000_mut.sql', content: "create policy mut_probe_own on public.properties using (auth.uid() = user_id);\n" },
   'rls-parent-scope': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  property_id uuid not null references public.properties(id) on delete cascade\n);\nalter table public.mut_probe enable row level security;\ncreate policy mut_probe_own on public.mut_probe using (true);\n' },
   'migration-versions': { add: 'supabase/migrations/20261020120000_mut.sql', content: 'select 1;\n' },
