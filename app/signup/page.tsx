@@ -4,7 +4,8 @@ import { T } from '@/components/tokens'
 import { KIND_LABEL, type FirmKind } from '@/lib/data/firmWords'
 import { FIRM_TERMS_VERSION } from '@/lib/legal/firms'
 import FirmTermsCheck, { FIRM_TERMS_NEEDED } from '@/app/accountant/workspace/FirmTerms'
-import { useState, useEffect, useSyncExternalStore, type ReactNode } from 'react'
+import { useState, useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react'
+import { leakedAtSubmit } from '@/lib/auth/leakGate'
 import { leaveDevice } from '@/lib/localPrivacy'
 import { authClient, mayHaveSession } from '@/lib/supabase/lazy';
 import Link from 'next/link'
@@ -500,9 +501,21 @@ export default function SignupPage() {
     setResent(true)
   }
 
+  // ΕΝΑ ΠΑΤΗΜΑ, ΜΙΑ ΕΓΓΡΑΦΗ. Το `loading` ανάβει μόνο μετά τους ασύγχρονους
+  // ελέγχους (ΑΦΜ γραφείου, διαρροή κωδικού) και ως τότε δεύτερο πάτημα
+  // περνούσε κι αυτό: δύο `signUp`, δύο email. Η σημαία ref αλλάζει αμέσως,
+  // χωρίς να περιμένει απόδοση.
+  const submitting = useRef(false)
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (loading) return
+    if (loading || submitting.current) return
+    submitting.current = true
+    // Το `loading` σβήνει σε κάθε έξοδο ακόμη και όταν πεταχτεί εξαίρεση (δίκτυο που
+    // κόπηκε στο `signUp`): αλλιώς η φόρμα έμενε κλειδωμένη ως την ανανέωση.
+    try { await submitForm() } finally { submitting.current = false; setLoading(false) }
+  }
+
+  async function submitForm() {
     // Η ΣΥΓΚΑΤΑΘΕΣΗ ΕΛΕΓΧΕΤΑΙ ΠΡΩΤΗ, γιατί είναι το ΜΟΝΟ εμπόδιο που ο χρήστης
     // δεν βλέπει πάνω στο πεδίο που φταίει: ο κωδικός έχει τη λίστα του από
     // κάτω, το κουτί των όρων δεν έχει τίποτα ώσπου να το αγγίξεις.
@@ -527,15 +540,25 @@ export default function SignupPage() {
       countSignupStep('invalid')
       return
     }
-    if (leaked) {
-      setPwTouched(true)
-      setError(PW_MSG.leaked)
-      countSignupStep('invalid')
-      return
-    }
     if (!pw.ok) {
       setPwTouched(true)
       setError(pw.common ? PW_MSG.common : PW_MSG.weak)
+      countSignupStep('invalid')
+      return
+    }
+    // ΔΙΑΡΡΟΗ: ό,τι ξέρει ήδη το πεδίο, αλλιώς ρωτά η ίδια η υποβολή, γιατί ο
+    // έλεγχος του πεδίου μπορεί να μην έχει απαντήσει (κωδικός που επικολλήθηκε,
+    // lib/auth/leakGate.ts). Ένα μπλοκ για τις δύο περιπτώσεις: το /signup είναι
+    // στο όριο βάρους του (docs/perf/budget.json). Ένας κωδικός που διέρρευσε
+    // περνά ήδη την πολιτική ισχύος, οπότε η σειρά μετά το `pw.ok` δεν αλλάζει
+    // κανένα μήνυμα. Το `loading` κλειδώνει και το πεδίο: αλλιώς ο χρήστης τον
+    // άλλαζε όσο περίμενε και αποθηκευόταν ο προηγούμενος, που δεν τον ξέρει.
+    setLoading(true)
+    if (leaked || await leakedAtSubmit(password)) {
+      setLoading(false)
+      setLeakedPw(password)
+      setPwTouched(true)
+      setError(PW_MSG.leaked)
       countSignupStep('invalid')
       return
     }
@@ -940,12 +963,12 @@ export default function SignupPage() {
                 </div>}
                 <div>
                   <label htmlFor="su-email" className="po-field-label">{A ? A.email : 'Ηλεκτρονικό ταχυδρομείο'}</label>
-                  <input id="su-email" name="email" autoComplete="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={A ? A.emailPlaceholder : 'onoma@email.com'} required style={field} onFocus={focus} onBlur={blur} />
+                  <input id="su-email" name="email" autoComplete="email" type="email" value={email} onChange={e => setEmail(e.target.value)} readOnly={loading} placeholder={A ? A.emailPlaceholder : 'onoma@email.com'} required style={field} onFocus={focus} onBlur={blur} />
                 </div>
                 <div>
                   <label htmlFor="su-password" className="po-field-label">{A ? A.password : 'Κωδικός'}</label>
                   <div style={{ position: 'relative' }}>
-                    <input id="su-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={A ? A.passwordHint : PASSWORD_MIN_HINT} required minLength={PASSWORD_MIN_LENGTH} aria-describedby={(password || pwTouched) ? "su-pw-req" : undefined} style={{ ...field, paddingRight: 48 }} onFocus={focus} onBlur={e => { blur(e); setPwTouched(true) }} />
+                    <input id="su-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} readOnly={loading} placeholder={A ? A.passwordHint : PASSWORD_MIN_HINT} required minLength={PASSWORD_MIN_LENGTH} aria-describedby={(password || pwTouched) ? "su-pw-req" : undefined} style={{ ...field, paddingRight: 48 }} onFocus={focus} onBlur={e => { blur(e); setPwTouched(true) }} />
                     <PasswordEye show={show} onToggle={() => setShow(s => !s)} />
                   </div>
 
