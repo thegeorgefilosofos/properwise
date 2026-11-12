@@ -126,7 +126,7 @@ export interface PolicyNoticeCopy {
 export function policyNoticeCopy(meta: PolicyMeta | null | undefined, seenLocally: string | null): PolicyNoticeCopy {
   // Η 2026-11-12.2 αλλάζει τους ΟΡΟΥΣ: σε όποιον τη βλέπει, ο σύνδεσμος πάει εκεί.
   // Αλλάζει ΚΑΙ την Πολιτική απορρήτου (όρια της δοκιμής), οπότε η επικεφαλίδα
-  // λέει και τα δύο σε κάθε βαθμίδα, και σε όποιον είδε την 2026-11-12.
+  // λέει και τα δύο σε κάθε βαθμίδα και σε όποιον είδε την 2026-11-12.
   const both = { short: POLICY_NOTICE_SHORT, headline: 'Ενημερώσαμε τους Όρους και την Πολιτική απορρήτου.', href: '/terms', hrefLabel: 'Δες τους Όρους' } as const
   const terms = `Οι Όροι λένε πλέον ότι ${TERMS_TRIAL_ADDITION}`
   const limits = `η Πολιτική απορρήτου λέει ότι ${PRIVACY_LIMITS_ADDITION}`
