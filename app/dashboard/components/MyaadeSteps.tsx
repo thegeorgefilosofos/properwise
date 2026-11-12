@@ -294,7 +294,7 @@ export function PropertyRow({ row, index, known, onToggle, onPatch, rowId, force
           </div>
           {extra && <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>{extra}</span>}
           {row.enfia != null && <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>{`Ο φόρος της πράξης για αυτό το ακίνητο, ${fe(row.enfia)}, γράφεται ως ΕΝΦΙΑ του ακινήτου${isNew(row) ? '' : ', αν δεν έχει ήδη ποσό'}. Οι δόσεις βγαίνουν από το σύνολο της πράξης.`}</span>}
-          {row.enfia == null && row.tax != null && <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>Τα ποσά των ακινήτων δεν βγάζουν το πληρωτέο της πράξης, συνήθως λόγω εκπτώσεων, προσαυξήσεων ή απαλλαγής. Γι' αυτό ΕΝΦΙΑ ανά ακίνητο δεν γράφεται, μόνο το σύνολο.</span>}
+          {row.enfia == null && row.tax != null && <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>Τα ποσά των ακινήτων δεν βγάζουν το πληρωτέο της πράξης, συνήθως λόγω εκπτώσεων, προσαυξήσεων ή απαλλαγής. Γι’ αυτό ΕΝΦΙΑ ανά ακίνητο δεν γράφεται, μόνο το σύνολο.</span>}
           {atakBad && <span style={{ ...TT.caption, color: 'var(--negative)' }}>{`Ο ΑΤΑΚ είναι ${ATAK_DIGITS} ψηφία.`}</span>}
         </div>
       )}
