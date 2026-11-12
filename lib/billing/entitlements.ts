@@ -71,7 +71,8 @@ export type Feature =
   | 'accounting_journal' // λογιστικό ημερολόγιο (SoftOne, Epsilon, Xero)
   | 'bank_import'      // εισαγωγή κινήσεων τράπεζας από CSV
   | 'investment_analysis' // IRR / NPV / DSCR και ανάλυση ευαισθησίας
-  | 'early_access';    // mobile app και νέες δυνατότητες, 15 ημέρες νωρίτερα
+  | 'early_access'     // mobile app και νέες δυνατότητες, 15 ημέρες νωρίτερα
+  | 'foreclosure_protection'; // Προστασία ιδιοκτήτη (αναγκαστική εκτέλεση)
 
 // Ελάχιστο πλάνο ανά δυνατότητα.
 export const FEATURE_MIN_PLAN: Record<Feature, PlanId> = {
@@ -82,6 +83,11 @@ export const FEATURE_MIN_PLAN: Record<Feature, PlanId> = {
   multi_property:     'owner',
   comparison:         'owner',
   early_access:       'owner',
+  // ΠΡΟΣΤΑΣΙΑ ΙΔΙΟΚΤΗΤΗ: απόφαση ιδιοκτήτη 12/11/2026, από το «Ιδιοκτήτης+».
+  // Η οθόνη τη ρωτά με `hasFeature`· η πρόταση για το πακέτο ζει στο
+  // lib/legal/billingWords.ts (PROSTASIA_ACCESS). Δεν είναι γραμμή του πίνακα
+  // των πακέτων (PlanMatrix): εκείνος δείχνει μόνο όσα γράφει ρητά.
+  foreclosure_protection: 'owner',
   // ΤΟ ΜΗΤΡΩΟ ΛΕΕΙ Ο,ΤΙ ΕΠΙΒΑΛΛΕΙ Η ΟΘΟΝΗ, ΟΧΙ Ο,ΤΙ ΘΑ ΘΕΛΑΜΕ. Η εισαγωγή
   // κινήσεων τράπεζας και το ημερολόγιο άρθρων ζουν ήδη μέσα στη λογιστική του
   // επαγγελματία (TabAccounting: `mode === 'professional'`, διπλογραφικό). Αν
@@ -152,6 +158,7 @@ export const FEATURE_LABEL: Record<Feature, string> = {
   bank_import:         'Κινήσεις τράπεζας',
   investment_analysis: 'Επενδυτική ανάλυση',
   early_access:        'Νέες δυνατότητες νωρίτερα',
+  foreclosure_protection: 'Προστασία ιδιοκτήτη',
 };
 
 const rank = (p: PlanId): number => {

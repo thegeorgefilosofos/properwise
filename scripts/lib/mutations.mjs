@@ -26,6 +26,27 @@ const MUT_WF = '.github/workflows/__mut_backup_logs__.yml'
 const wfRun = (body) => `name: m\non: workflow_dispatch\njobs:\n  m:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n${body.split('\n').map(l => `          ${l}`).join('\n')}\n`
 
 export const MUTATIONS = {
+  // Προστασία ιδιοκτήτη (12/11/2026): κάθε κανόνας του φύλακα, χωριστά.
+  'enforcement-rules': { every: [
+    // απόσπασμα «διορθωμένο» με το χέρι: δεν βρίσκεται πια στο στιγμιότυπο
+    { file: 'lib/legal/enforcement/sources.ts', from: '"Η ανακοπή είναι απαράδεκτη, αν δεν κατατεθεί το αργότερο τριάντα (30) εργάσιμες', to: '"Η ανακοπή είναι απαράδεκτη, αν δεν κατατεθεί το αργότερο είκοσι (20) εργάσιμες' },
+    // κανόνας που φαίνεται με μία μόνο πηγή
+    { file: 'lib/legal/enforcement/rules.ts', from: "...r, status: 'verified', verifier: 'properwise-team', sources: src(r.id), lawyerReviewed: null,", to: "...r, status: 'verified', verifier: 'properwise-team', sources: src(r.id).filter(s => s.kind === 'official'), lawyerReviewed: null," },
+    // υπογραφή δικηγόρου χωρίς όνομα και ημερομηνία
+    { file: 'lib/legal/enforcement/rules.ts', from: "...r, status: 'verified', verifier: 'properwise-team', sources: src(r.id), lawyerReviewed: null,", to: "...r, status: 'verified', verifier: 'properwise-team', sources: src(r.id), lawyerReviewed: { reviewer: '', reviewedAt: '', version: r.version }," },
+    // υπογραφή δικηγόρου γραμμένη σε οθόνη
+    { add: 'app/dashboard/components/prostasia/__mut_review__.ts', content: "import { rule } from '@/lib/legal/enforcement/rules'\nexport const forged = { ...rule('as-938-4-new'), lawyerReviewed: { reviewer: 'x', reviewedAt: '2026-11-12', version: 1 } }\n" },
+    // η σήμανση γραμμένη με το χέρι στην οθόνη
+    { add: 'app/dashboard/components/prostasia/__mut_badge__.tsx', content: tsx('    <span>Επαληθευμένο από επίσημες πηγές · δεν αποτελεί νομική συμβουλή</span>') },
+    // η σήμανση με άλλη διατύπωση από αυτή που ενέκρινε ο ιδιοκτήτης
+    { file: 'lib/legal/enforcement/badges.ts', from: "export const VERIFIED_BADGE = 'Επαληθευμένο από επίσημες πηγές · δεν αποτελεί νομική συμβουλή';", to: "export const VERIFIED_BADGE = 'Ελέγχθηκε νομικά';" },
+  ] },
+  'legal-day-literals': { every: [
+    { add: 'app/dashboard/components/prostasia/__mut_days__.tsx', content: tsx('    <p>Η αίτηση κατατίθεται το αργότερο 15 εργάσιμες ημέρες πριν.</p>') },
+    { add: 'app/dashboard/components/prostasia/__mut_words__.tsx', content: tsx('    <p>Ο πλειστηριασμός ορίζεται σε επτά μήνες από την κατάσχεση.</p>') },
+    { add: 'app/dashboard/components/prostasia/__mut_date__.tsx', content: tsx('    <p>Αιτήσεις έως 30/06/2027.</p>') },
+    { add: 'app/dashboard/components/prostasia/__mut_pct__.tsx', content: tsx('    <p>Τίμημα όχι κάτω από το 70% της τιμής.</p>') },
+  ] },
   // Ο οδηγός «Νέο ακίνητο» ξανά με τη φόρμα απλωμένη αυτούσια: ακριβώς το
   // '' στο property_settings.insurance_expiry (Postgres 22007, 06/11/2026).
   'act-row-grid': { file: 'app/dashboard/components/RentReceived.tsx', from: '.act-row:has(.rr-cta) > * { flex: 1 1 100%; }', to: '.act-row:has(.rr-cta) { grid-template-columns: 1fr; }' },

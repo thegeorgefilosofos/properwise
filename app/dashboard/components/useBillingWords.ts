@@ -24,6 +24,8 @@ export interface ClientBillingWords {
   inviteAccess?: string;
   /** Η άρνηση `plan_required` της ίδιας πρόσκλησης. */
   invitePlanRefusal?: string;
+  /** Από ποιο πακέτο ανοίγει η Προστασία ιδιοκτήτη. */
+  prostasiaAccess?: string;
 }
 
 let pending: Promise<ClientBillingWords | null> | null = null;

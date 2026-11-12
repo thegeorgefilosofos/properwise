@@ -446,6 +446,63 @@ export const REGULATED: readonly Regulated[] = [
     checkedAt: '2026-08-26',
     recheck: 'Ο μειωμένος 6% στο ρεύμα έχει παραταθεί επανειλημμένα. Ελεγξε αν λήγει.',
   },
+
+  // ── Προστασία ιδιοκτήτη (αναγκαστική εκτέλεση) ──────────────────────────
+  // Οι κανόνες ζουν στο lib/legal/enforcement/rules.ts, ο καθένας με δύο πηγές
+  // (ΦΕΚ και taxheaven) και αυτούσιο απόσπασμα στο docs/legal/enforcement-sources/.
+  // Η αντιπαραβολή της 12/11/2026 έγινε από εργαλείο για λογαριασμό της ομάδας·
+  // ο έλεγχος δικηγόρου εκκρεμεί (κατάλογος ελέγχου) και ΔΕΝ δηλώνεται πουθενά.
+  // Ο ΚΠολΔ άλλαξε τέσσερις φορές σε δεκαπέντε μήνες: επανέλεγχος ανά εξάμηνο.
+  {
+    id: 'enforcement-kpold-5221',
+    label: 'Προθεσμίες αναγκαστικής εκτέλεσης (ΚΠολΔ, ν. 5221/2025 και επόμενοι)',
+    where: 'lib/legal/enforcement/rules.ts',
+    validFrom: '2026-01-01',
+    validTo: null,
+    source: 'https://www.kodiko.gr/nomothesia/document/1205557/nomos-5221-2025',
+    checkedAt: '2026-11-12',
+    recheck: 'Νέος νόμος που αγγίζει τα άρθρα 904 έως 1054 ΚΠολΔ, τον ν. 4738/2020 ή τον ν. 5072/2023; Ξανακατέβασε τις πηγές, ξαναγράψε τα στιγμιότυπα και ανέβασε το version του κανόνα. Ελεγξε και αν ο Φορέας Απόκτησης άρχισε να λειτουργεί (κανόνας faep-219).',
+  },
+  {
+    id: 'enforcement-sources',
+    label: 'Αποσπάσματα και πηγές των κανόνων εκτέλεσης',
+    where: 'lib/legal/enforcement/sources.ts',
+    validFrom: '2026-01-01',
+    validTo: null,
+    source: 'https://www.taxheaven.gr/law/5221/2025/arthro/126',
+    checkedAt: '2026-11-12',
+    recheck: 'Ανοίγουν ακόμη οι διευθύνσεις; Το απόσπασμα κάθε κανόνα βρίσκεται ακόμη αυτούσιο στο κείμενο της πηγής;',
+  },
+  {
+    id: 'debt-120-doseis',
+    label: 'Ρύθμιση οφειλών σε ΑΑΔΕ και e-ΕΦΚΑ σε δόσεις',
+    where: 'lib/legal/enforcement/numbers.ts',
+    validFrom: '2026-11-09',
+    validTo: '2027-06-30',
+    source: 'https://www.taxheaven.gr/law/5354/2026/arthro/35',
+    checkedAt: '2026-11-12',
+    recheck: 'Παρατάθηκε η προθεσμία αιτήσεων (DEBT_INSTALMENTS.applyBy) ή άλλαξε το πλήθος δόσεων;',
+  },
+  {
+    id: 'servicer-5354',
+    label: 'Υποχρεώσεις των servicers (ν. 5354/2026)',
+    where: 'lib/legal/enforcement/numbers.ts',
+    validFrom: '2026-11-09',
+    validTo: null,
+    source: 'https://www.taxheaven.gr/law/5354/2026/arthro/13',
+    checkedAt: '2026-11-12',
+    recheck: 'Αλλαξαν οι ημέρες του άρθρου 37Α ή οι μήνες του άρθρου 182 ν. 5193/2025;',
+  },
+  {
+    id: 'bilateral-63a',
+    label: 'Ειδική διμερής διαδικασία ρύθμισης με τον servicer',
+    where: 'lib/legal/enforcement/rules.ts',
+    validFrom: '2027-02-09',
+    validTo: null,
+    source: 'https://www.taxheaven.gr/law/5354/2026/arthro/392',
+    checkedAt: '2026-11-12',
+    recheck: 'Ξεκίνησε η διαδικασία των άρθρων 63Α επ. ν. 5072/2023; Η κάρτα στην Προστασία ιδιοκτήτη λέει ακόμη «δεν λειτουργεί».',
+  },
 ];
 
 /**

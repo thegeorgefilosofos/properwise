@@ -16,8 +16,10 @@ import { labelStyle } from '../LoanShared'
 import { LensPanel, MiniSection, CatRow, InlineLink, LinkCard, EuriborArea } from './Bits'
 import type { LoanProps, LoanState } from './useLoan'
 import { ANAK_HREF } from '@/lib/accounting/anakainisi2026'
+import type { PlanId } from '@/lib/billing/plans'
+import ProstasiaEntry from '../prostasia/ProstasiaEntry'
 
-export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanProps & LoanState, 'advType' | 'openCalcDocs' | 'market' | 'profile'>) {
+export function LoanGuide({ advType, openCalcDocs, market, profile, plan = 'free', userId }: Pick<LoanProps & LoanState, 'advType' | 'openCalcDocs' | 'market' | 'profile'> & { plan?: PlanId; userId: string }) {
   // Οι δύο γραμμές των ειδικών κατηγοριών έλεγαν «το μισό δάνειο άτοκο» και
   // «+50% επιδότηση επιτοκίου» τέσσερις μήνες μετά το κλείσιμο των αιτήσεων,
   // ενώ τρεις ενότητες πιο πάνω ο ίδιος οδηγός έγραφε ότι το πρόγραμμα έκλεισε.
@@ -178,6 +180,9 @@ export function LoanGuide({ advType, openCalcDocs, market, profile }: Pick<LoanP
         <MiniSection title="Δάνεια σε διαχειριστές και κόκκινα δάνεια">
           <p className="po-prose po-just" style={{fontSize:15,color:'var(--text-primary)',fontFamily: T.font.sans,fontWeight:500,letterSpacing:'-0.01em',marginBottom:8}}>{hy(<>{SERVICERS_GUIDE.lead}</>)}</p>
           <p className="po-prose po-just" style={{fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.7,fontFamily: T.font.sans,marginBottom:16}}>{hy(<>{SERVICERS_GUIDE.intro}</>)}</p>
+          {/* ΠΡΟΣΤΑΣΙΑ ΙΔΙΟΚΤΗΤΗ: η κύρια είσοδος (προδιαγραφή §4.1). Το εργαλείο
+              κατεβαίνει μόνο όταν πατηθεί. */}
+          <div style={{marginBottom:T.sp.lg}}><ProstasiaEntry plan={plan} userId={userId}/></div>
 
           {/* Μαζεμένες σειρές· η επεξήγηση κρύβεται πίσω από ⓘ (όχι κατεβατό). */}
           <p style={{...labelStyle,marginBottom:10}}>Τα δικαιώματά σου</p>

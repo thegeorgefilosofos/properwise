@@ -756,7 +756,7 @@ export default function Dashboard() {
                   )}
                 </>
               )}
-              {nav==='loan'      && <TabLoan key={selected.id} propertyId={selected.id} userId={user.id} propertyValue={selected.value??undefined} propertySqm={selected.sqm??undefined} propertyYearBuilt={selected.year_built??undefined} profileType={effProfileType}/>}
+              {nav==='loan'      && <TabLoan key={selected.id} propertyId={selected.id} userId={user.id} propertyValue={selected.value??undefined} propertySqm={selected.sqm??undefined} propertyYearBuilt={selected.year_built??undefined} profileType={effProfileType} plan={effPlan}/>}
               {nav==='accounting'&& <TabAccounting key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} legalForm={taxForm} plan={effPlan} status={readStatus(selected)} onNavigate={(t)=>setNav(t)} onAddExpense={()=>{ setNav('finances'); setManualExpense(n=>n+1); }} onEditProperty={(id)=>{ const p=properties.find(x=>x.id===id); if(p){ setEditFocus('owner_afm'); setEditProperty(p); } }}/>}
               {navSafe==='inventory' && <TabInventory key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} handoverIntent={handoverIntent} onIntentConsumed={()=>setHandoverIntent(null)} properties={properties}/>}
               {nav==='checklist' && <TabChecklist key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType}/>}
