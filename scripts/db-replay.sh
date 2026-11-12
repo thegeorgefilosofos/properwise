@@ -346,6 +346,17 @@ if ! cout=$($PSQL -d posdb -f "$ROOT/scripts/db/server-columns-probe.sql" 2>&1);
 fi
 probes=$((probes + $(echo "$cout" | grep -c 'probe:' || true)))
 
+# ── Η ΑΠΟΤΥΧΗΜΕΝΗ ΠΛΗΡΩΜΗ ΕΧΕΙ ΟΡΙΟ ΚΑΙ Η ΕΠΙΣΤΡΟΦΗ ΚΛΕΙΝΕΙ ΤΗΝ ΠΡΟΣΒΑΣΗ ──────
+# Οι στήλες χάρης και ανάκλησης (20261112190000) δεν γράφονται από τον πελάτη
+# και η `user_plan_rank` κρίνει τη χάρη χωρίς να περιμένει γεγονός
+# (scripts/db/billing-grace-probe.sql, έλεγχος ετοιμότητας πληρωμών 12/11/2026).
+if ! gout=$($PSQL -d posdb -f "$ROOT/scripts/db/billing-grace-probe.sql" 2>&1); then
+  echo "🔴 Η χάρη της αποτυχημένης πληρωμής ή οι στήλες της δεν κρατούν:"
+  echo "$gout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΡΟΗ|ΧΑΡΗ|ΣΧΗΜΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$gout" | grep -c 'probe:' || true)))
+
 # ── ΞΕΡΕΙ Η ΥΓΕΙΑ ΤΗΣ ΤΡΟΦΟΔΟΣΙΑΣ ΤΙ ΔΕΝ ΗΡΘΕ; ──────────────────────────────
 # Η `market_feed_health()` έλεγε «εντάξει, 8 από 8» στις 18/10/2026 πάνω σε
 # γραμμή χωρίς δύο σειρές του καταλόγου. Το scripts/db/market-feed-probe.sql τη
@@ -389,6 +400,13 @@ DB_PRO=$(echo "$SRC" | grep -oE "'pro_paid'     then v_target := [0-9]+" | grep 
 TS_TRIAL=$(grep -oE 'TRIAL_DAYS = [0-9]+' "$ROOT/lib/billing/plans.ts" | grep -oE '[0-9]+')
 DB_TRIAL=$(psql -h "$WORK" -U postgres -d posdb -X -A -t -c "select public.trial_days()" | tr -d '[:space:]')
 
+# ΚΑΙ ΟΙ ΗΜΕΡΕΣ ΧΑΡΗΣ ΤΗΣ ΑΠΟΤΥΧΗΜΕΝΗΣ ΠΛΗΡΩΜΗΣ (20261112190000). Η οθόνη λέει
+# «ως τις …» με το `PAST_DUE_GRACE_DAYS`· η βάση κόβει με την
+# `past_due_grace_days()`. Μια απόκλιση σημαίνει ότι η κάρτα υπόσχεται άλλη μέρα
+# από αυτήν που κλείνει το πακέτο.
+TS_GRACE=$(grep -oE 'PAST_DUE_GRACE_DAYS = [0-9]+' "$ROOT/lib/billing/subscription.ts" | grep -oE '[0-9]+')
+DB_GRACE=$(psql -h "$WORK" -U postgres -d posdb -X -A -t -c "select public.past_due_grace_days()" | tr -d '[:space:]')
+
 
 # ΚΑΙ Η ΣΕΙΡΑ ΤΩΝ ΠΑΚΕΤΩΝ. Το `public.plan_rank` κρίνει τι βλέπει ο χρήστης μέσα
 # στη βάση (όρια ακινήτων, κλειδωμένες καρτέλες)· το `PLAN_ORDER` κρίνει τα ίδια
@@ -421,6 +439,7 @@ drift=0
 [ "$TS_VOL" = "$DB_VOL" ] || { echo "✗ στόχος όγκου: εφαρμογή $TS_VOL, βάση ${DB_VOL:-—}"; drift=1; }
 [ "$TS_PRO" = "$DB_PRO" ] || { echo "✗ στόχος συνδρομητών: εφαρμογή $TS_PRO, βάση ${DB_PRO:-—}"; drift=1; }
 [ "$TS_TRIAL" = "$DB_TRIAL" ] || { echo "✗ ημέρες δοκιμής: εφαρμογή $TS_TRIAL, βάση ${DB_TRIAL:-—}"; drift=1; }
+[ "$TS_GRACE" = "$DB_GRACE" ] || { echo "✗ ημέρες χάρης αποτυχημένης πληρωμής: εφαρμογή ${TS_GRACE:-—}, βάση ${DB_GRACE:-—}"; drift=1; }
 [ "$TS_RANKS" = "$DB_RANKS" ] || { echo "✗ σειρά πακέτων: εφαρμογή «$TS_RANKS», βάση «${DB_RANKS:-—}»"; drift=1; }
 [ "$TS_PRICES" = "$DB_PRICES" ] || { echo "✗ τιμές πακέτων: εφαρμογή «$TS_PRICES», βάση «${DB_PRICES:-—}»"; drift=1; }
 [ "$drift" = "0" ] || { echo ""; echo "🔴 Η βάση δίνει άλλα από αυτά που γράφει η οθόνη."; exit 1; }
@@ -432,5 +451,6 @@ echo "   η υγεία της τροφοδοσίας επιτοκίων κρίν
 echo "   το σενάριο του staging γεμίζει λογαριασμό και οι στόχοι του"
 echo "   Προγράμματος Πρόσκλησης συμφωνούν με το"
 echo "   lib/referral/referral.ts ($TS_VOL, $TS_PRO) και η δοκιμή είναι $TS_TRIAL"
-echo "   ημέρες και στα δύο, η σειρά των πακέτων είναι «$TS_RANKS»"
+echo "   ημέρες και στα δύο, η χάρη της αποτυχημένης πληρωμής $TS_GRACE ημέρες"
+echo "   και στα δύο, η σειρά των πακέτων είναι «$TS_RANKS»"
 echo "   και οι τιμές συμφωνούν: «$TS_PRICES»."

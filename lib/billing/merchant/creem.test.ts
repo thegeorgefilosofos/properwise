@@ -261,6 +261,72 @@ async function main() {
   }
 }
 
+// ── ΕΠΙΣΤΡΟΦΗ ΧΡΗΜΑΤΩΝ ΚΑΙ ΑΜΦΙΣΒΗΤΗΣΗ: ΤΙ ΔΙΑΒΑΖΕΤΑΙ (έλεγχος 12/11/2026) ──
+// Το σχήμα της τεκμηρίωσης: η συνδρομή έρχεται ως αντικείμενο ή ως κείμενο,
+// μέσα στο γεγονός ή μέσα στη συναλλαγή. Κανένα από τα πεδία δεν βρίσκει
+// λογαριασμό μόνο του: ο webhook δέχεται ΜΟΝΟ τη συνδρομή που έχει ήδη
+// καταγράψει (morWebhook.ts).
+{
+  const AT = 1728734325927;
+  const refund = (obj: Record<string, unknown>) => ({ eventType: 'refund.created', created_at: AT, object: { id: 'ref_1', ...obj } });
+  const r1 = creemPort.readRevocation(refund({ subscription: { id: 'sub_9' }, refund_amount: 499, transaction: { amount_paid: 499 } }));
+  ok('επιστροφή: διαβάζεται', r1?.kind === 'refund' && r1.subscriptionId === 'sub_9' && !r1.partial);
+  ok('επιστροφή: με την ώρα του φακέλου', r1?.occurredAt === new Date(AT).toISOString());
+  ok('η συνδρομή ως κείμενο', creemPort.readRevocation(refund({ subscription: 'sub_8' }))?.subscriptionId === 'sub_8');
+  ok('η συνδρομή μέσα στη συναλλαγή', creemPort.readRevocation(refund({ transaction: { subscription: 'sub_7' } }))?.subscriptionId === 'sub_7');
+  ok('χωρίς συνδρομή: κενό, όχι εικασία', creemPort.readRevocation(refund({}))?.subscriptionId === null);
+  ok('μερική επιστροφή', creemPort.readRevocation(refund({ subscription: 'sub_9', refund_amount: 100, transaction: { amount_paid: 499 } }))?.partial === true);
+  ok('ποσό που λείπει δεν κάνει την επιστροφή μερική',
+     creemPort.readRevocation(refund({ subscription: 'sub_9', refund_amount: 499 }))?.partial === false);
+  const d = creemPort.readRevocation({ eventType: 'dispute.created', object: { id: 'disp_1', amount: 1, subscription: { id: 'sub_9' }, created_at: AT } });
+  ok('αμφισβήτηση: διαβάζεται, ποτέ μερική', d?.kind === 'dispute' && d.subscriptionId === 'sub_9' && !d.partial);
+  ok('αμφισβήτηση: η ώρα από το αντικείμενο όταν λείπει ο φάκελος', d?.occurredAt === new Date(AT).toISOString());
+  ok('γεγονός συνδρομής δεν είναι ανάκληση', creemPort.readRevocation(event()) === null);
+  ok('άγνωστο γεγονός δεν είναι ανάκληση', creemPort.readRevocation({ eventType: 'checkout.completed', object: {} }) === null);
+}
+
+// ── Η ΔΙΑΓΝΩΣΗ ΤΟΥ ΤΑΜΕΙΟΥ: ΤΙ ΦΤΑΙΕΙ, ΧΩΡΙΣ ΤΙΜΕΣ (έλεγχος 12/11/2026) ────
+{
+  const SECRET_KEY = 'creem_live_SECRET_123';
+  const TEST_KEY = 'creem_test_SECRET_456';
+  const live = { [CREEM_KEY_ENV]: SECRET_KEY, [CREEM_PRODUCTS_ENV]: FULL, [CREEM_SECRET_ENV]: 'whsec_SECRET', VERCEL_ENV: 'production' };
+  const g = creemPort.diagnose(live);
+  ok('πλήρης ρύθμιση: εντάξει', g.ok && g.key === 'live' && g.products === 'complete' && g.missingPairs.length === 0 && g.webhookSecret);
+
+  const noKey = creemPort.diagnose({ ...live, [CREEM_KEY_ENV]: '' });
+  ok('χωρίς κλειδί: το λέει', !noKey.ok && noKey.key === 'missing');
+  const testInProd = creemPort.diagnose({ ...live, [CREEM_KEY_ENV]: TEST_KEY });
+  ok('δοκιμαστικό κλειδί στην παραγωγή: το λέει', !testInProd.ok && testInProd.key === 'test' && testInProd.testKeyInProduction);
+  ok('δοκιμαστικό κλειδί εκτός παραγωγής: εντάξει',
+     creemPort.diagnose({ ...live, [CREEM_KEY_ENV]: TEST_KEY, VERCEL_ENV: 'preview' }).ok);
+  const flag = creemPort.diagnose({ ...live, CREEM_TEST_MODE: 'true' });
+  ok('διακόπτης δοκιμής με ζωντανό κλειδί: το λέει', !flag.ok && flag.testModeConflict);
+  const half = creemPort.diagnose({ ...live, [CREEM_PRODUCTS_ENV]: PRODUCTS });
+  ok('μισός χάρτης: ονομάζει τα ζεύγη που λείπουν', !half.ok && half.products === 'incomplete'
+     && half.missingPairs.includes('agency:monthly') && half.missingPairs.includes('office:annual')
+     && !half.missingPairs.includes('solo:monthly'));
+  const none = creemPort.diagnose({ ...live, [CREEM_PRODUCTS_ENV]: '' });
+  ok('χωρίς χάρτη: «λείπει»', !none.ok && none.products === 'missing' && none.missingPairs.length === 8);
+  const bad = creemPort.diagnose({ ...live, [CREEM_PRODUCTS_ENV]: `${FULL},prod_x:ufo:monthly` });
+  ok('χάρτης με χαλασμένη γραμμή: «δεν διαβάζεται», με πλήθος', !bad.ok && bad.products === 'unreadable' && bad.badEntries === 1);
+  ok('χωρίς μυστικό webhook: το λέει, χωρίς να κλείνει το ταμείο',
+     creemPort.diagnose({ ...live, [CREEM_SECRET_ENV]: '' }).webhookSecret === false
+     && creemPort.diagnose({ ...live, [CREEM_SECRET_ENV]: '' }).ok);
+  const many = creemPort.diagnose({ [CREEM_KEY_ENV]: TEST_KEY, [CREEM_PRODUCTS_ENV]: PRODUCTS, VERCEL_ENV: 'production' });
+  ok('πολλά σφάλματα μαζί: φαίνονται όλα, όχι μόνο το πρώτο', many.testKeyInProduction && many.products === 'incomplete');
+
+  // ΚΑΜΙΑ ΤΙΜΗ ΣΤΗΝ ΑΠΑΝΤΗΣΗ: ούτε κλειδί, ούτε μυστικό, ούτε αναγνωριστικό προϊόντος.
+  for (const [name, diag] of Object.entries({ g, noKey, testInProd, flag, half, none, bad, many })) {
+    const text = JSON.stringify(diag);
+    ok(`${name}: χωρίς τιμή μεταβλητής`, !/SECRET|prod_[a-z]|ufo|whsec/.test(text));
+  }
+  // ΜΙΑ ΚΡΙΣΗ: η διάγνωση και το configError δεν διαφωνούν ποτέ.
+  for (const e of [live, { ...live, [CREEM_KEY_ENV]: '' }, { ...live, [CREEM_KEY_ENV]: TEST_KEY }, { ...live, CREEM_TEST_MODE: '1' },
+    { ...live, [CREEM_PRODUCTS_ENV]: PRODUCTS }, { ...live, [CREEM_PRODUCTS_ENV]: '' }, { ...live, [CREEM_PRODUCTS_ENV]: `${FULL},x` }]) {
+    ok(`διάγνωση και configError συμφωνούν (${creemPort.configError(e) || 'εντάξει'})`, creemPort.diagnose(e).ok === (creemPort.configError(e) === ''));
+  }
+}
+
 main().then(() => {
   console.log(`merchant/creem — ${pass} passed, ${fail} failed`);
   if (fail) process.exit(1);

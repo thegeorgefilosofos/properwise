@@ -17,6 +17,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { PLANS, propertyAllowance, PLAN_ORDER, TRIAL_DAYS, BILLING_CYCLES, normalizePlan, type PlanId, type BillingCycle } from './plans';
+import { pastDueUntil } from './subscription';
 
 export type ProfileType = 'individual' | 'professional';
 
@@ -275,13 +276,23 @@ export function trialState(input: EntitlementInput): TrialState {
  * ακυρωμένη με ισχύ ως τη λήξη κρατά εκεί το πακέτο που πληρώθηκε· αν το
  * γεγονός της λήξης δεν φτάσει ποτέ, το πακέτο θα έμενε ανοιχτό για πάντα.
  * Η ημερομηνία κρίνεται εδώ και στην `public.user_plan_rank`, με τον ίδιο
- * κανόνα: `cancelled` με `mor_ends_at` που πέρασε είναι `free`.
+ * κανόνα: `cancelled` με `mor_ends_at` που πέρασε είναι `free`· και
+ * `past_due` με την πρώτη αποτυχία παλαιότερη από τη χάρη επίσης.
  */
 export function livePlan(
-  row: { plan?: string | null; subscription_status?: string | null; mor_ends_at?: string | null } | null | undefined,
+  row: {
+    plan?: string | null; subscription_status?: string | null; mor_ends_at?: string | null;
+    mor_past_due_at?: string | null;
+  } | null | undefined,
   now: number = Date.now(),
 ): string {
   const plan = row?.plan || 'free';
+  // Η ΑΠΟΤΥΧΗΜΕΝΗ ΠΛΗΡΩΜΗ ΜΕΤΑ ΤΗ ΧΑΡΗ (έλεγχος 12/11/2026): ίδιος κανόνας με
+  // την `isEntitled` και την `public.user_plan_rank`, χωρίς να περιμένει γεγονός.
+  if (row?.subscription_status === 'past_due') {
+    const until = pastDueUntil(row.mor_past_due_at);
+    return until && Date.parse(until) <= now ? 'free' : plan;
+  }
   if (row?.subscription_status !== 'cancelled' || !row.mor_ends_at) return plan;
   const ends = new Date(row.mor_ends_at).getTime();
   return Number.isFinite(ends) && ends <= now ? 'free' : plan;

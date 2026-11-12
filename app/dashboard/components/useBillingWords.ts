@@ -24,6 +24,11 @@ export interface ClientBillingWords {
   inviteAccess?: string;
   /** Η άρνηση `plan_required` της ίδιας πρόσκλησης. */
   invitePlanRefusal?: string;
+  /**
+   * Η κάρτα της συνδρομής σε αποτυχημένη πληρωμή και μετά από επιστροφή ή
+   * αμφισβήτηση. Το `{date}` το συμπληρώνει η οθόνη.
+   */
+  subscriptionNotices?: { pastDue: string; pastDueOver: string; refund: string; dispute: string };
 }
 
 let pending: Promise<ClientBillingWords | null> | null = null;

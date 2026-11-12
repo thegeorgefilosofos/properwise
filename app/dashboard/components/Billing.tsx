@@ -30,7 +30,8 @@ import { T, Btn, LinkBtn, InfoBanner, Spinner, Card, SecHdr, ChipToggle, fixedCo
 import { PLANS, PLAN_ORDER, normalizePlan, annualPerMonth, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 // Η ΦΑΣΗ ΤΗΣ ΣΥΝΔΡΟΜΗΣ ΔΕΝ ΚΡΙΝΕΤΑΙ ΕΔΩ. Οι καταστάσεις τις ονομάζει ο
 // έμπορος και τις γράφει ο webhook· η οθόνη τις διαβάζει από την ίδια πηγή.
-import { subPhase, cardState } from '@/lib/billing/subscription';
+import { subPhase, cardState, pastDueUntil } from '@/lib/billing/subscription';
+import { useBillingWords } from './useBillingWords';
 import { ALLOWED_PLANS, planFromParam, cycleFromParam, type ProfileType } from '@/lib/billing/entitlements';
 import { SegmentControl } from './UIComponents';
 import { notifyError, notifyOk } from '@/components/Toast';
@@ -47,6 +48,8 @@ interface BillingData {
   profile_type: string;
   /** Ο,τι ξέρει ο πάροχος για τη συνδρομή. Διαβάζεται, δεν γράφεται από εδώ. */
   subscription_status: string; mor_renews_at: string; mor_ends_at: string;
+  /** Η πρώτη αποτυχημένη χρέωση· πότε και γιατί έκλεισε η πρόσβαση (webhook). */
+  mor_past_due_at: string; mor_revoked_at: string; mor_revoked_reason: string;
   /** Η συνδρομή στον έμπορο. Η ΥΠΑΡΞΗ της κρίνει αν υπάρχει πύλη διαχείρισης. */
   mor_subscription_id: string;
   /** Ο λογαριασμός δοκιμαστή. Οσο υπάρχει, δεν υπάρχει τίποτα να αγοραστεί. */
@@ -61,6 +64,7 @@ const INIT: BillingData = {
   doc_type: 'receipt', full_name: '', company_name: '', afm: '', doy: '', profession: '',
   address: '', city: '', postal_code: '', country: 'GR', vat_number: '', phone: '', plan: 'free', billing_cycle: 'monthly',
   profile_type: 'individual', subscription_status: '', mor_renews_at: '', mor_ends_at: '',
+  mor_past_due_at: '', mor_revoked_at: '', mor_revoked_reason: '',
   mor_subscription_id: '', tester_since: '', hold_plan: '', hold_until: '',
 };
 
@@ -298,6 +302,39 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
  * είναι ενεργή: αυτό το ξέρει μόνο ο διακομιστής και λέγεται με τις λέξεις
  * των Ορων. Λέει μόνο τι ισχύει στην οθόνη και ότι τίποτα δεν άλλαξε.
  */
+/**
+ * ΓΙΑΤΙ ΕΙΝΑΙ ΚΛΕΙΣΤΟ ΤΟ ΤΑΜΕΙΟ, ΜΟΝΟ ΓΙΑ ΔΙΑΧΕΙΡΙΣΤΗ (έλεγχος ετοιμότητας
+ * πληρωμών 12/11/2026, «Λείπει (κώδικας)» 5).
+ *
+ * Δεν υπάρχει χωριστή οθόνη διαχείρισης· η κάρτα της συνδρομής είναι το σημείο
+ * όπου ο ιδιοκτήτης βλέπει ότι το ταμείο είναι κλειστό. Η διαδρομή κρίνει μόνη
+ * της ποιος είναι διαχειριστής (app_admins και δεύτερο βήμα) και σε όλους τους
+ * άλλους απαντά 403: τότε εδώ δεν εμφανίζεται τίποτα. Καμία τιμή μεταβλητής
+ * δεν φτάνει ως εδώ, μόνο ονόματα και ζεύγη πακέτου.
+ */
+function CheckoutDiagnostic() {
+  const [problems, setProblems] = useState<string[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/billing/diagnostic')
+      .then(r => (r.ok ? r.json() as Promise<{ problems?: string[] }> : null))
+      .then(b => { if (alive && b && Array.isArray(b.problems)) setProblems(b.problems); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  if (!problems || problems.length === 0) return null;
+  return (
+    <div style={{ marginTop: T.sp.sm }}>
+      <InfoBanner tone="warning">
+        <strong>Διάγνωση ταμείου, μόνο για διαχειριστή.</strong>
+        <ul style={{ margin: `${T.sp.xs}px 0 0`, paddingLeft: T.sp.lg }}>
+          {problems.map(p => <li key={p}>{p}</li>)}
+        </ul>
+      </InfoBanner>
+    </div>
+  );
+}
+
 const CHECKOUT_UNREACHABLE = 'Η πληρωμή με κάρτα δεν είναι διαθέσιμη αυτή τη στιγμή. Η συνδρομή σου δεν αλλάζει.';
 
 // ─── Η ΣΥΝΔΡΟΜΗ ─────────────────────────────────────────────────────────────
@@ -382,7 +419,15 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
   const endsAt = (d.mor_ends_at || '').trim();
   const renewsAt = (d.mor_renews_at || '').trim();
   // Ο κανόνας ζει στο lib/billing/subscription.ts, όπου τον φτάνει δοκιμή.
-  const { tone, running } = cardState({ status, endsAt }, new Date().toISOString());
+  const pastDueSince = (d.mor_past_due_at || '').trim() || null;
+  const revokedAt = (d.mor_revoked_at || '').trim() || null;
+  const { tone, running } = cardState({ status, endsAt, pastDueSince, revokedAt }, new Date().toISOString());
+  // ΤΑ ΛΟΓΙΑ ΤΗΣ ΑΠΟΤΥΧΗΜΕΝΗΣ ΠΛΗΡΩΜΗΣ ΚΑΙ ΤΗΣ ΕΠΙΣΤΡΟΦΗΣ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΟΝ
+  // ΔΙΑΚΟΜΙΣΤΗ (lib/legal/billingWords.ts, SUBSCRIPTION_NOTICES). Χωρίς
+  // απάντηση δεν λέγεται τίποτα: καμία οθόνη δεν μαντεύει στη θέση του.
+  const notices = useBillingWords()?.subscriptionNotices ?? null;
+  const graceUntil = pastDueUntil(pastDueSince);
+  const withDate = (text: string, iso: string | null) => text.replace('{date}', iso ? fd(iso) : '');
 
   // ── ΤΟ ΚΟΥΜΠΙ ΡΩΤΑΕΙ ΠΡΙΝ ΕΜΦΑΝΙΣΤΕΙ ────────────────────────────────────
   // Οι σύνδεσμοι αγοράς ζουν σε μεταβλητή περιβάλλοντος, δηλαδή ο περιηγητής
@@ -565,8 +610,12 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
           {tone === 'trial' ? 'Σε δοκιμή' : `Ενεργή συνδρομή, ${plan.name}`}
           {renewsAt ? `. Ανανέωση στις ${fd(renewsAt)}.` : '.'}
         </InfoBanner>
-      ) : tone === 'retrying' ? (
-        <InfoBanner tone="warning">Η τελευταία χρέωση δεν ολοκληρώθηκε. Ο λογαριασμός παραμένει ανοιχτός όσο ο έμπορος ξαναδοκιμάζει την κάρτα. Ενημέρωσε την κάρτα σου από τη διαχείριση συνδρομής.</InfoBanner>
+      ) : tone === 'retrying' && notices && graceUntil ? (
+        <InfoBanner tone="warning">{withDate(notices.pastDue, graceUntil)}</InfoBanner>
+      ) : tone === 'retrying-over' && notices ? (
+        <InfoBanner tone="warning">{withDate(notices.pastDueOver, graceUntil)}</InfoBanner>
+      ) : tone === 'revoked' && notices ? (
+        <InfoBanner tone="warning">{withDate(d.mor_revoked_reason === 'dispute' ? notices.dispute : notices.refund, revokedAt)}</InfoBanner>
       ) : null}
 
       {/* ── Η ΥΠΟΒΑΘΜΙΣΗ ΠΟΥ ΠΕΡΙΜΕΝΕΙ, ΓΡΑΜΜΕΝΗ ────────────────────────────
@@ -690,6 +739,7 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
       {live === false && (
         <div style={{ marginTop: T.sp.lg }}>
           <InfoBanner tone="info">{note || CHECKOUT_UNREACHABLE}</InfoBanner>
+          <CheckoutDiagnostic />
         </div>
       )}
 

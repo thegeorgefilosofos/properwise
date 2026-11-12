@@ -6,41 +6,20 @@
 // περιηγητής, οποιοσδήποτε θα έβαζε ξένο αναγνωριστικό, άλλη παραλλαγή, ή θα
 // ζητούσε δοκιμή που έχει ήδη ξοδέψει.
 //
-// ── ΤΕΣΣΕΡΙΣ ΕΛΕΓΧΟΙ ΠΡΙΝ ΑΝΟΙΞΕΙ ───────────────────────────────────────
-// ΤΑΥΤΟΤΗΤΑ: ο χρήστης έρχεται από τη ΣΥΝΕΔΡΙΑ, όχι από το αίτημα.
-// ΠΑΚΕΤΟ: ένας ιδιώτης δεν αγοράζει πακέτο επαγγελματία γράφοντάς το στη
-//   διεύθυνση — θα πλήρωνε για καρτέλες που το προφίλ του δεν ανοίγει.
-// ΔΟΚΙΜΑΣΤΗΣ: όποιος έχει την ιδιότητα ΔΕΝ πληρώνει ποτέ. Το ταμείο δεν
-//   ανοίγει καν γι' αυτόν — δεν υπάρχει τίποτα να αγοράσει.
-// ΔΟΚΙΜΗ: μία ανά ΛΟΓΑΡΙΑΣΜΟ. Δεύτερη συνδρομή στον ίδιο λογαριασμό ζητά
-//   `skip_trial`, αλλιώς η ακύρωση την τρίτη ημέρα και ένα νέο πάτημα δίνουν
-//   καθαρές 30 ημέρες, επ' άπειρον.
-//
-// ── ΚΑΙ Η ΕΡΩΤΗΣΗ ΔΕΝ ΕΙΝΑΙ ΑΓΟΡΑ ───────────────────────────────────────
-// Η οθόνη ρωτά «υπάρχει ταμείο;» σε κάθε φόρτωση, για να μη δείξει κουμπί που
-// δεν οδηγεί πουθενά. Με `probe=1` απαντάμε από τη ρύθμιση, ΧΩΡΙΣ να ζητήσουμε
-// ταμείο από τον έμπορο: αλλιώς κάθε άνοιγμα των Ρυθμίσεων θα άφηνε από μία
-// αχρησιμοποίητη συνεδρία πληρωμής στον πίνακά του.
+// ΕΔΩ ΜΕΝΕΙ Η ΤΑΥΤΟΤΗΤΑ: ο χρήστης έρχεται από τη ΣΥΝΕΔΡΙΑ, όχι από το αίτημα,
+// και η μισή συνεδρία δεν περνά. Η ΑΠΟΦΑΣΗ (πακέτο, συνθήκη πώλησης,
+// δοκιμαστής, συνδρομή που τρέχει, probe, ταμείο) ζει στο flow.ts, ώστε να
+// τρέχει σε δοκιμή χωρίς το next/headers (flow.test.ts).
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireSecondStep } from '@/lib/auth/secondStep';
-import { PLANS, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 import { merchant } from '@/lib/billing/merchant';
-import { isEntitled, isMorStatus } from '@/lib/billing/subscription';
-import { billingWords } from '@/lib/legal/billingWords';
-import { checkoutState } from '@/lib/legal/checkout';
-import { SITE } from '@/lib/core/site';
 import * as billing from '@/lib/data/billing';
 import { reportRoute } from '@/lib/observability/route';
-
-/** Ο σύνδεσμος πληρωμής δεν ζει για πάντα σε ένα ιστορικό περιηγητή. */
-const LINK_MINUTES = 30;
-
-/** Η απάντηση όταν δεν υπάρχει ταμείο. Ιδια διατύπωση με τους Ορους. */
-const closed = () => NextResponse.json({ available: false, url: null, note: billingWords().chargingToday });
+import { checkoutResponse, CHECKOUT_PROFILE_COLUMNS, type CheckoutProfile } from './flow';
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -51,100 +30,15 @@ export async function GET(request: NextRequest) {
   const denied = await requireSecondStep(supabase, user);
   if (denied) return denied;
 
-  const plan = (request.nextUrl.searchParams.get('plan') || '').trim();
-  const cycle = (request.nextUrl.searchParams.get('cycle') || '').trim();
-  const probe = request.nextUrl.searchParams.get('probe') === '1';
-  // Το «free» ΕΙΝΑΙ στο PLANS (είναι πραγματικό επίπεδο), αλλά δεν έχει τιμή:
-  // δεν στήνεται ταμείο για δωρεάν πακέτο. Χωρίς αυτόν τον ρητό αποκλεισμό, το
-  // `plan in PLANS` θα το άφηνε να περάσει και ο πάροχος θα ζητούσε προϊόν που
-  // δεν υπάρχει.
-  if (!Object.hasOwn(PLANS, plan) || plan === 'free' || (cycle !== 'monthly' && cycle !== 'annual')) {
-    return NextResponse.json({ error: 'Άγνωστο πακέτο ή κύκλος.' }, { status: 400 });
-  }
-
-  const mor = merchant();
-  // ΠΕΜΠΤΟΣ ΕΛΕΓΧΟΣ, ΠΡΩΤΟΣ ΣΤΗ ΣΕΙΡΑ: ΞΕΡΕΙ Ο ΑΓΟΡΑΣΤΗΣ ΑΠΟ ΠΟΙΟΝ ΑΓΟΡΑΖΕΙ;
-  // Το ταμείο άνοιγε με μόνο ζωντανό κλειδί, ενώ ο φορέας ήταν ανώνυμος
-  // (νομική αξιολόγηση 20/10/2026). Η οθόνη κρύβει πλέον το κουμπί, αλλά ένας
-  // σελιδοδείκτης ή μια ανοιχτή καρτέλα φτάνουν εδώ κατευθείαν: η άρνηση ζει
-  // στον διακομιστή, στην ΙΔΙΑ συνθήκη με τα κείμενα (lib/legal/checkout.ts).
-  const gate = checkoutState(process.env);
-  if (!gate.live) {
-    // ΤΟ «ΓΙΑΤΙ ΟΧΙ» ΤΑΞΙΔΕΥΕΙ ΜΟΝΟ ΠΡΟΣ ΤΑ ΜΕΣΑ. Ονόματα μεταβλητών δεν
-    // εκτίθενται σε δημόσια διεύθυνση.
-    console.info(gate.closedBy === 'identity'
-      ? `[${mor.id}] το ταμείο μένει κλειστό: η ταυτότητα του πωλητή δεν έχει δημοσιευθεί`
-      : `[${mor.id}] η χρέωση δεν είναι ρυθμισμένη`);
-    return closed();
-  }
-
-  const profile = await billing.profile<{
-    profile_type: string | null; trial_used_at: string | null;
-    tester_since: string | null; full_name: string | null;
-    subscription_status: string | null; mor_ends_at: string | null;
-  }>(supabase, user.id, 'profile_type, trial_used_at, tester_since, full_name, subscription_status, mor_ends_at');
-
-  // Ο ΔΟΚΙΜΑΣΤΗΣ ΔΕΝ ΕΧΕΙ ΤΙ ΝΑ ΑΓΟΡΑΣΕΙ. Δεν είναι σφάλμα, είναι η κατάστασή
-  // του: το προϊόν του δίνεται ολόκληρο και χωρίς συνδρομή στον έμπορο.
-  if (profile?.tester_since) {
-    return NextResponse.json({ available: false, url: null, tester: true });
-  }
-
-  // ── ΔΕΥΤΕΡΟ ΤΑΜΕΙΟ ΠΑΝΩ ΣΕ ΣΥΝΔΡΟΜΗ ΠΟΥ ΙΣΧΥΕΙ ΑΚΟΜΗ ─────────────────────
-  // Η οθόνη κρύβει το κουμπί όσο τρέχει συνδρομή, αλλά η διαδρομή δεν ρωτούσε
-  // ποτέ: μια διεύθυνση γραμμένη με το χέρι, ένας παλιός σελιδοδείκτης ή μια
-  // καρτέλα ανοιχτή από χθες άνοιγαν ταμείο δίπλα στο πρώτο. Ο πελάτης
-  // κατέληγε με ΔΥΟ συνδρομές στον έμπορο, δύο χρεώσεις τον μήνα και μία μόνο
-  // από τις δύο ορατή στην κάρτα του.
-  //
-  // Ο ΙΔΙΟΣ ΚΑΝΟΝΑΣ ΜΕ ΤΗΝ ΠΡΟΣΒΑΣΗ ΚΑΙ ΟΧΙ ΔΕΥΤΕΡΟΣ. Το «ισχύει ακόμη;» το
-  // απαντά η `isEntitled`, εκεί όπου το απαντά και για κάθε άλλη διαδρομή: η
-  // ακυρωμένη συνδρομή που τρέχει ως την ημερομηνία της μετράει ζωντανή.
-  const morStatus = (profile?.subscription_status || '').trim();
-  if (isMorStatus(morStatus) && isEntitled({ status: morStatus, endsAt: profile?.mor_ends_at ?? null }, new Date().toISOString())) {
-    // Η ΕΡΩΤΗΣΗ «ΕΙΝΑΙ ΑΝΟΙΧΤΟ ΤΟ ΤΑΜΕΙΟ;» ΘΕΛΕΙ ΑΠΑΝΤΗΣΗ ΚΑΙ ΓΙΑ ΤΟΝ ΣΥΝΔΡΟΜΗΤΗ.
-    // Η οθόνη χρέωσης δείχνει την «Αλλαγή πακέτου» μόνο όταν η ερώτηση απαντά
-    // «ναι». Το 409 έπεφτε πριν από αυτήν, οπότε κανένας πληρωμένος πελάτης
-    // δεν έβλεπε ποτέ το κουμπί της αναβάθμισης (έλεγχος 27.09.2026, D6).
-    // Ταμείο δεν ανοίγει: το 409 παρακάτω ισχύει για κάθε κανονικό αίτημα.
-    if (probe) return NextResponse.json({ available: true, subscribed: true, url: null, note: billingWords().chargingToday });
-    return NextResponse.json({
-      error: 'Υπάρχει ήδη ενεργή συνδρομή. Η αλλαγή πακέτου γίνεται από τη διαχείριση συνδρομής.',
-    }, { status: 409 });
-  }
-
-  // ── ΤΟ ΠΑΚΕΤΟ ΕΙΝΑΙ Η ΔΗΛΩΣΗ ────────────────────────────────────────
-  // Εδώ υπήρχε 403 όταν το πακέτο δεν ταίριαζε στον δηλωμένο τύπο προφίλ.
-  // Σε λογαριασμό δηλωμένο «Επαγγελματία» χωρίς το πακέτο του, η οθόνη
-  // έδειχνε «Ιδιώτη» (ο επαγγελματικός τρόπος ανοίγει μόνο με το πακέτο)
-  // και κλείδωνε τα δύο επαγγελματικά. Το ταμείο απέρριπτε τα τρία του
-  // ιδιώτη. Κανένα πακέτο δεν αγοραζόταν (έλεγχος 28.09.2026).
-  //
-  // Ο τύπος δεν προστατεύει τίποτα που να αξίζει άρνηση πώλησης. Ο,τι ανοίγει
-  // το κρίνει το πακέτο. Τον τύπο τον ξαναγράφει ο webhook μόλις η
-  // αγορά ολοκληρωθεί (`profileTypeToWrite`).
-
-  if (probe) return NextResponse.json({ available: true, url: null, note: billingWords().chargingToday });
-
-  // Η ΔΙΑΔΡΟΜΗ ΔΕΝ ΞΕΡΕΙ ΤΙ ΕΙΝΑΙ ΠΑΡΑΛΛΑΓΗ. Ζητά «Ιδιοκτήτης+, ετήσια» και
-  // παίρνει διεύθυνση: η μετάφραση στη γλώσσα του παρόχου ζει στη θύρα.
-  const { url, error } = await mor.openCheckout({
-    buyer: { userId: user.id, email: user.email, name: profile?.full_name },
-    plan: plan as PlanId,
-    cycle: cycle as BillingCycle,
-    redirectUrl: `${SITE}/dashboard?checkout=ok`,
-    // Η ΔΟΚΙΜΗ ΕΙΝΑΙ ΜΙΑ ΑΝΑ ΛΟΓΑΡΙΑΣΜΟ. Το πότε δόθηκε το γράφει ο webhook,
-    // όταν δει την πρώτη συνδρομή σε δοκιμή — όχι εδώ: ένα ταμείο που άνοιξε
-    // και εγκαταλείφθηκε δεν πρέπει να καίει τη δοκιμή κανενός.
-    skipTrial: !!profile?.trial_used_at,
-    expiresAt: new Date(Date.now() + LINK_MINUTES * 60_000).toISOString(),
-  }, process.env);
-
-  if (error) {
-    console.info(`[${mor.id}] το ταμείο δεν άνοιξε:`, error);
-    // Το `error` του εμπόρου είναι ελεύθερο κείμενο: ταξιδεύει μόνο το όνομά του.
-    void reportRoute('api/billing/checkout', `${mor.id} checkout not opened`, { status: 502 });
-    return NextResponse.json({ error: 'Το ταμείο δεν άνοιξε.' }, { status: 502 });
-  }
-  return NextResponse.json({ available: !!url, url, note: billingWords().chargingToday });
+  const q = request.nextUrl.searchParams;
+  return checkoutResponse(
+    { plan: (q.get('plan') || '').trim(), cycle: (q.get('cycle') || '').trim(), probe: q.get('probe') === '1' },
+    {
+      env: process.env,
+      mor: merchant(),
+      user: { id: user.id, email: user.email },
+      readProfile: () => billing.profile<CheckoutProfile>(supabase, user.id, CHECKOUT_PROFILE_COLUMNS),
+      report: (route, what, f) => { void reportRoute(route, what, f); },
+    },
+  );
 }
