@@ -264,7 +264,8 @@ ok('η καστάνια σαρώνει πραγματικά αρχεία', files
   const oct = computeObligations({ ...prop, rental_mode: 'short_term', status_detail: 'seasonal' }, null, [], new Date(2026, 9, 2), 'short_term')
   const byKind = (k: string) => oct.find(o => taxKindOfEventSource(o.source) === k)
   ok('2.10: η δήλωση διαμονής είναι η 20.10', byKind('str-registry')?.date === nextWorkingDay('2026-10-20'))
-  ok('2.10: το τέλος κλιματικής είναι το 30.10', byKind('str-climate-fee')?.date === lastWorkingDayOfMonth(2026, 9))
+  // 31.10.2026 Σάββατο: η προθεσμία πάει στην επόμενη εργάσιμη (ΚΦΔ άρθρο 7 παρ. 1), όχι πίσω.
+  ok('2.10: το τέλος κλιματικής είναι το 2.11', byKind('str-climate-fee')?.date === nextWorkingDay('2026-10-31') && nextWorkingDay('2026-10-31') === '2026-11-02')
   ok('2.10: καμία θεσμική εκπρόθεσμη όταν υπάρχει επόμενη', oct.filter(o => o.category === 'tax').every(o => o.daysUntil >= 0))
   // Χωρίς επόμενη στο ίδιο είδος, η περασμένη μένει (Ε1 της 15.7 στις 30.7).
   ok('30.7: η Ε1 που πέρασε μένει όταν δεν υπάρχει επόμενη', income?.date === nextWorkingDay('2026-07-15'))
