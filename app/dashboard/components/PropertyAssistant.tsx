@@ -34,7 +34,7 @@ import { PLANS } from '@/lib/billing/plans';
 
 import { suggestedOpeners, greeting as buildGreeting } from '@/lib/assistant/openers';
 import { hy } from '@/components/Hyphen';
-import { remainingLine } from '@/lib/billing/aiLimits';
+import { remainingLine, assistantLockedMessage } from '@/lib/billing/aiLimits';
 import {
   type Props,
   eur, navLabel, reachLabel, NO_MEMORIES, FAB_H,
@@ -491,7 +491,15 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                       ? noKeyNotice(prefs.formal)
                       : err === 'limit'
                         ? (limitMsg || remainingLine(quota, prefs.formal) || (prefs.formal ? 'Φτάσατε το όριο ερωτήσεων.' : 'Έφτασες το όριο ερωτήσεων.'))
-                        : (errDetail || (prefs.formal ? 'Δεν μπόρεσα να απαντήσω τώρα. Δοκιμάστε ξανά σε λίγο.' : 'Δεν μπόρεσα να απαντήσω τώρα. Δοκίμασε ξανά σε λίγο.')))}
+                        : err === 'plan'
+                          // ΤΟ ΠΑΚΕΤΟ ΔΕΝ ΕΙΝΑΙ ΒΛΑΒΗ. Ο διακομιστής λέει σε ποιο πακέτο
+                          // υπάρχει η Νόα (assistantLockedMessage)· η οθόνη το μεταφέρει
+                          // και δείχνει πού αλλάζει, αντί για «δοκίμασε ξανά σε λίγο».
+                          ? (limitMsg || assistantLockedMessage())
+                          : (errDetail || (prefs.formal ? 'Δεν μπόρεσα να απαντήσω τώρα. Δοκιμάστε ξανά σε λίγο.' : 'Δεν μπόρεσα να απαντήσω τώρα. Δοκίμασε ξανά σε λίγο.')))}
+                    {err === 'plan' && (
+                      <div style={{ marginTop: 8 }}><Btn variant="secondary" onClick={() => onNavigate('settings')}>Δες το πακέτο στις Ρυθμίσεις</Btn></div>
+                    )}
                   </div>
                 )}
               </div>
