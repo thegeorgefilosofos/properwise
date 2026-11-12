@@ -6,6 +6,7 @@
 // ημερολογίου (`isOverdue`), που διαβάζουν η κάρτα, ο μήνας και οι λίστες.
 import { pastState, PAST_LABEL, NEVER_OVERDUE, PEA_EXPIRY_DAY_SOURCE } from './pastState';
 import { onceOnDay } from './onceOnDay';
+import { INCOME_INSTALMENT_SOURCE_PREFIX, reminderOccurrences } from './recurrence';
 import { peaSource } from '../property/peaExpiry';
 import { isOverdue, isPastNotice, pastStateOf, type CalEvent } from '../../app/dashboard/components/calendar/model';
 import { readFileSync } from 'node:fs';
@@ -33,6 +34,11 @@ const ev = (source: string, event_date: string, status = 'pending') => ({ source
   eq('προθεσμία σε εξέλιξη: όχι ληξιπρόθεσμο', pastState(ev('manual', '2026-11-11', 'in_progress'), T), null);
   eq('οι λέξεις', [PAST_LABEL.overdue, PAST_LABEL.expired], ['Ληξιπρόθεσμο', 'Έληξε']);
   ok('ο κατάλογος χρησιμοποιεί το ίδιο κατηγόρημα με τα email', NEVER_OVERDUE.includes(onceOnDay));
+  // Δόση φόρου εισοδήματος: τα email δεν τη λένε ληξιπρόθεσμη (reminderOccurrences)· ούτε η οθόνη.
+  const inst = ev(`${INCOME_INSTALMENT_SOURCE_PREFIX}2026-1`, '2026-07-31');
+  eq('δόση φόρου εισοδήματος που πέρασε: όχι ληξιπρόθεσμη', pastState(inst, T), 'passed');
+  ok('ίδια απόφαση με τα email', reminderOccurrences([{ ...inst, recurring: false }] as never, T, '2027-12-31').overdue.length === 0);
+  eq('άλλη φορολογική προθεσμία που πέρασε: ληξιπρόθεσμη', pastState(ev('tax:x-1', '2026-07-31'), T), 'overdue');
 }
 
 // ── Το μοντέλο του ημερολογίου ──────────────────────────────────────────────

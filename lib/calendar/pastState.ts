@@ -16,19 +16,22 @@
 //     Καμία ένδειξη, μόνο η ημερομηνία.
 //
 // ΠΩΣ ΜΠΑΙΝΕΙ ΝΕΟ ΕΙΔΟΣ. Ό,τι δεν πρέπει να λέγεται ποτέ «ληξιπρόθεσμο» μπαίνει
-// με ΜΙΑ γραμμή στο `NEVER_OVERDUE`. Υποψήφιες: οι δόσεις φόρου εισοδήματος
-// (`tax:income-instalment-*`), που τα email ήδη δεν τις λένε ληξιπρόθεσμες
+// με ΜΙΑ γραμμή στο `NEVER_OVERDUE`. Εκεί είναι και οι δόσεις φόρου εισοδήματος
+// (`tax:income-instalment-*`): τα email δεν τις λένε ληξιπρόθεσμες
 // (`reminderOccurrences` στο lib/calendar/recurrence.ts) γιατί η εφαρμογή δεν
 // ξέρει αν ο χρήστης χρωστά φόρο. Χωρίς αυτή τη γραμμή, η δόση που ο χρήστης
-// άγγιξε και ο συγχρονισμός δεν σβήνει θα έλεγε στην οθόνη «Ληξιπρόθεσμο».
+// άγγιξε και ο συγχρονισμός δεν σβήνει θα έλεγε στην οθόνη «Ληξιπρόθεσμο»
+// ενώ το email όχι.
 // ═══════════════════════════════════════════════════════════════════════════
 import { onceOnDay, PEA_SOURCE_PREFIX } from './onceOnDay';
+import { isIncomeInstalmentSource } from './recurrence';
 
 type Sourced = { source?: string | null };
 
 /** Τα είδη που, όταν περάσει η μέρα τους, δεν είναι ποτέ «ληξιπρόθεσμα». */
 export const NEVER_OVERDUE: ReadonlyArray<(e: Sourced) => boolean> = [
   onceOnDay,
+  e => isIncomeInstalmentSource(e.source),
 ];
 
 /** Η πηγή της γραμμής της ίδιας της λήξης του ΠΕΑ (`peaSource(0)` στο lib/property/peaExpiry.ts). */
