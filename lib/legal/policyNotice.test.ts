@@ -35,7 +35,13 @@ ok('η ημερομηνία της έκδοσης δεν είναι μελλον
 ok('όλοι μαθαίνουν για τη δοκιμή, τα δώρα και την αλλαγή πακέτου', all.every(trialTerms))
 ok('η αλλαγή των Όρων έρχεται τελευταία', all.every(c => c.summary.endsWith('μέσα από την εφαρμογή.')))
 ok('η 2026-11-12.2 στέλνει στους Όρους', all.every(c => c.href === '/terms' && c.headline.includes('Όρους')))
-ok('είδε την 2026-11-12: ΜΟΝΟ η αλλαγή των Όρων', !keepCopy(sawKeep) && !backups(sawKeep) && sawKeep.headline === 'Ενημερώσαμε τους Όρους.' && sawKeep.short === 'Νέοι Όροι.')
+// Η 2026-11-12.2 άλλαξε ΚΑΙ την Πολιτική απορρήτου (όρια της δοκιμής, έλεγχος PR 559):
+// και όποιος είδε την 2026-11-12 πρέπει να το μάθει από την επικεφαλίδα.
+const privacyLimits = (c: { summary: string }) => c.summary.includes('η Πολιτική απορρήτου λέει ότι το όριο των σαρώσεων της δοκιμής') && c.summary.includes('ισχύουν μόνο στη δοκιμή και στον συνεργάτη που δεν έχει σε ισχύ μήνες χωρίς χρέωση')
+ok('είδε την 2026-11-12: ΜΟΝΟ η 2026-11-12.2, σε Όρους και Πολιτική', !keepCopy(sawKeep) && !backups(sawKeep) && sawKeep.headline === 'Ενημερώσαμε τους Όρους και την Πολιτική απορρήτου.' && sawKeep.short === 'Νέοι Όροι και Απόρρητο.')
+ok('όλοι μαθαίνουν ότι άλλαξε η Πολιτική απορρήτου για τα όρια της δοκιμής', all.every(privacyLimits) && all.every(c => c.headline.includes('Πολιτική απορρήτου') && c.short.includes('Απόρρητο')))
+ok('τα όρια της Πολιτικής έρχονται πριν από τους Όρους', all.every(c => c.summary.indexOf('η Πολιτική απορρήτου λέει ότι το όριο') < c.summary.indexOf('Οι Όροι λένε πλέον')))
+ok('τα όρια της Πολιτικής έρχονται μετά το αντίγραφο της σάρωσης', [sawBackup, sawBulk, sawReview, missedReview, never].every(c => c.summary.indexOf('Κράτα αντίγραφο') < c.summary.indexOf('η Πολιτική απορρήτου λέει ότι το όριο')))
 ok('είδε την 2026-11-12 σε αυτή τη συσκευή: το ίδιο', policyNoticeCopy({}, KEEP_COPY_VERSION).summary === sawKeep.summary)
 ok('εγγράφηκε με την 2026-11-12: μόνο οι Όροι', sawKeepCopy({ consent_policy_version: '2026-11-12' }, null) && !sawKeepCopy({ consent_policy_version: '2026-11-11' }, null))
 ok('όποιος έκλεισε την ειδοποίηση της 2026-11-12 τη βλέπει ξανά, μία φορά', policyNoticeDue({ policy_notice_seen: '2026-11-12' }, '2026-11-12') && !policyNoticeDue({ policy_notice_seen: POLICY_VERSION }, null) && !policyNoticeDue({}, POLICY_VERSION))
