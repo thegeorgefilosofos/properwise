@@ -33,6 +33,8 @@ import {
   type LeaseDeclarationInput, type DeclField,
 } from '@/lib/tax/leaseDeclaration';
 import { declaredForLease, type DeclRecord } from './leaseFlow';
+import { PeaLeaseNotice } from './PeaLeaseNotice';
+import { peaDeclField } from '@/lib/property/peaExpiry';
 
 const TAB_LABEL: Record<NonNullable<DeclField['fixIn']>, string> = {
   property: 'Ακίνητο', tenant: navLabel('tenant'), settings: navLabel('settings'),
@@ -90,6 +92,10 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
   // (`tenants.aade_lease_decl_ref`, στήλη 19 του Ε2), όχι μόνο στο ιστορικό.
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [leaseStart, setLeaseStart] = useState<string | null>(null);
+  // ΤΟ ΠΕΑ ΤΟΥ ΑΚΙΝΗΤΟΥ. Ο αριθμός πρωτοκόλλου του μπαίνει υποχρεωτικά στη
+  // δήλωση μίσθωσης (ν. 4122/2013, άρθρο 12 παρ. 8) και η λήξη κρίνει την
+  // ειδοποίηση «Χρειάζεται ΠΕΑ σε ισχύ».
+  const [pea, setPea] = useState<{ number: string | null; expiry: string | null; propType: string | null }>({ number: null, expiry: null, propType: null });
 
   useEffect(() => {
     if (!open) return;
@@ -112,7 +118,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
           // με οδηγία να πάει να τα συμπληρώσει στην καρτέλα Ακίνητο. Ήταν ήδη
           // συμπληρωμένα. Ξανάβρισκε το 11ψήφιο ΑΤΑΚ από το Ε9 για να ξεμπλοκάρει
           // κάτι που δεν ήταν ποτέ κενό.
-          properties.one(supabase, propertyId, 'name,atak,address,postal_code,sqm,floor,prop_type,ownership', userId),
+          properties.one(supabase, propertyId, 'name,atak,address,postal_code,sqm,floor,prop_type,ownership,pea_number,pea_expiry', userId),
           // Ίδιο σφάλμα, δεύτερο σκέλος: ο πίνακας `tenants` ΔΕΝ έχει `created_at`,
           // έχει `updated_at`. Η ταξινόμηση σε ανύπαρκτη στήλη ρίχνει το ερώτημα
           // ακριβώς όπως η ανύπαρκτη στήλη στο select, οπότε «έλειπαν» και το
@@ -146,6 +152,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
         const start = typeof t?.lease_start === 'string' ? t.lease_start : null;
         setSubmitted(prior);
         setTenantId(tid);
+        setPea({ number: (p?.pea_number as string) ?? null, expiry: (p?.pea_expiry as string) ?? null, propType: (p?.prop_type as string) ?? null });
         setLeaseStart(start);
         setEditing(false);
         // Ο αριθμός προηγούμενης μίσθωσης δεν προσυμπληρώνεται στη νέα.
@@ -178,7 +185,13 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
     return () => { alive = false; };
   }, [open, propertyId, userId, supabase]);
 
-  const decl = useMemo(() => buildLeaseDeclaration(input), [input]);
+  // Ο ΑΡΙΘΜΟΣ ΤΟΥ ΠΕΑ ΕΙΝΑΙ ΠΕΔΙΟ ΤΗΣ ΔΗΛΩΣΗΣ, ΟΧΙ ΣΗΜΕΙΩΣΗ ΔΙΠΛΑ ΤΗΣ: έτσι τον
+  // έχουν η λίστα, η αντιγραφή και το φύλλο εκτύπωσης (lib/property/peaExpiry.ts).
+  const decl = useMemo(() => {
+    const base = buildLeaseDeclaration(input);
+    const peaField = peaDeclField(pea.number, pea.propType);
+    return peaField ? { ...base, fields: [...base.fields, peaField] } : base;
+  }, [input, pea.number, pea.propType]);
   const lease = { tenantId, leaseStart };
   const current = declaredForLease(submitted, lease) ? submitted : null;
 
@@ -302,6 +315,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
           <div style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, overflow: 'hidden' }}>
             {decl.fields.map(row)}
           </div>
+          <div style={{ marginTop: 10 }}><PeaLeaseNotice peaExpiry={pea.expiry} propType={pea.propType} leaseStart={input.lease?.start} /></div>
         </div>
 
         {/* Καταγραφή υποβολής */}

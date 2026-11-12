@@ -7,12 +7,13 @@
 // ΜΟΝΟ ΣΥΝΘΕΤΙΚΑ ΣΤΟΙΧΕΙΑ (το φυλάει ο guard-fixture-identities): ΑΤΑΚ 999…,
 // ΑΦΜ που δεν περνά τον έλεγχο ψηφίου, «ΠΑΡΑΔΕΙΓΜΑΤΟΣ», Τ.Κ. 10000. Η διάταξη
 // είναι αυτή της πραγματικής εκτύπωσης (scripts/perf-bench/e9Fixture.ts).
+import { readFileSync } from 'node:fs';
 import { parseE9 } from './e9';
 import { parseEnfiaAct } from './enfiaAct';
 import { parseMyaadeLines, INCOME_TAX_REASON } from './parse';
 import { parsePhotoReply, PHOTO_PROMPT, PHOTO_ASK, PHOTO_MAX_ROWS } from './photo';
 import { detectDocKind } from './detect';
-import { buildDrafts, bulkWindow, deriveReview, commitRowOf, BULK_MAX } from './review';
+import { buildDrafts, bulkWindow, deriveReview, commitRowOf, lineTaxIsPayable, BULK_MAX } from './review';
 import { newPropertyRow, commitImport } from './commit';
 import { fillOnlyEmpty } from './match';
 import { fakeAtak } from './fixtures';
@@ -35,6 +36,8 @@ function validTestAfm(): string {
   return base + String((sum % 11) % 10);
 }
 
+/** Οι γραμμές της πράξης του §4 (γραμμές 150 + 150, πληρωτέο 225), για το §9. */
+let actLines2026: string[] = [];
 const okDoc = (r: ReturnType<typeof parseE9>) => (r.status === 'ok' ? r.doc : null);
 const rows3: FakeE9Row[] = [
   { n: 1, street: ['ΟΔΟΣ', 'ΠΑΡΑΔΕΙΓΜΑΤΟΣ', '(ΠΡΩΗΝ ΔΟΚΙΜΗΣ)'], floor: '2', sqm: '41,79', built: '2008' },
@@ -122,6 +125,7 @@ const rows3: FakeE9Row[] = [
     ...row(1, '150,00'), ...row(2, '150,00'),
     'ΣΤΟΙΧΕΙΑ ΓΗΠΕΔΩΝ - ΠΙΝΑΚΑΣ 2 ΕΝΤΥΠΟΥ Ε9', 'ΔΕΝ ΔΗΛΩΘΗΚΑΝ ΑΚΙΝΗΤΑ ΣΤΟΝ ΠΙΝΑΚΑ 2 ΕΝΤΥΠΟΥ Ε9',
   ];
+  actLines2026 = lines;
   const r = parseEnfiaAct(lines);
   const d = r.status === 'ok' ? r.doc : null;
   ok('πράξη 2026: αναγνωρίζεται', !!d, r);
@@ -228,6 +232,60 @@ async function commitChecks() {
   const db = newPropertyRow('u', commitRowOf(d));
   ok('κεφαλαία: έτσι φτάνει και στη βάση', db.address === want && String(db.name).includes(want), db);
   ok('κεφαλαία: ο δήμος μένει «ΑΘΗΝΑΙΩΝ» (όχι «Αθηναιων»)', doc.properties[0].municipality === 'ΑΘΗΝΑΙΩΝ', doc.properties[0].municipality);
+}
+
+// ── 9. Βοηθητικοί χώροι και ΕΝΦΙΑ ανά ακίνητο ──────────────────────────
+// Οι βοηθητικοί του Ε9 → `storage_sqm`, όπως η σάρωση Ε9. Ο φόρος της γραμμής
+// της πράξης → `enfia` του ακινήτου (απόφαση 12/11/2026). Το σύνολο ανά ΑΦΜ
+// διαβάζεται ΜΟΝΟ από τα σύνολα (enfiaTotals.ts), ποτέ από αυτή τη στήλη.
+{
+  const doc = okDoc(parseE9(fakeE9Lines(rows3))) as MyAadeImport;
+  const drafts = buildDrafts(doc, [], Infinity);
+  ok('βοηθητικοί: στο πεδίο της Επεξεργασίας, με κόμμα', drafts[2]?.storageSqm === '6,5' && drafts[0]?.storageSqm === '', drafts.map(d => d.storageSqm));
+  const row = commitRowOf(drafts[2]);
+  ok('βοηθητικοί: φεύγουν με τη γραμμή, Ε9 χωρίς ΕΝΦΙΑ', row.storageSqm === 6.5 && row.enfia === null, row);
+  ok('βοηθητικοί: στο νέο ακίνητο ως storage_sqm', newPropertyRow('u', row).storage_sqm === 6.5);
+  ok('βοηθητικοί: διόρθωση στην Επεξεργασία', newPropertyRow('u', commitRowOf({ ...drafts[2], storageSqm: '8,25' })).storage_sqm === 8.25);
+  ok('βοηθητικοί: κενό ή μηδέν δεν γράφεται', !('storage_sqm' in newPropertyRow('u', commitRowOf(drafts[0]))) && !('storage_sqm' in newPropertyRow('u', commitRowOf({ ...drafts[2], storageSqm: '0' }))));
+
+  const found = { atak: null, sqm: null, floor: null, address: null, storageSqm: 6.5, enfia: 150 };
+  const base = { id: 'x', name: 'x', address: 'α', atak: null };
+  ok('υπάρχον: βοηθητικοί και ΕΝΦΙΑ μόνο αν λείπουν',
+    JSON.stringify(fillOnlyEmpty({ ...base, storage_sqm: null, enfia: 0 }, found)) === JSON.stringify({ storage_sqm: 6.5, enfia: 150 })
+    && !Object.keys(fillOnlyEmpty({ ...base, storage_sqm: 4, enfia: 99.9 }, found)).length);
+  ok('υπάρχον: χωρίς τις στήλες (δεν διαβάστηκαν) δεν αγγίζονται', !Object.keys(fillOnlyEmpty(base, found)).length);
+
+  const asAct = (total: number | null, taxes: (number | null)[], found?: number): MyAadeImport =>
+    ({ ...doc, kind: 'enfia_act', total, found, properties: doc.properties.map((p, i) => ({ ...p, tax: taxes[i] ?? null })) });
+  const enfiaOf = (d: MyAadeImport) => buildDrafts(d, [], Infinity).map(commitRowOf).map(r => r.enfia);
+  // Ίσα αθροίσματα: ο φόρος κάθε γραμμής είναι το πληρωτέο του ακινήτου.
+  const equal = enfiaOf(asAct(300, [100, 150, 50]));
+  ok('πράξη, γραμμές = πληρωτέο: ο φόρος κάθε γραμμής αυτούσιος', JSON.stringify(equal) === JSON.stringify([100, 150, 50]), equal);
+  ok('πράξη, γραμμές = πληρωτέο: στο νέο ακίνητο ως enfia', newPropertyRow('u', commitRowOf(buildDrafts(asAct(300, [100, 150, 50]), [], Infinity)[1])).enfia === 150);
+  ok('πράξη, ανοχή ενός λεπτού', enfiaOf(asAct(300.01, [100, 150, 50]))[0] === 100);
+  // Εκπτώσεις: κύριος φόρος 300 στις γραμμές, πληρωτέο 225. Τίποτα ανά ακίνητο, ούτε αναλογία.
+  ok('πράξη με εκπτώσεις: κανένα ποσό ανά ακίνητο', enfiaOf(asAct(225, [100, 150, 50])).every(v => v === null));
+  ok('πράξη με απαλλαγή (σύνολο 0 ή αρνητικό): κανένα ποσό ανά ακίνητο',
+    enfiaOf(asAct(0, [100, 150, 50])).every(v => v === null) && enfiaOf(asAct(-12, [100, 150, 50])).every(v => v === null));
+  ok('πράξη με γραμμή χωρίς φόρο ή μισό έγγραφο: κανένα ποσό ανά ακίνητο',
+    enfiaOf(asAct(250, [100, 150, null])).every(v => v === null) && enfiaOf(asAct(300, [100, 150, 50], 25)).every(v => v === null));
+  ok('Ε9: ποτέ ΕΝΦΙΑ', !lineTaxIsPayable(doc) && enfiaOf(doc).every(v => v === null));
+  // Η διάταξη της πραγματικής πράξης του §4: γραμμές 150 + 150, πληρωτέο 225.
+  const real = parseEnfiaAct(actLines2026);
+  ok('πραγματική διάταξη με έκπτωση: τίποτα ανά ακίνητο, το σύνολο μένει', real.status === 'ok' && !lineTaxIsPayable(real.doc) && real.doc.total === 225, real);
+
+  // ΔΥΟ ΓΡΑΜΜΕΣ ΣΤΟ ΙΔΙΟ ΥΠΑΡΧΟΝ: η δεύτερη θα έγραφε πάνω στην πρώτη.
+  const two = buildDrafts(doc, [{ id: 'k', name: 'Κ', address: doc.properties[0].address, atak: null }], Infinity)
+    .map((r, i) => (i < 2 ? { ...r, match: { status: 'maybe' as const, id: 'k' }, same: true } : r));
+  const dup = deriveReview({ rows: two, year: '2026', total: '', slots: Infinity, left: 5, owners: [], ownerId: null, dailyLimit: 10, currentYear: 2026 });
+  ok('δύο γραμμές στο ίδιο ακίνητο: εμπόδιο με λόγο', dup.blockers.some(b => b.id === 'same'), dup.blockers);
+  const fixed = deriveReview({ rows: two.map((r, i) => (i === 1 ? { ...r, same: false } : r)), year: '2026', total: '', slots: Infinity, left: 5, owners: [], ownerId: null, dailyLimit: 10, currentYear: 2026 });
+  ok('η δεύτερη ως άλλο ακίνητο: το εμπόδιο φεύγει', !fixed.blockers.some(b => b.id === 'same'), fixed.blockers);
+
+  // Η στήλη ανά ακίνητο δεν διαβάζεται από τον υπολογισμό των δόσεων: αλλιώς
+  // το σύνολο θα μετρούσε δεύτερη φορά.
+  const totalsSrc = readFileSync('lib/calendar/enfiaTotals.ts', 'utf8').replace(/\/\/.*$/gm, '');
+  ok('enfiaTotals.ts: καμία ανάγνωση του user_properties.enfia', !/\.enfia\b|['",\s]enfia['",\s]|user_properties|propertyEnfia/.test(totalsSrc));
 }
 
 commitChecks().then(() => {

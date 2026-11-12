@@ -680,7 +680,10 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
       const gross = ownerShareOfAmount(rmode==='individual_shortterm' ? pShort.grossRevenue : Math.max(0, pRentAccrued - pRelief), pPct)
       // Για το ανοιχτό ακίνητο, ο ΕΝΦΙΑ της Κατάστασης: αλλιώς η ενοποίηση θα
       // μετρούσε άλλο ποσό από τη γραμμή που βλέπει ο χρήστης δίπλα της.
-      const pEnfia = p.id===propertyId ? enfia : ownerShareOfAmount(resolveEnfia({ propertyEnfia:p.enfia }).annual, pPct)
+      // Το `enfia` της καρτέλας είναι ΗΔΗ το μερίδιο (εκκαθαριστικό ή φόρος της
+      // γραμμής της πράξης, lib/myaade/commit.ts): δεύτερο κόψιμο στο ποσοστό θα
+      // το μίκραινε δύο φορές, όπως ήδη δεν κόβεται για το ανοιχτό ακίνητο.
+      const pEnfia = p.id===propertyId ? enfia : resolveEnfia({ propertyEnfia:p.enfia }).annual
       const input:StatementInput = { regime:rmode, grossIncome:gross, enfia: pEnfia, presumptiveRate: presumptiveDeductionRateForYear(year, pViaBank, rmode==='individual_shortterm' ? pShort.nightsByMonth : rentByMonth(allRent.filter(r=>r.property_id===p.id), year)),
         // Ο ίδιος κανόνας του μεριδίου με τα ακαθάριστα κι τον ΕΝΦΙΑ από πάνω:
         // τέλος υπολογισμένο στο 100% δίπλα σε έσοδα 33% δεν ισοσκελίζει.
