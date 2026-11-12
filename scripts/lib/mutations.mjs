@@ -398,6 +398,8 @@ export const MUTATIONS = {
     { file: 'lib/billing/rollout.ts', from: "gate: 'mobile_access', pending: true }", to: "gate: 'mobile_access' } // rpc('mobile_access', {})" },
   ] },
   'service-role': { add: 'components/__mut__.ts', content: "export const key = process.env.SUPABASE_SERVICE_ROLE_KEY\n" },
+  // Το σφάλμα του 10/11/2026 αυτούσιο: δημόσιο URL φωτογραφίας παράδοσης.
+  'public-url': { add: 'components/__mut__.ts', content: "export const u = (s: any, p: string) => s.storage.from('inventory-photos').getPublicUrl(p)\n" },
   'csv-injection': { add: 'lib/core/__mut__.ts', content: "export const row = (cells: string[]) => cells.join(';')\n" },
   'password-leak': { every: [
     // Χωρίς onLeaked.
