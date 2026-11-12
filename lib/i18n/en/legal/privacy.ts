@@ -62,6 +62,7 @@ export function privacySectionsEn(): LegalSection[] {
       'Providing the Service and managing your account: performance of a contract (Article 6(1)(b)).',
       'Billing and collecting subscriptions: performance of a contract and compliance with a legal obligation (Article 6(1)(b) and 6(1)(c)).',
       'Security, fraud prevention, stability and improvement of the Service: legitimate interest (Article 6(1)(f)).',
+      'Check against automated accounts (Cloudflare Turnstile) on sign-up, sign-in and password reset, when it is switched on: legitimate interest in the security of the Service (Article 6(1)(f)).',
       'Artificial intelligence (Noa, document scanning): performance of a contract, because you use them at your own request (Article 6(1)(b)).',
       'Updates about PROPERWISE features: consent (Article 6(1)(a) GDPR). You receive them only if you tick their own box at sign-up, which starts unticked and is separate from the market newsletter. You can stop them at any time from the unsubscribe link in every message. We do not send third-party advertising messages.',
       'Property market newsletter: consent (Article 6(1)(a) GDPR), with its own separate box at sign-up, which starts unticked. You can stop it from the unsubscribe link in every message, separately from the feature updates.',
@@ -149,6 +150,7 @@ export function privacySectionsEn(): LegalSection[] {
       ...[...activeSubprocessors()].sort((a, b) => Number(a.role !== 'processor') - Number(b.role !== 'processor')).map(subprocessorLineEn),
       `Planned but not active today, meaning they process no data: ${plannedSubprocessors().map(subprocessorNameEn).join(', ')}.`,
       'No external service for QR codes: every QR (payment link, contact card, inventory label) is generated locally on your device.',
+      'Leaked-password check (Have I Been Pwned): when you set or change a password, your browser computes the password’s SHA-1 locally and sends api.pwnedpasswords.com only its first five characters, with a padded response. The service does not receive your password, email or account; like any server, it sees the IP address the request comes from.',
     ], after: [
       'Before we add a new provider, we notify you by email.',
     ], note: 'The same list appears on the “About us” page. We may also disclose data where required by law, a competent authority or a court.' },

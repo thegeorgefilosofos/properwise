@@ -256,7 +256,15 @@ export const MUTATIONS = {
   // ── Βάση δεδομένων και ασφάλεια ───────────────────────────────────────
   // Οι μεταναστεύσεις είναι ΠΡΟΣΘΕΤΙΚΕΣ: μια νέα με το σφάλμα μέσα είναι η
   // πιστότερη προσομοίωση του «κάποιος γράφει την επόμενη μετανάστευση».
-  'rls-coverage': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  user_id uuid not null references auth.users(id) on delete cascade\n);\n' },
+  // ΤΡΕΙΣ ΚΑΝΟΝΕΣ, ΤΡΕΙΣ ΑΠΟΔΕΙΞΕΙΣ. Ο πίνακας χωρίς RLS· ο ίδιος με ένα
+  // ομώνυμο `private.` που έχει RLS (κλειδί μόνο με το όνομα θα τον έβγαζε
+  // καλυμμένο)· και `drop` του ομώνυμου σε άλλο schema (θα τον έσβηνε από τον
+  // κατάλογο). Και τα τρία πρέπει να κοκκινίζουν.
+  'rls-coverage': { every: [
+    { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  user_id uuid not null references auth.users(id) on delete cascade\n);\n' },
+    { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (id bigint primary key);\ncreate table if not exists private.mut_probe (id bigint primary key);\nalter table private.mut_probe enable row level security;\n' },
+    { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists mut_probe (id bigint primary key);\ndrop table if exists private.mut_probe;\n' },
+  ] },
   'rls-initplan': { add: 'supabase/migrations/29990101000000_mut.sql', content: "create policy mut_probe_own on public.properties using (auth.uid() = user_id);\n" },
   'rls-parent-scope': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  property_id uuid not null references public.properties(id) on delete cascade\n);\nalter table public.mut_probe enable row level security;\ncreate policy mut_probe_own on public.mut_probe using (true);\n' },
   'migration-versions': { add: 'supabase/migrations/20261020120000_mut.sql', content: 'select 1;\n' },
@@ -895,6 +903,16 @@ export const MUTATIONS = {
     { file: 'scripts/db-replay.sh', from: '#!/usr/bin/env bash\n# log-guard: synthetic-db', to: '#!/usr/bin/env bash\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n# log-guard: synthetic-db' },
     { file: 'scripts/db-replay.sh', from: 'PSQL="psql -h $WORK -U postgres', to: 'export PGHOST="$WORK"\nPSQL="psql -h $WORK -U postgres' },
     { file: '.github/workflows/ci.yml', from: '        run: bash scripts/db-replay.sh', to: '        env:\n          DB_PW: ${{ secrets.DB_PASSWORD }}\n        run: bash scripts/db-replay.sh' },
+    // Το db push της παραγωγής χωρίς quiet-db: `DETAIL: Key (…)=(…)` στο log.
+    { file: '.github/workflows/supabase-deploy.yml', from: 'run: bash scripts/ci/quiet-db.sh "supabase db push" -- supabase db push --remote --yes --include-all', to: 'run: supabase db push --remote --yes --include-all' },
+    { file: '.github/workflows/supabase-deploy.yml', from: 'listing="$(bash scripts/ci/quiet-db.sh "migration list" --stdout -- supabase migration list --remote)"', to: 'listing="$(supabase migration list --remote)"' },
+    { file: '.github/workflows/db-backup.yml', from: 'bash scripts/ci/quiet-db.sh "dump δεδομένων" -- supabase db dump', to: 'supabase db dump' },
+    { add: MUT_WF, content: wfRun('supabase db push --remote --yes >/dev/null 2>&1 | tee push.log') },
+    { add: MUT_WF, content: wfRun("supabase db query 'select email from t' >out.txt 2>/dev/null\ncat out.txt") },
+    // Η εξαίρεση του quiet-db καλύπτει μόνο την τυλιγμένη εντολή, όχι τη γραμμή.
+    { add: MUT_WF, content: wfRun('bash scripts/ci/quiet-db.sh "push" -- supabase db push --remote --yes; supabase db push --remote --yes') },
+    { add: MUT_WF, content: wfRun('bash scripts/ci/quiet-db.sh "push" -- supabase link && supabase db query "select 1"') },
+    { add: MUT_WF, content: wfRun('x="$(bash scripts/ci/quiet-db.sh "push" --stdout -- supabase db push --remote)"') },
     { file: 'scripts/db-replay.sh', from: 'PSQL="psql -h $WORK -U postgres', to: 'PSQL="psql $DATABASE_URL -h $WORK -U postgres' },
     { file: 'scripts/backup/vault.mjs', from: "import { pathToFileURL } from 'node:url'\n", to: "import { pathToFileURL } from 'node:url'\nimport { spawnSync } from 'node:child_process'\nexport const probe = () => spawnSync('pg_dump --data-only', { shell: true })\n" },
   ] },
