@@ -4,6 +4,7 @@
 // ένα ερώτημα και το PostgREST έκοβε την απάντηση στις 1.000: οι παλιότερες
 // κινήσεις ξαναγύριζαν για έλεγχο ως καινούργιες. Η ψεύτικη βάση εδώ κόβει
 // όπως το PostgREST και κρατά μετρητή αιτημάτων. Τα δεδομένα είναι συνθετικά.
+import { createClient } from '@supabase/supabase-js'
 import { parseBankCsv, legacyKeyOf, findKnownKeys, dedupKeyChunks, type BankTxn } from './bankImport'
 
 let passed = 0, failed = 0
@@ -66,6 +67,59 @@ const fakeLookup = (calls: string[][]) => (keys: string[]) => {
     const calls: string[][] = []
     await findKnownKeys([], fakeLookup(calls))
     ok('κανένα αίτημα χωρίς κινήσεις', calls.length === 0)
+  }
+
+  // ── Το πραγματικό URL του postgrest-js μένει μικρό ─────────────────────────
+  // Ο postgrest-js βάζει εισαγωγικά σε τιμές με κόμμα ή παρένθεση και
+  // κωδικοποιεί με URLSearchParams: το «(» γίνεται %28, τρεις χαρακτήρες.
+  // Περιγραφές γεμάτες κόμματα και παρενθέσεις είναι η χειρότερη περίπτωση.
+  {
+    const urls: string[] = []
+    const fakeFetch = (async (input: RequestInfo | URL) => {
+      urls.push(String(input instanceof Request ? input.url : input))
+      return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }) as typeof fetch
+    const db = createClient('http://localhost:54321', 'anon-key-dokimi', { global: { fetch: fakeFetch }, auth: { persistSession: false } })
+    const user = '00000000-0000-4000-8000-000000000000'
+    const nasty: BankTxn[] = Array.from({ length: 120 }, (_, i) => ({
+      date: '2026-03-05', amount: -10, raw: '', key: `v2|k${i}`,
+      description: `(${i}),`.padEnd(200, '(,) '),
+    }))
+    const { error } = await findKnownKeys(nasty, keys => db.from('bank_transactions').select('dedup_hash').eq('user_id', user).in('dedup_hash', keys))
+    ok('postgrest-js: χωρίς σφάλμα', error === null)
+    ok('postgrest-js: έγιναν αιτήματα', urls.length > 1)
+    const longest = Math.max(...urls.map(u => u.length))
+    ok("postgrest-js: κάθε URL κάτω από 6.000 χαρακτήρες", longest < 6000)
+    const asked = new Set(urls.flatMap(u => {
+      const v = new URL(u).searchParams.get('dedup_hash') || ''
+      return [v]
+    }))
+    ok('postgrest-js: κάθε παλιό κλειδί ρωτήθηκε', nasty.every(t => [...asked].some(v => v.includes(legacyKeyOf(t)))))
+  }
+  // ── Μισό ζεύγος surrogate στο κόψιμο των 200 ───────────────────────────────
+  // Το `.slice(0, 200)` μπορούσε να κόψει ένα emoji στη μέση. Το μισό ζεύγος
+  // ρίχνει το encodeURIComponent και η εισαγωγή σταματούσε χωρίς μήνυμα.
+  {
+    const head = '2026-03-05|-10|'
+    const description = 'α'.repeat(200 - head.length - 1) + '🏠 ΕΝΟΙΚΙΟ'
+    const t: BankTxn = { date: '2026-03-05', amount: -10, description, raw: '', key: 'v2|emoji' }
+    const k = legacyKeyOf(t)
+    const lone = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(k)
+    ok('παλιό κλειδί χωρίς μισό ζεύγος', !lone)
+    ok('παλιό κλειδί έως 200', k.length <= 200)
+    let threw = false
+    try { dedupKeyChunks([t]) } catch { threw = true }
+    ok('οι ομάδες φτιάχνονται χωρίς εξαίρεση', !threw)
+    // Οταν το κόψιμο δεν πέφτει σε ζεύγος, το κλειδί μένει ΙΔΙΟ με όσα έχει η βάση.
+    const plain: BankTxn = { date: '2026-03-05', amount: 800, description: 'β'.repeat(300), raw: '', key: 'v2|x' }
+    ok('κλειδί χωρίς emoji ίδιο με το παλιό κόψιμο', legacyKeyOf(plain) === `2026-03-05|800|${'β'.repeat(300)}`.slice(0, 200))
+  }
+  // ── Εξαίρεση στην αναζήτηση γίνεται σφάλμα, όχι απόρριψη ─────────────────────
+  {
+    let rejected = false, res: { error: unknown } | null = null
+    try { res = await findKnownKeys(all.slice(0, 3), () => { throw new Error('δίκτυο') }) } catch { rejected = true }
+    ok('η εξαίρεση δεν ξεφεύγει', !rejected)
+    ok('η εξαίρεση επιστρέφεται ως σφάλμα', res !== null && res.error instanceof Error)
   }
 
   console.log(`bankImport (διπλές) — ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)
