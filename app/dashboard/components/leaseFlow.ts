@@ -27,27 +27,51 @@ export const normName = (v: string | null | undefined): string =>
 
 export interface Person { name?: string | null; afm?: string | null }
 
-/** Λέξεις του ονόματος που ξεχωρίζουν πρόσωπο: χωρίς αρχικά («Γ.») και μόρια. */
-const nameWords = (v: string | null | undefined): Set<string> =>
-  new Set(normName(v).split(/[\s.,-]+/).filter(w => w.length > 2));
+/** Οι λέξεις του ονόματος, κανονικοποιημένες. Το «Γ.» μένει «γ», δηλαδή αρχικό. */
+const nameWords = (v: string | null | undefined): string[] =>
+  normName(v).split(/[\s.,-]+/).filter(Boolean);
+
+/** Κάθε λέξη του `short` βρίσκει δική της λέξη στο `long`: ίδια ή, αν είναι αρχικό, με αυτό το αρχικό. */
+function coveredBy(short: string[], long: string[]): boolean {
+  const free = [...long];
+  // Πρώτα οι ολόκληρες λέξεις, μετά τα αρχικά: το «γ» να μην πάρει τη λέξη που
+  // χρειάζεται μια ολόκληρη λέξη.
+  const rest = short.filter(w => { const i = free.indexOf(w); if (i < 0) return true; free.splice(i, 1); return false; });
+  return rest.every(w => {
+    if (w.length !== 1) return false;
+    const i = free.findIndex(x => x.startsWith(w));
+    if (i < 0) return false;
+    free.splice(i, 1);
+    return true;
+  });
+}
 
 /**
- * Τα δύο ονόματα είναι ΣΑΦΩΣ άλλοι άνθρωποι; Ναι, όταν και τα δύο υπάρχουν και
- * δεν μοιράζονται καμία λέξη. «Γ. Παπαδοπουλος» και «Γιώργος Παπαδόπουλος» δεν
- * διαφέρουν σαφώς· «Μαρία Νικολάου» και «Γιώργος Παπαδόπουλος» διαφέρουν.
+ * Το ίδιο όνομα; Ναι, μόνο όταν τα κανονικοποιημένα ονόματα είναι ίδια, σε
+ * οποιαδήποτε σειρά, ή όταν το ένα είναι το άλλο με αρχικά: κάθε λέξη του
+ * μικρότερου βρίσκει λέξη ή αρχικό στο μεγαλύτερο.
+ *
+ *   «Γ. Παπαδόπουλος» και «Γιώργος Παπαδόπουλος»    ίδιο
+ *   «Παπαδόπουλος Γιώργος» και «Γιώργος Παπαδόπουλος» ίδιο
+ *   «Μαρία Νικολάου» και «Μαρία Παπαδάκη»          ΟΧΙ: κοινό μόνο το μικρό όνομα
+ *   «Γιώργος Παπαδόπουλος» και «Νίκος Παπαδόπουλος»  ΟΧΙ: κοινό μόνο το επώνυμο
+ *
+ * Η ΠΡΩΤΗ ΓΡΑΦΗ ΕΛΕΓΕ «ΔΙΑΦΟΡΕΤΙΚΟ» ΜΟΝΟ ΧΩΡΙΣ ΚΑΜΙΑ ΚΟΙΝΗ ΛΕΞΗ, οπότε η
+ * αδερφή ή ο συνονόματος με το προσυμπληρωμένο ΑΦΜ ξανάγραφε σιωπηλά τον
+ * ενοικιαστή. Κενό όνομα δεν ταιριάζει: η αμφιβολία πάει στην ερώτηση.
  */
-export function namesClearlyDiffer(a: string | null | undefined, b: string | null | undefined): boolean {
+export function namesMatch(a: string | null | undefined, b: string | null | undefined): boolean {
   const A = nameWords(a), B = nameWords(b);
-  if (!A.size || !B.size) return false;
-  for (const w of A) if (B.has(w)) return false;
-  return true;
+  if (!A.length || !B.length) return false;
+  const [short, long] = A.length <= B.length ? [A, B] : [B, A];
+  return coveredBy(short, long) || (A.length === B.length && coveredBy(long, short));
 }
 
 /**
  * Το πρόσωπο του μισθωτηρίου είναι ο ίδιος με τον καταχωρημένο ενοικιαστή;
  *
  * Άλλο ΑΦΜ σημαίνει άλλος άνθρωπος ακόμη και με ίδιο όνομα (συνωνυμία). Ίδιο ΑΦΜ
- * σημαίνει ο ίδιος, ΕΚΤΟΣ αν τα ονόματα διαφέρουν σαφώς: το παράθυρο
+ * σημαίνει ο ίδιος ΜΟΝΟ αν ταιριάζουν και τα ονόματα (namesMatch): το παράθυρο
  * μισθωτηρίου προσυμπληρώνει το ΑΦΜ του τρέχοντος ενοικιαστή, οπότε όποιος
  * έγραφε μόνο το όνομα του νέου άφηνε το ΑΦΜ του παλιού και το ΑΦΜ μόνο του
  * «αποφάσιζε» αντικατάσταση. Όταν λείπει ΑΦΜ από τη μία πλευρά, κρίνει το
@@ -55,7 +79,7 @@ export function namesClearlyDiffer(a: string | null | undefined, b: string | nul
  */
 export function samePerson(a: Person, b: Person): boolean {
   const afmA = digits(a.afm), afmB = digits(b.afm);
-  if (afmA && afmB) return afmA === afmB && !namesClearlyDiffer(a.name, b.name);
+  if (afmA && afmB) return afmA === afmB && namesMatch(a.name, b.name);
   const nA = normName(a.name), nB = normName(b.name);
   return !!nA && nA === nB;
 }

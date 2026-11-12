@@ -87,6 +87,9 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
   // «Νέος ενοικιαστής»: ο προηγούμενος αποχώρησε, εκτός αν είναι συγκάτοικοι.
   // Αλλιώς το ακίνητο έμενε με δύο τρέχοντες και τα ενοίκια αθροίζονταν.
   const [prevLeft, setPrevLeft] = useState(true);
+  // Ο νέος γράφτηκε, η αποχώρηση του προηγούμενου όχι: το παράθυρο ΔΕΝ κλείνει
+  // μόνο του, γιατί αλλιώς το ακίνητο μένει σιωπηλά με δύο τρέχοντες.
+  const [moveOutRetry, setMoveOutRetry] = useState<{ id: string; name: string; date: string } | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
 
@@ -207,6 +210,19 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
   // του Α γραμμή του Β: το όνομα άλλαζε και οι πληρωμές του Α φαίνονταν πλέον
   // στο όνομα του Β. Τώρα: ίδιος άνθρωπος (ΑΦΜ, αλλιώς όνομα) ενημερώνεται·
   // διαφορετικός ρωτιέται «αντικατάσταση στοιχείων ή νέος ενοικιαστής;».
+  const markPrevLeft = async (m: { id: string; name: string; date: string }): Promise<boolean> => {
+    const ok = await saved(`Ο νέος ενοικιαστής γράφτηκε, αλλά η αποχώρηση του/της ${m.name} δεν καταχωρήθηκε`,
+      tenantStore.markPast(supabase, m.id, m.date));
+    setMoveOutRetry(ok ? null : m);
+    return ok;
+  };
+  const retryMoveOut = async () => {
+    if (!moveOutRetry) return;
+    setArchiving(true);
+    try { if (await markPrevLeft(moveOutRetry)) { onSaved?.(); closeTimer.current = setTimeout(onClose, 1400); } }
+    finally { setArchiving(false); }
+  };
+
   const archive = async (choice?: 'replace' | 'new') => {
     if (!pending || !prop) return;
     setArchiving(true); setErr('');
@@ -266,16 +282,16 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
       // «Αποχώρηση» της καρτέλας (markPast: `status` και `move_out_date` μαζί).
       // Μόνο μετά την επιτυχή εγγραφή του νέου, ώστε αποτυχία να μην αφήνει
       // το ακίνητο χωρίς κανέναν.
+      let left = true;
       if (!updateId && cur?.id && choice === 'new' && prevLeft) {
         const out = dayBefore(res.start);
         const moveOut = cur.lease_start && out < cur.lease_start.slice(0, 10) ? cur.lease_start.slice(0, 10) : out;
-        await saved(`Ο νέος ενοικιαστής γράφτηκε, αλλά η αποχώρηση του/της ${cur.full_name || 'προηγούμενου'} δεν καταχωρήθηκε`,
-          tenantStore.markPast(supabase, cur.id, moveOut));
+        left = await markPrevLeft({ id: cur.id, name: cur.full_name || 'προηγούμενου ενοικιαστή', date: moveOut });
       }
 
       setArchived(true);
       onSaved?.();
-      closeTimer.current = setTimeout(onClose, 1400);
+      if (left) closeTimer.current = setTimeout(onClose, 1400);
     } catch { setErr(tenantFailed); }
     finally { setArchiving(false); }
   };
@@ -354,11 +370,13 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
   // ΥΠΟΓΡΑΦΕΣ. Ίδια φρουρά με το Modal του PortfolioTab.
   const closeIfIdle = () => { if (busy || archiving) return; onClose(); };
 
-  const footerHead = archived ? 'Αποθηκεύτηκε και ενημερώθηκε ο ενοικιαστής.'
+  const footerHead = archived && moveOutRetry ? `Ο νέος ενοικιαστής γράφτηκε. Η αποχώρηση του/της ${moveOutRetry.name} δεν καταχωρήθηκε.`
+    : archived ? 'Αποθηκεύτηκε και ενημερώθηκε ο ενοικιαστής.'
     : conflict ? `Στο ακίνητο μένει ήδη: ${conflict.name}. Αντικατάσταση στοιχείων ή νέος ενοικιαστής;`
     : docArchived ? 'Το μισθωτήριο αρχειοθετήθηκε. Η καρτέλα ενοικιαστή δεν ενημερώθηκε ακόμη.'
     : SAY.archiveAsk;
-  const footerNote = archived ? ''
+  const footerNote = archived && moveOutRetry ? 'Μέχρι να καταχωρηθεί, το ακίνητο μετρά δύο τρέχοντες ενοικιαστές και τα ενοίκιά τους αθροίζονται.'
+    : archived ? ''
     : conflict ? `${conflict.sameAfm ? `Το ΑΦΜ είναι ίδιο με της καρτέλας «${conflict.name}» ενώ το όνομα διαφέρει: έλεγξε το ΑΦΜ. ` : ''}Η αντικατάσταση γράφει το μισθωτήριο πάνω στην καρτέλα «${conflict.name}», όπου μένει και το ιστορικό πληρωμών της. Ο νέος ενοικιαστής παίρνει δική του καρτέλα.`
     : docArchived ? ''
     : `Αρχειοθετείται με ημερομηνία έναρξης ${grDate(res.start)} και ενημερώνει την καρτέλα ενοικιαστή.`;
@@ -377,7 +395,12 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
   ) : undefined;
 
   const footer = pending ? (
-    !archived && (conflict ? (
+    archived ? (moveOutRetry && (
+      <>
+        <Btn variant="secondary" onClick={onClose} disabled={archiving}>Κλείσιμο</Btn>
+        <Btn variant="primary" onClick={retryMoveOut} disabled={archiving}>{archiving ? 'Αποθήκευση…' : 'Δοκίμασε ξανά την αποχώρηση'}</Btn>
+      </>
+    )) : (conflict ? (
       <>
         <Btn variant="secondary" onClick={onClose} disabled={archiving}>Ίσως αργότερα</Btn>
         <Btn variant="secondary" onClick={() => archive('replace')} disabled={archiving}>Αντικατάσταση στοιχείων</Btn>

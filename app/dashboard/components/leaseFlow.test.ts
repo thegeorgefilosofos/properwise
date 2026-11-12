@@ -13,7 +13,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { samePerson, sameAfm, namesClearlyDiffer, normName, leaseCategoryOf, declaredForLease, declRecordOf, dayBefore, tenantPatchFromLease, leaseDocKey, leaseDocPath } from './leaseFlow'
+import { samePerson, sameAfm, namesMatch, normName, leaseCategoryOf, declaredForLease, declRecordOf, dayBefore, tenantPatchFromLease, leaseDocKey, leaseDocPath } from './leaseFlow'
 import { computeObligations } from './obligations'
 
 let pass = 0, fail = 0
@@ -38,9 +38,20 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; fails.push
   const prefilled = { name: 'Μαρία Νικολάου', afm: '123456789' }
   ok('ίδιο ΑΦΜ με σαφώς άλλο όνομα ΔΕΝ είναι ο ίδιος (ερώτηση)', !samePerson(A, prefilled))
   ok('…και σημειώνεται ως ίδιο ΑΦΜ για προειδοποίηση', sameAfm(A, prefilled))
-  ok('αρχικό και επώνυμο δεν διαφέρουν σαφώς', !namesClearlyDiffer('Γ. Παπαδοπουλος', 'Γιώργος Παπαδόπουλος'))
-  ok('άλλο όνομα και άλλο επώνυμο διαφέρουν σαφώς', namesClearlyDiffer('Μαρία Νικολάου', 'Γιώργος Παπαδόπουλος'))
-  ok('κενό όνομα δεν διαφέρει σαφώς', !namesClearlyDiffer('', 'Γιώργος Παπαδόπουλος'))
+  ok('αρχικό και επώνυμο: ίδιο όνομα', namesMatch('Γ. Παπαδόπουλος', 'Γιώργος Παπαδόπουλος'))
+  ok('αρχικό και επώνυμο, αντίστροφα ορίσματα: ίδιο', namesMatch('Γιώργος Παπαδόπουλος', 'Γ. Παπαδόπουλος'))
+  ok('αντίστροφη σειρά: ίδιο όνομα', namesMatch('Παπαδόπουλος Γιώργος', 'ΓΙΩΡΓΟΣ ΠΑΠΑΔΟΠΟΥΛΟΣ'))
+  ok('αντίστροφη σειρά με αρχικό: ίδιο', namesMatch('Παπαδόπουλος Γ.', 'Γιώργος Παπαδόπουλος'))
+  ok('άλλο όνομα και άλλο επώνυμο: όχι', !namesMatch('Μαρία Νικολάου', 'Γιώργος Παπαδόπουλος'))
+  ok('κοινό μόνο το μικρό όνομα: όχι', !namesMatch('Μαρία Νικολάου', 'Μαρία Παπαδάκη'))
+  ok('κοινό μόνο το επώνυμο: όχι', !namesMatch('Γιώργος Παπαδόπουλος', 'Νίκος Παπαδόπουλος'))
+  ok('αρχικό άλλου γράμματος: όχι', !namesMatch('Ν. Παπαδόπουλος', 'Γιώργος Παπαδόπουλος'))
+  ok('κενό όνομα δεν ταιριάζει', !namesMatch('', 'Γιώργος Παπαδόπουλος'))
+  // Με το ίδιο (προσυμπληρωμένο) ΑΦΜ, κοινή λέξη δεν αρκεί πια: ρωτάμε.
+  ok('ίδιο ΑΦΜ, κοινό μικρό όνομα: ερώτηση', !samePerson({ name: 'Μαρία Νικολάου', afm: '123456789' }, { name: 'Μαρία Παπαδάκη', afm: '123456789' }))
+  ok('ίδιο ΑΦΜ, κοινό επώνυμο: ερώτηση', !samePerson(A, { name: 'Νίκος Παπαδόπουλος', afm: '123456789' }))
+  ok('ίδιο ΑΦΜ, αρχικό: ο ίδιος', samePerson(A, { name: 'Γ. Παπαδόπουλος', afm: '123456789' }))
+  ok('ίδιο ΑΦΜ, αντίστροφη σειρά: ο ίδιος', samePerson(A, { name: 'Παπαδόπουλος Γιώργος', afm: '123456789' }))
 }
 
 // ── 4. Η ΓΡΑΜΜΗ ΑΠΟ ΤΟ ΜΙΣΘΩΤΗΡΙΟ ─────────────────────────────────────────
@@ -127,10 +138,13 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; fails.push
   ok('1: η γραμμή βγαίνει από το tenantPatchFromLease', MODAL.includes("tenantPatchFromLease(facts, updateId ? 'update' : 'insert')"))
   ok('1: ίδιο ΑΦΜ με άλλο όνομα προειδοποιεί', MODAL.includes('sameAfm(curPerson, newPerson)'))
   // 3 (αναθεώρηση). Ο προηγούμενος αποχωρεί με markPast, προεπιλογή ναι.
-  ok('3: «Νέος ενοικιαστής» σημειώνει αποχώρηση με markPast', /tenantStore\.markPast\(supabase, cur\.id/.test(MODAL))
+  ok('3: «Νέος ενοικιαστής» σημειώνει αποχώρηση με markPast', /tenantStore\.markPast\(supabase, m\.id/.test(MODAL) && /markPrevLeft\(\{ id: cur\.id/.test(MODAL))
   ok('3: η αποχώρηση είναι προεπιλογή', MODAL.includes('useState(true)') && MODAL.includes('setPrevLeft'))
   // 4. Ημερολόγιο όπως στο TabTenant.
   ok('4: syncTenantSchedule μετά την εγγραφή', /syncTenantSchedule\(supabase, savedRow/.test(MODAL))
+  // Αποτυχία αποχώρησης: το παράθυρο μένει ανοιχτό με επανάληψη.
+  ok('3: αποτυχημένη αποχώρηση δεν κλείνει το παράθυρο', MODAL.includes('if (left) closeTimer.current = setTimeout(onClose'))
+  ok('3: υπάρχει «Δοκίμασε ξανά την αποχώρηση»', MODAL.includes('Δοκίμασε ξανά την αποχώρηση') && MODAL.includes('onClick={retryMoveOut}'))
   ok('1: χωρίς γραμμή, καμία επιτυχία', /if \(!row\) \{ setErr\(/.test(MODAL))
   // 2. Προσαρτάται μόνο ανοιχτό.
   ok('2: το LeaseModal προσαρτάται μόνο ανοιχτό', /\{leaseOpen && <LeaseModal\b/.test(TAB))
