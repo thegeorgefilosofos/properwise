@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs'
 import {
   takeCheckoutReturn, subscriptionArrived, pollUntil, planFieldsFromRow, PLAN_COLUMNS,
-  PLAN_POLL_DELAYS_MS, CHECKOUT_RETURN_SAY, type PlanProfileRow,
+  PLAN_POLL_DELAYS_MS, CHECKOUT_RETURN_SAY, planReadApplies, type PlanProfileRow,
 } from './planRefresh'
 
 let pass = 0, fail = 0
@@ -124,6 +124,18 @@ async function main() {
     ok('οι θέσεις από προσκλήσεις φτάνουν στην οθόνη', f.bonusProperties === 2 && f.bonusUntil === '2027-01-01')
     ok('μηδέν θέσεις μένει μηδέν', planFieldsFromRow({ bonus_properties: 0 }, NOW).bonusProperties === 0)
     ok('χωρίς προφίλ: δωρεάν', planFieldsFromRow(null, NOW).plan === 'free')
+  }
+
+  // ── ΣΦΑΛΜΑ ΑΝΑΓΝΩΣΗΣ ΔΕΝ ΕΙΝΑΙ «ΔΩΡΕΑΝ» ─────────────────────────────────
+  ok('χωρίς προφίλ και χωρίς σφάλμα: γράφεται (δωρεάν)', planReadApplies({ error: null }))
+  ok('σφάλμα ανάγνωσης: δεν γράφεται', !planReadApplies({ error: { message: 'network' } }))
+  {
+    const dash = readFileSync('app/dashboard/components/shell/useDashboard.ts', 'utf8')
+    const body = dash.slice(dash.indexOf('const loadPlan = useCallback'), dash.indexOf('const refreshPlan = useCallback'))
+    ok('ο πίνακας διαβάζει το πακέτο με το σφάλμα ορατό', body.includes('billing.profileOutcome<'))
+    const guard = body.indexOf('if (!planReadApplies(outcome)) return null;')
+    const firstWrite = body.indexOf('setPlan(')
+    ok('και σταματά πριν από κάθε εγγραφή όταν η ανάγνωση αποτύχει', guard > 0 && firstWrite > guard)
   }
 
   // ── ΟΙ ΔΥΟ ΑΝΑΓΝΩΣΕΙΣ ΧΡΗΣΙΜΟΠΟΙΟΥΝ ΤΙΣ ΙΔΙΕΣ ΣΤΗΛΕΣ ─────────────────────

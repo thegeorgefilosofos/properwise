@@ -498,7 +498,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                           ? (limitMsg || assistantLockedMessage())
                           : (errDetail || (prefs.formal ? 'Δεν μπόρεσα να απαντήσω τώρα. Δοκιμάστε ξανά σε λίγο.' : 'Δεν μπόρεσα να απαντήσω τώρα. Δοκίμασε ξανά σε λίγο.')))}
                     {err === 'plan' && (
-                      <div style={{ marginTop: 8 }}><Btn variant="secondary" onClick={() => onNavigate('settings')}>Δες το πακέτο στις Ρυθμίσεις</Btn></div>
+                      <div style={{ marginTop: 8 }}><Btn variant="secondary" onClick={() => onNavigate('settings')}>{prefs.formal ? 'Δείτε το πακέτο στις Ρυθμίσεις' : 'Δες το πακέτο στις Ρυθμίσεις'}</Btn></div>
                     )}
                   </div>
                 )}

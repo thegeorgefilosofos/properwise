@@ -7,6 +7,7 @@
 import { readFileSync } from 'node:fs'
 import { doorErrorMessage, testerErrorMessage, serverReason, TESTER_SAY } from './billingErrors'
 import { MFA_REQUIRED, MFA_SAY } from '@/lib/auth/mfa'
+import { ORIGIN_DENIED } from '@/lib/api/origin'
 
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
@@ -35,6 +36,8 @@ ok('429 χωρίς σώμα: δικό του μήνυμα ορίου', testerErr
 ok('500: βλάβη, όχι λάθος κωδικός', testerErrorMessage(500, { error: 'Η εξαργύρωση δεν ολοκληρώθηκε.' }) === TESTER_SAY.server)
 ok('502: βλάβη, όχι λάθος κωδικός', testerErrorMessage(502, {}) === TESTER_SAY.server)
 ok('κανένα 5xx δεν λέει «δεν αναγνωρίζεται»', ![500, 502, 503].some(s => testerErrorMessage(s, {}) === TESTER_SAY.wrong))
+ok('403 άλλης προέλευσης: όχι «δεν αναγνωρίζεται»', testerErrorMessage(403, { error: ORIGIN_DENIED }) === TESTER_SAY.origin)
+ok('και το μήνυμα λέει τι να κάνει', TESTER_SAY.origin === 'Δεν έγινε. Ανανέωσε τη σελίδα και δοκίμασε ξανά.')
 ok('403 δεύτερου βήματος: η φράση του', testerErrorMessage(403, { error: MFA_REQUIRED, message: MFA_SAY.ask }) === MFA_SAY.ask)
 
 // ── Η ΚΑΡΤΑ ΧΡΗΣΙΜΟΠΟΙΕΙ ΤΙΣ ΕΠΙΛΟΓΕΣ ────────────────────────────────────

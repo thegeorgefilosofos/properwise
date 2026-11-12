@@ -12,6 +12,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { MFA_REQUIRED, MFA_SAY } from '@/lib/auth/mfa';
+import { ORIGIN_DENIED } from '@/lib/api/origin';
 
 /** Το σώμα μιας άρνησης, όπως το γράφουν οι διαδρομές. */
 export interface ErrorBody { error?: unknown; message?: unknown }
@@ -45,6 +46,8 @@ export const TESTER_SAY = {
   wrong: 'Ο κωδικός δεν αναγνωρίζεται.',
   tooMany: 'Πολλές προσπάθειες. Δοκίμασε ξανά αύριο.',
   server: 'Η εξαργύρωση δεν ολοκληρώθηκε. Ο κωδικός μπορεί να είναι σωστός· δοκίμασε ξανά σε λίγο.',
+  /** Το αίτημα δεν ήρθε από τη σελίδα της εφαρμογής (403 ORIGIN_DENIED): ο κωδικός δεν κρίθηκε καν. */
+  origin: 'Δεν έγινε. Ανανέωσε τη σελίδα και δοκίμασε ξανά.',
 } as const;
 
 /**
@@ -59,6 +62,7 @@ export function testerErrorMessage(status: number, body: ErrorBody | null | unde
   if (status === 429) return serverReason(body) || TESTER_SAY.tooMany;
   if (status >= 500) return TESTER_SAY.server;
   if (status === 403 && text(body?.error) === MFA_REQUIRED) return serverReason(body);
+  if (status === 403 && text(body?.error) === ORIGIN_DENIED) return TESTER_SAY.origin;
   if (status === 401) return serverReason(body) || TESTER_SAY.wrong;
   return TESTER_SAY.wrong;
 }

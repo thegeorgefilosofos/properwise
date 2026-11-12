@@ -76,6 +76,19 @@ export interface PlanFields {
   bonusUntil: string | null;
 }
 
+/**
+ * Γράφεται στην οθόνη αυτή η ανάγνωση;
+ *
+ * «ΔΕΝ ΥΠΑΡΧΕΙ ΠΡΟΦΙΛ» ΚΑΙ «Η ΑΝΑΓΝΩΣΗ ΑΠΕΤΥΧΕ» ΔΕΝ ΕΙΝΑΙ ΤΟ ΙΔΙΟ. Το πρώτο
+ * σημαίνει δωρεάν πακέτο και γράφεται. Το δεύτερο σημαίνει ότι δεν ξέρουμε:
+ * αν γραφόταν ως «δωρεάν», ένα σφάλμα δικτύου στην ανανέωση ή στην αναμονή
+ * μετά το ταμείο θα κλείδωνε τις καρτέλες πελάτη που πληρώνει. Τότε μένει
+ * ό,τι ήδη δείχνει η οθόνη.
+ */
+export function planReadApplies(outcome: { error: unknown }): boolean {
+  return !outcome.error;
+}
+
 /** Η γραμμή του προφίλ στα πεδία της οθόνης. Χωρίς προφίλ: δωρεάν, χωρίς τίποτα. */
 export function planFieldsFromRow(row: PlanProfileRow | null | undefined, now: number = Date.now()): PlanFields {
   return {

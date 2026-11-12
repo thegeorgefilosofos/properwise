@@ -27,7 +27,7 @@ import type { OwnerContext } from '@/lib/property/visibility'
 import { LEGAL_FORMS, type LegalForm } from '@/lib/accounting/dossier'
 import { confirmDialog, confirmDiscard } from '@/components/ConfirmDialog'
 import { notify, notifyError, notifyOk } from '@/components/Toast'
-import { PLAN_COLUMNS, CHECKOUT_RETURN_SAY, planFieldsFromRow, pollUntil, subscriptionArrived, takeCheckoutReturn, type PlanProfileRow } from '@/lib/billing/planRefresh'
+import { PLAN_COLUMNS, CHECKOUT_RETURN_SAY, planFieldsFromRow, planReadApplies, pollUntil, subscriptionArrived, takeCheckoutReturn, type PlanProfileRow } from '@/lib/billing/planRefresh'
 import { clearHistory as clearAssistantHistory } from '../assistantPersona'
 import {
   effectivePlan, canAddProperty, planAtLeast, trialState, PROFESSIONAL_MIN_PLAN, type EntitlementInput,
@@ -370,7 +370,11 @@ export function useDashboard() {
   /** Ανεβαίνει σε κάθε νέα ανάγνωση μετά από αλλαγή: οι Ρυθμίσεις ξαναδιαβάζουν το δικό τους. */
   const [planVersion, setPlanVersion] = useState(0);
   const loadPlan = useCallback(async (uid: string): Promise<(PlanProfileRow & { profile_type?: string|null; legal_form?: string|null }) | null> => {
-    const data = await billing.profile<PlanProfileRow & { profile_type?: string|null; legal_form?: string|null }>(supabase, uid, `${PLAN_COLUMNS}, profile_type, legal_form`);
+    const outcome = await billing.profileOutcome<PlanProfileRow & { profile_type?: string|null; legal_form?: string|null }>(supabase, uid, `${PLAN_COLUMNS}, profile_type, legal_form`);
+    // Σφάλμα ανάγνωσης: καμία εγγραφή στην οθόνη (planReadApplies). Ενα σφάλμα
+    // δικτύου δεν κάνει τον συνδρομητή «δωρεάν» ούτε τον επαγγελματία «ιδιώτη».
+    if (!planReadApplies(outcome)) return null;
+    const data = outcome.data;
     if (!mountedRef.current) return data;
     const f = planFieldsFromRow(data);
     setPlan(f.plan); setCompPlan(f.compPlan); setCompUntil(f.compUntil); setTrialUsedAt(f.trialUsedAt);
