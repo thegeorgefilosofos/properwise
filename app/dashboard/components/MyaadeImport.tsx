@@ -97,7 +97,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
    */
   initialFile?: File;
   /**
-   * ΤΟ PDF ΗΡΘΕ ΚΑΤΕΥΘΕΙΑΝ ΑΠΟ ΤΗ ΣΑΡΩΣΗ (έλεγχος PR #547), χωρίς βήμα ελέγχου.
+   * ΤΟ PDF ΗΡΘΕ ΚΑΤΕΥΘΕΙΑΝ ΑΠΟ ΤΗ ΣΑΡΩΣΗ (έλεγχος PR 547), χωρίς βήμα ελέγχου.
    * Δείχνει το «Κράτα αντίγραφο στον Φάκελο», κλειστό εξ ορισμού (απόφαση
    * ιδιοκτήτη 12/11/2026). `propertyId`: το ακίνητο της σάρωσης, όπου μπαίνει
    * το αντίγραφο· χωρίς αυτό, το πρώτο ακίνητο που δημιούργησε η εισαγωγή.
@@ -378,7 +378,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
         {step === 'pick' && (failure ? (
           <CenterState tone="negative" title={failure.title} info={failure.info} action={{ label: 'Δοκίμασε άλλο αρχείο', onClick: pickFile }}>
             <span style={{ ...TT.body, color: 'var(--text-secondary)' }}>{failure.hint}</span>
-            {/* Ο ΔΡΟΜΟΣ ΠΙΣΩ (έλεγχος PR #547): το αρχείο ήρθε από τη Σάρωση και η
+            {/* Ο ΔΡΟΜΟΣ ΠΙΣΩ (έλεγχος PR 547): το αρχείο ήρθε από τη Σάρωση και η
                 μαζική δεν το διάβασε· η κανονική σάρωση μπορεί να το καταχωρήσει ως έγγραφο. */}
             {backToScan && <Btn variant="ghost" onClick={backToScan}>Σάρωσέ το ως έγγραφο</Btn>}
           </CenterState>

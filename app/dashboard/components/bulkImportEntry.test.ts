@@ -123,7 +123,7 @@ ok('το κλείσιμο καθαρίζει το αρχείο', /const closeMya
   ok('η σάρωση παίρνει null αντί για ακίνητο', page.includes('propertyId={selected?.id ?? null}'));
 }
 
-// ── 9. Έλεγχος PR #547 (12/11/2026) ──────────────────────────────────────
+// ── 9. Έλεγχος PR 547 (12/11/2026) ──────────────────────────────────────
 {
   const load = scan.slice(scan.indexOf('const loadFile = useCallback('), scan.indexOf('// Στρίψιμο null/undefined'));
   // 1. Το κολλημένο παράθυρο: καμία ωμή ανάγνωση με `setSniffing(true)` χωρίς `finally`.
