@@ -31,14 +31,20 @@ export interface Draft {
   /** Τ.Κ. και έτος κατασκευής: γράφονται στο νέο ακίνητο, στο υπάρχον μόνο αν λείπουν. */
   postcode: string;
   yearBuilt: string;
+  /** Βοηθητικοί χώροι του Ε9 → `storage_sqm`: στο νέο ακίνητο, στο υπάρχον μόνο αν λείπουν. */
+  storageSqm: string;
   municipality: string | null;
   /** Μόνο για την προβολή: δεν γράφονται. */
   prefecture: string | null;
   district: string | null;
   category: string | null;
   right: string | null;
-  auxSqm: number | null;
   kind: string | null;
+  /**
+   * Ο φόρος της γραμμής, όπως τον τυπώνει η πράξη. Γράφεται στο `enfia` του
+   * ακινήτου (στο υπάρχον μόνο αν λείπει) και δεν διορθώνεται εδώ: είναι αριθμός
+   * του επίσημου εγγράφου. Το σύνολο του ΑΦΜ μένει χωριστά (commit.ts).
+   */
   tax: number | null;
   /** Κάποιο πεδίο βγήκε από τη θέση του: «Έλεγξέ το». */
   check: boolean;
@@ -131,7 +137,8 @@ export function buildDrafts(doc: MyAadeImport, known: readonly KnownProperty[], 
       sqm: toText(p.sqm), pct: toText(p.ownershipPct), floor: p.floor ?? '',
       postcode: p.postcode ?? '', yearBuilt: yearText(p.yearBuilt),
       municipality: p.municipality, prefecture: p.prefecture ?? null, district: p.district ?? null,
-      category: p.category ?? null, right: p.right ?? null, auxSqm: p.auxSqm ?? null,
+      storageSqm: toText(p.auxSqm),
+      category: p.category ?? null, right: p.right ?? null,
       kind: p.kind, tax: p.tax, check: p.check, overPlan: false,
     };
   });
@@ -233,5 +240,6 @@ export function commitRowOf(d: Draft) {
     existingId: existingIdOf(d), name: d.name, address: d.address || null, atak: isAtak(d.atak) ? atakDigits(d.atak) : null,
     sqm: toNumber(d.sqm), ownershipPct: toNumber(d.pct), floor: d.floor || null,
     postalCode: /^\d{5}$/.test(d.postcode.trim()) ? d.postcode.trim() : null, yearBuilt: yearBuiltOf(d.yearBuilt, 2099),
+    storageSqm: toNumber(d.storageSqm), enfia: d.tax != null && d.tax > 0 ? d.tax : null,
   };
 }

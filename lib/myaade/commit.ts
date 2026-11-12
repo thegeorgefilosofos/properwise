@@ -14,6 +14,15 @@
 // ΚΑΘΕ ΒΗΜΑ ΠΟΥ ΑΠΟΤΥΓΧΑΝΕΙ ΛΕΓΕΤΑΙ ΜΕ ΤΟ ΟΝΟΜΑ ΤΟΥ. Τίποτα από όσα γράφτηκαν
 // πριν δεν σβήνεται αυτόματα: η αναίρεση είναι επιλογή του χρήστη.
 //
+// ΔΥΟ ΠΟΣΑ ΕΝΦΙΑ, ΔΥΟ ΘΕΣΕΙΣ, ΚΑΝΕΝΑ ΑΘΡΟΙΣΜΑ (απόφαση 12/11/2026, «ανά ακίνητο»).
+//   · Το ΣΥΝΟΛΟ της πράξης (ένα ανά ΑΦΜ) πηγαίνει ΜΟΝΟ στο βήμα 3. Από εκεί το
+//     διαβάζει το lib/calendar/enfiaTotals.ts για πλήθος και ποσό δόσεων.
+//   · Ο ΦΟΡΟΣ ΚΑΘΕ ΓΡΑΜΜΗΣ, όπως τον τυπώνει η πράξη, πηγαίνει στο
+//     `user_properties.enfia` του ακινήτου του («ΕΝΦΙΑ που πληρώνεις»). Δεν
+//     υπολογίζεται, δεν μοιράζεται, δεν στρογγυλεύεται εδώ. Το enfiaTotals.ts δεν
+//     διαβάζει αυτή τη στήλη, οπότε το σύνολο δεν μετριέται δεύτερη φορά. Το
+//     φυλάει το bulk.test.ts (§9).
+//
 // ΤΟ PDF ΔΕΝ ΑΓΓΙΖΕΙ ΤΗ ΒΑΣΗ. Εδώ φτάνουν μόνο οι τιμές που επιβεβαίωσε ο
 // χρήστης. Το ΑΦΜ της πράξης δεν περνά καν από αυτό το αρχείο.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -56,7 +65,14 @@ export interface CommitRow {
   /** Από το Ε9 ή την πράξη του 2026. Προαιρετικά: η παλιά πράξη δεν τα δίνει. */
   postalCode?: string | null;
   yearBuilt?: number | null;
+  /** Βοηθητικοί χώροι του Ε9 → `storage_sqm`. */
+  storageSqm?: number | null;
+  /** Ο φόρος της γραμμής της πράξης, αυτούσιος → `user_properties.enfia`. Ποτέ το σύνολο. */
+  enfia?: number | null;
 }
+
+/** Τα πεδία που η αναίρεση ξαναδειάζει στο υπάρχον ακίνητο, αν τα συμπλήρωσε η εισαγωγή. */
+export const UNDOABLE_FIELDS = ['enfia', 'storage_sqm'] as const;
 
 export interface CommitInput {
   userId: string;
@@ -91,6 +107,8 @@ export function newPropertyRow(userId: string, r: CommitRow, clientId: string | 
   if (r.floor?.trim()) row.floor = r.floor.trim();
   if (r.postalCode && /^\d{5}$/.test(r.postalCode)) row.postal_code = r.postalCode;
   if (r.yearBuilt && Number.isInteger(r.yearBuilt) && r.yearBuilt >= 1800 && r.yearBuilt <= 2100) row.year_built = r.yearBuilt;
+  if (r.storageSqm && r.storageSqm > 0) row.storage_sqm = r.storageSqm;
+  if (r.enfia && r.enfia > 0) row.enfia = r.enfia;
   return row;
 }
 
@@ -161,6 +179,25 @@ async function writeStatement(
   return { result, documentId, replaced: plan.replaced, error: null };
 }
 
+/**
+ * Οι τρέχουσες τιμές των `UNDOABLE_FIELDS` στα υπάρχοντα ακίνητα, διαβασμένες
+ * τη στιγμή της καταχώρησης: η οθόνη δεν τις φορτώνει. Σφάλμα ανάγνωσης = κενός
+ * χάρτης, δηλαδή «δεν ξέρουμε» και το `fillOnlyEmpty` δεν τις αγγίζει.
+ */
+async function undoableValues(
+  db: SupabaseClient, userId: string, rows: readonly CommitRow[],
+): Promise<Map<string, Pick<KnownProperty, 'enfia' | 'storage_sqm'>>> {
+  const out = new Map<string, Pick<KnownProperty, 'enfia' | 'storage_sqm'>>();
+  if (!rows.some(r => r.existingId && ((r.enfia ?? 0) > 0 || (r.storageSqm ?? 0) > 0))) return out;
+  const res = await properties.listWithError<{ id: string; enfia: number | null; storage_sqm: number | null }>(db, userId, { columns: 'id,enfia,storage_sqm' });
+  if (res.error) return out;
+  for (const p of res.rows) {
+    // Στήλη που δεν ήρθε (π.χ. παλιό σχήμα) μένει `undefined`: δεν αγγίζεται.
+    if (p && typeof p.id === 'string') out.set(p.id, { ...('enfia' in p ? { enfia: p.enfia } : {}), ...('storage_sqm' in p ? { storage_sqm: p.storage_sqm } : {}) });
+  }
+  return out;
+}
+
 /** Γράφει όσα επιβεβαίωσε ο χρήστης. */
 export async function commitImport(db: SupabaseClient, input: CommitInput): Promise<CommitOutcome> {
   const reserved = await db.from(TABLE)
@@ -175,15 +212,23 @@ export async function commitImport(db: SupabaseClient, input: CommitInput): Prom
   let filled = 0;
   let firstId: string | null = null;
   let limitHit = false;
+  const filledProps: Replaced[] = [];
+  const extra = await undoableValues(db, input.userId, input.rows);
   for (const r of input.rows) {
     if (r.existingId) {
-      const cur = input.known.find(k => k.id === r.existingId);
+      const known = input.known.find(k => k.id === r.existingId);
       firstId ??= r.existingId;
-      if (!cur) continue;
+      if (!known) continue;
+      const cur = { ...known, ...extra.get(r.existingId) };
       const patch = fillOnlyEmpty(cur, r);
       if (!Object.keys(patch).length) continue;
       const res = await properties.update(db, r.existingId, patch, input.userId);
-      if (res.error) failures.push(`Τα κενά του «${cur.name}» δεν συμπληρώθηκαν.`); else filled++;
+      if (res.error) { failures.push(`Τα κενά του «${cur.name}» δεν συμπληρώθηκαν.`); continue; }
+      filled++;
+      for (const field of UNDOABLE_FIELDS) {
+        const value = patch[field];
+        if (typeof value === 'number') filledProps.push({ t: 'prop', id: r.existingId, field, value });
+      }
       continue;
     }
     if (limitHit) { failures.push(`Το «${r.name}» δεν προστέθηκε: το πακέτο δεν χωρά άλλο ακίνητο.`); continue; }
@@ -206,7 +251,7 @@ export async function commitImport(db: SupabaseClient, input: CommitInput): Prom
     if (s.error) failures.push(s.error);
   }
 
-  const rec = await db.from(TABLE).update({ created_property_ids: created, document_id: documentId, replaced }).eq('id', batchId);
+  const rec = await db.from(TABLE).update({ created_property_ids: created, document_id: documentId, replaced: [...replaced, ...filledProps] }).eq('id', batchId);
   if (rec.error) failures.push('Η εισαγωγή δεν καταγράφηκε για αναίρεση· τα στοιχεία της αποθηκεύτηκαν.');
 
   // Με αναμονή: η επόμενη οθόνη δείχνει ήδη τις δόσεις με τα ποσά τους.
@@ -288,7 +333,13 @@ export async function undoImport(db: SupabaseClient, userId: string, batch: Impo
   if (batch.document_id) await documents.remove(db, batch.document_id);
   for (const r of batch.replaced) {
     if (r.t === 'doc') await documents.update(db, [r.id], { amount: r.amount });
-    else {
+    else if (r.t === 'prop') {
+      // Ήταν κενό πριν την εισαγωγή. Αν ο χρήστης το άλλαξε στο μεταξύ, μένει το δικό του.
+      const cur = await properties.oneWithError<Record<string, unknown>>(db, r.id, r.field, userId);
+      if (!cur.error && cur.row && Math.round(Number(cur.row[r.field]) * 100) === Math.round(r.value * 100)) {
+        await properties.update(db, r.id, { [r.field]: null }, userId);
+      }
+    } else {
       const cur = await settings.sectionWithError<Record<string, unknown>>(db, r.property_id, 'services', userId);
       if (!cur.error && cur.data) await settings.put(db, r.property_id, userId, 'services', { ...cur.data, enfiaStatementTotal: r.total, enfiaStatementYear: r.year });
     }

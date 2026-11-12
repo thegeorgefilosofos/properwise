@@ -7,6 +7,7 @@
 // ΜΟΝΟ ΣΥΝΘΕΤΙΚΑ ΣΤΟΙΧΕΙΑ (το φυλάει ο guard-fixture-identities): ΑΤΑΚ 999…,
 // ΑΦΜ που δεν περνά τον έλεγχο ψηφίου, «ΠΑΡΑΔΕΙΓΜΑΤΟΣ», Τ.Κ. 10000. Η διάταξη
 // είναι αυτή της πραγματικής εκτύπωσης (scripts/perf-bench/e9Fixture.ts).
+import { readFileSync } from 'node:fs';
 import { parseE9 } from './e9';
 import { parseEnfiaAct } from './enfiaAct';
 import { parseMyaadeLines, INCOME_TAX_REASON } from './parse';
@@ -228,6 +229,38 @@ async function commitChecks() {
   const db = newPropertyRow('u', commitRowOf(d));
   ok('κεφαλαία: έτσι φτάνει και στη βάση', db.address === want && String(db.name).includes(want), db);
   ok('κεφαλαία: ο δήμος μένει «ΑΘΗΝΑΙΩΝ» (όχι «Αθηναιων»)', doc.properties[0].municipality === 'ΑΘΗΝΑΙΩΝ', doc.properties[0].municipality);
+}
+
+// ── 9. Βοηθητικοί χώροι και ΕΝΦΙΑ ανά ακίνητο ──────────────────────────
+// Οι βοηθητικοί του Ε9 → `storage_sqm`, όπως η σάρωση Ε9. Ο φόρος της γραμμής
+// της πράξης → `enfia` του ακινήτου (απόφαση 12/11/2026). Το σύνολο ανά ΑΦΜ
+// διαβάζεται ΜΟΝΟ από τα σύνολα (enfiaTotals.ts), ποτέ από αυτή τη στήλη.
+{
+  const doc = okDoc(parseE9(fakeE9Lines(rows3))) as MyAadeImport;
+  const drafts = buildDrafts(doc, [], Infinity);
+  ok('βοηθητικοί: στο πεδίο της Επεξεργασίας, με κόμμα', drafts[2]?.storageSqm === '6,5' && drafts[0]?.storageSqm === '', drafts.map(d => d.storageSqm));
+  const row = commitRowOf(drafts[2]);
+  ok('βοηθητικοί: φεύγουν με τη γραμμή, Ε9 χωρίς ΕΝΦΙΑ', row.storageSqm === 6.5 && row.enfia === null, row);
+  ok('βοηθητικοί: στο νέο ακίνητο ως storage_sqm', newPropertyRow('u', row).storage_sqm === 6.5);
+  ok('βοηθητικοί: διόρθωση στην Επεξεργασία', newPropertyRow('u', commitRowOf({ ...drafts[2], storageSqm: '8,25' })).storage_sqm === 8.25);
+  ok('βοηθητικοί: κενό ή μηδέν δεν γράφεται', !('storage_sqm' in newPropertyRow('u', commitRowOf(drafts[0]))) && !('storage_sqm' in newPropertyRow('u', commitRowOf({ ...drafts[2], storageSqm: '0' }))));
+
+  const found = { atak: null, sqm: null, floor: null, address: null, storageSqm: 6.5, enfia: 150 };
+  const base = { id: 'x', name: 'x', address: 'α', atak: null };
+  ok('υπάρχον: βοηθητικοί και ΕΝΦΙΑ μόνο αν λείπουν',
+    JSON.stringify(fillOnlyEmpty({ ...base, storage_sqm: null, enfia: 0 }, found)) === JSON.stringify({ storage_sqm: 6.5, enfia: 150 })
+    && !Object.keys(fillOnlyEmpty({ ...base, storage_sqm: 4, enfia: 99.9 }, found)).length);
+  ok('υπάρχον: χωρίς τις στήλες (δεν διαβάστηκαν) δεν αγγίζονται', !Object.keys(fillOnlyEmpty(base, found)).length);
+
+  const act = buildDrafts({ ...doc, kind: 'enfia_act', total: 300, properties: doc.properties.map((p, i) => ({ ...p, tax: i === 0 ? 150 : i === 1 ? 150 : null })) }, [], Infinity);
+  const actRows = act.map(commitRowOf);
+  ok('πράξη: ο φόρος κάθε γραμμής, αυτούσιος, όχι το σύνολο', actRows[0].enfia === 150 && actRows[1].enfia === 150 && actRows[2].enfia === null, actRows.map(r => r.enfia));
+  ok('πράξη: στο νέο ακίνητο ως enfia', newPropertyRow('u', actRows[0]).enfia === 150 && !('enfia' in newPropertyRow('u', actRows[2])));
+
+  // Η στήλη ανά ακίνητο δεν διαβάζεται από τον υπολογισμό των δόσεων: αλλιώς
+  // το σύνολο θα μετρούσε δεύτερη φορά.
+  const totalsSrc = readFileSync('lib/calendar/enfiaTotals.ts', 'utf8').replace(/\/\/.*$/gm, '');
+  ok('enfiaTotals.ts: καμία ανάγνωση του user_properties.enfia', !/\.enfia\b|['",\s]enfia['",\s]|user_properties|propertyEnfia/.test(totalsSrc));
 }
 
 commitChecks().then(() => {
