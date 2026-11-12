@@ -191,7 +191,7 @@ export function aadePath(action: AadeAction): string {
 export function destinationForKind(kind: string): AadeAction {
   if (kind.startsWith('enfia')) return 'enfia';
   if (kind === 'e9') return 'e9';
-  if (kind === 'income-decl' || kind === 'income-autofile') return 'income';
+  if (kind === 'income-decl' || kind === 'income-autofile' || kind === 'income-instalment') return 'income';
   if (kind === 'str-registry') return 'str-declaration';
   if (kind === 'str-climate-fee') return 'climate-fee';
   return 'calendar';

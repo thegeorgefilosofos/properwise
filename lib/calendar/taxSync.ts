@@ -61,6 +61,7 @@ import {
 import { readEnfiaCounts } from './enfiaTotals';
 import type { StatusRow } from '@/lib/property/status';
 import { athensToday } from '@/lib/core/time';
+import { isIncomeInstalmentSource } from './recurrence';
 import * as calendar from '@/lib/data/calendar';
 import * as properties from '@/lib/data/properties';
 
@@ -111,7 +112,11 @@ function statusTouched(r: Pick<TaxRow, 'auto_hash' | 'status'>): boolean {
 
 /** Προθεσμία του φορολογούμενου (ΕΝΦΙΑ, Ε1, Ε9) και όχι ενός ακινήτου. */
 export function isPersonLevel(source: string | null | undefined): boolean {
-  return !!taxObligationOfEventSource(source)?.profiles.includes('owner');
+  const o = taxObligationOfEventSource(source);
+  // Οι δόσεις του φόρου εισοδήματος βγαίνουν μόνο σε νοικιασμένο ακίνητο, αλλά
+  // ο φόρος είναι ένας ανά ΑΦΜ: πληρωμένη δόση σε ένα ακίνητο είναι πληρωμένη
+  // σε όλα.
+  return !!o && (o.profiles.includes('owner') || o.kind === 'income-instalment');
 }
 
 export interface TaxSyncPlan {
@@ -130,17 +135,20 @@ export interface TaxSyncPlan {
  * @param enfiaInstalments έτος → πλήθος δόσεων ΕΝΦΙΑ, όπου το σύνολο του
  *        εκκαθαριστικού είναι γνωστό (κανόνας 6)· αλλιώς δώδεκα.
  * @param enfiaTotals έτος → σύνολο εκκαθαριστικού, για το ποσό κάθε δόσης.
+ * @param incomeTaxNil φορολογικά έτη με εκκαθαριστικό φόρου εισοδήματος χωρίς
+ *        φόρο: οι δόσεις τους δεν γράφονται και όσες ανέγγιχτες υπάρχουν σβήνονται.
  */
 export function planTaxSync(
   today: string, profile: PropertyTaxProfile, existing: readonly TaxRow[],
   closedElsewhere: ReadonlyMap<string, string> = new Map(),
   enfiaInstalments: Readonly<Record<number, number>> = {},
   enfiaTotals: Readonly<Record<number, number>> = {},
+  incomeTaxNil: readonly number[] = [],
 ): TaxSyncPlan {
   const bySource = new Map<string, TaxRow>();
   for (const r of existing) if (r.source && !bySource.has(r.source)) bySource.set(r.source, r);
 
-  const desired = taxEventsToWrite(today, profile, [...bySource.values()], { enfiaInstalments }, { enfiaTotals });
+  const desired = taxEventsToWrite(today, profile, [...bySource.values()], { enfiaInstalments, incomeTaxNil }, { enfiaTotals });
   const plan: TaxSyncPlan = { insert: [], update: [], remove: [], total: desired.length };
   const wanted = new Set<string>();
 
@@ -181,7 +189,11 @@ export function planTaxSync(
     // Ο,ΤΙ ΠΕΡΑΣΕ ΔΕΝ ΣΒΗΝΕΤΑΙ ΠΟΤΕ, ούτε ως «περιττή» δόση ΕΝΦΙΑ (κανόνας 6). Η
     // `isSurplusEnfiaInstalment` που το επέτρεπε έφυγε μαζί με την εξαίρεση.
     // Και η σημερινή: μια δόση που λήγει ΣΗΜΕΡΑ είναι η πιο επείγουσα από όλες.
-    if (text(r.event_date).slice(0, 10) <= today) continue;
+    // Περασμένη γραμμή μένει: είναι ιστορικό. Εξαίρεση η δόση του φόρου
+    // εισοδήματος που πέρασε ανοιχτή και ανέγγιχτη: δεν ξέρουμε ότι οφειλόταν,
+    // και ανοιχτή θα έφευγε ως «Ληξιπρόθεσμο» (lib/facts/deadlines.ts).
+    const day = text(r.event_date).slice(0, 10);
+    if (day <= today && !(isIncomeInstalmentSource(r.source) && day < today)) continue;
     plan.remove.push(r.id);
   }
   return plan;
@@ -251,7 +263,7 @@ export async function syncOwnerTaxDeadlines(
   }
 
   for (const p of props) {
-    const plan = planTaxSync(today, taxProfileOf(p), byProperty.get(p.id) ?? [], closedElsewhere.get(p.id), enfia.counts.get(p.id), enfia.totals.get(p.id));
+    const plan = planTaxSync(today, taxProfileOf(p), byProperty.get(p.id) ?? [], closedElsewhere.get(p.id), enfia.counts.get(p.id), enfia.totals.get(p.id), enfia.incomeTaxNil.get(p.id));
     out.totals[p.id] = plan.total;
     const scope = { propertyId: p.id, userId: ownerId };
 
