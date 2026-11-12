@@ -300,25 +300,34 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   async function applyEditScope(scope:'this'|'following'|'all'){
     if(!editingEvent)return; setSaving(true)
     const base=editingEvent; const occ=editOccDate||base.event_date; const payload=buildPayload()
+    // ΤΟ ΠΑΡΑΘΥΡΟ ΜΕΝΕΙ ΑΝΟΙΧΤΟ ΟΤΑΝ ΔΕΝ ΓΡΑΦΤΗΚΕ ΤΙΠΟΤΑ, όπως στο saveEvent.
+    // Εκλεινε πάντα και ο χρήστης έχανε ό,τι διόρθωσε. `wrote` γίνεται true
+    // μόλις περάσει το πρώτο βήμα: από εκεί και πέρα η βάση άλλαξε και μια
+    // δεύτερη προσπάθεια θα έγραφε διπλό, οπότε κλείνει και ξαναφορτώνει.
+    let wrote=false
     try{
       if(scope==='all'){
-        await saved('Η σειρά δεν ενημερώθηκε', calendar.update(supabase,base.id,calendar.editPatch(payload)))
+        wrote=await saved('Η σειρά δεν ενημερώθηκε', calendar.update(supabase,base.id,calendar.editPatch(payload)))
       }else if(scope==='this'){
         // Απόσπαση μόνο αυτής: νέο μεμονωμένο με τις αλλαγές + εξαίρεση της ημέρας από τη σειρά.
         // Η ΣΕΙΡΑ ΤΩΝ ΔΥΟ ΕΧΕΙ ΣΗΜΑΣΙΑ: αν μπει η εξαίρεση χωρίς να έχει
         // δημιουργηθεί το μεμονωμένο, η εμφάνιση εξαφανίζεται εντελώς.
-        if(await saved('Η εξαίρεση της ημέρας δεν αποθηκεύτηκε', calendar.insert(supabase,[{...payload,event_date:occ,recurring:false,recurring_interval:null,recurrence_until:null,recurrence_count:null}]))){
+        wrote=await saved('Η εξαίρεση της ημέρας δεν αποθηκεύτηκε', calendar.insert(supabase,[{...payload,event_date:occ,recurring:false,recurring_interval:null,recurrence_until:null,recurrence_count:null}]))
+        if(wrote){
           const ex=Array.from(new Set([...(base.recurrence_exdates||[]),occ]))
           await saved('Η ημέρα δεν αφαιρέθηκε από τη σειρά', calendar.update(supabase,base.id,{recurrence_exdates:ex}))
         }
       }else{
         // Αυτό και τα επόμενα: κόψε τη σειρά την προηγούμενη μέρα + νέα σειρά από την occ.
-        if(await saved('Η σειρά δεν κόπηκε στη σωστή ημερομηνία', calendar.update(supabase,base.id,{recurrence_until:addDaysStr(occ,-1),recurrence_count:null}))){
+        wrote=await saved('Η σειρά δεν κόπηκε στη σωστή ημερομηνία', calendar.update(supabase,base.id,{recurrence_until:addDaysStr(occ,-1),recurrence_count:null}))
+        if(wrote){
           await saved('Η νέα σειρά δεν δημιουργήθηκε', calendar.insert(supabase,[{...payload,event_date:occ,recurrence_exdates:((base.recurrence_exdates||[]) as string[]).filter(d=>d>=occ)}]))
         }
       }
-    }catch{}
-    await load(); setScopePrompt(false); setShowModal(false); setEditOccDate(null); setSaving(false)
+    }catch{ notifyError('Το γεγονός δεν αποθηκεύτηκε. Δοκίμασε ξανά.') }
+    setScopePrompt(false); setSaving(false)
+    if(!wrote) return
+    await load(); setShowModal(false); setEditOccDate(null)
   }
 
   async function toggleStatus(e:CalEvent){
