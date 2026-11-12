@@ -54,6 +54,8 @@ import { isTabAllowed, isTabPurchasable, canAddProperty, hasFeature, planAtLeast
 // Η ΕΙΣΑΓΩΓΗ ΑΠΟ ΤΟ myAADE ΦΟΡΤΩΝΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΑΝΟΙΞΕΙ: ο αναλυτής και ο
 // αναγνώστης PDF δεν βαραίνουν την αρχική σελίδα του πίνακα.
 const MyaadeImport = dynamic(() => import('./components/MyaadeImport'), { ssr: false });
+// Ο πελάτης χωρίς ακίνητο δεν φτάνει στη Λογιστική, όπου ζουν τα αιτήματα του λογιστή.
+const AccountantInvites = dynamic(() => import('./components/AccountantInvites'), { ssr: false });
 import { hasAssistant } from '@/lib/billing/aiLimits';
 import { enfiaCarryWizard } from '@/lib/tools/enfiaCarry';
 import { isTabVisible, hiddenTabCount } from '@/lib/nav/disclosure';
@@ -75,7 +77,7 @@ export default function Dashboard() {
     statusDropdown, setStatusDropdown, editProperty, setEditProperty, editFocus, setEditFocus, sidebarOpen, setSidebarOpen,
     announce, setAnnounce, cmdkOpen, setCmdkOpen, quickAddOpen, setQuickAddOpen, manualExpense,
     setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
-    scanAfterAdd, setScanAfterAdd, plan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
+    scanAfterAdd, setScanAfterAdd, plan, planVersion, refreshPlan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
     setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, openWizard, updateStatus, deleteProperty,
@@ -624,6 +626,7 @@ export default function Dashboard() {
                 <Btn variant="secondary" onClick={() => openMyaade()}>Από Ε9 ή ΕΝΦΙΑ</Btn>
                 <Btn variant="secondary" onClick={() => setShowPreview(true)}>Δες ένα παράδειγμα</Btn>
               </div>
+              {user && <div style={{textAlign:'left'}}><AccountantInvites userId={user.id} canShare={hasFeature(ent,'e2_export')} /></div>}
             </div>
           </div>
         ) : (
@@ -834,7 +837,7 @@ export default function Dashboard() {
                 </>
               )}
               {nav==='referral'  && <TabReferral userId={user.id} plan={plan} profileType={effProfileType}/>}
-              {nav==='settings'  && <TabSettings key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} declaredType={profileType} onProfileChange={setProfileType} releaseFrom={effPlan}/>}
+              {nav==='settings'  && <TabSettings key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} declaredType={profileType} onProfileChange={setProfileType} releaseFrom={effPlan} onPlanChanged={refreshPlan} planVersion={planVersion}/>}
             </div>
             </TabBoundary>
           </>
