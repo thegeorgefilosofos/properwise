@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client'
 import { hardNavigate } from '@/lib/core/navigate'
 import { endSession, SIGN_OUT_FAILED } from '@/lib/auth/endSession'
 import { anyKeptUnsaved } from '../keptDrafts'
+import { navLabel } from '@/lib/nav/labels'
 import * as propertyStore from '@/lib/data/properties'
 import * as documentStore from '@/lib/data/documents'
 import * as feedStore from '@/lib/data/calendarFeed'
@@ -673,7 +674,11 @@ export function useDashboard() {
     // ΟΙ ΜΗ ΚΑΤΑΧΩΡΗΜΕΝΕΣ ΣΑΡΩΣΕΙΣ ΡΩΤΟΥΝ ΕΔΩ, ΟΣΟ ΥΠΑΡΧΕΙ ΑΚΟΜΗ ΣΥΝΕΔΡΙΑ. Μετά
     // το `endSession` τίποτα δεν επιτρέπεται να σταματήσει την έξοδο: το
     // `hardNavigate` σβήνει τα προσχέδια και τον φύλακα ανανέωσης πριν φύγει.
-    if (anyKeptUnsaved() && !(await confirmDiscard('Στον Φάκελο υπάρχουν σαρώσεις που δεν έχουν καταχωρηθεί. Με την αποσύνδεση χάνονται.'))) return;
+    if (anyKeptUnsaved() && !(await confirmDialog({
+      title: 'Να γίνει αποσύνδεση;',
+      message: `Στην καρτέλα «${navLabel('documents')}» υπάρχουν σαρώσεις που δεν έχουν καταχωρηθεί. Με την αποσύνδεση χάνονται.`,
+      confirmLabel: 'Αποσύνδεση χωρίς καταχώρηση', cancelLabel: 'Συνέχεια', tone: 'negative',
+    }))) return;
     if (!await endSession(supabase)) {
       // duration 0 = μένει ώσπου να το κλείσει ο χρήστης, ίδιο βάρος με το alert που
       // αντικατέστησε.

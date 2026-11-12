@@ -13,7 +13,7 @@ import { confirmDialog } from '@/components/ConfirmDialog';
 import { CustomSelect, TextInput, DatePicker, Textarea, NumberInput } from './UIComponents';
 import { downloadTableXlsx } from './exportCsv';
 import { saved } from '@/components/dbWrite';
-import { createKeptStore, hasUnsaved, isSettled, isWorking } from './keptDrafts';
+import { createKeptStore, isWorking } from './keptDrafts';
 import { downloadInTurn } from './downloadInTurn';
 import { notifyError, notifyOk } from '@/components/Toast';
 import { money } from './sheetFormat';
@@ -329,9 +329,10 @@ export default function TabDocuments({
   const [renameItem, setRenameItem] = useState<Item | null>(null);   // ανοιχτό modal μετονομασίας
 
   // Σάρωση → επιβεβαίωση → καταχώρηση. Καμία χειροκίνητη φόρμα, κανένας διακόπτης.
-  // Ανοιχτή από την αρχή μόνο όταν περιμένουν ΜΗ αποθηκευμένα προσχέδια από
-  // προηγούμενη επίσκεψη· τα τελειωμένα καθαρίζονται παρακάτω.
-  const [showUpload, setShowUpload] = useState(() => hasUnsaved(draftStore.get(draftKey)));
+  // Ανοιχτή από την αρχή όταν περιμένουν προσχέδια από προηγούμενη επίσκεψη:
+  // μη αποθηκευμένα, ή σαρώσεις που απέτυχαν και ο χρήστης πρέπει να τις δει.
+  // Τα αποθηκευμένα καθαρίζονται παρακάτω.
+  const [showUpload, setShowUpload] = useState(() => draftStore.get(draftKey).some(d => d.status !== 'saved'));
   // ΤΟ `uploadMin` ΕΦΥΓΕ. Ηταν ΤΡΙΤΗ κατάσταση της ίδιας κάρτας —ανοιχτή,
   // ελαχιστοποιημένη, κλειστή— και το «×» οδηγούσε στη μεσαία: ο χρήστης
   // πατούσε το σύμβολο που παντού σημαίνει «κλείσε» και έμενε με μια κεφαλίδα
@@ -349,9 +350,11 @@ export default function TabDocuments({
     () => NO_DRAFTS,
   );
   const setDrafts = useCallback((next: Draft[] | ((prev: Draft[]) => Draft[])) => draftStore.set(draftKey, next), [draftKey]);
-  // Οσα τελείωσαν (αποθηκεύτηκαν ή δεν διαβάστηκαν) δεν ξαναεμφανίζονται στην
-  // επόμενη επίσκεψη. Η ερώτηση πριν από ανανέωση ζει στο ίδιο το κατάστημα.
-  useEffect(() => { draftStore.prune(draftKey, d => !isSettled(d)); }, [draftKey]);
+  // Οσα αποθηκεύτηκαν δεν ξαναεμφανίζονται στην επόμενη επίσκεψη. Οσα ΑΠΕΤΥΧΑΝ
+  // μένουν, με τον λόγο τους, ώσπου να τα βγάλει ο χρήστης: αλλιώς μια σάρωση
+  // που δεν διαβάστηκε θα εξαφανιζόταν χωρίς να το μάθει ποτέ. Η ερώτηση πριν
+  // από ανανέωση ζει στο ίδιο το κατάστημα και δεν μετρά τα αποτυχημένα.
+  useEffect(() => { draftStore.prune(draftKey, d => d.status !== 'saved'); }, [draftKey]);
   // Το τοπικό `busy` χάνεται με την καρτέλα· η σάρωση που τρέχει ακόμη όχι.
   const busy = busyHere || isWorking(drafts);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -727,13 +730,22 @@ export default function TabDocuments({
   const [downloading, setDownloading] = useState(false);
   const bulkDownload = async () => {
     if (downloading) return;
-    const files = selItems.filter(i => i.url).map(i => ({ url: i.url!, name: i.fileName }));
+    const files = selItems.filter(i => i.url).map(i => {
+      const path = i.raw?.file_path;
+      return {
+        url: i.url!, name: i.fileName,
+        // Μόνο τα αρχεία του Φακέλου ξέρουμε να τα ξαναϋπογράψουμε.
+        resign: path ? async () => (await supabase.storage.from('property-files').createSignedUrl(path, 60 * 10)).data?.signedUrl ?? null : undefined,
+      };
+    });
     if (!files.length) return;
     setDownloading(true);
     const r = await downloadInTurn(files);
     setDownloading(false);
     if (r.failed.length) notifyError(r.failed.length === 1 ? `Το «${r.failed[0]}» δεν κατέβηκε. Δοκίμασε ξανά.` : `${r.failed.length} αρχεία δεν κατέβηκαν. Δοκίμασε ξανά.`);
-    else notifyOk(r.ok === 1 ? 'Το αρχείο κατέβηκε' : `Κατέβηκαν ${r.ok} αρχεία`);
+    // «Ξεκίνησε», όχι «κατέβηκαν»: ο περιηγητής μπορεί να ζητήσει άδεια για
+    // πολλές λήψεις και η εφαρμογή δεν μαθαίνει την απάντηση.
+    else notifyOk(r.ok === 1 ? 'Ξεκίνησε η λήψη του αρχείου' : `Ξεκίνησε η λήψη ${r.ok} αρχείων`);
   };
 
   /* ── Παράγωγα δεδομένα ─────────────────────────────────────────────────── */

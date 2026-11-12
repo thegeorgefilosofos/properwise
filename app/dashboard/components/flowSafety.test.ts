@@ -16,7 +16,7 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { createKeptStore, hasUnsaved, isWorking, anyKeptUnsaved } from './keptDrafts'
+import { createKeptStore, isWorking, anyKeptUnsaved } from './keptDrafts'
 import { downloadInTurn } from './downloadInTurn'
 import { hardNavigate } from '@/lib/core/navigate'
 import { FILES_NOT_IN_EXPORT } from '@/lib/dataExport'
@@ -60,9 +60,11 @@ const body = (src: string, start: string, end: string): string => {
   store.set('p1', [])
   ok('6: το «Απόρριψη» αδειάζει', store.get('p1').length === 0)
 
-  ok('6: έτοιμο προσχέδιο = μη αποθηκευμένο', hasUnsaved([{ status: 'ready' }]))
-  ok('6: αποτυχία αποθήκευσης = μη αποθηκευμένο', hasUnsaved([{ status: 'error' }]))
-  ok('6: μόνο αποθηκευμένα/αποτυχημένα σαρώσεις = τίποτα να χαθεί', !hasUnsaved([{ status: 'saved' }, { status: 'failed' }]))
+  const probe = createKeptStore<D>()
+  const unsavedWith = (...st: string[]) => { probe.set('k', st.map((status, i) => ({ id: String(i), status }))); const u = probe.hasUnsaved(); probe.clear(); return u }
+  ok('6: έτοιμο προσχέδιο = μη αποθηκευμένο', unsavedWith('ready'))
+  ok('6: αποτυχία αποθήκευσης = μη αποθηκευμένο', unsavedWith('error'))
+  ok('6: μόνο αποθηκευμένα/αποτυχημένα σαρώσεις = τίποτα να χαθεί', !unsavedWith('saved', 'failed'))
   ok('6: σάρωση σε εξέλιξη = δουλεύει', isWorking([{ status: 'scanning' }]) && isWorking([{ status: 'pending' }]) && isWorking([{ status: 'saving' }]))
   ok('6: έτοιμο ή λάθος δεν κλειδώνει τα κουμπιά', !isWorking([{ status: 'ready' }, { status: 'error' }, { status: 'failed' }]))
   ok('6: τα άδεια σύνολα ακροατών φεύγουν', store.listenedKeys() === 0)
@@ -111,8 +113,10 @@ const body = (src: string, start: string, end: string): string => {
   // κυριολεκτικό-πρότυπο: ψάχνουμε το κείμενο του κώδικα, όχι την τιμή του.
   ok('6: κλειδί χρήστη και ακινήτου', src.includes('const draftKey = `${userId}:${propertyId}`'))
   ok('6: κανένας φύλακας ανανέωσης μέσα στην καρτέλα (ζει στο κατάστημα)', !/beforeunload/.test(src))
-  ok('6: η κάρτα ανοίγει μόνο για μη αποθηκευμένα', /useState\(\(\) => hasUnsaved\(draftStore\.get\(draftKey\)\)\)/.test(src))
-  ok('6: τα τελειωμένα καθαρίζονται στο άνοιγμα', /draftStore\.prune\(draftKey, d => !isSettled\(d\)\)/.test(src))
+  ok('6: στο άνοιγμα καθαρίζονται μόνο τα αποθηκευμένα', /draftStore\.prune\(draftKey, d => d\.status !== 'saved'\)/.test(src))
+  ok('6: τα αποτυχημένα ανοίγουν την κάρτα για να φανούν', /useState\(\(\) => draftStore\.get\(draftKey\)\.some\(d => d\.status !== 'saved'\)\)/.test(src))
+  // κυριολεκτικό-πρότυπο: ψάχνουμε το κείμενο του κώδικα.
+  ok('B: το μήνυμα λέει «Ξεκίνησε η λήψη»', src.includes('Ξεκίνησε η λήψη ${r.ok} αρχείων'))
   const bulk = body(src, 'const bulkDownload', '/* ──')
   ok('3: η μαζική λήψη δεν ανοίγει παράθυρο ανά αρχείο', bulk.length > 0 && !/window\.open/.test(bulk) && /downloadInTurn\(/.test(bulk))
   ok('6: η σάρωση που πετά δεν μένει «σε εξέλιξη»', /try \{ r = await scanFile\(d\.file\); \} catch/.test(src))
@@ -132,6 +136,8 @@ const body = (src: string, start: string, end: string): string => {
   const ask = so.indexOf('anyKeptUnsaved()')
   const end = so.indexOf('endSession(supabase)')
   ok('1: η ερώτηση για τις σαρώσεις έρχεται πριν από το endSession', ask > 0 && end > ask)
+  ok('A: κουμπιά «Αποσύνδεση χωρίς καταχώρηση» και «Συνέχεια»', so.includes("confirmLabel: 'Αποσύνδεση χωρίς καταχώρηση', cancelLabel: 'Συνέχεια'"))
+  ok('A: η καρτέλα με το όνομα του μενού', so.includes("navLabel('documents')"))
   const nav = read('lib/core/navigate.ts')
   ok('1: η σκληρή πλοήγηση καθαρίζει πριν από το assign', /for \(const fn of beforeLeave\)[\s\S]*window\.location\.assign/.test(nav))
 }
@@ -164,7 +170,7 @@ const body = (src: string, start: string, end: string): string => {
   ok('16β: δεν είναι display:none', !/display:\s*'none'/.test(input))
   ok('16β: κρύβεται μόνο οπτικά', /className="sr-only"/.test(input))
   const css = read('app/globals.css')
-  ok('16β: εναλλακτικό :focus-within για περιηγητές χωρίς :has', css.includes('.po-file-pick:focus-within'))
+  ok('16β: εναλλακτικό :focus-within μόνο για περιηγητές χωρίς :has', /@supports not selector\(:has\(\*\)\) \{\s*\.po-file-pick:focus-within/.test(css))
 }
 
 // ── 4. Πρόσκληση λογιστή χωρίς ακίνητο ─────────────────────────────────────
@@ -208,6 +214,20 @@ const inTurn = async () => {
   ok('3: ένα ένα, με παύση ανάμεσα', order.join(',') === 'u1,wait,u2,wait,u3,wait,u4')
   ok('3: όσα κατέβηκαν αποθηκεύτηκαν με το όνομά τους', saved.join(',') === 'a.pdf,d.pdf' && r.ok === 2)
   ok('3: αποτυχία ή σφάλμα δικτύου μετριούνται με όνομα', r.failed.join(',') === 'b.pdf,c.pdf')
+
+  // E: ο σύνδεσμος που έληξε υπογράφεται ξανά, μία φορά.
+  const tried: string[] = []
+  let resigned = 0
+  const r2 = await downloadInTurn([
+    { url: 'old', name: 'x.pdf', resign: async () => { resigned++; return 'new' } },
+    { url: 'dead', name: 'y.pdf', resign: async () => { resigned++; return 'dead2' } },
+  ], {
+    fetch: async (u) => { tried.push(u); return { ok: u === 'new', blob: async () => new Blob([u]) } },
+    save: () => true,
+    wait: async () => {},
+  })
+  ok('E: ο ληγμένος σύνδεσμος ξαναϋπογράφεται και κατεβαίνει', r2.ok === 1 && tried.join(',') === 'old,new,dead,dead2')
+  ok('E: μία νέα υπογραφή ανά αρχείο, όχι βρόχος', resigned === 2 && r2.failed.join(',') === 'y.pdf')
 }
 
 inTurn().then(() => {

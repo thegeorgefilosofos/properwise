@@ -46,12 +46,12 @@ const EMPTY: never[] = []
 const SETTLED = new Set(['saved', 'failed'])
 
 /** Τελειωμένο: αποθηκεύτηκε ή η σάρωση απέτυχε (δεν υπάρχει τίποτα να χαθεί). */
-export function isSettled(d: { status: string }): boolean {
+function isSettled(d: { status: string }): boolean {
   return SETTLED.has(d.status)
 }
 
 /** Υπάρχει σάρωση που δεν έχει ακόμη καταχωρηθεί (ή τρέχει ακόμη); */
-export function hasUnsaved(drafts: readonly { status: string }[]): boolean {
+function hasUnsaved(drafts: readonly { status: string }[]): boolean {
   return drafts.some(d => !isSettled(d))
 }
 

@@ -2877,9 +2877,11 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 /* ΚΟΥΜΠΙ ΑΡΧΕΙΟΥ ΠΟΥ ΦΤΑΝΕΙ ΚΑΙ ΜΕ ΠΛΗΚΤΡΟΛΟΓΙΟ. Το πεδίο αρχείου μέσα στην
    ετικέτα ήταν `display:none` και το Tab δεν το έβρισκε ποτέ. Τώρα είναι
    `sr-only`: εστιάζεται κανονικά και η ετικέτα γύρω του δείχνει την εστίαση. */
-/* Το `:focus-within` πρώτο, για περιηγητές χωρίς `:has`· όπου υπάρχει `:has`, ο
-   δεύτερος κανόνας δεν αλλάζει τίποτα, απλώς επιβεβαιώνει. */
-.po-file-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Το `:focus-within` μόνο για περιηγητές χωρίς `:has`: εκεί ανάβει και με
+   εστίαση από ποντίκι, που είναι καλύτερο από καθόλου ένδειξη. */
+@supports not selector(:has(*)) {
+  .po-file-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+}
 .po-file-pick:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ΟΙ ΓΡΑΜΜΕΣ ΤΗΣ ΚΑΡΤΑΣ ΠΕΛΑΤΗ ΣΤΗΝ ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ. Στο τηλέφωνο τα κουμπιά

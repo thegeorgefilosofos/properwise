@@ -11,6 +11,10 @@
 // σειρά και μικρή παύση ανάμεσα. Χωρίς παράθυρο δεν υπάρχει τίποτα να
 // μπλοκαριστεί και ένα αρχείο τη φορά δεν φορτώνει τη μνήμη. Ό,τι αποτύχει
 // μετριέται και λέγεται με το όνομά του.
+//
+// Ο ΣΥΝΔΕΣΜΟΣ ΠΟΥ ΕΛΗΞΕ ΥΠΟΓΡΑΦΕΤΑΙ ΞΑΝΑ. Η καρτέλα μένει ανοιχτή ώρες και οι
+// σύνδεσμοι έχουν λήξη. Οταν ο καλών δίνει `resign`, μια απάντηση που δεν
+// είναι ok δοκιμάζεται ακόμη μία φορά με φρέσκια υπογραφή (η RLS ξανακρίνει).
 // ═══════════════════════════════════════════════════════════════════════════
 import { downloadFile } from '@/lib/core/download'
 
@@ -29,8 +33,15 @@ const browserIo: InTurnIo = {
   wait: (ms) => new Promise(r => setTimeout(r, ms)),
 }
 
+export interface InTurnFile {
+  url: string
+  name: string
+  /** Νέος υπογεγραμμένος σύνδεσμος, όταν ο πρώτος απαντήσει με σφάλμα. */
+  resign?: () => Promise<string | null>
+}
+
 export async function downloadInTurn(
-  files: readonly { url: string; name: string }[],
+  files: readonly InTurnFile[],
   io: InTurnIo = browserIo,
 ): Promise<{ ok: number; failed: string[] }> {
   let ok = 0
@@ -39,7 +50,11 @@ export async function downloadInTurn(
     if (i > 0) await io.wait(GAP_MS)
     const f = files[i]
     try {
-      const res = await io.fetch(f.url)
+      let res = await io.fetch(f.url)
+      if (!res.ok && f.resign) {
+        const fresh = await f.resign()
+        if (fresh) res = await io.fetch(fresh)
+      }
       if (res.ok && io.save(await res.blob(), f.name)) ok++
       else failed.push(f.name)
     } catch {
