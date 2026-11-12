@@ -18,6 +18,7 @@ import { toLoanRow } from '@/lib/loans/shape'
 import { programStatus, PROGRAM_ORDER } from '@/lib/loans/programStatus'
 import { loanEventTitle, UNSET_BANK } from '../calendar/model'
 import { notifyOk, notifyError } from '@/components/Toast'
+import type { PlanId } from '@/lib/billing/plans'
 import { confirmDialog } from '@/components/confirmBus'
 import { downloadXlsx } from '../sheets'
 import {
@@ -41,7 +42,9 @@ import type { CalcState } from './model'
 // Μία ανοιχτή τη φορά, ώστε να παραμένει καθαρό — όχι «σούπερ μάρκετ» με καρτέλες.
 export type LoanSection = 'advisor'|'banks'|'programs'|'guide'
 
-export type LoanProps = {propertyId:string;userId:string;propertyValue?:number;propertySqm?:number;propertyYearBuilt?:number;profileType?:'individual'|'professional'}
+export type LoanProps = {propertyId:string;userId:string;propertyValue?:number;propertySqm?:number;propertyYearBuilt?:number;profileType?:'individual'|'professional';
+  /** Το ενεργό πακέτο: ανοίγει ή κλειδώνει την Προστασία ιδιοκτήτη στον Οδηγό. */
+  plan?:PlanId}
 
 export function useLoan({ propertyId, userId, propertyValue, profileType='individual' }: LoanProps) {
   const supabase = createClient()

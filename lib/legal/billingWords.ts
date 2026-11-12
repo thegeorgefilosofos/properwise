@@ -62,7 +62,7 @@ import { IDENTITY, sellerIdentityGaps, sellerFieldLabel, type LegalIdentity } fr
 import { TRIAL_DAYS, PLANS } from '@/lib/billing/plans';
 import { SCAN_LIMITS } from '@/lib/billing/aiLimits';
 import { INVITE_LIMITS } from '@/lib/billing/inviteLimits';
-import { PROFESSIONAL_MIN_PLAN } from '@/lib/billing/entitlements';
+import { PROFESSIONAL_MIN_PLAN, FEATURE_MIN_PLAN } from '@/lib/billing/entitlements';
 
 // ── ΜΕΤΑ ΤΗ ΔΟΚΙΜΗ: ΤΟ ΔΩΡΕΑΝ ΠΑΚΕΤΟ, ΟΧΙ ΔΙΑΓΡΑΦΗ ────────────────────────
 // ΑΠΟΦΑΣΗ ΙΔΙΟΚΤΗΤΗ (25.09.2026). Ως τώρα, χωρίς συνδρομή ο λογαριασμός
@@ -308,6 +308,13 @@ const INVITE_TRIAL = `στη δοκιμή έως ${INVITE_LIMITS.trialPerDay} τ
 export const INVITE_ACCESS = `Για πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω· ${INVITE_TRIAL}.`;
 /** Η άρνηση της βάσης (`plan_required`), με τα ίδια όρια. */
 export const INVITE_PLAN_REFUSAL = `Η πρόσκληση με email ανοίγει στο πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω· ${INVITE_TRIAL}.`;
+
+/**
+ * Από ποιο πακέτο ανοίγει η Προστασία ιδιοκτήτη (απόφαση ιδιοκτήτη 12/11/2026).
+ * Το πακέτο βγαίνει από το FEATURE_MIN_PLAN, που κρίνει και την πρόσβαση· η
+ * οθόνη (ProstasiaEntry) το διαβάζει από το /api/billing/words.
+ */
+export const PROSTASIA_ACCESS = `Η Προστασία ιδιοκτήτη περιλαμβάνεται από το πακέτο «${PLANS[FEATURE_MIN_PLAN.foreclosure_protection].name}» και πάνω.`;
 
 /**
  * Το δικαίωμα του νόμου για τον καταναλωτή, σε μία πρόταση για τα ψιλά του

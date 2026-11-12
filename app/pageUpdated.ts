@@ -96,7 +96,7 @@ export const PAGE_UPDATED = {
   // (`transfer-tax`, lib/legal/validity.ts), όχι κλειδί στο lib/facts/taxLimits.
   '/exoda-agoras-akinitou': PURCHASE_SOURCES_CHECKED,
   // ── Η ΕΚΠΤΩΣΗ ΑΝΑΚΑΙΝΙΣΗΣ: Ο ΕΛΕΓΧΟΣ ΤΟΥ ΜΗΤΡΩΟΥ ΙΣΧΥΟΣ (renovation-39b) ───────
-  '/ypologismos-ekptosis-anakainisis': regulated('renovation-39b').checkedAt,
+  '/ypologismos-ekptosis-anakainisis': checked(regulated('renovation-39b').checkedAt, 'renovation-39b'),
   // ── ΤΟ Ε2: ΟΙ ΠΗΓΕΣ ΤΟΥ ΟΔΗΓΟΥ (lib/tools/e2Odigos.ts) ───────────────────────
   '/symplirosi-e2': E2_GUIDE_CHECKED,
 
