@@ -19,7 +19,6 @@ import { Fragment, useId, useState, type ReactNode } from 'react';
 import { DropZone as FileDropZone } from './DropZone';
 import { CheckCircle2, ChevronDown, ChevronRight, Info, Lock, AlertTriangle, XCircle } from 'lucide-react';
 import { T, TT, Btn, Badge, fe, fp, SelectBox } from '@/components/Theme';
-import { fn } from '@/lib/core/format';
 import type { Tone } from '@/components/tokens';
 import { TextInput, NumberInput, CustomSelect, InfoDot } from './UIComponents';
 import { Tooltip } from './calendar/Bits';
@@ -28,6 +27,7 @@ import { atakDigits, isAtak, ATAK_DIGITS } from '@/lib/property/atak';
 import { plural } from '@/lib/core/greek';
 import { isNew, toNumber, BULK_MAX, type Draft } from '@/lib/myaade/review';
 import { E9_RIGHTS } from '@/lib/myaade/labels';
+import { MYAADE_ACCEPT } from '@/lib/myaade/accept';
 import type { KnownProperty } from '@/lib/myaade/match';
 
 // Οι κανόνες που θέλουν media query. Ένα σημείο, με πρόθεμα `mya-`.
@@ -125,8 +125,8 @@ export function MyaadeSteps() {
   );
 }
 
-/** Τι δέχεται το πλακίδιο: το PDF του myAADE ή φωτογραφία του (scanDoc.ts: PHOTO_LIST_TYPES). */
-export const MYAADE_ACCEPT = 'application/pdf,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif';
+/** Τι δέχεται το πλακίδιο: το PDF του myAADE ή φωτογραφία του. Ζει στο lib/myaade/accept.ts. */
+export { MYAADE_ACCEPT };
 /** Πώς διαβάζεται κάθε αρχείο. Το ίδιο λέει και η Πολιτική απορρήτου. */
 export const MYAADE_PRIVACY = 'Το PDF διαβάζεται στον περιηγητή σου και δεν ανεβαίνει πουθενά. Η φωτογραφία διαβάζεται με AI στον διακομιστή και δεν αποθηκεύεται. Κρατάμε μόνο ό,τι επιβεβαιώσεις: τα ακίνητα και, από την πράξη, το ποσό του ΕΝΦΙΑ. Το ΑΦΜ του εγγράφου δεν αποθηκεύεται.';
 
@@ -238,7 +238,6 @@ export function PropertyRow({ row, index, known, onToggle, onPatch, rowId, force
     row.district && row.district !== row.municipality ? `Διαμέρισμα ${row.district}` : null,
     row.category ? `Κατηγορία Ε9: ${row.category}` : null,
     row.right ? `Δικαίωμα: ${E9_RIGHTS[row.right] ?? `κωδικός ${row.right}`}` : null,
-    row.auxSqm ? `Βοηθητικοί χώροι ${fn(row.auxSqm, 2)} τ.μ.` : null,
   ].filter(Boolean).join(' · ');
   const badges = (
     <>
@@ -272,7 +271,7 @@ export function PropertyRow({ row, index, known, onToggle, onPatch, rowId, force
         <span className="mya-badge-wide" style={{ gap: T.sp.xs, flexWrap: 'wrap', justifyContent: 'flex-end' }}>{badges}</span>
         {row.tax != null && (
           <span style={{ ...TT.bodySm, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', textAlign: 'right', whiteSpace: 'nowrap' }}>
-            <span className="sr-only">Φόρος ακινήτου </span>{fe(row.tax)}
+            <span className="sr-only">{row.enfia != null ? 'Φόρος ακινήτου ' : 'Κύριος φόρος γραμμής '}</span>{fe(row.tax)}
           </span>
         )}
       </div>
@@ -288,12 +287,15 @@ export function PropertyRow({ row, index, known, onToggle, onPatch, rowId, force
             <div className="mya-span mya-two"><TextInput label="Διεύθυνση" value={row.address} onChange={v => onPatch({ address: v })} /></div>
             <div className="mya-span"><TextInput label="ΑΤΑΚ" value={row.atak} onChange={v => onPatch({ atak: atakDigits(v) })} placeholder={`${ATAK_DIGITS} ψηφία`} inputMode="numeric" /></div>
             <NumberInput label="Επιφάνεια" suffix="τ.μ." value={row.sqm} onChange={v => onPatch({ sqm: v })} />
+            <NumberInput label="Βοηθητικοί χώροι" suffix="τ.μ." value={row.storageSqm} onChange={v => onPatch({ storageSqm: v })} />
             <NumberInput label="Ποσοστό" suffix="%" value={row.pct} onChange={v => onPatch({ pct: v })} max={100} />
             <TextInput label="Όροφος" value={row.floor} onChange={v => onPatch({ floor: v })} />
             <TextInput label="Τ.Κ." value={row.postcode} onChange={v => onPatch({ postcode: v.replace(/\D/g, '').slice(0, 5) })} inputMode="numeric" />
             <TextInput label="Έτος κατασκευής" value={row.yearBuilt} onChange={v => onPatch({ yearBuilt: v.replace(/\D/g, '').slice(0, 4) })} inputMode="numeric" />
           </div>
           {extra && <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>{extra}</span>}
+          {row.enfia != null && <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>{`Ο φόρος της πράξης για αυτό το ακίνητο, ${fe(row.enfia)}, γράφεται ως ΕΝΦΙΑ του ακινήτου${isNew(row) ? '' : ', αν δεν έχει ήδη ποσό'}. Οι δόσεις βγαίνουν από το σύνολο της πράξης.`}</span>}
+          {row.enfia == null && row.tax != null && <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>Τα ποσά των ακινήτων δεν βγάζουν το πληρωτέο της πράξης, συνήθως λόγω εκπτώσεων, προσαυξήσεων ή απαλλαγής. Γι’ αυτό ΕΝΦΙΑ ανά ακίνητο δεν γράφεται, μόνο το σύνολο.</span>}
           {atakBad && <span style={{ ...TT.caption, color: 'var(--negative)' }}>{`Ο ΑΤΑΚ είναι ${ATAK_DIGITS} ψηφία.`}</span>}
         </div>
       )}

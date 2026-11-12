@@ -135,6 +135,12 @@ const json = (body: unknown, status = 200) =>
     }
     return out(done);
   }
+  // Το «αντικατάστησε ό,τι έγραψε η πηγή» (replaceSource) σβήνει τα παλιά.
+  if (method === 'DELETE') {
+    const gone = table(t).filter(r => matches(r, filters));
+    db[t] = table(t).filter(r => !gone.includes(r));
+    return out(gone);
+  }
   return json({ message: 'method' }, 405);
 }) as typeof fetch;
 
@@ -365,9 +371,57 @@ const commit = (doc: Partial<ScannedDoc>, extra: Partial<CommitInput> = {}) =>
     ok(`PR402: η κατηγορία μένει B (πήρα ${table('user_properties')[0].pea_class})`, table('user_properties')[0].pea_class === 'B');
     ok('PR402: καμία δεύτερη υπενθύμιση λήξης για το παλιό', table('calendar_events').length === 1);
     await commit({ doc_type: 'government', subtype: 'pea', title: 'ΠΕΑ', pea_class: 'Α', expiry_date: '2037-02-01' });
-    ok('PR402: νεότερο ΠΕΑ αντικαθιστά', table('user_properties')[0].pea_class === 'A' && table('calendar_events').length === 2);
+    // Το νεότερο γράφει τη λήξη του και τις υπενθυμίσεις 90 και 30 ημέρες πριν
+    // (lib/property/peaExpiry.ts), με δικές τους πηγές. Το χειρόγραφο γεγονός μένει.
+    const peaRows = () => table('calendar_events').filter(e => String(e.source ?? '').startsWith('pea:expiry:'));
+    ok(`PR402: νεότερο ΠΕΑ αντικαθιστά (πήρα ${table('user_properties')[0].pea_class}, ${table('calendar_events').length} γεγονότα)`,
+      table('user_properties')[0].pea_class === 'A' && table('user_properties')[0].pea_expiry === '2037-02-01' && peaRows().length === 3 && table('calendar_events').length === 4);
+    ok('PR402: λήξη, 90 και 30 ημέρες πριν', JSON.stringify(peaRows().map(e => e.event_date).sort()) === JSON.stringify(['2036-11-03', '2037-01-02', '2037-02-01']));
     await commit({ doc_type: 'government', subtype: 'pea', title: 'ΠΕΑ', pea_class: 'Α', expiry_date: '2037-02-01' });
-    ok('PR402: το ίδιο ΠΕΑ δεύτερη φορά: καμία δεύτερη υπενθύμιση', table('calendar_events').length === 2 && table('user_properties')[0].pea_class === 'A');
+    ok(`PR402: το ίδιο ΠΕΑ δεύτερη φορά: καμία δεύτερη υπενθύμιση (${table('calendar_events').length})`, peaRows().length === 3 && table('calendar_events').length === 4 && table('user_properties')[0].pea_class === 'A');
+    // Παλαιότερο ΠΕΑ μετά το νεότερο: η στήλη της λήξης το κρίνει παλιό.
+    await commit({ doc_type: 'government', subtype: 'pea', title: 'ΠΕΑ', pea_class: 'Γ', expiry_date: '2036-12-01' });
+    ok('PR402: παλαιότερο ΠΕΑ δεν αγγίζει λήξη ούτε υπενθυμίσεις', table('user_properties')[0].pea_expiry === '2037-02-01' && peaRows().length === 3);
+  }
+
+  // ══ ΠΕΑ · Αριθμός, έκδοση, λήξη και υπενθυμίσεις (PR #549, αναθεώρηση) ═══
+  {
+    const pea = (extra: Record<string, unknown>) => ({ doc_type: 'government', subtype: 'pea', title: 'ΠΕΑ', ...extra }) as Partial<ScannedDoc>;
+    const peaRows = () => table('calendar_events').filter(e => String(e.source ?? '').startsWith('pea:expiry:'));
+
+    // Το νέο ΠΕΑ χωρίς αριθμό και έκδοση σβήνει τα στοιχεία του παλιού.
+    reset({ user_properties: [{ id: P, user_id: U, pea_class: 'Δ', pea_number: '111/2020', pea_issued: '2020-01-01', pea_expiry: '2030-01-01' }] });
+    await commit(pea({ pea_class: 'B', expiry_date: '2036-03-01' }));
+    const row = table('user_properties')[0];
+    ok(`ΠΕΑ: ο παλιός αριθμός δεν μένει δίπλα στη νέα λήξη (${row.pea_number}, ${row.pea_issued})`, row.pea_number === null && row.pea_issued === null && row.pea_expiry === '2036-03-01' && row.pea_class === 'B');
+
+    // Πρώτα το ακίνητο, μετά οι υπενθυμίσεις.
+    const firstProp = calls.findIndex(c => c === 'PATCH user_properties');
+    const firstCal = calls.findIndex(c => c === 'POST calendar_events');
+    ok(`ΠΕΑ: το ακίνητο γράφεται πριν από το ημερολόγιο (${firstProp} < ${firstCal})`, firstProp >= 0 && firstCal > firstProp);
+
+    // Το ίδιο ΠΕΑ ξανά: οι γραμμές μένουν ίδιες (ίδια αναγνωριστικά, καμία διαγραφή).
+    const ids = peaRows().map(e => e.id).sort().join();
+    calls.length = 0;
+    await commit(pea({ pea_class: 'B', expiry_date: '2036-03-01' }));
+    ok('ΠΕΑ: το ίδιο ΠΕΑ δεν ξαναγράφει τις υπενθυμίσεις', peaRows().map(e => e.id).sort().join() === ids && !calls.includes('DELETE calendar_events') && !calls.includes('POST calendar_events'));
+
+    // Αποτυχία εγγραφής του ακινήτου: καμία υπενθύμιση για λήξη που το ακίνητο δεν κρατά.
+    reset({ user_properties: [{ id: P, user_id: U }] });
+    broken.add('PATCH user_properties');
+    await commit(pea({ pea_class: 'A', expiry_date: '2036-03-01' }));
+    ok('ΠΕΑ: χωρίς ακίνητο, χωρίς υπενθυμίσεις', peaRows().length === 0);
+
+    // Ληγμένο ΠΕΑ: τα τέσσερα μαζί, μόνο όταν λείπουν και τα τέσσερα.
+    reset({ user_properties: [{ id: P, user_id: U, pea_number: '9/2025' }] });
+    await commit(pea({ pea_class: 'Γ', pea_number: '1/2010', issue_date: '2010-01-01', expiry_date: '2020-01-01' }));
+    const mixed = table('user_properties')[0];
+    ok(`ΠΕΑ ληγμένο: δεν ανακατεύεται με ό,τι υπάρχει (${mixed.pea_number}, ${mixed.pea_expiry})`, mixed.pea_number === '9/2025' && mixed.pea_expiry == null && mixed.pea_class == null);
+    reset({ user_properties: [{ id: P, user_id: U }] });
+    await commit(pea({ pea_class: 'Γ', pea_number: '1/2010', issue_date: '2010-01-01', expiry_date: '2020-01-01' }));
+    const filledRow = table('user_properties')[0];
+    ok('ΠΕΑ ληγμένο σε κενό ακίνητο: τα τέσσερα μαζί', filledRow.pea_class === 'Γ' && filledRow.pea_number === '1/2010' && filledRow.pea_issued === '2010-01-01' && filledRow.pea_expiry === '2020-01-01');
+    ok('ΠΕΑ ληγμένο: καμία υπενθύμιση', peaRows().length === 0);
   }
 
   // ══ APP-5 · Ό,τι δεν διαβάζεται σταματά πριν φύγει ═════════════════════

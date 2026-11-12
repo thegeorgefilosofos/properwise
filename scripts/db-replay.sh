@@ -177,6 +177,29 @@ fi
 $PSQL -c "drop database if exists emailprobe" >/dev/null
 eprobes=$(echo "$eout" | grep -c 'probe:' || true)
 
+# ── Ο ANON ΔΕΝ ΑΓΓΙΖΕΙ ΠΙΝΑΚΑ ΧΡΗΣΤΗ ───────────────────────────────────────
+# Πριν από το rls-probe, για τον ίδιο λόγο με το email-activation-probe: εκείνο
+# δίνει σκόπιμα GRANT σε όλους τους πίνακες. Εδώ ελέγχονται τα δικαιώματα όπως
+# τα αφήνουν τα migrations (20261110140000).
+if ! aout=$($PSQL -d posdb -f "$ROOT/scripts/db/anon-grants-probe.sql" 2>&1); then
+  echo "🔴 Ο anon έχει δικαίωμα εκεί που δεν πρέπει:"
+  echo "$aout" | grep -m3 -E 'ERROR|ΕΚΘΕΣΗ' | sed 's/^/    /'
+  exit 1
+fi
+eprobes=$(( eprobes + $(echo "$aout" | grep -c 'probe:' || true) ))
+
+# ── ΠΟΙΟΣ ΒΛΕΠΕΙ ΤΙΣ ΦΩΤΟΓΡΑΦΙΕΣ ΑΠΟΓΡΑΦΗΣ ───────────────────────────────────
+# Σε κλώνο, γιατί γράφει χρήστες, οργανισμό και αντικείμενα αποθήκευσης.
+$PSQL -c "drop database if exists photoprobe" >/dev/null
+$PSQL -c "create database photoprobe template posdb" >/dev/null
+if ! pout=$($PSQL -d photoprobe -f "$ROOT/scripts/db/inventory-photos-probe.sql" 2>&1); then
+  echo "🔴 Οι φωτογραφίες απογραφής δεν φαίνονται σε όποιον πρέπει:"
+  echo "$pout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ' | sed 's/^/    /'
+  exit 1
+fi
+$PSQL -c "drop database if exists photoprobe" >/dev/null
+eprobes=$(( eprobes + $(echo "$pout" | grep -c 'probe:' || true) ))
+
 # ── ΤΑ ΔΟΚΙΜΑΣΤΙΚΑ ΓΡΑΦΕΙΑ ΕΧΟΥΝ ΑΠΟΔΕΧΤΕΙ ΤΟΥΣ ΟΡΟΥΣ ───────────────────────
 # Χωρίς αποδοχή των όρων επεξεργασίας (20261108090000) κανένα γραφείο δεν βλέπει
 # πελάτη. Τα παρακάτω σενάρια ελέγχουν άλλα πράγματα, οπότε εδώ τα γραφεία και
@@ -301,6 +324,15 @@ if ! pout=$($PSQL -d posdb -f "$ROOT/scripts/db/pay-token-probe.sql" 2>&1); then
   exit 1
 fi
 probes=$((probes + $(echo "$pout" | grep -c 'probe:' || true)))
+
+# ── ΠΕΑ: ΕΚΔΟΣΗ ΟΧΙ ΜΕΤΑ ΤΗ ΛΗΞΗ ΚΑΙ Η ΜΕΤΑΦΟΡΑ ΑΠΟ ΤΟ ΗΜΕΡΟΛΟΓΙΟ ────────────
+# Ξανατρέχει τη μεταφορά πάνω σε δεδομένα δοκιμής (scripts/db/pea-probe.sql).
+if ! peaout=$(cd "$ROOT" && $PSQL -d posdb -f "$ROOT/scripts/db/pea-probe.sql" 2>&1); then
+  echo "🔴 Οι στήλες ΠΕΑ ή η μεταφορά της λήξης δεν κάνουν ό,τι λένε:"
+  echo "$peaout" | grep -m3 -E 'ERROR|ΣΧΗΜΑ|ΜΕΤΑΦΟΡΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$peaout" | grep -c 'probe:' || true)))
 
 # ── ΟΙ ΣΤΗΛΕΣ ΤΟΥ ΔΙΑΚΟΜΙΣΤΗ ΔΕΝ ΓΡΑΦΟΝΤΑΙ ΑΠΟ ΤΟΝ ΠΕΛΑΤΗ ──────────────────
 # Επιβεβαίωση email υπενθυμίσεων, κύκλος χρέωσης, προθεσμία διαγραφής, θέση

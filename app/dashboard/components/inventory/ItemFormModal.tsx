@@ -19,6 +19,7 @@ import { notifyError } from '@/components/Toast'
 import { failed, MSG } from '@/lib/core/dbError'
 import { uploadPath } from '@/lib/core/uploadPath'
 import { uploadUserScoped } from '@/lib/storage/scopedUpload'
+import { INVENTORY_PHOTOS_BUCKET, useInventoryPhotoUrls } from '@/lib/storage/inventoryPhotos'
 import { INVENTORY_CATEGORIES, CONDITIONS, ENERGY_CLASSES, inventoryLabel, conditionLabel, type InventoryItem } from './model'
 import { blankIfZero, calcCurrentValue, calcDepreciationPct, calcYearsLeft } from './calc'
 import { DOCS_BUCKET, openInventoryDoc } from './storage'
@@ -192,10 +193,13 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
   // Ενιαίο πεδίο φωτογραφίας: ανεβάζει τη φωτογραφία ΚΑΙ (προαιρετικά) τη διαβάζει
   // με AI — μία ενέργεια, όχι δύο ξεχωριστά «πεδία φωτο».
   const [photoBusy,setPhotoBusy] = useState(false)
+  const photoUrls = useInventoryPhotoUrls(supabase, form.photos||[]).urls
   const addPhotoFile = async(file:File) => {
     setPhotoBusy(true)
-    const {path,error}=await uploadUserScoped(supabase,'inventory-photos',uploadPath(file.name),file,{upsert:true})
-    if(!error){ const {data:u}=supabase.storage.from('inventory-photos').getPublicUrl(path); setForm(f=>{const photos=[...(f.photos||[]),u.publicUrl]; return {...f,photos,photo_url:f.photo_url||u.publicUrl}}) }
+    // Ιδιωτικό bucket: γράφεται η ΔΙΑΔΡΟΜΗ «<uid>/<ακίνητο>/…», η προβολή υπογράφεται.
+    // Το ακίνητο στη διαδρομή κρίνει ποιος βλέπει (private.inventory_photo_visible).
+    const {path,error}=await uploadUserScoped(supabase,INVENTORY_PHOTOS_BUCKET,uploadPath(file.name,propertyId),file,{upsert:true})
+    if(!error){ setForm(f=>{const photos=[...(f.photos||[]),path]; return {...f,photos,photo_url:f.photo_url||path}}) }
     else notifyError(failed(MSG.upload))
     setPhotoBusy(false)
   }
@@ -239,7 +243,7 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(84px,1fr))',gap:8}}>
             {(form.photos||[]).map((url,i)=>(
               <div key={i} {...pressable(()=>set('photo_url',url), url===form.photo_url?'Κύρια φωτογραφία':'Ορισμός ως κύρια φωτογραφία')} title={url===form.photo_url?'Κύρια φωτογραφία':'Ορισμός ως κύρια'} style={{position:'relative',height:84,borderRadius:10,overflow:'hidden',border:`2px solid ${url===form.photo_url?'var(--accent)':'var(--border-subtle)'}`,cursor:'pointer'}}>
-                <RuntimeImg src={url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
+                {photoUrls[url]&&<RuntimeImg src={photoUrls[url]} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>}
                 {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ, ΓΙΑ ΤΗ ΓΕΩΜΕΤΡΙΑ. Ο τόνος «media» του IconBtn δίνει ακριβώς
                     την όψη «πάνω σε φωτογραφία», όμως το κουτί του είναι 32 και 44 σε δάχτυλο:
                     πάνω σε μικρογραφία 84×84 που είναι η ίδια στόχος αφής («Ορισμός ως κύρια»),

@@ -62,6 +62,41 @@ export type Regulated = {
   checkedAt: string;
   /** Τι πρέπει να κοιτάξει ο άνθρωπος όταν έρθει η ώρα. Μία πρόταση. */
   recheck: string;
+  /**
+   * Νόμος ή απόφαση που εκκρεμεί και θα ανανεώσει ή θα αλλάξει τον κανόνα.
+   * Οσο υπάρχει, ο φύλακας ΠΡΟΕΙΔΟΠΟΙΕΙ αντί να κόβει πριν και μετά τη λήξη,
+   * γιατί κανείς δεν μπορεί να γράψει νέο validTo πριν δημοσιευτεί το κείμενο
+   * (απόφαση ιδιοκτήτη 10/11/2026: πρώτα έλεγχος στο διαδίκτυο, όχι κόκκινο).
+   * Η εξαίρεση λήγει μόνη της 90 ημέρες μετά το `since`: από εκεί κόβει.
+   * Οταν δημοσιευτεί: νέο validTo, νέο checkedAt, πηγή το ΦΕΚ ή η απόφαση·
+   * το πεδίο φεύγει.
+   */
+  pending?: Pending;
+};
+
+/** Τι περιμένουμε: νόμο (ψήφιση και ΦΕΚ) ή απόφαση (υπουργική, ΚΥΑ, ΑΑΔΕ). */
+export type Pending = {
+  kind: 'law' | 'decision';
+  /** Τι αναμένεται, π.χ. «Απόφαση κατώτατου μισθού 2027». */
+  title: string;
+  /** Η αρμόδια επίσημη πηγή όπου θα δημοσιευτεί. */
+  href: string;
+  /** Από πότε μετρά η εκκρεμότητα (ISO). Μετά από 90 ημέρες ο φύλακας κόβει. */
+  since: string;
+};
+
+/**
+ * Ο νόμος που εκκρεμεί για τους κανόνες του 2027 (μέτρα της 90ής ΔΕΘ). Το
+ * `href` είναι η ανακοίνωση του Υπουργείου για τη ΔΙΑΒΟΥΛΕΥΣΗ του
+ * νομοσχεδίου. Το `since` είναι η κατάθεσή του στη Βουλή, 04/11/2026, κατά
+ * δημοσιεύματα· η εξαίρεση κόβει από 02/02/2027. Συνδέονται μόνο οι κανόνες
+ * που ο φάκελος ελέγχου του 2027 δείχνει ότι ανανεώνει ή αλλάζει.
+ */
+const DETH_2026_BILL: Pending = {
+  kind: 'law',
+  title: 'Νομοσχέδιο με τα μέτρα της 90ής ΔΕΘ για τα έτη 2026 και 2027',
+  href: 'https://minfin.gov.gr/anartithike-se-dimosia-diavoulefsi-to-nomoschedio-me-ta-metra-pou-anakoinothikan-stin-90i-diethni-ekthesi-thessalonikis-kai-efarmozontai-kata-ta-eti-2026-kai-2027/',
+  since: '2026-11-04',
 };
 
 /**
@@ -74,6 +109,7 @@ export const REGULATED: readonly Regulated[] = [
   // ── Φόρος εισοδήματος από ακίνητα ────────────────────────────────────────
   {
     id: 'rental-brackets',
+    pending: { kind: 'decision', title: 'Επιβεβαίωση ότι η κλίμακα φόρου ενοικίων δεν αλλάζει το 2027 (το νομοσχέδιο της ΔΕΘ δεν την αγγίζει, κατά τον φάκελο ελέγχου)', href: `${AADE_HOME}/polites/eisodima`, since: '2026-11-10' },
     label: 'Κλίμακα φόρου εισοδήματος από ακίνητα',
     where: 'lib/billing/greekTax.ts',
     validFrom: '2026-01-01',
@@ -117,6 +153,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'business-brackets',
+    pending: DETH_2026_BILL,
     label: 'Κλίμακα φόρου επιχειρηματικής δραστηριότητας',
     where: 'lib/billing/greekTax.ts',
     validFrom: '2026-01-01',
@@ -127,6 +164,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'self-employed-min-income',
+    pending: { kind: 'decision', title: 'Απόφαση κατώτατου μισθού 2027 (Υπουργείο Εργασίας)', href: 'https://ypergasias.gov.gr/', since: '2026-11-10' },
     label: 'Τεκμαρτό ελάχιστο καθαρό εισόδημα ελεύθερου επαγγελματία',
     where: 'lib/billing/greekTax.ts',
     validFrom: '2026-01-01',
@@ -159,6 +197,7 @@ export const REGULATED: readonly Regulated[] = [
   // ── ΕΝΦΙΑ ────────────────────────────────────────────────────────────────
   {
     id: 'enfia-coefficients',
+    pending: { kind: 'decision', title: 'Απόφαση για τις αντικειμενικές αξίες και τις ζώνες του 2027', href: `${AADE_HOME}/polites/enfia`, since: '2026-11-10' },
     label: 'Συντελεστές ΕΝΦΙΑ: ζώνη, όροφος, παλαιότητα',
     where: 'lib/billing/enfia.ts',
     validFrom: '2026-01-01',
@@ -173,6 +212,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'enfia-thresholds',
+    pending: DETH_2026_BILL,
     label: 'Όριο συμπληρωματικού ΕΝΦΙΑ και αφορολόγητο περιουσίας',
     where: 'lib/billing/enfia.ts',
     validFrom: '2026-01-01',
@@ -195,6 +235,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'enfia-instalments',
+    pending: { kind: 'decision', title: 'Απόφαση της ΑΑΔΕ για τον ΕΝΦΙΑ 2027: πλήθος και προθεσμίες δόσεων', href: `${AADE_HOME}/polites/enfia`, since: '2026-11-10' },
     label: 'Πλήθος και προθεσμίες δόσεων ΕΝΦΙΑ',
     where: 'lib/tax/greekTaxCalendar.ts',
     validFrom: '2026-01-01',
@@ -207,6 +248,7 @@ export const REGULATED: readonly Regulated[] = [
   // ── Βραχυχρόνια μίσθωση ──────────────────────────────────────────────────
   {
     id: 'climate-levy',
+    pending: { kind: 'decision', title: 'Ποσά του ΤΑΚΚ για το 2027', href: `${AADE_HOME}/epiheiriseis/forologikes-ypiresies/telos-anthektikotitas-stin-klimatiki-krisi`, since: '2026-11-10' },
     label: 'Τέλος ανθεκτικότητας στην κλιματική κρίση (ΤΑΚΚ)',
     where: 'lib/billing/greekTax.ts',
     validFrom: '2026-01-01',
@@ -217,6 +259,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'municipal-accommodation-tax',
+    pending: { kind: 'decision', title: 'Ισχύς του δημοτικού φόρου διαμονής για το 2027', href: `${AADE_HOME}/epiheiriseis/forologikes-ypiresies`, since: '2026-11-10' },
     label: 'Δημοτικός φόρος διαμονής',
     where: 'lib/billing/greekTax.ts',
     validFrom: '2026-01-01',
@@ -246,6 +289,7 @@ export const REGULATED: readonly Regulated[] = [
     // πράξεις όπως τις έχουν ήδη ο κώδικας και το data/accounting-sources.json
     // (`str_registry`, έλεγχος 25.09.2026). Πηγή η επίσημη σελίδα του Μητρώου.
     id: 'str-freeze',
+    pending: { kind: 'decision', title: 'ΚΥΑ για την αναστολή νέων εγγραφών βραχυχρόνιας διαμονής το 2027', href: `${AADE_HOME}/epiheiriseis/forologikes-ypiresies/mitroo-akiniton-brahyhronias-diamonis`, since: '2026-11-10' },
     label: 'Αναστολή νέων εγγραφών στο Μητρώο Βραχυχρόνιας Διαμονής (κέντρο Αθήνας, Α΄ Θεσσαλονίκης)',
     where: 'lib/market/greekMarket.ts',
     validFrom: '2026-01-01',
@@ -268,6 +312,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'rent-adjustment-cap',
+    pending: { kind: 'law', title: 'Διάταξη για το πλαφόν αναπροσαρμογής των επαγγελματικών μισθωμάτων το 2027', href: 'https://www.et.gr/', since: '2026-11-10' },
     label: 'Ανώτατο ποσοστό αναπροσαρμογής μισθώματος',
     where: 'lib/documents/rentAdjustment.ts',
     validFrom: '2026-01-01',
@@ -290,6 +335,7 @@ export const REGULATED: readonly Regulated[] = [
   // ── Δάνεια και κρατικά προγράμματα ───────────────────────────────────────
   {
     id: 'loan-programs',
+    pending: { kind: 'decision', title: 'Νέοι κύκλοι των κρατικών στεγαστικών προγραμμάτων για το 2027', href: 'https://www.gov.gr/ipiresies/periousia-kai-phorologia', since: '2026-11-10' },
     label: 'Κρατικά προγράμματα στέγασης και επιδότησης',
     where: 'lib/loans/programStatus.ts',
     validFrom: '2026-01-01',
@@ -300,6 +346,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'transfer-tax',
+    pending: DETH_2026_BILL,
     label: 'Φόρος μεταβίβασης ακινήτου και απαλλαγή πρώτης κατοικίας',
     // ΤΟ `where` ΕΔΕΙΧΝΕ ΣΤΟΝ ΚΑΤΑΝΑΛΩΤΗ, ΟΧΙ ΣΤΗΝ ΠΗΓΗ. Ο υπολογιστής δανείου
     // ΕΙΣΑΓΕΙ τους συντελεστές· δεν τους ορίζει. Ο φύλακας ελέγχει ότι το αρχείο
@@ -345,6 +392,7 @@ export const REGULATED: readonly Regulated[] = [
     // 18.10.2026 στο κείμενο του ΦΕΚ (legalize-dev/legalize-gr,
     // gr/FEK-A-198-2025.md), από εργαλείο.
     id: 'vacant-rental-exemption',
+    pending: DETH_2026_BILL,
     label: 'Τριετής απαλλαγή ενοικίου για κενές κατοικίες που νοικιάζονται μακροχρόνια: παράθυρο σύναψης μίσθωσης',
     where: 'lib/accounting/updates2026.ts',
     validFrom: '2024-09-08',
@@ -360,6 +408,7 @@ export const REGULATED: readonly Regulated[] = [
     // 18.10.2026· ο διακομιστής δεν το άφησε να ανοιχτεί. Το `checkedAt` είναι
     // του data/accounting-sources.json (`renovation_39b`).
     id: 'renovation-39b',
+    pending: DETH_2026_BILL,
     label: 'Μείωση φόρου για δαπάνες αναβάθμισης κτιρίων (άρθρο 39Β ΚΦΕ): παράθυρο δαπανών',
     where: 'lib/accounting/renovation39b.ts',
     validFrom: '2024-01-01',
@@ -392,6 +441,7 @@ export const REGULATED: readonly Regulated[] = [
     // αυτήν: ο φύλακας κοκκινίζει όσο είναι ακόμη χρήσιμο να ψάξει κανείς για
     // ΚΥΑ, οδηγό ή πλατφόρμα. Η πηγή είναι το δελτίο της ΕΑΤ (SPITI_MOU_3.sources.hdb).
     id: 'spiti-mou-3',
+    pending: { kind: 'decision', title: 'ΚΥΑ και οδηγός του «Σπίτι μου ΙΙΙ»', href: 'https://minscfa.gov.gr/', since: '2026-11-10' },
     label: 'Σπίτι μου ΙΙΙ: ό,τι έχει ανακοινωθεί επίσημα, χωρίς ΚΥΑ',
     where: 'lib/loans/recommend.ts',
     validFrom: '2026-09-05',
@@ -417,6 +467,7 @@ export const REGULATED: readonly Regulated[] = [
   // λήξης. Εδώ αποκτούν ημερομηνία που κοκκινίζει.
   {
     id: 'new-build-vat-suspension',
+    pending: DETH_2026_BILL,
     label: 'Αναστολή ΦΠΑ 24% στα νεόδμητα (οπότε επιβάλλεται ΦΜΑ 3,09%)',
     where: 'lib/accounting/transfer.ts',
     validFrom: '2026-01-01',
@@ -427,6 +478,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'capital-gains-suspension',
+    pending: DETH_2026_BILL,
     label: 'Αναστολή φόρου υπεραξίας 15% στη μεταβίβαση ακινήτων',
     where: 'lib/accounting/transfer.ts',
     validFrom: '2026-01-01',

@@ -135,3 +135,66 @@ export function renew(
   return db.from(TABLE).update({ expires_at: until })
     .eq('property_id', propertyId).eq('user_id', userId);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΚΩΔΙΚΟΣ PIN ΑΠΟ ΠΡΟΕΠΙΛΟΓΗ (απόφαση ιδιοκτήτη 10/11/2026)
+// ─────────────────────────────────────────────────────────────────────────
+// Ο έλεγχος ασφάλειας της 10/11/2026 βρήκε ότι κανένας από τους ενεργούς
+// συνδέσμους δεν είχε PIN, ενώ η get_portal_data δίνει όνομα μισθωτή,
+// διεύθυνση, IBAN πληρωμής, εγγύηση και οφειλές σε όποιον έχει τον σύνδεσμο,
+// για έως 365 ημέρες. Ο σύνδεσμος ταξιδεύει σε μηνύματα και προωθείται.
+//
+// Γι' αυτό κάθε νέα πύλη γεννιέται με τυχαίο PIN, που ο ιδιοκτήτης το βλέπει
+// ΜΙΑ φορά και το δίνει στον μισθωτή. Μπορεί να το κλείσει συνειδητά. Στη
+// βάση πάει μόνο το bcrypt της set_portal_pin· το καθαρό PIN δεν γράφεται
+// πουθενά. Έξι ψηφία αντί για τέσσερα: 10^6 συνδυασμοί, με το όριο
+// προσπαθειών που ήδη έχει ο έλεγχος της πύλης.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Πόσα ψηφία έχει το τυχαίο PIN που προτείνεται. */
+export const PIN_DIGITS = 6;
+
+/**
+ * Τυχαίο PIN από κρυπτογραφική πηγή, ομοιόμορφο ανά ψηφίο. Η απόρριψη των
+ * τιμών ≥ 250 κρατά τα δέκα ψηφία ισοπίθανα (το 256 δεν διαιρείται με το 10).
+ */
+export function newPin(rand: (buf: Uint8Array) => Uint8Array = b => crypto.getRandomValues(b)): string {
+  let out = '';
+  while (out.length < PIN_DIGITS) {
+    for (const v of rand(new Uint8Array(PIN_DIGITS * 2))) {
+      if (v < 250 && out.length < PIN_DIGITS) out += String(v % 10);
+    }
+  }
+  return out;
+}
+
+// ── ΧΩΡΙΣ ΔΕΥΤΕΡΟ ΒΗΜΑ, ΤΟ PIN ΔΕΝ ΓΡΑΦΕΤΑΙ ─────────────────────────────────
+// Η set_portal_pin απαιτεί private.mfa_satisfied() και σηκώνει 42501
+// `mfa_required` όταν η συνεδρία δεν έχει περάσει τον έλεγχο δύο βημάτων.
+// Το γενικό «δεν ορίστηκε» δεν λέει στον ιδιοκτήτη τι να κάνει· αυτό λέει.
+
+/** Αρνήθηκε η βάση επειδή λείπει η επαλήθευση δύο βημάτων; */
+export const isMfaDenied = (e: { code?: string | null; message?: string | null } | null | undefined): boolean =>
+  !!e && (e.code === '42501' || /mfa_required/i.test(e.message || ''));
+
+/** Η φράση της οθόνης όταν λείπει το δεύτερο βήμα. */
+export const MFA_PIN_SAY =
+  'Για να οριστεί κωδικός πύλης χρειάζεται επαλήθευση δύο βημάτων. Ενεργοποίησέ την στον Λογαριασμό, στην ενότητα «Ασφάλεια» και δοκίμασε ξανά.';
+
+export type PinWrite = 'ok' | 'none' | 'mfa' | 'error';
+
+/**
+ * Γράφει ή σβήνει το PIN μέσω της set_portal_pin (bcrypt στη βάση). `none`:
+ * καμία δική σου γραμμή με αυτό το token. Το σφάλμα επιστρέφεται για μήνυμα.
+ */
+export async function writePin(
+  db: Db, token: string, pin: string,
+): Promise<{ result: PinWrite; error: DbError | null }> {
+  try {
+    const { data, error } = await db.rpc('set_portal_pin', { p_token: token, p_pin: pin });
+    if (error) return { result: isMfaDenied(error) ? 'mfa' : 'error', error };
+    return { result: data ? 'ok' : 'none', error: null };
+  } catch (e) {
+    return { result: 'error', error: { message: e instanceof Error ? e.message : 'Σφάλμα δικτύου' } as DbError };
+  }
+}

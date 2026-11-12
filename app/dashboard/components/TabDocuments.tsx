@@ -47,6 +47,7 @@ import { SAY } from '@/lib/core/dbError';
 import { useLoad } from '@/app/hooks/useLoad';
 import { toggleIn } from '@/lib/core/toggleSet';
 import { athensToday } from '@/lib/core/time';
+import { signInventoryPhotos } from '@/lib/storage/inventoryPhotos';
 
 /* ════════════════════════════════════════════════════════════════════════
    ΑΡΧΕΙΟ — μία επίπεδη λίστα με όψεις, ΧΩΡΙΣ φακέλους.
@@ -358,6 +359,10 @@ export default function TabDocuments({
       linksFailed = !!signErr || !signed;
       signed?.forEach((s, i) => { if (s?.signedUrl) signedMap[paths[i]] = s.signedUrl; });
     }
+    // Οι φωτογραφίες εξοπλισμού ζουν στο ιδιωτικό inventory-photos: ίδια υπογραφή
+    // με την απογραφή (lib/storage/inventoryPhotos) και ίδια δήλωση αποτυχίας.
+    const invPhotos = await signInventoryPhotos(supabase, invRes.map(i => i.photo_url || (Array.isArray(i.photos) ? i.photos[0] : '') || ''));
+    if (invPhotos.error) linksFailed = true;
     setLinksWarn(linksFailed);
 
     const out: RawItem[] = [];
@@ -445,7 +450,8 @@ export default function TabDocuments({
     const inv = invRes;
     inv.forEach(i => {
       if (!i.warranty_expiry && !i.photo_url) return;
-      const photo = i.photo_url || (Array.isArray(i.photos) ? i.photos[0] : null) || null;
+      const stored = i.photo_url || (Array.isArray(i.photos) ? i.photos[0] : null) || null;
+      const photo = stored ? invPhotos.urls[stored] || null : null;
       out.push({
         id: `inv:${i.id}`, source: 'inventory', folder: 'warranties',
         title: [i.name, i.brand].filter(Boolean).join(' · ') || 'Εξοπλισμός',
