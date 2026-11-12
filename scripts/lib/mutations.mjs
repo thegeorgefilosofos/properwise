@@ -564,9 +564,12 @@ export const MUTATIONS = {
   'success-over-error': { add: 'app/dashboard/components/__mut__.tsx', content: "import { saved } from '@/components/dbWrite'\nimport { notifyOk } from '@/components/toastBus'\nexport default function MutationProbe() {\n  const go = async () => {\n    await saved('Η ανάθεση δεν αποθηκεύτηκε', Promise.resolve({ error: null }))\n    notifyOk('Η ανάθεση αποθηκεύτηκε')\n  }\n  return <button onClick={go}>Ανάθεση</button>\n}\n" },
 
   'validity': { every: [
+    // Κανόνας που ΕΛΗΞΕ, ΧΩΡΙΣ εκκρεμότητα. Μέχρι τις 10/11/2026 η μετάλλαξη
+    // ήταν στον ΤΑΚΚ· από τότε ο ΤΑΚΚ έχει `pending` και η λήξη του σωστά
+    // προειδοποιεί αντί να κόβει. Ο ΔΤΚ δεν έχει, οπότε εδώ πρέπει να κόψει.
     { file: 'lib/legal/validity.ts',
-      from: "    label: 'Τέλος ανθεκτικότητας στην κλιματική κρίση (ΤΑΚΚ)',\n    where: 'lib/billing/greekTax.ts',\n    validFrom: '2026-01-01',\n    validTo: '2026-12-31',",
-      to:   "    label: 'Τέλος ανθεκτικότητας στην κλιματική κρίση (ΤΑΚΚ)',\n    where: 'lib/billing/greekTax.ts',\n    validFrom: '2024-01-01',\n    validTo: '2024-12-31'," },
+      from: "    where: 'lib/market/cpi.ts',\n    validFrom: '2026-01-01',\n    validTo: '2027-01-31',",
+      to:   "    where: 'lib/market/cpi.ts',\n    validFrom: '2024-01-01',\n    validTo: '2024-12-31'," },
     { file: 'lib/legal/validity.ts',
       from: "    where: 'lib/billing/enfia.ts',",
       to:   "    where: 'lib/billing/enfia-METAKOMISE.ts'," },
@@ -576,6 +579,25 @@ export const MUTATIONS = {
     // ενοικίων. Νέο αρχείο που επικαλείται νόμο χωρίς να το φυλάει κανείς.
     { add: 'lib/core/__mut_law__.ts',
       content: '// Νέος κανόνας: μείωση 12% (ν.5300/2027), χωρίς εγγραφή σε μητρώο.\nexport const PROBE_RATE = 0.12\n' },
+    // ΚΑΙ Ο ΤΕΤΑΡΤΟΣ: Η ΕΞΑΙΡΕΣΗ ΤΗΣ ΕΚΚΡΕΜΟΤΗΤΑΣ (`pending`) ΔΕΝ ΓΙΝΕΤΑΙ ΜΟΝΙΜΗ.
+    // Οσο εκκρεμεί νόμος ή απόφαση, ο κανόνας προειδοποιεί αντί να κόβει, ακόμη
+    // και αφού λήξει (απόφαση ιδιοκτήτη 10/11/2026). Πάνω από 90 ημέρες όμως
+    // κόβει: εδώ η εκκρεμότητα «ξεκίνησε» στις αρχές του 2025.
+    { file: 'lib/legal/validity.ts',
+      from: "  since: '2026-11-04',\n};",
+      to:   "  since: '2025-01-02',\n};" },
+    // ΚΑΙ ΤΑ ΠΑΡΑΘΥΡΑΚΙΑ ΤΟΥ ΙΔΙΟΥ ΟΡΙΟΥ: μελλοντικό `since` δεν φτάνει ποτέ
+    // τις 90 ημέρες, άκυρο δεν μετριέται καθόλου.
+    { file: 'lib/legal/validity.ts',
+      from: "  since: '2026-11-04',\n};",
+      to:   "  since: '2099-01-01',\n};" },
+    { file: 'lib/legal/validity.ts',
+      from: "  since: '2026-11-04',\n};",
+      to:   "  since: 'kati',\n};" },
+    // Και η πηγή της εκκρεμότητας: δημοσίευμα δεν σταματά το κόκκινο.
+    { file: 'lib/legal/validity.ts',
+      from: "href: 'https://ypergasias.gov.gr/'",
+      to:   "href: 'https://www.example-news.gr/kat-mis-2027'" },
   ] },
 
   'modal-width': { every: [
