@@ -4,12 +4,17 @@
 // UpgradeModal — εμφανίζεται όταν ο χρήστης φτάσει το όριο ακινήτων του πλάνου.
 // Ήρεμο, premium, χωρίς πίεση: εξηγεί γιατί, δείχνει το προτεινόμενο πλάνο,
 // και οδηγεί στη διαχείριση συνδρομής (Ρυθμίσεις → Χρέωση).
+//
+// ΠΑΝΩ ΣΤΟ ΚΟΙΝΟ `Modal`. Ηταν δικό του πέπλο με div: χωρίς role="dialog",
+// χωρίς aria-modal, χωρίς Escape και χωρίς παγίδα εστίασης, οπότε το Tab
+// έφευγε στη σελίδα από κάτω και ο αναγνώστης οθόνης δεν μάθαινε ότι άνοιξε
+// παράθυρο. Το κοινό παράθυρο τα κάνει όλα αυτά σε ένα σημείο.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { IDENTITY } from '@/lib/legal/identity';
 import { PLANS, PLAN_ORDER, normalizePlan, planForCount, annualPerMonth, type PlanId } from '@/lib/billing/plans';
 import { paidPlanForProfile } from '@/lib/billing/entitlements';
-import { T, feAuto, Btn, CloseButton } from '@/components/Theme';
+import { T, feAuto, Btn, Modal } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
 
 export default function UpgradeModal({ currentCount, planId, onClose, onManage }: {
@@ -42,49 +47,39 @@ export default function UpgradeModal({ currentCount, planId, onClose, onManage }
 
   if (beyondTopPlan) {
     return (
-      <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-        className="md-scrim" style={{ fontFamily: T.font.sans }}>
-        <div style={{ background: 'var(--bg-surface)', borderRadius: T.radius.modal, width: '100%', maxWidth: 520, boxShadow: 'var(--shadow-xl)', padding: 'clamp(24px, 3vw, 34px)' }}>
-          <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: '0 0 8px' }}>Διαχειρίζεσαι μεγάλο χαρτοφυλάκιο</h2>
+      <Modal open onClose={onClose} size="sm" title="Διαχειρίζεσαι μεγάλο χαρτοφυλάκιο"
+        footer={<>
+          <Btn onClick={onClose}>Κλείσιμο</Btn>
+          {/* Ο προορισμός είναι mailto, άρα μένει σύνδεσμος — το `href` του Btn του δίνει την ίδια όψη με το ζευγάρι του χωρίς να γίνει κουμπί. */}
+          <Btn variant="primary" href={`mailto:${IDENTITY.supportEmail}?subject=Χαρτοφυλάκιο%20άνω%20των%20ακινήτων%20του%20πακέτου`}>Επικοινώνησε μαζί μας</Btn>
+        </>}>
           {/* Η ΕΠΕΞΗΓΗΣΗ ΤΟΥ ΤΑΒΑΝΙΟΥ ΕΠΙΑΝΕ ΤΕΣΣΕΡΙΣ ΓΡΑΜΜΕΣ ΜΕ ΡΙΓΜΕΝΗ ΑΚΡΗ.
               Το κουτί είναι 452 εικονοστοιχεία (520 πλάτος μείον 2×34 γέμισμα),
               δηλαδή μέτρο ~64 χαρακτήρων στα 14 — μέσα στο εύρος 60-80 όπου η
               πλήρης στοίχιση κλείνει τα κενά αντί να τα τεντώσει. Η στοίχιση μπαίνει
               στο στοιχείο που κρατά το κείμενο, τα σημεία τομής στο ίδιο το
               κείμενο· η διεύθυνση αλληλογραφίας είναι λατινική, ο συλλαβισμός δεν την αγγίζει. */}
-          <p className="po-just" style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0 0 20px', lineHeight: 1.6 }}>
+          <p className="po-just" style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
             {/* Χωρίς «στήνουμε πακέτο στα μέτρα σου» και «απαντάμε την ίδια ημέρα»:
                 κανένα από τα δύο δεν το εγγυάται κάτι πίσω από την οθόνη. */}
             {hy(<>Το πακέτο «{PLANS[paidPlanForProfile('professional')].name}» καλύπτει έως {PLANS[paidPlanForProfile('professional')].maxProperties} ακίνητα και τα έχεις ήδη συμπληρώσει.
             Για περισσότερα, γράψε μας στο <strong style={{ color: 'var(--text-primary)' }}>{IDENTITY.supportEmail}</strong>.</>)}
           </p>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-            <Btn size="lg" onClick={onClose}>Κλείσιμο</Btn>
-            {/* Ο προορισμός είναι mailto, άρα μένει σύνδεσμος — το `href` του Btn του δίνει την ίδια όψη με το ζευγάρι του χωρίς να γίνει κουμπί. */}
-            <Btn variant="primary" size="lg" href={`mailto:${IDENTITY.supportEmail}?subject=Χαρτοφυλάκιο%20άνω%20των%20ακινήτων%20του%20πακέτου`}>Επικοινώνησε μαζί μας</Btn>
-          </div>
-        </div>
-      </div>
+      </Modal>
     );
   }
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      className="md-scrim" style={{ fontFamily: T.font.sans }}>
-      <div style={{ background: 'var(--bg-surface)', borderRadius: T.radius.modal, width: '100%', maxWidth: 720, maxHeight: 'calc(100vh - 48px)', overflow: 'auto', boxShadow: 'var(--shadow-xl)', padding: 'clamp(24px, 3vw, 34px)' }}>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 8 }}>
-          <div>
-            <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: '0 0 6px' }}>Χρειάζεσαι λίγο περισσότερο χώρο</h2>
-            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.55 }}>
-              Το πακέτο σου ({PLANS[current].name}) καλύπτει {PLANS[current].maxProperties === Infinity ? 'απεριόριστα' : PLANS[current].maxProperties} {PLANS[current].maxProperties === 1 ? 'ακίνητο' : 'ακίνητα'}.{' '}
-              Για να προσθέσεις κι άλλο, διάλεξε ένα πακέτο που σου ταιριάζει. Χωρίς δέσμευση, ακυρώνεις όποτε θέλεις.
-            </p>
-          </div>
-          <CloseButton onClose={onClose} />
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12, margin: '22px 0 20px' }}>
+    <Modal open onClose={onClose} size="lg" title="Χρειάζεσαι λίγο περισσότερο χώρο"
+      subtitle={<>
+        Το πακέτο σου ({PLANS[current].name}) καλύπτει {PLANS[current].maxProperties === Infinity ? 'απεριόριστα' : PLANS[current].maxProperties} {PLANS[current].maxProperties === 1 ? 'ακίνητο' : 'ακίνητα'}.{' '}
+        Για να προσθέσεις κι άλλο, διάλεξε ένα πακέτο που σου ταιριάζει. Χωρίς δέσμευση, ακυρώνεις όποτε θέλεις.
+      </>}
+      footer={<>
+        <Btn onClick={onClose}>Όχι τώρα</Btn>
+        <Btn variant="primary" onClick={onManage}>Δες τα πακέτα και αναβάθμισε</Btn>
+      </>}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12, paddingTop: 10, fontFamily: T.font.sans }}>
           {PLAN_ORDER.map(id => {
             const p = PLANS[id as PlanId];
             const isRec = id === recommended;
@@ -122,12 +117,6 @@ export default function UpgradeModal({ currentCount, planId, onClose, onManage }
             );
           })}
         </div>
-
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <Btn size="lg" onClick={onClose}>Όχι τώρα</Btn>
-          <Btn variant="primary" size="lg" onClick={onManage}>Δες τα πακέτα και αναβάθμισε</Btn>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

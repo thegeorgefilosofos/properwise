@@ -35,7 +35,7 @@ import InboundAddress from './InboundAddress';
 import CalendarFeedRow from './CalendarFeedRow';
 import ActivityLog from './ActivityLog';
 import OrgTeam from './OrgTeam';
-import { exportAllData } from '@/lib/dataExport';
+import { exportAllData, FILES_NOT_IN_EXPORT } from '@/lib/dataExport';
 import * as accountantLink from '@/lib/data/accountantLink';
 import { confirmDialog } from '@/components/confirmBus';
 import { PLANS, PLAN_ORDER, normalizePlan, type PlanId } from '@/lib/billing/plans';
@@ -333,7 +333,7 @@ function DeleteAccount() {
 
   return (
     <SetRow title="Διαγραφή λογαριασμού"
-      desc="Διαγράφει οριστικά τον λογαριασμό και όλα τα δεδομένα σου: ακίνητα, ενοικιαστές, πελάτες, δαπάνες, λογαριασμούς, έγγραφα και αρχεία. Η ενέργεια δεν αναιρείται. Αν θέλεις αντίγραφο, προηγείται η εξαγωγή δεδομένων παραπάνω.">
+      desc={`Διαγράφει οριστικά τον λογαριασμό και όλα τα δεδομένα σου: ακίνητα, ενοικιαστές, πελάτες, δαπάνες, λογαριασμούς, έγγραφα και αρχεία. Η ενέργεια δεν αναιρείται. Αν θέλεις αντίγραφο, κάνε πρώτα την εξαγωγή δεδομένων παραπάνω. ${FILES_NOT_IN_EXPORT}`}>
       {has2fa && !leftover && (
         // Μόνο για όποιον έχει δεύτερο παράγοντα: η διαγραφή θα τον ζητήσει,
         // οπότε ας μην τον ξαφνιάσει τη στιγμή της οριστικής πράξης.
@@ -1040,7 +1040,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
               ΜΕΣΑ, το ημερολόγιο βγάζει τις προθεσμίες ΕΞΩ, εκεί που ο
               ιδιοκτήτης κοιτάζει ήδη κάθε μέρα. */}
           <CalendarFeedRow userId={userId} />
-          <SetRow title="Εξαγωγή όλων των δεδομένων" desc="Κάθε εγγραφή που σε αφορά, σε ένα αρχείο JSON: η μορφή που ζητά το δικαίωμα φορητότητας, για μεταφορά σε άλλη υπηρεσία. Για ανάγνωση, κάθε καρτέλα έχει δική της εξαγωγή Excel."
+          <SetRow title="Εξαγωγή όλων των δεδομένων" desc={`Κάθε εγγραφή που σε αφορά, σε ένα αρχείο JSON: η μορφή που ζητά το δικαίωμα φορητότητας, για μεταφορά σε άλλη υπηρεσία. ${FILES_NOT_IN_EXPORT} Για ανάγνωση, κάθε καρτέλα έχει δική της εξαγωγή Excel.`}
             control={<Btn variant="secondary" onClick={exportAll} disabled={exporting}>{exporting ? 'Εξαγωγή…' : 'Εξαγωγή όλων'}</Btn>}>
             {exportErr && <div style={{ ...TT.bodySm, color: 'var(--negative)' }}>{exportErr}</div>}
             {exportOk && <div style={{ ...TT.bodySm }}>{exportOk}</div>}

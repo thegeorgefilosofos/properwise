@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as expenses from '@/lib/data/expenses';
 import * as billStore from '@/lib/data/bills';
@@ -13,6 +13,7 @@ import { confirmDialog } from '@/components/ConfirmDialog';
 import { CustomSelect, TextInput, DatePicker, Textarea, NumberInput } from './UIComponents';
 import { downloadTableXlsx } from './exportCsv';
 import { saved } from '@/components/dbWrite';
+import { createKeptStore, hasUnsaved, isWorking } from './keptDrafts';
 import { notifyError } from '@/components/Toast';
 import { money } from './sheetFormat';
 import { useAppPreferences } from './useAppPreferences';
@@ -271,6 +272,10 @@ function BulkBtn({ icon, label, onClick, disabled }: { icon: React.ReactNode; la
   return <Btn variant="secondary" onClick={onClick} disabled={disabled}>{icon}{label}</Btn>;
 }
 
+// Τα προσχέδια σάρωσης ανά ακίνητο, έξω από την καρτέλα (βλ. keptDrafts.ts).
+const draftStore = createKeptStore<Draft>();
+const NO_DRAFTS: Draft[] = [];
+
 // ΤΟ `profileType` ΕΦΥΓΕ ΑΠΟ ΤΗΝ ΥΠΟΓΡΑΦΗ. Το ταμπλό το περνούσε σε κάθε
 // απόδοση και εδώ δεν το διάβαζε τίποτα: το Αρχείο εγγράφων δεν κλειδώνει
 // τίποτα ανά προφίλ. Μια παράμετρος που δεν διαβάζεται δεν είναι αθώα — λέει
@@ -320,17 +325,35 @@ export default function TabDocuments({
   const [renameItem, setRenameItem] = useState<Item | null>(null);   // ανοιχτό modal μετονομασίας
 
   // Σάρωση → επιβεβαίωση → καταχώρηση. Καμία χειροκίνητη φόρμα, κανένας διακόπτης.
-  const [showUpload, setShowUpload] = useState(false);
+  // Ανοιχτή από την αρχή όταν περιμένουν προσχέδια από προηγούμενη επίσκεψη.
+  const [showUpload, setShowUpload] = useState(() => draftStore.get(propertyId).length > 0);
   // ΤΟ `uploadMin` ΕΦΥΓΕ. Ηταν ΤΡΙΤΗ κατάσταση της ίδιας κάρτας —ανοιχτή,
   // ελαχιστοποιημένη, κλειστή— και το «×» οδηγούσε στη μεσαία: ο χρήστης
   // πατούσε το σύμβολο που παντού σημαίνει «κλείσε» και έμενε με μια κεφαλίδα
   // πάνω από ένα άδειο κουτί, χωρίς κείμενο, χωρίς περιεχόμενο, να πιάνει
   // ύψος και να μη λέει τίποτα. Δύο καταστάσεις αρκούν και το «×» κάνει αυτό
   // που δηλώνει.
-  const [busy, setBusy] = useState(false);             // σάρωση ή καταχώρηση σε εξέλιξη
+  const [busyHere, setBusy] = useState(false);         // σάρωση ή καταχώρηση σε εξέλιξη
   const [msg, setMsg] = useState<{ text: string; error?: boolean } | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [drafts, setDrafts] = useState<Draft[]>([]);
+  // ΣΤΟ ΚΑΤΑΣΤΗΜΑ, ΟΧΙ ΣΕ useState: η καρτέλα ξαναστήνεται σε κάθε αλλαγή
+  // καρτέλας ή ακινήτου και οι σαρώσεις είναι ήδη πληρωμένες.
+  const drafts = useSyncExternalStore(
+    useCallback((cb: () => void) => draftStore.subscribe(propertyId, cb), [propertyId]),
+    () => draftStore.get(propertyId),
+    () => NO_DRAFTS,
+  );
+  const setDrafts = useCallback((next: Draft[] | ((prev: Draft[]) => Draft[])) => draftStore.set(propertyId, next), [propertyId]);
+  // Το τοπικό `busy` χάνεται με την καρτέλα· η σάρωση που τρέχει ακόμη όχι.
+  const busy = busyHere || isWorking(drafts);
+  const unsaved = hasUnsaved(drafts);
+  // Η ανανέωση ή το κλείσιμο της σελίδας σβήνει τη μνήμη: ρωτά ο περιηγητής.
+  useEffect(() => {
+    if (!unsaved) return;
+    const stop = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', stop);
+    return () => window.removeEventListener('beforeunload', stop);
+  }, [unsaved]);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
 
@@ -541,7 +564,10 @@ export default function TabDocuments({
         continue;
       }
       patch(d.id, { status: 'scanning' });
-      const r = await scanFile(d.file);
+      let r: Awaited<ReturnType<typeof scanFile>>;
+      try { r = await scanFile(d.file); } catch { patch(d.id, { status: 'failed', scanError: 'unreadable' }); continue; }
+      // Το σφάλμα που πετιέται δεν αφήνει προσχέδιο «σε εξέλιξη» για πάντα:
+      // τα προσχέδια ζουν πια πέρα από την καρτέλα και θα κλείδωναν τα κουμπιά.
       if (r.kind === 'photo' && r.photo) {
         patch(d.id, { status: 'ready', kind: 'photo', category: r.photo.category, photoTitle: r.photo.title || '', open: !r.photo.title });
       } else if (r.error === 'format') {
@@ -571,7 +597,8 @@ export default function TabDocuments({
     const plan = d.doc ? planDocSave(d.doc, athensToday()).archive : undefined;
     const r = await archiveScannedFile(plan
       ? archiveInputFrom({ ...plan, category: d.category }, d.file, propertyId, userId, plan.title || d.doc?.provider)
-      : { file: d.file, propertyId, userId, kind: d.kind, category: d.category, title: (d.photoTitle || '').trim() || d.file.name });
+      : { file: d.file, propertyId, userId, kind: d.kind, category: d.category, title: (d.photoTitle || '').trim() || d.file.name })
+      .catch(() => ({ ok: false as const }));
     patch(d.id, r.ok
       ? { status: 'saved', saved: [navLabel('documents')], open: false, ask: undefined, duplicate: undefined }
       : { status: 'error', errorText: 'Δεν αποθηκεύτηκε. Δοκίμασε ξανά.' });
@@ -584,9 +611,15 @@ export default function TabDocuments({
   const commitDraft = async (d: Draft, next: CommitAnswers = {}) => {
     if (d.kind === 'photo' || !d.doc) return archiveOnly(d);
     patch(d.id, { status: 'saving', errorText: undefined });
-    const r = await commitScannedDoc({
-      doc: d.doc, file: d.file, propertyId, userId, archiveCategory: d.category, ...next,
-    });
+    let r: Awaited<ReturnType<typeof commitScannedDoc>>;
+    try {
+      r = await commitScannedDoc({
+        doc: d.doc, file: d.file, propertyId, userId, archiveCategory: d.category, ...next,
+      });
+    } catch {
+      patch(d.id, { status: 'error', errorText: 'Δεν αποθηκεύτηκε. Δοκίμασε ξανά.' });
+      return false;
+    }
     // Ερώτηση ή πιθανή διπλοεγγραφή: τίποτα δεν γράφτηκε, ρωτάμε. ΔΕΝ είναι
     // αποτυχία και δεν λέγεται «δοκίμασε ξανά».
     const q = openQuestion(r);
@@ -653,13 +686,23 @@ export default function TabDocuments({
   // στοιχεία (Έξοδα/Λογαριασμοί/Απογραφή) διαχειρίζονται στην πηγή τους.
   // Η άμυνα για στήλη που δεν υπάρχει ακόμη στη βάση ζει στο στρώμα, μαζί με τη
   // λίστα των προαιρετικών στηλών — ήταν γραμμένη εδώ και άλλες τρεις φορές αλλού.
-  const updateDocs = async (its: Item[], p: Record<string, unknown>) => {
-    await documents.update(supabase, its.filter(i => i.raw).map(i => i.raw!.id), p);
-    fetchAll();
+  // ΤΟ ΣΦΑΛΜΑ ΔΕΝ ΚΑΤΑΠΙΝΕΤΑΙ. Η απάντηση της βάσης αγνοούνταν και το παράθυρο
+  // έκλεινε σαν να έγινε η αλλαγή· ο χρήστης έβλεπε τον παλιό τίτλο χωρίς
+  // εξήγηση. Τώρα λέγεται και το παράθυρο μένει ανοιχτό με ό,τι έγραψε.
+  const updateDocs = async (its: Item[], p: Record<string, unknown>): Promise<boolean> => {
+    const ok = await saved('Η αλλαγή δεν αποθηκεύτηκε', documents.update(supabase, its.filter(i => i.raw).map(i => i.raw!.id), p));
+    if (ok) fetchAll();
+    return ok;
   };
   // Το σήμα του συνόλου ΕΝΦΙΑ φεύγει όταν ο τίτλος αλλάξει έτος (renamePatch).
-  const applyRename = async (title: string) => { if (renameItem && title.trim()) await updateDocs([renameItem], renamePatch(renameItem.raw?.title, title, renameItem.raw?.statement_total)); setRenameItem(null); };
-  const applyFix = async (p: Record<string, unknown>) => { if (fixItems?.length) await updateDocs(fixItems, p); setFixItems(null); setSelected(new Set()); };
+  const applyRename = async (title: string) => {
+    if (!renameItem || !title.trim()) { setRenameItem(null); return; }
+    if (await updateDocs([renameItem], renamePatch(renameItem.raw?.title, title, renameItem.raw?.statement_total))) setRenameItem(null);
+  };
+  const applyFix = async (p: Record<string, unknown>) => {
+    if (fixItems?.length && !await updateDocs(fixItems, p)) return;
+    setFixItems(null); setSelected(new Set());
+  };
 
   const toggleSel = (id: string) => setSelected(p => { return toggleIn(p, id); });
   const selItems = useMemo(() => items.filter(i => selected.has(i.id)), [items, selected]);
