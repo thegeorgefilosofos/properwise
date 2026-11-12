@@ -75,7 +75,7 @@ export default function Dashboard() {
     statusDropdown, setStatusDropdown, editProperty, setEditProperty, editFocus, setEditFocus, sidebarOpen, setSidebarOpen,
     announce, setAnnounce, cmdkOpen, setCmdkOpen, quickAddOpen, setQuickAddOpen, manualExpense,
     setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
-    scanAfterAdd, setScanAfterAdd, plan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
+    scanAfterAdd, setScanAfterAdd, plan, planVersion, refreshPlan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
     setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, openWizard, updateStatus, deleteProperty,
@@ -834,7 +834,7 @@ export default function Dashboard() {
                 </>
               )}
               {nav==='referral'  && <TabReferral userId={user.id} plan={plan} profileType={effProfileType}/>}
-              {nav==='settings'  && <TabSettings key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} declaredType={profileType} onProfileChange={setProfileType} releaseFrom={effPlan}/>}
+              {nav==='settings'  && <TabSettings key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} declaredType={profileType} onProfileChange={setProfileType} releaseFrom={effPlan} onPlanChanged={refreshPlan} planVersion={planVersion}/>}
             </div>
             </TabBoundary>
           </>

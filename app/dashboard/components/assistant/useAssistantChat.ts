@@ -17,6 +17,7 @@ import {
 import { fe } from '@/components/Theme'
 import { NAV_MAP, buildPersonalPrompt, parseAction, cleanForSpeech, addMemory } from '../assistantPersona'
 import { assistantLockedMessage } from '@/lib/billing/aiLimits'
+import { classifyChatError } from '@/lib/assistant/chatError'
 import { modelFor } from '@/lib/assistant/model'
 import { numberMatchLine } from '@/lib/assistant/roster'
 import { scanFile, scanContentPart, MAX_SCAN_MB } from '../scanDoc'
@@ -203,14 +204,13 @@ export function useAssistantChat({
       readQuota(res);
       const data = await res.json();
       if (!res.ok) {
-        if (res.status === 429) { setLimitMsg(String(data?.error || '')); setErr('limit'); }
-        else if (String(data?.error || '').includes('ANTHROPIC_API_KEY')) setErr('key');
-        else {
-          // 400/413: ο διακομιστής λέει ΤΙ να αλλάξει ο χρήστης· το γενικό
-          // «δοκίμασε ξανά» θα τον έβαζε να ξαναστείλει το ίδιο πράγμα.
-          setErrDetail(res.status === 400 || res.status === 413 ? String(data?.error || '') : '');
-          setErr('service');
-        }
+        // Η ΕΠΙΛΟΓΗ ΖΕΙ ΣΤΟ lib/assistant/chatError.ts. Το 403 του πακέτου
+        // («η Νόα δεν περιλαμβάνεται») έπεφτε εδώ στη «βλάβη» και ο χρήστης
+        // διάβαζε «δοκίμασε ξανά σε λίγο» για κάτι που δεν αλλάζει με αναμονή.
+        const e = classifyChatError(res.status, data);
+        if (e.kind === 'limit' || e.kind === 'plan') setLimitMsg(e.message);
+        else setErrDetail(e.message);
+        setErr(e.kind);
         // Η ΕΡΩΤΗΣΗ ΓΥΡΝΑ ΣΤΟ ΠΕΔΙΟ. Το συννεφάκι φεύγει, οι λέξεις του χρήστη όχι.
         setMsgs(m => m.slice(0, -1)); setInput(q);
         return;
