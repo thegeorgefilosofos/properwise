@@ -346,7 +346,7 @@ function StepBody({ rows, place, after, moreTitle = 'Περισσότερα', le
   );
 }
 
-export default function AddPropertyWizard({ userId, onClose, onSaved, existing, focus, initial, onBulkImport }: {
+export default function AddPropertyWizard({ userId, onClose, onSaved, existing, focus, initial, onBulkImport, hasProperties = false }: {
   userId: string; onClose: () => void; onSaved: (propertyId: string | null) => void; existing?: ExistingProperty | null;
   /**
    * Ο,ΤΙ ΕΓΡΑΨΕ ΗΔΗ Ο ΕΠΙΣΚΕΠΤΗΣ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ ΕΝΦΙΑ (lib/tools/enfiaCarry.ts):
@@ -362,11 +362,14 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
    */
   focus?: 'owner_afm' | null;
   /**
-   * Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΩΣ ΠΡΩΤΗ ΕΠΙΛΟΓΗ (απόφαση ιδιοκτήτη 09/11/2026). Το
-   * δίνει ο πίνακας μόνο όταν ο χρήστης δεν έχει κανένα ακίνητο: η κάρτα στέκει
-   * πάνω από τον τύπο ακινήτου και ανοίγει την εισαγωγή από Ε9 ή πράξη ΕΝΦΙΑ.
+   * Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΩΣ ΠΡΩΤΗ ΕΠΙΛΟΓΗ. Ο πίνακας τη δίνει σε ΚΑΘΕ νέα
+   * καταχώρηση, με ή χωρίς ακίνητα (απόφαση ιδιοκτήτη 10/11/2026· ως τις
+   * 09/11 μόνο χωρίς κανένα). Η κάρτα στέκει πάνω από τον τύπο ακινήτου και
+   * ανοίγει την εισαγωγή από Ε9 ή πράξη ΕΝΦΙΑ. Στην επεξεργασία δεν φαίνεται.
    */
   onBulkImport?: () => void;
+  /** Ο χρήστης έχει ήδη ακίνητα: η κάρτα λέει πώς τα βρίσκει η εισαγωγή. */
+  hasProperties?: boolean;
 }) {
   const supabase = createClient();
   const isEdit = !!existing?.id;
@@ -923,7 +926,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
       {/* STEP 1, Τύπος & Κατάσταση */}
       {step === 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {!isEdit && onBulkImport && <BulkImportCard onStart={onBulkImport} />}
+          {!isEdit && onBulkImport && <BulkImportCard onStart={onBulkImport} hasProperties={hasProperties} />}
           <div>
             <div id={typeGroupId} style={labelStyle}>Τύπος ακινήτου</div>
             {/* ΟΛΑ ΤΑ ΠΛΑΚΙΔΙΑ ΙΣΑ ΚΑΙ ΟΤΑΝ ΤΟ ΟΝΟΜΑ ΠΙΑΝΕΙ ΔΥΟ ΣΕΙΡΕΣ.

@@ -30,6 +30,10 @@ import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
 import { toolBreadcrumb } from '../toolSeo';
 import { ShortVsLongCalculator } from './ShortVsLongCalculator';
+import { REGULATORY_UPDATES_2026 } from '@/lib/accounting/updates2026';
+
+// Ο κανόνας ΑΜΑ διαβάζεται εδώ στον server και περνά στον υπολογιστή ως δεδομένα.
+const AMA_RULE = REGULATORY_UPDATES_2026.find(u => u.id === 'ama-red-zones');
 import { PAGE_UPDATED, limitsChecked } from '../pageUpdated';
 
 // Τίτλος ≤60 και περιγραφή ≤160 χαρακτήρες: ό,τι περισσεύει κόβεται στα
@@ -149,7 +153,7 @@ export default function Page() {
             αυτό, ολόκληρη η σελίδα θα έβγαινε από τη στατική απόδοση και θα
             έχανε το SEO για το οποίο υπάρχει. */}
         <Suspense fallback={<div style={{ minHeight: 480 }} aria-hidden/>}>
-          <ShortVsLongCalculator today={athensToday()} cta={
+          <ShortVsLongCalculator today={athensToday()} amaRule={AMA_RULE} cta={
             <ToolCta
               title="Όποια κι αν διαλέξεις, τα έξοδα θέλουν τάξη."
               body="Το PROPERWISE κρατά ενοίκια, λογαριασμούς και δαπάνες ανά ακίνητο και ετοιμάζει τα στοιχεία του Ε2 για τον λογιστή σου."

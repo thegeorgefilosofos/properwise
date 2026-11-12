@@ -149,7 +149,7 @@ async function main() {
   const HERE = dirname(fileURLToPath(import.meta.url));
   const ROUTE = readFileSync(join(HERE, '..', '..', 'app', 'api', 'inbound', 'route.ts'), 'utf8');
 
-  ok(/import \{ supportRecipientKind \} from '@\/lib\/inbound\/support'/.test(ROUTE),
+  ok(/import \{ supportRecipientKind(, [\w, ]+)? \} from '@\/lib\/inbound\/support'/.test(ROUTE),
     'η διαδρομή εισάγει το supportRecipientKind');
   ok(/import \{ handleReplyAck \} from '@\/lib\/inbound\/replyAck'/.test(ROUTE),
     'η διαδρομή εισάγει το handleReplyAck');

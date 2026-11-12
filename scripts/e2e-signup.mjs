@@ -118,6 +118,107 @@ for (const [name, ua, android] of [['Android', IG, true], ['iPhone', 'Mozilla/5.
   await ctx.close();
 }
 
+// ── Ο ΑΝΩΝΥΜΟΣ ΕΠΙΣΚΕΠΤΗΣ: ΧΩΡΙΣ ΣΥΝΕΔΡΙΑ, Ο ΠΕΛΑΤΗΣ ΔΕΝ ΦΟΡΤΩΝΕΙ ─────────────
+// Το `mayHaveSession()` απαντά «όχι» (lib/supabase/lazy.ts) και το effect της
+// σελίδας βγαίνει νωρίς. Ό,τι η σελίδα έκανε ΧΩΡΙΣ χρήστη πρέπει να γίνεται
+// ακόμη: εδώ ελέγχεται ότι η πρόωρη έξοδος δεν έφαγε τίποτα (12/11/2026).
+{
+  const PAGE_LOGIN = resolve('.e2e-signup/login.html');
+  const anon = async (file, search = '') => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await ctx.addInitScript(() => { window.__mayHaveSession = false; });
+    const p = await ctx.newPage();
+    await p.goto(pathToFileURL(file).href + search);
+    return { ctx, p };
+  };
+
+  // Ο ΣΥΝΔΕΣΜΟΣ ΕΠΙΒΕΒΑΙΩΣΗΣ ΑΠΟ ΑΛΛΗ ΣΥΣΚΕΥΗ. Το app/auth/callback στέλνει
+  // στο /login?confirm=failed ΧΩΡΙΣ cookie συνεδρίας: ακριβώς η περίπτωση
+  // όπου το effect βγαίνει νωρίς. Το μήνυμα και το κουμπί επαναποστολής
+  // χάνονταν (εύρημα του ελέγχου του #534).
+  {
+    const { ctx, p } = await anon(PAGE_LOGIN, '?confirm=failed');
+    await p.waitForSelector('#root form, #root input', { timeout: 6000 });
+    const said = await p.getByText('άλλη συσκευή', { exact: false }).first().waitFor({ timeout: 4000 }).then(() => true).catch(() => false);
+    check('ανώνυμος, ?confirm=failed: λέγεται τι πήγε στραβά', said);
+    const resend = await p.getByRole('button', { name: 'Ξαναστείλε το email επιβεβαίωσης' }).count();
+    check('ανώνυμος, ?confirm=failed: το κουμπί επαναποστολής εμφανίζεται', resend === 1, `κουμπιά=${resend}`);
+    check('ανώνυμος, ?confirm=failed: ο πελάτης δεν ρωτήθηκε', await p.evaluate(() => window.__getUser ?? 0) === 0);
+    await ctx.close();
+  }
+  // Η απλή σύνδεση χωρίς παράμετρο: καμία ειδοποίηση, καμία ερώτηση.
+  {
+    const { ctx, p } = await anon(PAGE_LOGIN);
+    await p.waitForSelector('#root input', { timeout: 6000 });
+    await p.waitForTimeout(300);
+    check('ανώνυμος, /login: κανένα μήνυμα σφάλματος', await p.locator('[role="alert"]').count() === 0);
+    check('ανώνυμος, /login: κανένα κουμπί επαναποστολής', await p.getByRole('button', { name: 'Ξαναστείλε το email επιβεβαίωσης' }).count() === 0);
+    check('ανώνυμος, /login: ο πελάτης δεν ρωτήθηκε', await p.evaluate(() => window.__getUser ?? 0) === 0);
+    await ctx.close();
+  }
+  // Η εγγραφή του ανώνυμου: ίδια φόρμα, ίδια υποβολή, χωρίς ερώτηση συνεδρίας.
+  {
+    const { ctx, p } = await anon(PAGE);
+    await p.waitForSelector('#su-consent');
+    await p.locator('#su-email').fill('anonymos@properwise.gr');
+    await p.locator('#su-password').fill('Dokimastis2026!');
+    await p.locator('#su-consent').check();
+    await p.locator('form button[type="submit"]').click();
+    const sent = await p.waitForSelector('text=Άνοιξε το email σου', { timeout: 6000 }).then(() => true).catch(() => false);
+    check('ανώνυμος, /signup: η εγγραφή ολοκληρώνεται', sent);
+    check('ανώνυμος, /signup: ο πελάτης δεν ρωτήθηκε για συνεδρία', await p.evaluate(() => window.__getUser ?? 0) === 0);
+    await ctx.close();
+  }
+}
+// ── Η ΠΥΛΗ ΔΙΑΡΡΟΗΣ ΣΤΗΝ ΥΠΟΒΟΛΗ (10/11/2026) ───────────────────────────────
+// Ψεύτικη υπηρεσία Have I Been Pwned: απαντά μετά από 700 ms, δηλαδή η
+// υποβολή περιμένει. Σε αυτό το παράθυρο: δεύτερο πάτημα δεν δίνει δεύτερη
+// εγγραφή, το πεδίο του κωδικού δεν αλλάζει· ο διαρρεύσας κωδικός που
+// επικολλήθηκε και υποβλήθηκε ΑΜΕΣΩΣ απορρίπτεται.
+{
+  const { createHash } = await import('node:crypto');
+  const LEAKED = 'Kalokairi2024!x';
+  const sha = createHash('sha1').update(LEAKED).digest('hex').toUpperCase();
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const gate = await ctx.newPage();
+  const prefixes = [];
+  await gate.route('https://api.pwnedpasswords.com/range/*', async route => {
+    const prefix = route.request().url().split('/range/')[1];
+    prefixes.push(prefix);
+    await new Promise(r => setTimeout(r, 700));
+    const body = prefix === sha.slice(0, 5) ? `${sha.slice(5)}:42\r\n0000000000000000000000000000000000A:0` : '0000000000000000000000000000000000A:0';
+    await route.fulfill({ status: 200, body, contentType: 'text/plain' });
+  });
+  await gate.goto(pathToFileURL(PAGE).href);
+  await gate.waitForSelector('#su-consent');
+  const sub = () => gate.locator('form button[type="submit"]');
+  const pw = gate.locator('#su-password');
+
+  await gate.locator('#su-email').fill('diplo@properwise.gr');
+  await pw.fill('Dokimastis2026!');
+  await gate.locator('#su-consent').check();
+  // Δύο υποβολές ΣΤΟ ΙΔΙΟ tick: το React δεν έχει προλάβει να αποδώσει το
+  // `loading` της πρώτης. Δύο κλικ του Playwright δεν το δείχνουν, γιατί
+  // ανάμεσά τους μεσολαβεί απόδοση· ένα γρήγορο διπλό πάτημα σε αργό κινητό ναι.
+  await gate.evaluate(() => { const f = document.querySelector('form'); f.requestSubmit(); f.requestSubmit(); });
+  const locked = await pw.evaluate(el => el.readOnly);
+  check('πύλη: όσο ρωτά η υποβολή, το πεδίο του κωδικού δεν αλλάζει', locked === true);
+  await gate.waitForSelector('text=Άνοιξε το email σου', { timeout: 6000 });
+  check('πύλη: δύο πατήματα, μία εγγραφή', await gate.evaluate(() => window.__signups) === 1,
+    `signUp=${await gate.evaluate(() => window.__signups)}`);
+
+  await gate.getByRole('button', { name: 'Γράψε άλλη' }).click();
+  await gate.waitForSelector('#su-consent');
+  // Επικόλληση και ΑΜΕΣΗ υποβολή: ο έλεγχος του πεδίου δεν προλαβαίνει.
+  await pw.fill(LEAKED);
+  await sub().click();
+  const refused = await gate.getByText('διαρροή').first().waitFor({ timeout: 6000 }).then(() => true).catch(() => false);
+  check('πύλη: διαρρεύσας κωδικός που υποβλήθηκε αμέσως απορρίπτεται', refused);
+  check('πύλη: και δεν έγινε δεύτερη εγγραφή', await gate.evaluate(() => window.__signups) === 1);
+  check('πύλη: έφυγαν μόνο πεντάψηφα προθέματα', prefixes.length > 0 && prefixes.every(x => /^[0-9A-F]{5}$/.test(x)), prefixes.join(','));
+  await ctx.close();
+}
+
 await browser.close();
 
 if (fails.length) {

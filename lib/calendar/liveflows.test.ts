@@ -15,7 +15,7 @@ const fails: string[] = []
 const ok = (name: string, cond: boolean) => { if (cond) passed++; else { failed++; if (fails.length < 80) fails.push(name) } }
 
 // ══ (Α) AUTO-MARK-PAID, end-to-end με τον πραγματικό expandRecurring ═══════════
-type RD = Recurrable & { recurring: boolean; recurring_interval: string }
+type RD = Recurrable & { recurring: boolean; recurring_interval: string; recurrence_exdates: string[] }
 const rentDue: RD = { id: 'rd', event_date: '2026-01-05', recurring: true, recurring_interval: 'monthly', recurrence_exdates: [] }
 const occs = (ev: RD) => expandRecurring([ev], '2026-01-01', '2026-12-31').map(e => e.event_date).sort()
 

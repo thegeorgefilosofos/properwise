@@ -32,8 +32,11 @@ import { verifySignature, SECRET_ENV } from '@/lib/inbound/signature';
 import { readReceivedEvent } from '@/lib/inbound/event';
 import { tokenFromRecipients, INBOUND_DOMAIN, DOMAIN_ENV } from '@/lib/inbound/address';
 import { fetchBody, KEY_ENV } from '@/lib/inbound/fetchBody';
-import { supportRecipientKind } from '@/lib/inbound/support';
+import { supportRecipientKind, senderAddress, isAutomatedSender } from '@/lib/inbound/support';
 import { handleReplyAck } from '@/lib/inbound/replyAck';
+import { supportPriority, forwardSubject } from '@/lib/inbound/priority';
+import { forwardOne, type ClaimedRow } from '@/lib/support/forwarder';
+import { forwardDeps } from '@/lib/support/forwardDeps';
 import { MAIL_DOMAIN } from '@/lib/legal/identity';
 import { parseInbound } from '@/lib/inbound/parse';
 import * as inbound from '@/lib/data/inbound';
@@ -108,6 +111,58 @@ export async function POST(request: Request) {
   const db = createServiceClient();
 
   if (!token) {
+    // ΠΡΟΤΕΡΑΙΟΤΗΤΑ ΣΤΗΝ ΥΠΟΣΤΗΡΙΞΗ (Όροι, «Υποστήριξη»), ΩΣ ΥΠΟΨΙΑ. Το From δεν
+    // επαληθεύεται (lib/inbound/priority.ts): το πακέτο του σημαδεύει το μήνυμα
+    // «πιθανή προτεραιότητα, μη επαληθευμένη» και η επιβεβαίωση δεν λέει τίποτα.
+    const sender = senderAddress(event.from);
+    const { data: rankData, error: rankError } = await db.rpc('support_rank_for_email', { p_email: sender });
+    if (rankError) log('το επίπεδο του αποστολέα δεν διαβάστηκε:', rankError.message);
+    const priority = supportPriority(typeof rankData === 'number' ? rankData : 0);
+
+    // ΠΡΩΤΑ Η ΓΡΑΜΜΗ, ΜΕ ΤΟ ΑΚΡΙΒΕΣ ΣΩΜΑ ΠΟΥ ΘΑ ΣΤΑΛΕΙ. Αν δεν γραφτεί, 5xx: ο
+    // πάροχος ξαναστέλνει το γεγονός και το μήνυμα δεν χάνεται σιωπηλά.
+    const automated = isAutomatedSender(event.from);
+    const { error: inboxError } = await db.from('support_inbox').upsert({
+      provider_id: event.emailId, from_email: sender, subject: event.subject,
+      kind: kind ?? 'support', plan_rank: priority.rank,
+      priority_claimed: priority.claimed, sender_verified: false,
+      forward_subject: forwardSubject(event.subject, priority), reply_to: event.from,
+      forward_state: automated ? 'skipped' : 'pending',
+    }, { onConflict: 'provider_id', ignoreDuplicates: true });
+    if (inboxError) {
+      log('η καταγραφή στο support_inbox απέτυχε:', codeOf(inboxError));
+      void reportRoute('api/inbound', 'support inbox write failed', { status: 500, code: codeOf(inboxError) });
+      return NextResponse.json({ error: 'write_failed' }, { status: 500 });
+    }
+
+    // ΜΙΑ ΠΡΟΣΠΑΘΕΙΑ ΤΩΡΑ, ΑΝ Η ΓΡΑΜΜΗ ΕΙΝΑΙ ΔΙΚΗ ΜΑΣ. Ο,τι δεν φύγει το
+    // ξαναπιάνει το cron (app/api/support/forward) κάθε 10 λεπτά, ως 7 ημέρες.
+    if (!automated) {
+      const { data: claimed, error: claimError } = await db.rpc('support_forward_claim', { p_limit: 1, p_provider_id: event.emailId });
+      if (claimError) {
+        log('η δέσμευση της προώθησης απέτυχε:', codeOf(claimError));
+        void reportRoute('api/inbound', 'support forward claim failed', { status: 500, code: codeOf(claimError) });
+        return NextResponse.json({ error: 'write_failed' }, { status: 500 });
+      }
+      const rows = (claimed ?? []) as ClaimedRow[];
+      if (rows.length) {
+        try {
+          const { state, result } = await forwardOne(rows[0], forwardDeps(db));
+          if (!result.ok) {
+            log('η προώθηση δεν έγινε τώρα:', result.code);
+            if (result.kind !== 'retry' || state === 'failed') {
+              void reportRoute('api/inbound', `support forward ${state === 'failed' ? 'failed' : result.kind}`, { status: 200, code: result.code });
+            }
+          }
+        } catch {
+          log('η σημείωση της προώθησης απέτυχε');
+          void reportRoute('api/inbound', 'support forward settle failed', { status: 500 });
+          return NextResponse.json({ error: 'write_failed' }, { status: 500 });
+        }
+      }
+    }
+    if (priority.claimed) log(`πιθανή προτεραιότητα, μη επαληθευμένη (${priority.plan})`);
+
     // Δημόσια διεύθυνσή μας (το `kind` είναι εδώ βέβαιο): αυτόματη επιβεβαίωση,
     // που φεύγει ΑΠΟ την ίδια διεύθυνση που γράφτηκε (support/privacy/security).
     const outcome = await handleReplyAck(db, event.from, process.env[KEY_ENV], { kind });

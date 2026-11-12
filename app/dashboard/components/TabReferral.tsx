@@ -167,6 +167,8 @@ const REWARD_REASON: Record<string, string> = {
   pro_paid: `${PRO_PAID_TARGET} συνδρομητές μέσα στον μήνα`,
   referee_welcome: 'Ανταμοιβή καλωσορίσματος',
   milestone: 'Μηνιαία ανταμοιβή', partner: 'Ιδιότητα συνεργάτη',
+  // Το δώρο της απόκτησης (20261110120000): ίδια ετικέτα με την ιδιότητα.
+  partner_welcome: 'Ιδιότητα συνεργάτη',
 };
 const rewardReason = (reason: string) => REWARD_REASON[reason] || 'Ανταμοιβή';
 const rewardTitle = (r: Reward) => r.kind === 'slot'
@@ -330,10 +332,18 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
           supabase.from('referral_codes').upsert({ user_id: userId, code }, { onConflict: 'user_id' }));
         // Καταγράφει την ανά-σύσταση αξία στο ledger (idempotent) πριν το διαβάσουμε.
         await supabase.rpc('reconcile_referral_rewards', { p_code: code });
+        // ΤΟ OVERVIEW ΠΡΩΤΑ, ΟΙ ΑΝΤΑΜΟΙΒΕΣ ΜΕΤΑ. Η get_referral_overview μπορεί να
+        // γράψει την ιδιότητα συνεργάτη και ο trigger της το δώρο της απόκτησης
+        // (20261110120000). Με την ανάγνωση των ανταμοιβών παράλληλα, το δώρο
+        // φαινόταν μόνο στην επόμενη φόρτωση. Οι άλλες τρεις κλήσεις μένουν
+        // παράλληλες με το overview, οπότε προστίθεται μόνο μία ανάγνωση.
+        // Promise.resolve: ο builder στέλνει νέο αίτημα σε κάθε `then`· έτσι τρέχει μία φορά.
+        const ovP = Promise.resolve(supabase.rpc('get_referral_overview', { p_code: code }));
+        const rwP = ovP.then(() => supabase.from('referral_rewards').select('kind,months,tier,reason,status,created_at').order('created_at', { ascending: false }));
         const [{ data }, { data: sp }, { data: rw }, { data: ls }, { data: st }] = await Promise.all([
-          supabase.rpc('get_referral_overview', { p_code: code }),
+          ovP,
           supabase.rpc('get_referral_social_proof'),
-          supabase.from('referral_rewards').select('kind,months,tier,reason,status,created_at').order('created_at', { ascending: false }),
+          rwP,
           supabase.rpc('get_referral_list', { p_code: code }),
           supabase.rpc('get_referral_standing'),
         ]);

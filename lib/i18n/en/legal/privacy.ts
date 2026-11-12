@@ -62,6 +62,7 @@ export function privacySectionsEn(): LegalSection[] {
       'Providing the Service and managing your account: performance of a contract (Article 6(1)(b)).',
       'Billing and collecting subscriptions: performance of a contract and compliance with a legal obligation (Article 6(1)(b) and 6(1)(c)).',
       'Security, fraud prevention, stability and improvement of the Service: legitimate interest (Article 6(1)(f)).',
+      'Check against automated accounts (Cloudflare Turnstile) on sign-up, sign-in and password reset, when it is switched on: legitimate interest in the security of the Service (Article 6(1)(f)).',
       'Artificial intelligence (Noa, document scanning): performance of a contract, because you use them at your own request (Article 6(1)(b)).',
       'Updates about PROPERWISE features: consent (Article 6(1)(a) GDPR). You receive them only if you tick their own box at sign-up, which starts unticked and is separate from the market newsletter. You can stop them at any time from the unsubscribe link in every message. We do not send third-party advertising messages.',
       'Property market newsletter: consent (Article 6(1)(a) GDPR), with its own separate box at sign-up, which starts unticked. You can stop it from the unsubscribe link in every message, separately from the feature updates.',
@@ -69,7 +70,7 @@ export function privacySectionsEn(): LegalSection[] {
       'Cookie-free traffic measurement: legitimate interest in improving the Service (Article 6(1)(f)). Details in the section “Cookies and similar technologies”.',
       'Recording your account’s key steps and sign-in dates, for aggregate weekly counts: legitimate interest in knowing whether the Service is useful (Article 6(1)(f)). Details in the section “Cookies and similar technologies”.',
       'Access and records of an accounting firm you authorized: performance of a contract (Article 6(1)(b)). Access history and activity log of the firm: legitimate interest (Article 6(1)(f)).',
-      'Daily encrypted backups: legitimate interest in the availability and integrity of the Service (Article 6(1)(f)), so that your data is not lost through a fault or a mistake.',
+      'Daily encrypted backups of the database and, every Sunday, of the files you upload: legitimate interest in the availability and integrity of the Service (Article 6(1)(f)), so that your data is not lost through a fault or a mistake.',
     ] },
     { h: 'Third-party data you enter', p: [
       'When you enter details of third parties (e.g. tenants or partners), you act as the party responsible for collecting them lawfully. You must have a legal basis and, where required, have informed those persons. We process this data solely on your behalf, so that the Service works. The terms of this processing are the “Processing agreement for third-party data” in the Terms of use, which you accept before the first time you save a tenant’s details.',
@@ -149,18 +150,19 @@ export function privacySectionsEn(): LegalSection[] {
       ...[...activeSubprocessors()].sort((a, b) => Number(a.role !== 'processor') - Number(b.role !== 'processor')).map(subprocessorLineEn),
       `Planned but not active today, meaning they process no data: ${plannedSubprocessors().map(subprocessorNameEn).join(', ')}.`,
       'No external service for QR codes: every QR (payment link, contact card, inventory label) is generated locally on your device.',
+      'Leaked-password check (Have I Been Pwned): when you set or change a password, your browser computes the password’s SHA-1 locally and sends api.pwnedpasswords.com only its first five characters, with a padded response. The service does not receive your password, email or account; like any server, it sees the IP address the request comes from.',
     ], after: [
       'Before we add a new provider, we notify you by email.',
     ], note: 'The same list appears on the “About us” page. We may also disclose data where required by law, a competent authority or a court.' },
     { h: 'International transfers', p: [
-      'The system of record (database, authentication, files) is inside the European Union, in Frankfurt. However, Supabase’s contracting entity, which runs it, is a company based in Singapore (Supabase Pte. Ltd), so its access to the database for operation and technical support may take place outside the European Economic Area. Some providers also process data in the United States: the encrypted backup, questions to Noa, sending email, and hosting and delivering the app.',
+      'The system of record (database, authentication, files) and its encrypted backup are inside the European Union, in Frankfurt. However, Supabase’s contracting entity, which runs it, is a company based in Singapore (Supabase Pte. Ltd), so its access to the database for operation and technical support may take place outside the European Economic Area. Some providers also process data in the United States: questions to Noa, sending email, and hosting and delivering the app.',
       TRANSFER_SAFEGUARDS_EN,
       `Article 13(1)(f) GDPR gives you the right to see the safeguards themselves, not just to learn that they exist. Ask for them at ${mail} and we will send you a copy of the Clauses for each provider, redacting only commercial terms that do not concern the protection of your data.`,
     ] },
     { h: 'Retention', labelled: true, p: ['We keep your data only for as long as necessary:'], list: [
       'Account and property data: for as long as your account exists.',
       words.lapsedRetention,
-      `After your account is deleted: the data is deleted from the database immediately. The encrypted backups that contain it are deleted automatically within ${BACKUP_RETENTION_DAYS} days.`,
+      `After your account is deleted: the data is deleted from the database immediately. The encrypted backups that contain it are deleted automatically within ${BACKUP_RETENTION_DAYS} days. Two exceptions. The last valid backup of the database and the last valid backup of the files are never deleted automatically: they are deleted at the first clean-up after a newer valid one exists, once they are ${BACKUP_RETENTION_DAYS} days old. And if the automatic clean-up stops working, old backups are not deleted until it works again.`,
       'Guest check-in details: for as long as the property they belong to exists; they are deleted with the property or with your account.',
       'Maintenance requests from the tenant portal: for as long as the property exists; they are deleted with it or with your account.',
       'Security activity log: at the latest until your account is deleted.',

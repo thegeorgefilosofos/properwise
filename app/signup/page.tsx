@@ -1,11 +1,13 @@
 'use client'
-import { T, Btn, LinkBtn, ChipToggle } from '@/components/Theme'
+import { Btn, LinkBtn, ChipToggle } from '@/components/ThemeCore'
+import { T } from '@/components/tokens'
 import { KIND_LABEL, type FirmKind } from '@/lib/data/firmWords'
 import { FIRM_TERMS_VERSION } from '@/lib/legal/firms'
 import FirmTermsCheck, { FIRM_TERMS_NEEDED } from '@/app/accountant/workspace/FirmTerms'
-import { useState, useEffect, useSyncExternalStore, type ReactNode } from 'react'
+import { useState, useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react'
+import { leakedAtSubmit } from '@/lib/auth/leakGate'
 import { leaveDevice } from '@/lib/localPrivacy'
-import { authClient } from '@/lib/supabase/lazy';
+import { authClient, mayHaveSession } from '@/lib/supabase/lazy';
 import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
 import { AuthMobileBrand } from '../AuthMobileBrand'
@@ -29,6 +31,8 @@ import { POLICY_VERSION as CONSENT_VERSION } from '@/lib/legal/identity'
 import { applyNews, newsDecided, newsFromParam, newsMeta, newsParam, pendingNews, type NewsChoice } from '@/lib/auth/signupNews'
 import { usePlanTerms, useTrialBadge, useSignupCta } from './PlanTerms'
 import { localeOfPath, type Locale } from '@/lib/i18n/locale'
+import { useCaptcha } from '../useCaptcha'
+import { captchaOptions } from '@/lib/auth/captcha'
 import { localHref } from '@/lib/i18n/paths'
 import { useAuthEn, type AuthEn } from '@/lib/i18n/authEn'
 import { fmtFor } from '@/lib/core/format'
@@ -191,6 +195,7 @@ export default function SignupPage() {
   // σημαίνει ελληνικά και το αγγλικό λεξικό δεν μπαίνει στο πακέτο του /signup.
   const A = useAuthEn(), S = A?.signup
   const locale: Locale = A ? 'en' : 'el'
+  const captcha = useCaptcha(locale)
   const failed = (el: string, en_: string | undefined, e?: unknown) => failedIn(A, el, en_, e)
   const PW_MSG = A ? { leaked: A.pw.leaked, weak: A.pw.weak, common: A.pw.common } : PASSWORD_MSG
   // Από το billingWords, στον διακομιστή (layout.tsx): `null` όσο το ταμείο χρεώνει.
@@ -286,6 +291,9 @@ export default function SignupPage() {
   }, [])
   useEffect(() => {
     // Ασύγχρονο ξετύλιγμα: το effect δεν επιστρέφει ποτέ υπόσχεση.
+    // Χωρίς cookie συνεδρίας και χωρίς επιστροφή στη διεύθυνση, η απάντηση
+    // είναι ήδη γνωστή: κανένας χρήστης. Ο πελάτης δεν φορτώνει (lib/supabase/lazy.ts).
+    if (!mayHaveSession()) return
     void (async () => {
     const supabase = await authClient()
     supabase.auth.getUser().then(async ({ data }) => {
@@ -480,17 +488,34 @@ export default function SignupPage() {
   async function resend() {
     setResendErr('')
     const supabase = await authClient()
+    // Η Supabase ελέγχει διακριτικό και στην επαναποστολή. Το πλαίσιο του
+    // ελέγχου μετακομίζει στην οθόνη «Άνοιξε το email σου» μαζί με το κουμπί.
+    const captchaToken = await captcha.token()
+    if (captchaToken === null) { setResendErr(captcha.failMessage()); return }
     const { error } = await supabase.auth.resend({
       type: 'signup', email: email.trim(),
-      options: { emailRedirectTo: confirmRedirect(query) },
+      options: { emailRedirectTo: confirmRedirect(query), ...captchaOptions(captchaToken) },
     })
+    captcha.reset()
     if (error) { setResendErr(failed('Το email δεν ξαναστάλθηκε', S?.notResent, error)); return }
     setResent(true)
   }
 
+  // ΕΝΑ ΠΑΤΗΜΑ, ΜΙΑ ΕΓΓΡΑΦΗ. Το `loading` ανάβει μόνο μετά τους ασύγχρονους
+  // ελέγχους (ΑΦΜ γραφείου, διαρροή κωδικού) και ως τότε δεύτερο πάτημα
+  // περνούσε κι αυτό: δύο `signUp`, δύο email. Η σημαία ref αλλάζει αμέσως,
+  // χωρίς να περιμένει απόδοση.
+  const submitting = useRef(false)
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (loading) return
+    if (loading || submitting.current) return
+    submitting.current = true
+    // Το `loading` σβήνει σε κάθε έξοδο ακόμη και όταν πεταχτεί εξαίρεση (δίκτυο που
+    // κόπηκε στο `signUp`): αλλιώς η φόρμα έμενε κλειδωμένη ως την ανανέωση.
+    try { await submitForm() } finally { submitting.current = false; setLoading(false) }
+  }
+
+  async function submitForm() {
     // Η ΣΥΓΚΑΤΑΘΕΣΗ ΕΛΕΓΧΕΤΑΙ ΠΡΩΤΗ, γιατί είναι το ΜΟΝΟ εμπόδιο που ο χρήστης
     // δεν βλέπει πάνω στο πεδίο που φταίει: ο κωδικός έχει τη λίστα του από
     // κάτω, το κουτί των όρων δεν έχει τίποτα ώσπου να το αγγίξεις.
@@ -515,27 +540,40 @@ export default function SignupPage() {
       countSignupStep('invalid')
       return
     }
-    if (leaked) {
-      setPwTouched(true)
-      setError(PW_MSG.leaked)
-      countSignupStep('invalid')
-      return
-    }
     if (!pw.ok) {
       setPwTouched(true)
       setError(pw.common ? PW_MSG.common : PW_MSG.weak)
       countSignupStep('invalid')
       return
     }
+    // ΔΙΑΡΡΟΗ: ό,τι ξέρει ήδη το πεδίο, αλλιώς ρωτά η ίδια η υποβολή, γιατί ο
+    // έλεγχος του πεδίου μπορεί να μην έχει απαντήσει (κωδικός που επικολλήθηκε,
+    // lib/auth/leakGate.ts). Ένα μπλοκ για τις δύο περιπτώσεις: το /signup είναι
+    // στο όριο βάρους του (docs/perf/budget.json). Ένας κωδικός που διέρρευσε
+    // περνά ήδη την πολιτική ισχύος, οπότε η σειρά μετά το `pw.ok` δεν αλλάζει
+    // κανένα μήνυμα. Το `loading` κλειδώνει και το πεδίο: αλλιώς ο χρήστης τον
+    // άλλαζε όσο περίμενε και αποθηκευόταν ο προηγούμενος, που δεν τον ξέρει.
+    setLoading(true)
+    if (leaked || await leakedAtSubmit(password)) {
+      setLoading(false)
+      setLeakedPw(password)
+      setPwTouched(true)
+      setError(PW_MSG.leaked)
+      countSignupStep('invalid')
+      return
+    }
     countSignupStep('submit')
     setError(''); setLoading(true)
     const supabase = await authClient()
+    const captchaToken = await captcha.token()
+    if (captchaToken === null) { setError(captcha.failMessage()); setLoading(false); countSignupStep('error'); return }
     // Αποδεικτικό συγκατάθεσης (GDPR, αρχή λογοδοσίας): καταγράφουμε στο προφίλ
     // του χρήστη ΠΟΤΕ αποδέχθηκε τους Όρους και την Πολιτική και ΠΟΙΑ έκδοσή τους,
     // ώστε η αποδοχή να είναι αποδείξιμη και να ζητηθεί εκ νέου αν αλλάξουν ουσιωδώς.
     const { error } = await supabase.auth.signUp({
       email, password,
       options: {
+        ...captchaOptions(captchaToken),
         // Ο ΣΥΝΔΕΣΜΟΣ ΤΟΥ EMAIL ΠΕΡΝΑΕΙ ΑΠΟ ΤΗΝ ΑΝΤΑΛΛΑΓΗ ΤΟΥ ΔΙΑΚΡΙΤΙΚΟΥ.
         // Εδειχνε κατευθείαν στον πίνακα, ο οποίος ζητά συνεδρία — και συνεδρία
         // δεν υπάρχει ακόμη τη στιγμή που πατιέται ο σύνδεσμος. Ο
@@ -559,6 +597,7 @@ export default function SignupPage() {
     // της: όποιος πατούσε «Γράψε άλλη» γύριζε στη φόρμα και έβρισκε το κουμπί
     // κλειδωμένο στο «Δημιουργία…», για πάντα. Καμία διέξοδος εκτός από
     // ανανέωση της σελίδας και ο χρήστης δεν είχε τρόπο να το μαντέψει.
+    captcha.reset()
     setLoading(false)
     countSignupStep(error ? 'error' : 'sent')
     if (error) setError(failed('Η εγγραφή δεν ολοκληρώθηκε', S?.failed, error))
@@ -714,6 +753,7 @@ export default function SignupPage() {
                 action={
                   /* Η σβηστή όψη μετά την αποστολή είναι το disabled του .po-btn. */
                   <>
+                    {captcha.slot}
                     <Btn variant="primary" field onClick={resend} disabled={resent}>
                       {resent ? (S ? S.resent : 'Το ξαναστείλαμε') : (S ? S.resend : 'Ξαναστείλε το email')}
                     </Btn>
@@ -923,12 +963,12 @@ export default function SignupPage() {
                 </div>}
                 <div>
                   <label htmlFor="su-email" className="po-field-label">{A ? A.email : 'Ηλεκτρονικό ταχυδρομείο'}</label>
-                  <input id="su-email" name="email" autoComplete="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={A ? A.emailPlaceholder : 'onoma@email.com'} required style={field} onFocus={focus} onBlur={blur} />
+                  <input id="su-email" name="email" autoComplete="email" type="email" value={email} onChange={e => setEmail(e.target.value)} readOnly={loading} placeholder={A ? A.emailPlaceholder : 'onoma@email.com'} required style={field} onFocus={focus} onBlur={blur} />
                 </div>
                 <div>
                   <label htmlFor="su-password" className="po-field-label">{A ? A.password : 'Κωδικός'}</label>
                   <div style={{ position: 'relative' }}>
-                    <input id="su-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={A ? A.passwordHint : PASSWORD_MIN_HINT} required minLength={PASSWORD_MIN_LENGTH} aria-describedby={(password || pwTouched) ? "su-pw-req" : undefined} style={{ ...field, paddingRight: 48 }} onFocus={focus} onBlur={e => { blur(e); setPwTouched(true) }} />
+                    <input id="su-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} readOnly={loading} placeholder={A ? A.passwordHint : PASSWORD_MIN_HINT} required minLength={PASSWORD_MIN_LENGTH} aria-describedby={(password || pwTouched) ? "su-pw-req" : undefined} style={{ ...field, paddingRight: 48 }} onFocus={focus} onBlur={e => { blur(e); setPwTouched(true) }} />
                     <PasswordEye show={show} onToggle={() => setShow(s => !s)} />
                   </div>
 
@@ -1046,6 +1086,7 @@ export default function SignupPage() {
                     «Ξεκίνα τη δοκιμή», οπότε όποιος πάτησε «Ξεκίνα δωρεάν» στην
                     αρχική διάβαζε εδώ ότι ξεκινά δοκιμή. Ο ίδιος κανόνας με την
                     κάρτα που πάτησε (lib/billing/trialOffer.ts), έτοιμος από το layout. */}
+                {captcha.slot}
                 <Btn variant="primary" type="submit" field describedBy={why ? 'su-cta-why' : undefined}>
                   {loading ? (S ? S.creating : 'Δημιουργία…') : firm ? 'Δημιουργία γραφείου' : cta}
                 </Btn>

@@ -23,7 +23,7 @@ import { fpRate } from '@/lib/core/format'
 import { waterMonthly } from '@/lib/energy/tariff'
 import { monthAcc, monthYearLabel } from '@/lib/core/months'
 import { randomSuffix } from '@/lib/core/uploadPath'
-import { notify } from '@/components/Toast'
+import { notify, notifyError } from '@/components/Toast'
 import { saved } from '@/components/dbWrite'
 import {
   forecastMonthEnd, categoryStatus, annualSummary, periodTrend, detectRecurring, RecurringCharge,
@@ -506,7 +506,11 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       } else {
         setStrPropCount(0);
       }
-    } catch (_) {}
+    } catch (e) {
+      // Αποδόσεις και όριο βραχυχρόνιων: χωρίς αυτά η οθόνη έδειχνε κενό σαν «τίποτα».
+      console.error('[useBudget] αποδόσεις:', e);
+      notifyError('Οι αποδόσεις δεν φορτώθηκαν. Δοκίμασε ανανέωση.');
+    }
     finally { setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propertyId, isPro, userId]);

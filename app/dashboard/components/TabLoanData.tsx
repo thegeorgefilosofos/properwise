@@ -10,6 +10,7 @@ import { EXOIKONOMO_2025, ANAVATHMIZO, openEnergyPrograms, joinGreek } from '@/l
 import { athensToday, athensParts } from '@/lib/core/time'
 import { fn, feWhole, fpRate, grDateOf } from '@/lib/core/format'
 import { RENO_39B_CAP, RENO_39B_YEARS, RENO_39B_TO } from '@/lib/accounting/renovation39b'
+import { SALE_LEASE_BACK_STATUS, SALE_LEASE_BACK_HREF } from '@/lib/accounting/saleLeaseBack'
 import { firstHomeExemption, TRANSFER_TAX_RATE, TRANSFER_TAX_MAIN_RATE, MUNICIPAL_SURCHARGE_RATE, NEW_BUILD_VAT_RATE, NEW_BUILD_VAT_SUSPENDED_UNTIL, FIRST_HOME_EXEMPTION_SINGLE, FIRST_HOME_EXEMPTION_MARRIED } from '@/lib/accounting/transfer'
 import { COMMERCIAL_STAMP_DUTY } from '@/lib/billing/commercialLease'
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive'
@@ -71,6 +72,9 @@ export const EURIBOR_HISTORY = [
   // Ο μέσος όρος Σεπτεμβρίου από την ίδια σειρά (2,6350455), όπως τον έχει η
   // βάση από τις 03/10/2026. Μηνιαίος μέσος, όχι τιμή ημέρας.
   {date:'2026-09',val:2.635},
+  // Ο μέσος όρος Οκτωβρίου από την ίδια σειρά (2,6346818), όπως τον έχει η βάση
+  // (market_rates, asOf 01/10/2026, fetchedAt 08/11/2026). Μηνιαίος μέσος.
+  {date:'2026-10',val:2.635},
 ]
 
 // Εφεδρικές τιμές όταν ο πίνακας market_rates είναι κενός. Δείχνονται ΠΑΝΤΑ με
@@ -606,7 +610,7 @@ export const SERVICERS_GUIDE = {
   tools: [
     { name: 'Εξωδικαστικός Μηχανισμός Ρύθμισης Οφειλών', d: 'Ηλεκτρονική πλατφόρμα (ΕΓΔΙΧ) που ρυθμίζει συνολικά οφειλές σε Δημόσιο, ΕΦΚΑ, τράπεζες και servicers. Δυνατότητα διαγραφής (κουρέματος) μέρους της οφειλής και αναστολή πλειστηριασμών/κατασχέσεων όσο τηρείται η ρύθμιση.', facts: ['Έως 240 δόσεις σε Δημόσιο/ΕΦΚΑ', 'Έως 420 δόσεις σε τράπεζες/servicers για φυσικά πρόσωπα με εμπράγματες εξασφαλίσεις', '240 δόσεις χωρίς ειδικά προνόμια · 180 για νομικά πρόσωπα'], url: 'https://www.keyd.gov.gr/ryumish_ofeilvn_ejvdik/' },
     { name: 'Ευάλωτοι οφειλέτες: υποχρεωτική αποδοχή', d: 'Για πιστοποιημένους ευάλωτους οφειλέτες (και ευάλωτους ΑμεΑ), η πρόταση αναδιάρθρωσης που παράγει η πλατφόρμα γίνεται υποχρεωτικά αποδεκτή από τράπεζες και Δημόσιο. Το πρόγραμμα «Κρατάμε το σπίτι μας» προβλέπει επιπλέον κούρεμα χρέους.', facts: ['Αυτόματη/υποχρεωτική αποδοχή για ευάλωτους', 'Πρόσθετο κούρεμα έως ~28% στο «Κρατάμε το σπίτι μας»'], url: 'https://minfin.gov.gr/diacheirisi-idiotikou-xreous/rythmisi-ofeilon/exodikastikos-michanismos-rythmisis-ofeilon/' },
-    { name: 'Φορέας Απόκτησης και Επαναμίσθωσης Ακινήτων', d: 'Για ευάλωτους οφειλέτες που κινδυνεύουν να χάσουν την πρώτη κατοικία: ο Φορέας αποκτά το ακίνητο και το επαναμισθώνει υποχρεωτικά στον οφειλέτη για 12 έτη, με δικαίωμα επαναγοράς στην τρέχουσα εμπορική αξία.', facts: ['Έναρξη λειτουργίας: φθινόπωρο 2026', 'Επαναμίσθωση 12 ετών · δικαίωμα επαναγοράς', 'Στοχεύει ~15.000 νοικοκυριά'], url: 'https://minfin.gov.gr/diacheirisi-idiotikou-xreous/' },
+    { name: 'Φορέας Απόκτησης και Επαναμίσθωσης Ακινήτων', d: `Για ευάλωτους οφειλέτες που κινδυνεύουν να χάσουν την κύρια κατοικία: ο Φορέας αποκτά το ακίνητο και το επαναμισθώνει στον οφειλέτη, με δικαίωμα επαναγοράς. ${SALE_LEASE_BACK_STATUS}`, facts: ['Επαναμίσθωση στον οφειλέτη · δικαίωμα επαναγοράς'], url: SALE_LEASE_BACK_HREF },
   ],
   redFlags: [
     'Πληρωμή «έναντι» χωρίς έγγραφη ρύθμιση: ζήτησε πάντα την πλήρη σύμβαση ρύθμισης πριν πληρώσεις.',

@@ -2656,6 +2656,11 @@ begin
        values (pr, o, 'Βραχυχρόνιο', 'short_term');
   insert into public.tenants (id, user_id, property_id, full_name, email, lease_start, monthly_rent)
        values (te, o, pr, 'Νέος Ενοικιαστής', 'enoikiastis@properwise.gr', current_date, 480.00);
+  -- Ενοικιαστής που έφυγε, με μίσθωση που «λήγει» σε δέκα μέρες: όπως τον
+  -- γράφει η εφαρμογή (lib/data/tenants.ts), status 'past' και move_out_date.
+  insert into public.tenants (id, user_id, property_id, full_name, lease_start, lease_end, monthly_rent, status, move_out_date)
+       values ('44444444-0000-0000-0000-000000000003', o, pr, 'Πρώην Ενοικιαστής',
+               current_date - 300, current_date + 10, 450.00, 'past', current_date - 5);
 
   perform public.lifecycle_enqueue();
 
@@ -2667,21 +2672,24 @@ begin
    where copy_id = 'connect_calendar' and to_email = 'adranis@properwise.gr';
   if n <> 1 then raise exception 'Η σύνδεση ημερολογίου δεν μπήκε στην ουρά: % γραμμές', n; end if;
 
-  -- ΠΑΕΙ ΣΤΟΝ ΕΝΟΙΚΙΑΣΤΗ ΚΑΙ ΕΙΝΑΙ ΛΕΙΤΟΥΡΓΙΚΟ. Αν έφευγε ως εμπορικό, θα
-  -- ήταν μήνυμα μάρκετινγκ σε άνθρωπο που δεν έδωσε ποτέ συγκατάθεση.
+  -- ΣΤΟΝ ΕΝΟΙΚΙΑΣΤΗ ΔΕΝ ΦΕΥΓΕΙ ΤΙΠΟΤΑ (απόφαση ιδιοκτήτη 10/11/2026). Οι
+  -- Ρυθμίσεις το υπόσχονται: «Στον ενοικιαστή δεν στέλνει τίποτα η εφαρμογή».
+  select count(*) into n from public.email_outbox where to_email = 'enoikiastis@properwise.gr';
+  if n <> 0 then raise exception 'Μπήκε στην ουρά email προς ενοικιαστή: % γραμμές', n; end if;
+
+  -- ΚΑΙ Ο ΙΔΙΟΚΤΗΤΗΣ ΔΕΝ ΠΑΙΡΝΕΙ «ΛΗΓΕΙ Η ΜΙΣΘΩΣΗ» ΓΙΑ ΕΝΟΙΚΙΑΣΤΗ ΠΟΥ ΕΦΥΓΕ.
   select count(*) into n from public.email_outbox
-   where copy_id = 'tenant_welcome' and to_email = 'enoikiastis@properwise.gr'
-     and category = 'operational';
-  if n <> 1 then raise exception 'Το καλωσόρισμα ενοικιαστή δεν έφυγε σωστά: % γραμμές', n; end if;
+   where copy_id = 'lease_ending' and to_email = 'adranis@properwise.gr';
+  if n <> 0 then raise exception 'Ειδοποίηση λήξης για ενοικιαστή που έφυγε: % γραμμές', n; end if;
 
   -- ΚΑΙ ΔΕΥΤΕΡΗ ΕΚΤΕΛΕΣΗ ΔΕΝ ΞΑΝΑΣΤΕΛΝΕΙ ΤΙΠΟΤΑ.
   perform public.lifecycle_enqueue();
   select count(*) into n from public.email_outbox
-   where copy_id in ('inactive_30', 'connect_calendar', 'tenant_welcome')
-     and to_email in ('adranis@properwise.gr', 'enoikiastis@properwise.gr');
-  if n <> 3 then raise exception 'Δεύτερο πέρασμα ξαναέστειλε: % γραμμές αντί για 3', n; end if;
+   where copy_id in ('inactive_30', 'connect_calendar')
+     and to_email = 'adranis@properwise.gr';
+  if n <> 2 then raise exception 'Δεύτερο πέρασμα ξαναέστειλε: % γραμμές αντί για 2', n; end if;
 
-  raise notice 'probe: τα έξι κείμενα φεύγουν και δεν ξαναφεύγουν στο δεύτερο πέρασμα';
+  raise notice 'probe: τα κείμενα φεύγουν μία φορά, τίποτα στον ενοικιαστή, καμία λήξη για όποιον έφυγε';
 end $probe$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -4193,6 +4201,59 @@ begin
   if cp is distinct from 'agency' then raise exception 'Στο ταβάνι των 12 μηνών ο μήνας «Επαγγελματίας» χάθηκε: comp_plan = %', cp; end if;
   if m is distinct from 12 then raise exception 'Στο ταβάνι οι μήνες έγιναν %', m; end if;
   raise notice 'probe: στο ταβάνι των 12 μηνών η βαθμίδα ανεβαίνει';
+end $probe$;
+
+-- Δώρο μετά τη λήξη παλιών μηνών (20261110120500): οι νέοι μήνες μετρούν από
+-- σήμερα. Πριν, το comp_until έβγαινε από την παλιά έναρξη και έπεφτε στο παρελθόν.
+reset role;
+do $probe$
+begin
+  delete from public.referral_rewards where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  insert into public.referral_rewards (user_id, kind, months, tier, reason, status)
+    values ('1a1a1a1a-0000-4000-8000-0000000000b0', 'months', 1, 'owner', 'per_referral_pro', 'pending');
+  update public.billing_profiles
+     set comp_plan = 'owner', comp_months_granted = 1,
+         comp_started_at = now() - interval '6 months', comp_until = now() - interval '5 months'
+   where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  insert into public.referral_rewards (user_id, kind, months, tier, reason, status)
+    values ('1a1a1a1a-0000-4000-8000-0000000000b0', 'months', 1, 'agency', 'pro_paid', 'pending');
+end $probe$;
+set role authenticated;
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000b0';
+do $probe$
+declare cu timestamptz; cp text;
+begin
+  perform public.sync_comp_from_referrals();
+  select comp_until, comp_plan into cu, cp from public.billing_profiles where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  if cu is null or cu < now() + interval '1 month' - interval '1 minute' or cu > now() + interval '1 month' + interval '1 minute' then
+    raise exception 'Δώρο μετά από ληγμένους μήνες: comp_until = %, αναμενόταν σήμερα + 1 μήνας', cu;
+  end if;
+  if cp is distinct from 'agency' then raise exception 'Δώρο μετά τη λήξη: comp_plan = %', cp; end if;
+  raise notice 'probe: δώρο μετά τη λήξη μετρά από σήμερα';
+end $probe$;
+
+-- Ενεργό comp που επεκτείνεται: ο νέος μήνας μπαίνει στο τέλος, όχι από σήμερα.
+reset role;
+do $probe$
+begin
+  update public.billing_profiles
+     set comp_until = now() + interval '10 days'
+   where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  insert into public.referral_rewards (user_id, kind, months, tier, reason, status)
+    values ('1a1a1a1a-0000-4000-8000-0000000000b0', 'months', 1, 'agency', 'pro_paid', 'pending');
+end $probe$;
+set role authenticated;
+set session "probe.uid" = '1a1a1a1a-0000-4000-8000-0000000000b0';
+do $probe$
+declare cu timestamptz;
+begin
+  perform public.sync_comp_from_referrals();
+  select comp_until into cu from public.billing_profiles where user_id = '1a1a1a1a-0000-4000-8000-0000000000b0';
+  if cu is null or cu < now() + interval '10 days' + interval '1 month' - interval '1 minute'
+     or cu > now() + interval '10 days' + interval '1 month' + interval '1 minute' then
+    raise exception 'Ενεργό comp: comp_until = %, αναμενόταν τέλος + 1 μήνας', cu;
+  end if;
+  raise notice 'probe: ενεργό comp επεκτείνεται από το τέλος του';
 end $probe$;
 
 -- ── Ο λογιστής στέλνει ─────────────────────────────────────────────────────

@@ -1,9 +1,10 @@
 'use client'
-import { T, Btn, LinkBtn } from '@/components/Theme'
+import { Btn, LinkBtn } from '@/components/ThemeCore'
+import { T } from '@/components/tokens'
 import { useState, useEffect, useSyncExternalStore } from 'react'
 import { leaveDevice } from '@/lib/localPrivacy'
 import { useRouter } from 'next/navigation'
-import { authClient } from '@/lib/supabase/lazy';
+import { authClient, mayHaveSession } from '@/lib/supabase/lazy';
 import { secondStepPending, MFA_SAY as MFA_SAY_EL } from '@/lib/auth/mfa';
 import Link from 'next/link'
 import AlreadySignedIn from '../AlreadySignedIn'
@@ -16,6 +17,8 @@ import { continuation, carried } from '@/lib/auth/continuation';
 import type { Locale } from '@/lib/i18n/locale';
 import { localHref } from '@/lib/i18n/paths';
 import { useAuthEn } from '@/lib/i18n/authEn';
+import { useCaptcha } from '../useCaptcha';
+import { captchaOptions } from '@/lib/auth/captcha';
 
 // ΤΟ ΠΑΚΕΤΟ ΠΟΥ ΤΑΞΙΔΕΨΕ ΩΣ ΕΔΩ ΔΕΝ ΧΑΝΕΤΑΙ ΣΤΗΝ ΠΟΡΤΑ. Ο διαμεσολαβητής στέλνει
 // το ανώνυμο «/tameio?plan=…&cycle=…» στη σύνδεση κρατώντας τη διεύθυνση· η
@@ -87,6 +90,7 @@ export default function LoginPage() {
   const A = useAuthEn(), L = A?.login
   const locale: Locale = A ? 'en' : 'el'
   const MFA_SAY = A ? A.mfa : MFA_SAY_EL
+  const captcha = useCaptcha(locale)
   const fail = (el: string, en_: string | undefined, e: unknown) => A ? Promise.resolve(A.failed(en_ ?? el, e)) : failed(el, e)
   const [email, setEmail] = useState('')
   // Μέσα σε Instagram, Facebook ή TikTok χωρίς κουμπί προς Safari ή Chrome η
@@ -165,20 +169,11 @@ export default function LoginPage() {
     // Ο πελάτης φορτώνεται μετά το πρώτο σχεδίασμα, οπότε το effect ξετυλίγεται
     // μέσα σε ασύγχρονη συνάρτηση: το ίδιο το effect ΔΕΝ επιτρέπεται να
     // επιστρέψει υπόσχεση, γιατί η React διαβάζει την επιστροφή ως καθαρισμό.
-    void (async () => {
-    const supabase = await authClient()
-    supabase.auth.getUser().then(async ({ data }) => {
-      setSessionEmail(data.user?.email ?? null)
-      // ── Η ΣΥΝΕΔΡΙΑ ΠΟΥ ΧΡΩΣΤΑΕΙ ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ──────────────────────
-      // Ο διαμεσολαβητής στέλνει εδώ όποιον κρατά συνεδρία «aal1» ενώ έχει
-      // δηλωμένη συσκευή. Χωρίς αυτή τη γραμμή θα έβλεπε «είσαι ήδη
-      // συνδεδεμένος» με ένα κουμπί που τον γυρίζει πίσω εδώ: κλειστός
-      // βρόχος, χωρίς κανένα σημείο να δώσει τον εξαψήφιο κωδικό.
-      if (data.user) {
-        const { data: levels, error: levelError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-        if (levelError) { setError(MFA_SAY.stuck); return }
-        if (secondStepPending(levels)) await askSecondStep(supabase, MFA_SAY.stuck)
-      }
+    // ΧΩΡΙΣ ΣΥΝΕΔΡΙΑ. Τρέχει ΚΑΙ στην πρόωρη έξοδο παρακάτω: το
+    // `/login?confirm=failed` έρχεται συνήθως χωρίς cookie (σύνδεσμος από άλλη
+    // συσκευή), οπότε το `mayHaveSession()` λέει «όχι» και ο πελάτης δεν φορτώνει.
+    // Το μήνυμα δεν τον χρειάζεται (scripts/e2e-signup.mjs, «ανώνυμος»).
+    const noSession = () => {
       // Ο ΣΥΝΔΕΣΜΟΣ ΕΠΙΒΕΒΑΙΩΣΗΣ ΠΟΥ ΔΕΝ ΔΟΥΛΕΨΕ ΛΕΓΕΤΑΙ ΜΕ ΛΕΞΕΙΣ. Η
       // ανταλλαγή του διακριτικού (app/auth/callback) καταλήγει εδώ όταν
       // αποτύχει· χωρίς αυτό, όποιος μόλις πάτησε «Επιβεβαίωση» στο email του
@@ -195,10 +190,29 @@ export default function LoginPage() {
       // εγγραφής: ο πάροχος έχει ήδη επιβεβαιώσει τη διεύθυνση, μόνο η ανταλλαγή
       // κωδικού (PKCE) θέλει το ίδιο πρόγραμμα. Το μήνυμα έλεγε «δεν ισχύει πια»
       // και έστελνε σε επαναποστολή άνθρωπο που μπορούσε απλώς να συνδεθεί.
-      if (!data.user && failedConfirm()) {
+      if (failedConfirm()) {
         setError(L ? L.confirmFailed : 'Αν άνοιξες τον σύνδεσμο σε άλλη συσκευή ή άλλο πρόγραμμα περιήγησης, το email σου είναι συνήθως ήδη επιβεβαιωμένο: απλώς συνδέσου. Αλλιώς γράψε το email σου και πάτησε «Ξαναστείλε το email επιβεβαίωσης».')
         setUnconfirmed(true)
       }
+    }
+    // Χωρίς cookie συνεδρίας και χωρίς επιστροφή στη διεύθυνση, η απάντηση
+    // είναι ήδη γνωστή: κανένας χρήστης. Ο πελάτης δεν φορτώνει (lib/supabase/lazy.ts).
+    if (!mayHaveSession()) { noSession(); return }
+    void (async () => {
+    const supabase = await authClient()
+    supabase.auth.getUser().then(async ({ data }) => {
+      setSessionEmail(data.user?.email ?? null)
+      // ── Η ΣΥΝΕΔΡΙΑ ΠΟΥ ΧΡΩΣΤΑΕΙ ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ──────────────────────
+      // Ο διαμεσολαβητής στέλνει εδώ όποιον κρατά συνεδρία «aal1» ενώ έχει
+      // δηλωμένη συσκευή. Χωρίς αυτή τη γραμμή θα έβλεπε «είσαι ήδη
+      // συνδεδεμένος» με ένα κουμπί που τον γυρίζει πίσω εδώ: κλειστός
+      // βρόχος, χωρίς κανένα σημείο να δώσει τον εξαψήφιο κωδικό.
+      if (data.user) {
+        const { data: levels, error: levelError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+        if (levelError) { setError(MFA_SAY.stuck); return }
+        if (secondStepPending(levels)) await askSecondStep(supabase, MFA_SAY.stuck)
+      }
+      if (!data.user) noSession()
     })
     })()
     // Το L και το MFA_SAY δεν αλλάζουν όσο ζει η σελίδα: τα δίνει το layout.
@@ -222,7 +236,10 @@ export default function LoginPage() {
     setError(''); setUnconfirmed(false); setResent(false)
     setLoading(true)
     const supabase = await authClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const captchaToken = await captcha.token()
+    if (captchaToken === null) { setError(captcha.failMessage()); setLoading(false); return }
+    const { error } = await supabase.auth.signInWithPassword({ email, password, options: captchaOptions(captchaToken) })
+    captcha.reset()
     if (error) {
       const message = await fail('Η σύνδεση δεν έγινε', L?.failed, error)
       setError(message)
@@ -280,10 +297,14 @@ export default function LoginPage() {
       return
     }
     const supabase = await authClient()
+    // Η Supabase ελέγχει διακριτικό και στην επαναποστολή, όχι μόνο στη σύνδεση.
+    const captchaToken = await captcha.token()
+    if (captchaToken === null) { setError(captcha.failMessage()); return }
     const { error } = await supabase.auth.resend({
       type: 'signup', email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(afterSignIn())}` },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(afterSignIn())}`, ...captchaOptions(captchaToken) },
     })
+    captcha.reset()
     if (error) { setError(await fail('Το email δεν ξαναστάλθηκε', L?.notResent, error)); return }
     setError(''); setResent(true)
   }
@@ -409,6 +430,7 @@ export default function LoginPage() {
             </p>
           )}
 
+          {!factorId && captcha.slot}
           <Btn variant="primary" type="submit" field disabled={busy}>
             {factorId
               ? (verifying ? (L ? L.verifying : 'Επαλήθευση…') : (L ? L.verify : 'Επαλήθευση'))

@@ -64,7 +64,8 @@ ok(subprocessorLine(rowOf({}, 'Anthropic')).includes('Anthropic Ireland, Limited
 // ── ΤΟ ΑΝΤΙΓΡΑΦΟ ΖΕΙ ΟΣΟ ΛΕΕΙ Η ΡΟΗ ΠΟΥ ΤΟ ΦΤΙΑΧΝΕΙ ─────────────────────────
 {
   const yml = readFileSync('.github/workflows/db-backup.yml', 'utf8');
-  const days = Number(/retention-days:\s*(\d+)/.exec(yml)?.[1]);
+  // Η κράτηση στον ιδιωτικό χώρο `db-backups`: η ροή σβήνει ό,τι είναι παλαιότερο.
+  const days = Number(/KEEP_DAYS:\s*'?(\d+)/.exec(yml)?.[1]);
   eq(BACKUP_RETENTION_DAYS, days, 'η Πολιτική απορρήτου λέει τις ίδιες ημέρες με το db-backup.yml');
 }
 

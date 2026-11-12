@@ -12,6 +12,8 @@ import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 // πλέον μόνες τους σε κάθε ακίνητο· ο ίδιος κανόνας με τη συνδρομή και το push
 // κρατά μία γραμμή ανά `tax:<id>`, ώστε δύο διαμερίσματα να μη δίνουν δύο email.
 import { oneTaxCopy } from '../../../lib/calendar/taxOnce.ts'
+// Οι σειρές αναπτύσσονται με την ΙΔΙΑ λογική που δείχνει το ημερολόγιο.
+import { reminderOccurrences, reminderKey } from '../../../lib/calendar/recurrence.ts'
 // «ΠΛΗΡΩΣΑ» ΜΕ ΕΝΑ ΠΑΤΗΜΑ (29/10/2026): κάθε γραμμή του email φέρνει σύνδεσμο
 // που σημειώνει τη συγκεκριμένη προθεσμία πληρωμένη. Διακριτικό 256 bit, μόνο
 // το αποτύπωμα στη βάση, μίας χρήσης, με λήξη (lib/reminders/payLink.ts).
@@ -190,13 +192,25 @@ function buildDunningEmail(rows: RentPaymentsRow[], tenantMap: Record<string, Te
   return { subject, html }
 }
 
-async function sendEmail(to: string, subject: string, html: string) {
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, reply_to: REPLY_TO, to, subject, html }),
-  })
-  return res.ok
+/**
+ * `true` μόνο αν ο πάροχος δέχτηκε το μήνυμα. ΚΑΜΙΑ ΕΞΑΙΡΕΣΗ ΔΕΝ ΒΓΑΙΝΕΙ ΠΡΟΣ ΤΑ
+ * ΕΞΩ: μια πεσμένη σύνδεση πετούσε μέσα στον βρόχο, άφηνε τη δέσμευση της
+ * όχλησης χωρίς email και σταματούσε την εργασία για όλους τους υπόλοιπους
+ * ιδιοκτήτες. Τώρα είναι απλώς «δεν στάλθηκε»: η δέσμευση σβήνεται και ο
+ * βρόχος συνεχίζει με τον επόμενο.
+ */
+async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: FROM_EMAIL, reply_to: REPLY_TO, to, subject, html }),
+    })
+    return res.ok
+  } catch (err) {
+    console.error('[send-reminders] αποστολή email:', err)
+    return false
+  }
 }
 
 Deno.serve(async (req) => {
@@ -206,12 +220,28 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
   }
 
-  const today = new Date(); today.setHours(0,0,0,0)
-  const todayStr = today.toISOString().split('T')[0]
-  const in1day  = new Date(today); in1day.setDate(today.getDate()+1)
-  const in3days = new Date(today); in3days.setDate(today.getDate()+3)
-  const in7days = new Date(today); in7days.setDate(today.getDate()+7)
-  const fmt = (d: Date) => d.toISOString().split('T')[0]
+  // ── ΣΤΙΣ 08:00 ΩΡΑ ΑΘΗΝΑΣ, ΧΕΙΜΩΝΑ ΚΑΙ ΚΑΛΟΚΑΙΡΙ ──────────────────────
+  // Η οθόνη ρυθμίσεων λέει «στις 08:00». Το cron τρέχει σε UTC, οπότε μία ώρα
+  // UTC είναι 08:00 μόνο τη μισή χρονιά. Τρέχει πλέον στις 05:00 ΚΑΙ στις 06:00
+  // UTC με `{"athens_hour":8}` και εδώ περνά μόνο η κλήση που πέφτει στις 08
+  // Αθήνας (migration 20261110131000). Κλήση χωρίς το πεδίο (χειροκίνητη,
+  // δοκιμή) τρέχει όπως πάντα.
+  const want = await req.clone().json().then((b: { athens_hour?: unknown }) => b?.athens_hour, () => undefined)
+  const athensHour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Athens', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
+  if (typeof want === 'number' && want !== athensHour) {
+    return new Response(JSON.stringify({ success: true, skipped: 'not_this_hour', athensHour }), { headers: { 'Content-Type': 'application/json' } })
+  }
+
+  // Η ΗΜΕΡΑ ΕΙΝΑΙ Η ΜΕΡΑ ΤΗΣ ΑΘΗΝΑΣ, όχι του διακομιστή (UTC).
+  const athensDay = (plus: number) => {
+    const d = new Date(Date.now() + plus * 86_400_000)
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+  }
+  const todayStr = athensDay(0)
+  const in1day = athensDay(1), in3days = athensDay(3), in7days = athensDay(7)
+  const fmt = (d: string) => d
+  /** Μεσάνυχτα της ημέρας της Αθήνας, για τις ημέρες καθυστέρησης του ενοικίου. */
+  const today = new Date(`${todayStr}T00:00:00Z`)
 
   try {
     // ═══ ΔΥΟ ΑΝΑΓΝΩΣΕΙΣ ΠΟΥ ΕΣΒΗΝΑΝ ΟΛΟΚΛΗΡΗ ΤΗΝ ΕΡΓΑΣΙΑ ΜΕ ΠΡΑΣΙΝΟ ══════════
@@ -265,8 +295,9 @@ Deno.serve(async (req) => {
 
     // ── ΚΑΙ ΤΑ ΔΥΟ ΠΕΡΑΣΜΑΤΑ ΦΤΑΝΟΥΝ ΜΟΝΟ ΣΤΟΝ ΙΔΙΟΚΤΗΤΗ ──────────────────
     // Το ημερολόγιο και το ληξιπρόθεσμο ενοίκιο γράφουν στο mailbox(user_id).
-    // Το tenants.email δεν το διαβάζει κανένας αποστολέας: 3 σύνδεσμοι
-    // mailto: στη διεπαφή, 0 κλήσεις προς τον πάροχο αποστολής.
+    // Το tenants.email δεν το διαβάζει κανένας αποστολέας. Ως 10/11/2026 το
+    // διάβαζε η lifecycle_enqueue για το `tenant_welcome`. Αφαιρέθηκε στο
+    // 20261110130000 και το db-replay ελέγχει ότι δεν μπαίνει τίποτα στην ουρά.
     // Η οθόνη ρυθμίσεων το λέει πλέον ρητά, αντί για «διακριτική ενημέρωση»
     // με κλιμάκωση και όριο ανά δόση, που διαβαζόταν ως όχληση οφειλέτη.
     //
@@ -300,6 +331,22 @@ Deno.serve(async (req) => {
       if (evErr) { console.error('[send-reminders] γεγονότα ημερολογίου:', evErr); skipped++; continue }
       const events = oneTaxCopy((rows || []) as CalendarEventsRow[]).kept
       if (!events.length) continue
+      // ΚΑΘΕ ΕΜΦΑΝΙΣΗ ΜΙΑΣ ΣΕΙΡΑΣ, ΟΧΙ ΜΟΝΟ Η ΠΡΩΤΗ (lib/calendar/recurrence.ts).
+      const { upcoming, overdue: overdueRows } = reminderOccurrences(events, todayStr, in7days)
+      /** Τι έχει ήδη σταλεί, ως «event_id|είδος». Αποτυχία ανάγνωσης = null: δεν στέλνουμε. */
+      const sentKeys = async (list: typeof upcoming, type: string): Promise<Set<string> | null> => {
+        const keys = list.map(e => reminderKey(e, type))
+        const { data, error } = await supabase.from('notification_log').select('event_id,reminder_type')
+          .in('event_id', [...new Set(keys.map(k => k.event_id))]).in('reminder_type', [...new Set(keys.map(k => k.reminder_type))])
+        if (error) { console.error('[send-reminders] μητρώο απεσταλμένων:', error); return null }
+        return new Set(((data || []) as Pick<NotificationLogRow, 'event_id' | 'reminder_type'>[]).map(l => `${l.event_id}|${l.reminder_type}`))
+      }
+      const logRows = (list: typeof upcoming, type: string) =>
+        list.map(e => ({ user_id: pref.user_id, ...reminderKey(e, type) }))
+      // «Πλήρωσα» μόνο για αποθηκευμένη γραμμή: το διακριτικό δείχνει σε uuid
+      // και η εικονική εμφάνιση δεν έχει δικό της (το ημερολόγιο τη σημειώνει
+      // πληρωμένη αποσπώντας την από τη σειρά).
+      const payable = (list: typeof upcoming) => list.filter(e => !e._virtual)
 
       const checks = [
         { type: '7days', enabled: pref.reminder_7days, date: fmt(in7days) },
@@ -313,30 +360,32 @@ Deno.serve(async (req) => {
 
       for (const check of checks) {
         if (!check.enabled) continue
-        const matching = events.filter(e => e.event_date === check.date)
+        const matching = upcoming.filter(e => e.event_date === check.date)
         if (!matching.length) continue
         // ΤΟ ΜΗΤΡΩΟ ΑΠΕΣΤΑΛΜΕΝΩΝ ΕΙΝΑΙ Ο ΜΟΝΟΣ ΦΡΑΓΜΟΣ ΓΙΑ ΔΙΠΛΑ EMAIL. Αγνοώντας
         // το `error`, μια αποτυχία γινόταν «δεν έχει σταλεί τίποτα» και η ίδια
         // υπενθύμιση έφευγε ΞΑΝΑ στον ίδιο άνθρωπο. Το να μη σταλεί σήμερα μια
         // υπενθύμιση διορθώνεται αύριο· ένα διπλό email δεν ξαναπαίρνεται πίσω.
-        const { data: sent, error: sentErr } = await supabase.from('notification_log').select('event_id').in('event_id', matching.map(e=>e.id)).eq('reminder_type', check.type)
-        if (sentErr) { console.error('[send-reminders] μητρώο απεσταλμένων:', sentErr); skipped++; continue }
-        const sentIds = new Set(((sent||[]) as Pick<NotificationLogRow,'event_id'>[]).map(l=>l.event_id))
-        const toSend  = matching.filter(e => !sentIds.has(e.id))
+        const sent = await sentKeys(matching, check.type)
+        if (!sent) { skipped++; continue }
+        const toSend = matching.filter(e => { const k = reminderKey(e, check.type); return !sent.has(`${k.event_id}|${k.reminder_type}`) })
         if (!toSend.length) continue
-        const { subject, html } = buildEmail(toSend, check.type, await payLinks(pref.user_id, toSend))
+        const { subject, html } = buildEmail(toSend, check.type, await payLinks(pref.user_id, payable(toSend)))
         const ok = await sendEmail(to, subject, html)
         if (ok) {
-          await supabase.from('notification_log').insert(toSend.map(e => ({ user_id: pref.user_id, event_id: e.id, reminder_type: check.type })))
+          await supabase.from('notification_log').insert(logRows(toSend, check.type))
           totalSent++
         }
       }
 
       // Το ίδιο ίσχυε για τα εκπρόθεσμα: ο διακόπτης υπήρχε και κανείς δεν τον διάβαζε.
-      const overdue = pref.reminder_overdue === false ? [] : events.filter(e => e.event_date < todayStr)
+      const overdue = pref.reminder_overdue === false ? [] : overdueRows
       if (overdue.length) {
         const { data: sentOD, error: sentODErr } = await supabase.from('notification_log').select('event_id').in('event_id', overdue.map(e=>e.id)).eq('reminder_type','overdue')
-        if (sentODErr) { console.error('[send-reminders] μητρώο ληξιπρόθεσμων:', sentODErr); skipped++ }
+        // ΧΩΡΙΣ ΜΗΤΡΩΟ, ΧΩΡΙΣ EMAIL: όπως στα 7/3/1/σήμερα. Χωρίς το `continue`
+        // η αποτυχία ανάγνωσης γινόταν «δεν έχει σταλεί τίποτα» και το ίδιο
+        // ληξιπρόθεσμο ξανάφευγε. Το πέρασμα των οχλήσεων είναι χωριστό, πιο κάτω.
+        if (sentODErr) { console.error('[send-reminders] μητρώο ληξιπρόθεσμων:', sentODErr); skipped++; continue }
         const sentODIds = new Set(((sentOD||[]) as Pick<NotificationLogRow,'event_id'>[]).map(l=>l.event_id))
         const toSendOD  = overdue.filter(e => !sentODIds.has(e.id))
         if (toSendOD.length) {
@@ -386,9 +435,12 @@ Deno.serve(async (req) => {
       const overdueIds = overdue.map(r => r.id)
       if (!overdueIds.length) continue
       // ΟΛΑ τα προηγούμενα dunning logs για αυτές τις δόσεις με μία query.
+      // Η ΟΧΛΗΣΗ ΕΧΕΙ ΔΙΚΗ ΤΗΣ ΣΤΗΛΗ (20261110131500). Ως τις 10/11/2026 γραφόταν
+      // στο `event_id`, που δείχνει στο calendar_events: η εισαγωγή αποτύγχανε,
+      // το ιστορικό έμενε άδειο και κάθε εκτέλεση έστελνε ξανά «πρώτη» όχληση.
       const { data: priorLogs, error: priorErr } = await supabase.from('notification_log')
-        .select('event_id, created_at').eq('reminder_type', 'rent_overdue')
-        .in('event_id', overdueIds)
+        .select('rent_payment_id, created_at').like('reminder_type', 'rent_overdue%')
+        .in('rent_payment_id', overdueIds)
       // Ιδιο σκεπτικό: χωρίς το ιστορικό, ΚΑΘΕ ληξιπρόθεσμη δόση θα φαινόταν
       // ανειδοποίητη και η όχληση θα ξανάφευγε από την αρχή, με τον αριθμό
       // ειδοποίησης μηδενισμένο. Καλύτερα καμία όχληση σήμερα.
@@ -397,8 +449,8 @@ Deno.serve(async (req) => {
       // Per-instalment: COUNT προηγούμενων ειδοποιήσεων + MAX(created_at) (πιο πρόσφατη).
       const priorCount: Record<string, number> = {}
       const lastNotice: Record<string, number> = {}
-      for (const l of priorLogs || []) {
-        const id = l.event_id
+      for (const l of (priorLogs || []) as { rent_payment_id: string; created_at: string | null }[]) {
+        const id = l.rent_payment_id
         priorCount[id] = (priorCount[id] || 0) + 1
         const t = l.created_at ? new Date(l.created_at).getTime() : NaN
         if (Number.isFinite(t) && (lastNotice[id] === undefined || t > lastNotice[id])) lastNotice[id] = t
@@ -407,7 +459,10 @@ Deno.serve(async (req) => {
       // Eligible τώρα ⇔ (count < maxNotices) ΚΑΙ (καμία προηγούμενη ή η πιο πρόσφατη
       // είναι παλαιότερη από everyDays μέρες: now - lastNoticeTime >= everyDays*86400000).
       const now = new Date().getTime()
-      const spacingMs = everyDays * 86400000
+      // Δύο ώρες ανοχή: η εργασία τρέχει στις 08:00 Αθήνας, που την ημέρα της
+      // αλλαγής ώρας απέχει 23 ώρες από την προηγούμενη. Χωρίς την ανοχή, η
+      // όχληση εκείνης της μέρας θα πήγαινε μία μέρα πίσω.
+      const spacingMs = everyDays * 86400000 - 2 * 3600000
       const toNotify = overdue.filter(r => {
         const count = priorCount[r.id] || 0
         if (count >= maxNotices) return false
@@ -441,13 +496,24 @@ Deno.serve(async (req) => {
         for (const p of (pRows || []) as PropertyName[]) propMap[p.id] = p
       }
 
+      // ΠΡΩΤΑ ΤΟ ΜΗΤΡΩΟ, ΜΕΤΑ ΤΟ EMAIL. Αν το μητρώο δεν γραφτεί, δεν στέλνουμε:
+      // μια όχληση που λείπει σήμερα φεύγει αύριο, μια διπλή όχληση σε οφειλέτη
+      // δεν ξαναπαίρνεται πίσω. Το μοναδικό (rent_payment_id, είδος) κόβει και
+      // δεύτερη ταυτόχρονη εκτέλεση. Αν το email δεν φύγει, το μητρώο σβήνεται.
+      const { data: claimed, error: claimErr } = await supabase.from('notification_log').insert(toNotify.map(r => ({
+        user_id: pref.user_id, event_id: null, rent_payment_id: r.id,
+        reminder_type: `rent_overdue:${(priorCount[r.id] || 0) + 1}`, created_at: new Date().toISOString(),
+      }))).select('id')
+      if (claimErr) { console.error('[send-reminders] μητρώο οχλήσεων:', claimErr); skipped++; continue }
       const { subject, html } = buildDunningEmail(toNotify, tenantMap, propMap, today, noticeLabel, noticeNumber)
       const ok = await sendEmail(to, subject, html)
-      if (ok) {
-        await supabase.from('notification_log').insert(toNotify.map(r => ({
-          user_id: pref.user_id, event_id: r.id, reminder_type: 'rent_overdue', created_at: new Date().toISOString(),
-        })))
-        dunningSent++
+      if (ok) dunningSent++
+      else {
+        const ids = ((claimed || []) as { id: string }[]).map(c => c.id)
+        if (ids.length) {
+          const { error: undoErr } = await supabase.from('notification_log').delete().in('id', ids)
+          if (undoErr) console.error('[send-reminders] αναίρεση μητρώου οχλήσεων:', undoErr)
+        }
       }
     }
 

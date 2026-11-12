@@ -1,8 +1,7 @@
 'use client'
 import { navLabel } from '@/lib/nav/labels';
-import { useState, useEffect, useRef, useMemo, useSyncExternalStore } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { deviceNotifyOn, NOTIFY_EVENT } from '@/lib/push/client'
 import { createClient } from '@/lib/supabase/client'
 import * as stayStore from '@/lib/data/stays';
 import * as expenses from '@/lib/data/expenses'
@@ -45,7 +44,6 @@ import { DatePicker } from './UIComponents'
 import { expandRecurring } from '@/lib/calendar/recurrence'
 import { findConflicts } from '@/lib/calendar/availability'
 import { parseICS } from '@/lib/calendar/icsImport'
-import { dueReminders, notifyBody } from '@/lib/calendar/notify'
 import { toStaySpan, type StaySpan } from '@/lib/calendar/stayBars'
 import {
   taxKindOfEventSource,
@@ -72,13 +70,6 @@ import { EventModal, ScopeModal } from './calendar/EventModal'
 import { SubscribeModal } from './calendar/SubscribeModal'
 import { CalendarQuickAdd } from './calendar/CalendarQuickAdd'
 import { dueTextStart } from '@/lib/facts/deadlines'
-
-// Οποιος αλλάξει τον διακόπτη σε ΑΛΛΗ καρτέλα ή σε άλλη οθόνη, φτάνει εδώ.
-function subscribeNotify(onChange: () => void): () => void {
-  window.addEventListener(NOTIFY_EVENT, onChange)
-  window.addEventListener('storage', onChange)
-  return () => { window.removeEventListener(NOTIFY_EVENT, onChange); window.removeEventListener('storage', onChange) }
-}
 
 export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenTasks }: {
   propertyId:string; userId:string;
@@ -123,15 +114,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   // πλήρως ορατό (clamp στα άκρα της οθόνης), προς τα κάτω· πάνω μόνο αν δεν χωράει.
   const positionMenu=()=>{ const el=menuBtnRef.current; if(!el)return; const r=el.getBoundingClientRect(); const W=248, PANEL_H=392, M=8; const below=window.innerHeight-r.bottom-M; const up=below<PANEL_H && r.top-M>below; const left=Math.max(M,Math.min(r.right-W,window.innerWidth-W-M)); setMenuCoords({top:up?r.top-6:r.bottom+6,left,up}) }
   const importRef=useRef<HTMLInputElement>(null)
-  // Ο ΔΙΑΚΟΠΤΗΣ ΕΙΝΑΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ, ΟΧΙ ΤΗΣ REACT. Ηταν `useState(false)` και
-  // `if(deviceNotifyOn())setNotifyOn(true)` μέσα στο effect που στήνει τον
-  // ακροατή: σύγχρονη γραφή κατάστασης, δηλαδή δεύτερη απόδοση σε κάθε φόρτωση
-  // του ημερολογίου. Το `useSyncExternalStore` δίνει ΞΕΧΩΡΙΣΤΗ απάντηση στον
-  // διακομιστή («όχι», γιατί εκεί δεν υπάρχουν ειδοποιήσεις), οπότε δεν υπάρχει
-  // ούτε ασυμφωνία ενυδάτωσης ούτε δεύτερη απόδοση.
-  const notifyOn = useSyncExternalStore(subscribeNotify, deviceNotifyOn, () => false)
   const [stays,setStays]=useState<StaySpan[]>([])
-  const notifiedRef=useRef<Set<string>>(new Set())
   // Ενιαίο drag (ποντίκι + αφή) — μετακίνηση γεγονότος με σύρσιμο στο πλέγμα του μήνα.
   const drag=usePointerDrag((id,date,time)=>moveEvent(id,date,time))
   // Εισαγωγή γεγονότων από αρχείο .ics (Google/Apple/Outlook export).
@@ -165,25 +148,10 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   }
   useEffect(()=>{ if(!showMenu)return; positionMenu(); const h=(ev:MouseEvent)=>{ const t=ev.target as Node; if((menuRef.current?.contains(t))||(menuPopRef.current?.contains(t)))return; setShowMenu(false) }; const rp=()=>positionMenu(); document.addEventListener('mousedown',h); window.addEventListener('scroll',rp,true); window.addEventListener('resize',rp); return ()=>{document.removeEventListener('mousedown',h); window.removeEventListener('scroll',rp,true); window.removeEventListener('resize',rp)} },[showMenu])
 
-  // ΟΙ ΕΙΔΟΠΟΙΗΣΕΙΣ ΣΥΣΚΕΥΗΣ ΕΧΟΥΝ ΕΝΑΝ ΔΙΑΚΟΠΤΗ ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΕΔΩ. Ζει στις
-  // Ρυθμίσεις → Ειδοποιήσεις (DeviceNotifications.tsx) και ανάβει ΚΑΙ την πρωινή
-  // ειδοποίηση με την εφαρμογή κλειστή ΚΑΙ αυτή εδώ την τοπική, ~10' πριν από
-  // κάθε ραντεβού, όσο η εφαρμογή είναι ανοιχτή. Το ημερολόγιο ΑΚΟΥΕΙ: όποιος
-  // αλλάξει τον διακόπτη σε άλλη καρτέλα δεν χρειάζεται να ανανεώσει σελίδα.
-  useEffect(()=>{
-    if(!notifyOn||typeof Notification==='undefined')return
-    const tick=()=>{
-      if(Notification.permission!=='granted')return
-      const due=dueReminders(events.filter(e=>!e._virtual),athensNow(),10,notifiedRef.current)
-      for(const e of due){
-        notifiedRef.current.add(e.id)
-        try{ new Notification(e.title,{ body:notifyBody(e,athensNow()), tag:`cal_${e.id}` }) }catch{}
-      }
-    }
-    tick()
-    const iv=setInterval(tick,60000)
-    return ()=>clearInterval(iv)
-  },[notifyOn,events])
+  // Η ΤΟΠΙΚΗ ΕΙΔΟΠΟΙΗΣΗ ~10' ΠΡΙΝ ΑΠΟ ΚΑΘΕ ΡΑΝΤΕΒΟΥ ΔΕΝ ΖΕΙ ΠΙΑ ΕΔΩ (10/11/2026).
+  // Μέσα στο ημερολόγιο χτυπούσε μόνο με ανοιχτή αυτή την καρτέλα, μόνο για το
+  // επιλεγμένο ακίνητο και ποτέ για εμφάνιση σειράς. Τώρα τη στήνει η σελίδα του
+  // πίνακα για όλα τα ακίνητα (useAppointmentReminders).
   useEffect(()=>{
     load()
     // Ζωντανό: κάθε αλλαγή στα γεγονότα (π.χ. συμφωνία πληρωμής, sync υποχρεώσεων

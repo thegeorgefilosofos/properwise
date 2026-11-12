@@ -21,6 +21,10 @@
 /** Σκελετός component οθόνης, για φύλακες που σαρώνουν .tsx. */
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
+/** Ροή-δόλωμα για τον φύλακα των logs: ένα βήμα με το σενάριο `body`. */
+const MUT_WF = '.github/workflows/__mut_backup_logs__.yml'
+const wfRun = (body) => `name: m\non: workflow_dispatch\njobs:\n  m:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n${body.split('\n').map(l => `          ${l}`).join('\n')}\n`
+
 export const MUTATIONS = {
   // Ο οδηγός «Νέο ακίνητο» ξανά με τη φόρμα απλωμένη αυτούσια: ακριβώς το
   // '' στο property_settings.insurance_expiry (Postgres 22007, 06/11/2026).
@@ -252,7 +256,15 @@ export const MUTATIONS = {
   // ── Βάση δεδομένων και ασφάλεια ───────────────────────────────────────
   // Οι μεταναστεύσεις είναι ΠΡΟΣΘΕΤΙΚΕΣ: μια νέα με το σφάλμα μέσα είναι η
   // πιστότερη προσομοίωση του «κάποιος γράφει την επόμενη μετανάστευση».
-  'rls-coverage': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  user_id uuid not null references auth.users(id) on delete cascade\n);\n' },
+  // ΤΡΕΙΣ ΚΑΝΟΝΕΣ, ΤΡΕΙΣ ΑΠΟΔΕΙΞΕΙΣ. Ο πίνακας χωρίς RLS· ο ίδιος με ένα
+  // ομώνυμο `private.` που έχει RLS (κλειδί μόνο με το όνομα θα τον έβγαζε
+  // καλυμμένο)· και `drop` του ομώνυμου σε άλλο schema (θα τον έσβηνε από τον
+  // κατάλογο). Και τα τρία πρέπει να κοκκινίζουν.
+  'rls-coverage': { every: [
+    { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  user_id uuid not null references auth.users(id) on delete cascade\n);\n' },
+    { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (id bigint primary key);\ncreate table if not exists private.mut_probe (id bigint primary key);\nalter table private.mut_probe enable row level security;\n' },
+    { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists mut_probe (id bigint primary key);\ndrop table if exists private.mut_probe;\n' },
+  ] },
   'rls-initplan': { add: 'supabase/migrations/29990101000000_mut.sql', content: "create policy mut_probe_own on public.properties using (auth.uid() = user_id);\n" },
   'rls-parent-scope': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  property_id uuid not null references public.properties(id) on delete cascade\n);\nalter table public.mut_probe enable row level security;\ncreate policy mut_probe_own on public.mut_probe using (true);\n' },
   'migration-versions': { add: 'supabase/migrations/20261020120000_mut.sql', content: 'select 1;\n' },
@@ -305,9 +317,9 @@ export const MUTATIONS = {
   'chromium-path': { every: [
     { add: 'scripts/__mut__.mjs', content: "import { chromium } from 'playwright-core';\nawait chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });\n" },
     { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install', to: 'playwright@1.40.0 install' },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install --with-deps webkit', to: 'playwright@1.63.0 install --with-deps webkit' },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install --with-deps webkit', to: 'playwright install --with-deps webkit' },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install --with-deps webkit', to: 'playwright@latest install --with-deps webkit' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install webkit', to: 'playwright@1.63.0 install webkit' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install webkit', to: 'playwright install webkit' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install webkit', to: 'playwright@latest install webkit' },
   ] },
   'email-audience': {
     file: 'supabase/functions/_shared/emailTemplates.ts',
@@ -317,6 +329,8 @@ export const MUTATIONS = {
   // Λεζάντα με ποσό που δεν βγήκε από τη μηχανή. Το «480» είναι ακριβώς το λάθος
   // που έγινε κάποτε στ' αλήθεια — η έκπτωση που χάνεται, γραμμένη ως φόρος. Ο
   // πραγματικός φόρος ήταν 72 €.
+  // Το deploy της Supabase χωρίς --remote: έτσι απέτυχε από 04/11 ως 10/11/2026 (#478).
+  'supabase-deploy-target': { file: '.github/workflows/supabase-deploy.yml', from: 'supabase db push --remote --yes --include-all', to: 'supabase db push --include-all' },
   'post-numbers': { add: 'docs/marketing/keimena/__mut__.md', content: 'Από το Ε9: με ενοίκιο 9.600 € χάνεις 480 € τον χρόνο.\n' },
   // Το «Ε9» περνά ως όνομα εντύπου· τα ποσά δίπλα του πρέπει να κόβονται.
   // Η λεζάντα που έλεγε ψέματα, ξαναφερμένη αυτούσια: ήταν στο
@@ -373,9 +387,34 @@ export const MUTATIONS = {
   'toggle': { add: 'app/dashboard/components/__mut__.tsx', content: "export function Tog({ on, set }: { on: boolean; set: (v: boolean) => void }) {\n  return (\n    <button type=\"button\" role=\"switch\" aria-checked={on} onClick={() => set(!on)}\n      style={{ width: 46, height: 26, borderRadius: 12, background: on ? 'var(--accent)' : 'var(--border-default)' }}>\n      <span />\n    </button>\n  )\n}\n" },
   'http-bridge': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create or replace function public.mut_probe_call() returns void language sql as $$ select net.http_post(url => \'https://x\') $$;\ngrant execute on function public.mut_probe_call() to authenticated;\n' },
   'sql-types': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create or replace function public.mut_probe() returns void language plpgsql as $$\ndeclare v_row record;\nbegin\n  for v_row in select * from public.bills loop\n    if v_row.property_id = some_text then null; end if;\n  end loop;\nend $$;\n' },
+  // Νέα δυνατότητα που ανακοινώνεται χωρίς να περνά από τη σειρά διάθεσης.
+  // Τρεις κανόνες: νέα δυνατότητα που ανακοινώνεται χωρίς το μητρώο, εγγραφή με
+  // ημερομηνία που δεν την κλειδώνει κανείς και πύλη που δεν καλεί κανείς.
+  'rollout': { every: [
+    { add: 'components/__mut__.tsx', content: tsx('    <span>Νέα δυνατότητα: εξαγωγή σε Excel</span>') },
+    { file: 'lib/billing/rollout.ts', from: 'export const ROLLOUT: Record<string, RolloutEntry> = {\n', to: "export const ROLLOUT: Record<string, RolloutEntry> = {\n  excel_export: { label: 'Εξαγωγή σε Excel', opens: '2027-01-01' },\n" },
+    { file: 'lib/billing/rollout.ts', from: "gate: 'mobile_access', pending: true }", to: "gate: 'mobile_access' }" },
+    // Καλών μόνο σε σχόλιο δεν κλειδώνει τίποτα.
+    { file: 'lib/billing/rollout.ts', from: "gate: 'mobile_access', pending: true }", to: "gate: 'mobile_access' } // rpc('mobile_access', {})" },
+  ] },
   'service-role': { add: 'components/__mut__.ts', content: "export const key = process.env.SUPABASE_SERVICE_ROLE_KEY\n" },
   'csv-injection': { add: 'lib/core/__mut__.ts', content: "export const row = (cells: string[]) => cells.join(';')\n" },
-  'password-leak': { add: 'components/__mut__.tsx', content: "import PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  return <PasswordStrength value={v} />\n}\n" },
+  'password-leak': { every: [
+    // Χωρίς onLeaked.
+    { add: "components/__mut__.tsx", content: "import PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  return <PasswordStrength value={v} />\n}\n" },
+    // Ακούει το εύρημα, αλλά η υποβολή δεν ρωτά η ίδια (10/11/2026).
+    { add: "components/__mut__.tsx", content: "import { useState } from 'react'\nimport PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  const [leakedPw, setLeakedPw] = useState<string | null>(null)\n  const blocked = leakedPw === v\n  return <><PasswordStrength password={v} onLeaked={setLeakedPw} /><button disabled={blocked}>ok</button></>\n}\n" },
+    // Η πύλη μόνο σε σχόλιο.
+    { add: "components/__mut__.tsx", content: "import { useState } from 'react'\nimport PasswordStrength from '@/components/PasswordStrength'\nimport { leakedAtSubmit } from '@/lib/auth/leakGate'\nexport function P({ v }: { v: string }) {\n  const [leakedPw, setLeakedPw] = useState<string | null>(null)\n  const blocked = leakedPw === v\n  // if (await leakedAtSubmit(v)) return null\n  void leakedAtSubmit\n  return <><PasswordStrength password={v} onLeaked={setLeakedPw} /><button disabled={blocked}>ok</button></>\n}\n" },
+    // Η πύλη καλείται και η απάντηση πετιέται.
+    { add: "components/__mut__.tsx", content: "import { useState } from 'react'\nimport PasswordStrength from '@/components/PasswordStrength'\nimport { leakedAtSubmit } from '@/lib/auth/leakGate'\nexport function P({ v }: { v: string }) {\n  const [leakedPw, setLeakedPw] = useState<string | null>(null)\n  const blocked = leakedPw === v\n  void leakedAtSubmit(v)\n  return <><PasswordStrength password={v} onLeaked={setLeakedPw} /><button disabled={blocked}>ok</button></>\n}\n" },
+    // Κλήση που ορίζει κωδικό, χωρίς PasswordStrength και χωρίς πύλη.
+    { add: "lib/__mut__.ts", content: "type C = { auth: { updateUser(a: object): Promise<unknown> } }\nexport async function setPw(c: C, password: string) {\n  return c.auth.updateUser({ password })\n}\n" },
+    // Η πύλη υπάρχει, αλλά ΜΕΤΑ την εγγραφή.
+    { add: "lib/__mut__.ts", content: "import { leakedAtSubmit } from '@/lib/auth/leakGate'\ntype C = { auth: { signUp(a: object): Promise<unknown> } }\nexport async function join(c: C, email: string, password: string) {\n  await c.auth.signUp({ email, password })\n  if (await leakedAtSubmit(password)) return false\n  return true\n}\n" },
+    // Κλήση διαχειριστή με τον κωδικό στο δεύτερο όρισμα, χωρίς πύλη.
+    { add: "lib/__mut__.ts", content: "type A = { auth: { admin: { updateUserById(id: string, a: object): Promise<unknown> } } }\nexport async function reset(c: A, id: string, password: string) {\n  return c.auth.admin.updateUserById(id, { password })\n}\n" },
+  ] },
   // Δύο κανόνες, δύο αποδείξεις: διαδρομή χωρίς καμία ταυτότητα και
   // διαδρομή με συνεδρία που δεν ζητά το δεύτερο βήμα (03.10.2026).
   'api-auth': { every: [
@@ -516,7 +555,7 @@ export const MUTATIONS = {
   // ανύπαρκτο αρχείο συνεχίζει να λέει «ελεγμένο».
   // Ο κατάλογος που ξέμεινε πίσω: ένα μήνυμα λιγότερο στο δεσμευμένο έγγραφο
   // από όσα υπάρχουν στον κώδικα. Ακριβώς ό,τι έγινε με το «106 emails».
-  'message-catalog': { file: 'docs/KATALOGOS-MINYMATON.md', from: '| **ΣΥΝΟΛΟ** | **120** | |', to: '| **ΣΥΝΟΛΟ** | **106** | |' },
+  'message-catalog': { file: 'docs/KATALOGOS-MINYMATON.md', from: '| **ΣΥΝΟΛΟ** | **119** | |', to: '| **ΣΥΝΟΛΟ** | **106** | |' },
 
   // Το πράσινο πάνω στο κόκκινο: η απάντηση του γραψίματος πετιέται και η
   // επιτυχία ανακοινώνεται ούτως ή άλλως.
@@ -831,5 +870,72 @@ export const MUTATIONS = {
     { add: 'lib/i18n/en/__mut__.ts', content: "export const cta = { label: 'Start free', price: '€0/month' }\n" },
     { add: 'lib/i18n/en/__mut__.ts', content: "export const per = (a: string) => `ή ${a} a year`\n" },
     { add: 'lib/i18n/en/__mut__.ts', content: "export const noa = 'Noa reads your bills and she answers in Greek.'\n" },
+  ] },
+
+  // ══ Η ΔΙΑΡΡΟΗ ΤΗΣ ΔΟΚΙΜΗΣ ΕΠΑΝΑΦΟΡΑΣ (11/11/2026) ═══════════════════════════
+  // Ακριβώς το #521: Postgres ως `services:`, που το GitHub τυπώνει το log του.
+  // Και κάθε τείχος χωριστά, μαζί με κάθε παράκαμψη που βρήκε η αξιολόγηση του
+  // #538: άλλη εικόνα ή γραφή YAML, άλλος τρόπος εκκίνησης container, stderr
+  // που ενώνεται σε σωλήνα ή τυπώνεται αργότερα, psql πίσω από `bash -c` ή
+  // μεταβλητή, xtrace σε κάθε γραφή, σενάριο που καλεί μια ροή.
+  'backup-logs': { every: [
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs:\n  drill:\n    runs-on: ubuntu-latest\n    services:\n      postgres:\n        image: postgres:17.6\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs:\n  d:\n    runs-on: ubuntu-latest\n    env:\n      K: ${{ secrets.K }}\n    services:\n      db:\n        image: ${{ vars.DB_IMAGE }}\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs: {d: {runs-on: ubuntu-latest, services: {db: {image: 'postgres:17'}}, steps: [{run: echo}]}}\n" },
+    { file: '.github/workflows/backup-restore-drill.yml', from: 'docker run -d --name drill-pg --log-driver none --network none', to: 'docker run -d --name drill-pg --network none' },
+    { file: '.github/workflows/backup-restore-drill.yml', from: '-c log_min_error_statement=panic -c log_min_messages=panic', to: '-c log_min_messages=panic' },
+    { add: MUT_WF, content: wfRun('docker container run -d --name x redis:7 >/dev/null 2>&1') },
+    { add: MUT_WF, content: wfRun('docker create --name x redis:7 >/dev/null') },
+    { add: MUT_WF, content: wfRun('docker start x >/dev/null') },
+    { add: MUT_WF, content: wfRun('docker compose -f db.yml up -d') },
+    { add: MUT_WF, content: wfRun('docker-compose up -d') },
+    { add: MUT_WF, content: wfRun('supabase start') },
+    { file: '.github/workflows/backup-restore-drill.yml', from: 'pg -d drill -v ON_ERROR_STOP=1 -f - < scripts/db/platform-stub.sql >/dev/null 2>&1', to: 'pg -d drill -v ON_ERROR_STOP=1 -f - < scripts/db/platform-stub.sql' },
+    { add: MUT_WF, content: wfRun('pg_dump -f dump.sql') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql >/dev/null 2>&1 | tee psql.log') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql 2>&1 >/dev/null | sed 1q') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql >/dev/null 2>psql.err || true\ntail -5 psql.err') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql >/dev/null 2>psql.err || cat psql.err') },
+    { add: MUT_WF, content: wfRun("bash -c 'psql -f data.sql'") },
+    { add: MUT_WF, content: wfRun('PSQL="psql -h localhost -q"\n$PSQL -f data.sql >/dev/null') },
+    { add: MUT_WF, content: wfRun('out=$(psql -f data.sql 2>&1) || true\necho "$out"') },
+    { add: MUT_WF, content: wfRun('n="$(psql -tAc \'select 1\')"') },
+    { add: MUT_WF, content: wfRun('set -o errexit -o xtrace') },
+    { add: MUT_WF, content: wfRun('set -o pipefail; set -eo xtrace') },
+    { add: 'scripts/backup/__mut__.sh', content: '#!/usr/bin/env bash\nset -euxo pipefail\necho ok\n' },
+    // Αξιολόγηση του #538 στο d793fa5: stderr σε αρχείο ή μεταβλητή, stdout σε
+    // αρχείο που ξαναδιαβάζεται, μεταβλητή που τυπώνεται με άλλους τρόπους,
+    // eval / node -e / python -c, services με μόνο GITHUB_TOKEN και εικόνα ${{ }},
+    // synthetic-db κάτω από τη 10η γραμμή, με PG* ή καλούμενο με secret, allow
+    // πάνω σε πραγματική βάση.
+    { add: MUT_WF, content: wfRun('psql -f d.sql >/dev/null 2>psql.err\nsed -n 1p psql.err') },
+    { add: MUT_WF, content: wfRun('err=$(psql -f d.sql 2>&1 >/dev/null) || true') },
+    { add: MUT_WF, content: wfRun("psql -tAc 'select email from t' >out.txt 2>/dev/null\ncat out.txt") },
+    { add: MUT_WF, content: wfRun("psql -tAc 'select email from t' >out.txt 2>/dev/null\njq -R . out.txt") },
+    { add: MUT_WF, content: wfRun("n=$(psql -tAc 'select email from t' 2>/dev/null)\ncat <<<\"$n\"") },
+    { add: MUT_WF, content: wfRun("n=$(psql -tAc 'select email from t' 2>/dev/null)\necho \"::notice::$n\"") },
+    { add: MUT_WF, content: wfRun("n=$(psql -tAc 'select email from t' 2>/dev/null)\necho \"$n\" >> \"$GITHUB_STEP_SUMMARY\"") },
+    { add: MUT_WF, content: wfRun("n=$(psql -tAc 'select email from t' 2>/dev/null)\necho \"$n\" >&2") },
+    { add: MUT_WF, content: wfRun('eval "psql -f d.sql"') },
+    { add: MUT_WF, content: wfRun("node -e \"require('child_process').execSync('psql -f d.sql', { stdio: 'inherit' })\"") },
+    { add: MUT_WF, content: wfRun("python3 -c \"import os; os.system('pg_dump -f x.sql')\"") },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs:\n  d:\n    runs-on: ubuntu-latest\n    env:\n      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n    services:\n      db:\n        image: ${{ vars.DB_IMAGE }}\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs:\n  d:\n    runs-on: ubuntu-latest\n    env:\n      PW: ${{ secrets.DB_PASSWORD }}\n    services:\n      cache:\n        image: redis:7\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: wfRun('# log-guard: allow — δοκιμή\npsql "$DATABASE_URL" -f d.sql') },
+    { file: 'scripts/db-replay.sh', from: '#!/usr/bin/env bash\n# log-guard: synthetic-db', to: '#!/usr/bin/env bash\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n# log-guard: synthetic-db' },
+    { file: 'scripts/db-replay.sh', from: 'PSQL="psql -h $WORK -U postgres', to: 'export PGHOST="$WORK"\nPSQL="psql -h $WORK -U postgres' },
+    { file: '.github/workflows/ci.yml', from: '        run: bash scripts/db-replay.sh', to: '        env:\n          DB_PW: ${{ secrets.DB_PASSWORD }}\n        run: bash scripts/db-replay.sh' },
+    // Το db push της παραγωγής χωρίς quiet-db: `DETAIL: Key (…)=(…)` στο log.
+    { file: '.github/workflows/supabase-deploy.yml', from: 'run: bash scripts/ci/quiet-db.sh "supabase db push" -- supabase db push --remote --yes --include-all', to: 'run: supabase db push --remote --yes --include-all' },
+    { file: '.github/workflows/supabase-deploy.yml', from: 'listing="$(bash scripts/ci/quiet-db.sh "migration list" --stdout -- supabase migration list --remote)"', to: 'listing="$(supabase migration list --remote)"' },
+    { file: '.github/workflows/db-backup.yml', from: 'bash scripts/ci/quiet-db.sh "dump δεδομένων" -- supabase db dump', to: 'supabase db dump' },
+    { add: MUT_WF, content: wfRun('supabase db push --remote --yes >/dev/null 2>&1 | tee push.log') },
+    { add: MUT_WF, content: wfRun("supabase db query 'select email from t' >out.txt 2>/dev/null\ncat out.txt") },
+    // Η εξαίρεση του quiet-db καλύπτει μόνο την τυλιγμένη εντολή, όχι τη γραμμή.
+    { add: MUT_WF, content: wfRun('bash scripts/ci/quiet-db.sh "push" -- supabase db push --remote --yes; supabase db push --remote --yes') },
+    { add: MUT_WF, content: wfRun('bash scripts/ci/quiet-db.sh "push" -- supabase link && supabase db query "select 1"') },
+    { add: MUT_WF, content: wfRun('x="$(bash scripts/ci/quiet-db.sh "push" --stdout -- supabase db push --remote)"') },
+    { file: 'scripts/db-replay.sh', from: 'PSQL="psql -h $WORK -U postgres', to: 'PSQL="psql $DATABASE_URL -h $WORK -U postgres' },
+    { file: 'scripts/backup/vault.mjs', from: "import { pathToFileURL } from 'node:url'\n", to: "import { pathToFileURL } from 'node:url'\nimport { spawnSync } from 'node:child_process'\nexport const probe = () => spawnSync('pg_dump --data-only', { shell: true })\n" },
   ] },
 }
