@@ -39,7 +39,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 import { PRICE_FACTS } from '@/lib/facts/prices';
-import { POLICY_VERSION } from '@/lib/legal/identity';
+import { POLICY_DATE } from '@/lib/legal/identity';
 import { CPI_CONFIRMED_AT } from '@/lib/market/cpi';
 import TOOL_STAMPS from './toolStamps.json';
 import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
@@ -117,10 +117,11 @@ export const PAGE_UPDATED = {
   '/anaprosarmogi-enoikiou': checked(CPI_CONFIRMED_AT, 'ΔΤΚ ΕΛΣΤΑΤ'),
 
   // ── ΕΜΠΙΣΤΟΣΥΝΗ ΚΑΙ ΝΟΜΙΚΑ: Η ΕΚΔΟΣΗ ΠΟΥ ΤΥΠΩΝΟΥΝ ─────────────────────────
-  // «Έκδοση … · Τελευταία ενημέρωση: …» και στις τρεις, από το `POLICY_VERSION`.
-  '/trust': POLICY_VERSION,
-  '/privacy': POLICY_VERSION,
-  '/terms': POLICY_VERSION,
+  // «Έκδοση … · Τελευταία ενημέρωση: …» και στις τρεις, από την ημερομηνία του
+  // `POLICY_VERSION` (`POLICY_DATE`, χωρίς το αύξον της ίδιας μέρας).
+  '/trust': POLICY_DATE,
+  '/privacy': POLICY_DATE,
+  '/terms': POLICY_DATE,
 } as const satisfies Record<string, string>;
 
 export type DatedPage = keyof typeof PAGE_UPDATED;

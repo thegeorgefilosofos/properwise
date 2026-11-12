@@ -45,7 +45,7 @@ import { planBriefing } from './components/assistantPersona';
 import UpgradeModal from './components/UpgradeModal';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
-import { MYAADE_OPEN_EVENT, type MyaadeOpenDetail } from './components/myaadeOpen';
+import { MYAADE_OPEN_EVENT, type MyaadeOpenDetail, type BulkFromScan } from './components/myaadeOpen';
 import { useAppointmentReminders } from './components/useAppointmentReminders';
 import FeatureLock, { LockBadge } from './components/FeatureLock';
 import { PLANS } from '@/lib/billing/plans';
@@ -107,10 +107,20 @@ export default function Dashboard() {
   // περνά και το αρχείο, ώστε να μην ανεβαίνει δεύτερη φορά.
   const [myaadeOpen, setMyaadeOpen] = useState(false);
   const [myaadeFile, setMyaadeFile] = useState<File | null>(null);
-  const openMyaade = (file: File | null = null) => { setMyaadeFile(file); setMyaadeOpen(true); };
-  const closeMyaade = () => { setMyaadeOpen(false); setMyaadeFile(null); };
+  // Το PDF που η Σάρωση έστειλε κατευθείαν (χωρίς βήμα ελέγχου): η μαζική δείχνει
+  // τότε το «Κράτα αντίγραφο» και τον δρόμο πίσω, «Σάρωσέ το ως έγγραφο».
+  const [myaadeFromScan, setMyaadeFromScan] = useState<BulkFromScan | null>(null);
+  // Το αρχείο που γυρίζει από τη μαζική στην κανονική σάρωση.
+  const [scanBackFile, setScanBackFile] = useState<File | null>(null);
+  const openMyaade = (file: File | null = null, fromScan: BulkFromScan | null = null) => { setMyaadeFile(file); setMyaadeFromScan(fromScan); setMyaadeOpen(true); };
+  // Η σάρωση χωρίς ακίνητο: μόνο με μετρημένα άδεια λίστα, όχι στη φόρτωση ή σε σφάλμα.
+  const scanNoProperty = !selected && !loading && !loadError && properties.length === 0;
+  const closeMyaade = () => { setMyaadeOpen(false); setMyaadeFile(null); setMyaadeFromScan(null); };
+  // Το αρχείο της επιστροφής ζει όσο είναι ανοιχτή η Σάρωση: στο επόμενο άνοιγμα
+  // δεν ξαναδιαβάζεται. Ρύθμιση στην απόδοση, όχι σε εφέ (όπως το `initialApplied`).
+  if (!quickAddOpen && scanBackFile) setScanBackFile(null);
   useEffect(() => {
-    const open = (e: Event) => { setMyaadeFile((e as CustomEvent<MyaadeOpenDetail>).detail?.file ?? null); setMyaadeOpen(true); };
+    const open = (e: Event) => { setMyaadeFile((e as CustomEvent<MyaadeOpenDetail>).detail?.file ?? null); setMyaadeFromScan(null); setMyaadeOpen(true); };
     window.addEventListener(MYAADE_OPEN_EVENT, open);
     return () => window.removeEventListener(MYAADE_OPEN_EVENT, open);
   }, []);
@@ -288,8 +298,8 @@ export default function Dashboard() {
         <button
           onClick={()=>{ setQuickAddOpen(true); setSidebarOpen(false); }}
           className="quick-add-btn"
-          disabled={!selected}
-          title={selected ? 'Φωτογράφισε ή ανέβασε οποιοδήποτε έγγραφο: λογαριασμό, απόδειξη πληρωμής, μισθωτήριο, ασφαλιστήριο' : 'Πρόσθεσε πρώτα ένα ακίνητο'}>
+          disabled={!selected&&!scanNoProperty}
+          title={selected ? 'Φωτογράφισε ή ανέβασε οποιοδήποτε έγγραφο: λογαριασμό, απόδειξη πληρωμής, μισθωτήριο, ασφαλιστήριο' : scanNoProperty ? 'Πολλά ακίνητα μαζί από το Ε9 ή την πράξη ΕΝΦΙΑ' : 'Πρόσθεσε πρώτα ένα ακίνητο'}>
           <span className="quick-add-icon" aria-hidden>
             <svg aria-hidden="true" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -931,12 +941,24 @@ export default function Dashboard() {
           σαρώνει πια τίποτα. Ο τίτλος μένει: είναι το όνομα του παραθύρου δίπλα
           στο «×» και το μόνο που ακούει ο αναγνώστης οθόνης — το χειρόγραφο
           παράθυρο δεν είχε κανένα. */}
-      <Modal open={!!(quickAddOpen&&user&&selected)} onClose={requestCloseQuickAdd} size="lg"
+      {/* ΚΑΙ ΧΩΡΙΣ ΑΚΙΝΗΤΟ, ΜΕ ΜΟΝΟ ΤΗ ΜΑΖΙΚΗ (12/11/2026). Ηταν `quickAddOpen&&user&&selected`:
+          ο άδειος λογαριασμός δεν είχε σάρωση, ενώ το Ε9 ή η πράξη ΕΝΦΙΑ είναι
+          ακριβώς ο τρόπος να φτιάξει τα ακίνητά του. Ανοίγει μόνο ΑΦΟΥ φορτώσει
+          η λίστα και βγει μετρημένα άδεια (`scanNoProperty`): στη φόρτωση το
+          `selected` είναι ακόμη κενό και το DocumentScan κρατά το ακίνητο από το
+          πρώτο του άνοιγμα. */}
+      <Modal open={!!(quickAddOpen&&user&&(selected||scanNoProperty))} onClose={requestCloseQuickAdd} size="lg"
         title="Σάρωση εγγράφου">
-        {user&&selected&&<DocumentScan propertyId={selected.id} userId={user.id} properties={properties} onBusyChange={setScanBusy} onDirtyChange={setScanDirty}
+        {/* ΤΟ ΚΛΕΙΔΙ ΔΕΝ ΑΛΛΑΖΕΙ ΜΕ ΤΟ ΑΚΙΝΗΤΟ (έλεγχος PR 547). Ηταν `selected?.id`:
+            κάθε αλλαγή του επιλεγμένου ακινήτου όσο το παράθυρο ήταν ανοιχτό (π.χ.
+            η επαναφόρτωση μετά από καταχώρηση) ξαναέστηνε τη σάρωση και έσβηνε τον
+            έλεγχο που ήταν στη μέση. Το ακίνητο της σάρωσης το κρατά το ίδιο το
+            DocumentScan (`targetId`). Ξαναστήνεται μόνο στο πέρασμα από «χωρίς
+            ακίνητο» σε «με ακίνητο», όπου υπάρχει μόνο η πρώτη οθόνη. */}
+        {user&&(selected||scanNoProperty)&&<DocumentScan key={selected ? 'property' : 'none'} propertyId={selected?.id ?? null} initialFile={scanBackFile ?? undefined} userId={user.id} properties={properties} onBusyChange={setScanBusy} onDirtyChange={setScanDirty}
           onManual={()=>{ closeQuickAdd(); setNav('finances'); setManualExpense(n=>n+1); }}
           onOpenAccounting={()=>{ closeQuickAdd(); setNav('accounting'); }}
-          onBulkImport={(file)=>{ closeQuickAdd(); openMyaade(file); }}
+          onBulkImport={(file, fromScan)=>{ closeQuickAdd(); setScanBackFile(null); openMyaade(file, fromScan ?? null); }}
           onSaved={async()=>{await fetchProperties(user.id);}}/>}
       </Modal>
 
@@ -979,6 +1001,10 @@ export default function Dashboard() {
       }}/>}
       {editProperty&&user&&<AddPropertyWizard userId={user.id} existing={editProperty} focus={editFocus} onClose={()=>{setEditProperty(null);setEditFocus(null);}} onSaved={async()=>{setEditProperty(null);setEditFocus(null);await fetchProperties(user.id);}}/>}
       {myaadeOpen&&<MyaadeImport userId={user.id} limit={propertyLimit(ent)} initialFile={myaadeFile ?? undefined}
+        fromScan={myaadeFromScan ?? undefined}
+        // «ΣΑΡΩΣΕ ΤΟ ΩΣ ΕΓΓΡΑΦΟ»: πίσω στη Σάρωση με το ίδιο αρχείο, μόνο όταν η
+        // σάρωση είχε ακίνητο (χωρίς ακίνητο ένα έγγραφο δεν έχει πού να μπει).
+        onScanAsDocument={myaadeFromScan?.propertyId && myaadeFile ? ()=>{ const f = myaadeFile; closeMyaade(); setScanBackFile(f); setQuickAddOpen(true); } : undefined}
         onUpgrade={()=>{ closeMyaade(); setShowUpgrade(true); }}
         onClose={closeMyaade}
         onSaved={async()=>{ await fetchProperties(user.id); }}

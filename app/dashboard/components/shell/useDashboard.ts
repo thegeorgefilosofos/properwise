@@ -463,6 +463,10 @@ export function useDashboard() {
         // με το «Σάρωσε έγγραφο» του καλωσορίσματος.
         else if (LAUNCH.scan && !countErr && count === 0) {
           setEnfiaCarry(null);
+          // Η σάρωση ανοίγει πλέον και χωρίς ακίνητο (μόνο με τη μαζική): εδώ
+          // ανοίγει ο οδηγός, οπότε το παράθυρο της σάρωσης δεν ανοίγει από πάνω
+          // του. Ξανανοίγει μόλις αποθηκευτεί το ακίνητο (`scanAfterAdd`).
+          setQuickAddOpen(false);
           setScanAfterAdd(true);
           setShowAddModal(true);
           void trackOnboarding(supabase, { event: PRODUCT_EVENTS.wizard_opened, from: 'scan' });

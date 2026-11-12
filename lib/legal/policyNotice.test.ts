@@ -1,7 +1,8 @@
 // npx tsx lib/legal/policyNotice.test.ts
 import { readFileSync } from 'node:fs'
-import { policyNoticeDue, policyNoticeCopy, sawLegalReview, sawBulkImport, sawBackups, LEGAL_REVIEW_VERSION, BULK_VERSION, BACKUP_VERSION, firmNoticeDue, FIRM_NOTICE_VERSION, FIRM_NOTICE_BODY, FIRM_NOTICE_TITLE, FIRM_NOTICE_HREF, FIRM_NOTICE_POLICIES } from './policyNotice'
-import { POLICY_VERSION } from './identity'
+import { policyNoticeDue, policyNoticeCopy, sawLegalReview, sawBulkImport, sawBackups, sawKeepCopy, LEGAL_REVIEW_VERSION, BULK_VERSION, BACKUP_VERSION, KEEP_COPY_VERSION, firmNoticeDue, FIRM_NOTICE_VERSION, FIRM_NOTICE_BODY, FIRM_NOTICE_TITLE, FIRM_NOTICE_HREF, FIRM_NOTICE_POLICIES } from './policyNotice'
+import { POLICY_VERSION, POLICY_DATE, versionSeq } from './identity'
+import { athensToday } from '@/lib/core/time'
 import { MERCHANT_NAMES } from './merchant'
 
 let pass = 0, fail = 0
@@ -14,36 +15,50 @@ ok('την έκλεισε σε άλλη συσκευή: όχι', !policyNoticeDu
 ok('εγγράφηκε με αυτή την έκδοση: όχι', !policyNoticeDue({ consent_policy_version: POLICY_VERSION }, null))
 ok('έκλεισε παλιότερη ενημέρωση: τη βλέπει', policyNoticeDue({ policy_notice_seen: '2026-09' }, '2026-09'))
 // ── Τι λέει η ειδοποίηση: ανάλογα με το τι έχει ήδη δει (09/11/2026) ──
-// Η νομική ενημέρωση της 2026-11-09 δεν χάνεται επειδή ήρθε η 2026-11-10,
-// ούτε η 2026-11-10 επειδή ήρθε η 2026-11-11 (αντίγραφα ασφαλείας), ούτε η
-// 2026-11-11 επειδή ήρθε η 2026-11-12 (Όροι: δοκιμή, δώρα, αλλαγή πακέτου).
+// Καμία ειδοποίηση δεν χάνεται επειδή ήρθε νεότερη: η 2026-11-09 (νομικός
+// έλεγχος), η 2026-11-10 (μαζική), η 2026-11-11 (αντίγραφα ασφαλείας), η
+// 2026-11-12 (αντίγραφο της σάρωσης, PR 547) και η 2026-11-12.2 (Όροι, PR 559).
+const sawKeep = policyNoticeCopy({ policy_notice_seen: '2026-11-12' }, null)
 const sawBackup = policyNoticeCopy({ policy_notice_seen: '2026-11-11' }, null)
 const sawBulk = policyNoticeCopy({ policy_notice_seen: '2026-11-10' }, null)
 const sawReview = policyNoticeCopy({ policy_notice_seen: '2026-11-09' }, null)
 const missedReview = policyNoticeCopy({ policy_notice_seen: '2026-10-03', consent_policy_version: '2026-09' }, '2026-10-03')
 const never = policyNoticeCopy(null, null)
-const all = [sawBackup, sawBulk, sawReview, missedReview, never]
+const all = [sawKeep, sawBackup, sawBulk, sawReview, missedReview, never]
 const backups = (c: { summary: string }) => c.summary.includes('αντίγραφα ασφαλείας φυλάσσονται στη Φρανκφούρτη') && c.summary.includes('κάθε Κυριακή') && c.summary.includes('μόνο το κλειδί')
+const keepCopy = (c: { summary: string }) => c.summary.includes('«Κράτα αντίγραφο στον Φάκελο»') && c.summary.includes('ΑΦΜ') && c.summary.includes('το πρωτότυπο μπαίνει ολόκληρο')
 const trialTerms = (c: { summary: string }) => c.summary.includes('Οι Όροι λένε πλέον ότι η δοκιμή έχει δικό της όριο') && c.summary.includes('κοινό μηνιαίο απόθεμα') && c.summary.includes('έχουν τα όρια του πακέτου τους') && c.summary.includes('πότε αλλάζεις πακέτο')
+// Η ΕΚΔΟΣΗ: νέα, μετά την 2026-11-12 που ήδη είναι στην παραγωγή, χωρίς μελλοντική ημερομηνία.
+ok('η έκδοση είναι η δεύτερη της 2026-11-12', POLICY_VERSION === '2026-11-12.2' && POLICY_DATE === '2026-11-12' && versionSeq(POLICY_VERSION) === '2' && versionSeq('2026-11-12') === '')
+ok('ως κείμενο: μετά την 2026-11-12, πριν από την 2026-11-13', POLICY_VERSION > '2026-11-12' && POLICY_VERSION < '2026-11-13')
+ok('η ημερομηνία της έκδοσης δεν είναι μελλοντική', POLICY_DATE <= athensToday())
 ok('όλοι μαθαίνουν για τη δοκιμή, τα δώρα και την αλλαγή πακέτου', all.every(trialTerms))
 ok('η αλλαγή των Όρων έρχεται τελευταία', all.every(c => c.summary.endsWith('μέσα από την εφαρμογή.')))
-ok('η 2026-11-12 στέλνει στους Όρους', all.every(c => c.href === '/terms' && c.headline.includes('Όρους')))
-ok('είδε την 2026-11-11: μόνο η αλλαγή των Όρων', !backups(sawBackup) && !sawBackup.summary.includes('μαζική καταχώρηση') && sawBackup.headline === 'Ενημερώσαμε τους Όρους.' && sawBackup.short === 'Νέοι Όροι.')
+ok('η 2026-11-12.2 στέλνει στους Όρους', all.every(c => c.href === '/terms' && c.headline.includes('Όρους')))
+ok('είδε την 2026-11-12: ΜΟΝΟ η αλλαγή των Όρων', !keepCopy(sawKeep) && !backups(sawKeep) && sawKeep.headline === 'Ενημερώσαμε τους Όρους.' && sawKeep.short === 'Νέοι Όροι.')
+ok('είδε την 2026-11-12 σε αυτή τη συσκευή: το ίδιο', policyNoticeCopy({}, KEEP_COPY_VERSION).summary === sawKeep.summary)
+ok('εγγράφηκε με την 2026-11-12: μόνο οι Όροι', sawKeepCopy({ consent_policy_version: '2026-11-12' }, null) && !sawKeepCopy({ consent_policy_version: '2026-11-11' }, null))
+ok('όποιος έκλεισε την ειδοποίηση της 2026-11-12 τη βλέπει ξανά, μία φορά', policyNoticeDue({ policy_notice_seen: '2026-11-12' }, '2026-11-12') && !policyNoticeDue({ policy_notice_seen: POLICY_VERSION }, null) && !policyNoticeDue({}, POLICY_VERSION))
+ok('όποιος εγγράφεται με την 2026-11-12.2 δεν τη βλέπει', !policyNoticeDue({ consent_policy_version: '2026-11-12.2' }, null))
+ok('το «2026-11-12.2» μετρά ως «είδε» κάθε παλιότερη', sawKeepCopy({ policy_notice_seen: '2026-11-12.2' }, null) && sawLegalReview(null, '2026-11-12.2'))
+ok('άκυρο αύξον δεν μετρά', !sawKeepCopy({ policy_notice_seen: '2026-11-12.x' }, null) && !sawKeepCopy({ policy_notice_seen: '2026-11-12.10' }, null))
+const notKeep = [sawBackup, sawBulk, sawReview, missedReview, never]
+ok('όσοι δεν είδαν την 2026-11-12 μαθαίνουν και για το αντίγραφο της σάρωσης', notKeep.every(keepCopy))
+ok('το αντίγραφο της σάρωσης έρχεται μετά τα αντίγραφα ασφαλείας', notKeep.every(c => c.summary.indexOf('Κράτα αντίγραφο') > c.summary.indexOf('αντίγραφα ασφαλείας')))
+ok('είδε την 2026-11-11: το αντίγραφο της σάρωσης και οι Όροι', !backups(sawBackup) && !sawBackup.summary.includes('μαζική καταχώρηση ακινήτων η φωτογραφία') && sawBackup.headline === 'Ενημερώσαμε τους Όρους και την Πολιτική απορρήτου.')
 ok('είδε την 2026-11-11 σε αυτή τη συσκευή: το ίδιο', policyNoticeCopy({}, BACKUP_VERSION).summary === sawBackup.summary)
-ok('εγγράφηκε με την 2026-11-11: μόνο οι Όροι', sawBackups({ consent_policy_version: '2026-11-11' }, null) && !sawBackups({ consent_policy_version: '2026-11-10' }, null))
-ok('όποιος έκλεισε την ειδοποίηση της 2026-11-11 τη βλέπει ξανά, μία φορά', POLICY_VERSION === '2026-11-12' && policyNoticeDue({ policy_notice_seen: '2026-11-11' }, '2026-11-11') && !policyNoticeDue({ policy_notice_seen: POLICY_VERSION }, null))
-ok('όποιος εγγράφεται με την 2026-11-12 δεν τη βλέπει', !policyNoticeDue({ consent_policy_version: '2026-11-12' }, null))
+ok('εγγράφηκε με την 2026-11-11', sawBackups({ consent_policy_version: '2026-11-11' }, null) && !sawBackups({ consent_policy_version: '2026-11-10' }, null))
 const others = [sawBulk, sawReview, missedReview, never]
 ok('όσοι δεν είδαν την 2026-11-11 μαθαίνουν και για τα αντίγραφα ασφαλείας', others.every(backups))
-ok('είδε την 2026-11-10 (λογαριασμός): τα αντίγραφα και οι Όροι', !sawBulk.summary.includes('μαζική καταχώρηση') && !sawBulk.summary.includes('υπαναχώρησης') && sawBulk.headline === 'Ενημερώσαμε τους Όρους και την Πολιτική απορρήτου.' && sawBulk.href === '/terms')
+ok('είδε την 2026-11-10 (λογαριασμός): χωρίς μαζική και νομικό έλεγχο', !sawBulk.summary.includes('μαζική καταχώρηση ακινήτων η φωτογραφία') && !sawBulk.summary.includes('υπαναχώρησης'))
 ok('είδε την 2026-11-10 σε αυτή τη συσκευή: το ίδιο', policyNoticeCopy({}, BULK_VERSION).summary === sawBulk.summary)
 ok('εγγράφηκε με την 2026-11-10: χωρίς τη μαζική καταχώρηση', sawBulkImport({ consent_policy_version: '2026-11-10' }, null) && !sawBulkImport({ consent_policy_version: '2026-11-09' }, null))
 ok('είδε την 2026-11-09 (λογαριασμός): η μαζική καταχώρηση και τα αντίγραφα', sawReview.summary.includes('δεν αποθηκεύεται') && sawReview.summary.includes('PDF διαβάζεται μόνο στη συσκευή') && !sawReview.summary.includes('υπαναχώρησης') && !sawReview.summary.includes('συγκαταθέσεις')
   && sawReview.summary.indexOf('μαζική καταχώρηση') < sawReview.summary.indexOf('αντίγραφα ασφαλείας'))
 ok('είδε την 2026-11-09: «Ενημερώσαμε τους Όρους και την Πολιτική απορρήτου.»', sawReview.headline === 'Ενημερώσαμε τους Όρους και την Πολιτική απορρήτου.' && sawReview.href === '/terms')
-ok('είδε την 2026-11-09 σε αυτή τη συσκευή: μόνο η προσθήκη', policyNoticeCopy({}, LEGAL_REVIEW_VERSION).headline === sawReview.headline)
+ok('είδε την 2026-11-09 σε αυτή τη συσκευή: μόνο η προσθήκη', policyNoticeCopy({}, LEGAL_REVIEW_VERSION).summary === sawReview.summary)
 ok('εγγράφηκε με την 2026-11-09: μόνο η προσθήκη', sawLegalReview({ consent_policy_version: '2026-11-09' }, null))
-ok('έκλεισε ήδη την 2026-11-10 αλλού: η δική της περίληψη', sawLegalReview({ policy_notice_seen: POLICY_VERSION }, null))
+ok('έκλεισε ήδη την τρέχουσα αλλού: η δική της περίληψη', sawLegalReview({ policy_notice_seen: POLICY_VERSION }, null))
 ok('δεν είδε την 2026-11-09: πρώτα ο νομικός έλεγχος, μετά η προσθήκη', missedReview.summary.includes('δικαίωμα υπαναχώρησης του νόμου') && missedReview.summary.includes('χωριστές συγκαταθέσεις')
   && missedReview.summary.indexOf('υπαναχώρησης') < missedReview.summary.indexOf('δεν αποθηκεύεται') && missedReview.summary.includes('PDF διαβάζεται μόνο στη συσκευή')
   && missedReview.summary.indexOf('δεν αποθηκεύεται') < missedReview.summary.indexOf('αντίγραφα ασφαλείας φυλάσσονται'))
@@ -78,6 +93,7 @@ ok('στην 2026-11-09 τη βλέπει ακόμη', firmNoticeDue(owner, null
 ok('στην 2026-11-10 τη βλέπει ακόμη', firmNoticeDue(owner, null, '2026-11-10'))
 ok('στην 2026-11-11 τη βλέπει ακόμη', firmNoticeDue(owner, null, '2026-11-11'))
 ok('στην 2026-11-12 τη βλέπει ακόμη', firmNoticeDue(owner, null, '2026-11-12'))
+ok('στην 2026-11-12.2 τη βλέπει ακόμη', firmNoticeDue(owner, null, '2026-11-12.2'))
 ok('όποιος την έκλεισε δεν την ξαναβλέπει στην 2026-11-11', !firmNoticeDue({ ...owner, user_metadata: { firm_notice_seen: V } }, null, '2026-11-11'))
 ok('όποιος την έκλεισε δεν την ξαναβλέπει στην 2026-11-10', !firmNoticeDue({ ...owner, user_metadata: { firm_notice_seen: V } }, null, '2026-11-10'))
 ok('όποιος την έκλεισε στην 2026-11-05 δεν την ξαναβλέπει στην 2026-11-09', !firmNoticeDue({ ...owner, user_metadata: { firm_notice_seen: V } }, null, '2026-11-09'))
