@@ -32,7 +32,7 @@ import {
   buildLeaseDeclaration, declarationSheet, RULES,
   type LeaseDeclarationInput, type DeclField,
 } from '@/lib/tax/leaseDeclaration';
-import { declaredForLease, type DeclRecord } from './leaseFlow';
+import { declaredForLease, declRecordOf, type DeclRecord } from './leaseFlow';
 import { PeaLeaseNotice } from './PeaLeaseNotice';
 import { peaDeclField } from '@/lib/property/peaExpiry';
 
@@ -68,13 +68,10 @@ async function readSubmitted(supabase: SupabaseClient, userId: string, propertyI
     .select('created_at,metadata')
     .eq('user_id', userId).eq('action', DECL_ACTION).eq('entity_id', propertyId)
     .order('created_at', { ascending: false }).limit(1).maybeSingle());
-  if (!row) return null;
+  const rec = declRecordOf(row);
+  if (!row || !rec) return null;
   const meta = (row.metadata ?? {}) as Record<string, unknown>;
-  return {
-    at: row.created_at as string,
-    ref: typeof meta.reference === 'string' ? meta.reference : '',
-    tenantId: typeof meta.tenant_id === 'string' ? meta.tenant_id : null,
-  };
+  return { ...rec, ref: typeof meta.reference === 'string' ? meta.reference : '' };
 }
 
 export default function LeaseDeclaration({ open, onClose, propertyId, userId, supabase }: {
@@ -340,7 +337,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <input aria-label="Αριθμός δήλωσης μίσθωσης" value={refInput} onChange={e => setRefInput(e.target.value)} placeholder="Αριθμός δήλωσης (προαιρετικό)"
                   style={{ flex: 1, minWidth: 200, height: T.h.lg, padding: '0 13px', borderRadius: 10, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none' }} />
-                {editing && <Btn variant="secondary" onClick={() => setEditing(false)} disabled={saving}>Άκυρο</Btn>}
+                {editing && <Btn variant="secondary" onClick={() => setEditing(false)} disabled={saving}>Ακύρωση</Btn>}
                 <Btn variant="secondary" onClick={markSubmitted} disabled={saving}>{saving ? 'Αποθήκευση…' : editing ? 'Αποθήκευση' : 'Την υπέβαλα'}</Btn>
               </div>
             </>

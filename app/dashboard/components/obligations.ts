@@ -119,6 +119,9 @@ export interface OblDone {
    * Πηγή: το `activity_log`, action `lease_declaration_submitted`.
    */
   leaseDeclaredAt?: string | null;
+  /** Για ποιον ενοικιαστή και ποια έναρξη γράφτηκε (metadata της ίδιας γραμμής). */
+  leaseDeclTenantId?: string | null;
+  leaseDeclLeaseStart?: string | null;
   /**
    * Οι θεσμικές προθεσμίες (`tax:<id>`) που έκλεισαν στο Ημερολόγιο ή στις
    * Εκκρεμότητες (`closedTaxRefs`). Η δόση που σημείωσες πληρωμένη εκεί δεν
@@ -194,9 +197,11 @@ export function computeObligations(
   // παλαιότερη από την έναρξη αφορά τον προηγούμενο μισθωτή και δεν κλείνει
   // τίποτα. Ημερομηνία που δεν διαβάζεται δεν κλείνει επίσης τίποτα.
   // Ο κανόνας ζει στο leaseFlow.ts, κοινός με τη Δήλωση μίσθωσης.
+  // Με το αναγνωριστικό του ενοικιαστή, ώστε δήλωση που υποβλήθηκε στην
+  // υπογραφή (πριν την έναρξη) να κλείνει την υπενθύμιση κι εδώ.
   const declaredForThisLease = declaredForLease(
-    done.leaseDeclaredAt ? { at: done.leaseDeclaredAt } : null,
-    { leaseStart: tenant?.lease_start });
+    done.leaseDeclaredAt ? { at: done.leaseDeclaredAt, tenantId: done.leaseDeclTenantId, leaseStart: done.leaseDeclLeaseStart } : null,
+    { tenantId: tenant?.id, leaseStart: tenant?.lease_start });
   if (tenant?.lease_start && !declaredForThisLease) {
     if (dayOf(tenant.lease_start)) {
       // ΜΙΑ πηγή αλήθειας με τη μηχανή της δήλωσης (lib/tax/leaseDeclaration):

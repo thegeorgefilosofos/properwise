@@ -24,7 +24,9 @@ import { Building2 } from 'lucide-react';
 import { InfoHint } from './InfoHint';
 import { savedData } from '@/components/dbWrite';
 import { notifyError } from '@/components/Toast';
-import { samePerson, leaseCategoryOf } from './leaseFlow';
+import { samePerson, sameAfm, dayBefore, tenantPatchFromLease } from './leaseFlow';
+import { syncTenantSchedule } from './TabTenantHelpers';
+import { saved } from '@/components/dbWrite';
 
 import { CustomSelect as Select, DatePicker } from './UIComponents';
 import ScanButton from './ScanButton';
@@ -81,7 +83,10 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
   // χωρίς δεύτερο αντίγραφο του ίδιου μισθωτηρίου στο Αρχείο.
   const [docArchived, setDocArchived] = useState(false);
   // Στο ακίνητο μένει άλλος άνθρωπος: ρωτάμε πριν γράψουμε πάνω του.
-  const [conflict, setConflict] = useState<{ name: string } | null>(null);
+  const [conflict, setConflict] = useState<{ name: string; sameAfm: boolean } | null>(null);
+  // «Νέος ενοικιαστής»: ο προηγούμενος αποχώρησε, εκτός αν είναι συγκάτοικοι.
+  // Αλλιώς το ακίνητο έμενε με δύο τρέχοντες και τα ενοίκια αθροίζονταν.
+  const [prevLeft, setPrevLeft] = useState(true);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
 
@@ -222,14 +227,21 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
       // Ενημέρωση/δημιουργία ενοικιαστή από το υπογεγραμμένο συμφωνητικό. Ο τύπος
       // μίσθωσης είναι υποχρεωτικός στην καρτέλα (TabTenant) και βγαίνει από τη
       // «Χρήση» του ίδιου του συμφωνητικού.
-      const payload = {
-        full_name: tenant.trim(), afm: tenantAfm.trim() || null, lease_category: leaseCategoryOf(use),
-        monthly_rent: res.monthlyRent, deposit_amount: res.deposit || null, lease_start: res.start, lease_end: res.end,
+      const facts = {
+        name: tenant, afm: tenantAfm, use, monthlyRent: res.monthlyRent, deposit: res.deposit,
+        start: res.start, end: res.end, paymentDay: res.paymentDay,
       };
-      const cur = await tenantStore.current<{ id: string; full_name: string | null; afm: string | null }>(supabase, prop.id, 'id,full_name,afm', userId);
-      const same = !!cur?.id && samePerson({ name: cur.full_name, afm: cur.afm }, { name: tenant, afm: tenantAfm });
+      const cur = await tenantStore.current<{ id: string; full_name: string | null; afm: string | null; lease_start: string | null }>(supabase, prop.id, 'id,full_name,afm,lease_start', userId);
+      const curPerson = { name: cur?.full_name, afm: cur?.afm };
+      const newPerson = { name: tenant, afm: tenantAfm };
+      // Ίδιο ΑΦΜ με σαφώς άλλο όνομα δεν αποφασίζει μόνο του (samePerson): ρωτάμε.
+      const same = !!cur?.id && samePerson(curPerson, newPerson);
       const updateId = cur?.id && (same || choice === 'replace') ? cur.id : null;
-      if (cur?.id && !updateId && choice !== 'new') { setConflict({ name: cur.full_name || 'άλλος ενοικιαστής' }); return; }
+      if (cur?.id && !updateId && choice !== 'new') {
+        setConflict({ name: cur.full_name || 'άλλος ενοικιαστής', sameAfm: sameAfm(curPerson, newPerson) });
+        return;
+      }
+      const payload = tenantPatchFromLease(facts, updateId ? 'update' : 'insert');
       // Νέος ενοικιαστής: πρώτα η σύμβαση επεξεργασίας (lib/legal/dpa.ts).
       if (!updateId && !(await ensureDpa(supabase))) { setErr('Το μισθωτήριο αρχειοθετήθηκε, ο ενοικιαστής όχι: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.'); return; }
       // Το try/catch από πάνω δεν καλύπτει αυτό: το Supabase δεν πετά. Χωρίς τον
@@ -245,8 +257,21 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
       // ενοικιαστής» και όταν η εγγραφή είχε αποτύχει.
       if (!row) { setErr(tenantFailed); return; }
       setConflict(null);
-      const { error: instErr } = await syncInstalments(supabase, row as unknown as Tenant, prop.id, userId);
+      const savedRow = row as unknown as Tenant;
+      // ΟΠΩΣ ΣΤΟ TabTenant: ημερολόγιο και εκκρεμότητες της μίσθωσης, μετά οι δόσεις.
+      await syncTenantSchedule(supabase, savedRow, prop.id, userId, 'save', { rentDueDay: payload.rent_due_day });
+      const { error: instErr } = await syncInstalments(supabase, savedRow, prop.id, userId);
       if (instErr) notifyError(`Ο ενοικιαστής ενημερώθηκε, αλλά οι δόσεις ενοικίου δεν δημιουργήθηκαν. ${instErr}`);
+      // Ο ΠΡΟΗΓΟΥΜΕΝΟΣ ΑΠΟΧΩΡΕΙ ΜΕ ΤΗΝ ΕΝΑΡΞΗ ΤΟΥ ΝΕΟΥ, ίδια λογική με την
+      // «Αποχώρηση» της καρτέλας (markPast: `status` και `move_out_date` μαζί).
+      // Μόνο μετά την επιτυχή εγγραφή του νέου, ώστε αποτυχία να μην αφήνει
+      // το ακίνητο χωρίς κανέναν.
+      if (!updateId && cur?.id && choice === 'new' && prevLeft) {
+        const out = dayBefore(res.start);
+        const moveOut = cur.lease_start && out < cur.lease_start.slice(0, 10) ? cur.lease_start.slice(0, 10) : out;
+        await saved(`Ο νέος ενοικιαστής γράφτηκε, αλλά η αποχώρηση του/της ${cur.full_name || 'προηγούμενου'} δεν καταχωρήθηκε`,
+          tenantStore.markPast(supabase, cur.id, moveOut));
+      }
 
       setArchived(true);
       onSaved?.();
@@ -334,13 +359,19 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
     : docArchived ? 'Το μισθωτήριο αρχειοθετήθηκε. Η καρτέλα ενοικιαστή δεν ενημερώθηκε ακόμη.'
     : SAY.archiveAsk;
   const footerNote = archived ? ''
-    : conflict ? `Η αντικατάσταση γράφει το μισθωτήριο πάνω στην καρτέλα «${conflict.name}», όπου μένει και το ιστορικό πληρωμών της. Ο νέος ενοικιαστής παίρνει δική του καρτέλα.`
+    : conflict ? `${conflict.sameAfm ? `Το ΑΦΜ είναι ίδιο με της καρτέλας «${conflict.name}» ενώ το όνομα διαφέρει: έλεγξε το ΑΦΜ. ` : ''}Η αντικατάσταση γράφει το μισθωτήριο πάνω στην καρτέλα «${conflict.name}», όπου μένει και το ιστορικό πληρωμών της. Ο νέος ενοικιαστής παίρνει δική του καρτέλα.`
     : docArchived ? ''
     : `Αρχειοθετείται με ημερομηνία έναρξης ${grDate(res.start)} και ενημερώνει την καρτέλα ενοικιαστή.`;
   const footerInfo = pending ? (
     <span style={{ display: 'inline-block', minWidth: 220 }}>
       <span style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>{footerHead}</span>
       {footerNote && <span style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{footerNote}</span>}
+      {conflict && !archived && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', marginTop: 6, cursor: 'pointer' }}>
+          <input type="checkbox" checked={prevLeft} onChange={e => setPrevLeft(e.target.checked)} disabled={archiving} />
+          Με «Νέος ενοικιαστής»: ο/η {conflict.name} αποχώρησε στις {grDate(dayBefore(res.start))}. Ξετσέκαρε για συγκάτοικους.
+        </label>
+      )}
       {err && <span role="alert" style={{ display: 'block', fontSize: 12, color: 'var(--negative)', marginTop: 4 }}>{err}</span>}
     </span>
   ) : undefined;

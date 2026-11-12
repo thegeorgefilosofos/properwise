@@ -13,7 +13,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { samePerson, normName, leaseCategoryOf, declaredForLease, leaseDocKey, leaseDocPath } from './leaseFlow'
+import { samePerson, sameAfm, namesClearlyDiffer, normName, leaseCategoryOf, declaredForLease, declRecordOf, dayBefore, tenantPatchFromLease, leaseDocKey, leaseDocPath } from './leaseFlow'
 import { computeObligations } from './obligations'
 
 let pass = 0, fail = 0
@@ -31,6 +31,32 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; fails.push
   ok('κενό όνομα δεν ταιριάζει με κενό', !samePerson({ name: '', afm: '' }, { name: ' ', afm: null }))
   ok('Χρήση κατοικίας → residential', leaseCategoryOf('residence') === 'residential')
   ok('Επαγγελματική → commercial', leaseCategoryOf('professional') === 'commercial')
+
+  // Η ΠΑΚΑΛΙΑ ΤΗΣ ΠΡΟΣΥΜΠΛΗΡΩΣΗΣ: το παράθυρο γεμίζει το ΑΦΜ του Α. Ο χρήστης
+  // γράφει μόνο το όνομα του Β. Πριν, το ίδιο ΑΦΜ αποφάσιζε «ίδιος» και ο Α
+  // γινόταν Β σιωπηλά.
+  const prefilled = { name: 'Μαρία Νικολάου', afm: '123456789' }
+  ok('ίδιο ΑΦΜ με σαφώς άλλο όνομα ΔΕΝ είναι ο ίδιος (ερώτηση)', !samePerson(A, prefilled))
+  ok('…και σημειώνεται ως ίδιο ΑΦΜ για προειδοποίηση', sameAfm(A, prefilled))
+  ok('αρχικό και επώνυμο δεν διαφέρουν σαφώς', !namesClearlyDiffer('Γ. Παπαδοπουλος', 'Γιώργος Παπαδόπουλος'))
+  ok('άλλο όνομα και άλλο επώνυμο διαφέρουν σαφώς', namesClearlyDiffer('Μαρία Νικολάου', 'Γιώργος Παπαδόπουλος'))
+  ok('κενό όνομα δεν διαφέρει σαφώς', !namesClearlyDiffer('', 'Γιώργος Παπαδόπουλος'))
+}
+
+// ── 4. Η ΓΡΑΜΜΗ ΑΠΟ ΤΟ ΜΙΣΘΩΤΗΡΙΟ ─────────────────────────────────────────
+{
+  const facts = { name: ' Μαρία Νικολάου ', afm: '', use: 'professional' as const, monthlyRent: 600, deposit: 0, start: '2026-12-01', end: '2029-11-30', paymentDay: 31 }
+  const upd = tenantPatchFromLease(facts, 'update')
+  ok('ενημέρωση: κενό ΑΦΜ δεν σβήνει το υπάρχον', !('afm' in upd))
+  ok('ενημέρωση: μηδενική εγγύηση δεν σβήνει την υπάρχουσα', !('deposit_amount' in upd))
+  const ins = tenantPatchFromLease(facts, 'insert')
+  ok('νέος: ρητό null στο κενό ΑΦΜ', ins.afm === null && ins.deposit_amount === null)
+  ok('ημέρα πληρωμής στο rent_due_day, με όριο 28 όπως στο TabTenant', ins.rent_due_day === 28)
+  ok('ημέρα 0 γίνεται 1', tenantPatchFromLease({ ...facts, paymentDay: 0 }, 'insert').rent_due_day === 1)
+  ok('τύπος μίσθωσης από τη Χρήση', ins.lease_category === 'commercial')
+  ok('όνομα χωρίς κενά άκρων', ins.full_name === 'Μαρία Νικολάου')
+  ok('ενημέρωση με ΑΦΜ το γράφει', tenantPatchFromLease({ ...facts, afm: '987654321', deposit: 1200 }, 'update').afm === '987654321')
+  ok('αποχώρηση την παραμονή της νέας έναρξης', dayBefore('2026-12-01') === '2026-11-30' && dayBefore('2027-03-01') === '2027-02-28')
 }
 
 // ── 3. ΔΗΛΩΣΗ ΓΙΑ ΤΗΝ ΤΡΕΧΟΥΣΑ ΜΙΣΘΩΣΗ ────────────────────────────────────
@@ -46,6 +72,18 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; fails.push
   ok('χωρίς έναρξη, μετρά μόνο καταγραφή για τον ίδιο', declaredForLease({ at: '2026-01-01', tenantId: 't-new' }, { tenantId: 't-new' }))
   ok('χωρίς έναρξη και χωρίς αναγνωριστικό, τίποτα', !declaredForLease({ at: '2026-01-01' }, { tenantId: 't-new' }))
 
+  // ΔΗΛΩΣΗ ΣΤΗΝ ΥΠΟΓΡΑΦΗ, ΠΡΙΝ ΤΗΝ ΕΝΑΡΞΗ. Πριν: «δεν καταγράφηκε», ξανά
+  // καταγραφή, διπλές γραμμές και στο επόμενο άνοιγμα «αφορά προηγούμενη».
+  ok('ίδιος ενοικιαστής πριν την έναρξη μετρά', declaredForLease({ at: '2026-06-20T09:00:00Z', tenantId: 't-new', leaseStart: '2026-07-10' }, lease))
+  ok('ίδιος ενοικιαστής χωρίς αποθηκευμένη έναρξη μετρά', declaredForLease({ at: '2026-06-20T09:00:00Z', tenantId: 't-new' }, lease))
+  ok('ίδιος ενοικιαστής με άλλη έναρξη (ανανέωση) θέλει νέα', !declaredForLease({ at: '2026-06-20T09:00:00Z', tenantId: 't-new', leaseStart: '2023-07-10' }, lease))
+  // ΗΜΕΡΑ ΑΘΗΝΑΣ: 01:30 Αθήνας στις 10/07 είναι 22:30 UTC στις 09/07.
+  ok('παλιά καταγραφή 01:30 Αθήνας την ημέρα έναρξης μετρά', declaredForLease({ at: '2026-07-09T22:30:00Z' }, lease))
+  ok('παλιά καταγραφή 23:30 Αθήνας την παραμονή δεν μετρά', !declaredForLease({ at: '2026-07-09T20:30:00Z' }, lease))
+  const rec = declRecordOf({ created_at: '2026-06-20T09:00:00Z', metadata: { tenant_id: 't-new', lease_start: '2026-07-10', reference: '1' } })
+  ok('η γραμμή του ιστορικού διαβάζεται με ενοικιαστή και έναρξη', rec?.tenantId === 't-new' && rec?.leaseStart === '2026-07-10')
+  ok('γραμμή χωρίς ημερομηνία δεν είναι καταγραφή', declRecordOf({ metadata: {} }) === null)
+
   // Η Επισκόπηση και η Δήλωση μίσθωσης απαντούν το ίδιο για τις ίδιες ημερομηνίες.
   const NOW = new Date('2026-07-25T09:00:00Z')
   const prop = { id: 'p1', name: 'Σπίτι', prop_type: 'apartment', status_detail: 'rented', rental_mode: 'long_term' }
@@ -54,13 +92,20 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; fails.push
     const open = computeObligations(prop as never, tenant as never, [], NOW, 'long_term', { leaseDeclaredAt: at }).some(o => o.id === 'lease_decl')
     ok(`ίδια απάντηση Επισκόπησης και Δήλωσης για ${at.slice(0, 10)}`, open === !declaredForLease({ at }, lease))
   }
+  // Η Επισκόπηση περνά πλέον το αναγνωριστικό: δήλωση στην υπογραφή την κλείνει.
+  const early = computeObligations(prop as never, tenant as never, [], NOW, 'long_term',
+    { leaseDeclaredAt: '2026-06-20T09:00:00Z', leaseDeclTenantId: 't-new', leaseDeclLeaseStart: '2026-07-10' }).some(o => o.id === 'lease_decl')
+  ok('Επισκόπηση: δήλωση στην υπογραφή για τον ίδιο κλείνει την υπενθύμιση', !early)
+  const other = computeObligations(prop as never, tenant as never, [], NOW, 'long_term',
+    { leaseDeclaredAt: '2026-07-20T09:00:00Z', leaseDeclTenantId: 't-old' }).some(o => o.id === 'lease_decl')
+  ok('Επισκόπηση: δήλωση άλλου ενοικιαστή δεν την κλείνει', other)
 }
 
 // ── 9. ΤΟ PDF ΤΟΥ ΜΙΣΘΩΤΗΡΙΟΥ ──────────────────────────────────────────────
 {
   const key = leaseDocKey('u1', 't1', 'Μισθωτήριο Παπαδόπουλος.pdf', new Date(2026, 10, 12))
   ok(`το κλειδί μένει στον φάκελο του ενοικιαστή (${key})`, key.startsWith('u1/t1/'))
-  ok('χωρίς ελληνικά στο κλειδί', !/[Α-Ωα-ωΆ-Ώά-ώ]/.test(key))
+  ok('χωρίς ελληνικά στο κλειδί', !/[\u0370-\u03FF\u1F00-\u1FFF]/.test(key))
   ok('μόνο ασφαλείς χαρακτήρες', /^[\w./-]+$/.test(key))
   ok('κρατά την επέκταση', key.endsWith('.pdf'))
   ok('νέο αρχείο: ανοίγει από το lease_doc_url', leaseDocPath('u1', { id: 't1', lease_doc_name: 'Μισθωτήριο.pdf', lease_doc_url: key }) === key)
@@ -79,7 +124,13 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; fails.push
   // 1. Καμία ενημέρωση του τρέχοντος χωρίς απόφαση «ίδιος» ή «αντικατάσταση».
   ok('1: το μισθωτήριο δεν ενημερώνει πια το cur.id χωρίς έλεγχο', !/updateReturning\(supabase,\s*cur\.id/.test(MODAL))
   ok('1: η απόφαση περνά από το samePerson', MODAL.includes('samePerson('))
-  ok('1: ο νέος ενοικιαστής παίρνει τύπο μίσθωσης', /lease_category:\s*leaseCategoryOf\(use\)/.test(MODAL))
+  ok('1: η γραμμή βγαίνει από το tenantPatchFromLease', MODAL.includes("tenantPatchFromLease(facts, updateId ? 'update' : 'insert')"))
+  ok('1: ίδιο ΑΦΜ με άλλο όνομα προειδοποιεί', MODAL.includes('sameAfm(curPerson, newPerson)'))
+  // 3 (αναθεώρηση). Ο προηγούμενος αποχωρεί με markPast, προεπιλογή ναι.
+  ok('3: «Νέος ενοικιαστής» σημειώνει αποχώρηση με markPast', /tenantStore\.markPast\(supabase, cur\.id/.test(MODAL))
+  ok('3: η αποχώρηση είναι προεπιλογή', MODAL.includes('useState(true)') && MODAL.includes('setPrevLeft'))
+  // 4. Ημερολόγιο όπως στο TabTenant.
+  ok('4: syncTenantSchedule μετά την εγγραφή', /syncTenantSchedule\(supabase, savedRow/.test(MODAL))
   ok('1: χωρίς γραμμή, καμία επιτυχία', /if \(!row\) \{ setErr\(/.test(MODAL))
   // 2. Προσαρτάται μόνο ανοιχτό.
   ok('2: το LeaseModal προσαρτάται μόνο ανοιχτό', /\{leaseOpen && <LeaseModal\b/.test(TAB))

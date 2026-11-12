@@ -62,6 +62,7 @@ import {
 } from '@/lib/home/readFailures'
 import { captureError } from '@/lib/observability/report'
 import { computeObligations, type OblMaint, type OblTenant } from './obligations'
+import { declRecordOf, type DeclRecord } from './leaseFlow'
 import { taxProfileOf } from '@/lib/tax/greekTaxCalendar'
 import PortalShare from './PortalShare'
 import OccupancyPanel from './OccupancyPanel'
@@ -168,7 +169,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const [rentPeriods, setRentPeriods] = useState<{ id:string|null; amount:number|null; due_date:string|null; paid:boolean|null; period_year:number|null; period_month:number|null }[]>([]);
   const [maint, setMaint] = useState<OblMaint[]>([]);
   /** Πότε καταγράφηκε η υποβολή της δήλωσης μίσθωσης· κλείνει την υποχρέωση. */
-  const [leaseDeclaredAt, setLeaseDeclaredAt] = useState<string|null>(null);
+  const [leaseDecl, setLeaseDecl] = useState<DeclRecord|null>(null);
   const [closedTax, setClosedTax] = useState<ReadonlySet<string>>(() => new Set());
   /** Τα σαρωμένα εκκαθαριστικά φόρου εισοδήματος: το ποσό των δόσεων στους 12 μήνες. */
   const [incomeTaxDocs, setIncomeTaxDocs] = useState<IncomeTaxStatement[]>([]);
@@ -248,7 +249,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       // ΠΟΤΕ ΚΑΤΑΓΡΑΦΗΚΕ Η ΔΗΛΩΣΗ ΜΙΣΘΩΣΗΣ. Η υποχρέωση εμφανιζόταν για ενενήντα
       // μέρες γύρω από την προθεσμία ασχέτως υποβολής, ενώ υποβάλλεται μία φορά.
       // Το LeaseDeclaration γράφει ήδη εδώ· έλειπε μόνο η ανάγνωση.
-      supabase.from('activity_log').select('created_at')
+      supabase.from('activity_log').select('created_at,metadata')
         .eq('user_id',userId).eq('action','lease_declaration_submitted').eq('entity_id',prop.id)
         .order('created_at',{ascending:false}).limit(1),
       rentStore.ofPropertyWithError<IncomeRent>(supabase,prop.id,rentStore.INCOME_COLUMNS,userId,{ year }),
@@ -290,7 +291,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     setIncomeTaxDocs(itx.statements);
     setExpenses((exp.rows||[]) as Expense[]); setBills(bil.rows); setTasks(tsk.data||[]); setTenant(ten.rows?.[0]||null);
     setRentPeriods(rp.rows); setMaint((mnt.data||[]) as OblMaint[]); setTenantFull(ten.rows?.[0]||null);
-    setLeaseDeclaredAt((decl.data?.[0]?.created_at as string|undefined) ?? null);
+    setLeaseDecl(declRecordOf(decl.data?.[0]));
     setChk(ci.rows); setInv(iv.rows); setLoans(ln.views); setHostStays(hs.rows); setYearRents(yr.rows); setAllExpenses((allExp.rows||[]) as { amount:number; date:string; category:string; is_recurring?:boolean; recurring_frequency?:string|null }[]);
     // ΑΚΡΙΒΩΣ οι στήλες του select('property_id,actual_rent,target_rent') — όχι
     // ολόκληρη η γραμμή του rent_config. Με `any` το `r.property_id` δεν
@@ -743,9 +744,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // φορές, η ασφάλεια δύο, τα ελλιπή στοιχεία δύο. Τώρα οι πηγές συγχωνεύονται
   // ανά ΘΕΜΑ (lib/home/agenda.ts) και βγαίνει μία σειρά προτεραιότητας.
   const obligations = useMemo(
-    () => computeObligations(prop, tenantFull, maint, now, taxProfileOf(prop), { leaseDeclaredAt, closedTaxRefs: closedTax }, leavers),
+    () => computeObligations(prop, tenantFull, maint, now, taxProfileOf(prop), { leaseDeclaredAt: leaseDecl?.at ?? null, leaseDeclTenantId: leaseDecl?.tenantId, leaseDeclLeaseStart: leaseDecl?.leaseStart, closedTaxRefs: closedTax }, leavers),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [prop, tenantFull, maint, todayIso, leaseDeclaredAt, closedTax, leavers],
+    [prop, tenantFull, maint, todayIso, leaseDecl, closedTax, leavers],
   );
   // ═══ ΔΥΟ ΛΙΣΤΕΣ «ΤΙ ΕΡΧΕΤΑΙ», Η ΜΙΑ ΚΑΤΩ ΑΠΟ ΤΗΝ ΑΛΛΗ ═══════════════════
   // Η ατζέντα στην κορυφή έλεγε «τι χρειάζεται τώρα». Τρεις ζώνες πιο κάτω, μια
