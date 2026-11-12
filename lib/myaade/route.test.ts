@@ -3,8 +3,9 @@
 // Από τη Σάρωση στη μαζική (12/11/2026): ποιο αρχείο διαβάζεται στη συσκευή,
 // πότε πάει κατευθείαν στη μαζική και τι λέει η κάρτα του βήματος ελέγχου.
 // ΜΟΝΟ ΣΥΝΘΕΤΙΚΑ ΣΤΟΙΧΕΙΑ (guard-fixture-identities).
-import { shouldSniff, scanRoute, offersBulk, bulkOfferTitle, bulkOfferAction, SNIFF_MAX_BYTES } from './route';
-import { sniffMyaadeKind } from './sniff';
+import { shouldSniff, scanRoute, offersBulk, bulkOfferTitle, bulkOfferAction, sniffBeforeScan, SNIFF_MAX_BYTES, type SniffResult } from './route';
+import { sniffMyaadeKind, sniffMyaade, SNIFF_TIMEOUT_MS } from './sniff';
+import { PDF_TIMEOUT_MS } from './readPdf';
 import { detectDocKind } from './detect';
 import { fakeE9Lines } from '@/scripts/perf-bench/e9Fixture';
 import { SCAN_MAX_LINES } from '@/lib/billing/documents';
@@ -43,10 +44,24 @@ ok('φωτογραφία, ακόμη κι αν κάτι είπε Ε9: σάρωσ
 }
 
 // ── 3. Η κάρτα του βήματος ελέγχου (φωτογραφία ή PDF που πέρασε από τη σάρωση) ──
-ok('Ε9 της σάρωσης: προτείνει μαζική', offersBulk('e9'));
-ok('ΕΝΦΙΑ της σάρωσης: προτείνει μαζική', offersBulk('enfia'));
-ok('λογαριασμός: όχι', !offersBulk('bill') && !offersBulk(undefined) && !offersBulk(null));
-ok('η σάρωση δεν έχει είδος «enfia_act»', !offersBulk('enfia_act'));
+const PHOTO = { type: 'image/jpeg', name: 'e9.jpg' };
+const PDFF = { type: PDF, name: 'e9.pdf' };
+ok('Ε9 της σάρωσης σε φωτογραφία: προτείνει μαζική', offersBulk('e9', PHOTO, null));
+ok('ΕΝΦΙΑ της σάρωσης σε φωτογραφία: προτείνει μαζική', offersBulk('enfia', PHOTO, null));
+ok('λογαριασμός: όχι', !offersBulk('bill', PHOTO, null) && !offersBulk(undefined, PHOTO, null) && !offersBulk(null, PHOTO, null));
+ok('η σάρωση δεν έχει είδος «enfia_act»', !offersBulk('enfia_act', PHOTO, null));
+
+// ΤΟ PDF ΠΟΥ Η ΣΥΣΚΕΥΗ ΔΕΝ ΔΙΑΒΑΣΕ ΔΕΝ ΒΓΑΖΕΙ ΚΑΡΤΑ-ΑΔΙΕΞΟΔΟ (έλεγχος PR #547).
+// Η μαζική διαβάζει με τον ίδιο αναγνώστη: ό,τι δεν διάβασε η συσκευή δεν θα το
+// διάβαζε ούτε εκείνη. Κάρτα μόνο όταν η συσκευή δεν πρόλαβε ή δεν δοκίμασε.
+ok('PDF που δεν πρόλαβε: κάρτα', offersBulk('e9', PDFF, 'timeout'));
+ok('PDF από 5 MB και πάνω (δεν δοκιμάστηκε): κάρτα', offersBulk('enfia', PDFF, 'skipped'));
+ok('PDF όπου ο αναγνώστης δεν φορτώθηκε: κάρτα', offersBulk('e9', PDFF, 'error'));
+ok('PDF κλειδωμένο ή σαρωμένο: χωρίς κάρτα', !offersBulk('e9', PDFF, 'unreadable'));
+ok('PDF που διαβάστηκε και δεν είναι Ε9 ή πράξη: χωρίς κάρτα', !offersBulk('enfia', PDFF, 'read'));
+ok('PDF χωρίς τύπο, με κατάληξη: ίδιος κανόνας', !offersBulk('e9', { type: '', name: 'E9.PDF' }, 'unreadable') && offersBulk('e9', { type: '', name: 'E9.PDF' }, 'timeout'));
+ok('PDF χωρίς καμία ανάγνωση (null): χωρίς κάρτα', !offersBulk('e9', PDFF, null));
+ok('η φωτογραφία δεν κοιτά την ανάγνωση', offersBulk('e9', PHOTO, 'unreadable'));
 ok('χωρίς γραμμές', bulkOfferTitle(0, SCAN_MAX_LINES) === 'Το έγγραφο έχει τα ακίνητά σου');
 ok('ένα ακίνητο', bulkOfferTitle(1, SCAN_MAX_LINES) === 'Βρέθηκε 1 ακίνητο');
 ok('τρία ακίνητα', bulkOfferTitle(3, SCAN_MAX_LINES) === 'Βρέθηκαν 3 ακίνητα');
@@ -55,7 +70,37 @@ ok('κουμπί: όλα', bulkOfferAction(3) === 'Καταχώρησε όλα' 
 ok('κουμπί: ένα', bulkOfferAction(1) === 'Μαζική καταχώρηση');
 
 // ── 4. Η ανάγνωση στη συσκευή δεν σταματά ποτέ τη σάρωση ─────────────────
+ok('ο χρόνος της ανάγνωσης χωρά το κρύο φόρτωμα και μένει κάτω από του αναγνώστη', SNIFF_TIMEOUT_MS >= 6_000 && SNIFF_TIMEOUT_MS < PDF_TIMEOUT_MS / 2, SNIFF_TIMEOUT_MS);
 void (async () => {
+  // ΤΟ ΚΟΛΛΗΜΕΝΟ ΠΑΡΑΘΥΡΟ (έλεγχος PR #547). Το chunk δεν κατεβαίνει: η ένδειξη
+  // πρέπει να σβήσει και η σάρωση να συνεχίσει. Στον παλιό κώδικα το
+  // `setSniffing(false)` δεν έτρεχε ποτέ.
+  {
+    const busy: boolean[] = [];
+    const f = new File(['x'], 'e9.pdf', { type: PDF });
+    const r = await sniffBeforeScan(f, () => Promise.reject(new Error('ChunkLoadError: Loading chunk 123 failed')), on => busy.push(on));
+    ok('chunk που δεν φορτώνει: η ένδειξη άναψε και έσβησε', JSON.stringify(busy) === '[true,false]', busy);
+    ok('chunk που δεν φορτώνει: «error», δηλαδή κανονική σάρωση', r.outcome === 'error', r);
+    ok('και η κάρτα της μαζικής μένει διαθέσιμη', offersBulk('e9', PDFF, r.outcome));
+  }
+  {
+    const busy: boolean[] = [];
+    const f = new File(['x'], 'e9.pdf', { type: PDF });
+    const r = await sniffBeforeScan(f, async () => ({ sniffMyaade: async () => { throw new Error('boom'); } }), on => busy.push(on));
+    ok('ο αναγνώστης σκάει: η ένδειξη σβήνει', JSON.stringify(busy) === '[true,false]' && r.outcome === 'error', { busy, r });
+  }
+  {
+    const busy: boolean[] = [];
+    const f = new File(['x'], 'e9.pdf', { type: PDF });
+    const want: SniffResult = { outcome: 'read', kind: 'e9' };
+    const r = await sniffBeforeScan(f, async () => ({ sniffMyaade: async () => want }), on => busy.push(on));
+    ok('κανονική ανάγνωση: περνά το αποτέλεσμα και η ένδειξη σβήνει', r === want && JSON.stringify(busy) === '[true,false]', { busy, r });
+  }
+  {
+    const r = await sniffMyaade(new File(['όχι PDF'], 'fake.pdf', { type: PDF }));
+    ok('αρχείο που δεν είναι PDF: «unreadable», χωρίς κάρτα', r.outcome === 'unreadable' && !offersBulk('e9', PDFF, r.outcome), r);
+  }
+
   const notPdf = new File(['όχι PDF'], 'fake.pdf', { type: PDF });
   const k = await sniffMyaadeKind(notPdf);
   ok('αρχείο που δεν είναι PDF: «δεν ξέρουμε», όχι σφάλμα', k === null, k);

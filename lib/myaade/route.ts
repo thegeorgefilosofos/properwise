@@ -9,11 +9,14 @@
 // Τώρα:
 //   PDF κάτω από `SNIFF_MAX_BYTES`  Διαβάζεται στη συσκευή και η κεφαλίδα κρίνει
 //                                   (detect.ts). Ε9 ή πράξη ΕΝΦΙΑ: κατευθείαν
-//                                   στη μαζική, χωρίς AI, χωρίς σάρωση από το
-//                                   πακέτο και χωρίς αντίγραφο στον Φάκελο.
+//                                   στη μαζική, χωρίς AI και χωρίς σάρωση από
+//                                   το πακέτο. Το αντίγραφο στον Φάκελο είναι
+//                                   επιλογή της μαζικής (κλειστή εξ ορισμού)
+//                                   και από εκεί υπάρχει δρόμος πίσω στη σάρωση.
 //   Ό,τι άλλο                       Κανονική σάρωση. Αν η σάρωση πει Ε9 ή ΕΝΦΙΑ,
 //                                   το βήμα ελέγχου προτείνει τη μαζική ΠΡΙΝ από
-//                                   την καταχώρηση.
+//                                   την καταχώρηση (`offersBulk`: για PDF μόνο
+//                                   αν η συσκευή δεν πρόλαβε να το κρίνει).
 //
 // Καθαρές συναρτήσεις: η οθόνη (DocumentScan.tsx) μόνο τις καλεί.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -49,9 +52,64 @@ export function scanRoute(kind: MyAadeDocKind | null | undefined, mime: string, 
   return kind === 'e9' || kind === 'enfia_act' ? 'bulk' : 'scan';
 }
 
-/** Τα είδη της σάρωσης (lib/billing/documents: KIND_OPTIONS) που διαβάζει η μαζική. */
-export function offersBulk(scanKind: string | null | undefined): boolean {
-  return scanKind === 'e9' || scanKind === 'enfia';
+/**
+ * Τι έμαθε η ανάγνωση στη συσκευή.
+ *   read        διαβάστηκε· `kind` είναι ό,τι βρήκε η κεφαλίδα
+ *   unreadable  κλειδωμένο, σαρωμένο χαρτί χωρίς κείμενο, χαλασμένο
+ *   timeout     δεν πρόλαβε (`SNIFF_TIMEOUT_MS`)
+ *   error       ο αναγνώστης δεν φορτώθηκε (χωρίς σύνδεση, παλιά έκδοση)
+ *   skipped     δεν δοκιμάστηκε (`shouldSniff`: π.χ. από `SNIFF_MAX_BYTES` και πάνω)
+ */
+export type SniffOutcome = 'read' | 'unreadable' | 'timeout' | 'error' | 'skipped';
+export type SniffResult =
+  | { outcome: 'read'; kind: MyAadeDocKind }
+  | { outcome: Exclude<SniffOutcome, 'read'> };
+
+/**
+ * Η ανάγνωση στη συσκευή, φραγμένη ώστε να ΤΕΛΕΙΩΝΕΙ ΠΑΝΤΑ (έλεγχος PR #547).
+ *
+ * Ηταν `setSniffing(true); await import(…)` χωρίς `finally`: αν το chunk δεν
+ * κατέβαινε (χωρίς σύνδεση, ή έκδοση που άλλαξε στο μεταξύ), η ένδειξη έμενε
+ * αναμμένη για πάντα. Το παράθυρο δεν έκλεινε (`scanBusy`) και κάθε επόμενο
+ * αρχείο αγνοούνταν. Εδώ το `setBusy(false)` τρέχει σε κάθε έξοδο και η
+ * αποτυχία γίνεται `error`, οπότε η σάρωση συνεχίζει κανονικά.
+ *
+ * Ο φορτωτής δίνεται απ' έξω, ώστε η οθόνη να κρατά το δυναμικό import και ο
+ * έλεγχος να δοκιμάζει την αποτυχία του χωρίς δίκτυο.
+ */
+export async function sniffBeforeScan(
+  file: File,
+  load: () => Promise<{ sniffMyaade: (f: File) => Promise<SniffResult> }>,
+  setBusy: (on: boolean) => void,
+): Promise<SniffResult> {
+  setBusy(true);
+  try {
+    const { sniffMyaade } = await load();
+    return await sniffMyaade(file);
+  } catch {
+    return { outcome: 'error' };
+  } finally {
+    setBusy(false);
+  }
+}
+
+/**
+ * Αν το βήμα ελέγχου (ή η οθόνη επιτυχίας) προτείνει τη μαζική.
+ *
+ * ΦΩΤΟΓΡΑΦΙΑ: όταν η σάρωση είπε Ε9 ή ΕΝΦΙΑ, όπως πριν.
+ * PDF: ΜΟΝΟ όταν η συσκευή δεν πρόλαβε να το κρίνει (`timeout`, `error`) ή δεν
+ * το δοκίμασε (`skipped`). Ενα PDF που διαβάστηκε και η κεφαλίδα του δεν είναι
+ * Ε9 ή πράξη, ή που είναι κλειδωμένο ή σαρωμένο, θα έβγαινε «λάθος έγγραφο» και
+ * στη μαζική, που διαβάζει με τον ίδιο αναγνώστη: η κάρτα θα ήταν αδιέξοδο.
+ */
+export function offersBulk(
+  scanKind: string | null | undefined,
+  file: { type: string; name: string } | null | undefined,
+  sniff: SniffOutcome | null | undefined,
+): boolean {
+  if (scanKind !== 'e9' && scanKind !== 'enfia') return false;
+  if (!file || !isPdf(file.type, file.name)) return true;
+  return sniff === 'timeout' || sniff === 'error' || sniff === 'skipped';
 }
 
 /**

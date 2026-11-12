@@ -22,8 +22,9 @@ import {
   withPropertyLine, isDocumentary, billCategoryLabel, archiveOptions, archiveCategoryFor, folderOf, compactRow,
   lineUnset, planDocSave, LINE_NONE, KIND_OPTIONS, DOC_FIELD_LABELS, SCAN_MAX_LINES, type ScannedDoc, type DocField, type Choice,
 } from '@/lib/billing/documents';
-import { shouldSniff, scanRoute, offersBulk, bulkOfferTitle, bulkOfferAction } from '@/lib/myaade/route';
+import { shouldSniff, scanRoute, offersBulk, bulkOfferTitle, bulkOfferAction, sniffBeforeScan, type SniffOutcome } from '@/lib/myaade/route';
 import { navLabel } from '@/lib/nav/labels';
+import type { BulkFromScan } from './myaadeOpen';
 import { athensToday } from '@/lib/core/time';
 import {
   scanDocument, commitScannedDoc, SCAN_FILE_MAX_MB, SYSTEM_PROMPT as SCAN_SYSTEM_PROMPT,
@@ -94,9 +95,21 @@ interface Props {
    * τη δική της ζώνη). Το Ε9 και το εκκαθαριστικό ΕΝΦΙΑ έχουν συχνά πολλά
    * ακίνητα, ενώ η σάρωση τα αρχειοθετεί σε ένα. Από τις 12/11/2026 ο δρόμος
    * ανοίγει ΠΡΙΝ από την καταχώρηση: το PDF του myAADE πάει κατευθείαν (χωρίς
-   * AI, χωρίς αντίγραφο στον Φάκελο) και η φωτογραφία το προτείνει στον έλεγχο.
+   * AI, με το αντίγραφο ως επιλογή της μαζικής) και η φωτογραφία το προτείνει
+   * στον έλεγχο.
+   *
+   * `fromScan` υπάρχει ΜΟΝΟ για το PDF που πήγε κατευθείαν, χωρίς βήμα
+   * ελέγχου: η μαζική δείχνει τότε το «Κράτα αντίγραφο» και τον δρόμο πίσω
+   * («Σάρωσέ το ως έγγραφο»). Από την κάρτα του ελέγχου ή την οθόνη επιτυχίας
+   * το αντίγραφο έχει ήδη κριθεί εδώ, οπότε δεν δίνεται.
    */
-  onBulkImport?: (file: File | null) => void;
+  onBulkImport?: (file: File | null, fromScan?: BulkFromScan) => void;
+  /**
+   * Αρχείο που επιστρέφει από τη μαζική με το «Σάρωσέ το ως έγγραφο».
+   * Διαβάζεται μία φορά με την κανονική σάρωση, χωρίς δεύτερη ανάγνωση στη
+   * συσκευή: η συσκευή το έκρινε ήδη Ε9 ή πράξη και ο χρήστης είπε όχι.
+   */
+  initialFile?: File;
 }
 
 // ΚΑΤΩ ΑΠΟ ΑΥΤΟ Η ΣΑΡΩΣΗ ΔΕΝ ΕΙΝΑΙ ΣΙΓΟΥΡΗ ΓΙΑ ΤΟΝ ΤΥΠΟ. Η βεβαιότητα είναι
@@ -198,7 +211,7 @@ const DocIcon = ({ size }: { size: number }) => (
   <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>
 );
 
-export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyChange, onDirtyChange, onManual, onOpenAccounting, onBulkImport, properties }: Props) {
+export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyChange, onDirtyChange, onManual, onOpenAccounting, onBulkImport, initialFile, properties }: Props) {
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -246,7 +259,16 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   // το αλλάξει ο χρήστης· μια νέα αλλαγή τύπου το επαναφέρει στην προεπιλογή.
   const [archiveCat, setArchiveCat] = useState<string | null>(null);
   // Η ανάγνωση του PDF στη συσκευή, πριν από τη σάρωση (lib/myaade/sniff).
-  const [sniffing, setSniffing] = useState(false);
+  // Το ref κρατά την ίδια τιμή για τη `loadFile`, που δεν ξαναφτιάχνεται σε κάθε αλλαγή.
+  const [sniffing, setSniffingState] = useState(false);
+  const sniffingRef = useRef(false);
+  const setSniffing = useCallback((on: boolean) => { sniffingRef.current = on; setSniffingState(on); }, []);
+  // Τι έμαθε η συσκευή για το τρέχον αρχείο: η κάρτα της μαζικής το θέλει (`offersBulk`).
+  const [sniffOutcome, setSniffOutcome] = useState<SniffOutcome | null>(null);
+  // ΤΟ ΠΑΡΑΘΥΡΟ ΜΠΟΡΕΙ ΝΑ ΚΛΕΙΣΕΙ ΟΣΟ ΔΙΑΒΑΖΕΤΑΙ. Μια ανάγνωση που τελειώνει
+  // μετά δεν ανοίγει τη μαζική πάνω σε ό,τι κάνει ο χρήστης στο μεταξύ.
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   // ΑΝΤΙΓΡΑΦΟ ΣΤΟΝ ΦΑΚΕΛΟ, ΜΟΝΟ ΑΝ ΤΟ ΖΗΤΗΣΕΙ (απόφαση ιδιοκτήτη 12/11/2026).
   // Το Ε9 και η πράξη έχουν ΑΦΜ και ονοματεπώνυμο· η μαζική κρατά μόνο τις
   // επιβεβαιωμένες τιμές. Κλειστό εξ ορισμού.
@@ -309,8 +331,8 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   // αριθμοί τα ποσά και σβήνει το «Στο χαρτί» όταν αλλάζει η περίοδος.
   const setF = (f: DocField, raw: string) => setEdited(p => (p ? withField(p, f, raw) : p));
 
-  const loadFile = useCallback(async (f: File) => {
-    if (sniffing) return;
+  const loadFile = useCallback(async (f: File, opts?: { skipSniff?: boolean }) => {
+    if (sniffingRef.current) return;
     // Η ΙΔΙΑ ΛΙΣΤΑ ΜΕ ΤΟ `accept` (scanDoc.ts: SCAN_TYPES). Εδώ περνούσαν CSV και
     // Excel που ο πάροχος δεν διαβάζει και γύριζαν «η υπηρεσία δεν απαντά».
     const unreadable = unreadableFormat(f);
@@ -323,19 +345,28 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
     }
     // ΤΟ PDF ΤΟΥ myAADE ΔΕΝ ΠΕΡΝΑ ΑΠΟ ΤΟ AI (12/11/2026). Η κεφαλίδα διαβάζεται
     // στη συσκευή, ΠΡΙΝ από το `scanDocument`: Ε9 ή πράξη ΕΝΦΙΑ πάει κατευθείαν
-    // στη μαζική, χωρίς σάρωση από το πακέτο και χωρίς αντίγραφο στον Φάκελο.
+    // στη μαζική, χωρίς σάρωση από το πακέτο (το αντίγραφο είναι επιλογή εκεί).
     // Ο αναγνώστης φορτώνεται μόνο τώρα (δυναμικό import). Ό,τι δεν
     // αναγνωριστεί, ή δεν διαβαστεί, συνεχίζει στην κανονική σάρωση.
-    if (onBulkImport && shouldSniff(f)) {
-      setError(''); setSniffing(true);
-      const { sniffMyaadeKind } = await import('@/lib/myaade/sniff');
-      const found = await sniffMyaadeKind(f);
-      setSniffing(false);
-      if (scanRoute(found, f.type, f.name) === 'bulk') { onBulkImport(f); return; }
+    // Η ΕΝΔΕΙΞΗ ΣΒΗΝΕΙ ΠΑΝΤΑ (έλεγχος PR #547): το `sniffBeforeScan` κλείνει
+    // το `sniffing` σε `finally` και ένα chunk που δεν κατεβαίνει γίνεται
+    // `error`, δηλαδή κανονική σάρωση. Το αρχείο που γύρισε από τη μαζική
+    // (`skipSniff`) δεν ξαναδιαβάζεται: ο χρήστης διάλεξε τη σάρωση.
+    let outcome: SniffOutcome | null = null;
+    if (onBulkImport && !opts?.skipSniff) {
+      if (shouldSniff(f)) {
+        setError('');
+        const found = await sniffBeforeScan(f, () => import('@/lib/myaade/sniff'), setSniffing);
+        if (!alive.current) return;
+        outcome = found.outcome;
+        if (found.outcome === 'read' && scanRoute(found.kind, f.type, f.name) === 'bulk') {
+          onBulkImport(f, { propertyId: propertyId ?? null }); return;
+        }
+      } else outcome = 'skipped';
     }
     // προεπισκόπηση-blob: δείχνει το αρχείο και το ανοίγει σε νέα καρτέλα, δεν κατεβάζει.
     setFile(f); setFileUrl(URL.createObjectURL(f)); setEdited(null); setError(''); setAsk(null); setDuplicate(''); setAnswers({});
-    setTypeTouched(false); setArchiveCat(null); setKeepCopy(false); setKeepFailed(false); setStep('review');
+    setTypeTouched(false); setArchiveCat(null); setKeepCopy(false); setKeepFailed(false); setSniffOutcome(outcome); setStep('review');
     // Η ΑΝΑΓΝΩΣΗ γίνεται από τη ΜΙΑ μηχανή σάρωσης (scanDoc.ts) — καμία δεύτερη
     // υλοποίηση prompt/parse εδώ. Ό,τι διορθώσουμε εκεί, διορθώνεται παντού.
     setScanning(true);
@@ -347,7 +378,23 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
     // περιέχει…» θα γραφόταν στον Φάκελο μόλις ο χρήστης διάλεγε τύπο.
     if (r.doc) setEdited(isDocumentary(r.doc) ? withPropertyLine(r.doc, propertyAtak) : { doc_type: 'other', is_document: false });
     else { setError(r.error || 'unreadable'); setErrorText(r.errorText || ''); setEdited({ doc_type: 'other', is_document: false }); }
-  }, [propertyAtak, onBulkImport, sniffing]);
+  }, [propertyAtak, onBulkImport, propertyId, setSniffing]);
+
+  // ΖΕΣΤΟΣ ΑΝΑΓΝΩΣΤΗΣ. Το chunk της ανάγνωσης στη συσκευή ζητείται μόλις ανοίξει
+  // η Σάρωση, όχι όταν πέσει το PDF: το πρώτο PDF δεν περιμένει το δίκτυο μέσα
+  // στο `SNIFF_TIMEOUT_MS`. Μια αποτυχία εδώ δεν λέει τίποτα· η `loadFile` ξαναδοκιμάζει.
+  useEffect(() => { if (onBulkImport) void import('@/lib/myaade/sniff').catch(() => {}); }, [onBulkImport]);
+
+  // ΤΟ ΑΡΧΕΙΟ ΠΟΥ ΓΥΡΙΣΕ ΑΠΟ ΤΗ ΜΑΖΙΚΗ («Σάρωσέ το ως έγγραφο»): μία φορά, με
+  // την κανονική σάρωση. Η αναφορά κρατά την τρέχουσα `loadFile`, όπως στο MyaadeImport.
+  const loadFileRef = useRef(loadFile);
+  useEffect(() => { loadFileRef.current = loadFile; });
+  const initialTaken = useRef<File | null>(null);
+  useEffect(() => {
+    if (!initialFile || initialTaken.current === initialFile) return;
+    initialTaken.current = initialFile;
+    void loadFileRef.current(initialFile, { skipSniff: true });
+  }, [initialFile]);
 
   // Στρίψιμο null/undefined από payload (χρησιμοποιείται στις Επαφές παρακάτω).
   const nrm = (s?: string) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -486,6 +533,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
     if (keepCopy) {
       setHanding(true); setKeepFailed(false);
       const ok = await archiveCopy();
+      if (!alive.current) return;
       setHanding(false);
       if (!ok) { setKeepFailed(true); return; }
     }
@@ -493,7 +541,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   };
 
   const reset = () => {
-    setKeepCopy(false); setKeepFailed(false);
+    setKeepCopy(false); setKeepFailed(false); setSniffOutcome(null);
     setStep('upload'); setFile(null); setFileUrl(''); setEdited(null);
     setSaving(false); setError(''); setSavedInfo([]); setFailedInfo([]); setArchiveCat(null);
     setContactState('cta'); setAsk(null); setDuplicate(''); setAnswers({}); setTypeTouched(false);
@@ -593,7 +641,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             ΤΟ Ε2 ΣΥΝΕΧΙΖΕΙ ΣΤΗ ΛΟΓΙΣΤΙΚΗ. Η σύγκριση με τα μισθώματα ζει εκεί·
             η οθόνη έλεγε «ανέβασέ το και εκεί» χωρίς δρόμο. Τώρα ο δρόμος είναι
             η κύρια ενέργεια και η νέα σάρωση η δεύτερη. */}
-        {offersBulk(kindOf(edited)?.value) && onBulkImport ? (
+        {offersBulk(kindOf(edited)?.value, file, sniffOutcome) && onBulkImport ? (
           <div className="act-center" style={{ display: 'flex', gap: T.sp.sm, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Btn variant="secondary" onClick={reset}>Σάρωσε νέο έγγραφο</Btn>
             <Btn variant="primary" onClick={() => onBulkImport(file)}>Καταχώρησε όλα τα ακίνητα</Btn>
@@ -699,7 +747,8 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
               υπάρχει ακόμη ακίνητο. Ιδιο σχήμα και ύψος με τα διπλανά. */}
           {onBulkImport && (
             // Η αιώρηση σε CSS (`.pick-tile-css`), όχι με χειριστές JavaScript (guard-js-hover).
-            <div role="button" tabIndex={0} onClick={openBulk} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openBulk()}}}
+            // Το κενό ενεργοποιεί στο άφημα, όπως ένα <button>· στο πάτημα μόνο κρατά τη σελίδα ακίνητη.
+            <div role="button" tabIndex={0} onClick={openBulk} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();openBulk()}else if(e.key===" ")e.preventDefault()}} onKeyUp={e=>{if(e.key===" "){e.preventDefault();openBulk()}}}
               className="pick-tile pick-tile-css" style={{ minHeight: 172, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 16 }}>
               <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>
               <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Πολλά ακίνητα από Ε9 ή ΕΝΦΙΑ</div>
@@ -723,9 +772,14 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             ΑΦΜ διαβάζεται από πάροχο AI. Η δέσμευση για την εκπαίδευση είναι
             η ίδια που γράφει η Πολιτική απορρήτου. */}
         <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.55, margin: '12px 0 0' }}>
-          {/* ΤΟ PDF ΤΟΥ myAADE ΔΙΑΒΑΖΕΤΑΙ ΣΤΗ ΣΥΣΚΕΥΗ (12/11/2026), όπως λέει η
-              πολιτική απορρήτου για την εισαγωγή από το myAADE: πλέον και από εδώ. */}
-          {bulkOnly ? 'Το PDF του myAADE διαβάζεται στη συσκευή σου· η φωτογραφία διαβάζεται με AI' : <>Η ανάγνωση γίνεται με AI· το Ε9 και η πράξη ΕΝΦΙΑ σε PDF του myAADE διαβάζονται στη συσκευή σου</>}, σύμφωνα με την <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>πολιτική απορρήτου</a>· ο πάροχος AI δεσμεύεται με σύμβαση να μην εκπαιδεύει μοντέλα με τα έγγραφά σου.
+          {/* ΛΕΕΙ ΜΟΝΟ Ο,ΤΙ ΙΣΧΥΕΙ ΠΑΝΤΑ (έλεγχος PR #547). Ελεγε ότι το Ε9 και η
+              πράξη σε PDF «διαβάζονται στη συσκευή σου», ενώ ένα PDF από
+              `SNIFF_MAX_BYTES` και πάνω, κλειδωμένο, ή που δεν πρόλαβε
+              (`SNIFF_TIMEOUT_MS`) περνά από την κανονική σάρωση, δηλαδή από τον
+              πάροχο AI. Τώρα λέει τη σειρά: πρώτα η συσκευή και μόνο όταν
+              αναγνωριστεί εκεί, μένει εκεί. Χωρίς ακίνητο ανοίγει μόνο η μαζική,
+              που διαβάζει το PDF πάντα στη συσκευή: εκεί η πρόταση ισχύει χωρίς όρο. */}
+          {bulkOnly ? 'Το PDF του myAADE διαβάζεται στη συσκευή σου· η φωτογραφία διαβάζεται με AI' : <>Η ανάγνωση γίνεται με AI. Ένα PDF του myAADE το ελέγχουμε πρώτα στη συσκευή σου: αν αναγνωριστεί ως Ε9 ή πράξη ΕΝΦΙΑ, δεν στέλνεται στον πάροχο AI</>}. Ισχύει η <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'none', borderBottom: '1px solid var(--border-default)' }}>πολιτική απορρήτου</a>· ο πάροχος AI δεσμεύεται με σύμβαση να μην εκπαιδεύει μοντέλα με τα έγγραφά σου.
         </p>
       </div>
     );
@@ -862,7 +916,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   μπει στον Φάκελο. Τώρα έρχεται πρώτη. Το αντίγραφο στον Φάκελο
                   είναι επιλογή, κλειστή εξ ορισμού. Η κανονική φόρμα μένει από
                   κάτω, για όποιον θέλει μόνο το ένα ακίνητο. */}
-              {offersBulk(kind?.value) && onBulkImport && (
+              {offersBulk(kind?.value, file, sniffOutcome) && onBulkImport && (
                 <section aria-label="Μαζική καταχώρηση" style={{ display: 'flex', flexDirection: 'column', gap: T.sp.md, background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.card, padding: '16px 18px' }}>
                   <div>
                     <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{bulkOfferTitle(edited.lines?.length ?? 0, SCAN_MAX_LINES)}</div>

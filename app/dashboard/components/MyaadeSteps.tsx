@@ -128,7 +128,7 @@ export function MyaadeSteps() {
 /** Τι δέχεται το πλακίδιο: το PDF του myAADE ή φωτογραφία του (scanDoc.ts: PHOTO_LIST_TYPES). */
 export const MYAADE_ACCEPT = 'application/pdf,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif';
 /** Πώς διαβάζεται κάθε αρχείο. Το ίδιο λέει και η Πολιτική απορρήτου. */
-export const MYAADE_PRIVACY = 'Το PDF διαβάζεται στον περιηγητή σου και δεν ανεβαίνει πουθενά. Η φωτογραφία διαβάζεται με AI στον διακομιστή και δεν αποθηκεύεται. Κρατάμε μόνο ό,τι επιβεβαιώσεις: τα ακίνητα και, από την πράξη, το ποσό του ΕΝΦΙΑ. Το ΑΦΜ του εγγράφου δεν αποθηκεύεται.';
+export const MYAADE_PRIVACY = 'Το PDF διαβάζεται στον περιηγητή σου και δεν ανεβαίνει πουθενά, εκτός αν από τη Σάρωση ζητήσεις «Κράτα αντίγραφο στον Φάκελο». Η φωτογραφία διαβάζεται με AI στον διακομιστή και δεν αποθηκεύεται. Κρατάμε μόνο ό,τι επιβεβαιώσεις: τα ακίνητα και, από την πράξη, το ποσό του ΕΝΦΙΑ. Το ΑΦΜ του εγγράφου δεν αποθηκεύεται.';
 
 /** Το πλακίδιο του αρχείου (DropZone.tsx) με τα λεκτικά του Ε9 και της πράξης ΕΝΦΙΑ. */
 export function DropZone({ onFile, disabled, inputId }: { onFile: (f: File | undefined) => void; disabled: boolean; inputId: string }) {
