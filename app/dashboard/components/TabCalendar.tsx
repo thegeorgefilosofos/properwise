@@ -70,7 +70,7 @@ import { AutoPullPanel } from './calendar/AutoPullPanel'
 import { EventModal, ScopeModal } from './calendar/EventModal'
 import { SubscribeModal } from './calendar/SubscribeModal'
 import { CalendarQuickAdd } from './calendar/CalendarQuickAdd'
-import { dueTextStart } from '@/lib/facts/deadlines'
+import { dueTextStart, incomeInstalmentsAfter } from '@/lib/facts/deadlines'
 
 export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenTasks }: {
   propertyId:string; userId:string;
@@ -338,6 +338,14 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
     const ns:EventStatus=e.status==='paid'?'pending':'paid'
     if(!await saved('Η κατάσταση δεν αποθηκεύτηκε', calendar.update(supabase,e.id,{status:ns}))) return
     if(ns==='paid') void track(supabase, PRODUCT_EVENTS.paid_marked, paidProps('app'))
+    // ΕΦΑΠΑΞ ΕΞΟΦΛΗΣΗ ΤΟΥ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ: ρωτά, δεν υποθέτει. Οι δόσεις των
+    // άλλων ακινήτων κλείνουν από τον συγχρονισμό (προθεσμία του φορολογούμενου).
+    const rest=ns==='paid'?incomeInstalmentsAfter(events,e):[]
+    if(rest.length&&await confirmDialog({title:'Εξοφλήθηκε όλος ο φόρος;',message:`Αν πλήρωσες εφάπαξ, κλείνουν και οι υπόλοιπες δόσεις της ίδιας δήλωσης (${rest.length}). Αν πληρώνεις σε δόσεις, άφησέ τες ανοιχτές.`,confirmLabel:'Κλείσιμο υπόλοιπων',cancelLabel:'Πληρώνω σε δόσεις'})
+      &&await saved('Οι υπόλοιπες δόσεις δεν έκλεισαν', calendar.updateMany(supabase,rest.map(r=>r.id),{status:'paid'}))){
+      const ids=new Set(rest.map(r=>r.id))
+      setEvents(prev=>prev.map(ev=>ids.has(ev.id)?{...ev,status:'paid' as EventStatus}:ev))
+    }
     // ΑΝΑΙΡΕΣΗ ΤΟΥ «ΠΛΗΡΩΣΑ» ΑΠΟ ΤΗΝ ΕΦΑΡΜΟΓΗ: αν η πληρωμή είχε γραφτεί και ως
     // δαπάνη από την υπενθύμιση (lib/reminders/payLink.ts), ρωτά πριν τη σβήσει.
     if(ns==='pending'&&await expenses.hasDedup(supabase,userId,payDedupHash(e.id))

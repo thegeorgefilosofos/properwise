@@ -26,7 +26,7 @@ import * as documents from '@/lib/data/documents';
 // Η ΜΙΑ μηχανή σάρωσης/καταχώρησης. Το Αρχείο δεν έχει δική του λογική OCR, δικό
 // του prompt, ούτε δική του απόφαση για το ράφι: όλα ζουν στο scanDoc.ts και στο
 // lib/billing (δοκιμασμένα). Ό,τι φαίνεται εδώ είναι μόνο οθόνη.
-import { ARCHIVE_CATEGORIES, validateDoc, DOC_FIELD_LABELS, DOC_TYPE_LABELS, FOLDERS, folderForDoc, archiveOptions, docForm, fieldOptions, fieldValue, kindOf, shelfPath, planDocSave, renamePatch, type FolderKey, type ScannedDoc } from '@/lib/billing/documents';
+import { ARCHIVE_CATEGORIES, validateDoc, DOC_FIELD_LABELS, DOC_TYPE_LABELS, FOLDERS, folderForDoc, archiveOptions, docForm, fieldOptions, fieldValue, kindOf, shelfPath, planDocSave, renamePatch, amountFromInput, type FolderKey, type ScannedDoc } from '@/lib/billing/documents';
 import {
   scanFile, commitScannedDoc, archiveScannedFile, archiveCategoryFor, archiveInputFrom,
   withAnswer, failedNotice, openQuestion, notForFolder, FOLDER_ACCEPT,
@@ -1502,7 +1502,7 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onAnswer, onArchiveOnly, 
             {hasMoney(doc.doc_type) && (
               <div style={g2x}>
                 <NumberInput label={mark(`${amountLabel} (€)`, amountKey)} value={doc[amountKey] != null ? String(doc[amountKey]) : ''}
-                  onChange={t => onPatchDoc({ [amountKey]: t.trim() ? parseFloat(t.replace(',', '.')) || undefined : undefined } as Partial<ScannedDoc>)} placeholder=""/>
+                  onChange={t => onPatchDoc({ [amountKey]: amountFromInput(t, kindOf(doc)) } as Partial<ScannedDoc>)} placeholder=""/>
                 <DatePicker label={mark('Ημερομηνία έκδοσης', 'issue_date')} value={doc.issue_date || ''} onChange={t => onPatchDoc({ issue_date: t })}/>
               </div>
             )}

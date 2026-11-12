@@ -1384,11 +1384,41 @@ const filled = (o: Record<string, unknown>): Record<string, unknown> | undefined
 };
 
 /**
+ * Το ποσό που πληκτρολόγησε ο χρήστης στη φόρμα σάρωσης.
+ *
+ * Κενό ή μη αριθμός → «δεν διαβάστηκε». Μηδέν επίσης «δεν διαβάστηκε», γιατί
+ * ένας λογαριασμός των 0€ είναι σχεδόν πάντα κενό πεδίο. ΕΞΑΙΡΕΣΗ το
+ * εκκαθαριστικό φόρου εισοδήματος (12.11.2026): εκεί μηδέν ή αρνητικό
+ * (επιστροφή) είναι πραγματική απάντηση («δεν έχεις φόρο») και από αυτήν ο
+ * συγχρονισμός ξέρει ότι δεν υπάρχουν δόσεις (lib/calendar/enfiaTotals.ts).
+ */
+export function amountFromInput(text: string, kind: DocKind | null | undefined): number | undefined {
+  if (!text.trim()) return undefined;
+  const n = parseFloat(text.replace(',', '.'));
+  if (!Number.isFinite(n)) return undefined;
+  return n !== 0 || kind?.value === 'income_tax' ? n : undefined;
+}
+
+/** Η ετικέτα του Ημερολογίου στο «Θα ενημερωθούν» για εκκαθαριστικό εισοδήματος, όταν η κατάσταση του ακινήτου δεν είναι γνωστή. */
+export const INCOME_CALENDAR_TARGET = `${CALENDAR} (1η δόση, αν το ακίνητο δεν νοικιάζεται)`;
+
+/** Ρυθμίσεις της δρομολόγησης που εξαρτώνται από το ακίνητο, όχι από το χαρτί. */
+export interface DocSaveOptions {
+  /**
+   * Το ημερολόγιο γράφει ήδη τις δόσεις φόρου εισοδήματος του ακινήτου (νοικιασμένο:
+   * `income-instalment` του lib/tax/greekTaxCalendar.ts). Τότε το εκκαθαριστικό
+   * δεν γράφει δική του «1η δόση»: θα ήταν δεύτερη γραμμή για την ίδια πληρωμή.
+   */
+  incomeSeries?: boolean;
+}
+
+/**
  * Καθαρή δρομολόγηση: από ScannedDoc → SavePlan. Δεν αγγίζει βάση.
  * @param doc   τα (επεξεργασμένα από τον χρήστη) πεδία
  * @param today ISO ημερομηνία σήμερα (περνιέται για ντετερμινιστικά τεστ)
+ * @param opts  ό,τι εξαρτάται από το ακίνητο (`DocSaveOptions`)
  */
-export function planDocSave(doc: ScannedDoc, today: string): SavePlan {
+export function planDocSave(doc: ScannedDoc, today: string, opts: DocSaveOptions = {}): SavePlan {
   // Χωρίς είδος (δεν είναι έγγραφο) μένει μόνο η αρχειοθέτηση.
   const kind = kindOf(doc) ?? KIND_BY_ID.other;
   const k = kind.value;
@@ -1428,7 +1458,9 @@ export function planDocSave(doc: ScannedDoc, today: string): SavePlan {
     // τράπεζα και, με τη σειρά «πάροχος πρώτα», ό,τι έγραφε ο χρήστης στον
     // Ενοικιαστή δεν αποθηκευόταν πουθενά.
     supplier: (k === 'rent_in' ? tenant || provider : provider || (k === 'lease' ? tenant : '')) || undefined,
-    amount: typeof docAmount === 'number' && docAmount > 0 ? docAmount : undefined,
+    // Θετικό ποσό, όπως πάντα. Στο εκκαθαριστικό φόρου εισοδήματος και μηδέν ή
+    // αρνητικό (επιστροφή): είναι η απάντηση «δεν έχεις φόρο» (`amountFromInput`).
+    amount: typeof docAmount === 'number' && (docAmount > 0 || (k === 'income_tax' && Number.isFinite(docAmount))) ? docAmount : undefined,
     provider_afm: afm && isValidAfm(afm) ? afm : undefined,
     period_from: pFrom || undefined,
     period_to: pTo || undefined,
@@ -1766,8 +1798,14 @@ export function planDocSave(doc: ScannedDoc, today: string): SavePlan {
   if (k === 'income_tax') {
     // ΟΧΙ ΔΑΠΑΝΗ ΑΚΙΝΗΤΟΥ: ο φόρος εισοδήματος είναι του φορολογούμενου. Η 1η
     // δόση μπαίνει στο ημερολόγιο χωρίς ποσό· το ποσό μένει στο έγγραφο.
+    //
+    // ΟΧΙ ΔΕΥΤΕΡΗ «1η ΔΟΣΗ» (12.11.2026). Σε νοικιασμένο ακίνητο το ημερολόγιο
+    // γράφει ήδη τις δόσεις (`opts.incomeSeries`)· η γραμμή της σάρωσης θα ήταν
+    // διπλή, με τις δικές της υπενθυμίσεις και «Ληξιπρόθεσμο». Και χωρίς φόρο
+    // (μηδέν ή επιστροφή) δεν υπάρχει δόση να υπενθυμιστεί.
     const plan: SavePlan = { targets: [FOLDER], archive };
-    if (iso(doc.due_date)) {
+    const noTax = archive.amount !== undefined && !(archive.amount > 0);
+    if (iso(doc.due_date) && !opts.incomeSeries && !noTax) {
       plan.calendar = [{
         title: `Φόρος εισοδήματος${year ? ` ${year}` : ''}: 1η δόση`, category: 'tax',
         event_date: iso(doc.due_date), amount: null, priority: 'high',
@@ -1803,16 +1841,24 @@ export function planDocSave(doc: ScannedDoc, today: string): SavePlan {
  * έλεγε «Στοιχεία ακινήτου · Δαπάνες · Ημερολόγιο» και αρχειοθετούνταν μόνο.
  * Ο Φάκελος μπαίνει μόνο όταν υπάρχει αρχείο να αρχειοθετηθεί.
  */
-export function docTargets(doc: ScannedDoc, hasFile: boolean, today: string = athensToday()): string[] {
-  if (!kindOf(doc)) return [];
+export function docTargets(
+  doc: ScannedDoc, hasFile: boolean, today: string = athensToday(), opts: DocSaveOptions = {},
+): string[] {
+  const kind = kindOf(doc);
+  if (!kind) return [];
   // ΜΕ ΤΟ ΣΗΜΕΡΑ, ΟΠΩΣ Η ΚΑΤΑΧΩΡΗΣΗ. Με κενή ημερομηνία, μια συνδρομή χωρίς
   // έκδοση και λήξη δεν έβγαζε ανανέωση και η λίστα παρέλειπε το Ημερολόγιο
   // που η καταχώρηση θα έγραφε.
-  const plan = planDocSave(doc, today);
+  const plan = planDocSave(doc, today, opts);
   const fillOnly = !!(plan.property || plan.settingsFill || plan.propertyFillGroup) && !plan.propertyReplace;
+  // Η «1η δόση» του εκκαθαριστικού εισοδήματος γράφεται μόνο όταν το ακίνητο
+  // ΔΕΝ νοικιάζεται (`incomeSeries`). Οταν ο καλών δεν το ξέρει, η λίστα το λέει
+  // υπό όρο αντί να υπόσχεται γραμμή που ίσως δεν γραφτεί (12.11.2026).
+  const incomeMaybe = kind.value === 'income_tax' && opts.incomeSeries === undefined;
   const out = plan.targets
     .filter(t => t !== FOLDER)
-    .map(t => (t === PROPERTY_TARGET && fillOnly ? `${t} (μόνο κενά)` : t));
+    .map(t => (t === PROPERTY_TARGET && fillOnly ? `${t} (μόνο κενά)`
+      : t === CALENDAR && incomeMaybe ? INCOME_CALENDAR_TARGET : t));
   if (hasFile && plan.archive) out.push(FOLDER);
   return out.filter((t, i) => out.indexOf(t) === i);
 }

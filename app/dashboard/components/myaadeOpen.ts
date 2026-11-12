@@ -15,3 +15,10 @@ export type MyaadeOpenDetail = { file?: File };
 export const openMyaadeImport = (file?: File): void => {
   window.dispatchEvent(new CustomEvent<MyaadeOpenDetail>(MYAADE_OPEN_EVENT, { detail: file instanceof File ? { file } : {} }));
 };
+
+/**
+ * Από τη Σάρωση στη μαζική ΧΩΡΙΣ βήμα ελέγχου (το PDF που η συσκευή αναγνώρισε
+ * ως Ε9 ή πράξη): σε ποιο ακίνητο ήταν η σάρωση, ή `null` χωρίς κανένα. Η μαζική
+ * δείχνει τότε το «Κράτα αντίγραφο» και, με ακίνητο, το «Σάρωσέ το ως έγγραφο».
+ */
+export type BulkFromScan = { propertyId: string | null };

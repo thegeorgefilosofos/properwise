@@ -32,7 +32,7 @@ import { syncPeaReminders } from '@/lib/calendar/peaSync';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
 import {
-  classifyDocType, planDocSave, normalizeScannedDoc, archiveCategoryFor, isDocumentary,
+  classifyDocType, planDocSave, normalizeScannedDoc, archiveCategoryFor, isDocumentary, kindOf,
   SCAN_NUM_KEYS, SCAN_MAX_LINES, PROPERTY_TARGET,
   type ScannedDoc, type ArchivePlan, type DocLine,
 } from '@/lib/billing/documents';
@@ -56,6 +56,7 @@ import {
 } from '@/lib/billing/parse';
 import { MSG } from '@/lib/core/dbError';
 import { isPhotoFile } from '@/lib/myaade/accept';
+import { taxProfileOf } from '@/lib/tax/greekTaxCalendar';
 
 // ── Το prompt αναγνώρισης (ΕΝΑ, κοινό) ─────────────────────────────────────
 // Ζει στο lib/billing/scanPrompt.ts, χτισμένο από το ίδιο λεξιλόγιο με τη φόρμα
@@ -566,14 +567,31 @@ export async function archiveScannedFile(input: ArchiveInput): Promise<{ ok: boo
     .upload(path, file, { upsert: false, contentType: file.type || undefined });
   if (upErr) return { ok: false, error: upErr.message };
 
-  const base: Record<string, unknown> = {
+  const { error } = await documents.add(supabase, propertyId, userId, archivePayload(input, path));
+  return error ? { ok: false, error: error.message ?? 'insert' } : { ok: true };
+}
+
+/**
+ * Γράφει το ημερολόγιο τις δόσεις φόρου εισοδήματος σε αυτό το ακίνητο; Ναι όταν
+ * νοικιάζεται (ο κανόνας του lib/tax/greekTaxCalendar.ts). Αν το ακίνητο δεν
+ * διαβαστεί, «όχι»: καλύτερα μια διπλή υπενθύμιση από καμία.
+ */
+async function hasIncomeSeries(db: ReturnType<typeof createClient>, propertyId: string, userId: string): Promise<boolean> {
+  const r = await properties.oneWithError<{ status_detail: string | null; rental_mode: string | null }>(db, propertyId, 'status_detail,rental_mode', userId);
+  return !r.error && !!r.row && taxProfileOf(r.row) !== 'owner';
+}
+
+/**
+ * Η γραμμή του Αρχείου (`property_documents`) από το input και τη διαδρομή του
+ * αρχείου. Καθαρή, ώστε η διαδρομή σάρωση → σχέδιο → γραμμή να ελέγχεται σε τεστ.
+ */
+export function archivePayload(input: ArchiveInput, path: string): Record<string, unknown> {
+  const { file, propertyId, userId, kind } = input;
+  return {
     property_id: propertyId, user_id: userId, kind, category: input.category,
     title: (input.title || file.name).slice(0, 200), notes: input.notes ?? null,
     doc_date: input.doc_date || null, file_path: path, file_name: file.name,
     mime: file.type || null, size_bytes: file.size,
-  };
-  const payload: Record<string, unknown> = {
-    ...base,
     supplier: input.supplier ?? null,
     amount: input.amount ?? null,
     provider_afm: input.provider_afm ?? null,
@@ -584,9 +602,6 @@ export async function archiveScannedFile(input: ArchiveInput): Promise<{ ok: boo
     // και θα έσπαγε την καταχώρηση σε βάση χωρίς τη στήλη πριν από τη μετάβαση.
     ...(input.statement_total ? { statement_total: true } : {}),
   };
-
-  const { error } = await documents.add(supabase, propertyId, userId, payload);
-  return error ? { ok: false, error: error.message ?? 'insert' } : { ok: true };
 }
 
 /** Από το σχέδιο αρχειοθέτησης (καθαρή λογική) στο input της βάσης. */
@@ -872,7 +887,10 @@ export async function commitScannedDoc(input: CommitInput): Promise<CommitResult
   const { propertyId, userId, file } = input;
   const today = input.today || athensToday();
   const doc = normalizeScannedDoc(input.doc);
-  const plan = planDocSave(doc, today);
+  // Εκκαθαριστικό φόρου εισοδήματος σε νοικιασμένο ακίνητο: οι δόσεις είναι ήδη
+  // στο ημερολόγιο, χωρίς δεύτερη «1η δόση» (planDocSave, `incomeSeries`).
+  const incomeSeries = kindOf(doc)?.value === 'income_tax' ? await hasIncomeSeries(supabase, propertyId, userId) : false;
+  const plan = planDocSave(doc, today, { incomeSeries });
   // Ονομάζεται `written` και όχι `saved`: το `saved` είναι πια ο βοηθός που
   // ελέγχει αν το γράψιμο πέτυχε και δύο πράγματα δεν μοιράζονται ένα όνομα.
   const written: string[] = [];

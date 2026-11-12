@@ -10,7 +10,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { greekPropertyTaxObligations, lastWorkingDayOfMonth, ENFIA_FEWER_HINT } from '@/lib/tax/greekTaxCalendar';
 import { enfiaInstalmentCount } from '@/lib/tools/enfiaSchedule';
-import { enfiaCountsByProperty, enfiaTotalOfSettings } from './enfiaTotals';
+import { enfiaCountsByProperty, enfiaTotalOfSettings, incomeTaxNilByProperty } from './enfiaTotals';
 import { enfiaYearOf, planDocSave, renamePatch, ENFIA_TITLE } from '@/lib/billing/documents';
 
 let pass = 0, fail = 0;
@@ -89,6 +89,16 @@ ok('μετονομασία, ίδιο έτος: το σήμα μένει', JSON.s
 ok('μετονομασία, άλλο έτος: το σήμα φεύγει', renamePatch('ΕΝΦΙΑ 2026', 'ΕΝΦΙΑ 2025', true).statement_total === false);
 ok('μετονομασία, όχι πια ΕΝΦΙΑ: το σήμα φεύγει', renamePatch('ΕΝΦΙΑ 2026', 'Εκκαθαριστικό', true).statement_total === false);
 ok('μετονομασία χωρίς σήμα: μόνο ο τίτλος', JSON.stringify(renamePatch('Χαρτί', 'ΕΝΦΙΑ 2026', false)) === '{"title":"ΕΝΦΙΑ 2026"}');
+
+// ── ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ ΧΩΡΙΣ ΦΟΡΟ (12.11.2026) ───────────────
+{
+  const props = [{ id: 'a', client_id: null }, { id: 'b', client_id: null }];
+  const nil = incomeTaxNilByProperty(props, null, [{ propertyId: 'a', year: 2025, amount: 0 }]);
+  ok('μηδέν στο ένα ακίνητο του ιδιώτη: και στα δύο', nil.get('a')?.join() === '2025' && nil.get('b')?.join() === '2025');
+  ok('φόρος σε άλλο ακίνητο του ίδιου ΑΦΜ: όχι μηδέν', incomeTaxNilByProperty(props, null, [{ propertyId: 'a', year: 2025, amount: 0 }, { propertyId: 'b', year: 2025, amount: 300 }]).get('a')?.length === 0);
+  ok('κάθε ακίνητο μόνο του: μόνο εκεί που σαρώθηκε', incomeTaxNilByProperty(props, new Set(), [{ propertyId: 'a', year: 2025, amount: 0 }]).get('b')?.length === 0);
+  ok('χωρίς εκκαθαριστικό: κανένα έτος', incomeTaxNilByProperty(props, null, []).get('a')?.length === 0);
+}
 
 console.log(`\nenfiaTotals: ${pass} ✓ · ${fail} ✗`);
 if (fail) process.exit(1);

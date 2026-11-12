@@ -1276,6 +1276,15 @@ body {
 @media (min-width: 880px) {
   .scan-tiles[data-tiles="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+/* ΕΝΑ, ΟΤΑΝ ΔΕΝ ΥΠΑΡΧΕΙ ΑΚΙΝΗΤΟ: μόνο η μαζική από Ε9 ή ΕΝΦΙΑ, σε όλο το
+   πλάτος αντί για μισή στήλη. ΠΕΝΤΕ, με την τράπεζα: 3+2 αντί για 2+2+1. */
+.scan-tiles[data-tiles="1"] { grid-template-columns: 1fr; }
+@media (min-width: 700px) { .scan-tiles[data-tiles="5"] { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* Πλακίδιο επιλογής με την αιώρηση σε CSS: ίδια όψη με τα διπλανά που την
+   γράφουν ακόμη σε JavaScript. Δουλεύει και για όποιον έρχεται με πληκτρολόγιο. */
+.pick-tile-css { border: 1px solid var(--border-default); border-radius: 14px; background: var(--bg-elevated); cursor: pointer; transition: border-color .15s, background .15s; }
+.pick-tile-css:focus-visible { border-color: var(--accent); background: var(--accent-dim); }
+@media (hover: hover) { .pick-tile-css:hover { border-color: var(--accent); background: var(--accent-dim); } }
 
 /* ΚΑΙ ΟΙ ΤΙΜΕΣ ΤΩΝ ΕΠΙΛΟΓΕΩΝ ΠΟΥ ΔΕΝ ΕΙΝΑΙ <input>. Στην αφή κάθε <input>
    γράφει 16 (κανόνας του Safari, πιο κάτω), ενώ ο επιλογέας λίστας και ο

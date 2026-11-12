@@ -161,7 +161,8 @@ export function upcomingTaxObligations(
  * μόνο όταν το είδος δεν έχει επόμενη, για `DEADLINE_LOOKBACK_DAYS` ημέρες.
  *
  * Οι ενδιάμεσες δόσεις ΕΝΦΙΑ δεν μένουν ποτέ περασμένες: τις διαδέχεται πάντα
- * η επόμενη πληρωμή της ίδιας σειράς. Μια κλειστή προθεσμία (δόση πληρωμένη
+ * η επόμενη πληρωμή της ίδιας σειράς. Το ίδιο οι δόσεις του φόρου εισοδήματος:
+ * περασμένη δόση δεν μένει στη λίστα ως εκπρόθεσμη. Μια κλειστή προθεσμία (δόση πληρωμένη
  * νωρίτερα) αφήνει να φανεί η επόμενη του ίδιου είδους αμέσως, όχι όταν
  * περάσει η ημερομηνία της.
  *
@@ -188,12 +189,31 @@ export function nextTaxObligations(
 
   const pick = new Map<string, TaxObligation>();
   for (const o of pool) {
-    if (o.kind === 'enfia-instalment' && o.date < t) continue;
+    if ((o.kind === 'enfia-instalment' || o.kind === 'income-instalment') && o.date < t) continue;
     const cur = pick.get(o.kind);
     if (cur && cur.date >= t) continue;
     pick.set(o.kind, o);
   }
   return [...pick.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * Οι ΑΝΟΙΧΤΕΣ μεταγενέστερες δόσεις φόρου εισοδήματος της ΙΔΙΑΣ δήλωσης με τη
+ * δόση `paid` (από τις πηγές `tax:income-instalment-<έτος>-<δόση>`).
+ *
+ * Για το «πληρώθηκε εφάπαξ;» του Ημερολογίου (12.11.2026): όποιος εξόφλησε όλο
+ * τον φόρο δεν πρέπει να κλείνει μία μία τις υπόλοιπες δόσεις ούτε να παίρνει
+ * υπενθυμίσεις γι' αυτές. Η εφαρμογή ΔΕΝ το υποθέτει: ρωτά και κλείνει μόνο αν
+ * ο χρήστης πει ναι. Κενή λίστα για κάθε άλλο γεγονός.
+ */
+export function incomeInstalmentsAfter<T extends { id: string; source?: string | null; status?: string | null; event_date: string }>(
+  events: readonly T[], paid: { id: string; source?: string | null; event_date: string },
+): T[] {
+  const m = /^tax:income-instalment-(\d{4})-\d+$/.exec(String(paid.source ?? ''));
+  if (!m) return [];
+  const prefix = `tax:income-instalment-${m[1]}-`;
+  return events.filter(e => e.id !== paid.id && String(e.source ?? '').startsWith(prefix)
+    && e.event_date > paid.event_date && !isClosedStatus(e.status));
 }
 
 const shift = (iso: string, days: number): string => {
@@ -240,6 +260,11 @@ export function taxEventsToWrite(
     const src = taxEventSource(o.id);
     const prev = had.get(src);
     if (o.date < t && prev === undefined) continue;
+    // ΠΕΡΑΣΜΕΝΗ ΔΟΣΗ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ ΔΕΝ ΜΕΝΕΙ ΑΝΟΙΧΤΗ (12.11.2026). Η εφαρμογή
+    // δεν ξέρει αν ο χρήστης χρωστά φόρο· μια ανοιχτή περασμένη δόση θα γινόταν
+    // «Ληξιπρόθεσμο» σε όποιον δεν χρωστά. Μένει μόνο αν την έκλεισε ο ίδιος·
+    // την ανοιχτή που δεν άγγιξε ο συγχρονισμός τη σβήνει (lib/calendar/taxSync.ts).
+    if (o.kind === 'income-instalment' && o.date < t && !isClosedStatus(prev)) continue;
     const ev: EventDraft = { ...taxObligationToEvent(o), status: (prev ?? 'pending') as EventStatus };
     const amount = ENFIA_KINDS.has(o.kind) ? enfiaInstalmentAmount(o, amounts.enfiaTotals) : null;
     if (amount !== null) ev.amount = amount;

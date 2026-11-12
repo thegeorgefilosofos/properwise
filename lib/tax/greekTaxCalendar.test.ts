@@ -266,14 +266,59 @@ ok('κενό/ιδιοχρησία → owner', taxProfileOf({ status_detail: 'own
 }
 
 // ── ΟΙ ΔΟΣΕΙΣ ΤΟΥ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ ΕΙΝΑΙ ΤΟΥ ΝΟΜΟΥ ΚΑΙ ΖΟΥΝ ΣΕ ΜΙΑ ΣΤΑΘΕΡΑ ─────
-// ΚΦΕ άρθρο 67 παρ. 4 περ. α΄ (άρθρο 84 ν.5162/2024): οκτώ μηνιαίες δόσεις. Ο
+// ΚΦΕ άρθρο 67 παρ. 6 (άρθρο 84 ν.5162/2024): οκτώ μηνιαίες δόσεις. Ο
 // αριθμός γράφεται εδώ δεύτερη φορά, με τα δικά του λόγια, ώστε λάθος στη
 // σταθερά να κοκκινίζει· και η σημείωση πρέπει να τον παίρνει από τη σταθερά.
 {
-  ok('οκτώ δόσεις φόρου εισοδήματος (άρθρο 67 παρ. 4 ΚΦΕ)', INCOME_TAX_INSTALMENTS === 8)
+  ok('οκτώ δόσεις φόρου εισοδήματος (άρθρο 67 παρ. 6 ΚΦΕ)', INCOME_TAX_INSTALMENTS === 8)
   const decl = greekPropertyTaxObligations(2026, 'owner').find(o => o.kind === 'income-decl')!
   ok('η σημείωση της δήλωσης λέει το πλήθος της σταθεράς',
     decl.notes.includes(`σε έως ${INCOME_TAX_INSTALMENTS} δόσεις.`))
+}
+
+// ── ΟΙ ΔΟΣΕΙΣ ΤΟΥ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ ΣΤΟ ΗΜΕΡΟΛΟΓΙΟ (12.11.2026) ─────────────
+// Ως τώρα δεν έβγαινε καμία. ΚΦΕ άρθρο 67 παρ. 6: η 1η ως την τελευταία
+// εργάσιμη του Ιουλίου και οι επτά επόμενες ως την τελευταία εργάσιμη κάθε
+// επόμενου μήνα.
+{
+  const inc = (y: number, p: 'owner' | 'long_term' | 'short_term' = 'long_term') =>
+    greekPropertyTaxObligations(y, p).filter(o => o.kind === 'income-instalment')
+  const i26 = inc(2026)
+  ok('δήλωση 2026: οκτώ δόσεις', i26.length === INCOME_TAX_INSTALMENTS)
+  ok('κλειδιά income-instalment-2026-1 ως -8', i26.map(o => o.id).join(',') === Array.from({ length: INCOME_TAX_INSTALMENTS }, (_, i) => `income-instalment-2026-${i + 1}`).join(','))
+  // Οι ακριβείς ημερομηνίες της δήλωσης 2026 (φορολογικό έτος 2025).
+  const want = ['2026-07-31', '2026-08-31', '2026-09-30', '2026-10-30', '2026-11-30', '2026-12-31', '2027-01-29', '2027-02-26']
+  want.forEach((d, i) => ok(`δήλωση 2026: ${i + 1}η δόση ${d}`, i26[i]?.date === d))
+  // Και της δήλωσης 2027: Ιούλιος 2027 ως Φεβρουάριος 2028.
+  const want27 = ['2027-07-30', '2027-08-31', '2027-09-30', '2027-10-29', '2027-11-30', '2027-12-31', '2028-01-31', '2028-02-29']
+  want27.forEach((d, i) => ok(`δήλωση 2027: ${i + 1}η δόση ${d}`, inc(2027)[i]?.date === d))
+  ok('κάθε δόση = τελευταία εργάσιμη του μήνα της', [2026, 2027, 2028].every(y => inc(y).every((o, i) => {
+    const t = 6 + i
+    return o.date === lastWorkingDayOfMonth(y + Math.floor(t / 12), t % 12) && !isNonWorkingDay(o.date)
+  })))
+  ok('τίτλοι, η 8η «και τελευταία»', i26.every((o, i) => o.title === (i === 7 ? 'Φόρος εισοδήματος, 8η και τελευταία δόση' : `Φόρος εισοδήματος, ${i + 1}η δόση`)))
+  ok('του νόμου, με την πηγή', i26.every(o => o.confidence === 'statutory' && o.notes.includes('άρθρο 67 παρ. 6')))
+  ok('η σημείωση παίρνει το πλήθος από τη σταθερά', i26.every(o => o.notes.includes(`σε ${INCOME_TAX_INSTALMENTS} ισόποσες`)))
+  ok('ο ιδιοκτήτης πληρώνει', i26.every(o => o.who === 'owner'))
+  // Μόνο σε νοικιασμένο ακίνητο: η ιδιοκατοίκηση δεν παίρνει οκτώ υπενθυμίσεις.
+  ok('ιδιοκατοίκηση: καμία δόση', inc(2026, 'owner').length === 0)
+  ok('βραχυχρόνια: οκτώ δόσεις', inc(2026, 'short_term').length === INCOME_TAX_INSTALMENTS)
+  // Κανένα ποσό γραμμένο στο χέρι: η εφαρμογή δεν ξέρει το ποσό της δόσης.
+  ok('καμία δόση με ποσό στη σημείωση', i26.every(o => !/\d\s*€|€\s*\d/.test(taxObligationNotes(o))))
+  ok('το γεγονός γράφεται χωρίς ποσό', i26.every(o => taxObligationToEvent(o).amount === null))
+  // Το κλειδί γυρίζει στο είδος, στο έτος της δήλωσης και στη δόση.
+  ok('kind από κλειδί', taxKindOfEventSource('tax:income-instalment-2026-8') === 'income-instalment')
+  ok('η 8η δόση της δήλωσης 2026 από το κλειδί της', taxObligationOfEventSource('tax:income-instalment-2026-8')?.date === '2027-02-26')
+  ok('meta του είδους', taxKindMeta(2027)['income-instalment']?.who === 'owner')
+  // Ο προορισμός: η δήλωση εισοδήματος στο myAADE, όχι το γενικό ημερολόγιο.
+  ok('ο προορισμός είναι η δήλωση εισοδήματος', destinationForKind('income-instalment') === 'income' && i26.every(o => o.official_url === AADE_DESTINATIONS.income.url))
+  // Ο ορίζοντας της 12.11.2026 δείχνει τις 5η ως 8η που απομένουν.
+  const left = taxObligationsHorizon('2026-11-12', 'long_term').filter(o => o.kind === 'income-instalment' && o.date >= '2026-11-12')
+  // Εκκαθαριστικό χωρίς φόρο για το φορολογικό έτος 2025: η δήλωση 2026 δεν έχει δόσεις.
+  ok('incomeTaxNil 2025: καμία δόση της δήλωσης 2026', greekPropertyTaxObligations(2026, 'long_term', { incomeTaxNil: [2025] }).every(o => o.kind !== 'income-instalment'))
+  ok('incomeTaxNil 2025: η δήλωση 2027 έχει τις οκτώ', greekPropertyTaxObligations(2027, 'long_term', { incomeTaxNil: [2025] }).filter(o => o.kind === 'income-instalment').length === INCOME_TAX_INSTALMENTS)
+  ok('12.11.2026: απομένουν οι 5η ως 8η', left.map(o => `${o.id}@${o.date}`).join(',') ===
+    'income-instalment-2026-5@2026-11-30,income-instalment-2026-6@2026-12-31,income-instalment-2026-7@2027-01-29,income-instalment-2026-8@2027-02-26')
 }
 
 // ── report ───────────────────────────────────────────────────────────────────
