@@ -13,8 +13,9 @@ import { confirmDialog } from '@/components/ConfirmDialog';
 import { CustomSelect, TextInput, DatePicker, Textarea, NumberInput } from './UIComponents';
 import { downloadTableXlsx } from './exportCsv';
 import { saved } from '@/components/dbWrite';
-import { createKeptStore, hasUnsaved, isWorking } from './keptDrafts';
-import { notifyError } from '@/components/Toast';
+import { createKeptStore, hasUnsaved, isSettled, isWorking } from './keptDrafts';
+import { downloadInTurn } from './downloadInTurn';
+import { notifyError, notifyOk } from '@/components/Toast';
 import { money } from './sheetFormat';
 import { useAppPreferences } from './useAppPreferences';
 // Τα σχήματα των τριών πινάκων που διαβάζει το Αρχείο δίπλα στα δικά του αρχεία.
@@ -285,6 +286,9 @@ export default function TabDocuments({
 }: Props & { embedded?: boolean }) {
   const supabase = createClient();
   const { prefs } = useAppPreferences(propertyId);
+  // Το κλειδί των προσχεδίων: χρήστης ΚΑΙ ακίνητο, ώστε δύο λογαριασμοί στην
+  // ίδια καρτέλα περιηγητή να μη βλέπουν ποτέ ο ένας τα χαρτιά του άλλου.
+  const draftKey = `${userId}:${propertyId}`;
 
   const [items, setItems] = useState<Item[]>([]);
   // Ο ΔΕΙΚΤΗΣ ΦΟΡΤΩΣΗΣ ΔΕΝ ΕΙΝΑΙ ΞΕΧΩΡΙΣΤΗ ΚΑΤΑΣΤΑΣΗ, ΕΙΝΑΙ ΕΡΩΤΗΣΗ. Ηταν
@@ -325,8 +329,9 @@ export default function TabDocuments({
   const [renameItem, setRenameItem] = useState<Item | null>(null);   // ανοιχτό modal μετονομασίας
 
   // Σάρωση → επιβεβαίωση → καταχώρηση. Καμία χειροκίνητη φόρμα, κανένας διακόπτης.
-  // Ανοιχτή από την αρχή όταν περιμένουν προσχέδια από προηγούμενη επίσκεψη.
-  const [showUpload, setShowUpload] = useState(() => draftStore.get(propertyId).length > 0);
+  // Ανοιχτή από την αρχή μόνο όταν περιμένουν ΜΗ αποθηκευμένα προσχέδια από
+  // προηγούμενη επίσκεψη· τα τελειωμένα καθαρίζονται παρακάτω.
+  const [showUpload, setShowUpload] = useState(() => hasUnsaved(draftStore.get(draftKey)));
   // ΤΟ `uploadMin` ΕΦΥΓΕ. Ηταν ΤΡΙΤΗ κατάσταση της ίδιας κάρτας —ανοιχτή,
   // ελαχιστοποιημένη, κλειστή— και το «×» οδηγούσε στη μεσαία: ο χρήστης
   // πατούσε το σύμβολο που παντού σημαίνει «κλείσε» και έμενε με μια κεφαλίδα
@@ -339,21 +344,16 @@ export default function TabDocuments({
   // ΣΤΟ ΚΑΤΑΣΤΗΜΑ, ΟΧΙ ΣΕ useState: η καρτέλα ξαναστήνεται σε κάθε αλλαγή
   // καρτέλας ή ακινήτου και οι σαρώσεις είναι ήδη πληρωμένες.
   const drafts = useSyncExternalStore(
-    useCallback((cb: () => void) => draftStore.subscribe(propertyId, cb), [propertyId]),
-    () => draftStore.get(propertyId),
+    useCallback((cb: () => void) => draftStore.subscribe(draftKey, cb), [draftKey]),
+    () => draftStore.get(draftKey),
     () => NO_DRAFTS,
   );
-  const setDrafts = useCallback((next: Draft[] | ((prev: Draft[]) => Draft[])) => draftStore.set(propertyId, next), [propertyId]);
+  const setDrafts = useCallback((next: Draft[] | ((prev: Draft[]) => Draft[])) => draftStore.set(draftKey, next), [draftKey]);
+  // Οσα τελείωσαν (αποθηκεύτηκαν ή δεν διαβάστηκαν) δεν ξαναεμφανίζονται στην
+  // επόμενη επίσκεψη. Η ερώτηση πριν από ανανέωση ζει στο ίδιο το κατάστημα.
+  useEffect(() => { draftStore.prune(draftKey, d => !isSettled(d)); }, [draftKey]);
   // Το τοπικό `busy` χάνεται με την καρτέλα· η σάρωση που τρέχει ακόμη όχι.
   const busy = busyHere || isWorking(drafts);
-  const unsaved = hasUnsaved(drafts);
-  // Η ανανέωση ή το κλείσιμο της σελίδας σβήνει τη μνήμη: ρωτά ο περιηγητής.
-  useEffect(() => {
-    if (!unsaved) return;
-    const stop = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
-    window.addEventListener('beforeunload', stop);
-    return () => window.removeEventListener('beforeunload', stop);
-  }, [unsaved]);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
 
@@ -721,7 +721,20 @@ export default function TabDocuments({
     if (gone) notifyError('Οι γραμμές έφυγαν αλλά κάποια αρχεία δεν σβήστηκαν');
     setSelected(new Set()); fetchAll();
   };
-  const bulkDownload = () => { selItems.filter(i => i.url).forEach(i => window.open(i.downloadUrl || i.url!, '_blank', 'noopener')); };
+  // ΕΝΑ ΕΝΑ, ΟΧΙ ΠΑΡΑΘΥΡΟ ΑΝΑ ΑΡΧΕΙΟ. Το `window.open` ανά αρχείο περνούσε
+  // μόνο το πρώτο από τον φραγμό αναδυόμενων· τα υπόλοιπα χάνονταν σιωπηλά. Και
+  // αυτή είναι η διαδρομή που δείχνουν η εξαγωγή και η διαγραφή λογαριασμού.
+  const [downloading, setDownloading] = useState(false);
+  const bulkDownload = async () => {
+    if (downloading) return;
+    const files = selItems.filter(i => i.url).map(i => ({ url: i.url!, name: i.fileName }));
+    if (!files.length) return;
+    setDownloading(true);
+    const r = await downloadInTurn(files);
+    setDownloading(false);
+    if (r.failed.length) notifyError(r.failed.length === 1 ? `Το «${r.failed[0]}» δεν κατέβηκε. Δοκίμασε ξανά.` : `${r.failed.length} αρχεία δεν κατέβηκαν. Δοκίμασε ξανά.`);
+    else notifyOk(r.ok === 1 ? 'Το αρχείο κατέβηκε' : `Κατέβηκαν ${r.ok} αρχεία`);
+  };
 
   /* ── Παράγωγα δεδομένα ─────────────────────────────────────────────────── */
 
@@ -989,7 +1002,7 @@ export default function TabDocuments({
           <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>{selected.size} {selected.size === 1 ? 'επιλεγμένο' : 'επιλεγμένα'}</span>
           <div style={{ width: 1, height: 20, background: 'var(--border-subtle)', flexShrink: 0 }}/>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <BulkBtn icon={<IconDownload/>} label="Λήψη" onClick={bulkDownload} disabled={!selItems.some(i => i.url)}/>
+            <BulkBtn icon={<IconDownload/>} label={downloading ? 'Λήψη…' : 'Λήψη'} onClick={() => void bulkDownload()} disabled={downloading || !selItems.some(i => i.url)}/>
             <BulkBtn icon={<IconMoveFolder/>} label="Διόρθωση αναγνώρισης" onClick={() => selDocs.length && setFixItems(selDocs)} disabled={!selDocs.length}/>
             <BulkBtn icon={<IconTrash/>} label="Διαγραφή" onClick={bulkDelete} disabled={!selRaw.length}/>
           </div>

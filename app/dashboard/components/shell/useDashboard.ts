@@ -12,6 +12,7 @@ import { useEffect, useState, useCallback, useMemo, useRef, useSyncExternalStore
 import { createClient } from '@/lib/supabase/client'
 import { hardNavigate } from '@/lib/core/navigate'
 import { endSession, SIGN_OUT_FAILED } from '@/lib/auth/endSession'
+import { anyKeptUnsaved } from '../keptDrafts'
 import * as propertyStore from '@/lib/data/properties'
 import * as documentStore from '@/lib/data/documents'
 import * as feedStore from '@/lib/data/calendarFeed'
@@ -669,6 +670,10 @@ export function useDashboard() {
     // πρόκειται να λήξει: μετά την αποσύνδεση, η RLS δεν θα το επέτρεπε ποτέ.
     // Τα τρία βήματα (ειδοποιήσεις, συνεδρία, περιηγητής) ζουν στο
     // lib/auth/endSession: τα μοιράζεται με την πύλη του λογιστή.
+    // ΟΙ ΜΗ ΚΑΤΑΧΩΡΗΜΕΝΕΣ ΣΑΡΩΣΕΙΣ ΡΩΤΟΥΝ ΕΔΩ, ΟΣΟ ΥΠΑΡΧΕΙ ΑΚΟΜΗ ΣΥΝΕΔΡΙΑ. Μετά
+    // το `endSession` τίποτα δεν επιτρέπεται να σταματήσει την έξοδο: το
+    // `hardNavigate` σβήνει τα προσχέδια και τον φύλακα ανανέωσης πριν φύγει.
+    if (anyKeptUnsaved() && !(await confirmDiscard('Στον Φάκελο υπάρχουν σαρώσεις που δεν έχουν καταχωρηθεί. Με την αποσύνδεση χάνονται.'))) return;
     if (!await endSession(supabase)) {
       // duration 0 = μένει ώσπου να το κλείσει ο χρήστης, ίδιο βάρος με το alert που
       // αντικατέστησε.
