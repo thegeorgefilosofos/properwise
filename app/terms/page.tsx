@@ -8,8 +8,9 @@ import { IDENTITY, identityIsPublished, identityPendingSentence, POLICY_UPDATED,
 // PLANS, με τον ίδιο μορφοποιητή που τυπώνει κάθε ποσό της εφαρμογής.
 import { PLANS, TRIAL_DAYS, PRIORITY_SUPPORT_LINE, firstPlanWith } from '@/lib/billing/plans';
 import { SCAN_LIMITS, TRIAL_SCANS_PER_MONTH } from '@/lib/billing/aiLimits';
-import { TRIAL_PLAN, EARLY_ACCESS_DAYS, PROFESSIONAL_MIN_PLAN } from '@/lib/billing/entitlements';
+import { EARLY_ACCESS_DAYS, PROFESSIONAL_MIN_PLAN } from '@/lib/billing/entitlements';
 import { fe } from '@/lib/core/format';
+import { TRIAL_OFFER } from '@/lib/billing/trialOffer';
 // ΤΑ ΛΟΓΙΑ ΓΙΑ ΤΑ ΧΡΗΜΑΤΑ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΗΝ ΙΔΙΑ ΣΥΝΘΗΚΗ ΜΕ ΤΟ ΚΟΥΜΠΙ ΤΟΥ ΤΑΜΕΙΟΥ.
 import { billingWords } from '@/lib/legal/billingWords';
 import { WITHDRAWAL_LABEL, WITHDRAWAL_CONFIRM_LABEL, WITHDRAWAL_PATH } from '@/lib/legal/withdrawalLabels';
@@ -117,7 +118,13 @@ export default function TermsPage() {
         ] },
         { h: 'Συνδρομή, τιμές και δωρεάν δοκιμή', part: 'Β. Συνδρομή και χρήματα', p: [
           `Το πακέτο «${PLANS.free.name}» είναι δωρεάν, χωρίς συνδρομή: ${propertiesFor('free')}, τα φορολογικά εργαλεία, ${SCAN_LIMITS.free} σαρώσεις εγγράφων τον μήνα, χωρίς τη Νόα. Οι συνδρομές είναι τέσσερις, χωρίς δέσμευση διάρκειας: «${PLANS.solo.name}» για ${propertiesFor('solo')}, με τη Νόα και σάρωση χωρίς μηνιαίο όριο (${fe(PLANS.solo.priceMonthly)} τον μήνα ή ${fe(PLANS.solo.priceAnnual)} τον χρόνο), «${PLANS.owner.name}» για ${propertiesFor('owner')} (${fe(PLANS.owner.priceMonthly)} τον μήνα ή ${fe(PLANS.owner.priceAnnual)} τον χρόνο), «${PLANS.agency.name}» για ${propertiesFor('agency')} με ομαδική διαχείριση (${fe(PLANS.agency.priceMonthly)} τον μήνα ή ${fe(PLANS.agency.priceAnnual)} τον χρόνο) και «${PLANS.office.name}» για ${propertiesFor('office')} (${fe(PLANS.office.priceMonthly)} τον μήνα ή ${fe(PLANS.office.priceAnnual)} τον χρόνο). Οι αναγραφόμενες τιμές αφορούν καταναλωτές στην Ελλάδα και περιλαμβάνουν τον αναλογούντα ΦΠΑ· για πελάτες εκτός Ελλάδας ο ΦΠΑ προκύπτει από τη χώρα τους. Σε κάθε περίπτωση, το ποσό που θα χρεωθείς το βλέπεις στο ταμείο πριν επιβεβαιώσεις και η ανάλυση του ΦΠΑ αναγράφεται στο παραστατικό.`,
-          `Κάθε λογαριασμός λαμβάνει δωρεάν δοκιμή ${TRIAL_DAYS} ημερών, μία φορά, με τις δυνατότητες του πακέτου «${PLANS[TRIAL_PLAN].name}». Το πακέτο που επέλεξες κατά την εγγραφή ισχύει από την ενεργοποίηση της συνδρομής.`,
+          // Η ΔΟΚΙΜΗ ΜΕ ΤΑ ΟΡΙΑ ΤΗΣ ΚΑΙ ΤΗΝ ΚΟΙΝΗ ΔΕΞΑΜΕΝΗ (έλεγχος 12/11/2026).
+          // Ελεγε ότι η δοκιμή έχει ό,τι δυνατότητα έχει το «Ιδιοκτήτης+», άρα υποσχόταν
+          // σιωπηρά και τις ερωτήσεις και τη σάρωση χωρίς όριο του πακέτου. Η
+          // πρόταση είναι πλέον η ΙΔΙΑ με της αρχικής (TRIAL_OFFER), με τους
+          // αριθμούς από τις σταθερές και την κοινή δεξαμενή. Το δώρο έχει τα
+          // όρια του πακέτου του από τη 20261112120000.
+          `${TRIAL_OFFER} Η δοκιμή δίνεται μία φορά ανά λογαριασμό. Το ίδιο όριο και το ίδιο απόθεμα ισχύουν για τον συνεργάτη, όσο δεν έχει σε ισχύ μήνες χωρίς χρέωση. Οι μήνες χωρίς χρέωση του προγράμματος πρόσκλησης και το δώρο της κλήρωσης δεν αντλούν από το απόθεμα: έχουν τα όρια του πακέτου τους. Το πακέτο που επέλεξες κατά την εγγραφή ισχύει από την ενεργοποίηση της συνδρομής.`,
           // ΟΙ ΔΥΟ ΚΑΤΕΥΘΥΝΣΕΙΣ ΤΗΣ ΑΛΛΑΓΗΣ ΕΧΟΥΝ ΕΝΤΕΛΩΣ ΔΙΑΦΟΡΕΤΙΚΗ
           // ΟΙΚΟΝΟΜΙΑ ΚΑΙ ΚΑΜΙΑ ΑΠΟ ΤΙΣ ΔΥΟ ΔΕΝ ΕΙΝΑΙ ΠΡΟΦΑΝΗΣ. Χωρίς αυτή
           // την παράγραφο, ο πελάτης που υποβαθμίζεται περιμένει επιστροφή

@@ -169,8 +169,10 @@ const dailyFrom = (perMonth: number) => perMonth <= 0 ? 0 : Math.max(5, Math.cei
 // ΔΥΝΑΤΟΤΗΤΕΣ της δοκιμής μένουν ακέραιες — τρία ακίνητα, σύγκριση, τα πάντα.
 // Μόνο το πακέτο ερωτήσεων είναι δοκιμαστικό, όπως και η ίδια η δοκιμή.
 //
-// ΙΣΧΥΕΙ ΚΑΙ ΓΙΑ ΤΟΥΣ ΔΩΡΕΑΝ ΜΗΝΕΣ ΚΑΙ ΤΟΥΣ ΣΥΝΕΡΓΑΤΕΣ: κάθε ανυψωμένο επίπεδο
-// που δεν συνοδεύεται από πληρωμή κοστίζει από την ίδια τσέπη.
+// ΙΣΧΥΕΙ ΚΑΙ ΓΙΑ ΤΟΥΣ ΣΥΝΕΡΓΑΤΕΣ: κάθε ανυψωμένο επίπεδο που δεν συνοδεύεται
+// από πληρωμή κοστίζει από την ίδια τσέπη. ΟΧΙ για το δώρο (δωρεάν μήνες,
+// κλήρωση) από 12/11/2026: εκείνο υποσχέθηκε πακέτο και παίρνει τα όριά του
+// (`effectiveAiLimits`, παράμετρος `comp`).
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Το πακέτο ερωτήσεων κάθε ανυψωμένου αλλά ΜΗ ΠΛΗΡΩΝΟΝΤΟΣ λογαριασμού. */
@@ -234,8 +236,10 @@ export const FREE_TESTERS_PER_MONTH = 100;
 /**
  * Το ταβάνι στο ΑΘΡΟΙΣΜΑ όλων των μη-πληρωνόντων ανά μήνα.
  *
- * Μετρούν εδώ: λογαριασμοί χωρίς συνδρομή, δωρεάν δοκιμή, δωρεάν μήνες από
- * συστάσεις και Συνεργάτες — όλοι κοστίζουν από την ίδια τσέπη.
+ * Μετρούν εδώ: η δωρεάν δοκιμή και οι Συνεργάτες χωρίς δώρο. ΟΧΙ πια οι
+ * δωρεάν μήνες και το δώρο της κλήρωσης (`drawsFromPool`, 20261112120000).
+ * Ο δωρεάν λογαριασμός δεν έχει Νόα και οι πέντε σαρώσεις του μένουν εκτός.
+ * Λέγεται στη γραμμή της δοκιμής και στους Όρους (lib/billing/trialOffer.ts).
  */
 export const FREE_POOL_PER_MONTH = FREE_TESTERS_PER_MONTH * TRIAL_LIMITS.perMonth;
 
@@ -339,7 +343,8 @@ export const SCAN_LIMITS: Record<PlanId, number | null> = {
 // κοστίζει από την ίδια τσέπη.
 //
 // ΑΠΟΦΑΣΗ ΙΔΙΟΚΤΗΤΗ (03.10.2026): τριάντα σαρώσεις τον μήνα για κάθε ανυψωμένο
-// αλλά μη πληρωμένο λογαριασμό και κάθε σάρωση μετρά στη δεξαμενή
+// αλλά μη πληρωμένο λογαριασμό χωρίς δώρο (από 12/11/2026 το δώρο σαρώνει με
+// το όριο του πακέτου του) και κάθε σάρωση μετρά στη δεξαμενή
 // (FREE_POOL_PER_MONTH). Ο συνδρομητής που πληρώνει μένει χωρίς μηνιαίο όριο
 // και ο δωρεάν «Ιδιοκτήτης» στις πέντε του, εκτός δεξαμενής. Το ίδιο νούμερο
 // ζει στη `ai_plan_limits()` ως `trial_scan` (20261003100000).
@@ -433,6 +438,36 @@ export function poolExhaustedMessage(canBuy = false): string {
 // Το `lib/billing/aiLimits.test.ts` ελέγχει ότι τα δύο συμφωνούν.
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ΤΟ ΔΩΡΟ ΔΕΝ ΕΙΝΑΙ ΔΟΚΙΜΗ (απόφαση ιδιοκτήτη 12/11/2026)
+// ─────────────────────────────────────────────────────────────────────────
+// Οι μήνες χωρίς χρέωση του προγράμματος πρόσκλησης και το δώρο της κλήρωσης
+// γράφονται στα `comp_plan`/`comp_until`. Οι Όροι (§10, §13) τους υπόσχονται
+// ως «μήνες συνδρομής» και «έναν χρόνο συνδρομής» ενός πακέτου, όχι ως
+// δοκιμή· ο μετρητής όμως τους έκοβε στο TRIAL_LIMITS και τους χρέωνε στην
+// κοινή δεξαμενή. Από τη 20261112120000 το δώρο σε ισχύ παίρνει τα όρια του
+// ΔΙΚΟΥ ΤΟΥ πακέτου, εκτός δεξαμενής. Η δοκιμή και ο Συνεργάτης χωρίς δώρο
+// μένουν στο TRIAL_LIMITS.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Το πακέτο του δώρου, αν μετρά ως δώρο: βαθμός από 1 και πάνω, όπως το
+ * `v_cr between 1 and …` της `take_ai_unit`. Το «free» ως δώρο δεν είναι δώρο.
+ * Το αν ισχύει ακόμη (`comp_until`) το κρίνει ο καλών (`activeComp`).
+ */
+export function giftPlan(comp: PlanId | string | null | undefined): PlanId | null {
+  const i = PLAN_RANK_ORDER.indexOf(String(comp ?? '') as PlanId);
+  return i >= 1 ? PLAN_RANK_ORDER[i] : null;
+}
+
+/**
+ * Αν μια μονάδα αυτού του λογαριασμού χρεώνεται στην κοινή δεξαμενή: μόνο
+ * όποιος δεν πληρώνει ΚΑΙ δεν έχει δώρο σε ισχύ. Το `pool` της `take_ai_unit`.
+ */
+export function drawsFromPool(paying: boolean, comp: PlanId | string | null = null): boolean {
+  return !paying && !giftPlan(comp);
+}
+
 /**
  * Τα όρια που ΘΑ ΕΠΙΒΑΛΕΙ ο μετρητής σε αυτόν τον λογαριασμό.
  *
@@ -441,13 +476,20 @@ export function poolExhaustedMessage(canBuy = false): string {
  *               είναι ανυψωμένο. Δοκιμή, δωρεάν μήνες και Συνεργάτης: `false`.
  * @param tester λογαριασμός δοκιμαστή (`tester_since`). Κόβεται ΤΕΛΕΥΤΑΙΟΣ,
  *               ώστε να κόβει και τον «πληρωμένο», όπως η `take_ai_unit`.
+ * @param comp   το πακέτο του δώρου σε ισχύ (`activeComp(...)?.plan`), αλλιώς
+ *               `null`. Δίνει τα όρια ΑΥΤΟΥ του πακέτου αντί της δοκιμής.
  */
-export function effectiveAiLimits(plan: PlanId | string | null | undefined, paying: boolean, tester = false): AiLimits {
+export function effectiveAiLimits(
+  plan: PlanId | string | null | undefined, paying: boolean, tester = false,
+  comp: PlanId | string | null = null,
+): AiLimits {
   const l = aiLimitsFor(plan);
-  const base = paying ? l : {
+  const gift = paying ? null : giftPlan(comp);
+  const cap = paying ? null : gift ? aiLimitsFor(gift) : TRIAL_LIMITS;
+  const base = !cap ? l : {
     perMinute: l.perMinute,
-    perDay: Math.min(l.perDay, TRIAL_LIMITS.perDay),
-    perMonth: Math.min(l.perMonth, TRIAL_LIMITS.perMonth),
+    perDay: Math.min(l.perDay, cap.perDay),
+    perMonth: Math.min(l.perMonth, cap.perMonth),
   };
   if (!tester) return base;
   return {

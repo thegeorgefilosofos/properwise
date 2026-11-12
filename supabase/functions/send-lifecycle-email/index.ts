@@ -169,6 +169,9 @@ Deno.serve(async (req) => {
     ...(params as Personal),
     name: recipientName,
     appUrl: APP_URL,
+    // Η ΚΑΤΑΣΤΑΣΗ ΤΟΥ ΤΑΜΕΙΟΥ ΑΠΟ ΤΟ ΠΕΡΙΒΑΛΛΟΝ, ΟΧΙ ΑΠΟ ΤΟΝ ΚΑΛΟΥΝΤΑ: το
+    // trial_ending προτείνει πακέτο μόνο όταν αγοράζεται (emailCopy/upsell.ts).
+    billingLive: BILLING_LIVE,
     // Ο σύνδεσμος απεγγραφής δεν εξαρτάται από το τι θυμήθηκε να στείλει ο
     // καλών: στο εμπορικό μπαίνει πάντα, από τη βάση.
     unsubUrl: prefs?.unsubUrl ?? (params.unsubUrl == null ? undefined : String(params.unsubUrl)),

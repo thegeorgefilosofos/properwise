@@ -15,7 +15,7 @@ import { siteUrl } from '@/lib/core/site';
 import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
 import { LISTED_GUIDES } from '@/app/odigos/guides';
 import { PLANS, PLAN_ORDER, TRIAL_DAYS } from '@/lib/billing/plans';
-import { fe } from '@/lib/core/format';
+import { fe, feWhole } from '@/lib/core/format';
 import { billingWords } from '@/lib/legal/billingWords';
 import { IDENTITY } from '@/lib/legal/identity';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
@@ -26,7 +26,11 @@ export function llmsText(): string {
   const notice = billingWords().pricingNotice;
   const plans = PLAN_ORDER.map(id => {
     const p = PLANS[id];
-    const price = p.priceMonthly > 0 ? `${fe(p.priceMonthly)} τον μήνα ή ${fe(p.priceAnnual)} τον χρόνο` : 'δωρεάν';
+    // ΟΧΙ «ΔΩΡΕΑΝ» ΔΙΠΛΑ ΣΕ ΤΙΜΕΣ (κανόνας ιδιοκτήτη 02.11.2026, έλεγχος
+    // 12/11/2026). Η αρχική γράφει «0€/μήνα» και από κάτω «χωρίς συνδρομή»
+    // (app/LandingParts.tsx)· το ίδιο εδώ, ώστε το μοντέλο που διαβάζει το
+    // αρχείο να μη μεταφέρει «δωρεάν πακέτο» δίπλα στον τιμοκατάλογο.
+    const price = p.priceMonthly > 0 ? `${fe(p.priceMonthly)} τον μήνα ή ${fe(p.priceAnnual)} τον χρόνο` : `${feWhole(p.priceMonthly)} τον μήνα, χωρίς συνδρομή`;
     return `- ${p.name}: ${price}, ${properties(p.maxProperties)}`;
   });
   return [

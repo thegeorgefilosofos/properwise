@@ -49,7 +49,7 @@ import { MYAADE_OPEN_EVENT, type MyaadeOpenDetail } from './components/myaadeOpe
 import { useAppointmentReminders } from './components/useAppointmentReminders';
 import FeatureLock, { LockBadge } from './components/FeatureLock';
 import { PLANS } from '@/lib/billing/plans';
-import { isTabAllowed, isTabPurchasable, canAddProperty, hasFeature, planAtLeast, paidPlanForProfile, requiredPlanForFeature, propertyLimit } from '@/lib/billing/entitlements';
+import { isTabAllowed, isTabPurchasable, canAddProperty, hasFeature, planAtLeast, paidPlanForProfile, requiredPlanForFeature, propertyLimit, activeComp } from '@/lib/billing/entitlements';
 
 // Η ΕΙΣΑΓΩΓΗ ΑΠΟ ΤΟ myAADE ΦΟΡΤΩΝΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΑΝΟΙΞΕΙ: ο αναλυτής και ο
 // αναγνώστης PDF δεν βαραίνουν την αρχική σελίδα του πίνακα.
@@ -889,7 +889,7 @@ export default function Dashboard() {
           // Ο δωρεάν «Ιδιοκτήτης» δεν έχει τη Νόα· η δοκιμή την έχει (ανεβάζει
           // το επίπεδο στο «Ιδιοκτήτης+»), γι' αυτό κρίνει το ενεργό πακέτο.
           assistantLocked={!hasAssistant(effPlan)}
-          planBrief={planBriefing(effPlan, plan, trial.active ? trial.daysLeft : undefined)}
+          planBrief={planBriefing(effPlan, plan, trial.active ? trial.daysLeft : undefined, activeComp(ent)?.plan ?? null)}
           onScan={()=>setQuickAddOpen(true)}
         />
       )}
@@ -910,7 +910,7 @@ export default function Dashboard() {
           onNavigate={()=>tryAddProperty()}
           onAddProperty={()=>tryAddProperty()}
           onScan={()=>{ setScanAfterAdd(true); tryAddProperty(); }}
-          planBrief={planBriefing(effPlan, plan, trial.active ? trial.daysLeft : undefined)}
+          planBrief={planBriefing(effPlan, plan, trial.active ? trial.daysLeft : undefined, activeComp(ent)?.plan ?? null)}
         />
       )}
 

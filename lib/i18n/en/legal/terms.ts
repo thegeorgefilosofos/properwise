@@ -18,6 +18,7 @@ import { PLANS, TRIAL_DAYS, PRIORITY_SUPPORT_LINE, firstPlanWith, type PlanId } 
 import { SCAN_LIMITS, TRIAL_SCANS_PER_MONTH } from '@/lib/billing/aiLimits';
 import { TRIAL_PLAN, EARLY_ACCESS_DAYS, PROFESSIONAL_MIN_PLAN } from '@/lib/billing/entitlements';
 import { fmtFor } from '@/lib/core/format';
+import { trialOfferEn } from '@/lib/billing/trialOffer';
 import { billingWordsEn } from '@/lib/legal/billingWords';
 import { WITHDRAWAL_PATH } from '@/lib/legal/withdrawalLabels';
 import { enPathFor } from '@/lib/i18n/paths';
@@ -93,7 +94,7 @@ export function termsSectionsEn(): LegalSection[] {
     ] },
     { h: 'Subscription, prices and trial', part: 'B. Subscription and money', p: [
       `The “${name('free')}” plan is provided at no charge, without a subscription: ${propertiesFor('free')}, the tax tools, ${SCAN_LIMITS.free} document scans a month, without Noa. There are four subscriptions, with no minimum term: “${name('solo')}” for ${propertiesFor('solo')}, with Noa and scanning with no monthly limit (${price('solo')}), “${name('owner')}” for ${propertiesFor('owner')} (${price('owner')}), “${name('agency')}” for ${propertiesFor('agency')} with team management (${price('agency')}) and “${name('office')}” for ${propertiesFor('office')} (${price('office')}). The prices shown apply to consumers in Greece and include the applicable VAT; for customers outside Greece, VAT follows their country. In every case, you see the amount you will be charged at checkout before you confirm, and the VAT breakdown appears on the receipt.`,
-      `Every account receives a ${TRIAL_DAYS}-day trial at no charge, once, with the features of the “${name(TRIAL_PLAN)}” plan. The plan you chose at sign-up applies from the activation of the subscription.`,
+      `${trialOfferEn(name(TRIAL_PLAN))} The trial is given once per account. The same limit and the same allowance apply to a partner while they have no months without charge in force. Months without charge from the referral programme and the prize-draw gift do not draw on the allowance: they have the limits of their plan. The plan you chose at sign-up applies from the activation of the subscription.`,
       words.planChange,
       words.afterTrial,
       `${words.paymentMethodAsked} No charge is ever made using details you have not given yourself for that purpose.`,
