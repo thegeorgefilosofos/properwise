@@ -108,6 +108,8 @@ export default function Dashboard() {
   const [myaadeOpen, setMyaadeOpen] = useState(false);
   const [myaadeFile, setMyaadeFile] = useState<File | null>(null);
   const openMyaade = (file: File | null = null) => { setMyaadeFile(file); setMyaadeOpen(true); };
+  // Η σάρωση χωρίς ακίνητο: μόνο με μετρημένα άδεια λίστα, όχι στη φόρτωση ή σε σφάλμα.
+  const scanNoProperty = !selected && !loading && !loadError && properties.length === 0;
   const closeMyaade = () => { setMyaadeOpen(false); setMyaadeFile(null); };
   useEffect(() => {
     const open = (e: Event) => { setMyaadeFile((e as CustomEvent<MyaadeOpenDetail>).detail?.file ?? null); setMyaadeOpen(true); };
@@ -288,8 +290,8 @@ export default function Dashboard() {
         <button
           onClick={()=>{ setQuickAddOpen(true); setSidebarOpen(false); }}
           className="quick-add-btn"
-          disabled={!selected}
-          title={selected ? 'Φωτογράφισε ή ανέβασε οποιοδήποτε έγγραφο: λογαριασμό, απόδειξη πληρωμής, μισθωτήριο, ασφαλιστήριο' : 'Πρόσθεσε πρώτα ένα ακίνητο'}>
+          disabled={!selected&&!scanNoProperty}
+          title={selected ? 'Φωτογράφισε ή ανέβασε οποιοδήποτε έγγραφο: λογαριασμό, απόδειξη πληρωμής, μισθωτήριο, ασφαλιστήριο' : scanNoProperty ? 'Πολλά ακίνητα μαζί από το Ε9 ή την πράξη ΕΝΦΙΑ' : 'Πρόσθεσε πρώτα ένα ακίνητο'}>
           <span className="quick-add-icon" aria-hidden>
             <svg aria-hidden="true" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -931,9 +933,15 @@ export default function Dashboard() {
           σαρώνει πια τίποτα. Ο τίτλος μένει: είναι το όνομα του παραθύρου δίπλα
           στο «×» και το μόνο που ακούει ο αναγνώστης οθόνης — το χειρόγραφο
           παράθυρο δεν είχε κανένα. */}
-      <Modal open={!!(quickAddOpen&&user&&selected)} onClose={requestCloseQuickAdd} size="lg"
+      {/* ΚΑΙ ΧΩΡΙΣ ΑΚΙΝΗΤΟ, ΜΕ ΜΟΝΟ ΤΗ ΜΑΖΙΚΗ (12/11/2026). Ηταν `quickAddOpen&&user&&selected`:
+          ο άδειος λογαριασμός δεν είχε σάρωση, ενώ το Ε9 ή η πράξη ΕΝΦΙΑ είναι
+          ακριβώς ο τρόπος να φτιάξει τα ακίνητά του. Ανοίγει μόνο ΑΦΟΥ φορτώσει
+          η λίστα και βγει μετρημένα άδεια (`scanNoProperty`): στη φόρτωση το
+          `selected` είναι ακόμη κενό και το DocumentScan κρατά το ακίνητο από το
+          πρώτο του άνοιγμα. */}
+      <Modal open={!!(quickAddOpen&&user&&(selected||scanNoProperty))} onClose={requestCloseQuickAdd} size="lg"
         title="Σάρωση εγγράφου">
-        {user&&selected&&<DocumentScan propertyId={selected.id} userId={user.id} properties={properties} onBusyChange={setScanBusy} onDirtyChange={setScanDirty}
+        {user&&(selected||scanNoProperty)&&<DocumentScan key={selected?.id ?? 'none'} propertyId={selected?.id ?? null} userId={user.id} properties={properties} onBusyChange={setScanBusy} onDirtyChange={setScanDirty}
           onManual={()=>{ closeQuickAdd(); setNav('finances'); setManualExpense(n=>n+1); }}
           onOpenAccounting={()=>{ closeQuickAdd(); setNav('accounting'); }}
           onBulkImport={(file)=>{ closeQuickAdd(); openMyaade(file); }}
