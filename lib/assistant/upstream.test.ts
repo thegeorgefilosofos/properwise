@@ -62,7 +62,9 @@ for (const s of [401, 403]) {
   eq(`${s} είναι πρόβλημα ρύθμισης, όχι του χρήστη`, upstreamFailure(s).status, 500)
   ok(`${s} κουβαλά το σημάδι του κλειδιού`, upstreamFailure(s).message.includes('ANTHROPIC_API_KEY'))
 }
-const clients = ['app/dashboard/components/assistant/useAssistantChat.ts', 'app/dashboard/components/scanDoc.ts']
+// Η συνομιλία της Νόας κατατάσσει τις αρνήσεις στο lib/assistant/chatError.ts
+// (το ελέγχει το chatError.test.ts ότι η συνομιλία το καλεί).
+const clients = ['lib/assistant/chatError.ts', 'app/dashboard/components/scanDoc.ts']
 ok('οι πελάτες ψάχνουν όντως αυτό το σημάδι',
   clients.every(f => /API_KEY'\)/.test(read(f))))
 

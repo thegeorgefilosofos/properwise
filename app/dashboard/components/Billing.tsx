@@ -37,6 +37,7 @@ import { notifyError, notifyOk } from '@/components/Toast';
 import { ALL_COUNTRIES, isEuCountry, isReverseCharge } from '@/lib/billing/invoiceProfile';
 import { determineVat, vatTreatmentLabel } from '@/lib/billing/invoicing';
 import { isReferralCode } from '@/lib/referral/referral';
+import { doorErrorMessage, testerErrorMessage, type ErrorBody } from '@/lib/billing/billingErrors';
 import { WITHDRAWAL_DAYS, WITHDRAWAL_LABEL, WITHDRAWAL_PATH } from '@/lib/legal/withdrawalLabels';
 
 interface BillingData {
@@ -64,8 +65,17 @@ const INIT: BillingData = {
   mor_subscription_id: '', tester_since: '', hold_plan: '', hold_until: '',
 };
 
-export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
+export default function Billing({ userId, wantPlan = null, wantCycle = null, onPlanChanged, refreshKey = 0 }: {
   userId: string;
+  /**
+   * Το πακέτο άλλαξε στον διακομιστή (δοκιμαστής, αλλαγή πακέτου). Ο γονέας
+   * ξαναδιαβάζει το δικό του αντίγραφο: χωρίς αυτό, η κάρτα έδειχνε το νέο
+   * πακέτο και οι καρτέλες, η σύγκριση και το όριο ακινήτων το παλιό ως την
+   * επόμενη ανανέωση (έλεγχος 12.11.2026, εύρημα 5).
+   */
+  onPlanChanged?: () => void;
+  /** Αλλάζει όταν ο γονέας ξέρει ότι το προφίλ άλλαξε (π.χ. επιστροφή από το ταμείο). */
+  refreshKey?: number;
   /** Το πακέτο που διάλεξε ο χρήστης στη σύγκριση από πάνω. */
   wantPlan?: PlanId | null;
   /** Ο κύκλος που είχε η σύγκριση τη στιγμή της επιλογής. */
@@ -91,7 +101,7 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
   // αλλαγή πακέτου δοκιμαστή γράφεται με ρόλο υπηρεσίας, οπότε η οθόνη δεν
   // μπορεί να τη μαντέψει.
   const [reloads, setReloads] = useState(0);
-  const reload = () => setReloads(n => n + 1);
+  const reload = () => { setReloads(n => n + 1); onPlanChanged?.(); };
 
   // ── Η ΕΠΙΛΟΓΗ ΤΗΣ ΕΓΓΡΑΦΗΣ ΕΠΙΖΕΙ ΤΗΣ ΕΓΚΑΤΑΛΕΙΨΗΣ ΤΟΥ ΤΑΜΕΙΟΥ ────────
   // Πακέτο και κύκλος διαλέγονται στον τιμοκατάλογο και γράφονται στο προφίλ
@@ -144,7 +154,7 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
       setLoading(false);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, reloads]);
+  }, [userId, reloads, refreshKey]);
 
   const save = async () => {
     setSaving(true); setSaved(false); setSaveErr(false);
@@ -423,8 +433,11 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
     setBusy(true);
     try {
       const res = await fetch(url);
-      const body = await res.json() as { url?: string | null };
-      if (!body.url) { notifyError(`${what} δεν άνοιξε. Δοκίμασε ξανά σε λίγο.`); setBusy(false); return; }
+      const body = await res.json().catch(() => ({})) as { url?: string | null } & ErrorBody;
+      // Ο ΛΟΓΟΣ ΤΟΥ ΔΙΑΚΟΜΙΣΤΗ ΠΡΩΤΑ. Το 409 («υπάρχει ήδη ενεργή συνδρομή») και
+      // το 403 του δεύτερου βήματος λένε τι να κάνει ο χρήστης· το γενικό
+      // «δοκίμασε ξανά» τον έβαζε να ξαναπατά για την ίδια άρνηση.
+      if (!body.url) { notifyError(doorErrorMessage(res.status, body, what)); setBusy(false); return; }
       window.location.href = body.url;
     } catch {
       notifyError(`${what} δεν άνοιξε. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.`);
@@ -482,7 +495,12 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),
       });
-      if (!res.ok) { notifyError('Ο κωδικός δεν αναγνωρίζεται.'); setBusy(false); return; }
+      if (!res.ok) {
+        // Το όριο προσπαθειών και η βλάβη δεν είναι «λάθος κωδικός»
+        // (lib/billing/billingErrors.ts).
+        const body = await res.json().catch(() => ({})) as ErrorBody;
+        notifyError(testerErrorMessage(res.status, body)); setBusy(false); return;
+      }
       notifyOk('Ο κωδικός εξαργυρώθηκε');
       setCode(''); setCodeOpen(false);
       onChanged();

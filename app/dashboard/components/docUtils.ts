@@ -6,6 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 // Το Αρχείο έχει ένα σπίτι: lib/data/documents.
 import * as documents from '@/lib/data/documents';
+import { uploadPath } from '@/lib/core/uploadPath';
 // Η ελληνική ημερομηνία έχει ένα σπίτι: lib/core/format.
 export { grDate } from '@/lib/core/format';
 
@@ -36,7 +37,10 @@ export interface ArchiveInput {
 /** Ανεβάζει το PDF και το καταχωρεί στα έγγραφα του ακινήτου. Η άμυνα για στήλη
  *  που δεν υπάρχει ακόμη στη βάση ζει στο στρώμα — εδώ ήξερε μόνο το `supplier`. */
 export async function archivePdfToProperty(i: ArchiveInput): Promise<void> {
-  const path = `${i.userId}/${i.propertyId}/document/${Date.now()}_${i.fileName}.pdf`;
+  // ΤΟ ΚΛΕΙΔΙ ΑΠΟ ΤΟ uploadPath, ΟΧΙ ΑΠΟ ΤΟ ΟΝΟΜΑ. Το «Μισθωτήριο_…» έμπαινε ωμό
+  // στο κλειδί αποθήκευσης, που δεν δέχεται ελληνικούς χαρακτήρες. Το όνομα που
+  // βλέπει ο χρήστης μένει στο `file_name` και η ανάγνωση γίνεται από το `file_path`.
+  const path = uploadPath(`${i.fileName}.pdf`, `${i.userId}/${i.propertyId}/document`);
   const { error: upErr } = await i.supabase.storage.from('property-files')
     .upload(path, i.blob, { upsert: false, contentType: 'application/pdf' });
   if (upErr) throw upErr;

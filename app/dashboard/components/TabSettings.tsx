@@ -35,13 +35,14 @@ import InboundAddress from './InboundAddress';
 import CalendarFeedRow from './CalendarFeedRow';
 import ActivityLog from './ActivityLog';
 import OrgTeam from './OrgTeam';
-import { exportAllData } from '@/lib/dataExport';
+import { exportAllData, FILES_NOT_IN_EXPORT } from '@/lib/dataExport';
 import * as accountantLink from '@/lib/data/accountantLink';
 import { confirmDialog } from '@/components/confirmBus';
 import { PLANS, PLAN_ORDER, normalizePlan, type PlanId } from '@/lib/billing/plans';
 import { hasVerifiedFactor } from '@/lib/auth/mfa';
 
-import { effectivePlan, livePlan, activeComp, planAtLeast, propertyLimit, trialState, isOpenEnded } from '@/lib/billing/entitlements';
+import { PLAN_COLUMNS, planFieldsFromRow, type PlanProfileRow } from '@/lib/billing/planRefresh';
+import { effectivePlan, activeComp, planAtLeast, propertyLimit, trialState, isOpenEnded } from '@/lib/billing/entitlements';
 import { athensToday } from '@/lib/core/time';
 import { notifyError } from '@/components/Toast';
 import { SAY, failed } from '@/lib/core/dbError';
@@ -333,7 +334,7 @@ function DeleteAccount() {
 
   return (
     <SetRow title="Διαγραφή λογαριασμού"
-      desc="Διαγράφει οριστικά τον λογαριασμό και όλα τα δεδομένα σου: ακίνητα, ενοικιαστές, πελάτες, δαπάνες, λογαριασμούς, έγγραφα και αρχεία. Η ενέργεια δεν αναιρείται. Αν θέλεις αντίγραφο, προηγείται η εξαγωγή δεδομένων παραπάνω.">
+      desc={`Διαγράφει οριστικά τον λογαριασμό και όλα τα δεδομένα σου: ακίνητα, ενοικιαστές, πελάτες, δαπάνες, λογαριασμούς, έγγραφα και αρχεία. Η ενέργεια δεν αναιρείται. Αν θέλεις αντίγραφο, κάνε πρώτα την εξαγωγή δεδομένων παραπάνω. ${FILES_NOT_IN_EXPORT}`}>
       {has2fa && !leftover && (
         // Μόνο για όποιον έχει δεύτερο παράγοντα: η διαγραφή θα τον ζητήσει,
         // οπότε ας μην τον ξαφνιάσει τη στιγμή της οριστικής πράξης.
@@ -513,7 +514,13 @@ function ProfileCard({ userId, email }: { userId: string; email: string }) {
 // `declaredType` είναι αυτό που ΕΠΕΛΕΞΕ ο χρήστης. Ο επιλογέας δούλευε με το
 // πρώτο: δηλωμένος «Επαγγελματίας» χωρίς το πακέτο έβλεπε επιλεγμένο τον
 // «Ιδιώτη» και το πάτημά του δεν αποθήκευε τίποτα, γιατί «ήταν ήδη εκεί».
-export default function TabSettings({ propertyId, userId, profileType = 'individual', declaredType, onProfileChange, releaseFrom }: { propertyId: string; userId: string; profileType?: ProfileType; declaredType?: ProfileType; onProfileChange?: (v: ProfileType) => void; releaseFrom?: PlanId }) {
+export default function TabSettings({ propertyId, userId, profileType = 'individual', declaredType, onProfileChange, releaseFrom, onPlanChanged, planVersion = 0 }: {
+  propertyId: string; userId: string; profileType?: ProfileType; declaredType?: ProfileType; onProfileChange?: (v: ProfileType) => void; releaseFrom?: PlanId;
+  /** Το πακέτο άλλαξε από εδώ (δοκιμαστής, αλλαγή πακέτου): ο πίνακας ξαναδιαβάζει το δικό του. */
+  onPlanChanged?: () => void;
+  /** Ανεβαίνει κάθε φορά που ο πίνακας ξαναδιάβασε το πακέτο: οι Ρυθμίσεις ξαναδιαβάζουν το δικό τους. */
+  planVersion?: number;
+}) {
   const chosenType: ProfileType = declaredType ?? profileType;
   const supabase = createClient();
 
@@ -573,10 +580,27 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
     });
   }, [supabase.auth]);
 
+  // ── ΤΟ ΠΑΚΕΤΟ ΞΑΝΑΔΙΑΒΑΖΕΤΑΙ, ΔΕΝ ΜΑΝΤΕΥΕΤΑΙ ────────────────────────────
+  // Διαβαζόταν μία φορά στο άνοιγμα της καρτέλας. Μετά από αλλαγή πακέτου ή
+  // επιστροφή από το ταμείο η σύγκριση και το όριο έδειχναν το παλιό ως την
+  // επόμενη ανανέωση. Οι στήλες και η ανάγνωσή τους ζουν στο
+  // lib/billing/planRefresh.ts: εδώ έλειπαν οι θέσεις από προσκλήσεις.
+  const loadPlan = useCallback(() => {
+    billing.profile<PlanProfileRow>(supabase, userId, PLAN_COLUMNS)
+      .then(data => {
+        if (!data) return;
+        const f = planFieldsFromRow(data);
+        setPlan(f.plan); setCompPlan(f.compPlan); setCompUntil(f.compUntil); setTrialUsedAt(f.trialUsedAt);
+        setHoldPlan(f.holdPlan); setHoldUntil(f.holdUntil); setBonusProps(f.bonusProperties); setBonusUntil(f.bonusUntil);
+      });
+  }, [supabase, userId]);
+  useEffect(() => { loadPlan(); }, [loadPlan, planVersion]);
+  /** Η κάρτα χρέωσης άλλαξε το πακέτο: ο πίνακας ξαναδιαβάζει και ανεβάζει το `planVersion`. */
+  const planChanged = useCallback(() => {
+    if (onPlanChanged) onPlanChanged(); else loadPlan();
+  }, [onPlanChanged, loadPlan]);
+
   useEffect(() => {
-    billing.profile<{ plan: string | null; comp_plan: string | null; comp_until: string | null; trial_used_at: string | null; hold_plan: string | null; hold_until: string | null; bonus_properties: number | null; bonus_properties_until: string | null; subscription_status: string | null; mor_ends_at: string | null }>(
-      supabase, userId, 'plan, comp_plan, comp_until, trial_used_at, hold_plan, hold_until, subscription_status, mor_ends_at')
-      .then(data => { if (data) { setPlan(livePlan(data)); setCompPlan(data.comp_plan || null); setCompUntil(data.comp_until || null); setTrialUsedAt(data.trial_used_at || null); setHoldPlan(data.hold_plan || null); setHoldUntil(data.hold_until || null); setBonusProps(data.bonus_properties ?? null); setBonusUntil(data.bonus_properties_until || null); } });
     supabase.from('referral_partners').select('user_id').eq('user_id', userId).maybeSingle()
       .then(({ data }) => setPartner(!!data));
     properties.count(supabase, userId).then(setPropertyCount);
@@ -956,7 +980,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
       {showManage && (
         <div ref={manageRef} style={{ scrollMarginTop: 16 }}>
           <PlanComparison profileType={chosenType} currentPlan={effPlan} paidPlan={normalizePlan(plan)} onUpgrade={choosePlan} />
-          <div ref={billingRef} style={{ scrollMarginTop: 16 }}><Billing userId={userId} wantPlan={wantPlan} wantCycle={wantCycle} /></div>
+          <div ref={billingRef} style={{ scrollMarginTop: 16 }}><Billing userId={userId} wantPlan={wantPlan} wantCycle={wantCycle} onPlanChanged={planChanged} refreshKey={planVersion} /></div>
         </div>
       )}
 
@@ -1040,7 +1064,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
               ΜΕΣΑ, το ημερολόγιο βγάζει τις προθεσμίες ΕΞΩ, εκεί που ο
               ιδιοκτήτης κοιτάζει ήδη κάθε μέρα. */}
           <CalendarFeedRow userId={userId} />
-          <SetRow title="Εξαγωγή όλων των δεδομένων" desc="Κάθε εγγραφή που σε αφορά, σε ένα αρχείο JSON: η μορφή που ζητά το δικαίωμα φορητότητας, για μεταφορά σε άλλη υπηρεσία. Για ανάγνωση, κάθε καρτέλα έχει δική της εξαγωγή Excel."
+          <SetRow title="Εξαγωγή όλων των δεδομένων" desc={`Κάθε εγγραφή που σε αφορά, σε ένα αρχείο JSON: η μορφή που ζητά το δικαίωμα φορητότητας, για μεταφορά σε άλλη υπηρεσία. ${FILES_NOT_IN_EXPORT} Για ανάγνωση, κάθε καρτέλα έχει δική της εξαγωγή Excel.`}
             control={<Btn variant="secondary" onClick={exportAll} disabled={exporting}>{exporting ? 'Εξαγωγή…' : 'Εξαγωγή όλων'}</Btn>}>
             {exportErr && <div style={{ ...TT.bodySm, color: 'var(--negative)' }}>{exportErr}</div>}
             {exportOk && <div style={{ ...TT.bodySm }}>{exportOk}</div>}

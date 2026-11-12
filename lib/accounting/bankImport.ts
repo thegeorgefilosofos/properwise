@@ -107,8 +107,23 @@ function findColumns(headers: string[]): Columns {
   let di = findCol(headers, DATE_KEYS, i => matches(headers[i], VALUE_DATE_KEYS))
   if (di < 0) di = findCol(headers, DATE_KEYS)
   // Ούτε η περιγραφή παίρνει στήλη χρημάτων: το «Ποσό Συναλλαγής» είναι ποσό.
-  const isMoney = (i: number) => [AMOUNT_KEYS, DEBIT_KEYS, CREDIT_KEYS, BALANCE_KEYS].some(k => matches(headers[i], k))
-  const desc = findCol(headers, DESC_KEYS, i => isDate(i) || isMoney(i))
+  // ΔΥΟ ΠΕΡΑΣΜΑΤΑ. Πρώτα μόνο στήλες χωρίς καμία λέξη χρημάτων, όπως πάντα.
+  // Αν δεν υπάρχει τέτοια, μια στήλη με λέξη χρημάτων γίνεται περιγραφή όταν η
+  // λέξη περιγραφής ταιριάζει καλύτερα: η «Αιτιολογία Χρέωσης» (λέξη
+  // «αιτιολογία» έναντι μέρους του «χρέωσης»). Το δεύτερο πέρασμα σε ένα
+  // βήμα έκανε την «Κίνηση Χρέωσης» περιγραφή και έχανε κάθε χρέωση: γι' αυτό
+  // δεν παίρνει ποτέ τη μόνη στήλη χρέωσης ή πίστωσης όταν δεν υπάρχει στήλη
+  // ποσού να την αντικαταστήσει.
+  const MONEY = [AMOUNT_KEYS, DEBIT_KEYS, CREDIT_KEYS, BALANCE_KEYS]
+  const moneyScore = (i: number) => Math.max(...MONEY.map(k => matchScore(headers[i], k)))
+  const hasAmountCol = headers.some((_, i) => !isDate(i) && matches(headers[i], AMOUNT_KEYS) &&
+    ![DEBIT_KEYS, CREDIT_KEYS, BALANCE_KEYS].some(k => matches(headers[i], k)))
+  const soleOf = (keys: string[], i: number) => matches(headers[i], keys) &&
+    headers.every((h, j) => j === i || isDate(j) || !matches(h, keys))
+  const neededForMoney = (i: number) => !hasAmountCol && (soleOf(DEBIT_KEYS, i) || soleOf(CREDIT_KEYS, i))
+  let desc = findCol(headers, DESC_KEYS, i => isDate(i) || moneyScore(i) > 0)
+  if (desc < 0) desc = findCol(headers, DESC_KEYS, i =>
+    isDate(i) || moneyScore(i) >= matchScore(headers[i], DESC_KEYS) || neededForMoney(i))
   const taken = (i: number) => isDate(i) || i === desc
   const debit = findCol(headers, DEBIT_KEYS, taken)
   const credit = findCol(headers, CREDIT_KEYS, taken)
@@ -156,7 +171,22 @@ function keyOfLine(date: string, amount: number, line: string, nth: number): str
  * ξανάγραφε ΚΑΘΕ παλιά κίνηση ως καινούργια: διπλά έξοδα σε όλο το έτος.
  */
 export function legacyKeyOf(t: { date: string; description: string; amount: number }): string {
-  return `${t.date}|${t.amount}|${t.description}`.slice(0, 200)
+  return cutUtf16(`${t.date}|${t.amount}|${t.description}`, 200)
+}
+
+// ── ΤΟ ΚΟΨΙΜΟ ΣΤΟΥΣ 200 ΕΣΠΑΓΕ EMOJI ΣΤΗ ΜΕΣΗ ──────────────────────────────
+// Το `.slice(0, 200)` μετρά μονάδες UTF-16. Ενα emoji πιάνει δύο: όταν το όριο
+// έπεφτε ανάμεσά τους, έμενε μισό ζεύγος και το encodeURIComponent έριχνε
+// εξαίρεση μέσα στον έλεγχο διπλών. Εδώ, αν το κόψιμο σπάει ζεύγος, πέφτει
+// και το μισό. Το όριο μένει σε μονάδες UTF-16 ΕΠΙΤΗΔΕΣ: σε κάθε άλλη
+// περίπτωση το κλειδί βγαίνει ΙΔΙΟ με όσα έγραψε το `.slice` στη βάση, ενώ
+// ένα κόψιμο σε σημεία κώδικα θα άλλαζε κάθε παλιό κλειδί που έχει emoji.
+
+/** Κόβει στις `max` μονάδες UTF-16 χωρίς να αφήσει μισό ζεύγος surrogate. */
+function cutUtf16(s: string, max: number): string {
+  if (s.length <= max) return s
+  const c = s.charCodeAt(max - 1)
+  return s.slice(0, c >= 0xd800 && c <= 0xdbff ? max - 1 : max)
 }
 
 // ── Ο ΕΛΕΓΧΟΣ ΔΙΠΛΩΝ ΕΒΛΕΠΕ ΜΟΝΟ ΤΙΣ ΠΡΩΤΕΣ ΧΙΛΙΕΣ ΚΙΝΗΣΕΙΣ ──────────────────
@@ -165,13 +195,25 @@ export function legacyKeyOf(t: { date: string; description: string; amount: numb
 // πρώτη κίνηση και μετά τα παλιά αποτυπώματα δεν έφταναν ποτέ και οι παλιές
 // κινήσεις ξαναγύριζαν για έλεγχο ως καινούργιες. Τώρα ρωτάμε μόνο για τα
 // αποτυπώματα του αρχείου (νέο και παλιό κλειδί κάθε γραμμής), σε ομάδες.
-// Η ομάδα κλείνει στα 200 κλειδιά ή όταν το κωδικοποιημένο μήκος περάσει το
-// όριο: τα παλιά κλειδιά φτάνουν τους 200 χαρακτήρες και σε ελληνικά το URL
-// τετραπλασιάζεται και πάνω, οπότε 200 τέτοια δεν χωρούν σε ένα αίτημα.
+// Η ομάδα κλείνει στα 200 κλειδιά ή όταν το μήκος στο URL περάσει το όριο:
+// τα παλιά κλειδιά φτάνουν τους 200 χαρακτήρες και σε ελληνικά το URL
+// εξαπλασιάζεται, οπότε 200 τέτοια δεν χωρούν σε ένα αίτημα.
+// ΤΟ ΜΗΚΟΣ ΜΕΤΡΙΕΤΑΙ ΟΠΩΣ ΤΟ ΓΡΑΦΕΙ Ο postgrest-js: τιμή με κόμμα ή παρένθεση
+// μπαίνει σε εισαγωγικά, το κόμμα ανάμεσα στις τιμές γίνεται %2C και όλα
+// κωδικοποιούνται με URLSearchParams, όπου το «(» γίνεται %28. Το
+// encodeURIComponent αφήνει τις παρενθέσεις ως έχουν και μετρούσε λιγότερα:
+// περιγραφές γεμάτες παρενθέσεις έβγαζαν URL 7.600 χαρακτήρων.
 // Η αναζήτηση (I/O) δίνεται από τον καλούντα: εδώ μένει καθαρή λογική.
 
 const KEY_CHUNK = 200
-const KEY_CHUNK_CHARS = 6000
+/** Ο προϋπολογισμός της τιμής `in.(…)`. Με τη βάση του URL μένει κάτω από 6.000. */
+const KEY_CHUNK_CHARS = 5600
+
+/** Πόσους χαρακτήρες πιάνει η τιμή στο URL, μαζί με το κόμμα που τη χωρίζει. */
+function urlLength(k: string): number {
+  const v = /[,()]/.test(k) ? `"${k}"` : k
+  return new URLSearchParams({ x: v }).toString().length - 2 + 3
+}
 
 /** Τα αποτυπώματα προς έλεγχο σε ομάδες που χωρούν σε ένα αίτημα. */
 export function dedupKeyChunks(txns: BankTxn[], maxKeys = KEY_CHUNK, maxChars = KEY_CHUNK_CHARS): string[][] {
@@ -179,8 +221,7 @@ export function dedupKeyChunks(txns: BankTxn[], maxKeys = KEY_CHUNK, maxChars = 
   const out: string[][] = []
   let cur: string[] = [], len = 0
   for (const k of keys) {
-    // +3: το κόμμα ανάμεσα και τα εισαγωγικά γύρω από τιμές με κόμμα ή παρένθεση.
-    const kl = encodeURIComponent(k).length + 3
+    const kl = urlLength(k)
     if (cur.length && (cur.length >= maxKeys || len + kl > maxChars)) { out.push(cur); cur = []; len = 0 }
     cur.push(k); len += kl
   }
@@ -191,13 +232,21 @@ export function dedupKeyChunks(txns: BankTxn[], maxKeys = KEY_CHUNK, maxChars = 
 /** Μία ομάδα ερωτήματος: ποια από αυτά τα αποτυπώματα υπάρχουν ήδη. */
 export type DedupLookup = (keys: string[]) => PromiseLike<{ data: { dedup_hash: string }[] | null; error: unknown }>
 
-/** Ποια αποτυπώματα του αρχείου υπάρχουν ήδη. Στο πρώτο σφάλμα σταματά. */
+/**
+ * Ποια αποτυπώματα του αρχείου υπάρχουν ήδη. Στο πρώτο σφάλμα σταματά.
+ * Και η εξαίρεση γυρίζει ως `error`: η οθόνη καλεί εδώ έξω από `try` και μια
+ * απόρριψη θα άφηνε τον χρήστη χωρίς μήνυμα και χωρίς επόμενο βήμα.
+ */
 export async function findKnownKeys(txns: BankTxn[], lookup: DedupLookup): Promise<{ seen: Set<string>; error: unknown }> {
   const seen = new Set<string>()
-  for (const chunk of dedupKeyChunks(txns)) {
-    const { data, error } = await lookup(chunk)
-    if (error) return { seen, error }
-    for (const r of data || []) seen.add(r.dedup_hash)
+  try {
+    for (const chunk of dedupKeyChunks(txns)) {
+      const { data, error } = await lookup(chunk)
+      if (error) return { seen, error }
+      for (const r of data || []) seen.add(r.dedup_hash)
+    }
+  } catch (e) {
+    return { seen, error: e ?? new Error('Ο έλεγχος διπλών απέτυχε') }
   }
   return { seen, error: null }
 }

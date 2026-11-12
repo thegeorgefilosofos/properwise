@@ -91,6 +91,8 @@ const TAX_CATEGORY: Record<TaxObligationKind, string> = {
   // Ο έλεγχος του προσυμπληρωμένου δεν είναι πληρωμή· είναι δήλωση που πρέπει
   // να κοιταχτεί πριν οριστικοποιηθεί μόνη της.
   'income-autofile': 'legal',
+  // Οι δόσεις του φόρου εισοδήματος είναι πληρωμές, όπως οι δόσεις του ΕΝΦΙΑ.
+  'income-instalment': 'financial',
   'str-registry': 'legal',
   'str-climate-fee': 'financial',
 }

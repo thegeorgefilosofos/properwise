@@ -28,9 +28,10 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { T, TT, Btn, Badge, Modal, fe } from '@/components/Theme';
-import { NumberInput, CustomSelect } from './UIComponents';
+import { NumberInput, CustomSelect, Toggle } from './UIComponents';
 import { notify, notifyError } from '@/components/Toast';
-import { MAX_SCAN_MB, scanPhotoList } from './scanDoc';
+import { MAX_SCAN_MB, scanPhotoList, archiveScannedFile } from './scanDoc';
+import { archiveCategoryFor } from '@/lib/billing/documents';
 import { isPhotoFile, MYAADE_ACCEPT } from '@/lib/myaade/accept';
 import * as propertiesData from '@/lib/data/properties';
 import { read } from '@/lib/data/read';
@@ -70,7 +71,7 @@ function photoFailure(error: string | undefined, text: string | undefined): Fail
 
 type Step = 'pick' | 'reading' | 'review' | 'saving' | 'done';
 
-export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSaved, onOpenCalendar, initialDoc, initialFailure, initialFile }: {
+export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSaved, onOpenCalendar, initialDoc, initialFailure, initialFile, fromScan, onScanAsDocument }: {
   userId: string;
   /** Το όριο ακινήτων του πακέτου (`propertyLimit`). */
   limit: number;
@@ -95,6 +96,19 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
    * είχε πέσει στη ζώνη αποθέσεως: ίδιοι έλεγχοι, ίδια προεπισκόπηση.
    */
   initialFile?: File;
+  /**
+   * ΤΟ PDF ΗΡΘΕ ΚΑΤΕΥΘΕΙΑΝ ΑΠΟ ΤΗ ΣΑΡΩΣΗ (έλεγχος PR 547), χωρίς βήμα ελέγχου.
+   * Δείχνει το «Κράτα αντίγραφο στον Φάκελο», κλειστό εξ ορισμού (απόφαση
+   * ιδιοκτήτη 12/11/2026). `propertyId`: το ακίνητο της σάρωσης, όπου μπαίνει
+   * το αντίγραφο· χωρίς αυτό, το πρώτο ακίνητο που δημιούργησε η εισαγωγή.
+   */
+  fromScan?: { propertyId: string | null };
+  /**
+   * «Σάρωσέ το ως έγγραφο»: πίσω στην κανονική σάρωση με το ίδιο αρχείο. Για
+   * ό,τι η κεφαλίδα είπε Ε9 ή πράξη ενώ ο χρήστης ήθελε άλλο (Ε9 μόνο με
+   * γήπεδα, συνοδευτική επιστολή, εξαντλημένο όριο της ημέρας).
+   */
+  onScanAsDocument?: () => void;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const inputId = useId();
@@ -121,6 +135,11 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
   const [left, setLeft] = useState<number | null>(null);
   const [undoable, setUndoable] = useState<ImportBatch | null>(null);
   const [summary, setSummary] = useState<DoneSummary | null>(null);
+  // ΑΝΤΙΓΡΑΦΟ ΜΟΝΟ ΑΝ ΤΟ ΖΗΤΗΣΕΙ (απόφαση ιδιοκτήτη 12/11/2026). Κλειστό εξ ορισμού.
+  const [keepCopy, setKeepCopy] = useState(false);
+  // Ποιο αρχείο διαβάστηκε τελευταίο. Μετά το «Άλλο αρχείο» δεν είναι πια της
+  // Σάρωσης: ούτε αντίγραφο ούτε δρόμος πίσω για ένα αρχείο που δεν ήρθε από εκεί.
+  const [readFrom, setReadFrom] = useState<File | null>(null);
 
   // ── ΤΙ ΞΕΡΕΙ ΗΔΗ Η ΕΦΑΡΜΟΓΗ ────────────────────────────────────────────
   // Ξαναδιαβάζεται με το άνοιγμα και μετά από κάθε καταχώρηση ή αναίρεση.
@@ -170,7 +189,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
 
   const readFile = async (f: File | undefined) => {
     if (!f) return;
-    setFailure(null);
+    setFailure(null); setReadFrom(f); setKeepCopy(false);
     if (f.size > MAX_SCAN_MB * 1024 * 1024) { setFailure({ title: 'Πολύ μεγάλο αρχείο', hint: `Δεχόμαστε έως ${MAX_SCAN_MB} MB.`, info: 'Το Ε9 και η πράξη του myAADE είναι λίγες σελίδες.' }); return; }
     // ΦΩΤΟΓΡΑΦΙΑ: AI στον διακομιστή, η εικόνα δεν αποθηκεύεται. Η απάντηση περνά τον έλεγχο του photo.ts.
     if (isPhotoFile(f)) {
@@ -254,6 +273,23 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
       return;
     }
     for (const f of res.failures) notifyError(f);
+    // ΤΟ ΑΝΤΙΓΡΑΦΟ ΜΠΑΙΝΕΙ ΜΕΤΑ ΤΗΝ ΚΑΤΑΧΩΡΗΣΗ, ΠΟΤΕ ΠΡΙΝ. Ετσι μια εισαγωγή που
+    // απέτυχε ή κόπηκε από το όριο της ημέρας δεν αφήνει χαρτί χωρίς ακίνητα.
+    // ΜΟΝΟ ΤΟ ΧΑΡΤΙ, ΧΩΡΙΣ ΠΟΣΟ: ούτε `amount` ούτε `statement_total`, όπως το
+    // αντίγραφο της φωτογραφίας στη Σάρωση. Το σύνολο ΕΝΦΙΑ το έγραψε ήδη το
+    // `commitImport`· δεύτερο θα μετρούσε τις δόσεις δύο φορές
+    // (lib/calendar/enfiaTotals.ts). Ο τίτλος δεν αρχίζει με «ΕΝΦΙΑ <έτος>»,
+    // ώστε να μη μοιάζει με εκκαθαριστικό (`enfiaYearOf`).
+    if (fromScan && keepCopy && initialFile && readFrom === initialFile) {
+      const target = fromScan.propertyId ?? res.created[0] ?? known?.[0]?.id ?? null;
+      const kept = target ? await archiveScannedFile({
+        file: initialFile, propertyId: target, userId, kind: 'document',
+        category: archiveCategoryFor({ doc_type: 'tax', subtype: doc.kind === 'e9' ? 'e9' : 'enfia' }),
+        title: `${doc.kind === 'e9' ? 'Ε9' : 'Πράξη ΕΝΦΙΑ'}${review.yearN ? ` ${review.yearN}` : ''}`,
+        doc_date: doc.issueDate ?? null,
+      }) : { ok: false };
+      if (!kept.ok) notifyError('Τα ακίνητα καταχωρήθηκαν· το αντίγραφο δεν μπήκε στον Φάκελο. Ανέβασέ το από τον Φάκελο.');
+    }
     if (res.created.length) {
       void (async () => {
         const n = await propertiesData.count(supabase, userId);
@@ -313,6 +349,8 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
     return parts.length ? `Καταχώρηση · ${parts.join(' · ')}` : 'Καταχώρηση';
   })();
   const notFit = review.excess || review.leftOut;
+  const scanFile = !!initialFile && (readFrom === null || readFrom === initialFile);
+  const backToScan = scanFile ? onScanAsDocument : undefined;
   const isE9 = doc?.kind === 'e9';
 
   return (
@@ -340,9 +378,13 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
         {step === 'pick' && (failure ? (
           <CenterState tone="negative" title={failure.title} info={failure.info} action={{ label: 'Δοκίμασε άλλο αρχείο', onClick: pickFile }}>
             <span style={{ ...TT.body, color: 'var(--text-secondary)' }}>{failure.hint}</span>
+            {/* Ο ΔΡΟΜΟΣ ΠΙΣΩ (έλεγχος PR 547): το αρχείο ήρθε από τη Σάρωση και η
+                μαζική δεν το διάβασε· η κανονική σάρωση μπορεί να το καταχωρήσει ως έγγραφο. */}
+            {backToScan && <Btn variant="ghost" onClick={backToScan}>Σάρωσέ το ως έγγραφο</Btn>}
           </CenterState>
         ) : left === 0 ? (
-          <CenterState tone="warning" title="Έφτασες το όριο της ημέρας" info={`Χωρούν ${MYAADE_DAILY_IMPORTS} εισαγωγές σε 24 ώρες, μετρημένες στον διακομιστή. Δοκίμασε αργότερα.`} />
+          <CenterState tone="warning" title="Έφτασες το όριο της ημέρας" info={`Χωρούν ${MYAADE_DAILY_IMPORTS} εισαγωγές σε 24 ώρες, μετρημένες στον διακομιστή. Δοκίμασε αργότερα.`}
+            action={backToScan ? { label: 'Σάρωσέ το ως έγγραφο', onClick: backToScan } : undefined} />
         ) : (
           <>
             {undoable && (
@@ -404,6 +446,20 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
               <Note tone="warning" info={`Το ΑΦΜ ${isE9 ? 'του Ε9' : 'της πράξης'} δεν είναι κανενός ιδιοκτήτη που έχεις στην εφαρμογή. Αν είναι δικό σου, συνιδιοκτήτη ή πελάτη σου, συνέχισε. Αλλιώς διάλεξε άλλο αρχείο.`}>
                 {isE9 ? 'Το Ε9 είναι σε άλλο ΑΦΜ.' : 'Η πράξη είναι σε άλλο ΑΦΜ.'}
               </Note>
+            )}
+            {left === 0 && backToScan && (
+              <Note tone="warning" action={{ label: 'Σάρωσέ το ως έγγραφο', onClick: backToScan }}
+                info={`Χωρούν ${MYAADE_DAILY_IMPORTS} εισαγωγές σε 24 ώρες. Η σάρωση το καταχωρεί ως ένα έγγραφο σε ένα ακίνητο.`}>
+                Έφτασες το όριο της ημέρας.
+              </Note>
+            )}
+            {fromScan && scanFile && (
+              // Η ΑΝΑΙΡΕΣΗ ΚΡΑΤΑ ΑΚΙΝΗΤΟ ΜΕ ΕΓΓΡΑΦΟ (commit.ts: `touched`). Με αντίγραφο
+              // σε ακίνητο που δημιούργησε η εισαγωγή, η αναίρεση δεν το σβήνει: το λέμε πριν.
+              <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.xs }}>
+                <Toggle on={keepCopy} onChange={setKeepCopy} label="Κράτα αντίγραφο στον Φάκελο" />
+                <span style={{ ...TT.caption }}>Με αντίγραφο, η αναίρεση της εισαγωγής κρατά το ακίνητο όπου μπαίνει.</span>
+              </div>
             )}
             {doc.source === 'photo' && (
               <Note tone="info" info="Η φωτογραφία διαβάστηκε με AI στον διακομιστή και δεν αποθηκεύτηκε. Τίποτα δεν γράφεται πριν πατήσεις «Καταχώρηση».">

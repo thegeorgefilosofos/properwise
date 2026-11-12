@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { ensureDpa } from '@/lib/legal/dpa';
 import * as properties from '@/lib/data/properties';
@@ -69,6 +69,7 @@ import { saved } from '@/components/dbWrite';
 import { confirmDialog } from '@/components/ConfirmDialog';
 import LeaseModal from './LeaseModal';
 import LeaseDeclaration from './LeaseDeclaration';
+import { leaseDocKey, leaseDocPath } from './leaseFlow';
 import { PeaLeaseNotice } from './PeaLeaseNotice';
 import { downloadTableXlsx, csvDate } from './exportCsv';
 import {
@@ -224,6 +225,11 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
   const loading = loadedFor !== propertyId
   const [saving,setSaving]=useState(false);
+  // ΚΛΕΙΔΑΡΙΑ ΣΤΗΝ ΕΙΣΟΔΟ ΤΟΥ save(). Το `saving` γίνεται true ΜΕΤΑ το
+  // `await ensureDpa()`, οπότε δύο γρήγορα πατήματα στο «Προσθήκη ενοικιαστή»
+  // περνούσαν και τα δύο και έγραφαν δύο ίδιους ενοικιαστές. Η ref αλλάζει
+  // αμέσως, χωρίς να περιμένει απόδοση.
+  const saveLock=useRef(false);
   const [uploading,setUploading]=useState(false);
   const [error,setError]=useState<string|null>(null);
   // Το in-flow banner επιτυχίας (state + helper + JSX) αφαιρέθηκε υπέρ του κοινού
@@ -459,6 +465,11 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   const editRow=editId?tenants.find(t=>t.id===editId):undefined;
 
   const save=async()=>{
+    if(saveLock.current) return;
+    saveLock.current=true;
+    try{ await saveUnlocked(); } finally { saveLock.current=false; }
+  };
+  const saveUnlocked=async()=>{
     if(!form.full_name.trim()){setError('Το ονοματεπώνυμο είναι υποχρεωτικό');return;}
     if(!form.lease_category){setError('Ο τύπος μίσθωσης (κατοικία ή επαγγελματική) είναι υποχρεωτικός');return;}
     const declRef=cleanDigits(form.aade_lease_decl_ref);
@@ -566,19 +577,28 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   };
 
   // ── Έγγραφο μισθωτηρίου (PDF) ────────────────────────────────────────────────
+  // ΤΟ ΟΝΟΜΑ ΤΟΥ ΑΡΧΕΙΟΥ ΔΕΝ ΕΙΝΑΙ ΚΛΕΙΔΙ. Το ωμό `file.name` έμπαινε στη
+  // διαδρομή και ένα «Μισθωτήριο Παπαδόπουλος.pdf» δεν ανέβαινε καθόλου. Το
+  // κλειδί βγαίνει πλέον από το uploadPath() (leaseDocKey) και γράφεται στο
+  // `lease_doc_url`· το `lease_doc_name` κρατά το όνομα για την οθόνη. Τα παλιά
+  // αρχεία, χωρίς `lease_doc_url`, ανοίγουν όπως πριν (leaseDocPath).
   const uploadPDF=async(t:Tenant,file:File)=>{
     setUploading(true);
-    const path=`${userId}/${t.id}/${file.name}`;
-    const{error:upErr}=await supabase.storage.from('lease-documents').upload(path,file,{upsert:true});
+    const path=leaseDocKey(userId,t.id,file.name);
+    const prev=leaseDocPath(userId,t);
+    const{error:upErr}=await supabase.storage.from('lease-documents').upload(path,file,{upsert:false,contentType:file.type||undefined});
     if(upErr){setError(failed('Το αρχείο δεν ανέβηκε', upErr));setUploading(false);return;}
     // Το αρχείο ανέβηκε ήδη. Αν δεν καταγραφεί το όνομά του, ο ενοικιαστής δεν
     // έχει συμβόλαιο πουθενά στην οθόνη — και το αρχείο υπάρχει, αόρατο.
-    if(!await saved('Το συμβόλαιο ανέβηκε, αλλά δεν συνδέθηκε με τον ενοικιαστή',tenantStore.update(supabase,t.id,{lease_doc_name:file.name}))){setUploading(false);return;}
+    if(!await saved('Το συμβόλαιο ανέβηκε, αλλά δεν συνδέθηκε με τον ενοικιαστή',tenantStore.update(supabase,t.id,{lease_doc_name:file.name,lease_doc_url:path}))){setUploading(false);return;}
+    // Το προηγούμενο PDF δεν το δείχνει πια καμία γραμμή. Πριν το έσβηνε το
+    // `upsert` (ίδιο όνομα, ίδιο κλειδί)· τώρα κάθε ανέβασμα έχει δικό του.
+    if(prev && prev!==path) await supabase.storage.from('lease-documents').remove([prev]);
     setUploading(false);notifyOk('Το PDF ανέβηκε');void refresh();
   };
   const openLeaseDoc=async(t:Tenant)=>{
-    if(!t.lease_doc_name) return;
-    const path=`${userId}/${t.id}/${t.lease_doc_name}`;
+    const path=leaseDocPath(userId,t);
+    if(!path) return;
     const{data,error:e}=await supabase.storage.from('lease-documents').createSignedUrl(path,60*60);
     if(e||!data?.signedUrl){setError('Το PDF δεν άνοιξε. Δοκίμασε ξανά.');return;}
     window.open(data.signedUrl,'_blank','noopener,noreferrer');
@@ -873,7 +893,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                         <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans, overflow:'hidden', textOverflow:'ellipsis' }}>{dc.lease_doc_name}</div>
                         <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>Ανεβασμένο συμβόλαιο</div>
                       </div>
-                      <button style={s.btnDng} onClick={async()=>{if(!dc.lease_doc_name)return;await supabase.storage.from('lease-documents').remove([`${userId}/${dc.id}/${dc.lease_doc_name}`]);if(!await saved('Το συμβόλαιο δεν αποσυνδέθηκε',tenantStore.update(supabase,dc.id,{lease_doc_url:null,lease_doc_name:null})))return;notify('PDF διαγράφηκε');void refresh();}}>Διαγραφή</button>
+                      <button style={s.btnDng} onClick={async()=>{const docPath=leaseDocPath(userId,dc);if(!docPath)return;await supabase.storage.from('lease-documents').remove([docPath]);if(!await saved('Το συμβόλαιο δεν αποσυνδέθηκε',tenantStore.update(supabase,dc.id,{lease_doc_url:null,lease_doc_name:null})))return;notify('PDF διαγράφηκε');void refresh();}}>Διαγραφή</button>
                     </div>
                     {/* Το κάτω περιθώριο είναι θέση μέσα στη στήλη, όχι όψη του κουμπιού. */}
                     <div style={{ marginBottom:10 }}><Btn variant="primary" onClick={()=>openLeaseDoc(dc)}>Άνοιγμα PDF</Btn></div>
@@ -1251,7 +1271,8 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       )}
 
       <LeaseDeclaration open={declOpen} onClose={()=>setDeclOpen(false)} propertyId={propertyId} userId={userId} supabase={supabase} />
-      <LeaseModal open={leaseOpen} onClose={()=>setLeaseOpen(false)} userId={userId} supabase={supabase} branding={branding} propertyId={propertyId} />
+      {/* Προσαρτάται μόνο ανοιχτό: κάθε άνοιγμα ξεκινά καθαρό (βλ. LeaseModal). */}
+      {leaseOpen && <LeaseModal open onClose={()=>setLeaseOpen(false)} onSaved={()=>void refresh()} userId={userId} supabase={supabase} branding={branding} propertyId={propertyId} />}
     </div>
   );
 }

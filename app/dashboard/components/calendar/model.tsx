@@ -13,6 +13,7 @@ import { taxKindMeta } from '@/lib/tax/greekTaxCalendar'
 import { DAY_NAMES_SHORT } from '@/lib/core/months'
 import { grDate } from '@/lib/core/format'
 import { STATUS_LABEL, statusColor, type StatusKind } from '@/lib/core/status'
+import { pastState, type PastState } from '@/lib/calendar/pastState'
 
 // Οι τρεις απαριθμήσεις του γεγονότος ζουν στο στρώμα δεδομένων, όχι εδώ: τις
 // γράφουν και άλλες οθόνες και μία λάθος συμβολοσειρά είναι αόρατη μέχρι να
@@ -157,7 +158,12 @@ export const fmtShort = fmt
 // ═══════════════════════════════════════════════════════════════════════════
 export function athensNow(): Date { const t=athensToday(); return new Date(`${t}T00:00:00`) }
 export function daysUntil(dateStr: string) { return athensDaysUntil(dateStr) ?? 0 }
-export function isOverdue(e: CalEvent)  { return e.status==='pending'&&daysUntil(e.event_date)<0 }
+// Η ΠΕΡΑΣΜΕΝΗ ΜΕΡΑ ΔΕΝ ΚΑΝΕΙ ΚΑΘΕ ΓΕΓΟΝΟΣ ΛΗΞΙΠΡΟΘΕΣΜΟ. Η υπενθύμιση λήξης ΠΕΑ
+// που πέρασε δεν είναι οφειλή· ο κανόνας ζει στο lib/calendar/pastState.ts.
+export function pastStateOf(e: CalEvent): PastState | null { return pastState(e, athensToday()) }
+export function isOverdue(e: CalEvent)  { return pastStateOf(e)==='overdue' }
+/** Ανοιχτή υπενθύμιση που η μέρα της πέρασε, χωρίς να είναι οφειλή (ΠΕΑ: «Έληξε» ή απλώς πέρασε). */
+export function isPastNotice(e: CalEvent) { const s=pastStateOf(e); return s==='expired'||s==='passed' }
 // ═══ ΟΙ ΤΙΤΛΟΙ ΤΩΝ ΚΑΔΩΝ ΗΤΑΝ ΨΕΥΔΕΙΣ, ΟΧΙ ΑΝΑΚΡΙΒΕΙΣ ══════════════════════
 // «Αυτόν τον μήνα» ήταν `d>7 && d<=30`, δηλαδή ΚΥΛΙΟΜΕΝΕΣ ημέρες. Στις 27
 // Αυγούστου, γεγονός της 20ής Σεπτεμβρίου καθόταν στο «Αυτόν τον μήνα» ενώ

@@ -45,6 +45,7 @@ import { expandRecurring } from '@/lib/calendar/recurrence'
 import { findConflicts } from '@/lib/calendar/availability'
 import { parseICS } from '@/lib/calendar/icsImport'
 import { toStaySpan, type StaySpan } from '@/lib/calendar/stayBars'
+import { PAST_LABEL } from '@/lib/calendar/pastState'
 import {
   taxKindOfEventSource,
   TAX_EVENT_CATEGORY,
@@ -61,7 +62,7 @@ import {
   type EventCategory, type EventStatus, type ViewMode, type CalEvent,
   type FormState, CATEGORIES, STATUSES, canonicalCategory,
   EMPTY_FORM, fmt, fmtShort,
-  athensNow, daysUntil, isOverdue, isThisWeek, isThisMonth, isExpiring, todayStr, addDaysStr,
+  athensNow, daysUntil, isOverdue, isPastNotice, pastStateOf, isThisWeek, isThisMonth, isExpiring, todayStr, addDaysStr,
 } from './calendar/model'
 import { EventCard, Section } from './calendar/EventCard'
 import { usePointerDrag, DaySheet, MonthView } from './calendar/MonthView'
@@ -69,7 +70,7 @@ import { AutoPullPanel } from './calendar/AutoPullPanel'
 import { EventModal, ScopeModal } from './calendar/EventModal'
 import { SubscribeModal } from './calendar/SubscribeModal'
 import { CalendarQuickAdd } from './calendar/CalendarQuickAdd'
-import { dueTextStart } from '@/lib/facts/deadlines'
+import { dueTextStart, incomeInstalmentsAfter } from '@/lib/facts/deadlines'
 
 export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenTasks }: {
   propertyId:string; userId:string;
@@ -219,6 +220,9 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   }),[events,filterCat,filterStatus,searchQ,dateFrom,dateTo])
 
   const overdue=filtered.filter(isOverdue)
+  // Η υπενθύμιση ΠΕΑ που πέρασε δεν είναι ληξιπρόθεσμη, αλλά δεν χάνεται κιόλας:
+  // το «Έληξε» είναι πληροφορία για την επόμενη μίσθωση (lib/calendar/pastState.ts).
+  const pastNotices=filtered.filter(isPastNotice)
   const thisWeek=filtered.filter(isThisWeek)
   const thisMonth=filtered.filter(isThisMonth)
   const expiring=filtered.filter(isExpiring)
@@ -300,25 +304,34 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   async function applyEditScope(scope:'this'|'following'|'all'){
     if(!editingEvent)return; setSaving(true)
     const base=editingEvent; const occ=editOccDate||base.event_date; const payload=buildPayload()
+    // ΤΟ ΠΑΡΑΘΥΡΟ ΜΕΝΕΙ ΑΝΟΙΧΤΟ ΟΤΑΝ ΔΕΝ ΓΡΑΦΤΗΚΕ ΤΙΠΟΤΑ, όπως στο saveEvent.
+    // Εκλεινε πάντα και ο χρήστης έχανε ό,τι διόρθωσε. `wrote` γίνεται true
+    // μόλις περάσει το πρώτο βήμα: από εκεί και πέρα η βάση άλλαξε και μια
+    // δεύτερη προσπάθεια θα έγραφε διπλό, οπότε κλείνει και ξαναφορτώνει.
+    let wrote=false
     try{
       if(scope==='all'){
-        await saved('Η σειρά δεν ενημερώθηκε', calendar.update(supabase,base.id,calendar.editPatch(payload)))
+        wrote=await saved('Η σειρά δεν ενημερώθηκε', calendar.update(supabase,base.id,calendar.editPatch(payload)))
       }else if(scope==='this'){
         // Απόσπαση μόνο αυτής: νέο μεμονωμένο με τις αλλαγές + εξαίρεση της ημέρας από τη σειρά.
         // Η ΣΕΙΡΑ ΤΩΝ ΔΥΟ ΕΧΕΙ ΣΗΜΑΣΙΑ: αν μπει η εξαίρεση χωρίς να έχει
         // δημιουργηθεί το μεμονωμένο, η εμφάνιση εξαφανίζεται εντελώς.
-        if(await saved('Η εξαίρεση της ημέρας δεν αποθηκεύτηκε', calendar.insert(supabase,[{...payload,event_date:occ,recurring:false,recurring_interval:null,recurrence_until:null,recurrence_count:null}]))){
+        wrote=await saved('Η εξαίρεση της ημέρας δεν αποθηκεύτηκε', calendar.insert(supabase,[{...payload,event_date:occ,recurring:false,recurring_interval:null,recurrence_until:null,recurrence_count:null}]))
+        if(wrote){
           const ex=Array.from(new Set([...(base.recurrence_exdates||[]),occ]))
           await saved('Η ημέρα δεν αφαιρέθηκε από τη σειρά', calendar.update(supabase,base.id,{recurrence_exdates:ex}))
         }
       }else{
         // Αυτό και τα επόμενα: κόψε τη σειρά την προηγούμενη μέρα + νέα σειρά από την occ.
-        if(await saved('Η σειρά δεν κόπηκε στη σωστή ημερομηνία', calendar.update(supabase,base.id,{recurrence_until:addDaysStr(occ,-1),recurrence_count:null}))){
+        wrote=await saved('Η σειρά δεν κόπηκε στη σωστή ημερομηνία', calendar.update(supabase,base.id,{recurrence_until:addDaysStr(occ,-1),recurrence_count:null}))
+        if(wrote){
           await saved('Η νέα σειρά δεν δημιουργήθηκε', calendar.insert(supabase,[{...payload,event_date:occ,recurrence_exdates:((base.recurrence_exdates||[]) as string[]).filter(d=>d>=occ)}]))
         }
       }
-    }catch{}
-    await load(); setScopePrompt(false); setShowModal(false); setEditOccDate(null); setSaving(false)
+    }catch{ notifyError('Το γεγονός δεν αποθηκεύτηκε. Δοκίμασε ξανά.') }
+    setScopePrompt(false); setSaving(false)
+    if(!wrote) return
+    await load(); setShowModal(false); setEditOccDate(null)
   }
 
   async function toggleStatus(e:CalEvent){
@@ -334,6 +347,14 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
     const ns:EventStatus=e.status==='paid'?'pending':'paid'
     if(!await saved('Η κατάσταση δεν αποθηκεύτηκε', calendar.update(supabase,e.id,{status:ns}))) return
     if(ns==='paid') void track(supabase, PRODUCT_EVENTS.paid_marked, paidProps('app'))
+    // ΕΦΑΠΑΞ ΕΞΟΦΛΗΣΗ ΤΟΥ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ: ρωτά, δεν υποθέτει. Οι δόσεις των
+    // άλλων ακινήτων κλείνουν από τον συγχρονισμό (προθεσμία του φορολογούμενου).
+    const rest=ns==='paid'?incomeInstalmentsAfter(events,e):[]
+    if(rest.length&&await confirmDialog({title:'Εξοφλήθηκε όλος ο φόρος;',message:`Αν πλήρωσες εφάπαξ, κλείνουν και οι υπόλοιπες δόσεις της ίδιας δήλωσης (${rest.length}). Αν πληρώνεις σε δόσεις, άφησέ τες ανοιχτές.`,confirmLabel:'Κλείσιμο υπόλοιπων',cancelLabel:'Πληρώνω σε δόσεις'})
+      &&await saved('Οι υπόλοιπες δόσεις δεν έκλεισαν', calendar.updateMany(supabase,rest.map(r=>r.id),{status:'paid'}))){
+      const ids=new Set(rest.map(r=>r.id))
+      setEvents(prev=>prev.map(ev=>ids.has(ev.id)?{...ev,status:'paid' as EventStatus}:ev))
+    }
     // ΑΝΑΙΡΕΣΗ ΤΟΥ «ΠΛΗΡΩΣΑ» ΑΠΟ ΤΗΝ ΕΦΑΡΜΟΓΗ: αν η πληρωμή είχε γραφτεί και ως
     // δαπάνη από την υπενθύμιση (lib/reminders/payLink.ts), ρωτά πριν τη σβήσει.
     if(ns==='pending'&&await expenses.hasDedup(supabase,userId,payDedupHash(e.id))
@@ -618,7 +639,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
                   // Καθαρός, φιλτραρίσιμος πίνακας: κάθε πεδίο σε δικό του κελί, αριθμοί
                   // ως αριθμοί (2 δεκαδικά), στήλες Έτος/Μήνας/Προθεσμία για φιλτράρισμα,
                   // και ξεχωριστά φύλλα «Εκπρόθεσμα»/«Επερχόμενα».
-                  const prothesmia=(e:CalEvent)=> (e.status==='paid'||e.status==='cancelled')?'Ολοκληρωμένο':isOverdue(e)?'Ληξιπρόθεσμο':'Εντός προθεσμίας'
+                  const prothesmia=(e:CalEvent)=>{ if(e.status==='paid'||e.status==='cancelled') return 'Ολοκληρωμένο'; const p=pastStateOf(e); return p?PAST_LABEL[p]:'Εντός προθεσμίας' }
                   const cols:XlsxCol[]=[
                     {header:'Ημερομηνία',kind:'date',width:13},
                     {header:'Ημέρα',width:11},
@@ -797,6 +818,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       {!loading&&viewMode==='agenda'&&(
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
           {overdue.length>0&&<Section title="Ληξιπρόθεσμα" color="var(--negative)" events={overdue} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
+          {pastNotices.length>0&&<Section title="Περασμένες υπενθυμίσεις" color="var(--text-secondary)" events={pastNotices} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} desc bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {thisWeek.length>0&&<Section title="Επόμενες 7 ημέρες" color="var(--accent)" events={thisWeek} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {thisMonth.length>0&&<Section title="Σε 8 ως 30 ημέρες" color="var(--text-secondary)" events={thisMonth} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {later.length>0&&<Section title="Αργότερα" color="var(--text-secondary)" events={later} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
