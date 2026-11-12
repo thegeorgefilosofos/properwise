@@ -22,7 +22,11 @@
 // εκτίμησης και, όταν είναι αυτό σε χρήση, στην Κατάσταση.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { useEffect, useState } from 'react';
 import { useBillsSettings } from './BillsSettings';
+import { createClient } from '@/lib/supabase/client';
+import * as properties from '@/lib/data/properties';
+import { readEnfiaCounts } from '@/lib/calendar/enfiaTotals';
 import { ENFIA_DEFAULTS, type EnfiaSettings, type EnfiaNow } from '@/lib/facts/enfia';
 
 // Ο ΕΝΦΙΑ του έτους είναι καθαρή συνάρτηση και ζει στο lib/facts/enfia.ts, ώστε
@@ -42,4 +46,33 @@ export interface EnfiaState {
   update: (patch: Partial<EnfiaSettings>) => void;
   loading: boolean;
   now: EnfiaNow;
+}
+
+const supabase = createClient();
+
+/**
+ * Έτος → πλήθος δόσεων του εκκαθαριστικού του φορολογούμενου στον οποίο ανήκει
+ * το ακίνητο, από τα ΣΥΝΟΛΑ (lib/calendar/enfiaTotals.ts, ο ίδιος κανόνας με
+ * το Ημερολόγιο). Χωρίς γνωστό σύνολο ή με σφάλμα ανάγνωσης: κενό, οπότε το
+ * πλήθος βγαίνει από το ποσό του ακινήτου, όπως πριν.
+ *
+ * ΓΙΑΤΙ. Ο ΕΝΦΙΑ ανά ακίνητο (π.χ. ο φόρος της γραμμής της πράξης, 27€) θα
+ * έβγαζε δύο δόσεις στην Επισκόπηση, ενώ το Ημερολόγιο γράφει δώδεκα από το
+ * σύνολο του ΑΦΜ.
+ */
+export function useEnfiaInstalmentCounts(propertyId: string, userId: string): Readonly<Record<number, number>> | undefined {
+  const key = propertyId && userId ? `${propertyId}|${userId}` : '';
+  const [store, setStore] = useState<{ key: string; counts: Record<number, number> | undefined }>({ key: '', counts: undefined });
+  useEffect(() => {
+    if (!key) return;
+    let live = true;
+    void (async () => {
+      const list = await properties.listWithError<{ id: string; client_id: string | null }>(supabase, userId, { columns: 'id,client_id' });
+      if (list.error) return;
+      const res = await readEnfiaCounts(supabase, userId, list.rows);
+      if (live && !res.error) setStore({ key, counts: res.counts.get(propertyId) });
+    })();
+    return () => { live = false; };
+  }, [key, propertyId, userId]);
+  return store.key === key ? store.counts : undefined;
 }

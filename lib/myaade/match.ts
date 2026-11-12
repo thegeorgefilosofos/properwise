@@ -21,6 +21,9 @@ export interface KnownProperty {
   floor?: string | null;
   postal_code?: string | null;
   year_built?: number | null;
+  /** Βοηθητικοί χώροι και «ΕΝΦΙΑ που πληρώνεις». `undefined` = δεν διαβάστηκαν, δεν αγγίζονται. */
+  storage_sqm?: number | null;
+  enfia?: number | null;
 }
 
 export type MatchResult =
@@ -67,7 +70,10 @@ export function matchProperty(
  */
 export function fillOnlyEmpty(
   current: KnownProperty,
-  found: { atak: string | null; sqm: number | null; floor: string | null; address: string | null; postalCode?: string | null; yearBuilt?: number | null },
+  found: {
+    atak: string | null; sqm: number | null; floor: string | null; address: string | null;
+    postalCode?: string | null; yearBuilt?: number | null; storageSqm?: number | null; enfia?: number | null;
+  },
 ): Record<string, string | number> {
   const patch: Record<string, string | number> = {};
   if (!isAtak(current.atak) && isAtak(found.atak)) patch.atak = atakDigits(found.atak);
@@ -77,5 +83,9 @@ export function fillOnlyEmpty(
   // Τ.Κ. και έτος: μόνο όταν το ακίνητο τα φορτώθηκε και τα έχει κενά (`undefined` = δεν ξέρουμε, δεν αγγίζεται).
   if (current.postal_code !== undefined && !String(current.postal_code ?? '').trim() && found.postalCode && /^\d{5}$/.test(found.postalCode)) patch.postal_code = found.postalCode;
   if (current.year_built !== undefined && !(Number(current.year_built) > 0) && found.yearBuilt) patch.year_built = found.yearBuilt;
+  // Βοηθητικοί χώροι του Ε9: όπως η σάρωση Ε9 (lib/billing/documents.ts, `storage_sqm`), μόνο στο κενό.
+  if (current.storage_sqm !== undefined && !(Number(current.storage_sqm) > 0) && found.storageSqm && found.storageSqm > 0) patch.storage_sqm = found.storageSqm;
+  // Ο φόρος της γραμμής της πράξης, όπως τυπώνεται. Ποσό που έγραψε ο χρήστης δεν αλλάζει.
+  if (current.enfia !== undefined && !(Number(current.enfia) > 0) && found.enfia && found.enfia > 0) patch.enfia = found.enfia;
   return patch;
 }

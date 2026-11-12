@@ -10,7 +10,7 @@ import {
   DOC_KINDS, KIND_OPTIONS, kindOf, applyKind, docForm, docTargets, fieldOptions, fieldValue, withField,
   selectLine, withPropertyLine, archiveOptions, folderForDoc, FOLDERS, BILL_CATEGORIES,
   SCAN_NUM_KEYS, SCAN_MAX_LINES, PROPERTY_TARGET, compactRow, shelfPath, lineUnset, LINE_NONE,
-  commonMonthOf, PEA_EXPIRY_TITLE, incomeTaxYearOf, INCOME_TAX_TITLE, amountFromInput,
+  commonMonthOf, PEA_EXPIRY_TITLE, PEA_COLUMNS, incomeTaxYearOf, INCOME_TAX_TITLE, amountFromInput, INCOME_CALENDAR_TARGET,
   type ScannedDoc, type DocType, type DocKindId, type DocField,
 } from './documents';
 import { SYSTEM_PROMPT, SCAN_KEYS } from './scanPrompt';
@@ -109,7 +109,7 @@ eq('validate payment: amount blocking', validateDoc(doc({ doc_type: 'payment' })
   eq('ΠΕΑ σε ισχύ: φρουρός από το γεγονός λήξης', JSON.stringify(pea.replaceIfNewerEvent), JSON.stringify({ title: PEA_EXPIRY_TITLE, value: '2030-01-01' }));
   eq('ΠΕΑ: το γεγονός λήξης έχει τον ίδιο τίτλο με τον φρουρό', pea.calendar?.[0]?.title, PEA_EXPIRY_TITLE);
   const expired = planDocSave(doc({ doc_type: 'government', subtype: 'pea', pea_class: 'Δ', expiry_date: '2020-01-01' }), '2026-10-18');
-  check('ληγμένο ΠΕΑ: μόνο συμπλήρωση, χωρίς φρουρό', !expired.propertyReplace && !expired.replaceIfNewerEvent && !!expired.property);
+  check('ληγμένο ΠΕΑ: μόνο συμπλήρωση, χωρίς φρουρό', !expired.propertyReplace && !expired.replaceIfNewerEvent && !!expired.propertyFillGroup);
 }
 // unknown category coerced to 'other'
 {
@@ -770,6 +770,13 @@ eq('όροφος ως κείμενο', normalizeScannedDoc(doc({ floor: 2 as unk
   const covered = planDocSave(asKind('income_tax', { tax_year: 2025, amount: 1200, due_date: '2026-07-31' }), TODAY, { incomeSeries: true });
   check('νοικιασμένο (οι δόσεις στο ημερολόγιο): καμία δεύτερη «1η δόση»', covered.calendar === undefined && !covered.targets.includes(navLabel('calendar')));
   eq('νοικιασμένο: το ποσό μένει στο έγγραφο', covered.archive!.amount, 1200);
+  // Η ΠΡΟΕΠΙΣΚΟΠΗΣΗ ΔΕΝ ΥΠΟΣΧΕΤΑΙ Ο,ΤΙ ΔΕΝ ΘΑ ΓΡΑΦΤΕΙ. Χωρίς γνωστή κατάσταση
+  // ακινήτου το Ημερολόγιο λέγεται υπό όρο· με γνωστή, όπως θα γίνει.
+  const scan = asKind('income_tax', { tax_year: 2025, amount: 1200, due_date: '2026-07-31' });
+  eq('«Θα ενημερωθούν»: άγνωστη κατάσταση, Ημερολόγιο υπό όρο', docTargets(scan, false, TODAY), [INCOME_CALENDAR_TARGET]);
+  eq('«Θα ενημερωθούν»: νοικιασμένο, χωρίς Ημερολόγιο', docTargets(scan, false, TODAY, { incomeSeries: true }), []);
+  eq('«Θα ενημερωθούν»: ιδιοκατοίκηση, Ημερολόγιο', docTargets(scan, false, TODAY, { incomeSeries: false }), [navLabel('calendar')]);
+  eq('«Θα ενημερωθούν»: χωρίς φόρο, καμία γραμμή', docTargets(asKind('income_tax', { tax_year: 2025, amount: 0, due_date: '2026-07-31' }), false, TODAY), []);
 }
 for (const v of ['e1', 'e2', 'e3'] as DocKindId[]) {
   const p = planDocSave(asKind(v, { tax_year: 2024, amount: 999, issue_date: '2025-06-30' }), TODAY);
@@ -815,10 +822,29 @@ check('Ε2: παραπέμπει στη Λογιστική', (docForm(asKind('e2
 }
 {
   const p = planDocSave(asKind('pea', { pea_class: 'Β', issue_date: '2026-01-10', expiry_date: '2036-01-10' }), TODAY);
-  eq('ΠΕΑ: η κατηγορία αντικαθιστά', p.propertyReplace, { pea_class: 'B' });
+  eq('ΠΕΑ: κατηγορία, έκδοση και λήξη αντικαθιστούν', p.propertyReplace, { pea_class: 'B', pea_issued: '2026-01-10', pea_expiry: '2036-01-10' });
+  eq('ΠΕΑ: φρουρός και από τη στήλη της λήξης', p.replaceIfNewer, { column: 'pea_expiry', value: '2036-01-10' });
   eq('ΠΕΑ: λήξη στο ημερολόγιο', [p.calendar![0].title, p.calendar![0].category], ['Λήξη ΠΕΑ', 'contract']);
+  eq('ΠΕΑ: λήξη και υπενθυμίσεις 90 και 30 ημέρες πριν', p.calendar!.map(e => e.event_date), ['2036-01-10', '2035-10-12', '2035-12-11']);
+  eq('ΠΕΑ: οι υπενθυμίσεις αντικαθιστούν τις προηγούμενες', p.calendarSync, 'pea');
   eq('ΠΕΑ: ράφι', p.archive!.category, 'Τεχνική Έκθεση');
   check('ΠΕΑ χωρίς λήξη: καμία λήξη', planDocSave(asKind('pea', { pea_class: 'A' }), TODAY).calendar === undefined);
+  // Ο αριθμός (ν. 4122/2013, άρθρο 12 παρ. 8) γράφεται πια στο ακίνητο, όχι μόνο στη σημείωση.
+  const num = planDocSave(asKind('pea', { pea_class: 'Γ', pea_number: '  123456/2026 ', expiry_date: '2036-01-10' }), TODAY);
+  eq('ΠΕΑ: ο αριθμός στο ακίνητο', num.propertyReplace?.pea_number, '123456/2026');
+  // Ληγμένο: συμπληρώνει μόνο ό,τι λείπει και καμία υπενθύμιση στο παρελθόν.
+  const old = planDocSave(asKind('pea', { pea_class: 'Γ', pea_number: '1/2014', issue_date: '2014-01-01', expiry_date: '2024-01-01' }), TODAY);
+  eq('ΠΕΑ ληγμένο: τα τέσσερα μαζί, μόνο αν λείπουν και τα τέσσερα', old.propertyFillGroup, { columns: PEA_COLUMNS, values: { pea_class: 'Γ', pea_number: '1/2014', pea_issued: '2014-01-01', pea_expiry: '2024-01-01' } });
+  check('ΠΕΑ ληγμένο: καμία συμπλήρωση ανά στήλη', old.property === undefined);
+  check('ΠΕΑ ληγμένο: καμία υπενθύμιση', old.calendar === undefined && old.calendarSync === undefined);
+  // Έκδοση μετά τη λήξη είναι λάθος ανάγνωσης: δεν γράφεται.
+  const bad = planDocSave(asKind('pea', { issue_date: '2037-01-01', expiry_date: '2036-01-10' }), TODAY);
+  eq('ΠΕΑ: έκδοση μετά τη λήξη δεν γράφεται', bad.propertyReplace, { pea_expiry: '2036-01-10' });
+  // Μόνο αριθμός, χωρίς κατηγορία και λήξη: συμπληρώνει μόνο αν λείπει.
+  eq('ΠΕΑ μόνο με αριθμό: στην ομάδα, μόνο αν λείπουν όλα', planDocSave(asKind('pea', { pea_number: '77/2025' }), TODAY).propertyFillGroup?.values, { pea_number: '77/2025' });
+  // Νέο ΠΕΑ χωρίς αριθμό και έκδοση: σβήνει τα στοιχεία του παλιού.
+  eq('ΠΕΑ σε ισχύ χωρίς αριθμό και έκδοση: σβήνουν', planDocSave(asKind('pea', { pea_class: 'B', expiry_date: '2036-01-10' }), TODAY).propertyClear, ['pea_number', 'pea_issued']);
+  eq('ΠΕΑ σε ισχύ με έκδοση χωρίς αριθμό: σβήνει μόνο ο αριθμός', p.propertyClear, ['pea_number']);
 }
 {
   eq('ΑΜΑ: στο ακίνητο, μόνο αν λείπει', planDocSave(asKind('ama', { ama: '00001234567' }), TODAY).property, { ama: '00001234567' });
@@ -914,7 +940,7 @@ eq('τίτλος ιδιοκτησίας: φάκελος Έγγραφα ακιν�
 }
 {
   // Η κατηγορία ΠΕΑ αντικαθιστά μόνο από ισχύον πιστοποιητικό.
-  eq('ΠΕΑ χωρίς λήξη: μόνο αν λείπει', [planDocSave(asKind('pea', { pea_class: 'A' }), TODAY).property, planDocSave(asKind('pea', { pea_class: 'A' }), TODAY).propertyReplace], [{ pea_class: 'A' }, undefined]);
+  eq('ΠΕΑ χωρίς λήξη: μόνο αν λείπουν όλα', [planDocSave(asKind('pea', { pea_class: 'A' }), TODAY).propertyFillGroup?.values, planDocSave(asKind('pea', { pea_class: 'A' }), TODAY).propertyReplace], [{ pea_class: 'A' }, undefined]);
   eq('ΠΕΑ ληγμένο: μόνο αν λείπει', planDocSave(asKind('pea', { pea_class: 'A', expiry_date: '2020-01-01' }), TODAY).propertyReplace, undefined);
   check('ΠΕΑ ληγμένο: «(μόνο κενά)»', docTargets(asKind('pea', { pea_class: 'A', expiry_date: '2020-01-01' }), true, TODAY).includes(`${PROPERTY_TARGET} (μόνο κενά)`));
   // Το ασφαλιστήριο αντικαθιστά μόνο με λήξη και μόνο νεότερη (ο έλεγχος στην καταχώρηση).

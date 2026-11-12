@@ -145,6 +145,9 @@ const src = (p: string) => readFileSync(p, 'utf8')
   ok('email: οι δόσεις μόνο στον τύπο που επιτρέπεται', sr.includes('reminderAllowed(e, check.type)'))
   ok('push: οι δόσεις δεν ξαναλέγονται στο τηλέφωνο', push.includes('.filter(e => !isIncomeInstalmentSource(e.source))'))
   ok('email: αναπλήρωση την ίδια μέρα για δόση χωρίς υπενθύμιση τριών ημερών', sr.includes('incomeSameDayFallback(dueInc, !!pref.reminder_3days, sent3)'))
+  // Μαζί με τον κανόνα του ΠΕΑ (#549): και οι δύο στο ίδιο φίλτρο, κανείς δεν σβήνει τον άλλο.
+  ok('email: ΠΕΑ και δόσεις στο ίδιο φίλτρο', sr.includes('remindsAs(e, check.type) && reminderAllowed(e, check.type)'))
+  ok('push: ΠΕΑ μόνο τη μέρα του και δόσεις ποτέ', push.includes('.filter(e => !onceOnDay(e) || e.event_date === today)') && push.includes('.filter(e => !isIncomeInstalmentSource(e.source))'))
   const scan = src('app/dashboard/components/scanDoc.ts')
   ok('σάρωση: καμία δεύτερη «1η δόση» όταν το ημερολόγιο έχει τις δόσεις', scan.includes('planDocSave(doc, today, { incomeSeries })'))
 }

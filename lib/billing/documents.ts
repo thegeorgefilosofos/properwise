@@ -21,6 +21,7 @@ import { atakDigits, isAtak } from '../property/atak';
 import { cleanAma, isValidAmaFormat } from '../property/ama';
 import { cleanDigits, E2_POWER_SUPPLY_DIGITS } from '../property/powerSupply';
 import { PEA_CLASSES, peaClassOf } from '../property/pea';
+import { PEA_EXPIRY_TITLE, cleanPeaNumber, peaReminderDrafts } from '../property/peaExpiry';
 import { OBJ_VALUE_WHOLE } from '../property/fields';
 import { athensToday } from '../core/time';
 import type { EventDraft } from '../data/calendar';
@@ -494,6 +495,8 @@ export interface ScannedDoc {
 
   // ΠΕΑ, ΑΜΑ
   pea_class?: string;
+  /** Αριθμός πρωτοκόλλου του ΠΕΑ (ν. 4122/2013, άρθρο 12 παρ. 8: μπαίνει στη δήλωση μίσθωσης). */
+  pea_number?: string;
   ama?:       string;
 
   // φορολογικό
@@ -708,8 +711,10 @@ const KIND_FORMS: Record<DocKindId, KindForm> = {
   },
   pea: {
     groups: [{ rows: [
-      [{ key: 'pea_class', label: 'Ενεργειακή κατηγορία', input: 'select', options: 'pea_class', dest: 'user_properties.pea_class' }],
-      [issueDate, { key: 'expiry_date', label: 'Λήξη', input: 'date', dest: 'Ημερολόγιο: λήξη ΠΕΑ' }],
+      [{ key: 'pea_class', label: 'Ενεργειακή κατηγορία', input: 'select', options: 'pea_class', dest: 'user_properties.pea_class' },
+       { key: 'pea_number', label: 'Αριθμός ΠΕΑ', input: 'code', dest: 'user_properties.pea_number' }],
+      [{ ...issueDate, dest: 'property_documents.issue_date, user_properties.pea_issued' },
+       { key: 'expiry_date', label: 'Λήξη', input: 'date', dest: 'user_properties.pea_expiry, Ημερολόγιο: λήξη ΠΕΑ και υπενθυμίσεις 90 και 30 ημέρες πριν' }],
     ] }],
   },
   ama: {
@@ -1156,7 +1161,7 @@ export function isDocumentary(d: Partial<ScannedDoc>): boolean {
   if (d.is_document === false) return false;
   return !!(d.provider || d.amount || d.title || d.due_date || d.issue_date
     || d.tenant_name || d.monthly_rent || d.premium || d.policy_number || d.atak || d.purchase_price
-    || d.tax_year || d.ama || d.pea_class || d.lines?.length);
+    || d.tax_year || d.ama || d.pea_class || d.pea_number || d.lines?.length);
 }
 
 // ── 2β) Κανονικοποίηση μετά την OCR ─────────────────────────────────────────
@@ -1225,6 +1230,7 @@ export function normalizeScannedDoc(doc: ScannedDoc): ScannedDoc {
     }
   }
   if (out.pea_class != null) { const c = peaClassOf(out.pea_class); if (c) out.pea_class = c; else delete out.pea_class; }
+  if (out.pea_number != null) { const n = cleanPeaNumber(String(out.pea_number)); if (n) out.pea_number = n; else delete out.pea_number; }
   if (out.ama != null) { const a = cleanAma(String(out.ama)); if (a) out.ama = a; else delete out.ama; }
   if (out.rent_due_day != null) {
     const n = Math.round(Number(out.rent_due_day));
@@ -1295,6 +1301,22 @@ export interface SavePlan {
    * Παλαιότερο χαρτί: ούτε κατηγορία ούτε δεύτερη υπενθύμιση λήξης.
    */
   replaceIfNewerEvent?: { title: string; value: string };
+  /**
+   * Το `calendar` ΑΝΤΙΚΑΘΙΣΤΑ ό,τι είχε γράψει ο γραφέας του αντί να προστεθεί.
+   * `pea`: οι υπενθυμίσεις λήξης ΠΕΑ (lib/calendar/peaSync.ts).
+   */
+  calendarSync?: 'pea';
+  /**
+   * Στήλες που γίνονται `null` ΜΑΖΙ με το `propertyReplace`, γιατί ανήκαν στο
+   * χαρτί που αντικαθίσταται και το νέο δεν τις έχει (αριθμός και έκδοση ΠΕΑ).
+   * Γράφονται μόνο όταν γράφεται και η αντικατάσταση.
+   */
+  propertyClear?: string[];
+  /**
+   * Στο user_properties ΟΛΑ ΜΑΖΙ και μόνο αν ΟΛΕΣ οι `columns` είναι κενές.
+   * Για στοιχεία που ανήκουν στο ίδιο χαρτί και δεν ανακατεύονται (ΠΕΑ).
+   */
+  propertyFillGroup?: { columns: readonly string[]; values: Record<string, unknown> };
   /** Στο property_settings με αντικατάσταση (ασφάλιση). */
   settings?: Record<string, unknown>;
   /** Στο property_settings, ΜΟΝΟ τα κενά (πάροχοι). */
@@ -1327,8 +1349,11 @@ export function commonMonthOf(dates: (string | undefined)[], today: string): num
   return Number(d.slice(5, 7)) - 1;
 }
 
-/** Ο τίτλος του γεγονότος λήξης ΠΕΑ: από αυτόν το βρίσκει και ο φρουρός. */
-export const PEA_EXPIRY_TITLE = 'Λήξη ΠΕΑ';
+/** Ο τίτλος του γεγονότος λήξης ΠΕΑ: από αυτόν το βρίσκει και ο φρουρός (lib/property/peaExpiry.ts). */
+export { PEA_EXPIRY_TITLE };
+
+/** Οι στήλες του ΠΕΑ στο ακίνητο: ένα χαρτί, τέσσερα στοιχεία. */
+export const PEA_COLUMNS: readonly string[] = ['pea_class', 'pea_number', 'pea_issued', 'pea_expiry'];
 
 // Ο κανόνας «συμπληρώνουμε κενά, δεν διορθώνουμε γεμάτα» ζει στο lib/core/prefill.ts,
 // γιατί τον χρειάζεται και ο οδηγός προσθήκης ακινήτου — όχι μόνο η σάρωση.
@@ -1373,6 +1398,9 @@ export function amountFromInput(text: string, kind: DocKind | null | undefined):
   if (!Number.isFinite(n)) return undefined;
   return n !== 0 || kind?.value === 'income_tax' ? n : undefined;
 }
+
+/** Η ετικέτα του Ημερολογίου στο «Θα ενημερωθούν» για εκκαθαριστικό εισοδήματος, όταν η κατάσταση του ακινήτου δεν είναι γνωστή. */
+export const INCOME_CALENDAR_TARGET = `${CALENDAR} (1η δόση, αν το ακίνητο δεν νοικιάζεται)`;
 
 /** Ρυθμίσεις της δρομολόγησης που εξαρτώνται από το ακίνητο, όχι από το χαρτί. */
 export interface DocSaveOptions {
@@ -1673,30 +1701,53 @@ export function planDocSave(doc: ScannedDoc, today: string, opts: DocSaveOptions
   }
 
   if (k === 'pea') {
-    // Η ΚΑΤΗΓΟΡΙΑ ΤΟΥ ΠΕΑ ΑΝΤΙΚΑΘΙΣΤΑ ΜΟΝΟ ΑΠΟ ΙΣΧΥΟΝ ΠΙΣΤΟΠΟΙΗΤΙΚΟ. Το νεότερο
-    // ακυρώνει το παλιό, αλλά το ακίνητο δεν κρατά ημερομηνία έκδοσης για να
-    // κριθεί ποιο είναι νεότερο. Με λήξη που δεν έχει περάσει, το χαρτί είναι
-    // το τρέχον και αντικαθιστά· ληγμένο ή χωρίς λήξη (π.χ. παλιό ΠΕΑ που
-    // αρχειοθετείται) συμπληρώνει μόνο αν λείπει. Ο αριθμός του μένει στη
-    // σημείωση μέχρι να αποκτήσει στήλη· η λήξη γίνεται υπενθύμιση μόνο αν
-    // τυπώνεται.
+    // ΤΟ ΠΕΑ ΑΝΤΙΚΑΘΙΣΤΑ ΜΟΝΟ ΑΠΟ ΙΣΧΥΟΝ ΠΙΣΤΟΠΟΙΗΤΙΚΟ. Το νεότερο ακυρώνει το
+    // παλιό (ν. 4122/2013, άρθρο 11 παρ. 6 περ. γ΄). Με λήξη που δεν έχει περάσει,
+    // το χαρτί είναι το τρέχον και γράφεται ΟΛΟΚΛΗΡΟ: κατηγορία, αριθμός, έκδοση
+    // και λήξη, μόνο αν η λήξη του είναι ίση ή νεότερη από όση ξέρει ήδη η
+    // εφαρμογή (στήλη `pea_expiry` και γεγονός «Λήξη ΠΕΑ»).
+    //
+    // ΑΡΙΘΜΟΣ ΚΑΙ ΕΚΔΟΣΗ ΠΟΥ ΔΕΝ ΔΙΑΒΑΣΤΗΚΑΝ ΣΒΗΝΟΥΝ (`propertyClear`). Αλλιώς ο
+    // αριθμός του παλιού ΠΕΑ έμενε δίπλα στη λήξη του νέου και έφευγε στη δήλωση
+    // μίσθωσης. Η κατηγορία που δεν διαβάστηκε μένει: λέει κάτι για το κτίριο,
+    // όχι για το συγκεκριμένο χαρτί.
+    //
+    // ΛΗΓΜΕΝΟ Ή ΧΩΡΙΣ ΛΗΞΗ (π.χ. παλιό ΠΕΑ που αρχειοθετείται) γράφει τα τέσσερα
+    // ΜΑΖΙ και μόνο όταν λείπουν και τα τέσσερα (`propertyFillGroup`). Η
+    // συμπλήρωση ανά στήλη ανακάτευε δύο πιστοποιητικά: αριθμός από το ένα,
+    // λήξη από το άλλο· και έκδοση μετά τη λήξη που απέρριπτε η βάση
+    // (user_properties_pea_dates_chk).
+    //
+    // ΟΙ ΥΠΕΝΘΥΜΙΣΕΙΣ (λήξη, 90 και 30 ημέρες πριν, lib/property/peaExpiry.ts)
+    // γράφονται από τον ΕΝΑ γραφέα τους (lib/calendar/peaSync.ts), ΜΕΤΑ το
+    // ακίνητο και μόνο όταν η λήξη του ακινήτου άλλαξε (scanDoc.ts).
     const plan: SavePlan = { targets: [FOLDER], archive };
-    const cls = peaClassOf(doc.pea_class);
-    if (cls) {
-      const current = !!iso(doc.expiry_date) && iso(doc.expiry_date) >= today;
+    const expiry = iso(doc.expiry_date);
+    const issued = iso(doc.issue_date);
+    const values = {
+      pea_class: peaClassOf(doc.pea_class),
+      pea_number: cleanPeaNumber(doc.pea_number) ?? '',
+      pea_issued: issued && (!expiry || issued <= expiry) ? issued : '',
+      pea_expiry: expiry,
+    };
+    const fields = filled(values);
+    if (fields) {
+      const current = !!expiry && expiry >= today;
       if (current) {
-        plan.propertyReplace = { pea_class: cls };
-        // Ισχύον ΠΕΑ δεν σημαίνει νεότερο: κρίνεται από τη λήξη που ήδη ξέρουμε.
-        plan.replaceIfNewerEvent = { title: PEA_EXPIRY_TITLE, value: iso(doc.expiry_date) };
-      } else plan.property = { pea_class: cls };
+        plan.propertyReplace = fields;
+        const clear = (['pea_number', 'pea_issued'] as const).filter(c => !values[c]);
+        if (clear.length) plan.propertyClear = [...clear];
+        plan.replaceIfNewer = { column: 'pea_expiry', value: expiry };
+        // Ισχύον ΠΕΑ δεν σημαίνει νεότερο: κρίνεται και από τη λήξη του ημερολογίου.
+        plan.replaceIfNewerEvent = { title: PEA_EXPIRY_TITLE, value: expiry };
+        const reminders = peaReminderDrafts(expiry, today, baseNote ? `Από σάρωση: ${baseNote}` : 'Από σάρωση πιστοποιητικού ενεργειακής απόδοσης.');
+        if (reminders.length) {
+          plan.calendar = reminders;
+          plan.calendarSync = 'pea';
+          plan.targets.splice(plan.targets.length - 1, 0, CALENDAR);
+        }
+      } else plan.propertyFillGroup = { columns: PEA_COLUMNS, values: fields };
       plan.targets.unshift(PROPERTY_TARGET);
-    }
-    if (iso(doc.expiry_date)) {
-      plan.calendar = [{
-        title: PEA_EXPIRY_TITLE, category: 'contract', event_date: iso(doc.expiry_date), amount: null,
-        notes: ['Από σάρωση πιστοποιητικού ενεργειακής απόδοσης', baseNote].filter(Boolean).join(' · '),
-      }];
-      plan.targets.splice(plan.targets.length - 1, 0, CALENDAR);
     }
     return plan;
   }
@@ -1790,16 +1841,24 @@ export function planDocSave(doc: ScannedDoc, today: string, opts: DocSaveOptions
  * έλεγε «Στοιχεία ακινήτου · Δαπάνες · Ημερολόγιο» και αρχειοθετούνταν μόνο.
  * Ο Φάκελος μπαίνει μόνο όταν υπάρχει αρχείο να αρχειοθετηθεί.
  */
-export function docTargets(doc: ScannedDoc, hasFile: boolean, today: string = athensToday()): string[] {
-  if (!kindOf(doc)) return [];
+export function docTargets(
+  doc: ScannedDoc, hasFile: boolean, today: string = athensToday(), opts: DocSaveOptions = {},
+): string[] {
+  const kind = kindOf(doc);
+  if (!kind) return [];
   // ΜΕ ΤΟ ΣΗΜΕΡΑ, ΟΠΩΣ Η ΚΑΤΑΧΩΡΗΣΗ. Με κενή ημερομηνία, μια συνδρομή χωρίς
   // έκδοση και λήξη δεν έβγαζε ανανέωση και η λίστα παρέλειπε το Ημερολόγιο
   // που η καταχώρηση θα έγραφε.
-  const plan = planDocSave(doc, today);
-  const fillOnly = !!(plan.property || plan.settingsFill) && !plan.propertyReplace;
+  const plan = planDocSave(doc, today, opts);
+  const fillOnly = !!(plan.property || plan.settingsFill || plan.propertyFillGroup) && !plan.propertyReplace;
+  // Η «1η δόση» του εκκαθαριστικού εισοδήματος γράφεται μόνο όταν το ακίνητο
+  // ΔΕΝ νοικιάζεται (`incomeSeries`). Οταν ο καλών δεν το ξέρει, η λίστα το λέει
+  // υπό όρο αντί να υπόσχεται γραμμή που ίσως δεν γραφτεί (12.11.2026).
+  const incomeMaybe = kind.value === 'income_tax' && opts.incomeSeries === undefined;
   const out = plan.targets
     .filter(t => t !== FOLDER)
-    .map(t => (t === PROPERTY_TARGET && fillOnly ? `${t} (μόνο κενά)` : t));
+    .map(t => (t === PROPERTY_TARGET && fillOnly ? `${t} (μόνο κενά)`
+      : t === CALENDAR && incomeMaybe ? INCOME_CALENDAR_TARGET : t));
   if (hasFile && plan.archive) out.push(FOLDER);
   return out.filter((t, i) => out.indexOf(t) === i);
 }

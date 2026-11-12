@@ -28,7 +28,11 @@ export interface SettingsTotal { propertyId: string; data: Record<string, unknow
 /** Ό,τι χρειάζεται η αναίρεση για να επιστρέψει ένα ποσό. */
 export type Replaced =
   | { t: 'doc'; id: string; amount: number | null }
-  | { t: 'set'; property_id: string; total: string; year: string };
+  | { t: 'set'; property_id: string; total: string; year: string }
+  // Κενό πεδίο υπάρχοντος ακινήτου που συμπλήρωσε η εισαγωγή (commit.ts,
+  // `UNDOABLE_FIELDS`). Ήταν κενό, οπότε η αναίρεση το ξαναδειάζει, μόνο αν
+  // κρατά ακόμη την τιμή που γράφτηκε.
+  | { t: 'prop'; id: string; field: 'enfia' | 'storage_sqm'; value: number };
 
 export interface StatementPlan {
   /** Νέα γραμμή στο ακίνητο-στόχο, όταν δεν υπάρχει καμία για το έτος. */

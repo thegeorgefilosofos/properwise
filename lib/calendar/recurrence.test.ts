@@ -1,6 +1,7 @@
 // Τεστ για την επέκταση επαναλαμβανόμενων (recurrence.ts). Τρέξε: npx tsx lib/calendar/recurrence.test.ts
 import { nextOccurrence, occurrenceAt, expandRecurring, reminderOccurrences, reminderKey, reminderAllowed, isIncomeInstalmentSource, incomeSameDayFallback, INCOME_INSTALMENT_SOURCE_PREFIX, INCOME_INSTALMENT_REMINDER } from './recurrence'
 import { taxEventSource } from '../tax/greekTaxCalendar'
+import { remindsAs } from './onceOnDay'
 
 let passed = 0, failed = 0
 const fails: string[] = []
@@ -136,6 +137,22 @@ ok('yearly αναπτύσσεται', expandRecurring([{ id: 'y', event_date: '2
   ok('πήρε την υπενθύμιση τριών ημερών: όχι ξανά', incomeSameDayFallback([i5, i6, other], true, sent).map(e => e.id).join() === 'i6')
   ok('η υπενθύμιση τριών ημερών κλειστή: όλες την ίδια μέρα', incomeSameDayFallback([i5, i6, other], false, new Set()).map(e => e.id).join() === 'i5,i6')
   ok('άλλα γεγονότα: καμία αναπλήρωση', incomeSameDayFallback([other], false, new Set()).length === 0)
+}
+
+// ── ΠΕΑ ΚΑΙ ΔΟΣΕΙΣ ΜΑΖΙ: ο πίνακας των υπενθυμίσεων του email ────────────────
+// Το φίλτρο της send-reminders είναι `remindsAs && reminderAllowed`· τα
+// ληξιπρόθεσμα περνούν από το `reminderOccurrences` και το `remindsAs(…, 'overdue')`.
+{
+  const pea = { id: 'p', event_date: '2026-11-30', source: 'pea:expiry:abc:30' }
+  const inc = { id: 'i', event_date: '2026-11-30', source: 'tax:income-instalment-2026-5' }
+  const plain = { id: 'm', event_date: '2026-11-30', source: 'manual' }
+  const types = ['7days', '3days', '1day', 'today']
+  const allowed = (e: typeof pea) => types.filter(t => remindsAs(e, t) && reminderAllowed(e, t)).join()
+  ok('ΠΕΑ: μόνο την ίδια μέρα', allowed(pea) === 'today')
+  ok('δόση: μόνο τρεις μέρες πριν (η ίδια μέρα μόνο ως αναπλήρωση)', allowed(inc) === '3days')
+  ok('άλλο γεγονός: όλη η σκάλα', allowed(plain) === types.join())
+  const od = reminderOccurrences([pea, inc, plain], '2026-12-05', '2026-12-12').overdue.filter(e => remindsAs(e, 'overdue')).map(e => e.id).join()
+  ok('ληξιπρόθεσμο: ούτε ΠΕΑ ούτε δόση', od === 'm')
 }
 
 console.log(`recurrence.ts, ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)
