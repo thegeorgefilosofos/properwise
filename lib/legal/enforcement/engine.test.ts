@@ -20,7 +20,7 @@ function forwardWorking(start: string, n: number, skipAugust: boolean): string {
 }
 import {
   afterCalendarSpanCounterparty, afterCalendarSpanUser, auctionWindow, beforeWorkingSpan,
-  computeTimeline, regimeOf, type CaseFacts, type Item,
+  calmAllowed, CALM_WINDOW_DAYS, computeTimeline, regimeOf, type CaseFacts, type Item,
 } from './engine';
 import { displayable, hasTwoSources } from './gate';
 import { RULES, rule } from './rules';
@@ -76,7 +76,7 @@ ok(forwardWorking('2026-07-20', 15, false) === '2026-08-10', 'TV-3 χωρίς π
 // ── TV-5 έως TV-6β, TV-16: προθεσμίες προς τα πίσω από τον πλειστηριασμό ────
 // Η αυστηρή ανάγνωση (η τιμή της προδιαγραφής) ελέγχεται με το backWorking.
 // Η ασφαλής ημερομηνία της μηχανής είναι μία εργάσιμη νωρίτερα, γιατί δεν
-// ξέρουμε τις τοπικές αργίες (C3, έλεγχος 13/11/2026)· το εύρος ανοίγει ±1.
+// ξέρουμε τις τοπικές αργίες (C3, έλεγχος 12/11/2026)· το εύρος ανοίγει ±1.
 eq(backWorking('2027-03-17', 30, false), '2027-02-02', 'TV-5 αυστηρή ανάγνωση = 02/02/2027 (προδιαγραφή)');
 eq(backWorking('2027-03-17', 15, false), '2027-02-23', 'TV-5β αυστηρή ανάγνωση = 23/02/2027 (προδιαγραφή)');
 eq(backWorking('2027-03-17', 5, false), '2027-03-09', 'TV-5γ αυστηρή ανάγνωση = 09/03/2027 (προδιαγραφή)');
@@ -242,6 +242,24 @@ eq(nextWorking('2027-04-07'), '2027-04-08', 'TV-14 +1');
   eq(displayable({ ...r, lawyerReviewed: { reviewer: 'Δ-1', reviewedAt: '2026-12-01', version: r.version + 1 } }, TODAY), { ok: true, tier: 'verified' }, 'υπογραφή για άλλη έκδοση δεν μετρά');
   eq(displayable({ ...r, lawyerReviewed: { reviewer: 'Δ-1', reviewedAt: '2026-12-01', version: r.version } }, TODAY), { ok: true, tier: 'lawyer' }, 'έγκυρη υπογραφή → βαθμίδα lawyer');
   eq(displayable(rule('ds-120-aade'), '2027-07-01'), { ok: false, reason: 'expired' }, 'μετά τις 30/06/2027 οι 120 δόσεις δεν φαίνονται');
+}
+
+// ── «Υπάρχει χρόνος»: μόνο όταν η μηχανή μπορεί να το στηρίξει ─────────
+// Η εκδοχή 978ae12 έλεγχε μόνο προθεσμίες με ημερομηνία και έλεγε «υπάρχει
+// χρόνος» και στις τρεις πρώτες περιπτώσεις.
+{
+  const calm = (o: Partial<CaseFacts>) => { const f = facts(o); return calmAllowed(computeTimeline(f, TODAY), f, TODAY); };
+  eq(calm({ received: 'diatagi' }), false, 'ήρεμο μήνυμα: διαταγή πληρωμής (ανακοπή χωρίς υπολογισμό) → όχι');
+  eq(calm({ epitagi: '2021-06-01', auction: '2026-11-17' }), false, 'ήρεμο μήνυμα: επιταγή 2021, πλειστηριασμός σε 5 ημέρες → όχι');
+  eq(calm({ epitagi: OLD, seizure: '2026-10-23' }), false, 'ήρεμο μήνυμα: κατάσχεση πριν από 20 ημέρες, παλιό καθεστώς → όχι');
+  eq(calm({ epitagi: 'unknown', seizure: '2026-10-23' }), false, 'ήρεμο μήνυμα: κατάσχεση πριν από 20 ημέρες, άγνωστο καθεστώς → όχι');
+  eq(calm({ epitagi: NEW, auction: '2027-06-30' }), false, 'ήρεμο μήνυμα: με πλειστηριασμό η αναστολή του 1000 δεν υπολογίζεται → όχι');
+  eq(calm({ received: 'servicer', servicerRequest: '2026-11-20' }), true, 'ήρεμο μήνυμα: μόνο αίτημα στον servicer → ναι');
+  eq(calm({ epitagi: NEW, seizure: '2026-11-10' }), true, `ήρεμο μήνυμα: νέα κατάσχεση, ασφαλής ημερομηνία πέρα από ${CALM_WINDOW_DAYS} ημέρες → ναι`);
+  eq(calm({ epitagi: NEW, seizure: '2026-10-01' }), false, 'ήρεμο μήνυμα: ασφαλής ημερομηνία μέσα στο παράθυρο → όχι');
+  // «Γιατί» σε επιταγή πριν από το 2022: μόνο ο κανόνας της μεταβατικής.
+  const pre = computeTimeline(facts({ epitagi: '2021-06-01', seizure: '2026-06-20', auction: '2027-03-17', continuation: '2027-01-10' }), TODAY);
+  for (const k of ['ka-954-4', 'as-938-4', 'ka-993', 'an-934a', 'as-973']) eq(item(pre, k)?.ruleIds, ['regime-4842-2022'], `πριν από το 2022: το «Γιατί» του ${k} δείχνει μόνο τη μεταβατική`);
 }
 
 // ── Το μητρώο ───────────────────────────────────────────────────────────

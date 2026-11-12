@@ -126,7 +126,7 @@ const minTier = (ts: Tier[]): Tier => (ts.every(t => t === 'lawyer') ? 'lawyer' 
  *             ΚΑΙ μία εργάσιμη νωρίτερα, γιατί δεν ξέρουμε τις τοπικές αργίες
  *             (C3). Μια τοπική αργία μέσα στο διάστημα (π.χ. του Αγίου Δημητρίου
  *             στη Θεσσαλονίκη) φέρνει την προθεσμία μία εργάσιμη πίσω· χωρίς
- *             αυτό η «ασφαλής» ημερομηνία θα ήταν ήδη αργά (έλεγχος 13/11/2026).
+ *             αυτό η «ασφαλής» ημερομηνία θα ήταν ήδη αργά (έλεγχος 12/11/2026).
  *   latest:   μία εργάσιμη αργότερα από την αυστηρή ανάγνωση, με τον Αύγουστο να μετρά.
  */
 export function beforeWorkingSpan(day: string, n: number): Span {
@@ -202,6 +202,31 @@ export function window973(declared: string): { span: Span; reasons: string[] } {
   return { span: { earliest, latest, safe: earliest }, reasons };
 }
 
+/** Πόσες ημέρες πριν από την ασφαλή ημερομηνία ή τον πλειστηριασμό παύει το «υπάρχει χρόνος». */
+export const CALM_WINDOW_DAYS = 15;
+
+/** Οι προθεσμίες του ΧΡΗΣΤΗ· αν κάποια δεν υπολογίζεται, δεν ξέρουμε αν υπάρχει χρόνος. */
+const USER_DEADLINE_KEYS: readonly string[] = ['dp-632', 'an-934a', 'ka-954-4', 'as-938-4', 'as-1000'];
+
+/**
+ * Επιτρέπεται το καθησυχαστικό «Υπάρχει χρόνος να δεις τις επιλογές σου»;
+ *
+ * ΜΟΝΟ αν ξέρουμε ότι ισχύει (έλεγχος 12/11/2026). Η πρώτη εκδοχή κοιτούσε
+ * μόνο προθεσμίες με ημερομηνία, οπότε έλεγε «υπάρχει χρόνος» ακριβώς εκεί
+ * όπου η μηχανή ΔΕΝ μπορεί να υπολογίσει: διαταγή πληρωμής, επιταγή του 2021
+ * με πλειστηριασμό σε πέντε ημέρες, κατάσχεση πριν από είκοσι ημέρες σε
+ * παλιό ή άγνωστο καθεστώς. Τώρα χρειάζονται και τα τρία:
+ *   · καμία δική σου προθεσμία χωρίς υπολογισμό («ρώτα δικηγόρο»)·
+ *   · ο πλειστηριασμός, αν υπάρχει, πέρα από CALM_WINDOW_DAYS ημέρες·
+ *   · καμία δική σου προθεσμία περασμένη ή μέσα σε CALM_WINDOW_DAYS ημέρες.
+ */
+export function calmAllowed(t: Timeline, f: CaseFacts, today: string): boolean {
+  const soon = addDays(today, CALM_WINDOW_DAYS);
+  if (t.items.some(i => i.kind === 'ask-lawyer' && USER_DEADLINE_KEYS.includes(i.key))) return false;
+  if (isDate(f.auction) && f.auction <= soon) return false;
+  return !t.items.some(i => i.kind === 'deadline' && !!i.span && (!!i.past || i.span.safe <= soon));
+}
+
 export function computeTimeline(f: CaseFacts, today: string): Timeline {
   assertIso(today);
   for (const k of ['epitagi', 'seizure', 'auction', 'continuation', 'servicerRequest', 'exodikastikos'] as const) {
@@ -251,11 +276,11 @@ export function computeTimeline(f: CaseFacts, today: string): Timeline {
       const reason = regime === 'pre2022' ? PRE2022
         : regime === 'old' ? rule('an-934a-old').withheldReason!
         : 'Χρειάζεται η ημερομηνία επίδοσης της επιταγής για να ξέρουμε ποιο καθεστώς ισχύει.';
-      items.push(askLawyer('an-934a', ['an-934a-old'], reason));
+      items.push(askLawyer('an-934a', regime === 'pre2022' ? ['regime-4842-2022'] : ['an-934a-old'], reason));
     }
 
     const w = gateRule('ka-993-window', today);
-    if (regime === 'pre2022') items.push(askLawyer('ka-993', ['ka-993-window', 'regime-4842-2022'], PRE2022));
+    if (regime === 'pre2022') items.push(askLawyer('ka-993', ['regime-4842-2022'], PRE2022));
     else if ('tier' in w) {
       const { span, reasons } = auctionWindow(f.seizure, f.asset);
       if (regime === 'unknown') reasons.push('pre2022-possible');
@@ -278,7 +303,7 @@ export function computeTimeline(f: CaseFacts, today: string): Timeline {
   if (isDate(f.auction)) {
     const A = f.auction;
     for (const [key, base] of [['ka-954-4', 'ka-954-4'], ['as-938-4', 'as-938-4']] as const) {
-      if (regime === 'pre2022') { items.push(askLawyer(key, [`${base}-old`, 'regime-4842-2022'], PRE2022)); continue; }
+      if (regime === 'pre2022') { items.push(askLawyer(key, ['regime-4842-2022'], PRE2022)); continue; }
       const ids = regimes.map(r => `${base}-${r}`);
       const uses = ids.map(id => gateRule(id, today));
       if (uses.every(u => 'tier' in u)) {
@@ -350,7 +375,7 @@ export function computeTimeline(f: CaseFacts, today: string): Timeline {
   if (isDate(f.continuation)) {
     const u = gateRule('as-973-window', today);
     if (regime === 'old' || regime === 'pre2022') {
-      items.push(askLawyer('as-973', ['as-973-window'], `Για επιταγή πριν από την ${grDate(rule('regime-126-7').params.date!)} η νέα ημέρα μετά από δήλωση συνέχισης κρίνεται από παλιότερο κείμενο που δεν επαληθεύσαμε.`));
+      items.push(askLawyer('as-973', [regime === 'pre2022' ? 'regime-4842-2022' : 'regime-126-7'], `Για επιταγή πριν από την ${grDate(rule('regime-126-7').params.date!)} η νέα ημέρα μετά από δήλωση συνέχισης κρίνεται από παλιότερο κείμενο που δεν επαληθεύσαμε.`));
     } else if ('tier' in u) {
       const { span, reasons } = window973(f.continuation);
       const { earliest, latest } = span;

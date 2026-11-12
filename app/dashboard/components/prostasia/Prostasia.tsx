@@ -18,14 +18,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { T, Btn, ChipToggle } from '@/components/Theme'
 import { grDate } from '@/lib/core/format'
 import { athensToday } from '@/lib/core/time'
-import { computeTimeline, type CaseFacts, type DateFact, type Item, type Received } from '@/lib/legal/enforcement/engine'
+import { calmAllowed, computeTimeline, type CaseFacts, type DateFact, type Item, type Received } from '@/lib/legal/enforcement/engine'
 import { displayable } from '@/lib/legal/enforcement/gate'
 import { rule, RULES_CHECKED_AT } from '@/lib/legal/enforcement/rules'
 import {
   ANSWER, ASK_LAWYER_BADGE, CHECKS_TITLE, FIELDS, INTRO, LAWYER_BADGE, NEXT, REASONS, RECEIVED_OPTIONS, VERIFIED_BADGE, WHOSE,
-  CALM_WINDOW_DAYS, basisLine, checkText, footer, itemBody, itemTitle, longDate, optionCards, relDays,
+  basisLine, checkText, footer, itemBody, itemTitle, longDate, optionCards, relDays,
 } from '@/lib/legal/enforcement/copy'
-import { addDays as addDaysIso } from '@/lib/legal/enforcement/calc'
 import * as contactStore from '@/lib/data/contacts'
 import { createClient } from '@/lib/supabase/client'
 import { DatePicker, CustomSelect } from '../UIComponents'
@@ -270,9 +269,8 @@ export default function Prostasia({ userId }: { userId: string }) {
   const dated = timeline?.items.filter(i => i.kind !== 'ask-lawyer') ?? []
   const ask = timeline?.items.filter(i => i.kind === 'ask-lawyer') ?? []
   const currentKey = dated.find(i => i.kind === 'deadline' && !i.past)?.key
-  // «Υπάρχει χρόνος» μόνο αν καμία δική σου προθεσμία δεν πέρασε ή δεν είναι κοντά.
-  const soon = addDaysIso(today, CALM_WINDOW_DAYS)
-  const urgent = dated.some(i => i.kind === 'deadline' && i.span && (i.past || i.span.safe <= soon))
+  // «Υπάρχει χρόνος» μόνο όταν η μηχανή μπορεί να το στηρίξει (calmAllowed).
+  const urgent = !!timeline && !!facts && !calmAllowed(timeline, facts, today)
   const done = (['epitagi', 'seizure', 'continuation', 'servicerRequest'] as const)
     .filter(k => answers.dates[k].mode === 'date' && answers.dates[k].date)
 

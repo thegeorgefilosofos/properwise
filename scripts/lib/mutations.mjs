@@ -38,7 +38,7 @@ export const MUTATIONS = {
     { add: 'app/dashboard/components/prostasia/__mut_review__.ts', content: "import { rule } from '@/lib/legal/enforcement/rules'\nexport const forged = { ...rule('as-938-4-new'), lawyerReviewed: { reviewer: 'x', reviewedAt: '2026-11-12', version: 1 } }\n" },
     // η σήμανση γραμμένη με το χέρι στην οθόνη
     { add: 'app/dashboard/components/prostasia/__mut_badge__.tsx', content: tsx('    <span>Επαληθευμένο από επίσημες πηγές · δεν αποτελεί νομική συμβουλή</span>') },
-    // αριθμός του κανόνα που δεν λέει το απόσπασμα (έλεγχος 13/11/2026)
+    // αριθμός του κανόνα που δεν λέει το απόσπασμα (έλεγχος 12/11/2026)
     { file: 'lib/legal/enforcement/rules.ts', from: "params: { percent: 70 }", to: "params: { percent: 60 }" },
     { file: 'lib/legal/enforcement/numbers.ts', from: "count: 120, was: 72", to: "count: 100, was: 72" },
     // η σήμανση με άλλη διατύπωση από αυτή που ενέκρινε ο ιδιοκτήτης
@@ -590,7 +590,7 @@ export const MUTATIONS = {
 
   'validity': { every: [
     // Παραπομπή σε νόμο γραμμένη με το χέρι στα κείμενα της Προστασίας
-    // ιδιοκτήτη (13/11/2026): το copy.ts δεν εξαιρείται, άρα πρέπει να κόψει.
+    // ιδιοκτήτη (12/11/2026): το copy.ts δεν εξαιρείται, άρα πρέπει να κόψει.
     { file: 'lib/legal/enforcement/copy.ts', from: "export const CHECKS_TITLE = ", to: "export const MUT_LAW = 'Αιτήσεις έως 30/06/2027 (ν.5354/2026, ΦΕΚ Α 184).';\nexport const CHECKS_TITLE = " },
     // Κανόνας που ΕΛΗΞΕ, ΧΩΡΙΣ εκκρεμότητα. Μέχρι τις 10/11/2026 η μετάλλαξη
     // ήταν στον ΤΑΚΚ· από τότε ο ΤΑΚΚ έχει `pending` και η λήξη του σωστά
