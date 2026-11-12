@@ -270,7 +270,7 @@ export function PropertyRow({ row, index, known, onToggle, onPatch, rowId, force
         <span className="mya-badge-wide" style={{ gap: T.sp.xs, flexWrap: 'wrap', justifyContent: 'flex-end' }}>{badges}</span>
         {row.tax != null && (
           <span style={{ ...TT.bodySm, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', textAlign: 'right', whiteSpace: 'nowrap' }}>
-            <span className="sr-only">Φόρος ακινήτου </span>{fe(row.tax)}
+            <span className="sr-only">{row.enfia != null ? 'Φόρος ακινήτου ' : 'Κύριος φόρος γραμμής '}</span>{fe(row.tax)}
           </span>
         )}
       </div>
@@ -293,7 +293,8 @@ export function PropertyRow({ row, index, known, onToggle, onPatch, rowId, force
             <TextInput label="Έτος κατασκευής" value={row.yearBuilt} onChange={v => onPatch({ yearBuilt: v.replace(/\D/g, '').slice(0, 4) })} inputMode="numeric" />
           </div>
           {extra && <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>{extra}</span>}
-          {row.tax != null && row.tax > 0 && <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>{`Ο φόρος της πράξης για αυτό το ακίνητο, ${fe(row.tax)}, γράφεται ως ΕΝΦΙΑ του ακινήτου${isNew(row) ? '' : ', αν δεν έχει ήδη ποσό'}. Οι δόσεις βγαίνουν από το σύνολο της πράξης.`}</span>}
+          {row.enfia != null && <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>{`Ο φόρος της πράξης για αυτό το ακίνητο, ${fe(row.enfia)}, γράφεται ως ΕΝΦΙΑ του ακινήτου${isNew(row) ? '' : ', αν δεν έχει ήδη ποσό'}. Οι δόσεις βγαίνουν από το σύνολο της πράξης.`}</span>}
+          {row.enfia == null && row.tax != null && <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>Τα ποσά των ακινήτων δεν βγάζουν το πληρωτέο της πράξης, συνήθως λόγω εκπτώσεων, προσαυξήσεων ή απαλλαγής. Γι' αυτό ΕΝΦΙΑ ανά ακίνητο δεν γράφεται, μόνο το σύνολο.</span>}
           {atakBad && <span style={{ ...TT.caption, color: 'var(--negative)' }}>{`Ο ΑΤΑΚ είναι ${ATAK_DIGITS} ψηφία.`}</span>}
         </div>
       )}

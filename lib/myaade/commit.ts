@@ -214,11 +214,15 @@ export async function commitImport(db: SupabaseClient, input: CommitInput): Prom
   let limitHit = false;
   const filledProps: Replaced[] = [];
   const extra = await undoableValues(db, input.userId, input.rows);
+  const patched = new Set<string>();
   for (const r of input.rows) {
     if (r.existingId) {
       const known = input.known.find(k => k.id === r.existingId);
       firstId ??= r.existingId;
       if (!known) continue;
+      // Δεύτερη γραμμή στο ίδιο ακίνητο: το εμποδίζει ήδη η προεπισκόπηση (deriveReview, «same»).
+      if (patched.has(r.existingId)) { failures.push(`Δύο γραμμές έδειχναν στο «${known.name}»· κρατήθηκε η πρώτη.`); continue; }
+      patched.add(r.existingId);
       const cur = { ...known, ...extra.get(r.existingId) };
       const patch = fillOnlyEmpty(cur, r);
       if (!Object.keys(patch).length) continue;
@@ -334,6 +338,8 @@ export async function undoImport(db: SupabaseClient, userId: string, batch: Impo
   for (const r of batch.replaced) {
     if (r.t === 'doc') await documents.update(db, [r.id], { amount: r.amount });
     else if (r.t === 'prop') {
+      // Μόνο τα γνωστά πεδία: η γραμμή διαβάζεται από τη βάση, δεν της χαρίζεται στήλη.
+      if (!(UNDOABLE_FIELDS as readonly string[]).includes(r.field) || typeof r.id !== 'string' || typeof r.value !== 'number') continue;
       // Ήταν κενό πριν την εισαγωγή. Αν ο χρήστης το άλλαξε στο μεταξύ, μένει το δικό του.
       const cur = await properties.oneWithError<Record<string, unknown>>(db, r.id, r.field, userId);
       if (!cur.error && cur.row && Math.round(Number(cur.row[r.field]) * 100) === Math.round(r.value * 100)) {

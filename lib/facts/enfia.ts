@@ -63,6 +63,12 @@ export interface EnfiaFacts {
   ownershipPct?: number | null;
   /** Ο ΤΚ του ακινήτου· κρίνει αν ισχύει η μείωση του μικρού οικισμού (Αττική). */
   postalCode?: string | null;
+  /**
+   * Έτος → πλήθος δόσεων του ΕΚΚΑΘΑΡΙΣΤΙΚΟΥ του φορολογούμενου, όταν υπάρχει
+   * γνωστό σύνολο (lib/calendar/enfiaTotals.ts). Το ποσό του ακινήτου μοιράζεται
+   * στις ίδιες δόσεις με το Ημερολόγιο, όχι σε δικές του.
+   */
+  instalmentCounts?: Readonly<Record<number, number>>;
 }
 
 export interface EnfiaNow {
@@ -174,7 +180,7 @@ export function enfiaYear(s: EnfiaSettings, year: number, facts: EnfiaFacts = {}
   // (έτος χωρίς απόφαση), μένει η προβολή και το `datesConfirmed` το λέει.
   const due = enfiaDueDates(year);
   const byNo = new Map(due.map(d => [d.no, d]));
-  const instalments = enfiaInstalments(annual, year).map(i => {
+  const instalments = enfiaInstalments(annual, year, facts.instalmentCounts?.[year]).map(i => {
     const d = byNo.get(i.no);
     return d ? { ...i, date: d.date, label: grDateLong(d.date) } : i;
   });

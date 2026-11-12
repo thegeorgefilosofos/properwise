@@ -7,6 +7,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { extractPdfText, ascii85Decode, asciiHexDecode } from '@/lib/pdf/pdfText';
 import { enfiaTotalsByProperty } from '@/lib/calendar/enfiaTotals';
+import { enfiaYear, ENFIA_DEFAULTS } from '@/lib/facts/enfia';
 import { PAY_UNDO_HOURS } from '@/lib/reminders/payLink';
 import { parseEnfiaAct } from './enfiaAct';
 import { detectDocKind } from './detect';
@@ -519,6 +520,37 @@ async function run() {
     ok('αναίρεση: ο ΕΝΦΙΑ που γέμισε η εισαγωγή ξαναδειάζει, οι βοηθητικοί που άλλαξε ο χρήστης μένουν',
       undone.ok && back.length === 1 && JSON.stringify(back[0].payload) === JSON.stringify({ enfia: null })
       && back[0].filters.some(f => f[1] === 'id' && f[2] === 'p0'), back.map(c => [c.payload, c.filters]));
+  }
+
+  // ── 17. ΕΝΦΙΑ ανά ακίνητο ΜΟΝΟ όταν οι γραμμές βγάζουν το πληρωτέο (έλεγχος 12/11/2026) ─
+  {
+    const enfiaOf = (lines: string[]) => buildDrafts(okDoc(parseEnfiaAct(lines))!, [], Infinity).map(commitRowOf).map(r => r.enfia);
+    const eq = enfiaOf(enfiaActLines());
+    ok('γραμμές 412,30 + 430,90 = πληρωτέο 843,20: ο φόρος κάθε γραμμής γράφεται', JSON.stringify(eq) === JSON.stringify([412.3, 430.9]), eq);
+    const cut = enfiaActLines({ gross: '843,20', payable: '632,40' });
+    ok('με έκπτωση (πληρωτέο 632,40): κανένα ποσό ανά ακίνητο, το σύνολο μένει',
+      enfiaOf(cut).every(v => v === null) && okDoc(parseEnfiaAct(cut))?.total === 632.4, enfiaOf(cut));
+    for (const raw of ['0,00', '-12,00']) {
+      const zero = enfiaActLines({ payable: raw });
+      ok(`πληρωτέο «${raw}»: κανένα ποσό ανά ακίνητο`, enfiaOf(zero).every(v => v === null), enfiaOf(zero));
+    }
+
+    // Οι δόσεις του ακινήτου ακολουθούν το εκκαθαριστικό του ΑΦΜ (ίδιο με το Ημερολόγιο).
+    const small = { ...ENFIA_DEFAULTS };
+    const alone = enfiaYear(small, 2026, { stored: 27 });
+    const withTotal = enfiaYear(small, 2026, { stored: 27, instalmentCounts: { 2026: 12 } });
+    ok('27€ μόνο του: δύο δόσεις (από το ποσό)', alone.instalments.length === 2, alone.instalments.length);
+    ok('27€ σε εκκαθαριστικό 12 δόσεων: δώδεκα, όσο και το Ημερολόγιο, με το ίδιο ετήσιο',
+      withTotal.instalments.length === 12 && Math.round(withTotal.instalments.reduce((a, i) => a + i.amount, 0) * 100) === 2700, withTotal.instalments.map(i => i.amount));
+    ok('πλήθος για άλλο έτος δεν αλλάζει το φετινό', enfiaYear(small, 2026, { stored: 27, instalmentCounts: { 2025: 12 } }).instalments.length === 2);
+
+    // Αναίρεση: πεδίο εκτός λίστας δεν αγγίζεται, ακόμη κι αν γράφτηκε στη γραμμή.
+    const now = new Date('2026-10-30T12:00:00Z');
+    const bogus = { id: 'b17', created_at: new Date(now.getTime() - 3_600_000).toISOString(), undone_at: null, tax_year: 2026, created_property_ids: [], document_id: null,
+      replaced: [{ t: 'prop', id: 'p0', field: 'user_id', value: 1 }] as unknown as Parameters<typeof undoImport>[2]['replaced'] };
+    const bogusDb = makeFakeDb(c => (c.table === 'myaade_imports' && c.op === 'update' ? { data: [{ id: 'b17' }], error: null } : undefined));
+    const bo = await undoImport(bogusDb.db as unknown as SupabaseClient, 'u1', bogus, now);
+    ok('αναίρεση: πεδίο εκτός λίστας αγνοείται', bo.ok && !bogusDb.calls.some(c => c.table === 'user_properties' && (c.op === 'update' || c.single)), bogusDb.calls.map(c => `${c.table}:${c.op}`));
   }
 
   // ── 11. Τα fixtures είναι ψεύτικα ───────────────────────────────────

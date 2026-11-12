@@ -40,12 +40,14 @@ export interface Draft {
   category: string | null;
   right: string | null;
   kind: string | null;
-  /**
-   * Ο φόρος της γραμμής, όπως τον τυπώνει η πράξη. Γράφεται στο `enfia` του
-   * ακινήτου (στο υπάρχον μόνο αν λείπει) και δεν διορθώνεται εδώ: είναι αριθμός
-   * του επίσημου εγγράφου. Το σύνολο του ΑΦΜ μένει χωριστά (commit.ts).
-   */
+  /** Ο φόρος της γραμμής, όπως τον τυπώνει η πράξη. Μόνο για την προβολή. */
   tax: number | null;
+  /**
+   * Ό,τι γράφεται στο `enfia` του ακινήτου (στο υπάρχον μόνο αν λείπει): ο
+   * φόρος της γραμμής ΜΟΝΟ όταν είναι το πληρωτέο (`lineTaxIsPayable`), αλλιώς
+   * `null`. Δεν διορθώνεται εδώ: είναι αριθμός του επίσημου εγγράφου.
+   */
+  enfia: number | null;
   /** Κάποιο πεδίο βγήκε από τη θέση του: «Έλεγξέ το». */
   check: boolean;
   /** Νέα γραμμή που δεν χώρεσε στο πακέτο όταν διαβάστηκε το αρχείο. */
@@ -124,11 +126,31 @@ export function bulkWindow(doc: MyAadeImport, known: readonly KnownProperty[], m
   return { shown, total, hidden: total - shown.length };
 }
 
+/**
+ * Ο φόρος κάθε γραμμής είναι το ΠΛΗΡΩΤΕΟ του ακινήτου μόνο όταν οι γραμμές
+ * αθροίζουν το πληρωτέο σύνολο της πράξης (ανοχή ενός λεπτού) και αυτό είναι
+ * θετικό. Και στις δύο διατάξεις ο φόρος της γραμμής είναι ΚΥΡΙΟΣ φόρος, πριν
+ * από εκπτώσεις, προσαυξήσεις ή συμπληρωματικό (enfiaAct.ts, αυτοέλεγχος).
+ * Με εκπτώσεις τα ποσά των γραμμών είναι μεγαλύτερα από όσα πληρώνονται· με
+ * απαλλαγή (σύνολο μηδέν ή αρνητικό) δεν πληρώνεται τίποτα. Τότε δεν γράφεται
+ * ΕΝΦΙΑ σε κανένα ακίνητο της πράξης: ούτε επιμερισμός, ούτε αναλογία. Το
+ * άθροισμα εδώ είναι έλεγχος, όχι ποσό που γράφεται.
+ */
+export function lineTaxIsPayable(doc: MyAadeImport): boolean {
+  if (doc.kind !== 'enfia_act' || doc.total == null || !(doc.total > 0)) return false;
+  // Έγγραφο που δόθηκε μισό (π.χ. φωτογραφία με περισσότερα ακίνητα): το άθροισμα δεν ελέγχεται.
+  if (!doc.properties.length || (doc.found ?? 0) > doc.properties.length) return false;
+  if (doc.properties.some(p => p.tax == null)) return false;
+  const sum = doc.properties.reduce((s, p) => s + Math.round((p.tax as number) * 100), 0);
+  return Math.abs(sum - Math.round(doc.total * 100)) <= 1;
+}
+
 /** Το έτος κατασκευής για πεδίο: τέσσερα ψηφία ή κενό. */
 const yearText = (n: number | null | undefined): string => (n != null && Number.isInteger(n) ? String(n) : '');
 
 /** Οι γραμμές του εγγράφου (έως BULK_MAX), με ταίριασμα και όριο πακέτου. Οι νέες πέρα από το όριο ξεκινούν ξετσεκαρισμένες. */
 export function buildDrafts(doc: MyAadeImport, known: readonly KnownProperty[], slots: number): Draft[] {
+  const payable = lineTaxIsPayable(doc);
   const drafts: Draft[] = bulkWindow(doc, known).shown.map(i => {
     const p = doc.properties[i];
     return {
@@ -139,7 +161,8 @@ export function buildDrafts(doc: MyAadeImport, known: readonly KnownProperty[], 
       municipality: p.municipality, prefecture: p.prefecture ?? null, district: p.district ?? null,
       storageSqm: toText(p.auxSqm),
       category: p.category ?? null, right: p.right ?? null,
-      kind: p.kind, tax: p.tax, check: p.check, overPlan: false,
+      kind: p.kind, tax: p.tax, enfia: payable && p.tax != null && p.tax > 0 ? p.tax : null,
+      check: p.check, overPlan: false,
     };
   });
   const over = new Set(overLimit(drafts.filter(r => r.match.status === 'new').map(r => r.key), slots));
@@ -184,7 +207,7 @@ export interface ReviewState {
   /** Η πράξη είναι άλλου έτους από το τρέχον (π.χ. περσινή). */
   otherYear: boolean;
   /** Γιατί δεν γίνεται ακόμη η αποθήκευση, με σειρά προτεραιότητας. Κενό = γίνεται. Σύντομα: χωρούν σε μία γραμμή. */
-  blockers: { id: 'limit' | 'owner' | 'none' | 'maybe' | 'excess' | 'atak' | 'name' | 'postcode' | 'built' | 'total' | 'year'; text: string }[];
+  blockers: { id: 'limit' | 'owner' | 'none' | 'maybe' | 'same' | 'excess' | 'atak' | 'name' | 'postcode' | 'built' | 'total' | 'year'; text: string }[];
 }
 
 /** Ό,τι χρειάζεται η οθόνη για να ξέρει αν και τι αποθηκεύεται. Καθαρή συνάρτηση. */
@@ -208,6 +231,9 @@ export function deriveReview(i: ReviewInput): ReviewState {
   if (needsOwner && !i.ownerId) b.push({ id: 'owner', text: 'Διάλεξε ιδιοκτήτη.' });
   if (!chosen.length) b.push({ id: 'none', text: 'Διάλεξε τουλάχιστον ένα ακίνητο.' });
   if (unanswered) b.push({ id: 'maybe', text: `Απάντησε για ${unanswered} ${plural(unanswered, 'ακίνητο', 'ακίνητα')}: «Ίσως υπάρχει».` });
+  // Δύο γραμμές στο ΙΔΙΟ υπάρχον ακίνητο: η δεύτερη θα έγραφε πάνω στην πρώτη.
+  const targets = chosen.map(existingIdOf).filter((id): id is string => !!id);
+  if (new Set(targets).size < targets.length) b.push({ id: 'same', text: 'Δύο γραμμές δείχνουν στο ίδιο ακίνητο. Δήλωσε τη μία ως άλλο ακίνητο.' });
   if (excess) b.push({ id: 'excess', text: `Ξετσέκαρε ${excess} ή δες τα πακέτα.` });
   if (chosen.some(r => r.atak.trim() !== '' && !isAtak(r.atak))) b.push({ id: 'atak', text: `Ο ΑΤΑΚ θέλει ${ATAK_DIGITS} ψηφία.` });
   if (chosen.some(r => isNew(r) && !r.name.trim())) b.push({ id: 'name', text: 'Δώσε όνομα στο νέο ακίνητο.' });
@@ -240,6 +266,6 @@ export function commitRowOf(d: Draft) {
     existingId: existingIdOf(d), name: d.name, address: d.address || null, atak: isAtak(d.atak) ? atakDigits(d.atak) : null,
     sqm: toNumber(d.sqm), ownershipPct: toNumber(d.pct), floor: d.floor || null,
     postalCode: /^\d{5}$/.test(d.postcode.trim()) ? d.postcode.trim() : null, yearBuilt: yearBuiltOf(d.yearBuilt, 2099),
-    storageSqm: toNumber(d.storageSqm), enfia: d.tax != null && d.tax > 0 ? d.tax : null,
+    storageSqm: toNumber(d.storageSqm), enfia: d.enfia != null && d.enfia > 0 ? d.enfia : null,
   };
 }
