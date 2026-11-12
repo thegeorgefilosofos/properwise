@@ -30,7 +30,8 @@ import { createClient } from '@/lib/supabase/client';
 import { T, TT, Btn, Badge, Modal, fe } from '@/components/Theme';
 import { NumberInput, CustomSelect } from './UIComponents';
 import { notify, notifyError } from '@/components/Toast';
-import { MAX_SCAN_MB, scanPhotoList, isPhotoFile } from './scanDoc';
+import { MAX_SCAN_MB, scanPhotoList } from './scanDoc';
+import { isPhotoFile, MYAADE_ACCEPT } from '@/lib/myaade/accept';
 import * as propertiesData from '@/lib/data/properties';
 import { read } from '@/lib/data/read';
 import { grDate } from '@/lib/core/format';
@@ -354,7 +355,7 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
           </>
         ))}
         {/* Το πεδίο του αρχείου ζει και στο σφάλμα: το «Δοκίμασε άλλο αρχείο» το ανοίγει. */}
-        {step === 'pick' && left !== 0 && (failure ? <input id={inputId} type="file" accept="application/pdf,.pdf" className="sr-only" tabIndex={-1} aria-label="Η πράξη ΕΝΦΙΑ σε PDF" onChange={e => { void readFile(e.target.files?.[0]); e.currentTarget.value = ''; }} />
+        {step === 'pick' && left !== 0 && (failure ? <input id={inputId} type="file" accept={MYAADE_ACCEPT} className="sr-only" tabIndex={-1} aria-label="Το Ε9 ή η πράξη ΕΝΦΙΑ, σε PDF ή φωτογραφία" onChange={e => { void readFile(e.target.files?.[0]); e.currentTarget.value = ''; }} />
           : <DropZone onFile={f => void readFile(f)} disabled={known === null || loadFailed} inputId={inputId} />)}
 
         {step === 'reading' && <ReadProgress page={progress.page} pages={progress.pages} label={status} />}

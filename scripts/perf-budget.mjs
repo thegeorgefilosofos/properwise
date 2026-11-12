@@ -169,6 +169,11 @@ void (async () => {
     const mark = l === null ? '     —' : l < 2048 ? `${kb(l)}!` : kb(l)
     console.log(`  ${row.path.padEnd(30)} ${kb(row.m.initial).padStart(6)} ${kb(row.m.js).padStart(8)} ${kb(row.m.total).padStart(8)} ${String(row.m.fcp).padStart(6)}ms ${mark.padStart(8)}`)
   }
+  // ── ΤΑ BYTES ΤΗΣ ΠΥΛΗΣ, ΟΧΙ ΣΤΡΟΓΓΥΛΑ KB (11/11/2026) ──────────────────────
+  // Η βάση γράφεται σε bytes· ο πίνακας από πάνω δείχνει δέκατα του KB, δηλαδή
+  // ±51 bytes. Για να γραφτεί βάση από ό,τι μέτρησε το CI χωρίς να μαντέψει
+  // κανείς, η ίδια μέτρηση τυπώνεται και ακριβής, σε μία γραμμή JSON.
+  console.log('\n  bytes ' + JSON.stringify(Object.fromEntries(rows.map(r => [r.path, { initial: r.m.initial, js: r.m.js, total: r.m.total }]))))
 
   if (WRITE) {
     // ═══ ΕΔΩ ΗΤΑΝ Η ΤΡΥΠΑ ═══════════════════════════════════════════════════

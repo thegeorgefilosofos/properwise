@@ -28,7 +28,7 @@ import { hy } from './Hyphen';
 
 // Τα στοιχεία του κρίσιμου μονοπατιού ζουν στο ThemeCore.tsx (δες εκεί γιατί)
 // και ξαναεξάγονται εδώ αυτούσια.
-export { quietFocus, OVERLAY_BASE_Z, ABOVE_ASSISTANT_Z, isOverlayOpen, useOverlayShell, CloseButton, MODAL_WIDTH, Modal, pressable, Btn, IconBtn, ChipToggle, LinkBtn } from './ThemeCore';
+export { quietFocus, OVERLAY_BASE_Z, ABOVE_ASSISTANT_Z, isOverlayOpen, lockScroll, useOverlayShell, CloseButton, MODAL_WIDTH, Modal, pressable, Btn, IconBtn, ChipToggle, LinkBtn } from './ThemeCore';
 export type { ModalSize } from './ThemeCore';
 import { useOverlayShell, CloseButton, MODAL_WIDTH, Btn, type ModalSize } from './ThemeCore';
 

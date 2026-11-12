@@ -106,6 +106,35 @@ export const ABOVE_ASSISTANT_Z = 1400;
  */
 export const isOverlayOpen = (): boolean => overlayStack.length > 0;
 
+// ═══ ΤΟ ΚΛΕΙΔΩΜΑ ΤΗΣ ΚΥΛΙΣΗΣ ΜΕΤΡΑΕΙ, ΔΕΝ ΘΥΜΑΤΑΙ (11/11/2026) ═══════════════
+// Κάθε επικάλυψη κρατούσε την τιμή που βρήκε (`prev`) και την ξανάγραφε στο
+// κλείσιμο, κάτι που είναι σωστό μόνο όταν κλείνουν με την ανάποδη σειρά από
+// αυτή που άνοιξαν. Και το φύλλο φίλτρων του Αρχείου (ArchiveFilters) είχε δικό
+// του κλείδωμα, μόνο στο `body`: στον πίνακα όμως κυλά η `.app-content`, που
+// έμενε ξεκλείδωτη πίσω από το φύλλο (μετρημένο στη σκηνή `documents`).
+//
+// Τώρα υπάρχει ΕΝΑ κλείδωμα για όλες: η πρώτη επικάλυψη κλειδώνει και κρατά
+// τις αρχικές τιμές, η τελευταία που φεύγει τις γυρίζει, με όποια σειρά κι αν
+// κλείσουν.
+let scrollLocks = 0;
+let scrollSaved: Array<[HTMLElement, string]> = [];
+export function lockScroll(): () => void {
+  if (scrollLocks++ === 0) {
+    const targets = [document.querySelector<HTMLElement>('.app-content'), document.body]
+      .filter((el): el is HTMLElement => !!el);
+    scrollSaved = targets.map(el => [el, el.style.overflow]);
+    targets.forEach(el => { el.style.overflow = 'hidden'; });
+  }
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    if (--scrollLocks > 0) return;
+    scrollSaved.forEach(([el, v]) => { el.style.overflow = v; });
+    scrollSaved = [];
+  };
+}
+
 // Εξάγεται για τη μία επικάλυψη που ΔΕΝ είναι Modal (WelcomeOnboarding): παίρνει
 // την ίδια εστίαση και παγίδα Tab, με `onClose` που δεν κάνει τίποτα.
 export function useOverlayShell(open: boolean, onClose: () => void) {
@@ -218,11 +247,7 @@ export function useOverlayShell(open: boolean, onClose: () => void) {
   // hidden) και το `document.body` για τις δημόσιες σελίδες που δεν το έχουν.
   useEffect(() => {
     if (!open) return;
-    const targets = [document.querySelector<HTMLElement>('.app-content'), document.body]
-      .filter((el): el is HTMLElement => !!el);
-    const prev = targets.map(el => el.style.overflow);
-    targets.forEach(el => { el.style.overflow = 'hidden'; });
-    return () => { targets.forEach((el, i) => { el.style.overflow = prev[i]; }); };
+    return lockScroll();
   }, [open]);
 
   return { panelRef, z: OVERLAY_BASE_Z + depth * 10, backdrop };
