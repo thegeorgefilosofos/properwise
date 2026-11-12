@@ -54,6 +54,7 @@ import {
   type MatchCandidate, type MatchResult,
 } from '@/lib/billing/parse';
 import { MSG } from '@/lib/core/dbError';
+import { isPhotoFile } from '@/lib/myaade/accept';
 
 // ── Το prompt αναγνώρισης (ΕΝΑ, κοινό) ─────────────────────────────────────
 // Ζει στο lib/billing/scanPrompt.ts, χτισμένο από το ίδιο λεξιλόγιο με τη φόρμα
@@ -461,10 +462,7 @@ export async function scanPhoto(file: File): Promise<ScanFailure & { photo?: { c
 }
 
 // ── Φωτογραφία Ε9 ή πράξης ΕΝΦΙΑ: η μαζική καταχώρηση (09/11/2026) ─────────
-/** Τι φωτογραφίες δέχεται η μαζική καταχώρηση. Το HEIC μόνο όπου ο περιηγητής το ανοίγει. */
-export const PHOTO_LIST_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'] as const;
-export const isPhotoFile = (file: { type?: string; name?: string }): boolean =>
-  (PHOTO_LIST_TYPES as readonly string[]).includes((file.type || '').toLowerCase()) || /\.(jpe?g|png|webp|hei[cf])$/i.test(file.name || '');
+// Τι φωτογραφίες δέχεται: μία λίστα για το `accept` και τον έλεγχο (lib/myaade/accept.ts).
 
 /**
  * Διαβάζει φωτογραφία εγγράφου με δικό του prompt (lib/myaade/photo.ts) και
