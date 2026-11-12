@@ -4,7 +4,7 @@
 // πότε πάει κατευθείαν στη μαζική και τι λέει η κάρτα του βήματος ελέγχου.
 // ΜΟΝΟ ΣΥΝΘΕΤΙΚΑ ΣΤΟΙΧΕΙΑ (guard-fixture-identities).
 import { shouldSniff, scanRoute, offersBulk, bulkOfferTitle, bulkOfferAction, sniffBeforeScan, SNIFF_MAX_BYTES, type SniffResult } from './route';
-import { sniffMyaadeKind, sniffMyaade, SNIFF_TIMEOUT_MS } from './sniff';
+import { sniffMyaade, SNIFF_TIMEOUT_MS } from './sniff';
 import { PDF_TIMEOUT_MS } from './readPdf';
 import { detectDocKind } from './detect';
 import { fakeE9Lines } from '@/scripts/perf-bench/e9Fixture';
@@ -127,10 +127,9 @@ void (async () => {
     ok('αρχείο που δεν είναι PDF: «unreadable», χωρίς κάρτα', r.outcome === 'unreadable' && !offersBulk('e9', PDFF, r.outcome), r);
   }
 
-  const notPdf = new File(['όχι PDF'], 'fake.pdf', { type: PDF });
-  const k = await sniffMyaadeKind(notPdf);
-  ok('αρχείο που δεν είναι PDF: «δεν ξέρουμε», όχι σφάλμα', k === null, k);
-  ok('και η σάρωση συνεχίζει', scanRoute(k, PDF) === 'scan');
+  const notPdf = await sniffMyaade(new File(['όχι PDF'], 'fake.pdf', { type: PDF }));
+  ok('αρχείο που δεν είναι PDF: χωρίς είδος, όχι σφάλμα', notPdf.outcome !== 'read', notPdf);
+  ok('και η σάρωση συνεχίζει', scanRoute(notPdf.outcome === 'read' ? notPdf.kind : null, PDF) === 'scan');
   console.log(`σάρωση → μαζική: ${pass} ✓ · ${fail} ✗`);
   if (fail) process.exit(1);
 })();

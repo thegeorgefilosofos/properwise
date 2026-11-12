@@ -8,7 +8,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readPdfText, PdfReadError } from './readPdf';
 import { detectDocKind } from './detect';
-import type { MyAadeDocKind } from './types';
 import type { SniffResult } from './route';
 
 /**
@@ -41,10 +40,4 @@ export async function sniffMyaade(file: File): Promise<SniffResult> {
     // σενάριο του εργάτη δεν φορτώθηκε (`PdfWorkerLoadError`, δεν είναι PdfReadError).
     return { outcome: e instanceof PdfReadError ? 'unreadable' : 'error' };
   }
-}
-
-/** Το είδος του PDF από την κεφαλίδα του, ή `null` όταν δεν διαβάστηκε. */
-export async function sniffMyaadeKind(file: File): Promise<MyAadeDocKind | null> {
-  const r = await sniffMyaade(file);
-  return r.outcome === 'read' ? r.kind : null;
 }
