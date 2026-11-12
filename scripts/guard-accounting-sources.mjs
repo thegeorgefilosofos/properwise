@@ -22,6 +22,12 @@
 //   εγκυκλίους· ό,τι αναφέρεται και δεν είναι στο μητρώο, το λέει. Έτσι μια
 //   καινούρια εξάρτηση δεν μπορεί να μπει κρυφά.
 //
+// ΑΝΘΡΩΠΟΣ Ή ΕΡΓΑΛΕΙΟ (12/11/2026). Το `checkedAt` είναι η ανθρώπινη
+// υπογραφή. Οπου την πηγή την αντιπαρέβαλε μόνο εργαλείο, `checkedAt: null` και
+// `toolReadAt` με την ημέρα της ανάγνωσης. Αυτό περνά με προειδοποίηση που
+// τυπώνεται πάντα· κόβει (και χωρίς `--strict`) όταν το `toolReadAt` λείπει, δεν
+// είναι ημερομηνία, είναι μελλοντικό ή είναι πάνω από 12 μηνών.
+//
 // Η ΦΡΕΣΚΑΔΑ ΕΛΕΓΧΕΤΑΙ ΜΕ `--strict`, όπως στο price-freshness: στο CI είναι
 // προειδοποίηση, στο προγραμματισμένο workflow είναι κόκκινο που ανοίγει issue.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -34,6 +40,13 @@ const entries = Object.entries(data).filter(([k]) => !k.startsWith('_'));
 
 const problems = [];
 const stale = [];
+/** Πηγές που διάβασε μόνο εργαλείο: περνούν, αλλά τυπώνονται πάντα. */
+const toolOnly = [];
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+const isDay = v => ISO_DAY.test(String(v)) && new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v;
+/** Πόσο κρατά μια ανάγνωση εργαλείου χωρίς ανθρώπινο έλεγχο: 12 μήνες. */
+const TOOL_READ_MAX_DAYS = 365;
+const nowMs = Date.now();
 
 // ── 1. Το σημάδι υπάρχει και τα αρχεία επίσης ─────────────────────────────
 /** Οι παραπομπές που καλύπτει μια εγγραφή, χωρίς κενά για σταθερή σύγκριση. */
@@ -50,7 +63,18 @@ for (const [key, s] of entries) {
     }
   }
   if (!s.title || !s.why || !s.pinned) problems.push(`${key}: λείπει τίτλος, αιτιολογία ή έκδοση`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s.checkedAt))) problems.push(`${key}: το checkedAt δεν είναι ημερομηνία`);
+  if (s.checkedAt === null) {
+    // Κανένας άνθρωπος δεν το είδε: μόνο με πρόσφατη ανάγνωση εργαλείου.
+    if (!('toolReadAt' in s)) problems.push(`${key}: checkedAt null χωρίς toolReadAt — ούτε άνθρωπος ούτε εργαλείο το είδε`);
+    else if (!isDay(s.toolReadAt)) problems.push(`${key}: το toolReadAt «${s.toolReadAt}» δεν είναι ημερομηνία YYYY-MM-DD`);
+    else {
+      const age = Math.floor((nowMs - new Date(`${s.toolReadAt}T00:00:00Z`).getTime()) / 86400000);
+      if (age < 0) problems.push(`${key}: το toolReadAt ${s.toolReadAt} είναι μετά το σήμερα`);
+      else if (age > TOOL_READ_MAX_DAYS) problems.push(`${key}: η ανάγνωση του εργαλείου (${s.toolReadAt}) είναι ${age} ημερών (πάνω από 12 μήνες) χωρίς κανέναν ανθρώπινο έλεγχο της πηγής`);
+      else toolOnly.push(`  · ${key}  ${s.title} (toolReadAt ${s.toolReadAt})`);
+    }
+  } else if (!isDay(s.checkedAt)) problems.push(`${key}: το checkedAt δεν είναι ημερομηνία`);
+  else if ('toolReadAt' in s) problems.push(`${key}: έχει και checkedAt και toolReadAt — όταν το δει άνθρωπος, το toolReadAt φεύγει`);
   if (!['accounting', 'legal', 'technical'].includes(s.domain)) problems.push(`${key}: άγνωστο domain «${s.domain}»`);
 }
 
@@ -81,6 +105,7 @@ for (const [cite, f] of seen) {
 const today = Date.now();
 const ageOf = iso => Math.floor((today - new Date(`${iso}T00:00:00Z`).getTime()) / 86400000);
 for (const [, s] of entries) {
+  if (s.checkedAt === null) continue; // η ανάγνωση εργαλείου κρίθηκε στο 1
   const age = ageOf(s.checkedAt);
   if (Number.isFinite(age) && age > (s.maxAgeDays ?? 365)) {
     stale.push(`  · ${s.title}\n    Ελέγχθηκε πριν από ${age} ημέρες (όριο ${s.maxAgeDays}).${s.watch ? `\n    ${s.watch}` : ''}`);
@@ -93,6 +118,12 @@ if (problems.length) {
   console.error('\n  Το μητρώο ζει στο data/accounting-sources.json και πρέπει να συμφωνεί');
   console.error('  με τον κώδικα. Αν αναβαθμίστηκε πηγή, αναβαθμίζονται και τα δύο.');
   process.exit(1);
+}
+
+if (toolOnly.length) {
+  console.warn(`⚠ ${toolOnly.length} πηγές τις διάβασε μόνο εργαλείο· κανένας άνθρωπος δεν τις έχει ελέγξει:\n`);
+  for (const t of toolOnly) console.warn(t);
+  console.warn('\n  Οταν τις δει άνθρωπος: checkedAt με την ημέρα του ελέγχου και αφαίρεση του toolReadAt.\n');
 }
 
 if (stale.length) {

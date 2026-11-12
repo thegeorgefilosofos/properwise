@@ -38,7 +38,9 @@ const GROUP_LABEL: Record<TaxLimitGroup, string> = {
 /** Πότε ελέγχθηκαν τα όρια μιας ομάδας και από πού, από το μητρώο ισχύος. */
 export function taxLimitAsOf(group: TaxLimitGroup): AsOf {
   const rows = TAX_LIMIT_GROUPS[group].map(id => regulated(id));
-  const oldest = rows.map(r => r.checkedAt).sort()[0] ?? null;
+  // Μία εγγραφή χωρίς ανθρώπινο έλεγχο (μόνο `toolReadAt`) κάνει όλη την ομάδα
+  // «χωρίς ημερομηνία ελέγχου»: δεν δανείζεται την ημερομηνία των άλλων.
+  const oldest = rows.some(r => r.checkedAt === null) ? null : rows.map(r => r.checkedAt as string).sort()[0] ?? null;
   return {
     label: GROUP_LABEL[group],
     checkedAt: oldest,

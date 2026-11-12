@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
-import { IDENTITY, POLICY_VERSION } from '@/lib/legal/identity';
+import { IDENTITY, POLICY_VERSION, POLICY_DATE, versionSuffix } from '@/lib/legal/identity';
 import { DISCLOSURE } from '@/lib/legal/disclosure';
 import { subprocessors, ANTHROPIC_CONTRACT, BACKUP_RETENTION_DAYS } from '@/lib/legal/subprocessors';
 import { billingWordsEn } from '@/lib/legal/billingWords';
@@ -28,7 +28,7 @@ const PATH = '/en/trust';
 const URL = siteUrl(PATH);
 const TITLE = 'About us';
 const DESC = 'Who we are, where your data is stored, who can see it and what we never do with it.';
-const UPDATED = monthYearEn(POLICY_VERSION.slice(0, 7));
+const UPDATED = monthYearEn(POLICY_DATE.slice(0, 7));
 
 export const metadata: Metadata = publicMetadata({ title: `${TITLE} · PROPERWISE`, description: DESC, url: URL, image: shareImage('en-trust') });
 
@@ -290,7 +290,7 @@ export default function TrustPageEn() {
           { '@type': 'Organization', '@id': ORG_ID, name: IDENTITY.tradeName, url: SITE,
             logo: { '@type': 'ImageObject', url: siteUrl('/icons/icon-512.png'), width: 512, height: 512 }, sameAs: [...SOCIAL_PROFILES] },
           { '@type': 'AboutPage', '@id': `${URL}#webpage`, url: URL, name: TITLE, description: DESC, inLanguage: 'en',
-            dateModified: POLICY_VERSION, isPartOf: { '@id': `${SITE}/#website` }, about: { '@id': ORG_ID }, publisher: { '@id': ORG_ID } },
+            dateModified: POLICY_DATE, isPartOf: { '@id': `${SITE}/#website` }, about: { '@id': ORG_ID }, publisher: { '@id': ORG_ID } },
           breadcrumbJsonLd([{ name: TITLE, path: PATH }], HOME_CRUMB_EN),
         ],
       }} />
@@ -301,7 +301,7 @@ export default function TrustPageEn() {
         eyebrow="Trust"
         title={TITLE}
         meta={LEGAL_UI_EN.updated(UPDATED)}
-        version={LEGAL_UI_EN.version(POLICY_VERSION, UPDATED)}
+        version={LEGAL_UI_EN.version(POLICY_DATE, UPDATED, versionSuffix(POLICY_VERSION))}
         intro="We ask for your tax number, your leases and your income. There is no reason to trust us with them unless you know who we are, where they go and what we don’t do with them. Here we say it as openly as we can, with no small print, including the exceptions that don’t flatter us."
         blocks={blocks}
       />

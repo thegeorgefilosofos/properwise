@@ -373,6 +373,11 @@ export interface Personal extends Ctx {
   discountPct?: number;      // ποσοστό έκπτωσης· γράφεται ΜΟΝΟ μαζί με `discountCode`
   discountCode?: string;     // ο κωδικός που εφαρμόζει την έκπτωση στο ταμείο
   trialDaysLeft?: number;    // μέρες που απομένουν στη δοκιμή
+  /**
+   * Αν αγοράζεται συνδρομή τώρα. Το γράφει ΜΟΝΟ ο αποστολέας, από το
+   * BILLING_LIVE της συνάρτησης άκρης· ό,τι στείλει ο καλών το σκεπάζει.
+   */
+  billingLive?: boolean;
   daysLeft?: number;         // μέρες που απομένουν σε προθεσμία (π.χ. πριν τη διαγραφή λογαριασμού)
   invoiceAmount?: number;    // ποσό παραστατικού, σε EUR
   invoiceNumber?: string;    // αριθμός παραστατικού

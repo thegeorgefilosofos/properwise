@@ -12,6 +12,7 @@ import { COMMERCIAL_RENT_CAP_2026 as RENT_CAP } from '@/lib/documents/rentCap';
 import { ATHENS_STR_FREEZE as ATHENS, THESS_STR_FREEZE as THESS } from '@/lib/market/greekMarket';
 import { DSTI_LIMIT } from '@/lib/loans/dstiLimit';
 import { SALE_LEASE_BACK_STATUS, SALE_LEASE_BACK_HREF } from './saleLeaseBack';
+import { DEBT_INSTALMENTS, SERVICER_DOCS_DAYS, SERVICER_PROPOSAL_MONTHS, SERVICER_RULES_FROM } from '@/lib/legal/enforcement/numbers';
 import { FIRST_YEAR_BANK_RECEIPT, FIRST_MONTH_BANK_RECEIPT } from '@/lib/billing/greekTax';
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { STR_SPECS_TEXT, STR_SPECS_LAW, STR_SPECS_FEK, STR_SPECS_FROM } from './strSpecs';
@@ -171,6 +172,18 @@ export const REGULATORY_UPDATES_2026: RegulatoryUpdate[] = [
     summary: 'Ο ν. 5072/2023 (ενσωμάτωση Οδηγίας ΕΕ 2021/2167) καθιέρωσε νέο πλαίσιο «διαχειριστών & αγοραστών πιστώσεων» με ενισχυμένη προστασία δανειοληπτών: υποχρεώσεις διαφάνειας/ενημέρωσης, Κώδικας Δεοντολογίας, δικαίωμα καταγγελίας στην ΤτΕ και προθεσμίες πριν τον πλειστηριασμό. Αν οφειλή σου πέρασε σε servicer, μπορείς συχνά να διαπραγματευτείς ρύθμιση και να ζητήσεις απόδειξη νομιμοποίησης της αλυσίδας μεταβίβασης.',
     effective: '2023+ (ισχύον 2026)', legalBasis: 'ν. 5072/2023 (αντικατέστησε τον ν. 4354/2015)',
     severity: 'info',
+  },
+  {
+    // ν. 5354/2026 (ΦΕΚ Α' 184/09.11.2026). Αριθμοί από το lib/legal/enforcement/numbers.ts,
+    // επαληθευμένοι σε δύο πηγές (ΦΕΚ και taxheaven): κανόνες sv-37a, sv-182,
+    // ds-120-aade και ds-120-efka του lib/legal/enforcement/rules.ts.
+    id: 'servicers-5354-2026',
+    area: 'servicers_funds', audiences: ['borrower', 'all'],
+    title: `Servicers και ${DEBT_INSTALMENTS.count} δόσεις: ν. 5354/2026`,
+    summary: `Από ${grDate(SERVICER_RULES_FROM)} ο servicer, αν του το ζητήσεις, πρέπει να σου δώσει χωρίς χρέωση τις συμβάσεις, το ιστορικό καταβολών, τον τρόπο υπολογισμού του επιτοκίου και αναλυτική κατάσταση της οφειλής μέσα σε ${SERVICER_DOCS_DAYS}\u00a0ημέρες· αλλιώς η απαίτηση δεν παράγει τόκους ώσπου να δοθούν τα στοιχεία (άρθρο 37Α ν. 5072/2023). Η γραπτή πρόταση ρύθμισης οφείλεται τουλάχιστον ${SERVICER_PROPOSAL_MONTHS}\u00a0μήνες πριν από πλειστηριασμό που επισπεύδεται για πρώτη φορά, όχι πριν από κάθε πλειστηριασμό (άρθρο 182 ν. 5193/2025). Η ρύθμιση των ${DEBT_INSTALMENTS.was} δόσεων σε ΑΑΔΕ και e-ΕΦΚΑ έγινε έως ${DEBT_INSTALMENTS.count} δόσεις, με αιτήσεις έως ${grDate(DEBT_INSTALMENTS.applyBy)} και τους όρους του νόμου. Αφορά νομικά θέματα, παρέπεμψε σε δικηγόρο.`,
+    effective: grDate(SERVICER_RULES_FROM), legalBasis: "ν. 5354/2026 (ΦΕΚ Α' 184/09.11.2026) άρθρα 13, 17, 35 και 36",
+    sourceLabel: 'ΦΕΚ του ν. 5354/2026 (kodiko.gr)', sourceHref: 'https://www.kodiko.gr/nomothesia/document/1363462/nomos-5354-2026',
+    severity: 'action',
   },
   {
     id: 'sale-lease-back',

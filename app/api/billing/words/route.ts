@@ -15,7 +15,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireSecondStep } from '@/lib/auth/secondStep';
-import { billingWords, INVITE_ACCESS, INVITE_PLAN_REFUSAL, SUBSCRIPTION_NOTICES } from '@/lib/legal/billingWords';
+import { billingWords, INVITE_ACCESS, INVITE_PLAN_REFUSAL, PROSTASIA_ACCESS, SUBSCRIPTION_NOTICES } from '@/lib/legal/billingWords';
 
 export async function GET() {
   const supabase = await createClient();
@@ -34,6 +34,8 @@ export async function GET() {
       inviteAccess: INVITE_ACCESS, invitePlanRefusal: INVITE_PLAN_REFUSAL,
       // Η κάρτα της συνδρομής: αποτυχημένη πληρωμή και επιστροφή χρημάτων (Billing).
       subscriptionNotices: SUBSCRIPTION_NOTICES,
+      // Από ποιο πακέτο ανοίγει η Προστασία ιδιοκτήτη (ProstasiaEntry).
+      prostasiaAccess: PROSTASIA_ACCESS,
     },
     { headers: { 'Cache-Control': 'private, max-age=300' } },
   );
