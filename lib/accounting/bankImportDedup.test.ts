@@ -8,6 +8,20 @@ import { createClient } from '@supabase/supabase-js'
 import { parseBankCsv, legacyKeyOf, findKnownKeys, dedupKeyChunks, type BankTxn } from './bankImport'
 
 let passed = 0, failed = 0
+
+/** Οι τιμές ενός `in.(a,"b,c")` όπως τις χωρίζει το PostgREST. */
+function parseInList(v: string): string[] {
+  if (!v.startsWith('in.(') || !v.endsWith(')')) return []
+  const body = v.slice(4, -1), out: string[] = []
+  let cur = '', quoted = false
+  for (const ch of body) {
+    if (ch === '"') quoted = !quoted
+    else if (ch === ',' && !quoted) { out.push(cur); cur = '' }
+    else cur += ch
+  }
+  out.push(cur)
+  return out
+}
 function ok(name: string, cond: boolean) { if (cond) { passed++ } else { failed++; console.log('  ✗ ' + name) } }
 
 const CAP = 1000
@@ -90,11 +104,12 @@ const fakeLookup = (calls: string[][]) => (keys: string[]) => {
     ok('postgrest-js: έγιναν αιτήματα', urls.length > 1)
     const longest = Math.max(...urls.map(u => u.length))
     ok("postgrest-js: κάθε URL κάτω από 6.000 χαρακτήρες", longest < 6000)
-    const asked = new Set(urls.flatMap(u => {
-      const v = new URL(u).searchParams.get('dedup_hash') || ''
-      return [v]
-    }))
-    ok('postgrest-js: κάθε παλιό κλειδί ρωτήθηκε', nasty.every(t => [...asked].some(v => v.includes(legacyKeyOf(t)))))
+    // Η λίστα `in.(…)` διαβάζεται τιμή προς τιμή, με τα εισαγωγικά, όπως τη
+    // διαβάζει το PostgREST: ένα κλειδί ρωτήθηκε μόνο αν βγαίνει ακέραιο.
+    const asked = new Set(urls.flatMap(u => parseInList(new URL(u).searchParams.get('dedup_hash') || '')))
+    ok('postgrest-js: κάθε παλιό κλειδί ρωτήθηκε ακέραιο', nasty.every(t => asked.has(legacyKeyOf(t))))
+    ok('postgrest-js: κάθε νέο κλειδί ρωτήθηκε', nasty.every(t => asked.has(t.key)))
+    ok('postgrest-js: τίποτα άλλο', asked.size === nasty.length * 2)
   }
   // ── Μισό ζεύγος surrogate στο κόψιμο των 200 ───────────────────────────────
   // Το `.slice(0, 200)` μπορούσε να κόψει ένα emoji στη μέση. Το μισό ζεύγος

@@ -107,12 +107,23 @@ function findColumns(headers: string[]): Columns {
   let di = findCol(headers, DATE_KEYS, i => matches(headers[i], VALUE_DATE_KEYS))
   if (di < 0) di = findCol(headers, DATE_KEYS)
   // Ούτε η περιγραφή παίρνει στήλη χρημάτων: το «Ποσό Συναλλαγής» είναι ποσό.
-  // Η στήλη μετρά ως χρήματα όταν η λέξη χρημάτων ταιριάζει τουλάχιστον το ίδιο
-  // καλά με τη λέξη περιγραφής: η «Αιτιολογία Χρέωσης» είναι περιγραφή (λέξη
-  // «αιτιολογία» έναντι μέρους του «χρέωσης»), το «Ποσό Συναλλαγής» είναι ποσό.
-  const moneyScore = (i: number) => Math.max(...[AMOUNT_KEYS, DEBIT_KEYS, CREDIT_KEYS, BALANCE_KEYS].map(k => matchScore(headers[i], k)))
-  const isMoney = (i: number) => { const m = moneyScore(i); return m > 0 && m >= matchScore(headers[i], DESC_KEYS) }
-  const desc = findCol(headers, DESC_KEYS, i => isDate(i) || isMoney(i))
+  // ΔΥΟ ΠΕΡΑΣΜΑΤΑ. Πρώτα μόνο στήλες χωρίς καμία λέξη χρημάτων, όπως πάντα.
+  // Αν δεν υπάρχει τέτοια, μια στήλη με λέξη χρημάτων γίνεται περιγραφή όταν η
+  // λέξη περιγραφής ταιριάζει καλύτερα: η «Αιτιολογία Χρέωσης» (λέξη
+  // «αιτιολογία» έναντι μέρους του «χρέωσης»). Το δεύτερο πέρασμα σε ένα
+  // βήμα έκανε την «Κίνηση Χρέωσης» περιγραφή και έχανε κάθε χρέωση: γι' αυτό
+  // δεν παίρνει ποτέ τη μόνη στήλη χρέωσης ή πίστωσης όταν δεν υπάρχει στήλη
+  // ποσού να την αντικαταστήσει.
+  const MONEY = [AMOUNT_KEYS, DEBIT_KEYS, CREDIT_KEYS, BALANCE_KEYS]
+  const moneyScore = (i: number) => Math.max(...MONEY.map(k => matchScore(headers[i], k)))
+  const hasAmountCol = headers.some((_, i) => !isDate(i) && matches(headers[i], AMOUNT_KEYS) &&
+    ![DEBIT_KEYS, CREDIT_KEYS, BALANCE_KEYS].some(k => matches(headers[i], k)))
+  const soleOf = (keys: string[], i: number) => matches(headers[i], keys) &&
+    headers.every((h, j) => j === i || isDate(j) || !matches(h, keys))
+  const neededForMoney = (i: number) => !hasAmountCol && (soleOf(DEBIT_KEYS, i) || soleOf(CREDIT_KEYS, i))
+  let desc = findCol(headers, DESC_KEYS, i => isDate(i) || moneyScore(i) > 0)
+  if (desc < 0) desc = findCol(headers, DESC_KEYS, i =>
+    isDate(i) || moneyScore(i) >= matchScore(headers[i], DESC_KEYS) || neededForMoney(i))
   const taken = (i: number) => isDate(i) || i === desc
   const debit = findCol(headers, DEBIT_KEYS, taken)
   const credit = findCol(headers, CREDIT_KEYS, taken)
