@@ -17,7 +17,8 @@ import { groupSeries, rowCount, type SeriesRow } from '@/lib/calendar/series'
 import { taxKindOfEventSource, taxObligationOfEventSource, CONFIDENCE_LABEL, CONFIDENCE_HINT } from '@/lib/tax/greekTaxCalendar'
 import { WHO_LABEL } from '@/lib/accounting/dossier'
 import { downloadFile } from '@/lib/core/download'
-import { type CalEvent, CATEGORIES, TAX_META, fmt, daysUntil, isOverdue } from './model'
+import { type CalEvent, CATEGORIES, TAX_META, fmt, daysUntil, pastStateOf } from './model'
+import { PAST_LABEL } from '@/lib/calendar/pastState'
 import { Tooltip, StatusDot } from './Bits'
 import { dueTextStart } from '@/lib/facts/deadlines'
 
@@ -104,7 +105,11 @@ export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, o
   /** Δεν αλλάζει πια τη γραφή της ημερομηνίας· βλ. το σχόλιο πάνω από την κάρτα. */
   sameMonth?:boolean
 }) {
-  const overdue = isOverdue(event)
+  // Ληξιπρόθεσμο μόνο ό,τι οφείλεται. Η ημέρα λήξης του ΠΕΑ που πέρασε λέει
+  // «Έληξε»· οι υπενθυμίσεις 90 και 30 ημερών που πέρασαν, τίποτα (lib/calendar/pastState.ts).
+  const past    = pastStateOf(event)
+  const overdue = past==='overdue'
+  const pastWord = past&&past!=='passed' ? PAST_LABEL[past] : null
   const done    = event.status==='paid'||event.status==='cancelled'
   const cat     = CATEGORIES[event.category]
   const isAuto  = event.source!=='manual'
@@ -201,9 +206,9 @@ export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, o
         {/* ΤΟ ΕΚΠΡΟΘΕΣΜΟ ΛΕΓΕΤΑΙ ΜΕ ΤΗ ΛΕΞΗ ΤΟΥ. Εγραφε μόνο «πριν 7 ημέρες»,
             που διαβάζεται και ως απλή ημερομηνία. Η λέξη πάνω, η απόσταση από
             κάτω: σε μία σειρά έκοβε τον τίτλο του γεγονότος στα 390. */}
-        {overdue && <span style={{ fontSize:12, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-primary)' }}>Ληξιπρόθεσμο</span>}
+        {pastWord && <span style={{ fontSize:12, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-primary)' }}>{pastWord}</span>}
         <span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', fontWeight:due===0?600:400, color:due===0?'var(--text-primary)':'var(--text-secondary)' }}>
-          {overdue||due===0||due===1?dueTextStart(due):fmt(event.event_date)}{event.event_time?` · ${event.event_time}`:''}
+          {pastWord||due===0||due===1?dueTextStart(due):fmt(event.event_date)}{event.event_time?` · ${event.event_time}`:''}
         </span>
         {!bulkMode&&(
           /* ΚΡΥΒΕΤΑΙ Η ΟΨΗ, ΟΧΙ Η ΕΝΕΡΓΕΙΑ. Με `opacity: 0` από αιώρηση σε

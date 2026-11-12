@@ -215,3 +215,28 @@ export function peaDeclField(peaNumber: string | null | undefined, propType?: st
       hint: `Τυπώνεται στο πιστοποιητικό ενεργειακής απόδοσης. Μπαίνει στη δήλωση (${PEA_LAW} παρ. 8).`,
     };
 }
+
+/**
+ * Ο ΜΕΤΡΗΤΗΣ ΤΗΣ ΔΗΛΩΣΗΣ ΜΕΤΡΑ ΜΟΝΟ ΤΑ ΥΠΟΧΡΕΩΤΙΚΑ. Με το πεδίο του ΠΕΑ στο
+ * σύνολο, η δήλωση έλεγε «11 από 12 πεδία έτοιμα» ενώ ήταν έτοιμη: το ΠΕΑ δεν
+ * κρίνει την ετοιμότητα (βλ. `peaDeclField`). Τα προαιρετικά που λείπουν
+ * μετριούνται χωριστά.
+ */
+export function declProgress(fields: ReadonlyArray<{ required: boolean; status: string }>): {
+  ready: number; total: number; optionalMissing: number;
+} {
+  const req = fields.filter(f => f.required);
+  return {
+    ready: req.filter(f => f.status === 'ok').length,
+    total: req.length,
+    optionalMissing: fields.filter(f => !f.required && f.status === 'missing').length,
+  };
+}
+
+/** Η γραμμή του μετρητή: «12 από 12 υποχρεωτικά πεδία έτοιμα · 1 προαιρετικό λείπει». */
+export function declProgressText(fields: ReadonlyArray<{ required: boolean; status: string }>): string {
+  const { ready, total, optionalMissing: n } = declProgress(fields);
+  const head = `${ready} από ${total} υποχρεωτικά πεδία έτοιμα`;
+  if (!n) return head;
+  return `${head} · ${n === 1 ? '1 προαιρετικό λείπει' : `${n} προαιρετικά λείπουν`}`;
+}
