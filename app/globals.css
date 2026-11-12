@@ -1276,6 +1276,15 @@ body {
 @media (min-width: 880px) {
   .scan-tiles[data-tiles="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+/* ΕΝΑ, ΟΤΑΝ ΔΕΝ ΥΠΑΡΧΕΙ ΑΚΙΝΗΤΟ: μόνο η μαζική από Ε9 ή ΕΝΦΙΑ, σε όλο το
+   πλάτος αντί για μισή στήλη. ΠΕΝΤΕ, με την τράπεζα: 3+2 αντί για 2+2+1. */
+.scan-tiles[data-tiles="1"] { grid-template-columns: 1fr; }
+@media (min-width: 700px) { .scan-tiles[data-tiles="5"] { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* Πλακίδιο επιλογής με την αιώρηση σε CSS: ίδια όψη με τα διπλανά που την
+   γράφουν ακόμη σε JavaScript. Δουλεύει και για όποιον έρχεται με πληκτρολόγιο. */
+.pick-tile-css { border: 1px solid var(--border-default); border-radius: 14px; background: var(--bg-elevated); cursor: pointer; transition: border-color .15s, background .15s; }
+.pick-tile-css:focus-visible { border-color: var(--accent); background: var(--accent-dim); }
+@media (hover: hover) { .pick-tile-css:hover { border-color: var(--accent); background: var(--accent-dim); } }
 
 /* ΚΑΙ ΟΙ ΤΙΜΕΣ ΤΩΝ ΕΠΙΛΟΓΕΩΝ ΠΟΥ ΔΕΝ ΕΙΝΑΙ <input>. Στην αφή κάθε <input>
    γράφει 16 (κανόνας του Safari, πιο κάτω), ενώ ο επιλογέας λίστας και ο
@@ -2873,6 +2882,16 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   white-space: nowrap;
   border: 0;
 }
+
+/* ΚΟΥΜΠΙ ΑΡΧΕΙΟΥ ΠΟΥ ΦΤΑΝΕΙ ΚΑΙ ΜΕ ΠΛΗΚΤΡΟΛΟΓΙΟ. Το πεδίο αρχείου μέσα στην
+   ετικέτα ήταν `display:none` και το Tab δεν το έβρισκε ποτέ. Τώρα είναι
+   `sr-only`: εστιάζεται κανονικά και η ετικέτα γύρω του δείχνει την εστίαση. */
+/* Το `:focus-within` μόνο για περιηγητές χωρίς `:has`: εκεί ανάβει και με
+   εστίαση από ποντίκι, που είναι καλύτερο από καθόλου ένδειξη. */
+@supports not selector(:has(*)) {
+  .po-file-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+}
+.po-file-pick:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ΟΙ ΓΡΑΜΜΕΣ ΤΗΣ ΚΑΡΤΑΣ ΠΕΛΑΤΗ ΣΤΗΝ ΠΥΛΗ ΤΟΥ ΛΟΓΙΣΤΗ. Στο τηλέφωνο τα κουμπιά
    πέφτουν κάτω από το κείμενο· χωρίς γραμμή ανάμεσα δεν φαινόταν σε ποια
