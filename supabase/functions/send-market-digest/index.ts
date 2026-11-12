@@ -11,6 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 import { emailShell, eyebrow, h, note, dataTable, listUnsubscribeHeaders } from '../_shared/emailTemplates.ts'
 import { EMAIL_LIGHT as C } from '../_shared/emailPalette.ts'
+import { audience, batchKey, ensurePrefs, readPrefs } from '../_shared/marketingAudience.ts'
 ;
 import { createClient } from 'npm:@supabase/supabase-js@2.118.0'
 import { APP_URL } from '../_shared/site.ts'
@@ -129,23 +130,25 @@ Deno.serve(async (req) => {
 
   const users = await listUsers()
   if (!users.length) return json({ message: 'no_users' })
-  await supabase.from('email_marketing_prefs').upsert(users.map(u => ({ user_id: u.id })), { onConflict: 'user_id', ignoreDuplicates: true })
-  // ΙΔΙΟ ΣΦΑΛΜΑ ΜΕ ΤΟ ΕΝΗΜΕΡΩΤΙΚΟ ΔΕΛΤΙΟ, ΔΕΥΤΕΡΟΣ ΑΠΟΣΤΟΛΕΑΣ. Χωρίς το
-  // `error`, αποτυχία γύριζε `undefined`, το `|| []` έφτιαχνε ΚΕΝΟ χάρτη — και
-  // το φίλτρο `prefMap.get(u.id)?.market_news !== false` γινόταν ΑΛΗΘΕΣ για
-  // κάθε χρήστη: το μήνυμα έφευγε και σε όσους είχαν απεγγραφεί, με σύνδεσμο
-  // απεγγραφής «/unsubscribe/undefined». Δύο αποστολείς, ένα αντιγραμμένο
-  // μοτίβο, δύο φορές το ίδιο λάθος.
-  const { data: prefs, error: prefsErr } = await supabase.from('email_marketing_prefs').select('user_id,market_news,unsubscribe_token')
+  // Γραμμή προτιμήσεων ανά χρήστη, σε παρτίδες· η νέα περνά από τον trigger
+  // της συγκατάθεσης της εγγραφής.
+  const ensureErr = await ensurePrefs(supabase, users.map(u => u.id))
+  if (ensureErr) {
+    console.error('[send-market-digest] οι γραμμές προτιμήσεων δεν δημιουργήθηκαν:', ensureErr)
+    return json({ error: 'email_marketing_prefs not ensured', detail: ensureErr.message }, 500)
+  }
+  // ΙΔΙΟ ΣΦΑΛΜΑ ΜΕ ΤΟ ΕΝΗΜΕΡΩΤΙΚΟ ΔΕΛΤΙΟ. Χάρτης από ΕΝΑ αίτημα κοβόταν στις
+  // 1.000 και το φίλτρο `!== false` έστελνε σε όποιον έλειπε, μαζί με όσους
+  // είχαν κάνει απεγγραφή, με σύνδεσμο «/unsubscribe/undefined». Τώρα: όλες οι
+  // σελίδες και μόνο ρητό «ναι» με token (έλεγχος κλίμακας 10/11/2026).
+  const { rows: prefs, error: prefsErr } = await readPrefs(supabase, 'market_news')
   if (prefsErr) {
     console.error('[send-market-digest] οι προτιμήσεις μάρκετινγκ δεν διαβάστηκαν:', prefsErr)
     return json({ error: 'email_marketing_prefs unreadable', detail: prefsErr.message }, 500)
   }
-  // Ο χάρτης προτιμήσεων ανά χρήστη. Το «any» έσβηνε τον έλεγχο του κλειδιού.
-  type PrefRow = { user_id: string } & Record<string, unknown>
-  const prefMap = new Map(((prefs || []) as PrefRow[]).map(p => [p.user_id, p]))
-  const recipients = users.filter(u => prefMap.get(u.id)?.market_news !== false)
-  if (!recipients.length) return json({ message: 'no_subscribers' })
+  const { recipients, skippedNoToken } = audience(users, prefs, 'market_news')
+  if (skippedNoToken) console.error(`[send-market-digest] ${skippedNoToken} παραλήπτες χωρίς token απεγγραφής: δεν στάλθηκε`)
+  if (!recipients.length) return json({ message: 'no_subscribers', skippedNoToken })
 
   const inner = METRICS.map(m => rowHtml(m.label, cur[m.key], prev[m.key])).join('')
   const subject = 'PROPERWISE · Εβδομαδιαία ενημέρωση επιτοκίων'
@@ -154,16 +157,18 @@ Deno.serve(async (req) => {
   for (let i = 0; i < recipients.length; i += 100) {
     const chunk = recipients.slice(i, i + 100)
     const payload = chunk.map(u => {
-      const unsubUrl = `${APP_URL}/unsubscribe/${prefMap.get(u.id)?.unsubscribe_token}`
+      const unsubUrl = `${APP_URL}/unsubscribe/${u.token}`
       return { from: FROM_EMAIL, reply_to: REPLY_TO, to: u.email, subject, html: layout(inner, unsubUrl), headers: listUnsubscribeHeaders(unsubUrl) }
     })
     try {
       const res = await fetch('https://api.resend.com/emails/batch', {
-        method: 'POST', headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        // Ιδιοδύναμο ανά παρτίδα και ανά εβδομάδα: επανάληψη της ίδιας μέρας δεν ξαναστέλνει.
+        method: 'POST', headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json', 'Idempotency-Key': await batchKey(`digest-${nowIso.slice(0, 10)}`, chunk, String(curRow.updated_at)) },
         body: JSON.stringify(payload),
       })
       if (res.ok) sent += chunk.length; else failed += chunk.length
     } catch { failed += chunk.length }
   }
-  return json({ sent, failed, recipients: recipients.length })
+  if (failed) console.error(`[send-market-digest] ${failed} από ${recipients.length} δεν στάλθηκαν`)
+  return json({ sent, failed, recipients: recipients.length, skippedNoToken })
 })

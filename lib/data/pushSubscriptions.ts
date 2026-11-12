@@ -9,7 +9,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PushSubscriptionsRow } from '@/lib/supabase/tables';
 import type { DbError } from '@/lib/supabase/writeResult';
-import { read, type ReadResult } from './read';
+import { readAll, type ReadResult } from './read';
 import type { DeviceSubscription } from '@/lib/push/subscription';
 
 const TABLE = 'push_subscriptions';
@@ -58,7 +58,9 @@ export async function has(db: Db, userId: string, endpoint: string): Promise<boo
 
 /** Ολες οι συσκευές που δέχονται, για τον αποστολέα. ΜΟΝΟ με πελάτη υπηρεσίας. */
 export async function all(db: Db): Promise<ReadResult<SendRow>> {
-  return read<SendRow>(db.from(TABLE).select(SEND_COLUMNS).order('user_id'));
+  // ΣΕ ΣΕΛΙΔΕΣ: σε ΕΝΑ αίτημα, πάνω από 1.000 συσκευές οι υπόλοιπες δεν έπαιρναν
+  // ποτέ ειδοποίηση, πάντα οι ίδιες (όσες είχαν «μεγάλο» user_id).
+  return readAll<SendRow>((from, to) => db.from(TABLE).select(SEND_COLUMNS).order('user_id').order('id').range(from, to));
 }
 
 /** Η αποστολή πέτυχε: σημειώνεται η ώρα και μηδενίζονται οι αποτυχίες. */

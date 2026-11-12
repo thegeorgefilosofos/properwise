@@ -33,7 +33,7 @@ import type { DbError } from '@/lib/supabase/writeResult';
 import { classifyExpense } from '@/lib/expenses/classify';
 // ΤΟ `rows` ΠΑΙΡΝΕΙ ΨΕΥΔΩΝΥΜΟ: το αρχείο έχει ήδη δικό του `row()` (χτίζει τη
 // γραμμή προς τη βάση) και παραμέτρους με το όνομα `rows` στις εγγραφές.
-import { read, rows as readRows, type ReadResult } from './read';
+import { readAll, read, rows as readRows, type ReadResult } from './read';
 
 const TABLE = 'expenses';
 
@@ -201,7 +201,11 @@ export async function ledger<T = LedgerRow>(
 export async function ledgerWithError<T = LedgerRow>(
   db: Db, propertyId: string, opts: LedgerOpts = {},
 ): Promise<ReadResult<T>> {
-  return read<T>(ledgerQuery(db, propertyId, opts));
+  // Με ρητό όριο ο καλών ζήτησε λίγες γραμμές· αλλιώς ΟΛΕΣ, σε σελίδες. Μια
+  // κομμένη λίστα στις 1.000 θα έβγαζε μικρότερες δαπάνες, άρα μεγαλύτερο φόρο,
+  // σε Λογιστική, Ε2 και απόδοση (έλεγχος κλίμακας 10/11/2026).
+  if (opts.limit) return read<T>(ledgerQuery(db, propertyId, opts));
+  return readAll<T>((from, to) => ledgerQuery(db, propertyId, opts).order('id', { ascending: true }).range(from, to));
 }
 
 /** Το καθολικό πολλών ακινήτων του ίδιου χρήστη — σύγκριση, χαρτοφυλάκιο. */
