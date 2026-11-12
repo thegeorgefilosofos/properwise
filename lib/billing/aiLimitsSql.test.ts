@@ -58,7 +58,27 @@ const ai = latest('take_ai_unit')
 const scan = latest('take_scan_unit')
 eq('take_ai_unit: υπογραφή χωρίς όρια', /take_ai_unit\(p_uid uuid, p_request_id uuid\)/.test(ai), true)
 eq('take_scan_unit: υπογραφή χωρίς όρια', /take_scan_unit\(p_uid uuid, p_request_id uuid, p_file_hash text\)/.test(scan), true)
-eq('take_ai_unit: δοκιμή από τη trial_day', /if not v_pay then\s*\n\s*v_lday := least\(v_lday, \(v_lim->>'trial_day'\)/.test(ai), true)
+eq('take_ai_unit: δοκιμή από τη trial_day', /if v_pool then\s*\n\s*v_lday := least\(v_lday, \(v_lim->>'trial_day'\)/.test(ai), true)
+// ΤΟ ΔΩΡΟ ΠΑΙΡΝΕΙ ΤΑ ΟΡΙΑ ΤΟΥ ΠΑΚΕΤΟΥ ΤΟΥ (20261112170000). Ο ίδιος όρος με την
+// user_plan_rank (comp_until > now, βαθμός ≥ 1) και με τον TS (`giftPlan`).
+const gift = /v_cr := case when v_cuntil is not null and v_cuntil > v_now then public\.plan_rank\(v_cplan\) else 0 end;/
+eq('take_ai_unit: το δώρο κρίνεται από comp_plan και comp_until', gift.test(ai), true)
+eq('take_scan_unit: ίδιος όρος δώρου', gift.test(scan), true)
+eq('take_ai_unit: δώρο μόνο από βαθμό 1 και πάνω', /v_comp := not v_pay and v_cr between 1 and/.test(ai), true)
+eq('take_ai_unit: το δώρο εκτός δεξαμενής', /v_pool := not v_pay and not v_comp;/.test(ai), true)
+eq('take_ai_unit: το δώρο στα όρια του πακέτου του', /if v_comp then\s*\n\s*v_lday := least\(v_lday, \(v_lim->'day'->>v_cr\)::integer\);\s*\n\s*v_lmon := least\(v_lmon, \(v_lim->'month'->>v_cr\)::integer\);/.test(ai), true)
+eq('take_ai_unit: το αίτημα γράφει τη δεξαμενή που χρέωσε', /'ai', v_mon, v_day, v_pool\)/.test(ai), true)
+eq('take_scan_unit: το δώρο δεν χρεώνει δεξαμενή', /v_charge := not v_pay and not v_comp and v_r >= 1;/.test(scan), true)
+eq('take_scan_unit: το δώρο σαρώνει με το όριο του πακέτου του', /v_cap->'scan'->>\(case when v_comp then v_cr else v_r end\)/.test(scan), true)
+eq('TS: το δώρο «agency» στα όρια του «agency»', effectiveAiLimits('agency', false, false, 'agency').perMonth, aiLimitsFor('agency').perMonth)
+// Η ασφάλεια δεν αλλάζει: security definer, search_path, μόνο service_role.
+for (const [name, f, sig] of [['take_ai_unit', ai, 'uuid, uuid'], ['take_scan_unit', scan, 'uuid, uuid, text']] as const) {
+  eq(`${name}: security definer με search_path`, /returns json language plpgsql security definer set search_path to 'public'/.test(f), true)
+  const file = files.find(x => readFileSync(`${dir}/${x}`, 'utf8').includes(`create or replace function public.${name}`))!
+  const sql = readFileSync(`${dir}/${file}`, 'utf8')
+  eq(`${name}: καμία εκτέλεση από πελάτη`, sql.includes(`revoke all on function public.${name}(${sig}) from public, anon, authenticated;`), true)
+  eq(`${name}: μόνο service_role`, sql.includes(`grant execute on function public.${name}(${sig}) to service_role;`), true)
+}
 eq('take_ai_unit: δοκιμαστής από τη tester_month', /v_lmon := least\(v_lmon, \(v_lim->>'tester_month'\)/.test(ai), true)
 const pay = /v_pay\s*:=\s*coalesce\(v_plan, 'free'\) in \(([^)]*)\)/
 eq('take_scan_unit: ίδιος ορισμός του «πληρώνει» με την take_ai_unit', pay.exec(scan)?.[1], pay.exec(ai)?.[1])

@@ -16,7 +16,7 @@ import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolS
 import { ToolNumField, ToolFields, ToolSeg, ToolHero } from '@/app/ToolParts';
 import { ToolSelect } from '@/app/ToolSelect';
 import LiveResult from '@/components/LiveResult';
-import { SPEC, PATH, PROP_TYPES } from './spec';
+import { SPEC, PATH, PROP_TYPES, openingYear } from './spec';
 import { useToolDict, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
 import { localHref } from '@/lib/i18n/paths';
 
@@ -47,7 +47,7 @@ export function E2Calculator({ today, cta }: { today: string; cta: ReactNode }) 
   const months = en ? monthOpts(E.months) : MONTH_OPTS;
   const propTypes = en ? PROP_TYPES.map(p => ({ value: p.value, label: E.propType(p.value, p.label) })) : PROP_TYPES;
   const years = useMemo(() => offeredIncomeYears(today, FIRST_YEAR_NEW_BRACKETS - 1), [today]);
-  const [v, set] = useToolState(SPEC, path, x => ({ ...x, etos: years.map(String).includes(x.etos) ? x.etos : String(years[0]) }));
+  const [v, set] = useToolState(SPEC, path, x => ({ ...x, etos: years.map(String).includes(x.etos) ? x.etos : String(openingYear(today, years)) }));
   const ids = { enoikio: useId(), pososto: useId(), tm: useId() };
   const year = Number(v.etos);
   const use = (['lease', 'own_use', 'vacant'].includes(v.xrisi) ? v.xrisi : 'lease') as E2Use;

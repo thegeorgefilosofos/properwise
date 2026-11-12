@@ -18,7 +18,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { Metadata } from 'next';
-import { IDENTITY, identityLabels, POLICY_UPDATED, POLICY_VERSION } from '@/lib/legal/identity';
+import { IDENTITY, identityLabels, POLICY_UPDATED, POLICY_VERSION, POLICY_DATE, versionSuffix } from '@/lib/legal/identity';
 import { DISCLOSURE } from '@/lib/legal/disclosure';
 import { subprocessors, TRANSFER_SAFEGUARDS, ANTHROPIC_CONTRACT, BACKUP_RETENTION_DAYS } from '@/lib/legal/subprocessors';
 import { ASSISTANT_ACC, ASSISTANT_TO } from '@/lib/assistant/identity';
@@ -67,7 +67,7 @@ const jsonLd = {
       name: 'Ποιοι είμαστε',
       description: DESC,
       inLanguage: 'el',
-      dateModified: POLICY_VERSION,
+      dateModified: POLICY_DATE,
       isPartOf: { '@id': `${SITE}/#website` },
       about: { '@id': ORG_ID },
       publisher: { '@id': ORG_ID },
@@ -541,7 +541,7 @@ export default function TrustPage() {
         eyebrow="Εμπιστοσύνη"
         title="Ποιοι είμαστε"
         meta={`Τελευταία ενημέρωση: ${POLICY_UPDATED}`}
-        version={`Έκδοση ${grDate(POLICY_VERSION)} · Τελευταία ενημέρωση: ${POLICY_UPDATED}`}
+        version={`Έκδοση ${grDate(POLICY_DATE)}${versionSuffix(POLICY_VERSION)} · Τελευταία ενημέρωση: ${POLICY_UPDATED}`}
         intro="Σου ζητάμε το ΑΦΜ σου, τα μισθωτήριά σου και τα έσοδά σου. Δεν υπάρχει λόγος να μας τα εμπιστευτείς αν δεν ξέρεις ποιοι είμαστε, πού πάνε και τι δεν κάνουμε μ’ αυτά. Εδώ τα λέμε όσο πιο ανοιχτά μπορούμε, χωρίς μικρά γράμματα, μαζί με τις εξαιρέσεις που δεν μας βολεύουν."
         blocks={blocks}
       />

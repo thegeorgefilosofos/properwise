@@ -423,8 +423,13 @@ const NOT_LIVE: Omit<BillingWords, 'live' | 'saleClosedReason' | 'seller'> = {
     'Τα έσοδά μας θα είναι οι συνδρομές. Σήμερα η χρέωση συνδρομών δεν έχει ενεργοποιηθεί.',
   paymentMethodAsked:
     'Όταν η χρέωση ενεργοποιηθεί, το μέσο πληρωμής θα ζητείται ρητά στο ταμείο και μόνο για συνδρομή, με σαφή αναφορά στο ποσό και στην περίοδο πριν πληρώσεις. Η χρέωση θα γίνεται τη στιγμή της αγοράς.',
+  // ΔΕΝ ΥΠΟΣΧΕΤΑΙ ΚΟΥΜΠΙ ΠΟΥ ΔΕΝ ΥΠΑΡΧΕΙ (έλεγχος 12/11/2026). Ελεγε «το
+  // αλλάζεις όποτε θέλεις… σήμερα δεν κοστίζει τίποτα», ενώ το
+  // app/api/billing/plan/route.ts απαντά 403 σε όποιον δεν έχει συνδρομή και
+  // 503 όσο το ταμείο είναι κλειστό. Η αλλαγή πακέτου υπάρχει μόνο από τη
+  // στιγμή που ανοίγουν οι συνδρομές· ως τότε το λέμε όπως είναι.
   planChange:
-    'Το πακέτο το αλλάζεις όποτε θέλεις μέσα από την εφαρμογή και σήμερα η αλλαγή δεν κοστίζει τίποτα. Όταν ενεργοποιηθεί η χρέωση, η αναβάθμιση θα χρεώνεται αναλογικά, μόνο για τις ημέρες ως την επόμενη ανανέωση. Η υποβάθμιση θα ισχύει από την επόμενη ανανέωση, χωρίς επιστροφή για την περίοδο που έχεις ήδη πληρώσει.',
+    'Οι συνδρομές δεν έχουν ανοίξει ακόμη, οπότε σήμερα δεν αγοράζεις ούτε αλλάζεις πακέτο μέσα από την εφαρμογή· ανοίγουν σύντομα. Από τότε, η αναβάθμιση θα ισχύει αμέσως και θα χρεώνεται αναλογικά, μόνο για τις ημέρες ως την επόμενη ανανέωση. Η υποβάθμιση θα ισχύει από την επόμενη ανανέωση, χωρίς επιστροφή για την περίοδο που έχεις ήδη πληρώσει.',
   subscriptionPlace:
     'Όταν ενεργοποιηθεί η χρέωση, τα παραστατικά, το μέσο πληρωμής και η συνδρομή θα βρίσκονται στη διαχείριση συνδρομής, μέσα από τον Λογαριασμό σου.',
   renewal:
@@ -610,7 +615,7 @@ const NOT_LIVE_EN: Omit<BillingWords, 'live' | 'saleClosedReason' | 'seller'> = 
   paymentMethodAsked:
     'Once billing is switched on, a payment method will be requested explicitly at checkout and only for a subscription, with the amount and the period shown clearly before you pay. The charge will be made at the moment of purchase.',
   planChange:
-    'You can change plans at any time from within the app, and today the change costs nothing. Once billing is switched on, an upgrade will be charged pro rata, only for the days until the next renewal. A downgrade will apply from the next renewal, with no refund for the period you have already paid.',
+    'Subscriptions are not open yet, so today you cannot buy or change a plan in the app; they open soon. From then on, an upgrade will take effect immediately and be charged pro rata, only for the days until the next renewal. A downgrade will apply from the next renewal, with no refund for the period you have already paid.',
   subscriptionPlace:
     'Once billing is switched on, receipts, your payment method and the subscription will be in subscription management, under your Account.',
   renewal:

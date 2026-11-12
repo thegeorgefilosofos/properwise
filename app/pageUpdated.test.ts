@@ -39,7 +39,7 @@ import { monthGen, monthYearLabel } from '@/lib/core/months';
 import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 import { PRICE_FACTS } from '@/lib/facts/prices';
 import { PURCHASE_SOURCES_CHECKED } from '@/lib/tools/exodaAgoras';
-import { POLICY_VERSION } from '@/lib/legal/identity';
+import { POLICY_DATE } from '@/lib/legal/identity';
 import { CPI_CONFIRMED_AT } from '@/lib/market/cpi';
 import { renderToStaticMarkup as html } from 'react-dom/server';
 import { ToolSources } from './PublicChrome';
@@ -70,9 +70,9 @@ const SOURCED: Partial<Record<DatedPage, { from: string; iso: string | null }>> 
   '/exoda-agoras-akinitou': { from: 'PURCHASE_SOURCES_CHECKED', iso: PURCHASE_SOURCES_CHECKED },
   '/ypologismos-ekptosis-anakainisis': { from: "regulated('renovation-39b').checkedAt", iso: regulated('renovation-39b').checkedAt },
   '/symplirosi-e2': { from: 'E2_GUIDE_CHECKED', iso: E2_GUIDE_CHECKED },
-  '/trust': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
-  '/privacy': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
-  '/terms': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
+  '/trust': { from: 'POLICY_DATE', iso: POLICY_DATE },
+  '/privacy': { from: 'POLICY_DATE', iso: POLICY_DATE },
+  '/terms': { from: 'POLICY_DATE', iso: POLICY_DATE },
 };
 /** Οι γραμμές με το χέρι: μόνο σελίδες που δεν τυπώνουν ημερομηνία ενημέρωσης. */
 const MANUAL: readonly DatedPage[] = ['/', '/paketa', '/signup', '/logistes', '/ypologismos-stegastikou-daneiou'];

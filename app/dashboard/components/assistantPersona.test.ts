@@ -759,8 +759,10 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
        new RegExp(`ΠΑΚΕΤΟ ΕΡΩΤΗΣΕΩΝ ΣΕ ΕΜΕΝΑ.*${pl.name.replace('+', '\\+')} ${aiLimitsFor(pl.id).perMonth}`).test(p)));
   ok('gating: κανένα επίθετο στη θέση νουμέρου', !/διπλάσιο πακέτο|μεγαλύτερο πακέτο ερωτήσεων/i.test(p));
   ok('gating: η δοκιμή λέει ΤΟ ΔΙΚΟ ΤΗΣ νούμερο, όχι του επιπέδου',
-     new RegExp(`ανυψωμένο αλλά ΜΗ πληρωμένο επίπεδο[^.]*${TRIAL_LIMITS.perMonth} τον μήνα`).test(p)
+     new RegExp(`Στη δοκιμή και στον Συνεργάτη χωρίς δώρο[^.]*${TRIAL_LIMITS.perMonth} τον μήνα`).test(p)
      && TRIAL_LIMITS.perMonth < aiLimitsFor('owner').perMonth);
+  ok('gating: οι μήνες χωρίς χρέωση έχουν το πακέτο ερωτήσεων του πακέτου τους (20261112170000)',
+     /οι μήνες χωρίς χρέωση \(πρόγραμμα πρόσκλησης, κλήρωση\) δίνουν το πακέτο ερωτήσεων του πακέτου τους/.test(p));
   ok('gating: τράπεζα → Επαγγελματίας', new RegExp(`Ο «${PLANS.agency.name}».*κινήσεων τράπεζας`).test(p));
   ok('gating: χαρτοφυλάκιο → Επαγγελματίας', new RegExp(`Ο «${PLANS.agency.name}».*«Χαρτοφυλάκιο»`).test(p));
   ok('gating: CRM → Επαγγελματίας', new RegExp(`Ο «${PLANS.agency.name}».*«Πελατολόγιο»/CRM`).test(p));
@@ -914,6 +916,12 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
      !/Χωρίς συνδρομή» χωρίς/.test(planBriefing('free', 'free')));
   ok('τελευταία ημέρα δοκιμής δεν γράφει «0 ημέρες»',
      /τελευταία ημέρα/.test(planBriefing('owner', null, 0)));
+  // ΤΟ ΔΩΡΟ ΛΕΕΙ ΤΑ ΟΡΙΑ ΤΟΥ ΠΑΚΕΤΟΥ ΤΟΥ (12/11/2026): η Νόα λέει στον νικητή
+  // της κλήρωσης τον αριθμό που θα τον σταματήσει, δηλαδή του «agency».
+  ok('planBriefing: το δώρο «agency» λέει τα όρια του «agency»',
+     planBriefing('agency', 'free', undefined, 'agency').includes(`${aiLimitsFor('agency').perMonth} τον μήνα`))
+  ok('planBriefing: χωρίς δώρο, το ίδιο επίπεδο λέει τη δοκιμή',
+     !planBriefing('agency', 'free').includes(`${aiLimitsFor('agency').perMonth} τον μήνα`))
 }
 
 // ── ΧΩΡΙΣ ΑΚΙΝΗΤΟ, ΚΑΜΙΑ ΕΓΓΡΑΦΗ ─────────────────────────────────────────────

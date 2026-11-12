@@ -7,6 +7,7 @@ import { LINK_STYLE } from './linkStyle';
 import { BackLink } from './BackLink';
 import { transliterate } from '@/lib/core/uploadPath';
 import { grDate } from '@/lib/core/format';
+import { versionDate, versionSuffix } from '@/lib/legal/identity';
 import { LegalForm } from './LegalForm';
 import { TocSpy } from './TocSpy';
 import type { Locale } from '@/lib/i18n/locale';
@@ -472,7 +473,9 @@ export function LegalShell({ title, updated, version, intro, sections, disclaime
       title={title}
       intro={intro}
       meta={en ? U.updated(updated) : `Τελευταία ενημέρωση: ${updated}`}
-      version={version ? (en ? U.version(version, updated) : `Έκδοση ${grDate(version)} · Τελευταία ενημέρωση: ${updated}`) : undefined}
+      // Η ΕΚΔΟΣΗ ΔΙΑΒΑΖΕΤΑΙ ΩΣ ΗΜΕΡΟΜΗΝΙΑ ΚΑΙ ΑΥΞΟΝ: «12/11/2026 (2)» για τη
+      // δεύτερη έκδοση της ίδιας μέρας (lib/legal/identity.ts).
+      version={version ? (en ? U.version(versionDate(version), updated, versionSuffix(version)) : `Έκδοση ${grDate(versionDate(version))}${versionSuffix(version)} · Τελευταία ενημέρωση: ${updated}`) : undefined}
       blocks={sections.map(s => ({
         id: s.id,
         h: s.h,

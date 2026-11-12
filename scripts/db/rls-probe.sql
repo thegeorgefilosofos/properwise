@@ -2403,7 +2403,9 @@ begin
   end if;
   update public.ai_budget set free_count = 0 where month = mon;
 
-  -- 4α. ΔΩΡΕΑΝ ΜΗΝΕΣ: ΙΔΙΟ ΤΑΒΑΝΙ, ΙΔΙΑ ΔΕΞΑΜΕΝΗ.
+  -- 4α. ΔΩΡΕΑΝ ΜΗΝΕΣ: ΤΟ ΟΡΙΟ ΤΟΥ ΠΑΚΕΤΟΥ ΤΟΥΣ, ΕΚΤΟΣ ΔΕΞΑΜΕΝΗΣ (20261112170000).
+  -- Ως τις 12/11/2026 έπαιρναν το ταβάνι της δοκιμής και χρέωναν τη δεξαμενή·
+  -- οι Όροι (§10, §13) υπόσχονται μήνες του πακέτου, όχι δοκιμή.
   update public.billing_profiles
      set trial_used_at = now(), comp_plan = 'agency', comp_until = now() + interval '20 days'
    where user_id = t;
@@ -2412,10 +2414,13 @@ begin
   end if;
   update public.scan_usage set minute_count = 0 where user_id = t;
   res := public.bump_scan_usage(100, scans);
-  if (res->>'allowed')::boolean is not true or (res->>'month_limit')::int <> cap
-     or (select free_count from public.ai_budget where month = mon) <> 1 then
-    raise exception 'Οι δωρεάν μήνες σαρώνουν χωρίς το ταβάνι της δοκιμής ή εκτός δεξαμενής: %', res;
+  if (res->>'allowed')::boolean is not true or res->>'month_limit' is not null
+     or (res->>'pool')::boolean is not false
+     or (select free_count from public.ai_budget where month = mon) <> 0 then
+    raise exception 'Οι δωρεάν μήνες σαρώνουν με το ταβάνι της δοκιμής ή από τη δεξαμενή: %', res;
   end if;
+  -- Ως τότε η δεξαμενή είχε 1 από τον δωρεάν βαθμό 0 πιο κάτω· το κρατάμε ίδιο.
+  update public.ai_budget set free_count = 1 where month = mon;
 
   -- 4β. ΔΩΡΕΑΝ ΒΑΘΜΟΣ 0: ΠΕΝΤΕ, ΕΚΤΟΣ ΔΕΞΑΜΕΝΗΣ.
   update public.billing_profiles set comp_plan = null, comp_until = null where user_id = t;
@@ -2596,6 +2601,105 @@ begin
   else update public.ai_budget set free_count = saved where month = mon; end if;
   delete from auth.users where id in (t, p);
   raise notice 'probe: η άρνηση δεν γράφει τίποτα, η επιστροφή γίνεται μία φορά, το ίδιο αρχείο τρεις φορές με μία σάρωση';
+end $probe$;
+
+-- ── ΤΟ ΔΩΡΟ ΠΑΙΡΝΕΙ ΤΑ ΟΡΙΑ ΤΟΥ ΠΑΚΕΤΟΥ ΤΟΥ (20261112170000) ───────────────
+-- ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΚΛΕΙΝΕΙ. Ο νικητής της κλήρωσης και όποιος κερδίζει μήνες από
+-- συστάσεις έχει `plan = 'free'` και το δώρο στο `comp_plan`. Η `take_ai_unit`
+-- τον έκοβε στο πακέτο της δοκιμής και τον χρέωνε στην κοινή δεξαμενή, ενώ οι
+-- Όροι (§10, §13) του υπόσχονται μήνες του πακέτου. Κρίνονται εδώ:
+--   1. Δώρο «agency» σε ισχύ: τα όρια του «agency» στη Νόα, καμία δεξαμενή·
+--      περνά ερώτηση πέρα από το ταβάνι της δοκιμής, ακόμη και με γεμάτη δεξαμενή.
+--   2. Δώρο «solo» σε Συνεργάτη (βαθμός «agency»): τα όρια του «solo».
+--   3. Δώρο που έληξε: πάλι η δοκιμή και η δεξαμενή.
+--   4. Δοκιμαστής με δώρο: το ταβάνι του δοκιμαστή.
+--   5. Η επιστροφή ερώτησης του δώρου δεν πιστώνει δεξαμενή που δεν χρεώθηκε.
+do $probe$
+declare
+  t     uuid := '33333333-3333-3333-3333-33333333333c';
+  lim   jsonb := public.ai_plan_limits();
+  lpool int  := (lim->>'pool')::int;
+  mon   date := date_trunc('month', (now() at time zone 'Europe/Athens'))::date;
+  tday  int  := (lim->>'trial_day')::int;
+  tmon  int  := (lim->>'trial_month')::int;
+  saved int;
+  r1    uuid := gen_random_uuid();
+  res   json;
+begin
+  if (lim->'month'->>3)::int <= tmon or (lim->'day'->>3)::int <= tday then
+    raise exception 'Ο έλεγχος θα ήταν κενός: το «agency» δεν έχει περισσότερα από τη δοκιμή';
+  end if;
+  insert into auth.users (id, email) values (t, 'doro-kliroseis@probe.test');
+  insert into public.billing_profiles (user_id, plan, trial_used_at, tester_since, comp_plan, comp_until)
+    values (t, 'free', now(), null, 'agency', now() + interval '1 year')
+    on conflict (user_id) do update
+      set plan = 'free', trial_used_at = now(), tester_since = null, comp_plan = 'agency', comp_until = now() + interval '1 year';
+  if public.user_plan_rank(t) <> 3 then
+    raise exception 'Ο έλεγχος θα ήταν κενός: το δώρο δίνει βαθμό %', public.user_plan_rank(t);
+  end if;
+  select free_count into saved from public.ai_budget where month = mon;
+
+  -- 1. ΤΑ ΟΡΙΑ ΤΟΥ ΠΑΚΕΤΟΥ ΧΩΡΙΣ ΔΕΞΑΜΕΝΗ, ΑΚΟΜΗ ΚΑΙ ΜΕ ΓΕΜΑΤΗ ΔΕΞΑΜΕΝΗ.
+  insert into public.ai_budget (month, free_count, updated_at) values (mon, lpool, now())
+    on conflict (month) do update set free_count = lpool;
+  insert into public.ai_usage (user_id, minute_bucket, minute_count, day, day_count, month, month_count, updated_at)
+    values (t, date_trunc('minute', now()), 0, (now() at time zone 'Europe/Athens')::date, tday,
+            mon, tmon, now())
+    on conflict (user_id) do update set minute_count = 0, day = excluded.day, day_count = tday, month = mon, month_count = tmon;
+  res := public.take_ai_unit(t, r1);
+  if (res->>'allowed')::boolean is not true
+     or (res->>'month_limit')::int <> (lim->'month'->>3)::int or (res->>'day_limit')::int <> (lim->'day'->>3)::int
+     or (res->>'comp')::boolean is not true or (res->>'pool')::boolean is not false then
+    raise exception 'ΤΟ ΔΩΡΟ ΚΟΠΗΚΕ ΣΤΗ ΔΟΚΙΜΗ Ή ΣΤΗ ΔΕΞΑΜΕΝΗ: %', res;
+  end if;
+  if (select free_count from public.ai_budget where month = mon) <> lpool
+     or (select pool from public.ai_usage_requests where request_id = r1) is not false then
+    raise exception 'Η ερώτηση του δώρου άγγιξε τη δεξαμενή';
+  end if;
+
+  -- 5. Η ΕΠΙΣΤΡΟΦΗ ΔΕΝ ΠΙΣΤΩΝΕΙ ΔΕΞΑΜΕΝΗ ΠΟΥ ΔΕΝ ΧΡΕΩΘΗΚΕ.
+  update public.ai_budget set free_count = 5 where month = mon;
+  res := public.refund_ai_unit(t, r1, true);
+  if (res->>'refunded')::boolean is not true or (select free_count from public.ai_budget where month = mon) <> 5 then
+    raise exception 'Η επιστροφή του δώρου πείραξε τη δεξαμενή: %', res;
+  end if;
+
+  -- 2. ΔΩΡΟ «solo» ΣΕ ΣΥΝΕΡΓΑΤΗ: ΤΑ ΟΡΙΑ ΤΟΥ «solo».
+  insert into public.referral_partners (user_id) values (t) on conflict do nothing;
+  update public.billing_profiles set comp_plan = 'solo' where user_id = t;
+  update public.ai_usage set day_count = 0, month_count = 0, minute_count = 0 where user_id = t;
+  res := public.take_ai_unit(t, gen_random_uuid());
+  if (res->>'rank')::int <> 3 or (res->>'month_limit')::int <> (lim->'month'->>1)::int
+     or (res->>'pool')::boolean is not false then
+    raise exception 'Το δώρο «solo» σε Συνεργάτη δεν πήρε τα όρια του «solo»: %', res;
+  end if;
+  delete from public.referral_partners where user_id = t;
+
+  -- 3. ΔΩΡΟ ΠΟΥ ΕΛΗΞΕ: Η ΔΟΚΙΜΗ ΚΑΙ Η ΔΕΞΑΜΕΝΗ.
+  update public.billing_profiles
+     set comp_plan = 'agency', comp_until = now() - interval '1 day', trial_used_at = null
+   where user_id = t;
+  update public.ai_usage set day_count = 0, month_count = 0, minute_count = 0 where user_id = t;
+  res := public.take_ai_unit(t, gen_random_uuid());
+  if (res->>'allowed')::boolean is not true or (res->>'month_limit')::int <> tmon
+     or (res->>'pool')::boolean is not true or (select free_count from public.ai_budget where month = mon) <> 6 then
+    raise exception 'Το δώρο που έληξε κράτησε τα όρια ή βγήκε από τη δεξαμενή: %', res;
+  end if;
+
+  -- 4. ΔΟΚΙΜΑΣΤΗΣ ΜΕ ΔΩΡΟ: ΤΟ ΤΑΒΑΝΙ ΤΟΥ ΔΟΚΙΜΑΣΤΗ.
+  update public.billing_profiles
+     set comp_plan = 'office', comp_until = now() + interval '1 year', tester_since = now()
+   where user_id = t;
+  update public.ai_usage set day_count = 0, month_count = 0, minute_count = 0 where user_id = t;
+  res := public.take_ai_unit(t, gen_random_uuid());
+  if (res->>'month_limit')::int <> (lim->>'tester_month')::int then
+    raise exception 'Ο δοκιμαστής με δώρο ξέφυγε από το ταβάνι του: %', res;
+  end if;
+
+  if saved is null then delete from public.ai_budget where month = mon;
+  else update public.ai_budget set free_count = saved where month = mon; end if;
+  delete from auth.users where id = t;
+  raise notice 'probe: το δώρο παίρνει τα όρια του πακέτου του εκτός δεξαμενής· η δοκιμή, το δώρο που έληξε και ο δοκιμαστής όπως πριν';
 end $probe$;
 
 -- ── ΤΟ CHECK-IN ΜΕΤΡΑ ΤΡΕΙΣ ΤΗΝ ΩΡΑ ΜΟΝΟ ΣΕ ΖΩΝΤΑΝΟ ΣΥΝΔΕΣΜΟ ─────────

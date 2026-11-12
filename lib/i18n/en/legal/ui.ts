@@ -16,7 +16,7 @@ export const LEGAL_UI_EN = {
   // Ιδια σειρά με το TRUST_PAGES του κελύφους: «Ποιοι είμαστε», «Πολιτική απορρήτου», «Όροι χρήσης».
   pages: ['About us', 'Privacy Policy', 'Terms of use'] as const,
   updated: (when: string) => `Last updated: ${when}`,
-  version: (iso: string, when: string) => `Version ${fmtFor('en').date(iso)} · Last updated: ${when}`,
+  version: (iso: string, when: string, suffix = '') => `Version ${fmtFor('en').date(iso)}${suffix} · Last updated: ${when}`,
   notice: 'This translation is provided for convenience. The Greek version is the legally binding text.',
   greekLink: 'Read the Greek version',
 };

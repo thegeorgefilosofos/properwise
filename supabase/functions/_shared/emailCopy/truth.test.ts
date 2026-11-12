@@ -86,5 +86,22 @@ for (const [id, r] of sources) {
   ok(`${id}: καμία φράση που πουλά τα χωρίς συνδρομή`, !SELLS_FREE.test(text(r)), text(r).match(SELLS_FREE)?.[0])
 }
 
+// 4. Η ΔΟΚΙΜΗ ΔΕΝ ΥΠΟΣΧΕΤΑΙ ΟΣΑ ΔΕΝ ΔΙΝΕΙ (έλεγχος 12/11/2026)
+//   · trial_ending: «διάλεξε πακέτο» μόνο με ανοιχτό ταμείο (BILLING_LIVE).
+//   · trial_started: όχι «πλήρη πρόσβαση»· η δοκιμή έχει δικό της όριο.
+const endDark = text(UPSELL.trial_ending({ ...ctx } as never))
+const endSpoof = text(UPSELL.trial_ending({ ...ctx, billingLive: 'true' } as never))
+const endLive = text(UPSELL.trial_ending({ ...ctx, billingLive: true } as never))
+ok('trial_ending με κλειστό ταμείο: δεν λέει «διάλεξε πακέτο»', !/διάλεξε πακέτο/i.test(endDark), endDark)
+ok('trial_ending: μόνο το boolean true ανοίγει την πρόταση', !/διάλεξε πακέτο/i.test(endSpoof), endSpoof)
+ok('trial_ending με κλειστό ταμείο: λέει ακόμη τι γίνεται στη λήξη', endDark.includes('χωρίς συνδρομή στο πακέτο «Ιδιοκτήτης»'), endDark)
+ok('trial_ending με κλειστό ταμείο: χωρίς «ακύρωση όποτε θες»', !endDark.includes('Ακύρωση όποτε θες'), endDark)
+ok('trial_ending με ανοιχτό ταμείο: προτείνει πακέτο', /Διάλεξε πακέτο/.test(endLive) && endLive.includes('διάλεξε πακέτο όποτε σε βολεύει'), endLive)
+const sender = readFileSync('supabase/functions/send-lifecycle-email/index.ts', 'utf8')
+ok('ο αποστολέας γράφει το billingLive από το BILLING_LIVE, μετά τις παραμέτρους', /\.\.\.\(params as Personal\),[\s\S]{0,400}billingLive: BILLING_LIVE,/.test(sender))
+const started = text(UPSELL.trial_started(ctx as never))
+ok('trial_started: όχι «πλήρη πρόσβαση»', !/πλήρη πρόσβαση/i.test(started), started)
+ok('trial_started: λέει ότι οι ερωτήσεις και οι σαρώσεις έχουν όριο δοκιμής', started.includes('με όριο δοκιμής στις ερωτήσεις προς τη Νόα και στις σαρώσεις'), started)
+
 console.log(failed ? `✗ emailCopy αλήθεια: ${failed} απέτυχαν από ${passed + failed}` : `✓ emailCopy αλήθεια: ${passed} έλεγχοι πέρασαν`)
 if (failed) process.exit(1)
