@@ -42,6 +42,7 @@ import { cronSecretOk, CRON_SECRET_ENV } from '@/lib/api/cronSecret';
 import * as devices from '@/lib/data/pushSubscriptions';
 import * as properties from '@/lib/data/properties';
 import { reminderOccurrences, type Recurrable } from '@/lib/calendar/recurrence';
+import { onceOnDay, payableReminder } from '@/lib/calendar/onceOnDay';
 import * as calendar from '@/lib/data/calendar';
 import * as checklist from '@/lib/data/checklist';
 import * as bills from '@/lib/data/bills';
@@ -147,7 +148,10 @@ export async function POST(request: Request) {
     // Οι εμφανίσεις της σειράς με τους κανόνες του ημερολογίου· ληξιπρόθεσμο
     // μόνο το μεμονωμένο γεγονός, όπως στο email (lib/calendar/recurrence.ts).
     const occ = reminderOccurrences(eventRead.rows, today, to);
-    const events: DeadlineEvent[] = [...occ.overdue.filter(e => e.event_date >= from), ...occ.upcoming];
+    // Οι ειδοποιήσεις μιας ημέρας (λήξη ΠΕΑ, lib/calendar/onceOnDay.ts) μόνο τη
+    // δική τους ημέρα: ούτε ως επερχόμενες ούτε ως ληξιπρόθεσμες.
+    const events: DeadlineEvent[] = [...occ.overdue.filter(e => e.event_date >= from), ...occ.upcoming]
+      .filter(e => !onceOnDay(e) || e.event_date === today);
     const msg = dailyPush(
       deadlineItems({ properties: props, events, tasks, bills: unpaidBills, rent: dues, from, to }),
       today,
@@ -156,7 +160,8 @@ export async function POST(request: Request) {
     // «ΠΛΗΡΩΣΑ» ΣΤΗΝ ΕΙΔΟΠΟΙΗΣΗ: μόνο όταν λέει ΕΝΑ γεγονός ημερολογίου. Ενα
     // διακριτικό για όλες τις συσκευές του χρήστη· όποια πατηθεί πρώτη το εξαργυρώνει.
     const eventId = eventIdOfUid(msg.uid);
-    const pay = eventId ? await mintPayToken(db, userId, eventId, 'push', new Date()) : null;
+    const payable = !!eventId && events.some(e => e.id === eventId && payableReminder(e));
+    const pay = payable && eventId ? await mintPayToken(db, userId, eventId, 'push', new Date()) : null;
     const out = { title: msg.title, body: msg.body, url: msg.url, ...(pay ? { pay } : {}) };
 
     for (const sub of due) {
