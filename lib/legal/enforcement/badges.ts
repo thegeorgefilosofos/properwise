@@ -10,7 +10,13 @@
 //
 // Ο φύλακας scripts/guard-enforcement-rules.mjs κόβει κάθε αντίγραφο αυτών των
 // φράσεων έξω από αυτό το αρχείο: οι οθόνες εισάγουν τις σταθερές.
+//
+// ΚΑΙ ΜΟΝΟ ΜΕ ΑΝΘΡΩΠΙΝΟ ΜΑΤΙ. Ο κανόνας στη βαθμίδα 'tool' (την αντιπαραβολή
+// την έκανε μόνο εργαλείο, το μητρώο ισχύος έχει `checkedAt: null`) ΔΕΝ δείχνει
+// «Επαληθευμένο»· δείχνει «Επιβεβαίωσε με δικηγόρο» ώσπου να υπογράψει άνθρωπος.
+// Η επιλογή γίνεται εδώ, σε καθαρές συναρτήσεις που τις ελέγχει τεστ.
 // ═══════════════════════════════════════════════════════════════════════════
+import type { GateResult, Tier } from './gate';
 
 export const VERIFIED_BADGE = 'Επαληθευμένο από επίσημες πηγές · δεν αποτελεί νομική συμβουλή';
 
@@ -18,3 +24,15 @@ export const LAWYER_BADGE = 'Ελέγχθηκε από δικηγόρο';
 
 /** Για κανόνα που δεν επαληθεύτηκε: η μηχανή δεν δίνει ημερομηνία. */
 export const ASK_LAWYER_BADGE = 'Επιβεβαίωσε με δικηγόρο';
+
+/** Η σήμανση ενός σημείου του χρονοδιαγράμματος. */
+export function itemBadge(kind: string, tier: Tier | null, hasDiscrepancy: boolean): string {
+  if (kind === 'ask-lawyer' || hasDiscrepancy || tier === null || tier === 'tool') return ASK_LAWYER_BADGE;
+  return tier === 'lawyer' ? LAWYER_BADGE : VERIFIED_BADGE;
+}
+
+/** Η σήμανση μιας κάρτας επιλογής: «Επαληθευμένο» μόνο αν ΚΑΘΕ κανόνας της το στηρίζει. */
+export function cardBadge(gates: readonly GateResult[], hasDiscrepancy: boolean): string {
+  const ok = gates.length > 0 && !hasDiscrepancy && gates.every(g => g.ok && g.tier !== 'tool');
+  return ok ? VERIFIED_BADGE : ASK_LAWYER_BADGE;
+}

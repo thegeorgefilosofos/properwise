@@ -22,8 +22,8 @@ import { calmAllowed, computeTimeline, type CaseFacts, type DateFact, type Item,
 import { displayable } from '@/lib/legal/enforcement/gate'
 import { rule, RULES_CHECKED_AT } from '@/lib/legal/enforcement/rules'
 import {
-  ANSWER, ASK_LAWYER_BADGE, CHECKS_TITLE, FIELDS, INTRO, LAWYER_BADGE, NEXT, REASONS, RECEIVED_OPTIONS, VERIFIED_BADGE, WHOSE,
-  basisLine, checkText, footer, itemBody, itemTitle, longDate, optionCards, relDays,
+  ANSWER, CHECKS_TITLE, FIELDS, INTRO, NEXT, REASONS, RECEIVED_OPTIONS, WHOSE,
+  basisLine, cardBadge, itemBadge, checkText, footer, itemBody, itemTitle, longDate, optionCards, relDays,
 } from '@/lib/legal/enforcement/copy'
 import * as contactStore from '@/lib/data/contacts'
 import { createClient } from '@/lib/supabase/client'
@@ -213,7 +213,7 @@ function SpanLine({ i, today }: { i: Item; today: string }) {
 
 function TimelineItem({ i, today, current }: { i: Item; today: string; current: boolean }) {
   const diffs = discrepancies(i.ruleIds)
-  const badge = i.kind === 'ask-lawyer' || diffs.length ? ASK_LAWYER_BADGE : i.tier === 'lawyer' ? LAWYER_BADGE : VERIFIED_BADGE
+  const badge = itemBadge(i.kind, i.tier, diffs.length > 0)
   const basis = basisLine(i)
   return (
     <li aria-current={current ? 'step' : undefined} style={{ ...card, listStyle: 'none', borderLeft: `3px solid ${current ? 'var(--accent)' : 'var(--border-default)'}` }}>
@@ -360,7 +360,7 @@ export default function Prostasia({ userId }: { userId: string }) {
             <p style={{ ...small, margin: '0 0 8px' }}>Με σταθερή σειρά. Καμία δεν είναι «η καλύτερη»· εξαρτάται από την περίπτωσή σου.</p>
             <ul style={{ margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 10 }}>
               {cards.map(c => {
-                const ok = c.ruleIds.length > 0 && discrepancies(c.ruleIds).length === 0 && c.ruleIds.every(id => displayable(rule(id), today).ok || displayable({ ...rule(id), validFrom: today }, today).ok)
+                const gates = c.ruleIds.map(id => { const g = displayable(rule(id), today); return g.ok ? g : displayable({ ...rule(id), validFrom: today }, today) })
                 return (
                   <li key={c.id} style={{ ...card, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <h5 style={h3}>{c.title}</h5>
@@ -369,7 +369,7 @@ export default function Prostasia({ userId }: { userId: string }) {
                     <p style={{ ...small, margin: 0 }}><strong>Για τον πλειστηριασμό:</strong> {c.auction}</p>
                     <p style={{ ...small, margin: 0 }}><strong>Πρώτο βήμα:</strong> {c.first}</p>
                     {discrepancies(c.ruleIds).map(d => <p key={d} style={{ ...small, margin: 0 }}>Οι πηγές διαφέρουν: {d}</p>)}
-                    <div><Badge text={ok ? VERIFIED_BADGE : ASK_LAWYER_BADGE}/></div>
+                    <div><Badge text={cardBadge(gates, discrepancies(c.ruleIds).length > 0)}/></div>
                     <Sources ruleIds={c.ruleIds}/>
                   </li>
                 )

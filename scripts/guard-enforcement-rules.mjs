@@ -171,7 +171,9 @@ else {
   if (!m || m[1] !== OWNER_BADGE) add(BADGES_FILE, 0, `το VERIFIED_BADGE δεν είναι η διατύπωση που ενέκρινε ο ιδιοκτήτης («${OWNER_BADGE}»)`)
 }
 const ui = code.filter(f => f.startsWith(UI_DIR) && f.endsWith('.tsx'))
-if (!ui.some(f => /\bVERIFIED_BADGE\b/.test(readFileSync(f, 'utf8')))) add(UI_DIR, 0, 'καμία οθόνη της Προστασίας δεν δείχνει το VERIFIED_BADGE')
+// Η οθόνη δείχνει τη σήμανση είτε απευθείας είτε μέσω των itemBadge/cardBadge
+// του badges.ts, που διαλέγουν ανάμεσα στις τρεις σταθερές κατά βαθμίδα (12/11/2026).
+if (!ui.some(f => /\bVERIFIED_BADGE\b|\bitemBadge\(|\bcardBadge\(/.test(readFileSync(f, 'utf8')))) add(UI_DIR, 0, 'καμία οθόνη της Προστασίας δεν δείχνει το VERIFIED_BADGE')
 
 if (provlimata.length) {
   console.error(`\n✗ ${provlimata.length} προβλήματα στους κανόνες της Προστασίας ιδιοκτήτη:\n`)

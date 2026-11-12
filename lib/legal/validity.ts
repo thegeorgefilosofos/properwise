@@ -19,6 +19,13 @@
 //   από πού βγήκε    (`source`, νόμος ή επίσημη σελίδα)
 //   πότε ελέγχθηκε   (`checkedAt`, από άνθρωπο, με το μάτι)
 //
+// ΑΝΘΡΩΠΟΣ Ή ΕΡΓΑΛΕΙΟ, ΠΟΤΕ ΑΝΑΚΑΤΕΜΕΝΑ. Οταν την πηγή τη διάβασε μόνο εργαλείο
+// (αντιπαραβολή κειμένων, χωρίς ανθρώπινο μάτι), το `checkedAt` μένει `null` και
+// η ημερομηνία της ανάγνωσης γράφεται στο `toolReadAt`. Η κατάσταση τότε είναι
+// 'unchecked': ούτε 'ok' ούτε σιωπηλή. Ο φύλακας την αφήνει να περάσει με
+// προειδοποίηση μόνο όσο το `toolReadAt` είναι έως 12 μηνών· χωρίς αυτό, ή
+// παλιότερο, κόβει. Ενα «ελέγχθηκε» που δεν έγινε δεν γράφεται ποτέ.
+//
 // Ο φύλακας `scripts/guard-validity.mjs` κοκκινίζει όταν κάτι έληξε, όταν λήγει
 // μέσα στις επόμενες 45 ημέρες ή όταν δεν έχει ελεγχθεί πάνω από 12 μήνες. Η
 // σελίδα «Ισχύς δεδομένων» δείχνει το ίδιο μητρώο στον ιδιοκτήτη του προϊόντος,
@@ -58,8 +65,17 @@ export type Regulated = {
   validTo: string | null;
   /** Ο νόμος ή η επίσημη σελίδα. Ανοίγει με ένα κλικ από τη σελίδα ισχύος. */
   source: string;
-  /** Πότε το είδε άνθρωπος τελευταία φορά (ISO). */
-  checkedAt: string;
+  /**
+   * Πότε το είδε άνθρωπος τελευταία φορά (ISO). `null` όταν δεν το έχει δει
+   * ακόμη άνθρωπος: τότε υποχρεωτικό το `toolReadAt`.
+   */
+  checkedAt: string | null;
+  /**
+   * Πότε το διάβασε και το αντιπαρέβαλε ΕΡΓΑΛΕΙΟ (ISO), όταν δεν το έχει δει
+   * άνθρωπος. Δεν είναι υπογραφή: κρατά την εγγραφή στην κατάσταση 'unchecked'
+   * το πολύ 12 μήνες. Φεύγει όταν άνθρωπος γράψει `checkedAt`.
+   */
+  toolReadAt?: string;
   /** Τι πρέπει να κοιτάξει ο άνθρωπος όταν έρθει η ώρα. Μία πρόταση. */
   recheck: string;
   /**
@@ -512,7 +528,8 @@ export const REGULATED: readonly Regulated[] = [
     validFrom: '2026-01-01',
     validTo: null,
     source: 'https://www.kodiko.gr/nomothesia/document/1205557/nomos-5221-2025',
-    checkedAt: '2026-11-12',
+    checkedAt: null,
+    toolReadAt: '2026-11-12',
     recheck: 'Νέος νόμος που αγγίζει τα άρθρα 904 έως 1054 ΚΠολΔ, τον ν. 4738/2020 ή τον ν. 5072/2023; Ξανακατέβασε τις πηγές, ξαναγράψε τα στιγμιότυπα και ανέβασε το version του κανόνα. Ελεγξε και αν ο Φορέας Απόκτησης άρχισε να λειτουργεί (κανόνας faep-219).',
   },
   {
@@ -522,7 +539,8 @@ export const REGULATED: readonly Regulated[] = [
     validFrom: '2026-01-01',
     validTo: null,
     source: 'https://www.taxheaven.gr/law/5221/2025/arthro/126',
-    checkedAt: '2026-11-12',
+    checkedAt: null,
+    toolReadAt: '2026-11-12',
     recheck: 'Ανοίγουν ακόμη οι διευθύνσεις; Το απόσπασμα κάθε κανόνα βρίσκεται ακόμη αυτούσιο στο κείμενο της πηγής;',
   },
   {
@@ -532,7 +550,8 @@ export const REGULATED: readonly Regulated[] = [
     validFrom: '2026-11-09',
     validTo: '2027-06-30',
     source: 'https://www.taxheaven.gr/law/5354/2026/arthro/35',
-    checkedAt: '2026-11-12',
+    checkedAt: null,
+    toolReadAt: '2026-11-12',
     recheck: 'Παρατάθηκε η προθεσμία αιτήσεων (DEBT_INSTALMENTS.applyBy) ή άλλαξε το πλήθος δόσεων;',
   },
   {
@@ -542,7 +561,8 @@ export const REGULATED: readonly Regulated[] = [
     validFrom: '2026-11-09',
     validTo: null,
     source: 'https://www.taxheaven.gr/law/5354/2026/arthro/13',
-    checkedAt: '2026-11-12',
+    checkedAt: null,
+    toolReadAt: '2026-11-12',
     recheck: 'Αλλαξαν οι ημέρες του άρθρου 37Α ή οι μήνες του άρθρου 182 ν. 5193/2025;',
   },
   {
@@ -552,7 +572,8 @@ export const REGULATED: readonly Regulated[] = [
     validFrom: '2027-02-09',
     validTo: null,
     source: 'https://www.taxheaven.gr/law/5354/2026/arthro/392',
-    checkedAt: '2026-11-12',
+    checkedAt: null,
+    toolReadAt: '2026-11-12',
     recheck: 'Ξεκίνησε η διαδικασία των άρθρων 63Α επ. ν. 5072/2023; Η κάρτα στην Προστασία ιδιοκτήτη λέει ακόμη «δεν λειτουργεί».',
   },
 ];
@@ -578,12 +599,34 @@ export function daysLeft(r: Regulated, today: string): number | null {
   return Math.round((Date.parse(r.validTo) - Date.parse(today)) / 86_400_000);
 }
 
-/** Πόσοι μήνες πέρασαν από τον τελευταίο ανθρώπινο έλεγχο. */
-export function monthsSinceCheck(r: Regulated, today: string): number {
-  return (Date.parse(today) - Date.parse(r.checkedAt)) / (86_400_000 * 30.44);
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Μήνες από μια ημερομηνία ISO ώς σήμερα· `null` όταν δεν είναι ημερομηνία. */
+function monthsSince(iso: string | null | undefined, today: string): number | null {
+  if (!iso || !ISO_DAY.test(iso)) return null;
+  const m = (Date.parse(today) - Date.parse(iso)) / (86_400_000 * 30.44);
+  return Number.isFinite(m) ? m : null;
 }
 
-export type Status = 'expired' | 'expiring' | 'stale' | 'ok';
+/**
+ * Πόσοι μήνες πέρασαν από τον τελευταίο ΑΝΘΡΩΠΙΝΟ έλεγχο· `null` όταν δεν
+ * έγινε ποτέ ή η ημερομηνία δεν διαβάζεται. Ποτέ NaN: ένα NaN θα έβγαινε
+ * «όχι πάνω από 12» και η εγγραφή θα περνούσε για ελεγμένη.
+ */
+export function monthsSinceCheck(r: Regulated, today: string): number | null {
+  return monthsSince(r.checkedAt, today);
+}
+
+/** Πόσοι μήνες πέρασαν από την ανάγνωση του εργαλείου· `null` αν δεν υπάρχει. */
+export function monthsSinceToolRead(r: Regulated, today: string): number | null {
+  return monthsSince(r.toolReadAt, today);
+}
+
+/**
+ * 'unchecked': την πηγή τη διάβασε μόνο εργαλείο, μέσα στους τελευταίους 12
+ * μήνες. Δεν είναι 'ok': θέλει ανθρώπινο μάτι, απλώς δεν κόβει ακόμη.
+ */
+export type Status = 'expired' | 'expiring' | 'stale' | 'unchecked' | 'ok';
 
 /**
  * Η κατάσταση μιας εγγραφής σε μια δεδομένη ημέρα.
@@ -596,13 +639,29 @@ export function statusOf(r: Regulated, today: string): Status {
   const d = daysLeft(r, today);
   if (d !== null && d < 0) return 'expired';
   if (d !== null && d <= WARN_DAYS) return 'expiring';
-  if (monthsSinceCheck(r, today) > RECHECK_MONTHS) return 'stale';
+  // Χωρίς ανθρώπινο έλεγχο: 'unchecked' μόνο με πρόσφατη ανάγνωση εργαλείου.
+  // Χωρίς αυτήν, ή με παλιά, 'stale'. Ποτέ 'ok'.
+  if (r.checkedAt === null) {
+    const tool = monthsSinceToolRead(r, today);
+    return tool !== null && tool >= 0 && tool <= RECHECK_MONTHS ? 'unchecked' : 'stale';
+  }
+  const human = monthsSinceCheck(r, today);
+  if (human === null || human > RECHECK_MONTHS) return 'stale';
   return 'ok';
+}
+
+/**
+ * Η εγγραφή την έχει δει άνθρωπος, μέσα στους 12 μήνες; Οτι στηρίζει σήμανση
+ * «επαληθευμένο» στην οθόνη ρωτά αυτό, όχι το `checkedAt` μόνο του.
+ */
+export function humanChecked(r: Regulated, today: string): boolean {
+  const m = monthsSinceCheck(r, today);
+  return m !== null && m >= 0 && m <= RECHECK_MONTHS;
 }
 
 /** Οσα θέλουν ανθρώπινο μάτι σήμερα, με τα πιο επείγοντα πρώτα. */
 export function needsAttention(today: string): { r: Regulated; status: Status }[] {
-  const rank: Record<Status, number> = { expired: 0, expiring: 1, stale: 2, ok: 3 };
+  const rank: Record<Status, number> = { expired: 0, expiring: 1, stale: 2, unchecked: 3, ok: 4 };
   return REGULATED
     .map(r => ({ r, status: statusOf(r, today) }))
     .filter(x => x.status !== 'ok')

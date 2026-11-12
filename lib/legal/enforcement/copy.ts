@@ -17,7 +17,7 @@ import type { Check, Item } from './engine';
 import { publishedLabel, rule, RULES_CHECKED_AT } from './rules';
 import { addMonths } from './calc';
 
-export { VERIFIED_BADGE, LAWYER_BADGE, ASK_LAWYER_BADGE } from './badges';
+export { VERIFIED_BADGE, LAWYER_BADGE, ASK_LAWYER_BADGE, itemBadge, cardBadge } from './badges';
 
 // ── Μορφοποίηση από τα params ────────────────────────────────────────────
 type Case = 'acc' | 'gen';

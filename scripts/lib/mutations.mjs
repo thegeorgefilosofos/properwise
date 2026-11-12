@@ -626,6 +626,15 @@ export const MUTATIONS = {
     { file: 'lib/legal/validity.ts',
       from: "href: 'https://ypergasias.gov.gr/'",
       to:   "href: 'https://www.example-news.gr/kat-mis-2027'" },
+    // ΑΝΘΡΩΠΟΣ Ή ΕΡΓΑΛΕΙΟ (12/11/2026). Εγγραφή που δεν την είδε κανείς: `checkedAt`
+    // null χωρίς `toolReadAt`. Δεν είναι 'unchecked', είναι κενό: πρέπει να κόψει.
+    { file: 'lib/legal/validity.ts',
+      from: "    checkedAt: null,\n    toolReadAt: '2026-11-12',\n    recheck: 'Νέος νόμος που αγγίζει",
+      to:   "    checkedAt: null,\n    recheck: 'Νέος νόμος που αγγίζει" },
+    // Και η ανάγνωση του εργαλείου δεν κρατά για πάντα: πάνω από 12 μήνες κόβει.
+    { file: 'lib/legal/validity.ts',
+      from: "    checkedAt: null,\n    toolReadAt: '2026-11-12',\n    recheck: 'Νέος νόμος που αγγίζει",
+      to:   "    checkedAt: null,\n    toolReadAt: '2025-10-01',\n    recheck: 'Νέος νόμος που αγγίζει" },
   ] },
 
   'modal-width': { every: [
@@ -806,7 +815,13 @@ export const MUTATIONS = {
     { file: 'package.json', from: '"guards":', to: '"mut:probe": "node scripts/mut-probe.mjs",\n    "guards":' },
   ] },
   // Παραπομπή σε νόμο μέσα στον κώδικα, χωρίς εγγραφή στο μητρώο πηγών.
-  'accounting-sources': { add: 'lib/core/__mut__.ts', content: "// Κατά το ν.9999/2020, το τεκμαρτό ποσοστό αλλάζει.\nexport const rate = 0.05\n" },
+  'accounting-sources': { every: [
+    { add: 'lib/core/__mut__.ts', content: "// Κατά το ν.9999/2020, το τεκμαρτό ποσοστό αλλάζει.\nexport const rate = 0.05\n" },
+    // Πηγή που δεν την είδε ούτε άνθρωπος ούτε εργαλείο: `checkedAt` null χωρίς `toolReadAt`.
+    { file: 'data/accounting-sources.json', from: '    "checkedAt": null,\n    "toolReadAt": "2026-11-12",', to: '    "checkedAt": null,' },
+    // Ανάγνωση εργαλείου πάνω από 12 μηνών, χωρίς ανθρώπινο έλεγχο.
+    { file: 'data/accounting-sources.json', from: '    "checkedAt": null,\n    "toolReadAt": "2026-11-12",', to: '    "checkedAt": null,\n    "toolReadAt": "2025-10-01",' },
+  ] },
   'landing-theme': { file: 'app/LandingStyles.tsx', from: '          --bg-base: var(--mkt-bg-base);', to: '          --bg-base: #101418;' },
   // Διαδρομή που παρακάμπτει τη θύρα και μιλά κατευθείαν στον πάροχο.
   // Η ΔΙΑΔΡΟΜΗ ΤΟΥ ΤΑΜΕΙΟΥ ΞΑΝΑΡΩΤΑ ΜΟΝΟ ΤΟΝ ΕΜΠΟΡΟ: ακριβώς το σφάλμα της

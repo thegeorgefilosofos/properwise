@@ -22,7 +22,9 @@ import {
   afterCalendarSpanCounterparty, afterCalendarSpanUser, auctionWindow, beforeWorkingSpan,
   calmAllowed, CALM_WINDOW_DAYS, computeTimeline, regimeOf, type CaseFacts, type Item,
 } from './engine';
-import { displayable, hasTwoSources } from './gate';
+import { displayable, hasTwoSources, sourcesHumanChecked, ENFORCEMENT_REGISTRY } from './gate';
+import { ASK_LAWYER_BADGE, LAWYER_BADGE, VERIFIED_BADGE, cardBadge, itemBadge } from './badges';
+import { statusOf } from '@/lib/legal/validity';
 import { RULES, rule } from './rules';
 import type { LegalRule } from './types';
 
@@ -237,10 +239,14 @@ eq(nextWorking('2027-04-07'), '2027-04-08', 'TV-14 +1');
   const notVerified: LegalRule = { ...r, status: 'withheld' };
   eq(displayable(notVerified, TODAY).ok, false, 'TV-18 κανόνας που δεν επαληθεύτηκε → δεν φαίνεται');
   eq(displayable({ ...r, verifier: null }, TODAY).ok, false, 'χωρίς verifier → δεν φαίνεται');
-  eq(displayable(r, TODAY), { ok: true, tier: 'verified' }, 'επαληθευμένος, χωρίς υπογραφή → βαθμίδα verified');
-  eq(displayable({ ...r, lawyerReviewed: { reviewer: '', reviewedAt: '2026-12-01', version: r.version } }, TODAY), { ok: true, tier: 'verified' }, 'υπογραφή χωρίς όνομα δεν μετρά');
-  eq(displayable({ ...r, lawyerReviewed: { reviewer: 'Δ-1', reviewedAt: '2026-12-01', version: r.version + 1 } }, TODAY), { ok: true, tier: 'verified' }, 'υπογραφή για άλλη έκδοση δεν μετρά');
+  // Με ανθρώπινο `checkedAt` στο μητρώο (humanSeen = true): οι βαθμίδες όπως πριν.
+  eq(displayable(r, TODAY, true), { ok: true, tier: 'verified' }, 'επαληθευμένος, χωρίς υπογραφή, με ανθρώπινο έλεγχο → βαθμίδα verified');
+  eq(displayable({ ...r, lawyerReviewed: { reviewer: '', reviewedAt: '2026-12-01', version: r.version } }, TODAY, true), { ok: true, tier: 'verified' }, 'υπογραφή χωρίς όνομα δεν μετρά');
+  eq(displayable({ ...r, lawyerReviewed: { reviewer: 'Δ-1', reviewedAt: '2026-12-01', version: r.version + 1 } }, TODAY, true), { ok: true, tier: 'verified' }, 'υπογραφή για άλλη έκδοση δεν μετρά');
   eq(displayable({ ...r, lawyerReviewed: { reviewer: 'Δ-1', reviewedAt: '2026-12-01', version: r.version } }, TODAY), { ok: true, tier: 'lawyer' }, 'έγκυρη υπογραφή → βαθμίδα lawyer');
+  // Χωρίς ανθρώπινο έλεγχο (μόνο εργαλείο): βαθμίδα 'tool', ποτέ 'verified'.
+  eq(displayable(r, TODAY, false), { ok: true, tier: 'tool' }, 'μόνο ανάγνωση εργαλείου → βαθμίδα tool');
+  eq(displayable({ ...r, lawyerReviewed: { reviewer: '', reviewedAt: '2026-12-01', version: r.version } }, TODAY, false), { ok: true, tier: 'tool' }, 'άκυρη υπογραφή δεν ανεβάζει από tool');
   eq(displayable(rule('ds-120-aade'), '2027-07-01'), { ok: false, reason: 'expired' }, 'μετά τις 30/06/2027 οι 120 δόσεις δεν φαίνονται');
 }
 
@@ -304,6 +310,45 @@ eq(regimeOf('unknown'), 'unknown', '«δεν ξέρω» → άγνωστο');
     }
   }
   eq(bad, 0, 'ιδιότητες: εύρος σε τάξη, εργάσιμες, 993 ποτέ 5 ή 6 μήνες, ντετερμινισμός, καμία προθεσμία πριν από την αφετηρία');
+}
+
+// ── Ανθρωπος ή εργαλείο: «Επαληθευμένο» μόνο με ανθρώπινο έλεγχο ─────────
+// Το μητρώο ισχύος γράφει `checkedAt: null, toolReadAt` για τις πέντε εγγραφές
+// των κανόνων εκτέλεσης (12/11/2026): την αντιπαραβολή την έκανε εργαλείο. Ως
+// τότε η οθόνη έδειχνε «Επαληθευμένο» σαν να το είχε δει άνθρωπος.
+{
+  ok(ENFORCEMENT_REGISTRY.length >= 3, 'το μητρώο ισχύος έχει εγγραφές για τα αρχεία των κανόνων εκτέλεσης');
+  const unseen = ENFORCEMENT_REGISTRY.filter(x => x.checkedAt === null);
+  ok(unseen.every(x => statusOf(x, TODAY) === 'unchecked'), "checkedAt null με πρόσφατο toolReadAt → 'unchecked', όχι 'ok'");
+  ok(unseen.every(x => statusOf({ ...x, toolReadAt: undefined }, TODAY) === 'stale'), "checkedAt null χωρίς toolReadAt → 'stale'");
+  ok(unseen.every(x => statusOf({ ...x, toolReadAt: 'kati' }, TODAY) === 'stale'), "toolReadAt που δεν είναι ημερομηνία → 'stale', όχι NaN που περνά");
+  ok(unseen.every(x => statusOf(x, '2028-01-01') !== 'ok' && statusOf(x, '2028-01-01') !== 'unchecked'), 'toolReadAt πάνω από 12 μηνών → δεν περνά');
+  ok(unseen.every(x => statusOf({ ...x, checkedAt: 'kati' }, TODAY) === 'stale'), "checkedAt που δεν είναι ημερομηνία → 'stale', όχι 'ok'");
+
+  // Οσο έστω μία εγγραφή είναι 'unchecked', καμία σήμανση της οθόνης δεν λέει «Επαληθευμένο».
+  if (unseen.length) {
+    ok(!sourcesHumanChecked(TODAY), 'με εγγραφή χωρίς ανθρώπινο έλεγχο, οι πηγές δεν λογίζονται ελεγμένες');
+    eq(displayable(rule('as-938-4-new'), TODAY), { ok: true, tier: 'tool' }, 'ο κανόνας από το μητρώο σήμερα → βαθμίδα tool');
+    const all = [
+      computeTimeline(facts({ epitagi: NEW, seizure: '2026-06-20' }), TODAY),
+      computeTimeline(facts({ epitagi: NEW, seizure: '2026-06-20', auction: '2027-03-17' }), TODAY),
+      computeTimeline(facts({ epitagi: OLD, seizure: '2026-01-20', auction: '2026-12-16', received: 'synexisi', continuation: '2026-10-01' }), TODAY),
+      computeTimeline(facts({ epitagi: NEW, servicerRequest: '2026-11-01' }), TODAY),
+    ].flatMap(t => t.items);
+    ok(all.some(i => i.tier !== null), 'υπάρχουν σημεία με βαθμίδα για να ελεγχθούν');
+    ok(all.every(i => itemBadge(i.kind, i.tier, false) !== VERIFIED_BADGE), 'κανένα σημείο του χρονοδιαγράμματος δεν δείχνει «Επαληθευμένο» χωρίς ανθρώπινο έλεγχο');
+    ok(all.filter(i => i.tier !== null).every(i => itemBadge(i.kind, i.tier, false) === ASK_LAWYER_BADGE), '…δείχνει «Επιβεβαίωσε με δικηγόρο»');
+    eq(cardBadge(RULES.filter(x => x.status === 'verified').map(x => displayable(x, TODAY)), false), ASK_LAWYER_BADGE, 'οι κάρτες επιλογών επίσης «Επιβεβαίωσε με δικηγόρο»');
+  }
+  // Οι συναρτήσεις της σήμανσης, για κάθε βαθμίδα.
+  eq(itemBadge('deadline', 'tool', false), ASK_LAWYER_BADGE, 'tool → Επιβεβαίωσε με δικηγόρο');
+  eq(itemBadge('deadline', 'verified', false), VERIFIED_BADGE, 'verified → Επαληθευμένο');
+  eq(itemBadge('deadline', 'lawyer', false), LAWYER_BADGE, 'lawyer → Ελέγχθηκε από δικηγόρο');
+  eq(itemBadge('deadline', 'verified', true), ASK_LAWYER_BADGE, 'διαφορά πηγών → Επιβεβαίωσε με δικηγόρο');
+  eq(itemBadge('ask-lawyer', null, false), ASK_LAWYER_BADGE, 'ask-lawyer → Επιβεβαίωσε με δικηγόρο');
+  eq(cardBadge([{ ok: true, tier: 'verified' }, { ok: true, tier: 'tool' }], false), ASK_LAWYER_BADGE, 'κάρτα με έναν κανόνα tool → Επιβεβαίωσε με δικηγόρο');
+  eq(cardBadge([{ ok: true, tier: 'verified' }, { ok: true, tier: 'lawyer' }], false), VERIFIED_BADGE, 'κάρτα με ελεγμένους κανόνες → Επαληθευμένο');
+  eq(cardBadge([], false), ASK_LAWYER_BADGE, 'κάρτα χωρίς κανόνα → Επιβεβαίωσε με δικηγόρο');
 }
 
 console.log(`\nlegal/enforcement/engine — ${p} passed, ${f} failed`);

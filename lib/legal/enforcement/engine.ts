@@ -118,7 +118,7 @@ export function regimeOf(epitagi: DateFact): RegimeOut {
 const PRE2022 = `Για επιταγή που επιδόθηκε πριν από την ${grDate(rule('regime-4842-2022').params.date!)} ισχύουν παλιότερες διατάξεις που δεν επαληθεύσαμε. Η προθεσμία μπορεί να είναι σύντομη· μίλησε με δικηγόρο τώρα.`;
 
 /** Η χαμηλότερη βαθμίδα: αν ένας κανόνας δεν έχει υπογραφή, το στοιχείο δεν την έχει. */
-const minTier = (ts: Tier[]): Tier => (ts.every(t => t === 'lawyer') ? 'lawyer' : 'verified');
+const minTier = (ts: Tier[]): Tier => (ts.some(t => t === 'tool') ? 'tool' : ts.every(t => t === 'lawyer') ? 'lawyer' : 'verified');
 
 /**
  * Προθεσμία «το αργότερο Ν εργάσιμες πριν από την ημέρα Π».
