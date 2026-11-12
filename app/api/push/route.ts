@@ -41,7 +41,7 @@ import { createServiceClient, serviceClientError, SERVICE_CLIENT_LOG } from '@/l
 import { cronSecretOk, CRON_SECRET_ENV } from '@/lib/api/cronSecret';
 import * as devices from '@/lib/data/pushSubscriptions';
 import * as properties from '@/lib/data/properties';
-import { reminderOccurrences, type Recurrable } from '@/lib/calendar/recurrence';
+import { reminderOccurrences, isIncomeInstalmentSource, type Recurrable } from '@/lib/calendar/recurrence';
 import { onceOnDay, payableReminder } from '@/lib/calendar/onceOnDay';
 import * as calendar from '@/lib/data/calendar';
 import * as checklist from '@/lib/data/checklist';
@@ -149,9 +149,13 @@ export async function POST(request: Request) {
     // μόνο το μεμονωμένο γεγονός, όπως στο email (lib/calendar/recurrence.ts).
     const occ = reminderOccurrences(eventRead.rows, today, to);
     // Οι ειδοποιήσεις μιας ημέρας (λήξη ΠΕΑ, lib/calendar/onceOnDay.ts) μόνο τη
-    // δική τους ημέρα: ούτε ως επερχόμενες ούτε ως ληξιπρόθεσμες.
+    // δική τους ημέρα: ούτε ως επερχόμενες ούτε ως ληξιπρόθεσμες. Οι δόσεις του
+    // φόρου εισοδήματος έχουν τις δικές τους υπενθυμίσεις στο email (τριών
+    // ημερών, ή την ίδια μέρα αν εκείνη δεν έφυγε)· η ειδοποίηση τηλεφώνου δεν
+    // τις ξαναλέει (lib/calendar/recurrence.ts).
     const events: DeadlineEvent[] = [...occ.overdue.filter(e => e.event_date >= from), ...occ.upcoming]
-      .filter(e => !onceOnDay(e) || e.event_date === today);
+      .filter(e => !onceOnDay(e) || e.event_date === today)
+      .filter(e => !isIncomeInstalmentSource(e.source));
     const msg = dailyPush(
       deadlineItems({ properties: props, events, tasks, bills: unpaidBills, rent: dues, from, to }),
       today,

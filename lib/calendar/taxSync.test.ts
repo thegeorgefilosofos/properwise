@@ -16,6 +16,8 @@ import { oneTaxCopy } from './taxOnce';
 import { deadlineItems } from './deadlines';
 import { taxEventsToWrite } from '@/lib/facts/deadlines';
 import { ENFIA_FEWER_HINT } from '@/lib/tax/greekTaxCalendar';
+import { applyKind, normalizeScannedDoc, planDocSave, amountFromInput, kindOf, type ScannedDoc } from '@/lib/billing/documents';
+import { archiveInputFrom, archivePayload } from '@/app/dashboard/components/scanDoc';
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean, extra?: unknown) => {
@@ -199,6 +201,8 @@ const STR_NOV = 'tax:str-registry-2026-11';
     ok('συνιδιοκτησία 50%: ίδιες προθεσμίες με το 100%', taxRows(tables, 'pA').length === taxRows(tables, 'pB').length);
     ok('οι συνιδιοκτήτες της καρτέλας δεν παίρνουν γραμμές', taxRows(tables).every(r => r.user_id === OWNER));
     ok('ο ΕΝΦΙΑ είναι του ανθρώπου, όχι του ακινήτου', isPersonLevel(EIGHTH) && !isPersonLevel(STR_NOV));
+    // Ο φόρος εισοδήματος είναι ένας ανά ΑΦΜ, ας βγαίνει μόνο σε νοικιασμένο ακίνητο.
+    ok('η δόση φόρου εισοδήματος είναι του ανθρώπου', isPersonLevel('tax:income-instalment-2026-5'));
 
     // Πλήρωσε την 8η δόση από το ακίνητο Α και τη δήλωση Νοεμβρίου του Α.
     bySrc(tables, 'pA', EIGHTH)!.status = 'paid';
@@ -293,6 +297,56 @@ const STR_NOV = 'tax:str-registry-2026-11';
     ok('ΕΝΦΙΑ σύνολο από τον χρήστη: δύο υπενθυμίσεις', enfia2026(typed.tables.calendar_events).length === 2);
     const both = await run([stmt('p1', 67.2)], { bills_settings: [{ property_id: 'p2', user_id: OWNER, section: 'services', data: { enfiaStatementTotal: '27,44', enfiaStatementYear: '2026' } }] });
     ok('ΕΝΦΙΑ δύο σύνολα που διαφωνούν: μετρά το μεγαλύτερο', enfia2026(both.tables.calendar_events).length === 6);
+    // ── ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ ΧΩΡΙΣ ΦΟΡΟ: ΚΑΜΙΑ ΔΟΣΗ (12.11.2026) ──
+    // Το σαρωμένο «Φόρος εισοδήματος 2025» με μηδέν (ή επιστροφή) σημαίνει ότι η
+    // δήλωση 2026 δεν έχει δόσεις. Ο ίδιος φορολογούμενος σε όλα του τα ακίνητα.
+    {
+      const inc2026 = (rows: Row[], pid = 'p1') => rows.filter(r => r.property_id === pid && String(r.source).startsWith('tax:income-instalment-2026-'));
+      const itx = (pid: string, amount: number | null, year = 2025) =>
+        ({ id: `i-${pid}-${amount}-${year}`, property_id: pid, user_id: OWNER, title: `Φόρος εισοδήματος ${year}`, amount });
+      const none = await run([]);
+      ok('εισόδημα: χωρίς εκκαθαριστικό, οκτώ δόσεις', inc2026(none.tables.calendar_events).length === 8, inc2026(none.tables.calendar_events).length);
+      const zero = await run([itx('p1', 0)]);
+      ok('εισόδημα: εκκαθαριστικό με μηδέν, καμία δόση', inc2026(zero.tables.calendar_events).length === 0, inc2026(zero.tables.calendar_events).map(r => r.source));
+      ok('εισόδημα: μηδέν, ούτε στο άλλο ακίνητο του ίδιου ΑΦΜ', inc2026(zero.tables.calendar_events, 'p2').length === 0);
+      const refund = await run([itx('p2', -120)]);
+      ok('εισόδημα: επιστροφή, καμία δόση', inc2026(refund.tables.calendar_events).length === 0);
+      const owes = await run([itx('p1', 900)]);
+      ok('εισόδημα: εκκαθαριστικό με φόρο, οκτώ δόσεις', inc2026(owes.tables.calendar_events).length === 8);
+      const blank = await run([itx('p1', null)]);
+      ok('εισόδημα: κενό ποσό δεν είναι μηδέν, οκτώ δόσεις', inc2026(blank.tables.calendar_events).length === 8);
+      const other = await run([itx('p1', 0, 2024)]);
+      ok('εισόδημα: μηδέν άλλου έτους δεν αγγίζει τη δήλωση 2026', inc2026(other.tables.calendar_events).length === 8);
+      // Η ΠΡΑΓΜΑΤΙΚΗ ΔΙΑΔΡΟΜΗ ΤΗΣ ΣΑΡΩΣΗΣ, όχι γραμμή γραμμένη με το χέρι: ο
+      // χρήστης γράφει «0» στη φόρμα, το σχέδιο αποθήκευσης και η γραμμή του
+      // Αρχείου βγαίνουν από τις ίδιες συναρτήσεις με την εφαρμογή.
+      const scanned = (typed: string) => {
+        const base = applyKind({ doc_type: 'tax', tax_year: 2025, due_date: '2026-07-31' } as ScannedDoc, 'income_tax');
+        const doc = normalizeScannedDoc({ ...base, amount: amountFromInput(typed, kindOf(base)) });
+        const plan = planDocSave(doc, MARCH, { incomeSeries: true });
+        const file = { name: 'ekkatharistiko.pdf', type: 'application/pdf', size: 1 } as File;
+        return { id: `scan-${typed}`, ...archivePayload(archiveInputFrom(plan.archive!, file, 'p1', OWNER, plan.archive!.title), 'p/x.pdf') };
+      };
+      const scanZero = await run([scanned('0')]);
+      ok('σάρωση με «0»: καμία δόση της δήλωσης 2026', inc2026(scanZero.tables.calendar_events).length === 0, inc2026(scanZero.tables.calendar_events).length);
+      const scanRefund = await run([scanned('-75')]);
+      ok('σάρωση με επιστροφή: καμία δόση', inc2026(scanRefund.tables.calendar_events).length === 0);
+      const scanOwes = await run([scanned('640')]);
+      ok('σάρωση με φόρο: οκτώ δόσεις', inc2026(scanOwes.tables.calendar_events).length === 8);
+      ok('σάρωση σε νοικιασμένο: καμία δεύτερη «1η δόση» από τη σάρωση', !scanOwes.tables.calendar_events.some(r => String(r.title).includes('1η δόση') && !String(r.source).startsWith('tax:')));
+
+      const mixed = await run([itx('p1', 0), itx('p2', 900)]);
+      ok('εισόδημα: μηδέν και φόρος στον ίδιο ΑΦΜ, μένουν οι δόσεις', inc2026(mixed.tables.calendar_events).length === 8);
+      // Γραμμένες ήδη, μετά σαρώνεται μηδέν: φεύγουν οι ανέγγιχτες, μένει η πληρωμένη.
+      const later = await run([]);
+      const paidOne = inc2026(later.tables.calendar_events).find(r => r.source === 'tax:income-instalment-2026-3')!;
+      paidOne.status = 'paid';
+      later.tables.property_documents.push(itx('p1', 0));
+      await syncOwnerTaxDeadlines(later.db, OWNER, { today: MARCH });
+      ok('εισόδημα: σαρώθηκε μηδέν, φεύγουν οι ανέγγιχτες, μένει η πληρωμένη',
+        inc2026(later.tables.calendar_events).map(r => r.source).join() === 'tax:income-instalment-2026-3', inc2026(later.tables.calendar_events).map(r => r.source));
+    }
+
     const stale = await run([], { bills_settings: [{ property_id: 'p1', user_id: OWNER, section: 'services', data: { enfiaStatementTotal: '27,44', enfiaStatementYear: '2025' } }] });
     ok('ΕΝΦΙΑ σύνολο άλλου έτους: δεν μετρά', enfia2026(stale.tables.calendar_events).length === 12);
 
@@ -319,7 +373,10 @@ const STR_NOV = 'tax:str-registry-2026-11';
     ok('συμφιλίωση: δεύτερο πέρασμα δεν αλλάζει τίποτα και δεν ξαναγεννά', r2.inserted === 0 && r2.updated === 0 && r2.removed === 0
       && enfia2026(c.tables.calendar_events).length === 8, r2);
     const r3 = await syncOwnerTaxDeadlines(c.db, OWNER, { today: '2026-03-01' });
-    ok('συμφιλίωση: ούτε με «σήμερα» πριν από αυτές', r3.inserted === 0, r3);
+    // Καμία νέα γραμμή ΕΝΦΙΑ. Οι μόνες εισαγωγές είναι οι δόσεις φόρου
+    // εισοδήματος Ιουλίου ως Σεπτεμβρίου: σβήστηκαν ως περασμένες στις 05/10 και
+    // με «σήμερα» τον Μάρτιο είναι πάλι μελλοντικές (3 δόσεις × 2 ακίνητα).
+    ok('συμφιλίωση: ούτε με «σήμερα» πριν από αυτές', r3.inserted === c.tables.calendar_events.filter(r => /^tax:income-instalment-2026-[123]$/.test(String(r.source))).length, r3);
 
     // Η ΔΟΣΗ ΠΟΥ ΛΗΓΕΙ ΣΗΜΕΡΑ ΜΕΝΕΙ (2ος έλεγχος, 21/10/2026). Δώδεκα γραμμένες,
     // μετά σύνολο 27,44€ (δύο δόσεις) και συγχρονισμός την ημέρα της 8ης.
@@ -356,6 +413,29 @@ const STR_NOV = 'tax:str-registry-2026-11';
     const noProfile = await run([stmt('p1', 27.44)], { billing_profiles: [] });
     ok('χωρίς προφίλ: το σύνολο μένει στο ακίνητό του', enfia2026(noProfile.tables.calendar_events, 'p1').length === 2
       && enfia2026(noProfile.tables.calendar_events, 'p2').length === 12);
+  }
+
+  // ── 7β. ΠΕΡΑΣΜΕΝΗ ΔΟΣΗ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ ΔΕΝ ΜΕΝΕΙ ΑΝΟΙΧΤΗ (12.11.2026) ─────
+  // Η εφαρμογή δεν ξέρει αν οφειλόταν· ανοιχτή θα γινόταν «Ληξιπρόθεσμο».
+  {
+    const NOV = '2026-11-12';
+    const fresh = planTaxSync('2026-07-01', 'long_term', []);
+    const rows = fresh.insert.map((d, i) => ({ id: `r${i}`, property_id: 'p1', ...d })) as unknown as Parameters<typeof planTaxSync>[2];
+    const byId = new Map(rows.map(r => [r.id, r]));
+    const idOf = (src: string) => rows.find(r => r.source === src)!.id;
+    // Η 2η πληρωμένη από τον χρήστη (κατάσταση που άλλαξε μετά το αποτύπωμα).
+    (byId.get(idOf('tax:income-instalment-2026-2')) as { status: string }).status = 'paid';
+    const plan = planTaxSync(NOV, 'long_term', rows);
+    const removed = new Set(plan.remove.map(id => byId.get(id)!.source));
+    ok('περασμένες ανοιχτές δόσεις 1, 3, 4: σβήνονται', ['1', '3', '4'].every(k => removed.has(`tax:income-instalment-2026-${k}`)), [...removed]);
+    ok('η πληρωμένη 2η μένει', !removed.has('tax:income-instalment-2026-2'));
+    ok('οι μελλοντικές 5 ως 8 μένουν', ['5', '6', '7', '8'].every(k => !removed.has(`tax:income-instalment-2026-${k}`)));
+    ok('περασμένη ΕΝΦΙΑ δεν σβήνεται (ιστορικό)', ![...removed].some(s => String(s).startsWith('tax:enfia-')));
+    // Με εκκαθαριστικό χωρίς φόρο για το 2025: φεύγουν και οι μελλοντικές.
+    const nil = planTaxSync(NOV, 'long_term', rows, new Map(), {}, {}, [2025]);
+    const nilRemoved = new Set(nil.remove.map(id => byId.get(id)!.source));
+    ok('εκκαθαριστικό χωρίς φόρο: φεύγουν και οι 5 ως 8', ['5', '6', '7', '8'].every(k => nilRemoved.has(`tax:income-instalment-2026-${k}`)));
+    ok('εκκαθαριστικό χωρίς φόρο: καμία νέα δόση', !nil.insert.some(d => String(d.source).startsWith('tax:income-instalment-')));
   }
 
   // ── 8. ΤΟ ΣΧΕΔΙΟ ΧΩΡΙΣ ΒΑΣΗ ─────────────────────────────────────────────────
