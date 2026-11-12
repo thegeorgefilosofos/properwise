@@ -10,9 +10,10 @@ ok('end of 3y lease', leaseEndDate('2026-09-01', 3) === '2029-08-31')
 ok('end of 1y lease from 31/01', leaseEndDate('2026-01-31', 1) === '2027-01-30')
 ok('end with invalid start', leaseEndDate('', 3) === '')
 
-// Προθεσμία δήλωσης: τέλος του επόμενου μήνα.
-ok('deadline for Sep start', declarationDeadline('2026-09-15') === '2026-10-31')
-ok('deadline crosses year', declarationDeadline('2026-12-03') === '2027-01-31')
+// Προθεσμία δήλωσης: τέλος του επόμενου μήνα, σε αργία ή Σαββατοκύριακο η
+// επόμενη εργάσιμη (ΚΦΔ άρθρο 7 παρ. 1). 31/10/2026 Σάββατο, 31/01/2027 Κυριακή.
+ok('deadline for Sep start', declarationDeadline('2026-09-15') === '2026-11-02')
+ok('deadline crosses year', declarationDeadline('2026-12-03') === '2027-02-01')
 // Φεβρουάριος (μη δίσεκτο 2027): 31/03.
 ok('deadline for Feb start', declarationDeadline('2027-02-10') === '2027-03-31')
 
@@ -25,7 +26,7 @@ ok('36 months', l.months === 36)
 ok('3 years', l.years === 3)
 ok('not below minimum', l.belowLegalMinimum === false)
 ok('first year total', l.firstYearTotal === 6000)
-ok('deadline set', l.declarationDeadline === '2026-10-31')
+ok('deadline set', l.declarationDeadline === '2026-11-02')
 
 // Κάτω από την ελάχιστη τριετία κατοικίας → σημαία.
 const short = computeLease({ monthlyRent: 400, start: '2026-01-01', years: 1 })
@@ -52,7 +53,7 @@ const terms = leaseTerms(l)
 ok('terms numbered from 1', terms[0].title.startsWith('1. '))
 ok('has adjustment term', terms.some(t => t.title.includes('Αναπροσαρμογή')))
 ok('has deposit term', terms.some(t => t.title.includes('Εγγύηση')))
-ok('mentions myAADE deadline', terms.some(t => t.text.includes('31/10/2026')))
+ok('mentions myAADE deadline', terms.some(t => t.text.includes('02/11/2026')))
 ok('mentions bank payment', terms.some(t => t.text.includes('τραπεζικό')))
 
 // Χωρίς εγγύηση/αναπροσαρμογή → οι όροι παραλείπονται και η αρίθμηση μένει συνεχής.

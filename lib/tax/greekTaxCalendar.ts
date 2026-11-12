@@ -10,14 +10,16 @@
 //     η υποχρέωση αντιστοιχεί σε παραστατικό του φακέλου, το `dossier` δείχνει
 //     σε αυτό και το τεστ επαληθεύει ότι το `who` συμφωνεί.
 // Οι προθεσμίες που πέφτουν σε αργία/Σαββατοκύριακο μετατίθενται στην επόμενη
-// εργάσιμη (άρθρο περί διοικητικών προθεσμιών).
+// εργάσιμη: ΚΦΔ (ν. 5104/2024) άρθρο 7 παρ. 1 (βλ. `nextWorkingDay`). Εξαίρεση
+// μόνο όπου ο ίδιος ο νόμος λέει «τελευταία ΕΡΓΑΣΙΜΗ του μήνα» (δόσεις ΕΝΦΙΑ,
+// δόσεις φόρου εισοδήματος): εκεί η μέρα είναι ήδη εργάσιμη και δεν μετατίθεται.
 //
 // ΜΙΑ ΠΗΓΗ, ΜΙΑ ΗΜΕΡΟΜΗΝΙΑ. Αυτό το αρχείο είναι ο ΜΟΝΟΣ τόπος όπου ζει θεσμική
 // προθεσμία φορολογίας ακινήτων. Το `app/dashboard/components/obligations.ts`
 // (Επισκόπηση) και το `TabCalendar.tsx` (Ημερολόγιο) διαβάζουν από εδώ, με το
 // ίδιο κλειδί ταυτότητας γεγονότος (`taxEventSource`), ώστε η ίδια υποχρέωση να
 // μην μπορεί να υπάρξει δύο φορές με δύο ημερομηνίες.
-import { isNonWorkingDay } from '../calendar/greekHolidays'
+import { isNonWorkingDay, nextWorkingDay } from '../calendar/greekHolidays'
 import type { EventDraft } from '../data/calendar'
 import { readStatus, type StatusRow } from '../property/status'
 import { WHO_LABEL, type Who } from '../accounting/dossier'
@@ -140,18 +142,10 @@ function iso(y: number, mIndex0: number, day: number): string {
   return `${y}-${String(mIndex0 + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 function daysInMonth(y: number, mIndex0: number): number { return new Date(y, mIndex0 + 1, 0).getDate() }
-function addDay(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const nd = new Date(Date.UTC(y, m - 1, d + 1))
-  return `${nd.getUTCFullYear()}-${String(nd.getUTCMonth() + 1).padStart(2, '0')}-${String(nd.getUTCDate()).padStart(2, '0')}`
-}
 
-// Μετάθεση προθεσμίας στην επόμενη εργάσιμη αν πέφτει σε αργία/ΣΚ.
-export function nextWorkingDay(dateStr: string): string {
-  let d = dateStr, guard = 0
-  while (isNonWorkingDay(d) && guard++ < 14) d = addDay(d)
-  return d
-}
+// Μετάθεση προθεσμίας στην επόμενη εργάσιμη αν πέφτει σε αργία/ΣΚ (ΚΦΔ άρθρο 7
+// παρ. 1). Μία υλοποίηση, στο lib/calendar/greekHolidays.ts· εδώ επανεξάγεται.
+export { nextWorkingDay }
 // Τελευταία εργάσιμη ημέρα του μήνα (για δόσεις που λήγουν «τέλος μήνα»).
 export function lastWorkingDayOfMonth(y: number, mIndex0: number): string {
   let day = daysInMonth(y, mIndex0)
@@ -393,10 +387,22 @@ function shortTermObligations(year: number): Draft[] {
     })
     // Τέλος ανθεκτικότητας στην κλιματική κρίση (πρώην φόρος διαμονής): μηνιαία
     // απόδοση από τον εκμεταλλευτή, έως το τέλος του επόμενου μήνα.
+    //
+    // ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΚΛΕΙΝΕΙ (12.11.2026). Η ημερομηνία ήταν η τελευταία ΕΡΓΑΣΙΜΗ
+    // του μήνα, δηλαδή μετάθεση ΠΙΣΩ: η απόδοση Σεπτεμβρίου έβγαινε 30/10/2026,
+    // ενώ η 31/10 ήταν Σάββατο και η προθεσμία έληγε 02/11/2026. Αντίθετα με την
+    // αρχή αυτού του αρχείου και με το ημερολόγιο του taxheaven.
+    //
+    // ΠΗΓΗ. ν. 5177/2025 άρθρο 44 παρ. 4 (πρώην ν. 4389/2016 άρθρο 53 παρ. 2):
+    // «Οι δηλώσεις υποβάλλονται μέχρι την τελευταία ημέρα του επόμενου μήνα από
+    // αυτόν της έκδοσης κάθε ειδικού στοιχείου». Τελευταία ΗΜΕΡΑ, όχι εργάσιμη·
+    // αν πέφτει σε αργία ή Σαββατοκύριακο, ΚΦΔ άρθρο 7 παρ. 1: η αμέσως επόμενη
+    // εργάσιμη. Η προθεσμία του Δεκεμβρίου μπορεί έτσι να πέσει στον Ιανουάριο·
+    // το κλειδί κρατά τον μήνα στον οποίο ανήκει.
     out.push({
-      kind: 'str-climate-fee', id: `str-climate-fee-${year}-${m + 1}`, date: lastWorkingDayOfMonth(year, m),
+      kind: 'str-climate-fee', id: `str-climate-fee-${year}-${m + 1}`, date: nextWorkingDay(iso(year, m, daysInMonth(year, m))),
       title: 'Τέλος ανθεκτικότητας κλιματικής κρίσης, απόδοση',
-      notes: `Μηνιαία απόδοση του τέλους ανθεκτικότητας στην κλιματική κρίση (τέλος διαμονής) που εισπράχθηκε από τους επισκέπτες, έως το τέλος του επόμενου μήνα. ${CONFIRM}`,
+      notes: `Μηνιαία απόδοση του τέλους ανθεκτικότητας στην κλιματική κρίση (τέλος διαμονής) που εισπράχθηκε από τους επισκέπτες, έως το τέλος του επόμενου μήνα· αν η τελευταία μέρα του μήνα είναι αργία ή Σαββατοκύριακο, έως την επόμενη εργάσιμη. ${CONFIRM}`,
       category: 'tax', confidence: 'statutory', profiles: ['short_term'],
       who: 'owner', dossier: 'climate_levy',
     })
