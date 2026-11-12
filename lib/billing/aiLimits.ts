@@ -237,7 +237,7 @@ export const FREE_TESTERS_PER_MONTH = 100;
  * Το ταβάνι στο ΑΘΡΟΙΣΜΑ όλων των μη-πληρωνόντων ανά μήνα.
  *
  * Μετρούν εδώ: η δωρεάν δοκιμή και οι Συνεργάτες χωρίς δώρο. ΟΧΙ πια οι
- * δωρεάν μήνες και το δώρο της κλήρωσης (`drawsFromPool`, 20261112120000).
+ * δωρεάν μήνες και το δώρο της κλήρωσης (`drawsFromPool`, 20261112170000).
  * Ο δωρεάν λογαριασμός δεν έχει Νόα και οι πέντε σαρώσεις του μένουν εκτός.
  * Λέγεται στη γραμμή της δοκιμής και στους Όρους (lib/billing/trialOffer.ts).
  */
@@ -445,7 +445,7 @@ export function poolExhaustedMessage(canBuy = false): string {
 // γράφονται στα `comp_plan`/`comp_until`. Οι Όροι (§10, §13) τους υπόσχονται
 // ως «μήνες συνδρομής» και «έναν χρόνο συνδρομής» ενός πακέτου, όχι ως
 // δοκιμή· ο μετρητής όμως τους έκοβε στο TRIAL_LIMITS και τους χρέωνε στην
-// κοινή δεξαμενή. Από τη 20261112120000 το δώρο σε ισχύ παίρνει τα όρια του
+// κοινή δεξαμενή. Από τη 20261112170000 το δώρο σε ισχύ παίρνει τα όρια του
 // ΔΙΚΟΥ ΤΟΥ πακέτου, εκτός δεξαμενής. Η δοκιμή και ο Συνεργάτης χωρίς δώρο
 // μένουν στο TRIAL_LIMITS.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -484,8 +484,9 @@ export function effectiveAiLimits(
   comp: PlanId | string | null = null,
 ): AiLimits {
   const l = aiLimitsFor(plan);
-  const gift = paying ? null : giftPlan(comp);
-  const cap = paying ? null : gift ? aiLimitsFor(gift) : TRIAL_LIMITS;
+  // Όποιος αντλεί από τη δεξαμενή έχει το πακέτο της δοκιμής· το δώρο, του πακέτου του.
+  const gift = giftPlan(comp);
+  const cap = paying ? null : drawsFromPool(paying, comp) || !gift ? TRIAL_LIMITS : aiLimitsFor(gift);
   const base = !cap ? l : {
     perMinute: l.perMinute,
     perDay: Math.min(l.perDay, cap.perDay),

@@ -59,7 +59,7 @@ const scan = latest('take_scan_unit')
 eq('take_ai_unit: υπογραφή χωρίς όρια', /take_ai_unit\(p_uid uuid, p_request_id uuid\)/.test(ai), true)
 eq('take_scan_unit: υπογραφή χωρίς όρια', /take_scan_unit\(p_uid uuid, p_request_id uuid, p_file_hash text\)/.test(scan), true)
 eq('take_ai_unit: δοκιμή από τη trial_day', /if v_pool then\s*\n\s*v_lday := least\(v_lday, \(v_lim->>'trial_day'\)/.test(ai), true)
-// ΤΟ ΔΩΡΟ ΠΑΙΡΝΕΙ ΤΑ ΟΡΙΑ ΤΟΥ ΠΑΚΕΤΟΥ ΤΟΥ (20261112120000). Ο ίδιος όρος με την
+// ΤΟ ΔΩΡΟ ΠΑΙΡΝΕΙ ΤΑ ΟΡΙΑ ΤΟΥ ΠΑΚΕΤΟΥ ΤΟΥ (20261112170000). Ο ίδιος όρος με την
 // user_plan_rank (comp_until > now, βαθμός ≥ 1) και με τον TS (`giftPlan`).
 const gift = /v_cr := case when v_cuntil is not null and v_cuntil > v_now then public\.plan_rank\(v_cplan\) else 0 end;/
 eq('take_ai_unit: το δώρο κρίνεται από comp_plan και comp_until', gift.test(ai), true)

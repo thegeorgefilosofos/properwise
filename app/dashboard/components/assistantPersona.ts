@@ -266,7 +266,7 @@ const REGION_LINE = REGION_KEYS
  * @param base  το πακέτο που χρεώνεται πράγματι (`billing_profiles.plan`).
  * @param trialDaysLeft ημέρες που απομένουν στη δοκιμή, αν τρέχει δοκιμή.
  * @param comp  το πακέτο του δώρου σε ισχύ (`activeComp(ent)?.plan`): δίνει τα
- *   όριά του, όπως η `take_ai_unit` από τη 20261112120000.
+ *   όριά του, όπως η `take_ai_unit` από τη 20261112170000.
  */
 export function planBriefing(plan: PlanId, base: string | null | undefined, trialDaysLeft?: number, comp: PlanId | null = null): string {
   const paying = isPayingPlan(base);
