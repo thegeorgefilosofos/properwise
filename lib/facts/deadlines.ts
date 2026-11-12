@@ -161,7 +161,8 @@ export function upcomingTaxObligations(
  * μόνο όταν το είδος δεν έχει επόμενη, για `DEADLINE_LOOKBACK_DAYS` ημέρες.
  *
  * Οι ενδιάμεσες δόσεις ΕΝΦΙΑ δεν μένουν ποτέ περασμένες: τις διαδέχεται πάντα
- * η επόμενη πληρωμή της ίδιας σειράς. Μια κλειστή προθεσμία (δόση πληρωμένη
+ * η επόμενη πληρωμή της ίδιας σειράς. Το ίδιο οι δόσεις του φόρου εισοδήματος:
+ * περασμένη δόση δεν μένει στη λίστα ως εκπρόθεσμη. Μια κλειστή προθεσμία (δόση πληρωμένη
  * νωρίτερα) αφήνει να φανεί η επόμενη του ίδιου είδους αμέσως, όχι όταν
  * περάσει η ημερομηνία της.
  *
@@ -188,7 +189,7 @@ export function nextTaxObligations(
 
   const pick = new Map<string, TaxObligation>();
   for (const o of pool) {
-    if (o.kind === 'enfia-instalment' && o.date < t) continue;
+    if ((o.kind === 'enfia-instalment' || o.kind === 'income-instalment') && o.date < t) continue;
     const cur = pick.get(o.kind);
     if (cur && cur.date >= t) continue;
     pick.set(o.kind, o);

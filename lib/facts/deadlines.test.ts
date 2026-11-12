@@ -139,5 +139,20 @@ ok('ο λογαριασμός από τον πίνακά του, όχι από �
 ok('το ενοίκιο από τη γραμμή του, όχι από την υπενθύμιση', uids.includes('rent-r1@properwise') && !uids.includes('event-e-rent@properwise'), uids);
 ok('η σημείωση της εκκρεμότητας χωρίς JSON', feed.find(f => f.uid === 'task-t-own@properwise')?.note === 'Ρώτα τον Νίκο', feed.find(f => f.uid === 'task-t-own@properwise'));
 
+// ── ΔΟΣΕΙΣ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ (12.11.2026) ─────────────────────────────────
+// Μία γραμμή, η επόμενη δόση· η περασμένη δεν μένει ως εκπρόθεσμη. Κανένα ποσό:
+// η εφαρμογή δεν το ξέρει και δεν το γράφει με το χέρι.
+{
+  const nextInc = (d: string, p: 'owner' | 'long_term' = 'long_term') =>
+    nextTaxObligations(d, p).filter(o => o.kind === 'income-instalment');
+  ok('12.11.2026: η επόμενη δόση είναι η 5η, 30/11/2026', nextInc('2026-11-12').map(o => `${o.id}@${o.date}`).join() === 'income-instalment-2026-5@2026-11-30', nextInc('2026-11-12'));
+  ok('1.12.2026: η 5η πέρασε και δεν μένει, η επόμενη είναι η 6η', nextInc('2026-12-01').map(o => o.id).join() === 'income-instalment-2026-6', nextInc('2026-12-01'));
+  ok('15.3.2027: μετά την 8η, καμία περασμένη δόση', nextInc('2027-03-15').every(o => o.date >= '2027-03-15'), nextInc('2027-03-15'));
+  ok('ιδιοκατοίκηση: καμία δόση', nextInc('2026-11-12', 'owner').length === 0);
+  const evs = taxEventsToWrite('2026-11-12', 'long_term').filter(e => String(e.source).startsWith('tax:income-instalment-'));
+  ok('12.11.2026: γράφονται οι 5η ως 8η', evs.map(e => e.event_date).join() === '2026-11-30,2026-12-31,2027-01-29,2027-02-26', evs.map(e => e.event_date));
+  ok('χωρίς ποσό: δεν υπάρχει ποσό από τον κώδικα', evs.every(e => e.amount === null || e.amount === undefined), evs.map(e => e.amount));
+}
+
 console.log(fail ? `✗ deadlines: ${fail} απέτυχαν, ${pass} πέρασαν` : `✓ deadlines: ${pass} έλεγχοι πέρασαν`);
 if (fail) process.exit(1);

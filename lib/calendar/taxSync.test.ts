@@ -199,6 +199,8 @@ const STR_NOV = 'tax:str-registry-2026-11';
     ok('συνιδιοκτησία 50%: ίδιες προθεσμίες με το 100%', taxRows(tables, 'pA').length === taxRows(tables, 'pB').length);
     ok('οι συνιδιοκτήτες της καρτέλας δεν παίρνουν γραμμές', taxRows(tables).every(r => r.user_id === OWNER));
     ok('ο ΕΝΦΙΑ είναι του ανθρώπου, όχι του ακινήτου', isPersonLevel(EIGHTH) && !isPersonLevel(STR_NOV));
+    // Ο φόρος εισοδήματος είναι ένας ανά ΑΦΜ, ας βγαίνει μόνο σε νοικιασμένο ακίνητο.
+    ok('η δόση φόρου εισοδήματος είναι του ανθρώπου', isPersonLevel('tax:income-instalment-2026-5'));
 
     // Πλήρωσε την 8η δόση από το ακίνητο Α και τη δήλωση Νοεμβρίου του Α.
     bySrc(tables, 'pA', EIGHTH)!.status = 'paid';

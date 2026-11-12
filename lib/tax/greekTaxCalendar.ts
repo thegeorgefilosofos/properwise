@@ -32,7 +32,7 @@ export type PropertyTaxProfile = 'owner' | 'long_term' | 'short_term'
  *  που θέλει «μία γραμμή ανά υποχρέωση» και όχι δώδεκα ίδιες. */
 export type TaxObligationKind =
   | 'enfia-issue' | 'enfia-first' | 'enfia-instalment' | 'enfia-last'
-  | 'e9' | 'income-decl' | 'income-autofile'
+  | 'e9' | 'income-decl' | 'income-autofile' | 'income-instalment'
   | 'str-registry' | 'str-climate-fee'
 
 export interface TaxObligation {
@@ -70,7 +70,7 @@ export const isTaxEventSource = (source?: string | null): boolean =>
   !!source && source.startsWith(TAX_SOURCE_PREFIX)
 
 export const TAX_KINDS: readonly TaxObligationKind[] = [
-  'enfia-issue', 'enfia-first', 'enfia-instalment', 'enfia-last', 'e9', 'income-autofile', 'income-decl',
+  'enfia-issue', 'enfia-first', 'enfia-instalment', 'enfia-last', 'e9', 'income-autofile', 'income-decl', 'income-instalment',
   'str-registry', 'str-climate-fee',
 ]
 
@@ -216,10 +216,14 @@ function knownEnfiaCount(year: number, opts: TaxCalendarOptions): number | null 
 // Ο αριθμός ζούσε μόνο μέσα στη σημείωση του `income-decl` («έως 8 δόσεις») και
 // γραμμένος με το χέρι στον οδηγό προθεσμιών («έως οκτώ δόσεις»).
 //
-// ΠΗΓΗ. ΚΦΕ (ν.4172/2013) άρθρο 67 παρ. 4 περ. α΄, όπως αντικαταστάθηκε με το
-// άρθρο 84 ν.5162/2024 (ΦΕΚ Α΄ 198/05.12.2024): ο φόρος καταβάλλεται σε οκτώ (8)
-// ισόποσες μηνιαίες δόσεις, η πρώτη ως την τελευταία εργάσιμη του Ιουλίου και
-// οι επτά επόμενες ως την τελευταία εργάσιμη καθενός από τους επόμενους μήνες.
+// ΠΗΓΗ. ΚΦΕ (ν.4172/2013) άρθρο 67 παρ. 6, τρίτο εδάφιο, όπως αντικαταστάθηκε με
+// το άρθρο 84 ν.5162/2024 (ΦΕΚ Α΄ 198/05.12.2024). Ως τώρα εδώ έγραφε «παρ. 4
+// περ. α΄»· η παρ. 4 είναι η κοινή δήλωση των συζύγων. Κείμενο, όπως είναι
+// κωδικοποιημένο στο https://www.taxheaven.gr/law/4172/2013/arthro/67 :
+// «Η καταβολή του φόρου γίνεται σε οκτώ (8) ισόποσες μηνιαίες δόσεις, από τις
+// οποίες η πρώτη καταβάλλεται μέχρι την τελευταία εργάσιμη ημέρα του μηνός
+// Ιουλίου και οι υπόλοιπες επτά (7) μέχρι την τελευταία εργάσιμη ημέρα των
+// επόμενων επτά (7) μηνών.»
 // Μόνιμη διάταξη, όχι ρύθμιση του έτους. Για το φορολογικό έτος 2025 (δηλώσεις
 // του 2026) το επιβεβαιώνουν οι Οδηγίες συμπλήρωσης Ε1 2026 της ΑΑΔΕ
 // (16.03.2026) και το Δελτίο Τύπου ΑΑΔΕ 13.03.2026: πρώτη δόση ως 31/7/2026.
@@ -227,6 +231,10 @@ function knownEnfiaCount(year: number, opts: TaxCalendarOptions): number | null 
 // data/accounting-sources.json (income_tax_instalments).
 /** Πλήθος μηνιαίων δόσεων του φόρου εισοδήματος φυσικών προσώπων. */
 export const INCOME_TAX_INSTALMENTS = 8
+/** Η διάταξη, όπως τη διαβάζει ο χρήστης στις σημειώσεις. */
+const KFE_ART67 = 'ΚΦΕ (ν. 4172/2013), άρθρο 67 παρ. 6'
+/** Ο μήνας της 1ης δόσης (Ιούλιος, μηδενική αρίθμηση). */
+const INCOME_FIRST_MONTH = 6
 
 // Οι υποχρεώσεις που ισχύουν για ΟΛΟΥΣ τους ιδιοκτήτες ακινήτων, ανά έτος.
 function ownerObligations(year: number, opts: TaxCalendarOptions = {}): Draft[] {
@@ -368,6 +376,39 @@ function ownerObligations(year: number, opts: TaxCalendarOptions = {}): Draft[] 
     category: 'tax', confidence: 'announced', profiles: ['owner', 'long_term', 'short_term'],
     who: 'accountant',
   })
+
+  // ── ΟΙ ΔΟΣΕΙΣ ΤΟΥ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ (12.11.2026) ───────────────────────────
+  //
+  // ΤΟ ΚΕΝΟ. Υπήρχε μόνο ο αριθμός των δόσεων, μέσα στη σημείωση της δήλωσης.
+  // Ο ιδιοκτήτης με Ε2 έπαιρνε υπενθύμιση για κάθε δόση του ΕΝΦΙΑ και για καμία
+  // του φόρου εισοδήματος, που λήγουν τις ίδιες μέρες (Νοέμβριος ως Φεβρουάριος).
+  //
+  // Ο ΚΑΝΟΝΑΣ (ΚΦΕ άρθρο 67 παρ. 6, βλ. INCOME_TAX_INSTALMENTS): δόσεις ως την
+  // τελευταία ΕΡΓΑΣΙΜΗ του Ιουλίου και κάθε επόμενου μήνα. Η μέρα είναι ήδη
+  // εργάσιμη από τον νόμο, άρα `lastWorkingDayOfMonth` και καμία μετάθεση.
+  // Μόνιμη διάταξη, όχι απόφαση του έτους: γι' αυτό «του νόμου» για κάθε έτος.
+  //
+  // ΣΕ ΠΟΙΟΝ. Μόνο σε ακίνητο που νοικιάζεται (μακροχρόνια ή βραχυχρόνια): εκεί
+  // υπάρχει εισόδημα από ακίνητο που φορολογείται. Η ιδιοκατοίκηση δεν
+  // παράγει φόρο εισοδήματος από το ακίνητο και δεν γεμίζει με οκτώ
+  // υπενθυμίσεις. Το ποσό η εφαρμογή δεν το ξέρει (το βγάζει η εκκαθάριση της
+  // ΑΑΔΕ) και δεν γράφει κανένα: η σημείωση λέει ότι αφορά μόνο όποιον έχει
+  // φόρο για πληρωμή.
+  //
+  // Το κλειδί είναι `income-instalment-${έτος δήλωσης}-${δόση}`: η 8η δόση της
+  // δήλωσης του 2026 λήγει τον Φεβρουάριο του 2027 και κρατά το 2026.
+  for (let k = 1; k <= INCOME_TAX_INSTALMENTS; k++) {
+    const t = INCOME_FIRST_MONTH + k - 1
+    const isLast = k === INCOME_TAX_INSTALMENTS
+    out.push({
+      kind: 'income-instalment', id: `income-instalment-${year}-${k}`,
+      date: lastWorkingDayOfMonth(year + Math.floor(t / 12), t % 12),
+      title: isLast ? `Φόρος εισοδήματος, ${k}η και τελευταία δόση` : `Φόρος εισοδήματος, ${k}η δόση`,
+      notes: `Καταληκτική ${k}ης ${isLast ? 'και τελευταίας ' : ''}δόσης του φόρου εισοδήματος της δήλωσης ${year}, την τελευταία εργάσιμη του μήνα. Ο φόρος πληρώνεται σε ${INCOME_TAX_INSTALMENTS} ισόποσες μηνιαίες δόσεις, η πρώτη τον Ιούλιο (${KFE_ART67}). Αφορά μόνο όσους η εκκαθάριση της δήλωσης έβγαλε φόρο για πληρωμή που δεν εξοφλήθηκε εφάπαξ· το ποσό της δόσης είναι στο εκκαθαριστικό. ${CONFIRM}`,
+      category: 'tax', confidence: 'statutory', profiles: ['long_term', 'short_term'],
+      who: 'owner',
+    })
+  }
 
   return out
 }

@@ -111,7 +111,11 @@ function statusTouched(r: Pick<TaxRow, 'auto_hash' | 'status'>): boolean {
 
 /** Προθεσμία του φορολογούμενου (ΕΝΦΙΑ, Ε1, Ε9) και όχι ενός ακινήτου. */
 export function isPersonLevel(source: string | null | undefined): boolean {
-  return !!taxObligationOfEventSource(source)?.profiles.includes('owner');
+  const o = taxObligationOfEventSource(source);
+  // Οι δόσεις του φόρου εισοδήματος βγαίνουν μόνο σε νοικιασμένο ακίνητο, αλλά
+  // ο φόρος είναι ένας ανά ΑΦΜ: πληρωμένη δόση σε ένα ακίνητο είναι πληρωμένη
+  // σε όλα.
+  return !!o && (o.profiles.includes('owner') || o.kind === 'income-instalment');
 }
 
 export interface TaxSyncPlan {
