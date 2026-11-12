@@ -23,8 +23,9 @@ import { displayable } from '@/lib/legal/enforcement/gate'
 import { rule, RULES_CHECKED_AT } from '@/lib/legal/enforcement/rules'
 import {
   ANSWER, ASK_LAWYER_BADGE, CHECKS_TITLE, FIELDS, INTRO, LAWYER_BADGE, NEXT, REASONS, RECEIVED_OPTIONS, VERIFIED_BADGE, WHOSE,
-  basisLine, checkText, footer, itemBody, itemTitle, longDate, optionCards, relDays,
+  CALM_WINDOW_DAYS, basisLine, checkText, footer, itemBody, itemTitle, longDate, optionCards, relDays,
 } from '@/lib/legal/enforcement/copy'
+import { addDays as addDaysIso } from '@/lib/legal/enforcement/calc'
 import * as contactStore from '@/lib/data/contacts'
 import { createClient } from '@/lib/supabase/client'
 import { DatePicker, CustomSelect } from '../UIComponents'
@@ -73,6 +74,19 @@ function toFacts(a: Answers): CaseFacts {
   }
 }
 
+/** Η πρώτη ερώτηση που λείπει, για να την ονομάσει το κουμπί που δεν πατιέται. */
+function firstMissing(a: Answers): string | null {
+  if (!a.received) return FIELDS.received.label
+  for (const k of visibleDates(a)) {
+    const d = a.dates[k]
+    if (OPTIONAL.includes(k)) { if (d.mode === 'date' && !d.date) return FIELDS[k].label; continue }
+    if (d.mode === 'unset' || (d.mode === 'date' && !d.date)) return FIELDS[k].label
+  }
+  if (a.dates.auction.mode === 'date' && !a.auctionFirst) return FIELDS.auctionFirst.label
+  if (!a.publicDebt) return FIELDS.publicDebt.label
+  return null
+}
+
 function complete(a: Answers): boolean {
   if (!a.received || !a.publicDebt) return false
   for (const k of visibleDates(a)) {
@@ -99,10 +113,21 @@ function Badge({ text }: { text: string }) {
   )
 }
 
-/** Ημερομηνία με πλήρη ανάγνωση για αναγνώστες οθόνης. */
+/**
+ * Ημερομηνία με πλήρη ανάγνωση για αναγνώστες οθόνης. Κρυφό κείμενο, όχι
+ * `aria-label`: σε `<time>` χωρίς ρόλο πολλοί αναγνώστες αγνοούν το label.
+ */
 function D({ iso, strong }: { iso: string; strong?: boolean }) {
-  return <time dateTime={iso} aria-label={longDate(iso)} style={{ fontWeight: strong ? 600 : 500, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{grDate(iso)}</time>
+  return (
+    <time dateTime={iso} style={{ fontWeight: strong ? 600 : 500, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+      <span aria-hidden="true">{grDate(iso)}</span><span className="sr-only">{longDate(iso)}</span>
+    </time>
+  )
 }
+
+/** Οι δύο πηγές του κανόνα διαφωνούν στη διατύπωση (π.χ. ΦΕΚ και κωδικοποίηση). */
+const discrepancies = (ruleIds: string[]): string[] =>
+  ruleIds.map(rule).map(r => r.discrepancy).filter((d): d is string => !!d)
 
 function Sources({ ruleIds }: { ruleIds: string[] }) {
   const rules = ruleIds.map(rule).filter(r => r.status === 'verified')
@@ -163,10 +188,16 @@ function SpanLine({ i, today }: { i: Item; today: string }) {
   const s = i.span
   if (!s) return null
   if (s.earliest === s.latest) {
-    return <p style={{ ...muted, margin: '6px 0 0' }}>{i.kind === 'expected' ? 'Έως ' : ''}<D iso={s.safe} strong/> · {relDays(s.safe, today)}</p>
+    const lead = i.kind === 'expected' ? 'Περίπου έως ' : i.kind === 'upcoming' ? 'Κατά τον υπολογισμό μας: ' : ''
+    const past = s.safe < today
+    return <p style={{ ...muted, margin: '6px 0 0' }}>{lead}<D iso={s.safe} strong/> · {relDays(s.safe, today)}{past && i.kind !== 'fixed' ? '. Η ημερομηνία αυτή έχει περάσει.' : ''}</p>
   }
   if (i.kind === 'cutoff') {
+    if (i.past) return <p style={{ ...muted, margin: '6px 0 0' }}>Η τελευταία ημέρα για να μείνει ο πλειστηριασμός έξω από το διάστημα ήταν η <D iso={s.earliest}/> και έχει περάσει.</p>
     return <p style={{ ...muted, margin: '6px 0 0' }}>Οριστική υποβολή έως <D iso={s.earliest} strong/>· η <D iso={s.latest}/> είναι οριακή.</p>
+  }
+  if (i.kind === 'window') {
+    return <p style={{ ...muted, margin: '6px 0 0' }}>Συνήθως από <D iso={s.earliest}/> έως <D iso={s.latest}/>.</p>
   }
   const forUser = i.kind === 'deadline'
   return (
@@ -182,18 +213,20 @@ function SpanLine({ i, today }: { i: Item; today: string }) {
 }
 
 function TimelineItem({ i, today, current }: { i: Item; today: string; current: boolean }) {
-  const badge = i.kind === 'ask-lawyer' ? ASK_LAWYER_BADGE : i.tier === 'lawyer' ? LAWYER_BADGE : VERIFIED_BADGE
+  const diffs = discrepancies(i.ruleIds)
+  const badge = i.kind === 'ask-lawyer' || diffs.length ? ASK_LAWYER_BADGE : i.tier === 'lawyer' ? LAWYER_BADGE : VERIFIED_BADGE
   const basis = basisLine(i)
   return (
     <li aria-current={current ? 'step' : undefined} style={{ ...card, listStyle: 'none', borderLeft: `3px solid ${current ? 'var(--accent)' : 'var(--border-default)'}` }}>
       <p style={{ ...small, margin: '0 0 4px', textTransform: 'none' }}>{current ? 'Πού βρίσκεσαι · ' : ''}{WHOSE[i.kind]}</p>
-      <h4 style={h3}>{itemTitle(i)}</h4>
+      <h5 style={h3}>{itemTitle(i)}</h5>
       <p style={{ ...muted, margin: '6px 0 0' }}>{itemBody(i)}</p>
       <SpanLine i={i} today={today}/>
       {basis && <p style={{ ...small, margin: '6px 0 0' }}>{basis}</p>}
       {i.kind !== 'ask-lawyer' && i.reasons.filter(r => REASONS[r]).length > 0 && (
         <ul style={{ ...small, margin: '6px 0 0', paddingLeft: 16 }}>{i.reasons.filter(r => REASONS[r]).map(r => <li key={r}>{REASONS[r]}</li>)}</ul>
       )}
+      {diffs.map(d => <p key={d} style={{ ...small, margin: '6px 0 0' }}>Οι πηγές διαφέρουν: {d}</p>)}
       <div style={{ marginTop: 8 }}><Badge text={badge}/></div>
       <Sources ruleIds={i.ruleIds}/>
     </li>
@@ -237,6 +270,9 @@ export default function Prostasia({ userId }: { userId: string }) {
   const dated = timeline?.items.filter(i => i.kind !== 'ask-lawyer') ?? []
   const ask = timeline?.items.filter(i => i.kind === 'ask-lawyer') ?? []
   const currentKey = dated.find(i => i.kind === 'deadline' && !i.past)?.key
+  // «Υπάρχει χρόνος» μόνο αν καμία δική σου προθεσμία δεν πέρασε ή δεν είναι κοντά.
+  const soon = addDaysIso(today, CALM_WINDOW_DAYS)
+  const urgent = dated.some(i => i.kind === 'deadline' && i.span && (i.past || i.span.safe <= soon))
   const done = (['epitagi', 'seizure', 'continuation', 'servicerRequest'] as const)
     .filter(k => answers.dates[k].mode === 'date' && answers.dates[k].date)
 
@@ -253,7 +289,6 @@ export default function Prostasia({ userId }: { userId: string }) {
 
       {started && !shown && (
         <form onSubmit={e => { e.preventDefault(); if (complete(answers)) setShown(true) }} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <p style={{ ...muted, margin: 0 }}>{INTRO.calm}</p>
           <div style={{ maxWidth: 420 }}>
             <CustomSelect label={FIELDS.received.label} value={answers.received} placeholder="Διάλεξε"
               options={RECEIVED_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
@@ -276,15 +311,16 @@ export default function Prostasia({ userId }: { userId: string }) {
               onChange={v => setAnswers(a => ({ ...a, publicDebt: v }))}/>
           )}
           <div style={{ position: 'sticky', bottom: 'env(safe-area-inset-bottom, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)', background: 'var(--bg-surface)' }}>
-            <Btn variant="primary" type="submit" disabled={!complete(answers)}>Δες το χρονοδιάγραμμα</Btn>
-            {!complete(answers) && <p style={{ ...small, margin: '6px 0 0' }}>Απάντησε σε κάθε ερώτηση. Το «{ANSWER.unknown}» είναι απάντηση.</p>}
+            <Btn variant="primary" type="submit" disabled={!complete(answers)} describedBy={complete(answers) ? undefined : 'prostasia-missing'}>Δες το χρονοδιάγραμμα</Btn>
+            {!complete(answers) && <p id="prostasia-missing" style={{ ...small, margin: '6px 0 0' }}>Λείπει απάντηση: «{firstMissing(answers)}». Το «{ANSWER.unknown}» είναι απάντηση.</p>}
           </div>
         </form>
       )}
 
       {shown && timeline && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <h3 ref={resultRef} tabIndex={-1} style={{ ...h3, fontSize: 18, outline: 'none' }}>Το χρονοδιάγραμμά σου</h3>
+          <h4 ref={resultRef} tabIndex={-1} style={{ ...h3, fontSize: 18, outline: 'none' }}>Το χρονοδιάγραμμά σου</h4>
+          <p style={{ ...muted, margin: 0 }}>{urgent ? INTRO.urgent : INTRO.calm}</p>
           <div><Btn variant="secondary" onClick={() => setShown(false)}>Κάτι δεν ταιριάζει; Διόρθωσε τα στοιχεία</Btn></div>
 
           {done.length > 0 && (
@@ -326,7 +362,7 @@ export default function Prostasia({ userId }: { userId: string }) {
             <p style={{ ...small, margin: '0 0 8px' }}>Με σταθερή σειρά. Καμία δεν είναι «η καλύτερη»· εξαρτάται από την περίπτωσή σου.</p>
             <ul style={{ margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 10 }}>
               {cards.map(c => {
-                const ok = c.ruleIds.length > 0 && c.ruleIds.every(id => displayable(rule(id), today).ok || displayable({ ...rule(id), validFrom: today }, today).ok)
+                const ok = c.ruleIds.length > 0 && discrepancies(c.ruleIds).length === 0 && c.ruleIds.every(id => displayable(rule(id), today).ok || displayable({ ...rule(id), validFrom: today }, today).ok)
                 return (
                   <li key={c.id} style={{ ...card, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <h5 style={h3}>{c.title}</h5>
@@ -334,6 +370,7 @@ export default function Prostasia({ userId }: { userId: string }) {
                     <p style={{ ...small, margin: 0 }}><strong>Σε ποιον ταιριάζει:</strong> {c.fits}</p>
                     <p style={{ ...small, margin: 0 }}><strong>Για τον πλειστηριασμό:</strong> {c.auction}</p>
                     <p style={{ ...small, margin: 0 }}><strong>Πρώτο βήμα:</strong> {c.first}</p>
+                    {discrepancies(c.ruleIds).map(d => <p key={d} style={{ ...small, margin: 0 }}>Οι πηγές διαφέρουν: {d}</p>)}
                     <div><Badge text={ok ? VERIFIED_BADGE : ASK_LAWYER_BADGE}/></div>
                     <Sources ruleIds={c.ruleIds}/>
                   </li>

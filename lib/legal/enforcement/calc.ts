@@ -87,18 +87,6 @@ export function forwardCalendar(start: string, n: number, skipAugust: boolean): 
   return d;
 }
 
-/** Ν εργάσιμες μετά το `start`, με αφετηρία την επομένη. */
-export function forwardWorking(start: string, n: number, skipAugust: boolean): string {
-  let d = assertIso(start);
-  let k = 0;
-  while (k < n) {
-    d = addDays(d, 1);
-    if (!isWorking(d) || (skipAugust && isAugust(d))) continue;
-    k++;
-  }
-  return d;
-}
-
 /**
  * Η ν-οστή εργάσιμη ΠΡΙΝ από το `day`, χωρίς να μετρά το ίδιο το `day`
  * (σύμβαση C5, η αυστηρή ανάγνωση). Με `augustWorks = false`, οι εργάσιμες

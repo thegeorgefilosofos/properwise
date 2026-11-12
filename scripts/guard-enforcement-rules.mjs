@@ -21,6 +21,11 @@
 //      γράφει τιμή στο `lawyerReviewed` (οι δοκιμές εξαιρούνται: φτιάχνουν
 //      αντίγραφα για να ελέγξουν την πύλη).
 //   4. Κάθε `rule('…')` σε οθόνη ή στη μηχανή δείχνει σε κανόνα που υπάρχει.
+//   6. Κάθε αριθμός των `params` (count, countTo, percent, was) βρίσκεται, με
+//      ψηφία ή ολογράφως, στο απόσπασμα μιας επίσημης ΚΑΙ μιας ανεξάρτητης
+//      πηγής· κάθε `date` ως «Η.Μ.ΕΕΕΕ» στο απόσπασμα· κάθε `since` ως ημερομηνία
+//      ΦΕΚ στο `amendedBy`. Ο έλεγχος 13/11/2026 άλλαξε το 70% της ελεύθερης
+//      πώλησης σε 60% και τις 120 δόσεις σε 100: ο φύλακας έμεινε πράσινος.
 //   5. Οι δύο σημάνσεις («Επαληθευμένο από επίσημες πηγές…», «Ελέγχθηκε από
 //      δικηγόρο») γράφονται ΜΟΝΟ στο lib/legal/enforcement/badges.ts, η πρώτη
 //      ακριβώς όπως την ενέκρινε ο ιδιοκτήτης· η οθόνη εισάγει τις σταθερές.
@@ -77,6 +82,18 @@ try {
 }
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/
+/** Τα αριθμητικά όπως τα γράφει ο νόμος, σε όποια πτώση φτάνει στα αποσπάσματα. */
+const WORDS = {
+  1: ['ένα', 'μία', 'μιας'], 2: ['δύο'], 3: ['τρεις', 'τρία', 'τριών'], 4: ['τέσσερις', 'τεσσάρων'], 5: ['πέντε'],
+  6: ['έξι'], 7: ['επτά'], 8: ['οκτώ'], 9: ['εννέα'], 10: ['δέκα'], 15: ['δεκαπέντε'], 20: ['είκοσι'],
+  30: ['τριάντα'], 45: ['σαράντα πέντε'], 60: ['εξήντα'], 70: ['εβδομήντα'], 72: ['εβδομήντα δύο'], 120: ['εκατόν είκοσι'],
+}
+const hasNumber = (text, n) => new RegExp(`(?<!\\d)${n}(?!\\d)`).test(text)
+  || (WORDS[n] ?? []).some(w => new RegExp(`(?<![\\p{L}])${w}(?![\\p{L}])`, 'u').test(text))
+const hasDate = (text, iso) => {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new RegExp(`(?<!\\d)0?${d}\\S{0,3}\\.0?${m}\\.${y}(?!\\d)`).test(text)
+}
 const snapshots = new Map()
 for (const r of rules) {
   const where = `${RULES_FILE} [${r.id}]`
@@ -92,6 +109,18 @@ for (const r of rules) {
   const ind = r.sources.filter(s => s.kind === 'independent')
   if (!off.length || !ind.length) add(where, 0, 'επαληθευμένος χωρίς επίσημη ΚΑΙ ανεξάρτητη πηγή')
   else if (!off.some(o => ind.some(i => i.url !== o.url))) add(where, 0, 'οι δύο πηγές έχουν την ίδια διεύθυνση')
+  // 6: οι αριθμοί των params στα αποσπάσματα (μία επίσημη ΚΑΙ μία ανεξάρτητη)
+  const texts = kind => r.sources.filter(s => s.kind === kind).map(s => norm((s.excerpt ?? []).join(' ')))
+  const inBoth = test => texts('official').some(test) && texts('independent').some(test)
+  for (const k of ['count', 'countTo', 'percent', 'was']) {
+    const n = r.params?.[k]
+    if (typeof n === 'number' && !inBoth(t => hasNumber(t, n))) add(where, 0, `ο αριθμός ${k}=${n} δεν βρίσκεται στο απόσπασμα επίσημης και ανεξάρτητης πηγής`)
+  }
+  if (r.params?.date && !inBoth(t => hasDate(t, r.params.date))) add(where, 0, `η ημερομηνία ${r.params.date} δεν βρίσκεται στο απόσπασμα επίσημης και ανεξάρτητης πηγής`)
+  if (r.params?.since) {
+    const [y, m, d] = r.params.since.split('-')
+    if (!r.amendedBy.includes(`${d}.${m}.${y}`)) add(where, 0, `το since ${r.params.since} δεν είναι η ημερομηνία του ΦΕΚ στο amendedBy`)
+  }
   for (const s of r.sources) {
     for (const k of ['title', 'url', 'snapshot', 'checkedAt']) if (!s[k]) add(where, 0, `πηγή χωρίς ${k}`)
     if (s.url && !/^https:\/\//.test(s.url)) add(where, 0, `πηγή χωρίς https: ${s.url}`)

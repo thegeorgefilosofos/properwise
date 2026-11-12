@@ -23,6 +23,7 @@
 // τέλος του μήνα (C7). Βλ. κανόνες 'conv-144' και 'conv-workday'.
 // ═══════════════════════════════════════════════════════════════════════════
 import { SOURCES } from './sources';
+import { grDate } from '@/lib/core/format';
 import type { LegalRule } from './types';
 import { DEBT_INSTALMENTS, SERVICER_DOCS_DAYS, SERVICER_PROPOSAL_MONTHS, SERVICER_RULES_FROM } from './numbers';
 
@@ -57,6 +58,17 @@ export const RULES: readonly LegalRule[] = [
     validFrom: '2026-01-01', validTo: null,
   }),
   verified({
+    // ΤΟ ΠΑΛΙΟ ΚΑΘΕΣΤΩΣ ΕΧΕΙ ΚΙ ΑΥΤΟ ΑΡΧΗ (έλεγχος 13/11/2026). Οι κανόνες του
+    // ν. 4842/2021 ισχύουν για επιταγές από 01/01/2022 (άρθρα 116 §6γ και 120).
+    // Για παλιότερη επιταγή η μηχανή δεν δίνει ημερομηνία.
+    id: 'regime-4842-2022', version: 1,
+    label: 'Από πότε ισχύουν οι διατάξεις του ν. 4842/2021 για την εκτέλεση',
+    provision: 'ν. 4842/2021 άρθρα 116 §6γ και 120', amendedBy: KPOLD_4842,
+    regime: 'any', params: { date: '2022-01-01' },
+    ambiguities: ['Το 116 §6γ λέει «μετά από την έναρξη ισχύος του παρόντος νόμου»· το άρθρο 120 βάζει τα άρθρα 116 και το Μέρος Α΄ σε ισχύ την 01/01/2022, ενώ ο νόμος δημοσιεύθηκε 13/10/2021. Η εφαρμογή παίρνει τη συντηρητική ανάγνωση.'],
+    validFrom: '2022-01-01', validTo: null,
+  }),
+  verified({
     id: 'aug-147-2', version: 1,
     label: 'Ο Αύγουστος δεν μετρά σε ορισμένες προθεσμίες',
     provision: 'ΚΠολΔ 147 §2', amendedBy: N5282,
@@ -88,7 +100,7 @@ export const RULES: readonly LegalRule[] = [
       'Αν η προθεσμία πέφτει τον Αύγουστο, ο νόμος λέει ότι «λαμβάνεται υπόψη ο επόμενος μήνας»· δεν είναι σαφές αν μετατοπίζεται και το όριο των οκτώ μηνών.',
       'Δεν βρέθηκε τροποποίηση του 993 §2 στα ΦΕΚ των ν. 5221/2025, 5282/2026 και 5354/2026· αυτό δεν αποκλείει τροποποίηση σε άλλον νόμο.',
     ],
-    validFrom: '2021-10-13', validTo: null,
+    validFrom: '2022-01-01', validTo: null,
   }),
   verified({
     // Στο μητρώο ΜΟΝΟ για να μη μπερδευτεί με το 993 §2: αφορά κινητά. Η μηχανή
@@ -114,7 +126,7 @@ export const RULES: readonly LegalRule[] = [
     provision: 'ΚΠολΔ 954 §4 (για ακίνητα μέσω του 993 §2)', amendedBy: `${KPOLD_4842}, άρθρο 63`,
     regime: 'old', params: { count: 15, unit: 'working' },
     ambiguities: ['Μέτρηση «το αργότερο Ν εργάσιμες πριν» (σύμβαση C5).', 'Εργάσιμες του Αυγούστου (σύμβαση C6).', 'Τοπικές αργίες (σύμβαση C3).'],
-    validFrom: '2021-10-13', validTo: null,
+    validFrom: '2022-01-01', validTo: null,
   }),
 
   // ── Αναστολή πλειστηριασμού ─────────────────────────────────────────────
@@ -132,7 +144,7 @@ export const RULES: readonly LegalRule[] = [
     provision: 'ΚΠολΔ 938 §4', amendedBy: KPOLD_4842,
     regime: 'old', params: { count: 5, unit: 'working' },
     ambiguities: ['Μέτρηση «το αργότερο Ν εργάσιμες πριν» (σύμβαση C5).', 'Εργάσιμες του Αυγούστου (σύμβαση C6).', 'Τοπικές αργίες (σύμβαση C3).'],
-    validFrom: '2021-10-13', validTo: null,
+    validFrom: '2022-01-01', validTo: null,
   }),
 
   // ── Ο πλειστηριασμός ────────────────────────────────────────────────────
@@ -164,6 +176,7 @@ export const RULES: readonly LegalRule[] = [
   // ── Εξωδικαστικός ───────────────────────────────────────────────────────
   verified({
     id: 'ex-18-cutoff', version: 1,
+    discrepancy: 'Το αρχικό ΦΕΚ γράφει «από την ημερομηνία υποβολής»· η κωδικοποίηση γράφει «οριστικής υποβολής». Την τροποποιητική διάταξη δεν τη βρήκαμε.',
     label: 'Ο εξωδικαστικός δεν αναστέλλει πλειστηριασμό που είναι κοντά',
     provision: 'ν. 4738/2020 άρθρο 18', amendedBy: "ν. 4738/2020 (ΦΕΚ Α' 207/27.10.2020), όπως ισχύει",
     regime: 'any', params: { count: 3, unit: 'months' },
@@ -214,8 +227,8 @@ export const RULES: readonly LegalRule[] = [
     id: 'sv-63a', version: 1,
     label: 'Ειδική διμερής διαδικασία ρύθμισης με τον servicer',
     provision: 'ν. 5072/2023 άρθρα 63Α επ.', amendedBy: `${N5354}, άρθρα 19 και 392 §2`,
-    regime: 'any', params: { count: 3, unit: 'months', date: '2027-02-09' },
-    ambiguities: ['Η ισχύς αρχίζει τρεις μήνες από τη δημοσίευση (09/11/2026), δηλαδή κατά τον υπολογισμό μας 09/02/2027.'],
+    regime: 'any', params: { count: 3, unit: 'months', since: SERVICER_RULES_FROM },
+    ambiguities: ['Ο νόμος λέει «τρεις μήνες από τη δημοσίευση»· η ημερομηνία 09/02/2027 είναι δικός μας υπολογισμός.'],
     validFrom: '2027-02-09', validTo: null,
   }),
 
@@ -308,6 +321,17 @@ export function rule(id: string): LegalRule {
   const r = RULES.find(x => x.id === id);
   if (!r) throw new Error(`enforcement/rules: άγνωστος κανόνας «${id}»`);
   return r;
+}
+
+/**
+ * «ΦΕΚ 09/11/2026»: η δημοσίευση από την οποία μετρά κανόνας με `since`. Ζει
+ * εδώ, στο αρχείο που φυλάει το μητρώο ισχύος, ώστε τα κείμενα (copy.ts) να μη
+ * γράφουν παραπομπή σε ΦΕΚ με το χέρι.
+ */
+export function publishedLabel(id: string): string {
+  const since = rule(id).params.since;
+  if (!since) throw new Error(`enforcement/rules: ο κανόνας «${id}» δεν έχει since`);
+  return `ΦΕΚ ${grDate(since)}`;
 }
 
 /** Η πιο πρόσφατη ημερομηνία αντιπαραβολής, για το υποσέλιδο της οθόνης. */

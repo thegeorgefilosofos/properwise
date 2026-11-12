@@ -38,6 +38,9 @@ export const MUTATIONS = {
     { add: 'app/dashboard/components/prostasia/__mut_review__.ts', content: "import { rule } from '@/lib/legal/enforcement/rules'\nexport const forged = { ...rule('as-938-4-new'), lawyerReviewed: { reviewer: 'x', reviewedAt: '2026-11-12', version: 1 } }\n" },
     // η σήμανση γραμμένη με το χέρι στην οθόνη
     { add: 'app/dashboard/components/prostasia/__mut_badge__.tsx', content: tsx('    <span>Επαληθευμένο από επίσημες πηγές · δεν αποτελεί νομική συμβουλή</span>') },
+    // αριθμός του κανόνα που δεν λέει το απόσπασμα (έλεγχος 13/11/2026)
+    { file: 'lib/legal/enforcement/rules.ts', from: "params: { percent: 70 }", to: "params: { percent: 60 }" },
+    { file: 'lib/legal/enforcement/numbers.ts', from: "count: 120, was: 72", to: "count: 100, was: 72" },
     // η σήμανση με άλλη διατύπωση από αυτή που ενέκρινε ο ιδιοκτήτης
     { file: 'lib/legal/enforcement/badges.ts', from: "export const VERIFIED_BADGE = 'Επαληθευμένο από επίσημες πηγές · δεν αποτελεί νομική συμβουλή';", to: "export const VERIFIED_BADGE = 'Ελέγχθηκε νομικά';" },
   ] },
@@ -46,6 +49,7 @@ export const MUTATIONS = {
     { add: 'app/dashboard/components/prostasia/__mut_words__.tsx', content: tsx('    <p>Ο πλειστηριασμός ορίζεται σε επτά μήνες από την κατάσχεση.</p>') },
     { add: 'app/dashboard/components/prostasia/__mut_date__.tsx', content: tsx('    <p>Αιτήσεις έως 30/06/2027.</p>') },
     { add: 'app/dashboard/components/prostasia/__mut_pct__.tsx', content: tsx('    <p>Τίμημα όχι κάτω από το 70% της τιμής.</p>') },
+    { add: 'app/dashboard/components/prostasia/__mut_gen__.tsx', content: tsx('    <p>Μέσα σε διάστημα τριών μηνών από την υποβολή.</p>') },
   ] },
   // Ο οδηγός «Νέο ακίνητο» ξανά με τη φόρμα απλωμένη αυτούσια: ακριβώς το
   // '' στο property_settings.insurance_expiry (Postgres 22007, 06/11/2026).
@@ -585,6 +589,9 @@ export const MUTATIONS = {
   'success-over-error': { add: 'app/dashboard/components/__mut__.tsx', content: "import { saved } from '@/components/dbWrite'\nimport { notifyOk } from '@/components/toastBus'\nexport default function MutationProbe() {\n  const go = async () => {\n    await saved('Η ανάθεση δεν αποθηκεύτηκε', Promise.resolve({ error: null }))\n    notifyOk('Η ανάθεση αποθηκεύτηκε')\n  }\n  return <button onClick={go}>Ανάθεση</button>\n}\n" },
 
   'validity': { every: [
+    // Παραπομπή σε νόμο γραμμένη με το χέρι στα κείμενα της Προστασίας
+    // ιδιοκτήτη (13/11/2026): το copy.ts δεν εξαιρείται, άρα πρέπει να κόψει.
+    { file: 'lib/legal/enforcement/copy.ts', from: "export const CHECKS_TITLE = ", to: "export const MUT_LAW = 'Αιτήσεις έως 30/06/2027 (ν.5354/2026, ΦΕΚ Α 184).';\nexport const CHECKS_TITLE = " },
     // Κανόνας που ΕΛΗΞΕ, ΧΩΡΙΣ εκκρεμότητα. Μέχρι τις 10/11/2026 η μετάλλαξη
     // ήταν στον ΤΑΚΚ· από τότε ο ΤΑΚΚ έχει `pending` και η λήξη του σωστά
     // προειδοποιεί αντί να κόβει. Ο ΔΤΚ δεν έχει, οπότε εδώ πρέπει να κόψει.

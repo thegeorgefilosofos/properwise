@@ -5,8 +5,19 @@
 // πηγές), η αναμενόμενη ημερομηνία της προδιαγραφής ελέγχεται ως το όριο του
 // εύρους που της αντιστοιχεί και το άλλο όριο γράφεται ρητά.
 import {
-  addMonths, backWorking, forwardWorking, isAugust, isWorking, nextWorking,
+  addDays, addMonths, backWorking, isAugust, isWorking, nextWorking,
 } from './calc';
+
+/**
+ * Ν εργάσιμες μετά, από την επομένη. Ζει εδώ και όχι στη μηχανή: η μόνη
+ * προθεσμία που μετρά εργάσιμες προς τα εμπρός (632 §2) δεν εμφανίζεται, οπότε
+ * η αριθμητική της ελέγχεται μόνο για να είναι έτοιμη για τον δικηγόρο.
+ */
+function forwardWorking(start: string, n: number, skipAugust: boolean): string {
+  let d = start, k = 0;
+  while (k < n) { d = addDays(d, 1); if (!isWorking(d) || (skipAugust && isAugust(d))) continue; k++; }
+  return d;
+}
 import {
   afterCalendarSpanCounterparty, afterCalendarSpanUser, auctionWindow, beforeWorkingSpan,
   computeTimeline, regimeOf, type CaseFacts, type Item,
@@ -63,34 +74,65 @@ ok(forwardWorking('2026-07-20', 15, false) === '2026-08-10', 'TV-3 χωρίς π
 }
 
 // ── TV-5 έως TV-6β, TV-16: προθεσμίες προς τα πίσω από τον πλειστηριασμό ────
+// Η αυστηρή ανάγνωση (η τιμή της προδιαγραφής) ελέγχεται με το backWorking.
+// Η ασφαλής ημερομηνία της μηχανής είναι μία εργάσιμη νωρίτερα, γιατί δεν
+// ξέρουμε τις τοπικές αργίες (C3, έλεγχος 13/11/2026)· το εύρος ανοίγει ±1.
+eq(backWorking('2027-03-17', 30, false), '2027-02-02', 'TV-5 αυστηρή ανάγνωση = 02/02/2027 (προδιαγραφή)');
+eq(backWorking('2027-03-17', 15, false), '2027-02-23', 'TV-5β αυστηρή ανάγνωση = 23/02/2027 (προδιαγραφή)');
+eq(backWorking('2027-03-17', 5, false), '2027-03-09', 'TV-5γ αυστηρή ανάγνωση = 09/03/2027 (προδιαγραφή)');
 {
   const t = computeTimeline(facts({ epitagi: NEW, auction: '2027-03-17' }), TODAY);
-  eq(item(t, 'ka-954-4')?.span, { earliest: '2027-02-02', latest: '2027-02-03', safe: '2027-02-02' }, 'TV-5 954 §4 νέο (30 εργάσιμες)');
-  eq(item(t, 'as-938-4')?.span, { earliest: '2027-02-23', latest: '2027-02-24', safe: '2027-02-23' }, 'TV-5β 938 §4 νέο (15 εργάσιμες)');
+  eq(item(t, 'ka-954-4')?.span, { earliest: '2027-02-01', latest: '2027-02-03', safe: '2027-02-01' }, 'TV-5 954 §4 νέο (30 εργάσιμες), ±1');
+  eq(item(t, 'as-938-4')?.span, { earliest: '2027-02-22', latest: '2027-02-24', safe: '2027-02-22' }, 'TV-5β 938 §4 νέο (15 εργάσιμες), ±1');
 }
 {
   const t = computeTimeline(facts({ epitagi: OLD, auction: '2027-03-17' }), TODAY);
   eq(t.regime, 'old', 'TV-5γ καθεστώς από την ημερομηνία της επιταγής');
-  eq(item(t, 'as-938-4')?.span, { earliest: '2027-03-09', latest: '2027-03-10', safe: '2027-03-09' }, 'TV-5γ 938 §4 παλιό (5 εργάσιμες)');
-  eq(item(t, 'ka-954-4')?.span, { earliest: '2027-02-23', latest: '2027-02-24', safe: '2027-02-23' }, 'TV-5δ 954 §4 παλιό (15 εργάσιμες)');
+  eq(item(t, 'as-938-4')?.span, { earliest: '2027-03-08', latest: '2027-03-10', safe: '2027-03-08' }, 'TV-5γ 938 §4 παλιό (5 εργάσιμες), ±1');
+  eq(item(t, 'ka-954-4')?.span, { earliest: '2027-02-22', latest: '2027-02-24', safe: '2027-02-22' }, 'TV-5δ 954 §4 παλιό (15 εργάσιμες), ±1');
+}
+// ── Τοπική αργία μέσα στο διάστημα ───────────────────────────────────
+// Θεσσαλονίκη: πλειστηριασμός 11/11/2027, μέσα στο διάστημα ο Αγίου
+// Δημητρίου (26/10, τοπική αργία που η εφαρμογή δεν ξέρει). Με την αργία η
+// αυστηρή ανάγνωση γίνεται 19/10· η ασφαλής ημερομηνία πρέπει να μην είναι αργότερα.
+{
+  const t = computeTimeline(facts({ epitagi: NEW, auction: '2027-11-11' }), TODAY);
+  const s = item(t, 'as-938-4')!.span!;
+  eq(backWorking('2027-11-11', 15, false), '2027-10-20', 'Τοπική αργία: αυστηρή ανάγνωση χωρίς τοπικές αργίες');
+  eq(s.safe, '2027-10-19', 'Τοπική αργία: ασφαλής 19/10/2027, όχι 20/10/2027');
+  ok(s.safe <= '2027-10-19' && '2027-10-26' > s.safe && '2027-10-26' < '2027-11-11', 'Τοπική αργία: η τοπική αργία είναι μέσα στο διάστημα και η ασφαλής την καλύπτει');
+}
+// ── Επιταγή πριν από την 01/01/2022 ───────────────────────────────────
+{
+  const t = computeTimeline(facts({ epitagi: '2021-11-15', seizure: '2026-06-20', auction: '2027-03-17', continuation: '2027-01-10' }), TODAY);
+  eq(t.regime, 'pre2022', 'Πριν από το 2022: επιταγή 15/11/2021 → πριν από τον ν. 4842/2021');
+  for (const k of ['as-938-4', 'ka-954-4', 'ka-993', 'an-934a', 'as-973']) {
+    const i = item(t, k);
+    ok(i?.kind === 'ask-lawyer' && !i.span, `Πριν από το 2022: ${k}: «Επιβεβαίωσε με δικηγόρο», καμία ημερομηνία`);
+  }
+  ok(!t.checks.some(c => c.key === 'monday-holiday'), 'Πριν από το 2022: καμία σημαία από κανόνα που δεν εφαρμόζεται');
+  eq(regimeOf('2021-12-31'), 'pre2022', '31/12/2021 → pre2022');
+  eq(regimeOf('2022-01-01'), 'old', '01/01/2022 → παλιό καθεστώς του ν. 4842/2021');
+  ok(item(computeTimeline(facts({ epitagi: 'unknown', auction: '2027-03-17' }), TODAY), 'as-938-4')!.reasons.includes('pre2022-possible'), 'Πριν από το 2022: άγνωστη επιταγή: λόγος «μπορεί να είναι πριν από το 2022»');
 }
 {
   const t = computeTimeline(facts({ epitagi: NEW, auction: '2026-09-16' }), '2026-06-01');
   const a = item(t, 'ka-954-4')!.span!;
-  eq(a.earliest, '2026-07-07', 'TV-6 ασφαλής: ο Αύγουστος δεν μετρά');
+  eq(backWorking('2026-09-16', 30, false), '2026-07-07', 'TV-6 αυστηρή, ο Αύγουστος δεν μετρά (προδιαγραφή)');
+  eq(a.earliest, '2026-07-06', 'TV-6 ασφαλής: και μία εργάσιμη για τοπική αργία');
   // Η προδιαγραφή γράφει 05/08 (ο Αύγουστος μετρά, αυστηρά)· η μηχανή προσθέτει
   // συνεπώς και τη μία εργάσιμη της σύμβασης C5, όπως σε κάθε άλλο εύρος.
   eq(backWorking('2026-09-16', 30, true), '2026-08-05', 'TV-6 αυστηρή ανάγνωση με τον Αύγουστο');
   eq(a.latest, '2026-08-06', 'TV-6 χαλαρό όριο = 05/08 + 1 εργάσιμη (C5)');
   ok(item(t, 'ka-954-4')!.reasons.includes('c6'), 'TV-6 λόγος C6 (Αύγουστος)');
   const b = item(t, 'as-938-4')!.span!;
-  eq(b.earliest, '2026-07-28', 'TV-6β ασφαλής');
+  eq(b.earliest, '2026-07-27', 'TV-6β ασφαλής (28/07 της προδιαγραφής, -1 εργάσιμη)');
   eq(backWorking('2026-09-16', 15, true), '2026-08-26', 'TV-6β αυστηρή με τον Αύγουστο');
 }
 {
   const t = computeTimeline(facts({ epitagi: 'unknown', auction: '2027-03-17' }), TODAY);
   eq(t.regime, 'unknown', 'TV-16 άγνωστο καθεστώς');
-  eq(item(t, 'as-938-4')?.span, { earliest: '2027-02-23', latest: '2027-03-10', safe: '2027-02-23' }, 'TV-16 εύρος και των δύο καθεστώτων');
+  eq(item(t, 'as-938-4')?.span, { earliest: '2027-02-22', latest: '2027-03-10', safe: '2027-02-22' }, 'TV-16 εύρος και των δύο καθεστώτων, ±1');
   ok(t.checks.some(c => c.key === 'regime-unknown'), 'TV-16 σημαία «χρειάζεται η ημερομηνία της επιταγής»');
 }
 
@@ -123,6 +165,8 @@ ok(forwardWorking('2026-07-20', 15, false) === '2026-08-10', 'TV-3 χωρίς π
   eq(item(t, 'ex-18')?.status, 'not-covered', 'TV-9 μέσα στο τρίμηνο: η αναστολή δεν τον καλύπτει');
   const t2 = computeTimeline(facts({ auction: '2027-02-12' }), TODAY);
   eq(item(t2, 'ex-18')?.status, 'boundary', 'TV-9β ακριβώς στο όριο');
+  ok(item(t2, 'ex-18')!.reasons.includes('boundary') && !item(t, 'ex-18')!.reasons.includes('boundary'), 'λόγος «οριακή» μόνο στο όριο');
+  ok(item(t, 'ex-18')!.past === true, 'TV-9 η ημερομηνία υποβολής έχει ήδη περάσει → σημαία');
   const t3 = computeTimeline(facts({ auction: '2027-03-20' }), TODAY);
   eq(item(t3, 'ex-18')?.status, 'covered', 'πέρα από το τρίμηνο: καλύπτεται');
   eq(item(t3, 'ex-18')?.span?.safe, '2026-12-19', 'υπέβαλε έως 19/12/2026 για πλειστηριασμό 20/03/2027');
@@ -148,6 +192,10 @@ ok(forwardWorking('2026-07-20', 15, false) === '2026-08-10', 'TV-3 χωρίς π
 {
   const t = computeTimeline(facts({ auction: '2027-05-19', auctionFirst: 'yes' }), TODAY);
   eq(item(t, 'sv-182')?.span?.safe, '2027-02-19', 'TV-12 αναμενόμενη έως 19/02/2027');
+  ok(item(t, 'sv-182')!.reasons.includes('approx') && !item(t, 'sv-182')!.past, 'TV-12 «περίπου», δεν έχει περάσει');
+  ok(item(computeTimeline(facts({ auction: '2027-01-20', auctionFirst: 'yes' }), TODAY), 'sv-182')!.past === true, 'sv-182: 20/10/2026 έχει περάσει → σημαία');
+  const u = item(computeTimeline(facts({}), TODAY), 'sv-63a')!;
+  ok(u.kind === 'upcoming' && u.span!.safe === '2027-02-09' && u.basis!.date === '2026-11-09' && u.reasons.includes('computed'), 'sv-63a: τρεις μήνες από τη δημοσίευση 09/11/2026, δικός μας υπολογισμός 09/02/2027');
   const t2 = computeTimeline(facts({ auction: '2027-05-19', auctionFirst: 'no' }), TODAY);
   ok(!item(t2, 'sv-182')?.span && item(t2, 'sv-182')!.reasons.includes('not-for-repeat'), 'TV-12 επαναλαμβανόμενος: δεν ισχύει');
 }
@@ -156,6 +204,13 @@ ok(forwardWorking('2026-07-20', 15, false) === '2026-08-10', 'TV-3 χωρίς π
 {
   const t = computeTimeline(facts({ epitagi: NEW, continuation: '2027-01-20' }), TODAY);
   eq(item(t, 'as-973')?.span, { earliest: '2027-03-20', latest: '2027-04-20', safe: '2027-03-20' }, 'TV-13 2 έως 3 μήνες');
+  const a = item(computeTimeline(facts({ epitagi: NEW, continuation: '2027-06-20' }), TODAY), 'as-973')!;
+  eq(a.span, { earliest: '2027-09-20', latest: '2027-10-20', safe: '2027-09-20' }, '973: ο Αύγουστος μετατοπίζει και τα δύο όρια');
+  eq(item(computeTimeline(facts({ epitagi: OLD, continuation: '2027-01-20' }), TODAY), 'as-973')?.kind, 'ask-lawyer', '973 παλιό καθεστώς → ρώτα δικηγόρο');
+  const c = computeTimeline(facts({ epitagi: NEW, seizure: '2026-01-15', continuation: '2027-01-20', auction: '2027-03-25' }), TODAY);
+  ok(!c.checks.some(x => x.key === 'auction-outside-993'), '993: δεν σημαίνεται ημέρα που ταιριάζει στη δήλωση συνέχισης');
+  const c2 = computeTimeline(facts({ epitagi: NEW, seizure: '2026-01-15', continuation: '2027-01-20', auction: '2027-06-25' }), TODAY);
+  ok(c2.checks.some(x => x.key === 'auction-outside-993'), '993: σημαίνεται ημέρα που δεν ταιριάζει ούτε στη δήλωση συνέχισης');
 }
 
 // ── TV-14: ΚΠολΔ 1000 · αριθμητική ναι, οθόνη όχι ────────────────────────
