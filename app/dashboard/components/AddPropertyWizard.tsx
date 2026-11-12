@@ -17,10 +17,11 @@ import { cleanAma, isValidAmaFormat, amaLengthLooksUnusual } from '@/lib/propert
 import { ATAK_SOURCE, atakDigits } from '@/lib/property/atak';
 import { STATUSES, BY_KEY, readStatus, writeStatus, type PropertyStatus } from '@/lib/property/status';
 import { syncOwnerTaxDeadlines } from '@/lib/calendar/taxSync';
-import { PROPERTY_TYPES, propertyTypeLabel } from '@/lib/property/types';
+import { PROPERTY_TYPES, propertyTypeLabel, LAND_LIKE_TYPES } from '@/lib/property/types';
 import { fillOnlyEmpty, firstFilled } from '@/lib/core/prefill';
 import { fieldPlacement, PROPERTY_FIELDS, OBJ_VALUE_WHOLE, type FieldContext, type Placement } from '@/lib/property/fields';
 import { failed } from '@/lib/core/dbError';
+import { notifyError } from '@/components/Toast';
 import { PEA_CLASSES } from '@/lib/property/pea';
 import { cleanPeaNumber, isoDay, peaReminderDrafts, PEA_NUMBER_MAX, PEA_REMINDER_DAYS } from '@/lib/property/peaExpiry';
 import { syncPeaReminders } from '@/lib/calendar/peaSync';
@@ -49,8 +50,8 @@ const STATUS_COLORS: Record<string, string> = {
 // Πηγή είναι το `lib/property/status.ts`, που κρατά και τις επεξηγήσεις και
 // ξέρει τι γράφεται στη βάση (`writeStatus`) για κάθε επιλογή.
 
-// Τύποι χωρίς όροφο / έτος κατασκευής (γη & βοηθητικοί χώροι)
-const LAND_LIKE = new Set(['land', 'parking', 'storage', 'warehouse']);
+// Τύποι χωρίς όροφο / έτος κατασκευής (γη & βοηθητικοί χώροι): lib/property/types.ts
+const LAND_LIKE = LAND_LIKE_TYPES;
 // ── ΤΟ ΕΣΟΔΟ ΤΗΣ ΒΡΑΧΥΧΡΟΝΙΑΣ ΤΟ ΛΕΕΙ Ο ΙΔΙΟΚΤΗΤΗΣ, ΔΕΝ ΤΟ ΜΑΝΤΕΥΕΙ Η ΟΘΟΝΗ ──
 //
 // Εδώ ζούσε `const OCCUPANCY = 0.6`: ο οδηγός ζητούσε τιμή ανά διανυκτέρευση
@@ -724,10 +725,13 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     // Μόνο όταν η λήξη άλλαξε: η αποθήκευση για άλλο λόγο δεν ξαναγράφει
     // υπενθυμίσεις που ο χρήστης μπορεί να έχει ήδη σημειώσει. Η κενή λήξη τις
     // σβήνει. Με αναμονή, γιατί μια υπενθύμιση που δεν γράφτηκε δεν φαίνεται.
+    // ΧΩΡΙΣ ΝΑ ΣΤΑΜΑΤΑ Η ΑΠΟΘΗΚΕΥΣΗ: το ακίνητο έχει ήδη γραφτεί, οπότε οι
+    // επαφές, το σκαλί της αξίας και το `onSaved` γίνονται κανονικά και η
+    // αποτυχία λέγεται σε ειδοποίηση που μένει μετά το κλείσιμο του οδηγού.
     const nextExpiry = payload.pea_expiry ?? '';
     if (propertyId && nextExpiry !== isoDay(existing?.pea_expiry)) {
       const { error: pErr } = await syncPeaReminders(supabase, { propertyId, userId }, peaReminderDrafts(nextExpiry, athensToday()));
-      if (pErr) { setSaving(false); setError(failed('Το ακίνητο αποθηκεύτηκε, αλλά οι υπενθυμίσεις λήξης του ΠΕΑ δεν μπήκαν στο ημερολόγιο', pErr)); return; }
+      if (pErr) notifyError(failed('Το ακίνητο αποθηκεύτηκε, αλλά οι υπενθυμίσεις λήξης του ΠΕΑ δεν μπήκαν στο ημερολόγιο', pErr));
     }
 
     // ── ΤΟ ΣΚΑΛΙ ΤΗΣ ΑΞΙΑΣ ─────────────────────────────────────────────────

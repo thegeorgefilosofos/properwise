@@ -33,6 +33,7 @@ import {
   type LeaseDeclarationInput, type DeclField,
 } from '@/lib/tax/leaseDeclaration';
 import { PeaLeaseNotice } from './PeaLeaseNotice';
+import { peaDeclField } from '@/lib/property/peaExpiry';
 
 const TAB_LABEL: Record<NonNullable<DeclField['fixIn']>, string> = {
   property: 'Ακίνητο', tenant: navLabel('tenant'), settings: navLabel('settings'),
@@ -78,7 +79,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
   // ΤΟ ΠΕΑ ΤΟΥ ΑΚΙΝΗΤΟΥ. Ο αριθμός πρωτοκόλλου του μπαίνει υποχρεωτικά στη
   // δήλωση μίσθωσης (ν. 4122/2013, άρθρο 12 παρ. 8) και η λήξη κρίνει την
   // ειδοποίηση «Χρειάζεται ΠΕΑ σε ισχύ».
-  const [pea, setPea] = useState<{ number: string | null; expiry: string | null }>({ number: null, expiry: null });
+  const [pea, setPea] = useState<{ number: string | null; expiry: string | null; propType: string | null }>({ number: null, expiry: null, propType: null });
 
   useEffect(() => {
     if (!open) return;
@@ -133,7 +134,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
         if (!alive) return;
         setSubmitted(prior);
         setTenantId(typeof t?.id === 'string' ? t.id : null);
-        setPea({ number: (p?.pea_number as string) ?? null, expiry: (p?.pea_expiry as string) ?? null });
+        setPea({ number: (p?.pea_number as string) ?? null, expiry: (p?.pea_expiry as string) ?? null, propType: (p?.prop_type as string) ?? null });
         setRefInput(prior?.ref ?? '');
         setInput({
           owner: { name: (s?.owner_name as string) ?? null, afm: (s?.owner_afm as string) ?? null },
@@ -163,13 +164,13 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
     return () => { alive = false; };
   }, [open, propertyId, userId, supabase]);
 
-  const decl = useMemo(() => buildLeaseDeclaration(input), [input]);
-  const peaField: DeclField = {
-    key: 'pea_number', label: 'Αριθμός πρωτοκόλλου ΠΕΑ', value: pea.number ?? '', required: false,
-    status: pea.number ? 'ok' : 'missing',
-    hint: pea.number ? undefined : 'Τυπώνεται στο πιστοποιητικό ενεργειακής απόδοσης. Μπαίνει στη δήλωση (ν. 4122/2013, άρθρο 12 παρ. 8).',
-    fixIn: pea.number ? undefined : 'property',
-  };
+  // Ο ΑΡΙΘΜΟΣ ΤΟΥ ΠΕΑ ΕΙΝΑΙ ΠΕΔΙΟ ΤΗΣ ΔΗΛΩΣΗΣ, ΟΧΙ ΣΗΜΕΙΩΣΗ ΔΙΠΛΑ ΤΗΣ: έτσι τον
+  // έχουν η λίστα, η αντιγραφή και το φύλλο εκτύπωσης (lib/property/peaExpiry.ts).
+  const decl = useMemo(() => {
+    const base = buildLeaseDeclaration(input);
+    const peaField = peaDeclField(pea.number, pea.propType);
+    return peaField ? { ...base, fields: [...base.fields, peaField] } : base;
+  }, [input, pea.number, pea.propType]);
 
   const copy = async (key: string, text: string) => {
     try { await navigator.clipboard.writeText(text); setCopied(key); setTimeout(() => setCopied(null), 1400); } catch { /* αγνόησε */ }
@@ -290,9 +291,8 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
           </div>
           <div style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, overflow: 'hidden' }}>
             {decl.fields.map(row)}
-            {row(peaField)}
           </div>
-          <div style={{ marginTop: 10 }}><PeaLeaseNotice peaExpiry={pea.expiry} leaseStart={input.lease?.start} /></div>
+          <div style={{ marginTop: 10 }}><PeaLeaseNotice peaExpiry={pea.expiry} propType={pea.propType} leaseStart={input.lease?.start} /></div>
         </div>
 
         {/* Καταγραφή υποβολής */}

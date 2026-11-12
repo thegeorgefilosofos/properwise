@@ -5,8 +5,9 @@
 // αυτές τις ημέρες, όχι ότι ξαναϋπολογίζει τον εαυτό του.
 import {
   PEA_EXPIRY_TITLE, PEA_REMINDER_DAYS, PEA_SOURCE_PREFIX, LEASE_PEA_TITLE, PEA_REGISTRY_URL,
-  peaReminderDrafts, peaStateOn, peaDaysLeft, leasePeaNotice, isoDay, shiftIso, cleanPeaNumber, peaSource,
+  peaReminderDrafts, peaStateOn, peaDaysLeft, leasePeaNotice, isoDay, shiftIso, cleanPeaNumber, peaSource, peaDeclField,
 } from './peaExpiry';
+import { buildLeaseDeclaration, declarationSheet } from '../tax/leaseDeclaration';
 import { readFileSync } from 'node:fs';
 
 let pass = 0, fail = 0;
@@ -106,17 +107,36 @@ function ok(name: string, cond: boolean) { if (cond) pass++; else { fail++; cons
     ok(`[${n.kind}] χωρίς μεγάλη παύλα`, !all.includes('—'));
   }
   ok('το μητρώο του ΥΠΕΝ μόνο ως διεύθυνση αναφοράς', PEA_REGISTRY_URL === 'https://www.buildingcert.gr/');
+
+  // Οικόπεδο, θέση στάθμευσης, αποθήκη: καμία ειδοποίηση.
+  for (const t of ['land', 'parking', 'storage', 'warehouse']) {
+    eq(`[${t}] χωρίς ειδοποίηση ΠΕΑ`, leasePeaNotice({ pea_expiry: null, prop_type: t }, '2026-12-01', today), null);
+  }
+  eq('διαμέρισμα χωρίς ΠΕΑ: ειδοποίηση', leasePeaNotice({ pea_expiry: null, prop_type: 'apartment' }, '2026-12-01', today)?.kind, 'missing');
+}
+
+// ── Ο αριθμός ΠΕΑ μέσα στα πεδία της δήλωσης μίσθωσης ─────────────────────
+{
+  const f = peaDeclField(' 123456/2026 ', 'apartment');
+  eq('πεδίο με αριθμό', [f?.key, f?.value, f?.status, f?.required], ['pea_number', '123456/2026', 'ok', false]);
+  eq('πεδίο χωρίς αριθμό: λείπει, συμπληρώνεται στο ακίνητο', [peaDeclField(null)?.status, peaDeclField(null)?.fixIn], ['missing', 'property']);
+  eq('σε αποθήκη: κανένα πεδίο', peaDeclField('1/2026', 'storage'), null);
+  const base = buildLeaseDeclaration({});
+  const decl = { ...base, fields: [...base.fields, f!] };
+  ok('το φύλλο εκτύπωσης έχει τον αριθμό ΠΕΑ', declarationSheet(decl).includes('123456/2026'));
 }
 
 // ── Η ειδοποίηση φαίνεται στη ροή της μίσθωσης ─────────────────────────────
 {
   const read = (p: string) => readFileSync(p, 'utf8');
   const tab = read('app/dashboard/components/TabTenant.tsx');
-  ok('η φόρμα ενοικιαστή δείχνει την ειδοποίηση μόνο σε νέα μίσθωση', /!editId&&<div[^\n]*<PeaLeaseNotice peaExpiry=\{propPeaExpiry\} leaseStart=\{form\.lease_start\}/.test(tab));
-  ok('και διαβάζει τη λήξη του ακινήτου', tab.includes("'sqm,pea_expiry'"));
+  ok('η φόρμα ενοικιαστή δείχνει την ειδοποίηση μόνο σε νέα μίσθωση', /!editId&&<div[^\n]*<PeaLeaseNotice peaExpiry=\{propPeaExpiry\} propType=\{propType\} leaseStart=\{form\.lease_start\}/.test(tab));
+  ok('και διαβάζει τη λήξη και τον τύπο του ακινήτου', tab.includes("'sqm,pea_expiry,prop_type'"));
   const decl = read('app/dashboard/components/LeaseDeclaration.tsx');
-  ok('η δήλωση μίσθωσης δείχνει την ειδοποίηση', decl.includes('<PeaLeaseNotice peaExpiry={pea.expiry} leaseStart={input.lease?.start} />'));
-  ok('και τον αριθμό ΠΕΑ', decl.includes('pea_number,pea_expiry') && decl.includes('{row(peaField)}'));
+  ok('η δήλωση μίσθωσης δείχνει την ειδοποίηση', decl.includes('<PeaLeaseNotice peaExpiry={pea.expiry} propType={pea.propType} leaseStart={input.lease?.start} />'));
+  ok('ο αριθμός ΠΕΑ μπαίνει στα πεδία της δήλωσης (αντιγραφή και φύλλο)', decl.includes('pea_number,pea_expiry') && decl.includes('fields: [...base.fields, peaField]') && !decl.includes('{row(peaField)}'));
+  const wiz = read('app/dashboard/components/AddPropertyWizard.tsx');
+  ok('ο οδηγός δεν σταματά όταν αποτύχουν οι υπενθυμίσεις ΠΕΑ', wiz.includes("if (pErr) notifyError(failed('Το ακίνητο αποθηκεύτηκε, αλλά οι υπενθυμίσεις λήξης του ΠΕΑ"));
   const notice = read('app/dashboard/components/PeaLeaseNotice.tsx');
   ok('η ειδοποίηση είναι πληροφορία, όχι σφάλμα', notice.includes('<InfoBanner tone="info">'));
 }

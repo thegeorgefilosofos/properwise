@@ -38,7 +38,7 @@ import {
 } from '@/lib/billing/documents';
 import { SYSTEM_PROMPT, PHOTO_CATEGORIES, PHOTO_AI_CATEGORIES } from '@/lib/billing/scanPrompt';
 import { atakDigits } from '@/lib/property/atak';
-import { fillOnlyEmpty, stripEmpty } from '@/lib/core/prefill';
+import { fillOnlyEmpty, stripEmpty, isBlank } from '@/lib/core/prefill';
 import { athensToday } from '@/lib/core/time';
 import { saved, savedData } from '@/components/dbWrite';
 import { uploadPath } from '@/lib/core/uploadPath';
@@ -1061,21 +1061,9 @@ export async function commitScannedDoc(input: CommitInput): Promise<CommitResult
 
     // ── 3) Ημερολόγιο → calendar_events. Ενα παλαιότερο ΠΕΑ δεν φέρνει δεύτερη
     // υπενθύμιση λήξης δίπλα στη λήξη του ισχύοντος, ούτε το ίδιο ΠΕΑ δεύτερη φορά.
-    // Οι υπενθυμίσεις ΠΕΑ ΑΝΤΙΚΑΘΙΣΤΟΥΝ τις προηγούμενες (lib/calendar/peaSync.ts):
-    // η ίδια λήξη ξαναγράφεται ίδια, οπότε εκεί κόβει μόνο το παλαιότερο χαρτί.
-    if (plan.calendar && !reconciled && plan.calendarSync === 'pea') {
-      if (eventUnknown) fail(CALENDAR);
-      else if (!eventOlder) {
-        // Και η λήξη του ακινήτου (`replaceIfNewer`): νεότερη εκεί σημαίνει παλιό χαρτί.
-        const g = plan.replaceIfNewer;
-        const cur = g ? await properties.oneWithError<Record<string, unknown>>(supabase, propertyId, g.column, userId) : null;
-        if (cur?.error) fail(CALENDAR);
-        else if (!(g && isOlder(g.value, cur?.row?.[g.column]))) {
-          const { error: cErr } = await syncPeaReminders(supabase, { propertyId, userId }, plan.calendar);
-          if (cErr) fail(CALENDAR); else add(CALENDAR);
-        }
-      }
-    } else if (plan.calendar && !reconciled) {
+    // Οι υπενθυμίσεις ΠΕΑ (`calendarSync: 'pea'`) ΔΕΝ γράφονται εδώ: γράφονται
+    // μετά το ακίνητο (βήμα 5γ), για να ακολουθούν πάντα τη λήξη που κρατά.
+    if (plan.calendar && !reconciled && plan.calendarSync !== 'pea') {
       if (eventUnknown) fail(CALENDAR);
       else if (!eventOlder && !eventSame) {
         const { error: cErr } = await calendar.insert(supabase,
@@ -1137,26 +1125,58 @@ export async function commitScannedDoc(input: CommitInput): Promise<CommitResult
         }
       }
     }
+    // ── 5α) Στοιχεία ενός χαρτιού (ΠΕΑ) → ΟΛΑ ΜΑΖΙ, μόνο αν λείπουν ΟΛΑ.
+    // Η συμπλήρωση ανά στήλη θα ανακάτευε δύο πιστοποιητικά (lib/billing/documents.ts).
+    if (plan.propertyFillGroup) {
+      const { columns, values } = plan.propertyFillGroup;
+      const cur = await properties.oneWithError<Record<string, unknown>>(supabase, propertyId, columns.join(','), userId);
+      if (cur.error) fail(PROPERTY_TARGET);
+      else if (columns.every(c => isBlank(cur.row?.[c]))) {
+        const { error: pErr } = await properties.update(supabase, propertyId, values, userId);
+        if (pErr) fail(PROPERTY_TARGET); else add(PROPERTY_TARGET);
+      }
+    }
     // ── 5β) Ό,τι ΑΝΑΝΕΩΝΕΤΑΙ (ασφάλιση, κατηγορία ΠΕΑ) γράφεται με αντικατάσταση:
     // η νέα λήξη πρέπει να περάσει, η μη αναγνωρισμένη να μη σβήσει την παλιά.
     // ΚΑΙ ΜΟΝΟ ΑΝ ΤΟ ΧΑΡΤΙ ΕΙΝΑΙ ΝΕΟΤΕΡΟ (`replaceIfNewer`, `replaceIfNewerEvent`):
     // η αρχειοθέτηση του περσινού ασφαλιστηρίου δεν γυρίζει πίσω τη λήξη που
     // διαβάζουν οι προθεσμίες, η Νόα και τα email λήξης.
     const guard = plan.replaceIfNewer;
+    // Τι ήξερε η βάση πριν και αν η αντικατάσταση γράφτηκε: από αυτά κρίνεται
+    // το βήμα 5γ (υπενθυμίσεις ΠΕΑ).
+    let replaced = false, replaceUnknown = false;
+    let before: unknown;
     if (plan.propertyReplace) {
-      const patch = stripEmpty(plan.propertyReplace);
+      const patch: Record<string, unknown> = stripEmpty(plan.propertyReplace);
       if (Object.keys(patch).length) {
+        // Ό,τι ανήκε στο χαρτί που αντικαθίσταται και το νέο δεν το έχει, σβήνει
+        // μαζί του (`propertyClear`): το `stripEmpty` δεν αφήνει να περάσει `null`.
+        for (const c of plan.propertyClear ?? []) if (!(c in patch)) patch[c] = null;
         // Χωρίς ανάγνωση δεν ξέρουμε αν το χαρτί είναι νεότερο: δεν αντικαθιστούμε.
         const cur = guard
           ? await properties.oneWithError<Record<string, unknown>>(supabase, propertyId, guard.column, userId)
           : null;
         const unknown = !!cur?.error || eventUnknown;
         const stale = (!!guard && isOlder(guard.value, cur?.row?.[guard.column])) || eventOlder;
-        if (unknown) fail(PROPERTY_TARGET);
+        before = guard ? cur?.row?.[guard.column] : undefined;
+        if (unknown) { replaceUnknown = true; fail(PROPERTY_TARGET); }
         else if (!stale) {
           const { error: pErr } = await properties.update(supabase, propertyId, patch, userId);
-          if (pErr) fail(PROPERTY_TARGET); else add(PROPERTY_TARGET);
+          if (pErr) fail(PROPERTY_TARGET); else { add(PROPERTY_TARGET); replaced = true; }
         }
+      }
+    }
+    // ── 5γ) Υπενθυμίσεις ΠΕΑ → calendar_events, ΜΕΤΑ το ακίνητο.
+    // Μόνο αν η λήξη γράφτηκε στο ακίνητο ΚΑΙ άλλαξε. Το ίδιο ΠΕΑ δεύτερη φορά
+    // δεν ξαναγράφει τις γραμμές: το `notification_log` σβήνει μαζί τους, οπότε
+    // ένα ήδη σταλμένο email θα ξανάφευγε και μια υπενθύμιση που ο χρήστης
+    // έκλεισε θα γύριζε ανοιχτή. Παλαιότερο χαρτί ή αποτυχία εγγραφής του
+    // ακινήτου: καμία αλλαγή στις υπενθυμίσεις.
+    if (plan.calendar && !reconciled && plan.calendarSync === 'pea') {
+      if (replaceUnknown) fail(CALENDAR);
+      else if (replaced && guard && String(before ?? '').slice(0, 10) !== guard.value) {
+        const { error: cErr } = await syncPeaReminders(supabase, { propertyId, userId }, plan.calendar);
+        if (cErr) fail(CALENDAR); else add(CALENDAR);
       }
     }
 

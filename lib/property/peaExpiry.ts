@@ -28,10 +28,14 @@
 //
 // ΟΙ 90 ΚΑΙ 30 ΗΜΕΡΕΣ ΕΙΝΑΙ ΕΠΙΛΟΓΗ ΠΡΟΪΟΝΤΟΣ, ΟΧΙ ΝΟΜΟΥ: αρκετός χρόνος για
 // να κλειστεί ενεργειακός επιθεωρητής πριν από τη λήξη. Τα email τα στέλνει η
-// υπάρχουσα `send-reminders` από τα γεγονότα του ημερολογίου, με τις
-// προτιμήσεις ειδοποιήσεων του χρήστη.
+// υπάρχουσα `send-reminders` από τα γεγονότα του ημερολογίου: ΕΝΑ για την κάθε
+// υπενθύμιση, την ημέρα της, χωρίς σκάλα 7/3/1, χωρίς ληξιπρόθεσμο και χωρίς
+// «Πλήρωσα» (lib/calendar/onceOnDay.ts), με τον διακόπτη «Ημέρα εκτέλεσης» των
+// προτιμήσεων του χρήστη.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { EventDraft } from '../data/calendar';
+import { PEA_SOURCE_PREFIX } from '../calendar/onceOnDay';
+import { isLandLike } from './types';
 import { grDate } from '../core/format';
 import { daysBetweenIso } from '../core/time';
 
@@ -41,8 +45,12 @@ export const PEA_EXPIRY_TITLE = 'Λήξη ΠΕΑ';
 /** Πόσες ημέρες πριν από τη λήξη μπαίνει υπενθύμιση. Η ημέρα λήξης μπαίνει πάντα. */
 export const PEA_REMINDER_DAYS = [90, 30] as const;
 
-/** Το πρόθεμα της πηγής (`calendar_events.source`) των υπενθυμίσεων ΠΕΑ. */
-export const PEA_SOURCE_PREFIX = 'pea:expiry:';
+/**
+ * Το πρόθεμα της πηγής (`calendar_events.source`) των υπενθυμίσεων ΠΕΑ. Ζει στο
+ * lib/calendar/onceOnDay.ts, που το διαβάζει και η send-reminders: με αυτό τα
+ * email φεύγουν μία φορά, την ημέρα της κάθε υπενθύμισης.
+ */
+export { PEA_SOURCE_PREFIX };
 
 /** Η πηγή μιας υπενθύμισης: `pea:expiry:90`, `pea:expiry:30`, `pea:expiry:0`. */
 export const peaSource = (daysBefore: number): string => `${PEA_SOURCE_PREFIX}${daysBefore}`;
@@ -149,10 +157,13 @@ export const LEASE_PEA_TITLE = 'Χρειάζεται ΠΕΑ σε ισχύ';
  * `null` όταν δεν υπάρχει τίποτα να ειπωθεί.
  */
 export function leasePeaNotice(
-  prop: { pea_expiry?: string | null } | null | undefined,
+  prop: { pea_expiry?: string | null; prop_type?: string | null } | null | undefined,
   leaseStart: string | null | undefined,
   today: string,
 ): LeasePeaNotice | null {
+  // Οικόπεδο, θέση στάθμευσης, αποθήκη: ο οδηγός ακινήτου δεν ζητά ΠΕΑ για
+  // αυτούς τους τύπους (lib/property/types.ts), ούτε λοιπόν η ειδοποίηση.
+  if (isLandLike(prop?.prop_type)) return null;
   const start = isoDay(leaseStart);
   const on = start || isoDay(today);
   if (!on) return null;
@@ -174,4 +185,33 @@ export function leasePeaNotice(
       : `Το ΠΕΑ που έχουμε καταχωρημένο έληξε στις ${exp}.`,
     action: 'Αν έχεις ήδη νεότερο, γράψε τη νέα λήξη στα στοιχεία του ακινήτου ή σάρωσε το πιστοποιητικό.',
   };
+}
+
+/** Η γραμμή του ΠΕΑ στη δήλωση μίσθωσης, στο σχήμα των πεδίων της (lib/tax/leaseDeclaration.ts). */
+export interface PeaDeclField {
+  key: 'pea_number';
+  label: string;
+  value: string;
+  status: 'ok' | 'missing';
+  required: false;
+  hint?: string;
+  fixIn?: 'property';
+}
+
+/**
+ * Ο αριθμός πρωτοκόλλου του ΠΕΑ ως πεδίο της δήλωσης μίσθωσης (ν. 4122/2013,
+ * άρθρο 12 παρ. 8). Μπαίνει ΣΤΑ ΠΕΔΙΑ της δήλωσης και όχι δίπλα τους, ώστε να
+ * τον έχουν και η αντιγραφή και το φύλλο εκτύπωσης. `null` σε οικόπεδο, θέση
+ * στάθμευσης ή αποθήκη. Δεν είναι υποχρεωτικό για την ετοιμότητα: η δήλωση
+ * κρίνεται από τον builder της, που δεν αλλάζει εδώ.
+ */
+export function peaDeclField(peaNumber: string | null | undefined, propType?: string | null): PeaDeclField | null {
+  if (isLandLike(propType)) return null;
+  const n = cleanPeaNumber(peaNumber);
+  return n
+    ? { key: 'pea_number', label: 'Αριθμός πρωτοκόλλου ΠΕΑ', value: n, status: 'ok', required: false }
+    : {
+      key: 'pea_number', label: 'Αριθμός πρωτοκόλλου ΠΕΑ', value: '', status: 'missing', required: false, fixIn: 'property',
+      hint: `Τυπώνεται στο πιστοποιητικό ενεργειακής απόδοσης. Μπαίνει στη δήλωση (${PEA_LAW} παρ. 8).`,
+    };
 }

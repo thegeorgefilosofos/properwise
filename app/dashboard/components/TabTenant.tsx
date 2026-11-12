@@ -213,6 +213,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   const [propSqm,setPropSqm]=useState<number|null>(null);
   // Η λήξη του ΠΕΑ του ακινήτου: κρίνει την ειδοποίηση «Χρειάζεται ΠΕΑ σε ισχύ» στη νέα μίσθωση.
   const [propPeaExpiry,setPropPeaExpiry]=useState<string|null>(null);
+  const [propType,setPropType]=useState<string|null>(null);
   const [propertyCount,setPropertyCount]=useState(1);
   // Ο ΔΕΙΚΤΗΣ ΦΟΡΤΩΣΗΣ ΔΕΝ ΕΙΝΑΙ ΞΕΧΩΡΙΣΤΗ ΚΑΤΑΣΤΑΣΗ, ΕΙΝΑΙ ΕΡΩΤΗΣΗ. Ηταν
   // `setLoading(true)` στην πρώτη γραμμή της φόρτωσης: σύγχρονη γραφή μέσα σε
@@ -274,7 +275,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       supabase.from('tenant_damages').select('*').eq('property_id',propertyId).eq('user_id',userId).order('occurred_on',{ascending:false}),
       supabase.from('rent_comparables').select('id,property_id,title,area,sqm,rent,rent_per_sqm,listing_type,source,url').eq('property_id',propertyId),
       supabase.from('maintenance_requests').select('*').eq('user_id',userId).eq('property_id',propertyId).order('created_at',{ascending:false}),
-      properties.one<{ sqm: number; pea_expiry: string | null }>(supabase, propertyId, 'sqm,pea_expiry', userId),
+      properties.one<{ sqm: number; pea_expiry: string | null; prop_type: string | null }>(supabase, propertyId, 'sqm,pea_expiry,prop_type', userId),
       // ΤΟ ΠΛΗΘΟΣ ΑΚΙΝΗΤΩΝ ΚΡΙΝΕΙ ΦΟΡΟΛΟΓΙΚΗ ΠΡΟΕΙΔΟΠΟΙΗΣΗ. Με τον ανύπαρκτο
       // πίνακα το count γύριζε null → propertyCount πάντα 1 → ο ιδιοκτήτης με
       // τρία ακίνητα ΔΕΝ έβλεπε ποτέ ότι ο φόρος είναι προοδευτικός στο
@@ -285,6 +286,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     setTenants(list); setPayments(pd); setDamages((dd||[]) as TenantDamage[]); setComps((cd||[]) as RentComp[]); setMaint((md||[]) as MaintenanceReq[]);
     const sq=Number((own as {sqm?:number|null}|null)?.sqm);
     setPropPeaExpiry((own as {pea_expiry?:string|null}|null)?.pea_expiry ?? null);
+    setPropType((own as {prop_type?:string|null}|null)?.prop_type ?? null);
     setPropSqm(Number.isFinite(sq)&&sq>0?sq:null);
     setPropertyCount(Math.max(1, pc||1));
     setLoadedFor(propertyId);
@@ -1013,7 +1015,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
             </div>
             {/* Ο ΝΕΟΣ ΕΝΟΙΚΙΑΣΤΗΣ ΘΕΛΕΙ ΠΕΑ ΣΕ ΙΣΧΥ (ν. 4122/2013, άρθρο 12). Μόνο στη
                 νέα μίσθωση: η επεξεργασία παλιάς δεν είναι η στιγμή να το θυμίσουμε. */}
-            {!editId&&<div style={{ marginTop:14 }}><PeaLeaseNotice peaExpiry={propPeaExpiry} leaseStart={form.lease_start}/></div>}
+            {!editId&&<div style={{ marginTop:14 }}><PeaLeaseNotice peaExpiry={propPeaExpiry} propType={propType} leaseStart={form.lease_start}/></div>}
 
             <div style={s.divider}/>
             {/* ── ΤΟ ΕΝΟΙΚΙΟ ───────────────────────────────────────────────── */}
