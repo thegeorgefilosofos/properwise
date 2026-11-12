@@ -40,6 +40,12 @@ export interface PlanRow {
   plan?: string | null;
   subscription_status?: string | null;
   mor_ends_at?: string | null;
+  /**
+   * Η πρώτη αποτυχημένη ανανέωση. Χωρίς αυτήν η `livePlan` και η `isEntitled`
+   * δεν βλέπουν πότε τελειώνει η χάρη του `past_due` και η οθόνη έδειχνε
+   * ανοιχτό πακέτο που η βάση (`user_plan_rank`) έχει ήδη κλείσει (PR 558).
+   */
+  mor_past_due_at?: string | null;
 }
 
 // ── ΤΙ ΔΙΑΒΑΖΕΤΑΙ ΚΑΙ ΤΙ ΖΗΤΙΕΤΑΙ ΕΙΝΑΙ ΕΝΑ ΚΑΙ ΤΟ ΑΥΤΟ ───────────────────
@@ -52,7 +58,7 @@ export interface PlanRow {
 
 /** Οι στήλες του `billing_profiles` που κρίνουν το πακέτο. */
 export const PLAN_COLUMNS =
-  'plan, comp_plan, comp_until, trial_used_at, hold_plan, hold_until, bonus_properties, bonus_properties_until, subscription_status, mor_ends_at';
+  'plan, comp_plan, comp_until, trial_used_at, hold_plan, hold_until, bonus_properties, bonus_properties_until, subscription_status, mor_ends_at, mor_past_due_at';
 
 export interface PlanProfileRow extends PlanRow {
   comp_plan?: string | null;
@@ -114,7 +120,7 @@ export function planFieldsFromRow(row: PlanProfileRow | null | undefined, now: n
 export function subscriptionArrived(row: PlanRow | null | undefined, now: number = Date.now()): boolean {
   const status = (row?.subscription_status || '').trim();
   if (!isMorStatus(status)) return false;
-  if (!isEntitled({ status, endsAt: row?.mor_ends_at ?? null }, new Date(now).toISOString())) return false;
+  if (!isEntitled({ status, endsAt: row?.mor_ends_at ?? null, pastDueSince: row?.mor_past_due_at ?? null }, new Date(now).toISOString())) return false;
   return livePlan(row, now) !== 'free';
 }
 

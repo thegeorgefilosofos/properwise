@@ -14,7 +14,9 @@
 --    5. ο service_role (webhook) γράφει κανονικά·
 --    6. η `revoke_mor_access` κόβει ΜΟΝΟ την τελευταία πληρωμένη συναλλαγή,
 --       μία φορά· δεν την καλεί ο πελάτης· η σκανδάλη `keep_mor_revocation`
---       κρατά την ανάκληση απέναντι σε γεγονός συνδρομής χωρίς νέα συναλλαγή.
+--       κρατά την ανάκληση απέναντι σε γεγονός συνδρομής χωρίς νέα συναλλαγή·
+--       η ίδια αναφορά δίνει `already_same_ref`, άλλη αναφορά `already`· η
+--       γραμμή δοκιμαστή δεν αγγίζεται από τη σκανδάλη.
 --
 --  Ολα μέσα σε συναλλαγή που ακυρώνεται: η βάση μένει όπως ήταν.
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -173,7 +175,14 @@ begin
     raise exception 'ΑΝΑΚΛΗΣΗ: η τελευταία πληρωμένη συναλλαγή δεν έκλεισε την πρόσβαση (%)', o;
   end if;
   o := public.revoke_mor_access('sub_g', 'tran_2', 'ref_2', 'refund', now());
-  if o->>'outcome' <> 'already' then raise exception 'ΑΝΑΚΛΗΣΗ: δεύτερη παράδοση δεν αναγνωρίστηκε (%)', o; end if;
+  if o->>'outcome' <> 'already_same_ref' then raise exception 'ΑΝΑΚΛΗΣΗ: δεύτερη παράδοση δεν αναγνωρίστηκε (%)', o; end if;
+  -- ΑΛΛΗ ΑΝΑΦΟΡΑ ΣΕ ΗΔΗ ΚΛΕΙΣΤΗ (αμφισβήτηση μετά από επιστροφή, PR 558 εύρημα 2):
+  -- δεν ξαναγράφει, αλλά δεν είναι ξαναπαράδοση. Ο webhook στέλνει email.
+  o := public.revoke_mor_access('sub_g', 'tran_2', 'disp_2', 'dispute', now());
+  select * into r from public.billing_profiles where user_id = a;
+  if o->>'outcome' <> 'already' or r.mor_revoked_ref <> 'ref_2' or r.mor_revoked_reason <> 'refund' then
+    raise exception 'ΑΝΑΚΛΗΣΗ: αμφισβήτηση μετά από επιστροφή μπερδεύτηκε με ξαναπαράδοση (%)', o;
+  end if;
   begin
     perform public.revoke_mor_access('sub_g', 'tran_2', 'ref_3', 'κάτι', now());
     raise exception 'ΑΝΑΚΛΗΣΗ: δέχτηκε λόγο εκτός refund/dispute';
@@ -206,6 +215,28 @@ begin
     raise exception 'ΑΝΑΚΛΗΣΗ: νέα πληρωμένη συναλλαγή δεν ξανάνοιξε την πρόσβαση';
   end if;
   raise notice 'probe: η ανάκληση μένει απέναντι σε ταυτόχρονο γεγονός, σηκώνεται μόνο με νέα πληρωμή';
+end $probe$;
+
+-- Ο ΔΟΚΙΜΑΣΤΗΣ ΜΕ ΠΑΛΙΑ ΑΝΑΚΛΗΣΗ (PR 558, εύρημα 4): η /api/billing/plan γράφει
+-- το πακέτο του με τον ρόλο υπηρεσίας και απαντά «ok». Η σκανδάλη δεν το
+-- γυρίζει σιωπηλά σε `free`.
+reset role;
+update public.billing_profiles
+   set tester_since = now() - interval '10 days', plan = 'free', subscription_status = 'expired',
+       mor_revoked_at = now(), mor_revoked_reason = 'refund', mor_revoked_ref = 'ref_t'
+ where user_id = '6d6d6d6d-0000-4000-8000-0000000000a1';
+set role service_role;
+do $probe$
+declare
+  a uuid := '6d6d6d6d-0000-4000-8000-0000000000a1';
+  r record;
+begin
+  update public.billing_profiles set plan = 'office', hold_plan = null, hold_until = null where user_id = a;
+  select * into r from public.billing_profiles where user_id = a;
+  if r.plan <> 'office' then
+    raise exception 'ΑΝΑΚΛΗΣΗ: η αλλαγή πακέτου δοκιμαστή γράφτηκε ως % αντί για office', r.plan;
+  end if;
+  raise notice 'probe: ο δοκιμαστής αλλάζει πακέτο και με παλιά ανάκληση';
 end $probe$;
 reset role;
 

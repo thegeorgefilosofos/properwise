@@ -77,14 +77,16 @@ export function fakeDb(rows: Row[] = [], fail: { lookup?: boolean; upsert?: bool
   /**
    * Η `public.revoke_mor_access` της μετανάστευσης 20261112190000, με την ίδια
    * συνθήκη σε ΕΝΑ βήμα: συνδρομή, τελευταία πληρωμένη συναλλαγή, όχι ήδη
-   * κλειστή, όχι η ίδια αναφορά. Η πραγματική ελέγχεται στο db-replay
+   * κλειστή, όχι η ίδια αναφορά. Η ίδια αναφορά δίνει `already_same_ref`,
+   * άλλη αναφορά σε ήδη κλειστή δίνει `already`. Η πραγματική ελέγχεται στο db-replay
    * (scripts/db/billing-grace-probe.sql).
    */
   const revoke = async (a: Record<string, unknown>) => {
     if (fail.revoke) return { data: null, error: { message: 'δεν γράφτηκε' } };
     const row = state.rows.find(r => r.mor_subscription_id === a.p_subscription);
     if (!row) return { data: { outcome: 'unmatched' }, error: null };
-    if (row.mor_revoked_at || row.mor_revoked_ref === a.p_reference) return { data: { outcome: 'already' }, error: null };
+    if (row.mor_revoked_ref === a.p_reference) return { data: { outcome: 'already_same_ref' }, error: null };
+    if (row.mor_revoked_at) return { data: { outcome: 'already' }, error: null };
     if (!row.mor_last_transaction_id || row.mor_last_transaction_id !== a.p_transaction) return { data: { outcome: 'not_latest' }, error: null };
     Object.assign(row, {
       plan: 'free', subscription_status: 'expired', mor_renews_at: null, mor_ends_at: a.p_at,

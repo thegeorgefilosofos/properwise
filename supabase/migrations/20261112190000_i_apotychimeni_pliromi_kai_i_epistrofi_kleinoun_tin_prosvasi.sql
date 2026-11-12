@@ -148,9 +148,15 @@ $$;
 -- ── Η ΑΝΑΚΛΗΣΗ ΣΕ ΕΝΑ ΒΗΜΑ ─────────────────────────────────────────────────
 -- Ελέγχει και γράφει με ΕΝΑ υπό όρους UPDATE: συνδρομή, τελευταία πληρωμένη
 -- συναλλαγή, όχι ήδη κλειστή, όχι η ίδια αναφορά. Καμία ανάγνωση που να
--- παλιώνει ανάμεσα. Όταν δεν γράφει, λέει γιατί: `already`, `not_latest`,
--- `unmatched`. Το `mor_event_at` δεν αγγίζεται: η επιστροφή δεν είναι
--- γεγονός συνδρομής.
+-- παλιώνει ανάμεσα. Όταν δεν γράφει, λέει γιατί:
+--   `already_same_ref`  η ΙΔΙΑ επιστροφή ή αμφισβήτηση ξαναπαραδόθηκε
+--                       (`mor_revoked_ref = p_reference`)· μόνο αυτή μένει
+--                       σιωπηλή στον webhook·
+--   `already`           η πρόσβαση είχε ήδη κλείσει από ΑΛΛΗ αναφορά, π.χ.
+--                       αμφισβήτηση μετά από επιστροφή της ίδιας συνδρομής·
+--                       ο webhook στέλνει email (έλεγχος του PR 558, εύρημα 2)·
+--   `not_latest`, `unmatched`.
+-- Το `mor_event_at` δεν αγγίζεται: η επιστροφή δεν είναι γεγονός συνδρομής.
 create or replace function public.revoke_mor_access(
   p_subscription text, p_transaction text, p_reference text, p_reason text, p_at timestamptz
 ) returns jsonb
@@ -180,7 +186,10 @@ begin
   select mor_revoked_at, mor_revoked_ref into v_row
     from public.billing_profiles where mor_subscription_id = p_subscription limit 1;
   if not found then return jsonb_build_object('outcome', 'unmatched'); end if;
-  if v_row.mor_revoked_at is not null or v_row.mor_revoked_ref is not distinct from p_reference then
+  if v_row.mor_revoked_ref is not distinct from p_reference then
+    return jsonb_build_object('outcome', 'already_same_ref');
+  end if;
+  if v_row.mor_revoked_at is not null then
     return jsonb_build_object('outcome', 'already');
   end if;
   return jsonb_build_object('outcome', 'not_latest');
@@ -199,12 +208,19 @@ comment on function public.revoke_mor_access(text, text, text, text, timestamptz
 -- η γραμμή μένει στην ίδια συνδρομή ΚΑΙ στην ίδια τελευταία συναλλαγή. Μόνο
 -- για τον ρόλο υπηρεσίας: ο πελάτης φυλάγεται ήδη από τη `lock_billing_plan`
 -- και η υποστήριξη (postgres) λύνει με το χέρι όταν χρειαστεί.
+--
+-- Ο ΔΟΚΙΜΑΣΤΗΣ ΠΕΡΝΑ (έλεγχος του PR 558, εύρημα 4). Η /api/billing/plan
+-- γράφει το πακέτο του δοκιμαστή με τον ρόλο υπηρεσίας και απαντά «ok». Αν η
+-- γραμμή του είχε παλιά ανάκληση, η σκανδάλη θα έγραφε σιωπηλά `free` κάτω από
+-- αυτό το «ok». Ο δοκιμαστής δεν πληρώνει τίποτα, οπότε η ανάκληση δεν έχει τι
+-- να προστατέψει: η γραμμή με `tester_since` δεν αγγίζεται.
 create or replace function public.keep_mor_revocation() returns trigger
     language plpgsql
     set search_path to 'public'
     as $$
 begin
   if current_user = 'service_role'
+     and old.tester_since is null
      and old.mor_revoked_at is not null
      and new.mor_subscription_id is not distinct from old.mor_subscription_id
      and new.mor_last_transaction_id is not distinct from old.mor_last_transaction_id then

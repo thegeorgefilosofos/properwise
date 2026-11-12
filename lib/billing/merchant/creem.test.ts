@@ -298,6 +298,10 @@ async function main() {
   ok('η συναλλαγή και ως αντικείμενο', nested.ok && nested.event.sub.lastTransactionId === 'tran_6' && !nested.event.paid);
   const none = creemPort.readEvent(event(), env);
   ok('χωρίς συναλλαγή: κενό', none.ok && none.event.sub.lastTransactionId === null);
+  // Η ΩΡΑ ΓΕΝΝΗΣΗΣ ΤΗΣ ΣΥΝΔΡΟΜΗΣ κρίνει αν άλλη συνδρομή είναι νεότερη από μια ανάκληση (PR 558, εύρημα 5).
+  const born = creemPort.readEvent(event({ created_at: '2026-10-01T09:00:00.000Z' }), env);
+  ok('η ώρα γέννησης της συνδρομής διαβάζεται', born.ok && born.event.sub.createdAt === '2026-10-01T09:00:00.000Z');
+  ok('χωρίς ώρα γέννησης: κενό', none.ok && none.event.sub.createdAt === null);
 }
 
 // ── Η ΔΙΑΓΝΩΣΗ ΤΟΥ ΤΑΜΕΙΟΥ: ΤΙ ΦΤΑΙΕΙ, ΧΩΡΙΣ ΤΙΜΕΣ (έλεγχος 12/11/2026) ────

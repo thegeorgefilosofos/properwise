@@ -9,6 +9,7 @@ import {
   takeCheckoutReturn, subscriptionArrived, pollUntil, planFieldsFromRow, PLAN_COLUMNS,
   PLAN_POLL_DELAYS_MS, CHECKOUT_RETURN_SAY, planReadApplies, type PlanProfileRow,
 } from './planRefresh'
+import { PAST_DUE_GRACE_DAYS } from './subscription'
 
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
@@ -124,6 +125,36 @@ async function main() {
     ok('οι θέσεις από προσκλήσεις φτάνουν στην οθόνη', f.bonusProperties === 2 && f.bonusUntil === '2027-01-01')
     ok('μηδέν θέσεις μένει μηδέν', planFieldsFromRow({ bonus_properties: 0 }, NOW).bonusProperties === 0)
     ok('χωρίς προφίλ: δωρεάν', planFieldsFromRow(null, NOW).plan === 'free')
+  }
+
+  // ── Η ΧΑΡΗ ΤΟΥ past_due ΦΤΑΝΕΙ ΣΤΗΝ ΟΘΟΝΗ (PR 558, L1) ──────────────────
+  // Η στήλη `mor_past_due_at` δεν ζητιόταν. Η `livePlan` τη διαβάζει μόνο όταν
+  // η κατάσταση είναι `past_due`, οπότε ο κατάσκοπος πιο πάνω (που γυρίζει
+  // undefined παντού) δεν την έβλεπε. Εδώ ο κατάσκοπος δίνει `past_due`.
+  {
+    const cols = new Set(PLAN_COLUMNS.split(',').map(c => c.trim()))
+    const touched = new Set<string>()
+    const spy = new Proxy({} as Record<string, unknown>, {
+      get: (_t, k) => {
+        if (typeof k !== 'string') return undefined
+        touched.add(k)
+        return k === 'subscription_status' ? 'past_due' : k === 'plan' ? 'solo' : '2026-11-01T00:00:00Z'
+      },
+    })
+    planFieldsFromRow(spy as PlanProfileRow, NOW)
+    subscriptionArrived(spy as PlanProfileRow, NOW)
+    const missing = [...touched].filter(k => !cols.has(k))
+    ok(`με past_due κάθε στήλη που διαβάζεται ζητιέται (λείπουν: ${missing.join(', ') || 'καμία'})`, missing.length === 0)
+    ok('η πρώτη αποτυχία ζητιέται από τη βάση', cols.has('mor_past_due_at'))
+
+    const DAY = 86_400_000
+    const failedAgo = (d: number) => new Date(NOW - d * DAY).toISOString()
+    const inGrace: PlanProfileRow = { plan: 'solo', subscription_status: 'past_due', mor_past_due_at: failedAgo(1) }
+    const afterGrace: PlanProfileRow = { plan: 'solo', subscription_status: 'past_due', mor_past_due_at: failedAgo(PAST_DUE_GRACE_DAYS + 1) }
+    ok('past_due μέσα στη χάρη: η οθόνη κρατά το πακέτο', planFieldsFromRow(inGrace, NOW).plan === 'solo')
+    ok('past_due μετά τη χάρη: η οθόνη δείχνει δωρεάν', planFieldsFromRow(afterGrace, NOW).plan === 'free')
+    ok('past_due μέσα στη χάρη: η συνδρομή μετρά ως ζωντανή', subscriptionArrived(inGrace, NOW))
+    ok('past_due μετά τη χάρη: η αναμονή δεν τη μετρά ως ζωντανή', !subscriptionArrived(afterGrace, NOW))
   }
 
   // ── ΣΦΑΛΜΑ ΑΝΑΓΝΩΣΗΣ ΔΕΝ ΕΙΝΑΙ «ΔΩΡΕΑΝ» ─────────────────────────────────
