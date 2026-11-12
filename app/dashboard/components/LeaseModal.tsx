@@ -11,7 +11,7 @@
 // ζει καθαρή και δοκιμασμένη στο lib/documents/lease.ts.
 // ═══════════════════════════════════════════════════════════════════════════
 import { LEASE_DECLARATION_NAME } from '@/lib/tax/leaseDeclaration';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ensureDpa } from '@/lib/legal/dpa';
 import * as properties from '@/lib/data/properties';
@@ -23,6 +23,8 @@ import { T, TT, Btn, ChipToggle, Spinner, EmptyState, Modal, fp, fixedCols } fro
 import { Building2 } from 'lucide-react';
 import { InfoHint } from './InfoHint';
 import { savedData } from '@/components/dbWrite';
+import { notifyError } from '@/components/Toast';
+import { samePerson, leaseCategoryOf } from './leaseFlow';
 
 import { CustomSelect as Select, DatePicker } from './UIComponents';
 import ScanButton from './ScanButton';
@@ -39,8 +41,15 @@ import { acceptNumeric, PCT_MAX } from '@/lib/core/numInput';
 
 interface Prop { id: string; name: string; address: string | null; sqm?: number | null; atak?: string | null }
 
-export default function LeaseModal({ open, onClose, userId, supabase, branding, propertyId }: {
+// ── ΚΑΘΕ ΑΝΟΙΓΜΑ ΞΕΚΙΝΑ ΑΠΟ ΤΟ ΜΗΔΕΝ ──────────────────────────────────────
+// Ο καλών το προσαρτά ΜΟΝΟ όσο είναι ανοιχτό (`{open && <LeaseModal …/>}`).
+// Προσαρτημένο μόνιμα, κρατούσε την κατάσταση του προηγούμενου ανοίγματος: το
+// `pending.model` ενός παλιού PDF αρχειοθετούνταν με τα στοιχεία της νέας
+// φόρμας και μετά από επιτυχή αρχειοθέτηση το παράθυρο ξανάνοιγε χωρίς κουμπί.
+export default function LeaseModal({ open, onClose, userId, supabase, branding, propertyId, onSaved }: {
   open: boolean; onClose: () => void; userId: string; supabase: SupabaseClient; branding?: ReportBranding | null; propertyId?: string;
+  /** Η καρτέλα ενοικιαστή γράφτηκε: ο καλών ανανεώνει τη λίστα του. */
+  onSaved?: () => void;
 }) {
   const [props, setProps] = useState<Prop[]>([]);
   const [propId, setPropId] = useState(propertyId || '');
@@ -68,6 +77,13 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
   const [pending, setPending] = useState<{ model: PdfReportModel; fname: string } | null>(null);
   const [archiving, setArchiving] = useState(false);
   const [archived, setArchived] = useState(false);
+  // Το PDF μπήκε ήδη στα έγγραφα: νέα προσπάθεια ενημερώνει μόνο τον ενοικιαστή,
+  // χωρίς δεύτερο αντίγραφο του ίδιου μισθωτηρίου στο Αρχείο.
+  const [docArchived, setDocArchived] = useState(false);
+  // Στο ακίνητο μένει άλλος άνθρωπος: ρωτάμε πριν γράψουμε πάνω του.
+  const [conflict, setConflict] = useState<{ name: string } | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
 
   // Φόρτωση ακινήτων και προσυμπλήρωση εκμισθωτή από το branding. Όλα τα setState
   // γίνονται στο callback (όχι στο σώμα του effect), ώστε να μην προκαλούνται
@@ -179,37 +195,63 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
   };
 
   // Αρχειοθέτηση + ενημέρωση της καρτέλας ενοικιαστή (ώστε να μη γράφονται δύο φορές).
-  const archive = async () => {
+  //
+  // ── Ο ΤΡΕΧΩΝ ΕΝΟΙΚΙΑΣΤΗΣ ΔΕΝ ΞΑΝΑΓΡΑΦΕΤΑΙ ΣΙΩΠΗΛΑ ────────────────────────
+  // Εδώ γινόταν `updateReturning(cur.id, …)` για όποιον κι αν ήταν στο
+  // μισθωτήριο. Μισθωτήριο για τον Β σε ακίνητο όπου έμενε ο Α έκανε τη γραμμή
+  // του Α γραμμή του Β: το όνομα άλλαζε και οι πληρωμές του Α φαίνονταν πλέον
+  // στο όνομα του Β. Τώρα: ίδιος άνθρωπος (ΑΦΜ, αλλιώς όνομα) ενημερώνεται·
+  // διαφορετικός ρωτιέται «αντικατάσταση στοιχείων ή νέος ενοικιαστής;».
+  const archive = async (choice?: 'replace' | 'new') => {
     if (!pending || !prop) return;
     setArchiving(true); setErr('');
     try {
-      await archivePdfToProperty({
-        supabase, userId, propertyId: prop.id, blob: await reportPdfBlob(pending.model), fileName: pending.fname,
-        title: `Μισθωτήριο · ${tenant.trim()} · από ${grDate(res.start)}`,
-        notes: `Μίσθωμα ${pEur(res.monthlyRent)}${res.deposit > 0 ? `, εγγύηση ${pEur(res.deposit)}` : ''}, έως ${grDate(res.end)}`,
-        docDate: res.start, category: 'lease', supplier: tenant.trim(),
-      });
+      if (!docArchived) {
+        await archivePdfToProperty({
+          supabase, userId, propertyId: prop.id, blob: await reportPdfBlob(pending.model), fileName: pending.fname,
+          title: `Μισθωτήριο · ${tenant.trim()} · από ${grDate(res.start)}`,
+          notes: `Μίσθωμα ${pEur(res.monthlyRent)}${res.deposit > 0 ? `, εγγύηση ${pEur(res.deposit)}` : ''}, έως ${grDate(res.end)}`,
+          docDate: res.start, category: 'lease', supplier: tenant.trim(),
+        });
+        setDocArchived(true);
+      }
+    } catch { setErr(SAY.archiveFailed); setArchiving(false); return; }
 
-      // Ενημέρωση/δημιουργία ενοικιαστή από το υπογεγραμμένο συμφωνητικό.
-      const payload = { full_name: tenant.trim(), afm: tenantAfm.trim() || null, monthly_rent: res.monthlyRent, deposit_amount: res.deposit || null, lease_start: res.start, lease_end: res.end };
-      const cur = await tenantStore.current<{ id: string }>(supabase, prop.id, 'id', userId);
+    const tenantFailed = 'Το μισθωτήριο αρχειοθετήθηκε, αλλά η καρτέλα ενοικιαστή δεν ενημερώθηκε. Δοκίμασε ξανά.';
+    try {
+      // Ενημέρωση/δημιουργία ενοικιαστή από το υπογεγραμμένο συμφωνητικό. Ο τύπος
+      // μίσθωσης είναι υποχρεωτικός στην καρτέλα (TabTenant) και βγαίνει από τη
+      // «Χρήση» του ίδιου του συμφωνητικού.
+      const payload = {
+        full_name: tenant.trim(), afm: tenantAfm.trim() || null, lease_category: leaseCategoryOf(use),
+        monthly_rent: res.monthlyRent, deposit_amount: res.deposit || null, lease_start: res.start, lease_end: res.end,
+      };
+      const cur = await tenantStore.current<{ id: string; full_name: string | null; afm: string | null }>(supabase, prop.id, 'id,full_name,afm', userId);
+      const same = !!cur?.id && samePerson({ name: cur.full_name, afm: cur.afm }, { name: tenant, afm: tenantAfm });
+      const updateId = cur?.id && (same || choice === 'replace') ? cur.id : null;
+      if (cur?.id && !updateId && choice !== 'new') { setConflict({ name: cur.full_name || 'άλλος ενοικιαστής' }); return; }
       // Νέος ενοικιαστής: πρώτα η σύμβαση επεξεργασίας (lib/legal/dpa.ts).
-      if (!cur?.id && !(await ensureDpa(supabase))) { setErr('Το μισθωτήριο αρχειοθετήθηκε, ο ενοικιαστής όχι: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.'); return; }
+      if (!updateId && !(await ensureDpa(supabase))) { setErr('Το μισθωτήριο αρχειοθετήθηκε, ο ενοικιαστής όχι: χρειάζεται αποδοχή της σύμβασης επεξεργασίας.'); return; }
       // Το try/catch από πάνω δεν καλύπτει αυτό: το Supabase δεν πετά. Χωρίς τον
       // έλεγχο, το συμφωνητικό αρχειοθετούνταν και ο ενοικιαστής δεν υπήρχε πουθενά.
       //
       // Η ΓΡΑΜΜΗ ΕΠΙΣΤΡΕΦΕΙ, ΓΙΑΤΙ ΑΠΟ ΑΥΤΗΝ ΓΕΝΝΙΟΥΝΤΑΙ ΤΑ ΧΡΗΜΑΤΑ. Χωρίς
       // αυτήν δεν ξέρουμε ούτε το αναγνωριστικό του νέου ενοικιαστή ούτε τη
-      // συχνότητα πληρωμής, δηλαδή δεν μπορούν να δημιουργηθούν οι δόσεις — και
-      // ένα υπογεγραμμένο μισθωτήριο θα άφηνε την ταμειακή θέση στο μηδέν.
-      const row = await savedData('Ο ενοικιαστής δεν ενημερώθηκε από το συμφωνητικό', cur?.id
-        ? tenantStore.updateReturning(supabase, cur.id, payload)
+      // συχνότητα πληρωμής, δηλαδή δεν μπορούν να δημιουργηθούν οι δόσεις.
+      const row = await savedData('Ο ενοικιαστής δεν ενημερώθηκε από το συμφωνητικό', updateId
+        ? tenantStore.updateReturning(supabase, updateId, payload)
         : tenantStore.addReturning(supabase, prop.id, userId, payload));
-      if (row) await syncInstalments(supabase, row as unknown as Tenant, prop.id, userId);
+      // ΚΑΜΙΑ ΓΡΑΜΜΗ, ΚΑΜΙΑ ΕΠΙΤΥΧΙΑ. Το υποσέλιδο έλεγε «ενημερώθηκε ο
+      // ενοικιαστής» και όταν η εγγραφή είχε αποτύχει.
+      if (!row) { setErr(tenantFailed); return; }
+      setConflict(null);
+      const { error: instErr } = await syncInstalments(supabase, row as unknown as Tenant, prop.id, userId);
+      if (instErr) notifyError(`Ο ενοικιαστής ενημερώθηκε, αλλά οι δόσεις ενοικίου δεν δημιουργήθηκαν. ${instErr}`);
 
       setArchived(true);
-      setTimeout(onClose, 1400);
-    } catch { setErr(SAY.archiveFailed); }
+      onSaved?.();
+      closeTimer.current = setTimeout(onClose, 1400);
+    } catch { setErr(tenantFailed); }
     finally { setArchiving(false); }
   };
 
@@ -287,22 +329,35 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
   // ΥΠΟΓΡΑΦΕΣ. Ίδια φρουρά με το Modal του PortfolioTab.
   const closeIfIdle = () => { if (busy || archiving) return; onClose(); };
 
+  const footerHead = archived ? 'Αποθηκεύτηκε και ενημερώθηκε ο ενοικιαστής.'
+    : conflict ? `Στο ακίνητο μένει ήδη: ${conflict.name}. Αντικατάσταση στοιχείων ή νέος ενοικιαστής;`
+    : docArchived ? 'Το μισθωτήριο αρχειοθετήθηκε. Η καρτέλα ενοικιαστή δεν ενημερώθηκε ακόμη.'
+    : SAY.archiveAsk;
+  const footerNote = archived ? ''
+    : conflict ? `Η αντικατάσταση γράφει το μισθωτήριο πάνω στην καρτέλα «${conflict.name}», όπου μένει και το ιστορικό πληρωμών της. Ο νέος ενοικιαστής παίρνει δική του καρτέλα.`
+    : docArchived ? ''
+    : `Αρχειοθετείται με ημερομηνία έναρξης ${grDate(res.start)} και ενημερώνει την καρτέλα ενοικιαστή.`;
   const footerInfo = pending ? (
     <span style={{ display: 'inline-block', minWidth: 220 }}>
-      <span style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>
-        {archived ? 'Αποθηκεύτηκε και ενημερώθηκε ο ενοικιαστής.' : SAY.archiveAsk}
-      </span>
-      {!archived && <span style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Αρχειοθετείται με ημερομηνία έναρξης {grDate(res.start)} και ενημερώνει την καρτέλα ενοικιαστή.</span>}
+      <span style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>{footerHead}</span>
+      {footerNote && <span style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{footerNote}</span>}
+      {err && <span role="alert" style={{ display: 'block', fontSize: 12, color: 'var(--negative)', marginTop: 4 }}>{err}</span>}
     </span>
   ) : undefined;
 
   const footer = pending ? (
-    !archived && (
+    !archived && (conflict ? (
       <>
         <Btn variant="secondary" onClick={onClose} disabled={archiving}>Ίσως αργότερα</Btn>
-        <Btn variant="primary" onClick={archive} disabled={archiving}>{archiving ? 'Αποθήκευση…' : 'Ναι, αποθήκευσε'}</Btn>
+        <Btn variant="secondary" onClick={() => archive('replace')} disabled={archiving}>Αντικατάσταση στοιχείων</Btn>
+        <Btn variant="primary" onClick={() => archive('new')} disabled={archiving}>{archiving ? 'Αποθήκευση…' : 'Νέος ενοικιαστής'}</Btn>
       </>
-    )
+    ) : (
+      <>
+        <Btn variant="secondary" onClick={onClose} disabled={archiving}>Ίσως αργότερα</Btn>
+        <Btn variant="primary" onClick={() => archive()} disabled={archiving}>{archiving ? 'Αποθήκευση…' : docArchived ? 'Ενημέρωση ενοικιαστή' : 'Ναι, αποθήκευσε'}</Btn>
+      </>
+    ))
   ) : (
     <>
       <Btn variant="secondary" onClick={onClose} disabled={busy}>Ακύρωση</Btn>
@@ -404,7 +459,7 @@ export default function LeaseModal({ open, onClose, userId, supabase, branding, 
                 </div>
               </div>
 
-              {err && <div style={{ fontSize: 'var(--fs-base)', color: 'var(--negative)', background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: T.radius.inner, padding: '10px 14px' }}>{err}</div>}
+              {err && !pending && <div style={{ fontSize: 'var(--fs-base)', color: 'var(--negative)', background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: T.radius.inner, padding: '10px 14px' }}>{err}</div>}
             </>
           )}
       </>

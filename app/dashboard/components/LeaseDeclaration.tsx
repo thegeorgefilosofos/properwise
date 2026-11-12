@@ -32,6 +32,7 @@ import {
   buildLeaseDeclaration, declarationSheet, RULES,
   type LeaseDeclarationInput, type DeclField,
 } from '@/lib/tax/leaseDeclaration';
+import { declaredForLease, type DeclRecord } from './leaseFlow';
 
 const TAB_LABEL: Record<NonNullable<DeclField['fixIn']>, string> = {
   property: 'Ακίνητο', tenant: navLabel('tenant'), settings: navLabel('settings'),
@@ -51,15 +52,27 @@ const DECL_ACTION = 'lease_declaration_submitted';
 // Πηγή αλήθειας είναι η τελευταία γραμμή του activity_log για ΑΥΤΟ το ακίνητο.
 // Το activity_log έχει πολιτική SELECT (baseline.sql:4207), όχι INSERT, οπότε
 // η ανάγνωση περνά απευθείας ενώ το γράψιμο μόνο μέσω RPC.
+//
+// ΚΑΙ ΑΦΟΡΑ ΜΙΑ ΜΙΣΘΩΣΗ, ΟΧΙ ΤΟ ΑΚΙΝΗΤΟ. Η γραμμή διαβαζόταν μόνο με το
+// `entity_id`: μία καταγραφή έδειχνε «Καταγράφηκε» για πάντα ακόμη και για τον
+// επόμενο ενοικιαστή, ενώ η Επισκόπηση ζητούσε νέα δήλωση για τη νέα μίσθωση.
+// Αν ισχύει για την τρέχουσα μίσθωση το κρίνει το `declaredForLease`
+// (leaseFlow.ts), ο ίδιος κανόνας με την Επισκόπηση. Νέες καταγραφές κρατούν
+// και το αναγνωριστικό του ενοικιαστή.
+type Submitted = DeclRecord & { ref: string };
 async function readSubmitted(supabase: SupabaseClient, userId: string, propertyId: string):
-  Promise<{ at: string; ref: string } | null> {
+  Promise<Submitted | null> {
   const row = await must(supabase.from('activity_log')
     .select('created_at,metadata')
     .eq('user_id', userId).eq('action', DECL_ACTION).eq('entity_id', propertyId)
     .order('created_at', { ascending: false }).limit(1).maybeSingle());
   if (!row) return null;
   const meta = (row.metadata ?? {}) as Record<string, unknown>;
-  return { at: row.created_at as string, ref: typeof meta.reference === 'string' ? meta.reference : '' };
+  return {
+    at: row.created_at as string,
+    ref: typeof meta.reference === 'string' ? meta.reference : '',
+    tenantId: typeof meta.tenant_id === 'string' ? meta.tenant_id : null,
+  };
 }
 
 export default function LeaseDeclaration({ open, onClose, propertyId, userId, supabase }: {
@@ -68,12 +81,15 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState<LeaseDeclarationInput>({});
   const [copied, setCopied] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState<{ at: string; ref: string } | null>(null);
+  const [submitted, setSubmitted] = useState<Submitted | null>(null);
+  // Διόρθωση του αριθμού ή νέα καταγραφή πάνω σε υπάρχουσα.
+  const [editing, setEditing] = useState(false);
   const [refInput, setRefInput] = useState('');
   const [saving, setSaving] = useState(false);
   // Η μίσθωση που δηλώνεται: ο αριθμός της δήλωσης γράφεται και στη γραμμή της
   // (`tenants.aade_lease_decl_ref`, στήλη 19 του Ε2), όχι μόνο στο ιστορικό.
   const [tenantId, setTenantId] = useState<string | null>(null);
+  const [leaseStart, setLeaseStart] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -126,9 +142,14 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
         const p = prop as Record<string, unknown> | null;
         const s = settings as Record<string, unknown> | null;
         if (!alive) return;
+        const tid = typeof t?.id === 'string' ? t.id : null;
+        const start = typeof t?.lease_start === 'string' ? t.lease_start : null;
         setSubmitted(prior);
-        setTenantId(typeof t?.id === 'string' ? t.id : null);
-        setRefInput(prior?.ref ?? '');
+        setTenantId(tid);
+        setLeaseStart(start);
+        setEditing(false);
+        // Ο αριθμός προηγούμενης μίσθωσης δεν προσυμπληρώνεται στη νέα.
+        setRefInput(declaredForLease(prior, { tenantId: tid, leaseStart: start }) ? prior?.ref ?? '' : '');
         setInput({
           owner: { name: (s?.owner_name as string) ?? null, afm: (s?.owner_afm as string) ?? null },
           property: { name: (p?.name as string) ?? null, atak: (p?.atak as string) ?? null, address: (p?.address as string) ?? null,
@@ -158,6 +179,8 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
   }, [open, propertyId, userId, supabase]);
 
   const decl = useMemo(() => buildLeaseDeclaration(input), [input]);
+  const lease = { tenantId, leaseStart };
+  const current = declaredForLease(submitted, lease) ? submitted : null;
 
   const copy = async (key: string, text: string) => {
     try { await navigator.clipboard.writeText(text); setCopied(key); setTimeout(() => setCopied(null), 1400); } catch { /* αγνόησε */ }
@@ -180,7 +203,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
       // activity_log, που έχει πολιτική SELECT και καμία INSERT: η RLS το
       // έκοβε με 42501 και καμία δήλωση δεν μπήκε ποτέ στο ιστορικό.
       await logActivity(supabase, DECL_ACTION, 'property', propertyId,
-        { reference: ref.value, deadline: decl.deadline.due });
+        { reference: ref.value, deadline: decl.deadline.due, tenant_id: tenantId, lease_start: leaseStart });
       // Ο ΑΡΙΘΜΟΣ ΤΗΣ ΑΑΔΕ ΑΝΗΚΕΙ ΣΤΗ ΜΙΣΘΩΣΗ. Από εδώ τον διαβάζει το Ε2 (στ. 19)
       // και η σύγκριση με το προσυμπληρωμένο, ανά μίσθωση.
       if (ref.value && tenantId) {
@@ -191,7 +214,7 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
       // σωπαίνει σε αποτυχία, οπότε το «Καταγράφηκε» πριν την ανάγνωση ήταν
       // ακριβώς το ψέμα που έβλεπε ο ιδιοκτήτης δίπλα στο κόκκινο μήνυμα.
       const now = await readSubmitted(supabase, userId, propertyId);
-      if (now) setSubmitted(now);
+      if (now && declaredForLease(now, lease)) { setSubmitted(now); setEditing(false); }
       else notifyError(failed('Η δήλωση δεν καταγράφηκε στο ιστορικό'));
     } catch (e) {
       notifyError(failed('Η δήλωση δεν καταγράφηκε στο ιστορικό', e));
@@ -284,20 +307,29 @@ export default function LeaseDeclaration({ open, onClose, propertyId, userId, su
         {/* Καταγραφή υποβολής */}
         <div>
           <div style={{ ...TT.label, marginBottom: 8 }}>Μετά την υποβολή</div>
-          {submitted ? (
+          {current && !editing ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 15px', borderRadius: T.radius.inner, background: 'var(--positive-soft)', border: '1px solid var(--positive-border)' }}>
               <Check size={15} style={{ color: 'var(--positive)', flexShrink: 0 }} />
-              <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)' }}>
-                Καταγράφηκε στις {fd(submitted.at)}
-                {submitted.ref && <> · αρ. δήλωσης <strong style={{ fontFamily: T.font.num }}>{submitted.ref}</strong></>}
+              <span style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-base)', color: 'var(--text-primary)' }}>
+                Καταγράφηκε στις {fd(current.at)}
+                {current.ref && <> · αρ. δήλωσης <strong style={{ fontFamily: T.font.num }}>{current.ref}</strong></>}
               </span>
+              <Btn variant="secondary" onClick={() => { setRefInput(current.ref); setEditing(true); }}>Διόρθωση</Btn>
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <input aria-label="Αριθμός δήλωσης μίσθωσης" value={refInput} onChange={e => setRefInput(e.target.value)} placeholder="Αριθμός δήλωσης (προαιρετικό)"
-                style={{ flex: 1, minWidth: 200, height: T.h.lg, padding: '0 13px', borderRadius: 10, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none' }} />
-              <Btn variant="secondary" onClick={markSubmitted} disabled={saving}>{saving ? 'Αποθήκευση…' : 'Την υπέβαλα'}</Btn>
-            </div>
+            <>
+              {submitted && !current && (
+                <div style={{ ...TT.caption, marginBottom: 8, lineHeight: 1.5 }}>
+                  Η καταγραφή της {fd(submitted.at)} αφορά προηγούμενη μίσθωση. Η τρέχουσα θέλει νέα δήλωση.
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input aria-label="Αριθμός δήλωσης μίσθωσης" value={refInput} onChange={e => setRefInput(e.target.value)} placeholder="Αριθμός δήλωσης (προαιρετικό)"
+                  style={{ flex: 1, minWidth: 200, height: T.h.lg, padding: '0 13px', borderRadius: 10, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans, outline: 'none' }} />
+                {editing && <Btn variant="secondary" onClick={() => setEditing(false)} disabled={saving}>Άκυρο</Btn>}
+                <Btn variant="secondary" onClick={markSubmitted} disabled={saving}>{saving ? 'Αποθήκευση…' : editing ? 'Αποθήκευση' : 'Την υπέβαλα'}</Btn>
+              </div>
+            </>
           )}
           <div style={{ ...TT.caption, marginTop: 8, lineHeight: 1.5 }}>
             Ο μισθωτής πρέπει να αποδεχθεί τη δήλωση από τον δικό του λογαριασμό στο myAADE.

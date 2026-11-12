@@ -1,0 +1,101 @@
+// npx tsx app/dashboard/components/leaseFlow.test.ts
+// ═══════════════════════════════════════════════════════════════════════════
+// Η ΔΙΑΔΡΟΜΗ ΤΗΣ ΜΙΣΘΩΣΗΣ: πέντε σφάλματα που κλειδώνουν εδώ.
+//
+//   1. Μισθωτήριο για νέο πρόσωπο ξανάγραφε τη γραμμή του τρέχοντος ενοικιαστή.
+//   2. Το παράθυρο μισθωτηρίου κρατούσε το PDF του προηγούμενου ανοίγματος.
+//   3. Η Δήλωση μίσθωσης έλεγε «καταγράφηκε» για πάντα ανά ακίνητο.
+//   9. Ελληνικό όνομα αρχείου έμπαινε ωμό στο κλειδί αποθήκευσης.
+//  10. Δύο γρήγορα πατήματα έγραφαν δύο ίδιους ενοικιαστές.
+//
+// Οι αποφάσεις δοκιμάζονται ως καθαρές συναρτήσεις (leaseFlow.ts). Η καλωδίωση
+// στα συστατικά, που δεν τρέχει χωρίς περιηγητή, ελέγχεται στον πηγαίο κώδικα.
+// ═══════════════════════════════════════════════════════════════════════════
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { samePerson, normName, leaseCategoryOf, declaredForLease, leaseDocKey, leaseDocPath } from './leaseFlow'
+import { computeObligations } from './obligations'
+
+let pass = 0, fail = 0
+const fails: string[] = []
+const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; fails.push(n) } }
+
+// ── 1. Ο ΙΔΙΟΣ ΑΝΘΡΩΠΟΣ ────────────────────────────────────────────────────
+{
+  const A = { name: 'Γιώργος Παπαδόπουλος', afm: '123456789' }
+  ok('άλλο ΑΦΜ = άλλος άνθρωπος ακόμη και με ίδιο όνομα', !samePerson(A, { name: 'Γιώργος Παπαδόπουλος', afm: '987654321' }))
+  ok('ίδιο ΑΦΜ = ίδιος άνθρωπος ακόμη και με άλλη ορθογραφία', samePerson(A, { name: 'Γ. Παπαδοπουλος', afm: ' 123 456 789 ' }))
+  ok('άλλο όνομα χωρίς ΑΦΜ = άλλος άνθρωπος', !samePerson(A, { name: 'Μαρία Νικολάου', afm: '' }))
+  ok('ίδιο όνομα χωρίς ΑΦΜ στη μία πλευρά = ίδιος', samePerson(A, { name: 'ΓΙΩΡΓΟΣ  ΠΑΠΑΔΟΠΟΥΛΟΣ', afm: null }))
+  ok('τόνοι και τελικό σίγμα δεν μετρούν', normName('Νικόλαος  Δήμας') === normName('ΝΙΚΟΛΑΟΣ δημασ'))
+  ok('κενό όνομα δεν ταιριάζει με κενό', !samePerson({ name: '', afm: '' }, { name: ' ', afm: null }))
+  ok('Χρήση κατοικίας → residential', leaseCategoryOf('residence') === 'residential')
+  ok('Επαγγελματική → commercial', leaseCategoryOf('professional') === 'commercial')
+}
+
+// ── 3. ΔΗΛΩΣΗ ΓΙΑ ΤΗΝ ΤΡΕΧΟΥΣΑ ΜΙΣΘΩΣΗ ────────────────────────────────────
+{
+  const lease = { tenantId: 't-new', leaseStart: '2026-07-10' }
+  // Το σενάριο του αδιεξόδου: δήλωση του προηγούμενου ενοικιαστή, νέα μίσθωση.
+  // Πριν, η Δήλωση μίσθωσης έλεγε «Καταγράφηκε» και η Επισκόπηση «εκκρεμεί».
+  ok('καταγραφή πριν την έναρξη δεν αφορά την τρέχουσα', !declaredForLease({ at: '2026-05-01T09:00:00Z' }, lease))
+  ok('καταγραφή μετά την έναρξη αφορά την τρέχουσα', declaredForLease({ at: '2026-07-20T09:00:00Z' }, lease))
+  ok('ίδια μέρα με την έναρξη μετράει', declaredForLease({ at: '2026-07-10T18:00:00Z' }, lease))
+  ok('καταγραφή για άλλον ενοικιαστή δεν μετρά', !declaredForLease({ at: '2026-07-20T09:00:00Z', tenantId: 't-old' }, lease))
+  ok('χωρίς καταγραφή, τίποτα', !declaredForLease(null, lease))
+  ok('χωρίς έναρξη, μετρά μόνο καταγραφή για τον ίδιο', declaredForLease({ at: '2026-01-01', tenantId: 't-new' }, { tenantId: 't-new' }))
+  ok('χωρίς έναρξη και χωρίς αναγνωριστικό, τίποτα', !declaredForLease({ at: '2026-01-01' }, { tenantId: 't-new' }))
+
+  // Η Επισκόπηση και η Δήλωση μίσθωσης απαντούν το ίδιο για τις ίδιες ημερομηνίες.
+  const NOW = new Date('2026-07-25T09:00:00Z')
+  const prop = { id: 'p1', name: 'Σπίτι', prop_type: 'apartment', status_detail: 'rented', rental_mode: 'long_term' }
+  const tenant = { id: 't-new', lease_start: '2026-07-10', lease_end: '2029-07-09' }
+  for (const at of ['2026-05-01T09:00:00Z', '2026-07-10T18:00:00Z', '2026-07-20T09:00:00Z']) {
+    const open = computeObligations(prop as never, tenant as never, [], NOW, 'long_term', { leaseDeclaredAt: at }).some(o => o.id === 'lease_decl')
+    ok(`ίδια απάντηση Επισκόπησης και Δήλωσης για ${at.slice(0, 10)}`, open === !declaredForLease({ at }, lease))
+  }
+}
+
+// ── 9. ΤΟ PDF ΤΟΥ ΜΙΣΘΩΤΗΡΙΟΥ ──────────────────────────────────────────────
+{
+  const key = leaseDocKey('u1', 't1', 'Μισθωτήριο Παπαδόπουλος.pdf', new Date(2026, 10, 12))
+  ok(`το κλειδί μένει στον φάκελο του ενοικιαστή (${key})`, key.startsWith('u1/t1/'))
+  ok('χωρίς ελληνικά στο κλειδί', !/[Α-Ωα-ωΆ-Ώά-ώ]/.test(key))
+  ok('μόνο ασφαλείς χαρακτήρες', /^[\w./-]+$/.test(key))
+  ok('κρατά την επέκταση', key.endsWith('.pdf'))
+  ok('νέο αρχείο: ανοίγει από το lease_doc_url', leaseDocPath('u1', { id: 't1', lease_doc_name: 'Μισθωτήριο.pdf', lease_doc_url: key }) === key)
+  ok('παλιό αρχείο: ανοίγει όπως πριν, φάκελος + όνομα', leaseDocPath('u1', { id: 't1', lease_doc_name: 'old.pdf', lease_doc_url: null }) === 'u1/t1/old.pdf')
+  ok('κλειδί έξω από τον φάκελο δεν γίνεται δεκτό', leaseDocPath('u1', { id: 't1', lease_doc_name: 'old.pdf', lease_doc_url: 'u2/t9/x.pdf' }) === 'u1/t1/old.pdf')
+  ok('χωρίς αρχείο, καμία διαδρομή', leaseDocPath('u1', { id: 't1' }) === null)
+}
+
+// ── Η ΚΑΛΩΔΙΩΣΗ ΣΤΑ ΣΥΣΤΑΤΙΚΑ ──────────────────────────────────────────────
+{
+  const here = join(process.cwd(), 'app/dashboard/components')
+  const src = (f: string) => readFileSync(join(here, f), 'utf8')
+    .split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n')
+  const TAB = src('TabTenant.tsx'), MODAL = src('LeaseModal.tsx'), DECL = src('LeaseDeclaration.tsx'), DOC = src('docUtils.ts')
+
+  // 1. Καμία ενημέρωση του τρέχοντος χωρίς απόφαση «ίδιος» ή «αντικατάσταση».
+  ok('1: το μισθωτήριο δεν ενημερώνει πια το cur.id χωρίς έλεγχο', !/updateReturning\(supabase,\s*cur\.id/.test(MODAL))
+  ok('1: η απόφαση περνά από το samePerson', MODAL.includes('samePerson('))
+  ok('1: ο νέος ενοικιαστής παίρνει τύπο μίσθωσης', /lease_category:\s*leaseCategoryOf\(use\)/.test(MODAL))
+  ok('1: χωρίς γραμμή, καμία επιτυχία', /if \(!row\) \{ setErr\(/.test(MODAL))
+  // 2. Προσαρτάται μόνο ανοιχτό.
+  ok('2: το LeaseModal προσαρτάται μόνο ανοιχτό', /\{leaseOpen && <LeaseModal\b/.test(TAB))
+  // 3. Η ένδειξη «Καταγράφηκε» περνά από τον κοινό κανόνα.
+  ok('3: η Δήλωση μίσθωσης κρίνει με το declaredForLease', DECL.includes('declaredForLease(submitted'))
+  ok('3: η καταγραφή κρατά τον ενοικιαστή', /tenant_id:\s*tenantId/.test(DECL))
+  ok('3: υπάρχει διόρθωση της καταγραφής', DECL.includes('setEditing(true)'))
+  // 9. Κανένα ωμό όνομα στο κλειδί.
+  ok('9: το PDF του ενοικιαστή δεν έχει file.name στο κλειδί', !/`\$\{userId\}\/\$\{t\.id\}\/\$\{file\.name\}`/.test(TAB))
+  ok('9: το κλειδί βγαίνει από το leaseDocKey', TAB.includes('leaseDocKey(userId,t.id,file.name)'))
+  ok('9: η αρχειοθέτηση PDF περνά από το uploadPath', /uploadPath\(`\$\{i\.fileName\}\.pdf`/.test(DOC))
+  // 10. Η κλειδαριά πριν από κάθε await.
+  const iLock = TAB.indexOf('if(saveLock.current) return;')
+  const iDpa = TAB.indexOf('await ensureDpa(supabase))){setError(\'Τα στοιχεία δεν αποθηκεύτηκαν')
+  ok('10: η κλειδαριά μπαίνει πριν τη σύμβαση επεξεργασίας', iLock > 0 && iDpa > iLock)
+}
+
+console.log(fail === 0 ? `✓ leaseFlow: ${pass} έλεγχοι πέρασαν` : `✗ leaseFlow: ${fail} απέτυχαν από ${pass + fail}`)
+if (fail) { for (const f of fails) console.log('  ✗ ' + f); process.exit(1) }

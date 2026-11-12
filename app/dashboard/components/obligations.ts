@@ -8,6 +8,7 @@ import { athensToday } from '@/lib/core/time';
 import { nextTaxObligations, daysFrom, DEADLINE_LOOKBACK_DAYS } from '@/lib/facts/deadlines';
 import type { Who } from '@/lib/accounting/dossier';
 import type { StatusRow } from '@/lib/property/status';
+import { declaredForLease } from './leaseFlow';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // obligations.ts, οι υποχρεώσεις του ιδιοκτήτη στην Επισκόπηση.
@@ -192,8 +193,10 @@ export function computeObligations(
   // «υπάρχει καταγραφή»: κάθε ΝΕΑ μίσθωση θέλει ΝΕΑ δήλωση, οπότε καταγραφή
   // παλαιότερη από την έναρξη αφορά τον προηγούμενο μισθωτή και δεν κλείνει
   // τίποτα. Ημερομηνία που δεν διαβάζεται δεν κλείνει επίσης τίποτα.
-  const declaredForThisLease = !!(tenant?.lease_start && done.leaseDeclaredAt
-    && done.leaseDeclaredAt.slice(0, 10) >= tenant.lease_start.slice(0, 10));
+  // Ο κανόνας ζει στο leaseFlow.ts, κοινός με τη Δήλωση μίσθωσης.
+  const declaredForThisLease = declaredForLease(
+    done.leaseDeclaredAt ? { at: done.leaseDeclaredAt } : null,
+    { leaseStart: tenant?.lease_start });
   if (tenant?.lease_start && !declaredForThisLease) {
     if (dayOf(tenant.lease_start)) {
       // ΜΙΑ πηγή αλήθειας με τη μηχανή της δήλωσης (lib/tax/leaseDeclaration):
