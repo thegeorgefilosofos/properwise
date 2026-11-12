@@ -45,8 +45,8 @@ for (const [name, env] of Object.entries(cases)) {
      && !/solo:monthly/.test(p('μισός χάρτης')));
   ok('χαλασμένος χάρτης: μετρά τις γραμμές', /2 γραμμές/.test(p('χαλασμένος χάρτης')));
   ok('χωρίς χάρτη: το λέει, χωρίς κατάλογο οκτώ ζευγών', /Λείπει ο χάρτης/.test(p('χωρίς χάρτη')) && !/ζεύγη/.test(p('χωρίς χάρτη')));
-  ok('χωρίς μυστικό webhook: προειδοποιεί ενώ το ταμείο είναι ανοιχτό',
-     checkoutDiagnosis(cases['χωρίς μυστικό webhook'], creemPort).live && /CREEM_WEBHOOK_SECRET/.test(p('χωρίς μυστικό webhook')));
+  ok('χωρίς μυστικό webhook: κλειστό και το λέει',
+     !checkoutDiagnosis(cases['χωρίς μυστικό webhook'], creemPort).live && /CREEM_WEBHOOK_SECRET/.test(p('χωρίς μυστικό webhook')));
 }
 
 // ── Η ΔΙΑΔΡΟΜΗ: ΣΥΝΕΔΡΙΑ, ΔΕΥΤΕΡΟ ΒΗΜΑ, ΔΙΑΧΕΙΡΙΣΤΗΣ, ΜΕ ΑΥΤΗ ΤΗ ΣΕΙΡΑ ───────

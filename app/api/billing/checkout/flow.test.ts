@@ -17,7 +17,7 @@ import { checkoutResponse, LINK_MINUTES, type CheckoutProfile } from './flow';
 import { creemPort } from '@/lib/billing/merchant/creem';
 import type { CheckoutOrder, MerchantPort } from '@/lib/billing/merchant';
 import { SITE } from '@/lib/core/site';
-import { billingWords } from '@/lib/legal/billingWords';
+import { billingWords, REVOKED_CHECKOUT_REFUSAL } from '@/lib/legal/billingWords';
 import { PAST_DUE_GRACE_DAYS } from '@/lib/billing/subscription';
 
 let pass = 0, fail = 0;
@@ -35,7 +35,7 @@ const iso = (ms: number) => new Date(ms).toISOString();
 
 const blank: CheckoutProfile = {
   profile_type: null, trial_used_at: null, tester_since: null, full_name: 'Μαρία',
-  subscription_status: null, mor_ends_at: null,
+  subscription_status: null, mor_ends_at: null, mor_revoked_at: null, mor_subscription_id: null,
 };
 
 /** Ενας έμπορος που θυμάται κάθε ταμείο που του ζητήθηκε. */
@@ -115,6 +115,20 @@ async function main() {
   ] as const) {
     const r = await ask({}, { profile: p });
     ok(`${name}: ανοίγει νέο ταμείο`, r.status === 200 && r.orders.length === 1);
+  }
+
+  // ── 4β. ΠΡΟΣΒΑΣΗ ΠΟΥ ΕΚΛΕΙΣΕ ΑΠΟ ΕΠΙΣΤΡΟΦΗ: ΟΧΙ ΔΕΥΤΕΡΗ ΣΥΝΔΡΟΜΗ ─────────
+  // Η συνδρομή στον Creem δεν έχει ακυρωθεί· μια νέα αγορά θα έστηνε δεύτερη
+  // δίπλα της. Πρώτα η υποστήριξη (έλεγχος του PR 558, M2).
+  {
+    const p = { subscription_status: 'expired', mor_ends_at: iso(NOW - DAY), mor_revoked_at: iso(NOW - DAY), mor_subscription_id: 'sub_1' };
+    const r = await ask({}, { profile: p });
+    ok('ανακλημένη: 409 με τη φράση των λόγων χρέωσης', r.status === 409 && r.body.error === REVOKED_CHECKOUT_REFUSAL && r.orders.length === 0);
+    const probe = await ask({ probe: true }, { profile: p });
+    ok('ανακλημένη: το probe λέει κλειστό, με τον λόγο', probe.body.available === false && probe.body.revoked === true
+       && probe.body.note === REVOKED_CHECKOUT_REFUSAL && probe.orders.length === 0);
+    const resolved = await ask({}, { profile: { ...p, mor_revoked_at: null } });
+    ok('όταν η υποστήριξη το λύσει: ανοίγει', resolved.status === 200 && resolved.orders.length === 1);
   }
 
   // ── 5. PROBE ΓΙΑ ΛΟΓΑΡΙΑΣΜΟ ΧΩΡΙΣ ΣΥΝΔΡΟΜΗ: ΑΠΑΝΤΗΣΗ ΧΩΡΙΣ ΤΑΜΕΙΟ ───────────

@@ -125,12 +125,6 @@ export function pastDueStamp(
   return eventAt ?? nowIso;
 }
 
-/** Η νεότερη από δύο ώρες ISO· η άκυρη δεν κερδίζει ποτέ. */
-function latest(a: string | null | undefined, b: string): string {
-  const ta = a ? Date.parse(a) : NaN;
-  return Number.isFinite(ta) && ta > Date.parse(b) ? (a as string) : b;
-}
-
 /**
  * Ο ΤΥΠΟΣ ΠΡΟΦΙΛ ΑΚΟΛΟΥΘΕΙ ΤΗΝ ΑΓΟΡΑ.
  *
@@ -194,28 +188,33 @@ export interface MerchantEventDeps {
 }
 
 /**
- * ΕΠΙΣΤΡΟΦΗ ΧΡΗΜΑΤΩΝ Ή ΑΜΦΙΣΒΗΤΗΣΗ: ΤΕΛΟΣ ΠΡΟΣΒΑΣΗΣ, ΜΙΑ ΦΟΡΑ.
+ * ΕΠΙΣΤΡΟΦΗ ΧΡΗΜΑΤΩΝ Ή ΑΜΦΙΣΒΗΤΗΣΗ: ΤΕΛΟΣ ΠΡΟΣΒΑΣΗΣ, ΜΟΝΟ ΟΤΑΝ ΕΙΝΑΙ ΣΑΦΕΣ.
  *
- * ΠΗΓΗ: έλεγχος ετοιμότητας πληρωμών 12/11/2026, «Λείπει (κώδικας)» 1. Ως
- * τότε έφευγε μόνο email και ο πελάτης που πήρε πίσω τα χρήματά του κρατούσε
- * το πακέτο ώσπου να ακυρώσει κάποιος με το χέρι.
+ * ΠΗΓΗ: έλεγχος ετοιμότητας πληρωμών 12/11/2026, «Λείπει (κώδικας)» 1· και ο
+ * έλεγχος του PR 558 (M1, L3, L4). Ως τότε έφευγε μόνο email και ο πελάτης που
+ * πήρε πίσω τα χρήματά του κρατούσε το πακέτο.
  *
- * ΠΟΙΟΝ ΚΟΒΕΙ. Μόνο τον λογαριασμό που έχει καταγράψει ΑΥΤΗ τη συνδρομή
- * (`mor_subscription_id`). Ούτε `metadata` ούτε email: το σχήμα της επιστροφής
- * δεν έχει περάσει ακόμη από αληθινή συναλλαγή και ένα λάθος πεδίο δεν
- * επιτρέπεται να κόψει ξένο πελάτη. Επιστροφή παλιάς συνδρομής, ενώ ο
- * λογαριασμός πληρώνει ήδη νέα, δεν βρίσκει τίποτα και πάει σε άνθρωπο.
+ * ΠΟΤΕ ΚΟΒΕΙ. Μόνο όταν ΚΑΙ τα τρία ισχύουν:
+ *   · ολόκληρη επιστροφή: ποσά παρόντα, ίδιο νόμισμα, ίσα με όσα πλήρωσε ο
+ *     πελάτης (`whole === 'yes'`, creem.ts)·
+ *   · η συνδρομή είναι ΑΥΤΗ που έχει καταγράψει ένας λογαριασμός·
+ *   · η συναλλαγή είναι η ΤΕΛΕΥΤΑΙΑ πληρωμένη της συνδρομής
+ *     (`mor_last_transaction_id`). Η επιστροφή του πρώτου μήνα αφού πληρώθηκε ο
+ *     δεύτερος δεν κόβει πελάτη που πληρώνει.
+ * Σε κάθε άλλη περίπτωση η πρόσβαση μένει και φεύγει email στην υποστήριξη.
+ * Ούτε `metadata` ούτε email πελάτη: το σχήμα δεν έχει περάσει από αληθινή
+ * επιστροφή.
  *
- * ΤΙ ΓΡΑΦΕΙ. Πακέτο χωρίς συνδρομή, κατάσταση `expired`, λήξη τη στιγμή της
- * επιστροφής, καμία ανανέωση· και ΠΟΤΕ και ΓΙΑΤΙ (`mor_revoked_at`,
- * `mor_revoked_reason`). Η συνδρομή μένει καταγεγραμμένη: η πύλη πελάτη και
- * οι ειδοποιήσεις τη χρειάζονται.
+ * ΣΕ ΕΝΑ ΒΗΜΑ ΣΤΗ ΒΑΣΗ. Η `public.revoke_mor_access` ελέγχει και γράφει με ένα
+ * υπό όρους UPDATE: καμία ανάγνωση που θα μπορούσε να παλιώσει ανάμεσα. Και η
+ * σκανδάλη `keep_mor_revocation` κρατά την ανάκληση απέναντι σε ταυτόχρονο
+ * γεγονός `subscription.*` που διάβασε πριν από αυτήν: μόνο νέα συνδρομή ή νέα
+ * πληρωμένη συναλλαγή τη σηκώνει (μετανάστευση 20261112190000).
  *
- * ΜΙΑ ΦΟΡΑ ΚΑΙ ΧΩΡΙΣ ΣΕΙΡΑ. Δεύτερη παράδοση, ή αμφισβήτηση μετά από
- * επιστροφή, βρίσκει την καταγραφή και δεν ξαναγράφει ούτε ξαναστέλνει. Το
- * φίλτρο σειράς ΔΕΝ εφαρμόζεται: μια επιστροφή που φτάνει μετά από νεότερη
- * ενημέρωση της συνδρομής είναι ακόμη επιστροφή. Το `mor_event_at` δεν γυρίζει
- * πίσω.
+ * ΜΙΑ ΦΟΡΑ. Η αναφορά της επιστροφής (`mor_revoked_ref`) μένει και μετά από
+ * νέα χρέωση· η ίδια επιστροφή που ξαναστέλνεται δεν ξανακόβει. Το ρολόι των
+ * γεγονότων συνδρομής (`mor_event_at`) δεν αγγίζεται: η επιστροφή δεν είναι
+ * γεγονός συνδρομής.
  */
 async function applyRevocation(
   rv: Revocation, payload: unknown, deps: MerchantEventDeps,
@@ -228,15 +227,17 @@ async function applyRevocation(
     log(`${alert.subject}· ειδοποίηση ${sent ? 'στάλθηκε' : 'ΔΕΝ στάλθηκε'}`);
     return sent;
   };
+  const kept = async (outcome: RevocationOutcome, why: string) => {
+    log(`${rv.kind} για τη συνδρομή ${rv.subscriptionId}: ${why}· η πρόσβαση δεν άλλαξε`);
+    return NextResponse.json({ ok: true, alerted: await notify(outcome), revoked: false });
+  };
 
   if (!rv.subscriptionId) {
     log(`${rv.kind} χωρίς συνδρομή· η πρόσβαση δεν άλλαξε`);
     return NextResponse.json({ ok: true, alerted: await notify() });
   }
-  if (rv.partial) {
-    log(`μερική επιστροφή για τη συνδρομή ${rv.subscriptionId}· η πρόσβαση δεν άλλαξε`);
-    return NextResponse.json({ ok: true, alerted: await notify('partial'), revoked: false });
-  }
+  if (rv.whole !== 'yes') return kept(rv.whole, `όχι σαφώς ολόκληρη (${rv.whole})`);
+  if (!rv.transactionId) return kept('missing', 'χωρίς συναλλαγή');
 
   let db;
   try { db = (deps.db ?? (() => createServiceClient()))(); } catch (e) {
@@ -244,47 +245,33 @@ async function applyRevocation(
     return NextResponse.json({ error: 'not_configured' }, { status: 500 });
   }
 
-  const { data, error } = await db.from(TABLE)
-    .select('user_id, mor_event_at, mor_revoked_at').eq('mor_subscription_id', rv.subscriptionId).maybeSingle();
-  if (error) {
-    log('η αναζήτηση προφίλ απέτυχε:', error.message);
-    return NextResponse.json({ error: 'lookup_failed' }, { status: 502 });
-  }
-  const row = data as { user_id?: string; mor_event_at?: string | null; mor_revoked_at?: string | null } | null;
-  if (!row?.user_id) {
-    log(`${rv.kind} για τη συνδρομή ${rv.subscriptionId}, που δεν την κρατά κανένας λογαριασμός· η πρόσβαση δεν άλλαξε`);
-    return NextResponse.json({ ok: true, alerted: await notify('unmatched'), revoked: false });
-  }
-  if (row.mor_revoked_at) {
-    log(`${rv.kind} για τη συνδρομή ${rv.subscriptionId}: η πρόσβαση είχε ήδη κλείσει στις ${row.mor_revoked_at}`);
-    return NextResponse.json({ ok: true, skipped: 'already_revoked' });
-  }
-
   const nowIso = deps.now ? deps.now() : new Date().toISOString();
-  const at = rv.occurredAt ?? nowIso;
-  const { error: writeError } = await db.from(TABLE).upsert({
-    user_id: row.user_id,
-    plan: 'free',
-    subscription_status: 'expired',
-    mor_renews_at: null,
-    mor_ends_at: at,
-    mor_past_due_at: null,
-    mor_revoked_at: at,
-    mor_revoked_reason: rv.kind,
-    mor_event_at: latest(row.mor_event_at, at),
-    // Η κράτηση υποβάθμισης αφορά πληρωμένη περίοδο· μετά από επιστροφή δεν
-    // υπάρχει τίποτα να κρατηθεί.
-    hold_plan: null,
-    hold_until: null,
-  }, { onConflict: 'user_id' });
-  if (writeError) {
+  const { data, error } = await db.rpc('revoke_mor_access', {
+    p_subscription: rv.subscriptionId,
+    p_transaction: rv.transactionId,
+    p_reference: rv.reference ?? `${rv.kind}:${rv.transactionId}`,
+    p_reason: rv.kind,
+    p_at: rv.occurredAt ?? nowIso,
+  });
+  if (error) {
     // 502: ο έμπορος ξαναστέλνει. Το μήνυμα φεύγει με την επιτυχημένη
     // επανάληψη, ένα ανά περιστατικό.
-    log('η εγγραφή της επιστροφής απέτυχε:', writeError.message);
+    log('η ανάκληση δεν γράφτηκε:', error.message);
     return NextResponse.json({ error: 'write_failed' }, { status: 502 });
   }
-  log(`${rv.kind} για τη συνδρομή ${rv.subscriptionId}: η πρόσβαση του λογαριασμού ${row.user_id} έκλεισε`);
-  return NextResponse.json({ ok: true, alerted: await notify('revoked'), revoked: true });
+  const out = (data ?? {}) as { outcome?: string; user_id?: string };
+  switch (out.outcome) {
+    case 'revoked':
+      log(`${rv.kind} για τη συνδρομή ${rv.subscriptionId}: η πρόσβαση του λογαριασμού ${out.user_id} έκλεισε`);
+      return NextResponse.json({ ok: true, alerted: await notify('revoked'), revoked: true });
+    case 'already':
+      log(`${rv.kind} για τη συνδρομή ${rv.subscriptionId}: ήδη καταγεγραμμένη ή ήδη κλειστή`);
+      return NextResponse.json({ ok: true, skipped: 'already_revoked' });
+    case 'not_latest':
+      return kept('older', 'όχι η τελευταία πληρωμένη συναλλαγή');
+    default:
+      return kept('unmatched', 'δεν την κρατά κανένας λογαριασμός');
+  }
 }
 
 /**
@@ -397,12 +384,12 @@ export async function applyMerchantEvent(raw: string, deps: MerchantEventDeps = 
 
   const nowIso = deps.now ? deps.now() : new Date().toISOString();
   const { data: stored, error: storedError } = await db.from(TABLE)
-    .select('mor_subscription_id, subscription_status, mor_ends_at, mor_past_due_at, mor_revoked_at')
+    .select('mor_subscription_id, subscription_status, mor_ends_at, mor_past_due_at, mor_revoked_at, mor_last_transaction_id')
     .eq('user_id', userId).maybeSingle();
   if (storedError) log('η καταγεγραμμένη συνδρομή δεν διαβάστηκε:', storedError.message);
   const current = stored as {
     mor_subscription_id?: string | null; subscription_status?: string | null; mor_ends_at?: string | null;
-    mor_past_due_at?: string | null; mor_revoked_at?: string | null;
+    mor_past_due_at?: string | null; mor_revoked_at?: string | null; mor_last_transaction_id?: string | null;
   } | null;
   const sameSubscription = current?.mor_subscription_id === sub.id;
 
@@ -412,8 +399,15 @@ export async function applyMerchantEvent(raw: string, deps: MerchantEventDeps = 
   // αυτές δεν ξανανοίγει το πακέτο. Μόνο ΝΕΑ ΧΡΕΩΣΗ που πέρασε ΜΕΤΑ την
   // επιστροφή: ο πελάτης πλήρωσε, άρα δικαιούται· ο άνθρωπος μαθαίνει ότι
   // η ακύρωση στον έμπορο δεν έγινε.
+  //
+  // ΝΕΑ ΧΡΕΩΣΗ ΣΗΜΑΙΝΕΙ ΚΑΙ ΤΑ ΤΡΙΑ: γεγονός πληρωμής, με ώρα ΜΕΤΑ την
+  // ανάκληση, με συναλλαγή ΑΛΛΗ από την επιστραμμένη. Χωρίς ώρα δεν ξέρουμε αν
+  // είναι η παλιά πληρωμή που άργησε· χωρίς νέα συναλλαγή η σκανδάλη
+  // `keep_mor_revocation` θα κρατούσε έτσι κι αλλιώς την ανάκληση.
   const revokedAt = sameSubscription ? (current?.mor_revoked_at ?? null) : null;
-  const recharged = !!revokedAt && read.event.paid && !!eventAt && Date.parse(eventAt) > Date.parse(revokedAt);
+  const newTransaction = !!sub.lastTransactionId && sub.lastTransactionId !== (current?.mor_last_transaction_id ?? null);
+  const recharged = !!revokedAt && read.event.paid && !!eventAt
+    && Date.parse(eventAt) > Date.parse(revokedAt) && newTransaction;
   if (revokedAt && !recharged) {
     log(`γεγονός ${read.event.name} για τη συνδρομή ${sub.id}, που έκλεισε στις ${revokedAt}· αγνοήθηκε`);
     return NextResponse.json({ ok: true, skipped: 'revoked' });
@@ -496,6 +490,9 @@ export async function applyMerchantEvent(raw: string, deps: MerchantEventDeps = 
     // Σε όλες η παλιά καταγραφή δεν ισχύει πια.
     mor_revoked_at: null,
     mor_revoked_reason: null,
+    // Η αναφορά της επιστροφής (`mor_revoked_ref`) ΔΕΝ σβήνει: η ίδια επιστροφή
+    // που ξαναστέλνεται μετά από νέα χρέωση δεν ξανακόβει.
+    ...(sub.lastTransactionId ? { mor_last_transaction_id: sub.lastTransactionId } : {}),
     ...(trialUsedAt ? { trial_used_at: trialUsedAt } : {}),
     ...(profileType ? { profile_type: profileType } : {}),
     // ΖΩΝΗ ΚΑΙ ΤΙΡΑΝΤΕΣ: η σκανδάλη `ensure_billing_profile` γεννά τη γραμμή

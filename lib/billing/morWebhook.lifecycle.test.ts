@@ -35,7 +35,7 @@ const ev = (name: string, at: number, over: Record<string, unknown> = {}, period
 /** Η γραμμή ενός πληρωμένου «Ενός ακινήτου» με ενεργή συνδρομή. */
 const paying = (over: Row = {}) => profile({
   plan: 'solo', subscription_status: 'active', mor_subscription_id: 'sub_1',
-  mor_renews_at: P1, mor_event_at: iso(T0), ...over,
+  mor_renews_at: P1, mor_event_at: iso(T0), mor_last_transaction_id: 'tran_1', ...over,
 });
 
 async function step(raw: string, db: FakeDb, now: number, alerts = fakeAlerts()) {
@@ -46,13 +46,14 @@ async function main() {
   // ══ 1. ΑΝΑΝΕΩΣΗ: ΔΕΥΤΕΡΗ ΠΕΡΙΟΔΟΣ ═════════════════════════════════════
   {
     const db = fakeDb([paying()]);
-    const r = await step(ev('subscription.paid', T1, {}, P2), db, T1 + 60_000);
+    const r = await step(ev('subscription.paid', T1, { last_transaction_id: 'tran_2' }, P2), db, T1 + 60_000);
     const row = db.rows[0];
     ok('ανανέωση: 200 ok', r.status === 200 && r.body.ok === true);
     ok('ανανέωση: το πακέτο μένει', row.plan === 'solo' && row.subscription_status === 'active');
     ok('ανανέωση: η επόμενη ανανέωση πάει στη δεύτερη περίοδο', row.mor_renews_at === P2);
     ok('ανανέωση: η ώρα του γεγονότος προχωρά', row.mor_event_at === iso(T1));
     ok('ανανέωση: καμία λήξη, κανένα «σε καθυστέρηση»', row.mor_ends_at === null && row.mor_past_due_at === null);
+    ok('ανανέωση: η τελευταία πληρωμένη συναλλαγή γράφεται', row.mor_last_transaction_id === 'tran_2');
     // ΙΔΙΟ ΓΕΓΟΝΟΣ ΔΕΥΤΕΡΗ ΦΟΡΑ (ο έμπορος ξαναστέλνει ό,τι δεν είδε 2xx).
     const again = await step(ev('subscription.paid', T1, {}, P2), db, T1 + 120_000);
     ok('ανανέωση δύο φορές: ίδιο αποτέλεσμα', again.status === 200
@@ -113,7 +114,11 @@ async function main() {
     ok('paused: δωρεάν', db.rows[0].plan === 'free' && db.rows[0].subscription_status === 'paused');
   }
 
-  // ══ 3. ΕΠΙΣΤΡΟΦΗ ΧΡΗΜΑΤΩΝ: ΤΕΛΟΣ ΠΡΟΣΒΑΣΗΣ ════════════════════════════
+  // ══ 3. ΕΠΙΣΤΡΟΦΗ ΧΡΗΜΑΤΩΝ: ΤΕΛΟΣ ΠΡΟΣΒΑΣΗΣ ΜΟΝΟ ΟΤΑΝ ΕΙΝΑΙ ΣΑΦΕΣ ═══════
+  // Ολόκληρη επιστροφή, ποσά παρόντα, ίδιο νόμισμα, ίδια βάση (όσα πλήρωσε ο
+  // πελάτης)· και η συναλλαγή είναι η ΤΕΛΕΥΤΑΙΑ πληρωμένη της συνδρομής. Σε
+  // κάθε άλλη περίπτωση η πρόσβαση μένει και φεύγει μόνο email (έλεγχος του
+  // PR 558, M1).
   const TR = T0 + 3 * DAY;                                   // η επιστροφή
   {
     const db = fakeDb([paying()]);
@@ -123,10 +128,14 @@ async function main() {
     ok('επιστροφή: 200 με revoked', r.status === 200 && r.body.ok === true && r.body.revoked === true);
     ok('επιστροφή: δωρεάν', row.plan === 'free');
     ok('επιστροφή: η κατάσταση γίνεται «έληξε»', row.subscription_status === 'expired');
-    ok('επιστροφή: καταγράφεται πότε και γιατί', row.mor_revoked_at === iso(TR) && row.mor_revoked_reason === 'refund');
+    ok('επιστροφή: καταγράφεται πότε, γιατί και ποια', row.mor_revoked_at === iso(TR)
+       && row.mor_revoked_reason === 'refund' && row.mor_revoked_ref === 'ref_1');
     ok('επιστροφή: η πρόσβαση τελείωσε τη στιγμή της επιστροφής', row.mor_ends_at === iso(TR));
     ok('επιστροφή: καμία ανανέωση δεν περιμένει', row.mor_renews_at === null);
     ok('επιστροφή: η συνδρομή μένει καταγεγραμμένη, για την πύλη πελάτη', row.mor_subscription_id === 'sub_1');
+    ok('επιστροφή: το ρολόι των γεγονότων συνδρομής δεν αγγίζεται', row.mor_event_at === iso(T0));
+    ok('επιστροφή: με μία ατομική κλήση στη βάση, όχι ανάγνωση και εγγραφή',
+       db.rpcs.some(c => c.fn === 'revoke_mor_access' && c.args.p_transaction === 'tran_1') && db.upserts.length === 0);
     ok('επιστροφή: ΜΙΑ ειδοποίηση, που λέει ότι η πρόσβαση έκλεισε', alerts.sent.length === 1
        && /έκλεισε/.test(alerts.sent[0].text) && alerts.sent[0].text.includes('sub_1'));
     ok('κανένα email πελάτη στο μήνυμα', !alerts.sent[0].text.includes('a@b.gr'));
@@ -134,8 +143,8 @@ async function main() {
     // ΙΔΙΑ ΕΠΙΣΤΡΟΦΗ ΔΕΥΤΕΡΗ ΦΟΡΑ: τίποτα δεν αλλάζει, κανένα δεύτερο μήνυμα.
     const alerts2 = fakeAlerts();
     const again = await step(moneyEvent('refund', TR), db, TR + 120_000, alerts2);
-    ok('επιστροφή δύο φορές: 200, χωρίς δεύτερη εγγραφή', again.status === 200
-       && again.body.skipped === 'already_revoked' && db.upserts.length === 1);
+    ok('επιστροφή δύο φορές: 200, χωρίς δεύτερη ανάκληση', again.status === 200
+       && again.body.skipped === 'already_revoked' && db.revokes === 1);
     ok('επιστροφή δύο φορές: χωρίς δεύτερο μήνυμα', alerts2.sent.length === 0);
     ok('επιστροφή δύο φορές: η ώρα της πρώτης μένει', db.rows[0].mor_revoked_at === iso(TR));
 
@@ -143,49 +152,79 @@ async function main() {
     await step(ev('subscription.active', TR - DAY), db, TR + 180_000);
     ok('παλιό «ενεργή» μετά την επιστροφή: μένει δωρεάν', db.rows[0].plan === 'free');
 
-    // Ο ΕΜΠΟΡΟΣ ΛΕΕΙ ΑΚΟΜΗ «active» (η επιστροφή δεν ακυρώνει μόνη της τη
-    // συνδρομή εκεί): νεότερη ενημέρωση ΧΩΡΙΣ πληρωμή δεν δίνει πρόσβαση.
+    // Ο ΕΜΠΟΡΟΣ ΛΕΕΙ ΑΚΟΜΗ «active»: νεότερη ενημέρωση ΧΩΡΙΣ πληρωμή δεν ανοίγει.
     const up = await step(ev('subscription.update', TR + DAY), db, TR + DAY + 60_000);
     ok('νεότερη ενημέρωση χωρίς πληρωμή: μένει δωρεάν', db.rows[0].plan === 'free' && up.body.skipped === 'revoked');
     ok('και η καταγραφή της επιστροφής μένει', db.rows[0].mor_revoked_reason === 'refund');
   }
-  // ΝΕΑ ΧΡΕΩΣΗ ΤΗΣ ΙΔΙΑΣ ΣΥΝΔΡΟΜΗΣ ΜΕΤΑ ΤΗΝ ΕΠΙΣΤΡΟΦΗ: πλήρωσε, άρα πρόσβαση,
-  // αλλά ο άνθρωπος πρέπει να μάθει ότι η συνδρομή δεν ακυρώθηκε.
+
+  // ── Η ΧΡΕΩΣΗ ΜΕΤΑ ΤΗΝ ΕΠΙΣΤΡΟΦΗ: ΜΟΝΟ ΑΝ ΕΓΙΝΕ ΜΕΤΑ, ΜΕ ΝΕΑ ΣΥΝΑΛΛΑΓΗ ──────
+  const revoked = (over: Row = {}) => paying({
+    plan: 'free', subscription_status: 'expired', mor_revoked_at: iso(TR), mor_revoked_reason: 'refund',
+    mor_revoked_ref: 'ref_1', mor_ends_at: iso(TR), mor_renews_at: null, ...over,
+  });
   {
-    const db = fakeDb([paying({ plan: 'free', subscription_status: 'expired', mor_revoked_at: iso(TR),
-      mor_revoked_reason: 'refund', mor_ends_at: iso(TR), mor_event_at: iso(TR), mor_renews_at: null })]);
+    const db = fakeDb([revoked()]);
     const alerts = fakeAlerts();
-    await step(ev('subscription.paid', T1, {}, P2), db, T1 + 60_000, alerts);
+    await step(ev('subscription.paid', T1, { last_transaction_id: 'tran_2' }, P2), db, T1 + 60_000, alerts);
     ok('χρέωση μετά την επιστροφή: το πακέτο ξανανοίγει', db.rows[0].plan === 'solo' && db.rows[0].subscription_status === 'active');
-    ok('χρέωση μετά την επιστροφή: η καταγραφή σβήνει', db.rows[0].mor_revoked_at === null && db.rows[0].mor_revoked_reason === null);
-    ok('χρέωση μετά την επιστροφή: ειδοποίηση στην υποστήριξη', alerts.sent.length === 1
-       && alerts.sent[0].text.includes('sub_1'));
+    ok('χρέωση μετά την επιστροφή: η καταγραφή σβήνει, η αναφορά μένει', db.rows[0].mor_revoked_at === null
+       && db.rows[0].mor_revoked_reason === null && db.rows[0].mor_revoked_ref === 'ref_1');
+    ok('χρέωση μετά την επιστροφή: ειδοποίηση στην υποστήριξη', alerts.sent.length === 1 && alerts.sent[0].text.includes('sub_1'));
+
+    // Η ΙΔΙΑ ΕΠΙΣΤΡΟΦΗ ΞΑΝΑΣΤΕΛΝΕΤΑΙ ΜΕΤΑ ΤΗ ΝΕΑ ΧΡΕΩΣΗ: δεν ξανακόβει (L4).
+    const r = await step(moneyEvent('refund', TR), db, T1 + 120_000);
+    ok('ίδια επιστροφή μετά από νέα χρέωση: δεν ξανακλείνει', db.rows[0].plan === 'solo' && r.body.revoked !== true);
   }
-  // ΕΠΙΣΤΡΟΦΗ ΠΟΥ ΦΤΑΝΕΙ ΜΕΤΑ ΑΠΟ ΝΕΟΤΕΡΟ ΓΕΓΟΝΟΣ: εφαρμόζεται κανονικά.
+  // ΤΟ ΚΡΙΣΙΜΟ «ΜΕΤΑ» (L5): «πληρώθηκε» με ώρα ΠΡΙΝ από την επιστροφή, νεότερο
+  // από το τελευταίο γεγονός συνδρομής, δεν ξανανοίγει, ακόμη και με άλλη συναλλαγή.
   {
-    const later = TR + 60 * 60_000;
-    const db = fakeDb([paying({ mor_event_at: iso(later) })]);
-    const r = await step(moneyEvent('refund', TR), db, later + 60_000);
-    ok('επιστροφή εκτός σειράς: εφαρμόζεται', r.body.revoked === true && db.rows[0].plan === 'free');
-    ok('επιστροφή εκτός σειράς: η ώρα τελευταίου γεγονότος δεν γυρίζει πίσω', db.rows[0].mor_event_at === iso(later));
+    const db = fakeDb([revoked()]);
+    await step(ev('subscription.paid', TR - 60_000, { last_transaction_id: 'tran_0' }), db, TR + 60_000);
+    ok('«πληρώθηκε» πριν από την επιστροφή: μένει κλειστή', db.rows[0].plan === 'free' && db.rows[0].mor_revoked_at === iso(TR));
   }
-  // ΜΕΡΙΚΗ ΕΠΙΣΤΡΟΦΗ: δεν κόβει το πακέτο, φτάνει σε άνθρωπο.
   {
-    const db = fakeDb([paying()]);
+    const db = fakeDb([revoked()]);
+    const raw = JSON.parse(ev('subscription.paid', TR + DAY, { last_transaction_id: 'tran_2', updated_at: null }));
+    delete raw.created_at;
+    await step(JSON.stringify(raw), db, TR + DAY + 60_000);
+    ok('«πληρώθηκε» χωρίς ώρα: μένει κλειστή', db.rows[0].plan === 'free' && db.rows[0].mor_revoked_at === iso(TR));
+  }
+  {
+    const db = fakeDb([revoked()]);
+    await step(ev('subscription.paid', TR + DAY, { last_transaction_id: 'tran_1' }), db, TR + DAY + 60_000);
+    ok('«πληρώθηκε» με την ίδια, επιστραμμένη συναλλαγή: μένει κλειστή', db.rows[0].plan === 'free');
+  }
+
+  // ── ΟΤΙΔΗΠΟΤΕ ΔΕΝ ΕΙΝΑΙ ΣΑΦΕΣ: Η ΠΡΟΣΒΑΣΗ ΜΕΝΕΙ, ΦΕΥΓΕΙ ΜΟΝΟ EMAIL ─────────
+  const stays = async (name: string, raw: string, rows: Row[], text: RegExp) => {
+    const db = fakeDb(rows);
     const alerts = fakeAlerts();
-    const r = await step(moneyEvent('refund', TR, { refund: 100, paid: 499 }), db, TR + 60_000, alerts);
-    ok('μερική επιστροφή: το πακέτο μένει', db.upserts.length === 0 && db.rows[0].plan === 'solo' && r.body.revoked !== true);
-    ok('μερική επιστροφή: ειδοποίηση που το λέει', alerts.sent.length === 1 && /μερική/i.test(alerts.sent[0].text));
-  }
-  // ΕΠΙΣΤΡΟΦΗ ΠΑΛΙΑΣ ΣΥΝΔΡΟΜΗΣ: η ζωντανή δεν αγγίζεται.
+    const r = await step(raw, db, TR + 60_000, alerts);
+    ok(`${name}: η πρόσβαση μένει`, r.status === 200 && r.body.revoked !== true && db.revokes === 0
+       && db.rows[0].plan === rows[0].plan && db.rows[0].mor_revoked_at === null);
+    ok(`${name}: μόνο ειδοποίηση`, alerts.sent.length === 1 && text.test(alerts.sent[0].text));
+  };
+  // Ο ΜΗΝΑΣ 1 ΕΠΙΣΤΡΕΦΕΤΑΙ ΑΦΟΥ ΠΛΗΡΩΘΗΚΕ Ο ΜΗΝΑΣ 2.
+  await stays('επιστροφή του πρώτου μήνα μετά την πληρωμή του δεύτερου',
+    moneyEvent('refund', TR, { transaction: 'tran_1' }), [paying({ mor_last_transaction_id: 'tran_2' })], /παλαιότερη χρέωση/);
+  await stays('συνδρομή χωρίς καταγεγραμμένη τελευταία συναλλαγή',
+    moneyEvent('refund', TR), [paying({ mor_last_transaction_id: null })], /παλαιότερη χρέωση/);
+  await stays('μερική επιστροφή', moneyEvent('refund', TR, { refund: 100 }), [paying()], /μερική/i);
+  await stays('επιστροφή χωρίς ποσό', moneyEvent('refund', TR, { refund: null }), [paying()], /χωρίς ποσό/);
+  await stays('συναλλαγή χωρίς ποσό πληρωμής', moneyEvent('refund', TR, { paid: null }), [paying()], /χωρίς ποσό/);
+  // ΚΑΘΑΡΟ ΑΠΕΝΑΝΤΙ ΣΕ ΜΙΚΤΟ: η επιστροφή ίση με το ποσό πριν από τον φόρο δεν
+  // είναι ολόκληρη επιστροφή όσων πλήρωσε ο πελάτης.
+  await stays('επιστροφή στο καθαρό ποσό, ενώ πληρώθηκε το μικτό',
+    moneyEvent('refund', TR, { refund: 419, paid: 499, net: 419 }), [paying()], /άλλη βάση/);
+  await stays('επιστροφή σε άλλο νόμισμα', moneyEvent('refund', TR, { currency: 'USD' }), [paying()], /άλλη βάση/);
   {
     const db = fakeDb([paying({ plan: 'agency', mor_subscription_id: 'sub_live' })]);
     const alerts = fakeAlerts();
     const r = await step(moneyEvent('refund', TR), db, TR + 60_000, alerts);
-    ok('επιστροφή άλλης συνδρομής: καμία εγγραφή', db.upserts.length === 0 && db.rows[0].plan === 'agency');
+    ok('επιστροφή άλλης συνδρομής: καμία ανάκληση', db.revokes === 0 && db.rows[0].plan === 'agency');
     ok('επιστροφή άλλης συνδρομής: 200 και ειδοποίηση', r.status === 200 && alerts.sent.length === 1);
   }
-  // ΕΠΙΣΤΡΟΦΗ ΧΩΡΙΣ ΣΥΝΔΡΟΜΗ (μεμονωμένη αγορά, άγνωστο σχήμα): μόνο ειδοποίηση.
   {
     const db = fakeDb([paying()]);
     const alerts = fakeAlerts();
@@ -193,29 +232,22 @@ async function main() {
     ok('επιστροφή χωρίς συνδρομή: η βάση δεν αγγίζεται', db.opened === 0 && db.rows[0].plan === 'solo');
     ok('επιστροφή χωρίς συνδρομή: 200 και ειδοποίηση', r.status === 200 && r.body.alerted === true);
   }
-  // Η ΒΑΣΗ ΔΕΝ ΓΡΑΦΕΙ: 502, ώστε ο έμπορος να ξαναστείλει.
   {
-    const db = fakeDb([paying()], { upsert: true });
+    const db = fakeDb([paying()], { revoke: true });
     const alerts = fakeAlerts();
     const r = await step(moneyEvent('refund', TR), db, TR + 60_000, alerts);
-    ok('επιστροφή που δεν γράφτηκε: 502', r.status === 502 && r.body.error === 'write_failed');
-    ok('επιστροφή που δεν γράφτηκε: το μήνυμα περιμένει την επανάληψη', alerts.sent.length === 0);
-  }
-  {
-    const db = fakeDb([paying()], { lookup: true });
-    const r = await step(moneyEvent('refund', TR), db, TR + 60_000);
-    ok('επιστροφή με αναζήτηση που απέτυχε: 502', r.status === 502 && r.body.error === 'lookup_failed');
+    ok('ανάκληση που δεν γράφτηκε: 502', r.status === 502 && r.body.error === 'write_failed');
+    ok('ανάκληση που δεν γράφτηκε: το μήνυμα περιμένει την επανάληψη', alerts.sent.length === 0);
   }
   // ΝΕΑ ΑΓΟΡΑ ΜΕΤΑ ΤΗΝ ΕΠΙΣΤΡΟΦΗ: νέα συνδρομή, καθαρή καταγραφή.
   {
-    const db = fakeDb([paying({ plan: 'free', subscription_status: 'expired', mor_revoked_at: iso(TR),
-      mor_revoked_reason: 'refund', mor_ends_at: iso(TR), mor_event_at: iso(TR) })]);
-    await step(ev('subscription.active', TR + DAY, { id: 'sub_2', product: { id: 'prod_c' } }), db, TR + DAY + 60_000);
+    const db = fakeDb([revoked({ mor_event_at: iso(TR) })]);
+    await step(ev('subscription.active', TR + DAY, { id: 'sub_2', product: { id: 'prod_c' }, last_transaction_id: 'tran_9' }), db, TR + DAY + 60_000);
     ok('νέα αγορά μετά την επιστροφή: ανοίγει', db.rows[0].plan === 'owner' && db.rows[0].mor_subscription_id === 'sub_2');
     ok('νέα αγορά μετά την επιστροφή: η παλιά καταγραφή σβήνει', db.rows[0].mor_revoked_at === null);
   }
 
-  // ══ 4. ΑΜΦΙΣΒΗΤΗΣΗ: ΤΕΛΟΣ ΠΡΟΣΒΑΣΗΣ ΑΠΟ ΤΗΝ ΠΡΩΤΗ ΣΤΙΓΜΗ ══════════════
+  // ══ 4. ΑΜΦΙΣΒΗΤΗΣΗ: ΙΔΙΟΣ ΚΑΝΟΝΑΣ ═════════════════════════════════════
   {
     const db = fakeDb([paying({ subscription_status: 'past_due', mor_past_due_at: iso(T2) })]);
     const alerts = fakeAlerts();
@@ -225,12 +257,15 @@ async function main() {
     ok('αμφισβήτηση: το «σε καθυστέρηση» σβήνει', db.rows[0].mor_past_due_at === null);
     ok('αμφισβήτηση: ειδοποίηση', alerts.sent.length === 1 && /Αμφισβήτηση/.test(alerts.sent[0].subject));
   }
+  await stays('αμφισβήτηση παλαιότερης χρέωσης',
+    moneyEvent('dispute', TR, { transaction: 'tran_1' }), [paying({ mor_last_transaction_id: 'tran_2' })], /παλαιότερη χρέωση/);
+  await stays('αμφισβήτηση χωρίς ποσό', moneyEvent('dispute', TR, { refund: null }), [paying()], /χωρίς ποσό/);
   // ΑΜΦΙΣΒΗΤΗΣΗ ΜΕΤΑ ΑΠΟ ΕΠΙΣΤΡΟΦΗ: ήδη κλειστή, ο λόγος μένει ο πρώτος.
   {
-    const db = fakeDb([paying({ plan: 'free', subscription_status: 'expired', mor_revoked_at: iso(TR), mor_revoked_reason: 'refund' })]);
+    const db = fakeDb([revoked()]);
     const r = await step(moneyEvent('dispute', TR + DAY), db, TR + DAY + 60_000);
     ok('αμφισβήτηση μετά την επιστροφή: τίποτα δεν ξαναγράφεται', r.body.skipped === 'already_revoked'
-       && db.upserts.length === 0 && db.rows[0].mor_revoked_reason === 'refund');
+       && db.revokes === 0 && db.rows[0].mor_revoked_reason === 'refund');
   }
 }
 

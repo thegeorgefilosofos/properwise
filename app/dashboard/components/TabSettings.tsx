@@ -574,8 +574,8 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   }, [supabase.auth]);
 
   useEffect(() => {
-    billing.profile<{ plan: string | null; comp_plan: string | null; comp_until: string | null; trial_used_at: string | null; hold_plan: string | null; hold_until: string | null; bonus_properties: number | null; bonus_properties_until: string | null; subscription_status: string | null; mor_ends_at: string | null }>(
-      supabase, userId, 'plan, comp_plan, comp_until, trial_used_at, hold_plan, hold_until, subscription_status, mor_ends_at')
+    billing.profile<{ plan: string | null; comp_plan: string | null; comp_until: string | null; trial_used_at: string | null; hold_plan: string | null; hold_until: string | null; bonus_properties: number | null; bonus_properties_until: string | null; subscription_status: string | null; mor_ends_at: string | null; mor_past_due_at: string | null }>(
+      supabase, userId, 'plan, comp_plan, comp_until, trial_used_at, hold_plan, hold_until, subscription_status, mor_ends_at, mor_past_due_at')
       .then(data => { if (data) { setPlan(livePlan(data)); setCompPlan(data.comp_plan || null); setCompUntil(data.comp_until || null); setTrialUsedAt(data.trial_used_at || null); setHoldPlan(data.hold_plan || null); setHoldUntil(data.hold_until || null); setBonusProps(data.bonus_properties ?? null); setBonusUntil(data.bonus_properties_until || null); } });
     supabase.from('referral_partners').select('user_id').eq('user_id', userId).maybeSingle()
       .then(({ data }) => setPartner(!!data));

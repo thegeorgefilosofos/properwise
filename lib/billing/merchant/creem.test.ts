@@ -269,20 +269,35 @@ async function main() {
 {
   const AT = 1728734325927;
   const refund = (obj: Record<string, unknown>) => ({ eventType: 'refund.created', created_at: AT, object: { id: 'ref_1', ...obj } });
-  const r1 = creemPort.readRevocation(refund({ subscription: { id: 'sub_9' }, refund_amount: 499, transaction: { amount_paid: 499 } }));
-  ok('επιστροφή: διαβάζεται', r1?.kind === 'refund' && r1.subscriptionId === 'sub_9' && !r1.partial);
+  const tx = (over: Record<string, unknown> = {}) => ({ id: 'tran_1', amount: 419, amount_paid: 499, tax_amount: 80, currency: 'EUR', ...over });
+  const r1 = creemPort.readRevocation(refund({ subscription: { id: 'sub_9' }, refund_amount: 499, refund_currency: 'EUR', transaction: tx() }));
+  ok('επιστροφή: διαβάζεται, ολόκληρη', r1?.kind === 'refund' && r1.subscriptionId === 'sub_9' && r1.whole === 'yes');
+  ok('επιστροφή: η συναλλαγή και η αναφορά', r1?.transactionId === 'tran_1' && r1.reference === 'ref_1');
   ok('επιστροφή: με την ώρα του φακέλου', r1?.occurredAt === new Date(AT).toISOString());
   ok('η συνδρομή ως κείμενο', creemPort.readRevocation(refund({ subscription: 'sub_8' }))?.subscriptionId === 'sub_8');
   ok('η συνδρομή μέσα στη συναλλαγή', creemPort.readRevocation(refund({ transaction: { subscription: 'sub_7' } }))?.subscriptionId === 'sub_7');
   ok('χωρίς συνδρομή: κενό, όχι εικασία', creemPort.readRevocation(refund({}))?.subscriptionId === null);
-  ok('μερική επιστροφή', creemPort.readRevocation(refund({ subscription: 'sub_9', refund_amount: 100, transaction: { amount_paid: 499 } }))?.partial === true);
-  ok('ποσό που λείπει δεν κάνει την επιστροφή μερική',
-     creemPort.readRevocation(refund({ subscription: 'sub_9', refund_amount: 499 }))?.partial === false);
-  const d = creemPort.readRevocation({ eventType: 'dispute.created', object: { id: 'disp_1', amount: 1, subscription: { id: 'sub_9' }, created_at: AT } });
-  ok('αμφισβήτηση: διαβάζεται, ποτέ μερική', d?.kind === 'dispute' && d.subscriptionId === 'sub_9' && !d.partial);
+  const w = (obj: Record<string, unknown>) => creemPort.readRevocation(refund({ subscription: 'sub_9', ...obj }))?.whole;
+  ok('μερική επιστροφή', w({ refund_amount: 100, refund_currency: 'EUR', transaction: tx() }) === 'partial');
+  ok('χωρίς ποσό επιστροφής: δεν κρίνεται', w({ refund_currency: 'EUR', transaction: tx() }) === 'missing');
+  ok('χωρίς ποσό πληρωμής: δεν κρίνεται, ούτε με το καθαρό', w({ refund_amount: 419, refund_currency: 'EUR', transaction: tx({ amount_paid: undefined }) }) === 'missing');
+  ok('καθαρό απέναντι σε μικτό: άλλη βάση', w({ refund_amount: 419, refund_currency: 'EUR', transaction: tx() }) === 'basis');
+  ok('άλλο νόμισμα: άλλη βάση', w({ refund_amount: 499, refund_currency: 'USD', transaction: tx() }) === 'basis');
+  ok('νόμισμα που λείπει: δεν κρίνεται', w({ refund_amount: 499, transaction: tx() }) === 'missing');
+  ok('πεζά και κεφαλαία στο νόμισμα δεν μετρούν', w({ refund_amount: 499, refund_currency: 'eur', transaction: tx() }) === 'yes');
+  const d = creemPort.readRevocation({ eventType: 'dispute.created', object: { id: 'disp_1', amount: 499, currency: 'EUR', transaction: tx(), subscription: { id: 'sub_9' }, created_at: AT } });
+  ok('αμφισβήτηση: διαβάζεται με τον ίδιο κανόνα', d?.kind === 'dispute' && d.subscriptionId === 'sub_9' && d.whole === 'yes' && d.reference === 'disp_1');
   ok('αμφισβήτηση: η ώρα από το αντικείμενο όταν λείπει ο φάκελος', d?.occurredAt === new Date(AT).toISOString());
+  ok('αμφισβήτηση μέρους: όχι ολόκληρη', creemPort.readRevocation({ eventType: 'dispute.created', object: { amount: 100, currency: 'EUR', transaction: tx(), subscription: 'sub_9' } })?.whole === 'partial');
   ok('γεγονός συνδρομής δεν είναι ανάκληση', creemPort.readRevocation(event()) === null);
   ok('άγνωστο γεγονός δεν είναι ανάκληση', creemPort.readRevocation({ eventType: 'checkout.completed', object: {} }) === null);
+  // Η ΤΕΛΕΥΤΑΙΑ ΠΛΗΡΩΜΕΝΗ ΣΥΝΑΛΛΑΓΗ ΤΑΞΙΔΕΥΕΙ ΜΕ ΤΟ ΓΕΓΟΝΟΣ ΣΥΝΔΡΟΜΗΣ.
+  const paid = creemPort.readEvent(event({ last_transaction_id: 'tran_5' }, 'subscription.paid'), env);
+  ok('subscription.paid: πληρωμή, με τη συναλλαγή', paid.ok && paid.event.paid && paid.event.sub.lastTransactionId === 'tran_5');
+  const nested = creemPort.readEvent(event({ last_transaction: { id: 'tran_6' } }), env);
+  ok('η συναλλαγή και ως αντικείμενο', nested.ok && nested.event.sub.lastTransactionId === 'tran_6' && !nested.event.paid);
+  const none = creemPort.readEvent(event(), env);
+  ok('χωρίς συναλλαγή: κενό', none.ok && none.event.sub.lastTransactionId === null);
 }
 
 // ── Η ΔΙΑΓΝΩΣΗ ΤΟΥ ΤΑΜΕΙΟΥ: ΤΙ ΦΤΑΙΕΙ, ΧΩΡΙΣ ΤΙΜΕΣ (έλεγχος 12/11/2026) ────
@@ -309,9 +324,14 @@ async function main() {
   ok('χωρίς χάρτη: «λείπει»', !none.ok && none.products === 'missing' && none.missingPairs.length === 8);
   const bad = creemPort.diagnose({ ...live, [CREEM_PRODUCTS_ENV]: `${FULL},prod_x:ufo:monthly` });
   ok('χάρτης με χαλασμένη γραμμή: «δεν διαβάζεται», με πλήθος', !bad.ok && bad.products === 'unreadable' && bad.badEntries === 1);
-  ok('χωρίς μυστικό webhook: το λέει, χωρίς να κλείνει το ταμείο',
+  // ΧΩΡΙΣ ΜΥΣΤΙΚΟ ΚΑΘΕ ΓΕΓΟΝΟΣ ΠΑΙΡΝΕΙ 401: ο πελάτης θα πλήρωνε χωρίς να
+  // ανοίξει ποτέ το πακέτο του. Το ταμείο κλείνει (έλεγχος του PR 558, M3).
+  ok('χωρίς μυστικό webhook: το λέει και κλείνει το ταμείο',
      creemPort.diagnose({ ...live, [CREEM_SECRET_ENV]: '' }).webhookSecret === false
-     && creemPort.diagnose({ ...live, [CREEM_SECRET_ENV]: '' }).ok);
+     && !creemPort.diagnose({ ...live, [CREEM_SECRET_ENV]: '' }).ok);
+  ok('χωρίς μυστικό webhook: δεν πουλά', !creemPort.isLive({ ...full, [CREEM_SECRET_ENV]: '' }));
+  ok('χωρίς μυστικό webhook: το configError ονομάζει τη μεταβλητή',
+     creemPort.configError({ ...full, [CREEM_SECRET_ENV]: ' ' }).includes(CREEM_SECRET_ENV));
   const many = creemPort.diagnose({ [CREEM_KEY_ENV]: TEST_KEY, [CREEM_PRODUCTS_ENV]: PRODUCTS, VERCEL_ENV: 'production' });
   ok('πολλά σφάλματα μαζί: φαίνονται όλα, όχι μόνο το πρώτο', many.testKeyInProduction && many.products === 'incomplete');
 
@@ -322,7 +342,8 @@ async function main() {
   }
   // ΜΙΑ ΚΡΙΣΗ: η διάγνωση και το configError δεν διαφωνούν ποτέ.
   for (const e of [live, { ...live, [CREEM_KEY_ENV]: '' }, { ...live, [CREEM_KEY_ENV]: TEST_KEY }, { ...live, CREEM_TEST_MODE: '1' },
-    { ...live, [CREEM_PRODUCTS_ENV]: PRODUCTS }, { ...live, [CREEM_PRODUCTS_ENV]: '' }, { ...live, [CREEM_PRODUCTS_ENV]: `${FULL},x` }]) {
+    { ...live, [CREEM_PRODUCTS_ENV]: PRODUCTS }, { ...live, [CREEM_PRODUCTS_ENV]: '' }, { ...live, [CREEM_PRODUCTS_ENV]: `${FULL},x` },
+    { ...live, [CREEM_SECRET_ENV]: '' }]) {
     ok(`διάγνωση και configError συμφωνούν (${creemPort.configError(e) || 'εντάξει'})`, creemPort.diagnose(e).ok === (creemPort.configError(e) === ''));
   }
 }

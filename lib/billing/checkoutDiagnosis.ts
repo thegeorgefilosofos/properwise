@@ -41,7 +41,7 @@ export function checkoutDiagnosis(
   if (c.products !== 'missing' && c.missingPairs.length) {
     problems.push(`Στον χάρτη προϊόντων λείπουν τα ζεύγη πακέτου και κύκλου: ${c.missingPairs.join(', ')}.`);
   }
-  if (!c.webhookSecret) problems.push('Λείπει το μυστικό υπογραφής του webhook (CREEM_WEBHOOK_SECRET): κάθε γεγονός του εμπόρου θα παίρνει 401.');
+  if (!c.webhookSecret) problems.push('Λείπει το μυστικό υπογραφής του webhook (CREEM_WEBHOOK_SECRET): κάθε γεγονός του εμπόρου θα έπαιρνε 401, γι\' αυτό το ταμείο μένει κλειστό.');
   if (gate.closedBy === 'identity') problems.push('Ο έμπορος δεν πουλά ως merchant of record και η ταυτότητα του φορέα δεν έχει δημοσιευθεί.');
   return { merchant: port.id, live: gate.live, closedBy: gate.closedBy, config: c, problems };
 }

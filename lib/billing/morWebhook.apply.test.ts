@@ -19,7 +19,7 @@
 import type { MerchantEventDeps } from './morWebhook';
 // Η ψεύτικη βάση, ο αποστολέας και η ρύθμιση ζουν στο morWebhook.testkit.ts,
 // κοινά με τη σουίτα της μηχανής καταστάσεων (morWebhook.lifecycle.test.ts).
-import { ENV, fakeDb, fakeAlerts, profile, subEvent, runWebhook } from './morWebhook.testkit';
+import { ENV, fakeDb, fakeAlerts, profile, subEvent, moneyEvent, runWebhook } from './morWebhook.testkit';
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
@@ -226,16 +226,13 @@ async function main() {
   // (έλεγχος ετοιμότητας πληρωμών 12/11/2026, «Λείπει (κώδικας)» 1). Η πλήρης
   // μηχανή (αμφισβήτηση, σειρά, επανάληψη) στο morWebhook.lifecycle.test.ts.
   {
-    const db = fakeDb([profile({ plan: 'solo', mor_subscription_id: 'sub_9', subscription_status: 'active' })]);
+    const db = fakeDb([profile({ plan: 'solo', mor_subscription_id: 'sub_9', subscription_status: 'active', mor_last_transaction_id: 'tran_1' })]);
     const alerts = fakeAlerts();
-    const raw = JSON.stringify({
-      id: 'evt_r', eventType: 'refund.created', created_at: AT,
-      object: { id: 'ref_1', refund_amount: 499, refund_currency: 'eur', subscription: { id: 'sub_9' }, customer: { email: 'a@b.gr' } },
-    });
+    const raw = moneyEvent('refund', AT, { subscription: { id: 'sub_9' } });
     const r = await run(raw, db, alerts);
     ok('επιστροφή: 200 ok με «alerted»', r.status === 200 && r.body.ok === true && r.body.alerted === true);
     ok('επιστροφή: μία ειδοποίηση για τη συνδρομή', alerts.sent.length === 1 && alerts.sent[0].text.includes('sub_9'));
-    ok('επιστροφή: το πακέτο γυρίζει στο δωρεάν', db.upserts.length === 1 && db.rows[0].plan === 'free');
+    ok('επιστροφή: το πακέτο γυρίζει στο δωρεάν', db.revokes === 1 && db.rows[0].plan === 'free');
     ok('επιστροφή: η κατάσταση καταγράφεται', db.rows[0].subscription_status === 'expired'
        && db.rows[0].mor_revoked_reason === 'refund' && db.rows[0].mor_revoked_at === AT_ISO);
     const failing = fakeAlerts(false);

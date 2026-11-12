@@ -275,7 +275,11 @@ export const creemPort: MerchantPort = {
     if (error) return error;
     if (map.size === 0) return `Λείπει η μεταβλητή: ${CREEM_PRODUCTS_ENV}.`;
     const missing = missingPairs(env);
-    return missing.length ? `Στο ${CREEM_PRODUCTS_ENV} λείπουν: ${missing.join(', ')}.` : '';
+    if (missing.length) return `Στο ${CREEM_PRODUCTS_ENV} λείπουν: ${missing.join(', ')}.`;
+    // ΧΩΡΙΣ ΜΥΣΤΙΚΟ WEBHOOK ΔΕΝ ΠΟΥΛΑΜΕ (έλεγχος του PR 558, M3). Κάθε γεγονός θα
+    // έπαιρνε 401: ο πελάτης θα πλήρωνε και το πακέτο του δεν θα άνοιγε ποτέ.
+    if (!(env[CREEM_SECRET_ENV] || '').trim()) return `Λείπει η μεταβλητή: ${CREEM_SECRET_ENV}. Χωρίς αυτήν κάθε γεγονός του εμπόρου παίρνει 401.`;
+    return '';
   },
 
   // ΟΛΑ ΤΑ ΕΜΠΟΔΙΑ ΜΑΖΙ, ΜΕ ΚΩΔΙΚΟΥΣ. Το `ok` βγαίνει από το ίδιο το
@@ -423,15 +427,26 @@ export const creemPort: MerchantPort = {
     const obj = (p.object && typeof p.object === 'object' ? p.object : {}) as Record<string, unknown>;
     const tx = (obj.transaction && typeof obj.transaction === 'object' ? obj.transaction : {}) as Record<string, unknown>;
     const subscriptionId = idOf(obj.subscription) || idOf(tx.subscription) || null;
-    const refunded = cents(obj.refund_amount);
-    const paid = cents(tx.amount_paid) ?? cents(tx.amount);
+    // ΙΔΙΑ ΒΑΣΗ: το ποσό της επιστροφής ή της αμφισβήτησης απέναντι στο
+    // `amount_paid`, δηλαδή όσα ΠΛΗΡΩΣΕ ο πελάτης. Το `amount` της συναλλαγής
+    // είναι πριν από φόρο και έκπτωση· δεν χρησιμοποιείται ως εφεδρεία, γιατί
+    // ένα καθαρό ποσό ίσο με αυτό θα έμοιαζε ολόκληρη επιστροφή ενώ δεν είναι.
+    const amount = cents(kind === 'refund' ? obj.refund_amount : obj.amount);
+    const currency = (str(kind === 'refund' ? obj.refund_currency : obj.currency) || '').toUpperCase();
+    const paid = cents(tx.amount_paid);
+    const paidCurrency = (str(tx.currency) || '').toUpperCase();
+    const whole: Revocation['whole'] = amount === null || paid === null || !currency || !paidCurrency ? 'missing'
+      : currency !== paidCurrency ? 'basis'
+        : amount === paid ? 'yes'
+          : amount < paid && amount === cents(tx.amount) ? 'basis'
+            : amount < paid ? 'partial' : 'basis';
     return {
       kind,
       subscriptionId,
+      transactionId: idOf(obj.transaction) || null,
+      reference: idOf(obj) || null,
       occurredAt: when(p.created_at) ?? when(obj.created_at),
-      // ΑΜΦΙΣΒΗΤΗΣΗ ΔΕΝ ΕΙΝΑΙ ΠΟΤΕ ΜΕΡΙΚΗ: η τράπεζα έχει ήδη πάρει πίσω την
-      // πληρωμή και η απάντηση στον πάροχο θέλει άνθρωπο.
-      partial: kind === 'refund' && refunded !== null && paid !== null && refunded < paid,
+      whole,
     };
   },
 
@@ -474,6 +489,9 @@ export const creemPort: MerchantPort = {
       userId: str(meta.user_id),
       renewsAt: str(obj.current_period_end_date) ?? str(obj.next_transaction_date),
       endsAt: endsAtOf(obj, status, occurredAtOf(p, obj)),
+      // Η ΤΕΛΕΥΤΑΙΑ ΠΛΗΡΩΜΕΝΗ ΣΥΝΑΛΛΑΓΗ ΤΗΣ ΣΥΝΔΡΟΜΗΣ (`last_transaction_id`, ή
+      // το αντικείμενο `last_transaction`). Μόνο αυτήν κλείνει μια επιστροφή.
+      lastTransactionId: str(obj.last_transaction_id) ?? (idOf(obj.last_transaction) || null),
     };
 
     // ΠΟΤΕ ΣΥΝΕΒΗ, ΩΣΤΕ ΕΝΑ ΚΑΘΥΣΤΕΡΗΜΕΝΟ ΝΑ ΜΗ ΓΡΑΨΕΙ ΠΑΝΩ ΣΕ ΝΕΟΤΕΡΟ. Ο

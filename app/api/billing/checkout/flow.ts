@@ -30,7 +30,7 @@ import { NextResponse } from 'next/server';
 import { PLANS, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 import type { BillingEnv, MerchantPort } from '@/lib/billing/merchant';
 import { isEntitled, isMorStatus } from '@/lib/billing/subscription';
-import { billingWords } from '@/lib/legal/billingWords';
+import { billingWords, REVOKED_CHECKOUT_REFUSAL } from '@/lib/legal/billingWords';
 import { checkoutState } from '@/lib/legal/checkout';
 import { IDENTITY } from '@/lib/legal/identity';
 import { SITE } from '@/lib/core/site';
@@ -47,11 +47,14 @@ export interface CheckoutProfile {
   full_name: string | null;
   subscription_status: string | null;
   mor_ends_at: string | null;
+  /** Πρόσβαση που έκλεισε από επιστροφή ή αμφισβήτηση· και η συνδρομή της. */
+  mor_revoked_at: string | null;
+  mor_subscription_id: string | null;
 }
 
 /** Οι στήλες του `CheckoutProfile`, για το `select`. */
 export const CHECKOUT_PROFILE_COLUMNS =
-  'profile_type, trial_used_at, tester_since, full_name, subscription_status, mor_ends_at';
+  'profile_type, trial_used_at, tester_since, full_name, subscription_status, mor_ends_at, mor_revoked_at, mor_subscription_id';
 
 export interface CheckoutAsk { plan: string; cycle: string; probe: boolean }
 
@@ -102,6 +105,16 @@ export async function checkoutResponse(ask: CheckoutAsk, deps: CheckoutDeps): Pr
   // του: το προϊόν του δίνεται ολόκληρο και χωρίς συνδρομή στον έμπορο.
   if (profile?.tester_since) {
     return NextResponse.json({ available: false, url: null, tester: true });
+  }
+
+  // ── ΠΡΟΣΒΑΣΗ ΠΟΥ ΕΚΛΕΙΣΕ ΑΠΟ ΕΠΙΣΤΡΟΦΗ: ΠΡΩΤΑ Η ΥΠΟΣΤΗΡΙΞΗ ──────────────
+  // Η συνδρομή στον έμπορο δεν ακυρώνεται μόνη της με την επιστροφή· μια νέα
+  // αγορά θα έστηνε δεύτερη δίπλα της (έλεγχος του PR 558, M2). Το ταμείο μένει
+  // κλειστό ώσπου η υποστήριξη να ακυρώσει την παλιά και να σβήσει την
+  // καταγραφή. Και το probe το λέει, ώστε η οθόνη να μη δείξει κουμπί.
+  if (profile?.mor_revoked_at && profile.mor_subscription_id) {
+    if (probe) return NextResponse.json({ available: false, url: null, revoked: true, note: REVOKED_CHECKOUT_REFUSAL });
+    return NextResponse.json({ error: REVOKED_CHECKOUT_REFUSAL }, { status: 409 });
   }
 
   // ── ΔΕΥΤΕΡΟ ΤΑΜΕΙΟ ΠΑΝΩ ΣΕ ΣΥΝΔΡΟΜΗ ΠΟΥ ΙΣΧΥΕΙ ΑΚΟΜΗ ─────────────────────

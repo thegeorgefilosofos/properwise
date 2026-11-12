@@ -21,11 +21,24 @@
 --     έκλεισε η πρόσβαση της καταγεγραμμένης συνδρομής. Ο webhook γράφει
 --     επιπλέον `plan = 'free'` και `subscription_status = 'expired'`, οπότε η
 --     `user_plan_rank` δεν χρειάζεται δεύτερη συνθήκη γι' αυτό.
+--   · `mor_last_transaction_id`: η τελευταία πληρωμένη συναλλαγή της
+--     συνδρομής, από τα γεγονότα `subscription.*`. Μόνο αυτήν μπορεί να κλείσει
+--     μια επιστροφή: η επιστροφή του πρώτου μήνα αφού πληρώθηκε ο δεύτερος
+--     δεν κόβει πελάτη που πληρώνει (έλεγχος του PR 558, M1).
+--   · `mor_revoked_ref`: η επιστροφή ή η αμφισβήτηση που έκλεισε την
+--     πρόσβαση. Μένει και μετά από νέα χρέωση, ώστε η ίδια επιστροφή που
+--     ξαναστέλνεται να μην ξανακόψει (L4).
 --   · `public.past_due_grace_days()`: οι ημέρες χάριτος, ίδιες με το
 --     `PAST_DUE_GRACE_DAYS` του lib/billing/subscription.ts (επιλογή
---     προϊόντος). Το db-replay ελέγχει ότι οι δύο αριθμοί συμφωνούν.
+--     προϊόντος, εκκρεμεί έγκριση ιδιοκτήτη). Το db-replay ελέγχει ότι οι δύο
+--     αριθμοί συμφωνούν.
+--   · `public.revoke_mor_access(...)`: η ανάκληση σε ΕΝΑ υπό όρους UPDATE, μόνο
+--     για τον ρόλο υπηρεσίας (L3).
+--   · σκανδάλη `keep_mor_revocation`: ταυτόχρονο γεγονός συνδρομής από τον
+--     webhook δεν αναιρεί την ανάκληση· μόνο νέα συνδρομή ή νέα πληρωμένη
+--     συναλλαγή τη σηκώνει (L3).
 --
--- ΟΙ ΤΡΕΙΣ ΣΤΗΛΕΣ ΑΝΗΚΟΥΝ ΣΤΟΝ ΔΙΑΚΟΜΙΣΤΗ. Η `lock_billing_plan` τις
+-- ΟΙ ΣΤΗΛΕΣ ΑΝΗΚΟΥΝ ΣΤΟΝ ΔΙΑΚΟΜΙΣΤΗ. Η `lock_billing_plan` τις
 -- ξαναγράφει από την παλιά τιμή όταν τις στέλνει ο πελάτης, όπως όλες τις
 -- `mor_*` (20261108153700). Αλλιώς ένας πελάτης σε καθυστέρηση θα μηδένιζε
 -- μόνος του το ρολόι της χάρης.
@@ -37,6 +50,8 @@
 alter table public.billing_profiles add column if not exists mor_past_due_at timestamptz;
 alter table public.billing_profiles add column if not exists mor_revoked_at timestamptz;
 alter table public.billing_profiles add column if not exists mor_revoked_reason text;
+alter table public.billing_profiles add column if not exists mor_revoked_ref text;
+alter table public.billing_profiles add column if not exists mor_last_transaction_id text;
 
 alter table public.billing_profiles drop constraint if exists billing_profiles_mor_revoked_reason_check;
 alter table public.billing_profiles add constraint billing_profiles_mor_revoked_reason_check
@@ -48,6 +63,10 @@ comment on column public.billing_profiles.mor_revoked_at is
   'Πότε επιστροφή χρημάτων ή αμφισβήτηση έκλεισε την πρόσβαση της καταγεγραμμένης συνδρομής. Γράφεται μόνο από τον webhook.';
 comment on column public.billing_profiles.mor_revoked_reason is
   'Γιατί έκλεισε η πρόσβαση: refund ή dispute. Γράφεται μόνο από τον webhook.';
+comment on column public.billing_profiles.mor_revoked_ref is
+  'Η επιστροφή ή η αμφισβήτηση που έκλεισε την πρόσβαση. Μένει και μετά από νέα χρέωση, ώστε η ίδια να μη μετρήσει δεύτερη φορά.';
+comment on column public.billing_profiles.mor_last_transaction_id is
+  'Η τελευταία πληρωμένη συναλλαγή της συνδρομής στον έμπορο. Μόνο επιστροφή ή αμφισβήτηση αυτής κλείνει πρόσβαση.';
 
 create or replace function public.past_due_grace_days()
 returns int language sql immutable
@@ -91,6 +110,8 @@ begin
       new.mor_past_due_at := null;
       new.mor_revoked_at := null;
       new.mor_revoked_reason := null;
+      new.mor_revoked_ref := null;
+      new.mor_last_transaction_id := null;
     else
       if new.plan is distinct from old.plan then new.plan := old.plan; end if;
       new.comp_plan          := old.comp_plan;
@@ -116,11 +137,97 @@ begin
       new.mor_past_due_at    := old.mor_past_due_at;
       new.mor_revoked_at     := old.mor_revoked_at;
       new.mor_revoked_reason := old.mor_revoked_reason;
+      new.mor_revoked_ref    := old.mor_revoked_ref;
+      new.mor_last_transaction_id := old.mor_last_transaction_id;
     end if;
   end if;
   return new;
 end;
 $$;
+
+-- ── Η ΑΝΑΚΛΗΣΗ ΣΕ ΕΝΑ ΒΗΜΑ ─────────────────────────────────────────────────
+-- Ελέγχει και γράφει με ΕΝΑ υπό όρους UPDATE: συνδρομή, τελευταία πληρωμένη
+-- συναλλαγή, όχι ήδη κλειστή, όχι η ίδια αναφορά. Καμία ανάγνωση που να
+-- παλιώνει ανάμεσα. Όταν δεν γράφει, λέει γιατί: `already`, `not_latest`,
+-- `unmatched`. Το `mor_event_at` δεν αγγίζεται: η επιστροφή δεν είναι
+-- γεγονός συνδρομής.
+create or replace function public.revoke_mor_access(
+  p_subscription text, p_transaction text, p_reference text, p_reason text, p_at timestamptz
+) returns jsonb
+    language plpgsql security definer
+    set search_path to 'public'
+    as $$
+declare
+  v_user uuid;
+  v_row record;
+begin
+  if p_reason is null or p_reason not in ('refund', 'dispute') then
+    raise exception 'bad_reason' using errcode = '22023';
+  end if;
+  update public.billing_profiles
+     set plan = 'free', subscription_status = 'expired',
+         mor_renews_at = null, mor_ends_at = p_at, mor_past_due_at = null,
+         hold_plan = null, hold_until = null,
+         mor_revoked_at = p_at, mor_revoked_reason = p_reason, mor_revoked_ref = p_reference
+   where mor_subscription_id = p_subscription
+     and mor_last_transaction_id = p_transaction
+     and mor_revoked_at is null
+     and mor_revoked_ref is distinct from p_reference
+  returning user_id into v_user;
+  if v_user is not null then
+    return jsonb_build_object('outcome', 'revoked', 'user_id', v_user);
+  end if;
+  select mor_revoked_at, mor_revoked_ref into v_row
+    from public.billing_profiles where mor_subscription_id = p_subscription limit 1;
+  if not found then return jsonb_build_object('outcome', 'unmatched'); end if;
+  if v_row.mor_revoked_at is not null or v_row.mor_revoked_ref is not distinct from p_reference then
+    return jsonb_build_object('outcome', 'already');
+  end if;
+  return jsonb_build_object('outcome', 'not_latest');
+end $$;
+
+revoke all on function public.revoke_mor_access(text, text, text, text, timestamptz) from public, anon, authenticated;
+grant execute on function public.revoke_mor_access(text, text, text, text, timestamptz) to service_role;
+
+comment on function public.revoke_mor_access(text, text, text, text, timestamptz) is
+  'Κλείνει την πρόσβαση μετά από ολόκληρη επιστροφή ή αμφισβήτηση της ΤΕΛΕΥΤΑΙΑΣ πληρωμένης συναλλαγής, σε ένα υπό όρους UPDATE. Μόνο ο webhook (service_role).';
+
+-- ── ΤΑΥΤΟΧΡΟΝΟ ΓΕΓΟΝΟΣ ΣΥΝΔΡΟΜΗΣ ΔΕΝ ΑΝΑΙΡΕΙ ΤΗΝ ΑΝΑΚΛΗΣΗ ──────────────────
+-- Ο webhook διαβάζει την καταγεγραμμένη συνδρομή και μετά γράφει. Ενα
+-- `subscription.update` που διάβασε ΠΡΙΝ από την ανάκληση θα έγραφε μετά από
+-- αυτήν `plan` και `mor_revoked_at = null`. Η σκανδάλη κρατά την ανάκληση όσο
+-- η γραμμή μένει στην ίδια συνδρομή ΚΑΙ στην ίδια τελευταία συναλλαγή. Μόνο
+-- για τον ρόλο υπηρεσίας: ο πελάτης φυλάγεται ήδη από τη `lock_billing_plan`
+-- και η υποστήριξη (postgres) λύνει με το χέρι όταν χρειαστεί.
+create or replace function public.keep_mor_revocation() returns trigger
+    language plpgsql
+    set search_path to 'public'
+    as $$
+begin
+  if current_user = 'service_role'
+     and old.mor_revoked_at is not null
+     and new.mor_subscription_id is not distinct from old.mor_subscription_id
+     and new.mor_last_transaction_id is not distinct from old.mor_last_transaction_id then
+    new.plan := 'free';
+    new.subscription_status := old.subscription_status;
+    new.mor_ends_at := old.mor_ends_at;
+    new.mor_renews_at := old.mor_renews_at;
+    new.mor_past_due_at := old.mor_past_due_at;
+    new.hold_plan := old.hold_plan;
+    new.hold_until := old.hold_until;
+    new.mor_revoked_at := old.mor_revoked_at;
+    new.mor_revoked_reason := old.mor_revoked_reason;
+    new.mor_revoked_ref := old.mor_revoked_ref;
+  end if;
+  return new;
+end $$;
+
+revoke all on function public.keep_mor_revocation() from public, anon, authenticated;
+
+drop trigger if exists billing_profiles_keep_mor_revocation on public.billing_profiles;
+create trigger billing_profiles_keep_mor_revocation
+  before update on public.billing_profiles
+  for each row execute function public.keep_mor_revocation();
 
 -- ── ΤΟ ΕΠΙΠΕΔΟ ΠΡΟΣΒΑΣΗΣ ΚΡΙΝΕΙ ΚΑΙ ΤΗ ΧΑΡΗ ───────────────────────────────
 -- Ολο το υπόλοιπο σώμα είναι αυτό της
