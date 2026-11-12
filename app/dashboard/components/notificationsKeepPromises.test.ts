@@ -136,5 +136,15 @@ const src = (p: string) => readFileSync(p, 'utf8')
   ok('το Recurrable δέχεται recurring null', rec.includes('recurring?: boolean | null'))
 }
 
+// ── Δόσεις φόρου εισοδήματος: μία υπενθύμιση, ποτέ «ληξιπρόθεσμο» (12.11.2026) ──
+// Ο κανόνας ζει στο lib/calendar/recurrence.ts· εδώ ελέγχεται ότι το email και
+// η ειδοποίηση τηλεφώνου τον διαβάζουν.
+{
+  const sr = src('supabase/functions/send-reminders/index.ts')
+  const push = src('app/api/push/route.ts')
+  ok('email: οι δόσεις μόνο στον τύπο που επιτρέπεται', sr.includes('reminderAllowed(e, check.type)'))
+  ok('push: οι δόσεις δεν ξαναλέγονται στο τηλέφωνο', push.includes('.filter(e => !isIncomeInstalmentSource(e.source))'))
+}
+
 console.log(`οι ειδοποιήσεις κάνουν ό,τι λένε: ${passed} ✓ · ${failed} ✗`)
 if (failed) { console.log('Απέτυχαν:\n - ' + fails.join('\n - ')); process.exit(1) }

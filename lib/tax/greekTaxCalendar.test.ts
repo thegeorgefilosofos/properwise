@@ -314,6 +314,9 @@ ok('κενό/ιδιοχρησία → owner', taxProfileOf({ status_detail: 'own
   ok('ο προορισμός είναι η δήλωση εισοδήματος', destinationForKind('income-instalment') === 'income' && i26.every(o => o.official_url === AADE_DESTINATIONS.income.url))
   // Ο ορίζοντας της 12.11.2026 δείχνει τις 5η ως 8η που απομένουν.
   const left = taxObligationsHorizon('2026-11-12', 'long_term').filter(o => o.kind === 'income-instalment' && o.date >= '2026-11-12')
+  // Εκκαθαριστικό χωρίς φόρο για το φορολογικό έτος 2025: η δήλωση 2026 δεν έχει δόσεις.
+  ok('incomeTaxNil 2025: καμία δόση της δήλωσης 2026', greekPropertyTaxObligations(2026, 'long_term', { incomeTaxNil: [2025] }).every(o => o.kind !== 'income-instalment'))
+  ok('incomeTaxNil 2025: η δήλωση 2027 έχει τις οκτώ', greekPropertyTaxObligations(2027, 'long_term', { incomeTaxNil: [2025] }).filter(o => o.kind === 'income-instalment').length === INCOME_TAX_INSTALMENTS)
   ok('12.11.2026: απομένουν οι 5η ως 8η', left.map(o => `${o.id}@${o.date}`).join(',') ===
     'income-instalment-2026-5@2026-11-30,income-instalment-2026-6@2026-12-31,income-instalment-2026-7@2027-01-29,income-instalment-2026-8@2027-02-26')
 }

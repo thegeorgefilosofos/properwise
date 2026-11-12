@@ -12,7 +12,7 @@
 import {
   CLOSED_STATUSES, isClosedStatus, daysFrom, isOverdue, dueText, dueTextStart,
   taskNoteOf, closedTaxRefs, upcomingTaxObligations, nextTaxObligations,
-  taxEventsToWrite, nextEnfiaDue, enfiaDueDates, taxProfileOfStatus,
+  taxEventsToWrite, nextEnfiaDue, enfiaDueDates, taxProfileOfStatus, incomeInstalmentsAfter,
 } from './deadlines';
 import { enfiaYear, ENFIA_DEFAULTS } from './enfia';
 import { computeObligations } from '@/app/dashboard/components/obligations';
@@ -152,6 +152,20 @@ ok('η σημείωση της εκκρεμότητας χωρίς JSON', feed.f
   const evs = taxEventsToWrite('2026-11-12', 'long_term').filter(e => String(e.source).startsWith('tax:income-instalment-'));
   ok('12.11.2026: γράφονται οι 5η ως 8η', evs.map(e => e.event_date).join() === '2026-11-30,2026-12-31,2027-01-29,2027-02-26', evs.map(e => e.event_date));
   ok('χωρίς ποσό: δεν υπάρχει ποσό από τον κώδικα', evs.every(e => e.amount === null || e.amount === undefined), evs.map(e => e.amount));
+}
+
+// ── ΠΕΡΑΣΜΕΝΗ ΔΟΣΗ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ, ΕΦΑΠΑΞ ΕΞΟΦΛΗΣΗ (12.11.2026) ───────────
+{
+  const src = (k: number) => `tax:income-instalment-2026-${k}`;
+  const had = [{ source: src(3), status: 'pending' }, { source: src(4), status: 'paid' }];
+  const evs = taxEventsToWrite('2026-11-12', 'long_term', had).map(e => String(e.source));
+  ok('περασμένη ανοιχτή δόση: δεν ξαναγράφεται', !evs.includes(src(3)), evs);
+  ok('περασμένη πληρωμένη δόση: μένει με την κατάστασή της', evs.includes(src(4)));
+  const ev = (id: string, k: number, status = 'pending', date = '') => ({ id, source: src(k), status, event_date: date || ['', '2026-07-31', '2026-08-31', '2026-09-30', '2026-10-30', '2026-11-30', '2026-12-31', '2027-01-29', '2027-02-26'][k] });
+  const all = [ev('a', 1, 'paid'), ev('b', 2), ev('c', 3), ev('d', 4, 'paid'), { id: 'x', source: 'tax:income-instalment-2027-2', status: 'pending', event_date: '2027-08-31' }, { id: 'y', source: 'tax:enfia-instalment-2026-9', status: 'pending', event_date: '2026-11-30' }];
+  ok('εφάπαξ: οι ανοιχτές μεταγενέστερες της ίδιας δήλωσης', incomeInstalmentsAfter(all, all[0]).map(e => e.id).join() === 'b,c');
+  ok('εφάπαξ: όχι άλλης δήλωσης, όχι ΕΝΦΙΑ, όχι πληρωμένες', !incomeInstalmentsAfter(all, all[0]).some(e => ['x', 'y', 'd'].includes(e.id)));
+  ok('εφάπαξ: τίποτα για άλλο γεγονός', incomeInstalmentsAfter(all, all[5]).length === 0);
 }
 
 console.log(fail ? `✗ deadlines: ${fail} απέτυχαν, ${pass} πέρασαν` : `✓ deadlines: ${pass} έλεγχοι πέρασαν`);

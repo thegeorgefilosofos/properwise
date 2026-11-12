@@ -1,5 +1,6 @@
 // Τεστ για την επέκταση επαναλαμβανόμενων (recurrence.ts). Τρέξε: npx tsx lib/calendar/recurrence.test.ts
-import { nextOccurrence, occurrenceAt, expandRecurring, reminderOccurrences, reminderKey } from './recurrence'
+import { nextOccurrence, occurrenceAt, expandRecurring, reminderOccurrences, reminderKey, reminderAllowed, isIncomeInstalmentSource, INCOME_INSTALMENT_SOURCE_PREFIX, INCOME_INSTALMENT_REMINDER } from './recurrence'
+import { taxEventSource } from '../tax/greekTaxCalendar'
 
 let passed = 0, failed = 0
 const fails: string[] = []
@@ -108,6 +109,22 @@ ok('yearly αναπτύσσεται', expandRecurring([{ id: 'y', event_date: '2
   ok('recurring null: μόνο η βάση', expandRecurring([{ ...row, recurring: null }], '2026-01-01', '2026-03-31').length === 1)
   const r = reminderOccurrences([row], '2026-03-01', '2026-03-31')
   ok('ο τύπος της γραμμής διατηρείται (χωρίς as)', r.upcoming[0].recurrence_until === null && r.overdue.length === 0)
+}
+
+// ── ΔΟΣΕΙΣ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ: ΠΟΤΕ ΛΗΞΙΠΡΟΘΕΣΜΕΣ, ΜΙΑ ΥΠΕΝΘΥΜΙΣΗ (12.11.2026) ──
+// Ως τότε η περασμένη ανοιχτή δόση έφευγε ως «Ληξιπρόθεσμο» σε όποιον δεν
+// χρωστούσε φόρο· και κάθε δόση έπαιρνε τέσσερις υπενθυμίσεις.
+{
+  const inc = { id: 'i5', event_date: '2026-11-30', source: 'tax:income-instalment-2026-5' }
+  const enfia = { id: 'e9', event_date: '2026-11-30', source: 'tax:enfia-instalment-2026-9' }
+  const occ = reminderOccurrences([inc, enfia], '2026-12-02', '2026-12-09')
+  ok('περασμένη δόση φόρου εισοδήματος: όχι ληξιπρόθεσμη', !occ.overdue.some(e => e.id === 'i5'))
+  ok('περασμένη δόση ΕΝΦΙΑ: ληξιπρόθεσμη, όπως πριν', occ.overdue.some(e => e.id === 'e9'))
+  ok('δόση φόρου εισοδήματος: μόνο η υπενθύμιση των τριών ημερών',
+    ['7days', '1day', 'today', 'overdue'].every(t => !reminderAllowed(inc, t)) && reminderAllowed(inc, '3days') && INCOME_INSTALMENT_REMINDER === '3days')
+  ok('άλλα γεγονότα: όλες οι υπενθυμίσεις', ['7days', '3days', '1day', 'today'].every(t => reminderAllowed(enfia, t) && reminderAllowed({ source: null }, t)))
+  ok('το πρόθεμα συμφωνεί με το κλειδί του ημερολογίου', taxEventSource('income-instalment-2026-5').startsWith(INCOME_INSTALMENT_SOURCE_PREFIX)
+    && isIncomeInstalmentSource(taxEventSource('income-instalment-2027-1')) && !isIncomeInstalmentSource(taxEventSource('income-decl-2026')) && !isIncomeInstalmentSource(null))
 }
 
 console.log(`recurrence.ts, ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)

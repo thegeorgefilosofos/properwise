@@ -48,6 +48,8 @@ export interface Recurrable {
   recurrence_count?: number | null           // μέγιστο πλήθος εμφανίσεων (base = 1η)
   /** Ημερομηνίες εξαίρεσης «YYYY-MM-DD». Στη βάση είναι jsonb, γι' αυτό `unknown`: ό,τι δεν είναι ημερομηνία αγνοείται. */
   recurrence_exdates?: unknown
+  /** Η πηγή της γραμμής (`tax:…` για τις θεσμικές προθεσμίες). */
+  source?: string | null
 }
 
 /** Οι ημερομηνίες εξαίρεσης, μόνο όσες είναι κείμενο. */
@@ -119,8 +121,39 @@ export function reminderOccurrences<T extends Recurrable>(
 ): { upcoming: (T & { _virtual?: boolean; _seriesId?: string })[]; overdue: T[] } {
   return {
     upcoming: expandRecurring(events, today, horizonEnd),
-    overdue: events.filter(e => e.event_date < today && !(e.recurring && e.recurring_interval)),
+    overdue: events.filter(e => e.event_date < today && !(e.recurring && e.recurring_interval) && !isIncomeInstalmentSource(e.source)),
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΟΙ ΔΟΣΕΙΣ ΤΟΥ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ: ΜΙΑ ΥΠΕΝΘΥΜΙΣΗ, ΠΟΤΕ «ΛΗΞΙΠΡΟΘΕΣΜΟ»
+// ─────────────────────────────────────────────────────────────────────────
+// Ο συγχρονισμός γράφει τις οκτώ δόσεις σε κάθε νοικιασμένο ακίνητο, αλλά η
+// εφαρμογή δεν ξέρει αν ο χρήστης χρωστά φόρο (μηδέν, επιστροφή ή εφάπαξ τον
+// Ιούλιο). Με τους κανόνες των άλλων γεγονότων θα έφευγαν ως οκτώ email
+// «Ληξιπρόθεσμο» και ως τέσσερις υπενθυμίσεις ανά δόση τον χρόνο, σε όσους δεν
+// χρωστούν τίποτα. Δύο κανόνες, εδώ, ώστε να τους διαβάζουν και το email (Deno)
+// και η ειδοποίηση τηλεφώνου:
+//   · περασμένη δόση δεν είναι ποτέ «ληξιπρόθεσμη» (`reminderOccurrences`)·
+//   · μία υπενθύμιση ανά δόση, τρεις μέρες πριν (`reminderAllowed`)· καμία
+//     στην ειδοποίηση τηλεφώνου, που ήδη υπενθυμίζει μόνο σήμερα και αύριο.
+// Ο συγχρονισμός (lib/calendar/taxSync.ts) σβήνει επιπλέον την περασμένη δόση
+// που ο χρήστης δεν άγγιξε.
+
+/** Το πρόθεμα της πηγής των δόσεων. Το τεστ το δένει με το `taxEventSource`. */
+export const INCOME_INSTALMENT_SOURCE_PREFIX = 'tax:income-instalment-'
+
+/** Γραμμή δόσης φόρου εισοδήματος (από την πηγή της). */
+export function isIncomeInstalmentSource(source: string | null | undefined): boolean {
+  return typeof source === 'string' && source.startsWith(INCOME_INSTALMENT_SOURCE_PREFIX)
+}
+
+/** Ο μόνος τύπος υπενθύμισης για τις δόσεις του φόρου εισοδήματος. */
+export const INCOME_INSTALMENT_REMINDER = '3days'
+
+/** Επιτρέπεται υπενθύμιση αυτού του τύπου (`7days`, `3days`, `1day`, `today`) για τη γραμμή; */
+export function reminderAllowed(e: { source?: string | null }, type: string): boolean {
+  return !isIncomeInstalmentSource(e.source) || type === INCOME_INSTALMENT_REMINDER
 }
 
 /**

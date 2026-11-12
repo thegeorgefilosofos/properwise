@@ -197,6 +197,25 @@ export function nextTaxObligations(
   return [...pick.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/**
+ * Οι ΑΝΟΙΧΤΕΣ μεταγενέστερες δόσεις φόρου εισοδήματος της ΙΔΙΑΣ δήλωσης με τη
+ * δόση `paid` (από τις πηγές `tax:income-instalment-<έτος>-<δόση>`).
+ *
+ * Για το «πληρώθηκε εφάπαξ;» του Ημερολογίου (12.11.2026): όποιος εξόφλησε όλο
+ * τον φόρο δεν πρέπει να κλείνει μία μία τις υπόλοιπες δόσεις ούτε να παίρνει
+ * υπενθυμίσεις γι' αυτές. Η εφαρμογή ΔΕΝ το υποθέτει: ρωτά και κλείνει μόνο αν
+ * ο χρήστης πει ναι. Κενή λίστα για κάθε άλλο γεγονός.
+ */
+export function incomeInstalmentsAfter<T extends { id: string; source?: string | null; status?: string | null; event_date: string }>(
+  events: readonly T[], paid: { id: string; source?: string | null; event_date: string },
+): T[] {
+  const m = /^tax:income-instalment-(\d{4})-\d+$/.exec(String(paid.source ?? ''));
+  if (!m) return [];
+  const prefix = `tax:income-instalment-${m[1]}-`;
+  return events.filter(e => e.id !== paid.id && String(e.source ?? '').startsWith(prefix)
+    && e.event_date > paid.event_date && !isClosedStatus(e.status));
+}
+
 const shift = (iso: string, days: number): string => {
   const d = new Date(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)));
   d.setUTCDate(d.getUTCDate() + days);
@@ -241,6 +260,11 @@ export function taxEventsToWrite(
     const src = taxEventSource(o.id);
     const prev = had.get(src);
     if (o.date < t && prev === undefined) continue;
+    // ΠΕΡΑΣΜΕΝΗ ΔΟΣΗ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ ΔΕΝ ΜΕΝΕΙ ΑΝΟΙΧΤΗ (12.11.2026). Η εφαρμογή
+    // δεν ξέρει αν ο χρήστης χρωστά φόρο· μια ανοιχτή περασμένη δόση θα γινόταν
+    // «Ληξιπρόθεσμο» σε όποιον δεν χρωστά. Μένει μόνο αν την έκλεισε ο ίδιος·
+    // την ανοιχτή που δεν άγγιξε ο συγχρονισμός τη σβήνει (lib/calendar/taxSync.ts).
+    if (o.kind === 'income-instalment' && o.date < t && !isClosedStatus(prev)) continue;
     const ev: EventDraft = { ...taxObligationToEvent(o), status: (prev ?? 'pending') as EventStatus };
     const amount = ENFIA_KINDS.has(o.kind) ? enfiaInstalmentAmount(o, amounts.enfiaTotals) : null;
     if (amount !== null) ev.amount = amount;
