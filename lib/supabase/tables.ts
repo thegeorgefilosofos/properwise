@@ -1551,6 +1551,9 @@ export interface UserPropertiesRow {
   ama: string | null;
   ama_listed_confirmed_at: string | null;
   power_supply_no: string | null;
+  pea_number: string | null;
+  pea_issued: string | null;
+  pea_expiry: string | null;
 }
 
 export interface WithdrawalRequestsRow {

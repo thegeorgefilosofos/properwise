@@ -69,7 +69,7 @@ import PolicyNotice from './PolicyNotice'
 import { athensToday, isoYear, isoMonth } from '@/lib/core/time'
 import { type IncomeRent } from '@/lib/income/propertyIncome'
 import { yearExpensesOf, expenseParts, expensePartsShort, EXPENSE_LABELS, INCOME_LABELS, rentIncome, yieldIncome, propertyStatus, hostingReceipts, hostingParts, hostingPartsShort, HOSTING_LABELS, YIELD_LABELS, YIELD_SHORT_LABELS, YIELD_INLINE_LABELS, yieldCosts, yieldPlatformFees, netPreTaxLabel, PLATFORM_FEE_LABELS, enfiaYear, closedTaxRefs, propertyRentTax, targetMonthlyOf } from '@/lib/facts'
-import { useEnfiaSettings } from './useEnfia'
+import { useEnfiaSettings, useEnfiaInstalmentCounts } from './useEnfia'
 import type { ClientStaysRow } from '@/lib/supabase/tables'
 import { useLoad, type LoadTurn } from '@/app/hooks/useLoad'
 import { readCoOwners } from '@/lib/property/coOwners'
@@ -391,10 +391,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // την Κατάσταση όταν ο πίνακας ΕΝΦΙΑ είχε φετινό ή περσινό και λάθος όνομα όταν
   // το ποσό ήταν του εκκαθαριστικού. Η ετικέτα λέει πλέον από πού βγήκε.
   const [enfiaSettings] = useEnfiaSettings(prop.id, userId);
+  // Το πλήθος δόσεων του εκκαθαριστικού του ΑΦΜ: ίδιο με το Ημερολόγιο (enfiaTotals.ts).
+  const enfiaCounts = useEnfiaInstalmentCounts(prop.id, userId);
   const enfiaNow = enfiaYear(enfiaSettings, year, {
     stored: prop.enfia, value: prop.value, objValue: prop.obj_value == null ? null : Number(prop.obj_value),
     sqm: prop.sqm, yearBuilt: prop.year_built, floor: prop.floor,
     propType: prop.prop_type, ownershipPct: prop.ownership == null ? null : Number(prop.ownership), postalCode: prop.postal_code,
+    instalmentCounts: enfiaCounts,
   });
   const totalExpYear = yExp.total;
   // ── «ΩΣ ΣΗΜΕΡΑ» ΣΗΜΑΙΝΕΙ ΩΣ ΣΗΜΕΡΑ ──────────────────────────────────────
@@ -650,6 +653,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       stored: prop.enfia, value: prop.value, objValue: prop.obj_value == null ? null : Number(prop.obj_value),
       sqm: prop.sqm, yearBuilt: prop.year_built, floor: prop.floor,
       propType: prop.prop_type, ownershipPct: prop.ownership == null ? null : Number(prop.ownership), postalCode: prop.postal_code,
+      instalmentCounts: enfiaCounts,
     } },
     incomeTax: personTax ? { statements: incomeTaxDocs, estimate: estTax > 0 ? { taxYear: year, amount: estTax } : null } : null,
     loans: [...loans],

@@ -14,6 +14,8 @@ import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 import { oneTaxCopy } from '../../../lib/calendar/taxOnce.ts'
 // Οι σειρές αναπτύσσονται με την ΙΔΙΑ λογική που δείχνει το ημερολόγιο.
 import { reminderOccurrences, reminderKey } from '../../../lib/calendar/recurrence.ts'
+// Οι ειδοποιήσεις μιας ημέρας (λήξη ΠΕΑ): μόνο το email της ημέρας τους, χωρίς «Πλήρωσα».
+import { remindsAs, payableReminder } from '../../../lib/calendar/onceOnDay.ts'
 // «ΠΛΗΡΩΣΑ» ΜΕ ΕΝΑ ΠΑΤΗΜΑ (29/10/2026): κάθε γραμμή του email φέρνει σύνδεσμο
 // που σημειώνει τη συγκεκριμένη προθεσμία πληρωμένη. Διακριτικό 256 bit, μόνο
 // το αποτύπωμα στη βάση, μίας χρήσης, με λήξη (lib/reminders/payLink.ts).
@@ -346,7 +348,7 @@ Deno.serve(async (req) => {
       // «Πλήρωσα» μόνο για αποθηκευμένη γραμμή: το διακριτικό δείχνει σε uuid
       // και η εικονική εμφάνιση δεν έχει δικό της (το ημερολόγιο τη σημειώνει
       // πληρωμένη αποσπώντας την από τη σειρά).
-      const payable = (list: typeof upcoming) => list.filter(e => !e._virtual)
+      const payable = (list: typeof upcoming) => list.filter(e => !e._virtual && payableReminder(e))
 
       const checks = [
         { type: '7days', enabled: pref.reminder_7days, date: fmt(in7days) },
@@ -360,7 +362,7 @@ Deno.serve(async (req) => {
 
       for (const check of checks) {
         if (!check.enabled) continue
-        const matching = upcoming.filter(e => e.event_date === check.date)
+        const matching = upcoming.filter(e => e.event_date === check.date && remindsAs(e, check.type))
         if (!matching.length) continue
         // ΤΟ ΜΗΤΡΩΟ ΑΠΕΣΤΑΛΜΕΝΩΝ ΕΙΝΑΙ Ο ΜΟΝΟΣ ΦΡΑΓΜΟΣ ΓΙΑ ΔΙΠΛΑ EMAIL. Αγνοώντας
         // το `error`, μια αποτυχία γινόταν «δεν έχει σταλεί τίποτα» και η ίδια
@@ -379,7 +381,7 @@ Deno.serve(async (req) => {
       }
 
       // Το ίδιο ίσχυε για τα εκπρόθεσμα: ο διακόπτης υπήρχε και κανείς δεν τον διάβαζε.
-      const overdue = pref.reminder_overdue === false ? [] : overdueRows
+      const overdue = pref.reminder_overdue === false ? [] : overdueRows.filter(e => remindsAs(e, 'overdue'))
       if (overdue.length) {
         const { data: sentOD, error: sentODErr } = await supabase.from('notification_log').select('event_id').in('event_id', overdue.map(e=>e.id)).eq('reminder_type','overdue')
         // ΧΩΡΙΣ ΜΗΤΡΩΟ, ΧΩΡΙΣ EMAIL: όπως στα 7/3/1/σήμερα. Χωρίς το `continue`
@@ -389,7 +391,7 @@ Deno.serve(async (req) => {
         const sentODIds = new Set(((sentOD||[]) as Pick<NotificationLogRow,'event_id'>[]).map(l=>l.event_id))
         const toSendOD  = overdue.filter(e => !sentODIds.has(e.id))
         if (toSendOD.length) {
-          const { subject, html } = buildEmail(toSendOD, 'overdue', await payLinks(pref.user_id, toSendOD))
+          const { subject, html } = buildEmail(toSendOD, 'overdue', await payLinks(pref.user_id, toSendOD.filter(payableReminder)))
           const ok = await sendEmail(to, subject, html)
           if (ok) {
             await supabase.from('notification_log').insert(toSendOD.map(e => ({ user_id: pref.user_id, event_id: e.id, reminder_type: 'overdue' })))

@@ -325,6 +325,15 @@ if ! pout=$($PSQL -d posdb -f "$ROOT/scripts/db/pay-token-probe.sql" 2>&1); then
 fi
 probes=$((probes + $(echo "$pout" | grep -c 'probe:' || true)))
 
+# ── ΠΕΑ: ΕΚΔΟΣΗ ΟΧΙ ΜΕΤΑ ΤΗ ΛΗΞΗ ΚΑΙ Η ΜΕΤΑΦΟΡΑ ΑΠΟ ΤΟ ΗΜΕΡΟΛΟΓΙΟ ────────────
+# Ξανατρέχει τη μεταφορά πάνω σε δεδομένα δοκιμής (scripts/db/pea-probe.sql).
+if ! peaout=$(cd "$ROOT" && $PSQL -d posdb -f "$ROOT/scripts/db/pea-probe.sql" 2>&1); then
+  echo "🔴 Οι στήλες ΠΕΑ ή η μεταφορά της λήξης δεν κάνουν ό,τι λένε:"
+  echo "$peaout" | grep -m3 -E 'ERROR|ΣΧΗΜΑ|ΜΕΤΑΦΟΡΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$peaout" | grep -c 'probe:' || true)))
+
 # ── ΟΙ ΣΤΗΛΕΣ ΤΟΥ ΔΙΑΚΟΜΙΣΤΗ ΔΕΝ ΓΡΑΦΟΝΤΑΙ ΑΠΟ ΤΟΝ ΠΕΛΑΤΗ ──────────────────
 # Επιβεβαίωση email υπενθυμίσεων, κύκλος χρέωσης, προθεσμία διαγραφής, θέση
 # στην ομάδα, αίτημα και σύνδεση λογιστή: ο `authenticated` τα στέλνει και η

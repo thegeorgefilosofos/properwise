@@ -22,6 +22,10 @@ const DESC_KEYS = ['περιγραφή', 'αιτιολογία', 'description', 
 const AMOUNT_KEYS = ['ποσό', 'amount', 'αξία']
 const DEBIT_KEYS = ['χρέωση', 'debit', 'χρεωσεις']
 const CREDIT_KEYS = ['πίστωση', 'credit', 'πιστωσεις']
+/** Υπόλοιπο λογαριασμού μετά την κίνηση: δεν είναι ποτέ το ποσό της. */
+const BALANCE_KEYS = ['υπόλοιπο', 'balance']
+/** Σημάδια ημερομηνίας αξίας: προτιμάται η ημερομηνία της συναλλαγής. */
+const VALUE_DATE_KEYS = ['αξία', 'value']
 
 // Ο ΑΝΑΛΥΤΗΣ ΕΦΥΓΕ ΣΤΟ lib/core/csv.ts. Ήταν σωστός και ιδιωτικός εδώ, ενώ δύο
 // ακόμη οθόνες διάβαζαν CSV με δικό τους, λανθασμένο. Τώρα ένας.
@@ -50,10 +54,67 @@ export function parseDate(s: string): string {
   return coreParseDate(String(s ?? '').trim().split(/[T ]/)[0]) ?? ''
 }
 
-function findCol(headers: string[], keys: string[]): number {
-  const low = headers.map(h => h.toLowerCase())
-  for (let i = 0; i < low.length; i++) if (keys.some(k => low[i].includes(k))) return i
-  return -1
+// ── Η «ΗΜΕΡΟΜΗΝΙΑ ΑΞΙΑΣ» ΓΙΝΟΤΑΝ ΣΤΗΛΗ ΠΟΣΟΥ ──────────────────────────────
+// Η αναζήτηση στήλης ήταν υποσυμβολοσειρά με πρώτη νίκη την πιο αριστερή
+// στήλη. Το «αξία» είναι κλειδί ποσού, οπότε η «Ημερομηνία Αξίας» ή «Ημ/νία
+// Αξίας», που τη δίνουν οι περισσότερες ελληνικές τράπεζες, διαβαζόταν ως
+// ποσό: καμία γραμμή δεν είχε αριθμό εκεί και η εισαγωγή έβγαζε μηδέν
+// κινήσεις. Το ίδιο έπαθε η περιγραφή: το «συναλλαγή» έπιανε την «Ημ/νία
+// Συναλλαγής». Τώρα:
+//   1. οι επικεφαλίδες συγκρίνονται χωρίς τόνους και πεζά,
+//   2. ακριβές ταίριασμα νικά ταίριασμα λέξης και αυτό νικά υποσυμβολοσειρά,
+//   3. κάθε ρόλος διαλέγει μόνο ανάμεσα σε στήλες που δεν έχει πάρει άλλος,
+//   4. στήλη που μοιάζει με ημερομηνία ή υπόλοιπο δεν γίνεται ποτέ ποσό.
+
+/** Πεζά, χωρίς τόνους και με σίγμα αντί για τελικό σίγμα. */
+function norm(s: string): string {
+  return String(s ?? '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/ς/g, 'σ').trim()
+}
+
+/** Πόσο καλά ταιριάζει η επικεφαλίδα: 3 ακριβώς, 2 λέξη, 1 υποσυμβολοσειρά, 0 καθόλου. */
+function matchScore(header: string, keys: string[]): number {
+  const h = norm(header)
+  if (!h) return 0
+  const words = h.split(/[^\p{L}\p{N}/]+/u).filter(Boolean)
+  let best = 0
+  for (const raw of keys) {
+    const k = norm(raw)
+    if (h === k) return 3
+    if (words.includes(k)) best = Math.max(best, 2)
+    else if (h.includes(k)) best = Math.max(best, 1)
+  }
+  return best
+}
+
+const matches = (header: string, keys: string[]) => matchScore(header, keys) > 0
+
+/** Η στήλη που ταιριάζει καλύτερα, εκτός από όσες αποκλείονται· στην ισοπαλία η αριστερότερη. */
+function findCol(headers: string[], keys: string[], skip: (i: number) => boolean = () => false): number {
+  let best = -1, bestScore = 0
+  for (let i = 0; i < headers.length; i++) {
+    if (skip(i)) continue
+    const sc = matchScore(headers[i], keys)
+    if (sc > bestScore) { best = i; bestScore = sc }
+  }
+  return best
+}
+
+interface Columns { di: number; desc: number; ai: number; debit: number; credit: number }
+
+function findColumns(headers: string[]): Columns {
+  const isDate = (i: number) => matches(headers[i], DATE_KEYS)
+  // Ημερομηνία συναλλαγής πρώτα· η ημερομηνία αξίας μόνο αν δεν υπάρχει άλλη.
+  let di = findCol(headers, DATE_KEYS, i => matches(headers[i], VALUE_DATE_KEYS))
+  if (di < 0) di = findCol(headers, DATE_KEYS)
+  // Ούτε η περιγραφή παίρνει στήλη χρημάτων: το «Ποσό Συναλλαγής» είναι ποσό.
+  const isMoney = (i: number) => [AMOUNT_KEYS, DEBIT_KEYS, CREDIT_KEYS, BALANCE_KEYS].some(k => matches(headers[i], k))
+  const desc = findCol(headers, DESC_KEYS, i => isDate(i) || isMoney(i))
+  const taken = (i: number) => isDate(i) || i === desc
+  const debit = findCol(headers, DEBIT_KEYS, taken)
+  const credit = findCol(headers, CREDIT_KEYS, taken)
+  const ai = findCol(headers, AMOUNT_KEYS, i =>
+    taken(i) || i === debit || i === credit || [DEBIT_KEYS, CREDIT_KEYS, BALANCE_KEYS].some(k => matches(headers[i], k)))
+  return { di, desc, ai, debit, credit }
 }
 
 // ── ΤΟ ΑΠΟΤΥΠΩΜΑ ΤΗΣ ΤΡΑΠΕΖΑΣ ΕΣΒΗΝΕ ΑΛΗΘΙΝΕΣ ΚΙΝΗΣΕΙΣ ─────────────────────
@@ -98,6 +159,49 @@ export function legacyKeyOf(t: { date: string; description: string; amount: numb
   return `${t.date}|${t.amount}|${t.description}`.slice(0, 200)
 }
 
+// ── Ο ΕΛΕΓΧΟΣ ΔΙΠΛΩΝ ΕΒΛΕΠΕ ΜΟΝΟ ΤΙΣ ΠΡΩΤΕΣ ΧΙΛΙΕΣ ΚΙΝΗΣΕΙΣ ──────────────────
+// Η οθόνη διάβαζε ΟΛΑ τα αποτυπώματα του χρήστη με ένα ερώτημα χωρίς σελίδες.
+// Το PostgREST κόβει την απάντηση στις 1.000 γραμμές, οπότε από τη χιλιοστή
+// πρώτη κίνηση και μετά τα παλιά αποτυπώματα δεν έφταναν ποτέ και οι παλιές
+// κινήσεις ξαναγύριζαν για έλεγχο ως καινούργιες. Τώρα ρωτάμε μόνο για τα
+// αποτυπώματα του αρχείου (νέο και παλιό κλειδί κάθε γραμμής), σε ομάδες.
+// Η ομάδα κλείνει στα 200 κλειδιά ή όταν το κωδικοποιημένο μήκος περάσει το
+// όριο: τα παλιά κλειδιά φτάνουν τους 200 χαρακτήρες και σε ελληνικά το URL
+// τετραπλασιάζεται και πάνω, οπότε 200 τέτοια δεν χωρούν σε ένα αίτημα.
+// Η αναζήτηση (I/O) δίνεται από τον καλούντα: εδώ μένει καθαρή λογική.
+
+const KEY_CHUNK = 200
+const KEY_CHUNK_CHARS = 6000
+
+/** Τα αποτυπώματα προς έλεγχο σε ομάδες που χωρούν σε ένα αίτημα. */
+export function dedupKeyChunks(txns: BankTxn[], maxKeys = KEY_CHUNK, maxChars = KEY_CHUNK_CHARS): string[][] {
+  const keys = [...new Set(txns.flatMap(t => [t.key, legacyKeyOf(t)]))]
+  const out: string[][] = []
+  let cur: string[] = [], len = 0
+  for (const k of keys) {
+    // +3: το κόμμα ανάμεσα και τα εισαγωγικά γύρω από τιμές με κόμμα ή παρένθεση.
+    const kl = encodeURIComponent(k).length + 3
+    if (cur.length && (cur.length >= maxKeys || len + kl > maxChars)) { out.push(cur); cur = []; len = 0 }
+    cur.push(k); len += kl
+  }
+  if (cur.length) out.push(cur)
+  return out
+}
+
+/** Μία ομάδα ερωτήματος: ποια από αυτά τα αποτυπώματα υπάρχουν ήδη. */
+export type DedupLookup = (keys: string[]) => PromiseLike<{ data: { dedup_hash: string }[] | null; error: unknown }>
+
+/** Ποια αποτυπώματα του αρχείου υπάρχουν ήδη. Στο πρώτο σφάλμα σταματά. */
+export async function findKnownKeys(txns: BankTxn[], lookup: DedupLookup): Promise<{ seen: Set<string>; error: unknown }> {
+  const seen = new Set<string>()
+  for (const chunk of dedupKeyChunks(txns)) {
+    const { data, error } = await lookup(chunk)
+    if (error) return { seen, error }
+    for (const r of data || []) seen.add(r.dedup_hash)
+  }
+  return { seen, error: null }
+}
+
 // ── ΤΟ ΠΟΣΟ ΠΟΥ ΔΕΝ ΔΙΑΒΑΣΤΗΚΕ ΕΡΙΧΝΕ ΤΗ ΓΡΑΜΜΗ ΣΙΩΠΗΛΑ ────────────────────
 // Το `continue` της γραμμής 82 πετούσε κάθε γραμμή χωρίς αναγνωρίσιμο ποσό
 // (κενό κελί, «ΥΠΟΛΟΙΠΟ», μορφή που δεν αναγνωρίζεται) χωρίς κανέναν μετρητή,
@@ -117,11 +221,7 @@ export function readBankCsv(text: string): BankCsvRead {
   if (lines.length < 2) return { txns: [], unreadable: 0 }
   const delim = detectDelimiter(lines[0])
   const headers = splitCsvLine(lines[0], delim)
-  const di = findCol(headers, DATE_KEYS)
-  const desc = findCol(headers, DESC_KEYS)
-  const ai = findCol(headers, AMOUNT_KEYS)
-  const debit = findCol(headers, DEBIT_KEYS)
-  const credit = findCol(headers, CREDIT_KEYS)
+  const { di, desc, ai, debit, credit } = findColumns(headers)
   const out: BankTxn[] = []
   let unreadable = 0
   // Πόσες φορές έχει ξαναφανεί η ίδια ακριβώς γραμμή μέσα στο ίδιο αρχείο.

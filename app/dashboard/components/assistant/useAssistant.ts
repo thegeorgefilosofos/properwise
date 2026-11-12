@@ -33,7 +33,7 @@ import {
   hostingReceipts, HOSTING_LABELS, enfiaYear,
   isClosedStatus, closedTaxRefs, nextEnfiaDue, nextTaxObligations, taxProfileOfStatus, dueText, daysFrom, isOverdue,
 } from '@/lib/facts'
-import { useEnfiaSettings } from '../useEnfia'
+import { useEnfiaSettings, useEnfiaInstalmentCounts } from '../useEnfia'
 import { computeInsights, type Insight } from '@/lib/insights/engine'
 import {
   RENTAL_TAX_SUMMARY_2026, CLIMATE_LEVY_SUMMARY_2025, MUNICIPAL_ACCOM_SUMMARY,
@@ -331,6 +331,8 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
   // Χωρίς ακίνητο το κλειδί είναι κενό: το useBillsSettings δεν διαβάζει και
   // δεν γράφει τίποτα, μένουν οι προεπιλογές.
   const [enfiaSettings] = useEnfiaSettings(propertyId ?? '', userId);
+  // Το πλήθος δόσεων του εκκαθαριστικού του ΑΦΜ: ίδιο με το Ημερολόγιο (enfiaTotals.ts).
+  const enfiaCounts = useEnfiaInstalmentCounts(propertyId ?? '', userId);
 
   // Φόρτωση δεδομένων ακινήτου (μία φορά όταν ανοίξει), για συγκεκριμένες απαντήσεις.
   const loadContext = useCallback(async () => {
@@ -472,6 +474,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       stored: propContext.enfia, value: propContext.value, objValue: propContext.objValue, sqm: propContext.sqm,
       yearBuilt: propContext.yearBuilt, floor: propContext.floor, propType: propContext.propType,
       ownershipPct: propContext.ownership ?? null, postalCode: propContext.postalCode,
+      instalmentCounts: enfiaCounts,
     });
     // Η ΕΠΟΜΕΝΗ ΔΟΣΗ ΑΠΟ ΤΟ ΦΟΡΟΛΟΓΙΚΟ ΗΜΕΡΟΛΟΓΙΟ, όχι από το έτος του ρολογιού:
     // τον Ιανουάριο είναι η 11η του περσινού εκκαθαριστικού (lib/facts/deadlines).
@@ -483,6 +486,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       stored: propContext.enfia, value: propContext.value, objValue: propContext.objValue, sqm: propContext.sqm,
       yearBuilt: propContext.yearBuilt, floor: propContext.floor, propType: propContext.propType,
       ownershipPct: propContext.ownership ?? null, postalCode: propContext.postalCode,
+      instalmentCounts: enfiaCounts,
     }) : ef;
     const dueAmount = due ? dueEf.instalments.find(i => i.no === due.no)?.amount ?? 0 : 0;
     const enfiaLine = ef.annual > 0
@@ -743,7 +747,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       });
       setTechStr(`Σύνολο επαφών: ${techRoster.length}\n${tLines.join('\n')}`);
     } else setTechStr('');
-  }, [propertyId, userId, propContext, supabase, allProperties.length, enfiaSettings]);
+  }, [propertyId, userId, propContext, supabase, allProperties.length, enfiaSettings, enfiaCounts]);
 
   // Τα συμφραζόμενα φορτώνονται ΜΙΑ φορά, όταν ανοίξει το πάνελ. Μέσα από το
   // κοινό `useLoad`, γιατί είναι ασύγχρονη φόρτωση όπως κάθε άλλη.
