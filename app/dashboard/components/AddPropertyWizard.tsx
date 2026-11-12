@@ -22,6 +22,9 @@ import { fillOnlyEmpty, firstFilled } from '@/lib/core/prefill';
 import { fieldPlacement, PROPERTY_FIELDS, OBJ_VALUE_WHOLE, type FieldContext, type Placement } from '@/lib/property/fields';
 import { failed } from '@/lib/core/dbError';
 import { PEA_CLASSES } from '@/lib/property/pea';
+import { cleanPeaNumber, isoDay, peaReminderDrafts, PEA_NUMBER_MAX, PEA_REMINDER_DAYS } from '@/lib/property/peaExpiry';
+import { syncPeaReminders } from '@/lib/calendar/peaSync';
+import { athensToday } from '@/lib/core/time';
 import type { EnfiaWizardInitial } from '@/lib/tools/enfiaCarry';
 import { draftKey, readDraft, writeDraft, clearDraft, sameDraft, restoreDraft } from '@/lib/ui/dismiss';
 import { confirmDiscard } from '@/components/ConfirmDialog';
@@ -113,6 +116,7 @@ interface WizardForm {
   value: string; objValue: string; enfia: string; purchasePrice: string; purchaseDate: string;
   rent: string; ownership: string; coOwners: string[];
   peaClass: string; heating: string; parking: string; storageSqm: string; powerSupply: string; bedrooms: string;
+  peaNumber: string; peaIssued: string; peaExpiry: string;
   settings: PropertySettings;
 }
 const WIZARD_DRAFT = 'property_wizard';
@@ -256,6 +260,7 @@ interface ExistingProperty {
   heating?: string | null; purchase_date?: string | null; parking_spaces?: number | string | null;
   storage_sqm?: number | string | null; bedrooms?: number | string | null; rental_mode?: string | null;
   co_owners?: unknown; ama?: string | null; power_supply_no?: string | null;
+  pea_number?: string | null; pea_issued?: string | null; pea_expiry?: string | null;
 }
 const s = (v: number | string | null | undefined) => (v == null ? '' : String(v));
 
@@ -416,6 +421,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
       peaClass: existing?.pea_class || '', heating: normalizeHeating(existing?.heating),
       parking: s(existing?.parking_spaces), storageSqm: s(existing?.storage_sqm) || seed?.storageSqm || '',
       powerSupply: existing?.power_supply_no || '', bedrooms: s(existing?.bedrooms),
+      peaNumber: existing?.pea_number || '', peaIssued: isoDay(existing?.pea_issued), peaExpiry: isoDay(existing?.pea_expiry),
       settings: INIT_SETTINGS,
     };
   });
@@ -494,6 +500,12 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   };
   const setCoOwnerAt = (i: number, val: string) => setCoOwners(prev => prev.map((v, idx) => idx === i ? val : v));
   const [peaClass, setPeaClass] = useState(start.peaClass);
+  // Τα στοιχεία του πιστοποιητικού: ο αριθμός μπαίνει στη δήλωση μίσθωσης και
+  // από τη λήξη βγαίνουν οι υπενθυμίσεις (lib/property/peaExpiry.ts).
+  const [peaNumber, setPeaNumber] = useState(start.peaNumber);
+  const [peaIssued, setPeaIssued] = useState(start.peaIssued);
+  const [peaExpiry, setPeaExpiry] = useState(start.peaExpiry);
+  const peaDatesBad = !!peaIssued && !!peaExpiry && peaIssued > peaExpiry;
   const [heating, setHeating] = useState(start.heating);
   const [parking, setParking] = useState(start.parking);
   const [storageSqm, setStorageSqm] = useState(start.storageSqm);
@@ -635,6 +647,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   const save = async () => {
     if (!name.trim()) { setStep(1); return; }
     if (powerCheck.error) { setStep(1); setError(`Αριθμός παροχής ρεύματος: ${powerCheck.error}`); return; }
+    if (peaDatesBad && !isLandLike) { setStep(1); setError('ΠΕΑ: η λήξη δεν μπορεί να είναι πριν από την έκδοση.'); return; }
     setSaving(true); setError('');
 
     // Συνιδιοκτήτες: τα ονόματα του οδηγού ξαναδένονται με ΑΦΜ, ποσοστό και
@@ -664,6 +677,9 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
       enfia: num(enfia),
       purchase_date: purchaseDate || null,
       pea_class: isLandLike ? null : (peaClass || null),
+      pea_number: isLandLike ? null : cleanPeaNumber(peaNumber),
+      pea_issued: isLandLike ? null : (isoDay(peaIssued) || null),
+      pea_expiry: isLandLike ? null : (isoDay(peaExpiry) || null),
       heating: isLandLike ? null : (heating || null),
       parking_spaces: isLandLike ? null : (parking ? parseInt(parking) : null),
       storage_sqm: isLandLike ? null : num(storageSqm),
@@ -704,6 +720,16 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     // πρωινού τις γράφει.
     if (propertyId) void syncOwnerTaxDeadlines(supabase, userId);
 
+    // ── ΟΙ ΥΠΕΝΘΥΜΙΣΕΙΣ ΤΟΥ ΠΕΑ ΑΚΟΛΟΥΘΟΥΝ ΤΗ ΛΗΞΗ ─────────────────────────────
+    // Μόνο όταν η λήξη άλλαξε: η αποθήκευση για άλλο λόγο δεν ξαναγράφει
+    // υπενθυμίσεις που ο χρήστης μπορεί να έχει ήδη σημειώσει. Η κενή λήξη τις
+    // σβήνει. Με αναμονή, γιατί μια υπενθύμιση που δεν γράφτηκε δεν φαίνεται.
+    const nextExpiry = payload.pea_expiry ?? '';
+    if (propertyId && nextExpiry !== isoDay(existing?.pea_expiry)) {
+      const { error: pErr } = await syncPeaReminders(supabase, { propertyId, userId }, peaReminderDrafts(nextExpiry, athensToday()));
+      if (pErr) { setSaving(false); setError(failed('Το ακίνητο αποθηκεύτηκε, αλλά οι υπενθυμίσεις λήξης του ΠΕΑ δεν μπήκαν στο ημερολόγιο', pErr)); return; }
+    }
+
     // ── ΤΟ ΣΚΑΛΙ ΤΗΣ ΑΞΙΑΣ ─────────────────────────────────────────────────
     // Το πρώτο ακίνητο είναι η στιγμή που η εφαρμογή αρχίζει να χρησιμεύει, το
     // δεύτερο είναι το πιο δυνατό σημάδι ότι κάποιος έμεινε. Τα δύο μετρώνται
@@ -743,7 +769,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   const form: WizardForm = {
     propType, statusKey, ama, name, address, postalCode, atak, sqm, floor, yearBuilt,
     value, objValue, enfia, purchasePrice, purchaseDate, rent, ownership, coOwners,
-    peaClass, heating, parking, storageSqm, powerSupply, bedrooms, settings,
+    peaClass, heating, parking, storageSqm, powerSupply, bedrooms, peaNumber, peaIssued, peaExpiry, settings,
   };
   const dirty = !sameDraft(form, pristine);
   const formJson = JSON.stringify(form);
@@ -1080,6 +1106,16 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={sqm} onChange={e => setSqm(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, sqmLabel),
             row('prop.pea', 'auto',
               <CustomSelect ariaLabel="Ενεργειακή κλάση (ΠΕΑ)" value={peaClass} onChange={setPeaClass} placeholder="Επίλεξε" options={PEA_CLASSES.map(c => ({ value: c, label: c }))} />, 'Ενεργειακή κλάση (ΠΕΑ)'),
+            row('prop.pea_cert', 'full', <>
+              <div style={grid3}>
+                <Field label="Αριθμός ΠΕΑ"><input style={inputStyle} value={peaNumber} maxLength={PEA_NUMBER_MAX} onChange={e => setPeaNumber(e.target.value)} onFocus={onFocus} onBlur={onBlur} /></Field>
+                <Field label="Έκδοση ΠΕΑ"><DatePicker value={peaIssued} onChange={v => { setPeaIssued(v); setError(''); }} /></Field>
+                <Field label="Λήξη ΠΕΑ"><DatePicker value={peaExpiry} onChange={v => { setPeaExpiry(v); setError(''); }} /></Field>
+              </div>
+              <p style={{ ...TT.caption, marginTop: 6, color: peaDatesBad ? 'var(--negative)' : undefined }}>
+                {peaDatesBad ? 'Η λήξη δεν μπορεί να είναι πριν από την έκδοση.' : `Όπως τυπώνονται στο πιστοποιητικό. Από τη λήξη μπαίνουν υπενθυμίσεις ${PEA_REMINDER_DAYS.join(' και ')} ημέρες πριν και την ημέρα της λήξης.`}
+              </p>
+            </>),
             row('prop.bedrooms', 'auto',
               <input style={numInputStyle} type="number" min={0} value={bedrooms} onChange={e => setBedrooms(e.target.value)} onFocus={onFocus} onBlur={onBlur} />),
             row('prop.postal_code', 'auto',
@@ -1210,6 +1246,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               isLandLike ? null : ['Όροφος', floor.trim() || ABSENT],
               isLandLike ? null : [labelOf('prop.year_built'), yearBuilt.trim() || ABSENT, true],
               isLandLike ? null : (peaClass ? [labelOf('prop.pea'), peaClass] : null),
+              isLandLike ? null : (isoDay(peaExpiry) ? ['Λήξη ΠΕΑ', fd(isoDay(peaExpiry))] : null),
               isLandLike ? null : (heating ? ['Θέρμανση', heatingLabel(heating)] : null),
               isLandLike ? null : (parking.trim() ? [labelOf('prop.parking'), parking.trim(), true] : null),
               isLandLike ? null : (num(storageSqm) != null ? ['Αποθήκη', `${fn(num(storageSqm)!)} τ.μ.`, true] : null),

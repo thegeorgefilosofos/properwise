@@ -28,6 +28,7 @@ import { syncInstalments } from './rentInstalments';
 import type { Tenant } from './TabTenantTypes';
 import * as expenses from '@/lib/data/expenses';
 import * as calendar from '@/lib/data/calendar';
+import { syncPeaReminders } from '@/lib/calendar/peaSync';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
 import {
@@ -1060,7 +1061,21 @@ export async function commitScannedDoc(input: CommitInput): Promise<CommitResult
 
     // ── 3) Ημερολόγιο → calendar_events. Ενα παλαιότερο ΠΕΑ δεν φέρνει δεύτερη
     // υπενθύμιση λήξης δίπλα στη λήξη του ισχύοντος, ούτε το ίδιο ΠΕΑ δεύτερη φορά.
-    if (plan.calendar && !reconciled) {
+    // Οι υπενθυμίσεις ΠΕΑ ΑΝΤΙΚΑΘΙΣΤΟΥΝ τις προηγούμενες (lib/calendar/peaSync.ts):
+    // η ίδια λήξη ξαναγράφεται ίδια, οπότε εκεί κόβει μόνο το παλαιότερο χαρτί.
+    if (plan.calendar && !reconciled && plan.calendarSync === 'pea') {
+      if (eventUnknown) fail(CALENDAR);
+      else if (!eventOlder) {
+        // Και η λήξη του ακινήτου (`replaceIfNewer`): νεότερη εκεί σημαίνει παλιό χαρτί.
+        const g = plan.replaceIfNewer;
+        const cur = g ? await properties.oneWithError<Record<string, unknown>>(supabase, propertyId, g.column, userId) : null;
+        if (cur?.error) fail(CALENDAR);
+        else if (!(g && isOlder(g.value, cur?.row?.[g.column]))) {
+          const { error: cErr } = await syncPeaReminders(supabase, { propertyId, userId }, plan.calendar);
+          if (cErr) fail(CALENDAR); else add(CALENDAR);
+        }
+      }
+    } else if (plan.calendar && !reconciled) {
       if (eventUnknown) fail(CALENDAR);
       else if (!eventOlder && !eventSame) {
         const { error: cErr } = await calendar.insert(supabase,

@@ -135,6 +135,12 @@ const json = (body: unknown, status = 200) =>
     }
     return out(done);
   }
+  // Το «αντικατάστησε ό,τι έγραψε η πηγή» (replaceSource) σβήνει τα παλιά.
+  if (method === 'DELETE') {
+    const gone = table(t).filter(r => matches(r, filters));
+    db[t] = table(t).filter(r => !gone.includes(r));
+    return out(gone);
+  }
   return json({ message: 'method' }, 405);
 }) as typeof fetch;
 
@@ -365,9 +371,17 @@ const commit = (doc: Partial<ScannedDoc>, extra: Partial<CommitInput> = {}) =>
     ok(`PR402: η κατηγορία μένει B (πήρα ${table('user_properties')[0].pea_class})`, table('user_properties')[0].pea_class === 'B');
     ok('PR402: καμία δεύτερη υπενθύμιση λήξης για το παλιό', table('calendar_events').length === 1);
     await commit({ doc_type: 'government', subtype: 'pea', title: 'ΠΕΑ', pea_class: 'Α', expiry_date: '2037-02-01' });
-    ok('PR402: νεότερο ΠΕΑ αντικαθιστά', table('user_properties')[0].pea_class === 'A' && table('calendar_events').length === 2);
+    // Το νεότερο γράφει τη λήξη του και τις υπενθυμίσεις 90 και 30 ημέρες πριν
+    // (lib/property/peaExpiry.ts), με δικές τους πηγές. Το χειρόγραφο γεγονός μένει.
+    const peaRows = () => table('calendar_events').filter(e => String(e.source ?? '').startsWith('pea:expiry:'));
+    ok(`PR402: νεότερο ΠΕΑ αντικαθιστά (πήρα ${table('user_properties')[0].pea_class}, ${table('calendar_events').length} γεγονότα)`,
+      table('user_properties')[0].pea_class === 'A' && table('user_properties')[0].pea_expiry === '2037-02-01' && peaRows().length === 3 && table('calendar_events').length === 4);
+    ok('PR402: λήξη, 90 και 30 ημέρες πριν', JSON.stringify(peaRows().map(e => e.event_date).sort()) === JSON.stringify(['2036-11-03', '2037-01-02', '2037-02-01']));
     await commit({ doc_type: 'government', subtype: 'pea', title: 'ΠΕΑ', pea_class: 'Α', expiry_date: '2037-02-01' });
-    ok('PR402: το ίδιο ΠΕΑ δεύτερη φορά: καμία δεύτερη υπενθύμιση', table('calendar_events').length === 2 && table('user_properties')[0].pea_class === 'A');
+    ok(`PR402: το ίδιο ΠΕΑ δεύτερη φορά: καμία δεύτερη υπενθύμιση (${table('calendar_events').length})`, peaRows().length === 3 && table('calendar_events').length === 4 && table('user_properties')[0].pea_class === 'A');
+    // Παλαιότερο ΠΕΑ μετά το νεότερο: η στήλη της λήξης το κρίνει παλιό.
+    await commit({ doc_type: 'government', subtype: 'pea', title: 'ΠΕΑ', pea_class: 'Γ', expiry_date: '2036-12-01' });
+    ok('PR402: παλαιότερο ΠΕΑ δεν αγγίζει λήξη ούτε υπενθυμίσεις', table('user_properties')[0].pea_expiry === '2037-02-01' && peaRows().length === 3);
   }
 
   // ══ APP-5 · Ό,τι δεν διαβάζεται σταματά πριν φύγει ═════════════════════

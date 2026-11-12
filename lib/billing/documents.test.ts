@@ -794,10 +794,25 @@ check('Ε2: παραπέμπει στη Λογιστική', (docForm(asKind('e2
 }
 {
   const p = planDocSave(asKind('pea', { pea_class: 'Β', issue_date: '2026-01-10', expiry_date: '2036-01-10' }), TODAY);
-  eq('ΠΕΑ: η κατηγορία αντικαθιστά', p.propertyReplace, { pea_class: 'B' });
+  eq('ΠΕΑ: κατηγορία, έκδοση και λήξη αντικαθιστούν', p.propertyReplace, { pea_class: 'B', pea_issued: '2026-01-10', pea_expiry: '2036-01-10' });
+  eq('ΠΕΑ: φρουρός και από τη στήλη της λήξης', p.replaceIfNewer, { column: 'pea_expiry', value: '2036-01-10' });
   eq('ΠΕΑ: λήξη στο ημερολόγιο', [p.calendar![0].title, p.calendar![0].category], ['Λήξη ΠΕΑ', 'contract']);
+  eq('ΠΕΑ: λήξη και υπενθυμίσεις 90 και 30 ημέρες πριν', p.calendar!.map(e => e.event_date), ['2036-01-10', '2035-10-12', '2035-12-11']);
+  eq('ΠΕΑ: οι υπενθυμίσεις αντικαθιστούν τις προηγούμενες', p.calendarSync, 'pea');
   eq('ΠΕΑ: ράφι', p.archive!.category, 'Τεχνική Έκθεση');
   check('ΠΕΑ χωρίς λήξη: καμία λήξη', planDocSave(asKind('pea', { pea_class: 'A' }), TODAY).calendar === undefined);
+  // Ο αριθμός (ν. 4122/2013, άρθρο 12 παρ. 8) γράφεται πια στο ακίνητο, όχι μόνο στη σημείωση.
+  const num = planDocSave(asKind('pea', { pea_class: 'Γ', pea_number: '  123456/2026 ', expiry_date: '2036-01-10' }), TODAY);
+  eq('ΠΕΑ: ο αριθμός στο ακίνητο', num.propertyReplace?.pea_number, '123456/2026');
+  // Ληγμένο: συμπληρώνει μόνο ό,τι λείπει και καμία υπενθύμιση στο παρελθόν.
+  const old = planDocSave(asKind('pea', { pea_class: 'Γ', pea_number: '1/2014', issue_date: '2014-01-01', expiry_date: '2024-01-01' }), TODAY);
+  eq('ΠΕΑ ληγμένο: συμπλήρωση με τα στοιχεία του', old.property, { pea_class: 'Γ', pea_number: '1/2014', pea_issued: '2014-01-01', pea_expiry: '2024-01-01' });
+  check('ΠΕΑ ληγμένο: καμία υπενθύμιση', old.calendar === undefined && old.calendarSync === undefined);
+  // Έκδοση μετά τη λήξη είναι λάθος ανάγνωσης: δεν γράφεται.
+  const bad = planDocSave(asKind('pea', { issue_date: '2037-01-01', expiry_date: '2036-01-10' }), TODAY);
+  eq('ΠΕΑ: έκδοση μετά τη λήξη δεν γράφεται', bad.propertyReplace, { pea_expiry: '2036-01-10' });
+  // Μόνο αριθμός, χωρίς κατηγορία και λήξη: συμπληρώνει μόνο αν λείπει.
+  eq('ΠΕΑ μόνο με αριθμό: μόνο αν λείπει', planDocSave(asKind('pea', { pea_number: '77/2025' }), TODAY).property, { pea_number: '77/2025' });
 }
 {
   eq('ΑΜΑ: στο ακίνητο, μόνο αν λείπει', planDocSave(asKind('ama', { ama: '00001234567' }), TODAY).property, { ama: '00001234567' });
