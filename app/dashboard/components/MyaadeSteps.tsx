@@ -28,6 +28,7 @@ import { atakDigits, isAtak, ATAK_DIGITS } from '@/lib/property/atak';
 import { plural } from '@/lib/core/greek';
 import { isNew, toNumber, BULK_MAX, type Draft } from '@/lib/myaade/review';
 import { E9_RIGHTS } from '@/lib/myaade/labels';
+import { MYAADE_ACCEPT } from '@/lib/myaade/accept';
 import type { KnownProperty } from '@/lib/myaade/match';
 
 // Οι κανόνες που θέλουν media query. Ένα σημείο, με πρόθεμα `mya-`.
@@ -125,8 +126,8 @@ export function MyaadeSteps() {
   );
 }
 
-/** Τι δέχεται το πλακίδιο: το PDF του myAADE ή φωτογραφία του (scanDoc.ts: PHOTO_LIST_TYPES). */
-export const MYAADE_ACCEPT = 'application/pdf,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif';
+/** Τι δέχεται το πλακίδιο: το PDF του myAADE ή φωτογραφία του. Ζει στο lib/myaade/accept.ts. */
+export { MYAADE_ACCEPT };
 /** Πώς διαβάζεται κάθε αρχείο. Το ίδιο λέει και η Πολιτική απορρήτου. */
 export const MYAADE_PRIVACY = 'Το PDF διαβάζεται στον περιηγητή σου και δεν ανεβαίνει πουθενά. Η φωτογραφία διαβάζεται με AI στον διακομιστή και δεν αποθηκεύεται. Κρατάμε μόνο ό,τι επιβεβαιώσεις: τα ακίνητα και, από την πράξη, το ποσό του ΕΝΦΙΑ. Το ΑΦΜ του εγγράφου δεν αποθηκεύεται.';
 
