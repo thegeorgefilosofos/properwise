@@ -16,6 +16,8 @@ import { oneTaxCopy } from './taxOnce';
 import { deadlineItems } from './deadlines';
 import { taxEventsToWrite } from '@/lib/facts/deadlines';
 import { ENFIA_FEWER_HINT } from '@/lib/tax/greekTaxCalendar';
+import { applyKind, normalizeScannedDoc, planDocSave, amountFromInput, kindOf, type ScannedDoc } from '@/lib/billing/documents';
+import { archiveInputFrom, archivePayload } from '@/app/dashboard/components/scanDoc';
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean, extra?: unknown) => {
@@ -315,6 +317,24 @@ const STR_NOV = 'tax:str-registry-2026-11';
       ok('εισόδημα: κενό ποσό δεν είναι μηδέν, οκτώ δόσεις', inc2026(blank.tables.calendar_events).length === 8);
       const other = await run([itx('p1', 0, 2024)]);
       ok('εισόδημα: μηδέν άλλου έτους δεν αγγίζει τη δήλωση 2026', inc2026(other.tables.calendar_events).length === 8);
+      // Η ΠΡΑΓΜΑΤΙΚΗ ΔΙΑΔΡΟΜΗ ΤΗΣ ΣΑΡΩΣΗΣ, όχι γραμμή γραμμένη με το χέρι: ο
+      // χρήστης γράφει «0» στη φόρμα, το σχέδιο αποθήκευσης και η γραμμή του
+      // Αρχείου βγαίνουν από τις ίδιες συναρτήσεις με την εφαρμογή.
+      const scanned = (typed: string) => {
+        const base = applyKind({ doc_type: 'tax', tax_year: 2025, due_date: '2026-07-31' } as ScannedDoc, 'income_tax');
+        const doc = normalizeScannedDoc({ ...base, amount: amountFromInput(typed, kindOf(base)) });
+        const plan = planDocSave(doc, MARCH, { incomeSeries: true });
+        const file = { name: 'ekkatharistiko.pdf', type: 'application/pdf', size: 1 } as File;
+        return { id: `scan-${typed}`, ...archivePayload(archiveInputFrom(plan.archive!, file, 'p1', OWNER, plan.archive!.title), 'p/x.pdf') };
+      };
+      const scanZero = await run([scanned('0')]);
+      ok('σάρωση με «0»: καμία δόση της δήλωσης 2026', inc2026(scanZero.tables.calendar_events).length === 0, inc2026(scanZero.tables.calendar_events).length);
+      const scanRefund = await run([scanned('-75')]);
+      ok('σάρωση με επιστροφή: καμία δόση', inc2026(scanRefund.tables.calendar_events).length === 0);
+      const scanOwes = await run([scanned('640')]);
+      ok('σάρωση με φόρο: οκτώ δόσεις', inc2026(scanOwes.tables.calendar_events).length === 8);
+      ok('σάρωση σε νοικιασμένο: καμία δεύτερη «1η δόση» από τη σάρωση', !scanOwes.tables.calendar_events.some(r => String(r.title).includes('1η δόση') && !String(r.source).startsWith('tax:')));
+
       const mixed = await run([itx('p1', 0), itx('p2', 900)]);
       ok('εισόδημα: μηδέν και φόρος στον ίδιο ΑΦΜ, μένουν οι δόσεις', inc2026(mixed.tables.calendar_events).length === 8);
       // Γραμμένες ήδη, μετά σαρώνεται μηδέν: φεύγουν οι ανέγγιχτες, μένει η πληρωμένη.

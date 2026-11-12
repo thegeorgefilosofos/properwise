@@ -1,5 +1,5 @@
 // Τεστ για την επέκταση επαναλαμβανόμενων (recurrence.ts). Τρέξε: npx tsx lib/calendar/recurrence.test.ts
-import { nextOccurrence, occurrenceAt, expandRecurring, reminderOccurrences, reminderKey, reminderAllowed, isIncomeInstalmentSource, INCOME_INSTALMENT_SOURCE_PREFIX, INCOME_INSTALMENT_REMINDER } from './recurrence'
+import { nextOccurrence, occurrenceAt, expandRecurring, reminderOccurrences, reminderKey, reminderAllowed, isIncomeInstalmentSource, incomeSameDayFallback, INCOME_INSTALMENT_SOURCE_PREFIX, INCOME_INSTALMENT_REMINDER } from './recurrence'
 import { taxEventSource } from '../tax/greekTaxCalendar'
 
 let passed = 0, failed = 0
@@ -125,6 +125,17 @@ ok('yearly αναπτύσσεται', expandRecurring([{ id: 'y', event_date: '2
   ok('άλλα γεγονότα: όλες οι υπενθυμίσεις', ['7days', '3days', '1day', 'today'].every(t => reminderAllowed(enfia, t) && reminderAllowed({ source: null }, t)))
   ok('το πρόθεμα συμφωνεί με το κλειδί του ημερολογίου', taxEventSource('income-instalment-2026-5').startsWith(INCOME_INSTALMENT_SOURCE_PREFIX)
     && isIncomeInstalmentSource(taxEventSource('income-instalment-2027-1')) && !isIncomeInstalmentSource(taxEventSource('income-decl-2026')) && !isIncomeInstalmentSource(null))
+}
+
+// ── ΚΑΜΙΑ ΔΟΣΗ ΧΩΡΙΣ ΥΠΕΝΘΥΜΙΣΗ: ΑΝΑΠΛΗΡΩΣΗ ΤΗΝ ΙΔΙΑ ΜΕΡΑ (12.11.2026) ───────
+{
+  const i5 = { id: 'i5', event_date: '2026-11-30', source: 'tax:income-instalment-2026-5' }
+  const i6 = { id: 'i6', event_date: '2026-11-30', source: 'tax:income-instalment-2026-6' }
+  const other = { id: 'o', event_date: '2026-11-30', source: 'manual' }
+  const sent = new Set([`${reminderKey(i5, '3days').event_id}|${reminderKey(i5, '3days').reminder_type}`])
+  ok('πήρε την υπενθύμιση τριών ημερών: όχι ξανά', incomeSameDayFallback([i5, i6, other], true, sent).map(e => e.id).join() === 'i6')
+  ok('η υπενθύμιση τριών ημερών κλειστή: όλες την ίδια μέρα', incomeSameDayFallback([i5, i6, other], false, new Set()).map(e => e.id).join() === 'i5,i6')
+  ok('άλλα γεγονότα: καμία αναπλήρωση', incomeSameDayFallback([other], false, new Set()).length === 0)
 }
 
 console.log(`recurrence.ts, ${passed} passed, ${failed} failed (σύνολο ${passed + failed})`)

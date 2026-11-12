@@ -144,6 +144,9 @@ const src = (p: string) => readFileSync(p, 'utf8')
   const push = src('app/api/push/route.ts')
   ok('email: οι δόσεις μόνο στον τύπο που επιτρέπεται', sr.includes('reminderAllowed(e, check.type)'))
   ok('push: οι δόσεις δεν ξαναλέγονται στο τηλέφωνο', push.includes('.filter(e => !isIncomeInstalmentSource(e.source))'))
+  ok('email: αναπλήρωση την ίδια μέρα για δόση χωρίς υπενθύμιση τριών ημερών', sr.includes('incomeSameDayFallback(dueInc, !!pref.reminder_3days, sent3)'))
+  const scan = src('app/dashboard/components/scanDoc.ts')
+  ok('σάρωση: καμία δεύτερη «1η δόση» όταν το ημερολόγιο έχει τις δόσεις', scan.includes('planDocSave(doc, today, { incomeSeries })'))
 }
 
 console.log(`οι ειδοποιήσεις κάνουν ό,τι λένε: ${passed} ✓ · ${failed} ✗`)

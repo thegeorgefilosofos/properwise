@@ -13,7 +13,7 @@ import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 // κρατά μία γραμμή ανά `tax:<id>`, ώστε δύο διαμερίσματα να μη δίνουν δύο email.
 import { oneTaxCopy } from '../../../lib/calendar/taxOnce.ts'
 // Οι σειρές αναπτύσσονται με την ΙΔΙΑ λογική που δείχνει το ημερολόγιο.
-import { reminderOccurrences, reminderKey, reminderAllowed } from '../../../lib/calendar/recurrence.ts'
+import { reminderOccurrences, reminderKey, reminderAllowed, incomeSameDayFallback, isIncomeInstalmentSource } from '../../../lib/calendar/recurrence.ts'
 // «ΠΛΗΡΩΣΑ» ΜΕ ΕΝΑ ΠΑΤΗΜΑ (29/10/2026): κάθε γραμμή του email φέρνει σύνδεσμο
 // που σημειώνει τη συγκεκριμένη προθεσμία πληρωμένη. Διακριτικό 256 bit, μόνο
 // το αποτύπωμα στη βάση, μίας χρήσης, με λήξη (lib/reminders/payLink.ts).
@@ -362,7 +362,14 @@ Deno.serve(async (req) => {
         if (!check.enabled) continue
         // Οι δόσεις του φόρου εισοδήματος παίρνουν μόνο την υπενθύμιση των τριών
         // ημερών (lib/calendar/recurrence.ts, `reminderAllowed`).
-        const matching = upcoming.filter(e => e.event_date === check.date && reminderAllowed(e, check.type))
+        let matching = upcoming.filter(e => e.event_date === check.date && reminderAllowed(e, check.type))
+        // Η ίδια μέρα για τη δόση που δεν πήρε υπενθύμιση τριών ημερών (κλειστή ή
+        // γραμμή νεότερη). Χωρίς μητρώο, καμία αναπλήρωση: όχι διπλό email.
+        const dueInc = check.type === 'today' ? upcoming.filter(e => e.event_date === check.date && isIncomeInstalmentSource(e.source)) : []
+        if (dueInc.length) {
+          const sent3 = pref.reminder_3days ? await sentKeys(dueInc, '3days') : new Set<string>()
+          if (sent3) matching = [...matching, ...incomeSameDayFallback(dueInc, !!pref.reminder_3days, sent3)]
+        }
         if (!matching.length) continue
         // ΤΟ ΜΗΤΡΩΟ ΑΠΕΣΤΑΛΜΕΝΩΝ ΕΙΝΑΙ Ο ΜΟΝΟΣ ΦΡΑΓΜΟΣ ΓΙΑ ΔΙΠΛΑ EMAIL. Αγνοώντας
         // το `error`, μια αποτυχία γινόταν «δεν έχει σταλεί τίποτα» και η ίδια

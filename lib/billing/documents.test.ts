@@ -10,7 +10,7 @@ import {
   DOC_KINDS, KIND_OPTIONS, kindOf, applyKind, docForm, docTargets, fieldOptions, fieldValue, withField,
   selectLine, withPropertyLine, archiveOptions, folderForDoc, FOLDERS, BILL_CATEGORIES,
   SCAN_NUM_KEYS, SCAN_MAX_LINES, PROPERTY_TARGET, compactRow, shelfPath, lineUnset, LINE_NONE,
-  commonMonthOf, PEA_EXPIRY_TITLE, incomeTaxYearOf, INCOME_TAX_TITLE,
+  commonMonthOf, PEA_EXPIRY_TITLE, incomeTaxYearOf, INCOME_TAX_TITLE, amountFromInput,
   type ScannedDoc, type DocType, type DocKindId, type DocField,
 } from './documents';
 import { SYSTEM_PROMPT, SCAN_KEYS } from './scanPrompt';
@@ -749,6 +749,27 @@ eq('όροφος ως κείμενο', normalizeScannedDoc(doc({ floor: 2 as unk
   check('φόρος εισοδήματος: καμία δαπάνη', p.expense === undefined);
   eq('φόρος εισοδήματος: 1η δόση χωρίς ποσό', [p.calendar![0].title, p.calendar![0].amount, p.calendar![0].category], ['Φόρος εισοδήματος 2025: 1η δόση', null, 'tax']);
   eq('φόρος εισοδήματος: το ποσό στο έγγραφο', p.archive!.amount, 1200);
+}
+// ── ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΧΩΡΙΣ ΦΟΡΟ ΚΑΙ ΧΩΡΙΣ ΔΙΠΛΗ 1η ΔΟΣΗ (12.11.2026) ──────────
+// Ως τότε το μηδέν της φόρμας γινόταν «δεν διαβάστηκε» και το Αρχείο έγραφε
+// μόνο θετικό ποσό: ένα εκκαθαριστικό χωρίς φόρο έμενε NULL και ο συγχρονισμός
+// δεν μάθαινε ποτέ ότι οι δόσεις δεν υπάρχουν.
+{
+  const inc = kindOf(asKind('income_tax'));
+  const bill = kindOf(asKind('bill'));
+  eq('φόρμα: 0 στο εκκαθαριστικό εισοδήματος είναι μηδέν', amountFromInput('0', inc), 0);
+  eq('φόρμα: αρνητικό (επιστροφή) μένει', amountFromInput('-120,50', inc), -120.5);
+  eq('φόρμα: 0 στον λογαριασμό μένει «δεν διαβάστηκε»', amountFromInput('0', bill), undefined);
+  eq('φόρμα: κενό και κείμενο, «δεν διαβάστηκε»', [amountFromInput(' ', inc), amountFromInput('abc', inc)], [undefined, undefined]);
+  eq('φόρμα: δεκαδικό με κόμμα', amountFromInput('12,5', bill), 12.5);
+  const zero = planDocSave(asKind('income_tax', { tax_year: 2025, amount: 0, due_date: '2026-07-31' }), TODAY);
+  eq('μηδέν: γράφεται στο Αρχείο ως 0', zero.archive!.amount, 0);
+  check('μηδέν: καμία «1η δόση» στο ημερολόγιο', zero.calendar === undefined);
+  eq('επιστροφή: γράφεται αρνητική', planDocSave(asKind('income_tax', { tax_year: 2025, amount: -80 }), TODAY).archive!.amount, -80);
+  eq('άλλο είδος με 0: όχι ποσό, όπως πριν', planDocSave(asKind('tax', { tax_year: 2025, amount: 0 }), TODAY).archive!.amount, undefined);
+  const covered = planDocSave(asKind('income_tax', { tax_year: 2025, amount: 1200, due_date: '2026-07-31' }), TODAY, { incomeSeries: true });
+  check('νοικιασμένο (οι δόσεις στο ημερολόγιο): καμία δεύτερη «1η δόση»', covered.calendar === undefined && !covered.targets.includes(navLabel('calendar')));
+  eq('νοικιασμένο: το ποσό μένει στο έγγραφο', covered.archive!.amount, 1200);
 }
 for (const v of ['e1', 'e2', 'e3'] as DocKindId[]) {
   const p = planDocSave(asKind(v, { tax_year: 2024, amount: 999, issue_date: '2025-06-30' }), TODAY);
