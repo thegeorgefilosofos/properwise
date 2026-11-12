@@ -454,7 +454,12 @@ export default function MyaadeImport({ userId, limit, onUpgrade, onClose, onSave
               </Note>
             )}
             {fromScan && scanFile && (
-              <Toggle on={keepCopy} onChange={setKeepCopy} label="Κράτα αντίγραφο στον Φάκελο" />
+              // Η ΑΝΑΙΡΕΣΗ ΚΡΑΤΑ ΑΚΙΝΗΤΟ ΜΕ ΕΓΓΡΑΦΟ (commit.ts: `touched`). Με αντίγραφο
+              // σε ακίνητο που δημιούργησε η εισαγωγή, η αναίρεση δεν το σβήνει: το λέμε πριν.
+              <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp.xs }}>
+                <Toggle on={keepCopy} onChange={setKeepCopy} label="Κράτα αντίγραφο στον Φάκελο" />
+                <span style={{ ...TT.caption }}>Με αντίγραφο, η αναίρεση της εισαγωγής κρατά το ακίνητο όπου μπαίνει.</span>
+              </div>
             )}
             {doc.source === 'photo' && (
               <Note tone="info" info="Η φωτογραφία διαβάστηκε με AI στον διακομιστή και δεν αποθηκεύτηκε. Τίποτα δεν γράφεται πριν πατήσεις «Καταχώρηση».">

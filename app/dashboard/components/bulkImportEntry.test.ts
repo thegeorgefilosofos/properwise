@@ -144,6 +144,7 @@ ok('το κλείσιμο καθαρίζει το αρχείο', /const closeMya
   ok('η εισαγωγή ξέρει ότι ήρθε από τη Σάρωση', importer.includes('fromScan?: { propertyId: string | null };') && page.includes('fromScan={myaadeFromScan ?? undefined}'));
   ok('ο διακόπτης του αντιγράφου κλειστός εξ ορισμού', importer.includes('const [keepCopy, setKeepCopy] = useState(false);'));
   ok('ο διακόπτης στην εισαγωγή', importer.includes('<Toggle on={keepCopy} onChange={setKeepCopy} label="Κράτα αντίγραφο στον Φάκελο" />'));
+  ok('κάτω από τον διακόπτη: η αναίρεση κρατά το ακίνητο του αντιγράφου', importer.includes('Με αντίγραφο, η αναίρεση της εισαγωγής κρατά το ακίνητο όπου μπαίνει.'));
   const saveFn = importer.slice(importer.indexOf('const doSave = async'), importer.indexOf('const latestSave'));
   const commitAt = saveFn.indexOf('await commitImport(');
   const failAt = saveFn.indexOf('if (!res.ok)');

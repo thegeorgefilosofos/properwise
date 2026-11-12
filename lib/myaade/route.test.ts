@@ -96,6 +96,32 @@ void (async () => {
     const r = await sniffBeforeScan(f, async () => ({ sniffMyaade: async () => want }), on => busy.push(on));
     ok('κανονική ανάγνωση: περνά το αποτέλεσμα και η ένδειξη σβήνει', r === want && JSON.stringify(busy) === '[true,false]', { busy, r });
   }
+  // ΣΕΝΑΡΙΟ ΕΡΓΑΤΗ ΠΟΥ ΔΕΝ ΦΟΡΤΩΘΗΚΕ: «error» (δεν ξέρουμε), όχι «unreadable».
+  // Ψεύτικος Worker: σκέτο Event χωρίς κανένα μήνυμα πριν, όπως ο περιηγητής.
+  {
+    const g = globalThis as { Worker?: unknown };
+    const real = g.Worker;
+    class FailingWorker {
+      onmessage: ((ev: { data: unknown }) => void) | null = null;
+      onerror: ((ev: Event) => void) | null = null;
+      constructor(public crashAfterPage = false) {}
+      postMessage() {
+        setTimeout(() => {
+          if (this.crashAfterPage) this.onmessage?.({ data: { kind: 'page', page: 1, pages: 2 } });
+          this.onerror?.(new Event('error'));
+        }, 0);
+      }
+      terminate() {}
+    }
+    g.Worker = class extends FailingWorker { constructor() { super(false); } };
+    const load = await sniffMyaade(new File(['%PDF-1.4'], 'e9.pdf', { type: PDF }));
+    ok('σενάριο εργάτη που δεν φορτώθηκε: «error»', load.outcome === 'error', load);
+    ok('και η κάρτα της μαζικής μένει', offersBulk('e9', PDFF, load.outcome));
+    g.Worker = class extends FailingWorker { constructor() { super(true); } };
+    const crash = await sniffMyaade(new File(['%PDF-1.4'], 'e9.pdf', { type: PDF }));
+    ok('εργάτης που ξεκίνησε και έσκασε στο αρχείο: «unreadable»', crash.outcome === 'unreadable', crash);
+    g.Worker = real;
+  }
   {
     const r = await sniffMyaade(new File(['όχι PDF'], 'fake.pdf', { type: PDF }));
     ok('αρχείο που δεν είναι PDF: «unreadable», χωρίς κάρτα', r.outcome === 'unreadable' && !offersBulk('e9', PDFF, r.outcome), r);

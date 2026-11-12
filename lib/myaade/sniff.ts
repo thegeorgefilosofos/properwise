@@ -37,7 +37,8 @@ export async function sniffMyaade(file: File): Promise<SniffResult> {
     return { outcome: 'read', kind: detectDocKind(res.lines) };
   } catch (e) {
     // Το ίδιο το αρχείο δεν ανοίγει (χαλασμένο, όχι PDF): ούτε η μαζική θα το
-    // διάβαζε. Ό,τι άλλο (π.χ. ο αναγνώστης δεν κατέβηκε) σημαίνει «δεν ξέρουμε».
+    // διάβαζε. Ό,τι άλλο σημαίνει «δεν ξέρουμε»: ο αναγνώστης δεν κατέβηκε, ή το
+    // σενάριο του εργάτη δεν φορτώθηκε (`PdfWorkerLoadError`, δεν είναι PdfReadError).
     return { outcome: e instanceof PdfReadError ? 'unreadable' : 'error' };
   }
 }
