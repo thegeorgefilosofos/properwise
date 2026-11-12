@@ -109,6 +109,28 @@ const st = greekPropertyTaxObligations(2026, 'short_term')
 ok('short_term έχει owner-υποχρεώσεις', st.some(o => o.id.startsWith('enfia-first')))
 ok('short_term έχει μητρώο ΑΑΔΕ ×12', st.filter(o => o.id.startsWith('str-registry')).length === 12)
 ok('short_term έχει τέλος ×12', st.filter(o => o.id.startsWith('str-climate-fee')).length === 12)
+// ΤΑΚΚ: τελευταία ΗΜΕΡΑ του μήνα (ν. 5177/2025 άρθρο 44 παρ. 4)· σε αργία ή
+// Σαββατοκύριακο η αμέσως ΕΠΟΜΕΝΗ εργάσιμη (ΚΦΔ ν. 5104/2024 άρθρο 7 παρ. 1),
+// ποτέ η προηγούμενη. Οι ακριβείς ημερομηνίες 2026-2027:
+{
+  const takk = (y: number, m: number) => greekPropertyTaxObligations(y, 'short_term').find(o => o.id === `str-climate-fee-${y}-${m}`)?.date
+  const want: [number, number, string][] = [
+    [2026, 10, '2026-11-02'], // 31/10 Σάββατο (taxheaven: ΤΑΚΚ Σεπτεμβρίου έως 02/11/2026)
+    [2026, 11, '2026-11-30'], // Δευτέρα
+    [2026, 12, '2026-12-31'], // Πέμπτη
+    [2027, 1, '2027-02-01'],  // 31/01 Κυριακή
+    [2027, 2, '2027-03-01'],  // 28/02 Κυριακή
+    [2027, 3, '2027-03-31'],  // Τετάρτη
+  ]
+  for (const [y, m, d] of want) ok(`ΤΑΚΚ ${m}/${y} → ${d}`, takk(y, m) === d)
+  // Ποτέ πριν από την τελευταία μέρα του μήνα: η μετάθεση πάει μόνο μπροστά.
+  ok('ΤΑΚΚ ποτέ πριν από το τέλος του μήνα', [2026, 2027, 2028].every(y =>
+    greekPropertyTaxObligations(y, 'short_term').filter(o => o.kind === 'str-climate-fee').every(o => {
+      const m = Number(o.id.split('-').pop())
+      const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
+      return o.date >= last && o.date === nextWorkingDay(last)
+    })))
+}
 ok('short_term ταξινομημένα', st.every((o, i) => i === 0 || st[i - 1].date <= o.date))
 ok('short_term ημερομηνίες εργάσιμες', st.every(o => !isNonWorkingDay(o.date)))
 // μητρώο ~20ή κάθε μήνα (ή επόμενη εργάσιμη)
