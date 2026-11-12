@@ -45,6 +45,7 @@ import { expandRecurring } from '@/lib/calendar/recurrence'
 import { findConflicts } from '@/lib/calendar/availability'
 import { parseICS } from '@/lib/calendar/icsImport'
 import { toStaySpan, type StaySpan } from '@/lib/calendar/stayBars'
+import { PAST_LABEL } from '@/lib/calendar/pastState'
 import {
   taxKindOfEventSource,
   TAX_EVENT_CATEGORY,
@@ -61,7 +62,7 @@ import {
   type EventCategory, type EventStatus, type ViewMode, type CalEvent,
   type FormState, CATEGORIES, STATUSES, canonicalCategory,
   EMPTY_FORM, fmt, fmtShort,
-  athensNow, daysUntil, isOverdue, isThisWeek, isThisMonth, isExpiring, todayStr, addDaysStr,
+  athensNow, daysUntil, isOverdue, isPastNotice, pastStateOf, isThisWeek, isThisMonth, isExpiring, todayStr, addDaysStr,
 } from './calendar/model'
 import { EventCard, Section } from './calendar/EventCard'
 import { usePointerDrag, DaySheet, MonthView } from './calendar/MonthView'
@@ -219,6 +220,9 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   }),[events,filterCat,filterStatus,searchQ,dateFrom,dateTo])
 
   const overdue=filtered.filter(isOverdue)
+  // Η υπενθύμιση ΠΕΑ που πέρασε δεν είναι ληξιπρόθεσμη, αλλά δεν χάνεται κιόλας:
+  // το «Έληξε» είναι πληροφορία για την επόμενη μίσθωση (lib/calendar/pastState.ts).
+  const pastNotices=filtered.filter(isPastNotice)
   const thisWeek=filtered.filter(isThisWeek)
   const thisMonth=filtered.filter(isThisMonth)
   const expiring=filtered.filter(isExpiring)
@@ -618,7 +622,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
                   // Καθαρός, φιλτραρίσιμος πίνακας: κάθε πεδίο σε δικό του κελί, αριθμοί
                   // ως αριθμοί (2 δεκαδικά), στήλες Έτος/Μήνας/Προθεσμία για φιλτράρισμα,
                   // και ξεχωριστά φύλλα «Εκπρόθεσμα»/«Επερχόμενα».
-                  const prothesmia=(e:CalEvent)=> (e.status==='paid'||e.status==='cancelled')?'Ολοκληρωμένο':isOverdue(e)?'Ληξιπρόθεσμο':'Εντός προθεσμίας'
+                  const prothesmia=(e:CalEvent)=>{ if(e.status==='paid'||e.status==='cancelled') return 'Ολοκληρωμένο'; const p=pastStateOf(e); return p?PAST_LABEL[p]:'Εντός προθεσμίας' }
                   const cols:XlsxCol[]=[
                     {header:'Ημερομηνία',kind:'date',width:13},
                     {header:'Ημέρα',width:11},
@@ -797,6 +801,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       {!loading&&viewMode==='agenda'&&(
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
           {overdue.length>0&&<Section title="Ληξιπρόθεσμα" color="var(--negative)" events={overdue} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
+          {pastNotices.length>0&&<Section title="Περασμένες υπενθυμίσεις" color="var(--text-secondary)" events={pastNotices} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} desc bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {thisWeek.length>0&&<Section title="Επόμενες 7 ημέρες" color="var(--accent)" events={thisWeek} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {thisMonth.length>0&&<Section title="Σε 8 ως 30 ημέρες" color="var(--text-secondary)" events={thisMonth} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {later.length>0&&<Section title="Αργότερα" color="var(--text-secondary)" events={later} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}

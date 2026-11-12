@@ -6,6 +6,7 @@
 import {
   PEA_EXPIRY_TITLE, PEA_REMINDER_DAYS, PEA_SOURCE_PREFIX, LEASE_PEA_TITLE, PEA_REGISTRY_URL,
   peaReminderDrafts, peaStateOn, peaDaysLeft, leasePeaNotice, isoDay, shiftIso, cleanPeaNumber, peaSource, peaDeclField,
+  declProgress, declProgressText,
 } from './peaExpiry';
 import { buildLeaseDeclaration, declarationSheet } from '../tax/leaseDeclaration';
 import { readFileSync } from 'node:fs';
@@ -124,6 +125,28 @@ function ok(name: string, cond: boolean) { if (cond) pass++; else { fail++; cons
   const base = buildLeaseDeclaration({});
   const decl = { ...base, fields: [...base.fields, f!] };
   ok('το φύλλο εκτύπωσης έχει τον αριθμό ΠΕΑ', declarationSheet(decl).includes('123456/2026'));
+}
+
+// ── Ο μετρητής της δήλωσης: έτοιμη δήλωση δεν λέει «N-1 από N» ──────────────
+{
+  const full = buildLeaseDeclaration({
+    today: '2026-11-12',
+    owner: { name: 'Μαρία Παπαδάκη', afm: '090000045' },
+    property: { atak: '12345678901', address: 'Σόλωνος 10', postalCode: '10673', sqm: 80 },
+    tenant: { fullName: 'Νίκος Γεωργίου', afm: '090000045' },
+    lease: { start: '2026-11-01', end: '2029-10-31', monthlyRent: 650 },
+  });
+  eq('η βάση της δοκιμής είναι έτοιμη δήλωση', full.readiness, 'ready');
+  const noPea = [...full.fields, peaDeclField(null, 'apartment')!];
+  const p = declProgress(noPea);
+  eq('έτοιμη δήλωση χωρίς ΠΕΑ: όλα τα υποχρεωτικά έτοιμα', p.ready, p.total);
+  eq('το ΠΕΑ που λείπει μετριέται χωριστά', p.optionalMissing, 1);
+  eq('η γραμμή του μετρητή', declProgressText(noPea), `${p.total} από ${p.total} υποχρεωτικά πεδία έτοιμα · 1 προαιρετικό λείπει`);
+  eq('με ΠΕΑ: χωρίς προαιρετικό που λείπει', declProgressText([...full.fields, peaDeclField('1/2026', 'apartment')!]), `${p.total} από ${p.total} υποχρεωτικά πεδία έτοιμα`);
+  const empty = declProgress(buildLeaseDeclaration({}).fields);
+  ok('κενή δήλωση: λιγότερα έτοιμα από το σύνολο', empty.ready < empty.total);
+  const ui = readFileSync('app/dashboard/components/LeaseDeclaration.tsx', 'utf8');
+  ok('η οθόνη μετρά με τον ίδιο κανόνα', ui.includes('footerInfo={<>{declProgressText(decl.fields)}</>}') && !ui.includes('{decl.fields.length} πεδία έτοιμα'));
 }
 
 // ── Η ειδοποίηση φαίνεται στη ροή της μίσθωσης ─────────────────────────────
