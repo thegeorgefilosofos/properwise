@@ -66,6 +66,14 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } })
 await page.goto('file://' + join(root, '.perf-bench/simple.html'))
 await page.waitForSelector('[data-s-open]')
 
+// ΣΤΗΝ ΕΠΕΞΕΡΓΑΣΙΑ Η ΡΑΓΑ ΕΙΝΑΙ ΚΑΡΤΕΛΕΣ (13/11/2026). Η «Συνέχεια» υπάρχει
+// πια μόνο στο νέο ακίνητο· ο πάγκος ανοίγει υπάρχοντα ακίνητα, οπότε το
+// επόμενο βήμα είναι η επόμενη καρτέλα της ράγας.
+const nextStep = async () => {
+  const cur = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] .wiz-tab')].findIndex(t => t.getAttribute('aria-current') === 'step'))
+  await page.locator('[role="dialog"] .wiz-tab').nth(cur + 1).click()
+}
+
 console.log('\nΤα κουτιά που βλέπει ο χρήστης στον οδηγό ακινήτου\n')
 
 /** Τα ΟΡΑΤΑ χειριστήρια μέσα στο παράθυρο, χωρίς τα κρυμμένα σε «Περισσότερα». */
@@ -90,7 +98,7 @@ for (const [k, caps] of Object.entries(CAP)) {
   await page.waitForSelector('[role="dialog"]')
   for (const step of [1, 2, 3]) {
     // Το πρώτο βήμα είναι ο τύπος· προχωράμε ως εκεί που μετράμε.
-    await page.click('text=Συνέχεια')
+    await nextStep()
     await page.waitForTimeout(60)
     const n = await visibleControls()
     ok(`${LABEL[k]}, βήμα ${step + 1}: ${n} χειριστήρια`, n >= 0 && n <= caps[step],
@@ -126,7 +134,7 @@ for (const [k, caps] of Object.entries(CAP)) {
     await page.click(`[data-s-open="${k}"]`)
     await page.waitForSelector('[role="dialog"]')
     for (const step of [1, 2, 3]) {
-      await page.click('text=Συνέχεια')
+      await nextStep()
       await page.waitForTimeout(60)
       const more = await page.$('[role="dialog"] [data-more]')
       if (more) { await more.click(); await page.waitForTimeout(60) }
@@ -161,8 +169,8 @@ for (const [k, caps] of Object.entries(CAP)) {
 {
   await page.click('[data-s-open="short"]')
   await page.waitForSelector('[role="dialog"]')
-  await page.click('text=Συνέχεια'); await page.waitForTimeout(60)
-  await page.click('text=Συνέχεια'); await page.waitForTimeout(60)
+  await nextStep(); await page.waitForTimeout(60)
+  await nextStep(); await page.waitForTimeout(60)
   const more = await page.$('[role="dialog"] [data-more]')
   if (more) { await more.click(); await page.waitForTimeout(60) }
   await page.getByLabel('Μέσο μηνιαίο έσοδο (€)').fill('1400')
@@ -194,7 +202,7 @@ for (const [k, caps] of Object.entries(CAP)) {
 {
   await page.click('[data-s-open="vacant"]')
   await page.waitForSelector('[role="dialog"]')
-  for (let i = 0; i < 3; i++) { await page.click('text=Συνέχεια'); await page.waitForTimeout(60) }
+  for (let i = 0; i < 3; i++) { await nextStep(); await page.waitForTimeout(60) }
   const txt = await page.evaluate(() => document.querySelector('[role="dialog"]').innerText)
   const active = await page.evaluate(() => document.querySelector('[role="dialog"] .wiz-step-on')?.textContent?.trim())
   const steps = await page.evaluate(() => document.querySelectorAll('[role="dialog"] .wiz-step').length)
@@ -211,8 +219,8 @@ for (const [k, caps] of Object.entries(CAP)) {
 for (const [k, want, not] of [['long', 'Μηνιαίο μίσθωμα (€)', 'Στόχος ενοικίου (€/μήνα)'], ['vacant', 'Στόχος ενοικίου (€/μήνα)', 'Μηνιαίο μίσθωμα (€)']]) {
   await page.click(`[data-s-open="${k}"]`)
   await page.waitForSelector('[role="dialog"]')
-  await page.click('text=Συνέχεια'); await page.waitForTimeout(60)
-  await page.click('text=Συνέχεια'); await page.waitForTimeout(60)
+  await nextStep(); await page.waitForTimeout(60)
+  await nextStep(); await page.waitForTimeout(60)
   const has = await page.getByLabel(want, { exact: true }).count()
   const hasNot = await page.getByLabel(not, { exact: true }).count()
   ok(`${LABEL[k]}: το πεδίο του ενοικίου λέγεται «${want}»`, has === 1 && hasNot === 0)
@@ -225,7 +233,7 @@ for (const [k, want, not] of [['long', 'Μηνιαίο μίσθωμα (€)', '�
 // ο χρήστης πληρώνει τρεις οθόνες για ένα κουτί.
 await page.click('[data-s-open="vacant"]')
 await page.waitForSelector('[role="dialog"]')
-await page.click('text=Συνέχεια')
+await nextStep()
 await page.waitForTimeout(60)
 const saveNow = await page.$('text=Αποθήκευση')
 ok('η αποθήκευση στέκει ήδη στο δεύτερο βήμα', !!saveNow)

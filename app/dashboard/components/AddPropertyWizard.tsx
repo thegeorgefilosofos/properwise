@@ -1,7 +1,7 @@
 'use client';
 
 import { settingsRow, hasAnySetting } from '@/lib/property/settingsRow';
-import { useState, useEffect, useId, cloneElement, isValidElement, Children, Fragment } from 'react';
+import { useState, useEffect, useId, useRef, cloneElement, isValidElement, Children, Fragment } from 'react';
 import { track, trackOnboarding, PRODUCT_EVENTS } from '@/lib/analytics/events';
 import { HEATING_TYPES, heatingLabel, normalizeHeating } from '@/lib/property/heating';
 import { createClient } from '@/lib/supabase/client';
@@ -11,13 +11,13 @@ import * as billing from '@/lib/data/billing';
 import * as billStore from '@/lib/data/bills';
 import { readCoOwners, mergeCoOwnerNames, hasCoOwnerDetails, writeCoOwners } from '@/lib/property/coOwners';
 import { cleanDigits, powerSupplyFromNote, E2_POWER_SUPPLY_DIGITS } from '@/lib/property/powerSupply';
-import { T, fe, fn, fp, fd, fixedCols, ABSENT, Modal, TT, Btn, ChipToggle } from '@/components/Theme';
+import { T, fe, fn, fp, fd, ABSENT, Modal, TT, Btn, ChipToggle } from '@/components/Theme';
 import { CustomSelect, DatePicker } from './UIComponents';
 import { cleanAma, isValidAmaFormat, amaLengthLooksUnusual } from '@/lib/property/ama';
 import { ATAK_SOURCE, atakDigits } from '@/lib/property/atak';
 import { STATUSES, BY_KEY, readStatus, writeStatus, type PropertyStatus } from '@/lib/property/status';
 import { syncOwnerTaxDeadlines } from '@/lib/calendar/taxSync';
-import { PROPERTY_TYPES, propertyTypeLabel, LAND_LIKE_TYPES } from '@/lib/property/types';
+import { propertyTypeLabel, LAND_LIKE_TYPES } from '@/lib/property/types';
 import { fillOnlyEmpty, firstFilled } from '@/lib/core/prefill';
 import { fieldPlacement, PROPERTY_FIELDS, OBJ_VALUE_WHOLE, type FieldContext, type Placement } from '@/lib/property/fields';
 import { failed } from '@/lib/core/dbError';
@@ -26,10 +26,13 @@ import { PEA_CLASSES } from '@/lib/property/pea';
 import { cleanPeaNumber, isoDay, peaReminderDrafts, PEA_NUMBER_MAX, PEA_REMINDER_DAYS } from '@/lib/property/peaExpiry';
 import { syncPeaReminders } from '@/lib/calendar/peaSync';
 import { athensToday } from '@/lib/core/time';
-import { firstTaxOf } from '@/lib/onboarding/firstTax';
+import { firstTaxOf, firstDeadlines } from '@/lib/onboarding/firstTax';
+import { ONBOARDING_STEPS, PRIMARY_TYPES, MORE_TYPES, PRIMARY_STATUSES, MORE_STATUSES, typeNeedsMore, statusNeedsMore, defaultPropertyName } from '@/lib/onboarding/steps';
+import { grDate } from '@/lib/core/format';
 import type { EnfiaWizardInitial } from '@/lib/tools/enfiaCarry';
 import { draftKey, readDraft, writeDraft, clearDraft, sameDraft, restoreDraft } from '@/lib/ui/dismiss';
 import { confirmDiscard } from '@/components/ConfirmDialog';
+import { useBackButton } from '@/components/useBackButton';
 import { BulkImportCard } from './BulkImportCard';
 
 // Η ενεργειακή κλάση (ΠΕΑ) ζει στο lib/property/pea.ts: τη γράφει και η σάρωση
@@ -81,8 +84,20 @@ const LAND_LIKE = LAND_LIKE_TYPES;
 // την πρώτη μέρα. Τα ίδια πεδία ζουν τώρα στη «Σύνοψη», κλειστά, κάτω από τα
 // στοιχεία που θα αποθηκευτούν: κανένα δεν χάθηκε, ο οδηγός παραμένει ο μόνος
 // τους επεξεργαστής.
-const STEPS = ['Τύπος', 'Βασικά', 'Οικονομικά', 'Σύνοψη'];
-const SUMMARY_STEP = STEPS.length - 1;
+//
+// ΚΑΙ ΔΥΟ ΟΘΟΝΕΣ ΓΙΑ ΝΕΟ ΑΚΙΝΗΤΟ (κριτική σχεδίασης, 13/11/2026). Η υποδοχή
+// υπόσχεται τρία βήματα (lib/onboarding/steps.ts): τύπος, μίσθωμα, ο φόρος σου.
+// Ο νέος οδηγός είναι ακριβώς αυτά: «Τύπος ακινήτου», «Μίσθωμα» με τον φόρο να
+// βγαίνει καθώς γράφεται· η αποθήκευση ανοίγει την Επισκόπηση με τον φόρο
+// στην κορυφή. Τα «Βασικά» (διεύθυνση, ΑΤΑΚ, εμβαδόν, ΠΕΑ) συμπληρώνονται μετά,
+// από τη λίστα «Από πού ξεκινάς», που ανοίγει αυτόν τον οδηγό στο σωστό βήμα.
+// Η επεξεργασία κρατά και τα τέσσερα, ως καρτέλες: όποιος διορθώνει ξέρει πού
+// πάει και αποθηκεύει από όποια θέλει.
+const EDIT_STEPS = ['Τύπος', 'Βασικά', 'Οικονομικά', 'Σύνοψη'];
+const SUMMARY_STEP = EDIT_STEPS.length - 1;
+type Page = 'type' | 'basics' | 'money' | 'summary';
+const EDIT_PAGES: readonly Page[] = ['type', 'basics', 'money', 'summary'];
+const NEW_PAGES: readonly Page[] = ['type', 'money'];
 
 /** Μια γραμμή φόρμας: ποιο πεδίο είναι, πόσο πλάτος πιάνει και το χειριστήριό του. */
 interface FormRow { id: string; span: 'auto' | 'full'; node: React.ReactNode; label?: string }
@@ -343,7 +358,7 @@ function StepBody({ rows, place, after, moreTitle = 'Περισσότερα', le
                 υποχρεώνει σε άνοιγμα για να μάθει ο χρήστης αν τον αφορά. */}
             <span style={{ flex: 1, fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--text-primary)' }}>
               {/* Το όνομα του μητρώου και όχι της φόρμας: χωρίς «(%)» και «(€)». */}
-              {open ? lessTitle : `${moreTitle}: ${more.slice(0, 3).map(r => inSentence(labelOf(r.id))).join(', ')}${more.length > 3 ? ` και ${more.length - 3} ακόμη` : ''}`}
+              {open ? lessTitle : `${moreTitle}: ${more.slice(0, 2).map(r => inSentence(labelOf(r.id))).join(', ')}${more.length > 2 ? ` και ${more.length - 2} ακόμη` : ''}`}
             </span>
           </button>
           {open && <div style={grid2}>{more.map(cell)}</div>}
@@ -367,7 +382,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
    * `owner_afm` ο οδηγός ανοίγει στη «Σύνοψη» με τις επαφές ανοιχτές και τον
    * κέρσορα στο ΑΦΜ, αντί ο χρήστης να περάσει τρία βήματα για να το βρει.
    */
-  focus?: 'owner_afm' | 'rent' | null;
+  focus?: 'owner_afm' | 'rent' | 'basics' | null;
   /**
    * Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΩΣ ΠΡΩΤΗ ΕΠΙΛΟΓΗ. Ο πίνακας τη δίνει σε ΚΑΘΕ νέα
    * καταχώρηση, με ή χωρίς ακίνητα (απόφαση ιδιοκτήτη 10/11/2026· ως τις
@@ -439,15 +454,19 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     if (sameDraft(form, pristine)) return null;
     // Πρόχειρο από τον οδηγό των πέντε βημάτων: το παλιό 4 (Σύνοψη) και το
     // παλιό 3 (Επαφές) πέφτουν και τα δύο στη Σύνοψη, όπου ζουν πια οι επαφές.
-    const step = typeof d.step === 'number' && Number.isInteger(d.step) && d.step >= 0 ? Math.min(d.step, SUMMARY_STEP) : 0;
+    // Και πρόχειρο από τον οδηγό των τεσσάρων: πέφτει στο «Μίσθωμα», το τελευταίο του νέου.
+    const step = typeof d.step === 'number' && Number.isInteger(d.step) && d.step >= 0 ? Math.min(d.step, NEW_PAGES.length - 1) : 0;
     return { form, step };
   });
   const start = draft?.form ?? pristine;
 
-  // Η κάρτα του πρώτου φόρου ανοίγει την επεξεργασία στο μίσθωμα που λείπει,
-  // δηλαδή στα «Οικονομικά», όχι στον τύπο που μόλις διάλεξε.
+  // Η Επισκόπηση ανοίγει την επεξεργασία στο μίσθωμα που λείπει («Οικονομικά»)
+  // και η λίστα «Από πού ξεκινάς» στα «Βασικά», όχι στον τύπο.
   const focusRent = isEdit && focus === 'rent';
-  const [step, setStep] = useState(focusAfm ? SUMMARY_STEP : focusRent ? 2 : draft?.step ?? 0); // 0..3
+  const focusBasics = isEdit && focus === 'basics';
+  const pages = isEdit ? EDIT_PAGES : NEW_PAGES;
+  const [step, setStep] = useState(focusAfm ? SUMMARY_STEP : focusRent ? EDIT_PAGES.indexOf('money') : focusBasics ? EDIT_PAGES.indexOf('basics') : draft?.step ?? 0);
+  const page = pages[Math.min(step, pages.length - 1)];
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   // Αλλαγή βήματος = νέα προσπάθεια· το παλιό σφάλμα δεν αφορά πια την οθόνη.
@@ -457,6 +476,8 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   const [createdId, setCreatedId] = useState<string | null>(null);
 
   const [propType, setPropType] = useState(start.propType);
+  // «Άλλο…» και «Άλλη κατάσταση»: ανοιχτά από την αρχή όταν η επιλογή ζει εκεί.
+  const [moreTypes, setMoreTypes] = useState(() => typeNeedsMore(start.propType));
   // ΜΙΑ κατάσταση, στο λεξιλόγιο της εφαρμογής. Η μετάφραση προς τις δύο
   // στήλες της βάσης γίνεται από το `writeStatus`, που τις γράφει ΜΑΖΙ.
   //
@@ -618,15 +639,40 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // Ο ίδιος υπολογισμός με την κάρτα του πρώτου φόρου και το πλακίδιο της
   // Επισκόπησης (lib/onboarding/firstTax.ts). Ο χρήστης βλέπει τι σημαίνει το
   // ποσό που γράφει πριν πατήσει αποθήκευση, όχι τρεις οθόνες μετά.
-  const draftTax = statusKey && rentN != null && rentN > 0
-    ? firstTaxOf({ id: existing?.id ?? 'draft', ...dbStatus, target_rent: rentN, ownership: num(ownership) ?? 100 }, athensToday())
+  //
+  // ΚΑΙ ΟΙ ΠΡΟΘΕΣΜΙΕΣ ΖΟΥΝ ΣΤΗΝ ΙΔΙΑ ΚΑΡΤΑ. Ηταν δεύτερο παράθυρο μετά την
+  // αποθήκευση («Το ακίνητο αποθηκεύτηκε»), ένα πέπλο ακόμη πριν φτάσει ο
+  // χρήστης στην Επισκόπηση. Εδώ τις βλέπει τη στιγμή που γράφει το ποσό.
+  const [today] = useState(athensToday);
+  const taxLabelId = useId();
+  const draftTax = statusKey
+    ? firstTaxOf({ id: existing?.id ?? 'draft', ...dbStatus, target_rent: rentN != null && rentN > 0 ? rentN : null, ownership: num(ownership) ?? 100 }, today)
     : null;
-  const rentTaxPreview = draftTax?.rented && draftTax.annual > 0 && (
-    <div role="status" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: grossYield != null ? 12 : 0 }}>
-      <div style={{ ...TT.label, marginBottom: 6 }}>{`Φόρος ενοικίων ${draftTax.year}`}</div>
-      <div style={{ fontFamily: T.font.num, fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{fe(draftTax.tax)}</div>
-      <div style={{ ...TT.caption, marginTop: 6 }}>{`Ενδεικτικά, για έσοδα ${fe(draftTax.annual)} τον χρόνο.`}</div>
-    </div>
+  const draftDeadlines = statusKey ? firstDeadlines(status, today) : [];
+  const taxShown = !!draftTax && draftTax.rented && draftTax.annual > 0;
+  const rentTaxPreview = draftTax && (
+    <section className="wiz-tax" aria-labelledby={taxLabelId}>
+      <div id={taxLabelId} className="wiz-tax-label">{draftTax.rented ? `Φόρος ενοικίων ${draftTax.year}` : 'Φόρος ενοικίων'}</div>
+      {/* Μόνο το ποσό ακούγεται όταν αλλάζει, όχι όλη η κάρτα σε κάθε πλήκτρο. */}
+      <div aria-live="polite">
+        {taxShown
+          ? <>
+            <div className="wiz-tax-amount">{fe(draftTax.tax)}</div>
+            <div className="wiz-tax-note">{`Ενδεικτικά, για έσοδα ${fe(draftTax.annual)} τον χρόνο.`}</div>
+          </>
+          : <div className="wiz-tax-empty">{draftTax.rented ? 'Γράψε το μίσθωμα και ο φόρος βγαίνει εδώ.' : 'Δεν νοικιάζεται, άρα δεν έχει φόρο ενοικίων.'}</div>}
+      </div>
+      {draftDeadlines.length > 0 && (
+        <ul className="wiz-tax-rows" aria-label="Επόμενες προθεσμίες">
+          {draftDeadlines.map(d => (
+            <li key={d.id} className="wiz-tax-row">
+              <span className="po-elide">{d.title}</span>
+              <span className="wiz-tax-date">{grDate(d.date)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 
   // ΣΕ ΝΟΙΚΙΑΣΜΕΝΟ ΑΚΙΝΗΤΟ ΡΩΤΑΜΕ ΤΟ ΕΝΟΙΚΙΟ, ΟΧΙ ΤΟΝ ΣΤΟΧΟ (αξιολόγηση
@@ -642,7 +688,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   const rentLabel = airbnb ? 'Μέσο μηνιαίο έσοδο (€)' : leased ? 'Μηνιαίο μίσθωμα (€)' : 'Στόχος ενοικίου (€/μήνα)';
   const sqmLabel = propType === 'land' ? 'Εμβαδόν οικοπέδου (τ.μ.)' : 'Εμβαδόν (τ.μ.)';
 
-  const canNext = step === 0 ? !!propType && statusKey !== null : step === 1 ? !!name.trim() : true;
+  const canNext = page === 'type' ? !!propType && statusKey !== null : true;
   // Οι ομάδες επιλογών του πρώτου βήματος ονομάζονται από τον τίτλο τους.
   const typeGroupId = useId();
   const statusGroupId = useId();
@@ -654,25 +700,23 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // ο χρήστης έβλεπε ένα σβηστό κουμπί χωρίς λόγο. Τώρα το πάτημα λέει τι
   // λείπει και φέρνει στο βλέμμα το σημείο που το ζητά.
   const next = () => {
-    // ΤΟ ΟΝΟΜΑ ΕΡΧΕΤΑΙ ΠΡΟΤΕΙΝΟΜΕΝΟ (13/11/2026). Ηταν το μόνο υποχρεωτικό
-    // πεδίο που ζητούσε πληκτρολόγηση και ο νέος χρήστης σταματούσε σε κενό
-    // κουτί για να σκεφτεί ένα όνομα. Τώρα το βήμα ανοίγει με τον τύπο του
-    // ακινήτου («Διαμέρισμα»), επιλεγμένο ώστε το πρώτο πλήκτρο να το αντικαθιστά.
-    if (canNext && step === 0 && !name.trim() && propType) setName(propertyTypeLabel(propType));
     if (canNext) { goStep(s => s + 1); return; }
-    if (step === 0) {
-      setError('Διάλεξε κατάσταση για να συνεχίσεις.');
-      document.getElementById(statusGroupId)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    } else if (step === 1) {
-      setError('Γράψε ένα όνομα για το ακίνητο για να συνεχίσεις.');
-      document.getElementById(nameId)?.focus();
-    }
+    setError('Διάλεξε κατάσταση για να συνεχίσεις.');
+    document.getElementById(statusGroupId)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   };
 
+  // ΤΟ ΟΝΟΜΑ ΔΕΝ ΖΗΤΙΕΤΑΙ ΣΤΟ ΝΕΟ ΑΚΙΝΗΤΟ. Ηταν το μόνο υποχρεωτικό πεδίο που
+  // ζητούσε πληκτρολόγηση και ο νέος χρήστης σταματούσε σε κενό κουτί για να
+  // σκεφτεί ένα όνομα. Παίρνει τη διεύθυνση ή τον τύπο («Διαμέρισμα») και
+  // αλλάζει από τα «Βασικά στοιχεία». Στην επεξεργασία το όνομα που σβήστηκε
+  // ζητιέται ξανά: εκεί ο χρήστης το άλλαξε ο ίδιος.
+  const finalName = name.trim() || (isEdit ? '' : defaultPropertyName(propertyTypeLabel(propType), address));
+  const basicsStep = EDIT_PAGES.indexOf('basics');
+
   const save = async () => {
-    if (!name.trim()) { setStep(1); return; }
-    if (powerCheck.error) { setStep(1); setError(`Αριθμός παροχής ρεύματος: ${powerCheck.error}`); return; }
-    if (peaDatesBad && !isLandLike) { setStep(1); setError('ΠΕΑ: η λήξη δεν μπορεί να είναι πριν από την έκδοση.'); return; }
+    if (!finalName) { setStep(basicsStep); setError('Γράψε ένα όνομα για το ακίνητο.'); return; }
+    if (powerCheck.error) { if (isEdit) setStep(basicsStep); setError(`Αριθμός παροχής ρεύματος: ${powerCheck.error}`); return; }
+    if (peaDatesBad && !isLandLike) { if (isEdit) setStep(basicsStep); setError('ΠΕΑ: η λήξη δεν μπορεί να είναι πριν από την έκδοση.'); return; }
     setSaving(true); setError('');
 
     // Συνιδιοκτήτες: τα ονόματα του οδηγού ξαναδένονται με ΑΦΜ, ποσοστό και
@@ -683,7 +727,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
       : hasCoOwnerDetails(knownCoOwners) ? writeCoOwners(knownCoOwners) : null;
 
     const payload = {
-      name: name.trim(),
+      name: finalName,
       prop_type: propType,
       address: address.trim() || null,
       postal_code: postalCode.trim() || null,
@@ -834,6 +878,25 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     shared: isShared,
   };
   const place = (id: string) => fieldPlacement(id, fieldCtx);
+  // ΤΟ ΜΙΣΘΩΜΑ ΠΡΩΤΟ, Η ΑΝΤΙΚΕΙΜΕΝΙΚΗ ΣΤΑ «ΠΕΡΙΣΣΟΤΕΡΑ». Η αντικειμενική αξία
+  // δεν αλλάζει τον φόρο ενοικίων που βλέπει ο χρήστης στο ίδιο βήμα και
+  // ζητούσε ένα χαρτί (το Ε9) που ο νέος χρήστης σπάνια έχει μπροστά του.
+  const placeMoney = (id: string): Placement => (id === 'prop.obj_value' && place(id) === 'core' ? 'more' : place(id));
+
+  const railLabels = isEdit ? EDIT_STEPS : ONBOARDING_STEPS.map(s => s.label);
+  const railRef = useRef<HTMLDivElement>(null);
+  // Η λεπτή γραμμή κάτω από τη ράγα, μόνο όταν το σώμα έχει κυλήσει.
+  useEffect(() => {
+    const rail = railRef.current;
+    const body = rail?.closest<HTMLElement>('.po-modal-body');
+    if (!rail || !body) return;
+    const sync = () => { if (body.scrollTop > 0) rail.dataset.scrolled = ''; else delete rail.dataset.scrolled; };
+    sync();
+    body.addEventListener('scroll', sync, { passive: true });
+    return () => body.removeEventListener('scroll', sync);
+  }, []);
+  // Νέο βήμα, από την κορυφή: το σώμα δεν κρατά την κύλιση του προηγούμενου.
+  useEffect(() => { railRef.current?.closest<HTMLElement>('.po-modal-body')?.scrollTo({ top: 0 }); }, [step]);
 
   // ── ΔΕΝ ΚΛΕΙΝΕΙ ΟΣΟ ΑΠΟΘΗΚΕΥΕΙ ────────────────────────────────────────────
   // Το χειρόγραφο κέλυφος έκλεινε μόνο με κλικ στο φόντο ή στο «✕». Το Modal
@@ -851,17 +914,27 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   //
   // ΚΑΙ ΔΕΝ ΚΛΕΙΝΕΙ ΧΩΡΙΣ ΕΡΩΤΗΣΗ ΟΣΟ ΥΠΑΡΧΟΥΝ ΑΛΛΑΓΕΣ. Ένας δρόμος για όλα: το
   // φόντο, το Escape, το «×» και το «Ακύρωση» περνούν από εδώ.
-  const requestClose = async () => {
-    if (saving) return;
-    if (dirty && !(await confirmDiscard())) return;
+  const requestClose = async (): Promise<boolean> => {
+    if (saving) return false;
+    if (dirty && !(await confirmDiscard())) return false;
     clearDraft(formKey);
     // ΤΟ ΑΚΙΝΗΤΟ ΥΠΑΡΧΕΙ ΗΔΗ: η λίστα ανανεώνεται. Αν έσκαγε το δεύτερο βήμα και
     // ο χρήστης έκλεινε τον οδηγό, η σελίδα δεν ξαναδιάβαζε τα ακίνητα και το
     // νέο ακίνητο φαινόταν να μην αποθηκεύτηκε ποτέ (αναφορά λογιστή, 06/11/2026).
-    if (createdId && !isEdit) { onSaved(createdId); return; }
+    if (createdId && !isEdit) { onSaved(createdId); return true; }
     if (!isEdit && !createdId) void trackOnboarding(supabase, { event: PRODUCT_EVENTS.wizard_closed, step: step + 1 });
     onClose();
+    return true;
   };
+
+  // ΤΟ «ΠΙΣΩ» ΤΟΥ ΠΕΡΙΗΓΗΤΗ ΕΙΝΑΙ ΤΟ «ΠΙΣΩ» ΤΟΥ ΥΠΟΣΕΛΙΔΟΥ (components/useBackButton.ts):
+  // στο δεύτερο βήμα γυρίζει στο πρώτο, στο πρώτο κλείνει, με την ίδια ερώτηση
+  // για τις αλλαγές. Ποτέ έξω από τον πίνακα με μισογραμμένο ακίνητο.
+  useBackButton(rearm => {
+    if (saving) { rearm(); return; }
+    if (!isEdit && step > 0) { goStep(s => s - 1); rearm(); return; }
+    void requestClose().then(closed => { if (!closed) rearm(); });
+  });
 
   return (
     // ΠΟΛΥΒΗΜΑΤΙΚΟ, ΑΛΛΑ ΠΑΡΑΘΥΡΟ — ΟΧΙ ΟΛΟΣΕΛΙΔΗ ΕΜΠΕΙΡΙΑ.
@@ -871,139 +944,102 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     // χρήστης. Το χειρόγραφο κέλυφος δεν άκουγε Escape, δεν επέστρεφε την
     // εστίαση και δεν κλείδωνε την κύλιση του φόντου· και το «✕» του ήταν
     // 36×36 με radius 18, δηλαδή τέταρτο σχήμα κλεισίματος στην ίδια εφαρμογή.
-    <Modal open onClose={requestClose} size="md"
+    <Modal open onClose={requestClose} size="md" className="wiz-scrim"
       ariaLabel={isEdit ? 'Επεξεργασία ακινήτου' : 'Νέο ακίνητο'}
       // Ο ΥΠΟΤΙΤΛΟΣ ΕΛΕΓΕ «Βήμα 1 από 5 · Τύπος» ΚΑΙ ΑΠΟ ΚΑΤΩ Η ΡΑΓΑ ΤΟ ΙΔΙΟ.
-      // Πέντε κύκλοι με αριθμό, πέντε ονόματα βημάτων, τσεκ σε ό,τι τελείωσε
-      // και φωτισμένο το τρέχον: η ράγα λέει ΠΕΡΙΣΣΟΤΕΡΑ από τη φράση και τη
-      // λέει με μια ματιά. Η φράση ήταν η ίδια πληροφορία, δεύτερη φορά, στην
-      // πρώτη οθόνη που βλέπει όποιος μόλις έγραψε λογαριασμό.
+      // Η ράγα λέει περισσότερα με μια ματιά· η φράση ήταν η ίδια πληροφορία δεύτερη φορά.
       title={isEdit ? 'Επεξεργασία ακινήτου' : 'Νέο ακίνητο'}
-      footer={<>
-        {/* Ήσυχο: είναι η έξοδος του βήματος και δεν διεκδικεί το μάτι από τη
-            «Συνέχεια». Το `size="lg"` κρατά το ύψος T.h.lg που είχε ήδη όλη η
-            σειρά, ώστε τα τέσσερα κουμπιά του υποσέλιδου να μένουν ίσα. */}
+      // ═══ ΕΝΑ ΚΥΡΙΟ ΚΟΥΜΠΙ ΑΝΑ ΒΗΜΑ ΚΑΙ ΕΝΑ ΗΣΥΧΟ ΓΙΑ ΠΙΣΩ ═══════════════
+      // Ηταν τρία: «Πίσω», «Αποθήκευση τώρα» με περίγραμμα στη μέση και
+      // «Συνέχεια», με λεκτικά που άλλαζαν κάτω από τα 420 εικονοστοιχεία. Ο
+      // νέος οδηγός έχει δύο οθόνες, οπότε η αποθήκευση είναι απλώς το κύριο
+      // κουμπί της δεύτερης. Η επεξεργασία έχει καρτέλες στη ράγα και
+      // αποθηκεύει από όποια καρτέλα. Τα λεκτικά δεν αλλάζουν με το πλάτος.
+      footer={isEdit ? <>
+        <Btn variant="ghost" size="lg" onClick={requestClose}>Ακύρωση</Btn>
+        <Btn variant="primary" size="lg" onClick={save} disabled={saving}>{saving ? 'Αποθήκευση…' : 'Αποθήκευση'}</Btn>
+      </> : <>
         <Btn variant="ghost" size="lg" onClick={() => (step === 0 ? requestClose() : goStep(s => s - 1))}>
           {step === 0 ? 'Ακύρωση' : 'Πίσω'}
         </Btn>
-
-        {/* ══════════════════════════════════════════════════════════════
-            Η ΕΞΟΔΟΣ ΥΠΑΡΧΕΙ ΑΠΟ ΤΗ ΣΤΙΓΜΗ ΠΟΥ ΤΟ ΑΚΙΝΗΤΟ ΣΤΕΚΕΤΑΙ
-
-            Ο οδηγός απαιτούσε και τα πέντε βήματα για να αποθηκεύσει, ενώ το
-            ΜΟΝΟ υποχρεωτικό πεδίο είναι το όνομα — και το λέει το ίδιο το
-            `canNext` δύο γραμμές πιο πάνω. Ενας άνθρωπος που μόλις έφτιαξε
-            λογαριασμό έπρεπε να περάσει από τρεις οθόνες με εβδομήντα δύο
-            κουτιά για να δει το πρώτο του ακίνητο στη λίστα.
-
-            Τώρα η αποθήκευση στέκει δίπλα στη «Συνέχεια» από το δεύτερο βήμα
-            και μετά. Δεν αντικαθιστά τη «Συνέχεια»: όποιος έχει τα χαρτιά
-            μπροστά του συνεχίζει, όποιος δεν τα έχει τελειώνει. Και τα δύο
-            γράφουν το ίδιο ακίνητο με την ίδια `save()`, οπότε δεν υπάρχει
-            «μισό» ακίνητο — υπάρχει ακίνητο με λιγότερα συμπληρωμένα.
-            ══════════════════════════════════════════════════════════════ */}
-        {step > 0 && step < STEPS.length - 1 && (
-          <Btn variant="secondary" size="lg" onClick={save} disabled={saving || !name.trim()}>{saving ? 'Αποθήκευση…' : isEdit ? 'Αποθήκευση' : <><span className="lp-hide-xs">Αποθήκευση τώρα</span><span className="lp-only-xs">Αποθήκευση</span></>}</Btn>
-        )}
-
-        {step < STEPS.length - 1 ? (
-          <Btn variant="primary" size="lg" onClick={next}>Συνέχεια</Btn>
-        ) : (
-          <Btn variant="primary" size="lg" onClick={save} disabled={saving || !name.trim()}>{saving ? 'Αποθήκευση…' : isEdit
-            ? <><span className="lp-hide-xs">Αποθήκευση αλλαγών</span><span className="lp-only-xs">Αποθήκευση</span></>
-            : <><span className="lp-hide-xs">Προσθήκη ακινήτου</span><span className="lp-only-xs">Προσθήκη</span></>}</Btn>
-        )}
+        {step < pages.length - 1
+          ? <Btn variant="primary" size="lg" onClick={next}>Συνέχεια</Btn>
+          : <Btn variant="primary" size="lg" onClick={save} disabled={saving}>{saving ? 'Αποθήκευση…' : 'Αποθήκευση'}</Btn>}
       </>}>
 
-      {/* ═══ ΟΙ ΚΥΚΛΟΙ ΣΤΟΙΧΙΖΟΝΤΑΙ ΑΠΟ ΠΑΝΩ, ΟΧΙ ΑΠΟ ΤΟ ΚΕΝΤΡΟ ══════════════════
-          ΤΟ ΕΦΕΡΕ Η ΑΠΟΚΡΥΨΗ ΤΩΝ ΟΝΟΜΑΤΩΝ. Οταν σε τηλέφωνο γράφεται μόνο το
-          ενεργό βήμα, η στήλη του έχει κύκλο 28 συν κενό 6 συν όνομα 14, δηλαδή
-          48, ενώ οι άλλες τέσσερις έχουν μόνο τα 28 του κύκλου. Η ράγα ψηλώνει
-          στα 48 και με στοίχιση στο κέντρο οι τέσσερις κοντές στήλες πέφτουν
-          (48 − 28) ÷ 2 = 10 εικονοστοιχεία χαμηλότερα από τον ενεργό κύκλο:
-          μετρημένο κέντρο 139,75 ο πρώτος έναντι 150,75 οι υπόλοιποι, δηλαδή
-          μια ράγα βημάτων που δεν κάθεται σε γραμμή.
+      {/* ═══ Η ΡΑΓΑ: ΙΣΕΣ ΣΤΗΛΕΣ, ΟΛΑ ΤΑ ΟΝΟΜΑΤΑ, ΚΟΛΛΗΜΕΝΗ ΣΤΗΝ ΚΟΡΥΦΗ ═════════
+          ΙΣΕΣ ΣΤΗΛΕΣ. Κάθε βήμα παίρνει το ίδιο κλάσμα του πλάτους και ο κόμβος
+          κάθεται στο κέντρο της στήλης του· η γραμμή ένωσης πάει από κέντρο σε
+          κέντρο (globals.css, `.wiz-rail`). Ετσι τα κενά είναι ίσα σε κάθε
+          πλάτος, χωρίς να μετρά κανείς ονόματα.
 
-          Με στοίχιση στην κορυφή όλοι οι κύκλοι ξεκινούν στο ίδιο ύψος και το
-          όνομα κρέμεται από κάτω. Η γραμμή που τους ενώνει παίρνει περιθώριο
-          κορυφής (28 − 2) ÷ 2 = 13 για να πέσει στο κέντρο του κύκλου, γιατί
-          έχει πάψει να το βρίσκει μόνη της.
+          ΟΛΑ ΤΑ ΟΝΟΜΑΤΑ ΦΑΙΝΟΝΤΑΙ. Στα 320 ο νέος οδηγός έχει τρία ονόματα σε
+          στήλες των 90 και η επεξεργασία τέσσερα σε στήλες των 68: χωρούν. Πριν,
+          τα ονόματα των άλλων βημάτων έκρυβαν στο κινητό και ο χρήστης έβλεπε
+          κύκλους χωρίς λόγια.
 
-          ΓΙΑΤΙ ΠΛΕΓΜΑ ΚΑΙ ΟΧΙ ΓΡΑΜΜΗ: με flex η ορατή ετικέτα πλάταινε τη στήλη
-          του ενεργού βήματος και έτρωγε από τη δική του γραμμή σύνδεσης. Στα 320
-          έβγαινε 3,6 εικονοστοιχεία δίπλα σε τρεις των 8,5 και στα 300 μηδένιζε.
-          Το πλέγμα δίνει στις τέσσερις γραμμές ίδιο κλάσμα: μετρημένες 7,3 στα
-          320 και 17,3 στα 360, ίσες μεταξύ τους σε κάθε πλάτος. */}
-      {/* ΤΟ ΠΡΟΧΕΙΡΟ ΛΕΓΕΤΑΙ. Χωρίς αυτή τη γραμμή, ένα οδηγός που ανοίγει
+          ΚΟΛΛΗΜΕΝΗ. Σε μακρύ βήμα η ράγα έφευγε με την κύλιση και άφηνε ένα
+          ορφανό όνομα στη μέση. Τώρα μένει στην κορυφή του σώματος, με μια
+          λεπτή γραμμή από κάτω μόλις το σώμα κυλήσει (`data-scrolled`).
+
+          ΣΤΟ ΝΕΟ ΑΚΙΝΗΤΟ, ΤΑ ΒΗΜΑΤΑ ΤΗΣ ΥΠΟΔΟΧΗΣ. Το τρίτο, «Ο φόρος σου», είναι
+          ο προορισμός: η Επισκόπηση μετά την αποθήκευση. Στην επεξεργασία οι
+          κόμβοι είναι κουμπιά, καρτέλες προς κάθε ενότητα. */}
+      <div ref={railRef} className="wiz-rail">
+        <ol aria-label={isEdit ? 'Ενότητες' : 'Βήματα'} style={{ gridTemplateColumns: `repeat(${railLabels.length}, minmax(0, 1fr))` }}>
+          {railLabels.map((label, i) => {
+            const done = i < step, active = i === step;
+            const node = <>
+              <span className="wiz-node" data-state={active ? 'now' : done && !isEdit ? 'done' : 'todo'} aria-hidden>
+                {done && !isEdit ? <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg> : i + 1}
+              </span>
+              <span className={`wiz-step${active ? ' wiz-step-on' : ''}`}>{label}</span>
+            </>;
+            return (
+              <li key={label} className="wiz-rail-col" data-reached={!isEdit && i <= step ? '' : undefined} aria-current={active && !isEdit ? 'step' : undefined}>
+                {isEdit
+                  ? <button type="button" className="wiz-tab" aria-current={active ? 'step' : undefined} onClick={() => goStep(() => i)}>{node}</button>
+                  : node}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+      {/* ΤΟ ΠΡΟΧΕΙΡΟ ΛΕΓΕΤΑΙ. Χωρίς αυτή τη γραμμή, ένας οδηγός που ανοίγει
           γεμάτος μοιάζει με λάθος: «ποιος τα έγραψε αυτά;». */}
       {draft && (
         <p role="status" style={{ ...TT.bodySm, margin: 0 }}>
           Συνεχίζεις από εκεί που σταμάτησες. Το πρόχειρο μένει μόνο σε αυτή την καρτέλα.
         </p>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, auto minmax(4px, 1fr)) auto', alignItems: 'start' }}>
-        {STEPS.map((label, i) => {
-          const done = i < step, active = i === step;
-          const on = done || active;
-          return (
-            <Fragment key={label}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: on ? 'var(--accent)' : 'var(--bg-overlay)', color: on ? 'var(--accent-text)' : 'var(--text-tertiary)',
-                  border: active ? '2px solid var(--accent)' : '2px solid transparent',
-                  boxShadow: active ? '0 0 0 4px var(--accent-soft)' : 'none',
-                  fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, transition: 'background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s, opacity 0.2s',
-                }}>{done ? '✓' : i + 1}</div>
-                {/* ═══ ΣΕ ΣΤΕΝΗ ΟΘΟΝΗ ΓΡΑΦΕΤΑΙ ΜΟΝΟ ΤΟ ΒΗΜΑ ΠΟΥ ΠΑΤΑΣ ═══════════
-                    Τα πέντε ονόματα μαζί θέλουν 293 εικονοστοιχεία και το
-                    παράθυρο δίνει 278: μετρημένο σε Galaxy A, 360×800, η
-                    «Σύνοψη» έβγαινε δεκαπέντε έξω από τη δεξιά άκρη.
-
-                    ΓΙΑΤΙ ΟΧΙ ΜΙΚΡΟΤΕΡΑ ΓΡΑΜΜΑΤΑ: στα 10 χωρούν όλα, αλλά τα 11
-                    είναι το κάτω όριο αναγνωσιμότητας που τηρεί η εφαρμογή
-                    παντού και το ελέγχει ο έλεγχος διάταξης. Μια εξαίρεση εδώ
-                    θα ήταν εξαίρεση παντού.
-
-                    ΤΙ ΜΕΝΕΙ ΟΡΑΤΟ: οι πέντε κύκλοι με τους αριθμούς τους, τα
-                    τικ στα περασμένα και το όνομα του βήματος που πατάς. Δηλαδή
-                    πού είσαι, πόσα έκανες και πόσα μένουν. Τα ονόματα των
-                    επόμενων βημάτων εμφανίζονται καθώς φτάνεις σε αυτά. */}
-                <div className={`wiz-step${active ? ' wiz-step-on' : ''}`} style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 500, color: on ? 'var(--text-primary)' : 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>{label}</div>
-              </div>
-              {i < STEPS.length - 1 && <div style={{ height: 2, background: i < step ? 'var(--accent)' : 'var(--border-subtle)', margin: '13px 8px 0', transition: 'background 0.2s' }} />}
-            </Fragment>
-          );
-        })}
-      </div>
 
       {/* STEP 1, Τύπος & Κατάσταση */}
-      {step === 0 && (
+      {page === 'type' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {!isEdit && onBulkImport && <BulkImportCard onStart={onBulkImport} hasProperties={hasProperties} />}
           <div>
-            <div id={typeGroupId} style={labelStyle}>Τύπος ακινήτου</div>
-            {/* ΟΛΑ ΤΑ ΠΛΑΚΙΔΙΑ ΙΣΑ ΚΑΙ ΟΤΑΝ ΤΟ ΟΝΟΜΑ ΠΙΑΝΕΙ ΔΥΟ ΣΕΙΡΕΣ.
-                Στα 360 η «Επαγγελματική αποθήκη» και η «Αποθήκη πολυκατοικίας»
-                τυλίγονται, οπότε η γραμμή τους μετρήθηκε 94 ενώ οι υπόλοιπες
-                80: τρία διαφορετικά ύψη στην ίδια οθόνη. Το `1fr` στις γραμμές
-                δίνει σε όλες το ύψος της ψηλότερης. */}
-            <div role="group" aria-labelledby={typeGroupId} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gridAutoRows: '1fr', gap: 10 }}>
-              {PROPERTY_TYPES.map(t => {
+            {/* «Άλλο…» στη γραμμή της ετικέτας, δεξιά: ούτε μία σειρά ύψους δική του. */}
+            <div className="wiz-group-head">
+              <div id={typeGroupId} style={labelStyle}>Τύπος ακινήτου</div>
+              {!moreTypes && (
+                <button type="button" className="wiz-more-link" aria-expanded={false} onClick={() => setMoreTypes(true)}>Άλλο…</button>
+              )}
+            </div>
+            {/* ΕΞΙ ΠΛΑΚΙΔΙΑ ΚΑΙ «ΑΛΛΟ…». Δώδεκα πλακίδια έπιαναν μισή οθόνη πριν
+                φτάσει ο χρήστης στην ερώτηση που μετρά (την κατάσταση). Οι έξι
+                συνηθέστεροι τύποι φαίνονται, οι υπόλοιποι ένα πάτημα πιο κάτω
+                (lib/onboarding/steps.ts). Εξι στήλες στο παράθυρο, τρεις στο
+                τηλέφωνο: γεμάτες σειρές σε κάθε πλάτος, ως 88 ύψος, κενό 12.
+                Το `1fr` στις γραμμές δίνει σε όλα το ύψος του ψηλότερου. */}
+            <div role="group" aria-labelledby={typeGroupId} className="wiz-types">
+              {[...PRIMARY_TYPES, ...(moreTypes ? MORE_TYPES : [])].map(t => {
                 const sel = propType === t;
                 return (
-                  // Πλακίδιο με ΚΑΤΑΣΤΑΣΗ, όχι ενέργεια: το `aria-pressed` το δηλώνει
-                  // πλέον μόνο του και η επιλογή δεν παχαίνει περίγραμμα, οπότε το
-                  // ύψος της γραμμής μένει ίδιο χωρίς τον δακτύλιο. Το σχήμα της
-                  // στήλης —εικονίδιο πάνω από το όνομα— είναι γεωμετρία του σημείου
-                  // χρήσης και μένει εδώ.
-                  <ChipToggle key={t} on={sel} onClick={() => setPropType(t)}>
-                    {/* Από πάνω, όχι από το κέντρο: με όνομα δύο γραμμών το
-                        εικονίδιο ανέβαινε 5 έως 7 εικονοστοιχεία πάνω από τα
-                        διπλανά της ίδιας σειράς. Όλα ξεκινούν στο ίδιο ύψος. */}
-                    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', alignSelf: 'stretch', gap: 8, padding: '16px 0', flex: 1 }}>
+                  // Πλακίδιο με ΚΑΤΑΣΤΑΣΗ, όχι ενέργεια: το `aria-pressed` το δηλώνει.
+                  <ChipToggle key={t} on={sel} className="wiz-type" onClick={() => setPropType(t)}>
+                    <span className="wiz-type-in">
                       <TypeIcon type={t} />
-                      <span style={{ fontFamily: T.font.sans, fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? 'var(--text-primary)' : 'var(--text-secondary)', textAlign: 'center' }}>{propertyTypeLabel(t)}</span>
+                      <span style={{ fontWeight: sel ? 600 : 500, color: sel ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{propertyTypeLabel(t)}</span>
                     </span>
                   </ChipToggle>
                 );
@@ -1013,47 +1049,32 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
 
           <div>
             <div id={statusGroupId} style={labelStyle}>Κατάσταση</div>
-            <p id={`${statusGroupId}-hint`} style={{ ...TT.caption, margin: '0 0 8px' }}>Διάλεξε μία. Αλλάζει όποτε θέλεις.</p>
-            {/* ΕΠΤΑ ΕΠΙΛΟΓΕΣ, ΙΔΙΕΣ ΑΚΡΙΒΩΣ ΜΕ ΤΗΝ ΚΕΦΑΛΙΔΑ ΤΟΥ ΑΚΙΝΗΤΟΥ.
-                Η κάθε μία φέρει και την επεξήγησή της, όπως στο μενού: η
-                διαφορά μακροχρόνιας και βραχυχρόνιας δεν είναι προφανής από
-                τον τίτλο και ήταν ο λόγος που υπήρχε χωριστός διακόπτης.
-
-                ΤΟ ΕΠΤΑ ΔΕΝ ΔΙΑΙΡΕΙΤΑΙ ΚΑΙ ΦΑΙΝΟΤΑΝ. Ηταν ένα πλέγμα `auto-fit`:
-                στο παράθυρο των 640 έβγαζε δύο στήλες, δηλαδή 2+2+2+1, με το
-                «Αμφισβητούμενο» μόνο του και τρύπα δίπλα του. Μετρημένο στον
-                πάγκο, σε τέσσερα πλάτη — και είναι η ΠΡΩΤΗ οθόνη που βλέπει
-                όποιος μόλις έγραψε λογαριασμό.
-
-                Η μακροχρόνια μίσθωση παίρνει ολόκληρη τη γραμμή. Δεν είναι
-                τέχνασμα για να βγει ο αριθμός: είναι η συντριπτικά συνηθέστερη
-                απάντηση, οπότε ο μεγαλύτερος στόχος ανήκει σε εκείνη. Μένουν
-                έξι, που κάνουν 3+3 και 2+2+2. */}
-            {(() => {
-              const tile = (st: typeof STATUSES[number]) => {
-                const sel = statusKey === st.key;
+            {/* ΤΕΣΣΕΡΙΣ ΓΡΑΜΜΕΣ ΚΑΙ ΜΙΑ ΛΙΣΤΑ. Οι τέσσερις καταστάσεις που ζει
+                σχεδόν κάθε ακίνητο (μίσθωση, βραχυχρόνια, κενό, ιδιοχρησία)
+                φαίνονται με την επεξήγησή τους· οι τρεις σπάνιες ζουν σε μία
+                αναδιπλούμενη λίστα από κάτω, όπου μία επιλογή είναι δύο πατήματα
+                και δεν πιάνει χώρο όσο δεν χρειάζεται. Δύο στήλες στο παράθυρο,
+                μία στο τηλέφωνο. */}
+            <div role="group" aria-labelledby={statusGroupId} className="wiz-statuses">
+              {PRIMARY_STATUSES.map(key => {
+                const st = BY_KEY[key];
+                const sel = statusKey === key;
                 return (
-                  // Ίδια οικογένεια με τα πλακίδια του τύπου από πάνω: κατάσταση με
-                  // `aria-pressed`, όχι ενέργεια. Σχήμα `chip` και όχι `seg`, γιατί
-                  // τα πλακίδια δεν κάθονται σε ράγα με δικό της περίγραμμα. Οι δύο
-                  // γραμμές —τίτλος και επεξήγηση— κρατούν το γέμισμά τους εδώ.
-                  // Ο τίτλος στην κορυφή του πλακιδίου: με υπόδειξη μίας γραμμής
-                  // έπεφτε 8 εικονοστοιχεία χαμηλότερα από τους διπλανούς.
-                  <ChipToggle key={st.key} on={sel} onClick={() => { setStatusKey(st.key); setError(''); }}>
-                    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', alignSelf: 'stretch', gap: 2, padding: '10px 2px', textAlign: 'left', flex: 1 }}>
-                      <span style={{ fontSize: 'var(--fs-base)', fontWeight: sel ? 700 : 500, color: 'var(--text-primary)' }}>{st.label}</span>
+                  <ChipToggle key={key} on={sel} className="wiz-status" onClick={() => { setStatusKey(key); setError(''); }}>
+                    <span className="wiz-status-in">
+                      <span style={{ fontSize: 'var(--fs-base)', fontWeight: sel ? 600 : 500, color: 'var(--text-primary)' }}>{st.label}</span>
                       <span style={{ fontSize: 'var(--fs-xs)', lineHeight: 1.4, color: 'var(--text-tertiary)' }}>{st.hint}</span>
                     </span>
                   </ChipToggle>
                 );
-              };
-              return (
-                <div role="group" aria-labelledby={statusGroupId} aria-describedby={`${statusGroupId}-hint`} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {tile(STATUSES[0])}
-                  <div {...fixedCols(3, 8, 'stretch')}>{STATUSES.slice(1).map(tile)}</div>
-                </div>
-              );
-            })()}
+              })}
+            </div>
+            <div className="wiz-more-status" data-on={statusNeedsMore(statusKey) ? '' : undefined}>
+              <CustomSelect ariaLabel="Άλλη κατάσταση" value={statusNeedsMore(statusKey) ? statusKey! : ''}
+                onChange={v => { setStatusKey(v as PropertyStatus); setError(''); }}
+                placeholder="Άλλη κατάσταση…"
+                options={MORE_STATUSES.map(k => ({ value: k, label: BY_KEY[k].label }))} />
+            </div>
           </div>
 
           {/* Ο ΔΙΑΚΟΠΤΗΣ «Βραχυχρόνια μίσθωση (Airbnb / Booking)» ΕΦΥΓΕ.
@@ -1116,7 +1137,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
           φύγει από εδώ δεν υπάρχει πουθενά αλλού.
           ══════════════════════════════════════════════════════════════════ */}
 
-      {step === 1 && (
+      {page === 'basics' && (
         <StepBody
           place={place}
           rows={[
@@ -1176,10 +1197,27 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
       )}
 
       {/* STEP 3, Οικονομικά */}
-      {step === 2 && (
+      {page === 'money' && (
         <StepBody
-          place={place}
+          place={placeMoney}
           rows={[
+            row('prop.rent', airbnb ? 'full' : 'auto', <>
+              {/* Στο νέο ακίνητο ο δρομέας περιμένει ήδη στο ποσό και το Enter
+                  αποθηκεύει: το βήμα γίνεται χωρίς ποντίκι και χωρίς ψάξιμο. */}
+              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={rent} onChange={e => setRent(e.target.value)} placeholder={airbnb ? '1400' : '820'} onFocus={onFocus} onBlur={onBlur}
+                autoFocus={!isEdit || focusRent}
+                onKeyDown={e => { if (e.key === 'Enter' && !isEdit) { e.preventDefault(); void save(); } }} />
+              {airbnb && (
+                <div style={{ ...TT.caption, marginTop: 6 }}>
+                  Τιμή ανά νύχτα επί τις νύχτες του μήνα, κατά μέσο όρο.
+                </div>
+              )}
+              {leased && (
+                <div style={{ ...TT.caption, marginTop: 6 }}>
+                  Όπως γράφει το μισθωτήριο.
+                </div>
+              )}
+            </>, rentLabel),
             row('prop.obj_value', 'auto', <>
               <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={objValue} onChange={e => setObjValue(e.target.value)} onFocus={onFocus} onBlur={onBlur} />
               {/* Ο ΕΝΦΙΑ κόβει μόνος του το ποσοστό ιδιοκτησίας: η αξία του
@@ -1188,19 +1226,6 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
                 {OBJ_VALUE_WHOLE}
               </div>
             </>, 'Αντικειμενική αξία (€)'),
-            row('prop.rent', airbnb ? 'full' : 'auto', <>
-              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={rent} onChange={e => setRent(e.target.value)} placeholder={airbnb ? '1400' : '820'} onFocus={onFocus} onBlur={onBlur} />
-              {airbnb && (
-                <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.6 }}>
-                  Η τιμή ανά νύχτα επί τις νύχτες που νοικιάζεται τον μήνα, κατά μέσο όρο μέσα στη χρονιά. Οι καταγεγραμμένες διαμονές αντικαθιστούν αυτή την εκτίμηση παντού όπου υπάρχουν.
-                </div>
-              )}
-              {leased && (
-                <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.6 }}>
-                  Όσο πληρώνει σήμερα ο ενοικιαστής, όπως γράφει το μισθωτήριο. Όταν καταχωρήσεις τον ενοικιαστή με τη μίσθωσή του, μετρά το μίσθωμα εκείνης.
-                </div>
-              )}
-            </>, rentLabel),
             row('prop.co_owners', 'full', <>
               <input style={numInputStyle} type="number" inputMode="numeric" min={1} max={99} value={coOwners.length}
                 onChange={e => setCoOwnerCount(parseInt(e.target.value, 10))} onFocus={onFocus} onBlur={onBlur} />
@@ -1242,7 +1267,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
           συμπληρωμένα από το προφίλ και οι πάροχοι γράφονται μόνοι τους με την
           πρώτη σάρωση λογαριασμού. Ηταν δικό τους βήμα, με ένα μόνο κουμπί μέσα·
           τώρα είναι ένα κουτί στο τέλος, πριν από την «Προσθήκη ακινήτου». */}
-      {step === SUMMARY_STEP && (
+      {page === 'summary' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.popup }}>
             <div style={{ color: 'var(--accent)' }}><TypeIcon type={propType} /></div>

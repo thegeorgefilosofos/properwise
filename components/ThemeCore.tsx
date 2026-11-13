@@ -371,8 +371,10 @@ function useKeyboardInset(open: boolean, ref: { current: HTMLElement | null }) {
   }, [open, ref]);
 }
 
-export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 'md', children, footer, footerInfo }: {
+export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 'md', children, footer, footerInfo, className }: {
   open: boolean; onClose: () => void;
+  /** Προστίθεται στο πέπλο (`po-modal-scrim`): για όψη που αφορά ένα μόνο παράθυρο, π.χ. το φόντο του οδηγού. */
+  className?: string;
   /** Δέχεται και JSX (π.χ. τίτλος με <InfoHint>). Για τεχνολογίες υποβοήθησης δώσε ariaLabel. */
   title: ReactNode; ariaLabel?: string; subtitle?: ReactNode; icon?: ReactNode;
   size?: ModalSize; children: ReactNode; footer?: ReactNode; footerInfo?: ReactNode;
@@ -387,7 +389,7 @@ export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 
   const subId = useId();
   if (!open) return null;
   return (
-    <div ref={scrimRef} className="po-modal-scrim" {...backdrop} role="dialog" aria-modal="true" aria-label={ariaLabel}
+    <div ref={scrimRef} className={className ? `po-modal-scrim ${className}` : 'po-modal-scrim'} {...backdrop} role="dialog" aria-modal="true" aria-label={ariaLabel}
       aria-labelledby={ariaLabel ? undefined : titleId} aria-describedby={subtitle ? subId : undefined}
       style={{ position: 'fixed', inset: 0, background: T.scrim, zIndex: z, overscrollBehavior: 'contain' }}>
       <div ref={panelRef} tabIndex={-1} onClick={e => e.stopPropagation()} className="po-modal"

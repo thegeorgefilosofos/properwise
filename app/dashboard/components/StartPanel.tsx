@@ -18,6 +18,7 @@
 
 import { T, TT, Btn } from '@/components/Theme';
 import { daysLabel, stepsLabel, type StartPanelState } from '@/lib/home/start';
+import { useBillingWords } from './useBillingWords';
 import { askCta } from '@/lib/assistant/identity';
 
 /** «Έγιναν 2 από τα 3 βήματα.» — για τον αναγνώστη οθόνης. */
@@ -39,15 +40,22 @@ const Tick = ({ state }: { state: 'done' | 'now' | 'todo' }) => {
   );
 };
 
-export default function StartPanel({ state, collapsed, onToggle, onNavigate, onPreview, onAsk }: {
+export default function StartPanel({ state, collapsed, onToggle, onNavigate, onPreview, onAsk, onTour }: {
   state: StartPanelState;
   collapsed: boolean;
   onToggle: (next: boolean) => void;
   onNavigate: (tab: string) => void;
   onPreview: () => void;
   onAsk: () => void;
+  /** Η σύντομη περιήγηση, όσο δεν έχει γίνει και υπάρχει ακίνητο να δείξει. */
+  onTour?: () => void;
 }) {
+  // Η γραμμή της δοκιμής, στις λέξεις του lib/legal/billingWords.ts. Χωρίς
+  // απάντηση του διακομιστή δεν λέγεται τίποτα για τη δοκιμή.
+  const words = useBillingWords();
   if (!state.visible) return null;
+  const days = Math.max(0, Math.round(state.daysLeft));
+  const trialLine = words?.trialLine ? (days === 1 ? words.trialLine.one : words.trialLine.many).replace('{n}', String(days)) : null;
 
   const shell: React.CSSProperties = {
     border: '1px solid var(--accent-border)', borderRadius: T.radius.card,
@@ -69,16 +77,11 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
 
   return (
     <div style={{ ...shell, padding: '18px 20px 16px' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: T.sp.lg, flexWrap: 'wrap' }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ ...TT.label, color: 'var(--accent)' }}>Δοκιμή</div>
-          <div style={{ ...TT.h2, marginTop: 6 }}>Από πού ξεκινάς</div>
-        </div>
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ ...TT.caption }}>Απομένουν</div>
-          <div style={{ ...TT.kpi, fontSize: 20, marginTop: 4 }}>{daysLabel(state.daysLeft)}</div>
-        </div>
-      </div>
+      {/* ΤΟ ΜΕΓΑΛΥΤΕΡΟ ΝΟΥΜΕΡΟ ΤΗΣ ΟΘΟΝΗΣ ΗΤΑΝ ΟΙ ΗΜΕΡΕΣ ΤΗΣ ΔΟΚΙΜΗΣ. Τώρα μία
+          ήσυχη γραμμή κάτω από τον τίτλο· το μεγάλο νούμερο ανήκει στον φόρο
+          του χρήστη, λίγο πιο κάτω (OverviewTab). */}
+      <div style={{ ...TT.h2 }}>Από πού ξεκινάς</div>
+      {trialLine && <div style={{ fontSize: 'var(--fs-sm)', lineHeight: 1.4, color: 'var(--text-tertiary)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>{trialLine}</div>}
 
       {/* Το τσεκάρισμα ακούγεται κιόλας: τα βήματα ξαναμετρώνται όταν ο χρήστης
           γυρίζει στην Επισκόπηση (useDashboard, `refreshStartSignals`). */}
@@ -114,11 +117,13 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
               {/* ΕΝΑ ΚΟΥΜΠΙ, ΔΥΟ ΟΨΕΙΣ. Το ενεργό βήμα το γεμίζει, τα υπόλοιπα
                   το αφήνουν ήσυχο. Δύο χωριστά <button> για το ίδιο πράγμα θα
                   ήταν το ίδιο κουμπί γραμμένο δύο φορές. */}
-              {!s.done && (
+              {!s.done && !s.blocked && (
                 // ΤΟ flexShrink ΖΕΙ ΣΤΟ ΔΟΧΕΙΟ. Το κείμενο δίπλα έχει `flex: 1`, δηλαδή
                 // βάση μηδέν: σε στενή οθόνη όλη η συρρίκνωση θα έπεφτε στο κουμπί.
+                // ΤΟ ΡΗΜΑ ΛΕΕΙ ΤΙ ΘΑ ΓΙΝΕΙ («Σάρωση», «Σύνδεση»), όχι ένα κοινό
+                // «Άνοιγμα» που δεν έλεγε τίποτα για κανένα βήμα.
                 <div style={{ flexShrink: 0 }}>
-                  <Btn variant={isNow ? 'primary' : 'ghost'} onClick={() => onNavigate(s.nav)}>Άνοιγμα</Btn>
+                  <Btn variant={isNow ? 'primary' : 'ghost'} onClick={() => onNavigate(s.nav)}>{s.cta}</Btn>
                 </div>
               )}
             </li>
@@ -127,16 +132,21 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
       </ul>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm, marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
-        <Btn variant="secondary" onClick={onPreview}>Δες ένα παράδειγμα</Btn>
+        {/* ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΦΕΥΓΕΙ ΜΟΛΙΣ ΥΠΑΡΧΕΙ ΑΛΗΘΙΝΟ ΑΚΙΝΗΤΟ. Ο χρήστης βλέπει πια
+            τα δικά του ποσά· ένα φανταστικό ακίνητο δίπλα τους μπερδεύει. */}
+        {!state.hasProperty && <Btn variant="secondary" onClick={onPreview}>Δες ένα παράδειγμα</Btn>}
+        {onTour && <Btn variant="secondary" onClick={onTour}>Σύντομη περιήγηση</Btn>}
         <Btn variant="secondary" onClick={onAsk}>{askCta()}</Btn>
         {/* Ghost και όχι secondary: η σύμπτυξη κλείνει το πάνελ και δεν διεκδικεί
             το βλέμμα μαζί με τις δύο πόρτες δίπλα της. Το `marginLeft` είναι θέση
             μέσα στη σειρά — μένει στο δοχείο, έξω από την όψη του κουμπιού. */}
         <div style={{ marginLeft: 'auto' }}><Btn variant="ghost" onClick={() => onToggle(true)}>Σύμπτυξη</Btn></div>
       </div>
-      <div style={{ ...TT.caption, marginTop: 10 }}>
-        Το παράδειγμα είναι ένα ακίνητο με μία ολόκληρη χρονιά στο PROPERWISE, για να δεις τι κάνει η εφαρμογή.
-      </div>
+      {!state.hasProperty && (
+        <div style={{ ...TT.caption, marginTop: 10 }}>
+          Το παράδειγμα είναι ένα ακίνητο με μία ολόκληρη χρονιά στο PROPERWISE, για να δεις τι κάνει η εφαρμογή.
+        </div>
+      )}
     </div>
   );
 }

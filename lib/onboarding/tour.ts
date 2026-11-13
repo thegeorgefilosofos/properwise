@@ -19,7 +19,7 @@
 // υποδοχή». Χωρίς νέα μετανάστευση. Το τοπικό κλειδί είναι δίχτυ για την
 // αποτυχημένη εγγραφή, ώστε η περιήγηση να μην ξανανοίξει στην ίδια συσκευή.
 // ═══════════════════════════════════════════════════════════════════════════
-import { ASSISTANT_ACC } from '@/lib/assistant/identity';
+import { ASSISTANT_ACC, ASSISTANT_NAME } from '@/lib/assistant/identity';
 
 export interface TourStep {
   id: 'deadlines' | 'documents' | 'assistant';
@@ -34,19 +34,21 @@ export const TOUR_STEPS: readonly TourStep[] = [
     id: 'deadlines',
     targets: ['.sidebar-item[data-nav="calendar"]', '.bottom-nav-item[data-tour-nav="calendar"]'],
     title: 'Προθεσμίες και φόροι',
-    body: 'Οι δόσεις ΕΝΦΙΑ και οι δηλώσεις μπαίνουν μόνες τους στο Ημερολόγιο.',
+    body: 'Οι δόσεις ΕΝΦΙΑ και φόρου εισοδήματος είναι ήδη στο Ημερολόγιο.',
   },
   {
     id: 'documents',
     targets: ['.quick-add-btn', '.tour-scan'],
-    title: 'Έγγραφα και λογιστής',
-    body: 'Φωτογράφισε μια απόδειξη και η καταχώρηση γίνεται μόνη της, έτοιμη για τον λογιστή.',
+    // Ενας όρος για το έγγραφο: «παραστατικό» στο περιεχόμενο, «Σάρωση» στην πράξη.
+    title: 'Σάρωση παραστατικών',
+    body: 'Με τη Σάρωση, κάθε παραστατικό καταχωρείται έτοιμο για τον λογιστή.',
   },
   {
     id: 'assistant',
     targets: ['.pa-fab'],
     title: `Ρώτα ${ASSISTANT_ACC}`,
-    body: 'Απαντά στα ελληνικά, με βάση τα στοιχεία των ακινήτων σου.',
+    // Η Νόα συστήνεται με το όνομά της, ποτέ με τίτλο ρόλου.
+    body: `Η ${ASSISTANT_NAME} απαντά για τα ακίνητά σου, με τα δικά σου στοιχεία.`,
   },
 ];
 
@@ -57,7 +59,7 @@ export function isVisibleRect(r: { width: number; height: number; left: number; 
 
 export interface Box { top: number; left: number; width: number; height: number }
 
-export type CaretEdge = 'top' | 'bottom' | 'left';
+export type CaretEdge = 'top' | 'bottom' | 'left' | 'right';
 
 export interface CardPlace {
   top: number; left: number; width: number;
@@ -65,16 +67,26 @@ export interface CardPlace {
   caret: { edge: CaretEdge; offset: number };
 }
 
+/** Η κάρτα δεν ανεβαίνει πάνω από την μπάρα της κορυφής (64 ύψος και 8 αέρας). */
+export const TOUR_TOP = 72;
+
 /**
  * Πού κάθεται η κάρτα: ΠΑΝΤΑ ΔΙΠΛΑ ΣΤΟΝ ΣΤΟΧΟ, με βέλος στο κέντρο του.
- * Σε στενή οθόνη σε όλο το πλάτος, ακριβώς πάνω από στόχο του κάτω μισού ή
- * ακριβώς κάτω από στόχο του πάνω. Σε φαρδιά, δεξιά από στόχο της πλαϊνής
- * μπάρας, αλλιώς κάτω ή πάνω, όπου χωρά. Πάντα μέσα στο παράθυρο.
+ *
+ * - Στενή οθόνη (< 640): όλο το πλάτος, πάνω από στόχο του κάτω μισού ή κάτω
+ *   από στόχο του πάνω.
+ * - Φαρδιά, στόχος στο αριστερό τρίτο (πλαϊνή μπάρα): δεξιά του.
+ * - Φαρδιά, στόχος κάτω δεξιά (το κουμπί της Νόας): ΑΡΙΣΤΕΡΑ του, ώστε η
+ *   κάρτα να μη σκεπάζει ούτε τον στόχο ούτε τη στήλη από πάνω του.
+ * - Αλλιώς κάτω ή πάνω, όπου χωρά.
+ *
+ * Πάντα μέσα στο παράθυρο και ποτέ πάνω από το `TOUR_TOP`.
  */
-export function placeCard(target: Box, card: { width: number; height: number }, vw: number, vh: number, gap = 14, edge = 16): CardPlace {
+export function placeCard(target: Box, card: { width: number; height: number }, vw: number, vh: number, gap = 14, edge = 16, top0 = TOUR_TOP): CardPlace {
   const cx = target.left + target.width / 2;
   const cy = target.top + target.height / 2;
-  const clampY = (y: number) => Math.min(Math.max(edge, y), vh - card.height - edge);
+  const minTop = Math.max(edge, top0);
+  const clampY = (y: number) => Math.max(minTop, Math.min(y, vh - card.height - edge));
   const along = (pos: number, size: number) => Math.min(Math.max(20, pos), size - 20);
   const vertical = (width: number, left: number): CardPlace => {
     const below = target.top + target.height + gap;
@@ -89,6 +101,13 @@ export function placeCard(target: Box, card: { width: number; height: number }, 
   if (target.left < vw / 3 && right + width + edge <= vw) {
     const top = clampY(cy - card.height / 2);
     return { top, left: right, width, caret: { edge: 'left', offset: along(cy - top, card.height) } };
+  }
+  const leftOf = target.left - gap - width;
+  if (cx > vw / 2 && cy > vh / 2 && leftOf >= edge) {
+    // Η κάρτα τελειώνει πάνω από τον πάτο του στόχου, όχι στο κέντρο του: έτσι
+    // το βέλος δείχνει τον στόχο και η κάρτα δεν κατεβαίνει κάτω από αυτόν.
+    const top = clampY(target.top + target.height - card.height);
+    return { top, left: leftOf, width, caret: { edge: 'right', offset: along(cy - top, card.height) } };
   }
   const left = Math.min(Math.max(edge, cx - width / 2), vw - width - edge);
   return vertical(width, left);

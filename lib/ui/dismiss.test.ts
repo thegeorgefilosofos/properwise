@@ -118,7 +118,7 @@ const locked: DraftStore = {
 
   const wiz = readFileSync('app/dashboard/components/AddPropertyWizard.tsx', 'utf8')
   const close = wiz.slice(wiz.indexOf('const requestClose = async'), wiz.indexOf('const requestClose = async') + 400)
-  ok('Γ. ο οδηγός ρωτά πριν κλείσει με αλλαγές', /if \(dirty && !\(await confirmDiscard\(\)\)\) return;/.test(close))
+  ok('Γ. ο οδηγός ρωτά πριν κλείσει με αλλαγές', /if \(dirty && !\(await confirmDiscard\(\)\)\) return( false)?;/.test(close))
   ok('Γ. ο οδηγός περνά το ίδιο κλείσιμο στο Modal', /<Modal open onClose=\{requestClose\}/.test(wiz))
   ok('Γ. το πρόχειρο σβήνει με την αποθήκευση', /clearDraft\(formKey\);\s*onSaved\(propertyId\)/.test(wiz))
 

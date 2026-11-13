@@ -74,3 +74,14 @@ export function firstTaxOf(p: FirstTaxProperty, today: string): FirstTax {
 export function firstDeadlines(status: PropertyStatus, today: string, count = 2): TaxObligation[] {
   return upcomingTaxObligations(today, taxProfileOfStatus(status)).slice(0, count);
 }
+
+/**
+ * Η επόμενη προθεσμία ΤΟΥ ΙΔΙΟΥ ΦΟΡΟΥ με το ποσό: ο φόρος ενοικίων πληρώνεται
+ * με τον φόρο εισοδήματος, οπότε δίπλα του στέκει η επόμενη δόση ή η δήλωσή
+ * του, ποτέ ο ΕΝΦΙΑ (κριτική σχεδίασης, 13/11/2026: η ημερομηνία του ΕΝΦΙΑ
+ * κάτω από τον φόρο ενοικίων διαβαζόταν σαν να ανήκε σε εκείνον).
+ */
+export function incomeTaxDeadline(status: PropertyStatus, today: string): TaxObligation | null {
+  const income = new Set(['income-instalment', 'income-decl', 'income-autofile']);
+  return upcomingTaxObligations(today, taxProfileOfStatus(status)).find(o => income.has(o.kind)) ?? null;
+}

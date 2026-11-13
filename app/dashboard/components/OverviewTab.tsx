@@ -116,7 +116,13 @@ function stepFitsProperty(key: string, prop: Property): boolean {
   return true;
 }
 
-export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, profileType = 'individual', legalForm = 'individual' }: { prop: Property;
+export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, profileType = 'individual', legalForm = 'individual', startSlot }: { prop: Property;
+  /**
+   * Η λίστα «Από πού ξεκινάς», ΚΑΤΩ από το κεντρικό ποσό (13/11/2026). Ηταν
+   * πάνω από όλα και στο τηλέφωνο έσπρωχνε τον φόρο του νέου χρήστη κάτω από
+   * την πρώτη οθόνη: ο λόγος που ήρθε ήταν η μόνη πληροφορία που δεν φαινόταν.
+   */
+  startSlot?: React.ReactNode;
   /** ΟΛΑ τα ακίνητα του χρήστη — χρειάζονται για τον φόρο: η κλίμακα των ενοικίων
    *  είναι προοδευτική στο σύνολο του φορολογούμενου, όχι ανά ακίνητο. */
   properties: Property[];
@@ -586,6 +592,15 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // δαπάνες της χρονιάς.
   const heroIsNet = isLet(prop);
   const heroValue = heroIsNet ? annualRent - costs.total - estTax : projectedExpYear;
+  // ── ΤΟ ΠΡΩΤΟ ΑΚΙΝΗΤΟ: Ο ΦΟΡΟΣ ΣΤΗΝ ΚΟΡΥΦΗ (κριτική σχεδίασης, 13/11/2026) ──
+  // Ο νέος χρήστης μόλις είδε τον φόρο του στον οδηγό και η Επισκόπηση άνοιγε
+  // με ένα «Καθαρό» που δεν είχε δει ποτέ. Οσο το ακίνητο είναι το μόνο του,
+  // νοικιάζεται και δεν έχει ακόμη καμία είσπραξη ή διαμονή, η κορυφή δείχνει
+  // τον ΙΔΙΟ αριθμό που είδε (ίδια `propertyRentTax`) και το καθαρό από κάτω.
+  // Με την πρώτη είσπραξη το καθαρό γίνεται πραγματικό και ξαναπαίρνει τη θέση του.
+  const rentedNow = readStatus(prop) === 'rent_long' || readStatus(prop) === 'rent_short';
+  const taxHero = rentedNow && properties.length === 1 && yearRents.length === 0 && hostStays.length === 0;
+  const rentMissing = taxHero && annualRent <= 0;
   // ΜΙΣΟ ΣΥΝΟΛΟ ΔΙΑΒΑΖΕΤΑΙ ΣΑΝ ΟΛΟΚΛΗΡΟ. Αν δεν διαβάστηκε έστω μία περιοχή με
   // ποσά, κανένα σύνολο της οθόνης δεν είναι αληθινό: το κεντρικό ποσό γίνεται
   // «—», το Ταμείο και η ζώνη της χρονιάς κρύβονται και το PDF περιμένει.
@@ -846,10 +861,20 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:16,flexWrap:'wrap',marginBottom:20}}>
         <div style={{minWidth:0}}>
           <AthensNow style={{fontFamily:T.font.sans,fontSize: 'var(--fs-xs)',fontWeight:600,color:'var(--text-tertiary)',letterSpacing:'0.02em',marginBottom:4,minHeight:15}}/>
-          <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-note)',color:'var(--text-secondary)'}}>{heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
-          <div style={{fontFamily:T.font.num,fontSize:'clamp(28px,7vw,40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
+          <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-note)',color:'var(--text-secondary)'}}>{taxHero ? `Φόρος ενοικίων ${year}` : heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
+          {rentMissing
+            // ΜΙΣΘΩΣΗ ΧΩΡΙΣ ΠΟΣΟ ΔΕΝ ΔΕΙΧΝΕΙ ΜΗΔΕΝ ΣΑΝ ΝΑ ΗΤΑΝ ΦΟΡΟΣ: λέει τι λείπει
+            // και ανοίγει την επεξεργασία στο μίσθωμα. Η αποθήκευση γυρίζει εδώ.
+            ? <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',marginTop:4}}>
+                <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-primary)'}}>Λείπει το μίσθωμα</span>
+                <Btn variant="secondary" onClick={()=>onNavigate('edit-rent')}>Πρόσθεσε μίσθωμα</Btn>
+              </div>
+            : <div style={{fontFamily:T.font.num,fontSize:'clamp(28px,7vw,40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
             ? <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-secondary)',letterSpacing:0}}>Δεν φορτώθηκε</span>
-            : fmtEur(heroValue)}</div>
+            : fmtEur(taxHero ? estTax : heroValue)}</div>}
+          {taxHero && !rentMissing && !moneyGap && (
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`Καθαρό ${year} · ${fmtEur(heroValue)}`}</div>
+          )}
           {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
               Εδώ γραφόταν ξανά, εξήντα εικονοστοιχεία κάτω από την ίδια
               πρόταση: όνομα, τύπος, κατάσταση, διεύθυνση — τα ίδια τέσσερα
@@ -890,6 +915,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         </Btn>
         </div>
       </div>
+      {startSlot}
 
 
       {/* ═══ Η ΕΝΗΜΕΡΩΣΗ ΤΩΝ ΟΡΩΝ ΚΑΤΩ ΑΠΟ ΤΗΝ ΚΕΦΑΛΙΔΑ, ΣΕ ΜΙΑ ΓΡΑΜΜΗ ══════════

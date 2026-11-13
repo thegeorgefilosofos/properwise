@@ -15,23 +15,21 @@
 // πρόταση στέλνει τον χρήστη στη λίστα, που βλέπει πριν από κάθε καταχώρηση.
 // ═══════════════════════════════════════════════════════════════════════════
 import { FileStack } from 'lucide-react';
-import { T, TT, Btn } from '@/components/Theme';
 import { BULK_MAX } from '@/lib/myaade/planLimit';
 
+// ΜΙΑ ΓΡΑΜΜΗ, ΟΧΙ ΚΑΡΤΑ (κριτική σχεδίασης, 13/11/2026). Ηταν κουτί σε τόνο
+// με κουμπί από κάτω, 140 ύψος στο τηλέφωνο: έσπρωχνε την ερώτηση της
+// κατάστασης κάτω από την πρώτη οθόνη του οδηγού. Τώρα όλη η γραμμή είναι το
+// κουμπί, με βέλος στο τέλος: ίδια θέση, ίδια ενέργεια, το μισό ύψος.
 export function BulkImportCard({ onStart, hasProperties = false }: { onStart: () => void; hasProperties?: boolean }) {
   return (
-    <section aria-label="Μαζική καταχώρηση" style={{
-      display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: T.sp.md,
-      padding: T.sp.lg, borderRadius: T.radius.inner, border: '1px solid var(--accent-border)', background: 'var(--accent-soft)',
-    }}>
-      <span style={{ display: 'flex', alignItems: 'flex-start', gap: T.sp.md, flex: '1 1 220px', minWidth: 0 }}>
-        <FileStack size={20} aria-hidden style={{ color: 'var(--accent)', flexShrink: 0 }} />
-        <span style={{ display: 'flex', flexDirection: 'column', gap: T.sp.xs, minWidth: 0 }}>
-          <span style={{ ...TT.bodySm, fontWeight: 600, color: 'var(--text-primary)' }}>Όλα τα ακίνητά σου μαζί</span>
-          <span style={{ ...TT.caption }}>{`Από το Ε9 ή την πράξη ΕΝΦΙΑ, σε PDF ή φωτογραφία. Έως ${BULK_MAX} με τη μία.${hasProperties ? ' Όσα έχεις ήδη τα ψάχνουμε με τον ΑΤΑΚ ή τη διεύθυνση. Ελέγχεις τη λίστα πριν από κάθε καταχώρηση.' : ''}`}</span>
-        </span>
+    <button type="button" className="bulk-row" onClick={onStart}>
+      <FileStack size={20} aria-hidden className="bulk-row-icon" />
+      <span className="bulk-row-text">
+        <span className="bulk-row-title">Όλα τα ακίνητά σου μαζί</span>
+        <span className="bulk-row-sub">{`Από το Ε9 ή την πράξη ΕΝΦΙΑ, σε PDF ή φωτογραφία. Έως ${BULK_MAX} με τη μία.${hasProperties ? ' Όσα έχεις ήδη τα ψάχνουμε με τον ΑΤΑΚ ή τη διεύθυνση.' : ''}`}</span>
       </span>
-      <Btn variant="primary" onClick={onStart}>Ανέβασε έγγραφο</Btn>
-    </section>
+      <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="bulk-row-chev"><path d="m9 18 6-6-6-6" /></svg>
+    </button>
   );
 }

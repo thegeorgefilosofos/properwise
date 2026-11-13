@@ -18,10 +18,13 @@
 // `prefers-reduced-motion` πηδά (globals.css, `.ob-spot`).
 //
 // ΔΕΝ ΦΟΡΤΩΝΕΤΑΙ ΣΕ ΚΑΝΕΝΑΝ ΑΛΛΟ. Μπαίνει με `dynamic` από το lazyTabs.tsx
-// και αποδίδεται μόνο όταν ο νέος χρήστης πατήσει «Δες πού είναι τι».
+// και αποδίδεται μόνο όταν ο χρήστης πατήσει «Σύντομη περιήγηση» στη λίστα
+// «Από πού ξεκινάς». Δεν ανοίγει ποτέ μόνη της: ο δρόμος ως τον πρώτο φόρο
+// είναι τέσσερα πατήματα χωρίς κανένα πέπλο ανάμεσα.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useId, useLayoutEffect, useState } from 'react';
 import { T, TT, Btn, useOverlayShell } from '@/components/Theme';
+import { useBackButton } from '@/components/useBackButton';
 import { TOUR_STEPS, isVisibleRect, placeCard, type TourStep, type Box, type CardPlace } from '@/lib/onboarding/tour';
 
 interface Props {
@@ -29,7 +32,9 @@ interface Props {
   onDone: (how: 'finished' | 'dismissed') => void;
 }
 
-const PAD = 6;
+// Δύο εικονοστοιχεία αέρα γύρω από τον στόχο: με έξι το φως έπεφτε πάνω στα
+// διπλανά στοιχεία της μπάρας και τα έδειχνε κι εκείνα.
+const PAD = 2;
 const EDGE = 4;
 
 /** Το πρώτο ορατό στοιχείο από τους επιλογείς του βήματος. */
@@ -46,12 +51,14 @@ export default function ProductTour({ onDone }: Props) {
   // Μόνο τα βήματα με ορατό στόχο τη στιγμή που ξεκινά η περιήγηση.
   const [steps] = useState(() => TOUR_STEPS.filter(s => findTarget(s)));
   const [i, setI] = useState(0);
-  const [spot, setSpot] = useState<(Box & { round?: boolean }) | null>(null);
+  const [spot, setSpot] = useState<(Box & { radius: number }) | null>(null);
   const [pos, setPos] = useState<CardPlace | null>(null);
   const titleId = useId();
   const bodyId = useId();
   const dismiss = () => onDone('dismissed');
   const { panelRef, z } = useOverlayShell(true, dismiss);
+  // «Πίσω» του περιηγητή: ένα βήμα πίσω, στο πρώτο κλείνει, όπως τα κουμπιά της κάρτας.
+  useBackButton(rearm => { if (i > 0) { setI(i - 1); rearm(); } else dismiss(); });
 
   const step = steps[i];
   const last = i === steps.length - 1;
@@ -105,9 +112,11 @@ export default function ProductTour({ onDone }: Props) {
           const vw = window.innerWidth, vh = window.innerHeight;
           const left = Math.max(EDGE, r.left - PAD), top = Math.max(EDGE, r.top - PAD);
           const box = { top, left, width: Math.min(vw - EDGE, r.right + PAD) - left, height: Math.min(vh - EDGE, r.bottom + PAD) - top };
-          // Στρογγυλό στοιχείο, στρογγυλό φως: το κουμπί της Νόας είναι χάπι.
-          const round = parseFloat(getComputedStyle(el).borderTopLeftRadius) >= r.height / 2 - 1;
-          setSpot({ ...box, round });
+          // Η ακτίνα του φωτός είναι η ακτίνα του στόχου συν το περιθώριο: οι
+          // δύο καμπύλες μένουν ομόκεντρες, όποιο σχήμα κι αν έχει ο στόχος
+          // (χάπι η Νόα, 10 τα κουμπιά, 12 τα στοιχεία της πλαϊνής μπάρας).
+          const own = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
+          setSpot({ ...box, radius: Math.min(own, r.height / 2) + PAD });
           const card = panelRef.current;
           const size = { width: 360, height: card?.offsetHeight || 220 };
           setPos(placeCard(box, size, window.innerWidth, window.innerHeight, 16));
@@ -144,7 +153,7 @@ export default function ProductTour({ onDone }: Props) {
       <div className="ob-tour-catch" aria-hidden />
       {spot && (
         <div className="ob-spot" aria-hidden
-          style={{ top: spot.top, left: spot.left, width: spot.width, height: spot.height, borderRadius: spot.round ? 100 : undefined }} />
+          style={{ top: spot.top, left: spot.left, width: spot.width, height: spot.height, borderRadius: spot.radius }} />
       )}
 
       <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" data-keeps-fab={step.id === 'assistant' ? '' : undefined} aria-labelledby={titleId} aria-describedby={bodyId}
@@ -152,7 +161,7 @@ export default function ProductTour({ onDone }: Props) {
         style={pos ? { top: pos.top, left: pos.left, width: pos.width } : { visibility: 'hidden' }}>
         {/* Το βέλος δείχνει το κέντρο του στόχου, στην ακμή που τον κοιτά. */}
         {pos && <span className="ob-caret" data-edge={pos.caret.edge} aria-hidden
-          style={pos.caret.edge === 'left' ? { top: pos.caret.offset } : { left: pos.caret.offset }} />}
+          style={pos.caret.edge === 'left' || pos.caret.edge === 'right' ? { top: pos.caret.offset } : { left: pos.caret.offset }} />}
         {/* Η αλλαγή βήματος ακούγεται από εδώ· η εστίαση μένει στο κουμπί. Η
             πρόοδος φαίνεται μόνο στις κουκκίδες· ο αναγνώστης οθόνης την ακούει. */}
         <div aria-live="polite">

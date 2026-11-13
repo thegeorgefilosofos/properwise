@@ -29,10 +29,12 @@ import { athensToday } from '@/lib/core/time';
 import { grDate } from '@/lib/core/format';
 import { writeStatus } from '@/lib/property/status';
 import { DEMO_PROPERTY } from '@/lib/demo/sample';
-import { firstTaxOf, firstDeadlines } from '@/lib/onboarding/firstTax';
+import { firstTaxOf, incomeTaxDeadline } from '@/lib/onboarding/firstTax';
+import { ONBOARDING_STEPS } from '@/lib/onboarding/steps';
 import { vocative } from '@/lib/greekName';
 import { saved } from '@/components/dbWrite';
 import { trackOnboarding, PRODUCT_EVENTS } from '@/lib/analytics/events';
+import { useBackButton } from '@/components/useBackButton';
 
 interface Props {
   userId: string;
@@ -46,24 +48,15 @@ interface Props {
 }
 
 /**
- * Ο δρόμος ως τον πρώτο φόρο, όπως θα τον περπατήσει: τρία βήματα, μία γραμμή
- * το καθένα. Ο αριθμός κάθε βήματος βγαίνει από τη θέση του.
- */
-const PATH: readonly string[] = [
-  'Τύπος και κατάσταση',
-  'Το μίσθωμα, αν υπάρχει',
-  'Ο φόρος σου, αμέσως',
-];
-
-/**
  * Η ΜΙΚΡΟΓΡΑΦΙΑ ΤΗΣ ΚΑΡΤΑΣ ΤΟΥ ΦΟΡΟΥ: η υποδοχή δείχνει το προϊόν, όχι μόνο
  * λόγια. Το ποσό βγαίνει από την ίδια `firstTaxOf` με την πραγματική κάρτα,
  * για το ακίνητο του παραδείγματος (lib/demo/sample.ts) και λέγεται
- * «Παράδειγμα». Η προθεσμία είναι η πραγματική επόμενη του ημερολογίου.
+ * «Παράδειγμα». Η γραμμή από κάτω είναι η επόμενη προθεσμία ΤΟΥ ΙΔΙΟΥ ΦΟΡΟΥ
+ * (φόρος εισοδήματος, με τον οποίο πληρώνεται ο φόρος ενοικίων), όχι ο ΕΝΦΙΑ.
  */
 function previewOf(today: string) {
   const t = firstTaxOf({ id: 'demo', ...writeStatus('rent_long'), target_rent: DEMO_PROPERTY.monthlyRent }, today);
-  const next = firstDeadlines('rent_long', today, 1)[0] ?? null;
+  const next = incomeTaxDeadline('rent_long', today);
   return { year: t.year, tax: t.tax, next };
 }
 
@@ -85,6 +78,8 @@ export default function WelcomeOnboarding({ userId, name, onAddProperty, onClose
     await mark(); onClose();
   };
   const { panelRef } = useOverlayShell(true, later);
+  // Το «Πίσω» του περιηγητή είναι το «Αργότερα»: γράφει και κλείνει, δεν βγάζει από τον πίνακα.
+  useBackButton(() => { void later(); });
 
   // ΕΝΑ ΑΡΙΣΤΕΡΟ ΠΕΡΙΘΩΡΙΟ ΓΙΑ ΟΛΑ, ΚΕΝΑ ΣΤΟ ΠΛΕΓΜΑ ΤΩΝ 8 (globals.css, .ob-*).
   // Σε κινητό η κάρτα γίνεται φύλλο που ακουμπά στο κάτω μέρος· σε υπολογιστή
@@ -92,8 +87,6 @@ export default function WelcomeOnboarding({ userId, name, onAddProperty, onClose
   return (
     <div role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descId} className="ob-scrim">
       <div ref={panelRef} tabIndex={-1} className="ob-card">
-        <span className="ob-grip" aria-hidden />
-
         <h2 id={titleId} className="ob-title">
           {greet ? `Καλώς ήρθες, ${greet}` : 'Καλώς ήρθες'}
         </h2>
@@ -117,11 +110,12 @@ export default function WelcomeOnboarding({ userId, name, onAddProperty, onClose
           )}
         </div>
 
+        {/* Τα ίδια τρία βήματα με τη ράγα του οδηγού (lib/onboarding/steps.ts). */}
         <ol className="ob-steps" aria-label="Τα βήματα">
-          {PATH.map((title, i) => (
-            <li key={title} className="ob-step" data-now={i === 0 ? '' : undefined} style={{ animationDelay: `${120 + i * 40}ms` }}>
+          {ONBOARDING_STEPS.map((st, i) => (
+            <li key={st.id} className="ob-step" data-now={i === 0 ? '' : undefined} style={{ animationDelay: `${120 + i * 40}ms` }}>
               <span className="ob-node" aria-hidden>{i + 1}</span>
-              <span className="ob-step-label">{title}</span>
+              <span className="ob-step-label">{st.label}</span>
             </li>
           ))}
         </ol>

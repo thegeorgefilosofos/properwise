@@ -5,7 +5,7 @@
 // πρέπει να λένε το ίδιο ποσό. Εδώ κλειδώνει ότι βγαίνουν από την ίδια
 // συνάρτηση με τα ίδια έσοδα. Και ότι ακίνητο που δεν νοικιάζεται δεν δείχνει
 // φόρο ενοικίων.
-import { firstTaxOf, firstDeadlines, isRented } from './firstTax';
+import { firstTaxOf, firstDeadlines, isRented, incomeTaxDeadline } from './firstTax';
 import { propertyRentTax } from '@/lib/facts/rentTax';
 import { writeStatus } from '@/lib/property/status';
 
@@ -40,6 +40,13 @@ const dl = firstDeadlines('rent_long', TODAY);
 ok('δύο επόμενες προθεσμίες', dl.length === 2);
 ok('από σήμερα και μετά', dl.every(d => d.date >= TODAY));
 ok('με τη σειρά', dl[0].date <= dl[1].date);
+
+// Η ΓΡΑΜΜΗ ΚΑΤΩ ΑΠΟ ΤΟΝ ΦΟΡΟ ΕΝΟΙΚΙΩΝ ΤΗΣ ΥΠΟΔΟΧΗΣ: ίδιος φόρος, ποτέ ΕΝΦΙΑ.
+for (const day of [TODAY, '2026-01-10', '2026-06-15', '2026-12-31']) {
+  const inc = incomeTaxDeadline('rent_long', day);
+  ok(`προθεσμία φόρου εισοδήματος (${day})`, !!inc && /^income-/.test(inc.kind) && inc.date >= day);
+  ok(`όχι ΕΝΦΙΑ (${day})`, !inc || !/ΕΝΦΙΑ/.test(inc.title));
+}
 
 console.log(`${pass} πέρασαν, ${fail} απέτυχαν`);
 if (fail) process.exit(1);
