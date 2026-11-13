@@ -52,8 +52,8 @@ import { merchant, type MerchantPort, type BillingEnv, type Revocation } from '@
 import { isEntitled, isMorStatus, type MorStatus } from '@/lib/billing/subscription';
 import { profileForPlan } from '@/lib/billing/entitlements';
 import {
-  alertFor, duplicateAlert, orphanAlert, otherSubscriptionAlert, rechargedAlert, sendMerchantAlert,
-  unprovenPaymentAlert,
+  alertFor, duplicateAlert, orphanAlert, otherSubscriptionAlert, rechargedAlert, refundedTransactionAlert,
+  sendMerchantAlert, unprovenPaymentAlert,
   type MerchantAlert, type RevocationOutcome,
 } from '@/lib/billing/merchantAlert';
 
@@ -392,13 +392,13 @@ export async function applyMerchantEvent(raw: string, deps: MerchantEventDeps = 
 
   const nowIso = deps.now ? deps.now() : new Date().toISOString();
   const { data: stored, error: storedError } = await db.from(TABLE)
-    .select('mor_subscription_id, subscription_status, mor_ends_at, mor_past_due_at, mor_revoked_at, mor_last_transaction_id, mor_event_at')
+    .select('mor_subscription_id, subscription_status, mor_ends_at, mor_past_due_at, mor_revoked_at, mor_last_transaction_id, mor_event_at, mor_revoked_tx')
     .eq('user_id', userId).maybeSingle();
   if (storedError) log('η καταγεγραμμένη συνδρομή δεν διαβάστηκε:', storedError.message);
   const current = stored as {
     mor_subscription_id?: string | null; subscription_status?: string | null; mor_ends_at?: string | null;
     mor_past_due_at?: string | null; mor_revoked_at?: string | null; mor_last_transaction_id?: string | null;
-    mor_event_at?: string | null;
+    mor_event_at?: string | null; mor_revoked_tx?: string | null;
   } | null;
   const sameSubscription = current?.mor_subscription_id === sub.id;
   /** Συνέβη το γεγονός ΑΥΣΤΗΡΑ μετά από αυτή τη στιγμή; Χωρίς μία από τις δύο ώρες: όχι. */
@@ -482,6 +482,27 @@ export async function applyMerchantEvent(raw: string, deps: MerchantEventDeps = 
   // η συνδρομή ισχύει, δίνει ό,τι αγοράστηκε· μόλις πάψει, ο λογαριασμός πέφτει
   // στο «χωρίς συνδρομή» και όχι σε κάτι ενδιάμεσο που δεν πλήρωσε κανείς.
   const entitled = isEntitled({ ...sub, pastDueSince }, nowIso);
+
+  // ── Η ΣΥΝΑΛΛΑΓΗ ΠΟΥ ΕΠΙΣΤΡΑΦΗΚΕ ΔΕΝ ΞΑΝΑΝΟΙΓΕΙ ΤΙΠΟΤΑ (έλεγχος του PR 558, γύρος 3) ──
+  // Η σκανδάλη `keep_mor_revocation` και το `revokedAt` παραπάνω κρατούν την
+  // ανάκληση μόνο όσο υπάρχει `mor_revoked_at`. Το σβήνουν όμως, χωρίς νέα
+  // πληρωμή, δύο δρόμοι: νεότερη συνδρομή που έγινε δεκτή από το `created_at`
+  // της και το SQL της υποστήριξης (docs/ops/creem-vercel-odigos.md, Ζ4.4).
+  // Από εκεί και πέρα ένα «active» της συνδρομής που επιστράφηκε, με την ΙΔΙΑ
+  // επιστραμμένη συναλλαγή, θα ξανάνοιγε το πακέτο.
+  //
+  // Το `mor_revoked_tx` (μετανάστευση 20261113120000) δεν σβήνει ποτέ. Γεγονός
+  // που θα έδινε πρόσβαση με αυτήν ως τελευταία πληρωμένη ΔΕΝ γράφεται: η γραμμή
+  // μένει όπως είναι (χωρίς πακέτο, ή στη συνδρομή που κρατά) και η συνδρομή,
+  // που ζει ακόμη στον έμπορο, φτάνει σε άνθρωπο. Η συναλλαγή ανήκει σε μία
+  // μόνο συνδρομή, οπότε η ίδια συναλλαγή σημαίνει και την ίδια συνδρομή. Μόνο
+  // ΝΕΑ συναλλαγή ανοίγει ξανά, με τους κανόνες σειράς που ισχύουν ήδη.
+  const revokedTx = current?.mor_revoked_tx ?? null;
+  if (entitled && revokedTx && sub.lastTransactionId === revokedTx) {
+    const alerted = await safeSend(sendAlert, refundedTransactionAlert(userId, sub.id, revokedTx));
+    log(`γεγονός ${read.event.name} για τη συνδρομή ${sub.id} με τη συναλλαγή ${revokedTx}, που επιστράφηκε· η πρόσβαση δεν άνοιξε, ειδοποίηση ${alerted ? 'στάλθηκε' : 'ΔΕΝ στάλθηκε'}`);
+    return NextResponse.json({ ok: true, skipped: 'revoked_transaction', alerted });
+  }
 
   // ── ΞΕΝΗ ΣΥΝΔΡΟΜΗ ΔΕΝ ΓΡΑΦΕΙ ΠΑΝΩ ΣΕ ΖΩΝΤΑΝΗ ──────────────────────────
   // Ο λογαριασμός κρατά ΜΙΑ συνδρομή. Ενα γεγονός για ΑΛΛΗ συνδρομή, π.χ. η

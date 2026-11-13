@@ -76,7 +76,7 @@ ok('η χάρη δεν αγγίζει τις υπόλοιπες καταστάσ
   const days = /returns int[^$]*\$\$ select (\d+) \$\$/.exec(latestFn('create or replace function public.past_due_grace_days('))?.[1]
   ok('η βάση και η εφαρμογή μετρούν τις ίδιες ημέρες χάρης', Number(days) === PAST_DUE_GRACE_DAYS)
   const lock = latestFn('create or replace function public.lock_billing_plan(')
-  for (const col of ['mor_past_due_at', 'mor_revoked_at', 'mor_revoked_reason', 'mor_revoked_ref', 'mor_last_transaction_id']) {
+  for (const col of ['mor_past_due_at', 'mor_revoked_at', 'mor_revoked_reason', 'mor_revoked_ref', 'mor_last_transaction_id', 'mor_revoked_tx']) {
     ok(`ο πελάτης δεν γράφει το ${col} σε INSERT`, new RegExp(`new\\.${col} := null;`).test(lock))
     ok(`ο πελάτης δεν γράφει το ${col} σε UPDATE`, new RegExp(`new\\.${col}\\s+:= old\\.${col};`).test(lock))
   }

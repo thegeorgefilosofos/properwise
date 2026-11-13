@@ -295,6 +295,7 @@ export interface BillingProfilesRow {
   mor_revoked_reason: string | null;
   mor_revoked_ref: string | null;
   mor_last_transaction_id: string | null;
+  mor_revoked_tx: string | null;
 }
 
 export interface BillsRow {

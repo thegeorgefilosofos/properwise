@@ -130,6 +130,7 @@ async function main() {
     ok('επιστροφή: η κατάσταση γίνεται «έληξε»', row.subscription_status === 'expired');
     ok('επιστροφή: καταγράφεται πότε, γιατί και ποια', row.mor_revoked_at === iso(TR)
        && row.mor_revoked_reason === 'refund' && row.mor_revoked_ref === 'ref_1');
+    ok('επιστροφή: θυμάται τη συναλλαγή που επιστράφηκε', row.mor_revoked_tx === 'tran_1');
     ok('επιστροφή: η πρόσβαση τελείωσε τη στιγμή της επιστροφής', row.mor_ends_at === iso(TR));
     ok('επιστροφή: καμία ανανέωση δεν περιμένει', row.mor_renews_at === null);
     ok('επιστροφή: η συνδρομή μένει καταγεγραμμένη, για την πύλη πελάτη', row.mor_subscription_id === 'sub_1');
@@ -161,7 +162,7 @@ async function main() {
   // ── Η ΧΡΕΩΣΗ ΜΕΤΑ ΤΗΝ ΕΠΙΣΤΡΟΦΗ: ΜΟΝΟ ΑΝ ΕΓΙΝΕ ΜΕΤΑ, ΜΕ ΝΕΑ ΣΥΝΑΛΛΑΓΗ ──────
   const revoked = (over: Row = {}) => paying({
     plan: 'free', subscription_status: 'expired', mor_revoked_at: iso(TR), mor_revoked_reason: 'refund',
-    mor_revoked_ref: 'ref_1', mor_ends_at: iso(TR), mor_renews_at: null, ...over,
+    mor_revoked_ref: 'ref_1', mor_revoked_tx: 'tran_1', mor_ends_at: iso(TR), mor_renews_at: null, ...over,
   });
   {
     const db = fakeDb([revoked()]);
@@ -306,6 +307,66 @@ async function main() {
       db, TR + DAY + 60_000, alerts);
     ok('παλαιότερη συνδρομή που έληξε: τίποτα δεν γράφεται, κανένα email', db.upserts.length === 0
        && db.rows[0].mor_subscription_id === 'sub_1' && db.rows[0].mor_revoked_at === iso(TR) && alerts.sent.length === 0);
+  }
+
+  // ── Η ΣΥΝΑΛΛΑΓΗ ΠΟΥ ΕΠΙΣΤΡΑΦΗΚΕ ΔΕΝ ΞΑΝΑΝΟΙΓΕΙ (έλεγχος του PR 558, γύρος 3) ──
+  // Η αναπαραγωγή του ευρήματος: η sub_1 κλείνει από επιστροφή, η sub_2
+  // γεννιέται μετά και πληρώνεται (σβήνει το `mor_revoked_at`), η sub_2 λήγει
+  // και η sub_1 στέλνει «active» με την ίδια επιστραμμένη tran_1.
+  {
+    const db = fakeDb([paying()]);
+    const alerts = fakeAlerts();
+    await step(moneyEvent('refund', TR), db, TR + 60_000, alerts);
+    ok('αναπαραγωγή: η επιστροφή κλείνει', db.rows[0].plan === 'free' && db.rows[0].mor_revoked_tx === 'tran_1');
+    await step(ev('subscription.paid', TR + DAY, {
+      id: 'sub_2', last_transaction_id: 'tran_2', created_at: iso(TR + DAY - 60_000),
+    }, P2), db, TR + DAY + 60_000, alerts);
+    ok('αναπαραγωγή: η νέα συνδρομή ανοίγει και σβήνει την ανάκληση', db.rows[0].plan === 'solo'
+       && db.rows[0].mor_subscription_id === 'sub_2' && db.rows[0].mor_revoked_at === null);
+    ok('αναπαραγωγή: η επιστραμμένη συναλλαγή μένει γραμμένη', db.rows[0].mor_revoked_tx === 'tran_1');
+    await step(ev('subscription.expired', TR + 2 * DAY, {
+      id: 'sub_2', status: 'expired', last_transaction_id: 'tran_2', created_at: iso(TR + DAY - 60_000),
+    }, P2), db, TR + 2 * DAY + 60_000, alerts);
+    ok('αναπαραγωγή: η sub_2 λήγει', db.rows[0].plan === 'free' && db.rows[0].subscription_status === 'expired');
+    const before = alerts.sent.length;
+    const r = await step(ev('subscription.update', TR + 3 * DAY, { last_transaction_id: 'tran_1' }, P2),
+      db, TR + 3 * DAY + 60_000, alerts);
+    ok('«active» με την επιστραμμένη συναλλαγή: η πρόσβαση ΔΕΝ ανοίγει', db.rows[0].plan === 'free'
+       && db.rows[0].subscription_status === 'expired' && db.rows[0].mor_subscription_id === 'sub_2');
+    ok('«active» με την επιστραμμένη συναλλαγή: 200 και καμία εγγραφή', r.status === 200
+       && r.body.skipped === 'revoked_transaction' && db.upserts.length === 2);
+    ok('«active» με την επιστραμμένη συναλλαγή: email στην υποστήριξη', alerts.sent.length === before + 1
+       && alerts.sent[before].text.includes('sub_1') && alerts.sent[before].text.includes('tran_1')
+       && r.body.alerted === true);
+    // ΑΚΥΡΩΜΕΝΗ ΜΕ ΜΕΛΛΟΝΤΙΚΟ ΤΕΛΟΣ ΠΕΡΙΟΔΟΥ: δίνει πρόσβαση, άρα ούτε αυτή.
+    await step(ev('subscription.canceled', TR + 4 * DAY, {
+      status: 'canceled', last_transaction_id: 'tran_1', canceled_at: iso(TR + 4 * DAY),
+    }, P2), db, TR + 4 * DAY + 60_000, alerts);
+    ok('«canceled» με μελλοντικό τέλος και την επιστραμμένη συναλλαγή: δεν ανοίγει', db.rows[0].plan === 'free'
+       && db.rows[0].mor_subscription_id === 'sub_2');
+  }
+  // Ζ4.4: Η ΥΠΟΣΤΗΡΙΞΗ ΣΒΗΝΕΙ ΤΗΝ ΚΑΤΑΓΡΑΦΗ. Το `mor_revoked_tx` μένει και
+  // κρατά τη γραμμή· μόνο νέα συναλλαγή ανοίγει ξανά.
+  {
+    const db = fakeDb([revoked({ mor_revoked_at: null, mor_revoked_reason: null })]);
+    const alerts = fakeAlerts();
+    const r = await step(ev('subscription.update', TR + DAY, { last_transaction_id: 'tran_1' }, P2), db, TR + DAY + 60_000, alerts);
+    ok('Ζ4.4, «active» με την επιστραμμένη: μένει δωρεάν', db.rows[0].plan === 'free'
+       && db.rows[0].subscription_status === 'expired' && r.body.skipped === 'revoked_transaction');
+    ok('Ζ4.4, «active» με την επιστραμμένη: email', alerts.sent.length === 1);
+    // Η ΙΔΙΑ ΕΠΙΣΤΡΟΦΗ ΞΑΝΑΣΤΕΛΝΕΤΑΙ: σιωπηλή, αλλά η πρόσβαση μένει κλειστή.
+    await step(moneyEvent('refund', TR), db, TR + DAY + 90_000);
+    ok('Ζ4.4, ξαναπαράδοση της επιστροφής: η πρόσβαση μένει κλειστή', db.rows[0].plan === 'free');
+    // ΓΕΓΟΝΟΣ ΧΩΡΙΣ ΠΡΟΣΒΑΣΗ ΜΕ ΤΗΝ ΕΠΙΣΤΡΑΜΜΕΝΗ: γράφεται κανονικά, χωρίς email.
+    const a2 = fakeAlerts();
+    await step(ev('subscription.expired', TR + DAY + 3_600_000, { status: 'expired', last_transaction_id: 'tran_1' }, P2),
+      db, TR + DAY + 3_660_000, a2);
+    ok('Ζ4.4, «expired» με την επιστραμμένη: γράφεται, κανένα email', db.rows[0].plan === 'free'
+       && db.rows[0].subscription_status === 'expired' && a2.sent.length === 0);
+    // ΝΕΑ ΣΥΝΑΛΛΑΓΗ: ανοίγει ξανά, η επιστραμμένη μένει γραμμένη.
+    await step(ev('subscription.paid', TR + 2 * DAY, { last_transaction_id: 'tran_2' }, P2), db, TR + 2 * DAY + 60_000);
+    ok('Ζ4.4, νέα συναλλαγή: ανοίγει', db.rows[0].plan === 'solo' && db.rows[0].mor_last_transaction_id === 'tran_2'
+       && db.rows[0].mor_revoked_tx === 'tran_1');
   }
 
   // ══ 4. ΑΜΦΙΣΒΗΤΗΣΗ: ΙΔΙΟΣ ΚΑΝΟΝΑΣ ═════════════════════════════════════
