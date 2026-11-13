@@ -115,6 +115,28 @@ export function GuideUpdated({ guide }: { guide: Guide }) {
   );
 }
 
+/**
+ * Η ΣΥΝΤΟΜΗ ΑΠΑΝΤΗΣΗ ΚΑΤΩ ΑΠΟ ΤΗΝ ΕΠΙΚΕΦΑΛΙΔΑ (13/11/2026). Ο αναγνώστης που
+ * έρχεται από την αναζήτηση ρωτά ένα πράγμα («πώς υπολογίζεται ο ΕΝΦΙΑ», «πότε
+ * πληρώνεται») και η απάντηση βρισκόταν δύο ενότητες πιο κάτω. Δύο ή τρεις
+ * προτάσεις, με τους αριθμούς από τη μηχανή όπως και το υπόλοιπο σώμα. Μόνο
+ * σύμβολα σχεδίασης: απόσταση και γωνίες από το `T`, χρώματα από μεταβλητές.
+ */
+export function GuideQuickAnswer({ children }: { children: ReactNode }) {
+  return (
+    <section aria-label="Σύντομη απάντηση" style={{
+      margin: `0 0 ${T.sp.lg}px`, padding: `${T.sp.lg}px ${T.sp.xl}px`, borderRadius: T.radius.card,
+      border: '1px solid var(--border-subtle)', borderLeft: `${T.sp.xs}px solid var(--accent)`,
+      background: 'var(--bg-elevated)',
+    }}>
+      <div style={{ fontSize: 13, fontWeight: T.weight.bold, color: 'var(--text-tertiary)', marginBottom: T.sp.xs }}>Σύντομη απάντηση</div>
+      <p style={{ margin: 0, fontSize: 15, lineHeight: 1.65, color: 'var(--text-primary)', textWrap: 'pretty' }}>
+        {children}
+      </p>
+    </section>
+  );
+}
+
 // ── ΗΜΕΡΟΜΗΝΙΕΣ ΣΤΟ ΚΕΙΜΕΝΟ ΚΑΙ ΣΤΟΥΣ ΠΙΝΑΚΕΣ ΤΩΝ ΟΔΗΓΩΝ ─────────────────────
 // Ήταν γραμμένες δύο φορές, ίδιες, στον οδηγό ΕΝΦΙΑ 2026 και στον οδηγό
 // προθεσμιών (07/10/2026). Η πρώτη διόρθωση στη μία θα άφηνε την άλλη πίσω και

@@ -15,7 +15,7 @@
 //
 // Server Component για SEO/ταχύτητα. Καμία εξάρτηση από 'use client'.
 // ═══════════════════════════════════════════════════════════════════════════
-import { Fragment } from 'react';
+import { Fragment, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
@@ -33,9 +33,10 @@ import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
 import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
+import { LAW_5219_PDF, LAW_5246_PDF } from '../fek';
 import {
   GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideTable, GuideSources, GuideCta, GuideFaq, GuideCalcLink,
-  RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
+  GuideQuickAnswer, RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
 } from '../GuideParts';
 import { enfiaInstalmentRule, enfiaInstalmentDates } from '../enfiaText';
 
@@ -166,6 +167,34 @@ const FLOOR_BANDS: [label: string, key: string][] = [
 ];
 const FLOOR = FLOOR_BANDS.map(([label, key]) => [label, fn(ENFIA_FLOOR_COEF[key], 2)] as const);
 
+// ── ΔΥΟ ΑΚΟΜΗ ΠΑΡΑΔΕΙΓΜΑΤΑ, ΑΠΟ ΤΗΝ ΙΔΙΑ ΜΗΧΑΝΗ (13/11/2026) ──────────────────
+// Ένα διαμέρισμα έδειχνε μία ζώνη, μία παλαιότητα και έναν όροφο. Εδώ δύο
+// ακόμη, με άλλη τιμή ζώνης, μέγεθος, ηλικία και όροφο. Γράφονται μόνο τα
+// στοιχεία του ακινήτου· κάθε συντελεστής, κλιμάκιο και ποσό βγαίνει από την
+// `estimateENFIA` και τους πίνακες της μηχανής, όπως στο πρώτο παράδειγμα.
+// Ο όροφος γράφεται με το κλιμάκιο του πίνακα (`FLOOR_BANDS`).
+const MORE_EX = [
+  { title: 'Παλιό διαμέρισμα στο ισόγειο', sqm: 70, price: 1_200, years: 30, floor: 'ground' },
+  { title: 'Καινούργιο διαμέρισμα σε ψηλό όροφο', sqm: 110, price: 3_200, years: 3, floor: 'fifth_plus' },
+].map(ex => {
+  const zone = zoneKeyFromPricePerSqm(ex.price)!;
+  const age = enfiaAgeKeyFromYears(ex.years)!;
+  const value = ex.sqm * ex.price;
+  const res = estimateENFIA({ sqm: ex.sqm, zone, floor: ex.floor, age, totalValue: value, propertyValue: value })!;
+  const bracket = ENFIA_WEALTH_REDUCTION.find(w => value <= w.limit)!;
+  const floorBand = FLOOR_BANDS.find(([, key]) => key === ex.floor)![0];
+  const zoneTax = ENFIA_ZONE_TAX[zone], ageCoef = enfiaAgeCoef(age), floorCoef = ENFIA_FLOOR_COEF[ex.floor];
+  const rows: [string, string][] = [
+    ['Βασικός φόρος ζώνης', `${feRate(zoneTax)}/τ.μ.`],
+    ['Συντελεστής παλαιότητας', fn(ageCoef, 2)],
+    ['Συντελεστής ορόφου', fn(floorCoef, 2)],
+    ['Κύριος φόρος κτίσματος', fe(res.basic)],
+    [res.reductionPct > 0 ? `Αυτόματη μείωση ${pct(res.reductionPct)}` : 'Αυτόματη μείωση', fe(res.reductionAmount)],
+    ['ΕΝΦΙΑ ετησίως', fe(res.annual)],
+  ];
+  return { ...ex, zone, value, res, bracket, floorBand, zoneTax, ageCoef, floorCoef, rows };
+});
+
 const WEALTH = ENFIA_WEALTH_REDUCTION.map((w, i) => [
   w.limit === Infinity ? `Πάνω από ${feWhole(ENFIA_WEALTH_REDUCTION[i - 1].limit)}` : `Έως ${feWhole(w.limit)}`,
   pct(w.pct),
@@ -183,25 +212,36 @@ const EXTRA_LAST = rate(ENFIA_EXTRA_BRACKETS.at(-1)!.rate);
 // κωδικοποίησε τα άρθρα 1 έως 8 του ν. 4223/2013. Η αντιστοίχιση άρθρο προς
 // άρθρο δεν διαβάστηκε από πρωτογενές κείμενο (25.09.2026), οπότε οι παραπομπές
 // μένουν στα άρθρα του ν. 4223/2013 και η πρώτη γραμμή λέει πού ζουν σήμερα.
-const SOURCES: string[] = [
-  'Ο ΕΝΦΙΑ ρυθμίζεται από τον Κώδικα Φορολογίας Περιουσίας (ν. 5219/2025, ΦΕΚ Α΄ 130/18.07.2025), που κωδικοποίησε τα άρθρα 1 έως 8 του ν. 4223/2013. Όπου δεν αναφέρεται ρητά ο Κώδικας, οι παραπομπές που ακολουθούν δείχνουν τα άρθρα του ν. 4223/2013 όπως κωδικοποιήθηκαν εκεί.',
+// ΟΙ ΝΟΜΟΙ ΜΕ ΣΥΝΔΕΣΜΟ ΣΤΟ ΦΕΚ (13/11/2026). Ο Κώδικας και ο ν. 5246/2025
+// γράφονταν ως σκέτο κείμενο. Οι διευθύνσεις ζουν μία φορά στο ../fek.ts, με το
+// πώς επαληθεύτηκαν· εδώ μόνο διαβάζονται.
+const EXT = { target: '_blank', rel: 'noopener noreferrer', className: 'lp-link', style: LINK_STYLE } as const;
+const CODE_LINK = <a href={LAW_5219_PDF} {...EXT}>ν. 5219/2025, ΦΕΚ Α΄ 130/18.07.2025</a>;
+const SOURCES: ReactNode[] = [
+  <>{'Ο ΕΝΦΙΑ ρυθμίζεται από τον Κώδικα Φορολογίας Περιουσίας ('}{CODE_LINK}{'), που κωδικοποίησε τα άρθρα 1 έως 8 του ν. 4223/2013. Όπου δεν αναφέρεται ρητά ο Κώδικας, οι παραπομπές που ακολουθούν δείχνουν τα άρθρα του ν. 4223/2013 όπως κωδικοποιήθηκαν εκεί.'}</>,
   'Κύριος φόρος (τιμή ζώνης, συντελεστές παλαιότητας και ορόφου): άρθρο 4 ν. 4223/2013, όπως ισχύει με τον ν. 4916/2022.',
-  `Συντελεστές ${fn(PRE.coef, 2)} για κτίρια πριν από το ${ENFIA_PRE_YEAR} και ${fn(OVER.coef, 2)} για κτίρια άνω των ${ENFIA_CENTURY_YEARS} ετών: άρθρο 11, Ενότητα Α΄, παρ. 2, περ. β΄ του Κώδικα Φορολογίας Περιουσίας (ν. 5219/2025, ΦΕΚ Α΄ 130/18.07.2025), ίδιο κείμενο με το άρθρο 4 ν. 4223/2013.`,
+  <>{`Συντελεστές ${fn(PRE.coef, 2)} για κτίρια πριν από το ${ENFIA_PRE_YEAR} και ${fn(OVER.coef, 2)} για κτίρια άνω των ${ENFIA_CENTURY_YEARS} ετών: άρθρο 11, Ενότητα Α΄, παρ. 2, περ. β΄ του Κώδικα Φορολογίας Περιουσίας (`}{CODE_LINK}{'), ίδιο κείμενο με το άρθρο 4 ν. 4223/2013.'}</>,
   'Τιμές ζώνης: πίνακες αντικειμενικών αξιών της ΑΑΔΕ.',
   'Αυτόματη μείωση ανά συνολική αξία και προσαύξηση μεγάλης περιουσίας: άρθρα 7 και 4 (Ενότητα Ε΄) ν. 4223/2013, όπως ισχύει με τον ν. 4916/2022.',
   `Πρόσθετος φόρος ακινήτων αξίας άνω των ${feWhole(ENFIA_EXTRA_TAX_FREE)}: άρθρο 4 (Ενότητα Γ΄) ν. 4223/2013, όπως ισχύει με τον ν. 4916/2022.`,
   'Μειώσεις και απαλλαγές με κριτήρια (χαμηλό εισόδημα, τρίτεκνοι και πολύτεκνοι, αναπηρία): άρθρο 7 ν. 4223/2013.',
   `Μείωση ασφαλισμένης κατοικίας ${pct(INS_OVER.pct)} ή ${pct(INSURANCE.pct)}: απόφαση ΑΑΔΕ Α.1005/2026.`,
-  'Μείωση κύριας κατοικίας σε μικρό οικισμό: άρθρο 10 ν. 5246/2025 (ΦΕΚ Α΄ 198/11.11.2025), που πρόσθεσε την παρ. 3 στο άρθρο 17 του Κώδικα Φορολογίας Περιουσίας · εφαρμογή με την απόφαση ΑΑΔΕ Α.1063/2026 (ΦΕΚ Β΄ 1526/17.03.2026).',
+  <>{'Μείωση κύριας κατοικίας σε μικρό οικισμό: άρθρο 10 '}<a href={LAW_5246_PDF} {...EXT}>ν. 5246/2025 (ΦΕΚ Α΄ 198/11.11.2025)</a>{', που πρόσθεσε την παρ. 3 στο άρθρο 17 του Κώδικα Φορολογίας Περιουσίας · εφαρμογή με την απόφαση ΑΑΔΕ Α.1063/2026 (ΦΕΚ Β΄ 1526/17.03.2026).'}</>,
 ];
 
 // Οι ενότητες τροφοδοτούν ΚΑΙ τις κεφαλίδες ΚΑΙ τα περιεχόμενα — μία πηγή.
 /** Οι όροι του τύπου του κύριου φόρου, με τη σειρά που πολλαπλασιάζονται. */
 const FORMULA = ['Τετραγωνικά', 'βασικός φόρος ζώνης', 'συντελεστής παλαιότητας', 'συντελεστής ορόφου'];
 
+/** Ο τίτλος κάθε επιπλέον παραδείγματος, όπως οι τίτλοι παραδειγμάτων των άλλων οδηγών. */
+const eg: CSSProperties = {
+  fontSize: 16, fontWeight: T.weight.bold, letterSpacing: '-0.01em', color: 'var(--text-primary)',
+  margin: `${T.sp.xxl}px 0 ${T.sp.xs}px`,
+};
+
 const S = {
   core: { id: 'kyrios-foros', over: '1. Ο πυρήνας', title: 'Ο κύριος φόρος του κτίσματος' },
-  example: { id: 'paradeigma', over: '2. Παράδειγμα', title: 'Ένα διαμέρισμα, βήμα βήμα' },
+  example: { id: 'paradeigma', over: '2. Παραδείγματα', title: 'Τρία διαμερίσματα, βήμα βήμα' },
   wealth: { id: 'aftomati-meiosi', over: '3. Αυτόματα', title: 'Αυτόματη μείωση ανά συνολική αξία' },
   relief: { id: 'apallages', over: '4. Με κριτήρια', title: 'Απαλλαγές και ειδικές μειώσεις' },
   large: { id: 'megali-periousia', over: '5. Μεγάλη περιουσία', title: 'Προσαύξηση και πρόσθετος φόρος' },
@@ -229,6 +269,12 @@ export default function Page() {
           {H1}
         </h1>
         <GuideUpdated guide={GUIDE} />
+        {/* Η απάντηση στην ερώτηση της αναζήτησης, πριν από το ευρετήριο. Ο τύπος
+            είναι ο ίδιος πίνακας όρων με το κουτί της ενότητας 1, τα ποσά του
+            πρώτου παραδείγματος από την `estimateENFIA`. */}
+        <GuideQuickAnswer>
+          {`Ο ΕΝΦΙΑ ενός κτίσματος ξεκινά από τον κύριο φόρο: ${FORMULA.map(t => t.toLowerCase()).join(' × ')}. Από τον κύριο φόρο αφαιρείται αυτόματα μείωση έως ${pct(WEALTH_MAX)} ανάλογα με τη συνολική αξία της περιουσίας σου, μαζί με όσες απαλλαγές δικαιούσαι. Για παράδειγμα, ένα διαμέρισμα ${EX.sqm} τ.μ., ${EX.years} ετών, στον 3ο όροφο, με τιμή ζώνης ${feWhole(EX.price)}/τ.μ. και χωρίς άλλο ακίνητο πληρώνει ενδεικτικά ${fe(EX_RES.annual)} τον χρόνο.`}
+        </GuideQuickAnswer>
         {/* Το ευρετήριο ακριβώς κάτω από τη γραμμή της ημερομηνίας: στο κινητό
             ερχόταν μετά από δύο παραγράφους εισαγωγής, μισή οθόνη πιο κάτω. */}
         <GuideToc sections={Object.values(S)} />
@@ -237,7 +283,7 @@ export default function Page() {
           {'Ο ΕΝΦΙΑ (Ενιαίος Φόρος Ιδιοκτησίας Ακινήτων) είναι φόρος κατοχής: τον πληρώνεις κάθε χρόνο επειδή έχεις το ακίνητο, ανεξάρτητα από το αν το νοικιάζεις ή μένει κενό. Υπολογίζεται από τα χαρακτηριστικά του ακινήτου και τη συνολική αξία της περιουσίας σου.'}
         </p>
         <p className="lg-p">
-          {'Ο οδηγός δείχνει τον τύπο, τους συντελεστές και ένα παράδειγμα σε ευρώ. Επειδή ο πλήρης τύπος περιλαμβάνει και άλλους συντελεστές (πρόσοψης, επιφάνειας), το αποτέλεσμα είναι ενδεικτική εκτίμηση, όχι το επίσημο εκκαθαριστικό.'}
+          {'Ο οδηγός δείχνει τον τύπο, τους συντελεστές και τρία παραδείγματα σε ευρώ. Επειδή ο πλήρης τύπος περιλαμβάνει και άλλους συντελεστές (πρόσοψης, επιφάνειας), το αποτέλεσμα είναι ενδεικτική εκτίμηση, όχι το επίσημο εκκαθαριστικό.'}
         </p>
 
         {/* 1. Ο κύριος φόρος */}
@@ -296,6 +342,19 @@ export default function Page() {
           <span className="gd-result-k">Τελικός ΕΝΦΙΑ</span>
           <span className="gd-result-v">{`${fe(EX_RES.annual)} τον χρόνο`}</span>
         </div>
+
+        {MORE_EX.map((ex, i) => (
+          <Fragment key={ex.title}>
+            <h3 style={eg}>{`Παράδειγμα ${i + 2}: ${ex.title.charAt(0).toLowerCase()}${ex.title.slice(1)}`}</h3>
+            <p className="lg-p">
+              {`Εμβαδόν ${ex.sqm} τ.μ., τιμή ζώνης ${feWhole(ex.price)}/τ.μ. (κλιμάκιο ${zoneRange(ex.zone)}), ${ex.years} ετών, όροφος στο κλιμάκιο «${ex.floorBand}». Ο κύριος φόρος είναι ${ex.sqm} × ${fn(ex.zoneTax, 2)} × ${fn(ex.ageCoef, 2)} × ${fn(ex.floorCoef, 2)} = ${fe(ex.res.basic)}. Με αντικειμενική αξία ${feWhole(ex.value)} και χωρίς άλλο ακίνητο, `}
+              {ex.res.reductionPct > 0
+                ? `η αυτόματη μείωση είναι ${pct(ex.res.reductionPct)} (κλιμάκιο έως ${feWhole(ex.bracket.limit)}).`
+                : 'δεν δικαιούται αυτόματη μείωση.'}
+            </p>
+            <GuideTable caption={`Παράδειγμα ${i + 2}`} head={['Υπολογισμός', 'Αποτέλεσμα']} min="260px" rows={ex.rows} />
+          </Fragment>
+        ))}
 
         <GuideCalcLink href="/ypologismos-enfia" action="Υπολόγισε τον ΕΝΦΙΑ σου" />
 
