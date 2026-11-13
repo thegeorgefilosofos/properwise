@@ -29,12 +29,12 @@ import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
 import { athensParts, athensToday } from '@/lib/core/time';
-import { fe, feWhole, fp, fpRate } from '@/lib/core/format';
+import { fe, feWhole, fn, fp, fpRate } from '@/lib/core/format';
 import { DSTI_LIMIT } from '@/lib/loans/affordability';
 import { spitiMouOpen, spitiMouClosedSentence, SPITI_MOU, SPITI_MOU_3, spitiMou3Line } from '@/lib/loans/recommend';
 import { programDateLabel } from '@/lib/loans/programStatus';
 import {
-  mortgagePlan, borrowingCapacity, housingNote, marketDescription, type MarketFact, type MortgageMarket,
+  mortgagePlan, borrowingCapacity, housingNote, marketDescription, rateField, RATE_SHOCK, type MarketFact, type MortgageMarket,
 } from '@/lib/tools/stegastiko';
 import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, ToolCta, TOOL_PRIVACY_FAQ, WRAP, WRAP_PAD } from '../PublicChrome';
 import { ToolGuides } from '../odigos/ToolGuides';
@@ -42,7 +42,9 @@ import { hy } from '@/components/Hyphen';
 import { BackLink } from '../BackLink';
 import { shareImage } from '../og/share';
 import { publicMetadata } from '../publicMetadata';
-import { toolBreadcrumb } from '../toolSeo';
+import { toolJsonLd, ToolByline } from '../toolSeo';
+import { ToolLedger } from '../ToolParts';
+import { PAGE_UPDATED } from '../pageUpdated';
 import { guideAt } from '../odigos/guides';
 import { MortgageCalculator } from './MortgageCalculator';
 import { readMortgageMarket } from './marketRates';
@@ -64,7 +66,8 @@ const SPITI_GUIDE = guideAt('/odigos/spiti-mou-3-ti-allazei');
 // χαρακτήρων, κομμένο. Τώρα κάτω από 60, με την αναζήτηση μπροστά· το «πόσο
 // δάνειο παίρνω» μένει στην περιγραφή.
 const titleFor = (year: number) => `Υπολογισμός στεγαστικού δανείου ${year}: δόση και τόκοι`;
-const URL = siteUrl('/ypologismos-stegastikou-daneiou');
+const PATH = '/ypologismos-stegastikou-daneiou';
+const URL = siteUrl(PATH);
 
 // Η ΠΕΡΙΓΡΑΦΗ ΞΕΚΙΝΑ ΜΕ ΤΙΣ ΤΙΜΕΣ ΤΗΣ ΑΓΟΡΑΣ, ΑΠΟ ΤΙΣ ΣΕΙΡΕΣ. Ήταν στατική και η
 // μηχανή αναζήτησης έπαιρνε το απόσπασμα από τη σημείωση της σελίδας, που έγραφε
@@ -82,8 +85,24 @@ export async function generateMetadata(): Promise<Metadata> {
 
 // ΤΑ ΠΑΡΑΔΕΙΓΜΑΤΑ ΤΩΝ ΑΠΑΝΤΗΣΕΩΝ ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΗ ΜΗΧΑΝΗ. Το επιτόκιο τους είναι
 // παράδειγμα και το λένε· δεν παρουσιάζεται ως τρέχον.
-const EX = { amount: 150_000, rate: 3.5, years: 25, income: 2_000 };
+// Τα κείμενα κάτω από τη φόρμα (13/11/2026) παίρνουν από εδώ και τις
+// παραλλαγές τους: συντομότερη και μακρύτερη διάρκεια, ένα βήμα ποσού και το
+// έτος στο οποίο γράφεται το υπόλοιπο. Κανένα ψηφίο δεν γράφεται στο κείμενο.
+const EX = { amount: 150_000, rate: 3.5, years: 25, income: 2_000, shorter: 20, longer: 30, step: 10_000, checkpoint: 10 };
 const EX_PLAN = mortgagePlan(EX.amount, EX.rate, EX.years);
+/** Ο τύπος της δόσης, κομμάτι κομμάτι: μηνιαίο επιτόκιο, δόσεις, συντελεστής ανατοκισμού. */
+const EX_R = EX.rate / 100 / 12;
+const EX_Q = Math.pow(1 + EX_R, EX_PLAN.months);
+/** Το ίδιο δάνειο με το Euribor ψηλότερα κατά `RATE_SHOCK`, όπως το σενάριο της κάρτας. */
+const EX_SHOCK = mortgagePlan(EX.amount, EX.rate + RATE_SHOCK, EX.years);
+const EX_SHORT = mortgagePlan(EX.amount, EX.rate, EX.shorter);
+const EX_LONG = mortgagePlan(EX.amount, EX.rate, EX.longer);
+const EX_STEP = mortgagePlan(EX.step, EX.rate, EX.years);
+const EX_LEFT = EX_PLAN.schedule[EX.checkpoint - 1]?.balance ?? 0;
+/** Το παράδειγμα ανοιχτό στη φόρμα, με τα πεδία της διεύθυνσης του υπολογιστή. */
+const EX_HREF = `${PATH}?${new URLSearchParams({
+  poso: String(EX.amount), eti: String(EX.years), typos: 'stathero', epitokio: rateField(EX.rate),
+})}`;
 const EX_CAP = borrowingCapacity({
   incomeMonthly: EX.income, firstTimeBuyer: true, existingMonthlyDebt: 0,
   desiredAmount: EX.amount, ratePct: EX.rate, years: EX.years,
@@ -193,6 +212,7 @@ function MarketNote({ market }: { market: MortgageMarket }) {
 }
 
 const LINK = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 } as const;
+const PROSE = { fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0 } as const;
 
 export default async function Page() {
   const today = athensToday();
@@ -201,29 +221,10 @@ export default async function Page() {
   const yieldGuide = guideAt('/odigos/kathari-apodosi-akinitou');
   const enfiaGuide = guideAt('/odigos/pos-ypologizetai-o-enfia');
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'WebApplication',
-        name: 'Υπολογισμός δόσης στεγαστικού δανείου',
-        url: URL,
-        applicationCategory: 'FinanceApplication',
-        operatingSystem: 'Web',
-        inLanguage: 'el',
-        description: marketDescription(market),
-        offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
-      },
-      toolBreadcrumb('/ypologismos-stegastikou-daneiou'),
-      {
-        '@type': 'FAQPage',
-        mainEntity: FAQ.map(f => ({
-          '@type': 'Question', name: f.q,
-          acceptedAnswer: { '@type': 'Answer', text: f.a },
-        })),
-      },
-    ],
-  };
+  // Το ίδιο σχήμα με τους άλλους υπολογιστές (app/toolSeo.tsx): εφαρμογή με
+  // συντάκτη και εκδότη, διαδρομή και οι ερωτήσεις που αποδίδει η σελίδα.
+  const jsonLd = toolJsonLd({ name: 'Υπολογισμός δόσης στεγαστικού δανείου', url: URL, description: marketDescription(market), faq: FAQ });
+  const hasMarket = housingNote(market).length > 0 || !!market.euribor;
 
   return (
     <div className="po-tool-page" data-mode="dark" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
@@ -253,7 +254,82 @@ export default async function Page() {
           }/>
         </Suspense>
 
-        <ToolSources kind="loan" checked={null} />
+        <ToolSources kind="loan" checked={null} updated={PAGE_UPDATED[PATH]} />
+
+        {/* ── ΤΑ ΚΕΙΜΕΝΑ ΚΑΤΩ ΑΠΟ ΤΗ ΦΟΡΜΑ (13/11/2026) ─────────────────────────
+            Ο έλεγχος SEO βρήκε τη σελίδα σχεδόν χωρίς κείμενο σε σχέση με τους
+            άλλους υπολογιστές. Τέσσερα κομμάτια: ο τύπος, ένα λυμένο
+            παράδειγμα, σταθερό ή κυμαινόμενο και τι κινεί τη δόση. Κάθε ποσό
+            βγαίνει από τη μηχανή της φόρμας (`mortgagePlan`) με το παράδειγμα
+            του `EX`· το επιτόκιο του παραδείγματος δεν παρουσιάζεται ως τρέχον. */}
+        <section className="po-tool-more" style={{ marginTop: 'clamp(44px,6vw,72px)' }}>
+          <SectionHead over="Ο τύπος" title="Πώς υπολογίζεται η μηνιαία δόση" />
+          <p className="po-just" style={{ ...PROSE, marginBottom: 12 }}>{hy(
+            'Το στεγαστικό αποπληρώνεται τοκοχρεολυτικά: πληρώνεις την ίδια δόση κάθε μήνα και κάθε δόση έχει δύο κομμάτια. '
+            + 'Το ένα είναι ο τόκος του μήνα πάνω στο υπόλοιπο που χρωστάς. Το άλλο είναι κεφάλαιο, που μειώνει το υπόλοιπο. '
+            + 'Επειδή το υπόλοιπο πέφτει, ο τόκος μικραίνει από μήνα σε μήνα ενώ το κομμάτι του κεφαλαίου μεγαλώνει.')}</p>
+          <p className="po-just" style={PROSE}>{hy(
+            'Η δόση βγαίνει από τρία στοιχεία: το κεφάλαιο, το μηνιαίο επιτόκιο r (το ετήσιο διά δώδεκα) και τον αριθμό των δόσεων n (τα έτη επί δώδεκα). '
+            + 'Με q τον συντελεστή ανατοκισμού όλης της διάρκειας, δηλαδή το «ένα συν r» υψωμένο στη δύναμη n, '
+            + 'η δόση είναι το κεφάλαιο επί r επί q, διά το q μειωμένο κατά ένα. Είναι ο τύπος της σταθερής δόσης (annuity) που χρησιμοποιεί και ο υπολογιστής.')}</p>
+        </section>
+
+        <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
+          <SectionHead over="Λυμένο παράδειγμα" title={`${feWhole(EX.amount)} για ${EX.years} χρόνια με ${fp(EX.rate)}: δόση ${fe(EX_PLAN.monthly)}`} />
+          <p className="po-just" style={{ ...PROSE, marginBottom: 16 }}>{hy(
+            'Το επιτόκιο είναι παράδειγμα, όχι η τιμή της αγοράς σήμερα. Τη μέση τιμή της αγοράς τη γράφει το πλαίσιο πάνω από τη φόρμα.')}</p>
+          <ToolLedger rows={[
+            { k: 'Κεφάλαιο', v: feWhole(EX.amount) },
+            { k: `Μηνιαίο επιτόκιο r: ${fp(EX.rate)} διά δώδεκα`, v: `${fn(EX_R * 100, 4)}%`, kind: 'param' },
+            { k: `Δόσεις n: ${EX.years} έτη επί δώδεκα`, v: fn(EX_PLAN.months), kind: 'param' },
+            { k: 'Συντελεστής ανατοκισμού q', v: fn(EX_Q, 4), kind: 'param' },
+            { k: 'Δόση του παραδείγματος', v: fe(EX_PLAN.monthly), kind: 'total' },
+          ]}/>
+          <p className="po-just" style={{ ...PROSE, marginTop: 16 }}>{hy(<>
+            Σε {fn(EX_PLAN.months)} δόσεις πληρώνεις συνολικά {fe(EX_PLAN.totalPaid)}: τα {feWhole(EX.amount)} είναι το κεφάλαιο
+            {' '}και τα {fe(EX_PLAN.totalInterest)} τόκοι. Τον πρώτο χρόνο πληρώνεις {fe(EX_PLAN.firstYear.interest)} τόκους
+            {' '}και μόλις {fe(EX_PLAN.firstYear.principal)} κεφάλαιο. Μετά από {EX.checkpoint} χρόνια χρωστάς ακόμη {fe(EX_LEFT)}.{' '}
+            <Link href={EX_HREF} className="lp-link" style={LINK}>Άνοιξε το παράδειγμα στον υπολογιστή</Link>.
+          </>)}</p>
+        </section>
+
+        <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
+          <SectionHead over="Τύπος επιτοκίου" title="Σταθερό ή κυμαινόμενο επιτόκιο" />
+          <p className="po-just" style={{ ...PROSE, marginBottom: 12 }}>{hy(
+            'Με σταθερό επιτόκιο η δόση δεν αλλάζει όσο διαρκεί η σταθερή περίοδος της σύμβασης, που μπορεί να είναι μερικά χρόνια ή ολόκληρο το δάνειο. '
+            + 'Για αυτό το διάστημα ξέρεις από την αρχή τι θα πληρώνεις, όπου κι αν πάνε τα επιτόκια της αγοράς. Στο τέλος της σταθερής περιόδου η σύμβαση ορίζει με ποιο επιτόκιο συνεχίζει το δάνειο.')}</p>
+          <p className="po-just" style={{ ...PROSE, marginBottom: 12 }}>{hy(
+            'Με κυμαινόμενο το επιτόκιο έχει δύο κομμάτια: το Euribor, που αλλάζει με την αγορά, συν το περιθώριο της τράπεζας, που ορίζει η σύμβαση. '
+            + 'Όταν αλλάζει το Euribor, η δόση υπολογίζεται ξανά με τον ίδιο τύπο πάνω στο υπόλοιπο που απομένει.')}</p>
+          <p className="po-just" style={PROSE}>{hy(
+            `Στο παράδειγμα από πάνω, αν το επιτόκιο ήταν κυμαινόμενο και ανέβαινε κατά ${fn(RATE_SHOCK)} ποσοστιαία μονάδα, στο ${fp(EX.rate + RATE_SHOCK)} για όλη τη διάρκεια, `
+            + `η δόση θα γινόταν ${fe(EX_SHOCK.monthly)} αντί για ${fe(EX_PLAN.monthly)}: ${fe(EX_SHOCK.monthly - EX_PLAN.monthly)} περισσότερα τον μήνα `
+            + `και ${fe(EX_SHOCK.totalInterest - EX_PLAN.totalInterest)} περισσότεροι τόκοι συνολικά. Όταν διαλέξεις κυμαινόμενο, ο υπολογιστής δείχνει το ίδιο σενάριο για το δικό σου δάνειο.`
+            + (hasMarket ? ' Τα μέσα επιτόκια των νέων στεγαστικών και το Euribor τριμήνου, με τον μήνα και την πηγή τους, είναι στο πλαίσιο πάνω από τη φόρμα.' : ''))}</p>
+        </section>
+
+        <section className="po-tool-more" style={{ marginTop: 'clamp(40px,5vw,60px)' }}>
+          <SectionHead over="Τι αλλάζει τη δόση" title="Επιτόκιο, διάρκεια και ποσό" />
+          <ul className="lg-ul">
+            <li>{hy(<>
+              <strong style={{ color: 'var(--text-primary)' }}>Το επιτόκιο.</strong>{' '}
+              Με {fp(EX.rate)} το δάνειο του παραδείγματος έχει δόση {fe(EX_PLAN.monthly)}. Με {fp(EX.rate + RATE_SHOCK)} έχει {fe(EX_SHOCK.monthly)}.
+            </>)}</li>
+            <li>{hy(<>
+              <strong style={{ color: 'var(--text-primary)' }}>Η διάρκεια.</strong>{' '}
+              Τα ίδια {feWhole(EX.amount)} σε {EX.shorter} χρόνια έχουν δόση {fe(EX_SHORT.monthly)} και {fe(EX_SHORT.totalInterest)} τόκους.
+              {' '}Σε {EX.longer} χρόνια η δόση πέφτει στα {fe(EX_LONG.monthly)} αλλά οι τόκοι ανεβαίνουν στα {fe(EX_LONG.totalInterest)}.
+              {' '}Μεγαλύτερη διάρκεια σημαίνει μικρότερη δόση και περισσότερους τόκους.
+            </>)}</li>
+            <li>{hy(<>
+              <strong style={{ color: 'var(--text-primary)' }}>Το ποσό.</strong>{' '}
+              Η δόση ακολουθεί το κεφάλαιο αναλογικά: με τους ίδιους όρους κάθε {feWhole(EX.step)} δανείου προσθέτουν {fe(EX_STEP.monthly)} στη μηνιαία δόση.
+            </>)}</li>
+          </ul>
+          <p className="po-just" style={{ ...PROSE, marginTop: 12 }}>{hy(
+            `Πόσο ψηλά μπορεί να φτάσει η δόση το ορίζει ο δείκτης δόσης προς εισόδημα: όλες οι δόσεις μαζί έως ${FIRST} του καθαρού εισοδήματος `
+            + `για όσους δανείζονται πρώτη φορά και ${OTHER} για τους υπόλοιπους. Ο υπολογιστής τον εφαρμόζει στο εισόδημα που γράφεις.`)}</p>
+        </section>
 
         <section className="po-tool-more" style={{ marginTop: 'clamp(44px,6vw,72px)' }}>
           <SectionHead over="Συχνές ερωτήσεις" title="Ό,τι ρωτούν πριν ζητήσουν δάνειο" />
@@ -304,6 +380,7 @@ export default async function Page() {
             {' '}εξηγεί γιατί η μεικτή απόδοση των αγγελιών δείχνει πάντα περισσότερα.
           </>)}</p>
         </section>
+        <ToolByline />
         <ToolGuides tool="/ypologismos-stegastikou-daneiou" />
       </main>
 

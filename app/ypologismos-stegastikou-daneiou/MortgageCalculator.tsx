@@ -33,7 +33,7 @@ import { fmtFor } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { DSTI_LIMIT } from '@/lib/loans/affordability';
 import {
-  parseRate, loanRate, mortgagePlan, borrowingCapacity, rateField, freshFact, startRates, spreadHint, RATE_CAP, YEARS_CAP,
+  parseRate, loanRate, mortgagePlan, borrowingCapacity, rateField, freshFact, startRates, spreadHint, RATE_CAP, YEARS_CAP, RATE_SHOCK,
   type MortgageMarket, type RateKind,
 } from '@/lib/tools/stegastiko';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
@@ -136,7 +136,7 @@ export function MortgageCalculator({ market, today, cta, exampleRate }: {
   const plan = useMemo(() => (rate === null ? null : mortgagePlan(loan, rate, years)), [loan, rate, years]);
   // ΤΟ ΚΥΜΑΙΝΟΜΕΝΟ ΜΕ ΜΙΑ ΜΟΝΑΔΑ ΠΑΡΑΠΑΝΩ: όχι πρόβλεψη, ένα «τι αν» με
   // στρογγυλό βήμα, ώστε η αβεβαιότητα να φαίνεται σε ευρώ και όχι σε επίθετα.
-  const plus1 = useMemo(() => (kind === 'floating' && rate !== null ? mortgagePlan(loan, rate + 1, years) : null), [kind, loan, rate, years]);
+  const plus1 = useMemo(() => (kind === 'floating' && rate !== null ? mortgagePlan(loan, rate + RATE_SHOCK, years) : null), [kind, loan, rate, years]);
 
   const income = amount(v.eisodima);
   const debts = amount(v.doseis);

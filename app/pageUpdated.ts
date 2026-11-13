@@ -45,6 +45,7 @@ import TOOL_STAMPS from './toolStamps.json';
 import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
 import { PURCHASE_SOURCES_CHECKED } from '@/lib/tools/exodaAgoras';
 import { E2_GUIDE_CHECKED } from '@/lib/tools/e2Odigos';
+import { MORTGAGE_PAGE_UPDATED } from '@/lib/tools/stegastiko';
 import { regulated } from '@/lib/legal/validity';
 
 /** Μητρώο χωρίς ημερομηνία ελέγχου σπάει το χτίσιμο, δεν γίνεται σιωπηλά «καμία». */
@@ -85,16 +86,16 @@ export const PAGE_UPDATED = {
   '/signup': '2026-10-03',
   // Η πύλη, η λίστα των πελατών και ο φάκελος ανά ΑΦΜ που περιγράφει η σελίδα.
   '/logistes': '2026-10-03',
-  // Ο υπολογιστής δόσης στεγαστικού δεν ακολουθεί τους φόρους: αλλάζει όταν
-  // αλλάξει ο ίδιος. Το μέσο επιτόκιο που δείχνει έχει δική του ημερομηνία
-  // δίπλα στο πεδίο, γι' αυτό το πλαίσιο των πηγών του δεν γράφει άλλη.
-  // Αλλαγές του ίδιου: πηγές και περιγραφή από την αγορά (#401 18/10), FAQ
-  // «Σπίτι μου ΙΙΙ» (#405 19/10/2026). Ο χάρτης έλεγε ακόμη 03/10.
-  '/ypologismos-stegastikou-daneiou': '2026-10-19',
   // Τα έξοδα αγοράς: η ημέρα που ελέγχθηκαν οι πηγές τους στο κείμενο των ΦΕΚ,
   // από τη μηχανή τους. Ο φόρος μεταβίβασης έχει και δικό του μητρώο ισχύος
   // (`transfer-tax`, lib/legal/validity.ts), όχι κλειδί στο lib/facts/taxLimits.
   '/exoda-agoras-akinitou': PURCHASE_SOURCES_CHECKED,
+  // ── Ο ΥΠΟΛΟΓΙΣΤΗΣ ΣΤΕΓΑΣΤΙΚΟΥ: Η ΑΛΛΑΓΗ ΤΟΥ ΙΔΙΟΥ (lib/tools/stegastiko.ts) ───
+  // Δεν ακολουθεί τους φόρους: αλλάζει όταν αλλάξει ο ίδιος. Από 13/11/2026 η
+  // σελίδα έχει κείμενα κάτω από τη φόρμα και τυπώνει την ημερομηνία στο
+  // πλαίσιο των πηγών, όπως οι άλλοι υπολογιστές. Το μέσο επιτόκιο κρατά τη
+  // δική του ημερομηνία δίπλα στην τιμή.
+  '/ypologismos-stegastikou-daneiou': MORTGAGE_PAGE_UPDATED,
   // ── Η ΕΚΠΤΩΣΗ ΑΝΑΚΑΙΝΙΣΗΣ: Ο ΕΛΕΓΧΟΣ ΤΟΥ ΜΗΤΡΩΟΥ ΙΣΧΥΟΣ (renovation-39b) ───────
   '/ypologismos-ekptosis-anakainisis': checked(regulated('renovation-39b').checkedAt, 'renovation-39b'),
   // ── ΤΟ Ε2: ΟΙ ΠΗΓΕΣ ΤΟΥ ΟΔΗΓΟΥ (lib/tools/e2Odigos.ts) ───────────────────────
