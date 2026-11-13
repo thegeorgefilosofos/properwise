@@ -20,6 +20,7 @@ import { propertyRentTax } from '@/lib/facts/rentTax';
 import { readStatus, type PropertyStatus, type StatusRow } from '@/lib/property/status';
 import { upcomingTaxObligations, taxProfileOfStatus } from '@/lib/facts/deadlines';
 import type { TaxObligation } from '@/lib/tax/greekTaxCalendar';
+import { grDate } from '@/lib/core/format';
 
 /** Οι στήλες του ακινήτου που χρειάζεται ο πρώτος φόρος. */
 export interface FirstTaxProperty extends StatusRow {
@@ -70,11 +71,6 @@ export function firstTaxOf(p: FirstTaxProperty, today: string): FirstTax {
   };
 }
 
-/** Οι επόμενες θεσμικές προθεσμίες για το φορολογικό προφίλ του ακινήτου. */
-export function firstDeadlines(status: PropertyStatus, today: string, count = 2): TaxObligation[] {
-  return upcomingTaxObligations(today, taxProfileOfStatus(status)).slice(0, count);
-}
-
 /**
  * Η επόμενη προθεσμία ΤΟΥ ΙΔΙΟΥ ΦΟΡΟΥ με το ποσό: ο φόρος ενοικίων πληρώνεται
  * με τον φόρο εισοδήματος, οπότε δίπλα του στέκει η επόμενη δόση ή η δήλωσή
@@ -84,4 +80,19 @@ export function firstDeadlines(status: PropertyStatus, today: string, count = 2)
 export function incomeTaxDeadline(status: PropertyStatus, today: string): TaxObligation | null {
   const income = new Set(['income-instalment', 'income-decl', 'income-autofile']);
   return upcomingTaxObligations(today, taxProfileOfStatus(status)).find(o => income.has(o.kind)) ?? null;
+}
+
+/** Η μία γραμμή κάτω από το ποσό: τίτλος και ημερομηνία σε μορφή ηη/μμ/εεεε. */
+export interface TaxDeadlineRow { id: string; title: string; date: string }
+
+/**
+ * Η ΓΡΑΜΜΗ ΚΑΤΩ ΑΠΟ ΤΟΝ ΦΟΡΟ ΕΝΟΙΚΙΩΝ, ΓΡΑΜΜΕΝΗ ΜΙΑ ΦΟΡΑ (κριτική σχεδίασης
+ * r2, 13/11/2026). Η υποδοχή έδειχνε τη δόση του φόρου εισοδήματος και ο
+ * οδηγός, με άλλη συνάρτηση, δύο γραμμές με πρώτη τον ΕΝΦΙΑ. Τώρα και οι δύο
+ * διαβάζουν αυτή: μία γραμμή, ίδιος φόρος, ίδια μορφή ημερομηνίας. Ο ΕΝΦΙΑ
+ * ζει στο Ημερολόγιο, όπου δείχνει το πρώτο βήμα της περιήγησης.
+ */
+export function taxDeadlineRow(status: PropertyStatus, today: string): TaxDeadlineRow | null {
+  const o = incomeTaxDeadline(status, today);
+  return o ? { id: o.id, title: o.title, date: grDate(o.date) } : null;
 }

@@ -35,23 +35,27 @@ const ok = (name, cond, detail = '') => {
 // οπότε το βήμα 3 μετρά τώρα τη Σύνοψη: πάλι μηδέν ορατά, ίδιο όριο. Το
 // «Περισσότερα» της ελέγχεται όπως πριν. Το όριο δεν άλλαξε· άλλαξε ότι ο
 // χρήστης περνά μία οθόνη λιγότερη.
+//
+// ΤΡΕΙΣ ΚΑΡΤΕΛΕΣ ΑΠΟ 13/11/2026 (κριτική σχεδίασης r2). Η «Σύνοψη» έφυγε και
+// οι επαφές της μπήκαν κλειστές στο τέλος των «Βασικών»: μηδέν ορατά κουτιά
+// παραπάνω, οπότε τα όρια των δύο καρτελών δεν αλλάζουν.
 // ΚΟΛΛΗΜΕΝΟ ΣΤΟ ΜΕΤΡΗΜΕΝΟ, ΧΩΡΙΣ ΤΖΟΓΟ. Ενα όριο με περιθώριο δύο πεδίων
 // αφήνει δύο πεδία να μπουν χωρίς να το πάρει κανείς είδηση — και η επόμενη
 // φορά ξεκινά από εκεί. Τρεις καστάνιες αυτού του αποθετηρίου είχαν ακριβώς
 // αυτό το πρόβλημα και δεν θα έπιαναν την επόμενη οπισθοδρόμηση.
 const CAP = {
-  vacant: { 1: 4, 2: 2, 3: 0 },
-  long:   { 1: 5, 2: 2, 3: 0 },
-  short:  { 1: 6, 2: 2, 3: 0 },
-  own:    { 1: 4, 2: 1, 3: 0 },
-  land:   { 1: 4, 2: 2, 3: 0 },
+  vacant: { 1: 4, 2: 2 },
+  long:   { 1: 5, 2: 2 },
+  short:  { 1: 6, 2: 2 },
+  own:    { 1: 4, 2: 1 },
+  land:   { 1: 4, 2: 2 },
   // ΤΟ ΜΟΝΑΔΙΚΟ ΟΡΙΟ ΠΟΥ ΑΝΕΒΗΚΕ ΚΑΙ Ο ΛΟΓΟΣ ΓΡΑΦΕΤΑΙ.
   // Στη συνιδιοκτησία τα ΟΝΟΜΑΤΑ των συνιδιοκτητών εμφανίζονταν επειδή το
   // ποσοστό είναι κάτω από 100 — και το ίδιο το ποσοστό καθόταν πίσω από το
   // «Περισσότερα». Ο χρήστης έβλεπε το αποτέλεσμα χωρίς την αιτία και δεν
   // είχε πού να τη διορθώσει. Το πεδίο έγινε βασικό ΜΟΝΟ σε ακίνητο που είναι
   // ήδη μοιρασμένο: 4 σε 5 κουτιά, σε μία από τις έξι περιπτώσεις.
-  shared: { 1: 5, 2: 5, 3: 0 },
+  shared: { 1: 5, 2: 5 },
 }
 const LABEL = {
   vacant: 'κενό διαμέρισμα', long: 'μακροχρόνια', short: 'βραχυχρόνια',
@@ -68,9 +72,9 @@ await page.waitForSelector('[data-s-open]')
 
 // ΣΤΗΝ ΕΠΕΞΕΡΓΑΣΙΑ Η ΡΑΓΑ ΕΙΝΑΙ ΚΑΡΤΕΛΕΣ (13/11/2026). Η «Συνέχεια» υπάρχει
 // πια μόνο στο νέο ακίνητο· ο πάγκος ανοίγει υπάρχοντα ακίνητα, οπότε το
-// επόμενο βήμα είναι η επόμενη καρτέλα της ράγας.
+// επόμενο βήμα είναι η επόμενη καρτέλα (`role="tab"`, `aria-selected`).
 const nextStep = async () => {
-  const cur = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] .wiz-tab')].findIndex(t => t.getAttribute('aria-current') === 'step'))
+  const cur = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] .wiz-tab')].findIndex(t => t.getAttribute('aria-selected') === 'true'))
   await page.locator('[role="dialog"] .wiz-tab').nth(cur + 1).click()
 }
 
@@ -96,7 +100,7 @@ const visibleControls = () => page.evaluate(() => {
 for (const [k, caps] of Object.entries(CAP)) {
   await page.click(`[data-s-open="${k}"]`)
   await page.waitForSelector('[role="dialog"]')
-  for (const step of [1, 2, 3]) {
+  for (const step of [1, 2]) {
     // Το πρώτο βήμα είναι ο τύπος· προχωράμε ως εκεί που μετράμε.
     await nextStep()
     await page.waitForTimeout(60)
@@ -133,7 +137,7 @@ for (const [k, caps] of Object.entries(CAP)) {
   for (const k of Object.keys(CAP)) {
     await page.click(`[data-s-open="${k}"]`)
     await page.waitForSelector('[role="dialog"]')
-    for (const step of [1, 2, 3]) {
+    for (const step of [1, 2]) {
       await nextStep()
       await page.waitForTimeout(60)
       const more = await page.$('[role="dialog"] [data-more]')
@@ -173,7 +177,7 @@ for (const [k, caps] of Object.entries(CAP)) {
   await nextStep(); await page.waitForTimeout(60)
   const more = await page.$('[role="dialog"] [data-more]')
   if (more) { await more.click(); await page.waitForTimeout(60) }
-  await page.getByLabel('Μέσο μηνιαίο έσοδο (€)').fill('1400')
+  await page.getByLabel('Μέσο μηνιαίο έσοδο', { exact: true }).fill('1400')
   await page.getByLabel('Εμπορική αξία (€)').fill('200000')
   await page.waitForTimeout(120)
   // ΤΟ ΚΕΙΜΕΝΟ ΔΕΝ ΙΣΟΠΕΔΩΝΕΤΑΙ. Η παλιά γραφή ήταν «16.800,00\u00A0€» και ο
@@ -196,27 +200,31 @@ for (const [k, caps] of Object.entries(CAP)) {
   ok('το «Κλείσιμο χωρίς αποθήκευση» κλείνει τον οδηγό', !(await page.$('[role="dialog"]')))
 }
 
-// ── ΤΕΣΣΕΡΑ ΒΗΜΑΤΑ, ΜΕ ΤΙΣ ΕΠΑΦΕΣ ΣΤΗ ΣΥΝΟΨΗ ─────────────────────────────
-// Η ράγα του οδηγού έχει όσους κύκλους και βήματα· μετά από τρία «Συνέχεια»
-// ο χρήστης είναι στη Σύνοψη και βλέπει εκεί το κουτί των επαφών.
+// ── ΤΡΕΙΣ ΚΑΡΤΕΛΕΣ, ΜΕ ΤΙΣ ΕΠΑΦΕΣ ΣΤΑ ΒΑΣΙΚΑ ─────────────────────────────
+// Η επεξεργασία έχει τρεις καρτέλες χωρίς αριθμούς· οι επαφές (πρώην «Σύνοψη»)
+// ζουν κλειστές στο τέλος των «Βασικών» και ανοίγουν με ένα πάτημα.
 {
   await page.click('[data-s-open="vacant"]')
   await page.waitForSelector('[role="dialog"]')
-  for (let i = 0; i < 3; i++) { await nextStep(); await page.waitForTimeout(60) }
-  const txt = await page.evaluate(() => document.querySelector('[role="dialog"]').innerText)
-  const active = await page.evaluate(() => document.querySelector('[role="dialog"] .wiz-step-on')?.textContent?.trim())
-  const steps = await page.evaluate(() => document.querySelectorAll('[role="dialog"] .wiz-step').length)
-  ok('ο οδηγός έχει τέσσερα βήματα και τελειώνει στη Σύνοψη',
-    steps === 4 && active === 'Σύνοψη' && !(await page.$('[role="dialog"] >> text=Συνέχεια')), `${steps} βήματα, ενεργό «${active}»`)
-  ok('οι επαφές ζουν στη Σύνοψη, κλειστές', /Επαφές, προαιρετικά/.test(txt))
+  await nextStep(); await page.waitForTimeout(60)
+  const tabs = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] [role="tab"]')].map(t => t.textContent.trim()))
+  const active = await page.evaluate(() => document.querySelector('[role="dialog"] [role="tab"][aria-selected="true"]')?.textContent?.trim())
+  ok('η επεξεργασία έχει τρεις καρτέλες, χωρίς «Σύνοψη»', tabs.join() === 'Τύπος,Βασικά,Οικονομικά' && active === 'Βασικά', `${tabs.join(' · ')}, ενεργή «${active}»`)
+  const contacts = page.locator('[role="dialog"] [data-more]', { hasText: 'Επαφές, προαιρετικά' })
+  ok('οι επαφές ζουν στα Βασικά, κλειστές', (await contacts.count()) === 1 && (await contacts.getAttribute('aria-expanded')) === 'false')
+  const before = await visibleControls()
+  await contacts.click(); await page.waitForTimeout(60)
+  ok('το κουτί των επαφών ανοίγει', (await visibleControls()) > before)
   await page.keyboard.press('Escape')
+  const ask = await page.waitForSelector('text=Κλείσιμο χωρίς αποθήκευση', { timeout: 800 }).catch(() => null)
+  if (ask) await ask.click()
   await page.waitForTimeout(80)
 }
 
 // ── ΣΤΟ ΝΟΙΚΙΑΣΜΕΝΟ ΤΟ ΕΝΟΙΚΙΟ, ΣΤΟ ΚΕΝΟ Ο ΣΤΟΧΟΣ ───────────────────────
 // Ο ιδιοκτήτης με ενοικιαστή διάβαζε «Στόχος ενοικίου» και δεν ήξερε τι να
 // γράψει. Η ετικέτα κρίνεται από την κατάσταση του πρώτου βήματος.
-for (const [k, want, not] of [['long', 'Μηνιαίο μίσθωμα (€)', 'Στόχος ενοικίου (€/μήνα)'], ['vacant', 'Στόχος ενοικίου (€/μήνα)', 'Μηνιαίο μίσθωμα (€)']]) {
+for (const [k, want, not] of [['long', 'Μηνιαίο μίσθωμα', 'Στόχος ενοικίου ανά μήνα'], ['vacant', 'Στόχος ενοικίου ανά μήνα', 'Μηνιαίο μίσθωμα']]) {
   await page.click(`[data-s-open="${k}"]`)
   await page.waitForSelector('[role="dialog"]')
   await nextStep(); await page.waitForTimeout(60)

@@ -7921,12 +7921,15 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
   background: var(--ob-veil);
   -webkit-backdrop-filter: blur(var(--ob-blur)); backdrop-filter: blur(var(--ob-blur));
 }
-/* Μία οικογένεια ακτίνων (παράθυρο 18, εσωτερικό 10) και ένα επίπεδο σκιάς
-   (--elev-3) για ΚΑΘΕ επικάλυψη της πρώτης εισόδου. */
+/* Μία οικογένεια ακτίνων (παράθυρο, εσωτερικό) και ένα επίπεδο σκιάς
+   (--elev-3) για ΚΑΘΕ επικάλυψη της πρώτης εισόδου. Οι ακτίνες έρχονται από
+   την κλίμακα (components/tokens.ts: `T.radius.modal`, `T.radius.inner`) ως
+   μεταβλητές που γράφει το ίδιο το στοιχείο (`--modal-r`, `--radius-inner`),
+   όπως στο `.po-modal`· η τιμή μετά το κόμμα είναι μόνο δίχτυ. */
 .ob-card {
   position: relative; width: min(440px, 100%); margin: auto; padding: 40px 40px 28px; outline: none;
   background: var(--bg-surface); border: 1px solid var(--border-subtle);
-  border-radius: 18px; box-shadow: var(--elev-3);
+  border-radius: var(--modal-r, 18px); box-shadow: var(--elev-3);
   animation: ob-rise 0.22s cubic-bezier(0, 0, 0, 1) both;
 }
 .ob-title {
@@ -7940,7 +7943,7 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 /* Η μικρογραφία της κάρτας του φόρου: επιφάνεια χωρίς περίγραμμα, ώστε να μη
    γίνει κουτί μέσα σε κουτί. */
 .ob-preview {
-  margin-top: 24px; padding: 16px; border-radius: 10px; background: var(--bg-elevated);
+  margin-top: 24px; padding: 16px; border-radius: var(--radius-inner, 10px); background: var(--bg-elevated);
   animation: ob-rise 0.22s cubic-bezier(0, 0, 0, 1) 80ms both;
 }
 .ob-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--fs-xs); font-weight: 600; color: var(--text-secondary); }
@@ -7988,7 +7991,7 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
   .ob-scrim { padding: 0; }
   .ob-card {
     width: 100%; margin: auto 0 0; padding: 28px 24px calc(16px + env(safe-area-inset-bottom, 0px));
-    border-radius: 18px 18px 0 0; border-bottom: none;
+    border-radius: var(--modal-r, 18px) var(--modal-r, 18px) 0 0; border-bottom: none;
   }
 }
 
@@ -8004,7 +8007,7 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 :root[data-mode="light"] .ob-tour { --tour-veil: rgba(15, 23, 42, 0.45); }
 .ob-tour-catch { position: absolute; inset: 0; pointer-events: auto; }
 .ob-spot {
-  position: fixed; border-radius: 14px; pointer-events: none;
+  position: fixed; pointer-events: none;
   /* Δακτύλιος 2px και πέπλο, τίποτε άλλο. Το απαλό φωτοστέφανο των 6px
      έπεφτε πάνω στα διπλανά στοιχεία της μπάρας και τα έδειχνε κι εκείνα. Η
      ακτίνα έρχεται από τον στόχο συν το περιθώριο (ProductTour.tsx). */
@@ -8015,7 +8018,7 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 .ob-tour-card {
   position: fixed; pointer-events: auto; padding: 20px 20px 16px; outline: none;
   background: var(--bg-surface); border: 1px solid var(--border-subtle);
-  border-radius: 18px; box-shadow: var(--elev-3);
+  border-radius: var(--modal-r, 18px); box-shadow: var(--elev-3);
   transition: top 0.24s cubic-bezier(0.2, 0, 0, 1), left 0.24s cubic-bezier(0.2, 0, 0, 1);
   animation: ob-in 0.24s cubic-bezier(0.2, 0, 0, 1);
 }
@@ -8066,6 +8069,14 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
   }
   .wiz-scrim .po-modal-body { flex: 1; }
 }
+/* ΣΤΟ ΠΑΡΑΘΥΡΟ, ΑΓΚΥΡΩΜΕΝΟ ΨΗΛΑ (κριτική σχεδίασης r2). Κεντραρισμένο, το
+   παράθυρο άλλαζε ύψος σε κάθε βήμα και η κορυφή του πηδούσε από 32 σε 51, 93
+   και 109. Τώρα η κορυφή μένει σταθερή και το παράθυρο μεγαλώνει μόνο προς τα
+   κάτω: κεφαλίδα και ράγα δεν κουνιούνται ποτέ. */
+@media (min-width: 561px) {
+  .wiz-scrim.po-modal-scrim { align-items: flex-start; padding-top: clamp(48px, 10vh, 96px); }
+  .wiz-scrim .po-modal { max-height: calc(100dvh - clamp(48px, 10vh, 96px) - 16px); }
+}
 /* Το placeholder στο σκούρο: πιο σβηστό από την τιμή, ώστε να μη διαβάζεται
    ως ήδη γραμμένο. */
 .wiz-scrim input::placeholder { color: var(--text-tertiary); opacity: 0.6; }
@@ -8077,7 +8088,7 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
    ό,τι περνά από κάτω της, άκρη με άκρη. */
 .wiz-rail {
   position: sticky; top: -24px; z-index: 2;
-  margin: -24px -24px 0; padding: 20px 24px 16px;
+  margin: -24px -24px 0; padding: 10px 24px;
   background: var(--bg-surface);
   border-bottom: 1px solid transparent;
   transition: border-color 0.15s;
@@ -8089,48 +8100,65 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 }
 .wiz-rail-col { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
 /* Η γραμμή ένωσης: από τον προηγούμενο κόμβο ως αυτόν, κέντρο με κέντρο, με
-   8 αέρα από κάθε κύκλο (14 ακτίνα + 8 = 22). */
+   8 αέρα από κάθε κύκλο (12 ακτίνα + 8 = 20). */
 .wiz-rail-col + .wiz-rail-col::before {
-  content: ""; position: absolute; top: 13px; left: calc(-50% + 22px); width: calc(100% - 44px);
+  content: ""; position: absolute; top: 11px; left: calc(-50% + 20px); width: calc(100% - 40px);
   height: 2px; border-radius: 1px; background: var(--border-subtle);
   transition: background-color 0.2s;
 }
 .wiz-rail-col[data-reached]::before { background: var(--accent); }
 .wiz-node {
-  width: 28px; height: 28px; border-radius: 100px; box-sizing: border-box; flex: none;
+  width: 24px; height: 24px; border-radius: 100px; box-sizing: border-box; flex: none;
   display: inline-flex; align-items: center; justify-content: center;
   border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-tertiary);
   font-size: var(--fs-xs); font-weight: 600; font-variant-numeric: tabular-nums;
   transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
 }
-.wiz-node[data-state="now"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); box-shadow: 0 0 0 4px var(--accent-soft); }
+.wiz-node[data-state="now"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); box-shadow: 0 0 0 3px var(--accent-soft); }
 .wiz-node[data-state="done"] { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+/* Ο προορισμός (η Επισκόπηση μετά την αποθήκευση): διακεκομμένος, χωρίς αριθμό. */
+.wiz-node[data-state="dest"] { border-style: dashed; background: transparent; }
 .wiz-step {
-  margin-top: 8px; max-width: 100%;
+  margin-top: 4px; max-width: 100%;
   font-size: var(--fs-xs); font-weight: 500; line-height: 1.3; color: var(--text-secondary);
   text-wrap: balance;
 }
 .wiz-step-on { color: var(--text-primary); font-weight: 600; }
-/* Στην επεξεργασία οι κόμβοι είναι καρτέλες: όλη η στήλη πατιέται (44 ύψος). */
-.wiz-tab {
-  display: flex; flex-direction: column; align-items: center; width: 100%; min-height: 44px;
-  padding: 0 4px; border: 0; border-radius: 10px; background: none; color: inherit;
-  font: inherit; cursor: pointer;
+/* Στην επεξεργασία, καρτέλες: ένα πλαίσιο τριών τμημάτων, χωρίς αριθμούς και
+   χωρίς γραμμές ένωσης. Ύψος από την κοινή κλίμακα (36, 44 σε δάχτυλο), ακτίνα
+   η εσωτερική (10) και το επιλεγμένο σε υπερυψωμένη επιφάνεια με βάρος 600. */
+.wiz-rail[data-kind="tabs"] { padding: 12px 24px; }
+.wiz-seg {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 3px;
+  border: 1px solid var(--border-subtle); border-radius: 13px;
 }
+.wiz-tab {
+  min-height: var(--h-md); padding: 0 8px; border: 0; border-radius: 10px;
+  background: none; color: var(--text-secondary); cursor: pointer;
+  font: inherit; font-size: var(--fs-base); font-weight: 500; line-height: 1.2;
+  transition: background-color 0.15s, color 0.15s;
+}
+.wiz-tab[aria-selected="true"] { background: var(--bg-elevated); color: var(--text-primary); font-weight: 600; }
 .wiz-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.wiz-tab:hover .wiz-node[data-state="todo"] { border-color: var(--accent); color: var(--accent); }
+@media (hover: hover) { .wiz-tab[aria-selected="false"]:hover { color: var(--text-primary); } }
 
 /* Οι τύποι: έξι στήλες στο παράθυρο, τρεις στο τηλέφωνο. Γεμάτες σειρές, κενό 12. */
 .wiz-types { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 12px; }
-@media (max-width: 560px) { .wiz-types { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.wiz-type.po-chip { padding: 0 4px; min-height: 80px; max-height: 88px; }
+@media (max-width: 560px) { .wiz-types { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } }
+/* ΤΟ ΓΕΜΙΣΜΑ ΚΑΙ ΤΟ ΥΨΟΣ ΘΕΛΟΥΝ `!important`: το ChipToggle τα γράφει
+   ενσωματωμένα (0 12, 32), οπότε ο κανόνας εδώ δεν ίσχυε ποτέ και το λεκτικό
+   είχε 59 πλάτος σε πλακίδιο 85 («Διαμέ-ρισμα»). Με 4 από κάθε πλευρά και
+   κενό 8 στο τηλέφωνο, η μακρύτερη λέξη των έξι πρώτων («Μονοκατοικία», 75)
+   χωρά σε μία γραμμή από τα 320 ως τα 1280. */
+.wiz-type.po-chip { padding: 0 4px !important; min-height: 80px !important; max-height: 88px; }
 .wiz-types:has(> :nth-child(7)) .wiz-type.po-chip { max-height: none; }
 .wiz-type-in {
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start; align-self: stretch;
   gap: 8px; padding: 16px 0 12px; flex: 1; min-width: 0;
   font-size: var(--fs-xs); line-height: 1.3; text-align: center;
+  hyphens: auto; overflow-wrap: anywhere;
 }
-/* «Άλλο…»: κουμπί κειμένου στη δεξιά άκρη της γραμμής της ετικέτας. Στόχος
+/* «Όλοι οι τύποι», «Όλες οι καταστάσεις»: κουμπί κειμένου στη δεξιά άκρη της γραμμής της ετικέτας. Στόχος
    αφής 44, που απλώνεται προς τα πάνω (αρνητικό περιθώριο) ώστε η γραμμή να
    κρατά το ύψος της ετικέτας· στοίχιση στη γραμμή βάσης του κειμένου. */
 .wiz-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
@@ -8146,19 +8174,33 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 /* Οι καταστάσεις: δύο στήλες στο παράθυρο, μία στο τηλέφωνο. */
 .wiz-statuses { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 12px; }
 @media (max-width: 560px) { .wiz-statuses { grid-template-columns: minmax(0, 1fr); grid-auto-rows: 1fr; gap: 8px; } }
-.wiz-status.po-chip { justify-content: flex-start; padding: 0 16px; min-height: 64px; }
+.wiz-status.po-chip { justify-content: flex-start; padding: 0 16px !important; min-height: 64px !important; }
 .wiz-status-in {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
   flex: 1; align-self: stretch; justify-content: center;
   padding: 12px 0; text-align: left; min-width: 0;
 }
-.wiz-more-status { margin-top: 12px; }
-@media (max-width: 560px) { .wiz-more-status { margin-top: 8px; } }
+/* Το «Περισσότερα στοιχεία (6)»: ήσυχη αποκάλυψη, όχι κουτί. 44 ύψος, χωρίς
+   περίγραμμα ή φόντο, βέλος 16 και λεκτικό στο δευτερεύον χρώμα. */
+.wiz-disclose {
+  display: flex; align-items: center; gap: 8px; align-self: flex-start; min-height: 44px; padding: 0;
+  border: 0; background: none; cursor: pointer; text-align: left;
+  font: inherit; font-size: var(--fs-base); font-weight: 500; line-height: 1.3; color: var(--text-secondary);
+}
+.wiz-disclose svg { flex: none; color: var(--text-tertiary); }
+@media (hover: hover) { .wiz-disclose:hover { color: var(--text-primary); } }
+.wiz-disclose:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+/* Το «€» μέσα στο πεδίο του μισθώματος, ως κατάληξη. */
+.wiz-suffix { position: relative; }
+.wiz-suffix > span {
+  position: absolute; right: 16px; top: 50%; transform: translateY(-50%); pointer-events: none;
+  font-size: 14px; color: var(--text-tertiary);
+}
 
 /* Ο φόρος καθώς γράφεται το μίσθωμα: εσωτερική επιφάνεια (ακτίνα 10), χωρίς
    περίγραμμα, ώστε να μη γίνει κουτί μέσα σε κουτί. Ίδια όψη με τη μικρογραφία
    της υποδοχής (`.ob-preview`). */
-.wiz-tax { padding: 16px; border-radius: 10px; background: var(--bg-elevated); }
+.wiz-tax { padding: 16px; border-radius: var(--radius-inner, 10px); background: var(--bg-elevated); }
 .wiz-tax-label { font-size: var(--fs-xs); font-weight: 600; line-height: 1.3; color: var(--text-secondary); }
 .wiz-tax-amount {
   margin-top: 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2;
@@ -8166,27 +8208,65 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 }
 .wiz-tax-note { margin-top: 4px; font-size: var(--fs-xs); line-height: 1.4; color: var(--text-secondary); }
 .wiz-tax-empty { margin-top: 4px; font-size: var(--fs-base); line-height: 1.5; color: var(--text-primary); }
-.wiz-tax-rows { list-style: none; margin: 12px 0 0; padding: 0; }
 .wiz-tax-row {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   padding: 12px 0 0; margin-top: 12px; border-top: 1px solid var(--border-subtle);
   font-size: var(--fs-xs); line-height: 1.4; color: var(--text-secondary);
 }
-.wiz-tax-row:first-child { margin-top: 0; }
 .wiz-tax-date { flex: none; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
 
-/* Η μαζική καταχώρηση στην κορυφή του νέου ακινήτου (BulkImportCard.tsx): μία
-   γραμμή-κουμπί σε τόνο, εσωτερική ακτίνα 10, 44 και πάνω ύψος. */
+/* Η μαζική καταχώρηση (BulkImportCard.tsx). Στο παράθυρο μία γραμμή-κουμπί
+   στην κορυφή, σε ουδέτερη επιφάνεια χωρίς περίγραμμα, ίδια με την κάρτα του
+   φόρου (`.wiz-tax`). Στο τηλέφωνο μία γραμμή κειμένου κάτω από την κατάσταση. */
 .bulk-row {
   display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px;
   padding: 12px 16px; border-radius: 10px; text-align: left; cursor: pointer; font: inherit;
-  border: 1px solid var(--accent-border); background: var(--accent-soft); color: var(--text-primary);
-  transition: border-color 0.15s, background-color 0.15s;
+  border: 0; background: var(--bg-elevated); color: var(--text-primary);
+  transition: background-color 0.15s;
 }
-.bulk-row:hover { border-color: var(--accent); }
+@media (hover: hover) { .bulk-row:hover { background: var(--bg-hover); } }
 .bulk-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.bulk-row-icon { flex: none; color: var(--accent); }
+.bulk-row-icon { flex: none; color: var(--text-secondary); }
 .bulk-row-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .bulk-row-title { font-size: var(--fs-base); font-weight: 600; line-height: 1.3; }
 .bulk-row-sub { font-size: var(--fs-xs); line-height: 1.4; color: var(--text-secondary); }
 .bulk-row-chev { flex: none; color: var(--text-secondary); }
+.bulk-line {
+  display: none; align-items: center; gap: 8px; align-self: flex-start; min-height: 44px; margin-top: -8px; padding: 0;
+  border: 0; background: none; cursor: pointer; text-align: left;
+  font: inherit; font-size: var(--fs-base); font-weight: 500; line-height: 1.3; color: var(--accent);
+}
+.bulk-line svg { flex: none; }
+.bulk-line:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+@media (max-width: 560px) {
+  .bulk-row { display: none; }
+  .bulk-line { display: inline-flex; }
+}
+
+/* ═══ «ΑΠΟ ΠΟΥ ΞΕΚΙΝΑΣ» (StartPanel.tsx) ════════════════════════════════════
+   Οι γραμμές απλώνουν 12 έξω από το περιεχόμενο, για την απαλή επιφάνεια του
+   ενεργού βήματος· η διαχωριστική ζωγραφίζεται στο πλάτος του περιεχομένου,
+   στην ίδια ευθεία με τον τίτλο και το υποσέλιδο. */
+.sp-row {
+  position: relative; display: flex; align-items: flex-start; gap: 12px;
+  margin: 0 -12px; padding: 11px 12px;
+}
+.sp-row::before {
+  content: ""; position: absolute; top: 0; left: 12px; right: 12px; height: 1px;
+  background: var(--border-subtle);
+}
+.sp-row[data-first]::before, .sp-row[data-now]::before { display: none; }
+.sp-row[data-now] {
+  padding: 12px; border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+.sp-row-bar { position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 100px; background: var(--accent); }
+/* Το κουμπί κάθε γραμμής στο κέντρο της, σε κάθε πλάτος. Τα ήσυχα τραβιούνται
+   δεξιά όσο το γέμισμά τους (`--btn-pad`, 18), ώστε το λεκτικό τους να
+   τελειώνει στην ακμή του περιγράμματος του ενεργού. */
+.sp-cta { flex: none; align-self: center; }
+.sp-cta[data-ghost] { margin-right: -18px; }
+
+/* Η «Σάρωσε έγγραφο» της κορυφής της Επισκόπησης, μόνο όσο η πλαϊνή μπάρα είναι
+   συρτάρι (OverviewTab.tsx): από τα 1025 και πάνω το κύριο κουμπί είναι της μπάρας. */
+@media (min-width: 1025px) { .ov-scan-hero { display: none !important; } }

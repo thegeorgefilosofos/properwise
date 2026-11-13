@@ -24,12 +24,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useId, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Btn, fe, useOverlayShell } from '@/components/Theme';
+import { Btn, fe, useOverlayShell, T } from '@/components/Theme';
 import { athensToday } from '@/lib/core/time';
-import { grDate } from '@/lib/core/format';
 import { writeStatus } from '@/lib/property/status';
 import { DEMO_PROPERTY } from '@/lib/demo/sample';
-import { firstTaxOf, incomeTaxDeadline } from '@/lib/onboarding/firstTax';
+import { firstTaxOf, taxDeadlineRow } from '@/lib/onboarding/firstTax';
 import { ONBOARDING_STEPS } from '@/lib/onboarding/steps';
 import { vocative } from '@/lib/greekName';
 import { saved } from '@/components/dbWrite';
@@ -56,7 +55,7 @@ interface Props {
  */
 function previewOf(today: string) {
   const t = firstTaxOf({ id: 'demo', ...writeStatus('rent_long'), target_rent: DEMO_PROPERTY.monthlyRent }, today);
-  const next = incomeTaxDeadline('rent_long', today);
+  const next = taxDeadlineRow('rent_long', today);
   return { year: t.year, tax: t.tax, next };
 }
 
@@ -86,7 +85,10 @@ export default function WelcomeOnboarding({ userId, name, onAddProperty, onClose
   // μένει παράθυρο στο κέντρο.
   return (
     <div role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descId} className="ob-scrim">
-      <div ref={panelRef} tabIndex={-1} className="ob-card">
+      {/* Οι ακτίνες από την κλίμακα (components/tokens.ts): το φύλλο στυλ τις
+          διαβάζει ως μεταβλητές, ώστε να μη γράφονται δεύτερη φορά ως ψηφία. */}
+      <div ref={panelRef} tabIndex={-1} className="ob-card"
+        style={{ '--modal-r': `${T.radius.modal}px`, '--radius-inner': `${T.radius.inner}px` } as React.CSSProperties}>
         <h2 id={titleId} className="ob-title">
           {greet ? `Καλώς ήρθες, ${greet}` : 'Καλώς ήρθες'}
         </h2>
@@ -105,7 +107,7 @@ export default function WelcomeOnboarding({ userId, name, onAddProperty, onClose
           {preview.next && (
             <div className="ob-preview-row">
               <span className="po-elide">{preview.next.title}</span>
-              <span className="ob-preview-date">{grDate(preview.next.date)}</span>
+              <span className="ob-preview-date">{preview.next.date}</span>
             </div>
           )}
         </div>

@@ -5,7 +5,7 @@
 // πρέπει να λένε το ίδιο ποσό. Εδώ κλειδώνει ότι βγαίνουν από την ίδια
 // συνάρτηση με τα ίδια έσοδα. Και ότι ακίνητο που δεν νοικιάζεται δεν δείχνει
 // φόρο ενοικίων.
-import { firstTaxOf, firstDeadlines, isRented, incomeTaxDeadline } from './firstTax';
+import { firstTaxOf, isRented, incomeTaxDeadline, taxDeadlineRow } from './firstTax';
 import { propertyRentTax } from '@/lib/facts/rentTax';
 import { writeStatus } from '@/lib/property/status';
 
@@ -36,10 +36,14 @@ const own = firstTaxOf({ id: 'p3', ...writeStatus('own_use'), target_rent: 600, 
 ok('ιδιοχρησία: χωρίς φόρο ενοικίων', !own.rented && own.tax === 0);
 ok('ο ΕΝΦΙΑ περνά ως αριθμός', own.enfia === 320);
 
-const dl = firstDeadlines('rent_long', TODAY);
-ok('δύο επόμενες προθεσμίες', dl.length === 2);
-ok('από σήμερα και μετά', dl.every(d => d.date >= TODAY));
-ok('με τη σειρά', dl[0].date <= dl[1].date);
+// ΜΙΑ ΓΡΑΜΜΗ, Η ΙΔΙΑ ΣΤΗΝ ΥΠΟΔΟΧΗ ΚΑΙ ΣΤΟΝ ΟΔΗΓΟ: η προθεσμία του φόρου εισοδήματος, σε ηη/μμ/εεεε.
+for (const st of ['rent_long', 'rent_short'] as const) {
+  const row = taxDeadlineRow(st, TODAY);
+  const inc = incomeTaxDeadline(st, TODAY);
+  ok(`η γραμμή είναι η προθεσμία του φόρου εισοδήματος (${st})`, !!row && !!inc && row.id === inc.id && row.title === inc.title);
+  ok(`ημερομηνία ηη/μμ/εεεε (${st})`, !!row && /^\d{2}\/\d{2}\/\d{4}$/.test(row.date));
+  ok(`όχι ΕΝΦΙΑ (${st})`, !!row && !/ΕΝΦΙΑ/.test(row.title));
+}
 
 // Η ΓΡΑΜΜΗ ΚΑΤΩ ΑΠΟ ΤΟΝ ΦΟΡΟ ΕΝΟΙΚΙΩΝ ΤΗΣ ΥΠΟΔΟΧΗΣ: ίδιος φόρος, ποτέ ΕΝΦΙΑ.
 for (const day of [TODAY, '2026-01-10', '2026-06-15', '2026-12-31']) {

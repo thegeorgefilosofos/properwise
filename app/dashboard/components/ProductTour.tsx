@@ -158,7 +158,7 @@ export default function ProductTour({ onDone }: Props) {
 
       <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" data-keeps-fab={step.id === 'assistant' ? '' : undefined} aria-labelledby={titleId} aria-describedby={bodyId}
         className="ob-tour-card"
-        style={pos ? { top: pos.top, left: pos.left, width: pos.width } : { visibility: 'hidden' }}>
+        style={{ ...(pos ? { top: pos.top, left: pos.left, width: pos.width } : { visibility: 'hidden' }), '--modal-r': `${T.radius.modal}px` } as unknown as React.CSSProperties}>
         {/* Το βέλος δείχνει το κέντρο του στόχου, στην ακμή που τον κοιτά. */}
         {pos && <span className="ob-caret" data-edge={pos.caret.edge} aria-hidden
           style={pos.caret.edge === 'left' || pos.caret.edge === 'right' ? { top: pos.caret.offset } : { left: pos.caret.offset }} />}

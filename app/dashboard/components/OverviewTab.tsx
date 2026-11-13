@@ -860,7 +860,6 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           κατάσταση, η ώρα Ελλάδας και η ενέργεια στη σειρά της. */}
       <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:16,flexWrap:'wrap',marginBottom:20}}>
         <div style={{minWidth:0}}>
-          <AthensNow style={{fontFamily:T.font.sans,fontSize: 'var(--fs-xs)',fontWeight:600,color:'var(--text-tertiary)',letterSpacing:'0.02em',marginBottom:4,minHeight:15}}/>
           <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-note)',color:'var(--text-secondary)'}}>{taxHero ? `Φόρος ενοικίων ${year}` : heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
           {rentMissing
             // ΜΙΣΘΩΣΗ ΧΩΡΙΣ ΠΟΣΟ ΔΕΝ ΔΕΙΧΝΕΙ ΜΗΔΕΝ ΣΑΝ ΝΑ ΗΤΑΝ ΦΟΡΟΣ: λέει τι λείπει
@@ -875,6 +874,11 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           {taxHero && !rentMissing && !moneyGap && (
             <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`Καθαρό ${year} · ${fmtEur(heroValue)}`}</div>
           )}
+          {/* Η ΩΡΑ ΕΛΛΑΔΑΣ ΚΑΤΩ ΑΠΟ ΤΟ ΠΟΣΟ, ΟΧΙ ΠΑΝΩ (κριτική σχεδίασης r2). Ηταν η
+              πρώτη γραμμή της οθόνης, σε έντονο βάρος· έσπρωχνε το ποσό κάτω:
+              ο νέος χρήστης διάβαζε πρώτα «Παρασκευή 13/11» και μετά τον φόρο του.
+              Μένει, γιατί δίνει νόημα στο «ως σήμερα», αλλά ως υποσημείωση. */}
+          <AthensNow style={{fontFamily:T.font.sans,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,minHeight:15}}/>
           {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
               Εδώ γραφόταν ξανά, εξήντα εικονοστοιχεία κάτω από την ίδια
               πρόταση: όνομα, τύπος, κατάσταση, διεύθυνση — τα ίδια τέσσερα
@@ -889,7 +893,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         {/* «ΣΑΡΩΣΕ ΕΓΓΡΑΦΟ» ΣΤΗΝ ΠΡΩΤΗ ΟΘΟΝΗ ΚΑΙ ΣΤΟ ΚΙΝΗΤΟ. Στα 390 εικονοστοιχεία
             η σάρωση ήθελε κύλιση· είναι η πιο συχνή πράξη του ιδιοκτήτη. */}
         <div className="ov-head-actions" style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-        <Btn variant="primary" className="tour-scan" onClick={()=>onNavigate('scan')}>
+        {/* ΕΝΑ ΓΕΜΑΤΟ ΚΟΥΜΠΙ ΑΝΑ ΟΘΟΝΗ (κριτική σχεδίασης r2). Από τα 1025 και
+            πάνω η πλαϊνή μπάρα έχει ήδη το «Σάρωσε έγγραφο» ως κύριο κουμπί·
+            εδώ ήταν η ίδια πράξη δεύτερη φορά, με άλλο εικονίδιο. Κρύβεται εκεί
+            (`.ov-scan-hero`, globals.css) και μένει κάτω από τα 1025, όπου η
+            μπάρα είναι συρτάρι. Η «Αναφορά σε PDF» μένει δευτερεύουσα. */}
+        <Btn variant="primary" className="tour-scan ov-scan-hero" onClick={()=>onNavigate('scan')}>
           <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
           Σάρωσε έγγραφο
         </Btn>

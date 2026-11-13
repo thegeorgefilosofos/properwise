@@ -21,7 +21,20 @@ import { BULK_MAX } from '@/lib/myaade/planLimit';
 // με κουμπί από κάτω, 140 ύψος στο τηλέφωνο: έσπρωχνε την ερώτηση της
 // κατάστασης κάτω από την πρώτη οθόνη του οδηγού. Τώρα όλη η γραμμή είναι το
 // κουμπί, με βέλος στο τέλος: ίδια θέση, ίδια ενέργεια, το μισό ύψος.
-export function BulkImportCard({ onStart, hasProperties = false }: { onStart: () => void; hasProperties?: boolean }) {
+//
+// ΚΑΙ ΧΩΡΙΣ ΤΟΝΟ (κριτική σχεδίασης r2). Σε τόνο, πάνω από την πρώτη ερώτηση,
+// διαβαζόταν ως ο κύριος δρόμος. Στο παράθυρο μένει πρώτη, σε ουδέτερη
+// επιφάνεια χωρίς περίγραμμα. Στο τηλέφωνο (`compact`) γίνεται μία ήσυχη
+// γραμμή κειμένου 44 ύψους ΚΑΤΩ από την κατάσταση, ώστε τύπος και κατάσταση
+// να είναι τα πρώτα που βλέπει το μάτι. Ο οδηγός αποδίδει και τις δύο· το
+// φύλλο στυλ δείχνει τη μία ανά πλάτος (`.bulk-row`, `.bulk-line`).
+export function BulkImportCard({ onStart, hasProperties = false, compact = false }: { onStart: () => void; hasProperties?: boolean; compact?: boolean }) {
+  if (compact) return (
+    <button type="button" className="bulk-line" onClick={onStart}>
+      <FileStack size={16} aria-hidden />
+      <span>Έχεις πολλά ακίνητα; Ανέβασε το Ε9</span>
+    </button>
+  );
   return (
     <button type="button" className="bulk-row" onClick={onStart}>
       <FileStack size={20} aria-hidden className="bulk-row-icon" />
