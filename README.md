@@ -241,6 +241,12 @@ red. Dependabot keeps npm packages and Actions current through the same gate.
 | [`docs/facts.md`](docs/facts.md) | Every figure, its function and its screens |
 | [`.claude/skills/fylakas/SKILL.md`](.claude/skills/fylakas/SKILL.md) | How to write a guard |
 
+## Contributing
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): setup, checks, the review and merge process, protected paths and the language policy.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): layers, data flow, auth, billing, calendar sync, Noa, firm accounts and known debt.
+- [`docs/GLOSSARY.md`](docs/GLOSSARY.md): Greek domain and tooling terms in English.
+
 ---
 
 <div align="center"><sub>© PROPERWISE. All rights reserved. Proprietary and confidential.</sub></div>
