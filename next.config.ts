@@ -1,5 +1,13 @@
 import type { NextConfig } from "next";
 
+// ── Εκτός ευρετηρίου ─────────────────────────────────────────────────────────
+// Το robots.txt τις αφήνει ανοιχτές ώστε η μηχανή να ΔΕΙ αυτή την κεφαλίδα.
+const NOINDEX_PATHS = [
+  "/portal/:path*", "/checkin/:path*", "/accountant/:path*", "/unsubscribe/:path*",
+  "/plirosa/:path*", "/verify/:path*", "/verify", "/epivevaiosi-email/:path*",
+  "/reset-password", "/en/reset-password", "/imerologio/:path*", "/tameio/:path*", "/tameio",
+];
+
 // ── Security headers ─────────────────────────────────────────────────────────
 // Το Content-Security-Policy ορίζεται πλέον στο proxy.ts (middleware) με
 // per-request nonce, ώστε να φύγει το 'unsafe-inline' από το script-src. Εδώ
@@ -140,6 +148,12 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      // Ιδιωτικές σελίδες με token ή στοιχεία χρήστη: noindex ως κεφαλίδα, ώστε
+      // να ισχύει και για τις διαδρομές χωρίς HTML (ροή ημερολογίου, αρχεία).
+      ...NOINDEX_PATHS.map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      })),
       // Ο service worker ΔΕΝ επιτρέπεται να αποθηκευτεί. Αν ο browser κρατήσει
       // παλιό sw.js, κρατά και τη στρατηγική cache που μπορεί να σερβίρει
       // ασύμβατα αρχεία build. Είναι το μοναδικό αρχείο όπου η μηδενική
