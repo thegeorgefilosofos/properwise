@@ -8,11 +8,12 @@
 // ανοίγει τη σελίδα στον Chrome (Android) ή στο Safari (iOS 17 και νεότερο) και
 // ο επισκέπτης μπορεί να συνεχίσει με email στην ίδια σελίδα.
 //
-// Η GOOGLE ΜΕΝΕΙ ΠΡΩΤΗ (04.10.2026). Την πρώτη μέρα του συνδέσμου στο bio του
-// Instagram, όσοι έβλεπαν μόνο οδηγία στην κορυφή το έλεγαν «δεν μπορώ να μπω με
-// Google». Τώρα η οδηγία λέει πρώτα τι να κάνει κανείς και, όπου γίνεται, το
-// κάνει με ένα πάτημα. Μόνο όπου δεν υπάρχει τέτοιο κουμπί η Εγγραφή και η
-// Σύνδεση (`useEmailFirst`) βάζουν τη φόρμα του email πάνω και την οδηγία κάτω.
+// ΣΤΗΝ ΕΦΑΡΜΟΓΗ ΤΟ EMAIL ΕΡΧΕΤΑΙ ΠΡΩΤΟ (13.11.2026). Ως τότε η οδηγία για τη
+// Google έμενε πρώτη όπου υπήρχε κουμπί προς Safari ή Chrome. Το χωνί μιας
+// εβδομάδας: 3 επισκέψεις από το Instagram, 3 φορές η οδηγία, καμία υποβολή.
+// Το πλαίσιο της οδηγίας έπιανε ~340px και έσπρωχνε το πεδίο του email στην
+// κάτω άκρη της οθόνης (y=792 σε 812). Τώρα σε κάθε ενσωματωμένο περιηγητή η
+// φόρμα του email είναι πάνω και η οδηγία, με το κουμπί της, από κάτω.
 // Μία πηγή για Σύνδεση και Εγγραφή, όπως και το σήμα της Google.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useSyncExternalStore } from 'react'
@@ -20,7 +21,7 @@ import { useAuthEn } from '@/lib/i18n/authEn'
 import { Btn } from '@/components/ThemeCore'
 import { T } from '@/components/tokens'
 import GoogleG from './GoogleG'
-import { inAppBrowser, chromeIntent, safariLink } from '@/lib/core/inAppBrowser'
+import { inAppBrowser, chromeIntent, safariLink, emailFirst } from '@/lib/core/inAppBrowser'
 import { countSignupStep } from '@/lib/analytics/signupFunnel'
 
 const NEVER_CHANGES = () => () => {}
@@ -34,15 +35,9 @@ export function useInAppBrowser() {
   return inAppBrowser(useSyncExternalStore(NEVER_CHANGES, readUa, serverUa))
 }
 
-/**
- * Η Google μένει η πρώτη επιλογή όπου υπάρχει κουμπί που ανοίγει τη σελίδα στο
- * Safari ή στον Chrome με ένα πάτημα. Μόνο όπου δεν υπάρχει (παλαιότερο iOS,
- * άγνωστη εφαρμογή) η φόρμα του email έρχεται πρώτη: εκεί η Google θέλει
- * μενού και αντιγραφή, το email ένα λεπτό.
- */
+/** Μέσα σε εφαρμογή η Google δεν δουλεύει: η φόρμα του email έρχεται πρώτη (`emailFirst`). */
 export function useEmailFirst() {
-  const iab = useInAppBrowser()
-  return iab !== null && !iab.android && !iab.safari
+  return emailFirst(useInAppBrowser())
 }
 
 /** `funnel`: μόνο η εγγραφή μετρά τα βήματά της· η σύνδεση όχι. */
@@ -67,7 +62,7 @@ export default function GoogleButton({ onClick, funnel = false }: { onClick: () 
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: 'var(--text-secondary)' }}>
         {E ? <><b style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{E.title(target)}</b>{' '}{E.body}</> : <>
         <b style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Για σύνδεση με Google, άνοιξε τη σελίδα {target}.</b>{' '}
-        Η Google δεν επιτρέπει σύνδεση μέσα από {iab.where}. Αλλιώς, με email είσαι μέσα σε ένα λεπτό.</>}
+        Η Google δεν επιτρέπει σύνδεση μέσα από {iab.where}. Με το email από πάνω δεν χρειάζεται να φύγεις.</>}
       </p>
       {iab.android ? (
         <Btn variant="secondary" field href={chromeIntent(window.location.href)} onClick={funnel ? () => countSignupStep('chrome') : undefined}>

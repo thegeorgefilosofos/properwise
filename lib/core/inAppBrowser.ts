@@ -64,6 +64,12 @@ export function inAppBrowser(ua: string | null | undefined): InAppBrowser | null
 }
 
 /**
+ * Η φόρμα του email πρώτη; Σε κάθε ενσωματωμένο περιηγητή ναι: εκεί η Google
+ * απαντά «disallowed_useragent» και το email είναι ο μόνος δρόμος χωρίς έξοδο.
+ */
+export const emailFirst = (iab: InAppBrowser | null): boolean => iab !== null;
+
+/**
  * Σύνδεσμος που ανοίγει την ίδια σελίδα στον Chrome του Android. Αν ο Chrome
  * λείπει, το σύστημα πηγαίνει στο `browser_fallback_url`, δηλαδή στην ίδια
  * διεύθυνση: τίποτα δεν χάνεται. Στο iPhone δεν υπάρχει αντίστοιχος δρόμος.
