@@ -175,7 +175,7 @@ const FLOOR = FLOOR_BANDS.map(([label, key]) => [label, fn(ENFIA_FLOOR_COEF[key]
 // Ο όροφος γράφεται με το κλιμάκιο του πίνακα (`FLOOR_BANDS`).
 const MORE_EX = [
   { title: 'Παλιό διαμέρισμα στο ισόγειο', sqm: 70, price: 1_200, years: 30, floor: 'ground' },
-  { title: 'Νεόδμητο διαμέρισμα σε ψηλό όροφο', sqm: 110, price: 3_200, years: 3, floor: 'fifth_plus' },
+  { title: 'Καινούργιο διαμέρισμα σε ψηλό όροφο', sqm: 110, price: 3_200, years: 3, floor: 'fifth_plus' },
 ].map(ex => {
   const zone = zoneKeyFromPricePerSqm(ex.price)!;
   const age = enfiaAgeKeyFromYears(ex.years)!;
@@ -273,7 +273,7 @@ export default function Page() {
             είναι ο ίδιος πίνακας όρων με το κουτί της ενότητας 1, τα ποσά του
             πρώτου παραδείγματος από την `estimateENFIA`. */}
         <GuideQuickAnswer>
-          {`Ο ΕΝΦΙΑ ενός κτίσματος ξεκινά από τον κύριο φόρο: ${FORMULA.map(t => t.toLowerCase()).join(' × ')}. Από τον κύριο φόρο αφαιρείται αυτόματα μείωση έως ${pct(WEALTH_MAX)} ανάλογα με τη συνολική αξία της περιουσίας σου, μαζί με όσες απαλλαγές δικαιούσαι. Για παράδειγμα, ένα διαμέρισμα ${EX.sqm} τ.μ., ${EX.years} ετών, με τιμή ζώνης ${feWhole(EX.price)}/τ.μ. πληρώνει ενδεικτικά ${fe(EX_RES.annual)} τον χρόνο.`}
+          {`Ο ΕΝΦΙΑ ενός κτίσματος ξεκινά από τον κύριο φόρο: ${FORMULA.map(t => t.toLowerCase()).join(' × ')}. Από τον κύριο φόρο αφαιρείται αυτόματα μείωση έως ${pct(WEALTH_MAX)} ανάλογα με τη συνολική αξία της περιουσίας σου, μαζί με όσες απαλλαγές δικαιούσαι. Για παράδειγμα, ένα διαμέρισμα ${EX.sqm} τ.μ., ${EX.years} ετών, στον 3ο όροφο, με τιμή ζώνης ${feWhole(EX.price)}/τ.μ. και χωρίς άλλο ακίνητο πληρώνει ενδεικτικά ${fe(EX_RES.annual)} τον χρόνο.`}
         </GuideQuickAnswer>
         {/* Το ευρετήριο ακριβώς κάτω από τη γραμμή της ημερομηνίας: στο κινητό
             ερχόταν μετά από δύο παραγράφους εισαγωγής, μισή οθόνη πιο κάτω. */}
