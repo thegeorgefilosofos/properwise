@@ -8,7 +8,7 @@
 // της παλέτας. Η σελίδα (page.tsx) μόνο το αποδίδει.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useNavHistory } from '../useNavHistory'
-import { useEffect, useState, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useEffectEvent, useState, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { hardNavigate } from '@/lib/core/navigate'
 import { endSession, SIGN_OUT_FAILED } from '@/lib/auth/endSession'
@@ -19,7 +19,8 @@ import * as documentStore from '@/lib/data/documents'
 import * as feedStore from '@/lib/data/calendarFeed'
 import { syncOwnerTaxDeadlines } from '@/lib/calendar/taxSync'
 import * as settingsStore from '@/lib/data/settings'
-import { enfiaCarrySettings, type EnfiaCarry } from '@/lib/tools/enfiaCarry'
+import { enfiaCarrySettings, enfiaPublicEstimate } from '@/lib/tools/enfiaCarry'
+import { carrySavedNote, type CalcCarry, type SavedProperty } from '@/lib/tools/calcCarry'
 import { athensToday } from '@/lib/core/time'
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing'
@@ -135,9 +136,15 @@ export function useDashboard() {
   const [startCollapsed, setStartCollapsed] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [scanAfterAdd, setScanAfterAdd] = useState(false);// «Σάρωση εγγράφου» της υποδοχής: σάρωση μόλις αποθηκευτεί το ακίνητο
-  // Η εκτίμηση του δημόσιου υπολογιστή ΕΝΦΙΑ που ήρθε μαζί με την εγγραφή
-  // (lib/tools/enfiaCarry.ts). Ζει ώσπου να αποθηκευτεί ή να κλείσει ο οδηγός.
-  const [enfiaCarry, setEnfiaCarry] = useState<EnfiaCarry | null>(LAUNCH.enfia);
+  // Ό,τι υπολόγισε ο επισκέπτης στον δημόσιο υπολογιστή ΕΝΦΙΑ ή ενοικίων και
+  // ζήτησε να αποθηκευτεί (lib/tools/calcCarry.ts). Ζει ώσπου να αποθηκευτεί ή
+  // να κλείσει ο οδηγός.
+  const [calcCarry, setCalcCarry] = useState<CalcCarry | null>(LAUNCH.carry);
+  // Λογαριασμός ΜΕ ακίνητα που ήρθε από το «Αποθήκευσε το ακίνητο»: ο οδηγός
+  // ανοίγει μόλις διαβαστεί το πακέτο, από την ίδια πύλη με κάθε προσθήκη
+  // (`tryAddProperty`), ώστε το όριο του πακέτου να ισχύει κι εδώ.
+  const [carryReady, setCarryReady] = useState(false);
+  const carryOpened = useRef(false);
   const [plan, setPlan] = useState<string>('free');       // τρέχον πακέτο συνδρομής (billing_profiles)
   const [compPlan, setCompPlan] = useState<string|null>(null);   // δωρεάν πρόσβαση: επίπεδο (π.χ. από referral)
   const [compUntil, setCompUntil] = useState<string|null>(null); // δωρεάν πρόσβαση: λήξη (ISO)
@@ -519,7 +526,12 @@ export function useDashboard() {
         // μόλις έγραψε τα στοιχεία του ακινήτου του· το καλωσόρισμα θα τον ρωτούσε
         // «από πού ξεκινάς» για κάτι που έχει ήδη ξεκινήσει. Μόνο σε λογαριασμό
         // χωρίς ακίνητα: όποιος έχει ήδη, δεν ανοίγει οδηγό που δεν ζήτησε.
-        if (LAUNCH.enfia && !countErr && count === 0) { setShowAddModal(true); void trackOnboarding(supabase, { event: PRODUCT_EVENTS.wizard_opened, from: 'other' }); }
+        //
+        // ΚΑΙ ΣΕ ΛΟΓΑΡΙΑΣΜΟ ΜΕ ΑΚΙΝΗΤΑ, ΟΤΑΝ ΤΟ ΖΗΤΗΣΕ (13/11/2026). Το «Αποθήκευσε
+        // το ακίνητο» κάτω από το αποτέλεσμα είναι ρητό αίτημα: ο συνδεδεμένος
+        // ιδιοκτήτης που το πάτησε περιμένει τον οδηγό, όχι την Επισκόπηση.
+        if (LAUNCH.carry && !countErr && count === 0) { setShowAddModal(true); void trackOnboarding(supabase, { event: PRODUCT_EVENTS.wizard_opened, from: 'other' }); }
+        else if (LAUNCH.carry && !countErr) { void planRead.then(() => { if (mountedRef.current) setCarryReady(true); }); }
         // Η ΣΥΝΤΟΜΕΥΣΗ «ΣΑΡΩΣΗ» ΧΩΡΙΣ ΑΚΙΝΗΤΟ ΔΕΝ ΕΚΑΝΕ ΤΙΠΟΤΑ (20.10.2026). Το
         // παράθυρο της σάρωσης ανοίγει μόνο με επιλεγμένο ακίνητο, οπότε όποιος
         // πατούσε το εικονίδιο της εφαρμογής σε άδειο λογαριασμό έβλεπε την
@@ -527,7 +539,7 @@ export function useDashboard() {
         // και η σάρωση ακολουθεί μόλις αποθηκευτεί το ακίνητο, ο ίδιος δρόμος
         // με το «Σάρωσε έγγραφο» του καλωσορίσματος.
         else if (LAUNCH.scan && !countErr && count === 0) {
-          setEnfiaCarry(null);
+          setCalcCarry(null);
           // Η σάρωση ανοίγει πλέον και χωρίς ακίνητο (μόνο με τη μαζική): εδώ
           // ανοίγει ο οδηγός, οπότε το παράθυρο της σάρωσης δεν ανοίγει από πάνω
           // του. Ξανανοίγει μόλις αποθηκευτεί το ακίνητο (`scanAfterAdd`).
@@ -537,7 +549,7 @@ export function useDashboard() {
           void trackOnboarding(supabase, { event: PRODUCT_EVENTS.wizard_opened, from: 'scan' });
         }
         else {
-          setEnfiaCarry(null);
+          setCalcCarry(null);
           if (!obErr && !countErr && !ob?.welcomed && count === 0) setShowWelcome(true);
         }
         // Σταδιακή αποκάλυψη: τι έχει ήδη ανοίξει + τι δικαιολογούν τα δεδομένα.
@@ -606,23 +618,40 @@ export function useDashboard() {
   // άδειες θα έδειχνε «χωρίς ΕΝΦΙΑ» ως την επόμενη φόρτωση. Τι γράφεται και πότε
   // ΔΕΝ γράφεται τίποτα το κρίνει το `enfiaCarrySettings`: μόνο ό,τι ξαναβγάζει
   // ακριβώς το ποσό που είδε ο επισκέπτης.
-  const dropEnfiaCarry = () => setEnfiaCarry(null);
-  const commitEnfiaCarry = async (propertyId: string | null) => {
-    const carry = enfiaCarry;
-    setEnfiaCarry(null);
+  const dropCarry = () => setCalcCarry(null);
+  // Το γεγονός διαβάζει το πακέτο ΤΗΣ ΤΡΕΧΟΥΣΑΣ απόδοσης, χωρίς να ξανατρέχει
+  // το effect σε κάθε απόδοση. Μία φορά, μόλις διαβαστεί το πακέτο.
+  const openCarry = useEffectEvent(() => tryAddProperty('other'));
+  useEffect(() => {
+    if (!carryReady || carryOpened.current) return;
+    carryOpened.current = true;
+    openCarry();
+  }, [carryReady]);
+  const commitCarry = async (propertyId: string | null) => {
+    const carry = calcCarry;
+    setCalcCarry(null);
     if (!carry || !propertyId || !user) return;
-    // Τα τετραγωνικά και το ποσοστό ΟΠΩΣ ΑΠΟΘΗΚΕΥΤΗΚΑΝ: αν τα άλλαξε στον οδηγό,
-    // η εκτίμηση περιγράφει άλλο ακίνητο και δεν γράφεται. Αποτυχία ανάγνωσης
-    // δεν σταματά τη ροή: το ακίνητο υπάρχει, απλώς χωρίς την εκτίμηση.
-    let facts: { sqm: number | null; ownership: number | null } | null = null;
+    // Τα στοιχεία ΟΠΩΣ ΑΠΟΘΗΚΕΥΤΗΚΑΝ: αν τα άλλαξε στον οδηγό, η εκτίμηση
+    // περιγράφει άλλο ακίνητο και δεν γράφεται· η επιβεβαίωση λέει τα δικά
+    // του. Αποτυχία ανάγνωσης δεν σταματά τη ροή: το ακίνητο υπάρχει.
+    let facts: (SavedProperty & { ownership: number | null }) | null = null;
     try {
-      facts = await propertyStore.one<{ sqm: number | null; ownership: number | null }>(supabase, propertyId, 'sqm,ownership', user.id);
+      facts = await propertyStore.one<SavedProperty & { ownership: number | null }>(supabase, propertyId,
+        'name,sqm,ownership,target_rent,status_detail,rental_mode', user.id);
     } catch { return; }
     if (!facts) return;
-    const data = enfiaCarrySettings(carry.inputs, facts, Number(athensToday().slice(0, 4)));
-    if (!data) return;
-    await saved('Η εκτίμηση ΕΝΦΙΑ του υπολογιστή δεν αποθηκεύτηκε στο ακίνητο',
-      settingsStore.put(supabase, propertyId, user.id, 'services', data));
+    const today = athensToday();
+    let annual: number | null = null;
+    if (carry.kind === 'enfia') {
+      const data = enfiaCarrySettings(carry.enfia.inputs, facts, Number(today.slice(0, 4)));
+      if (data && await saved('Η εκτίμηση ΕΝΦΙΑ του υπολογιστή δεν αποθηκεύτηκε στο ακίνητο',
+        settingsStore.put(supabase, propertyId, user.id, 'services', data))) {
+        annual = enfiaPublicEstimate(carry.enfia.inputs)?.annual ?? null;
+      }
+    }
+    // ΤΙ ΑΠΟΘΗΚΕΥΤΗΚΕ, ΣΤΗΝ ΟΘΟΝΗ. Μένει ώσπου να το κλείσει: είναι η απάντηση
+    // στο «κράτησε όσα έγραψα;» και η προθεσμία που μόλις μπήκε στο ημερολόγιο.
+    notifyOk(carrySavedNote(carry.kind, facts, annual, today), { duration: 0 });
   };
 
   const updateStatus = async (status: PropertyStatus) => {
@@ -768,6 +797,6 @@ export function useDashboard() {
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
     setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, openWizard, updateStatus, deleteProperty,
-    scanBusy, setScanBusy, setScanDirty, closeQuickAdd, requestCloseQuickAdd, signOut, enfiaCarry, dropEnfiaCarry, commitEnfiaCarry,
+    scanBusy, setScanBusy, setScanDirty, closeQuickAdd, requestCloseQuickAdd, signOut, calcCarry, dropCarry, commitCarry,
   }
 }

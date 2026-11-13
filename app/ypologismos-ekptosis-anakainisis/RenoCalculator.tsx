@@ -19,6 +19,7 @@ import LiveResult from '@/components/LiveResult';
 import { useToolDict, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
 import { localHref } from '@/lib/i18n/paths';
 import { SPEC, PATH, TAX_KEYS } from './spec';
+import { ToolMeaning } from '@/app/ToolMeaning';
 
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 const typed = (s: string): number | null => (String(s ?? '').trim() === '' ? null : Math.max(0, parseAmount(s) ?? 0));
@@ -37,7 +38,7 @@ const NOTE = { margin: '12px 0 0', fontSize: 14, lineHeight: 1.6, color: 'var(--
 /** Το κλάσμα των υλικών, ως λέξη: «το 1/3». */
 const SHARE_TEXT = `το ${fn(1)}/${fn(Math.round(1 / RENO_39B_MATERIALS_SHARE))}`;
 
-export function RenoCalculator({ today, cta }: { today: string; cta: ReactNode }) {
+export function RenoCalculator({ today, cta, meaning }: { today: string; cta: ReactNode; meaning?: string }) {
   // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/renovation-tax-credit-calculator) ───────
   // Τα αγγλικά έρχονται από τον πάροχο του /en (lib/i18n/toolEn.ts)· εδώ δεν
   // εισάγεται κανένα αγγλικό λεξικό, ώστε να μην κατεβαίνει στα ελληνικά.
@@ -139,6 +140,8 @@ export function RenoCalculator({ today, cta }: { today: string; cta: ReactNode }
           </>
         )}
       </div>
+      {/* «Τι σημαίνει αυτό»: ο οδηγός του αποτελέσματος (app/ToolMeaning.tsx), μόνο στα ελληνικά. */}
+      {!en && <ToolMeaning href={meaning}/>}
       <ToolActions path={path} spec={SPEC} values={v}/>
       {cta}
       <ToolPaperFoot path={path} spec={SPEC} values={v}/>

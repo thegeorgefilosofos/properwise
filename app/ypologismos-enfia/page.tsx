@@ -35,6 +35,8 @@ import { toolJsonLd, ToolByline, ToolOnwardLinks } from '../toolSeo';
 import { enfiaH1, enfiaExamples } from './seo';
 import { enfiaSignupHref } from '@/lib/tools/enfiaCarry';
 import { SPEC } from './spec';
+import { SAVE_PROPERTY_TERMS } from '@/lib/legal/billingWords';
+import { toolMeaning } from '@/lib/core/publicTools';
 
 // ΤΟ ΕΤΟΣ ΤΟΥ ΤΙΤΛΟΥ ΕΙΝΑΙ ΤΟ ΕΤΟΣ ΤΟΥ ΥΠΟΛΟΓΙΣΜΟΥ. Ήταν γραμμένο «2026» με το
 // χέρι, ενώ ο υπολογιστής και ο πίνακας των δόσεων ακολουθούν το τρέχον έτος:
@@ -174,7 +176,7 @@ export default function Page() {
             Η εφεδρεία έχει το ΙΔΙΟ ύψος με τη φόρμα, ώστε το κείμενο από κάτω
             να μην αναπηδήσει μόλις φορτώσει. */}
         <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
-          <EnfiaCalculator year={year} today={athensToday()} cta={
+          <EnfiaCalculator year={year} today={athensToday()} next={{ terms: SAVE_PROPERTY_TERMS, meaning: toolMeaning(PATH) }} cta={
             <ToolCta
               // Με τις προεπιλογές σκέτη εγγραφή: το παράδειγμα δεν είναι ακίνητο
               // κανενός. Από πάνω γράφει ο υπολογιστής τα πεδία που άλλαξε ο

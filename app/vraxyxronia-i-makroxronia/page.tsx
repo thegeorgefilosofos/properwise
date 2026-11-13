@@ -16,6 +16,7 @@
 //
 // Κόστος λειτουργίας: μηδέν. Υπολογισμός στη συσκευή, καμία εγγραφή.
 // ═══════════════════════════════════════════════════════════════════════════
+import { toolMeaning } from '@/lib/core/publicTools';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
@@ -153,7 +154,7 @@ export default function Page() {
             αυτό, ολόκληρη η σελίδα θα έβγαινε από τη στατική απόδοση και θα
             έχανε το SEO για το οποίο υπάρχει. */}
         <Suspense fallback={<div style={{ minHeight: 480 }} aria-hidden/>}>
-          <ShortVsLongCalculator today={athensToday()} amaRule={AMA_RULE} cta={
+          <ShortVsLongCalculator today={athensToday()} meaning={toolMeaning('/vraxyxronia-i-makroxronia')} amaRule={AMA_RULE} cta={
             <ToolCta
               title="Όποια κι αν διαλέξεις, τα έξοδα θέλουν τάξη."
               body="Το PROPERWISE κρατά ενοίκια, λογαριασμούς και δαπάνες ανά ακίνητο και ετοιμάζει τα στοιχεία του Ε2 για τον λογιστή σου."

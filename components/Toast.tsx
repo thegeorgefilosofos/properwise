@@ -88,6 +88,11 @@ export function ToastHost() {
         position: 'fixed', left: '50%', bottom: 'var(--float-bottom)', transform: 'translateX(-50%)',
         zIndex: Z.toast, display: 'flex', flexDirection: 'column', alignItems: 'center',
         gap: 8, pointerEvents: 'none', maxWidth: 'min(92vw, 460px)',
+        // ΤΟ ΠΛΑΤΟΣ ΗΤΑΝ ΤΟ ΜΙΣΟ ΤΗΣ ΟΘΟΝΗΣ (13/11/2026). Με `left: 50%` το
+        // σταθερό πλαίσιο μετρά το διαθέσιμο πλάτος από τη μέση ως τη δεξιά άκρη,
+        // οπότε ένα μήνυμα δύο γραμμών στα 375 τυλιγόταν σε δέκα, λέξη τη λέξη.
+        // Το `max-content` το αφήνει να πάρει όσο χρειάζεται, ως το όριο από πάνω.
+        width: 'max-content',
       }}
     >
       {items.map(t => (

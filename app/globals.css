@@ -5968,6 +5968,35 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   font-size: 11px; font-weight: 600; line-height: 1.5; white-space: nowrap; vertical-align: 1px;
   background: var(--accent-soft); color: var(--accent); border: 1px solid var(--border-accent);
 }
+/* ═══ ΤΟ ΕΠΟΜΕΝΟ ΒΗΜΑ ΚΑΤΩ ΑΠΟ ΤΟ ΑΠΟΤΕΛΕΣΜΑ (app/ToolNextStep.tsx) ═══════════
+   Η ίδια τυπογραφία με την πρόταση εγγραφής του τέλους (`ToolCta`): τίτλος 15
+   σε έμφαση, γραμμή 14 σε δευτερεύον. Το κουμπί και ο σύνδεσμος σε μία σειρά,
+   με τη σειρά που τα διαβάζει και το πληκτρολόγιο: πρώτα το κύριο. Στο
+   τηλέφωνο το κουμπί πιάνει όλο το πλάτος και ο σύνδεσμος κεντράρεται από
+   κάτω του, στον ίδιο άξονα. */
+.po-next-title {
+  margin: 0; font-size: 15px; font-weight: 600; line-height: 1.4;
+  letter-spacing: -0.015em; color: var(--text-primary); text-wrap: balance;
+}
+.po-next-line {
+  margin: 6px 0 0; font-size: 14px; line-height: 1.55;
+  color: var(--text-secondary); text-wrap: pretty;
+}
+.po-next-acts {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 16px;
+}
+.po-next-go {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; white-space: nowrap;
+}
+.po-next-more {
+  font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none;
+}
+.po-next-solo { margin: 12px 0 0; }
+@media (max-width: 480px) {
+  .po-next-go { flex: 1 1 100%; }
+  .po-next-acts .po-next-more { margin: 0 auto; }
+}
 @media (max-width: 600px) {
   .po-tool-grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .po-tool-hero > .po-tool-fig-primary { grid-column: 1 / -1; }

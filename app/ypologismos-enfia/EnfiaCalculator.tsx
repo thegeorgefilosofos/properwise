@@ -44,8 +44,11 @@ import { SPEC } from './spec';
 import { useToolDict, useToolEn, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
 import { localHref } from '@/lib/i18n/paths';
 import { fmtFor } from '@/lib/core/format';
-import { enfiaInputs, enfiaPublicEstimate, enfiaSignupHref } from '@/lib/tools/enfiaCarry';
-import { ToolCtaHref } from '@/app/ToolCtaLink';
+import { enfiaInputs, enfiaPublicEstimate, enfiaSignupHref, enfiaChanged, ENFIA_APP_PATH } from '@/lib/tools/enfiaCarry';
+import { saveCalcDraft } from '@/lib/tools/calcDraft';
+import { grDate } from '@/lib/core/format';
+import { ToolCtaHref, ToolCtaClick } from '@/app/ToolCtaLink';
+import { ToolNextStep } from '@/app/ToolNextStep';
 const PATH = '/ypologismos-enfia';
 type EnfiaEn = NonNullable<ToolEn['enfia']>;
 
@@ -67,10 +70,16 @@ const FLOORS: { key: keyof typeof ENFIA_FLOOR_COEF; label: string }[] =
 const ageLabel = (choices: { key: string; label: string }[], key: string): string =>
   choices.find(a => a.key === key)?.label ?? ENFIA_AGE_BANDS.find(a => a.key === key)?.label ?? key;
 
-export function EnfiaCalculator({ year, today, cta }: {
+export function EnfiaCalculator({ year, today, cta, next }: {
   year: number; today: string;
   /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
   cta: ReactNode;
+  /**
+   * Το επόμενο βήμα κάτω από το αποτέλεσμα (app/ToolNextStep.tsx), μόνο στα
+   * ελληνικά. Η γραμμή του κόστους και ο οδηγός έρχονται από τη σελίδα, ώστε
+   * το lib/legal/billingWords.ts να μην κατεβαίνει στον περιηγητή.
+   */
+  next?: { terms: string; meaning?: string };
 }) {
   // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/enfia-calculator) ──────────────────────
   // Ιδιος υπολογισμός· αλλάζουν οι λέξεις (lib/i18n/en/tools/enfia.ts) και η
@@ -146,6 +155,12 @@ export function EnfiaCalculator({ year, today, cta }: {
   const instalmentRows = r ? enfiaInstalments(r.annual, year) : [];
   const instalmentCount = instalmentRows.length;
   const firstInstalment = instalmentRows[0]?.amount ?? 0;
+  // Η ΕΠΟΜΕΝΗ ΔΟΣΗ, ΑΠΟ ΤΟΝ ΙΔΙΟ ΠΙΝΑΚΑ ΜΕ ΤΙΣ ΔΟΣΕΙΣ ΑΠΟ ΚΑΤΩ. Το ημερολόγιο
+  // της εφαρμογής γράφει όλες τις μηνιαίες δόσεις του έτους όσο δεν ξέρει το
+  // σύνολο του εκκαθαριστικού (lib/calendar/enfiaTotals.ts), άρα και αυτήν:
+  // το «κάθε δόση» της πρότασης ισχύει για ό,τι δείχνει ο πίνακας.
+  const nextDue = instalmentRows.find(row => row.date >= today);
+  const changed = enfiaChanged(v);
 
   return (
     <div style={{ fontFamily: T.font.sans }}>
@@ -314,6 +329,15 @@ export function EnfiaCalculator({ year, today, cta }: {
         )}
       </div>
 
+      {/* ΤΟ ΕΠΟΜΕΝΟ ΒΗΜΑ, ΜΟΝΟ ΓΙΑ ΤΟ ΔΙΚΟ ΤΟΥ ΑΚΙΝΗΤΟ. Με τις προεπιλογές η
+          κάρτα δείχνει το παράδειγμα της σελίδας, που δεν είναι ακίνητο
+          κανενός: τότε μένει μόνο ο οδηγός. */}
+      {r && !en && next && <ToolNextStep meaning={next.meaning} {...(changed ? {
+        title: 'Θα σου θυμίσουμε κάθε δόση',
+        line: nextDue ? `Η επόμενη λήγει ${grDate(nextDue.date)}. ${next.terms}` : next.terms,
+        save: { tool: 'enfia' as const, values: v, signupHref: enfiaSignupHref(v), appHref: ENFIA_APP_PATH },
+      } : {})}/>}
+
       {/* Οι δύο έξοδοι στην ΙΔΙΑ θέση και στους τέσσερις: αμέσως μετά την κάρτα. */}
       <ToolActions path={path} spec={SPEC} values={v}/>
 
@@ -343,9 +367,11 @@ export function EnfiaCalculator({ year, today, cta }: {
 
       {/* ΤΟ «ΞΕΚΙΝΑ» ΚΟΥΒΑΛΑ ΤΗΝ ΕΚΤΙΜΗΣΗ. Ηταν σκέτο «/signup»: ο επισκέπτης
           έγραφε πέντε πεδία, έφτιαχνε λογαριασμό και ο οδηγός τα ρωτούσε από
-          την αρχή. Τώρα ο σύνδεσμος γράφει τα πεδία όπως είναι στη διεύθυνση
-          (lib/tools/enfiaCarry.ts) και το πρώτο ακίνητο ανοίγει με αυτά. */}
-      <ToolCtaHref.Provider value={localHref(locale, enfiaSignupHref(v))}>{cta}</ToolCtaHref.Provider>
+          την αρχή. Τώρα το πάτημα γράφει τα πεδία στο πρόχειρο της συσκευής
+          (lib/tools/calcDraft.ts) και το πρώτο ακίνητο ανοίγει με αυτά. */}
+      <ToolCtaHref.Provider value={localHref(locale, enfiaSignupHref(v))}>
+        <ToolCtaClick.Provider value={changed ? () => { saveCalcDraft('enfia', v); } : null}>{cta}</ToolCtaClick.Provider>
+      </ToolCtaHref.Provider>
     </div>
   );
 }

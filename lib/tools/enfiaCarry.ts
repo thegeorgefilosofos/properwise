@@ -7,10 +7,13 @@
 // και ο οδηγός ρωτούσε από την αρχή όσα μόλις είχε γράψει. Η φόρμα ΕΝΦΙΑ του
 // πίνακα έχει τα ίδια ακριβώς πεδία (lib/facts/enfia.ts, ENFIA_DEFAULTS).
 //
-// Η ΔΙΑΔΡΟΜΗ. Ο σύνδεσμος γίνεται «/signup?next=/dashboard?action=enfia&…» με
-// τα πεδία της διεύθυνσης του υπολογιστή (toolQuery: μόνο όσα άλλαξαν). Η
-// συνέχεια περνά ήδη από email και Google (lib/auth/continuation.ts) και ο
-// πίνακας διαβάζει το `action` στην εκκίνηση (lib/nav/history.ts).
+// Η ΔΙΑΔΡΟΜΗ. Ο σύνδεσμος γίνεται «/signup?next=/dashboard?action=enfia» και τα
+// πεδία (toolQuery: μόνο όσα άλλαξαν) μένουν στο πρόχειρο της συσκευής
+// (lib/tools/calcDraft.ts), όχι στη διεύθυνση. Η συνέχεια περνά ήδη από email
+// και Google (lib/auth/continuation.ts) και ο πίνακας διαβάζει το `action` στην
+// εκκίνηση (lib/nav/history.ts, app/dashboard/components/shell/nav.tsx).
+// Διεύθυνση με πεδία, από σύνδεσμο που στάλθηκε πριν από την αλλαγή, διαβάζεται
+// ακόμη, με τους ίδιους ελέγχους.
 //
 // ΤΡΕΙΣ ΚΛΕΙΔΑΡΙΕΣ, ΓΙΑΤΙ ΤΗ ΔΙΕΥΘΥΝΣΗ ΤΗ ΓΡΑΦΕΙ Ο ΚΑΘΕΝΑΣ:
 //   1. Ο προορισμός είναι πάντα η σταθερή διαδρομή «/dashboard». Τιμές μπαίνουν
@@ -99,17 +102,21 @@ export function enfiaPublicEstimate(i: EnfiaInputs): ENFIAResult | null {
 }
 
 // ── Η ΔΙΕΥΘΥΝΣΗ ΠΡΟΣ ΤΑ ΕΞΩ ───────────────────────────────────────────────
+// ΧΩΡΙΣ ΤΙΜΕΣ ΑΠΟ 13/11/2026. Η διαδρομή έγραφε τα πεδία δίπλα στο `action`,
+// δηλαδή τα στοιχεία του ακινήτου έμπαιναν στα αρχεία καταγραφής και στο email
+// επιβεβαίωσης. Τώρα λέει μόνο τι ζητήθηκε· οι τιμές ταξιδεύουν στο πρόχειρο
+// της συσκευής (lib/tools/calcDraft.ts), που γράφει η σελίδα με το πάτημα.
 
-/** Η διαδρομή του πίνακα που ανοίγει τον οδηγό με αυτά τα πεδία. */
-export function enfiaCarryPath(values: Readonly<Record<string, string>>): string {
-  const q = new URLSearchParams(toolQuery(SPEC, values))
-  const out = new URLSearchParams({ action: ENFIA_ACTION })
-  for (const [k, v] of q) out.set(k, v)
-  return `${HOME}?${out.toString()}`
+/** Η διαδρομή του πίνακα που ανοίγει τον οδηγό με το πρόχειρο του υπολογιστή. */
+export const ENFIA_APP_PATH = `${HOME}?action=${ENFIA_ACTION}`
+
+/** Άλλαξε ο επισκέπτης κάποιο πεδίο; Με τις προεπιλογές είναι το παράδειγμα της σελίδας. */
+export function enfiaChanged(values: Readonly<Record<string, string>>): boolean {
+  return toolQuery(SPEC, values) !== ''
 }
 
 /**
- * Ο σύνδεσμος του «Ξεκίνα δωρεάν» κάτω από τον υπολογιστή.
+ * Ο σύνδεσμος εγγραφής κάτω από τον υπολογιστή.
  *
  * ΧΩΡΙΣ ΑΛΛΑΓΜΕΝΟ ΠΕΔΙΟ, ΣΚΕΤΗ ΕΓΓΡΑΦΗ. Οι προεπιλογές του SPEC είναι το
  * παράδειγμα της σελίδας, όχι το ακίνητο του επισκέπτη. Με αυτές στη συνέχεια
@@ -118,8 +125,8 @@ export function enfiaCarryPath(values: Readonly<Record<string, string>>): string
  * παραδείγματος σαν δική του εκτίμηση.
  */
 export function enfiaSignupHref(values: Readonly<Record<string, string>>): string {
-  if (!toolQuery(SPEC, values)) return '/signup'
-  return `/signup?${new URLSearchParams({ next: enfiaCarryPath(values) }).toString()}`
+  if (!enfiaChanged(values)) return '/signup'
+  return `/signup?${new URLSearchParams({ next: ENFIA_APP_PATH }).toString()}`
 }
 
 // ── Η ΔΙΕΥΘΥΝΣΗ ΠΡΟΣ ΤΑ ΜΕΣΑ ────────────────────────────────────────────────
@@ -173,6 +180,16 @@ export function readEnfiaCarry(params: URLSearchParams): EnfiaCarry | null {
   }
   const inputs = enfiaInputs(values)
   return inputs ? { values, inputs } : null
+}
+
+/**
+ * Το φορτίο ΕΝΦΙΑ από τις τιμές του προχείρου (lib/tools/calcDraft.ts), με
+ * ΤΟΝ ΙΔΙΟ έλεγχο που περνά η διεύθυνση: ίδια κλειδιά, ίδιες κλειδαριές.
+ */
+export function readEnfiaCarryValues(values: Readonly<Record<string, string>>): EnfiaCarry | null {
+  const q = new URLSearchParams()
+  for (const k of ENFIA_KEYS) if (Object.prototype.hasOwnProperty.call(values, k)) q.set(k, values[k])
+  return readEnfiaCarry(q)
 }
 
 // ── ΤΙ ΓΡΑΦΕΤΑΙ ΣΤΟ ΝΕΟ ΑΚΙΝΗΤΟ ─────────────────────────────────────────────

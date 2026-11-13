@@ -10,7 +10,7 @@
 // Τρέξε: npx tsx lib/tools/enfiaCarry.test.ts
 // ═══════════════════════════════════════════════════════════════════════════
 import {
-  enfiaInputs, enfiaPublicEstimate, enfiaCarryPath, enfiaSignupHref, readEnfiaCarry,
+  enfiaInputs, enfiaPublicEstimate, ENFIA_APP_PATH, enfiaSignupHref, readEnfiaCarry, readEnfiaCarryValues,
   enfiaCarrySettings, enfiaCarryWizard, ENFIA_KEYS, ENFIA_ACTION, type EnfiaValues,
 } from './enfiaCarry'
 import { SPEC } from './enfiaSpec'
@@ -34,21 +34,10 @@ ok('τα κλειδιά της συνέχειας είναι τα κλειδιά
 
 // ── Η ΔΙΕΥΘΥΝΣΗ ΠΡΟΣ ΤΑ ΕΞΩ ─────────────────────────────────────────────────
 {
-  ok('προεπιλογές → μόνο το action', enfiaCarryPath(SPEC) === `${HOME}?action=${ENFIA_ACTION}`)
-  const path = enfiaCarryPath(vals({ tm: '120', zoni: '2100', orofos: 'third', palaiotita: 'y10_14' }))
-  ok('πάντα ο πίνακας, πάντα σχετική διαδρομή', path.startsWith(`${HOME}?action=${ENFIA_ACTION}&`))
-  ok('γράφονται μόνο όσα άλλαξαν', path === `${HOME}?action=enfia&tm=120&zoni=2100&orofos=third&palaiotita=y10_14`)
-
-  // Ό,τι κι αν έγραψε κάποιος στα πεδία, μένει ΤΙΜΗ: δεν γίνεται κλειδί, δεν
-  // αλλάζει προορισμό.
-  const evil = enfiaCarryPath(vals({ tm: '90&next=//kako.gr#x', zoni: 'javascript:alert(1)' }))
-  const back = P(evil.slice(evil.indexOf('?')))
-  ok('«&next=» μέσα σε πεδίο δεν γίνεται κλειδί', back.get('next') === null && back.get('tm') === '90&next=//kako.gr#x')
-  ok('…και ο προορισμός μένει ο πίνακας', evil.startsWith(`${HOME}?`) && !evil.includes('#'))
-  // Ξένα κλειδιά στις τιμές δεν γράφονται.
-  const foreign = enfiaCarryPath({ ...SPEC, next: '//kako.gr', plan: 'pro' } as Record<string, string>)
-  ok('ξένα κλειδιά δεν γράφονται στη διαδρομή', foreign === `${HOME}?action=enfia`)
-
+  // ΚΑΜΙΑ ΤΙΜΗ ΣΤΗ ΔΙΕΥΘΥΝΣΗ (13/11/2026). Η διαδρομή έγραφε τα πεδία δίπλα
+  // στο `action` και έφταναν στα αρχεία καταγραφής και στο email επιβεβαίωσης.
+  // Τώρα λέει μόνο τι ζητήθηκε· οι τιμές ζουν στο πρόχειρο (lib/tools/calcDraft.ts).
+  ok('η συνέχεια είναι πάντα ο πίνακας με το action', ENFIA_APP_PATH === `${HOME}?action=${ENFIA_ACTION}`)
   // Ο σύνδεσμος της εγγραφής και η πραγματική συνέχεια (lib/auth/continuation.ts).
   // ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΤΗΣ ΣΕΛΙΔΑΣ ΔΕΝ ΓΙΝΕΤΑΙ ΑΚΙΝΗΤΟ. Με τις προεπιλογές ο οδηγός
   // άνοιγε με 85 τ.μ. και 2ο όροφο που δεν έγραψε κανείς και η Επισκόπηση
@@ -59,7 +48,10 @@ ok('τα κλειδιά της συνέχειας είναι τα κλειδιά
     const href = enfiaSignupHref(v)
     const u = new URL(href, 'https://properwise.gr')
     ok(`ο σύνδεσμος πηγαίνει στην εγγραφή (${href})`, u.pathname === '/signup' && [...u.searchParams.keys()].join() === 'next')
-    ok(`η συνέχεια φτάνει ακέραιη στον πίνακα (${href})`, continuation(u.search) === enfiaCarryPath(v))
+    ok(`η συνέχεια φτάνει ακέραιη στον πίνακα (${href})`, continuation(u.search) === ENFIA_APP_PATH)
+    // ΑΠΟΤΥΓΧΑΝΕ ΣΤΟΝ ΠΑΛΙΟ ΚΩΔΙΚΑ: ο σύνδεσμος κουβαλούσε τα τ.μ., τη ζώνη και το ποσοστό.
+    const inner = new URLSearchParams(continuation(u.search).split('?')[1] ?? '')
+    ok(`κανένα πεδίο του ακινήτου στη διεύθυνση (${href})`, ENFIA_KEYS.every(k => !u.searchParams.has(k) && !inner.has(k)))
   }
 }
 
@@ -179,4 +171,14 @@ ok('τα κλειδιά της συνέχειας είναι τα κλειδιά
 }
 
 console.log(`\nlib/tools/enfiaCarry.test.ts: ${passed} passed, ${failed} failed`)
-if (failed) { console.log('FAILED:\n' + fails.map(f => '  ✗ ' + f).join('\n')); process.exit(1) }
+if (failed) { // ── ΤΟ ΠΡΟΧΕΙΡΟ ΠΕΡΝΑ ΑΠΟ ΤΙΣ ΙΔΙΕΣ ΚΛΕΙΔΑΡΙΕΣ ΜΕ ΤΗ ΔΙΕΥΘΥΝΣΗ ──────────────────
+{
+  const c = readEnfiaCarryValues({ tm: '120', zoni: '2100', orofos: 'third' })
+  ok('το πρόχειρο δίνει την ίδια εκτίμηση με τη διεύθυνση', !!c && c.inputs.sqm === 120
+    && JSON.stringify(c) === JSON.stringify(readEnfiaCarry(P('tm=120&zoni=2100&orofos=third'))))
+  ok('άκυρη τιμή στο πρόχειρο → τίποτα', readEnfiaCarryValues({ tm: '120', orofos: 'constructor' }) === null)
+  ok('κενό πρόχειρο → τίποτα (το παράδειγμα δεν είναι ακίνητο)', readEnfiaCarryValues({}) === null)
+  ok('ξένο κλειδί στο πρόχειρο δεν περνά', !Object.keys(readEnfiaCarryValues({ tm: '90', next: '//kako.gr' } as Record<string, string>)?.values ?? {}).includes('next'))
+}
+
+console.log('FAILED:\n' + fails.map(f => '  ✗ ' + f).join('\n')); process.exit(1) }

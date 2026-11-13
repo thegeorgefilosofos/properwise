@@ -8,7 +8,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { NAV_LABELS, navLabel } from '@/lib/nav/labels'
 import { readLaunchShortcut } from '@/lib/nav/history'
-import type { EnfiaCarry } from '@/lib/tools/enfiaCarry'
+import { resolveCarry, draftToolOf, type CalcCarry } from '@/lib/tools/calcCarry'
+import { takeCalcDraft } from '@/lib/tools/calcDraft'
 import { CORE_TABS } from '@/lib/nav/disclosure'
 
 // Η ΣΕΙΡΑ ΕΙΝΑΙ ΤΟΥ ΜΕΝΟΥ, ΤΑ ΟΝΟΜΑΤΑ ΟΧΙ. Τα ονόματα ζουν στο lib/nav/labels.ts
@@ -38,17 +39,20 @@ export const NAV_LABEL = NAV_LABELS;
 // αντί να διαβάζεται παράλληλα. Το `action` ανοίγει τη γρήγορη προσθήκη, που
 // ούτως ή άλλως περιμένει επιλεγμένο ακίνητο.
 //
-// Το `action=enfia` φέρνει την εκτίμηση του δημόσιου υπολογιστή ΕΝΦΙΑ από την
-// εγγραφή (lib/tools/enfiaCarry.ts): ο πίνακας ανοίγει τον οδηγό με αυτά τα
-// πεδία στο πρώτο ακίνητο (useDashboard).
-function takeLaunchShortcut(): { scan: boolean; enfia: EnfiaCarry | null } {
-  if (typeof window === 'undefined') return { scan: false, enfia: null };
+// Το `action=enfia` και το `action=rent` φέρνουν ό,τι υπολόγισε ο επισκέπτης
+// στον δημόσιο υπολογιστή: οι τιμές από το πρόχειρο της συσκευής
+// (lib/tools/calcDraft.ts), που διαβάζεται εδώ ΜΙΑ φορά και σβήνεται. Ο
+// πίνακας ανοίγει τον οδηγό με αυτά τα πεδία (useDashboard).
+function takeLaunchShortcut(): { scan: boolean; carry: CalcCarry | null } {
+  if (typeof window === 'undefined') return { scan: false, carry: null };
   const s = readLaunchShortcut(window.location.search, window.location.hash, NAV_ORDER);
-  if (!s.consumed) return { scan: false, enfia: null };
+  if (!s.consumed) return { scan: false, carry: null };
+  const tool = draftToolOf(s.action);
+  const carry = resolveCarry(s.action, s.carryParams, tool ? takeCalcDraft(tool) : null);
   // Η διεύθυνση καθαρίζεται με replaceState: αλλιώς κάθε ανανέωση θα ξανάνοιγε
   // το παράθυρο σάρωσης και το «πίσω» θα κολλούσε στην ίδια συντόμευση.
   window.history.replaceState(null, '', window.location.pathname + s.search + (s.hash ?? window.location.hash));
-  return { scan: s.scan, enfia: s.enfia };
+  return { scan: s.scan, carry };
 }
 export const LAUNCH = takeLaunchShortcut();
 

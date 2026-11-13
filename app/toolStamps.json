@@ -2,19 +2,19 @@
   "σημείωση": "Παράγεται από το npm run tools:stamp. Μην το γράφεις με το χέρι. Το φυλάει ο scripts/guard-tool-updated.mjs. updated: null = δεν έχει οριστεί ημερομηνία περιεχομένου· ισχύει ο έλεγχος των ορίων.",
   "tools": {
     "/kathari-apodosi": {
-      "hash": "48db982579f7f1ea",
+      "hash": "ab07268bbbea4f83",
       "updated": "2026-10-20"
     },
     "/vraxyxronia-i-makroxronia": {
-      "hash": "48849bcb10149752",
+      "hash": "22b71fa7295e7fd1",
       "updated": null
     },
     "/ypologismos-enfia": {
-      "hash": "bfb0a16d0f1778ab",
+      "hash": "4bfa233c76496045",
       "updated": "2026-10-20"
     },
     "/ypologismos-forou-enoikion": {
-      "hash": "d32f180fa1ed7f12",
+      "hash": "8338704171dfa9c9",
       "updated": "2026-10-20"
     }
   }

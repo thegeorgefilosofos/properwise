@@ -4,7 +4,11 @@
 // Μπορεί να το πληκτρολογήσει, να το επικολλήσει από παλιό μήνυμα, ή να μείνει
 // από προηγούμενη έκδοση της εφαρμογής. Καμία τιμή δεν επιτρέπεται να ρίξει τον
 // πίνακα — και καμία δεν επιτρέπεται να μπει αυτούσια σε επόμενο σύνδεσμο.
-import { parseNavHash, formatNavHash, shouldPush, readLaunchShortcut } from './history'
+import { parseNavHash, formatNavHash, shouldPush, readLaunchShortcut, type LaunchShortcut } from './history'
+import { resolveCarry } from '../tools/calcCarry'
+
+/** Η εκτίμηση ΕΝΦΙΑ μιας διεύθυνσης, όπως τη λύνει ο πίνακας χωρίς πρόχειρο (nav.tsx). */
+const enfiaOf = (s: LaunchShortcut) => { const c = resolveCarry(s.action, s.carryParams, null); return c && c.kind === 'enfia' ? c.enfia : null }
 
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
@@ -101,29 +105,30 @@ ok('αφαίρεση ακινήτου → εγγραφή', shouldPush(L('a', 'p'
 {
   const KNOWN = ['overview', 'finances']
   const e1 = readLaunchShortcut('?action=enfia&tm=120&zoni=2100&orofos=third&palaiotita=y10_14&pososto=50', '', KNOWN)
-  ok('η εκτίμηση φτάνει', !!e1.enfia && e1.enfia.inputs.sqm === 120 && e1.enfia.inputs.zone === '1501_2500'
-     && e1.enfia.values.orofos === 'third' && e1.enfia.inputs.own === 50)
+  const c1 = enfiaOf(e1)
+  ok('η εκτίμηση φτάνει (παλιός σύνδεσμος με πεδία)', !!c1 && c1.inputs.sqm === 120 && c1.inputs.zone === '1501_2500'
+     && c1.values.orofos === 'third' && c1.inputs.own === 50)
   ok('…και η διεύθυνση καθαρίζει από τα κλειδιά της', e1.consumed && e1.search === '' && !e1.scan && e1.hash === null)
 
   const e2 = readLaunchShortcut('?action=enfia', '', KNOWN)
   // Χωρίς πεδία έμενε το παράδειγμα της σελίδας (85 τ.μ.) και ο οδηγός άνοιγε μ' αυτό.
-  ok('χωρίς πεδία → καμία εκτίμηση', e2.enfia === null && e2.consumed && e2.search === '')
+  ok('χωρίς πεδία → καμία εκτίμηση', enfiaOf(e2) === null && e2.consumed && e2.search === '')
 
   const e3 = readLaunchShortcut('?utm_source=x&action=enfia&tm=90&next=%2F%2Fkako.gr&plan=pro', '', KNOWN)
-  ok('ξένα κλειδιά δεν μπαίνουν στο φορτίο', !!e3.enfia && Object.keys(e3.enfia.values).join() === 'tm,zoni,orofos,palaiotita,pososto,voith')
+  ok('ξένα κλειδιά δεν μπαίνουν στο φορτίο', Object.keys(enfiaOf(e3)?.values ?? {}).join() === 'tm,zoni,orofos,palaiotita,pososto,voith')
   ok('…και μένουν στη διεύθυνση όπως κάθε ξένο κλειδί', e3.search === '?utm_source=x&next=%2F%2Fkako.gr&plan=pro')
 
   for (const bad of ['tm=%2F%2Fkako.gr', 'tm=https%3A%2F%2Fkako.gr', 'tm=javascript%3Aalert(1)', 'orofos=constructor',
     'palaiotita=__proto__', 'pososto=150', 'zoni=abc', 'tm=-5']) {
     const e = readLaunchShortcut(`?action=enfia&${bad}`, '', KNOWN)
-    ok(`άκυρη τιμή (${bad}) → καμία εκτίμηση`, e.enfia === null)
+    ok(`άκυρη τιμή (${bad}) → καμία εκτίμηση`, enfiaOf(e) === null)
     ok(`…αλλά η διεύθυνση καθαρίζει (${bad})`, e.consumed && e.search === '')
   }
 
   const e4 = readLaunchShortcut('?action=scan&tm=90', '', KNOWN)
-  ok('χωρίς action=enfia τα πεδία δεν διαβάζονται', e4.enfia === null && e4.scan && e4.search === '?tm=90')
-  ok('κεφαλαία δεν είναι η ενέργεια', readLaunchShortcut('?action=ENFIA&tm=90', '', KNOWN).enfia === null)
-  ok('συντόμευση χωρίς ενέργεια ΕΝΦΙΑ: καμία εκτίμηση', readLaunchShortcut('?tab=finances', '', KNOWN).enfia === null)
+  ok('χωρίς action=enfia τα πεδία δεν διαβάζονται', enfiaOf(e4) === null && e4.scan && e4.search === '?tm=90')
+  ok('κεφαλαία δεν είναι η ενέργεια', enfiaOf(readLaunchShortcut('?action=ENFIA&tm=90', '', KNOWN)) === null)
+  ok('συντόμευση χωρίς ενέργεια ΕΝΦΙΑ: καμία εκτίμηση', enfiaOf(readLaunchShortcut('?tab=finances', '', KNOWN)) === null)
 }
 
 console.log(fail === 0 ? `✓ navHistory: ${pass} έλεγχοι πέρασαν` : `✗ navHistory: ${fail} απέτυχαν από ${pass + fail}`)

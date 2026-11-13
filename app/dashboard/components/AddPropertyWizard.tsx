@@ -26,7 +26,7 @@ import { PEA_CLASSES } from '@/lib/property/pea';
 import { cleanPeaNumber, isoDay, peaReminderDrafts, PEA_NUMBER_MAX, PEA_REMINDER_DAYS } from '@/lib/property/peaExpiry';
 import { syncPeaReminders } from '@/lib/calendar/peaSync';
 import { athensToday } from '@/lib/core/time';
-import type { EnfiaWizardInitial } from '@/lib/tools/enfiaCarry';
+import type { CarryWizardInitial } from '@/lib/tools/calcCarry';
 import { draftKey, readDraft, writeDraft, clearDraft, sameDraft, restoreDraft } from '@/lib/ui/dismiss';
 import { confirmDiscard } from '@/components/ConfirmDialog';
 import { BulkImportCard } from './BulkImportCard';
@@ -355,12 +355,12 @@ function StepBody({ rows, place, after, moreTitle = 'Περισσότερα', le
 export default function AddPropertyWizard({ userId, onClose, onSaved, existing, focus, initial, onBulkImport, hasProperties = false }: {
   userId: string; onClose: () => void; onSaved: (propertyId: string | null) => void; existing?: ExistingProperty | null;
   /**
-   * Ο,ΤΙ ΕΓΡΑΨΕ ΗΔΗ Ο ΕΠΙΣΚΕΠΤΗΣ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ ΕΝΦΙΑ (lib/tools/enfiaCarry.ts):
-   * τετραγωνικά, ποσοστό, όροφος, βοηθητικοί χώροι. Μόνο σε νέο ακίνητο· στην
-   * επεξεργασία μιλά το ίδιο το ακίνητο. Ο όροφος περνά μόνο αν είναι μία από
-   * τις επιλογές του οδηγού.
+   * Ο,ΤΙ ΕΓΡΑΨΕ ΗΔΗ Ο ΕΠΙΣΚΕΠΤΗΣ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (lib/tools/calcCarry.ts).
+   * ΕΝΦΙΑ: τετραγωνικά, ποσοστό, όροφος, βοηθητικοί χώροι. Ενοίκια: κατάσταση
+   * και μηνιαίο μίσθωμα. Μόνο σε νέο ακίνητο· στην επεξεργασία μιλά το ίδιο
+   * το ακίνητο. Ο όροφος και η κατάσταση περνούν μόνο αν είναι επιλογές του οδηγού.
    */
-  initial?: EnfiaWizardInitial;
+  initial?: CarryWizardInitial;
   /**
    * ΑΠΟ ΠΟΥ ΑΝΟΙΓΕΙ Ο ΟΔΗΓΟΣ. Η Λογιστική ζητά το ΑΦΜ του ιδιοκτήτη· με
    * `owner_afm` ο οδηγός ανοίγει στη «Σύνοψη» με τις επαφές ανοιχτές και τον
@@ -401,7 +401,10 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     return {
       propType: existing?.prop_type || 'apartment',
       // ΜΙΑ κατάσταση, στο λεξιλόγιο της εφαρμογής (βλ. `statusKey` πιο κάτω).
-      statusKey: existing ? readStatus(existing) : null,
+      // Από τον υπολογιστή ενοικίων η κατάσταση έρχεται «μακροχρόνια»: αυτήν
+      // υπολόγισε ο επισκέπτης. Ο κανόνας «καμία προεπιλογή» αφορά το μάντεμα,
+      // όχι ό,τι δήλωσε ο ίδιος ένα λεπτό πριν.
+      statusKey: existing ? readStatus(existing) : (seed?.statusKey && STATUSES.some(x => x.key === seed.statusKey) ? seed.statusKey : null),
       ama: cleanAma(existing?.ama || ''),
       name: existing?.name || '', address: existing?.address || '', postalCode: existing?.postal_code || '',
       // Το 0 είναι το «δεν δόθηκε» της βάσης (NOT NULL, προεπιλογή 0): ανοίγει
@@ -416,7 +419,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
       // για να αλλάξεις τη διεύθυνση και έβρισκες 3.000 στην «τιμή ανά
       // διανυκτέρευση», με την προεπισκόπηση να λέει 657.000€ ετήσια έσοδα. Κάθε
       // αποθήκευση πολλαπλασίαζε ξανά το νούμερο.
-      rent: s(existing?.target_rent),
+      rent: s(existing?.target_rent) || seed?.rent || '',
       ownership: s(existing?.ownership) || seed?.ownership || '100',
       coOwners: known.length ? known.map(c => c.name) : [''],
       peaClass: existing?.pea_class || '', heating: normalizeHeating(existing?.heating),

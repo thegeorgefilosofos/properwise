@@ -19,6 +19,7 @@
 // ΚΟΣΤΟΣ: μηδέν. Στατική απόδοση, ο υπολογισμός γίνεται στη συσκευή, κανένα
 // αίτημα σε βάση, κανένα AI, καμία εξωτερική υπηρεσία.
 // ═══════════════════════════════════════════════════════════════════════════
+import { toolMeaning } from '@/lib/core/publicTools';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
@@ -159,7 +160,7 @@ export default function Page() {
             SEO για το οποίο υπάρχει. Η εφεδρεία έχει το ίδιο ύψος με τη φόρμα,
             ώστε το κείμενο από κάτω να μην αναπηδήσει μόλις φορτώσει. */}
         <Suspense fallback={<div style={{ minHeight: 460 }} aria-hidden/>}>
-          <ApodosiCalculator year={year} today={athensToday()} cta={
+          <ApodosiCalculator year={year} today={athensToday()} meaning={toolMeaning('/kathari-apodosi')} cta={
             <ToolCta
               title="Θέλεις να το βλέπεις για όλα σου τα ακίνητα, χωρίς να το ξαναϋπολογίζεις;"
               body="Το PROPERWISE κρατά ενοίκια, ΕΝΦΙΑ και δαπάνες ανά ακίνητο και δείχνει ποιο αποδίδει, ποιο σε βαραίνει."

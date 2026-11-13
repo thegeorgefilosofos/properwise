@@ -7,6 +7,7 @@
 // lib/accounting/renovation39b.ts· η ημερομηνία ελέγχου από το μητρώο ισχύος
 // (lib/legal/validity.ts, `renovation-39b`). Τίποτα γραμμένο εδώ στο χέρι.
 // ═══════════════════════════════════════════════════════════════════════════
+import { toolMeaning } from '@/lib/core/publicTools';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
@@ -96,7 +97,7 @@ export default function Page() {
         <ToolLede>{`Η μείωση του φόρου εισοδήματος για υπηρεσίες ανακαίνισης, ανά έτος και συνολικά, όπως ορίζει το ${RENO_39B_LAW.replace(/ \(.*$/, '')}.`}</ToolLede>
 
         <Suspense fallback={<div style={{ minHeight: 560 }} aria-hidden/>}>
-          <RenoCalculator today={today} cta={
+          <RenoCalculator today={today} meaning={toolMeaning('/ypologismos-ekptosis-anakainisis')} cta={
             <ToolCta title="Θέλεις να τη βλέπεις κάθε χρόνο στη δήλωσή σου;"
               body="Το PROPERWISE κρατά τα τιμολόγια της ανακαίνισης στο ακίνητο, ελέγχει αν πληρώθηκαν ηλεκτρονικά και τα δίνει έτοιμα στον λογιστή σου κάθε χρόνο."/>
           }/>

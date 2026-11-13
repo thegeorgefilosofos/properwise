@@ -35,6 +35,7 @@ import { ToolNumField, ToolFields, ToolHero, ToolLedger, ToolStats, TOOL_LABEL, 
 import LiveResult from '@/components/LiveResult';
 import { useToolDict, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
 import { localHref } from '@/lib/i18n/paths';
+import { ToolMeaning } from '@/app/ToolMeaning';
 /** Τα πεδία όπως ταξιδεύουν στη διεύθυνση, με τις προεπιλογές τους. */
 const SPEC = {
   axia: '200000', enoikio: '700', mines: '12',
@@ -68,10 +69,12 @@ function Group({ title, children, first }: { title: string; children: React.Reac
   );
 }
 
-export function ApodosiCalculator({ year, today, cta }: {
+export function ApodosiCalculator({ year, today, cta, meaning }: {
   year: number; today: string;
   /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
   cta: ReactNode;
+  /** Ο οδηγός «Τι σημαίνει αυτό» (lib/core/publicTools.ts). */
+  meaning?: string;
 }) {
   // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/rental-yield-calculator) ──────────────────
   // Τα αγγλικά έρχονται από τον πάροχο του /en (lib/i18n/toolEn.ts)· εδώ δεν
@@ -291,6 +294,8 @@ export function ApodosiCalculator({ year, today, cta }: {
           { k: 'Οριακός συντελεστής', v: fpRate(r.marginal * 100) },
         ]}/>
       </div>
+      {/* «Τι σημαίνει αυτό»: ο οδηγός του αποτελέσματος (app/ToolMeaning.tsx), μόνο στα ελληνικά. */}
+      {!en && <ToolMeaning href={meaning}/>}
 
       {/* ΤΟ ΟΝΟΜΑ ΤΟΥ ΑΚΙΝΗΤΟΥ, ΜΟΝΟ ΓΙΑ ΤΟ ΧΑΡΤΙ, ΠΑΝΩ ΑΠΟ ΤΟ «Εκτύπωση». Ηταν
           κάτω από τα κουμπιά, δηλαδή μετά την ενέργεια που επηρεάζει. */}

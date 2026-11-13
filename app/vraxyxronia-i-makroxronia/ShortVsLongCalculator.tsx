@@ -32,6 +32,7 @@ import { ToolNumField, ToolFields, ToolSeg, ToolHint, ToolHero } from '@/app/Too
 import { ToolSelect } from '@/app/ToolSelect';
 
 import LiveResult from '@/components/LiveResult';
+import { ToolMeaning } from '@/app/ToolMeaning';
 import { SPEC } from './spec';
 import { roundHalfUp } from '@/lib/core/money';
 import { useToolDict, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
@@ -73,8 +74,10 @@ const deltaWith = (fe: (n: number) => string) => (n: number) => {
  */
 export type AmaRule = Pick<RegulatoryUpdate, 'title' | 'summary' | 'legalBasis' | 'effective' | 'sourceHref' | 'sourceLabel'>;
 
-export function ShortVsLongCalculator({ today, cta, amaRule: AMA_RULE }: {
+export function ShortVsLongCalculator({ today, cta, amaRule: AMA_RULE, meaning }: {
   today: string;
+  /** Ο οδηγός «Τι σημαίνει αυτό» (lib/core/publicTools.ts). */
+  meaning?: string;
   /** Ο κανόνας ΑΜΑ από το updates2026.ts (`ama-red-zones`), αν υπάρχει. */
   amaRule?: AmaRule;
   /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
@@ -281,6 +284,9 @@ export function ShortVsLongCalculator({ today, cta, amaRule: AMA_RULE }: {
           </p>
         </div>
       </div>
+
+      {/* «Τι σημαίνει αυτό»: ο οδηγός του αποτελέσματος (app/ToolMeaning.tsx), μόνο στα ελληνικά. */}
+      {!en && <ToolMeaning href={meaning}/>}
 
       {/* Οι δύο έξοδοι στην ΙΔΙΑ θέση και στους τέσσερις: αμέσως μετά την κάρτα. */}
       <ToolActions path={path} spec={SPEC} values={v}/>

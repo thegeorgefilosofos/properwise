@@ -58,6 +58,8 @@ import LiveResult from '@/components/LiveResult';
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { SPEC } from './spec';
+import { rentChanged, rentSignupHref, RENT_APP_PATH } from '@/lib/tools/rentCarry';
+import { ToolNextStep } from '@/app/ToolNextStep';
 import { useToolDict, type ToolEn, NO_EN } from '@/lib/i18n/toolEn';
 import { localHref } from '@/lib/i18n/paths';
 const PATH = '/ypologismos-forou-enoikion';
@@ -106,10 +108,12 @@ function filingNote(year: number, today: string): string {
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 const MAX_MONTHS = 12;
 
-export function RentTaxCalculator({ today, cta }: {
+export function RentTaxCalculator({ today, cta, next }: {
   today: string;
   /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
   cta: ReactNode;
+  /** Το επόμενο βήμα κάτω από το αποτέλεσμα, μόνο στα ελληνικά (βλ. EnfiaCalculator). */
+  next?: { terms: string; meaning?: string };
 }) {
   // ── Η ΙΔΙΑ ΟΘΟΝΗ ΣΤΑ ΑΓΓΛΙΚΑ (/en/rental-income-tax-calculator) ─────────────
   // Ιδιος υπολογισμός· αλλάζουν οι λέξεις (lib/i18n/en/tools/rent.ts) και η
@@ -316,6 +320,17 @@ export function RentTaxCalculator({ today, cta }: {
           { k: en ? E.marginal : 'Οριακός συντελεστής', v: fpRate(r.marginal * 100) },
         ]}/>
       </div>
+
+      {/* ΤΟ ΕΠΟΜΕΝΟ ΒΗΜΑ. Το ακίνητο μπαίνει «μακροχρόνια μίσθωση» με το
+          μίσθωμα του υπολογιστή (lib/tools/rentCarry.ts) και αυτή η κατάσταση
+          γράφει στο ημερολόγιο τη δήλωση Ε1/Ε2 και τις δόσεις του φόρου
+          εισοδήματος (lib/facts/deadlines.ts). Με το παράδειγμα της σελίδας
+          μένει μόνο ο οδηγός. */}
+      {!en && next && <ToolNextStep meaning={next.meaning} {...(rentChanged(v) && r.gross > 0 ? {
+        title: 'Θα σου θυμίσουμε τη δήλωση και τις δόσεις',
+        line: next.terms,
+        save: { tool: 'rent' as const, values: v, signupHref: rentSignupHref(v), appHref: RENT_APP_PATH },
+      } : {})}/>}
 
       <ToolActions path={path} spec={SPEC} values={v}/>
 

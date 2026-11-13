@@ -42,6 +42,8 @@ import { STR_MAX_PROPERTIES, STR_BUSINESS_PROPERTIES } from '../odigos/strText';
 import { LAW_5222_PDF, LAW_5246_PDF } from '../odigos/fek';
 import { toolJsonLd, ToolByline, ToolOnwardLinks } from '../toolSeo';
 import { rentPageYear, rentH1, rentTitle, rentDesc, rentExample } from './seo';
+import { SAVE_PROPERTY_TERMS } from '@/lib/legal/billingWords';
+import { toolMeaning } from '@/lib/core/publicTools';
 
 // ΟΙ ΑΡΙΘΜΟΙ ΤΟΥ ΚΕΙΜΕΝΟΥ ΑΠΟ ΤΙΣ ΣΤΑΘΕΡΕΣ ΠΟΥ ΥΠΟΛΟΓΙΖΟΥΝ (07/10/2026). Η κλίμακα,
 // το 5%, το 95% και η «01/07/2027» ήταν γραμμένα με το χέρι σε επτά σημεία, δίπλα
@@ -182,7 +184,7 @@ export default function Page() {
             Η εφεδρεία έχει το ΙΔΙΟ ύψος με τη φόρμα, ώστε το κείμενο από κάτω
             να μην αναπηδήσει μόλις φορτώσει. */}
         <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
-          <RentTaxCalculator today={today} cta={
+          <RentTaxCalculator today={today} next={{ terms: SAVE_PROPERTY_TERMS, meaning: toolMeaning('/ypologismos-forou-enoikion') }} cta={
             <ToolCta
               title="Θέλεις να μη χρειαστεί να το ξαναϋπολογίσεις;"
               body="Το PROPERWISE κρατά οργανωμένα ενοίκια, λογαριασμούς και δαπάνες όλη τη χρονιά και εξάγει με ένα κλικ όσα ζητά ο λογιστής σου."

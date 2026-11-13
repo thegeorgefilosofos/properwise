@@ -20,14 +20,23 @@ export interface PublicTool {
    * τον κόμβο, μπαίνει στην ομάδα «Άλλοι υπολογισμοί» ώσπου να του δοθεί.
    */
   topic?: TopicId;
+  /**
+   * «Τι σημαίνει αυτό» κάτω από το αποτέλεσμα (app/ToolNextStep.tsx): ο ΕΝΑΣ
+   * οδηγός που εξηγεί αυτό ακριβώς το νούμερο. Μόνο όπου ο οδηγός έχει θέμα
+   * τον ίδιο τον υπολογισμό· όπου απλώς τον αναφέρει, ο σύνδεσμος λείπει και ο
+   * επισκέπτης βρίσκει τους οδηγούς στο τέλος της σελίδας (ToolGuides). Το
+   * publicToolsMeaning.test.ts ελέγχει ότι κάθε οδηγός εδώ υπάρχει στον
+   * κατάλογο και δηλώνει τον υπολογιστή.
+   */
+  meaning?: string;
 }
 
 export const PUBLIC_TOOLS: readonly PublicTool[] = [
-  { href: '/ypologismos-enfia', label: 'ΕΝΦΙΑ', desc: 'Ο ΕΝΦΙΑ του ακινήτου από τα τετραγωνικά, την τιμή ζώνης, τον όροφο και την παλαιότητα.', topic: 'enfia' },
-  { href: '/ypologismos-ekptosis-anakainisis', label: 'Έκπτωση φόρου ανακαίνισης', desc: 'Πόσο μειώνεται ο φόρος εισοδήματος για υπηρεσίες ανακαίνισης, ανά έτος και συνολικά, με το όριο κάθε έτους.', topic: 'enfia' },
-  { href: '/ypologismos-forou-enoikion', label: 'Φορολογία ενοικίων', desc: 'Ο φόρος των ενοικίων με την κλίμακα του έτους και την τεκμαρτή έκπτωση.', topic: 'enoikia' },
-  { href: '/kathari-apodosi', label: 'Καθαρή απόδοση', desc: 'Μεικτή και καθαρή απόδοση ακινήτου μετά τον φόρο, τον ΕΝΦΙΑ και τις δαπάνες.', topic: 'agora' },
-  { href: '/vraxyxronia-i-makroxronia', label: 'Βραχυχρόνια ή μακροχρόνια', desc: 'Τα καθαρά της βραχυχρόνιας και της μακροχρόνιας μίσθωσης, με φόρο, τέλος ανθεκτικότητας και προμήθεια.', topic: 'enoikia' },
+  { href: '/ypologismos-enfia', label: 'ΕΝΦΙΑ', desc: 'Ο ΕΝΦΙΑ του ακινήτου από τα τετραγωνικά, την τιμή ζώνης, τον όροφο και την παλαιότητα.', topic: 'enfia', meaning: '/odigos/pos-ypologizetai-o-enfia' },
+  { href: '/ypologismos-ekptosis-anakainisis', label: 'Έκπτωση φόρου ανακαίνισης', desc: 'Πόσο μειώνεται ο φόρος εισοδήματος για υπηρεσίες ανακαίνισης, ανά έτος και συνολικά, με το όριο κάθε έτους.', topic: 'enfia', meaning: '/odigos/ekptosi-forou-anakainisis' },
+  { href: '/ypologismos-forou-enoikion', label: 'Φορολογία ενοικίων', desc: 'Ο φόρος των ενοικίων με την κλίμακα του έτους και την τεκμαρτή έκπτωση.', topic: 'enoikia', meaning: '/odigos/forologia-enoikion-2026' },
+  { href: '/kathari-apodosi', label: 'Καθαρή απόδοση', desc: 'Μεικτή και καθαρή απόδοση ακινήτου μετά τον φόρο, τον ΕΝΦΙΑ και τις δαπάνες.', topic: 'agora', meaning: '/odigos/kathari-apodosi-akinitou' },
+  { href: '/vraxyxronia-i-makroxronia', label: 'Βραχυχρόνια ή μακροχρόνια', desc: 'Τα καθαρά της βραχυχρόνιας και της μακροχρόνιας μίσθωσης, με φόρο, τέλος ανθεκτικότητας και προμήθεια.', topic: 'enoikia', meaning: '/odigos/airbnb-takk-2026' },
   { href: '/anaprosarmogi-enoikiou', label: 'Αναπροσαρμογή ενοικίου', desc: 'Το νέο μίσθωμα με ποσοστό ή ΔΤΚ της ΕΛΣΤΑΤ, ανά έτος, με το όριο των επαγγελματικών μισθώσεων όπου ισχύει.', topic: 'enoikia' },
   { href: '/symplirosi-e2', label: 'Ε2: συμπλήρωση εντύπου', desc: 'Τι γράφεις σε κάθε στήλη του Ε2 για ένα ακίνητο και σε ποιον κωδικό του Ε1 πηγαίνει το ποσό.', topic: 'enoikia' },
   { href: '/exoda-agoras-akinitou', label: 'Έξοδα αγοράς ακινήτου', desc: 'Φόρος μεταβίβασης, ΦΠΑ νεόδμητου, τέλη, αμοιβές και πόσα μετρητά χρειάζεσαι εκτός δανείου, με την πηγή κάθε ποσού.', topic: 'agora' },
@@ -42,3 +51,8 @@ export const PUBLIC_TOOLS: readonly PublicTool[] = [
  * διαδρομή είχε δύο κρίκους, γιατί κρίκος χωρίς σελίδα θα έδειχνε στο κενό.
  */
 export const TOOLS_HUB = { href: '/ergaleia', label: 'Εργαλεία' } as const;
+
+/** Ο οδηγός «Τι σημαίνει αυτό» ενός υπολογιστή, ή `undefined`. */
+export function toolMeaning(href: string): string | undefined {
+  return PUBLIC_TOOLS.find(t => t.href === href)?.meaning;
+}

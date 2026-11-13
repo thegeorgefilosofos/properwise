@@ -57,7 +57,7 @@ const MyaadeImport = dynamic(() => import('./components/MyaadeImport'), { ssr: f
 // Ο πελάτης χωρίς ακίνητο δεν φτάνει στη Λογιστική, όπου ζουν τα αιτήματα του λογιστή.
 const AccountantInvites = dynamic(() => import('./components/AccountantInvites'), { ssr: false });
 import { hasAssistant } from '@/lib/billing/aiLimits';
-import { enfiaCarryWizard } from '@/lib/tools/enfiaCarry';
+import { carryWizard } from '@/lib/tools/calcCarry';
 import { isTabVisible, hiddenTabCount } from '@/lib/nav/disclosure';
 import { askAssistant } from './components/AssistantStrip';
 import {
@@ -81,7 +81,7 @@ export default function Dashboard() {
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
     setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, openWizard, updateStatus, deleteProperty,
-    setScanBusy, setScanDirty, closeQuickAdd, requestCloseQuickAdd, signOut, enfiaCarry, dropEnfiaCarry, commitEnfiaCarry,
+    setScanBusy, setScanDirty, closeQuickAdd, requestCloseQuickAdd, signOut, calcCarry, dropCarry, commitCarry,
   } = useDashboard()
 
   // Ο χειροποίητος κύκλος είχε ΔΙΚΟ ΤΟΥ inline <style> με @keyframes spin — ακριβές
@@ -982,21 +982,21 @@ export default function Dashboard() {
           κουμπί καθαρισμού που έψαχνε λάθος όνομα και δεν εμφανιζόταν ποτέ. */}
       <DemoPreview open={showPreview} onClose={()=>setShowPreview(false)}
         onAddProperty={()=>{ setShowPreview(false); tryAddProperty(); }} />
-      {/* Ο ΟΔΗΓΟΣ ΑΝΟΙΓΕΙ ΜΕ ΟΣΑ ΕΓΡΑΨΕ Ο ΕΠΙΣΚΕΠΤΗΣ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ ΕΝΦΙΑ.
-          Τετραγωνικά, ποσοστό, όροφος (όπου η αντιστοίχιση είναι μία) και
-          βοηθητικοί χώροι. Η εκτίμηση γράφεται στις ρυθμίσεις ΕΝΦΙΑ του νέου
+      {/* Ο ΟΔΗΓΟΣ ΑΝΟΙΓΕΙ ΜΕ ΟΣΑ ΕΓΡΑΨΕ Ο ΕΠΙΣΚΕΠΤΗΣ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (lib/tools/calcCarry.ts).
+          ΕΝΦΙΑ: τετραγωνικά, ποσοστό, όροφος (όπου η αντιστοίχιση είναι μία) και
+          βοηθητικοί χώροι. Ενοίκια: κατάσταση «μακροχρόνια» και μίσθωμα. Η εκτίμηση γράφεται στις ρυθμίσεις ΕΝΦΙΑ του νέου
           ακινήτου ΠΡΙΝ το επιλέξει η λίστα, ώστε η Επισκόπηση να ανοίξει με το
-          ίδιο ποσό (useDashboard, commitEnfiaCarry). */}
+          ίδιο ποσό (useDashboard, commitCarry). */}
       {showAddModal&&user&&<AddPropertyWizard userId={user.id}
-        initial={enfiaCarry ? enfiaCarryWizard(enfiaCarry.inputs) : undefined}
+        initial={carryWizard(calcCarry)}
         // Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΣΤΟ ΠΡΩΤΟ ΒΗΜΑ, ΠΑΝΤΑ (απόφαση ιδιοκτήτη 10/11/2026).
         // Ως τις 09/11 φαινόταν μόνο χωρίς κανένα ακίνητο· όποιος είχε ένα και
         // ήθελε να περάσει τα υπόλοιπα δεν έβρισκε δρόμο από εδώ.
-        onBulkImport={()=>{ setShowAddModal(false); setScanAfterAdd(false); dropEnfiaCarry(); openMyaade(); }}
+        onBulkImport={()=>{ setShowAddModal(false); setScanAfterAdd(false); dropCarry(); openMyaade(); }}
         hasProperties={properties.length > 0}
-        onClose={()=>{setShowAddModal(false);setScanAfterAdd(false);dropEnfiaCarry();}} onSaved={async(id)=>{
+        onClose={()=>{setShowAddModal(false);setScanAfterAdd(false);dropCarry();}} onSaved={async(id)=>{
         setShowAddModal(false);
-        await commitEnfiaCarry(id);
+        await commitCarry(id);
         const list = await fetchProperties(user.id);
         const added = scanAfterAdd && id ? list?.find(p => p.id === id) : undefined;
         setScanAfterAdd(false);
