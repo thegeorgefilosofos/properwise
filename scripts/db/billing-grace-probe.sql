@@ -16,7 +16,10 @@
 --       μία φορά· δεν την καλεί ο πελάτης· η σκανδάλη `keep_mor_revocation`
 --       κρατά την ανάκληση απέναντι σε γεγονός συνδρομής χωρίς νέα συναλλαγή·
 --       η ίδια αναφορά δίνει `already_same_ref`, άλλη αναφορά `already`· η
---       γραμμή δοκιμαστή δεν αγγίζεται από τη σκανδάλη.
+--       γραμμή δοκιμαστή δεν αγγίζεται από τη σκανδάλη·
+--    7. η ανάκληση κρατά τη συναλλαγή στο `mor_revoked_tx` (20261113120000,
+--       έλεγχος του PR 558, γύρος 3)· η στήλη μένει όταν η υποστήριξη σβήσει
+--       την ανάκληση (Ζ4.4) ή περάσει νέα πληρωμή· ο πελάτης δεν τη γράφει.
 --
 --  Ολα μέσα σε συναλλαγή που ακυρώνεται: η βάση μένει όπως ήταν.
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -56,7 +59,7 @@ declare r record;
 begin
   update public.billing_profiles
      set mor_past_due_at = null, mor_revoked_at = now(), mor_revoked_reason = 'refund', full_name = 'Όνομα',
-         mor_revoked_ref = 'ref_x', mor_last_transaction_id = 'tran_x'
+         mor_revoked_ref = 'ref_x', mor_last_transaction_id = 'tran_x', mor_revoked_tx = 'tran_x'
    where user_id = auth.uid();
   select * into r from public.billing_profiles where user_id = auth.uid();
   if r.mor_past_due_at is null then
@@ -67,6 +70,9 @@ begin
   end if;
   if r.mor_last_transaction_id is not null then
     raise exception 'ΔΙΑΡΡΟΗ: ο πελάτης έγραψε την τελευταία πληρωμένη συναλλαγή';
+  end if;
+  if r.mor_revoked_tx is not null then
+    raise exception 'ΔΙΑΡΡΟΗ: ο πελάτης έγραψε την επιστραμμένη συναλλαγή';
   end if;
   begin
     perform public.revoke_mor_access('sub_g', 'tran_g', 'ref_g', 'refund', now());
@@ -82,10 +88,11 @@ set session "probe.uid" = '6d6d6d6d-0000-4000-8000-0000000000b1';
 do $probe$
 declare r record;
 begin
-  insert into public.billing_profiles(user_id, full_name, mor_past_due_at, mor_revoked_at, mor_revoked_reason)
-    values (auth.uid(), 'Νέος', now() + interval '50 years', now(), 'dispute');
+  insert into public.billing_profiles(user_id, full_name, mor_past_due_at, mor_revoked_at, mor_revoked_reason, mor_revoked_tx)
+    values (auth.uid(), 'Νέος', now() + interval '50 years', now(), 'dispute', 'tran_n');
   select * into r from public.billing_profiles where user_id = auth.uid();
-  if r.mor_past_due_at is not null or r.mor_revoked_at is not null or r.mor_revoked_reason is not null then
+  if r.mor_past_due_at is not null or r.mor_revoked_at is not null or r.mor_revoked_reason is not null
+     or r.mor_revoked_tx is not null then
     raise exception 'ΔΙΑΡΡΟΗ: το INSERT πέρασε στήλες χάρης ή ανάκλησης';
   end if;
   raise notice 'probe: οι στήλες χάρης και ανάκλησης μένουν στον διακομιστή';
@@ -174,6 +181,9 @@ begin
   if o->>'outcome' <> 'revoked' or r.plan <> 'free' or r.subscription_status <> 'expired' or r.mor_revoked_ref <> 'ref_2' then
     raise exception 'ΑΝΑΚΛΗΣΗ: η τελευταία πληρωμένη συναλλαγή δεν έκλεισε την πρόσβαση (%)', o;
   end if;
+  if r.mor_revoked_tx is distinct from 'tran_2' then
+    raise exception 'ΑΝΑΚΛΗΣΗ: η επιστραμμένη συναλλαγή δεν γράφτηκε στο mor_revoked_tx (%)', r.mor_revoked_tx;
+  end if;
   o := public.revoke_mor_access('sub_g', 'tran_2', 'ref_2', 'refund', now());
   if o->>'outcome' <> 'already_same_ref' then raise exception 'ΑΝΑΚΛΗΣΗ: δεύτερη παράδοση δεν αναγνωρίστηκε (%)', o; end if;
   -- ΑΛΛΗ ΑΝΑΦΟΡΑ ΣΕ ΗΔΗ ΚΛΕΙΣΤΗ (αμφισβήτηση μετά από επιστροφή, PR 558 εύρημα 2):
@@ -214,13 +224,40 @@ begin
   if r.plan <> 'agency' or r.mor_revoked_at is not null or r.mor_revoked_ref <> 'ref_2' then
     raise exception 'ΑΝΑΚΛΗΣΗ: νέα πληρωμένη συναλλαγή δεν ξανάνοιξε την πρόσβαση';
   end if;
+  if r.mor_revoked_tx is distinct from 'tran_2' then
+    raise exception 'ΑΝΑΚΛΗΣΗ: η νέα πληρωμή έσβησε την επιστραμμένη συναλλαγή';
+  end if;
   raise notice 'probe: η ανάκληση μένει απέναντι σε ταυτόχρονο γεγονός, σηκώνεται μόνο με νέα πληρωμή';
 end $probe$;
 
 -- Ο ΔΟΚΙΜΑΣΤΗΣ ΜΕ ΠΑΛΙΑ ΑΝΑΚΛΗΣΗ (PR 558, εύρημα 4): η /api/billing/plan γράφει
 -- το πακέτο του με τον ρόλο υπηρεσίας και απαντά «ok». Η σκανδάλη δεν το
 -- γυρίζει σιωπηλά σε `free`.
+-- 7. Ζ4.4: Η ΥΠΟΣΤΗΡΙΞΗ ΣΒΗΝΕΙ ΤΗΝ ΑΝΑΚΛΗΣΗ. Το SQL του οδηγού, ως postgres,
+-- αφήνει το `mor_revoked_tx`, ώστε ο webhook να αρνείται ακόμη την ίδια
+-- συναλλαγή (lib/billing/morWebhook.ts).
 reset role;
+do $probe$
+declare
+  a uuid := '6d6d6d6d-0000-4000-8000-0000000000a1';
+  o jsonb;
+  r record;
+begin
+  update public.billing_profiles
+     set plan = 'agency', subscription_status = 'active', mor_subscription_id = 'sub_z',
+         mor_last_transaction_id = 'tran_z', mor_revoked_at = null, mor_revoked_reason = null,
+         mor_revoked_ref = null, mor_revoked_tx = null, mor_ends_at = null
+   where user_id = a;
+  o := public.revoke_mor_access('sub_z', 'tran_z', 'ref_z', 'refund', now());
+  if o->>'outcome' <> 'revoked' then raise exception 'Ζ4.4: η ανάκληση δεν έγινε (%)', o; end if;
+  update public.billing_profiles set mor_revoked_at = null, mor_revoked_reason = null where user_id = a;
+  select * into r from public.billing_profiles where user_id = a;
+  if r.mor_revoked_at is not null or r.mor_revoked_tx is distinct from 'tran_z' then
+    raise exception 'Ζ4.4: το SQL της υποστήριξης έσβησε την επιστραμμένη συναλλαγή (%)', r.mor_revoked_tx;
+  end if;
+  raise notice 'probe: η επιστραμμένη συναλλαγή μένει μετά από νέα πληρωμή και μετά το Ζ4.4';
+end $probe$;
+
 update public.billing_profiles
    set tester_since = now() - interval '10 days', plan = 'free', subscription_status = 'expired',
        mor_revoked_at = now(), mor_revoked_reason = 'refund', mor_revoked_ref = 'ref_t'

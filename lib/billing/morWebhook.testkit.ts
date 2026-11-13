@@ -75,7 +75,7 @@ export function fakeDb(rows: Row[] = [], fail: { lookup?: boolean; upsert?: bool
     },
   });
   /**
-   * Η `public.revoke_mor_access` της μετανάστευσης 20261112190000, με την ίδια
+   * Η `public.revoke_mor_access` της μετανάστευσης 20261113120000, με την ίδια
    * συνθήκη σε ΕΝΑ βήμα: συνδρομή, τελευταία πληρωμένη συναλλαγή, όχι ήδη
    * κλειστή, όχι η ίδια αναφορά. Η ίδια αναφορά δίνει `already_same_ref`,
    * άλλη αναφορά σε ήδη κλειστή δίνει `already`. Η πραγματική ελέγχεται στο db-replay
@@ -92,6 +92,7 @@ export function fakeDb(rows: Row[] = [], fail: { lookup?: boolean; upsert?: bool
       plan: 'free', subscription_status: 'expired', mor_renews_at: null, mor_ends_at: a.p_at,
       mor_past_due_at: null, hold_plan: null, hold_until: null,
       mor_revoked_at: a.p_at, mor_revoked_reason: a.p_reason, mor_revoked_ref: a.p_reference,
+      mor_revoked_tx: a.p_transaction,
     });
     state.revokes++;
     return { data: { outcome: 'revoked', user_id: row.user_id }, error: null };
@@ -131,7 +132,7 @@ export function fakeAlerts(result: boolean | 'throw' = true) {
 export const profile = (over: Row = {}): Row => ({
   user_id: 'u1', plan: 'free', subscription_status: null, mor_subscription_id: null,
   mor_ends_at: null, mor_event_at: null, mor_past_due_at: null, mor_revoked_at: null,
-  mor_revoked_reason: null, mor_revoked_ref: null, mor_last_transaction_id: null,
+  mor_revoked_reason: null, mor_revoked_ref: null, mor_last_transaction_id: null, mor_revoked_tx: null,
   trial_used_at: null, profile_type: null, ...over,
 });
 
