@@ -609,10 +609,10 @@ export default function SignupPage() {
   // κουμπιού γράφει την απόδειξη στην επιστροφή `oauth=1`, οπότε η γραμμή
   // στέκεται ακριβώς από κάτω του, όπου κι αν βρίσκεται το κουμπί.
   const googleLegal = (
-    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '8px 0 0', lineHeight: 1.6, textAlign: 'center', textWrap: 'pretty' }}>
+    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '14px 0 0', lineHeight: 1.6, textAlign: 'center', textWrap: 'pretty' }}>
       {S ? S.legalGoogle[0] : <>Συνεχίζοντας με Google, αποδέχεσαι τους{' '}</>}
-      <Link href={localHref(locale, '/terms')} className="lp-link" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.legalGoogle[1] : <> και έχεις διαβάσει την{' '}</>}
-      <Link href={localHref(locale, '/privacy')} className="lp-link" style={consentLink}>{A ? A.privacy : 'Πολιτική απορρήτου'}</Link>{S ? S.legalGoogle[2] : '.'}
+      <Link href={localHref(locale, '/terms')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.legalGoogle[1] : <> και έχεις διαβάσει την{' '}</>}
+      <Link href={localHref(locale, '/privacy')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.privacy : 'Πολιτική απορρήτου'}</Link>{S ? S.legalGoogle[2] : '.'}
     </p>
   )
   // Τα κουτιά των ενημερωτικών, με το ίδιο ιδίωμα αφής με το πρώτο. Δύο, ένα
@@ -738,7 +738,7 @@ export default function SignupPage() {
               <MailSent
                 title={S ? S.mailTitle : 'Άνοιξε το email σου'}
                 email={email.trim()}
-                body={S ? <>{S.mailBody(!!chosenPlan && !planTerms)[0]}<Link href={`${localHref(locale, '/login')}${carried(query)}`} className="lp-link" style={consentLink}>{S.mailBody(false)[1]}</Link>{S.mailBody(false)[2]}</> : <>Αν δεν υπάρχει ήδη λογαριασμός με αυτή τη διεύθυνση, σου στείλαμε σύνδεσμο επιβεβαίωσης. Πάτησέ τον για να μπεις{chosenPlan && !planTerms ? ' και να ολοκληρώσεις τη συνδρομή σου' : ''}. Αν υπάρχει ήδη, <Link href={`/login${carried(query)}`} className="lp-link" style={consentLink}>συνδέσου</Link>. Δες και τον φάκελο με <span style={{ whiteSpace: 'nowrap' }}>τα ανεπιθύμητα.</span></>}
+                body={S ? <>{S.mailBody(!!chosenPlan && !planTerms)[0]}<Link href={`${localHref(locale, '/login')}${carried(query)}`} className="lp-link po-tap-inline" style={consentLink}>{S.mailBody(false)[1]}</Link>{S.mailBody(false)[2]}</> : <>Αν δεν υπάρχει ήδη λογαριασμός με αυτή τη διεύθυνση, σου στείλαμε σύνδεσμο επιβεβαίωσης. Πάτησέ τον για να μπεις{chosenPlan && !planTerms ? ' και να ολοκληρώσεις τη συνδρομή σου' : ''}. Αν υπάρχει ήδη, <Link href={`/login${carried(query)}`} className="lp-link po-tap-inline" style={consentLink}>συνδέσου</Link>. Δες και τον φάκελο με <span style={{ whiteSpace: 'nowrap' }}>τα ανεπιθύμητα.</span></>}
                 action={
                   /* Η σβηστή όψη μετά την αποστολή είναι το disabled του .po-btn. */
                   <>
@@ -971,7 +971,7 @@ export default function SignupPage() {
                   {emailHint && (
                     <p id="su-email-hint" style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '6px 0 0', lineHeight: 1.5 }}>
                       {S ? S.emailSuggest : EMAIL_MSG.suggest}{' '}
-                      <LinkBtn onClick={() => setEmail(emailHint)}>{emailHint}</LinkBtn>{S ? '?' : ';'}
+                      <LinkBtn className="po-tap-inline" onClick={() => setEmail(emailHint)}>{emailHint}</LinkBtn>{S ? '?' : ';'}
                     </p>
                   )}
                 </div>
@@ -1053,10 +1053,10 @@ export default function SignupPage() {
                     Οι συγκαταθέσεις που ΔΕΝ είναι σύμβαση μένουν χωριστά κουτιά:
                     τα δύο ενημερωτικά (ατσεκάριστα) και οι όροι του γραφείου.
                     Η Πολιτική απορρήτου δεν «γίνεται αποδεκτή»: είναι ενημέρωση. */}
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '-4px 0 0', lineHeight: 1.6, textWrap: 'pretty' }}>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0', lineHeight: 1.6, textWrap: 'pretty' }}>
                   {S ? S.legal[0] : <>Συνεχίζοντας με email, αποδέχεσαι τους{' '}</>}
-                  <Link href={localHref(locale, '/terms')} className="lp-link" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.legal[1] : <> και έχεις διαβάσει την{' '}</>}
-                  <Link href={localHref(locale, '/privacy')} className="lp-link" style={consentLink}>{A ? A.privacy : 'Πολιτική απορρήτου'}</Link>{S ? S.legal[2] : '.'}
+                  <Link href={localHref(locale, '/terms')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.legal[1] : <> και έχεις διαβάσει την{' '}</>}
+                  <Link href={localHref(locale, '/privacy')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.privacy : 'Πολιτική απορρήτου'}</Link>{S ? S.legal[2] : '.'}
                 </p>
               </form>
               {emailFirst && !firm && <>
