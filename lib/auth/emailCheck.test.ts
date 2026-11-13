@@ -29,6 +29,9 @@ ok('σωστός πάροχος: τίποτα', suggestEmail('onoma@gmail.com') 
 ok('άγνωστος τομέας: τίποτα', suggestEmail('grafeio@properwise.gr') === null)
 ok('μικρός τομέας με δύο αλλαγές: τίποτα', suggestEmail('a@aol.com') === null)
 ok('χωρίς @: τίποτα', suggestEmail('onoma') === null)
+ok('mail.com είναι πάροχος: τίποτα', suggestEmail('onoma@mail.com') === null)
+ok('ymail.com είναι πάροχος: τίποτα', suggestEmail('onoma@ymail.com') === null)
+ok('gmail.con → gmail.com και με mail.com στη λίστα', suggestEmail('onoma@gmail.con') === 'onoma@gmail.com')
 
 ok('ελληνικά μηνύματα χωρίς παύλα', Object.values(EMAIL_MSG).every(m => !/[—–]/.test(m)))
 

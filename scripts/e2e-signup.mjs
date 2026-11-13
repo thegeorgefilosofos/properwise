@@ -162,7 +162,7 @@ for (const [name, ua, android] of [['Android', IG, true], ['iPhone', 'Mozilla/5.
     await p.waitForSelector('#su-email');
     await p.locator('#su-email').fill('anonymos@properwise.gr');
     await p.locator('#su-password').fill('Dokimastis2026!');
-        await p.locator('form button[type="submit"]').click();
+    await p.locator('form button[type="submit"]').click();
     const sent = await p.waitForSelector('text=Άνοιξε το email σου', { timeout: 6000 }).then(() => true).catch(() => false);
     check('ανώνυμος, /signup: η εγγραφή ολοκληρώνεται', sent);
     check('ανώνυμος, /signup: ο πελάτης δεν ρωτήθηκε για συνεδρία', await p.evaluate(() => window.__getUser ?? 0) === 0);
@@ -195,7 +195,7 @@ for (const [name, ua, android] of [['Android', IG, true], ['iPhone', 'Mozilla/5.
 
   await gate.locator('#su-email').fill('diplo@properwise.gr');
   await pw.fill('Dokimastis2026!');
-    // Δύο υποβολές ΣΤΟ ΙΔΙΟ tick: το React δεν έχει προλάβει να αποδώσει το
+  // Δύο υποβολές ΣΤΟ ΙΔΙΟ tick: το React δεν έχει προλάβει να αποδώσει το
   // `loading` της πρώτης. Δύο κλικ του Playwright δεν το δείχνουν, γιατί
   // ανάμεσά τους μεσολαβεί απόδοση· ένα γρήγορο διπλό πάτημα σε αργό κινητό ναι.
   await gate.evaluate(() => { const f = document.querySelector('form'); f.requestSubmit(); f.requestSubmit(); });

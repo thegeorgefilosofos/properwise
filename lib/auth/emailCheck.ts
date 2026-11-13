@@ -22,7 +22,7 @@ export function emailProblem(email: string): EmailProblem | null {
 }
 
 /** Οι πάροχοι που γράφουν σχεδόν όλοι οι επισκέπτες μας. */
-const DOMAINS = ['gmail.com', 'yahoo.com', 'yahoo.gr', 'hotmail.com', 'outlook.com', 'live.com', 'icloud.com', 'otenet.gr', 'windowslive.com'] as const
+const DOMAINS = ['gmail.com', 'yahoo.com', 'yahoo.gr', 'hotmail.com', 'outlook.com', 'live.com', 'icloud.com', 'otenet.gr', 'windowslive.com', 'mail.com', 'ymail.com'] as const
 
 /** Απόσταση Levenshtein, μόνο για λέξεις λίγων χαρακτήρων. */
 function distance(a: string, b: string): number {

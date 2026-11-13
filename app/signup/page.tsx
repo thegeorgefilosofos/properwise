@@ -28,8 +28,8 @@ import { secondStepPending } from '@/lib/auth/mfa';
 import { fe } from '@/lib/core/format';
 // Η μορφή του κωδικού πρόσκλησης ζει δίπλα στη γεννήτριά του, όχι εδώ.
 import { isReferralCode } from '@/lib/referral/code';
-import { POLICY_VERSION as CONSENT_VERSION } from '@/lib/legal/identity'
-import { applyNews, newsDecided, newsFromParam, newsMeta, newsParam, pendingNews, type NewsChoice } from '@/lib/auth/signupNews'
+import { oauthPatch, signupData } from '@/lib/auth/signupConsent'
+import { applyNews, newsParam, pendingNews, type NewsChoice } from '@/lib/auth/signupNews'
 import { usePlanTerms, useTrialBadge, useSignupCta } from './PlanTerms'
 import { localeOfPath, type Locale } from '@/lib/i18n/locale'
 import { useCaptcha } from '../useCaptcha'
@@ -138,26 +138,8 @@ const countSignup = (supabase: Awaited<ReturnType<typeof authClient>>) => Promis
   new Promise<void>(r => setTimeout(r, 1500)),
 ]).catch(() => {})
 
-/**
- * Ό,τι λείπει από το προφίλ μετά την επιστροφή από την Google: η απόδειξη
- * συγκατάθεσης, η πρόσκληση και το πακέτο. Συμπληρώνει ΜΟΝΟ ό,τι λείπει: η
- * απόδειξη που μετράει είναι η ΠΡΩΤΗ, όχι η σημερινή.
- */
-function oauthPatch(meta: Record<string, unknown>, q: URLSearchParams, news: NewsChoice = newsFromParam(q.get('news'))): Record<string, unknown> {
-  const patch: Record<string, unknown> = {}
-  // Η επιλογή των ενημερωτικών ταξιδεύει όπως το πακέτο, στη διεύθυνση
-  // επιστροφής· γράφεται μόνο για λογαριασμό που δεν έχει ακόμη ούτε
-  // συγκατάθεση ούτε απόφαση. Υπάρχων χρήστης κρατά τις προτιμήσεις του.
-  if (!meta.consent_terms_accepted_at && !newsDecided(meta)) Object.assign(patch, newsMeta(news))
-  if (!meta.consent_terms_accepted_at) {
-    patch.consent_terms_accepted_at = new Date().toISOString()
-    patch.consent_policy_version = CONSENT_VERSION
-  }
-  const r = q.get('ref'); if (r && !meta.referred_by) patch.referred_by = r
-  const p = planFromParam(q.get('plan'))
-  if (p && !meta.chosen_plan) { patch.chosen_plan = p; patch.chosen_cycle = cycleFromParam(q.get('cycle')) }
-  return patch
-}
+// Η απόδειξη της επιστροφής από την Google (`oauthPatch`) και τα `data` της
+// εγγραφής με email (`signupData`) ζουν στο lib/auth/signupConsent.ts, με test.
 
 /**
  * ΤΑ ΕΝΗΜΕΡΩΤΙΚΑ, ΟΠΩΣ ΤΑ ΔΙΑΛΕΞΕ. Η βάση κλείνει και τα δύο όταν δημιουργεί
@@ -308,8 +290,9 @@ export default function SignupPage() {
       const q = new URLSearchParams(window.location.search)
       // ═══ ΔΥΟ ΔΙΑΔΡΟΜΕΣ ΕΠΙΣΤΡΟΦΗΣ ΚΑΙ Η ΔΙΑΦΟΡΑ ΤΟΥΣ ΕΙΝΑΙ Η ΣΥΓΚΑΤΑΘΕΣΗ ═══
       //
-      // «oauth=1» σημαίνει ότι ο χρήστης ΤΣΕΚΑΡΕ το κουτί σε αυτή τη σελίδα
-      // πριν φύγει για την Google: η αποδοχή έγινε, μένει να καταγραφεί.
+      // «oauth=1» σημαίνει ότι ο χρήστης πάτησε «Συνέχισε με Google» σε αυτή τη
+      // σελίδα, με τη γραμμή αποδοχής ορατή ακριβώς κάτω από το κουμπί: το
+      // πάτημα είναι η αποδοχή, μένει να καταγραφεί.
       //
       // «oauth=login» έρχεται από τη σελίδα σύνδεσης, όπου ΔΕΝ υπάρχει κουτί.
       // Και η `signInWithOAuth` είναι ΚΑΙ εγγραφή: ο πρωτοεμφανιζόμενος
@@ -451,12 +434,14 @@ export default function SignupPage() {
   // ═══════════════════════════════════════════════════════════════════════
   async function signInWithGoogle() {
     countSignupStep('google')
-    // ΕΝΑ ΠΑΤΗΜΑ, ΟΠΩΣ ΣΤΗ ΣΥΝΔΕΣΗ (13.11.2026). Ως τότε το κουμπί ζητούσε πρώτα
-    // το κουτί των Όρων, που καθόταν ~450px πιο κάτω, κάτω από το όριο της
-    // οθόνης στο κινητό: το πάτημα έκανε κύλιση αντί για Google. Στο χωνί, ένα
-    // πάτημα «google» και καμία εγγραφή. Η αποδοχή δίνεται πλέον με την ενέργεια
-    // (η γραμμή κάτω από το κουμπί, όπως ήδη στη Σύνδεση) και η απόδειξη
-    // γράφεται όπως πριν στην επιστροφή `oauth=1` (`oauthPatch`).
+    // ΕΝΑ ΠΑΤΗΜΑ (13.11.2026). Ως τότε το κουμπί ζητούσε πρώτα το κουτί των
+    // Όρων, που καθόταν ~450px πιο κάτω, κάτω από το όριο της οθόνης στο κινητό:
+    // το πάτημα έκανε κύλιση αντί για Google. Στο χωνί, ένα πάτημα «google» και
+    // καμία εγγραφή. Η αποδοχή δίνεται πλέον με το πάτημα, με τη γραμμή
+    // `googleLegal` ορατή ακριβώς κάτω από το κουμπί. Η απόδειξη γράφεται
+    // στην επιστροφή `oauth=1` (`oauthPatch`). Στη Σύνδεση δεν ισχύει το ίδιο:
+    // εκεί η επιστροφή είναι `oauth=login` και ο νέος λογαριασμός περνά από το
+    // «Ένα βήμα ακόμη» με κουτί, πριν γραφτεί οποιαδήποτε απόδειξη.
     setError('')
     const supabase = await authClient()
     // Η ΣΥΝΕΧΕΙΑ (πακέτο ή «next») ΕΡΧΕΤΑΙ ΕΛΕΓΜΕΝΗ ΑΠΟ ΤΟ `carried`: στη
@@ -575,14 +560,10 @@ export default function SignupPage() {
         // διακριτικό στη διεύθυνση: ο λογαριασμός άνοιγε, αλλά ο άνθρωπος
         // κατέληγε να κοιτά «Σύνδεση» αντί για την εφαρμογή του.
         emailRedirectTo: confirmRedirect(firm ? firmQuery(query) : query),
-        data: {
-          ...(firm ? { account_kind: 'firm', firm_name: firmName.trim(), firm_afm: firmAfm, firm_kind: firmKind, firm_terms_version: FIRM_TERMS_VERSION } : {}),
-          consent_terms_accepted_at: new Date().toISOString(),
-          consent_policy_version: CONSENT_VERSION,
-          ...newsMeta(news),
-          ...(refCode ? { referred_by: refCode } : {}),
-          ...(chosenPlan ? { chosen_plan: chosenPlan, chosen_cycle: chosenCycle } : {}),
-        },
+        data: signupData({
+          firm: firm ? { account_kind: 'firm', firm_name: firmName.trim(), firm_afm: firmAfm, firm_kind: firmKind, firm_terms_version: FIRM_TERMS_VERSION } : null,
+          news, refCode, plan: chosenPlan, cycle: chosenCycle,
+        }),
       },
     })
     // ΤΟ `loading` ΕΠΑΝΕΡΧΕΤΑΙ ΚΑΙ ΣΤΗΝ ΕΠΙΤΥΧΙΑ, ΟΧΙ ΜΟΝΟ ΣΤΟ ΣΦΑΛΜΑ.
@@ -624,6 +605,16 @@ export default function SignupPage() {
   // Υπογραμμισμένοι, ίδια γραμμή με το `.po-link` και τη σύνδεση (20.10.2026):
   // το χρώμα μόνο του δεν λέει «πατιέται» σε όποιον δεν ξεχωρίζει τόνους.
   const consentLink: React.CSSProperties = { color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1, fontWeight: 600, whiteSpace: 'nowrap' }
+  // Η ΑΠΟΔΟΧΗ ΚΑΤΩ ΑΠΟ ΤΟ «ΣΥΝΕΧΙΣΕ ΜΕ GOOGLE» (13.11.2026). Το πάτημα του
+  // κουμπιού γράφει την απόδειξη στην επιστροφή `oauth=1`, οπότε η γραμμή
+  // στέκεται ακριβώς από κάτω του, όπου κι αν βρίσκεται το κουμπί.
+  const googleLegal = (
+    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '8px 0 0', lineHeight: 1.6, textAlign: 'center', textWrap: 'pretty' }}>
+      {S ? S.legalGoogle[0] : <>Συνεχίζοντας με Google, αποδέχεσαι τους{' '}</>}
+      <Link href={localHref(locale, '/terms')} className="lp-link" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.legalGoogle[1] : <> και έχεις διαβάσει την{' '}</>}
+      <Link href={localHref(locale, '/privacy')} className="lp-link" style={consentLink}>{A ? A.privacy : 'Πολιτική απορρήτου'}</Link>{S ? S.legalGoogle[2] : '.'}
+    </p>
+  )
   // Τα κουτιά των ενημερωτικών, με το ίδιο ιδίωμα αφής με το πρώτο. Δύο, ένα
   // για κάθε σκοπό, ατσεκάριστα και προαιρετικά: η εγγραφή προχωρά ό,τι κι
   // αν διαλέξεις (νομικός έλεγχος 09/11/2026, Π-5).
@@ -927,12 +918,13 @@ export default function SignupPage() {
               {!A && firm && (
                 <div role="note" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '10px 14px', marginBottom: 20, borderRadius: T.radius.inner, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', fontSize: 14, color: 'var(--text-primary)', fontWeight: 600 }}>
                   Λογαριασμός λογιστή ή γραφείου
-                  <LinkBtn onClick={() => { setAccountKind('owner'); setError('') }}>Είμαι ιδιοκτήτης</LinkBtn>
+                  <LinkBtn className="po-tap-inline" onClick={() => { setAccountKind('owner'); setError('') }}>Είμαι ιδιοκτήτης</LinkBtn>
                 </div>
               )}
 
               {!emailFirst && !firm && <>
                 <GoogleButton onClick={signInWithGoogle} funnel />
+                {googleLegal}
                 <OrDivider word={A ? A.or : undefined} />
               </>}
 
@@ -1052,14 +1044,17 @@ export default function SignupPage() {
                     Ηταν υποχρεωτικό κουτί πάνω από το κουμπί, το οποίο σε κινητό
                     κατέληγε στα y=764 και το κουμπί στα 1011, δηλαδή εκτός
                     οθόνης. Οι Όροι (/terms) λένε ήδη «Με τη δημιουργία
-                    λογαριασμού […] αποδέχεσαι τους παρόντες Όρους» και η
-                    Σύνδεση το λέει με την ίδια γραμμή. Η απόδειξη (ποτέ, ποια
-                    έκδοση) γράφεται όπως πριν, στο `signUp` και στο `oauthPatch`.
+                    λογαριασμού […] αποδέχεσαι τους παρόντες Όρους». Η ίδια
+                    γραμμή στέκεται και κάτω από το «Συνέχισε με Google»
+                    (`googleLegal`), ώστε να φαίνεται όπου φαίνεται το κουμπί.
+                    Στη Σύνδεση η γραμμή ΔΕΝ μετρά ως αποδοχή: ο νέος λογαριασμός
+                    από εκεί περνά από το «Ένα βήμα ακόμη». Η απόδειξη (πότε, ποια
+                    έκδοση) γράφεται στο `signupData` και στο `oauthPatch`.
                     Οι συγκαταθέσεις που ΔΕΝ είναι σύμβαση μένουν χωριστά κουτιά:
                     τα δύο ενημερωτικά (ατσεκάριστα) και οι όροι του γραφείου.
                     Η Πολιτική απορρήτου δεν «γίνεται αποδεκτή»: είναι ενημέρωση. */}
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '-4px 0 0', lineHeight: 1.6, textWrap: 'pretty' }}>
-                  {S ? S.legal[0] : <>Συνεχίζοντας με email ή Google, αποδέχεσαι τους{' '}</>}
+                  {S ? S.legal[0] : <>Συνεχίζοντας με email, αποδέχεσαι τους{' '}</>}
                   <Link href={localHref(locale, '/terms')} className="lp-link" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.legal[1] : <> και έχεις διαβάσει την{' '}</>}
                   <Link href={localHref(locale, '/privacy')} className="lp-link" style={consentLink}>{A ? A.privacy : 'Πολιτική απορρήτου'}</Link>{S ? S.legal[2] : '.'}
                 </p>
@@ -1067,11 +1062,12 @@ export default function SignupPage() {
               {emailFirst && !firm && <>
                 <OrDivider word={A ? A.or : undefined} />
                 <GoogleButton onClick={signInWithGoogle} funnel />
+                {googleLegal}
               </>}
               {!A && !firm && (
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '24px 0 0', lineHeight: 1.5 }}>
                   Λογιστής ή γραφείο;{' '}
-                  <LinkBtn onClick={() => { setAccountKind('firm'); setError('') }}>Λογαριασμός γραφείου</LinkBtn>
+                  <LinkBtn className="po-tap-inline" onClick={() => { setAccountKind('firm'); setError('') }}>Λογαριασμός γραφείου</LinkBtn>
                 </p>
               )}
             </>
