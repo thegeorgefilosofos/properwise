@@ -58,13 +58,18 @@ import {
 // την αρχή «Φορολογία Airbnb 2026», που είναι και το όνομα στον κατάλογο.
 // Η διεύθυνση μένει ίδια, γιατί είναι ήδη στο ευρετήριο.
 const H1 = 'Φορολογία Airbnb 2026: τέλος ανθεκτικότητας, φόρος εισοδήματος και τέλη';
-const TITLE = 'Τέλος ανθεκτικότητας 2026 στο Airbnb: ποσά, δήλωση, φόρος';
 const GUIDE = guideAt('/odigos/airbnb-takk-2026');
-// Η περιγραφή ζει στον κατάλογο: ίδια στη σελίδα αποτελεσμάτων και στην κάρτα.
-const DESC = GUIDE.desc;
 const URL = siteUrl(GUIDE.href);
 
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-airbnb-takk-2026') });
+// ΤΑ ΠΟΣΑ ΜΠΑΙΝΟΥΝ ΣΤΟΝ ΤΙΤΛΟ ΚΑΙ ΣΤΗΝ ΠΕΡΙΓΡΑΦΗ (13.11.2026). CTR 1,4% σε θέση
+// 5,2 (Search Console, τρίμηνο): ο τίτλος έλεγε «ποσά» χωρίς ποσό. Τώρα το
+// εύρος του τέλους για τη βραχυχρόνια (χαμηλό διαμερίσματος έως υψηλό μεγάλης
+// μονοκατοικίας) και στην περιγραφή τα δύο ποσά του διαμερίσματος, από τον
+// ίδιο πίνακα με το σώμα (CLIMATE_LEVY_FROM_2025). Η περιγραφή της κάρτας στον
+// κόμβο μένει στον κατάλογο (GUIDE.desc).
+export function generateMetadata(): Metadata {
+  return publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-airbnb-takk-2026') });
+}
 
 // Ο ΣΥΝΔΕΣΜΟΣ ΣΤΟΝ ΟΔΗΓΟ ΑΜΑ ΓΥΡΙΣΕ (07/10/2026). Από τις 05.10 τον απέκλειε
 // ένα ανοιχτό P0: ο οδηγός ΑΜΑ έγραφε ότι και η κληρονομιά διαγράφει από το
@@ -95,6 +100,10 @@ const ATHENS_TO = grDate(ATHENS.to);
 
 const SMALL = CLIMATE_LEVY_FROM_2025.small;
 const LARGE = CLIMATE_LEVY_FROM_2025.large;
+const TITLE = `Τέλος ανθεκτικότητας 2026 Airbnb: ${eur(SMALL.low)} έως ${eur(LARGE.high)} τη βραδιά`;
+const DESC =
+  `Τέλος ανθεκτικότητας διαμερίσματος: ${eur(SMALL.high)} τη βραδιά Απρίλιο έως Οκτώβριο, `
+  + `${eur(SMALL.low)} τον χειμώνα. Πώς δηλώνεται στο myAADE και πώς φορολογείται το Airbnb.`;
 const SQM = CLIMATE_LEVY_AREA_SQM;
 const rates = (id: ClimateLevyCategory) => CLIMATE_LEVY_CATEGORIES.find(c => c.id === id)!.rates;
 const TOURIST_SMALL = rates('tourist-small');

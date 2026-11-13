@@ -39,10 +39,12 @@ import { SPEC } from './spec';
 // ΤΟ ΕΤΟΣ ΤΟΥ ΤΙΤΛΟΥ ΕΙΝΑΙ ΤΟ ΕΤΟΣ ΤΟΥ ΥΠΟΛΟΓΙΣΜΟΥ. Ήταν γραμμένο «2026» με το
 // χέρι, ενώ ο υπολογιστής και ο πίνακας των δόσεων ακολουθούν το τρέχον έτος:
 // την 1.1.2027 ο τίτλος στη Google θα έλεγε 2026 πάνω από πίνακα του 2027.
-const titleFor = (year: number) => `Υπολογισμός ΕΝΦΙΑ ${year} με τα δικά σου δεδομένα`;
-const DESC =
-  'Υπολόγισε τον ΕΝΦΙΑ του ακινήτου σου από τα τετραγωνικά, την τιμή ζώνης, τον όροφο '
-  + 'και την παλαιότητα. Χωρίς εγγραφή.';
+// CTR 13.11.2026: 4,2% σε θέση 7,7 (Search Console, τρίμηνο). Ο τίτλος λέει τι
+// παίρνεις αμέσως· η περιγραφή έχει κι αυτή τη χρονιά του τίτλου.
+const titleFor = (year: number) => `Υπολογισμός ΕΝΦΙΑ ${year}: άμεσο αποτέλεσμα, χωρίς εγγραφή`;
+const descFor = (year: number) =>
+  `Βάλε τετραγωνικά, τιμή ζώνης, όροφο και παλαιότητα και δες αμέσως τον ΕΝΦΙΑ ${year} `
+  + 'του ακινήτου σου, με την ανάλυση του ποσού βήμα βήμα. Χωρίς εγγραφή.';
 const PATH = '/ypologismos-enfia';
 const URL = siteUrl(PATH);
 
@@ -62,7 +64,8 @@ const URL = siteUrl(PATH);
 
 // Ο τίτλος είναι απόλυτος και η εικόνα κοινοποίησης μπαίνει πάντα (publicMetadata).
 export function generateMetadata(): Metadata {
-  return publicMetadata({ title: titleFor(athensParts().year), description: DESC, url: URL, image: shareImage('ypologismos-enfia') });
+  const year = athensParts().year;
+  return publicMetadata({ title: titleFor(year), description: descFor(year), url: URL, image: shareImage('ypologismos-enfia') });
 }
 
 const ageBand = (key: string) => ENFIA_AGE_BANDS.find(b => b.key === key)!;
@@ -142,7 +145,7 @@ export default function Page() {
   const examples = enfiaExamples(year);
   // Μία πηγή για σελίδα και σχήμα: το `FAQPage` είναι ο ίδιος πίνακας που
   // αποδίδουν οι «Συχνές ερωτήσεις» από κάτω (app/toolSeo.tsx).
-  const jsonLd = toolJsonLd({ name: `Υπολογισμός ΕΝΦΙΑ ${year}`, url: URL, description: DESC, faq: FAQ });
+  const jsonLd = toolJsonLd({ name: `Υπολογισμός ΕΝΦΙΑ ${year}`, url: URL, description: descFor(year), faq: FAQ });
 
   return (
     <div className="po-tool-page" data-mode="dark" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>

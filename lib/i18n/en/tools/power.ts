@@ -138,9 +138,11 @@ export const POWER_EN = {
 };
 
 export const POWER_PAGE_EN = {
-  title: 'Greek electricity tariffs compared: what you would pay each month',
+  // 13.11.2026: 201 impressions at position 5.0, CTR 2% (Search Console, 3 months).
+  // The old title ran to 65 characters and was cut; the query words now lead.
+  title: 'Electricity tariffs in Greece compared: your monthly bill',
   h1: 'Electricity tariffs in Greece: what each one would cost you',
-  description: 'What you would pay each month on every residential electricity tariff in Greece, with the date prices were checked and the regulator as the source.',
+  description: 'Enter your own kWh and see what every residential electricity tariff in Greece would cost you each month. Prices from RAAEY, the energy regulator.',
   lede: 'What you would pay per month and per year on every electricity tariff, for your own kWh. Prices come from RAAEY, Greece’s energy regulator, which labels tariffs blue (fixed), green (special, priced monthly) and yellow (variable).',
   ctaTitle: 'With your own bills, not an estimate?',
   ctaBody: 'In PROPERWISE you keep the electricity bills of each property, and the same comparison runs on their actual kWh.',
