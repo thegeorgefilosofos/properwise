@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useId, ReactNode, Fragment, type KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, useId, useCallback, ReactNode, Fragment, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { Btn, IconBtn, ChipToggle } from '@/components/ThemeCore';
 import { T, localDay } from '@/components/tokens';
@@ -10,6 +10,7 @@ import { athensToday, isoYear, isoMonth } from '@/lib/core/time';
 import { MONTHS_SHORT, DAY_NAMES_MIN } from '@/lib/core/months';
 import { fn } from '@/lib/core/format';
 import { hy } from '@/components/Hyphen';
+import { useMicField } from '@/components/dictation/MicButton';
 
 // ── ΕΝΙΑΙΟ σύστημα πεδίων (ένα μέγεθος/σχήμα/focus παντού) ───────────────────
 // Γωνία 10, 1px border + accent focus-ring (χωρίς μετατόπιση layout — δεν
@@ -1532,16 +1533,25 @@ interface TextInputProps {
   mono?: boolean;
   /** Το πληκτρολόγιο της αφής: «numeric» για κωδικούς που είναι μόνο ψηφία. */
   inputMode?: 'text' | 'numeric' | 'decimal' | 'tel' | 'email' | 'url' | 'search';
+  /**
+   * ΜΙΚΡΟΦΩΝΟ ΜΕΣΑ ΣΤΟ ΠΕΔΙΟ, για ελεύθερο κείμενο που λέγεται φυσικά:
+   * περιγραφές, σημειώσεις, αναζητήσεις. Ποτέ σε ποσά, ημερομηνίες, ΑΦΜ ή
+   * ΑΤΑΚ: εκεί ένα ψηφίο που ακούστηκε λάθος είναι λάθος δήλωση.
+   */
+  dictation?: boolean;
 }
 
-export function TextInput({ label, labelInfo, ariaLabel, id, value, onChange, placeholder, type='text', disabled, prefix, suffix, onKeyDown, mono, inputMode }: TextInputProps) {
+export function TextInput({ label, labelInfo, ariaLabel, id, value, onChange, placeholder, type='text', disabled, prefix, suffix, onKeyDown, mono, inputMode, dictation = false }: TextInputProps) {
   const [focused, setFocused] = useState(false);
   const autoId = useId();
   const inputId = id ?? autoId;
+  const fieldRef = useRef<HTMLInputElement | null>(null);
+  const getField = useCallback(() => fieldRef.current, []);
+  const mic = useMicField({ value, onChange, getField, enabled: dictation && !disabled });
   return (
     <div>
       {label && <label htmlFor={inputId} style={fieldLabelStyle}><span>{labelWithInfo(label, labelInfo)}</span></label>}
-      <div style={{
+      <div className="po-field-box" style={{
         display: 'flex', alignItems: 'center',
         background: 'var(--bg-surface)',
         border: `1px solid ${fieldBorderColor(focused)}`,
@@ -1568,6 +1578,7 @@ export function TextInput({ label, labelInfo, ariaLabel, id, value, onChange, pl
             δάπεδο τα πεδία που ζουν μέσα σε στόχο ο οποίος το τηρεί ήδη.
             Ο στόχος αφής ΔΕΝ μικραίνει: μένει το περίβλημα των 44. */}
         <input
+          ref={fieldRef}
           className="po-field-inner"
           id={inputId}
           aria-label={label ? undefined : ariaLabel}
@@ -1593,12 +1604,14 @@ export function TextInput({ label, labelInfo, ariaLabel, id, value, onChange, pl
             minWidth: 0,
           }}
         />
+        {mic.button}
         {suffix && (
           <div style={{ padding: '0 12px', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 14, background: 'var(--bg-elevated)', alignSelf: 'stretch', display: 'flex', alignItems: 'center', borderLeft: '1px solid var(--border-subtle)', flexShrink: 0 }}>
             {suffix}
           </div>
         )}
       </div>
+      {mic.note}
     </div>
   );
 }
@@ -1610,9 +1623,11 @@ const TEXTAREA_LINE = 20;
 const TEXTAREA_CHROME = 22; // γέμισμα 10+10 και περίγραμμα 1+1
 
 export function Textarea({
-  label, labelInfo, value, onChange, placeholder, rows = 3, autoGrow,
+  label, labelInfo, value, onChange, placeholder, rows = 3, autoGrow, dictation = false,
 }: {
   label?: string; labelInfo?: ReactNode; value: string; onChange: (v: string) => void; placeholder?: string; rows?: number;
+  /** Μικρόφωνο πάνω δεξιά μέσα στο πεδίο (δες το `TextInput`). */
+  dictation?: boolean;
   /**
    * ΤΟ ΠΕΔΙΟ ΜΕΓΑΛΩΝΕΙ ΜΕ ΤΟ ΚΕΙΜΕΝΟ ΤΟΥ. Ξεκινά από `rows` γραμμές και
    * ψηλώνει ως 200, μετά κυλά. Μια σημείωση που διάβασε η σάρωση φαίνεται
@@ -1623,6 +1638,9 @@ export function Textarea({
 }) {
   const [focused, setFocused] = useState(false);
   const inputId = useId();
+  const fieldRef = useRef<HTMLTextAreaElement | null>(null);
+  const getField = useCallback(() => fieldRef.current, []);
+  const mic = useMicField({ value, onChange, multiline: true, getField, enabled: dictation });
   // Η ανάπτυξη ζει στην κλάση `.po-autogrow` (globals.css), γιατί μόνο εκεί
   // υπάρχει `@supports`: η λαβή αλλαγής ύψους μένει μόνο όπου δεν ψηλώνει μόνο του.
   const grow: React.CSSProperties = autoGrow
@@ -1631,7 +1649,9 @@ export function Textarea({
   return (
     <div>
       {label && <label htmlFor={inputId} style={fieldLabelStyle}><span>{labelWithInfo(label, labelInfo)}</span></label>}
+      <div className="po-dictate" data-mic={mic.supported ? 'multi' : undefined}>
       <textarea
+        ref={fieldRef}
         id={inputId}
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -1658,6 +1678,9 @@ export function Textarea({
           lineHeight: `${TEXTAREA_LINE}px`,
         }}
       />
+      {mic.button}
+      </div>
+      {mic.note}
     </div>
   );
 }

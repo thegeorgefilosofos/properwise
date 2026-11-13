@@ -802,7 +802,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                         <TextInput label="Παλαιότερη σημείωση φθοράς" value={stayForm.damage_note} onChange={v => setStayForm(f => ({ ...f, damage_note: v }))} />
                       )}
                       {stayForm.notes.trim() !== '' && (
-                        <TextInput label="Παλαιότερη σημείωση" value={stayForm.notes} onChange={v => setStayForm(f => ({ ...f, notes: v }))} />
+                        <TextInput dictation label="Παλαιότερη σημείωση" value={stayForm.notes} onChange={v => setStayForm(f => ({ ...f, notes: v }))} />
                       )}
                     </div>
                   )}
@@ -1085,7 +1085,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
       {/* Η «μαύρη λίστα» έγινε αυτό: ιδιωτική σημείωση, ΧΩΡΙΣ ετικέτα
           κατηγορίας. Ο διακόπτης `do_not_rent` κατηγοριοποιούσε πρόσωπο
           με νομικό βάρος (GDPR) και τύπωνε «Προσοχή» δίπλα σε όνομα. */}
-      <Textarea label="Ιδιωτική σημείωση" value={form.notes} onChange={v => setForm(f => ({ ...f, notes: v }))} rows={3} placeholder="Ό,τι θέλεις να θυμάσαι για αυτή τη φιλοξενία. Δική σου σημείωση, χωρίς κατηγοριοποίηση." />
+      <Textarea dictation label="Ιδιωτική σημείωση" value={form.notes} onChange={v => setForm(f => ({ ...f, notes: v }))} rows={3} placeholder="Ό,τι θέλεις να θυμάσαι για αυτή τη φιλοξενία. Δική σου σημείωση, χωρίς κατηγοριοποίηση." />
       </Modal>
     </div>
   );

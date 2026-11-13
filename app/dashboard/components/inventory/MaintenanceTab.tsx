@@ -147,7 +147,7 @@ export function MaintenanceTab({items,schedules,propertyId,userId,onSaved}:{item
             <div><label htmlFor={intervalId} style={labelStyle}>Επανάληψη κάθε</label><NumberInput id={intervalId} value={String(form.interval_months)} onChange={v=>setForm(f=>({...f,interval_months:parseInt(v)||1}))} suffix="μήνες" min={1} max={60}/></div>
             <div><label style={labelStyle}>Τελευταία εκτέλεση</label><DatePicker value={form.last_done} onChange={v=>setForm(f=>({...f,last_done:v}))}/></div>
             <div><label htmlFor={estCostId} style={labelStyle}>Εκτιμώμενο κόστος</label><NumberInput id={estCostId} value={String(form.est_cost)} onChange={v=>setForm(f=>({...f,est_cost:parseFloat(v)||0}))} suffix="€" min={0}/></div>
-            <div style={{gridColumn:'1/-1'}}><label htmlFor={mNotesId} style={labelStyle}>Σημειώσεις</label><TextInput id={mNotesId} value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))} placeholder="Τεχνικός, παρατηρήσεις…"/></div>
+            <div style={{gridColumn:'1/-1'}}><label htmlFor={mNotesId} style={labelStyle}>Σημειώσεις</label><TextInput dictation id={mNotesId} value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))} placeholder="Τεχνικός, παρατηρήσεις…"/></div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:8,marginTop:10,padding:'9px 12px',background:'var(--accent-soft)',border:'1px solid var(--accent-border)',borderRadius:T.radius.inner}}>
             <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>

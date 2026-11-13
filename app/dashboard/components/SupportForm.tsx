@@ -12,6 +12,7 @@ import { notify } from '@/components/Toast';
 import { PLANS, PLAN_ORDER, type PlanId } from '@/lib/billing/plans';
 import { PRIORITY_FROM } from '@/lib/inbound/priority';
 import { SUPPORT_SUBJECT_MAX, SUPPORT_MESSAGE_MAX, SUPPORT_MESSAGE_MIN } from '@/lib/support/form';
+import { Dictation } from '@/components/dictation/MicButton';
 
 const field = (focused: boolean) => ({
   width: '100%', boxSizing: 'border-box' as const, padding: '10px 14px', borderRadius: T.radius.inner,
@@ -65,13 +66,16 @@ export default function SupportForm({ plan = 'free' }: { plan?: PlanId }) {
         onFocus={() => setFocus('s')} onBlur={() => setFocus(null)}
         style={{ ...field(focus === 's'), marginTop: 12 }}
       />
-      <textarea
-        aria-label="Το μήνυμά σου" value={message} maxLength={SUPPORT_MESSAGE_MAX} rows={4}
-        placeholder="Τι χρειάζεσαι;"
-        onChange={e => { setMessage(e.target.value); if (error) setError(null); if (sent) setSent(false); }}
-        onFocus={() => setFocus('m')} onBlur={() => setFocus(null)}
-        style={{ ...field(focus === 'm'), marginTop: 8, resize: 'vertical', minHeight: 96 }}
-      />
+      <Dictation multiline value={message} style={{ marginTop: 8 }}
+        onChange={v => { setMessage(v.slice(0, SUPPORT_MESSAGE_MAX)); if (error) setError(null); if (sent) setSent(false); }}>
+        <textarea
+          aria-label="Το μήνυμά σου" value={message} maxLength={SUPPORT_MESSAGE_MAX} rows={4}
+          placeholder="Τι χρειάζεσαι;"
+          onChange={e => { setMessage(e.target.value); if (error) setError(null); if (sent) setSent(false); }}
+          onFocus={() => setFocus('m')} onBlur={() => setFocus(null)}
+          style={{ ...field(focus === 'm'), resize: 'vertical', minHeight: 96 }}
+        />
+      </Dictation>
       {error && <div role="alert" style={{ fontSize: 12, color: 'var(--negative)', fontFamily: T.font.sans, marginTop: 6 }}>{error}</div>}
       {sent && !error && <div role="status" style={{ fontSize: 12, color: 'var(--positive)', fontFamily: T.font.sans, marginTop: 6 }}>Στάλθηκε.</div>}
       <div style={{ marginTop: 12 }}>

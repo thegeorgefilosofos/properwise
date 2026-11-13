@@ -12,6 +12,7 @@ import JustifyPolish from "@/components/JustifyPolish";
 import { ConfirmHost } from "@/components/ConfirmDialog";
 import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE } from "@/lib/core/site";
 import { THEME_COLOR } from "@/lib/core/themeColor";
+import { A11Y_INIT_SCRIPT } from "@/lib/core/a11yPrefs";
 import { LOCALE_HEADER, SUGGEST_HEADER, browserLacksGreek, type Locale } from "@/lib/i18n/locale";
 import LangSuggest from "./LangSuggest";
 
@@ -125,6 +126,7 @@ const themeInitScript = `
       for (var i = 0; i < bars.length; i++) bars[i].setAttribute('content', ${JSON.stringify(THEME_COLOR.light)});
     }
   } catch(e) {}
+  ${A11Y_INIT_SCRIPT}
 })();
 `;
 

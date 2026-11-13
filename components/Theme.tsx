@@ -25,6 +25,7 @@ export { T, TT, formGrid, fieldRow, fixedCols, tileGrid, tileRow, fe, feAuto, fe
 export type { Tone } from './tokens';
 import { T, TT, isBlankMetric, type Tone } from './tokens';
 import { hy } from './Hyphen';
+import { prefersLessMotion } from '@/lib/core/a11yPrefs';
 
 // Τα στοιχεία του κρίσιμου μονοπατιού ζουν στο ThemeCore.tsx (δες εκεί γιατί)
 // και ξαναεξάγονται εδώ αυτούσια.
@@ -835,8 +836,8 @@ export function Bar({
 }) {
   const clamp = (n: number) => Math.max(0, Math.min(100, Number.isFinite(n) ? n : 0));
   // Με σβηστή την κίνηση ξεκινά γεμάτη: καμία δεύτερη απόδοση, κανένα τρεμόπαιγμα.
-  const [grown, setGrown] = useState(() => !grow || (
-    typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches));
+  // Και με τη χειροκίνητη «Λιγότερη κίνηση» των Ρυθμίσεων, όχι μόνο της συσκευής.
+  const [grown, setGrown] = useState(() => !grow || prefersLessMotion());
   useEffect(() => {
     if (!grow) return;
     const id = requestAnimationFrame(() => setGrown(true));
@@ -991,17 +992,25 @@ export function SelectBox({ checked, indeterminate, onChange, label }: {
       // Η γραμμή από κάτω είναι συχνά κι αυτή πατήσιμη (άνοιγμα εγγραφής): το
       // πάτημα στο πλαίσιο επιλέγει, δεν ανοίγει.
       onClick={e => { e.stopPropagation(); onChange(); }}
+      // ΣΤΟΧΟΣ 24, ΠΛΑΙΣΙΟ 18. Το axe μετρούσε 18 × 18 στο Χαρτοφυλάκιο στα 375,
+      // κάτω από το 24 του WCAG 2.5.8. Το κουμπί μεγαλώνει διάφανο και το
+      // αρνητικό περιθώριο (2, στο πλέγμα αποστάσεων) κρατά τη διάταξη σχεδόν όπως ήταν· το ορατό πλαίσιο μένει 18.
       style={{
-        width: 18, height: 18, flexShrink: 0, padding: 0, borderRadius: T.radius.xs,
+        width: 24, height: 24, margin: -2, flexShrink: 0, padding: 0, border: 0, background: 'transparent',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+      }}>
+      <span style={{
+        width: 18, height: 18, borderRadius: T.radius.xs,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border-control)'}`,
         background: on ? 'var(--accent)' : 'var(--bg-elevated)',
-        color: 'var(--accent-text)', cursor: 'pointer',
+        color: 'var(--accent-text)',
         transition: `background 0.14s ${T.ease.standard}, border-color 0.14s ${T.ease.standard}`,
       }}>
       {checked
         ? <svg width={11} height={11} viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2.5 6.3l2.2 2.2L9.5 3.6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></svg>
         : indeterminate ? <span style={{ width: 8, height: 2, borderRadius: 3, background: 'currentColor' }} /> : null}
+      </span>
     </button>
   );
 }

@@ -48,6 +48,7 @@ import { FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '@/lib/billing
 import { fpRate, grDateOf } from '@/lib/core/format'
 import AthensNow from './AthensNow'
 import CashHero from './CashHero'
+import { SpeakAmount } from '@/components/SpeakAmount'
 import RentReceived, { receivableLines } from './RentReceived'
 import AgendaPanel from './AgendaPanel'
 import { CalendarQuickAdd } from './calendar/CalendarQuickAdd'
@@ -1078,7 +1079,19 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           χρησιμοποιείται πουθενά αλλού στην εφαρμογή και δεν διαβάζεται με μια
           ματιά. Είναι όλα το ίδιο πράγμα — αριθμός με ετικέτα — και πλέον
           δείχνουν έτσι. */}
-      <SecHdr label={`Η χρονιά ${year}`} sub="Πού καταλήγει με ό,τι ξέρουμε σήμερα" />
+      {/* «ΑΚΟΥΣΕ» ΤΗΝ ΑΛΥΣΙΔΑ ΤΗΣ ΧΡΟΝΙΑΣ. Τα ίδια τέσσερα ποσά με τα πλακίδια
+          από κάτω, από τις ίδιες μεταβλητές, διαβασμένα ολογράφως. Φαίνεται μόνο
+          με την «Ανάγνωση ποσών» των Ρυθμίσεων και μόνο όπου υπάρχουν έσοδα:
+          χωρίς αυτά δεν υπάρχει φόρος ούτε καθαρό να ακουστεί. */}
+      <SecHdr label={`Η χρονιά ${year}`} sub="Πού καταλήγει με ό,τι ξέρουμε σήμερα"
+        right={!moneyGap && isLet(prop) ? (
+          <SpeakAmount title={`Η χρονιά ${year}`} label="τα ποσά της χρονιάς" figures={[
+            { label: 'Έσοδα έτους', amount: annualRent },
+            { label: EXPENSE_LABELS.total, amount: yExp.total },
+            { label: portfolioTax.count > 1 ? 'Μερίδιο φόρου' : 'Φόρος ενοικίου', amount: estTax },
+            { label: 'Καθαρό έτους', amount: annualRent - costs.total - estTax },
+          ]} />
+        ) : undefined} />
       {moneyGap ? (
         <EmptyState icon={<FileText size={20}/>} title="Τα ποσά της χρονιάς περιμένουν" hint="Δεν φορτώθηκαν όλες οι καταχωρήσεις. Με μισές, τα σύνολα δεν θα ήταν αληθινά."/>
       ) : (() => {

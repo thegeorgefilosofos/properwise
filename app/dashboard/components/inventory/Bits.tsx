@@ -232,7 +232,10 @@ export function InlineConditionEdit({item,onUpdate}:{item:InventoryItem;onUpdate
   },[open,place])
   return (
     <div style={{display:'inline-block'}}>
-      <button ref={btnRef} onClick={e=>{e.stopPropagation();setOpen(v=>!v)}} style={{display:'inline-flex',alignItems:'center',gap:4,padding:'3px 10px',borderRadius:T.radius.pill,fontSize: 'var(--fs-xs)',fontWeight:500,fontFamily:T.font.sans,color:CONDITION_COLOR[item.condition],background:CONDITION_COLOR[item.condition]+'18',border:`1px solid ${CONDITION_COLOR[item.condition]}40`,cursor:'pointer'}}>
+      {/* Ορατό ύψος 24 (WCAG 2.5.8: το axe μέτρησε 20 πάνω στις κάρτες) και
+          στόχος αφής 44 από το ψευδοστοιχείο του `.po-box`, όπως στα υπόλοιπα
+          μικρά σχήματα της εφαρμογής. */}
+      <button ref={btnRef} className="po-box" aria-expanded={open} onClick={e=>{e.stopPropagation();setOpen(v=>!v)}} style={{display:'inline-flex',alignItems:'center',gap:4,minHeight:24,padding:'3px 10px',borderRadius:T.radius.pill,fontSize: 'var(--fs-xs)',fontWeight:500,fontFamily:T.font.sans,color:CONDITION_COLOR[item.condition],background:CONDITION_COLOR[item.condition]+'18',border:`1px solid ${CONDITION_COLOR[item.condition]}40`,cursor:'pointer'}}>
         {conditionLabel(item.condition)}
         <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" style={{transform:open?'rotate(180deg)':'none',transition:'transform 0.15s'}}><path d="M2 4l3 3 3-3"/></svg>
       </button>

@@ -17,6 +17,7 @@ import {
   type EventCategory, type EventPriority, type EventStatus, type FormState, CATEGORIES,
   PRIORITIES, STATUSES, RECURRING_OPTIONS,
 } from './model'
+import { Dictation } from '@/components/dictation/MicButton'
 
 // Καθαρός επιλογέας ώρας — αντικαθιστά το άσχημο native <input type="time">.
 // Κουμπί με ώρα → portal λίστα ανά 15΄ (κλιπ-άτρωτη, ίδια αισθητική με το app).
@@ -248,7 +249,9 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
         {/* Σημειώσεις */}
         <div>
           <label htmlFor={fid('notes')} style={lbl}>Σημειώσεις</label>
-          <textarea id={fid('notes')} style={{...fld, height:'auto', minHeight:60, padding:'10px 14px', resize:'vertical'}} placeholder="Οδηγίες, αριθμός λογαριασμού…" value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} onFocus={focus} onBlur={blur}/>
+          <Dictation multiline value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))}>
+            <textarea id={fid('notes')} style={{...fld, height:'auto', minHeight:60, padding:'10px 14px', resize:'vertical'}} placeholder="Οδηγίες, αριθμός λογαριασμού…" value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} onFocus={focus} onBlur={blur}/>
+          </Dictation>
         </div>
       </>)}
     </Modal>

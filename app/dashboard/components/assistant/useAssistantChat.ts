@@ -11,9 +11,8 @@ import type { AssistantActions } from './useAssistantActions'
 import { SAY } from '@/lib/core/dbError'
 import { useState, useRef, useEffect } from 'react'
 import { track, PRODUCT_EVENTS } from '@/lib/analytics/events'
-import {
-  speechRecognizer, speechSupported, type SpeechEvent, type SpeechErrorEvent, type SpeechRecognizer,
-} from '@/lib/core/speech'
+import { useDictation } from '@/components/dictation/useDictation'
+import { pickGreekVoice } from '@/lib/core/speak'
 import { fe } from '@/components/Theme'
 import { NAV_MAP, buildPersonalPrompt, parseAction, cleanForSpeech, addMemory } from '../assistantPersona'
 import { assistantLockedMessage } from '@/lib/billing/aiLimits'
@@ -42,16 +41,39 @@ export function useAssistantChat({
 >) {
 
   // ── Φωνή: ομιλία στα ελληνικά (hands-free) ─────────────────────────────────
-  const [listening, setListening] = useState(false);
+  // Η ΥΠΑΓΟΡΕΥΣΗ ΕΙΝΑΙ Η ΙΔΙΑ ΜΕ ΤΩΝ ΠΕΔΙΩΝ (components/dictation/useDictation).
+  // Η Νόα ζητά μόνο να σταματά στην πρώτη παύση (`continuous: false`), γιατί
+  // εκεί είναι η σειρά της να απαντήσει. Μηνύματα σφάλματος, στίξη με λέξεις
+  // και άρνηση μικροφώνου έρχονται από το κοινό hook.
   const [speaking, setSpeaking] = useState(false);
   const [handsFree, setHandsFree] = useState(false);
-  useEffect(() => { listeningRef.current = listening; }, [listening, listeningRef]);
-  const recRef = useRef<SpeechRecognizer | null>(null);
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
   const handsFreeRef = useRef(false);
-  const supportsSTT = speechSupported();
   const supportsTTS = typeof window !== 'undefined' && 'speechSynthesis' in window;
   useEffect(() => { handsFreeRef.current = handsFree; }, [handsFree]);
+  /** Η επόμενη ακρόαση, από τον χειριστή του τέλους (που ορίζεται πριν από αυτήν). */
+  const relistenRef = useRef<() => void>(() => {});
+
+  const dictation = useDictation({
+    continuous: false,
+    formal: !!prefs.formal,
+    onText: text => setInput(text),
+    onEnd: (final, error) => {
+      if (error === 'denied' || error === 'no-mic' || error === 'unsupported') { setHandsFree(false); handsFreeRef.current = false; }
+      const t = final.trim();
+      if (t) { setInput(''); ask(t, true); return; }
+      // Hands-free: αν δεν πιάστηκε ομιλία (παύση/θόρυβος), ξανάνοιξε το μικρόφωνο
+      // ώστε ο κύκλος να μη «σπάει». Δεν ξεκινά όσο εκφωνείται απάντηση ή ήδη ακούει.
+      if (handsFreeRef.current && (!error || error === 'no-speech')) setTimeout(() => {
+        if (handsFreeRef.current && !listeningRef.current && !(supportsTTS && window.speechSynthesis.speaking)) relistenRef.current();
+      }, 500);
+    },
+  });
+  const listening = dictation.listening;
+  useEffect(() => { listeningRef.current = listening; }, [listening, listeningRef]);
+  const supportsSTT = dictation.supported;
+  // Σε hands-free το «δεν άκουσα» δεν είναι σφάλμα: ο κύκλος απλώς ξανανοίγει.
+  const micMessage = handsFree && dictation.error === 'no-speech' ? '' : dictation.message;
 
   useEffect(() => {
     if (!supportsTTS) return;
@@ -60,21 +82,13 @@ export function useAssistantChat({
     return () => { try { window.speechSynthesis.onvoiceschanged = null; window.speechSynthesis.cancel(); } catch { /* ignore */ } };
   }, [supportsTTS]);
 
-  // Μία φωνή, χωρίς φύλο: διαλέγουμε την πιο ουδέτερη και ευκρινή ελληνική που
-  // δίνει το σύστημα, χωρίς να ψάχνουμε «αντρική» ή «γυναικεία».
-  const pickVoice = (): SpeechSynthesisVoice | null => {
-    const el = voicesRef.current.filter(v => v.lang && v.lang.toLowerCase().startsWith('el'));
-    if (!el.length) return null;
-    return el.find(v => /Google/i.test(v.name)) || el[0];
-  };
-
   const speak = (text: string, after?: () => void) => {
     const spoken = cleanForSpeech(text);
     if (!supportsTTS || !spoken) { after?.(); return; }
     try {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(spoken);
-      const v = pickVoice(); if (v) u.voice = v;
+      const v = pickGreekVoice(voicesRef.current); if (v) u.voice = v;
       u.lang = 'el-GR'; u.rate = 1.0; u.pitch = 1.0;
       u.onstart = () => setSpeaking(true);
       u.onend = () => { setSpeaking(false); after?.(); };
@@ -84,36 +98,14 @@ export function useAssistantChat({
   };
   const stopSpeaking = () => { try { window.speechSynthesis?.cancel(); } catch { /* ignore */ } setSpeaking(false); };
 
-  const stopListening = () => { try { recRef.current?.stop(); } catch { /* ignore */ } setListening(false); };
+  const stopListening = () => { dictation.stop(); };
   const startListening = () => {
-    const SR = speechRecognizer();
-    if (!SR) return;
+    if (!supportsSTT) return;
     stopSpeaking();
-    const rec = new SR();
-    rec.lang = 'el-GR'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
-    let finalText = '';
-    rec.onresult = (e: SpeechEvent) => {
-      let interim = '';
-      const res = e.results;
-      if (!res) return;
-      for (let i = e.resultIndex ?? 0; i < res.length; i++) {
-        const tr = res[i][0]?.transcript || '';
-        if (res[i].isFinal) finalText += tr; else interim += tr;
-      }
-      setInput((finalText + interim).trim());
-    };
-    rec.onerror = (ev: SpeechErrorEvent) => { setListening(false); if ((ev?.error || '') === 'not-allowed' || (ev?.error || '') === 'service-not-allowed') { setHandsFree(false); handsFreeRef.current = false; } };
-    rec.onend = () => {
-      setListening(false);
-      const t = finalText.trim();
-      if (t) { setInput(''); ask(t, true); }
-      // Hands-free: αν δεν πιάστηκε ομιλία (παύση/θόρυβος), ξανάνοιξε το μικρόφωνο
-      // ώστε ο κύκλος να μη «σπάει». Δεν ξεκινά όσο εκφωνείται απάντηση ή ήδη ακούει.
-      else if (handsFreeRef.current) setTimeout(() => { if (handsFreeRef.current && !listeningRef.current && !(supportsTTS && window.speechSynthesis.speaking)) startListening(); }, 500);
-    };
-    recRef.current = rec; setInput(''); setListening(true);
-    try { rec.start(); } catch { setListening(false); }
+    setInput('');
+    void dictation.start();
   };
+  useEffect(() => { relistenRef.current = startListening; });
   const toggleMic = () => { if (listening) stopListening(); else { setOpen(true); startListening(); } };
 
   /**
@@ -345,7 +337,7 @@ export function useAssistantChat({
   useEffect(() => { askRef.current = ask; });
 
   return {
-    listening, speaking, handsFree, setHandsFree, supportsSTT, supportsTTS, stopSpeaking,
+    listening, speaking, handsFree, setHandsFree, supportsSTT, supportsTTS, stopSpeaking, micMessage,
     stopListening, startListening, toggleMic, ask, askImage,
   }
 }

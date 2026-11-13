@@ -68,8 +68,8 @@ html, body { height: 100%; }
    ρύθμιση μεγέθους κειμένου του συστήματος δουλεύουν κανονικά. Απαγορεύει
    μόνο την ΑΥΤΟΜΑΤΗ, αόρατη διόγκωση που αποφασίζει ο περιηγητής.
 
-   Η εφαρμογή έχει ήδη δικό της «Μεγαλύτερο κείμενο» στις Ρυθμίσεις
-   (`html.a11y-large-text`), δηλαδή η μεγέθυνση είναι επιλογή του χρήστη και
+   Η εφαρμογή έχει ήδη δικό της «Μέγεθος κειμένου» στις Ρυθμίσεις
+   (`:root[data-text]`), δηλαδή η μεγέθυνση είναι επιλογή του χρήστη και
    μετριέται — όχι απόφαση του περιηγητή που κανείς δεν βλέπει.
    ═══════════════════════════════════════════════════════════════════════════ */
 html {
@@ -5027,18 +5027,179 @@ a.lp-link { transition: color 0.15s ease, filter 0.15s ease; }
   .acc-choice:hover { transform: none; }
 }
 
-/* ═══ Προσβασιμότητα (χειροκίνητες ρυθμίσεις από τον χρήστη) ═══════════════ */
-/* Μειωμένη κίνηση: σβήνει animations/transitions σε όλη την εφαρμογή. */
-html.a11y-reduce-motion *,
-html.a11y-reduce-motion *::before,
-html.a11y-reduce-motion *::after {
+/* ═══ ΠΡΟΣΒΑΣΙΜΟΤΗΤΑ: ΟΙ ΡΥΘΜΙΣΕΙΣ ΤΟΥ ΧΡΗΣΤΗ ════════════════════════════
+   Ζουν ως ιδιότητες στο <html> (lib/core/a11yPrefs.ts) και μπαίνουν από το
+   σενάριο πριν το πρώτο paint, όπως το θέμα: ο χρήστης που ζήτησε μεγάλο
+   κείμενο δεν βλέπει ποτέ πρώτα το μικρό. */
+
+/* ── ΛΙΓΟΤΕΡΗ ΚΙΝΗΣΗ ΑΚΟΜΗ ΚΙ ΟΤΑΝ Η ΣΥΣΚΕΥΗ ΔΕΝ ΤΗ ΖΗΤΑ ────────────────────
+   Ο,τι σβήνει το `prefers-reduced-motion` το σβήνει και η χειροκίνητη
+   επιλογή. Η προεπιλογή («όπως η συσκευή») δεν γράφει τίποτα εδώ. */
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
   scroll-behavior: auto !important;
 }
-/* Μεγαλύτερο κείμενο: ήπια μεγέθυνση όλης της διεπαφής (zoom, px-agnostic). */
-html.a11y-large-text { zoom: 1.08; }
+
+/* ── ΜΕΓΕΘΟΣ ΚΕΙΜΕΝΟΥ ────────────────────────────────────────────────────
+   ΓΙΑΤΙ `zoom` ΚΑΙ ΟΧΙ `font-size` ΣΤΗ ΡΙΖΑ. Τα μεγέθη της εφαρμογής είναι
+   γραμμένα σε εικονοστοιχεία, όχι σε rem: πάνω από χίλιες τετρακόσιες
+   δηλώσεις. Μια μεγαλύτερη γραμματοσειρά στη ρίζα δεν θα άλλαζε σχεδόν
+   τίποτα. Το `zoom` μεγαλώνει κείμενο, εικονίδια και στόχους αφής μαζί, όπως
+   η μεγέθυνση του περιηγητή. Η διάταξη ξαναρέει στο μικρότερο πλάτος που
+   μένει. Ελέγχθηκε στα 320. */
+:root[data-text="large"]  { zoom: 1.125; }
+:root[data-text="xlarge"] { zoom: 1.25; }
+
+/* ── ΥΨΗΛΗ ΑΝΤΙΘΕΣΗ ──────────────────────────────────────────────────────
+   Τα ίδια tokens, με τιμές που περνούν το WCAG AAA (7:1) για κάθε κείμενο
+   πάνω σε κάθε επιφάνεια. Τα περιγράμματα φαίνονται (3:1 και πάνω). Το
+   μετρά το scripts/guard-contrast.mjs, ως χωριστό χώρο με όριο 7:1.
+   Οι αποχρώσεις -soft, -border και -on-container βγαίνουν με color-mix από
+   τους βασικούς τόνους, οπότε ακολουθούν χωρίς δική τους γραμμή. Οι
+   διαβαθμίσεις των επιφανειών γίνονται συμπαγείς: ένα ντεγκραντέ πίσω από
+   κείμενο είναι ακριβώς ό,τι κάνει την αντίθεση να διαφέρει από σημείο σε
+   σημείο. Ο επιλογέας έχει ειδικότητα 0,3,0, ώστε να κερδίζει και τα δύο
+   θέματα όπου κι αν βρίσκεται στο αρχείο. */
+:root[data-contrast="high"]:not([data-mode="light"]) {
+  --bg-base: #000000;
+  --bg-surface: #0b0f16;
+  --bg-elevated: #151c27;
+  --bg-overlay: #19212d;
+  --bg-hover: rgba(255,255,255,0.10);
+  --text-primary: #ffffff;
+  --text-secondary: #e6ebf2;
+  --text-tertiary: #d3dae4;
+  --border-subtle: #66768d;
+  --border-default: #8796ab;
+  --border-strong: #aab6c7;
+  --border-control: #bcc7d6;
+  --accent: #c2daff;
+  --accent-hover: #d3e4ff;
+  --positive: #93ecce;
+  --negative: #ffc7c1;
+  --warning: #f4d28f;
+  --info: #ccd7ff;
+  --series-out: #b0bccc;
+  --sidebar-bg: #000000;
+  --surface-raised: #0b0f16;
+  --surface-sunken: #000000;
+  --surface-hero: #0b0f16;
+  --surface-kpi: #0b0f16;
+}
+:root[data-mode="light"][data-contrast="high"] {
+  --bg-base: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-elevated: #eef1f5;
+  --bg-overlay: #e9edf2;
+  --bg-hover: rgba(0,0,0,0.06);
+  --text-primary: #000000;
+  --text-secondary: #1b2433;
+  --text-tertiary: #2b3646;
+  --border-subtle: #6f7a8a;
+  --border-default: #525d6d;
+  --border-strong: #333e4e;
+  --border-control: #1f2937;
+  --accent: #0a357f;
+  --accent-hover: #072a66;
+  --positive: #04432c;
+  --negative: #7a1717;
+  --warning: #4d3200;
+  --info: #16327c;
+  --series-out: #4f5a6a;
+  --ch-airbnb: #8c2d31;
+  --ch-booking: #0a406e;
+  --ch-vrbo: #2b348c;
+  --sidebar-bg: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #ffffff;
+  --surface-hero: #ffffff;
+  --surface-kpi: #ffffff;
+}
+/* Η εστίαση στην υψηλή αντίθεση είναι παχιά και στο χρώμα του κειμένου: ο
+   μπλε δακτύλιος των 2 εικονοστοιχείων είναι ακριβώς ό,τι χάνει πρώτο όποιος
+   βλέπει λιγότερο. */
+:root[data-contrast="high"] :focus-visible {
+  outline: 3px solid var(--text-primary) !important;
+  outline-offset: 2px !important;
+}
+
+/* ═══ ΥΠΑΓΟΡΕΥΣΗ (components/dictation/MicButton.tsx) ═════════════════════
+   Στόχος 44 × 44 και ορατός κύκλος 32 στο κέντρο, ώστε να κάθεται μέσα στο
+   πεδίο χωρίς να το φουσκώνει. Ανοιχτό: γεμάτος κύκλος στον τόνο έμφασης
+   και ένας δακτύλιος που ανασαίνει. Με λιγότερη κίνηση ο δακτύλιος μένει
+   σταθερός: η κατάσταση φαίνεται, απλώς δεν κουνιέται. */
+.po-mic {
+  position: relative; flex: none;
+  width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--text-tertiary); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.po-mic::before, .po-mic::after {
+  content: ''; position: absolute; inset: 6px; border-radius: 50%;
+  transition: background-color .15s, box-shadow .15s;
+}
+.po-mic svg { position: relative; z-index: 1; }
+@media (hover: hover) {
+  .po-mic:hover { color: var(--text-primary); }
+  .po-mic:hover::before { background: var(--bg-hover); }
+}
+.po-mic:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
+.po-mic[data-state="error"] { color: var(--negative); }
+.po-mic[aria-pressed="true"] { color: var(--on-tone); }
+.po-mic[aria-pressed="true"]::before { background: var(--accent); }
+.po-mic[aria-pressed="true"]::after { animation: po-mic-breathe 1.6s cubic-bezier(0.2, 0, 0, 1) infinite; }
+@keyframes po-mic-breathe {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); }
+  100% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .po-mic[aria-pressed="true"]::after { animation: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+}
+:root[data-motion="reduce"] .po-mic[aria-pressed="true"]::after { animation: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* Το πεδίο κρατά χώρο για το κουμπί ΜΟΝΟ όπου το κουμπί υπάρχει. Το
+   `!important` νικά το ενσωματωμένο γέμισμα που γράφουν τα πεδία. */
+.po-dictate { position: relative; }
+.po-dictate[data-mic] > input,
+.po-dictate[data-mic] > textarea { padding-inline-end: 44px !important; }
+.po-dictate[data-mic] > .po-mic { position: absolute; inset-inline-end: 0; }
+.po-dictate[data-mic="single"] > .po-mic { top: 50%; transform: translateY(-50%); }
+.po-dictate[data-mic="multi"] > .po-mic { top: 0; }
+/* Μέσα στο TextInput το κουμπί είναι παιδί του flex· τα 44 του περνούν το
+   περίγραμμα του κουτιού κατά ένα εικονοστοιχείο πάνω και κάτω. */
+.po-field-box > .po-mic { margin-block: -1px; }
+.po-dictate-note {
+  margin-top: 6px; font-family: 'Inter', sans-serif; font-size: var(--fs-note);
+  line-height: 1.5; color: var(--negative);
+}
+
+/* ═══ ΤΟ ΟΝΟΜΑ ΤΗΣ ΚΑΡΤΑΣ ΩΣ ΚΟΥΜΠΙ (TabInventory.tsx) ═══════════════════
+   Μοιάζει με τίτλο, συμπεριφέρεται ως κουμπί: εκεί φτάνει το Tab και ο
+   αναγνώστης οθόνης, αφού η κάρτα δεν είναι πια ολόκληρη κουμπί. */
+.app-content button.po-box.po-card-name,
+.po-card-name {
+  display: block; width: 100%; min-height: 24px; padding: 0; margin: 0 0 2px; border: 0;
+  background: transparent; text-align: left; cursor: pointer;
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; line-height: 1.3; color: var(--text-primary);
+}
+.po-card-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+/* ═══ «ΑΚΟΥΣΕ» ΔΙΠΛΑ ΣΤΑ ΒΑΣΙΚΑ ΠΟΣΑ (components/SpeakAmount.tsx) ═══════ */
+.po-speak {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; padding: 0 12px; border-radius: 999px;
+  border: 1px solid var(--border-default); background: var(--bg-surface);
+  color: var(--text-secondary); font-family: 'Inter', sans-serif;
+  font-size: var(--fs-sm); font-weight: 600; cursor: pointer;
+}
+@media (hover: hover) { .po-speak:hover { color: var(--text-primary); border-color: var(--border-strong); } }
+.po-speak:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.po-speak[data-on] { color: var(--accent); border-color: var(--accent); }
 
 /* ═══ Toast (components/Toast.tsx) ════════════════════════════════════════ */
 /* Η μόνη κίνηση: ήπια άνοδος 6px. Το `prefers-reduced-motion` παραπάνω και ο

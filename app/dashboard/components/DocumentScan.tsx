@@ -1044,7 +1044,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   {form.note && <div style={{ ...TT.caption, marginTop: -T.sp.sm }}>{form.note}</div>}
 
                   {/* ── Γ. Σημειώσεις ── */}
-                  <Textarea label="Σημειώσεις" autoGrow rows={2} placeholder="Ό,τι άλλο γράφει το έγγραφο"
+                  <Textarea dictation label="Σημειώσεις" autoGrow rows={2} placeholder="Ό,τι άλλο γράφει το έγγραφο"
                     value={edited.notes || ''} onChange={val => setEdited(p => (p ? { ...p, notes: val } : p))} />
 
                   {/* ── Δ. Δικά σου πεδία: γράφονται στη σημείωση του Φακέλου ως «Όνομα: Τιμή» ── */}

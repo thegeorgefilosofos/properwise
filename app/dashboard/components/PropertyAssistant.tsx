@@ -63,7 +63,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     supabase, openBills, openRent, setClientsStr,
   })
   const {
-    listening, speaking, handsFree, setHandsFree, supportsSTT, supportsTTS, stopSpeaking,
+    listening, speaking, handsFree, setHandsFree, supportsSTT, supportsTTS, stopSpeaking, micMessage,
     stopListening, startListening, toggleMic, ask, askImage,
   } = useAssistantChat({
     listeningRef, setInput, setOpen, setQuota, busy, setErr, setErrDetail, setLimitMsg,
@@ -330,10 +330,15 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
               <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
             </IconBtn>
           </div>
+          {/* Το σφάλμα του μικροφώνου λέει και τι κάνεις τώρα (π.χ. πώς το
+              επιτρέπεις). Διαβάζεται ως ειδοποίηση από τον αναγνώστη οθόνης. */}
+          {micMessage && !listening && (
+            <p role="alert" className="po-dictate-note" style={{ margin: 0, padding: '8px 16px', borderBottom: '1px solid var(--border-subtle)' }}>{micMessage}</p>
+          )}
           {(listening || speaking) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: 'var(--accent-dim)', borderBottom: '1px solid var(--border-subtle)' }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: listening ? 'var(--negative)' : 'var(--accent)', animation: 'pa-pulse 1.1s infinite' }} />
-              <span style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', flex: 1 }}>{listening ? 'Ακούω…' : speakingLabel()}</span>
+              <span style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', flex: 1 }}>{listening ? 'Ακούω' : speakingLabel()}</span>
               {/* Το περιτύλιγμα κρατά την τυπογραφία των 12/700: το LinkBtn κληρονομεί γραμματοσειρά από τον γονέα του */}
               {speaking && <span style={{ fontFamily: T.font.sans, fontSize: 12, fontWeight: 700 }}><LinkBtn onClick={stopSpeaking}>Σταμάτα</LinkBtn></span>}
             </div>
@@ -517,12 +522,12 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                   <svg aria-hidden="true" width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z" /><circle cx="12" cy="13" r="3.2" /></svg>
                 </button>
                 {supportsSTT && (
-                  <button onClick={toggleMic} disabled={busy} className="po-box" aria-label={listening ? 'Σταμάτα' : 'Μίλα'} title={listening ? 'Σταμάτα' : 'Μίλα στα ελληνικά'}
+                  <button onClick={toggleMic} disabled={busy} className="po-box" aria-label="Υπαγόρευση" aria-pressed={listening} title={listening ? 'Σταμάτα' : 'Μίλα στα ελληνικά'}
                     style={{ width: 42, height: 42, flexShrink: 0, borderRadius: '50%', border: 'none', background: listening ? 'var(--negative)' : 'var(--bg-elevated)', color: listening ? 'var(--on-tone)' : 'var(--text-secondary)', cursor: busy ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: listening ? 'pa-pulse 1.1s infinite' : 'none' }}>
                     <svg aria-hidden="true" width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v4" /></svg>
                   </button>
                 )}
-                <input value={input} ref={inputRef} aria-label={prefs.formal ? `Η ερώτησή σας προς ${ASSISTANT_ACC}` : `Η ερώτησή σου προς ${ASSISTANT_ACC}`} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') ask(input); }} placeholder={listening ? 'Ακούω…' : placeholder} disabled={busy}
+                <input value={input} ref={inputRef} aria-label={prefs.formal ? `Η ερώτησή σας προς ${ASSISTANT_ACC}` : `Η ερώτησή σου προς ${ASSISTANT_ACC}`} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') ask(input); }} placeholder={listening ? 'Ακούω' : placeholder} disabled={busy}
                   style={{ flex: 1, minWidth: 0, background: 'var(--bg-base)', border: '1px solid var(--border-control)', borderRadius: T.radius.pill, padding: '10px 15px', color: 'var(--text-primary)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, outline: 'none' }}
                   onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-soft)'; }}
                   onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-control)'; e.currentTarget.style.boxShadow = 'none'; }} />

@@ -198,14 +198,9 @@ export function useDashboard() {
     () => 'Ctrl K',
   );
 
-  // Προσβασιμότητα: εφαρμογή αποθηκευμένων προτιμήσεων σε όλη την εφαρμογή.
-  useEffect(() => {
-    try {
-      const r = document.documentElement;
-      if (localStorage.getItem('po_reduce_motion') === '1') r.classList.add('a11y-reduce-motion');
-      if (localStorage.getItem('po_large_text') === '1') r.classList.add('a11y-large-text');
-    } catch { /* ignore */ }
-  }, []);
+  // Οι ρυθμίσεις προσβασιμότητας ΔΕΝ εφαρμόζονται πια εδώ: τις γράφει στο
+  // <html> το σενάριο του θέματος πριν το πρώτο paint (lib/core/a11yPrefs.ts).
+  // Από effect, ο χρήστης με μεγάλο κείμενο έβλεπε πρώτα το μικρό.
 
   // Καθολικό ⌘K / Ctrl+K για άνοιγμα του command palette.
   //

@@ -457,7 +457,7 @@ export function ItemFormModal({item,onSave,onClose,propertyId,ctx,kwhPrice,start
           )}
         </>)}
         <Field d={f('inv.notes')}>
-          <Textarea value={form.notes||''} onChange={v=>set('notes',v)} placeholder="Παρατηρήσεις, ιστορικό, χαρακτηριστικά…" rows={2}/>
+          <Textarea dictation value={form.notes||''} onChange={v=>set('notes',v)} placeholder="Παρατηρήσεις, ιστορικό, χαρακτηριστικά…" rows={2}/>
         </Field>
       </>)}
     </Modal>

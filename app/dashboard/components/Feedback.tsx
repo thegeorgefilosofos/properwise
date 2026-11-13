@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { T, Btn, Spinner } from '@/components/Theme';
 import { PLANS } from '@/lib/billing/plans';
+import { Dictation } from '@/components/dictation/MicButton';
 
 const MIN_WORDS = 12;
 
@@ -183,25 +184,27 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
             γραφτεί λέξη: ένα άδειο ορθογώνιο που ζητά έκθεση, όχι σχόλιο. Με
             τρεις σειρές η πρόσκληση διαβάζεται ως «δυο κουβέντες» — και το
             `resize: vertical` μένει, για όποιον θέλει να γράψει περισσότερα. */}
-        <textarea
-          aria-label="Το μήνυμά σου"
-          value={body}
-          onChange={e => { setBody(e.target.value); if (error) setError(null); }}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          placeholder="Γράψε ελεύθερα, με δικά σου λόγια. Τι θα σε βοηθούσε περισσότερο;"
-          rows={3}
-          maxLength={4000}
-          style={{
-            width: '100%', boxSizing: 'border-box', marginTop: 14, resize: 'vertical', minHeight: 76,
-            padding: '12px 14px', borderRadius: T.radius.inner,
-            border: `1px solid ${focused ? 'var(--accent)' : 'var(--border-control)'}`,
-            boxShadow: focused ? '0 0 0 3px var(--accent-dim)' : 'none',
-            background: 'var(--bg-surface)', color: 'var(--text-primary)',
-            fontFamily: T.font.sans, fontSize: 14, lineHeight: 1.55, outline: 'none',
-            transition: 'border-color 0.15s, box-shadow 0.15s',
-          }}
-        />
+        <Dictation multiline value={body} style={{ marginTop: 14 }} onChange={v => { setBody(v.slice(0, 4000)); if (error) setError(null); }}>
+          <textarea
+            aria-label="Το μήνυμά σου"
+            value={body}
+            onChange={e => { setBody(e.target.value); if (error) setError(null); }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder="Γράψε ελεύθερα, με δικά σου λόγια. Τι θα σε βοηθούσε περισσότερο;"
+            rows={3}
+            maxLength={4000}
+            style={{
+              width: '100%', boxSizing: 'border-box', resize: 'vertical', minHeight: 76,
+              padding: '12px 14px', borderRadius: T.radius.inner,
+              border: `1px solid ${focused ? 'var(--accent)' : 'var(--border-control)'}`,
+              boxShadow: focused ? '0 0 0 3px var(--accent-dim)' : 'none',
+              background: 'var(--bg-surface)', color: 'var(--text-primary)',
+              fontFamily: T.font.sans, fontSize: 14, lineHeight: 1.55, outline: 'none',
+              transition: 'border-color 0.15s, box-shadow 0.15s',
+            }}
+          />
+        </Dictation>
 
         {/* Μετρητής λέξεων / ένδειξη ετοιμότητας */}
         <div style={{ fontSize: 12, color: ready ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 8, lineHeight: 1.5 }}>
