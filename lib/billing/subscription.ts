@@ -90,6 +90,8 @@ export interface MorSubscription {
  * να γίνεται η καθυστέρηση δωρεάν μήνας. Αλλάζει μόνο με απόφαση ιδιοκτήτη και
  * ΜΑΖΙ με την `public.past_due_grace_days()` της βάσης: το db-replay ελέγχει
  * ότι οι δύο αριθμοί συμφωνούν.
+ *
+ * Απόφαση ιδιοκτήτη 13/11/2026: επτά ημέρες.
  */
 export const PAST_DUE_GRACE_DAYS = 7;
 

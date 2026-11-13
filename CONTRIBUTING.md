@@ -128,7 +128,7 @@ request.
    (`docs/org/ergaleia/codex.md`). The agent that wrote the PR checks each
    finding against the code and either fixes it in the same PR or answers
    once with file and line.
-3. **CI must be green.** The `gate` job (currently named «Ολα πράσινα») fails
+3. **CI must be green.** The `gate` job («All green») fails
    unless every other job in `ci.yml` succeeded.
 4. **A human squash-merges.** Code changes reach `main` only this way, with
    one exception: `.github/workflows/elstat-cpi.yml` runs on a schedule and,
