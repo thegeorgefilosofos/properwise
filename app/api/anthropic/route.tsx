@@ -59,6 +59,24 @@ const MAX_REQUESTS_PER_DAY = Math.max(...dailyLimitsByRank());
 const MAX_BODY_BYTES = 12 * 1024 * 1024; // ~12MB: αρκετό για φωτογραφία/PDF λογαριασμού
 const MAX_MESSAGES   = 40;
 
+/** Το σώμα του πελάτη, όσο το διαβάζει η διαδρομή. Κάθε πεδίο εκτός από τα
+ *  μηνύματα μένει `unknown` και κρίνεται εκεί που χρησιμοποιείται. */
+interface ClientBody {
+  messages: unknown[];
+  persona?: unknown;
+  personal?: unknown;
+  model?: unknown;
+  max_tokens?: unknown;
+  system?: unknown;
+}
+
+/** Αντικείμενο με τουλάχιστον ένα μήνυμα. Οτιδήποτε άλλο είναι 400. */
+function hasMessages(v: unknown): v is ClientBody {
+  if (typeof v !== 'object' || v === null) return false;
+  const messages = (v as { messages?: unknown }).messages;
+  return Array.isArray(messages) && messages.length > 0;
+}
+
 // ── ΠΟΣΟ ΖΕΙ ΑΥΤΗ Η ΣΥΝΑΡΤΗΣΗ ────────────────────────────────────────────────
 // Η διαδρομή ΔΕΝ δήλωνε όριο, οπότε ίσχυε η προεπιλογή της πλατφόρμας — ένα
 // νούμερο που δεν φαίνεται πουθενά στον κώδικα και αλλάζει με το πακέτο
@@ -139,8 +157,7 @@ export async function POST(req: NextRequest) {
   //
   // Διαβάζουμε πρώτα ως κείμενο για να επιβάλουμε σκληρό όριο μεγέθους (το
   // Content-Length μπορεί να λείπει/να είναι πλαστό, μετράμε τα πραγματικά bytes).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let body: any;
+  let parsed: unknown;
   try {
     const raw = await req.text();
     if (raw.length > MAX_BODY_BYTES) {
@@ -149,15 +166,16 @@ export async function POST(req: NextRequest) {
         { status: 413 }
       );
     }
-    body = JSON.parse(raw);
+    parsed = JSON.parse(raw);
   } catch {
     return NextResponse.json({ error: 'Το αίτημα δεν διαβάστηκε.' }, { status: 400 });
   }
   // Ασφάλεια: δεν προωθούμε ΟΛΟ το body του client (θα ήταν γενικός proxy
   // Claude με χρέωση δική μας). Μηνύματα πρέπει να υπάρχουν.
-  if (!Array.isArray(body?.messages) || body.messages.length === 0) {
+  if (!hasMessages(parsed)) {
     return NextResponse.json({ error: 'Λείπουν μηνύματα.' }, { status: 400 });
   }
+  const body = parsed;
   // ── ΤΟ ΜΕΓΑΛΟ PDF ΕΡΧΕΤΑΙ ΑΠΟ ΤΟΝ ΧΩΡΟ ΑΡΧΕΙΩΝ ΤΟΥ ΧΡΗΣΤΗ ─────
   // lib/assistant/stagedFile.ts: μόνο `<uid>/scan-tmp/<uuid>.pdf` του ίδιου
   // χρήστη, με τη δική του συνεδρία (RLS). Κρίνεται πριν από τον μετρητή, ώστε
@@ -303,11 +321,11 @@ export async function POST(req: NextRequest) {
     // αρχίζει με 'assistant'.
     if (body.messages.length > MAX_MESSAGES) {
       let trimmed = body.messages.slice(-MAX_MESSAGES);
-      while (trimmed.length && trimmed[0]?.role !== 'user') trimmed = trimmed.slice(1);
+      while (trimmed.length && (trimmed[0] as { role?: unknown } | null | undefined)?.role !== 'user') trimmed = trimmed.slice(1);
       body.messages = trimmed.length ? trimmed : body.messages.slice(-1);
     }
     const safeBody: Record<string, unknown> = {
-      model:      ALLOWED.has(body.model) ? body.model : 'claude-sonnet-5', // ποτέ opus
+      model:      typeof body.model === 'string' && ALLOWED.has(body.model) ? body.model : 'claude-sonnet-5', // ποτέ opus
       max_tokens: Math.min(Number(body.max_tokens) || 1000, scan ? SCAN_SHAPE.maxTokens : 2000),
       messages:   body.messages,
     };

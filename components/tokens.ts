@@ -201,6 +201,12 @@ export const fd = (d: string | Date) => {
   return `${String(x.getDate()).padStart(2, '0')}/${String(x.getMonth() + 1).padStart(2, '0')}/${x.getFullYear()}`;
 };
 
+// Η σύντομη μορφή, με ρητή απάντηση για την απούσα ημερομηνία (όπως το `feOr`
+// για το ποσό). Ηταν γραμμένη τρεις φορές ως τοπικό `fmtDate` (λίστα ελέγχου,
+// επαφές, απογραφή) με το ίδιο σώμα· η δοκιμή στο tokens.test.ts δείχνει ότι
+// βγάζει ακριβώς ό,τι έβγαζαν και τα τρία.
+export const fdOr = (d: string | null | undefined, absent = '') => (d ? fd(d) : absent);
+
 // Πλήρης μορφή χωρίς συντομογραφία μήνα («30 Ιουνίου 2026»).
 export const fdLong = (d: string | Date) =>
   localDay(d).toLocaleDateString('el-GR', { day: 'numeric', month: 'long', year: 'numeric' });

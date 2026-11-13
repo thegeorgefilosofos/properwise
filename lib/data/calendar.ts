@@ -213,8 +213,14 @@ export interface EventMatch {
   eventDate?: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function applyMatch(query: any, m: EventMatch): any {
+/** Τα φίλτρα που χρειάζεται η `applyMatch`· ο κατασκευαστής του Supabase τα έχει όλα. */
+interface MatchFilters<Q> {
+  eq(column: string, value: unknown): Q;
+  in(column: string, values: readonly unknown[]): Q;
+  like(column: string, pattern: string): Q;
+}
+
+function applyMatch<Q extends MatchFilters<Q>>(query: Q, m: EventMatch): Q {
   let q = query;
   if (m.source !== undefined)    q = q.eq('source', m.source);
   if (m.sources !== undefined)   q = q.in('source', m.sources);
@@ -233,8 +239,7 @@ function applyMatch(query: any, m: EventMatch): any {
 // φίλτρα και ο τύπος του αποτελέσματος θα γύριζε `any` σε κάθε κλήση. Οι
 // αναγνώσεις είναι έξι, όσες χρειάζονται πραγματικά και η καθεμιά λέει τι θέλει.
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function scoped(db: Db, propertyId: string, columns: string): any {
+function scoped(db: Db, propertyId: string, columns: string) {
   return db.from(TABLE).select(columns).eq('property_id', propertyId);
 }
 
