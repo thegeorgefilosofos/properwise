@@ -45,6 +45,7 @@ concurrency:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
   gen:
@@ -144,3 +145,5 @@ jobs:
           PRBODY
           )"
           fi
+          # Το PR του GITHUB_TOKEN δεν ξεκινά το CI μόνο του· το workflow_dispatch ναι.
+          gh workflow run ci.yml --ref "$BRANCH"
