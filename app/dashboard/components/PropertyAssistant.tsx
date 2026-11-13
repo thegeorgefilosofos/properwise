@@ -115,10 +115,14 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   // Το σήμα δεν το επινοούμε: κάθε παράθυρο δηλώνει `aria-modal="true"` — και
   // όσα δεν το δήλωναν, τώρα το δηλώνουν. Όσο υπάρχει ένα ανοιχτό, ο βοηθός
   // αποσύρεται. Μόλις κλείσει, επιστρέφει.
+  //
+  // ΜΙΑ ΕΞΑΙΡΕΣΗ: Η ΠΕΡΙΗΓΗΣΗ ΤΗΣ ΠΡΩΤΗΣ ΕΙΣΟΔΟΥ (ProductTour.tsx). Είναι κι
+  // αυτή `aria-modal`, αλλά το τελευταίο της βήμα δείχνει ΑΚΡΙΒΩΣ αυτό το
+  // κουμπί· αν αποσυρόταν, η περιήγηση θα φώτιζε το κενό.
   const [overlayOpen, setOverlayOpen] = useState(false);
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    const check = () => setOverlayOpen(!!document.querySelector('[aria-modal="true"]'));
+    const check = () => setOverlayOpen(!!document.querySelector('[aria-modal="true"]:not([data-keeps-fab])'));
     check();
     const mo = new MutationObserver(check);
     mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-modal'] });

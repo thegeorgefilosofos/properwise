@@ -26,6 +26,7 @@ import { PEA_CLASSES } from '@/lib/property/pea';
 import { cleanPeaNumber, isoDay, peaReminderDrafts, PEA_NUMBER_MAX, PEA_REMINDER_DAYS } from '@/lib/property/peaExpiry';
 import { syncPeaReminders } from '@/lib/calendar/peaSync';
 import { athensToday } from '@/lib/core/time';
+import { firstTaxOf } from '@/lib/onboarding/firstTax';
 import type { EnfiaWizardInitial } from '@/lib/tools/enfiaCarry';
 import { draftKey, readDraft, writeDraft, clearDraft, sameDraft, restoreDraft } from '@/lib/ui/dismiss';
 import { confirmDiscard } from '@/components/ConfirmDialog';
@@ -366,7 +367,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
    * `owner_afm` ο οδηγός ανοίγει στη «Σύνοψη» με τις επαφές ανοιχτές και τον
    * κέρσορα στο ΑΦΜ, αντί ο χρήστης να περάσει τρία βήματα για να το βρει.
    */
-  focus?: 'owner_afm' | null;
+  focus?: 'owner_afm' | 'rent' | null;
   /**
    * Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΩΣ ΠΡΩΤΗ ΕΠΙΛΟΓΗ. Ο πίνακας τη δίνει σε ΚΑΘΕ νέα
    * καταχώρηση, με ή χωρίς ακίνητα (απόφαση ιδιοκτήτη 10/11/2026· ως τις
@@ -443,7 +444,10 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   });
   const start = draft?.form ?? pristine;
 
-  const [step, setStep] = useState(focusAfm ? SUMMARY_STEP : draft?.step ?? 0); // 0..3
+  // Η κάρτα του πρώτου φόρου ανοίγει την επεξεργασία στο μίσθωμα που λείπει,
+  // δηλαδή στα «Οικονομικά», όχι στον τύπο που μόλις διάλεξε.
+  const focusRent = isEdit && focus === 'rent';
+  const [step, setStep] = useState(focusAfm ? SUMMARY_STEP : focusRent ? 2 : draft?.step ?? 0); // 0..3
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   // Αλλαγή βήματος = νέα προσπάθεια· το παλιό σφάλμα δεν αφορά πια την οθόνη.
@@ -610,6 +614,21 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   const annualRent = rentN != null ? rentN * 12 : null;
   const grossYield = (annualRent != null && effValueN != null && effValueN > 0) ? (annualRent / effValueN) * 100 : null;
 
+  // ── Ο ΦΟΡΟΣ ΤΟΥ ΜΙΣΘΩΜΑΤΟΣ, ΚΑΘΩΣ ΓΡΑΦΕΤΑΙ ──────────────────────────────
+  // Ο ίδιος υπολογισμός με την κάρτα του πρώτου φόρου και το πλακίδιο της
+  // Επισκόπησης (lib/onboarding/firstTax.ts). Ο χρήστης βλέπει τι σημαίνει το
+  // ποσό που γράφει πριν πατήσει αποθήκευση, όχι τρεις οθόνες μετά.
+  const draftTax = statusKey && rentN != null && rentN > 0
+    ? firstTaxOf({ id: existing?.id ?? 'draft', ...dbStatus, target_rent: rentN, ownership: num(ownership) ?? 100 }, athensToday())
+    : null;
+  const rentTaxPreview = draftTax?.rented && draftTax.annual > 0 && (
+    <div role="status" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: grossYield != null ? 12 : 0 }}>
+      <div style={{ ...TT.label, marginBottom: 6 }}>{`Φόρος ενοικίων ${draftTax.year}, ενδεικτικά`}</div>
+      <div style={{ fontFamily: T.font.num, fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{fe(draftTax.tax)}</div>
+      <div style={{ ...TT.caption, marginTop: 6 }}>{`Σε έσοδα ${fe(draftTax.annual)} τον χρόνο. Ο ίδιος υπολογισμός με την Επισκόπηση.`}</div>
+    </div>
+  );
+
   // ΣΕ ΝΟΙΚΙΑΣΜΕΝΟ ΑΚΙΝΗΤΟ ΡΩΤΑΜΕ ΤΟ ΕΝΟΙΚΙΟ, ΟΧΙ ΤΟΝ ΣΤΟΧΟ (αξιολόγηση
   // χρήστη, 20/10/2026). Ο ιδιοκτήτης που μόλις διάλεξε «Μακροχρόνια μίσθωση»
   // διάβαζε «Στόχος ενοικίου» και δεν ήξερε τι να γράψει: έχει ενοίκιο, όχι
@@ -635,6 +654,11 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // ο χρήστης έβλεπε ένα σβηστό κουμπί χωρίς λόγο. Τώρα το πάτημα λέει τι
   // λείπει και φέρνει στο βλέμμα το σημείο που το ζητά.
   const next = () => {
+    // ΤΟ ΟΝΟΜΑ ΕΡΧΕΤΑΙ ΠΡΟΤΕΙΝΟΜΕΝΟ (13/11/2026). Ηταν το μόνο υποχρεωτικό
+    // πεδίο που ζητούσε πληκτρολόγηση και ο νέος χρήστης σταματούσε σε κενό
+    // κουτί για να σκεφτεί ένα όνομα. Τώρα το βήμα ανοίγει με τον τύπο του
+    // ακινήτου («Διαμέρισμα»), επιλεγμένο ώστε το πρώτο πλήκτρο να το αντικαθιστά.
+    if (canNext && step === 0 && !name.trim() && propType) setName(propertyTypeLabel(propType));
     if (canNext) { goStep(s => s + 1); return; }
     if (step === 0) {
       setError('Διάλεξε κατάσταση για να συνεχίσεις.');
@@ -1097,7 +1121,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
           place={place}
           rows={[
             row('prop.name', 'full',
-              <input id={nameId} style={inputStyle} value={name} onChange={e => { setName(e.target.value); setError(''); }} placeholder="Διαμέρισμα στο κέντρο" onFocus={onFocus} onBlur={onBlur} autoFocus />),
+              <input id={nameId} style={inputStyle} value={name} onChange={e => { setName(e.target.value); setError(''); }} placeholder="Διαμέρισμα στο κέντρο" onFocus={e => { onFocus(e); if (!isEdit) e.currentTarget.select(); }} onBlur={onBlur} autoFocus />),
             row('prop.address', 'full',
               <input style={inputStyle} value={address} onChange={e => setAddress(e.target.value)} placeholder="Οδός Παραδείγματος 12, Αθήνα" onFocus={onFocus} onBlur={onBlur} />),
             /* Η οδηγία ΔΕΝ ζει σε placeholder: το placeholder σβήνει με το πρώτο
@@ -1199,7 +1223,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
             row('prop.ownership', 'auto',
               <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={ownership} onChange={e => setOwnership(e.target.value)} max={100} onFocus={onFocus} onBlur={onBlur} />, 'Ποσοστό ιδιοκτησίας (%)'),
           ]}
-          after={grossYield != null && (
+          after={<>{rentTaxPreview}{grossYield != null && (
             <div style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.card, padding: 16 }}>
               <div style={{ fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--accent)', marginBottom: 6 }}>Εκτιμώμενη μεικτή απόδοση</div>
               <div style={{ fontFamily: T.font.num, fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{fp(grossYield)}</div>
@@ -1207,7 +1231,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
                 {`Ετήσια έσοδα ${fe(annualRent!)} επί ${valueN != null ? 'εμπορικής' : 'αντικειμενικής'} αξίας ${fe(effValueN!)}`}
               </div>
             </div>
-          )}
+          )}</>}
         />
       )}
 

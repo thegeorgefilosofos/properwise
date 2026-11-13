@@ -7891,3 +7891,61 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
   .po-foot-legal > a { margin-block: 0; }
 }
 
+
+/* ═══ ΥΠΟΔΟΧΗ ΚΑΙ ΠΕΡΙΗΓΗΣΗ ΤΗΣ ΠΡΩΤΗΣ ΕΙΣΟΔΟΥ ═══════════════════════════════
+   Το γιατί ζει στα WelcomeOnboarding.tsx και ProductTour.tsx. Μόνο υπάρχοντα
+   tokens: επιφάνεια, περίγραμμα, σκιά, πέπλο και τόνος της εφαρμογής, με τις
+   ακτίνες της κλίμακας (παράθυρο 18, κάρτα 14). Καμία νέα όψη.
+
+   Η υποδοχή κάθεται πάνω από τα παράθυρα (3000), όπως και πριν: από εδώ ανοίγει
+   ο οδηγός, όχι από πάνω του. Η περιήγηση παίρνει το βάθος της από τη στοίβα
+   των επικαλύψεων (useOverlayShell). */
+.ob-scrim {
+  position: fixed; inset: 0; z-index: 3000; display: flex; padding: 16px;
+  overflow-y: auto; overscroll-behavior: contain; background: var(--scrim);
+}
+.ob-card {
+  width: min(440px, 100%); margin: auto; padding: 32px 32px 20px; outline: none;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: 18px; box-shadow: var(--elev-3);
+  animation: ob-in 0.32s cubic-bezier(0.2, 0, 0, 1);
+}
+@media (max-width: 420px) { .ob-card { padding: 24px 20px 12px; } }
+.ob-path { list-style: none; margin: 24px 0 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.ob-path-row { display: flex; gap: 12px; align-items: flex-start; }
+.ob-path-num {
+  flex: none; width: 24px; height: 24px; border-radius: 100px; margin-top: 1px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent-soft); color: var(--accent);
+  font-size: var(--fs-xs); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.ob-quiet { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+
+/* Η περιήγηση. Το πέπλο είναι η σκιά του φωτεινού παραθύρου (`.ob-spot`):
+   ένα στοιχείο που ακολουθεί τον στόχο, αντί για τέσσερα κομμάτια γύρω του. */
+.ob-tour { position: fixed; inset: 0; pointer-events: none; }
+.ob-tour-catch { position: absolute; inset: 0; pointer-events: auto; }
+.ob-spot {
+  position: fixed; border-radius: 14px; pointer-events: none;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 0 9999px var(--scrim);
+  transition: top 0.24s cubic-bezier(0.2, 0, 0, 1), left 0.24s cubic-bezier(0.2, 0, 0, 1),
+              width 0.24s cubic-bezier(0.2, 0, 0, 1), height 0.24s cubic-bezier(0.2, 0, 0, 1);
+}
+.ob-tour-card {
+  position: fixed; pointer-events: auto; padding: 16px 20px; outline: none;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: 14px; box-shadow: var(--elev-3);
+  transition: top 0.24s cubic-bezier(0.2, 0, 0, 1), left 0.24s cubic-bezier(0.2, 0, 0, 1);
+  animation: ob-in 0.24s cubic-bezier(0.2, 0, 0, 1);
+}
+.ob-dots { display: flex; gap: 6px; flex: 1; }
+.ob-dots span {
+  width: 6px; height: 6px; border-radius: 100px; background: var(--border-default);
+  transition: width 0.24s cubic-bezier(0.2, 0, 0, 1), background-color 0.24s cubic-bezier(0.2, 0, 0, 1);
+}
+.ob-dots span.on { width: 18px; background: var(--accent); }
+@keyframes ob-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .ob-card, .ob-tour-card { animation: none; }
+  .ob-spot, .ob-tour-card, .ob-dots span { transition: none; }
+}

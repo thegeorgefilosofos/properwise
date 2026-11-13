@@ -87,3 +87,8 @@ export const PortfolioTab = dynamic(() => import('./PortfolioTab'), { loading: T
 export const AddPropertyWizard = dynamic(() => import('./AddPropertyWizard'), { ssr: false });
 export const DocumentScan = dynamic(() => import('./DocumentScan'), { ssr: false });
 export const WelcomeOnboarding = dynamic(() => import('./WelcomeOnboarding'), { ssr: false });
+// Η κάρτα του πρώτου φόρου και η περιήγηση: μία φορά στη ζωή του λογαριασμού,
+// μόνο για όποιον μόλις πρόσθεσε το πρώτο του ακίνητο. Κανένας άλλος δεν τις
+// κατεβάζει.
+export const FirstTaxCard = dynamic(() => import('./FirstTaxCard'), { ssr: false });
+export const ProductTour = dynamic(() => import('./ProductTour'), { ssr: false });

@@ -26,6 +26,8 @@ import {
   AddPropertyWizard,
   DocumentScan,
   WelcomeOnboarding,
+  FirstTaxCard,
+  ProductTour,
 } from './components/lazyTabs';
 import { STATUSES, readStatus, statusLabel as statusLabelOf } from '@/lib/property/status';
 import { tabDecision, canCompare } from '@/lib/property/visibility';
@@ -76,7 +78,7 @@ export default function Dashboard() {
     setHandoverIntent, navShowAll, loading, loadError, showAddModal, setShowAddModal,
     statusDropdown, setStatusDropdown, editProperty, setEditProperty, editFocus, setEditFocus, sidebarOpen, setSidebarOpen,
     announce, setAnnounce, cmdkOpen, setCmdkOpen, quickAddOpen, setQuickAddOpen, manualExpense,
-    setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
+    setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, tourDone, finishTour, startCollapsed, showPreview, setShowPreview,
     scanAfterAdd, setScanAfterAdd, plan, planVersion, refreshPlan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
@@ -107,6 +109,14 @@ export default function Dashboard() {
   // εγγράφου» όταν το έγγραφο είναι Ε9 ή εκκαθαριστικό ΕΝΦΙΑ. Η καρτέλα ΕΝΦΙΑ,
   // βαθιά μέσα στη Λογιστική, στέλνει γεγονός (όπως το «pos:ask»). Η σάρωση
   // περνά και το αρχείο, ώστε να μην ανεβαίνει δεύτερη φορά.
+  // ── Ο ΠΡΩΤΟΣ ΦΟΡΟΣ ΚΑΙ Η ΠΕΡΙΗΓΗΣΗ ─────────────────────────────────────
+  // Μόλις αποθηκευτεί το ΠΡΩΤΟ ακίνητο από τον οδηγό, ανοίγει η κάρτα με τον
+  // φόρο του (FirstTaxCard) και από εκεί, μία φορά, η περιήγηση. Το
+  // `firstTaxBack` θυμάται ότι η επεξεργασία άνοιξε από την κάρτα για το
+  // μίσθωμα που έλειπε, ώστε η κάρτα να ξαναφανεί με τον φόρο μόλις γραφτεί.
+  const [firstTax, setFirstTax] = useState<Property | null>(null);
+  const [firstTaxBack, setFirstTaxBack] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
   const [myaadeOpen, setMyaadeOpen] = useState(false);
   const [myaadeFile, setMyaadeFile] = useState<File | null>(null);
   // Το PDF που η Σάρωση έστειλε κατευθείαν (χωρίς βήμα ελέγχου): η μαζική δείχνει
@@ -855,7 +865,7 @@ export default function Dashboard() {
               // ήταν σκέτη τελεία: δύο πληροφορίες που ο αναγνώστης οθόνης δεν
               // μπορούσε να μεταφέρει με κανέναν τρόπο. Το `aria-current` λέει
               // πού βρίσκεσαι και το σήμα αποκτά τον αριθμό του.
-              <button key={item.id} className={`bottom-nav-item ${isActive?'active':''}`} onClick={onTap}
+              <button key={item.id} data-tour-nav={item.id} className={`bottom-nav-item ${isActive?'active':''}`} onClick={onTap}
                 aria-current={isActive ? 'page' : undefined}>
                 {item.icon}
                 <span>{item.label}</span>
@@ -965,7 +975,7 @@ export default function Dashboard() {
           onSaved={async()=>{await fetchProperties(user.id);}}/>}
       </Modal>
 
-      {showWelcome&&user&&<WelcomeOnboarding userId={user.id}
+      {showWelcome&&user&&<WelcomeOnboarding userId={user.id} name={fullName}
         onAddProperty={()=>{ setShowWelcome(false); openWizard('welcome'); }}
         // ═══ Η ΣΑΡΩΣΗ ΠΕΡΝΑΕΙ ΑΠΟ ΤΟΝ ΟΔΗΓΟ ═════════════════════════════════
         // Εδώ δημιουργούνταν σιωπηλά «Νέο ακίνητο», διαμέρισμα, με κατάσταση
@@ -995,14 +1005,30 @@ export default function Dashboard() {
         onBulkImport={()=>{ setShowAddModal(false); setScanAfterAdd(false); dropEnfiaCarry(); openMyaade(); }}
         hasProperties={properties.length > 0}
         onClose={()=>{setShowAddModal(false);setScanAfterAdd(false);dropEnfiaCarry();}} onSaved={async(id)=>{
+        // Το πρώτο ακίνητο του λογαριασμού: μετρημένο ΠΡΙΝ την ανανέωση της λίστας.
+        const first = properties.length === 0;
         setShowAddModal(false);
         await commitEnfiaCarry(id);
         const list = await fetchProperties(user.id);
-        const added = scanAfterAdd && id ? list?.find(p => p.id === id) : undefined;
+        const savedProp = id ? list?.find(p => p.id === id) : undefined;
+        const added = scanAfterAdd ? savedProp : undefined;
         setScanAfterAdd(false);
         if (added) { setSelected(added); setNav('overview'); setQuickAddOpen(true); }
+        // Ο ΦΟΡΟΣ ΑΜΕΣΩΣ ΜΕΤΑ ΤΗΝ ΑΠΟΘΗΚΕΥΣΗ. Οχι όταν ακολουθεί σάρωση: εκεί ο
+        // χρήστης ζήτησε ήδη την επόμενη κίνηση.
+        else if (first && savedProp) { setSelected(savedProp); setNav('overview'); setFirstTax(savedProp); }
       }}/>}
-      {editProperty&&user&&<AddPropertyWizard userId={user.id} existing={editProperty} focus={editFocus} onClose={()=>{setEditProperty(null);setEditFocus(null);}} onSaved={async()=>{setEditProperty(null);setEditFocus(null);await fetchProperties(user.id);}}/>}
+      {editProperty&&user&&<AddPropertyWizard userId={user.id} existing={editProperty} focus={editFocus}
+        onClose={()=>{ const back = firstTaxBack ? editProperty : null; setEditProperty(null);setEditFocus(null); setFirstTaxBack(false); if (back) setFirstTax(back); }}
+        onSaved={async(id)=>{ const back = firstTaxBack; setEditProperty(null);setEditFocus(null); setFirstTaxBack(false);
+          const list = await fetchProperties(user.id);
+          const again = back ? list?.find(p => p.id === (id ?? editProperty.id)) : undefined;
+          if (again) setFirstTax(again); }}/>}
+      {firstTax&&<FirstTaxCard property={firstTax} offerTour={!tourDone}
+        onTour={()=>{ setFirstTax(null); setTourOpen(true); }}
+        onClose={()=>{ setFirstTax(null); if (!tourDone) finishTour(); }}
+        onAddRent={()=>{ const p = firstTax; setFirstTax(null); setFirstTaxBack(true); setEditFocus('rent'); setEditProperty(p); }} />}
+      {tourOpen&&<ProductTour onDone={()=>{ setTourOpen(false); finishTour(); }} />}
       {myaadeOpen&&<MyaadeImport userId={user.id} limit={propertyLimit(ent)} initialFile={myaadeFile ?? undefined}
         fromScan={myaadeFromScan ?? undefined}
         // «ΣΑΡΩΣΕ ΤΟ ΩΣ ΕΓΓΡΑΦΟ»: πίσω στη Σάρωση με το ίδιο αρχείο, μόνο όταν η
