@@ -17,6 +17,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type CSSProperties } from 'react';
 import { useDictation } from './useDictation';
 
+type Engine = typeof import('@/lib/core/dictation');
+
 type Field = HTMLInputElement | HTMLTextAreaElement;
 
 const isEn = () => typeof document !== 'undefined' && /^en\b/i.test(document.documentElement.lang || '');
@@ -61,21 +63,25 @@ export function useMicField({ value, onChange, multiline = false, getField, enab
   const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
   useEffect(() => { valueRef.current = value; onChangeRef.current = onChange; });
-  const composeRef = useRef<((s: string) => { value: string; caret: number }) | null>(null);
+  const writerRef = useRef<ReturnType<Engine['fieldWriter']> | null>(null);
   const caretRef = useRef<number | null>(null);
   const [announce, setAnnounce] = useState('');
 
   const d = useDictation({
     continuous: true,
     onText: text => {
-      const c = composeRef.current;
-      if (!c) return;
-      const r = c(text);
+      // Ο συγγραφέας γράφει μόνο πάνω σε δική του τιμή (lib/core/dictation.ts,
+      // `fieldWriter`): αν ο χρήστης πληκτρολόγησε, το αποτέλεσμα πετιέται.
+      const r = writerRef.current?.apply(text, valueRef.current);
+      if (!r) return;
       caretRef.current = r.caret;
+      // Η νέα τιμή ισχύει αμέσως, πριν από την επόμενη απόδοση: δύο αποτελέσματα
+      // που φτάνουν πριν προλάβει η React δεν πρέπει να μοιάζουν με πληκτρολόγηση.
+      valueRef.current = r.value;
       onChangeRef.current(r.value);
     },
     onEnd: (_final, error) => {
-      composeRef.current = null;
+      writerRef.current = null;
       setAnnounce(error ? '' : words(isEn()).off);
     },
   });
@@ -93,16 +99,18 @@ export function useMicField({ value, onChange, multiline = false, getField, enab
     if (el instanceof HTMLTextAreaElement && el.scrollHeight > el.clientHeight) el.scrollTop = el.scrollHeight;
   }, [value, getField]);
 
-  // Ο χρήστης πληκτρολογεί: η υπαγόρευση σταματά και το μήνυμα σβήνει. Οι
-  // δικές μας αλλαγές περνούν από τη React και δεν βγάζουν συμβάν `input`.
-  const { listening, stop, clear, message } = d;
+  // Ο χρήστης πληκτρολογεί: η υπαγόρευση κλείνει ΧΩΡΙΣ να παραδώσει ό,τι
+  // είχε ακούσει και το μήνυμα σβήνει. Οι δικές μας αλλαγές περνούν από τη
+  // React και δεν βγάζουν συμβάν `input`. Με `abort` και όχι `stop`: το `stop`
+  // παραδίδει ακόμη ένα αποτέλεσμα, που θα έσβηνε όσα μόλις γράφτηκαν.
+  const { listening, abort, clear, message } = d;
   useEffect(() => {
     const el = getField();
     if (!el) return;
-    const onInput = () => { if (listening) stop(); if (message) clear(); };
+    const onInput = () => { if (listening) { writerRef.current = null; abort(); } if (message) clear(); };
     el.addEventListener('input', onInput);
     return () => el.removeEventListener('input', onInput);
-  }, [getField, listening, stop, clear, message]);
+  }, [getField, listening, abort, clear, message]);
 
   const wasListening = useRef(false);
   useEffect(() => {
@@ -123,7 +131,7 @@ export function useMicField({ value, onChange, multiline = false, getField, enab
         // φυσικό εκεί είναι να συνεχίσει το κείμενο, όχι να γράψει μπροστά του.
         const focused = typeof document !== 'undefined' && document.activeElement === el;
         const touched = focused || start !== 0 || end !== 0;
-        composeRef.current = engine.composer({
+        writerRef.current = engine.fieldWriter({
           value: v,
           start: touched ? start : v.length,
           end: touched ? end : v.length,

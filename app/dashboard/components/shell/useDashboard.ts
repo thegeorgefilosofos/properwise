@@ -9,6 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useNavHistory } from '../useNavHistory'
 import { useEffect, useState, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
+import { A11Y_KEY, applyA11y, parseA11y } from '@/lib/core/a11yPrefs'
 import { createClient } from '@/lib/supabase/client'
 import { hardNavigate } from '@/lib/core/navigate'
 import { endSession, SIGN_OUT_FAILED } from '@/lib/auth/endSession'
@@ -198,9 +199,19 @@ export function useDashboard() {
     () => 'Ctrl K',
   );
 
-  // Οι ρυθμίσεις προσβασιμότητας ΔΕΝ εφαρμόζονται πια εδώ: τις γράφει στο
-  // <html> το σενάριο του θέματος πριν το πρώτο paint (lib/core/a11yPrefs.ts).
-  // Από effect, ο χρήστης με μεγάλο κείμενο έβλεπε πρώτα το μικρό.
+  // Οι ρυθμίσεις προσβασιμότητας ΔΕΝ εφαρμόζονται πια εδώ στη φόρτωση: τις
+  // γράφει στο <html> το σενάριο του θέματος πριν το πρώτο paint
+  // (lib/core/a11yPrefs.ts). Από effect, ο χρήστης με μεγάλο κείμενο έβλεπε
+  // πρώτα το μικρό. Εδώ μένει μόνο ο συγχρονισμός ανάμεσα σε καρτέλες: η
+  // αλλαγή στη μία φτάνει στην άλλη με το συμβάν `storage`, χωρίς ανανέωση.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== A11Y_KEY) return;
+      try { applyA11y(document.documentElement, parseA11y(e.newValue)); } catch { /* χωρίς DOM */ }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   // Καθολικό ⌘K / Ctrl+K για άνοιγμα του command palette.
   //

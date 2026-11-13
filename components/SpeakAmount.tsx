@@ -35,11 +35,17 @@ export function SpeakIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+function StopIcon() {
+  return (
+    <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
+  );
+}
+
 /**
  * Το κουμπί. `always`: φαίνεται και χωρίς τη ρύθμιση (για το δείγμα μέσα
  * στις ίδιες τις Ρυθμίσεις).
  */
-export function SpeakAmount({ title, figures, label, always = false }: {
+export function SpeakAmount({ title, figures, label, always = false, text, variant = 'pill' }: {
   title: string;
   figures: readonly SpokenFigure[];
   /**
@@ -49,6 +55,14 @@ export function SpeakAmount({ title, figures, label, always = false }: {
    */
   label: string;
   always?: boolean;
+  /** Ορατό κείμενο στη θέση του «Άκουσε» (π.χ. «Άκουσε ένα παράδειγμα»). */
+  text?: string;
+  /**
+   * `icon`: στρογγυλό κουμπί με το ηχείο, ίδιας γεωμετρίας με το μικρόφωνο
+   * (στόχος 44, ορατός κύκλος 32). Για κεφαλίδες, όπου ένα περιγραμμένο
+   * κουμπί με λέξη ήταν πιο ψηλό από την ίδια την κεφαλίδα.
+   */
+  variant?: 'pill' | 'icon';
 }) {
   const [prefs] = useA11yPrefs();
   const supported = useSyncExternalStore(NEVER, ttsSupported, () => false);
@@ -62,11 +76,26 @@ export function SpeakAmount({ title, figures, label, always = false }: {
     const ok = speakGreek(spokenFigures(title, figures), { start: () => setSpeaking(true), end: () => setSpeaking(false) });
     if (ok) setSpeaking(true);
   };
+  if (variant === 'icon') {
+    // Όνομα σταθερό, κατάσταση στο `aria-pressed`: το όνομα δεν αλλάζει κάτω
+    // από τα δάχτυλα του χρήστη, όπως και στο μικρόφωνο.
+    const name = `Άκουσε ${label}`;
+    return (
+      <button type="button" className="po-mic po-speak-icon" aria-pressed={speaking} aria-label={name}
+        title={speaking ? 'Σταμάτα την ανάγνωση' : name} onClick={press}>
+        {speaking ? <StopIcon /> : <SpeakIcon size={18} />}
+      </button>
+    );
+  }
   return (
     <button type="button" className="po-speak" data-on={speaking || undefined} onClick={press}>
       <SpeakIcon />
-      <span>{speaking ? 'Σταμάτα' : 'Άκουσε'}</span>
-      <span className="sr-only">{speaking ? ' την ανάγνωση' : ` ${label}`}</span>
+      {text && !speaking
+        ? <span>{text}</span>
+        : <>
+            <span>{speaking ? 'Σταμάτα' : 'Άκουσε'}</span>
+            <span className="sr-only">{speaking ? ' την ανάγνωση' : ` ${label}`}</span>
+          </>}
     </button>
   );
 }

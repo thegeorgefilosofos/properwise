@@ -82,10 +82,66 @@ export const recognitionLang = (pageLang: string): string => (isEnglish(pageLang
  * «απέτυχε» χωρίς επόμενο βήμα αφήνει τον χρήστη μπροστά σε κουμπί που δεν
  * ξέρει αν θα δουλέψει την επόμενη φορά.
  */
-export function errorMessage(error: DictationError, opts: { lang?: string; formal?: boolean } = {}): string {
+/**
+ * Πού ζει ο διακόπτης του μικροφώνου. Το «λουκέτο δίπλα στη διεύθυνση» είναι
+ * σωστό μόνο στον Chrome και στον Edge του υπολογιστή. Στο iPhone ο διακόπτης
+ * είναι στο «aA», στο Android στις Άδειες, στο Safari του Mac στις Ρυθμίσεις
+ * του. Η εγκατεστημένη εφαρμογή δεν έχει καν γραμμή διεύθυνσης.
+ */
+export type Platform = 'ios' | 'android' | 'mac-safari' | 'pwa' | 'desktop'
+
+/**
+ * @param ua         το User-Agent
+ * @param standalone τρέχει ως εγκατεστημένη εφαρμογή (display-mode: standalone)
+ * @param touch      `navigator.maxTouchPoints`: το iPad δηλώνει Mac αλλά έχει αφή
+ */
+export function platformOf(ua: string, standalone: boolean, touch = 0): Platform {
+  if (standalone) return 'pwa'
+  if (/iPhone|iPad|iPod/i.test(ua)) return 'ios'
+  const safari = /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox/i.test(ua)
+  if (/Macintosh/i.test(ua) && safari) return touch > 1 ? 'ios' : 'mac-safari'
+  if (/Android/i.test(ua)) return 'android'
+  return 'desktop'
+}
+
+/** Η πλατφόρμα αυτού του περιηγητή. Εκτός περιηγητή: υπολογιστής. */
+export function currentPlatform(): Platform {
+  if (typeof navigator === 'undefined') return 'desktop'
+  let standalone = false
+  try { standalone = !!window.matchMedia?.('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true } catch { /* παλιός περιηγητής */ }
+  return platformOf(navigator.userAgent || '', standalone, navigator.maxTouchPoints || 0)
+}
+
+const DENIED_EL: Record<Platform, [string, string]> = {
+  'desktop': [
+    'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Πάτησε το λουκέτο δίπλα στη διεύθυνση, επίτρεψε το Μικρόφωνο και δοκίμασε ξανά.',
+    'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Πατήστε το λουκέτο δίπλα στη διεύθυνση, επιτρέψτε το Μικρόφωνο και δοκιμάστε ξανά.'],
+  'ios': [
+    'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Πάτησε «aA» στη γραμμή διεύθυνσης, μετά Ρυθμίσεις ιστοτόπου, επίτρεψε το Μικρόφωνο και δοκίμασε ξανά.',
+    'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Πατήστε «aA» στη γραμμή διεύθυνσης, μετά Ρυθμίσεις ιστοτόπου, επιτρέψτε το Μικρόφωνο και δοκιμάστε ξανά.'],
+  'android': [
+    'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Πάτησε το εικονίδιο αριστερά από τη διεύθυνση, μετά Άδειες, επίτρεψε το Μικρόφωνο και δοκίμασε ξανά.',
+    'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Πατήστε το εικονίδιο αριστερά από τη διεύθυνση, μετά Άδειες, επιτρέψτε το Μικρόφωνο και δοκιμάστε ξανά.'],
+  'mac-safari': [
+    'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Στο μενού Safari άνοιξε Ρυθμίσεις, μετά Ιστότοποι και Μικρόφωνο, επίτρεψέ το για αυτή τη σελίδα και δοκίμασε ξανά.',
+    'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Στο μενού Safari ανοίξτε Ρυθμίσεις, μετά Ιστότοποι και Μικρόφωνο, επιτρέψτε το για αυτή τη σελίδα και δοκιμάστε ξανά.'],
+  'pwa': [
+    'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Άνοιξε τις ρυθμίσεις της συσκευής για το PROPERWISE, επίτρεψε το Μικρόφωνο και δοκίμασε ξανά.',
+    'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Ανοίξτε τις ρυθμίσεις της συσκευής για το PROPERWISE, επιτρέψτε το Μικρόφωνο και δοκιμάστε ξανά.'],
+}
+const DENIED_EN: Record<Platform, string> = {
+  'desktop': 'The microphone is blocked for this site. Click the lock icon next to the address, allow Microphone and try again.',
+  'ios': 'The microphone is blocked for this site. Tap "aA" in the address bar, then Site Settings, allow Microphone and try again.',
+  'android': 'The microphone is blocked for this site. Tap the icon left of the address, then Permissions, allow Microphone and try again.',
+  'mac-safari': 'The microphone is blocked for this site. In the Safari menu open Settings, then Websites and Microphone, allow it for this page and try again.',
+  'pwa': 'The microphone is blocked for this app. Open your device settings for PROPERWISE, allow Microphone and try again.',
+}
+
+export function errorMessage(error: DictationError, opts: { lang?: string; formal?: boolean; platform?: Platform } = {}): string {
+  const platform = opts.platform ?? 'desktop'
   if (isEnglish(opts.lang || '')) {
     switch (error) {
-      case 'denied': return 'The microphone is blocked for this site. Click the lock icon next to the address, allow Microphone and try again.'
+      case 'denied': return DENIED_EN[platform]
       case 'no-speech': return 'I did not hear anything. Tap the microphone and speak.'
       case 'no-mic': return 'No microphone found. Connect one and try again.'
       case 'network': return 'Dictation needs an internet connection. Try again in a moment.'
@@ -96,9 +152,7 @@ export function errorMessage(error: DictationError, opts: { lang?: string; forma
   }
   const f = !!opts.formal
   switch (error) {
-    case 'denied': return f
-      ? 'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Πατήστε το λουκέτο δίπλα στη διεύθυνση, επιτρέψτε το Μικρόφωνο και δοκιμάστε ξανά.'
-      : 'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Πάτησε το λουκέτο δίπλα στη διεύθυνση, επίτρεψε το Μικρόφωνο και δοκίμασε ξανά.'
+    case 'denied': return DENIED_EL[platform][f ? 1 : 0]
     case 'no-speech': return f
       ? 'Δεν άκουσα κάτι. Πατήστε το μικρόφωνο και μιλήστε.'
       : 'Δεν άκουσα κάτι. Πάτησε το μικρόφωνο και μίλα.'
@@ -219,6 +273,33 @@ export function composer(at: InsertionPoint): (spoken: string) => { value: strin
   }
 }
 
+/**
+ * Ο συγγραφέας ενός πεδίου για μία συνεδρία: γράφει ΜΟΝΟ πάνω σε τιμή που
+ * έγραψε ο ίδιος.
+ *
+ * ΓΙΑΤΙ. Οταν ο χρήστης αρχίσει να πληκτρολογεί, η υπαγόρευση σταματά. Ομως
+ * το `stop()` του περιηγητή παραδίδει ακόμη ένα τελικό αποτέλεσμα για τον ήχο
+ * που είχε ήδη πιάσει. Ο ελληνικός IME βγάζει κι αυτός συμβάντα `input`.
+ * Εκείνο το τελευταίο αποτέλεσμα χτιζόταν από την τιμή της στιγμής που πατήθηκε
+ * το μικρόφωνο και έσβηνε όσα πληκτρολογήθηκαν στο μεταξύ. Τώρα, μόλις η τιμή
+ * του πεδίου διαφέρει από την τελευταία που γράψαμε, ο συγγραφέας παραιτείται
+ * για όλη τη συνεδρία: η πληκτρολόγηση κερδίζει πάντα.
+ */
+export function fieldWriter(at: InsertionPoint): {
+  apply(spoken: string, current: string): { value: string; caret: number } | null
+} {
+  const compose = composer(at)
+  let expected: string | null = at.value
+  return {
+    apply(spoken, current) {
+      if (expected === null || current !== expected) { expected = null; return null }
+      const r = compose(spoken)
+      expected = r.value
+      return r
+    },
+  }
+}
+
 // ── Η συνεδρία ────────────────────────────────────────────────────────────
 
 export interface SessionOptions {
@@ -293,6 +374,7 @@ export function startSession(o: SessionOptions): Session | null {
   }
 
   rec.onresult = (e: SpeechEvent) => {
+    if (ended) return
     const t = transcriptOf(e)
     final = formatSpoken(t.final, o.lang)
     const all = formatSpoken([t.final, t.interim].filter(Boolean).join(' '), o.lang)
@@ -324,8 +406,12 @@ export function startSession(o: SessionOptions): Session | null {
 
   return {
     stop() { disarm(); try { rec.stop() } catch { finish() } },
+    // ΧΩΡΙΣ ΚΕΙΜΕΝΟ. Το abort σημαίνει «ο χρήστης έφυγε» (κλείσιμο οθόνης,
+    // πληκτρολόγηση): ό,τι είχε ακουστεί δεν παραδίδεται, αλλιώς η Νόα θα
+    // έστελνε ερώτηση από σελίδα που ο χρήστης έχει ήδη αφήσει.
     abort() {
       disarm()
+      final = ''
       try { if (rec.abort) rec.abort(); else rec.stop() } catch { /* ήδη κλειστή */ }
       finish()
     },

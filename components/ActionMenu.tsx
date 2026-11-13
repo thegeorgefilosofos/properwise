@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, MoreHorizontal } from 'lucide-react';
 import { T, quietFocus } from '@/components/Theme';
+import { cssRect, cssViewW, cssViewH } from '@/lib/core/cssZoom';
 
 export interface ActionMenuItem {
   key: string;
@@ -121,14 +122,14 @@ export function ActionMenu({
   // να υπάρχει καμία ένδειξη ότι υπάρχουν. Το ανώτατο ύψος είναι ο χώρος ως την
   // κάτω άκρη και ό,τι περισσεύει κυλά μέσα στο μενού.
   const place = useCallback(() => {
-    const b = btnRef.current?.getBoundingClientRect();
+    const b = cssRect(btnRef.current);
     if (!b) return;
-    const vw = window.innerWidth;
+    const vw = cssViewW();
     const width = Math.min(MENU_MAX, Math.max(0, vw - 2 * EDGE));
     const wanted = align === 'left' ? b.left : b.right - width;
     const left = Math.min(Math.max(EDGE, wanted), vw - EDGE - width);
     const top = b.bottom + GAP;
-    setPos({ top, left, width, maxHeight: Math.max(0, window.innerHeight - top - EDGE) });
+    setPos({ top, left, width, maxHeight: Math.max(0, cssViewH() - top - EDGE) });
   }, [align]);
 
   useEffect(() => {

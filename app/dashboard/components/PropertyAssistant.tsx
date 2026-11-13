@@ -63,7 +63,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     supabase, openBills, openRent, setClientsStr,
   })
   const {
-    listening, speaking, handsFree, setHandsFree, supportsSTT, supportsTTS, stopSpeaking, micMessage,
+    listening, speaking, handsFree, setHandsFree, supportsSTT, supportsTTS, stopSpeaking, micMessage, preloadMic,
     stopListening, startListening, toggleMic, ask, askImage,
   } = useAssistantChat({
     listeningRef, setInput, setOpen, setQuota, busy, setErr, setErrDetail, setLimitMsg,
@@ -72,6 +72,10 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     canNavigate, setMemories, userId, runAction, answeredRef, nudgedRef, setPendingDoc, askRef,
     propertyId,
   })
+  // Η ΜΗΧΑΝΗ ΤΗΣ ΦΩΝΗΣ ΚΑΤΕΒΑΙΝΕΙ ΜΟΛΙΣ ΑΝΟΙΞΕΙ ΤΟ ΠΑΝΕΛ, όχι στο πρώτο πάτημα:
+  // έτσι το μικρόφωνο ανοίγει μέσα στην ίδια χειρονομία του χρήστη, που κάποιοι
+  // περιηγητές (Safari στο iPhone) τη θέλουν για να δώσουν μικρόφωνο.
+  useEffect(() => { if (open) preloadMic(); }, [open, preloadMic])
   // Πριν από το πρώτο ακίνητο το ιστορικό είναι του χρήστη (assistantPersona.ts).
   const histId = historyId(propertyId, userId);
 
@@ -330,11 +334,6 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
               <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
             </IconBtn>
           </div>
-          {/* Το σφάλμα του μικροφώνου λέει και τι κάνεις τώρα (π.χ. πώς το
-              επιτρέπεις). Διαβάζεται ως ειδοποίηση από τον αναγνώστη οθόνης. */}
-          {micMessage && !listening && (
-            <p role="alert" className="po-dictate-note" style={{ margin: 0, padding: '8px 16px', borderBottom: '1px solid var(--border-subtle)' }}>{micMessage}</p>
-          )}
           {(listening || speaking) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: 'var(--accent-dim)', borderBottom: '1px solid var(--border-subtle)' }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: listening ? 'var(--negative)' : 'var(--accent)', animation: 'pa-pulse 1.1s infinite' }} />
@@ -509,8 +508,15 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                 )}
               </div>
 
+              {/* ΤΟ ΣΦΑΛΜΑ ΤΟΥ ΜΙΚΡΟΦΩΝΟΥ, ΑΚΡΙΒΩΣ ΠΑΝΩ ΑΠΟ ΤΟ ΜΙΚΡΟΦΩΝΟ. Ζούσε στην
+                  κορυφή του πάνελ, ενώ το βλέμμα του χρήστη είναι κάτω, στο πεδίο
+                  και στο μικρόφωνο που μόλις πάτησε. Λέει και τι κάνει τώρα (π.χ.
+                  πώς επιτρέπει το μικρόφωνο) και διαβάζεται ως ειδοποίηση. */}
+              {micMessage && !listening && (
+                <p role="alert" className="po-dictate-note" style={{ margin: 0, padding: '8px 14px 0', borderTop: '1px solid var(--border-subtle)' }}>{micMessage}</p>
+              )}
               {/* Είσοδος */}
-              <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderTop: '1px solid var(--border-subtle)', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderTop: micMessage && !listening ? 'none' : '1px solid var(--border-subtle)', alignItems: 'center' }}>
                 <input ref={imgRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) askImage(f); e.currentTarget.value = ''; }} />
                 <button onClick={() => {
                   if (busy) return;
@@ -638,7 +644,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
            οποία ρωτάς. Ένα κεντραρισμένο παράθυρο με σκοτεινό φόντο θα έκρυβε
            ακριβώς τα νούμερα που συζητάτε. Ευθυγραμμίζεται μόνο η ακτίνα με το
            token (ήταν καρφωμένο 18px, δηλαδή η ίδια τιμή γραμμένη δεύτερη φορά). */
-        .pa-panel{position:fixed;right:24px;bottom:92px;width:390px;max-width:calc(100vw - 32px);height:min(600px,calc(100vh - 130px));background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:${T.radius.modal}px;box-shadow:var(--highlight-inset),var(--elev-3);z-index:1200;display:flex;flex-direction:column;overflow:hidden}
+        .pa-panel{position:fixed;right:24px;bottom:92px;width:390px;max-width:calc(calc(100vw / var(--zoom, 1)) - 32px);height:min(600px,calc(calc(100vh / var(--zoom, 1)) - 130px));background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:${T.radius.modal}px;box-shadow:var(--highlight-inset),var(--elev-3);z-index:1200;display:flex;flex-direction:column;overflow:hidden}
         .pa-panel:focus{outline:none}
         /* ΤΟ ΟΡΙΟ ΕΙΝΑΙ 768, ΟΣΟ ΚΑΙ ΤΗΣ ΚΑΤΩ ΠΛΟΗΓΗΣΗΣ.
            Ήταν 600 ενώ η κάτω πλοήγηση εμφανίζεται στα 768: στο ενδιάμεσο —
@@ -657,7 +663,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
              bottom:78px το κουμπί κλεισίματος (που κάθεται στο --fab-bottom,
              πάνω από την πλοήγηση) σκέπαζε την τελευταία γραμμή του πάνελ:
              τη γνωστοποίηση ότι η Νόα είναι τεχνητή νοημοσύνη. */
-          .pa-panel{right:8px;left:8px;bottom:calc(var(--fab-bottom) + var(--fab-h) + 10px);width:auto;max-width:none;height:min(560px,calc(100dvh - var(--fab-bottom) - var(--fab-h) - 34px))}
+          .pa-panel{right:8px;left:8px;bottom:calc(var(--fab-bottom) + var(--fab-h) + 10px);width:auto;max-width:none;height:min(560px,calc(calc(100dvh / var(--zoom, 1)) - var(--fab-bottom) - var(--fab-h) - 34px))}
         }
         /* Η πρόσκληση μαζεύεται στο σήμα: μόλις κυλήσει η σελίδα και εξαρχής
            κάτω από τα 1.280, όπου το περιεχόμενο φτάνει ως την άκρη. Ο λόγος και

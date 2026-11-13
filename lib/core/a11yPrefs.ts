@@ -98,14 +98,3 @@ export const A11Y_INIT_SCRIPT = `
     if (p.motion === 'reduce') r.setAttribute('data-motion', 'reduce');
   } catch (e) {}
 `
-
-/**
- * Ζητά λιγότερη κίνηση ο χρήστης, από τη συσκευή ή από τις ρυθμίσεις;
- * Για τον κώδικα που κινεί πράγματα με JavaScript (κύλιση, μετρητές), όπου
- * το CSS δεν φτάνει.
- */
-export function prefersLessMotion(): boolean {
-  if (typeof document === 'undefined') return false
-  if (document.documentElement.getAttribute('data-motion') === 'reduce') return true
-  try { return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { return false }
-}

@@ -21,6 +21,7 @@ import { type CalEvent, CATEGORIES, TAX_META, fmt, daysUntil, pastStateOf } from
 import { PAST_LABEL } from '@/lib/calendar/pastState'
 import { Tooltip, StatusDot } from './Bits'
 import { dueTextStart } from '@/lib/facts/deadlines'
+import { cssRect, cssViewW, cssViewH } from '@/lib/core/cssZoom'
 
 // Μετατροπή γεγονότος σε είσοδο για τους συνδέσμους εξωτερικών ημερολογίων.
 function toCalInput(e: CalEvent) {
@@ -48,10 +49,10 @@ function AddToCalendarMenu({ event, onEdit, onDelete, onOpenChange }: { event: C
   // να ΧΩΡΑΕΙ ΠΑΝΤΑ στην οθόνη και να κάνει εσωτερικό scroll αν δεν φτάνει.
   const reposition=()=>{
     if(!btnRef.current)return;
-    const r=btnRef.current.getBoundingClientRect();
+    const r=cssRect(btnRef.current);
     const W=232, M=8, GAP=6, DESIRED=440;
-    const left=Math.max(M, Math.min(r.left, window.innerWidth-W-M));
-    const spaceBelow=window.innerHeight - r.bottom - M;
+    const left=Math.max(M, Math.min(r.left, cssViewW()-W-M));
+    const spaceBelow=cssViewH() - r.bottom - M;
     const spaceAbove=r.top - M;
     const up = spaceBelow < DESIRED && spaceAbove > spaceBelow;
     const avail = up ? spaceAbove : spaceBelow;

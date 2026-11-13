@@ -1029,9 +1029,9 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
 
       {/* ── Εισαγωγή κράτησης από email (AI) ────────────────────────────────
           Χειρόγραφο παράθυρο με δικό του radius 18 (το token λέει
-          T.radius.modal) και maxHeight '92vh' — που στο κινητό μετρά ΚΑΙ τη
+          T.radius.modal) και maxHeight 'calc(92vh / var(--zoom, 1))' — που στο κινητό μετρά ΚΑΙ τη
           γραμμή διευθύνσεων του περιηγητή, άρα τα κουμπιά «Ακύρωση/Ανάλυση»
-          κάθονταν κάτω από αυτήν. Το Modal μετρά σε 92dvh.
+          κάθονταν κάτω από αυτήν. Το Modal μετρά σε calc(92dvh / var(--zoom, 1)).
           Οι δύο ενέργειες ήταν μέσα στην περιοχή κύλισης, δηλαδή έφευγαν από το
           κάδρο όταν το επικολλημένο email ήταν μεγάλο· τώρα είναι υποσέλιδο. */}
       <EmailStayModal
@@ -1042,7 +1042,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
 
       {/* ── Εισαγωγή iCal (Airbnb/Booking) ──────────────────────────────────
           Ίδια ιστορία με το παράθυρο του email: χειρόγραφο κέλυφος με radius 18
-          αντί για T.radius.modal και '92vh' αντί για '92dvh'. Το εικονίδιο του
+          αντί για T.radius.modal και 'calc(92vh / var(--zoom, 1))' αντί για 'calc(92dvh / var(--zoom, 1))'. Το εικονίδιο του
           ημερολογίου ζούσε σε δικό του κουτί 44×44 — το Modal το τοποθετεί μόνο
           του, οπότε εδώ μένει σκέτο το SVG. */}
       <IcalImportModal

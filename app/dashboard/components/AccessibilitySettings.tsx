@@ -11,6 +11,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useSyncExternalStore } from 'react';
 import { SetList, SetRow } from './SettingsKit';
+import { InfoHint } from './InfoHint';
 import { SegmentControl, Toggle } from './UIComponents';
 import { useA11yPrefs } from '@/components/useA11yPrefs';
 import { useDictationSupported } from '@/components/dictation/useDictation';
@@ -58,12 +59,12 @@ export function AccessibilitySettings() {
             onChange={v => update({ text: v as TextSize })} options={TEXT_OPTS} />
         </div>
       </SetRow>
-      <SetRow title="Υψηλή αντίθεση" desc="Κείμενο που ξεχωρίζει καθαρά από το φόντο και περιγράμματα που φαίνονται. Ισχύει στο σκοτεινό και στο φωτεινό θέμα."
+      <SetRow title="Υψηλή αντίθεση" desc="Κείμενο που ξεχωρίζει καθαρά από το φόντο και περιγράμματα που φαίνονται."
         control={<Toggle on={prefs.contrast} onChange={v => update({ contrast: v })} ariaLabel="Υψηλή αντίθεση" />} />
       <SetRow title="Λιγότερη κίνηση"
         desc={osReduces
           ? 'Η συσκευή σου ζητά ήδη λιγότερη κίνηση και η εφαρμογή την ακολουθεί.'
-          : 'Η εφαρμογή ακολουθεί τη ρύθμιση της συσκευής σου. Με «Πάντα λιγότερη» σβήνουν τα εφέ κίνησης εδώ, ό,τι κι αν λέει η συσκευή.'}>
+          : 'Ακολουθεί τη συσκευή σου, εκτός αν διαλέξεις «Πάντα λιγότερη».'}>
         <div style={SEG_WIDTH}>
           <SegmentControl ariaLabel="Λιγότερη κίνηση" value={prefs.motion}
             onChange={v => update({ motion: v === 'reduce' ? 'reduce' : 'system' })}
@@ -71,14 +72,19 @@ export function AccessibilitySettings() {
         </div>
       </SetRow>
       {canSpeak && (
-        <SetRow title="Ανάγνωση ποσών" desc="Κουμπί «Άκουσε» δίπλα στα βασικά ποσά, όπως ο φόρος στην Επισκόπηση. Τα διαβάζει φωναχτά στα ελληνικά, ολογράφως."
+        <SetRow title="Ανάγνωση ποσών" desc="Κουμπί «Άκουσε» δίπλα στα βασικά ποσά της Επισκόπησης. Τα διαβάζει φωναχτά, ολογράφως."
           control={<Toggle on={prefs.speakAmounts} onChange={v => update({ speakAmounts: v })} ariaLabel="Ανάγνωση ποσών" />}>
-          <SpeakAmount always title="" figures={SAMPLE} label="ένα παράδειγμα ποσού" />
+          <SpeakAmount always title="" figures={SAMPLE} label="ένα παράδειγμα" text="Άκουσε ένα παράδειγμα" />
         </SetRow>
       )}
       {canDictate && (
         <SetRow title="Υπαγόρευση"
-          desc="Πάτα το μικρόφωνο μέσα σε σημειώσεις, περιγραφές και αναζητήσεις και μίλα. Οι λέξεις «τελεία», «κόμμα», «ερωτηματικό» και «νέα γραμμή» γράφονται ως στίξη. Τη φωνή τη μετατρέπει σε κείμενο ο περιηγητής σου και συνήθως τη στέλνει για αναγνώριση στον πάροχό του (Google στο Chrome, Microsoft στο Edge, Apple στο Safari). Η εφαρμογή λαμβάνει μόνο το κείμενο." />
+          desc={<>
+            Πάτα το μικρόφωνο σε ένα πεδίο και μίλα· πες «τελεία» ή «κόμμα» για στίξη. Τη φωνή την αναγνωρίζει ο περιηγητής σου και στην εφαρμογή φτάνει μόνο το κείμενο.{' '}
+            <InfoHint label="Ποιος αναγνωρίζει τη φωνή">
+              Ο περιηγητής συνήθως στέλνει τον ήχο για αναγνώριση στον πάροχό του: Google στο Chrome, Microsoft στο Edge, Apple στο Safari. Γράφονται ως στίξη και τα «ερωτηματικό», «θαυμαστικό» και «νέα γραμμή».
+            </InfoHint>
+          </>} />
       )}
     </SetList>
   );

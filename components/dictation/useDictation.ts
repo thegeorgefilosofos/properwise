@@ -62,6 +62,8 @@ export interface Dictation {
   listening: boolean;
   start: (opts?: StartOptions) => Promise<void>;
   stop: () => void;
+  /** Κλείνει χωρίς να παραδώσει κείμενο (ο χρήστης πληκτρολογεί ή φεύγει). */
+  abort: () => void;
   toggle: (opts?: StartOptions) => void;
   /** Σβήνει το μήνυμα σφάλματος (π.χ. όταν ο χρήστης αρχίσει να γράφει). */
   clear: () => void;
@@ -75,8 +77,17 @@ export function useDictation(opts: DictationOptions = {}): Dictation {
   const sessionRef = useRef<Session | null>(null);
   const optsRef = useRef(opts);
   useEffect(() => { optsRef.current = opts; });
+  // ΖΩΝΤΑΝΟ Ή ΟΧΙ. Η μηχανή φορτώνεται ασύγχρονα στο πρώτο πάτημα: αν το πεδίο
+  // κλείσει όσο κατεβαίνει, η συνέχεια του `start` θα άνοιγε μικρόφωνο που δεν
+  // θα το έκλεινε κανείς και θα έγραφε σε φόρμα που δεν υπάρχει πια.
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; sessionRef.current?.abort(); sessionRef.current = null; };
+  }, []);
 
   const stop = useCallback(() => { sessionRef.current?.stop(); }, []);
+  const abort = useCallback(() => { sessionRef.current?.abort(); }, []);
   const clear = useCallback(() => {
     setMessage('');
     setState(s => (s.status === 'error' ? { status: 'idle', error: null, heard: false } : s));
@@ -86,7 +97,7 @@ export function useDictation(opts: DictationOptions = {}): Dictation {
   const start = useCallback(async (so?: StartOptions) => {
     if (sessionRef.current) return;
     const engine = await loadDictation();
-    if (sessionRef.current) return;
+    if (sessionRef.current || !mountedRef.current) return;
     so?.prepare?.(engine);
     setMessage('');
     const lang = pageLang();
@@ -97,12 +108,14 @@ export function useDictation(opts: DictationOptions = {}): Dictation {
     mine = engine.startSession({
       lang: engine.recognitionLang(lang),
       continuous: optsRef.current.continuous,
-      onState: setState,
-      onText: (text, final) => optsRef.current.onText?.(text, final),
+      onState: st => { if (mountedRef.current) setState(st); },
+      onText: (text, final) => { if (mountedRef.current) optsRef.current.onText?.(text, final); },
       onEnd: (final, error) => {
         done = true;
         if (sessionRef.current === mine) sessionRef.current = null;
-        setMessage(error ? engine.errorMessage(error, { lang, formal: optsRef.current.formal }) : '');
+        // Μετά το κλείσιμο της οθόνης τίποτα δεν φτάνει στον καλούντα.
+        if (!mountedRef.current) return;
+        setMessage(error ? engine.errorMessage(error, { lang, formal: optsRef.current.formal, platform: engine.currentPlatform() }) : '');
         optsRef.current.onEnd?.(final, error);
       },
     });
@@ -113,16 +126,13 @@ export function useDictation(opts: DictationOptions = {}): Dictation {
     if (sessionRef.current) stop(); else void start(so);
   }, [start, stop]);
 
-  // Η σελίδα που κλείνει δεν αφήνει το μικρόφωνο ανοιχτό.
-  useEffect(() => () => { sessionRef.current?.abort(); sessionRef.current = null; }, []);
-
   return {
     supported,
     status: state.status,
     error: state.error,
     message,
     listening: state.status === 'listening' || state.status === 'starting',
-    start, stop, toggle, clear, preload,
+    start, stop, abort, toggle, clear, preload,
   };
 }
 

@@ -60,12 +60,15 @@ export default function SupportForm({ plan = 'free' }: { plan?: PlanId }) {
         Η απάντηση έρχεται στο email του λογαριασμού σου.
         {priority && ` Με το «${PLANS[plan].name}» τα μηνύματα από εδώ απαντώνται κατά προτεραιότητα.`}
       </p>
-      <input
-        aria-label="Θέμα" value={subject} maxLength={SUPPORT_SUBJECT_MAX} placeholder="Θέμα (προαιρετικό)"
-        onChange={e => { setSubject(e.target.value); if (error) setError(null); }}
-        onFocus={() => setFocus('s')} onBlur={() => setFocus(null)}
-        style={{ ...field(focus === 's'), marginTop: 12 }}
-      />
+      <Dictation value={subject} style={{ marginTop: 12 }}
+        onChange={v => { setSubject(v.slice(0, SUPPORT_SUBJECT_MAX)); if (error) setError(null); }}>
+        <input
+          aria-label="Θέμα" value={subject} maxLength={SUPPORT_SUBJECT_MAX} placeholder="Θέμα (προαιρετικό)"
+          onChange={e => { setSubject(e.target.value); if (error) setError(null); }}
+          onFocus={() => setFocus('s')} onBlur={() => setFocus(null)}
+          style={field(focus === 's')}
+        />
+      </Dictation>
       <Dictation multiline value={message} style={{ marginTop: 8 }}
         onChange={v => { setMessage(v.slice(0, SUPPORT_MESSAGE_MAX)); if (error) setError(null); if (sent) setSent(false); }}>
         <textarea

@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { T } from '@/components/Theme'
 import { type EventStatus, STATUSES } from './model'
+import { cssRect, cssViewW } from '@/lib/core/cssZoom'
 
 // Google-style tooltip — portal ώστε να ΜΗΝ κόβεται από overflow (π.χ. στα κελιά του μήνα).
 // ═══════════════════════════════════════════════════════════════════════════
@@ -32,7 +33,7 @@ export function Tooltip({ text, children, fill, content }: { text: string; child
   // το `content`, οπότε το πλάτος είναι δηλωμένη εξάρτηση και όχι κλειστή τιμή.
   useEffect(()=>{
     if(!show)return
-    const place = () => { const el=ref.current; if(!el)return; const r=el.getBoundingClientRect(); const below=r.top<170; const cx=r.left+r.width/2; const left=Math.max(8+W/2, Math.min(cx, window.innerWidth-8-W/2)); setPos({ left, top: below?r.bottom+8:r.top-8, below }) }
+    const place = () => { const el=ref.current; if(!el)return; const r=cssRect(el); const below=r.top<170; const cx=r.left+r.width/2; const left=Math.max(8+W/2, Math.min(cx, cssViewW()-8-W/2)); setPos({ left, top: below?r.bottom+8:r.top-8, below }) }
     place()
     window.addEventListener('scroll',place,true); window.addEventListener('resize',place)
     return ()=>{ window.removeEventListener('scroll',place,true); window.removeEventListener('resize',place) }
@@ -41,7 +42,7 @@ export function Tooltip({ text, children, fill, content }: { text: string; child
     <div ref={ref} style={fill?{ display:'flex', width:'100%', height:'100%' }:{ display:'inline-flex' }} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)} onFocus={content?()=>setShow(true):undefined} onBlur={content?()=>setShow(false):undefined}>
       {children}
       {show && (content || text) && createPortal(
-        <div role={content ? 'tooltip' : undefined} style={{ position:'fixed', left:pos.left, top:pos.top, transform:`translate(-50%, ${pos.below?'0':'-100%'})`, background:'var(--bg-elevated)', border:'1px solid var(--border-default)', borderRadius: content ? T.radius.popup : T.radius.chip, padding: content ? '12px 14px' : '9px 13px', fontSize:12, lineHeight:1.5, color:'var(--text-primary)', fontFamily: T.font.sans, zIndex:3000, pointerEvents:'none', width:W, maxWidth:'calc(100vw - 16px)', whiteSpace: content ? undefined : 'pre-wrap' as const, boxShadow:'var(--elev-3)' }}>
+        <div role={content ? 'tooltip' : undefined} style={{ position:'fixed', left:pos.left, top:pos.top, transform:`translate(-50%, ${pos.below?'0':'-100%'})`, background:'var(--bg-elevated)', border:'1px solid var(--border-default)', borderRadius: content ? T.radius.popup : T.radius.chip, padding: content ? '12px 14px' : '9px 13px', fontSize:12, lineHeight:1.5, color:'var(--text-primary)', fontFamily: T.font.sans, zIndex:3000, pointerEvents:'none', width:W, maxWidth:'calc(calc(100vw / var(--zoom, 1)) - 16px)', whiteSpace: content ? undefined : 'pre-wrap' as const, boxShadow:'var(--elev-3)' }}>
           {content ?? text}
         </div>, document.body)}
     </div>

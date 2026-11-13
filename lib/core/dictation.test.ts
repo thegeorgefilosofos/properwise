@@ -5,7 +5,7 @@
 // σιωπή. Μαζί η στίξη με λέξεις και η εισαγωγή στη θέση του δρομέα.
 import {
   IDLE, reduce, errorFromCode, errorMessage, recognitionLang, transcriptOf, formatSpoken, composer,
-  startSession, type DictationState, type DictationError,
+  fieldWriter, platformOf, startSession, type DictationState, type DictationError,
 } from './dictation';
 import type { SpeechEvent } from './speech';
 
@@ -45,8 +45,8 @@ ok('άγνωστος κωδικός: γενικό', errorFromCode('bad-grammar')
 const all: DictationError[] = ['denied', 'no-speech', 'no-mic', 'network', 'language', 'unsupported', 'other'];
 ok('κάθε σφάλμα έχει ελληνικό μήνυμα', all.every(e => /[α-ω]/i.test(errorMessage(e))));
 ok('κάθε σφάλμα έχει αγγλικό μήνυμα', all.every(e => /^[\x20-\x7e]+$/.test(errorMessage(e, { lang: 'en' }))));
-ok('η άρνηση λέει πώς επιτρέπεις το μικρόφωνο', /λουκέτο/.test(errorMessage('denied')) && /επίτρεψε/.test(errorMessage('denied')));
-ok('ευγενικός πληθυντικός', /επιτρέψτε/.test(errorMessage('denied', { formal: true })));
+ok('η άρνηση λέει πώς επιτρέπεις το μικρόφωνο', /επίτρεψε/.test(errorMessage('denied')));
+ok('ευγενικός πληθυντικός', /επιτρέψτε/i.test(errorMessage('denied', { formal: true })));
 ok('κανένα μήνυμα δεν έχει αποσιωπητικά', all.every(e => !/…|\.\.\./.test(errorMessage(e))));
 ok('γλώσσα: ελληνικά', recognitionLang('el') === 'el-GR' && recognitionLang('') === 'el-GR');
 ok('γλώσσα: αγγλικά για /en', recognitionLang('en') === 'en-US' && recognitionLang('en-GB') === 'en-US');
@@ -102,6 +102,51 @@ ok('αγγλικά: period', formatSpoken('paid in cash period thanks', 'en-US')
   const c = composer({ value: 'Χ', start: 1, end: 1, multiline: false });
   ok('τα ενδιάμεσα δεν συσσωρεύονται', c('ένα').value === 'Χ ένα' && c('ένα δύο').value === 'Χ ένα δύο');
   ok('κενό αποτέλεσμα: η αρχική τιμή', c('').value === 'Χ');
+}
+
+// ── Η ΠΛΗΚΤΡΟΛΟΓΗΣΗ ΚΕΡΔΙΖΕΙ ΤΗΝ ΥΠΑΓΟΡΕΥΣΗ ───────────────────────────────
+// Το `stop()` παραδίδει ακόμη ένα τελικό αποτέλεσμα. Αν ο χρήστης έγραψε στο
+// μεταξύ, εκείνο το αποτέλεσμα έχτιζε την τιμή από την παγωμένη αρχή και
+// έσβηνε όσα πληκτρολόγησε. Ο συγγραφέας του πεδίου δεν γράφει ποτέ πάνω σε
+// τιμή που δεν έγραψε ο ίδιος.
+{
+  const w = fieldWriter({ value: 'Αρχή', start: 4, end: 4, multiline: false });
+  const a = w.apply('ένα', 'Αρχή');
+  ok('πρώτο αποτέλεσμα γράφεται', a?.value === 'Αρχή ένα');
+  const b = w.apply('ένα δύο', 'Αρχή ένα');
+  ok('δεύτερο αποτέλεσμα πάνω στο δικό μας κείμενο', b?.value === 'Αρχή ένα δύο');
+  ok('ο χρήστης πληκτρολόγησε: το αποτέλεσμα ΔΕΝ γράφεται', w.apply('ένα δύο τρία', 'Αρχή ένα δύοx') === null);
+  ok('και δεν ξαναγράφει ποτέ σε αυτή τη συνεδρία', w.apply('ένα δύο τρία', 'Αρχή ένα δύο') === null);
+}
+{
+  const w = fieldWriter({ value: '', start: 0, end: 0, multiline: false });
+  ok('αλλαγή πριν από το πρώτο αποτέλεσμα: τίποτα', w.apply('γεια', 'κ') === null);
+}
+
+// ── ΟΔΗΓΙΕΣ ΑΝΑ ΠΛΑΤΦΟΡΜΑ ──────────────────────────────────────────────────
+const IOS = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1';
+const AND = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36';
+const MACSAF = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15';
+const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+const EDGE = CHROME + ' Edg/130.0';
+const MACCHROME = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+ok('πλατφόρμα: iPhone', platformOf(IOS, false) === 'ios');
+ok('πλατφόρμα: Android', platformOf(AND, false) === 'android');
+ok('πλατφόρμα: Safari σε Mac', platformOf(MACSAF, false) === 'mac-safari');
+ok('πλατφόρμα: Chrome σε Mac δεν είναι Safari', platformOf(MACCHROME, false) === 'desktop');
+ok('πλατφόρμα: Chrome/Edge', platformOf(CHROME, false) === 'desktop' && platformOf(EDGE, false) === 'desktop');
+ok('πλατφόρμα: εγκατεστημένη εφαρμογή', platformOf(CHROME, true) === 'pwa' && platformOf(AND, true) === 'pwa');
+ok('iPad που δηλώνει Mac με αφή: iOS', platformOf(MACSAF, false, 5) === 'ios');
+{
+  const m = (pl: Parameters<typeof errorMessage>[1]) => errorMessage('denied', pl);
+  ok('iOS: aA και Ρυθμίσεις ιστοτόπου', /aA/.test(m({ platform: 'ios' })) && /Ρυθμίσεις ιστοτόπου/.test(m({ platform: 'ios' })));
+  ok('Android: Άδειες', /Άδειες/.test(m({ platform: 'android' })));
+  ok('Safari Mac: Ιστότοποι', /Ιστότοποι/.test(m({ platform: 'mac-safari' })));
+  ok('εγκατεστημένη: ρυθμίσεις της συσκευής', /ρυθμίσεις της συσκευής/.test(m({ platform: 'pwa' })));
+  ok('Chrome/Edge: λουκέτο', /λουκέτο/.test(m({ platform: 'desktop' })));
+  ok('μόνο ο υπολογιστής μιλά για λουκέτο', !/λουκέτο/.test(m({ platform: 'ios' }) + m({ platform: 'android' }) + m({ platform: 'pwa' })));
+  ok('ευγενικός πληθυντικός ανά πλατφόρμα', /Πατήστε/.test(m({ platform: 'ios', formal: true })));
+  ok('αγγλικά ανά πλατφόρμα', /Site Settings/.test(m({ platform: 'ios', lang: 'en' })));
 }
 
 // ── Η ΣΥΝΕΔΡΙΑ, ΜΕ ΨΕΥΤΙΚΗ ΑΝΑΓΝΩΣΤΡΙΑ ────────────────────────────────────
@@ -174,6 +219,13 @@ async function sessions() {
     r.rec.onerror({ error: 'aborted' });
     r.session!.abort();
     ok('abort: τέλος χωρίς σφάλμα', r.ends.length === 1 && r.ends[0].error === null && r.states.at(-1)?.status === 'idle');
+  }
+  {
+    // Η σελίδα κλείνει στη μέση της φράσης: η Νόα ΔΕΝ πρέπει να στείλει ερώτηση.
+    const r = run({ continuous: false, noSpeechMs: 1000 });
+    r.rec.onresult(ev(['πόσο φόρο', true]));
+    r.session!.abort();
+    ok('abort: κανένα κείμενο στο τέλος', r.ends.length === 1 && r.ends[0].final === '');
   }
   {
     const r = run({ continuous: false, noSpeechMs: 1000 });

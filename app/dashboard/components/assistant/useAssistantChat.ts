@@ -337,7 +337,7 @@ export function useAssistantChat({
   useEffect(() => { askRef.current = ask; });
 
   return {
-    listening, speaking, handsFree, setHandsFree, supportsSTT, supportsTTS, stopSpeaking, micMessage,
+    listening, speaking, handsFree, setHandsFree, supportsSTT, supportsTTS, stopSpeaking, micMessage, preloadMic: dictation.preload,
     stopListening, startListening, toggleMic, ask, askImage,
   }
 }

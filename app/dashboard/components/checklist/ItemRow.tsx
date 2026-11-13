@@ -14,6 +14,7 @@ import { WHO_LABEL } from '@/lib/accounting/dossier'
 import { fmtDate, isOverdue, daysUntil, getPri, priShowDot, priDotColor } from './calc'
 import type { ChecklistItem } from './model'
 import { dueText } from '@/lib/facts/deadlines'
+import { cssRect, cssViewW, cssViewH } from '@/lib/core/cssZoom'
 
 
 // ─── ItemRow ──────────────────────────────────────────────────────────────────
@@ -69,10 +70,10 @@ export function ItemRow({ item, allItems, onToggle, onEdit, onDelete, onAddToCal
 
   const openMenu = () => {
     if (menuBtnRef.current) {
-      const r = menuBtnRef.current.getBoundingClientRect()
+      const r = cssRect(menuBtnRef.current)
       const menuH = 372 // ύψος μενού· αναποδογύρισε προς τα πάνω αν δεν χωράει κάτω
-      const down = r.bottom + menuH + 8 < window.innerHeight
-      setMenuPos({ top: down ? r.bottom + 6 : Math.max(8, r.top - menuH - 6), right: window.innerWidth - r.right })
+      const down = r.bottom + menuH + 8 < cssViewH()
+      setMenuPos({ top: down ? r.bottom + 6 : Math.max(8, r.top - menuH - 6), right: cssViewW() - r.right })
     }
     setShowMenu(s => !s)
   }

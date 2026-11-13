@@ -10,7 +10,8 @@ import { athensToday, isoYear, isoMonth } from '@/lib/core/time';
 import { MONTHS_SHORT, DAY_NAMES_MIN } from '@/lib/core/months';
 import { fn } from '@/lib/core/format';
 import { hy } from '@/components/Hyphen';
-import { useMicField } from '@/components/dictation/MicButton';
+import { useMicField, type MicField } from '@/components/dictation/MicButton';
+import { cssRect, cssViewW, cssViewH } from '@/lib/core/cssZoom';
 
 // ── ΕΝΙΑΙΟ σύστημα πεδίων (ένα μέγεθος/σχήμα/focus παντού) ───────────────────
 // Γωνία 10, 1px border + accent focus-ring (χωρίς μετατόπιση layout — δεν
@@ -204,7 +205,7 @@ export function InfoDot({ text, label }: { text: string; label?: string }) {
   const ref = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; up: boolean }>({ top: 0, left: 0, up: false });
   const show = () => {
-    const r = ref.current?.getBoundingClientRect();
+    const r = cssRect(ref.current);
     if (!r || typeof window === 'undefined') return;
     // Το πλάτος του κουτιού είναι 280 και η δεξιά άκρη μετριέται χωρίς τη
     // γραμμή κύλισης: το `innerWidth` τη μετρά μέσα, οπότε η σημείωση έμπαινε
@@ -212,7 +213,7 @@ export function InfoDot({ text, label }: { text: string; label?: string }) {
     const vw = document.documentElement.clientWidth;
     const W = Math.min(280, vw - 16);
     const left = Math.min(Math.max(8, r.left - 2), vw - W - 8);
-    const up = r.bottom + 120 > window.innerHeight;
+    const up = r.bottom + 120 > cssViewH();
     setPos({ top: up ? r.top - 8 : r.bottom + 8, left, up });
     setOpen(true);
   };
@@ -239,7 +240,7 @@ export function InfoDot({ text, label }: { text: string; label?: string }) {
         /* Ιδιο μέτρο και ίδια στοίχιση με το ⓘ του InfoHint: δύο επεξηγήσεις
            δίπλα δίπλα δεν επιτρέπεται να διαβάζονται αλλιώς επειδή τις γράφουν
            δύο αρχεία. Πλάτος 280, πλήρης στοίχιση, συλλαβισμός στην απόδοση. */
-        <div role="tooltip" style={{ position: 'fixed', top: pos.top, left: pos.left, transform: pos.up ? 'translateY(-100%)' : 'none', width: 280, maxWidth: 'calc(100vw - 16px)', ...INFO_TOOLTIP_STYLE, zIndex: Z.tooltip, pointerEvents: 'none' }}>
+        <div role="tooltip" style={{ position: 'fixed', top: pos.top, left: pos.left, transform: pos.up ? 'translateY(-100%)' : 'none', width: 280, maxWidth: 'calc(calc(100vw / var(--zoom, 1)) - 16px)', ...INFO_TOOLTIP_STYLE, zIndex: Z.tooltip, pointerEvents: 'none' }}>
           <p className="po-just" style={{ margin: 0, fontSize: 'inherit', color: 'inherit', fontFamily: 'inherit', lineHeight: 'inherit' }}>{hy(text)}</p>
         </div>,
         document.body,
@@ -765,9 +766,9 @@ export function CustomSelect({
   // ώστε ποτέ να μη «κόβεται» ή να βγαίνει εκτός οθόνης.
   const reposition = () => {
     const el = triggerRef.current; if (!el) return;
-    const r = el.getBoundingClientRect();
+    const r = cssRect(el);
     const GAP = 4, MARGIN = 8, DESIRED = 264;
-    const below = window.innerHeight - r.bottom - MARGIN;
+    const below = cssViewH() - r.bottom - MARGIN;
     const above = r.top - MARGIN;
     // Προτίμηση ΠΡΟΣ ΤΑ ΚΑΤΩ: το μενού κάνει εσωτερικό scroll, οπότε ανοίγει κάτω
     // ακόμη κι όταν ο χώρος είναι περιορισμένος. Γυρίζει πάνω ΜΟΝΟ όταν ο χώρος
@@ -793,17 +794,17 @@ export function CustomSelect({
     // πλάτους, στοιχισμένη και στις δύο άκρες.
     const vw = document.documentElement.clientWidth;
     const frameEl = el.closest('[role="dialog"] > div');
-    const frame = frameEl?.getBoundingClientRect();
+    const frame = cssRect(frameEl);
     const lo = frame ? frame.left + MARGIN : MARGIN;
     const hi = frame ? frame.right - MARGIN : vw - MARGIN;
     // `clientWidth`: χωρίς το περίγραμμα της κάρτας, όπως το πλάτος των πεδίων της.
-    const room = frameEl ? frameEl.clientWidth - 2 * T.sp.xxl : window.innerWidth * 0.86;
+    const room = frameEl ? frameEl.clientWidth - 2 * T.sp.xxl : cssViewW() * 0.86;
     // ΤΑΒΑΝΙ 400 ΑΝΤΙ ΓΙΑ 340 ΚΑΙ ΤΟ ΚΕΙΜΕΝΟ ΤΥΛΙΓΕΙ (09/11/2026). Μια επιλογή
     // «όνομα · ρόλος» στη μαζική ανάθεση της πύλης ξεπερνούσε τα 340: η γραμμή
     // ήταν `nowrap`, κοβόταν στο «Υπεύθυνος γραφ…» και η λίστα αποκτούσε οριζόντια
     // κύλιση. Τώρα η λίστα μεγαλώνει ως το περιεχόμενο και, πέρα από το ταβάνι,
     // η επιλογή σπάει σε δεύτερη γραμμή αντί να κόβεται.
-    const maxW = Math.max(r.width, Math.min(400, window.innerWidth * 0.86, room));
+    const maxW = Math.max(r.width, Math.min(400, cssViewW() * 0.86, room));
     const left = Math.max(lo, Math.min(r.left, hi - maxW));
     setMenuPos({ top: up ? r.top - GAP : r.bottom + GAP, left, minWidth: r.width, maxW, maxH, up });
   };
@@ -1061,7 +1062,7 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
 
   const reposition = () => {
     if (!ref.current) return;
-    const r = ref.current.getBoundingClientRect();
+    const r = cssRect(ref.current);
     const GAP = 4, MARGIN = 8;
     // ΤΟ ΠΛΑΤΟΣ ΜΕΤΡΙΕΤΑΙ, ΔΕΝ ΥΠΟΤΙΘΕΤΑΙ. Εδώ ήταν σταθερά 280, όσο λέει το
     // ενσωματωμένο στυλ. Σε οθόνη αφής όμως το φύλλο στυλ ανοίγει το ημερολόγιο
@@ -1073,13 +1074,13 @@ export function DatePicker({ label, labelInfo, ariaLabel, value, onChange, disab
     // Πραγματικό ύψος πίνακα (μεταβλητό: 5–6 εβδομάδες) — με fallback πριν ζωγραφιστεί.
     const panelH = popupRef.current?.offsetHeight || 344;
     const left = Math.max(MARGIN, Math.min(r.left, document.documentElement.clientWidth - panelW - MARGIN));
-    const below = window.innerHeight - r.bottom - MARGIN;
+    const below = cssViewH() - r.bottom - MARGIN;
     // Προτίμηση προς τα κάτω· αν δεν χωράει ολόκληρο, γύρισμα προς τα πάνω, αλλιώς
     // clamp ώστε ο πίνακας να μένει πάντα πλήρως ορατός στην οθόνη.
     let top: number;
     if (below >= panelH) top = r.bottom + GAP;
     else if (r.top - MARGIN > below) top = Math.max(MARGIN, r.top - GAP - panelH);
-    else top = Math.max(MARGIN, window.innerHeight - panelH - MARGIN);
+    else top = Math.max(MARGIN, cssViewH() - panelH - MARGIN);
     setCoords({ top, left });
   };
 
@@ -1337,7 +1338,7 @@ export function BulkActionBar({ count, countLabel, actions, onClear, minWidth = 
     t === 'accent' ? 'var(--accent)' : t === 'strong' ? 'var(--text-primary)' : 'var(--text-secondary)';
   const hover = (t: BulkAction['tone']) => (t === 'accent' ? 'var(--accent-soft)' : 'var(--bg-surface)');
   return (
-    <div style={{ position: 'fixed', bottom: 'var(--float-bottom)', left: '50%', transform: 'translateX(-50%)', zIndex: 'var(--float-z)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: T.radius.modal, boxShadow: 'var(--elev-3)', overflow: 'hidden', minWidth: `min(${minWidth}px, calc(100vw - 24px))`, maxWidth: 'calc(100vw - 24px)' }}>
+    <div style={{ position: 'fixed', bottom: 'var(--float-bottom)', left: '50%', transform: 'translateX(-50%)', zIndex: 'var(--float-z)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: T.radius.modal, boxShadow: 'var(--elev-3)', overflow: 'hidden', minWidth: `min(${minWidth}px, calc(calc(100vw / var(--zoom, 1)) - 24px))`, maxWidth: 'calc(calc(100vw / var(--zoom, 1)) - 24px)' }}>
       <div style={{ padding: '12px 18px', borderRight: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <div style={{ minWidth: 24, height: 26, padding: '0 6px', borderRadius: T.radius.pill, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'var(--accent-text)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{count}</div>
         <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', fontFamily: T.font.sans }}>{countLabel}</span>
@@ -1541,13 +1542,24 @@ interface TextInputProps {
   dictation?: boolean;
 }
 
-export function TextInput({ label, labelInfo, ariaLabel, id, value, onChange, placeholder, type='text', disabled, prefix, suffix, onKeyDown, mono, inputMode, dictation = false }: TextInputProps) {
+// ΤΑ HOOKS ΤΗΣ ΥΠΑΓΟΡΕΥΣΗΣ ΤΡΕΧΟΥΝ ΜΟΝΟ ΟΠΟΥ ΖΗΤΗΘΗΚΕ. Τα περισσότερα πεδία
+// της εφαρμογής δεν έχουν μικρόφωνο· δεν πληρώνουν ακροατή, κατάσταση ζωντανής
+// περιοχής και effect ανά πεδίο για κάτι που δεν δείχνουν.
+export function TextInput(props: TextInputProps) {
+  return props.dictation ? <DictatedTextInput {...props} /> : <TextInputView {...props} />;
+}
+
+function DictatedTextInput(props: TextInputProps) {
+  const fieldRef = useRef<HTMLInputElement | null>(null);
+  const getField = useCallback(() => fieldRef.current, []);
+  const mic = useMicField({ value: props.value, onChange: props.onChange, getField, enabled: !props.disabled });
+  return <TextInputView {...props} fieldRef={fieldRef} mic={mic} />;
+}
+
+function TextInputView({ label, labelInfo, ariaLabel, id, value, onChange, placeholder, type='text', disabled, prefix, suffix, onKeyDown, mono, inputMode, fieldRef, mic }: TextInputProps & { fieldRef?: React.Ref<HTMLInputElement>; mic?: MicField }) {
   const [focused, setFocused] = useState(false);
   const autoId = useId();
   const inputId = id ?? autoId;
-  const fieldRef = useRef<HTMLInputElement | null>(null);
-  const getField = useCallback(() => fieldRef.current, []);
-  const mic = useMicField({ value, onChange, getField, enabled: dictation && !disabled });
   return (
     <div>
       {label && <label htmlFor={inputId} style={fieldLabelStyle}><span>{labelWithInfo(label, labelInfo)}</span></label>}
@@ -1604,14 +1616,14 @@ export function TextInput({ label, labelInfo, ariaLabel, id, value, onChange, pl
             minWidth: 0,
           }}
         />
-        {mic.button}
+        {mic?.button}
         {suffix && (
           <div style={{ padding: '0 12px', color: 'var(--text-secondary)', fontFamily: T.font.sans, fontSize: 14, background: 'var(--bg-elevated)', alignSelf: 'stretch', display: 'flex', alignItems: 'center', borderLeft: '1px solid var(--border-subtle)', flexShrink: 0 }}>
             {suffix}
           </div>
         )}
       </div>
-      {mic.note}
+      {mic?.note}
     </div>
   );
 }
@@ -1622,9 +1634,7 @@ export function TextInput({ label, labelInfo, ariaLabel, id, value, onChange, pl
 const TEXTAREA_LINE = 20;
 const TEXTAREA_CHROME = 22; // γέμισμα 10+10 και περίγραμμα 1+1
 
-export function Textarea({
-  label, labelInfo, value, onChange, placeholder, rows = 3, autoGrow, dictation = false,
-}: {
+type TextareaProps = {
   label?: string; labelInfo?: ReactNode; value: string; onChange: (v: string) => void; placeholder?: string; rows?: number;
   /** Μικρόφωνο πάνω δεξιά μέσα στο πεδίο (δες το `TextInput`). */
   dictation?: boolean;
@@ -1635,12 +1645,22 @@ export function Textarea({
    * το `field-sizing`, μένει το σταθερό ύψος των `rows` με λαβή αλλαγής ύψους.
    */
   autoGrow?: boolean;
-}) {
-  const [focused, setFocused] = useState(false);
-  const inputId = useId();
+};
+
+export function Textarea(props: TextareaProps) {
+  return props.dictation ? <DictatedTextarea {...props} /> : <TextareaView {...props} />;
+}
+
+function DictatedTextarea(props: TextareaProps) {
   const fieldRef = useRef<HTMLTextAreaElement | null>(null);
   const getField = useCallback(() => fieldRef.current, []);
-  const mic = useMicField({ value, onChange, multiline: true, getField, enabled: dictation });
+  const mic = useMicField({ value: props.value, onChange: props.onChange, multiline: true, getField });
+  return <TextareaView {...props} fieldRef={fieldRef} mic={mic} />;
+}
+
+function TextareaView({ label, labelInfo, value, onChange, placeholder, rows = 3, autoGrow, fieldRef, mic }: TextareaProps & { fieldRef?: React.Ref<HTMLTextAreaElement>; mic?: MicField }) {
+  const [focused, setFocused] = useState(false);
+  const inputId = useId();
   // Η ανάπτυξη ζει στην κλάση `.po-autogrow` (globals.css), γιατί μόνο εκεί
   // υπάρχει `@supports`: η λαβή αλλαγής ύψους μένει μόνο όπου δεν ψηλώνει μόνο του.
   const grow: React.CSSProperties = autoGrow
@@ -1649,7 +1669,7 @@ export function Textarea({
   return (
     <div>
       {label && <label htmlFor={inputId} style={fieldLabelStyle}><span>{labelWithInfo(label, labelInfo)}</span></label>}
-      <div className="po-dictate" data-mic={mic.supported ? 'multi' : undefined}>
+      <div className="po-dictate" data-mic={mic?.supported ? 'multi' : undefined}>
       <textarea
         ref={fieldRef}
         id={inputId}
@@ -1678,9 +1698,9 @@ export function Textarea({
           lineHeight: `${TEXTAREA_LINE}px`,
         }}
       />
-      {mic.button}
+      {mic?.button}
       </div>
-      {mic.note}
+      {mic?.note}
     </div>
   );
 }

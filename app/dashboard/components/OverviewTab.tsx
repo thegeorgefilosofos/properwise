@@ -848,7 +848,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         <div style={{minWidth:0}}>
           <AthensNow style={{fontFamily:T.font.sans,fontSize: 'var(--fs-xs)',fontWeight:600,color:'var(--text-tertiary)',letterSpacing:'0.02em',marginBottom:4,minHeight:15}}/>
           <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-note)',color:'var(--text-secondary)'}}>{heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
-          <div style={{fontFamily:T.font.num,fontSize:'clamp(28px,7vw,40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
+          <div style={{fontFamily:T.font.num,fontSize:'clamp(28px,calc(7vw / var(--zoom, 1)),40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
             ? <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-secondary)',letterSpacing:0}}>Δεν φορτώθηκε</span>
             : fmtEur(heroValue)}</div>
           {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
@@ -1085,7 +1085,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           χωρίς αυτά δεν υπάρχει φόρος ούτε καθαρό να ακουστεί. */}
       <SecHdr label={`Η χρονιά ${year}`} sub="Πού καταλήγει με ό,τι ξέρουμε σήμερα"
         right={!moneyGap && isLet(prop) ? (
-          <SpeakAmount title={`Η χρονιά ${year}`} label="τα ποσά της χρονιάς" figures={[
+          <SpeakAmount variant="icon" title={`Η χρονιά ${year}`} label="τα ποσά της χρονιάς" figures={[
             { label: 'Έσοδα έτους', amount: annualRent },
             { label: EXPENSE_LABELS.total, amount: yExp.total },
             { label: portfolioTax.count > 1 ? 'Μερίδιο φόρου' : 'Φόρος ενοικίου', amount: estTax },

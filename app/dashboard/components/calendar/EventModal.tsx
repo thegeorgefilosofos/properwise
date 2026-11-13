@@ -18,6 +18,7 @@ import {
   PRIORITIES, STATUSES, RECURRING_OPTIONS,
 } from './model'
 import { Dictation } from '@/components/dictation/MicButton'
+import { cssRect } from '@/lib/core/cssZoom'
 
 // Καθαρός επιλογέας ώρας — αντικαθιστά το άσχημο native <input type="time">.
 // Κουμπί με ώρα → portal λίστα ανά 15΄ (κλιπ-άτρωτη, ίδια αισθητική με το app).
@@ -27,7 +28,7 @@ function TimeField({ value, onChange, ariaLabel }: { value:string; onChange:(v:s
   const ref=useRef<HTMLButtonElement>(null)
   const listRef=useRef<HTMLDivElement>(null)
   const times=useMemo(()=>{ const t:string[]=[]; for(let h=0;h<24;h++)for(const m of [0,15,30,45])t.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`); return t },[])
-  const openMenu=()=>{ const r=ref.current?.getBoundingClientRect(); if(r)setRect({left:r.left,top:r.bottom+6,width:Math.max(r.width,132)}); setOpen(o=>!o) }
+  const openMenu=()=>{ const r=cssRect(ref.current); if(r)setRect({left:r.left,top:r.bottom+6,width:Math.max(r.width,132)}); setOpen(o=>!o) }
   useEffect(()=>{ if(!open)return; const close=(e:MouseEvent)=>{ if(!ref.current?.contains(e.target as Node)&&!listRef.current?.contains(e.target as Node))setOpen(false) }; const esc=(e:KeyboardEvent)=>{ if(e.key==='Escape'){e.stopPropagation();setOpen(false)} }; document.addEventListener('mousedown',close); document.addEventListener('keydown',esc,true); return ()=>{ document.removeEventListener('mousedown',close); document.removeEventListener('keydown',esc,true) } },[open])
   useEffect(()=>{ if(open&&listRef.current){ let idx=times.indexOf(value); if(idx<0)idx=36; const el=listRef.current.children[idx+1] as HTMLElement; el?.scrollIntoView({block:'center'}) } },[open,value,times])
   return (

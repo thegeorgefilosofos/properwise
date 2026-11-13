@@ -991,7 +991,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
       )}
 
       {!loading&&inventoryApplies&&(items.length===0
-        ? <div className="card" style={{textAlign:'center',padding:'clamp(40px,7vw,68px) 24px',marginTop:8}}>
+        ? <div className="card" style={{textAlign:'center',padding:'clamp(40px,calc(7vw / var(--zoom, 1)),68px) 24px',marginTop:8}}>
             {handoverSeed&&(
               <div style={{display:'flex',alignItems:'center',gap:10,textAlign:'left',maxWidth:520,margin:'0 auto 24px',padding:'12px 16px',background:'var(--accent-soft)',border:'1px solid var(--accent-border)',borderRadius:T.radius.inner}}>
                 <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>

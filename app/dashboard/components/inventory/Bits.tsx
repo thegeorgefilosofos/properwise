@@ -26,6 +26,7 @@ import { openReport, rEsc } from '../reportPdf'
 import { INK, RULE } from '@/lib/print/ink'
 import type { FieldDecision } from '@/lib/property/fields'
 import { CONDITIONS, CONDITION_COLOR, ENERGY_TONE, ROOM_PRESETS, inventoryLabel, conditionLabel, type InventoryItem } from './model'
+import { cssRect, cssViewW, cssViewH } from '@/lib/core/cssZoom'
 
 // ── Η ΚΑΡΤΑ ΤΗΣ ΑΠΟΓΡΑΦΗΣ ΕΙΝΑΙ Η ΚΑΡΤΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ ─────────────────────
 // ΜΙΑ ΚΑΡΤΕΛΑ ΕΙΧΕ ΔΙΚΟ ΤΗΣ ΟΡΙΣΜΟ ΚΑΡΤΑΣ. Η συνταγή εδώ ήταν bg-surface με
@@ -75,7 +76,7 @@ export function BulkPicker({label,icon,options,onPick,labelOf}:{label:string;ico
   const [rect,setRect] = useState<{top:number;left:number}|null>(null)
   const btnRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
-  const place = useCallback(()=>{const b=btnRef.current?.getBoundingClientRect();if(b)setRect({top:b.bottom+4,left:b.left})},[])
+  const place = useCallback(()=>{const b=cssRect(btnRef.current);if(b)setRect({top:b.bottom+4,left:b.left})},[])
   useEffect(()=>{
     if(!open) return
     place()
@@ -208,10 +209,10 @@ export function InlineConditionEdit({item,onUpdate}:{item:InventoryItem;onUpdate
   // Το μενού ζει σε portal (fixed) ώστε να μην το «κόβει» κανένα overflow:hidden γονικό (κάρτα/φωτο).
   // Τοποθέτηση με επίγνωση viewport: διαλέγει πλευρά με χώρο + maxHeight ώστε να μη κόβεται εκτός οθόνης.
   const place = useCallback(()=>{
-    const b=btnRef.current?.getBoundingClientRect()
+    const b=cssRect(btnRef.current)
     if(!b) return
     const M=8, GAP=4, needed=CONDITIONS.length*36+12
-    const spaceBelow=window.innerHeight-b.bottom-M, spaceAbove=b.top-M
+    const spaceBelow=cssViewH()-b.bottom-M, spaceAbove=b.top-M
     const up = spaceBelow<needed && spaceAbove>spaceBelow
     const maxH = Math.max(120, Math.min((up?spaceAbove:spaceBelow)-GAP, needed))
     setRect({top: up?b.top-GAP:b.bottom+GAP, left:b.left, width:b.width, up, maxH})
@@ -264,13 +265,13 @@ export function OverflowMenu({actions,align='right',dark}:{actions:OverflowActio
   const btnRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const place = useCallback(()=>{
-    const b=btnRef.current?.getBoundingClientRect()
+    const b=cssRect(btnRef.current)
     if(!b) return
     const M=8, GAP=6, needed=actions.length*38+12
-    const spaceBelow=window.innerHeight-b.bottom-M, spaceAbove=b.top-M
+    const spaceBelow=cssViewH()-b.bottom-M, spaceAbove=b.top-M
     const up = spaceBelow<needed && spaceAbove>spaceBelow
     const maxH = Math.max(120, Math.min((up?spaceAbove:spaceBelow)-GAP, needed))
-    setRect({top: up?b.top-GAP:b.bottom+GAP, right:window.innerWidth-b.right, left:b.left, up, maxH})
+    setRect({top: up?b.top-GAP:b.bottom+GAP, right:cssViewW()-b.right, left:b.left, up, maxH})
   },[actions.length])
   useEffect(()=>{
     if(!open) return

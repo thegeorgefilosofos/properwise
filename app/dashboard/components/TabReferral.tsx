@@ -547,7 +547,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
       </div>
 
       {/* ── Σύνδεσμος πρόσκλησης (focal, elevated) ── */}
-      <div style={{ ...card, boxShadow: 'var(--highlight-inset), var(--elev-2)', padding: 'clamp(18px, 2.4vw, 26px)', marginBottom: T.sp.xl }}>
+      <div style={{ ...card, boxShadow: 'var(--highlight-inset), var(--elev-2)', padding: 'clamp(18px, calc(2.4vw / var(--zoom, 1)), 26px)', marginBottom: T.sp.xl }}>
         {/* Ο ΚΩΔΙΚΟΣ ΕΣΠΑΓΕ ΤΗ ΣΕΙΡΑ ΤΩΝ ΚΟΥΜΠΙΩΝ ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΚΟΥΜΠΙ. Καθόταν
             τελευταίος μέσα στη σειρά των επτά τρόπων κοινοποίησης, με `margin-left:
             auto`: ένα όγδοο στοιχείο που δεν πατιέται, να διεκδικεί χώρο από επτά
@@ -630,7 +630,7 @@ export default function TabReferral({ userId, plan = 'free', profileType }: {
 
       {/* ── Τα κέρδη σου με μια ματιά (μόλις υπάρχει δραστηριότητα) ── */}
       {stats && stats.invites > 0 && (
-        <div className="ref-rise ref-hover-accent" style={{ ...card, boxShadow: 'var(--highlight-inset), var(--elev-2)', borderColor: 'var(--accent-border)', background: 'linear-gradient(180deg, var(--accent-soft), transparent 160%)', padding: PAD, marginBottom: T.sp.xl, display: 'flex', alignItems: 'center', gap: 'clamp(16px, 3vw, 28px)', flexWrap: 'wrap' }}>
+        <div className="ref-rise ref-hover-accent" style={{ ...card, boxShadow: 'var(--highlight-inset), var(--elev-2)', borderColor: 'var(--accent-border)', background: 'linear-gradient(180deg, var(--accent-soft), transparent 160%)', padding: PAD, marginBottom: T.sp.xl, display: 'flex', alignItems: 'center', gap: 'clamp(16px, calc(3vw / var(--zoom, 1)), 28px)', flexWrap: 'wrap' }}>
           {([
             ['Προσκλήσεις', stats.invites, false],
             ['Ενεργοποιήθηκαν', stats.activated, true],

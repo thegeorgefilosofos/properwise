@@ -25,7 +25,6 @@ export { T, TT, formGrid, fieldRow, fixedCols, tileGrid, tileRow, fe, feAuto, fe
 export type { Tone } from './tokens';
 import { T, TT, isBlankMetric, type Tone } from './tokens';
 import { hy } from './Hyphen';
-import { prefersLessMotion } from '@/lib/core/a11yPrefs';
 
 // Τα στοιχεία του κρίσιμου μονοπατιού ζουν στο ThemeCore.tsx (δες εκεί γιατί)
 // και ξαναεξάγονται εδώ αυτούσια.
@@ -836,8 +835,12 @@ export function Bar({
 }) {
   const clamp = (n: number) => Math.max(0, Math.min(100, Number.isFinite(n) ? n : 0));
   // Με σβηστή την κίνηση ξεκινά γεμάτη: καμία δεύτερη απόδοση, κανένα τρεμόπαιγμα.
-  // Και με τη χειροκίνητη «Λιγότερη κίνηση» των Ρυθμίσεων, όχι μόνο της συσκευής.
-  const [grown, setGrown] = useState(() => !grow || prefersLessMotion());
+  // ΙΔΙΑ ΠΡΩΤΗ ΑΠΟΔΟΣΗ ΣΕ ΔΙΑΚΟΜΙΣΤΗ ΚΑΙ ΠΕΡΙΗΓΗΤΗ. Ο αρχικοποιητής διάβαζε
+  // την προτίμηση κίνησης από το `document`: ο διακομιστής έβγαζε άδεια μπάρα,
+  // ο περιηγητής γεμάτη· η React το έβλεπε ως ασυμφωνία ενυδάτωσης. Τώρα
+  // η μπάρα γεμίζει πάντα στο επόμενο καρέ· με λιγότερη κίνηση (συσκευής ή
+  // Ρυθμίσεων) το CSS μηδενίζει τη μετάβαση και το γέμισμα είναι ακαριαίο.
+  const [grown, setGrown] = useState(() => !grow);
   useEffect(() => {
     if (!grow) return;
     const id = requestAnimationFrame(() => setGrown(true));

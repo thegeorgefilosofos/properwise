@@ -13,6 +13,7 @@ import { CustomSelect } from '../UIComponents'
 import { MessageSquare } from 'lucide-react'
 import { getPri, priDotColor, priShowDot } from './calc'
 import type { Comment, SubTask } from './model'
+import { cssRect, cssViewH } from '@/lib/core/cssZoom'
 
 // ══ ΤΟ ΥΨΟΣ ΒΓΑΙΝΕ ΑΠΟ PADDING ΚΑΙ ΓΙ' ΑΥΤΟ ΔΕΝ ΣΥΜΦΩΝΟΥΣΕ ΜΕ ΚΑΝΕΝΑ ══════
 // Μετρημένο στη γραμμή φίλτρων των Εκκρεμοτήτων, στην ίδια σειρά: πεδίο
@@ -78,12 +79,12 @@ export function FilterSelect({ value, onChange, options, minWidth = 168, idle }:
   const active = value !== 'all'
   const reposition = useCallback(() => {
     if (!btnRef.current) return
-    const r = btnRef.current.getBoundingClientRect()
+    const r = cssRect(btnRef.current)
     const menuH = Math.min(options.length * 40 + 12, 320)
-    const openUp = r.bottom + menuH + 8 > window.innerHeight && r.top - menuH - 8 > 0
+    const openUp = r.bottom + menuH + 8 > cssViewH() && r.top - menuH - 8 > 0
     // maxH = ο ίδιος διαθέσιμος χώρος που δεσμεύτηκε για το flip, ώστε το πραγματικό ύψος
     // να μη ξεπερνά τον χώρο και το πλεόνασμα να κάνει εσωτερικό scroll (αντί να κόβεται).
-    const avail = openUp ? r.top - 8 : window.innerHeight - r.bottom - 8
+    const avail = openUp ? r.top - 8 : cssViewH() - r.bottom - 8
     setPos({ top: openUp ? r.top - menuH - 6 : r.bottom + 6, left: r.left, width: r.width, maxH: Math.max(120, Math.min(menuH, avail - 6)) })
   }, [options.length])
   useEffect(() => {
