@@ -676,7 +676,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             <Btn variant="secondary" onClick={() => setImported(0)}>Εισαγωγή άλλου αρχείου</Btn>
           </div>
         ) : (
-          <BudgetImport propertyId={propertyId} userId={userId} onImported={n => setImported(n)} />
+          <BudgetImport propertyId={propertyId} userId={userId} onImported={n => setImported(n)} autoPick />
         )}
       </div>
     );

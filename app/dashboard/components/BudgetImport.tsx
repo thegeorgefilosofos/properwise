@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { readSheetAsCsv, SheetError } from '@/lib/core/readSheet';
 import { createClient } from '@/lib/supabase/client';
 import * as expenses from '@/lib/data/expenses';
@@ -32,12 +32,14 @@ interface Props {
   /** Οι κατηγορίες της επιλογής. Χωρίς αυτές, οι βασικές του Προϋπολογισμού. */
   cats?: readonly { key: string; label: string }[];
   onImported?: (n: number) => void;
+  /** Ανοίγει την επιλογή αρχείου μόλις εμφανιστεί: το πλακίδιο ήταν ήδη η απόφαση. */
+  autoPick?: boolean;
 }
 
 /** dd/mm/yyyy, όπως κάθε ημερομηνία της εφαρμογής. */
 const dmy = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '';
 
-export default function BudgetImport({ propertyId, userId = '', cats = CATS, onImported }: Props) {
+export default function BudgetImport({ propertyId, userId = '', cats = CATS, onImported, autoPick }: Props) {
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [rows, setRows] = useState<Row[] | null>(null);
@@ -46,6 +48,10 @@ export default function BudgetImport({ propertyId, userId = '', cats = CATS, onI
   const [fileName, setFileName] = useState('');
 
   const catOptions = cats.map(c => ({ value: c.key, label: c.label }));
+  // ΕΝΑ ΠΑΤΗΜΑ ΛΙΓΟΤΕΡΟ. Το «Κινήσεις από αρχείο» και μετά «Διάλεξε αρχείο»
+  // ζητούσαν δύο φορές το ίδιο. Η επιλογή ανοίγει μέσα στο ίδιο άγγιγμα· αν ο
+  // περιηγητής την αρνηθεί, το κουμπί από κάτω μένει.
+  useEffect(() => { if (autoPick) fileRef.current?.click(); }, [autoPick]);
 
   const handleFile = async (file: File) => {
     setErr(''); setBusy(true); setFileName(file.name);
