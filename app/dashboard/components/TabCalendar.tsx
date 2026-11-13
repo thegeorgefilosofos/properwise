@@ -348,7 +348,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
     if(!await saved('Η κατάσταση δεν αποθηκεύτηκε', calendar.update(supabase,e.id,{status:ns}))) return
     if(ns==='paid') void track(supabase, PRODUCT_EVENTS.paid_marked, paidProps('app'))
     // ΕΦΑΠΑΞ ΕΞΟΦΛΗΣΗ ΤΟΥ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ: ρωτά, δεν υποθέτει. Οι δόσεις των
-    // άλλων ακινήτων κλείνουν από τον συγχρονισμό (προθεσμία του φορολογούμενου).
+    // άλλων ακινήτων του ίδιου φορολογούμενου κλείνουν από τον συγχρονισμό.
     const rest=ns==='paid'?incomeInstalmentsAfter(events,e):[]
     if(rest.length&&await confirmDialog({title:'Εξοφλήθηκε όλος ο φόρος;',message:`Αν πλήρωσες εφάπαξ, κλείνουν και οι υπόλοιπες δόσεις της ίδιας δήλωσης (${rest.length}). Αν πληρώνεις σε δόσεις, άφησέ τες ανοιχτές.`,confirmLabel:'Κλείσιμο υπόλοιπων',cancelLabel:'Πληρώνω σε δόσεις'})
       &&await saved('Οι υπόλοιπες δόσεις δεν έκλεισαν', calendar.updateMany(supabase,rest.map(r=>r.id),{status:'paid'}))){

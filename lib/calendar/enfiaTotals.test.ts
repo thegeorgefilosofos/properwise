@@ -10,7 +10,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { greekPropertyTaxObligations, lastWorkingDayOfMonth, ENFIA_FEWER_HINT } from '@/lib/tax/greekTaxCalendar';
 import { enfiaInstalmentCount } from '@/lib/tools/enfiaSchedule';
-import { enfiaCountsByProperty, enfiaTotalOfSettings, incomeTaxNilByProperty } from './enfiaTotals';
+import { enfiaCountsByProperty, enfiaTotalOfSettings, incomeTaxNilByProperty, taxpayerKeys } from './enfiaTotals';
 import { enfiaYearOf, planDocSave, renamePatch, ENFIA_TITLE } from '@/lib/billing/documents';
 
 let pass = 0, fail = 0;
@@ -98,6 +98,18 @@ ok('μετονομασία χωρίς σήμα: μόνο ο τίτλος', JSON.
   ok('φόρος σε άλλο ακίνητο του ίδιου ΑΦΜ: όχι μηδέν', incomeTaxNilByProperty(props, null, [{ propertyId: 'a', year: 2025, amount: 0 }, { propertyId: 'b', year: 2025, amount: 300 }]).get('a')?.length === 0);
   ok('κάθε ακίνητο μόνο του: μόνο εκεί που σαρώθηκε', incomeTaxNilByProperty(props, new Set(), [{ propertyId: 'a', year: 2025, amount: 0 }]).get('b')?.length === 0);
   ok('χωρίς εκκαθαριστικό: κανένα έτος', incomeTaxNilByProperty(props, null, []).get('a')?.length === 0);
+}
+
+// ── ΤΟ ΚΛΕΙΔΙ ΦΟΡΟΛΟΓΟΥΜΕΝΟΥ ΠΟΥ ΔΙΑΒΑΖΕΙ ΚΑΙ Ο ΣΥΓΧΡΟΝΙΣΜΟΣ (13.11.2026) ──
+{
+  const props = [{ id: 'a', client_id: 'cA' }, { id: 'a2', client_id: 'cA' }, { id: 'b', client_id: 'cB' }, { id: 's', client_id: null }];
+  const ind = taxpayerKeys(props, null);
+  ok('κλειδί: ιδιώτης, όλα ένας', new Set(ind.values()).size === 1 && ind.size === 4);
+  const pro = taxpayerKeys(props, new Set(['cA', 'cB']));
+  ok('κλειδί: ίδιος πελάτης, ίδιο κλειδί', pro.get('a') === pro.get('a2'));
+  ok('κλειδί: άλλος πελάτης, άλλο κλειδί', pro.get('a') !== pro.get('b') && pro.get('a') !== pro.get('s'));
+  const alone = taxpayerKeys(props, new Set());
+  ok('κλειδί: χωρίς καρτέλες, κάθε ακίνητο μόνο του', new Set(alone.values()).size === 4);
 }
 
 console.log(`\nenfiaTotals: ${pass} ✓ · ${fail} ✗`);
