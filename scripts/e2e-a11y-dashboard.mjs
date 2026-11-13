@@ -103,17 +103,69 @@ const LABELS = {
   blindFocus: 'εστίαση που δεν φαίνεται με Tab',
   lowContrast: 'κείμενο κάτω από την αντίθεση WCAG AA',
   tinyTap: 'στόχος αφής κάτω από τα 44 εικονοστοιχεία',
+  noState: 'κατάσταση που δεν άνοιξε',
 }
 
 let findings = 0
 
-for (const scene of RUN) {
+// ═══ ΟΧΙ ΜΟΝΟ Η ΠΡΟΕΠΙΛΕΓΜΕΝΗ ΚΑΤΑΣΤΑΣΗ (13/11/2026) ═══════════════════════════
+// Ο σαρωτής έβλεπε κάθε σκηνή όπως ανοίγει. Στον Προϋπολογισμό αυτό σήμαινε
+// όλες τις ενότητες μαζεμένες: οι γραμμές κατηγοριών, οι εξαιρέσεις και η
+// προεπισκόπηση της εισαγωγής δεν σαρώθηκαν ποτέ· εκεί ακριβώς ζούσαν οι
+// στόχοι των 16 εικονοστοιχείων και τα ένθετα χειριστήρια. Ενα πράσινο εδώ δεν
+// έλεγε τίποτα για την ενότητα. Τώρα κάθε σκηνή μπορεί να δηλώσει καταστάσεις:
+// ενέργειες που την ανοίγουν πριν από τη σάρωση, σε ΚΑΙ ΤΑ ΔΥΟ περιβάλλοντα.
+const BANK_CSV = 'Ημερομηνία;Περιγραφή;Ποσό\n03/08/2026;ΔΕΗ ΛΟΓΑΡΙΑΣΜΟΣ;-84,20\n06/08/2026;NETFLIX.COM;-13,99\n08/08/2026;ΥΔΡΑΥΛΙΚΟΣ;-140,00\n'
+/** Ανοίγει την πρώτη κατηγορία που έχει κινήσεις (διακόπτη εξαίρεσης) και τον κλείνει. */
+// Τα δεδομένα του πάγκου έχουν ημερομηνίες· ο τρέχων μήνας μπορεί να είναι
+// άδειος, οπότε πηγαίνει πίσω μήνα μήνα ώσπου να βρει κατηγορία με κινήσεις.
+const openExclusion = async (page) => {
+  for (let back = 0; back <= 12; back++) {
+    const rows = page.locator('.bud-cat')
+    const n = await rows.count()
+    for (let i = 0; i < n; i++) {
+      await rows.nth(i).click()
+      await page.waitForTimeout(300)
+      const sw = page.getByRole('switch', { name: /μετρά στον προϋπολογισμό/ })
+      if (await sw.count()) { await sw.first().click(); await page.waitForTimeout(300); return }
+      await page.keyboard.press('Escape'); await page.waitForTimeout(200)
+    }
+    const prev = page.getByRole('button', { name: 'Προηγούμενος μήνας' })
+    if (!(await prev.count()) || await prev.first().isDisabled()) break
+    await prev.first().click(); await page.waitForTimeout(300)
+  }
+  throw new Error('καμία κατηγορία με κινήσεις')
+}
+const openMore = async (page) => {
+  const b = page.getByRole('button', { name: /^Περισσότερα/ }).first()
+  if ((await b.getAttribute('aria-expanded')) === 'false') await b.click()
+  await page.waitForTimeout(300)
+}
+const STATES = {
+  budget: [
+    { name: 'φύλλο κατηγορίας', act: async (page) => { await page.locator('.bud-cat').first().click(); await page.waitForTimeout(300) } },
+    { name: 'εξαίρεση', act: openExclusion },
+    { name: 'περισσότερα', act: openMore },
+    { name: 'όλες οι κατηγορίες', act: async (page) => { const b = page.getByRole('button', { name: /χωρίς κινήσεις/ }); if (await b.count()) await b.first().click(); await page.waitForTimeout(200) } },
+  ],
+  budgetPro: [{ name: 'περισσότερα', act: openMore }],
+  finances: [{ name: 'προϋπολογισμός', act: async (page) => { await page.getByRole('button', { name: 'Προϋπολογισμός', exact: true }).first().click(); await page.waitForTimeout(900) } }],
+  scan: [{ name: 'προεπισκόπηση εισαγωγής', act: async (page) => {
+    await page.getByRole('button', { name: /Κινήσεις από αρχείο/ }).first().click()
+    await page.waitForTimeout(300)
+    await page.locator('input[type=file][aria-label="Αρχείο κινήσεων"]').setInputFiles({ name: 'kiniseis.csv', mimeType: 'text/csv', buffer: Buffer.from(BANK_CSV) })
+    await page.waitForTimeout(900)
+  } }],
+}
+
+for (const scene of RUN) for (const state of [{ name: '', act: null }, ...(STATES[scene] || [])]) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 }, locale: 'el-GR' })
   const page = await ctx.newPage()
   await page.goto(benchUrl(scene), { waitUntil: 'load' })
   await page.waitForTimeout(1800)
 
-  const found = { anonymous: [], selfNamed: [], loudImage: [], namelessDialog: [], headingJump: [], blindFocus: [], lowContrast: [], tinyTap: [] }
+  const found = { anonymous: [], selfNamed: [], loudImage: [], namelessDialog: [], headingJump: [], blindFocus: [], lowContrast: [], tinyTap: [], noState: [] }
+  if (state.act) { try { await state.act(page) } catch (e) { found.noState.push(`${state.name}: ${String(e.message).split('\n')[0]}`) } }
 
   // ── ΣΤΟΧΟΙ ΑΦΗΣ ────────────────────────────────────────────────────────
   // Ο κανόνας των 44 έτρεχε ΜΟΝΟ στις οκτώ δημόσιες σελίδες: οι τριάντα εννέα
@@ -125,6 +177,7 @@ for (const scene of RUN) {
     const tp = await touchCtx.newPage()
     await tp.goto(benchUrl(scene), { waitUntil: 'load' })
     await tp.waitForTimeout(1200)
+    if (state.act) { try { await state.act(tp) } catch { /* καταγράφεται ήδη από το κύριο περιβάλλον */ } }
     found.tinyTap.push(...await tp.evaluate(tinyTargets, { MIN: TAP, INLINE: TAP_INLINE }))
     await touchCtx.close()
   }
@@ -302,7 +355,7 @@ for (const scene of RUN) {
     for (const u of uniq.slice(0, 6)) lines.push(`      · ${u}`)
     if (uniq.length > 6) lines.push(`      · και άλλα ${uniq.length - 6}`)
   }
-  if (lines.length) { console.log(` ${scene}`); console.log(lines.join('\n')) }
+  if (lines.length) { console.log(` ${scene}${state.name ? ` · ${state.name}` : ''}`); console.log(lines.join('\n')) }
   await ctx.close()
 }
 

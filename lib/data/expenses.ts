@@ -290,12 +290,9 @@ export async function insertFromBank(db: Db, rows: Partial<ExpenseRow>[]): Promi
   return { data: null, error: null };
 }
 
-/** Εισαγωγή με τα αναγνωριστικά πίσω — για όσους πρέπει να κρατήσουν αναφορά. */
-export function insertReturning(
-  db: Db, rows: Partial<ExpenseRow>[],
-): PromiseLike<{ data: { id: string }[] | null; error: { message?: string; code?: string } | null }> {
-  return db.from(TABLE).insert(rows).select('id');
-}
+// Η `insertReturning` ΕΦΥΓΕ (13/11/2026). Τη χρησιμοποιούσε μόνο το «Δείξε μου»
+// του Προϋπολογισμού, για να γράψει δαπάνες-δείγματα στον πίνακα του χρήστη.
+// Το παράδειγμα ζει πλέον στη μνήμη (budget/plan.ts) και δεν γράφει τίποτα.
 
 /** Μία γραμμή έτοιμη από αλλού, με το αναγνωριστικό της πίσω. */
 export function addRow(

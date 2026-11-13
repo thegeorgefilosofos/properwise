@@ -1,29 +1,9 @@
 'use client'
 // ═══════════════════════════════════════════════════════════════════════════
-// ΤΑ ΔΙΑΓΡΑΜΜΑΤΑ ΤΟΥ ΠΡΟΫΠΟΛΟΓΙΣΜΟΥ: ΓΡΑΜΜΗ ΤΑΣΗΣ, ΜΗΝΙΑΙΕΣ ΜΠΑΡΕΣ, ΔΑΚΤΥΛΙΟΣ
+// ΤΑ ΔΙΑΓΡΑΜΜΑΤΑ ΤΟΥ ΠΡΟΫΠΟΛΟΓΙΣΜΟΥ: ΜΗΝΙΑΙΕΣ ΜΠΑΡΕΣ ΚΑΙ ΔΑΚΤΥΛΙΟΣ
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState } from 'react'
 import { T, feAuto, grUpper } from '@/components/Theme'
-
-// Μικρογράφημα τάσης 12 μηνών ανά κατηγορία (από το φορτωμένο ιστορικό). Το σημείο
-// του επιλεγμένου μήνα τονίζεται με γαλάζιο. Κρύβεται αν δεν υπάρχει καθόλου ιστορικό.
-export function Sparkline({ values, activeIndex }: { values: number[]; activeIndex: number }) {
-  const w = 54, h = 14, pad = 2;
-  if (values.every(v => !v)) return <span style={{ width: w, flexShrink: 0 }} aria-hidden="true" />;
-  const max = Math.max(1, ...values);
-  const n = values.length;
-  const x = (i: number) => n <= 1 ? pad : pad + (i * (w - 2 * pad)) / (n - 1);
-  const y = (v: number) => h - pad - (Math.max(0, v) / max) * (h - 2 * pad);
-  const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-  // Καθαρή μονόχρωμη μικρογραφία τάσης — χωρίς έγχρωμη «κουκκίδα», ώστε οι γραμμές
-  // των κατηγοριών να μένουν ομοιόμορφες και διακριτικές (καμία διακοσμητική χρώση).
-  void activeIndex;
-  return (
-    <svg width={w} height={h} style={{ display: 'block', flexShrink: 0 }} aria-hidden="true">
-      <polyline points={pts} fill="none" stroke="color-mix(in srgb, var(--text-primary) 26%, transparent)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 // Ράβδοι εξόδων ανά μήνα — premium, στο ΓΑΛΑΖΙΟ της παλέτας μας (accent): απαλή κάθετη
 // διαβάθμιση, στρογγυλεμένη κορυφή, baseline· στο πέρασμα του κέρσορα φωτίζεται, σηκώνεται
@@ -75,7 +55,7 @@ export function Donut({ slices }: { slices: { label: string; value: number }[] }
   if (sorted.length > MAX) {
     const head = sorted.slice(0, MAX - 1);
     const rest = sorted.slice(MAX - 1).reduce((s, x) => s + x.value, 0);
-    segs = [...head, { label: 'Λοιπά', value: rest }];
+    segs = [...head, { label: 'Άλλες κατηγορίες', value: rest }];
   }
   const r = 56, sw = 14, C = 2 * Math.PI * r;
   const GAP = segs.length > 1 ? 6 : 0;   // κενό μεταξύ τόξων (σε μονάδες περιμέτρου)
