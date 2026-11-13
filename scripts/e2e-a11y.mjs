@@ -223,7 +223,11 @@ for (const path of ['/login', '/signup']) {
   ok('εγγραφή: η περιγραφή δείχνει σε υπαρκτό στόχο',
     await pwField.getAttribute('aria-describedby') === 'su-pw-req' && await p.locator('#su-pw-req').count() === 1)
 
-  // ΥΠΟΒΟΛΗ ΧΩΡΙΣ ΣΥΓΚΑΤΑΘΕΣΗ: ΕΞΗΓΕΙΤΑΙ, ΜΙΑ ΦΟΡΑ, ΣΤΑ ΕΛΛΗΝΙΚΑ.
+  // ΥΠΟΒΟΛΗ ΧΩΡΙΣ ΣΥΓΚΑΤΑΘΕΣΗ: ΕΞΗΓΕΙΤΑΙ, ΜΙΑ ΦΟΡΑ, ΣΤΑ ΕΛΛΗΝΙΚΑ. Ο ιδιοκτήτης
+  // δεν έχει πια κουτί Όρων (αποδοχή με το πάτημα, 13/11/2026). Το μόνο
+  // υποχρεωτικό κουτί που μένει είναι οι όροι επεξεργασίας του γραφείου.
+  await p.getByRole('button', { name: 'Λογαριασμός γραφείου' }).click()
+  await p.waitForTimeout(300)
   await p.locator('#su-email').fill('dokimi@example.com')
   await pwField.fill('Dokimastiko2026!x')
   await p.waitForTimeout(400)
