@@ -195,6 +195,9 @@ const STR_NOV = 'tax:str-registry-2026-11';
         prop('pA', 'seasonal', 'short_term', { ownership: 100 }),
         prop('pB', 'seasonal', 'short_term', { ownership: 50, co_owners: [{ name: 'Αδελφή', pct: 50 }] }),
       ],
+      // Κάθε λογαριασμός έχει προφίλ από την εγγραφή του (migration
+      // 20260820200000), ιδιώτης εκ προεπιλογής: ένας φορολογούμενος.
+      billing_profiles: [{ user_id: OWNER, profile_type: 'individual' }],
       calendar_events: [],
     });
     await syncOwnerTaxDeadlines(db, OWNER, { today: TODAY });
@@ -230,6 +233,68 @@ const STR_NOV = 'tax:str-registry-2026-11';
     const pending = taxRows(tables).filter(r => r.status === 'pending').map(r => ({ id: String(r.id), source: String(r.source) }));
     const mail = oneTaxCopy(pending).kept;
     ok('email: μία γραμμή ανά προθεσμία', new Set(mail.map(e => e.source)).size === mail.length);
+  }
+
+  // ── 6β. ΕΝΑΣ ΛΟΓΑΡΙΑΣΜΟΣ, ΠΟΛΛΟΙ ΦΟΡΟΛΟΓΟΥΜΕΝΟΙ (13.11.2026) ───────────────
+  // Ο επαγγελματίας κρατά στον ίδιο λογαριασμό ακίνητα πολλών ιδιοκτητών. Η
+  // πληρωμένη δόση του πελάτη Α δεν κλείνει τη δόση του πελάτη Β. Ο κανόνας του
+  // φορολογούμενου είναι ο ίδιος με τον ΕΝΦΙΑ (lib/accounting/taxpayer.ts).
+  {
+    const INC5 = 'tax:income-instalment-2026-5';
+    const sameTaxpayerRun = async (fixture: Tables, ids: string[]) => {
+      const { db, tables } = fakeDb({ calendar_events: [], ...fixture });
+      await syncOwnerTaxDeadlines(db, OWNER, { today: TODAY });
+      bySrc(tables, ids[0], EIGHTH)!.status = 'paid';
+      bySrc(tables, ids[0], INC5)!.status = 'paid';
+      await syncOwnerTaxDeadlines(db, OWNER, { today: TODAY });
+      const st = (pid: string, src: string) => bySrc(tables, pid, src)?.status;
+      return { tables, st };
+    };
+    const PRO = [{ user_id: OWNER, profile_type: 'professional' }];
+
+    // Δύο πελάτες «Ιδιοκτήτης» με άλλο ΑΦΜ ο καθένας.
+    const two = await sameTaxpayerRun({
+      user_properties: [prop('a1', 'rented', 'long_term', { client_id: 'cA' }), prop('b1', 'rented', 'long_term', { client_id: 'cB' })],
+      billing_profiles: PRO,
+      clients: [{ id: 'cA', user_id: OWNER, type: 'owner', afm: '111111111' }, { id: 'cB', user_id: OWNER, type: 'owner', afm: '222222222' }],
+    }, ['a1', 'b1']);
+    ok('δύο πελάτες: η δόση εισοδήματος του Α δεν κλείνει του Β', two.st('b1', INC5) === 'pending', two.st('b1', INC5));
+    ok('δύο πελάτες: ο ΕΝΦΙΑ του Α δεν κλείνει του Β', two.st('b1', EIGHTH) === 'pending', two.st('b1', EIGHTH));
+    ok('δύο πελάτες: του Α μένει πληρωμένη', two.st('a1', INC5) === 'paid' && two.st('a1', EIGHTH) === 'paid');
+
+    // Ο ίδιος πελάτης σε δύο ακίνητα: κλείνουν μαζί. Ακίνητο χωρίς πελάτη
+    // ανήκει στον κάτοχο του λογαριασμού, άλλον φορολογούμενο.
+    const one = await sameTaxpayerRun({
+      user_properties: [
+        prop('a1', 'rented', 'long_term', { client_id: 'cA' }), prop('a2', 'rented', 'long_term', { client_id: 'cA' }),
+        prop('s1', 'rented', 'long_term'),
+      ],
+      billing_profiles: PRO,
+      clients: [{ id: 'cA', user_id: OWNER, type: 'owner', afm: '111111111' }],
+    }, ['a1', 'a2', 's1']);
+    ok('ίδιος πελάτης: η δόση εισοδήματος κλείνει και στο άλλο του ακίνητο', one.st('a2', INC5) === 'paid', one.st('a2', INC5));
+    ok('ίδιος πελάτης: ο ΕΝΦΙΑ κλείνει και στο άλλο του ακίνητο', one.st('a2', EIGHTH) === 'paid', one.st('a2', EIGHTH));
+    ok('ίδιος πελάτης: το ακίνητο του κατόχου δεν κλείνει', one.st('s1', INC5) === 'pending' && one.st('s1', EIGHTH) === 'pending');
+
+    // Ιδιώτης χωρίς καμία καρτέλα: ένας φορολογούμενος, όπως πριν.
+    const owner = await sameTaxpayerRun({
+      user_properties: [prop('o1', 'rented', 'long_term'), prop('o2', 'rented', 'long_term')],
+      billing_profiles: [{ user_id: OWNER, profile_type: 'individual' }],
+    }, ['o1', 'o2']);
+    ok('ιδιώτης: η δόση εισοδήματος κλείνει σε όλα, όπως πριν', owner.st('o2', INC5) === 'paid' && owner.st('o2', EIGHTH) === 'paid');
+
+    // ΑΓΝΩΣΤΟΣ ΦΟΡΟΛΟΓΟΥΜΕΝΟΣ: δεν κλείνει τίποτα αλλού. Επαγγελματίας χωρίς
+    // καρτέλα «Ιδιοκτήτης» και προφίλ που δεν διαβάζεται (μέλος ομάδας).
+    const noCards = await sameTaxpayerRun({
+      user_properties: [prop('x1', 'rented', 'long_term'), prop('x2', 'rented', 'long_term')],
+      billing_profiles: PRO,
+    }, ['x1', 'x2']);
+    ok('επαγγελματίας χωρίς καρτέλες: δεν κλείνει στο άλλο ακίνητο', noCards.st('x2', INC5) === 'pending' && noCards.st('x2', EIGHTH) === 'pending');
+    const unread = await sameTaxpayerRun({
+      user_properties: [prop('y1', 'rented', 'long_term'), prop('y2', 'rented', 'long_term')],
+      billing_profiles: [],
+    }, ['y1', 'y2']);
+    ok('προφίλ που δεν διαβάζεται: δεν κλείνει στο άλλο ακίνητο', unread.st('y2', INC5) === 'pending' && unread.st('y2', EIGHTH) === 'pending');
   }
 
   // ── 7. ΤΟ ΠΡΩΙΝΟ ΠΕΡΑΣΜΑ: ΚΑΘΕ ΙΔΙΟΚΤΗΤΗΣ ΣΤΑ ΔΙΚΑ ΤΟΥ ──────────────────────

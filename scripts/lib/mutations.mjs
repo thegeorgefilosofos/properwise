@@ -983,4 +983,12 @@ export const MUTATIONS = {
     { file: 'scripts/db-replay.sh', from: 'PSQL="psql -h $WORK -U postgres', to: 'PSQL="psql $DATABASE_URL -h $WORK -U postgres' },
     { file: 'scripts/backup/vault.mjs', from: "import { pathToFileURL } from 'node:url'\n", to: "import { pathToFileURL } from 'node:url'\nimport { spawnSync } from 'node:child_process'\nexport const probe = () => spawnSync('pg_dump --data-only', { shell: true })\n" },
   ] },
+  // Οι δόσεις του φόρου εισοδήματος παραπέμπονταν στην παρ. 4 του άρθρου 67 ΚΦΕ (13/11/2026).
+  'kfe67-instalments': { every: [
+    { file: 'lib/home/forecast12.ts', from: 'ΚΦΕ άρθρο 67 παρ. 6,\n', to: 'ΚΦΕ άρθρο 67 παρ. 4,\n' },
+    { file: 'data/accounting-sources.json', from: '(ΚΦΕ άρθρο 67 παρ. 6, τρίτο εδάφιο)', to: '(ΚΦΕ άρθρο 67 παρ. 4 περ. α΄)' },
+    { file: 'data/accounting-sources.json', from: 'αντικατέστησε το τρίτο εδάφιο της παρ. 6 του άρθρου 67 ΚΦΕ', to: 'αντικατέστησε την περ. α΄ της παρ. 4 του άρθρου 67 ΚΦΕ' },
+    { file: 'app/dashboard/components/assistantPersona.ts', from: '(ΚΦΕ άρθρο 67 §6, όπως', to: '(ΚΦΕ άρθρο 67 §4α, όπως' },
+    { add: 'docs/__mut_kfe67__.md', content: 'Income tax is paid in eight monthly instalments (Income Tax Code, Article 67(4)).\n' },
+  ] },
 }
