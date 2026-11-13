@@ -247,7 +247,11 @@ email**. Οι λογιστές δουλεύουν με Epsilon Net κ.λπ. γι
   `app/odigos/guides.ts`).
 - Οδηγός εκτός καταλόγου (`unlisted`, π.χ. όσο περιμένει νομικό έλεγχο): εκτός
   κόμβου, εκτός χάρτη και `noindex`, με την ίδια συνθήκη (`isHiddenGuide`).
-- `robots.txt` (allow public, disallow ιδιωτικά/token), canonical/`metadataBase`,
+- `robots.txt` (`app/robots.ts`): allow public, disallow μόνο το `/dashboard`.
+  Οι ιδιωτικές σελίδες και όσες έχουν token ΔΕΝ μπαίνουν στο disallow (#571):
+  τις κρατά έξω η κεφαλίδα `X-Robots-Tag: noindex` του `next.config.ts`
+  (`NOINDEX_PATHS`), που η μηχανή διαβάζει μόνο αν της επιτρέπεται η σελίδα.
+- Canonical/`metadataBase`,
   Open Graph/Twitter με δική τους κάρτα (`app/og/share.ts`) για κάθε δημόσια
   σελίδα του χάρτη.
 - Meta description 70–160 χαρακτήρες σε κάθε σελίδα του χάρτη, μετρημένη όπως
