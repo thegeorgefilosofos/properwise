@@ -48,14 +48,16 @@ cp .env.example .env.local      # .env.local is gitignored
 | `TESTER_CODE` | Beta tester code redeemed in the app (`lib/billing/testerCode.ts`). |
 | `SUPABASE_SERVICE_ROLE_KEY` | Bypasses RLS. Read only by `lib/supabase/service.ts`, for the few server routes that need it. |
 | `NEXT_PUBLIC_SITE_URL` | Canonical site URL (`lib/core/site.ts`). Blank uses the default. |
-| `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | Google Search Console verification tag (`app/layout.tsx`). Blank omits it. |
-| `NEXT_PUBLIC_BUILD_SHA` | Build identifier shown on error pages, served by `app/api/version` and sent as the Sentry release. Blank reports `dev`. |
 
 The app code also reads a few optional server variables that are not in
 `.env.example`, for email, push and scheduled routes: `RESEND_API_KEY`,
 `CRON_SECRET` (`lib/api/cronSecret.ts`), `VAPID_PRIVATE_KEY` and
 `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (`lib/push/`), and `NEXT_PUBLIC_INBOUND_DOMAIN`
-(`lib/inbound/address.ts`). Edge functions read their own variables from the
+(`lib/inbound/address.ts`). Two optional public variables are not in
+`.env.example` either: `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, the Google
+Search Console tag (`app/layout.tsx`; blank omits it), and
+`NEXT_PUBLIC_BUILD_SHA`, the build identifier shown on error pages, served by
+`app/api/version` and sent as the Sentry release (blank reports `dev`). Edge functions read their own variables from the
 Supabase function environment, not from `.env.local`.
 
 Never commit a value. Secrets in tracked files are blocked by
@@ -250,7 +252,8 @@ The full guide is `.claude/skills/kastania/SKILL.md` (in Greek).
 
 The rule:
 
-1. If the number goes up, the check fails.
+1. If the number goes up, the check fails. The one exception is
+   `perf:mobile`, which only reports: a slower result never fails it.
 2. When the number improves, lower the baseline **in the same commit** as
    the improvement, with a short note beside the number that says what
    changed.
@@ -271,8 +274,9 @@ Where they live:
 | `scripts/optiki-baseline.json` | visual defects from the optical scan | `npm run optiki:ratchet` |
 | `scripts/design-scale-baseline.json` | distinct type sizes, weights, gaps and radii rendered in the app | `npm run e2e:scale` |
 | `docs/perf/budget.json` | client wire bytes per public screen | `npm run perf:budget` |
-| `docs/perf/server.json` | server trace bytes per function | `npm run perf:server` |
-| `docs/perf/bench.json`, `docs/perf/mobile.json` | render time with a large portfolio | `npm run perf:bench`, `npm run perf:mobile` |
+| `docs/perf/server.json` | server trace bytes: the deployment total and the heaviest single function (`total`, `heaviest`) | `npm run perf:server` |
+| `docs/perf/bench.json` | render time of our own code with portfolios of 3, 50 and 200 properties | `npm run perf:bench` |
+| `docs/perf/mobile.json` | FCP, LCP and blocking time of three public routes under mobile CPU and network throttling; reports only; a slower result never fails | `npm run perf:mobile` |
 
 Never raise a baseline to get CI green, never widen the `slack` noise
 tolerance, and never write a baseline from a measurement taken on another
