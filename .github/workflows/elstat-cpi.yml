@@ -15,17 +15,20 @@ name: ELSTAT rent index
 # ελέγχει ότι το δεύτερο είναι το 75% του πρώτου. Αν όλα δένουν, γράφει τη νέα
 # γραμμή στον πίνακα και η εφαρμογή ανεβαίνει με αυτήν.
 #
-# ΓΡΑΦΕΙ ΚΑΤΕΥΘΕΙΑΝ ΣΤΟ MAIN ΚΑΙ ΤΙ ΤΟ ΣΤΗΡΙΖΕΙ
-# Κανένα ανθρώπινο βήμα: ο δείκτης φτάνει στην εφαρμογή μόνος του. Αυτό που
-# αντικαθιστά το ανθρώπινο μάτι είναι τέσσερις έλεγχοι που πρέπει ΟΛΟΙ να
-# περάσουν πριν γραφτεί οτιδήποτε:
+# ΑΝΟΙΓΕΙ PR, ΔΕΝ ΓΡΑΦΕΙ ΣΤΟ MAIN
+# Από 13/11/2026 το main προστατεύεται με κανόνα (υποχρεωτικό PR και «All
+# green»), οπότε η ροή ανοίγει PR στο κλαδί elstat-cpi/<μήνας>. Ένα PR που
+# ανοίγει με το GITHUB_TOKEN δεν ξεκινά μόνο του το CI, γι' αυτό η ροή το
+# ξεκινά ρητά με workflow_dispatch πάνω στο κλαδί: ο έλεγχος «All green»
+# κρεμιέται στο ίδιο commit και το PR συγχωνεύεται με ένα κλικ. Πριν ανοίξει
+# το PR, πρέπει να περάσουν ΟΛΟΙ οι έλεγχοι:
 #
 #   1. Το ίδιο το δελτίο περιέχει τον έλεγχό του: το δεύτερο ποσοστό είναι το
 #      75% του πρώτου. Αν δεν δένουν, δεν διαβάστηκαν τα σωστά νούμερα.
 #   2. Το ποσοστό πρέπει να πέφτει σε πραγματικό εύρος δωδεκάμηνης μεταβολής.
 #   3. Το έτος αναφοράς πρέπει να υπάρχει μέσα στο κείμενο του δελτίου.
 #   4. Μετά τη γραφή τρέχουν typecheck, ολόκληρη η σουίτα και ο φύλακας
-#      φρεσκάδας. Ό,τι δεν περάσει, δεν φτάνει ποτέ στο main.
+#      φρεσκάδας. Ό,τι δεν περάσει, δεν γίνεται ποτέ PR.
 #
 # Αν κάτι από αυτά αποτύχει, δεν γράφεται τίποτα και ανοίγει issue. Η εφαρμογή
 # συνεχίζει με τον τελευταίο δημοσιευμένο δείκτη — σωστά, απλώς όχι φρέσκα.
@@ -45,6 +48,8 @@ on:
 permissions:
   contents: write
   issues: write
+  pull-requests: write
+  actions: write
 
 concurrency:
   group: elstat-cpi
@@ -90,19 +95,28 @@ jobs:
           npm test
           node scripts/guard-cpi-freshness.mjs
 
-      - name: Γραφή στο main
+      - name: PR με τη νέα γραμμή
         if: steps.read.outputs.changed == 'yes' && steps.verify.outcome == 'success'
         env:
           REPORT: ${{ steps.read.outputs.report }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          BRANCH="elstat-cpi/$(date -u +%Y-%m)"
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout -B "$BRANCH"
           git add lib/market/cpi.ts
-          git commit -m "Ο δείκτης αναπροσαρμογής μισθωμάτων, από το δελτίο της ΕΛΣΤΑΤ" -m "$REPORT"
-          # Η ανάγνωση κρατά δευτερόλεπτα· αν στο μεταξύ έπεσε άλλο commit, το
-          # rebase το σέβεται αντί να το σβήσει.
-          git pull --rebase origin main
-          git push origin HEAD:main
+          git commit -m "Rent adjustment index from the ELSTAT bulletin" -m "$REPORT"
+          git push --force origin "$BRANCH"
+          if ! gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
+            printf '%s\n\n```\n%s\n```\n' \
+              'Ο νέος δείκτης αναπροσαρμογής μισθωμάτων από το δελτίο της ΕΛΣΤΑΤ. Typecheck, τεστ και φύλακας φρεσκάδας πέρασαν πριν ανοίξει το PR.' \
+              "$REPORT" > /tmp/pr-body.md
+            gh pr create --base main --head "$BRANCH" \
+              --title "ΔΤΚ: νέος δείκτης αναπροσαρμογής μισθωμάτων" --body-file /tmp/pr-body.md
+          fi
+          # Το PR του GITHUB_TOKEN δεν ξεκινά το CI μόνο του· το workflow_dispatch ναι.
+          gh workflow run ci.yml --ref "$BRANCH"
 
       - name: Issue όταν οι έλεγχοι δεν περάσουν
         if: failure() && steps.read.outputs.changed == 'yes'

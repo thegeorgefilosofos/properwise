@@ -20,6 +20,9 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  # Για τα PR που ανοίγουν οι αυτόματες ροές (π.χ. elstat-cpi.yml): το PR του
+  # GITHUB_TOKEN δεν ξεκινά το CI, οπότε η ροή το ξεκινά ρητά πάνω στο κλαδί.
+  workflow_dispatch:
 
 permissions:
   contents: read
