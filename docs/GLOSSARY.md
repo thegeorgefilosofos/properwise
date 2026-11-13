@@ -93,12 +93,12 @@ to English is proposed separately (see `CONTRIBUTING.md`, Language policy).
 | Job ID | Display name | English meaning |
 |---|---|---|
 | `verify` | (none, shown as `verify`) | Security scan, audit, lint ratchet, typecheck, guards, ratchets, db-replay, tests, build. |
-| `rendered` | «Ο,τι κρίνεται αφού ζωγραφιστεί» | "What can only be judged once painted": checks on the built, rendered pages. |
-| `scans` | «Σαρώσεις περιηγητή» | "Browser scans": keyboard, accessibility, touch, alignment and other scanners on the dashboard. |
-| `scans-light` | «Οι σαρωτές ξανά, στο φωτεινό θέμα» | "The scanners again, in the light theme". |
-| `layout` | «Διάταξη σε είκοσι δύο συσκευές» | "Layout on twenty-two devices" (Chromium). |
-| `layout-webkit` | «Διάταξη σε Safari, εννέα πλάτη αφής» | "Layout in Safari, nine touch widths" (WebKit). |
-| `gate` | «Ολα πράσινα» | "All green": passes only if every other job passed. May be the required status check in branch protection. |
+| `rendered` | «Rendered checks» | Checks on the built, rendered app. Before 13/11/2026: «Ο,τι κρίνεται αφού ζωγραφιστεί». |
+| `scans` | «Browser scans» | Keyboard, accessibility, touch, alignment and other scanners on the dashboard. Before: «Σαρώσεις περιηγητή». |
+| `scans-light` | «Browser scans (light theme)» | The same scanners in the light theme. Before: «Οι σαρωτές ξανά, στο φωτεινό θέμα». |
+| `layout` | «Layout, 22 devices» | Layout on twenty-two devices (Chromium). Before: «Διάταξη σε είκοσι δύο συσκευές». |
+| `layout-webkit` | «Layout, Safari touch» | Layout in Safari, nine touch widths (WebKit). Before: «Διάταξη σε Safari, εννέα πλάτη αφής». |
+| `gate` | «All green» | Passes only if every other job passed. The required status check in branch protection. Before: «Ολα πράσινα». |
 
 Recurring words in step names:
 

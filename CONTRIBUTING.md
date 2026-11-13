@@ -128,13 +128,14 @@ request.
    (`docs/org/ergaleia/codex.md`). The agent that wrote the PR checks each
    finding against the code and either fixes it in the same PR or answers
    once with file and line.
-3. **CI must be green.** The `gate` job (currently named «Ολα πράσινα») fails
+3. **CI must be green.** The `gate` job («All green») fails
    unless every other job in `ci.yml` succeeded.
-4. **A human squash-merges.** Code changes reach `main` only this way, with
-   one exception: `.github/workflows/elstat-cpi.yml` runs on a schedule and,
-   when ΕΛΣΤΑΤ publishes a new index, commits `lib/market/cpi.ts` and pushes
-   it to `main` itself, after a typecheck, `npm test` and the CPI freshness
-   guard pass.
+4. **A human squash-merges.** Code reaches `main` only this way; a branch
+   ruleset on `main` requires a pull request and «All green», and blocks
+   force pushes. Automated workflows open PRs too: `elstat-cpi.yml` opens one
+   when ΕΛΣΤΑΤ publishes a new index (after a typecheck, `npm test` and the
+   CPI freshness guard pass) and starts CI on it with `workflow_dispatch`,
+   because a PR opened with `GITHUB_TOKEN` does not trigger CI by itself.
 
 ### After a squash merge: rebranch
 
