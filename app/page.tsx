@@ -229,7 +229,7 @@ export default async function Landing() {
               «διαχείριση ακινήτων» διαβάζεται και ως εργαλείο μεσίτη ή διαχειριστή
               πολυκατοικίας. Τη θέση παίρνει η ταμπέλα του κοινού, με το ίδιο
               σχήμα που έχει κάθε ενότητα της σελίδας (.lp-eyebrow). */}
-          <p className="lp-rise lp-eyebrow" style={{ margin: `0 auto ${T.sp.lg}px` }}>Για ιδιοκτήτες ακινήτων στην Ελλάδα</p>
+          <p className="lp-rise lp-eyebrow lp-eyebrow-hero" style={{ margin: `0 auto ${T.sp.lg}px` }}>Για ιδιοκτήτες και διαχειριστές ακινήτων στην Ελλάδα</p>
           <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.15, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
             {/* Ο ΙΔΙΟΣ ΤΙΤΛΟΣ ΜΕ ΤΗΝ ΚΑΡΤΕΛΑ ΚΑΙ ΤΗΝ ΚΑΡΤΑ ΚΟΙΝΟΠΟΙΗΣΗΣ (HOME_TITLE_LINES,
                 lib/core/site.ts). Δύο γραμμές· από τα 900 και πάνω καμία δεν σπάει. */}

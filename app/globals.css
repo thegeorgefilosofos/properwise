@@ -5160,6 +5160,11 @@ body:has(.po-tool-page) .po-cookie {
   content: ''; width: 5px; height: 5px; border-radius: 50%;
   background: var(--accent); flex-shrink: 0;
 }
+/* Η γραμμή του κοινού στην πρώτη οθόνη της αρχικής: σε κινητό σπάει σε δύο
+   γραμμές, οπότε ισοβαρείς γραμμές στο κέντρο, χωρίς την τελεία που έμενε
+   μόνη της στο πλάι. */
+.lp-eyebrow-hero { display: block; text-align: center; text-wrap: balance; }
+.lp-eyebrow-hero::before { content: none; }
 
 /* ── ΤΟ ΥΠΟΣΕΛΙΔΟ ΟΛΩΝ ΤΩΝ ΔΗΜΟΣΙΩΝ ΣΕΛΙΔΩΝ ───────────────────────────────
    ΗΤΑΝ ΓΡΑΜΜΕΝΟ ΜΕΣΑ ΣΤΟ <style> ΤΗΣ ΑΡΧΙΚΗΣ ΚΑΙ ΤΟ ΧΡΗΣΙΜΟΠΟΙΟΥΣΑΝ ΤΕΣΣΕΡΙΣ
