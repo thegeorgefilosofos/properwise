@@ -85,13 +85,37 @@ scripts/.tmp-*
 # Τα βίντεο των σειρών ξαναβγαίνουν από το scripts/marketing/seires.ts --video
 docs/marketing/instagram/seires/**/*.mp4
 
-# Τα shorts (scripts/marketing/shorts/render.ts): στο git ΜΟΝΟ το texts.md και το
-# cover.jpg κάθε short. Βίντεο, ήχος, καρέ, στιγμιότυπα και φύλλα ελέγχου
+# Τα shorts (scripts/marketing/shorts/render.ts): στο git ΜΟΝΟ το texts.md κάθε
+# short. Βίντεο, ήχος, καρέ, εξώφυλλα, στιγμιότυπα και φύλλα ελέγχου
 # ξαναβγαίνουν από την εντολή, όπως τα reels του docs/marketing/reels/.
 docs/marketing/shorts/out/**/*
 !docs/marketing/shorts/out/**/
 !docs/marketing/shorts/out/*/texts.md
-!docs/marketing/shorts/out/*/cover.jpg
+
+# 13/11/2026, απόφαση ιδιοκτήτη: οι εικόνες, τα PDF και τα βίντεο του μάρκετινγκ
+# ζουν έξω από το αποθετήριο. Στο git μένουν τα κείμενα (keimena/, README) και τα
+# scripts που τα παράγουν (scripts/marketing/, scripts/brand/store.ts,
+# scripts/build-plan-images.mjs). Το ιστορικό ΔΕΝ ξαναγράφτηκε.
+docs/marketing/**/*.png
+docs/marketing/**/*.jpg
+docs/marketing/**/*.jpeg
+docs/marketing/**/*.pdf
+docs/marketing/**/*.mp4
+docs/marketing/**/*.webp
+docs/marketing/**/*.gif
+
+# Την ίδια μέρα: τα εσωτερικά έγγραφα (βαθμολογήσεις, αξιολογήσεις, έλεγχοι με
+# ημερομηνία, μηνύματα προς τον συντονιστή) ζουν έξω από το αποθετήριο.
+/docs/VATHMOLOGIA-*.md
+/docs/AUDIT-2026-07.md
+/docs/ASSESSMENT-2026-08.md
+/docs/NYXTA-2026-08-24.md
+/docs/ELEGCHOS-2026-08-14.md
+/docs/APOTIMISI-2026-08-25.md
+/docs/APOTIMISI-MARKAS-2026-09-14.md
+/docs/org/MINYMA-STON-CEO.md
+/docs/org/PROMPT-ENG-2026-09-14.md
+/docs/org/GROK-SYNDESI.md
 
 # Τα πραγματικά PDF του myAADE, μόνο τοπικά (lib/myaade, guard-fixture-identities)
 local-samples/
