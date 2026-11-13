@@ -95,3 +95,6 @@ docs/marketing/shorts/out/**/*
 
 # Τα πραγματικά PDF του myAADE, μόνο τοπικά (lib/myaade, guard-fixture-identities)
 local-samples/
+
+# Τοπικές άδειες του Claude Code ανά μηχάνημα· δεν ανήκουν στο αποθετήριο.
+.claude/settings.local.json

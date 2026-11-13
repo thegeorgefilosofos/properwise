@@ -10,7 +10,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { depreciate } from '@/lib/inventory/depreciation'
 import { monthlyKwh, monthlyEnergyCost } from '@/lib/property/energy'
-import { fd, ABSENT_DATE } from '@/components/tokens'
+import { fdOr, ABSENT_DATE } from '@/components/tokens'
 import { athensToday, daysUntil as athensDaysUntil } from '@/lib/core/time'
 import { plural, days } from '@/lib/core/greek'
 import { addMonths as addCalendarMonths } from '@/lib/loans/progress'
@@ -58,7 +58,7 @@ export const hasEnergy = (item: InventoryItem) => monthlyKwh(item) != null
 // Ήταν `fmtEur` (μηδέν δεκαδικά) και `fmtEurC` (δύο) — δύο ονόματα για το ίδιο
 // πράγμα από τη στιγμή που τα δεκαδικά έπαψαν να είναι επιλογή του κάθε σημείου.
 // Δύο ονόματα σημαίνουν δύο πιθανές απαντήσεις στο «πώς γράφεται ένα ποσό εδώ».
-export const fmtDate = (d: string) => d ? fd(d) : ABSENT_DATE
+export const fmtDate = (d: string) => fdOr(d, ABSENT_DATE)
 // ═══ ΟΙ ΜΕΡΕΣ ΜΕΤΡΙΟΥΝΤΑΙ ΣΤΗΝ ΩΡΑ ΑΘΗΝΑΣ ════════════════════════════════
 // Ήταν `Math.ceil((new Date(d) - Date.now()) / 86400000)`. Το `new Date('2026-08-10')`
 // είναι μεσάνυχτα UTC· το `Date.now()` είναι πραγματική ώρα. Στην Ελλάδα, από τα

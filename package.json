@@ -2,12 +2,17 @@
   "name": "properwise",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "lint:ratchet": "node scripts/lint-ratchet.mjs",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint:ratchet && npm test && npm run guards",
     "security": "node scripts/security-check.mjs",
     "security:bundle": "node scripts/check-bundle-secrets.mjs",
     "prices": "node scripts/price-freshness.mjs",

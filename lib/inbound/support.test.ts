@@ -61,8 +61,8 @@ ok(isAutomatedSender('') === true, 'κενός αποστολέας δεν απ�
 ok(isAutomatedSender('χωρίς διεύθυνση') === true, 'μη αναγνωρίσιμος αποστολέας δεν απαντιέται');
 
 // Ο κανονικός πελάτης ΠΑΙΡΝΕΙ απάντηση.
-ok(isAutomatedSender(`maria@gmail.com`) === false, 'κανονικός πελάτης απαντιέται');
-ok(isAutomatedSender(`Μαρία Παπά <maria.papa@outlook.com>`) === false, 'πελάτης με όνομα απαντιέται');
+ok(isAutomatedSender(`maria@example.com`) === false, 'κανονικός πελάτης απαντιέται');
+ok(isAutomatedSender(`Μαρία Παπά <maria.papa@example.com>`) === false, 'πελάτης με όνομα απαντιέται');
 ok(isAutomatedSender(`support@allo.gr`) === false, 'support σε ΞΕΝΟ τομέα είναι κανονικός αποστολέας');
 
 console.log(`\ninbound/support.ts — ${p} passed, ${f} failed`);
