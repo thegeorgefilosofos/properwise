@@ -52,14 +52,16 @@ export const revalidate = 86400;
 
 const GUIDE = guideAt('/odigos/enfia-2026-pliromi-doseis-pistopoiitiko');
 const H1 = GUIDE.title;
-const TITLE = H1;
-// Κάτω από 160 χαρακτήρες: τόσα δείχνει η σελίδα αποτελεσμάτων πριν κόψει.
-const DESC =
-  'Πότε λήγει κάθε δόση του ΕΝΦΙΑ 2026, πού πατάς στο myAADE για να πληρώσεις, '
-  + 'πώς βγάζεις πιστοποιητικό ΕΝΦΙΑ και ποιος το οριστικοποιεί.';
 const URL = siteUrl(GUIDE.href);
 
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-enfia-2026-pliromi-doseis-pistopoiitiko') });
+// ΤΙΤΛΟΣ ΚΑΙ ΠΕΡΙΓΡΑΦΗ ΜΕ ΤΗ ΧΡΟΝΙΑ ΚΑΙ ΤΟ ΠΛΗΘΟΣ ΤΩΝ ΔΟΣΕΩΝ ΤΟΥ ΟΔΗΓΟΥ
+// (13.11.2026). CTR 0,3% σε θέση 6,7 και 0 κλικ στο «οριστικοποιηση ενφια»
+// (Search Console, τρίμηνο). Ο τίτλος ανοίγει με την πληρωμή και κλείνει με
+// την οριστικοποίηση· η περιγραφή λέει πόσες δόσεις, από τη μηχανή (`N`).
+export function generateMetadata(): Metadata {
+  const title = `Πληρωμή ΕΝΦΙΑ ${YEAR}: δόσεις, πιστοποιητικό, οριστικοποίηση`;
+  return publicMetadata({ title, description: DESC, url: URL, type: 'article', image: shareImage('odigos-enfia-2026-pliromi-doseis-pistopoiitiko') });
+}
 
 // ── ΤΟ ΕΤΟΣ ΚΑΙ ΟΙ ΔΟΣΕΙΣ ΤΟΥ, ΑΠΟ ΤΗ ΜΗΧΑΝΗ ─────────────────────────────────
 /** Ο οδηγός αφορά το εκκαθαριστικό αυτού του έτους, όπως λέει ο τίτλος του. */
@@ -74,6 +76,10 @@ const ISSUED = FIRST_OBL.confidence === 'statutory';
 const BASIS = enfiaIssueBasis(YEAR);
 const AUTOFILE = obligationOf(YEAR, 'income-autofile').date;
 const PORTAL = AADE_DESTINATIONS.enfia;
+// Κάτω από 155 χαρακτήρες: τόσα δείχνει η σελίδα αποτελεσμάτων πριν κόψει.
+const DESC =
+  `ΕΝΦΙΑ ${YEAR} εφάπαξ ή σε έως ${N} δόσεις: πότε λήγει καθεμία, πώς πληρώνεις στο myAADE, `
+  + 'πώς βγάζεις πιστοποιητικό και τι είναι η οριστικοποίηση.';
 /**
  * Τα βήματα του μενού, από το μητρώο. Το τελευταίο βήμα του μητρώου δεν είναι
  * επιλογή μενού: λέει τι βρίσκεις εκεί (εκκαθαριστικό, δόσεις, ταυτότητα
@@ -164,7 +170,7 @@ const S = {
   pay: { id: 'pliromi', over: '2. Πληρωμή', title: 'Πού πατάς για να πληρώσεις' },
   check: { id: 'elegxos', over: '3. Πριν πληρώσεις', title: 'Δες αν το ποσό είναι σωστό' },
   cert: { id: 'pistopoiitiko', over: '4. Πιστοποιητικό', title: 'Πιστοποιητικό ΕΝΦΙΑ για πώληση' },
-  final: { id: 'oristikopoiisi', over: '5. Οριστικοποίηση', title: 'Την κάνει ο συμβολαιογράφος' },
+  final: { id: 'oristikopoiisi', over: '5. Οριστικοποίηση', title: 'Οριστικοποίηση ΕΝΦΙΑ: την κάνει ο συμβολαιογράφος' },
 } as const;
 
 export default function Page() {
