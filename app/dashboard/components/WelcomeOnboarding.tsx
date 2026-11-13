@@ -22,10 +22,14 @@
 // Escape καλεί το ίδιο «Αργότερα», που πρώτα γράφει και μετά κλείνει. Το
 // κλικ στο φόντο δεν κλείνει: ένα άστοχο άγγιγμα δεν είναι απόφαση.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, TT, Btn, useOverlayShell } from '@/components/Theme';
-import { BrandLogo } from '@/components/BrandMark';
+import { Btn, fe, useOverlayShell } from '@/components/Theme';
+import { athensToday } from '@/lib/core/time';
+import { grDate } from '@/lib/core/format';
+import { writeStatus } from '@/lib/property/status';
+import { DEMO_PROPERTY } from '@/lib/demo/sample';
+import { firstTaxOf, firstDeadlines } from '@/lib/onboarding/firstTax';
 import { vocative } from '@/lib/greekName';
 import { saved } from '@/components/dbWrite';
 import { trackOnboarding, PRODUCT_EVENTS } from '@/lib/analytics/events';
@@ -51,11 +55,24 @@ const PATH: readonly string[] = [
   'Ο φόρος σου, αμέσως',
 ];
 
+/**
+ * Η ΜΙΚΡΟΓΡΑΦΙΑ ΤΗΣ ΚΑΡΤΑΣ ΤΟΥ ΦΟΡΟΥ: η υποδοχή δείχνει το προϊόν, όχι μόνο
+ * λόγια. Το ποσό βγαίνει από την ίδια `firstTaxOf` με την πραγματική κάρτα,
+ * για το ακίνητο του παραδείγματος (lib/demo/sample.ts) και λέγεται
+ * «Παράδειγμα». Η προθεσμία είναι η πραγματική επόμενη του ημερολογίου.
+ */
+function previewOf(today: string) {
+  const t = firstTaxOf({ id: 'demo', ...writeStatus('rent_long'), target_rent: DEMO_PROPERTY.monthlyRent }, today);
+  const next = firstDeadlines('rent_long', today, 1)[0] ?? null;
+  return { year: t.year, tax: t.tax, next };
+}
+
 export default function WelcomeOnboarding({ userId, name, onAddProperty, onClose }: Props) {
   const supabase = createClient();
   const titleId = useId();
   const descId = useId();
   const greet = vocative(name);
+  const [preview] = useState(() => previewOf(athensToday()));
 
   const mark = async () => {
     await saved('Η πρόοδος της υποδοχής δεν αποθηκεύτηκε', supabase.from('onboarding_progress')
@@ -69,38 +86,52 @@ export default function WelcomeOnboarding({ userId, name, onAddProperty, onClose
   };
   const { panelRef } = useOverlayShell(true, later);
 
-  // ΕΝΑ ΑΡΙΣΤΕΡΟ ΠΕΡΙΘΩΡΙΟ ΓΙΑ ΟΛΑ. Λογότυπο, τίτλος, κείμενο, βήματα και
-  // κουμπί ξεκινούν στην ίδια κατακόρυφη· τα κενά είναι του `T.sp`.
+  // ΕΝΑ ΑΡΙΣΤΕΡΟ ΠΕΡΙΘΩΡΙΟ ΓΙΑ ΟΛΑ, ΚΕΝΑ ΣΤΟ ΠΛΕΓΜΑ ΤΩΝ 8 (globals.css, .ob-*).
+  // Σε κινητό η κάρτα γίνεται φύλλο που ακουμπά στο κάτω μέρος· σε υπολογιστή
+  // μένει παράθυρο στο κέντρο.
   return (
     <div role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descId} className="ob-scrim">
       <div ref={panelRef} tabIndex={-1} className="ob-card">
-        <BrandLogo size={20} />
+        <span className="ob-grip" aria-hidden />
 
-        <h2 id={titleId} style={{ ...TT.displaySm, margin: `${T.sp.xxl}px 0 0` }}>
+        <h2 id={titleId} className="ob-title">
           {greet ? `Καλώς ήρθες, ${greet}` : 'Καλώς ήρθες'}
         </h2>
-        <p id={descId} style={{ ...TT.body, textWrap: 'balance', color: 'var(--text-secondary)', margin: `${T.sp.sm}px 0 0` }}>
+        <p id={descId} className="ob-sub">
           Φόρος, προθεσμίες και έγγραφα των ακινήτων σου, σε ένα σημείο.
         </p>
 
-        {/* Μία ήσυχη ομάδα με λεπτές διαχωριστικές, όχι τρία σκόρπια κουτιά. */}
-        <ol className="ob-path" aria-label="Τα βήματα">
+        {/* Η μικρογραφία είναι εικόνα του προϊόντος, όχι περιεχόμενο: ο
+            αναγνώστης οθόνης την προσπερνά. */}
+        <div className="ob-preview" aria-hidden>
+          <div className="ob-preview-head">
+            <span>{`Φόρος ενοικίων ${preview.year}`}</span>
+            <span className="ob-preview-tag">Παράδειγμα</span>
+          </div>
+          <div className="ob-preview-amount">{fe(preview.tax)}</div>
+          {preview.next && (
+            <div className="ob-preview-row">
+              <span className="po-elide">{preview.next.title}</span>
+              <span className="ob-preview-date">{grDate(preview.next.date)}</span>
+            </div>
+          )}
+        </div>
+
+        <ol className="ob-steps" aria-label="Τα βήματα">
           {PATH.map((title, i) => (
-            <li key={title} className="ob-path-row">
-              <span className="ob-path-num" aria-hidden>{i + 1}</span>
-              <span style={{ ...TT.label, color: 'var(--text-primary)', minWidth: 0 }}>{title}</span>
+            <li key={title} className="ob-step" data-now={i === 0 ? '' : undefined} style={{ animationDelay: `${120 + i * 40}ms` }}>
+              <span className="ob-node" aria-hidden>{i + 1}</span>
+              <span className="ob-step-label">{title}</span>
             </li>
           ))}
         </ol>
 
-        <div style={{ display: 'grid', marginTop: T.sp.xxl }}>
+        <div className="ob-actions">
           <Btn variant="primary" size="lg" onClick={addProperty}>Πρόσθεσε το πρώτο σου ακίνητο</Btn>
-        </div>
-        {/* Η μαζική καταχώρηση από Ε9 ή ΕΝΦΙΑ δεν χάνεται: είναι η πρώτη
-            κάρτα του οδηγού και κουμπί της κενής οθόνης. Εδώ θα ήταν δεύτερη
-            επιλογή ίσου βάρους δίπλα στη μία που μετρά. */}
-        <div className="ob-quiet">
-          <Btn variant="ghost" onClick={later}>Αργότερα</Btn>
+          {/* Η μαζική καταχώρηση από Ε9 ή ΕΝΦΙΑ δεν χάνεται: είναι η πρώτη
+              κάρτα του οδηγού και κουμπί της κενής οθόνης. Εδώ θα ήταν δεύτερη
+              επιλογή ίσου βάρους δίπλα στη μία που μετρά. */}
+          <Btn variant="ghost" size="lg" onClick={later}>Αργότερα</Btn>
         </div>
       </div>
     </div>

@@ -57,26 +57,39 @@ export function isVisibleRect(r: { width: number; height: number; left: number; 
 
 export interface Box { top: number; left: number; width: number; height: number }
 
+export type CaretEdge = 'top' | 'bottom' | 'left';
+
+export interface CardPlace {
+  top: number; left: number; width: number;
+  /** Η ακμή της κάρτας που κοιτά τον στόχο και η θέση του βέλους πάνω της. */
+  caret: { edge: CaretEdge; offset: number };
+}
+
 /**
- * Πού κάθεται η κάρτα. Σε στενή οθόνη, κολλημένη πάνω ή κάτω σε όλο το πλάτος,
- * στην αντίθετη μεριά από τον στόχο. Σε φαρδιά, δεξιά από στόχο της πλαϊνής
- * μπάρας, αλλιώς κάτω ή πάνω, όπου χωρά, πάντα μέσα στο παράθυρο.
+ * Πού κάθεται η κάρτα: ΠΑΝΤΑ ΔΙΠΛΑ ΣΤΟΝ ΣΤΟΧΟ, με βέλος στο κέντρο του.
+ * Σε στενή οθόνη σε όλο το πλάτος, ακριβώς πάνω από στόχο του κάτω μισού ή
+ * ακριβώς κάτω από στόχο του πάνω. Σε φαρδιά, δεξιά από στόχο της πλαϊνής
+ * μπάρας, αλλιώς κάτω ή πάνω, όπου χωρά. Πάντα μέσα στο παράθυρο.
  */
-export function placeCard(target: Box, card: { width: number; height: number }, vw: number, vh: number, gap = 20, edge = 16): { top: number; left: number; width: number } {
-  if (vw < 640) {
-    const width = vw - edge * 2;
-    const below = target.top + target.height / 2 < vh / 2;
-    return { width, left: edge, top: below ? Math.max(edge, vh - card.height - edge) : edge };
-  }
-  const width = Math.min(card.width, vw - edge * 2);
-  const clampX = (x: number) => Math.min(Math.max(edge, x), vw - width - edge);
+export function placeCard(target: Box, card: { width: number; height: number }, vw: number, vh: number, gap = 14, edge = 16): CardPlace {
+  const cx = target.left + target.width / 2;
+  const cy = target.top + target.height / 2;
   const clampY = (y: number) => Math.min(Math.max(edge, y), vh - card.height - edge);
+  const along = (pos: number, size: number) => Math.min(Math.max(20, pos), size - 20);
+  const vertical = (width: number, left: number): CardPlace => {
+    const below = target.top + target.height + gap;
+    const fitsBelow = below + card.height + edge <= vh;
+    const preferAbove = cy > vh / 2 || !fitsBelow;
+    const top = preferAbove ? clampY(target.top - gap - card.height) : clampY(below);
+    return { top, left, width, caret: { edge: preferAbove ? 'bottom' : 'top', offset: along(cx - left, width) } };
+  };
+  if (vw < 640) return vertical(vw - edge * 2, edge);
+  const width = Math.min(card.width, vw - edge * 2);
   const right = target.left + target.width + gap;
   if (target.left < vw / 3 && right + width + edge <= vw) {
-    return { width, left: right, top: clampY(target.top + target.height / 2 - card.height / 2) };
+    const top = clampY(cy - card.height / 2);
+    return { top, left: right, width, caret: { edge: 'left', offset: along(cy - top, card.height) } };
   }
-  const below = target.top + target.height + gap;
-  const left = clampX(target.left + target.width / 2 - width / 2);
-  if (below + card.height + edge <= vh) return { width, left, top: below };
-  return { width, left, top: clampY(target.top - gap - card.height) };
+  const left = Math.min(Math.max(edge, cx - width / 2), vw - width - edge);
+  return vertical(width, left);
 }

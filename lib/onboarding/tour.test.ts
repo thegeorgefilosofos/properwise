@@ -28,6 +28,10 @@ for (const vw of [320, 375, 1280]) {
     ok(`μέσα στο πλάτος ${vw}`, p.left >= 16 && p.left + p.width <= vw - 16 + 0.5);
     ok(`μέσα στο ύψος ${vw}`, p.top >= 16 && p.top + card.height <= vh - 16 + 0.5);
     if (vw < 640) ok(`στο κινητό δεν σκεπάζει τον στόχο ${vw}`, p.top + card.height <= t.top || p.top >= t.top + t.height);
+    const near = p.caret.edge === 'bottom' ? t.top - (p.top + card.height) : p.caret.edge === 'top' ? p.top - (t.top + t.height) : p.left - (t.left + t.width);
+    ok(`η κάρτα ακουμπά τον στόχο ${vw}`, near >= 0 && near <= 40);
+    const axis = p.caret.edge === 'left' ? card.height : p.width;
+    ok(`το βέλος μέσα στην κάρτα ${vw}`, p.caret.offset >= 20 && p.caret.offset <= axis - 20);
   }
 }
 ok('στόχος της πλαϊνής μπάρας: η κάρτα δεξιά', placeCard({ top: 300, left: 12, width: 230, height: 44 }, card, 1280, 800).left > 242);

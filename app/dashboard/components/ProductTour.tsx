@@ -21,8 +21,8 @@
 // και αποδίδεται μόνο όταν ο νέος χρήστης πατήσει «Δες πού είναι τι».
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useId, useLayoutEffect, useState } from 'react';
-import { T, TT, Btn, CloseButton, useOverlayShell } from '@/components/Theme';
-import { TOUR_STEPS, isVisibleRect, placeCard, type TourStep, type Box } from '@/lib/onboarding/tour';
+import { T, TT, Btn, useOverlayShell } from '@/components/Theme';
+import { TOUR_STEPS, isVisibleRect, placeCard, type TourStep, type Box, type CardPlace } from '@/lib/onboarding/tour';
 
 interface Props {
   /** Τέλος ή απόρριψη: ο γονέας γράφει ότι έγινε και κλείνει. */
@@ -47,7 +47,7 @@ export default function ProductTour({ onDone }: Props) {
   const [steps] = useState(() => TOUR_STEPS.filter(s => findTarget(s)));
   const [i, setI] = useState(0);
   const [spot, setSpot] = useState<(Box & { round?: boolean }) | null>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [pos, setPos] = useState<CardPlace | null>(null);
   const titleId = useId();
   const bodyId = useId();
   const dismiss = () => onDone('dismissed');
@@ -63,6 +63,14 @@ export default function ProductTour({ onDone }: Props) {
     const y = scroller?.scrollTop ?? 0;
     return () => { scroller?.scrollTo({ top: y }); };
   }, []);
+
+  // ΤΟ «ΠΙΣΩ» ΕΞΑΦΑΝΙΖΕΤΑΙ ΣΤΟ ΠΡΩΤΟ ΒΗΜΑ. Αν η εστίαση ήταν πάνω του, θα
+  // έπεφτε στο <body>, έξω από την κάρτα· πηγαίνει στο κύριο κουμπί.
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel || panel.contains(document.activeElement)) return;
+    panel.querySelector<HTMLElement>('.ob-tour-foot [data-variant="primary"]')?.focus();
+  }, [i, panelRef]);
 
   // Χωρίς κανένα ορατό στόχο δεν υπάρχει τι να δείξει: τελειώνει αμέσως.
   useEffect(() => { if (steps.length === 0) onDone('finished'); }, [steps.length, onDone]);
@@ -102,7 +110,7 @@ export default function ProductTour({ onDone }: Props) {
           setSpot({ ...box, round });
           const card = panelRef.current;
           const size = { width: 360, height: card?.offsetHeight || 220 };
-          setPos(placeCard(box, size, window.innerWidth, window.innerHeight));
+          setPos(placeCard(box, size, window.innerWidth, window.innerHeight, 16));
         });
       };
       measure();
@@ -142,22 +150,24 @@ export default function ProductTour({ onDone }: Props) {
       <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" data-keeps-fab={step.id === 'assistant' ? '' : undefined} aria-labelledby={titleId} aria-describedby={bodyId}
         className="ob-tour-card"
         style={pos ? { top: pos.top, left: pos.left, width: pos.width } : { visibility: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm }}>
-          <span style={{ ...TT.caption, flex: 1 }}>{`Βήμα ${i + 1} από ${steps.length}`}</span>
-          <CloseButton onClose={dismiss} label="Κλείσιμο περιήγησης" style={{ margin: -6 }} />
-        </div>
-        {/* Η αλλαγή βήματος ακούγεται από εδώ· η εστίαση μένει στο κουμπί. */}
+        {/* Το βέλος δείχνει το κέντρο του στόχου, στην ακμή που τον κοιτά. */}
+        {pos && <span className="ob-caret" data-edge={pos.caret.edge} aria-hidden
+          style={pos.caret.edge === 'left' ? { top: pos.caret.offset } : { left: pos.caret.offset }} />}
+        {/* Η αλλαγή βήματος ακούγεται από εδώ· η εστίαση μένει στο κουμπί. Η
+            πρόοδος φαίνεται μόνο στις κουκκίδες· ο αναγνώστης οθόνης την ακούει. */}
         <div aria-live="polite">
-          <h2 id={titleId} style={{ ...TT.h2, margin: `${T.sp.xs}px 0 0` }}>{step.title}</h2>
+          <span className="sr-only">{`Βήμα ${i + 1} από ${steps.length}. `}</span>
+          <div className="ob-tour-head">
+            <h2 id={titleId} style={{ ...TT.h2, margin: 0 }}>{step.title}</h2>
+            <Btn variant="ghost" className="ob-tour-skip" onClick={dismiss}>Παράλειψη</Btn>
+          </div>
           <p id={bodyId} style={{ ...TT.bodySm, margin: `${T.sp.sm}px 0 0` }}>{step.body}</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm, marginTop: T.sp.lg }}>
+        <div className="ob-tour-foot">
           <div className="ob-dots" aria-hidden>
             {steps.map((s, k) => <span key={s.id} className={k === i ? 'on' : undefined} />)}
           </div>
-          {i === 0
-            ? <Btn variant="ghost" onClick={dismiss}>Παράλειψη</Btn>
-            : <Btn variant="ghost" onClick={() => setI(i - 1)}>Πίσω</Btn>}
+          {i > 0 && <Btn variant="ghost" onClick={() => setI(i - 1)}>Πίσω</Btn>}
           <Btn variant="primary" onClick={() => (last ? onDone('finished') : setI(i + 1))}>{last ? 'Τέλος' : 'Επόμενο'}</Btn>
         </div>
       </div>
