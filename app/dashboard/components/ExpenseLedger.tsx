@@ -31,6 +31,7 @@ import { track, PRODUCT_EVENTS } from '@/lib/analytics/events';
 import { createClient } from '@/lib/supabase/client';
 import * as expenseStore from '@/lib/data/expenses'
 import * as billStore from '@/lib/data/bills'
+import { ledgerSource } from '@/lib/data/ledgerSource'
 import ExpenseCompare from './ExpenseCompare';
 import type { Spend } from '@/lib/expenses/compare';
 import { T, TT, fe, fn, Btn, LinkBtn, Card, EmptyState, Modal, Skeleton, fixedCols, ABSENT_DATE, Stat, ChipToggle } from '@/components/Theme';
@@ -135,14 +136,10 @@ const dueText = (due: string): { text: string; late: boolean } => {
 async function fetchLedger(
   supabase: ReturnType<typeof createClient>, propertyId: string, userId: string,
 ): Promise<{ bills: LedgerBill[]; expenses: LedgerExpense[] }> {
-  const [b, e] = await Promise.all([
-    billStore.ofProperty<LedgerBill>(supabase, propertyId, billStore.LEDGER_COLUMNS, userId),
-    expenseStore.ledger(supabase, propertyId, { userId, excludeCategory: 'tenant_extra' }),
-  ]);
-  return {
-    bills: b,
-    expenses: e as unknown as LedgerExpense[],
-  };
+  // ΜΙΑ ΑΝΑΓΝΩΣΗ ΜΕ ΤΑ ΤΣΙΠ ΤΟΥ ΠΡΟΫΠΟΛΟΓΙΣΜΟΥ (lib/data/ledgerSource): όσα
+  // μετρά το «2 εκκρεμούν» είναι ακριβώς όσα δείχνει εδώ το φίλτρο.
+  const r = await ledgerSource(supabase, propertyId, userId);
+  return { bills: r.bills, expenses: r.expenses };
 }
 
 /** «1 απλήρωτη», «4 απλήρωτες»: η λέξη είναι η δαπάνη, όπως στον τίτλο του πλακιδίου. */
@@ -1077,13 +1074,15 @@ function Row({ e, busy, counts, onPaid, onEdit, onDelete }: { e: LedgerEntry; bu
         </span>
         {(meta || due) && (
           <span style={{ ...TT.caption, display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
-            {meta && <span>{meta}{due ? ' ·' : ''}</span>}
+            {meta && <span>{meta}</span>}
             {/* Η ΠΡΟΘΕΣΜΙΑ ΕΙΝΑΙ ΥΠΕΝΘΥΜΙΣΗ, ΟΧΙ ΣΦΑΛΜΑ. Το ληξιπρόθεσμο κρατά
                 τόνο επειδή είναι εξαίρεση και ζητά κίνηση· η επερχόμενη
                 προθεσμία δεν ζητά τίποτα ακόμη και μένει ουδέτερη. */}
             {due && (
-              <span style={{ color: due.late ? 'var(--warning)' : 'var(--text-tertiary)', fontWeight: 600 }}>
-                {meta ? due.text : due.text.charAt(0).toUpperCase() + due.text.slice(1)}
+              // ΔΙΚΗ ΤΗΣ ΣΕΙΡΑ, ΧΩΡΙΣ ΤΕΛΕΙΑ: η τελεία ανάμεσα έμενε ορφανή στην
+              // άκρη της γραμμής μόλις η προθεσμία τύλιγε («Ρεύμα · πάγιο ·»).
+              <span style={{ color: due.late ? 'var(--warning)' : 'var(--text-tertiary)', fontWeight: 600, flexBasis: meta ? '100%' : undefined }}>
+                {due.text.charAt(0).toUpperCase() + due.text.slice(1)}
               </span>
             )}
           </span>

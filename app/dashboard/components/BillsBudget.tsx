@@ -27,7 +27,8 @@ import { categoryStatus, type RecurringCharge } from '@/lib/billing/budget';
 import { parseLocalDate, PAYERS, type Props, type MonthItem } from './budget/model';
 import { MonthBars, Donut } from './budget/charts';
 import { useBudget } from './budget/useBudget';
-import { progress, yearly, orderCats, suggestTarget, type Target } from './budget/plan';
+import { progress, yearly, orderCats, suggestTarget, nameToCommit, type Target } from './budget/plan';
+import { monthShort } from '@/lib/core/months';
 import { overdueWord, pendingWord, overWord, sumCents } from '@/lib/expenses/attention';
 import { STR_INDIVIDUAL_MAX_PROPERTIES } from '@/lib/billing/greekTax';
 import { YIELD_SHORT_LABELS, YIELD_PRE_TAX_SUB } from '@/lib/facts/labels';
@@ -75,14 +76,14 @@ function CardHead({ title, info, right, level = 2 }: { title: string; info?: str
 export default function BillsBudget({ propertyId, userId = '', profileType = 'individual', onScan, onOpenLedger }: Props) {
   const b = useBudget({ propertyId, userId, profileType });
   const {
-    isPro, budgets, catMonth, income, loanMonthly, rentalMode, strNights, recurring, monthItems,
+    isPro, budgets, catMonth, actuals, overBudget, _curYm, income, loanMonthly, rentalMode, strNights, recurring, monthItems,
     invReturns, strPropCount, taxPctAuto, loading, saving,
     demoBusy, setMonthOffset, collapsed, toggleCollapse, updateBudget, labelOverrides, activeCats, hiddenBaseCats,
     catBudget, masterBudget, addCategory, removeCategory, restoreCategory, demoIds, demo, setDemo,
     removeDemo, renameCategory, excludedMap, excludeItem, unexcludeItem, patchExcl, exclAmountOf, catForecast,
     forecastTotal, yearBars, catYtd, weekCats, weekTotalV, weekMax, rolloverOn, hasPrevMonth, carryIn,
     adjAvailable, _prevLabel, isCurMonth, viewYm, viewActuals, viewActualTotal, viewRecordedTotal, viewMonthLabel, viewItems,
-    displayOver, canGoNewer, canGoOlder, committedBills, monthlyCost, hasIncome, insights, dismissSuggestion,
+    canGoNewer, canGoOlder, committedBills, monthlyCost, hasIncome, insights, dismissSuggestion,
     targetSuggestions, notifyOn, isSTR, strPlatformPct, strMgmtPct, strTaxPct, waterfall, incomeDeductions, safeRaw,
     isShortfall, loadError, attention, ytdActual, monthsElapsed, isOverCat, retry, exclAmtDraft, setExclAmtDraft,
     monthTotals,
@@ -90,6 +91,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
 
   const wide = useWide();
   const [sheetKey, setSheetKey] = useState<string | null>(null);
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [targetOpen, setTargetOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [showIdle, setShowIdle] = useState(false);
@@ -109,30 +111,31 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
     );
   }
 
-  const newExpense = onScan ? <Btn variant="primary" size="lg" onClick={onScan}>Νέα δαπάνη</Btn> : null;
+  const newExpense = onScan ? <Btn variant="primary" onClick={onScan} className="bud-new">Νέα δαπάνη</Btn> : null;
 
   // ── ΚΕΦΑΛΙΔΑ ───────────────────────────────────────────────────────────
   // Το «προφίλ ιδιώτη» έφυγε: δεν είναι πληροφορία προϋπολογισμού. Η σημείωση
-  // των τριακοσίων εικονοστοιχείων έγινε ⓘ δίπλα στον τίτλο.
+  // των τριακοσίων εικονοστοιχείων έγινε ⓘ δίπλα στον τίτλο. Τίτλος, μήνας και
+  // κύρια ενέργεια σε ΕΝΑ πλέγμα: στο τηλέφωνο ο τίτλος πάνω και από κάτω ο
+  // μήνας με το κουμπί, από τα 1.024 και τα τρία σε μία σειρά.
   const header = (
     <div className="bud-head">
-      <h1 className="page-title" style={{ ...TT.display, margin: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-        Προϋπολογισμός<InfoDot text={NOTE} label="Πώς μετράμε" />
+      <h1 className="page-title bud-title" style={{ ...TT.display, margin: 0 }}>
+        Προϋπολογισμός<span className="bud-title-info"><InfoDot text={NOTE} label="Πώς μετράμε" /></span>
       </h1>
-      {/* Ο ΜΗΝΑΣ ΑΡΙΣΤΕΡΑ, Η ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ ΔΕΞΙΑ, ΣΤΗΝ ΙΔΙΑ ΣΕΙΡΑ. Στα 375 ο
-          τίτλος και το κουμπί δεν χωρούσαν μαζί και το κουμπί έπεφτε μόνο του. */}
-      <div className="bud-head-row">
-        {!loadError ? (
-          <div className="bud-month" role="group" aria-label="Μήνας">
-            <IconBtn onClick={() => canGoOlder && setMonthOffset(o => o - 1)} disabled={!canGoOlder} label="Προηγούμενος μήνας"><Chevron dir="left" size={18} /></IconBtn>
-            <span className="bud-month-label" aria-live="polite">{viewMonthLabel}</span>
-            <IconBtn onClick={() => canGoNewer && setMonthOffset(o => o + 1)} disabled={!canGoNewer} label="Επόμενος μήνας"><Chevron size={18} /></IconBtn>
-            {!isCurMonth && <LinkBtn tone="quiet" onClick={() => setMonthOffset(0)}>Σήμερα</LinkBtn>}
-            {saving && <span style={{ ...TT.caption, marginLeft: T.sp.sm }}>Αποθήκευση…</span>}
-          </div>
-        ) : null}
-        {newExpense}
-      </div>
+      {!loadError && (
+        <div className="bud-month" role="group" aria-label="Μήνας">
+          <IconBtn onClick={() => canGoOlder && setMonthOffset(o => o - 1)} disabled={!canGoOlder} label="Προηγούμενος μήνας"><Chevron dir="left" size={18} /></IconBtn>
+          <span className="bud-month-label" aria-live="polite">
+            <span className="bud-m-long">{viewMonthLabel}</span>
+            <span className="bud-m-short" aria-hidden="true">{`${monthShort(Number(viewYm.slice(5, 7)) - 1)} ${viewYm.slice(0, 4)}`}</span>
+          </span>
+          <IconBtn onClick={() => canGoNewer && setMonthOffset(o => o + 1)} disabled={!canGoNewer} label="Επόμενος μήνας"><Chevron size={18} /></IconBtn>
+          {!isCurMonth && <button type="button" className="bud-textbtn" onClick={() => setMonthOffset(0)}>Σήμερα</button>}
+          {saving && <span style={{ ...TT.caption, marginLeft: T.sp.sm }}>Αποθήκευση…</span>}
+        </div>
+      )}
+      {newExpense}
     </div>
   );
 
@@ -203,7 +206,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
     <Card gap={false}>
       <div className="bud-hero-top">
         <span style={{ ...TT.label }}>Ξόδεψες</span>
-        {masterBudget != null && <LinkBtn tone="quiet" onClick={() => setTargetOpen(true)}>Αλλαγή στόχου</LinkBtn>}
+        {masterBudget != null && <button type="button" className="bud-textbtn" onClick={() => setTargetOpen(true)}>Αλλαγή στόχου</button>}
       </div>
       <div className="bud-hero-fig">
         <span className="bud-big">{feAuto(viewActualTotal)}</span>
@@ -258,43 +261,55 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
     </Card>
   );
 
-  // ── 3. «ΧΡΕΙΑΖΟΝΤΑΙ ΕΣΕΝΑ» ─────────────────────────────────────────────────
-  // Τέσσερις στοιβαγμένες λωρίδες υπέρβασης έγιναν τσιπ. Κάθε τσιπ ανοίγει τις
-  // Δαπάνες ήδη φιλτραρισμένες· τα ληξιπρόθεσμα είναι πια ένα πάτημα μακριά.
-  const chips: { key: string; text: string; tone?: 'negative'; go: () => void }[] = [];
-  if (attention.overdue.n > 0) chips.push({ key: 'overdue', tone: 'negative', text: `${overdueWord(attention.overdue.n)} · ${feAuto(attention.overdue.sum)}`, go: () => onOpenLedger?.({ kind: 'overdue' }) });
-  if (attention.pending.n > 0) chips.push({ key: 'pending', text: `${pendingWord(attention.pending.n)} · ${feAuto(attention.pending.sum)}`, go: () => onOpenLedger?.({ kind: 'pending' }) });
-  if (displayOver.length > 0) chips.push({ key: 'over', tone: 'negative', text: overWord(displayOver.length),
-    go: () => onOpenLedger?.({ kind: 'buckets', buckets: displayOver.map(c => c.key), month: viewYm, label: displayOver.map(c => c.label).join(', ') }) });
-  const attentionBlock = (chips.length > 0 || (!isPro && strPropCount >= STR_BUSINESS_FROM)) ? (
+  // ── 3. «ΘΕΛΟΥΝ ΤΗΝ ΠΡΟΣΟΧΗ ΣΟΥ» ──────────────────────────────────────────
+  // Τέσσερις στοιβαγμένες λωρίδες υπέρβασης έγιναν γραμμές, με τον ρυθμό των
+  // κατηγοριών: λέξη αριστερά, ποσό δεξιά, βελάκι. Κάθε γραμμή ανοίγει τις
+  // Δαπάνες ήδη φιλτραρισμένες.
+  //
+  // ΕΝΑ ΧΡΟΝΙΚΟ ΠΛΑΙΣΙΟ: ΣΗΜΕΡΑ. Τα ληξιπρόθεσμα και τα εκκρεμή είναι πάντα
+  // σημερινά· η υπέρβαση ακολουθούσε τον μήνα που κοιτάς και η κάρτα έδειχνε
+  // σημερινές οφειλές δίπλα στην υπέρβαση του Οκτωβρίου. Μετρά πλέον κι αυτή
+  // τον τρέχοντα μήνα και η κάρτα το λέει.
+  const overSum = sumCents(overBudget.map(c => (actuals[c.key] || 0) - (catBudget(c.key) ?? 0)));
+  const attnRows: { key: string; label: string; amount: number; tone: string; go: () => void }[] = [];
+  if (attention.overdue.n > 0) attnRows.push({ key: 'overdue', label: overdueWord(attention.overdue.n), amount: attention.overdue.sum, tone: 'var(--warning)', go: () => onOpenLedger?.({ kind: 'overdue' }) });
+  if (attention.pending.n > 0) attnRows.push({ key: 'pending', label: pendingWord(attention.pending.n), amount: attention.pending.sum, tone: 'var(--text-tertiary)', go: () => onOpenLedger?.({ kind: 'pending' }) });
+  if (overBudget.length > 0) attnRows.push({ key: 'over', label: overWord(overBudget.length), amount: overSum, tone: 'var(--negative)',
+    go: () => onOpenLedger?.({ kind: 'buckets', buckets: overBudget.map(c => c.key), month: _curYm, label: overBudget.map(c => c.label).join(', ') }) });
+  const strWarn = !isPro && strPropCount >= STR_BUSINESS_FROM;
+  const attentionBlock = (attnRows.length > 0 || strWarn) ? (
     <Card gap={false}>
-    <section aria-label="Χρειάζονται εσένα" className="bud-attn">
-      <CardHead title="Χρειάζονται εσένα" />
-      {chips.length > 0 && (
-        <ul className="bud-chips">
-          {chips.map(c => (
-            <li key={c.key}>
-              <button type="button" className="bud-chip" onClick={c.go} disabled={!onOpenLedger}>
-                <span aria-hidden="true" className="bud-dot" style={{ background: c.tone === 'negative' ? 'var(--negative)' : 'var(--text-tertiary)' }} />
-                <span className="bud-num">{c.text}</span>
-                <Chevron size={14} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {notifyOn && isCurMonth && displayOver.length > 0 && <div style={{ ...TT.caption }}>Θα λάβεις υπενθύμιση με email και στο Ημερολόγιο.</div>}
-      {!isPro && strPropCount >= STR_BUSINESS_FROM && (
-        <p style={{ ...TT.bodySm, margin: 0 }}>
-          Έχεις <strong style={{ color: 'var(--text-primary)' }}>{strPropCount} βραχυχρόνια ακίνητα</strong>. Από {STR_BUSINESS_FROM} και πάνω η δραστηριότητα θεωρείται επιχειρηματική, με υποχρεώσεις ΦΠΑ, ΕΦΚΑ και προκαταβολής φόρου. Δες τη Λογιστική ή ρώτα τον λογιστή σου.
-        </p>
-      )}
-    </section>
+      <section aria-label="Θέλουν την προσοχή σου">
+        <CardHead title="Θέλουν την προσοχή σου" right={<span style={{ ...TT.caption }}>Σήμερα</span>} />
+        {attnRows.length > 0 && (
+          <ul className="bud-cats">
+            {attnRows.map(r => (
+              <li key={r.key}>
+                <button type="button" className="bud-row" onClick={r.go} disabled={!onOpenLedger}>
+                  <span aria-hidden="true" className="bud-dot" style={{ background: r.tone }} />
+                  <span className="bud-row-label">{r.label}</span>
+                  <span className="bud-row-amt bud-num">{r.key === 'over' ? `+${feAuto(r.amount)}` : feAuto(r.amount)}</span>
+                  <span className="bud-row-chev" aria-hidden="true"><Chevron size={16} /></span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {notifyOn && overBudget.length > 0 && <div style={{ ...TT.caption, marginTop: T.sp.sm }}>Θα λάβεις υπενθύμιση με email και στο Ημερολόγιο.</div>}
+        {strWarn && (
+          <p style={{ ...TT.bodySm, margin: attnRows.length ? `${T.sp.md}px 0 0` : 0 }}>
+            Έχεις <strong style={{ color: 'var(--text-primary)' }}>{strPropCount} βραχυχρόνια ακίνητα</strong>. Από {STR_BUSINESS_FROM} και πάνω η δραστηριότητα θεωρείται επιχειρηματική, με υποχρεώσεις ΦΠΑ, ΕΦΚΑ και προκαταβολής φόρου. Δες τη Λογιστική ή ρώτα τον λογιστή σου.
+          </p>
+        )}
+      </section>
     </Card>
   ) : null;
 
   // ── 4. ΟΙ ΚΑΤΗΓΟΡΙΕΣ, ΠΑΝΤΑ ΑΝΟΙΧΤΕΣ ───────────────────────────────────────
-  const rows = activeCats.map(c => {
+  // Κρυμμένη κατηγορία με κίνηση τον μήνα μένει στη λίστα: τα λεφτά δεν κρύβονται
+  // και η λίστα αθροίζει στο «Ξόδεψες».
+  const shownCats = [...activeCats, ...hiddenBaseCats.filter(c => (viewActuals[c.key] || 0) > 0).map(c => ({ key: c.key, label: labelOverrides[c.key] ?? c.label }))];
+  const rows = shownCats.map(c => {
     const actual = viewActuals[c.key] || 0;
     const target = catBudget(c.key);
     const projectedOver = isCurMonth && target != null && target > 0 && !isOverCat(c.key, actual)
@@ -305,14 +320,18 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const catRow = (r: typeof rows[number]) => {
     const p = progress(r.actual, r.target);
     const over = !!p?.over;
-    const status = over ? `υπέρβαση ${feAuto(r.actual - (r.target ?? 0))}` : r.projectedOver ? 'προβλεπόμενη υπέρβαση' : '';
+    // Η υπέρβαση τη λένε η κόκκινη ράβδος και το κόκκινο ποσό· γραμμένη και ως
+    // τρίτη σειρά ήταν το ίδιο πράγμα τρεις φορές. Μένει μόνο για τον αναγνώστη
+    // οθόνης. Η πρόβλεψη δεν φαίνεται αλλού, οπότε κρατά τη λέξη της.
+    const status = !over && r.projectedOver ? 'προβλεπόμενη υπέρβαση' : '';
     return (
       <li key={r.key}>
         <button type="button" className="bud-cat" aria-haspopup="dialog" onClick={() => setSheetKey(r.key)}>
           <span className="bud-cat-name">{r.label}</span>
           <span className="bud-cat-amt bud-num">
-            <span style={{ color: r.actual > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', fontWeight: r.actual > 0 ? 600 : 400 }}>{feAuto(r.actual)}</span>
+            <span style={{ color: over ? 'var(--negative)' : r.actual > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', fontWeight: r.actual > 0 ? 600 : 400 }}>{feAuto(r.actual)}</span>
             {r.target != null && <span style={{ color: 'var(--text-tertiary)' }}> / {feAuto(r.target)}</span>}
+            {over && <span className="sr-only">, υπέρβαση {feAuto(r.actual - (r.target ?? 0))}</span>}
           </span>
           <span className="bud-cat-chev" aria-hidden="true"><Chevron size={16} /></span>
           <span className="bud-cat-line">
@@ -320,7 +339,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
               ? <span className="bud-bar" aria-hidden="true"><span style={{ width: `${p.bar}%`, background: over ? 'var(--negative)' : BAR_FILL }} /></span>
               : <span style={{ ...TT.caption }}>χωρίς στόχο</span>}
           </span>
-          {status && <span className="bud-cat-status" style={{ color: over ? 'var(--negative)' : 'var(--text-tertiary)' }}>{status}</span>}
+          {status && <span className="bud-cat-status" style={{ color: 'var(--text-tertiary)' }}>{status}</span>}
         </button>
       </li>
     );
@@ -335,17 +354,26 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       {active.length === 0 && !showIdle && <p style={{ ...TT.bodySm, margin: 0 }}>Καμία κίνηση αυτόν τον μήνα.</p>}
       <div className="bud-cats-foot">
         {idle.length > 0 && (
-          <LinkBtn tone="quiet" onClick={() => setShowIdle(v => !v)}>
+          <button type="button" className="bud-textbtn" onClick={() => setShowIdle(v => !v)} aria-expanded={showIdle}>
             {showIdle ? 'Λιγότερες' : `+${idle.length} χωρίς κινήσεις`}
-          </LinkBtn>
+          </button>
         )}
-        <LinkBtn onClick={() => setAddOpen(true)}>Νέα κατηγορία</LinkBtn>
+        <button type="button" className="bud-textbtn bud-textbtn-accent" onClick={() => setAddOpen(true)}>Νέα κατηγορία</button>
       </div>
     </Card>
   );
 
   // ── Η ΚΑΤΗΓΟΡΙΑ ΣΕ ΦΥΛΛΟ ────────────────────────────────────────────────────
-  const sheetCat = sheetKey ? activeCats.find(c => c.key === sheetKey) ?? null : null;
+  const sheetCat = sheetKey ? shownCats.find(c => c.key === sheetKey) ?? null : null;
+  const sheetHidden = !!sheetKey && hiddenBaseCats.some(c => c.key === sheetKey);
+  // ΤΟ ΟΝΟΜΑ ΓΡΑΦΕΤΑΙ ΣΕ ΠΡΟΣΧΕΔΙΟ (ανασκόπηση PR 576). Αποθηκευόταν σε κάθε
+  // πλήκτρο, κομμένο: το κενό μετά από λέξη χανόταν και το «Θέρμανση σπιτιού»
+  // δεν γραφόταν ποτέ. Αποθηκεύεται στην έξοδο από το πεδίο ή στο «Τέλος».
+  const commitName = () => {
+    if (sheetCat && nameDraft != null) { const v = nameToCommit(nameDraft, sheetCat.label); if (v) renameCategory(sheetCat.key, v); }
+    setNameDraft(null);
+  };
+  const closeSheet = () => { commitName(); setSheetKey(null); };
   const sheet = sheetCat && (() => {
     const key = sheetCat.key;
     const target = catBudget(key);
@@ -354,11 +382,17 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
     const hist = [1, 2, 3].map(k => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - k); return catMonth[`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`]?.[key] || 0; });
     const sug = suggestTarget(hist);
     return (
-      <Modal open onClose={() => setSheetKey(null)} size="sm" title={sheetCat.label}
+      <Modal open onClose={closeSheet} size="sm" title={sheetCat.label}
         subtitle={<span className="bud-num">{feAuto(actual)}{target != null ? ` από ${feAuto(target)}` : ', χωρίς στόχο'}</span>}
         footer={<>
-          <Btn variant="ghost" onClick={() => { setSheetKey(null); removeCategory(key); }}>Αφαίρεση</Btn>
-          <Btn variant="primary" onClick={() => setSheetKey(null)}>Τέλος</Btn>
+          {/* Η ΑΦΑΙΡΕΣΗ ΛΕΕΙ ΤΙ ΑΦΑΙΡΕΙ, ΜΕ ΚΟΚΚΙΝΟ, ΜΑΚΡΙΑ ΑΠΟ ΤΟ «ΤΕΛΟΣ». Δεν
+              ρωτά: η αναίρεση έρχεται με το μήνυμα (removeCategory). */}
+          <span className="bud-sheet-danger">
+            {sheetHidden
+              ? <LinkBtn onClick={() => { setNameDraft(null); setSheetKey(null); restoreCategory(key); }}>Επαναφορά κατηγορίας</LinkBtn>
+              : <LinkBtn tone="danger" onClick={() => { setNameDraft(null); setSheetKey(null); removeCategory(key); }}>Αφαίρεση κατηγορίας</LinkBtn>}
+          </span>
+          <Btn variant="primary" onClick={closeSheet}>Τέλος</Btn>
         </>}>
         <div style={{ display: 'grid', gap: T.sp.md }}>
           <NumberInput label="Μηνιαίος στόχος" value={budgets[key] ?? ''} onChange={v => updateBudget(key, v)} suffix="€" optional min={0} />
@@ -366,7 +400,9 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
             Άφησε κενό για κατηγορία χωρίς στόχο.
             {sug != null && sug !== target && <> <LinkBtn onClick={() => updateBudget(key, String(sug))}>{`Βάλε τον μέσο όρο: ${feAuto(sug)}`}</LinkBtn></>}
           </div>
-          <TextInput label="Όνομα" value={labelOverrides[key] ?? sheetCat.label} onChange={v => { if (v.trim()) renameCategory(key, v); }} />
+          <div onBlur={commitName}>
+            <TextInput label="Όνομα" value={nameDraft ?? sheetCat.label} onChange={setNameDraft} />
+          </div>
         </div>
         <div>
           <h3 style={{ ...TT.label, color: 'var(--text-primary)', margin: 0 }}>Κινήσεις του μήνα</h3>
@@ -706,18 +742,31 @@ function BudgetStyles() {
       .bud { max-width: 1120px; font-family: ${T.font.sans}; color: var(--text-primary); }
       .bud-num { font-family: ${T.font.num}; font-variant-numeric: tabular-nums; }
       .bud-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .bud-head { display: grid; gap: ${T.sp.md}px; margin-bottom: ${T.sp.xl}px; }
-      .bud-head-row { display: flex; align-items: center; justify-content: space-between; gap: ${T.sp.md}px; flex-wrap: wrap; }
-      .bud-head-row .po-link, .bud-hero-top .po-link { white-space: nowrap; }
-      @media (max-width: 380px) { .bud-head-row > .po-btn { flex: 1 1 100%; } }
-      .bud-month { display: flex; align-items: center; gap: ${T.sp.xs}px; margin-left: -8px; flex-wrap: wrap; min-width: 0; }
-      .bud-month-label { min-width: 136px; text-align: center; font-size: var(--fs-base); font-weight: 600; color: var(--text-primary); }
+      .bud-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title title" "month new"; align-items: center; gap: ${T.sp.sm}px ${T.sp.md}px; margin-bottom: ${T.sp.xl}px; }
+      .bud-title { grid-area: title; display: inline-flex; align-items: center; min-width: 0; }
+      .bud-title-info { display: inline-flex; margin-left: calc(8px - (var(--h-sm) - 15px) / 2); }
+      .bud-month { grid-area: month; }
+      .bud-head > .bud-new { grid-area: new; justify-self: end; white-space: nowrap; }
+      @media (min-width: 1024px) {
+        .bud-head { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "title month new"; column-gap: ${T.sp.xxl}px; }
+      }
+      .bud-m-short { display: none; }
+      @media (max-width: 360px) { .bud-m-long { display: none; } .bud-m-short { display: inline; } }
+      .bud-textbtn { display: inline-flex; align-items: center; min-height: var(--h-sm); padding: 0; border: 0; background: none; color: var(--text-secondary); font: inherit; font-size: var(--fs-note); white-space: nowrap; cursor: pointer; transition: color 0.15s; }
+      .bud-textbtn:hover { color: var(--text-primary); }
+      .bud-textbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: ${T.radius.xs}px; }
+      .bud-textbtn-accent { color: var(--accent); font-weight: 600; }
+      .bud-textbtn-accent:hover { color: var(--accent); text-decoration: underline; }
+      .bud-sheet-danger { margin-right: auto; display: inline-flex; align-items: center; }
+      .bud-month { display: flex; align-items: center; gap: ${T.sp.xs}px; min-width: 0; margin-left: calc(19px - var(--h-sm) / 2); }
+      .bud-month-label { padding: 0 ${T.sp.xs}px; white-space: nowrap; font-size: var(--fs-base); font-weight: 600; color: var(--text-primary); }
       .bud-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: ${T.sp.lg}px; align-items: start; }
       @media (min-width: 1024px) { .bud-grid { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: ${T.sp.xxl}px; } }
       .bud-col { display: grid; gap: ${T.sp.lg}px; min-width: 0; }
       .bud-card-head > :last-child:not(h2):not(h3) { white-space: nowrap; flex-shrink: 0; }
       .bud-card-head { display: flex; align-items: center; justify-content: space-between; gap: ${T.sp.md}px; min-height: 24px; margin-bottom: ${T.sp.md}px; }
-      .bud-hero-top { display: flex; align-items: baseline; justify-content: space-between; gap: ${T.sp.md}px; margin-bottom: ${T.sp.sm}px; }
+      .bud-hero-top { display: flex; align-items: center; justify-content: space-between; gap: ${T.sp.md}px; margin-bottom: ${T.sp.sm}px; min-height: 22px; }
+      .bud-hero-top .bud-textbtn { margin: -12px 0; }
             .bud-hero-fig { display: flex; align-items: baseline; gap: ${T.sp.sm}px; flex-wrap: wrap; }
       .bud-big { font-family: ${T.font.num}; font-variant-numeric: tabular-nums; font-size: 32px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
       .bud-bar { display: block; height: 4px; border-radius: ${T.radius.hair}px; background: var(--bg-overlay); overflow: hidden; width: 100%; }
@@ -725,17 +774,16 @@ function BudgetStyles() {
       .bud-bar-lg { height: 8px; border-radius: ${T.radius.pill}px; margin: ${T.sp.md}px 0 ${T.sp.sm}px; }
       .bud-hero-cap { display: flex; justify-content: space-between; gap: ${T.sp.md}px; flex-wrap: wrap; font-size: var(--fs-xs); color: var(--text-tertiary); line-height: 1.45; }
       .bud-hero-cash { display: flex; align-items: center; justify-content: space-between; gap: ${T.sp.md}px; margin-top: ${T.sp.lg}px; padding-top: ${T.sp.md}px; border-top: 1px solid var(--border-subtle); }
-      .bud-attn { display: grid; gap: ${T.sp.sm}px; }
-      .bud-attn > .bud-card-head { margin-bottom: ${T.sp.xs}px; }
-      .bud-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: ${T.sp.sm}px; }
-      .bud-chip { display: inline-flex; align-items: center; gap: ${T.sp.sm}px; min-height: var(--h-md); padding: 0 ${T.sp.md}px; border-radius: ${T.radius.pill}px; border: 1px solid var(--border-subtle); background: var(--surface-raised); color: var(--text-primary); font: inherit; font-size: var(--fs-note); cursor: pointer; transition: background 0.15s, border-color 0.15s; }
-      .bud-chip:hover { background: var(--bg-elevated); border-color: var(--border-default); }
-      .bud-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-      .bud-chip svg { color: var(--text-tertiary); }
       .bud-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
       .bud-cats, .bud-list, .bud-items { list-style: none; margin: 0; padding: 0; }
       .bud-cat { display: grid; grid-template-columns: minmax(0, 1fr) auto 16px; grid-template-rows: auto 16px auto; column-gap: ${T.sp.md}px; row-gap: 6px; align-items: center; width: calc(100% + 16px); margin: 0 -8px; padding: 10px 8px; min-height: 56px; border: 0; border-radius: ${T.radius.inner}px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background 0.15s; }
       .bud-cats > li + li { border-top: 1px solid var(--border-subtle); }
+      .bud-row { display: grid; grid-template-columns: 6px minmax(0, 1fr) auto 16px; column-gap: ${T.sp.md}px; align-items: center; width: calc(100% + 16px); margin: 0 -8px; padding: 10px 8px; min-height: 52px; border: 0; border-radius: ${T.radius.inner}px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background 0.15s; }
+      .bud-row:hover { background: var(--bg-elevated); }
+      .bud-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+      .bud-row-label { min-width: 0; font-size: var(--fs-base); line-height: 1.35; }
+      .bud-row-chev { color: var(--text-tertiary); display: inline-flex; }
+      .bud-row-amt { font-size: var(--fs-base); font-weight: 600; text-align: right; white-space: nowrap; }
       .bud-cat:hover { background: var(--bg-elevated); }
       .bud-cat:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
       .bud-cat-name { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-base); font-weight: 500; }
@@ -760,7 +808,7 @@ function BudgetStyles() {
       .bud-setting { width: 100%; display: flex; align-items: center; gap: ${T.sp.md}px; padding: ${T.sp.md}px; border-radius: ${T.radius.inner}px; border: 1px solid var(--border-subtle); background: var(--bg-elevated); color: inherit; font: inherit; text-align: left; cursor: pointer; }
       .bud-setting:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       .bud-assume { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: ${T.sp.md}px; margin-top: ${T.sp.md}px; padding-top: ${T.sp.md}px; border-top: 1px solid var(--border-subtle); }
-      @media (max-width: 560px) { .bud-big { font-size: 28px; } .bud-month-label { min-width: 0; padding: 0 ${T.sp.xs}px; } }
+      @media (max-width: 560px) { .bud-big { font-size: 28px; } }
     `}</style>
   );
 }

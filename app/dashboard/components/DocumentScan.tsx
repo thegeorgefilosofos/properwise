@@ -253,6 +253,8 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   // σάρωση και την τράπεζα. Τώρα είναι ένα ακόμη πλακίδιο εδώ: ένας δρόμος.
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState(0);
+  // Διαβασμένες κινήσεις που δεν μπήκαν: το κλείσιμο ρωτά πρώτα, όπως στον έλεγχο σάρωσης.
+  const [importDirty, setImportDirty] = useState(false);
   const [error, setError] = useState('');
   const [errorText, setErrorText] = useState('');
   const [savedInfo, setSavedInfo] = useState<string[]>([]);
@@ -296,7 +298,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   const busy = scanning || saving || sniffing || handing;
   useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
   useEffect(() => () => { onBusyChange?.(false); }, [onBusyChange]);
-  const dirty = step === 'review';
+  const dirty = step === 'review' || (importing && importDirty);
   useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
   useEffect(() => () => { onDirtyChange?.(false); }, [onDirtyChange]);
   // ΤΟ ΣΚΑΛΙ `scan_opened`: μία φορά ανά άνοιγμα του παραθύρου, χωρίς τίποτα
@@ -666,9 +668,16 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
 
   // ── Κινήσεις από αρχείο CSV ή Excel ───────────────────────────────────────
   if (step === 'upload' && importing && propertyId) {
+    // ΤΟ ΑΚΙΝΗΤΟ ΛΕΓΕΤΑΙ ΚΑΙ ΑΛΛΑΖΕΙ ΕΔΩ. Η εισαγωγή έγραφε σιωπηλά στο ακίνητο
+    // του πίνακα, ενώ ο υπόλοιπος επιλογέας αφήνει τον χρήστη να διαλέξει.
+    const importTarget = targetId || propertyId;
     return (
       <div style={{ fontFamily: T.font.sans, color: 'var(--text-primary)', display: 'grid', gap: T.sp.lg }}>
-        <div><LinkBtn tone="quiet" onClick={() => { setImporting(false); setImported(0); }}>Πίσω στις επιλογές</LinkBtn></div>
+        <div><LinkBtn tone="quiet" onClick={() => { setImporting(false); setImported(0); setImportDirty(false); }}>Πίσω στις επιλογές</LinkBtn></div>
+        {(properties?.length ?? 0) > 1 && imported === 0 && (
+          <CustomSelect label="Στο ακίνητο" value={importTarget} onChange={id => setTargetId(id)}
+            options={(properties || []).map(p => ({ value: p.id, label: p.name, ...(p.address ? { description: p.address } : {}) }))} />
+        )}
         {imported > 0 ? (
           <div role="status" style={{ display: 'grid', gap: T.sp.md, justifyItems: 'start' }}>
             <div style={{ ...TT.h2 }}>{imported === 1 ? 'Μπήκε 1 δαπάνη' : `Μπήκαν ${imported} δαπάνες`}</div>
@@ -676,7 +685,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             <Btn variant="secondary" onClick={() => setImported(0)}>Εισαγωγή άλλου αρχείου</Btn>
           </div>
         ) : (
-          <BudgetImport propertyId={propertyId} userId={userId} onImported={n => setImported(n)} autoPick />
+          <BudgetImport propertyId={importTarget} userId={userId} onImported={n => setImported(n)} onDirtyChange={setImportDirty} autoPick />
         )}
       </div>
     );
@@ -763,8 +772,8 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             <div role="button" tabIndex={0} onClick={() => setImporting(true)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();setImporting(true)}else if(e.key===" ")e.preventDefault()}} onKeyUp={e=>{if(e.key===" "){e.preventDefault();setImporting(true)}}}
               className="pick-tile pick-tile-css" style={{ minHeight: 172, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 16 }}>
               <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M3 3h18v18H3z"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
-              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Κινήσεις από αρχείο</div>
-              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>CSV ή Excel της τράπεζας</div>
+              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Κινήσεις τράπεζας</div>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>CSV ή Excel</div>
             </div>
           )}
 

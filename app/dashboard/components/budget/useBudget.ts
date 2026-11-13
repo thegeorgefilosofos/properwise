@@ -57,7 +57,8 @@ import {
   FIXED_CATS, ymOf, CATS, type MonthItem, type ExclRule, type CustomCatRaw, type Props,
   COLLAPSED_BY_DEFAULT, COLLAPSED_SERVER,
 } from './model'
-import { parseTarget, planTotal, demoRows, DEMO_TARGETS, anyFailed, type Target } from './plan'
+import { parseTarget, planTotal, demoRows, DEMO_TARGETS, anyFailed, spentTotal, type Target } from './plan'
+import { ledgerSource } from '@/lib/data/ledgerSource'
 import { attentionOf, sumCents, type Attention } from '@/lib/expenses/attention'
 
 export function useBudget({ propertyId, userId = '', profileType = 'individual' }: Props) {
@@ -197,7 +198,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       // ΤΩΡΑ: μία ανάγνωση, συγχώνευση από τον ίδιο πυρήνα που τροφοδοτεί την
       // οθόνη Δαπάνες και τα τρία παράθυρα κόβονται από την ίδια λίστα. Ό,τι
       // δείχνουν οι Δαπάνες, αθροίζει ο Προϋπολογισμός.
-      const [budgetRead, settRes, billsRead, expRead] = await Promise.all([
+      const [budgetRead, settRes, billsRead, expRead, attnRead] = await Promise.all([
         settings.sectionWithError(supabase, propertyId, 'budgets', userId),
         settings.sections(supabase, propertyId, ['providers','insurance','services','common'], userId),
         // Ευρύτερο παράθυρο κατά έναν χρόνο: η ημερομηνία που ΜΕΤΡΑ για έναν
@@ -206,10 +207,13 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
         // Το τελικό κόψιμο γίνεται μετά τη συγχώνευση, όπου η ημερομηνία είναι μία.
         billStore.ofPropertyWithError(supabase, propertyId, billStore.LEDGER_COLUMNS, userId, { since: wideStart }),
         expenses.ledgerWithError(supabase, propertyId, { from: histStart }),
+        // ΤΑ ΤΣΙΠ ΜΕΤΡΟΥΝ ΤΗΝ ΙΔΙΑ ΛΙΣΤΑ ΠΟΥ ΑΝΟΙΓΟΥΝ: ίδια ανάγνωση με τις Δαπάνες
+        // (όλο το ιστορικό, μόνο του χρήστη, χωρίς τα έξοδα ενοικιαστή).
+        ledgerSource(supabase, propertyId, userId),
       ]);
       // ΤΡΕΙΣ ΑΝΑΓΝΩΣΕΙΣ ΠΟΥ ΑΝ ΛΕΙΨΟΥΝ, ΤΑ ΝΟΥΜΕΡΑ ΕΙΝΑΙ ΨΕΜΑ. Οποια αποτύχει,
       // η οθόνη δείχνει σφάλμα με «Δοκίμασε ξανά» και ΚΑΝΕΝΑ μηδενικό.
-      if (anyFailed([budgetRead, billsRead, expRead])) { setLoadError(true); return; }
+      if (anyFailed([budgetRead, billsRead, expRead, attnRead])) { setLoadError(true); return; }
       setLoadError(false);
       const budgetRes = demoRef.current ? DEMO_TARGETS : budgetRead.data;
       const allBillsRes = demoRef.current ? [] : billsRead.rows;
@@ -326,7 +330,8 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       const bucketOf = (e: LedgerEntry): string =>
         e.group === 'maintenance' ? 'maintenance' : catOf(e.category);
 
-      setAttention(attentionOf(ledger, athensToday()));
+      setAttention(demoRef.current ? { overdue: { n: 0, sum: 0 }, pending: { n: 0, sum: 0 } }
+        : attentionOf(mergeLedger(attnRead.bills, attnRead.expenses).entries, athensToday()));
       const inWindow = ledger.filter(e => e.date >= histStart && e.date <= dateEnd);
       const monthRows = inWindow.filter(e => e.date >= start);
       const weekRows = inWindow.filter(e => e.date >= weekStart);
@@ -703,7 +708,8 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   // ΟΛΕΣ ΟΙ ΜΗ ΠΑΓΙΕΣ ΚΑΤΗΓΟΡΙΕΣ ΠΟΥ ΜΕΤΡΑ ΚΑΙ ΤΟ ΠΛΑΚΙΔΙΟ ΤΟΥ ΜΗΝΑ. Με μόνο
   // συντήρηση και «λοιπά», οι δικές σου κατηγορίες έμπαιναν στο σύνολο αλλά όχι
   // στην πρόβλεψη, που έβγαινε μικρότερη από όσα έχουν ήδη ξοδευτεί.
-  const variableToDate = activeCats.filter(c => !FIXED_CATS.includes(c.key)).reduce((s, c) => s + (actuals[c.key] || 0), 0);
+  // Κάθε κουβάς που δεν είναι πάγιος, μαζί με τους κρυμμένους: τα χρήματα δεν κρύβονται.
+  const variableToDate = Object.entries(actuals).filter(([k]) => !FIXED_CATS.includes(k)).reduce((s, [, v]) => s + (v || 0), 0);
   const forecastTotal  = forecastMonthEnd(fixedToDate, variableToDate, _day, _daysInMonth);
   // Κατηγορίες που, με τον τρέχοντα ρυθμό, θα ξεπεράσουν τον στόχο (χωρίς να είναι ήδη).
   const projectedOver  = activeCats.filter(c => { const t = catBudget(c.key); return t != null && t > 0 && categoryStatus(t, actuals[c.key] || 0, catForecast(c.key)) === 'projected_over'; });
@@ -769,9 +775,11 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   const viewDate        = new Date(_now.getFullYear(), _now.getMonth() + monthOffset, 1);
   const viewYm          = ymOf(viewDate);
   const viewActuals     = isCurMonth ? actuals : (catMonth[viewYm] || {});
-  const viewActualTotal = sumCents(activeCats.map(c => viewActuals[c.key] || 0));
+  // ΟΛΟΙ ΟΙ ΚΟΥΒΑΔΕΣ ΜΑΖΙ ΜΕ ΤΟΥΣ ΚΡΥΜΜΕΝΟΥΣ (plan.ts: spentTotal). Το «Ξόδεψες»
+  // ισούται με τον μήνα των Δαπανών, όποια κατηγορία κι αν κρύψεις.
+  const viewActualTotal = spentTotal(viewActuals);
   // Μόνο τα καταχωρημένα των ίδιων κατηγοριών, χωρίς τις εκτιμήσεις παρόχων.
-  const viewRecordedTotal = sumCents(activeCats.map(c => catMonth[viewYm]?.[c.key] || 0));
+  const viewRecordedTotal = spentTotal(catMonth[viewYm] || {});
   // ΤΟ ΙΔΙΟ ΟΝΟΜΑ ΜΗΝΑ, ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ. Ο μορφοποιητής του περιηγητή δίνει
   // άλλη πτώση ανάλογα με το τι του ζητάς: «Ιούλιος 2026» με τον χρόνο, σκέτο
   // «Ιουλίου» χωρίς αυτόν. Δύο κλήσεις στο ίδιο αρχείο έβγαζαν διαφορετική
@@ -959,7 +967,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
     setShowSettings, demoBusy, setMonthOffset, collapsed, toggleCollapse, loadData, updateBudget,
     labelOverrides, activeCats, hiddenBaseCats, catBudget, masterBudget, persistCats, UNDO_MS,
     addCategory, removeCategory, restoreCategory, demoIds, demo, setDemo, removeDemo, renameCategory,
-    loadError, attention, ytdActual, monthsElapsed, isOverCat, retry,
+    loadError, attention, ytdActual, monthsElapsed, isOverCat, retry, overBudget,
     excludedMap, excludedCount, excludeItem, unexcludeItem, patchExcl, exclAmountOf, _curYm,
     catForecast, forecastTotal, projectedOver, annual, catTrend, _sparkYms, catSpark, yearBars,
     catYtd, weekCats, weekTotalV, weekMax, rolloverOn, _prevYm, hasPrevMonth, carryIn, adjAvailable,

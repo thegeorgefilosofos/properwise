@@ -8,7 +8,7 @@
 // κατηγορία έβγαινε 415,00€. Τώρα ο στόχος είναι είτε δικός σου είτε κανένας.
 // ═══════════════════════════════════════════════════════════════════════════
 import { sumCents } from '@/lib/expenses/attention';
-import { budgetBucket } from '@/lib/expenses/taxonomy';
+import { budgetBucket, resolveCategory } from '@/lib/expenses/taxonomy';
 
 /** Στόχος: ποσό που όρισες, ή `null` όταν δεν όρισες. Το ρητό 0 είναι στόχος. */
 export type Target = number | null;
@@ -79,13 +79,35 @@ export function orderCats<R extends CatRow>(rows: readonly R[]): { active: R[]; 
   return { active, idle: rows.filter(r => !(r.actual > 0)) };
 }
 
-/** Ο κουβάς για μια κατηγορία της εισαγωγής αρχείου. Το έσοδο δεν είναι δαπάνη. */
-export function importBucket(parserCategory: string): string {
-  if (parserCategory === 'rent_income') return '';
+/**
+ * Μια γραμμή της εισαγωγής: ο κουβάς που δείχνει η λίστα ΚΑΙ η κατηγορία που
+ * γράφεται στη βάση. Η κατηγορία είναι πάντα κατηγορία του λεξιλογίου, ώστε
+ * να γυρίζει στον ίδιο κουβά και οι Δαπάνες να τη λένε με το όνομά της.
+ * Το έσοδο δεν είναι δαπάνη: κουβάς κενός, η γραμμή ξεκινά ανεπίλεκτη.
+ *
+ * Ο συναγερμός (`security`) πάει πλέον στην «Ασφάλεια», όπως ορίζει το
+ * λεξιλόγιο· όχι στις «Λοιπές» όπου τον έβαζε ο παλιός πίνακας.
+ */
+export function importRow(parserCategory: string): { bucket: string; slug: string } {
+  if (parserCategory === 'rent_income') return { bucket: '', slug: '' };
   // Οι φόροι της τράπεζας (ΑΑΔΕ, ΕΝΦΙΑ, ΕΦΚΑ) είναι τα επίσημα του Προϋπολογισμού.
-  if (parserCategory === 'taxes') return 'services';
-  return budgetBucket(parserCategory);
+  const slug = parserCategory === 'taxes' ? 'enfia' : (resolveCategory(parserCategory) ?? 'other');
+  return { bucket: budgetBucket(slug), slug };
 }
+
+/** Το όνομα που αποθηκεύεται από το πεδίο «Όνομα»: κομμένο, μη κενό, διαφορετικό. */
+export function nameToCommit(draft: string, current: string): string | null {
+  const v = draft.trim().slice(0, 40);
+  return v && v !== current.trim() ? v : null;
+}
+
+/**
+ * Ο,ΤΙ ΞΟΔΕΨΕΣ, ΑΠΟ ΚΑΘΕ ΚΟΥΒΑ. Απόφαση (ανασκόπηση PR 576): η απόκρυψη μιας
+ * κατηγορίας αφορά τη γραμμή και τον στόχο της, όχι τα χρήματα. Με άθροισμα
+ * μόνο των ορατών, το «Ξόδεψες» έπεφτε κάτω από τον μήνα των Δαπανών.
+ */
+export const spentTotal = (byBucket: Record<string, number>): number =>
+  sumCents(Object.values(byBucket).map(v => Number(v) || 0));
 
 /**
  * ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΖΕΙ ΜΟΝΟ ΣΤΗ ΜΝΗΜΗ. Το «Δείξε μου» έγραφε οκτώ πραγματικές

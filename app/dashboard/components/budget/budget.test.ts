@@ -10,11 +10,17 @@
 //   · δύο ονόματα για το ίδιο πράγμα
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-  parseTarget, planTotal, progress, yearly, importBucket, orderCats, demoRows, anyFailed, suggestTarget,
-} from './plan';
+import * as plan from './plan';
+const { parseTarget, planTotal, progress, yearly, orderCats, demoRows, anyFailed, suggestTarget } = plan;
+// Τα νέα (ανασκόπηση): λείπουν από τον παλιό κώδικα, οπότε ορίζονται με εφεδρεία που αποτυγχάνει.
+const nameToCommit: (d: string, c: string) => string | null = (plan as Record<string, unknown>).nameToCommit as never ?? (() => 'λείπει');
+const importRow: (c: string) => { bucket: string; slug: string } = (plan as Record<string, unknown>).importRow as never ?? (() => ({ bucket: 'λείπει', slug: 'λείπει' }));
+const importBucket = (c: string) => importRow(c).bucket;
+const spentTotal: (a: Record<string, number>) => number = (plan as Record<string, unknown>).spentTotal as never ?? (() => -1);
 import { CATS } from './model';
-import { BUDGET_BUCKETS, BY_SLUG } from '@/lib/expenses/taxonomy';
+import * as tax from '@/lib/expenses/taxonomy';
+const { BUDGET_BUCKETS, BY_SLUG, resolveCategory, budgetBucket } = tax;
+const bucketSlug: (b: string) => string = (tax as Record<string, unknown>).bucketSlug as never ?? ((b: string) => b);
 import { attentionOf, matchesLedgerFilter, sumCents, overdueWord, pendingWord, overWord } from '@/lib/expenses/attention';
 
 let pass = 0, fail = 0;
@@ -60,7 +66,7 @@ const src = (f: string) => readFileSync(join(here, f), 'utf8');
   eq('taxes → Υπηρεσίες', importBucket('taxes'), 'services');
   eq('έσοδο → όχι δαπάνη', importBucket('rent_income'), '');
   const imp = src('BudgetImport.tsx');
-  ok('η εισαγωγή δεν έχει δικό της πίνακα', !/streaming:\s*'insurance'/.test(imp) && imp.includes('importBucket('));
+  ok('η εισαγωγή δεν έχει δικό της πίνακα', !/streaming:\s*'insurance'/.test(imp) && imp.includes('importRow('));
 }
 
 // ── 4. ΚΑΝΕΝΑΣ ΣΤΟΧΟΣ ΠΟΥ ΔΕΝ ΟΡΙΣΕΣ ─────────────────────────────────────────
@@ -130,6 +136,53 @@ const src = (f: string) => readFileSync(join(here, f), 'utf8');
   const { active, idle } = orderCats([r('a', 10, 50), r('b', 180, 60), r('c', 0, 20), r('d', 45, 40), r('e', 30, 40, true)]);
   eq('υπέρβαση πρώτα, μετά πρόβλεψη, μετά ποσό', active.map(x => x.key), ['b', 'd', 'e', 'a']);
   eq('χωρίς κίνηση χωριστά', idle.map(x => x.key), ['c']);
+}
+
+// ═══ ΔΕΥΤΕΡΟΣ ΕΛΕΓΧΟΣ (ανασκόπηση PR 576) ════════════════════════════════════
+// Γραμμένα πριν από τις διορθώσεις: απέτυχαν πάνω στο 71263c5.
+
+// ── R1. ΤΟ ΟΝΟΜΑ ΓΡΑΦΕΤΑΙ ΣΕ ΠΡΟΣΧΕΔΙΟ ΚΑΙ ΑΠΟΘΗΚΕΥΕΤΑΙ ΣΤΟ ΤΕΛΟΣ ──────────────
+{
+  const ui = src('BillsBudget.tsx');
+  ok('το πεδίο «Όνομα» δεν μετονομάζει σε κάθε πλήκτρο', !/label="Όνομα"[^>]*onChange=\{[^}]*renameCategory/.test(ui));
+  eq('κενό όνομα δεν αποθηκεύεται', nameToCommit('   ', 'Θέρμανση'), null);
+  eq('ίδιο όνομα δεν αποθηκεύεται', nameToCommit('Θέρμανση ', 'Θέρμανση'), null);
+  eq('όνομα δύο λέξεων', nameToCommit(' Θέρμανση σπιτιού ', 'Θέρμανση'), 'Θέρμανση σπιτιού');
+}
+
+// ── R3. Η ΑΦΑΙΡΕΣΗ ΛΕΕΙ ΤΙ ΑΦΑΙΡΕΙ ΚΑΙ ΜΟΙΑΖΕΙ ΕΠΙΚΙΝΔΥΝΗ ──────────────────────
+{
+  const ui = src('BillsBudget.tsx');
+  ok('«Αφαίρεση κατηγορίας» με κόκκινο μελάνι', /tone="danger"[^\n]{0,200}>Αφαίρεση κατηγορίας</.test(ui));
+  ok('η αναίρεση μένει', src('budget/useBudget.ts').includes("label: 'Αναίρεση'"));
+}
+
+// ── R4. ΜΙΑ ΣΤΡΟΓΓΥΛΟΠΟΙΗΣΗ, ΤΟΥ lib/core/money ────────────────────────────────
+{
+  eq('1,005 → 1,01 όπως το cents()', sumCents([1.005]), 1.01);
+  eq('563,925 → 563,93 όπως το cents()', sumCents([563.925]), 563.93);
+}
+
+// ── R5. Η ΕΙΣΑΓΩΓΗ ΓΡΑΦΕΙ ΠΡΑΓΜΑΤΙΚΗ ΚΑΤΗΓΟΡΙΑ ΚΑΙ ΓΥΡΙΖΕΙ ΣΤΟΝ ΙΔΙΟ ΚΟΥΒΑ ────
+{
+  for (const pc of ['electricity', 'water', 'gas', 'internet', 'streaming', 'insurance', 'taxes', 'municipal', 'security', 'common', 'maintenance', 'elevator', 'pool', 'gardener', 'cleaner', 'plumber', 'electrician', 'other']) {
+    const r = importRow(pc);
+    ok(`«${pc}» γράφει κατηγορία του λεξιλογίου (${r.slug})`, resolveCategory(r.slug) === r.slug);
+    eq(`«${pc}» γυρίζει στον ίδιο κουβά`, budgetBucket(r.slug), r.bucket);
+  }
+  for (const b of BUDGET_BUCKETS) {
+    eq(`ο κουβάς «${b.key}» γράφεται ως κατηγορία που γυρίζει σε αυτόν`, budgetBucket(bucketSlug(b.key)), b.key);
+  }
+  ok('ποτέ «services» στη βάση', importRow('taxes').slug !== 'services' && bucketSlug('services') !== 'services');
+  eq('το έσοδο δεν εισάγεται', importRow('rent_income').bucket, '');
+}
+
+// ── R10. Η ΚΡΥΜΜΕΝΗ ΚΑΤΗΓΟΡΙΑ ΔΕΝ ΚΡΥΒΕΙ ΧΡΗΜΑΤΑ ────────────────────────────────
+// Απόφαση: η απόκρυψη αφορά τη γραμμή και τον στόχο, όχι τα λεφτά. Το «Ξόδεψες»
+// ισούται πάντα με τον μήνα των Δαπανών.
+{
+  eq('το σύνολο μετρά κάθε κουβά', spentTotal({ water: 31, heating: 180, c_x: 10.5 }), 221.5);
+  ok('το useBudget δεν αθροίζει μόνο τις ορατές κατηγορίες', /viewActualTotal\s*=\s*spentTotal\(/.test(src('budget/useBudget.ts')));
 }
 
 console.log(`budget: ${pass} πέρασαν, ${fail} απέτυχαν`);

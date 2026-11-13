@@ -151,7 +151,7 @@ const STATES = {
   budgetPro: [{ name: 'περισσότερα', act: openMore }],
   finances: [{ name: 'προϋπολογισμός', act: async (page) => { await page.getByRole('button', { name: 'Προϋπολογισμός', exact: true }).first().click(); await page.waitForTimeout(900) } }],
   scan: [{ name: 'προεπισκόπηση εισαγωγής', act: async (page) => {
-    await page.getByRole('button', { name: /Κινήσεις από αρχείο/ }).first().click()
+    await page.getByRole('button', { name: /Κινήσεις τράπεζας/ }).first().click()
     await page.waitForTimeout(300)
     await page.locator('input[type=file][aria-label="Αρχείο κινήσεων"]').setInputFiles({ name: 'kiniseis.csv', mimeType: 'text/csv', buffer: Buffer.from(BANK_CSV) })
     await page.waitForTimeout(900)

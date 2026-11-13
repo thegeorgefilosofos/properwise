@@ -7,6 +7,7 @@
 // Προϋπολογισμού και το φίλτρο των Δαπανών να λένε τα ίδια νούμερα.
 // ═══════════════════════════════════════════════════════════════════════════
 import { budgetBucket } from './taxonomy';
+import { cents } from '@/lib/core/money';
 
 /** Ό,τι χρειάζεται από μια γραμμή του καθολικού (lib/expenses/ledger.ts). */
 export interface AttentionEntry {
@@ -26,9 +27,13 @@ export const isOverdue = (e: AttentionEntry, today: string): boolean =>
 export const isPendingNotOverdue = (e: AttentionEntry, today: string): boolean =>
   !e.paid && !isOverdue(e, today);
 
-/** Αθροισμα σε λεπτά, ώστε δύο οθόνες να μη διαφωνούν στο τελευταίο ψηφίο. */
+/**
+ * Αθροισμα στρογγυλεμένο στο λεπτό με το ΙΔΙΟ `cents()` του lib/core/money,
+ * ώστε να υπάρχει ένας δρόμος στρογγυλοποίησης: το μισό λεπτό πάει πάνω
+ * (1,005 → 1,01), όπως στον φόρο και στα σύνολα του lib/facts.
+ */
 export const sumCents = (xs: readonly number[]): number =>
-  Math.round(xs.reduce((s, x) => s + Math.round((Number(x) || 0) * 100), 0)) / 100;
+  cents(xs.reduce((s, x) => s + (Number(x) || 0), 0));
 
 export interface AttentionCount { n: number; sum: number }
 export interface Attention { overdue: AttentionCount; pending: AttentionCount }

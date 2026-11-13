@@ -9,7 +9,8 @@ import { notify } from '@/components/Toast';
 import { CustomSelect } from './UIComponents';
 import { parseCSV } from '@/lib/billing/parse';
 import { CATS } from './budget/model';
-import { importBucket } from './budget/plan';
+import { importRow } from './budget/plan';
+import { bucketSlug } from '@/lib/expenses/taxonomy';
 
 // ── Μαζική εισαγωγή δαπανών από αρχείο (CSV / Excel) ─────────────────────────
 // Διαβάζει τραπεζικό αντίγραφο ή λίστα εξόδων, αναγνωρίζει αυτόματα ημερομηνία,
@@ -22,9 +23,10 @@ import { importBucket } from './budget/plan';
 //
 // ΚΑΝΕΝΑΣ ΔΙΚΟΣ ΤΗΣ ΠΙΝΑΚΑΣ ΚΑΤΗΓΟΡΙΩΝ. Είχε έναν, γραμμένο πριν υπάρξει ο
 // κουβάς «Συνδρομές», οπότε κάθε Netflix έπεφτε στην «Ασφάλεια». Περνά πλέον
-// από το κοινό λεξιλόγιο (`importBucket` → `budgetBucket`).
+// από το κοινό λεξιλόγιο (`importRow` → `resolveCategory` και `budgetBucket`).
 
-interface Row { id: string; date: string; description: string; amount: number; catKey: string; selected: boolean }
+// `catKey` είναι ο κουβάς της λίστας· `slug` η κατηγορία του λεξιλογίου που γράφεται στη βάση.
+interface Row { id: string; date: string; description: string; amount: number; catKey: string; slug: string; selected: boolean }
 
 interface Props {
   propertyId: string;
@@ -34,12 +36,14 @@ interface Props {
   onImported?: (n: number) => void;
   /** Ανοίγει την επιλογή αρχείου μόλις εμφανιστεί: το πλακίδιο ήταν ήδη η απόφαση. */
   autoPick?: boolean;
+  /** Υπάρχουν διαβασμένες γραμμές που δεν μπήκαν: ο γονέας ρωτά πριν κλείσει. */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 /** dd/mm/yyyy, όπως κάθε ημερομηνία της εφαρμογής. */
 const dmy = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '';
 
-export default function BudgetImport({ propertyId, userId = '', cats = CATS, onImported, autoPick }: Props) {
+export default function BudgetImport({ propertyId, userId = '', cats = CATS, onImported, autoPick, onDirtyChange }: Props) {
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [rows, setRows] = useState<Row[] | null>(null);
@@ -48,10 +52,13 @@ export default function BudgetImport({ propertyId, userId = '', cats = CATS, onI
   const [fileName, setFileName] = useState('');
 
   const catOptions = cats.map(c => ({ value: c.key, label: c.label }));
-  // ΕΝΑ ΠΑΤΗΜΑ ΛΙΓΟΤΕΡΟ. Το «Κινήσεις από αρχείο» και μετά «Διάλεξε αρχείο»
+  // ΕΝΑ ΠΑΤΗΜΑ ΛΙΓΟΤΕΡΟ. Το «Κινήσεις τράπεζας» και μετά «Διάλεξε αρχείο»
   // ζητούσαν δύο φορές το ίδιο. Η επιλογή ανοίγει μέσα στο ίδιο άγγιγμα· αν ο
   // περιηγητής την αρνηθεί, το κουμπί από κάτω μένει.
   useEffect(() => { if (autoPick) fileRef.current?.click(); }, [autoPick]);
+  const dirty = !!rows && rows.length > 0;
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
+  useEffect(() => () => { onDirtyChange?.(false); }, [onDirtyChange]);
 
   const handleFile = async (file: File) => {
     setErr(''); setBusy(true); setFileName(file.name);
@@ -61,8 +68,8 @@ export default function BudgetImport({ propertyId, userId = '', cats = CATS, onI
       const text = isExcel ? await readSheetAsCsv(file) : await file.text();
       const parsed = parseCSV(text).filter(t => t.debit);   // μόνο έξοδα (όχι πιστώσεις/έσοδα)
       const mapped: Row[] = parsed.map(t => {
-        const key = importBucket(t.category);
-        return { id: t.id, date: t.date, description: t.description, amount: t.amount, catKey: key || 'other', selected: key !== '' };
+        const r = importRow(t.category);
+        return { id: t.id, date: t.date, description: t.description, amount: t.amount, catKey: r.bucket || 'other', slug: r.slug || 'other', selected: r.bucket !== '' };
       });
       // Ενα σφάλμα, χωρίς το αντιφατικό «0 εγγραφές αναγνωρίστηκαν» από κάτω.
       if (!mapped.length) { setErr('Δεν βρήκαμε δαπάνες στο αρχείο. Χρειάζονται στήλες ημερομηνίας, ποσού και περιγραφής.'); setRows(null); return; }
@@ -86,7 +93,7 @@ export default function BudgetImport({ propertyId, userId = '', cats = CATS, onI
       const payload = valid.map(r => ({
         property_id: propertyId, user_id: userId || null,
         amount: r.amount, date: r.date, description: r.description.slice(0, 200),
-        category: r.catKey, expense_group: r.catKey === 'maintenance' ? 'maintenance' : 'other',
+        category: r.slug, expense_group: r.catKey === 'maintenance' ? 'maintenance' : 'other',
         bill_id: null,
       }));
       const { error } = await expenses.insert(supabase, payload);
@@ -156,7 +163,7 @@ export default function BudgetImport({ propertyId, userId = '', cats = CATS, onI
                 <span className="bud-imp-date" style={{ ...TT.caption, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{dmy(r.date) || 'Χωρίς ημερομηνία'}</span>
                 <span className="bud-imp-desc" style={{ ...TT.bodySm, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{r.description}</span>
                 <div className="bud-imp-cat" style={{ minWidth: 0 }}>
-                  <CustomSelect ariaLabel={`Κατηγορία για «${r.description}»`} value={r.catKey} onChange={v => setRows(rs => rs!.map(x => x.id === r.id ? { ...x, catKey: v } : x))} options={catOptions} />
+                  <CustomSelect ariaLabel={`Κατηγορία για «${r.description}»`} value={r.catKey} onChange={v => setRows(rs => rs!.map(x => x.id === r.id ? { ...x, catKey: v, slug: bucketSlug(v) } : x))} options={catOptions} />
                 </div>
                 <span className="bud-imp-amt" style={{ ...TT.bodySm, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', textAlign: 'right', whiteSpace: 'nowrap' }}>{feAuto(r.amount)}</span>
               </div>

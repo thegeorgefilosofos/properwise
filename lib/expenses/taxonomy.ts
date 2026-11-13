@@ -280,3 +280,18 @@ export const BUDGET_BUCKETS: readonly { key: BudgetBucket; label: string }[] = [
   { key: 'other', label: 'Λοιπές δαπάνες' },
 ];
 
+/**
+ * Η ΚΑΤΗΓΟΡΙΑ ΠΟΥ ΓΡΑΦΕΤΑΙ ΣΤΗ ΒΑΣΗ ΟΤΑΝ Ο ΧΡΗΣΤΗΣ ΔΙΑΛΕΓΕΙ ΚΟΥΒΑ.
+ *
+ * Η εισαγωγή αρχείου έγραφε το κλειδί του κουβά ως κατηγορία· το
+ * «services» δεν είναι κατηγορία του λεξιλογίου: ο ΕΝΦΙΑ από την τράπεζα
+ * προσγειωνόταν στις «Λοιπές δαπάνες» και οι Δαπάνες έγραφαν «services».
+ * Κάθε κουβάς έχει εδώ μία αντιπροσωπευτική κατηγορία που γυρίζει πάντα σε
+ * αυτόν (`budgetBucket(bucketSlug(b)) === b`, τεστ στο budget.test.ts).
+ */
+const BUCKET_SLUG: Record<BudgetBucket, string> = {
+  electricity: 'electricity', water: 'water', internet: 'internet', heating: 'heating',
+  insurance: 'insurance', subscriptions: 'subscription', services: 'enfia', common: 'common',
+  maintenance: 'repair', other: 'other',
+};
+export const bucketSlug = (bucket: string): string => BUCKET_SLUG[bucket as BudgetBucket] ?? bucket;
