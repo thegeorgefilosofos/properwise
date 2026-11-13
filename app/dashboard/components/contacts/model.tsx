@@ -12,7 +12,7 @@ import * as contactStore from '@/lib/data/contacts'
 import {
   Users, Building2, Wrench, Trees, UserCheck, Zap, Wifi, Landmark, Briefcase, Shield,
 } from 'lucide-react'
-import { fd } from '@/components/Theme'
+import { fdOr } from '@/components/Theme'
 import type { ContactFile } from '@/lib/storage/contactFiles'
 import { daysUntilOrNull } from '@/lib/core/time'
 // Το Αρχείο έχει ένα σπίτι: lib/data/documents.
@@ -285,10 +285,7 @@ export const EMPTY_EXTRA: ContactExtra = {
 export const EMPTY_FORM = { full_name: '', role: 'other', phone: '', email: '', freeNotes: '', extra: { ...EMPTY_EXTRA } }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-export function fmtDate(d: string) {
-  if (!d) return ''
-  try { return fd(d) } catch { return d }
-}
+export const fmtDate = (d: string) => fdOr(d)
 // Η πολιτική «null όταν λείπει, 0 όταν είναι άκυρη» ζει στο lib/core/time.
 export const daysUntil = daysUntilOrNull
 export function isOverdue(d: string) { const n = daysUntil(d); return n !== null && n < 0 }

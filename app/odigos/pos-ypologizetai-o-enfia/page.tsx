@@ -44,15 +44,20 @@ const GUIDE = guideAt('/odigos/pos-ypologizetai-o-enfia');
 // κόμβου, στη διαδρομή και στο δομημένο σχήμα. Η χρονιά μπαίνει μόνο στον
 // τίτλο της σελίδας αποτελεσμάτων.
 const H1 = GUIDE.title;
-const TITLE = `${H1} (2026)`;
-// Κάτω από 160 χαρακτήρες: τόσα δείχνει η σελίδα αποτελεσμάτων πριν κόψει.
+// Η ΧΡΟΝΙΑ ΤΟΥ ΤΙΤΛΟΥ ΕΙΝΑΙ ΤΗΣ ΣΕΛΙΔΑΣ (13.11.2026). Ήταν «(2026)» με το χέρι,
+// ενώ το σώμα παίρνει τη χρονιά από το `athensParts()`. CTR 2% σε θέση 15
+// (Search Console, τρίμηνο): ο τίτλος λέει τι βρίσκει ο αναγνώστης.
+const titleFor = (year: number) => `${H1} ${year}: βήμα βήμα με παράδειγμα`;
+// Κάτω από 155 χαρακτήρες: τόσα δείχνει η σελίδα αποτελεσμάτων πριν κόψει.
 // Η επιφύλαξη «ενδεικτικός» μένει στο σώμα της σελίδας.
 const DESC =
   'Πώς βγαίνει ο ΕΝΦΙΑ: τιμή ζώνης επί τετραγωνικά, συντελεστές παλαιότητας και ορόφου, '
-  + 'αυτόματη μείωση και απαλλαγές. Με παράδειγμα σε ευρώ.';
+  + 'μειώσεις και απαλλαγές. Με λυμένο παράδειγμα και υπολογιστή.';
 const URL = siteUrl(GUIDE.href);
 
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-pos-ypologizetai-o-enfia') });
+export function generateMetadata(): Metadata {
+  return publicMetadata({ title: titleFor(athensParts().year), description: DESC, url: URL, type: 'article', image: shareImage('odigos-pos-ypologizetai-o-enfia') });
+}
 
 const pct = (n: number) => fpRate(n);
 const reduction = (key: string) => ENFIA_REDUCTIONS.find(r => r.key === key)!;

@@ -21,7 +21,7 @@
 // Γι' αυτό οι έλεγχοι τρέχουν σε ΤΕΣΣΕΡΙΣ ζώνες. Ένας έλεγχος που περνά μόνο
 // στην Αθήνα δεν ελέγχει τίποτα: το σφάλμα ήταν αόρατο ΑΚΡΙΒΩΣ εκεί.
 import { execFileSync } from 'node:child_process'
-import { localDay, fd, fdLong } from './tokens'
+import { localDay, fd, fdLong, fdOr, ABSENT_DATE } from './tokens'
 
 let pass = 0, fail = 0
 function ok(name: string, cond: boolean) { if (cond) pass++; else { fail++; console.error('✗ ' + name) } }
@@ -101,6 +101,25 @@ if (!process.env.PO_TZ_CHILD) {
     } catch { bad += (bad ? ', ' : '') + tz }
   }
   ok('ίδιο αποτέλεσμα σε Αθήνα, UTC, Νέα Υόρκη, Ώκλαντ και Χονολουλού' + (bad ? ` — απέτυχε: ${bad}` : ''), bad === '')
+}
+
+// ═══ ΤΟ `fdOr` ΒΓΑΖΕΙ ΟΤΙ ΕΒΓΑΖΑΝ ΤΑ ΤΡΙΑ ΤΟΠΙΚΑ `fmtDate` ═════════════════
+// Τα σώματα από κάτω είναι αντιγραμμένα αυτούσια από τα αρχεία που τα είχαν
+// πριν από τη συγχώνευση. Αν κάποτε το `fdOr` αλλάξει συμπεριφορά, η δοκιμή
+// λέει ποιο από τα τρία παλιά σημεία θα έβλεπε άλλο κείμενο.
+{
+  const checklistOld = (d: string | null) => (d ? fd(d) : '')
+  const contactsOld = (d: string) => { if (!d) return ''; try { return fd(d) } catch { return d } }
+  const inventoryOld = (d: string) => d ? fd(d) : ABSENT_DATE
+  const inputs = ['', '2026-01-05', '2024-02-29', ' 2026-10-05 ', '2026-08-14T21:30:00Z', '2026-03-29T00:30:00+02:00', 'όχι ημερομηνία', '2026-13-45']
+  let bad = ''
+  for (const d of inputs) {
+    if (fdOr(d) !== checklistOld(d)) bad += `λίστα ελέγχου «${d}» `
+    if (fdOr(d) !== contactsOld(d)) bad += `επαφές «${d}» `
+    if (fdOr(d, ABSENT_DATE) !== inventoryOld(d)) bad += `απογραφή «${d}» `
+  }
+  if (fdOr(null) !== checklistOld(null)) bad += 'λίστα ελέγχου null '
+  eq('fdOr: ίδιο κείμενο με τα τρία παλιά fmtDate, χαρακτήρα προς χαρακτήρα', bad, '')
 }
 
 console.log(fail === 0 ? `✓ tokens: ${pass} έλεγχοι πέρασαν` : `✗ tokens: ${fail} απέτυχαν από ${pass + fail}`)

@@ -148,8 +148,7 @@ export function row(scope: Scope, d: ExpenseDraft): Partial<ExpenseRow> {
 
 // ── ΑΝΑΓΝΩΣΗ ───────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function scoped(db: Db, columns: string): any {
+function scoped(db: Db, columns: string) {
   return db.from(TABLE).select(columns);
 }
 
@@ -163,8 +162,7 @@ export interface LedgerOpts {
   limit?: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function ledgerQuery(db: Db, propertyId: string, opts: LedgerOpts): any {
+function ledgerQuery(db: Db, propertyId: string, opts: LedgerOpts) {
   let q = scoped(db, opts.columns ?? LEDGER_COLUMNS).eq('property_id', propertyId);
   if (opts.userId) q = q.eq('user_id', opts.userId);
   if (opts.from) q = q.gte('date', opts.from);

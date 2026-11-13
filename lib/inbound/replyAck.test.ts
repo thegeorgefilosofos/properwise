@@ -55,7 +55,7 @@ function fakeSend(result: AckResult = { ok: true }) {
 }
 
 const KEY = 're_test_key';
-const HUMAN = 'Μαρία <maria@gmail.com>';
+const HUMAN = 'Μαρία <maria@example.com>';
 
 async function main() {
   // ── 1. Πελάτης + πρώτη επαφή → στέλνεται, 200 acked:true ──────────────────
@@ -66,10 +66,10 @@ async function main() {
     ok(out.status === 200, 'πελάτης: 200');
     ok(out.body.acked === true, 'πελάτης: acked true');
     ok(sender.sent.length === 1, 'στάλθηκε ΜΙΑ επιβεβαίωση');
-    ok(sender.sent[0]?.to === 'maria@gmail.com', 'στη σκέτη διεύθυνση του αποστολέα');
+    ok(sender.sent[0]?.to === 'maria@example.com', 'στη σκέτη διεύθυνση του αποστολέα');
     ok(sender.sent[0]?.name === 'George', 'με το πραγματικό όνομα από τον λογαριασμό');
     ok(sender.sent[0]?.apiKey === KEY, 'με το κλειδί του παρόχου');
-    ok(calls.some(c => c.fn === 'try_support_ack' && c.args.p_email === 'maria@gmail.com'), 'ρωτήθηκε το try_support_ack με τη διεύθυνση');
+    ok(calls.some(c => c.fn === 'try_support_ack' && c.args.p_email === 'maria@example.com'), 'ρωτήθηκε το try_support_ack με τη διεύθυνση');
     ok(calls.some(c => c.fn === 'name_for_email'), 'ρωτήθηκε το name_for_email');
     ok(out.logs.includes('στάλθηκε επιβεβαίωση παραλαβής'), 'το λέει στα αρχεία καταγραφής');
   }

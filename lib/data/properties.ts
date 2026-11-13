@@ -146,9 +146,8 @@ export async function pageAfter<T = { id: string; user_id: string }>(
  * χρησιμοποιείται η `list`: ένας γενικός κατασκευαστής σε κάθε οθόνη θα ήταν
  * ακριβώς η σκόρπια γνώση που το στρώμα ήρθε να μαζέψει.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function query(db: Db, userId: string, columns: string): any {
-  return db.from(TABLE).select(columns).eq('user_id', userId);
+export function query<T = Record<string, unknown>>(db: Db, userId: string, columns: string) {
+  return db.from(TABLE).select<string, T>(columns).eq('user_id', userId);
 }
 
 /** Πόσα ακίνητα του χρήστη είναι σε βραχυχρόνια μίσθωση. */

@@ -20,6 +20,10 @@
 --    7. η ανάκληση κρατά τη συναλλαγή στο `mor_revoked_tx` (20261113120000,
 --       έλεγχος του PR 558, γύρος 3)· η στήλη μένει όταν η υποστήριξη σβήσει
 --       την ανάκληση (Ζ4.4) ή περάσει νέα πληρωμή· ο πελάτης δεν τη γράφει.
+--    8. η νόμιμη επαναφορά του οδηγού (Ζ7, έλεγχος των PR 560 και 563) με τα
+--       τρία SQL του: ζωντανή συνδρομή, ακυρωμένη ως το τέλος της περιόδου,
+--       νεότερη πληρωμή που δεν άνοιξε πρόσβαση· και ακυρωμένη στο τέλος
+--       περιόδου (`scheduled_cancel`) στα Ζ7.1 και Ζ7.3.
 --
 --  Ολα μέσα σε συναλλαγή που ακυρώνεται: η βάση μένει όπως ήταν.
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -230,9 +234,6 @@ begin
   raise notice 'probe: η ανάκληση μένει απέναντι σε ταυτόχρονο γεγονός, σηκώνεται μόνο με νέα πληρωμή';
 end $probe$;
 
--- Ο ΔΟΚΙΜΑΣΤΗΣ ΜΕ ΠΑΛΙΑ ΑΝΑΚΛΗΣΗ (PR 558, εύρημα 4): η /api/billing/plan γράφει
--- το πακέτο του με τον ρόλο υπηρεσίας και απαντά «ok». Η σκανδάλη δεν το
--- γυρίζει σιωπηλά σε `free`.
 -- 7. Ζ4.4: Η ΥΠΟΣΤΗΡΙΞΗ ΣΒΗΝΕΙ ΤΗΝ ΑΝΑΚΛΗΣΗ. Το SQL του οδηγού, ως postgres,
 -- αφήνει το `mor_revoked_tx`, ώστε ο webhook να αρνείται ακόμη την ίδια
 -- συναλλαγή (lib/billing/morWebhook.ts).
@@ -258,6 +259,236 @@ begin
   raise notice 'probe: η επιστραμμένη συναλλαγή μένει μετά από νέα πληρωμή και μετά το Ζ4.4';
 end $probe$;
 
+-- 8. Ζ7: Η ΝΟΜΙΜΗ ΕΠΑΝΑΦΟΡΑ (έλεγχος των PR 560 και 563). Τα SQL του οδηγού,
+-- ως postgres, από γραμμή που η ανάκληση ισχύει ακόμη. Το καθένα ενημερώνει
+-- ΜΙΑ γραμμή (καμία σε δεύτερη εκτέλεση, με λάθος συναλλαγή, με κατάσταση
+-- που δεν επιτρέπεται ή αφού νεότερη πληρωμή σήκωσε ήδη την ανάκληση) και
+-- αφήνει την αναφορά της επιστροφής. Ακυρωμένη συνδρομή (`scheduled_cancel`
+-- στον Creem) παίρνει λήξη από το `current_period_end_date` και πέφτει μόνη
+-- της σε `free` όταν περάσει (έλεγχος του PR 563, M1).
+do $probe$
+declare
+  a uuid := '6d6d6d6d-0000-4000-8000-0000000000a1';
+  o jsonb;
+  r record;
+  n int;
+  pe timestamptz := date_trunc('second', now()) + interval '20 days';
+begin
+  -- Ζ7.1 ΖΩΝΤΑΝΗ ΣΥΝΔΡΟΜΗ: η κατάσταση έρχεται από τον Creem (εδώ `on_trial`).
+  update public.billing_profiles
+     set plan = 'agency', subscription_status = 'active', mor_subscription_id = 'sub_w',
+         mor_last_transaction_id = 'tran_w', mor_revoked_at = null, mor_revoked_reason = null,
+         mor_revoked_ref = null, mor_revoked_tx = null, mor_ends_at = null
+   where user_id = a;
+  o := public.revoke_mor_access('sub_w', 'tran_w', 'disp_w', 'dispute', now());
+  if o->>'outcome' <> 'revoked' then raise exception 'Ζ7.1: η ανάκληση δεν έγινε (%)', o; end if;
+  -- ΛΑΘΟΣ ΣΥΝΑΛΛΑΓΗ: καμία γραμμή.
+  update public.billing_profiles as b
+     set mor_revoked_at = null, mor_revoked_reason = null, mor_revoked_tx = null,
+         plan = 'agency', subscription_status = v.status,
+         mor_ends_at   = case when v.status = 'cancelled' then v.period_end end,
+         mor_renews_at = case when v.status = 'cancelled' then null else v.period_end end
+    from (values ('on_trial', pe)) as v(status, period_end)
+   where b.user_id = a and b.mor_subscription_id = 'sub_w' and b.mor_revoked_tx = 'tran_x'
+     and b.mor_last_transaction_id = b.mor_revoked_tx
+     and v.status in ('active', 'on_trial', 'cancelled');
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'Ζ7.1: το SQL άγγιξε γραμμή με άλλη επιστραμμένη συναλλαγή'; end if;
+  -- ΚΑΤΑΣΤΑΣΗ ΠΟΥ ΔΕΝ ΕΠΙΤΡΕΠΕΤΑΙ (`past_due`): καμία γραμμή.
+  update public.billing_profiles as b
+     set mor_revoked_at = null, mor_revoked_reason = null, mor_revoked_tx = null,
+         plan = 'agency', subscription_status = v.status,
+         mor_ends_at   = case when v.status = 'cancelled' then v.period_end end,
+         mor_renews_at = case when v.status = 'cancelled' then null else v.period_end end
+    from (values ('past_due', pe)) as v(status, period_end)
+   where b.user_id = a and b.mor_subscription_id = 'sub_w' and b.mor_revoked_tx = 'tran_w'
+     and b.mor_last_transaction_id = b.mor_revoked_tx
+     and v.status in ('active', 'on_trial', 'cancelled');
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'Ζ7.1: το SQL δέχτηκε κατάσταση past_due'; end if;
+  update public.billing_profiles as b
+     set mor_revoked_at = null, mor_revoked_reason = null, mor_revoked_tx = null,
+         plan = 'agency', subscription_status = v.status,
+         mor_ends_at   = case when v.status = 'cancelled' then v.period_end end,
+         mor_renews_at = case when v.status = 'cancelled' then null else v.period_end end
+    from (values ('on_trial', pe)) as v(status, period_end)
+   where b.user_id = a and b.mor_subscription_id = 'sub_w' and b.mor_revoked_tx = 'tran_w'
+     and b.mor_last_transaction_id = b.mor_revoked_tx
+     and v.status in ('active', 'on_trial', 'cancelled');
+  get diagnostics n = row_count;
+  select * into r from public.billing_profiles where user_id = a;
+  if n <> 1 or r.mor_revoked_at is not null or r.mor_revoked_tx is not null
+     or r.plan <> 'agency' or r.subscription_status <> 'on_trial' or r.mor_revoked_ref <> 'disp_w'
+     or r.mor_ends_at is not null or r.mor_renews_at is distinct from pe then
+    raise exception 'Ζ7.1: η επαναφορά δεν έγινε όπως λέει ο οδηγός (%, %)', n, r.mor_revoked_tx;
+  end if;
+  if public.user_plan_rank(a) <> public.plan_rank('agency') then
+    raise exception 'Ζ7.1: μετά την επαναφορά το επίπεδο είναι %', public.user_plan_rank(a);
+  end if;
+
+  -- Ζ7.1 ΜΕ `scheduled_cancel` ΣΤΟΝ CREEM: λήξη στο τέλος της περιόδου, καμία ανανέωση.
+  update public.billing_profiles
+     set mor_subscription_id = 'sub_s', mor_last_transaction_id = 'tran_s', mor_revoked_ref = null,
+         plan = 'agency', subscription_status = 'active', mor_ends_at = null
+   where user_id = a;
+  o := public.revoke_mor_access('sub_s', 'tran_s', 'ref_s', 'refund', now());
+  if o->>'outcome' <> 'revoked' then raise exception 'Ζ7.1 cancelled: η ανάκληση δεν έγινε (%)', o; end if;
+  update public.billing_profiles as b
+     set mor_revoked_at = null, mor_revoked_reason = null, mor_revoked_tx = null,
+         plan = 'agency', subscription_status = v.status,
+         mor_ends_at   = case when v.status = 'cancelled' then v.period_end end,
+         mor_renews_at = case when v.status = 'cancelled' then null else v.period_end end
+    from (values ('cancelled', pe)) as v(status, period_end)
+   where b.user_id = a and b.mor_subscription_id = 'sub_s' and b.mor_revoked_tx = 'tran_s'
+     and b.mor_last_transaction_id = b.mor_revoked_tx
+     and v.status in ('active', 'on_trial', 'cancelled');
+  get diagnostics n = row_count;
+  select * into r from public.billing_profiles where user_id = a;
+  if n <> 1 or r.subscription_status <> 'cancelled' or r.mor_ends_at is distinct from pe
+     or r.mor_renews_at is not null then
+    raise exception 'Ζ7.1 cancelled: λήξη % και ανανέωση % (%)', r.mor_ends_at, r.mor_renews_at, n;
+  end if;
+  if public.user_plan_rank(a) <> public.plan_rank('agency') then
+    raise exception 'Ζ7.1 cancelled: πριν από το τέλος της περιόδου το επίπεδο είναι %', public.user_plan_rank(a);
+  end if;
+  update public.billing_profiles set mor_ends_at = now() - interval '1 minute' where user_id = a;
+  if public.user_plan_rank(a) <> 0 then
+    raise exception 'Ζ7.1 cancelled: μετά το τέλος της περιόδου το επίπεδο είναι %', public.user_plan_rank(a);
+  end if;
+
+  -- Ζ7.1 ΑΦΟΥ ΝΕΟΤΕΡΗ ΠΛΗΡΩΜΗ ΣΗΚΩΣΕ ΗΔΗ ΤΗΝ ΑΝΑΚΛΗΣΗ: καμία γραμμή.
+  update public.billing_profiles
+     set mor_subscription_id = 'sub_l', mor_last_transaction_id = 'tran_l1', mor_revoked_ref = null,
+         plan = 'agency', subscription_status = 'active', mor_ends_at = null
+   where user_id = a;
+  o := public.revoke_mor_access('sub_l', 'tran_l1', 'ref_l', 'refund', now());
+  if o->>'outcome' <> 'revoked' then raise exception 'Ζ7.1 lifted: η ανάκληση δεν έγινε (%)', o; end if;
+  -- Ο webhook γράφει τη νέα χρέωση: νέα συναλλαγή, η ανάκληση σβήνει.
+  update public.billing_profiles
+     set mor_revoked_at = null, mor_revoked_reason = null, mor_last_transaction_id = 'tran_l2',
+         plan = 'agency', subscription_status = 'active', mor_ends_at = null, mor_renews_at = pe
+   where user_id = a;
+  update public.billing_profiles as b
+     set mor_revoked_at = null, mor_revoked_reason = null, mor_revoked_tx = null,
+         plan = 'agency', subscription_status = v.status,
+         mor_ends_at   = case when v.status = 'cancelled' then v.period_end end,
+         mor_renews_at = case when v.status = 'cancelled' then null else v.period_end end
+    from (values ('cancelled', pe)) as v(status, period_end)
+   where b.user_id = a and b.mor_subscription_id = 'sub_l' and b.mor_revoked_tx = 'tran_l1'
+     and b.mor_last_transaction_id = b.mor_revoked_tx
+     and v.status in ('active', 'on_trial', 'cancelled');
+  get diagnostics n = row_count;
+  select * into r from public.billing_profiles where user_id = a;
+  if n <> 0 or r.subscription_status <> 'active' or r.mor_revoked_tx is distinct from 'tran_l1' then
+    raise exception 'Ζ7.1 lifted: το SQL έγραψε πάνω από νεότερη πληρωμή (%)', n;
+  end if;
+
+  -- Ζ7.2 ΑΚΥΡΩΜΕΝΗ ΣΤΟΝ CREEM: πρόσβαση ως το `current_period_end_date`.
+  update public.billing_profiles
+     set mor_subscription_id = 'sub_c', mor_last_transaction_id = 'tran_c', mor_revoked_ref = null
+   where user_id = a;
+  o := public.revoke_mor_access('sub_c', 'tran_c', 'ref_c', 'refund', now());
+  if o->>'outcome' <> 'revoked' then raise exception 'Ζ7.2: η ανάκληση δεν έγινε (%)', o; end if;
+  update public.billing_profiles
+     set mor_revoked_at = null, mor_revoked_reason = null, mor_revoked_tx = null,
+         plan = 'agency', subscription_status = 'cancelled', mor_ends_at = pe,
+         mor_renews_at = null
+   where user_id = a and mor_subscription_id = 'sub_c' and mor_revoked_tx = 'tran_c';
+  get diagnostics n = row_count;
+  select * into r from public.billing_profiles where user_id = a;
+  if n <> 1 or r.mor_revoked_at is not null or r.mor_revoked_tx is not null
+     or r.subscription_status <> 'cancelled' or r.mor_revoked_ref <> 'ref_c' then
+    raise exception 'Ζ7.2: η επαναφορά δεν έγινε όπως λέει ο οδηγός (%, %)', n, r.mor_revoked_tx;
+  end if;
+  if public.user_plan_rank(a) <> public.plan_rank('agency') then
+    raise exception 'Ζ7.2: πριν από το τέλος της περιόδου το επίπεδο είναι %', public.user_plan_rank(a);
+  end if;
+  update public.billing_profiles
+     set mor_revoked_at = null, mor_revoked_reason = null, mor_revoked_tx = null,
+         plan = 'agency', subscription_status = 'cancelled', mor_ends_at = pe,
+         mor_renews_at = null
+   where user_id = a and mor_subscription_id = 'sub_c' and mor_revoked_tx = 'tran_c';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'Ζ7.2: δεύτερη εκτέλεση άγγιξε τη γραμμή'; end if;
+  -- ΜΕΤΑ ΤΟ ΤΕΛΟΣ ΤΗΣ ΠΕΡΙΟΔΟΥ: πέφτει μόνη της, χωρίς γεγονός.
+  update public.billing_profiles set mor_ends_at = now() - interval '1 minute' where user_id = a;
+  if public.user_plan_rank(a) <> 0 then
+    raise exception 'Ζ7.2: μετά το τέλος της περιόδου το επίπεδο είναι %', public.user_plan_rank(a);
+  end if;
+
+  -- Ζ7.3 ΝΕΟΤΕΡΗ ΠΛΗΡΩΜΗ ΠΟΥ ΔΕΝ ΑΝΟΙΞΕ: η επιστραμμένη μένει.
+  update public.billing_profiles
+     set mor_subscription_id = 'sub_p', mor_last_transaction_id = 'tran_p1', mor_revoked_ref = null,
+         plan = 'agency', subscription_status = 'active', mor_ends_at = null
+   where user_id = a;
+  o := public.revoke_mor_access('sub_p', 'tran_p1', 'ref_p', 'refund', now());
+  if o->>'outcome' <> 'revoked' then raise exception 'Ζ7.3: η ανάκληση δεν έγινε (%)', o; end if;
+  update public.billing_profiles as b
+     set mor_revoked_at = null, mor_revoked_reason = null, mor_last_transaction_id = 'tran_p2',
+         plan = 'agency', subscription_status = v.status,
+         mor_ends_at   = case when v.status = 'cancelled' then v.period_end end,
+         mor_renews_at = case when v.status = 'cancelled' then null else v.period_end end
+    from (values ('active', pe)) as v(status, period_end)
+   where b.user_id = a and b.mor_subscription_id = 'sub_p'
+     and b.mor_last_transaction_id = b.mor_revoked_tx
+     and v.status in ('active', 'on_trial', 'cancelled');
+  get diagnostics n = row_count;
+  select * into r from public.billing_profiles where user_id = a;
+  if n <> 1 or r.mor_revoked_at is not null or r.mor_revoked_tx is distinct from 'tran_p1'
+     or r.mor_last_transaction_id <> 'tran_p2' or r.mor_revoked_ref <> 'ref_p'
+     or r.mor_ends_at is not null or r.mor_renews_at is distinct from pe then
+    raise exception 'Ζ7.3: η επαναφορά δεν έγινε όπως λέει ο οδηγός (%, %)', n, r.mor_revoked_tx;
+  end if;
+  if public.user_plan_rank(a) <> public.plan_rank('agency') then
+    raise exception 'Ζ7.3: μετά την επαναφορά το επίπεδο είναι %', public.user_plan_rank(a);
+  end if;
+  update public.billing_profiles as b
+     set mor_revoked_at = null, mor_revoked_reason = null, mor_last_transaction_id = 'tran_p2',
+         plan = 'agency', subscription_status = v.status,
+         mor_ends_at   = case when v.status = 'cancelled' then v.period_end end,
+         mor_renews_at = case when v.status = 'cancelled' then null else v.period_end end
+    from (values ('active', pe)) as v(status, period_end)
+   where b.user_id = a and b.mor_subscription_id = 'sub_p'
+     and b.mor_last_transaction_id = b.mor_revoked_tx
+     and v.status in ('active', 'on_trial', 'cancelled');
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'Ζ7.3: δεύτερη εκτέλεση άγγιξε τη γραμμή'; end if;
+
+  -- Ζ7.3 ΜΕ `scheduled_cancel` ΣΤΟΝ CREEM: λήξη στο τέλος της περιόδου, καμία ανανέωση.
+  update public.billing_profiles
+     set mor_subscription_id = 'sub_q', mor_last_transaction_id = 'tran_q1', mor_revoked_ref = null,
+         plan = 'agency', subscription_status = 'active', mor_ends_at = null
+   where user_id = a;
+  o := public.revoke_mor_access('sub_q', 'tran_q1', 'ref_q', 'refund', now());
+  if o->>'outcome' <> 'revoked' then raise exception 'Ζ7.3 cancelled: η ανάκληση δεν έγινε (%)', o; end if;
+  update public.billing_profiles as b
+     set mor_revoked_at = null, mor_revoked_reason = null, mor_last_transaction_id = 'tran_q2',
+         plan = 'agency', subscription_status = v.status,
+         mor_ends_at   = case when v.status = 'cancelled' then v.period_end end,
+         mor_renews_at = case when v.status = 'cancelled' then null else v.period_end end
+    from (values ('cancelled', pe)) as v(status, period_end)
+   where b.user_id = a and b.mor_subscription_id = 'sub_q'
+     and b.mor_last_transaction_id = b.mor_revoked_tx
+     and v.status in ('active', 'on_trial', 'cancelled');
+  get diagnostics n = row_count;
+  select * into r from public.billing_profiles where user_id = a;
+  if n <> 1 or r.subscription_status <> 'cancelled' or r.mor_ends_at is distinct from pe
+     or r.mor_renews_at is not null or r.mor_revoked_tx is distinct from 'tran_q1' then
+    raise exception 'Ζ7.3 cancelled: λήξη % και ανανέωση % (%)', r.mor_ends_at, r.mor_renews_at, n;
+  end if;
+  if public.user_plan_rank(a) <> public.plan_rank('agency') then
+    raise exception 'Ζ7.3 cancelled: πριν από το τέλος της περιόδου το επίπεδο είναι %', public.user_plan_rank(a);
+  end if;
+  update public.billing_profiles set mor_ends_at = now() - interval '1 minute' where user_id = a;
+  if public.user_plan_rank(a) <> 0 then
+    raise exception 'Ζ7.3 cancelled: μετά το τέλος της περιόδου το επίπεδο είναι %', public.user_plan_rank(a);
+  end if;
+  raise notice 'probe: η νόμιμη επαναφορά του Ζ7 (ζωντανή, ακυρωμένη στο τέλος περιόδου, ακυρωμένη, νεότερη πληρωμή) ενημερώνει μία γραμμή όπως λέει ο οδηγός';
+end $probe$;
+
+-- Ο ΔΟΚΙΜΑΣΤΗΣ ΜΕ ΠΑΛΙΑ ΑΝΑΚΛΗΣΗ (PR 558, εύρημα 4): η /api/billing/plan γράφει
+-- το πακέτο του με τον ρόλο υπηρεσίας και απαντά «ok». Η σκανδάλη δεν το
+-- γυρίζει σιωπηλά σε `free`.
 update public.billing_profiles
    set tester_since = now() - interval '10 days', plan = 'free', subscription_status = 'expired',
        mor_revoked_at = now(), mor_revoked_reason = 'refund', mor_revoked_ref = 'ref_t'
