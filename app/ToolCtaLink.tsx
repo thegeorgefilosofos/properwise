@@ -10,6 +10,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import Link from 'next/link';
 import { createContext, useContext, type CSSProperties, type ReactNode } from 'react';
+import { withSignupEntry } from '@/lib/analytics/signupEntry';
 
 /** Η διεύθυνση που δίνει ο υπολογιστής στο «Ξεκίνα» του· `null` = η σταθερή. */
 export const ToolCtaHref = createContext<string | null>(null);
@@ -18,5 +19,6 @@ export function ToolCtaLink({ href, className, style, children }: {
   href: string; className?: string; style?: CSSProperties; children: ReactNode;
 }) {
   const live = useContext(ToolCtaHref);
-  return <Link href={live ?? href} className={className} style={style}>{children}</Link>;
+  // Και η διεύθυνση του υπολογιστή (π.χ. ΕΝΦΙΑ με `next=`) κρατά το `?from=calculator`.
+  return <Link href={withSignupEntry(live ?? href, 'calculator')} className={className} style={style}>{children}</Link>;
 }

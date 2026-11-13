@@ -245,4 +245,42 @@ begin
   raise notice 'probe: ο ανώνυμος μετρά το χωνί της εγγραφής και δεν διαβάζει τίποτα';
 end $funnel$;
 
+-- ── ΤΟ ΣΗΜΕΙΟ ΕΙΣΟΔΟΥ (20261113163700) ──────────────────────────────────────
+--  Η κλήση με τέσσερις παραμέτρους (ο κώδικας πριν από το ?from=) μετρά ακόμη
+--  και γράφεται 'other'. Γνωστή είσοδος παίρνει δική της γραμμή, άγνωστη ή
+--  ελεύθερο κείμενο σωπαίνει όπως η άγνωστη πηγή.
+set role anon;
+select public.count_signup_step('view', 'direct', false, false);
+select public.count_signup_step('view', 'direct', false, false, 'guide');
+select public.count_signup_step('view', 'direct', false, false, 'guide');
+select public.count_signup_step('view', 'direct', false, false, 'kati_allo');
+select public.count_signup_step('view', 'direct', false, false, 'https://example.com/?email=x');
+select public.count_signup_step('view', 'direct', false, false, null);
+reset role;
+do $funnel_entry$
+declare v_other int; v_guide int; rows_ int;
+begin
+  select n into v_other from public.signup_funnel where step = 'view' and source = 'direct' and entry = 'other';
+  select n into v_guide from public.signup_funnel where step = 'view' and source = 'direct' and entry = 'guide';
+  select count(*) into rows_ from public.signup_funnel;
+  if v_other is distinct from 1 then
+    raise exception 'Η κλήση χωρίς είσοδο έγραψε % αντί για 1 στο other', v_other;
+  end if;
+  if v_guide is distinct from 2 then
+    raise exception 'Η είσοδος guide έγραψε % αντί για 2', v_guide;
+  end if;
+  if rows_ <> 2 then
+    raise exception 'Άγνωστη είσοδος μπήκε στο χωνί ως ΝΕΑ γραμμή: % γραμμές', rows_;
+  end if;
+  if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+              where n.nspname = 'public' and p.proname = 'count_signup_step' and p.pronargs <> 5) then
+    raise exception 'Έμεινε και η παλιά υπογραφή της count_signup_step: η κλήση με τέσσερις είναι διφορούμενη';
+  end if;
+  if has_function_privilege('public', 'public.count_signup_step(text, text, boolean, boolean, text)', 'execute') then
+    raise exception 'ΕΚΘΕΣΗ: η count_signup_step εκτελείται από τον PUBLIC';
+  end if;
+  delete from public.signup_funnel;
+  raise notice 'probe: το χωνί μετρά το σημείο εισόδου μόνο από τον κλειστό κατάλογο';
+end $funnel_entry$;
+
 drop table expected_anon;

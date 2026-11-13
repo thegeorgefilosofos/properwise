@@ -34,6 +34,7 @@ import { ENFIA_INSTALMENTS, ENFIA_MIN_INSTALMENT } from '@/lib/tools/enfiaSchedu
 import { feWhole } from '@/lib/core/format';
 import { monthNom, monthGen, monthAcc } from '@/lib/core/months';
 import { enfiaInstalmentRule, enfiaInstalmentDates } from '../enfiaText';
+import { withSignupEntry } from '@/lib/analytics/signupEntry';
 import {
   GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
   RelatedGuides, guideJsonLd, LINK_STYLE, longDate, dayMonth, dateCells, type GuideFaqItem,
@@ -193,7 +194,7 @@ export default function Page() {
       {/* Η ΔΕΞΙΑ ΣΤΗΛΗ ΔΕΝ ΕΠΑΝΑΛΑΜΒΑΝΕΙ ΤΟ ΚΟΥΜΠΙ ΤΟΥ ΣΩΜΑΤΟΣ. Ελεγε κι αυτή
           «Υπολόγισε τον ΕΝΦΙΑ σου», σε οδηγό για ΗΜΕΡΟΜΗΝΙΕΣ: η ενέργεια που
           ταιριάζει εδώ είναι να μπουν οι προθεσμίες στο ημερολόγιο. */}
-      <GuideMain rail={{ sections: Object.values(S), cta: { href: '/signup', action: 'Βάλε τις προθεσμίες στο ημερολόγιο' } }}>
+      <GuideMain rail={{ sections: Object.values(S), cta: { href: withSignupEntry('/signup', 'guide'), action: 'Βάλε τις προθεσμίες στο ημερολόγιο' } }}>
         <div className="lp-eyebrow">Οδηγός</div>
         <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: 680, letterSpacing: '-0.035em',
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>

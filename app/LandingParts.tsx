@@ -11,6 +11,7 @@ import { T } from '@/components/tokens'
 import { hy } from '@/components/Hyphen'
 import { ASSISTANT_NAME, ASSISTANT_ACC } from '@/lib/assistant/identity'
 import { signupCta, signupCtaEn } from '@/lib/billing/trialOffer'
+import { withSignupEntry } from '@/lib/analytics/signupEntry'
 import type { Locale } from '@/lib/i18n/locale'
 import { localHref } from '@/lib/i18n/paths'
 import { PARTS_EN } from '@/lib/i18n/en/landing'
@@ -152,7 +153,7 @@ export function NoaFeature({ locale = 'el' }: { locale?: Locale } = {}) {
             {en && <div className="nf-terms">{N.disclosure}</div>}
           </div>
           <div className="nf-cta">
-            <Link href={localHref(locale, '/signup?plan=solo&cycle=monthly')} className="lp-cta lp-primary lp-press" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '13px 24px', borderRadius: T.radius.pill }}>{en ? N.cta : <>Δοκίμασε {ASSISTANT_ACC}</>}</Link>
+            <Link href={localHref(locale, withSignupEntry('/signup?plan=solo&cycle=monthly', 'home'))} className="lp-cta lp-primary lp-press" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '13px 24px', borderRadius: T.radius.pill }}>{en ? N.cta : <>Δοκίμασε {ASSISTANT_ACC}</>}</Link>
             <span className="nf-free">{en ? N.noSub : `Ο «${PLANS.free.name}» χωρίς ${ASSISTANT_ACC} δεν θέλει συνδρομή.`}</span>
           </div>
         </div>
@@ -283,7 +284,7 @@ export function OwnerPlanCard({ billingLive, locale = 'el' }: { billingLive: boo
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>{P.includes}</div>
           {[...shared, freeScan].map(line)}
         </div>
-        {cta(localHref(locale, '/signup'), locale === 'en' ? signupCtaEn() : signupCta())}
+        {cta(localHref(locale, withSignupEntry('/signup', 'home')), locale === 'en' ? signupCtaEn() : signupCta())}
       </div>
       <div className="pc-on">
         {price(money(noa.priceMonthly), P.perMonth)}
@@ -298,8 +299,8 @@ export function OwnerPlanCard({ billingLive, locale = 'el' }: { billingLive: boo
               του subgrid που μοιράζονται οι κάρτες. */}
           <div style={{ fontSize: 12, color: FAINT, lineHeight: 1.4, marginTop: 2 }}>{P.trialLine()}</div>
         </div>
-        {cta(localHref(locale, `/signup?plan=solo&cycle=monthly`), locale === 'en' ? signupCtaEn('solo') : signupCta('solo'))}
-        {billingLive && <Link href={localHref(locale, '/signup?plan=solo&cycle=annual')} className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{P.annual(paidMonths)}</Link>}
+        {cta(localHref(locale, withSignupEntry('/signup?plan=solo&cycle=monthly', 'home')), locale === 'en' ? signupCtaEn('solo') : signupCta('solo'))}
+        {billingLive && <Link href={localHref(locale, withSignupEntry('/signup?plan=solo&cycle=annual', 'home'))} className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{P.annual(paidMonths)}</Link>}
       </div>
     </div>
   );
@@ -383,10 +384,10 @@ export function PlanCard({ planId, name, nameColor, sub, price, per, note, annua
           το --bg-elevated είναι ένα σκαλί πάνω από την κάρτα και το
           --border-default μια γραμμή που φαίνεται. Και τα τέσσερα πιάνουν 44
           εικονοστοιχεία ύψος, όσο ζητά το δάχτυλο. */}
-      <Link href={localHref(locale, `/signup?plan=${planId}&cycle=monthly`)} className={ctaGhost ? 'lp-ghost lp-press' : 'lp-cta lp-primary lp-press'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, textAlign: 'center', background: ctaGhost ? 'var(--bg-elevated)' : undefined, color: ctaGhost ? TEXT : undefined, textDecoration: 'none', fontSize: 13, fontWeight: 700, padding: '10px', borderRadius: T.radius.pill, border: ctaGhost ? '1px solid var(--border-default)' : 'none' }}>{cta}</Link>
+      <Link href={localHref(locale, withSignupEntry(`/signup?plan=${planId}&cycle=monthly`, 'home'))} className={ctaGhost ? 'lp-ghost lp-press' : 'lp-cta lp-primary lp-press'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, textAlign: 'center', background: ctaGhost ? 'var(--bg-elevated)' : undefined, color: ctaGhost ? TEXT : undefined, textDecoration: 'none', fontSize: 13, fontWeight: 700, padding: '10px', borderRadius: T.radius.pill, border: ctaGhost ? '1px solid var(--border-default)' : 'none' }}>{cta}</Link>
       {/* ΣΥΝΔΕΣΜΟΣ ΠΟΥ ΜΟΙΑΖΕΙ ΣΥΝΔΕΣΜΟΣ. Γκρι, δώδεκα εικονοστοιχεία, χωρίς
           υπογράμμιση: διαβαζόταν ως λεζάντα και όχι ως επιλογή. */}
-      {annual && <Link href={localHref(locale, `/signup?plan=${planId}&cycle=annual`)} className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{annual}</Link>}
+      {annual && <Link href={localHref(locale, withSignupEntry(`/signup?plan=${planId}&cycle=annual`, 'home'))} className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{annual}</Link>}
     </div>
   );
 }

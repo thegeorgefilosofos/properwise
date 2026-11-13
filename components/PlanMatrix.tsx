@@ -28,6 +28,7 @@ import { fn } from '@/components/tokens';
 import { fe, feWhole } from '@/lib/core/format';
 import { Btn } from '@/components/Theme';
 import { signupCta } from '@/lib/billing/trialOffer';
+import { withSignupEntry } from '@/lib/analytics/signupEntry';
 import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { signupCtaEn } from '@/lib/billing/trialOffer';
 import { fmtFor } from '@/lib/core/format';
@@ -264,10 +265,10 @@ function CellText({ v, locale = 'el' }: { v: string; locale?: Locale }) {
 // δοκιμή και μετά συνεχίζει στο δωρεάν. Όποιος θέλει τη Νόα τη διαλέγει μετά.
 const TrialCta = ({ id, recommended, locale = 'el' }: { id: ComparedPlan; recommended?: PlanId; locale?: Locale }) => (
   id === 'solo'
-    ? <Btn variant="secondary" field href={localHref(locale, '/signup')}>
+    ? <Btn variant="secondary" field href={localHref(locale, withSignupEntry('/signup', 'pricing'))}>
         {locale === 'en' ? signupCtaEn('free') : signupCta('free')}<span className="sr-only">{WORDS[locale].plan(planName(locale, 'free'))}</span>
       </Btn>
-    : <Btn variant={id === recommended ? 'primary' : 'secondary'} field href={localHref(locale, `/signup?plan=${id}&cycle=monthly`)}>
+    : <Btn variant={id === recommended ? 'primary' : 'secondary'} field href={localHref(locale, withSignupEntry(`/signup?plan=${id}&cycle=monthly`, 'pricing'))}>
         {/* Το λεκτικό ανά πακέτο το λέει ο κανόνας του trialOffer.ts· κανένα
             δεν υπόσχεται πια δωρεάν πακέτο με τιμή. */}
         {locale === 'en' ? signupCtaEn(id) : signupCta(id)}<span className="sr-only">{WORDS[locale].plan(planName(locale, id))}</span>

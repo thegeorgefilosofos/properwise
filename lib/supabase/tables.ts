@@ -1359,6 +1359,7 @@ export interface SignupFunnelRow {
   in_app: boolean;
   mobile: boolean;
   n: number;
+  entry: string;
 }
 
 export interface StoragePurgeQueueRow {
