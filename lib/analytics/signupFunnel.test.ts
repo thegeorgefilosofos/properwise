@@ -6,6 +6,7 @@
 // μετριέται ποτέ και κανείς δεν το βλέπει, γιατί η συνάρτηση σωπαίνει.
 import { readFileSync, readdirSync } from 'node:fs'
 import { SIGNUP_STEPS, SIGNUP_SOURCES, signupSource, isMobileUa, landingQuery } from './signupFunnel'
+import { SIGNUP_ENTRIES, signupEntry, withSignupEntry } from './signupEntry'
 
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
@@ -104,6 +105,27 @@ const fn = sql.slice(sql.lastIndexOf('create or replace function public.count_si
 ok('η συνάρτηση ελέγχει κάθε βήμα', steps.every(s => fn.includes(`'${s}'`)))
 ok('η συνάρτηση ελέγχει κάθε πηγή', SIGNUP_SOURCES.every(s => fn.includes(`'${s}'`)))
 ok('και κλειδώνει το search_path', /set search_path = public, pg_temp/.test(fn))
+
+// ── ΤΟ ΣΗΜΕΙΟ ΕΙΣΟΔΟΥ (?from=) ─────────────────────────────────────────────
+ok('γνωστή είσοδος από το ?from=', signupEntry('?from=guide') === 'guide' && signupEntry('?plan=solo&from=pricing') === 'pricing')
+ok('χωρίς ?from=: other', signupEntry('') === 'other' && signupEntry('?plan=solo') === 'other')
+ok('άγνωστη είσοδος ή ελεύθερο κείμενο: other', ['?from=kati', '?from=GUIDE', '?from=https%3A%2F%2Fx.gr%2F%3Femail%3Dx', '?from='].every(q => signupEntry(q) === 'other'))
+ok('ο σύνδεσμος παίρνει το ?from=', withSignupEntry('/signup', 'home') === '/signup?from=home')
+ok('και κρατά πακέτο και κύκλο', withSignupEntry('/signup?plan=solo&cycle=monthly', 'pricing') === '/signup?plan=solo&cycle=monthly&from=pricing')
+ok('και την άγκυρα', withSignupEntry('/signup?plan=solo#x', 'guide') === '/signup?plan=solo&from=guide#x')
+ok('παλιό from αντικαθίσταται', withSignupEntry('/signup?from=home', 'calculator') === '/signup?from=calculator')
+ok('other ή άγνωστη: ο σύνδεσμος μένει ίδιος', withSignupEntry('/signup?plan=solo', 'other') === '/signup?plan=solo'
+  && withSignupEntry('/signup', 'kati' as unknown as 'home') === '/signup')
+ok('κάθε είσοδος ξαναδιαβάζεται ίδια', SIGNUP_ENTRIES.filter(e => e !== 'other').every(e => signupEntry(withSignupEntry('/signup', e).slice(7)) === e))
+ok('το χωνί στέλνει την είσοδο από τη διεύθυνση', /p_entry: signupEntry\(window\.location\.search\)/.test(funnelSrc))
+const entriesInSql = quoted(last([...sql.matchAll(/check \(entry in \(([^)]*)\)/g)])?.[1] ?? '')
+ok('κάθε είσοδος της εφαρμογής υπάρχει στη βάση', SIGNUP_ENTRIES.every(e => entriesInSql.has(e)))
+ok('και η βάση δεν έχει είσοδο που η εφαρμογή δεν στέλνει', entriesInSql.size === SIGNUP_ENTRIES.length)
+ok('η συνάρτηση ελέγχει κάθε είσοδο', SIGNUP_ENTRIES.every(e => fn.includes(`'${e}'`)) && /p_entry text default 'other'/.test(fn))
+ok('η είσοδος είναι μέρος του κλειδιού', /primary key \(day, step, source, in_app, mobile, entry\)/.test(sql) && /on conflict \(day, step, source, in_app, mobile, entry\)/.test(fn))
+ok('η παλιά υπογραφή σβήνεται', sql.includes('drop function if exists public.count_signup_step(text, text, boolean, boolean);'))
+ok('ίδια δικαιώματα στη νέα υπογραφή', /revoke execute on function public\.count_signup_step\(text, text, boolean, boolean, text\) from public;/.test(fn)
+  && /grant execute on function public\.count_signup_step\(text, text, boolean, boolean, text\) to anon, authenticated, service_role;/.test(fn))
 
 console.log(`${fail ? '✗' : '✓'} χωνί εγγραφής: ${pass} περνούν${fail ? `, ${fail} αποτυγχάνουν` : ''}`)
 if (fail) process.exit(1)

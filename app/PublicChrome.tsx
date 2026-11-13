@@ -32,6 +32,7 @@ import { TRIAL_DAYS } from '@/lib/billing/plans';
 import { RENO_39B_LAW, RENO_39B_KYA } from '@/lib/accounting/renovation39b';
 import { E1_4D2_SOURCE } from '@/lib/accounting/e1Codes';
 import { signupCta } from '@/lib/billing/trialOffer';
+import { withSignupEntry } from '@/lib/analytics/signupEntry';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { hy } from '@/components/Hyphen';
 import PublicMenu, { type MenuGroup } from './PublicMenu';
@@ -654,11 +655,12 @@ export function ToolSources({ kind, checked, updated, locale = 'el' }: {
 // αρχικοποίησή της (ταυτότητα βοηθού, πακέτα χρέωσης) και το λογότυπο. Από τη
 // σελίδα ο περιηγητής παίρνει μόνο το HTML της, στην ίδια θέση.
 /**
- * @param href Πού πηγαίνει το κουμπί της εγγραφής. Προεπιλογή η εγγραφή· ο
+ * @param href Πού πηγαίνει το κουμπί της εγγραφής. Προεπιλογή η εγγραφή με
+ *   `?from=calculator` (lib/analytics/signupEntry.ts)· ο
  *   υπολογιστής που τυλίγει το `ToolCta` μπορεί να τη γράψει από πάνω με τα
  *   πεδία του (`ToolCtaHref`, app/ToolCtaLink.tsx).
  */
-export function ToolCta({ title, body, href = '/signup', locale = 'el' }: { title: string; body: ReactNode; href?: string; locale?: Locale }) {
+export function ToolCta({ title, body, href = withSignupEntry('/signup', 'calculator'), locale = 'el' }: { title: string; body: ReactNode; href?: string; locale?: Locale }) {
   const en = locale === 'en';
   return (
     <div className="po-noprint" style={{

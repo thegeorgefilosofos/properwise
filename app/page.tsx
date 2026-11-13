@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
 import { aiLimitsFor } from '@/lib/billing/aiLimits';
 import { TRIAL_OFFER, signupCta } from '@/lib/billing/trialOffer';
+import { withSignupEntry } from '@/lib/analytics/signupEntry';
 import { partnerWelcomeTier } from '@/lib/referral/referral';
 import { fe } from '@/lib/core/format';
 import { SITE, ORG_ID, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE, HOME_TITLE_LINES, SOCIAL_PROFILES } from '@/lib/core/site';
@@ -305,7 +306,7 @@ export default async function Landing() {
               // επιλογές ακριβώς εκεί που ο νέος επισκέπτης αποφασίζει. Ο
               // επιστρέφων έχει τη «Σύνδεση» στην κεφαλίδα και στο μενού
               // (PublicNav), σε κάθε δημόσια σελίδα.
-              <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }}>{signupCta()}</Link>
+              <Link href={withSignupEntry('/signup', 'home')} className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }}>{signupCta()}</Link>
             )}
           </div>
           {/* ΣΤΟΙΧΕΙΑ ΠΟΥ ΔΕΝ ΣΠΑΝΕ ΣΤΗ ΜΕΣΗ. Στα 390 η γραμμή έπεφτε «…· Χωρίς
@@ -816,7 +817,7 @@ export default async function Landing() {
             <span className="lp-lede-line">Κάθε έγγραφο στη θέση του, κάθε προθεσμία στην ώρα της.</span>{' '}
             <span className="lp-lede-line">Και η επόμενη δήλωση θα σε βρει με τον φάκελο ήδη έτοιμο.</span>
           </p>
-          <Link href={loggedIn ? '/dashboard' : '/signup'} className="lp-cta lp-primary lp-final-cta" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : signupCta()}</Link>
+          <Link href={loggedIn ? '/dashboard' : withSignupEntry('/signup', 'home')} className="lp-cta lp-primary lp-final-cta" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : signupCta()}</Link>
         </div>
       </section>
 

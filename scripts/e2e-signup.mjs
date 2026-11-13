@@ -81,9 +81,9 @@ check('χωνί: μετρήθηκε η προβολή', steps.includes('view'), 
 check('χωνί: μετρήθηκαν υποβολή και αποστολή', steps.includes('submit') && steps.includes('sent'), steps.join(','));
 check('χωνί: κάθε βήμα μία φορά ανά φόρτωση ακόμη και με δύο υποβολές',
   ['view', 'submit', 'sent'].every(s => steps.filter(x => x === s).length === 1), steps.join(','));
-check('χωνί: μόνο η συνάρτηση του χωνιού και μόνο τα τέσσερα πεδία',
+check('χωνί: μόνο η συνάρτηση του χωνιού και μόνο τα πέντε πεδία',
   (await funnel(page)).every(c => c.fn === 'count_signup_step'
-    && Object.keys(c).sort().join() === 'fn,p_in_app,p_mobile,p_source,p_step'));
+    && Object.keys(c).sort().join() === 'fn,p_entry,p_in_app,p_mobile,p_source,p_step'));
 check('χωνί: σε κανονικό περιηγητή δεν μετρά οδηγία εφαρμογής', !steps.includes('app_note'));
 
 // Υποβολή χωρίς αποδοχή των Όρων: μετριέται κάθε φορά, γιατί εκεί κολλάει ο κόσμος.

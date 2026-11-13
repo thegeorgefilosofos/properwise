@@ -5,6 +5,7 @@ import { T } from '@/components/tokens';
 import { PLANS } from '@/lib/billing/plans';
 import { aiLimitsFor } from '@/lib/billing/aiLimits';
 import { signupCtaEn, trialOfferEn } from '@/lib/billing/trialOffer';
+import { withSignupEntry } from '@/lib/analytics/signupEntry';
 import { TRIAL_PLAN } from '@/lib/billing/entitlements';
 import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { fmtFor } from '@/lib/core/format';
@@ -72,7 +73,7 @@ export default async function LandingEn() {
   const money = fmtFor('en').fe;
   const faq = faqEn();
   const visible = 5;
-  const signup = localHref('en', '/signup');
+  const signup = localHref('en', withSignupEntry('/signup', 'home'));
   // Ο ΠΙΝΑΚΑΣ ΕΙΝΑΙ ΕΛΛΗΝΙΚΟΣ: πλήρης πλοήγηση (σκέτο <a>), ώστε η ρίζα να
   // ξαναγράψει το `<html lang>`.
   const dashboard = (cls: string, style: React.CSSProperties, label: string) =>
