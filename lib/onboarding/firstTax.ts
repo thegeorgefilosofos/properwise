@@ -18,8 +18,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { propertyRentTax } from '@/lib/facts/rentTax';
 import { readStatus, type PropertyStatus, type StatusRow } from '@/lib/property/status';
-import { upcomingTaxObligations, taxProfileOfStatus } from '@/lib/facts/deadlines';
-import type { TaxObligation } from '@/lib/tax/greekTaxCalendar';
+import { taxProfileOfStatus } from '@/lib/facts/deadlines';
+import { greekPropertyTaxObligations, CONFIDENCE_LABEL, type TaxObligation } from '@/lib/tax/greekTaxCalendar';
 import { grDate } from '@/lib/core/format';
 
 /** Οι στήλες του ακινήτου που χρειάζεται ο πρώτος φόρος. */
@@ -72,27 +72,38 @@ export function firstTaxOf(p: FirstTaxProperty, today: string): FirstTax {
 }
 
 /**
- * Η επόμενη προθεσμία ΤΟΥ ΙΔΙΟΥ ΦΟΡΟΥ με το ποσό: ο φόρος ενοικίων πληρώνεται
- * με τον φόρο εισοδήματος, οπότε δίπλα του στέκει η επόμενη δόση ή η δήλωσή
- * του, ποτέ ο ΕΝΦΙΑ (κριτική σχεδίασης, 13/11/2026: η ημερομηνία του ΕΝΦΙΑ
- * κάτω από τον φόρο ενοικίων διαβαζόταν σαν να ανήκε σε εκείνον).
+ * Η ΠΡΟΘΕΣΜΙΑ ΠΟΥ ΑΝΗΚΕΙ ΣΤΟ ΠΟΣΟ (κριτική σχεδίασης r3, 13/11/2026).
+ *
+ * Το ποσό είναι ο φόρος ενοικίων του φορολογικού έτους `incomeYear` (τα
+ * μισθώματα του 2026). Αυτός ο φόρος δηλώνεται και πληρώνεται το ΕΠΟΜΕΝΟ
+ * έτος: με τη δήλωση του `incomeYear + 1`. Στο ημερολόγιο
+ * (lib/tax/greekTaxCalendar.ts) κάθε υποχρέωση κρατά το έτος ΔΗΛΩΣΗΣ, οπότε η
+ * σωστή γραμμή είναι η `income-decl` του `incomeYear + 1`.
+ *
+ * ΤΙ ΗΤΑΝ ΛΑΘΟΣ. Η γραμμή έπαιρνε την επόμενη προθεσμία φόρου εισοδήματος από
+ * σήμερα: τον Νοέμβριο του 2026 αυτή ήταν «5η δόση 30/11/2026», δόση της
+ * δήλωσης 2026, δηλαδή του φόρου για τα εισοδήματα του 2025. Δίπλα στον φόρο
+ * των ενοικίων του 2026 έλεγε «πληρώνεις 1.026€ ως τις 30/11/2026». Ενας νέος
+ * ιδιοκτήτης χωρίς ενοίκια το 2025 δεν χρωστά τίποτα εκείνη τη μέρα.
+ *
+ * Η ημερομηνία της δήλωσης ανακοινώνεται κάθε χρόνο· το ημερολόγιο τη δίνει με
+ * `confidence: 'announced'`. Η γραμμή λοιπόν τη γράφει μαζί με την ετικέτα
+ * βεβαιότητας του ίδιου ημερολογίου (`CONFIDENCE_LABEL`), ποτέ ως βέβαιη.
  */
-export function incomeTaxDeadline(status: PropertyStatus, today: string): TaxObligation | null {
-  const income = new Set(['income-instalment', 'income-decl', 'income-autofile']);
-  return upcomingTaxObligations(today, taxProfileOfStatus(status)).find(o => income.has(o.kind)) ?? null;
+export function incomeTaxDeadline(status: PropertyStatus, incomeYear: number): TaxObligation | null {
+  if (!isRented(status) || !Number.isInteger(incomeYear)) return null;
+  return greekPropertyTaxObligations(incomeYear + 1, taxProfileOfStatus(status)).find(o => o.kind === 'income-decl') ?? null;
 }
 
-/** Η μία γραμμή κάτω από το ποσό: τίτλος και ημερομηνία σε μορφή ηη/μμ/εεεε. */
-export interface TaxDeadlineRow { id: string; title: string; date: string }
+/** Η μία γραμμή κάτω από το ποσό: τίτλος, ημερομηνία ηη/μμ/εεεε και πόσο βέβαιη είναι. */
+export interface TaxDeadlineRow { id: string; title: string; date: string; confidence: string }
 
 /**
- * Η ΓΡΑΜΜΗ ΚΑΤΩ ΑΠΟ ΤΟΝ ΦΟΡΟ ΕΝΟΙΚΙΩΝ, ΓΡΑΜΜΕΝΗ ΜΙΑ ΦΟΡΑ (κριτική σχεδίασης
- * r2, 13/11/2026). Η υποδοχή έδειχνε τη δόση του φόρου εισοδήματος και ο
- * οδηγός, με άλλη συνάρτηση, δύο γραμμές με πρώτη τον ΕΝΦΙΑ. Τώρα και οι δύο
- * διαβάζουν αυτή: μία γραμμή, ίδιος φόρος, ίδια μορφή ημερομηνίας. Ο ΕΝΦΙΑ
- * ζει στο Ημερολόγιο, όπου δείχνει το πρώτο βήμα της περιήγησης.
+ * Η ΓΡΑΜΜΗ ΚΑΤΩ ΑΠΟ ΤΟΝ ΦΟΡΟ ΕΝΟΙΚΙΩΝ, ΓΡΑΜΜΕΝΗ ΜΙΑ ΦΟΡΑ. Υποδοχή και οδηγός
+ * διαβάζουν αυτή: μία γραμμή, η δήλωση που φορολογεί το ίδιο εισόδημα, με την
+ * ετικέτα βεβαιότητας του ημερολογίου. Ο ΕΝΦΙΑ ζει στο Ημερολόγιο.
  */
-export function taxDeadlineRow(status: PropertyStatus, today: string): TaxDeadlineRow | null {
-  const o = incomeTaxDeadline(status, today);
-  return o ? { id: o.id, title: o.title, date: grDate(o.date) } : null;
+export function taxDeadlineRow(status: PropertyStatus, incomeYear: number): TaxDeadlineRow | null {
+  const o = incomeTaxDeadline(status, incomeYear);
+  return o ? { id: o.id, title: o.title, date: grDate(o.date), confidence: CONFIDENCE_LABEL[o.confidence] } : null;
 }

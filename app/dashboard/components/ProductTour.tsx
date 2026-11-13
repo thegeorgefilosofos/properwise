@@ -23,7 +23,7 @@
 // είναι τέσσερα πατήματα χωρίς κανένα πέπλο ανάμεσα.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useId, useLayoutEffect, useState } from 'react';
-import { T, TT, Btn, useOverlayShell } from '@/components/Theme';
+import { T, TT, Btn, IconBtn, useOverlayShell } from '@/components/Theme';
 import { useBackButton } from '@/components/useBackButton';
 import { TOUR_STEPS, isVisibleRect, placeCard, type TourStep, type Box, type CardPlace } from '@/lib/onboarding/tour';
 
@@ -62,6 +62,8 @@ export default function ProductTour({ onDone }: Props) {
 
   const step = steps[i];
   const last = i === steps.length - 1;
+  // Στενή κάρτα (320, στήλη της πλαϊνής μπάρας): «×» αντί για λεκτικό, χωρίς κουκκίδες.
+  const compact = !!pos && pos.width < 300;
 
   // Η περιήγηση κυλά τη σελίδα ως τους στόχους της. Στο τέλος ο χρήστης
   // γυρίζει εκεί όπου ήταν, όχι στη μέση της Επισκόπησης.
@@ -168,16 +170,26 @@ export default function ProductTour({ onDone }: Props) {
           <span className="sr-only">{`Βήμα ${i + 1} από ${steps.length}. `}</span>
           <div className="ob-tour-head">
             <h2 id={titleId} style={{ ...TT.h2, margin: 0 }}>{step.title}</h2>
-            <Btn variant="ghost" className="ob-tour-skip" onClick={dismiss}>Παράλειψη</Btn>
+            {/* ΣΤΗ ΣΤΕΝΗ ΚΑΡΤΑ Η «ΠΑΡΑΛΕΙΨΗ» ΓΙΝΕΤΑΙ «×» (κριτική σχεδίασης r3): στα
+                320 και στη στήλη της πλαϊνής μπάρας το λεκτικό έσπαγε τον τίτλο
+                σε δύο γραμμές. Το όνομα για τον αναγνώστη οθόνης μένει ίδιο. */}
+            {compact
+              ? <IconBtn label="Παράλειψη" size="md" className="ob-tour-skip-ico" onClick={dismiss}>
+                  <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                </IconBtn>
+              : <Btn variant="ghost" className="ob-tour-skip" onClick={dismiss}>Παράλειψη</Btn>}
           </div>
           <p id={bodyId} style={{ ...TT.bodySm, margin: `${T.sp.sm}px 0 0` }}>{step.body}</p>
         </div>
         <div className="ob-tour-foot">
+          {/* Οι κουκκίδες μόνο όπου χωρούν· στη στενή κάρτα η πρόοδος ακούγεται
+              (`sr-only`) και τα δύο κουμπιά κρατούν τη σειρά τους. */}
           <div className="ob-dots" aria-hidden>
-            {steps.map((s, k) => <span key={s.id} className={k === i ? 'on' : undefined} />)}
+            {!compact && steps.map((s, k) => <span key={s.id} className={k === i ? 'on' : undefined} />)}
           </div>
           {i > 0 && <Btn variant="ghost" onClick={() => setI(i - 1)}>Πίσω</Btn>}
-          <Btn variant="primary" onClick={() => (last ? onDone('finished') : setI(i + 1))}>{last ? 'Τέλος' : 'Επόμενο'}</Btn>
+          {/* Σταθερό ελάχιστο πλάτος: «Επόμενο» και «Τέλος» δεν μετακινούν το «Πίσω». */}
+          <Btn variant="primary" className="ob-tour-next" onClick={() => (last ? onDone('finished') : setI(i + 1))}>{last ? 'Τέλος' : 'Επόμενο'}</Btn>
         </div>
       </div>
     </div>

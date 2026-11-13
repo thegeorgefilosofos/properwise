@@ -49,8 +49,9 @@ export const TOUR_STEPS: readonly TourStep[] = [
     // Ο τίτλος δεν επαναλαμβάνει το κουμπί από κάτω του («Ρώτα τη Νόα»):
     // τρεις ίδιες φράσεις στην ίδια οθόνη (κριτική σχεδίασης r2).
     title: `Η ${ASSISTANT_NAME}`,
-    // Η Νόα συστήνεται με το όνομά της, ποτέ με τίτλο ρόλου.
-    body: `Η ${ASSISTANT_NAME} απαντά για τα ακίνητά σου, με τα δικά σου στοιχεία.`,
+    // Η Νόα συστήνεται με το όνομά της (στον τίτλο), ποτέ με τίτλο ρόλου.
+    // Το όνομα το λέει ο τίτλος· το σώμα δεν το ξαναγράφει (κριτική σχεδίασης r3).
+    body: 'Απαντά για τα ακίνητά σου, με τα δικά σου στοιχεία.',
   },
 ];
 
@@ -77,9 +78,11 @@ export const TOUR_TOP = 72;
  *
  * - Στενή οθόνη (< 640): όλο το πλάτος, πάνω από στόχο του κάτω μισού ή κάτω
  *   από στόχο του πάνω.
- * - Φαρδιά, στόχος στο αριστερό τρίτο (πλαϊνή μπάρα): δεξιά του, με την
- *   κορυφή της κάρτας 8 πάνω από την κορυφή του στόχου. Κεντραρισμένη στον
- *   στόχο, η κάρτα του Ημερολογίου ανέβαινε πάνω από το ποσό της κορυφής.
+ * - Φαρδιά, στόχος στο αριστερό τρίτο (πλαϊνή μπάρα): ΚΑΤΩ από τον στόχο,
+ *   μέσα στη στήλη της μπάρας, ως τη δεξιά ακμή του στόχου (τουλάχιστον 240).
+ *   Δεξιά της μπάρας η κάρτα έκοβε στη μέση το ποσό του φόρου και τη λίστα
+ *   «Από πού ξεκινάς» (κριτική σχεδίασης r3)· εδώ σκεπάζει μόνο στοιχεία της
+ *   μπάρας κάτω από το πέπλο. Δεξιά της μόνο όταν από κάτω δεν χωρά.
  * - Φαρδιά, στόχος κάτω δεξιά (το κουμπί της Νόας): ΑΡΙΣΤΕΡΑ του, ώστε η
  *   κάρτα να μη σκεπάζει ούτε τον στόχο ούτε τη στήλη από πάνω του.
  * - Αλλιώς κάτω ή πάνω, όπου χωρά.
@@ -102,9 +105,18 @@ export function placeCard(target: Box, card: { width: number; height: number }, 
   if (vw < 640) return vertical(vw - edge * 2, edge);
   const width = Math.min(card.width, vw - edge * 2);
   const right = target.left + target.width + gap;
-  if (target.left < vw / 3 && right + width + edge <= vw) {
-    const top = clampY(target.top - 8);
-    return { top, left: right, width, caret: { edge: 'left', offset: along(cy - top, card.height) } };
+  if (target.left < vw / 3) {
+    const below = target.top + target.height + gap;
+    const left = Math.max(edge, target.left);
+    // Ως τη δεξιά ακμή του στόχου, ώστε να μένει μέσα στη στήλη της μπάρας.
+    const colWidth = Math.min(width, Math.max(240, target.left + target.width - left));
+    if (below >= minTop && below + card.height + edge <= vh && left + colWidth + edge <= vw) {
+      return { top: below, left, width: colWidth, caret: { edge: 'top', offset: along(cx - left, colWidth) } };
+    }
+    if (right + width + edge <= vw) {
+      const top = clampY(target.top - 8);
+      return { top, left: right, width, caret: { edge: 'left', offset: along(cy - top, card.height) } };
+    }
   }
   const leftOf = target.left - gap - width;
   if (cx > vw / 2 && cy > vh / 2 && leftOf >= edge) {

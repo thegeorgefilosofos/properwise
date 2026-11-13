@@ -393,7 +393,7 @@ export function Modal({ open, onClose, title, ariaLabel, subtitle, icon, size = 
       aria-labelledby={ariaLabel ? undefined : titleId} aria-describedby={subtitle ? subId : undefined}
       style={{ position: 'fixed', inset: 0, background: T.scrim, zIndex: z, overscrollBehavior: 'contain' }}>
       <div ref={panelRef} tabIndex={-1} onClick={e => e.stopPropagation()} className="po-modal"
-        style={{ '--modal-w': `${MODAL_WIDTH[size]}px`, '--modal-r': `${T.radius.modal}px`, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--elev-3)', outline: 'none', overscrollBehavior: 'contain' } as CSSProperties}>
+        style={{ '--modal-w': `${MODAL_WIDTH[size]}px`, '--modal-r': `${T.radius.modal}px`, '--radius-inner': `${T.radius.inner}px`, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--elev-3)', outline: 'none', overscrollBehavior: 'contain' } as CSSProperties}>
         {/* Λαβή: μόνο σήμα «φύλλο», στο τηλέφωνο. Δεν σέρνεται· κλείνεις με ×, φόντο ή Escape. */}
         <span className="po-modal-grip" aria-hidden="true" />
 

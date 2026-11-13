@@ -50,12 +50,13 @@ interface Props {
  * Η ΜΙΚΡΟΓΡΑΦΙΑ ΤΗΣ ΚΑΡΤΑΣ ΤΟΥ ΦΟΡΟΥ: η υποδοχή δείχνει το προϊόν, όχι μόνο
  * λόγια. Το ποσό βγαίνει από την ίδια `firstTaxOf` με την πραγματική κάρτα,
  * για το ακίνητο του παραδείγματος (lib/demo/sample.ts) και λέγεται
- * «Παράδειγμα». Η γραμμή από κάτω είναι η επόμενη προθεσμία ΤΟΥ ΙΔΙΟΥ ΦΟΡΟΥ
- * (φόρος εισοδήματος, με τον οποίο πληρώνεται ο φόρος ενοικίων), όχι ο ΕΝΦΙΑ.
+ * «Παράδειγμα». Η γραμμή από κάτω είναι η δήλωση που φορολογεί ΤΟ ΙΔΙΟ
+ * εισόδημα, τον επόμενο χρόνο, με την ετικέτα βεβαιότητας του ημερολογίου
+ * (κριτική σχεδίασης r3: ήταν δόση της προηγούμενης δήλωσης). Ποτέ ο ΕΝΦΙΑ.
  */
 function previewOf(today: string) {
   const t = firstTaxOf({ id: 'demo', ...writeStatus('rent_long'), target_rent: DEMO_PROPERTY.monthlyRent }, today);
-  const next = taxDeadlineRow('rent_long', today);
+  const next = taxDeadlineRow('rent_long', t.year);
   return { year: t.year, tax: t.tax, next };
 }
 
@@ -106,8 +107,11 @@ export default function WelcomeOnboarding({ userId, name, onAddProperty, onClose
           <div className="ob-preview-amount">{fe(preview.tax)}</div>
           {preview.next && (
             <div className="ob-preview-row">
-              <span className="po-elide">{preview.next.title}</span>
-              <span className="ob-preview-date">{preview.next.date}</span>
+              <div className="ob-preview-line">
+                <span style={{ minWidth: 0 }}>{preview.next.title}</span>
+                <span className="ob-preview-date">{preview.next.date}</span>
+              </div>
+              <div className="ob-preview-conf">{preview.next.confidence}</div>
             </div>
           )}
         </div>
@@ -116,7 +120,9 @@ export default function WelcomeOnboarding({ userId, name, onAddProperty, onClose
         <ol className="ob-steps" aria-label="Τα βήματα">
           {ONBOARDING_STEPS.map((st, i) => (
             <li key={st.id} className="ob-step" data-now={i === 0 ? '' : undefined} style={{ animationDelay: `${120 + i * 40}ms` }}>
-              <span className="ob-node" aria-hidden>{i + 1}</span>
+              {/* Ο προορισμός σχεδιάζεται όπως στη ράγα του οδηγού: διακεκομμένος
+                  κύκλος χωρίς αριθμό (κριτική σχεδίασης r3). */}
+              <span className="ob-node" data-state={st.id === 'tax' ? 'dest' : undefined} aria-hidden>{st.id === 'tax' ? null : i + 1}</span>
               <span className="ob-step-label">{st.label}</span>
             </li>
           ))}

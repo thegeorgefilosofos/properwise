@@ -60,6 +60,8 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
     border: '1px solid var(--accent-border)', borderRadius: T.radius.card,
     background: 'var(--surface-raised)', boxShadow: 'var(--highlight-inset), var(--elev-1)',
     marginBottom: T.sp.lg,
+    // Η εσωτερική ακτίνα της κλίμακας, για την επιφάνεια του ενεργού βήματος (`.sp-row`).
+    ['--radius-inner' as string]: `${T.radius.inner}px`,
   };
 
   // ── ΣΥΜΠΤΥΓΜΕΝΟΣ ────────────────────────────────────────────────────────
@@ -119,7 +121,7 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
             <li key={s.key} className="sp-row" data-now={isNow ? '' : undefined} data-first={i === 0 ? '' : undefined}>
               {isNow && <span aria-hidden className="sp-row-bar" />}
               <Tick state={s.done ? 'done' : isNow ? 'now' : 'todo'} />
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="sp-text" style={{ flex: 1, minWidth: 0 }}>
                 {/* ΤΟ ΤΕΛΕΙΩΜΕΝΟ ΒΗΜΑ ΔΕΝ ΔΙΑΓΡΑΦΕΤΑΙ: τριτεύον γκρι και το γεμάτο
                     σημάδι αρκούν. Η γραμμή από πάνω του ήταν θόρυβος. */}
                 <div style={{ ...TT.bodySm, color: s.done ? 'var(--text-tertiary)' : 'var(--text-primary)', fontWeight: s.done ? 500 : 700 }}>{s.title}</div>

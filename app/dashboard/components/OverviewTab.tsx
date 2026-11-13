@@ -875,10 +875,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`Καθαρό ${year} · ${fmtEur(heroValue)}`}</div>
           )}
           {/* Η ΩΡΑ ΕΛΛΑΔΑΣ ΚΑΤΩ ΑΠΟ ΤΟ ΠΟΣΟ, ΟΧΙ ΠΑΝΩ (κριτική σχεδίασης r2). Ηταν η
-              πρώτη γραμμή της οθόνης, σε έντονο βάρος· έσπρωχνε το ποσό κάτω:
-              ο νέος χρήστης διάβαζε πρώτα «Παρασκευή 13/11» και μετά τον φόρο του.
-              Μένει, γιατί δίνει νόημα στο «ως σήμερα», αλλά ως υποσημείωση. */}
-          <AthensNow style={{fontFamily:T.font.sans,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,minHeight:15}}/>
+              πρώτη γραμμή της οθόνης, σε έντονο βάρος· έσπρωχνε το ποσό κάτω.
+              Δίνει νόημα στο «ως σήμερα» των εισπράξεων, άρα μένει ως
+              υποσημείωση. ΟΧΙ ΣΤΗΝ ΠΡΩΤΗ ΕΠΙΣΚΟΠΗΣΗ (κριτική σχεδίασης r3): ο
+              φόρος της κορυφής είναι εκτίμηση της χρονιάς, όχι ποσό «ως σήμερα»·
+              η ώρα ήταν τέταρτη γραμμή χωρίς λόγο. */}
+          {!taxHero && <AthensNow style={{fontFamily:T.font.sans,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,minHeight:15}}/>}
           {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
               Εδώ γραφόταν ξανά, εξήντα εικονοστοιχεία κάτω από την ίδια
               πρόταση: όνομα, τύπος, κατάσταση, διεύθυνση — τα ίδια τέσσερα
@@ -898,8 +900,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             εδώ ήταν η ίδια πράξη δεύτερη φορά, με άλλο εικονίδιο. Κρύβεται εκεί
             (`.ov-scan-hero`, globals.css) και μένει κάτω από τα 1025, όπου η
             μπάρα είναι συρτάρι. Η «Αναφορά σε PDF» μένει δευτερεύουσα. */}
+        {/* ΕΝΑ ΕΙΚΟΝΙΔΙΟ ΓΙΑ ΤΗ ΣΑΡΩΣΗ (κριτική σχεδίασης r3): η φωτογραφική μηχανή
+            της πλαϊνής μπάρας, όχι πλαίσιο σάρωσης εδώ και μηχανή εκεί. */}
         <Btn variant="primary" className="tour-scan ov-scan-hero" onClick={()=>onNavigate('scan')}>
-          <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
+          <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           Σάρωσε έγγραφο
         </Btn>
         <Btn disabled={moneyGap} title={moneyGap ? 'Η αναφορά περιμένει να φορτωθούν όλα τα ποσά' : undefined} onClick={()=>printPropertyStatement({

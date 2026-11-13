@@ -8,6 +8,7 @@
 import { firstTaxOf, isRented, incomeTaxDeadline, taxDeadlineRow } from './firstTax';
 import { propertyRentTax } from '@/lib/facts/rentTax';
 import { writeStatus } from '@/lib/property/status';
+import { CONFIDENCE_LABEL } from '@/lib/tax/greekTaxCalendar';
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
@@ -36,21 +37,28 @@ const own = firstTaxOf({ id: 'p3', ...writeStatus('own_use'), target_rent: 600, 
 ok('ιδιοχρησία: χωρίς φόρο ενοικίων', !own.rented && own.tax === 0);
 ok('ο ΕΝΦΙΑ περνά ως αριθμός', own.enfia === 320);
 
-// ΜΙΑ ΓΡΑΜΜΗ, Η ΙΔΙΑ ΣΤΗΝ ΥΠΟΔΟΧΗ ΚΑΙ ΣΤΟΝ ΟΔΗΓΟ: η προθεσμία του φόρου εισοδήματος, σε ηη/μμ/εεεε.
+// ── Η ΓΡΑΜΜΗ ΚΑΤΩ ΑΠΟ ΤΟΝ ΦΟΡΟ: Η ΔΗΛΩΣΗ ΠΟΥ ΦΟΡΟΛΟΓΕΙ ΤΟ ΙΔΙΟ ΕΙΣΟΔΗΜΑ ──
+// Ο φόρος ενοικίων του έτους Υ δηλώνεται με τη δήλωση του Υ+1. Η γραμμή δεν
+// είναι ποτέ δόση της προηγούμενης δήλωσης (κριτική σχεδίασης r3, 13/11/2026).
 for (const st of ['rent_long', 'rent_short'] as const) {
-  const row = taxDeadlineRow(st, TODAY);
-  const inc = incomeTaxDeadline(st, TODAY);
-  ok(`η γραμμή είναι η προθεσμία του φόρου εισοδήματος (${st})`, !!row && !!inc && row.id === inc.id && row.title === inc.title);
-  ok(`ημερομηνία ηη/μμ/εεεε (${st})`, !!row && /^\d{2}\/\d{2}\/\d{4}$/.test(row.date));
-  ok(`όχι ΕΝΦΙΑ (${st})`, !!row && !/ΕΝΦΙΑ/.test(row.title));
+  for (const Y of [2026, 2027]) {
+    const o = incomeTaxDeadline(st, Y);
+    ok(`${st} ${Y}: η δήλωση του ${Y + 1}`, !!o && o.kind === 'income-decl' && o.id === `income-decl-${Y + 1}`);
+    ok(`${st} ${Y}: ημερομηνία μέσα στο ${Y + 1}`, !!o && o.date.startsWith(`${Y + 1}-`));
+    const row = taxDeadlineRow(st, Y);
+    ok(`${st} ${Y}: ηη/μμ/εεεε του ${Y + 1}`, !!row && new RegExp(`^\\d{2}/\\d{2}/${Y + 1}$`).test(row.date));
+    ok(`${st} ${Y}: λέει πόσο βέβαιη είναι η ημερομηνία`, !!row && !!o && row.confidence === CONFIDENCE_LABEL[o.confidence]);
+    ok(`${st} ${Y}: όχι ΕΝΦΙΑ, όχι δόση`, !!row && !/ΕΝΦΙΑ|δόση/.test(row.title));
+  }
 }
-
-// Η ΓΡΑΜΜΗ ΚΑΤΩ ΑΠΟ ΤΟΝ ΦΟΡΟ ΕΝΟΙΚΙΩΝ ΤΗΣ ΥΠΟΔΟΧΗΣ: ίδιος φόρος, ποτέ ΕΝΦΙΑ.
-for (const day of [TODAY, '2026-01-10', '2026-06-15', '2026-12-31']) {
-  const inc = incomeTaxDeadline('rent_long', day);
-  ok(`προθεσμία φόρου εισοδήματος (${day})`, !!inc && /^income-/.test(inc.kind) && inc.date >= day);
-  ok(`όχι ΕΝΦΙΑ (${day})`, !inc || !/ΕΝΦΙΑ/.test(inc.title));
+// Η ΧΡΟΝΙΑ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟ ΠΟΣΟ, ΟΧΙ ΑΠΟ ΤΟ ΣΗΜΕΡΑ: στις 13/11/2026 ο φόρος είναι
+// του 2026 και η γραμμή είναι του 2027, όχι η 5η δόση του Νοεμβρίου 2026.
+{
+  const t2 = firstTaxOf({ id: 'p9', ...writeStatus('rent_long'), target_rent: 600 }, TODAY);
+  const row = taxDeadlineRow('rent_long', t2.year);
+  ok('13/11/2026: φόρος του 2026, γραμμή στο 2027', t2.year === 2026 && !!row && row.date.endsWith('/2027') && row.id === 'income-decl-2027');
 }
+ok('ακίνητο που δεν νοικιάζεται: καμία γραμμή', taxDeadlineRow('own_use', 2026) === null && taxDeadlineRow('vacant', 2026) === null);
 
 console.log(`${pass} πέρασαν, ${fail} απέτυχαν`);
 if (fail) process.exit(1);

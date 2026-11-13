@@ -202,7 +202,7 @@ for (const [k, caps] of Object.entries(CAP)) {
 
 // ── ΤΡΕΙΣ ΚΑΡΤΕΛΕΣ, ΜΕ ΤΙΣ ΕΠΑΦΕΣ ΣΤΑ ΒΑΣΙΚΑ ─────────────────────────────
 // Η επεξεργασία έχει τρεις καρτέλες χωρίς αριθμούς· οι επαφές (πρώην «Σύνοψη»)
-// ζουν κλειστές στο τέλος των «Βασικών» και ανοίγουν με ένα πάτημα.
+// ζουν στο «Περισσότερα στοιχεία» των «Βασικών» και ανοίγουν με ένα πάτημα.
 {
   await page.click('[data-s-open="vacant"]')
   await page.waitForSelector('[role="dialog"]')
@@ -210,11 +210,14 @@ for (const [k, caps] of Object.entries(CAP)) {
   const tabs = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] [role="tab"]')].map(t => t.textContent.trim()))
   const active = await page.evaluate(() => document.querySelector('[role="dialog"] [role="tab"][aria-selected="true"]')?.textContent?.trim())
   ok('η επεξεργασία έχει τρεις καρτέλες, χωρίς «Σύνοψη»', tabs.join() === 'Τύπος,Βασικά,Οικονομικά' && active === 'Βασικά', `${tabs.join(' · ')}, ενεργή «${active}»`)
-  const contacts = page.locator('[role="dialog"] [data-more]', { hasText: 'Επαφές, προαιρετικά' })
-  ok('οι επαφές ζουν στα Βασικά, κλειστές', (await contacts.count()) === 1 && (await contacts.getAttribute('aria-expanded')) === 'false')
+  // ΕΝΑ «ΠΕΡΙΣΣΟΤΕΡΑ» ΣΤΑ ΒΑΣΙΚΑ (κριτική σχεδίασης r3): οι επαφές μπήκαν στο ίδιο
+  // κουτί με τα υπόλοιπα κρυμμένα πεδία, όχι σε δεύτερο με άλλο όνομα.
+  const more = page.locator('[role="dialog"] [data-more]')
+  ok('ένα κουτί «Περισσότερα στοιχεία» στα Βασικά, κλειστό', (await more.count()) === 1 && (await more.getAttribute('aria-expanded')) === 'false' && /^Περισσότερα στοιχεία \(\d+\)$/.test((await more.innerText()).trim()), (await more.innerText()).trim())
   const before = await visibleControls()
-  await contacts.click(); await page.waitForTimeout(60)
-  ok('το κουτί των επαφών ανοίγει', (await visibleControls()) > before)
+  await more.click(); await page.waitForTimeout(60)
+  const owner = await page.getByLabel('Ονοματεπώνυμο ιδιοκτήτη', { exact: true }).count()
+  ok('ανοίγει και φέρνει και τις επαφές', (await visibleControls()) > before && owner === 1, `ιδιοκτήτης: ${owner}`)
   await page.keyboard.press('Escape')
   const ask = await page.waitForSelector('text=Κλείσιμο χωρίς αποθήκευση', { timeout: 800 }).catch(() => null)
   if (ask) await ask.click()

@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   ONBOARDING_STEPS, PRIMARY_TYPES, MORE_TYPES, PRIMARY_STATUSES, MORE_STATUSES,
-  typeNeedsMore, statusNeedsMore, defaultPropertyName,
+  typeNeedsMore, statusNeedsMore, defaultPropertyName, stepLabels, NOT_RENTED_STEP_LABEL,
 } from './steps';
 import { PROPERTY_TYPES } from '@/lib/property/types';
 import { STATUSES } from '@/lib/property/status';
@@ -36,6 +36,8 @@ ok('διαμέρισμα: η λίστα μένει κλειστή', !typeNeedsMo
 ok('ανακαίνιση: ανοίγει η λίστα των υπολοίπων', statusNeedsMore('renovation'));
 ok('κενό: η λίστα μένει κλειστή', !statusNeedsMore('vacant') && !statusNeedsMore(null));
 
+ok('μη νοικιασμένο: το δεύτερο βήμα λέγεται ΕΝΦΙΑ, όχι Μίσθωμα', stepLabels(false)[1] === NOT_RENTED_STEP_LABEL && !stepLabels(false).includes('Μίσθωμα'));
+ok('νοικιασμένο ή χωρίς κατάσταση: τα βήματα της υποδοχής', stepLabels(true).join() === ONBOARDING_STEPS.map(s => s.label).join() && stepLabels(null).join() === stepLabels(true).join());
 ok('όνομα: η διεύθυνση όταν υπάρχει', defaultPropertyName('Διαμέρισμα', ' Σόλωνος 12 ') === 'Σόλωνος 12');
 ok('όνομα: ο τύπος χωρίς διεύθυνση', defaultPropertyName('Διαμέρισμα', '') === 'Διαμέρισμα' && defaultPropertyName('Μονοκατοικία') === 'Μονοκατοικία');
 
@@ -45,7 +47,7 @@ const root = process.cwd();
 const welcome = readFileSync(join(root, 'app/dashboard/components/WelcomeOnboarding.tsx'), 'utf8');
 const wizard = readFileSync(join(root, 'app/dashboard/components/AddPropertyWizard.tsx'), 'utf8');
 ok('η υποδοχή εισάγει τα βήματα', /ONBOARDING_STEPS/.test(welcome));
-ok('ο οδηγός εισάγει τα βήματα', /ONBOARDING_STEPS/.test(wizard));
+ok('ο οδηγός εισάγει τα βήματα', /stepLabels\(/.test(wizard));
 for (const l of labels) {
   ok(`η υποδοχή δεν γράφει με το χέρι «${l}»`, !welcome.includes(`'${l}'`));
   ok(`ο οδηγός δεν γράφει με το χέρι «${l}»`, !wizard.includes(`'${l}'`));

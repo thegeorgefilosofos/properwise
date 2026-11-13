@@ -63,7 +63,7 @@ const RUNTIME = [
   // ύψος από το visualViewport. Κάθε χρήση στο globals.css έχει εφεδρική τιμή.
   { name: '--modal-w', why: 'πλάτος παραθύρου από το MODAL_WIDTH, το γράφει το Modal του components/Theme.tsx' },
   { name: '--modal-r', why: 'ακτίνα παραθύρου από το T.radius.modal, το γράφει το Modal του components/Theme.tsx' },
-  { name: '--radius-inner', why: 'εσωτερική ακτίνα από το T.radius.inner, τη γράφουν η υποδοχή (WelcomeOnboarding) και η κάρτα του φόρου στον οδηγό για τα .ob-preview και .wiz-tax' },
+  { name: '--radius-inner', why: 'εσωτερική ακτίνα από το T.radius.inner, τη γράφουν το Modal του components/Theme.tsx, η υποδοχή (WelcomeOnboarding) και η λίστα «Από πού ξεκινάς» (StartPanel) για τις εσωτερικές επιφάνειές τους' },
   { name: '--kb', why: 'πόσο σκεπάζει το πληκτρολόγιο της οθόνης, το γράφει το useKeyboardInset του Modal' },
   { name: '--vvh', why: 'ορατό ύψος με ανοιχτό πληκτρολόγιο, το γράφει το useKeyboardInset του Modal' },
   { name: '--sx', why: 'θέση δείκτη, την γράφει το app/Spotlight.tsx ανά καρέ' },

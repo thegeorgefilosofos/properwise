@@ -31,6 +31,20 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   { id: 'tax', label: 'Ο φόρος σου' },
 ];
 
+/**
+ * ΤΟ ΔΕΥΤΕΡΟ ΒΗΜΑ ΣΕ ΑΚΙΝΗΤΟ ΠΟΥ ΔΕΝ ΝΟΙΚΙΑΖΕΤΑΙ (κριτική σχεδίασης r3). Ιδιοχρησία,
+ * κενό, ανακαίνιση: δεν υπάρχει μίσθωμα να γραφτεί, οπότε το βήμα δεν λέγεται
+ * «Μίσθωμα» ούτε ζητά «στόχο ενοικίου». Ζητά τον ΕΝΦΙΑ, τον φόρο που έχει
+ * πράγματι αυτό το ακίνητο. Η ράγα του οδηγού αλλάζει το όνομα μόλις διαλεχτεί
+ * η κατάσταση.
+ */
+export const NOT_RENTED_STEP_LABEL = 'ΕΝΦΙΑ';
+
+/** Τα ονόματα της ράγας για την κατάσταση που διαλέχτηκε· χωρίς κατάσταση, της υποδοχής. */
+export function stepLabels(rented: boolean | null): string[] {
+  return ONBOARDING_STEPS.map(s => (s.id === 'rent' && rented === false ? NOT_RENTED_STEP_LABEL : s.label));
+}
+
 type PropertyType = typeof PROPERTY_TYPES[number];
 
 /** Οι έξι τύποι που φαίνονται πρώτοι, με τη σειρά του μητρώου. */

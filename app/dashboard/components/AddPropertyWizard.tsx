@@ -27,7 +27,7 @@ import { cleanPeaNumber, isoDay, peaReminderDrafts, PEA_NUMBER_MAX, PEA_REMINDER
 import { syncPeaReminders } from '@/lib/calendar/peaSync';
 import { athensToday } from '@/lib/core/time';
 import { firstTaxOf, taxDeadlineRow } from '@/lib/onboarding/firstTax';
-import { ONBOARDING_STEPS, PRIMARY_TYPES, MORE_TYPES, PRIMARY_STATUSES, MORE_STATUSES, typeNeedsMore, statusNeedsMore, defaultPropertyName } from '@/lib/onboarding/steps';
+import { stepLabels, PRIMARY_TYPES, MORE_TYPES, PRIMARY_STATUSES, MORE_STATUSES, typeNeedsMore, statusNeedsMore, defaultPropertyName } from '@/lib/onboarding/steps';
 import type { EnfiaWizardInitial } from '@/lib/tools/enfiaCarry';
 import { draftKey, readDraft, writeDraft, clearDraft, sameDraft, restoreDraft } from '@/lib/ui/dismiss';
 import { confirmDiscard } from '@/components/ConfirmDialog';
@@ -381,11 +381,12 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   /**
    * Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΩΣ ΠΡΩΤΗ ΕΠΙΛΟΓΗ. Ο πίνακας τη δίνει σε ΚΑΘΕ νέα
    * καταχώρηση, με ή χωρίς ακίνητα (απόφαση ιδιοκτήτη 10/11/2026· ως τις
-   * 09/11 μόνο χωρίς κανένα). Η κάρτα στέκει πάνω από τον τύπο ακινήτου και
-   * ανοίγει την εισαγωγή από Ε9 ή πράξη ΕΝΦΙΑ. Στην επεξεργασία δεν φαίνεται.
+   * 09/11 μόνο χωρίς κανένα). Από την κριτική σχεδίασης r3 στέκει ως μία
+   * ήσυχη γραμμή ΚΑΤΩ από την κατάσταση, σε κάθε πλάτος· ανοίγει την
+   * εισαγωγή από Ε9 ή πράξη ΕΝΦΙΑ. Στην επεξεργασία δεν φαίνεται.
    */
   onBulkImport?: () => void;
-  /** Ο χρήστης έχει ήδη ακίνητα: η κάρτα λέει πώς τα βρίσκει η εισαγωγή. */
+  /** Ο χρήστης έχει ήδη ακίνητα: η γραμμή λέει πώς τα βρίσκει η εισαγωγή. */
   hasProperties?: boolean;
 }) {
   const supabase = createClient();
@@ -644,28 +645,37 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   const draftTax = statusKey
     ? firstTaxOf({ id: existing?.id ?? 'draft', ...dbStatus, target_rent: rentN != null && rentN > 0 ? rentN : null, ownership: num(ownership) ?? 100 }, today)
     : null;
-  // ΜΙΑ ΓΡΑΜΜΗ, Ο ΙΔΙΟΣ ΦΟΡΟΣ (κριτική σχεδίασης r2, 13/11/2026). Ηταν οι δύο
-  // επόμενες προθεσμίες του προφίλ, με πρώτη τη δόση του ΕΝΦΙΑ κάτω από τον
-  // φόρο ενοικίων. Τώρα η ίδια γραμμή με την υποδοχή (`taxDeadlineRow`): η
-  // επόμενη προθεσμία του φόρου εισοδήματος, μόνο σε νοικιασμένο ακίνητο.
-  const draftRow = draftTax?.rented ? taxDeadlineRow(status, today) : null;
+  // ΜΙΑ ΓΡΑΜΜΗ, Η ΔΗΛΩΣΗ ΤΟΥ ΙΔΙΟΥ ΕΙΣΟΔΗΜΑΤΟΣ (κριτική σχεδίασης r3). Το
+  // ποσό είναι ο φόρος των ενοικίων του `draftTax.year`· η γραμμή είναι η
+  // δήλωση που τον φορολογεί, τον επόμενο χρόνο, με την ετικέτα βεβαιότητας
+  // του ημερολογίου. Ίδια συνάρτηση με την υποδοχή (`taxDeadlineRow`).
+  const draftRow = draftTax?.rented ? taxDeadlineRow(status, draftTax.year) : null;
   const taxShown = !!draftTax && draftTax.rented && draftTax.annual > 0;
+  // ΙΔΙΟ ΣΧΗΜΑ ΑΔΕΙΟ ΚΑΙ ΓΕΜΑΤΟ (κριτική σχεδίασης r3). Το άδειο ήταν μία
+  // γραμμή και το γεμάτο ποσό 28 και σημείωση: με το πρώτο πλήκτρο η κάρτα
+  // ψήλωνε 33 και το «Περισσότερα» και το υποσέλιδο έφευγαν κάτω από τον
+  // δείκτη. Τώρα η θέση του ποσού είναι πάντα εκεί (ήσυχη μπάρα όσο δεν υπάρχει) και η σημείωση
+  // από κάτω του λέει τι λείπει ή για ποια έσοδα είναι.
   const rentTaxPreview = draftTax && (
-    <section className="wiz-tax" aria-labelledby={taxLabelId} style={{ '--radius-inner': `${T.radius.inner}px` } as React.CSSProperties}>
+    <section className="wiz-tax" aria-labelledby={taxLabelId}>
       <div id={taxLabelId} className="wiz-tax-label">{draftTax.rented ? `Φόρος ενοικίων ${draftTax.year}` : 'Φόρος ενοικίων'}</div>
       {/* Μόνο το ποσό ακούγεται όταν αλλάζει, όχι όλη η κάρτα σε κάθε πλήκτρο. */}
       <div aria-live="polite">
-        {taxShown
-          ? <>
-            <div className="wiz-tax-amount">{fe(draftTax.tax)}</div>
-            <div className="wiz-tax-note">{`Ενδεικτικά, για έσοδα ${fe(draftTax.annual)} τον χρόνο.`}</div>
-          </>
-          : <div className="wiz-tax-empty">{draftTax.rented ? 'Γράψε το μίσθωμα και ο φόρος βγαίνει εδώ.' : 'Δεν νοικιάζεται, άρα δεν έχει φόρο ενοικίων.'}</div>}
+        {/* Χωρίς μίσθωση δεν υπάρχει ποσό να περιμένει: μόνο η εξήγηση. */}
+        {draftTax.rented && <div className="wiz-tax-amount" data-empty={taxShown ? undefined : ''} aria-hidden={taxShown ? undefined : true}>{taxShown ? fe(draftTax.tax) : '\u00a0'}</div>}
+        <div className="wiz-tax-note">
+          {taxShown
+            ? `Ενδεικτικά, για έσοδα ${fe(draftTax.annual)} τον χρόνο.`
+            : draftTax.rented ? 'Γράψε το μίσθωμα και ο φόρος βγαίνει εδώ.' : 'Δεν νοικιάζεται, άρα δεν έχει φόρο ενοικίων. Ο ΕΝΦΙΑ μπαίνει στο Ημερολόγιο.'}
+        </div>
       </div>
       {draftRow && (
         <div className="wiz-tax-row">
-          <span className="po-elide">{draftRow.title}</span>
-          <span className="wiz-tax-date">{draftRow.date}</span>
+          <div className="wiz-tax-line">
+            <span style={{ minWidth: 0 }}>{draftRow.title}</span>
+            <span className="wiz-tax-date">{draftRow.date}</span>
+          </div>
+          <div className="wiz-tax-conf">{draftRow.confidence}</div>
         </div>
       )}
     </section>
@@ -878,9 +888,20 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // ΤΟ ΜΙΣΘΩΜΑ ΠΡΩΤΟ, Η ΑΝΤΙΚΕΙΜΕΝΙΚΗ ΣΤΑ «ΠΕΡΙΣΣΟΤΕΡΑ». Η αντικειμενική αξία
   // δεν αλλάζει τον φόρο ενοικίων που βλέπει ο χρήστης στο ίδιο βήμα και
   // ζητούσε ένα χαρτί (το Ε9) που ο νέος χρήστης σπάνια έχει μπροστά του.
-  const placeMoney = (id: string): Placement => (id === 'prop.obj_value' && place(id) === 'core' ? 'more' : place(id));
+  //
+  // ΣΤΟ ΝΕΟ ΑΚΙΝΗΤΟ ΠΟΥ ΔΕΝ ΝΟΙΚΙΑΖΕΤΑΙ, ΚΑΝΕΝΑ ΜΙΣΘΩΜΑ (κριτική σχεδίασης r3).
+  // Ιδιοχρησία ή κενό: το βήμα λέγεται «ΕΝΦΙΑ» (lib/onboarding/steps.ts) και
+  // ζητά τον ΕΝΦΙΑ που πληρώνει ο χρήστης, όχι «στόχο ενοικίου». Ο στόχος
+  // μένει διαθέσιμος στην επεξεργασία, στα «Οικονομικά».
+  const rentedNow = statusKey === 'rent_long' || statusKey === 'rent_short';
+  const enfiaStep = !isEdit && statusKey !== null && !rentedNow;
+  const placeMoney = (id: string): Placement => {
+    if (enfiaStep && id === 'prop.rent') return 'hidden';
+    if (enfiaStep && id === 'prop.enfia') return 'core';
+    return id === 'prop.obj_value' && place(id) === 'core' ? 'more' : place(id);
+  };
 
-  const railLabels = isEdit ? EDIT_STEPS : ONBOARDING_STEPS.map(s => s.label);
+  const railLabels = isEdit ? EDIT_STEPS : stepLabels(statusKey === null ? null : rentedNow);
   const railRef = useRef<HTMLDivElement>(null);
   // Η λεπτή γραμμή κάτω από τη ράγα, μόνο όταν το σώμα έχει κυλήσει.
   useEffect(() => {
@@ -1037,9 +1058,6 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
       {/* STEP 1, Τύπος & Κατάσταση */}
       {page === 'type' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {/* Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ: στο παράθυρο πρώτη, σε ουδέτερη επιφάνεια· στο
-              τηλέφωνο μία ήσυχη γραμμή κάτω από την κατάσταση (BulkImportCard). */}
-          {!isEdit && onBulkImport && <BulkImportCard onStart={onBulkImport} hasProperties={hasProperties} />}
           <div>
             {/* ΕΝΑ ΜΟΤΙΒΟ ΓΙΑ «ΔΕΙΞΕ ΚΙ ΑΛΛΑ», ΣΤΟΥΣ ΤΥΠΟΥΣ ΚΑΙ ΣΤΙΣ ΚΑΤΑΣΤΑΣΕΙΣ
                 (κριτική σχεδίασης r2). Κουμπί κειμένου στη γραμμή της ετικέτας,
@@ -1103,7 +1121,10 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               })}
             </div>
           </div>
-          {!isEdit && onBulkImport && <BulkImportCard compact onStart={onBulkImport} hasProperties={hasProperties} />}
+          {/* Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΜΕΤΑ ΤΙΣ ΔΥΟ ΕΡΩΤΗΣΕΙΣ, ΣΕ ΚΑΘΕ ΠΛΑΤΟΣ (κριτική
+              σχεδίασης r3). Στο παράθυρο ήταν ακόμη πρώτη και η βαρύτερη γραμμή
+              της οθόνης· τώρα μία θέση και μία όψη παντού (BulkImportCard). */}
+          {!isEdit && onBulkImport && <BulkImportCard onStart={onBulkImport} hasProperties={hasProperties} />}
 
           {/* Ο ΔΙΑΚΟΠΤΗΣ «Βραχυχρόνια μίσθωση (Airbnb / Booking)» ΕΦΥΓΕ.
               Έκανε ό,τι ακριβώς και το chip «Βραχυχρόνια μίσθωση» — έγραφε
@@ -1225,19 +1246,12 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               </>, 'Αριθμός παροχής ρεύματος'),
               row('prop.storage_sqm', 'auto',
                 <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={storageSqm} onChange={e => setStorageSqm(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'Αποθήκη (τ.μ.)'),
-            ]}
-          />
-          {/* ΟΙ ΕΠΑΦΕΣ ΖΟΥΝ ΣΤΟ ΤΕΛΟΣ ΤΩΝ «ΒΑΣΙΚΩΝ», ΚΛΕΙΣΤΕΣ. Ηταν η «Σύνοψη»·
-              κανένα πεδίο τους δεν χρειάζεται για να υπάρξει το ακίνητο: τα
-              στοιχεία του ιδιοκτήτη έρχονται από το προφίλ και οι πάροχοι από
-              την πρώτη σάρωση λογαριασμού. Στις ετικέτες του μητρώου λέγεται
-              ΤΙΝΟΣ είναι το στοιχείο («Ονοματεπώνυμο ιδιοκτήτη»). */}
-          <StepBody
-            place={place}
-            moreTitle="Επαφές, προαιρετικά"
-            lessTitle="Απόκρυψη επαφών"
-            defaultOpen={focusAfm}
-            rows={[
+              // ΟΙ ΕΠΑΦΕΣ ΣΤΟ ΙΔΙΟ «ΠΕΡΙΣΣΟΤΕΡΑ» (κριτική σχεδίασης r3). Ηταν δεύτερο
+              // κουτί 57 πιο κάτω με άλλο όνομα («Επαφές, προαιρετικά»): δεκαεπτά
+              // κρυμμένα πεδία πίσω από δύο λέξεις. Κανένα δεν χρειάζεται για να
+              // υπάρξει το ακίνητο· τα στοιχεία του ιδιοκτήτη έρχονται από το
+              // προφίλ και οι πάροχοι από την πρώτη σάρωση. Οι ετικέτες του
+              // μητρώου λένε ΤΙΝΟΣ είναι το στοιχείο («Ονοματεπώνυμο ιδιοκτήτη»).
               row('prop.owner_name', 'full', <>
                 {/* Λέμε από πού ήρθαν τα στοιχεία. Προσυμπληρωμένο ΑΦΜ που δεν
                     ελέγχθηκε είναι χειρότερο από κενό: φαίνεται επιβεβαιωμένο. */}
@@ -1276,6 +1290,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               row('prop.notes', 'full',
                 <textarea value={settings.notes} onChange={setSf('notes')} rows={4} style={{ ...inputStyle, height: 'auto', resize: 'none' }} />, 'Σημειώσεις'),
             ]}
+            defaultOpen={focusAfm}
           />
         </div>
       )}
@@ -1293,7 +1308,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
                   με το «€» ως ήσυχη κατάληξη μέσα του. */}
               <div className="wiz-suffix">
                 <input style={{ ...numInputStyle, paddingRight: 36 }} type="number" min={0} inputMode="decimal" value={rent} onChange={e => setRent(e.target.value)} onFocus={onFocus} onBlur={onBlur}
-                  autoFocus={!isEdit || focusRent}
+                  autoFocus={(!isEdit && !enfiaStep) || focusRent}
                   onKeyDown={e => { if (e.key === 'Enter' && !isEdit) { e.preventDefault(); void save(); } }} />
                 <span aria-hidden>€</span>
               </div>
@@ -1333,8 +1348,13 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'Τιμή αγοράς (€)'),
             row('prop.purchase_date', 'auto',
               <DatePicker value={purchaseDate} onChange={setPurchaseDate} />),
-            row('prop.enfia', 'auto',
-              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={enfia} onChange={e => setEnfia(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'ΕΝΦΙΑ που πληρώνεις (€/έτος)'),
+            row('prop.enfia', enfiaStep ? 'full' : 'auto',
+              <div className="wiz-suffix">
+                <input style={{ ...numInputStyle, paddingRight: 36 }} type="number" min={0} inputMode="decimal" value={enfia} onChange={e => setEnfia(e.target.value)} onFocus={onFocus} onBlur={onBlur}
+                  autoFocus={enfiaStep}
+                  onKeyDown={e => { if (e.key === 'Enter' && enfiaStep) { e.preventDefault(); void save(); } }} />
+                <span aria-hidden>€</span>
+              </div>, 'ΕΝΦΙΑ που πληρώνεις τον χρόνο'),
             row('prop.ownership', 'auto',
               <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={ownership} onChange={e => setOwnership(e.target.value)} max={100} onFocus={onFocus} onBlur={onBlur} />, 'Ποσοστό ιδιοκτησίας (%)'),
           ]}

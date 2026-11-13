@@ -51,11 +51,12 @@ export default function ScanButton({ label = SCAN_LABEL, hint = SCAN_HINT, onExt
       {/* ΤΟ ΚΟΥΜΠΙ ΕΙΝΑΙ ΠΕΡΙΓΡΑΜΜΑΤΙΚΟ, ΑΡΑ ΔΕΥΤΕΡΕΥΟΝ. Η κατάσταση «απασχολημένο»
           δεν χρειάζεται πια δικό της γέμισμα: το `disabled` τη δηλώνει και στην
           προσιτότητα και στην όψη, ενώ η τελίτσα και το «Ανάγνωση…» τη λένε με
-          λέξεις. Το ύψος και η αιώρηση έρχονται από την `.po-btn`. */}
+          λέξεις. Το ύψος και η αιώρηση έρχονται από την `.po-btn`. Το εικονίδιο
+          είναι η φωτογραφική μηχανή, όπως σε κάθε «Σάρωση» της εφαρμογής. */}
       <Btn variant="secondary" onClick={() => ref.current?.click()} disabled={busy}>
         {busy
           ? <><span className="live-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', display: 'inline-block' }} />Ανάγνωση…</>
-          : <><svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" /><path d="M7 12h10" /></svg>{label}</>}
+          : <><svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>{label}</>}
       </Btn>
       {hint && !busy && !err && <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.4 }}>{hint}</span>}
       {err && <span style={{ fontSize: 12, color: 'var(--negative)', fontFamily: T.font.sans }}>{err}</span>}
