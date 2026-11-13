@@ -40,7 +40,7 @@ import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import {
-  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
+  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq, GuideCalcLink,
   RelatedGuides, guideJsonLd, type GuideFaqItem,
 } from '../GuideParts';
 import { fe, feWhole, fn, fpRate, grDate } from '@/lib/core/format';
@@ -211,6 +211,8 @@ export default function Page() {
         <div className="lg-note lg-note-tip" style={{ marginTop: 16 }}>
           {`Αν ο όρος έδινε ${fpRate(EX.low)}, το νέο μίσθωμα θα ήταν ${feWhole(EX.rent)} × ${fn(1 + EX.low / 100, 2)} = ${feWhole(R_LOW.newRent)}. Είναι κάτω από το όριο των ${feWhole(R.newRent)}, οπότε ισχύει ο όρος χωρίς αλλαγή.`}
         </div>
+
+        <GuideCalcLink href="/anaprosarmogi-enoikiou" action="Υπολόγισε τη δική σου αναπροσαρμογή" />
 
         {/* 6. Στην πράξη */}
         <H2 {...S.todo} />

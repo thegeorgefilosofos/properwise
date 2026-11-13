@@ -5396,6 +5396,18 @@ body:has(.po-tool-page) .po-cookie {
    23 εικονοστοιχεία ψηλότερα. Με subgrid ετικέτα, τίτλος, περιγραφή και
    σύνδεσμος στέκονται στο ίδιο ύψος και στις δύο. */
 .og-card { display: flex; flex-direction: column; gap: 8px; }
+/* Ο ΥΠΟΛΟΓΙΣΜΟΣ ΜΕΣΑ ΣΤΟΝ ΟΔΗΓΟ (`GuideCalcLink`, app/odigos/GuideParts.tsx).
+   Μία σειρά: η δράση αριστερά, το βέλος δεξιά, στο ύψος της κάρτας των
+   σχετικών οδηγών. Το περίγραμμα παίρνει τον τόνο της έμφασης, όπως η
+   ανακοίνωση της αρχικής, ώστε να διαβάζεται ως ενέργεια και όχι ως πλαίσιο
+   σημείωσης. Κανένα νέο χρώμα: color-mix του ίδιου --accent. */
+.og-card.gd-calc-link {
+  flex-direction: row; align-items: center; justify-content: space-between; gap: 16px;
+  min-height: 44px; padding: 14px 16px; border-radius: 14px; text-decoration: none;
+  background: var(--bg-elevated);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.og-card.gd-calc-link:hover { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
 @supports (grid-template-rows: subgrid) {
   @media (min-width: 721px) {
     .og-grid > .og-card { display: grid; grid-row: span 4; grid-template-rows: subgrid; row-gap: 8px; }

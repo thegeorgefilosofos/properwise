@@ -45,7 +45,7 @@ import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import { LAW_5222_PDF } from '../fek';
 import {
-  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideTable, GuideSources, GuideCta, GuideFaq,
+  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideTable, GuideSources, GuideCta, GuideFaq, GuideCalcLink,
   RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
 } from '../GuideParts';
 import {
@@ -424,6 +424,8 @@ export default function Page() {
         <p className="lg-p">
           {'Αν χρεώνεις το τέλος στον επισκέπτη, δεν μειώνει τα καθαρά σου, αλλά ανεβάζει την τελική τιμή που βλέπει ο επισκέπτης.'}
         </p>
+
+        <GuideCalcLink href="/vraxyxronia-i-makroxronia" action="Σύγκρινε βραχυχρόνια και μακροχρόνια μίσθωση" />
 
         {/* 7. Τέλος παρεπιδημούντων */}
         <H2 {...S.municipal} />

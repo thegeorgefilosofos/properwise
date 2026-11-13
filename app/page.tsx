@@ -220,15 +220,16 @@ export default async function Landing() {
               σε accent) και όχι από ξεθώριασμα του brand.
               Και το μέγεθος έπεσε από 78px σε 60px: στα 78 ο τίτλος έσπαγε σε
               τέσσερις γραμμές με κακά σημεία κοπής («…κάνει τα / υπόλοιπα»). */}
-          {/* Η ΑΝΑΚΟΙΝΩΣΗ ΠΑΝΩ ΑΠΟ ΤΟΝ ΤΙΤΛΟ. Η μεγαλύτερη αλλαγή του προϊόντος
-              (25.09.2026) δεν χωράει στα ψιλά κάτω από τα κουμπιά: ο επισκέπτης
-              που ψάχνει «πόσο κοστίζει» τη βλέπει πριν διαβάσει τίποτε άλλο.
-              Ενα σημάδι «Νέο», μία πρόταση, ένας σύνδεσμος στα πακέτα. */}
-          <Link href="#pricing" className="lp-rise lp-news">
-            <span className="lp-news-tag">Νέο</span>
-            <span>Το πακέτο «{PLANS.free.name}» είναι πλέον χωρίς συνδρομή</span>
-            <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-          </Link>
+          {/* ΓΙΑ ΠΟΙΟΝ, ΠΡΙΝ ΑΠΟ ΤΙ (13/11/2026). Εδώ στεκόταν η ανακοίνωση «Νέο:
+              το πακέτο «Ιδιοκτήτης» είναι πλέον χωρίς συνδρομή». Στο κινητό
+              έπιανε δύο γραμμές πάνω από τον τίτλο, μιλούσε με όνομα πακέτου που ο
+              νέος επισκέπτης δεν ξέρει, έστελνε στα πακέτα αντί για την εγγραφή
+              και έλεγε το «χωρίς συνδρομή» που λένε ήδη το κουμπί και τα ✓.
+              Και πουθενά στην πρώτη οθόνη δεν έλεγε σε ποιον απευθύνεται: η
+              «διαχείριση ακινήτων» διαβάζεται και ως εργαλείο μεσίτη ή διαχειριστή
+              πολυκατοικίας. Τη θέση παίρνει η ταμπέλα του κοινού, με το ίδιο
+              σχήμα που έχει κάθε ενότητα της σελίδας (.lp-eyebrow). */}
+          <p className="lp-rise lp-eyebrow" style={{ margin: `0 auto ${T.sp.lg}px` }}>Για ιδιοκτήτες ακινήτων στην Ελλάδα</p>
           <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.15, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
             {/* Ο ΙΔΙΟΣ ΤΙΤΛΟΣ ΜΕ ΤΗΝ ΚΑΡΤΕΛΑ ΚΑΙ ΤΗΝ ΚΑΡΤΑ ΚΟΙΝΟΠΟΙΗΣΗΣ (HOME_TITLE_LINES,
                 lib/core/site.ts). Δύο γραμμές· από τα 900 και πάνω καμία δεν σπάει. */}
@@ -287,16 +288,25 @@ export default async function Landing() {
           <p className="lp-rise-2 lp-lede" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 28px' }}>
             {/* Η ΝΟΑ ΔΕΝ ΤΗΝ ΕΧΟΥΝ ΟΛΟΙ: γι' αυτό ο υπότιτλος δεν την υπόσχεται.
                 Η δοκιμή της λέγεται στα ✓ από κάτω, η τιμή της στον τιμοκατάλογο. */}
-            <span className="lp-lede-line">Λογαριασμός, μισθωτήριο, απόδειξη: η{'\u00a0'}εφαρμογή τα διαβάζει και τα βάζει στη θέση{'\u00a0'}τους.</span>{' '}
-            <span className="lp-lede-line">Ενοίκια, δαπάνες, φόρος ενοικίων, Ε2 και ΕΝΦΙΑ, έτοιμα πριν σου τα ζητήσει ο λογιστής.</span>
+            {/* ΤΙ ΚΕΡΔΙΖΕΙΣ, ΜΕ ΛΙΓΟΤΕΡΕΣ ΛΕΞΕΙΣ (13/11/2026). Ηταν πέντε γραμμές στα
+                375 και η δεύτερη πρόταση απαριθμούσε πέντε πράγματα πριν πει το
+                όφελος. Τώρα τα τρία που ζητά ο λογιστής και οι δύο προτάσεις
+                έχουν σχεδόν ίσο μήκος, ώστε η πλήρης στοίχιση από τα 720 να μην
+                ανοίγει τα κενά της κοντύτερης. */}
+            <span className="lp-lede-line">Λογαριασμός, μισθωτήριο, απόδειξη: η{'\u00a0'}εφαρμογή τα διαβάζει και τα{'\u00a0'}καταχωρεί.</span>{' '}
+            <span className="lp-lede-line">Ο φόρος ενοικίων, το Ε2 και ο ΕΝΦΙΑ είναι έτοιμα πριν τα ζητήσει ο{'\u00a0'}λογιστής.</span>
           </p>
           <div className="lp-rise-3 lp-hero-ctas" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             {loggedIn ? (
               <Link href="/dashboard" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }}>Άνοιξε τον πίνακά σου</Link>
-            ) : (<>
+            ) : (
+              // ΕΝΑ ΚΟΥΜΠΙ (13/11/2026). Δίπλα του στεκόταν το «Έχω λογαριασμό»,
+              // ίδιου μεγέθους και στο κινητό ίδιου πλάτους: δύο ισοβαρείς
+              // επιλογές ακριβώς εκεί που ο νέος επισκέπτης αποφασίζει. Ο
+              // επιστρέφων έχει τη «Σύνδεση» στην κεφαλίδα και στο μενού
+              // (PublicNav), σε κάθε δημόσια σελίδα.
               <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }}>{signupCta()}</Link>
-              <Link href="/login" style={{ background: 'transparent', color: 'var(--text-primary)', textDecoration: 'none', fontSize: 15, fontWeight: 600, padding: '14px 28px', borderRadius: T.radius.pill, border: '1px solid var(--border-strong)', transition: 'border-color .15s, background .15s' }}>Έχω λογαριασμό</Link>
-            </>)}
+            )}
           </div>
           {/* ΣΤΟΙΧΕΙΑ ΠΟΥ ΔΕΝ ΣΠΑΝΕ ΣΤΗ ΜΕΣΗ. Στα 390 η γραμμή έπεφτε «…· Χωρίς
               / δέσμευση · …»· κάθε στοιχείο κρατιέται ολόκληρο και τυλίγει μόνο

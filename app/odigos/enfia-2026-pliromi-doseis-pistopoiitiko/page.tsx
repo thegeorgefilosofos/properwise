@@ -43,7 +43,7 @@ import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import { enfiaInstalments, enfiaIssueBasis, instalmentStatus, obligationOf } from './schedule';
 import {
-  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
+  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq, GuideCalcLink,
   RelatedGuides, guideJsonLd, LINK_STYLE, longDate, dayMonth, dateCells, type GuideFaqItem,
 } from '../GuideParts';
 import { enfiaInstalmentRule, enfiaInstalmentDates } from '../enfiaText';
@@ -264,6 +264,8 @@ export default function Page() {
           <Link href="/odigos/pos-ypologizetai-o-enfia" className="lp-link" style={LINK_STYLE}>Πώς υπολογίζεται ο ΕΝΦΙΑ</Link>
           {'.'}
         </p>
+
+        <GuideCalcLink href="/ypologismos-enfia" action="Έλεγξε το ποσό του ΕΝΦΙΑ σου" />
 
         {/* 4. Πιστοποιητικό */}
         <H2 {...S.cert} />

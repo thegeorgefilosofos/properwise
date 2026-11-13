@@ -23,6 +23,7 @@ import { FaqPlus } from '../FaqPlus';
 import { refsOnly } from '@/components/Hyphen';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { LISTED_GUIDES, guideShareImageUrl, relatedGuides, type Guide } from './guides';
+import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
 
 const HUB = { href: '/odigos', label: 'Οδηγοί' } as const;
 
@@ -269,6 +270,39 @@ export function GuideCta({ title, href, action, children }: {
         </p>
       </div>
     </section>
+  );
+}
+
+/**
+ * Ο ΥΠΟΛΟΓΙΣΜΟΣ ΕΚΕΙ ΠΟΥ ΤΟΝ ΘΕΛΕΙ Ο ΑΝΑΓΝΩΣΤΗΣ (13/11/2026).
+ *
+ * Το `GuideCta` στέκεται μετά τις πηγές και η δεξιά στήλη (`GuideRail`) υπάρχει
+ * μόνο από τα 1200. Στο τηλέφωνο, απ' όπου έρχεται η περισσότερη κίνηση, ο
+ * αναγνώστης που μόλις διάβασε πώς βγαίνει το ποσό έπρεπε να κυλήσει ως το
+ * τέλος για να το βγάλει για το δικό του ακίνητο. Αυτή η γραμμή μπαίνει ακριβώς
+ * μετά την εξήγηση του υπολογισμού: μία κάρτα, ένας σύνδεσμος, ένα βέλος.
+ *
+ * Ο ΣΥΝΔΕΣΜΟΣ ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ ΔΗΜΟΣΙΟΣ ΥΠΟΛΟΓΙΣΜΟΣ. Διαβάζεται απέναντι στον
+ * κατάλογο (lib/core/publicTools.ts): διεύθυνση που δεν είναι εκεί σταματά την
+ * απόδοση, αντί να βγει σύνδεσμος προς σελίδα που δεν υπάρχει ή θέλει εγγραφή.
+ * Η φράση κάτω από τη δράση είναι η ίδια με του `GuideCta`.
+ */
+export function GuideCalcLink({ href, action }: { href: string; action: string }) {
+  if (!PUBLIC_TOOLS.some(t => t.href === href)) {
+    throw new Error(`Το ${href} δεν είναι δημόσιος υπολογισμός (lib/core/publicTools.ts).`);
+  }
+  return (
+    <p className="gd-calc" style={{ margin: `${T.sp.xxl}px 0` }}>
+      <Link href={href} className="og-card lp-press gd-calc-link">
+        <span style={{ display: 'flex', flexDirection: 'column', gap: T.sp.xs, minWidth: 0 }}>
+          <span style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.01em', color: 'var(--text-primary)', textWrap: 'balance' }}>{action}</span>
+          <span style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--text-tertiary)' }}>Με τα δικά σου δεδομένα, χωρίς εγγραφή.</span>
+        </span>
+        <svg aria-hidden="true" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', color: 'var(--accent)' }}>
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </Link>
+    </p>
   );
 }
 

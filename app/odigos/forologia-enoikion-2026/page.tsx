@@ -35,7 +35,7 @@ import { guideAt } from '../guides';
 import { LAW_5246_PDF } from '../fek';
 import { STR_MAX_PROPERTIES, STR_BUSINESS_PROPERTIES } from '../strText';
 import {
-  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideTable, GuideSources, GuideCta, GuideFaq,
+  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideTable, GuideSources, GuideCta, GuideFaq, GuideCalcLink,
   RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
 } from '../GuideParts';
 
@@ -266,6 +266,8 @@ export default function Page() {
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Τεκμαρτή έκπτωση:'}</strong>{` ${fn(PRESUMPTIVE_DEDUCTION_RATE, 2)} × Ε`}</li>
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Φορολογητέο (κατά κανόνα):'}</strong>{` ${fn(1 - PRESUMPTIVE_DEDUCTION_RATE, 2)} × Ε`}</li>
         </ul>
+
+        <GuideCalcLink href="/ypologismos-forou-enoikion" action="Υπολόγισε τον φόρο των ενοικίων σου" />
 
         {/* 3. Τραπεζική είσπραξη */}
         <H2 {...S.bank} />
