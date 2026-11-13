@@ -53,7 +53,7 @@ import { isEntitled, isMorStatus, type MorStatus } from '@/lib/billing/subscript
 import { profileForPlan } from '@/lib/billing/entitlements';
 import {
   alertFor, duplicateAlert, orphanAlert, otherSubscriptionAlert, rechargedAlert, refundedTransactionAlert,
-  sendMerchantAlert, unprovenPaymentAlert,
+  revokedNoTransactionAlert, sendMerchantAlert, unprovenPaymentAlert,
   type MerchantAlert, type RevocationOutcome,
 } from '@/lib/billing/merchantAlert';
 
@@ -502,6 +502,38 @@ export async function applyMerchantEvent(raw: string, deps: MerchantEventDeps = 
     const alerted = await safeSend(sendAlert, refundedTransactionAlert(userId, sub.id, revokedTx));
     log(`γεγονός ${read.event.name} για τη συνδρομή ${sub.id} με τη συναλλαγή ${revokedTx}, που επιστράφηκε· η πρόσβαση δεν άνοιξε, ειδοποίηση ${alerted ? 'στάλθηκε' : 'ΔΕΝ στάλθηκε'}`);
     return NextResponse.json({ ok: true, skipped: 'revoked_transaction', alerted });
+  }
+
+  // ── ΚΑΙ ΧΩΡΙΣ ΣΥΝΑΛΛΑΓΗ, ΑΠΟ ΤΗΝ ΙΔΙΑ ΣΥΝΔΡΟΜΗ (έλεγχος του PR 560, L1) ────
+  // Ο έλεγχος παραπάνω πιάνει μόνο γεγονός που ΛΕΕΙ την επιστραμμένη. Γεγονός
+  // χωρίς `last_transaction_id` (ή `last_transaction`, creem.ts) δεν λέει
+  // τίποτα και θα περνούσε. Μετά το Ζ4.4 θα ξανάνοιγε το πακέτο.
+  //
+  // ΚΛΕΙΝΕΙ ΜΟΝΟ ΟΤΑΝ ΚΑΙ ΤΑ ΤΡΙΑ ΙΣΧΥΟΥΝ:
+  //   · η συνδρομή είναι η καταγεγραμμένη·
+  //   · η τελευταία πληρωμένη της γραμμής είναι ΑΚΟΜΗ η επιστραμμένη, δηλαδή
+  //     καμία πληρωμή δεν πέρασε από την ανάκληση και μετά·
+  //   · το γεγονός θα έδινε πρόσβαση.
+  // Η γραμμή μένει όπως είναι και φεύγει email.
+  //
+  // ΓΙΑΤΙ ΔΕΝ ΚΛΕΙΔΩΝΕΙ ΕΞΩ ΠΕΛΑΤΗ ΠΟΥ ΠΛΗΡΩΝΕΙ. Κάθε νέα πληρωμή κουβαλά
+  // συναλλαγή (`subscription.paid`), περνά από εδώ και γράφει νέο
+  // `mor_last_transaction_id`· από εκεί και πέρα ο όρος δεν ισχύει πια και τα
+  // γεγονότα χωρίς συναλλαγή γράφονται όπως πάντα. Η νόμιμη επαναφορά (Ζ4.7
+  // του οδηγού) σβήνει και το `mor_revoked_tx`.
+  //
+  // ΤΟ ΟΡΙΟ ΠΟΥ ΜΕΝΕΙ. Μετά από νεότερη συνδρομή που έγινε δεκτή, η γραμμή
+  // κρατά εκείνη και δεν ξέρει σε ποια συνδρομή ανήκε το `mor_revoked_tx`.
+  // Γεγονός χωρίς συναλλαγή από την ΠΑΛΙΑ συνδρομή δεν ξεχωρίζει από γεγονός
+  // μιας τρίτης, οπότε περνά από τον έλεγχο ξένης συνδρομής πιο κάτω: αν η
+  // καταγεγραμμένη ζει, φεύγει email για διπλή συνδρομή· αν όχι, γράφεται.
+  // Γι' αυτό η υποστήριξη ακυρώνει στον έμπορο κάθε συνδρομή που επιστράφηκε
+  // (docs/ops/creem-vercel-odigos.md, Ζ4.4).
+  if (entitled && revokedTx && !sub.lastTransactionId && sameSubscription
+      && (current?.mor_last_transaction_id ?? null) === revokedTx) {
+    const alerted = await safeSend(sendAlert, revokedNoTransactionAlert(userId, sub.id, revokedTx));
+    log(`γεγονός ${read.event.name} για τη συνδρομή ${sub.id} χωρίς συναλλαγή, με τελευταία πληρωμένη την ${revokedTx} που επιστράφηκε· η πρόσβαση δεν άνοιξε, ειδοποίηση ${alerted ? 'στάλθηκε' : 'ΔΕΝ στάλθηκε'}`);
+    return NextResponse.json({ ok: true, skipped: 'revoked_no_transaction', alerted });
   }
 
   // ── ΞΕΝΗ ΣΥΝΔΡΟΜΗ ΔΕΝ ΓΡΑΦΕΙ ΠΑΝΩ ΣΕ ΖΩΝΤΑΝΗ ──────────────────────────

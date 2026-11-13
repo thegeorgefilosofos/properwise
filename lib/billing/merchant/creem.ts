@@ -491,6 +491,9 @@ export const creemPort: MerchantPort = {
       endsAt: endsAtOf(obj, status, occurredAtOf(p, obj)),
       // Η ΤΕΛΕΥΤΑΙΑ ΠΛΗΡΩΜΕΝΗ ΣΥΝΑΛΛΑΓΗ ΤΗΣ ΣΥΝΔΡΟΜΗΣ (`last_transaction_id`, ή
       // το αντικείμενο `last_transaction`). Μόνο αυτήν κλείνει μια επιστροφή.
+      // Μπορεί να λείπει: τότε `null` και ο webhook δεν ανοίγει πρόσβαση σε
+      // συνδρομή που η τελευταία πληρωμένη της επιστράφηκε (morWebhook.ts,
+      // έλεγχος του PR 560, L1). Η νέα πληρωμή τη φέρνει πάντα.
       lastTransactionId: str(obj.last_transaction_id) ?? (idOf(obj.last_transaction) || null),
       // ΠΟΤΕ ΓΕΝΝΗΘΗΚΕ Η ΣΥΝΔΡΟΜΗ. Κρίνει αν μια άλλη συνδρομή είναι νεότερη από
       // μια ανάκληση (lib/billing/morWebhook.ts, έλεγχος του PR 558, εύρημα 5).

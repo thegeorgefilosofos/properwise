@@ -20,6 +20,8 @@
 --    7. η ανάκληση κρατά τη συναλλαγή στο `mor_revoked_tx` (20261113120000,
 --       έλεγχος του PR 558, γύρος 3)· η στήλη μένει όταν η υποστήριξη σβήσει
 --       την ανάκληση (Ζ4.4) ή περάσει νέα πληρωμή· ο πελάτης δεν τη γράφει.
+--    8. η νόμιμη επαναφορά του οδηγού (Ζ4.7, έλεγχος του PR 560) σβήνει μαζί
+--       την ανάκληση και το `mor_revoked_tx` και ξαναδίνει το πακέτο.
 --
 --  Ολα μέσα σε συναλλαγή που ακυρώνεται: η βάση μένει όπως ήταν.
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -230,9 +232,6 @@ begin
   raise notice 'probe: η ανάκληση μένει απέναντι σε ταυτόχρονο γεγονός, σηκώνεται μόνο με νέα πληρωμή';
 end $probe$;
 
--- Ο ΔΟΚΙΜΑΣΤΗΣ ΜΕ ΠΑΛΙΑ ΑΝΑΚΛΗΣΗ (PR 558, εύρημα 4): η /api/billing/plan γράφει
--- το πακέτο του με τον ρόλο υπηρεσίας και απαντά «ok». Η σκανδάλη δεν το
--- γυρίζει σιωπηλά σε `free`.
 -- 7. Ζ4.4: Η ΥΠΟΣΤΗΡΙΞΗ ΣΒΗΝΕΙ ΤΗΝ ΑΝΑΚΛΗΣΗ. Το SQL του οδηγού, ως postgres,
 -- αφήνει το `mor_revoked_tx`, ώστε ο webhook να αρνείται ακόμη την ίδια
 -- συναλλαγή (lib/billing/morWebhook.ts).
@@ -258,6 +257,51 @@ begin
   raise notice 'probe: η επιστραμμένη συναλλαγή μένει μετά από νέα πληρωμή και μετά το Ζ4.4';
 end $probe$;
 
+-- 8. Ζ4.7: Η ΝΟΜΙΜΗ ΕΠΑΝΑΦΟΡΑ (έλεγχος του PR 560, L3). Το SQL του οδηγού, ως
+-- postgres, από γραμμή που η ανάκληση ισχύει ακόμη: σβήνει ΜΑΖΙ την καταγραφή
+-- και το `mor_revoked_tx`, ξαναδίνει το πακέτο και αφήνει την αναφορά. Με
+-- λάθος `mor_revoked_tx` στο `where` δεν αγγίζει τίποτα.
+do $probe$
+declare
+  a uuid := '6d6d6d6d-0000-4000-8000-0000000000a1';
+  o jsonb;
+  r record;
+  n int;
+begin
+  update public.billing_profiles
+     set plan = 'agency', subscription_status = 'active', mor_subscription_id = 'sub_w',
+         mor_last_transaction_id = 'tran_w', mor_revoked_at = null, mor_revoked_reason = null,
+         mor_revoked_ref = null, mor_revoked_tx = null, mor_ends_at = null
+   where user_id = a;
+  o := public.revoke_mor_access('sub_w', 'tran_w', 'disp_w', 'dispute', now());
+  if o->>'outcome' <> 'revoked' then raise exception 'Ζ4.7: η ανάκληση δεν έγινε (%)', o; end if;
+  update public.billing_profiles
+     set mor_revoked_at = null, mor_revoked_reason = null, mor_revoked_tx = null,
+         plan = 'agency', subscription_status = 'active', mor_ends_at = null,
+         mor_renews_at = now() + interval '20 days'
+   where user_id = a and mor_subscription_id = 'sub_w' and mor_revoked_tx = 'tran_x';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'Ζ4.7: το SQL άγγιξε γραμμή με άλλη επιστραμμένη συναλλαγή'; end if;
+  update public.billing_profiles
+     set mor_revoked_at = null, mor_revoked_reason = null, mor_revoked_tx = null,
+         plan = 'agency', subscription_status = 'active', mor_ends_at = null,
+         mor_renews_at = now() + interval '20 days'
+   where user_id = a and mor_subscription_id = 'sub_w' and mor_revoked_tx = 'tran_w';
+  get diagnostics n = row_count;
+  select * into r from public.billing_profiles where user_id = a;
+  if n <> 1 or r.mor_revoked_at is not null or r.mor_revoked_tx is not null
+     or r.plan <> 'agency' or r.subscription_status <> 'active' or r.mor_revoked_ref <> 'disp_w' then
+    raise exception 'Ζ4.7: η επαναφορά δεν έγινε όπως λέει ο οδηγός (%, %)', n, r.mor_revoked_tx;
+  end if;
+  if public.user_plan_rank(a) <> public.plan_rank('agency') then
+    raise exception 'Ζ4.7: μετά την επαναφορά το επίπεδο είναι %', public.user_plan_rank(a);
+  end if;
+  raise notice 'probe: η νόμιμη επαναφορά σβήνει μαζί ανάκληση και επιστραμμένη συναλλαγή';
+end $probe$;
+
+-- Ο ΔΟΚΙΜΑΣΤΗΣ ΜΕ ΠΑΛΙΑ ΑΝΑΚΛΗΣΗ (PR 558, εύρημα 4): η /api/billing/plan γράφει
+-- το πακέτο του με τον ρόλο υπηρεσίας και απαντά «ok». Η σκανδάλη δεν το
+-- γυρίζει σιωπηλά σε `free`.
 update public.billing_profiles
    set tester_since = now() - interval '10 days', plan = 'free', subscription_status = 'expired',
        mor_revoked_at = now(), mor_revoked_reason = 'refund', mor_revoked_ref = 'ref_t'

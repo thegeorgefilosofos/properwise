@@ -368,6 +368,40 @@ async function main() {
     ok('Ζ4.4, νέα συναλλαγή: ανοίγει', db.rows[0].plan === 'solo' && db.rows[0].mor_last_transaction_id === 'tran_2'
        && db.rows[0].mor_revoked_tx === 'tran_1');
   }
+  // Ζ4.4 ΚΑΙ ΓΕΓΟΝΟΣ ΧΩΡΙΣ ΣΥΝΑΛΛΑΓΗ (έλεγχος του PR 560, L1): η ίδια συνδρομή
+  // στέλνει «active» χωρίς `last_transaction_id`. Η τελευταία πληρωμένη της
+  // γραμμής είναι ακόμη η επιστραμμένη, οπότε τίποτα δεν δείχνει νέα πληρωμή.
+  {
+    const db = fakeDb([revoked({ mor_revoked_at: null, mor_revoked_reason: null })]);
+    const alerts = fakeAlerts();
+    const r = await step(ev('subscription.update', TR + DAY, {}, P2), db, TR + DAY + 60_000, alerts);
+    ok('Ζ4.4, «active» χωρίς συναλλαγή: μένει δωρεάν', db.rows[0].plan === 'free'
+       && db.rows[0].subscription_status === 'expired' && db.upserts.length === 0);
+    ok('Ζ4.4, «active» χωρίς συναλλαγή: 200 και λόγος', r.status === 200 && r.body.skipped === 'revoked_no_transaction');
+    ok('Ζ4.4, «active» χωρίς συναλλαγή: email στην υποστήριξη', alerts.sent.length === 1 && r.body.alerted === true
+       && alerts.sent[0].text.includes('sub_1') && alerts.sent[0].text.includes('tran_1'));
+    // Η ΝΕΑ ΠΛΗΡΩΜΗ ΚΟΥΒΑΛΑ ΠΑΝΤΑ ΣΥΝΑΛΛΑΓΗ: ανοίγει κανονικά.
+    await step(ev('subscription.paid', TR + 2 * DAY, { last_transaction_id: 'tran_2' }, P2), db, TR + 2 * DAY + 60_000);
+    ok('Ζ4.4, νέα πληρωμή μετά από γεγονός χωρίς συναλλαγή: ανοίγει', db.rows[0].plan === 'solo'
+       && db.rows[0].mor_last_transaction_id === 'tran_2');
+    // ΚΑΙ ΜΕΤΑ ΑΠΟ ΑΥΤΗΝ, γεγονός χωρίς συναλλαγή γράφεται: ο πελάτης πλήρωσε.
+    await step(ev('subscription.update', TR + 3 * DAY, { status: 'canceled', canceled_at: iso(TR + 3 * DAY) }, P2),
+      db, TR + 3 * DAY + 60_000);
+    ok('Ζ4.4, γεγονός χωρίς συναλλαγή μετά από νέα πληρωμή: γράφεται', db.rows[0].plan === 'solo'
+       && db.rows[0].subscription_status === 'cancelled' && db.upserts.length === 2);
+  }
+  // ΠΕΛΑΤΗΣ ΠΟΥ ΠΛΗΡΩΝΕΙ, ΜΕ ΠΑΛΙΑ ΕΠΙΣΤΡΑΜΜΕΝΗ ΣΤΗ ΓΡΑΜΜΗ: η ανανέωση και τα
+  // γεγονότα χωρίς συναλλαγή περνούν όπως πάντα.
+  {
+    const db = fakeDb([paying({ mor_last_transaction_id: 'tran_2', mor_revoked_tx: 'tran_1', mor_revoked_ref: 'ref_1' })]);
+    const alerts = fakeAlerts();
+    const up = await step(ev('subscription.update', T1 - DAY), db, T1 - DAY + 60_000, alerts);
+    ok('πληρώνει, παλιά επιστραμμένη: ενημέρωση χωρίς συναλλαγή γράφεται', up.body.skipped === undefined
+       && db.upserts.length === 1 && db.rows[0].plan === 'solo' && alerts.sent.length === 0);
+    await step(ev('subscription.paid', T1, { last_transaction_id: 'tran_3' }, P2), db, T1 + 60_000, alerts);
+    ok('πληρώνει, παλιά επιστραμμένη: η ανανέωση περνά', db.rows[0].plan === 'solo'
+       && db.rows[0].mor_renews_at === P2 && db.rows[0].mor_last_transaction_id === 'tran_3' && alerts.sent.length === 0);
+  }
 
   // ══ 4. ΑΜΦΙΣΒΗΤΗΣΗ: ΙΔΙΟΣ ΚΑΝΟΝΑΣ ═════════════════════════════════════
   {
