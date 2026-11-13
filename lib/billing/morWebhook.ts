@@ -53,7 +53,7 @@ import { isEntitled, isMorStatus, type MorStatus } from '@/lib/billing/subscript
 import { profileForPlan } from '@/lib/billing/entitlements';
 import {
   alertFor, duplicateAlert, orphanAlert, otherSubscriptionAlert, rechargedAlert, refundedTransactionAlert,
-  revokedNoTransactionAlert, sendMerchantAlert, unprovenPaymentAlert,
+  revokedNoTransactionAlert, revokedOtherNoTransactionAlert, sendMerchantAlert, unprovenPaymentAlert,
   type MerchantAlert, type RevocationOutcome,
 } from '@/lib/billing/merchantAlert';
 
@@ -528,7 +528,8 @@ export async function applyMerchantEvent(raw: string, deps: MerchantEventDeps = 
   // κρατά εκείνη και δεν ξέρει σε ποια συνδρομή ανήκε το `mor_revoked_tx`.
   // Γεγονός χωρίς συναλλαγή από την ΠΑΛΙΑ συνδρομή δεν ξεχωρίζει από γεγονός
   // μιας τρίτης, οπότε περνά από τον έλεγχο ξένης συνδρομής πιο κάτω: αν η
-  // καταγεγραμμένη ζει, φεύγει email για διπλή συνδρομή· αν όχι, γράφεται.
+  // καταγεγραμμένη ζει, φεύγει email για διπλή συνδρομή· αν όχι, γράφεται και
+  // φεύγει email μετά την εγγραφή (έλεγχος του PR 563, L4).
   // Γι' αυτό η υποστήριξη ακυρώνει στον έμπορο κάθε συνδρομή που επιστράφηκε
   // (docs/ops/creem-vercel-odigos.md, Ζ4.4).
   if (entitled && revokedTx && !sub.lastTransactionId && sameSubscription
@@ -650,6 +651,18 @@ export async function applyMerchantEvent(raw: string, deps: MerchantEventDeps = 
   if (recharged) {
     const sent = await safeSend(sendAlert, rechargedAlert(userId, sub.id, lateCharge));
     log(`νέα χρέωση μετά από επιστροφή· ειδοποίηση ${sent ? 'στάλθηκε' : 'ΔΕΝ στάλθηκε'}`);
+  }
+  // ΑΛΛΗ ΣΥΝΔΡΟΜΗ ΧΩΡΙΣ ΣΥΝΑΛΛΑΓΗ ΑΝΟΙΞΕ ΠΡΟΣΒΑΣΗ ΣΕ ΛΟΓΑΡΙΑΣΜΟ ΜΕ ΕΠΙΣΤΡΑΜΜΕΝΗ
+  // (έλεγχος του PR 563, L4). Το L1 πιο πάνω πιάνει μόνο την καταγεγραμμένη
+  // συνδρομή. Μετά από αλλαγή συνδρομής η γραμμή δεν ξέρει σε ποια ανήκε το
+  // `mor_revoked_tx`, οπότε ένα καθυστερημένο «active» της συνδρομής που
+  // επιστράφηκε, χωρίς συναλλαγή, γράφεται σαν νέα συνδρομή. Δεν το κόβουμε (μια
+  // αληθινή νέα συνδρομή πληρώνεται) αλλά δεν περνά σιωπηλά. ΜΕΤΑ ΤΗΝ ΕΓΓΡΑΦΗ,
+  // για τον ίδιο λόγο με τα παραπάνω: η επανάληψη βρίσκει πια την ίδια
+  // συνδρομή και δεν ξαναστέλνει.
+  if (!sameSubscription && revokedTx && !sub.lastTransactionId && entitled) {
+    const sent = await safeSend(sendAlert, revokedOtherNoTransactionAlert(userId, sub.id, revokedTx));
+    log(`η συνδρομή ${sub.id} άνοιξε πρόσβαση χωρίς συναλλαγή, ενώ ο λογαριασμός έχει την ${revokedTx} που επιστράφηκε· ειδοποίηση ${sent ? 'στάλθηκε' : 'ΔΕΝ στάλθηκε'}`);
   }
 
   // ── ΤΑ ΔΥΟ ΤΕΛΕΥΤΑΙΑ ΣΚΑΛΙΑ ΤΟΥ ΧΩΝΙΟΥ, ΑΠΟ ΤΗ ΜΟΝΗ ΠΗΓΗ ΠΟΥ ΤΑ ΞΕΡΕΙ ──

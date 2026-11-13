@@ -447,18 +447,29 @@ Vercel: ο φύλακας δεν τη βλέπει από εκεί, άρα δε�
 λάθος (π.χ. αμφισβήτηση που κέρδισε ο έμπορος, επιστροφή που ακυρώθηκε στον
 Creem) ή όταν μια νεότερη πληρωμή δεν άνοιξε την πρόσβαση. Ολα στο SQL editor
 του Supabase, ένα `update` τη φορά. Κάθε `update` εδώ πρέπει να ενημερώσει
-**1 γραμμή**· 0 σημαίνει άλλη συνδρομή, άλλη επιστροφή ή ότι έγινε ήδη· τότε
-σταματάς. Το `mor_revoked_ref` δεν αγγίζεται, ώστε η ίδια επιστροφή που
-ξαναστέλνεται να μην ξανακόψει.
+**1 γραμμή**· 0 σημαίνει άλλη συνδρομή, άλλη επιστροφή, κατάσταση που δεν
+επιτρέπεται εδώ ή ότι έγινε ήδη· τότε σταματάς. Το `mor_revoked_ref` δεν
+αγγίζεται, ώστε η ίδια επιστροφή που ξαναστέλνεται να μην ξανακόψει.
 
 Οι τιμές βγαίνουν από τον Creem, όχι από μνήμης:
 
 - `plan`: το πακέτο της συνδρομής (`solo`, `owner`, `agency` ή `office`).
-- `subscription_status`: ό,τι δείχνει ο Creem για τη συνδρομή, με το όνομα
-  της βάσης: `active` → `'active'`, `trialing` → `'on_trial'`, `canceled` ή
+- `status`: ό,τι δείχνει ο Creem για τη συνδρομή, με το όνομα της βάσης:
+  `active` → `'active'`, `trialing` → `'on_trial'`, `canceled` ή
   `scheduled_cancel` → `'cancelled'`. Για `past_due`, `paused` ή `unpaid` δεν
   τρέχεις τίποτα: η κατάσταση αυτή χρειάζεται και την ώρα της πρώτης αποτυχίας
   και τη γράφει μόνο ο webhook.
+- `period_end`: το `current_period_end_date` της συνδρομής στον Creem.
+
+**Λήξη ή ανανέωση, όπως ο webhook.** Στα Ζ7.1 και Ζ7.3 δίνεις μόνο `status`
+και `period_end` και το SQL γράφει μόνο του τα δύο πεδία, όπως ο webhook
+(`lib/billing/merchant/creem.ts`): `'cancelled'` παίρνει `mor_ends_at =
+period_end` και καμία ανανέωση· `'active'` ή `'on_trial'` παίρνει
+`mor_renews_at = period_end` και καμία λήξη. Ακυρωμένη συνδρομή χωρίς λήξη
+δεν πέφτει ποτέ σε `free` στη `user_plan_rank` της βάσης, ενώ η εφαρμογή
+(`isEntitled`) τη βλέπει χωρίς πρόσβαση και ανοίγει το ταμείο για δεύτερη
+χρέωση. Αλλη κατάσταση από τις
+τρεις ενημερώνει 0 γραμμές.
 
 **Ζ7.1 Η συνδρομή που επιστράφηκε ζει ακόμη στον Creem.** Πρώτα στον Creem: η
 συναλλαγή που επιστράφηκε έχει ξαναγίνει πληρωμένη. Σβήνει μαζί η καταγραφή
@@ -466,18 +477,25 @@ Creem) ή όταν μια νεότερη πληρωμή δεν άνοιξε τη
 επιστραμμένη ή χωρίς συναλλαγή, θα αγνοηθεί και θα φύγει email.
 
 ```sql
-update public.billing_profiles
+update public.billing_profiles as b
    set mor_revoked_at = null, mor_revoked_reason = null, mor_revoked_tx = null,
-       plan = '…', subscription_status = '…', mor_ends_at = null,
-       mor_renews_at = '…'
- where user_id = '…' and mor_subscription_id = '…' and mor_revoked_tx = '…';
+       plan = '…', subscription_status = v.status,
+       mor_ends_at   = case when v.status = 'cancelled' then v.period_end end,
+       mor_renews_at = case when v.status = 'cancelled' then null else v.period_end end
+  from (values ('…', '…'::timestamptz)) as v(status, period_end)
+ where b.user_id = '…' and b.mor_subscription_id = '…' and b.mor_revoked_tx = '…'
+   and b.mor_last_transaction_id = b.mor_revoked_tx
+   and v.status in ('active', 'on_trial', 'cancelled');
 ```
 
-`mor_renews_at`: το `current_period_end_date` της συνδρομής στον Creem.
+Το `b.mor_last_transaction_id = b.mor_revoked_tx` ενημερώνει μόνο όσο η
+ανάκληση ισχύει: καμία πληρωμή δεν πέρασε από τότε. Αν νεότερη πληρωμή την
+έχει ήδη σηκώσει, η πρόσβαση είναι ανοιχτή και το SQL δεν γράφει τίποτα πάνω
+από όσα έγραψε ο webhook.
 
 **Ζ7.2 Η συνδρομή ακυρώθηκε ήδη στον Creem.** Ο συνηθισμένος δρόμος, γιατί το
 Ζ4.4 ακυρώνει αμέσως. Ο πελάτης κρατά την πρόσβαση ως το τέλος της περιόδου
-που πλήρωσε η συναλλαγή και δεν ξαναγοράζει τίποτα. Μετά από εκείνη τη στιγμή
+της συνδρομής στον Creem και δεν ξαναγοράζει τίποτα. Μετά από εκείνη τη στιγμή
 η `user_plan_rank` τον γυρίζει μόνη της σε `free`, χωρίς γεγονός.
 
 ```sql
@@ -488,8 +506,9 @@ update public.billing_profiles
  where user_id = '…' and mor_subscription_id = '…' and mor_revoked_tx = '…';
 ```
 
-`mor_ends_at`: η ημερομηνία πληρωμής της συναλλαγής που επιστράφηκε, συν τον
-κύκλο της συνδρομής (ένας μήνας ή ένας χρόνος).
+`mor_ends_at`: το `current_period_end_date` της συνδρομής στον Creem, η ίδια
+πηγή που διαβάζει ο webhook για ακυρωμένη συνδρομή. Αν έχει ήδη περάσει, ο
+λογαριασμός μένει `free` και το SQL απλώς καθαρίζει την καταγραφή.
 
 **Ζ7.3 Νεότερη πληρωμή που δεν άνοιξε πρόσβαση.** Το email λέει ότι η
 συνδρομή που επιστράφηκε στέλνει γεγονός χωρίς συναλλαγή ή ότι μια πληρωμή
@@ -500,18 +519,21 @@ update public.billing_profiles
 παραδόθηκε με 200 και η πρόσβαση έμεινε κλειστή:
 
 ```sql
-update public.billing_profiles
+update public.billing_profiles as b
    set mor_revoked_at = null, mor_revoked_reason = null, mor_last_transaction_id = '…',
-       plan = '…', subscription_status = '…', mor_ends_at = null,
-       mor_renews_at = '…'
- where user_id = '…' and mor_subscription_id = '…'
-   and mor_last_transaction_id = mor_revoked_tx;
+       plan = '…', subscription_status = v.status,
+       mor_ends_at   = case when v.status = 'cancelled' then v.period_end end,
+       mor_renews_at = case when v.status = 'cancelled' then null else v.period_end end
+  from (values ('…', '…'::timestamptz)) as v(status, period_end)
+ where b.user_id = '…' and b.mor_subscription_id = '…'
+   and b.mor_last_transaction_id = b.mor_revoked_tx
+   and v.status in ('active', 'on_trial', 'cancelled');
 ```
 
 `mor_last_transaction_id`: η νεότερη πληρωμένη συναλλαγή. Το `mor_revoked_tx`
 **μένει**: η συναλλαγή που επιστράφηκε δεν ξαναγίνεται πληρωμένη επειδή
-πέρασε άλλη. Το τελευταίο `and` ενημερώνει μόνο γραμμή που κρατά ακόμη την
-επιστραμμένη ως τελευταία πληρωμένη.
+πέρασε άλλη. Το `b.mor_last_transaction_id = b.mor_revoked_tx` ενημερώνει
+μόνο γραμμή που κρατά ακόμη την επιστραμμένη ως τελευταία πληρωμένη.
 
 ---
 

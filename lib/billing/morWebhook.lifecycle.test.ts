@@ -399,6 +399,9 @@ async function main() {
     const alerts = fakeAlerts();
     const born = { id: 'sub_2', created_at: iso(TR + DAY - 60_000) };
     await step(ev('subscription.trialing', TR + DAY, { ...born, status: 'trialing' }, P2), db, TR + DAY + 60_000, alerts);
+    // L4 (έλεγχος του PR 563): γράφεται, αλλά δεν περνά σιωπηλά.
+    ok('νέα συνδρομή σε δοκιμή χωρίς συναλλαγή: ένα email (L4)', alerts.sent.length === 1
+       && alerts.sent[0].text.includes('sub_2') && alerts.sent[0].text.includes('tran_1'));
     ok('νέα συνδρομή σε δοκιμή χωρίς συναλλαγή: γράφεται', db.rows[0].mor_subscription_id === 'sub_2'
        && db.rows[0].subscription_status === 'on_trial' && db.rows[0].plan === 'solo');
     ok('νέα συνδρομή χωρίς συναλλαγή: η συναλλαγή της παλιάς δεν μένει', db.rows[0].mor_last_transaction_id === null
@@ -408,7 +411,7 @@ async function main() {
     }, P2), db, TR + 2 * DAY + 60_000, alerts);
     ok('νέα συνδρομή, ακύρωση στο τέλος περιόδου χωρίς συναλλαγή: γράφεται', r.body.skipped === undefined
        && db.rows[0].subscription_status === 'cancelled' && db.rows[0].mor_ends_at === P2 && db.upserts.length === 2);
-    ok('νέα συνδρομή, ακύρωση στο τέλος περιόδου: κανένα email', alerts.sent.length === 0);
+    ok('νέα συνδρομή, ακύρωση στο τέλος περιόδου: κανένα νέο email', alerts.sent.length === 1);
   }
   // ΤΟ ΙΔΙΟ ΣΤΟΝ ΔΡΟΜΟ ΤΗΣ ΣΥΝΔΡΟΜΗΣ ΠΟΥ ΓΕΝΝΗΘΗΚΕ ΜΕΤΑ ΤΗΝ ΑΝΑΚΛΗΣΗ (bornAfter):
   // η ανάκληση ισχύει ακόμη, η sub_2 γίνεται δεκτή χωρίς συναλλαγή.
@@ -434,7 +437,52 @@ async function main() {
     const r = await step(ev('subscription.active', TR + DAY, { id: 'sub_3', created_at: iso(TR + DAY - 60_000) }, P2),
       db, TR + DAY + 60_000, alerts);
     ok('άλλη συνδρομή χωρίς συναλλαγή μετά το Ζ4.4: δεν πέφτει στο L1', r.body.skipped === undefined
-       && db.rows[0].mor_subscription_id === 'sub_3' && db.rows[0].plan === 'solo' && alerts.sent.length === 0);
+       && db.rows[0].mor_subscription_id === 'sub_3' && db.rows[0].plan === 'solo');
+    ok('άλλη συνδρομή χωρίς συναλλαγή μετά το Ζ4.4: ένα email μετά την εγγραφή (L4)', alerts.sent.length === 1
+       && alerts.sent[0].text.includes('sub_3') && alerts.sent[0].text.includes('tran_1'));
+    // Η ΕΠΑΝΑΛΗΨΗ ΤΟΥ ΙΔΙΟΥ ΓΕΓΟΝΟΤΟΣ βρίσκει πια την ίδια συνδρομή: κανένα δεύτερο email.
+    await step(ev('subscription.active', TR + DAY, { id: 'sub_3', created_at: iso(TR + DAY - 60_000) }, P2),
+      db, TR + DAY + 120_000, alerts);
+    ok('άλλη συνδρομή, επανάληψη: κανένα δεύτερο email', alerts.sent.length === 1);
+  }
+  // L4 (έλεγχος του PR 563): Η ΣΥΝΔΡΟΜΗ ΠΟΥ ΕΠΙΣΤΡΑΦΗΚΕ ΓΥΡΙΖΕΙ ΜΕΤΑ ΑΠΟ ΑΛΛΗ. Η
+  // sub_1 επιστράφηκε, το Ζ4.4 έσβησε την ανάκληση, μια sub_2 που δεν ζει
+  // γράφτηκε (η τελευταία πληρωμένη σβήνει). Ενα καθυστερημένο «active» της
+  // sub_1 χωρίς συναλλαγή δεν ξεχωρίζει από νέα συνδρομή: γράφεται, με email.
+  {
+    const db = fakeDb([revoked({ mor_revoked_at: null, mor_revoked_reason: null })]);
+    const alerts = fakeAlerts();
+    await step(ev('subscription.paused', TR + DAY, { id: 'sub_2', status: 'paused' }, P2), db, TR + DAY + 60_000, alerts);
+    ok('L4: η sub_2 που δεν ζει γράφεται χωρίς email', db.rows[0].mor_subscription_id === 'sub_2'
+       && db.rows[0].plan === 'free' && db.rows[0].mor_last_transaction_id === null && alerts.sent.length === 0);
+    const r = await step(ev('subscription.active', TR + 2 * DAY, {}, P2), db, TR + 2 * DAY + 60_000, alerts);
+    ok('L4: καθυστερημένο «active» της sub_1 χωρίς συναλλαγή γράφεται', r.body.skipped === undefined
+       && db.rows[0].mor_subscription_id === 'sub_1' && db.rows[0].plan === 'solo');
+    ok('L4: και φεύγει email με τη συνδρομή και την επιστραμμένη', alerts.sent.length === 1
+       && alerts.sent[0].text.includes('sub_1') && alerts.sent[0].text.includes('tran_1'));
+  }
+  // L1 ΜΟΝΟ ΓΙΑ ΓΕΓΟΝΟΣ ΠΟΥ ΘΑ ΕΔΙΝΕ ΠΡΟΣΒΑΣΗ (έλεγχος του PR 563, L3): η ίδια
+  // συνδρομή, μετά το Ζ4.4, στέλνει «paused» χωρίς συναλλαγή. Δεν ανοίγει τίποτα,
+  // οπότε γράφεται όπως πάντα, χωρίς email.
+  {
+    const db = fakeDb([revoked({ mor_revoked_at: null, mor_revoked_reason: null })]);
+    const alerts = fakeAlerts();
+    const r = await step(ev('subscription.paused', TR + DAY, { status: 'paused' }, P2), db, TR + DAY + 60_000, alerts);
+    ok('L1, γεγονός χωρίς πρόσβαση: γράφεται χωρίς email', r.body.skipped === undefined && db.upserts.length === 1
+       && db.rows[0].subscription_status === 'paused' && db.rows[0].plan === 'free' && alerts.sent.length === 0);
+  }
+  // Η ΙΔΙΑ ΣΥΝΔΡΟΜΗ ΚΡΑΤΑ ΤΗΝ ΤΕΛΕΥΤΑΙΑ ΠΛΗΡΩΜΕΝΗ (έλεγχος του PR 563, M2). Γεγονός
+  // χωρίς συναλλαγή δεν σβήνει την tran_2· αλλιώς η επιστροφή της tran_2 θα
+  // έβγαινε `not_latest` και η πρόσβαση δεν θα έκλεινε.
+  {
+    const db = fakeDb([paying({ mor_last_transaction_id: 'tran_2' })]);
+    const alerts = fakeAlerts();
+    const up = await step(ev('subscription.update', T0 + DAY), db, T0 + DAY + 60_000, alerts);
+    ok('ίδια συνδρομή, γεγονός χωρίς συναλλαγή: η τελευταία πληρωμένη μένει', up.body.skipped === undefined
+       && db.upserts.length === 1 && db.rows[0].mor_last_transaction_id === 'tran_2');
+    const r = await step(moneyEvent('refund', T0 + 2 * DAY, { transaction: 'tran_2' }), db, T0 + 2 * DAY + 60_000, alerts);
+    ok('ίδια συνδρομή, επιστροφή της tran_2: η πρόσβαση κλείνει', r.body.revoked === true
+       && db.rows[0].plan === 'free' && db.rows[0].mor_revoked_tx === 'tran_2');
   }
   // ΠΕΛΑΤΗΣ ΠΟΥ ΠΛΗΡΩΝΕΙ, ΜΕ ΠΑΛΙΑ ΕΠΙΣΤΡΑΜΜΕΝΗ ΣΤΗ ΓΡΑΜΜΗ: η ανανέωση και τα
   // γεγονότα χωρίς συναλλαγή περνούν όπως πάντα.
