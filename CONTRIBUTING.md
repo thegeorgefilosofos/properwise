@@ -49,15 +49,23 @@ cp .env.example .env.local      # .env.local is gitignored
 | `SUPABASE_SERVICE_ROLE_KEY` | Bypasses RLS. Read only by `lib/supabase/service.ts`, for the few server routes that need it. |
 | `NEXT_PUBLIC_SITE_URL` | Canonical site URL (`lib/core/site.ts`). Blank uses the default. |
 
-The app code also reads a few optional server variables that are not in
-`.env.example`, for email, push and scheduled routes: `RESEND_API_KEY`,
-`CRON_SECRET` (`lib/api/cronSecret.ts`), `VAPID_PRIVATE_KEY` and
-`NEXT_PUBLIC_VAPID_PUBLIC_KEY` (`lib/push/`), and `NEXT_PUBLIC_INBOUND_DOMAIN`
-(`lib/inbound/address.ts`). Two optional public variables are not in
-`.env.example` either: `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, the Google
-Search Console tag (`app/layout.tsx`; blank omits it), and
-`NEXT_PUBLIC_BUILD_SHA`, the build identifier shown on error pages, served by
-`app/api/version` and sent as the Sentry release (blank reports `dev`). Edge functions read their own variables from the
+Optional variables that are not in `.env.example`:
+
+- Server only: `RESEND_API_KEY` (email), `CRON_SECRET`
+  (`lib/api/cronSecret.ts`), `VAPID_PRIVATE_KEY` (`lib/push/`) and
+  `SENTRY_DSN`, a server-side fallback for `NEXT_PUBLIC_SENTRY_DSN`
+  (`lib/observability/report.ts`).
+- Public: `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (`lib/push/`),
+  `NEXT_PUBLIC_INBOUND_DOMAIN` (`lib/inbound/address.ts`) and
+  `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, the Google Search Console tag
+  (`app/layout.tsx`; blank omits it).
+
+Do not set `NEXT_PUBLIC_BUILD_SHA` yourself. `next.config.ts` defines it at
+build time from the first 7 characters of `VERCEL_GIT_COMMIT_SHA` or
+`GIT_COMMIT_SHA`, or `dev` if neither is set. It is shown on error pages,
+served by `app/api/version` and sent as the Sentry release.
+
+Edge functions read their own variables from the
 Supabase function environment, not from `.env.local`.
 
 Never commit a value. Secrets in tracked files are blocked by
