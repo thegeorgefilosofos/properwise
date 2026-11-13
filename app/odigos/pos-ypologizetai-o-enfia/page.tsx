@@ -34,7 +34,7 @@ import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import {
-  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideTable, GuideSources, GuideCta, GuideFaq,
+  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideTable, GuideSources, GuideCta, GuideFaq, GuideCalcLink,
   RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
 } from '../GuideParts';
 import { enfiaInstalmentRule, enfiaInstalmentDates } from '../enfiaText';
@@ -296,6 +296,8 @@ export default function Page() {
           <span className="gd-result-k">Τελικός ΕΝΦΙΑ</span>
           <span className="gd-result-v">{`${fe(EX_RES.annual)} τον χρόνο`}</span>
         </div>
+
+        <GuideCalcLink href="/ypologismos-enfia" action="Υπολόγισε τον ΕΝΦΙΑ σου" />
 
         {/* 3. Αυτόματη μείωση */}
         <H2 {...S.wealth} />

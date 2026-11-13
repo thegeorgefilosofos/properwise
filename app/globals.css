@@ -5160,6 +5160,11 @@ body:has(.po-tool-page) .po-cookie {
   content: ''; width: 5px; height: 5px; border-radius: 50%;
   background: var(--accent); flex-shrink: 0;
 }
+/* Η γραμμή του κοινού στην πρώτη οθόνη της αρχικής: σε κινητό σπάει σε δύο
+   γραμμές, οπότε ισοβαρείς γραμμές στο κέντρο, χωρίς την τελεία που έμενε
+   μόνη της στο πλάι. */
+.lp-eyebrow-hero { display: block; text-align: center; text-wrap: balance; }
+.lp-eyebrow-hero::before { content: none; }
 
 /* ── ΤΟ ΥΠΟΣΕΛΙΔΟ ΟΛΩΝ ΤΩΝ ΔΗΜΟΣΙΩΝ ΣΕΛΙΔΩΝ ───────────────────────────────
    ΗΤΑΝ ΓΡΑΜΜΕΝΟ ΜΕΣΑ ΣΤΟ <style> ΤΗΣ ΑΡΧΙΚΗΣ ΚΑΙ ΤΟ ΧΡΗΣΙΜΟΠΟΙΟΥΣΑΝ ΤΕΣΣΕΡΙΣ
@@ -5396,6 +5401,20 @@ body:has(.po-tool-page) .po-cookie {
    23 εικονοστοιχεία ψηλότερα. Με subgrid ετικέτα, τίτλος, περιγραφή και
    σύνδεσμος στέκονται στο ίδιο ύψος και στις δύο. */
 .og-card { display: flex; flex-direction: column; gap: 8px; }
+/* Ο ΥΠΟΛΟΓΙΣΜΟΣ ΜΕΣΑ ΣΤΟΝ ΟΔΗΓΟ (`GuideCalcLink`, app/odigos/GuideParts.tsx).
+   Μία σειρά: η δράση αριστερά, το βέλος δεξιά, στο ύψος της κάρτας των
+   σχετικών οδηγών. Το περίγραμμα παίρνει τον τόνο της έμφασης, όπως η
+   ανακοίνωση της αρχικής, ώστε να διαβάζεται ως ενέργεια και όχι ως πλαίσιο
+   σημείωσης. Κανένα νέο χρώμα: color-mix του ίδιου --accent. */
+.og-card.gd-calc-link {
+  flex-direction: row; align-items: center; justify-content: space-between; gap: 16px;
+  min-height: 44px; padding: 14px 16px; border-radius: 14px; text-decoration: none;
+  background: var(--bg-elevated);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.og-card.gd-calc-link:hover,
+.og-card.gd-calc-link:focus-visible { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.og-card.gd-calc-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @supports (grid-template-rows: subgrid) {
   @media (min-width: 721px) {
     .og-grid > .og-card { display: grid; grid-row: span 4; grid-template-rows: subgrid; row-gap: 8px; }
@@ -6081,6 +6100,9 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   }
   /* Το ευρετήριο μέσα στο κείμενο του οδηγού φεύγει: το λέει ήδη η στήλη. */
   .gd-layout > .gd .lg-toc { display: none; }
+  /* Η κάρτα υπολογισμού φεύγει όπου φαίνεται η στήλη: το κουμπί της στήλης
+     οδηγεί ήδη στον ίδιο υπολογισμό και δύο δράσεις με άλλα λόγια μπερδεύουν. */
+  .gd-layout > .gd-rail ~ .gd .gd-calc { display: none; }
   /* Στη στήλη ο κατάλογος είναι γραμμή, όχι κουτί: μία στήλη ονομάτων με
      λεπτή γραμμή αριστερά, που φωτίζεται εκεί που βρίσκεσαι. */
   .lg-grid > .lg-toc .lg-toc-d, .gd-rail .lg-toc-d {
