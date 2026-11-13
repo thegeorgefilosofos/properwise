@@ -187,8 +187,8 @@ export default async function Landing() {
             <BrandLogo />
           </div>
           {/* Οι ίδιοι σύνδεσμοι με κάθε άλλη δημόσια σελίδα (PublicNav): «Τιμές»,
-              «Σύνδεση» και η δοκιμή. Στο κινητό το «Σύνδεση» κονταίνει σε
-              «Είσοδος», δεν σβήνει· ο επιστρέφων χρήστης δεν έχει άλλο δρόμο. */}
+              «Σύνδεση» και η δοκιμή. Στο κινητό το «Σύνδεση» περνά στο μενού, δεν
+              σβήνει· ο επιστρέφων χρήστης δεν έχει άλλο δρόμο. */}
           <PublicNav signedIn={loggedIn && (
             <Link href="/dashboard" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '9px 18px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>Ο πίνακάς σου</Link>
           )} />
@@ -293,7 +293,7 @@ export default async function Landing() {
                 όφελος. Τώρα τα τρία που ζητά ο λογιστής και οι δύο προτάσεις
                 έχουν σχεδόν ίσο μήκος, ώστε η πλήρης στοίχιση από τα 720 να μην
                 ανοίγει τα κενά της κοντύτερης. */}
-            <span className="lp-lede-line">Λογαριασμός, μισθωτήριο, απόδειξη: η{'\u00a0'}εφαρμογή τα διαβάζει και τα{'\u00a0'}καταχωρεί.</span>{' '}
+            <span className="lp-lede-line">Λογαριασμός, μισθωτήριο, απόδειξη: η{'\u00a0'}εφαρμογή τα διαβάζει και συμπληρώνει τα{'\u00a0'}στοιχεία.</span>{' '}
             <span className="lp-lede-line">Ο φόρος ενοικίων, το Ε2 και ο ΕΝΦΙΑ είναι έτοιμα πριν τα ζητήσει ο{'\u00a0'}λογιστής.</span>
           </p>
           <div className="lp-rise-3 lp-hero-ctas" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>

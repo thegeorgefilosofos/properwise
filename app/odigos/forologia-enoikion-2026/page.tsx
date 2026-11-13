@@ -267,8 +267,6 @@ export default function Page() {
           <li><strong style={{ color: 'var(--text-primary)' }}>{'Φορολογητέο (κατά κανόνα):'}</strong>{` ${fn(1 - PRESUMPTIVE_DEDUCTION_RATE, 2)} × Ε`}</li>
         </ul>
 
-        <GuideCalcLink href="/ypologismos-forou-enoikion" action="Υπολόγισε τον φόρο των ενοικίων σου" />
-
         {/* 3. Τραπεζική είσπραξη */}
         <H2 {...S.bank} />
         <p className="lg-p">
@@ -354,6 +352,8 @@ export default function Page() {
         <p className="lg-p" style={{ marginTop: 16 }}>
           {`Διαφορά ${feWhole(EX3_WITHOUT.tax - EX3_WITH.tax)}. Η στήλη «Χωρίς έκπτωση» δείχνει τον φόρο όταν όλο το ενοίκιο της χρονιάς εισπράττεται μετρητά, όπως θα ισχύει από το ${FIRST_YEAR_BANK_RECEIPT + 1}· το ${FIRST_YEAR_BANK_RECEIPT} η κύρωση πιάνει μόνο όσα εισπράττονται από την 1η ${monthGen(FIRST_MONTH_BANK_RECEIPT - 1)}. Για τα εισοδήματα του ${FIRST_YEAR_BANK_RECEIPT - 1} ισχύει η στήλη με την έκπτωση.`}
         </p>
+
+        <GuideCalcLink href="/ypologismos-forou-enoikion" action="Υπολόγισε τον φόρο των ενοικίων σου" />
 
         {/* 5. Πηγές / νομική βάση */}
         <GuideSources over="5. Τεκμηρίωση" sources={SOURCES} />
