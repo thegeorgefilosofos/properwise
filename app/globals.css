@@ -4475,9 +4475,12 @@ body { hyphens: none; }
 /* Σελίδες Σύνδεσης/Εγγραφής: το marketing panel κρύβεται σε κινητό,
    η φόρμα παίρνει όλο το πλάτος — καμία οριζόντια κύλιση. */
 .auth-mobile-brand { display: none; }
+/* Η υπενθύμιση της αξίας ζει στο πάνελ· όπου κρύβεται το πάνελ, λέγεται σε μία γραμμή κάτω από τον τίτλο. */
+.auth-mobile-only { display: none; }
 @media (max-width: 860px) {
   .auth-aside { display: none !important; }
   .auth-mobile-brand { display: flex; margin-bottom: 24px; }
+  .auth-mobile-only { display: block; }
   .auth-main  { flex: 1 1 100% !important; width: 100% !important; padding: 32px 20px !important; }
 }
 

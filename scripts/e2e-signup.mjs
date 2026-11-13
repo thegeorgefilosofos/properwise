@@ -35,7 +35,7 @@ const check = (name, ok, detail = '') => {
 const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 await page.goto(pathToFileURL(PAGE).href);
-await page.waitForSelector('#su-consent');
+await page.waitForSelector('#su-email');
 
 // ΤΟ ΚΟΥΜΠΙ ΔΕΝ ΕΙΝΑΙ ΠΟΤΕ `disabled` ΚΑΙ ΑΥΤΟ ΕΙΝΑΙ ΣΚΟΠΙΜΟ: μένει
 // πατήσιμο ώστε ο handler να πει τον λόγο αντί να σωπάσει. Αρα το σφάλμα
@@ -45,7 +45,6 @@ const submit = () => page.locator('form button[type="submit"]');
 // ── Η ΦΟΡΜΑ ΣΥΜΠΛΗΡΩΝΕΤΑΙ ─────────────────────────────────────────────────
 await page.locator('#su-email').fill('dokimastis@properwise.gr');
 await page.locator('input[type="password"]').first().fill('Dokimastis2026!');
-await page.locator('#su-consent').check();
 
 check('το κουμπί καλεί σε ενέργεια πριν την υποβολή',
   (await submit().textContent())?.includes('Ξεκίνα') === true);
@@ -57,7 +56,7 @@ check('μετά την υποβολή εμφανίζεται η οθόνη επ�
 
 // ── ΚΑΙ ΠΙΣΩ, ΜΕ ΤΟ «ΓΡΑΨΕ ΑΛΛΗ» ──────────────────────────────────────────
 await page.getByRole('button', { name: 'Γράψε άλλη' }).click();
-await page.waitForSelector('#su-consent');
+await page.waitForSelector('#su-email');
 
 // ΕΔΩ ΕΙΝΑΙ ΟΛΟ ΤΟ ΝΟΗΜΑ ΤΟΥ ΑΡΧΕΙΟΥ.
 const label = (await submit().textContent())?.trim() ?? '';
@@ -86,10 +85,11 @@ check('χωνί: μόνο η συνάρτηση του χωνιού και μό�
     && Object.keys(c).sort().join() === 'fn,p_in_app,p_mobile,p_source,p_step'));
 check('χωνί: σε κανονικό περιηγητή δεν μετρά οδηγία εφαρμογής', !steps.includes('app_note'));
 
-// Υποβολή χωρίς αποδοχή των Όρων: μετριέται κάθε φορά, γιατί εκεί κολλάει ο κόσμος.
+// Υποβολή με email που δεν στέκει: μετριέται κάθε φορά, γιατί εκεί κολλάει ο κόσμος.
+// (Η αποδοχή των Όρων είναι η ίδια η υποβολή από 13.11.2026, χωρίς κουτί.)
 await page.getByRole('button', { name: 'Γράψε άλλη' }).click();
-await page.waitForSelector('#su-consent');
-await page.locator('#su-consent').uncheck();
+await page.waitForSelector('#su-email');
+await page.locator('#su-email').fill('allos@properwise');
 await submit().click();
 await submit().click();
 await page.waitForTimeout(200);
@@ -104,7 +104,7 @@ for (const [name, ua, android] of [['Android', IG, true], ['iPhone', 'Mozilla/5.
   const ctx = await browser.newContext({ userAgent: ua, viewport: { width: 390, height: 844 } });
   const ig = await ctx.newPage();
   await ig.goto(pathToFileURL(PAGE).href);
-  await ig.waitForSelector('#su-consent');
+  await ig.waitForSelector('#su-email');
   await ig.waitForSelector('[role="note"]', { timeout: 4000 }).catch(() => null);
   check(`Instagram (${name}): χωρίς «Συνέχισε με Google»`, await ig.getByText('Συνέχισε με Google').count() === 0);
   check(`Instagram (${name}): η οδηγία ονομάζει την εφαρμογή`, await ig.getByText('μέσα από το Instagram').count() === 1);
@@ -159,10 +159,9 @@ for (const [name, ua, android] of [['Android', IG, true], ['iPhone', 'Mozilla/5.
   // Η εγγραφή του ανώνυμου: ίδια φόρμα, ίδια υποβολή, χωρίς ερώτηση συνεδρίας.
   {
     const { ctx, p } = await anon(PAGE);
-    await p.waitForSelector('#su-consent');
+    await p.waitForSelector('#su-email');
     await p.locator('#su-email').fill('anonymos@properwise.gr');
     await p.locator('#su-password').fill('Dokimastis2026!');
-    await p.locator('#su-consent').check();
     await p.locator('form button[type="submit"]').click();
     const sent = await p.waitForSelector('text=Άνοιξε το email σου', { timeout: 6000 }).then(() => true).catch(() => false);
     check('ανώνυμος, /signup: η εγγραφή ολοκληρώνεται', sent);
@@ -190,13 +189,12 @@ for (const [name, ua, android] of [['Android', IG, true], ['iPhone', 'Mozilla/5.
     await route.fulfill({ status: 200, body, contentType: 'text/plain' });
   });
   await gate.goto(pathToFileURL(PAGE).href);
-  await gate.waitForSelector('#su-consent');
+  await gate.waitForSelector('#su-email');
   const sub = () => gate.locator('form button[type="submit"]');
   const pw = gate.locator('#su-password');
 
   await gate.locator('#su-email').fill('diplo@properwise.gr');
   await pw.fill('Dokimastis2026!');
-  await gate.locator('#su-consent').check();
   // Δύο υποβολές ΣΤΟ ΙΔΙΟ tick: το React δεν έχει προλάβει να αποδώσει το
   // `loading` της πρώτης. Δύο κλικ του Playwright δεν το δείχνουν, γιατί
   // ανάμεσά τους μεσολαβεί απόδοση· ένα γρήγορο διπλό πάτημα σε αργό κινητό ναι.
@@ -208,7 +206,7 @@ for (const [name, ua, android] of [['Android', IG, true], ['iPhone', 'Mozilla/5.
     `signUp=${await gate.evaluate(() => window.__signups)}`);
 
   await gate.getByRole('button', { name: 'Γράψε άλλη' }).click();
-  await gate.waitForSelector('#su-consent');
+  await gate.waitForSelector('#su-email');
   // Επικόλληση και ΑΜΕΣΗ υποβολή: ο έλεγχος του πεδίου δεν προλαβαίνει.
   await pw.fill(LEAKED);
   await sub().click();
