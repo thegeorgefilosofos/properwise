@@ -519,8 +519,10 @@ export async function applyMerchantEvent(raw: string, deps: MerchantEventDeps = 
   // ΓΙΑΤΙ ΔΕΝ ΚΛΕΙΔΩΝΕΙ ΕΞΩ ΠΕΛΑΤΗ ΠΟΥ ΠΛΗΡΩΝΕΙ. Κάθε νέα πληρωμή κουβαλά
   // συναλλαγή (`subscription.paid`), περνά από εδώ και γράφει νέο
   // `mor_last_transaction_id`· από εκεί και πέρα ο όρος δεν ισχύει πια και τα
-  // γεγονότα χωρίς συναλλαγή γράφονται όπως πάντα. Η νόμιμη επαναφορά (Ζ4.7
-  // του οδηγού) σβήνει και το `mor_revoked_tx`.
+  // γεγονότα χωρίς συναλλαγή γράφονται όπως πάντα. Νέα συνδρομή που γράφεται
+  // χωρίς συναλλαγή σβήνει το `mor_last_transaction_id` (πιο κάτω, στο
+  // `upsert`), οπότε ούτε αυτή πέφτει εδώ. Η νόμιμη επαναφορά (Ζ7 του οδηγού)
+  // σβήνει και το `mor_revoked_tx`.
   //
   // ΤΟ ΟΡΙΟ ΠΟΥ ΜΕΝΕΙ. Μετά από νεότερη συνδρομή που έγινε δεκτή, η γραμμή
   // κρατά εκείνη και δεν ξέρει σε ποια συνδρομή ανήκε το `mor_revoked_tx`.
@@ -606,7 +608,14 @@ export async function applyMerchantEvent(raw: string, deps: MerchantEventDeps = 
     mor_revoked_reason: null,
     // Η αναφορά της επιστροφής (`mor_revoked_ref`) ΔΕΝ σβήνει: η ίδια επιστροφή
     // που ξαναστέλνεται μετά από νέα χρέωση δεν ξανακόβει.
-    ...(sub.lastTransactionId ? { mor_last_transaction_id: sub.lastTransactionId } : {}),
+    // Η ΤΕΛΕΥΤΑΙΑ ΠΛΗΡΩΜΕΝΗ ΑΝΗΚΕΙ ΣΤΗ ΣΥΝΔΡΟΜΗ ΤΗΣ (έλεγχος του PR 563, M1).
+    // Γεγονός χωρίς συναλλαγή κρατά την τιμή μόνο για την ΙΔΙΑ συνδρομή. Σε
+    // αλλαγή συνδρομής (και στον δρόμο `bornAfter`) σβήνει: αλλιώς η
+    // επιστραμμένη της παλιάς θα έμενε ως «τελευταία πληρωμένη» της νέας και
+    // ο έλεγχος L1 πιο πάνω θα έριχνε τα επόμενα γεγονότα της νέας.
+    ...(sub.lastTransactionId
+      ? { mor_last_transaction_id: sub.lastTransactionId }
+      : sameSubscription ? {} : { mor_last_transaction_id: null }),
     ...(trialUsedAt ? { trial_used_at: trialUsedAt } : {}),
     ...(profileType ? { profile_type: profileType } : {}),
     // ΖΩΝΗ ΚΑΙ ΤΙΡΑΝΤΕΣ: η σκανδάλη `ensure_billing_profile` γεννά τη γραμμή
