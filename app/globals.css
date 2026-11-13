@@ -7899,27 +7899,40 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 
    Η υποδοχή κάθεται πάνω από τα παράθυρα (3000), όπως και πριν: από εδώ ανοίγει
    ο οδηγός, όχι από πάνω του. Η περιήγηση παίρνει το βάθος της από τη στοίβα
-   των επικαλύψεων (useOverlayShell). */
+   των επικαλύψεων (useOverlayShell).
+
+   ΤΟ ΦΟΝΤΟ ΤΗΣ ΥΠΟΔΟΧΗΣ ΔΕΝ ΔΙΑΒΑΖΕΤΑΙ. Με το απλό `--scrim` η κενή οθόνη
+   από πίσω έμενε ευανάγνωστη: εικονίδιο, μισός τίτλος και τρία κουμπιά που
+   έλεγαν τα ίδια με την υποδοχή, κάτω από αυτήν. Εδώ το φόντο γίνεται μία ήρεμη
+   επιφάνεια: η βάση του θέματος σχεδόν αδιαφανής, με θόλωμα από πάνω. */
 .ob-scrim {
   position: fixed; inset: 0; z-index: 3000; display: flex; padding: 16px;
-  overflow-y: auto; overscroll-behavior: contain; background: var(--scrim);
+  overflow-y: auto; overscroll-behavior: contain;
+  background: color-mix(in srgb, var(--bg-base) 90%, transparent);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
 }
 .ob-card {
-  width: min(440px, 100%); margin: auto; padding: 32px 32px 20px; outline: none;
+  width: min(420px, 100%); margin: auto; padding: 32px 32px 24px; outline: none;
   background: var(--bg-surface); border: 1px solid var(--border-subtle);
   border-radius: 18px; box-shadow: var(--elev-3);
   animation: ob-in 0.32s cubic-bezier(0.2, 0, 0, 1);
 }
-@media (max-width: 420px) { .ob-card { padding: 24px 20px 12px; } }
-.ob-path { list-style: none; margin: 24px 0 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
-.ob-path-row { display: flex; gap: 12px; align-items: flex-start; }
+@media (max-width: 420px) { .ob-card { padding: 24px 24px 16px; } }
+/* Τα βήματα: μία ομάδα, ένα λεπτό περίγραμμα, διαχωριστικές ανάμεσα. Ο αριθμός
+   κάθεται στο κέντρο της γραμμής του τίτλου, ίδιο μέγεθος σε όλα. */
+.ob-path {
+  list-style: none; margin: 24px 0 0; padding: 0;
+  border: 1px solid var(--border-subtle); border-radius: 10px;
+}
+.ob-path-row { display: flex; gap: 12px; align-items: center; min-height: 48px; padding: 0 16px; }
+.ob-path-row + .ob-path-row { border-top: 1px solid var(--border-subtle); }
 .ob-path-num {
-  flex: none; width: 24px; height: 24px; border-radius: 100px; margin-top: 1px;
+  flex: none; width: 24px; height: 24px; border-radius: 100px;
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--accent-soft); color: var(--accent);
   font-size: var(--fs-xs); font-weight: 700; font-variant-numeric: tabular-nums;
 }
-.ob-quiet { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+.ob-quiet { display: flex; justify-content: center; margin-top: 8px; }
 
 /* Η περιήγηση. Το πέπλο είναι η σκιά του φωτεινού παραθύρου (`.ob-spot`):
    ένα στοιχείο που ακολουθεί τον στόχο, αντί για τέσσερα κομμάτια γύρω του. */
@@ -7927,7 +7940,9 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 .ob-tour-catch { position: absolute; inset: 0; pointer-events: auto; }
 .ob-spot {
   position: fixed; border-radius: 14px; pointer-events: none;
-  box-shadow: 0 0 0 2px var(--accent), 0 0 0 9999px var(--scrim);
+  /* Δακτύλιος, απαλό φωτοστέφανο και έξω το πέπλο των παραθύρων: ο στόχος
+     ξεχωρίζει χωρίς να σβήνει η υπόλοιπη οθόνη. */
+  box-shadow: 0 0 0 2px var(--accent), 0 0 0 7px var(--accent-soft), 0 0 0 9999px var(--scrim);
   transition: top 0.24s cubic-bezier(0.2, 0, 0, 1), left 0.24s cubic-bezier(0.2, 0, 0, 1),
               width 0.24s cubic-bezier(0.2, 0, 0, 1), height 0.24s cubic-bezier(0.2, 0, 0, 1);
 }

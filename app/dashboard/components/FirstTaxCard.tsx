@@ -45,47 +45,47 @@ export default function FirstTaxCard({ property, offerTour, onTour, onClose, onA
 
   return (
     <Modal open onClose={onClose} size="sm"
-      title="Το πρώτο σου ακίνητο είναι μέσα"
+      title="Το ακίνητο αποθηκεύτηκε"
       subtitle={property.name}
       icon={<svg aria-hidden="true" width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
       footer={offerTour ? <>
         <Btn variant="ghost" size="lg" onClick={onClose}>Παράλειψη</Btn>
-        <Btn variant="primary" size="lg" onClick={onTour}>Δες πού είναι τι</Btn>
+        <Btn variant="primary" size="lg" onClick={onTour}>Γνώρισε την εφαρμογή</Btn>
       </> : <Btn variant="primary" size="lg" onClick={onClose}>Εντάξει</Btn>}>
 
       {hasTax ? (
         <section aria-labelledby="first-tax-label">
-          <div id="first-tax-label" style={{ ...TT.label }}>{`Φόρος ενοικίων ${t.year}, ενδεικτικά`}</div>
+          <div id="first-tax-label" style={{ ...TT.label }}>{`Φόρος ενοικίων ${t.year}`}</div>
           <div className="ob-figure" style={{ ...TT.display, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', marginTop: T.sp.sm }}>{fe(t.tax)}</div>
           <p style={{ ...TT.bodySm, margin: `${T.sp.sm}px 0 0` }}>
-            {`Σε έσοδα ${fe(t.annual)} τον χρόνο, από ${fe(t.monthly)} τον μήνα. Το ίδιο ποσό βλέπεις στην Επισκόπηση και αλλάζει μόλις καταχωρήσεις ενοικιαστή ή εισπράξεις.`}
+            {`Ενδεικτικά, για έσοδα ${fe(t.annual)} τον χρόνο.`}
           </p>
         </section>
       ) : t.rented ? (
         <section>
           <div style={{ ...TT.label }}>{`Φόρος ενοικίων ${t.year}`}</div>
           <p style={{ ...TT.body, margin: `${T.sp.sm}px 0 ${T.sp.md}px` }}>
-            Για να βγει ο φόρος, λείπει μόνο το μηνιαίο μίσθωμα.
+            Λείπει το μηνιαίο μίσθωμα.
           </p>
           <div style={{ display: 'grid' }}>
-            <Btn variant="secondary" size="lg" onClick={onAddRent}>Πρόσθεσε το μίσθωμα</Btn>
+            <Btn variant="secondary" size="lg" onClick={onAddRent}>Πρόσθεσε μίσθωμα</Btn>
           </div>
         </section>
       ) : (
         <section>
           <div style={{ ...TT.label }}>Φόρος ενοικίων</div>
           <p style={{ ...TT.body, margin: `${T.sp.sm}px 0 0` }}>
-            Το ακίνητο δεν νοικιάζεται, οπότε δεν έχει φόρο ενοικίων. Αν το νοικιάσεις, άλλαξε την κατάσταση από το πάνω μέρος της οθόνης.
+            Δεν νοικιάζεται, άρα δεν έχει φόρο ενοικίων.
           </p>
         </section>
       )}
 
       {(t.enfia != null || deadlines.length > 0) && (
         <section aria-labelledby="first-tax-next">
-          <div id="first-tax-next" style={{ ...TT.label, marginBottom: T.sp.xs }}>Τι έρχεται</div>
+          <div id="first-tax-next" style={{ ...TT.label, marginBottom: T.sp.xs }}>Επόμενες προθεσμίες</div>
           {t.enfia != null && (
             <div style={row}>
-              <span style={{ ...TT.body }}>ΕΝΦΙΑ που δήλωσες</span>
+              <span style={{ ...TT.body }}>ΕΝΦΙΑ</span>
               <span style={{ ...TT.figure, whiteSpace: 'nowrap' }}>{`${fe(t.enfia)} τον χρόνο`}</span>
             </div>
           )}
@@ -95,7 +95,7 @@ export default function FirstTaxCard({ property, offerTour, onTour, onClose, onA
               <span style={{ ...TT.figure, whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{grDate(d.date)}</span>
             </div>
           ))}
-          <p style={{ ...TT.caption, margin: `${T.sp.xs}px 0 0` }}>Οι προθεσμίες μπήκαν ήδη στο Ημερολόγιο.</p>
+          <p style={{ ...TT.caption, margin: `${T.sp.xs}px 0 0` }}>Μπήκαν ήδη στο Ημερολόγιο.</p>
         </section>
       )}
     </Modal>

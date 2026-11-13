@@ -623,9 +623,9 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
     : null;
   const rentTaxPreview = draftTax?.rented && draftTax.annual > 0 && (
     <div role="status" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: grossYield != null ? 12 : 0 }}>
-      <div style={{ ...TT.label, marginBottom: 6 }}>{`Φόρος ενοικίων ${draftTax.year}, ενδεικτικά`}</div>
+      <div style={{ ...TT.label, marginBottom: 6 }}>{`Φόρος ενοικίων ${draftTax.year}`}</div>
       <div style={{ fontFamily: T.font.num, fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{fe(draftTax.tax)}</div>
-      <div style={{ ...TT.caption, marginTop: 6 }}>{`Σε έσοδα ${fe(draftTax.annual)} τον χρόνο. Ο ίδιος υπολογισμός με την Επισκόπηση.`}</div>
+      <div style={{ ...TT.caption, marginTop: 6 }}>{`Ενδεικτικά, για έσοδα ${fe(draftTax.annual)} τον χρόνο.`}</div>
     </div>
   );
 

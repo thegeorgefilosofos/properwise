@@ -16,7 +16,9 @@ ok('χωρίς μακριά παύλα', !/[—–]/.test(text));
 ok('χωρίς κόμμα πριν από «και»', !/,\s*και(?!\p{L})/u.test(text));
 ok('η Νόα δεν λέγεται «βοηθός»', !/βοηθ/i.test(text));
 ok('κανένας αριθμός γραμμένος με το χέρι', !/\d/.test(text));
-ok('σύντομα κείμενα', TOUR_STEPS.every(s => s.body.length <= 160 && s.title.length <= 32));
+ok('τίτλος ως τρεις λέξεις', TOUR_STEPS.every(s => s.title.split(/\s+/).length <= 3));
+ok('σώμα ως δεκατέσσερις λέξεις, μία πρόταση', TOUR_STEPS.every(s => s.body.split(/\s+/).length <= 14 && (s.body.match(/[.;]/g) || []).length === 1));
+ok('χωρίς αποσιωπητικά ή θαυμαστικά', !/…|\.\.\.|!/.test(text));
 
 const card = { width: 340, height: 220 };
 for (const vw of [320, 375, 1280]) {
