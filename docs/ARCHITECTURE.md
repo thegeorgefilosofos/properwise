@@ -175,7 +175,7 @@ flowchart LR
   `TAB_MIN_PLAN`, property limits.
 - **Trial.** The trial runs inside the app, not at the merchant
   (`trialState` in `entitlements.ts`; its length is `TRIAL_DAYS` in
-  `plans.ts`). Creem products have no trial period.
+  `plans.ts`). Creem products are configured without a trial.
 - **Merchant of record.** Creem sells the subscription in its own name,
   issues the receipt, remits VAT and executes refunds (`lib/legal/merchant.ts`). The merchant is behind a port (`lib/billing/merchant/port.ts`,
   `merchant/index.ts`, implementation `merchant/creem.ts`). The active one is
@@ -277,16 +277,20 @@ Rules that hold at every level, enforced in SQL
 
 ## CI and scheduled checks
 
-- `ci.yml` runs on every pull request to `main`: `verify` (security scan,
-  audit, lint ratchet, typecheck for the app and the Deno functions, guards
-  and their mutations, ratchets, db-replay, tests, build, bundle secret
-  scan), then browser jobs (`rendered`, `scans`, `scans-light`, `layout`,
-  `layout-webkit`), then `gate`, which passes only if all of them passed.
+- `ci.yml` runs on every pull request to `main`. Six jobs run in parallel:
+  `verify` (security scan, audit, lint ratchet, typecheck for the app and the
+  Deno functions, guards and their mutations, ratchets, db-replay, tests,
+  build, bundle secret scan) and the browser jobs `rendered`, `scans`,
+  `scans-light`, `layout` and `layout-webkit`. Only `gate` has `needs:`; it
+  waits for all six and passes only if all of them passed.
 - A PR with a merge conflict runs no CI; see the rebranch rule in
   `CONTRIBUTING.md`.
 - Scheduled workflows: tax-data validity, ΑΑΔΕ form editions, the ΕΛΣΤΑΤ
   rent index, price freshness, a daily security sweep, a weekly production
-  quality pass, backups and a backup watchdog, production health.
+  quality pass, backups and a backup watchdog.
+- `health.yml` is not scheduled: it runs on push to `main` and on
+  `workflow_dispatch`. Between releases the `health-check` edge function runs
+  from pg_cron.
 
 ## Known debt
 
@@ -305,11 +309,13 @@ Stated plainly so that nobody builds on a wrong assumption.
   - `lib/i18n/en/legal/terms.ts` and `lib/i18n/en/legal/privacy.ts` (`app/legal-shell`)
   - `lib/i18n/en/landingStats.ts` (`app/dashboard/components/insurance/catalog`)
   - `lib/i18n/en/tools/buy.tsx` (`app/ToolParts`, `app/exoda-agoras-akinitou/lines`)
-- **`lib/` is not framework-free.** Besides the above, seven non-test files
-  in `lib/` import from `next/*` (`lib/auth/secondStep.ts`,
-  `lib/billing/requireFeature.ts`, `lib/billing/morWebhook.ts`,
-  `lib/supabase/server.ts`, `lib/observability/route.ts`,
-  `lib/i18n/useLocale.ts`, `lib/i18n/serverLocale.ts`). The README's
+- **`lib/` is not framework-free.** Besides the above, eight non-test files
+  in `lib/` depend on Next: seven import from `next/*`
+  (`lib/auth/secondStep.ts`, `lib/billing/requireFeature.ts`,
+  `lib/billing/morWebhook.ts`, `lib/supabase/server.ts`,
+  `lib/observability/route.ts`, `lib/i18n/useLocale.ts`,
+  `lib/i18n/serverLocale.ts`) and `lib/seo/noindex.ts` has a type import from
+  `'next'`. The README's
   repository layout still describes `lib/` as framework-free; that line is
   out of date.
 - **`lib/billing/` mixes concerns**: subscription billing and property tax

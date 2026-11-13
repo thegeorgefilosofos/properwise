@@ -48,6 +48,8 @@ cp .env.example .env.local      # .env.local is gitignored
 | `TESTER_CODE` | Beta tester code redeemed in the app (`lib/billing/testerCode.ts`). |
 | `SUPABASE_SERVICE_ROLE_KEY` | Bypasses RLS. Read only by `lib/supabase/service.ts`, for the few server routes that need it. |
 | `NEXT_PUBLIC_SITE_URL` | Canonical site URL (`lib/core/site.ts`). Blank uses the default. |
+| `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | Google Search Console verification tag (`app/layout.tsx`). Blank omits it. |
+| `NEXT_PUBLIC_BUILD_SHA` | Build identifier shown on error pages, served by `app/api/version` and sent as the Sentry release. Blank reports `dev`. |
 
 The app code also reads a few optional server variables that are not in
 `.env.example`, for email, push and scheduled routes: `RESEND_API_KEY`,
@@ -57,7 +59,9 @@ The app code also reads a few optional server variables that are not in
 Supabase function environment, not from `.env.local`.
 
 Never commit a value. Secrets in tracked files are blocked by
-`npm run security` in CI and by the daily security workflow.
+`npm run security`, a blocking step of the `verify` job in `ci.yml`. The
+daily `security-daily.yml` also runs it and opens an issue on a
+finding, but it cannot block anything: its steps are `continue-on-error`.
 
 ### Run locally
 
@@ -78,8 +82,8 @@ npx tsc --noEmit                # strict typecheck
 npm test                        # scripts/test.mjs: every *.test.ts, each in its own process
 npm run guards                  # scripts/run-guards.mjs: every scripts/guard-*.mjs, in parallel
 npm run guards:verify           # each guard must turn red on its own mutation
-npm run lint:ratchet            # lint error count may only go down
-npm run color:ratchet           # raw hex colours may only go down
+npm run lint:ratchet            # baseline is 0 errors, 0 warnings: any ESLint error or warning fails
+npm run color:ratchet           # raw hex and rgb()/rgba() colours may only go down
 npm run db:replay               # every migration on a real Postgres, plus write flows and RLS probes
 ```
 
@@ -107,15 +111,20 @@ request.
    on a `claude/*` branch and opens the PR. Some tasks start as GitHub issues
    filed by other tools (`docs/org/SYNERGEIA.md`,
    `.github/workflows/grok-gefyra.yml`).
-2. **Every PR gets an independent review.** The review rules are the
-   "Review guidelines" section of `AGENTS.md`: report only what can break,
-   with file and line, and state your confidence. Codex is set up as an
-   automated reviewer (`docs/org/ergaleia/codex.md`). The agent that wrote
-   the PR checks each finding against the code and either fixes it in the
-   same PR or answers once with file and line.
+2. **Every PR gets an independent review** by a separate AI agent, not the
+   one that wrote it. The review follows the "Review guidelines" section of
+   `AGENTS.md`: report only what can break, with file and line, and state
+   your confidence. Codex is one tool that can do this review
+   (`docs/org/ergaleia/codex.md`). The agent that wrote the PR checks each
+   finding against the code and either fixes it in the same PR or answers
+   once with file and line.
 3. **CI must be green.** The `gate` job (currently named «Ολα πράσινα») fails
    unless every other job in `ci.yml` succeeded.
-4. **A human squash-merges.** Nothing enters `main` automatically.
+4. **A human squash-merges.** Code changes reach `main` only this way, with
+   one exception: `.github/workflows/elstat-cpi.yml` runs on a schedule and,
+   when ΕΛΣΤΑΤ publishes a new index, commits `lib/market/cpi.ts` and pushes
+   it to `main` itself, after a typecheck, `npm test` and the CPI freshness
+   guard pass.
 
 ### After a squash merge: rebranch
 
@@ -173,7 +182,7 @@ Related rules from the same section:
 
 ## Language policy
 
-Decided by the owner on 13/11/2026.
+Project convention:
 
 **English** for:
 
@@ -245,15 +254,20 @@ The rule:
 2. When the number improves, lower the baseline **in the same commit** as
    the improvement, with a short note beside the number that says what
    changed.
-3. An improvement without a lowered baseline also fails, so the baseline
-   cannot drift high and hide a later regression.
+3. Whether an improvement without a lowered baseline also fails depends on
+   the check. `color:ratchet` fails (it uses `tightened()` from
+   `scripts/lib/ratchet.mjs`, as do several static `guard-*.mjs` scans), and
+   `perf:server` fails when the weight drops by more than 2%. `lint:ratchet`,
+   `optiki:ratchet`, `perf:budget` and `e2e:scale` only print a reminder to
+   lower the baseline; `perf:bench` and `perf:mobile` say nothing. Lower it
+   anyway, so the baseline cannot drift high and hide a later regression.
 
 Where they live:
 
 | Baseline | Measures | Command |
 |---|---|---|
-| `scripts/lint-baseline.json` | ESLint error count; some rule kinds are always zero | `npm run lint:ratchet` |
-| `scripts/color-baseline.json` | raw hex colours in `app/`, `components/` and `lib/` | `npm run color:ratchet` |
+| `scripts/lint-baseline.json` | ESLint errors and warnings; both ceilings are 0 (`maxErrors`, `maxWarnings`), so any error or warning fails | `npm run lint:ratchet` |
+| `scripts/color-baseline.json` | raw hex (`maxHex`) and `rgb()`/`rgba()` (`maxRgb`) colours in `app/`, `components/` and `lib/`, and raw colours in `supabase/functions` (`maxEdge`) | `npm run color:ratchet` |
 | `scripts/optiki-baseline.json` | visual defects from the optical scan | `npm run optiki:ratchet` |
 | `scripts/design-scale-baseline.json` | distinct type sizes, weights, gaps and radii rendered in the app | `npm run e2e:scale` |
 | `docs/perf/budget.json` | client wire bytes per public screen | `npm run perf:budget` |
