@@ -42,6 +42,18 @@ export interface MorSubscription {
   renewsAt: string | null;
   /** Πότε λήγει η πρόσβαση. Γεμάτο σε ακύρωση και σε λήξη. */
   endsAt: string | null;
+  /**
+   * Η τελευταία πληρωμένη συναλλαγή, όταν τη στέλνει ο έμπορος. Μόνο αυτήν
+   * μπορεί να κλείσει μια επιστροφή χρημάτων: η επιστροφή παλαιότερου μήνα
+   * δεν κόβει πελάτη που πλήρωσε ήδη τον επόμενο.
+   */
+  lastTransactionId?: string | null;
+  /**
+   * Πότε δημιουργήθηκε η συνδρομή στον έμπορο, σε ISO, όταν τη στέλνει. Μόνο
+   * με αυτήν αποδεικνύεται ότι μια ΑΛΛΗ συνδρομή είναι νεότερη από μια
+   * ανάκληση (έλεγχος του PR 558, εύρημα 5).
+   */
+  createdAt?: string | null;
 }
 
 // ── ΠΟΤΕ ΙΣΧΥΕΙ Η ΣΥΝΔΡΟΜΗ ────────────────────────────────────────────────
@@ -49,8 +61,13 @@ export interface MorSubscription {
 // `on_trial`   δοκιμή σε εξέλιξη — η μόνη δωρεάν περίοδος του προϊόντος.
 // `active`     πληρωμένη και ενεργή.
 // `past_due`   μια ανανέωση απέτυχε και ο έμπορος ξαναδοκιμάζει την
-//              είσπραξη. Η πρόσβαση ΜΕΝΕΙ: το να κλείσει η πόρτα σε πελάτη
-//              που απλώς άλλαξε κάρτα είναι χειρότερο από λίγες ημέρες πίστωση.
+//              είσπραξη. Η πρόσβαση ΜΕΝΕΙ για `PAST_DUE_GRACE_DAYS` ημέρες
+//              από την ΠΡΩΤΗ αποτυχία: το να κλείσει η πόρτα σε πελάτη που
+//              απλώς άλλαξε κάρτα είναι χειρότερο από λίγες ημέρες πίστωση.
+//              Μετά, ο λογαριασμός πέφτει στο πακέτο χωρίς συνδρομή ώσπου να
+//              περάσει η πληρωμή. Ως τις 12/11/2026 η πρόσβαση έμενε χωρίς
+//              όριο, όσο ο έμπορος δεν έστελνε «unpaid» (έλεγχος ετοιμότητας
+//              πληρωμών 12/11/2026, «Λείπει (κώδικας)» 2).
 // `cancelled`  ακυρώθηκε η ΜΕΛΛΟΝΤΙΚΗ χρέωση, αλλά η περίοδος που πληρώθηκε
 //              τρέχει ακόμη. Η πρόσβαση ΜΕΝΕΙ ως το `ends_at` και ούτε μέρα
 //              παραπάνω. Χωρίς `ends_at` δεν υπάρχει πρόσβαση: δεν εφευρίσκουμε
@@ -62,17 +79,51 @@ export interface MorSubscription {
 // `expired`    τελείωσε.
 //
 /**
+ * ΠΟΣΕΣ ΗΜΕΡΕΣ ΚΡΑΤΑ Η ΠΡΟΣΒΑΣΗ ΜΕΤΑ ΤΗΝ ΠΡΩΤΗ ΑΠΟΤΥΧΗΜΕΝΗ ΧΡΕΩΣΗ.
+ *
+ * ΕΚΚΡΕΜΕΙ ΕΓΚΡΙΣΗ ΙΔΙΟΚΤΗΤΗ (12/11/2026): ο αριθμός είναι πρόταση του
+ * ελέγχου ετοιμότητας πληρωμών και θα επιβεβαιωθεί ή θα αλλάξει από τον
+ * ιδιοκτήτη, μαζί με την `public.past_due_grace_days()`.
+ *
+ * ΕΠΙΛΟΓΗ ΠΡΟΪΟΝΤΟΣ, ΟΧΙ ΚΑΝΟΝΑΣ ΤΟΥ ΕΜΠΟΡΟΥ ΟΥΤΕ ΤΟΥ ΝΟΜΟΥ. Μια εβδομάδα
+ * φτάνει για να δει ο πελάτης το email του εμπόρου και να αλλάξει κάρτα, χωρίς
+ * να γίνεται η καθυστέρηση δωρεάν μήνας. Αλλάζει μόνο με απόφαση ιδιοκτήτη και
+ * ΜΑΖΙ με την `public.past_due_grace_days()` της βάσης: το db-replay ελέγχει
+ * ότι οι δύο αριθμοί συμφωνούν.
+ */
+export const PAST_DUE_GRACE_DAYS = 7;
+
+/**
+ * Ως πότε κρατά η πρόσβαση μιας συνδρομής σε καθυστέρηση πληρωμής.
+ *
+ * `null` όταν δεν ξέρουμε πότε ξεκίνησε η καθυστέρηση: δεν εφευρίσκουμε
+ * ημερομηνία για να κόψουμε πρόσβαση.
+ */
+export function pastDueUntil(since: string | null | undefined): string | null {
+  const t = since ? Date.parse(since) : NaN;
+  return Number.isFinite(t) ? new Date(t + PAST_DUE_GRACE_DAYS * 86_400_000).toISOString() : null;
+}
+
+/**
  * Ισχύει η συνδρομή τη δεδομένη στιγμή;
  *
+ * @param sub.pastDueSince Η πρώτη αποτυχημένη χρέωση (`mor_past_due_at`). Μόνο
+ *               για το `past_due`· χωρίς αυτήν η χάρη δεν λήγει.
  * @param nowIso Η στιγμή που κρίνεται, σε ISO. Δίνεται από τον καλούντα ώστε ο
  *               έλεγχος να είναι ντετερμινιστικός.
  */
-export function isEntitled(sub: { status: MorStatus; endsAt: string | null }, nowIso: string): boolean {
+export function isEntitled(
+  sub: { status: MorStatus; endsAt: string | null; pastDueSince?: string | null },
+  nowIso: string,
+): boolean {
   switch (sub.status) {
     case 'on_trial':
     case 'active':
-    case 'past_due':
       return true;
+    case 'past_due': {
+      const until = pastDueUntil(sub.pastDueSince);
+      return !until || Date.parse(nowIso) < Date.parse(until);
+    }
     case 'cancelled':
       return !!sub.endsAt && nowIso < sub.endsAt;
     case 'paused':
@@ -200,6 +251,10 @@ export type CardTone =
   | 'trial'
   | 'active'
   | 'retrying'
+  /** Η πληρωμή δεν πέρασε και η χάρη τελείωσε: το πακέτο σταμάτησε. */
+  | 'retrying-over'
+  /** Επιστροφή χρημάτων ή αμφισβήτηση έκλεισε την πρόσβαση. */
+  | 'revoked'
   /** Τίποτα να πει. */
   | 'none';
 
@@ -212,16 +267,35 @@ export interface CardState {
   running: boolean;
 }
 
-export function cardState(sub: { status: string; endsAt: string | null }, nowIso: string): CardState {
+/**
+ * ΔΥΟ ΠΛΑΙΣΙΑ ΑΚΟΜΗ (έλεγχος ετοιμότητας πληρωμών 12/11/2026). Η επιστροφή
+ * χρημάτων γράφει `expired` με λήξη τη στιγμή της επιστροφής· χωρίς δικό της
+ * πλαίσιο θα διαβαζόταν «η συνδρομή έληξε», που δεν εξηγεί τίποτα. Και το
+ * `past_due` μετά τη χάρη δεν είναι πια «ξαναδοκιμάζεται με ανοιχτό
+ * λογαριασμό»: το πακέτο έχει σταματήσει και αυτό πρέπει να λέγεται.
+ *
+ * ΤΟ `past_due` ΚΡΑΤΑ ΤΟ ΤΑΜΕΙΟ ΚΛΕΙΣΤΟ ΚΑΙ ΜΕΤΑ ΤΗ ΧΑΡΗ. Η συνδρομή ζει
+ * ακόμη στον έμπορο, που ξαναδοκιμάζει την είσπραξη· μια δεύτερη αγορά θα
+ * χρέωνε δύο φορές τη μέρα που θα περάσει η κάρτα. Η λύση είναι η κάρτα, από
+ * τη διαχείριση συνδρομής.
+ */
+export function cardState(
+  sub: { status: string; endsAt: string | null; pastDueSince?: string | null; revokedAt?: string | null },
+  nowIso: string,
+): CardState {
   const endsAt = (sub.endsAt || '').trim();
   const endsAhead = !!endsAt && nowIso < endsAt;
   const phase = subPhase(sub.status);
   const live = phase === 'trial' || phase === 'active' || phase === 'retrying';
-  const tone: CardTone = endsAhead ? 'cancelled-running'
-    : endsAt ? 'cancelled-over'
-      : phase === 'trial' ? 'trial'
-        : phase === 'active' ? 'active'
-          : phase === 'retrying' ? 'retrying'
-            : 'none';
+  const revoked = !!(sub.revokedAt || '').trim() && !live && !endsAhead;
+  const graceOver = phase === 'retrying' && !isEntitled({ status: 'past_due', endsAt: null, pastDueSince: sub.pastDueSince }, nowIso);
+  const tone: CardTone = revoked ? 'revoked'
+    : endsAhead ? 'cancelled-running'
+      : endsAt ? 'cancelled-over'
+        : phase === 'trial' ? 'trial'
+          : phase === 'active' ? 'active'
+            : graceOver ? 'retrying-over'
+              : phase === 'retrying' ? 'retrying'
+                : 'none';
   return { tone, running: live || endsAhead };
 }

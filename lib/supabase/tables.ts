@@ -290,6 +290,11 @@ export interface BillingProfilesRow {
   hold_plan: string | null;
   hold_until: string | null;
   lapsed_at: string | null;
+  mor_past_due_at: string | null;
+  mor_revoked_at: string | null;
+  mor_revoked_reason: string | null;
+  mor_revoked_ref: string | null;
+  mor_last_transaction_id: string | null;
 }
 
 export interface BillsRow {

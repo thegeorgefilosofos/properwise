@@ -36,6 +36,7 @@ import { isMorStatus } from '../subscription';
 import type {
   BillingEnv, MerchantPort, CheckoutOrder, ChangeOrder,
   CheckoutResult, PortalResult, ChangeResult, ReadEvent, SubscriptionState,
+  Revocation, ConfigDiagnosis,
 } from './port';
 import { PLAN_ORDER, BILLING_CYCLES, type PlanId, type BillingCycle } from '../plans';
 import { CREEM_LOGO } from './creemLogo';
@@ -231,6 +232,16 @@ async function fetchSubscription(
   return { sub: data, error: '' };
 }
 
+/** Ενα ποσό σε λεπτά, όταν είναι πράγματι αριθμός. */
+const cents = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
+/** Ωρα σε χιλιοστά εποχής ή σε ISO, ως ISO. */
+const when = (v: unknown): string | null => {
+  if (typeof v === 'number' && Number.isFinite(v)) return new Date(v).toISOString();
+  const s = str(v);
+  return s && Number.isFinite(Date.parse(s)) ? new Date(Date.parse(s)).toISOString() : null;
+};
+
 export const creemPort: MerchantPort = {
   id: 'creem',
   name: MERCHANT_NAMES.creem,
@@ -264,7 +275,34 @@ export const creemPort: MerchantPort = {
     if (error) return error;
     if (map.size === 0) return `Λείπει η μεταβλητή: ${CREEM_PRODUCTS_ENV}.`;
     const missing = missingPairs(env);
-    return missing.length ? `Στο ${CREEM_PRODUCTS_ENV} λείπουν: ${missing.join(', ')}.` : '';
+    if (missing.length) return `Στο ${CREEM_PRODUCTS_ENV} λείπουν: ${missing.join(', ')}.`;
+    // ΧΩΡΙΣ ΜΥΣΤΙΚΟ WEBHOOK ΔΕΝ ΠΟΥΛΑΜΕ (έλεγχος του PR 558, M3). Κάθε γεγονός θα
+    // έπαιρνε 401: ο πελάτης θα πλήρωνε και το πακέτο του δεν θα άνοιγε ποτέ.
+    if (!(env[CREEM_SECRET_ENV] || '').trim()) return `Λείπει η μεταβλητή: ${CREEM_SECRET_ENV}. Χωρίς αυτήν κάθε γεγονός του εμπόρου παίρνει 401.`;
+    return '';
+  },
+
+  // ΟΛΑ ΤΑ ΕΜΠΟΔΙΑ ΜΑΖΙ, ΜΕ ΚΩΔΙΚΟΥΣ. Το `ok` βγαίνει από το ίδιο το
+  // `configError`, ώστε η διάγνωση να μη διαφωνεί ποτέ με την πύλη του ταμείου.
+  diagnose(env): ConfigDiagnosis {
+    const k = key(env);
+    const raw = (env[CREEM_PRODUCTS_ENV] || '').trim();
+    const { map, error } = productMap(env);
+    // Κάθε γραμμή του χάρτη ή μπαίνει στον χάρτη ή είναι λάθος: η διαφορά είναι
+    // το πλήθος των λαθών, χωρίς να διαβαστεί το κείμενό τους.
+    const entries = raw.split(',').map(e => e.trim()).filter(Boolean).length;
+    const missing = missingPairs(env);
+    return {
+      ok: creemPort.configError(env) === '',
+      key: !k ? 'missing' : isTest(env) ? 'test' : 'live',
+      testModeConflict: !!k && flagOn(env[CREEM_TEST_ENV]) && !isTest(env),
+      testKeyInProduction: !!k && isTest(env) && isProduction(env),
+      products: !raw ? 'missing' : error ? 'unreadable' : map.size === 0 ? 'missing' : missing.length ? 'incomplete' : 'complete',
+      badEntries: error && raw ? entries - map.size : 0,
+      missingPairs: missing,
+      webhookSecret: !!(env[CREEM_SECRET_ENV] || '').trim(),
+      production: isProduction(env),
+    };
   },
 
   async openCheckout(order: CheckoutOrder, env, fetcher): Promise<CheckoutResult> {
@@ -374,6 +412,44 @@ export const creemPort: MerchantPort = {
     return a.length === b.length && timingSafeEqual(a, b);
   },
 
+  // ── ΕΠΙΣΤΡΟΦΗ ΧΡΗΜΑΤΩΝ ΚΑΙ ΑΜΦΙΣΒΗΤΗΣΗ ──────────────────────────────────
+  // Τα `refund.created` και `dispute.created` της τεκμηρίωσης του παρόχου: η
+  // συνδρομή έρχεται ως αντικείμενο ή ως κείμενο, στο ίδιο το γεγονός ή μέσα
+  // στη συναλλαγή. Το σχήμα δεν έχει περάσει ακόμη από αληθινή επιστροφή, γι'
+  // αυτό διαβάζονται και οι δύο θέσεις και κανένα πεδίο δεν εφευρίσκεται. Το
+  // ποιος λογαριασμός κόβεται το κρίνει ο webhook, μόνο από τη συνδρομή που
+  // έχει ήδη καταγράψει.
+  readRevocation(payload: unknown): Revocation | null {
+    const p = (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
+    const name = String(p.eventType || '').trim();
+    const kind = name.startsWith('refund.') ? 'refund' : name.startsWith('dispute.') ? 'dispute' : null;
+    if (!kind) return null;
+    const obj = (p.object && typeof p.object === 'object' ? p.object : {}) as Record<string, unknown>;
+    const tx = (obj.transaction && typeof obj.transaction === 'object' ? obj.transaction : {}) as Record<string, unknown>;
+    const subscriptionId = idOf(obj.subscription) || idOf(tx.subscription) || null;
+    // ΙΔΙΑ ΒΑΣΗ: το ποσό της επιστροφής ή της αμφισβήτησης απέναντι στο
+    // `amount_paid`, δηλαδή όσα ΠΛΗΡΩΣΕ ο πελάτης. Το `amount` της συναλλαγής
+    // είναι πριν από φόρο και έκπτωση· δεν χρησιμοποιείται ως εφεδρεία, γιατί
+    // ένα καθαρό ποσό ίσο με αυτό θα έμοιαζε ολόκληρη επιστροφή ενώ δεν είναι.
+    const amount = cents(kind === 'refund' ? obj.refund_amount : obj.amount);
+    const currency = (str(kind === 'refund' ? obj.refund_currency : obj.currency) || '').toUpperCase();
+    const paid = cents(tx.amount_paid);
+    const paidCurrency = (str(tx.currency) || '').toUpperCase();
+    const whole: Revocation['whole'] = amount === null || paid === null || !currency || !paidCurrency ? 'missing'
+      : currency !== paidCurrency ? 'basis'
+        : amount === paid ? 'yes'
+          : amount < paid && amount === cents(tx.amount) ? 'basis'
+            : amount < paid ? 'partial' : 'basis';
+    return {
+      kind,
+      subscriptionId,
+      transactionId: idOf(obj.transaction) || null,
+      reference: idOf(obj) || null,
+      occurredAt: when(p.created_at) ?? when(obj.created_at),
+      whole,
+    };
+  },
+
   readEvent(payload: unknown, env): ReadEvent {
     const p = (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
     const name = String(p.eventType || '').trim();
@@ -413,6 +489,12 @@ export const creemPort: MerchantPort = {
       userId: str(meta.user_id),
       renewsAt: str(obj.current_period_end_date) ?? str(obj.next_transaction_date),
       endsAt: endsAtOf(obj, status, occurredAtOf(p, obj)),
+      // Η ΤΕΛΕΥΤΑΙΑ ΠΛΗΡΩΜΕΝΗ ΣΥΝΑΛΛΑΓΗ ΤΗΣ ΣΥΝΔΡΟΜΗΣ (`last_transaction_id`, ή
+      // το αντικείμενο `last_transaction`). Μόνο αυτήν κλείνει μια επιστροφή.
+      lastTransactionId: str(obj.last_transaction_id) ?? (idOf(obj.last_transaction) || null),
+      // ΠΟΤΕ ΓΕΝΝΗΘΗΚΕ Η ΣΥΝΔΡΟΜΗ. Κρίνει αν μια άλλη συνδρομή είναι νεότερη από
+      // μια ανάκληση (lib/billing/morWebhook.ts, έλεγχος του PR 558, εύρημα 5).
+      createdAt: when(obj.created_at),
     };
 
     // ΠΟΤΕ ΣΥΝΕΒΗ, ΩΣΤΕ ΕΝΑ ΚΑΘΥΣΤΕΡΗΜΕΝΟ ΝΑ ΜΗ ΓΡΑΨΕΙ ΠΑΝΩ ΣΕ ΝΕΟΤΕΡΟ. Ο
@@ -420,6 +502,11 @@ export const creemPort: MerchantPort = {
     // πρώτο, γιατί αφορά το ΓΕΓΟΝΟΣ και όχι το αντικείμενο.
     const occurredAt = occurredAtOf(p, obj);
 
-    return { ok: true, event: { name, sub, plan: planOfVariant(map, productId), occurredAt } };
+    // Η ΧΡΕΩΣΗ ΠΟΥ ΠΕΡΑΣΕ ΕΧΕΙ ΔΙΚΟ ΤΗΣ ΓΕΓΟΝΟΣ στον πάροχο, το
+    // `subscription.paid` (πρώτη πληρωμή και κάθε ανανέωση). Τα υπόλοιπα
+    // λένε κατάσταση, όχι πληρωμή.
+    const paid = name === 'subscription.paid';
+
+    return { ok: true, event: { name, sub, plan: planOfVariant(map, productId), occurredAt, paid } };
   },
 };

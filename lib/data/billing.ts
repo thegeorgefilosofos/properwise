@@ -45,6 +45,9 @@ const SERVER_OWNED = [
   'plan', 'billing_cycle',
   'comp_plan', 'comp_until', 'comp_months_granted', 'comp_started_at',
   'mor_customer_id', 'mor_subscription_id', 'mor_variant_id', 'mor_renews_at', 'mor_ends_at', 'mor_event_at', 'subscription_status',
+  // Η ΧΑΡΗ ΤΗΣ ΑΠΟΤΥΧΗΜΕΝΗΣ ΠΛΗΡΩΜΗΣ ΚΑΙ Η ΕΠΙΣΤΡΟΦΗ ΧΡΗΜΑΤΩΝ (20261112190000):
+  // αν τις έγραφε ο πελάτης, θα μηδένιζε μόνος του το ρολόι της χάρης.
+  'mor_past_due_at', 'mor_revoked_at', 'mor_revoked_reason', 'mor_revoked_ref', 'mor_last_transaction_id',
   // Η χρήση της δοκιμής και η ιδιότητα δοκιμαστή δίνουν ΔΩΡΕΑΝ ΧΡΗΣΗ: αν τις
   // έγραφε ο πελάτης, η δοκιμή θα ξεκινούσε από την αρχή όποτε ήθελε.
   'trial_used_at', 'tester_since',

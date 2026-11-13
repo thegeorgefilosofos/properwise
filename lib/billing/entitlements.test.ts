@@ -8,6 +8,7 @@ import {
   trialState, isOpenEnded, planFromParam, cycleFromParam, profileForPlan, activeHold,
   checkoutLanding, type EntitlementInput,
 } from './entitlements';
+import { PAST_DUE_GRACE_DAYS } from './subscription';
 
 let p = 0, f = 0;
 const ok = (c: boolean, m: string) => { if (c) p++; else { f++; console.error('✗', m); } };
@@ -350,6 +351,15 @@ for (const id of ['free', 'solo', 'owner', 'agency', 'office'] as const) {
   ok(livePlan({ plan: 'agency', subscription_status: 'cancelled', mor_ends_at: null }, T) === 'agency',
      'χωρίς ημερομηνία: η στήλη αποφασίζει, όπως πριν');
   ok(livePlan(null, T) === 'free', 'χωρίς γραμμή: δωρεάν');
+  // Η ΑΠΟΤΥΧΗΜΕΝΗ ΠΛΗΡΩΜΗ ΚΡΑΤΑ ΤΟ ΠΑΚΕΤΟ ΜΟΝΟ ΜΕΣΑ ΣΤΗ ΧΑΡΗ (έλεγχος 12/11/2026).
+  const DAY = 86_400_000;
+  const failedAgo = (d: number) => new Date(T - d * DAY).toISOString();
+  ok(livePlan({ plan: 'agency', subscription_status: 'past_due', mor_past_due_at: failedAgo(1) }, T) === 'agency',
+     'past_due μέσα στη χάρη: κρατά το πακέτο');
+  ok(livePlan({ plan: 'agency', subscription_status: 'past_due', mor_past_due_at: failedAgo(PAST_DUE_GRACE_DAYS + 1) }, T) === 'free',
+     'past_due μετά τη χάρη: δωρεάν, όπως στη βάση');
+  ok(livePlan({ plan: 'agency', subscription_status: 'past_due', mor_past_due_at: null }, T) === 'agency',
+     'past_due χωρίς ώρα: η στήλη αποφασίζει');
 }
 
 console.log(`\nbilling/entitlements.ts — ${p} passed, ${f} failed`);
