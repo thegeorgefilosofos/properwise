@@ -7,6 +7,10 @@ import { PROTHESMIES_PATH, PROTHESMIES_UPDATED, monthPath, upcomingMonths } from
 import { athensToday } from '@/lib/core/time'
 import { languageAlternates } from '@/lib/i18n/paths'
 
+// Οι μήνες των προθεσμιών αλλάζουν με την ημερομηνία: ο χάρτης ξαναχτίζεται
+// κάθε 24 ώρες, όπως οι σελίδες των μηνών, ώστε να μη δείχνει μήνα που έγινε noindex.
+export const revalidate = 86400
+
 // Χάρτης της δημόσιας σελίδας για τις μηχανές αναζήτησης. Μόνο δημόσιες
 // διαδρομές: το dashboard, τα portals και οι σελίδες με token μένουν εκτός.
 //

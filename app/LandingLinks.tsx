@@ -27,7 +27,7 @@ const COL: React.CSSProperties = {
   padding: 'clamp(18px, 2.2vw, 24px)',
 }
 const H3: React.CSSProperties = { fontSize: 16, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.02em', color: TEXT }
-const ITEM: React.CSSProperties = { color: TEXT, textDecoration: 'none', fontSize: 15, fontWeight: 500 }
+const ITEM: React.CSSProperties = { color: TEXT, textDecoration: 'none', fontSize: 15, fontWeight: 500, display: 'flex', width: '100%' }
 const ALL: React.CSSProperties = { color: ACCENT, textDecoration: 'none', fontSize: 15, fontWeight: 600 }
 
 function Column({ title, links, all }: {
@@ -55,7 +55,7 @@ export function ToolsAndGuides() {
   const guides = LISTED_GUIDES.slice(0, PER_COLUMN).map(g => ({ href: g.href, text: g.title }))
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: CARD_GAP }}>
-      <Column title="Υπολογισμοί χωρίς εγγραφή" links={tools}
+      <Column title="Υπολογισμοί" links={tools}
         all={{ href: TOOLS_HUB.href, text: `Όλοι οι υπολογισμοί (${PUBLIC_TOOLS.length})` }} />
       <Column title="Οδηγοί" links={guides}
         all={{ href: '/odigos', text: `Όλοι οι οδηγοί (${LISTED_GUIDES.length})` }} />

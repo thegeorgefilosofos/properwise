@@ -241,7 +241,7 @@ function splitFoot(links: [string, string][], hub: [string, string] | null, more
 // (~6 KB gzip σε κάθε δημόσια σελίδα). Το guides.test ελέγχει ότι κάθε σύνδεσμος
 // εδώ είναι δημοσιευμένος οδηγός. Ο οδηγός ΑΜΑ έμενε έξω από τα κοινά κομμάτια
 // με την απόφαση της 13/10· μπήκε στον κατάλογο στις 27/10/2026 και από
-// 14/11/2026 κάθεται εδώ δίπλα στον οδηγό Airbnb, το ίδιο θέμα.
+// 14/11/2026 ακολουθεί τον οδηγό Airbnb στη λίστα, το ίδιο θέμα.
 const FOOT_GUIDES: [string, string][] = [
   ['/odigos/pos-ypologizetai-o-enfia', 'Πώς υπολογίζεται ο ΕΝΦΙΑ'],
   ['/odigos/ekptosi-forou-anakainisis', 'Έκπτωση φόρου για ανακαίνιση'],
