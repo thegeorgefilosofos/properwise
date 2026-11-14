@@ -35,6 +35,42 @@ const GROUP_LABEL: Record<TaxLimitGroup, string> = {
   yield: 'Κλίμακα ενοικίων, τεκμαρτή έκπτωση, ΕΝΦΙΑ',
 };
 
+/**
+ * Το όνομα της πηγής όπως το διαβάζει ο άνθρωπος, από τη διεύθυνση του
+ * μητρώου. Η οθόνη έγραφε «μητρώο ισχύος της εφαρμογής, με τον νόμο ή την
+ * ΑΑΔΕ»: το μητρώο είναι δικό μας εργαλείο, η πηγή είναι ο νόμος ή η ΑΑΔΕ και
+ * ο σύνδεσμος πήγαινε ήδη εκεί.
+ */
+export function sourceName(url: string | undefined): string {
+  if (!url) return 'ΑΑΔΕ ή ΦΕΚ';
+  // Η διεύθυνση του Εθνικού Τυπογραφείου: /apiFEK/{τεύχος}/{έτος}/{αριθμός}/pdf.
+  // Αδιάσπαστο κενό μετά το «ΦΕΚ» και το τεύχος: δεν σπάει η παραπομπή.
+  const fek = /et\.gr\/apiFEK\/(\d+)\/(\d{4})\/(\d+)/.exec(url);
+  if (fek) {
+    const issue = ({ '1': 'Α΄', '2': 'Β΄', '4': 'Δ΄' } as Record<string, string>)[fek[1]];
+    return issue ? `ΦΕΚ\u00a0${issue}\u00a0${fek[3]}/${fek[2]}` : `ΦΕΚ\u00a0${fek[3]}/${fek[2]}`;
+  }
+  if (/(^|\.)aade\.gr\//.test(url.replace(/^https?:\/\//, ''))) return 'ΑΑΔΕ';
+  return 'ΑΑΔΕ ή ΦΕΚ';
+}
+
+/**
+ * Ό,τι περιμένει το μητρώο για τους κανόνες μιας ομάδας (νόμος ή απόφαση που
+ * θα τους αλλάξει), χωρίς διπλά. Η οθόνη το λέει δίπλα στην ημερομηνία ελέγχου
+ * αντί να το κρύβει πίσω από ένα «ελέγχθηκε».
+ */
+export function taxLimitPending(group: TaxLimitGroup): { title: string; href: string }[] {
+  const seen = new Set<string>();
+  const out: { title: string; href: string }[] = [];
+  for (const id of TAX_LIMIT_GROUPS[group]) {
+    const p = regulated(id).pending;
+    if (!p || seen.has(p.title)) continue;
+    seen.add(p.title);
+    out.push({ title: p.title, href: p.href });
+  }
+  return out;
+}
+
 /** Πότε ελέγχθηκαν τα όρια μιας ομάδας και από πού, από το μητρώο ισχύος. */
 export function taxLimitAsOf(group: TaxLimitGroup): AsOf {
   const rows = TAX_LIMIT_GROUPS[group].map(id => regulated(id));
@@ -44,8 +80,9 @@ export function taxLimitAsOf(group: TaxLimitGroup): AsOf {
   return {
     label: GROUP_LABEL[group],
     checkedAt: oldest,
-    source: 'μητρώο ισχύος της εφαρμογής, με τον νόμο ή την ΑΑΔΕ',
+    source: sourceName(rows[0]?.source),
     url: rows[0]?.source,
+    rules: true,
   };
 }
 

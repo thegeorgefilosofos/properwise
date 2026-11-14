@@ -55,9 +55,11 @@ import * as settings from '@/lib/data/settings';
 import { T, TT, fe, feWhole, fp, SecHdr, Spinner, fixedCols, Btn, ABSENT } from '@/components/Theme';
 import { openMyaadeImport } from './myaadeOpen';
 import { NumberInput, CustomSelect } from './UIComponents';
-import { AadePill } from '@/components/AadeLink';
+import { aadeTitle } from '@/components/AadeLink';
+import { AADE_DESTINATIONS } from '@/lib/tax/aade';
+import { ArrowUpRight } from 'lucide-react';
 import { AsOfNote } from '@/components/AsOfNote';
-import { taxLimitAsOf } from '@/lib/facts/taxLimits';
+import { taxLimitAsOf, taxLimitPending } from '@/lib/facts/taxLimits';
 import {
   ENFIA_REDUCTIONS, ENFIA_FLOOR_COEF, enfiaReductionInForce, enfiaReductionRate, enfiaAgeChoices,
   ENFIA_SURCHARGE_THRESHOLD, ENFIA_EXTRA_TAX_FREE,
@@ -407,13 +409,17 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
     <div style={{ fontFamily: T.font.sans, color: 'var(--text-primary)' }}>
       <SecHdr label="Υπολογισμός ΕΝΦΙΑ"
         sub="Πόσο είναι ο φόρος του ακινήτου και πόσα να βάζεις στην άκρη κάθε μήνα"
-        right={<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        right={<div className="enfia-hdr-actions">
           {/* Η ΠΡΑΞΗ ΑΠΟ ΤΟ myAADE ΓΡΑΦΕΙ ΤΟ ΣΥΝΟΛΟ: δόσεις και υπενθυμίσεις βγαίνουν από αυτό. */}
           <Btn variant="secondary" onClick={() => openMyaadeImport()}>Ενημέρωσε από την πράξη</Btn>
-          <AadePill action="enfia" label="Ε9 και ΕΝΦΙΑ"/>
+          {/* ΙΔΙΟ ΥΨΟΣ ΜΕ ΤΟ ΔΙΠΛΑΝΟ (14/11/2026). Η πιλούλα της ΑΑΔΕ ήταν 27
+              δίπλα σε κουμπί 36 ή 44: δύο ενέργειες της ίδιας σειράς σε δύο
+              σχήματα. Τώρα είναι κουμπί-σύνδεσμος ίδιου σχήματος, ήσυχο. */}
+          <Btn variant="ghost" href={AADE_DESTINATIONS.enfia.url} newTab title={aadeTitle('enfia')}>Ε9 και ΕΝΦΙΑ<ArrowUpRight size={13} aria-hidden="true" /></Btn>
         </div>}/>
-      {/* Οι συντελεστές και τα όρια του υπολογισμού, με το πότε ελέγχθηκαν (lib/facts/taxLimits). */}
-      <AsOfNote fact={taxLimitAsOf('enfia')} style={{ margin: '-4px 0 12px' }} />
+      {/* Οι συντελεστές και τα όρια του υπολογισμού, με το πότε τα έλεγξε
+          άνθρωπος και ό,τι εκκρεμεί για αυτά (lib/facts/taxLimits). */}
+      <AsOfNote fact={taxLimitAsOf('enfia')} pending={taxLimitPending('enfia')} style={{ margin: '-4px 0 12px' }} />
 
       {/* ── Η ΑΠΑΝΤΗΣΗ ΠΡΩΤΗ, ΜΕ ΤΗΝ ΠΗΓΗ ΤΗΣ ─────────────────────────────
           Το νούμερο δεν στέκει ποτέ γυμνό. Δίπλα του λέγεται από πού ήρθε και
