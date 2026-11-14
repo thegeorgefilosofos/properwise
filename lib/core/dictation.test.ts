@@ -8,6 +8,7 @@ import {
   fieldWriter, platformOf, startSession, type DictationState, type DictationError,
 } from './dictation';
 import type { SpeechEvent } from './speech';
+import { PRODUCT_NAME } from './site';
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
@@ -135,7 +136,10 @@ ok('πλατφόρμα: Android', platformOf(AND, false) === 'android');
 ok('πλατφόρμα: Safari σε Mac', platformOf(MACSAF, false) === 'mac-safari');
 ok('πλατφόρμα: Chrome σε Mac δεν είναι Safari', platformOf(MACCHROME, false) === 'desktop');
 ok('πλατφόρμα: Chrome/Edge', platformOf(CHROME, false) === 'desktop' && platformOf(EDGE, false) === 'desktop');
-ok('πλατφόρμα: εγκατεστημένη εφαρμογή', platformOf(CHROME, true) === 'pwa' && platformOf(AND, true) === 'pwa');
+ok('πλατφόρμα: εγκατεστημένη στο κινητό', platformOf(AND, true) === 'pwa' && platformOf(IOS, true) === 'pwa');
+ok('πλατφόρμα: εγκατεστημένη στον υπολογιστή', platformOf(CHROME, true) === 'pwa-desktop' && platformOf(EDGE, true) === 'pwa-desktop');
+const CRIOS = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0 Mobile/15E148 Safari/604.1';
+ok('πλατφόρμα: Chrome στο iPhone', platformOf(CRIOS, false) === 'ios-chrome');
 ok('iPad που δηλώνει Mac με αφή: iOS', platformOf(MACSAF, false, 5) === 'ios');
 {
   const m = (pl: Parameters<typeof errorMessage>[1]) => errorMessage('denied', pl);
@@ -143,6 +147,9 @@ ok('iPad που δηλώνει Mac με αφή: iOS', platformOf(MACSAF, false, 
   ok('Android: Άδειες', /Άδειες/.test(m({ platform: 'android' })));
   ok('Safari Mac: Ιστότοποι', /Ιστότοποι/.test(m({ platform: 'mac-safari' })));
   ok('εγκατεστημένη: ρυθμίσεις της συσκευής', /ρυθμίσεις της συσκευής/.test(m({ platform: 'pwa' })));
+  ok('εγκατεστημένη στον υπολογιστή: Πληροφορίες εφαρμογής', /Πληροφορίες εφαρμογής/.test(m({ platform: 'pwa-desktop' })));
+  ok('Chrome στο iPhone: Ρυθμίσεις του iPhone, όχι aA', /Ρυθμίσεις του iPhone/.test(m({ platform: 'ios-chrome' })) && !/aA/.test(m({ platform: 'ios-chrome' })));
+  ok('το όνομα του προϊόντος από τη σταθερά', m({ platform: 'pwa' }).includes(PRODUCT_NAME));
   ok('Chrome/Edge: λουκέτο', /λουκέτο/.test(m({ platform: 'desktop' })));
   ok('μόνο ο υπολογιστής μιλά για λουκέτο', !/λουκέτο/.test(m({ platform: 'ios' }) + m({ platform: 'android' }) + m({ platform: 'pwa' })));
   ok('ευγενικός πληθυντικός ανά πλατφόρμα', /Πατήστε/.test(m({ platform: 'ios', formal: true })));

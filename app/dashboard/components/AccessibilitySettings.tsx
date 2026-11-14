@@ -72,7 +72,7 @@ export function AccessibilitySettings() {
         </div>
       </SetRow>
       {canSpeak && (
-        <SetRow title="Ανάγνωση ποσών" desc="Κουμπί «Άκουσε» δίπλα στα βασικά ποσά της Επισκόπησης. Τα διαβάζει φωναχτά, ολογράφως."
+        <SetRow title="Ανάγνωση ποσών" desc="Ένα ηχείο δίπλα στον τίτλο «Η χρονιά» της Επισκόπησης. Πατάς και ακούς τα βασικά ποσά φωναχτά, ολογράφως."
           control={<Toggle on={prefs.speakAmounts} onChange={v => update({ speakAmounts: v })} ariaLabel="Ανάγνωση ποσών" />}>
           <SpeakAmount always title="" figures={SAMPLE} label="ένα παράδειγμα" text="Άκουσε ένα παράδειγμα" />
         </SetRow>

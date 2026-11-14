@@ -9,7 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useNavHistory } from '../useNavHistory'
 import { useEffect, useState, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
-import { A11Y_KEY, applyA11y, parseA11y } from '@/lib/core/a11yPrefs'
+import { A11Y_KEY, APP_ATTR, applyA11y, parseA11y } from '@/lib/core/a11yPrefs'
 import { createClient } from '@/lib/supabase/client'
 import { hardNavigate } from '@/lib/core/navigate'
 import { endSession, SIGN_OUT_FAILED } from '@/lib/auth/endSession'
@@ -210,7 +210,12 @@ export function useDashboard() {
       try { applyA11y(document.documentElement, parseA11y(e.newValue)); } catch { /* χωρίς DOM */ }
     };
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      // Φεύγοντας από τον πίνακα ελέγχου (πλοήγηση χωρίς ανανέωση), το σημάδι
+      // του πρώτου paint φεύγει μαζί· τη μεγέθυνση την κρατά μόνο το `.app-shell`.
+      try { document.documentElement.removeAttribute(APP_ATTR); } catch { /* χωρίς DOM */ }
+    };
   }, []);
 
   // Καθολικό ⌘K / Ctrl+K για άνοιγμα του command palette.

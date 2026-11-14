@@ -5,7 +5,7 @@
 // `applyA11y`. Αν απέκλιναν, ο χρήστης θα έβλεπε ένα μέγεθος στη φόρτωση και
 // άλλο μόλις ενυδατωθεί η σελίδα.
 import {
-  A11Y_DEFAULTS, A11Y_INIT_SCRIPT, A11Y_KEY, LEGACY_LARGE, LEGACY_MOTION,
+  A11Y_DEFAULTS, A11Y_INIT_SCRIPT, A11Y_KEY, APP_ATTR, LEGACY_LARGE, LEGACY_MOTION,
   a11yAttributes, applyA11y, parseA11y, serializeA11y, type A11yPrefs,
 } from './a11yPrefs';
 
@@ -60,12 +60,18 @@ const fakeEl = () => {
 }
 
 // ── ΤΟ ΣΕΝΑΡΙΟ ΠΡΙΝ ΤΟ PAINT ΣΥΜΦΩΝΕΙ ΜΕ ΤΟ applyA11y ─────────────────────
-const runInit = (store: Record<string, string>) => {
+const runInit = (store: Record<string, string>, pathname = '/') => {
   const el = fakeEl();
   const localStorage = { getItem: (k: string) => (k in store ? store[k] : null) };
   const document = { documentElement: el };
-  new Function('localStorage', 'document', A11Y_INIT_SCRIPT)(localStorage, document);
+  new Function('localStorage', 'document', 'location', A11Y_INIT_SCRIPT)(localStorage, document, { pathname });
+  el.attrs.delete(APP_ATTR);
   return el.attrs;
+};
+const appMark = (pathname: string) => {
+  const el = fakeEl();
+  new Function('localStorage', 'document', 'location', A11Y_INIT_SCRIPT)({ getItem: () => null }, { documentElement: el }, { pathname });
+  return el.attrs.get(APP_ATTR) === '1';
 };
 const cases: A11yPrefs[] = [
   A11Y_DEFAULTS,
@@ -84,6 +90,10 @@ for (const p of cases) {
   const b = runInit({ [A11Y_KEY]: '{oops' });
   ok('το σενάριο αντέχει χαλασμένη εγγραφή', b.size === 0);
 }
+
+// ── ΤΟ ΣΗΜΑΔΙ ΤΟΥ ΠΙΝΑΚΑ ΕΛΕΓΧΟΥ ΑΠΟ ΤΟ ΠΡΩΤΟ PAINT ─────────────────────────
+ok('/dashboard: σημάδι', appMark('/dashboard') && appMark('/dashboard/x'));
+ok('δημόσια σελίδα: χωρίς σημάδι', !appMark('/') && !appMark('/dashboards') && !appMark('/ypologismos-enfia'));
 
 console.log(`${pass} πέρασαν, ${fail} απέτυχαν`);
 if (fail) process.exit(1);

@@ -15,6 +15,7 @@
 // υπάρχει (Firefox), το κουμπί δεν αποδίδεται καθόλου.
 // ═══════════════════════════════════════════════════════════════════════════
 import { speechRecognizer, type SpeechEvent, type SpeechErrorEvent, type SpeechRecognizer } from './speech'
+import { PRODUCT_NAME } from './site'
 
 /** Οι καταστάσεις που βλέπει ο χρήστης. */
 export type DictationStatus = 'idle' | 'starting' | 'listening' | 'error'
@@ -88,7 +89,7 @@ export const recognitionLang = (pageLang: string): string => (isEnglish(pageLang
  * είναι στο «aA», στο Android στις Άδειες, στο Safari του Mac στις Ρυθμίσεις
  * του. Η εγκατεστημένη εφαρμογή δεν έχει καν γραμμή διεύθυνσης.
  */
-export type Platform = 'ios' | 'android' | 'mac-safari' | 'pwa' | 'desktop'
+export type Platform = 'ios' | 'ios-chrome' | 'android' | 'mac-safari' | 'pwa' | 'pwa-desktop' | 'desktop'
 
 /**
  * @param ua         το User-Agent
@@ -96,7 +97,12 @@ export type Platform = 'ios' | 'android' | 'mac-safari' | 'pwa' | 'desktop'
  * @param touch      `navigator.maxTouchPoints`: το iPad δηλώνει Mac αλλά έχει αφή
  */
 export function platformOf(ua: string, standalone: boolean, touch = 0): Platform {
-  if (standalone) return 'pwa'
+  const mobile = /iPhone|iPad|iPod|Android/i.test(ua) || (/Macintosh/i.test(ua) && touch > 1)
+  // Εγκατεστημένη: στο κινητό ο διακόπτης είναι στις ρυθμίσεις της συσκευής,
+  // στον υπολογιστή στο μενού του παραθύρου της εφαρμογής (Chrome, Edge).
+  if (standalone) return mobile ? 'pwa' : 'pwa-desktop'
+  // Ο Chrome στο iPhone δεν έχει «aA»: η άδεια ζει στις Ρυθμίσεις του iPhone.
+  if (/CriOS/i.test(ua)) return 'ios-chrome'
   if (/iPhone|iPad|iPod/i.test(ua)) return 'ios'
   const safari = /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox/i.test(ua)
   if (/Macintosh/i.test(ua) && safari) return touch > 1 ? 'ios' : 'mac-safari'
@@ -125,16 +131,24 @@ const DENIED_EL: Record<Platform, [string, string]> = {
   'mac-safari': [
     'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Στο μενού Safari άνοιξε Ρυθμίσεις, μετά Ιστότοποι και Μικρόφωνο, επίτρεψέ το για αυτή τη σελίδα και δοκίμασε ξανά.',
     'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Στο μενού Safari ανοίξτε Ρυθμίσεις, μετά Ιστότοποι και Μικρόφωνο, επιτρέψτε το για αυτή τη σελίδα και δοκιμάστε ξανά.'],
+  'ios-chrome': [
+    'Το μικρόφωνο είναι κλειστό για τον Chrome. Άνοιξε τις Ρυθμίσεις του iPhone, μετά Chrome, άνοιξε το Μικρόφωνο και δοκίμασε ξανά.',
+    'Το μικρόφωνο είναι κλειστό για τον Chrome. Ανοίξτε τις Ρυθμίσεις του iPhone, μετά Chrome, ανοίξτε το Μικρόφωνο και δοκιμάστε ξανά.'],
   'pwa': [
-    'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Άνοιξε τις ρυθμίσεις της συσκευής για το PROPERWISE, επίτρεψε το Μικρόφωνο και δοκίμασε ξανά.',
-    'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Ανοίξτε τις ρυθμίσεις της συσκευής για το PROPERWISE, επιτρέψτε το Μικρόφωνο και δοκιμάστε ξανά.'],
+    `Το μικρόφωνο είναι κλειστό για την εφαρμογή. Άνοιξε τις ρυθμίσεις της συσκευής για το ${PRODUCT_NAME}, επίτρεψε το Μικρόφωνο και δοκίμασε ξανά.`,
+    `Το μικρόφωνο είναι κλειστό για την εφαρμογή. Ανοίξτε τις ρυθμίσεις της συσκευής για το ${PRODUCT_NAME}, επιτρέψτε το Μικρόφωνο και δοκιμάστε ξανά.`],
+  'pwa-desktop': [
+    'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Άνοιξε το μενού του παραθύρου (⋮ ή …), μετά Πληροφορίες εφαρμογής, επίτρεψε το Μικρόφωνο και δοκίμασε ξανά.',
+    'Το μικρόφωνο είναι κλειστό για την εφαρμογή. Ανοίξτε το μενού του παραθύρου (⋮ ή …), μετά Πληροφορίες εφαρμογής, επιτρέψτε το Μικρόφωνο και δοκιμάστε ξανά.'],
 }
 const DENIED_EN: Record<Platform, string> = {
   'desktop': 'The microphone is blocked for this site. Click the lock icon next to the address, allow Microphone and try again.',
   'ios': 'The microphone is blocked for this site. Tap "aA" in the address bar, then Site Settings, allow Microphone and try again.',
   'android': 'The microphone is blocked for this site. Tap the icon left of the address, then Permissions, allow Microphone and try again.',
   'mac-safari': 'The microphone is blocked for this site. In the Safari menu open Settings, then Websites and Microphone, allow it for this page and try again.',
-  'pwa': 'The microphone is blocked for this app. Open your device settings for PROPERWISE, allow Microphone and try again.',
+  'ios-chrome': 'The microphone is blocked for Chrome. Open iPhone Settings, then Chrome, turn on Microphone and try again.',
+  'pwa': `The microphone is blocked for this app. Open your device settings for ${PRODUCT_NAME}, allow Microphone and try again.`,
+  'pwa-desktop': 'The microphone is blocked for this app. Open the window menu (⋮ or …), then App info, allow Microphone and try again.',
 }
 
 export function errorMessage(error: DictationError, opts: { lang?: string; formal?: boolean; platform?: Platform } = {}): string {

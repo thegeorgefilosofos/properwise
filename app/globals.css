@@ -105,7 +105,12 @@ body {
 /* Πλήρες ύψος που σέβεται τη μπάρα διευθύνσεων του κινητού (Safari/Chrome):
    το `100dvh` είναι το ΠΡΑΓΜΑΤΙΚΑ ορατό ύψος· το `100vh` μένει από πάνω ως
    εναλλακτικό για τα ελάχιστα προγράμματα που δεν ξέρουν `dvh`. */
-.min-h-dvh { min-height: calc(100vh / var(--zoom, 1)); min-height: calc(100dvh / var(--zoom, 1)); }
+.min-h-dvh { min-height: calc(100vh / var(--zoom, 1)); }
+/* ΤΟ dvh ΣΕ @supports. Μια δήλωση με `var()` δεν πετιέται στην ανάγνωση: σε
+   περιηγητή χωρίς `dvh` (Safari πριν το 15.4) γίνεται άκυρη ΜΕΤΑ, δηλαδή
+   χάνεται και η γραμμή `vh` από πάνω της. Μέσα σε @supports τη διαβάζει μόνο
+   όποιος την ξέρει. */
+@supports (height: 100dvh) { .min-h-dvh { min-height: calc(100dvh / var(--zoom, 1)); } }
 
 /* ══════════════════════════════════════════════════════════════
    ΧΡΩΜΑΤΙΚΟ ΣΥΣΤΗΜΑ — ΦΩΤΕΙΝΟ ΘΕΜΑ (Η ΕΞΑΙΡΕΣΗ· ΒΑΣΗ ΕΙΝΑΙ ΤΟ ΣΚΟΥΡΟ)
@@ -1712,10 +1717,10 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
      οθόνης. Το `100dvh` είναι το πραγματικά ορατό· το `100vh` μένει από πάνω
      ως εναλλακτικό για τα ελάχιστα προγράμματα που δεν το ξέρουν. */
   height: calc(100vh / var(--zoom, 1));
-  height: calc(100dvh / var(--zoom, 1));
   overflow: hidden;
   background: var(--bg-base);
 }
+@supports (height: 100dvh) { .app-shell { height: calc(100dvh / var(--zoom, 1)); } }
 
 /* Google Navigation Rail / Sidebar */
 .app-sidebar {
@@ -5059,12 +5064,14 @@ a.lp-link { transition: color 0.15s ease, filter 0.15s ease; }
    τους χάνονταν. Γι' αυτό κάθε μήκος οθόνης της εφαρμογής γράφεται
    `calc(100dvh / var(--zoom, 1))`.
 
-   ΜΟΝΟ ΣΤΟΝ ΠΙΝΑΚΑ ΕΛΕΓΧΟΥ (`:has(.app-shell)`). Η ρύθμιση ζει εκεί και εκεί
+   ΜΟΝΟ ΣΤΟΝ ΠΙΝΑΚΑ ΕΛΕΓΧΟΥ (`:has(.app-shell)`· από το πρώτο paint και με το
+   `data-app` που γράφει το σενάριο του θέματος στο /dashboard, ώστε ούτε ο
+   δείκτης φόρτωσης να ζωγραφίζεται μικρός). Η ρύθμιση ζει εκεί και εκεί
    ελέγχθηκε. Οι δημόσιες σελίδες έχουν δεκάδες μήκη οθόνης στη δική τους
    τυπογραφία και ο περιηγητής έχει ήδη δική του μεγέθυνση γι' αυτές. */
 :root { --zoom: 1; }
-:root[data-text="large"]:has(.app-shell)  { zoom: 1.125; --zoom: 1.125; }
-:root[data-text="xlarge"]:has(.app-shell) { zoom: 1.25; --zoom: 1.25; }
+:root[data-text="large"]:is(:has(.app-shell), [data-app])  { zoom: 1.125; --zoom: 1.125; }
+:root[data-text="xlarge"]:is(:has(.app-shell), [data-app]) { zoom: 1.25; --zoom: 1.25; }
 
 /* ── ΥΨΗΛΗ ΑΝΤΙΘΕΣΗ ──────────────────────────────────────────────────────
    Τα ίδια tokens, με τιμές που περνούν το WCAG AAA (7:1) για κάθε κείμενο
@@ -5222,6 +5229,9 @@ a.lp-link { transition: color 0.15s ease, filter 0.15s ease; }
 }
 @media (hover: hover) { .po-speak:hover { color: var(--text-primary); border-color: var(--border-strong); } }
 .po-speak:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Το ηχείο μέσα στην κεφαλίδα ενότητας, δίπλα στον τίτλο. Τα αρνητικά
+   περιθώρια κρατούν τον στόχο των 44 χωρίς να ψηλώσουν τη γραμμή του τίτλου. */
+.sec-hdr-act { display: inline-flex; vertical-align: middle; margin-block: -14px; margin-inline-start: 4px; }
 .po-speak[data-on] { color: var(--accent); border-color: var(--accent); }
 
 /* ═══ Toast (components/Toast.tsx) ════════════════════════════════════════ */
@@ -5707,12 +5717,14 @@ body:has(.po-tool-page) .po-cookie {
    όταν τελειώσει το φύλλο, επίτηδες: στην πρώτη επίσκεψη το πλαίσιο cookies
    στέκεται πάνω από την κεφαλίδα και στα 568 ύψος το φύλλο ξεκινά 101 πιο
    χαμηλά. Η σελίδα κυλά, η κεφαλίδα κολλά στην κορυφή και φαίνεται όλο. */
-.pub-menu-sheet { max-height: calc(calc(100vh / var(--zoom, 1)) - 90px); max-height: calc(calc(100dvh / var(--zoom, 1)) - 90px); overflow-y: auto; }
+.pub-menu-sheet { max-height: calc(calc(100vh / var(--zoom, 1)) - 90px); overflow-y: auto; }
+@supports (height: 100dvh) { .pub-menu-sheet { max-height: calc(calc(100dvh / var(--zoom, 1)) - 90px); } }
 /* Η ΓΡΑΜΜΗ «View in English» (app/LangSuggest.tsx) στέκεται πάνω από την
    κεφαλίδα και κατεβάζει το φύλλο ~52px. Στο CI, με περιηγητή χωρίς ελληνικά,
    το φύλλο έβγαινε κάτω από την οθόνη (620 σε 568). Όσο φαίνεται η γραμμή,
    το φύλλο κονταίνει ανάλογα. */
-body:has(.pw-lang-suggest) .pub-menu-sheet { max-height: calc(calc(100vh / var(--zoom, 1)) - 162px); max-height: calc(calc(100dvh / var(--zoom, 1)) - 162px); }
+body:has(.pw-lang-suggest) .pub-menu-sheet { max-height: calc(calc(100vh / var(--zoom, 1)) - 162px); }
+@supports (height: 100dvh) { body:has(.pw-lang-suggest) .pub-menu-sheet { max-height: calc(calc(100dvh / var(--zoom, 1)) - 162px); } }
 .pub-menu-sheet ul { margin: 0; padding: 0; list-style: none; }
 .pub-menu-group + .pub-menu-group { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-subtle); }
 .pub-menu-label {

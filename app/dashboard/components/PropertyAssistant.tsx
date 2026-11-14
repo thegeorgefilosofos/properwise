@@ -17,6 +17,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useState, useRef, useEffect } from 'react';
+import { cssRect, cssViewW, cssViewH, toCssPx } from '@/lib/core/cssZoom';
 import { AssistantMark } from './AssistantMark';
 import { T, TT, Modal, Btn, IconBtn, LinkBtn, fe, fd, ABOVE_ASSISTANT_Z } from '@/components/Theme';
 import Feedback from './Feedback';
@@ -129,7 +130,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     return () => mo.disconnect();
   }, []);
   const fabBox = () => {
-    const r = fabRef.current?.getBoundingClientRect();
+    // Σε εικονοστοιχεία της ρίζας, όπως γράφεται το `left/top` (lib/core/cssZoom).
+    const r = cssRect(fabRef.current);
     return { w: r?.width || FAB_H, h: r?.height || FAB_H };
   };
   // ═══ ΤΟ ΠΛΩΤΟ ΚΟΥΜΠΙ ΕΜΕΝΕ ΟΠΟΥ ΤΟ ΑΦΗΝΕ ΤΟ ΔΑΧΤΥΛΟ ═══════════════════════
@@ -188,8 +190,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       const inView = typeof window !== 'undefined'
         && Number.isFinite(p?.x) && Number.isFinite(p?.y)
         && p.x >= m && p.y >= m
-        && p.x <= window.innerWidth - w - m
-        && p.y <= window.innerHeight - h - m;
+        && p.x <= cssViewW() - w - m
+        && p.y <= cssViewH() - h - m;
       // Η αποθηκευμένη θέση εφαρμόζεται όπως είναι: ο χρήστης τη διάλεξε.
       if (inView) setFabPos(p);
       else localStorage.removeItem('pa_fab_pos');
@@ -221,8 +223,11 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   useEffect(() => {
     const move = (e: PointerEvent) => {
       const d = fabDrag.current; if (!d || e.pointerId !== d.id) return;
-      const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
-      if (!d.moved && Math.hypot(dx, dy) < d.slop) return;
+      // Η απόσταση του δείκτη είναι σε εικονοστοιχεία οθόνης· το κατώφλι μένει
+      // εκεί (το δάχτυλο τρέμει σε οθόνη), η μετατόπιση γράφεται στη ρίζα.
+      const sdx = e.clientX - d.sx, sdy = e.clientY - d.sy;
+      if (!d.moved && Math.hypot(sdx, sdy) < d.slop) return;
+      const dx = toCssPx(sdx), dy = toCssPx(sdy);
       d.moved = true; if (!dragging) setDragging(true);
       if (e.cancelable) e.preventDefault();
       const { w, h } = fabBox();
@@ -261,7 +266,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     if (e.button && e.button !== 0) return;
     justDragged.current = false;
     const el = e.currentTarget as HTMLElement;
-    const r = el.getBoundingClientRect();
+    const r = cssRect(el);
     // Η ΣΥΛΛΗΨΗ ΤΟΥ ΔΕΙΚΤΗ. Χωρίς αυτήν, ένα γρήγορο σύρσιμο που προσπερνά το
     // κουμπί χάνει τις κινήσεις του σε όποιο στοιχείο βρεθεί από κάτω.
     try { el.setPointerCapture(e.pointerId); } catch { /* ο περιηγητής δεν το υποστηρίζει */ }
@@ -275,7 +280,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   // Θέση πάνελ: αν το κουμπί έχει μετακινηθεί, το πάνελ ανοίγει κοντά του (πάνω ή κάτω, με clamp).
   const panelFixed: React.CSSProperties = (() => {
     if (!fabPos || typeof window === 'undefined') return {};
-    const vw = window.innerWidth, vh = window.innerHeight;
+    const vw = cssViewW(), vh = cssViewH();
     const pw = Math.min(390, vw - 32), ph = Math.min(600, vh - 130);
     // Το ΥΨΟΣ του κουμπιού είναι σταθερό (FAB_H) — μόνο το πλάτος αλλάζει με τη
     // γλώσσα και την οθόνη. Άρα η θέση του πάνελ δεν χρειάζεται μέτρηση και δεν

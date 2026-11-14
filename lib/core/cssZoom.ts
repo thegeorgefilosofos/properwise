@@ -42,3 +42,20 @@ export function cssRect(el: Element | null | undefined): CssRect | undefined {
 /** Πλάτος και ύψος του παραθύρου σε εικονοστοιχεία της ρίζας. */
 export const cssViewW = (): number => (typeof window === 'undefined' ? 0 : window.innerWidth / cssZoom())
 export const cssViewH = (): number => (typeof window === 'undefined' ? 0 : window.innerHeight / cssZoom())
+
+/**
+ * Σημείο ή μήκος από εικονοστοιχεία οθόνης (δείκτης, `visualViewport`) σε
+ * εικονοστοιχεία της ρίζας.
+ */
+export const toCssPx = (screenPx: number, z = cssZoom()): number => screenPx / z
+
+/**
+ * Κράτα ένα κουτί μέσα σε ένα παράθυρο, με περιθώριο. Καθαρή συνάρτηση: όλα
+ * τα μήκη στον ίδιο χώρο (της ρίζας), ώστε να δοκιμάζεται χωρίς περιηγητή.
+ */
+export function clampBox(x: number, y: number, w: number, h: number, vw: number, vh: number, m = 8): { x: number; y: number } {
+  return {
+    x: Math.max(m, Math.min(x, vw - w - m)),
+    y: Math.max(m, Math.min(y, vh - h - m)),
+  }
+}

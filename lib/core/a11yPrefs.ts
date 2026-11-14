@@ -26,6 +26,12 @@ export interface A11yPrefs {
 }
 
 export const A11Y_KEY = 'po_a11y'
+/**
+ * Σημάδι «εδώ είναι ο πίνακας ελέγχου» από το πρώτο paint. Το μέγεθος κειμένου
+ * ισχύει όπου υπάρχει `.app-shell`, που όμως αποδίδεται μετά τη σύνδεση: χωρίς
+ * το σημάδι, ο δείκτης φόρτωσης ζωγραφιζόταν μικρός και μετά πηδούσε.
+ */
+export const APP_ATTR = 'data-app'
 export const LEGACY_LARGE = 'po_large_text'
 export const LEGACY_MOTION = 'po_reduce_motion'
 
@@ -96,5 +102,7 @@ export const A11Y_INIT_SCRIPT = `
     if (p.text === 'large' || p.text === 'xlarge') r.setAttribute('data-text', p.text);
     if (p.contrast === true) r.setAttribute('data-contrast', 'high');
     if (p.motion === 'reduce') r.setAttribute('data-motion', 'reduce');
+    var path = (typeof location !== 'undefined' && location.pathname) || '';
+    if (/^\\/dashboard(\\/|$)/.test(path)) r.setAttribute(${JSON.stringify(APP_ATTR)}, '1');
   } catch (e) {}
 `

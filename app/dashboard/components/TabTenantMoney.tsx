@@ -984,7 +984,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       )}
 
       {/* Αίτημα πληρωμής (IBAN / QR / κοινοποίηση) — κοινό Modal.
-          Το χειρόγραφο έστηνε μόνο του maxHeight:'calc(90vh / var(--zoom, 1))' + overflowY· το Modal
+          Το χειρόγραφο έστηνε μόνο του maxHeight:'90vh' + overflowY· το Modal
           κυλά ΜΟΝΟ το σώμα και κρατά κεφαλίδα και ενέργειες πάντα ορατές. */}
       {req&&(
         <Modal open onClose={()=>setReq(null)} size="sm"
