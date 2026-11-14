@@ -76,6 +76,16 @@ export function defaultBookkeeping(form: LegalForm): BookKeeping {
 }
 
 /**
+ * Τα βιβλία που ισχύουν για αυτή τη μορφή. Ο ιδιώτης δεν τηρεί βιβλία για τα
+ * ενοίκιά του, ό,τι κι αν γράφει η στήλη `bookkeeping` της βάσης: η μορφή και
+ * τα βιβλία αποθηκεύονται χωριστά και μια ασυνεπής γραμμή έβγαζε σε ιδιώτη
+ * ισολογισμό, έντυπο Ν και Ε3 της εταιρείας (14/11/2026).
+ */
+export function effectiveBookkeeping(form: LegalForm, books: BookKeeping): BookKeeping {
+  return form === 'individual' ? 'none' : books;
+}
+
+/**
  * Έχει επιχειρηματική δραστηριότητα;
  *
  * ΓΙΑΤΙ ΥΠΑΡΧΕΙ ΞΕΧΩΡΙΣΤΑ. Η μηχανή ορατότητας δουλεύει με δύο τιμές
@@ -575,8 +585,9 @@ export function requirementsFor(ctx: DossierContext): Requirement[] {
   if (ctx.hasLoan) push(EXTRAS.find(r => r.id === 'loan_interest')!);
   if (ctx.ownershipChanged) push(EXTRAS.find(r => r.id === 'e9')!);
 
-  if (ctx.books === 'single_entry') SINGLE_ENTRY.forEach(push);
-  if (ctx.books === 'double_entry') DOUBLE_ENTRY.forEach(push);
+  const books = effectiveBookkeeping(ctx.form, ctx.books);
+  if (books === 'single_entry') SINGLE_ENTRY.forEach(push);
+  if (books === 'double_entry') DOUBLE_ENTRY.forEach(push);
 
   const rank = (r: Requirement): number =>
     (r.blocking ? 0 : 10) + (r.who === 'owner' ? 0 : r.who === 'app' ? 1 : 2);

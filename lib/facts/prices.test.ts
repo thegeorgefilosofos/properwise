@@ -8,7 +8,7 @@
 // φορολογικά όρια από το μητρώο ισχύος και η κλίμακα σε μία πρόταση.
 // ═══════════════════════════════════════════════════════════════════════════
 import { PRICE_FACTS, TELECOM_FACTS, telecomAsOf, asOfLine, asOfDate } from './prices';
-import { TAX_LIMIT_GROUPS, taxLimitAsOf, bracketsSentence } from './taxLimits';
+import { TAX_LIMIT_GROUPS, taxLimitAsOf, taxLimitPending, sourceName, bracketsSentence } from './taxLimits';
 import { regulated } from '@/lib/legal/validity';
 import { RENTAL_TAX_BRACKETS_2026, RENTAL_TAX_BRACKETS_2025 } from '@/lib/billing/greekTax';
 import { feWhole, fpRate } from '@/lib/core/format';
@@ -54,7 +54,18 @@ for (const g of Object.keys(TAX_LIMIT_GROUPS) as (keyof typeof TAX_LIMIT_GROUPS)
   const oldest = TAX_LIMIT_GROUPS[g].map(id => regulated(id).checkedAt).sort()[0];
   ok(`${g}: ο παλαιότερος έλεγχος της ομάδας`, a.checkedAt === oldest, { got: a.checkedAt, oldest });
   ok(`${g}: πηγή από το μητρώο`, a.url === regulated(TAX_LIMIT_GROUPS[g][0]).source);
+  // Η ημερομηνία είναι ανθρώπινος έλεγχος του κανόνα και το λέει· η πηγή είναι
+  // ο νόμος ή η ΑΑΔΕ, όχι το δικό μας μητρώο.
+  const line = asOfLine(a);
+  ok(`${g}: «Κανόνες ελεγμένοι», όχι «Τελευταία ενημέρωση»`, !a.checkedAt || (/^Κανόνες ελεγμένοι \d{2}\/\d{2}\/\d{4} · Πηγή: /.test(line) && !/Τελευταία ενημέρωση/.test(line)), line);
+  ok(`${g}: η πηγή δεν είναι το μητρώο`, !/μητρώο/.test(line), line);
+  // Κάθε εκκρεμότητα του μητρώου για την ομάδα φτάνει στην οθόνη, μία φορά.
+  const want = new Set(TAX_LIMIT_GROUPS[g].map(id => regulated(id).pending?.title).filter(Boolean));
+  ok(`${g}: όλες οι εκκρεμότητες, χωρίς διπλά`, taxLimitPending(g).length === want.size && taxLimitPending(g).every(p => want.has(p.title)));
 }
+ok('πηγή: ΦΕΚ από τη διεύθυνση του Εθνικού Τυπογραφείου', sourceName('https://api.et.gr/apiFEK/1/2025/198/pdf') === 'ΦΕΚ\u00a0Α΄\u00a0198/2025', sourceName('https://api.et.gr/apiFEK/1/2025/198/pdf'));
+ok('πηγή: ΑΑΔΕ', sourceName('https://www.aade.gr/polites/enfia') === 'ΑΑΔΕ');
+ok('πηγή: άγνωστη διεύθυνση δεν γίνεται «ΑΑΔΕ» με σιγουριά', sourceName('https://example.com/aade.gr/x') === 'ΑΑΔΕ ή ΦΕΚ');
 
 // ── Η κλίμακα σε μία πρόταση, από τα κλιμάκια ──────────────────────────────
 const b = RENTAL_TAX_BRACKETS_2026;

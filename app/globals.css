@@ -7894,3 +7894,108 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
   .po-foot-legal > a { margin-block: 0; }
 }
 
+
+/* ═══ ΛΟΓΙΣΤΙΚΗ: Ο ΦΑΚΕΛΟΣ ΤΟΥ ΛΟΓΙΣΤΗ, ΜΑΖΕΜΕΝΟΣ (14/11/2026) ═══════════════
+   Ο ιδιοκτήτης ζήτησε τη Λογιστική «πιο μαζεμένη, μίνιμαλ, απλή». Οι κανόνες
+   ζουν σε δικό τους μπλοκ, στο τέλος, χωρίς να αγγίζουν τους γενικούς κανόνες
+   τυπογραφίας: μόνο κλάσεις `acd-*` (AccountantDossier.tsx) και η σειρά
+   ενεργειών του ΕΝΦΙΑ.
+
+   Η ΓΡΑΜΜΗ: κουτάκι, κείμενο, βέλος λεπτομερειών, σε πλέγμα τριών στηλών.
+   Τίτλος και περιγραφή ξεκινούν από την ίδια αριστερή ακμή, κάθε γραμμή έχει
+   το ίδιο πάνω και κάτω περιθώριο και κάθε διαχωριστικό ξεκινά από την ίδια
+   εσοχή (την ακμή του κειμένου), όπως στις λίστες του iOS. */
+.acd-head-note {
+  font-size: var(--fs-note); color: var(--text-tertiary); line-height: 1.5;
+  margin: 10px 0 0; font-family: inherit;
+}
+.acd-head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 16px 0 0; }
+.acd-actions:empty { display: none; }
+.acd-actions { margin: 12px 0 0; }
+
+.acd-sec { padding-top: 6px !important; padding-bottom: 6px !important; }
+.acd-sec-h { margin: 0; font: inherit; }
+.acd-sec-toggle {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px;
+  padding: 0; background: none; border: none; cursor: pointer; text-align: left;
+  color: var(--text-primary); font-family: inherit;
+}
+.acd-sec-title { flex: 1; min-width: 0; font-size: var(--fs-base); font-weight: 600; line-height: 1.35; }
+.acd-sec-count { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.acd-sec-chev { flex-shrink: 0; color: var(--text-tertiary); transition: transform 0.18s; }
+.acd-sec-sub {
+  font-size: var(--fs-note); color: var(--text-tertiary); line-height: 1.5;
+  margin: 0 0 6px; padding-left: 30px;
+}
+.acd-sec > div[hidden] { display: none; }
+.acd-sec > div:not([hidden]) { padding-bottom: 8px; }
+
+.acd-row {
+  position: relative; display: grid; grid-template-columns: 18px minmax(0, 1fr) auto;
+  column-gap: 12px; align-items: start; padding: 12px 0;
+}
+.acd-row::before {
+  content: ''; position: absolute; top: 0; left: 30px; right: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+.acd-row-box { display: inline-flex; margin-top: 1px; }
+.acd-row-text { min-width: 0; }
+.acd-row-title {
+  margin: 0; font-size: 14px; font-weight: 600; line-height: 1.4;
+  font-family: inherit; text-wrap: pretty;
+}
+.acd-row-opt { font-weight: 400; font-size: var(--fs-note); color: var(--text-tertiary); }
+.acd-row-why {
+  margin: 2px 0 0; font-size: var(--fs-note); color: var(--text-secondary);
+  line-height: 1.5; font-family: inherit; text-wrap: pretty;
+}
+.acd-row-details { margin: 8px 0 0; display: grid; gap: 4px; }
+.acd-row-details > p {
+  margin: 0; font-size: var(--fs-note); color: var(--text-tertiary);
+  line-height: 1.5; font-family: inherit;
+}
+.acd-row-more {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; margin: -10px -10px -10px 0; padding: 0;
+  border: none; background: none; border-radius: 10px; cursor: pointer;
+  color: var(--text-tertiary);
+}
+.acd-row-more:hover { color: var(--text-primary); background: var(--bg-elevated); }
+@media (pointer: coarse) { .acd-row-more { width: 44px; height: 44px; margin: -12px -12px -12px 0; } }
+
+.acd-done { position: relative; }
+.acd-done::before {
+  content: ''; position: absolute; top: 0; left: 30px; right: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+.acd-done-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; min-height: 44px; padding: 0 0 0 30px; background: none; border: none;
+  cursor: pointer; color: var(--text-secondary); font-family: inherit;
+  font-size: var(--fs-note); font-weight: 600; text-align: left;
+}
+.acd-done-toggle > svg { color: var(--text-tertiary); flex-shrink: 0; }
+.acd-done > div[hidden] { display: none; }
+
+/* ΕΝΦΙΑ: οι δύο ενέργειες της κεφαλίδας στο ίδιο ύψος, στην ίδια σειρά. */
+.enfia-hdr-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Στο τηλέφωνο ο φάκελος πιάνει τη σειρά και το «⋯» κάθεται δίπλα του, ίδιο
+   ύψος. Η κάρτα στενεύει το περιθώριό της κάτω από τα 360, ώστε τα δύο να
+   χωρούν και στα 320 χωρίς να σπάσει η σειρά. */
+@media (max-width: 560px) {
+  .acd-head-actions { flex-wrap: nowrap; }
+  .acd-head-actions > .po-btn { flex: 1 1 auto; }
+}
+@media (max-width: 360px) {
+  .acd-head { padding-left: 18px !important; padding-right: 18px !important; }
+}
+/* Ο σύνδεσμος της ΑΑΔΕ είναι κουμπί-κείμενο: χωρίς το οριζόντιο περιθώριο του
+   κουμπιού, ώστε όταν πέσει κάτω από το «Ενημέρωσε» να ξεκινά από την ίδια ακμή. */
+.enfia-hdr-actions > a.po-btn { --btn-pad: 9px 4px; }
+/* Στο στενό τηλέφωνο το «Μπορεί να περιμένει» παίρνει δική του σειρά κάτω από
+   τον τίτλο, χωρίς τελεία: τυλιγμένο μέσα στον τίτλο άφηνε την τελεία στην
+   αρχή γραμμής ή έσπρωχνε το κείμενο κάτω από το βέλος. */
+@media (max-width: 480px) {
+  .acd-row-opt { display: block; margin-top: 1px; }
+  .acd-row-dot { display: none; }
+}

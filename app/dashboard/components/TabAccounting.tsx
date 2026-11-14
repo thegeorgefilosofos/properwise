@@ -3,7 +3,7 @@ import { track, PRODUCT_EVENTS } from '@/lib/analytics/events';
 import { collectionModeReason } from '@/lib/tax/rentCollectionMode';
 import { T, Btn, IconBtn, ChipToggle, LinkBtn, Skeleton, SkeletonKPIs, InfoBanner, fn } from '@/components/Theme'
 import { hy } from '@/components/Hyphen'
-import { ActionMenu } from '@/components/ActionMenu'
+import { ActionMenu, type ActionMenuItem } from '@/components/ActionMenu'
 import { ChevronLeft, ChevronRight, Download, ArrowUpRight } from 'lucide-react'
 import { InfoHint } from './InfoHint'
 import BankImport from './BankImport'
@@ -152,49 +152,41 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
 
   // ── ΤΑ ΚΟΥΜΠΙΑ ΠΟΥ ΦΕΥΓΟΥΝ ΠΡΟΣ ΤΟΝ ΛΟΓΙΣΤΗ ────────────────────────────
   // Πηγαίνουν μέσα στην κάρτα του φακέλου, γιατί απαντούν την ίδια ερώτηση.
-  // Ο φάκελος είναι το κύριο κουμπί και μένει εκεί· εδώ κάθονται τα τρία που
-  // δεν είναι ο φάκελος: το σκέτο Excel (για όποιον θέλει μόνο τα νούμερα),
-  // η ζωντανή πύλη και το ημερολόγιο άρθρων όπου υπάρχει.
-  // ΤΟ `title` ΖΕΙ ΣΤΟ ΠΕΡΙΤΥΛΙΓΜΑ ΚΑΙ ΟΧΙ ΣΤΟ ΚΟΥΜΠΙ. Το `Btn` δέχεται `title`,
-  // όμως η ζωντανή πύλη απενεργοποιείται όσο δημιουργείται ο σύνδεσμος και το
-  // απενεργοποιημένο στοιχείο δεν δέχεται γεγονότα ποντικιού σε κάθε περιηγητή:
-  // η εξήγηση θα χανόταν ακριβώς την ώρα της αναμονής. Στο περιτύλιγμα φαίνεται
-  // πάντα· ο περιηγητής δείχνει το `title` του πλησιέστερου γονέα, οπότε ο
-  // χρήστης βλέπει ό,τι έβλεπε — και οι τρεις της σειράς γράφονται ίδια.
-  const accountantActions = (
+  // Ο φάκελος είναι το κύριο κουμπί και μένει εκεί· εδώ είναι όσα δεν είναι ο
+  // φάκελος: το σκέτο Excel (για όποιον θέλει μόνο τα νούμερα), η ζωντανή πύλη
+  // και το ημερολόγιο άρθρων όπου υπάρχει.
+  // ΣΕ ΕΝΑ «ΠΕΡΙΣΣΟΤΕΡΑ» (14/11/2026). Ηταν τρία κουμπιά με περίγραμμα σε τρία
+  // πλάτη, στοιβαγμένα στο κινητό κάτω από το κύριο. Η εξήγηση που ζούσε στο
+  // `title` του περιτυλίγματος (αόρατη στο κινητό) γίνεται η περιγραφή της
+  // γραμμής του μενού, ορατή παντού. Το κλείδωμα του πακέτου λέγεται εκεί.
+  const lockIcon = <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  const accountantMore: ActionMenuItem[] = [
+    { key:'excel', label:'Μόνο το Excel', icon:<Download size={14}/>, onClick:exportBundle,
+      description:'Κινήσεις και κατάσταση αποτελεσμάτων σε ένα αρχείο. Περιέχεται ήδη στον φάκελο.' },
+    // «Ζωντανή πύλη λογιστή» δεν έλεγε τι παίρνει ο λογιστής. Παίρνει έναν
+    // σύνδεσμο που ανοίγει χωρίς κωδικούς· αυτό λέει το λεκτικό. Το πακέτο
+    // ονομάζεται από το μητρώο, ποτέ γραμμένο με το χέρι.
+    { key:'link', label:acctLink?'Ο σύνδεσμος είναι έτοιμος':'Σύνδεσμος για τον λογιστή', onClick:shareWithAccountant, busy:acctBusy, busyLabel:'Δημιουργία…',
+      icon: canAccountantPortal
+        ? <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4M12 2v13"/></svg>
+        : lockIcon,
+      description: canAccountantPortal
+        ? 'Χωρίς κωδικούς και χωρίς email, μόνο για ανάγνωση. Καλύπτει όλα τα ακίνητά σου.'
+        : `Περιλαμβάνεται από το πακέτο «${PLANS[FEATURE_MIN_PLAN.e2_export].name}» και πάνω, όπως και η εξαγωγή Ε2.` },
+    // ΤΟ ΚΛΕΙΔΩΜΕΝΟ ΦΑΙΝΕΤΑΙ ΕΚΕΙ ΠΟΥ ΠΑΤΙΕΤΑΙ: το λουκέτο στη θέση του
+    // εικονιδίου, το πάτημα πηγαίνει στα πακέτα. Μόνο σε όποιον κρατά
+    // διπλογραφικά βιβλία, δηλαδή σε όποιον το ημερολόγιο άρθρων χρησιμεύει.
+    ...(doubleEntry ? [{ key:'journal', label:'Ημερολόγιο άρθρων',
+      onClick:()=>{ if(!canJournal){ onNavigate?.('settings'); return } setJournalOpen(true) },
+      icon: canJournal
+        ? <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 10h16M10 4v16"/></svg>
+        : lockIcon,
+      description: canJournal
+        ? 'Πλήρες ημερολόγιο άρθρων και εξαγωγή CSV (SoftOne, Epsilon, QuickBooks, Xero).'
+        : `Το ημερολόγιο άρθρων και το ισοζύγιο διπλογραφικής περιλαμβάνονται από το πακέτο «${journalPlanName}» και πάνω.` }] : []),
+  ]
+  const accountantActions = acctLink ? (
     <>
-      <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-        <span style={{ display:'inline-flex' }} title="Μόνο τα νούμερα: αναλυτικές κινήσεις και κατάσταση αποτελεσμάτων σε ένα αρχείο Excel. Περιέχεται ήδη μέσα στον φάκελο.">
-          <Btn variant="secondary" onClick={exportBundle}><Download size={13}/>Μόνο το Excel</Btn>
-        </span>
-        {/* Το accent περίγραμμα του «έτοιμη» ήταν ΚΑΤΑΣΤΑΣΗ και όχι ρόλος: τη λένε
-            πλέον μόνο το εικονίδιο και το λεκτικό, όπως και η αναμονή. */}
-        {/* «Ζωντανή πύλη λογιστή» δεν έλεγε τι παίρνει ο λογιστής. Παίρνει έναν
-            σύνδεσμο που ανοίγει χωρίς κωδικούς· αυτό λέει τώρα το κουμπί. Το
-            πακέτο ονομάζεται από το μητρώο, ποτέ γραμμένο με το χέρι. */}
-        <span style={{ display:'inline-flex' }} title={canAccountantPortal ? "Σύνδεσμος για τον λογιστή σου, χωρίς κωδικούς και χωρίς email. Καλύπτει όλα τα ακίνητά σου: διεύθυνση, ΑΤΑΚ, μίσθωμα, έσοδα και δαπάνες της χρονιάς. Μόνο για ανάγνωση." : `Ο σύνδεσμος για τον λογιστή περιλαμβάνεται από το πακέτο «${PLANS[FEATURE_MIN_PLAN.e2_export].name}» και πάνω, όπως και η εξαγωγή Ε2.`}>
-          <Btn variant="secondary" onClick={shareWithAccountant} disabled={acctBusy}>
-          {canAccountantPortal
-            ? <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4M12 2v13"/></svg>
-            : <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
-          {acctBusy?'Δημιουργία…':acctLink?'Ο σύνδεσμος είναι έτοιμος':'Σύνδεσμος για τον λογιστή'}
-          </Btn>
-        </span>
-        {/* ΤΟ ΚΛΕΙΔΩΜΕΝΟ ΦΑΙΝΕΤΑΙ ΕΚΕΙ ΠΟΥ ΠΑΤΙΕΤΑΙ. Ίδιος κανόνας με τη διπλανή
-            πύλη λογιστή: το λουκέτο μπαίνει στη θέση του εικονιδίου, το κουμπί
-            πάει στα πακέτα. Μόνο σε όποιον κρατά διπλογραφικά βιβλία, δηλαδή
-            σε όποιον το ημερολόγιο άρθρων του χρησιμεύει. */}
-        {doubleEntry && (
-        <span style={{ display:'inline-flex' }} title={canJournal?"Πλήρες ημερολόγιο άρθρων και εξαγωγή CSV (SoftOne/Epsilon/QuickBooks/Xero)":`Το ημερολόγιο άρθρων και το ισοζύγιο διπλογραφικής περιλαμβάνονται από το πακέτο «${journalPlanName}» και πάνω.`}>
-          <Btn variant="secondary" onClick={()=>{ if(!canJournal){ onNavigate?.('settings'); return } setJournalOpen(true) }}>
-          {canJournal
-            ? <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 10h16M10 4v16"/></svg>
-            : <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
-          Ημερολόγιο άρθρων
-          </Btn>
-        </span>
-        )}
-      </div>
       {acctLink && (
         // ═══ Η ΚΑΡΤΑ ΤΟΥ ΣΥΝΔΕΣΜΟΥ, ΣΕ ΤΡΕΙΣ ΣΕΙΡΕΣ (02/11/2026) ═══════════════
         // ΤΙ ΦΩΤΟΓΡΑΦΗΘΗΚΕ ΣΕ IPHONE. Ηταν μία γραμμή με τύλιγμα και η στοίβα
@@ -238,7 +230,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
         </div>
       )}
     </>
-  )
+  ) : null
 
   // ══ ΟΤΑΝ Η ΑΝΑΓΝΩΣΗ ΑΠΕΤΥΧΕ, Η ΟΘΟΝΗ ΔΕΝ ΠΑΡΙΣΤΑΝΕΙ ΤΗΝ ΠΛΗΡΗ ═══════════
   // Το προηγούμενο σφάλμα αυτής της οθόνης, γραμμένο στα σχόλιά της, ήταν
@@ -401,7 +393,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
           ακόμη τίποτα έβλεπε πρώτα τι θα ζητήσει ο λογιστής και μετά πώς να
           ξεκινήσει. Τώρα ξεκινά από το «ξεκίνα» και ο κατάλογος ανοίγει με ένα
           πάτημα. */}
-      <AccountantDossier userId={userId} onEditProperty={onEditProperty} state={dossier} year={year} properties={dossierProps} exportSource={dossierExport} actions={accountantActions} canShareLink={canAccountantPortal}
+      <AccountantDossier userId={userId} onEditProperty={onEditProperty} state={dossier} year={year} properties={dossierProps} exportSource={dossierExport} actions={accountantActions} more={accountantMore} canShareLink={canAccountantPortal}
         compact={!hasActivity} yearData={yearData} />
 
       {/* ΤΟ ΚΑΘΕΣΤΩΣ ΠΡΙΝ ΑΠΟ ΤΟΝ ΑΡΙΘΜΟ. Με περισσότερα βραχυχρόνια από το όριο
