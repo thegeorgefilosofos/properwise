@@ -112,7 +112,7 @@ export default function RequestSheet({ target, year, from, onClose, onSend }: {
             <p style={{ ...TT.body, fontWeight: 600, color: 'var(--text-primary)', margin: `${T.sp.xs}px 0 0` }}>{target.item}</p>
           </div>
 
-          <Textarea label="Σημείωση, προαιρετικά" value={text} onChange={setText} rows={2} autoGrow
+          <Textarea dictation label="Σημείωση, προαιρετικά" value={text} onChange={setText} rows={2} autoGrow
             placeholder="Π.χ. του Οκτωβρίου, με τις αποδείξεις" />
 
           {/* ΜΟΝΟ ΜΕ ΔΕΥΤΕΡΟ ΚΑΝΑΛΙ ΥΠΑΡΧΕΙ ΕΠΙΛΟΓΗ. Σήμερα το γραφείο δεν βλέπει

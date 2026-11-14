@@ -17,6 +17,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useState, useRef, useEffect } from 'react';
+import { cssRect, cssViewW, cssViewH, toCssPx } from '@/lib/core/cssZoom';
 import { AssistantMark } from './AssistantMark';
 import { T, TT, Modal, Btn, IconBtn, LinkBtn, fe, fd, ABOVE_ASSISTANT_Z } from '@/components/Theme';
 import Feedback from './Feedback';
@@ -63,7 +64,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     supabase, openBills, openRent, setClientsStr,
   })
   const {
-    listening, speaking, handsFree, setHandsFree, supportsSTT, supportsTTS, stopSpeaking,
+    listening, speaking, handsFree, setHandsFree, supportsSTT, supportsTTS, stopSpeaking, micMessage, preloadMic,
     stopListening, startListening, toggleMic, ask, askImage,
   } = useAssistantChat({
     listeningRef, setInput, setOpen, setQuota, busy, setErr, setErrDetail, setLimitMsg,
@@ -72,6 +73,10 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     canNavigate, setMemories, userId, runAction, answeredRef, nudgedRef, setPendingDoc, askRef,
     propertyId,
   })
+  // Η ΜΗΧΑΝΗ ΤΗΣ ΦΩΝΗΣ ΚΑΤΕΒΑΙΝΕΙ ΜΟΛΙΣ ΑΝΟΙΞΕΙ ΤΟ ΠΑΝΕΛ, όχι στο πρώτο πάτημα:
+  // έτσι το μικρόφωνο ανοίγει μέσα στην ίδια χειρονομία του χρήστη, που κάποιοι
+  // περιηγητές (Safari στο iPhone) τη θέλουν για να δώσουν μικρόφωνο.
+  useEffect(() => { if (open) preloadMic(); }, [open, preloadMic])
   // Πριν από το πρώτο ακίνητο το ιστορικό είναι του χρήστη (assistantPersona.ts).
   const histId = historyId(propertyId, userId);
 
@@ -125,7 +130,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     return () => mo.disconnect();
   }, []);
   const fabBox = () => {
-    const r = fabRef.current?.getBoundingClientRect();
+    // Σε εικονοστοιχεία της ρίζας, όπως γράφεται το `left/top` (lib/core/cssZoom).
+    const r = cssRect(fabRef.current);
     return { w: r?.width || FAB_H, h: r?.height || FAB_H };
   };
   // ═══ ΤΟ ΠΛΩΤΟ ΚΟΥΜΠΙ ΕΜΕΝΕ ΟΠΟΥ ΤΟ ΑΦΗΝΕ ΤΟ ΔΑΧΤΥΛΟ ═══════════════════════
@@ -184,8 +190,8 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
       const inView = typeof window !== 'undefined'
         && Number.isFinite(p?.x) && Number.isFinite(p?.y)
         && p.x >= m && p.y >= m
-        && p.x <= window.innerWidth - w - m
-        && p.y <= window.innerHeight - h - m;
+        && p.x <= cssViewW() - w - m
+        && p.y <= cssViewH() - h - m;
       // Η αποθηκευμένη θέση εφαρμόζεται όπως είναι: ο χρήστης τη διάλεξε.
       if (inView) setFabPos(p);
       else localStorage.removeItem('pa_fab_pos');
@@ -217,8 +223,11 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   useEffect(() => {
     const move = (e: PointerEvent) => {
       const d = fabDrag.current; if (!d || e.pointerId !== d.id) return;
-      const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
-      if (!d.moved && Math.hypot(dx, dy) < d.slop) return;
+      // Η απόσταση του δείκτη είναι σε εικονοστοιχεία οθόνης· το κατώφλι μένει
+      // εκεί (το δάχτυλο τρέμει σε οθόνη), η μετατόπιση γράφεται στη ρίζα.
+      const sdx = e.clientX - d.sx, sdy = e.clientY - d.sy;
+      if (!d.moved && Math.hypot(sdx, sdy) < d.slop) return;
+      const dx = toCssPx(sdx), dy = toCssPx(sdy);
       d.moved = true; if (!dragging) setDragging(true);
       if (e.cancelable) e.preventDefault();
       const { w, h } = fabBox();
@@ -257,7 +266,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
     if (e.button && e.button !== 0) return;
     justDragged.current = false;
     const el = e.currentTarget as HTMLElement;
-    const r = el.getBoundingClientRect();
+    const r = cssRect(el);
     // Η ΣΥΛΛΗΨΗ ΤΟΥ ΔΕΙΚΤΗ. Χωρίς αυτήν, ένα γρήγορο σύρσιμο που προσπερνά το
     // κουμπί χάνει τις κινήσεις του σε όποιο στοιχείο βρεθεί από κάτω.
     try { el.setPointerCapture(e.pointerId); } catch { /* ο περιηγητής δεν το υποστηρίζει */ }
@@ -271,7 +280,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   // Θέση πάνελ: αν το κουμπί έχει μετακινηθεί, το πάνελ ανοίγει κοντά του (πάνω ή κάτω, με clamp).
   const panelFixed: React.CSSProperties = (() => {
     if (!fabPos || typeof window === 'undefined') return {};
-    const vw = window.innerWidth, vh = window.innerHeight;
+    const vw = cssViewW(), vh = cssViewH();
     const pw = Math.min(390, vw - 32), ph = Math.min(600, vh - 130);
     // Το ΥΨΟΣ του κουμπιού είναι σταθερό (FAB_H) — μόνο το πλάτος αλλάζει με τη
     // γλώσσα και την οθόνη. Άρα η θέση του πάνελ δεν χρειάζεται μέτρηση και δεν
@@ -333,7 +342,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
           {(listening || speaking) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: 'var(--accent-dim)', borderBottom: '1px solid var(--border-subtle)' }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: listening ? 'var(--negative)' : 'var(--accent)', animation: 'pa-pulse 1.1s infinite' }} />
-              <span style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', flex: 1 }}>{listening ? 'Ακούω…' : speakingLabel()}</span>
+              <span style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', flex: 1 }}>{listening ? 'Ακούω' : speakingLabel()}</span>
               {/* Το περιτύλιγμα κρατά την τυπογραφία των 12/700: το LinkBtn κληρονομεί γραμματοσειρά από τον γονέα του */}
               {speaking && <span style={{ fontFamily: T.font.sans, fontSize: 12, fontWeight: 700 }}><LinkBtn onClick={stopSpeaking}>Σταμάτα</LinkBtn></span>}
             </div>
@@ -504,8 +513,15 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                 )}
               </div>
 
+              {/* ΤΟ ΣΦΑΛΜΑ ΤΟΥ ΜΙΚΡΟΦΩΝΟΥ, ΑΚΡΙΒΩΣ ΠΑΝΩ ΑΠΟ ΤΟ ΜΙΚΡΟΦΩΝΟ. Ζούσε στην
+                  κορυφή του πάνελ, ενώ το βλέμμα του χρήστη είναι κάτω, στο πεδίο
+                  και στο μικρόφωνο που μόλις πάτησε. Λέει και τι κάνει τώρα (π.χ.
+                  πώς επιτρέπει το μικρόφωνο) και διαβάζεται ως ειδοποίηση. */}
+              {micMessage && !listening && (
+                <p role="alert" className="po-dictate-note" style={{ margin: 0, padding: '8px 14px 0', borderTop: '1px solid var(--border-subtle)' }}>{micMessage}</p>
+              )}
               {/* Είσοδος */}
-              <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderTop: '1px solid var(--border-subtle)', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderTop: micMessage && !listening ? 'none' : '1px solid var(--border-subtle)', alignItems: 'center' }}>
                 <input ref={imgRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) askImage(f); e.currentTarget.value = ''; }} />
                 <button onClick={() => {
                   if (busy) return;
@@ -517,12 +533,12 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                   <svg aria-hidden="true" width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z" /><circle cx="12" cy="13" r="3.2" /></svg>
                 </button>
                 {supportsSTT && (
-                  <button onClick={toggleMic} disabled={busy} className="po-box" aria-label={listening ? 'Σταμάτα' : 'Μίλα'} title={listening ? 'Σταμάτα' : 'Μίλα στα ελληνικά'}
+                  <button onClick={toggleMic} disabled={busy} className="po-box" aria-label="Υπαγόρευση" aria-pressed={listening} title={listening ? 'Σταμάτα' : 'Μίλα στα ελληνικά'}
                     style={{ width: 42, height: 42, flexShrink: 0, borderRadius: '50%', border: 'none', background: listening ? 'var(--negative)' : 'var(--bg-elevated)', color: listening ? 'var(--on-tone)' : 'var(--text-secondary)', cursor: busy ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: listening ? 'pa-pulse 1.1s infinite' : 'none' }}>
                     <svg aria-hidden="true" width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v4" /></svg>
                   </button>
                 )}
-                <input value={input} ref={inputRef} aria-label={prefs.formal ? `Η ερώτησή σας προς ${ASSISTANT_ACC}` : `Η ερώτησή σου προς ${ASSISTANT_ACC}`} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') ask(input); }} placeholder={listening ? 'Ακούω…' : placeholder} disabled={busy}
+                <input value={input} ref={inputRef} aria-label={prefs.formal ? `Η ερώτησή σας προς ${ASSISTANT_ACC}` : `Η ερώτησή σου προς ${ASSISTANT_ACC}`} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') ask(input); }} placeholder={listening ? 'Ακούω' : placeholder} disabled={busy}
                   style={{ flex: 1, minWidth: 0, background: 'var(--bg-base)', border: '1px solid var(--border-control)', borderRadius: T.radius.pill, padding: '10px 15px', color: 'var(--text-primary)', fontSize: 'var(--fs-base)', fontFamily: T.font.sans, outline: 'none' }}
                   onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-soft)'; }}
                   onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-control)'; e.currentTarget.style.boxShadow = 'none'; }} />
@@ -633,7 +649,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
            οποία ρωτάς. Ένα κεντραρισμένο παράθυρο με σκοτεινό φόντο θα έκρυβε
            ακριβώς τα νούμερα που συζητάτε. Ευθυγραμμίζεται μόνο η ακτίνα με το
            token (ήταν καρφωμένο 18px, δηλαδή η ίδια τιμή γραμμένη δεύτερη φορά). */
-        .pa-panel{position:fixed;right:24px;bottom:92px;width:390px;max-width:calc(100vw - 32px);height:min(600px,calc(100vh - 130px));background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:${T.radius.modal}px;box-shadow:var(--highlight-inset),var(--elev-3);z-index:1200;display:flex;flex-direction:column;overflow:hidden}
+        .pa-panel{position:fixed;right:24px;bottom:92px;width:390px;max-width:calc(calc(100vw / var(--zoom, 1)) - 32px);height:min(600px,calc(calc(100vh / var(--zoom, 1)) - 130px));background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:${T.radius.modal}px;box-shadow:var(--highlight-inset),var(--elev-3);z-index:1200;display:flex;flex-direction:column;overflow:hidden}
         .pa-panel:focus{outline:none}
         /* ΤΟ ΟΡΙΟ ΕΙΝΑΙ 768, ΟΣΟ ΚΑΙ ΤΗΣ ΚΑΤΩ ΠΛΟΗΓΗΣΗΣ.
            Ήταν 600 ενώ η κάτω πλοήγηση εμφανίζεται στα 768: στο ενδιάμεσο —
@@ -652,7 +668,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
              bottom:78px το κουμπί κλεισίματος (που κάθεται στο --fab-bottom,
              πάνω από την πλοήγηση) σκέπαζε την τελευταία γραμμή του πάνελ:
              τη γνωστοποίηση ότι η Νόα είναι τεχνητή νοημοσύνη. */
-          .pa-panel{right:8px;left:8px;bottom:calc(var(--fab-bottom) + var(--fab-h) + 10px);width:auto;max-width:none;height:min(560px,calc(100dvh - var(--fab-bottom) - var(--fab-h) - 34px))}
+          .pa-panel{right:8px;left:8px;bottom:calc(var(--fab-bottom) + var(--fab-h) + 10px);width:auto;max-width:none;height:min(560px,calc(calc(100dvh / var(--zoom, 1)) - var(--fab-bottom) - var(--fab-h) - 34px))}
         }
         /* Η πρόσκληση μαζεύεται στο σήμα: μόλις κυλήσει η σελίδα και εξαρχής
            κάτω από τα 1.280, όπου το περιεχόμενο φτάνει ως την άκρη. Ο λόγος και

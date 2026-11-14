@@ -71,6 +71,7 @@ import { EventModal, ScopeModal } from './calendar/EventModal'
 import { SubscribeModal } from './calendar/SubscribeModal'
 import { CalendarQuickAdd } from './calendar/CalendarQuickAdd'
 import { dueTextStart, incomeInstalmentsAfter } from '@/lib/facts/deadlines'
+import { cssRect, cssViewW, cssViewH } from '@/lib/core/cssZoom'
 
 export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenTasks }: {
   propertyId:string; userId:string;
@@ -113,7 +114,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   const [menuCoords,setMenuCoords]=useState<{top:number;left:number;up:boolean}>({top:0,left:0,up:false})
   // Θέση του μενού «⋯»: portal + fixed, δεξιά-στοιχισμένο στο κουμπί αλλά πάντα
   // πλήρως ορατό (clamp στα άκρα της οθόνης), προς τα κάτω· πάνω μόνο αν δεν χωράει.
-  const positionMenu=()=>{ const el=menuBtnRef.current; if(!el)return; const r=el.getBoundingClientRect(); const W=248, PANEL_H=392, M=8; const below=window.innerHeight-r.bottom-M; const up=below<PANEL_H && r.top-M>below; const left=Math.max(M,Math.min(r.right-W,window.innerWidth-W-M)); setMenuCoords({top:up?r.top-6:r.bottom+6,left,up}) }
+  const positionMenu=()=>{ const el=menuBtnRef.current; if(!el)return; const r=cssRect(el); const W=248, PANEL_H=392, M=8; const below=cssViewH()-r.bottom-M; const up=below<PANEL_H && r.top-M>below; const left=Math.max(M,Math.min(r.right-W,cssViewW()-W-M)); setMenuCoords({top:up?r.top-6:r.bottom+6,left,up}) }
   const importRef=useRef<HTMLInputElement>(null)
   const [stays,setStays]=useState<StaySpan[]>([])
   // Ενιαίο drag (ποντίκι + αφή) — μετακίνηση γεγονότος με σύρσιμο στο πλέγμα του μήνα.
@@ -627,7 +628,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
         <div ref={menuRef} style={{ position:'relative' }}>
           <button ref={menuBtnRef} aria-label="Περισσότερα" aria-haspopup="menu" aria-expanded={showMenu} title="Περισσότερα" onClick={()=>setShowMenu(m=>!m)} style={{ width:T.h.lg, height:T.h.lg, borderRadius:'50%', border:'1px solid '+(showMenu?'var(--border-default)':'var(--border-subtle)'), background:showMenu?'var(--bg-elevated)':'var(--bg-surface)', cursor:'pointer', color:'var(--text-secondary)', display:'flex', alignItems:'center', justifyContent:'center' }}><MoreHorizontal size={18}/></button>
           {showMenu&&createPortal(
-            <div ref={menuPopRef} role="menu" style={{ position:'fixed', top:menuCoords.top, left:menuCoords.left, transform:menuCoords.up?'translateY(-100%)':'none', width:248, maxHeight:'min(392px, 80vh)', overflowY:'auto', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius: T.radius.popup, boxShadow:'var(--elev-3)', padding:6, zIndex:3000 }}>
+            <div ref={menuPopRef} role="menu" style={{ position:'fixed', top:menuCoords.top, left:menuCoords.left, transform:menuCoords.up?'translateY(-100%)':'none', width:248, maxHeight:'min(392px, calc(80vh / var(--zoom, 1)))', overflowY:'auto', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius: T.radius.popup, boxShadow:'var(--elev-3)', padding:6, zIndex:3000 }}>
               {([
                 {label: bulkMode?'Τέλος επιλογής':'Μαζική επιλογή', icon:<CheckSquare size={15}/>, on:()=>{setBulkMode(b=>!b);setSelectedIds(new Set());setShowMenu(false)}},
                 {label: showFilters?'Απόκρυψη φίλτρων':'Φίλτρα', icon:<Filter size={15}/>, on:()=>{setShowFilters(f=>!f);setShowMenu(false)}},

@@ -12,6 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { T } from '@/components/Theme';
+import { Dictation } from '@/components/dictation/MicButton';
 
 export interface CommandItem {
   id: string;
@@ -110,15 +111,19 @@ export function CommandPalette({ open, onClose, items }: { open: boolean; onClos
   let idx = -1;
   return (
     <div className="cmdk-scrim" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="cmdk" role="dialog" aria-modal="true">
-        <input
-          ref={inputRef}
-          aria-label="Αναζήτηση ή μετάβαση"
-          className="cmdk-input"
-          placeholder="Αναζήτηση ή μετάβαση… (ακίνητο, καρτέλα, ενέργεια)"
-          value={q}
-          onChange={e => setQ(e.target.value)}
-        />
+      {/* Ο ΔΙΑΛΟΓΟΣ ΕΙΧΕ ΡΟΛΟ ΧΩΡΙΣ ΟΝΟΜΑ: ο αναγνώστης οθόνης ανακοίνωνε σκέτο
+          «διάλογος» και ο χρήστης δεν ήξερε τι άνοιξε. */}
+      <div className="cmdk" role="dialog" aria-modal="true" aria-label="Αναζήτηση και μετάβαση">
+        <Dictation value={q} onChange={setQ}>
+          <input
+            ref={inputRef}
+            aria-label="Αναζήτηση ή μετάβαση"
+            className="cmdk-input"
+            placeholder="Αναζήτηση ή μετάβαση… (ακίνητο, καρτέλα, ενέργεια)"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+          />
+        </Dictation>
         <div className="cmdk-list" ref={listRef}>
           {rows.length === 0 ? (
             <div className="cmdk-empty">Κανένα αποτέλεσμα για «{q}»</div>

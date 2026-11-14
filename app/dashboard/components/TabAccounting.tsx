@@ -316,7 +316,7 @@ export default function TabAccounting({ propertyId, userId, profileType='individ
               εγγράφου και QR για να ελέγξει ο λογιστής ότι δεν άλλαξε· αυτό
               λέει και το όνομά του. Η αναπροσαρμογή ενοικίου εμφανίζεται μόνο
               όπου υπάρχει μισθωτής να ειδοποιηθεί. */}
-          <ActionMenu label="Αναφορές και ενέργειες" icon={<Printer size={14}/>} items={[
+          <ActionMenu label="Αναφορές και ενέργειες" align="left" icon={<Printer size={14}/>} items={[
             { key:'print', label:'Λογιστική αναφορά', description:'Σύνοψη εσόδων, φόρου και καθαρού σε PDF, έτοιμη για τον λογιστή σου', icon:<Printer size={16}/>, onClick:printReport },
             { key:'official', label:'Αναφορά με επαλήθευση', description:'PDF με αριθμό εγγράφου και QR για να ελέγξει ο λογιστής ότι δεν άλλαξε', icon:<ShieldCheck size={16}/>, onClick:officialReport, busy:genOfficial },
             ...(status==='rent_long' ? [

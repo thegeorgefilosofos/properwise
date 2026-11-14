@@ -7,6 +7,7 @@ import { X, Copy } from 'lucide-react'
 import { InfoDot } from '../UIComponents'
 import { T, IconBtn } from '@/components/Theme'
 import type { FieldDecision } from '@/lib/property/fields'
+import { Dictation } from '@/components/dictation/MicButton'
 
 // ── Δομικά του ντοσιέ επαφής ──────────────────────────────────────────────
 // ΣΕ MODULE SCOPE: ορισμένα μέσα στο DossierPanel, ξαναγεννιούνταν σε κάθε
@@ -60,7 +61,8 @@ export function Inp({ value, onChange, placeholder, type = 'text', min, ariaLabe
 }
 export function Txt({ value, onChange, placeholder, rows = 4, ariaLabel }: { value: string; onChange: (v: string) => void; placeholder?: string; rows?: number; ariaLabel?: string }) {
   const named = useContext(FieldName);
-  return <textarea value={value} onChange={e => onChange(e.target.value)} aria-label={ariaLabel ?? named} placeholder={placeholder} rows={rows} style={{ ...iStyle, height: 'auto', resize: 'vertical', lineHeight: 1.6 }} onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-dim)' }} onBlur={e => { e.target.style.borderColor = 'var(--border-default)'; e.target.style.boxShadow = 'none' }} />
+  // Οι ελεύθερες σημειώσεις μιας επαφής λέγονται πιο εύκολα απ' όσο γράφονται.
+  return <Dictation multiline value={value} onChange={onChange}><textarea value={value} onChange={e => onChange(e.target.value)} aria-label={ariaLabel ?? named} placeholder={placeholder} rows={rows} style={{ ...iStyle, height: 'auto', resize: 'vertical', lineHeight: 1.6 }} onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-dim)' }} onBlur={e => { e.target.style.borderColor = 'var(--border-default)'; e.target.style.boxShadow = 'none' }} /></Dictation>
 }
 // Πεδίο ΜΕ ΤΟ «ΓΙΑΤΙ» ΤΟΥ, από το μητρώο. Αν το πεδίο δεν αφορά αυτόν τον χρήστη,
 // δεν αποδίδεται καθόλου — δεν κλειδώνεται και δεν εμφανίζεται γκριζαρισμένο.

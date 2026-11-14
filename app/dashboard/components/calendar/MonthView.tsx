@@ -389,7 +389,7 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
                    «κουμπί» χωρίς τίποτε άλλο. Το `onDayClick` είχε ήδη φρένο
                    (`day&&`), δηλαδή το πάτημα δεν έκανε ποτέ τίποτα. */
                 <div key={idx} className="cal-cell"
-                  {...(day!=null ? (()=>{ const pr = pressable(()=>{ if(coarse&&dayEvents.length) onDayOpen(dateStr); else onDayClick(dateStr) }, `${day} ${monthGen(month)}${dayEvents.length?`, ${dayEvents.length} ${dayEvents.length===1?'γεγονός':'γεγονότα'}`:''}`)
+                  {...(day!=null ? (()=>{ const pr = pressable(()=>{ if(coarse&&dayEvents.length) onDayOpen(dateStr); else onDayClick(dateStr) }, `${day} ${monthGen(month)}${dayEvents.length?`, ${dayEvents.length} ${dayEvents.length===1?'γεγονός':'γεγονότα'}`:''}${(()=>{ const g=staysOnDay(stays,dateStr).map(x=>x.guest).filter(Boolean); return g.length?`, ${g.length===1?'κράτηση':'κρατήσεις'}: ${g.join(', ')}`:'' })()}`)
                     // Το `pressable` δίνει tabIndex 0 σε ΚΑΘΕ κελί. Εδώ μένει μία
                     // στάση για όλο το πλέγμα και τα υπόλοιπα κελιά βγαίνουν από
                     // τη σειρά του Tab χωρίς να χάσουν το Enter και το κενό.
@@ -490,7 +490,11 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
                 ξαναπιάνει, ώστε το tooltip να δουλεύει και το κλικ επάνω της να
                 μην αλλάζει ημέρα. */}
             {shownLanes>0&&(
-              <div aria-hidden={false} style={{ position:'absolute', left:0, right:0, top:CELL_PAD+DAY_HEAD_H+weekHolH, height:railH, pointerEvents:'none' }}>
+              // ΚΡΥΦΟ ΣΤΟΝ ΑΝΑΓΝΩΣΤΗ, ΓΡΑΜΜΕΝΟ ΣΤΟ ΚΕΛΙ. Το στρώμα ήταν παιδί της
+              // σειράς χωρίς ρόλο κελιού: το axe το μετρούσε «κρίσιμο» και ο
+              // αναγνώστης διάβαζε τα ονόματα έξω από τις ημέρες τους. Οι
+              // κρατήσεις λέγονται πλέον στο όνομα κάθε ημέρας (πιο πάνω).
+              <div aria-hidden="true" style={{ position:'absolute', left:0, right:0, top:CELL_PAD+DAY_HEAD_H+weekHolH, height:railH, pointerEvents:'none' }}>
                 {segments.filter(g=>g.lane<MAX_LANES).map(g=>{
                   const cc=channelColor(g.stay.channel)
                   const L=g.openLeft?0:BAR_INSET, R=g.openRight?0:BAR_INSET

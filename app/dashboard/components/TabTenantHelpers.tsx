@@ -226,7 +226,7 @@ export function ServicesEditor({ value, onChange }: { value: ServiceLine[] | nul
             alignItems:'end', gap:'12px', padding:'12px 14px',
             background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:'10px',
           }}>
-            <TextInput label="Περιγραφή" value={l.name} onChange={v => upd(i, { name: v })} placeholder="Συντήρηση καυστήρα" />
+            <TextInput dictation label="Περιγραφή" value={l.name} onChange={v => upd(i, { name: v })} placeholder="Συντήρηση καυστήρα" />
             <NumberInput label="Κόστος τον μήνα" value={l.cost ? String(l.cost) : ''} onChange={v => upd(i, { cost: parseFloat(v) || 0 })} suffix="€" />
             <UIServiceBySelect label="Ποιος πληρώνει" value={l.payer} onChange={v => upd(i, { payer: v })} />
             {/* ΜΕΝΕΙ ΧΕΙΡΟΠΟΙΗΤΟ. Το `s.btnDng` είναι γεωμετρικά δευτερεύον κουμπί

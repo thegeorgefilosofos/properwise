@@ -61,6 +61,10 @@ export function palette(text, seed) {
   const base = new Map(seed?.base ?? [])
   const overrides = { light: new Map(seed?.light ?? []), dark: new Map(seed?.dark ?? []) }
   for (const b of blocks(text)) {
+    // Η ΥΨΗΛΗ ΑΝΤΙΘΕΣΗ ΤΩΝ ΡΥΘΜΙΣΕΩΝ ΔΕΝ ΕΙΝΑΙ ΤΟ ΘΕΜΑ. Ο επιλογέας της γράφει
+    // `[data-mode="light"]` (ή το `:not` του) και θα έμπαινε στο φωτεινό ως
+    // βάση. Διαβάζεται χωριστά, από το `readPalettes`, ως δικός της χώρος.
+    if (b.selector.includes('data-contrast')) continue
     const hitsRoot = /(^|,)\s*:root\s*(,|$)/.test(b.selector)
     const dark = b.selector.includes('[data-mode="dark"]')
     const light = b.selector.includes('[data-mode="light"]')
@@ -84,7 +88,20 @@ export function readPalettes(path = CSS_PATH) {
   const { base, wrapped } = splitAtRules(raw)
   const main = palette(base)
   const contrastCss = wrapped.filter(w => /prefers-contrast/.test(w.condition)).map(w => w.body).join('\n')
-  return { main, contrast: contrastCss.trim() ? palette(contrastCss, main.parts) : null }
+  // Η «Υψηλή αντίθεση» των Ρυθμίσεων (`:root[data-contrast="high"]…`): το μπλοκ
+  // του σκοτεινού και του φωτεινού ξαναγράφονται με τους επιλογείς του θέματος
+  // και στρώνονται πάνω στη βάση, όπως η παλέτα αυξημένης αντίθεσης.
+  let manualCss = ''
+  for (const b of blocks(base)) {
+    if (!b.selector.includes('data-contrast="high"') || !/--[a-z]/.test(b.body)) continue
+    const light = /\[data-mode="light"\]/.test(b.selector) && !/:not\(\[data-mode="light"\]\)/.test(b.selector)
+    manualCss += `${light ? '[data-mode="light"]' : '[data-mode="dark"]'} {${b.body}}\n`
+  }
+  return {
+    main,
+    contrast: contrastCss.trim() ? palette(contrastCss, main.parts) : null,
+    manual: manualCss ? palette(manualCss, main.parts) : null,
+  }
 }
 
 /** Χρώμα → [r,g,b,a] (0..255, άλφα 0..1). null για ό,τι δεν είναι χρώμα. */

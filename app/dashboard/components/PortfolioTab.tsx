@@ -44,6 +44,7 @@ import RentReceived from './RentReceived';
 import { collectableLines, allViaBank, type CollectableRent } from '@/lib/rent/collect';
 import { useLoad } from '@/app/hooks/useLoad';
 import { toggleIn } from '@/lib/core/toggleSet';
+import { Dictation } from '@/components/dictation/MicButton';
 
 interface PropLite { id: string; name: string; prop_type: string | null; address: string | null; target_rent: number | null; value: number | null; }
 /** Δόση ενοικίου όπως την καταχωρεί ο ιδιοκτήτης — `paid` = εισπράχθηκε. */
@@ -831,7 +832,9 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
             ανήκει στον υπότιτλο από πάνω, όχι στο πεδίο από κάτω. */}
         <div>
           <label style={{ ...TT.label, display: 'block', marginBottom: 6 }}>Περιγραφή</label>
-          <input aria-label="Περιγραφή" autoFocus value={bulkDesc} onChange={e => setBulkDesc(e.target.value)} placeholder="Έλεγχος κλιματιστικών" style={fieldStyle} />
+          <Dictation value={bulkDesc} onChange={setBulkDesc}>
+            <input aria-label="Περιγραφή" autoFocus value={bulkDesc} onChange={e => setBulkDesc(e.target.value)} placeholder="Έλεγχος κλιματιστικών" style={fieldStyle} />
+          </Dictation>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>

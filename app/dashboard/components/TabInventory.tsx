@@ -367,7 +367,7 @@ function ItemsTab({items,photoUrls,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,
             390 κάθε φίλτρο έπιανε άλλο πλάτος σε δική του γραμμή και η δεξιά άκρη
             πήγαινε ζιγκ ζαγκ. Με `flex: 1 1 <βάση>` η βάση κρατά το κείμενο να
             χωράει και κάθε γραμμή που προκύπτει από τύλιγμα γεμίζει ίσα. */}
-        <div style={{flex:'2 1 210px',minWidth:0}}><TextInput ariaLabel="Αναζήτηση αντικειμένου" value={search} onChange={setSearch} placeholder="Αντικείμενο ή μάρκα" aria-label="Αναζήτηση απογραφής"/></div>
+        <div style={{flex:'2 1 210px',minWidth:0}}><TextInput dictation ariaLabel="Αναζήτηση αντικειμένου" value={search} onChange={setSearch} placeholder="Αντικείμενο ή μάρκα" aria-label="Αναζήτηση απογραφής"/></div>
         {/* ΤΑ ΠΛΑΤΗ ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΟ ΚΕΙΜΕΝΟ ΚΑΙ ΤΟ ΚΕΙΜΕΝΟ ΕΙΝΑΙ ΕΛΛΗΝΙΚΟ.
             Το «Όλες οι κατηγορίες» και το «Όλα τα δωμάτια» είναι οι ΠΡΟΕΠΙΛΟΓΕΣ,
             δηλαδή αυτό που βλέπει ο χρήστης πριν αγγίξει τίποτα — και δεν
@@ -459,7 +459,13 @@ function ItemsTab({items,photoUrls,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,
                  έχανε οριστικά τη σκιά της. Η `.card` έχει ηρεμία και αιώρηση σε
                  CSS· ενσωματωμένο μένει μόνο το σημάδι της επιλογής, που πρέπει να
                  νικά και την αιώρηση, μαζί με το μηδενικό γέμισμα της φωτογραφίας. */
-              <div key={item.id} {...pressable(()=>selectMode?toggleSel(item.id):onEdit(item))} className="card" style={{padding:0,overflow:'hidden',display:'flex',flexDirection:'column',cursor:'pointer',...(sel?{borderColor:'var(--accent)',boxShadow:'0 0 0 1px var(--accent)'}:{})}}
+              /* ΚΑΡΤΑ ΧΩΡΙΣ ΡΟΛΟ ΚΟΥΜΠΙΟΥ. Ηταν ολόκληρη `role="button"` με
+                 κουμπιά μέσα της (κατάσταση, μενού): ο αναγνώστης οθόνης δεν
+                 μπορεί να διαβάσει κουμπί μέσα σε κουμπί και το axe το μετρούσε
+                 σοβαρό σφάλμα σε κάθε κάρτα. Το πάτημα οπουδήποτε στην κάρτα
+                 μένει για το ποντίκι και το δάχτυλο· το πληκτρολόγιο και ο
+                 αναγνώστης φτάνουν από το όνομα, που είναι πλέον κουμπί. */
+              <div key={item.id} role="article" aria-label={item.name} onClick={()=>selectMode?toggleSel(item.id):onEdit(item)} className="card" style={{padding:0,overflow:'hidden',display:'flex',flexDirection:'column',cursor:'pointer',...(sel?{borderColor:'var(--accent)',boxShadow:'0 0 0 1px var(--accent)'}:{})}}
               >
                 {/* ΧΩΡΙΣ ΦΩΤΟΓΡΑΦΙΑ, ΧΩΡΙΣ 118 ΕΙΚΟΝΟΣΤΟΙΧΕΙΑ ΚΕΝΟΥ. Ενα αχνό εικονίδιο σε
                     γκρι κουτί έπιανε το μισό ύψος της κάρτας και δεν έλεγε τίποτα·
@@ -486,7 +492,7 @@ function ItemsTab({items,photoUrls,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,
                 <div style={{padding:'12px 14px',display:'flex',flexDirection:'column',gap:8,flex:1}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10}}>
                     <div style={{minWidth:0}}>
-                      <p className="po-elide" style={{fontSize:14,fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)',marginBottom:2,lineHeight:1.3}}>{item.name}</p>
+                      <button type="button" className="po-box po-card-name po-elide" onClick={e=>{e.stopPropagation();if(selectMode)toggleSel(item.id);else onEdit(item)}}>{item.name}</button>
                       <p className="po-elide" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{inventoryLabel(item.category)}{item.room?` · ${inventoryLabel(item.room)}`:''}</p>
                     </div>
                     {/* ΤΟ «0,00€» ΕΦΥΓΕ ΑΠΟ ΤΗ ΘΕΣΗ ΤΗΣ ΑΠΑΝΤΗΣΗΣ. Ενα αντικείμενο
@@ -985,7 +991,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
       )}
 
       {!loading&&inventoryApplies&&(items.length===0
-        ? <div className="card" style={{textAlign:'center',padding:'clamp(40px,7vw,68px) 24px',marginTop:8}}>
+        ? <div className="card" style={{textAlign:'center',padding:'clamp(40px,calc(7vw / var(--zoom, 1)),68px) 24px',marginTop:8}}>
             {handoverSeed&&(
               <div style={{display:'flex',alignItems:'center',gap:10,textAlign:'left',maxWidth:520,margin:'0 auto 24px',padding:'12px 16px',background:'var(--accent-soft)',border:'1px solid var(--accent-border)',borderRadius:T.radius.inner}}>
                 <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>

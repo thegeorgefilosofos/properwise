@@ -68,8 +68,8 @@ html, body { height: 100%; }
    ρύθμιση μεγέθους κειμένου του συστήματος δουλεύουν κανονικά. Απαγορεύει
    μόνο την ΑΥΤΟΜΑΤΗ, αόρατη διόγκωση που αποφασίζει ο περιηγητής.
 
-   Η εφαρμογή έχει ήδη δικό της «Μεγαλύτερο κείμενο» στις Ρυθμίσεις
-   (`html.a11y-large-text`), δηλαδή η μεγέθυνση είναι επιλογή του χρήστη και
+   Η εφαρμογή έχει ήδη δικό της «Μέγεθος κειμένου» στις Ρυθμίσεις
+   (`:root[data-text]`), δηλαδή η μεγέθυνση είναι επιλογή του χρήστη και
    μετριέται — όχι απόφαση του περιηγητή που κανείς δεν βλέπει.
    ═══════════════════════════════════════════════════════════════════════════ */
 html {
@@ -105,7 +105,12 @@ body {
 /* Πλήρες ύψος που σέβεται τη μπάρα διευθύνσεων του κινητού (Safari/Chrome):
    το `100dvh` είναι το ΠΡΑΓΜΑΤΙΚΑ ορατό ύψος· το `100vh` μένει από πάνω ως
    εναλλακτικό για τα ελάχιστα προγράμματα που δεν ξέρουν `dvh`. */
-.min-h-dvh { min-height: 100vh; min-height: 100dvh; }
+.min-h-dvh { min-height: calc(100vh / var(--zoom, 1)); }
+/* ΤΟ dvh ΣΕ @supports. Μια δήλωση με `var()` δεν πετιέται στην ανάγνωση: σε
+   περιηγητή χωρίς `dvh` (Safari πριν το 15.4) γίνεται άκυρη ΜΕΤΑ, δηλαδή
+   χάνεται και η γραμμή `vh` από πάνω της. Μέσα σε @supports τη διαβάζει μόνο
+   όποιος την ξέρει. */
+@supports (height: 100dvh) { .min-h-dvh { min-height: calc(100dvh / var(--zoom, 1)); } }
 
 /* ══════════════════════════════════════════════════════════════
    ΧΡΩΜΑΤΙΚΟ ΣΥΣΤΗΜΑ — ΦΩΤΕΙΝΟ ΘΕΜΑ (Η ΕΞΑΙΡΕΣΗ· ΒΑΣΗ ΕΙΝΑΙ ΤΟ ΣΚΟΥΡΟ)
@@ -1711,11 +1716,11 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
      περιθώριο που κρατά η `.app-content` για την πλοήγηση — πέφτει εκτός
      οθόνης. Το `100dvh` είναι το πραγματικά ορατό· το `100vh` μένει από πάνω
      ως εναλλακτικό για τα ελάχιστα προγράμματα που δεν το ξέρουν. */
-  height: 100vh;
-  height: 100dvh;
+  height: calc(100vh / var(--zoom, 1));
   overflow: hidden;
   background: var(--bg-base);
 }
+@supports (height: 100dvh) { .app-shell { height: calc(100dvh / var(--zoom, 1)); } }
 
 /* Google Navigation Rail / Sidebar */
 .app-sidebar {
@@ -1991,7 +1996,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   /* ΤΟ 46vw ΚΡΑΤΑΕΙ ΤΟ ΣΗΜΑ ΚΑΤΑΣΤΑΣΗΣ ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ ΣΕ ΦΑΡΔΙΑ ΟΘΟΝΗ.
      Χωρίς αυτό, ένα μακρύ όνομα ακινήτου έπαιρνε όλο το πλάτος και έσπρωχνε το
      «Βραχυχρόνια μίσθωση» σε δεύτερη σειρά ακόμη και σε υπολογιστή. */
-  max-width: 46vw;
+  max-width: calc(46vw / var(--zoom, 1));
 }
 .topbar-switch-face {
   display: flex;
@@ -2036,7 +2041,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
    και καθαρό κενό ώστε οι δύο επιφάνειες να μην αγγίζονται: 126.
    Μετρημένο σε 320, 360 και 412, το φόντο του ονόματος σταματά 8, 8 και 28
    εικονοστοιχεία πριν από τον φακό. Το όνομα πήγε από 124 σε 192. */
-@media (max-width: 640px) { .topbar-switch { max-width: calc(100vw - 126px); } }
+@media (max-width: 640px) { .topbar-switch { max-width: calc(calc(100vw / var(--zoom, 1)) - 126px); } }
 
 /* Οι δύο τυλιχτές της μπάρας, σε υπολογιστή όπως ήταν ενσωματωμένοι. Ζουν
    ως κλάσεις ώστε στο κινητό να γίνονται `display: contents` (δες ≤640). */
@@ -2821,7 +2826,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
    οπότε το λογότυπο καθόταν 6 εικονοστοιχεία πιο μέσα από τη στήλη κάτω του.
    Ενα μέγεθος, το `--pub-gutter`, οδηγεί και τα δύο: το WRAP/WRAP_PAD του
    PublicChrome το διαβάζει, ώστε αρχή και τέλος να συμπίπτουν σε κάθε πλάτος. */
-:root { --pub-gutter: clamp(20px, 5vw, 48px); }
+:root { --pub-gutter: clamp(20px, calc(5vw / var(--zoom, 1)), 48px); }
 @media (max-width: 360px) { :root { --pub-gutter: 14px; } }
 /* ΚΑΙ Η ΕΓΚΟΠΗ ΤΟΥ iPHONE ΜΕΤΡΑ (27/10/2026). Η ρίζα δηλώνει `viewportFit:
    "cover"`, οπότε στο οριζόντιο iPhone η σελίδα απλώνεται κάτω από την εγκοπή
@@ -2832,7 +2837,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
    Γράφεται ΚΑΙ για το σκαλί των 360, αλλιώς, ως μεταγενέστερος κανόνας,
    θα ξανάφερνε τα 20 εκεί όπου η κεφαλίδα θέλει 14. */
 @supports (padding: max(0px, env(safe-area-inset-left))) {
-  :root { --pub-gutter: max(clamp(20px, 5vw, 48px), env(safe-area-inset-left), env(safe-area-inset-right)); }
+  :root { --pub-gutter: max(clamp(20px, calc(5vw / var(--zoom, 1)), 48px), env(safe-area-inset-left), env(safe-area-inset-right)); }
   @media (max-width: 360px) { :root { --pub-gutter: max(14px, env(safe-area-inset-left), env(safe-area-inset-right)); } }
 }
 
@@ -3446,7 +3451,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     padding-bottom: env(safe-area-inset-bottom, 0px);
     box-sizing: border-box;
     width: 280px;
-    max-width: 86vw;
+    max-width: calc(86vw / var(--zoom, 1));
     z-index: 1200;
     transform: translateX(-100%);
     /* ΤΟ ΚΛΕΙΣΤΟ ΜΕΝΟΥ ΕΜΕΝΕ ΣΤΗ ΣΕΙΡΑ ΤΟΥ TAB ΚΑΙ ΣΤΟΝ ΑΝΑΓΝΩΣΤΗ ΟΘΟΝΗΣ.
@@ -3478,7 +3483,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   }
   .app-scrim.open { opacity: 1; pointer-events: auto; }
 
-  .app-main { width: 100%; max-width: 100vw; overflow-x: hidden; }
+  .app-main { width: 100%; max-width: calc(100vw / var(--zoom, 1)); overflow-x: hidden; }
 
   /* Κουμπί ☰ στο topbar */
   .nav-toggle {
@@ -3912,7 +3917,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .auth-aside-body { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: center; max-width: 600px; }
 /* Η γραμμή της υποσημείωσης στο ίδιο μέτρο με το σώμα: αλλιώς δύο δεξιές άκρες. */
 .auth-aside-foot { max-width: 600px; }
-.auth-aside-h { font-size: clamp(20px, calc(3.35vw - 7.2px), 38px); }
+.auth-aside-h { font-size: clamp(20px, calc(calc(3.35vw / var(--zoom, 1)) - 7.2px), 38px); }
 .auth-aside-sub { font-size: 15px; }
 .auth-aside-pillars { gap: 24px; }
 .auth-aside-pl { font-size: 14px; }
@@ -3921,7 +3926,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* 460 από τα 768: η γραμμή των Όρων στα 12px θέλει 452 (app/login/page.tsx). */
 @media (min-width: 768px) { .auth-form { max-width: 460px; } }
 @media (min-width: 1440px) {
-  .auth-aside-h { font-size: clamp(38px, calc(2.2vw + 2px), 44px); }
+  .auth-aside-h { font-size: clamp(38px, calc(calc(2.2vw / var(--zoom, 1)) + 2px), 44px); }
   .auth-aside-sub { font-size: 17px; }
   .auth-aside-pillars { gap: 28px; }
   .auth-aside-pl { font-size: 16px; }
@@ -4230,7 +4235,7 @@ body { hyphens: none; }
    μπάρα αφής του iPhone (`env`) μακριά από τα κουμπιά. Ταμπλέτα και γραφείο:
    ίδια όπως πριν, κεντραρισμένο. */
 .po-modal-scrim { display: flex; align-items: center; justify-content: center; padding: 16px; }
-.po-modal { position: relative; width: min(var(--modal-w, 620px), 100%); max-height: 92dvh; border-radius: var(--modal-r, 18px); }
+.po-modal { position: relative; width: min(var(--modal-w, 620px), 100%); max-height: calc(92dvh / var(--zoom, 1)); border-radius: var(--modal-r, 18px); }
 .po-modal-body { padding: 24px; }
 .po-modal-foot { padding: 14px 24px; }
 .po-modal-grip { display: none; }
@@ -4241,7 +4246,7 @@ body { hyphens: none; }
   .po-modal-scrim { align-items: flex-end; padding: 0 0 var(--kb, 0px); }
   .po-modal {
     width: 100%;
-    max-height: min(90dvh, calc(var(--vvh, 100dvh) - 16px));
+    max-height: min(calc(90dvh / var(--zoom, 1)), calc(var(--vvh, calc(100dvh / var(--zoom, 1))) - 16px));
     border-radius: var(--modal-r, 18px) var(--modal-r, 18px) 0 0;
     border-bottom: 0 !important;
     /* Χωρίς `fill-mode`: μετά την είσοδο το transform φεύγει εντελώς, ώστε οι
@@ -4879,7 +4884,7 @@ body { hyphens: none; }
    ══════════════════════════════════════════════════════════════════════════ */
 .cmdk-scrim {
   position: fixed; inset: 0; background: var(--scrim); z-index: 1500;
-  display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px;
+  display: flex; align-items: flex-start; justify-content: center; padding: calc(12vh / var(--zoom, 1)) 16px 16px;
   animation: cmdk-in 0.12s ease;
 }
 @keyframes cmdk-in { from { opacity: 0; } to { opacity: 1; } }
@@ -4893,7 +4898,7 @@ body { hyphens: none; }
   padding: 16px 18px; font-size: 16px; color: var(--text-primary);
   font-family: 'Inter', sans-serif; border-bottom: 1px solid var(--border-subtle);
 }
-.cmdk-list { max-height: 52vh; overflow-y: auto; padding: 6px; }
+.cmdk-list { max-height: calc(52vh / var(--zoom, 1)); overflow-y: auto; padding: 6px; }
 .cmdk-item {
   display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer;
   font-size: 14px; color: var(--text-primary); font-family: 'Inter', sans-serif;
@@ -5027,18 +5032,207 @@ a.lp-link { transition: color 0.15s ease, filter 0.15s ease; }
   .acc-choice:hover { transform: none; }
 }
 
-/* ═══ Προσβασιμότητα (χειροκίνητες ρυθμίσεις από τον χρήστη) ═══════════════ */
-/* Μειωμένη κίνηση: σβήνει animations/transitions σε όλη την εφαρμογή. */
-html.a11y-reduce-motion *,
-html.a11y-reduce-motion *::before,
-html.a11y-reduce-motion *::after {
+/* ═══ ΠΡΟΣΒΑΣΙΜΟΤΗΤΑ: ΟΙ ΡΥΘΜΙΣΕΙΣ ΤΟΥ ΧΡΗΣΤΗ ════════════════════════════
+   Ζουν ως ιδιότητες στο <html> (lib/core/a11yPrefs.ts) και μπαίνουν από το
+   σενάριο πριν το πρώτο paint, όπως το θέμα: ο χρήστης που ζήτησε μεγάλο
+   κείμενο δεν βλέπει ποτέ πρώτα το μικρό. */
+
+/* ── ΛΙΓΟΤΕΡΗ ΚΙΝΗΣΗ ΑΚΟΜΗ ΚΙ ΟΤΑΝ Η ΣΥΣΚΕΥΗ ΔΕΝ ΤΗ ΖΗΤΑ ────────────────────
+   Ο,τι σβήνει το `prefers-reduced-motion` το σβήνει και η χειροκίνητη
+   επιλογή. Η προεπιλογή («όπως η συσκευή») δεν γράφει τίποτα εδώ. */
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
   scroll-behavior: auto !important;
 }
-/* Μεγαλύτερο κείμενο: ήπια μεγέθυνση όλης της διεπαφής (zoom, px-agnostic). */
-html.a11y-large-text { zoom: 1.08; }
+
+/* ── ΜΕΓΕΘΟΣ ΚΕΙΜΕΝΟΥ ────────────────────────────────────────────────────
+   ΓΙΑΤΙ `zoom` ΚΑΙ ΟΧΙ `font-size` ΣΤΗ ΡΙΖΑ. Τα μεγέθη της εφαρμογής είναι
+   γραμμένα σε εικονοστοιχεία, όχι σε rem: πάνω από χίλιες τετρακόσιες
+   δηλώσεις. Μια μεγαλύτερη γραμματοσειρά στη ρίζα δεν θα άλλαζε σχεδόν
+   τίποτα. Το `zoom` μεγαλώνει κείμενο, εικονίδια και στόχους αφής μαζί, όπως
+   η μεγέθυνση του περιηγητή. Η διάταξη ξαναρέει στο μικρότερο πλάτος που
+   μένει. Ελέγχθηκε στα 320.
+
+   ΤΑ ΜΗΚΗ ΤΗΣ ΟΘΟΝΗΣ ΔΙΑΙΡΟΥΝΤΑΙ ΜΕ ΤΗ ΜΕΓΕΘΥΝΣΗ. Κάτω από `zoom` ένα
+   `100dvh` πολλαπλασιάζεται κι αυτό: μετρημένο με zoom 1,25 σε οθόνη 800, ένα
+   στοιχείο `height: 100dvh` έβγαινε 1.000 ψηλό και ένα `100vw` 500 σε οθόνη
+   400. Τα παράθυρα έβγαιναν πιο ψηλά από την οθόνη και τα κουμπιά του πάτου
+   τους χάνονταν. Γι' αυτό κάθε μήκος οθόνης της εφαρμογής γράφεται
+   `calc(100dvh / var(--zoom, 1))`.
+
+   ΜΟΝΟ ΣΤΟΝ ΠΙΝΑΚΑ ΕΛΕΓΧΟΥ (`:has(.app-shell)`· από το πρώτο paint και με το
+   `data-app` που γράφει το σενάριο του θέματος στο /dashboard, ώστε ούτε ο
+   δείκτης φόρτωσης να ζωγραφίζεται μικρός). Η ρύθμιση ζει εκεί και εκεί
+   ελέγχθηκε. Οι δημόσιες σελίδες έχουν δεκάδες μήκη οθόνης στη δική τους
+   τυπογραφία και ο περιηγητής έχει ήδη δική του μεγέθυνση γι' αυτές. */
+:root { --zoom: 1; }
+:root[data-text="large"]:is(:has(.app-shell), [data-app])  { zoom: 1.125; --zoom: 1.125; }
+:root[data-text="xlarge"]:is(:has(.app-shell), [data-app]) { zoom: 1.25; --zoom: 1.25; }
+
+/* ── ΥΨΗΛΗ ΑΝΤΙΘΕΣΗ ──────────────────────────────────────────────────────
+   Τα ίδια tokens, με τιμές που περνούν το WCAG AAA (7:1) για κάθε κείμενο
+   πάνω σε κάθε επιφάνεια. Τα περιγράμματα φαίνονται (3:1 και πάνω). Το
+   μετρά το scripts/guard-contrast.mjs, ως χωριστό χώρο με όριο 7:1.
+   Οι αποχρώσεις -soft, -border και -on-container βγαίνουν με color-mix από
+   τους βασικούς τόνους, οπότε ακολουθούν χωρίς δική τους γραμμή. Οι
+   διαβαθμίσεις των επιφανειών γίνονται συμπαγείς: ένα ντεγκραντέ πίσω από
+   κείμενο είναι ακριβώς ό,τι κάνει την αντίθεση να διαφέρει από σημείο σε
+   σημείο. Πιάνει και τα τμήματα που ξαναδηλώνουν θέμα (`[data-mode="dark"]`
+   σε οδηγούς, υπολογιστές, αγγλικές σελίδες), αλλιώς η αντίθεση σταματούσε
+   στο όριό τους. Ο επιλογέας έχει ειδικότητα 0,3,0, ώστε να κερδίζει και τα δύο
+   θέματα όπου κι αν βρίσκεται στο αρχείο. */
+:root[data-contrast="high"]:not([data-mode="light"]),
+:root[data-contrast="high"] [data-mode="dark"] {
+  --bg-base: #000000;
+  --bg-surface: #0b0f16;
+  --bg-elevated: #151c27;
+  --bg-overlay: #19212d;
+  --bg-hover: rgba(255,255,255,0.10);
+  --text-primary: #ffffff;
+  --text-secondary: #e6ebf2;
+  --text-tertiary: #d3dae4;
+  --border-subtle: #66768d;
+  --border-default: #8796ab;
+  --border-strong: #aab6c7;
+  --border-control: #bcc7d6;
+  --accent: #c2daff;
+  --accent-hover: #d3e4ff;
+  --positive: #93ecce;
+  --negative: #ffc7c1;
+  --warning: #f4d28f;
+  --info: #ccd7ff;
+  --series-out: #b0bccc;
+  --sidebar-bg: #000000;
+  --surface-raised: #0b0f16;
+  --surface-sunken: #000000;
+  --surface-hero: #0b0f16;
+  --surface-kpi: #0b0f16;
+}
+:root[data-mode="light"][data-contrast="high"],
+:root[data-contrast="high"] [data-mode="light"] {
+  --bg-base: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-elevated: #eef1f5;
+  --bg-overlay: #e9edf2;
+  --bg-hover: rgba(0,0,0,0.06);
+  --text-primary: #000000;
+  --text-secondary: #1b2433;
+  --text-tertiary: #2b3646;
+  --border-subtle: #6f7a8a;
+  --border-default: #525d6d;
+  --border-strong: #333e4e;
+  --border-control: #1f2937;
+  --accent: #0a357f;
+  --accent-hover: #072a66;
+  --positive: #04432c;
+  --negative: #7a1717;
+  --warning: #4d3200;
+  --info: #16327c;
+  --series-out: #4f5a6a;
+  --ch-airbnb: #8c2d31;
+  --ch-booking: #0a406e;
+  --ch-vrbo: #2b348c;
+  --sidebar-bg: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #ffffff;
+  --surface-hero: #ffffff;
+  --surface-kpi: #ffffff;
+}
+/* Η εστίαση στην υψηλή αντίθεση είναι παχιά και στο χρώμα του κειμένου: ο
+   μπλε δακτύλιος των 2 εικονοστοιχείων είναι ακριβώς ό,τι χάνει πρώτο όποιος
+   βλέπει λιγότερο. */
+:root[data-contrast="high"] :focus-visible {
+  outline: 3px solid var(--text-primary) !important;
+  outline-offset: 2px !important;
+}
+
+/* ═══ ΥΠΑΓΟΡΕΥΣΗ (components/dictation/MicButton.tsx) ═════════════════════
+   Στόχος 44 × 44 και ορατός κύκλος 32 στο κέντρο, ώστε να κάθεται μέσα στο
+   πεδίο χωρίς να το φουσκώνει. Ανοιχτό: γεμάτος κύκλος στον τόνο έμφασης
+   και ένας δακτύλιος που ανασαίνει. Με λιγότερη κίνηση ο δακτύλιος μένει
+   σταθερός: η κατάσταση φαίνεται, απλώς δεν κουνιέται. */
+.po-mic {
+  position: relative; flex: none;
+  width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--text-tertiary); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.po-mic::before, .po-mic::after {
+  content: ''; position: absolute; inset: 6px; border-radius: 50%;
+  transition: background-color .15s, box-shadow .15s;
+}
+.po-mic svg { position: relative; z-index: 1; }
+@media (hover: hover) {
+  .po-mic:hover { color: var(--text-primary); }
+  .po-mic:hover::before { background: var(--bg-hover); }
+}
+.po-mic:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
+.po-mic[data-state="error"] { color: var(--negative); }
+.po-mic[aria-pressed="true"] { color: var(--on-tone); }
+.po-mic[aria-pressed="true"]::before { background: var(--accent); }
+.po-mic[aria-pressed="true"]::after { animation: po-mic-breathe 1.6s cubic-bezier(0.2, 0, 0, 1) infinite; }
+@keyframes po-mic-breathe {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); }
+  100% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .po-mic[aria-pressed="true"]::after { animation: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+}
+:root[data-motion="reduce"] .po-mic[aria-pressed="true"]::after { animation: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* Το πεδίο κρατά χώρο για το κουμπί ΜΟΝΟ όπου το κουμπί υπάρχει. Το
+   `!important` νικά το ενσωματωμένο γέμισμα που γράφουν τα πεδία. */
+.po-dictate { position: relative; }
+.po-dictate[data-mic] > input,
+.po-dictate[data-mic] > textarea { padding-inline-end: 48px !important; }
+/* Τέσσερα εικονοστοιχεία μέσα από την άκρη (δύο από πάνω, για να μένει στο
+   ύψος της πρώτης γραμμής): ο κύκλος των 32 και ο δακτύλιος
+   των 6 γύρω του μένουν μέσα στο πεδίο, μακριά από το περίγραμμα και τη
+   στρογγυλεμένη γωνία του. */
+.po-dictate[data-mic] > .po-mic { position: absolute; inset-inline-end: 4px; }
+.po-dictate[data-mic="single"] > .po-mic { top: 50%; transform: translateY(-50%); }
+.po-dictate[data-mic="multi"] > .po-mic { top: 2px; }
+/* Μέσα στο TextInput το κουμπί είναι παιδί του flex· τα 44 του περνούν το
+   περίγραμμα του κουτιού κατά ένα εικονοστοιχείο πάνω και κάτω. */
+.po-field-box > .po-mic { margin-block: -1px; margin-inline-end: 4px; }
+/* Το σφάλμα το λέει το εικονίδιο, βαμμένο στον αρνητικό τόνο· το κείμενο
+   μένει δευτερεύον. Μια ολόκληρη κόκκινη παράγραφος κάτω από ένα πεδίο
+   φωνάζει πιο δυνατά από το λάθος που περιγράφει. */
+.po-dictate-note {
+  margin-top: 6px; font-family: 'Inter', sans-serif; font-size: var(--fs-note);
+  line-height: 1.5; color: var(--text-secondary);
+}
+
+/* ═══ ΤΟ ΟΝΟΜΑ ΤΗΣ ΚΑΡΤΑΣ ΩΣ ΚΟΥΜΠΙ (TabInventory.tsx) ═══════════════════
+   Μοιάζει με τίτλο, συμπεριφέρεται ως κουμπί: εκεί φτάνει το Tab και ο
+   αναγνώστης οθόνης, αφού η κάρτα δεν είναι πια ολόκληρη κουμπί. */
+.app-content button.po-box.po-card-name,
+.po-card-name {
+  display: block; width: 100%; min-height: 24px; padding: 0; margin: 0 0 2px; border: 0;
+  background: transparent; text-align: left; cursor: pointer;
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; line-height: 1.3; color: var(--text-primary);
+}
+.po-card-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+/* ═══ «ΑΚΟΥΣΕ» ΔΙΠΛΑ ΣΤΑ ΒΑΣΙΚΑ ΠΟΣΑ (components/SpeakAmount.tsx) ═══════ */
+.po-speak {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; padding: 0 12px; border-radius: 999px;
+  border: 1px solid var(--border-default); background: var(--bg-surface);
+  color: var(--text-secondary); font-family: 'Inter', sans-serif;
+  font-size: var(--fs-sm); font-weight: 600; cursor: pointer;
+}
+@media (hover: hover) { .po-speak:hover { color: var(--text-primary); border-color: var(--border-strong); } }
+.po-speak:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Το ηχείο μέσα στην κεφαλίδα ενότητας, δίπλα στον τίτλο. Τα αρνητικά
+   περιθώρια κρατούν τον στόχο των 44 χωρίς να ψηλώσουν τη γραμμή του τίτλου. */
+.sec-hdr-act { display: inline-flex; vertical-align: middle; margin-block: -14px; margin-inline-start: 4px; }
+.po-speak[data-on] { color: var(--accent); border-color: var(--accent); }
 
 /* ═══ Toast (components/Toast.tsx) ════════════════════════════════════════ */
 /* Η μόνη κίνηση: ήπια άνοδος 6px. Το `prefers-reduced-motion` παραπάνω και ο
@@ -5267,7 +5461,7 @@ body:has(.po-tool-page) .po-cookie {
 .lp-foot {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  column-gap: 28px; row-gap: clamp(28px, 3.4vw, 40px);
+  column-gap: 28px; row-gap: clamp(28px, calc(3.4vw / var(--zoom, 1)), 40px);
   align-items: start;
 }
 /* Η ΜΑΡΚΑ ΠΙΑΝΕΙ ΟΛΟΚΛΗΡΗ ΤΗ ΣΕΙΡΑ, ΑΠΟ ΠΑΝΩ. Από κάτω τέσσερις ισότιμες
@@ -5276,7 +5470,7 @@ body:has(.po-tool-page) .po-cookie {
    τέλος των εργαλείων — που διαβαζόταν ως πάρεργο. Τέσσερις στήλες στο μέτρο
    1.044 βγάζουν ~240 η καθεμία με τρία κενά 28· από τα 1024 και κάτω
    γίνονται δύο (η μάρκα πάντα ολόκληρη πάνω) ακόμη και στο τηλέφωνο. */
-.lp-foot > :first-child { grid-column: 1 / -1; margin-bottom: clamp(4px, 1vw, 10px); }
+.lp-foot > :first-child { grid-column: 1 / -1; margin-bottom: clamp(4px, calc(1vw / var(--zoom, 1)), 10px); }
 /* ΣΤΗΝ ΕΠΙΦΑΝΕΙΑ ΕΡΓΑΣΙΑΣ: ΚΑΘΕ ΣΥΝΔΕΣΜΟΣ ΣΕ ΜΙΑ ΓΡΑΜΜΗ, ΙΣΑ ΚΕΝΑ (26/10/2026).
    Με τέσσερα ίσα 1fr το «Υπαναχώρηση από τη σύμβαση εδώ» (η ένδειξη του νόμου,
    δεν συντομεύεται) έσπαγε σε δύο γραμμές και κατέβαζε το «Επικοινωνία» μισή
@@ -5510,7 +5704,7 @@ body:has(.po-tool-page) .po-cookie {
 .pub-menu-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pub-menu-sheet {
   position: absolute; top: calc(100% + 10px); right: 0; z-index: 60;
-  width: max-content; min-width: 200px; max-width: calc(100vw - 2 * var(--pub-gutter));
+  width: max-content; min-width: 200px; max-width: calc(calc(100vw / var(--zoom, 1)) - 2 * var(--pub-gutter));
   margin: 0; padding: 6px;
   background: var(--bg-surface); border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-lg);
@@ -5523,12 +5717,14 @@ body:has(.po-tool-page) .po-cookie {
    όταν τελειώσει το φύλλο, επίτηδες: στην πρώτη επίσκεψη το πλαίσιο cookies
    στέκεται πάνω από την κεφαλίδα και στα 568 ύψος το φύλλο ξεκινά 101 πιο
    χαμηλά. Η σελίδα κυλά, η κεφαλίδα κολλά στην κορυφή και φαίνεται όλο. */
-.pub-menu-sheet { max-height: calc(100vh - 90px); max-height: calc(100dvh - 90px); overflow-y: auto; }
+.pub-menu-sheet { max-height: calc(calc(100vh / var(--zoom, 1)) - 90px); overflow-y: auto; }
+@supports (height: 100dvh) { .pub-menu-sheet { max-height: calc(calc(100dvh / var(--zoom, 1)) - 90px); } }
 /* Η ΓΡΑΜΜΗ «View in English» (app/LangSuggest.tsx) στέκεται πάνω από την
    κεφαλίδα και κατεβάζει το φύλλο ~52px. Στο CI, με περιηγητή χωρίς ελληνικά,
    το φύλλο έβγαινε κάτω από την οθόνη (620 σε 568). Όσο φαίνεται η γραμμή,
    το φύλλο κονταίνει ανάλογα. */
-body:has(.pw-lang-suggest) .pub-menu-sheet { max-height: calc(100vh - 162px); max-height: calc(100dvh - 162px); }
+body:has(.pw-lang-suggest) .pub-menu-sheet { max-height: calc(calc(100vh / var(--zoom, 1)) - 162px); }
+@supports (height: 100dvh) { body:has(.pw-lang-suggest) .pub-menu-sheet { max-height: calc(calc(100dvh / var(--zoom, 1)) - 162px); } }
 .pub-menu-sheet ul { margin: 0; padding: 0; list-style: none; }
 .pub-menu-group + .pub-menu-group { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-subtle); }
 .pub-menu-label {
@@ -5647,7 +5843,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    κεφαλίδας είναι ένα και είναι η δοκιμή. */
 .lg-back {
   display: inline-flex; align-items: center; gap: 7px;
-  margin-bottom: clamp(16px, 2.2vw, 24px);
+  margin-bottom: clamp(16px, calc(2.2vw / var(--zoom, 1)), 24px);
   font-size: 14px; font-weight: 600; text-decoration: none;
   color: var(--text-tertiary); transition: color .15s;
 }
@@ -5690,7 +5886,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    Αλλάζει μόνο ότι κεντράρεται αντί να κάθεται δεξιά από κενή στήλη. */
 .lg-grid {
   display: block;
-  margin-top: clamp(32px, 4.5vw, 52px);
+  margin-top: clamp(32px, calc(4.5vw / var(--zoom, 1)), 52px);
 }
 /* ═══ ΤΟ ΚΕΙΜΕΝΟ ΦΤΑΝΕΙ ΣΤΗΝ ΑΚΡΗ, ΟΠΩΣ ΚΑΘΕ ΑΛΛΟ ΣΤΟΙΧΕΙΟ ΤΗΣ ΣΕΛΙΔΑΣ ═══
    ΜΕ ΤΟ ΤΑΒΑΝΙ ΤΩΝ 712 Η ΣΕΛΙΔΑ ΕΙΧΕ ΔΥΟ ΔΕΞΙΕΣ ΑΚΡΕΣ. Η ημερομηνία, το
@@ -5770,7 +5966,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   font-size: 13px; line-height: 1.6; padding: 14px 0 0;
   background: none; border: 0; border-top: 1px solid var(--border-subtle); border-radius: 0;
 }
-.lg-closing { margin-top: clamp(32px, 4vw, 48px); }
+.lg-closing { margin-top: clamp(32px, calc(4vw / var(--zoom, 1)), 48px); }
 /* ΤΟ ΣΩΜΑ ΤΩΝ ΝΟΜΙΚΩΝ ΣΕΛΙΔΩΝ ΣΤΟ ΜΕΓΕΘΟΣ ΚΑΙ ΣΤΟ ΧΡΩΜΑ ΤΩΝ ΟΔΗΓΩΝ (01.10.2026).
    Στα 15 και στον δεύτερο τόνο το «Ποιοι είμαστε» έβγαζε 95 ως 115 χαρακτήρες
    τη γραμμή και ήταν πιο αχνό από κάθε οδηγό, ενώ λέει τι υποσχόμαστε. Ιδιο
@@ -5797,7 +5993,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
 /* Ο ΤΙΤΛΟΣ ΤΟΥ ΜΕΡΟΥΣ μέσα στο κείμενο. Λεπτή γραμμή από πάνω αντί για κουτί:
    χωρίζει χωρίς να προσθέτει άλλο ένα πλαίσιο σε σελίδα που είναι ήδη κείμενο. */
 .lg-part {
-  margin: clamp(40px, 5vw, 60px) 0 22px; padding-top: 20px;
+  margin: clamp(40px, calc(5vw / var(--zoom, 1)), 60px) 0 22px; padding-top: 20px;
   border-top: 1px solid var(--border-subtle);
   font-size: 13px; font-weight: 600; color: var(--accent);
 }
@@ -5811,7 +6007,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
    τα άλματα, σε σελίδες 16.000 εικονοστοιχείων στο κινητό. Ο κατάλογος γυρίζει
    στην κορυφή της στήλης, στο ΠΛΑΤΟΣ της: σε δύο στήλες στον υπολογιστή,
    πτυσσόμενος στο κινητό, ώστε να μη σπρώχνει το κείμενο τρεις οθόνες κάτω. */
-.lg-toc { margin: 0 0 clamp(30px, 4vw, 46px); }
+.lg-toc { margin: 0 0 clamp(30px, calc(4vw / var(--zoom, 1)), 46px); }
 .lg-toc-list { list-style: none; margin: 0; padding: 0; }
 .lg-toc-list li { break-inside: avoid; }
 .lg-toc-list a {
@@ -6098,7 +6294,7 @@ details.lp-faq-more[open] > div > details.lp-faq:first-child { border-top: none;
   .gd-layout > .gd { max-width: none; }
   .lg-grid > .lg-toc, .gd-layout > .gd-rail {
     grid-column: 2; grid-row: 1; margin: 0;
-    position: sticky; top: 24px; max-height: calc(100dvh - 48px); overflow-y: auto;
+    position: sticky; top: 24px; max-height: calc(calc(100dvh / var(--zoom, 1)) - 48px); overflow-y: auto;
     display: flex; flex-direction: column; gap: 16px;
   }
   /* Το ευρετήριο μέσα στο κείμενο του οδηγού φεύγει: το λέει ήδη η στήλη. */
@@ -6620,7 +6816,7 @@ tr.po-row-more { display: none; }
    δεύτερο τόνο και η εναλλακτική (ετήσια ή Νόα) σε δική της γραμμή. */
 .plan-price { display: block; padding: 10px 0 14px; line-height: 1.1; }
 .plan-price-num {
-  font-size: clamp(28px, 2.6vw, 32px); font-weight: 700; letter-spacing: -0.03em;
+  font-size: clamp(28px, calc(2.6vw / var(--zoom, 1)), 32px); font-weight: 700; letter-spacing: -0.03em;
   color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .plan-price-per { margin-left: 2px; font-size: 14px; font-weight: 500; color: var(--text-secondary); }
@@ -6842,7 +7038,7 @@ tr.po-row-more { display: none; }
      οθόνη 320 — παίρνει ό,τι υπάρχει και το ΥΨΟΣ μένει 44: ο στόχος γίνεται
      ορθογώνιος αντί για τετράγωνος, που είναι η σωστή απάντηση όταν το πλάτος
      το ορίζει η συσκευή. */
-  .dp-pop { width: min(340px, calc(100vw - 20px)) !important; padding: 12px !important; }
+  .dp-pop { width: min(340px, calc(calc(100vw / var(--zoom, 1)) - 20px)) !important; padding: 12px !important; }
   .dp-day { aspect-ratio: auto !important; min-height: 44px; }
 }
 
@@ -7166,7 +7362,7 @@ tr.po-row-more { display: none; }
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  margin: clamp(22px, 3.5vw, 32px) 0 0;
+  margin: clamp(22px, calc(3.5vw / var(--zoom, 1)), 32px) 0 0;
   padding: 12px 14px;
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
@@ -7266,10 +7462,10 @@ tr.po-row-more { display: none; }
    Ο ΤΙΤΛΟΣ ΣΤΗΝ ΚΛΙΜΑΚΑ ΤΩΝ ΑΛΛΩΝ H2 (25 → 40, `SectionHead`). Ηταν 30 → 50,
    ο μόνος δεύτερος τίτλος της σελίδας μεγαλύτερος από τους άλλους: διαβαζόταν
    ως δεύτερο hero μέσα στη σελίδα. */
-.nf-band { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 64px); align-items: start; }
+.nf-band { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(32px, calc(5vw / var(--zoom, 1)), 64px); align-items: start; }
 .nf-title {
   display: flex; align-items: center; gap: 14px; margin: 0;
-  font-size: clamp(25px, 3.4vw, 40px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
+  font-size: clamp(25px, calc(3.4vw / var(--zoom, 1)), 40px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
 }
 .nf-mono {
   flex: none; width: 1.18em; height: 1.18em; border-radius: 30%;
@@ -7277,7 +7473,7 @@ tr.po-row-more { display: none; }
   font-size: 0.82em; font-weight: 700; letter-spacing: -0.02em;
   background: var(--accent); color: var(--accent-text);
 }
-.nf-lead { margin: 18px 0 0; font-size: clamp(16px, 1.7vw, 18px); line-height: 1.6; color: var(--text-secondary); }
+.nf-lead { margin: 18px 0 0; font-size: clamp(16px, calc(1.7vw / var(--zoom, 1)), 18px); line-height: 1.6; color: var(--text-secondary); }
 .nf-does { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 14px; }
 .nf-does li { display: grid; grid-template-columns: 10px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; }
 /* ΕΝΑ ΣΥΣΤΗΜΑ ΣΗΜΑΔΙΩΝ ΛΙΣΤΑΣ ΣΤΗΝ ΑΡΧΙΚΗ: το τικ των πακέτων, της
@@ -7305,7 +7501,7 @@ tr.po-row-more { display: none; }
    ρίζας. Κάθε κομμάτι («4,99€», «τον μήνα», «ή … τον χρόνο») μένει ακέραιο. */
 .nf-price { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 8px; row-gap: 4px; }
 .nf-price > * { white-space: nowrap; }
-.nf-amount { font-size: clamp(30px, 3.4vw, 38px); font-weight: 700; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; color: var(--text-primary); line-height: 1; }
+.nf-amount { font-size: clamp(30px, calc(3.4vw / var(--zoom, 1)), 38px); font-weight: 700; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; color: var(--text-primary); line-height: 1; }
 .nf-per { font-size: 15px; color: var(--text-secondary); }
 .nf-terms { font-size: 14px; color: var(--text-secondary); line-height: 1.45; text-wrap: pretty; }
 .nf-cta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px; margin-top: 20px; }
@@ -7437,7 +7633,7 @@ tr.po-row-more { display: none; }
    2,07:1. Ο τίτλος και τα κείμενα της σελίδας μένουν στα `--text-primary` και
    `--text-secondary`, πάνω από 4,5:1. */
 .e404-code {
-  margin: 0 0 8px; font-size: clamp(88px, 16vw, 144px); font-weight: 700; line-height: 1;
+  margin: 0 0 8px; font-size: clamp(88px, calc(16vw / var(--zoom, 1)), 144px); font-weight: 700; line-height: 1;
   letter-spacing: -0.06em; font-variant-numeric: tabular-nums;
   color: var(--border-control); user-select: none;
 }
@@ -7479,7 +7675,7 @@ tr.po-row-more { display: none; }
    πάνελ έχει ήδη 128 πάνω από το σώμα του (γέμισμα 48, λογότυπο 24, κενό 56),
    οπότε του δίνεται μόνο η διαφορά. Στο τηλέφωνο το πάνελ κρύβεται και το
    γέμισμα το ορίζει ο κανόνας του `.auth-main` για τα 860. */
-.auth-top { --auth-top: max(128px, 14vh); }
+.auth-top { --auth-top: max(128px, calc(14vh / var(--zoom, 1))); }
 .auth-top .auth-aside-body { justify-content: flex-start; padding-top: calc(var(--auth-top) - 128px); }
 
 /* ═══ ΤΑ ΚΟΥΤΑΚΙΑ ΤΗΣ ΣΥΝΑΙΝΕΣΗΣ ΣΤΟ ΣΚΟΥΡΟ ═════════════════════════════════

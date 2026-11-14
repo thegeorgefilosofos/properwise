@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { cssRect } from '@/lib/core/cssZoom';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΤΟ ΔΙΑΓΡΑΜΜΑ ΜΕΤΡΑΕΙ ΣΕ ΕΙΚΟΝΟΣΤΟΙΧΕΙΑ ΟΘΟΝΗΣ, ΟΧΙ ΣΕ ΜΟΝΑΔΕΣ viewBox
@@ -70,7 +71,10 @@ export function useChartWidth(fallback = 640) {
     const el = ref.current; if (!el) return;
     // Το ύψος είναι δηλωμένο στο ίδιο το svg, άρα η αλλαγή του viewBox δεν
     // αλλάζει τη διάταξη και δεν υπάρχει βρόχος.
-    const read = () => setW(Math.round(el.getBoundingClientRect().width));
+    // Σε εικονοστοιχεία της ρίζας: με «Μέγεθος κειμένου» το πλάτος οθόνης θα
+    // έδινε viewBox μεγαλύτερο κατά τη μεγέθυνση και τα γράμματα του
+    // διαγράμματος θα έβγαιναν μικρότερα από το κείμενο γύρω τους.
+    const read = () => setW(Math.round(cssRect(el).width));
     read();
     const ro = new ResizeObserver(read);
     ro.observe(el.parentElement ?? el);

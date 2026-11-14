@@ -9,6 +9,7 @@ import { feAuto, feOr } from '@/components/Theme'
 import { type Memory, type AssistantAction, NAV_MAP } from '../assistantPersona'
 import type { ReconcileQuestion } from '../scanDoc'
 import type { PropertyStatus } from '@/lib/facts/status';
+import { clampBox, cssViewW, cssViewH } from '@/lib/core/cssZoom';
 
 interface PropContext {
   name: string; propType?: string; address?: string; value?: number; sqm?: number; status?: string; targetRent?: number;
@@ -113,10 +114,11 @@ export const FAB_H = 52;
 // ΤΟ ΚΟΥΜΠΙ ΜΕΝΕΙ ΟΠΟΥ ΤΟ ΑΦΗΝΕΙΣ (03/11/2026). Ως τότε κούμπωνε σε μία από
 // τις δύο κάτω γωνίες· ο ιδιοκτήτης ζήτησε ελεύθερη θέση, όπως παλιά. Μένει
 // μόνο ο περιορισμός μέσα στην οθόνη, με περιθώριο 8.
+//
+// ΣΕ ΕΙΚΟΝΟΣΤΟΙΧΕΙΑ ΤΗΣ ΡΙΖΑΣ. Με το «Μέγεθος κειμένου» η ρίζα έχει `zoom` και
+// το `left/top` του κουμπιού ζωγραφίζεται πολλαπλασιασμένο: ο περιορισμός με
+// το `innerWidth` της οθόνης άφηνε το κουμπί να βγει 25% έξω δεξιά και κάτω.
 export const clampToView = (x: number, y: number, w: number, h: number, m = 8) => {
   if (typeof window === 'undefined') return { x, y };
-  return {
-    x: Math.max(m, Math.min(x, window.innerWidth - w - m)),
-    y: Math.max(m, Math.min(y, window.innerHeight - h - m)),
-  };
+  return clampBox(x, y, w, h, cssViewW(), cssViewH(), m);
 };

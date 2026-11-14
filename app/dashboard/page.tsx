@@ -131,7 +131,7 @@ export default function Dashboard() {
   useAppointmentReminders(user?.id);
 
   if (loading || !user) return (
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--bg-base)'}}>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'calc(100vh / var(--zoom, 1))',background:'var(--bg-base)'}}>
       <Spinner size={48} label="Φόρτωση…" />
     </div>
   );
@@ -494,7 +494,7 @@ export default function Dashboard() {
                           `aria-hidden` ώστε να μη μπει στη σειρά του Tab. Με
                           πληκτρολόγιο κλείνει με Escape. */}
                       <div aria-hidden onClick={()=>setStatusDropdown(false)} style={{position:'fixed',inset:0,zIndex:99}}/>
-                      <div role="menu" style={{position:'absolute',top:'calc(100% + 8px)',left:0,maxHeight:'min(440px, calc(100vh - 96px))',overflowY:'auto',overscrollBehavior:'contain',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10,padding:'6px 0',zIndex:100,minWidth:224,boxShadow:'var(--shadow-lg)'}}>
+                      <div role="menu" style={{position:'absolute',top:'calc(100% + 8px)',left:0,maxHeight:'min(440px, calc(calc(100vh / var(--zoom, 1)) - 96px))',overflowY:'auto',overscrollBehavior:'contain',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10,padding:'6px 0',zIndex:100,minWidth:224,boxShadow:'var(--shadow-lg)'}}>
                         <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)', lineHeight: 1.3,fontWeight:600,color:'var(--text-tertiary)',padding:'6px 16px 4px'}}>Κατάσταση</div>
                         {STATUSES.map(({ key: k, label: v, hint }) => {
                           const active = readStatus(selected)===k;

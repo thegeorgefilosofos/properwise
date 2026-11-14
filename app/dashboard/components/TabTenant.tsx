@@ -1243,10 +1243,10 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                           σπάνια ξεπερνά μία πρόταση («Αποθήκη, κήπος»). Ο χρήστης
                           που γράφει περισσότερα το τραβά από τη γωνία του. */}
                       {more('tenant.extra_perks')&&(
-                        <Textarea rows={2} label={labelOf('tenant.extra_perks')} labelInfo={whyOf('tenant.extra_perks')} value={form.extra_perks} onChange={v=>sf('extra_perks',v)} placeholder="Αποθήκη, κήπος…"/>
+                        <Textarea dictation rows={2} label={labelOf('tenant.extra_perks')} labelInfo={whyOf('tenant.extra_perks')} value={form.extra_perks} onChange={v=>sf('extra_perks',v)} placeholder="Αποθήκη, κήπος…"/>
                       )}
                       {more('tenant.notes')&&(
-                        <Textarea rows={2} label={labelOf('tenant.notes')} labelInfo={whyOf('tenant.notes')} value={form.notes} onChange={v=>sf('notes',v)}/>
+                        <Textarea dictation rows={2} label={labelOf('tenant.notes')} labelInfo={whyOf('tenant.notes')} value={form.notes} onChange={v=>sf('notes',v)}/>
                       )}
                     </div>
                   </div>

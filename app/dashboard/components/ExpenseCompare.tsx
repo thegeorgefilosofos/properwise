@@ -73,7 +73,10 @@ function BasisSwitch({ value, onChange, enabled, labels }: {
 }) {
   const opts: Basis[] = ['previous_month', 'same_month_last_year'];
   return (
-    <div style={{ display: 'inline-flex', gap: 2, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, padding: 4 }}>
+    // ΤΥΛΙΓΕΤΑΙ ΑΝΤΙ ΝΑ ΒΓΕΙ ΕΞΩ. Με «Πολύ μεγάλο» κείμενο στα 320 οι δύο
+    // επιλογές θέλουν περισσότερο πλάτος από όσο μένει και η δεύτερη κοβόταν
+    // στην άκρη της οθόνης. Τώρα κατεβαίνει σε δεύτερη σειρά.
+    <div style={{ display: 'inline-flex', flexWrap: 'wrap', maxWidth: '100%', gap: 2, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.chip, padding: 4 }}>
       {/* `seg` και όχι `chip`: η ράγα έχει ήδη δικό της περίγραμμα, οπότε ένα
           δεύτερο ανά πλακίδιο θα έδινε διπλή γραμμή. */}
       {opts.map(id => (
@@ -256,8 +259,10 @@ function HistoryBars({ points, currentKey }: { points: MonthPoint[]; currentKey:
             την επικεφαλίδα «Δώδεκα μήνες» αυτό λέγεται, αλλιώς διαβάζεται ως
             δωδεκάμηνος. */}
         {showAvg && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>
-            <span aria-hidden style={{ width: 16, borderTop: '1px dashed var(--text-tertiary)' }} />
+          // Χωρίς `nowrap` στο κείμενο: με μεγάλο κείμενο στα 320 το υπόμνημα έβγαινε
+          // έξω από την κάρτα. Η γραμμούλα μένει ενωμένη με την πρώτη λέξη.
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
+            <span aria-hidden style={{ width: 16, flex: 'none', borderTop: '1px dashed var(--text-tertiary)' }} />
             <span>μέσος όρος{!gutter && <> <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-secondary)' }}>{fe(avg)}</span></>}{months < n ? ` σε ${months} μήνες με δαπάνες` : ''}</span>
           </span>
         )}
