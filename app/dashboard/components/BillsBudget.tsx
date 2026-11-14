@@ -1,1071 +1,833 @@
 'use client';
 
-import { TextInput, Toggle, ToggleTrack, InfoDot } from './UIComponents';
-import { T, fe, feAuto, fp, fn, fd, ABSENT_SHORT, KPIGrid, Skeleton, SkeletonKPIs, pressable, Btn, IconBtn, ChipToggle, LinkBtn } from '@/components/Theme';
+// ═══════════════════════════════════════════════════════════════════════════
+// ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ: ΜΙΑ ΕΡΩΤΗΣΗ ΑΝΑ ΟΘΟΝΗ (13/11/2026)
+// ─────────────────────────────────────────────────────────────────────────
+// Ο έλεγχος τον βαθμολόγησε 4/10. Η πρώτη οθόνη πήγαινε σε σημείωση και σε
+// κάρτα ταμείου, ο μήνας έναντι σχεδίου ήταν κάτω από την πτυχή, κάθε ενότητα
+// ξεκινούσε μαζεμένη και στα 375 η γραμμή κατηγορίας άνοιγε τη σελίδα στα 465.
+//
+// Τώρα η οθόνη απαντά «πώς πάει ο μήνας σε σχέση με το σχέδιό μου και τι με
+// χρειάζεται τώρα»:
+//   1. κεφαλίδα με μήνα και «Νέα δαπάνη»
+//   2. «Ξόδεψες X από Y», με το πραγματικό ποσοστό
+//   3. «Χρειάζονται εσένα»: ληξιπρόθεσμα, εκκρεμή, υπερβάσεις, με ένα πάτημα
+//      στη φιλτραρισμένη λίστα των Δαπανών
+//   4. οι κατηγορίες, πάντα ανοιχτές· πάτημα ανοίγει φύλλο με τις κινήσεις
+//   5. όλα τα υπόλοιπα κάτω από ΕΝΑ «Περισσότερα»
+// Στον υπολογιστή: 1.120 πλάτος, δύο στήλες (7 και 5).
+// ═══════════════════════════════════════════════════════════════════════════
+
+import { useState, useSyncExternalStore, type ReactNode } from 'react';
+import { NumberInput, TextInput, Toggle, ToggleTrack, InfoDot, CustomSelect } from './UIComponents';
+import { T, TT, fd, feAuto, fn, ABSENT_SHORT, KPIGrid, Skeleton, Btn, IconBtn, LinkBtn, Card, Modal, ChipToggle } from '@/components/Theme';
 import { feSigned, fpSigned, fpRate } from '@/lib/core/format';
-import { monthGen } from '@/lib/core/months';
-import { parseAmount } from '@/lib/core/greek';
 import { notify } from '@/components/Toast';
-import { categoryStatus, RecurringCharge } from '@/lib/billing/budget';
-import BudgetImport from './BudgetImport';
-import { toggleIn } from '@/lib/core/toggleSet';
-import {
-  parseLocalDate, FIXED_CATS, PAYERS,
-  type Props,
-} from './budget/model'
-import { Sparkline, MonthBars, Donut } from './budget/charts'
-import { InlineNumber, InlineText } from './budget/Bits'
-import { useBudget } from './budget/useBudget'
-import { STR_INDIVIDUAL_MAX_PROPERTIES } from '@/lib/billing/greekTax'
-import { YIELD_SHORT_LABELS, YIELD_PRE_TAX_SUB } from '@/lib/facts/labels'
+import { categoryStatus, type RecurringCharge } from '@/lib/billing/budget';
+import { parseLocalDate, PAYERS, type Props, type MonthItem } from './budget/model';
+import { MonthBars, Donut } from './budget/charts';
+import { useBudget } from './budget/useBudget';
+import { progress, yearly, orderCats, suggestTarget, nameToCommit, hiddenSpend, type Target } from './budget/plan';
+import { monthShort } from '@/lib/core/months';
+import { overdueWord, pendingWord, overWord, sumCents } from '@/lib/expenses/attention';
+import { STR_INDIVIDUAL_MAX_PROPERTIES } from '@/lib/billing/greekTax';
+import { YIELD_SHORT_LABELS, YIELD_PRE_TAX_SUB } from '@/lib/facts/labels';
 
-/**
- * Από πόσα βραχυχρόνια ακίνητα και πάνω η εκμίσθωση φυσικού προσώπου θεωρείται
- * επιχειρηματική δραστηριότητα. Βγαίνει από το ίδιο όριο του 39Α ΚΦΕ που κρίνει
- * την ειδοποίηση «χρειάζεται έναρξη» της Λογιστικής (lib/property/ama.ts): με
- * τον αριθμό γραμμένο εδώ ξεχωριστά, μια αλλαγή του νόμου θα άλλαζε μόνο τη μία
- * οθόνη.
- */
-const STR_BUSINESS_FROM = STR_INDIVIDUAL_MAX_PROPERTIES + 1
+/** Από πόσα βραχυχρόνια και πάνω η εκμίσθωση είναι επιχειρηματική (39Α ΚΦΕ). */
+const STR_BUSINESS_FROM = STR_INDIVIDUAL_MAX_PROPERTIES + 1;
 
-export default function BillsBudget({ propertyId, userId = '', profileType = 'individual' }: Props) {
+// ── Η ΔΙΑΤΑΞΗ ΔΥΟ ΣΤΗΛΩΝ ΚΡΙΝΕΤΑΙ ΑΠΟ ΤΟ ΠΛΑΤΟΣ, ΜΙΑ ΦΟΡΑ ─────────────────────
+// Η δεξιά στήλη δεν είναι αντίγραφο της αριστερής: εκεί ζουν το ετήσιο και οι
+// επαναλαμβανόμενες, που στο τηλέφωνο μπαίνουν στο «Περισσότερα». Με CSS θα
+// έπρεπε να αποδοθούν δύο φορές· εδώ αποδίδονται μία, στη σωστή θέση.
+const WIDE = '(min-width: 1024px)';
+const subWide = (cb: () => void) => {
+  if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+  const m = window.matchMedia(WIDE); m.addEventListener('change', cb);
+  return () => m.removeEventListener('change', cb);
+};
+const useWide = () => useSyncExternalStore(subWide, () => !!window.matchMedia?.(WIDE).matches, () => false);
+
+// Η ουδέτερη ράβδος: ήρεμη όσο δεν υπάρχει υπέρβαση. Η υπέρβαση παίρνει --negative.
+const BAR_FILL = 'color-mix(in srgb, var(--text-primary) 42%, transparent)';
+
+const NOTE = 'Τα σύνολα μετρούν λογαριασμούς και δαπάνες μαζί, στον μήνα της ημερομηνίας τους. Όσα δεν έχουν πληρωθεί μετρούν κι αυτά και σημειώνονται «εκκρεμεί».';
+
+const Chevron = ({ dir = 'right', size = 16 }: { dir?: 'right' | 'left' | 'down'; size?: number }) => (
+  <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+    style={{ transform: dir === 'left' ? 'rotate(180deg)' : dir === 'down' ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s', flexShrink: 0 }}>
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+
+/** Επικεφαλίδα κάρτας: ίδιο ύψος, ίδιο κενό, ίδια γραμμή σε κάθε κάρτα της οθόνης. */
+function CardHead({ title, info, right, level = 2 }: { title: string; info?: string; right?: ReactNode; level?: 2 | 3 }) {
+  const H = level === 2 ? 'h2' : 'h3';
+  return (
+    <div className="bud-card-head">
+      <H style={{ ...TT.label, color: 'var(--text-primary)', margin: 0, display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        {title}{info && <InfoDot text={info} />}
+      </H>
+      {right}
+    </div>
+  );
+}
+
+export default function BillsBudget({ propertyId, userId = '', profileType = 'individual', onScan, onOpenLedger }: Props) {
+  const b = useBudget({ propertyId, userId, profileType });
   const {
-    isPro, budgets, actuals, monthTotals, catMonth, income, incomeYtd, loanMonthly, rentalMode,
-    propSqm, strNights, recurring, monthItems, catBreakdown, openCats, setOpenCats, invReturns,
-    strPropCount, taxPctAuto, loading, saving, hoverCat, setHoverCat, delCatHover, setDelCatHover,
-    newCatName, setNewCatName, hoverRec, setHoverRec, hoverWeek, setHoverWeek, coarse, exclAmtDraft,
-    setExclAmtDraft, addingCat, setAddingCat, ledgerNoteSeen, dismissLedgerNote, showSettings,
-    setShowSettings, demoBusy, setMonthOffset, collapsed, toggleCollapse, loadData, updateBudget,
-    labelOverrides, activeCats, hiddenBaseCats, catBudget, masterBudget, persistCats, UNDO_MS,
-    addCategory, removeCategory, restoreCategory, demoIds, seedDemo, removeDemo, renameCategory,
-    excludedMap, excludedCount, excludeItem, unexcludeItem, patchExcl, exclAmountOf, _curYm,
-    catForecast, forecastTotal, projectedOver, annual, catTrend, _sparkYms, catSpark, yearBars,
-    catYtd, weekCats, weekTotalV, weekMax, rolloverOn, _prevYm, hasPrevMonth, carryIn, adjAvailable,
-    _prevLabel, isCurMonth, viewYm, viewActuals, viewActualTotal, viewRecordedTotal, viewMonthLabel,
-    viewItems, displayOver, canGoNewer, canGoOlder, committedBills, monthlyCost, hasIncome,
-    insights, dismissSuggestion, targetSuggestions, notifyOn, isSTR, strPlatformPct, strMgmtPct,
-    strTaxPct, waterfall, incomeDeductions, safeRaw, isShortfall,
-  } = useBudget({ propertyId, userId, profileType })
+    isPro, budgets, catMonth, overBudget, _curYm, income, loanMonthly, rentalMode, strNights, recurring, monthItems,
+    invReturns, strPropCount, taxPctAuto, loading, saving,
+    demoBusy, setMonthOffset, collapsed, toggleCollapse, updateBudget, labelOverrides, activeCats, hiddenBaseCats,
+    catBudget, masterBudget, addCategory, removeCategory, restoreCategory, demoIds, demo, setDemo,
+    removeDemo, renameCategory, excludedMap, excludeItem, unexcludeItem, patchExcl, exclAmountOf, catForecast,
+    forecastTotal, yearBars, catYtd, weekCats, weekTotalV, weekMax, rolloverOn, hasPrevMonth, carryIn,
+    adjAvailable, _prevLabel, isCurMonth, viewYm, viewActuals, viewActualTotal, viewRecordedTotal, viewMonthLabel, viewItems,
+    canGoNewer, canGoOlder, committedBills, monthlyCost, hasIncome, insights, dismissSuggestion,
+    targetSuggestions, notifyOn, isSTR, strPlatformPct, strMgmtPct, strTaxPct, waterfall, incomeDeductions, safeRaw,
+    isShortfall, loadError, attention, ytdActual, monthsElapsed, isOverCat, retry, exclAmtDraft, setExclAmtDraft,
+    monthTotals,
+  } = b;
 
-  // Κεφαλίδα ενότητας — ΟΛΗ η γραμμή είναι clickable (άνοιγμα/κλείσιμο), όχι μόνο το βελάκι.
-  // Το ⓘ σταματά τη διάδοση ώστε να δείχνει επεξήγηση χωρίς να κλείνει την ενότητα.
-  const secHdr = (label: string, key?: string, right?: React.ReactNode, info?: React.ReactNode) => {
-    const shut = !!key && collapsed.has(key);
-    const clickable = !!key;
+  const wide = useWide();
+  const [sheetKey, setSheetKey] = useState<string | null>(null);
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const [targetOpen, setTargetOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [showIdle, setShowIdle] = useState(false);
+  const moreOpen = !collapsed.has('more');
+
+  // ── ΣΚΕΛΕΤΟΣ: ΤΟ ΣΧΗΜΑ ΤΗΣ ΟΘΟΝΗΣ, ΟΧΙ ΣΠΙΝΕΡ ─────────────────────────────
+  if (loading) {
     return (
-      <div
-        onClick={clickable ? () => toggleCollapse(key!) : undefined}
-        onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCollapse(key!); } } : undefined}
-        role={clickable ? 'button' : undefined} tabIndex={clickable ? 0 : undefined} aria-expanded={clickable ? !shut : undefined}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: shut ? 0 : 12, paddingBottom: shut ? 0 : 10, borderBottom: shut ? 'none' : '1px solid var(--border-subtle)', cursor: clickable ? 'pointer' : 'default', userSelect: 'none' }}>
-        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</span>
-        {info && <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>{info}</span>}
-        <span style={{ flex: 1 }}/>
-        {right}
-        {key && (
-          <span aria-hidden="true" style={{ display: 'flex', color: 'var(--text-tertiary)', padding: 4, margin: '-4px -4px -4px 0' }}>
-            <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: shut ? 'rotate(-90deg)' : 'none', transition: 'transform 0.18s' }}><polyline points="6 9 12 15 18 9"/></svg>
-          </span>
-        )}
+      <div className="bud" aria-busy="true">
+        <Skeleton h={36} w={240} r={8} style={{ marginBottom: T.sp.lg }} />
+        <div className="bud-grid">
+          <div className="bud-col"><Skeleton h={168} r={T.radius.card} /><Skeleton h={320} r={T.radius.card} /></div>
+          <div className="bud-col"><Skeleton h={120} r={T.radius.card} /></div>
+        </div>
+        <BudgetStyles />
       </div>
     );
-  };
+  }
 
-  // Ενιαίος διακόπτης ρύθμισης (ίδιο idiom με τα toggles της εφαρμογής).
-  // ΤΙ ΕΣΠΑΣΕ. Η κάρτα είναι η ίδια <button> που γυρίζει τη ρύθμιση, αλλά ο
-  // βοηθός δεν είχε ΚΑΘΟΛΟΥ σημασιολογία διακόπτη: ούτε role="switch" ούτε
-  // aria-checked. Και οι δύο ρυθμίσεις («Ειδοποίηση σε υπέρβαση», «Μεταφορά
-  // υπολοίπου») ανακοινώνονταν ως απλά κουμπιά, δηλαδή ο αναγνώστης οθόνης δεν
-  // έλεγε ποτέ αν είναι ανοιχτές. Ο δείκτης βαφόταν με ωμό #fff και η σκιά με
-  // ωμό rgba — δύο παραβάσεις της παλέτας μέσα σε τρεις γραμμές. Δεν γίνεται
-  // κοινό `Toggle`: το `Toggle` είναι <button> και <button> μέσα σε <button>
-  // είναι άκυρο HTML.
+  const newExpense = onScan ? <Btn variant="primary" onClick={onScan} className="bud-new">Νέα δαπάνη</Btn> : null;
+
+  // ── ΚΕΦΑΛΙΔΑ ───────────────────────────────────────────────────────────
+  // Το «προφίλ ιδιώτη» έφυγε: δεν είναι πληροφορία προϋπολογισμού. Η σημείωση
+  // των τριακοσίων εικονοστοιχείων έγινε ⓘ δίπλα στον τίτλο. Τίτλος, μήνας και
+  // κύρια ενέργεια σε ΕΝΑ πλέγμα: στο τηλέφωνο ο τίτλος πάνω και από κάτω ο
+  // μήνας με το κουμπί, από τα 1.024 και τα τρία σε μία σειρά.
+  const header = (
+    <div className="bud-head">
+      <h1 className="page-title bud-title" style={{ ...TT.display, margin: 0 }}>
+        Προϋπολογισμός<span className="bud-title-info"><InfoDot text={NOTE} label="Πώς μετράμε" /></span>
+      </h1>
+      {!loadError && (
+        <div className="bud-month" role="group" aria-label="Μήνας">
+          <IconBtn onClick={() => canGoOlder && setMonthOffset(o => o - 1)} disabled={!canGoOlder} label="Προηγούμενος μήνας"><Chevron dir="left" size={18} /></IconBtn>
+          <span className="bud-month-label" aria-live="polite">
+            <span className="bud-m-long">{viewMonthLabel}</span>
+            <span className="bud-m-short" aria-hidden="true">{`${monthShort(Number(viewYm.slice(5, 7)) - 1)} ${viewYm.slice(0, 4)}`}</span>
+          </span>
+          <IconBtn onClick={() => canGoNewer && setMonthOffset(o => o + 1)} disabled={!canGoNewer} label="Επόμενος μήνας"><Chevron size={18} /></IconBtn>
+          {!isCurMonth && <button type="button" className="bud-textbtn" onClick={() => setMonthOffset(0)}>Σήμερα</button>}
+          {saving && <span style={{ ...TT.caption, marginLeft: T.sp.sm }}>Αποθήκευση…</span>}
+        </div>
+      )}
+      {newExpense}
+    </div>
+  );
+
+  // ── ΣΦΑΛΜΑ: ΚΑΝΕΝΑ ΜΗΔΕΝΙΚΟ, ΚΑΝΕΝΑ ΠΑΡΑΔΕΙΓΜΑ ───────────────────────────
+  if (loadError) {
+    return (
+      <div className="bud">
+        {header}
+        <Card gap={false} style={{ maxWidth: 640 }}>
+          <div role="alert" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: T.sp.md }}>
+            <h2 style={{ ...TT.h2, margin: 0 }}>Δεν φορτώθηκε ο προϋπολογισμός</h2>
+            <p style={{ ...TT.body, color: 'var(--text-secondary)', margin: 0 }}>
+              Τα ποσά δεν είναι μηδέν, απλώς δεν τα βλέπουμε τώρα. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.
+            </p>
+            <Btn variant="secondary" onClick={retry}>Δοκίμασε ξανά</Btn>
+          </div>
+        </Card>
+        <BudgetStyles />
+      </div>
+    );
+  }
+
+  const hasHistory = monthItems.length > 0 || Object.keys(monthTotals).length > 0;
+  const hasAnyTarget = masterBudget != null || activeCats.some(c => catBudget(c.key) != null);
+  const isEmpty = !demo && !hasHistory && !hasAnyTarget;
+  const priorTotals = [1, 2, 3].map(k => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - k); return monthTotals[`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`] || 0; });
+  const suggestedTotal = suggestTarget(priorTotals);
+
+  // ── ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΚΑΙ ΤΑ ΠΑΛΙΑ ΔΕΙΓΜΑΤΑ ────────────────────────────────────
+  const demoBar = demo ? (
+    <div className="bud-note" role="status">
+      <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', flex: '1 1 200px' }}>Βλέπεις ένα παράδειγμα. Δεν αποθηκεύεται τίποτα και δεν αγγίζει τις δαπάνες σου.</span>
+      <Btn variant="secondary" onClick={() => setDemo(false)}>Κλείσιμο παραδείγματος</Btn>
+    </div>
+  ) : demoIds.length > 0 ? (
+    <div className="bud-note">
+      <span style={{ ...TT.bodySm, color: 'var(--text-secondary)', flex: '1 1 200px' }}>Υπάρχουν δαπάνες δείγματος από παλιότερη έκδοση της εφαρμογής.</span>
+      <Btn variant="secondary" onClick={removeDemo} disabled={demoBusy}>{demoBusy ? 'Αφαίρεση…' : 'Αφαίρεση δείγματος'}</Btn>
+    </div>
+  ) : null;
+
+  // ── ΚΕΝΗ ΚΑΤΑΣΤΑΣΗ: ΑΠΟ ΚΕΝΟ ΣΧΕΔΙΟ, ΧΩΡΙΣ ΕΦΕΥΡΕΜΕΝΟΥΣ ΣΤΟΧΟΥΣ ─────────────
+  const emptyCard = (
+    <Card gap={false}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: T.sp.md }}>
+        <h2 style={{ ...TT.h2, margin: 0 }}>Ξεκίνα με έναν μηνιαίο στόχο</h2>
+        <p style={{ ...TT.body, color: 'var(--text-secondary)', margin: 0 }}>
+          Βάλε πόσα θέλεις να ξοδεύεις τον μήνα για το ακίνητο ή καταχώρησε την πρώτη δαπάνη με τη «Νέα δαπάνη». Θα βλέπεις εδώ πού πάνε τα χρήματα.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.md, flexWrap: 'wrap' }}>
+          <Btn variant="secondary" onClick={() => setTargetOpen(true)}>Βάλε μηνιαίο στόχο</Btn>
+          <LinkBtn tone="quiet" onClick={() => setDemo(true)}>Δες ένα παράδειγμα</LinkBtn>
+        </div>
+      </div>
+    </Card>
+  );
+
+  // ── 2. «ΞΟΔΕΨΕΣ X ΑΠΟ Y» ───────────────────────────────────────────────────
+  const withEstimates = isCurMonth && viewActualTotal - viewRecordedTotal > 0.005;
+  const prog = progress(viewActualTotal, masterBudget);
+  const parts = [
+    { l: 'κρατήσεις εσόδου', v: incomeDeductions },
+    { l: 'πάγια', v: committedBills },
+    { l: 'δόση δανείου', v: loanMonthly },
+  ].filter(p => p.v > 0.004);
+  const listOf = (xs: string[]) => xs.length < 2 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} και ${xs[xs.length - 1]}`;
+  const hero = (
+    <Card gap={false}>
+      <div className="bud-hero-top">
+        <span style={{ ...TT.label }}>Ξόδεψες</span>
+        {masterBudget != null && <button type="button" className="bud-textbtn" onClick={() => setTargetOpen(true)}>Αλλαγή στόχου</button>}
+      </div>
+      <div className="bud-hero-fig">
+        <span className="bud-big">{feAuto(viewActualTotal)}</span>
+        <span style={{ ...TT.body, color: 'var(--text-secondary)' }}>{masterBudget != null ? <>από <span className="bud-num">{feAuto(masterBudget)}</span></> : 'χωρίς στόχο'}</span>
+      </div>
+      {prog ? (
+        <>
+          <div className="bud-bar bud-bar-lg" aria-hidden="true">
+            <span style={{ width: `${prog.bar}%`, background: prog.over ? 'var(--negative)' : BAR_FILL }} />
+          </div>
+          <div className="bud-hero-cap">
+            <span className="bud-num">{fpRate(prog.pct)} του στόχου{withEstimates ? ', με εκτιμήσεις παρόχων' : ''}</span>
+            <span className="bud-num" style={{ color: prog.over ? 'var(--negative)' : 'var(--text-secondary)', fontWeight: 600 }}>
+              {prog.over ? `Υπέρβαση ${feAuto(-prog.left)}` : `Μένουν ${feAuto(prog.left)}`}
+            </span>
+          </div>
+        </>
+      ) : (
+        <div style={{ marginTop: T.sp.md }}>
+          <Btn variant="secondary" onClick={() => setTargetOpen(true)}>Βάλε μηνιαίο στόχο</Btn>
+        </div>
+      )}
+      {isCurMonth && Math.abs(forecastTotal - viewActualTotal) > 0.005 && (
+        <div style={{ ...TT.caption, marginTop: T.sp.sm }}>Με τον ρυθμό ως τώρα, ο μήνας κλείνει στα <span className="bud-num">{feAuto(forecastTotal)}</span>.</div>
+      )}
+      {isCurMonth && rolloverOn && hasPrevMonth && carryIn !== 0 && (
+        <div style={{ ...TT.caption, marginTop: T.sp.xs }}>
+          Μεταφορά από τον {_prevLabel} <span className="bud-num">{carryIn > 0 ? '+' : ''}{feAuto(carryIn)}</span> · πραγματικά διαθέσιμα <span className="bud-num">{feAuto(adjAvailable)}</span>
+        </div>
+      )}
+      {isCurMonth && (hasIncome || monthlyCost > 0) && (
+        // ΔΥΟ ΣΕΙΡΕΣ ΚΑΙ ΣΤΑ 320. Ετικέτα και ποσό στην πρώτη, η σύνθεση σε όλο
+        // το πλάτος από κάτω· πριν η ετικέτα και η σύνθεση στριμώχνονταν δίπλα
+        // στο ποσό και έπιαναν τέσσερις σειρές, με το ⓘ στη μέση του κειμένου.
+        <div className="bud-hero-cash">
+            <div className="bud-cash-label" style={{ ...TT.bodySm, color: 'var(--text-primary)' }}>
+              {hasIncome ? (isPro ? 'Ταμειακή ροή του μήνα' : 'Διαθέσιμο του μήνα') : 'Μηνιαίο κόστος ακινήτου'}
+              <InfoDot text={hasIncome
+                ? (waterfall ? 'Εισπράξεις μετά την προμήθεια και την εκτίμηση φόρου, μείον πάγια και δόση δανείου. Ενδεικτικό.' : 'Ενοίκιο του μήνα μείον πάγια και δόση δανείου, προ φόρου. Ενδεικτικό.')
+                : 'Τα πάγια του μήνα (ρεύμα, νερό, θέρμανση, τηλέφωνο, ασφάλεια, συνδρομές, κοινόχρηστα) και η δόση του δανείου.'} />
+            </div>
+            <div className="bud-cash-sub" style={{ ...TT.caption }}>
+              {hasIncome
+                ? `${rentalMode === 'short_term' ? 'Εισπράξεις' : 'Ενοίκιο'} ${feAuto(income)}${parts.length ? ` μείον ${listOf(parts.map(p => `${p.l} ${feAuto(p.v)}`))}` : ''}`
+                : listOf(parts.map(p => `${p.l} ${feAuto(p.v)}`))}
+            </div>
+          <span className="bud-num bud-cash-val" style={{ ...TT.h2, fontFamily: T.font.num, color: hasIncome && safeRaw < 0 ? 'var(--negative)' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+            {feSigned(hasIncome ? safeRaw : monthlyCost)}
+          </span>
+        </div>
+      )}
+      {isShortfall && <div style={{ ...TT.caption, color: 'var(--negative)', marginTop: T.sp.sm }}>Οι υποχρεώσεις του μήνα ξεπερνούν τα έσοδα κατά {feAuto(-safeRaw)}.</div>}
+    </Card>
+  );
+
+  // ── 3. «ΘΕΛΟΥΝ ΤΗΝ ΠΡΟΣΟΧΗ ΣΟΥ» ──────────────────────────────────────────
+  // Τέσσερις στοιβαγμένες λωρίδες υπέρβασης έγιναν γραμμές, με τον ρυθμό των
+  // κατηγοριών: λέξη αριστερά, ποσό δεξιά, βελάκι. Κάθε γραμμή ανοίγει τις
+  // Δαπάνες ήδη φιλτραρισμένες.
   //
-  // Η ΑΠΑΝΤΗΣΗ ΗΤΑΝ ΝΑ ΞΑΝΑΖΩΓΡΑΦΙΣΤΕΙ ΤΟ ΕΛΑΤΗΡΙΟ ΣΤΟ ΧΕΡΙ, δηλαδή δεύτερη
-  // εμφάνιση για το ίδιο πράγμα — και είχε ήδη αποκλίνει: `borderRadius: 20`
-  // αντί για το ύψος και δικό της `transition`. Τώρα η όψη έρχεται από το
-  // `ToggleTrack`, που τη μοιράζεται με το κοινό `Toggle`: μία εμφάνιση, δύο
-  // περιτυλίγματα, κανένα ένθετο κουμπί.
+  // ΕΝΑ ΧΡΟΝΙΚΟ ΠΛΑΙΣΙΟ: ΣΗΜΕΡΑ. Τα ληξιπρόθεσμα και τα εκκρεμή είναι πάντα
+  // σημερινά· η υπέρβαση ακολουθούσε τον μήνα που κοιτάς και η κάρτα έδειχνε
+  // σημερινές οφειλές δίπλα στην υπέρβαση του Οκτωβρίου. Μετρά πλέον κι αυτή
+  // τον τρέχοντα μήνα και η κάρτα το λέει.
+  const attnRows: { key: string; label: string; amount: number | null; tone: string; go: () => void }[] = [];
+  if (attention.overdue.n > 0) attnRows.push({ key: 'overdue', label: overdueWord(attention.overdue.n), amount: attention.overdue.sum, tone: 'var(--warning)', go: () => onOpenLedger?.({ kind: 'overdue' }) });
+  if (attention.pending.n > 0) attnRows.push({ key: 'pending', label: pendingWord(attention.pending.n), amount: attention.pending.sum, tone: 'var(--text-tertiary)', go: () => onOpenLedger?.({ kind: 'pending' }) });
+  // ΕΝΑΣ ΑΡΙΘΜΟΣ ΥΠΕΡΒΑΣΗΣ ΣΤΗΝ ΟΘΟΝΗ. Το άθροισμα των υπερβάσεων ανά κατηγορία
+  // (+251€) διαφωνούσε με την «Υπέρβαση 129,99€» της κάρτας από πάνω, που είναι
+  // σύνολο έναντι στόχου. Η γραμμή λέει μόνο πόσες· τα ποσά είναι στη λίστα.
+  if (overBudget.length > 0) attnRows.push({ key: 'over', label: overWord(overBudget.length), amount: null, tone: 'var(--negative)',
+    go: () => onOpenLedger?.({ kind: 'buckets', buckets: overBudget.map(c => c.key), month: _curYm, label: overBudget.map(c => c.label).join(', ') }) });
+  const strWarn = !isPro && strPropCount >= STR_BUSINESS_FROM;
+  const attentionBlock = (attnRows.length > 0 || strWarn) ? (
+    <Card gap={false}>
+      <section aria-label="Θέλουν την προσοχή σου">
+        <CardHead title="Θέλουν την προσοχή σου" right={<span style={{ ...TT.caption }}>Σήμερα</span>} />
+        {attnRows.length > 0 && (
+          <ul className="bud-cats">
+            {attnRows.map(r => (
+              <li key={r.key}>
+                <button type="button" className="bud-row" onClick={r.go} disabled={!onOpenLedger}>
+                  <span aria-hidden="true" className="bud-dot" style={{ background: r.tone }} />
+                  <span className="bud-row-label">{r.label}</span>
+                  <span className="bud-row-amt bud-num">{r.amount != null ? feAuto(r.amount) : ''}</span>
+                  <span className="bud-row-chev" aria-hidden="true"><Chevron size={16} /></span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {notifyOn && overBudget.length > 0 && <div style={{ ...TT.caption, marginTop: T.sp.sm }}>Θα λάβεις υπενθύμιση με email και στο Ημερολόγιο.</div>}
+        {strWarn && (
+          <p style={{ ...TT.bodySm, margin: attnRows.length ? `${T.sp.md}px 0 0` : 0 }}>
+            Έχεις <strong style={{ color: 'var(--text-primary)' }}>{strPropCount} βραχυχρόνια ακίνητα</strong>. Από {STR_BUSINESS_FROM} και πάνω η δραστηριότητα θεωρείται επιχειρηματική, με υποχρεώσεις ΦΠΑ, ΕΦΚΑ και προκαταβολής φόρου. Δες τη Λογιστική ή ρώτα τον λογιστή σου.
+          </p>
+        )}
+      </section>
+    </Card>
+  ) : null;
+
+  // ── 4. ΟΙ ΚΑΤΗΓΟΡΙΕΣ, ΠΑΝΤΑ ΑΝΟΙΧΤΕΣ ───────────────────────────────────────
+  // ΟΙ ΚΡΥΜΜΕΝΕΣ ΣΕ ΜΙΑ ΗΣΥΧΗ ΓΡΑΜΜΗ (επανέλεγχος PR 576). Η απόκρυψη αφορά τη
+  // γραμμή και τον στόχο· τα χρήματα όμως ξοδεύτηκαν. Ό,τι ανήκει σε κρυμμένη
+  // ή αφαιρεμένη κατηγορία μαζεύεται σε μία γραμμή χωρίς στόχο και χωρίς
+  // ράβδο, ώστε η λίστα να αθροίζει στο «Ξόδεψες». Ο στόχος του μήνα και το
+  // πλήθος των υπερβάσεων μετρούν μόνο τις ορατές κατηγορίες.
+  const hiddenSum = hiddenSpend(viewActuals, activeCats.map(c => c.key));
+  const rows = activeCats.map(c => {
+    const actual = viewActuals[c.key] || 0;
+    const target = catBudget(c.key);
+    const projectedOver = isCurMonth && target != null && target > 0 && !isOverCat(c.key, actual)
+      && categoryStatus(target, actual, catForecast(c.key)) === 'projected_over';
+    return { key: c.key, label: c.label, actual, target, projectedOver };
+  });
+  const { active, idle } = orderCats(rows);
+  const catRow = (r: typeof rows[number]) => {
+    const p = progress(r.actual, r.target);
+    const over = !!p?.over;
+    // Η υπέρβαση τη λένε η κόκκινη ράβδος και το κόκκινο ποσό· γραμμένη και ως
+    // τρίτη σειρά ήταν το ίδιο πράγμα τρεις φορές. Μένει μόνο για τον αναγνώστη
+    // οθόνης. Η πρόβλεψη δεν φαίνεται αλλού, οπότε κρατά τη λέξη της.
+    const status = !over && r.projectedOver ? 'προβλεπόμενη υπέρβαση' : '';
+    return (
+      <li key={r.key}>
+        <button type="button" className="bud-cat" aria-haspopup="dialog" onClick={() => setSheetKey(r.key)}>
+          <span className="bud-cat-name">{r.label}</span>
+          <span className="bud-cat-amt bud-num">
+            <span style={{ color: over ? 'var(--negative)' : r.actual > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', fontWeight: r.actual > 0 ? 600 : 400 }}>{feAuto(r.actual)}</span>
+            {r.target != null && <span style={{ color: 'var(--text-tertiary)' }}> / {feAuto(r.target)}</span>}
+            {over && <span className="sr-only">, υπέρβαση {feAuto(r.actual - (r.target ?? 0))}</span>}
+          </span>
+          <span className="bud-cat-chev" aria-hidden="true"><Chevron size={16} /></span>
+          <span className="bud-cat-line">
+            {p
+              ? <span className="bud-bar" aria-hidden="true"><span style={{ width: `${p.bar}%`, background: over ? 'var(--negative)' : BAR_FILL }} /></span>
+              : <span style={{ ...TT.caption }}>χωρίς στόχο</span>}
+          </span>
+          {status && <span className="bud-cat-status" style={{ color: 'var(--text-tertiary)' }}>{status}</span>}
+        </button>
+      </li>
+    );
+  };
+  const categories = (
+    <Card gap={false}>
+      <CardHead title="Ανά κατηγορία" info="Πάτησε μια κατηγορία για να δεις τις κινήσεις της, να αλλάξεις τον στόχο ή να εξαιρέσεις κάτι. Οι αλλαγές αποθηκεύονται μόνες τους." />
+      <ul className="bud-cats">
+        {active.map(catRow)}
+        {showIdle && idle.map(catRow)}
+        {hiddenSum > 0.004 && (
+          <li className="bud-hidden-row">
+            <span>Κρυμμένες κατηγορίες</span>
+            <span className="bud-num">{feAuto(hiddenSum)}</span>
+          </li>
+        )}
+      </ul>
+      {active.length === 0 && !showIdle && <p style={{ ...TT.bodySm, margin: 0 }}>Καμία κίνηση αυτόν τον μήνα.</p>}
+      <div className="bud-cats-foot">
+        {idle.length > 0 && (
+          <button type="button" className="bud-textbtn" onClick={() => setShowIdle(v => !v)} aria-expanded={showIdle}>
+            {showIdle ? 'Λιγότερες κατηγορίες' : `Δείξε ${idle.length} χωρίς κινήσεις`}
+          </button>
+        )}
+        <button type="button" className="bud-textbtn bud-textbtn-accent" onClick={() => setAddOpen(true)}>+ Νέα κατηγορία</button>
+      </div>
+    </Card>
+  );
+
+  // ── Η ΚΑΤΗΓΟΡΙΑ ΣΕ ΦΥΛΛΟ ────────────────────────────────────────────────────
+  const sheetCat = sheetKey ? activeCats.find(c => c.key === sheetKey) ?? null : null;
+  // ΤΟ ΟΝΟΜΑ ΓΡΑΦΕΤΑΙ ΣΕ ΠΡΟΣΧΕΔΙΟ (ανασκόπηση PR 576). Αποθηκευόταν σε κάθε
+  // πλήκτρο, κομμένο: το κενό μετά από λέξη χανόταν και το «Θέρμανση σπιτιού»
+  // δεν γραφόταν ποτέ. Αποθηκεύεται στην έξοδο από το πεδίο ή στο «Τέλος».
+  const commitName = () => {
+    if (sheetCat && nameDraft != null) { const v = nameToCommit(nameDraft, sheetCat.label); if (v) renameCategory(sheetCat.key, v); }
+    setNameDraft(null);
+  };
+  const closeSheet = () => { commitName(); setSheetKey(null); };
+  const sheet = sheetCat && (() => {
+    const key = sheetCat.key;
+    const target = catBudget(key);
+    const actual = viewActuals[key] || 0;
+    const items = viewItems.filter(it => it.catKey === key).sort((a, z) => (a.date < z.date ? 1 : -1));
+    const hist = [1, 2, 3].map(k => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - k); return catMonth[`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`]?.[key] || 0; });
+    const sug = suggestTarget(hist);
+    return (
+      <Modal open onClose={closeSheet} size="sm" title={sheetCat.label}
+        subtitle={<span className="bud-num">{feAuto(actual)}{target != null ? ` από ${feAuto(target)}` : ', χωρίς στόχο'}</span>}
+        footer={<>
+          {/* Η ΑΦΑΙΡΕΣΗ ΛΕΕΙ ΤΙ ΑΦΑΙΡΕΙ, ΜΕ ΚΟΚΚΙΝΟ, ΜΑΚΡΙΑ ΑΠΟ ΤΟ «ΤΕΛΟΣ». Δεν
+              ρωτά: η αναίρεση έρχεται με το μήνυμα (removeCategory). */}
+          <span className="bud-sheet-danger">
+            <button type="button" className="bud-textbtn bud-textbtn-danger" onClick={() => { setNameDraft(null); setSheetKey(null); removeCategory(key); }}>Αφαίρεση κατηγορίας</button>
+          </span>
+          <Btn variant="primary" onClick={closeSheet}>Τέλος</Btn>
+        </>}>
+        <div style={{ display: 'grid', gap: T.sp.md }}>
+          <NumberInput label="Μηνιαίος στόχος" value={budgets[key] ?? ''} onChange={v => updateBudget(key, v)} suffix="€" optional min={0} />
+          <div style={{ ...TT.caption, marginTop: -4 }}>
+            Άφησε κενό για κατηγορία χωρίς στόχο.
+            {sug != null && sug !== target && <> <LinkBtn onClick={() => updateBudget(key, String(sug))}>{`Βάλε τον μέσο όρο: ${feAuto(sug)}`}</LinkBtn></>}
+          </div>
+          <div onBlur={commitName}>
+            <TextInput label="Όνομα" value={nameDraft ?? sheetCat.label} onChange={setNameDraft} />
+          </div>
+        </div>
+        <div>
+          <h3 style={{ ...TT.label, color: 'var(--text-primary)', margin: 0 }}>Κινήσεις του μήνα</h3>
+          <p style={{ ...TT.caption, margin: `2px 0 ${T.sp.sm}px` }}>Κλείσε τον διακόπτη σε ό,τι δεν θέλεις να μετρά, π.χ. αν το πλήρωσε άλλος.</p>
+          {items.length === 0
+            ? <p style={{ ...TT.bodySm, margin: 0 }}>Καμία κίνηση σε αυτή την κατηγορία.</p>
+            : <ul className="bud-items">{items.map(it => itemRow(it))}</ul>}
+        </div>
+      </Modal>
+    );
+  })();
+
+  function itemRow(it: MonthItem) {
+    const ex = excludedMap[it.id];
+    const isEx = !!ex;
+    const excl = exclAmountOf(it.id, it.amount);
+    const partial = isEx && ex?.amount != null && ex.amount > 0 && ex.amount < it.amount;
+    const name = `${it.label} ${fd(it.date)}`;
+    const amtVal = exclAmtDraft[it.id] ?? (ex?.amount != null ? String(ex.amount) : '');
+    return (
+      <li key={it.id} className="bud-item">
+        <div className="bud-item-row">
+          <div style={{ minWidth: 0 }}>
+            <div className="bud-ellipsis" style={{ ...TT.bodySm, color: isEx ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{it.label}</div>
+            <div style={{ ...TT.caption }} className="bud-num">{fd(it.date)}{it.paid ? '' : ' · εκκρεμεί'}{isEx ? (partial ? ` · μετρά ${feAuto(Math.max(0, it.amount - excl))}` : ' · δεν μετρά') : ''}</div>
+          </div>
+          <span className="bud-num" style={{ ...TT.bodySm, fontWeight: 600, color: isEx ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: isEx && !partial ? 'line-through' : 'none', whiteSpace: 'nowrap' }}>{feAuto(it.amount)}</span>
+          <Toggle on={!isEx} ariaLabel={`${name}: μετρά στον προϋπολογισμό`}
+            onChange={() => {
+              if (isEx) { unexcludeItem(it.id); setExclAmtDraft(d => { const n = { ...d }; delete n[it.id]; return n; }); }
+              // Χωρίς μήνυμα: ο διακόπτης ΕΙΝΑΙ η αναίρεση και το μήνυμα σκέπαζε τη λίστα.
+              else excludeItem(it.id);
+            }} />
+        </div>
+        {isEx && (
+          <div className="bud-item-excl">
+            <CustomSelect label="Λόγος" value={ex?.payer ?? ''} onChange={v => patchExcl(it.id, { payer: v })}
+              options={[{ value: '', label: 'Χωρίς λόγο' }, ...PAYERS.map(p => ({ value: p, label: `Πληρώνει: ${p}` }))]} />
+            <NumberInput label="Ποσό που εξαιρείται" value={amtVal} suffix="€" optional min={0}
+              onChange={v => { setExclAmtDraft(d => ({ ...d, [it.id]: v })); const n = Number(String(v).replace(',', '.')); patchExcl(it.id, { amount: Number.isFinite(n) && n > 0 ? n : undefined }); }} />
+            <div style={{ ...TT.caption, gridColumn: '1 / -1' }}>Κενό ποσό: δεν μετρά καθόλου.</div>
+          </div>
+        )}
+      </li>
+    );
+  }
+
+  // ── ΣΤΟΧΟΣ ΜΗΝΑ ────────────────────────────────────────────────────────────
+  const targetSheet = targetOpen && (
+    <TargetSheet initial={budgets.total ?? (masterBudget != null ? String(masterBudget) : (suggestedTotal != null ? String(suggestedTotal) : ''))}
+      suggested={suggestedTotal} hasExplicit={!!budgets.total} sumOfCats={(() => { const s = activeCats.map(c => catBudget(c.key)).filter((v): v is number => v != null); return s.length ? sumCents(s) : null; })()}
+      onClose={() => setTargetOpen(false)}
+      onSave={v => { updateBudget('total', v); setTargetOpen(false); notify(v ? 'Ο μηνιαίος στόχος αποθηκεύτηκε' : 'Ο συνολικός στόχος αφαιρέθηκε'); }} />
+  );
+
+  // ── ΝΕΑ ΚΑΤΗΓΟΡΙΑ ────────────────────────────────────────────────────────────
+  const addSheet = addOpen && (
+    <AddCategorySheet hidden={hiddenBaseCats.map(c => ({ key: c.key, label: labelOverrides[c.key] ?? c.label }))}
+      onClose={() => setAddOpen(false)} onAdd={n => { addCategory(n); setAddOpen(false); }} onRestore={k => { restoreCategory(k); setAddOpen(false); }} />
+  );
+
+  // ── ΕΤΗΣΙΑ ΕΙΚΟΝΑ ────────────────────────────────────────────────────────────
+  // ΜΙΑ ΣΤΡΟΓΓΥΛΟΠΟΙΗΣΗ: τα ποσά από το ίδιο άθροισμα σε λεπτά με τις Δαπάνες,
+  // χωρίς το στρογγύλεμα σε ευρώ του πυρήνα (2.527,00 έναντι 2.526,89).
+  const ytdTarget = masterBudget != null ? masterBudget * monthsElapsed : null;
+  const ytdProg = progress(ytdActual, ytdTarget);
+  const yearPace = monthsElapsed > 0 ? (ytdActual / monthsElapsed) * 12 : 0;
+  const annualCard = (Object.keys(monthTotals).length > 0) && (
+    <Card gap={false}>
+      <CardHead title="Ετήσια εικόνα" right={<span className="bud-num" style={{ ...TT.caption }}>{String(new Date().getFullYear())}</span>} />
+      <div className="bud-kv">
+        <span>Από την αρχή του έτους</span>
+        <span className="bud-num"><strong style={{ color: 'var(--text-primary)' }}>{feAuto(ytdActual)}</strong>{ytdTarget != null && <span style={{ color: 'var(--text-tertiary)' }}> / {feAuto(ytdTarget)}</span>}</span>
+      </div>
+      {ytdProg && <div className="bud-bar" style={{ margin: `${T.sp.sm}px 0` }} aria-hidden="true"><span style={{ width: `${ytdProg.bar}%`, background: ytdProg.over ? 'var(--negative)' : BAR_FILL }} /></div>}
+      <div className="bud-kv">
+        <span>Με αυτόν τον ρυθμό, το έτος κλείνει στα</span>
+        <span className="bud-num" style={{ color: masterBudget != null && yearPace > yearly(masterBudget) ? 'var(--negative)' : 'var(--text-primary)', fontWeight: 600 }}>{feAuto(yearPace)}</span>
+      </div>
+      {masterBudget != null && <div className="bud-kv"><span>Στόχος έτους</span><span className="bud-num">{feAuto(yearly(masterBudget))}</span></div>}
+      {yearBars.some(x => x.value > 0) && <div style={{ marginTop: T.sp.lg }}><MonthBars data={yearBars} activeYm={viewYm} /></div>}
+      {!wide && catYtd.length > 0 && <div style={{ marginTop: T.sp.lg }}><Donut slices={catYtd} /></div>}
+    </Card>
+  );
+
+  // ── ΕΠΑΝΑΛΑΜΒΑΝΟΜΕΝΕΣ ────────────────────────────────────────────────────────
+  // Η κεφαλίδα λέει μόνο το μηνιαίο· το ετήσιο είναι ×12 του ΙΔΙΟΥ αθροίσματος,
+  // όχι άθροισμα στρογγυλεμένων ετήσιων (1.728,00 έναντι 1.727,88).
+  const cad = (c: RecurringCharge['cadence']) => c === 'monthly' ? 'Κάθε μήνα' : c === 'bimonthly' ? 'Κάθε δύο μήνες' : c === 'quarterly' ? 'Κάθε τρίμηνο' : c === 'yearly' ? 'Κάθε χρόνο' : 'Ακανόνιστα';
+  const recMonthly = sumCents(recurring.map(r => r.monthlyEquivalent));
+  const recurringCard = recurring.length > 0 && (
+    <Card gap={false}>
+      <CardHead title="Επαναλαμβανόμενες χρεώσεις" info="Συνδρομές και πάγια που εντοπίζονται από τις καταχωρημένες δαπάνες σου, όταν ο ίδιος πάροχος επαναλαμβάνεται σε πολλούς μήνες."
+        right={<span className="bud-num" style={{ ...TT.caption }}>{feAuto(recMonthly)}/μήνα</span>} />
+      <ul className="bud-list">
+        {recurring.slice(0, wide ? 5 : 10).map(r => (
+          <li key={r.key} className="bud-list-row">
+            <div style={{ minWidth: 0 }}>
+              <div className="bud-ellipsis" style={{ ...TT.bodySm, color: 'var(--text-primary)' }}>{r.label}</div>
+              <div style={{ ...TT.caption }} className="bud-num">{cad(r.cadence)} · επόμενη {fd(parseLocalDate(r.nextExpected))}</div>
+            </div>
+            <div style={{ textAlign: 'right' }} className="bud-num">
+              <div style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 600 }}>{feAuto(r.monthlyEquivalent)}/μήνα</div>
+              <div style={{ ...TT.caption }}>{feAuto(yearly(r.monthlyEquivalent))}/έτος</div>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {recurring.length > 1 && <div className="bud-kv" style={{ marginTop: T.sp.sm }}><span>Τον χρόνο, όλες μαζί</span><span className="bud-num" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{feAuto(yearly(recMonthly))}</span></div>}
+    </Card>
+  );
+
+  // ── ΤΑ ΥΠΟΛΟΙΠΑ, ΚΑΤΩ ΑΠΟ ΤΟ «ΠΕΡΙΣΣΟΤΕΡΑ» ──────────────────────────────────
+  const weekCard = isCurMonth && weekTotalV > 0 && (
+    <Card gap={false}>
+      <CardHead title="Αυτή την εβδομάδα" right={<span className="bud-num" style={{ ...TT.caption }}>{feAuto(weekTotalV)}</span>} />
+      <ul className="bud-list">
+        {weekCats.map(c => (
+          <li key={c.label} className="bud-week-row">
+            <span className="bud-ellipsis" style={{ ...TT.bodySm, color: 'var(--text-primary)' }}>{c.label}</span>
+            <span className="bud-bar" aria-hidden="true"><span style={{ width: `${(c.value / weekMax) * 100}%`, background: BAR_FILL }} /></span>
+            <span className="bud-num" style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 600, textAlign: 'right' }}>{feAuto(c.value)}</span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+
+  const excludedHere = viewItems.filter(it => !!excludedMap[it.id]);
+  const exclCard = excludedHere.length > 0 && (
+    <Card gap={false}>
+      <CardHead title={`Εξαιρέσεις (${excludedHere.length})`} info="Κινήσεις που δεν μετρούν στον προϋπολογισμό, π.χ. γιατί τις πλήρωσε άλλος. Εξαιρείς μια κίνηση από το φύλλο της κατηγορίας της." />
+      <ul className="bud-list">
+        {excludedHere.map(it => (
+          <li key={it.id} className="bud-list-row">
+            <div style={{ minWidth: 0 }} id={`bud-ex-${it.id}`}>
+              <div className="bud-ellipsis" style={{ ...TT.bodySm, color: 'var(--text-primary)' }}>{it.label}</div>
+              <div style={{ ...TT.caption }} className="bud-num">{fd(it.date)} · εξαιρούνται {feAuto(exclAmountOf(it.id, it.amount))} από {feAuto(it.amount)}{excludedMap[it.id]?.payer ? ` · ${excludedMap[it.id]?.payer}` : ''}</div>
+            </div>
+            <Btn variant="ghost" onClick={() => unexcludeItem(it.id)} describedBy={`bud-ex-${it.id}`}>Να μετρά</Btn>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+
+  const suggestionsCard = isCurMonth && (targetSuggestions.length > 0 || insights.length > 0) && (
+    <Card gap={false}>
+      <CardHead title="Παρατηρήσεις" />
+      <ul className="bud-list">
+        {insights.map((t, i) => <li key={`i${i}`} style={{ ...TT.bodySm, padding: `${T.sp.sm}px 0` }}>{t}</li>)}
+        {targetSuggestions.map(s => (
+          <li key={s.key} style={{ padding: `${T.sp.sm}px 0`, display: 'grid', gap: T.sp.sm }}>
+            <span style={{ ...TT.bodySm }}>{s.text}</span>
+            <span style={{ display: 'flex', gap: T.sp.sm, flexWrap: 'wrap' }}>
+              <Btn variant="secondary" onClick={s.apply}>{s.cta}</Btn>
+              <Btn variant="ghost" onClick={() => dismissSuggestion(s.key)}>Όχι τώρα</Btn>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+
+  const strCard = isCurMonth && isSTR && waterfall && (
+    <Card gap={false}>
+      <CardHead title="Από μεικτό σε καθαρό" info="Το έσοδο βραχυχρόνιας του μήνα μείον προμήθεια πλατφόρμας, τέλος ανθεκτικότητας ανά διανυκτέρευση, διαχείριση και εκτίμηση φόρου. Εκτίμηση· αλλάζεις τις παραδοχές από κάτω."
+        right={strNights > 0 ? <span className="bud-num" style={{ ...TT.caption }}>{strNights === 1 ? '1 διανυκτέρευση' : `${fn(strNights)} διανυκτερεύσεις`}</span> : undefined} />
+      {[
+        { l: 'Μεικτό έσοδο', v: waterfall.gross as number | null, sub: false },
+        { l: 'Προμήθεια πλατφόρμας', v: -waterfall.platformFee, sub: true },
+        { l: 'Τέλος ανθεκτικότητας', v: waterfall.climateFee == null ? null : -waterfall.climateFee, sub: true },
+        ...(waterfall.management > 0 ? [{ l: 'Διαχείριση', v: -waterfall.management, sub: true }] : []),
+        { l: 'Κράτηση φόρου (εκτίμηση)', v: -waterfall.taxReserve, sub: true },
+      ].map(r => (
+        <div key={r.l} className="bud-kv" style={{ color: r.sub ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
+          <span>{r.l}</span>
+          {r.v == null ? <span>Λείπουν οι νύχτες</span> : <span className="bud-num">{feSigned(r.v)}</span>}
+        </div>
+      ))}
+      <div className="bud-kv" style={{ borderTop: '1px solid var(--border-subtle)', marginTop: T.sp.sm, paddingTop: T.sp.sm, color: 'var(--text-primary)', fontWeight: 600 }}>
+        <span>{waterfall.climateFee == null ? 'Καθαρό (χωρίς το τέλος)' : 'Καθαρό'}</span><span className="bud-num">{feSigned(waterfall.net)}</span>
+      </div>
+      <div style={{ ...TT.caption, marginTop: T.sp.sm }}>
+        {waterfall.netPerNight != null ? <>Καθαρό ανά διανυκτέρευση <span className="bud-num">{feSigned(waterfall.netPerNight)}</span> · </> : null}Περιθώριο <span className="bud-num">{fpSigned(waterfall.marginPct)}</span>
+      </div>
+      <div className="bud-assume">
+        {([
+          { l: 'Προμήθεια πλατφόρμας %', raw: budgets.strPlatformPct ?? '15', val: strPlatformPct, key: 'strPlatformPct' },
+          { l: 'Διαχείριση %', raw: budgets.strMgmtPct ?? '0', val: strMgmtPct, key: 'strMgmtPct' },
+          { l: 'Συντελεστής φόρου %', raw: budgets.strTaxPct ?? String(taxPctAuto ?? 15), val: strTaxPct, key: 'strTaxPct' },
+        ]).map(a => <NumberInput key={a.key} label={a.l} value={a.raw} onChange={v => updateBudget(a.key, v)} suffix="%" min={0} max={100} />)}
+      </div>
+    </Card>
+  );
+
+  const proCard = isPro && invReturns && (
+    <Card gap={false}>
+      <CardHead title="Απόδοση επένδυσης" info={`Καθαρό προ δόσης: έσοδα μείον λειτουργικές δαπάνες, χωρίς τη δόση. Ταμειακή ροή: αυτό μείον τη δόση. Καθαρή απόδοση: καθαρό προ δόσης / ${invReturns.onPurchase ? 'τιμή αγοράς' : 'τρέχουσα αξία'}, πριν από τον φόρο. Απόδοση ιδίων κεφαλαίων: ταμειακή ροή / ίδια κεφάλαια. Ενδεικτικά, σε ετήσια βάση.`} />
+      <KPIGrid nested items={[
+        { label: 'Καθαρό προ δόσης', value: feSigned(invReturns.noi) },
+        { label: 'Ταμειακή ροή', value: feSigned(invReturns.preTaxCashFlow) },
+        { label: YIELD_SHORT_LABELS.net_pre_tax, value: fpSigned(invReturns.capRatePct), fact: invReturns.onPurchase ? undefined : 'yield-net-recorded',
+          sub: `${invReturns.onPurchase ? 'επί τιμής αγοράς' : 'επί τρέχουσας αξίας'}, ${YIELD_PRE_TAX_SUB}` },
+        invReturns.cashOnCashPct != null
+          ? { label: 'Απόδοση ιδίων κεφαλαίων', value: fpSigned(invReturns.cashOnCashPct) }
+          : { label: 'Απόδοση ιδίων κεφαλαίων', value: ABSENT_SHORT, sub: 'χρειάζεται τιμή αγοράς και προκαταβολή' },
+      ]} />
+    </Card>
+  );
+
+  const businessCard = isPro && (
+    <Card gap={false}>
+      <CardHead title="Επιχειρηματικές υποχρεώσεις" />
+      <p style={{ ...TT.bodySm, margin: 0 }}>
+        Εκτός από τον φόρο εισοδήματος, ως επιχείρηση έχεις τις μηνιαίες εισφορές ΕΦΚΑ, την προκαταβολή φόρου για την επόμενη χρήση και, αν παρέχεις υπηρεσίες, τον ΦΠΑ. Τα ακριβή ποσά είναι στη Λογιστική.
+      </p>
+    </Card>
+  );
+
   const settingToggle = (settingKey: string, on: boolean, title: string, desc: string) => (
-    <button type="button" role="switch" aria-checked={on} onClick={() => updateBudget(settingKey, on ? 'false' : 'true')}
-      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--bg-elevated)', border: `1px solid ${on ? 'var(--border-accent)' : 'var(--border-subtle)'}`, borderRadius: T.radius.inner, cursor: 'pointer', textAlign: 'left', fontFamily: T.font.sans }}>
+    <button type="button" role="switch" aria-checked={on} className="bud-setting" onClick={() => updateBudget(settingKey, on ? 'false' : 'true')}>
       <ToggleTrack on={on} />
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>{title}</span>
-        <span style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>{desc}</span>
+        <span style={{ ...TT.bodySm, display: 'block', color: 'var(--text-primary)', fontWeight: 600 }}>{title}</span>
+        <span style={{ ...TT.caption, display: 'block' }}>{desc}</span>
       </span>
     </button>
   );
+  const settingsCard = (
+    <Card gap={false}>
+      <CardHead title="Ρυθμίσεις" />
+      <div style={{ display: 'grid', gap: T.sp.sm }}>
+        {settingToggle('notifyOverspend', notifyOn, 'Ειδοποίηση σε υπέρβαση', 'Μήνυμα όταν μια κατηγορία περάσει τον στόχο, με email και στο Ημερολόγιο.')}
+        {settingToggle('rollover', rolloverOn, 'Μεταφορά υπολοίπου', 'Ό,τι περισσέψει ή λείψει μεταφέρεται στον επόμενο μήνα.')}
+      </div>
+    </Card>
+  );
 
-  // Σκελετός αντί για spinner: το σχήμα (KPIs + κάρτες κατηγοριών) είναι σταθερό,
-  // οπότε η διάταξη δεν «πηδά» μόλις φτάσουν τα δεδομένα.
-  if (loading) return <><SkeletonKPIs n={4} />{[0, 1, 2].map(i => <Skeleton key={i} h={70} r={12} style={{ marginBottom: 10 }} />)}</>;
+  // Ο υπότιτλος λέει ΜΟΝΟ ό,τι υπάρχει από κάτω, με τη σειρά του.
+  const moreList: [ReactNode, string][] = [
+    [!wide && annualCard, 'ετήσια εικόνα'], [!wide && recurringCard, 'επαναλαμβανόμενες'],
+    [wide && catYtd.length > 0 && <Card gap={false}><CardHead title="Κατανομή ανά κατηγορία" /><Donut slices={catYtd} /></Card>, 'κατανομή'],
+    [suggestionsCard, 'παρατηρήσεις'], [weekCard, 'εβδομάδα'], [exclCard, 'εξαιρέσεις'], [strCard, 'μεικτό και καθαρό'],
+    [proCard, 'απόδοση'], [businessCard, 'υποχρεώσεις'], [settingsCard, 'ρυθμίσεις'],
+  ];
+  const present = moreList.filter(([n]) => !!n);
+  const moreItems = present.map(([n]) => n);
+  const moreSummary = (() => { const w = present.map(([, l]) => l); const t = listOf(w); return t.charAt(0).toUpperCase() + t.slice(1); })();
+  const more = (
+    <div className="bud-col">
+      <button type="button" className="bud-more" aria-expanded={moreOpen} aria-controls="bud-more-body" onClick={() => toggleCollapse('more')}>
+        <span style={{ minWidth: 0 }}>
+          <span style={{ ...TT.label, color: 'var(--text-primary)', display: 'block' }}>Περισσότερα</span>
+          <span style={{ ...TT.caption, display: 'block' }}>{moreSummary}</span>
+        </span>
+        <Chevron dir={moreOpen ? 'down' : 'right'} />
+      </button>
+      {moreOpen && <div id="bud-more-body" className="bud-col">{moreItems.map((x, i) => <div key={i}>{x}</div>)}</div>}
+    </div>
+  );
+
+  const left = (
+    <div className="bud-col">
+      {demoBar}
+      {isEmpty ? emptyCard : <>{hero}{!wide && attentionBlock}{categories}</>}
+    </div>
+  );
+  const right = (
+    <div className="bud-col">
+      {wide && attentionBlock}
+      {wide && recurringCard}
+      {wide && annualCard}
+      {more}
+    </div>
+  );
 
   return (
-    <div style={{ fontFamily: T.font.sans, color: 'var(--text-primary)' }}>
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            {/* Η ΜΟΝΗ ΕΠΙΚΕΦΑΛΙΔΑ ΠΡΩΤΟΥ ΕΠΙΠΕΔΟΥ ΤΗΣ ΟΨΗΣ. Ήταν <div> κάτω από
-                ένα κρυφό h1 «Δαπάνες»: η σελίδα ανακοινωνόταν με άλλο όνομα. */}
-            <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em', margin: 0 }}>Προϋπολογισμός</h1>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
-            {/* Το κουτί είναι ο στόχος αφής, το βελάκι μένει 15: ό,τι κάνει η
-                `.po-ico` για κάθε άλλο εικονοκουμπί της εφαρμογής. */}
-            <IconBtn onClick={() => canGoOlder && setMonthOffset(o => o - 1)} disabled={!canGoOlder} label="Προηγούμενος μήνας">
-              <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            </IconBtn>
-            <span style={{ minWidth: 96, textAlign: 'center', textTransform: 'capitalize' }}>{viewMonthLabel}</span>
-            <IconBtn onClick={() => canGoNewer && setMonthOffset(o => o + 1)} disabled={!canGoNewer} label="Επόμενος μήνας">
-              <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </IconBtn>
-            {/* Δευτερεύον: έχει λεκτικό και περίγραμμα σε διάφανο φόντο. Το μελάνι
-                γίνεται ουδέτερο, γιατί το χρώμα του ρόλου ζει πλέον στην `.po-btn`. */}
-            {!isCurMonth && <Btn variant="secondary" onClick={() => setMonthOffset(0)}>Τρέχων</Btn>}
-            {/* ΤΟ ΠΡΟΦΙΛ ΕΙΝΑΙ ΠΛΗΡΟΦΟΡΙΑ, ΟΧΙ ΦΙΛΤΡΟ. Ως τσιπ δίπλα στον μήνα
-                έμοιαζε με κάτι που πατιέται· γράφεται πλέον ως κείμενο. */}
-            <span style={{ marginLeft: 6, color: 'var(--text-tertiary)' }}>{isPro ? 'προφίλ επιχείρησης' : 'προφίλ ιδιώτη'}</span>
-            {saving && <span style={{ marginLeft: 10, color: 'var(--text-tertiary)', fontSize: 'var(--fs-xs)' }}>· Αποθήκευση…</span>}
-          </div>
-        </div>
-      </div>
-
-      {/* Μία γραμμή, μία φορά. Τα σύνολα άλλαξαν και ο χρήστης δικαιούται να ξέρει
-          γιατί — χωρίς πανό, χωρίς παράθυρο, χωρίς να ζητά κλικ για να συνεχίσει. */}
-      {!ledgerNoteSeen && (monthItems.length > 0 || Object.keys(monthTotals).length > 0) && (
-        /* ΤΟ ΚΟΥΜΠΙ ΔΕΝ ΣΠΑΕΙ ΣΕ ΔΥΟ ΓΡΑΜΜΕΣ. Χωρίς `nowrap` και `flexShrink: 0`
-           το κείμενο έπαιρνε όλο τον χώρο και το «Το κατάλαβα» στριμωχνόταν σε
-           δύο σειρές δίπλα του. Το κείμενο παίρνει ό,τι μένει και στοιχίζεται. */
-        <div className="po-stack-sm" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12, padding: '8px 8px 8px 16px', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, background: 'var(--bg-surface)', fontFamily: T.font.sans, fontSize: 12, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-          {/* ΧΩΡΙΣ ΕΝΣΩΜΑΤΟ `flex`. Το `flex: 1` εδώ νικούσε το `.po-stack-sm`
-              (βλ. globals.css): στα 320 το κείμενο έμενε σε στήλη ~150 δίπλα στο
-              κουμπί και η πλήρης στοίχιση άνοιγε τρύπες. Τώρα κάτω από τα 560 το
-              κουμπί πάει από κάτω· το `.po-just-box` κρατά αριστερή στοίχιση αν
-              η στήλη ξαναστενέψει. */}
-          <div className="po-just-box">
-            <span className="po-just" style={{ display: 'block' }}>
-              Τα σύνολα μετρούν λογαριασμούς και δαπάνες μαζί, στον μήνα της ημερομηνίας τους. Όσα δεν έχουν πληρωθεί μετρούν κι αυτά και σημειώνονται «εκκρεμεί».
-            </span>
-          </div>
-          {/* Ήσυχο και όχι δευτερεύον: η σημείωση δεν ζητά απόφαση, οπότε η
-              απόρριψή της δεν παίρνει περίγραμμα. */}
-          <Btn variant="ghost" onClick={dismissLedgerNote} className="po-btn-keep">
-            Το κατάλαβα
-          </Btn>
-        </div>
-      )}
-
-      {/* «Δείξε μου» — δείγμα μήνα όταν ο προϋπολογισμός είναι άδειος */}
-      {isCurMonth && demoIds.length === 0 && monthItems.length === 0 && Object.keys(monthTotals).length === 0 && (
-        <div className="budget-rise" style={{ background: 'var(--bg-surface)', border: '1px dashed var(--border-default)', borderRadius: T.radius.card, padding: 16, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, marginBottom: 4 }}>Δες πώς λειτουργεί σε 10 δευτερόλεπτα</div>
-            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>Θα προσθέσουμε ένα δείγμα δαπανών του μήνα, ώστε να ζωντανέψουν τα γραφήματα και οι κατηγορίες. Τα αφαιρείς με ένα άγγιγμα όποτε θέλεις.</div>
-          </div>
-          {/* Δευτερεύον και όχι κύριο: το γέμισμα ήταν απόχρωση του τονισμού με
-              ορατό περίγραμμα, δηλαδή κουμπί με περίμετρο. Το ύψος T.h.md είναι
-              ήδη το προεπιλεγμένο του Btn, οπότε η γραμμή δεν κουνιέται. */}
-          <Btn variant="secondary" onClick={seedDemo} disabled={demoBusy}>
-            {demoBusy ? 'Δημιουργία…' : 'Δείξε μου'}
-          </Btn>
-        </div>
-      )}
-
-      {/* Ενεργό δείγμα — διακριτική επισήμανση + αφαίρεση */}
-      {demoIds.length > 0 && (
-        <div className="budget-rise" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '11px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-          <span style={{ flex: 1, fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>Εμφανίζονται δείγματα δεδομένων για επίδειξη.</span>
-          {/* Ήσυχο: μέσα σε γραμμή ειδοποίησης, χωρίς φόντο και χωρίς περίγραμμα.
-              Το μελάνι γίνεται ουδέτερο — ο τονισμός ανήκει στην κύρια ενέργεια. */}
-          <Btn variant="ghost" onClick={removeDemo} disabled={demoBusy}>
-            {demoBusy ? 'Αφαίρεση…' : 'Αφαίρεση δείγματος'}
-          </Btn>
-        </div>
-      )}
-
-      {/* «Ασφαλές διαθέσιμο» — έσοδα − δεσμευμένα − εισφορές (Monzo Left to Spend) */}
-      {isCurMonth && (hasIncome || monthlyCost > 0) && (() => {
-        const val = hasIncome ? safeRaw : monthlyCost;
-        const seg = (v: number) => income > 0 ? Math.max(0, Math.min(100, (v / income) * 100)) : 0;
-        // ── ΤΑ ΣΚΕΛΗ ΠΟΥ ΥΠΑΡΧΟΥΝ ΠΡΑΓΜΑΤΙΚΑ ────────────────────────────────
-        // Η υποσημείωση έγραφε «λογαριασμοί και δόση» ΠΑΝΤΑ και τα σκέλη
-        // γράφονταν ξανά από κάτω ως πλακίδια. Σε ακίνητο χωρίς δάνειο η φράση
-        // υποσχόταν δόση που δεν υπάρχει και όταν το μόνο σκέλος ήταν τα πάγια
-        // το πλακίδιο «ΠΑΓΙΑ 51,34€» καθόταν ακριβώς κάτω από το ίδιο 51,34€
-        // του τίτλου: ο ίδιος αριθμός, δύο φορές, με απόσταση μιας ανάσας.
-        //
-        // Τώρα η σύνθεση γράφεται μία φορά, από τα ΙΔΙΑ τα δεδομένα και τα
-        // πλακίδια εμφανίζονται μόνο όταν έχουν κάτι να σπάσουν.
-        // ΟΙ ΣΥΝΔΡΟΜΕΣ ΕΙΝΑΙ ΗΔΗ ΜΕΣΑ ΣΤΟΥΣ ΛΟΓΑΡΙΑΣΜΟΥΣ. Το `FIXED_CATS` τις
-        // περιέχει, άρα το `committedBills` τις έχει μετρήσει: γραμμένες και
-        // χωριστά, τα σκέλη άθροιζαν παραπάνω από το ίδιο τους το σύνολο και η
-        // πρόταση «πάγια, δόση δανείου και συνδρομές» υποσχόταν τρεις
-        // προσθετέους που δεν προσθέτουν. Αφαιρούνται από τους λογαριασμούς
-        // ώστε το άθροισμα των πλακιδίων να ΕΙΝΑΙ ο αριθμός από πάνω.
-        const subsCost = actuals.subscriptions || 0;
-        const parts = [
-          // Η ΑΠΑΡΙΘΜΗΣΗ ΤΩΝ ΕΞΙ ΚΑΤΗΓΟΡΙΩΝ ΕΚΑΝΕ ΤΟ ΠΛΑΚΙΔΙΟ ΤΕΣΣΕΡΙΣ ΣΕΙΡΕΣ ΨΗΛΟ,
-          // ΕΝΩ ΤΑ ΔΙΠΛΑΝΑ ΤΟΥ ΗΤΑΝ ΜΙΑ. Μετρημένο στην οθόνη του χρήστη: το πρώτο
-          // από τα πέντε ξεκινούσε σαράντα εικονοστοιχεία ψηλότερα από τα άλλα
-          // τέσσερα. Η λίστα απαντά «τι μετράει ως λογαριασμός», δηλαδή ορισμό:
-          // πάει στο κυκλάκι, όπως κάθε ορισμός σε αυτή την εφαρμογή.
-          // Η ΦΡΑΣΗ ΘΕΛΕΙ ΑΙΤΙΑΤΙΚΗ. Χτιζόταν από τις ετικέτες με πεζά και
-          // έβγαινε «μετά από λογαριασμοί και δόση δανείου». Κάθε σκέλος
-          // κρατά πλέον τη δική του μορφή για τη φράση (`acc`).
-          { l: 'Κρατήσεις εσόδου', acc: 'κρατήσεις εσόδου', v: incomeDeductions, sub: 'προμήθεια, τέλος και φόρος',
-            info: 'Προμήθεια πλατφόρμας, τέλος ανθεκτικότητας, διαχείριση και εκτίμηση φόρου. Η ανάλυση είναι στην κάρτα «Από μεικτό σε καθαρό».' },
-          { l: 'Λογαριασμοί',  acc: 'λογαριασμούς',  v: committedBills - subsCost, sub: 'πάγια του μήνα',
-            info: 'Ρεύμα, νερό, θέρμανση, τηλέφωνο, ασφάλεια και κοινόχρηστα.' },
-          { l: 'Δόση δανείου', acc: 'δόση δανείου', v: loanMonthly,               sub: 'τοκοχρεολύσιο του μήνα' },
-          { l: 'Συνδρομές',    acc: 'συνδρομές',    v: subsCost,                  sub: 'ό,τι χρεώνεται μόνο του' },
-        ].filter(p => p.v !== 0);
-        const listOf = (xs: string[]) => xs.length < 2 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} και ${xs[xs.length - 1]}`;
-        const composition = listOf(parts.map(p => p.acc));
-        // Χωρίς έσοδα η σύνθεση στέκεται μόνη της, χωρίς πρόθεση: ονομαστική.
-        const compositionNom = listOf(parts.map(p => p.l.toLowerCase()));
-        return (
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-              <div className="po-fig-card" tabIndex={0}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{hasIncome ? (isPro ? 'Διαθέσιμη ταμειακή ροή' : 'Διαθέσιμο μετά τις υποχρεώσεις') : 'Μηνιαίο κόστος ακινήτου'}</span>
-                  {/* ΧΩΡΙΣ «ΑΣΦΑΛΕΙΑ» ΚΑΙ ΧΩΡΙΣ ΑΠΟΘΕΜΑΤΙΚΑ. Η εξήγηση υποσχόταν
-                      αφαίρεση εισφορών σε αποθεματικά που δεν υπάρχουν πια και
-                      «ποσό που μπορείς με ασφάλεια να αποσύρεις» για έναν αριθμό
-                      που δεν ήξερε τον φόρο. Λέει πλέον ακριβώς τι αφαιρείται. */}
-                  <InfoDot text={hasIncome
-                    ? (waterfall
-                      ? 'Έσοδα μετά την προμήθεια και την εκτίμηση φόρου, μείον λογαριασμούς και δόση δανείου. Ενδεικτικό.'
-                      : 'Ενοίκιο του μήνα μείον λογαριασμούς και δόση δανείου, προ φόρου. Ενδεικτικό.')
-                    : 'Το άθροισμα των πάγιων λογαριασμών του μήνα και της δόσης του δανείου. Δηλαδή τι σου κοστίζει το ακίνητο κάθε μήνα.'} />
-                </div>
-                <div className="po-fig" data-tone={hasIncome ? (safeRaw < 0 ? 'negative' : 'accent') : undefined} style={{ fontSize: 28, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1, letterSpacing: '-0.02em', transition: 'color 0.15s' }}>{feSigned(val)}</div>
-                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 6, fontFamily: T.font.sans }}>
-                  {hasIncome
-                    ? (composition ? `μετά από ${composition}` : 'χωρίς δεσμευμένες δαπάνες')
-                    : (parts.length > 1 ? compositionNom : (parts[0]?.sub ?? ''))}
-                </div>
-              </div>
-            </div>
-            {/* ══════════════════════════════════════════════════════════════
-                ΧΩΡΙΣ ΕΣΟΔΑ, ΤΟ ΚΟΥΤΙ ΕΙΧΕ ΕΝΑ ΝΟΥΜΕΡΟ ΚΑΙ ΤΡΙΑ ΤΕΤΑΡΤΑ ΚΕΝΟ.
-                ────────────────────────────────────────────────────────────
-                Η ανάλυση (μπάρα και σκέλη) εμφανιζόταν ΜΟΝΟ όταν είχε δηλωθεί
-                εισόδημα, γιατί μοιράζει τα έσοδα. Ο ιδιοκτήτης που δεν έχει
-                δηλώσει ενοίκιο έβλεπε «51,34€» και «λογαριασμοί και δόση» σε
-                πλαίσιο εκατόν είκοσι εικονοστοιχείων: ένα νούμερο που δεν λέει
-                ΑΠΟ ΤΙ βγήκε, σε χώρο που θα το χωρούσε τρεις φορές.
-
-                Τα ίδια σκέλη υπάρχουν και χωρίς έσοδα — απλώς δεν αφαιρούνται
-                από κάτι. Μπαίνουν ως πλακίδια και δίπλα τους η διαφορά από τον
-                προηγούμενο μήνα: η μόνη σύγκριση που έχει νόημα όταν λείπει το
-                εισόδημα, γιατί απαντά «ακρίβυνε ή έπεσε;».
-                ══════════════════════════════════════════════════════════════ */}
-            {!hasIncome && (() => {
-              // ΟΜΟΙΑ ΜΕ ΟΜΟΙΑ. Το «Έναντι» αφαιρούσε από λογαριασμούς ΣΥΝ δόση
-              // δανείου το σύνολο του προηγούμενου μήνα ΧΩΡΙΣ δόση: η δόση έμοιαζε
-              // με αύξηση κόστους κάθε μήνα. Τώρα συγκρίνονται μόνο τα πάγια με
-              // τα πάγια του προηγούμενου μήνα και η διαφορά γράφεται με πρόσημο.
-              const prev  = FIXED_CATS.reduce((s, k) => s + (catMonth[_prevYm]?.[k] || 0), 0);
-              const diff  = committedBills - prev;
-              // ΤΟ «ΕΝΑΝΤΙ» ΘΕΛΕΙ ΓΕΝΙΚΗ ΚΑΙ Ο ΜΗΝΑΣ ΤΗΝ ΕΧΕΙ. Έγραφε «751,00€
-              // τον Ιούλιος»: ονομαστική μετά από πρόθεση, από τα πιο ορατά λάθη
-              // σε ελληνικό κείμενο. Η αιτιατική και η γενική υπάρχουν ήδη στο
-              // lib/core/months.ts ακριβώς γι' αυτό — απλώς δεν είχαν κληθεί εδώ.
-              // ΤΑ ΣΚΕΛΗ ΜΠΑΙΝΟΥΝ ΜΟΝΟ ΟΤΑΝ ΕΙΝΑΙ ΠΕΡΙΣΣΟΤΕΡΑ ΑΠΟ ΕΝΑ: με ένα
-              // σκέλος, το πλακίδιο θα έγραφε ΤΟΝ ΙΔΙΟ αριθμό με την επικεφαλίδα
-              // από πάνω του. Τότε όμως το κουτί έμενε με ένα μοναχικό πλακίδιο
-              // σε πλάτος που χωρά τέσσερα — και ό,τι έλειπε δεν ήταν διάταξη,
-              // ήταν πληροφορία.
-              //
-              // ΟΙ ΔΥΟ ΠΟΥ ΠΡΟΣΤΕΘΗΚΑΝ ΔΕΝ ΕΠΑΝΑΛΑΜΒΑΝΟΥΝ ΤΙΠΟΤΑ. Ο ετήσιος
-              // ρυθμός είναι το νούμερο με το οποίο συγκρίνεις ένα ενοίκιο ή μια
-              // ασφάλεια και το κόστος ανά τετραγωνικό είναι το μόνο που κάνει
-              // δύο ακίνητα συγκρίσιμα. Κανένα από τα δύο δεν γράφεται αλλού.
-              const tiles: { l: string; v: number; sub: string; info?: string; txt?: string }[] = [
-                ...(parts.length > 1 ? parts : []),
-                ...(monthlyCost > 0 ? [{ l: 'Τον χρόνο', v: monthlyCost * 12, sub: 'με τον ρυθμό του μήνα' }] : []),
-                ...(monthlyCost > 0 && (propSqm || 0) > 0
-                  ? [{ l: 'Ανά τετραγωνικό', v: monthlyCost / (propSqm as number), sub: `σε ${fn(propSqm as number)} τ.μ. τον μήνα` }] : []),
-                ...(prev > 0 ? [{ l: `Λογαριασμοί έναντι ${monthGen(Number(_prevYm.slice(5, 7)) - 1)}`,
-                  v: diff, txt: `${diff > 0 ? '+' : diff < 0 ? '−' : ''}${feAuto(Math.abs(diff))}`, sub: `από ${feAuto(prev)}` }] : []),
-              ];
-              if (tiles.length === 0) return null;
-              // ΤΟ `style` ΣΒΗΝΕΙ ΟΛΟΚΛΗΡΟ ΤΟ `style` ΤΟΥ SPREAD ΚΑΙ ΤΟ ΕΣΒΗΝΕ.
-              // Ο βοηθός `fixedCols` δίνει τις μεταβλητές των στηλών ΜΕΣΑ στο
-              // `style`· γραμμένο σκέτο ένα `style={{ marginTop: 16 }}` από
-              // δίπλα, τις έπαιρνε όλες μαζί του. Μετρημένο στα 430: το πλέγμα
-              // δεν είχε καθόλου `--fc-sm`, έμενε σε δύο στήλες και πέντε
-              // πλακίδια έβγαιναν 2+2+1, με το πέμπτο μισό και τρύπα δεξιά του.
-              // Δεκατρία άλλα σημεία της εφαρμογής το γράφουν σωστά με άπλωμα·
-              // αυτό ήταν το μόνο που το ξέχασε.
-              //
-              // ΚΑΙ ΤΟ ΤΑΒΑΝΙ ΤΩΝ ΤΕΣΣΑΡΩΝ ΕΦΤΙΑΧΝΕ ΟΡΦΑΝΟ. Με πέντε πλακίδια
-              // και τέσσερις στήλες, το πέμπτο έμενε μόνο του με κενό όσο τρία
-              // δεξιά του. Πέντε στήλες αφήνουν τον βοηθό να διαλέξει διαιρέτη
-              // στα στενά: τρία και δύο στην ταμπλέτα, ένα ανά σειρά στο
-              // τηλέφωνο. Καμία σειρά δεν τελειώνει με ένα.
-              // ΤΟ ΠΛΑΚΙΔΙΟ ΗΤΑΝ ΓΡΑΜΜΕΝΟ ΜΕ ΤΟ ΧΕΡΙ, ΔΙΠΛΑ ΣΕ ΕΝΑ ΑΛΛΟ ΓΡΑΜΜΕΝΟ ΜΕ
-              // ΤΟ ΧΕΡΙ. Η ίδια οθόνη είχε ΔΥΟ σειρές δεικτών με δύο διαφορετικά
-              // πλακίδια και δύο διαφορετικά πλέγματα: εδώ `.kpi-card nested` μέσα
-              // σε `fixedCols`, εκατόν πενήντα γραμμές πιο κάτω το `KPI` του
-              // LoanShared μέσα σε `auto-fit minmax(128px)`. Διαφορετικό ύψος,
-              // διαφορετικό μέγεθος αριθμού, διαφορετικά σπασίματα.
-              //
-              // Και οι δύο περνούν πλέον από το κοινό `KPIGrid`, στην ένθετη
-              // εκδοχή του: ίδιο κουτί, ίδιος κανόνας στηλών σε τέσσερα σκαλιά,
-              // ίδια κλιμάκωση αριθμού, ίδιο ύψος — το πλέγμα τεντώνει τα κελιά
-              // του, οπότε τα πλακίδια είναι ΑΚΡΙΒΩΣ ίδια όσο κι αν διαφέρει το
-              // κείμενό τους.
-              return (
-                <div style={{ marginTop: 16 }}>
-                  <KPIGrid nested items={tiles.map(t => ({ label: t.l, value: t.txt ?? feAuto(t.v), sub: t.sub, title: t.info }))} />
-                </div>
-              );
-            })()}
-            {hasIncome && (
-              <>
-                <div style={{ display: 'flex', height: 8, borderRadius: T.radius.xs, overflow: 'hidden', marginTop: 16, marginBottom: 10, background: 'var(--bg-overlay)' }}>
-                  {incomeDeductions > 0 && <div title="Κρατήσεις εσόδου" style={{ width: `${seg(incomeDeductions)}%`, background: 'color-mix(in srgb, var(--text-primary) 44%, transparent)' }}/>}
-                  <div title="Λογαριασμοί" style={{ width: `${seg(committedBills)}%`, background: 'color-mix(in srgb, var(--text-primary) 32%, transparent)' }}/>
-                  <div title="Δόση δανείου" style={{ width: `${seg(loanMonthly)}%`, background: 'color-mix(in srgb, var(--text-primary) 20%, transparent)' }}/>
-                  <div title="Διαθέσιμο" style={{ flex: 1, background: safeRaw < 0 ? 'var(--negative)' : 'var(--accent)' }}/>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
-                  {[
-                    { l: 'Έσοδα', v: income },
-                    { l: 'Κρατήσεις εσόδου', v: -incomeDeductions },
-                    { l: 'Λογαριασμοί', v: -committedBills },
-                    { l: 'Δόση δανείου', v: -loanMonthly },
-                    { l: 'Διαθέσιμο', v: safeRaw },
-                  ].filter(x => x.v !== 0).map(x => (
-                    <span key={x.l} style={{ fontVariantNumeric: 'tabular-nums' }}>{x.l} <strong style={{ color: 'var(--text-primary)', fontFamily: T.font.num }}>{feSigned(x.v)}</strong></span>
-                  ))}
-                </div>
-                {isShortfall && (
-                  <div style={{ marginTop: 12, fontSize: 12, color: 'var(--negative)', fontFamily: T.font.sans }}>Οι υποχρεώσεις του μήνα ξεπερνούν τα έσοδα κατά {feAuto(-safeRaw)}.</div>
-                )}
-              </>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* Έσοδα / rent-roll — αναμενόμενα ή πραγματικά έσοδα ακινήτου (προσαρμόζεται στον τύπο μίσθωσης) */}
-      {isCurMonth && income > 0 && (() => {
-        const isSTRmode = rentalMode === 'short_term';
-        const netFlow = safeRaw;
-        return (
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
-            {/* Ο ΤΙΤΛΟΣ ΛΕΕΙ ΤΟ ΙΔΙΟ ΜΕ ΤΑ ΠΛΑΚΙΔΙΑ ΑΠΟ ΚΑΤΩ. Έλεγε «Έσοδα» και στους
-                δύο τρόπους, πάνω από τρία διαφορετικά πράγματα: εισπράξεις από
-                διαμονές, αναμενόμενο ενοίκιο και καθαρή ροή. Η λέξη «έσοδα» έχει
-                φορολογικό νόημα και δεν είναι κανένα από τα τρία. */}
-            {secHdr(isSTRmode ? 'Εισπράξεις' : 'Ενοίκιο', 'income', undefined,
-              <InfoDot text={isSTRmode
-                ? 'Ό,τι μπήκε στο ταμείο από τα καταλύματα: του μήνα, από την αρχή του έτους, διανυκτερεύσεις και μέση τιμή ανά βραδιά. Το δηλωτέο ποσό είναι μεγαλύτερο, γιατί περιλαμβάνει την προμήθεια της πλατφόρμας: το βλέπεις στη Λογιστική ως «Μεικτά έσοδα».'
-                : 'Αναμενόμενο ενοίκιο από τους ενεργούς ενοικιαστές: μηνιαίο, ετήσιο και η καθαρή ροή μετά τα μηνιαία κόστη. Είναι πρόβλεψη, όχι καταγεγραμμένες εισπράξεις· αυτές τις βλέπεις στους «Ενοικιαστές» και στη «Λογιστική».'} />)}
-            {!collapsed.has('income') && (
-              <KPIGrid nested items={isSTRmode ? [
-                /* ΕΙΣΠΡΑΞΕΙΣ, ΟΧΙ ΕΣΟΔΑ: εδώ αθροίζεται ό,τι μπήκε στο ταμείο από
-                   τις διαμονές. Το ΔΗΛΩΤΕΟ ποσό είναι μεγαλύτερο, γιατί περιλαμβάνει
-                   την προμήθεια της πλατφόρμας — και το λέει η Λογιστική, ως «Μεικτά
-                   έσοδα». Δύο σωστά νούμερα για την ίδια διαμονή· η λέξη ξεχωρίζει
-                   ποιο είναι ποιο. */
-                { label: 'Εισπράξεις μήνα', value: feAuto(income), title: 'Ό,τι μπήκε στο ταμείο από διαμονές αυτόν τον μήνα. Το δηλωτέο ποσό είναι μεγαλύτερο: το βλέπεις στη Λογιστική ως «Μεικτά έσοδα».' },
-                { label: 'Από την αρχή έτους', value: feAuto(incomeYtd), title: 'Εισπράξεις από διαμονές, από 1η Ιανουαρίου.' },
-                { label: 'Διανυκτερεύσεις', value: fn(strNights) },
-                { label: 'Μέση τιμή ανά βραδιά', value: strNights > 0 ? feAuto(income / strNights) : fe(0) },
-              ] : [
-                { label: 'Μηνιαίο ενοίκιο', value: feAuto(income) },
-                { label: 'Ετησίως', value: feAuto(income * 12) },
-                { label: 'Αναμενόμενα φέτος', value: feAuto(incomeYtd), title: 'Μηνιαίο ενοίκιο × μήνες που πέρασαν φέτος (αναμενόμενα, όχι καταγεγραμμένες εισπράξεις).' },
-                { label: 'Καθαρή ροή', value: feSigned(netFlow), title: 'Αναμενόμενο ενοίκιο μείον λογαριασμούς και δόση δανείου, προ φόρου. Πρόβλεψη, όχι εισπράξεις.' },
-              ]}/>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* Waterfall εσόδου βραχυχρόνιας — από μεικτό σε καθαρό (μόνο short_term) */}
-      {isCurMonth && isSTR && waterfall && (() => {
-        // ΤΟ ΤΕΛΟΣ ΚΡΑΤΑ ΤΗ ΘΕΣΗ ΤΟΥ ΚΑΙ ΟΤΑΝ ΔΕΝ ΥΠΟΛΟΓΙΖΕΤΑΙ. Εγραφε
-        // «άγνωστο, λείπουν διανυκτερεύσεις» στο ΤΕΛΟΣ της λίστας, κάτω από την
-        // κράτηση φόρου, ενώ με νύχτες κάθεται δεύτερο· και διαβαζόταν σαν να
-        // λείπουν ΚΡΑΤΗΣΕΙΣ, πάνω από μεικτό έσοδο που προφανώς έχει. Λείπουν οι
-        // νύχτες τους (`strWaterfall`: null μόνο όταν υπάρχει έσοδο με 0 νύχτες).
-        const rows: { l: string; v: number | null; sub: boolean }[] = [
-          { l: 'Μεικτό έσοδο', v: waterfall.gross, sub: false },
-          { l: 'Προμήθεια πλατφόρμας', v: -waterfall.platformFee, sub: true },
-          { l: 'Τέλος ανθεκτικότητας', v: waterfall.climateFee == null ? null : -waterfall.climateFee, sub: true },
-          ...(waterfall.management > 0 ? [{ l: 'Διαχείριση', v: -waterfall.management, sub: true }] : []),
-          { l: 'Κράτηση φόρου (εκτίμηση)', v: -waterfall.taxReserve, sub: true },
-        ];
-        return (
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
-              <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>Από μεικτό σε καθαρό</span>
-              <InfoDot text="Ανάλυση του εσόδου βραχυχρόνιας μίσθωσης του μήνα: αφαιρούνται η προμήθεια της πλατφόρμας, το τέλος ανθεκτικότητας (ανά διανυκτέρευση), η τυχόν διαχείριση και η εκτιμώμενη κράτηση φόρου, για να δεις τι μένει πραγματικά. Πρόκειται για εκτίμηση· μπορείς να προσαρμόσεις τις παραδοχές στην επεξεργασία." />
-              {/* Ολόκληρη η λέξη: το «0 διαν.» ήταν η μόνη συντομογραφία της
-                  οθόνης. Με μηδέν νύχτες δεν γράφεται· το λέει η γραμμή του τέλους. */}
-              {strNights > 0 && <span style={{ marginLeft: 'auto', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{strNights === 1 ? '1 διανυκτέρευση' : `${fn(strNights)} διανυκτερεύσεις`}</span>}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* ΤΟ ΤΕΛΟΣ ΟΦΕΙΛΕΤΑΙ ΑΝΑ ΔΙΑΝΥΚΤΕΡΕΥΣΗ. Κρατήσεις με ποσό και
-                  χωρίς νύχτες έδιναν «0,00€», σαν να μην οφείλεται τίποτα. Χωρίς
-                  νύχτες το ποσό δεν υπολογίζεται και το καθαρό το λέει. */}
-              {rows.map((r, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, fontSize: 'var(--fs-base)', fontFamily: T.font.sans, color: r.sub ? 'var(--text-secondary)' : 'var(--text-primary)', fontWeight: r.sub ? 400 : 600 }}>
-                  <span>{r.l}</span>
-                  {r.v == null
-                    ? <span style={{ color: 'var(--text-tertiary)', textAlign: 'right' }}>Λείπουν οι νύχτες</span>
-                    : <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: r.v < 0 ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{feSigned(r.v)}</span>}
-                </div>
-              ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
-                <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans }}>{waterfall.climateFee == null ? 'Καθαρό (χωρίς το τέλος)' : 'Καθαρό'}</span>
-                <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{feSigned(waterfall.net)}</span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 12, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
-              {waterfall.netPerNight != null
-                ? <span>Καθαρό / διανυκτέρευση <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{feSigned(waterfall.netPerNight)}</strong></span>
-                : <span>Συμπλήρωσε τις νύχτες σε κάθε κράτηση του μήνα για το τέλος ανθεκτικότητας και το καθαρό ανά διανυκτέρευση.</span>}
-              <span>Περιθώριο <strong style={{ color: 'var(--text-secondary)', fontFamily: T.font.num }}>{fpSigned(waterfall.marginPct)}</strong></span>
-            </div>
-            {/* ═══ ΟΙ ΠΑΡΑΔΟΧΕΣ, ΩΣ ΖΕΥΓΗ ΕΤΙΚΕΤΑΣ ΚΑΙ ΤΙΜΗΣ ═════════════════════
-                Ηταν μία σειρά κειμένου, «Προμήθεια πλατφόρμας 15% Διαχείριση 0%
-                Συντελεστής φόρου 15%», όπου το μάτι δεν ξεχώριζε πού τελειώνει
-                η μία παραδοχή και πού αρχίζει η επόμενη. Τώρα η καθεμία είναι
-                δικό της κουτάκι με την ετικέτα και την τιμή, που τυλίγει ολόκληρο
-                στο στενό πλάτος. Η τιμή αλλάζει με πάτημα, όπως πριν. */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
-              <span style={{ fontWeight: 600, color: 'var(--text-secondary)', marginRight: 4 }}>Παραδοχές</span>
-              {([
-                { l: 'Προμήθεια πλατφόρμας', info: 'Το ποσοστό προμήθειας της πλατφόρμας κράτησης (π.χ. Airbnb, Booking) επί του μεικτού εσόδου.', raw: budgets.strPlatformPct ?? '15', val: strPlatformPct, key: 'strPlatformPct' },
-                { l: 'Διαχείριση', info: null, raw: budgets.strMgmtPct ?? '0', val: strMgmtPct, key: 'strMgmtPct' },
-                { l: 'Συντελεστής φόρου', info: null, raw: budgets.strTaxPct ?? String(taxPctAuto ?? 15), val: strTaxPct, key: 'strTaxPct' },
-              ] as const).map(a => (
-                <span key={a.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', minHeight: 28, borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', whiteSpace: 'nowrap' }}>
-                  {a.l}
-                  {a.info && <InfoDot text={a.info} />}
-                  <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
-                    <InlineNumber raw={a.raw} display={fpRate(a.val)} onCommit={v => updateBudget(a.key, v)} width={44} ariaLabel={`${a.l} %`} />
-                  </strong>
-                </span>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
-      {displayOver.length > 0 && (
-        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {displayOver.map(cat => {
-            const budget = catBudget(cat.key);
-            const actual = viewActuals[cat.key] || 0;
-            return (
-              <div key={cat.key} className="po-fig-card" tabIndex={0} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans }}>{cat.label}</span>
-                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>υπέρβαση</span>
-                <span className="po-fig" data-tone="negative" style={{ fontSize: 12, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>+{feAuto(actual - budget)}</span>
-                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>({feAuto(actual)} έναντι {feAuto(budget)})</span>
-              </div>
-            );
-          })}
-          {notifyOn && isCurMonth && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, paddingLeft: 2 }}>
-              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-              Θα λάβεις υπενθύμιση μέσω email και στο Ημερολόγιο.
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Προβλεπόμενη υπέρβαση — με τον τρέχοντα ρυθμό (προειδοποίηση, όχι ήδη υπέρβαση) */}
-      {isCurMonth && projectedOver.length > 0 && (
-        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: '10px 16px' }}>
-          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M23 6l-9.5 9.5-5-5L1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-          <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-            Με τον τρέχοντα ρυθμό, θα ξεπεραστεί ο στόχος σε: <strong style={{ color: 'var(--text-primary)' }}>{projectedOver.map(c => c.label).join(', ')}</strong>
-          </span>
-        </div>
-      )}
-
-      {/* Όριο βραχυχρόνιων (ΜΟΝΟ ιδιώτης) — νομικό κατώφλι επιχειρηματικής δραστηριότητας */}
-      {!isPro && strPropCount >= STR_BUSINESS_FROM && (
-        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: T.radius.inner, padding: '10px 16px' }}>
-          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
-          <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-            Έχεις <strong style={{ color: 'var(--text-primary)' }}>{strPropCount} βραχυχρόνια ακίνητα</strong>. Από {STR_BUSINESS_FROM} και πάνω, η δραστηριότητα θεωρείται επιχειρηματική και προκύπτουν υποχρεώσεις ΦΠΑ, ΕΦΚΑ και προκαταβολής φόρου. Συμβουλέψου τη Λογιστική και τον λογιστή σου.
-          </span>
-        </div>
-      )}
-
-      {/* Ο μήνας — μετρικές + πρόοδος σε ΕΝΑ πλαίσιο (χωρίς διπλότυπη κάρτα «Σύνολο») */}
-      <div className="po-fig-card" tabIndex={0} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
-        {/* Η ΔΕΥΤΕΡΗ ΣΕΙΡΑ ΔΕΙΚΤΩΝ ΤΗΣ ΙΔΙΑΣ ΟΘΟΝΗΣ ΕΙΧΕ ΑΛΛΟ ΠΛΑΚΙΔΙΟ ΚΑΙ ΑΛΛΟ
-            ΠΛΕΓΜΑ. Πάνω της, τα σκέλη του μηνιαίου κόστους ήταν `.kpi-card nested`
-            σε `fixedCols`· εδώ το `KPI` του LoanShared σε `auto-fit minmax(128px)`.
-            Δύο συστήματα καρτών, δύο ύψη, δύο μεγέθη αριθμού, εκατόν πενήντα
-            γραμμές απόσταση. Το κοινό `KPIGrid` τα κάνει ένα. */}
-        <KPIGrid nested items={[
-          { label: 'Στόχος τον μήνα', value: feAuto(masterBudget) },
-          // ΔΥΟ ΚΑΡΤΕΛΕΣ, ΔΥΟ ΠΟΣΑ ΓΙΑ ΤΟΝ ΙΔΙΟ ΜΗΝΑ. Οι Δαπάνες γράφουν μόνο τα
-          // καταχωρημένα, εδώ μετρούν και οι εκτιμήσεις παρόχων. Όταν υπάρχουν,
-          // το πλακίδιο το λέει και δείχνει από κάτω το ποσό των Δαπανών.
-          isCurMonth && viewActualTotal - viewRecordedTotal > 0.005
-            ? { label: 'Με εκτιμήσεις παρόχων', value: feAuto(viewActualTotal), sub: `καταχωρημένα ${feAuto(viewRecordedTotal)}`, title: 'Καταχωρημένα του μήνα συν εκτιμήσεις παρόχων για πάγιες κατηγορίες που δεν έχουν χρεωθεί ακόμη.' }
-            : { label: isCurMonth ? 'Καταχωρημένα' : 'Σύνολο μήνα', value: feAuto(viewActualTotal), title: isCurMonth ? 'Λογαριασμοί και δαπάνες του μήνα, πληρωμένα και απλήρωτα.' : 'Καταγεγραμμένες δαπάνες αυτού του μήνα από το ιστορικό.' },
-          // Η ΠΡΟΒΛΕΨΗ ΜΠΑΙΝΕΙ ΜΟΝΟ ΟΤΑΝ ΛΕΕΙ ΚΑΤΙ ΑΛΛΟ. Όταν ο μήνας έχει μόνο
-          // πάγια, η πρόβλεψη είναι το ίδιο ποσό με το διπλανό πλακίδιο: δύο
-          // «70,08€» δίπλα δίπλα, με δύο ονόματα.
-          ...(isCurMonth
-            ? (Math.abs(forecastTotal - viewActualTotal) > 0.005 ? [{ label: 'Πρόβλεψη μήνα', value: feAuto(forecastTotal) }] : [])
-            : [{ label: 'Έναντι στόχου', value: `${viewActualTotal <= masterBudget ? '−' : '+'}${feAuto(Math.abs(masterBudget - viewActualTotal))}` }]),
-          // «ΜΕΝΕΙ ΑΠΟ ΤΟΝ ΣΤΟΧΟ», ΟΧΙ «ΔΙΑΘΕΣΙΜΟ». Η πρώτη κάρτα λέει ήδη
-          // «Διαθέσιμο» για έσοδα μείον υποχρεώσεις· εδώ είναι στόχος μείον
-          // δαπάνες. Ίδια λέξη, δύο ποσά, πεντακόσια εικονοστοιχεία απόσταση.
-          { label: 'Μένει από τον στόχο', value: feAuto(Math.max(0, masterBudget - viewActualTotal)) },
-        ]}/>
-        {(() => {
-          const pct    = masterBudget > 0 ? Math.min((viewActualTotal / masterBudget) * 100, 100) : 0;
-          const isOver = viewActualTotal > masterBudget;
-          const col    = isOver ? 'var(--negative)' : 'color-mix(in srgb, var(--text-primary) 34%, transparent)';
-          return (
-            <>
-              <div style={{ height: 6, background: 'var(--bg-overlay)', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
-                <div style={{ height: '100%', width: `${pct}%`, background: col, borderRadius: 3, transition: 'width 0.6s ease' }}/>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
-                {/* Η ΡΑΒΔΟΣ ΜΕΤΡΑ ΚΑΙ ΤΙΣ ΕΚΤΙΜΗΣΕΙΣ ΚΑΙ ΤΟ ΛΕΕΙ. Έγραφε «χρησιμοποιήθηκε»
-                    για ποσό που περιείχε λογαριασμούς που δεν έχουν έρθει ακόμη. */}
-                <span style={{ color: 'var(--text-tertiary)', fontWeight: 700 }}>{fp(pct)} του στόχου{isCurMonth && viewActualTotal - viewRecordedTotal > 0.005 ? ', με τις εκτιμήσεις' : ''}</span>
-                {/* Το «Μένει» φαίνεται ήδη στο πλακίδιο δίπλα, εδώ μόνο η υπέρβαση. */}
-                <span className="po-fig" data-tone={isOver ? 'negative' : undefined}>{isOver ? `Υπέρβαση ${feAuto(viewActualTotal - masterBudget)}` : ''}</span>
-              </div>
-              {isCurMonth && rolloverOn && hasPrevMonth && carryIn !== 0 && (
-                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
-                  Μεταφορά από τον {_prevLabel}: <strong className="po-fig" data-tone={carryIn > 0 ? undefined : 'negative'} style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{carryIn > 0 ? '+' : ''}{feAuto(carryIn)}</strong>
-                  {' · '}πραγματικά διαθέσιμα <strong className="po-fig" data-tone={adjAvailable < 0 ? 'negative' : undefined} style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{feAuto(adjAvailable)}</strong>
-                </div>
-              )}
-            </>
-          );
-        })()}
-      </div>
-
-      {/* Απόδοση επένδυσης — ΜΟΝΟ επαγγελματίας (NOI/cap rate/cash-on-cash), δίπλα στα βασικά νούμερα */}
-      {isPro && invReturns && (
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid var(--border-subtle)' }}>
-            <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>Απόδοση επένδυσης</span>
-            <InfoDot text={`Καθαρό προ δόσης (καθαρό λειτουργικό έσοδο): έσοδα μείον λειτουργικές δαπάνες, χωρίς τη δόση. Ταμειακή ροή: αυτό μείον τη δόση. Καθαρή απόδοση: καθαρό προ δόσης / ${invReturns.onPurchase ? 'τιμή αγοράς' : 'τρέχουσα αξία'}, πριν από τον φόρο. Έσοδα και δαπάνες του έτους με τον ορισμό της Επισκόπησης: με διαμονές, όσες έγιναν ως σήμερα και όσες έχουν κλειστεί έως 31/12. Απόδοση ιδίων κεφαλαίων: ταμειακή ροή / ίδια κεφάλαια, όπου ίδια κεφάλαια = τιμή αγοράς μείον αρχικό δάνειο. Ενδεικτικά, σε ετήσια βάση.`} />
-          </div>
-          <KPIGrid nested items={[
-            // ΜΙΑ ΓΡΑΜΜΗ ΣΤΑ 390, ΟΠΩΣ Η ΓΕΙΤΟΝΙΚΗ. Το «Καθαρό λειτουργικό έσοδο / έτος»
-            // έπιανε δύο και το ποσό του έπεφτε χαμηλότερα από της «Ταμειακής ροής».
-            // Ο όρος μένει ολόκληρος στην επεξήγηση, το «ετήσια» επίσης.
-            { label: 'Καθαρό προ δόσης', value: feSigned(invReturns.noi) },
-            { label: 'Ταμειακή ροή', value: feSigned(invReturns.preTaxCashFlow) },
-            // ΤΟ ΙΔΙΟ ΟΝΟΜΑ ΜΕ ΤΗΝ ΕΠΙΣΚΟΠΗΣΗ ΚΑΙ ΤΙΣ ΑΠΟΔΟΣΕΙΣ. «Απόδοση επί αξίας»
-            // ήταν η καθαρή απόδοση προ φόρου με άλλο όνομα και άλλη μηχανή. Τώρα
-            // βγαίνει από το lib/facts και η βάση της λέγεται στον υπότιτλο.
-            { label: YIELD_SHORT_LABELS.net_pre_tax, value: fpSigned(invReturns.capRatePct), fact: invReturns.onPurchase ? undefined : 'yield-net-recorded',
-              sub: `${invReturns.onPurchase ? 'επί τιμής αγοράς' : 'επί τρέχουσας αξίας'}, ${YIELD_PRE_TAX_SUB}` },
-            invReturns.cashOnCashPct != null
-              ? { label: 'Απόδοση ιδίων κεφαλαίων', value: fpSigned(invReturns.cashOnCashPct) }
-              : { label: 'Απόδοση ιδίων κεφαλαίων', value: ABSENT_SHORT, sub: 'χρειάζεται τιμή αγοράς και προκαταβολή' },
-          ]}/>
-        </div>
-      )}
-
-      {/* Προτάσεις — προδραστικές, actionable (εφαρμογή με ένα άγγιγμα) */}
-      {isCurMonth && targetSuggestions.length > 0 && (
-        <div className="budget-rise" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-accent)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
-            <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--accent)', fontFamily: T.font.sans }}>Προτάσεις</span>
-            <InfoDot text="Προτάσεις που προκύπτουν από το πραγματικό μοτίβο των δαπανών σου. Τις εφαρμόζεις με ένα άγγιγμα και αναιρούνται, ή τις απορρίπτεις για να μην ξαναεμφανιστούν." />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {targetSuggestions.map(s => (
-              <div key={s.key} className="po-stack-sm" style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                <span style={{ fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{s.text}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                  {/* Δευτερεύον: ίδιο σχήμα με το «Δείξε μου», απόχρωση τονισμού με
-                      περίγραμμα. Το ύψος 28 ανεβαίνει στο κοινό ύψος κουμπιού. */}
-                  <Btn variant="secondary" onClick={s.apply}>
-                    {s.cta}
-                  </Btn>
-                  <IconBtn onClick={() => dismissSuggestion(s.key)} label="Απόρριψη" title="Απόρριψη">
-                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </IconBtn>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Παρατηρήσεις — 2–3 έξυπνες προτάσεις πάνω από τα γραφήματα */}
-      {isCurMonth && insights.length > 0 && (
-        <div className="budget-rise" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2Z"/></svg>
-            <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>Παρατηρήσεις</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {insights.map((t, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'color-mix(in srgb, var(--text-primary) 40%, transparent)', flexShrink: 0, marginTop: 8 }} />
-                <span style={{ fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{t}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Ετήσια εικόνα — YTD και προβολή τέλους έτους από καταγεγραμμένες εγγραφές */}
-      {(() => {
-        const ytdPct = annual.ytdBudget > 0 ? Math.min((annual.ytdActual / annual.ytdBudget) * 100, 100) : 0;
-        const ytdOver = annual.ytdActual > annual.ytdBudget;
-        const ytdCol = ytdOver ? 'var(--negative)' : 'color-mix(in srgb, var(--text-primary) 34%, transparent)';
-        const shut = collapsed.has('annual');
-        const hasAnnualData = annual.ytdActual > 0 || Object.keys(monthTotals).length > 0;
-        return (
-          <div className="po-fig-card" tabIndex={0} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
-            {secHdr('Ετήσια εικόνα', 'annual')}
-            {!shut && !hasAnnualData && (
-              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.6 }}>
-                Μόλις καταγραφούν οι πρώτες δαπάνες, εδώ θα εμφανίζεται η προβολή τέλους έτους, η πορεία από την αρχή του έτους και η κατανομή ανά κατηγορία.
-              </div>
-            )}
-            {!shut && hasAnnualData && (
-              <>
-                {/* Προβολή τέλους έτους — κύριος αριθμός */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-                  <span className="po-fig" data-tone={annual.onTrack ? undefined : 'negative'} style={{ fontSize: 24, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1, letterSpacing: '-0.02em' }}>{feAuto(annual.projectedYearEnd)}</span>
-                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>προβολή τέλους έτους · στόχος <span style={{ fontFamily: T.font.num }}>{feAuto(annual.annualBudget)}</span></span>
-                  <span style={{ marginLeft: 'auto', fontSize: 'var(--fs-xs)', fontWeight: 700, padding: '3px 10px', borderRadius: T.radius.pill, fontFamily: T.font.sans, color: annual.onTrack ? 'var(--text-secondary)' : 'var(--negative)', background: annual.onTrack ? 'var(--bg-elevated)' : 'var(--negative-dim)', border: `1px solid ${annual.onTrack ? 'var(--border-subtle)' : 'var(--negative-border)'}` }}>{annual.onTrack ? 'Εντός στόχου' : 'Εκτός στόχου'}</span>
-                </div>
-                {/* YTD — από την αρχή του έτους */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
-                  <span>Από την αρχή του έτους</span>
-                  <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>{feAuto(annual.ytdActual)} <span style={{ color: 'var(--text-tertiary)' }}>/ {feAuto(annual.ytdBudget)}</span></span>
-                </div>
-                <div style={{ height: 8, background: 'var(--bg-overlay)', borderRadius: T.radius.xs, overflow: 'hidden', marginBottom: 8 }}>
-                  <div style={{ height: '100%', width: `${ytdPct}%`, background: ytdCol, borderRadius: T.radius.xs, transition: 'width 0.6s ease' }}/>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>
-                  <span className="po-fig" data-tone={annual.variance > 0 ? 'negative' : undefined}>{annual.variance > 0 ? `Υπέρβαση ${feAuto(annual.variance)} έναντι στόχου` : `Εντός στόχου κατά ${feAuto(-annual.variance)}`}</span>
-                  {/* Η ΤΑΣΗ ΤΟΥ ΤΡΙΜΗΝΟΥ ΔΕΝ ΕΙΝΑΙ ΕΤΗΣΙΑ ΕΙΚΟΝΑ ΚΑΙ ΓΡΑΦΟΤΑΝ ΗΔΗ.
-                      Καθόταν στο δεξί άκρο μιας κάρτας που μιλά για ΤΟ ΕΤΟΣ («προβολή
-                      τέλους έτους», «από την αρχή του έτους», «έξοδα ανά μήνα») και
-                      έλεγε «−91% έναντι τριμήνου». Το ίδιο γεγονός το γράφει ήδη με
-                      λέξεις η παρατήρηση από πάνω: «ο μήνας τρέχει 91% κάτω από τον
-                      μέσο όρο του τριμήνου». Δύο φορές το ίδιο, σε δύο κάρτες, σε δύο
-                      μορφές — και η μία από τις δύο εκτός θέματος. */}
-                </div>
-                {/* Ετήσιο εργαλείο: ράβδοι εξόδων ανά μήνα (με ήπια κατάσταση όταν δεν υπάρχει ιστορικό) */}
-                <div style={{ marginTop: T.sp.lg, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-                  <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 12, fontFamily: T.font.sans }}>Δαπάνες ανά μήνα</div>
-                  {yearBars.some(b => b.value > 0)
-                    ? <MonthBars data={yearBars} activeYm={_curYm} />
-                    : <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, padding: '14px 0' }}>Μόλις καταγραφούν δαπάνες, θα δεις εδώ την πορεία ανά μήνα.</div>}
-                </div>
-                {/* Ετήσιο εργαλείο: κατανομή δαπανών ανά κατηγορία */}
-                {catYtd.length > 0 && (
-                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-                    <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 12, fontFamily: T.font.sans }}>Κατανομή ανά κατηγορία</div>
-                    <Donut slices={catYtd} />
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* Εβδομαδιαίο εργαλείο — δαπάνες αυτής της εβδομάδας ανά κατηγορία (μόνο τρέχων μήνας) */}
-      {isCurMonth && weekTotalV > 0 && (
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
-          {secHdr('Αυτή την εβδομάδα', 'week', <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{feAuto(weekTotalV)}</span>)}
-          {!collapsed.has('week') && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {weekCats.map(c => {
-                const on = hoverWeek === c.label;
-                return (
-                <div key={c.label} onMouseEnter={() => setHoverWeek(c.label)} onMouseLeave={() => setHoverWeek(null)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px', margin: '0 -6px', borderRadius: T.radius.inner, background: on ? 'var(--bg-elevated)' : 'transparent', transition: 'background 0.15s' }}>
-                  <span style={{ width: 120, flexShrink: 0, fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', fontFamily: T.font.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</span>
-                  <div style={{ flex: 1, height: 8, background: 'var(--bg-overlay)', borderRadius: T.radius.xs, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${(c.value / weekMax) * 100}%`, background: `color-mix(in srgb, var(--accent) ${on ? 100 : 66}%, transparent)`, borderRadius: T.radius.xs, transition: 'width 0.5s ease, background 0.18s' }} />
-                  </div>
-                  <span style={{ minWidth: 62, textAlign: 'right', flexShrink: 0, fontSize: 'var(--fs-base)', fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: on ? 'var(--accent)' : 'var(--text-primary)', transition: 'color 0.15s' }}>{feAuto(c.value)}</span>
-                </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Επιχειρηματικές υποχρεώσεις — ΜΟΝΟ επαγγελματίας (δεν αφορούν ιδιώτες) */}
-      {/* ΙΔΙΟ ΣΧΗΜΑ, ΙΔΙΑ ΣΥΜΠΕΡΙΦΟΡΑ. Καθόταν ανάμεσα σε αναδιπλούμενες κάρτες
-          ως στατική κάρτα με παράγραφο και χωρίς βελάκι· τώρα αναδιπλώνεται
-          όπως οι γειτονικές της. */}
-      {isPro && (
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
-          {secHdr('Επιχειρηματικές υποχρεώσεις', 'business')}
-          {!collapsed.has('business') && (
-          <span style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.55 }}>
-            Εκτός από τον φόρο εισοδήματος, ως επιχείρηση βαρύνεσαι με τις μηνιαίες εισφορές <strong style={{ color: 'var(--text-secondary)' }}>ΕΦΚΑ</strong>, την <strong style={{ color: 'var(--text-secondary)' }}>προκαταβολή φόρου</strong> για την επόμενη χρήση και, εφόσον παρέχεις υπηρεσίες, τον <strong style={{ color: 'var(--text-secondary)' }}>ΦΠΑ</strong>. Τα ακριβή ποσά υπολογίζονται στη Λογιστική.
-          </span>
-          )}
-        </div>
-      )}
-
-      {/* Επαναλαμβανόμενες χρεώσεις / συνδρομές — ανάλυση 12μηνου ιστορικού δαπανών */}
-      {recurring.length > 0 && (() => {
-        const monthlyTotal = recurring.reduce((s, r) => s + r.monthlyEquivalent, 0);
-        const annualTotal  = recurring.reduce((s, r) => s + r.annualCost, 0);
-        const cadLabel = (c: RecurringCharge['cadence']) => c === 'monthly' ? 'μηνιαία' : c === 'bimonthly' ? 'διμηνιαία' : c === 'quarterly' ? 'τριμηνιαία' : c === 'yearly' ? 'ετήσια' : 'ακανόνιστη';
-        return (
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
-            {/* ΜΕ ΜΙΑ ΧΡΕΩΣΗ, ΤΟ ΑΘΡΟΙΣΜΑ ΕΙΝΑΙ Η ΧΡΕΩΣΗ. Η κεφαλίδα έγραφε τον
-                μηνιαίο ισοδύναμο και το ετήσιο κόστος· η μοναδική γραμμή από
-                κάτω τα ίδια δύο νούμερα, με την ίδια σειρά και τις ίδιες μονάδες,
-                σε απόσταση σαράντα εικονοστοιχείων. Ενα σύνολο υπάρχει για να
-                αθροίζει: χρειάζεται δύο προσθετέους για να πει κάτι. Ο ίδιος
-                κανόνας ισχύει ήδη για τον μέσο όρο του δωδεκαμήνου στη σύγκριση
-                δαπανών. */}
-            {secHdr('Επαναλαμβανόμενες χρεώσεις', 'recurring',
-              recurring.length > 1
-                ? <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{feAuto(monthlyTotal)} τον μήνα · {feAuto(annualTotal)} τον χρόνο</span>
-                : undefined,
-              <InfoDot text="Συνδρομές και πάγιες χρεώσεις που εντοπίζονται αυτόματα από τις καταγεγραμμένες δαπάνες σου, όταν ο ίδιος πάροχος επαναλαμβάνεται σε πολλούς μήνες. Δείχνει συχνότητα, τυπικό ποσό και ετήσιο κόστος, ώστε να εντοπίζεις εύκολα τις «κρυφές» συνδρομές." />)}
-            {!collapsed.has('recurring') && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {recurring.slice(0, 10).map(r => {
-                  const hov = hoverRec === r.key;
-                  return (
-                    <div key={r.key} onMouseEnter={() => setHoverRec(r.key)} onMouseLeave={() => setHoverRec(null)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px', margin: '0 -8px', borderRadius: T.radius.inner, background: hov ? 'var(--bg-elevated)' : 'transparent', transition: 'background 0.15s' }}>
-                      <div style={{ width: 3, height: 26, borderRadius: 3, background: 'color-mix(in srgb, var(--text-primary) 26%, transparent)', flexShrink: 0 }} />
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', fontFamily: T.font.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</div>
-                        <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{cadLabel(r.cadence)} · επόμενη {fd(parseLocalDate(r.nextExpected))}</div>
-                      </div>
-                      <div style={{ textAlign: 'right', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>
-                        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: hov ? 'var(--accent)' : 'var(--text-primary)', transition: 'color 0.15s' }}>{feAuto(r.monthlyEquivalent)}<span style={{ fontSize: 'var(--fs-xs)', fontWeight: 500, color: 'var(--text-tertiary)' }}>/μήνα</span></div>
-                        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>{feAuto(r.annualCost)}/έτος</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
-        {secHdr('Ανά κατηγορία', 'cats', undefined,
-          <InfoDot text="Κάθε κατηγορία δείχνει τι έχεις ξοδέψει έναντι του στόχου. Πάτησε τον στόχο για να τον αλλάξεις επιτόπου ή το όνομα για να το μετονομάσεις. Οι στόχοι αποθηκεύονται αυτόματα." />)}
-        {!(collapsed.has('cats')) &&
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {activeCats.map(cat => {
-            const budget  = catBudget(cat.key);
-            const actual  = viewActuals[cat.key] || 0;
-            const pct     = budget > 0 ? Math.min((actual / budget) * 100, 100) : 0;
-            const isOver  = actual > budget && actual > 0;
-            const projOver = isCurMonth && !isOver && categoryStatus(budget, actual, catForecast(cat.key)) === 'projected_over';
-            const isWarn  = !isOver && !projOver && pct > 80;
-            // Ομοιόμορφες, μονόχρωμες ράβδοι για ΟΛΕΣ τις κατηγορίες — καμία κόκκινη
-            // ράβδος στην υπέρβαση· το «πόσο πάνω» λέγεται διακριτικά με μικρό αριθμό.
-            const col     = 'color-mix(in srgb, var(--text-primary) 34%, transparent)';
-            const tr      = catTrend(cat.key);
-
-            const hov = hoverCat === cat.key;
-            const bdItems = isCurMonth ? (catBreakdown[cat.key] || []) : [];
-            const hasBd = bdItems.length > 0;
-            const openCat = openCats.has(cat.key);
-            const toggleCat = () => setOpenCats(s => { return toggleIn(s, cat.key); });
-            return (
-              <div key={cat.key} className="po-fig-card" tabIndex={0}
-                onMouseEnter={() => setHoverCat(cat.key)} onMouseLeave={() => setHoverCat(null)}
-                style={{ borderRadius: T.radius.inner, padding: '6px 8px', margin: '0 -8px', background: hov ? 'var(--bg-elevated)' : 'transparent', transition: 'background 0.15s' }}>
-                {/* Πατιέται ΜΟΝΟ όταν υπάρχει ανάλυση από κάτω. Χωρίς τη συνθήκη, η
-                    γραμμή θα έμπαινε στη σειρά του Tab και θα ανακοινωνόταν ως κουμπί
-                    ακόμη κι όταν το πάτημα δεν κάνει τίποτα — κενή υπόσχεση, που για
-                    τον χρήστη πληκτρολογίου κοστίζει περισσότερο απ' ό,τι για τον
-                    χρήστη ποντικιού: εκείνος τουλάχιστον βλέπει ότι δεν άνοιξε κάτι. */}
-                <div {...(hasBd ? pressable(toggleCat) : {})} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, cursor: hasBd ? 'pointer' : 'default' }}>
-                  <div style={{ width: 3, height: 26, borderRadius: 3, background: hov ? 'var(--accent)' : col, flexShrink: 0, transition: 'background 0.15s' }}/>
-                  <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}><InlineText value={cat.label} onCommit={v => renameCategory(cat.key, v)} ariaLabel={`Μετονομασία «${cat.label}»`} /></span>
-                  {/* ═══ ΓΡΑΜΜΗ ΤΑΣΗΣ ΧΩΡΙΣ ΤΑΣΗ ΚΑΙ ΠΤΩΣΗ ΠΟΥ ΔΕΝ ΕΓΙΝΕ ═════════════
-                      ΤΟ ΜΙΚΡΟΓΡΑΦΗΜΑ ΣΧΕΔΙΑΖΟΤΑΝ ΠΑΝΤΑ, ΑΚΟΜΗ ΚΑΙ ΜΕ ΕΝΑ ΝΟΥΜΕΡΟ.
-                      Δώδεκα μήνες με δεδομένα σε έναν δεν είναι τάση: είναι μία
-                      κορυφή πάνω σε ίσια γραμμή. Μετρημένο στην οθόνη του χρήστη:
-                      τρεις από τις τέσσερις κατηγορίες έδειχναν πριόνι χωρίς νόημα.
-                      Τρία σημεία είναι το ελάχιστο για να υπάρχει κατεύθυνση.
-
-                      ΚΑΙ ΤΟ «−100%» ΕΛΕΓΕ ΠΤΩΣΗ ΠΟΥ ΔΕΝ ΕΧΕΙ ΣΥΜΒΕΙ. Στον τρέχοντα
-                      μήνα, κατηγορία με μηδέν σημαίνει «δεν έχει καταχωρηθεί ακόμη»,
-                      όχι «έπεσε στο μηδέν»: ο λογαριασμός του ρεύματος έρχεται στα
-                      μέσα του μήνα. Η εφαρμογή δεν βγάζει συμπέρασμα από δεδομένα
-                      που δεν έχουν φτάσει. */}
-                  {catSpark(cat.key).filter(v => v > 0).length >= 3 && (
-                    <span title="Τάση 12 μηνών"><Sparkline values={catSpark(cat.key)} activeIndex={_sparkYms.indexOf(viewYm)} /></span>
-                  )}
-                  {isCurMonth && actual > 0 && tr.avgPrior > 0 && tr.direction !== 'flat' && (
-                    <span title={`Μέσος όρος τριμήνου: ${feAuto(tr.avgPrior)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 'var(--fs-xs)', fontWeight: 700, fontFamily: T.font.num, color: 'var(--text-tertiary)' }}>
-                      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: tr.direction === 'down' ? 'scaleY(-1)' : 'none' }}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                      {tr.deltaPct > 0 ? '+' : ''}{tr.deltaPct}%
-                    </span>
-                  )}
-                  <span style={{ flex: 1 }}/>
-
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                    {/* ΙΔΙΟ ΜΕΓΕΘΟΣ ΚΑΙ ΣΤΙΣ ΔΥΟ ΠΕΡΙΠΤΩΣΕΙΣ. Το «καμία δαπάνη» ήταν
-                        παύλα σε 11 στιγμές δίπλα σε ποσό των 14: δύο διαφορετικά ύψη
-                        στην ίδια στήλη, που δεν στοιχίζονται μεταξύ τους σε καμία
-                        σειρά. Τώρα είναι ποσό, γράφεται 0,00€ και η απουσία λέγεται
-                        από το χρώμα και το βάρος. */}
-                    <span style={{ fontSize: 14, fontWeight: actual > 0 ? 700 : 500, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: actual > 0 ? (hov ? 'var(--accent)' : 'var(--text-primary)') : 'var(--text-tertiary)', transition: 'color 0.15s' }}>{feAuto(actual > 0 ? actual : 0)}</span>
-                    {/* Στόχος — κλικ για επιτόπου αλλαγή */}
-                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>/ <InlineNumber raw={budgets[cat.key] ?? String(cat.default)} display={feAuto(budget)} onCommit={v => updateBudget(cat.key, v)} width={58} ariaLabel={`Στόχος «${cat.label}»`} /></span>
-                    {isOver && <span className="po-fig" data-tone="negative" title="Υπέρβαση του στόχου" style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>+{feAuto(actual - budget)}</span>}
-                    {projOver && <span title="Με τον τρέχοντα ρυθμό θα ξεπεράσει τον στόχο" style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>προβλεπόμενη υπέρβαση</span>}
-                    {isWarn && <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fp(pct)}</span>}
-                  </div>
-                  {/* Αφαίρεση κατηγορίας — εμφανίζεται στο πέρασμα του κέρσορα */}
-                  <button type="button" title="Αφαίρεση κατηγορίας" aria-label={`Αφαίρεση «${cat.label}»`}
-                    onClick={e => { e.stopPropagation(); removeCategory(cat.key); }}
-                    onMouseEnter={() => setDelCatHover(cat.key)} onMouseLeave={() => setDelCatHover(null)}
-                    style={{ width: 22, height: 22, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: T.radius.xs, border: 'none', background: 'transparent', color: delCatHover === cat.key ? 'var(--negative)' : 'var(--text-tertiary)', cursor: 'pointer', transition: 'opacity 0.15s, color 0.15s', padding: 0, opacity: (hov || coarse) ? 1 : 0, pointerEvents: (hov || coarse) ? 'auto' : 'none' }}>
-                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </button>
-                  {hasBd && (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={hov ? 'var(--accent)' : 'var(--text-tertiary)'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: openCat ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s, stroke 0.15s' }} aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-                  )}
-                </div>
-
-                {(
-                  <div style={{ marginLeft: 12 }}>
-                    <div style={{ height: 4, background: 'var(--bg-overlay)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: hov ? 'var(--accent)' : col, borderRadius: 3, transition: 'width 0.5s ease, background 0.15s' }}/>
-                    </div>
-                  </div>
-                )}
-
-                {/* Ανάλυση κατηγορίας: πάροχος/περιγραφή, ποσό και ημερομηνία της κάθε πληρωμής */}
-                {hasBd && openCat && (
-                  <div style={{ marginLeft: 12, marginTop: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {bdItems.map((it, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 8px', margin: '0 -8px', borderRadius: T.radius.inner }}>
-                        <span style={{ width: 4, height: 4, borderRadius: '50%', background: it.paid ? 'color-mix(in srgb, var(--text-primary) 40%, transparent)' : 'var(--border-default)', flexShrink: 0 }} />
-                        <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-secondary)', fontFamily: T.font.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</span>
-                        {!it.paid && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>εκκρεμεί</span>}
-                        {it.date && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{parseLocalDate(it.date).toLocaleDateString('el-GR', { day: 'numeric', month: 'short' })}</span>}
-                        <span style={{ minWidth: 58, textAlign: 'right', flexShrink: 0, fontSize: 12, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>{feAuto(it.amount)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>}
-
-        {!collapsed.has('cats') && (() => {
-          const sumCats = activeCats.reduce((s, c) => s + catBudget(c.key), 0);
-          return (
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
-              {/* Σύνολο + ενέργειες (χωρίς λειτουργία επεξεργασίας — όλα επιτόπου) */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', fontSize: 12, fontFamily: T.font.sans, color: 'var(--text-secondary)' }}>
-                <span>Μηνιαίος στόχος <InlineNumber raw={budgets.total ?? String(Math.round(masterBudget))} display={feAuto(masterBudget)} onCommit={v => updateBudget('total', v)} width={70} ariaLabel="Συνολικός μηνιαίος στόχος" /></span>
-                <span style={{ color: 'var(--text-tertiary)' }}>Άθροισμα κατηγοριών <strong style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)' }}>{feAuto(sumCats)}</strong></span>
-                <span style={{ flex: 1 }} />
-                {/* Σύνδεσμοι μέσα στη γραμμή του συνόλου, όχι κουμπιά: δεν έχουν
-                    κουτί και ζουν ανάμεσα σε νούμερα. Ο ήσυχος τόνος κρατά τη
-                    διάκριση «ανοιχτό ή κλειστό» που έδινε πριν το μελάνι. */}
-                <LinkBtn tone={addingCat ? undefined : 'quiet'} onClick={() => setAddingCat(v => !v)}>{addingCat ? 'Κλείσιμο' : '+ Προσθήκη κατηγορίας'}</LinkBtn>
-                <LinkBtn tone={showSettings ? undefined : 'quiet'} onClick={() => setShowSettings(v => !v)}>Ρυθμίσεις</LinkBtn>
-              </div>
-
-              {addingCat && (
-                <div style={{ marginTop: 10, display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: 180 }}>
-                    <TextInput label="Νέα κατηγορία" value={newCatName} onChange={setNewCatName} placeholder="Καθαριότητα, Φύλαξη…"
-                      onKeyDown={e => { if (e.key === 'Enter' && newCatName.trim()) { addCategory(newCatName); setNewCatName(''); } }}/>
-                  </div>
-                  {/* Κύρια ενέργεια της σειράς: συμπαγές γέμισμα με ανεστραμμένο
-                      μελάνι. Το χρώμα του γεμίσματος το δίνει πλέον η `.po-btn`. */}
-                  <Btn variant="primary" disabled={!newCatName.trim()}
-                    onClick={() => { addCategory(newCatName); setNewCatName(''); }}>
-                    Προσθήκη
-                  </Btn>
-                </div>
-              )}
-
-              {hiddenBaseCats.length > 0 && (
-                <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Επαναφορά</span>
-                  {hiddenBaseCats.map(c => (
-                    <button key={c.key} type="button" title="Επαναφορά κατηγορίας" onClick={() => restoreCategory(c.key)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: T.radius.pill, border: '1px dashed var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500, fontFamily: T.font.sans, cursor: 'pointer' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-accent)'; (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-default)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; }}>
-                      <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                      {labelOverrides[c.key] ?? c.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {showSettings && (
-                <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 10 }}>
-                  {settingToggle('notifyOverspend', notifyOn, 'Ειδοποίηση σε υπέρβαση', 'Ειδοποίηση όταν μια κατηγορία ξεπεράσει τον στόχο, μέσω των προτιμήσεων ειδοποιήσεων και του Ημερολογίου.')}
-                  {settingToggle('rollover', rolloverOn, 'Μεταφορά υπολοίπου', 'Το αδιάθετο ή η υπέρβαση του μήνα μεταφέρεται στον επόμενο, αντί για μηδενισμό κάθε μήνα.')}
-                </div>
-              )}
-            </div>
-          );
-        })()}
-      </div>
-
-      {/* Εξαιρέσεις: όσα δεν θέλεις να μετρούν στα στατιστικά/προϋπολογισμό (τα πληρώνει άλλος ή απλώς εκτός) */}
-      {viewItems.length > 0 && (
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginBottom: 12 }}>
-          {secHdr('Εξαιρέσεις', 'exclusions',
-            excludedCount > 0 ? <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{excludedCount} εκτός</span> : undefined,
-            <InfoDot text="Απενεργοποίησε όσα δεν θέλεις να μετρούν στα στατιστικά και στον προϋπολογισμό. Εξαίρεσε ολόκληρη την εγγραφή ή μέρος του ποσού (π.χ. το μισό το πλήρωσε άλλος) και σημείωσε προαιρετικά τον λόγο." />)}
-          {!collapsed.has('exclusions') && (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {viewItems.map((it, idx) => {
-                const ex = excludedMap[it.id];
-                const isEx = !!ex;
-                const full = it.amount;
-                const excl = exclAmountOf(it.id, full);            // πόσο εξαιρείται
-                const cnt  = Math.max(0, full - excl);             // πόσο μετρά
-                const partial = isEx && ex?.amount != null && ex.amount > 0 && ex.amount < full;
-                const amtVal = exclAmtDraft[it.id] ?? (ex?.amount != null ? String(ex.amount) : '');
-                return (
-                  <div key={it.id} style={{ padding: '11px 0', borderTop: idx === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-base)', fontWeight: 500, color: isEx ? 'var(--text-tertiary)' : 'var(--text-primary)', fontFamily: T.font.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</span>
-                      {/* Ποσό: συνολικό· όταν εξαιρείται μερικώς, δείχνουμε διακριτικά πόσο μετρά */}
-                      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.2 }}>
-                        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: isEx ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: isEx && !partial ? 'line-through' : 'none', textDecorationColor: 'var(--border-default)' }}>{feAuto(full)}</span>
-                        {partial && <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>μετρά {feAuto(cnt)}</span>}
-                      </span>
-                      {/* Διακόπτης «μετρά στον προϋπολογισμό» — off = εξαιρέθηκε.
-                          ΓΙΑΤΙ ΜΕΝΕΙ ΧΕΙΡΟΓΡΑΦΟΣ. Το κοινό `Toggle` δένει την
-                          aria-label με το ΟΡΑΤΟ κείμενο: `aria-label={label}` και
-                          `{label && <span>{label}</span>}` στο ίδιο prop. Εδώ ο
-                          διακόπτης επαναλαμβάνεται μία φορά ανά εγγραφή του μήνα
-                          (δεκάδες γραμμές), οπότε το κοινό component θα τύπωνε
-                          «Μετρά στον προϋπολογισμό» δίπλα σε ΚΑΘΕ γραμμή για να
-                          κρατήσει την ετικέτα προσβασιμότητας. Η γεωμετρία και τα
-                          χρώματα ευθυγραμμίστηκαν με το `Toggle size="sm"`
-                          (36×20, δείκτης 12/16, περίγραμμα 2) ώστε να είναι
-                          οπτικά ο ΙΔΙΟΣ διακόπτης· έφευγε πριν με ωμό #fff στον
-                          δείκτη και ωμό rgba στη σκιά. */}
-                      {/* ΤΟ ΑΝΤΙΓΡΑΦΟ ΕΦΥΓΕ. Το σχόλιο από πάνω παραδεχόταν ότι
-                          ζωγράφιζε «οπτικά τον ΙΔΙΟ διακόπτη» με το χέρι: ίδια
-                          νούμερα, γραμμένα δεύτερη φορά. Την επόμενη φορά που
-                          θα αλλάξει το ελατήριο, αυτό εδώ θα έμενε πίσω. */}
-                      <Toggle on={!isEx} ariaLabel="Μετρά στον προϋπολογισμό"
-                        onChange={() => { if (isEx) { unexcludeItem(it.id); setExclAmtDraft(d => { const n = { ...d }; delete n[it.id]; return n; }); } else { const snap = budgets.__excluded; excludeItem(it.id); notify(`Εξαιρέθηκε «${it.label}»`, { duration: UNDO_MS, action: { label: 'Αναίρεση', onClick: () => persistCats({ __excluded: snap ?? '{}' }) } }); } }} />
-                    </div>
-                    {/* ═══ ΤΡΕΙΣ ΣΕΙΡΕΣ ΕΓΙΝΑΝ ΜΙΑ ══════════════════════════════════
-                        Το πάνελ έπιανε τρεις σειρές με στήλη ετικετών 74
-                        εικονοστοιχείων: «Λόγος», «Εξαιρείται», «Σημείωση». Ενα
-                        κουτί ύψους εκατόν είκοσι για να πεις ότι τον λογαριασμό
-                        τον πλήρωσε ο ενοικιαστής, ανοιγμένο κάτω από ΚΑΘΕ
-                        εξαιρεμένη γραμμή του μήνα.
-
-                        Τα τρία χειριστήρια χωρούν σε μία σειρά: τα πλακίδια του
-                        λόγου, το ποσό των εκατόν οκτώ και η σημείωση που παίρνει
-                        τον υπόλοιπο χώρο. Οι δύο ετικέτες που χρειάζονται μπαίνουν
-                        μπροστά από το χειριστήριό τους αντί για δική τους στήλη· η
-                        σημείωση δεν χρειάζεται καμία, γιατί το κείμενο υπόδειξης
-                        είναι ολόκληρο παράδειγμα.
-
-                        ΚΑΙ ΕΝΑ ΚΕΙΜΕΝΟ ΕΦΥΓΕ. Το «όλη η εγγραφή εξαιρείται» έλεγε
-                        ό,τι λέει ήδη η διαγραμμένη τιμή στη γραμμή από πάνω· το
-                        «μετρά 15,60€» της μερικής εξαίρεσης γράφεται κιόλας
-                        εκεί, κάτω από το ποσό. */}
-                    {isEx && (
-                      <div style={{ marginTop: 8, padding: '9px 11px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        {/* Λόγος: γρήγορες επιλογές (προαιρετικό) */}
-                        <span style={{ flexShrink: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Λόγος</span>
-                        {PAYERS.map(p => {
-                            const sel = ex?.payer === p;
-                          return (
-                            // Σχήμα `chip` και όχι `seg`: τα πλακίδια κάθονται ελεύθερα
-                            // μέσα στη γραμμή, χωρίς ράγα με δικό της περίγραμμα.
-                            <ChipToggle key={p} on={sel} onClick={() => patchExcl(it.id, { payer: sel ? '' : p })}>
-                              {p}
-                            </ChipToggle>
-                          );
-                        })}
-                        {/* Μερική εξαίρεση: πόσο από το ποσό να εξαιρεθεί (κενό = όλο)
-
-                            ΤΟ ΕΥΡΩ ΓΡΑΦΟΤΑΝ ΔΥΟ ΦΟΡΕΣ ΚΑΙ Η ΠΑΡΕΝΘΕΣΗ ΚΟΒΟΤΑΝ. Το
-                            κείμενο υπόδειξης ήταν «όλο (31,20€)» μέσα σε πεδίο 108
-                            εικονοστοιχείων που κρατά 22 δεξιά για το δικό του «€»:
-                            έμεναν 76 για δεκατρείς χαρακτήρες. Η οθόνη έγραφε «όλο
-                            (31,20€ €», με κομμένη παρένθεση και δύο σύμβολα
-                            νομίσματος στη σειρά. Το ποσό το λέει ήδη η ίδια η γραμμή,
-                            διαγραμμένο στο δεξί άκρο· η υπόδειξη λέει μόνο τι σημαίνει
-                            το κενό πεδίο. */}
-                        <span style={{ flexShrink: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginLeft: 4 }}>Εξαιρείται</span>
-                        <div style={{ position: 'relative', width: 92, flexShrink: 0 }}>
-                          <input aria-label="Ποσό που εξαιρείται" inputMode="decimal" value={amtVal}
-                            onChange={e => { const raw = e.target.value.replace(/[^\d.,]/g, ''); setExclAmtDraft(d => ({ ...d, [it.id]: raw })); const n = parseAmount(raw) ?? NaN; patchExcl(it.id, { amount: isFinite(n) && n > 0 ? n : undefined }); }}
-                            placeholder="όλο"
-                            style={{ width: '100%', height: 28, padding: '0 22px 0 10px', borderRadius: T.radius.xs, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', outline: 'none', transition: 'border-color 0.15s' }}
-                            onFocus={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-accent)'; }}
-                            onBlur={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-subtle)'; }} />
-                          <span style={{ position: 'absolute', right: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, pointerEvents: 'none' }}>€</span>
-                        </div>
-                        {/* Σημείωση: ελεύθερο κείμενο (προαιρετικό). Χωρίς ετικέτα:
-                            το κείμενο υπόδειξης είναι ολόκληρο παράδειγμα. */}
-                        <input aria-label="Σημείωση εξαίρεσης" type="text" value={ex?.note ?? ''} maxLength={120}
-                          onChange={e => patchExcl(it.id, { note: e.target.value })}
-                          placeholder="το μισό το πλήρωσε ο συγκάτοικος"
-                          style={{ flex: '1 1 180px', minWidth: 0, height: 28, padding: '0 10px', borderRadius: T.radius.xs, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-primary)', fontSize: 12, fontFamily: T.font.sans, outline: 'none', transition: 'border-color 0.15s' }}
-                          onFocus={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-accent)'; }}
-                          onBlur={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-subtle)'; }} />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ΕΝΑ ΚΛΙΚ ΛΙΓΟΤΕΡΟ. Το «Περισσότερα» έκρυβε δύο πράγματα: τα αποθεματικά
-          και την εισαγωγή αρχείου. Τα αποθεματικά αφαιρέθηκαν από το προϊόν,
-          οπότε έμεινε πτυσσόμενο πάνω από ΕΝΑ στοιχείο — δηλαδή ένα κλικ για να
-          δεις κάτι που χωρούσε να φαίνεται. Η ίδια η ενότητα μαζεύει ήδη. */}
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: 16, marginTop: 12 }}>
-        {secHdr('Εισαγωγή δεδομένων', 'import', undefined,
-          <InfoDot text="Ανέβασε τραπεζικό αντίγραφο ή λίστα δαπανών (CSV ή Excel) και το εργαλείο αναγνωρίζει αυτόματα ημερομηνία, ποσό και κατηγορία. Ελέγχεις και διορθώνεις πριν την καταχώρηση, ώστε οι δαπάνες να μπαίνουν στον σωστό μήνα και στη σωστή κατηγορία." />)}
-            {!collapsed.has('import') && (
-          <BudgetImport propertyId={propertyId} userId={userId} cats={activeCats.map(c => ({ key: c.key, label: c.label }))} onImported={loadData} />
-        )}
-      </div>
-
+    <div className="bud">
+      {header}
+      <div className="bud-grid">{left}{right}</div>
+      {sheet}{targetSheet}{addSheet}
+      <BudgetStyles />
     </div>
+  );
+}
+
+// ── ΦΥΛΛΟ: Ο ΣΤΟΧΟΣ ΤΟΥ ΜΗΝΑ ───────────────────────────────────────────────────
+function TargetSheet({ initial, suggested, hasExplicit, sumOfCats, onClose, onSave }: {
+  initial: string; suggested: number | null; hasExplicit: boolean; sumOfCats: Target; onClose: () => void; onSave: (v: string) => void;
+}) {
+  const [v, setV] = useState(initial);
+  return (
+    <Modal open onClose={onClose} size="sm" title="Μηνιαίος στόχος"
+      footer={<>
+        {hasExplicit && <Btn variant="ghost" onClick={() => onSave('')}>Χωρίς συνολικό στόχο</Btn>}
+        <Btn variant="primary" onClick={() => onSave(v.trim())} disabled={!v.trim()}>Αποθήκευση</Btn>
+      </>}>
+      <NumberInput label="Πόσα θέλεις να ξοδεύεις τον μήνα" value={v} onChange={setV} suffix="€" optional min={0} />
+      <p style={{ ...TT.bodySm, margin: 0 }}>
+        {suggested != null ? <>Ο μέσος όρος των τελευταίων μηνών είναι <span className="bud-num">{feAuto(suggested)}</span>. </> : null}
+        {sumOfCats != null ? <>Οι στόχοι των κατηγοριών σου αθροίζουν <span className="bud-num">{feAuto(sumOfCats)}</span>. </> : null}
+        Χωρίς συνολικό στόχο, μετράμε το άθροισμα των στόχων των κατηγοριών.
+      </p>
+    </Modal>
+  );
+}
+
+// ── ΦΥΛΛΟ: ΝΕΑ ΚΑΤΗΓΟΡΙΑ ─────────────────────────────────────────────────────────
+function AddCategorySheet({ hidden, onClose, onAdd, onRestore }: {
+  hidden: { key: string; label: string }[]; onClose: () => void; onAdd: (name: string) => void; onRestore: (key: string) => void;
+}) {
+  const [name, setName] = useState('');
+  return (
+    <Modal open onClose={onClose} size="sm" title="Νέα κατηγορία"
+      footer={<><Btn variant="ghost" onClick={onClose}>Ακύρωση</Btn><Btn variant="primary" disabled={!name.trim()} onClick={() => onAdd(name)}>Προσθήκη</Btn></>}>
+      <TextInput label="Όνομα κατηγορίας" value={name} onChange={setName} placeholder="Καθαριότητα, φύλαξη"
+        onKeyDown={e => { if (e.key === 'Enter' && name.trim()) onAdd(name); }} />
+      {hidden.length > 0 && (
+        <div>
+          <h3 style={{ ...TT.label, color: 'var(--text-primary)', margin: `0 0 ${T.sp.sm}px` }}>Ή επανάφερε μία που αφαίρεσες</h3>
+          <div style={{ display: 'flex', gap: T.sp.sm, flexWrap: 'wrap' }}>
+            {hidden.map(h => <ChipToggle key={h.key} on={false} onClick={() => onRestore(h.key)}>{h.label}</ChipToggle>)}
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+// ── ΤΟ ΣΤΥΛ ΤΗΣ ΟΘΟΝΗΣ, ΣΕ ΚΛΑΣΕΙΣ ──────────────────────────────────────────────
+// Οι media queries και το :hover δεν γράφονται inline. Ενα σημείο για κάθε
+// απόσταση: 16 ανάμεσα σε κάρτες, 12 μέσα σε κάρτα, 44 κάθε στόχος αφής.
+function BudgetStyles() {
+  return (
+    <style>{`
+      .bud { max-width: 1120px; font-family: ${T.font.sans}; color: var(--text-primary); }
+      .bud-num { font-family: ${T.font.num}; font-variant-numeric: tabular-nums; }
+      .bud-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .bud-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title title" "month new"; align-items: center; gap: ${T.sp.sm}px ${T.sp.md}px; margin-bottom: ${T.sp.xl}px; }
+      .bud-title { grid-area: title; display: inline-flex; align-items: center; min-width: 0; }
+      .bud-title-info { display: inline-flex; margin-left: calc(8px - (var(--h-sm) - 15px) / 2); }
+      .bud-month { grid-area: month; }
+      .bud-head > .bud-new { grid-area: new; justify-self: end; white-space: nowrap; }
+      @media (min-width: 1024px) {
+        .bud-head { grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "title month . new"; column-gap: ${T.sp.lg}px; }
+      }
+      .bud-m-short { display: none; }
+      @media (max-width: 360px) { .bud-m-long { display: none; } .bud-m-short { display: inline; } }
+      .bud-textbtn { display: inline-flex; align-items: center; min-height: var(--h-sm); padding: 0; border: 0; background: none; color: var(--text-secondary); font: inherit; font-size: var(--fs-note); font-weight: 500; white-space: nowrap; cursor: pointer; transition: color 0.15s; }
+      .bud-cats-foot .bud-textbtn { font-weight: 600; }
+      .bud-textbtn:hover { color: var(--text-primary); }
+      .bud-textbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: ${T.radius.xs}px; }
+      .bud-textbtn-accent { color: var(--accent); font-weight: 600; }
+      .bud-textbtn-danger, .bud-textbtn-danger:hover { color: var(--negative); font-weight: 600; }
+      .bud-hidden-row { display: flex; justify-content: space-between; align-items: center; gap: ${T.sp.md}px; min-height: 48px; padding-right: 28px; font-size: var(--fs-base); color: var(--text-tertiary); }
+      .bud-textbtn-accent:hover { color: var(--accent); text-decoration: underline; }
+      .bud-sheet-danger { margin-right: auto; display: inline-flex; align-items: center; }
+      .bud-month { display: flex; align-items: center; gap: ${T.sp.xs}px; min-width: 0; margin-left: calc(2px - var(--h-sm) / 2); }
+      @media (min-width: 1024px) { .bud-month { margin-left: 0; } }
+      .bud-month-label { padding: 0 ${T.sp.xs}px; white-space: nowrap; font-size: var(--fs-base); font-weight: 600; color: var(--text-primary); }
+      .bud-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: ${T.sp.lg}px; align-items: start; }
+      @media (min-width: 1024px) { .bud-grid { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: ${T.sp.xxl}px; } }
+      .bud-col { display: grid; gap: ${T.sp.lg}px; min-width: 0; }
+      .bud-card-head > :last-child:not(h2):not(h3) { white-space: nowrap; flex-shrink: 0; }
+      .bud-card-head { display: flex; align-items: center; justify-content: space-between; gap: ${T.sp.md}px; min-height: 24px; margin-bottom: ${T.sp.md}px; }
+      .bud-hero-top { display: flex; align-items: center; justify-content: space-between; gap: ${T.sp.md}px; margin-bottom: ${T.sp.sm}px; min-height: 22px; }
+      .bud-hero-top .bud-textbtn { margin: -12px 0; }
+            .bud-hero-fig { display: flex; align-items: baseline; gap: ${T.sp.sm}px; flex-wrap: wrap; }
+      .bud-big { font-family: ${T.font.num}; font-variant-numeric: tabular-nums; font-size: 32px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+      .bud-bar { display: block; height: 4px; border-radius: ${T.radius.hair}px; background: var(--bg-overlay); overflow: hidden; width: 100%; }
+      .bud-bar > span { display: block; height: 100%; border-radius: inherit; transition: width 0.5s ease; }
+      .bud-bar-lg { height: 8px; border-radius: ${T.radius.pill}px; margin: ${T.sp.md}px 0 ${T.sp.sm}px; }
+      .bud-hero-cap { display: flex; justify-content: space-between; gap: ${T.sp.md}px; flex-wrap: wrap; font-size: var(--fs-xs); color: var(--text-tertiary); line-height: 1.45; }
+      .bud-hero-cash { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: ${T.sp.md}px; row-gap: 2px; align-items: center; margin-top: ${T.sp.lg}px; padding-top: ${T.sp.md}px; border-top: 1px solid var(--border-subtle); }
+      .bud-cash-label { grid-column: 1; grid-row: 1; display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+      .bud-cash-val { grid-column: 2; grid-row: 1; }
+      .bud-cash-sub { grid-column: 1 / -1; grid-row: 2; }
+      .bud-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+      .bud-cats, .bud-list, .bud-items { list-style: none; margin: 0; padding: 0; }
+      .bud-cat { display: grid; grid-template-columns: minmax(0, 1fr) auto 16px; grid-template-rows: auto 16px auto; column-gap: ${T.sp.md}px; row-gap: 6px; align-items: center; width: calc(100% + 16px); margin: 0 -8px; padding: 10px 8px; min-height: 56px; border: 0; border-radius: ${T.radius.inner}px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background 0.15s; }
+      .bud-cats > li + li { border-top: 1px solid var(--border-subtle); }
+      .bud-row { display: grid; grid-template-columns: 6px minmax(0, 1fr) auto 16px; column-gap: ${T.sp.md}px; align-items: center; width: calc(100% + 16px); margin: 0 -8px; padding: 10px 8px; min-height: 52px; border: 0; border-radius: ${T.radius.inner}px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background 0.15s; }
+      .bud-row:hover { background: var(--bg-elevated); }
+      .bud-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+      .bud-row-label { min-width: 0; font-size: var(--fs-base); line-height: 1.35; }
+      .bud-row-chev { color: var(--text-tertiary); display: inline-flex; }
+      .bud-row-amt { font-size: var(--fs-base); font-weight: 600; text-align: right; white-space: nowrap; }
+      .bud-cat:hover { background: var(--bg-elevated); }
+      .bud-cat:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+      .bud-cat-name { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-base); font-weight: 500; }
+      .bud-cat-amt { grid-column: 2; grid-row: 1; white-space: nowrap; font-size: var(--fs-base); text-align: right; }
+      .bud-cat-chev { grid-column: 3; grid-row: 1 / -1; color: var(--text-tertiary); display: inline-flex; }
+      .bud-cat-line { grid-column: 1 / span 2; grid-row: 2; display: flex; align-items: center; min-width: 0; height: 16px; }
+      .bud-cat-status { grid-column: 1 / span 2; grid-row: 3; font-size: var(--fs-xs); font-weight: 600; line-height: 1.45; margin-top: -2px; }
+      .bud-cats-foot { display: flex; justify-content: space-between; align-items: center; gap: ${T.sp.sm}px ${T.sp.lg}px; flex-wrap: wrap; margin-top: ${T.sp.xs}px; padding-top: ${T.sp.md}px; border-top: 1px solid var(--border-subtle); }
+      .bud-cats-foot > :only-child { margin-left: auto; }
+      .bud-list > li + li, .bud-items > li + li { border-top: 1px solid var(--border-subtle); }
+      .bud-list-row { display: flex; align-items: center; justify-content: space-between; gap: ${T.sp.md}px; padding: 10px 0; min-height: 56px; }
+      .bud-week-row { display: grid; grid-template-columns: minmax(0, 140px) minmax(0, 1fr) 96px; gap: ${T.sp.md}px; align-items: center; padding: 10px 0; }
+      .bud-kv { display: flex; justify-content: space-between; align-items: baseline; gap: ${T.sp.md}px; font-size: var(--fs-note); color: var(--text-secondary); padding: 4px 0; }
+      .bud-item { padding: ${T.sp.sm}px 0; }
+      .bud-item-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: ${T.sp.md}px; min-height: 48px; }
+      .bud-item-excl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: ${T.sp.sm}px ${T.sp.md}px; margin-top: ${T.sp.sm}px; padding: ${T.sp.md}px; border-radius: ${T.radius.inner}px; background: var(--bg-elevated); }
+      @media (max-width: 420px) { .bud-item-excl { grid-template-columns: minmax(0, 1fr); } }
+      .bud-note { display: flex; align-items: center; gap: ${T.sp.md}px; flex-wrap: wrap; padding: ${T.sp.md}px ${T.sp.lg}px; border-radius: ${T.radius.card}px; border: 1px solid var(--border-subtle); background: var(--bg-elevated); }
+      .bud-more { display: flex; align-items: center; justify-content: space-between; gap: ${T.sp.md}px; width: 100%; min-height: 64px; padding: ${T.sp.md}px ${T.sp.lg}px; border-radius: ${T.radius.card}px; border: 1px solid var(--border-raised); background: var(--surface-raised); box-shadow: var(--highlight-inset), var(--elev-1); color: var(--text-tertiary); font: inherit; text-align: left; cursor: pointer; transition: background 0.15s; }
+      .bud-more:hover { background: var(--bg-elevated); }
+      .bud-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .bud-setting { width: 100%; display: flex; align-items: center; gap: ${T.sp.md}px; padding: ${T.sp.md}px; border-radius: ${T.radius.inner}px; border: 1px solid var(--border-subtle); background: var(--bg-elevated); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+      .bud-setting:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .bud-assume { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: ${T.sp.md}px; margin-top: ${T.sp.md}px; padding-top: ${T.sp.md}px; border-top: 1px solid var(--border-subtle); }
+      @media (max-width: 560px) { .bud-big { font-size: 28px; } }
+      /* ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ Η ΓΡΑΜΜΗ ΚΑΤΗΓΟΡΙΑΣ ΣΦΙΓΓΕΙ ΣΤΑ 64: οι δέκα κατηγορίες
+         χωρούν σε οθόνη 800 χωρίς κύλιση πριν από τις πρώτες επτά. */
+      @media (min-width: 1024px) { .bud-cat { padding-top: 8px; padding-bottom: 8px; } }
+    `}</style>
   );
 }

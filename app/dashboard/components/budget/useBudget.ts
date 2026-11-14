@@ -14,7 +14,6 @@ import * as loanStore from '@/lib/data/loans'
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings'
 import * as stayStore from '@/lib/data/stays'
-import * as billStore from '@/lib/data/bills'
 import * as tenantStore from '@/lib/data/tenants'
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
@@ -23,7 +22,7 @@ import { fpRate } from '@/lib/core/format'
 import { waterMonthly } from '@/lib/energy/tariff'
 import { monthAcc, monthYearLabel } from '@/lib/core/months'
 import { randomSuffix } from '@/lib/core/uploadPath'
-import { notify, notifyError } from '@/components/Toast'
+import { notify } from '@/components/Toast'
 import { saved } from '@/components/dbWrite'
 import {
   forecastMonthEnd, categoryStatus, annualSummary, periodTrend, detectRecurring, RecurringCharge,
@@ -57,6 +56,9 @@ import {
   FIXED_CATS, ymOf, CATS, type MonthItem, type ExclRule, type CustomCatRaw, type Props,
   COLLAPSED_BY_DEFAULT, COLLAPSED_SERVER,
 } from './model'
+import { parseTarget, planTotal, demoRows, DEMO_TARGETS, anyFailed, spentTotal, type Target } from './plan'
+import { ledgerSource } from '@/lib/data/ledgerSource'
+import { attentionOf, sumCents, type Attention } from '@/lib/expenses/attention'
 
 export function useBudget({ propertyId, userId = '', profileType = 'individual' }: Props) {
   const isPro = profileType === 'professional';
@@ -64,11 +66,10 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const initBudgets = (): Record<string, string> => {
-    const b: Record<string, string> = { total: '390' };
-    CATS.forEach(c => { b[c.key] = String(c.default); });
-    return b;
-  };
+  // ΚΕΝΟ ΣΧΕΔΙΟ, ΟΧΙ ΕΦΕΥΡΕΜΕΝΟ. Εδώ ξεκινούσε κάθε νέος χρήστης με «390»
+  // συνολικό στόχο και δέκα στόχους ανά κατηγορία που άθροιζαν 415: ένα σχέδιο
+  // που δεν έκανε και που δεν συμφωνούσε ούτε με τον εαυτό του.
+  const initBudgets = (): Record<string, string> => ({});
 
   const [budgets,      setBudgets]      = useState<Record<string, string>>(initBudgets);
   const [actuals,      setActuals]      = useState<Record<string, number>>({});
@@ -108,6 +109,15 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   // («assigned a value but never used») και η προειδοποίηση διαβαζόταν ως σκουπίδι.
   const [taxPctAuto,   setTaxPctAuto]   = useState<number | null>(null);
   const [loading,      setLoading]      = useState(true);
+  // ΑΠΟΤΥΧΗΜΕΝΗ ΦΟΡΤΩΣΗ ΔΕΝ ΕΙΝΑΙ ΑΔΕΙΟΣ ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ. Οι αναγνώσεις κατάπιναν
+  // το σφάλμα και η οθόνη έδειχνε «0,00€» με πρόταση να γράψει δείγμα σε βάση
+  // που μόλις απέτυχε. Τώρα η οθόνη ξέρει ότι δεν ξέρει.
+  const [loadError,    setLoadError]    = useState(false);
+  // Ληξιπρόθεσμα και εκκρεμή από ΟΛΟ το φορτωμένο καθολικό (lib/expenses/attention).
+  const [attention,    setAttention]    = useState<Attention>({ overdue: { n: 0, sum: 0 }, pending: { n: 0, sum: 0 } });
+  // ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΖΕΙ ΣΤΗ ΜΝΗΜΗ. Ref για το loadData, state για την οθόνη.
+  const [demo,         setDemoState]    = useState(false);
+  const demoRef = useRef(false);
   const [saving,       setSaving]       = useState(false);
   const [hoverCat,     setHoverCat]     = useState<string | null>(null);
   const [delCatHover,  setDelCatHover]  = useState<string | null>(null);
@@ -138,7 +148,8 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   // σε effect», δηλαδή δύο αποδόσεις σε κάθε φόρτωση και μια στιγμή όπου όλες οι
   // ενότητες φαίνονταν ανοιχτές. Προεπιλογή: όλες κλειστές.
   const [collapsed, setCollapsedStore] = useRemembered<Set<string>>(
-    `budget_collapsed_${propertyId}`,
+    // Νέο κλειδί: το παλιό κρατούσε έξι πτυσσόμενες ενότητες που δεν υπάρχουν πια.
+    `budget_more_${propertyId}`,
     raw => new Set<string>(raw ? (JSON.parse(raw) as string[]) : COLLAPSED_BY_DEFAULT),
     v => JSON.stringify([...v]),
     COLLAPSED_SERVER,
@@ -167,8 +178,6 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       const dateEnd = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;      // τέλος τρέχοντος μήνα
       // Ιστορικό 13 μηνών (τρέχων + 12 πίσω) για πρόβλεψη/ετήσια εικόνα/τάσεις.
       const histStart = `${ymOf(new Date(y, now.getMonth() - 12, 1))}-01`;
-      // Παράθυρο ανάγνωσης λογαριασμών: έναν χρόνο πιο πίσω από το ιστορικό.
-      const wideStart = `${ymOf(new Date(y, now.getMonth() - 24, 1))}-01`;
       // Αρχή τρέχουσας εβδομάδας (Δευτέρα) — για το εβδομαδιαίο εργαλείο (σωστό και στα όρια μήνα).
       const dow       = (now.getDay() + 6) % 7;   // Δευτέρα = 0
       const weekStartD = new Date(y, now.getMonth(), now.getDate() - dow);
@@ -186,16 +195,25 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       // ΤΩΡΑ: μία ανάγνωση, συγχώνευση από τον ίδιο πυρήνα που τροφοδοτεί την
       // οθόνη Δαπάνες και τα τρία παράθυρα κόβονται από την ίδια λίστα. Ό,τι
       // δείχνουν οι Δαπάνες, αθροίζει ο Προϋπολογισμός.
-      const [budgetRes, settRes, allBillsRes, allExpRes] = await Promise.all([
-        settings.section(supabase, propertyId, 'budgets', userId),
+      // ── ΜΙΑ ΑΝΑΓΝΩΣΗ ΚΑΘΟΛΙΚΟΥ, Η ΙΔΙΑ ΜΕ ΤΙΣ ΔΑΠΑΝΕΣ (επανέλεγχος PR 576) ──
+      // Ηταν τρεις: λογαριασμοί 24 μηνών, δαπάνες 12 μηνών χωρίς φίλτρο χρήστη
+      // και με τα έξοδα ενοικιαστή· μετά όλο το ιστορικό ξανά για τα τσιπ,
+      // σε κάθε φόρτωση και σε κάθε γεγονός πραγματικού χρόνου. Τώρα μία, η
+      // `ledgerSource` (όλο το ιστορικό, μόνο του χρήστη, χωρίς έξοδα
+      // ενοικιαστή): τα παράθυρα κόβονται από αυτήν με την ημερομηνία που ΜΕΤΡΑ
+      // μετά τη συγχώνευση· τα τσιπ μετρούν ακριβώς ό,τι δείχνουν οι Δαπάνες.
+      const [budgetRead, settRes, src] = await Promise.all([
+        settings.sectionWithError(supabase, propertyId, 'budgets', userId),
         settings.sections(supabase, propertyId, ['providers','insurance','services','common'], userId),
-        // Ευρύτερο παράθυρο κατά έναν χρόνο: η ημερομηνία που ΜΕΤΡΑ για έναν
-        // λογαριασμό (πληρωμή ή λήξη) δεν είναι το created_at, οπότε ένας
-        // λογαριασμός καταχωρημένος νωρίτερα μπορεί να ανήκει μέσα στο παράθυρο.
-        // Το τελικό κόψιμο γίνεται μετά τη συγχώνευση, όπου η ημερομηνία είναι μία.
-        billStore.ofProperty(supabase, propertyId, billStore.LEDGER_COLUMNS, userId, { since: wideStart }),
-        expenses.ledger(supabase, propertyId, { from: histStart }),
+        ledgerSource(supabase, propertyId, userId),
       ]);
+      // ΔΥΟ ΑΝΑΓΝΩΣΕΙΣ ΠΟΥ ΑΝ ΛΕΙΨΟΥΝ, ΤΑ ΝΟΥΜΕΡΑ ΕΙΝΑΙ ΨΕΜΑ. Οποια αποτύχει,
+      // η οθόνη δείχνει σφάλμα με «Δοκίμασε ξανά» και ΚΑΝΕΝΑ μηδενικό.
+      if (anyFailed([budgetRead, src])) { setLoadError(true); return; }
+      setLoadError(false);
+      const budgetRes = demoRef.current ? DEMO_TARGETS : budgetRead.data;
+      const allBillsRes = demoRef.current ? [] : src.bills;
+      const allExpRes = demoRef.current ? demoRows(now) : src.expenses;
 
       // ── Έσοδα + δεσμευμένες εκροές (για το «Ασφαλές διαθέσιμο») ──
       const [propRes, loansRes, tenantsRes, staysRes, yearRentsRes, yearStaysRes] = await Promise.all([
@@ -241,10 +259,13 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
         // ήδη μόνο όσους δεν έχουν φύγει, με τον ίδιο ορισμό σε κάθε οθόνη.
         inc = leaseMonthly > 0 ? leaseMonthly : (Number(propRes?.target_rent) || 0);
       }
-      setIncome(Math.round(inc));
+      // ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΔΕΝ ΔΕΙΧΝΕΙ ΤΟ ΠΡΑΓΜΑΤΙΚΟ ΕΝΟΙΚΙΟ ΚΑΙ ΤΗ ΔΟΣΗ. Ανακατεμένα με
+      // δαπάνες-δείγματα έβγαζαν ένα «διαθέσιμο» που δεν ήταν κανενός.
+      setIncome(demoRef.current ? 0 : Math.round(inc));
       // Έσοδα από την αρχή του έτους: βραχυχρόνια → πραγματικά καταλύματα YTD· μακροχρόνια
       // → αναμενόμενο ενοίκιο × μήνες που πέρασαν (δεν καταγράφουμε εισπράξεις εδώ).
-      if (rMode === 'short_term') setIncomeYtd(Math.round(staysAll.reduce((s, st) => s + stayGross(st), 0)));
+      if (demoRef.current) setIncomeYtd(0);
+      else if (rMode === 'short_term') setIncomeYtd(Math.round(staysAll.reduce((s, st) => s + stayGross(st), 0)));
       else if (rMode === 'long_term') setIncomeYtd(Math.round(inc * (now.getMonth() + 1)));
       else setIncomeYtd(0);
       // Δόση δανείου: ζωντανός υπολογισμός από ενεργά δάνεια (όχι διπλομέτρηση).
@@ -260,7 +281,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       // Επισκόπηση, από την ίδια συνάρτηση, «922,30€». Η στρογγυλοποίηση ανήκει
       // στην εμφάνιση, που ήδη γράφει δύο δεκαδικά.
       const loanM = loansInstalmentTotal(activeLoans);
-      setLoanMonthly(loanM);
+      setLoanMonthly(demoRef.current ? 0 : loanM);
 
       // Κλειδιά προσαρμοσμένων κατηγοριών (c_*): αν μια δαπάνη έχει αποθηκευτεί σε custom
       // κατηγορία, την προσμετράμε εκεί (αλλιώς θα «έπεφτε» στις Λοιπές δαπάνες).
@@ -308,6 +329,8 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       const bucketOf = (e: LedgerEntry): string =>
         e.group === 'maintenance' ? 'maintenance' : catOf(e.category);
 
+      setAttention(demoRef.current ? { overdue: { n: 0, sum: 0 }, pending: { n: 0, sum: 0 } }
+        : attentionOf(ledger, athensToday()));
       const inWindow = ledger.filter(e => e.date >= histStart && e.date <= dateEnd);
       const monthRows = inWindow.filter(e => e.date >= start);
       const weekRows = inWindow.filter(e => e.date >= weekStart);
@@ -348,9 +371,11 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       });
       setWeekActuals(wk);
 
-      if (budgetRes) {
-        const saved = budgetRes;
-        setBudgets(prev => { const n = { ...prev }; Object.entries(saved).forEach(([k, v]) => { if (k !== 'participants') n[k] = String(v); }); return n; });
+      // Ο,ΤΙ ΕΙΝΑΙ ΑΠΟΘΗΚΕΥΜΕΝΟ, ΤΙΠΟΤΑ ΑΛΛΟ. Πριν απλωνόταν πάνω σε προεπιλογές.
+      {
+        const n: Record<string, string> = {};
+        Object.entries((budgetRes ?? {}) as Record<string, unknown>).forEach(([k, v]) => { if (k !== 'participants' && v != null) n[k] = String(v); });
+        setBudgets(n);
       }
 
       const billActuals: Record<string, number> = {};
@@ -362,7 +387,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
         .map(({ e, id }) => ({
           id, kind: (e.billId ? 'bill' : 'expense') as 'bill' | 'expense',
           label: e.title || catLabelOf(bucketOf(e)), amount: e.amount,
-          catKey: bucketOf(e), ym: e.date.slice(0, 7),
+          catKey: bucketOf(e), ym: e.date.slice(0, 7), date: e.date, paid: e.paid,
         }));
       // Ανάλυση ανά κατηγορία: οι επιμέρους πληρωμές (πάροχος/περιγραφή, ποσό, ημερομηνία).
       const bd: Record<string, { label: string; amount: number; date: string; paid: boolean; kind: 'bill' | 'expense' }[]> = {};
@@ -383,7 +408,8 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       // και όχι το (μηδενισμένο από την εξαίρεση) billActuals.
       const recorded = new Set<string>(monthRows.map(bucketOf));
 
-      const getSett = (sec: settings.Section) => settRes[sec];
+      // Οι εκτιμήσεις παρόχων είναι του πραγματικού ακινήτου: όχι στο παράδειγμα.
+      const getSett = (sec: settings.Section) => (demoRef.current ? undefined : settRes[sec]);
       const prov = getSett('providers');
       if (prov) {
         if (!recorded.has('internet')) billActuals.internet = (parseFloat(String(prov.internetPrice)) || 0) + (prov.hasTV ? parseFloat(String(prov.tvPrice)) || 0 : 0);
@@ -507,9 +533,10 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
         setStrPropCount(0);
       }
     } catch (e) {
-      // Αποδόσεις και όριο βραχυχρόνιων: χωρίς αυτά η οθόνη έδειχνε κενό σαν «τίποτα».
-      console.error('[useBudget] αποδόσεις:', e);
-      notifyError('Οι αποδόσεις δεν φορτώθηκαν. Δοκίμασε ανανέωση.');
+      // Ο,ΤΙ ΚΙ ΑΝ ΕΣΠΑΣΕ, ΤΟ ΛΕΜΕ. Πριν έβγαινε μήνυμα για «αποδόσεις» ενώ
+      // έλειπε όλος ο προϋπολογισμός.
+      console.error('[useBudget] φόρτωση:', e);
+      setLoadError(true);
     }
     finally { setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -538,7 +565,8 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   useLoad(loadData);
 
   const saveBudgets = useCallback((data: Record<string, string>) => {
-    if (!propertyId) return;
+    // Στο παράδειγμα τίποτα δεν γράφεται: ούτε δαπάνες ούτε στόχοι.
+    if (!propertyId || demoRef.current) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       setSaving(true);
@@ -573,19 +601,21 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   const hiddenKeys: string[] = parseArr(budgets.__hidden).map(String);
   // Μετονομασίες βασικών κατηγοριών (οι custom κρατούν το όνομά τους στο __custom).
   const labelOverrides: Record<string, string> = (() => { try { const o = JSON.parse(budgets.__labels || '{}'); return o && typeof o === 'object' ? o : {}; } catch { return {}; } })();
-  const customCats: { key: string; label: string; default: number }[] = (parseArr(budgets.__custom) as CustomCatRaw[])
-    .filter(c => !!c && !!c.key && !!c.label).map(c => ({ key: String(c.key), label: labelOverrides[String(c.key)] ?? String(c.label), default: 0 }));
-  const activeCats: { key: string; label: string; default: number }[] = [
-    ...CATS.filter(c => !hiddenKeys.includes(c.key)).map(c => ({ key: c.key as string, label: labelOverrides[c.key] ?? (c.label as string), default: c.default as number })),
+  const customCats: { key: string; label: string }[] = (parseArr(budgets.__custom) as CustomCatRaw[])
+    .filter(c => !!c && !!c.key && !!c.label).map(c => ({ key: String(c.key), label: labelOverrides[String(c.key)] ?? String(c.label) }));
+  const activeCats: { key: string; label: string }[] = [
+    ...CATS.filter(c => !hiddenKeys.includes(c.key)).map(c => ({ key: c.key, label: labelOverrides[c.key] ?? c.label })),
     ...customCats,
   ];
   const hiddenBaseCats = CATS.filter(c => hiddenKeys.includes(c.key));
-  const catDefault    = (key: string) => activeCats.find(c => c.key === key)?.default ?? 0;
-  const catBudget     = (key: string) => budgetVal(budgets[key], catDefault(key));
-  const masterBudget  = budgetVal(budgets.total, activeCats.reduce((s, c) => s + c.default, 0));
+  // Ο στόχος μιας κατηγορίας: δικός σου ή `null`. Καμία προεπιλογή.
+  const catBudget     = (key: string): Target => parseTarget(budgets[key]);
+  // Ο συνολικός: ρητός αν τον όρισες, αλλιώς το άθροισμα όσων όρισες (plan.ts).
+  const masterBudget: Target = planTotal(budgets, activeCats.map(c => c.key));
+  const isOverCat     = (key: string, actual: number) => { const t = catBudget(key); return t != null && actual > t + 0.004; };
   // Υπερβάσεις ΤΡΕΧΟΝΤΟΣ μήνα (για τις ειδοποιήσεις email) — η προβολή/αλλαγή μήνα
   // χρησιμοποιεί ξεχωριστό displayOver, ώστε οι ειδοποιήσεις να μένουν στον τρέχοντα μήνα.
-  const overBudget    = activeCats.filter(c => (actuals[c.key] || 0) > catBudget(c.key));
+  const overBudget    = activeCats.filter(c => isOverCat(c.key, actuals[c.key] || 0));
 
   // Προσθήκη/απόκρυψη/επαναφορά κατηγορίας (αποθηκεύεται στις ρυθμίσεις budgets).
   const persistCats = (patch: Record<string, string>) => {
@@ -613,40 +643,26 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   const removeCategory = (key: string) => {
     const label = activeCats.find(c => c.key === key)?.label ?? 'Κατηγορία';
     const snapHidden = budgets.__hidden, snapCustom = budgets.__custom;   // στιγμιότυπο για αναίρεση
-    if (customCats.some(c => c.key === key)) persistCats({ __custom: JSON.stringify(customCats.filter(c => c.key !== key).map(c => ({ key: c.key, label: c.label }))) });
+    const isCustom = customCats.some(c => c.key === key);
+    if (isCustom) persistCats({ __custom: JSON.stringify(customCats.filter(c => c.key !== key).map(c => ({ key: c.key, label: c.label }))) });
     else persistCats({ __hidden: JSON.stringify([...hiddenKeys, key]) });
-    notify(`Η κατηγορία «${label}» αφαιρέθηκε`, { duration: UNDO_MS, action: { label: 'Αναίρεση', onClick: () => persistCats({ __hidden: snapHidden ?? '[]', __custom: snapCustom ?? '[]' }) } });
+    // Τα ποσά της δεν χάνονται. Βασική κατηγορία: μετρούν στη γραμμή «Κρυμμένες
+    // κατηγορίες». Δική σου: χωρίς το κλειδί της, οι δαπάνες της γυρίζουν από το
+    // λεξιλόγιο στις «Λοιπές δαπάνες», οπότε το μήνυμα λέει εκείνο.
+    notify(`Η κατηγορία «${label}» αφαιρέθηκε. ${isCustom ? 'Ό,τι ξοδεύτηκε εκεί μετρά στις «Λοιπές δαπάνες».' : 'Ό,τι ξοδεύτηκε εκεί μετρά στις κρυμμένες.'}`, { duration: UNDO_MS, action: { label: 'Αναίρεση', onClick: () => persistCats({ __hidden: snapHidden ?? '[]', __custom: snapCustom ?? '[]' }) } });
   };
   const restoreCategory = (key: string) => persistCats({ __hidden: JSON.stringify(hiddenKeys.filter(k => k !== key)) });
 
-  // ── «Δείξε μου»: δείγμα μήνα ώστε ένας άδειος προϋπολογισμός να ζωντανέψει σε δευτερόλεπτα ──
-  // Καταχωρεί ρεαλιστικές δείγμα-δαπάνες του τρέχοντος μήνα (με σωστές κατηγορίες) και κρατά
-  // τα id τους στο __demo, ώστε να αφαιρούνται με ένα άγγιγμα. Σαφώς επισημασμένο ως δείγμα.
+  // ── «Δες ένα παράδειγμα»: ΜΟΝΟ ΣΤΗ ΜΝΗΜΗ ─────────────────────────────────────
+  // Το παλιό «Δείξε μου» έγραφε οκτώ πραγματικές δαπάνες στον πίνακα του χρήστη
+  // (`expenses.insertReturning`): φαίνονταν στις Δαπάνες και στα ετήσια σύνολα και ήταν
+  // μια αποτυχημένη αφαίρεση μακριά από τη Λογιστική. Τώρα το παράδειγμα είναι
+  // γραμμές και στόχοι που δεν φεύγουν από τον περιηγητή (plan.ts: demoRows).
+  // Οσο είναι ανοιχτό, καμία αποθήκευση δεν γίνεται (saveBudgets).
+  const retry = () => { setLoading(true); void loadData(); };
+  const setDemo = (on: boolean) => { demoRef.current = on; setDemoState(on); setLoading(true); void loadData(); };
+  // Παλιά δείγματα, γραμμένα από την προηγούμενη εκδοχή: μένει ο δρόμος να φύγουν.
   const demoIds: string[] = (() => { try { const a = JSON.parse(budgets.__demo || '[]'); return Array.isArray(a) ? a.map(String) : []; } catch { return []; } })();
-  const seedDemo = async () => {
-    if (!propertyId || demoBusy) return;
-    setDemoBusy(true);
-    try {
-      const now = new Date(), y = now.getFullYear(), mo = now.getMonth();
-      const p2 = (n: number) => String(n).padStart(2, '0');
-      const dim = new Date(y, mo + 1, 0).getDate();
-      const day = (d: number) => `${y}-${p2(mo + 1)}-${p2(Math.min(d, now.getDate(), dim))}`;
-      const samples = [
-        { d: 8,  desc: 'ΔΕΗ',                 amount: 78.40, category: 'electricity', grp: 'other' },
-        { d: 12, desc: 'ΕΥΔΑΠ',               amount: 21.30, category: 'water',       grp: 'other' },
-        { d: 5,  desc: 'Vodafone',            amount: 34.90, category: 'internet',    grp: 'other' },
-        { d: 15, desc: 'Φυσικό αέριο',        amount: 46.00, category: 'heating',     grp: 'other' },
-        { d: 10, desc: 'Κοινόχρηστα',         amount: 40.00, category: 'common',      grp: 'other' },
-        { d: 3,  desc: 'Ασφάλεια κατοικίας',  amount: 18.50, category: 'insurance',   grp: 'other' },
-        { d: 18, desc: 'Υδραυλικός',          amount: 60.00, category: 'maintenance', grp: 'maintenance' },
-        { d: 20, desc: 'Είδη καθαριότητας',   amount: 25.00, category: 'other',       grp: 'other' },
-      ];
-      const payload = samples.map(s => ({ property_id: propertyId, user_id: userId || null, amount: s.amount, date: day(s.d), description: s.desc, category: s.category, expense_group: s.grp, bill_id: null }));
-      const { data, error } = await expenses.insertReturning(supabase, payload);
-      if (!error && data) persistCats({ __demo: JSON.stringify((data as { id: string }[]).map(r => String(r.id))) });
-      await loadData();
-    } finally { setDemoBusy(false); }
-  };
   const removeDemo = async () => {
     if (!propertyId || demoBusy || demoIds.length === 0) return;
     setDemoBusy(true);
@@ -696,15 +712,19 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   // ΟΛΕΣ ΟΙ ΜΗ ΠΑΓΙΕΣ ΚΑΤΗΓΟΡΙΕΣ ΠΟΥ ΜΕΤΡΑ ΚΑΙ ΤΟ ΠΛΑΚΙΔΙΟ ΤΟΥ ΜΗΝΑ. Με μόνο
   // συντήρηση και «λοιπά», οι δικές σου κατηγορίες έμπαιναν στο σύνολο αλλά όχι
   // στην πρόβλεψη, που έβγαινε μικρότερη από όσα έχουν ήδη ξοδευτεί.
-  const variableToDate = activeCats.filter(c => !FIXED_CATS.includes(c.key)).reduce((s, c) => s + (actuals[c.key] || 0), 0);
+  // Κάθε κουβάς που δεν είναι πάγιος, μαζί με τους κρυμμένους: τα χρήματα δεν κρύβονται.
+  const variableToDate = Object.entries(actuals).filter(([k]) => !FIXED_CATS.includes(k)).reduce((s, [, v]) => s + (v || 0), 0);
   const forecastTotal  = forecastMonthEnd(fixedToDate, variableToDate, _day, _daysInMonth);
   // Κατηγορίες που, με τον τρέχοντα ρυθμό, θα ξεπεράσουν τον στόχο (χωρίς να είναι ήδη).
-  const projectedOver  = activeCats.filter(c => categoryStatus(catBudget(c.key), actuals[c.key] || 0, catForecast(c.key)) === 'projected_over');
+  const projectedOver  = activeCats.filter(c => { const t = catBudget(c.key); return t != null && t > 0 && categoryStatus(t, actuals[c.key] || 0, catForecast(c.key)) === 'projected_over'; });
 
   // Ετήσια: πραγματικά YTD από καταγεγραμμένες εγγραφές (bills + λοιπές δαπάνες).
   const _yStr        = String(_now.getFullYear()) + '-';
-  const ytdActual    = Object.entries(monthTotals).filter(([ym]) => ym.startsWith(_yStr)).reduce((s, [, v]) => s + v, 0);
-  const annual       = annualSummary(masterBudget, ytdActual, _now.getMonth() + 1);
+  // ΜΙΑ ΣΤΡΟΓΓΥΛΟΠΟΙΗΣΗ: άθροισμα σε λεπτά, όπως στις Δαπάνες. Ο πυρήνας
+  // (annualSummary) στρογγυλεύει σε ευρώ και έγραφε 2.527,00 δίπλα στο 2.526,89.
+  const ytdActual    = sumCents(Object.entries(monthTotals).filter(([ym]) => ym.startsWith(_yStr)).map(([, v]) => v));
+  const monthsElapsed = _now.getMonth() + 1;
+  const annual       = annualSummary(masterBudget ?? 0, ytdActual, monthsElapsed);
   // Τάση μήνα: η ΠΡΟΒΛΕΨΗ του μήνα έναντι μέσου όρου 3 προηγούμενων. Το σύνολο
   // ως τώρα είναι μισός μήνας απέναντι σε ολόκληρους: την πρώτη του μήνα έβγαζε
   // «σχεδόν 100% κάτω» κάθε φορά.
@@ -741,10 +761,10 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   const rolloverOn    = budgets.rollover === 'true';
   const _prevYm       = _priorYms[0];
   const hasPrevMonth  = _prevYm in monthTotals;
-  const carryIn       = hasPrevMonth ? rolloverNext(masterBudget, monthTotals[_prevYm] || 0).carryOut : 0;
+  const carryIn       = hasPrevMonth && masterBudget != null ? rolloverNext(masterBudget, monthTotals[_prevYm] || 0).carryOut : 0;
   // «Πραγματικά διαθέσιμα» σε ΚΑΤΑΓΕΓΡΑΜΜΕΝΗ βάση και για τους δύο μήνες (η μεταφορά
   // υπολογίζεται από καταγεγραμμένα σύνολα) — αποφεύγει ανάμειξη με εκτιμήσεις παρόχων.
-  const adjAvailable  = masterBudget + carryIn - (monthTotals[_curYm] || 0);
+  const adjAvailable  = (masterBudget ?? 0) + carryIn - (monthTotals[_curYm] || 0);
   // Η ΓΕΝΙΚΗ ΤΟΥ ΜΗΝΑ ΕΡΧΕΤΑΙ ΑΠΡΟΣΚΛΗΤΗ ΑΠΟ ΤΟΝ ΜΟΡΦΟΠΟΙΗΤΗ. Το
   // `toLocaleDateString('el-GR', { month: 'long' })` επιστρέφει «Ιουλίου», που
   // είναι σωστό σε ημερομηνία («1 Ιουλίου») και λάθος μόνο του: «Μεταφορά από
@@ -759,9 +779,11 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   const viewDate        = new Date(_now.getFullYear(), _now.getMonth() + monthOffset, 1);
   const viewYm          = ymOf(viewDate);
   const viewActuals     = isCurMonth ? actuals : (catMonth[viewYm] || {});
-  const viewActualTotal = activeCats.reduce((s, c) => s + (viewActuals[c.key] || 0), 0);
+  // ΟΛΟΙ ΟΙ ΚΟΥΒΑΔΕΣ ΜΑΖΙ ΜΕ ΤΟΥΣ ΚΡΥΜΜΕΝΟΥΣ (plan.ts: spentTotal). Το «Ξόδεψες»
+  // ισούται με τον μήνα των Δαπανών, όποια κατηγορία κι αν κρύψεις.
+  const viewActualTotal = spentTotal(viewActuals);
   // Μόνο τα καταχωρημένα των ίδιων κατηγοριών, χωρίς τις εκτιμήσεις παρόχων.
-  const viewRecordedTotal = activeCats.reduce((s, c) => s + (catMonth[viewYm]?.[c.key] || 0), 0);
+  const viewRecordedTotal = spentTotal(catMonth[viewYm] || {});
   // ΤΟ ΙΔΙΟ ΟΝΟΜΑ ΜΗΝΑ, ΑΠΟ ΤΗΝ ΙΔΙΑ ΠΗΓΗ. Ο μορφοποιητής του περιηγητή δίνει
   // άλλη πτώση ανάλογα με το τι του ζητάς: «Ιούλιος 2026» με τον χρόνο, σκέτο
   // «Ιουλίου» χωρίς αυτόν. Δύο κλήσεις στο ίδιο αρχείο έβγαζαν διαφορετική
@@ -770,7 +792,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   // Οι γραμμές του μήνα ΠΟΥ ΒΛΕΠΕΙΣ, για τις εξαιρέσεις. Ο κατάλογος κρατά όλο
   // το δωδεκάμηνο, δηλαδή ακριβώς όσο πάει πίσω και ο επιλογέας μήνα.
   const viewItems       = monthItems.filter(it => it.ym === viewYm);
-  const displayOver     = activeCats.filter(c => (viewActuals[c.key] || 0) > catBudget(c.key));
+  const displayOver     = activeCats.filter(c => isOverCat(c.key, viewActuals[c.key] || 0));
   const canGoNewer      = monthOffset < 0;
   const canGoOlder      = monthOffset > -12;
 
@@ -838,7 +860,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
     activeCats.forEach(c => {
       const target = catBudget(c.key);
       const hist = _priorYms.map(ym => catMonth[ym]?.[c.key]).filter((v): v is number => typeof v === 'number' && v > 0);
-      if (hist.length < 2 || target <= 0) return;
+      if (hist.length < 2 || target == null || target <= 0) return;
       // Ο μέσος όρος γράφεται με τα λεπτά του και λέει πόσους μήνες καλύπτει:
       // μετρούν μόνο όσοι από τους τρεις είχαν δαπάνη στην κατηγορία.
       const avg = hist.reduce((s, v) => s + v, 0) / hist.length;
@@ -855,8 +877,8 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
         if (sv !== target && !dismissedSug.includes(key)) out.push({ key, text: `Η κατηγορία «${c.label}» είχε μέσο όρο ${feAuto(avg)} ${span}, κάτω από τον στόχο των ${feAuto(target)}.`, cta: `Ορισμός στόχου ${feAuto(sv)}`, apply: () => applyTarget(c.key, sv, `Ο στόχος της κατηγορίας «${c.label}» ενημερώθηκε`) });
       }
     });
-    const sumCats = activeCats.reduce((s, c) => s + catBudget(c.key), 0);
-    if (sumCats > 0 && Math.abs(sumCats - masterBudget) > Math.max(20, masterBudget * 0.1)) {
+    const sumCats = sumCents(activeCats.map(c => catBudget(c.key) ?? 0));
+    if (masterBudget != null && budgets.total != null && budgets.total !== '' && sumCats > 0 && Math.abs(sumCats - masterBudget) > Math.max(20, masterBudget * 0.1)) {
       const key = `total:${Math.round(sumCats)}`;
       if (!dismissedSug.includes(key)) out.push({ key, text: `Ο συνολικός μηνιαίος στόχος (${feAuto(masterBudget)}) διαφέρει από το άθροισμα των κατηγοριών (${feAuto(sumCats)}).`, cta: `Ορισμός στόχου ${feAuto(Math.round(sumCats))}`, apply: () => applyTarget('total', Math.round(sumCats), 'Ο συνολικός στόχος ευθυγραμμίστηκε') });
     }
@@ -871,7 +893,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   const overKey   = overBudget.map(c => c.key).sort().join(',');
   // Το μέγεθος της υπέρβασης μπαίνει στις εξαρτήσεις ώστε ένα ποσό που μεγαλώνει
   // (ίδια κατηγορία) να ενημερώνει το αποθηκευμένο γεγονός, όχι μόνο η αλλαγή κατηγοριών.
-  const overAmt   = Math.round(overBudget.reduce((s, c) => s + ((actuals[c.key] || 0) - catBudget(c.key)), 0));
+  const overAmt   = Math.round(overBudget.reduce((s, c) => s + ((actuals[c.key] || 0) - (catBudget(c.key) ?? 0)), 0));
 
   // ── Waterfall εσόδου βραχυχρόνιας: μεικτό → καθαρό (persona: short_term) ──────
   // Παραδοχές (προμήθεια/διαχείριση/φόρος) επεξεργάσιμες· εκτίμηση, όχι λογιστική.
@@ -905,7 +927,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   const safeRaw          = income - incomeDeductions - monthlyCost;
   const isShortfall      = hasIncome && safeRaw < 0;
   useEffect(() => {
-    if (!propertyId || !userId || loading) return;
+    if (!propertyId || !userId || loading || loadError || demo) return;
     let cancelled = false;
     (async () => {
       const y = _now.getFullYear(), mo = _now.getMonth();
@@ -917,7 +939,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       const ids = await calendar.ids(supabase, propertyId, { source: 'budget' }, { from: mStart, to: mEnd });
       if (cancelled) return;
       if (notifyOn && overBudget.length > 0) {
-        const total = overBudget.reduce((s, c) => s + ((actuals[c.key] || 0) - catBudget(c.key)), 0);
+        const total = overBudget.reduce((s, c) => s + ((actuals[c.key] || 0) - (catBudget(c.key) ?? 0)), 0);
         const title = `Υπέρβαση προϋπολογισμού: ${overBudget.map(c => c.label).join(', ')}`;
         if (ids.length > 0) {
           await saved('Η ειδοποίηση υπέρβασης δεν ενημερώθηκε',
@@ -938,7 +960,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [propertyId, userId, loading, notifyOn, overKey, overAmt]);
+  }, [propertyId, userId, loading, loadError, demo, notifyOn, overKey, overAmt]);
 
   return {
     isPro, budgets, actuals, monthTotals, catMonth, income, incomeYtd, loanMonthly, rentalMode,
@@ -948,7 +970,8 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
     setExclAmtDraft, addingCat, setAddingCat, ledgerNoteSeen, dismissLedgerNote, showSettings,
     setShowSettings, demoBusy, setMonthOffset, collapsed, toggleCollapse, loadData, updateBudget,
     labelOverrides, activeCats, hiddenBaseCats, catBudget, masterBudget, persistCats, UNDO_MS,
-    addCategory, removeCategory, restoreCategory, demoIds, seedDemo, removeDemo, renameCategory,
+    addCategory, removeCategory, restoreCategory, demoIds, demo, setDemo, removeDemo, renameCategory,
+    loadError, attention, ytdActual, monthsElapsed, isOverCat, retry, overBudget,
     excludedMap, excludedCount, excludeItem, unexcludeItem, patchExcl, exclAmountOf, _curYm,
     catForecast, forecastTotal, projectedOver, annual, catTrend, _sparkYms, catSpark, yearBars,
     catYtd, weekCats, weekTotalV, weekMax, rolloverOn, _prevYm, hasPrevMonth, carryIn, adjAvailable,

@@ -31,6 +31,7 @@ import { BankLinkRow } from './BankLink';
 import TabBills from './TabBills';
 import { type LegalForm } from '@/lib/accounting/dossier';
 import BillsBudget from './BillsBudget';
+import type { LedgerFilter } from '@/lib/expenses/attention';
 
 interface Props {
   propertyId: string; userId: string;
@@ -60,11 +61,33 @@ interface Props {
 
 type View = 'expenses' | 'budget';
 
+// ── Η ΟΨΗ ΖΕΙ ΣΤΗ ΔΙΕΥΘΥΝΣΗ (13/11/2026) ──────────────────────────────────────
+// Ηταν `useState('expenses')`: χωρίς σύνδεσμο και με επαναφορά σε κάθε
+// επίσκεψη, οπότε ο Προϋπολογισμός ήθελε πάντα ένα πάτημα παραπάνω. Η καρτέλα
+// ζει στο hash (useNavHistory)· η όψη μέσα της στο `?view=budget`, με
+// replaceState, ώστε το «πίσω» να μη γεμίζει με αλλαγές όψης.
+const readView = (): View => {
+  if (typeof window === 'undefined') return 'expenses';
+  try { return new URLSearchParams(window.location.search).get('view') === 'budget' ? 'budget' : 'expenses'; } catch { return 'expenses'; }
+};
+const writeView = (v: View) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const q = new URLSearchParams(window.location.search);
+    if (v === 'budget') q.set('view', 'budget'); else q.delete('view');
+    const s = q.toString();
+    window.history.replaceState(window.history.state, '', window.location.pathname + (s ? `?${s}` : '') + window.location.hash);
+  } catch { /* η όψη απλώς δεν θυμάται */ }
+};
+
 export default function TabFinances({
   propertyId, userId, propertyName, properties,
   profileType = 'individual', legalForm = 'individual', onScan, openAddNonce, handledAddNonce, onAddHandled,
 }: Props) {
-  const [view, setView] = useState<View>('expenses');
+  const [view, setViewState] = useState<View>(readView);
+  const setView = (v: View) => { setViewState(v); writeView(v); };
+  // Το φίλτρο με το οποίο ανοίγουν οι Δαπάνες από ένα τσιπ του Προϋπολογισμού.
+  const [ledgerFilter, setLedgerFilter] = useState<LedgerFilter | null>(null);
   const [contracts, setContracts] = useState(false);
   // ΤΟ ΚΑΘΟΛΙΚΟ ΞΑΝΑΔΙΑΒΑΖΕΙ ΟΤΑΝ ΜΠΕΙ ΓΡΑΜΜΗ ΑΠΟ ΤΑ ΕΙΣΕΡΧΟΜΕΝΑ. Χωρίς αυτό,
   // ο ιδιοκτήτης πατά «Καταχώρηση», η δαπάνη γράφεται και η λίστα από κάτω
@@ -129,7 +152,7 @@ export default function TabFinances({
           // γιατί η συρρίκνωση είναι διάταξη της ράγας κι όχι όψη του πλακιδίου.
           <span key={t.k} style={{ flexShrink: 0, display: 'inline-flex' }}>
             <ChipToggle on={active === t.k} shape="seg"
-              onClick={() => { if (t.k === 'contracts') { setContracts(true); } else { setContracts(false); setView(t.k as View); } }}>
+              onClick={() => { if (t.k === 'contracts') { setContracts(true); } else { setContracts(false); setLedgerFilter(null); setView(t.k as View); } }}>
               {t.label}
             </ChipToggle>
           </span>
@@ -168,12 +191,15 @@ export default function TabFinances({
           // εισερχόμενα. Η γραμμή της τράπεζας εμφανίζεται μόνο όταν η σύνδεση
           // είναι ανοιχτή· ως τότε θα ήταν υπόσχεση στην πιο ακριβή θέση.
           ? <ExpenseLedger key={ledgerKey} propertyId={propertyId} userId={userId} onScan={onScan} openAddNonce={openAddNonce} handledAddNonce={handledAddNonce} onAddHandled={onAddHandled}
+              filter={ledgerFilter} onFilterChange={setLedgerFilter}
               inbox={<>
                 <InboundInbox propertyId={propertyId} userId={userId} propertyName={propertyName} properties={properties}
                   onFiled={() => setLedgerKey(k => k + 1)} />
                 <BankLinkRow />
               </>} />
-          : <BillsBudget propertyId={propertyId} userId={userId} profileType={profileType} />}
+          // Η «Νέα δαπάνη» και στον Προϋπολογισμό: ίδιος επιλογέας, ίδια θέση.
+          : <BillsBudget propertyId={propertyId} userId={userId} profileType={profileType} onScan={onScan}
+              onOpenLedger={f => { setLedgerFilter(f); setView('expenses'); if (typeof window !== 'undefined') window.scrollTo({ top: 0 }); }} />}
     </div>
   );
 }

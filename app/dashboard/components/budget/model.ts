@@ -1,4 +1,5 @@
 'use client'
+import { BUDGET_BUCKETS } from '@/lib/expenses/taxonomy'
 // ═══════════════════════════════════════════════════════════════════════════
 // ΤΟ ΜΟΝΤΕΛΟ ΤΟΥ ΠΡΟΫΠΟΛΟΓΙΣΜΟΥ: ΚΑΤΗΓΟΡΙΕΣ, ΠΛΗΡΩΤΕΣ, ΕΞΑΙΡΕΣΕΙΣ, ΜΗΝΕΣ
 // ═══════════════════════════════════════════════════════════════════════════
@@ -13,26 +14,13 @@ export const parseLocalDate = (s: string): Date => {
 export const FIXED_CATS = ['electricity', 'water', 'internet', 'heating', 'insurance', 'subscriptions', 'services', 'common'];
 export const ymOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
-// ── Category definitions ──────────────────────────────────────────────────────
-export const CATS = [
-  { key: 'electricity',  label: 'Ρεύμα',              default: 80  },
-  { key: 'water',        label: 'Νερό',                default: 25  },
-  { key: 'internet',     label: 'Internet και τηλεφωνία',default: 35 },
-  { key: 'heating',      label: 'Θέρμανση',            default: 60  },
-  { key: 'insurance',    label: 'Ασφάλεια',            default: 30  },
-  // ΔΙΚΟΣ ΤΟΥΣ ΣΤΟΧΟΣ, ΓΙΑΤΙ ΔΙΚΗ ΤΟΥΣ ΣΥΜΠΕΡΙΦΟΡΑ. Οι συνδρομές ήταν στον
-  // κουβά της ασφάλειας: μία υπέρβαση 20€ σε streaming κρυβόταν πίσω από ένα
-  // ασφάλιστρο που δεν χρεώθηκε ακόμη αυτόν τον μήνα. Και είναι το μόνο πάγιο
-  // που ΜΕΓΑΛΩΝΕΙ μόνο του, μια χρέωση τη φορά, χωρίς κανείς να το αποφασίσει.
-  { key: 'subscriptions',label: 'Συνδρομές',           default: 25  },
-  { key: 'services',     label: 'Υπηρεσίες, ΕΝΦΙΑ',  default: 50  },
-  { key: 'common',       label: 'Κοινόχρηστα',         default: 40  },
-  // ΙΔΙΟ ΟΝΟΜΑ ΜΕ ΤΙΣ ΔΑΠΑΝΕΣ. Ο κουβάς λεγόταν «Συντήρηση» εδώ και η ίδια
-  // κατηγορία «Επισκευή» στο καθολικό και στην Επισκόπηση: τα ίδια 228€ με δύο
-  // ονόματα σε δύο οθόνες. Το όνομα ζει στο lib/expenses/taxonomy.ts.
-  { key: 'maintenance',  label: 'Επισκευές και συντήρηση', default: 20 },
-  { key: 'other',        label: 'Λοιπές δαπάνες',      default: 50  },
-] as const;
+// ── Οι κατηγορίες ─────────────────────────────────────────────────────────────
+// ΤΑ ΟΝΟΜΑΤΑ ΑΠΟ ΤΟ ΛΕΞΙΛΟΓΙΟ, ΧΩΡΙΣ ΠΡΟΕΠΙΛΕΓΜΕΝΟ ΣΤΟΧΟ. Εδώ ζούσαν ονόματα
+// που διέφεραν από τις Δαπάνες («Internet και τηλεφωνία», «Υπηρεσίες, ΕΝΦΙΑ»)
+// και στόχοι που δεν έβαλε κανείς: ο νέος χρήστης έβλεπε «Στόχος 390,00€» για
+// σχέδιο που δεν έκανε. Το όνομα ζει στο lib/expenses/taxonomy.ts, ο στόχος
+// είναι δικός σου ή κανένας (plan.ts).
+export const CATS: readonly { key: string; label: string }[] = BUDGET_BUCKETS;
 
 
 // Ποιος πληρώνει μια δαπάνη που εξαιρείται από τον προϋπολογισμό.
@@ -48,7 +36,7 @@ export const PAYERS = ['Οικογένεια', 'Ενοικιαστής', 'Ασφ
 // μπορούσες ούτε να εξαιρέσεις παλιά δαπάνη ούτε να δεις τι είχες εξαιρέσει,
 // ενώ ο ίδιος ο κανόνας δεν έχει ημερομηνία. Πλέον χτίζεται από ΟΛΟ το
 // δωδεκάμηνο που φορτώνεται ούτως ή άλλως και φιλτράρεται στον μήνα που βλέπεις.
-export interface MonthItem { id: string; kind: 'bill' | 'expense'; label: string; amount: number; catKey: string; ym: string }
+export interface MonthItem { id: string; kind: 'bill' | 'expense'; label: string; amount: number; catKey: string; ym: string; date: string; paid: boolean }
 // Κανόνας εξαίρεσης ανά εγγραφή: προαιρετικός λόγος (payer/note) και προαιρετικό
 // μερικό ποσό (amount). Χωρίς amount → εξαιρείται όλη η εγγραφή· με amount →
 // εξαιρείται μόνο αυτό το μέρος (π.χ. το κομμάτι που πλήρωσε κάποιος άλλος).
@@ -59,10 +47,18 @@ export interface ExclRule { payer?: string; note?: string; amount?: number }
 // Ήταν `any`, που σήμαινε ότι το `c.labl` (τυπογραφικό) θα περνούσε αθόρυβα.
 export interface CustomCatRaw { key?: unknown; label?: unknown }
 
-export interface Props { propertyId: string; userId?: string; profileType?: 'individual' | 'professional'; }
+export interface Props {
+  propertyId: string; userId?: string; profileType?: 'individual' | 'professional';
+  /** Ανοίγει τον επιλογέα «Νέα δαπάνη» της εφαρμογής (σάρωση, αρχείο, τράπεζα, χειροκίνητα). */
+  onScan?: () => void;
+  /** Ανοίγει τις Δαπάνες με φίλτρο, από τα τσιπ «Χρειάζονται εσένα». */
+  onOpenLedger?: (filter: import('@/lib/expenses/attention').LedgerFilter) => void;
+}
 
 // Οι ενότητες που ξεκινούν μαζεμένες, γραμμένες ΜΙΑ φορά. Το `COLLAPSED_SERVER`
 // είναι η απάντηση του διακομιστή και πρέπει να είναι ΣΤΑΘΕΡΗ αναφορά: νέο
 // `Set` σε κάθε απόδοση θα έβαζε τη React σε ατέρμονο βρόχο.
-export const COLLAPSED_BY_DEFAULT = ['annual', 'week', 'recurring', 'income', 'exclusions', 'import', 'cats', 'business'];
+// Οι κατηγορίες ΔΕΝ είναι πια εδώ: είναι η απάντηση της οθόνης και είναι πάντα
+// ανοιχτές. Ολα τα δευτερεύοντα ζουν κάτω από ΕΝΑ «Περισσότερα» (`more`).
+export const COLLAPSED_BY_DEFAULT = ['more'];
 export const COLLAPSED_SERVER = new Set<string>(COLLAPSED_BY_DEFAULT);

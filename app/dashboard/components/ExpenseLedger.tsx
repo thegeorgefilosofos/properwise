@@ -31,9 +31,10 @@ import { track, PRODUCT_EVENTS } from '@/lib/analytics/events';
 import { createClient } from '@/lib/supabase/client';
 import * as expenseStore from '@/lib/data/expenses'
 import * as billStore from '@/lib/data/bills'
+import { ledgerSource } from '@/lib/data/ledgerSource'
 import ExpenseCompare from './ExpenseCompare';
 import type { Spend } from '@/lib/expenses/compare';
-import { T, TT, fe, fn, Btn, LinkBtn, Card, EmptyState, Modal, Skeleton, fixedCols, ABSENT_DATE, Stat } from '@/components/Theme';
+import { T, TT, fe, fn, Btn, LinkBtn, Card, EmptyState, Modal, Skeleton, fixedCols, ABSENT_DATE, Stat, ChipToggle } from '@/components/Theme';
 import { ChevronRight } from 'lucide-react';
 import { notify, notifyError } from '@/components/toastBus';
 import { confirmDialog } from '@/components/ConfirmDialog';
@@ -54,6 +55,7 @@ import { PAID_BY_OPTIONS, SHARED_SCOPES, DEFAULT_SHARE_PERCENT } from '@/lib/exp
 import { CustomSelect, DatePicker, Toggle } from './UIComponents';
 import { InfoHint } from './InfoHint';
 import { athensToday, athensMonth, daysUntil } from '@/lib/core/time';
+import { matchesLedgerFilter, isOverdue, isPendingNotOverdue, type LedgerFilter } from '@/lib/expenses/attention';
 import { monthYearLabel, monthGen } from '@/lib/core/months';
 import { afmDigits, isValidAfm, parseAmount } from '@/lib/core/greek';
 
@@ -82,6 +84,13 @@ interface Props {
    * εικονοστοιχεία κάτω, κάτω από μια κάρτα email και μια γραμμή τράπεζας.
    */
   inbox?: ReactNode;
+  /**
+   * ΤΟ ΦΙΛΤΡΟ ΕΡΧΕΤΑΙ ΚΑΙ ΑΠΟ ΕΞΩ (13/11/2026). Τα τσιπ «Χρειάζονται εσένα» του
+   * Προϋπολογισμού ανοίγουν τη λίστα ήδη φιλτραρισμένη: ληξιπρόθεσμα, εκκρεμή
+   * ή οι κατηγορίες σε υπέρβαση. Χωρίς ελεγκτή, το φίλτρο ζει εδώ.
+   */
+  filter?: LedgerFilter | null;
+  onFilterChange?: (f: LedgerFilter | null) => void;
 }
 
 
@@ -110,7 +119,7 @@ const shortDate = (d: string): string => {
  */
 const dueText = (due: string): { text: string; late: boolean } => {
   const days = daysUntil(due) ?? 0;
-  if (days < 0) return { text: days === -1 ? 'πέρασε χθες' : `πέρασε πριν από ${-days} ημέρες`, late: true };
+  if (days < 0) return { text: days === -1 ? 'έληξε χθες' : `έληξε πριν από ${-days} ημέρες`, late: true };
   if (days === 0) return { text: 'λήγει σήμερα', late: true };
   if (days === 1) return { text: 'λήγει αύριο', late: false };
   return { text: `λήγει σε ${days} ημέρες`, late: false };
@@ -127,21 +136,20 @@ const dueText = (due: string): { text: string; late: boolean } => {
 async function fetchLedger(
   supabase: ReturnType<typeof createClient>, propertyId: string, userId: string,
 ): Promise<{ bills: LedgerBill[]; expenses: LedgerExpense[] }> {
-  const [b, e] = await Promise.all([
-    billStore.ofProperty<LedgerBill>(supabase, propertyId, billStore.LEDGER_COLUMNS, userId),
-    expenseStore.ledger(supabase, propertyId, { userId, excludeCategory: 'tenant_extra' }),
-  ]);
-  return {
-    bills: b,
-    expenses: e as unknown as LedgerExpense[],
-  };
+  // ΜΙΑ ΑΝΑΓΝΩΣΗ ΜΕ ΤΑ ΤΣΙΠ ΤΟΥ ΠΡΟΫΠΟΛΟΓΙΣΜΟΥ (lib/data/ledgerSource): όσα
+  // μετρά το «2 εκκρεμούν» είναι ακριβώς όσα δείχνει εδώ το φίλτρο.
+  const r = await ledgerSource(supabase, propertyId, userId);
+  return { bills: r.bills, expenses: r.expenses };
 }
 
-/** «1 απλήρωτος λογαριασμός», «4 απλήρωτοι λογαριασμοί». */
+/** «1 απλήρωτη», «4 απλήρωτες»: η λέξη είναι η δαπάνη, όπως στον τίτλο του πλακιδίου. */
 const unpaidBillsLabel = (n: number): string =>
-  `${n} ${n === 1 ? 'απλήρωτος λογαριασμός' : 'απλήρωτοι λογαριασμοί'}`;
+  `${n} ${n === 1 ? 'απλήρωτη' : 'απλήρωτες'}`;
 
-export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce, handledAddNonce, onAddHandled, inbox }: Props) {
+export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce, handledAddNonce, onAddHandled, inbox, filter: filterProp, onFilterChange }: Props) {
+  const [ownFilter, setOwnFilter] = useState<LedgerFilter | null>(null);
+  const filter = filterProp !== undefined ? filterProp : ownFilter;
+  const setFilter = onFilterChange ?? setOwnFilter;
   // Ένα instance ανά component. Χωρίς useMemo, κάθε render έφτιαχνε νέο client
   // και το κανάλι realtime ξαναδενόταν χωρίς λόγο.
   const supabase = useMemo(() => createClient(), []);
@@ -297,7 +305,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
     .map(e => ({
       date: e.date,
       amount: e.amount,
-      category: e.category || 'Λοιπά',
+      category: e.category || 'other',
       // Ο μπαλαντέρ ΔΕΝ είναι τίτλος. Περασμένος αυτούσιος, η μηχανή έβγαζε
       // «η αύξηση οφείλεται σε έκτακτη δαπάνη: Χωρίς περιγραφή».
       title: e.title === NO_TITLE ? undefined : e.title,
@@ -311,14 +319,16 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
   const editingRow = useMemo(
     () => (editingId ? expenses.find(x => x.id === editingId) ?? null : null), [expenses, editingId]);
 
+  const todayIso = athensToday();
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) return entries;
-    return entries.filter(e =>
+    const base = filter ? entries.filter(e => matchesLedgerFilter(e, filter, todayIso)) : entries;
+    if (!needle) return base;
+    return base.filter(e =>
       e.title.toLowerCase().includes(needle) ||
       categoryLabel(e.category).toLowerCase().includes(needle) ||
       (e.vendor || '').toLowerCase().includes(needle));
-  }, [entries, q]);
+  }, [entries, q, filter, todayIso]);
 
   const months = useMemo(() => groupByMonth(filtered), [filtered]);
 
@@ -345,7 +355,8 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
   // ΟΣΟ ΨΑΧΝΕΙ, ΤΙΠΟΤΑ ΔΕΝ ΚΡΥΒΕΤΑΙ. Αναζήτηση που δείχνει μόνο τα ευρήματα του
   // τρέχοντος μήνα απαντά ψέματα στο ερώτημα «πού πήγαν τα λεφτά της ΔΕΗ». Με
   // κείμενο στο πεδίο, η λίστα είναι πάντα ολόκληρη.
-  const searching = q.trim().length > 0;
+  // Με φίλτρο, όπως με αναζήτηση: όλη η λίστα, όχι μόνο ο τρέχων μήνας.
+  const searching = q.trim().length > 0 || !!filter;
   const current = useMemo(() => openMonths(months, thisMonth), [months, thisMonth]);
   const shown = wholeHistory || searching ? months : current;
   /** Πόσες δαπάνες μένουν πίσω από το «Περισσότερα». Μηδέν σημαίνει: κανένα κουμπί. */
@@ -371,6 +382,8 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
   const unpaid = useMemo(() => entries.filter(e => !e.paid), [entries]);
   const monthUnpaid = useMemo(() => unpaid.filter(e => e.date.startsWith(thisMonth)).length, [unpaid, thisMonth]);
   const unpaidTotal = useMemo(() => ledgerTotal(unpaid), [unpaid]);
+  const overdueN = useMemo(() => entries.filter(e => isOverdue(e, todayIso)).length, [entries, todayIso]);
+  const pendingN = useMemo(() => entries.filter(e => isPendingNotOverdue(e, todayIso)).length, [entries, todayIso]);
   // ═══ Η ΧΡΟΝΙΑ ΕΒΓΑΙΝΕ ΑΠΟ ΤΟ ΡΟΛΟΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ, Ο ΜΗΝΑΣ ΑΠΟ ΤΗΝ ΑΘΗΝΑ.
   // Δύο πηγές χρόνου στην ίδια σειρά τριών πλακιδίων. Την παραμονή της
   // Πρωτοχρονιάς, χρήστης σε άλλη ζώνη ώρας έβλεπε μήνα μιας χρονιάς και σύνολο
@@ -675,25 +688,40 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
             για τα ίδια ποσά. Παντού πλέον «απλήρωτοι λογαριασμοί». */}
         <Stat label={`Δαπάνες ${monthGen(Number(thisMonth.slice(5, 7)) - 1)}`} value={loading ? null : fe(monthTotal)}
           sub={monthUnpaid ? unpaidBillsLabel(monthUnpaid) : undefined} />
+        {/* ΔΥΟ ΠΛΑΚΙΔΙΑ ΕΛΕΓΑΝ ΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ. Το «Ανεξόφλητες» λέει πλέον
+            πόσες από αυτές έχουν ήδη λήξει: αυτό ζητά κίνηση σήμερα. */}
         <Stat label={'Ανεξόφλητες δαπάνες'} value={loading ? null : fe(unpaidTotal)}
-          sub={unpaid.length ? unpaidBillsLabel(unpaid.length) : undefined} />
+          sub={unpaid.length ? `${unpaidBillsLabel(unpaid.length)}${overdueN ? `, ${overdueN} ${overdueN === 1 ? 'ληξιπρόθεσμη' : 'ληξιπρόθεσμες'}` : ''}` : undefined} />
         <Stat label={`Δαπάνες ${thisMonth.slice(0, 4)}`} value={loading ? null : fe(yearTotal)}
           sub={yearExcluded > 0 ? `${fe(yearExcluded)} εκτός στατιστικών` : undefined} />
       </div>
 
       {inbox}
 
+      {/* ── ΦΙΛΤΡΑ: ΤΙ ΧΡΕΙΑΖΕΤΑΙ ΚΙΝΗΣΗ ─────────────────────────────────────
+          Το ληξιπρόθεσμο ήταν μία κίτρινη γραμμή βαθιά στη λίστα, χωρίς τρόπο
+          να το βρεις. Πλακίδια μόνο όταν υπάρχει κάτι απλήρωτο. */}
+      {(unpaid.length > 0 || filter) && (
+        <div role="group" aria-label="Φίλτρο δαπανών" style={{ display: 'flex', gap: T.sp.sm, flexWrap: 'wrap', alignItems: 'center', marginBottom: T.sp.lg }}>
+          <ChipToggle on={!filter} onClick={() => setFilter(null)}>Όλες</ChipToggle>
+          {(overdueN > 0 || filter?.kind === 'overdue') && <ChipToggle on={filter?.kind === 'overdue'} onClick={() => setFilter(filter?.kind === 'overdue' ? null : { kind: 'overdue' })}>{`Ληξιπρόθεσμες ${overdueN}`}</ChipToggle>}
+          {(pendingN > 0 || filter?.kind === 'pending') && <ChipToggle on={filter?.kind === 'pending'} onClick={() => setFilter(filter?.kind === 'pending' ? null : { kind: 'pending' })}>{`Εκκρεμούν ${pendingN}`}</ChipToggle>}
+          {filter?.kind === 'buckets' && <ChipToggle on onClick={() => setFilter(null)} title="Καθαρισμός φίλτρου">{`Σε υπέρβαση: ${filter.label}`}</ChipToggle>}
+        </div>
+      )}
+
       {/* Τα τρία νούμερα πρώτα, μετά η σύγκριση: το ανοιχτό και το ετήσιο
           είναι ό,τι ήρθε να δει ο χρήστης και κάθονταν κάτω από μια κάρτα
           πεντακοσίων εικονοστοιχείων. Η σύγκριση απαντά στο «γιατί». */}
-      <ExpenseCompare spends={spends} today={compareToday} />
+      {/* Με φίλτρο, η λίστα έρχεται αμέσως κάτω από τα νούμερα. */}
+      {!filter && <ExpenseCompare spends={spends} today={compareToday} />}
 
       {/* ── ΤΙ ΛΕΙΠΕΙ ────────────────────────────────────────────────────────
           Μία γραμμή, όχι πίνακας. Δεν είναι σφάλμα και δεν παρουσιάζεται ως
           τέτοιο: είναι παρατήρηση από το ιστορικό, με το τυπικό ποσό δίπλα ώστε
           ο χρήστης να ξέρει τι ψάχνει. Χωρίς χρώμα προειδοποίησης — ένας
           λογαριασμός που άργησε τρεις μέρες δεν είναι πρόβλημα. */}
-      {!loading && missing.length > 0 && (
+      {!loading && !filter && missing.length > 0 && (
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: T.sp.lg,
           padding: '12px 14px', borderRadius: T.radius.inner,
@@ -740,7 +768,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
       {/* ── ΤΙ ΑΛΛΑΞΕ ΤΙΜΗ ─────────────────────────────────────────────────
           Ίδιο σχήμα με τη γραμμή «τι λείπει» από πάνω: μία παρατήρηση, χωρίς
           χρώμα προειδοποίησης. Μια αύξηση δεν είναι σφάλμα του χρήστη. */}
-      {!loading && changed.length > 0 && (
+      {!loading && !filter && changed.length > 0 && (
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: T.sp.lg,
           padding: '12px 14px', borderRadius: T.radius.inner,
@@ -784,7 +812,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
             κεφαλίδα (`onScan`, με τη χειροκίνητη καταχώρηση μέσα), εδώ μένει
             μόνο η «Ακύρωση» της ανοιχτής φόρμας, ως δευτερεύουσα. */}
         {(adding || !onScan) && (
-          <Btn variant={onScan ? 'secondary' : 'primary'} onClick={() => { setSeed(undefined); setAdding(v => !v); }}>{adding ? 'Ακύρωση' : 'Νέα δαπάνη'}</Btn>
+          <Btn variant={adding ? 'ghost' : onScan ? 'secondary' : 'primary'} onClick={() => { setSeed(undefined); setAdding(v => !v); }}>{adding ? 'Ακύρωση' : 'Νέα δαπάνη'}</Btn>
         )}
         <div className="ledger-spacer" style={{ flex: 1 }} />
         {/* Ίδιο ύψος και ίδιο σχήμα με τα κουμπιά δίπλα του. Πριν ήταν ψηλότερο
@@ -819,6 +847,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           }}
         />
       </div>}
+
 
       {adding && (
         <>
@@ -916,8 +945,8 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
       // Ο τίτλος λέει ήδη ότι δεν βρέθηκε τίποτα. Ο υπότιτλος έλεγε το ίδιο με
       // άλλα λόγια· τώρα λέει ΤΙ αναζητήθηκε, που είναι το χρήσιμο.
       ) : months.length === 0 ? (
-        <EmptyState title="Δεν βρέθηκαν δαπάνες" hint={`Καμία εγγραφή δεν ταιριάζει με «${q}».`}
-          action={<Btn variant="secondary" onClick={() => setQ('')}>Εκκαθάριση</Btn>} />
+        <EmptyState title="Δεν βρέθηκαν δαπάνες" hint={q.trim() ? `Καμία εγγραφή δεν ταιριάζει με «${q}».` : 'Καμία εγγραφή δεν ταιριάζει με το φίλτρο.'}
+          action={<Btn variant="secondary" onClick={() => { setQ(''); setFilter(null); }}>Εκκαθάριση</Btn>} />
       ) : (
         <Card pad="sm" gap={false}>
           {shown.map(m => (
@@ -1050,8 +1079,10 @@ function Row({ e, busy, counts, onPaid, onEdit, onDelete }: { e: LedgerEntry; bu
                 τόνο επειδή είναι εξαίρεση και ζητά κίνηση· η επερχόμενη
                 προθεσμία δεν ζητά τίποτα ακόμη και μένει ουδέτερη. */}
             {due && (
-              <span style={{ color: due.late ? 'var(--warning)' : 'var(--text-tertiary)', fontWeight: 600 }}>
-                {meta ? '· ' : ''}{due.text}
+              // ΔΙΚΗ ΤΗΣ ΣΕΙΡΑ, ΧΩΡΙΣ ΤΕΛΕΙΑ: η τελεία ανάμεσα έμενε ορφανή στην
+              // άκρη της γραμμής μόλις η προθεσμία τύλιγε («Ρεύμα · πάγιο ·»).
+              <span style={{ color: due.late ? 'var(--warning)' : 'var(--text-tertiary)', fontWeight: 600, flexBasis: meta ? '100%' : undefined }}>
+                {due.text.charAt(0).toUpperCase() + due.text.slice(1)}
               </span>
             )}
           </span>
