@@ -4758,3 +4758,96 @@ begin
   perform public.erase_account('2b2b2b2b-0000-4000-8000-0000000000a3');
   perform public.erase_account('2b2b2b2b-0000-4000-8000-0000000000a4');
 end $probe$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ΤΟ ΕΥΡΟΣ ΑΚΙΝΗΤΩΝ ΚΑΙ ΤΑ ΟΙΚΟΝΟΜΙΚΑ ΤΟΥ ΜΕΛΟΥΣ, ΑΝΑ ΡΟΛΟ (10/11/2026)
+-- ─────────────────────────────────────────────────────────────────────────
+-- Οι restrictive πολιτικές scope_* (member_sees_property, member_sees_financials)
+-- δεν δοκιμάζονταν πουθενά για μέλος με property_scope. Το migration
+-- 20261110150000 τους βάζει φρουρό απόδοσης· αυτό το τμήμα αποδεικνύει ότι η
+-- ΣΗΜΑΣΙΑ μένει ίδια, για ιδιοκτήτη, μέλος χωρίς όριο, μέλος με όριο σε ένα
+-- ακίνητο, μέλος χωρίς οικονομικά και άσχετο χρήστη, σε ανάγνωση ΚΑΙ εγγραφή.
+-- ═══════════════════════════════════════════════════════════════════════════
+reset role;
+set session "probe.uid" = '';
+do $probe$
+declare
+  o     uuid := '5c5c5c5c-0000-4000-8000-000000000001';
+  m_all uuid := '5c5c5c5c-0000-4000-8000-000000000002';
+  m_one uuid := '5c5c5c5c-0000-4000-8000-000000000003';
+  m_fin uuid := '5c5c5c5c-0000-4000-8000-000000000004';
+  u     uuid := '5c5c5c5c-0000-4000-8000-000000000005';
+  pa    uuid := '5c5c5c5c-0000-4000-8000-0000000000a1';
+  pb    uuid := '5c5c5c5c-0000-4000-8000-0000000000b1';
+  org   uuid := '5c5c5c5c-0000-4000-8000-0000000000c1';
+begin
+  insert into auth.users(id, email) values
+    (o, 'scope-o@probe.test'), (m_all, 'scope-all@probe.test'), (m_one, 'scope-one@probe.test'),
+    (m_fin, 'scope-fin@probe.test'), (u, 'scope-u@probe.test');
+  insert into public.user_properties(id, user_id, name) values (pa, o, 'Εύρος Α'), (pb, o, 'Εύρος Β');
+  insert into public.organizations(id, owner_user_id, name) values (org, o, 'Εύρος δοκιμής');
+  insert into public.organization_members(org_id, user_id, email, role, status, can_view_financials, can_edit, property_scope) values
+    (org, m_all, 'scope-all@probe.test', 'member', 'active', true,  true, null),
+    (org, m_one, 'scope-one@probe.test', 'member', 'active', true,  true, array[pa]),
+    (org, m_fin, 'scope-fin@probe.test', 'member', 'active', false, true, null);
+  insert into public.tenants(property_id, user_id, full_name, monthly_rent) values (pa, o, 'Μισθωτής Α', 500), (pb, o, 'Μισθωτής Β', 600);
+  insert into public.rent_payments(user_id, property_id, amount, payment_date, status) values (o, pa, 500, current_date, 'paid'), (o, pb, 600, current_date, 'paid');
+  insert into public.expenses(user_id, property_id, amount, description, category, date) values
+    (o, pa, 10, 'Εύρος Α', 'other', current_date), (o, pb, 20, 'Εύρος Β', 'other', current_date);
+end $probe$;
+
+set role authenticated;
+do $probe$
+declare
+  -- χρήστης, ακίνητα, μισθωτές, εισπράξεις, δαπάνες (αναμενόμενα)
+  cases text[][] := array[
+    array['5c5c5c5c-0000-4000-8000-000000000001','ιδιοκτήτης',           '2','2','2','2'],
+    array['5c5c5c5c-0000-4000-8000-000000000002','μέλος χωρίς όριο',     '2','2','2','2'],
+    array['5c5c5c5c-0000-4000-8000-000000000003','μέλος με όριο στο Α',  '1','1','1','1'],
+    array['5c5c5c5c-0000-4000-8000-000000000004','μέλος χωρίς οικονομικά','2','0','0','0'],
+    array['5c5c5c5c-0000-4000-8000-000000000005','άσχετος χρήστης',      '0','0','0','0']];
+  i int; np int; nt int; nr int; ne int;
+begin
+  for i in 1 .. array_length(cases, 1) loop
+    perform set_config('probe.uid', cases[i][1], false);
+    select count(*) into np from public.user_properties where id in ('5c5c5c5c-0000-4000-8000-0000000000a1','5c5c5c5c-0000-4000-8000-0000000000b1');
+    select count(*) into nt from public.tenants where full_name in ('Μισθωτής Α','Μισθωτής Β');
+    select count(*) into nr from public.rent_payments where property_id in ('5c5c5c5c-0000-4000-8000-0000000000a1','5c5c5c5c-0000-4000-8000-0000000000b1');
+    select count(*) into ne from public.expenses where description in ('Εύρος Α','Εύρος Β');
+    if (np, nt, nr, ne) <> (cases[i][3]::int, cases[i][4]::int, cases[i][5]::int, cases[i][6]::int) then
+      raise exception 'ΕΥΡΟΣ: ο % βλέπει ακίνητα %, μισθωτές %, εισπράξεις %, δαπάνες % (αναμενόταν %/%/%/%)',
+        cases[i][2], np, nt, nr, ne, cases[i][3], cases[i][4], cases[i][5], cases[i][6];
+    end if;
+  end loop;
+
+  -- Εγγραφή: το μέλος με όριο γράφει στο Α και ΟΧΙ στο Β.
+  perform set_config('probe.uid', '5c5c5c5c-0000-4000-8000-000000000003', false);
+  insert into public.expenses(user_id, property_id, amount, description, category, date)
+    values ('5c5c5c5c-0000-4000-8000-000000000003', '5c5c5c5c-0000-4000-8000-0000000000a1', 1, 'Εύρος γραφή Α', 'other', current_date);
+  begin
+    insert into public.expenses(user_id, property_id, amount, description, category, date)
+      values ('5c5c5c5c-0000-4000-8000-000000000003', '5c5c5c5c-0000-4000-8000-0000000000b1', 1, 'Εύρος γραφή Β', 'other', current_date);
+    raise exception 'ΔΙΑΡΡΟΗ ΕΥΡΟΥΣ: το μέλος με όριο στο Α έγραψε δαπάνη στο Β';
+  exception when insufficient_privilege then null;
+  end;
+  -- Ο άσχετος δεν γράφει σε ακίνητο του ιδιοκτήτη.
+  perform set_config('probe.uid', '5c5c5c5c-0000-4000-8000-000000000005', false);
+  begin
+    insert into public.tenants(property_id, user_id, full_name, monthly_rent)
+      values ('5c5c5c5c-0000-4000-8000-0000000000a1', '5c5c5c5c-0000-4000-8000-000000000001', 'Ξένος', 1);
+    raise exception 'ΔΙΑΡΡΟΗ: άσχετος χρήστης έγραψε μισθωτή στο ακίνητο άλλου';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'probe: εύρος ακινήτων και οικονομικά μέλους, σε ανάγνωση και εγγραφή, για 5 ρόλους';
+end $probe$;
+
+reset role;
+set session "probe.uid" = '';
+do $probe$
+begin
+  perform public.erase_account('5c5c5c5c-0000-4000-8000-000000000003');
+  perform public.erase_account('5c5c5c5c-0000-4000-8000-000000000002');
+  perform public.erase_account('5c5c5c5c-0000-4000-8000-000000000004');
+  perform public.erase_account('5c5c5c5c-0000-4000-8000-000000000005');
+  perform public.erase_account('5c5c5c5c-0000-4000-8000-000000000001');
+end $probe$;
