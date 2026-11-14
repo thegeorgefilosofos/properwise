@@ -7944,7 +7944,7 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
   margin: 0; font-size: 14px; font-weight: 600; line-height: 1.4;
   font-family: inherit; text-wrap: pretty;
 }
-.acd-row-opt { font-weight: 400; font-size: var(--fs-note); color: var(--text-tertiary); white-space: nowrap; }
+.acd-row-opt { font-weight: 400; font-size: var(--fs-note); color: var(--text-tertiary); }
 .acd-row-why {
   margin: 2px 0 0; font-size: var(--fs-note); color: var(--text-secondary);
   line-height: 1.5; font-family: inherit; text-wrap: pretty;
@@ -7992,3 +7992,10 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 /* Ο σύνδεσμος της ΑΑΔΕ είναι κουμπί-κείμενο: χωρίς το οριζόντιο περιθώριο του
    κουμπιού, ώστε όταν πέσει κάτω από το «Ενημέρωσε» να ξεκινά από την ίδια ακμή. */
 .enfia-hdr-actions > a.po-btn { --btn-pad: 9px 4px; }
+/* Στο στενό τηλέφωνο το «Μπορεί να περιμένει» παίρνει δική του σειρά κάτω από
+   τον τίτλο, χωρίς τελεία: τυλιγμένο μέσα στον τίτλο άφηνε την τελεία στην
+   αρχή γραμμής ή έσπρωχνε το κείμενο κάτω από το βέλος. */
+@media (max-width: 480px) {
+  .acd-row-opt { display: block; margin-top: 1px; }
+  .acd-row-dot { display: none; }
+}

@@ -212,7 +212,10 @@ const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFamil
 // ΤΟ «ΑΠΑΡΑΙΤΗΤΟ» ΑΝΤΙΣΤΡΑΦΗΚΕ (14/11/2026). Η πιλούλα με κεφαλαία καθόταν σχεδόν
 // σε κάθε γραμμή και στο κινητό έπεφτε μόνη της σε δική της σειρά: ένδειξη που
 // είναι παντού δεν ξεχωρίζει τίποτα. Σημειώνεται πλέον μόνο η εξαίρεση, ως ήσυχο
-// «Προαιρετικό» στη σειρά του τίτλου. Το πού (διαδρομή myAADE και σύνδεσμος), το
+// «Μπορεί να περιμένει» στη σειρά του τίτλου. ΟΧΙ «Προαιρετικό»: το μη
+// μπλοκαριστικό σημαίνει «δεν σταματά τη δήλωση», όχι «δεν χρειάζεται». Η
+// δημοσίευση στο ΓΕΜΗ και οι περιοδικές δηλώσεις ΦΠΑ είναι υποχρεωτικές και θα
+// έγραφαν «Προαιρετικό» δίπλα σε «Υποχρεωτική για τα νομικά πρόσωπα». Το πού (διαδρομή myAADE και σύνδεσμος), το
 // για ποιο ακίνητο και τι λείπει από τα στοιχεία ανοίγουν κάτω από τη γραμμή.
 function Row({ r, checked, onToggle, attribute, fromData }: {
   r: Requirement; checked: boolean; onToggle: () => void; attribute: boolean
@@ -233,7 +236,7 @@ function Row({ r, checked, onToggle, attribute, fromData }: {
       <div className="acd-row-text">
         <p className="acd-row-title" style={{ color: checked ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
           {r.title}
-          {!r.blocking && <span className="acd-row-opt"> · Προαιρετικό</span>}
+          {!r.blocking && <span className="acd-row-opt"><span className="acd-row-dot" aria-hidden="true">{' · '}</span>Μπορεί να περιμένει</span>}
         </p>
         <p className="acd-row-why">{r.why}</p>
         {open && (

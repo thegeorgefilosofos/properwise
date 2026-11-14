@@ -5,7 +5,7 @@
 // εδώ μόνο το σχήμα: μικρά γράμματα, χωρίς πλαίσιο, η πηγή σύνδεσμος όταν έχει
 // διεύθυνση. Καθαρό στοιχείο χωρίς κατάσταση, για δημόσιες σελίδες και οθόνες.
 // ═══════════════════════════════════════════════════════════════════════════
-import type { CSSProperties } from 'react';
+import { Fragment, type CSSProperties } from 'react';
 import { asOfLine, type AsOf } from '@/lib/facts/prices';
 
 const LINK: CSSProperties = { color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2 };
@@ -26,10 +26,12 @@ export function AsOfNote({ fact, style, pending }: { fact: AsOf; style?: CSSProp
         ? <a href={fact.url} target="_blank" rel="noopener noreferrer" style={LINK}>{fact.source}</a>
         : fact.source)}
       {pending && pending.length > 0 && (
+        // Οι σύνδεσμοι κάθονται απευθείας μέσα στην πρόταση, χωρίς δικό τους
+        // περιτύλιγμα: είναι σύνδεσμοι κειμένου και κρίνονται ως τέτοιοι.
         <span style={{ display: 'block', marginTop: 2 }}>
           {pending.length === 1 ? 'Εκκρεμεί: ' : 'Εκκρεμούν: '}
           {pending.map((p, i) => (
-            <span key={p.title}>{i > 0 && ' · '}<a href={p.href} target="_blank" rel="noopener noreferrer" style={LINK}>{p.title}</a></span>
+            <Fragment key={p.title}>{i > 0 && ' · '}<a href={p.href} target="_blank" rel="noopener noreferrer" style={LINK}>{p.title}</a></Fragment>
           ))}
         </span>
       )}
