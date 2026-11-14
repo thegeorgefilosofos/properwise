@@ -18,8 +18,13 @@
 // ΟΙ ΚΑΤΑΛΟΓΟΙ ΕΙΝΑΙ ΚΛΕΙΣΤΟΙ ΚΑΙ ΕΙΝΑΙ ΟΙ ΙΔΙΟΙ ΜΕ ΤΗΣ ΒΑΣΗΣ. Η συνάρτηση
 // count_signup_step απορρίπτει σιωπηλά ό,τι δεν ξέρει· ένα βήμα που
 // προστίθεται μόνο εδώ δεν θα μετρηθεί ποτέ. Το τεστ διαβάζει το migration.
+//
+// ΤΟ ΣΗΜΕΙΟ ΕΙΣΟΔΟΥ (`p_entry`) έρχεται από το `?from=` του συνδέσμου εγγραφής
+// (lib/analytics/signupEntry.ts): αρχική, οδηγός, υπολογιστής ή πακέτα. Λέξη
+// του καταλόγου ή «other», ποτέ άλλο κείμενο.
 // ═══════════════════════════════════════════════════════════════════════════
 import { inAppBrowser } from '@/lib/core/inAppBrowser';
+import { signupEntry } from './signupEntry';
 
 export const SIGNUP_STEPS = {
   /** Άνοιξε η σελίδα εγγραφής. */
@@ -120,6 +125,7 @@ export function countSignupStep(step: SignupStep): void {
     p_source: signupSource(ua, window.location.search, document.referrer, window.location.hostname, landingQuery()),
     p_in_app: inAppBrowser(ua) !== null,
     p_mobile: isMobileUa(ua),
+    p_entry: signupEntry(window.location.search),
   };
   try {
     client ??= import('@/lib/supabase/lazy').then(m => m.authClient() as unknown as Promise<Rpc>);

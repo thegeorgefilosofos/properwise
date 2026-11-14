@@ -24,7 +24,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { T } from '@/components/tokens';
 import { hy } from '@/components/Hyphen';
-import { SITE, siteUrl, PRODUCT_NAME, ORG_ID } from '@/lib/core/site';
+import { SITE, siteUrl, PRODUCT_NAME } from '@/lib/core/site';
+import { organizationNode, ORG_REF } from '@/lib/seo/organization';
 import { athensToday } from '@/lib/core/time';
 import { declarationYear } from '@/lib/core/declarationYear';
 import { IDENTITY } from '@/lib/legal/identity';
@@ -138,14 +139,7 @@ const FAQ: GuideFaqItem[] = [
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
-    {
-      '@type': 'Organization',
-      '@id': ORG_ID,
-      name: PRODUCT_NAME,
-      url: SITE,
-      email: IDENTITY.supportEmail,
-      logo: { '@type': 'ImageObject', url: siteUrl('/icons/icon-512.png'), width: 512, height: 512 },
-    },
+    organizationNode(),
     {
       '@type': 'WebPage',
       '@id': `${URL}#webpage`,
@@ -154,7 +148,7 @@ const jsonLd = {
       description: DESC,
       inLanguage: 'el',
       isPartOf: { '@id': `${SITE}/#website` },
-      publisher: { '@id': ORG_ID },
+      publisher: ORG_REF,
       audience: { '@type': 'Audience', audienceType: 'Λογιστές και φοροτεχνικοί' },
       about: { '@type': 'Thing', name: 'Ενοίκια, δαπάνες και έντυπο Ε2 πελατών σε Excel για λογιστές' },
     },

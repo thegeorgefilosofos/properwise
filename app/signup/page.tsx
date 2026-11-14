@@ -16,6 +16,7 @@ import GoogleButton, { useEmailFirst } from '../GoogleButton'
 import { countSignupStep } from '@/lib/analytics/signupFunnel'
 import { BackLink } from '../BackLink'
 import MailSent from '../MailSent'
+import { emailProblem, suggestEmail, EMAIL_MSG } from '@/lib/auth/emailCheck'
 import { checkPassword, PASSWORD_MIN_HINT, PASSWORD_MIN_LABEL, PASSWORD_MIN_LENGTH, PASSWORD_MSG } from '@/lib/auth/password'
 import { hy } from '@/components/Hyphen'
 import { SAY, failed as failedEl } from '@/lib/core/dbError';
@@ -27,8 +28,8 @@ import { secondStepPending } from '@/lib/auth/mfa';
 import { fe } from '@/lib/core/format';
 // Η μορφή του κωδικού πρόσκλησης ζει δίπλα στη γεννήτριά του, όχι εδώ.
 import { isReferralCode } from '@/lib/referral/code';
-import { POLICY_VERSION as CONSENT_VERSION } from '@/lib/legal/identity'
-import { applyNews, newsDecided, newsFromParam, newsMeta, newsParam, pendingNews, type NewsChoice } from '@/lib/auth/signupNews'
+import { oauthPatch, signupData } from '@/lib/auth/signupConsent'
+import { applyNews, newsParam, pendingNews, type NewsChoice } from '@/lib/auth/signupNews'
 import { usePlanTerms, useTrialBadge, useSignupCta } from './PlanTerms'
 import { localeOfPath, type Locale } from '@/lib/i18n/locale'
 import { useCaptcha } from '../useCaptcha'
@@ -137,26 +138,8 @@ const countSignup = (supabase: Awaited<ReturnType<typeof authClient>>) => Promis
   new Promise<void>(r => setTimeout(r, 1500)),
 ]).catch(() => {})
 
-/**
- * Ό,τι λείπει από το προφίλ μετά την επιστροφή από την Google: η απόδειξη
- * συγκατάθεσης, η πρόσκληση και το πακέτο. Συμπληρώνει ΜΟΝΟ ό,τι λείπει: η
- * απόδειξη που μετράει είναι η ΠΡΩΤΗ, όχι η σημερινή.
- */
-function oauthPatch(meta: Record<string, unknown>, q: URLSearchParams, news: NewsChoice = newsFromParam(q.get('news'))): Record<string, unknown> {
-  const patch: Record<string, unknown> = {}
-  // Η επιλογή των ενημερωτικών ταξιδεύει όπως το πακέτο, στη διεύθυνση
-  // επιστροφής· γράφεται μόνο για λογαριασμό που δεν έχει ακόμη ούτε
-  // συγκατάθεση ούτε απόφαση. Υπάρχων χρήστης κρατά τις προτιμήσεις του.
-  if (!meta.consent_terms_accepted_at && !newsDecided(meta)) Object.assign(patch, newsMeta(news))
-  if (!meta.consent_terms_accepted_at) {
-    patch.consent_terms_accepted_at = new Date().toISOString()
-    patch.consent_policy_version = CONSENT_VERSION
-  }
-  const r = q.get('ref'); if (r && !meta.referred_by) patch.referred_by = r
-  const p = planFromParam(q.get('plan'))
-  if (p && !meta.chosen_plan) { patch.chosen_plan = p; patch.chosen_cycle = cycleFromParam(q.get('cycle')) }
-  return patch
-}
+// Η απόδειξη της επιστροφής από την Google (`oauthPatch`) και τα `data` της
+// εγγραφής με email (`signupData`) ζουν στο lib/auth/signupConsent.ts, με test.
 
 /**
  * ΤΑ ΕΝΗΜΕΡΩΤΙΚΑ, ΟΠΩΣ ΤΑ ΔΙΑΛΕΞΕ. Η βάση κλείνει και τα δύο όταν δημιουργεί
@@ -201,7 +184,6 @@ export default function SignupPage() {
   // Από το billingWords, στον διακομιστή (layout.tsx): `null` όσο το ταμείο χρεώνει.
   const planTerms = usePlanTerms()
   const trialBadge = useTrialBadge()
-  const [fullName, setFullName] = useState('')
   // ── ΙΔΙΟΚΤΗΤΗΣ Ή ΓΡΑΦΕΙΟ ───────────────────────────────────────────────
   // Ο τύπος του λογαριασμού ορίζεται εδώ και δεν αλλάζει: ο λογαριασμός
   // γραφείου βλέπει πελάτες και δεν καταχωρεί ακίνητα (20261104120000). Το
@@ -220,6 +202,9 @@ export default function SignupPage() {
   // φόρμα του email έρχεται πρώτη και η σημείωση για τη Google από κάτω.
   const emailFirst = useEmailFirst()
   const [email, setEmail] = useState('')
+  // ΤΟ EMAIL ΕΛΕΓΧΕΤΑΙ ΣΤΟ ΠΕΔΙΟ, ΜΕ ΕΛΛΗΝΙΚΑ (lib/auth/emailCheck.ts). Το σφάλμα
+  // φαίνεται μόλις φύγει κανείς από το πεδίο ή πατήσει υποβολή, όχι όσο γράφει.
+  const [emailTouched, setEmailTouched] = useState(false)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -305,8 +290,9 @@ export default function SignupPage() {
       const q = new URLSearchParams(window.location.search)
       // ═══ ΔΥΟ ΔΙΑΔΡΟΜΕΣ ΕΠΙΣΤΡΟΦΗΣ ΚΑΙ Η ΔΙΑΦΟΡΑ ΤΟΥΣ ΕΙΝΑΙ Η ΣΥΓΚΑΤΑΘΕΣΗ ═══
       //
-      // «oauth=1» σημαίνει ότι ο χρήστης ΤΣΕΚΑΡΕ το κουτί σε αυτή τη σελίδα
-      // πριν φύγει για την Google: η αποδοχή έγινε, μένει να καταγραφεί.
+      // «oauth=1» σημαίνει ότι ο χρήστης πάτησε «Συνέχισε με Google» σε αυτή τη
+      // σελίδα, με τη γραμμή αποδοχής ορατή ακριβώς κάτω από το κουμπί: το
+      // πάτημα είναι η αποδοχή, μένει να καταγραφεί.
       //
       // «oauth=login» έρχεται από τη σελίδα σύνδεσης, όπου ΔΕΝ υπάρχει κουτί.
       // Και η `signInWithOAuth` είναι ΚΑΙ εγγραφή: ο πρωτοεμφανιζόμενος
@@ -370,7 +356,7 @@ export default function SignupPage() {
     // να μην κάνει τίποτα: το μήνυμα υπήρχε, αλλά εκτός οθόνης.
     if (!consent) {
       setConsentTouched(true)
-      const box = document.getElementById('su-consent')
+      const box = document.getElementById('su-consent-oauth')
       box?.scrollIntoView({ block: 'center', behavior: 'smooth' })
       box?.focus()
       return
@@ -448,16 +434,14 @@ export default function SignupPage() {
   // ═══════════════════════════════════════════════════════════════════════
   async function signInWithGoogle() {
     countSignupStep('google')
-    // ΤΟ ΤΕΤΡΑΓΩΝΟ ΕΙΝΑΙ ΠΙΑ ΠΙΟ ΚΑΤΩ ΑΠΟ ΤΟ ΚΟΥΜΠΙ, ΑΡΑ ΔΕΙΧΝΕΤΑΙ. Χωρίς
-    // αυτό, όποιος πατούσε «Συνέχισε με Google» χωρίς αποδοχή έβλεπε το κουμπί
-    // να μην κάνει τίποτα: το μήνυμα υπήρχε, αλλά εκτός οθόνης.
-    if (!consent) {
-      setConsentTouched(true)
-      const box = document.getElementById('su-consent')
-      box?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-      box?.focus()
-      return
-    }
+    // ΕΝΑ ΠΑΤΗΜΑ (13.11.2026). Ως τότε το κουμπί ζητούσε πρώτα το κουτί των
+    // Όρων, που καθόταν ~450px πιο κάτω, κάτω από το όριο της οθόνης στο κινητό:
+    // το πάτημα έκανε κύλιση αντί για Google. Στο χωνί, ένα πάτημα «google» και
+    // καμία εγγραφή. Η αποδοχή δίνεται πλέον με το πάτημα, με τη γραμμή
+    // `googleLegal` ορατή ακριβώς κάτω από το κουμπί. Η απόδειξη γράφεται
+    // στην επιστροφή `oauth=1` (`oauthPatch`). Στη Σύνδεση δεν ισχύει το ίδιο:
+    // εκεί η επιστροφή είναι `oauth=login` και ο νέος λογαριασμός περνά από το
+    // «Ένα βήμα ακόμη» με κουτί, πριν γραφτεί οποιαδήποτε απόδειξη.
     setError('')
     const supabase = await authClient()
     // Η ΣΥΝΕΧΕΙΑ (πακέτο ή «next») ΕΡΧΕΤΑΙ ΕΛΕΓΜΕΝΗ ΑΠΟ ΤΟ `carried`: στη
@@ -516,19 +500,6 @@ export default function SignupPage() {
   }
 
   async function submitForm() {
-    // Η ΣΥΓΚΑΤΑΘΕΣΗ ΕΛΕΓΧΕΤΑΙ ΠΡΩΤΗ, γιατί είναι το ΜΟΝΟ εμπόδιο που ο χρήστης
-    // δεν βλέπει πάνω στο πεδίο που φταίει: ο κωδικός έχει τη λίστα του από
-    // κάτω, το κουτί των όρων δεν έχει τίποτα ώσπου να το αγγίξεις.
-    if (!consent) {
-      // ΜΟΝΟ Η ΣΗΜΑΙΑ, ΟΧΙ ΚΑΙ ΜΗΝΥΜΑ. Το κείμενο υπάρχει ήδη ακριβώς δίπλα
-      // στο κουτί που φταίει· ένα δεύτερο αντίγραφο στο γενικό πλαίσιο
-      // σφάλματος το έλεγε δύο φορές και ο αναγνώστης οθόνης το διάβαζε
-      // δύο φορές.
-      setConsentTouched(true)
-      setError('')
-      countSignupStep('invalid')
-      return
-    }
     // Ο έλεγχος ψηφίου φορτώνει μόνο για το γραφείο: ο ιδιοκτήτης δεν τον πληρώνει σε βάρος σελίδας.
     if (firm && !firmTerms) {
       setError(FIRM_TERMS_NEEDED)
@@ -537,6 +508,14 @@ export default function SignupPage() {
     }
     if (firm && (!firmName.trim() || !(await import('@/lib/core/greek')).isValidAfm(firmAfm))) {
       setError(!firmName.trim() ? 'Γράψε την επωνυμία του γραφείου.' : 'Ο ΑΦΜ του γραφείου δεν περνά τον έλεγχο ψηφίου.')
+      countSignupStep('invalid')
+      return
+    }
+    // Η ΑΠΟΔΟΧΗ ΤΩΝ ΟΡΩΝ ΕΙΝΑΙ Η ΙΔΙΑ Η ΥΠΟΒΟΛΗ (13.11.2026): η γραμμή κάτω από
+    // το κουμπί τη λέει και η απόδειξη γράφεται παρακάτω, όπως πάντα.
+    if (emailProblem(email)) {
+      setEmailTouched(true)
+      document.getElementById('su-email')?.focus()
       countSignupStep('invalid')
       return
     }
@@ -571,7 +550,7 @@ export default function SignupPage() {
     // του χρήστη ΠΟΤΕ αποδέχθηκε τους Όρους και την Πολιτική και ΠΟΙΑ έκδοσή τους,
     // ώστε η αποδοχή να είναι αποδείξιμη και να ζητηθεί εκ νέου αν αλλάξουν ουσιωδώς.
     const { error } = await supabase.auth.signUp({
-      email, password,
+      email: email.trim(), password,
       options: {
         ...captchaOptions(captchaToken),
         // Ο ΣΥΝΔΕΣΜΟΣ ΤΟΥ EMAIL ΠΕΡΝΑΕΙ ΑΠΟ ΤΗΝ ΑΝΤΑΛΛΑΓΗ ΤΟΥ ΔΙΑΚΡΙΤΙΚΟΥ.
@@ -581,15 +560,10 @@ export default function SignupPage() {
         // διακριτικό στη διεύθυνση: ο λογαριασμός άνοιγε, αλλά ο άνθρωπος
         // κατέληγε να κοιτά «Σύνδεση» αντί για την εφαρμογή του.
         emailRedirectTo: confirmRedirect(firm ? firmQuery(query) : query),
-        data: {
-          full_name: fullName.trim(),
-          ...(firm ? { account_kind: 'firm', firm_name: firmName.trim(), firm_afm: firmAfm, firm_kind: firmKind, firm_terms_version: FIRM_TERMS_VERSION } : {}),
-          consent_terms_accepted_at: new Date().toISOString(),
-          consent_policy_version: CONSENT_VERSION,
-          ...newsMeta(news),
-          ...(refCode ? { referred_by: refCode } : {}),
-          ...(chosenPlan ? { chosen_plan: chosenPlan, chosen_cycle: chosenCycle } : {}),
-        },
+        data: signupData({
+          firm: firm ? { account_kind: 'firm', firm_name: firmName.trim(), firm_afm: firmAfm, firm_kind: firmKind, firm_terms_version: FIRM_TERMS_VERSION } : null,
+          news, refCode, plan: chosenPlan, cycle: chosenCycle,
+        }),
       },
     })
     // ΤΟ `loading` ΕΠΑΝΕΡΧΕΤΑΙ ΚΑΙ ΣΤΗΝ ΕΠΙΤΥΧΙΑ, ΟΧΙ ΜΟΝΟ ΣΤΟ ΣΦΑΛΜΑ.
@@ -631,6 +605,16 @@ export default function SignupPage() {
   // Υπογραμμισμένοι, ίδια γραμμή με το `.po-link` και τη σύνδεση (20.10.2026):
   // το χρώμα μόνο του δεν λέει «πατιέται» σε όποιον δεν ξεχωρίζει τόνους.
   const consentLink: React.CSSProperties = { color: 'var(--accent)', textDecorationLine: 'underline', textUnderlineOffset: 3, textDecorationThickness: 1, fontWeight: 600, whiteSpace: 'nowrap' }
+  // Η ΑΠΟΔΟΧΗ ΚΑΤΩ ΑΠΟ ΤΟ «ΣΥΝΕΧΙΣΕ ΜΕ GOOGLE» (13.11.2026). Το πάτημα του
+  // κουμπιού γράφει την απόδειξη στην επιστροφή `oauth=1`, οπότε η γραμμή
+  // στέκεται ακριβώς από κάτω του, όπου κι αν βρίσκεται το κουμπί.
+  const googleLegal = (
+    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '14px 0 0', lineHeight: 1.6, textAlign: 'center', textWrap: 'pretty' }}>
+      {S ? S.legalGoogle[0] : <>Συνεχίζοντας με Google, αποδέχεσαι τους{' '}</>}
+      <Link href={localHref(locale, '/terms')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.legalGoogle[1] : <> και έχεις διαβάσει την{' '}</>}
+      <Link href={localHref(locale, '/privacy')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.privacy : 'Πολιτική απορρήτου'}</Link>{S ? S.legalGoogle[2] : '.'}
+    </p>
+  )
   // Τα κουτιά των ενημερωτικών, με το ίδιο ιδίωμα αφής με το πρώτο. Δύο, ένα
   // για κάθε σκοπό, ατσεκάριστα και προαιρετικά: η εγγραφή προχωρά ό,τι κι
   // αν διαλέξεις (νομικός έλεγχος 09/11/2026, Π-5).
@@ -659,12 +643,17 @@ export default function SignupPage() {
    * ΕΝΑΣ ΛΟΓΟΣ ΤΗ ΦΟΡΑ, με τη σειρά που θα τον συναντήσει ο χρήστης: μια λίστα
    * με τρία «λείπει» δεν λέει από πού να αρχίσει.
    */
+  const emailIssue = emailProblem(email)
+  const emailMsg = emailIssue === 'empty' ? (S ? S.emailEmpty : EMAIL_MSG.empty) : emailIssue ? (S ? S.emailInvalid : EMAIL_MSG.invalid) : ''
+  const emailShown = emailTouched && !!emailIssue
+  // Η πρόταση για τυπογραφικό στον πάροχο (gmail.con): μόνο αφού φύγει από το πεδίο.
+  const emailHint = emailTouched && !emailIssue ? suggestEmail(email) : null
   const why = loading ? ''
+    : emailIssue ? emailMsg
     : leaked ? (S ? S.whyLeaked : 'Ο κωδικός βρίσκεται σε γνωστή διαρροή. Διάλεξε άλλον.')
     // Με άδειο πεδίο δεν λέγεται «δεν πληροί» (02.10.2026): ο αναγνώστης οθόνης
     // το ανακοίνωνε πριν γραφτεί ούτε ένας χαρακτήρας. Λέγεται τι λείπει.
     : !pw.ok ? (password ? (S ? S.whyWeak : 'Ο κωδικός δεν πληροί ακόμη τις προϋποθέσεις.') : (S ? S.whyEmpty : 'Γράψε κωδικό για να συνεχίσεις.'))
-    : !consent ? (S ? S.whyConsent : 'Χρειάζεται αποδοχή των Όρων χρήσης.')
     : ''
 
   return (
@@ -749,7 +738,7 @@ export default function SignupPage() {
               <MailSent
                 title={S ? S.mailTitle : 'Άνοιξε το email σου'}
                 email={email.trim()}
-                body={S ? <>{S.mailBody(!!chosenPlan && !planTerms)[0]}<Link href={`${localHref(locale, '/login')}${carried(query)}`} className="lp-link" style={consentLink}>{S.mailBody(false)[1]}</Link>{S.mailBody(false)[2]}</> : <>Αν δεν υπάρχει ήδη λογαριασμός με αυτή τη διεύθυνση, σου στείλαμε σύνδεσμο επιβεβαίωσης. Πάτησέ τον για να μπεις{chosenPlan && !planTerms ? ' και να ολοκληρώσεις τη συνδρομή σου' : ''}. Αν υπάρχει ήδη, <Link href={`/login${carried(query)}`} className="lp-link" style={consentLink}>συνδέσου</Link>. Δες και τον φάκελο με <span style={{ whiteSpace: 'nowrap' }}>τα ανεπιθύμητα.</span></>}
+                body={S ? <>{S.mailBody(!!chosenPlan && !planTerms)[0]}<Link href={`${localHref(locale, '/login')}${carried(query)}`} className="lp-link po-tap-inline" style={consentLink}>{S.mailBody(false)[1]}</Link>{S.mailBody(false)[2]}</> : <>Αν δεν υπάρχει ήδη λογαριασμός με αυτή τη διεύθυνση, σου στείλαμε σύνδεσμο επιβεβαίωσης. Πάτησέ τον για να μπεις{chosenPlan && !planTerms ? ' και να ολοκληρώσεις τη συνδρομή σου' : ''}. Αν υπάρχει ήδη, <Link href={`/login${carried(query)}`} className="lp-link po-tap-inline" style={consentLink}>συνδέσου</Link>. Δες και τον φάκελο με <span style={{ whiteSpace: 'nowrap' }}>τα ανεπιθύμητα.</span></>}
                 action={
                   /* Η σβηστή όψη μετά την αποστολή είναι το disabled του .po-btn. */
                   <>
@@ -792,6 +781,13 @@ export default function SignupPage() {
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 24px' }}>
                 {S ? S.haveAccount : 'Έχεις ήδη λογαριασμό;'}{' '}
                 <Link href={`${localHref(locale, '/login')}${carried(query)}`} className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{S ? S.login : 'Σύνδεση'}</Link>
+              </p>
+              {/* Η ΑΞΙΑ, ΣΕ ΜΙΑ ΓΡΑΜΜΗ, ΕΚΕΙ ΠΟΥ ΚΡΥΒΕΤΑΙ ΤΟ ΠΑΝΕΛ (13.11.2026). Κάτω από
+                  τα 860 το AuthAside δεν φαίνεται και η σελίδα ζητούσε email
+                  και κωδικό χωρίς να λέει ούτε μία φορά τι παίρνεις. Το κείμενο
+                  βγαίνει από τις στήλες του πάνελ (AuthAside.tsx). */}
+              <p className="auth-mobile-only" style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '-12px 0 20px', textWrap: 'pretty' }}>
+                {S ? S.value : 'Τα ακίνητά σου σε τάξη: λογαριασμοί, μισθώσεις και προθεσμίες σε μία οθόνη.'}
               </p>
               {/* Η ΕΦΑΡΜΟΓΗ ΕΙΝΑΙ ΕΛΛΗΝΙΚΗ: η αγγλική εγγραφή το λέει πριν, ήσυχα. */}
               {S && <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.5, margin: '-14px 0 24px' }}>{S.appLanguage}</p>}
@@ -914,24 +910,25 @@ export default function SignupPage() {
                 </div>
               )}
 
-              {/* Η αιώρηση ερχόταν από την `.auth-hov`· τώρα τη δίνει το `.po-btn`. */}
-              {/* ΙΔΙΟΚΤΗΤΗΣ Ή ΓΡΑΦΕΙΟ: η πρώτη επιλογή, πάνω από όλα τα πεδία. */}
-              {!A && (
-                <div role="group" aria-label="Τύπος λογαριασμού" className="po-seg" style={{
-                  display: 'flex', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-                  borderRadius: T.radius.chip, padding: 4, gap: 2, marginBottom: 20, flexWrap: 'wrap',
-                }}>
-                  <ChipToggle shape="seg" grow on={!firm} onClick={() => { setAccountKind('owner'); setError('') }}>Ιδιοκτήτης</ChipToggle>
-                  <ChipToggle shape="seg" grow on={firm} onClick={() => { setAccountKind('firm'); setError('') }}>Λογιστής ή γραφείο</ChipToggle>
+              {/* ΙΔΙΟΚΤΗΤΗΣ Ή ΓΡΑΦΕΙΟ: ΟΧΙ ΠΙΑ ΠΡΩΤΗ ΑΠΟΦΑΣΗ (13.11.2026). Η ράγα με
+                  τα δύο κουμπιά καθόταν πάνω από όλα τα πεδία, ~80px και μία
+                  ερώτηση πριν από το πρώτο πεδίο, για τη μειοψηφία των γραφείων.
+                  Το γραφείο μπαίνει από τον σύνδεσμο κάτω από τη φόρμα· όσο
+                  είναι επιλεγμένο, η ένδειξη μένει εδώ με τον δρόμο πίσω. */}
+              {!A && firm && (
+                <div role="note" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '10px 14px', marginBottom: 20, borderRadius: T.radius.inner, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', fontSize: 14, color: 'var(--text-primary)', fontWeight: 600 }}>
+                  Λογαριασμός λογιστή ή γραφείου
+                  <LinkBtn className="po-tap-inline" onClick={() => { setAccountKind('owner'); setError('') }}>Είμαι ιδιοκτήτης</LinkBtn>
                 </div>
               )}
 
               {!emailFirst && !firm && <>
                 <GoogleButton onClick={signInWithGoogle} funnel />
+                {googleLegal}
                 <OrDivider word={A ? A.or : undefined} />
               </>}
 
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {firm && <>
                   <div>
                     <label htmlFor="su-firm" className="po-field-label">Επωνυμία γραφείου</label>
@@ -957,13 +954,26 @@ export default function SignupPage() {
                     </div>
                   </div>
                 </>}
-                {!firm && <div>
-                  <label htmlFor="su-name" className="po-field-label">{S ? S.name : 'Ονοματεπώνυμο'} <span className="po-field-opt">{S ? S.optional : '(προαιρετικό)'}</span></label>
-                  <input id="su-name" name="name" autoComplete="name" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder={S ? S.namePlaceholder : 'Όνομα και επώνυμο'} style={field} onFocus={focus} onBlur={blur} />
-                </div>}
                 <div>
                   <label htmlFor="su-email" className="po-field-label">{A ? A.email : 'Ηλεκτρονικό ταχυδρομείο'}</label>
-                  <input id="su-email" name="email" autoComplete="email" type="email" value={email} onChange={e => setEmail(e.target.value)} readOnly={loading} placeholder={A ? A.emailPlaceholder : 'onoma@email.com'} required style={field} onFocus={focus} onBlur={blur} />
+                  {/* ΧΩΡΙΣ ΤΟ ΟΝΟΜΑΤΕΠΩΝΥΜΟ (13.11.2026). Ηταν προαιρετικό, άρα δεν
+                      χρειαζόταν για τίποτα, αλλά έπιανε ~86px πάνω από το email
+                      και διαβαζόταν ως ένα ακόμη πεδίο. Το όνομα γράφεται όποτε
+                      θέλει ο χρήστης, στις Ρυθμίσεις. */}
+                  <input id="su-email" name="email" autoComplete="email" type="email" inputMode="email" autoCapitalize="none" spellCheck={false} value={email}
+                    onChange={e => setEmail(e.target.value)} readOnly={loading} placeholder={A ? A.emailPlaceholder : 'onoma@email.com'}
+                    aria-invalid={emailShown || undefined} aria-describedby={emailShown ? 'su-email-err' : emailHint ? 'su-email-hint' : undefined}
+                    style={field} onFocus={focus}
+                    onBlur={e => { blur(e); if (email.trim()) setEmailTouched(true) }} />
+                  {emailShown && (
+                    <p id="su-email-err" role="alert" style={{ fontSize: 13, color: 'var(--negative-on-container)', margin: '6px 0 0', lineHeight: 1.5 }}>{emailMsg}</p>
+                  )}
+                  {emailHint && (
+                    <p id="su-email-hint" style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '6px 0 0', lineHeight: 1.5 }}>
+                      {S ? S.emailSuggest : EMAIL_MSG.suggest}{' '}
+                      <LinkBtn className="po-tap-inline" onClick={() => setEmail(emailHint)}>{emailHint}</LinkBtn>{S ? '?' : ';'}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label htmlFor="su-password" className="po-field-label">{A ? A.password : 'Κωδικός'}</label>
@@ -991,66 +1001,6 @@ export default function SignupPage() {
                   </div>
                 )}
 
-                {/* ── Η ΑΠΟΔΟΧΗ, ΑΚΡΙΒΩΣ ΠΑΝΩ ΑΠΟ ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΤΗ ΧΡΕΙΑΖΕΤΑΙ ──────
-                    Καθόταν πάνω από τις δύο πόρτες, πρώτο πράγμα κάτω από τον
-                    τίτλο. Εκεί όμως ο επισκέπτης δεν έχει ακόμη αποφασίσει να
-                    εγγραφεί: του ζητούσαμε να δεσμευτεί σε όρους πριν καν δει
-                    τι ζητάμε από αυτόν. Και το πρώτο που έβλεπε στη σελίδα
-                    «Δημιουργία λογαριασμού» ήταν ένα άδειο τετράγωνο.
-                    Μπαίνει εκεί που τη διαβάζει κανείς πράγματι: τελευταία
-                    γραμμή πριν το κουμπί, με τα στοιχεία ήδη συμπληρωμένα.
-                    Η πόρτα της Google την εξακολουθεί να ΑΠΑΙΤΕΙ — το
-                    `signInWithGoogle` δεν προχωρά χωρίς αυτήν και φέρνει το
-                    βλέμμα εδώ κάτω. */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, paddingBottom: CONSENT_TAP_ROOM }}>
-                  {/* ΤΟ ΤΕΤΡΑΓΩΝΟ ΗΤΑΝ 16 × 16 ΚΑΙ ΕΙΝΑΙ ΥΠΟΧΡΕΩΤΙΚΟ ΓΙΑ ΝΑ ΓΙΝΕΙ
-                      ΕΓΓΡΑΦΗ: χωρίς αυτό το κουμπί μένει κλειστό. Δεκαέξι
-                      εικονοστοιχεία είναι ο μισός στόχος από όσο ζητά ένα δάχτυλο
-                      και ο πενηντάρης ιδιοκτήτης της στρατηγικής μας το αστοχεί.
-                      Μεγαλώνει η ΠΕΡΙΟΧΗ ΑΦΗΣ, όχι το σχήμα: μια ετικέτα 44 × 44
-                      γύρω από το τετράγωνο, με αρνητικό περιθώριο που επιστρέφει
-                      ακριβώς τον χώρο που πήρε. Οπτικά τίποτα δεν κουνιέται.
-                      ΓΙΑΤΙ ΕΤΙΚΕΤΑ ΚΑΙ ΟΧΙ onClick ΣΕ ΠΛΑΙΣΙΟ: η ετικέτα ενεργοποιεί
-                      το πεδίο από μόνη της, χωρίς JavaScript και δεν τυλίγει τους
-                      δύο συνδέσμους — ένα `<a>` μέσα σε `<label>` δίνει στοιχείο που
-                      και ακολουθεί σύνδεσμο και τσεκάρει κουτί με το ίδιο πάτημα. */}
-                  <label htmlFor="su-consent" style={{ ...TAP, margin: -14 }}>
-                    {/* ── ΥΠΟΧΡΕΩΤΙΚΟ, ΑΛΛΑ ΟΧΙ ΜΕ ΤΟ ΕΓΓΕΝΕΣ `required` ─────────
-                        Το `required` έκοβε την υποβολή ΠΡΙΝ τρέξει ο δικός μας
-                        handleSubmit, οπότε η ελληνική εξήγηση δεν εμφανιζόταν
-                        ποτέ και το μήνυμα ερχόταν από το φυλλομετρητή, στη
-                        δική ΤΟΥ γλώσσα. Ολη η υπόλοιπη φόρμα επικυρώνεται στον
-                        κώδικα, με ελληνικά μηνύματα και role="alert": ένα
-                        πεδίο που κάνει αλλιώς είναι δεύτερο ιδίωμα.
-
-                        Το `aria-required` κρατά τη σημασιολογία — ο αναγνώστης
-                        οθόνης εξακολουθεί να λέει «υποχρεωτικό». */}
-                    <input id="su-consent" type="checkbox" checked={consent}
-                      onChange={e => { setConsent(e.target.checked); if (e.target.checked) setConsentTouched(false) }}
-                      aria-required="true" aria-label={S ? S.consentAria : 'Αποδέχομαι τους Όρους χρήσης και διάβασα την Πολιτική απορρήτου'}
-                      className="po-check" />
-                  </label>
-                  {/* ΑΠΟΔΟΧΗ ΓΙΑ ΤΟΥΣ ΟΡΟΥΣ, ΕΝΗΜΕΡΩΣΗ ΓΙΑ ΤΗΝ ΠΟΛΙΤΙΚΗ. Εγραφε
-                      «Αποδέχομαι… την Πολιτική απορρήτου», ενώ η Πολιτική δεν
-                      ζητά αποδοχή: είναι ενημέρωση του άρθρου 13 GDPR και τη
-                      συγκατάθεση τη χρησιμοποιεί μόνο για τα δεδομένα κοινότητας.
-                      Ενα κουτί που «αποδέχεται» την ενημέρωση διαβάζεται ως
-                      συγκατάθεση σε όλα όσα περιγράφει. */}
-                  {/* Ετικέτα και το κείμενο, όπως στο πλαίσιο της Google: το
-                      πάτημα στο «Αποδέχομαι» δεν έκανε τίποτα. Ο σύνδεσμος μέσα
-                      σε ετικέτα ακολουθεί τον σύνδεσμο και ΔΕΝ τσεκάρει το
-                      κουτί, οπότε ο φόβος του σχολίου από πάνω δεν ισχύει. */}
-                  <label htmlFor="su-consent" style={consentText}>
-                    {S ? S.consent[0] : <>Αποδέχομαι τους{' '}</>}
-                    <Link href={localHref(locale, '/terms')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.consent[1] : <> και διάβασα την{' '}</>}
-                    <Link href={localHref(locale, '/privacy')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.privacy : 'Πολιτική απορρήτου'}</Link>{S ? S.consent[2] : '.'}
-                  </label>
-                </div>
-                {consentTouched && !consent && (
-                  <p role="alert" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: 0, lineHeight: 1.5 }}>
-                    {S ? S.consentNeeded : 'Χρειάζεται να αποδεχτείς τους Όρους χρήσης για να συνεχίσεις.'}
-                  </p>
-                )}
                 {firm && <FirmTermsCheck id="su-firm-terms" checked={firmTerms} onChange={on => { setFirmTerms(on); setError('') }} />}
                 {newsRow('su-news')}
 
@@ -1090,11 +1040,36 @@ export default function SignupPage() {
                 <Btn variant="primary" type="submit" field describedBy={why ? 'su-cta-why' : undefined}>
                   {loading ? (S ? S.creating : 'Δημιουργία…') : firm ? 'Δημιουργία γραφείου' : cta}
                 </Btn>
+                {/* ── Η ΑΠΟΔΟΧΗ, ΜΙΑ ΓΡΑΜΜΗ ΚΑΤΩ ΑΠΟ ΤΗΝ ΕΝΕΡΓΕΙΑ (13.11.2026) ─────────
+                    Ηταν υποχρεωτικό κουτί πάνω από το κουμπί, το οποίο σε κινητό
+                    κατέληγε στα y=764 και το κουμπί στα 1011, δηλαδή εκτός
+                    οθόνης. Οι Όροι (/terms) λένε ήδη «Με τη δημιουργία
+                    λογαριασμού […] αποδέχεσαι τους παρόντες Όρους». Η ίδια
+                    γραμμή στέκεται και κάτω από το «Συνέχισε με Google»
+                    (`googleLegal`), ώστε να φαίνεται όπου φαίνεται το κουμπί.
+                    Στη Σύνδεση η γραμμή ΔΕΝ μετρά ως αποδοχή: ο νέος λογαριασμός
+                    από εκεί περνά από το «Ένα βήμα ακόμη». Η απόδειξη (πότε, ποια
+                    έκδοση) γράφεται στο `signupData` και στο `oauthPatch`.
+                    Οι συγκαταθέσεις που ΔΕΝ είναι σύμβαση μένουν χωριστά κουτιά:
+                    τα δύο ενημερωτικά (ατσεκάριστα) και οι όροι του γραφείου.
+                    Η Πολιτική απορρήτου δεν «γίνεται αποδεκτή»: είναι ενημέρωση. */}
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 0 0', lineHeight: 1.6, textWrap: 'pretty' }}>
+                  {S ? S.legal[0] : <>Συνεχίζοντας με email, αποδέχεσαι τους{' '}</>}
+                  <Link href={localHref(locale, '/terms')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.terms : 'Όρους'}</Link>{S ? S.legal[1] : <> και έχεις διαβάσει την{' '}</>}
+                  <Link href={localHref(locale, '/privacy')} className="lp-link po-tap-inline" style={consentLink}>{A ? A.privacy : 'Πολιτική απορρήτου'}</Link>{S ? S.legal[2] : '.'}
+                </p>
               </form>
               {emailFirst && !firm && <>
                 <OrDivider word={A ? A.or : undefined} />
                 <GoogleButton onClick={signInWithGoogle} funnel />
+                {googleLegal}
               </>}
+              {!A && !firm && (
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '24px 0 0', lineHeight: 1.5 }}>
+                  Λογιστής ή γραφείο;{' '}
+                  <LinkBtn className="po-tap-inline" onClick={() => { setAccountKind('firm'); setError('') }}>Λογαριασμός γραφείου</LinkBtn>
+                </p>
+              )}
             </>
           )}
         </div>
