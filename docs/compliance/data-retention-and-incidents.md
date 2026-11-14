@@ -11,7 +11,9 @@ and what happens if there's a breach. Free to maintain; no tooling required.
 | Property / financial records | Life of account | Cascade on account deletion |
 | Tax-relevant records | Per Greek statutory periods (customer's obligation) | Retained while account active; exportable before deletion |
 | Tenant / guest records | Controlled by the customer | Deleted on customer instruction or account deletion |
-| Email outbox | Sent rows kept for audit; **stale/expired rows purged** | `drain_email_outbox` marks `expired` past 2 days |
+| Email outbox | Rows in `pending`/`dispatched` never touched. Final rows (`sent`, `expired`, `skipped`, `failed`): content (`params`) and name cleared after **90 days**; the row itself (address + `dedup_key`) stays so a one-time email is not re-sent, and is deleted after **400 days** only when its key is tied to a closed period (year/quarter/month/day). Deleted in full with the account | `private.prune_logs()`, pg_cron `logs-retention-prune` daily 02:29 UTC (migration 20261110151000) |
+| Reminder log (`notification_log`) | **13 months**, except: each user's first row (signup funnel metric), `overdue` rows of events still pending (else the reminder is re-sent). Deleted with the account (FK cascade) | Same job |
+| Health checks (`health_checks`), cron run log (`cron.job_run_details`) | **30 days** / **14 days**; operational, no personal data | Same job |
 | Marketing preferences and unsubscribes | Life of account; deleted with it (`/privacy`, «Χρόνος διατήρησης»; FK `on delete cascade`). The earlier «kept indefinitely» contradicted the published policy | Marketing is consent-only (6(1)(a)), not soft opt-in |
 | Guest pre-check-in data | While the property exists; deleted with the property or the account. **Open:** automatic deletion after departure (DPIA action A4) | `purge_property_children`, `erase_account` |
 | Withdrawal declarations (`withdrawal_requests`) | **Not yet defined** (DPIA action A6). Kept unlinked (`account_id = null`) after account deletion as proof of the exercised right | Migration `20261020120100_i_ypanaxorisi_echei_koumpi.sql` |

@@ -250,6 +250,13 @@ if ! frout=$($PSQL -d posdb -f "$ROOT/scripts/db/firm-retention-probe.sql" 2>&1)
   exit 1
 fi
 probes=$((probes + $(echo "$frout" | grep -c 'probe:' || true)))
+# Πόσο κρατιούνται οι πίνακες καταγραφής (20261110151000).
+if ! lrout=$($PSQL -d posdb -f "$ROOT/scripts/db/logs-retention-probe.sql" 2>&1); then
+  echo "🔴 Το καθάρισμα των πινάκων καταγραφής δεν κρατά τα όρια:"
+  echo "$lrout" | grep -m3 -E 'ERROR|ΔΙΑΤΗΡΗΣΗ|ΑΝΟΙΧΤΗ ΠΟΡΤΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$lrout" | grep -c 'probe:' || true)))
 if ! dlout=$($PSQL -d posdb -f "$ROOT/scripts/db/demo-logistis-probe.sql" 2>&1); then
   echo "🔴 Το scripts/db/demo-logistis.sql δεν τρέχει πάνω στο σχήμα:"
   echo "$dlout" | grep -m3 -E 'ERROR|DEMO' | sed 's/^/    /'
