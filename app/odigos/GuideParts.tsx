@@ -11,7 +11,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
-import { SITE, siteUrl, PRODUCT_NAME, ORG_ID } from '@/lib/core/site';
+import { siteUrl } from '@/lib/core/site';
+import { organizationNode, ORG_REF } from '@/lib/seo/organization';
 import { grDate } from '@/lib/core/format';
 import { monthGen, monthShort } from '@/lib/core/months';
 import { T } from '@/components/tokens';
@@ -26,6 +27,9 @@ import { LISTED_GUIDES, guideShareImageUrl, relatedGuides, type Guide } from './
 import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
 
 const HUB = { href: '/odigos', label: 'Οδηγοί' } as const;
+
+/** Η υπογραφή των οδηγών, η ίδια με των υπολογιστών (app/toolSeo.tsx). */
+const GUIDE_AUTHOR = 'Ομάδα Properwise';
 
 /** Μια ερώτηση με προαιρετικό σύνδεσμο κάτω από την απάντηση (όχι στο σχήμα). */
 export type GuideFaqItem = { q: string; a: string; link?: { href: string; label: string } };
@@ -104,14 +108,28 @@ function GuideRail({ sections, cta }: GuideRailProps) {
  */
 export function GuideUpdated({ guide }: { guide: Guide }) {
   return (
+    <>
+    {/* Η ΥΠΟΓΡΑΦΗ ΣΕ ΚΑΘΕ ΟΔΗΓΟ (14/11/2026). Την είχε μόνο ο οδηγός Airbnb, με
+        το χέρι. Η ίδια υπογραφή με τους υπολογιστές (app/toolSeo.tsx) και ο ίδιος
+        οργανισμός με το `author` του σχήματος (`guideJsonLd`). Δεν λέει ότι
+        έλεγξε δικηγόρος ή λογιστής: δεν έχει γίνει τέτοιος έλεγχος. */}
+    <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 4px' }}>
+      Κείμενο: {GUIDE_AUTHOR}
+    </p>
     <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 18px' }}>
       Τελευταία ενημέρωση: <time dateTime={guide.updated}>{grDate(guide.updated)}</time>
+      {/* Η ημέρα ελέγχου των πηγών, μόνο όταν ο οδηγός τη δηλώνει. */}
+      {guide.checkedAt && <>
+        {'\u00a0· '}
+        Έλεγχος πηγών: <time dateTime={guide.checkedAt}>{grDate(guide.checkedAt)}</time>
+      </>}
       {/* Το «·» κολλά στην ημερομηνία: στο κινητό έμενε μόνο του στην αρχή της
           δεύτερης γραμμής, πριν από το «Πηγές». */}
       {'\u00a0· '}
       {/* Μία λέξη που δεν σπάει: το «Νομική / βάση και πηγές» κοβόταν στα 390. */}
       <a href={`#${SOURCES_SECTION.id}`} className="lp-link" style={{ ...LINK_STYLE, whiteSpace: 'nowrap' }}>Πηγές</a>
     </p>
+    </>
   );
 }
 
@@ -412,18 +430,12 @@ export function guideJsonLd({ guide, headline, description, about, faq }: {
   guide: Guide; headline: string; description: string; about: string; faq: GuideFaqItem[];
 }) {
   const url = siteUrl(guide.href);
-  // Το ίδιο `@id` με την αρχική (ORG_ID): ένας εκδότης και συγγραφέας, όχι δύο.
-  const orgId = ORG_ID;
   return {
     '@context': 'https://schema.org',
     '@graph': [
-      {
-        '@type': 'Organization',
-        '@id': orgId,
-        name: PRODUCT_NAME,
-        url: SITE,
-        logo: { '@type': 'ImageObject', url: siteUrl('/icons/icon-512.png'), width: 512, height: 512 },
-      },
+      // Ο ένας κόμβος του οργανισμού (lib/seo/organization.ts): ένας εκδότης
+      // και συγγραφέας, ο ίδιος με την αρχική.
+      organizationNode(),
       {
         '@type': 'Article',
         headline,
@@ -433,8 +445,8 @@ export function guideJsonLd({ guide, headline, description, about, faq }: {
         datePublished: guide.published,
         dateModified: guide.updated,
         mainEntityOfPage: url,
-        author: { '@id': orgId },
-        publisher: { '@id': orgId },
+        author: ORG_REF,
+        publisher: ORG_REF,
         about: { '@type': 'Thing', name: about },
       },
       // Η διαδρομή από την κοινή συνάρτηση (lib/seo/breadcrumbs.ts), όπως στους

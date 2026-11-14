@@ -10,7 +10,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { siteUrl } from '@/lib/core/site';
 import { athensToday } from '@/lib/core/time';
-import { PROTHESMIES_PATH, deadlinesOfMonth, monthLabel, monthLabelAcc, monthPath, parseMonthKey, upcomingMonths } from '@/lib/seo/prothesmies';
+import { PROTHESMIES_PATH, deadlinesOfMonth, monthKeyOf, monthLabel, monthLabelAcc, monthPath, parseMonthKey, upcomingMonths } from '@/lib/seo/prothesmies';
 import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { ProthesmiesPage, prothesmiesJsonLd, HUB_NAME, H1_STYLE } from '../view';
@@ -27,10 +27,25 @@ const descOf = (m: string) =>
 
 const valid = (m: string) => !!parseMonthKey(m) && deadlinesOfMonth(m).length > 0;
 
+/**
+ * ΠΕΡΑΣΜΕΝΟΣ ΜΗΝΑΣ, ΕΚΤΟΣ ΕΥΡΕΤΗΡΙΟΥ (14/11/2026). Η σελίδα ενός μήνα που πέρασε
+ * απαντά ακόμη σε όποιον έχει τη διεύθυνση, αλλά οι προθεσμίες της έχουν λήξει:
+ * στην αναζήτηση θα έβγαινε ο Οκτώβριος σε όποιον ψάχνει τον Νοέμβριο. Ο χάρτης
+ * δηλώνει ήδη μόνο τους επόμενους μήνες (`upcomingMonths`). Οι σύνδεσμοι
+ * ακολουθούνται (`follow`), ώστε ο κόμβος και ο τρέχων μήνας να μη χάνουν τίποτα.
+ *
+ * ΧΩΡΙΣ canonical ΠΡΟΣ ΤΟΝ ΤΡΕΧΟΝΤΑ ΜΗΝΑ. Δεν είναι αντίγραφό του: άλλες
+ * προθεσμίες, άλλη ημερομηνία. Ένα canonical σε άλλη σελίδα δίπλα σε `noindex`
+ * είναι δύο αντικρουόμενα σήματα· όπως στο lib/seo/noindex.ts, το `alternates`
+ * μένει κενό, ώστε να μην κληρονομηθεί και το canonical της ρίζας.
+ */
+const isPast = (m: string) => m < monthKeyOf(athensToday());
+
 export async function generateMetadata({ params }: { params: Promise<{ mina: string }> }): Promise<Metadata> {
   const { mina } = await params;
   if (!valid(mina)) return {};
-  return publicMetadata({ title: titleOf(mina), description: descOf(mina), url: siteUrl(monthPath(mina)), image: shareImage('prothesmies') });
+  const meta = publicMetadata({ title: titleOf(mina), description: descOf(mina), url: siteUrl(monthPath(mina)), image: shareImage('prothesmies') });
+  return isPast(mina) ? { ...meta, robots: { index: false, follow: true }, alternates: {} } : meta;
 }
 
 export default async function Page({ params }: { params: Promise<{ mina: string }> }) {

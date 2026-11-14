@@ -15,8 +15,10 @@
 // (`readTool` με το SPEC του) και τρέχει την ίδια μηχανή με τη φόρμα. Αν το
 // ποσό του κειμένου και το ποσό της φόρμας διαφωνήσουν, κοκκινίζει εδώ.
 //
-// ΚΑΝΕΝΑΣ ΣΥΝΔΕΣΜΟΣ ΣΤΟΝ ΟΔΗΓΟ ΑΜΑ. Απόφαση της 13/10/2026, ώσπου να υπογράψει
-// η Legal· ελέγχεται εδώ για τις δύο σελίδες και το κοινό τους κομμάτι.
+// ΚΑΝΕΝΑΣ ΣΥΝΔΕΣΜΟΣ ΣΤΟΝ ΟΔΗΓΟ ΑΜΑ ΑΠΟ ΤΟ ΚΟΙΝΟ ΚΟΜΜΑΤΙ ΤΩΝ ΕΡΓΑΛΕΙΩΝ. Απόφαση της
+// 13/10/2026: τα εργαλεία δεν σχετίζονται με το μητρώο ΑΜΑ. Ο οδηγός μπήκε στον κατάλογο στις 27/10/2026 και
+// από 14/11/2026 τον δείχνει και το υποσέλιδο κάθε δημόσιας σελίδας, οπότε ο
+// έλεγχος της ολόκληρης σελίδας έφυγε· μένει μόνο για το app/toolSeo.tsx.
 //
 // Τα ποσά που ελέγχονται με τιμή είναι όσα έδωσε ο ιδιοκτήτης με την πηγή τους:
 // 12.000€ ενοίκιο του 2026 → 1.710€ φόρος (κλίμακα ν.5246/2025, τεκμαρτή
@@ -76,8 +78,13 @@ function common(name: string, page: Rendered, path: string, meta: Meta) {
   ok(`${name}: κανονική διεύθυνση η διεύθυνση της σελίδας`, meta.alternates?.canonical === siteUrl(path));
 
   const graph = page.ld[0]?.['@graph'] ?? [];
-  const app = graph.find(n => n['@type'] === 'WebApplication') as { author?: { name?: string } } | undefined;
-  ok(`${name}: συντάκτης στο σχήμα «${AUTHOR}»`, app?.author?.name === AUTHOR);
+  // Συντάκτης και εκδότης ο ΕΝΑΣ οργανισμός του ιστότοπου (14/11/2026): ένας
+  // κόμβος `Organization` στο σχήμα και οι δύο αναφορές στο `@id` του.
+  const app = graph.find(n => n['@type'] === 'WebApplication') as { author?: { '@id'?: string }; publisher?: { '@id'?: string } } | undefined;
+  const orgs = graph.filter(n => n['@type'] === 'Organization');
+  ok(`${name}: ένας κόμβος οργανισμού στο σχήμα`, orgs.length === 1 && typeof orgs[0]['@id'] === 'string');
+  ok(`${name}: συντάκτης στο σχήμα ο οργανισμός`, !!app?.author?.['@id'] && app.author['@id'] === orgs[0]?.['@id']);
+  ok(`${name}: εκδότης στο σχήμα ο οργανισμός`, !!app?.publisher?.['@id'] && app.publisher['@id'] === orgs[0]?.['@id']);
   ok(`${name}: ορατή υπογραφή «${AUTHOR}»`, page.text.includes(AUTHOR));
 
   // ΤΟ FAQPage ΛΕΕΙ ΜΟΝΟ Ο,ΤΙ ΔΙΑΒΑΖΕΙ Ο ΕΠΙΣΚΕΠΤΗΣ: κάθε ερώτηση είναι μία
@@ -95,7 +102,6 @@ function common(name: string, page: Rendered, path: string, meta: Meta) {
   // Οι σύνδεσμοι του ΚΕΙΜΕΝΟΥ: το μενού και το υποσέλιδο δείχνουν ήδη όλους τους υπολογιστές.
   const main = /<main[\s>][\s\S]*<\/main>/.exec(page.html)?.[0] ?? '';
   ok(`${name}: σύνδεσμος στον υπολογιστή στεγαστικού μέσα στο κείμενο`, main.includes(`href="${MORTGAGE}"`));
-  ok(`${name}: κανένας σύνδεσμος στον οδηγό ΑΜΑ (απόφαση 13/10)`, !page.html.includes(AMA));
   ok(`${name}: σύνδεσμος στην ΑΑΔΕ από το μητρώο μέσα στο κείμενο`, Object.values(AADE_DESTINATIONS).some(d => main.includes(`href="${d.url}"`)));
 }
 
