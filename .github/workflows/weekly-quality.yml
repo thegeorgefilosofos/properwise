@@ -153,7 +153,7 @@ jobs:
 
       - name: Τα ευρήματα της σάρωσης
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: optiki-${{ github.run_id }}
           path: |
