@@ -26,7 +26,8 @@ import { hyphenate, bindRefs } from '@/lib/core/hyphenate';
 import { billingWords } from '@/lib/legal/billingWords';
 import { LegalLayout, MailLink, type LegalBlock } from '../legal-shell';
 import Link from 'next/link';
-import { siteUrl, SITE, ORG_ID, SOCIAL_PROFILES } from '@/lib/core/site';
+import { siteUrl, SITE } from '@/lib/core/site';
+import { organizationNode, ORG_REF } from '@/lib/seo/organization';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { JsonLd } from '../PublicChrome';
 import { shareImage } from '../og/share';
@@ -52,14 +53,7 @@ export const metadata: Metadata = publicMetadata({
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
-    {
-      '@type': 'Organization',
-      '@id': ORG_ID,
-      name: IDENTITY.tradeName,
-      url: SITE,
-      logo: { '@type': 'ImageObject', url: siteUrl('/icons/icon-512.png'), width: 512, height: 512 },
-      sameAs: [...SOCIAL_PROFILES],
-    },
+    organizationNode(),
     {
       '@type': 'AboutPage',
       '@id': `${URL}#webpage`,
@@ -69,8 +63,8 @@ const jsonLd = {
       inLanguage: 'el',
       dateModified: POLICY_DATE,
       isPartOf: { '@id': `${SITE}/#website` },
-      about: { '@id': ORG_ID },
-      publisher: { '@id': ORG_ID },
+      about: ORG_REF,
+      publisher: ORG_REF,
     },
     breadcrumbJsonLd([{ name: 'Ποιοι είμαστε', path: PATH }]),
   ],

@@ -266,9 +266,6 @@ export default function Page() {
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
           {H1}
         </h1>
-        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 4px' }}>
-          {'Κείμενο και έλεγχος: Ομάδα Properwise'}
-        </p>
         <GuideUpdated guide={GUIDE} />
         {/* Το ευρετήριο ακριβώς κάτω από τη γραμμή της ημερομηνίας: στο κινητό
             ερχόταν μετά από δύο παραγράφους εισαγωγής, μισή οθόνη πιο κάτω. */}

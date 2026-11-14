@@ -5,7 +5,8 @@ import { IDENTITY, POLICY_VERSION, POLICY_DATE, versionSuffix } from '@/lib/lega
 import { DISCLOSURE } from '@/lib/legal/disclosure';
 import { subprocessors, ANTHROPIC_CONTRACT, BACKUP_RETENTION_DAYS } from '@/lib/legal/subprocessors';
 import { billingWordsEn } from '@/lib/legal/billingWords';
-import { siteUrl, SITE, ORG_ID, SOCIAL_PROFILES } from '@/lib/core/site';
+import { siteUrl, SITE } from '@/lib/core/site';
+import { organizationNode, ORG_REF } from '@/lib/seo/organization';
 import { breadcrumbJsonLd, HOME_CRUMB_EN } from '@/lib/seo/breadcrumbs';
 import { subprocessorRowEn, TRANSFER_SAFEGUARDS_EN, identityPendingEn } from '@/lib/i18n/en/legal/common';
 import { LEGAL_UI_EN, monthYearEn } from '@/lib/i18n/en/legal/ui';
@@ -287,10 +288,9 @@ export default function TrustPageEn() {
       <JsonLd data={{
         '@context': 'https://schema.org',
         '@graph': [
-          { '@type': 'Organization', '@id': ORG_ID, name: IDENTITY.tradeName, url: SITE,
-            logo: { '@type': 'ImageObject', url: siteUrl('/icons/icon-512.png'), width: 512, height: 512 }, sameAs: [...SOCIAL_PROFILES] },
+          organizationNode(),
           { '@type': 'AboutPage', '@id': `${URL}#webpage`, url: URL, name: TITLE, description: DESC, inLanguage: 'en',
-            dateModified: POLICY_DATE, isPartOf: { '@id': `${SITE}/#website` }, about: { '@id': ORG_ID }, publisher: { '@id': ORG_ID } },
+            dateModified: POLICY_DATE, isPartOf: { '@id': `${SITE}/#website` }, about: ORG_REF, publisher: ORG_REF },
           breadcrumbJsonLd([{ name: TITLE, path: PATH }], HOME_CRUMB_EN),
         ],
       }} />

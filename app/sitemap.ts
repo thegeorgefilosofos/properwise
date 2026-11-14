@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 import { SITE } from '@/lib/core/site'
 import { LISTED_GUIDES, GUIDES_UPDATED } from './odigos/guides'
 import { PAGE_UPDATED, TOOLS_UPDATED, type DatedPage } from './pageUpdated'
-import { TOOLS_HUB } from '@/lib/core/publicTools'
+import { PUBLIC_TOOLS, TOOLS_HUB } from '@/lib/core/publicTools'
 import { PROTHESMIES_PATH, PROTHESMIES_UPDATED, monthPath, upcomingMonths } from '@/lib/seo/prothesmies'
 import { athensToday } from '@/lib/core/time'
 import { languageAlternates } from '@/lib/i18n/paths'
@@ -20,22 +20,22 @@ import { languageAlternates } from '@/lib/i18n/paths'
 // η Google (`changeFrequency` και `priority` τα αγνοεί).
 const at = (path: DatedPage) => ({ url: SITE + (path === '/' ? '' : path), lastModified: PAGE_UPDATED[path] })
 
+/** Υπολογιστής του καταλόγου χωρίς ημερομηνία στο pageUpdated.ts σπάει το χτίσιμο, δεν μπαίνει «σήμερα». */
+function toolPage(href: string): DatedPage {
+  if (!(href in PAGE_UPDATED)) throw new Error(`${href}: ο υπολογιστής δεν έχει ημερομηνία στο app/pageUpdated.ts`)
+  return href as DatedPage
+}
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = SITE
   const rows: MetadataRoute.Sitemap = [
     { ...at('/'), changeFrequency: 'weekly', priority: 1 },
-    // Δωρεάν εργαλείο χωρίς εγγραφή. Υψηλή προτεραιότητα επειδή είναι η μόνη
-    // σελίδα που απαντά σε ερώτηση που ο ιδιοκτήτης ψάχνει ΠΡΙΝ μας ξέρει.
-    { ...at('/ypologismos-forou-enoikion'), changeFrequency: 'monthly', priority: 0.9 },
-    { ...at('/ypologismos-enfia'), changeFrequency: 'monthly', priority: 0.9 },
-    { ...at('/vraxyxronia-i-makroxronia'), changeFrequency: 'monthly', priority: 0.9 },
-    { ...at('/kathari-apodosi'), changeFrequency: 'monthly', priority: 0.9 },
-    { ...at('/anaprosarmogi-enoikiou'), changeFrequency: 'monthly', priority: 0.9 },
-    { ...at('/exoda-agoras-akinitou'), changeFrequency: 'monthly', priority: 0.9 },
-    { ...at('/ypologismos-ekptosis-anakainisis'), changeFrequency: 'monthly', priority: 0.9 },
-    { ...at('/symplirosi-e2'), changeFrequency: 'monthly', priority: 0.9 },
-    { ...at('/ypologismos-stegastikou-daneiou'), changeFrequency: 'monthly', priority: 0.9 },
-    { ...at('/sygkrisi-timologion-revmatos'), changeFrequency: 'monthly', priority: 0.9 },
+    // ΟΙ ΥΠΟΛΟΓΙΣΤΕΣ ΑΠΟ ΤΟΝ ΚΑΤΑΛΟΓΟ (14/11/2026). Ως τώρα ήταν δέκα γραμμές με
+    // το χέρι: νέος υπολογιστής στο PUBLIC_TOOLS έμπαινε στο μενού, στο
+    // υποσέλιδο και στον κόμβο, αλλά όχι στον χάρτη, ώσπου να το θυμηθεί
+    // κάποιος. Υψηλή προτεραιότητα επειδή απαντούν σε ερώτηση που ο ιδιοκτήτης
+    // ψάχνει ΠΡΙΝ μας ξέρει. Η ημερομηνία του καθενός από το app/pageUpdated.ts.
+    ...PUBLIC_TOOLS.map(t => ({ ...at(toolPage(t.href)), changeFrequency: 'monthly' as const, priority: 0.9 })),
     // Κόμβος εργαλείων (27.10.2026): όλοι οι υπολογιστές ανά θέμα, ο μεσαίος
     // κρίκος της διαδρομής τους. Ημερομηνία η νεότερη των υπολογιστών του.
     { url: base + TOOLS_HUB.href, lastModified: TOOLS_UPDATED, changeFrequency: 'monthly', priority: 0.8 },

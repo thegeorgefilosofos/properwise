@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { T } from '@/components/tokens';
-import { SITE, siteUrl, PRODUCT_NAME, ORG_ID } from '@/lib/core/site';
+import { SITE, siteUrl, PRODUCT_NAME } from '@/lib/core/site';
+import { organizationNode, ORG_REF } from '@/lib/seo/organization';
 import { athensParts } from '@/lib/core/time';
 import { IDENTITY } from '@/lib/legal/identity';
 import { billingWordsEn } from '@/lib/legal/billingWords';
@@ -130,10 +131,9 @@ const cta = { display: 'inline-flex', alignItems: 'center', minHeight: T.h.lg, p
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
-    { '@type': 'Organization', '@id': ORG_ID, name: PRODUCT_NAME, url: SITE, email: IDENTITY.supportEmail,
-      logo: { '@type': 'ImageObject', url: siteUrl('/icons/icon-512.png'), width: 512, height: 512 } },
+    organizationNode(),
     { '@type': 'WebPage', '@id': `${URL}#webpage`, url: URL, name: H1, description: DESC, inLanguage: 'en',
-      isPartOf: { '@id': `${SITE}/#website` }, publisher: { '@id': ORG_ID },
+      isPartOf: { '@id': `${SITE}/#website` }, publisher: ORG_REF,
       audience: { '@type': 'Audience', audienceType: 'Accountants and tax advisors' },
       about: { '@type': 'Thing', name: 'Clients’ rent, expenses and Greek form E2 in Excel for accountants' } },
     breadcrumbJsonLd([{ name: 'For accountants', path: PATH }], HOME_CRUMB_EN),
