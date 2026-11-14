@@ -29,6 +29,7 @@ import {
   ProductTour,
 } from './components/lazyTabs';
 import { STATUSES, readStatus, statusLabel as statusLabelOf } from '@/lib/property/status';
+import { agendaCoveredByStart } from '@/lib/home/start';
 import { tabDecision, canCompare } from '@/lib/property/visibility';
 import AmaStrip from './components/AmaStrip';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
@@ -716,7 +717,7 @@ export default function Dashboard() {
                 startSlot={<StartPanel state={startState} collapsed={startCollapsed} onToggle={toggleStartPanel}
                   onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='add' ? tryAddProperty() : t==='edit-basics' ? (setEditFocus('basics'), setEditProperty(selected)) : setNav(t)}
                   onPreview={()=>setShowPreview(true)}
-                  onTour={!tourDone ? ()=>setTourOpen(true) : undefined} />} properties={properties} userId={user.id} onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='edit' ? setEditProperty(selected) : t==='edit-rent' ? (setEditFocus('rent'), setEditProperty(selected)) : setNav(t)} tabVisible={navVisible} profileType={effProfileType} legalForm={taxForm}/>}
+                  onTour={!tourDone ? ()=>setTourOpen(true) : undefined} />} agendaExclude={agendaCoveredByStart(startState)} properties={properties} userId={user.id} onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='edit' ? setEditProperty(selected) : t==='edit-rent' ? (setEditFocus('rent'), setEditProperty(selected)) : t==='edit-enfia' ? (setEditFocus('enfia'), setEditProperty(selected)) : setNav(t)} tabVisible={navVisible} profileType={effProfileType} legalForm={taxForm}/>}
               {nav==='finances'  && <TabFinances key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} properties={financeProperties} profileType={effProfileType} legalForm={taxForm} onScan={()=>setQuickAddOpen(true)} openAddNonce={manualExpense} handledAddNonce={handledExpense} onAddHandled={setHandledExpense} />}
               {nav==='calendar'  && <TabCalendar key={selected.id} propertyId={selected.id} userId={user.id} openTasks={checklistAlerts} onOpenTasks={()=>setNav('checklist')}/>}
               {/* ═══ Η ΒΡΑΧΥΧΡΟΝΙΑ ΣΤΕΚΕΤΑΙ ΜΟΝΗ ΤΗΣ ═══════════════════════════

@@ -30,7 +30,7 @@ import { mergeLedger } from '@/lib/expenses/ledger'
 import { contractOverview } from '@/lib/contracts/overview'
 import { useAppPreferences } from './useAppPreferences'
 import {
-  T, TT, Btn, SkeletonKPIs, Skeleton, EmptyState, KPIGrid, SecHdr, InfoBanner, fp, feOr, fd, type KPIItem,
+  T, TT, Btn, LinkBtn, SkeletonKPIs, Skeleton, EmptyState, KPIGrid, SecHdr, InfoBanner, fp, feOr, fd, type KPIItem,
 } from '@/components/Theme'
 import { FileText } from 'lucide-react'
 import {
@@ -117,13 +117,18 @@ function stepFitsProperty(key: string, prop: Property): boolean {
   return true;
 }
 
-export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, profileType = 'individual', legalForm = 'individual', startSlot }: { prop: Property;
+export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, profileType = 'individual', legalForm = 'individual', startSlot, agendaExclude }: { prop: Property;
   /**
    * Η λίστα «Από πού ξεκινάς», ΚΑΤΩ από το κεντρικό ποσό (13/11/2026). Ηταν
    * πάνω από όλα και στο τηλέφωνο έσπρωχνε τον φόρο του νέου χρήστη κάτω από
    * την πρώτη οθόνη: ο λόγος που ήρθε ήταν η μόνη πληροφορία που δεν φαινόταν.
    */
   startSlot?: React.ReactNode;
+  /**
+   * Θέματα της ατζέντας που καλύπτει ήδη η λίστα «Από πού ξεκινάς» όσο φαίνεται
+   * (`agendaCoveredByStart`, lib/home/start.ts): δεν ζητούνται δεύτερη φορά.
+   */
+  agendaExclude?: readonly string[];
   /** ΟΛΑ τα ακίνητα του χρήστη — χρειάζονται για τον φόρο: η κλίμακα των ενοικίων
    *  είναι προοδευτική στο σύνολο του φορολογούμενου, όχι ανά ακίνητο. */
   properties: Property[];
@@ -609,11 +614,21 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // που πληρώνεται (από την ίδια `enfiaYear` με τα στοιχεία του ακινήτου, δηλαδή
   // για νέο λογαριασμό το ποσό που έγραψε ο χρήστης) και από κάτω την επόμενη
   // δόση από το ημερολόγιο (lib/onboarding/firstTax.ts).
-  const enfiaNext = !rentedNow && properties.length === 1 ? enfiaDeadline(readStatus(prop), todayAthens) : null;
-  const enfiaHeroYear = enfiaNext ? (enfiaNext.year === year ? enfiaNow : enfiaYear(enfiaSettings, enfiaNext.year, enfiaFacts)) : null;
+  //
+  // Η ΔΟΣΗ ΑΠΟ ΤΟ ΠΟΣΟ (κριτική σχεδίασης r5): το πλήθος των δόσεων βγαίνει από το
+  // ετήσιο, με τουλάχιστον 10€ τη δόση· το ποσό της από την ίδια
+  // `enfiaInstalments` με την ατζέντα. Αν η επόμενη δόση είναι άλλου έτους, το
+  // ποσό ξαναδιαβάζεται για εκείνο το έτος.
+  const firstNonRented = !rentedNow && properties.length === 1;
+  const enfiaBase = firstNonRented ? enfiaDeadline(readStatus(prop), todayAthens, enfiaNow.annual) : null;
+  const enfiaHeroYear = enfiaBase ? (enfiaBase.year === year ? enfiaNow : enfiaYear(enfiaSettings, enfiaBase.year, enfiaFacts)) : null;
+  const enfiaNext = enfiaBase && enfiaHeroYear && enfiaHeroYear !== enfiaNow ? enfiaDeadline(readStatus(prop), todayAthens, enfiaHeroYear.annual) ?? enfiaBase : enfiaBase;
   const enfiaHero = !!enfiaHeroYear && enfiaHeroYear.annual > 0;
   const enfiaPaid = enfiaHeroYear?.annual ?? 0;
-  const firstHero = taxHero || enfiaHero;
+  // ΧΩΡΙΣ ΠΟΣΟ, Ο ΕΝΦΙΑ ΛΕΕΙ ΤΙ ΛΕΙΠΕΙ (κριτική σχεδίασης r5), όπως το «Λείπει το
+  // μίσθωμα»: όχι «Δαπάνες 0,00€» σε κάποιον που μόλις πέρασε το βήμα «ΕΝΦΙΑ».
+  const enfiaMissing = firstNonRented && !enfiaHero;
+  const firstHero = taxHero || enfiaHero || enfiaMissing;
   // ΜΙΣΟ ΣΥΝΟΛΟ ΔΙΑΒΑΖΕΤΑΙ ΣΑΝ ΟΛΟΚΛΗΡΟ. Αν δεν διαβάστηκε έστω μία περιοχή με
   // ποσά, κανένα σύνολο της οθόνης δεν είναι αληθινό: το κεντρικό ποσό γίνεται
   // «—», το Ταμείο και η ζώνη της χρονιάς κρύβονται και το PDF περιμένει.
@@ -833,7 +848,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       //
       // Η ατζέντα μένει για ό,τι ΔΕΝ είναι χρήματα μέσα-έξω: λήξεις μίσθωσης
       // και ασφάλισης, δηλώσεις, συντήρηση, βήματα ρύθμισης.
-      .filter(it => it.key !== 'bills');
+      .filter(it => it.key !== 'bills')
+      // ── ΟΣΑ ΖΗΤΑ ΗΔΗ Η ΛΙΣΤΑ «ΑΠΟ ΠΟΥ ΞΕΚΙΝΑΣ» (κριτική σχεδίασης r5) ──────
+      // Δύο λίστες στην ίδια οθόνη ζητούσαν τα ίδια δύο πράγματα με άλλα λόγια.
+      .filter(it => !agendaExclude?.includes(it.key));
   // Πέντε στην αρχική. Η πλήρης λίστα ζει στις «Εκκρεμότητες» — και η οθόνη το λέει.
   // Το ποσό της δόσης ΕΝΦΙΑ από τις ίδιες γραμμές με την κάρτα των 12 μηνών.
   const agenda = attachAmounts(agendaAll.slice(0, 5), forecast.months.flatMap(m => m.lines));
@@ -873,8 +891,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           κατάσταση, η ώρα Ελλάδας και η ενέργεια στη σειρά της. */}
       <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:16,flexWrap:'wrap',marginBottom:20}}>
         <div style={{minWidth:0}}>
-          <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-note)',color:'var(--text-secondary)'}}>{taxHero ? `Φόρος ενοικίων ${year}` : enfiaHero ? `ΕΝΦΙΑ ${enfiaNext?.year ?? year}` : heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
-          {rentMissing
+          <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-note)',color:'var(--text-secondary)'}}>{taxHero ? `Φόρος ενοικίων ${year}` : enfiaHero || enfiaMissing ? `ΕΝΦΙΑ ${enfiaNext?.year ?? year}` : heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
+          {enfiaMissing
+            ? <div style={{marginTop:4}}>
+                <LinkBtn className="po-tap-inline" onClick={()=>onNavigate('edit-enfia')}>Γράψε τον ΕΝΦΙΑ του εκκαθαριστικού</LinkBtn>
+              </div>
+            : rentMissing
             // ΜΙΣΘΩΣΗ ΧΩΡΙΣ ΠΟΣΟ ΔΕΝ ΔΕΙΧΝΕΙ ΜΗΔΕΝ ΣΑΝ ΝΑ ΗΤΑΝ ΦΟΡΟΣ: λέει τι λείπει
             // και ανοίγει την επεξεργασία στο μίσθωμα. Η αποθήκευση γυρίζει εδώ.
             ? <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',marginTop:4}}>
@@ -893,7 +915,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               υποσημείωση. ΟΧΙ ΣΤΗΝ ΠΡΩΤΗ ΕΠΙΣΚΟΠΗΣΗ (κριτική σχεδίασης r3): ο
               φόρος της κορυφής είναι εκτίμηση της χρονιάς, όχι ποσό «ως σήμερα»·
               η ώρα ήταν τέταρτη γραμμή χωρίς λόγο. */}
-          {enfiaHero && enfiaNext && !moneyGap && (
+          {enfiaHero && enfiaNext?.row && !moneyGap && (
+            // «9η δόση 26,66€ · 30/11/2026»: η δόση και το ποσό της, χωρίς δεύτερο «ΕΝΦΙΑ».
             <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext.row.title} · ${enfiaNext.row.date}`}</div>
           )}
           {!firstHero && <AthensNow style={{fontFamily:T.font.sans,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,minHeight:15}}/>}

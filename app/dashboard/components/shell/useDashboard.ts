@@ -109,7 +109,7 @@ export function useDashboard() {
   const [statusDropdown, setStatusDropdown] = useState(false);
   const [editProperty, setEditProperty] = useState<Property | null>(null);
   // Από πού άνοιξε ο οδηγός: η Λογιστική τον ανοίγει στο ΑΦΜ του ιδιοκτήτη.
-  const [editFocus, setEditFocus] = useState<'owner_afm' | 'rent' | 'basics' | null>(null);
+  const [editFocus, setEditFocus] = useState<'owner_afm' | 'rent' | 'basics' | 'enfia' | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);  // συρόμενο μενού σε κινητό/tablet
   // Η ΑΛΛΑΓΗ ΑΚΙΝΗΤΟΥ ΑΛΛΑΖΕΙ ΟΛΗ ΤΗΝ ΟΘΟΝΗ ΚΑΙ ΔΕΝ ΑΝΑΚΟΙΝΩΝΟΤΑΝ. Οποιος
   // διαβάζει με αναγνώστη οθόνης άκουγε σιωπή: τα δεδομένα κάτω από τα δάχτυλά

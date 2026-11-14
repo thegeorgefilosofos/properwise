@@ -56,6 +56,22 @@ export interface StartStep {
   cta: string;
   /** Δεν γίνεται ακόμη (π.χ. τα βασικά χωρίς ακίνητο): χωρίς κουμπί. */
   blocked?: boolean;
+  /**
+   * Το θέμα της ατζέντας («Τι χρειάζεται τώρα», lib/home/agenda.ts) που κάνει την
+   * ΙΔΙΑ δουλειά. Οσο η λίστα φαίνεται, η ατζέντα δεν το ξαναζητά με άλλα λόγια
+   * (κριτική σχεδίασης r5: «Λείπουν στοιχεία του ακινήτου» κάτω από «Τα βασικά
+   * του ακινήτου», «Ξεκίνα με μία φωτογραφία» κάτω από «Ένα παραστατικό»).
+   */
+  agendaKey?: string;
+}
+
+/**
+ * Τα θέματα της ατζέντας που καλύπτει ήδη η λίστα «Από πού ξεκινάς»: όσο φαίνεται,
+ * τα ανοιχτά της βήματα δεν επαναλαμβάνονται στο «Τι χρειάζεται τώρα».
+ */
+export function agendaCoveredByStart(state: StartPanelState): string[] {
+  if (!state.visible) return [];
+  return state.steps.filter(s => !s.done && s.agendaKey).map(s => s.agendaKey!);
 }
 
 export interface StartPanelState {
@@ -101,6 +117,7 @@ export function startSteps(sig: StartSignals): StartStep[] {
       nav: 'edit-basics',
       cta: 'Συμπλήρωση',
       blocked: !has,
+      agendaKey: 'setup:details',
     },
     {
       key: 'document',
@@ -109,6 +126,7 @@ export function startSteps(sig: StartSignals): StartStep[] {
       done: sig.documents > 0,
       nav: 'scan',
       cta: 'Σάρωση',
+      agendaKey: 'setup:expense',
     },
     {
       key: 'deadlines',

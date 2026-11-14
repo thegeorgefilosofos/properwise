@@ -393,7 +393,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
    * `owner_afm` ο οδηγός ανοίγει στα «Βασικά» με τις επαφές ανοιχτές και τον
    * κέρσορα στο ΑΦΜ, αντί ο χρήστης να ψάξει καρτέλες για να το βρει.
    */
-  focus?: 'owner_afm' | 'rent' | 'basics' | null;
+  focus?: 'owner_afm' | 'rent' | 'basics' | 'enfia' | null;
   /**
    * Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΩΣ ΠΡΩΤΗ ΕΠΙΛΟΓΗ. Ο πίνακας τη δίνει σε ΚΑΘΕ νέα
    * καταχώρηση, με ή χωρίς ακίνητα (απόφαση ιδιοκτήτη 10/11/2026· ως τις
@@ -476,8 +476,11 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // και η λίστα «Από πού ξεκινάς» στα «Βασικά», όχι στον τύπο.
   const focusRent = isEdit && focus === 'rent';
   const focusBasics = isEdit && focus === 'basics';
+  // Η Επισκόπηση του ακινήτου που δεν νοικιάζεται ζητά τον ΕΝΦΙΑ που λείπει: τα
+  // «Οικονομικά», με το πεδίο ορατό και τον δρομέα μέσα του.
+  const focusEnfia = isEdit && focus === 'enfia';
   const pages = isEdit ? EDIT_PAGES : NEW_PAGES;
-  const [step, setStep] = useState(focusAfm ? EDIT_PAGES.indexOf('basics') : focusRent ? EDIT_PAGES.indexOf('money') : focusBasics ? EDIT_PAGES.indexOf('basics') : draft?.step ?? 0);
+  const [step, setStep] = useState(focusAfm ? EDIT_PAGES.indexOf('basics') : focusRent || focusEnfia ? EDIT_PAGES.indexOf('money') : focusBasics ? EDIT_PAGES.indexOf('basics') : draft?.step ?? 0);
   const page = pages[Math.min(step, pages.length - 1)];
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -671,7 +674,8 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // ενοικίων… Δεν νοικιάζεται»). Τώρα γράφει «ΕΝΦΙΑ {έτος}», το ποσό που
   // πληκτρολογεί ο χρήστης και από κάτω την επόμενη δόση από το ημερολόγιο.
   const enfiaN = num(enfia);
-  const enfiaInfo = draftTax && !draftTax.rented ? enfiaDeadline(status, today) : null;
+  // Οι δόσεις από το ποσό που γράφεται (κριτική σχεδίασης r5): 60€ είναι έξι, όχι δώδεκα.
+  const enfiaInfo = draftTax && !draftTax.rented ? enfiaDeadline(status, today, enfiaN) : null;
   const draftRow = draftTax?.rented ? taxDeadlineRow(status, draftTax.year) : enfiaInfo?.row ?? null;
   const taxShown = !!draftTax && (draftTax.rented ? draftTax.annual > 0 : enfiaN != null && enfiaN > 0);
   // ΙΔΙΟ ΣΧΗΜΑ ΑΔΕΙΟ ΚΑΙ ΓΕΜΑΤΟ (κριτική σχεδίασης r3 και r4). Με το πρώτο
@@ -681,7 +685,15 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // της σημείωσης κρατά το ύψος της άδεια.
   const taxLabel = draftTax ? (draftTax.rented ? `Φόρος ενοικίων ${draftTax.year}` : enfiaInfo ? `ΕΝΦΙΑ ${enfiaInfo.year}` : 'ΕΝΦΙΑ') : '';
   const taxHint = draftTax?.rented ? 'Γράψε το μίσθωμα και ο φόρος βγαίνει εδώ.' : 'Γράψε τον ΕΝΦΙΑ του εκκαθαριστικού.';
-  const taxNote = !draftTax || !taxShown ? '' : draftTax.rented ? `Ενδεικτικά, για έσοδα ${fe(draftTax.annual)} τον χρόνο.` : 'Όπως γράφει το εκκαθαριστικό.';
+  // Η ΚΑΡΤΑ ΤΟΥ ΕΝΦΙΑ ΛΕΕΙ ΚΑΤΙ ΠΟΥ Ο ΧΡΗΣΤΗΣ ΔΕΝ ΕΓΡΑΨΕ (κριτική σχεδίασης r5): τη
+  // διαίρεση σε δόσεις, από την ίδια `enfiaInstalments` με την ατζέντα. Η
+  // οδηγία «Όπως γράφει το εκκαθαριστικό.» πήγε κάτω από το πεδίο, όπως στο μίσθωμα.
+  const enfiaSplit = enfiaInfo && enfiaInfo.count > 0
+    ? (enfiaInfo.count === 1 ? 'Σε μία δόση.'
+      : enfiaInfo.last === enfiaInfo.each ? `${enfiaInfo.count}\u00a0δόσεις των ${fe(enfiaInfo.each)}.`
+      : `${enfiaInfo.count}\u00a0δόσεις των ${fe(enfiaInfo.each)}, η τελευταία ${fe(enfiaInfo.last)}.`)
+    : '';
+  const taxNote = !draftTax || !taxShown ? '' : draftTax.rented ? `Ενδεικτικά, για έσοδα ${fe(draftTax.annual)} τον χρόνο.` : enfiaSplit;
   const rentTaxPreview = draftTax && (
     <section className="wiz-tax" aria-labelledby={taxLabelId}>
       <div id={taxLabelId} className="wiz-tax-label">{taxLabel}</div>
@@ -692,11 +704,15 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
         </div>
         <div className="wiz-tax-note">{taxNote}</div>
       </div>
-      {draftRow && (
+      {draftRow ? (
         <div className="wiz-tax-row">
           <span style={{ minWidth: 0 }}>{draftRow.title}</span>
           <span className="wiz-tax-date">{draftRow.date}</span>
         </div>
+      ) : !draftTax.rented && (
+        // ΧΩΡΙΣ ΠΟΣΟ, ΚΑΜΙΑ ΔΟΣΗ (κριτική σχεδίασης r5): το πλήθος βγαίνει από το
+        // ποσό, οπότε η γραμμή λέει μόνο αυτό. Κρατά και τη θέση της γραμμής.
+        <div className="wiz-tax-row" data-empty="">Οι δόσεις βγαίνουν από το ποσό.</div>
       )}
     </section>
   );
@@ -917,7 +933,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   const enfiaStep = !isEdit && statusKey !== null && !rentedNow;
   const placeMoney = (id: string): Placement => {
     if (enfiaStep && id === 'prop.rent') return 'hidden';
-    if (enfiaStep && id === 'prop.enfia') return 'core';
+    if ((enfiaStep || focusEnfia) && id === 'prop.enfia') return 'core';
     return id === 'prop.obj_value' && place(id) === 'core' ? 'more' : place(id);
   };
 
@@ -1328,7 +1344,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
                   με το «€» ως ήσυχη κατάληξη μέσα του. */}
               <div className="wiz-suffix">
                 <input style={{ ...numInputStyle, paddingRight: 36 }} type="number" min={0} inputMode="decimal" value={rent} onChange={e => setRent(e.target.value)} onFocus={onFocus} onBlur={onBlur}
-                  autoFocus={(!isEdit && !enfiaStep) || focusRent}
+                  autoFocus={(!isEdit && !enfiaStep) || (focusRent && !focusEnfia)}
                   onKeyDown={e => { if (e.key === 'Enter' && !isEdit) { e.preventDefault(); void save(); } }} />
                 <span aria-hidden>€</span>
               </div>
@@ -1368,13 +1384,15 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'Τιμή αγοράς (€)'),
             row('prop.purchase_date', 'auto',
               <DatePicker value={purchaseDate} onChange={setPurchaseDate} />),
-            row('prop.enfia', enfiaStep ? 'full' : 'auto',
+            row('prop.enfia', enfiaStep ? 'full' : 'auto', <>
               <div className="wiz-suffix">
                 <input style={{ ...numInputStyle, paddingRight: 36 }} type="number" min={0} inputMode="decimal" value={enfia} onChange={e => setEnfia(e.target.value)} onFocus={onFocus} onBlur={onBlur}
-                  autoFocus={enfiaStep}
+                  autoFocus={enfiaStep || focusEnfia}
                   onKeyDown={e => { if (e.key === 'Enter' && enfiaStep) { e.preventDefault(); void save(); } }} />
                 <span aria-hidden>€</span>
-              </div>, 'ΕΝΦΙΑ που πληρώνεις τον χρόνο'),
+              </div>
+              {enfiaStep && <div style={{ ...TT.caption, marginTop: 6 }}>Όπως γράφει το εκκαθαριστικό.</div>}
+            </>, 'ΕΝΦΙΑ που πληρώνεις τον χρόνο'),
             row('prop.ownership', 'auto',
               <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={ownership} onChange={e => setOwnership(e.target.value)} max={100} onFocus={onFocus} onBlur={onBlur} />, 'Ποσοστό ιδιοκτησίας (%)'),
           ]}

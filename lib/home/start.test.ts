@@ -3,7 +3,7 @@
 // Ο πίνακας υποδοχής είναι το πρώτο πράγμα που βλέπει ο νέος χρήστης και το
 // πρώτο που πρέπει να ΦΥΓΕΙ όταν τελειώσει η δουλειά του. Εδώ κλειδώνουν και τα
 // δύο: τι δείχνει και πότε παύει να δείχνεται.
-import { startSteps, startPanel, daysLabel, stepsLabel } from './start';
+import { startSteps, startPanel, daysLabel, stepsLabel, agendaCoveredByStart } from './start';
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
@@ -65,6 +65,12 @@ ok('το ακίνητο ΔΕΝ κλείνει το παραστατικό',
   ok('με όλα κλειστά, φεύγει', !done.visible);
   ok('και δεν μένει τίποτα ανοιχτό', done.open === 0);
 
+  // Η ΑΤΖΕΝΤΑ ΔΕΝ ΕΠΑΝΑΛΑΜΒΑΝΕΙ ΤΗ ΛΙΣΤΑ (κριτική σχεδίασης r5).
+  const first = startPanel({ properties: 1, documents: 0, calendarLinked: false, basicsDone: false, trialActive: true, daysLeft: 30 });
+  const covered = agendaCoveredByStart(first);
+  ok('η λίστα καλύπτει τα βασικά και το πρώτο παραστατικό της ατζέντας', covered.includes('setup:details') && covered.includes('setup:expense'));
+  ok('ό,τι έγινε δεν κρύβεται από την ατζέντα', !agendaCoveredByStart(startPanel({ properties: 1, documents: 1, calendarLinked: false, basicsDone: true, trialActive: true, daysLeft: 30 })).includes('setup:expense'));
+  ok('χωρίς λίστα, η ατζέντα μένει ολόκληρη', agendaCoveredByStart(done).length === 0);
   const expired = startPanel({ ...sig(), trialActive: false, daysLeft: 0 });
   ok('χωρίς δοκιμή, δεν φαίνεται ούτε με ανοιχτά βήματα', !expired.visible);
 

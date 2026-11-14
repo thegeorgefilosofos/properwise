@@ -21,7 +21,8 @@ import { readStatus, type PropertyStatus, type StatusRow } from '@/lib/property/
 import { taxProfileOfStatus } from '@/lib/facts/deadlines';
 import { greekPropertyTaxObligations, type TaxObligation } from '@/lib/tax/greekTaxCalendar';
 import { monthYearLabel } from '@/lib/core/months';
-import { grDate } from '@/lib/core/format';
+import { grDate, fe } from '@/lib/core/format';
+import { enfiaInstalmentCount, enfiaInstalments } from '@/lib/tools/enfiaSchedule';
 
 /** Οι στήλες του ακινήτου που χρειάζεται ο πρώτος φόρος. */
 export interface FirstTaxProperty extends StatusRow {
@@ -137,21 +138,61 @@ export function taxDeadlineRow(status: PropertyStatus, incomeYear: number): TaxD
 
 const ENFIA_DUE = new Set<TaxObligation['kind']>(['enfia-first', 'enfia-instalment', 'enfia-last']);
 
+/** Ο ΕΝΦΙΑ του έτους που πληρώνεται και η επόμενη δόση του, όταν το ποσό είναι γνωστό. */
+export interface EnfiaPlan {
+  year: number;
+  /** Η επόμενη δόση· `null` χωρίς ποσό, γιατί χωρίς ποσό δεν ξέρουμε πόσες δόσεις υπάρχουν. */
+  row: TaxDeadlineRow | null;
+  /** Πόσες δόσεις, το ποσό των πρώτων και της τελευταίας· 0 χωρίς ποσό. */
+  count: number;
+  each: number;
+  last: number;
+}
+
+/** «ΕΝΦΙΑ, 9η δόση» → «9η δόση»: ο τίτλος της κάρτας λέει ήδη «ΕΝΦΙΑ». */
+const enfiaShort = (title: string): string => {
+  const t = title.replace(/^ΕΝΦΙΑ,\s*/, '');
+  return t.charAt(0).toLocaleUpperCase('el') + t.slice(1);
+};
+
+/** Ο αριθμός της δόσης από το κλειδί του ημερολογίου (`enfia-instalment-2026-9` → 9). */
+const instalmentNo = (o: TaxObligation, count: number): number =>
+  o.kind === 'enfia-first' ? 1 : o.kind === 'enfia-last' ? count : Number(o.id.split('-').pop());
+
 /**
- * Ο ΕΝΦΙΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΠΟΥ ΔΕΝ ΝΟΙΚΙΑΖΕΤΑΙ (κριτική σχεδίασης r4). Για ιδιοχρησία
- * ή κενό, ο φόρος που υπάρχει είναι ο ΕΝΦΙΑ. Το έτος είναι το έτος του ΕΝΦΙΑ
- * που πληρώνεται τώρα: οι δόσεις του έτους Υ τρέχουν ως τον Φεβρουάριο του Υ+1,
- * οπότε τον Ιανουάριο του 2027 η επόμενη δόση είναι ακόμη του ΕΝΦΙΑ 2026. Αν
- * δεν μένει καμία δόση του τρέχοντος έτους, η επόμενη είναι του επόμενου.
- * Η ημερομηνία και ο τίτλος έρχονται από το ημερολόγιο· το ποσό το γράφει ο χρήστης.
+ * Ο ΕΝΦΙΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΠΟΥ ΔΕΝ ΝΟΙΚΙΑΖΕΤΑΙ (κριτική σχεδίασης r4 και r5). Για
+ * ιδιοχρησία ή κενό, ο φόρος που υπάρχει είναι ο ΕΝΦΙΑ.
+ *
+ * ΤΟ ΕΤΟΣ: του ΕΝΦΙΑ που πληρώνεται τώρα. Οι δόσεις του έτους Υ τρέχουν ως τον
+ * Φεβρουάριο του Υ+1, οπότε τον Ιανουάριο του 2027 η επόμενη δόση είναι ακόμη
+ * του ΕΝΦΙΑ 2026. Αν δεν μένει καμία δόση του τρέχοντος έτους, του επόμενου.
+ *
+ * ΟΙ ΔΟΣΕΙΣ: από το ποσό (r5). Ο νόμος θέλει τουλάχιστον 10€ τη δόση
+ * (`enfiaInstalmentCount`, lib/tools/enfiaSchedule.ts), οπότε 60€ είναι έξι
+ * δόσεις ως τον Αύγουστο. Χωρίς το πλήθος το ημερολόγιο υποθέτει δώδεκα και η
+ * γραμμή έλεγε «9η δόση 30/11/2026», πληρωμή που δεν υπάρχει. Το πλήθος
+ * περνά στο ημερολόγιο (`enfiaInstalments`), όπως το περνούν η ατζέντα και ο
+ * συγχρονισμός. Χωρίς ποσό δεν βγαίνει γραμμή δόσης καθόλου.
+ *
+ * ΤΟ ΠΟΣΟ ΤΗΣ ΔΟΣΗΣ: από την ίδια `enfiaInstalments` με την ατζέντα (οι πρώτες
+ * κόβονται προς τα κάτω στο λεπτό, η τελευταία παίρνει τη διαφορά).
  */
-export function enfiaDeadline(status: PropertyStatus, today: string): { year: number; row: TaxDeadlineRow } | null {
+export function enfiaDeadline(status: PropertyStatus, today: string, annual?: number | null): EnfiaPlan | null {
   const y = Number(today.slice(0, 4));
   if (!Number.isInteger(y)) return null;
   const profile = taxProfileOfStatus(status);
+  const total = typeof annual === 'number' && annual > 0 ? annual : 0;
+  const count = enfiaInstalmentCount(total);
   for (const year of [y - 1, y, y + 1]) {
-    const o = greekPropertyTaxObligations(year, profile).find(x => ENFIA_DUE.has(x.kind) && x.date >= today);
-    if (o) return { year, row: deadlineRowOf(o) };
+    const opts = count ? { enfiaInstalments: { [year]: count } } : {};
+    const o = greekPropertyTaxObligations(year, profile, opts).find(x => ENFIA_DUE.has(x.kind) && x.date >= today);
+    if (!o) continue;
+    if (!count) return { year, row: null, count: 0, each: 0, last: 0 };
+    const plan = enfiaInstalments(total, year, count);
+    const inst = plan[instalmentNo(o, plan.length) - 1];
+    const each = plan[0]?.amount ?? 0, last = plan[plan.length - 1]?.amount ?? 0;
+    const row = inst ? { id: o.id, title: `${enfiaShort(o.title)} ${fe(inst.amount)}`, date: deadlineDate(o) } : null;
+    return { year, row, count: plan.length, each, last };
   }
   return null;
 }

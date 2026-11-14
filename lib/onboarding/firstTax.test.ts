@@ -63,16 +63,28 @@ for (const st of ['rent_long', 'rent_short'] as const) {
 // ── Η ΑΚΡΙΒΕΙΑ ΤΗΣ ΗΜΕΡΟΜΗΝΙΑΣ (r4): του νόμου ολόκληρη, ανακοινώσιμη μόνο μήνας ──
 ok('προθεσμία του νόμου: ηη/μμ/εεεε', deadlineDate({ date: '2027-07-30', confidence: 'statutory' }) === '30/07/2027');
 ok('ανακοινώσιμη: «Ιούλιος 2027»', deadlineDate({ date: '2027-07-15', confidence: 'announced' }) === 'Ιούλιος 2027');
-// ── Ο ΕΝΦΙΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΠΟΥ ΔΕΝ ΝΟΙΚΙΑΖΕΤΑΙ (r4) ──
+// ── Ο ΕΝΦΙΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΠΟΥ ΔΕΝ ΝΟΙΚΙΑΖΕΤΑΙ (r4, r5) ──
 for (const day of ['2026-11-14', '2027-01-10', '2027-03-01', '2026-12-31']) {
-  const e = enfiaDeadline('own_use', day);
-  const pool = e ? greekPropertyTaxObligations(e.year, 'owner').filter(o => o.id === e.row.id) : [];
+  const e = enfiaDeadline('own_use', day, 320);
+  const pool = e && e.row ? greekPropertyTaxObligations(e.year, 'owner', { enfiaInstalments: { [e.year]: e.count } }).filter(o => o.id === e.row!.id) : [];
   ok(`ΕΝΦΙΑ (${day}): επόμενη δόση από το ημερολόγιο`, !!e && pool.length === 1 && pool[0].date >= day && /^enfia-(first|instalment|last)/.test(pool[0].id));
-  ok(`ΕΝΦΙΑ (${day}): η ημερομηνία στην ακρίβεια του ημερολογίου`, !!e && pool.length === 1 && e.row.date === deadlineDate(pool[0]));
+  ok(`ΕΝΦΙΑ (${day}): η ημερομηνία στην ακρίβεια του ημερολογίου`, !!e && pool.length === 1 && e.row!.date === deadlineDate(pool[0]));
 }
 {
-  const jan = enfiaDeadline('vacant', '2027-01-10');
+  const jan = enfiaDeadline('vacant', '2027-01-10', 320);
   ok('Ιανουάριος 2027: η δόση είναι ακόμη του ΕΝΦΙΑ 2026', !!jan && jan.year === 2026);
+  // ΠΛΗΘΟΣ ΔΟΣΕΩΝ ΑΠΟ ΤΟ ΠΟΣΟ: 60€ είναι έξι δόσεις (10€ η καθεμία), ως τον Αύγουστο.
+  const small = enfiaDeadline('own_use', '2026-11-14', 60);
+  ok('60€ στις 14/11/2026: ΟΧΙ η 9η δόση του 2026', !!small && small.row?.id !== 'enfia-instalment-2026-9' && small.count === 6);
+  ok('60€ στις 14/11/2026: η επόμενη είναι του 2027, σε ακρίβεια μήνα', !!small && small.year === 2027 && !!small.row && /^\S+ 2027$/.test(small.row.date));
+  ok('60€: έξι δόσεις των 10,00€', !!small && small.each === 10 && small.last === 10);
+  // Το ποσό της δόσης όπως το βγάζει η ατζέντα (enfiaInstalments): 320 / 12, κάτω στο λεπτό.
+  const big = enfiaDeadline('own_use', '2026-11-14', 320);
+  ok('320€ στις 14/11/2026: «9η δόση 26,66€», 30/11/2026', !!big && big.row?.title === '9η δόση 26,66€' && big.row?.date === '30/11/2026' && big.count === 12);
+  ok('320€: η τελευταία παίρνει τη διαφορά', !!big && big.each === 26.66 && Math.abs(big.each * 11 + big.last - 320) < 0.001);
+  // Χωρίς ποσό δεν υπάρχει γραμμή δόσης: δεν ξέρουμε πόσες είναι.
+  const none = enfiaDeadline('own_use', '2026-11-14');
+  ok('χωρίς ποσό: έτος, καμία δόση', !!none && none.year === 2026 && none.row === null && none.count === 0);
 }
 ok('ακίνητο που δεν νοικιάζεται: καμία γραμμή', taxDeadlineRow('own_use', 2026) === null && taxDeadlineRow('vacant', 2026) === null);
 

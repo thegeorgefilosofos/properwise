@@ -8244,9 +8244,14 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 /* Χωρίς ποσό ακόμη: η οδηγία κάθεται στη θέση του ποσού, στο ύψος του (όχι
    παύλα, όχι μηδέν, όχι μπάρα-σκελετός που διαβάζεται ως «φορτώνει»). */
 .wiz-tax-amount[data-empty] {
-  display: flex; align-items: flex-end; min-height: calc(28px * 1.2);
-  font-size: var(--fs-base); font-weight: 400; letter-spacing: 0; color: var(--text-tertiary);
+  /* Το ύψος του ποσού ΚΑΙ της σημείωσης μαζί (28 × 1,2, κενό 4, σημείωση): η
+     οδηγία κάθεται στο οπτικό κέντρο και η άδεια σημείωση δεν αφήνει κοιλότητα
+     από κάτω (κριτική σχεδίασης r5). */
+  display: flex; align-items: center; min-height: calc(28px * 1.2 + 4px + var(--fs-xs) * 1.4);
+  font-size: var(--fs-base); font-weight: 400; letter-spacing: 0; line-height: 1.4; color: var(--text-tertiary);
 }
+.wiz-tax-amount[data-empty] + .wiz-tax-note:empty { display: none; }
+.wiz-tax-row[data-empty] { color: var(--text-tertiary); }
 .wiz-tax-note { margin-top: 4px; min-height: calc(var(--fs-xs) * 1.4); font-size: var(--fs-xs); line-height: 1.4; color: var(--text-secondary); }
 .wiz-tax-row {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
@@ -8307,6 +8312,18 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
    του πλαισίου και του γεμίσματος), ώστε το κουμπί να μη σκεπάζει λέξεις. */
 @media (max-width: 360px) {
   :root:has(.pa-fab-wrap) .sp-text { padding-right: calc(var(--fab-lane, 64px) - 36px); }
+  /* Και τα ήσυχα κουμπιά κάτω από το κείμενό τους: στα 320 η δεξιά στήλη είναι
+     ακριβώς η λωρίδα της Νόας και το «Σάρωση» έπεφτε κάτω από το κουμπί της. */
+  :root:has(.pa-fab-wrap) .sp-row { flex-wrap: wrap; }
+  :root:has(.pa-fab-wrap) .sp-row .sp-cta[data-ghost] { flex-basis: 100%; align-self: flex-start; margin: -4px 0 0 calc(30px - var(--btn-pad-x)); }
+}
+
+/* Ο ΧΑΙΡΕΤΙΣΜΟΣ ΤΗΣ ΝΟΑΣ ΚΑΙ ΤΟ ΚΟΥΜΠΙ ΤΗΣ (κριτική σχεδίασης r5). Στην πρώτη
+   Επισκόπηση, με λίγες γραμμές στην ατζέντα, ο χαιρετισμός έπεφτε στο ύψος του
+   πλωτού «Ρώτα τη Νόα» και η δεξιά του άκρη χανόταν από κάτω. Στον υπολογιστή
+   το κείμενο αφήνει το πλάτος του κουμπιού (περίπου 170) και το περιθώριό του. */
+@media (min-width: 1025px) {
+  :root:has(.pa-fab-wrap) .as-greet { padding-right: 184px; }
 }
 
 /* Η «Σάρωσε έγγραφο» της κορυφής της Επισκόπησης, μόνο όσο η πλαϊνή μπάρα είναι

@@ -184,9 +184,14 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           Ο σύνδεσμος λέει πλέον πού πάει και δεν υπόσχεται πλήθος που δεν θα
           βρεθεί εκεί. Το πλήθος καθεαυτό δεν χάνεται: η ίδια η καρτέλα το λέει
           στον υπότιτλό της, όπου είναι και σωστό. */}
-      <button type="button" className="agenda-more" onClick={() => onNavigate('checklist')}>
-        {total > items.length ? 'Δες λοιπές εκκρεμότητες' : 'Όλες οι εκκρεμότητες'}
-      </button>
+      {/* ΤΟ ΚΟΥΜΠΙ ΕΧΕΙ ΤΟ ΠΛΑΤΟΣ ΤΟΥ ΛΕΚΤΙΚΟΥ ΤΟΥ (κριτική σχεδίασης r5). Σε όλο το
+          πλάτος, με μικρή λίστα, η δεξιά του άκρη καθόταν κάτω από το κουμπί της
+          Νόας: ένα πάτημα εκεί άνοιγε τη Νόα αντί για τις εκκρεμότητες. */}
+      <div className="agenda-foot">
+        <button type="button" className="agenda-more" onClick={() => onNavigate('checklist')}>
+          {total > items.length ? 'Δες λοιπές εκκρεμότητες' : 'Όλες οι εκκρεμότητες'}
+        </button>
+      </div>
       {footer}
 
       <style jsx>{`
@@ -312,9 +317,10 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
         }
         .agenda-cover:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
         .agenda-chev { color: var(--text-tertiary); flex: none; }
+        .agenda-foot { border-top: 1px solid var(--border-subtle); }
         .agenda-more {
-          display: block; width: 100%; text-align: left;
-          padding: 12px 18px; border: none; border-top: 1px solid var(--border-subtle);
+          display: inline-flex; align-items: center; min-height: 44px; text-align: left;
+          padding: 0 18px; border: none;
           background: transparent; cursor: pointer;
           font-family: ${T.font.sans}; font-size: 12px; font-weight: 600;
           color: var(--text-secondary);
