@@ -72,9 +72,9 @@ export default function BudgetImport({ propertyId, userId = '', cats = CATS, onI
       const text = isExcel ? await readSheetAsCsv(file) : await file.text();
       const parsed = parseCSV(text).filter(t => t.debit);   // μόνο έξοδα (όχι πιστώσεις/έσοδα)
       const mapped: Row[] = parsed.map(t => {
-        const r = importRow(t.category, t.matched);
+        const r = importRow(t.category, `${t.matched} ${t.description}`);
         const key = r.bucket || 'other', slug = r.slug || 'other';
-        return { id: t.id, date: t.date, description: t.description, amount: t.amount, catKey: key, slug, origKey: key, origSlug: slug, selected: r.bucket !== '' };
+        return { id: t.id, date: t.date, description: t.description, amount: t.amount, catKey: key, slug, origKey: key, origSlug: slug, selected: r.select };
       });
       // Ενα σφάλμα, χωρίς το αντιφατικό «0 εγγραφές αναγνωρίστηκαν» από κάτω.
       if (!mapped.length) { setErr('Δεν βρήκαμε δαπάνες στο αρχείο. Χρειάζονται στήλες ημερομηνίας, ποσού και περιγραφής.'); setRows(null); return; }

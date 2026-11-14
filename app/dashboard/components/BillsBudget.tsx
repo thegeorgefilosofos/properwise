@@ -367,10 +367,10 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       <div className="bud-cats-foot">
         {idle.length > 0 && (
           <button type="button" className="bud-textbtn" onClick={() => setShowIdle(v => !v)} aria-expanded={showIdle}>
-            {showIdle ? 'Λιγότερες' : `+${idle.length} χωρίς κινήσεις`}
+            {showIdle ? 'Λιγότερες κατηγορίες' : `Δείξε ${idle.length} χωρίς κινήσεις`}
           </button>
         )}
-        <button type="button" className="bud-textbtn bud-textbtn-accent" onClick={() => setAddOpen(true)}>Νέα κατηγορία</button>
+        <button type="button" className="bud-textbtn bud-textbtn-accent" onClick={() => setAddOpen(true)}>+ Νέα κατηγορία</button>
       </div>
     </Card>
   );
@@ -757,11 +757,12 @@ function BudgetStyles() {
       .bud-month { grid-area: month; }
       .bud-head > .bud-new { grid-area: new; justify-self: end; white-space: nowrap; }
       @media (min-width: 1024px) {
-        .bud-head { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "title month new"; column-gap: ${T.sp.xxl}px; }
+        .bud-head { grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "title month . new"; column-gap: ${T.sp.lg}px; }
       }
       .bud-m-short { display: none; }
       @media (max-width: 360px) { .bud-m-long { display: none; } .bud-m-short { display: inline; } }
-      .bud-textbtn { display: inline-flex; align-items: center; min-height: var(--h-sm); padding: 0; border: 0; background: none; color: var(--text-secondary); font: inherit; font-size: var(--fs-note); white-space: nowrap; cursor: pointer; transition: color 0.15s; }
+      .bud-textbtn { display: inline-flex; align-items: center; min-height: var(--h-sm); padding: 0; border: 0; background: none; color: var(--text-secondary); font: inherit; font-size: var(--fs-note); font-weight: 500; white-space: nowrap; cursor: pointer; transition: color 0.15s; }
+      .bud-cats-foot .bud-textbtn { font-weight: 600; }
       .bud-textbtn:hover { color: var(--text-primary); }
       .bud-textbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: ${T.radius.xs}px; }
       .bud-textbtn-accent { color: var(--accent); font-weight: 600; }
@@ -824,6 +825,9 @@ function BudgetStyles() {
       .bud-setting:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       .bud-assume { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: ${T.sp.md}px; margin-top: ${T.sp.md}px; padding-top: ${T.sp.md}px; border-top: 1px solid var(--border-subtle); }
       @media (max-width: 560px) { .bud-big { font-size: 28px; } }
+      /* ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ Η ΓΡΑΜΜΗ ΚΑΤΗΓΟΡΙΑΣ ΣΦΙΓΓΕΙ ΣΤΑ 64: οι δέκα κατηγορίες
+         χωρούν σε οθόνη 800 χωρίς κύλιση πριν από τις πρώτες επτά. */
+      @media (min-width: 1024px) { .bud-cat { padding-top: 8px; padding-bottom: 8px; } }
     `}</style>
   );
 }

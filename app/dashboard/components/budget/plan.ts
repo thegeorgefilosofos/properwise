@@ -88,8 +88,14 @@ export function orderCats<R extends CatRow>(rows: readonly R[]): { active: R[]; 
  * Ο συναγερμός (`security`) πάει πλέον στην «Ασφάλεια», όπως ορίζει το
  * λεξιλόγιο· όχι στις «Λοιπές» όπου τον έβαζε ο παλιός πίνακας.
  */
-export function importRow(parserCategory: string, matched = ''): { bucket: string; slug: string } {
-  if (parserCategory === 'rent_income') return { bucket: '', slug: '' };
+// `text`: η λέξη που έπιασε ο αναλυτής ΚΑΙ η περιγραφή. Ο αναλυτής κρατά την
+// πρώτη λέξη της λίστας του (ΑΑΔΕ πριν από ΕΝΦΙΑ), οπότε το «ΑΑΔΕ ΕΝΦΙΑ ΔΟΣΗ
+// 3/12» έβγαινε αταξινόμητο αν κοιτούσαμε μόνο εκείνη.
+// `select`: αν η γραμμή ξεκινά επιλεγμένη. Το έσοδο και ο φόρος ή η ασφάλιση
+// που δεν είναι ΕΝΦΙΑ (εισόδημα, ΕΦΚΑ) είναι προσωπικές εκροές, όχι δαπάνη του
+// ακινήτου: ξεκινούν ανεπίλεκτα και ο χρήστης τα προσθέτει αν θέλει.
+export function importRow(parserCategory: string, text = ''): { bucket: string; slug: string; select: boolean } {
+  if (parserCategory === 'rent_income') return { bucket: '', slug: '', select: false };
   // ΕΝΦΙΑ ΜΟΝΟ ΟΤΑΝ Η ΤΡΑΠΕΖΑ ΓΡΑΦΕΙ ΕΝΦΙΑ (επανέλεγχος PR 576). Ο αναλυτής
   // βάζει στο ίδιο «taxes» και ΑΑΔΕ, ΕΦΟΡΙΑ, ΕΦΚΑ, ΙΚΑ, ΤΕΒΕ. Γραμμένα ως
   // `enfia` έβγαιναν «ΕΝΦΙΑ» στις Δαπάνες και στη Λογιστική και μια πληρωμή
@@ -97,10 +103,10 @@ export function importRow(parserCategory: string, matched = ''): { bucket: strin
   // έσβηνε την υπενθύμιση. Οι υπόλοιπες μένουν αταξινόμητες στις «Λοιπές» και
   // διαλέγει ο χρήστης.
   if (parserCategory === 'taxes') {
-    return /ENFIA|ΕΝΦΙΑ/i.test(matched) ? { bucket: 'services', slug: 'enfia' } : { bucket: 'other', slug: 'other' };
+    return /ENFIA|ΕΝΦΙΑ/i.test(text) ? { bucket: 'services', slug: 'enfia', select: true } : { bucket: 'other', slug: 'other', select: false };
   }
   const slug = resolveCategory(parserCategory) ?? 'other';
-  return { bucket: budgetBucket(slug), slug };
+  return { bucket: budgetBucket(slug), slug, select: true };
 }
 
 /** Το όνομα που αποθηκεύεται από το πεδίο «Όνομα»: κομμένο, μη κενό, διαφορετικό. */

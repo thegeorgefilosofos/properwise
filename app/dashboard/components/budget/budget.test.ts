@@ -238,5 +238,25 @@ const src = (f: string) => readFileSync(join(here, f), 'utf8');
   ok('στο παράδειγμα καμία πραγματική δόση', /setLoanMonthly\(demoRef\.current \? 0 :/.test(hook));
 }
 
+// ═══ ΤΕΤΑΡΤΟΣ ΕΛΕΓΧΟΣ (γύρος 3 στο b57259b) ═══════════════════════════════════
+{
+  const row = importRow as unknown as (c: string, m?: string) => { bucket: string; slug: string; select?: boolean };
+  // N1b: ο αναλυτής κρατά την ΠΡΩΤΗ λέξη της λίστας του (ΑΑΔΕ πριν από ΕΝΦΙΑ).
+  // Η απόφαση διαβάζει όλη την περιγραφή.
+  eq('«ΑΑΔΕ ΕΝΦΙΑ ΔΟΣΗ 3/12» → enfia', row('taxes', 'ΑΑΔΕ ΕΝΦΙΑ ΔΟΣΗ 3/12').slug, 'enfia');
+  eq('«AADE ENFIA 2026» → enfia', row('taxes', 'AADE ENFIA 2026').slug, 'enfia');
+  const imp = src('BudgetImport.tsx');
+  ok('η εισαγωγή δίνει την περιγραφή στην απόφαση', /importRow\(t\.category,[^)]*t\.description/.test(imp));
+  // N8: φόρος ή ασφάλιση που δεν είναι ΕΝΦΙΑ ξεκινά ανεπίλεκτος.
+  eq('ΕΦΚΑ ξεκινά ανεπίλεκτο', row('taxes', 'ΕΦΚΑ ΕΙΣΦΟΡΕΣ').select, false);
+  eq('ΕΝΦΙΑ ξεκινά επιλεγμένο', row('taxes', 'ΠΛΗΡΩΜΗ ΕΝΦΙΑ').select, true);
+  eq('ρεύμα ξεκινά επιλεγμένο', row('electricity', 'ΔΕΗ').select, true);
+  eq('έσοδο ξεκινά ανεπίλεκτο', row('rent_income', '').select, false);
+  ok('η εισαγωγή σέβεται την πρόταση επιλογής', imp.includes('selected: r.select'));
+  // N7: το μήνυμα λέει αλήθεια και για δική σου κατηγορία.
+  const hook = src('budget/useBudget.ts');
+  ok('το μήνυμα ξεχωρίζει τη δική σου κατηγορία', hook.includes('μετρά στις «Λοιπές δαπάνες»'));
+}
+
 console.log(`budget: ${pass} πέρασαν, ${fail} απέτυχαν`);
 if (fail) process.exit(1);

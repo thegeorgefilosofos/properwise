@@ -643,10 +643,13 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
   const removeCategory = (key: string) => {
     const label = activeCats.find(c => c.key === key)?.label ?? 'Κατηγορία';
     const snapHidden = budgets.__hidden, snapCustom = budgets.__custom;   // στιγμιότυπο για αναίρεση
-    if (customCats.some(c => c.key === key)) persistCats({ __custom: JSON.stringify(customCats.filter(c => c.key !== key).map(c => ({ key: c.key, label: c.label }))) });
+    const isCustom = customCats.some(c => c.key === key);
+    if (isCustom) persistCats({ __custom: JSON.stringify(customCats.filter(c => c.key !== key).map(c => ({ key: c.key, label: c.label }))) });
     else persistCats({ __hidden: JSON.stringify([...hiddenKeys, key]) });
-    // Τα ποσά της δεν χάνονται: μετρούν στο «Ξόδεψες», στη γραμμή «Κρυμμένες κατηγορίες».
-    notify(`Η κατηγορία «${label}» αφαιρέθηκε. Ό,τι ξοδεύτηκε εκεί μετρά στις κρυμμένες.`, { duration: UNDO_MS, action: { label: 'Αναίρεση', onClick: () => persistCats({ __hidden: snapHidden ?? '[]', __custom: snapCustom ?? '[]' }) } });
+    // Τα ποσά της δεν χάνονται. Βασική κατηγορία: μετρούν στη γραμμή «Κρυμμένες
+    // κατηγορίες». Δική σου: χωρίς το κλειδί της, οι δαπάνες της γυρίζουν από το
+    // λεξιλόγιο στις «Λοιπές δαπάνες», οπότε το μήνυμα λέει εκείνο.
+    notify(`Η κατηγορία «${label}» αφαιρέθηκε. ${isCustom ? 'Ό,τι ξοδεύτηκε εκεί μετρά στις «Λοιπές δαπάνες».' : 'Ό,τι ξοδεύτηκε εκεί μετρά στις κρυμμένες.'}`, { duration: UNDO_MS, action: { label: 'Αναίρεση', onClick: () => persistCats({ __hidden: snapHidden ?? '[]', __custom: snapCustom ?? '[]' }) } });
   };
   const restoreCategory = (key: string) => persistCats({ __hidden: JSON.stringify(hiddenKeys.filter(k => k !== key)) });
 
