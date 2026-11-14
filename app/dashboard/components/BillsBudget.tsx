@@ -27,7 +27,7 @@ import { categoryStatus, type RecurringCharge } from '@/lib/billing/budget';
 import { parseLocalDate, PAYERS, type Props, type MonthItem } from './budget/model';
 import { MonthBars, Donut } from './budget/charts';
 import { useBudget } from './budget/useBudget';
-import { progress, yearly, orderCats, suggestTarget, nameToCommit, type Target } from './budget/plan';
+import { progress, yearly, orderCats, suggestTarget, nameToCommit, hiddenSpend, type Target } from './budget/plan';
 import { monthShort } from '@/lib/core/months';
 import { overdueWord, pendingWord, overWord, sumCents } from '@/lib/expenses/attention';
 import { STR_INDIVIDUAL_MAX_PROPERTIES } from '@/lib/billing/greekTax';
@@ -76,7 +76,7 @@ function CardHead({ title, info, right, level = 2 }: { title: string; info?: str
 export default function BillsBudget({ propertyId, userId = '', profileType = 'individual', onScan, onOpenLedger }: Props) {
   const b = useBudget({ propertyId, userId, profileType });
   const {
-    isPro, budgets, catMonth, actuals, overBudget, _curYm, income, loanMonthly, rentalMode, strNights, recurring, monthItems,
+    isPro, budgets, catMonth, overBudget, _curYm, income, loanMonthly, rentalMode, strNights, recurring, monthItems,
     invReturns, strPropCount, taxPctAuto, loading, saving,
     demoBusy, setMonthOffset, collapsed, toggleCollapse, updateBudget, labelOverrides, activeCats, hiddenBaseCats,
     catBudget, masterBudget, addCategory, removeCategory, restoreCategory, demoIds, demo, setDemo,
@@ -238,21 +238,22 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
         </div>
       )}
       {isCurMonth && (hasIncome || monthlyCost > 0) && (
+        // ΔΥΟ ΣΕΙΡΕΣ ΚΑΙ ΣΤΑ 320. Ετικέτα και ποσό στην πρώτη, η σύνθεση σε όλο
+        // το πλάτος από κάτω· πριν η ετικέτα και η σύνθεση στριμώχνονταν δίπλα
+        // στο ποσό και έπιαναν τέσσερις σειρές, με το ⓘ στη μέση του κειμένου.
         <div className="bud-hero-cash">
-          <div style={{ minWidth: 0 }}>
-            <div style={{ ...TT.bodySm, color: 'var(--text-primary)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              {hasIncome ? (isPro ? 'Διαθέσιμη ταμειακή ροή' : 'Διαθέσιμο μετά τις υποχρεώσεις') : 'Μηνιαίο κόστος ακινήτου'}
+            <div className="bud-cash-label" style={{ ...TT.bodySm, color: 'var(--text-primary)' }}>
+              {hasIncome ? (isPro ? 'Ταμειακή ροή του μήνα' : 'Διαθέσιμο του μήνα') : 'Μηνιαίο κόστος ακινήτου'}
               <InfoDot text={hasIncome
                 ? (waterfall ? 'Εισπράξεις μετά την προμήθεια και την εκτίμηση φόρου, μείον πάγια και δόση δανείου. Ενδεικτικό.' : 'Ενοίκιο του μήνα μείον πάγια και δόση δανείου, προ φόρου. Ενδεικτικό.')
                 : 'Τα πάγια του μήνα (ρεύμα, νερό, θέρμανση, τηλέφωνο, ασφάλεια, συνδρομές, κοινόχρηστα) και η δόση του δανείου.'} />
             </div>
-            <div style={{ ...TT.caption }}>
+            <div className="bud-cash-sub" style={{ ...TT.caption }}>
               {hasIncome
                 ? `${rentalMode === 'short_term' ? 'Εισπράξεις' : 'Ενοίκιο'} ${feAuto(income)}${parts.length ? ` μείον ${listOf(parts.map(p => `${p.l} ${feAuto(p.v)}`))}` : ''}`
                 : listOf(parts.map(p => `${p.l} ${feAuto(p.v)}`))}
             </div>
-          </div>
-          <span className="bud-num" style={{ ...TT.h2, fontFamily: T.font.num, color: hasIncome && safeRaw < 0 ? 'var(--negative)' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+          <span className="bud-num bud-cash-val" style={{ ...TT.h2, fontFamily: T.font.num, color: hasIncome && safeRaw < 0 ? 'var(--negative)' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>
             {feSigned(hasIncome ? safeRaw : monthlyCost)}
           </span>
         </div>
@@ -270,11 +271,13 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   // σημερινά· η υπέρβαση ακολουθούσε τον μήνα που κοιτάς και η κάρτα έδειχνε
   // σημερινές οφειλές δίπλα στην υπέρβαση του Οκτωβρίου. Μετρά πλέον κι αυτή
   // τον τρέχοντα μήνα και η κάρτα το λέει.
-  const overSum = sumCents(overBudget.map(c => (actuals[c.key] || 0) - (catBudget(c.key) ?? 0)));
-  const attnRows: { key: string; label: string; amount: number; tone: string; go: () => void }[] = [];
+  const attnRows: { key: string; label: string; amount: number | null; tone: string; go: () => void }[] = [];
   if (attention.overdue.n > 0) attnRows.push({ key: 'overdue', label: overdueWord(attention.overdue.n), amount: attention.overdue.sum, tone: 'var(--warning)', go: () => onOpenLedger?.({ kind: 'overdue' }) });
   if (attention.pending.n > 0) attnRows.push({ key: 'pending', label: pendingWord(attention.pending.n), amount: attention.pending.sum, tone: 'var(--text-tertiary)', go: () => onOpenLedger?.({ kind: 'pending' }) });
-  if (overBudget.length > 0) attnRows.push({ key: 'over', label: overWord(overBudget.length), amount: overSum, tone: 'var(--negative)',
+  // ΕΝΑΣ ΑΡΙΘΜΟΣ ΥΠΕΡΒΑΣΗΣ ΣΤΗΝ ΟΘΟΝΗ. Το άθροισμα των υπερβάσεων ανά κατηγορία
+  // (+251€) διαφωνούσε με την «Υπέρβαση 129,99€» της κάρτας από πάνω, που είναι
+  // σύνολο έναντι στόχου. Η γραμμή λέει μόνο πόσες· τα ποσά είναι στη λίστα.
+  if (overBudget.length > 0) attnRows.push({ key: 'over', label: overWord(overBudget.length), amount: null, tone: 'var(--negative)',
     go: () => onOpenLedger?.({ kind: 'buckets', buckets: overBudget.map(c => c.key), month: _curYm, label: overBudget.map(c => c.label).join(', ') }) });
   const strWarn = !isPro && strPropCount >= STR_BUSINESS_FROM;
   const attentionBlock = (attnRows.length > 0 || strWarn) ? (
@@ -288,7 +291,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
                 <button type="button" className="bud-row" onClick={r.go} disabled={!onOpenLedger}>
                   <span aria-hidden="true" className="bud-dot" style={{ background: r.tone }} />
                   <span className="bud-row-label">{r.label}</span>
-                  <span className="bud-row-amt bud-num">{r.key === 'over' ? `+${feAuto(r.amount)}` : feAuto(r.amount)}</span>
+                  <span className="bud-row-amt bud-num">{r.amount != null ? feAuto(r.amount) : ''}</span>
                   <span className="bud-row-chev" aria-hidden="true"><Chevron size={16} /></span>
                 </button>
               </li>
@@ -306,10 +309,13 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   ) : null;
 
   // ── 4. ΟΙ ΚΑΤΗΓΟΡΙΕΣ, ΠΑΝΤΑ ΑΝΟΙΧΤΕΣ ───────────────────────────────────────
-  // Κρυμμένη κατηγορία με κίνηση τον μήνα μένει στη λίστα: τα λεφτά δεν κρύβονται
-  // και η λίστα αθροίζει στο «Ξόδεψες».
-  const shownCats = [...activeCats, ...hiddenBaseCats.filter(c => (viewActuals[c.key] || 0) > 0).map(c => ({ key: c.key, label: labelOverrides[c.key] ?? c.label }))];
-  const rows = shownCats.map(c => {
+  // ΟΙ ΚΡΥΜΜΕΝΕΣ ΣΕ ΜΙΑ ΗΣΥΧΗ ΓΡΑΜΜΗ (επανέλεγχος PR 576). Η απόκρυψη αφορά τη
+  // γραμμή και τον στόχο· τα χρήματα όμως ξοδεύτηκαν. Ό,τι ανήκει σε κρυμμένη
+  // ή αφαιρεμένη κατηγορία μαζεύεται σε μία γραμμή χωρίς στόχο και χωρίς
+  // ράβδο, ώστε η λίστα να αθροίζει στο «Ξόδεψες». Ο στόχος του μήνα και το
+  // πλήθος των υπερβάσεων μετρούν μόνο τις ορατές κατηγορίες.
+  const hiddenSum = hiddenSpend(viewActuals, activeCats.map(c => c.key));
+  const rows = activeCats.map(c => {
     const actual = viewActuals[c.key] || 0;
     const target = catBudget(c.key);
     const projectedOver = isCurMonth && target != null && target > 0 && !isOverCat(c.key, actual)
@@ -350,6 +356,12 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
       <ul className="bud-cats">
         {active.map(catRow)}
         {showIdle && idle.map(catRow)}
+        {hiddenSum > 0.004 && (
+          <li className="bud-hidden-row">
+            <span>Κρυμμένες κατηγορίες</span>
+            <span className="bud-num">{feAuto(hiddenSum)}</span>
+          </li>
+        )}
       </ul>
       {active.length === 0 && !showIdle && <p style={{ ...TT.bodySm, margin: 0 }}>Καμία κίνηση αυτόν τον μήνα.</p>}
       <div className="bud-cats-foot">
@@ -364,8 +376,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   );
 
   // ── Η ΚΑΤΗΓΟΡΙΑ ΣΕ ΦΥΛΛΟ ────────────────────────────────────────────────────
-  const sheetCat = sheetKey ? shownCats.find(c => c.key === sheetKey) ?? null : null;
-  const sheetHidden = !!sheetKey && hiddenBaseCats.some(c => c.key === sheetKey);
+  const sheetCat = sheetKey ? activeCats.find(c => c.key === sheetKey) ?? null : null;
   // ΤΟ ΟΝΟΜΑ ΓΡΑΦΕΤΑΙ ΣΕ ΠΡΟΣΧΕΔΙΟ (ανασκόπηση PR 576). Αποθηκευόταν σε κάθε
   // πλήκτρο, κομμένο: το κενό μετά από λέξη χανόταν και το «Θέρμανση σπιτιού»
   // δεν γραφόταν ποτέ. Αποθηκεύεται στην έξοδο από το πεδίο ή στο «Τέλος».
@@ -388,9 +399,7 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
           {/* Η ΑΦΑΙΡΕΣΗ ΛΕΕΙ ΤΙ ΑΦΑΙΡΕΙ, ΜΕ ΚΟΚΚΙΝΟ, ΜΑΚΡΙΑ ΑΠΟ ΤΟ «ΤΕΛΟΣ». Δεν
               ρωτά: η αναίρεση έρχεται με το μήνυμα (removeCategory). */}
           <span className="bud-sheet-danger">
-            {sheetHidden
-              ? <LinkBtn onClick={() => { setNameDraft(null); setSheetKey(null); restoreCategory(key); }}>Επαναφορά κατηγορίας</LinkBtn>
-              : <LinkBtn tone="danger" onClick={() => { setNameDraft(null); setSheetKey(null); removeCategory(key); }}>Αφαίρεση κατηγορίας</LinkBtn>}
+            <button type="button" className="bud-textbtn bud-textbtn-danger" onClick={() => { setNameDraft(null); setSheetKey(null); removeCategory(key); }}>Αφαίρεση κατηγορίας</button>
           </span>
           <Btn variant="primary" onClick={closeSheet}>Τέλος</Btn>
         </>}>
@@ -756,9 +765,12 @@ function BudgetStyles() {
       .bud-textbtn:hover { color: var(--text-primary); }
       .bud-textbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: ${T.radius.xs}px; }
       .bud-textbtn-accent { color: var(--accent); font-weight: 600; }
+      .bud-textbtn-danger, .bud-textbtn-danger:hover { color: var(--negative); font-weight: 600; }
+      .bud-hidden-row { display: flex; justify-content: space-between; align-items: center; gap: ${T.sp.md}px; min-height: 48px; padding-right: 28px; font-size: var(--fs-base); color: var(--text-tertiary); }
       .bud-textbtn-accent:hover { color: var(--accent); text-decoration: underline; }
       .bud-sheet-danger { margin-right: auto; display: inline-flex; align-items: center; }
-      .bud-month { display: flex; align-items: center; gap: ${T.sp.xs}px; min-width: 0; margin-left: calc(19px - var(--h-sm) / 2); }
+      .bud-month { display: flex; align-items: center; gap: ${T.sp.xs}px; min-width: 0; margin-left: calc(2px - var(--h-sm) / 2); }
+      @media (min-width: 1024px) { .bud-month { margin-left: 0; } }
       .bud-month-label { padding: 0 ${T.sp.xs}px; white-space: nowrap; font-size: var(--fs-base); font-weight: 600; color: var(--text-primary); }
       .bud-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: ${T.sp.lg}px; align-items: start; }
       @media (min-width: 1024px) { .bud-grid { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: ${T.sp.xxl}px; } }
@@ -773,7 +785,10 @@ function BudgetStyles() {
       .bud-bar > span { display: block; height: 100%; border-radius: inherit; transition: width 0.5s ease; }
       .bud-bar-lg { height: 8px; border-radius: ${T.radius.pill}px; margin: ${T.sp.md}px 0 ${T.sp.sm}px; }
       .bud-hero-cap { display: flex; justify-content: space-between; gap: ${T.sp.md}px; flex-wrap: wrap; font-size: var(--fs-xs); color: var(--text-tertiary); line-height: 1.45; }
-      .bud-hero-cash { display: flex; align-items: center; justify-content: space-between; gap: ${T.sp.md}px; margin-top: ${T.sp.lg}px; padding-top: ${T.sp.md}px; border-top: 1px solid var(--border-subtle); }
+      .bud-hero-cash { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: ${T.sp.md}px; row-gap: 2px; align-items: center; margin-top: ${T.sp.lg}px; padding-top: ${T.sp.md}px; border-top: 1px solid var(--border-subtle); }
+      .bud-cash-label { grid-column: 1; grid-row: 1; display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+      .bud-cash-val { grid-column: 2; grid-row: 1; }
+      .bud-cash-sub { grid-column: 1 / -1; grid-row: 2; }
       .bud-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
       .bud-cats, .bud-list, .bud-items { list-style: none; margin: 0; padding: 0; }
       .bud-cat { display: grid; grid-template-columns: minmax(0, 1fr) auto 16px; grid-template-rows: auto 16px auto; column-gap: ${T.sp.md}px; row-gap: 6px; align-items: center; width: calc(100% + 16px); margin: 0 -8px; padding: 10px 8px; min-height: 56px; border: 0; border-radius: ${T.radius.inner}px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background 0.15s; }

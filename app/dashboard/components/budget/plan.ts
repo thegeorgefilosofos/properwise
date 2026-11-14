@@ -88,10 +88,18 @@ export function orderCats<R extends CatRow>(rows: readonly R[]): { active: R[]; 
  * Ο συναγερμός (`security`) πάει πλέον στην «Ασφάλεια», όπως ορίζει το
  * λεξιλόγιο· όχι στις «Λοιπές» όπου τον έβαζε ο παλιός πίνακας.
  */
-export function importRow(parserCategory: string): { bucket: string; slug: string } {
+export function importRow(parserCategory: string, matched = ''): { bucket: string; slug: string } {
   if (parserCategory === 'rent_income') return { bucket: '', slug: '' };
-  // Οι φόροι της τράπεζας (ΑΑΔΕ, ΕΝΦΙΑ, ΕΦΚΑ) είναι τα επίσημα του Προϋπολογισμού.
-  const slug = parserCategory === 'taxes' ? 'enfia' : (resolveCategory(parserCategory) ?? 'other');
+  // ΕΝΦΙΑ ΜΟΝΟ ΟΤΑΝ Η ΤΡΑΠΕΖΑ ΓΡΑΦΕΙ ΕΝΦΙΑ (επανέλεγχος PR 576). Ο αναλυτής
+  // βάζει στο ίδιο «taxes» και ΑΑΔΕ, ΕΦΟΡΙΑ, ΕΦΚΑ, ΙΚΑ, ΤΕΒΕ. Γραμμένα ως
+  // `enfia` έβγαιναν «ΕΝΦΙΑ» στις Δαπάνες και στη Λογιστική και μια πληρωμή
+  // ΕΦΚΑ ίδιου ποσού μετρούσε ως πληρωμένη δόση ΕΝΦΙΑ (payDuplicate), δηλαδή
+  // έσβηνε την υπενθύμιση. Οι υπόλοιπες μένουν αταξινόμητες στις «Λοιπές» και
+  // διαλέγει ο χρήστης.
+  if (parserCategory === 'taxes') {
+    return /ENFIA|ΕΝΦΙΑ/i.test(matched) ? { bucket: 'services', slug: 'enfia' } : { bucket: 'other', slug: 'other' };
+  }
+  const slug = resolveCategory(parserCategory) ?? 'other';
   return { bucket: budgetBucket(slug), slug };
 }
 
@@ -108,6 +116,10 @@ export function nameToCommit(draft: string, current: string): string | null {
  */
 export const spentTotal = (byBucket: Record<string, number>): number =>
   sumCents(Object.values(byBucket).map(v => Number(v) || 0));
+
+/** Ο,τι ξοδεύτηκε σε κουβάδες που δεν είναι ορατές κατηγορίες: μία γραμμή, χωρίς στόχο. */
+export const hiddenSpend = (byBucket: Record<string, number>, visible: readonly string[]): number =>
+  sumCents(Object.entries(byBucket).filter(([k]) => !visible.includes(k)).map(([, v]) => Number(v) || 0));
 
 /**
  * ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΖΕΙ ΜΟΝΟ ΣΤΗ ΜΝΗΜΗ. Το «Δείξε μου» έγραφε οκτώ πραγματικές

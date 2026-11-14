@@ -14,7 +14,6 @@ import * as loanStore from '@/lib/data/loans'
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings'
 import * as stayStore from '@/lib/data/stays'
-import * as billStore from '@/lib/data/bills'
 import * as tenantStore from '@/lib/data/tenants'
 import * as expenses from '@/lib/data/expenses'
 import * as calendar from '@/lib/data/calendar'
@@ -179,8 +178,6 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       const dateEnd = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;      // τέλος τρέχοντος μήνα
       // Ιστορικό 13 μηνών (τρέχων + 12 πίσω) για πρόβλεψη/ετήσια εικόνα/τάσεις.
       const histStart = `${ymOf(new Date(y, now.getMonth() - 12, 1))}-01`;
-      // Παράθυρο ανάγνωσης λογαριασμών: έναν χρόνο πιο πίσω από το ιστορικό.
-      const wideStart = `${ymOf(new Date(y, now.getMonth() - 24, 1))}-01`;
       // Αρχή τρέχουσας εβδομάδας (Δευτέρα) — για το εβδομαδιαίο εργαλείο (σωστό και στα όρια μήνα).
       const dow       = (now.getDay() + 6) % 7;   // Δευτέρα = 0
       const weekStartD = new Date(y, now.getMonth(), now.getDate() - dow);
@@ -198,26 +195,25 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       // ΤΩΡΑ: μία ανάγνωση, συγχώνευση από τον ίδιο πυρήνα που τροφοδοτεί την
       // οθόνη Δαπάνες και τα τρία παράθυρα κόβονται από την ίδια λίστα. Ό,τι
       // δείχνουν οι Δαπάνες, αθροίζει ο Προϋπολογισμός.
-      const [budgetRead, settRes, billsRead, expRead, attnRead] = await Promise.all([
+      // ── ΜΙΑ ΑΝΑΓΝΩΣΗ ΚΑΘΟΛΙΚΟΥ, Η ΙΔΙΑ ΜΕ ΤΙΣ ΔΑΠΑΝΕΣ (επανέλεγχος PR 576) ──
+      // Ηταν τρεις: λογαριασμοί 24 μηνών, δαπάνες 12 μηνών χωρίς φίλτρο χρήστη
+      // και με τα έξοδα ενοικιαστή· μετά όλο το ιστορικό ξανά για τα τσιπ,
+      // σε κάθε φόρτωση και σε κάθε γεγονός πραγματικού χρόνου. Τώρα μία, η
+      // `ledgerSource` (όλο το ιστορικό, μόνο του χρήστη, χωρίς έξοδα
+      // ενοικιαστή): τα παράθυρα κόβονται από αυτήν με την ημερομηνία που ΜΕΤΡΑ
+      // μετά τη συγχώνευση· τα τσιπ μετρούν ακριβώς ό,τι δείχνουν οι Δαπάνες.
+      const [budgetRead, settRes, src] = await Promise.all([
         settings.sectionWithError(supabase, propertyId, 'budgets', userId),
         settings.sections(supabase, propertyId, ['providers','insurance','services','common'], userId),
-        // Ευρύτερο παράθυρο κατά έναν χρόνο: η ημερομηνία που ΜΕΤΡΑ για έναν
-        // λογαριασμό (πληρωμή ή λήξη) δεν είναι το created_at, οπότε ένας
-        // λογαριασμός καταχωρημένος νωρίτερα μπορεί να ανήκει μέσα στο παράθυρο.
-        // Το τελικό κόψιμο γίνεται μετά τη συγχώνευση, όπου η ημερομηνία είναι μία.
-        billStore.ofPropertyWithError(supabase, propertyId, billStore.LEDGER_COLUMNS, userId, { since: wideStart }),
-        expenses.ledgerWithError(supabase, propertyId, { from: histStart }),
-        // ΤΑ ΤΣΙΠ ΜΕΤΡΟΥΝ ΤΗΝ ΙΔΙΑ ΛΙΣΤΑ ΠΟΥ ΑΝΟΙΓΟΥΝ: ίδια ανάγνωση με τις Δαπάνες
-        // (όλο το ιστορικό, μόνο του χρήστη, χωρίς τα έξοδα ενοικιαστή).
         ledgerSource(supabase, propertyId, userId),
       ]);
-      // ΤΡΕΙΣ ΑΝΑΓΝΩΣΕΙΣ ΠΟΥ ΑΝ ΛΕΙΨΟΥΝ, ΤΑ ΝΟΥΜΕΡΑ ΕΙΝΑΙ ΨΕΜΑ. Οποια αποτύχει,
+      // ΔΥΟ ΑΝΑΓΝΩΣΕΙΣ ΠΟΥ ΑΝ ΛΕΙΨΟΥΝ, ΤΑ ΝΟΥΜΕΡΑ ΕΙΝΑΙ ΨΕΜΑ. Οποια αποτύχει,
       // η οθόνη δείχνει σφάλμα με «Δοκίμασε ξανά» και ΚΑΝΕΝΑ μηδενικό.
-      if (anyFailed([budgetRead, billsRead, expRead, attnRead])) { setLoadError(true); return; }
+      if (anyFailed([budgetRead, src])) { setLoadError(true); return; }
       setLoadError(false);
       const budgetRes = demoRef.current ? DEMO_TARGETS : budgetRead.data;
-      const allBillsRes = demoRef.current ? [] : billsRead.rows;
-      const allExpRes = demoRef.current ? demoRows(now) : expRead.rows;
+      const allBillsRes = demoRef.current ? [] : src.bills;
+      const allExpRes = demoRef.current ? demoRows(now) : src.expenses;
 
       // ── Έσοδα + δεσμευμένες εκροές (για το «Ασφαλές διαθέσιμο») ──
       const [propRes, loansRes, tenantsRes, staysRes, yearRentsRes, yearStaysRes] = await Promise.all([
@@ -263,10 +259,13 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
         // ήδη μόνο όσους δεν έχουν φύγει, με τον ίδιο ορισμό σε κάθε οθόνη.
         inc = leaseMonthly > 0 ? leaseMonthly : (Number(propRes?.target_rent) || 0);
       }
-      setIncome(Math.round(inc));
+      // ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΔΕΝ ΔΕΙΧΝΕΙ ΤΟ ΠΡΑΓΜΑΤΙΚΟ ΕΝΟΙΚΙΟ ΚΑΙ ΤΗ ΔΟΣΗ. Ανακατεμένα με
+      // δαπάνες-δείγματα έβγαζαν ένα «διαθέσιμο» που δεν ήταν κανενός.
+      setIncome(demoRef.current ? 0 : Math.round(inc));
       // Έσοδα από την αρχή του έτους: βραχυχρόνια → πραγματικά καταλύματα YTD· μακροχρόνια
       // → αναμενόμενο ενοίκιο × μήνες που πέρασαν (δεν καταγράφουμε εισπράξεις εδώ).
-      if (rMode === 'short_term') setIncomeYtd(Math.round(staysAll.reduce((s, st) => s + stayGross(st), 0)));
+      if (demoRef.current) setIncomeYtd(0);
+      else if (rMode === 'short_term') setIncomeYtd(Math.round(staysAll.reduce((s, st) => s + stayGross(st), 0)));
       else if (rMode === 'long_term') setIncomeYtd(Math.round(inc * (now.getMonth() + 1)));
       else setIncomeYtd(0);
       // Δόση δανείου: ζωντανός υπολογισμός από ενεργά δάνεια (όχι διπλομέτρηση).
@@ -282,7 +281,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       // Επισκόπηση, από την ίδια συνάρτηση, «922,30€». Η στρογγυλοποίηση ανήκει
       // στην εμφάνιση, που ήδη γράφει δύο δεκαδικά.
       const loanM = loansInstalmentTotal(activeLoans);
-      setLoanMonthly(loanM);
+      setLoanMonthly(demoRef.current ? 0 : loanM);
 
       // Κλειδιά προσαρμοσμένων κατηγοριών (c_*): αν μια δαπάνη έχει αποθηκευτεί σε custom
       // κατηγορία, την προσμετράμε εκεί (αλλιώς θα «έπεφτε» στις Λοιπές δαπάνες).
@@ -331,7 +330,7 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
         e.group === 'maintenance' ? 'maintenance' : catOf(e.category);
 
       setAttention(demoRef.current ? { overdue: { n: 0, sum: 0 }, pending: { n: 0, sum: 0 } }
-        : attentionOf(mergeLedger(attnRead.bills, attnRead.expenses).entries, athensToday()));
+        : attentionOf(ledger, athensToday()));
       const inWindow = ledger.filter(e => e.date >= histStart && e.date <= dateEnd);
       const monthRows = inWindow.filter(e => e.date >= start);
       const weekRows = inWindow.filter(e => e.date >= weekStart);
@@ -409,7 +408,8 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
       // και όχι το (μηδενισμένο από την εξαίρεση) billActuals.
       const recorded = new Set<string>(monthRows.map(bucketOf));
 
-      const getSett = (sec: settings.Section) => settRes[sec];
+      // Οι εκτιμήσεις παρόχων είναι του πραγματικού ακινήτου: όχι στο παράδειγμα.
+      const getSett = (sec: settings.Section) => (demoRef.current ? undefined : settRes[sec]);
       const prov = getSett('providers');
       if (prov) {
         if (!recorded.has('internet')) billActuals.internet = (parseFloat(String(prov.internetPrice)) || 0) + (prov.hasTV ? parseFloat(String(prov.tvPrice)) || 0 : 0);
@@ -645,7 +645,8 @@ export function useBudget({ propertyId, userId = '', profileType = 'individual' 
     const snapHidden = budgets.__hidden, snapCustom = budgets.__custom;   // στιγμιότυπο για αναίρεση
     if (customCats.some(c => c.key === key)) persistCats({ __custom: JSON.stringify(customCats.filter(c => c.key !== key).map(c => ({ key: c.key, label: c.label }))) });
     else persistCats({ __hidden: JSON.stringify([...hiddenKeys, key]) });
-    notify(`Η κατηγορία «${label}» αφαιρέθηκε`, { duration: UNDO_MS, action: { label: 'Αναίρεση', onClick: () => persistCats({ __hidden: snapHidden ?? '[]', __custom: snapCustom ?? '[]' }) } });
+    // Τα ποσά της δεν χάνονται: μετρούν στο «Ξόδεψες», στη γραμμή «Κρυμμένες κατηγορίες».
+    notify(`Η κατηγορία «${label}» αφαιρέθηκε. Ό,τι ξοδεύτηκε εκεί μετρά στις κρυμμένες.`, { duration: UNDO_MS, action: { label: 'Αναίρεση', onClick: () => persistCats({ __hidden: snapHidden ?? '[]', __custom: snapCustom ?? '[]' }) } });
   };
   const restoreCategory = (key: string) => persistCats({ __hidden: JSON.stringify(hiddenKeys.filter(k => k !== key)) });
 

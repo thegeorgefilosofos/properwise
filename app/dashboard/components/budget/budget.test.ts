@@ -21,6 +21,7 @@ import { CATS } from './model';
 import * as tax from '@/lib/expenses/taxonomy';
 const { BUDGET_BUCKETS, BY_SLUG, resolveCategory, budgetBucket } = tax;
 const bucketSlug: (b: string) => string = (tax as Record<string, unknown>).bucketSlug as never ?? ((b: string) => b);
+import { hasMatchingInstalment } from '@/lib/reminders/payDuplicate';
 import { attentionOf, matchesLedgerFilter, sumCents, overdueWord, pendingWord, overWord } from '@/lib/expenses/attention';
 
 let pass = 0, fail = 0;
@@ -48,8 +49,10 @@ const src = (f: string) => readFileSync(join(here, f), 'utf8');
 // ── 2. ΑΠΟΤΥΧΗΜΕΝΗ ΦΟΡΤΩΣΗ ΔΕΝ ΕΙΝΑΙ ΑΔΕΙΟΣ ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ ────────────────────
 {
   const hook = src('budget/useBudget.ts');
-  ok('δαπάνες με ορατό σφάλμα', hook.includes('expenses.ledgerWithError('));
-  ok('λογαριασμοί με ορατό σφάλμα', hook.includes('billStore.ofPropertyWithError('));
+  // Η ανάγνωση του καθολικού ζει πλέον στο lib/data/ledgerSource (επανέλεγχος PR 576).
+  const srcFile = readFileSync(join(process.cwd(), 'lib/data/ledgerSource.ts'), 'utf8');
+  ok('δαπάνες με ορατό σφάλμα', hook.includes('ledgerSource(') && srcFile.includes('expenseStore.ledgerWithError('));
+  ok('λογαριασμοί με ορατό σφάλμα', srcFile.includes('billStore.ofPropertyWithError'));
   ok('στόχοι με ορατό σφάλμα', hook.includes('settings.sectionWithError('));
   ok('το σφάλμα γίνεται κατάσταση', /setLoadError\(true\)/.test(hook));
   eq('ένα σφάλμα αρκεί', anyFailed([{ error: null }, { error: { message: 'x' } }]), true);
@@ -63,7 +66,7 @@ const src = (f: string) => readFileSync(join(here, f), 'utf8');
   eq('streaming → Συνδρομές', importBucket('streaming'), 'subscriptions');
   eq('gas → Θέρμανση', importBucket('gas'), 'heating');
   eq('plumber → Επισκευές', importBucket('plumber'), 'maintenance');
-  eq('taxes → Υπηρεσίες', importBucket('taxes'), 'services');
+  eq('φόρος χωρίς λέξη ΕΝΦΙΑ → αταξινόμητος', importBucket('taxes'), 'other');
   eq('έσοδο → όχι δαπάνη', importBucket('rent_income'), '');
   const imp = src('BudgetImport.tsx');
   ok('η εισαγωγή δεν έχει δικό της πίνακα', !/streaming:\s*'insurance'/.test(imp) && imp.includes('importRow('));
@@ -153,7 +156,7 @@ const src = (f: string) => readFileSync(join(here, f), 'utf8');
 // ── R3. Η ΑΦΑΙΡΕΣΗ ΛΕΕΙ ΤΙ ΑΦΑΙΡΕΙ ΚΑΙ ΜΟΙΑΖΕΙ ΕΠΙΚΙΝΔΥΝΗ ──────────────────────
 {
   const ui = src('BillsBudget.tsx');
-  ok('«Αφαίρεση κατηγορίας» με κόκκινο μελάνι', /tone="danger"[^\n]{0,200}>Αφαίρεση κατηγορίας</.test(ui));
+  ok('«Αφαίρεση κατηγορίας» με κόκκινο μελάνι', /bud-textbtn-danger[^\n]{0,200}>Αφαίρεση κατηγορίας</.test(ui));
   ok('η αναίρεση μένει', src('budget/useBudget.ts').includes("label: 'Αναίρεση'"));
 }
 
@@ -170,9 +173,10 @@ const src = (f: string) => readFileSync(join(here, f), 'utf8');
     ok(`«${pc}» γράφει κατηγορία του λεξιλογίου (${r.slug})`, resolveCategory(r.slug) === r.slug);
     eq(`«${pc}» γυρίζει στον ίδιο κουβά`, budgetBucket(r.slug), r.bucket);
   }
-  for (const b of BUDGET_BUCKETS) {
+  for (const b of BUDGET_BUCKETS.filter(x => x.key !== 'services')) {
     eq(`ο κουβάς «${b.key}» γράφεται ως κατηγορία που γυρίζει σε αυτόν`, budgetBucket(bucketSlug(b.key)), b.key);
   }
+  eq('οι «Υπηρεσίες και ΕΝΦΙΑ» δεν μαντεύουν κατηγορία', bucketSlug('services'), 'other');
   ok('ποτέ «services» στη βάση', importRow('taxes').slug !== 'services' && bucketSlug('services') !== 'services');
   eq('το έσοδο δεν εισάγεται', importRow('rent_income').bucket, '');
 }
@@ -183,6 +187,55 @@ const src = (f: string) => readFileSync(join(here, f), 'utf8');
 {
   eq('το σύνολο μετρά κάθε κουβά', spentTotal({ water: 31, heating: 180, c_x: 10.5 }), 221.5);
   ok('το useBudget δεν αθροίζει μόνο τις ορατές κατηγορίες', /viewActualTotal\s*=\s*spentTotal\(/.test(src('budget/useBudget.ts')));
+}
+
+// ═══ ΤΡΙΤΟΣ ΕΛΕΓΧΟΣ (επανέλεγχος στο ebd4cef) ═════════════════════════════════
+// Γραμμένα πριν από τις διορθώσεις: απέτυχαν πάνω στο ebd4cef.
+
+// ── N1. ΕΝΦΙΑ ΜΟΝΟ ΟΤΑΝ ΕΙΝΑΙ ΕΝΦΙΑ ─────────────────────────────────────────────
+{
+  const row = (cat: string, matched: string) => (importRow as unknown as (c: string, m?: string) => { bucket: string; slug: string })(cat, matched);
+  eq('ΕΝΦΙΑ από την τράπεζα → enfia', row('taxes', 'ΕΝΦΙΑ').slug, 'enfia');
+  eq('ENFIA από την τράπεζα → enfia', row('taxes', 'ENFIA').slug, 'enfia');
+  for (const kw of ['ΑΑΔΕ', 'AADE', 'ΕΦΟΡΙΑ ΑΘΗΝΩΝ', 'ΔΗΜΟΣΙΑ ΕΣΟΔΑ', 'ΕΦΚΑ', 'ΙΚΑ', 'ΤΕΒΕ']) {
+    const r = row('taxes', kw);
+    ok(`«${kw}» δεν γράφεται ΕΝΦΙΑ (${r.slug})`, resolveCategory(r.slug) !== 'enfia');
+    ok(`«${kw}» δεν γράφεται ως εκπιπτόμενο`, !tax.isDeductible(r.slug));
+  }
+  const efka = row('taxes', 'ΕΦΚΑ');
+  ok('πληρωμή ΕΦΚΑ δεν σβήνει την υπενθύμιση ΕΝΦΙΑ',
+    !hasMatchingInstalment([{ amount: 120, date: '2026-11-10', category: efka.slug }], 120, '2026-11-12'));
+  ok('η χειροκίνητη επιλογή κουβά δεν γράφει ποτέ ΕΝΦΙΑ', BUDGET_BUCKETS.every(b => resolveCategory(bucketSlug(b.key)) !== 'enfia'));
+}
+
+// ── N2. ΟΙ ΚΡΥΜΜΕΝΕΣ ΣΕ ΜΙΑ ΗΣΥΧΗ ΓΡΑΜΜΗ ──────────────────────────────────────
+{
+  const split = (plan as Record<string, unknown>).hiddenSpend as ((a: Record<string, number>, keys: string[]) => number) | undefined;
+  eq('ό,τι δεν είναι ορατή κατηγορία πάει στις κρυμμένες', split?.({ water: 31, heating: 180, c_x: 10.5 }, ['water']), 190.5);
+  const ui = src('BillsBudget.tsx');
+  ok('η λίστα έχει γραμμή «Κρυμμένες κατηγορίες»', ui.includes('Κρυμμένες κατηγορίες'));
+  ok('η κρυμμένη κατηγορία δεν ξαναμπαίνει ως κανονική γραμμή', !/\.\.\.hiddenBaseCats\.filter/.test(ui));
+  ok('το μήνυμα λέει πού πήγαν τα ποσά', /κρυμμέν/.test(src('budget/useBudget.ts').split('removeCategory')[1]?.slice(0, 900) ?? ''));
+}
+
+// ── N3. ΜΙΑ ΑΝΑΓΝΩΣΗ ΚΑΘΟΛΙΚΟΥ, ΟΧΙ ΤΡΕΙΣ ────────────────────────────────────────
+{
+  const hook = src('budget/useBudget.ts');
+  ok('χωρίς δεύτερη ανάγνωση δαπανών', !hook.includes('expenses.ledgerWithError('));
+  ok('χωρίς δεύτερη ανάγνωση λογαριασμών', !hook.includes('billStore.ofPropertyWithError('));
+  eq('μία κλήση στην κοινή ανάγνωση', (hook.match(/ledgerSource\(/g) || []).length, 1);
+}
+
+// ── N4. ΕΝΑΣ ΑΡΙΘΜΟΣ ΥΠΕΡΒΑΣΗΣ ΣΤΗΝ ΠΡΩΤΗ ΟΘΟΝΗ ─────────────────────────────────
+{
+  ok('η γραμμή υπέρβασης δεν έχει δικό της ποσό', /key: 'over'[^\n]*amount: null/.test(src('BillsBudget.tsx')));
+}
+
+// ── N6. ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΔΕΝ ΔΕΙΧΝΕΙ ΤΟ ΠΡΑΓΜΑΤΙΚΟ ΕΝΟΙΚΙΟ ─────────────────────────
+{
+  const hook = src('budget/useBudget.ts');
+  ok('στο παράδειγμα κανένα πραγματικό έσοδο', /setIncome\(demoRef\.current \? 0 :/.test(hook));
+  ok('στο παράδειγμα καμία πραγματική δόση', /setLoanMonthly\(demoRef\.current \? 0 :/.test(hook));
 }
 
 console.log(`budget: ${pass} πέρασαν, ${fail} απέτυχαν`);

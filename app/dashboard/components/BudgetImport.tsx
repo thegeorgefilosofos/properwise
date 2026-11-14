@@ -26,7 +26,8 @@ import { bucketSlug } from '@/lib/expenses/taxonomy';
 // από το κοινό λεξιλόγιο (`importRow` → `resolveCategory` και `budgetBucket`).
 
 // `catKey` είναι ο κουβάς της λίστας· `slug` η κατηγορία του λεξιλογίου που γράφεται στη βάση.
-interface Row { id: string; date: string; description: string; amount: number; catKey: string; slug: string; selected: boolean }
+// `origKey`/`origSlug`: ό,τι αναγνώρισε ο αναλυτής, ώστε η επιστροφή στον ίδιο κουβά να κρατά την ίδια κατηγορία.
+interface Row { id: string; date: string; description: string; amount: number; catKey: string; slug: string; origKey: string; origSlug: string; selected: boolean }
 
 interface Props {
   propertyId: string;
@@ -51,7 +52,10 @@ export default function BudgetImport({ propertyId, userId = '', cats = CATS, onI
   const [err, setErr] = useState('');
   const [fileName, setFileName] = useState('');
 
-  const catOptions = cats.map(c => ({ value: c.key, label: c.label }));
+  // Οι «Υπηρεσίες και ΕΝΦΙΑ» προσφέρονται ΜΟΝΟ σε γραμμή που ο αναλυτής ήδη
+  // αναγνώρισε εκεί (ΕΝΦΙΑ, δημοτικά): η επιλογή κουβά δεν μαντεύει φόρο.
+  const catOptions = cats.filter(c => c.key !== 'services').map(c => ({ value: c.key, label: c.label }));
+  const optionsFor = (r: Row) => r.origKey === 'services' ? cats.map(c => ({ value: c.key, label: c.label })) : catOptions;
   // ΕΝΑ ΠΑΤΗΜΑ ΛΙΓΟΤΕΡΟ. Το «Κινήσεις τράπεζας» και μετά «Διάλεξε αρχείο»
   // ζητούσαν δύο φορές το ίδιο. Η επιλογή ανοίγει μέσα στο ίδιο άγγιγμα· αν ο
   // περιηγητής την αρνηθεί, το κουμπί από κάτω μένει.
@@ -68,8 +72,9 @@ export default function BudgetImport({ propertyId, userId = '', cats = CATS, onI
       const text = isExcel ? await readSheetAsCsv(file) : await file.text();
       const parsed = parseCSV(text).filter(t => t.debit);   // μόνο έξοδα (όχι πιστώσεις/έσοδα)
       const mapped: Row[] = parsed.map(t => {
-        const r = importRow(t.category);
-        return { id: t.id, date: t.date, description: t.description, amount: t.amount, catKey: r.bucket || 'other', slug: r.slug || 'other', selected: r.bucket !== '' };
+        const r = importRow(t.category, t.matched);
+        const key = r.bucket || 'other', slug = r.slug || 'other';
+        return { id: t.id, date: t.date, description: t.description, amount: t.amount, catKey: key, slug, origKey: key, origSlug: slug, selected: r.bucket !== '' };
       });
       // Ενα σφάλμα, χωρίς το αντιφατικό «0 εγγραφές αναγνωρίστηκαν» από κάτω.
       if (!mapped.length) { setErr('Δεν βρήκαμε δαπάνες στο αρχείο. Χρειάζονται στήλες ημερομηνίας, ποσού και περιγραφής.'); setRows(null); return; }
@@ -163,7 +168,7 @@ export default function BudgetImport({ propertyId, userId = '', cats = CATS, onI
                 <span className="bud-imp-date" style={{ ...TT.caption, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{dmy(r.date) || 'Χωρίς ημερομηνία'}</span>
                 <span className="bud-imp-desc" style={{ ...TT.bodySm, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{r.description}</span>
                 <div className="bud-imp-cat" style={{ minWidth: 0 }}>
-                  <CustomSelect ariaLabel={`Κατηγορία για «${r.description}»`} value={r.catKey} onChange={v => setRows(rs => rs!.map(x => x.id === r.id ? { ...x, catKey: v, slug: bucketSlug(v) } : x))} options={catOptions} />
+                  <CustomSelect ariaLabel={`Κατηγορία για «${r.description}»`} value={r.catKey} onChange={v => setRows(rs => rs!.map(x => x.id === r.id ? { ...x, catKey: v, slug: v === x.origKey ? x.origSlug : bucketSlug(v) } : x))} options={optionsFor(r)} />
                 </div>
                 <span className="bud-imp-amt" style={{ ...TT.bodySm, fontWeight: 700, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', textAlign: 'right', whiteSpace: 'nowrap' }}>{feAuto(r.amount)}</span>
               </div>

@@ -287,11 +287,18 @@ export const BUDGET_BUCKETS: readonly { key: BudgetBucket; label: string }[] = [
  * «services» δεν είναι κατηγορία του λεξιλογίου: ο ΕΝΦΙΑ από την τράπεζα
  * προσγειωνόταν στις «Λοιπές δαπάνες» και οι Δαπάνες έγραφαν «services».
  * Κάθε κουβάς έχει εδώ μία αντιπροσωπευτική κατηγορία που γυρίζει πάντα σε
- * αυτόν (`budgetBucket(bucketSlug(b)) === b`, τεστ στο budget.test.ts).
+ * αυτόν (`budgetBucket(bucketSlug(b)) === b`, τεστ στο budget.test.ts),
+ * εκτός από τις «Υπηρεσίες και ΕΝΦΙΑ» (βλ. από κάτω).
  */
-const BUCKET_SLUG: Record<BudgetBucket, string> = {
+//
+// ΟΙ «ΥΠΗΡΕΣΙΕΣ ΚΑΙ ΕΝΦΙΑ» ΔΕΝ ΕΧΟΥΝ ΑΝΤΙΠΡΟΣΩΠΟ. Κάθε κατηγορία της οικογένειας
+// είναι συγκεκριμένη (ΕΝΦΙΑ, δημοτικά, συμβολαιογράφος, μηχανικός), με δικό
+// της φορολογικό νόημα. Μια επιλογή κουβά δεν ξέρει ποια είναι, οπότε δεν
+// γράφει καμία: πέφτει στο «other» και ο κουβάς αυτός δεν προσφέρεται για
+// χειροκίνητη επιλογή στην εισαγωγή.
+const BUCKET_SLUG: Partial<Record<BudgetBucket, string>> = {
   electricity: 'electricity', water: 'water', internet: 'internet', heating: 'heating',
-  insurance: 'insurance', subscriptions: 'subscription', services: 'enfia', common: 'common',
+  insurance: 'insurance', subscriptions: 'subscription', common: 'common',
   maintenance: 'repair', other: 'other',
 };
-export const bucketSlug = (bucket: string): string => BUCKET_SLUG[bucket as BudgetBucket] ?? bucket;
+export const bucketSlug = (bucket: string): string => BUCKET_SLUG[bucket as BudgetBucket] ?? 'other';
