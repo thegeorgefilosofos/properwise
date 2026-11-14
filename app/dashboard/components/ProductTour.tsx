@@ -62,7 +62,7 @@ export default function ProductTour({ onDone }: Props) {
 
   const step = steps[i];
   const last = i === steps.length - 1;
-  // Στενή κάρτα (320, στήλη της πλαϊνής μπάρας): «×» αντί για λεκτικό, χωρίς κουκκίδες.
+  // Στενή κάρτα (320, στήλη της πλαϊνής μπάρας): το «Πίσω» ως βέλος.
   const compact = !!pos && pos.width < 300;
 
   // Η περιήγηση κυλά τη σελίδα ως τους στόχους της. Στο τέλος ο χρήστης
@@ -159,7 +159,7 @@ export default function ProductTour({ onDone }: Props) {
       )}
 
       <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" data-keeps-fab={step.id === 'assistant' ? '' : undefined} aria-labelledby={titleId} aria-describedby={bodyId}
-        className="ob-tour-card"
+        className="ob-tour-card" data-compact={compact ? '' : undefined}
         style={{ ...(pos ? { top: pos.top, left: pos.left, width: pos.width } : { visibility: 'hidden' }), '--modal-r': `${T.radius.modal}px` } as unknown as React.CSSProperties}>
         {/* Το βέλος δείχνει το κέντρο του στόχου, στην ακμή που τον κοιτά. */}
         {pos && <span className="ob-caret" data-edge={pos.caret.edge} aria-hidden
@@ -170,24 +170,26 @@ export default function ProductTour({ onDone }: Props) {
           <span className="sr-only">{`Βήμα ${i + 1} από ${steps.length}. `}</span>
           <div className="ob-tour-head">
             <h2 id={titleId} style={{ ...TT.h2, margin: 0 }}>{step.title}</h2>
-            {/* ΣΤΗ ΣΤΕΝΗ ΚΑΡΤΑ Η «ΠΑΡΑΛΕΙΨΗ» ΓΙΝΕΤΑΙ «×» (κριτική σχεδίασης r3): στα
-                320 και στη στήλη της πλαϊνής μπάρας το λεκτικό έσπαγε τον τίτλο
-                σε δύο γραμμές. Το όνομα για τον αναγνώστη οθόνης μένει ίδιο. */}
-            {compact
-              ? <IconBtn label="Παράλειψη" size="md" className="ob-tour-skip-ico" onClick={dismiss}>
-                  <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                </IconBtn>
-              : <Btn variant="ghost" className="ob-tour-skip" onClick={dismiss}>Παράλειψη</Btn>}
+            {/* ΜΙΑ ΚΑΡΤΑ ΣΕ ΚΑΘΕ ΒΗΜΑ ΚΑΙ ΚΑΘΕ ΠΛΑΤΟΣ (κριτική σχεδίασης r4): η
+                «Παράλειψη» είναι πάντα «×» με το ίδιο όνομα για τον αναγνώστη
+                οθόνης. Πριν, η κάρτα άλλαζε ανατομία από βήμα σε βήμα. */}
+            <IconBtn label="Παράλειψη" size="md" className="ob-tour-skip-ico" onClick={dismiss}>
+              <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </IconBtn>
           </div>
           <p id={bodyId} style={{ ...TT.bodySm, margin: `${T.sp.sm}px 0 0` }}>{step.body}</p>
         </div>
         <div className="ob-tour-foot">
-          {/* Οι κουκκίδες μόνο όπου χωρούν· στη στενή κάρτα η πρόοδος ακούγεται
-              (`sr-only`) και τα δύο κουμπιά κρατούν τη σειρά τους. */}
+          {/* Οι κουκκίδες πάντα: το «1 από 3» φαίνεται και στο πρώτο βήμα. Στη
+              στενή κάρτα το «Πίσω» γίνεται βέλος με το ίδιο όνομα, ώστε να χωρούν. */}
           <div className="ob-dots" aria-hidden>
-            {!compact && steps.map((s, k) => <span key={s.id} className={k === i ? 'on' : undefined} />)}
+            {steps.map((s, k) => <span key={s.id} className={k === i ? 'on' : undefined} />)}
           </div>
-          {i > 0 && <Btn variant="ghost" onClick={() => setI(i - 1)}>Πίσω</Btn>}
+          {i > 0 && (compact
+            ? <IconBtn label="Πίσω" size="md" onClick={() => setI(i - 1)}>
+                <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+              </IconBtn>
+            : <Btn variant="ghost" onClick={() => setI(i - 1)}>Πίσω</Btn>)}
           {/* Σταθερό ελάχιστο πλάτος: «Επόμενο» και «Τέλος» δεν μετακινούν το «Πίσω». */}
           <Btn variant="primary" className="ob-tour-next" onClick={() => (last ? onDone('finished') : setI(i + 1))}>{last ? 'Τέλος' : 'Επόμενο'}</Btn>
         </div>

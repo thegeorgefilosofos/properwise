@@ -26,7 +26,7 @@ import { PEA_CLASSES } from '@/lib/property/pea';
 import { cleanPeaNumber, isoDay, peaReminderDrafts, PEA_NUMBER_MAX, PEA_REMINDER_DAYS } from '@/lib/property/peaExpiry';
 import { syncPeaReminders } from '@/lib/calendar/peaSync';
 import { athensToday } from '@/lib/core/time';
-import { firstTaxOf, taxDeadlineRow } from '@/lib/onboarding/firstTax';
+import { firstTaxOf, taxDeadlineRow, enfiaDeadline } from '@/lib/onboarding/firstTax';
 import { stepLabels, PRIMARY_TYPES, MORE_TYPES, PRIMARY_STATUSES, MORE_STATUSES, typeNeedsMore, statusNeedsMore, defaultPropertyName } from '@/lib/onboarding/steps';
 import type { EnfiaWizardInitial } from '@/lib/tools/enfiaCarry';
 import { draftKey, readDraft, writeDraft, clearDraft, sameDraft, restoreDraft } from '@/lib/ui/dismiss';
@@ -100,7 +100,7 @@ const EDIT_PAGES: readonly Page[] = ['type', 'basics', 'money'];
 const NEW_PAGES: readonly Page[] = ['type', 'money'];
 
 /** Μια γραμμή φόρμας: ποιο πεδίο είναι, πόσο πλάτος πιάνει και το χειριστήριό του. */
-interface FormRow { id: string; span: 'auto' | 'full'; node: React.ReactNode; label?: string }
+interface FormRow { id: string; span: 'auto' | 'full'; node: React.ReactNode; label?: string; group?: string }
 
 /** Η ετικέτα όπως τη γράφει το μητρώο. Αγνωστο id → το ίδιο το id, ώστε να φαίνεται. */
 const labelOf = (id: string) => PROPERTY_FIELDS.find(f => f.id === id)?.label ?? id;
@@ -289,8 +289,10 @@ const grid3: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repe
  * περνά τη δική της, γιατί το μητρώο κρατά τον ΛΟΓΟ του πεδίου και όχι τη
  * διατύπωση της στιγμής.
  */
-const row = (id: string, span: 'auto' | 'full', node: React.ReactNode, label?: string): FormRow =>
-  ({ id, span, node, label });
+const row = (id: string, span: 'auto' | 'full', node: React.ReactNode, label?: string, group?: string): FormRow =>
+  ({ id, span, node, label, group });
+/** Οι επαφές μέσα στο ίδιο «Περισσότερα» με τα στοιχεία του ακινήτου, με δικό τους υπότιτλο. */
+const CONTACTS = 'Επαφές';
 
 /**
  * Το σώμα ενός βήματος: ό,τι χρειάζεται τώρα και από κάτω ένα κουμπί για ό,τι
@@ -308,7 +310,7 @@ const row = (id: string, span: 'auto' | 'full', node: React.ReactNode, label?: s
  * έχανε το κουτί που έγραφε. Το `react-hooks/static-components` το είπε και
  * είχε δίκιο.
  */
-function StepBody({ rows, place, after, moreTitle = 'Περισσότερα στοιχεία', lessTitle = 'Λιγότερα στοιχεία', defaultOpen = false }: {
+function StepBody({ rows, place, after, moreTitle = 'Περισσότερα στοιχεία', lessTitle = 'Λιγότερα στοιχεία', defaultOpen = false, groupTitle = 'Ακίνητο' }: {
   rows: FormRow[];
   place: (id: string) => Placement;
   after?: React.ReactNode;
@@ -318,6 +320,8 @@ function StepBody({ rows, place, after, moreTitle = 'Περισσότερα στ
   lessTitle?: string;
   /** Ανοιχτό από την αρχή: όταν ο οδηγός ανοίγει για να γραφτεί ακριβώς κάτι από μέσα. */
   defaultOpen?: boolean;
+  /** Ο υπότιτλος των γραμμών χωρίς δική τους ομάδα, όταν το ανοιχτό κουτί έχει δύο ομάδες. */
+  groupTitle?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const core = rows.filter(r => place(r.id) === 'core');
@@ -356,7 +360,19 @@ function StepBody({ rows, place, after, moreTitle = 'Περισσότερα στ
             <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}><path d="m9 18 6-6-6-6" /></svg>
             <span>{open ? lessTitle : `${moreTitle} (${more.length})`}</span>
           </button>
-          {open && <div style={grid2}>{more.map(cell)}</div>}
+          {/* ΔΥΟ ΥΠΟΤΙΤΛΟΙ ΟΤΑΝ ΤΟ ΚΟΥΤΙ ΑΝΟΙΞΕΙ (κριτική σχεδίασης r4). Δεκαεπτά πεδία
+              σε ένα πλέγμα γίνονταν συρτάρι με ό,τι να 'ναι· τώρα «Ακίνητο» και
+              «Επαφές», ίδια σειρά με το μητρώο μέσα σε κάθε ομάδα. */}
+          {open && (() => {
+            const names = [...new Set(more.map(r => r.group ?? groupTitle))];
+            if (names.length < 2) return <div style={grid2}>{more.map(cell)}</div>;
+            return names.map(n => (
+              <div key={n} className="wiz-more-group">
+                <div className="wiz-more-head">{n}</div>
+                <div style={grid2}>{more.filter(r => (r.group ?? groupTitle) === n).map(cell)}</div>
+              </div>
+            ));
+          })()}
         </>
       )}
     </div>
@@ -649,33 +665,37 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // ποσό είναι ο φόρος των ενοικίων του `draftTax.year`· η γραμμή είναι η
   // δήλωση που τον φορολογεί, τον επόμενο χρόνο, με την ετικέτα βεβαιότητας
   // του ημερολογίου. Ίδια συνάρτηση με την υποδοχή (`taxDeadlineRow`).
-  const draftRow = draftTax?.rented ? taxDeadlineRow(status, draftTax.year) : null;
-  const taxShown = !!draftTax && draftTax.rented && draftTax.annual > 0;
-  // ΙΔΙΟ ΣΧΗΜΑ ΑΔΕΙΟ ΚΑΙ ΓΕΜΑΤΟ (κριτική σχεδίασης r3). Το άδειο ήταν μία
-  // γραμμή και το γεμάτο ποσό 28 και σημείωση: με το πρώτο πλήκτρο η κάρτα
-  // ψήλωνε 33 και το «Περισσότερα» και το υποσέλιδο έφευγαν κάτω από τον
-  // δείκτη. Τώρα η θέση του ποσού είναι πάντα εκεί (ήσυχη μπάρα όσο δεν υπάρχει) και η σημείωση
-  // από κάτω του λέει τι λείπει ή για ποια έσοδα είναι.
+  //
+  // ΑΚΙΝΗΤΟ ΠΟΥ ΔΕΝ ΝΟΙΚΙΑΖΕΤΑΙ: Η ΚΑΡΤΑ ΕΙΝΑΙ Ο ΕΝΦΙΑ (κριτική σχεδίασης r4). Το
+  // βήμα λέγεται «ΕΝΦΙΑ» και η κάρτα έλεγε μόνο τι ΔΕΝ ισχύει («Φόρος
+  // ενοικίων… Δεν νοικιάζεται»). Τώρα γράφει «ΕΝΦΙΑ {έτος}», το ποσό που
+  // πληκτρολογεί ο χρήστης και από κάτω την επόμενη δόση από το ημερολόγιο.
+  const enfiaN = num(enfia);
+  const enfiaInfo = draftTax && !draftTax.rented ? enfiaDeadline(status, today) : null;
+  const draftRow = draftTax?.rented ? taxDeadlineRow(status, draftTax.year) : enfiaInfo?.row ?? null;
+  const taxShown = !!draftTax && (draftTax.rented ? draftTax.annual > 0 : enfiaN != null && enfiaN > 0);
+  // ΙΔΙΟ ΣΧΗΜΑ ΑΔΕΙΟ ΚΑΙ ΓΕΜΑΤΟ (κριτική σχεδίασης r3 και r4). Με το πρώτο
+  // πλήκτρο η κάρτα ψήλωνε 33 και το «Περισσότερα» έφευγε κάτω από τον δείκτη.
+  // Η μπάρα-σκελετός που κρατούσε τη θέση διαβαζόταν ως «φορτώνει». Τώρα στη
+  // θέση του ποσού κάθεται η ίδια η οδηγία, στο ύψος του ποσού· η γραμμή
+  // της σημείωσης κρατά το ύψος της άδεια.
+  const taxLabel = draftTax ? (draftTax.rented ? `Φόρος ενοικίων ${draftTax.year}` : enfiaInfo ? `ΕΝΦΙΑ ${enfiaInfo.year}` : 'ΕΝΦΙΑ') : '';
+  const taxHint = draftTax?.rented ? 'Γράψε το μίσθωμα και ο φόρος βγαίνει εδώ.' : 'Γράψε τον ΕΝΦΙΑ του εκκαθαριστικού.';
+  const taxNote = !draftTax || !taxShown ? '' : draftTax.rented ? `Ενδεικτικά, για έσοδα ${fe(draftTax.annual)} τον χρόνο.` : 'Όπως γράφει το εκκαθαριστικό.';
   const rentTaxPreview = draftTax && (
     <section className="wiz-tax" aria-labelledby={taxLabelId}>
-      <div id={taxLabelId} className="wiz-tax-label">{draftTax.rented ? `Φόρος ενοικίων ${draftTax.year}` : 'Φόρος ενοικίων'}</div>
+      <div id={taxLabelId} className="wiz-tax-label">{taxLabel}</div>
       {/* Μόνο το ποσό ακούγεται όταν αλλάζει, όχι όλη η κάρτα σε κάθε πλήκτρο. */}
       <div aria-live="polite">
-        {/* Χωρίς μίσθωση δεν υπάρχει ποσό να περιμένει: μόνο η εξήγηση. */}
-        {draftTax.rented && <div className="wiz-tax-amount" data-empty={taxShown ? undefined : ''} aria-hidden={taxShown ? undefined : true}>{taxShown ? fe(draftTax.tax) : '\u00a0'}</div>}
-        <div className="wiz-tax-note">
-          {taxShown
-            ? `Ενδεικτικά, για έσοδα ${fe(draftTax.annual)} τον χρόνο.`
-            : draftTax.rented ? 'Γράψε το μίσθωμα και ο φόρος βγαίνει εδώ.' : 'Δεν νοικιάζεται, άρα δεν έχει φόρο ενοικίων. Ο ΕΝΦΙΑ μπαίνει στο Ημερολόγιο.'}
+        <div className="wiz-tax-amount" data-empty={taxShown ? undefined : ''}>
+          {taxShown ? fe(draftTax.rented ? draftTax.tax : enfiaN!) : taxHint}
         </div>
+        <div className="wiz-tax-note">{taxNote}</div>
       </div>
       {draftRow && (
         <div className="wiz-tax-row">
-          <div className="wiz-tax-line">
-            <span style={{ minWidth: 0 }}>{draftRow.title}</span>
-            <span className="wiz-tax-date">{draftRow.date}</span>
-          </div>
-          <div className="wiz-tax-conf">{draftRow.confidence}</div>
+          <span style={{ minWidth: 0 }}>{draftRow.title}</span>
+          <span className="wiz-tax-date">{draftRow.date}</span>
         </div>
       )}
     </section>
@@ -1261,13 +1281,13 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
                   </div>
                 )}
                 <input style={inputStyle} value={settings.owner_name} onChange={setSf('owner_name')} onFocus={onFocus} onBlur={onBlur} />
-              </>),
+              </>, undefined, CONTACTS),
               row('prop.owner_afm', 'auto',
-                <input style={numInputStyle} value={settings.owner_afm} onChange={setSf('owner_afm')} inputMode="numeric" autoFocus={focusAfm} onFocus={onFocus} onBlur={onBlur} />),
+                <input style={numInputStyle} value={settings.owner_afm} onChange={setSf('owner_afm')} inputMode="numeric" autoFocus={focusAfm} onFocus={onFocus} onBlur={onBlur} />, undefined, CONTACTS),
               row('prop.owner_phone', 'auto',
-                <input style={inputStyle} value={settings.owner_phone} onChange={setSf('owner_phone')} inputMode="tel" onFocus={onFocus} onBlur={onBlur} />),
+                <input style={inputStyle} value={settings.owner_phone} onChange={setSf('owner_phone')} inputMode="tel" onFocus={onFocus} onBlur={onBlur} />, undefined, CONTACTS),
               row('prop.owner_email', 'full',
-                <input type="email" style={inputStyle} value={settings.owner_email} onChange={setSf('owner_email')} onFocus={onFocus} onBlur={onBlur} />),
+                <input type="email" style={inputStyle} value={settings.owner_email} onChange={setSf('owner_email')} onFocus={onFocus} onBlur={onBlur} />, undefined, CONTACTS),
               /* ΤΟ «ΠΡΟΓΡΑΜΜΑ» ΕΦΥΓΕ. Ζητούσε το εμπορικό όνομα του πακέτου
                  internet — κάτι που ούτε ο ίδιος ο συνδρομητής θυμάται, δεν
                  χρησιμοποιείται πουθενά στην εφαρμογή και δεν αλλάζει καμία
@@ -1277,18 +1297,18 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
                 <Field label="Ρεύμα"><input style={inputStyle} value={settings.electricity_provider} onChange={setSf('electricity_provider')} onFocus={onFocus} onBlur={onBlur} /></Field>
                 <Field label="Νερό"><input style={inputStyle} value={settings.water_provider} onChange={setSf('water_provider')} onFocus={onFocus} onBlur={onBlur} /></Field>
                 <Field label="Internet"><input style={inputStyle} value={settings.internet_provider} onChange={setSf('internet_provider')} onFocus={onFocus} onBlur={onBlur} /></Field>
-              </div>),
+              </div>, undefined, CONTACTS),
               row('prop.manager', 'full', <div style={grid2}>
                 <Field label="Ονοματεπώνυμο"><input style={inputStyle} value={settings.property_manager} onChange={setSf('property_manager')} onFocus={onFocus} onBlur={onBlur} /></Field>
                 <Field label="Τηλέφωνο"><input style={inputStyle} value={settings.property_manager_phone} onChange={setSf('property_manager_phone')} inputMode="tel" onFocus={onFocus} onBlur={onBlur} /></Field>
-              </div>),
+              </div>, undefined, CONTACTS),
               row('prop.insurance', 'full', <div style={grid3}>
                 <Field label="Ασφαλιστική"><input style={inputStyle} value={settings.insurance_company} onChange={setSf('insurance_company')} onFocus={onFocus} onBlur={onBlur} /></Field>
                 <Field label="Αριθμός ασφαλιστηρίου"><input style={inputStyle} value={settings.insurance_policy} onChange={setSf('insurance_policy')} onFocus={onFocus} onBlur={onBlur} /></Field>
                 <Field label="Λήξη"><DatePicker value={settings.insurance_expiry} onChange={v => setSettings(p => ({ ...p, insurance_expiry: v }))} /></Field>
-              </div>),
+              </div>, undefined, CONTACTS),
               row('prop.notes', 'full',
-                <textarea value={settings.notes} onChange={setSf('notes')} rows={4} style={{ ...inputStyle, height: 'auto', resize: 'none' }} />, 'Σημειώσεις'),
+                <textarea value={settings.notes} onChange={setSf('notes')} rows={4} style={{ ...inputStyle, height: 'auto', resize: 'none' }} />, 'Σημειώσεις', CONTACTS),
             ]}
             defaultOpen={focusAfm}
           />

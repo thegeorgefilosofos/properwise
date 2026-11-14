@@ -52,7 +52,7 @@ for (const vw of [320, 375, 1280]) {
   const t = { top: 190, left: 12, width: 231, height: 44 };
   const p = placeCard(t, card, 1280, 800);
   ok('πλαϊνή μπάρα: η κάρτα κάτω από τον στόχο', p.caret.edge === 'top' && p.top === t.top + t.height + 14);
-  ok('πλαϊνή μπάρα: μέσα στη στήλη της μπάρας', p.left === 16 && p.left + p.width <= 256 && p.width >= 240);
+  ok('πλαϊνή μπάρα: μέσα στη στήλη, ως τη δεξιά ακμή του στόχου', p.left === 16 && p.left + p.width <= t.left + t.width && p.width >= 224);
   ok('πλαϊνή μπάρα: το βέλος στο κέντρο του στόχου', Math.abs(p.caret.offset - (t.left + t.width / 2 - p.left)) < 0.5);
   // Χωρίς χώρο από κάτω, δεξιά, με την κορυφή 8 πάνω από τον στόχο.
   const low = { top: 640, left: 12, width: 231, height: 44 };

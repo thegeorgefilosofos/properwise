@@ -51,8 +51,8 @@ interface Props {
  * λόγια. Το ποσό βγαίνει από την ίδια `firstTaxOf` με την πραγματική κάρτα,
  * για το ακίνητο του παραδείγματος (lib/demo/sample.ts) και λέγεται
  * «Παράδειγμα». Η γραμμή από κάτω είναι η δήλωση που φορολογεί ΤΟ ΙΔΙΟ
- * εισόδημα, τον επόμενο χρόνο, με την ετικέτα βεβαιότητας του ημερολογίου
- * (κριτική σχεδίασης r3: ήταν δόση της προηγούμενης δήλωσης). Ποτέ ο ΕΝΦΙΑ.
+ * εισόδημα, τον επόμενο χρόνο, με μήνα και έτος όσο η μέρα δεν έχει
+ * ανακοινωθεί (κριτική σχεδίασης r3 και r4). Ποτέ ο ΕΝΦΙΑ.
  */
 function previewOf(today: string) {
   const t = firstTaxOf({ id: 'demo', ...writeStatus('rent_long'), target_rent: DEMO_PROPERTY.monthlyRent }, today);
@@ -107,11 +107,8 @@ export default function WelcomeOnboarding({ userId, name, onAddProperty, onClose
           <div className="ob-preview-amount">{fe(preview.tax)}</div>
           {preview.next && (
             <div className="ob-preview-row">
-              <div className="ob-preview-line">
-                <span style={{ minWidth: 0 }}>{preview.next.title}</span>
-                <span className="ob-preview-date">{preview.next.date}</span>
-              </div>
-              <div className="ob-preview-conf">{preview.next.confidence}</div>
+              <span style={{ minWidth: 0 }}>{preview.next.title}</span>
+              <span className="ob-preview-date">{preview.next.date}</span>
             </div>
           )}
         </div>

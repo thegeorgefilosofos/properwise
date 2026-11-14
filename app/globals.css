@@ -7956,12 +7956,10 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
   font-variant-numeric: tabular-nums; color: var(--text-primary);
 }
 .ob-preview-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-subtle);
   font-size: var(--fs-xs); color: var(--text-secondary);
 }
-.ob-preview-line { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-/* Πόσο βέβαιη είναι η ημερομηνία, με τη λέξη του ημερολογίου (CONFIDENCE_LABEL). */
-.ob-preview-conf { margin-top: 2px; color: var(--text-tertiary); }
 .ob-preview-date { flex: none; font-variant-numeric: tabular-nums; color: var(--text-tertiary); }
 /* Ο κάθετος οδηγός βημάτων: κόμβοι που ενώνει μια γραμμή 1px. Ο πρώτος, το
    «τώρα», στον τόνο της εφαρμογής· οι επόμενοι ουδέτεροι. */
@@ -8033,6 +8031,9 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 .ob-tour-skip-ico.po-ico { margin: -4px -10px 0 0; }
 /* Σταθερό πλάτος για «Επόμενο» και «Τέλος»: το «Πίσω» δεν μετακινείται. */
 .ob-tour-next.po-btn { min-width: 112px; }
+/* Στη στενή κάρτα (στήλη της πλαϊνής μπάρας, 320) το κουμπί παίρνει το πλάτος
+   του λεκτικού: κουκκίδες, βέλος «Πίσω» και κύριο κουμπί χωρούν στη σειρά. */
+.ob-tour-card[data-compact] .ob-tour-next.po-btn { min-width: 0; }
 .ob-tour-foot { display: flex; align-items: center; gap: 8px; margin-top: 20px; }
 /* Το βέλος: τετράγωνο στραμμένο 45°, με την επιφάνεια και το περίγραμμα της κάρτας. */
 .ob-caret {
@@ -8134,9 +8135,10 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 /* Στην επεξεργασία, καρτέλες: ένα πλαίσιο τριών τμημάτων, χωρίς αριθμούς και
    χωρίς γραμμές ένωσης. Ύψος από την κοινή κλίμακα (36, 44 σε δάχτυλο), ακτίνα
    η εσωτερική (10) και το επιλεγμένο σε υπερυψωμένη επιφάνεια με βάρος 600. */
-/* 12 πάνω, 24 κάτω ως την πρώτη ετικέτα: το κενό του σώματος (20), το
-   περίγραμμα (1) και 3 εδώ. */
-.wiz-rail[data-kind="tabs"] { padding: 12px 24px 3px; }
+/* 12 πάνω και περίπου 24 κάτω ως το ΚΕΙΜΕΝΟ της πρώτης ετικέτας (κριτική
+   σχεδίασης r4): η ετικέτα έχει δικό της αέρα από πάνω (ελάχιστο ύψος 28,
+   στοίχιση κάτω), οπότε το κενό του σώματος (20) μαζεύεται κατά 8. */
+.wiz-rail[data-kind="tabs"] { padding: 12px 24px 0; margin-bottom: -8px; }
 .wiz-seg {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 3px;
   border: 1px solid var(--border-subtle); border-radius: var(--radius-inner, 10px);
@@ -8174,8 +8176,10 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 @media (max-width: 560px) {
   .wiz-types { grid-auto-rows: 88px; gap: 8px; }
   .wiz-type.po-chip { padding: 0 4px !important; justify-content: center; }
+  /* Εικονίδια στην ίδια κορυφή σε κάθε σειρά, όσες γραμμές κι αν έχει το
+     λεκτικό από κάτω (κριτική σχεδίασης r4). */
   .wiz-type-in {
-    flex-direction: column; justify-content: center; gap: 8px;
+    flex-direction: column; justify-content: flex-start; align-self: stretch; gap: 8px; padding-top: 20px;
     font-size: var(--fs-xs); text-align: center;
   }
 }
@@ -8214,6 +8218,9 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 .wiz-disclose svg { margin-left: -6px; }
 @media (hover: hover) { .wiz-disclose:hover { color: var(--text-primary); } }
 .wiz-disclose:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+/* Οι υπότιτλοι μέσα στο ανοιχτό «Περισσότερα στοιχεία» (Ακίνητο, Επαφές). */
+.wiz-more-group + .wiz-more-group { margin-top: 0; }
+.wiz-more-head { margin: 8px 0 12px; font-size: var(--fs-xs); font-weight: 600; line-height: 1.3; color: var(--text-tertiary); }
 /* Το «€» μέσα στο πεδίο του μισθώματος, ως κατάληξη. */
 .wiz-suffix { position: relative; }
 .wiz-suffix > span {
@@ -8234,19 +8241,18 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
   margin-top: 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2;
   font-variant-numeric: tabular-nums; color: var(--text-primary);
 }
-/* Χωρίς ποσό ακόμη: μια ήσυχη θέση στο ύψος του ποσού (όχι παύλα, όχι μηδέν),
-   ώστε η κάρτα να μην ψηλώνει με το πρώτο πλήκτρο. */
-.wiz-tax-amount[data-empty]::before {
-  content: ""; display: inline-block; vertical-align: middle; width: 4ch; height: 0.7em;
-  border-radius: var(--radius-inner, 10px); background: var(--border-subtle);
+/* Χωρίς ποσό ακόμη: η οδηγία κάθεται στη θέση του ποσού, στο ύψος του (όχι
+   παύλα, όχι μηδέν, όχι μπάρα-σκελετός που διαβάζεται ως «φορτώνει»). */
+.wiz-tax-amount[data-empty] {
+  display: flex; align-items: flex-end; min-height: calc(28px * 1.2);
+  font-size: var(--fs-base); font-weight: 400; letter-spacing: 0; color: var(--text-tertiary);
 }
-.wiz-tax-note { margin-top: 4px; font-size: var(--fs-xs); line-height: 1.4; color: var(--text-secondary); }
+.wiz-tax-note { margin-top: 4px; min-height: calc(var(--fs-xs) * 1.4); font-size: var(--fs-xs); line-height: 1.4; color: var(--text-secondary); }
 .wiz-tax-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   padding: 12px 0 0; margin-top: 12px; border-top: 1px solid var(--border-subtle);
   font-size: var(--fs-xs); line-height: 1.4; color: var(--text-secondary);
 }
-.wiz-tax-line { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.wiz-tax-conf { margin-top: 2px; color: var(--text-tertiary); }
 .wiz-tax-date { flex: none; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
 
 /* Η μαζική καταχώρηση (BulkImportCard.tsx): μία ήσυχη γραμμή κειμένου κάτω από
@@ -8288,14 +8294,13 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 /* ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΟ ΚΟΥΜΠΙ ΤΟΥ ΕΝΕΡΓΟΥ ΒΗΜΑΤΟΣ ΠΑΕΙ ΚΑΤΩ ΑΠΟ ΤΟ ΚΕΙΜΕΝΟ (κριτική
    σχεδίασης r3): δίπλα του έσπαγε τον τίτλο και την υπόδειξη σε δύο γραμμές η
    καθεμιά. Αριστερά στοιχίζεται με τον τίτλο: σημάδι 18 και κενό 12. */
-/* ΚΑΙ ΤΑ ΥΠΟΛΟΙΠΑ ΚΟΥΜΠΙΑ ΚΑΤΩ ΑΠΟ ΤΟ ΚΕΙΜΕΝΟ ΤΟΥΣ, ΣΤΟ ΤΗΛΕΦΩΝΟ: ένα σχήμα
-   γραμμής για όλη τη λίστα και η δεξιά στήλη μένει άδεια εκεί όπου πλέει το
-   κουμπί της Νόας. Τα ήσυχα τραβιούνται αριστερά όσο το γέμισμά τους, ώστε το
-   λεκτικό τους να αρχίζει στην ακμή του τίτλου. */
+/* ΜΟΝΟ ΤΟ ΕΝΕΡΓΟ ΒΗΜΑ ΣΤΟΙΒΑΖΕΤΑΙ (κριτική σχεδίασης r4). Με όλα τα κουμπιά σε
+   δική τους γραμμή η λίστα ψήλωνε 40% και η «Σύντομη περιήγηση» έπεφτε κάτω από
+   την πρώτη οθόνη στα 375. Τα ήσυχα κουμπιά («Σάρωση», «Σύνδεση») είναι μία
+   λέξη και χωρούν δεξιά, δίπλα σε υπόδειξη δύο γραμμών. */
 @media (max-width: 560px) {
-  .sp-row { flex-wrap: wrap; }
-  .sp-row .sp-cta { flex-basis: 100%; margin-left: 30px; align-self: flex-start; margin-top: -4px; }
-  .sp-row .sp-cta[data-ghost] { margin-right: 0; margin-left: calc(30px - var(--btn-pad-x)); }
+  .sp-row[data-now] { flex-wrap: wrap; }
+  .sp-row[data-now] .sp-cta { flex-basis: 100%; margin-left: 30px; align-self: flex-start; margin-top: -4px; }
 }
 /* Στα 360 και κάτω το κουμπί της Νόας πέφτει πάνω στις γραμμές της λίστας: το
    κείμενο αφήνει ελεύθερη τη λωρίδα του (48 κουμπί, 16 περιθώριο, μείον τα 36

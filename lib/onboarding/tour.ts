@@ -79,7 +79,7 @@ export const TOUR_TOP = 72;
  * - Στενή οθόνη (< 640): όλο το πλάτος, πάνω από στόχο του κάτω μισού ή κάτω
  *   από στόχο του πάνω.
  * - Φαρδιά, στόχος στο αριστερό τρίτο (πλαϊνή μπάρα): ΚΑΤΩ από τον στόχο,
- *   μέσα στη στήλη της μπάρας, ως τη δεξιά ακμή του στόχου (τουλάχιστον 240).
+ *   μέσα στη στήλη της μπάρας, ως τη δεξιά ακμή του στόχου (τουλάχιστον 224), μέσα από τη διαχωριστική.
  *   Δεξιά της μπάρας η κάρτα έκοβε στη μέση το ποσό του φόρου και τη λίστα
  *   «Από πού ξεκινάς» (κριτική σχεδίασης r3)· εδώ σκεπάζει μόνο στοιχεία της
  *   μπάρας κάτω από το πέπλο. Δεξιά της μόνο όταν από κάτω δεν χωρά.
@@ -108,8 +108,9 @@ export function placeCard(target: Box, card: { width: number; height: number }, 
   if (target.left < vw / 3) {
     const below = target.top + target.height + gap;
     const left = Math.max(edge, target.left);
-    // Ως τη δεξιά ακμή του στόχου, ώστε να μένει μέσα στη στήλη της μπάρας.
-    const colWidth = Math.min(width, Math.max(240, target.left + target.width - left));
+    // Ως τη δεξιά ακμή του στόχου, ποτέ ως το περίγραμμα της μπάρας (κριτική
+    // σχεδίασης r4: στα 240 η κάρτα κάθεται ακριβώς πάνω στη διαχωριστική).
+    const colWidth = Math.min(width, Math.max(224, target.left + target.width - left));
     if (below >= minTop && below + card.height + edge <= vh && left + colWidth + edge <= vw) {
       return { top: below, left, width: colWidth, caret: { edge: 'top', offset: along(cx - left, colWidth) } };
     }

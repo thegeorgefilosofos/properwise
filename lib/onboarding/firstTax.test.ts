@@ -5,10 +5,11 @@
 // πρέπει να λένε το ίδιο ποσό. Εδώ κλειδώνει ότι βγαίνουν από την ίδια
 // συνάρτηση με τα ίδια έσοδα. Και ότι ακίνητο που δεν νοικιάζεται δεν δείχνει
 // φόρο ενοικίων.
-import { firstTaxOf, isRented, incomeTaxDeadline, taxDeadlineRow } from './firstTax';
+import { firstTaxOf, isRented, incomeTaxDeadline, taxDeadlineRow, deadlineDate, enfiaDeadline } from './firstTax';
 import { propertyRentTax } from '@/lib/facts/rentTax';
 import { writeStatus } from '@/lib/property/status';
-import { CONFIDENCE_LABEL } from '@/lib/tax/greekTaxCalendar';
+import { greekPropertyTaxObligations } from '@/lib/tax/greekTaxCalendar';
+import { monthYearLabel } from '@/lib/core/months';
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
@@ -46,9 +47,10 @@ for (const st of ['rent_long', 'rent_short'] as const) {
     ok(`${st} ${Y}: η δήλωση του ${Y + 1}`, !!o && o.kind === 'income-decl' && o.id === `income-decl-${Y + 1}`);
     ok(`${st} ${Y}: ημερομηνία μέσα στο ${Y + 1}`, !!o && o.date.startsWith(`${Y + 1}-`));
     const row = taxDeadlineRow(st, Y);
-    ok(`${st} ${Y}: ηη/μμ/εεεε του ${Y + 1}`, !!row && new RegExp(`^\\d{2}/\\d{2}/${Y + 1}$`).test(row.date));
-    ok(`${st} ${Y}: λέει πόσο βέβαιη είναι η ημερομηνία`, !!row && !!o && row.confidence === CONFIDENCE_LABEL[o.confidence]);
-    ok(`${st} ${Y}: όχι ΕΝΦΙΑ, όχι δόση`, !!row && !/ΕΝΦΙΑ|δόση/.test(row.title));
+    // Η δήλωση ανακοινώνεται κάθε χρόνο: μόνο μήνας και έτος, ποτέ μέρα (r4).
+    ok(`${st} ${Y}: ανακοινώσιμη προθεσμία`, !!o && o.confidence === 'announced');
+    ok(`${st} ${Y}: μήνας και έτος του ${Y + 1}, χωρίς μέρα`, !!row && !!o && row.date === monthYearLabel(o.date.slice(0, 7)) && row.date.endsWith(` ${Y + 1}`) && !/\\d{2}\//.test(row.date));
+    ok(`${st} ${Y}: σύντομος τίτλος, όχι ΕΝΦΙΑ, όχι δόση`, !!row && row.title === 'Δήλωση φόρου εισοδήματος' && !/ΕΝΦΙΑ|δόση|Ε1/.test(row.title));
   }
 }
 // Η ΧΡΟΝΙΑ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟ ΠΟΣΟ, ΟΧΙ ΑΠΟ ΤΟ ΣΗΜΕΡΑ: στις 13/11/2026 ο φόρος είναι
@@ -56,7 +58,21 @@ for (const st of ['rent_long', 'rent_short'] as const) {
 {
   const t2 = firstTaxOf({ id: 'p9', ...writeStatus('rent_long'), target_rent: 600 }, TODAY);
   const row = taxDeadlineRow('rent_long', t2.year);
-  ok('13/11/2026: φόρος του 2026, γραμμή στο 2027', t2.year === 2026 && !!row && row.date.endsWith('/2027') && row.id === 'income-decl-2027');
+  ok('13/11/2026: φόρος του 2026, γραμμή στο 2027', t2.year === 2026 && !!row && row.date === 'Ιούλιος 2027' && row.id === 'income-decl-2027');
+}
+// ── Η ΑΚΡΙΒΕΙΑ ΤΗΣ ΗΜΕΡΟΜΗΝΙΑΣ (r4): του νόμου ολόκληρη, ανακοινώσιμη μόνο μήνας ──
+ok('προθεσμία του νόμου: ηη/μμ/εεεε', deadlineDate({ date: '2027-07-30', confidence: 'statutory' }) === '30/07/2027');
+ok('ανακοινώσιμη: «Ιούλιος 2027»', deadlineDate({ date: '2027-07-15', confidence: 'announced' }) === 'Ιούλιος 2027');
+// ── Ο ΕΝΦΙΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΠΟΥ ΔΕΝ ΝΟΙΚΙΑΖΕΤΑΙ (r4) ──
+for (const day of ['2026-11-14', '2027-01-10', '2027-03-01', '2026-12-31']) {
+  const e = enfiaDeadline('own_use', day);
+  const pool = e ? greekPropertyTaxObligations(e.year, 'owner').filter(o => o.id === e.row.id) : [];
+  ok(`ΕΝΦΙΑ (${day}): επόμενη δόση από το ημερολόγιο`, !!e && pool.length === 1 && pool[0].date >= day && /^enfia-(first|instalment|last)/.test(pool[0].id));
+  ok(`ΕΝΦΙΑ (${day}): η ημερομηνία στην ακρίβεια του ημερολογίου`, !!e && pool.length === 1 && e.row.date === deadlineDate(pool[0]));
+}
+{
+  const jan = enfiaDeadline('vacant', '2027-01-10');
+  ok('Ιανουάριος 2027: η δόση είναι ακόμη του ΕΝΦΙΑ 2026', !!jan && jan.year === 2026);
 }
 ok('ακίνητο που δεν νοικιάζεται: καμία γραμμή', taxDeadlineRow('own_use', 2026) === null && taxDeadlineRow('vacant', 2026) === null);
 

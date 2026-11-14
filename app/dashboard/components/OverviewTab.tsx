@@ -18,6 +18,7 @@ import * as documentStore from '@/lib/data/documents'
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventory from '@/lib/data/inventory'
 import { readStatus, statusLabel as statusLabelOf, isShortTerm, isLet } from '@/lib/property/status'
+import { enfiaDeadline } from '@/lib/onboarding/firstTax'
 import { taxpayerScope } from '@/lib/facts/taxpayer'
 import { ownershipPctOf } from '@/lib/accounting/taxpayerIncome'
 import { type StayAmountLike } from '@/lib/clients/stayAmounts'
@@ -400,12 +401,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const [enfiaSettings] = useEnfiaSettings(prop.id, userId);
   // Το πλήθος δόσεων του εκκαθαριστικού του ΑΦΜ: ίδιο με το Ημερολόγιο (enfiaTotals.ts).
   const enfiaCounts = useEnfiaInstalmentCounts(prop.id, userId);
-  const enfiaNow = enfiaYear(enfiaSettings, year, {
+  const enfiaFacts = {
     stored: prop.enfia, value: prop.value, objValue: prop.obj_value == null ? null : Number(prop.obj_value),
     sqm: prop.sqm, yearBuilt: prop.year_built, floor: prop.floor,
     propType: prop.prop_type, ownershipPct: prop.ownership == null ? null : Number(prop.ownership), postalCode: prop.postal_code,
     instalmentCounts: enfiaCounts,
-  });
+  };
+  const enfiaNow = enfiaYear(enfiaSettings, year, enfiaFacts);
   const totalExpYear = yExp.total;
   // ── «ΩΣ ΣΗΜΕΡΑ» ΣΗΜΑΙΝΕΙ ΩΣ ΣΗΜΕΡΑ ──────────────────────────────────────
   // Το φίλτρο κρατούσε μόνο το έτος, οπότε ο λογαριασμός ρεύματος που λήγει σε
@@ -601,6 +603,17 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const rentedNow = readStatus(prop) === 'rent_long' || readStatus(prop) === 'rent_short';
   const taxHero = rentedNow && properties.length === 1 && yearRents.length === 0 && hostStays.length === 0;
   const rentMissing = taxHero && annualRent <= 0;
+  // ── ΤΟ ΠΡΩΤΟ ΑΚΙΝΗΤΟ ΠΟΥ ΔΕΝ ΝΟΙΚΙΑΖΕΤΑΙ: Ο ΕΝΦΙΑ ΣΤΗΝ ΚΟΡΥΦΗ (κριτική σχεδίασης r4) ──
+  // Ιδιοχρησία ή κενό: ο οδηγός ζήτησε τον ΕΝΦΙΑ («Ο φόρος σου») και η
+  // Επισκόπηση άνοιγε με «Δαπάνες». Τώρα η κορυφή δείχνει τον ΕΝΦΙΑ του έτους
+  // που πληρώνεται (από την ίδια `enfiaYear` με τα στοιχεία του ακινήτου, δηλαδή
+  // για νέο λογαριασμό το ποσό που έγραψε ο χρήστης) και από κάτω την επόμενη
+  // δόση από το ημερολόγιο (lib/onboarding/firstTax.ts).
+  const enfiaNext = !rentedNow && properties.length === 1 ? enfiaDeadline(readStatus(prop), todayAthens) : null;
+  const enfiaHeroYear = enfiaNext ? (enfiaNext.year === year ? enfiaNow : enfiaYear(enfiaSettings, enfiaNext.year, enfiaFacts)) : null;
+  const enfiaHero = !!enfiaHeroYear && enfiaHeroYear.annual > 0;
+  const enfiaPaid = enfiaHeroYear?.annual ?? 0;
+  const firstHero = taxHero || enfiaHero;
   // ΜΙΣΟ ΣΥΝΟΛΟ ΔΙΑΒΑΖΕΤΑΙ ΣΑΝ ΟΛΟΚΛΗΡΟ. Αν δεν διαβάστηκε έστω μία περιοχή με
   // ποσά, κανένα σύνολο της οθόνης δεν είναι αληθινό: το κεντρικό ποσό γίνεται
   // «—», το Ταμείο και η ζώνη της χρονιάς κρύβονται και το PDF περιμένει.
@@ -860,7 +873,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           κατάσταση, η ώρα Ελλάδας και η ενέργεια στη σειρά της. */}
       <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:16,flexWrap:'wrap',marginBottom:20}}>
         <div style={{minWidth:0}}>
-          <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-note)',color:'var(--text-secondary)'}}>{taxHero ? `Φόρος ενοικίων ${year}` : heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
+          <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-note)',color:'var(--text-secondary)'}}>{taxHero ? `Φόρος ενοικίων ${year}` : enfiaHero ? `ΕΝΦΙΑ ${enfiaNext?.year ?? year}` : heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
           {rentMissing
             // ΜΙΣΘΩΣΗ ΧΩΡΙΣ ΠΟΣΟ ΔΕΝ ΔΕΙΧΝΕΙ ΜΗΔΕΝ ΣΑΝ ΝΑ ΗΤΑΝ ΦΟΡΟΣ: λέει τι λείπει
             // και ανοίγει την επεξεργασία στο μίσθωμα. Η αποθήκευση γυρίζει εδώ.
@@ -870,7 +883,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               </div>
             : <div style={{fontFamily:T.font.num,fontSize:'clamp(28px,7vw,40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
             ? <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-secondary)',letterSpacing:0}}>Δεν φορτώθηκε</span>
-            : fmtEur(taxHero ? estTax : heroValue)}</div>}
+            : fmtEur(taxHero ? estTax : enfiaHero ? enfiaPaid : heroValue)}</div>}
           {taxHero && !rentMissing && !moneyGap && (
             <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`Καθαρό ${year} · ${fmtEur(heroValue)}`}</div>
           )}
@@ -880,7 +893,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               υποσημείωση. ΟΧΙ ΣΤΗΝ ΠΡΩΤΗ ΕΠΙΣΚΟΠΗΣΗ (κριτική σχεδίασης r3): ο
               φόρος της κορυφής είναι εκτίμηση της χρονιάς, όχι ποσό «ως σήμερα»·
               η ώρα ήταν τέταρτη γραμμή χωρίς λόγο. */}
-          {!taxHero && <AthensNow style={{fontFamily:T.font.sans,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,minHeight:15}}/>}
+          {enfiaHero && enfiaNext && !moneyGap && (
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext.row.title} · ${enfiaNext.row.date}`}</div>
+          )}
+          {!firstHero && <AthensNow style={{fontFamily:T.font.sans,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,minHeight:15}}/>}
           {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
               Εδώ γραφόταν ξανά, εξήντα εικονοστοιχεία κάτω από την ίδια
               πρόταση: όνομα, τύπος, κατάσταση, διεύθυνση — τα ίδια τέσσερα
