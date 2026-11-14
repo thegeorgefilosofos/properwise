@@ -14,6 +14,20 @@ ok('την έκλεισε σε αυτή τη συσκευή: όχι', !policyNot
 ok('την έκλεισε σε άλλη συσκευή: όχι', !policyNoticeDue({ policy_notice_seen: POLICY_VERSION }, null))
 ok('εγγράφηκε με αυτή την έκδοση: όχι', !policyNoticeDue({ consent_policy_version: POLICY_VERSION }, null))
 ok('έκλεισε παλιότερη ενημέρωση: τη βλέπει', policyNoticeDue({ policy_notice_seen: '2026-09' }, '2026-09'))
+// ── Η ΠΡΩΤΗ ΕΠΙΣΚΟΠΗΣΗ ΤΟΥ ΝΕΟΥ ΛΟΓΑΡΙΑΣΜΟΥ (κριτική σχεδίασης r2, 13/11/2026) ──
+// Ο χρήστης που μόλις δέχτηκε τους Όρους στην εγγραφή δεν διαβάζει «Νέοι Όροι
+// και Απόρρητο» λίγα λεπτά μετά. Ο λογαριασμός που ΔΕΝ έχει καταγράψει αποδοχή
+// της τρέχουσας έκδοσης τη βλέπει πάντα: καμία απόκρυψη χωρίς ίχνος.
+{
+  const now = new Date().toISOString()
+  const fresh = { created_at: now, user_metadata: { consent_terms_accepted_at: now, consent_policy_version: POLICY_VERSION } }
+  ok('νέος λογαριασμός με αποδοχή της τρέχουσας έκδοσης: ούτε γραμμή', !policyNoticeDue(fresh.user_metadata, null))
+  ok('νέος λογαριασμός με αποδοχή της τρέχουσας έκδοσης: ούτε κάρτα γραφείων', !firmNoticeDue(fresh, null))
+  ok('αποδοχή παλιότερης έκδοσης: τη βλέπει', policyNoticeDue({ consent_terms_accepted_at: now, consent_policy_version: '2026-11-12' } as Record<string, unknown>, null))
+  ok('αποδοχή χωρίς καταγεγραμμένη έκδοση: τη βλέπει', policyNoticeDue({ consent_terms_accepted_at: now } as Record<string, unknown>, null))
+  ok('έκδοση σε άλλη μορφή (αριθμός): τη βλέπει', policyNoticeDue({ consent_policy_version: 20261112 }, null))
+  ok('χωρίς στοιχεία λογαριασμού στον νέο χρήστη: τη βλέπει', policyNoticeDue({}, null))
+}
 // ── Τι λέει η ειδοποίηση: ανάλογα με το τι έχει ήδη δει (09/11/2026) ──
 // Καμία ειδοποίηση δεν χάνεται επειδή ήρθε νεότερη: η 2026-11-09 (νομικός
 // έλεγχος), η 2026-11-10 (μαζική), η 2026-11-11 (αντίγραφα ασφαλείας), η

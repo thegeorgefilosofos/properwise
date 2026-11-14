@@ -306,7 +306,7 @@ for (const prefs of [id(), id({ formal: true }), id({ memory: false }), id({ com
   const p = buildSystemPrompt(id(), 'x');
   ok('γνώση: όχι πια «πύλη λογιστή (read-only)»', !/πύλη λογιστή \(read-only\)|πύλη λογιστή είναι μόνο-ανάγνωσης/.test(p));
   // Το όριο έρχεται από το BULK_MAX: η πηγή το γράφει ως όνομα, το prompt ως αριθμό.
-  ok('γνώση: μαζική καταχώρηση με το όριο από τον κώδικα', p.includes('Όλα τα ακίνητά σου μαζί') && /έως \d+ ακίνητα κάθε φορά/.test(p)
+  ok('γνώση: μαζική καταχώρηση με το όριο από τον κώδικα', p.includes('Έχεις πολλά ακίνητα; Ανέβασε το Ε9') && /έως \d+ ακίνητα κάθε φορά/.test(p)
     && /έως \$\{BULK_MAX\} ακίνητα κάθε φορά/.test(readFileSync('app/dashboard/components/assistantPersona.ts', 'utf8')));
   ok('γνώση: και τα τρία επίπεδα του γραφείου', LEVELS.every(l => p.includes(`«${LEVEL_LABEL[l]}»: ${LEVEL_HINT[l]}`)));
   ok('γνώση: και οι τρεις ρόλοι του γραφείου', ROLES.every(r => p.includes(`«${ROLE_LABEL[r]}»`)));
@@ -1025,7 +1025,7 @@ ok('κενό → undefined', normalizeBookTime('') === undefined);
   // οδηγός, Ctrl+K, ΕΝΦΙΑ και σάρωση. Η Νόα λέει όλους τους δρόμους που υπάρχουν στον κώδικα.
   const scan = readFileSync('app/dashboard/components/DocumentScan.tsx', 'utf8');
   ok('μαζική: οποιαδήποτε στιγμή, από τέσσερις δρόμους', !page.includes('onBulkImport={properties.length === 0 ?')
-    && p.includes('Ανοίγει οποιαδήποτε στιγμή') && p.includes('«Όλα τα ακίνητά σου μαζί»') && p.includes('«Ενημέρωσε από την πράξη»')
+    && p.includes('Ανοίγει οποιαδήποτε στιγμή') && p.includes('«Έχεις πολλά ακίνητα; Ανέβασε το Ε9»') && p.includes('«Ενημέρωσε από την πράξη»')
     && p.includes('«Μαζική καταχώρηση από Ε9 ή ΕΝΦΙΑ»') && page.includes("label: 'Μαζική καταχώρηση από Ε9 ή ΕΝΦΙΑ'")
     && p.includes('«Καταχώρησε όλα τα ακίνητα»') && scan.includes('>Καταχώρησε όλα τα ακίνητα</Btn>')
     && readFileSync('app/dashboard/components/EnfiaPanel.tsx', 'utf8').includes('Ενημέρωσε από την πράξη</Btn>') && page.includes('>Από Ε9 ή ΕΝΦΙΑ</Btn>')

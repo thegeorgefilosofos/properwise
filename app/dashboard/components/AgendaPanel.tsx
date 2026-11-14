@@ -98,8 +98,18 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
         <ul className="agenda-list">
           {items.map(it => {
             const d = itemDue(it);
+            // ΟΛΗ Η ΓΡΑΜΜΗ ΕΙΝΑΙ Ο ΣΥΝΔΕΣΜΟΣ ΟΤΑΝ Ο ΜΟΝΟΣ ΔΡΟΜΟΣ ΕΙΝΑΙ ΤΟ ΗΜΕΡΟΛΟΓΙΟ
+            // (κριτική σχεδίασης r3). Πέντε ίδια κουμπιά «Ημερολόγιο» γέμιζαν
+            // μία στήλη και στα 1280×800 το δεύτερο καθόταν κάτω από το κουμπί
+            // της Νόας. Τώρα η γραμμή πατιέται ολόκληρη (κουμπί που την
+            // καλύπτει, με το όνομα της γραμμής) και δεξιά μένει ένα ήσυχο
+            // βέλος. Κουμπί μένει μόνο όπου η ενέργεια είναι άλλη.
+            const toCalendar = it.action?.tab === 'calendar';
             return (
-              <li key={it.key} className={`agenda-row${d.overdue ? ' is-late' : ''}`}>
+              <li key={it.key} className={`agenda-row${d.overdue ? ' is-late' : ''}${toCalendar ? ' agenda-row--link' : ''}`}>
+                {toCalendar && (
+                  <button type="button" className="agenda-cover" aria-label={`${it.title}: ${it.action!.label}`} onClick={() => onNavigate('calendar')} />
+                )}
                 {/* Η ΣΤΗΛΗ ΤΟΥ ΧΡΟΝΟΥ. Σταθερό πλάτος ώστε οι αριθμοί όλων των
                     γραμμών να πέφτουν στον ίδιο άξονα, δεξιά στοιχισμένοι. */}
                 <div className={`agenda-when${d.value == null && !d.word ? ' agenda-when--quiet' : ''}`} aria-hidden={false}>
@@ -136,13 +146,16 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
                     κουμπί: τρεις μορφές γραμμής σε μία λίστα πέντε γραμμών. */}
                 {(it.amount || it.action) && (
                   <div className="agenda-side">
+                    {toCalendar && !it.amount && (
+                      <svg aria-hidden="true" className="agenda-chev" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                    )}
                     {it.amount && (
                       <span className="agenda-amt">
                         {fe(it.amount.value)}
                         {it.amount.estimate && <span className="agenda-amt-note">εκτίμηση</span>}
                       </span>
                     )}
-                    {it.action && (
+                    {it.action && !toCalendar && (
                       <button type="button" className="agenda-go" onClick={() => onNavigate(it.action!.tab)}>
                         {it.action.label}
                       </button>
@@ -292,6 +305,13 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
         }
         .agenda-go:hover { border-color: var(--accent); color: var(--accent); }
         .agenda-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        /* Η γραμμή-σύνδεσμος: το κουμπί την καλύπτει ολόκληρη, το βέλος δεξιά. */
+        .agenda-cover {
+          position: absolute; inset: 0; z-index: 1; width: 100%; padding: 0;
+          border: 0; background: transparent; cursor: pointer;
+        }
+        .agenda-cover:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+        .agenda-chev { color: var(--text-tertiary); flex: none; }
         .agenda-more {
           display: block; width: 100%; text-align: left;
           padding: 12px 18px; border: none; border-top: 1px solid var(--border-subtle);
@@ -341,6 +361,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           .agenda-amt { grid-area: amt; align-self: start; }
           .agenda-note { grid-area: note; margin-top: 4px; }
           .agenda-go { grid-area: go; justify-self: start; margin-top: 10px; }
+          .agenda-chev { grid-area: amt; align-self: center; justify-self: end; }
           .agenda-num { font-size: 15px; }
           /* Στο κινητό ο χρόνος είναι γραμμή ΠΑΝΩ από τον τίτλο, όχι στήλη:
              το «εκκρεμεί» δεν κρατά άξονα εδώ, μόνο ύψος. */

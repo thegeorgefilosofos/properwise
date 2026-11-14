@@ -26,6 +26,7 @@ import {
   AddPropertyWizard,
   DocumentScan,
   WelcomeOnboarding,
+  ProductTour,
 } from './components/lazyTabs';
 import { STATUSES, readStatus, statusLabel as statusLabelOf } from '@/lib/property/status';
 import { tabDecision, canCompare } from '@/lib/property/visibility';
@@ -76,7 +77,7 @@ export default function Dashboard() {
     setHandoverIntent, navShowAll, loading, loadError, showAddModal, setShowAddModal,
     statusDropdown, setStatusDropdown, editProperty, setEditProperty, editFocus, setEditFocus, sidebarOpen, setSidebarOpen,
     announce, setAnnounce, cmdkOpen, setCmdkOpen, quickAddOpen, setQuickAddOpen, manualExpense,
-    setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
+    setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, tourDone, finishTour, startCollapsed, showPreview, setShowPreview,
     scanAfterAdd, setScanAfterAdd, plan, planVersion, refreshPlan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
@@ -107,6 +108,12 @@ export default function Dashboard() {
   // εγγράφου» όταν το έγγραφο είναι Ε9 ή εκκαθαριστικό ΕΝΦΙΑ. Η καρτέλα ΕΝΦΙΑ,
   // βαθιά μέσα στη Λογιστική, στέλνει γεγονός (όπως το «pos:ask»). Η σάρωση
   // περνά και το αρχείο, ώστε να μην ανεβαίνει δεύτερη φορά.
+  // ── Η ΠΕΡΙΗΓΗΣΗ, ΜΟΝΟ ΟΤΑΝ ΖΗΤΗΘΕΙ ───────────────────────────────────
+  // Μετά το πρώτο ακίνητο ο χρήστης πέφτει κατευθείαν στην Επισκόπηση, με τον
+  // φόρο του στην κορυφή: κανένα παράθυρο ανάμεσα (κριτική σχεδίασης,
+  // 13/11/2026· ήταν κάρτα «Το ακίνητο αποθηκεύτηκε» και από εκεί περιήγηση).
+  // Η περιήγηση ζει ως ήσυχο κουμπί στη λίστα «Από πού ξεκινάς».
+  const [tourOpen, setTourOpen] = useState(false);
   const [myaadeOpen, setMyaadeOpen] = useState(false);
   const [myaadeFile, setMyaadeFile] = useState<File | null>(null);
   // Το PDF που η Σάρωση έστειλε κατευθείαν (χωρίς βήμα ελέγχου): η μαζική δείχνει
@@ -685,16 +692,12 @@ export default function Dashboard() {
                       )}
                     </div>
                   : <FeatureLock title="Σύγκρινε τα ακίνητά σου δίπλα-δίπλα" benefit={`Απόδοση, δαπάνες και πάροχοι όλων των ακινήτων σου σε έναν πίνακα. Ξεκλειδώνει με το πακέτο ${PLANS.owner.name}.`} requiredPlan="owner" currentPlanName={PLANS[effPlan].name} onManage={()=>setNav('settings')} />)}
-              {/* ═══ Ο ΠΙΝΑΚΑΣ ΤΗΣ ΔΟΚΙΜΗΣ, ΠΑΝΩ ΑΠΟ ΤΑ ΠΑΝΤΑ ═══════════════
-                  Ζει ΕΔΩ και όχι μέσα στην Επισκόπηση για δύο λόγους: είναι
-                  πλαίσιο του λογαριασμού, όχι του ακινήτου (τα βήματά του
-                  μετρούν ό,τι έχει ο ΧΡΗΣΤΗΣ) και η Επισκόπηση θα κουβαλούσε
-                  έξι ακόμη props για κάτι που δεν την αφορά. */}
-              {navSafe==='overview' && (
-                <StartPanel state={startState} collapsed={startCollapsed} onToggle={toggleStartPanel}
-                  onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : setNav(t)}
-                  onPreview={()=>setShowPreview(true)} onAsk={()=>askAssistant('', false)} />
-              )}
+              {/* ═══ Ο ΠΙΝΑΚΑΣ ΤΗΣ ΔΟΚΙΜΗΣ, ΚΑΤΩ ΑΠΟ ΤΟ ΚΕΝΤΡΙΚΟ ΠΟΣΟ ═══════════
+                  Η κατάστασή του ζει ΕΔΩ, γιατί είναι πλαίσιο του λογαριασμού
+                  (τα βήματά του μετρούν ό,τι έχει ο ΧΡΗΣΤΗΣ). Η Επισκόπηση τον
+                  δέχεται έτοιμο ως `startSlot` και τον βάζει κάτω από το ποσό
+                  της κορυφής (13/11/2026: πάνω από όλα έκρυβε στο τηλέφωνο τον
+                  φόρο του νέου χρήστη). */}
               {/* ═══ ΤΟ `key` ΕΙΝΑΙ Ο ΔΙΑΚΟΠΤΗΣ ΤΗΣ ΚΟΥΡΣΑΣ ═══════════════════════
                   ΤΟ ΣΦΑΛΜΑ: αλλάζεις ακίνητο ενώ φορτώνει το προηγούμενο. Η
                   `load` δεν έχει ακύρωση και το component ΔΕΝ ξαναστηνόταν —
@@ -709,7 +712,11 @@ export default function Dashboard() {
                   πίνακας. Ό,τι επιστρέψει από την προηγούμενη φόρτωση γράφει σε
                   component που δεν υπάρχει πια και η React το αγνοεί. Το ίδιο
                   ισχύει για κάθε καρτέλα που φορτώνει δικά της δεδομένα. */}
-              {navSafe==='overview'  && <OverviewTab key={selected.id} prop={selected} properties={properties} userId={user.id} onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='edit' ? setEditProperty(selected) : setNav(t)} tabVisible={navVisible} profileType={effProfileType} legalForm={taxForm}/>}
+              {navSafe==='overview'  && <OverviewTab key={selected.id} prop={selected}
+                startSlot={<StartPanel state={startState} collapsed={startCollapsed} onToggle={toggleStartPanel}
+                  onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='add' ? tryAddProperty() : t==='edit-basics' ? (setEditFocus('basics'), setEditProperty(selected)) : setNav(t)}
+                  onPreview={()=>setShowPreview(true)}
+                  onTour={!tourDone ? ()=>setTourOpen(true) : undefined} />} properties={properties} userId={user.id} onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='edit' ? setEditProperty(selected) : t==='edit-rent' ? (setEditFocus('rent'), setEditProperty(selected)) : setNav(t)} tabVisible={navVisible} profileType={effProfileType} legalForm={taxForm}/>}
               {nav==='finances'  && <TabFinances key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} properties={financeProperties} profileType={effProfileType} legalForm={taxForm} onScan={()=>setQuickAddOpen(true)} openAddNonce={manualExpense} handledAddNonce={handledExpense} onAddHandled={setHandledExpense} />}
               {nav==='calendar'  && <TabCalendar key={selected.id} propertyId={selected.id} userId={user.id} openTasks={checklistAlerts} onOpenTasks={()=>setNav('checklist')}/>}
               {/* ═══ Η ΒΡΑΧΥΧΡΟΝΙΑ ΣΤΕΚΕΤΑΙ ΜΟΝΗ ΤΗΣ ═══════════════════════════
@@ -855,7 +862,7 @@ export default function Dashboard() {
               // ήταν σκέτη τελεία: δύο πληροφορίες που ο αναγνώστης οθόνης δεν
               // μπορούσε να μεταφέρει με κανέναν τρόπο. Το `aria-current` λέει
               // πού βρίσκεσαι και το σήμα αποκτά τον αριθμό του.
-              <button key={item.id} className={`bottom-nav-item ${isActive?'active':''}`} onClick={onTap}
+              <button key={item.id} data-tour-nav={item.id} className={`bottom-nav-item ${isActive?'active':''}`} onClick={onTap}
                 aria-current={isActive ? 'page' : undefined}>
                 {item.icon}
                 <span>{item.label}</span>
@@ -965,7 +972,7 @@ export default function Dashboard() {
           onSaved={async()=>{await fetchProperties(user.id);}}/>}
       </Modal>
 
-      {showWelcome&&user&&<WelcomeOnboarding userId={user.id}
+      {showWelcome&&user&&<WelcomeOnboarding userId={user.id} name={fullName}
         onAddProperty={()=>{ setShowWelcome(false); openWizard('welcome'); }}
         // ═══ Η ΣΑΡΩΣΗ ΠΕΡΝΑΕΙ ΑΠΟ ΤΟΝ ΟΔΗΓΟ ═════════════════════════════════
         // Εδώ δημιουργούνταν σιωπηλά «Νέο ακίνητο», διαμέρισμα, με κατάσταση
@@ -995,14 +1002,26 @@ export default function Dashboard() {
         onBulkImport={()=>{ setShowAddModal(false); setScanAfterAdd(false); dropEnfiaCarry(); openMyaade(); }}
         hasProperties={properties.length > 0}
         onClose={()=>{setShowAddModal(false);setScanAfterAdd(false);dropEnfiaCarry();}} onSaved={async(id)=>{
+        // Το πρώτο ακίνητο του λογαριασμού: μετρημένο ΠΡΙΝ την ανανέωση της λίστας.
+        const first = properties.length === 0;
         setShowAddModal(false);
         await commitEnfiaCarry(id);
         const list = await fetchProperties(user.id);
-        const added = scanAfterAdd && id ? list?.find(p => p.id === id) : undefined;
+        const savedProp = id ? list?.find(p => p.id === id) : undefined;
+        const added = scanAfterAdd ? savedProp : undefined;
         setScanAfterAdd(false);
         if (added) { setSelected(added); setNav('overview'); setQuickAddOpen(true); }
+        // Ο ΦΟΡΟΣ ΑΜΕΣΩΣ ΜΕΤΑ ΤΗΝ ΑΠΟΘΗΚΕΥΣΗ: η Επισκόπηση του νέου ακινήτου,
+        // με τον φόρο ενοικίων στην κορυφή (OverviewTab). Οχι όταν ακολουθεί
+        // σάρωση: εκεί ο χρήστης ζήτησε ήδη την επόμενη κίνηση.
+        else if (first && savedProp) { setSelected(savedProp); setNav('overview'); }
       }}/>}
-      {editProperty&&user&&<AddPropertyWizard userId={user.id} existing={editProperty} focus={editFocus} onClose={()=>{setEditProperty(null);setEditFocus(null);}} onSaved={async()=>{setEditProperty(null);setEditFocus(null);await fetchProperties(user.id);}}/>}
+      {editProperty&&user&&<AddPropertyWizard userId={user.id} existing={editProperty} focus={editFocus}
+        // Η επεξεργασία γυρίζει εκεί όπου άνοιξε: στην Επισκόπηση, που
+        // ξαναδιαβάζει το ακίνητο και δείχνει τον φόρο με το νέο μίσθωμα.
+        onClose={()=>{setEditProperty(null);setEditFocus(null);}}
+        onSaved={async()=>{setEditProperty(null);setEditFocus(null);await fetchProperties(user.id);}}/>}
+      {tourOpen&&<ProductTour onDone={()=>{ setTourOpen(false); finishTour(); }} />}
       {myaadeOpen&&<MyaadeImport userId={user.id} limit={propertyLimit(ent)} initialFile={myaadeFile ?? undefined}
         fromScan={myaadeFromScan ?? undefined}
         // «ΣΑΡΩΣΕ ΤΟ ΩΣ ΕΓΓΡΑΦΟ»: πίσω στη Σάρωση με το ίδιο αρχείο, μόνο όταν η

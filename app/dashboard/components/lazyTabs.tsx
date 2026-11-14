@@ -87,3 +87,6 @@ export const PortfolioTab = dynamic(() => import('./PortfolioTab'), { loading: T
 export const AddPropertyWizard = dynamic(() => import('./AddPropertyWizard'), { ssr: false });
 export const DocumentScan = dynamic(() => import('./DocumentScan'), { ssr: false });
 export const WelcomeOnboarding = dynamic(() => import('./WelcomeOnboarding'), { ssr: false });
+// Η περιήγηση: μόνο για όποιον πατήσει «Σύντομη περιήγηση». Κανένας άλλος δεν
+// την κατεβάζει.
+export const ProductTour = dynamic(() => import('./ProductTour'), { ssr: false });

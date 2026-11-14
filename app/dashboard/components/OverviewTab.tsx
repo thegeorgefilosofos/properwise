@@ -18,6 +18,7 @@ import * as documentStore from '@/lib/data/documents'
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventory from '@/lib/data/inventory'
 import { readStatus, statusLabel as statusLabelOf, isShortTerm, isLet } from '@/lib/property/status'
+import { enfiaDeadline } from '@/lib/onboarding/firstTax'
 import { taxpayerScope } from '@/lib/facts/taxpayer'
 import { ownershipPctOf } from '@/lib/accounting/taxpayerIncome'
 import { type StayAmountLike } from '@/lib/clients/stayAmounts'
@@ -116,7 +117,13 @@ function stepFitsProperty(key: string, prop: Property): boolean {
   return true;
 }
 
-export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, profileType = 'individual', legalForm = 'individual' }: { prop: Property;
+export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, profileType = 'individual', legalForm = 'individual', startSlot }: { prop: Property;
+  /**
+   * Η λίστα «Από πού ξεκινάς», ΚΑΤΩ από το κεντρικό ποσό (13/11/2026). Ηταν
+   * πάνω από όλα και στο τηλέφωνο έσπρωχνε τον φόρο του νέου χρήστη κάτω από
+   * την πρώτη οθόνη: ο λόγος που ήρθε ήταν η μόνη πληροφορία που δεν φαινόταν.
+   */
+  startSlot?: React.ReactNode;
   /** ΟΛΑ τα ακίνητα του χρήστη — χρειάζονται για τον φόρο: η κλίμακα των ενοικίων
    *  είναι προοδευτική στο σύνολο του φορολογούμενου, όχι ανά ακίνητο. */
   properties: Property[];
@@ -394,12 +401,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const [enfiaSettings] = useEnfiaSettings(prop.id, userId);
   // Το πλήθος δόσεων του εκκαθαριστικού του ΑΦΜ: ίδιο με το Ημερολόγιο (enfiaTotals.ts).
   const enfiaCounts = useEnfiaInstalmentCounts(prop.id, userId);
-  const enfiaNow = enfiaYear(enfiaSettings, year, {
+  const enfiaFacts = {
     stored: prop.enfia, value: prop.value, objValue: prop.obj_value == null ? null : Number(prop.obj_value),
     sqm: prop.sqm, yearBuilt: prop.year_built, floor: prop.floor,
     propType: prop.prop_type, ownershipPct: prop.ownership == null ? null : Number(prop.ownership), postalCode: prop.postal_code,
     instalmentCounts: enfiaCounts,
-  });
+  };
+  const enfiaNow = enfiaYear(enfiaSettings, year, enfiaFacts);
   const totalExpYear = yExp.total;
   // ── «ΩΣ ΣΗΜΕΡΑ» ΣΗΜΑΙΝΕΙ ΩΣ ΣΗΜΕΡΑ ──────────────────────────────────────
   // Το φίλτρο κρατούσε μόνο το έτος, οπότε ο λογαριασμός ρεύματος που λήγει σε
@@ -586,6 +594,26 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   // δαπάνες της χρονιάς.
   const heroIsNet = isLet(prop);
   const heroValue = heroIsNet ? annualRent - costs.total - estTax : projectedExpYear;
+  // ── ΤΟ ΠΡΩΤΟ ΑΚΙΝΗΤΟ: Ο ΦΟΡΟΣ ΣΤΗΝ ΚΟΡΥΦΗ (κριτική σχεδίασης, 13/11/2026) ──
+  // Ο νέος χρήστης μόλις είδε τον φόρο του στον οδηγό και η Επισκόπηση άνοιγε
+  // με ένα «Καθαρό» που δεν είχε δει ποτέ. Οσο το ακίνητο είναι το μόνο του,
+  // νοικιάζεται και δεν έχει ακόμη καμία είσπραξη ή διαμονή, η κορυφή δείχνει
+  // τον ΙΔΙΟ αριθμό που είδε (ίδια `propertyRentTax`) και το καθαρό από κάτω.
+  // Με την πρώτη είσπραξη το καθαρό γίνεται πραγματικό και ξαναπαίρνει τη θέση του.
+  const rentedNow = readStatus(prop) === 'rent_long' || readStatus(prop) === 'rent_short';
+  const taxHero = rentedNow && properties.length === 1 && yearRents.length === 0 && hostStays.length === 0;
+  const rentMissing = taxHero && annualRent <= 0;
+  // ── ΤΟ ΠΡΩΤΟ ΑΚΙΝΗΤΟ ΠΟΥ ΔΕΝ ΝΟΙΚΙΑΖΕΤΑΙ: Ο ΕΝΦΙΑ ΣΤΗΝ ΚΟΡΥΦΗ (κριτική σχεδίασης r4) ──
+  // Ιδιοχρησία ή κενό: ο οδηγός ζήτησε τον ΕΝΦΙΑ («Ο φόρος σου») και η
+  // Επισκόπηση άνοιγε με «Δαπάνες». Τώρα η κορυφή δείχνει τον ΕΝΦΙΑ του έτους
+  // που πληρώνεται (από την ίδια `enfiaYear` με τα στοιχεία του ακινήτου, δηλαδή
+  // για νέο λογαριασμό το ποσό που έγραψε ο χρήστης) και από κάτω την επόμενη
+  // δόση από το ημερολόγιο (lib/onboarding/firstTax.ts).
+  const enfiaNext = !rentedNow && properties.length === 1 ? enfiaDeadline(readStatus(prop), todayAthens) : null;
+  const enfiaHeroYear = enfiaNext ? (enfiaNext.year === year ? enfiaNow : enfiaYear(enfiaSettings, enfiaNext.year, enfiaFacts)) : null;
+  const enfiaHero = !!enfiaHeroYear && enfiaHeroYear.annual > 0;
+  const enfiaPaid = enfiaHeroYear?.annual ?? 0;
+  const firstHero = taxHero || enfiaHero;
   // ΜΙΣΟ ΣΥΝΟΛΟ ΔΙΑΒΑΖΕΤΑΙ ΣΑΝ ΟΛΟΚΛΗΡΟ. Αν δεν διαβάστηκε έστω μία περιοχή με
   // ποσά, κανένα σύνολο της οθόνης δεν είναι αληθινό: το κεντρικό ποσό γίνεται
   // «—», το Ταμείο και η ζώνη της χρονιάς κρύβονται και το PDF περιμένει.
@@ -845,11 +873,30 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           κατάσταση, η ώρα Ελλάδας και η ενέργεια στη σειρά της. */}
       <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:16,flexWrap:'wrap',marginBottom:20}}>
         <div style={{minWidth:0}}>
-          <AthensNow style={{fontFamily:T.font.sans,fontSize: 'var(--fs-xs)',fontWeight:600,color:'var(--text-tertiary)',letterSpacing:'0.02em',marginBottom:4,minHeight:15}}/>
-          <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-note)',color:'var(--text-secondary)'}}>{heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
-          <div style={{fontFamily:T.font.num,fontSize:'clamp(28px,7vw,40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
+          <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-note)',color:'var(--text-secondary)'}}>{taxHero ? `Φόρος ενοικίων ${year}` : enfiaHero ? `ΕΝΦΙΑ ${enfiaNext?.year ?? year}` : heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
+          {rentMissing
+            // ΜΙΣΘΩΣΗ ΧΩΡΙΣ ΠΟΣΟ ΔΕΝ ΔΕΙΧΝΕΙ ΜΗΔΕΝ ΣΑΝ ΝΑ ΗΤΑΝ ΦΟΡΟΣ: λέει τι λείπει
+            // και ανοίγει την επεξεργασία στο μίσθωμα. Η αποθήκευση γυρίζει εδώ.
+            ? <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',marginTop:4}}>
+                <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-primary)'}}>Λείπει το μίσθωμα</span>
+                <Btn variant="secondary" onClick={()=>onNavigate('edit-rent')}>Πρόσθεσε μίσθωμα</Btn>
+              </div>
+            : <div style={{fontFamily:T.font.num,fontSize:'clamp(28px,7vw,40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
             ? <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-secondary)',letterSpacing:0}}>Δεν φορτώθηκε</span>
-            : fmtEur(heroValue)}</div>
+            : fmtEur(taxHero ? estTax : enfiaHero ? enfiaPaid : heroValue)}</div>}
+          {taxHero && !rentMissing && !moneyGap && (
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`Καθαρό ${year} · ${fmtEur(heroValue)}`}</div>
+          )}
+          {/* Η ΩΡΑ ΕΛΛΑΔΑΣ ΚΑΤΩ ΑΠΟ ΤΟ ΠΟΣΟ, ΟΧΙ ΠΑΝΩ (κριτική σχεδίασης r2). Ηταν η
+              πρώτη γραμμή της οθόνης, σε έντονο βάρος· έσπρωχνε το ποσό κάτω.
+              Δίνει νόημα στο «ως σήμερα» των εισπράξεων, άρα μένει ως
+              υποσημείωση. ΟΧΙ ΣΤΗΝ ΠΡΩΤΗ ΕΠΙΣΚΟΠΗΣΗ (κριτική σχεδίασης r3): ο
+              φόρος της κορυφής είναι εκτίμηση της χρονιάς, όχι ποσό «ως σήμερα»·
+              η ώρα ήταν τέταρτη γραμμή χωρίς λόγο. */}
+          {enfiaHero && enfiaNext && !moneyGap && (
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext.row.title} · ${enfiaNext.row.date}`}</div>
+          )}
+          {!firstHero && <AthensNow style={{fontFamily:T.font.sans,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,minHeight:15}}/>}
           {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
               Εδώ γραφόταν ξανά, εξήντα εικονοστοιχεία κάτω από την ίδια
               πρόταση: όνομα, τύπος, κατάσταση, διεύθυνση — τα ίδια τέσσερα
@@ -864,8 +911,15 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         {/* «ΣΑΡΩΣΕ ΕΓΓΡΑΦΟ» ΣΤΗΝ ΠΡΩΤΗ ΟΘΟΝΗ ΚΑΙ ΣΤΟ ΚΙΝΗΤΟ. Στα 390 εικονοστοιχεία
             η σάρωση ήθελε κύλιση· είναι η πιο συχνή πράξη του ιδιοκτήτη. */}
         <div className="ov-head-actions" style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-        <Btn variant="primary" onClick={()=>onNavigate('scan')}>
-          <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
+        {/* ΕΝΑ ΓΕΜΑΤΟ ΚΟΥΜΠΙ ΑΝΑ ΟΘΟΝΗ (κριτική σχεδίασης r2). Από τα 1025 και
+            πάνω η πλαϊνή μπάρα έχει ήδη το «Σάρωσε έγγραφο» ως κύριο κουμπί·
+            εδώ ήταν η ίδια πράξη δεύτερη φορά, με άλλο εικονίδιο. Κρύβεται εκεί
+            (`.ov-scan-hero`, globals.css) και μένει κάτω από τα 1025, όπου η
+            μπάρα είναι συρτάρι. Η «Αναφορά σε PDF» μένει δευτερεύουσα. */}
+        {/* ΕΝΑ ΕΙΚΟΝΙΔΙΟ ΓΙΑ ΤΗ ΣΑΡΩΣΗ (κριτική σχεδίασης r3): η φωτογραφική μηχανή
+            της πλαϊνής μπάρας, όχι πλαίσιο σάρωσης εδώ και μηχανή εκεί. */}
+        <Btn variant="primary" className="tour-scan ov-scan-hero" onClick={()=>onNavigate('scan')}>
+          <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           Σάρωσε έγγραφο
         </Btn>
         <Btn disabled={moneyGap} title={moneyGap ? 'Η αναφορά περιμένει να φορτωθούν όλα τα ποσά' : undefined} onClick={()=>printPropertyStatement({
@@ -890,6 +944,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         </Btn>
         </div>
       </div>
+      {startSlot}
 
 
       {/* ═══ Η ΕΝΗΜΕΡΩΣΗ ΤΩΝ ΟΡΩΝ ΚΑΤΩ ΑΠΟ ΤΗΝ ΚΕΦΑΛΙΔΑ, ΣΕ ΜΙΑ ΓΡΑΜΜΗ ══════════

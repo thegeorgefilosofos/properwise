@@ -904,7 +904,7 @@ export function CustomSelect({
           {selected?.dot && <div style={{ width: 8, height: 8, borderRadius: '50%', background: selected.dot, flexShrink: 0 }}/>}
           {selected?.color && <div style={{ width: 10, height: 10, borderRadius: 3, background: selected.color, flexShrink: 0 }}/>}
           {/* `po-field-value`: 16 στην αφή, όπως κάθε <input> δίπλα του (globals.css). */}
-          <span className="po-elide po-field-value" style={{
+          <span className="po-elide po-field-value" data-empty={selected ? undefined : ''} style={{
             fontFamily: T.font.sans,
             fontSize: tool ? 16 : 14,
             letterSpacing: tool ? 0 : '0.25px',

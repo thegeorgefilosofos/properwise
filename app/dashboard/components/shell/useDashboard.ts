@@ -43,6 +43,7 @@ import { trackOnboarding, PRODUCT_EVENTS, type WizardFrom } from '@/lib/analytic
 import type { Property } from './model'
 import { NAV_ITEMS, LAUNCH } from './nav'
 import { useInventoryAlerts, useChecklistAlerts } from './alerts'
+import { tourDoneLocally, markTourDoneLocally } from '@/lib/onboarding/tourDone'
 
 
 /** Η πλατφόρμα δεν αλλάζει όσο είναι ανοιχτή η σελίδα: καμία συνδρομή. */
@@ -108,7 +109,7 @@ export function useDashboard() {
   const [statusDropdown, setStatusDropdown] = useState(false);
   const [editProperty, setEditProperty] = useState<Property | null>(null);
   // Από πού άνοιξε ο οδηγός: η Λογιστική τον ανοίγει στο ΑΦΜ του ιδιοκτήτη.
-  const [editFocus, setEditFocus] = useState<'owner_afm' | null>(null);
+  const [editFocus, setEditFocus] = useState<'owner_afm' | 'rent' | 'basics' | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);  // συρόμενο μενού σε κινητό/tablet
   // Η ΑΛΛΑΓΗ ΑΚΙΝΗΤΟΥ ΑΛΛΑΖΕΙ ΟΛΗ ΤΗΝ ΟΘΟΝΗ ΚΑΙ ΔΕΝ ΑΝΑΚΟΙΝΩΝΟΤΑΝ. Οποιος
   // διαβάζει με αναγνώστη οθόνης άκουγε σιωπή: τα δεδομένα κάτω από τα δάχτυλά
@@ -127,6 +128,13 @@ export function useDashboard() {
   // βρίσκει στην πρώτη του απόδοση είναι εκκρεμές αίτημα ή παλιό.
   const [handledExpense, setHandledExpense] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);// καλωσόρισμα πρώτης χρήσης
+  // ── Η ΠΕΡΙΗΓΗΣΗ ΤΗΣ ΠΡΩΤΗΣ ΕΙΣΟΔΟΥ ─────────────────────────────────────
+  // `onboarding_progress.completed`: υπήρχε από την πρώτη μετανάστευση και δεν
+  // το έγραφε κανείς. Γράφεται όταν η περιήγηση τελειώσει ή απορριφθεί, ώστε
+  // να μην ξαναπροταθεί σε καμία συσκευή (lib/onboarding/tour.ts). Μέχρι να
+  // διαβαστεί η πρόοδος μετρά ως «έγινε»: καλύτερα να μην προταθεί μία φορά
+  // παρά να προταθεί σε όποιον την έχει ήδη κλείσει.
+  const [tourDone, setTourDone] = useState(true);
 
   // ── Ο ΠΙΝΑΚΑΣ «ΑΠΟ ΠΟΥ ΞΕΚΙΝΑΣ» ─────────────────────────────────────────
   // Τα σήματα διαβάζονται ΜΙΑ φορά, μαζί με τα υπόλοιπα counts της εκκίνησης:
@@ -247,6 +255,8 @@ export function useDashboard() {
     properties: properties.length,
     documents: startSignals.documents,
     calendarLinked: startSignals.calendarLinked,
+    // Τα βασικά του ακινήτου που βλέπει: διεύθυνση και εμβαδόν (lib/home/start.ts).
+    basicsDone: !!selected?.address?.trim() && Number(selected?.sqm) > 0,
     trialActive: trial.active,
     daysLeft: trial.daysLeft,
   });
@@ -276,6 +286,14 @@ export function useDashboard() {
     if (!startPrimed.current) { startPrimed.current = true; return; }
     void refreshStartSignals();
   }, [user, nav, quickAddOpen, startState.visible, refreshStartSignals]);
+
+  const finishTour = () => {
+    setTourDone(true);
+    markTourDoneLocally();
+    if (!user) return;
+    void saved('Η πρόοδος της περιήγησης δεν αποθηκεύτηκε', supabase.from('onboarding_progress')
+      .upsert({ user_id: user.id, completed: true, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }));
+  };
 
   const toggleStartPanel = (next: boolean) => {
     setStartCollapsed(next);
@@ -498,7 +516,7 @@ export function useDashboard() {
         // στο Αρχείο και ο μόνος δρόμος στο nav==='contacts' (ο βοηθός) κρίνεται
         // από το tabDecision. Πέντε COUNT έγιναν τέσσερα, ίδια ακριβώς οθόνη.
         const [{ data: ob, error: obErr }, { count, error: countErr }, { count: docCount }, loanRes, invRes, feedRes] = await Promise.all([
-          supabase.from('onboarding_progress').select('welcomed, revealed_tabs, nav_show_all, start_collapsed').eq('user_id', user.id).maybeSingle(),
+          supabase.from('onboarding_progress').select('welcomed, completed, revealed_tabs, nav_show_all, start_collapsed').eq('user_id', user.id).maybeSingle(),
           cnt('user_properties'),
           cnt('property_documents'),
           cnt('loans'),
@@ -548,8 +566,10 @@ export function useDashboard() {
         // πριν εφαρμοστεί το migration που προσθέτει τις στήλες) θα περνούσε ως
         // «διαβάστηκαν κενές προτιμήσεις» και θα ΕΚΡΥΒΕ καρτέλες αντί να ανοίξει
         // fail-open. Μόνο όταν το read πετύχει δηλώνουμε τις προτιμήσεις φορτωμένες.
-        const rec = ob as { revealed_tabs?: unknown; nav_show_all?: boolean; start_collapsed?: boolean | null } | null;
+        const rec = ob as { revealed_tabs?: unknown; nav_show_all?: boolean; start_collapsed?: boolean | null; completed?: boolean | null } | null;
         setStartCollapsed(!!rec?.start_collapsed);
+        // Αποτυχημένη ανάγνωση: «έγινε», όπως και πριν διαβαστεί.
+        setTourDone(!!obErr || !!rec?.completed || tourDoneLocally());
         if (obErr) {
           setNavPrefsFailed(true);    // → fail-open: φαίνονται ΟΛΕΣ οι καρτέλες
         } else {
@@ -763,7 +783,7 @@ export function useDashboard() {
     setHandoverIntent, navShowAll, loading, loadError, showAddModal, setShowAddModal,
     statusDropdown, setStatusDropdown, editProperty, setEditProperty, editFocus, setEditFocus, sidebarOpen, setSidebarOpen,
     announce, setAnnounce, cmdkOpen, setCmdkOpen, quickAddOpen, setQuickAddOpen, manualExpense,
-    setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
+    setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, tourDone, finishTour, startCollapsed, showPreview, setShowPreview,
     scanAfterAdd, setScanAfterAdd, plan, planVersion, refreshPlan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
