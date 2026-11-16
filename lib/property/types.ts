@@ -81,3 +81,10 @@ export const propertyTypeLabel = (t: string | null | undefined): string =>
 
 export const propertyTypePlural = (t: string | null | undefined): string =>
   known(t) ? PROPERTY_TYPE_PLURALS[t] : (t || '');
+
+/**
+ * Γη και βοηθητικοί χώροι: χωρίς όροφο, έτος κατασκευής και ΠΕΑ. Ζούσε μόνο
+ * στον οδηγό ακινήτου· τη χρειάζεται πια και η ειδοποίηση ΠΕΑ της μίσθωσης.
+ */
+export const LAND_LIKE_TYPES: ReadonlySet<string> = new Set(['land', 'parking', 'storage', 'warehouse']);
+export const isLandLike = (t: string | null | undefined): boolean => LAND_LIKE_TYPES.has(String(t ?? ''));

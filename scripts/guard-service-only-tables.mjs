@@ -39,7 +39,7 @@ const SERVICE_ONLY = [
   'cron_secrets',
   'email_outbox',
   'feedback_campaign_winners',
-  // Προσκλήσεις αποδοχής της κλήρωσης (20261110133000): μόνο το SHA-256 του
+  // Προσκλήσεις αποδοχής της κλήρωσης (20261116170000): μόνο το SHA-256 του
   // διακριτικού. Ο χρήστης περνά από τις accept_* και τη my_feedback_status.
   'feedback_prize_offers',
   'invoice_counters',

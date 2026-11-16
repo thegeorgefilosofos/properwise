@@ -51,7 +51,7 @@ export default function AmaStrip({ userId, propertyId }: { userId: string; prope
   const [readErr, setReadErr] = useState('');
 
   const load = useCallback(async () => {
-    let q = properties.query(supabase, userId, 'id,name,status_detail,rental_mode,ama,ama_listed_confirmed_at');
+    let q = properties.query<AmaProperty>(supabase, userId, 'id,name,status_detail,rental_mode,ama,ama_listed_confirmed_at');
     if (propertyId) q = q.eq('id', propertyId);
     const { data, error } = await q.order('created_at');
     // Σε αποτυχία ΔΕΝ σβήνουμε ό,τι έχει ήδη διαβαστεί: μια στιγμιαία αστοχία

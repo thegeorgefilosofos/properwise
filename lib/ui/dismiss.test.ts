@@ -109,7 +109,8 @@ const locked: DraftStore = {
 // Η συμπεριφορά ζει στις συναρτήσεις από πάνω. Εδώ ελέγχεται ότι οι οθόνες
 // τις καλούν και ότι κανένα κοινό φόντο δεν ξαναγύρισε στο `onClick={onClose}`.
 {
-  const theme = readFileSync('components/Theme.tsx', 'utf8')
+  // Το Modal και το κέλυφος ζουν στο ThemeCore.tsx, το SideSheet στο Theme.tsx.
+  const theme = readFileSync('components/Theme.tsx', 'utf8') + readFileSync('components/ThemeCore.tsx', 'utf8')
   ok('Γ. κανένα φόντο του Modal ή του SideSheet δεν κλείνει με σκέτο onClick',
     !/<div onClick=\{onClose\} role="dialog"/.test(theme))
   ok('Γ. το κέλυφος χρησιμοποιεί τον φύλακα του φόντου',
@@ -117,7 +118,7 @@ const locked: DraftStore = {
 
   const wiz = readFileSync('app/dashboard/components/AddPropertyWizard.tsx', 'utf8')
   const close = wiz.slice(wiz.indexOf('const requestClose = async'), wiz.indexOf('const requestClose = async') + 400)
-  ok('Γ. ο οδηγός ρωτά πριν κλείσει με αλλαγές', /if \(dirty && !\(await confirmDiscard\(\)\)\) return;/.test(close))
+  ok('Γ. ο οδηγός ρωτά πριν κλείσει με αλλαγές', /if \(dirty && !\(await confirmDiscard\(\)\)\) return( false)?;/.test(close))
   ok('Γ. ο οδηγός περνά το ίδιο κλείσιμο στο Modal', /<Modal open onClose=\{requestClose\}/.test(wiz))
   ok('Γ. το πρόχειρο σβήνει με την αποθήκευση', /clearDraft\(formKey\);\s*onSaved\(propertyId\)/.test(wiz))
 

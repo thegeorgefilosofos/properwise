@@ -36,7 +36,7 @@ import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import {
-  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
+  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq, GuideCalcLink,
   RelatedGuides, guideJsonLd, type GuideFaqItem,
 } from '../GuideParts';
 
@@ -230,6 +230,8 @@ export default function Page() {
         <div className="lg-note lg-note-tip" style={{ marginTop: 16 }}>
           {`Ο φόρος ενός ακινήτου εξαρτάται από τα υπόλοιπα ενοίκιά σου: μετριέται στο οριακό σου κλιμάκιο. Το ίδιο διαμέρισμα, αν εισπράττεις ήδη ${feWhole(EX_OTHER_GROSS)} ακαθάριστα από άλλα ακίνητα (${feWhole(OTHER_TAXABLE)} φορολογητέα), περνά κυρίως στο κλιμάκιο ${ratePct(STACKED_MAIN.rate)}: ${STACKED_SPLIT}, δηλαδή ${feWhole(STACKED.tax)} φόρος αντί για ${feWhole(BASE.tax)}. Τα καθαρά πέφτουν στα ${feWhole(STACKED.net)} και η καθαρή απόδοση στο ${pctOf(STACKED.netYield)}. Γι’ αυτό δύο ιδιοκτήτες με πανομοιότυπο ακίνητο κρατούν διαφορετικά.`}
         </div>
+
+        <GuideCalcLink href="/kathari-apodosi" action="Υπολόγισε την καθαρή απόδοσή σου" />
 
         {/* 4. Απόσβεση */}
         <H2 {...S.payback} />

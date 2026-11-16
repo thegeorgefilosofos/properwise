@@ -24,18 +24,21 @@ import { createClient } from '@/lib/supabase/client';
 import * as properties from '@/lib/data/properties';
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing';
+import { nameDaysLeft, nameLockedError, NAME_LOCK_DAYS, NAME_LOCKED_TEXT } from './nameLock';
 import { TextInput, CustomSelect, FIELD_LABEL_ROW } from './UIComponents';
 import { T, Btn, LinkBtn, InfoBanner, Spinner, Card, SecHdr, ChipToggle, fixedCols, fe, fd } from '@/components/Theme';
 import { PLANS, PLAN_ORDER, normalizePlan, annualPerMonth, type PlanId, type BillingCycle } from '@/lib/billing/plans';
 // Η ΦΑΣΗ ΤΗΣ ΣΥΝΔΡΟΜΗΣ ΔΕΝ ΚΡΙΝΕΤΑΙ ΕΔΩ. Οι καταστάσεις τις ονομάζει ο
 // έμπορος και τις γράφει ο webhook· η οθόνη τις διαβάζει από την ίδια πηγή.
-import { subPhase, cardState } from '@/lib/billing/subscription';
+import { subPhase, cardState, pastDueUntil } from '@/lib/billing/subscription';
+import { useBillingWords } from './useBillingWords';
 import { ALLOWED_PLANS, planFromParam, cycleFromParam, type ProfileType } from '@/lib/billing/entitlements';
 import { SegmentControl } from './UIComponents';
 import { notifyError, notifyOk } from '@/components/Toast';
 import { ALL_COUNTRIES, isEuCountry, isReverseCharge } from '@/lib/billing/invoiceProfile';
 import { determineVat, vatTreatmentLabel } from '@/lib/billing/invoicing';
 import { isReferralCode } from '@/lib/referral/referral';
+import { doorErrorMessage, testerErrorMessage, type ErrorBody } from '@/lib/billing/billingErrors';
 import { WITHDRAWAL_DAYS, WITHDRAWAL_LABEL, WITHDRAWAL_PATH } from '@/lib/legal/withdrawalLabels';
 
 interface BillingData {
@@ -46,6 +49,8 @@ interface BillingData {
   profile_type: string;
   /** Ο,τι ξέρει ο πάροχος για τη συνδρομή. Διαβάζεται, δεν γράφεται από εδώ. */
   subscription_status: string; mor_renews_at: string; mor_ends_at: string;
+  /** Η πρώτη αποτυχημένη χρέωση· πότε και γιατί έκλεισε η πρόσβαση (webhook). */
+  mor_past_due_at: string; mor_revoked_at: string; mor_revoked_reason: string;
   /** Η συνδρομή στον έμπορο. Η ΥΠΑΡΞΗ της κρίνει αν υπάρχει πύλη διαχείρισης. */
   mor_subscription_id: string;
   /** Ο λογαριασμός δοκιμαστή. Οσο υπάρχει, δεν υπάρχει τίποτα να αγοραστεί. */
@@ -60,11 +65,21 @@ const INIT: BillingData = {
   doc_type: 'receipt', full_name: '', company_name: '', afm: '', doy: '', profession: '',
   address: '', city: '', postal_code: '', country: 'GR', vat_number: '', phone: '', plan: 'free', billing_cycle: 'monthly',
   profile_type: 'individual', subscription_status: '', mor_renews_at: '', mor_ends_at: '',
+  mor_past_due_at: '', mor_revoked_at: '', mor_revoked_reason: '',
   mor_subscription_id: '', tester_since: '', hold_plan: '', hold_until: '',
 };
 
-export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
+export default function Billing({ userId, wantPlan = null, wantCycle = null, onPlanChanged, refreshKey = 0 }: {
   userId: string;
+  /**
+   * Το πακέτο άλλαξε στον διακομιστή (δοκιμαστής, αλλαγή πακέτου). Ο γονέας
+   * ξαναδιαβάζει το δικό του αντίγραφο: χωρίς αυτό, η κάρτα έδειχνε το νέο
+   * πακέτο και οι καρτέλες, η σύγκριση και το όριο ακινήτων το παλιό ως την
+   * επόμενη ανανέωση (έλεγχος 12.11.2026, εύρημα 5).
+   */
+  onPlanChanged?: () => void;
+  /** Αλλάζει όταν ο γονέας ξέρει ότι το προφίλ άλλαξε (π.χ. επιστροφή από το ταμείο). */
+  refreshKey?: number;
   /** Το πακέτο που διάλεξε ο χρήστης στη σύγκριση από πάνω. */
   wantPlan?: PlanId | null;
   /** Ο κύκλος που είχε η σύγκριση τη στιγμή της επιλογής. */
@@ -75,8 +90,14 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [saveErr, setSaveErr] = useState(false);
+  /** false, ή το κείμενο του σφάλματος (το κλείδωμα ονόματος έχει δικό του). */
+  const [saveErr, setSaveErr] = useState<string | false>(false);
   const [prefilled, setPrefilled] = useState(false);
+  // ΤΟ ΟΝΟΜΑ ΚΛΕΙΔΩΝΕΙ ΚΑΙ ΕΔΩ (nameLock.ts). Ως τις 10/11/2026 αυτή η φόρμα το
+  // άλλαζε ελεύθερα, παρότι ο Λογαριασμός και η σελίδα trust λένε «μία φορά τον μήνα».
+  const [nameLockDays, setNameLockDays] = useState(0);
+  /** Το όνομα όπως είναι αποθηκευμένο: αλλαγή του από μη κενό ξεκινά το κλείδωμα. */
+  const [savedName, setSavedName] = useState('');
   // Ζωντανή χρέωση; Το λέει ο ίδιος έλεγχος που δείχνει το κουμπί του ταμείου.
   const [billingLive, setBillingLive] = useState<boolean | null>(null);
   const set = (k: keyof BillingData, v: string) => setD(p => ({ ...p, [k]: v }));
@@ -84,7 +105,7 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
   // αλλαγή πακέτου δοκιμαστή γράφεται με ρόλο υπηρεσίας, οπότε η οθόνη δεν
   // μπορεί να τη μαντέψει.
   const [reloads, setReloads] = useState(0);
-  const reload = () => setReloads(n => n + 1);
+  const reload = () => { setReloads(n => n + 1); onPlanChanged?.(); };
 
   // ── Η ΕΠΙΛΟΓΗ ΤΗΣ ΕΓΓΡΑΦΗΣ ΕΠΙΖΕΙ ΤΗΣ ΕΓΚΑΤΑΛΕΙΨΗΣ ΤΟΥ ΤΑΜΕΙΟΥ ────────
   // Πακέτο και κύκλος διαλέγονται στον τιμοκατάλογο και γράφονται στο προφίλ
@@ -105,6 +126,9 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
       setWishPlan(planFromParam(meta.chosen_plan));
       setWishCycle(cycleFromParam(meta.chosen_cycle));
       const base: BillingData = { ...INIT, ...(data || {}) };
+      const changedAt = (data as { full_name_changed_at?: string | null } | null)?.full_name_changed_at;
+      setNameLockDays(nameDaysLeft(changedAt, Date.now()));
+      setSavedName(String(data?.full_name || '').trim());
 
       // Έξυπνη προσυμπλήρωση: αντλούμε ό,τι ήδη ξέρουμε από το ακίνητο και τις
       // ρυθμίσεις του, ώστε ο χρήστης να μη βρίσκει άδεια φόρμα (αλλιώς δεν τη
@@ -134,7 +158,7 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
       setLoading(false);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, reloads]);
+  }, [userId, reloads, refreshKey]);
 
   const save = async () => {
     setSaving(true); setSaved(false); setSaveErr(false);
@@ -148,8 +172,14 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
     // άρθρο 5§1 στοιχείο γ΄ GDPR). Οι στήλες μένουν· κανείς άλλος δεν τις διαβάζει.
     const { error } = await billing.save(supabase, userId, { ...d, ...RETIRED_FIELDS } as billing.BillingPatch);
     setSaving(false);
-    if (!error) { setSaved(true); setTimeout(() => setSaved(false), 2500); }
-    else setSaveErr(true);
+    if (!error) {
+      setSaved(true); setTimeout(() => setSaved(false), 2500);
+      // Ίδιος κανόνας με τη βάση (lock_full_name_change): αλλαγή από μη κενό κλειδώνει.
+      const now = String(d.full_name || '').trim();
+      if (savedName && now !== savedName) setNameLockDays(NAME_LOCK_DAYS);
+      setSavedName(now);
+    }
+    else setSaveErr(nameLockedError(error) ? NAME_LOCKED_TEXT : 'Δεν αποθηκεύτηκε. Δοκίμασε ξανά.');
   };
 
   if (loading) return <Spinner label="Φόρτωση…" />;
@@ -230,7 +260,9 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
             options={[{ value: 'receipt', label: 'Απόδειξη (ιδιώτης)' }, { value: 'invoice', label: 'Τιμολόγιο (επιχείρηση)' }]} />
           <CustomSelect label="Χώρα" value={country} onChange={v => set('country', v)}
             options={ALL_COUNTRIES.map(c => ({ value: c.code, label: c.name }))} />
-          <TextInput label="Ονοματεπώνυμο" value={d.full_name} onChange={v => set('full_name', v)} placeholder="Όνομα και επώνυμο" />
+          <TextInput label="Ονοματεπώνυμο" value={d.full_name} onChange={v => set('full_name', v)} placeholder="Όνομα και επώνυμο"
+            disabled={nameLockDays > 0}
+            labelInfo={nameLockDays > 0 ? `${NAME_LOCKED_TEXT} Ξανά σε ${nameLockDays} ${nameLockDays === 1 ? 'ημέρα' : 'ημέρες'}.` : undefined} />
           {isInvoice && <TextInput label="Επωνυμία εταιρείας" value={d.company_name} onChange={v => set('company_name', v)} placeholder="Παράδειγμα Ε.Ε." />}
           {/* Φορολογικό αναγνωριστικό: ΑΦΜ για Ελλάδα, κοινοτικό VAT (VIES) για ΕΕ, μητρώο για εκτός ΕΕ */}
           {isInvoice && isGr && <TextInput label="ΑΦΜ" value={d.afm} onChange={v => set('afm', v)} placeholder="123456789" />}
@@ -262,7 +294,7 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
 
         {saveErr && (
           <div style={{ fontSize: 12, color: 'var(--negative)', fontFamily: T.font.sans, lineHeight: 1.55, marginTop: 10 }}>
-            Δεν αποθηκεύτηκε. Δοκίμασε ξανά.
+            {saveErr}
           </div>
         )}
 
@@ -280,6 +312,40 @@ export default function Billing({ userId, wantPlan = null, wantCycle = null }: {
  * είναι ενεργή: αυτό το ξέρει μόνο ο διακομιστής και λέγεται με τις λέξεις
  * των Ορων. Λέει μόνο τι ισχύει στην οθόνη και ότι τίποτα δεν άλλαξε.
  */
+/**
+ * ΓΙΑΤΙ ΕΙΝΑΙ ΚΛΕΙΣΤΟ ΤΟ ΤΑΜΕΙΟ, ΜΟΝΟ ΓΙΑ ΔΙΑΧΕΙΡΙΣΤΗ (έλεγχος ετοιμότητας
+ * πληρωμών 12/11/2026, «Λείπει (κώδικας)» 5).
+ *
+ * Δεν υπάρχει χωριστή οθόνη διαχείρισης· η κάρτα της συνδρομής είναι το σημείο
+ * όπου ο ιδιοκτήτης βλέπει την κατάσταση του ταμείου. Εμφανίζεται όποτε η
+ * διάγνωση βρίσκει κάτι, ανοιχτό ή κλειστό το ταμείο. Η διαδρομή κρίνει μόνη
+ * της ποιος είναι διαχειριστής (app_admins και δεύτερο βήμα) και σε όλους τους
+ * άλλους απαντά 403: τότε εδώ δεν εμφανίζεται τίποτα. Καμία τιμή μεταβλητής
+ * δεν φτάνει ως εδώ, μόνο ονόματα και ζεύγη πακέτου.
+ */
+function CheckoutDiagnostic() {
+  const [problems, setProblems] = useState<string[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/billing/diagnostic')
+      .then(r => (r.ok ? r.json() as Promise<{ problems?: string[] }> : null))
+      .then(b => { if (alive && b && Array.isArray(b.problems)) setProblems(b.problems); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  if (!problems || problems.length === 0) return null;
+  return (
+    <div style={{ marginTop: T.sp.sm }}>
+      <InfoBanner tone="warning">
+        <strong>Διάγνωση ταμείου, μόνο για διαχειριστή.</strong>
+        <ul style={{ margin: `${T.sp.xs}px 0 0`, paddingLeft: T.sp.lg }}>
+          {problems.map(p => <li key={p}>{p}</li>)}
+        </ul>
+      </InfoBanner>
+    </div>
+  );
+}
+
 const CHECKOUT_UNREACHABLE = 'Η πληρωμή με κάρτα δεν είναι διαθέσιμη αυτή τη στιγμή. Η συνδρομή σου δεν αλλάζει.';
 
 // ─── Η ΣΥΝΔΡΟΜΗ ─────────────────────────────────────────────────────────────
@@ -364,7 +430,15 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
   const endsAt = (d.mor_ends_at || '').trim();
   const renewsAt = (d.mor_renews_at || '').trim();
   // Ο κανόνας ζει στο lib/billing/subscription.ts, όπου τον φτάνει δοκιμή.
-  const { tone, running } = cardState({ status, endsAt }, new Date().toISOString());
+  const pastDueSince = (d.mor_past_due_at || '').trim() || null;
+  const revokedAt = (d.mor_revoked_at || '').trim() || null;
+  const { tone, running } = cardState({ status, endsAt, pastDueSince, revokedAt }, new Date().toISOString());
+  // ΤΑ ΛΟΓΙΑ ΤΗΣ ΑΠΟΤΥΧΗΜΕΝΗΣ ΠΛΗΡΩΜΗΣ ΚΑΙ ΤΗΣ ΕΠΙΣΤΡΟΦΗΣ ΕΡΧΟΝΤΑΙ ΑΠΟ ΤΟΝ
+  // ΔΙΑΚΟΜΙΣΤΗ (lib/legal/billingWords.ts, SUBSCRIPTION_NOTICES). Χωρίς
+  // απάντηση δεν λέγεται τίποτα: καμία οθόνη δεν μαντεύει στη θέση του.
+  const notices = useBillingWords()?.subscriptionNotices ?? null;
+  const graceUntil = pastDueUntil(pastDueSince);
+  const withDate = (text: string, iso: string | null) => text.replace('{date}', iso ? fd(iso) : '');
 
   // ── ΤΟ ΚΟΥΜΠΙ ΡΩΤΑΕΙ ΠΡΙΝ ΕΜΦΑΝΙΣΤΕΙ ────────────────────────────────────
   // Οι σύνδεσμοι αγοράς ζουν σε μεταβλητή περιβάλλοντος, δηλαδή ο περιηγητής
@@ -405,8 +479,11 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
     setBusy(true);
     try {
       const res = await fetch(url);
-      const body = await res.json() as { url?: string | null };
-      if (!body.url) { notifyError(`${what} δεν άνοιξε. Δοκίμασε ξανά σε λίγο.`); setBusy(false); return; }
+      const body = await res.json().catch(() => ({})) as { url?: string | null } & ErrorBody;
+      // Ο ΛΟΓΟΣ ΤΟΥ ΔΙΑΚΟΜΙΣΤΗ ΠΡΩΤΑ. Το 409 («υπάρχει ήδη ενεργή συνδρομή») και
+      // το 403 του δεύτερου βήματος λένε τι να κάνει ο χρήστης· το γενικό
+      // «δοκίμασε ξανά» τον έβαζε να ξαναπατά για την ίδια άρνηση.
+      if (!body.url) { notifyError(doorErrorMessage(res.status, body, what)); setBusy(false); return; }
       window.location.href = body.url;
     } catch {
       notifyError(`${what} δεν άνοιξε. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.`);
@@ -464,7 +541,12 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),
       });
-      if (!res.ok) { notifyError('Ο κωδικός δεν αναγνωρίζεται.'); setBusy(false); return; }
+      if (!res.ok) {
+        // Το όριο προσπαθειών και η βλάβη δεν είναι «λάθος κωδικός»
+        // (lib/billing/billingErrors.ts).
+        const body = await res.json().catch(() => ({})) as ErrorBody;
+        notifyError(testerErrorMessage(res.status, body)); setBusy(false); return;
+      }
       notifyOk('Ο κωδικός εξαργυρώθηκε');
       setCode(''); setCodeOpen(false);
       onChanged();
@@ -547,8 +629,12 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
           {tone === 'trial' ? 'Σε δοκιμή' : `Ενεργή συνδρομή, ${plan.name}`}
           {renewsAt ? `. Ανανέωση στις ${fd(renewsAt)}.` : '.'}
         </InfoBanner>
-      ) : tone === 'retrying' ? (
-        <InfoBanner tone="warning">Η τελευταία χρέωση δεν ολοκληρώθηκε. Ο λογαριασμός παραμένει ανοιχτός όσο ο έμπορος ξαναδοκιμάζει την κάρτα. Ενημέρωσε την κάρτα σου από τη διαχείριση συνδρομής.</InfoBanner>
+      ) : tone === 'retrying' && notices && graceUntil ? (
+        <InfoBanner tone="warning">{withDate(notices.pastDue, graceUntil)}</InfoBanner>
+      ) : tone === 'retrying-over' && notices ? (
+        <InfoBanner tone="warning">{withDate(notices.pastDueOver, graceUntil)}</InfoBanner>
+      ) : tone === 'revoked' && notices ? (
+        <InfoBanner tone="warning">{withDate(d.mor_revoked_reason === 'dispute' ? notices.dispute : notices.refund, revokedAt)}</InfoBanner>
       ) : null}
 
       {/* ── Η ΥΠΟΒΑΘΜΙΣΗ ΠΟΥ ΠΕΡΙΜΕΝΕΙ, ΓΡΑΜΜΕΝΗ ────────────────────────────
@@ -674,6 +760,8 @@ function Subscription({ d, wantPlan = null, wantCycle = null, wishPlan = null, w
           <InfoBanner tone="info">{note || CHECKOUT_UNREACHABLE}</InfoBanner>
         </div>
       )}
+      {/* ΚΑΙ ΜΕ ΑΝΟΙΧΤΟ ΤΑΜΕΙΟ, αν λείπει κάτι (έλεγχος του PR 558, M3). */}
+      {live !== null && <CheckoutDiagnostic />}
 
       {/* ΠΟΙΟΣ ΧΡΕΩΝΕΙ, ΓΡΑΜΜΕΝΟ ΠΡΙΝ ΤΗ ΧΡΕΩΣΗ. Στην κίνηση της κάρτας φαίνεται
           το όνομα του παρόχου· ένας πελάτης που δεν το περίμενε το καταγγέλλει

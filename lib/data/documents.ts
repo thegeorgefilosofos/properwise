@@ -130,6 +130,34 @@ export async function incomeTaxStatementsWithError(
 }
 
 /**
+ * Τα σαρωμένα εκκαθαριστικά φόρου εισοδήματος ΠΟΛΛΩΝ ακινήτων: ακίνητο, φορολογικό
+ * έτος, ποσό. Ο ίδιος κανόνας με την `incomeTaxStatementsWithError`: το νεότερο
+ * έγγραφο κάθε έτους κερδίζει, κενό ποσό δεν είναι μηδέν, αρνητικό (επιστροφή)
+ * γίνεται μηδέν. Για τον συγχρονισμό των δόσεων (lib/calendar/enfiaTotals.ts):
+ * εκκαθαριστικό χωρίς φόρο σημαίνει «καμία δόση».
+ */
+export async function incomeTaxStatementsOfMany(
+  db: Db, propertyIds: string[], userId: string,
+): Promise<{ statements: { propertyId: string; year: number; amount: number }[]; error: DbError | null }> {
+  if (propertyIds.length === 0) return { statements: [], error: null };
+  const q = db.from(TABLE).select('property_id,title,amount,created_at').in('property_id', propertyIds).eq('user_id', userId)
+    .ilike('title', `${INCOME_TAX_TITLE} %`).order('created_at', { ascending: false });
+  const { rows, error } = await read<{ property_id: string; title: string | null; amount: number | null }>(q);
+  const seen = new Set<string>();
+  const statements: { propertyId: string; year: number; amount: number }[] = [];
+  for (const r of rows) {
+    const y = incomeTaxYearOf(r.title);
+    if (r.amount == null || String(r.amount).trim() === '') continue;
+    const a = Number(r.amount);
+    const k = `${r.property_id}|${y}`;
+    if (!y || !Number.isFinite(a) || seen.has(k)) continue;
+    seen.add(k);
+    statements.push({ propertyId: r.property_id, year: y, amount: Math.max(0, a) });
+  }
+  return { statements, error };
+}
+
+/**
  * Τα σαρωμένα εκκαθαριστικά ΕΝΦΙΑ πολλών ακινήτων: ακίνητο, έτος και ΣΥΝΟΛΟ.
  *
  * Από το σύνολο βγαίνει πόσες δόσεις έχει το εκκαθαριστικό (lib/calendar/

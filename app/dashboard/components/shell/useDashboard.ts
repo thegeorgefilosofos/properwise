@@ -9,9 +9,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useNavHistory } from '../useNavHistory'
 import { useEffect, useState, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
+import { A11Y_KEY, APP_ATTR, applyA11y, parseA11y } from '@/lib/core/a11yPrefs'
 import { createClient } from '@/lib/supabase/client'
 import { hardNavigate } from '@/lib/core/navigate'
 import { endSession, SIGN_OUT_FAILED } from '@/lib/auth/endSession'
+import { anyKeptUnsaved } from '../keptDrafts'
+import { navLabel } from '@/lib/nav/labels'
 import * as propertyStore from '@/lib/data/properties'
 import * as documentStore from '@/lib/data/documents'
 import * as feedStore from '@/lib/data/calendarFeed'
@@ -26,11 +29,13 @@ import { writeStatus, type PropertyStatus } from '@/lib/property/status'
 import type { OwnerContext } from '@/lib/property/visibility'
 import { LEGAL_FORMS, type LegalForm } from '@/lib/accounting/dossier'
 import { confirmDialog, confirmDiscard } from '@/components/ConfirmDialog'
-import { notifyError } from '@/components/Toast'
+import { notify, notifyError, notifyOk } from '@/components/Toast'
+import { PLAN_COLUMNS, CHECKOUT_RETURN_SAY, planFieldsFromRow, planReadApplies, pollUntil, subscriptionArrived, takeCheckoutReturn, type PlanProfileRow } from '@/lib/billing/planRefresh'
 import { clearHistory as clearAssistantHistory } from '../assistantPersona'
 import {
-  effectivePlan, livePlan, canAddProperty, planAtLeast, trialState, PROFESSIONAL_MIN_PLAN, type EntitlementInput,
+  effectivePlan, canAddProperty, planAtLeast, trialState, PROFESSIONAL_MIN_PLAN, type EntitlementInput,
 } from '@/lib/billing/entitlements'
+import { PLANS, normalizePlan } from '@/lib/billing/plans'
 import { reveal, sanitizeRevealed, coreTabs, type DisclosureSignals } from '@/lib/nav/disclosure'
 import { startPanel } from '@/lib/home/start'
 import { saved } from '@/components/dbWrite'
@@ -39,6 +44,7 @@ import { trackOnboarding, PRODUCT_EVENTS, type WizardFrom } from '@/lib/analytic
 import type { Property } from './model'
 import { NAV_ITEMS, LAUNCH } from './nav'
 import { useInventoryAlerts, useChecklistAlerts } from './alerts'
+import { tourDoneLocally, markTourDoneLocally } from '@/lib/onboarding/tourDone'
 
 
 /** Η πλατφόρμα δεν αλλάζει όσο είναι ανοιχτή η σελίδα: καμία συνδρομή. */
@@ -104,7 +110,7 @@ export function useDashboard() {
   const [statusDropdown, setStatusDropdown] = useState(false);
   const [editProperty, setEditProperty] = useState<Property | null>(null);
   // Από πού άνοιξε ο οδηγός: η Λογιστική τον ανοίγει στο ΑΦΜ του ιδιοκτήτη.
-  const [editFocus, setEditFocus] = useState<'owner_afm' | null>(null);
+  const [editFocus, setEditFocus] = useState<'owner_afm' | 'rent' | 'basics' | 'enfia' | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);  // συρόμενο μενού σε κινητό/tablet
   // Η ΑΛΛΑΓΗ ΑΚΙΝΗΤΟΥ ΑΛΛΑΖΕΙ ΟΛΗ ΤΗΝ ΟΘΟΝΗ ΚΑΙ ΔΕΝ ΑΝΑΚΟΙΝΩΝΟΤΑΝ. Οποιος
   // διαβάζει με αναγνώστη οθόνης άκουγε σιωπή: τα δεδομένα κάτω από τα δάχτυλά
@@ -123,6 +129,13 @@ export function useDashboard() {
   // βρίσκει στην πρώτη του απόδοση είναι εκκρεμές αίτημα ή παλιό.
   const [handledExpense, setHandledExpense] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);// καλωσόρισμα πρώτης χρήσης
+  // ── Η ΠΕΡΙΗΓΗΣΗ ΤΗΣ ΠΡΩΤΗΣ ΕΙΣΟΔΟΥ ─────────────────────────────────────
+  // `onboarding_progress.completed`: υπήρχε από την πρώτη μετανάστευση και δεν
+  // το έγραφε κανείς. Γράφεται όταν η περιήγηση τελειώσει ή απορριφθεί, ώστε
+  // να μην ξαναπροταθεί σε καμία συσκευή (lib/onboarding/tour.ts). Μέχρι να
+  // διαβαστεί η πρόοδος μετρά ως «έγινε»: καλύτερα να μην προταθεί μία φορά
+  // παρά να προταθεί σε όποιον την έχει ήδη κλείσει.
+  const [tourDone, setTourDone] = useState(true);
 
   // ── Ο ΠΙΝΑΚΑΣ «ΑΠΟ ΠΟΥ ΞΕΚΙΝΑΣ» ─────────────────────────────────────────
   // Τα σήματα διαβάζονται ΜΙΑ φορά, μαζί με τα υπόλοιπα counts της εκκίνησης:
@@ -194,13 +207,23 @@ export function useDashboard() {
     () => 'Ctrl K',
   );
 
-  // Προσβασιμότητα: εφαρμογή αποθηκευμένων προτιμήσεων σε όλη την εφαρμογή.
+  // Οι ρυθμίσεις προσβασιμότητας ΔΕΝ εφαρμόζονται πια εδώ στη φόρτωση: τις
+  // γράφει στο <html> το σενάριο του θέματος πριν το πρώτο paint
+  // (lib/core/a11yPrefs.ts). Από effect, ο χρήστης με μεγάλο κείμενο έβλεπε
+  // πρώτα το μικρό. Εδώ μένει μόνο ο συγχρονισμός ανάμεσα σε καρτέλες: η
+  // αλλαγή στη μία φτάνει στην άλλη με το συμβάν `storage`, χωρίς ανανέωση.
   useEffect(() => {
-    try {
-      const r = document.documentElement;
-      if (localStorage.getItem('po_reduce_motion') === '1') r.classList.add('a11y-reduce-motion');
-      if (localStorage.getItem('po_large_text') === '1') r.classList.add('a11y-large-text');
-    } catch { /* ignore */ }
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== A11Y_KEY) return;
+      try { applyA11y(document.documentElement, parseA11y(e.newValue)); } catch { /* χωρίς DOM */ }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      // Φεύγοντας από τον πίνακα ελέγχου (πλοήγηση χωρίς ανανέωση), το σημάδι
+      // του πρώτου paint φεύγει μαζί· τη μεγέθυνση την κρατά μόνο το `.app-shell`.
+      try { document.documentElement.removeAttribute(APP_ATTR); } catch { /* χωρίς DOM */ }
+    };
   }, []);
 
   // Καθολικό ⌘K / Ctrl+K για άνοιγμα του command palette.
@@ -243,6 +266,8 @@ export function useDashboard() {
     properties: properties.length,
     documents: startSignals.documents,
     calendarLinked: startSignals.calendarLinked,
+    // Τα βασικά του ακινήτου που βλέπει: διεύθυνση και εμβαδόν (lib/home/start.ts).
+    basicsDone: !!selected?.address?.trim() && Number(selected?.sqm) > 0,
     trialActive: trial.active,
     daysLeft: trial.daysLeft,
   });
@@ -272,6 +297,14 @@ export function useDashboard() {
     if (!startPrimed.current) { startPrimed.current = true; return; }
     void refreshStartSignals();
   }, [user, nav, quickAddOpen, startState.visible, refreshStartSignals]);
+
+  const finishTour = () => {
+    setTourDone(true);
+    markTourDoneLocally();
+    if (!user) return;
+    void saved('Η πρόοδος της περιήγησης δεν αποθηκεύτηκε', supabase.from('onboarding_progress')
+      .upsert({ user_id: user.id, completed: true, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }));
+  };
 
   const toggleStartPanel = (next: boolean) => {
     setStartCollapsed(next);
@@ -359,6 +392,61 @@ export function useDashboard() {
   };
   const showAllTabs = () => setNavShowAllPref(true);
 
+  // ── ΤΟ ΠΑΚΕΤΟ: ΜΙΑ ΑΝΑΓΝΩΣΗ, ΠΟΥ ΞΑΝΑΓΙΝΕΤΑΙ ─────────────────────────────
+  // Διαβαζόταν μία φορά, μέσα στην αρχική φόρτωση. Μετά από αγορά ή αλλαγή
+  // πακέτου οι κλειδωμένες καρτέλες, η πύλη «Προσθήκη ακινήτου» και η σύγκριση
+  // πακέτων έμεναν στο παλιό ως την επόμενη ανανέωση (έλεγχος 12.11.2026,
+  // εύρημα 5). Οι στήλες του πακέτου ζουν στο lib/billing/planRefresh.ts·
+  // εδώ προστίθενται μόνο όσες κρατά ο πίνακας (τύπος προφίλ, νομική μορφή).
+  /** Ανεβαίνει σε κάθε νέα ανάγνωση μετά από αλλαγή: οι Ρυθμίσεις ξαναδιαβάζουν το δικό τους. */
+  const [planVersion, setPlanVersion] = useState(0);
+  const loadPlan = useCallback(async (uid: string): Promise<(PlanProfileRow & { profile_type?: string|null; legal_form?: string|null }) | null> => {
+    const outcome = await billing.profileOutcome<PlanProfileRow & { profile_type?: string|null; legal_form?: string|null }>(supabase, uid, `${PLAN_COLUMNS}, profile_type, legal_form`);
+    // Σφάλμα ανάγνωσης: καμία εγγραφή στην οθόνη (planReadApplies). Ενα σφάλμα
+    // δικτύου δεν κάνει τον συνδρομητή «δωρεάν» ούτε τον επαγγελματία «ιδιώτη».
+    if (!planReadApplies(outcome)) return null;
+    const data = outcome.data;
+    if (!mountedRef.current) return data;
+    const f = planFieldsFromRow(data);
+    setPlan(f.plan); setCompPlan(f.compPlan); setCompUntil(f.compUntil); setTrialUsedAt(f.trialUsedAt);
+    setHoldPlan(f.holdPlan); setHoldUntil(f.holdUntil); setBonusProps(f.bonusProperties); setBonusUntil(f.bonusUntil);
+    setProfileType(data?.profile_type === 'professional' ? 'professional' : 'individual');
+    const raw = data?.legal_form ?? '';
+    setTaxForm(LEGAL_FORMS.includes(raw as LegalForm) ? raw as LegalForm : 'individual');
+    return data;
+  }, [supabase]);
+
+  /** Κάτι άλλαξε το πακέτο στον διακομιστή (κάρτα χρέωσης): ξαναδιάβασέ το παντού. */
+  const refreshPlan = useCallback(async () => {
+    if (!user) return;
+    await loadPlan(user.id);
+    if (mountedRef.current) setPlanVersion(v => v + 1);
+  }, [user, loadPlan]);
+
+  /**
+   * Μετά το ταμείο: περίμενε τη συνδρομή με όριο και πες την αλήθεια.
+   *
+   * Ο webhook μπορεί να έχει ήδη έρθει (η πρώτη ανάγνωση το δείχνει) ή να
+   * αργήσει. Αν δεν έρθει μέσα στο όριο, η οθόνη ΔΕΝ λέει ότι άλλαξε: λέει ότι
+   * περιμένουμε τον πάροχο και τι να κάνει ο χρήστης.
+   */
+  const awaitCheckout = async (uid: string, first: Promise<PlanProfileRow | null>) => {
+    const arrivedSay = (row: PlanProfileRow | null) =>
+      CHECKOUT_RETURN_SAY.arrived(PLANS[normalizePlan(planFieldsFromRow(row).plan)].name);
+    const firstRow = await first.catch(() => null);
+    if (subscriptionArrived(firstRow)) { notifyOk(arrivedSay(firstRow)); return; }
+    notify(CHECKOUT_RETURN_SAY.waiting);
+    const r = await pollUntil({
+      read: () => loadPlan(uid),
+      done: subscriptionArrived,
+      cancelled: () => !mountedRef.current,
+      waitFirst: true,
+    });
+    if (!mountedRef.current) return;
+    if (r.arrived) { setPlanVersion(v => v + 1); notifyOk(arrivedSay(r.row)); }
+    else notify(CHECKOUT_RETURN_SAY.late, { duration: 0 });
+  };
+
   const fetchProperties = useCallback(async (uid: string) => {
     // ΤΟ «ΔΕΝ ΔΙΑΒΑΣΤΗΚΕ» ΔΕΝ ΕΙΝΑΙ «ΔΕΝ ΕΧΕΙΣ ΤΙΠΟΤΑ».
     //
@@ -408,8 +496,14 @@ export function useDashboard() {
       // Ιδιότητα συνεργάτη (για το έμβλημα στο header), αν έχει κερδηθεί.
       supabase.from('referral_partners').select('user_id').eq('user_id', user.id).maybeSingle().then(({ data }) => setIsPartner(!!data));
       // Τρέχον πλάνο (για το όριο ακινήτων). Αν δεν υπάρχει προφίλ, δωρεάν.
-      billing.profile<{ plan?: string|null; profile_type?: string|null; comp_plan?: string|null; comp_until?: string|null; trial_used_at?: string|null; hold_plan?: string|null; hold_until?: string|null; bonus_properties?: number|null; bonus_properties_until?: string|null; legal_form?: string|null; subscription_status?: string|null; mor_ends_at?: string|null }>(supabase, user.id, 'plan, profile_type, comp_plan, comp_until, trial_used_at, hold_plan, hold_until, bonus_properties, bonus_properties_until, legal_form, subscription_status, mor_ends_at').then((data) => { setPlan(livePlan(data)); setProfileType(data?.profile_type === 'professional' ? 'professional' : 'individual'); setCompPlan((data as { comp_plan?: string|null } | null)?.comp_plan ?? null); setCompUntil((data as { comp_until?: string|null } | null)?.comp_until ?? null); setTrialUsedAt((data as { trial_used_at?: string|null } | null)?.trial_used_at ?? null); setHoldPlan((data as { hold_plan?: string|null } | null)?.hold_plan ?? null); setHoldUntil((data as { hold_until?: string|null } | null)?.hold_until ?? null); setBonusProps((data as { bonus_properties?: number|null } | null)?.bonus_properties ?? null); setBonusUntil((data as { bonus_properties_until?: string|null } | null)?.bonus_properties_until ?? null); const raw = (data as { legal_form?: string|null } | null)?.legal_form ?? '';
-        setTaxForm(LEGAL_FORMS.includes(raw as LegalForm) ? raw as LegalForm : 'individual'); });
+      const planRead = loadPlan(user.id);
+      // Η ΕΠΙΣΤΡΟΦΗ ΑΠΟ ΤΟ ΤΑΜΕΙΟ. Η παράμετρος σβήνεται αμέσως, ώστε μια
+      // ανανέωση να μην ξαναξεκινά την αναμονή (lib/billing/planRefresh.ts).
+      const ret = takeCheckoutReturn(window.location.search);
+      if (ret.search !== window.location.search) {
+        window.history.replaceState(null, '', window.location.pathname + ret.search + window.location.hash);
+      }
+      if (ret.returned) void awaitCheckout(user.id, planRead);
       // Μετατροπή κερδισμένων μηνών referral σε ενεργή δωρεάν πρόσβαση (server-verified,
       // idempotent). Εφαρμόζεται για την επόμενη φόρτωση· δεν είναι gameable από τον client.
       supabase.rpc('sync_comp_from_referrals').then(() => {});
@@ -433,7 +527,7 @@ export function useDashboard() {
         // στο Αρχείο και ο μόνος δρόμος στο nav==='contacts' (ο βοηθός) κρίνεται
         // από το tabDecision. Πέντε COUNT έγιναν τέσσερα, ίδια ακριβώς οθόνη.
         const [{ data: ob, error: obErr }, { count, error: countErr }, { count: docCount }, loanRes, invRes, feedRes] = await Promise.all([
-          supabase.from('onboarding_progress').select('welcomed, revealed_tabs, nav_show_all, start_collapsed').eq('user_id', user.id).maybeSingle(),
+          supabase.from('onboarding_progress').select('welcomed, completed, revealed_tabs, nav_show_all, start_collapsed').eq('user_id', user.id).maybeSingle(),
           cnt('user_properties'),
           cnt('property_documents'),
           cnt('loans'),
@@ -463,6 +557,10 @@ export function useDashboard() {
         // με το «Σάρωσε έγγραφο» του καλωσορίσματος.
         else if (LAUNCH.scan && !countErr && count === 0) {
           setEnfiaCarry(null);
+          // Η σάρωση ανοίγει πλέον και χωρίς ακίνητο (μόνο με τη μαζική): εδώ
+          // ανοίγει ο οδηγός, οπότε το παράθυρο της σάρωσης δεν ανοίγει από πάνω
+          // του. Ξανανοίγει μόλις αποθηκευτεί το ακίνητο (`scanAfterAdd`).
+          setQuickAddOpen(false);
           setScanAfterAdd(true);
           setShowAddModal(true);
           void trackOnboarding(supabase, { event: PRODUCT_EVENTS.wizard_opened, from: 'scan' });
@@ -479,8 +577,10 @@ export function useDashboard() {
         // πριν εφαρμοστεί το migration που προσθέτει τις στήλες) θα περνούσε ως
         // «διαβάστηκαν κενές προτιμήσεις» και θα ΕΚΡΥΒΕ καρτέλες αντί να ανοίξει
         // fail-open. Μόνο όταν το read πετύχει δηλώνουμε τις προτιμήσεις φορτωμένες.
-        const rec = ob as { revealed_tabs?: unknown; nav_show_all?: boolean; start_collapsed?: boolean | null } | null;
+        const rec = ob as { revealed_tabs?: unknown; nav_show_all?: boolean; start_collapsed?: boolean | null; completed?: boolean | null } | null;
         setStartCollapsed(!!rec?.start_collapsed);
+        // Αποτυχημένη ανάγνωση: «έγινε», όπως και πριν διαβαστεί.
+        setTourDone(!!obErr || !!rec?.completed || tourDoneLocally());
         if (obErr) {
           setNavPrefsFailed(true);    // → fail-open: φαίνονται ΟΛΕΣ οι καρτέλες
         } else {
@@ -669,6 +769,14 @@ export function useDashboard() {
     // πρόκειται να λήξει: μετά την αποσύνδεση, η RLS δεν θα το επέτρεπε ποτέ.
     // Τα τρία βήματα (ειδοποιήσεις, συνεδρία, περιηγητής) ζουν στο
     // lib/auth/endSession: τα μοιράζεται με την πύλη του λογιστή.
+    // ΟΙ ΜΗ ΚΑΤΑΧΩΡΗΜΕΝΕΣ ΣΑΡΩΣΕΙΣ ΡΩΤΟΥΝ ΕΔΩ, ΟΣΟ ΥΠΑΡΧΕΙ ΑΚΟΜΗ ΣΥΝΕΔΡΙΑ. Μετά
+    // το `endSession` τίποτα δεν επιτρέπεται να σταματήσει την έξοδο: το
+    // `hardNavigate` σβήνει τα προσχέδια και τον φύλακα ανανέωσης πριν φύγει.
+    if (anyKeptUnsaved() && !(await confirmDialog({
+      title: 'Να γίνει αποσύνδεση;',
+      message: `Στην καρτέλα «${navLabel('documents')}» υπάρχουν σαρώσεις που δεν έχουν καταχωρηθεί. Με την αποσύνδεση χάνονται.`,
+      confirmLabel: 'Αποσύνδεση χωρίς καταχώρηση', cancelLabel: 'Συνέχεια', tone: 'negative',
+    }))) return;
     if (!await endSession(supabase)) {
       // duration 0 = μένει ώσπου να το κλείσει ο χρήστης, ίδιο βάρος με το alert που
       // αντικατέστησε.
@@ -686,8 +794,8 @@ export function useDashboard() {
     setHandoverIntent, navShowAll, loading, loadError, showAddModal, setShowAddModal,
     statusDropdown, setStatusDropdown, editProperty, setEditProperty, editFocus, setEditFocus, sidebarOpen, setSidebarOpen,
     announce, setAnnounce, cmdkOpen, setCmdkOpen, quickAddOpen, setQuickAddOpen, manualExpense,
-    setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
-    scanAfterAdd, setScanAfterAdd, plan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
+    setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, tourDone, finishTour, startCollapsed, showPreview, setShowPreview,
+    scanAfterAdd, setScanAfterAdd, plan, planVersion, refreshPlan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
     setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, openWizard, updateStatus, deleteProperty,

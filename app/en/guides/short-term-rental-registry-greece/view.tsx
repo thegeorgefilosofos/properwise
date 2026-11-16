@@ -126,10 +126,10 @@ export default function Page() {
         `Freeze on new registrations in ${THESS_AREA} from ${THESS_FROM} to ${THESS_TO}: Article 111(2B) of Law 4446/2016 ${THESS_BASIS}.`,
         `Removal from the registry on a transfer between living persons (for value or as a gift) in the freeze zones: Article 111(2C) of Law 4446/2016 ${THESS_BASIS}.`,
         'Registration per property and display of the AMA on every platform and advertising medium: Article 111(2) of Law 4446/2016 · Decision POL.1187/2017 (Government Gazette B 4232/04.12.2017), as in force.',
-        `Fine for not registering or not showing the AMA: Article 111(5)(a) of Law 4446/2016, as replaced by Law 5073/2023 (Government Gazette A 204/12.12.2023) · ${SHARE} of the tax year’s gross income, at least ${FINE}, doubled for a new violation within one year of the fine being imposed.`,
+        `Fine for not registering or not showing the AMA: Article 111(5)(a) of Law 4446/2016, as replaced by Law 5073/2023 (Government Gazette A 204/11.12.2023) · ${SHARE} of the tax year’s gross income, at least ${FINE}, doubled for a new violation within one year of the fine being imposed.`,
         `Suitability requirements: Article 3 of Law 5170/2025 (${gazetteEn(STR_SPECS_FEK)}), cases a to d, from ${SPECS_FROM} · implementing details: Ministry of Tourism circular 19567/25.09.2025.`,
         `Fines for breaching the requirements: Article 3 of Law 5170/2025, paragraphs 5 and 6 · ${FINE}, doubled for a new violation within one year, quadrupled for each further one · on-site inspection by Ministry of Tourism staff (para. 2).`,
-        'Short-Term Stay Declaration: by the 20th of the month after departure (AADE FAQ, 23.09.2025) · payment of the climate crisis resilience fee: by the last day of the following month (Article 53(2) of Law 4389/2016, as replaced by Article 30 of Law 5073/2023).',
+        'Short-Term Stay Declaration: by the 20th of the month after departure (AADE FAQ, 23.09.2025) · payment of the climate crisis resilience fee: by the last day of the following month (Article 44(4) of Law 5177/2025, Government Gazette A 21/14.02.2025; formerly Article 53 of Law 4389/2016, codified and repealed by Article 63 of Law 5177/2025).',
       ]}
       faq={FAQ} faqTitle="What people ask before they let or buy"
       cta={{ title: 'Short-term or long-term?', href: '/en/short-term-vs-long-term-rental', action: 'Compare short-term and long-term',

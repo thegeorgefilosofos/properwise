@@ -39,7 +39,7 @@ if (r.ok) {
 // ── Και οι τρεις λίστες παραληπτών ─────────────────────────────────────────
 const three = readReceivedEvent({ ...EVENT, data: { ...EVENT.data, to: ['a@x.gr'], cc: ['b@x.gr'], received_for: ['c@x.gr'] } });
 ok(three.ok && three.event.recipients.join(',') === 'a@x.gr,b@x.gr,c@x.gr', 'to, cc και received_for μετράνε και τα τρία');
-const fwd = readReceivedEvent({ ...EVENT, data: { ...EVENT.data, to: ['o-idioktitis@gmail.com'], received_for: ['a3f19c7d0b2e4681@properwise.gr'] } });
+const fwd = readReceivedEvent({ ...EVENT, data: { ...EVENT.data, to: ['o-idioktitis@example.com'], received_for: ['a3f19c7d0b2e4681@properwise.gr'] } });
 ok(fwd.ok && fwd.event.recipients.includes('a3f19c7d0b2e4681@properwise.gr'), 'ΠΡΟΩΘΗΜΕΝΟ ΜΗΝΥΜΑ: η διεύθυνσή μας ζει στο received_for');
 
 // ── Γεγονότα που δεν μας αφορούν: 200, χωρίς θόρυβο ────────────────────────

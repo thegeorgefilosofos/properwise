@@ -40,6 +40,10 @@ export function obligationTitleEn(o: TaxObligation): string {
     case 'e9': return 'Form E9: check or report changes to your properties';
     case 'income-autofile': return 'Check the pre-filled tax return before it is filed automatically';
     case 'income-decl': return 'Income tax return (forms E1 and E2 for property)';
+    case 'income-instalment': {
+      const k = Number(o.id.split('-').pop());
+      return Number.isFinite(k) ? `Income tax: ${ordinal(k)} installment` : 'Income tax: installment';
+    }
     case 'str-registry': return 'Short-term rental stays: monthly filing (AADE registry)';
     case 'str-climate-fee': return 'Climate crisis resilience fee: payment';
   }

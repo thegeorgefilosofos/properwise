@@ -35,7 +35,7 @@ import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolS
 import { EstimateNote, ToolClampNote } from '@/app/ToolNotes';
 import { ToolNumField, ToolFields, ToolHero, ToolLedger } from '@/app/ToolParts';
 import { ToolSelect } from '@/app/ToolSelect';
-import { Btn } from '@/components/Theme';
+import { Btn } from '@/components/ThemeCore';
 
 import LiveResult from '@/components/LiveResult';
 const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);

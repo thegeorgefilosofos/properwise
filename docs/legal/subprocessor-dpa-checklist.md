@@ -22,9 +22,10 @@
 4. **Κατεβάστε το PDF** σε `docs/legal/executed-dpas/<provider>.pdf` (ή ασφαλή αποθήκη).
 5. Ενημερώστε το `subprocessors.md`: ☐ → ✅ με **ημερομηνία + έκδοση**.
 
-## 1. Supabase — κρίσιμο, EU/Frankfurt
+## 1. Supabase — κρίσιμο, EU/Frankfurt (βάση, αρχεία, κρυπτογραφημένα αντίγραφα ασφαλείας)
 - [x] Dashboard → Organization → Legal/Compliance (ή supabase.com/legal/dpa) → υπογραφή DPA (SCCs). **Υπογράφηκε 23.09.2026** (`lib/legal/subprocessors.ts`, `TRANSFER_SAFEGUARDS`).
 - [x] Επιβεβαίωση project **`eu-central-1`** (data residency ΕΕ).
+- [x] Κρυπτογραφημένα αντίγραφα ασφαλείας σε ιδιωτικό bucket `db-backups`, ίδια περιοχή με τη βάση (#521, 11.11.2026).
 - [ ] (Pro) managed backups/PITR όταν αναβαθμιστείτε.
 
 ## 2. Resend — email, ΗΠΑ (SCCs)
@@ -36,9 +37,9 @@
 - [x] **Έγγραφη επιβεβαίωση όρων μη-εκπαίδευσης** (Commercial Terms §B, αρχειοθετημένοι).
 - [ ] Καμία ειδική κατηγορία δεδομένων στα prompts.
 
-## 4. GitHub — κώδικας/CI/backups, ΗΠΑ (SCCs)
+## 4. GitHub — κώδικας/CI και κλειδί των backups, ΗΠΑ (SCCs)
 - [x] Αποδοχή Microsoft/GitHub DPA. **Υπογράφηκε** (επιβεβαίωση ιδιοκτήτη 25.09.2026, `lib/legal/subprocessors.ts`). Μένει το PDF στο αρχείο.
-- [x] **Backup artifacts κρυπτογραφημένα** (`BACKUP_PASSPHRASE` set).
+- [x] **Κανένα backup στη GitHub από το #521 (11.11.2026).** Μένει μόνο το κλειδί αποκρυπτογράφησης (`BACKUP_PASSPHRASE`) στα Secrets. Τα παλιά artifacts σβήνονται από το `db-backup.yml`.
 
 ## 5. Creem — χρέωση συνδρομών (merchant of record)
 - [x] Settings → Legal → DPA· η κάρτα μένει στο PCI scope της Creem, που πουλά ως merchant of record και αποδίδει τον ΦΠΑ κάθε χώρας. **Αποδεκτή στις 23.09.2026** (πηγή: δήλωση του ιδιοκτήτη, 27.09.2026).
@@ -72,7 +73,7 @@ Controller→Processor)** — accept/sign, save the PDF, update the register.
 2. **Resend** — Settings → DPA (SCCs). Signed 23.09.2026.
 3. **Anthropic** — Console → DPA (SCCs); **confirm no-training in writing**; no special-
    category data in prompts. Signed 23.09.2026.
-4. **GitHub** — accept Microsoft/GitHub DPA; confirm **encrypted** backups. Signed (owner, 25.09.2026).
+4. **GitHub** — accept Microsoft/GitHub DPA. Signed (owner, 25.09.2026). Holds the code and the backup key (Secrets); backups live in Supabase since #521.
 5. **Creem** — Settings → Legal → DPA; card stays in Creem PCI scope; they are the merchant of record.
 6. **Vercel** — hosting; DPA **not signed**, pending the move to a professional plan.
 Then flip every ☐→✅ with dates; publish a subprocessor summary; set up customer change-

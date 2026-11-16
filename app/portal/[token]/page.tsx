@@ -531,9 +531,9 @@ export default function TenantPortal() {
 
                   <div>
                     <label style={label}>{E ? E.photos : 'Φωτογραφίες (προαιρετικό)'}</label>
-                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, borderRadius: T.radius.chip, padding: '9px 14px', cursor: photos.length >= MAX_PHOTOS ? 'not-allowed' : 'pointer', opacity: photos.length >= MAX_PHOTOS ? 0.6 : 1, fontFamily: 'inherit' }}>
+                    <label className="po-file-pick" style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--bg-base)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, borderRadius: T.radius.chip, padding: '9px 14px', cursor: photos.length >= MAX_PHOTOS ? 'not-allowed' : 'pointer', opacity: photos.length >= MAX_PHOTOS ? 0.6 : 1, fontFamily: 'inherit' }}>
                       {E ? E.addPhotos : 'Προσθήκη φωτογραφιών'}
-                      <input type="file" accept="image/*" multiple aria-label={E ? E.photosLabel : 'Φωτογραφίες του προβλήματος'} disabled={photos.length >= MAX_PHOTOS} onChange={onPickFiles} style={{ display: 'none' }} />
+                      <input type="file" accept="image/*" multiple aria-label={E ? E.photosLabel : 'Φωτογραφίες του προβλήματος'} disabled={photos.length >= MAX_PHOTOS} onChange={onPickFiles} className="sr-only" />
                     </label>
                     {photos.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>

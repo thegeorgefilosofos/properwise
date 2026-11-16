@@ -18,15 +18,16 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { Metadata } from 'next';
-import { IDENTITY, identityLabels, POLICY_UPDATED, POLICY_VERSION } from '@/lib/legal/identity';
+import { IDENTITY, identityLabels, POLICY_UPDATED, POLICY_VERSION, POLICY_DATE, versionSuffix } from '@/lib/legal/identity';
 import { DISCLOSURE } from '@/lib/legal/disclosure';
-import { subprocessors, TRANSFER_SAFEGUARDS, ANTHROPIC_CONTRACT } from '@/lib/legal/subprocessors';
+import { subprocessors, TRANSFER_SAFEGUARDS, ANTHROPIC_CONTRACT, BACKUP_RETENTION_DAYS } from '@/lib/legal/subprocessors';
 import { ASSISTANT_ACC, ASSISTANT_TO } from '@/lib/assistant/identity';
 import { hyphenate, bindRefs } from '@/lib/core/hyphenate';
 import { billingWords } from '@/lib/legal/billingWords';
 import { LegalLayout, MailLink, type LegalBlock } from '../legal-shell';
 import Link from 'next/link';
-import { siteUrl, SITE, ORG_ID, SOCIAL_PROFILES } from '@/lib/core/site';
+import { siteUrl, SITE } from '@/lib/core/site';
+import { organizationNode, ORG_REF } from '@/lib/seo/organization';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { JsonLd } from '../PublicChrome';
 import { shareImage } from '../og/share';
@@ -52,14 +53,7 @@ export const metadata: Metadata = publicMetadata({
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
-    {
-      '@type': 'Organization',
-      '@id': ORG_ID,
-      name: IDENTITY.tradeName,
-      url: SITE,
-      logo: { '@type': 'ImageObject', url: siteUrl('/icons/icon-512.png'), width: 512, height: 512 },
-      sameAs: [...SOCIAL_PROFILES],
-    },
+    organizationNode(),
     {
       '@type': 'AboutPage',
       '@id': `${URL}#webpage`,
@@ -67,10 +61,10 @@ const jsonLd = {
       name: 'Ποιοι είμαστε',
       description: DESC,
       inLanguage: 'el',
-      dateModified: POLICY_VERSION,
+      dateModified: POLICY_DATE,
       isPartOf: { '@id': `${SITE}/#website` },
-      about: { '@id': ORG_ID },
-      publisher: { '@id': ORG_ID },
+      about: ORG_REF,
+      publisher: ORG_REF,
     },
     breadcrumbJsonLd([{ name: 'Ποιοι είμαστε', path: PATH }]),
   ],
@@ -305,10 +299,10 @@ export default function TrustPage() {
           </p>
           <ul className="lg-ul">
             <li>
-              <strong>Το κρυπτογραφημένο αντίγραφο ασφαλείας</strong> φυλάσσεται σε υποδομή των ΗΠΑ (GitHub). Είναι
-              κρυπτογραφημένο με AES-256 και χωρίς το κλειδί δεν διαβάζεται. Να ξέρεις όμως και το εξής: το κλειδί
-              φυλάσσεται ως μυστικό στον ίδιο πάροχο, οπότε η κρυπτογράφηση δεν κρατά το αντίγραφο κλειστό για τον
-              ίδιο τον πάροχο.
+              <strong>Το κλειδί του αντιγράφου ασφαλείας</strong> φυλάσσεται σε υποδομή των ΗΠΑ, στα Secrets του
+              GitHub. Το ίδιο το αντίγραφο είναι κρυπτογραφημένο με AES-256 και φυλάσσεται σε ιδιωτικό χώρο
+              αποθήκευσης της Supabase, στη Φρανκφούρτη όπως η βάση. Η κράτηση είναι {BACKUP_RETENTION_DAYS} ημέρες, με τις
+              εξαιρέσεις που γράφει η Πολιτική απορρήτου. Χωρίς το κλειδί δεν διαβάζεται.
             </li>
             <li>
               <strong>Τα ερωτήματά σου {ASSISTANT_TO}</strong>, μαζί με μια περίληψη των δεδομένων του ακινήτου, του
@@ -541,7 +535,7 @@ export default function TrustPage() {
         eyebrow="Εμπιστοσύνη"
         title="Ποιοι είμαστε"
         meta={`Τελευταία ενημέρωση: ${POLICY_UPDATED}`}
-        version={`Έκδοση ${grDate(POLICY_VERSION)} · Τελευταία ενημέρωση: ${POLICY_UPDATED}`}
+        version={`Έκδοση ${grDate(POLICY_DATE)}${versionSuffix(POLICY_VERSION)} · Τελευταία ενημέρωση: ${POLICY_UPDATED}`}
         intro="Σου ζητάμε το ΑΦΜ σου, τα μισθωτήριά σου και τα έσοδά σου. Δεν υπάρχει λόγος να μας τα εμπιστευτείς αν δεν ξέρεις ποιοι είμαστε, πού πάνε και τι δεν κάνουμε μ’ αυτά. Εδώ τα λέμε όσο πιο ανοιχτά μπορούμε, χωρίς μικρά γράμματα, μαζί με τις εξαιρέσεις που δεν μας βολεύουν."
         blocks={blocks}
       />

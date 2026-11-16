@@ -1,322 +1,137 @@
 'use client';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// WelcomeOnboarding — η πρώτη είσοδος, σε τέσσερις κάρτες
+// WelcomeOnboarding: η πρώτη είσοδος, σε μία οθόνη
 // ─────────────────────────────────────────────────────────────────────────
-// ΤΙ ΑΛΛΑΞΕ ΚΑΙ ΓΙΑΤΙ. Οι τρεις παλιές διαφάνειες περιέγραφαν την εφαρμογή με
-// επίθετα («όλη η διαχείριση σε ένα σημείο», «βγάλε τα περισσότερα από κάθε
-// νύχτα»). Κάθε προϊόν λέει τα ίδια. Οι τέσσερις κάρτες λένε τέσσερα πράγματα
-// με την ίδια σειρά: πού βρίσκεσαι στην εφαρμογή, τι είναι αυτό, γιατί αξίζει,
-// και η ΑΠΟΔΕΙΞΗ σε αριθμούς.
+// ΤΙ ΜΕΤΡΗΘΗΚΕ ΚΑΙ ΓΙΑΤΙ ΑΛΛΑΞΕ (13/11/2026). Η υποδοχή ήταν τέσσερις κάρτες
+// με ποσά ενός φανταστικού ακινήτου και στην τελευταία δύο ερωτήσεις για
+// νομική μορφή. Ο νέος χρήστης χρειαζόταν τέσσερα πατήματα για να φτάσει στον
+// οδηγό, διάβαζε ποσά που δεν ήταν δικά του και στα 375 η ερώτηση της κάρτας
+// κοβόταν σε «Πόσο φόρο θα πληρώσω φέτ…». Μετά την αποθήκευση έβλεπε ένα
+// μηδενικό «Καθαρό» και ο φόρος του ήταν τρεις οθόνες πιο κάτω.
 //
-// ΟΙ ΑΡΙΘΜΟΙ ΤΩΝ ΚΑΡΤΩΝ ΔΕΝ ΕΙΝΑΙ ΓΡΑΜΜΕΝΟΙ ΕΔΩ. Βγαίνουν από το
-// lib/demo/sample.ts και από το πραγματικό φορολογικό ημερολόγιο. Ένας αριθμός
-// γραμμένος στο χέρι σε οθόνη υποδοχής γερνά σιωπηλά: την επόμενη χρονιά
-// υπόσχεται προθεσμία που πέρασε, ή φόρο με κλίμακα που καταργήθηκε.
+// ΤΩΡΑ ΜΙΑ ΟΘΟΝΗ ΛΕΕΙ ΤΡΙΑ ΠΡΑΓΜΑΤΑ, ΜΕ ΛΙΓΑ ΛΟΓΙΑ: τι κάνει η εφαρμογή για
+// εκείνον, τι θα γίνει τώρα (ο δρόμος ως τον φόρο του) και μία ενέργεια. Τα ποσά του
+// παραδείγματος ζουν στο «Δες ένα παράδειγμα» της κενής οθόνης, όπου λέγονται
+// παράδειγμα. Ο τύπος προφίλ αλλάζει από τον Λογαριασμό και η νομική μορφή από
+// τον Φάκελο του λογιστή· η προεπιλογή (ιδιώτης, φυσικό πρόσωπο) είναι η
+// απάντηση της μεγάλης πλειονότητας και δεν κρύβει τίποτα που θα χρειαστεί.
 //
-// ΟΙ ΕΡΩΤΗΣΕΙΣ ΕΙΝΑΙ ΣΤΗΝ ΤΕΛΕΥΤΑΙΑ ΚΑΡΤΑ, ΟΧΙ ΣΤΗΝ ΠΡΩΤΗ. Πριν δει τι αγοράζει,
-// ο χρήστης δεν έχει λόγο να δηλώσει νομική μορφή· στο σημείο που πατά «Ας
-// ξεκινήσουμε», έχει.
-//
-// ═══ ΓΙΑΤΙ ΑΥΤΟ ΔΕΝ ΕΓΙΝΕ Modal ═══════════════════════════════════════════
-// 1. ΔΕΝ ΚΛΕΙΝΕΙ ΜΕ Escape ΟΥΤΕ ΜΕ ΚΛΙΚ ΣΤΟ ΦΟΝΤΟ, ΕΠΙΤΗΔΕΣ. Ο μόνος δρόμος
-//    εξόδου είναι το «Αργότερα», που πρώτα γράφει `welcomed: true` στο
-//    onboarding_progress και ΜΕΤΑ κλείνει. Με Modal, ένα Escape θα καλούσε
-//    κατευθείαν το onClose του γονέα (σκέτο `setShowWelcome(false)`): η υποδοχή
-//    θα «έκλεινε» χωρίς να καταγραφεί και θα ξαναέσκαγε στην επόμενη φόρτωση.
-// 2. ΔΕΝ ΕΙΝΑΙ ΤΙΤΛΟΣ + ΣΩΜΑ + ΕΝΕΡΓΕΙΕΣ, είναι κάρτα με δεδομένα και δείκτες
-//    βημάτων. Η κεφαλίδα του Modal θα πρόσθετε δεύτερο τρόπο κλεισίματος δίπλα
-//    στο «Αργότερα» — δηλαδή θα έλεγε το ίδιο πράγμα δύο φορές.
-// 3. ΖΕΙ ΠΑΝΩ ΑΠΟ ΤΑ ΠΑΡΑΘΥΡΑ (z-index 3000): από εδώ ανοίγει ο οδηγός
-//    προσθήκης ακινήτου, δεν ανοίγει από πάνω του.
-//
-// ΤΗ ΣΥΜΠΕΡΙΦΟΡΑ ΟΜΩΣ ΤΗΝ ΠΑΙΡΝΕΙ ΑΠΟ ΤΟ Modal. Το χειρόγραφο κέλυφος δήλωνε
-// `aria-modal` και δεν έδινε εστίαση ούτε την κρατούσε: με πληκτρολόγιο, το
-// Tab περπατούσε στον πίνακα πίσω από το πέπλο. Το `useOverlayShell` δίνει
-// εστίαση στην κάρτα, παγιδεύει το Tab, κλειδώνει την κύλιση και επιστρέφει
-// την εστίαση· το Escape καλεί ένα `onClose` που δεν κάνει τίποτα, για τον
-// λόγο 1.
+// ΚΛΕΙΝΕΙ ΜΕ Escape, ΓΙΑΤΙ ΤΩΡΑ ΤΟ Escape ΓΡΑΦΕΙ. Πριν, το Escape δεν έκανε
+// τίποτα επειδή θα έκλεινε την υποδοχή χωρίς να γράψει `welcomed`. Εδώ το
+// Escape καλεί το ίδιο «Αργότερα», που πρώτα γράφει και μετά κλείνει. Το
+// κλικ στο φόντο δεν κλείνει: ένα άστοχο άγγιγμα δεν είναι απόφαση.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { T, TT, fe, Btn, ChipToggle, useOverlayShell } from '@/components/Theme';
+import { Btn, fe, useOverlayShell, T } from '@/components/Theme';
 import { athensToday } from '@/lib/core/time';
-import { grDate } from '@/lib/core/format';
-import { ASSISTANT_NAME } from '@/lib/assistant/identity';
+import { writeStatus } from '@/lib/property/status';
+import { DEMO_PROPERTY } from '@/lib/demo/sample';
+import { firstTaxOf, taxDeadlineRow } from '@/lib/onboarding/firstTax';
+import { ONBOARDING_STEPS } from '@/lib/onboarding/steps';
+import { vocative } from '@/lib/greekName';
 import { saved } from '@/components/dbWrite';
-import * as billing from '@/lib/data/billing';
-import { defaultBookkeeping, type LegalForm, type BookKeeping } from '@/lib/accounting/dossier';
-import { demoSummary, demoLedger, demoExpenses } from '@/lib/demo/sample';
-import { expenseAccount } from '@/lib/accounting/journal';
-import { categoryLabel } from '@/lib/expenses/taxonomy';
-import { upcomingTaxObligations } from '@/lib/facts/deadlines';
 import { trackOnboarding, PRODUCT_EVENTS } from '@/lib/analytics/events';
+import { useBackButton } from '@/components/useBackButton';
 
 interface Props {
   userId: string;
+  /** Το όνομα του λογαριασμού, αν το δήλωσε. Χωρίς όνομα, χαιρετισμός χωρίς όνομα. */
+  name?: string;
   onAddProperty: () => void;                 // άνοιγμα οδηγού προσθήκης
-  onScanCreate: () => void;                  // δημιουργία + άνοιγμα σάρωσης εγγράφου
-  onMyaade?: () => void;                     // μαζική καταχώρηση από το Ε9 ή την πράξη ΕΝΦΙΑ (PDF ή φωτογραφία)
+  onScanCreate?: () => void;                 // παλιά είσοδος· η σάρωση ζει πλέον στον πίνακα
+  onMyaade?: () => void;                     // δεν αποδίδεται πια εδώ· η μαζική ζει στον οδηγό και στην κενή οθόνη
   onProfile?: (v: 'individual' | 'professional') => void;
-  onClose: () => void;                       // «Αργότερα» / κλείσιμο
+  onClose: () => void;                       // «Αργότερα» ή Escape
 }
-
-interface CardRow { left: string; right: string }
-interface WelcomeCard { label: string; title: string; copy: string; source: string; rows: [CardRow, CardRow] }
-
-/** Το Escape δεν κλείνει την υποδοχή (βλ. λόγο 1 πιο πάνω). */
-const KEEP_OPEN = () => {};
-
-// ΤΑ ΝΟΥΜΕΡΑ ΤΩΝ ΚΑΡΤΩΝ ΛΕΝΕ ΑΠΟ ΠΟΥ ΕΡΧΟΝΤΑΙ. Ο νέος χρήστης, χωρίς κανένα
-// δεδομένο ακόμη, διάβαζε «Κατάσταση αποτελεσμάτων 2026» με ποσό δίπλα σαν
-// να ήταν δικό του. Μόνο η τελευταία κάρτα έλεγε «παράδειγμα».
-const SAMPLE = 'Παράδειγμα με φανταστικά στοιχεία';
-
 
 /**
- * Οι τέσσερις κάρτες, με τα δεδομένα τους.
- *
- * ΤΑ ΛΕΚΤΙΚΑ ΕΙΝΑΙ ΟΝΟΜΑΤΙΚΕΣ ΦΡΑΣΕΙΣ, ΟΧΙ ΠΡΟΣΤΑΚΤΙΚΗ. «Ο φάκελος του
- * λογιστή», όχι «Ετοίμασε τον φάκελο». Η προστακτική ανήκει στα κουμπιά.
- * Τα τέσσερα κείμενα γράφτηκαν να έχουν σχεδόν ίδιο μήκος ώστε να ξεκινούν και
- * να τελειώνουν μαζί μέσα στην κάρτα.
+ * Η ΜΙΚΡΟΓΡΑΦΙΑ ΤΗΣ ΚΑΡΤΑΣ ΤΟΥ ΦΟΡΟΥ: η υποδοχή δείχνει το προϊόν, όχι μόνο
+ * λόγια. Το ποσό βγαίνει από την ίδια `firstTaxOf` με την πραγματική κάρτα,
+ * για το ακίνητο του παραδείγματος (lib/demo/sample.ts) και λέγεται
+ * «Παράδειγμα». Η γραμμή από κάτω είναι η δήλωση που φορολογεί ΤΟ ΙΔΙΟ
+ * εισόδημα, τον επόμενο χρόνο, με μήνα και έτος όσο η μέρα δεν έχει
+ * ανακοινωθεί (κριτική σχεδίασης r3 και r4). Ποτέ ο ΕΝΦΙΑ.
  */
-function buildCards(today: string): WelcomeCard[] {
-  const s = demoSummary(today);
-  const ledger = demoLedger(s.year);
-  const power = demoExpenses(s.year).find(e => e.category === 'electricity')!;
-  // ΟΙ ΕΠΟΜΕΝΕΣ, ΟΧΙ ΟΙ ΠΡΩΤΕΣ ΤΟΥ ΕΤΟΥΣ. Ο ορίζοντας ξεκινά την 1η Ιανουαρίου:
-  // τον Οκτώβριο η κάρτα έγραφε «οι επόμενες προθεσμίες» πάνω από την τελευταία
-  // δόση ΕΝΦΙΑ του Φεβρουαρίου και το Ε9, που είχαν περάσει.
-  const deadlines = upcomingTaxObligations(today, 'long_term').slice(0, 2);
-  const monthlyTax = s.statement.incomeTax / 12;
-
-  return [
-    {
-      label: 'Λογιστική',
-      title: 'Ο φάκελος του λογιστή',
-      copy: 'Ένα ενημερωμένο αρχείο με όσα ζητά ο λογιστής και μια σελίδα με τις ελλείψεις.',
-      source: SAMPLE,
-      rows: [
-        { left: `Κατάσταση αποτελεσμάτων ${s.year}`, right: fe(s.collected) },
-        { left: 'Δαπάνες ταξινομημένες για τον λογιστή', right: `${ledger.length} κατηγορίες` },
-      ],
-    },
-    {
-      label: 'Δαπάνες',
-      title: 'Αναγνώριση παραστατικών',
-      copy: 'Από τη σάρωση προκύπτουν η κατηγορία, το ΑΦΜ και ο λογαριασμός.',
-      source: SAMPLE,
-      rows: [
-        { left: power.description, right: fe(power.amount) },
-        { left: categoryLabel(power.category), right: `λογαριασμός ${expenseAccount(power.category).code}` },
-      ],
-    },
-    {
-      label: 'Υποχρεώσεις',
-      title: 'Το ημερολόγιο προθεσμιών',
-      copy: 'Κάθε δήλωση και κάθε δόση με την επίσημη καταληκτική ημερομηνία.',
-      // Οι προθεσμίες ΔΕΝ είναι παράδειγμα: βγαίνουν από το φορολογικό ημερολόγιο.
-      source: 'Οι επόμενες προθεσμίες του φορολογικού ημερολογίου',
-      // ΜΕ ΤΟ ΕΤΟΣ (20.10.2026). Ηταν «31/10»: δίπλα σε δόση ΕΝΦΙΑ του
-      // Φεβρουαρίου δεν έλεγε ποιας χρονιάς, ενώ κάθε άλλη ημερομηνία της
-      // εφαρμογής γράφεται 31/10/2026.
-      rows: [
-        { left: deadlines[0]?.title ?? '', right: deadlines[0] ? grDate(deadlines[0].date) : '' },
-        { left: deadlines[1]?.title ?? '', right: deadlines[1] ? grDate(deadlines[1].date) : '' },
-      ],
-    },
-    {
-      // Η βοηθός έχει όνομα και το όνομα είναι ο τίτλος· η ετικέτα λέει τι
-      // κάνεις μαζί της, όπως οι ετικέτες των άλλων τριών καρτών.
-      label: 'Ερωτήσεις',
-      title: `${ASSISTANT_NAME}, δίπλα σου`,
-      copy: 'Απαντά στα ελληνικά, με βάση τα δικά σου δεδομένα.',
-      source: SAMPLE,
-      rows: [
-        { left: 'Πόσο φόρο θα πληρώσω φέτος;', right: fe(s.statement.incomeTax) },
-        { left: 'Ενδεικτικά, στο παράδειγμα', right: `${fe(monthlyTax)} τον μήνα` },
-      ],
-    },
-  ];
+function previewOf(today: string) {
+  const t = firstTaxOf({ id: 'demo', ...writeStatus('rent_long'), target_rent: DEMO_PROPERTY.monthlyRent }, today);
+  const next = taxDeadlineRow('rent_long', t.year);
+  return { year: t.year, tax: t.tax, next };
 }
 
-export default function WelcomeOnboarding({ userId, onAddProperty, onScanCreate, onMyaade, onProfile, onClose }: Props) {
+export default function WelcomeOnboarding({ userId, name, onAddProperty, onClose }: Props) {
   const supabase = createClient();
-  const [step, setStep] = useState(0);
-  // ΚΑΜΙΑ ΠΡΟΕΠΙΛΟΓΗ, ΟΠΩΣ ΚΑΙ ΣΤΗ ΦΟΡΟΛΟΓΙΚΗ ΕΡΩΤΗΣΗ ΑΠΟ ΚΑΤΩ. Το «Ιδιώτης»
-  // φαινόταν επιλεγμένο αλλά γραφόταν μόνο με πάτημα: η οθόνη έλεγε κάτι που
-  // το προφίλ δεν είχε.
-  const [profile, setProfile] = useState<'individual' | 'professional' | null>(null);
-  const { panelRef } = useOverlayShell(true, KEEP_OPEN);
-  const [cards] = useState(() => buildCards(athensToday()));
-
-  const chooseProfile = (v: 'individual' | 'professional') => {
-    setProfile(v); onProfile?.(v);
-    void saved('Ο τύπος προφίλ δεν αποθηκεύτηκε',
-      billing.save(supabase, userId, { profile_type: v }));
-  };
-
-  // ── Νομική μορφή ─────────────────────────────────────────────────────────
-  // ΓΙΑΤΙ ΡΩΤΑΜΕ. Από αυτό κρίνεται αν ο χρήστης θα δει ποτέ ΕΦΚΑ, Ε3, απόσβεση
-  // κτιρίου και τη λέξη «ισολογισμός». Δεν συμπεραίνεται από τον τύπο προφίλ: ένας
-  // επαγγελματίας διαχειριστής δεν είναι απαραίτητα επιχείρηση και ένας «ιδιώτης»
-  // μπορεί να έχει ατομική. Λάθος μαντεψιά είτε κρύβει υποχρεωτικές καταστάσεις
-  // από μια ΙΚΕ, είτε τρομάζει κάποιον με ένα κληρονομικό διαμέρισμα.
-  //
-  // ΓΙΑΤΙ ΣΤΑΔΙΑΚΑ. Πρώτα ένα ναι/όχι. Ο 25χρονος που κληρονόμησε πατά «Φυσικό
-  // πρόσωπο» και δεν βλέπει ΠΟΤΕ τις λέξεις «απλογραφικά» και «διπλογραφικά» —
-  // αυτές εμφανίζονται μόνο σε όποιον δήλωσε ότι έχει επιχείρηση.
-  const [hasBiz, setHasBiz] = useState<boolean | null>(null);
-  const [legalForm, setLegalForm] = useState<LegalForm>('individual');
-  const [books, setBooks] = useState<BookKeeping>('none');
-
-  const saveLegal = (form: LegalForm, bk: BookKeeping) => {
-    setLegalForm(form); setBooks(bk);
-    void saved('Η νομική μορφή δεν αποθηκεύτηκε',
-      billing.save(supabase, userId, { legal_form: form, bookkeeping: bk }));
-  };
-  // Η μορφή προτείνει βιβλία (ΙΚΕ → διπλογραφικά, ατομική/ΟΕ → απλογραφικά) αλλά
-  // ο χρήστης έχει τον τελευταίο λόγο: μια Ο.Ε. μπορεί κάλλιστα να είναι διπλογραφικά.
-  const chooseForm = (form: LegalForm) => saveLegal(form, defaultBookkeeping(form));
-  const chooseBiz = (v: boolean) => {
-    setHasBiz(v);
-    if (v) chooseForm('sole_trader'); else saveLegal('individual', 'none');
-  };
+  const titleId = useId();
+  const descId = useId();
+  const greet = vocative(name);
+  const [preview] = useState(() => previewOf(athensToday()));
 
   const mark = async () => {
     await saved('Η πρόοδος της υποδοχής δεν αποθηκεύτηκε', supabase.from('onboarding_progress')
       .upsert({ user_id: userId, welcomed: true, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }));
   };
-
   const addProperty = async () => { await mark(); onAddProperty(); };
-  const scanCreate = async () => { await mark(); onScanCreate(); };
-  const myaade = async () => { await mark(); onMyaade?.(); };
-  // Η ΚΑΡΤΑ ΤΟΥ «ΑΡΓΟΤΕΡΑ». Όλοι οι νέοι χωρίς ακίνητο είχαν `welcomed=true` και
-  // κανείς δεν ήξερε σε ποια κάρτα έφυγαν. Μόνο ο αριθμός της κάρτας.
+  // Μία οθόνη πλέον: η «κάρτα» του γεγονότος είναι πάντα η πρώτη.
   const later = async () => {
-    void trackOnboarding(supabase, { event: PRODUCT_EVENTS.welcome_later, card: step + 1 });
+    void trackOnboarding(supabase, { event: PRODUCT_EVENTS.welcome_later, card: 1 });
     await mark(); onClose();
   };
+  const { panelRef } = useOverlayShell(true, later);
+  // Το «Πίσω» του περιηγητή είναι το «Αργότερα»: γράφει και κλείνει, δεν βγάζει από τον πίνακα.
+  useBackButton(() => { void later(); });
 
-  const c = cards[step];
-  const last = step === cards.length - 1;
-
-  // Μία ετικέτα ενότητας και δύο σχήματα επιλογής για ΟΛΕΣ τις ερωτήσεις αυτής
-  // της οθόνης: κάρτα για τη βασική επιλογή, pill για τη λεπτομέρεια. Χωρίς αυτά
-  // η ίδια επιλογή γραφόταν τρεις φορές με τρεις μικροδιαφορές.
-  const capLabel: React.CSSProperties = { ...TT.label, color: 'var(--text-tertiary)', marginBottom: 10 };
-  const choice = (on: boolean): React.CSSProperties => ({
-    textAlign: 'center', cursor: 'pointer', borderRadius: T.radius.inner, padding: '11px 8px',
-    border: `1px solid ${on ? 'var(--accent)' : 'var(--border-default)'}`,
-    background: on ? 'var(--accent-soft)' : 'var(--surface-raised)',
-    boxShadow: on ? '0 0 0 3px var(--accent-dim)' : 'none',
-    transition: `background-color 0.15s ${T.ease.standard}, border-color 0.15s ${T.ease.standard}, box-shadow 0.15s ${T.ease.standard}`,
-    fontFamily: T.font.sans,
-  });
-
+  // ΕΝΑ ΑΡΙΣΤΕΡΟ ΠΕΡΙΘΩΡΙΟ ΓΙΑ ΟΛΑ, ΚΕΝΑ ΣΤΟ ΠΛΕΓΜΑ ΤΩΝ 8 (globals.css, .ob-*).
+  // Σε κινητό η κάρτα γίνεται φύλλο που ακουμπά στο κάτω μέρος· σε υπολογιστή
+  // μένει παράθυρο στο κέντρο.
   return (
-    <div role="dialog" aria-modal="true" aria-label="Καλωσόρισμα"
-      style={{ position: 'fixed', inset: 0, background: T.scrim, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: T.sp.lg, overflowY: 'auto' }}>
-      <style>{`@keyframes welcomeIn{from{opacity:0;transform:translateY(8px) scale(0.98)}to{opacity:1;transform:none}}`}</style>
-      <div ref={panelRef} tabIndex={-1} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.modal, width: 'min(460px, 100%)', boxShadow: 'var(--elev-3)', fontFamily: T.font.sans, animation: `welcomeIn 0.3s ${T.ease.standard}`, padding: '26px 26px 22px', outline: 'none' }}>
+    <div role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descId} className="ob-scrim">
+      {/* Οι ακτίνες από την κλίμακα (components/tokens.ts): το φύλλο στυλ τις
+          διαβάζει ως μεταβλητές, ώστε να μη γράφονται δεύτερη φορά ως ψηφία. */}
+      <div ref={panelRef} tabIndex={-1} className="ob-card"
+        style={{ '--modal-r': `${T.radius.modal}px`, '--radius-inner': `${T.radius.inner}px` } as React.CSSProperties}>
+        <h2 id={titleId} className="ob-title">
+          {greet ? `Καλώς ήρθες, ${greet}` : 'Καλώς ήρθες'}
+        </h2>
+        <p id={descId} className="ob-sub">
+          Φόρος, προθεσμίες και έγγραφα των ακινήτων σου, σε ένα σημείο.
+        </p>
 
-        {/* ── Η ΚΑΡΤΑ ────────────────────────────────────────────────────────
-            Ετικέτα, τίτλος, κείμενο, δεδομένα — πάντα με αυτή τη σειρά και σε
-            σταθερά ύψη, ώστε καμία λέξη να μη μετακινείται από κάρτα σε κάρτα. */}
-        {/* Η εστίαση μένει στο «Επόμενο»· η νέα κάρτα ανακοινώνεται από εδώ. */}
-        <div aria-live="polite">
-        <div style={{ ...TT.label, color: 'var(--accent)' }}>{c.label}</div>
-        <div style={{ ...TT.h1, fontSize: 20, marginTop: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</div>
-        <div style={{ ...TT.bodySm, fontSize: 'var(--fs-base)', lineHeight: 1.55, marginTop: 8, minHeight: 40 }}>{c.copy}</div>
+        {/* Η μικρογραφία είναι εικόνα του προϊόντος, όχι περιεχόμενο: ο
+            αναγνώστης οθόνης την προσπερνά. */}
+        <div className="ob-preview" aria-hidden>
+          <div className="ob-preview-head">
+            <span>{`Φόρος ενοικίων ${preview.year}`}</span>
+            <span className="ob-preview-tag">Παράδειγμα</span>
+          </div>
+          <div className="ob-preview-amount">{fe(preview.tax)}</div>
+          {preview.next && (
+            <div className="ob-preview-row">
+              <span style={{ minWidth: 0 }}>{preview.next.title}</span>
+              <span className="ob-preview-date">{preview.next.date}</span>
+            </div>
+          )}
         </div>
 
-        <div style={{ ...TT.caption, marginTop: 16 }}>{c.source}</div>
-        <div style={{ marginTop: 6, border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, background: 'var(--bg-elevated)', padding: '12px 14px' }}>
-          {c.rows.map((r, i) => (
-            <div key={r.left} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: T.sp.md, marginTop: i === 0 ? 0 : 8 }}>
-              <span style={{ ...(i === 0 ? TT.bodySm : TT.caption), color: i === 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.left}</span>
-              <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: i === 0 ? 13 : 11, fontWeight: i === 0 ? 700 : 500, color: i === 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>{r.right}</span>
-            </div>
+        {/* Τα ίδια τρία βήματα με τη ράγα του οδηγού (lib/onboarding/steps.ts). */}
+        <ol className="ob-steps" aria-label="Τα βήματα">
+          {ONBOARDING_STEPS.map((st, i) => (
+            <li key={st.id} className="ob-step" data-now={i === 0 ? '' : undefined} style={{ animationDelay: `${120 + i * 40}ms` }}>
+              {/* Ο προορισμός σχεδιάζεται όπως στη ράγα του οδηγού: διακεκομμένος
+                  κύκλος χωρίς αριθμό (κριτική σχεδίασης r3). */}
+              <span className="ob-node" data-state={st.id === 'tax' ? 'dest' : undefined} aria-hidden>{st.id === 'tax' ? null : i + 1}</span>
+              <span className="ob-step-label">{st.label}</span>
+            </li>
           ))}
+        </ol>
+
+        <div className="ob-actions">
+          <Btn variant="primary" size="lg" onClick={addProperty}>Πρόσθεσε το πρώτο σου ακίνητο</Btn>
+          {/* Η μαζική καταχώρηση από Ε9 ή ΕΝΦΙΑ δεν χάνεται: είναι η πρώτη
+              κάρτα του οδηγού και κουμπί της κενής οθόνης. Εδώ θα ήταν δεύτερη
+              επιλογή ίσου βάρους δίπλα στη μία που μετρά. */}
+          <Btn variant="ghost" size="lg" onClick={later}>Αργότερα</Btn>
         </div>
-
-        {/* ── ΟΙ ΕΡΩΤΗΣΕΙΣ, ΜΟΝΟ ΣΤΗΝ ΤΕΛΕΥΤΑΙΑ ΚΑΡΤΑ ────────────────────── */}
-        {last && (
-          <div style={{ marginTop: T.sp.xl, paddingTop: 20, borderTop: '1px solid var(--border-subtle)' }}>
-            <div style={capLabel}>Τι σε περιγράφει</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {([['individual', 'Ιδιώτης', 'δικά μου ακίνητα'], ['professional', 'Επαγγελματίας', 'διαχείριση πολλών']] as const).map(([v, t, sub]) => {
-                const on = profile === v;
-                return (
-                  <button key={v} onClick={() => chooseProfile(v)} style={choice(on)}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: on ? 'var(--accent)' : 'var(--text-primary)' }}>{t}</div>
-                    <div style={{ ...TT.caption, marginTop: 2 }}>{sub}</div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div style={{ ...capLabel, marginTop: T.sp.lg }}>Πώς φορολογείσαι</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {([[false, 'Φυσικό πρόσωπο', 'μόνο δήλωση'], [true, 'Έχω επιχείρηση', 'ή ελεύθερος επαγγελματίας']] as const).map(([v, t, sub]) => (
-                <button key={String(v)} onClick={() => chooseBiz(v)} style={choice(hasBiz === v)}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: hasBiz === v ? 'var(--accent)' : 'var(--text-primary)' }}>{t}</div>
-                  <div style={{ ...TT.caption, marginTop: 2 }}>{sub}</div>
-                </button>
-              ))}
-            </div>
-
-            {hasBiz === true && (
-              <>
-                <div style={{ ...capLabel, marginTop: 14 }}>Μορφή</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {/* `chip` γιατί η σειρά δεν έχει δική της ράγα, `grow` για ίσα μερίδια όπως το flex:1 του pill. */}
-                  {([['sole_trader', 'Ατομική'], ['partnership', 'ΟΕ / ΕΕ'], ['company', 'ΑΕ / ΕΠΕ / ΙΚΕ']] as const).map(([v, t]) => (
-                    <ChipToggle key={v} grow on={legalForm === v} onClick={() => chooseForm(v)}>{t}</ChipToggle>
-                  ))}
-                </div>
-
-                <div style={{ ...capLabel, marginTop: 14 }}>Βιβλία</div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {([['single_entry', 'Απλογραφικά'], ['double_entry', 'Διπλογραφικά']] as const).map(([v, t]) => (
-                    <ChipToggle key={v} grow on={books === v} onClick={() => saveLegal(legalForm, v)}>{t}</ChipToggle>
-                  ))}
-                </div>
-                <div style={{ ...TT.caption, marginTop: 8 }}>
-                  Η πρόταση αλλάζει όποτε χρειαστεί, από τον «Λογαριασμό».
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ── ΔΕΙΚΤΕΣ ΚΑΙ ΕΝΕΡΓΕΙΕΣ, ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ ────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.md, marginTop: T.sp.xl, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 8, flex: 1 }}>
-            {cards.map((_, i) => (
-              <span key={i} style={{ width: i === step ? 22 : 7, height: 7, borderRadius: T.radius.xs, background: i === step ? 'var(--accent)' : 'var(--border-default)', transition: `width 0.28s ${T.ease.standard}, background-color 0.28s ${T.ease.standard}` }} />
-            ))}
-          </div>
-          {!last && <Btn variant="ghost" onClick={later}>Αργότερα</Btn>}
-          {/* `size="lg"` κρατά το ύψος T.h.lg που είχε το τοπικό primaryBtn. Η λάμψη
-              και το χειροκίνητο brightness/scale έφυγαν: η αιώρηση και το πάτημα ζουν
-              πλέον στο .po-btn, που ξέρει και εστίαση πληκτρολογίου και οθόνη αφής. */}
-          {!last
-            ? <Btn variant="primary" size="lg" onClick={() => setStep(step + 1)}>Επόμενο</Btn>
-            : <Btn variant="primary" size="lg" onClick={addProperty}>Ας ξεκινήσουμε</Btn>}
-        </div>
-
-        {last && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: T.sp.md, marginTop: 6 }}>
-            {/* ghost και όχι LinkBtn: είναι αυτοτελή κουμπιά σε γραμμή υποσέλιδου,
-                όχι λέξεις μέσα σε πρόταση. Το accent μελάνι της σάρωσης γίνεται
-                text-secondary — τον ρόλο τον δίνει πλέον η θέση, όχι το χρώμα. */}
-            <Btn variant="ghost" onClick={scanCreate}>Σάρωση εγγράφου</Btn>
-            {onMyaade && <Btn variant="ghost" onClick={myaade}>Από Ε9 ή ΕΝΦΙΑ</Btn>}
-            <Btn variant="ghost" onClick={later}>Αργότερα</Btn>
-          </div>
-        )}
       </div>
     </div>
   );

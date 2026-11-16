@@ -37,6 +37,13 @@ export interface AsOf {
   url?: string;
   /** Μετά από πόσες ημέρες η τιμή θεωρείται παλιά και δεν κατατάσσεται. */
   maxAgeDays?: number;
+  /**
+   * Κανόνες του νόμου και όχι τιμές αγοράς (lib/facts/taxLimits.ts). Η
+   * ημερομηνία τότε είναι ο τελευταίος ανθρώπινος έλεγχος του κανόνα, όχι
+   * ενημέρωση: «Τελευταία ενημέρωση 26/08/2026» διαβαζόταν σαν να είχε ξεχαστεί
+   * η οθόνη, ενώ ο κανόνας ισχύει ως το τέλος της χρονιάς.
+   */
+  rules?: boolean;
 }
 
 /** Οι τιμές αγοράς που δείχνει η εφαρμογή. Ζευγάρι με το data/price-sources.json. */
@@ -115,7 +122,7 @@ export function asOfDate(iso: string | null | undefined): string {
  */
 export function asOfLine(f: AsOf): string {
   const when = f.checkedAt
-    ? `Τελευταία ενημέρωση ${asOfDate(f.checkedAt)}`
+    ? `${f.rules ? 'Κανόνες ελεγμένοι' : 'Τελευταία ενημέρωση'} ${asOfDate(f.checkedAt)}`
     : 'Χωρίς ημερομηνία ελέγχου, επιβεβαίωσε στην πηγή';
   return `${when} · Πηγή: ${f.source}`;
 }

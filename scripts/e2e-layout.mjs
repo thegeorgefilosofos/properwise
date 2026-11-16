@@ -709,6 +709,23 @@ const PROBE = () => {
   return out
 }
 
+// ═══ ΜΕΤΡΑΜΕ ΑΦΟΥ ΣΤΑΜΑΤΗΣΕΙ Η ΚΙΝΗΣΗ (16/11/2026) ═══════════════════════════
+// Το CI του #581 κοκκίνισε ΜΟΝΟ στο WebKit: «documents·Φάκελοι @375 ξεφεύγει
+// «Φάκελοι» 11px». Στο Chromium η γεωμετρία ήταν ίδια εικονοστοιχείο προς
+// εικονοστοιχείο με το main. Το μόνο κινούμενο «Φάκελοι» της οθόνης είναι ο
+// τίτλος του `.fb-phone-pane`, που μπαίνει με `fb-in`: 24px μετατόπιση σε
+// 220ms, μέσα σε `.fb-phone` με `overflow: hidden`. Τα 11px είναι η μέση της
+// διαδρομής: ο σαρωτής μετρούσε στα σταθερά 550ms μετά το πάτημα και ο πιο
+// αργός δρομέας του WebKit δεν είχε τελειώσει την κίνηση. Πριν από κάθε μέτρηση
+// περιμένουμε τις πεπερασμένες κινήσεις να τελειώσουν (οι ατέρμονες, όπως ένας
+// δείκτης φόρτωσης, δεν περιμένονται), με ταβάνι ενός δευτερολέπτου.
+const settle = (p) => p.evaluate(() => Promise.race([
+  Promise.all(document.getAnimations()
+    .filter(a => a.effect && a.effect.getComputedTiming().iterations !== Infinity)
+    .map(a => a.finished.catch(() => {}))),
+  new Promise(r => setTimeout(r, 1000)),
+])).catch(() => {})
+
 const browser = await launchEngine()
 // Η ΤΑΜΠΛΕΤΑ ΣΕ ΟΡΙΖΟΝΤΙΑ ΘΕΣΗ ΔΕΝ ΜΕΤΡΙΟΤΑΝ ΩΣ ΤΑΜΠΛΕΤΑ. Το `hasTouch` ήταν
 // `w < 1100`, οπότε στα 1.024 και πάνω ο έλεγχος έτρεχε ΩΣ ΠΟΝΤΙΚΙ — και ο
@@ -953,6 +970,7 @@ async function scanDevice(dev, out) {
     let size = await measure()
     if (size < 120) { await p.waitForTimeout(1500); size = await measure() }
     if (size < 120) out.push({ where: `πάγκος ${s} @${w}×${dev.h}`, r: [`Η ΣΚΗΝΗ ΕΙΝΑΙ ΚΕΝΗ (${size} χαρακτήρες)`] })
+    await settle(p)
     const r = await p.evaluate(PROBE)
     if (r.length) out.push({ where: `πάγκος ${s} @${w}×${dev.h}`, r })
     // ═══ ΚΑΙ ΤΑ ΠΑΝΕΛ ΠΟΥ ΖΟΥΝ ΠΙΣΩ ΑΠΟ ΔΙΑΚΟΠΤΗ ═══════════════════════════
@@ -969,6 +987,7 @@ async function scanDevice(dev, out) {
       }, label)
       if (!hit) { out.push({ where: `πάγκος ${s} @${w}×${dev.h}`, r: [`ΤΟ ΚΟΥΜΠΙ «${label}» ΔΕΝ ΒΡΕΘΗΚΕ`] }); continue }
       await p.waitForTimeout(400)
+      await settle(p)
       const rr = await p.evaluate(PROBE)
       if (rr.length) out.push({ where: `πάγκος ${s}·${label.slice(0, 14)} @${w}×${dev.h}`, r: rr })
     }
@@ -1000,6 +1019,7 @@ async function scanDevice(dev, out) {
       await p.waitForTimeout(300)
       await p.evaluate(() => { document.querySelectorAll('.acc-toggle[aria-expanded="false"]').forEach(b => b.click()) })
       await p.waitForTimeout(250)
+      await settle(p)
       const rr = await p.evaluate(PROBE)
       if (rr.length) out.push({ where: `πάγκος ${s}·${label.slice(0, 14)} @${w}×${dev.h}`, r: rr })
     }
@@ -1009,6 +1029,7 @@ async function scanDevice(dev, out) {
     const p = await ctx.newPage()
     try { await p.goto(BASE + path, { waitUntil:'networkidle', timeout: 30000 }) } catch { await p.close(); continue }
     await p.waitForTimeout(300)
+    await settle(p)
     const r = await p.evaluate(PROBE)
     if (r.length) out.push({ where: `${path} @${w}×${dev.h}`, r })
     await p.close()

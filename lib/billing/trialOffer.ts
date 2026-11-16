@@ -9,15 +9,30 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { PLANS, TRIAL_DAYS, normalizePlan, isPayingPlan, type PlanId } from './plans';
 import { TRIAL_PLAN, planAtLeast } from './entitlements';
-import { TRIAL_LIMITS, TRIAL_SCANS_PER_MONTH } from './aiLimits';
+import { TRIAL_LIMITS, TRIAL_SCANS_PER_MONTH, FREE_POOL_PER_MONTH } from './aiLimits';
 import { ASSISTANT_TO } from '@/lib/assistant/identity';
+import { fn, fmtFor } from '@/lib/core/format';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ΚΑΙ Η ΚΟΙΝΗ ΔΕΞΑΜΕΝΗ ΛΕΓΕΤΑΙ (έλεγχος 12/11/2026)
+// ─────────────────────────────────────────────────────────────────────────
+// Οι ερωτήσεις και οι σαρώσεις της δοκιμής χρεώνονται και σε ένα κοινό
+// μηνιαίο ταβάνι για όλους (FREE_POOL_PER_MONTH, `pool` της `ai_plan_limits()`).
+// Οταν γεμίσει, η Νόα και η σάρωση κλείνουν για όλη τη δοκιμή ως την 1η του
+// επόμενου μήνα, ακόμη κι αν ο ίδιος ο χρήστης δεν έφτασε το δικό του όριο.
+// Αυτό δεν το έλεγε πουθενά ούτε η αρχική ούτε οι Όροι: ο χρήστης διάβαζε «20
+// ερωτήσεις» και μπορούσε να βρει κλειστό στην πρώτη. Ο αριθμός έρχεται από
+// τη σταθερά· η βάση την επιβάλλει (lib/billing/aiLimitsSql.test.ts).
+// ═══════════════════════════════════════════════════════════════════════════
+export const TRIAL_POOL_LINE =
+  `Οι ερωτήσεις και οι σαρώσεις της δοκιμής αντλούνται από κοινό μηνιαίο απόθεμα ${fn(FREE_POOL_PER_MONTH)} συνολικά για όλους τους λογαριασμούς σε δοκιμή· αν εξαντληθεί, ξανανοίγει την 1η του επόμενου μήνα.`;
 
 // Το διπλό «με … με» («ξεκινά με … δοκιμής με τις δυνατότητες») έγινε άνω
 // τελεία και απαρίθμηση: πρώτα η δοκιμή και μετά τι περιέχει.
 // ΚΑΙ Η ΣΑΡΩΣΗ ΜΕ ΤΟ ΟΡΙΟ ΤΗΣ (03.10.2026): το «όσα έχει ο Ιδιοκτήτης+»
 // υπόσχεται σιωπηρά σάρωση χωρίς όριο, ενώ η δοκιμή έχει δικό της ταβάνι.
 export const TRIAL_OFFER =
-  `Κάθε νέος λογαριασμός ξεκινά με δοκιμή ${TRIAL_DAYS} ημερών: όσα έχει ο «${PLANS[TRIAL_PLAN].name}», ${TRIAL_LIMITS.perMonth} ερωτήσεις ${ASSISTANT_TO} και ${TRIAL_SCANS_PER_MONTH} σαρώσεις τον μήνα.`;
+  `Κάθε νέος λογαριασμός ξεκινά με δοκιμή ${TRIAL_DAYS} ημερών: όσα έχει ο «${PLANS[TRIAL_PLAN].name}», ${TRIAL_LIMITS.perMonth} ερωτήσεις ${ASSISTANT_TO} και ${TRIAL_SCANS_PER_MONTH} σαρώσεις τον μήνα. ${TRIAL_POOL_LINE}`;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΤΟ ΚΟΥΜΠΙ ΠΡΟΣ ΤΗΝ ΕΓΓΡΑΦΗ ΛΕΕΙ ΟΤΙ ΣΥΜΒΑΙΝΕΙ ΣΤΟ ΠΑΚΕΤΟ ΠΟΥ ΚΟΥΒΑΛΑ
@@ -66,6 +81,11 @@ export function signupCtaEn(plan: PlanId | null = null): string {
   return trialCovers(id) ? 'Start your trial' : 'Sign up';
 }
 
+/** Το `TRIAL_POOL_LINE` στα αγγλικά, με τον ίδιο αριθμό. */
+export const TRIAL_POOL_LINE_EN =
+  `Trial questions and scans come from a shared monthly allowance of ${fmtFor('en').fn(FREE_POOL_PER_MONTH)} in total for all accounts on trial; if it runs out, it reopens on the 1st of the next month.`;
+
 /** Το `TRIAL_OFFER` στα αγγλικά, με το όνομα του πακέτου στα αγγλικά. */
 export const trialOfferEn = (trialPlanName: string): string =>
-  `Every new account starts with a ${TRIAL_DAYS}-day trial: everything in “${trialPlanName}”, ${TRIAL_LIMITS.perMonth} questions to Noa and ${TRIAL_SCANS_PER_MONTH} scans a month.`;
+  `Every new account starts with a ${TRIAL_DAYS}-day trial: everything in “${trialPlanName}”, ${TRIAL_LIMITS.perMonth} questions to Noa and ${TRIAL_SCANS_PER_MONTH} scans a month. ${TRIAL_POOL_LINE_EN}`;
+

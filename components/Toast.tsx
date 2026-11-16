@@ -9,7 +9,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { T, Z, type Tone } from './tokens';
 import { subscribeToasts, type ToastItem } from './toastBus';
-import { CloseButton, LinkBtn } from './Theme';
+import { CloseButton, LinkBtn } from './ThemeCore';
 
 // Ξανα-εξάγονται εδώ ώστε ένα component να χρειάζεται μία μόνο εισαγωγή.
 export { notify, notifyOk, notifyError, TOAST_MS } from './toastBus';
@@ -87,7 +87,7 @@ export function ToastHost() {
       style={{
         position: 'fixed', left: '50%', bottom: 'var(--float-bottom)', transform: 'translateX(-50%)',
         zIndex: Z.toast, display: 'flex', flexDirection: 'column', alignItems: 'center',
-        gap: 8, pointerEvents: 'none', maxWidth: 'min(92vw, 460px)',
+        gap: 8, pointerEvents: 'none', maxWidth: 'min(calc(92vw / var(--zoom, 1)), 460px)',
       }}
     >
       {items.map(t => (

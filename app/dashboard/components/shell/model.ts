@@ -19,6 +19,8 @@ export interface Property {
   rental_mode: string | null; client_id: string | null;
   /** jsonb [{name, afm, pct, address}]· διαβάζεται με το `readCoOwners` (lib/property/coOwners.ts). */
   co_owners: unknown; power_supply_no: string | null;
+  /** Τα στοιχεία του ΠΕΑ (lib/property/peaExpiry.ts). */
+  pea_number: string | null; pea_issued: string | null; pea_expiry: string | null;
   notes: string | null; status_detail: string | null; created_at: string;
 }
 // ΤΑ ΠΕΔΙΑ ΠΟΥ ΛΕΙΠΑΝ. Οι δύο τύποι περιέγραφαν λιγότερα από όσα διαβάζει η

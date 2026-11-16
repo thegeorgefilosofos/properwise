@@ -290,6 +290,12 @@ export interface BillingProfilesRow {
   hold_plan: string | null;
   hold_until: string | null;
   lapsed_at: string | null;
+  mor_past_due_at: string | null;
+  mor_revoked_at: string | null;
+  mor_revoked_reason: string | null;
+  mor_revoked_ref: string | null;
+  mor_last_transaction_id: string | null;
+  mor_revoked_tx: string | null;
 }
 
 export interface BillsRow {
@@ -1027,6 +1033,8 @@ export interface NotificationLogRow {
   event_id: string | null;
   reminder_type: string;
   sent_at: string | null;
+  /** Η δόση ενοικίου μιας όχλησης (20261110131500). Κενό για ημερολόγιο και μηνιαία. */
+  rent_payment_id: string | null;
   created_at: string | null;
 }
 
@@ -1351,6 +1359,7 @@ export interface SignupFunnelRow {
   in_app: boolean;
   mobile: boolean;
   n: number;
+  entry: string;
 }
 
 export interface StoragePurgeQueueRow {
@@ -1549,6 +1558,9 @@ export interface UserPropertiesRow {
   ama: string | null;
   ama_listed_confirmed_at: string | null;
   power_supply_no: string | null;
+  pea_number: string | null;
+  pea_issued: string | null;
+  pea_expiry: string | null;
 }
 
 export interface WithdrawalRequestsRow {

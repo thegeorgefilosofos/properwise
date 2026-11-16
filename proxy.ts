@@ -13,10 +13,18 @@ const isProd = process.env.NODE_ENV === "production";
 // 'unsafe-inline' από το script-src: κάθε inline script (και του Next και το δικό
 // μας theme-init) εμπιστεύεται μόνο μέσω του nonce + 'strict-dynamic'. Σε
 // development δεν στέλνουμε CSP (το Next dev χρειάζεται eval/ws/blob).
+// Cloudflare Turnstile (έλεγχος κατά των bots στις φόρμες του λογαριασμού,
+// app/useCaptcha.tsx). Μπαίνει ΜΟΝΟ όταν υπάρχει κλειδί: χωρίς αυτό η πολιτική
+// μένει ακριβώς η ίδια. Στο script-src η διεύθυνση είναι για τους παλιούς
+// περιηγητές· οι νέοι, με το 'strict-dynamic', εμπιστεύονται το σενάριο επειδή
+// το προσθέτει ήδη εμπιστευμένος κώδικας. Το πλαίσιο του ελέγχου είναι iframe.
+const TURNSTILE_ORIGIN = (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '').trim()
+  ? " https://challenges.cloudflare.com" : "";
+
 function buildCsp(nonce: string): string {
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${TURNSTILE_ORIGIN}`,
     "style-src 'self' 'unsafe-inline'",
     // ΠΡΟΣΟΧΗ — αυτό ΔΕΝ καλύπτει τα εκτυπώσιμα έγγραφα. Οι γεννήτριες αναφορών
     // ανοίγουν `window.open('')` και γράφουν HTML σε έγγραφο `about:blank`: δεν
@@ -42,7 +50,7 @@ function buildCsp(nonce: string): string {
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.pwnedpasswords.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io",
     // Η προεπισκόπηση PDF (Supabase storage) στο Αρχείο. Ο χάρτης Google του
     // ντοσιέ επαφής δεν είναι πια iframe: ανοίγει με ρητό κλικ σε νέα καρτέλα.
-    "frame-src 'self' https://*.supabase.co",
+    `frame-src 'self' https://*.supabase.co${TURNSTILE_ORIGIN}`,
     "frame-ancestors 'none'",
     "object-src 'none'",
     // PWA: ο service worker και το manifest είναι δικά μας και μόνο δικά μας.
@@ -64,6 +72,13 @@ export async function proxy(request: NextRequest) {
   // cookie καμία ανακατεύθυνση, ούτε από το Accept-Language (οδηγία Google),
   // οπότε η μηχανή αναζήτησης βλέπει πάντα τη σελίδα που ζήτησε.
   const pagePath = request.nextUrl.pathname;
+  // Η ΕΣΩΤΕΡΙΚΗ ΔΙΑΔΡΟΜΗ ΤΟΥ ΧΑΡΤΗ ΔΕΝ ΕΙΝΑΙ ΣΕΛΙΔΑ (next.config.ts, rewrites):
+  // όποιος τη ζητήσει απευθείας πηγαίνει στη μία διεύθυνση του χάρτη, το /xartis.
+  if (pagePath === "/en/_xartis") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/xartis";
+    return NextResponse.redirect(url, 308);
+  }
   const chosen = request.cookies.get(LOCALE_COOKIE)?.value;
   // Οι σελίδες παραλήπτη (πύλη ενοικιαστή, «Πλήρωσα», επαλήθευση…) κρατούν
   // τη διεύθυνσή τους και παίρνουν τη γλώσσα από τον επισκέπτη
@@ -192,6 +207,10 @@ export async function proxy(request: NextRequest) {
     // Η περιγραφή του site για τα εργαλεία AI (lib/seo/llms.ts). Το matcher
     // την προσπερνά ήδη· εδώ δηλώνεται για τον φύλακα των δημόσιων διαδρομών.
     "/llms.txt",
+    // Τα αρχεία για όσους ξέρουν πού να κοιτάξουν (16/11/2026): η ομάδα και τα
+    // εργαλεία (public/humans.txt) και ο χάρτης ιστότοπου για τον άνθρωπο. Το
+    // matcher προσπερνά το humans.txt και τη ροή των οδηγών (/odigos/feed.xml).
+    "/humans.txt", "/xartis",
     // ΟΔΗΓΟΣ-ΠΥΛΩΝΑΣ. Δωρεάν περιεχόμενο που εξηγεί τη φορολογία ενοικίων 2026
     // και δένει με τον υπολογιστή· απαντά ΠΡΙΝ την εγγραφή, όπως τα εργαλεία.
     // Οι ίδιοι οι οδηγοί περνούν με πρόθεμα, πιο κάτω.
@@ -406,6 +425,6 @@ export const config = {
     // ανώνυμα οι μηχανές για να επαληθεύσουν τον τομέα, όπως το αρχείο του
     // Search Console. Στατικό αρχείο για μηχανές: δεν θέλει ούτε συνεδρία ούτε
     // κεφαλίδες. Το lib/seo/indexnow.test.ts ελέγχει ότι μένει έξω από εδώ.
-    "/((?!_next/static|_next/image|\\.well-known/|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|llms\\.txt|(?:.*/)?opengraph-image|og/|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|[0-9a-f]+\\.txt$|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|\\.well-known/|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|llms\\.txt|humans\\.txt|odigos/feed\\.xml|(?:.*/)?opengraph-image|og/|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|[0-9a-f]+\\.txt$|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

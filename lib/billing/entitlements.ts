@@ -17,6 +17,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { PLANS, propertyAllowance, PLAN_ORDER, TRIAL_DAYS, BILLING_CYCLES, normalizePlan, type PlanId, type BillingCycle } from './plans';
+import { pastDueUntil } from './subscription';
 
 export type ProfileType = 'individual' | 'professional';
 
@@ -71,7 +72,8 @@ export type Feature =
   | 'accounting_journal' // λογιστικό ημερολόγιο (SoftOne, Epsilon, Xero)
   | 'bank_import'      // εισαγωγή κινήσεων τράπεζας από CSV
   | 'investment_analysis' // IRR / NPV / DSCR και ανάλυση ευαισθησίας
-  | 'early_access';    // mobile app και νέες δυνατότητες, 15 ημέρες νωρίτερα
+  | 'early_access'     // mobile app και νέες δυνατότητες, 15 ημέρες νωρίτερα
+  | 'foreclosure_protection'; // Προστασία ιδιοκτήτη (αναγκαστική εκτέλεση)
 
 // Ελάχιστο πλάνο ανά δυνατότητα.
 export const FEATURE_MIN_PLAN: Record<Feature, PlanId> = {
@@ -82,6 +84,11 @@ export const FEATURE_MIN_PLAN: Record<Feature, PlanId> = {
   multi_property:     'owner',
   comparison:         'owner',
   early_access:       'owner',
+  // ΠΡΟΣΤΑΣΙΑ ΙΔΙΟΚΤΗΤΗ: απόφαση ιδιοκτήτη 12/11/2026, από το «Ιδιοκτήτης+».
+  // Η οθόνη τη ρωτά με `hasFeature`· η πρόταση για το πακέτο ζει στο
+  // lib/legal/billingWords.ts (PROSTASIA_ACCESS). Δεν είναι γραμμή του πίνακα
+  // των πακέτων (PlanMatrix): εκείνος δείχνει μόνο όσα γράφει ρητά.
+  foreclosure_protection: 'owner',
   // ΤΟ ΜΗΤΡΩΟ ΛΕΕΙ Ο,ΤΙ ΕΠΙΒΑΛΛΕΙ Η ΟΘΟΝΗ, ΟΧΙ Ο,ΤΙ ΘΑ ΘΕΛΑΜΕ. Η εισαγωγή
   // κινήσεων τράπεζας και το ημερολόγιο άρθρων ζουν ήδη μέσα στη λογιστική του
   // επαγγελματία (TabAccounting: `mode === 'professional'`, διπλογραφικό). Αν
@@ -152,6 +159,7 @@ export const FEATURE_LABEL: Record<Feature, string> = {
   bank_import:         'Κινήσεις τράπεζας',
   investment_analysis: 'Επενδυτική ανάλυση',
   early_access:        'Νέες δυνατότητες νωρίτερα',
+  foreclosure_protection: 'Προστασία ιδιοκτήτη',
 };
 
 const rank = (p: PlanId): number => {
@@ -275,13 +283,23 @@ export function trialState(input: EntitlementInput): TrialState {
  * ακυρωμένη με ισχύ ως τη λήξη κρατά εκεί το πακέτο που πληρώθηκε· αν το
  * γεγονός της λήξης δεν φτάσει ποτέ, το πακέτο θα έμενε ανοιχτό για πάντα.
  * Η ημερομηνία κρίνεται εδώ και στην `public.user_plan_rank`, με τον ίδιο
- * κανόνα: `cancelled` με `mor_ends_at` που πέρασε είναι `free`.
+ * κανόνα: `cancelled` με `mor_ends_at` που πέρασε είναι `free`· και
+ * `past_due` με την πρώτη αποτυχία παλαιότερη από τη χάρη επίσης.
  */
 export function livePlan(
-  row: { plan?: string | null; subscription_status?: string | null; mor_ends_at?: string | null } | null | undefined,
+  row: {
+    plan?: string | null; subscription_status?: string | null; mor_ends_at?: string | null;
+    mor_past_due_at?: string | null;
+  } | null | undefined,
   now: number = Date.now(),
 ): string {
   const plan = row?.plan || 'free';
+  // Η ΑΠΟΤΥΧΗΜΕΝΗ ΠΛΗΡΩΜΗ ΜΕΤΑ ΤΗ ΧΑΡΗ (έλεγχος 12/11/2026): ίδιος κανόνας με
+  // την `isEntitled` και την `public.user_plan_rank`, χωρίς να περιμένει γεγονός.
+  if (row?.subscription_status === 'past_due') {
+    const until = pastDueUntil(row.mor_past_due_at);
+    return until && Date.parse(until) <= now ? 'free' : plan;
+  }
   if (row?.subscription_status !== 'cancelled' || !row.mor_ends_at) return plan;
   const ends = new Date(row.mor_ends_at).getTime();
   return Number.isFinite(ends) && ends <= now ? 'free' : plan;

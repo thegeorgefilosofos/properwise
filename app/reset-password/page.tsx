@@ -8,12 +8,15 @@ import { AuthMobileBrand } from '../AuthMobileBrand'
 import PasswordEye from '../PasswordEye'
 import { checkPassword, PASSWORD_MIN_HINT, PASSWORD_MIN_LABEL, PASSWORD_MSG } from '@/lib/auth/password'
 import PasswordStrength from '@/components/PasswordStrength'
+import { leakedAtSubmit } from '@/lib/auth/leakGate'
 import { failed as failedEl } from '@/lib/core/dbError';
 import { BackLink } from '../BackLink'
 import MailSent from '../MailSent'
 import type { Locale } from '@/lib/i18n/locale'
 import { localHref } from '@/lib/i18n/paths'
 import { useAuthEn } from '@/lib/i18n/authEn'
+import { useCaptcha } from '../useCaptcha'
+import { captchaOptions } from '@/lib/auth/captcha'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Επαναφορά κωδικού, δύο καταστάσεις:
@@ -48,6 +51,7 @@ export default function ResetPasswordPage() {
   const locale: Locale = A ? 'en' : 'el'
   const failed = (el: string, en_: string | undefined, e: unknown) => A ? A.failed(en_ ?? el, e) : failedEl(el, e)
   const MISMATCH = R ? R.mismatch : MISMATCH_EL
+  const captcha = useCaptcha(locale)
   // Ο ΣΥΝΔΕΣΜΟΣ ΤΟΥ EMAIL ΛΕΕΙ ΗΔΗ ΣΕ ΠΟΙΑ ΟΘΟΝΗ ΕΙΜΑΣΤΕ. Ηταν
   // `setMode('update')` μέσα σε effect: ο χρήστης που πάτησε τον σύνδεσμο
   // επαναφοράς έβλεπε για ένα καρέ τη φόρμα «στείλε μου σύνδεσμο», δηλαδή τη
@@ -99,7 +103,10 @@ export default function ResetPasswordPage() {
     e.preventDefault(); setError(''); setLoading(true)
     const supabase = await authClient()
     const redirectTo = `${window.location.origin}${localHref(locale, '/reset-password')}`
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
+    const captchaToken = await captcha.token()
+    if (captchaToken === null) { setLoading(false); setError(captcha.failMessage()); return }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo, ...captchaOptions(captchaToken) })
+    captcha.reset()
     setLoading(false)
     if (error) setError(failed('Το μήνυμα επαναφοράς δεν στάλθηκε', R?.notSent, error)); else setMode('sent')
   }
@@ -116,23 +123,33 @@ export default function ResetPasswordPage() {
     if (!pwOk) { setError(leakedPw === password ? (A ? A.pw.leaked : PASSWORD_MSG.leaked) : (A ? A.pw.weak : PASSWORD_MSG.weak)); return }
     if (password !== confirm) { setError(MISMATCH); return }
     setLoading(true)
-    const supabase = await authClient()
-    const { error } = await supabase.auth.updateUser({ password })
-    if (error) { setLoading(false); setError(failed('Ο κωδικός δεν άλλαξε', R?.notChanged, error)); return }
-    // ═══ ΟΙ ΑΛΛΕΣ ΣΥΣΚΕΥΕΣ ΚΛΕΙΝΟΥΝ ΜΑΖΙ ΜΕ ΤΟΝ ΠΑΛΙΟ ΚΩΔΙΚΟ ═══════════════
-    // Η οθόνη έλεγε «ο νέος κωδικός ισχύει σε όλες τις συσκευές σου» και
-    // καμία συνεδρία δεν έκλεινε. Οποιος αλλάζει κωδικό επειδή υποψιάζεται
-    // διαρροή νόμιζε ότι προστατεύτηκε, ενώ όποιος κρατούσε συνεδρία έμενε
-    // μέσα. Κλείνουν όλες εκτός από αυτή· αν αποτύχει, το λέμε και δείχνουμε
-    // πού γίνεται με το χέρι, αντί να υποσχεθούμε κάτι που δεν έγινε.
-    // ΚΑΙ ΟΙ ΤΟΠΙΚΕΣ ΚΟΠΙΕΣ ΑΥΤΗΣ ΤΗΣ ΣΥΣΚΕΥΗΣ ΦΕΥΓΟΥΝ. Η επαναφορά είναι
-    // γεγονός ασφαλείας και ο σύνδεσμος μπορεί να άνοιξε σε κοινόχρηστο
-    // μηχάνημα· ο πίνακας τα ξαναφορτώνει από τον διακομιστή.
-    const { error: outError } = await supabase.auth.signOut({ scope: 'others' })
-    leaveDevice()
-    setLoading(false)
-    setOthersOut(!outError)
-    setMode('done')
+    // ΤΟ `loading` ΣΒΗΝΕΙ ΣΕ ΚΑΘΕ ΕΞΟΔΟ ΑΚΟΜΗ ΚΑΙ ΣΕ ΕΞΑΙΡΕΣΗ (π.χ. δίκτυο που κόπηκε):
+    // αλλιώς τα πεδία έμεναν κλειδωμένα και το κουμπί σβηστό ως την ανανέωση.
+    try {
+      // Η υποβολή ρωτά η ίδια: ο έλεγχος του πεδίου μπορεί να μην έχει απαντήσει ακόμη.
+      if (await leakedAtSubmit(password)) {
+        setLeakedPw(password); setLoading(false); setError(A ? A.pw.leaked : PASSWORD_MSG.leaked); return
+      }
+      const supabase = await authClient()
+      const { error } = await supabase.auth.updateUser({ password })
+      if (error) { setLoading(false); setError(failed('Ο κωδικός δεν άλλαξε', R?.notChanged, error)); return }
+      // ═══ ΟΙ ΑΛΛΕΣ ΣΥΣΚΕΥΕΣ ΚΛΕΙΝΟΥΝ ΜΑΖΙ ΜΕ ΤΟΝ ΠΑΛΙΟ ΚΩΔΙΚΟ ═══════════════
+      // Η οθόνη έλεγε «ο νέος κωδικός ισχύει σε όλες τις συσκευές σου» και
+      // καμία συνεδρία δεν έκλεινε. Οποιος αλλάζει κωδικό επειδή υποψιάζεται
+      // διαρροή νόμιζε ότι προστατεύτηκε, ενώ όποιος κρατούσε συνεδρία έμενε
+      // μέσα. Κλείνουν όλες εκτός από αυτή· αν αποτύχει, το λέμε και δείχνουμε
+      // πού γίνεται με το χέρι, αντί να υποσχεθούμε κάτι που δεν έγινε.
+      // ΚΑΙ ΟΙ ΤΟΠΙΚΕΣ ΚΟΠΙΕΣ ΑΥΤΗΣ ΤΗΣ ΣΥΣΚΕΥΗΣ ΦΕΥΓΟΥΝ. Η επαναφορά είναι
+      // γεγονός ασφαλείας και ο σύνδεσμος μπορεί να άνοιξε σε κοινόχρηστο
+      // μηχάνημα· ο πίνακας τα ξαναφορτώνει από τον διακομιστή.
+      const { error: outError } = await supabase.auth.signOut({ scope: 'others' })
+      leaveDevice()
+      setLoading(false)
+      setOthersOut(!outError)
+      setMode('done')
+    } finally {
+      setLoading(false)
+    }
   }
 
   // Ο ΛΟΓΟΣ ΛΕΓΕΤΑΙ ΠΑΝΩ ΣΤΟ ΠΕΔΙΟ, ΟΧΙ ΣΕ ΣΒΗΣΤΟ ΚΟΥΜΠΙ. Η ασυμφωνία δεν
@@ -201,6 +218,7 @@ export default function ResetPasswordPage() {
                   onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
               </div>
               {errBox}
+              {captcha.slot}
               {/* `field` γιατί η υποβολή κρατά όλο το πλάτος της φόρμας, όπως πριν. */}
               <Btn variant="primary" type="submit" field disabled={loading}>{loading ? (R ? R.sending : 'Αποστολή…') : (R ? R.send : 'Στείλε σύνδεσμο')}</Btn>
             </form>
@@ -245,7 +263,7 @@ export default function ResetPasswordPage() {
               <div>
                 <label htmlFor="rp-password" style={label}>{R ? R.newPassword : 'Νέος κωδικός'}</label>
                 <div style={{ position: 'relative' }}>
-                  <input id="rp-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder={A ? A.passwordHint : PASSWORD_MIN_HINT} aria-describedby={password ? 'rp-pw-req' : undefined} style={{ ...field, paddingRight: 48 }}
+                  <input id="rp-password" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required readOnly={loading} value={password} onChange={e => setPassword(e.target.value)} placeholder={A ? A.passwordHint : PASSWORD_MIN_HINT} aria-describedby={password ? 'rp-pw-req' : undefined} style={{ ...field, paddingRight: 48 }}
                     onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
                   {eye}
                 </div>
@@ -253,7 +271,7 @@ export default function ResetPasswordPage() {
               </div>
               <div>
                 <label htmlFor="rp-confirm" style={label}>{R ? R.confirm : 'Επιβεβαίωση'}</label>
-                <input id="rp-confirm" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required value={confirm} onChange={e => setConfirm(e.target.value)} placeholder={R ? R.confirmPlaceholder : 'Ξαναγράψε τον κωδικό'} aria-invalid={mismatch || undefined} aria-describedby={mismatch ? 'rp-confirm-err' : undefined} style={field}
+                <input id="rp-confirm" name="new-password" autoComplete="new-password" type={show ? 'text' : 'password'} required readOnly={loading} value={confirm} onChange={e => setConfirm(e.target.value)} placeholder={R ? R.confirmPlaceholder : 'Ξαναγράψε τον κωδικό'} aria-invalid={mismatch || undefined} aria-describedby={mismatch ? 'rp-confirm-err' : undefined} style={field}
                   onFocus={e => e.currentTarget.style.borderColor = 'var(--accent)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-default)'} />
                 {mismatch && <p id="rp-confirm-err" style={{ fontSize: 12, color: 'var(--negative-on-container)', margin: '6px 0 0', lineHeight: 1.5 }}>{MISMATCH}</p>}
               </div>
