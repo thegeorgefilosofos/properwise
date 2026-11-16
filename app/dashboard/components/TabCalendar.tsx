@@ -492,7 +492,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   // Βάση κουμπιού σε ύφος Google
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+    <div className="cal-root" style={{ display:'flex', flexDirection:'column', gap:16 }}>
       {/* ── Η ΟΘΟΝΗ ΕΧΕΙ ΟΝΟΜΑ, ΟΠΩΣ ΚΑΘΕ ΑΛΛΗ ΚΑΡΤΕΛΑ ────────────────────────
           Ηταν `h1` κρυφό οπτικά: ο αναγνώστης οθόνης είχε κορυφή, το μάτι όχι·
           το Ημερολόγιο ήταν η μόνη καρτέλα χωρίς ορατό τίτλο δίπλα στον
@@ -532,7 +532,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       {viewMode==='month'&&overdue.length>0&&(
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderLeft:'3px solid var(--negative)', borderRadius:T.radius.card, overflow:'hidden' }}>
           <button onClick={()=>setShowOverdue(o=>!o)} aria-expanded={showOverdue} className="acc-toggle acc-row"
-            style={{ '--acc-pad': '12px 16px', borderBottom: showOverdue ? '1px solid var(--border-subtle)' : 'none' }}>
+            style={{ '--acc-pad': '12px 16px', '--acc-gap': '12px', borderBottom: showOverdue ? '1px solid var(--border-subtle)' : 'none' }}>
             <AlertTriangle size={14} color="var(--negative)"/>
             <p style={{ fontSize:14, color:'var(--text-secondary)', fontFamily: T.font.sans, letterSpacing:'0.1px', margin:0, flex:1 }}>
               {overdue.length===1?'1 ληξιπρόθεσμο':`${overdue.length} ληξιπρόθεσμα`} · <span style={{ color:'var(--text-primary)' }}>{showOverdue?'Απόκρυψη':'Εμφάνιση'}</span>
@@ -565,9 +565,13 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
 
       {/* Smart Alerts — μόνο η λήξη συμβολαίων· τα εκπρόθεσμα ανοίγουν από το KPI (χωρίς διπλό κόκκινο) */}
       {expiring.length>0&&(
-        <div style={{ display:'flex', alignItems:'center', gap: 12, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderLeft:'3px solid var(--warning)', borderRadius:10, padding:'10px 16px' }}>
-          <Shield size={14} color="var(--warning)"/>
-          <p style={{ fontSize:14, color:'var(--text-secondary)', fontFamily: T.font.sans, letterSpacing:'0.1px', margin:0 }}>
+        // ΙΔΙΟ ΣΧΗΜΑ ΜΕ ΤΗΝ ΚΑΡΤΑ ΤΩΝ ΛΗΞΙΠΡΟΘΕΣΜΩΝ ΑΠΟ ΠΑΝΩ. Ηταν ακτίνα 10
+        // κάτω από κάρτα με ακτίνα κάρτας, γέμισμα 10 κάτω από 12 και το
+        // εικονίδιο κεντραριζόταν στο ύψος ΔΥΟ σειρών κειμένου στο τηλέφωνο,
+        // οπότε έπεφτε ανάμεσά τους σαν τελεία. Τώρα κάθεται στην πρώτη σειρά.
+        <div style={{ display:'flex', alignItems:'flex-start', gap: 12, background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderLeft:'3px solid var(--warning)', borderRadius:T.radius.card, padding:'12px 16px' }}>
+          <Shield size={14} color="var(--warning)" aria-hidden="true" style={{ flexShrink:0, marginTop:2 }}/>
+          <p style={{ fontSize:14, lineHeight:1.45, color:'var(--text-secondary)', fontFamily: T.font.sans, letterSpacing:'0.1px', margin:0 }}>
             {expiring.length} συμβόλαι{expiring.length===1?'ο λήγει':'α λήγουν'} εντός 60 ημερών · <span style={{ color:'var(--text-primary)' }}>{expiring.map(e=>`${e.title} (${fmtShort(e.event_date)})`).join(', ')}</span>
           </p>
         </div>
@@ -606,6 +610,14 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
           </div>
         )}
 
+        {/* ═══ ΕΥΡΕΣΗ, «ΝΕΟ» ΚΑΙ «⋯» ΤΥΛΙΓΟΥΝ ΜΑΖΙ (16.11.2026) ═══════════════
+            Ηταν τρία χωριστά παιδιά της γραμμής. Στα 768 δεν χωρούσαν όλα σε μία
+            σειρά και το τύλιγμα έριχνε ΜΟΝΟ το «Νέο» και το «⋯» στη δεύτερη,
+            αριστερά, κάτω από τις όψεις: η κύρια ενέργεια της οθόνης ορφανή,
+            χωριστά από την εύρεση που είναι η αδελφή της. Τώρα είναι μία ομάδα
+            με ελάχιστο πλάτος 360: όταν δεν χωρά, κατεβαίνει ολόκληρη και
+            πιάνει τη σειρά, με την εύρεση να γεμίζει και τις ενέργειες δεξιά. */}
+        <div className="cal-actions" style={{ display:'flex', alignItems:'center', gap:10, flex:'1 1 360px', minWidth:0 }}>
         <div className="cal-search" style={{ flex:1, minWidth:100, position:'relative' }}>
           {/* Το «Τίτλος γεγονότος» ζητούσε 143 εικονοστοιχεία και το πεδίο δίνει
               116 στα 320: κοβόταν στο «Τίτλος γεγον…». Το σκέτο «Τίτλος» όμως,
@@ -683,6 +695,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
             </div>,
             document.body
           )}
+        </div>
         </div>
       </div>
 

@@ -57,6 +57,7 @@ import {
 import {
   Users,
   SearchX,
+  Search,
   ChevronRight,
   Trash2,
 } from 'lucide-react';
@@ -697,29 +698,29 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
 
       <KPIGrid items={kpis}/>
 
-      <div style={{ display:'flex', gap:10, flexWrap:'wrap' as const, alignItems:'center', marginBottom:16 }}>
-        {/* ΤΟ ΚΕΙΜΕΝΟ ΔΕΝ ΧΩΡΟΥΣΕ ΚΑΙ ΚΟΒΟΤΑΝ ΣΤΗ ΜΕΣΗ ΛΕΞΗΣ: ο χρήστης διάβαζε
-            «Αναζήτηση ονόματος, ΑΦΜ, τηλεφύ». Ένα πεδίο που δεν μπορεί να δείξει
-            ούτε τη δική του οδηγία δεν εμπνέει εμπιστοσύνη για τα υπόλοιπα.
-            Η υπόδειξη λέει τώρα μόνο ΤΙ ψάχνεται — που είναι και η χρήσιμη
-            πληροφορία — και το «Αναζήτηση» μετακόμισε στην ετικέτα για τον
-            αναγνώστη οθόνης, όπου ανήκει. */}
-        <input value={search} onChange={e=>setSearch(e.target.value)}
-          className="po-field field-wide" aria-label="Αναζήτηση ενοικιαστή" placeholder="Όνομα, ΑΦΜ ή τηλέφωνο"
-          style={{ background:'var(--bg-base)', border:'1px solid var(--border-control)', borderRadius:10, padding:'10px 14px', color:'var(--text-primary)', fontSize:14, height:T.h.lg, maxWidth:280, flex:'1 1 220px', outline:'none', boxSizing:'border-box', fontFamily:T.font.sans }}/>
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
-          {/* «Όλοι», «Τρέχων», «Προηγούμενοι»: δύο πληθυντικοί και ένας ενικός, σε
-              τρία διπλανά κουμπιά που φιλτράρουν ΛΙΣΤΑ. Το «Τρέχων» είναι σωστό
-              στη σήμανση ΕΝΟΣ ενοικιαστή — και εκεί μένει· εδώ μετρά πόσοι. */}
+      {/* ═══ ΑΝΑΖΗΤΗΣΗ ΚΑΙ ΦΙΛΤΡΟ, ΟΠΩΣ ΣΤΟ ΑΡΧΕΙΟ (16.11.2026) ═══════════════
+          Ηταν πεδίο χωρίς εικονίδιο με γωνίες 10 και, δίπλα, τρία ανεξάρτητα
+          πλακίδια με δικό τους περίγραμμα το καθένα. Στα 390 τα πλακίδια
+          έπεφταν σε δεύτερη σειρά με πλάτη 54, 86 και 108 και ογδόντα κενά
+          δεξιά: τρία κουμπιά που έμοιαζαν τρία άσχετα πράγματα, ενώ είναι ΜΙΑ
+          ερώτηση με τρεις απαντήσεις. Τώρα: ίδιο πεδίο με το Αρχείο (εικονίδιο,
+          σχήμα χαπιού) και τμηματικός επιλογέας σε ράγα, που στο τηλέφωνο
+          πιάνει όλο το πλάτος με τρία ίσα κομμάτια. Η υπόδειξη λέει ΤΙ
+          ψάχνεται· το «Αναζήτηση» ζει στην ετικέτα του αναγνώστη οθόνης. */}
+      {tenants.length>0&&<div className="po-tools">
+        <div className="po-search">
+          <Search size={15} aria-hidden="true" className="po-search-icon"/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} type="search"
+            className="po-search-input" aria-label="Αναζήτηση ενοικιαστή" placeholder="Όνομα, ΑΦΜ ή τηλέφωνο"/>
+        </div>
+        {/* «Όλοι», «Τρέχοντες», «Προηγούμενοι»: πληθυντικοί, γιατί φιλτράρουν
+            ΛΙΣΤΑ. Το «Τρέχων» μένει στη σήμανση ΕΝΟΣ ενοικιαστή. */}
+        <div role="group" aria-label="Ποιοι ενοικιαστές φαίνονται" className="po-rail">
           {([['all','Όλοι'],['current','Τρέχοντες'],['past','Προηγούμενοι']] as [typeof segment,string][]).map(([v,l])=>(
-            // shape «chip»: τα τρία φίλτρα κάθονται ελεύθερα στη γραμμή εργαλείων,
-            // χωρίς ράγα γύρω τους, οπότε το καθένα κρατά δικό του περίγραμμα.
-            // size «lg»: δίπλα τους κάθεται το πεδίο αναζήτησης με ύψος T.h.lg
-            // — το προεπιλεγμένο T.h.sm άφηνε τη σειρά 40 δίπλα σε 32.
-            <ChipToggle key={v} size="lg" on={segment===v} onClick={()=>setSegment(v)}>{l}</ChipToggle>
+            <ChipToggle key={v} shape="seg" on={segment===v} onClick={()=>setSegment(v)}>{l}</ChipToggle>
           ))}
         </div>
-      </div>
+      </div>}
 
       {tenants.length===0?(
         <EmptyState icon={<Users size={20}/>} title="Κανένας ενοικιαστής ακόμη" hint="Πρόσθεσε τον ενοικιαστή του ακινήτου για πλήρη παρακολούθηση μίσθωσης, ενοικίων, εγγύησης, φθορών και ανανέωσης." action={<div className="act-center" style={{ display:'flex', gap:8, flexWrap:'wrap' as const, justifyContent:'center' }}><Btn variant="primary" onClick={openAdd}>Νέος ενοικιαστής</Btn><Btn variant="secondary" onClick={()=>setLeaseOpen(true)}>Σύνταξη μισθωτηρίου</Btn></div>}/>
@@ -728,7 +729,11 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
           {filtered.length===0?(
             <EmptyState icon={<SearchX size={20}/>} title="Δεν βρέθηκαν ενοικιαστές" hint="Άλλαξε φίλτρο ή αναζήτηση."/>
           ):(
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap:14 }}>
+            // `auto-fill`, ΟΧΙ `auto-fit`: με έναν ενοικιαστή η κάρτα τεντωνόταν σε
+            // όλα τα 1.392 της σειράς και τα τρία ποσά της λωρίδας απείχαν 450
+            // το ένα από το άλλο. Τώρα κρατά πλάτος κάρτας και η σειρά γεμίζει
+            // όσο προστίθενται ενοικιαστές. `data-list`: εγγραφές του χρήστη.
+            <div data-list style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(100%, 360px), 1fr))', gap:14 }}>
               {filtered.map(t=>{
                 const od=overdueByTenant.get(t.id);
                 const d=daysLeft(t.lease_end);
@@ -758,10 +763,15 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                         </IconBtn>
                       </div>
                     }>
+                    {/* ΜΙΑ ΛΕΞΗ ΑΝΑ ΚΕΛΙ. «Μηνιαίο ενοίκιο» και «Ληξιπρόθεσμη οφειλή»
+                        έσπαγαν σε δύο σειρές στα 390 ΚΑΙ στην κάρτα των 455 του
+                        υπολογιστή και τα ποσά της ίδιας λωρίδας έπεφταν σε δύο
+                        ύψη. Το «μηνιαίο» το λέει ήδη ο δείκτης στην κορυφή· το
+                        «Ληξιπρόθεσμα» είναι η λέξη της καρτέλας Πληρωμών. */}
                     <StatStrip items={[
-                      { label:'Μηνιαίο ενοίκιο', value:fmt(t.monthly_rent), strong:true },
+                      { label:'Ενοίκιο', value:fmt(t.monthly_rent), strong:true },
                       { label:'Εγγύηση', value:fmt(t.deposit_amount) },
-                      { label:'Ληξιπρόθεσμη οφειλή', value:fmt(od?od.amount:0), tone:od?'negative':undefined },
+                      { label:'Ληξιπρόθεσμα', value:fmt(od?od.amount:0), tone:od?'negative':undefined },
                     ]} />
                     {/* ΤΟ ΡΑΝΤΕΒΟΥ ΤΗΣ ΑΝΑΠΡΟΣΑΡΜΟΓΗΣ ΛΕΓΕΤΑΙ. Το «Μηνιαίο ενοίκιο» από
                         πάνω δείχνει το ποσό που ΙΣΧΥΕΙ σήμερα· χωρίς αυτή τη γραμμή, η

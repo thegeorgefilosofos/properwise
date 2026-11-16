@@ -822,9 +822,12 @@ export default function TabDocuments({
   });
 
   // Ενιαίο σημείο ανεβάσματος — ζει στο PageTitle (ή στη γραμμή εργαλείων όταν embedded).
+  // «ΝΕΟ ΑΡΧΕΙΟ», ΟΠΩΣ «ΝΕΟΣ ΕΝΟΙΚΙΑΣΤΗΣ» ΚΑΙ «ΝΕΑ ΔΑΠΑΝΗ». Το «Καταχώρηση
+  // αρχείου» ήταν το μόνο κύριο κουμπί κεφαλίδας με άλλο ρήμα και στα 390 δεν
+  // χωρούσε στο μισό πλάτος: έσπαγε σε δύο σειρές δίπλα στο «Εξαγωγή Excel».
   const uploadBtn = (
     <Btn variant="primary" onClick={() => setShowUpload(s => !s)}>
-      <svg aria-hidden="true" {...S} width={15} height={15}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Καταχώρηση αρχείου
+      <svg aria-hidden="true" {...S} width={15} height={15}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Νέο αρχείο
     </Btn>
   );
   // Όταν το αρχείο είναι κενό, το κουμπί ζει ΜΟΝΟ στην κενή κατάσταση
@@ -1178,8 +1181,7 @@ function MonthGroups({ groups, a }: { groups: readonly { key: string; label: str
   // πιάνει όσο πλάτος χρειάζονται τα αρχεία του: οι μικροί μήνες κάθονται ο
   // ένας δίπλα στον άλλο, ο καθένας με την επικεφαλίδα του· ο μεγάλος
   // παίρνει ολόκληρη τη σειρά· ο κλειστός μήνας είναι γραμμή πλήρους πλάτους.
-  // Στο τηλέφωνο κάθε μήνας είναι όλο το πλάτος,
-  // όπως πριν. Στη λίστα οι γραμμές θέλουν πλάτος, οπότε εκεί μένουν στοίβα.
+  // Στο τηλέφωνο κάθε μήνας είναι όλο το πλάτος. Στη λίστα οι γραμμές θέλουν πλάτος, οπότε εκεί μένουν στοίβα.
   const grid = a.view === 'grid';
   return (
     // `data-list`: οι μήνες είναι εγγραφές του χρήστη, όχι πλακίδια που όρισε ο
@@ -1191,7 +1193,13 @@ function MonthGroups({ groups, a }: { groups: readonly { key: string; label: str
         return (
           // Κλειστός μήνας = μία γραμμή κεφαλίδας σε όλο το πλάτος, όπως σε κάθε
           // πτυσσόμενη λίστα· μόνο οι ανοιχτοί μήνες κάθονται δίπλα δίπλα.
-          <section key={m} style={{ flex: grid && !closed ? `0 1 ${monthWidth(its.length)}px` : '1 1 100%', minWidth: 0, maxWidth: '100%' }}>
+          // ΑΝΟΙΧΤΟΣ ΜΗΝΑΣ: ΒΑΣΗ ΟΣΟ ΤΑ ΑΡΧΕΙΑ ΤΟΥ ΚΑΙ ΜΕΓΑΛΩΝΕΙ. Με `0 1` ο μήνας
+          // έμενε 260 φαρδύς: στα 390 το πλακίδιο κατέληγε 260 σε δοχείο 326, με
+          // τρύπα δεξιά και στα 1440 οι δύο ανοιχτοί μήνες έπιαναν το ένα τρίτο
+          // της σειράς ενώ οι κλειστοί από κάτω όλη, με τα βελάκια σε δύο άξονες.
+          // Τώρα μοιράζονται τη σειρά και το βελάκι του τελευταίου κάθεται εκεί
+          // που κάθονται όλα τα άλλα.
+          <section key={m} style={{ flex: grid && !closed ? `1 1 ${monthWidth(its.length)}px` : '1 1 100%', minWidth: 0, maxWidth: '100%' }}>
             <button type="button" className="acc-toggle acc-month" data-open={!closed} aria-expanded={!closed}
               aria-label={`${label}, ${its.length} ${its.length === 1 ? 'αρχείο' : 'αρχεία'}`}
               onClick={() => setShut(prev => ({ ...prev, [m]: !closed }))}>
@@ -1201,7 +1209,9 @@ function MonthGroups({ groups, a }: { groups: readonly { key: string; label: str
               <svg aria-hidden="true" className="acc-month-chevron" width={16} height={16} viewBox="0 0 24 24" fill="none"
                 stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
             </button>
-            {!closed && <FileInner items={its} a={a}/>}
+            {/* Αέρας κάτω από ανοιχτό μήνα, ώστε η επόμενη κεφαλίδα να μην
+                κολλά στα πλακίδια: ίδιο κενό με κεφαλίδα και περιεχόμενο. */}
+            {!closed && <div style={{ paddingBottom: T.sp.md }}><FileInner items={its} a={a}/></div>}
           </section>
         );
       })}

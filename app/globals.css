@@ -1247,7 +1247,11 @@ body {
 .acc-month:hover .acc-month-label { color: var(--text-primary); }
 .acc-month-chevron { margin-left: auto; flex-shrink: 0; transition: transform .2s; }
 .acc-month-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary); flex-shrink: 0; }
-.acc-month-label { font-size: var(--fs-xs); font-weight: 700; color: var(--text-secondary); letter-spacing: 0.06em; transition: color .15s; }
+/* ΧΩΡΙΣ ΑΡΑΙΩΣΗ. Το 0.06em ταιριάζει σε ΚΕΦΑΛΑΙΑ ετικέτα· εδώ το κείμενο είναι
+   πεζό («Τον προηγούμενο μήνα», «Σεπτέμβριος 2026») και η αραίωση το έκανε να
+   διαβάζεται γράμμα γράμμα, ενώ ο μετρητής δίπλα του, με κανονικό διάστιχο,
+   έμοιαζε άλλη γραμματοσειρά. */
+.acc-month-label { font-size: var(--fs-xs); font-weight: 700; color: var(--text-secondary); transition: color .15s; }
 .acc-month-count { font-size: var(--fs-xs); color: var(--text-tertiary); }
 .acc-month[data-open="true"] .acc-month-chevron { transform: rotate(180deg); }
 
@@ -4461,7 +4465,11 @@ body { hyphens: none; }
 /* Η μικρογραφία της κάρτας αρχείου. Χωρίς εικόνα, στο τηλέφωνο γίνεται λωρίδα
    88 εικονοστοιχείων αντί για άδειο πλαίσιο 4:3 (TabDocuments, FileCard). */
 .file-thumb { aspect-ratio: 4 / 3; }
-@media (max-width: 560px) { .file-thumb[data-empty] { aspect-ratio: auto; height: 88px; } }
+/* ΤΟ ΑΔΕΙΟ ΠΛΑΙΣΙΟ ΔΕΝ ΚΕΡΔΙΖΕΙ 4:3 ΣΕ ΚΑΝΕΝΑ ΠΛΑΤΟΣ. Στα 768 ένα PDF χωρίς
+   προεπισκόπηση έπιανε 288 εικονοστοιχεία γκρι με ένα εικονίδιο 30 στη μέση,
+   πριν από το όνομα. Χαμηλή λωρίδα παντού· στο τηλέφωνο ακόμη χαμηλότερη. */
+.file-thumb[data-empty] { aspect-ratio: auto; height: 112px; }
+@media (max-width: 560px) { .file-thumb[data-empty] { height: 88px; } }
 
 /* Γραμμή κόστους υπηρεσίας (Ενοικιαστής): τα δύο πεδία πάνε από κάτω σε κινητό */
 @media (max-width: 560px) {
@@ -7283,12 +7291,17 @@ tr.po-row-more { display: none; }
    δύο άκρες δεν έχει πλευρές να δείξει · ένα μισό περίγραμμα διαβάζεται ως
    λάθος. Πάνω από 430 τίποτα δεν αλλάζει: εκεί οι στήλες περνούν άνετα.
    ═══════════════════════════════════════════════════════════════════════════ */
+/* ΤΟ `!important` ΕΙΝΑΙ Ο ΛΟΓΟΣ ΠΟΥ ΔΟΥΛΕΥΕΙ (16.11.2026). Η κάρτα του
+   MonthView γράφει ακτίνα και περίγραμμα ΕΝΣΩΜΑΤΑ, που νικούν κάθε κλάση: στα
+   390 το περιθώριο ακυρωνόταν σωστά, αλλά οι στρογγυλές γωνίες και οι δύο
+   πλαϊνές γραμμές έμεναν, κομμένες στην άκρη της οθόνης. Δηλαδή ακριβώς το
+   «μισό περίγραμμα» που η παράγραφος από πάνω λέει ότι διαβάζεται ως λάθος. */
 @media (max-width: 430px) {
   .cal-bleed {
     margin-inline: -16px;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
   }
 }
 @media (max-width: 360px) {
@@ -7871,7 +7884,8 @@ h1, h2, h3, h4, details > summary, th, dt { text-wrap: balance; }
   }
   .cal-toolbar .cal-period { min-width: 0 !important; }
   .cal-toolbar .cal-today { margin-left: 8px; }
-  .cal-toolbar > .cal-search { min-width: 0 !important; }
+  .cal-toolbar > .cal-actions { grid-column: 1 / -1; }
+  .cal-toolbar .cal-search { min-width: 0 !important; }
 }
 
 /* ── Η κάρτα του συνδέσμου για τον λογιστή (TabAccounting.tsx). Δύο σειρές
@@ -8870,3 +8884,34 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
    τίτλοι που τυλίγουν να ξεκινούν όλοι στην ίδια κατακόρυφο. */
 .lg-h { display: grid; grid-template-columns: 1.6em minmax(0, 1fr); align-items: baseline; }
 .lg-h-n { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+/* ═══ .po-tools · ΑΝΑΖΗΤΗΣΗ ΚΑΙ ΤΜΗΜΑΤΙΚΟ ΦΙΛΤΡΟ ΣΕ ΜΙΑ ΣΕΙΡΑ ═══════════════════
+   Η ίδια γραμμή που έχει το Αρχείο (`.ad-search`, archive/styles.ts), βγαλμένη
+   εδώ για όποια λίστα έχει πεδίο και ένα φίλτρο τριών τιμών. Ιδιο ύψος 40 για
+   πεδίο και ράγα, ώστε η σειρά να διαβάζεται στοιχισμένη· στο τηλέφωνο το
+   πεδίο και η ράγα πιάνουν από μία σειρά ολόκληρη, με ίσα κομμάτια. */
+.po-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.po-search { position: relative; flex: 1 1 260px; min-width: 200px; max-width: 420px; }
+.po-search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); pointer-events: none; }
+.po-search-input {
+  width: 100%; height: 40px; box-sizing: border-box; padding: 0 14px 0 36px; border-radius: 100px;
+  border: 1px solid var(--border-control); background: var(--bg-elevated); color: var(--text-primary);
+  font-family: inherit; font-size: var(--fs-xs); outline: none;
+}
+.po-search-input::-webkit-search-cancel-button { cursor: pointer; }
+.po-search-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.po-rail {
+  display: flex; height: 40px; align-items: stretch; box-sizing: border-box; overflow: hidden;
+  border: 1px solid var(--border-subtle); border-radius: 100px;
+}
+@media (max-width: 600px) {
+  .po-search { flex-basis: 100%; max-width: none; }
+  .po-rail { width: 100%; }
+  .po-rail > .po-chip { flex: 1 1 0; }
+}
+
+/* Το Ημερολόγιο στοιβάζει τα παιδιά του με κενό 16 και το PageTitle κρατά δικό
+   του κάτω περιθώριο: 40 ανάμεσα σε υπότιτλο και πρώτη κάρτα, ενώ σε κάθε άλλη
+   καρτέλα είναι 24. Το περιθώριο του τίτλου εδώ συμπληρώνει το κενό, δεν το
+   διπλασιάζει. */
+.cal-root > .page-head { margin-bottom: 8px !important; }
