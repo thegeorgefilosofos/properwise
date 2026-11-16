@@ -380,6 +380,21 @@ export const MUTATIONS = {
   // τεντώνοντας τα κενά. Μετρημένο: 26,6 εικονοστοιχεία εκεί που το φυσικό
   // κενό είναι 4,2. Η δεύτερη μορφή είναι το `hyphens: none`, που το σβήνει
   // ρητά — ίδιο αποτέλεσμα, άλλη διατύπωση.
+  // Τυπογραφικό σύστημα (14/11/2026): `balance` σε κείμενο σώματος, σε CSS και σε στυλ.
+  'wrap-balance': { every: [
+    { file: 'app/globals.css', from: '.lp-lede { max-width: 680px; text-align: center; text-wrap: pretty; }', to: '.lp-lede { max-width: 680px; text-align: center; text-wrap: balance; }' },
+    { file: 'app/globals.css', from: '.tx-glue { white-space: nowrap; }', to: '.tx-glue { white-space: nowrap; }\n.lg-body .lg-p { text-wrap-style: balance; }' },
+    { file: 'app/globals.css', from: '.tx-glue { white-space: nowrap; }', to: '.tx-glue { white-space: nowrap; }\n:where(p, li) { text-wrap: balance; }' },
+    { add: 'components/__mut__.tsx', content: tsx("    <p style={{ fontSize: 15, textWrap: 'balance' }}>Μια παράγραφος σώματος που ζυγίζεται σαν τίτλος.</p>") },
+  ] },
+  // Πιλούλες μίας επιλογής με τέσσερις ή περισσότερες επιλογές: πίνακας επιτόπου,
+  // σταθερά από άλλο αρχείο και πιλούλες γραμμένες μία μία.
+  'choice-chips': { every: [
+    { add: 'components/__mut__.tsx', content: "import { useState } from 'react'\nimport { ChipToggle } from '@/components/Theme'\nexport default function M() {\n  const [v, setV] = useState('a')\n  return (\n    <div>\n      {([['a', 'Α'], ['b', 'Β'], ['c', 'Γ'], ['d', 'Δ']] as const).map(([k, l]) => (\n        <ChipToggle key={k} on={v === k} onClick={() => setV(k)}>{l}</ChipToggle>\n      ))}\n    </div>\n  )\n}\n" },
+    { add: 'components/__mut__.tsx', content: "import { useState } from 'react'\nimport { ChipToggle } from '@/components/Theme'\nimport { DISPUTE_KINDS } from '@/lib/property/plan'\nexport default function M() {\n  const [v, setV] = useState('unknown')\n  return (\n    <div>\n      {DISPUTE_KINDS.map(k => (\n        <ChipToggle key={k.key} on={k.key === v} onClick={() => setV(k.key)}>{k.label}</ChipToggle>\n      ))}\n    </div>\n  )\n}\n" },
+    { add: 'components/__mut__.tsx', content: "import { useState } from 'react'\nimport { ChipToggle } from '@/components/Theme'\nexport default function M() {\n  const [m, setM] = useState('a')\n  return (\n    <div>\n      <ChipToggle on={m === 'a'} onClick={() => setM('a')}>Α</ChipToggle>\n      <ChipToggle on={m === 'b'} onClick={() => setM('b')}>Β</ChipToggle>\n      <ChipToggle on={m === 'c'} onClick={() => setM('c')}>Γ</ChipToggle>\n      <ChipToggle on={m === 'd'} onClick={() => setM('d')}>Δ</ChipToggle>\n    </div>\n  )\n}\n" },
+    { file: 'app/dashboard/components/BillsInsurance.tsx', from: '{/* chip-group: φίλτρο. Φιλτράρει', to: '{/* Φιλτράρει' },
+  ] },
   'justify-hyphen': { every: [
     { add: 'components/__mut__.tsx', content: tsx("    <p style={{ textAlign: 'justify', textWrap: 'pretty' }}>Ενα κείμενο που στοιχίζεται πέρα ως πέρα χωρίς να σπάει λέξη.</p>") },
     { add: 'components/__mut__.tsx', content: tsx("    <p style={{ textAlign: 'justify', hyphens: 'none' }}>Ενα κείμενο που στοιχίζεται πέρα ως πέρα χωρίς να σπάει λέξη.</p>") },
@@ -877,6 +892,10 @@ export const MUTATIONS = {
   // 29/10/2026. Και οι δύο κανόνες ζύγισης του globals.css, ο καθένας χωριστά·
   // και η επιστροφή τους στο shorthand `text-wrap`, που έσπαγε τα ποσά.
   'text-glue': { every: [
+    // η πρόζα δεν περνά πια από το `bindShortWords`
+    { file: 'components/Hyphen.tsx', from: 'bindRefs(bindShortWords(node))', to: 'bindRefs(node)' },
+    // λείπει μικρή λέξη από τη λίστα
+    { file: 'lib/core/hyphenate.ts', from: "  'και', 'σε', 'στο',", to: "  'σε', 'στο'," },
     { add: 'components/__mut__.tsx', content: tsx('    <p>Δωρεάν τις πρώτες {30} ημέρες, σε 80 τ.μ.</p>') },
     { file: 'app/globals.css', from: ':where([class*="-title"], [class*="-label"]', to: ':where([class*="-titlos"], [class*="-label"]' },
     { file: 'app/globals.css', from: 'legend, figcaption, a, button) { text-wrap-style: balance; }', to: 'legend, figcaption, a, button) { text-wrap: balance; }' },

@@ -4,6 +4,8 @@ import { InfoGlyph, INFO_GLYPH, INFO_TOOLTIP_STYLE } from './UIComponents'
 import { useState, useRef, useCallback, useId, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { hy } from '@/components/Hyphen'
+import { GlueTail } from '@/components/TextGlue'
+import { bindShortWords } from '@/lib/core/hyphenate'
 
 // Μικρό, ενιαίο ⓘ με premium popover που εμφανίζεται στο hover/focus. Portal →
 // δεν κόβεται από overflow. Θεματικό (light/dark). Χρήση με μέτρο: μόνο εκεί που
@@ -186,16 +188,11 @@ export function HintedText({ text, label, children, style }: {
   children: ReactNode
   style?: React.CSSProperties
 }) {
-  const cut = text.lastIndexOf(' ')
-  const head = cut > 0 ? text.slice(0, cut + 1) : ''
-  const tail = cut > 0 ? text.slice(cut + 1) : text
   return (
     <span style={style}>
-      {head}
-      <span style={{ whiteSpace: 'nowrap' }}>
-        {tail}
-        <InfoHint label={label}>{children}</InfoHint>
-      </span>
+      {/* Οι μικρές λέξεις κατεβαίνουν με την επόμενη, όπως στην πρόζα του `hy()`:
+          «…αυτή τη / στιγμή» στην κάρτα «Αναφορά» (14/11/2026). */}
+      <GlueTail text={bindShortWords(text)}><InfoHint label={label}>{children}</InfoHint></GlueTail>
     </span>
   )
 }

@@ -25,6 +25,7 @@ export { T, TT, formGrid, fieldRow, fixedCols, tileGrid, tileRow, fe, feAuto, fe
 export type { Tone } from './tokens';
 import { T, TT, isBlankMetric, type Tone } from './tokens';
 import { hy } from './Hyphen';
+import { GlueTail } from './TextGlue';
 
 // Τα στοιχεία του κρίσιμου μονοπατιού ζουν στο ThemeCore.tsx (δες εκεί γιατί)
 // και ξαναεξάγονται εδώ αυτούσια.
@@ -236,7 +237,7 @@ export function SecHdr({ label, sub, info, right }: { label: string; sub?: strin
         {/* ΤΙΤΛΟΣ ΔΕΥΤΕΡΟΥ ΕΠΙΠΕΔΟΥ, ΜΕ ΤΗΝ ΙΔΙΑ ΕΜΦΑΝΙΣΗ. Ως <div>, η πλοήγηση
             ανά επικεφαλίδα του αναγνώστη οθόνης δεν έβρισκε τίποτα κάτω από το
             h1 της καρτέλας. */}
-        <h2 style={{ ...TT.label, fontSize: 'var(--fs-xs)', margin: 0 }}>{label}{info}</h2>
+        <h2 style={{ ...TT.label, fontSize: 'var(--fs-xs)', margin: 0 }}><GlueTail text={label}>{info}</GlueTail></h2>
         {sub && <div className="sec-hdr-sub" style={{ ...TT.caption, fontSize: 'var(--fs-xs)', marginTop: 2 }}>{sub}</div>}
       </div>
       {right}
@@ -479,7 +480,7 @@ export function Tile({ label, value, sub, subTone, tone, title, info, chars, hal
           το ⓘ κάθεται στο τέλος της τελευταίας γραμμής, δεμένο με την
           τελευταία λέξη ώστε να μην πέσει μόνο του σε νέα γραμμή. */}
       <div className="kpi-label" style={info ? { lineHeight: '16px' } : undefined}>
-        {info ? <>{label.replace(/\s*\S+$/, '')}{/\s/.test(label) ? ' ' : ''}<span style={{ whiteSpace: 'nowrap' }}>{label.match(/\S+$/)?.[0]}{info}</span></> : label}
+        <GlueTail text={label}>{info}</GlueTail>
       </div>
       {/* Ουδέτερο by default· ο σημασιολογικός τόνος αποκαλύπτεται στο hover ή
           στο άγγιγμα (data-tone + globals.css), για χαμηλού θορύβου look. */}

@@ -900,11 +900,14 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                 Τώρα: διαλέγεις πρότυπο, το βλέπεις όλο, το στέλνεις. */}
             <div>
               <SecHdr label="Μηνύματα" sub="Έτοιμα πρότυπα για WhatsApp, Viber ή αντιγραφή" />
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                {MSG_TEMPLATES.map(t => (
-                  <ChipToggle key={t.id} on={t.id === msgId}
-                    onClick={() => { setMsgId(t.id); setMsgCopied(false); }}>{t.label}</ChipToggle>
-                ))}
+              {/* ΠΕΝΤΕ ΠΡΟΤΥΠΑ, ΕΝΑ ΤΗ ΦΟΡΑ: ΕΠΙΛΟΓΕΑΣ (14/11/2026). Ως πιλούλες
+                  τύλιγαν σε σειρές άνισου πλάτους πάνω από το κείμενο που
+                  ήταν ο λόγος της ενότητας. Ίδιες τιμές και ίδια προεπιλογή· η
+                  αλλαγή προτύπου μηδενίζει ακόμη το «Αντιγράφηκε». */}
+              <div className="choice-select" style={{ marginBottom: 12 }}>
+                <CustomSelect ariaLabel="Πρότυπο μηνύματος" value={msgId}
+                  onChange={v => { setMsgId(v); setMsgCopied(false); }}
+                  options={MSG_TEMPLATES.map(t => ({ value: t.id, label: t.label }))} />
               </div>
               {(() => {
                 const active = MSG_TEMPLATES.find(t => t.id === msgId) || MSG_TEMPLATES[0];

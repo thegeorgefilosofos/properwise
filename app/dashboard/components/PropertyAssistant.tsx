@@ -539,7 +539,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                   πρώτη ερώτηση το υπόλοιπο θα ήταν μαντεψιά. */}
               {/* ΜΙΑ ΠΡΟΤΑΣΗ ΑΝΑ ΓΡΑΜΜΗ. Ως ενιαίο κείμενο έσπαγε σε τρεις
                   κεντραρισμένες γραμμές στη μέση της φράσης. */}
-              <p style={{ ...TT.caption, color: 'var(--text-tertiary)', textAlign: 'center', margin: '8px 14px 0', textWrap: 'balance' }}>
+              <p style={{ ...TT.caption, color: 'var(--text-tertiary)', textAlign: 'center', margin: '8px 14px 0', textWrap: 'pretty' }}>
                 {aiDisclosureLines(prefs.formal).map((l, i) => <span key={i} style={{ display: 'block' }}>{l}</span>)}
               </p>
               {remainingLine(quota, prefs.formal) && (

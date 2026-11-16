@@ -148,8 +148,9 @@ ok('χωρίς εισαγωγικά και παρενθέσεις', anchorOf('Π
     self: '/privacy', title: 'Τ', updated: 'Σ', intro: 'Ι',
     sections: [{ h: 'Λίστα', labelled, list: ['Πρόσβαση: μαθαίνεις τι τηρούμε.', 'Μια μεγάλη πρόταση που συνεχίζει πολύ ώσπου να βρει άνω τελεία και να συνεχίσει ακόμη λίγο: εδώ.'] }],
   })).split(SHY).join('');
-  ok('η ετικέτα γράφεται έντονα', list(true).includes('<strong>Πρόσβαση</strong>: μαθαίνεις'));
-  ok('η μακριά φράση δεν κόβεται στα δύο', !list(true).includes('<strong>Μια μεγάλη'));
+  // Σε δική της γραμμή από 14/11/2026· η άνω κάτω τελεία μένει στο κείμενο.
+  ok('η ετικέτα γράφεται έντονα', list(true).includes('<strong class="lg-lead">Πρόσβαση<span class="sr-only">:</span></strong> μαθαίνεις'));
+  ok('η μακριά φράση δεν κόβεται στα δύο', !list(true).includes('<strong class="lg-lead">Μια μεγάλη'));
   ok('χωρίς δήλωση, καμία έντονη ετικέτα', !list(false).includes('<strong>'));
 }
 
@@ -170,7 +171,10 @@ ok('χωρίς εισαγωγικά και παρενθέσεις', anchorOf('Π
     self: '/terms', eyebrow: 'Νομικά', title: 'Τ', intro: 'Ι', version: 'Έκδοση 2026-09',
     blocks: [{ part: 'Α. Μέρος', h: 'Ενότητα', body: createElement('p', null, 'κείμενο') }],
   })).split(SHY).join('');
-  ok('το μέρος είναι h2', /<h2 class="lg-part[^"]*">Α. Μέρος<\/h2>/.test(out));
+  ok('το μέρος είναι h2', /<h2 class="lg-part[^"]*">Μέρος<\/h2>/.test(out));
+  // Μία αρίθμηση (14/11/2026): το γράμμα του μέρους δεν τυπώνεται δίπλα στον αριθμό της ενότητας.
+  ok('το γράμμα του μέρους δεν τυπώνεται', !out.includes('Α. Μέρος'));
+  ok('ο αριθμός στη γραμμή βάσης του τίτλου', out.includes('<h3 class="lg-h"') && out.includes('class="lg-h-n"'));
   ok('η ενότητα είναι h3', out.includes('<h3'));
   ok('ο αριθμός έχει τελεία για τον αναγνώστη', out.includes('1<span class="sr-only">. </span>'));
   ok('η έκδοση φαίνεται στην κορυφή', out.indexOf('Έκδοση 2026-09') > 0 && out.indexOf('Έκδοση 2026-09') < out.indexOf('lg-grid'));
@@ -187,6 +191,9 @@ ok('χωρίς εισαγωγικά και παρενθέσεις', anchorOf('Π
     const linked = out.split('ενότητα «<a href="#').length - 1;
     ok(`${name}: κάθε παραπομπή σε ενότητα είναι σύνδεσμος (${linked}/${refs})`, refs > 0 && refs === linked);
     ok(`${name}: η έκδοση φαίνεται στην κορυφή`, out.includes('class="lg-version"'));
+    // «Ισχύει από» στην όψη, η πλήρης έκδοση στο `data-version` (14/11/2026).
+    ok(`${name}: «Ισχύει από» με την ημερομηνία της έκδοσης`, /class="lg-version" data-version="[^"]+">Ισχύει από \d{2}\/\d{2}\/\d{4}</.test(out));
+    ok(`${name}: η έντονη αρχή σε δική της γραμμή`, out.includes('class="lg-lead"'));
   }
 }
 

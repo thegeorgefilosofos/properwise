@@ -113,7 +113,7 @@ export default async function LandingEn() {
               στοιχίζει δύο ισομήκεις προτάσεις πέρα πέρα (.lp-lede-line)· οι
               αγγλικές δεν είναι ισομήκεις και η πρώτη άνοιγε κενά ανάμεσα στις
               λέξεις. Μία παράγραφος με `balance`, όπως γράφει η Apple. */}
-          <p className="lp-rise-2" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 28px', maxWidth: 720, textWrap: 'balance' }}>
+          <p className="lp-rise-2" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 28px', maxWidth: 720, textWrap: 'pretty' }}>
             {LANDING_EN.lede[0]}{' '}{LANDING_EN.lede[1]}
           </p>
           <div className="lp-rise-3 lp-hero-ctas" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -303,7 +303,7 @@ export default async function LandingEn() {
       <section className="lp-hero lp-reveal lp-final" style={{ position: 'relative', overflow: 'hidden', borderBottom: 'none' }}>
         <div style={{ ...wrap, ...LAYER, textAlign: 'center', paddingTop: GAP, paddingBottom: GAP }}>
           <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>{FINAL_EN.title}</h2>
-          <p data-nohy="" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 30px', maxWidth: 640, textWrap: 'balance' }}>
+          <p data-nohy="" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 30px', maxWidth: 640, textWrap: 'pretty' }}>
             {FINAL_EN.lines[0]}{' '}{FINAL_EN.lines[1]}
           </p>
           {loggedIn
