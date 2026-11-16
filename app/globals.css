@@ -8360,7 +8360,10 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
    ό,τι περνά από κάτω της, άκρη με άκρη. */
 .wiz-rail {
   position: sticky; top: -24px; z-index: 2;
-  margin: -24px -24px 0; padding: 10px 24px;
+  /* 16 από τη γραμμή της κεφαλίδας ως τον κόμβο, 12 κάτω από τα ονόματα
+     (κριτική σχεδίασης r10): ο κόμβος καθόταν στα 10 από τη γραμμή και το
+     πρώτο ερώτημα 42 πιο κάτω, οπότε η ράγα κολλούσε στην κεφαλίδα. */
+  margin: -24px -24px 0; padding: 16px 24px 12px;
   background: var(--bg-surface);
   border-bottom: 1px solid transparent;
   transition: border-color 0.15s;
@@ -8451,10 +8454,13 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 /* «Όλοι οι τύποι», «Όλες οι καταστάσεις»: κουμπί κειμένου στη δεξιά άκρη της γραμμής της ετικέτας. Στόχος
    αφής 44, που απλώνεται προς τα πάνω (αρνητικό περιθώριο) ώστε η γραμμή να
    κρατά το ύψος της ετικέτας· στοίχιση στη γραμμή βάσης του κειμένου. */
-.wiz-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.wiz-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .wiz-group-head > :first-child { flex: 1; min-width: 0; }
 .wiz-more-link {
-  display: inline-flex; align-items: flex-end; min-height: 44px; margin: -16px 0 0; padding: 0 0 6px;
+  /* Ο στόχος των 44 απλώνεται ΙΣΑ πάνω και κάτω από το κείμενο (r10): ως τώρα
+     μόνο προς τα πάνω, οπότε η γραμμή της ετικέτας ψήλωνε 10 και το κενό από τη
+     ράγα και ανάμεσα στις ομάδες φαινόταν διαφορετικό. */
+  display: inline-flex; align-items: center; min-height: 44px; margin: -12px 0; padding: 0;
   border: 0; background: none; cursor: pointer; font: inherit;
   font-size: var(--fs-base); font-weight: 500; line-height: 1.3; color: var(--accent);
 }
@@ -8475,11 +8481,42 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 .wiz-statuses { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 12px; }
 @media (max-width: 560px) { .wiz-statuses { grid-template-columns: minmax(0, 1fr); grid-auto-rows: 1fr; gap: 8px; } }
 .wiz-status.po-chip { justify-content: flex-start; padding: 0 16px !important; min-height: 64px !important; }
+/* ΤΙΤΛΟΙ ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ ΣΕ ΚΑΘΕ ΣΕΙΡΑ (r10). Κεντραρισμένο κάθετα, το
+   «Μακροχρόνια μίσθωση» με δίγραμμη επεξήγηση στα 768 καθόταν 8 ψηλότερα από
+   το «Βραχυχρόνια μίσθωση» δίπλα του. Από πάνω, όπως κάθε κάρτα επιλογής. */
 .wiz-status-in {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
-  flex: 1; align-self: stretch; justify-content: center;
+  flex: 1; align-self: stretch; justify-content: flex-start;
   padding: 12px 0; text-align: left; min-width: 0;
 }
+/* Ο ΚΥΚΛΟΣ ΕΠΙΛΟΓΗΣ (r10). Στο σκούρο το επιλεγμένο πλακίδιο διέφερε από τα
+   άλλα μόνο κατά ένα πέπλο 10%: η επιλογή λεγόταν μόνο με απόχρωση (WCAG
+   1.4.1). Τώρα ένας κύκλος στη γραμμή του τίτλου, γεμάτος με σημάδι όταν
+   επιλεγεί, όπως κάθε ομάδα επιλογής ενός. */
+.wiz-radio {
+  /* Μέσα στη ροή, όχι στη γωνία: απόλυτα τοποθετημένος καθόταν πάνω στη δεύτερη
+     γραμμή της επεξήγησης στα 768 και στα 1440. */
+  flex: none; align-self: flex-start; width: 20px; height: 20px; margin: 10px 0 0 8px; border-radius: 100px; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--border-control); color: var(--accent-text);
+  transition: background-color 0.12s, border-color 0.12s;
+}
+.wiz-radio svg { opacity: 0; transition: opacity 0.12s; }
+.po-chip[aria-pressed="true"] .wiz-radio { background: var(--accent); border-color: var(--accent); }
+.po-chip[aria-pressed="true"] .wiz-radio svg { opacity: 1; }
+/* Το επιλεγμένο πλακίδιο τύπου και κατάστασης με πλήρες περίγραμμα τόνου, 2
+   χωρίς μετατόπιση (εσωτερική σκιά): το 28% του κοινού πλακιδίου χανόταν στο σκούρο. */
+.wiz-type.po-chip[aria-pressed="true"], .wiz-status.po-chip[aria-pressed="true"] {
+  border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent);
+}
+/* Η κατάσταση που λείπει, δίπλα στην ερώτηση και όχι στο κάτω μέρος της
+   οθόνης (r10): στα 390 το μήνυμα κατέληγε 600 πιο κάτω από τις επιλογές. */
+.wiz-field-error {
+  display: flex; align-items: center; gap: 8px; margin: 8px 0 0;
+  font-size: var(--fs-sm); line-height: 1.4; color: var(--negative);
+}
+.wiz-field-error svg { flex: none; }
+.wiz-statuses[data-invalid] .po-chip:not([aria-pressed="true"]) { border-color: var(--negative-border); }
 /* Το «Περισσότερα στοιχεία (6)»: ήσυχη αποκάλυψη, όχι κουτί. 44 ύψος, χωρίς
    περίγραμμα ή φόντο, βέλος 16 και λεκτικό στο δευτερεύον χρώμα. */
 .wiz-disclose {
