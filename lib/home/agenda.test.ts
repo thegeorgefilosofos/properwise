@@ -5,9 +5,11 @@
 // δύο, τα ελλιπή στοιχεία δύο. Αυτό το αρχείο κρατά τη συγχώνευση ειλικρινή: αν
 // κάποιος προσθέσει πηγή χωρίς να δηλώσει θέμα, τα διπλότυπα επιστρέφουν σιωπηλά.
 import {
+  withCondition, type AgendaItem,
   buildAgenda, attachAmounts, obligationSubject, insightSubject, overdueCount, dueLabel, dueParts, itemDue, shortNote,
   type InsightLike, type ObligationLike, type SetupLike,
 } from './agenda'
+import { greekPropertyTaxObligations } from '@/lib/tax/greekTaxCalendar'
 
 let pass = 0, fail = 0
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n) } }
@@ -326,6 +328,15 @@ ok('και ο μετρητής δεν σκάει', overdueCount([]) === 0)
   const none = attachAmounts(buildAgenda({ today: TODAY, obligations: [obl({ id: 'lease_end', date: '2026-08-14' })] }), lines)
   ok('άλλες γραμμές δεν παίρνουν ποσό ΕΝΦΙΑ', none[0].amount === undefined)
   ok('χωρίς γραμμή ίδιας ημερομηνίας, κανένα ποσό', attachAmounts(a, [{ ...lines[0], date: '2026-09-30' }])[0].amount === undefined)
+}
+
+// ── Η ΠΡΟΫΠΟΘΕΣΗ ΤΗΣ ΔΟΣΗΣ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ (κριτική σχεδίασης r7) ──
+{
+  const o = greekPropertyTaxObligations(2026, 'long_term').find(x => x.id === 'income-instalment-2026-5')!
+  const it = { key: `tax:${o.id}`, title: o.title, note: shortNote(o.notes), due: o.date, daysLeft: 14, action: null, origin: 'obligation', weight: 0 } as unknown as AgendaItem
+  const c = withCondition(it, [{ id: o.id, note: o.notes }]).condition ?? ''
+  ok('5η δόση: η πρόταση «Αφορά μόνο…» του ημερολογίου, αυτούσια', c.startsWith('Αφορά μόνο όσους') && o.notes.includes(c.slice(0, -1)))
+  ok('άλλες γραμμές: καμία προϋπόθεση', withCondition({ ...it, key: 'tax:enfia-instalment-2026-9' }, [{ id: o.id, note: o.notes }]).condition === undefined)
 }
 
 console.log(fail === 0 ? `✓ agenda: ${pass} έλεγχοι πέρασαν` : `✗ agenda: ${fail} απέτυχαν από ${pass + fail}`)
