@@ -74,6 +74,15 @@
 **Τα στοιχεία κάρτας τηρούνται αποκλειστικά από τη Creem**, που ενεργεί ως
 merchant of record· δεν περνούν ποτέ από τους δικούς μας διακομιστές.
 
+**2.8 Φωνητική εισαγωγή (υπαγόρευση και Νόα):** Η φωνή είναι προαιρετική και ενεργοποιείται μόνο όταν
+πατήσετε το μικρόφωνο. Τη μετατροπή της φωνής σε κείμενο την κάνει ο περιηγητής σας, με τη δική του
+υπηρεσία αναγνώρισης ομιλίας. Στο Chrome ο ήχος στέλνεται συνήθως στη Google και στο Edge στη Microsoft.
+Στο Safari η μετατροπή γίνεται συχνά στη συσκευή ή στην Apple. Το PROPERWISE δεν λαμβάνει, δεν
+καταγράφει και δεν αποθηκεύει ήχο. Λαμβάνει μόνο το κείμενο που εμφανίζεται στο πεδίο και το
+αποθηκεύει μόνο αν το αποθηκεύσετε εσείς. Στη Νόα το κείμενο στέλνεται ως ερώτηση μόλις σταματήσετε
+να μιλάτε, όπως μια ερώτηση που πληκτρολογείτε (§2.6). Η ανάγνωση φωναχτά (των απαντήσεων της Νόας
+και των ποσών) γίνεται από τον περιηγητή και δεν στέλνει τίποτα σε εμάς.
+
 ---
 
 ## 3. Σκοποί & νομικές βάσεις (άρθρο 6 ΓΚΠΔ)
@@ -122,6 +131,11 @@ merchant of record· δεν περνούν ποτέ από τους δικούς
 Έλεγχος κωδικού για διαρροές (Have I Been Pwned, προσθήκη 10/11/2026): ο περιηγητής στέλνει στο
 `api.pwnedpasswords.com` μόνο τους πέντε πρώτους χαρακτήρες του SHA-1 του κωδικού, με padding. Η υπηρεσία
 δεν λαμβάνει κωδικό, email ή λογαριασμό· βλέπει τη διεύθυνση IP του αιτήματος.
+
+Φωνητική εισαγωγή (προσθήκη 14/11/2026): η αναγνώριση ομιλίας είναι λειτουργία του περιηγητή σας και
+όχι δικός μας υπεργολάβος. Ο πάροχος του περιηγητή (π.χ. Google για το Chrome, Microsoft για το Edge)
+επεξεργάζεται τον ήχο με δική του ευθύνη, σύμφωνα με τους όρους του περιηγητή. Μπορείτε να μη χρησιμοποιείτε
+το μικρόφωνο: όλα γίνονται και με πληκτρολόγιο.
 
 Το **σύστημα καταγραφής παραμένει στην ΕΕ**. Η εγγύηση κάθε διαβίβασης εκτός ΕΟΧ γράφεται
 ανά πάροχο στον πίνακα. Όπου γράφει «εκκρεμεί» ή «δεν έχει καταγραφεί», καταγεγραμμένη εγγύηση
@@ -215,7 +229,10 @@ phone, ΑΦΜ. (2) Property/financial/tax: ΑΤΑΚ, objective value, ΕΝΦΙΑ
 bank imports, Ε2 figures, documents. (3) Tenant/guest (customer-entered): name, ΑΦΜ,
 phone, email, ID, lease terms, stay history — **customer is controller**. (4) Email/
 notifications. (5) Lifecycle/marketing. (6) AI context — no special-category data, no
-third-party phone/ΑΦΜ, not used for training. (7) Billing — card data held solely by Creem (merchant of record).
+third-party phone/ΑΦΜ, not used for training. (7) Billing — card data held solely by Creem (merchant of record). (8) Voice input (added 14/11/2026): optional, starts only when you press the
+microphone. Speech-to-text is performed by your browser's own speech service (in Chrome usually Google, in
+Edge Microsoft). PROPERWISE never receives or stores audio, only the resulting text, and only if you save it;
+in Noa the text is sent as a question as soon as you stop speaking.
 
 **3. Legal bases (Art. 6).** Service **6(1)(b)**; security **6(1)(f)**; records
 **6(1)(b)**; tax **6(1)(c)**; transactional email **6(1)(b)**; marketing **6(1)(a)**/
@@ -228,7 +245,7 @@ third-party phone/ΑΦΜ, not used for training. (7) Billing — card data held 
 Five, Inc.)/Anthropic/GitHub (US/SCCs), Creem (US/EU; transfer mechanism not recorded), Vercel (hosting, US; DPA pending), Google
 (sign-in, independent controller), Cloudflare, Inc. (Turnstile bot check on sign-up, sign-in
 and password reset; per Cloudflare: IP address, TLS fingerprint, User-Agent, sitekey and origin;
-legitimate interest in security; active only with a key; transfer safeguard not yet recorded). Leaked-password check (Have I Been Pwned): the browser sends api.pwnedpasswords.com only the first five characters of the password's SHA-1, with padding; the service sees the request's IP address, not the password, email or account. System of record in the EU. We do not sell personal
+legitimate interest in security; active only with a key; transfer safeguard not yet recorded). Leaked-password check (Have I Been Pwned): the browser sends api.pwnedpasswords.com only the first five characters of the password's SHA-1, with padding; the service sees the request's IP address, not the password, email or account. Voice input: speech recognition is a feature of your browser, not our subprocessor; the browser vendor processes the audio under its own terms. System of record in the EU. We do not sell personal
 data.
 
 **6. Retention.** Account: its life; deleted from the database immediately on
