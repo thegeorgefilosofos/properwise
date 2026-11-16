@@ -999,6 +999,8 @@ const u = (patch: Partial<InsuranceSettings>) => updPs(patch);
                   </span>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
+                  {/* chip-group: φίλτρο. Φιλτράρει τη λίστα των τιμών από κάτω,
+                      δεν ρωτά τίποτα (scripts/guard-choice-chips.mjs). */}
                   {QUOTE_FILTERS.map(f => (
                     <ChipToggle key={f.key} on={quotesFilter === f.key} onClick={() => setQuotesFilter(f.key)}>{f.label}</ChipToggle>
                   ))}
