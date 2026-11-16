@@ -55,6 +55,7 @@ export const CHROME_EN = {
     withdraw: 'Withdraw from your contract here',
     db: 'Database in the EU (Frankfurt)',
     privacy: ['/privacy', 'Privacy policy'] as L,
+    siteMap: ['/xartis', 'Site map'] as L,
     social: (net: string, newTab: boolean) => newTab ? `PROPERWISE on ${net} (opens in a new tab)` : `PROPERWISE on ${net}`,
   },
 };

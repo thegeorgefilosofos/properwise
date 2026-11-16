@@ -5588,6 +5588,71 @@ body:has(.po-tool-page) .po-cookie {
   font-size: 13px; line-height: 1.5; color: var(--text-secondary);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+/* Ο χάρτης ιστότοπου (app/xartis/SiteMapView.tsx). */
+.xm-jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 0; }
+.xm-chip {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 14px;
+  border-radius: 100px; border: 1px solid var(--border-subtle); background: var(--bg-surface);
+  font-size: 14px; font-weight: 500; color: var(--text-secondary); text-decoration: none;
+}
+.xm-chip-n { font-size: 12px; font-weight: 600; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+@media (pointer: coarse) { .xm-chip { min-height: 44px; } }
+@media (max-width: 560px) {
+  .xm-jump { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; }
+  .xm-chip { justify-content: space-between; border-radius: 10px; line-height: 1.3; }
+}
+.xm-root {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin-top: 32px;
+  padding: 16px 20px 4px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-surface));
+}
+.xm-root-host { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); overflow-wrap: anywhere; }
+.xm-root-sub { font-size: 13px; color: var(--text-tertiary); }
+.xm-root-list > .xm-row:first-child { border-top: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); margin-top: 8px; }
+.xm-grid, .xm-trio { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); margin-top: 16px; }
+@media (min-width: 900px) {
+  .xm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .xm-grid > .xm-wide { grid-column: 1 / -1; }
+  .xm-trio { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.xm-card {
+  min-width: 0; padding: 20px 20px 8px; border-radius: 14px;
+  border: 1px solid var(--border-subtle); background: var(--bg-surface); scroll-margin-top: 24px;
+}
+@media (max-width: 400px) { .xm-card, .xm-root { padding-left: 16px; padding-right: 16px; } }
+.xm-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.xm-title { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25; color: var(--text-primary); text-wrap: balance; }
+.xm-count { flex-shrink: 0; font-size: 13px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.xm-list { list-style: none; margin: 0; padding: 0; }
+.xm-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  padding: 12px 0; border-top: 1px solid var(--border-subtle); break-inside: avoid;
+}
+.xm-link {
+  min-width: 0; font-size: 15px; font-weight: 500; line-height: 1.4; color: var(--text-primary);
+  text-decoration: none; text-wrap: pretty; overflow-wrap: anywhere;
+}
+.xm-link.xm-hub { font-weight: 600; color: var(--accent); }
+.xm-link[aria-current="page"] { color: var(--text-secondary); }
+.xm-here {
+  display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 100px; vertical-align: 1px;
+  font-size: 12px; font-weight: 600; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.xm-date { flex-shrink: 0; font-size: 13px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.xm-cols { column-gap: 32px; }
+@media (min-width: 560px) { .xm-cols { columns: 2; } }
+@media (min-width: 900px) { .xm-cols { columns: 3; } }
+.xm-note { margin: 0; padding: 12px 0; font-size: 13px; line-height: 1.6; color: var(--text-tertiary); border-top: 1px solid var(--border-subtle); text-wrap: pretty; }
+.xm-note time { font-variant-numeric: tabular-nums; }
+.xm-inline { color: var(--accent); text-decoration: none; font-weight: 600; }
+.xm-files { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border-subtle); }
+.xm-files > .xm-note { border-top: 0; padding: 0; max-width: 720px; }
+.xm-file-list { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 0 32px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .xm-file-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.xm-file { display: grid; gap: 2px; padding: 12px 0; border-top: 1px solid var(--border-subtle); }
+.xm-file-path { width: fit-content; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
+.xm-file-desc { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+
 /* ΟΙ ΔΥΟ ΚΑΡΤΕΣ ΤΗΣ ΣΕΙΡΑΣ ΜΟΙΡΑΖΟΝΤΑΙ ΤΙΣ ΣΕΙΡΕΣ ΤΟΥΣ (29.09.2026). Οταν ο
    τίτλος της μίας έσπαγε σε δύο γραμμές, η περιγραφή της διπλανής ξεκινούσε
    23 εικονοστοιχεία ψηλότερα. Με subgrid ετικέτα, τίτλος, περιγραφή και

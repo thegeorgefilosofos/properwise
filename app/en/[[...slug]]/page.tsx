@@ -32,6 +32,9 @@ import * as raise from '../rent-increase-calculator/view';
 import * as e2 from '../form-e2-guide/view';
 import * as power from '../electricity-tariffs/view';
 import * as deadlines from '../tax-deadlines/view';
+import * as siteMap from '../sitemap/view';
+import * as siteMapEl from '../../xartis/view';
+import { XARTIS_INTERNAL } from '../../siteCatalogCore';
 import * as login from '../login/view';
 import * as loginFrame from '../login/frame';
 import * as signup from '../signup/view';
@@ -97,6 +100,9 @@ const PAGES = new Map<string, { view: View; frame?: Frame }>([
   ['/en/form-e2-guide', { view: e2 }],
   ['/en/electricity-tariffs', { view: power }],
   ['/en/tax-deadlines', { view: deadlines }],
+  ['/en/sitemap', { view: siteMap }],
+  // Ο ΕΛΛΗΝΙΚΟΣ ΧΑΡΤΗΣ, ΞΑΝΑΓΡΑΜΜΕΝΟΣ ΕΔΩ (next.config.ts): μία συνάρτηση λιγότερη.
+  [XARTIS_INTERNAL, { view: siteMapEl }],
   ['/en/login', { view: login, frame: loginFrame }],
   ['/en/signup', { view: signup, frame: signupFrame }],
   ['/en/reset-password', { view: reset, frame: resetFrame }],
