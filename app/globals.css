@@ -5310,16 +5310,57 @@ body:has(.po-tool-page) .po-cookie {
    ίδια γεωμετρία και την ίδια συμπεριφορά, όποια σελίδα κι αν είναι.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* Ο ΥΠΟΤΙΤΛΟΣ ΤΗΣ ΑΡΧΙΚΗΣ: ΔΥΟ ΓΡΑΜΜΕΣ ΠΕΡΑ ΠΕΡΑ (02.10.2026). Κάθε
-   πρόταση είναι μία γραμμή με πλήρη στοίχιση και το πλάτος ακολουθεί τη
-   μεγαλύτερη. Κάτω από τα 720 ρέουν μαζί, κεντραρισμένες (βλ. app/page.tsx).
-   06.10.2026: ΜΕΝΕΙ. Δεν είναι παράγραφος που τυλίγεται: κάθε γραμμή είναι
-   `nowrap`, άρα δεν κόβεται καμία λέξη και ο συλλαβισμός δεν παίζει ρόλο
-   (κληρονομεί το `none`). Στο κινητό δεν ισχύει καθόλου. */
+/* Ο ΥΠΟΤΙΤΛΟΣ ΤΗΣ ΑΡΧΙΚΗΣ (και το κλείσιμό της): δύο προτάσεις, μία ανά
+   γραμμή, κεντραρισμένες. Η πλήρης στοίχιση που ζούσε εδώ από τις 02.10.2026
+   έφυγε στις 16/11/2026, βλ. αμέσως από κάτω. */
 .lp-lede { max-width: 680px; text-align: center; text-wrap: pretty; }
-@media (min-width: 720px) {
-  .lp-lede { width: fit-content; max-width: none; text-align: justify; text-wrap: wrap; }
-  .lp-lede-line { display: block; white-space: nowrap; text-align-last: justify; }
+/* ΚΑΜΙΑ ΠΛΗΡΗΣ ΣΤΟΙΧΙΣΗ ΣΕ ΚΕΝΤΡΑΡΙΣΜΕΝΟ ΚΕΙΜΕΝΟ (16/11/2026). Από τα 720 οι
+   δύο γραμμές ήταν `nowrap` με `text-align-last: justify`: η κοντύτερη
+   πρόταση τεντωνόταν ως το πλάτος της μακρύτερης και στο 1440 τα κενά της
+   δεύτερης γραμμής έβγαιναν τρεις φορές το φυσικό (φωτογραφία ιδιοκτήτη).
+   Τώρα κάθε πρόταση είναι δική της γραμμή σε κάθε πλάτος, κεντραρισμένη με
+   το φυσικό της κενό. Οπου δεν χωρά, σπάει σε δύο ζυγισμένες γραμμές
+   (`balance` στη γραμμή-πρόταση, που είναι λεζάντα δύο γραμμών το πολύ, όχι
+   παράγραφος) και ποτέ η μία πρόταση δεν συνεχίζει στη γραμμή της άλλης. */
+.lp-lede-line { display: block; text-wrap: balance; }
+@media (min-width: 720px) { .lp-lede { max-width: 46em; } }
+
+/* «ΕΡΓΑΛΕΙΑ ΚΑΙ ΟΔΗΓΟΙ»: ΔΥΟ ΛΙΣΤΕΣ ΣΥΝΔΕΣΜΩΝ (app/LandingLinks.tsx, 16/11/2026).
+   Κάθε σειρά είναι ολόκληρη στόχος: ίδιο ελάχιστο ύψος (48, πάνω από τα 44 της
+   αφής), κείμενο αριστερά, βέλος στη δεξιά άκρη, ώστε η στήλη να κλείνει και
+   να μη μένει άδειο το δεξί μισό της κάρτας. Οι διαχωριστικές γραμμές
+   ξεκινούν στον άξονα του κειμένου, όχι στην άκρη της κάρτας. Το φόντο της
+   αιώρησης μπαίνει μέσα στο γέμισμα της κάρτας, με τη δική του καμπύλη. */
+.lp-lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items: stretch; }
+.lp-list { padding: 8px; display: flex; flex-direction: column; }
+.lp-list ul { list-style: none; margin: 0; padding: 0 0 6px; }
+.lp-list-head { display: flex; align-items: center; gap: 12px; padding: 14px 14px 12px; }
+.lp-list-ico {
+  width: 38px; height: 38px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 12px; background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+}
+.lp-list-row {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  min-height: 48px; padding: 12px 14px; border-radius: 10px;
+  color: var(--text-primary); text-decoration: none; font-size: 15px; font-weight: 500; line-height: 1.4;
+  text-wrap-style: balance; transition: background-color .15s ease, color .15s ease;
+}
+.lp-list li + li > .lp-list-row::before {
+  content: ''; position: absolute; top: 0; left: 14px; right: 14px; height: 1px; background: var(--border-subtle);
+}
+.lp-list-chev { flex-shrink: 0; color: var(--text-tertiary); transition: transform .15s ease, color .15s ease; }
+.lp-list-all { margin-top: auto; color: var(--accent); font-weight: 600; }
+.lp-list-all::before { content: ''; position: absolute; top: -3px; left: 14px; right: 14px; height: 1px; background: var(--border-subtle); }
+.lp-list-all .lp-list-chev { color: var(--accent); }
+.lp-list-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (hover: hover) {
+  .lp-list-row:hover { background: color-mix(in srgb, var(--text-primary) 5%, transparent); }
+  .lp-list-row:hover .lp-list-chev { color: var(--accent); transform: translateX(2px); }
+  .lp-list li:hover + li > .lp-list-row::before, .lp-list li:hover > .lp-list-row::before,
+  .lp-list ul:has(li:last-child:hover) + .lp-list-all::before { opacity: 0; }
+}
+@media (hover: none) {
+  .lp-list-row:active { background: color-mix(in srgb, var(--text-primary) 7%, transparent); }
 }
 
 /* Κουμπί: ανύψωση και λάμψη, ίδια σε κάθε δημόσια σελίδα. */
@@ -8360,7 +8401,10 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
    ό,τι περνά από κάτω της, άκρη με άκρη. */
 .wiz-rail {
   position: sticky; top: -24px; z-index: 2;
-  margin: -24px -24px 0; padding: 10px 24px;
+  /* 16 από τη γραμμή της κεφαλίδας ως τον κόμβο, 12 κάτω από τα ονόματα
+     (κριτική σχεδίασης r10): ο κόμβος καθόταν στα 10 από τη γραμμή και το
+     πρώτο ερώτημα 42 πιο κάτω, οπότε η ράγα κολλούσε στην κεφαλίδα. */
+  margin: -24px -24px 0; padding: 16px 24px 12px;
   background: var(--bg-surface);
   border-bottom: 1px solid transparent;
   transition: border-color 0.15s;
@@ -8451,10 +8495,13 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 /* «Όλοι οι τύποι», «Όλες οι καταστάσεις»: κουμπί κειμένου στη δεξιά άκρη της γραμμής της ετικέτας. Στόχος
    αφής 44, που απλώνεται προς τα πάνω (αρνητικό περιθώριο) ώστε η γραμμή να
    κρατά το ύψος της ετικέτας· στοίχιση στη γραμμή βάσης του κειμένου. */
-.wiz-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.wiz-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .wiz-group-head > :first-child { flex: 1; min-width: 0; }
 .wiz-more-link {
-  display: inline-flex; align-items: flex-end; min-height: 44px; margin: -16px 0 0; padding: 0 0 6px;
+  /* Ο στόχος των 44 απλώνεται ΙΣΑ πάνω και κάτω από το κείμενο (r10): ως τώρα
+     μόνο προς τα πάνω, οπότε η γραμμή της ετικέτας ψήλωνε 10 και το κενό από τη
+     ράγα και ανάμεσα στις ομάδες φαινόταν διαφορετικό. */
+  display: inline-flex; align-items: center; min-height: 44px; margin: -12px 0; padding: 0;
   border: 0; background: none; cursor: pointer; font: inherit;
   font-size: var(--fs-base); font-weight: 500; line-height: 1.3; color: var(--accent);
 }
@@ -8475,11 +8522,42 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 .wiz-statuses { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 12px; }
 @media (max-width: 560px) { .wiz-statuses { grid-template-columns: minmax(0, 1fr); grid-auto-rows: 1fr; gap: 8px; } }
 .wiz-status.po-chip { justify-content: flex-start; padding: 0 16px !important; min-height: 64px !important; }
+/* ΤΙΤΛΟΙ ΣΤΗΝ ΙΔΙΑ ΓΡΑΜΜΗ ΣΕ ΚΑΘΕ ΣΕΙΡΑ (r10). Κεντραρισμένο κάθετα, το
+   «Μακροχρόνια μίσθωση» με δίγραμμη επεξήγηση στα 768 καθόταν 8 ψηλότερα από
+   το «Βραχυχρόνια μίσθωση» δίπλα του. Από πάνω, όπως κάθε κάρτα επιλογής. */
 .wiz-status-in {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
-  flex: 1; align-self: stretch; justify-content: center;
+  flex: 1; align-self: stretch; justify-content: flex-start;
   padding: 12px 0; text-align: left; min-width: 0;
 }
+/* Ο ΚΥΚΛΟΣ ΕΠΙΛΟΓΗΣ (r10). Στο σκούρο το επιλεγμένο πλακίδιο διέφερε από τα
+   άλλα μόνο κατά ένα πέπλο 10%: η επιλογή λεγόταν μόνο με απόχρωση (WCAG
+   1.4.1). Τώρα ένας κύκλος στη γραμμή του τίτλου, γεμάτος με σημάδι όταν
+   επιλεγεί, όπως κάθε ομάδα επιλογής ενός. */
+.wiz-radio {
+  /* Μέσα στη ροή, όχι στη γωνία: απόλυτα τοποθετημένος καθόταν πάνω στη δεύτερη
+     γραμμή της επεξήγησης στα 768 και στα 1440. */
+  flex: none; align-self: flex-start; width: 20px; height: 20px; margin: 10px 0 0 8px; border-radius: 100px; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--border-control); color: var(--accent-text);
+  transition: background-color 0.12s, border-color 0.12s;
+}
+.wiz-radio svg { opacity: 0; transition: opacity 0.12s; }
+.po-chip[aria-pressed="true"] .wiz-radio { background: var(--accent); border-color: var(--accent); }
+.po-chip[aria-pressed="true"] .wiz-radio svg { opacity: 1; }
+/* Το επιλεγμένο πλακίδιο τύπου και κατάστασης με πλήρες περίγραμμα τόνου, 2
+   χωρίς μετατόπιση (εσωτερική σκιά): το 28% του κοινού πλακιδίου χανόταν στο σκούρο. */
+.wiz-type.po-chip[aria-pressed="true"], .wiz-status.po-chip[aria-pressed="true"] {
+  border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent);
+}
+/* Η κατάσταση που λείπει, δίπλα στην ερώτηση και όχι στο κάτω μέρος της
+   οθόνης (r10): στα 390 το μήνυμα κατέληγε 600 πιο κάτω από τις επιλογές. */
+.wiz-field-error {
+  display: flex; align-items: center; gap: 8px; margin: 8px 0 0;
+  font-size: var(--fs-sm); line-height: 1.4; color: var(--negative);
+}
+.wiz-field-error svg { flex: none; }
+.wiz-statuses[data-invalid] .po-chip:not([aria-pressed="true"]) { border-color: var(--negative-border); }
 /* Το «Περισσότερα στοιχεία (6)»: ήσυχη αποκάλυψη, όχι κουτί. 44 ύψος, χωρίς
    περίγραμμα ή φόντο, βέλος 16 και λεκτικό στο δευτερεύον χρώμα. */
 .wiz-disclose {
