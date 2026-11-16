@@ -258,3 +258,47 @@ export function budgetBucket(raw: unknown): BudgetBucket {
   if (!slug) return 'other';
   return HOME_BUCKET[slug] ?? FAMILY_BUCKET[BY_SLUG[slug].family];
 }
+
+/**
+ * ΤΑ ΟΝΟΜΑΤΑ ΤΩΝ ΚΟΥΒΑΔΩΝ, ΜΙΑ ΦΟΡΑ.
+ *
+ * Ο Προϋπολογισμός έγραφε δικά του ονόματα: «Internet και τηλεφωνία» εκεί που
+ * οι Δαπάνες έλεγαν «Internet και τηλέφωνο», «Υπηρεσίες, ΕΝΦΙΑ» με κόμμα μέσα
+ * σε όνομα. Οπου ο κουβάς αντιστοιχεί σε μία κατηγορία, το όνομα είναι το ΙΔΙΟ
+ * με την κατηγορία· όπου μαζεύει πολλές, γράφεται εδώ και μόνο εδώ.
+ */
+export const BUDGET_BUCKETS: readonly { key: BudgetBucket; label: string }[] = [
+  { key: 'electricity', label: BY_SLUG.electricity.label },
+  { key: 'water', label: BY_SLUG.water.label },
+  { key: 'internet', label: BY_SLUG.internet.label },
+  { key: 'heating', label: BY_SLUG.heating.label },
+  { key: 'insurance', label: BY_SLUG.insurance.label },
+  { key: 'subscriptions', label: BY_SLUG.subscription.label },
+  { key: 'services', label: 'Υπηρεσίες και ΕΝΦΙΑ' },
+  { key: 'common', label: BY_SLUG.common.label },
+  { key: 'maintenance', label: BY_SLUG.repair.label },
+  { key: 'other', label: 'Λοιπές δαπάνες' },
+];
+
+/**
+ * Η ΚΑΤΗΓΟΡΙΑ ΠΟΥ ΓΡΑΦΕΤΑΙ ΣΤΗ ΒΑΣΗ ΟΤΑΝ Ο ΧΡΗΣΤΗΣ ΔΙΑΛΕΓΕΙ ΚΟΥΒΑ.
+ *
+ * Η εισαγωγή αρχείου έγραφε το κλειδί του κουβά ως κατηγορία· το
+ * «services» δεν είναι κατηγορία του λεξιλογίου: ο ΕΝΦΙΑ από την τράπεζα
+ * προσγειωνόταν στις «Λοιπές δαπάνες» και οι Δαπάνες έγραφαν «services».
+ * Κάθε κουβάς έχει εδώ μία αντιπροσωπευτική κατηγορία που γυρίζει πάντα σε
+ * αυτόν (`budgetBucket(bucketSlug(b)) === b`, τεστ στο budget.test.ts),
+ * εκτός από τις «Υπηρεσίες και ΕΝΦΙΑ» (βλ. από κάτω).
+ */
+//
+// ΟΙ «ΥΠΗΡΕΣΙΕΣ ΚΑΙ ΕΝΦΙΑ» ΔΕΝ ΕΧΟΥΝ ΑΝΤΙΠΡΟΣΩΠΟ. Κάθε κατηγορία της οικογένειας
+// είναι συγκεκριμένη (ΕΝΦΙΑ, δημοτικά, συμβολαιογράφος, μηχανικός), με δικό
+// της φορολογικό νόημα. Μια επιλογή κουβά δεν ξέρει ποια είναι, οπότε δεν
+// γράφει καμία: πέφτει στο «other» και ο κουβάς αυτός δεν προσφέρεται για
+// χειροκίνητη επιλογή στην εισαγωγή.
+const BUCKET_SLUG: Partial<Record<BudgetBucket, string>> = {
+  electricity: 'electricity', water: 'water', internet: 'internet', heating: 'heating',
+  insurance: 'insurance', subscriptions: 'subscription', common: 'common',
+  maintenance: 'repair', other: 'other',
+};
+export const bucketSlug = (bucket: string): string => BUCKET_SLUG[bucket as BudgetBucket] ?? 'other';

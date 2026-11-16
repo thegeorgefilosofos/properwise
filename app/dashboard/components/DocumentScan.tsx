@@ -14,8 +14,9 @@ import { trackOnboarding, PRODUCT_EVENTS } from '@/lib/analytics/events';
 // Οι επαφές έχουν ένα σπίτι: lib/data/contacts.
 import * as contacts from '@/lib/data/contacts';
 import { BankLinkTile } from './BankLink';
+import BudgetImport from './BudgetImport';
 import { bankLinkState } from '@/lib/bank/link';
-import { T, TT, fe, fn, fixedCols, RuntimeImg, Btn, IconBtn, InfoBanner, Skeleton } from '@/components/Theme';
+import { T, TT, fe, fn, fixedCols, RuntimeImg, Btn, IconBtn, InfoBanner, Skeleton, LinkBtn } from '@/components/Theme';
 import { CustomSelect, DatePicker, TextInput, NumberInput, Textarea, LabelDot, Toggle } from './UIComponents';
 import {
   validateDoc, docSummaryLine, kindOf, applyKind, docForm, docTargets, fieldOptions, fieldValue, withField,
@@ -247,6 +248,13 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   const [edited, setEdited] = useState<ScannedDoc | null>(null);
   const [saving, setSaving] = useState(false);
   const [step, setStep] = useState<'upload' | 'review' | 'done'>('upload');
+  // ── ΚΙΝΗΣΕΙΣ ΑΠΟ ΑΡΧΕΙΟ, ΜΕΣΑ ΣΤΟΝ ΙΔΙΟ ΕΠΙΛΟΓΕΑ (13/11/2026) ─────────────
+  // Η εισαγωγή CSV ζούσε στο κάτω άκρο του Προϋπολογισμού, ξεχωριστή από τη
+  // σάρωση και την τράπεζα. Τώρα είναι ένα ακόμη πλακίδιο εδώ: ένας δρόμος.
+  const [importing, setImporting] = useState(false);
+  const [imported, setImported] = useState(0);
+  // Διαβασμένες κινήσεις που δεν μπήκαν: το κλείσιμο ρωτά πρώτα, όπως στον έλεγχο σάρωσης.
+  const [importDirty, setImportDirty] = useState(false);
   const [error, setError] = useState('');
   const [errorText, setErrorText] = useState('');
   const [savedInfo, setSavedInfo] = useState<string[]>([]);
@@ -290,7 +298,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
   const busy = scanning || saving || sniffing || handing;
   useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
   useEffect(() => () => { onBusyChange?.(false); }, [onBusyChange]);
-  const dirty = step === 'review';
+  const dirty = step === 'review' || (importing && importDirty);
   useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
   useEffect(() => () => { onDirtyChange?.(false); }, [onDirtyChange]);
   // ΤΟ ΣΚΑΛΙ `scan_opened`: μία φορά ανά άνοιγμα του παραθύρου, χωρίς τίποτα
@@ -658,6 +666,31 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
     );
   }
 
+  // ── Κινήσεις από αρχείο CSV ή Excel ───────────────────────────────────────
+  if (step === 'upload' && importing && propertyId) {
+    // ΤΟ ΑΚΙΝΗΤΟ ΛΕΓΕΤΑΙ ΚΑΙ ΑΛΛΑΖΕΙ ΕΔΩ. Η εισαγωγή έγραφε σιωπηλά στο ακίνητο
+    // του πίνακα, ενώ ο υπόλοιπος επιλογέας αφήνει τον χρήστη να διαλέξει.
+    const importTarget = targetId || propertyId;
+    return (
+      <div style={{ fontFamily: T.font.sans, color: 'var(--text-primary)', display: 'grid', gap: T.sp.lg }}>
+        <div><LinkBtn tone="quiet" onClick={() => { setImporting(false); setImported(0); setImportDirty(false); }}>Πίσω στις επιλογές</LinkBtn></div>
+        {(properties?.length ?? 0) > 1 && imported === 0 && (
+          <CustomSelect label="Στο ακίνητο" value={importTarget} onChange={id => setTargetId(id)}
+            options={(properties || []).map(p => ({ value: p.id, label: p.name, ...(p.address ? { description: p.address } : {}) }))} />
+        )}
+        {imported > 0 ? (
+          <div role="status" style={{ display: 'grid', gap: T.sp.md, justifyItems: 'start' }}>
+            <div style={{ ...TT.h2 }}>{imported === 1 ? 'Μπήκε 1 δαπάνη' : `Μπήκαν ${imported} δαπάνες`}</div>
+            <div style={{ ...TT.bodySm }}>Τις βλέπεις στις Δαπάνες και στον Προϋπολογισμό, στον μήνα της ημερομηνίας τους.</div>
+            <Btn variant="secondary" onClick={() => setImported(0)}>Εισαγωγή άλλου αρχείου</Btn>
+          </div>
+        ) : (
+          <BudgetImport propertyId={importTarget} userId={userId} onImported={n => setImported(n)} onDirtyChange={setImportDirty} autoPick />
+        )}
+      </div>
+    );
+  }
+
   // ── Βήμα 1: πώς μπαίνει το έγγραφο ─────────────────────────────────────────
   if (step === 'upload') {
     return (
@@ -682,7 +715,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
             διαβαζόταν ως υποσημείωση των τριών, ενώ είναι ισότιμη απάντηση
             στην ίδια ερώτηση. Το πλήθος το ξέρει το ίδιο το component, οπότε
             το λέει ρητά στο πλέγμα αντί να το αφήνει στο πλάτος. */}
-        <div className="scan-tiles" data-tiles={bulkOnly ? 1 : 2 + (onManual ? 1 : 0) + (onBulkImport ? 1 : 0) + (bankOpen ? 1 : 0)}>
+        <div className="scan-tiles" data-tiles={bulkOnly ? 1 : 2 + (onManual ? 1 : 0) + (propertyId ? 1 : 0) + (onBulkImport ? 1 : 0) + (bankOpen ? 1 : 0)}>
           {!bulkOnly && <>
           {/* ΓΡΑΜΜΕΝΟ ΡΗΤΑ, ΟΧΙ ΜΕ ΤΟΝ ΒΟΗΘΟ `pressable` ΚΑΙ ΕΧΕΙ ΛΟΓΟ.
               Το JSX spread κρύβει τις ιδιότητες από τη στατική ανάλυση: με
@@ -731,6 +764,16 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
               <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
               <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Γράψε το χειροκίνητα</div>
               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Χωρίς παραστατικό</div>
+            </div>
+          )}
+
+          {/* ΚΙΝΗΣΕΙΣ ΤΡΑΠΕΖΑΣ ΑΠΟ ΑΡΧΕΙΟ. Ιδιο σχήμα και ύψος με τα διπλανά. */}
+          {propertyId && (
+            <div role="button" tabIndex={0} onClick={() => setImporting(true)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();setImporting(true)}else if(e.key===" ")e.preventDefault()}} onKeyUp={e=>{if(e.key===" "){e.preventDefault();setImporting(true)}}}
+              className="pick-tile pick-tile-css" style={{ minHeight: 172, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 16 }}>
+              <svg aria-hidden="true" width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M3 3h18v18H3z"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+              <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 4 }}>Κινήσεις τράπεζας</div>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>CSV ή Excel</div>
             </div>
           )}
 

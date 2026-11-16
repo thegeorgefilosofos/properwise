@@ -57,8 +57,9 @@ export async function ofProperty<T = Partial<BillsRow>>(
  */
 export async function ofPropertyWithError<T = Partial<BillsRow>>(
   db: Db, propertyId: string, columns: string, userId?: string,
+  opts: { paid?: boolean; category?: string; since?: string } = {},
 ): Promise<ReadResult<T>> {
-  return read<T>(ofPropertyQuery(db, propertyId, columns, userId, {}));
+  return read<T>(ofPropertyQuery(db, propertyId, columns, userId, opts));
 }
 
 function ofPropertyQuery(
