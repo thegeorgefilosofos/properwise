@@ -52,12 +52,14 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
-import { T, TT, fe, feWhole, fp, SecHdr, Spinner, fixedCols, Btn, ABSENT } from '@/components/Theme';
+import { T, TT, fe, feWhole, fp, SecHdr, Spinner, fixedCols, Btn } from '@/components/Theme';
 import { openMyaadeImport } from './myaadeOpen';
 import { NumberInput, CustomSelect } from './UIComponents';
-import { AadePill } from '@/components/AadeLink';
+import { aadeTitle } from '@/components/AadeLink';
+import { AADE_DESTINATIONS } from '@/lib/tax/aade';
+import { ArrowUpRight } from 'lucide-react';
 import { AsOfNote } from '@/components/AsOfNote';
-import { taxLimitAsOf } from '@/lib/facts/taxLimits';
+import { taxLimitAsOf, taxLimitPending } from '@/lib/facts/taxLimits';
 import {
   ENFIA_REDUCTIONS, ENFIA_FLOOR_COEF, enfiaReductionInForce, enfiaReductionRate, enfiaAgeChoices,
   ENFIA_SURCHARGE_THRESHOLD, ENFIA_EXTRA_TAX_FREE,
@@ -285,36 +287,6 @@ const ROUTE_HELP: Record<Route, string> = {
   estimate: 'Ζώνη, εμβαδόν, όροφος και παλαιότητα. Όσα δεν ξέρεις μένουν ουδέτερα, δεν μαντεύονται.',
 };
 
-function RouteTile({ route, value, inUse, active, onSelect }: {
-  route: Route; value: number; inUse: boolean; active: boolean; onSelect: () => void;
-}) {
-  return (
-    <button type="button" onClick={onSelect} aria-pressed={active}
-      style={{
-        minWidth: 0, minHeight: 62, textAlign: 'left',
-        padding: '10px 13px', borderRadius: T.radius.inner, cursor: 'pointer',
-        fontFamily: 'inherit',
-        background: active ? 'var(--accent-soft)' : 'var(--bg-elevated)',
-        border: `1px solid ${active ? 'var(--accent)' : 'var(--border-subtle)'}`,
-        transition: 'background-color .15s, border-color .15s',
-      }}>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {/* Η κουκκίδα λέει «από εδώ βγαίνει το ποσό πάνω». Για όποιον δεν τη
-            βλέπει, το ίδιο πράγμα γίνεται λέξη μέσα στο κουμπί. */}
-        {inUse && <span aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
-        <span style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-          {SOURCE_LABEL[route]}
-        </span>
-        {inUse && <span className="sr-only">σε χρήση</span>}
-      </span>
-      <span style={{ ...TT.figure, fontSize: 15, display: 'block', marginTop: 4, color: value > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
-        {/* Όχι «Κενό»: στην ίδια οθόνη η λέξη σημαίνει ακίνητο χωρίς ενοικιαστή. */}
-        {value > 0 ? fe(value) : ABSENT}
-      </span>
-    </button>
-  );
-}
-
 export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
   propertyId: string; userId: string;
   /** Το έτος της Λογιστικής: ο πίνακας δεν διαλέγει δικό του. */
@@ -407,13 +379,17 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
     <div style={{ fontFamily: T.font.sans, color: 'var(--text-primary)' }}>
       <SecHdr label="Υπολογισμός ΕΝΦΙΑ"
         sub="Πόσο είναι ο φόρος του ακινήτου και πόσα να βάζεις στην άκρη κάθε μήνα"
-        right={<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        right={<div className="enfia-hdr-actions">
           {/* Η ΠΡΑΞΗ ΑΠΟ ΤΟ myAADE ΓΡΑΦΕΙ ΤΟ ΣΥΝΟΛΟ: δόσεις και υπενθυμίσεις βγαίνουν από αυτό. */}
           <Btn variant="secondary" onClick={() => openMyaadeImport()}>Ενημέρωσε από την πράξη</Btn>
-          <AadePill action="enfia" label="Ε9 και ΕΝΦΙΑ"/>
+          {/* ΙΔΙΟ ΥΨΟΣ ΜΕ ΤΟ ΔΙΠΛΑΝΟ (14/11/2026). Η πιλούλα της ΑΑΔΕ ήταν 27
+              δίπλα σε κουμπί 36 ή 44: δύο ενέργειες της ίδιας σειράς σε δύο
+              σχήματα. Τώρα είναι κουμπί-σύνδεσμος ίδιου σχήματος, ήσυχο. */}
+          <Btn variant="ghost" href={AADE_DESTINATIONS.enfia.url} newTab title={aadeTitle('enfia')}>Ε9 και ΕΝΦΙΑ<ArrowUpRight size={13} aria-hidden="true" /></Btn>
         </div>}/>
-      {/* Οι συντελεστές και τα όρια του υπολογισμού, με το πότε ελέγχθηκαν (lib/facts/taxLimits). */}
-      <AsOfNote fact={taxLimitAsOf('enfia')} style={{ margin: '-4px 0 12px' }} />
+      {/* Οι συντελεστές και τα όρια του υπολογισμού, με το πότε τα έλεγξε
+          άνθρωπος και ό,τι εκκρεμεί για αυτά (lib/facts/taxLimits). */}
+      <AsOfNote fact={taxLimitAsOf('enfia')} pending={taxLimitPending('enfia')} style={{ margin: '-4px 0 12px' }} />
 
       {/* ── Η ΑΠΑΝΤΗΣΗ ΠΡΩΤΗ, ΜΕ ΤΗΝ ΠΗΓΗ ΤΗΣ ─────────────────────────────
           Το νούμερο δεν στέκει ποτέ γυμνό. Δίπλα του λέγεται από πού ήρθε και
@@ -466,17 +442,28 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
         )}
       </div>
 
-      {/* ── ΑΠΟ ΠΟΥ ΒΓΑΙΝΕΙ: ΜΙΑ ΚΑΡΤΑ, ΤΡΙΑ ΠΛΑΚΙΔΙΑ ───────────────────────
-          Η σειρά των πλακιδίων ΕΙΝΑΙ η σειρά προτεραιότητας, οπότε το «ποιο
-          νικά» διαβάζεται από αριστερά προς τα δεξιά χωρίς να γραφτεί. */}
+      {/* ── ΑΠΟ ΠΟΥ ΒΓΑΙΝΕΙ: ΜΙΑ ΚΑΡΤΑ, ΕΝΑΣ ΕΠΙΛΟΓΕΑΣ ──────────────────────
+          Η σειρά των επιλογών ΕΙΝΑΙ η σειρά προτεραιότητας, οπότε το «ποιο
+          νικά» διαβάζεται από πάνω προς τα κάτω χωρίς να γραφτεί. */}
       <div style={card}>
         <SecHdr label="Από πού βγαίνει"
           sub="Τρεις δρόμοι για το ίδιο ποσό. Υπερισχύει ο πρώτος που έχει νούμερο."/>
-        <div className="route-row">
-          {ROUTES.map(r => (
-            <RouteTile key={r} route={r} value={routeValue[r]} inUse={inUse.source === r}
-              active={activeRoute === r} onSelect={() => setRoute(r)}/>
-          ))}
+        {/* ΕΝΑΣ ΕΠΙΛΟΓΕΑΣ ΑΝΤΙ ΓΙΑ ΤΡΙΑ ΠΛΑΚΙΔΙΑ (16/11/2026). Στο τηλέφωνο τα τρία
+            πλακίδια στοιβάζονταν σε όλο το πλάτος, 62 το καθένα, για μία
+            επιλογή ανάμεσα σε τρία. Οι τρεις ετικέτες δεν χωρούν σε μία σειρά
+            στα 320, οπότε γίνονται μία γραμμή επιλογής: η σειρά των επιλογών
+            μένει η σειρά προτεραιότητας, το ποσό κάθε δρόμου γράφεται κάτω
+            από το όνομά του και η κουκκίδα λέει ποιο ποσό είναι σε χρήση. */}
+        <div className="enfia-route-select">
+        <CustomSelect ariaLabel="Από πού βγαίνει" value={activeRoute} onChange={v => setRoute(v as Route)}
+          options={ROUTES.map(r => ({
+            value: r,
+            label: SOURCE_LABEL[r],
+            description: routeValue[r] > 0
+              ? `${fe(routeValue[r])}${inUse.source === r ? ' · σε χρήση στο ποσό πάνω' : ''}`
+              : 'Χωρίς ποσό ακόμη',
+            ...(inUse.source === r ? { dot: 'var(--accent)' } : {}),
+          }))}/>
         </div>
         <div style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
           {ROUTE_HELP[activeRoute]}
