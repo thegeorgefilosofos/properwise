@@ -40,7 +40,7 @@ export default function Feedback({ target = 'general', onDone, embedded }: {
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
   // Η ΚΛΗΡΩΣΗ ΑΞΙΟΛΟΓΗΣΗΣ (Όροι, #klirosi): ο νικητής αποδέχεται και από εδώ,
-  // όχι μόνο από το email. Υποχρεωτικό «Είμαι άνω των 18» (20261116170000).
+  // όχι μόνο από το email. Υποχρεωτικό «Είμαι άνω των 18» (20261116173000).
   const [adult, setAdult] = useState(false);
   const [prize, setPrize] = useState<'ask' | 'busy' | 'done' | 'failed'>('ask');
 

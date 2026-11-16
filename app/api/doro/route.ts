@@ -1,7 +1,7 @@
 // Η αποδοχή του δώρου της κλήρωσης αξιολόγησης από τον σύνδεσμο του email.
 // Ίδια φύλαξη με το /api/plirosa: μόνο από τη δική μας προέλευση, μόνο JSON,
 // χωρίς κρυφή μνήμη. Το διακριτικό ελέγχεται στη βάση (μόνο SHA-256, μίας
-// χρήσης, λήξη 14 ημερών· 20261116170000).
+// χρήσης, λήξη 14 ημερών· 20261116173000).
 import { NextResponse } from 'next/server';
 import { createServiceClient, serviceClientError, SERVICE_CLIENT_LOG } from '@/lib/supabase/service';
 import { acceptPrize } from '@/lib/feedback/prize';

@@ -8,7 +8,7 @@ let p = 0, f = 0;
 const ok = (c: boolean, m: string) => { if (c) p++; else { f++; console.error('✗', m); } };
 const eq = (a: unknown, b: unknown, m: string) => ok(JSON.stringify(a) === JSON.stringify(b), `${m}: ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`);
 
-const SQL = readFileSync('supabase/migrations/20261116170000_i_klirosi_axiologisis_opos_oi_oroi.sql', 'utf8');
+const SQL = readFileSync('supabase/migrations/20261116173000_i_klirosi_axiologisis_opos_oi_oroi.sql', 'utf8');
 const TERMS = readFileSync('app/terms/page.tsx', 'utf8');
 const COPY = readFileSync('supabase/functions/_shared/emailCopy/product.ts', 'utf8');
 const POLICY = readFileSync('supabase/functions/_shared/emailPolicy.ts', 'utf8');

@@ -26,6 +26,8 @@ const MUT_WF = '.github/workflows/__mut_backup_logs__.yml'
 const wfRun = (body) => `name: m\non: workflow_dispatch\njobs:\n  m:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n${body.split('\n').map(l => `          ${l}`).join('\n')}\n`
 
 export const MUTATIONS = {
+  // Το `.limit(2000)` του προγραμματιστή της ουράς, ξαναφερμένο: ο διακομιστής το κόβει στις 1.000.
+  'server-row-cap': { add: 'lib/__mut__.ts', content: "export const q = (db: any) => db.from('email_outbox').select('id').limit(2000)\n" },
   // Προστασία ιδιοκτήτη (12/11/2026): κάθε κανόνας του φύλακα, χωριστά.
   'enforcement-rules': { every: [
     // απόσπασμα «διορθωμένο» με το χέρι: δεν βρίσκεται πια στο στιγμιότυπο
