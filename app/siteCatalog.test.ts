@@ -12,6 +12,7 @@
 //   3. Η ημερομηνία κάθε σελίδας του καταλόγου είναι το `lastModified` της.
 //   4. Η ροή RSS έχει κάθε οδηγό του κόμβου, με την ημερομηνία του.
 //   5. Το /humans.txt υπογράφει «Ομάδα Properwise» και το security.txt ισχύει.
+//   6. Τα public/humans.txt και public/odigos/feed.xml είναι ό,τι γράφει ο κώδικας.
 // ═══════════════════════════════════════════════════════════════════════════
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -106,6 +107,13 @@ const expires = /^Expires:\s*(\S+)/m.exec(sec)?.[1] ?? '';
 ok('security.txt: επαφή η διεύθυνση ασφαλείας του μητρώου', sec.includes(`Contact: mailto:${IDENTITY.securityEmail}`));
 ok(`security.txt: το Expires (${expires}) δεν έχει περάσει`, expires.slice(0, 10) > athensToday());
 ok('security.txt: Canonical', /^Canonical: https:\/\/\S+\/\.well-known\/security\.txt$/m.test(sec));
+
+// ── 6. ΤΑ ΣΤΑΤΙΚΑ ΑΡΧΕΙΑ ΔΕΝ ΜΕΝΟΥΝ ΠΙΣΩ ΑΠΟ ΤΟΝ ΚΩΔΙΚΑ ─────────────────────────
+// Στατικά στο public/ για να μην ανεβαίνει δική τους συνάρτηση (docs/perf/server.json).
+for (const [file, made] of [['public/humans.txt', humans], ['public/odigos/feed.xml', feed]] as const) {
+  const onDisk = (() => { try { return readFileSync(file, 'utf8'); } catch { return ''; } })();
+  ok(`${file}: ίδιο με τον κώδικα (αν όχι: npm run machine-files)`, onDisk === made);
+}
 
 // Κανένα από τα νέα αρχεία δεν κλείνεται από το robots.
 const disallow = ([] as string[]).concat((robots().rules as { disallow?: string | string[] }).disallow ?? []);
