@@ -19,6 +19,13 @@
 //   από πού βγήκε    (`source`, νόμος ή επίσημη σελίδα)
 //   πότε ελέγχθηκε   (`checkedAt`, από άνθρωπο, με το μάτι)
 //
+// ΑΝΘΡΩΠΟΣ Ή ΕΡΓΑΛΕΙΟ, ΠΟΤΕ ΑΝΑΚΑΤΕΜΕΝΑ. Οταν την πηγή τη διάβασε μόνο εργαλείο
+// (αντιπαραβολή κειμένων, χωρίς ανθρώπινο μάτι), το `checkedAt` μένει `null` και
+// η ημερομηνία της ανάγνωσης γράφεται στο `toolReadAt`. Η κατάσταση τότε είναι
+// 'unchecked': ούτε 'ok' ούτε σιωπηλή. Ο φύλακας την αφήνει να περάσει με
+// προειδοποίηση μόνο όσο το `toolReadAt` είναι έως 12 μηνών· χωρίς αυτό, ή
+// παλιότερο, κόβει. Ενα «ελέγχθηκε» που δεν έγινε δεν γράφεται ποτέ.
+//
 // Ο φύλακας `scripts/guard-validity.mjs` κοκκινίζει όταν κάτι έληξε, όταν λήγει
 // μέσα στις επόμενες 45 ημέρες ή όταν δεν έχει ελεγχθεί πάνω από 12 μήνες. Η
 // σελίδα «Ισχύς δεδομένων» δείχνει το ίδιο μητρώο στον ιδιοκτήτη του προϊόντος,
@@ -58,10 +65,54 @@ export type Regulated = {
   validTo: string | null;
   /** Ο νόμος ή η επίσημη σελίδα. Ανοίγει με ένα κλικ από τη σελίδα ισχύος. */
   source: string;
-  /** Πότε το είδε άνθρωπος τελευταία φορά (ISO). */
-  checkedAt: string;
+  /**
+   * Πότε το είδε άνθρωπος τελευταία φορά (ISO). `null` όταν δεν το έχει δει
+   * ακόμη άνθρωπος: τότε υποχρεωτικό το `toolReadAt`.
+   */
+  checkedAt: string | null;
+  /**
+   * Πότε το διάβασε και το αντιπαρέβαλε ΕΡΓΑΛΕΙΟ (ISO), όταν δεν το έχει δει
+   * άνθρωπος. Δεν είναι υπογραφή: κρατά την εγγραφή στην κατάσταση 'unchecked'
+   * το πολύ 12 μήνες. Φεύγει όταν άνθρωπος γράψει `checkedAt`.
+   */
+  toolReadAt?: string;
   /** Τι πρέπει να κοιτάξει ο άνθρωπος όταν έρθει η ώρα. Μία πρόταση. */
   recheck: string;
+  /**
+   * Νόμος ή απόφαση που εκκρεμεί και θα ανανεώσει ή θα αλλάξει τον κανόνα.
+   * Οσο υπάρχει, ο φύλακας ΠΡΟΕΙΔΟΠΟΙΕΙ αντί να κόβει πριν και μετά τη λήξη,
+   * γιατί κανείς δεν μπορεί να γράψει νέο validTo πριν δημοσιευτεί το κείμενο
+   * (απόφαση ιδιοκτήτη 10/11/2026: πρώτα έλεγχος στο διαδίκτυο, όχι κόκκινο).
+   * Η εξαίρεση λήγει μόνη της 90 ημέρες μετά το `since`: από εκεί κόβει.
+   * Οταν δημοσιευτεί: νέο validTo, νέο checkedAt, πηγή το ΦΕΚ ή η απόφαση·
+   * το πεδίο φεύγει.
+   */
+  pending?: Pending;
+};
+
+/** Τι περιμένουμε: νόμο (ψήφιση και ΦΕΚ) ή απόφαση (υπουργική, ΚΥΑ, ΑΑΔΕ). */
+export type Pending = {
+  kind: 'law' | 'decision';
+  /** Τι αναμένεται, π.χ. «Απόφαση κατώτατου μισθού 2027». */
+  title: string;
+  /** Η αρμόδια επίσημη πηγή όπου θα δημοσιευτεί. */
+  href: string;
+  /** Από πότε μετρά η εκκρεμότητα (ISO). Μετά από 90 ημέρες ο φύλακας κόβει. */
+  since: string;
+};
+
+/**
+ * Ο νόμος που εκκρεμεί για τους κανόνες του 2027 (μέτρα της 90ής ΔΕΘ). Το
+ * `href` είναι η ανακοίνωση του Υπουργείου για τη ΔΙΑΒΟΥΛΕΥΣΗ του
+ * νομοσχεδίου. Το `since` είναι η κατάθεσή του στη Βουλή, 04/11/2026, κατά
+ * δημοσιεύματα· η εξαίρεση κόβει από 02/02/2027. Συνδέονται μόνο οι κανόνες
+ * που ο φάκελος ελέγχου του 2027 δείχνει ότι ανανεώνει ή αλλάζει.
+ */
+const DETH_2026_BILL: Pending = {
+  kind: 'law',
+  title: 'Νομοσχέδιο με τα μέτρα της 90ής ΔΕΘ για τα έτη 2026 και 2027',
+  href: 'https://minfin.gov.gr/anartithike-se-dimosia-diavoulefsi-to-nomoschedio-me-ta-metra-pou-anakoinothikan-stin-90i-diethni-ekthesi-thessalonikis-kai-efarmozontai-kata-ta-eti-2026-kai-2027/',
+  since: '2026-11-04',
 };
 
 /**
@@ -74,6 +125,7 @@ export const REGULATED: readonly Regulated[] = [
   // ── Φόρος εισοδήματος από ακίνητα ────────────────────────────────────────
   {
     id: 'rental-brackets',
+    pending: { kind: 'decision', title: 'Επιβεβαίωση ότι η κλίμακα φόρου ενοικίων δεν αλλάζει το 2027 (το νομοσχέδιο της ΔΕΘ δεν την αγγίζει, κατά τον φάκελο ελέγχου)', href: `${AADE_HOME}/polites/eisodima`, since: '2026-11-10' },
     label: 'Κλίμακα φόρου εισοδήματος από ακίνητα',
     where: 'lib/billing/greekTax.ts',
     validFrom: '2026-01-01',
@@ -92,7 +144,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     // Ζούσε μόνο σε σημείωση του ημερολογίου και ολογράφως στον οδηγό προθεσμιών.
-    // ΚΦΕ άρθρο 67 παρ. 4 περ. α΄, όπως αντικαταστάθηκε με το άρθρο 84 ν.5162/2024
+    // ΚΦΕ άρθρο 67 παρ. 6, τρίτο εδάφιο, όπως αντικαταστάθηκε με το άρθρο 84 ν.5162/2024
     // (ΦΕΚ Α΄ 198/05.12.2024). Μόνιμη διάταξη, άρα χωρίς validTo.
     id: 'income-tax-instalments',
     label: 'Πλήθος δόσεων φόρου εισοδήματος φυσικών προσώπων',
@@ -117,6 +169,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'business-brackets',
+    pending: DETH_2026_BILL,
     label: 'Κλίμακα φόρου επιχειρηματικής δραστηριότητας',
     where: 'lib/billing/greekTax.ts',
     validFrom: '2026-01-01',
@@ -127,6 +180,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'self-employed-min-income',
+    pending: { kind: 'decision', title: 'Απόφαση κατώτατου μισθού 2027 (Υπουργείο Εργασίας)', href: 'https://ypergasias.gov.gr/', since: '2026-11-10' },
     label: 'Τεκμαρτό ελάχιστο καθαρό εισόδημα ελεύθερου επαγγελματία',
     where: 'lib/billing/greekTax.ts',
     validFrom: '2026-01-01',
@@ -159,6 +213,7 @@ export const REGULATED: readonly Regulated[] = [
   // ── ΕΝΦΙΑ ────────────────────────────────────────────────────────────────
   {
     id: 'enfia-coefficients',
+    pending: { kind: 'decision', title: 'Απόφαση για τις αντικειμενικές αξίες και τις ζώνες του 2027', href: `${AADE_HOME}/polites/enfia`, since: '2026-11-10' },
     label: 'Συντελεστές ΕΝΦΙΑ: ζώνη, όροφος, παλαιότητα',
     where: 'lib/billing/enfia.ts',
     validFrom: '2026-01-01',
@@ -173,6 +228,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'enfia-thresholds',
+    pending: DETH_2026_BILL,
     label: 'Όριο συμπληρωματικού ΕΝΦΙΑ και αφορολόγητο περιουσίας',
     where: 'lib/billing/enfia.ts',
     validFrom: '2026-01-01',
@@ -195,6 +251,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'enfia-instalments',
+    pending: { kind: 'decision', title: 'Απόφαση της ΑΑΔΕ για τον ΕΝΦΙΑ 2027: πλήθος και προθεσμίες δόσεων', href: `${AADE_HOME}/polites/enfia`, since: '2026-11-10' },
     label: 'Πλήθος και προθεσμίες δόσεων ΕΝΦΙΑ',
     where: 'lib/tax/greekTaxCalendar.ts',
     validFrom: '2026-01-01',
@@ -207,6 +264,7 @@ export const REGULATED: readonly Regulated[] = [
   // ── Βραχυχρόνια μίσθωση ──────────────────────────────────────────────────
   {
     id: 'climate-levy',
+    pending: { kind: 'decision', title: 'Ποσά του ΤΑΚΚ για το 2027', href: `${AADE_HOME}/epiheiriseis/forologikes-ypiresies/telos-anthektikotitas-stin-klimatiki-krisi`, since: '2026-11-10' },
     label: 'Τέλος ανθεκτικότητας στην κλιματική κρίση (ΤΑΚΚ)',
     where: 'lib/billing/greekTax.ts',
     validFrom: '2026-01-01',
@@ -217,6 +275,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'municipal-accommodation-tax',
+    pending: { kind: 'decision', title: 'Ισχύς του δημοτικού φόρου διαμονής για το 2027', href: `${AADE_HOME}/epiheiriseis/forologikes-ypiresies`, since: '2026-11-10' },
     label: 'Δημοτικός φόρος διαμονής',
     where: 'lib/billing/greekTax.ts',
     validFrom: '2026-01-01',
@@ -246,6 +305,7 @@ export const REGULATED: readonly Regulated[] = [
     // πράξεις όπως τις έχουν ήδη ο κώδικας και το data/accounting-sources.json
     // (`str_registry`, έλεγχος 25.09.2026). Πηγή η επίσημη σελίδα του Μητρώου.
     id: 'str-freeze',
+    pending: { kind: 'decision', title: 'ΚΥΑ για την αναστολή νέων εγγραφών βραχυχρόνιας διαμονής το 2027', href: `${AADE_HOME}/epiheiriseis/forologikes-ypiresies/mitroo-akiniton-brahyhronias-diamonis`, since: '2026-11-10' },
     label: 'Αναστολή νέων εγγραφών στο Μητρώο Βραχυχρόνιας Διαμονής (κέντρο Αθήνας, Α΄ Θεσσαλονίκης)',
     where: 'lib/market/greekMarket.ts',
     validFrom: '2026-01-01',
@@ -268,6 +328,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'rent-adjustment-cap',
+    pending: { kind: 'law', title: 'Διάταξη για το πλαφόν αναπροσαρμογής των επαγγελματικών μισθωμάτων το 2027', href: 'https://www.et.gr/', since: '2026-11-10' },
     label: 'Ανώτατο ποσοστό αναπροσαρμογής μισθώματος',
     where: 'lib/documents/rentAdjustment.ts',
     validFrom: '2026-01-01',
@@ -290,6 +351,7 @@ export const REGULATED: readonly Regulated[] = [
   // ── Δάνεια και κρατικά προγράμματα ───────────────────────────────────────
   {
     id: 'loan-programs',
+    pending: { kind: 'decision', title: 'Νέοι κύκλοι των κρατικών στεγαστικών προγραμμάτων για το 2027', href: 'https://www.gov.gr/ipiresies/periousia-kai-phorologia', since: '2026-11-10' },
     label: 'Κρατικά προγράμματα στέγασης και επιδότησης',
     where: 'lib/loans/programStatus.ts',
     validFrom: '2026-01-01',
@@ -300,6 +362,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'transfer-tax',
+    pending: DETH_2026_BILL,
     label: 'Φόρος μεταβίβασης ακινήτου και απαλλαγή πρώτης κατοικίας',
     // ΤΟ `where` ΕΔΕΙΧΝΕ ΣΤΟΝ ΚΑΤΑΝΑΛΩΤΗ, ΟΧΙ ΣΤΗΝ ΠΗΓΗ. Ο υπολογιστής δανείου
     // ΕΙΣΑΓΕΙ τους συντελεστές· δεν τους ορίζει. Ο φύλακας ελέγχει ότι το αρχείο
@@ -345,6 +408,7 @@ export const REGULATED: readonly Regulated[] = [
     // 18.10.2026 στο κείμενο του ΦΕΚ (legalize-dev/legalize-gr,
     // gr/FEK-A-198-2025.md), από εργαλείο.
     id: 'vacant-rental-exemption',
+    pending: DETH_2026_BILL,
     label: 'Τριετής απαλλαγή ενοικίου για κενές κατοικίες που νοικιάζονται μακροχρόνια: παράθυρο σύναψης μίσθωσης',
     where: 'lib/accounting/updates2026.ts',
     validFrom: '2024-09-08',
@@ -360,6 +424,7 @@ export const REGULATED: readonly Regulated[] = [
     // 18.10.2026· ο διακομιστής δεν το άφησε να ανοιχτεί. Το `checkedAt` είναι
     // του data/accounting-sources.json (`renovation_39b`).
     id: 'renovation-39b',
+    pending: DETH_2026_BILL,
     label: 'Μείωση φόρου για δαπάνες αναβάθμισης κτιρίων (άρθρο 39Β ΚΦΕ): παράθυρο δαπανών',
     where: 'lib/accounting/renovation39b.ts',
     validFrom: '2024-01-01',
@@ -392,6 +457,7 @@ export const REGULATED: readonly Regulated[] = [
     // αυτήν: ο φύλακας κοκκινίζει όσο είναι ακόμη χρήσιμο να ψάξει κανείς για
     // ΚΥΑ, οδηγό ή πλατφόρμα. Η πηγή είναι το δελτίο της ΕΑΤ (SPITI_MOU_3.sources.hdb).
     id: 'spiti-mou-3',
+    pending: { kind: 'decision', title: 'ΚΥΑ και οδηγός του «Σπίτι μου ΙΙΙ»', href: 'https://minscfa.gov.gr/', since: '2026-11-10' },
     label: 'Σπίτι μου ΙΙΙ: ό,τι έχει ανακοινωθεί επίσημα, χωρίς ΚΥΑ',
     where: 'lib/loans/recommend.ts',
     validFrom: '2026-09-05',
@@ -417,6 +483,7 @@ export const REGULATED: readonly Regulated[] = [
   // λήξης. Εδώ αποκτούν ημερομηνία που κοκκινίζει.
   {
     id: 'new-build-vat-suspension',
+    pending: DETH_2026_BILL,
     label: 'Αναστολή ΦΠΑ 24% στα νεόδμητα (οπότε επιβάλλεται ΦΜΑ 3,09%)',
     where: 'lib/accounting/transfer.ts',
     validFrom: '2026-01-01',
@@ -427,6 +494,7 @@ export const REGULATED: readonly Regulated[] = [
   },
   {
     id: 'capital-gains-suspension',
+    pending: DETH_2026_BILL,
     label: 'Αναστολή φόρου υπεραξίας 15% στη μεταβίβαση ακινήτων',
     where: 'lib/accounting/transfer.ts',
     validFrom: '2026-01-01',
@@ -445,6 +513,68 @@ export const REGULATED: readonly Regulated[] = [
     source: `${AADE_HOME}/epiheiriseis/forologikes-ypiresies/fpa`,
     checkedAt: '2026-08-26',
     recheck: 'Ο μειωμένος 6% στο ρεύμα έχει παραταθεί επανειλημμένα. Ελεγξε αν λήγει.',
+  },
+
+  // ── Προστασία ιδιοκτήτη (αναγκαστική εκτέλεση) ──────────────────────────
+  // Οι κανόνες ζουν στο lib/legal/enforcement/rules.ts, ο καθένας με δύο πηγές
+  // (ΦΕΚ και taxheaven) και αυτούσιο απόσπασμα στο docs/legal/enforcement-sources/.
+  // Η αντιπαραβολή της 12/11/2026 έγινε από εργαλείο για λογαριασμό της ομάδας·
+  // ο έλεγχος δικηγόρου εκκρεμεί (κατάλογος ελέγχου) και ΔΕΝ δηλώνεται πουθενά.
+  // Ο ΚΠολΔ άλλαξε τέσσερις φορές σε δεκαπέντε μήνες: επανέλεγχος ανά εξάμηνο.
+  {
+    id: 'enforcement-kpold-5221',
+    label: 'Προθεσμίες αναγκαστικής εκτέλεσης (ΚΠολΔ, ν. 5221/2025 και επόμενοι)',
+    where: 'lib/legal/enforcement/rules.ts',
+    validFrom: '2026-01-01',
+    validTo: null,
+    source: 'https://www.kodiko.gr/nomothesia/document/1205557/nomos-5221-2025',
+    checkedAt: null,
+    toolReadAt: '2026-11-12',
+    recheck: 'Νέος νόμος που αγγίζει τα άρθρα 904 έως 1054 ΚΠολΔ, τον ν. 4738/2020 ή τον ν. 5072/2023; Ξανακατέβασε τις πηγές, ξαναγράψε τα στιγμιότυπα και ανέβασε το version του κανόνα. Ελεγξε και αν ο Φορέας Απόκτησης άρχισε να λειτουργεί (κανόνας faep-219).',
+  },
+  {
+    id: 'enforcement-sources',
+    label: 'Αποσπάσματα και πηγές των κανόνων εκτέλεσης',
+    where: 'lib/legal/enforcement/sources.ts',
+    validFrom: '2026-01-01',
+    validTo: null,
+    source: 'https://www.taxheaven.gr/law/5221/2025/arthro/126',
+    checkedAt: null,
+    toolReadAt: '2026-11-12',
+    recheck: 'Ανοίγουν ακόμη οι διευθύνσεις; Το απόσπασμα κάθε κανόνα βρίσκεται ακόμη αυτούσιο στο κείμενο της πηγής;',
+  },
+  {
+    id: 'debt-120-doseis',
+    label: 'Ρύθμιση οφειλών σε ΑΑΔΕ και e-ΕΦΚΑ σε δόσεις',
+    where: 'lib/legal/enforcement/numbers.ts',
+    validFrom: '2026-11-09',
+    validTo: '2027-06-30',
+    source: 'https://www.taxheaven.gr/law/5354/2026/arthro/35',
+    checkedAt: null,
+    toolReadAt: '2026-11-12',
+    recheck: 'Παρατάθηκε η προθεσμία αιτήσεων (DEBT_INSTALMENTS.applyBy) ή άλλαξε το πλήθος δόσεων;',
+  },
+  {
+    id: 'servicer-5354',
+    label: 'Υποχρεώσεις των servicers (ν. 5354/2026)',
+    where: 'lib/legal/enforcement/numbers.ts',
+    validFrom: '2026-11-09',
+    validTo: null,
+    source: 'https://www.taxheaven.gr/law/5354/2026/arthro/13',
+    checkedAt: null,
+    toolReadAt: '2026-11-12',
+    recheck: 'Αλλαξαν οι ημέρες του άρθρου 37Α ή οι μήνες του άρθρου 182 ν. 5193/2025;',
+  },
+  {
+    id: 'bilateral-63a',
+    label: 'Ειδική διμερής διαδικασία ρύθμισης με τον servicer',
+    where: 'lib/legal/enforcement/rules.ts',
+    validFrom: '2027-02-09',
+    validTo: null,
+    source: 'https://www.taxheaven.gr/law/5354/2026/arthro/392',
+    checkedAt: null,
+    toolReadAt: '2026-11-12',
+    recheck: 'Ξεκίνησε η διαδικασία των άρθρων 63Α επ. ν. 5072/2023; Η κάρτα στην Προστασία ιδιοκτήτη λέει ακόμη «δεν λειτουργεί».',
   },
 ];
 
@@ -469,12 +599,34 @@ export function daysLeft(r: Regulated, today: string): number | null {
   return Math.round((Date.parse(r.validTo) - Date.parse(today)) / 86_400_000);
 }
 
-/** Πόσοι μήνες πέρασαν από τον τελευταίο ανθρώπινο έλεγχο. */
-export function monthsSinceCheck(r: Regulated, today: string): number {
-  return (Date.parse(today) - Date.parse(r.checkedAt)) / (86_400_000 * 30.44);
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Μήνες από μια ημερομηνία ISO ώς σήμερα· `null` όταν δεν είναι ημερομηνία. */
+function monthsSince(iso: string | null | undefined, today: string): number | null {
+  if (!iso || !ISO_DAY.test(iso)) return null;
+  const m = (Date.parse(today) - Date.parse(iso)) / (86_400_000 * 30.44);
+  return Number.isFinite(m) ? m : null;
 }
 
-export type Status = 'expired' | 'expiring' | 'stale' | 'ok';
+/**
+ * Πόσοι μήνες πέρασαν από τον τελευταίο ΑΝΘΡΩΠΙΝΟ έλεγχο· `null` όταν δεν
+ * έγινε ποτέ ή η ημερομηνία δεν διαβάζεται. Ποτέ NaN: ένα NaN θα έβγαινε
+ * «όχι πάνω από 12» και η εγγραφή θα περνούσε για ελεγμένη.
+ */
+export function monthsSinceCheck(r: Regulated, today: string): number | null {
+  return monthsSince(r.checkedAt, today);
+}
+
+/** Πόσοι μήνες πέρασαν από την ανάγνωση του εργαλείου· `null` αν δεν υπάρχει. */
+export function monthsSinceToolRead(r: Regulated, today: string): number | null {
+  return monthsSince(r.toolReadAt, today);
+}
+
+/**
+ * 'unchecked': την πηγή τη διάβασε μόνο εργαλείο, μέσα στους τελευταίους 12
+ * μήνες. Δεν είναι 'ok': θέλει ανθρώπινο μάτι, απλώς δεν κόβει ακόμη.
+ */
+export type Status = 'expired' | 'expiring' | 'stale' | 'unchecked' | 'ok';
 
 /**
  * Η κατάσταση μιας εγγραφής σε μια δεδομένη ημέρα.
@@ -487,13 +639,29 @@ export function statusOf(r: Regulated, today: string): Status {
   const d = daysLeft(r, today);
   if (d !== null && d < 0) return 'expired';
   if (d !== null && d <= WARN_DAYS) return 'expiring';
-  if (monthsSinceCheck(r, today) > RECHECK_MONTHS) return 'stale';
+  // Χωρίς ανθρώπινο έλεγχο: 'unchecked' μόνο με πρόσφατη ανάγνωση εργαλείου.
+  // Χωρίς αυτήν, ή με παλιά, 'stale'. Ποτέ 'ok'.
+  if (r.checkedAt === null) {
+    const tool = monthsSinceToolRead(r, today);
+    return tool !== null && tool >= 0 && tool <= RECHECK_MONTHS ? 'unchecked' : 'stale';
+  }
+  const human = monthsSinceCheck(r, today);
+  if (human === null || human > RECHECK_MONTHS) return 'stale';
   return 'ok';
+}
+
+/**
+ * Η εγγραφή την έχει δει άνθρωπος, μέσα στους 12 μήνες; Οτι στηρίζει σήμανση
+ * «επαληθευμένο» στην οθόνη ρωτά αυτό, όχι το `checkedAt` μόνο του.
+ */
+export function humanChecked(r: Regulated, today: string): boolean {
+  const m = monthsSinceCheck(r, today);
+  return m !== null && m >= 0 && m <= RECHECK_MONTHS;
 }
 
 /** Οσα θέλουν ανθρώπινο μάτι σήμερα, με τα πιο επείγοντα πρώτα. */
 export function needsAttention(today: string): { r: Regulated; status: Status }[] {
-  const rank: Record<Status, number> = { expired: 0, expiring: 1, stale: 2, ok: 3 };
+  const rank: Record<Status, number> = { expired: 0, expiring: 1, stale: 2, unchecked: 3, ok: 4 };
   return REGULATED
     .map(r => ({ r, status: statusOf(r, today) }))
     .filter(x => x.status !== 'ok')

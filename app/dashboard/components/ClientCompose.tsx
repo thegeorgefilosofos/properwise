@@ -15,6 +15,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { T, TT, Btn, Badge, Modal } from '@/components/Theme';
 import { failed } from '@/lib/core/dbError';
 import { toggleIn } from '@/lib/core/toggleSet';
+import { Dictation } from '@/components/dictation/MicButton';
 
 // Ελάχιστο σχήμα πελάτη που χρειάζεται η σύνθεση (το Client του TabClients το ικανοποιεί).
 export interface ComposeClient {
@@ -289,17 +290,21 @@ export default function ClientCompose({ open, onClose, clients, supabase }: {
                 {aiOpen && (
                   <div style={{ border: '1px solid var(--accent-border)', background: 'var(--accent-soft)', borderRadius: T.radius.popup, padding: 14, marginBottom: 12 }}>
                     <div style={{ ...TT.bodySm, marginBottom: 8 }}>Πες μου με λίγα λόγια τι θέλεις να πεις· θα το γράψω επαγγελματικά.</div>
-                    <textarea aria-label="Τι θέλεις να λέει το μήνυμα" value={aiBrief} onChange={e => setAiBrief(e.target.value)} rows={2}
-                      placeholder="Ευχαριστήριο μετά τη διαμονή + κάλεσμα για κράτηση με 10% έκπτωση την επόμενη φορά"
-                      style={{ ...field, resize: 'vertical', marginBottom: 10 }} />
+                    <Dictation multiline value={aiBrief} onChange={setAiBrief} style={{ marginBottom: 10 }}>
+                      <textarea aria-label="Τι θέλεις να λέει το μήνυμα" value={aiBrief} onChange={e => setAiBrief(e.target.value)} rows={2}
+                        placeholder="Ευχαριστήριο μετά τη διαμονή + κάλεσμα για κράτηση με 10% έκπτωση την επόμενη φορά"
+                        style={{ ...field, resize: 'vertical' }} />
+                    </Dictation>
                     {aiErr && <div style={{ fontSize: 12, color: 'var(--negative)', marginBottom: 8 }}>{aiErr}</div>}
                     <Btn variant="primary" onClick={generateAI} disabled={aiBusy || !aiBrief.trim()}>{aiBusy ? 'Σύνταξη…' : 'Σύνταξη κειμένου'}</Btn>
                   </div>
                 )}
 
                 <input aria-label="Θέμα μηνύματος" value={subject} onChange={e => setSubject(e.target.value)} placeholder="Θέμα" style={{ ...field, marginBottom: 10 }} />
-                <textarea aria-label="Κείμενο μηνύματος" value={body} onChange={e => setBody(e.target.value)} rows={8}
-                  placeholder="Γράψε το μήνυμά σου εδώ…" style={{ ...field, resize: 'vertical', lineHeight: 1.6 }} />
+                <Dictation multiline value={body} onChange={setBody}>
+                  <textarea aria-label="Κείμενο μηνύματος" value={body} onChange={e => setBody(e.target.value)} rows={8}
+                    placeholder="Γράψε το μήνυμά σου εδώ…" style={{ ...field, resize: 'vertical', lineHeight: 1.6 }} />
+                </Dictation>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>Προσωποποίηση:</span>
                   <code style={{ fontSize: 'var(--fs-xs)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.xs, padding: '2px 6px', fontFamily: T.font.mono, color: 'var(--text-secondary)' }}>{'{{name}}'}</code>

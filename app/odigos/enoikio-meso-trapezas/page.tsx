@@ -46,7 +46,7 @@ import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import { LAW_5246_PDF } from '../fek';
 import {
-  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
+  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq, GuideCalcLink,
   RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
 } from '../GuideParts';
 
@@ -262,6 +262,8 @@ export default function Page() {
         <div className="lg-note lg-note-tip" style={{ marginTop: 16 }}>
           {`Τα ποσά υπολογίζονται με την κλίμακα ${FIRST_YEAR_NEW_BRACKETS}. Αν η κλίμακα αλλάξει για τα εισοδήματα του ${FIRST_YEAR_NEW_BRACKETS + 1}, αλλάζουν και τα ποσά. Αν έχεις κι άλλα ενοίκια, η έκπτωση που χάνεται φορολογείται στο δικό σου οριακό κλιμάκιο.`}
         </div>
+
+        <GuideCalcLink href="/ypologismos-forou-enoikion" action="Υπολόγισε τον φόρο των ενοικίων σου" />
 
         {/* 6. Βήματα */}
         <H2 {...S.steps} />

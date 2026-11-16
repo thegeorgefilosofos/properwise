@@ -25,7 +25,7 @@ import { fmtFor } from '@/lib/core/format';
 import { parseAmount } from '@/lib/core/greek';
 import { compareShortVsLong, netByOccupancy, HIGH_SEASON_NIGHTS, type SeasonSpread } from '@/lib/tools/shortVsLong';
 import { climateLevyRates, CLIMATE_LEVY_FROM_2025, FIRST_YEAR_CURRENT_LEVY } from '@/lib/billing/greekTax';
-import { REGULATORY_UPDATES_2026 } from '@/lib/accounting/updates2026';
+import type { RegulatoryUpdate } from '@/lib/accounting/updates2026';
 import { useToolState, ToolActions, ToolPaper, ToolPaperFoot } from '@/app/ToolShare';
 import { EstimateNote, ToolClampNote } from '@/app/ToolNotes';
 import { ToolNumField, ToolFields, ToolSeg, ToolHint, ToolHero } from '@/app/ToolParts';
@@ -40,7 +40,6 @@ const amount = (s: string): number => Math.max(0, parseAmount(s) ?? 0);
 
 
 /** Ο κανόνας των «κόκκινων ζωνών», από τη μία πηγή κανόνων της εφαρμογής. */
-const AMA_RULE = REGULATORY_UPDATES_2026.find(u => u.id === 'ama-red-zones');
 
 const LEVY = CLIMATE_LEVY_FROM_2025;
 
@@ -67,8 +66,17 @@ const deltaWith = (fe: (n: number) => string) => (n: number) => {
   return c > 0 ? `+${fe(c)}` : c < 0 ? `−${fe(-c)}` : fe(0);
 };
 
-export function ShortVsLongCalculator({ today, cta }: {
+/**
+ * Ο κανόνας των ζωνών ΑΜΑ, όπως τον δίνει η σελίδα (server) από το updates2026.ts.
+ * Έρχεται ως δεδομένα και όχι ως εισαγωγή: έτσι στον browser δεν πάνε όλες οι
+ * ενημερώσεις και οι σταθερές που διαβάζουν (perf-budget, 10/11/2026).
+ */
+export type AmaRule = Pick<RegulatoryUpdate, 'title' | 'summary' | 'legalBasis' | 'effective' | 'sourceHref' | 'sourceLabel'>;
+
+export function ShortVsLongCalculator({ today, cta, amaRule: AMA_RULE }: {
   today: string;
+  /** Ο κανόνας ΑΜΑ από το updates2026.ts (`ama-red-zones`), αν υπάρχει. */
+  amaRule?: AmaRule;
   /** Η πρόσκληση του τέλους, αποδομένη στη σελίδα: βλ. `ToolCta` στο app/PublicChrome.tsx. */
   cta: ReactNode;
 }) {

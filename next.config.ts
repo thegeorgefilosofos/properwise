@@ -1,5 +1,13 @@
 import type { NextConfig } from "next";
 
+// ── Εκτός ευρετηρίου ─────────────────────────────────────────────────────────
+// Το robots.txt τις αφήνει ανοιχτές ώστε η μηχανή να ΔΕΙ αυτή την κεφαλίδα.
+const NOINDEX_PATHS = [
+  "/portal/:path*", "/checkin/:path*", "/accountant/:path*", "/unsubscribe/:path*",
+  "/plirosa/:path*", "/verify/:path*", "/verify", "/epivevaiosi-email/:path*",
+  "/reset-password", "/en/reset-password", "/imerologio/:path*", "/tameio/:path*", "/tameio",
+];
+
 // ── Security headers ─────────────────────────────────────────────────────────
 // Το Content-Security-Policy ορίζεται πλέον στο proxy.ts (middleware) με
 // per-request nonce, ώστε να φύγει το 'unsafe-inline' από το script-src. Εδώ
@@ -45,6 +53,12 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_BUILD_SHA:
       (process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT_SHA ?? "").slice(0, 7) || "dev",
+    // ΠΑΝΤΑ ΣΤΑΘΕΡΑ ΑΚΟΜΗ ΚΑΙ ΧΩΡΙΣ ΚΛΕΙΔΙ. Μεταβλητή NEXT_PUBLIC_ που δεν υπάρχει
+    // ΔΕΝ αντικαθίσταται: μένει `process.env.X` στον κώδικα του περιηγητή, η
+    // συνθήκη του app/useCaptcha.tsx δεν διπλώνεται και ο έλεγχος κατά των bots
+    // έμπαινε στο /signup χωρίς να κάνει τίποτα (+1,7 KB, 11/11/2026). Με κενό
+    // κείμενο ο minifier τον πετά.
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "").trim(),
   },
   // ══ ΤΟ 83% ΚΑΘΕ ΣΥΝΑΡΤΗΣΗΣ ΗΤΑΝ ΜΙΑ ΒΙΒΛΙΟΘΗΚΗ ΠΟΥ ΔΕΝ ΚΑΛΕΙΤΑΙ ΠΟΤΕ ═══════
   //
@@ -100,7 +114,15 @@ const nextConfig: NextConfig = {
     // κοινοποίησης· κείμενο που δεν διαβάζει κανείς κατά την εκτέλεση (το og
     // φορτώνει μόνο .js, .wasm και γραμματοσειρές). Η εξοικονόμηση κάλυψε την
     // αλλαγή στα κομμάτια του πελάτη από τη διόρθωση της αναπροσαρμογής (#484).
-    '**/*': ['node_modules/@img/**', 'node_modules/sharp/**', 'node_modules/react/cjs/react.development.js', 'node_modules/next/dist/compiled/jsonwebtoken/**', 'node_modules/next/dist/compiled/@vercel/og/**/LICENSE'],
+    //
+    // ΚΑΙ ΤΟ ws ΤΟΥ NEXT (46.035 bytes × 83 = 3,8 MB ανά ανάπτυξη, 16/11/2026,
+    // μέτρηση σε χτίσιμο του main b71286c: 192,7 → 188,9 MB). Το φορτώνει ΜΟΝΟ
+    // το next/dist/server/node-environment-baseline.js, μέσα σε getter του
+    // `globalThis.WebSocket` που ορίζεται μόνο όταν ο Node ΔΕΝ έχει δικό του
+    // WebSocket. Ο Node 22 το έχει ενσωματωμένο (.nvmrc, CI: 22) και ο κώδικας
+    // του διακομιστή δεν ανοίγει ποτέ WebSocket (το realtime ζει στον περιηγητή).
+    // Αν το έργο γυρίσει ποτέ σε Node κάτω από 22, η εξαίρεση φεύγει.
+    '**/*': ['node_modules/@img/**', 'node_modules/sharp/**', 'node_modules/react/cjs/react.development.js', 'node_modules/next/dist/compiled/jsonwebtoken/**', 'node_modules/next/dist/compiled/@vercel/og/**/LICENSE', 'node_modules/next/dist/compiled/ws/**'],
   },
   // ── ΟΙ ΔΙΕΥΘΥΝΣΕΙΣ ΠΟΥ ΠΛΗΚΤΡΟΛΟΓΕΙ Ο ΚΟΣΜΟΣ ─────────────────────────────
   // Τα αγγλικά ονόματα που δοκιμάζει όποιος ψάχνει τιμές, εργαλεία ή cookies.
@@ -110,9 +132,18 @@ const nextConfig: NextConfig = {
   // οπότε το /calculators πάει στον πιο ζητούμενο υπολογιστή, που συνδέεται με
   // τους άλλους τρεις. Το cookies δείχνει την ενότητα του Απορρήτου με το
   // `anchorOf` του τίτλου της (app/legal-shell.tsx).
+  // ── Ο ΧΑΡΤΗΣ ΙΣΤΟΤΟΠΟΥ ΧΩΡΙΣ ΔΙΚΗ ΤΟΥ ΣΥΝΑΡΤΗΣΗ (16/11/2026) ─────────────────
+  // Το /xartis αποδίδεται από τον υπάρχοντα διανομέα του /en (app/xartis/view.tsx,
+  // `XARTIS_INTERNAL` στο app/siteCatalog.ts). Η διεύθυνση στον περιηγητή μένει
+  // /xartis και ο διαμεσολαβητής τρέχει πάνω της: γλώσσα, nonce, canonical.
+  async rewrites() {
+    return [{ source: "/xartis", destination: "/en/_xartis" }];
+  },
   async redirects() {
     return [
-      { source: "/calculators", destination: "/ypologismos-forou-enoikion", statusCode: 301 },
+      // Ο κόμβος των εργαλείων υπάρχει από 27/10/2026 (/ergaleia): η αγγλική
+      // λέξη οδηγεί σε όλους τους υπολογισμούς, όχι μόνο στον φόρο ενοικίων.
+      { source: "/calculators", destination: "/ergaleia", statusCode: 301 },
       { source: "/pricing", destination: "/paketa", statusCode: 301 },
       { source: "/cookies", destination: "/privacy#cookies-kai-synafeis-technologies", statusCode: 301 },
       // ΚΑΙ ΤΑ ΕΛΛΗΝΙΚΑ ΣΥΝΤΟΜΑ (12.10.2026). Ο έλεγχος αγοράς της ημέρας
@@ -134,6 +165,12 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      // Ιδιωτικές σελίδες με token ή στοιχεία χρήστη: noindex ως κεφαλίδα, ώστε
+      // να ισχύει και για τις διαδρομές χωρίς HTML (ροή ημερολογίου, αρχεία).
+      ...NOINDEX_PATHS.map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      })),
       // Ο service worker ΔΕΝ επιτρέπεται να αποθηκευτεί. Αν ο browser κρατήσει
       // παλιό sw.js, κρατά και τη στρατηγική cache που μπορεί να σερβίρει
       // ασύμβατα αρχεία build. Είναι το μοναδικό αρχείο όπου η μηδενική

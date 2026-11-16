@@ -45,6 +45,7 @@ import { MaintenanceTab } from './inventory/MaintenanceTab'
 import { inventoryExports } from './inventory/exports'
 import { useLoad } from '@/app/hooks/useLoad';
 import { toggleIn } from '@/lib/core/toggleSet';
+import { signInventoryPhotos, useInventoryPhotoUrls } from '@/lib/storage/inventoryPhotos'
 
 export { INVENTORY_CATEGORIES }
 export type { HandoverIntent }
@@ -285,8 +286,8 @@ function HandoverCard({handovers,onOpenHandover}:{handovers:InventoryHandover[];
 
 type SortKey = 'name'|'value'|'energy'|'age'|'depreciation'
 
-function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCondition,onWarrantyReminder,onBulkDelete,onBulkRoom}:{
-  items:InventoryItem[];kwhPrice:number
+function ItemsTab({items,photoUrls,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCondition,onWarrantyReminder,onBulkDelete,onBulkRoom}:{
+  items:InventoryItem[];photoUrls:Record<string,string>;kwhPrice:number
   onAdd:()=>void;onEdit:(i:InventoryItem)=>void;onDelete:(id:string)=>void
   onRepair:(i:InventoryItem)=>void;onQR:(i:InventoryItem)=>void
   onUpdateCondition:(id:string,c:string)=>void
@@ -447,7 +448,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
             // επιτρέπεται να μιλήσουμε για υπολειπόμενη αξία και χρόνια.
             const hasValue=(item.purchase_value||0)>0; const hasDate=!!item.purchase_date
             const mc=calcMonthlyCost(item,kwhPrice)
-            const photos=(item.photos||[]).filter(Boolean); const displayPhoto=item.photo_url||(photos[0]||'')
+            const photos=(item.photos||[]).filter(Boolean); const displayPhoto=item.photo_url||(photos[0]||''); const photoSrc=photoUrls[displayPhoto]||''
             const ws=item.warranty_expiry?warrantyStatus(item.warranty_expiry):null
             const repl=replacementSuggestion(item)
             const sel=selected.has(item.id)
@@ -458,14 +459,20 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                  έχανε οριστικά τη σκιά της. Η `.card` έχει ηρεμία και αιώρηση σε
                  CSS· ενσωματωμένο μένει μόνο το σημάδι της επιλογής, που πρέπει να
                  νικά και την αιώρηση, μαζί με το μηδενικό γέμισμα της φωτογραφίας. */
-              <div key={item.id} {...pressable(()=>selectMode?toggleSel(item.id):onEdit(item))} className="card" style={{padding:0,overflow:'hidden',display:'flex',flexDirection:'column',cursor:'pointer',...(sel?{borderColor:'var(--accent)',boxShadow:'0 0 0 1px var(--accent)'}:{})}}
+              /* ΚΑΡΤΑ ΧΩΡΙΣ ΡΟΛΟ ΚΟΥΜΠΙΟΥ. Ηταν ολόκληρη `role="button"` με
+                 κουμπιά μέσα της (κατάσταση, μενού): ο αναγνώστης οθόνης δεν
+                 μπορεί να διαβάσει κουμπί μέσα σε κουμπί και το axe το μετρούσε
+                 σοβαρό σφάλμα σε κάθε κάρτα. Το πάτημα οπουδήποτε στην κάρτα
+                 μένει για το ποντίκι και το δάχτυλο· το πληκτρολόγιο και ο
+                 αναγνώστης φτάνουν από το όνομα, που είναι πλέον κουμπί. */
+              <div key={item.id} role="article" aria-label={item.name} onClick={()=>selectMode?toggleSel(item.id):onEdit(item)} className="card" style={{padding:0,overflow:'hidden',display:'flex',flexDirection:'column',cursor:'pointer',...(sel?{borderColor:'var(--accent)',boxShadow:'0 0 0 1px var(--accent)'}:{})}}
               >
                 {/* ΧΩΡΙΣ ΦΩΤΟΓΡΑΦΙΑ, ΧΩΡΙΣ 118 ΕΙΚΟΝΟΣΤΟΙΧΕΙΑ ΚΕΝΟΥ. Ενα αχνό εικονίδιο σε
                     γκρι κουτί έπιανε το μισό ύψος της κάρτας και δεν έλεγε τίποτα·
                     χωρίς εικόνα μένει λωρίδα που κρατά μόνο τα χειριστήρια. */}
                 <div style={{height:displayPhoto?118:52,background:'var(--bg-elevated)',position:'relative',overflow:'hidden',flexShrink:0}}>
                   {displayPhoto
-                    ?<RuntimeImg src={displayPhoto} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
+                    ?(photoSrc&&<RuntimeImg src={photoSrc} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>)
                     :null}
                   {selectMode
                     ?<div style={{position:'absolute',top:8,left:8,background:'var(--scrim-media)',borderRadius: T.radius.chip,padding: 4}} onClick={e=>e.stopPropagation()}><SelectBox checked={sel} onChange={()=>toggleSel(item.id)} label={`Επιλογή ${item.name}`}/></div>
@@ -485,7 +492,7 @@ function ItemsTab({items,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,onUpdateCo
                 <div style={{padding:'12px 14px',display:'flex',flexDirection:'column',gap:8,flex:1}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10}}>
                     <div style={{minWidth:0}}>
-                      <p className="po-elide" style={{fontSize:14,fontWeight:500,fontFamily:T.font.sans,color:'var(--text-primary)',marginBottom:2,lineHeight:1.3}}>{item.name}</p>
+                      <button type="button" className="po-box po-card-name po-elide" onClick={e=>{e.stopPropagation();if(selectMode)toggleSel(item.id);else onEdit(item)}}>{item.name}</button>
                       <p className="po-elide" style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{inventoryLabel(item.category)}{item.room?` · ${inventoryLabel(item.room)}`:''}</p>
                     </div>
                     {/* ΤΟ «0,00€» ΕΦΥΓΕ ΑΠΟ ΤΗ ΘΕΣΗ ΤΗΣ ΑΠΑΝΤΗΣΗΣ. Ενα αντικείμενο
@@ -818,7 +825,11 @@ export default function TabInventory({propertyId,userId,profileType='individual'
     notifyOk(`Προστέθηκε υπενθύμιση εγγύησης στο ημερολόγιο για «${item.name}».`)
     return true
   }
-  const exportActions = inventoryExports({items,repairs,kwhPrice})
+  // Ιδιωτικό bucket: μία υπογραφή για όλες τις φωτογραφίες των καρτών
+  // (lib/storage/inventoryPhotos). Η έκθεση ασφαλιστή υπογράφει ξανά τη στιγμή
+  // που ανοίγει, γιατί οι σύνδεσμοι της οθόνης λήγουν.
+  const photoUrls = useInventoryPhotoUrls(supabase, useMemo(()=>items.flatMap(i=>[i.photo_url,...(i.photos||[])]).filter(Boolean),[items])).urls
+  const exportActions = inventoryExports({items,repairs,kwhPrice,signPhotos:s=>signInventoryPhotos(supabase,s).then(r=>r.urls)})
   // ΔΥΟ ΕΞΑΓΩΓΕΣ CSV ΤΩΝ ΙΔΙΩΝ ΔΕΔΟΜΕΝΩΝ ΔΕΝ ΥΠΑΡΧΟΥΝ ΠΙΑ. Η κεφαλίδα είχε
   // δική της, με εννέα στήλες· το μενού έχει την πλήρη, με είκοσι. Ο χρήστης
   // κατέβαζε «την απογραφή» και έπαιρνε άλλο αρχείο ανάλογα με το πού πάτησε.
@@ -980,7 +991,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
       )}
 
       {!loading&&inventoryApplies&&(items.length===0
-        ? <div className="card" style={{textAlign:'center',padding:'clamp(40px,7vw,68px) 24px',marginTop:8}}>
+        ? <div className="card" style={{textAlign:'center',padding:'clamp(40px,calc(7vw / var(--zoom, 1)),68px) 24px',marginTop:8}}>
             {handoverSeed&&(
               <div style={{display:'flex',alignItems:'center',gap:10,textAlign:'left',maxWidth:520,margin:'0 auto 24px',padding:'12px 16px',background:'var(--accent-soft)',border:'1px solid var(--accent-border)',borderRadius:T.radius.inner}}>
                 <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
@@ -1079,7 +1090,7 @@ export default function TabInventory({propertyId,userId,profileType='individual'
             ?<><SkeletonKPIs n={4}/><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:14}}>{[0,1,2,3,4,5].map(i=><Skeleton key={i} h={180} r={14}/>)}</div></>
             :<>
               <AttentionCard items={items} onEdit={item=>{setEditingItem(item);setShowItemForm(true)}} onWarrantyReminder={handleWarrantyReminder}/>
-              <ItemsTab items={items} kwhPrice={kwhPrice} onAdd={()=>{setEditingItem(null);setShowItemForm(true)}} onEdit={item=>{setEditingItem(item);setShowItemForm(true)}} onDelete={handleDelete} onRepair={item=>setRepairItem(item)} onQR={item=>setQrItem(item)} onUpdateCondition={handleUpdateCondition} onWarrantyReminder={handleWarrantyReminder} onBulkDelete={handleBulkDelete} onBulkRoom={handleBulkRoom}/>
+              <ItemsTab items={items} photoUrls={photoUrls} kwhPrice={kwhPrice} onAdd={()=>{setEditingItem(null);setShowItemForm(true)}} onEdit={item=>{setEditingItem(item);setShowItemForm(true)}} onDelete={handleDelete} onRepair={item=>setRepairItem(item)} onQR={item=>setQrItem(item)} onUpdateCondition={handleUpdateCondition} onWarrantyReminder={handleWarrantyReminder} onBulkDelete={handleBulkDelete} onBulkRoom={handleBulkRoom}/>
               <MaintenanceTab items={items} schedules={schedules} propertyId={propertyId} userId={userId} onSaved={fetchData}/>
               <AnalysisCards items={items} repairs={repairs} kwhPrice={kwhPrice} kwhControl={kwhControl}/>
               <HandoverCard handovers={handovers} onOpenHandover={()=>setPage('handover')}/>

@@ -22,11 +22,24 @@
 //   3. ΑΛΛΑΓΕΣ ΤΟΥ ΧΡΗΣΤΗ: το `auto_hash` κρατά τι έγραψε η μηχανή. Γραμμή που
 //      δεν ταιριάζει πια (μετακίνηση, άλλος τίτλος, σημείωση) την άλλαξε ο
 //      χρήστης και ο συγχρονισμός δεν αγγίζει το περιεχόμενό της, ούτε τη σβήνει.
-//   4. ΕΝΑ ΕΚΚΑΘΑΡΙΣΤΙΚΟ: ο ΕΝΦΙΑ, το Ε1 και το Ε9 είναι του φορολογούμενου, όχι
-//      του ακινήτου. Οταν μια τέτοια προθεσμία κλείσει σε ένα ακίνητο, κλείνει
-//      και στα άλλα του ίδιου ιδιοκτήτη· όχι όμως αν ο χρήστης έχει ορίσει ο ίδιος
-//      την κατάσταση εκείνης της γραμμής (π.χ. την ξανάνοιξε). Οι μηνιαίες της
-//      βραχυχρόνιας μένουν ανά ακίνητο.
+//   4. ΕΝΑ ΕΚΚΑΘΑΡΙΣΤΙΚΟ: ο ΕΝΦΙΑ, το Ε1, το Ε9 και οι δόσεις του φόρου
+//      εισοδήματος είναι του φορολογούμενου, όχι του ακινήτου. Οταν μια τέτοια
+//      προθεσμία κλείσει σε ένα ακίνητο, κλείνει και στα άλλα του ΙΔΙΟΥ
+//      φορολογούμενου· όχι όμως αν ο χρήστης έχει ορίσει ο ίδιος την κατάσταση
+//      εκείνης της γραμμής (π.χ. την ξανάνοιξε). Οι μηνιαίες της βραχυχρόνιας
+//      μένουν ανά ακίνητο.
+//
+//      ΙΔΙΟΣ ΦΟΡΟΛΟΓΟΥΜΕΝΟΣ, ΟΧΙ ΙΔΙΟΣ ΛΟΓΑΡΙΑΣΜΟΣ (13.11.2026). Ως τότε έκλεινε
+//      σε όλα τα ακίνητα του λογαριασμού. Για τον ιδιώτη είναι το ίδιο. Ο
+//      επαγγελματίας όμως κρατά ακίνητα πολλών ιδιοκτητών: η πληρωμένη δόση του
+//      πελάτη Α έκλεινε τη δόση του πελάτη Β, που έμενε χωρίς υπενθύμιση. Ο
+//      κανόνας είναι ο ίδιος με τον ΕΝΦΙΑ (`taxpayerKeys`, lib/calendar/
+//      enfiaTotals.ts, από το lib/accounting/taxpayer.ts): ιδιώτης = ένας
+//      φορολογούμενος· επαγγελματίας = ανά καρτέλα «Ιδιοκτήτης»· επαγγελματίας
+//      χωρίς καρτέλες ή λογαριασμός που δεν διαβάζεται = κάθε ακίνητο μόνο του.
+//      Οπου ο φορολογούμενος δεν είναι βέβαιος, δεν κλείνει τίποτα αλλού: μια
+//      ανοιχτή υπενθύμιση που περισσεύει κοστίζει ένα κλικ· μια που έκλεισε
+//      λάθος, πρόστιμο.
 //   5. ΠΑΛΙΑ ΠΟΥ ΔΕΝ ΙΣΧΥΟΥΝ ΠΙΑ (το ακίνητο έπαψε να είναι βραχυχρόνιο): φεύγουν
 //      μόνο αν είναι μελλοντικά, ανοιχτά και ανέγγιχτα. Τίποτε άλλο δεν σβήνεται.
 //   6. ΔΟΣΕΙΣ ΕΝΦΙΑ ΠΟΥ ΔΕΝ ΥΠΑΡΧΟΥΝ (20.10.2026). Με γνωστό σύνολο
@@ -61,6 +74,7 @@ import {
 import { readEnfiaCounts } from './enfiaTotals';
 import type { StatusRow } from '@/lib/property/status';
 import { athensToday } from '@/lib/core/time';
+import { isIncomeInstalmentSource } from './recurrence';
 import * as calendar from '@/lib/data/calendar';
 import * as properties from '@/lib/data/properties';
 
@@ -109,9 +123,17 @@ function statusTouched(r: Pick<TaxRow, 'auto_hash' | 'status'>): boolean {
   return !!p && p.status !== status(r.status);
 }
 
-/** Προθεσμία του φορολογούμενου (ΕΝΦΙΑ, Ε1, Ε9) και όχι ενός ακινήτου. */
+/**
+ * Προθεσμία του φορολογούμενου (ΕΝΦΙΑ, Ε1, Ε9, δόσεις φόρου εισοδήματος) και όχι
+ * ενός ακινήτου. ΔΕΝ λέει ποια ακίνητα είναι του ίδιου φορολογούμενου: αυτό το
+ * λέει το `taxpayerKeys` (κανόνας 4).
+ */
 export function isPersonLevel(source: string | null | undefined): boolean {
-  return !!taxObligationOfEventSource(source)?.profiles.includes('owner');
+  const o = taxObligationOfEventSource(source);
+  // Οι δόσεις του φόρου εισοδήματος βγαίνουν μόνο σε νοικιασμένο ακίνητο, αλλά
+  // ο φόρος είναι ένας ανά ΑΦΜ: πληρωμένη δόση σε ένα ακίνητο είναι πληρωμένη
+  // σε όλα τα ακίνητα του ίδιου ΑΦΜ.
+  return !!o && (o.profiles.includes('owner') || o.kind === 'income-instalment');
 }
 
 export interface TaxSyncPlan {
@@ -126,21 +148,24 @@ export interface TaxSyncPlan {
  * Το σχέδιο για ΕΝΑ ακίνητο. Καθαρή συνάρτηση: γραμμές μέσα, ενέργειες έξω.
  *
  * @param closedElsewhere πηγή → κλειστή κατάσταση, για προθεσμίες του
- *        φορολογούμενου που έκλεισαν σε ΑΛΛΟ ακίνητο του ίδιου ιδιοκτήτη.
+ *        φορολογούμενου που έκλεισαν σε ΑΛΛΟ ακίνητο του ίδιου φορολογούμενου.
  * @param enfiaInstalments έτος → πλήθος δόσεων ΕΝΦΙΑ, όπου το σύνολο του
  *        εκκαθαριστικού είναι γνωστό (κανόνας 6)· αλλιώς δώδεκα.
  * @param enfiaTotals έτος → σύνολο εκκαθαριστικού, για το ποσό κάθε δόσης.
+ * @param incomeTaxNil φορολογικά έτη με εκκαθαριστικό φόρου εισοδήματος χωρίς
+ *        φόρο: οι δόσεις τους δεν γράφονται και όσες ανέγγιχτες υπάρχουν σβήνονται.
  */
 export function planTaxSync(
   today: string, profile: PropertyTaxProfile, existing: readonly TaxRow[],
   closedElsewhere: ReadonlyMap<string, string> = new Map(),
   enfiaInstalments: Readonly<Record<number, number>> = {},
   enfiaTotals: Readonly<Record<number, number>> = {},
+  incomeTaxNil: readonly number[] = [],
 ): TaxSyncPlan {
   const bySource = new Map<string, TaxRow>();
   for (const r of existing) if (r.source && !bySource.has(r.source)) bySource.set(r.source, r);
 
-  const desired = taxEventsToWrite(today, profile, [...bySource.values()], { enfiaInstalments }, { enfiaTotals });
+  const desired = taxEventsToWrite(today, profile, [...bySource.values()], { enfiaInstalments, incomeTaxNil }, { enfiaTotals });
   const plan: TaxSyncPlan = { insert: [], update: [], remove: [], total: desired.length };
   const wanted = new Set<string>();
 
@@ -181,7 +206,11 @@ export function planTaxSync(
     // Ο,ΤΙ ΠΕΡΑΣΕ ΔΕΝ ΣΒΗΝΕΤΑΙ ΠΟΤΕ, ούτε ως «περιττή» δόση ΕΝΦΙΑ (κανόνας 6). Η
     // `isSurplusEnfiaInstalment` που το επέτρεπε έφυγε μαζί με την εξαίρεση.
     // Και η σημερινή: μια δόση που λήγει ΣΗΜΕΡΑ είναι η πιο επείγουσα από όλες.
-    if (text(r.event_date).slice(0, 10) <= today) continue;
+    // Περασμένη γραμμή μένει: είναι ιστορικό. Εξαίρεση η δόση του φόρου
+    // εισοδήματος που πέρασε ανοιχτή και ανέγγιχτη: δεν ξέρουμε ότι οφειλόταν,
+    // και ανοιχτή θα έφευγε ως «Ληξιπρόθεσμο» (lib/facts/deadlines.ts).
+    const day = text(r.event_date).slice(0, 10);
+    if (day <= today && !(isIncomeInstalmentSource(r.source) && day < today)) continue;
     plan.remove.push(r.id);
   }
   return plan;
@@ -240,18 +269,23 @@ export async function syncOwnerTaxDeadlines(
     const list = byProperty.get(r.property_id);
     if (list) list.push(r); else byProperty.set(r.property_id, [r]);
   }
-  // Για κάθε ακίνητο: τι έκλεισε στα ΑΛΛΑ. Η πρώτη κλειστή κατάσταση κερδίζει.
+  // Για κάθε ακίνητο: τι έκλεισε στα ΑΛΛΑ ακίνητα του ΙΔΙΟΥ φορολογούμενου
+  // (κανόνας 4). Ακίνητο χωρίς κλειδί δεν μοιράζεται τίποτα. Η πρώτη κλειστή
+  // κατάσταση κερδίζει.
+  const payer = (id: string) => enfia.taxpayer.get(id);
   for (const p of props) {
     const m = new Map<string, string>();
+    const mine = payer(p.id);
     for (const r of rows) {
       if (r.property_id === p.id || !r.source || !isClosedStatus(r.status)) continue;
+      if (mine === undefined || payer(r.property_id) !== mine) continue;
       if (!m.has(r.source)) m.set(r.source, String(r.status));
     }
     closedElsewhere.set(p.id, m);
   }
 
   for (const p of props) {
-    const plan = planTaxSync(today, taxProfileOf(p), byProperty.get(p.id) ?? [], closedElsewhere.get(p.id), enfia.counts.get(p.id), enfia.totals.get(p.id));
+    const plan = planTaxSync(today, taxProfileOf(p), byProperty.get(p.id) ?? [], closedElsewhere.get(p.id), enfia.counts.get(p.id), enfia.totals.get(p.id), enfia.incomeTaxNil.get(p.id));
     out.totals[p.id] = plan.total;
     const scope = { propertyId: p.id, userId: ownerId };
 

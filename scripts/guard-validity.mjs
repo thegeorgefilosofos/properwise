@@ -16,7 +16,29 @@
 //   · κάτι ΕΛΗΞΕ                     (`validTo` πριν από σήμερα)
 //   · κάτι λήγει μέσα σε 45 ημέρες   (χρόνος να το κοιτάξει άνθρωπος)
 //   · κάτι δεν ελέγχθηκε πάνω από 12 μήνες
+//   · κάτι δεν το είδε ποτέ άνθρωπος (`checkedAt: null`) και δεν έχει
+//     `toolReadAt`, ή η ανάγνωση του εργαλείου είναι πάνω από 12 μηνών
 //   · κάποιο `where` δείχνει σε αρχείο που δεν υπάρχει πια
+//
+// Η ΜΙΑ ΕΞΑΙΡΕΣΗ: ΝΟΜΟΣ Ή ΑΠΟΦΑΣΗ ΠΟΥ ΕΚΚΡΕΜΕΙ (`pending`). Στις 10/11/2026,
+// 17 κανόνες έληγαν στις 31/12/2026 και κανείς δεν μπορούσε να γράψει νέο
+// validTo πριν δημοσιευτεί το κείμενο που θα τους ανανέωνε: για 7 το
+// νομοσχέδιο της 90ής ΔΕΘ, για 1 διάταξη νόμου, για 9 απόφαση (ΚΥΑ, ΑΑΔΕ,
+// κατώτατος μισθός). Ο φύλακας θα κοκκίνιζε κάθε PR από τις 16/11 χωρίς να
+// υπάρχει τίποτα να διορθώσει. Απόφαση ιδιοκτήτη: όσο εκκρεμεί, ο κανόνας
+// ΠΡΟΕΙΔΟΠΟΙΕΙ πριν και μετά τη λήξη. Πρώτα έλεγχος στο διαδίκτυο, όχι
+// κόκκινο.
+//
+// ΤΑ ΔΙΧΤΥΑ, ΩΣΤΕ Η ΕΞΑΙΡΕΣΗ ΝΑ ΜΗ ΓΙΝΕΙ ΜΟΝΙΜΗ: 90 ημέρες μετά το `since`
+// κόβει· `since` άκυρο ή μελλοντικό κόβει· το `href` δείχνει μόνο σε επίσημη
+// πηγή (OFFICIAL πιο κάτω). Κανόνας χωρίς `pending` κόβει όπως πάντα.
+//
+// ΑΝΘΡΩΠΟΣ Ή ΕΡΓΑΛΕΙΟ (12/11/2026). Πέντε εγγραφές της Προστασίας ιδιοκτήτη
+// είχαν `checkedAt` ενώ τις είχε αντιπαραβάλει μόνο εργαλείο. Τώρα γράφουν
+// `checkedAt: null` και `toolReadAt`. Η κατάσταση 'unchecked' ΔΕΝ κόβει όσο η
+// ανάγνωση του εργαλείου είναι έως 12 μηνών· τυπώνεται όμως ΠΑΝΤΑ ως
+// προειδοποίηση με τη λίστα, ώστε η εκκρεμής ανθρώπινη υπογραφή να φαίνεται σε
+// κάθε τρέξιμο. Χωρίς `toolReadAt`, ή με παλιό, το `statusOf` δίνει 'stale'.
 //
 // ΤΟ ΤΕΛΕΥΤΑΙΟ ΕΙΝΑΙ ΤΟ ΠΙΟ ΥΠΟΥΛΟ. Μια μετακίνηση αρχείου αφήνει το μητρώο να
 // δείχνει στο κενό: εξακολουθεί να λέει «ελεγμένο», ενώ κανείς δεν ξέρει πού
@@ -44,7 +66,8 @@ const probe = `
 import { REGULATED, needsAttention, daysLeft, statusOf } from '@/lib/legal/validity'
 const today = ${JSON.stringify(today)}
 const rows = REGULATED.map(r => ({ id: r.id, label: r.label, where: r.where, source: r.source,
-  recheck: r.recheck, status: statusOf(r, today), days: daysLeft(r, today) }))
+  recheck: r.recheck, status: statusOf(r, today), days: daysLeft(r, today), pending: r.pending ?? null,
+  checkedAt: r.checkedAt, toolReadAt: r.toolReadAt ?? null }))
 process.stdout.write(JSON.stringify({ rows, attention: needsAttention(today).map(x => x.r.id) }))
 `
 const tmp = 'scripts/__validity-probe.ts'
@@ -60,12 +83,54 @@ try {
   process.exit(1)
 }
 
+/**
+ * Οπου επιτρέπεται να δείχνει μια εκκρεμότητα: εκεί που θα δημοσιευτεί το
+ * κείμενο. Ενα δημοσίευμα δεν είναι πηγή για να μη γίνεται κάτι κόκκινο.
+ */
+const OFFICIAL = ['*.gov.gr', 'hellenicparliament.gr', 'et.gr', 'aade.gr', 'opengov.gr', 'elstat.gr', 'bankofgreece.gr']
+function officialHref(href) {
+  let u
+  try { u = new URL(href) } catch { return false }
+  if (u.protocol !== 'https:') return false
+  const h = u.hostname.toLowerCase()
+  return OFFICIAL.some(d => d.startsWith('*.') ? h.endsWith(d.slice(1)) : h === d || h.endsWith('.' + d))
+}
+
+/** Πόσες ημέρες κρατά η εξαίρεση του νόμου που εκκρεμεί. Μετά κόβει. */
+const PENDING_MAX_DAYS = 90
+const dayDiff = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000)
+
 const findings = []
+const warnings = []
+/** Εγγραφές που διάβασε μόνο εργαλείο: περνούν, αλλά τυπώνονται πάντα. */
+const unchecked = []
 for (const r of out.rows) {
+  const p = r.pending
+  if (p) {
+    // Η ΕΞΑΙΡΕΣΗ ΔΕΝ ΓΙΝΕΤΑΙ ΜΟΝΙΜΗ ΜΕ ΠΑΡΑΘΥΡΑΚΙ. Ενα άκυρο ή μελλοντικό
+    // `since` θα έκανε το όριο των 90 ημερών να μη φτάνει ποτέ.
+    const validSince = /^\d{4}-\d{2}-\d{2}$/.test(p.since ?? '') && !Number.isNaN(Date.parse(p.since))
+      && new Date(Date.parse(p.since)).toISOString().slice(0, 10) === p.since
+    if (!validSince) { findings.push({ kind: 'ΑΚΥΡΗ ΕΚΚΡΕΜΟΤΗΤΑ', r, why: `το since «${p.since}» δεν είναι ημερομηνία YYYY-MM-DD` }); continue }
+    if (p.since > today) { findings.push({ kind: 'ΑΚΥΡΗ ΕΚΚΡΕΜΟΤΗΤΑ', r, why: `το since ${p.since} είναι μετά το σήμερα` }); continue }
+    if (!officialHref(p.href)) findings.push({ kind: 'ΧΩΡΙΣ ΕΠΙΣΗΜΗ ΠΗΓΗ', r, why: `η εκκρεμότητα δείχνει σε «${p.href}», όχι σε επίσημη πηγή (${OFFICIAL.join(', ')})` })
+    const age = dayDiff(p.since, today)
+    if (age >= PENDING_MAX_DAYS) {
+      findings.push({ kind: 'ΕΚΚΡΕΜΟΤΗΤΑ ΠΑΝΩ ΑΠΟ 90 ΗΜΕΡΕΣ', r, why: `«${p.title}» εκκρεμεί από ${p.since} (${age} ημέρες): ή δημοσιεύτηκε και ο κανόνας θέλει ενημέρωση, ή η εξαίρεση πρέπει να ξανακριθεί από άνθρωπο` })
+      continue
+    }
+  }
   if (!existsSync(r.where)) findings.push({ kind: 'ΧΑΜΕΝΟ ΑΡΧΕΙΟ', r, why: `το «${r.where}» δεν υπάρχει` })
+  else if (r.status === 'expired' && p) warnings.push({ kind: p.kind === 'law' ? 'ΕΛΗΞΕ, ΕΚΚΡΕΜΕΙ ΦΕΚ' : 'ΕΛΗΞΕ, ΕΚΚΡΕΜΕΙ ΑΠΟΦΑΣΗ', r, why: `πριν από ${-r.days} ημέρες· έλεγχος στο διαδίκτυο αν δημοσιεύτηκε: ${p.title}` })
   else if (r.status === 'expired') findings.push({ kind: 'ΕΛΗΞΕ', r, why: `πριν από ${-r.days} ημέρες` })
+  else if (r.status === 'expiring' && p) warnings.push({ kind: p.kind === 'law' ? 'ΛΗΓΕΙ, ΕΚΚΡΕΜΕΙ ΝΟΜΟΣ' : 'ΛΗΓΕΙ, ΕΚΚΡΕΜΕΙ ΑΠΟΦΑΣΗ', r, why: `σε ${r.days} ημέρες· δεν έχει δημοσιευτεί ακόμη: ${p.title}` })
   else if (r.status === 'expiring') findings.push({ kind: 'ΛΗΓΕΙ', r, why: `σε ${r.days} ημέρες` })
+  else if (r.status === 'stale' && r.checkedAt === null && !r.toolReadAt) findings.push({ kind: 'ΧΩΡΙΣ ΚΑΝΕΝΑΝ ΕΛΕΓΧΟ', r, why: 'checkedAt null χωρίς toolReadAt: ούτε άνθρωπος ούτε εργαλείο το είδε' })
+  else if (r.status === 'stale' && r.checkedAt === null) findings.push({ kind: 'ΠΑΛΙΑ ΑΝΑΓΝΩΣΗ ΕΡΓΑΛΕΙΟΥ', r, why: `toolReadAt ${r.toolReadAt}: πάνω από 12 μήνες ή όχι ημερομηνία, χωρίς κανέναν ανθρώπινο έλεγχο` })
   else if (r.status === 'stale') findings.push({ kind: 'ΑΝΕΛΕΓΚΤΟ', r, why: 'πάνω από 12 μήνες χωρίς ανθρώπινο έλεγχο' })
+  else if (r.status === 'unchecked') unchecked.push(r)
+  // Κάθε άλλη κατάσταση εκτός από 'ok' είναι άγνωστη στον φύλακα: κόβει αντί να περάσει.
+  else if (r.status !== 'ok') findings.push({ kind: 'ΑΓΝΩΣΤΗ ΚΑΤΑΣΤΑΣΗ', r, why: `κατάσταση «${r.status}»` })
 }
 
 // Και το αντίστροφο: μια πηγή που δεν είναι σύνδεσμος δεν ανοίγει με κλικ, άρα
@@ -132,6 +197,32 @@ if (unguarded.length) {
   process.exit(1)
 }
 
+if (warnings.length) {
+  console.warn(`⚠ ${warnings.length} κανόνες περιμένουν νόμο ή απόφαση που δεν έχει δημοσιευτεί (σήμερα ${today}). Δεν κόβουν· θέλουν έλεγχο στο διαδίκτυο:\n`)
+  const laws = new Map()
+  for (const w of warnings) {
+    const p = w.r.pending
+    const key = p.title + p.href
+    if (!laws.has(key)) laws.set(key, { p, items: [] })
+    laws.get(key).items.push(w)
+  }
+  for (const { p, items } of laws.values()) {
+    const cut = new Date(Date.parse(p.since) + PENDING_MAX_DAYS * 86_400_000).toISOString().slice(0, 10)
+    console.warn(`  ${p.title}`)
+    console.warn(`     ${p.href}`)
+    console.warn(`     εκκρεμεί από ${p.since} · κόβει από ${cut} αν δεν ενημερωθεί`)
+    for (const w of items) console.warn(`     · ${w.kind}  ${w.r.label} (${w.why.split('·')[0].trim()})`)
+    console.warn('')
+  }
+  console.warn('  ΟΤΑΝ ΔΗΜΟΣΙΕΥΤΕΙ: για κάθε κανόνα, νέο validTo και νέο checkedAt στο')
+  console.warn('  lib/legal/validity.ts, πηγή το ΦΕΚ ή η απόφαση· μετά αφαίρεση του pending. Αν')
+  console.warn('  άλλαξε τιμή, πρώτα ο κώδικας που την κρατά (με την πηγή στο PR).\n')
+}
+if (unchecked.length) {
+  console.warn(`⚠ ${unchecked.length} εγγραφές τις διάβασε μόνο εργαλείο· κανένας άνθρωπος δεν τις έχει ελέγξει (σήμερα ${today}). Δεν κόβουν ώσπου η ανάγνωση να περάσει τους 12 μήνες:\n`)
+  for (const r of unchecked) console.warn(`  · ${r.id}  ${r.label} (toolReadAt ${r.toolReadAt}) · ${r.where}`)
+  console.warn('\n  ΟΤΑΝ ΤΟ ΔΕΙ ΑΝΘΡΩΠΟΣ: checkedAt με την ημέρα του ελέγχου και αφαίρεση του toolReadAt.\n')
+}
 if (findings.length) {
   console.error(`✗ ${findings.length} ρυθμιζόμενα μεγέθη θέλουν ανθρώπινο μάτι (σήμερα ${today}):\n`)
   for (const f of findings) {
@@ -145,4 +236,4 @@ if (findings.length) {
   console.error('  αρκεί το checkedAt: αυτό είναι η υπογραφή ότι κάποιος κοίταξε.')
   process.exit(1)
 }
-console.log(`✓ και τα ${out.rows.length} ρυθμιζόμενα μεγέθη είναι εν ισχύι και ελεγμένα (σήμερα ${today}), κανένας κανόνας εκτός μητρώου`)
+console.log(`✓ τα ${out.rows.length} ρυθμιζόμενα μεγέθη δεν έχουν τίποτα που να κόβει (σήμερα ${today}${warnings.length ? `, ${warnings.length} με εκκρεμή νόμο ή απόφαση` : ''}${unchecked.length ? `, ${unchecked.length} μόνο με ανάγνωση εργαλείου` : ''}), κανένας κανόνας εκτός μητρώου`)

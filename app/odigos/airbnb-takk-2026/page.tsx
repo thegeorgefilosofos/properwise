@@ -45,7 +45,7 @@ import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import { LAW_5222_PDF } from '../fek';
 import {
-  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideTable, GuideSources, GuideCta, GuideFaq,
+  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideTable, GuideSources, GuideCta, GuideFaq, GuideCalcLink,
   RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
 } from '../GuideParts';
 import {
@@ -58,13 +58,18 @@ import {
 // την αρχή «Φορολογία Airbnb 2026», που είναι και το όνομα στον κατάλογο.
 // Η διεύθυνση μένει ίδια, γιατί είναι ήδη στο ευρετήριο.
 const H1 = 'Φορολογία Airbnb 2026: τέλος ανθεκτικότητας, φόρος εισοδήματος και τέλη';
-const TITLE = 'Τέλος ανθεκτικότητας 2026 στο Airbnb: ποσά, δήλωση, φόρος';
 const GUIDE = guideAt('/odigos/airbnb-takk-2026');
-// Η περιγραφή ζει στον κατάλογο: ίδια στη σελίδα αποτελεσμάτων και στην κάρτα.
-const DESC = GUIDE.desc;
 const URL = siteUrl(GUIDE.href);
 
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-airbnb-takk-2026') });
+// ΤΑ ΠΟΣΑ ΜΠΑΙΝΟΥΝ ΣΤΟΝ ΤΙΤΛΟ ΚΑΙ ΣΤΗΝ ΠΕΡΙΓΡΑΦΗ (13.11.2026). CTR 1,4% σε θέση
+// 5,2 (Search Console, τρίμηνο): ο τίτλος έλεγε «ποσά» χωρίς ποσό. Τώρα το
+// εύρος του τέλους για τη βραχυχρόνια (χαμηλό διαμερίσματος έως υψηλό μεγάλης
+// μονοκατοικίας) και στην περιγραφή τα δύο ποσά του διαμερίσματος, από τον
+// ίδιο πίνακα με το σώμα (CLIMATE_LEVY_FROM_2025). Η περιγραφή της κάρτας στον
+// κόμβο μένει στον κατάλογο (GUIDE.desc).
+export function generateMetadata(): Metadata {
+  return publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-airbnb-takk-2026') });
+}
 
 // Ο ΣΥΝΔΕΣΜΟΣ ΣΤΟΝ ΟΔΗΓΟ ΑΜΑ ΓΥΡΙΣΕ (07/10/2026). Από τις 05.10 τον απέκλειε
 // ένα ανοιχτό P0: ο οδηγός ΑΜΑ έγραφε ότι και η κληρονομιά διαγράφει από το
@@ -95,6 +100,10 @@ const ATHENS_TO = grDate(ATHENS.to);
 
 const SMALL = CLIMATE_LEVY_FROM_2025.small;
 const LARGE = CLIMATE_LEVY_FROM_2025.large;
+const TITLE = `Τέλος ανθεκτικότητας 2026 Airbnb: ${eur(SMALL.low)} έως ${eur(LARGE.high)} τη βραδιά`;
+const DESC =
+  `Τέλος ανθεκτικότητας διαμερίσματος: ${eur(SMALL.high)} τη βραδιά Απρίλιο έως Οκτώβριο, `
+  + `${eur(SMALL.low)} τον χειμώνα. Πώς δηλώνεται στο myAADE και πώς φορολογείται το Airbnb.`;
 const SQM = CLIMATE_LEVY_AREA_SQM;
 const rates = (id: ClimateLevyCategory) => CLIMATE_LEVY_CATEGORIES.find(c => c.id === id)!.rates;
 const TOURIST_SMALL = rates('tourist-small');
@@ -257,9 +266,6 @@ export default function Page() {
           lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
           {H1}
         </h1>
-        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 4px' }}>
-          {'Κείμενο και έλεγχος: Ομάδα Properwise'}
-        </p>
         <GuideUpdated guide={GUIDE} />
         {/* Το ευρετήριο ακριβώς κάτω από τη γραμμή της ημερομηνίας: στο κινητό
             ερχόταν μετά από δύο παραγράφους εισαγωγής, μισή οθόνη πιο κάτω. */}
@@ -424,6 +430,8 @@ export default function Page() {
         <p className="lg-p">
           {'Αν χρεώνεις το τέλος στον επισκέπτη, δεν μειώνει τα καθαρά σου, αλλά ανεβάζει την τελική τιμή που βλέπει ο επισκέπτης.'}
         </p>
+
+        <GuideCalcLink href="/vraxyxronia-i-makroxronia" action="Σύγκρινε βραχυχρόνια και μακροχρόνια μίσθωση" />
 
         {/* 7. Τέλος παρεπιδημούντων */}
         <H2 {...S.municipal} />

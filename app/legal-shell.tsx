@@ -7,6 +7,7 @@ import { LINK_STYLE } from './linkStyle';
 import { BackLink } from './BackLink';
 import { transliterate } from '@/lib/core/uploadPath';
 import { grDate } from '@/lib/core/format';
+import { versionDate, versionSuffix } from '@/lib/legal/identity';
 import { LegalForm } from './LegalForm';
 import { TocSpy } from './TocSpy';
 import type { Locale } from '@/lib/i18n/locale';
@@ -185,10 +186,27 @@ function sectionAnchors(blocks: readonly { h: string; id?: string }[]): string[]
  */
 const LEAD = /^([^:.;·]{2,72}):\s/u;
 
+/**
+ * ΜΑΛΑΚΑ ΕΝΩΤΙΚΑ ΜΟΝΟ ΣΤΙΣ ΜΑΚΡΙΕΣ ΛΕΞΕΙΣ (14/11/2026). Στο κινητό το σώμα
+ * συλλαβίζεται πια (`hyphens: auto`, globals.css «ΤΥΠΟΓΡΑΦΙΚΟ ΣΥΣΤΗΜΑ») και ο
+ * περιηγητής τιμά ΚΑΘΕ μαλακό ενωτικό, όποιο κι αν είναι το όριο του CSS.
+ * Μετρημένο στα 375: με τα ενωτικά του `hy()` από έξι γράμματα, 26% των
+ * γραμμών τελείωνε σε ενωτικό («ακί-νητο», «δεί-χνουμε»)· από δέκα, 11% στην
+ * Πολιτική και 16% στους Όρους. Η πλήρης στοίχιση του υπολογιστή κρατά τα
+ * σημεία τομής που μετρούν: οι ελληνικές λέξεις που ανοίγουν κενά είναι οι
+ * μακριές.
+ */
+const LEGAL_MIN_WORD = 10;
+
 function withLead(text: string, ctx: RefContext): ReactNode {
   const m = LEAD.exec(text);
   if (!m) return withRefs(text, ctx);
-  return <><strong>{m[1]}</strong>: {withRefs(text.slice(m[0].length), ctx)}</>;
+  // Η ΕΝΤΟΝΗ ΑΡΧΗ ΣΕ ΔΙΚΗ ΤΗΣ ΓΡΑΜΜΗ (14/11/2026). Μέσα στη ροή, η έντονη αρχή
+  // και το κείμενό της έκαναν κάθε κουκκίδα πυκνό μπλοκ έξι γραμμών όπου το μάτι
+  // δεν έβρισκε από πού ξεκινά το επόμενο θέμα. Η άνω κάτω τελεία μένει στο
+  // κείμενο (για αντιγραφή και αναγνώστη οθόνης)· κρύβεται μόνο από το μάτι,
+  // γιατί η αλλαγή γραμμής κάνει πια τη δουλειά της. Καμία λέξη δεν αλλάζει.
+  return <><strong className="lg-lead">{m[1]}<span className="sr-only">:</span></strong>{' '}{withRefs(text.slice(m[0].length), ctx)}</>;
 }
 
 /** Μία ενότητα με ελεύθερο περιεχόμενο, όπως τη θέλει το «Ποιοι είμαστε». */
@@ -223,7 +241,7 @@ export interface LegalBlock {
  * Ήταν «1. Ορισμοί» μέσα στο ίδιο κείμενο, οπότε ένας τίτλος δύο γραμμών
  * τύλιγε κάτω από τον αριθμό και η δεύτερη σειρά ξεκινούσε από άλλο σημείο.
  */
-export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, closing, self, guideHeads, locale = 'el', notice }: {
+export function LegalLayout({ eyebrow, title, intro, meta, version, versionId, blocks, closing, self, guideHeads, locale = 'el', notice }: {
   /** Η γλώσσα της σελίδας: κεφαλίδα, υποσέλιδο, «Περιεχόμενα». */
   locale?: Locale;
   /** Μία γραμμή στην κορυφή, πάνω από τον τίτλο (η σημείωση της μετάφρασης). */
@@ -248,6 +266,8 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
   meta?: string;
   /** Η έκδοση του κειμένου, κάτω από την εισαγωγή: αυτή γράφεται στην απόδειξη συγκατάθεσης. */
   version?: string;
+  /** Η πλήρης έκδοση (π.χ. «2026-11-12.2»), όταν η ορατή γραμμή τη συντομεύει. */
+  versionId?: string;
   blocks: LegalBlock[];
   /** Τελευταία σημείωση, κάτω από την τελευταία ενότητα. */
   closing?: ReactNode;
@@ -364,7 +384,7 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
             σελίδων, στο κενό δεξιά της (πιο κάτω, `lg-siblings`), ώστε η πρώτη
             πρόταση που διαβάζει ο επισκέπτης να μην κουβαλά ημερομηνία. */}
         <div className="lg-lede">
-          <p style={{ fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{hy(intro)}</p>
+          <p style={{ fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.65, margin: 0 }}>{hy(intro, true, LEGAL_MIN_WORD)}</p>
         </div>
         {/* Η ΕΚΔΟΣΗ ΚΑΙ ΣΤΗΝ ΚΟΡΥΦΗ. Ζούσε μόνο κάτω από την τελευταία ενότητα,
             δεκαεπτά χιλιάδες εικονοστοιχεία κάτω στο κινητό: όποιος ήθελε να
@@ -373,7 +393,7 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
             «…Σεπτέμβριος» και από κάτω «2026». Ο μήνας δένεται με το έτος του και
             το «·» με ό,τι προηγείται, ώστε η γραμμή να σπάει μόνο ανάμεσα στα
             δύο στοιχεία. */}
-        {version && <p className="lg-version">{version.replace(/ · /g, '\u00a0· ').replace(/ (?=\d{4}$)/, '\u00a0')}</p>}
+        {version && <p className="lg-version" data-version={versionId}>{version.replace(/ · /g, '\u00a0· ').replace(/ (?=\d{4}$)/, '\u00a0')}</p>}
         </div>
 
         {/* ΜΙΑ ΚΕΝΤΡΑΡΙΣΜΕΝΗ ΣΤΗΛΗ. Το πλαϊνό ευρετήριο αφαιρέθηκε: σε στήλη
@@ -405,16 +425,21 @@ export function LegalLayout({ eyebrow, title, intro, meta, version, blocks, clos
                     h2, ενότητα h3· η όψη μένει ίδια. Και ο αριθμός παίρνει τελεία
                     για τον αναγνώστη, αλλιώς το όνομα της ενότητας ακουγόταν
                     «1Υπεύθυνος επεξεργασίας». */}
-                {b.part && <h2 className={i === 0 ? 'lg-part lg-part-first' : 'lg-part'}>{b.part}</h2>}
-                <h3 style={{ display: 'flex', gap: 12, alignItems: 'baseline', fontSize: 'clamp(18px,2.2vw,21px)', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.3, margin: '0 0 12px' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, minWidth: 18 }}>{i + 1}<span className="sr-only">. </span></span>
+                {/* ΜΙΑ ΑΡΙΘΜΗΣΗ, ΟΧΙ ΔΥΟ (14/11/2026). Το μέρος έγραφε «Α.» και η
+                    ενότητα από κάτω «1»: δύο συστήματα στην ίδια ματιά. Το γράμμα
+                    φεύγει από την ΟΨΗ· το κείμενο του μέρους μένει όπως γράφτηκε
+                    στη σελίδα. Ο αριθμός της ενότητας παίρνει το μέγεθος του
+                    τίτλου, άρα και τη γραμμή βάσης του (`.lg-h`, globals.css). */}
+                {b.part && <h2 className={i === 0 ? 'lg-part lg-part-first' : 'lg-part'}>{b.part.replace(/^[Α-ΩA-Z]\.\s+/u, '')}</h2>}
+                <h3 className="lg-h" style={{ fontSize: 'clamp(18px,2.2vw,21px)', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.3, margin: '0 0 12px' }}>
+                  <span className="lg-h-n">{i + 1}<span className="sr-only">. </span></span>
                   <span style={{ textWrap: 'balance' }}>{b.h}</span>
                 </h3>
-                {hy(b.body)}
+                {hy(b.body, true, LEGAL_MIN_WORD)}
               </section>
             ))}
 
-            {hy(closing)}
+            {hy(closing, true, LEGAL_MIN_WORD)}
 
             {/* Η ΣΕΙΡΑ ΕΧΕΙ ΟΝΟΜΑ, ΓΙΑΤΙ ΤΗΝ ΚΡΙΝΕΙ ΕΛΕΓΧΟΣ. Χωρίς κλάση, ο
                 έλεγχος «καμία σελίδα δεν δείχνει στον εαυτό της» έψαχνε τη
@@ -472,7 +497,17 @@ export function LegalShell({ title, updated, version, intro, sections, disclaime
       title={title}
       intro={intro}
       meta={en ? U.updated(updated) : `Τελευταία ενημέρωση: ${updated}`}
-      version={version ? (en ? U.version(version, updated) : `Έκδοση ${grDate(version)} · Τελευταία ενημέρωση: ${updated}`) : undefined}
+      // Η ΕΚΔΟΣΗ ΔΙΑΒΑΖΕΤΑΙ ΩΣ ΗΜΕΡΟΜΗΝΙΑ ΚΑΙ ΑΥΞΟΝ: «12/11/2026 (2)» για τη
+      // δεύτερη έκδοση της ίδιας μέρας (lib/legal/identity.ts).
+      // Η ΕΚΔΟΣΗ, ΧΩΡΙΣ ΤΟ ΔΕΥΤΕΡΟ ΣΤΟΙΧΕΙΟ (14/11/2026). Η γραμμή έγραφε
+      // «Έκδοση 12/11/2026 (2) · Τελευταία ενημέρωση: Νοέμβριος 2026»: δύο
+      // ημερομηνίες για το ίδιο πράγμα στην πρώτη οθόνη. Μένει η πλήρης έκδοση,
+      // με το αύξον της ίδιας μέρας: αυτή υπόσχεται το κείμενο ότι αλλάζει σε
+      // κάθε αλλαγή. Ημερομηνία ισχύος δεν αποθηκεύεται χωριστά, άρα δεν
+      // γράφεται. Η «Τελευταία ενημέρωση» μένει στη σειρά των αδελφών σελίδων.
+      // Ιδια γραμμή στα αγγλικά (`versionOnly`).
+      version={version ? (en ? U.versionOnly(versionDate(version), versionSuffix(version)) : `Έκδοση ${grDate(versionDate(version))}${versionSuffix(version)}`) : undefined}
+      versionId={version}
       blocks={sections.map(s => ({
         id: s.id,
         h: s.h,

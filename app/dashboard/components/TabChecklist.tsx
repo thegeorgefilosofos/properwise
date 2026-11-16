@@ -12,7 +12,7 @@ import * as contactStore from '@/lib/data/contacts'
 import * as billing from '@/lib/data/billing'
 import { T, fn, fe, PageTitle, InfoBanner, Btn, IconBtn, ChipToggle, EmptyState, Skeleton, SkeletonKPIs, isOverlayOpen, Bar } from '@/components/Theme'
 import { confirmDialog } from '@/components/confirmBus'
-import { notify, notifyOk } from '@/components/Toast'
+import { notify, notifyOk, notifyError } from '@/components/Toast'
 import { saved, savedData, optimistic } from '@/components/dbWrite'
 import { ClipboardCheck, SearchX } from 'lucide-react'
 import { useReportBranding } from '@/lib/reportBranding'
@@ -26,7 +26,7 @@ import {
   obligationDrafts, pendingDrafts, isGeneratedRef, isTaxTaskRef, enfiaTasksPaidByBills,
 } from '@/lib/checklist/obligationTasks'
 import { taxProfileOf, type PropertyTaxProfile } from '@/lib/tax/greekTaxCalendar'
-import { HAS_BUSINESS } from '@/lib/accounting/dossier'
+import { HAS_BUSINESS, effectiveBookkeeping, type LegalForm, type BookKeeping } from '@/lib/accounting/dossier'
 import type { FieldContext } from '@/lib/property/fields'
 import type { StatusRow } from '@/lib/property/status'
 import type { ChecklistItemsRow } from '@/lib/supabase/tables'
@@ -180,7 +180,10 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
       setLoanPayment(
         loans.reduce((sum,l)=>sum+annuityMonthly(Number(l.amount)||0,Number(l.rate)||0,Number(l.years)||0),0)
       )
-    } catch (_) {}
+    } catch (e) {
+      console.error('[TabChecklist] δόση δανείου:', e);
+      if (fresh()) notifyError('Η δόση του δανείου δεν φορτώθηκε. Δοκίμασε ανανέωση.')
+    }
 
     // Η ΚΑΤΑΣΤΑΣΗ ΤΟΥ ΑΚΙΝΗΤΟΥ ΚΑΙ Η ΝΟΜΙΚΗ ΜΟΡΦΗ, από τη μία πηγή τους. Όλα
     // best-effort: αν δεν διαβαστούν, το προφίλ πέφτει στο ασφαλέστερο
@@ -226,7 +229,11 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
           setItems(prev => prev.map(i => closed.has(i.id) ? { ...i, status: 'done', completed: true } : i))
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      // Χωρίς αυτό, μια δόση ΕΝΦΙΑ που πλήρωσες έμενε ανοιχτή χωρίς εξήγηση.
+      console.error('[TabChecklist] πληρωμένος ΕΝΦΙΑ:', e);
+      if (fresh()) notifyError('Δεν ελέγχθηκε αν πληρώθηκε ο ΕΝΦΙΑ. Δοκίμασε ανανέωση.')
+    }
     if (fresh()) setLoadedFor(propertyId)
   }, [propertyId, userId])
 
@@ -271,7 +278,8 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
   const fieldCtx: FieldContext = useMemo(() => ({
     status: propertyStatus(statusRow),
     business: HAS_BUSINESS.has(legalForm),
-    doubleEntry: bookkeeping === 'double_entry',
+    // Ο ιδιώτης δεν τηρεί βιβλία, όποια κι αν είναι η στήλη (lib/accounting/dossier.ts).
+    doubleEntry: effectiveBookkeeping(legalForm as LegalForm, bookkeeping as BookKeeping) === 'double_entry',
     propertyCount,
     hasLoan: loanPayment > 0,
   }), [statusRow, legalForm, bookkeeping, propertyCount, loanPayment])

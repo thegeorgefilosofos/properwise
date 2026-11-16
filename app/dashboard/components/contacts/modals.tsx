@@ -21,6 +21,7 @@ import { CONTACT_BUCKET, removeFiles, linkFor, type ContactFile } from '@/lib/st
 import { athensToday, isoDate } from '@/lib/core/time'
 import { supabase, type Contact, fmtDate, digitsOf, fetchSupplierDocs, type SupplierDoc } from './model'
 import { Inp, FL } from './Bits'
+import { Dictation } from '@/components/dictation/MicButton'
 
 // ─── Notes Log ────────────────────────────────────────────────────────────────
 // Το «ανέβασμα φωτογραφίας επαφής» έφυγε από τη φόρμα: ήταν το ΠΡΩΤΟ πράγμα που
@@ -219,7 +220,7 @@ export function QuickExpenseModal({ contact, propertyId, userId, onClose, onSave
         <Btn variant="primary" onClick={save} disabled={saving || !amount}>{saving ? 'Αποθήκευση…' : 'Αποθήκευση δαπάνης'}</Btn>
       </>}>
       <div><FL>Ποσό (€)</FL><Inp value={amount} onChange={setAmount} placeholder="Παράδειγμα: 150" type="number" min={0} /></div>
-      <div><FL>Περιγραφή</FL><Inp value={description} onChange={setDescription} placeholder="Περιγραφή εργασίας" /></div>
+      <div><FL>Περιγραφή</FL><Dictation value={description} onChange={setDescription}><Inp value={description} onChange={setDescription} placeholder="Περιγραφή εργασίας" /></Dictation></div>
     </Modal>
   )
 }

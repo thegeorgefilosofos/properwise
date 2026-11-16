@@ -205,5 +205,13 @@ ok('ένα μόνο στοιχείο χωρίς «και»', !/ και /.test(gr
   ok('πρώτο βήμα: κανένα κόμμα πριν από «και»', !/,\s(?:και|κι)\s/.test(g + gf + s.join(' ')))
 }
 
+// ── Ο ΕΝΦΙΑ ΠΟΥ ΓΡΑΦΤΗΚΕ ΕΙΝΑΙ ΣΤΟΙΧΕΙΟ (κριτική σχεδίασης r6) ──
+{
+  const g = greeting(ASSISTANT_NAME, { propertyName: 'Κυψέλη', enfia: 320 })
+  ok('ΕΝΦΙΑ μόνο: «Βλέπω τον ΕΝΦΙΑ»', /Βλέπω τον ΕΝΦΙΑ/.test(g) && !/Μόλις καταχωρήσεις/.test(g))
+  const none = greeting(ASSISTANT_NAME, { propertyName: 'Κυψέλη', enfia: 0 })
+  ok('ΕΝΦΙΑ 0: ακόμη «Μόλις καταχωρήσεις»', /Μόλις καταχωρήσεις/.test(none))
+}
+
 console.log(`assistant/openers.test.ts: ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

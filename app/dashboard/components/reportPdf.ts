@@ -167,3 +167,24 @@ export function openReport(bodyHtml: string): void {
   w.document.write(bodyHtml + `<script>window.onload=function(){setTimeout(function(){window.print()},350)}</script>`);
   w.document.close();
 }
+
+/**
+ * Για αναφορά που χρειάζεται κάτι από το δίκτυο πριν γραφτεί, π.χ. φρέσκους
+ * υπογεγραμμένους συνδέσμους φωτογραφιών. Το παράθυρο ανοίγει ΣΥΓΧΡΟΝΙΚΑ, μέσα
+ * στο πάτημα του χρήστη, αλλιώς ο φύλακας αναδυόμενων το κόβει. Γεμίζει μόλις
+ * έρθει το HTML· αν αποτύχει, κλείνει και το λέει.
+ */
+export function openReportAsync(make: () => Promise<string>): void {
+  const w = window.open('', '_blank');
+  if (!w) { notifyError('Επίτρεψε τα αναδυόμενα παράθυρα για να δημιουργηθεί η αναφορά.'); return; }
+  w.document.write('<p style="font-family:sans-serif;padding:24px">Ετοιμάζεται η αναφορά…</p>');
+  make().then(html => {
+    w.document.open();
+    w.document.write(html + `<script>window.onload=function(){setTimeout(function(){window.print()},350)}</script>`);
+    w.document.close();
+  }).catch(e => {
+    console.error('[openReportAsync]', e);
+    w.close();
+    notifyError('Η αναφορά δεν ετοιμάστηκε. Δοκίμασε ξανά.');
+  });
+}

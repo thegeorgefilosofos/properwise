@@ -4,5 +4,21 @@
 // πέντε επίπεδα props. Ίδιο σχήμα με το «pos:ask» της Νόας.
 export const MYAADE_OPEN_EVENT = 'pos:myaade';
 
-/** Ανοίγει το παράθυρο εισαγωγής από οπουδήποτε μέσα στον πίνακα. */
-export const openMyaadeImport = (): void => { window.dispatchEvent(new CustomEvent(MYAADE_OPEN_EVENT)); };
+/** Τι κουβαλά το γεγονός: το αρχείο, όταν ο χρήστης το έχει ήδη ανεβάσει αλλού. */
+export type MyaadeOpenDetail = { file?: File };
+
+/**
+ * Ανοίγει το παράθυρο εισαγωγής από οπουδήποτε μέσα στον πίνακα. Με αρχείο,
+ * το παράθυρο το διαβάζει αμέσως: όποιος σάρωσε το Ε9 στη «Σάρωση εγγράφου»
+ * δεν το ανεβάζει δεύτερη φορά.
+ */
+export const openMyaadeImport = (file?: File): void => {
+  window.dispatchEvent(new CustomEvent<MyaadeOpenDetail>(MYAADE_OPEN_EVENT, { detail: file instanceof File ? { file } : {} }));
+};
+
+/**
+ * Από τη Σάρωση στη μαζική ΧΩΡΙΣ βήμα ελέγχου (το PDF που η συσκευή αναγνώρισε
+ * ως Ε9 ή πράξη): σε ποιο ακίνητο ήταν η σάρωση, ή `null` χωρίς κανένα. Η μαζική
+ * δείχνει τότε το «Κράτα αντίγραφο» και, με ακίνητο, το «Σάρωσέ το ως έγγραφο».
+ */
+export type BulkFromScan = { propertyId: string | null };

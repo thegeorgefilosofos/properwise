@@ -12,6 +12,7 @@ import { roundHalfUp } from '@/lib/core/money';
 import { fmtFor } from '@/lib/core/format'
 import type { Locale } from '@/lib/i18n/locale'
 import { localHref } from '@/lib/i18n/paths'
+import { withSignupEntry } from '@/lib/analytics/signupEntry'
 import { useToolEn, type ToolEn, NO_EN } from '@/lib/i18n/toolEn'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -244,7 +245,7 @@ export default function LandingCalculator({ cta, locale = 'el' }: { cta: string;
         <p className="po-just" style={{ fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)', lineHeight: 1.6, margin: 0 }}>
           {en ? C.note(FIRST_YEAR_NEW_BRACKETS, statutoryIn(PRESUMPTIVE_DEDUCTION_RATE)) : hy(<>Ενδεικτικός υπολογισμός για ένα ακίνητο χωρίς άλλο εισόδημα από ενοίκια, με την κλίμακα ενοικίων {FIRST_YEAR_NEW_BRACKETS} (ν. 5246/2025) και τεκμαρτή έκπτωση {statutory(PRESUMPTIVE_DEDUCTION_RATE)} για δαπάνες. Δεν υποκαθιστά τον λογιστή σου.</>)}
         </p>
-        <Link href={localHref(locale, '/signup')} className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
+        <Link href={localHref(locale, withSignupEntry('/signup', 'home'))} className="lp-cta lp-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px', borderRadius: T.radius.pill }}>
           {/* ΕΝΑ ΚΕΙΜΕΝΟ ΕΓΓΡΑΦΗΣ ΣΕ ΟΛΗ ΤΗΝ ΑΡΧΙΚΗ (28/10/2026). Εδώ έγραφε «… με
               το ακίνητό σου», ενώ η κορυφή και το τέλος της σελίδας γράφουν σκέτο
               το λεκτικό του `signupCta()`: δύο κουμπιά προς την ίδια εγγραφή με

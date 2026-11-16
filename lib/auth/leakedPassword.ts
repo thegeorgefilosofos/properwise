@@ -37,6 +37,8 @@
 // τρίτη υπηρεσία. Η πολιτική ισχύος από κάτω παραμένει υποχρεωτική.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { captureError } from '@/lib/observability/report'
+
 /** Το αποτέλεσμα του ελέγχου. `null` = ο έλεγχος δεν έτρεξε (δίκτυο/υπηρεσία). */
 export interface LeakCheck {
   /** Βρέθηκε σε γνωστή διαρροή; */
@@ -60,19 +62,24 @@ async function sha1Hex(text: string): Promise<string | null> {
 }
 
 /**
- * Είναι ο κωδικός σε γνωστή διαρροή;
- *
- * @param password ο κωδικός — δεν φεύγει από τη συσκευή
- * @param signal   προαιρετική ακύρωση (ο χρήστης συνεχίζει να πληκτρολογεί)
+ * Γιατί ο έλεγχος δεν έδωσε απάντηση. Η υποβολή χρειάζεται τη διάκριση: η
+ * υπηρεσία που σιώπησε αξίζει καταγραφή, ο περιηγητής χωρίς Web Crypto
+ * (σελίδα εκτός HTTPS, πολύ παλιός περιηγητής) όχι, γιατί δεν είναι βλάβη.
  */
-export async function checkLeakedPassword(
+export type LeakOutcome =
+  | { result: LeakCheck; reason: 'checked' }
+  | { result: null; reason: 'skipped' | 'unsupported' | 'unavailable' | 'aborted' }
+
+/** Ο έλεγχος με τον λόγο της αποτυχίας. Ο κωδικός δεν φεύγει από τη συσκευή. */
+export async function checkLeakedPasswordDetailed(
   password: string,
   signal?: AbortSignal,
-): Promise<LeakCheck | null> {
-  if (!password || password.length < 4) return null
+): Promise<LeakOutcome> {
+  if (!password || password.length < 4) return { result: null, reason: 'skipped' }
 
-  const hash = await sha1Hex(password)
-  if (!hash) return null
+  let hash: string | null
+  try { hash = await sha1Hex(password) } catch { hash = null }
+  if (!hash) return { result: null, reason: 'unsupported' }
 
   const prefix = hash.slice(0, 5)
   const suffix = hash.slice(5)
@@ -83,13 +90,76 @@ export async function checkLeakedPassword(
       signal,
       headers: { 'Add-Padding': 'true' },
     })
-    if (!res.ok) return null
+    if (!res.ok) return { result: null, reason: 'unavailable' }
     body = await res.text()
   } catch {
-    return null                       // δίκτυο, ακύρωση ή υπηρεσία εκτός: ανοιχτά
+    // δίκτυο, ακύρωση ή υπηρεσία εκτός: ανοιχτά
+    return { result: null, reason: signal?.aborted ? 'aborted' : 'unavailable' }
   }
 
-  return parseRange(body, suffix)
+  return { result: parseRange(body, suffix), reason: 'checked' }
+}
+
+/**
+ * Για την πύλη της υποβολής (`leakGate.ts`): `true` μόνο όταν η υπηρεσία
+ * απάντησε «βρέθηκε». Ζει εδώ και όχι στην πύλη, ώστε η πύλη να μένει όσο πιο
+ * ελαφριά γίνεται, γιατί φορτώνεται στατικά με τη σελίδα της εγγραφής ενώ
+ * αυτό το αρχείο μόνο στην υποβολή.
+ *
+ * Η ΠΡΟΘΕΣΜΙΑ (`until`, χρόνος ρολογιού) έρχεται από την πύλη και η ακύρωση
+ * στήνεται ΕΔΩ, όχι στην πύλη: εδώ τα bytes δεν βαραίνουν τη σελίδα. Αν το
+ * αρχείο φόρτωσε μετά τη λήξη, το αίτημα ακυρώνεται αμέσως.
+ *
+ * Η σιωπή αναφέρεται επίσης εδώ: αίτημα που κόπηκε στην προθεσμία βγαίνει
+ * `aborted` και αναφέρεται ως `timeout`. Ο περιηγητής χωρίς Web Crypto
+ * (`unsupported`) δεν αναφέρεται, γιατί δεν είναι βλάβη της υπηρεσίας.
+ */
+export async function leakedForSubmit(password: string, until: number): Promise<boolean> {
+  const ctl = new AbortController()
+  const timer = setTimeout(() => ctl.abort(), Math.max(0, until - Date.now()))
+  try {
+    const o = await checkLeakedPasswordDetailed(password, ctl.signal)
+    if (o.reason === 'unavailable') reportSubmitSilence('unavailable')
+    if (o.reason === 'aborted') reportSubmitSilence('timeout')
+    return o.reason === 'checked' && o.result.leaked
+  } catch {
+    return false                      // ποτέ απόρριψη: η πύλη δεν έχει δικό της catch
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+const REPORTED_KEY = 'pw-leak-check-reported'
+let reportedHere = false
+
+/**
+ * Η σιωπή της υπηρεσίας στην υποβολή, ΜΙΑ φορά ανά συνεδρία και μόνο με τον
+ * λόγο: ούτε κωδικός, ούτε hash. Ο περιηγητής χωρίς Web Crypto δεν φτάνει
+ * εδώ, γιατί δεν είναι βλάβη της υπηρεσίας.
+ */
+export function reportSubmitSilence(reason: 'timeout' | 'unavailable'): void {
+  if (reportedHere) return
+  reportedHere = true
+  try {
+    if (globalThis.sessionStorage?.getItem(REPORTED_KEY)) return
+    globalThis.sessionStorage?.setItem(REPORTED_KEY, '1')
+  } catch { /* ιδιωτική περιήγηση: αρκεί η σημαία της σελίδας */ }
+  // Στατικό import: το αρχείο αυτό φορτώνει ήδη δυναμικά και η αναφορά είναι
+  // ήδη στη σελίδα. Το δυναμικό import της εδώ πρόσθετε 0,3 KB στο /signup.
+  void captureError(new Error('leaked-password check unavailable at submit'), { reason })
+}
+
+/**
+ * Είναι ο κωδικός σε γνωστή διαρροή;
+ *
+ * @param password ο κωδικός — δεν φεύγει από τη συσκευή
+ * @param signal   προαιρετική ακύρωση (ο χρήστης συνεχίζει να πληκτρολογεί)
+ */
+export async function checkLeakedPassword(
+  password: string,
+  signal?: AbortSignal,
+): Promise<LeakCheck | null> {
+  return (await checkLeakedPasswordDetailed(password, signal)).result
 }
 
 /**

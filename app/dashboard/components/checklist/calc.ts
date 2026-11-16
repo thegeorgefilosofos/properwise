@@ -10,7 +10,7 @@
 // κείμενο· αν το γράψιμο και το διάβασμα ζούσαν σε δύο σημεία, η πρώτη αλλαγή
 // σχήματος θα έσπαγε το ένα από τα δύο σιωπηλά.
 // ═══════════════════════════════════════════════════════════════════════════
-import { fd } from '@/components/tokens'
+import { fdOr } from '@/components/tokens'
 import { addMonths as addCalendarMonths } from '@/lib/loans/progress'
 import type { ChecklistItemsRow } from '@/lib/supabase/tables'
 import { athensToday } from '@/lib/core/time'
@@ -22,7 +22,7 @@ import {
 } from './model'
 import type { Who } from '@/lib/accounting/dossier'
 
-export const fmtDate = (d: string | null) => (d ? fd(d) : '')
+export const fmtDate = (d: string | null) => fdOr(d)
 // ΛΗΞΙΠΡΟΘΕΣΜΗ ΣΤΗΝ ΕΛΛΑΔΑ, ΟΧΙ ΣΤΟ UTC. Εδώ γινόταν `new Date(due) < new Date()`:
 // μεσάνυχτα UTC απέναντι στο τώρα. Εργασία με προθεσμία σήμερα γινόταν
 // «ληξιπρόθεσμη» από τις 03:00 και η γραμμή έγραφε «έληξε πριν από σήμερα». Ο

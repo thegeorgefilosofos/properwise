@@ -32,7 +32,6 @@
 // Server Component για SEO/ταχύτητα. Καμία εξάρτηση από 'use client'.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { T } from '@/components/tokens';
 import { siteUrl, PRODUCT_NAME } from '@/lib/core/site';
 import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
@@ -40,7 +39,7 @@ import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import {
-  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
+  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq, GuideCalcLink,
   RelatedGuides, guideJsonLd, type GuideFaqItem,
 } from '../GuideParts';
 import { fe, feWhole, fn, fpRate, grDate } from '@/lib/core/format';
@@ -212,12 +211,14 @@ export default function Page() {
           {`Αν ο όρος έδινε ${fpRate(EX.low)}, το νέο μίσθωμα θα ήταν ${feWhole(EX.rent)} × ${fn(1 + EX.low / 100, 2)} = ${feWhole(R_LOW.newRent)}. Είναι κάτω από το όριο των ${feWhole(R.newRent)}, οπότε ισχύει ο όρος χωρίς αλλαγή.`}
         </div>
 
+        <GuideCalcLink href="/anaprosarmogi-enoikiou" action="Υπολόγισε τη δική σου αναπροσαρμογή" />
+
         {/* 6. Στην πράξη */}
         <H2 {...S.todo} />
         <ul className="lg-ul">
           <li>{'Διάβασε τον όρο αναπροσαρμογής: ποσοστό ή δείκτη και μήνα εφαρμογής.'}</li>
           <li>{`Υπολόγισε το μίσθωμα κατά τον όρο και σύγκρινέ το με το μίσθωμα του ${BASE_YEAR} × ${CAP_FACTOR}. Κράτα το μικρότερο από τα δύο.`}</li>
-          <li>{'Ο '}<Link href="/anaprosarmogi-enoikiou" className="lp-link" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{'υπολογισμός αναπροσαρμογής ενοικίου'}</Link>{` κάνει τη σύγκριση μόνος του και δείχνει το μίσθωμα ανά έτος, με το όριο μέσα στο ${YEAR}.`}</li>
+          <li>{`Ο υπολογισμός αναπροσαρμογής ενοικίου κάνει τη σύγκριση μόνος του και δείχνει το μίσθωμα ανά έτος, με το όριο μέσα στο ${YEAR}.`}</li>
           <li>{`Χρέωσε το σωστό ποσό. Το Ψηφιακό Τέλος Συναλλαγής ${STAMP} υπολογίζεται επί του μισθώματος: στα ${feWhole(R.newRent)} είναι ${stamp(R.newRent)} τον μήνα αντί για ${stamp(R.uncappedRent)} στα ${feWhole(R.uncappedRent)}. Δεν οφείλεται αν η μίσθωση έχει νομίμως υπαχθεί σε ΦΠΑ.`}</li>
           <li>{'Αν ο όρος είναι διατυπωμένος ασαφώς ή αν εξετάζεις εξαίρεση, επιβεβαίωσε με δικηγόρο ή λογιστή πριν στείλεις την ειδοποίηση στον μισθωτή.'}</li>
         </ul>

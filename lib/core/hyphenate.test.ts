@@ -10,7 +10,7 @@
 // ΤΑ ΠΑΡΑΔΕΙΓΜΑΤΑ ΕΙΝΑΙ ΤΑ ΚΑΝΟΝΙΚΑ ΤΗΣ ΓΡΑΜΜΑΤΙΚΗΣ, γιατί εκεί κρίνεται ο
 // κανόνας: «λά-σπη» έναντι «θάρ-ρος» είναι όλη η διαφορά του δεύτερου κανόνα.
 // ═══════════════════════════════════════════════════════════════════════════
-import { syllables, hyphenateWord, hyphenate, bindRefs, SHY } from './hyphenate';
+import { syllables, hyphenateWord, hyphenate, bindRefs, bindShortWords, SHY } from './hyphenate';
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean) => { if (cond) { pass++ } else { fail++; console.error('✗ ' + name) } };
@@ -216,6 +216,16 @@ eq('διεύθυνση: άθικτη', bindRefs('properwise.gr/scan'), 'properwi
 eq('λέξη που τελειώνει σε «ν.» δεν δένεται', bindRefs('πριν. 5 ημέρες'), `πριν. 5${NB}ημέρες`);
 eq('δεύτερο πέρασμα δεν αλλάζει τίποτα', bindRefs(bindRefs('ΦΕΚ Β΄ 5590/2026')), bindRefs('ΦΕΚ Β΄ 5590/2026'));
 ok('το hyphenate δεν δένει τίποτα', !hyphenate('ν. 4223/2013, 30 ημέρες').includes(NB));
+
+// ═══ ΟΙ ΜΙΚΡΕΣ ΛΕΞΕΙΣ ΚΑΤΕΒΑΙΝΟΥΝ ΜΕ ΤΗΝ ΕΠΟΜΕΝΗ (14/11/2026) ═════════════════
+eq('σύνδεσμος και άρθρο: δεμένα σε αλυσίδα', bindShortWords('δαπάνες και η Υπηρεσία'), `δαπάνες και${NB}η${NB}Υπηρεσία`);
+eq('πρόθεση με κεφαλαίο αρχικό', bindShortWords('Για κάθε ζήτημα'), `Για${NB}κάθε ζήτημα`);
+eq('το «στο» μέσα σε λέξη δεν δένεται', bindShortWords('αυτό είναι'), 'αυτό είναι');
+eq('το «ή» με τόνο', bindShortWords('ΑΦΜ ή κοινοτικό'), `ΑΦΜ ή${NB}κοινοτικό`);
+eq('μετά από εισαγωγικά', bindShortWords('«στο εξής»'), `«στο${NB}εξής»`);
+eq('στο τέλος της πρότασης: τίποτα να δέσει', bindShortWords('έρχεται το'), 'έρχεται το');
+eq('τα γράμματα μένουν ίδια', bindShortWords('γράψε στο email και θα απαντήσουμε').replace(/\u00a0/g, ' '), 'γράψε στο email και θα απαντήσουμε');
+eq('δεύτερο πέρασμα δεν αλλάζει τίποτα', bindShortWords(bindShortWords('με τον λογιστή')), bindShortWords('με τον λογιστή'));
 
 console.log(fail === 0 ? `✓ hyphenate: ${pass} έλεγχοι πέρασαν` : `✗ hyphenate: ${fail} απέτυχαν από ${pass + fail}`);
 if (fail > 0) process.exit(1);
