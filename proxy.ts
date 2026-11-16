@@ -72,6 +72,13 @@ export async function proxy(request: NextRequest) {
   // cookie καμία ανακατεύθυνση, ούτε από το Accept-Language (οδηγία Google),
   // οπότε η μηχανή αναζήτησης βλέπει πάντα τη σελίδα που ζήτησε.
   const pagePath = request.nextUrl.pathname;
+  // Η ΕΣΩΤΕΡΙΚΗ ΔΙΑΔΡΟΜΗ ΤΟΥ ΧΑΡΤΗ ΔΕΝ ΕΙΝΑΙ ΣΕΛΙΔΑ (next.config.ts, rewrites):
+  // όποιος τη ζητήσει απευθείας πηγαίνει στη μία διεύθυνση του χάρτη, το /xartis.
+  if (pagePath === "/en/_xartis") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/xartis";
+    return NextResponse.redirect(url, 308);
+  }
   const chosen = request.cookies.get(LOCALE_COOKIE)?.value;
   // Οι σελίδες παραλήπτη (πύλη ενοικιαστή, «Πλήρωσα», επαλήθευση…) κρατούν
   // τη διεύθυνσή τους και παίρνουν τη γλώσσα από τον επισκέπτη

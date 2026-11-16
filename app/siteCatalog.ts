@@ -25,6 +25,13 @@ import { PAGE_UPDATED, TOOLS_UPDATED } from './pageUpdated';
 /** Η διαδρομή της σελίδας του χάρτη και της αγγλικής της (lib/i18n/paths.ts). */
 export const XARTIS_PATH = '/xartis';
 
+/**
+ * Η εσωτερική διαδρομή όπου το next.config.ts ξαναγράφει το /xartis, μέσα στον
+ * διανομέα του /en (χωρίς νέα συνάρτηση). Ο διαμεσολαβητής (proxy.ts) στέλνει
+ * όποιον τη ζητήσει απευθείας στο /xartis.
+ */
+export const XARTIS_INTERNAL = '/en/_xartis';
+
 export type MapGroupId = 'arxiki' | 'ergaleia' | 'odigoi' | 'prothesmies' | 'logistes' | 'logariasmos' | 'nomika';
 
 /** Μία σελίδα του χάρτη, με τα δύο ονόματά της. */

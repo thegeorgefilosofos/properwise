@@ -113,7 +113,7 @@ function visibleDates(html: string): string[] {
 /** Η σελίδα μιας διαδρομής, αποδομένη όπως στον διακομιστή (ή `null` αν θέλει το Next). */
 /** Το αρχείο της σελίδας· οι μήνες των προθεσμιών είναι μία δυναμική διαδρομή. */
 const pageOf = (path: string): string =>
-  path === '/' ? 'app/page.tsx' : /^\/prothesmies\/\d{4}-\d{2}$/.test(path) ? 'app/prothesmies/[mina]/page.tsx' : `app${path}/page.tsx`;
+  path === '/' ? 'app/page.tsx' : path === XARTIS_PATH ? 'app/xartis/view.tsx' : /^\/prothesmies\/\d{4}-\d{2}$/.test(path) ? 'app/prothesmies/[mina]/page.tsx' : `app${path}/page.tsx`;
 
 async function render(path: string): Promise<string | null> {
   const file = './' + pageOf(path).slice(4).replace(/\.tsx$/, '');

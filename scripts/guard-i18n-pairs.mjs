@@ -43,7 +43,12 @@ if (!pairs.length) {
 
 const dirOf = (route) => (route === '/' ? 'app' : join('app', route))
 const isEn = (route) => route === '/en' || route.startsWith('/en/')
-const pageOf = (route) => join(dirOf(route), isEn(route) ? 'view.tsx' : 'page.tsx')
+// ΕΛΛΗΝΙΚΗ ΣΕΛΙΔΑ ΠΟΥ ΑΠΟΔΙΔΕΤΑΙ ΑΠΟ ΤΟΝ ΔΙΑΝΟΜΕΑ ΤΟΥ /en (16/11/2026): το /xartis
+// δεν έχει `page.tsx` (θα ήταν δική του συνάρτηση) αλλά `view.tsx` και το
+// next.config.ts το ξαναγράφει εκεί. Δεκτό ΜΟΝΟ αν η επανεγγραφή υπάρχει.
+const REWRITES = existsSync('next.config.ts') ? readFileSync('next.config.ts', 'utf8') : ''
+const rewritten = (route) => REWRITES.includes(`source: "${route}"`)
+const pageOf = (route) => join(dirOf(route), isEn(route) || (rewritten(route) && !existsSync(join(dirOf(route), 'page.tsx'))) ? 'view.tsx' : 'page.tsx')
 // Σελίδα noindex (π.χ. η επαναφορά κωδικού) δεν δηλώνει hreflang: δεν
 // ευρετηριάζεται σε καμία γλώσσα. Αρκεί να είναι noindex και οι ΔΥΟ πλευρές.
 const metaOk = (route, call) => [pageOf(route), join(dirOf(route), isEn(route) ? 'frame.tsx' : 'layout.tsx')]

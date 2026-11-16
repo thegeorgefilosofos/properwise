@@ -124,6 +124,13 @@ const nextConfig: NextConfig = {
   // οπότε το /calculators πάει στον πιο ζητούμενο υπολογιστή, που συνδέεται με
   // τους άλλους τρεις. Το cookies δείχνει την ενότητα του Απορρήτου με το
   // `anchorOf` του τίτλου της (app/legal-shell.tsx).
+  // ── Ο ΧΑΡΤΗΣ ΙΣΤΟΤΟΠΟΥ ΧΩΡΙΣ ΔΙΚΗ ΤΟΥ ΣΥΝΑΡΤΗΣΗ (16/11/2026) ─────────────────
+  // Το /xartis αποδίδεται από τον υπάρχοντα διανομέα του /en (app/xartis/view.tsx,
+  // `XARTIS_INTERNAL` στο app/siteCatalog.ts). Η διεύθυνση στον περιηγητή μένει
+  // /xartis και ο διαμεσολαβητής τρέχει πάνω της: γλώσσα, nonce, canonical.
+  async rewrites() {
+    return [{ source: "/xartis", destination: "/en/_xartis" }];
+  },
   async redirects() {
     return [
       // Ο κόμβος των εργαλείων υπάρχει από 27/10/2026 (/ergaleia): η αγγλική
