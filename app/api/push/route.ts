@@ -41,6 +41,8 @@ import { createServiceClient, serviceClientError, SERVICE_CLIENT_LOG } from '@/l
 import { cronSecretOk, CRON_SECRET_ENV } from '@/lib/api/cronSecret';
 import * as devices from '@/lib/data/pushSubscriptions';
 import * as properties from '@/lib/data/properties';
+import { reminderOccurrences, isIncomeInstalmentSource, type Recurrable } from '@/lib/calendar/recurrence';
+import { onceOnDay, payableReminder } from '@/lib/calendar/onceOnDay';
 import * as calendar from '@/lib/data/calendar';
 import * as checklist from '@/lib/data/checklist';
 import * as bills from '@/lib/data/bills';
@@ -129,9 +131,13 @@ export async function POST(request: Request) {
     skipped += subs.length - due.length;
     if (!due.length) continue;
 
-    const [props, events, tasks, unpaidBills, dues] = await Promise.all([
+    const [props, eventRead, tasks, unpaidBills, dues] = await Promise.all([
       properties.list<DeadlineProperty>(db, userId, { columns: 'id,name' }),
-      calendar.ofUserInRange<DeadlineEvent>(db, userId, from, to, 'id,property_id,title,event_date,amount,notes,status,source'),
+      // ΚΑΙ ΟΙ ΣΕΙΡΕΣ ΠΟΥ ΞΕΚΙΝΗΣΑΝ ΠΡΙΝ ΑΠΟ ΤΟ ΕΥΡΟΣ (10/11/2026). Ως τότε η
+      // ειδοποίηση έβλεπε μόνο αποθηκευμένες γραμμές, οπότε μια μηνιαία σειρά
+      // ειδοποιούσε μόνο την πρώτη της ημερομηνία.
+      calendar.ofUserWithSeries<DeadlineEvent & Recurrable>(db, userId, from, to,
+        'id,property_id,title,event_date,amount,notes,status,source,recurring,recurring_interval,recurrence_until,recurrence_count,recurrence_exdates'),
       checklist.openOfUser<DeadlineTask>(db, userId, 'id,property_id,description,due_date,note'),
       bills.ofUser<DeadlineBill>(db, userId, 'id,property_id,name,type,amount,due_date,paid',
         { unpaid: true, dueFrom: from, dueTo: to }),
@@ -139,6 +145,17 @@ export async function POST(request: Request) {
         { unpaid: true, dueFrom: from, dueTo: to }),
     ]);
 
+    // Οι εμφανίσεις της σειράς με τους κανόνες του ημερολογίου· ληξιπρόθεσμο
+    // μόνο το μεμονωμένο γεγονός, όπως στο email (lib/calendar/recurrence.ts).
+    const occ = reminderOccurrences(eventRead.rows, today, to);
+    // Οι ειδοποιήσεις μιας ημέρας (λήξη ΠΕΑ, lib/calendar/onceOnDay.ts) μόνο τη
+    // δική τους ημέρα: ούτε ως επερχόμενες ούτε ως ληξιπρόθεσμες. Οι δόσεις του
+    // φόρου εισοδήματος έχουν τις δικές τους υπενθυμίσεις στο email (τριών
+    // ημερών, ή την ίδια μέρα αν εκείνη δεν έφυγε)· η ειδοποίηση τηλεφώνου δεν
+    // τις ξαναλέει (lib/calendar/recurrence.ts).
+    const events: DeadlineEvent[] = [...occ.overdue.filter(e => e.event_date >= from), ...occ.upcoming]
+      .filter(e => !onceOnDay(e) || e.event_date === today)
+      .filter(e => !isIncomeInstalmentSource(e.source));
     const msg = dailyPush(
       deadlineItems({ properties: props, events, tasks, bills: unpaidBills, rent: dues, from, to }),
       today,
@@ -147,7 +164,8 @@ export async function POST(request: Request) {
     // «ΠΛΗΡΩΣΑ» ΣΤΗΝ ΕΙΔΟΠΟΙΗΣΗ: μόνο όταν λέει ΕΝΑ γεγονός ημερολογίου. Ενα
     // διακριτικό για όλες τις συσκευές του χρήστη· όποια πατηθεί πρώτη το εξαργυρώνει.
     const eventId = eventIdOfUid(msg.uid);
-    const pay = eventId ? await mintPayToken(db, userId, eventId, 'push', new Date()) : null;
+    const payable = !!eventId && events.some(e => e.id === eventId && payableReminder(e));
+    const pay = payable && eventId ? await mintPayToken(db, userId, eventId, 'push', new Date()) : null;
     const out = { title: msg.title, body: msg.body, url: msg.url, ...(pay ? { pay } : {}) };
 
     for (const sub of due) {

@@ -277,6 +277,37 @@ function ModalDemo() {
   );
 }
 
+// ═══ ΠΑΡΑΘΥΡΟ ΜΕΣΑ ΣΕ ΠΑΡΑΘΥΡΟ, ΠΟΥ ΚΛΕΙΝΟΥΝ ΜΑΖΙ (11/11/2026) ═══════════════
+// Η φόρμα ζει πίσω από `{open && <Φόρμα/>}` και ανοίγει μέσα της δεύτερο
+// παράθυρο· το «Αποθήκευση» του δεύτερου κλείνει ΚΑΙ τα δύο με μία αλλαγή
+// κατάστασης, δηλαδή τα δύο κλειδώματα κύλισης φεύγουν στην ίδια δέσμευση. Το
+// e2e-mobile ελέγχει ότι μετά η κύλιση της εφαρμογής γυρίζει (lockScroll στο
+// components/ThemeCore.tsx): κύλιση που μένει κλειδωμένη χωρίς ανοιχτό
+// παράθυρο είναι για τον χρήστη μια εφαρμογή που «κόλλησε».
+function NestedForm({ onDone }: { onDone: () => void }) {
+  const [inner, setInner] = useState(true);
+  return (
+    <Modal open onClose={onDone} title="Νέα δαπάνη">
+      <InfoBanner tone="info">Η φόρμα, με δεύτερο παράθυρο ανοιχτό από πάνω της.</InfoBanner>
+      <Modal open={inner} onClose={() => setInner(false)} size="sm" title="Νέα κατηγορία"
+        footer={<Btn variant="primary" onClick={onDone}>Αποθήκευση</Btn>}>
+        <InfoBanner tone="info">Η αποθήκευση κλείνει και τα δύο παράθυρα.</InfoBanner>
+      </Modal>
+    </Modal>
+  );
+}
+
+function ModalNestedDemo() {
+  const [open, setOpen] = useState(true);
+  return (
+    <div>
+      <PageTitle title="Δύο παράθυρα" sub={open ? 'ανοιχτά' : 'κλειστά'} right={<Btn variant="primary" onClick={() => setOpen(true)}>Άνοιγμα</Btn>} />
+      {Array.from({ length: 30 }, (_, i) => <div key={i} className="card" style={{ minHeight: 80 }}>Κάρτα {i + 1}</div>)}
+      {open && <NestedForm onDone={() => setOpen(false)} />}
+    </div>
+  );
+}
+
 function SelectDemo() {
   const [v, setV] = useState('v0');
   return (
@@ -436,9 +467,11 @@ const VIEWS: Record<string, () => React.ReactElement> = {
       </CenterState>
     </Modal>
   ),
-  // Η μαζική καταχώρηση: η κάρτα στο «Νέο ακίνητο» του νέου χρήστη, το Ε9 με
-  // τρία ακίνητα, το ταβάνι των 20, το όριο του πακέτου και το λάθος έγγραφο.
-  bulkWizard: () => <AddPropertyWizard userId="u1" onClose={() => {}} onSaved={() => {}} onBulkImport={() => {}} />,
+  // Η μαζική καταχώρηση: η κάρτα στο «Νέο ακίνητο», το Ε9 με τρία ακίνητα, το
+  // ταβάνι των 20, το όριο του πακέτου και το λάθος έγγραφο. Η κάρτα φαίνεται
+  // πλέον σε κάθε νέα καταχώρηση (10/11/2026)· η σκηνή δείχνει τη μακρύτερη
+  // εκδοχή της, με ακίνητα, ώστε οι σαρωτές να κρίνουν και τη δεύτερη πρόταση.
+  bulkWizard: () => <AddPropertyWizard userId="u1" onClose={() => {}} onSaved={() => {}} onBulkImport={() => {}} hasProperties />,
   bulkE9: () => <MyaadeImport userId="u1" limit={3} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} initialDoc={bulkDoc(3)} />,
   bulkMany: () => <MyaadeImport userId="u1" limit={Infinity} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} initialDoc={bulkDoc(23)} />,
   bulkPlan: () => <MyaadeImport userId="u1" limit={1} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} initialDoc={bulkDoc(3)} />,
@@ -526,6 +559,13 @@ const VIEWS: Record<string, () => React.ReactElement> = {
   plan: () => <TabPlan propertyId="p0" userId="u1" status="vacant" property={PLAN_PROPERTY} />,
   planReno: () => <TabPlan propertyId="p0" userId="u1" status="renovation" property={PLAN_PROPERTY} />,
   planSale: () => <TabPlan propertyId="p0" userId="u1" status="for_sale" property={PLAN_PROPERTY} />,
+  // Η ΑΜΦΙΣΒΗΤΟΥΜΕΝΗ ΚΑΤΑΣΤΑΣΗ: η ερώτηση «Τι είδους εκκρεμότητα είναι» και η
+  // κάρτα «Αναφορά». Ο ιδιοκτήτης τις φωτογράφισε (14/11/2026) και καμία σκηνή
+  // δεν τις απέδιδε. Για στιγμιότυπα (`?c=planDispute`)· ΔΕΝ είναι ακόμη στο
+  // scripts/lib/scenes.mjs: εκεί θα πρόσθετε στις καστάνιες της Νόας τη δική
+  // της επιφάνεια (2.008 px² στο πρώτο κάδρο, τέσσερα χειριστήρια τηλεφώνου)
+  // και η βάση ανεβαίνει μόνο με απόφαση ανθρώπου.
+  planDispute: () => <TabPlan propertyId="p0" userId="u1" status="disputed" property={PLAN_PROPERTY} />,
   // ═══ ΟΙ ΡΥΘΜΙΣΕΙΣ ΔΕΝ ΕΙΧΑΝ ΠΟΤΕ ΣΚΗΝΗ ══════════════════════════════════════
   // Τα «Στοιχεία τιμολόγησης» είναι η πυκνότερη φόρμα της εφαρμογής (έντεκα
   // πεδία σε τέσσερις στήλες) και η «Επωνυμία στις αναφορές» η μόνη με ανέβασμα
@@ -537,6 +577,7 @@ const VIEWS: Record<string, () => React.ReactElement> = {
   referral: () => <TabReferral userId="u1" plan="solo" profileType="individual" />,
   referralPro: () => <TabReferral userId="u1" plan="agency" profileType="professional" />,
   modal: () => <ModalDemo />,
+  modalNested: () => <ModalNestedDemo />,
   calendarDay: () => <DaySheetDemo />,
   select: () => <SelectDemo />,
 };

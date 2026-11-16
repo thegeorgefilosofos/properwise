@@ -167,11 +167,19 @@ Deno.serve(async (req: Request) => {
   // όταν τέσσερα από τα οκτώ επιτόκια είχαν αποτύχει, γιατί μετρούσε μόνο αν
   // πέτυχε η εγγραφή στη βάση. Οποιος διάβαζε τα αρχεία του χρονοδιαγράμματος
   // δεν είχε τρόπο να το μάθει.
+  //
+  // ΚΑΙ ΤΟ «success» ΔΕΝ ΛΕΕΙ ΠΙΑ ΝΑΙ ΣΕ ΜΙΣΗ ΔΟΥΛΕΙΑ. Στις 10/11/2026 η απάντηση
+  // ήταν `{"success":true,"fetched":6,"expected":10}`: τα στοιχεία υπήρχαν, αλλά
+  // η πρώτη λέξη που διαβάζει κανείς έλεγε το αντίθετο. Τώρα `success` σημαίνει
+  // «γράφτηκε και ήρθαν όλα»· το `partial` λέει ρητά την ενδιάμεση περίπτωση.
+  const fetchedCount = Object.keys(fresh).length
+  const partial = fetchedCount < ECB_SERIES.length
   const response = {
-    success: !rateErr,
+    success: !rateErr && !partial,
+    partial,
     timestamp: now.toISOString(),
     month,
-    fetched: Object.keys(fresh).length,
+    fetched: fetchedCount,
     // Ο ΚΑΤΑΛΟΓΟΣ, ΟΧΙ Η ΤΑΥΤΟΤΗΤΑ. Η ταυτότητα κρατά και ό,τι δεν ήρθε σήμερα,
     // οπότε «8 από 8» έβγαινε και όταν ο κατάλογος είχε δέκα σειρές.
     expected: ECB_SERIES.length,

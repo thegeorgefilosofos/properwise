@@ -26,8 +26,10 @@ import {
   AddPropertyWizard,
   DocumentScan,
   WelcomeOnboarding,
+  ProductTour,
 } from './components/lazyTabs';
 import { STATUSES, readStatus, statusLabel as statusLabelOf } from '@/lib/property/status';
+import { agendaCoveredByStart } from '@/lib/home/start';
 import { tabDecision, canCompare } from '@/lib/property/visibility';
 import AmaStrip from './components/AmaStrip';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
@@ -45,14 +47,17 @@ import { planBriefing } from './components/assistantPersona';
 import UpgradeModal from './components/UpgradeModal';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
-import { MYAADE_OPEN_EVENT } from './components/myaadeOpen';
+import { MYAADE_OPEN_EVENT, type MyaadeOpenDetail, type BulkFromScan } from './components/myaadeOpen';
+import { useAppointmentReminders } from './components/useAppointmentReminders';
 import FeatureLock, { LockBadge } from './components/FeatureLock';
 import { PLANS } from '@/lib/billing/plans';
-import { isTabAllowed, isTabPurchasable, canAddProperty, hasFeature, planAtLeast, paidPlanForProfile, requiredPlanForFeature, propertyLimit } from '@/lib/billing/entitlements';
+import { isTabAllowed, isTabPurchasable, canAddProperty, hasFeature, planAtLeast, paidPlanForProfile, requiredPlanForFeature, propertyLimit, activeComp } from '@/lib/billing/entitlements';
 
 // Η ΕΙΣΑΓΩΓΗ ΑΠΟ ΤΟ myAADE ΦΟΡΤΩΝΕΤΑΙ ΜΟΝΟ ΟΤΑΝ ΑΝΟΙΞΕΙ: ο αναλυτής και ο
 // αναγνώστης PDF δεν βαραίνουν την αρχική σελίδα του πίνακα.
 const MyaadeImport = dynamic(() => import('./components/MyaadeImport'), { ssr: false });
+// Ο πελάτης χωρίς ακίνητο δεν φτάνει στη Λογιστική, όπου ζουν τα αιτήματα του λογιστή.
+const AccountantInvites = dynamic(() => import('./components/AccountantInvites'), { ssr: false });
 import { hasAssistant } from '@/lib/billing/aiLimits';
 import { enfiaCarryWizard } from '@/lib/tools/enfiaCarry';
 import { isTabVisible, hiddenTabCount } from '@/lib/nav/disclosure';
@@ -73,8 +78,8 @@ export default function Dashboard() {
     setHandoverIntent, navShowAll, loading, loadError, showAddModal, setShowAddModal,
     statusDropdown, setStatusDropdown, editProperty, setEditProperty, editFocus, setEditFocus, sidebarOpen, setSidebarOpen,
     announce, setAnnounce, cmdkOpen, setCmdkOpen, quickAddOpen, setQuickAddOpen, manualExpense,
-    setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, startCollapsed, showPreview, setShowPreview,
-    scanAfterAdd, setScanAfterAdd, plan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
+    setManualExpense, handledExpense, setHandledExpense, showWelcome, setShowWelcome, tourDone, finishTour, startCollapsed, showPreview, setShowPreview,
+    scanAfterAdd, setScanAfterAdd, plan, planVersion, refreshPlan, profileType, setProfileType, taxForm, showUpgrade, setShowUpgrade,
     kbdHint, inventoryItems, checklistAlerts, pendingCount, pendingUnknown, ent, effPlan, trial,
     startState, toggleStartPanel, effProfileType, ownerCtx, showAllTabsPref, disclosure,
     setNavShowAllPref, showAllTabs, fetchProperties, tryAddProperty, openWizard, updateStatus, deleteProperty,
@@ -98,18 +103,43 @@ export default function Dashboard() {
   // στο υπάρχον gate, για να ΚΩΔΙΚΟΠΟΙΗΣΕΙ την αναλλοίωτη μία φορά και να
   // στενέψει τον τύπο για ΟΛΗ την απόδοση — αντί για 20 `!` ή cast στα σημεία
   // χρήσης, που θα σιώπαγαν τον έλεγχο αντί να τον ικανοποιήσουν.
-  // ── Η ΕΙΣΑΓΩΓΗ ΑΠΟ ΤΟ myAADE ΑΝΟΙΓΕΙ ΑΠΟ ΤΡΙΑ ΣΗΜΕΙΑ ───────────────────
-  // Η κενή οθόνη και η υποδοχή την ανοίγουν απευθείας· η καρτέλα ΕΝΦΙΑ, που
-  // ζει βαθιά μέσα στη Λογιστική, στέλνει γεγονός (όπως το «pos:ask»).
+  // ── Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΑΝΟΙΓΕΙ ΟΠΟΙΑΔΗΠΟΤΕ ΣΤΙΓΜΗ (απόφαση ιδιοκτήτη 10/11/2026)
+  // Σημεία εισόδου: η κενή οθόνη, η υποδοχή, η κάρτα στο πρώτο βήμα του «Νέο
+  // ακίνητο» (με ή χωρίς ακίνητα), το Ctrl+K, η καρτέλα ΕΝΦΙΑ και η «Σάρωση
+  // εγγράφου» όταν το έγγραφο είναι Ε9 ή εκκαθαριστικό ΕΝΦΙΑ. Η καρτέλα ΕΝΦΙΑ,
+  // βαθιά μέσα στη Λογιστική, στέλνει γεγονός (όπως το «pos:ask»). Η σάρωση
+  // περνά και το αρχείο, ώστε να μην ανεβαίνει δεύτερη φορά.
+  // ── Η ΠΕΡΙΗΓΗΣΗ, ΜΟΝΟ ΟΤΑΝ ΖΗΤΗΘΕΙ ───────────────────────────────────
+  // Μετά το πρώτο ακίνητο ο χρήστης πέφτει κατευθείαν στην Επισκόπηση, με τον
+  // φόρο του στην κορυφή: κανένα παράθυρο ανάμεσα (κριτική σχεδίασης,
+  // 13/11/2026· ήταν κάρτα «Το ακίνητο αποθηκεύτηκε» και από εκεί περιήγηση).
+  // Η περιήγηση ζει ως ήσυχο κουμπί στη λίστα «Από πού ξεκινάς».
+  const [tourOpen, setTourOpen] = useState(false);
   const [myaadeOpen, setMyaadeOpen] = useState(false);
+  const [myaadeFile, setMyaadeFile] = useState<File | null>(null);
+  // Το PDF που η Σάρωση έστειλε κατευθείαν (χωρίς βήμα ελέγχου): η μαζική δείχνει
+  // τότε το «Κράτα αντίγραφο» και τον δρόμο πίσω, «Σάρωσέ το ως έγγραφο».
+  const [myaadeFromScan, setMyaadeFromScan] = useState<BulkFromScan | null>(null);
+  // Το αρχείο που γυρίζει από τη μαζική στην κανονική σάρωση.
+  const [scanBackFile, setScanBackFile] = useState<File | null>(null);
+  const openMyaade = (file: File | null = null, fromScan: BulkFromScan | null = null) => { setMyaadeFile(file); setMyaadeFromScan(fromScan); setMyaadeOpen(true); };
+  // Η σάρωση χωρίς ακίνητο: μόνο με μετρημένα άδεια λίστα, όχι στη φόρτωση ή σε σφάλμα.
+  const scanNoProperty = !selected && !loading && !loadError && properties.length === 0;
+  const closeMyaade = () => { setMyaadeOpen(false); setMyaadeFile(null); setMyaadeFromScan(null); };
+  // Το αρχείο της επιστροφής ζει όσο είναι ανοιχτή η Σάρωση: στο επόμενο άνοιγμα
+  // δεν ξαναδιαβάζεται. Ρύθμιση στην απόδοση, όχι σε εφέ (όπως το `initialApplied`).
+  if (!quickAddOpen && scanBackFile) setScanBackFile(null);
   useEffect(() => {
-    const open = () => setMyaadeOpen(true);
+    const open = (e: Event) => { setMyaadeFile((e as CustomEvent<MyaadeOpenDetail>).detail?.file ?? null); setMyaadeFromScan(null); setMyaadeOpen(true); };
     window.addEventListener(MYAADE_OPEN_EVENT, open);
     return () => window.removeEventListener(MYAADE_OPEN_EVENT, open);
   }, []);
 
+  // «ΔΕΚΑ ΛΕΠΤΑ ΠΡΙΝ ΑΠΟ ΚΑΘΕ ΡΑΝΤΕΒΟΥ»: σε κάθε καρτέλα, για όλα τα ακίνητα.
+  useAppointmentReminders(user?.id);
+
   if (loading || !user) return (
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--bg-base)'}}>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'calc(100vh / var(--zoom, 1))',background:'var(--bg-base)'}}>
       <Spinner size={48} label="Φόρτωση…" />
     </div>
   );
@@ -234,6 +264,10 @@ export default function Dashboard() {
     { id: 'act-ask', label: `Ρώτα τη ${ASSISTANT_NAME}`, hint: 'Ενέργεια', keywords: 'noa βοηθός assistant ρώτα σάρωσε',
       action: () => askAssistant() },
     { id: 'act-add', label: 'Προσθήκη ακινήτου', hint: 'Ενέργεια', keywords: 'new property add', action: () => tryAddProperty() },
+    // ΧΩΡΙΣ ΕΛΕΓΧΟ ΟΡΙΟΥ, ΕΠΙΤΗΔΕΣ: στο όριο του πακέτου ο οδηγός δεν ανοίγει,
+    // αλλά η εισαγωγή μένει χρήσιμη (ταιριάζει τα υπάρχοντα, φέρνει τις δόσεις
+    // ΕΝΦΙΑ) και δείχνει η ίδια ποια νέα είναι «Εκτός πακέτου».
+    { id: 'act-bulk', label: 'Μαζική καταχώρηση από Ε9 ή ΕΝΦΙΑ', hint: 'Ενέργεια', keywords: 'e9 ε9 enfia ενφια μαζική εισαγωγή πράξη εκκαθαριστικό myaade pdf φωτογραφία bulk import', action: () => openMyaade() },
     { id: 'act-signout', label: 'Αποσύνδεση', hint: 'Ενέργεια', keywords: 'logout sign out exit', action: () => signOut() },
   ];
 
@@ -274,8 +308,8 @@ export default function Dashboard() {
         <button
           onClick={()=>{ setQuickAddOpen(true); setSidebarOpen(false); }}
           className="quick-add-btn"
-          disabled={!selected}
-          title={selected ? 'Φωτογράφισε ή ανέβασε οποιοδήποτε έγγραφο: λογαριασμό, απόδειξη πληρωμής, μισθωτήριο, ασφαλιστήριο' : 'Πρόσθεσε πρώτα ένα ακίνητο'}>
+          disabled={!selected&&!scanNoProperty}
+          title={selected ? 'Φωτογράφισε ή ανέβασε οποιοδήποτε έγγραφο: λογαριασμό, απόδειξη πληρωμής, μισθωτήριο, ασφαλιστήριο' : scanNoProperty ? 'Πολλά ακίνητα μαζί από το Ε9 ή την πράξη ΕΝΦΙΑ' : 'Πρόσθεσε πρώτα ένα ακίνητο'}>
           <span className="quick-add-icon" aria-hidden>
             <svg aria-hidden="true" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -468,7 +502,7 @@ export default function Dashboard() {
                           `aria-hidden` ώστε να μη μπει στη σειρά του Tab. Με
                           πληκτρολόγιο κλείνει με Escape. */}
                       <div aria-hidden onClick={()=>setStatusDropdown(false)} style={{position:'fixed',inset:0,zIndex:99}}/>
-                      <div role="menu" style={{position:'absolute',top:'calc(100% + 8px)',left:0,maxHeight:'min(440px, calc(100vh - 96px))',overflowY:'auto',overscrollBehavior:'contain',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10,padding:'6px 0',zIndex:100,minWidth:224,boxShadow:'var(--shadow-lg)'}}>
+                      <div role="menu" style={{position:'absolute',top:'calc(100% + 8px)',left:0,maxHeight:'min(440px, calc(calc(100vh / var(--zoom, 1)) - 96px))',overflowY:'auto',overscrollBehavior:'contain',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10,padding:'6px 0',zIndex:100,minWidth:224,boxShadow:'var(--shadow-lg)'}}>
                         <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)', lineHeight: 1.3,fontWeight:600,color:'var(--text-tertiary)',padding:'6px 16px 4px'}}>Κατάσταση</div>
                         {STATUSES.map(({ key: k, label: v, hint }) => {
                           const active = readStatus(selected)===k;
@@ -569,7 +603,7 @@ export default function Dashboard() {
                 <BrandMark size={52} />
               </div>
               <h1 style={{fontFamily: T.font.sans,fontSize:28,fontWeight:700,letterSpacing:'-0.025em',color:'var(--text-primary)',margin:'0 0 10px',textWrap:'balance'}}>Ξεκίνα από ένα ακίνητο</h1>
-              <p style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 28px',maxWidth:600,textWrap:'balance'}}>Φτάνουν ο τύπος, η κατάσταση και ένα όνομα, π.χ. «Διαμέρισμα στο κέντρο». Τα υπόλοιπα τα συμπληρώνεις όποτε θέλεις.</p>
+              <p style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 28px',maxWidth:600,textWrap:'pretty'}}>Φτάνουν ο τύπος, η κατάσταση και ένα όνομα, π.χ. «Διαμέρισμα στο κέντρο». Τα υπόλοιπα τα συμπληρώνεις όποτε θέλεις.</p>
               <ol style={{listStyle:'none',padding:0,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,170px),1fr))',gap:12,margin:'0 0 30px',textAlign:'left'}}>
                 {[
                   // ΙΔΙΟ ΜΕ ΤΟΝ ΟΔΗΓΟ ΚΑΙ ΜΕ ΤΗΝ ΠΡΟΤΑΣΗ ΑΠΟ ΠΑΝΩ (20.10.2026). Ελεγε
@@ -597,9 +631,10 @@ export default function Dashboard() {
                   πριν δώσει οτιδήποτε. Δευτερεύον, δίπλα στην κύρια ενέργεια. */}
               <div style={{display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap'}}>
                 <Btn variant="primary" onClick={() => tryAddProperty('empty')}>Πρόσθεσε το ακίνητό σου</Btn>
-                <Btn variant="secondary" onClick={() => setMyaadeOpen(true)}>Από Ε9 ή ΕΝΦΙΑ</Btn>
+                <Btn variant="secondary" onClick={() => openMyaade()}>Από Ε9 ή ΕΝΦΙΑ</Btn>
                 <Btn variant="secondary" onClick={() => setShowPreview(true)}>Δες ένα παράδειγμα</Btn>
               </div>
+              {user && <div style={{textAlign:'left'}}><AccountantInvites userId={user.id} canShare={hasFeature(ent,'e2_export')} /></div>}
             </div>
           </div>
         ) : (
@@ -658,16 +693,12 @@ export default function Dashboard() {
                       )}
                     </div>
                   : <FeatureLock title="Σύγκρινε τα ακίνητά σου δίπλα-δίπλα" benefit={`Απόδοση, δαπάνες και πάροχοι όλων των ακινήτων σου σε έναν πίνακα. Ξεκλειδώνει με το πακέτο ${PLANS.owner.name}.`} requiredPlan="owner" currentPlanName={PLANS[effPlan].name} onManage={()=>setNav('settings')} />)}
-              {/* ═══ Ο ΠΙΝΑΚΑΣ ΤΗΣ ΔΟΚΙΜΗΣ, ΠΑΝΩ ΑΠΟ ΤΑ ΠΑΝΤΑ ═══════════════
-                  Ζει ΕΔΩ και όχι μέσα στην Επισκόπηση για δύο λόγους: είναι
-                  πλαίσιο του λογαριασμού, όχι του ακινήτου (τα βήματά του
-                  μετρούν ό,τι έχει ο ΧΡΗΣΤΗΣ) και η Επισκόπηση θα κουβαλούσε
-                  έξι ακόμη props για κάτι που δεν την αφορά. */}
-              {navSafe==='overview' && (
-                <StartPanel state={startState} collapsed={startCollapsed} onToggle={toggleStartPanel}
-                  onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : setNav(t)}
-                  onPreview={()=>setShowPreview(true)} onAsk={()=>askAssistant('', false)} />
-              )}
+              {/* ═══ Ο ΠΙΝΑΚΑΣ ΤΗΣ ΔΟΚΙΜΗΣ, ΚΑΤΩ ΑΠΟ ΤΟ ΚΕΝΤΡΙΚΟ ΠΟΣΟ ═══════════
+                  Η κατάστασή του ζει ΕΔΩ, γιατί είναι πλαίσιο του λογαριασμού
+                  (τα βήματά του μετρούν ό,τι έχει ο ΧΡΗΣΤΗΣ). Η Επισκόπηση τον
+                  δέχεται έτοιμο ως `startSlot` και τον βάζει κάτω από το ποσό
+                  της κορυφής (13/11/2026: πάνω από όλα έκρυβε στο τηλέφωνο τον
+                  φόρο του νέου χρήστη). */}
               {/* ═══ ΤΟ `key` ΕΙΝΑΙ Ο ΔΙΑΚΟΠΤΗΣ ΤΗΣ ΚΟΥΡΣΑΣ ═══════════════════════
                   ΤΟ ΣΦΑΛΜΑ: αλλάζεις ακίνητο ενώ φορτώνει το προηγούμενο. Η
                   `load` δεν έχει ακύρωση και το component ΔΕΝ ξαναστηνόταν —
@@ -682,7 +713,11 @@ export default function Dashboard() {
                   πίνακας. Ό,τι επιστρέψει από την προηγούμενη φόρτωση γράφει σε
                   component που δεν υπάρχει πια και η React το αγνοεί. Το ίδιο
                   ισχύει για κάθε καρτέλα που φορτώνει δικά της δεδομένα. */}
-              {navSafe==='overview'  && <OverviewTab key={selected.id} prop={selected} properties={properties} userId={user.id} onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='edit' ? setEditProperty(selected) : setNav(t)} tabVisible={navVisible} profileType={effProfileType} legalForm={taxForm}/>}
+              {navSafe==='overview'  && <OverviewTab key={selected.id} prop={selected}
+                startSlot={<StartPanel state={startState} collapsed={startCollapsed} onToggle={toggleStartPanel}
+                  onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='add' ? tryAddProperty() : t==='edit-basics' ? (setEditFocus('basics'), setEditProperty(selected)) : setNav(t)}
+                  onPreview={()=>setShowPreview(true)}
+                  onTour={!tourDone ? ()=>setTourOpen(true) : undefined} />} agendaExclude={agendaCoveredByStart(startState)} properties={properties} userId={user.id} onNavigate={(t)=> t==='scan' ? setQuickAddOpen(true) : t==='edit' ? setEditProperty(selected) : t==='edit-rent' ? (setEditFocus('rent'), setEditProperty(selected)) : t==='edit-enfia' ? (setEditFocus('enfia'), setEditProperty(selected)) : setNav(t)} tabVisible={navVisible} profileType={effProfileType} legalForm={taxForm}/>}
               {nav==='finances'  && <TabFinances key={selected.id} propertyId={selected.id} userId={user.id} propertyName={selected.name} properties={financeProperties} profileType={effProfileType} legalForm={taxForm} onScan={()=>setQuickAddOpen(true)} openAddNonce={manualExpense} handledAddNonce={handledExpense} onAddHandled={setHandledExpense} />}
               {nav==='calendar'  && <TabCalendar key={selected.id} propertyId={selected.id} userId={user.id} openTasks={checklistAlerts} onOpenTasks={()=>setNav('checklist')}/>}
               {/* ═══ Η ΒΡΑΧΥΧΡΟΝΙΑ ΣΤΕΚΕΤΑΙ ΜΟΝΗ ΤΗΣ ═══════════════════════════
@@ -742,7 +777,7 @@ export default function Dashboard() {
                   )}
                 </>
               )}
-              {nav==='loan'      && <TabLoan key={selected.id} propertyId={selected.id} userId={user.id} propertyValue={selected.value??undefined} propertySqm={selected.sqm??undefined} propertyYearBuilt={selected.year_built??undefined} profileType={effProfileType}/>}
+              {nav==='loan'      && <TabLoan key={selected.id} propertyId={selected.id} userId={user.id} propertyValue={selected.value??undefined} propertySqm={selected.sqm??undefined} propertyYearBuilt={selected.year_built??undefined} profileType={effProfileType} plan={effPlan}/>}
               {nav==='accounting'&& <TabAccounting key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} legalForm={taxForm} plan={effPlan} status={readStatus(selected)} onNavigate={(t)=>setNav(t)} onAddExpense={()=>{ setNav('finances'); setManualExpense(n=>n+1); }} onEditProperty={(id)=>{ const p=properties.find(x=>x.id===id); if(p){ setEditFocus('owner_afm'); setEditProperty(p); } }}/>}
               {navSafe==='inventory' && <TabInventory key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} handoverIntent={handoverIntent} onIntentConsumed={()=>setHandoverIntent(null)} properties={properties}/>}
               {nav==='checklist' && <TabChecklist key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType}/>}
@@ -810,7 +845,7 @@ export default function Dashboard() {
                 </>
               )}
               {nav==='referral'  && <TabReferral userId={user.id} plan={plan} profileType={effProfileType}/>}
-              {nav==='settings'  && <TabSettings key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} declaredType={profileType} onProfileChange={setProfileType}/>}
+              {nav==='settings'  && <TabSettings key={selected.id} propertyId={selected.id} userId={user.id} profileType={effProfileType} declaredType={profileType} onProfileChange={setProfileType} releaseFrom={effPlan} onPlanChanged={refreshPlan} planVersion={planVersion}/>}
             </div>
             </TabBoundary>
           </>
@@ -828,7 +863,7 @@ export default function Dashboard() {
               // ήταν σκέτη τελεία: δύο πληροφορίες που ο αναγνώστης οθόνης δεν
               // μπορούσε να μεταφέρει με κανέναν τρόπο. Το `aria-current` λέει
               // πού βρίσκεσαι και το σήμα αποκτά τον αριθμό του.
-              <button key={item.id} className={`bottom-nav-item ${isActive?'active':''}`} onClick={onTap}
+              <button key={item.id} data-tour-nav={item.id} className={`bottom-nav-item ${isActive?'active':''}`} onClick={onTap}
                 aria-current={isActive ? 'page' : undefined}>
                 {item.icon}
                 <span>{item.label}</span>
@@ -875,7 +910,7 @@ export default function Dashboard() {
           // Ο δωρεάν «Ιδιοκτήτης» δεν έχει τη Νόα· η δοκιμή την έχει (ανεβάζει
           // το επίπεδο στο «Ιδιοκτήτης+»), γι' αυτό κρίνει το ενεργό πακέτο.
           assistantLocked={!hasAssistant(effPlan)}
-          planBrief={planBriefing(effPlan, plan, trial.active ? trial.daysLeft : undefined)}
+          planBrief={planBriefing(effPlan, plan, trial.active ? trial.daysLeft : undefined, activeComp(ent)?.plan ?? null)}
           onScan={()=>setQuickAddOpen(true)}
         />
       )}
@@ -896,7 +931,7 @@ export default function Dashboard() {
           onNavigate={()=>tryAddProperty()}
           onAddProperty={()=>tryAddProperty()}
           onScan={()=>{ setScanAfterAdd(true); tryAddProperty(); }}
-          planBrief={planBriefing(effPlan, plan, trial.active ? trial.daysLeft : undefined)}
+          planBrief={planBriefing(effPlan, plan, trial.active ? trial.daysLeft : undefined, activeComp(ent)?.plan ?? null)}
         />
       )}
 
@@ -917,15 +952,28 @@ export default function Dashboard() {
           σαρώνει πια τίποτα. Ο τίτλος μένει: είναι το όνομα του παραθύρου δίπλα
           στο «×» και το μόνο που ακούει ο αναγνώστης οθόνης — το χειρόγραφο
           παράθυρο δεν είχε κανένα. */}
-      <Modal open={!!(quickAddOpen&&user&&selected)} onClose={requestCloseQuickAdd} size="lg"
+      {/* ΚΑΙ ΧΩΡΙΣ ΑΚΙΝΗΤΟ, ΜΕ ΜΟΝΟ ΤΗ ΜΑΖΙΚΗ (12/11/2026). Ηταν `quickAddOpen&&user&&selected`:
+          ο άδειος λογαριασμός δεν είχε σάρωση, ενώ το Ε9 ή η πράξη ΕΝΦΙΑ είναι
+          ακριβώς ο τρόπος να φτιάξει τα ακίνητά του. Ανοίγει μόνο ΑΦΟΥ φορτώσει
+          η λίστα και βγει μετρημένα άδεια (`scanNoProperty`): στη φόρτωση το
+          `selected` είναι ακόμη κενό και το DocumentScan κρατά το ακίνητο από το
+          πρώτο του άνοιγμα. */}
+      <Modal open={!!(quickAddOpen&&user&&(selected||scanNoProperty))} onClose={requestCloseQuickAdd} size="lg"
         title="Σάρωση εγγράφου">
-        {user&&selected&&<DocumentScan propertyId={selected.id} userId={user.id} properties={properties} onBusyChange={setScanBusy} onDirtyChange={setScanDirty}
+        {/* ΤΟ ΚΛΕΙΔΙ ΔΕΝ ΑΛΛΑΖΕΙ ΜΕ ΤΟ ΑΚΙΝΗΤΟ (έλεγχος PR 547). Ηταν `selected?.id`:
+            κάθε αλλαγή του επιλεγμένου ακινήτου όσο το παράθυρο ήταν ανοιχτό (π.χ.
+            η επαναφόρτωση μετά από καταχώρηση) ξαναέστηνε τη σάρωση και έσβηνε τον
+            έλεγχο που ήταν στη μέση. Το ακίνητο της σάρωσης το κρατά το ίδιο το
+            DocumentScan (`targetId`). Ξαναστήνεται μόνο στο πέρασμα από «χωρίς
+            ακίνητο» σε «με ακίνητο», όπου υπάρχει μόνο η πρώτη οθόνη. */}
+        {user&&(selected||scanNoProperty)&&<DocumentScan key={selected ? 'property' : 'none'} propertyId={selected?.id ?? null} initialFile={scanBackFile ?? undefined} userId={user.id} properties={properties} onBusyChange={setScanBusy} onDirtyChange={setScanDirty}
           onManual={()=>{ closeQuickAdd(); setNav('finances'); setManualExpense(n=>n+1); }}
           onOpenAccounting={()=>{ closeQuickAdd(); setNav('accounting'); }}
+          onBulkImport={(file, fromScan)=>{ closeQuickAdd(); setScanBackFile(null); openMyaade(file, fromScan ?? null); }}
           onSaved={async()=>{await fetchProperties(user.id);}}/>}
       </Modal>
 
-      {showWelcome&&user&&<WelcomeOnboarding userId={user.id}
+      {showWelcome&&user&&<WelcomeOnboarding userId={user.id} name={fullName}
         onAddProperty={()=>{ setShowWelcome(false); openWizard('welcome'); }}
         // ═══ Η ΣΑΡΩΣΗ ΠΕΡΝΑΕΙ ΑΠΟ ΤΟΝ ΟΔΗΓΟ ═════════════════════════════════
         // Εδώ δημιουργούνταν σιωπηλά «Νέο ακίνητο», διαμέρισμα, με κατάσταση
@@ -935,7 +983,7 @@ export default function Dashboard() {
         // κατάσταση, όνομα· «Αποθήκευση τώρα» υπάρχει από το δεύτερο βήμα) και η
         // σάρωση ξεκινά πάνω στο ακίνητο που αποθηκεύτηκε.
         onScanCreate={()=>{ setShowWelcome(false); setScanAfterAdd(true); openWizard('scan'); }}
-        onMyaade={()=>{ setShowWelcome(false); setMyaadeOpen(true); }}
+        onMyaade={()=>{ setShowWelcome(false); openMyaade(); }}
         onProfile={setProfileType}
         onClose={()=>setShowWelcome(false)} />}
       {/* ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΔΕΝ ΓΡΑΦΕΙ ΤΙΠΟΤΑ. Ήταν ακίνητο μέσα στον λογαριασμό, με
@@ -949,23 +997,42 @@ export default function Dashboard() {
           ίδιο ποσό (useDashboard, commitEnfiaCarry). */}
       {showAddModal&&user&&<AddPropertyWizard userId={user.id}
         initial={enfiaCarry ? enfiaCarryWizard(enfiaCarry.inputs) : undefined}
-        // ΧΩΡΙΣ ΚΑΝΕΝΑ ΑΚΙΝΗΤΟ, ΠΡΩΤΑ Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ (απόφαση ιδιοκτήτη 09/11/2026).
-        onBulkImport={properties.length === 0 ? ()=>{ setShowAddModal(false); setScanAfterAdd(false); setMyaadeOpen(true); } : undefined}
+        // Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΣΤΟ ΠΡΩΤΟ ΒΗΜΑ, ΠΑΝΤΑ (απόφαση ιδιοκτήτη 10/11/2026).
+        // Ως τις 09/11 φαινόταν μόνο χωρίς κανένα ακίνητο· όποιος είχε ένα και
+        // ήθελε να περάσει τα υπόλοιπα δεν έβρισκε δρόμο από εδώ.
+        onBulkImport={()=>{ setShowAddModal(false); setScanAfterAdd(false); dropEnfiaCarry(); openMyaade(); }}
+        hasProperties={properties.length > 0}
         onClose={()=>{setShowAddModal(false);setScanAfterAdd(false);dropEnfiaCarry();}} onSaved={async(id)=>{
+        // Το πρώτο ακίνητο του λογαριασμού: μετρημένο ΠΡΙΝ την ανανέωση της λίστας.
+        const first = properties.length === 0;
         setShowAddModal(false);
         await commitEnfiaCarry(id);
         const list = await fetchProperties(user.id);
-        const added = scanAfterAdd && id ? list?.find(p => p.id === id) : undefined;
+        const savedProp = id ? list?.find(p => p.id === id) : undefined;
+        const added = scanAfterAdd ? savedProp : undefined;
         setScanAfterAdd(false);
         if (added) { setSelected(added); setNav('overview'); setQuickAddOpen(true); }
+        // Ο ΦΟΡΟΣ ΑΜΕΣΩΣ ΜΕΤΑ ΤΗΝ ΑΠΟΘΗΚΕΥΣΗ: η Επισκόπηση του νέου ακινήτου,
+        // με τον φόρο ενοικίων στην κορυφή (OverviewTab). Οχι όταν ακολουθεί
+        // σάρωση: εκεί ο χρήστης ζήτησε ήδη την επόμενη κίνηση.
+        else if (first && savedProp) { setSelected(savedProp); setNav('overview'); }
       }}/>}
-      {editProperty&&user&&<AddPropertyWizard userId={user.id} existing={editProperty} focus={editFocus} onClose={()=>{setEditProperty(null);setEditFocus(null);}} onSaved={async()=>{setEditProperty(null);setEditFocus(null);await fetchProperties(user.id);}}/>}
-      {myaadeOpen&&<MyaadeImport userId={user.id} limit={propertyLimit(ent)}
-        onUpgrade={()=>{ setMyaadeOpen(false); setShowUpgrade(true); }}
-        onClose={()=>setMyaadeOpen(false)}
+      {editProperty&&user&&<AddPropertyWizard userId={user.id} existing={editProperty} focus={editFocus}
+        // Η επεξεργασία γυρίζει εκεί όπου άνοιξε: στην Επισκόπηση, που
+        // ξαναδιαβάζει το ακίνητο και δείχνει τον φόρο με το νέο μίσθωμα.
+        onClose={()=>{setEditProperty(null);setEditFocus(null);}}
+        onSaved={async()=>{setEditProperty(null);setEditFocus(null);await fetchProperties(user.id);}}/>}
+      {tourOpen&&<ProductTour onDone={()=>{ setTourOpen(false); finishTour(); }} />}
+      {myaadeOpen&&<MyaadeImport userId={user.id} limit={propertyLimit(ent)} initialFile={myaadeFile ?? undefined}
+        fromScan={myaadeFromScan ?? undefined}
+        // «ΣΑΡΩΣΕ ΤΟ ΩΣ ΕΓΓΡΑΦΟ»: πίσω στη Σάρωση με το ίδιο αρχείο, μόνο όταν η
+        // σάρωση είχε ακίνητο (χωρίς ακίνητο ένα έγγραφο δεν έχει πού να μπει).
+        onScanAsDocument={myaadeFromScan?.propertyId && myaadeFile ? ()=>{ const f = myaadeFile; closeMyaade(); setScanBackFile(f); setQuickAddOpen(true); } : undefined}
+        onUpgrade={()=>{ closeMyaade(); setShowUpgrade(true); }}
+        onClose={closeMyaade}
         onSaved={async()=>{ await fetchProperties(user.id); }}
         // Οι δόσεις ζουν στο ημερολόγιο ακινήτου: χωρίς επιλεγμένο, το πρώτο της λίστας.
-        onOpenCalendar={async()=>{ setMyaadeOpen(false); const list = await fetchProperties(user.id); if (!selected && list?.[0]) setSelected(list[0]); setNav('calendar'); }}/>}
+        onOpenCalendar={async()=>{ closeMyaade(); const list = await fetchProperties(user.id); if (!selected && list?.[0]) setSelected(list[0]); setNav('calendar'); }}/>}
       {showUpgrade&&<UpgradeModal currentCount={properties.length} planId={effPlan} onClose={()=>setShowUpgrade(false)} onManage={()=>{setShowUpgrade(false);setNav('settings');}}/>}
       <DpaModal />
     </div>

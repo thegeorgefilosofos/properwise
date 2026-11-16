@@ -10,14 +10,16 @@
 //     η υποχρέωση αντιστοιχεί σε παραστατικό του φακέλου, το `dossier` δείχνει
 //     σε αυτό και το τεστ επαληθεύει ότι το `who` συμφωνεί.
 // Οι προθεσμίες που πέφτουν σε αργία/Σαββατοκύριακο μετατίθενται στην επόμενη
-// εργάσιμη (άρθρο περί διοικητικών προθεσμιών).
+// εργάσιμη: ΚΦΔ (ν. 5104/2024) άρθρο 7 παρ. 1 (βλ. `nextWorkingDay`). Εξαίρεση
+// μόνο όπου ο ίδιος ο νόμος λέει «τελευταία ΕΡΓΑΣΙΜΗ του μήνα» (δόσεις ΕΝΦΙΑ,
+// δόσεις φόρου εισοδήματος): εκεί η μέρα είναι ήδη εργάσιμη και δεν μετατίθεται.
 //
 // ΜΙΑ ΠΗΓΗ, ΜΙΑ ΗΜΕΡΟΜΗΝΙΑ. Αυτό το αρχείο είναι ο ΜΟΝΟΣ τόπος όπου ζει θεσμική
 // προθεσμία φορολογίας ακινήτων. Το `app/dashboard/components/obligations.ts`
 // (Επισκόπηση) και το `TabCalendar.tsx` (Ημερολόγιο) διαβάζουν από εδώ, με το
 // ίδιο κλειδί ταυτότητας γεγονότος (`taxEventSource`), ώστε η ίδια υποχρέωση να
 // μην μπορεί να υπάρξει δύο φορές με δύο ημερομηνίες.
-import { isNonWorkingDay } from '../calendar/greekHolidays'
+import { isNonWorkingDay, nextWorkingDay } from '../calendar/greekHolidays'
 import type { EventDraft } from '../data/calendar'
 import { readStatus, type StatusRow } from '../property/status'
 import { WHO_LABEL, type Who } from '../accounting/dossier'
@@ -30,7 +32,7 @@ export type PropertyTaxProfile = 'owner' | 'long_term' | 'short_term'
  *  που θέλει «μία γραμμή ανά υποχρέωση» και όχι δώδεκα ίδιες. */
 export type TaxObligationKind =
   | 'enfia-issue' | 'enfia-first' | 'enfia-instalment' | 'enfia-last'
-  | 'e9' | 'income-decl' | 'income-autofile'
+  | 'e9' | 'income-decl' | 'income-autofile' | 'income-instalment'
   | 'str-registry' | 'str-climate-fee'
 
 export interface TaxObligation {
@@ -68,7 +70,7 @@ export const isTaxEventSource = (source?: string | null): boolean =>
   !!source && source.startsWith(TAX_SOURCE_PREFIX)
 
 export const TAX_KINDS: readonly TaxObligationKind[] = [
-  'enfia-issue', 'enfia-first', 'enfia-instalment', 'enfia-last', 'e9', 'income-autofile', 'income-decl',
+  'enfia-issue', 'enfia-first', 'enfia-instalment', 'enfia-last', 'e9', 'income-autofile', 'income-decl', 'income-instalment',
   'str-registry', 'str-climate-fee',
 ]
 
@@ -140,18 +142,10 @@ function iso(y: number, mIndex0: number, day: number): string {
   return `${y}-${String(mIndex0 + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 function daysInMonth(y: number, mIndex0: number): number { return new Date(y, mIndex0 + 1, 0).getDate() }
-function addDay(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const nd = new Date(Date.UTC(y, m - 1, d + 1))
-  return `${nd.getUTCFullYear()}-${String(nd.getUTCMonth() + 1).padStart(2, '0')}-${String(nd.getUTCDate()).padStart(2, '0')}`
-}
 
-// Μετάθεση προθεσμίας στην επόμενη εργάσιμη αν πέφτει σε αργία/ΣΚ.
-export function nextWorkingDay(dateStr: string): string {
-  let d = dateStr, guard = 0
-  while (isNonWorkingDay(d) && guard++ < 14) d = addDay(d)
-  return d
-}
+// Μετάθεση προθεσμίας στην επόμενη εργάσιμη αν πέφτει σε αργία/ΣΚ (ΚΦΔ άρθρο 7
+// παρ. 1). Μία υλοποίηση, στο lib/calendar/greekHolidays.ts· εδώ επανεξάγεται.
+export { nextWorkingDay }
 // Τελευταία εργάσιμη ημέρα του μήνα (για δόσεις που λήγουν «τέλος μήνα»).
 export function lastWorkingDayOfMonth(y: number, mIndex0: number): string {
   let day = daysInMonth(y, mIndex0)
@@ -209,6 +203,13 @@ export interface TaxCalendarOptions {
    * lib/tools/enfiaSchedule.ts). Ό,τι λείπει είναι άγνωστο: δώδεκα, με σημείωση.
    */
   enfiaInstalments?: Readonly<Record<number, number>>
+  /**
+   * Φορολογικά έτη για τα οποία το σαρωμένο εκκαθαριστικό φόρου εισοδήματος
+   * δεν έχει φόρο (μηδέν ή επιστροφή): οι δόσεις τους δεν βγαίνουν
+   * (`incomeTaxNilByProperty` του lib/calendar/enfiaTotals.ts). Ό,τι λείπει
+   * είναι άγνωστο: οι δόσεις βγαίνουν, με τη σημείωση «αφορά μόνο όσους…».
+   */
+  incomeTaxNil?: readonly number[]
 }
 
 /** Το πλήθος δόσεων που ισχύει για το έτος, ή `null` όταν δεν είναι γνωστό. */
@@ -222,10 +223,14 @@ function knownEnfiaCount(year: number, opts: TaxCalendarOptions): number | null 
 // Ο αριθμός ζούσε μόνο μέσα στη σημείωση του `income-decl` («έως 8 δόσεις») και
 // γραμμένος με το χέρι στον οδηγό προθεσμιών («έως οκτώ δόσεις»).
 //
-// ΠΗΓΗ. ΚΦΕ (ν.4172/2013) άρθρο 67 παρ. 4 περ. α΄, όπως αντικαταστάθηκε με το
-// άρθρο 84 ν.5162/2024 (ΦΕΚ Α΄ 198/05.12.2024): ο φόρος καταβάλλεται σε οκτώ (8)
-// ισόποσες μηνιαίες δόσεις, η πρώτη ως την τελευταία εργάσιμη του Ιουλίου και
-// οι επτά επόμενες ως την τελευταία εργάσιμη καθενός από τους επόμενους μήνες.
+// ΠΗΓΗ. ΚΦΕ (ν.4172/2013) άρθρο 67 παρ. 6, τρίτο εδάφιο, όπως αντικαταστάθηκε με
+// το άρθρο 84 ν.5162/2024 (ΦΕΚ Α΄ 198/05.12.2024). Ως τώρα εδώ έγραφε «παρ. 4
+// περ. α΄»· η παρ. 4 είναι η κοινή δήλωση των συζύγων. Κείμενο, όπως είναι
+// κωδικοποιημένο στο https://www.taxheaven.gr/law/4172/2013/arthro/67 :
+// «Η καταβολή του φόρου γίνεται σε οκτώ (8) ισόποσες μηνιαίες δόσεις, από τις
+// οποίες η πρώτη καταβάλλεται μέχρι την τελευταία εργάσιμη ημέρα του μηνός
+// Ιουλίου και οι υπόλοιπες επτά (7) μέχρι την τελευταία εργάσιμη ημέρα των
+// επόμενων επτά (7) μηνών.»
 // Μόνιμη διάταξη, όχι ρύθμιση του έτους. Για το φορολογικό έτος 2025 (δηλώσεις
 // του 2026) το επιβεβαιώνουν οι Οδηγίες συμπλήρωσης Ε1 2026 της ΑΑΔΕ
 // (16.03.2026) και το Δελτίο Τύπου ΑΑΔΕ 13.03.2026: πρώτη δόση ως 31/7/2026.
@@ -233,6 +238,10 @@ function knownEnfiaCount(year: number, opts: TaxCalendarOptions): number | null 
 // data/accounting-sources.json (income_tax_instalments).
 /** Πλήθος μηνιαίων δόσεων του φόρου εισοδήματος φυσικών προσώπων. */
 export const INCOME_TAX_INSTALMENTS = 8
+/** Η διάταξη, όπως τη διαβάζει ο χρήστης στις σημειώσεις. */
+const KFE_ART67 = 'ΚΦΕ (ν. 4172/2013), άρθρο 67 παρ. 6'
+/** Ο μήνας της 1ης δόσης (Ιούλιος, μηδενική αρίθμηση). */
+const INCOME_FIRST_MONTH = 6
 
 // Οι υποχρεώσεις που ισχύουν για ΟΛΟΥΣ τους ιδιοκτήτες ακινήτων, ανά έτος.
 function ownerObligations(year: number, opts: TaxCalendarOptions = {}): Draft[] {
@@ -375,6 +384,48 @@ function ownerObligations(year: number, opts: TaxCalendarOptions = {}): Draft[] 
     who: 'accountant',
   })
 
+  // ── ΟΙ ΔΟΣΕΙΣ ΤΟΥ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ (12.11.2026) ───────────────────────────
+  //
+  // ΤΟ ΚΕΝΟ. Υπήρχε μόνο ο αριθμός των δόσεων, μέσα στη σημείωση της δήλωσης.
+  // Ο ιδιοκτήτης με Ε2 έπαιρνε υπενθύμιση για κάθε δόση του ΕΝΦΙΑ και για καμία
+  // του φόρου εισοδήματος, που λήγουν τις ίδιες μέρες (Νοέμβριος ως Φεβρουάριος).
+  //
+  // Ο ΚΑΝΟΝΑΣ (ΚΦΕ άρθρο 67 παρ. 6, βλ. INCOME_TAX_INSTALMENTS): δόσεις ως την
+  // τελευταία ΕΡΓΑΣΙΜΗ του Ιουλίου και κάθε επόμενου μήνα. Η μέρα είναι ήδη
+  // εργάσιμη από τον νόμο, άρα `lastWorkingDayOfMonth` και καμία μετάθεση.
+  // Μόνιμη διάταξη, όχι απόφαση του έτους: γι' αυτό «του νόμου» για κάθε έτος.
+  //
+  // ΣΕ ΠΟΙΟΝ. Μόνο σε ακίνητο που νοικιάζεται (μακροχρόνια ή βραχυχρόνια): εκεί
+  // υπάρχει εισόδημα από ακίνητο που φορολογείται. Η ιδιοκατοίκηση δεν
+  // παράγει φόρο εισοδήματος από το ακίνητο και δεν γεμίζει με οκτώ
+  // υπενθυμίσεις. Το ποσό το ξέρει η εφαρμογή μόνο όταν ο χρήστης έχει σαρώσει
+  // το εκκαθαριστικό· εδώ δεν γράφεται κανένα ποσό. Χωρίς εκκαθαριστικό η
+  // σημείωση λέει ότι η δόση αφορά μόνο όποιον έχει φόρο για πληρωμή. Με
+  // εκκαθαριστικό χωρίς φόρο οι δόσεις δεν βγαίνουν καθόλου (πιο κάτω).
+  // Οι υπενθυμίσεις τους: μία, τρεις μέρες πριν· ποτέ «ληξιπρόθεσμο»
+  // (lib/calendar/recurrence.ts, `reminderAllowed`).
+  //
+  // Το κλειδί είναι `income-instalment-${έτος δήλωσης}-${δόση}`: η 8η δόση της
+  // δήλωσης του 2026 λήγει τον Φεβρουάριο του 2027 και κρατά το 2026.
+  //
+  // ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΧΩΡΙΣ ΦΟΡΟ, ΚΑΜΙΑ ΔΟΣΗ. Η δήλωση του `year` αφορά το
+  // φορολογικό έτος `year - 1`. Αν ο χρήστης έχει σαρώσει το εκκαθαριστικό του
+  // και βγήκε μηδέν ή επιστροφή (`opts.incomeTaxNil`), οι οκτώ δόσεις δεν
+  // υπάρχουν· ο συγχρονισμός σβήνει όσες είχε γράψει και ο χρήστης δεν άγγιξε.
+  const incomeNil = opts.incomeTaxNil?.includes(year - 1) ?? false
+  for (let k = 1; !incomeNil && k <= INCOME_TAX_INSTALMENTS; k++) {
+    const t = INCOME_FIRST_MONTH + k - 1
+    const isLast = k === INCOME_TAX_INSTALMENTS
+    out.push({
+      kind: 'income-instalment', id: `income-instalment-${year}-${k}`,
+      date: lastWorkingDayOfMonth(year + Math.floor(t / 12), t % 12),
+      title: isLast ? `Φόρος εισοδήματος, ${k}η και τελευταία δόση` : `Φόρος εισοδήματος, ${k}η δόση`,
+      notes: `Καταληκτική ${k}ης ${isLast ? 'και τελευταίας ' : ''}δόσης του φόρου εισοδήματος της δήλωσης ${year}, την τελευταία εργάσιμη του μήνα. Ο φόρος πληρώνεται σε ${INCOME_TAX_INSTALMENTS} ισόποσες μηνιαίες δόσεις, η πρώτη τον Ιούλιο (${KFE_ART67}). Αφορά μόνο όσους η εκκαθάριση της δήλωσης έβγαλε φόρο για πληρωμή που δεν εξοφλήθηκε εφάπαξ· το ποσό της δόσης είναι στο εκκαθαριστικό. ${CONFIRM}`,
+      category: 'tax', confidence: 'statutory', profiles: ['long_term', 'short_term'],
+      who: 'owner',
+    })
+  }
+
   return out
 }
 
@@ -393,10 +444,22 @@ function shortTermObligations(year: number): Draft[] {
     })
     // Τέλος ανθεκτικότητας στην κλιματική κρίση (πρώην φόρος διαμονής): μηνιαία
     // απόδοση από τον εκμεταλλευτή, έως το τέλος του επόμενου μήνα.
+    //
+    // ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΚΛΕΙΝΕΙ (12.11.2026). Η ημερομηνία ήταν η τελευταία ΕΡΓΑΣΙΜΗ
+    // του μήνα, δηλαδή μετάθεση ΠΙΣΩ: η απόδοση Σεπτεμβρίου έβγαινε 30/10/2026,
+    // ενώ η 31/10 ήταν Σάββατο και η προθεσμία έληγε 02/11/2026. Αντίθετα με την
+    // αρχή αυτού του αρχείου και με το ημερολόγιο του taxheaven.
+    //
+    // ΠΗΓΗ. ν. 5177/2025 άρθρο 44 παρ. 4 (πρώην ν. 4389/2016 άρθρο 53 παρ. 2):
+    // «Οι δηλώσεις υποβάλλονται μέχρι την τελευταία ημέρα του επόμενου μήνα από
+    // αυτόν της έκδοσης κάθε ειδικού στοιχείου». Τελευταία ΗΜΕΡΑ, όχι εργάσιμη·
+    // αν πέφτει σε αργία ή Σαββατοκύριακο, ΚΦΔ άρθρο 7 παρ. 1: η αμέσως επόμενη
+    // εργάσιμη. Η προθεσμία του Δεκεμβρίου μπορεί έτσι να πέσει στον Ιανουάριο·
+    // το κλειδί κρατά τον μήνα στον οποίο ανήκει.
     out.push({
-      kind: 'str-climate-fee', id: `str-climate-fee-${year}-${m + 1}`, date: lastWorkingDayOfMonth(year, m),
+      kind: 'str-climate-fee', id: `str-climate-fee-${year}-${m + 1}`, date: nextWorkingDay(iso(year, m, daysInMonth(year, m))),
       title: 'Τέλος ανθεκτικότητας κλιματικής κρίσης, απόδοση',
-      notes: `Μηνιαία απόδοση του τέλους ανθεκτικότητας στην κλιματική κρίση (τέλος διαμονής) που εισπράχθηκε από τους επισκέπτες, έως το τέλος του επόμενου μήνα. ${CONFIRM}`,
+      notes: `Μηνιαία απόδοση του τέλους ανθεκτικότητας στην κλιματική κρίση (τέλος διαμονής) που εισπράχθηκε από τους επισκέπτες, έως το τέλος του επόμενου μήνα· αν η τελευταία μέρα του μήνα είναι αργία ή Σαββατοκύριακο, έως την επόμενη εργάσιμη. ${CONFIRM}`,
       category: 'tax', confidence: 'statutory', profiles: ['short_term'],
       who: 'owner', dossier: 'climate_levy',
     })

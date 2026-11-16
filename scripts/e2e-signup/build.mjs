@@ -24,6 +24,27 @@ await build({
   inject: BENCH_INJECT,
   alias: {
     '@/lib/supabase/lazy': join(here, 'fakeAuth.ts'),
+    'next/navigation': join(here, 'fakeNavigation.ts'),
+    'next/link': join(here, 'fakeLink.tsx'),
+    '@': root,
+  },
+});
+
+// Και η σύνδεση, με τα ίδια ψεύτικα: η ροή «σύνδεσμος επιβεβαίωσης που δεν
+// δούλεψε» (?confirm=failed) πρέπει να δουλεύει χωρίς να φορτώσει ο πελάτης.
+await build({
+  entryPoints: [join(here, 'harness-login.tsx')],
+  bundle: true,
+  format: 'iife',
+  jsx: 'automatic',
+  target: 'es2022',
+  outfile: join(out, 'harness-login.js'),
+  logLevel: 'error',
+  define: BENCH_DEFINE,
+  inject: BENCH_INJECT,
+  alias: {
+    '@/lib/supabase/lazy': join(here, 'fakeAuth.ts'),
+    'next/navigation': join(here, 'fakeNavigation.ts'),
     'next/link': join(here, 'fakeLink.tsx'),
     '@': root,
   },
@@ -39,4 +60,11 @@ writeFileSync(join(out, 'index.html'), `<!doctype html><html lang="el"><head>
 body{margin:0;font-family:system-ui,sans-serif;background:var(--bg-page,#fff);color:var(--text-primary,#111)}
 input,button,select{font-family:inherit}</style>
 </head><body><div id="root"></div><script src="./harness.js"></script></body></html>`);
+writeFileSync(join(out, 'login.html'), `<!doctype html><html lang="el"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Πάγκος σύνδεσης</title>
+<style>${vars}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg-page,#fff);color:var(--text-primary,#111)}
+input,button,select{font-family:inherit}</style>
+</head><body><div id="root"></div><script src="./harness-login.js"></script></body></html>`);
 console.log('✓ πάγκος εγγραφής');

@@ -1,96 +1,268 @@
-name: Database backup (free-tier safety net)
+name: Database backup (private storage)
 
-# Supabase Free has no scheduled backups, so we take our own: a daily logical dump
-# (schema + data + roles) uploaded as a private GitHub Actions artifact, restorable
-# with psql. This is off-site (different provider) — a real DR net until you upgrade
-# to Pro (managed backups + PITR).
+# ═══════════════════════════════════════════════════════════════════════════
+# ΤΟ ΗΜΕΡΗΣΙΟ ΑΝΤΙΓΡΑΦΟ ΑΣΦΑΛΕΙΑΣ, ΣΕ ΙΔΙΩΤΙΚΟ ΧΩΡΟ
+# ─────────────────────────────────────────────────────────────────────────
+# ΤΟ ΠΕΡΙΣΤΑΤΙΚΟ (10/11/2026). Αυτή η ροή ανέβαζε το dump ως artifact του
+# GitHub Actions. Το αποθετήριο όμως είναι ΔΗΜΟΣΙΟ: τα 34 αρχεία τα κατέβαζε
+# όποιος είχε λογαριασμό GitHub, με μόνη άμυνα μία συμμετρική φράση. Και τα
+# αρχεία του Storage (μισθωτήρια, φωτογραφίες) δεν υπήρχαν σε κανένα αντίγραφο.
 #
-# ⚠ The artifact contains REAL customer data. Two protections:
-#   • BACKUP_PASSPHRASE is REQUIRED. The dump is GPG-symmetric-encrypted (AES256)
-#     before upload. Decrypt with:
-#       gpg --decrypt --batch --passphrase "<pass>" data.sql.gpg > data.sql
-#     If the secret is missing the job FAILS and uploads nothing — an encrypted
-#     backup or none at all, never a plaintext dump of customer data.
-#   • Keep this repository PRIVATE. Retention is 30 days.
-# Before selling at scale, move to Pro backups (managed + PITR) or a KMS-encrypted
-# bucket with longer retention.
+# ΔΥΟ JOBS, ΜΕ ΧΩΡΙΣΤΑ ΔΙΚΑΙΩΜΑΤΑ.
+#   backup     Τα μυστικά της βάσης. Dump, έλεγχος υγείας, κρυπτογράφηση (gpg
+#              AES256), ανέβασμα σε κομμάτια στο ιδιωτικό bucket `db-backups`,
+#              σε φάκελο ανά εκτέλεση (`YYYY-MM-DDTHHMMSSZ`). Το manifest
+#              ανεβαίνει ΤΕΛΕΥΤΑΙΟ: χωρίς αυτό η εκτέλεση δεν μετρά.
+#              Κάθε Κυριακή (ή με το χέρι) και τα αρχεία των χρηστών.
+#              Το τελευταίο βήμα, ο καθαρισμός, τρέχει ΠΑΝΤΑ, ακόμη αν αποτύχει
+#              κάτι πριν: σβήνει ό,τι έκλεισε 30 ημέρες, ποτέ την τελευταία καλή
+#              βάση ούτε τα τελευταία καλά αρχεία. Αν δεν διαβαστεί κανένα
+#              manifest, δεν σβήνει τίποτα.
+#   artifacts  Τρέχει ΠΑΝΤΑ, μόνο με `actions: write` και χωρίς κανένα μυστικό:
+#              σβήνει όσα artifacts `supabase-backup-*` έμειναν από την παλιά ροή.
 #
-# Reuses the same two secrets as the deploy pipeline:
-#   SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD   (+ optional BACKUP_PASSPHRASE)
+# ΕΛΕΓΧΟΣ ΥΓΕΙΑΣ ΠΡΙΝ ΑΝΕΒΕΙ ΤΙΠΟΤΑ. Το σχήμα έχει τους πίνακες-κλειδιά· κάθε
+# αρχείο αποκρυπτογραφείται ξανά και ταιριάζει byte προς byte· όπου η παραγωγή
+# έχει γραμμές τις έχει και το dump· το dump δεδομένων δεν είναι κάτω από το μισό
+# του τελευταίου καλού (ρητή παράκαμψη: input `allow_shrink`). Αν κάτι αποτύχει, η ημέρα
+# δεν σφραγίζεται και η τελευταία καλή μένει.
+#
+# ΤΑ LOGS ΕΙΝΑΙ ΔΗΜΟΣΙΑ. Τίποτα εδώ δεν τυπώνει περιεχόμενο, διαδρομές
+# αρχείων χρηστών ή κλειδιά: μόνο πλήθη και μεγέθη.
+#
+# Η ΑΔΥΝΑΜΙΑ ΠΟΥ ΜΕΝΕΙ. Το αντίγραφο ζει στον ίδιο πάροχο με τη βάση. Προστατεύει
+# από λάθος διαγραφή ή κακή migration, όχι από απώλεια ολόκληρου του έργου.
+# Δεύτερος προορισμός σε άλλον πάροχο (R2 ή S3) θέλει λογαριασμό του ιδιοκτήτη.
+#
+# Secrets: SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD, BACKUP_PASSPHRASE.
+# Το κλειδί του service role βγαίνει από το Management API με το access token
+# (scripts/backup/service-key.sh), όχι από δικό του secret.
+# ═══════════════════════════════════════════════════════════════════════════
 
 on:
   schedule:
     - cron: '0 2 * * *'      # every day at 02:00 UTC
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      files:
+        description: 'Αντίγραφο και των αρχείων των χρηστών (Storage)'
+        type: boolean
+        default: true
+      allow_shrink:
+        description: 'Παράκαμψη του ελέγχου «όχι κάτω από το 50% του προηγούμενου», ΜΟΝΟ μετά από νόμιμη μείωση δεδομένων (docs/infra/runbook.md)'
+        type: boolean
+        default: false
+
+# Μία εκτέλεση τη φορά: δύο εκτελέσεις δεν γράφουν ποτέ μαζί στον χώρο. Η
+# δεύτερη περιμένει αντί να ακυρώσει την πρώτη.
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 env:
   SUPABASE_PROJECT_REF: aromvduuxtcrzmwwvnej
+  KEEP_DAYS: '30'
+  # Μία γραμμή για κάθε κρυπτογράφηση της ροής (dump και αρχεία χρηστών).
+  GPG_ENCRYPT: '--batch --yes --symmetric --cipher-algo AES256'
+  # Οι πίνακες που πρέπει να υπάρχουν σε κάθε αντίγραφο.
+  KEY_TABLES: 'user_properties tenants calendar_events billing_profiles expenses rent_payments'
+  # Τα buckets με έγγραφα και φωτογραφίες χρηστών.
+  # Και τα έξι buckets του έργου: δεν υπάρχει άλλο σημείο με αρχεία χρηστών.
+  FILE_BUCKETS: 'lease-documents property-files inventory-docs maintenance-photos inventory-photos avatars'
 
 jobs:
   backup:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
+    permissions:
+      contents: read
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
     steps:
-      - uses: supabase/setup-cli@v3
+      - uses: actions/checkout@v7
         with:
-          version: latest
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/backup
+            scripts/ci
 
-      - name: Link project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
-
-      - name: Dump roles, schema and data
-        run: |
-          mkdir -p backup
-          supabase db dump --linked --role-only -f backup/roles.sql
-          supabase db dump --linked            -f backup/schema.sql
-          supabase db dump --linked --data-only -f backup/data.sql
-          ls -lh backup
-
-      # Fail-CLOSED: χωρίς passphrase ΔΕΝ ανεβαίνει τίποτα. Ένα κρυπτογραφημένο
-      # αντίγραφο ή κανένα — ποτέ dump πελατών σε καθαρό κείμενο σε artifact.
-      - name: Encrypt dump (required)
+      # Fail-CLOSED, ΠΡΙΝ από κάθε dump: χωρίς φράση δεν βγαίνει καν αρχείο.
+      - name: Check secrets
         run: |
           set -euo pipefail
-          if [ -z "${BACKUP_PASSPHRASE:-}" ]; then
-            rm -rf backup
+          missing=""
+          for s in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD BACKUP_PASSPHRASE; do
+            [ -n "${!s:-}" ] || missing="$missing $s"
+          done
+          if [ -n "$missing" ]; then
             {
               echo "## ❌ Το αντίγραφο ασφαλείας ΔΕΝ δημιουργήθηκε"
               echo
-              echo "Λείπει το repo secret \`BACKUP_PASSPHRASE\`, οπότε το dump θα ανέβαινε"
-              echo "σε **καθαρό κείμενο** με πραγματικά δεδομένα πελατών (ονόματα, ΑΦΜ,"
-              echo "διευθύνσεις, μισθωτήρια). Το job σταματά αντί να το ανεβάσει."
+              echo "Λείπουν repo secrets:$missing"
               echo
-              echo "**Διόρθωση:** Settings → Secrets and variables → Actions → New repository secret"
-              echo "με όνομα \`BACKUP_PASSPHRASE\` και μια ισχυρή, φυλαγμένη φράση."
+              echo "**Διόρθωση:** Settings → Secrets and variables → Actions → New repository secret."
             } >> "$GITHUB_STEP_SUMMARY"
-            echo "::error::BACKUP_PASSPHRASE is not set — refusing to upload a plaintext dump of customer data."
+            echo "::error::Missing secrets:$missing — no backup taken."
             exit 1
           fi
-          for f in backup/roles.sql backup/schema.sql backup/data.sql; do
-            gpg --batch --yes --symmetric --cipher-algo AES256 \
-                --passphrase "$BACKUP_PASSPHRASE" -o "$f.gpg" "$f"
-            rm -f "$f"
-          done
-          echo "🔒 Αντίγραφο κρυπτογραφημένο (AES256) πριν το ανέβασμα." >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Date stamp
-        id: ts
-        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
-
-      - name: Upload backup artifact
-        uses: actions/upload-artifact@v7
+      # Κλειδωμένη έκδοση, όπως στο supabase-deploy.yml: νέα έκδοση μπαίνει ρητά.
+      - uses: supabase/setup-cli@v3
         with:
-          name: supabase-backup-${{ steps.ts.outputs.date }}
-          path: backup/
-          retention-days: 30
+          version: 3.1.0
 
-# Δες και: .github/workflows/backup-watchdog.yml — ελέγχει καθημερινά ότι αυτό
-# εδώ ΟΝΤΩΣ τρέχει και παράγει κρυπτογραφημένο αντίγραφο και ανοίγει issue αν
-# περάσουν δύο μέρες χωρίς. Χωρίς τον φύλακα, η αποτυχία εδώ είναι σιωπηλή.
+      # Οι εντολές πάνω στη βάση περνούν από το quiet-db: η έξοδός τους δεν
+      # τυπώνεται, μόνο ο κωδικός και η κατηγορία σφάλματος.
+      - name: Link project
+        run: bash scripts/ci/quiet-db.sh "supabase link" -- supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Dump roles, schema and data
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p backup
+          bash scripts/ci/quiet-db.sh "dump ρόλων" -- supabase db dump --linked --role-only -f backup/roles.sql
+          bash scripts/ci/quiet-db.sh "dump σχήματος" -- supabase db dump --linked -f backup/schema.sql
+          bash scripts/ci/quiet-db.sh "dump δεδομένων" -- supabase db dump --linked --data-only -f backup/data.sql
+          ls -lh backup | awk '{print $5, $9}'
+
+      - name: Service role key (masked)
+        run: bash scripts/backup/service-key.sh
+
+      - name: Ensure private bucket
+        run: node scripts/backup/vault.mjs ensure
+
+      - name: Health check (key tables in schema)
+        # shellcheck disable=SC2086
+        run: node scripts/backup/vault.mjs tables backup/schema.sql $KEY_TABLES
+
+      # Όχι άδειο dump: όπου η παραγωγή έχει γραμμές τη στιγμή του dump, τις έχει
+      # και το dump. Στο log μόνο ✓/✗ ανά πίνακα, κανένας αριθμός.
+      - name: Health check (rows against production)
+        # shellcheck disable=SC2086
+        run: node scripts/backup/vault.mjs rows-check backup/data.sql $KEY_TABLES
+
+      - name: Encrypt dump and prove it decrypts
+        run: |
+          set -euo pipefail
+          for f in roles schema data; do
+            # shellcheck disable=SC2086
+            gpg $GPG_ENCRYPT --passphrase "$BACKUP_PASSPHRASE" -o "backup/$f.sql.gpg" "backup/$f.sql"
+            gpg --batch --quiet --decrypt --passphrase "$BACKUP_PASSPHRASE" \
+                -o "backup/$f.check" "backup/$f.sql.gpg" 2>/dev/null
+            cmp -s "backup/$f.check" "backup/$f.sql" \
+              || { echo "::error::Το $f.sql.gpg δεν αποκρυπτογραφείται στο ίδιο περιεχόμενο."; exit 1; }
+            rm -f "backup/$f.check" "backup/$f.sql"
+          done
+          echo "🔒 Αντίγραφο κρυπτογραφημένο (AES256) και ελεγμένο ότι ανοίγει." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Health check (size against last good backup)
+        # Το input περνά μέσω env, όχι με ${{ }} μέσα στο run (CodeQL actions/code-injection).
+        env:
+          ALLOW_SHRINK: ${{ inputs.allow_shrink }}
+        run: |
+          set -euo pipefail
+          if [ "${ALLOW_SHRINK:-false}" = "true" ]; then
+            node scripts/backup/vault.mjs size-check backup/data.sql.gpg allow-shrink
+          else
+            node scripts/backup/vault.mjs size-check backup/data.sql.gpg
+          fi
+
+      - name: Upload dump
+        id: up
+        run: |
+          set -euo pipefail
+          # Φάκελος ανά εκτέλεση: δεν γράφεται ποτέ πάνω σε σφραγισμένη εκτέλεση.
+          day=$(node scripts/backup/vault.mjs folder)
+          echo "day=$day" >> "$GITHUB_OUTPUT"
+          rm -f manifest.json
+          for f in roles schema data; do
+            node scripts/backup/vault.mjs put-split "backup/$f.sql.gpg" "$day" "$f.sql.gpg" manifest.json
+          done
+          rm -rf backup
+
+      # Τα αρχεία των χρηστών: κάθε Κυριακή, ή όταν τρέχει με το χέρι.
+      - name: Files snapshot (weekly)
+        if: github.event_name == 'schedule' || inputs.files
+        env:
+          DAY: ${{ steps.up.outputs.day }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] && [ "$(date -u +%u)" != "7" ]; then
+            echo "Όχι Κυριακή: τα αρχεία των χρηστών αντιγράφονται την Κυριακή."
+            exit 0
+          fi
+          umask 077
+          mkdir -p files
+          # shellcheck disable=SC2086
+          node scripts/backup/vault.mjs snapshot files $FILE_BUCKETS
+          tar -C files -cf files.tar .
+          rm -rf files
+          # shellcheck disable=SC2086
+          gpg $GPG_ENCRYPT --passphrase "$BACKUP_PASSPHRASE" -o files.tar.gpg files.tar
+          rm -f files.tar
+          node scripts/backup/vault.mjs put-split files.tar.gpg "$DAY" files.tar.gpg manifest.json
+          rm -f files.tar.gpg
+          echo "🔒 Αρχεία χρηστών: κρυπτογραφημένο αντίγραφο στον ιδιωτικό χώρο." >> "$GITHUB_STEP_SUMMARY"
+
+      # ΤΕΛΕΥΤΑΙΟ: το manifest σφραγίζει την ημέρα. Πριν από αυτό, ο φύλακας, η
+      # επαναφορά και ο καθαρισμός δεν τη θεωρούν αντίγραφο.
+      - name: Seal day (manifest last)
+        env:
+          DAY: ${{ steps.up.outputs.day }}
+        run: |
+          set -euo pipefail
+          node scripts/backup/vault.mjs seal manifest.json "$DAY"
+          rm -f manifest.json
+          echo "✅ Αντίγραφο της $DAY στον ιδιωτικό χώρο \`db-backups\`." >> "$GITHUB_STEP_SUMMARY"
+
+      # ΤΡΕΧΕΙ ΚΑΙ ΟΤΑΝ ΑΠΟΤΥΧΕΙ ΚΑΤΙ ΠΑΡΑΠΑΝΩ. Η Πολιτική απορρήτου λέει ότι τα
+      # παλιά αντίγραφα σβήνονται μέσα σε 30 ημέρες. Αυτό δεν εξαρτάται από το αν
+      # πέτυχε το σημερινό. Η τελευταία καλή ημέρα μένει πάντα. Αν το κλειδί δεν
+      # βγήκε πιο πάνω (π.χ. αποτυχία πριν από εκείνο το βήμα), το παίρνει εδώ.
+      - name: Retention (always)
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_SERVICE_KEY:-}" ]; then
+            bash scripts/backup/service-key.sh
+            # Το $GITHUB_ENV το διαβάζει το ΕΠΟΜΕΝΟ βήμα· εδώ φορτώνεται ρητά.
+            SUPABASE_SERVICE_KEY=$(sed -n 's/^SUPABASE_SERVICE_KEY=//p' "$GITHUB_ENV" | tail -1)
+            SUPABASE_URL=$(sed -n 's/^SUPABASE_URL=//p' "$GITHUB_ENV" | tail -1)
+            export SUPABASE_SERVICE_KEY SUPABASE_URL
+          fi
+          node scripts/backup/vault.mjs prune "$KEEP_DAYS"
+
+  # Η ΠΑΛΙΑ ΡΟΗ ΑΦΗΣΕ ΑΝΤΙΓΡΑΦΑ ΣΕ ΔΗΜΟΣΙΟ ΧΩΡΟ. Σβήνονται σε κάθε εκτέλεση, σε
+  # δικό τους job: μόνο εδώ υπάρχει `actions: write` και εδώ δεν υπάρχει κανένα
+  # μυστικό της βάσης.
+  artifacts:
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+    steps:
+      - name: Delete old public artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ids=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
+                --jq '.artifacts[] | select(.name | startswith("supabase-backup-")) | .id')
+          n=0
+          for id in $ids; do
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id" >/dev/null
+            n=$((n + 1))
+          done
+          echo "✓ σβήστηκαν $n παλιά artifacts του αντιγράφου"
+          echo "🧹 Παλιά δημόσια artifacts που σβήστηκαν: $n" >> "$GITHUB_STEP_SUMMARY"
+
+# Δες και: .github/workflows/backup-watchdog.yml (ελέγχει καθημερινά ότι το
+# αντίγραφο ΥΠΑΡΧΕΙ και είναι πλήρες) και backup-restore-drill.yml (μηνιαία
+# δοκιμή επαναφοράς σε προσωρινή βάση).

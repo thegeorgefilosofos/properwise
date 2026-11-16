@@ -1,7 +1,7 @@
 'use client';
 
 import BrandMark from '@/components/BrandMark';
-import { T } from '@/components/Theme';
+import { T } from '@/components/tokens';
 import { navLabel } from '@/lib/nav/labels';
 import { ASSISTANT_NAME, ASSISTANT_INITIAL } from '@/lib/assistant/identity';
 // ═══════════════════════════════════════════════════════════════════════════

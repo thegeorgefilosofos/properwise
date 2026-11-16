@@ -269,6 +269,69 @@ for (const d of DEVICES) {
   await ctx.close()
 }
 
+// ═══ ΤΑ ΠΑΓΩΜΑΤΑ ΤΟΥ ΚΙΝΗΤΟΥ (11/11/2026) ════════════════════════════════
+// Τρία πράγματα που έλεγε «κολλάει» ο ιδιοκτήτης, μετρημένα σε επεξεργαστή /4:
+//
+//   1. Η ΜΠΑΡΑ ΔΙΕΥΘΥΝΣΕΩΝ. Σε κάθε αλλαγή φοράς κύλισης μαζεύεται ή ανοίγει
+//      και ο περιηγητής στέλνει `resize` με ΙΔΙΟ πλάτος. Ο στοιχειοθέτης
+//      (lib/ui/typeset.ts) ξανάκρινε τότε όλη τη σελίδα: στο χαρτοφυλάκιο των
+//      διακοσίων 2 ως 2,5 δευτερόλεπτα εργασιών για τρία ανεβοκατεβάσματα. Τώρα
+//      μηδέν· το όριο των 150 αφήνει χώρο σε αργό δρομέα, όχι στο παλιό σφάλμα.
+//   2. ΔΥΟ ΠΑΡΑΘΥΡΑ ΠΟΥ ΚΛΕΙΝΟΥΝ ΜΑΖΙ αφήνουν την κύλιση ελεύθερη.
+//   3. ΤΟ ΦΥΛΛΟ ΦΙΛΤΡΩΝ ΤΟΥ ΑΡΧΕΙΟΥ κλειδώνει την `.app-content` (κλείδωνε μόνο
+//      το `body`) και η εστίαση μένει στο κουτάκι που πατήθηκε (πηδούσε στο
+//      φύλλο σε κάθε επιλογή).
+{
+  const bench = (q) => 'file://' + process.cwd() + '/.perf-bench/mobile.html?' + q
+  const ctx = await browser.newContext({ ...DEVICES[1], locale: 'el-GR' })
+  await ctx.addInitScript(() => {
+    window.__lt = []
+    new PerformanceObserver(l => { for (const e of l.getEntries()) window.__lt.push({ s: e.startTime, d: e.duration }) }).observe({ type: 'longtask', buffered: true })
+  })
+  const p = await ctx.newPage()
+  const cdp = await ctx.newCDPSession(p)
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
+  await p.goto(bench('c=portfolio&n=200'), { waitUntil: 'load', timeout: 120000 })
+  await p.waitForFunction(() => document.querySelectorAll('.app-content *').length > 3000, null, { timeout: 60000 })
+  await p.waitForTimeout(6000)
+  const vp = DEVICES[1].viewport
+  const mark = await p.evaluate(() => performance.now())
+  for (let i = 0; i < 3; i++) {
+    await p.setViewportSize({ width: vp.width, height: vp.height - 56 }); await p.waitForTimeout(300)
+    await p.setViewportSize(vp); await p.waitForTimeout(300)
+  }
+  await p.waitForTimeout(2000)
+  const lt = await p.evaluate(m => Math.round(window.__lt.filter(x => x.s >= m).reduce((a, x) => a + x.d, 0)), mark)
+  ok(`χαρτοφυλάκιο ×200, μπάρα διευθύνσεων ×3: ${lt} χιλιοστά εργασιών (όριο 150)`, lt <= 150)
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
+
+  await p.goto(bench('c=modalNested&n=6'), { waitUntil: 'load' })
+  await p.getByRole('button', { name: 'Αποθήκευση' }).click()
+  await p.waitForTimeout(300)
+  const nested = await p.evaluate(() => ({
+    dialogs: document.querySelectorAll('[role="dialog"]').length,
+    app: getComputedStyle(document.querySelector('.app-content')).overflowY,
+    body: document.body.style.overflow,
+  }))
+  ok(`δύο παράθυρα κλείνουν μαζί: η κύλιση γυρίζει (${JSON.stringify(nested)})`,
+    nested.dialogs === 0 && nested.app !== 'hidden' && nested.body !== 'hidden')
+
+  await p.goto(bench('c=documents&n=6'), { waitUntil: 'load' })
+  await p.getByRole('button', { name: /Φίλτρα/ }).first().click()
+  await p.waitForSelector('.af-sheet .af-opt')
+  const locked = await p.evaluate(() => getComputedStyle(document.querySelector('.app-content')).overflowY)
+  await p.locator('.af-sheet .af-opt').first().click()
+  await p.waitForTimeout(300)
+  const focus = await p.evaluate(() => document.activeElement?.className || document.activeElement?.tagName)
+  ok(`φίλτρα Αρχείου: η εφαρμογή δεν κυλά πίσω από το φύλλο (${locked})`, locked === 'hidden')
+  ok(`φίλτρα Αρχείου: η εστίαση μένει στην επιλογή (${focus})`, /af-check-input/.test(focus))
+  await p.keyboard.press('Escape')
+  await p.waitForTimeout(300)
+  const released = await p.evaluate(() => getComputedStyle(document.querySelector('.app-content')).overflowY)
+  ok(`φίλτρα Αρχείου: η κύλιση γυρίζει στο κλείσιμο (${released})`, released !== 'hidden')
+  await ctx.close()
+}
+
 await browser.close()
 console.log(`\nΚινητό και ταμπλέτα (${MODE === 'light' ? 'φωτεινό' : 'σκούρο'}) — ${pass} πέρασαν, ${fail} απέτυχαν`)
 process.exit(fail ? 1 : 0)

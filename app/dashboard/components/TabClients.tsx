@@ -802,7 +802,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                         <TextInput label="Παλαιότερη σημείωση φθοράς" value={stayForm.damage_note} onChange={v => setStayForm(f => ({ ...f, damage_note: v }))} />
                       )}
                       {stayForm.notes.trim() !== '' && (
-                        <TextInput label="Παλαιότερη σημείωση" value={stayForm.notes} onChange={v => setStayForm(f => ({ ...f, notes: v }))} />
+                        <TextInput dictation label="Παλαιότερη σημείωση" value={stayForm.notes} onChange={v => setStayForm(f => ({ ...f, notes: v }))} />
                       )}
                     </div>
                   )}
@@ -900,11 +900,14 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                 Τώρα: διαλέγεις πρότυπο, το βλέπεις όλο, το στέλνεις. */}
             <div>
               <SecHdr label="Μηνύματα" sub="Έτοιμα πρότυπα για WhatsApp, Viber ή αντιγραφή" />
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                {MSG_TEMPLATES.map(t => (
-                  <ChipToggle key={t.id} on={t.id === msgId}
-                    onClick={() => { setMsgId(t.id); setMsgCopied(false); }}>{t.label}</ChipToggle>
-                ))}
+              {/* ΠΕΝΤΕ ΠΡΟΤΥΠΑ, ΕΝΑ ΤΗ ΦΟΡΑ: ΕΠΙΛΟΓΕΑΣ (14/11/2026). Ως πιλούλες
+                  τύλιγαν σε σειρές άνισου πλάτους πάνω από το κείμενο που
+                  ήταν ο λόγος της ενότητας. Ίδιες τιμές και ίδια προεπιλογή· η
+                  αλλαγή προτύπου μηδενίζει ακόμη το «Αντιγράφηκε». */}
+              <div className="choice-select" style={{ marginBottom: 12 }}>
+                <CustomSelect ariaLabel="Πρότυπο μηνύματος" value={msgId}
+                  onChange={v => { setMsgId(v); setMsgCopied(false); }}
+                  options={MSG_TEMPLATES.map(t => ({ value: t.id, label: t.label }))} />
               </div>
               {(() => {
                 const active = MSG_TEMPLATES.find(t => t.id === msgId) || MSG_TEMPLATES[0];
@@ -1085,7 +1088,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
       {/* Η «μαύρη λίστα» έγινε αυτό: ιδιωτική σημείωση, ΧΩΡΙΣ ετικέτα
           κατηγορίας. Ο διακόπτης `do_not_rent` κατηγοριοποιούσε πρόσωπο
           με νομικό βάρος (GDPR) και τύπωνε «Προσοχή» δίπλα σε όνομα. */}
-      <Textarea label="Ιδιωτική σημείωση" value={form.notes} onChange={v => setForm(f => ({ ...f, notes: v }))} rows={3} placeholder="Ό,τι θέλεις να θυμάσαι για αυτή τη φιλοξενία. Δική σου σημείωση, χωρίς κατηγοριοποίηση." />
+      <Textarea dictation label="Ιδιωτική σημείωση" value={form.notes} onChange={v => setForm(f => ({ ...f, notes: v }))} rows={3} placeholder="Ό,τι θέλεις να θυμάσαι για αυτή τη φιλοξενία. Δική σου σημείωση, χωρίς κατηγοριοποίηση." />
       </Modal>
     </div>
   );

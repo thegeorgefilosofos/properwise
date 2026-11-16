@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { T } from '@/components/tokens';
-import { ChipToggle } from '@/components/Theme';
+import { ChipToggle } from '@/components/ThemeCore';
 import { fn, fmtFor } from '@/lib/core/format';
 import { useLocale } from '@/lib/i18n/useLocale';
 import { parseAmount } from '@/lib/core/greek';

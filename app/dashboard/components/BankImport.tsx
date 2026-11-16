@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import * as expenseStore from '@/lib/data/expenses'
 import * as rentStore from '@/lib/data/rent'
 import { Check, ArrowRight, Landmark, SearchX } from 'lucide-react'
-import { readBankCsv, matchTransactions, legacyKeyOf, type BankTxn, type ExpectedRent, type RentMatch, type ExpenseSuggestion } from '@/lib/accounting/bankImport'
+import { readBankCsv, matchTransactions, legacyKeyOf, findKnownKeys, type BankTxn, type ExpectedRent, type RentMatch, type ExpenseSuggestion } from '@/lib/accounting/bankImport'
 import { feAuto, T, ABSENT_DATE, Btn, EmptyState, Modal, Spinner } from '@/components/Theme'
 import { athensToday } from '@/lib/core/time';
 import { grDate } from '@/lib/core/format';
@@ -55,9 +55,11 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
     // αποτυχία του ερωτήματος έδινε `existing = null`, άρα ΚΕΝΟ σύνολο
     // αποτυπωμάτων, άρα κάθε γραμμή του αρχείου περνούσε ως καινούρια. Ο
     // χρήστης δεν έβλεπε λάθος — έβλεπε διπλές κινήσεις στα βιβλία του.
-    const { data: existing, error: dedupErr } = await supabase.from('bank_transactions').select('dedup_hash').eq('user_id',userId)
+    // ΜΟΝΟ ΤΑ ΑΠΟΤΥΠΩΜΑΤΑ ΤΟΥ ΑΡΧΕΙΟΥ, ΣΕ ΟΜΑΔΕΣ. Το ερώτημα διάβαζε όλα τα
+    // αποτυπώματα του χρήστη και το PostgREST έκοβε στις 1.000 γραμμές: οι
+    // παλιότερες κινήσεις ξαναγύριζαν για έλεγχο. Δες `findKnownKeys`.
+    const { seen, error: dedupErr } = await findKnownKeys(txns, keys => supabase.from('bank_transactions').select('dedup_hash').eq('user_id',userId).in('dedup_hash',keys))
     if (dedupErr) { notifyError(failed('Ο έλεγχος για διπλές κινήσεις δεν ολοκληρώθηκε', dedupErr)); return }
-    const seen = new Set((existing||[]).map(r=>r.dedup_hash))
     const fresh = txns.filter(t=>!(seen.has(t.key) || seen.delete(legacyKeyOf(t))))
     setSkipped(txns.length - fresh.length)
     // Αναμενόμενα ενοίκια (ανεξόφλητα) του έτους.

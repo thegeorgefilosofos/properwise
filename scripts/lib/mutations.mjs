@@ -21,9 +21,38 @@
 /** Σκελετός component οθόνης, για φύλακες που σαρώνουν .tsx. */
 const tsx = (body) => `export default function MutationProbe() {\n  return (\n${body}\n  )\n}\n`
 
+/** Ροή-δόλωμα για τον φύλακα των logs: ένα βήμα με το σενάριο `body`. */
+const MUT_WF = '.github/workflows/__mut_backup_logs__.yml'
+const wfRun = (body) => `name: m\non: workflow_dispatch\njobs:\n  m:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n${body.split('\n').map(l => `          ${l}`).join('\n')}\n`
+
 export const MUTATIONS = {
   // Το `.limit(2000)` του προγραμματιστή της ουράς, ξαναφερμένο: ο διακομιστής το κόβει στις 1.000.
   'server-row-cap': { add: 'lib/__mut__.ts', content: "export const q = (db: any) => db.from('email_outbox').select('id').limit(2000)\n" },
+  // Προστασία ιδιοκτήτη (12/11/2026): κάθε κανόνας του φύλακα, χωριστά.
+  'enforcement-rules': { every: [
+    // απόσπασμα «διορθωμένο» με το χέρι: δεν βρίσκεται πια στο στιγμιότυπο
+    { file: 'lib/legal/enforcement/sources.ts', from: '"Η ανακοπή είναι απαράδεκτη, αν δεν κατατεθεί το αργότερο τριάντα (30) εργάσιμες', to: '"Η ανακοπή είναι απαράδεκτη, αν δεν κατατεθεί το αργότερο είκοσι (20) εργάσιμες' },
+    // κανόνας που φαίνεται με μία μόνο πηγή
+    { file: 'lib/legal/enforcement/rules.ts', from: "...r, status: 'verified', verifier: 'properwise-team', sources: src(r.id), lawyerReviewed: null,", to: "...r, status: 'verified', verifier: 'properwise-team', sources: src(r.id).filter(s => s.kind === 'official'), lawyerReviewed: null," },
+    // υπογραφή δικηγόρου χωρίς όνομα και ημερομηνία
+    { file: 'lib/legal/enforcement/rules.ts', from: "...r, status: 'verified', verifier: 'properwise-team', sources: src(r.id), lawyerReviewed: null,", to: "...r, status: 'verified', verifier: 'properwise-team', sources: src(r.id), lawyerReviewed: { reviewer: '', reviewedAt: '', version: r.version }," },
+    // υπογραφή δικηγόρου γραμμένη σε οθόνη
+    { add: 'app/dashboard/components/prostasia/__mut_review__.ts', content: "import { rule } from '@/lib/legal/enforcement/rules'\nexport const forged = { ...rule('as-938-4-new'), lawyerReviewed: { reviewer: 'x', reviewedAt: '2026-11-12', version: 1 } }\n" },
+    // η σήμανση γραμμένη με το χέρι στην οθόνη
+    { add: 'app/dashboard/components/prostasia/__mut_badge__.tsx', content: tsx('    <span>Επαληθευμένο από επίσημες πηγές · δεν αποτελεί νομική συμβουλή</span>') },
+    // αριθμός του κανόνα που δεν λέει το απόσπασμα (έλεγχος 12/11/2026)
+    { file: 'lib/legal/enforcement/rules.ts', from: "params: { percent: 70 }", to: "params: { percent: 60 }" },
+    { file: 'lib/legal/enforcement/numbers.ts', from: "count: 120, was: 72", to: "count: 100, was: 72" },
+    // η σήμανση με άλλη διατύπωση από αυτή που ενέκρινε ο ιδιοκτήτης
+    { file: 'lib/legal/enforcement/badges.ts', from: "export const VERIFIED_BADGE = 'Επαληθευμένο από επίσημες πηγές · δεν αποτελεί νομική συμβουλή';", to: "export const VERIFIED_BADGE = 'Ελέγχθηκε νομικά';" },
+  ] },
+  'legal-day-literals': { every: [
+    { add: 'app/dashboard/components/prostasia/__mut_days__.tsx', content: tsx('    <p>Η αίτηση κατατίθεται το αργότερο 15 εργάσιμες ημέρες πριν.</p>') },
+    { add: 'app/dashboard/components/prostasia/__mut_words__.tsx', content: tsx('    <p>Ο πλειστηριασμός ορίζεται σε επτά μήνες από την κατάσχεση.</p>') },
+    { add: 'app/dashboard/components/prostasia/__mut_date__.tsx', content: tsx('    <p>Αιτήσεις έως 30/06/2027.</p>') },
+    { add: 'app/dashboard/components/prostasia/__mut_pct__.tsx', content: tsx('    <p>Τίμημα όχι κάτω από το 70% της τιμής.</p>') },
+    { add: 'app/dashboard/components/prostasia/__mut_gen__.tsx', content: tsx('    <p>Μέσα σε διάστημα τριών μηνών από την υποβολή.</p>') },
+  ] },
   // Ο οδηγός «Νέο ακίνητο» ξανά με τη φόρμα απλωμένη αυτούσια: ακριβώς το
   // '' στο property_settings.insurance_expiry (Postgres 22007, 06/11/2026).
   'act-row-grid': { file: 'app/dashboard/components/RentReceived.tsx', from: '.act-row:has(.rr-cta) > * { flex: 1 1 100%; }', to: '.act-row:has(.rr-cta) { grid-template-columns: 1fr; }' },
@@ -254,7 +283,15 @@ export const MUTATIONS = {
   // ── Βάση δεδομένων και ασφάλεια ───────────────────────────────────────
   // Οι μεταναστεύσεις είναι ΠΡΟΣΘΕΤΙΚΕΣ: μια νέα με το σφάλμα μέσα είναι η
   // πιστότερη προσομοίωση του «κάποιος γράφει την επόμενη μετανάστευση».
-  'rls-coverage': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  user_id uuid not null references auth.users(id) on delete cascade\n);\n' },
+  // ΤΡΕΙΣ ΚΑΝΟΝΕΣ, ΤΡΕΙΣ ΑΠΟΔΕΙΞΕΙΣ. Ο πίνακας χωρίς RLS· ο ίδιος με ένα
+  // ομώνυμο `private.` που έχει RLS (κλειδί μόνο με το όνομα θα τον έβγαζε
+  // καλυμμένο)· και `drop` του ομώνυμου σε άλλο schema (θα τον έσβηνε από τον
+  // κατάλογο). Και τα τρία πρέπει να κοκκινίζουν.
+  'rls-coverage': { every: [
+    { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  user_id uuid not null references auth.users(id) on delete cascade\n);\n' },
+    { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (id bigint primary key);\ncreate table if not exists private.mut_probe (id bigint primary key);\nalter table private.mut_probe enable row level security;\n' },
+    { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists mut_probe (id bigint primary key);\ndrop table if exists private.mut_probe;\n' },
+  ] },
   'rls-initplan': { add: 'supabase/migrations/29990101000000_mut.sql', content: "create policy mut_probe_own on public.properties using (auth.uid() = user_id);\n" },
   'rls-parent-scope': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create table if not exists public.mut_probe (\n  id bigint generated always as identity primary key,\n  property_id uuid not null references public.properties(id) on delete cascade\n);\nalter table public.mut_probe enable row level security;\ncreate policy mut_probe_own on public.mut_probe using (true);\n' },
   'migration-versions': { add: 'supabase/migrations/20261020120000_mut.sql', content: 'select 1;\n' },
@@ -307,9 +344,9 @@ export const MUTATIONS = {
   'chromium-path': { every: [
     { add: 'scripts/__mut__.mjs', content: "import { chromium } from 'playwright-core';\nawait chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });\n" },
     { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install', to: 'playwright@1.40.0 install' },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install --with-deps webkit', to: 'playwright@1.63.0 install --with-deps webkit' },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install --with-deps webkit', to: 'playwright install --with-deps webkit' },
-    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install --with-deps webkit', to: 'playwright@latest install --with-deps webkit' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install webkit', to: 'playwright@1.63.0 install webkit' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install webkit', to: 'playwright install webkit' },
+    { file: '.github/workflows/ci.yml', from: 'playwright@1.64.1 install webkit', to: 'playwright@latest install webkit' },
   ] },
   'email-audience': {
     file: 'supabase/functions/_shared/emailTemplates.ts',
@@ -319,6 +356,8 @@ export const MUTATIONS = {
   // Λεζάντα με ποσό που δεν βγήκε από τη μηχανή. Το «480» είναι ακριβώς το λάθος
   // που έγινε κάποτε στ' αλήθεια — η έκπτωση που χάνεται, γραμμένη ως φόρος. Ο
   // πραγματικός φόρος ήταν 72 €.
+  // Το deploy της Supabase χωρίς --remote: έτσι απέτυχε από 04/11 ως 10/11/2026 (#478).
+  'supabase-deploy-target': { file: '.github/workflows/supabase-deploy.yml', from: 'supabase db push --remote --yes --include-all', to: 'supabase db push --include-all' },
   'post-numbers': { add: 'docs/marketing/keimena/__mut__.md', content: 'Από το Ε9: με ενοίκιο 9.600 € χάνεις 480 € τον χρόνο.\n' },
   // Το «Ε9» περνά ως όνομα εντύπου· τα ποσά δίπλα του πρέπει να κόβονται.
   // Η λεζάντα που έλεγε ψέματα, ξαναφερμένη αυτούσια: ήταν στο
@@ -343,6 +382,25 @@ export const MUTATIONS = {
   // τεντώνοντας τα κενά. Μετρημένο: 26,6 εικονοστοιχεία εκεί που το φυσικό
   // κενό είναι 4,2. Η δεύτερη μορφή είναι το `hyphens: none`, που το σβήνει
   // ρητά — ίδιο αποτέλεσμα, άλλη διατύπωση.
+  // Τυπογραφικό σύστημα (14/11/2026): `balance` σε κείμενο σώματος, σε CSS και σε στυλ.
+  'wrap-balance': { every: [
+    { file: 'app/globals.css', from: '.lp-lede { max-width: 680px; text-align: center; text-wrap: pretty; }', to: '.lp-lede { max-width: 680px; text-align: center; text-wrap: balance; }' },
+    { file: 'app/globals.css', from: '.tx-glue { white-space: nowrap; }', to: '.tx-glue { white-space: nowrap; }\n.lg-body .lg-p { text-wrap-style: balance; }' },
+    { file: 'app/globals.css', from: '.tx-glue { white-space: nowrap; }', to: '.tx-glue { white-space: nowrap; }\n:where(p, li) { text-wrap: balance; }' },
+    { add: 'components/__mut__.tsx', content: tsx("    <p style={{ fontSize: 15, textWrap: 'balance' }}>Μια παράγραφος σώματος που ζυγίζεται σαν τίτλος.</p>") },
+    // η ίδια παράγραφος γραμμένη σε τρεις γραμμές
+    { add: 'components/__mut__.tsx', content: tsx("    <p\n      style={{ fontSize: 15,\n        textWrap: 'balance' }}>\n      Μια παράγραφος σώματος που ζυγίζεται σαν τίτλος.\n    </p>") },
+  ] },
+  // Πιλούλες μίας επιλογής με τέσσερις ή περισσότερες επιλογές: πίνακας επιτόπου,
+  // σταθερά από άλλο αρχείο και πιλούλες γραμμένες μία μία.
+  'choice-chips': { every: [
+    { add: 'components/__mut__.tsx', content: "import { useState } from 'react'\nimport { ChipToggle } from '@/components/Theme'\nexport default function M() {\n  const [v, setV] = useState('a')\n  return (\n    <div>\n      {([['a', 'Α'], ['b', 'Β'], ['c', 'Γ'], ['d', 'Δ']] as const).map(([k, l]) => (\n        <ChipToggle key={k} on={v === k} onClick={() => setV(k)}>{l}</ChipToggle>\n      ))}\n    </div>\n  )\n}\n" },
+    { add: 'components/__mut__.tsx', content: "import { useState } from 'react'\nimport { ChipToggle } from '@/components/Theme'\nimport { DISPUTE_KINDS } from '@/lib/property/plan'\nexport default function M() {\n  const [v, setV] = useState('unknown')\n  return (\n    <div>\n      {DISPUTE_KINDS.map(k => (\n        <ChipToggle key={k.key} on={k.key === v} onClick={() => setV(k.key)}>{k.label}</ChipToggle>\n      ))}\n    </div>\n  )\n}\n" },
+    { add: 'components/__mut__.tsx', content: "import { useState } from 'react'\nimport { ChipToggle } from '@/components/Theme'\nexport default function M() {\n  const [m, setM] = useState('a')\n  return (\n    <div>\n      <ChipToggle on={m === 'a'} onClick={() => setM('a')}>Α</ChipToggle>\n      <ChipToggle on={m === 'b'} onClick={() => setM('b')}>Β</ChipToggle>\n      <ChipToggle on={m === 'c'} onClick={() => setM('c')}>Γ</ChipToggle>\n      <ChipToggle on={m === 'd'} onClick={() => setM('d')}>Δ</ChipToggle>\n    </div>\n  )\n}\n" },
+    { file: 'app/dashboard/components/BillsInsurance.tsx', from: '{/* chip-group: φίλτρο. Φιλτράρει', to: '{/* Φιλτράρει' },
+    // η πιλούλα γραμμένη σε πολλές γραμμές: το `on` σε δική του
+    { add: 'components/__mut__.tsx', content: "import { useState } from 'react'\nimport { ChipToggle } from '@/components/Theme'\nexport default function M() {\n  const [v, setV] = useState('a')\n  return (\n    <div>\n      {([['a', 'Α'], ['b', 'Β'], ['c', 'Γ'], ['d', 'Δ']] as const).map(([k, l]) => (\n        <ChipToggle\n          key={k}\n          on={v === k}\n          onClick={() => setV(k)}>\n          {l}\n        </ChipToggle>\n      ))}\n    </div>\n  )\n}\n" },
+  ] },
   'justify-hyphen': { every: [
     { add: 'components/__mut__.tsx', content: tsx("    <p style={{ textAlign: 'justify', textWrap: 'pretty' }}>Ενα κείμενο που στοιχίζεται πέρα ως πέρα χωρίς να σπάει λέξη.</p>") },
     { add: 'components/__mut__.tsx', content: tsx("    <p style={{ textAlign: 'justify', hyphens: 'none' }}>Ενα κείμενο που στοιχίζεται πέρα ως πέρα χωρίς να σπάει λέξη.</p>") },
@@ -375,9 +433,36 @@ export const MUTATIONS = {
   'toggle': { add: 'app/dashboard/components/__mut__.tsx', content: "export function Tog({ on, set }: { on: boolean; set: (v: boolean) => void }) {\n  return (\n    <button type=\"button\" role=\"switch\" aria-checked={on} onClick={() => set(!on)}\n      style={{ width: 46, height: 26, borderRadius: 12, background: on ? 'var(--accent)' : 'var(--border-default)' }}>\n      <span />\n    </button>\n  )\n}\n" },
   'http-bridge': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create or replace function public.mut_probe_call() returns void language sql as $$ select net.http_post(url => \'https://x\') $$;\ngrant execute on function public.mut_probe_call() to authenticated;\n' },
   'sql-types': { add: 'supabase/migrations/29990101000000_mut.sql', content: 'create or replace function public.mut_probe() returns void language plpgsql as $$\ndeclare v_row record;\nbegin\n  for v_row in select * from public.bills loop\n    if v_row.property_id = some_text then null; end if;\n  end loop;\nend $$;\n' },
+  // Νέα δυνατότητα που ανακοινώνεται χωρίς να περνά από τη σειρά διάθεσης.
+  // Τρεις κανόνες: νέα δυνατότητα που ανακοινώνεται χωρίς το μητρώο, εγγραφή με
+  // ημερομηνία που δεν την κλειδώνει κανείς και πύλη που δεν καλεί κανείς.
+  'rollout': { every: [
+    { add: 'components/__mut__.tsx', content: tsx('    <span>Νέα δυνατότητα: εξαγωγή σε Excel</span>') },
+    { file: 'lib/billing/rollout.ts', from: 'export const ROLLOUT: Record<string, RolloutEntry> = {\n', to: "export const ROLLOUT: Record<string, RolloutEntry> = {\n  excel_export: { label: 'Εξαγωγή σε Excel', opens: '2027-01-01' },\n" },
+    { file: 'lib/billing/rollout.ts', from: "gate: 'mobile_access', pending: true }", to: "gate: 'mobile_access' }" },
+    // Καλών μόνο σε σχόλιο δεν κλειδώνει τίποτα.
+    { file: 'lib/billing/rollout.ts', from: "gate: 'mobile_access', pending: true }", to: "gate: 'mobile_access' } // rpc('mobile_access', {})" },
+  ] },
   'service-role': { add: 'components/__mut__.ts', content: "export const key = process.env.SUPABASE_SERVICE_ROLE_KEY\n" },
+  // Το σφάλμα του 10/11/2026 αυτούσιο: δημόσιο URL φωτογραφίας παράδοσης.
+  'public-url': { add: 'components/__mut__.ts', content: "export const u = (s: any, p: string) => s.storage.from('inventory-photos').getPublicUrl(p)\n" },
   'csv-injection': { add: 'lib/core/__mut__.ts', content: "export const row = (cells: string[]) => cells.join(';')\n" },
-  'password-leak': { add: 'components/__mut__.tsx', content: "import PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  return <PasswordStrength value={v} />\n}\n" },
+  'password-leak': { every: [
+    // Χωρίς onLeaked.
+    { add: "components/__mut__.tsx", content: "import PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  return <PasswordStrength value={v} />\n}\n" },
+    // Ακούει το εύρημα, αλλά η υποβολή δεν ρωτά η ίδια (10/11/2026).
+    { add: "components/__mut__.tsx", content: "import { useState } from 'react'\nimport PasswordStrength from '@/components/PasswordStrength'\nexport function P({ v }: { v: string }) {\n  const [leakedPw, setLeakedPw] = useState<string | null>(null)\n  const blocked = leakedPw === v\n  return <><PasswordStrength password={v} onLeaked={setLeakedPw} /><button disabled={blocked}>ok</button></>\n}\n" },
+    // Η πύλη μόνο σε σχόλιο.
+    { add: "components/__mut__.tsx", content: "import { useState } from 'react'\nimport PasswordStrength from '@/components/PasswordStrength'\nimport { leakedAtSubmit } from '@/lib/auth/leakGate'\nexport function P({ v }: { v: string }) {\n  const [leakedPw, setLeakedPw] = useState<string | null>(null)\n  const blocked = leakedPw === v\n  // if (await leakedAtSubmit(v)) return null\n  void leakedAtSubmit\n  return <><PasswordStrength password={v} onLeaked={setLeakedPw} /><button disabled={blocked}>ok</button></>\n}\n" },
+    // Η πύλη καλείται και η απάντηση πετιέται.
+    { add: "components/__mut__.tsx", content: "import { useState } from 'react'\nimport PasswordStrength from '@/components/PasswordStrength'\nimport { leakedAtSubmit } from '@/lib/auth/leakGate'\nexport function P({ v }: { v: string }) {\n  const [leakedPw, setLeakedPw] = useState<string | null>(null)\n  const blocked = leakedPw === v\n  void leakedAtSubmit(v)\n  return <><PasswordStrength password={v} onLeaked={setLeakedPw} /><button disabled={blocked}>ok</button></>\n}\n" },
+    // Κλήση που ορίζει κωδικό, χωρίς PasswordStrength και χωρίς πύλη.
+    { add: "lib/__mut__.ts", content: "type C = { auth: { updateUser(a: object): Promise<unknown> } }\nexport async function setPw(c: C, password: string) {\n  return c.auth.updateUser({ password })\n}\n" },
+    // Η πύλη υπάρχει, αλλά ΜΕΤΑ την εγγραφή.
+    { add: "lib/__mut__.ts", content: "import { leakedAtSubmit } from '@/lib/auth/leakGate'\ntype C = { auth: { signUp(a: object): Promise<unknown> } }\nexport async function join(c: C, email: string, password: string) {\n  await c.auth.signUp({ email, password })\n  if (await leakedAtSubmit(password)) return false\n  return true\n}\n" },
+    // Κλήση διαχειριστή με τον κωδικό στο δεύτερο όρισμα, χωρίς πύλη.
+    { add: "lib/__mut__.ts", content: "type A = { auth: { admin: { updateUserById(id: string, a: object): Promise<unknown> } } }\nexport async function reset(c: A, id: string, password: string) {\n  return c.auth.admin.updateUserById(id, { password })\n}\n" },
+  ] },
   // Δύο κανόνες, δύο αποδείξεις: διαδρομή χωρίς καμία ταυτότητα και
   // διαδρομή με συνεδρία που δεν ζητά το δεύτερο βήμα (03.10.2026).
   'api-auth': { every: [
@@ -518,16 +603,22 @@ export const MUTATIONS = {
   // ανύπαρκτο αρχείο συνεχίζει να λέει «ελεγμένο».
   // Ο κατάλογος που ξέμεινε πίσω: ένα μήνυμα λιγότερο στο δεσμευμένο έγγραφο
   // από όσα υπάρχουν στον κώδικα. Ακριβώς ό,τι έγινε με το «106 emails».
-  'message-catalog': { file: 'docs/KATALOGOS-MINYMATON.md', from: '| **ΣΥΝΟΛΟ** | **120** | |', to: '| **ΣΥΝΟΛΟ** | **106** | |' },
+  'message-catalog': { file: 'docs/KATALOGOS-MINYMATON.md', from: '| **ΣΥΝΟΛΟ** | **119** | |', to: '| **ΣΥΝΟΛΟ** | **106** | |' },
 
   // Το πράσινο πάνω στο κόκκινο: η απάντηση του γραψίματος πετιέται και η
   // επιτυχία ανακοινώνεται ούτως ή άλλως.
   'success-over-error': { add: 'app/dashboard/components/__mut__.tsx', content: "import { saved } from '@/components/dbWrite'\nimport { notifyOk } from '@/components/toastBus'\nexport default function MutationProbe() {\n  const go = async () => {\n    await saved('Η ανάθεση δεν αποθηκεύτηκε', Promise.resolve({ error: null }))\n    notifyOk('Η ανάθεση αποθηκεύτηκε')\n  }\n  return <button onClick={go}>Ανάθεση</button>\n}\n" },
 
   'validity': { every: [
+    // Παραπομπή σε νόμο γραμμένη με το χέρι στα κείμενα της Προστασίας
+    // ιδιοκτήτη (12/11/2026): το copy.ts δεν εξαιρείται, άρα πρέπει να κόψει.
+    { file: 'lib/legal/enforcement/copy.ts', from: "export const CHECKS_TITLE = ", to: "export const MUT_LAW = 'Αιτήσεις έως 30/06/2027 (ν.5354/2026, ΦΕΚ Α 184).';\nexport const CHECKS_TITLE = " },
+    // Κανόνας που ΕΛΗΞΕ, ΧΩΡΙΣ εκκρεμότητα. Μέχρι τις 10/11/2026 η μετάλλαξη
+    // ήταν στον ΤΑΚΚ· από τότε ο ΤΑΚΚ έχει `pending` και η λήξη του σωστά
+    // προειδοποιεί αντί να κόβει. Ο ΔΤΚ δεν έχει, οπότε εδώ πρέπει να κόψει.
     { file: 'lib/legal/validity.ts',
-      from: "    label: 'Τέλος ανθεκτικότητας στην κλιματική κρίση (ΤΑΚΚ)',\n    where: 'lib/billing/greekTax.ts',\n    validFrom: '2026-01-01',\n    validTo: '2026-12-31',",
-      to:   "    label: 'Τέλος ανθεκτικότητας στην κλιματική κρίση (ΤΑΚΚ)',\n    where: 'lib/billing/greekTax.ts',\n    validFrom: '2024-01-01',\n    validTo: '2024-12-31'," },
+      from: "    where: 'lib/market/cpi.ts',\n    validFrom: '2026-01-01',\n    validTo: '2027-01-31',",
+      to:   "    where: 'lib/market/cpi.ts',\n    validFrom: '2024-01-01',\n    validTo: '2024-12-31'," },
     { file: 'lib/legal/validity.ts',
       from: "    where: 'lib/billing/enfia.ts',",
       to:   "    where: 'lib/billing/enfia-METAKOMISE.ts'," },
@@ -537,6 +628,34 @@ export const MUTATIONS = {
     // ενοικίων. Νέο αρχείο που επικαλείται νόμο χωρίς να το φυλάει κανείς.
     { add: 'lib/core/__mut_law__.ts',
       content: '// Νέος κανόνας: μείωση 12% (ν.5300/2027), χωρίς εγγραφή σε μητρώο.\nexport const PROBE_RATE = 0.12\n' },
+    // ΚΑΙ Ο ΤΕΤΑΡΤΟΣ: Η ΕΞΑΙΡΕΣΗ ΤΗΣ ΕΚΚΡΕΜΟΤΗΤΑΣ (`pending`) ΔΕΝ ΓΙΝΕΤΑΙ ΜΟΝΙΜΗ.
+    // Οσο εκκρεμεί νόμος ή απόφαση, ο κανόνας προειδοποιεί αντί να κόβει, ακόμη
+    // και αφού λήξει (απόφαση ιδιοκτήτη 10/11/2026). Πάνω από 90 ημέρες όμως
+    // κόβει: εδώ η εκκρεμότητα «ξεκίνησε» στις αρχές του 2025.
+    { file: 'lib/legal/validity.ts',
+      from: "  since: '2026-11-04',\n};",
+      to:   "  since: '2025-01-02',\n};" },
+    // ΚΑΙ ΤΑ ΠΑΡΑΘΥΡΑΚΙΑ ΤΟΥ ΙΔΙΟΥ ΟΡΙΟΥ: μελλοντικό `since` δεν φτάνει ποτέ
+    // τις 90 ημέρες, άκυρο δεν μετριέται καθόλου.
+    { file: 'lib/legal/validity.ts',
+      from: "  since: '2026-11-04',\n};",
+      to:   "  since: '2099-01-01',\n};" },
+    { file: 'lib/legal/validity.ts',
+      from: "  since: '2026-11-04',\n};",
+      to:   "  since: 'kati',\n};" },
+    // Και η πηγή της εκκρεμότητας: δημοσίευμα δεν σταματά το κόκκινο.
+    { file: 'lib/legal/validity.ts',
+      from: "href: 'https://ypergasias.gov.gr/'",
+      to:   "href: 'https://www.example-news.gr/kat-mis-2027'" },
+    // ΑΝΘΡΩΠΟΣ Ή ΕΡΓΑΛΕΙΟ (12/11/2026). Εγγραφή που δεν την είδε κανείς: `checkedAt`
+    // null χωρίς `toolReadAt`. Δεν είναι 'unchecked', είναι κενό: πρέπει να κόψει.
+    { file: 'lib/legal/validity.ts',
+      from: "    checkedAt: null,\n    toolReadAt: '2026-11-12',\n    recheck: 'Νέος νόμος που αγγίζει",
+      to:   "    checkedAt: null,\n    recheck: 'Νέος νόμος που αγγίζει" },
+    // Και η ανάγνωση του εργαλείου δεν κρατά για πάντα: πάνω από 12 μήνες κόβει.
+    { file: 'lib/legal/validity.ts',
+      from: "    checkedAt: null,\n    toolReadAt: '2026-11-12',\n    recheck: 'Νέος νόμος που αγγίζει",
+      to:   "    checkedAt: null,\n    toolReadAt: '2025-10-01',\n    recheck: 'Νέος νόμος που αγγίζει" },
   ] },
 
   'modal-width': { every: [
@@ -717,12 +836,18 @@ export const MUTATIONS = {
     { file: 'package.json', from: '"guards":', to: '"mut:probe": "node scripts/mut-probe.mjs",\n    "guards":' },
   ] },
   // Παραπομπή σε νόμο μέσα στον κώδικα, χωρίς εγγραφή στο μητρώο πηγών.
-  'accounting-sources': { add: 'lib/core/__mut__.ts', content: "// Κατά το ν.9999/2020, το τεκμαρτό ποσοστό αλλάζει.\nexport const rate = 0.05\n" },
+  'accounting-sources': { every: [
+    { add: 'lib/core/__mut__.ts', content: "// Κατά το ν.9999/2020, το τεκμαρτό ποσοστό αλλάζει.\nexport const rate = 0.05\n" },
+    // Πηγή που δεν την είδε ούτε άνθρωπος ούτε εργαλείο: `checkedAt` null χωρίς `toolReadAt`.
+    { file: 'data/accounting-sources.json', from: '    "checkedAt": null,\n    "toolReadAt": "2026-11-12",', to: '    "checkedAt": null,' },
+    // Ανάγνωση εργαλείου πάνω από 12 μηνών, χωρίς ανθρώπινο έλεγχο.
+    { file: 'data/accounting-sources.json', from: '    "checkedAt": null,\n    "toolReadAt": "2026-11-12",', to: '    "checkedAt": null,\n    "toolReadAt": "2025-10-01",' },
+  ] },
   'landing-theme': { file: 'app/LandingStyles.tsx', from: '          --bg-base: var(--mkt-bg-base);', to: '          --bg-base: #101418;' },
   // Διαδρομή που παρακάμπτει τη θύρα και μιλά κατευθείαν στον πάροχο.
   // Η ΔΙΑΔΡΟΜΗ ΤΟΥ ΤΑΜΕΙΟΥ ΞΑΝΑΡΩΤΑ ΜΟΝΟ ΤΟΝ ΕΜΠΟΡΟ: ακριβώς το σφάλμα της
   // 20/10/2026, ζωντανό κλειδί με ανώνυμο πωλητή.
-  'checkout-gate': { file: 'app/api/billing/checkout/route.ts', from: 'const gate = checkoutState(process.env);', to: 'const gate = { live: mor.isLive(process.env), closedBy: null };' },
+  'checkout-gate': { file: 'app/api/billing/checkout/flow.ts', from: 'const gate = checkoutState(env, IDENTITY, mor);', to: 'const gate = { live: mor.isLive(env), closedBy: null };' },
   'merchant-seam': { add: 'app/api/__mut__/route.ts', content: "import { creemPort } from '@/lib/billing/merchant/creem'\nexport const GET = () => Response.json({ live: creemPort.isLive(process.env) })\n" },
   // Νέα οθόνη ταυτοποίησης με επικεφαλίδα και καμία έξοδο: το αδιέξοδο που
   // εμφανίστηκε τέσσερις φορές.
@@ -773,6 +898,10 @@ export const MUTATIONS = {
   // 29/10/2026. Και οι δύο κανόνες ζύγισης του globals.css, ο καθένας χωριστά·
   // και η επιστροφή τους στο shorthand `text-wrap`, που έσπαγε τα ποσά.
   'text-glue': { every: [
+    // η πρόζα δεν περνά πια από το `bindShortWords`
+    { file: 'components/Hyphen.tsx', from: 'bindRefs(bindShortWords(node))', to: 'bindRefs(node)' },
+    // λείπει μικρή λέξη από τη λίστα
+    { file: 'lib/core/hyphenate.ts', from: "  'και', 'σε', 'στο',", to: "  'σε', 'στο'," },
     { add: 'components/__mut__.tsx', content: tsx('    <p>Δωρεάν τις πρώτες {30} ημέρες, σε 80 τ.μ.</p>') },
     { file: 'app/globals.css', from: ':where([class*="-title"], [class*="-label"]', to: ':where([class*="-titlos"], [class*="-label"]' },
     { file: 'app/globals.css', from: 'legend, figcaption, a, button) { text-wrap-style: balance; }', to: 'legend, figcaption, a, button) { text-wrap: balance; }' },
@@ -811,5 +940,80 @@ export const MUTATIONS = {
     { add: 'lib/i18n/en/__mut__.ts', content: "export const cta = { label: 'Start free', price: '€0/month' }\n" },
     { add: 'lib/i18n/en/__mut__.ts', content: "export const per = (a: string) => `ή ${a} a year`\n" },
     { add: 'lib/i18n/en/__mut__.ts', content: "export const noa = 'Noa reads your bills and she answers in Greek.'\n" },
+  ] },
+
+  // ══ Η ΔΙΑΡΡΟΗ ΤΗΣ ΔΟΚΙΜΗΣ ΕΠΑΝΑΦΟΡΑΣ (11/11/2026) ═══════════════════════════
+  // Ακριβώς το #521: Postgres ως `services:`, που το GitHub τυπώνει το log του.
+  // Και κάθε τείχος χωριστά, μαζί με κάθε παράκαμψη που βρήκε η αξιολόγηση του
+  // #538: άλλη εικόνα ή γραφή YAML, άλλος τρόπος εκκίνησης container, stderr
+  // που ενώνεται σε σωλήνα ή τυπώνεται αργότερα, psql πίσω από `bash -c` ή
+  // μεταβλητή, xtrace σε κάθε γραφή, σενάριο που καλεί μια ροή.
+  'backup-logs': { every: [
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs:\n  drill:\n    runs-on: ubuntu-latest\n    services:\n      postgres:\n        image: postgres:17.6\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs:\n  d:\n    runs-on: ubuntu-latest\n    env:\n      K: ${{ secrets.K }}\n    services:\n      db:\n        image: ${{ vars.DB_IMAGE }}\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs: {d: {runs-on: ubuntu-latest, services: {db: {image: 'postgres:17'}}, steps: [{run: echo}]}}\n" },
+    { file: '.github/workflows/backup-restore-drill.yml', from: 'docker run -d --name drill-pg --log-driver none --network none', to: 'docker run -d --name drill-pg --network none' },
+    { file: '.github/workflows/backup-restore-drill.yml', from: '-c log_min_error_statement=panic -c log_min_messages=panic', to: '-c log_min_messages=panic' },
+    { add: MUT_WF, content: wfRun('docker container run -d --name x redis:7 >/dev/null 2>&1') },
+    { add: MUT_WF, content: wfRun('docker create --name x redis:7 >/dev/null') },
+    { add: MUT_WF, content: wfRun('docker start x >/dev/null') },
+    { add: MUT_WF, content: wfRun('docker compose -f db.yml up -d') },
+    { add: MUT_WF, content: wfRun('docker-compose up -d') },
+    { add: MUT_WF, content: wfRun('supabase start') },
+    { file: '.github/workflows/backup-restore-drill.yml', from: 'pg -d drill -v ON_ERROR_STOP=1 -f - < scripts/db/platform-stub.sql >/dev/null 2>&1', to: 'pg -d drill -v ON_ERROR_STOP=1 -f - < scripts/db/platform-stub.sql' },
+    { add: MUT_WF, content: wfRun('pg_dump -f dump.sql') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql >/dev/null 2>&1 | tee psql.log') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql 2>&1 >/dev/null | sed 1q') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql >/dev/null 2>psql.err || true\ntail -5 psql.err') },
+    { add: MUT_WF, content: wfRun('psql -f data.sql >/dev/null 2>psql.err || cat psql.err') },
+    { add: MUT_WF, content: wfRun("bash -c 'psql -f data.sql'") },
+    { add: MUT_WF, content: wfRun('PSQL="psql -h localhost -q"\n$PSQL -f data.sql >/dev/null') },
+    { add: MUT_WF, content: wfRun('out=$(psql -f data.sql 2>&1) || true\necho "$out"') },
+    { add: MUT_WF, content: wfRun('n="$(psql -tAc \'select 1\')"') },
+    { add: MUT_WF, content: wfRun('set -o errexit -o xtrace') },
+    { add: MUT_WF, content: wfRun('set -o pipefail; set -eo xtrace') },
+    { add: 'scripts/backup/__mut__.sh', content: '#!/usr/bin/env bash\nset -euxo pipefail\necho ok\n' },
+    // Αξιολόγηση του #538 στο d793fa5: stderr σε αρχείο ή μεταβλητή, stdout σε
+    // αρχείο που ξαναδιαβάζεται, μεταβλητή που τυπώνεται με άλλους τρόπους,
+    // eval / node -e / python -c, services με μόνο GITHUB_TOKEN και εικόνα ${{ }},
+    // synthetic-db κάτω από τη 10η γραμμή, με PG* ή καλούμενο με secret, allow
+    // πάνω σε πραγματική βάση.
+    { add: MUT_WF, content: wfRun('psql -f d.sql >/dev/null 2>psql.err\nsed -n 1p psql.err') },
+    { add: MUT_WF, content: wfRun('err=$(psql -f d.sql 2>&1 >/dev/null) || true') },
+    { add: MUT_WF, content: wfRun("psql -tAc 'select email from t' >out.txt 2>/dev/null\ncat out.txt") },
+    { add: MUT_WF, content: wfRun("psql -tAc 'select email from t' >out.txt 2>/dev/null\njq -R . out.txt") },
+    { add: MUT_WF, content: wfRun("n=$(psql -tAc 'select email from t' 2>/dev/null)\ncat <<<\"$n\"") },
+    { add: MUT_WF, content: wfRun("n=$(psql -tAc 'select email from t' 2>/dev/null)\necho \"::notice::$n\"") },
+    { add: MUT_WF, content: wfRun("n=$(psql -tAc 'select email from t' 2>/dev/null)\necho \"$n\" >> \"$GITHUB_STEP_SUMMARY\"") },
+    { add: MUT_WF, content: wfRun("n=$(psql -tAc 'select email from t' 2>/dev/null)\necho \"$n\" >&2") },
+    { add: MUT_WF, content: wfRun('eval "psql -f d.sql"') },
+    { add: MUT_WF, content: wfRun("node -e \"require('child_process').execSync('psql -f d.sql', { stdio: 'inherit' })\"") },
+    { add: MUT_WF, content: wfRun("python3 -c \"import os; os.system('pg_dump -f x.sql')\"") },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs:\n  d:\n    runs-on: ubuntu-latest\n    env:\n      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n    services:\n      db:\n        image: ${{ vars.DB_IMAGE }}\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: "name: m\non: workflow_dispatch\njobs:\n  d:\n    runs-on: ubuntu-latest\n    env:\n      PW: ${{ secrets.DB_PASSWORD }}\n    services:\n      cache:\n        image: redis:7\n    steps:\n      - run: echo\n" },
+    { add: MUT_WF, content: wfRun('# log-guard: allow — δοκιμή\npsql "$DATABASE_URL" -f d.sql') },
+    { file: 'scripts/db-replay.sh', from: '#!/usr/bin/env bash\n# log-guard: synthetic-db', to: '#!/usr/bin/env bash\n#\n#\n#\n#\n#\n#\n#\n#\n#\n#\n# log-guard: synthetic-db' },
+    { file: 'scripts/db-replay.sh', from: 'PSQL="psql -h $WORK -U postgres', to: 'export PGHOST="$WORK"\nPSQL="psql -h $WORK -U postgres' },
+    { file: '.github/workflows/ci.yml', from: '        run: bash scripts/db-replay.sh', to: '        env:\n          DB_PW: ${{ secrets.DB_PASSWORD }}\n        run: bash scripts/db-replay.sh' },
+    // Το db push της παραγωγής χωρίς quiet-db: `DETAIL: Key (…)=(…)` στο log.
+    { file: '.github/workflows/supabase-deploy.yml', from: 'run: bash scripts/ci/quiet-db.sh "supabase db push" -- supabase db push --remote --yes --include-all', to: 'run: supabase db push --remote --yes --include-all' },
+    { file: '.github/workflows/supabase-deploy.yml', from: 'listing="$(bash scripts/ci/quiet-db.sh "migration list" --stdout -- supabase migration list --remote)"', to: 'listing="$(supabase migration list --remote)"' },
+    { file: '.github/workflows/db-backup.yml', from: 'bash scripts/ci/quiet-db.sh "dump δεδομένων" -- supabase db dump', to: 'supabase db dump' },
+    { add: MUT_WF, content: wfRun('supabase db push --remote --yes >/dev/null 2>&1 | tee push.log') },
+    { add: MUT_WF, content: wfRun("supabase db query 'select email from t' >out.txt 2>/dev/null\ncat out.txt") },
+    // Η εξαίρεση του quiet-db καλύπτει μόνο την τυλιγμένη εντολή, όχι τη γραμμή.
+    { add: MUT_WF, content: wfRun('bash scripts/ci/quiet-db.sh "push" -- supabase db push --remote --yes; supabase db push --remote --yes') },
+    { add: MUT_WF, content: wfRun('bash scripts/ci/quiet-db.sh "push" -- supabase link && supabase db query "select 1"') },
+    { add: MUT_WF, content: wfRun('x="$(bash scripts/ci/quiet-db.sh "push" --stdout -- supabase db push --remote)"') },
+    { file: 'scripts/db-replay.sh', from: 'PSQL="psql -h $WORK -U postgres', to: 'PSQL="psql $DATABASE_URL -h $WORK -U postgres' },
+    { file: 'scripts/backup/vault.mjs', from: "import { pathToFileURL } from 'node:url'\n", to: "import { pathToFileURL } from 'node:url'\nimport { spawnSync } from 'node:child_process'\nexport const probe = () => spawnSync('pg_dump --data-only', { shell: true })\n" },
+  ] },
+  // Οι δόσεις του φόρου εισοδήματος παραπέμπονταν στην παρ. 4 του άρθρου 67 ΚΦΕ (13/11/2026).
+  'kfe67-instalments': { every: [
+    { file: 'lib/home/forecast12.ts', from: 'ΚΦΕ άρθρο 67 παρ. 6,\n', to: 'ΚΦΕ άρθρο 67 παρ. 4,\n' },
+    { file: 'data/accounting-sources.json', from: '(ΚΦΕ άρθρο 67 παρ. 6, τρίτο εδάφιο)', to: '(ΚΦΕ άρθρο 67 παρ. 4 περ. α΄)' },
+    { file: 'data/accounting-sources.json', from: 'αντικατέστησε το τρίτο εδάφιο της παρ. 6 του άρθρου 67 ΚΦΕ', to: 'αντικατέστησε την περ. α΄ της παρ. 4 του άρθρου 67 ΚΦΕ' },
+    { file: 'app/dashboard/components/assistantPersona.ts', from: '(ΚΦΕ άρθρο 67 §6, όπως', to: '(ΚΦΕ άρθρο 67 §4α, όπως' },
+    { add: 'docs/__mut_kfe67__.md', content: 'Income tax is paid in eight monthly instalments (Income Tax Code, Article 67(4)).\n' },
   ] },
 }

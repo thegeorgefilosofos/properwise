@@ -24,8 +24,10 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { T } from '@/components/tokens';
 import { hy } from '@/components/Hyphen';
-import { SITE, siteUrl, PRODUCT_NAME, ORG_ID } from '@/lib/core/site';
-import { athensParts } from '@/lib/core/time';
+import { SITE, siteUrl, PRODUCT_NAME } from '@/lib/core/site';
+import { organizationNode, ORG_REF } from '@/lib/seo/organization';
+import { athensToday } from '@/lib/core/time';
+import { declarationYear } from '@/lib/core/declarationYear';
 import { IDENTITY } from '@/lib/legal/identity';
 import { billingWords } from '@/lib/legal/billingWords';
 import { ASSISTANT_NAME, ASSISTANT_ACC } from '@/lib/assistant/identity';
@@ -86,8 +88,12 @@ const SAMPLE: ClientCounts = {
 const SAMPLE_GAPS = gapsOf(SAMPLE);
 const SAMPLE_READY = readinessOf(SAMPLE_GAPS);
 
-/** Η χρήση του παραδείγματος του φακέλου: η τελευταία κλεισμένη, όπως στην πύλη. */
-const PACK_YEAR = athensParts().year - 1;
+/**
+ * Η χρήση του παραδείγματος του φακέλου: όποια ανοίγει η πύλη του λογιστή
+ * (`declarationYear`, app/accountant/[token]/page.tsx). Ηταν «πέρσι» πάντα, άρα
+ * από τον Αύγουστο έδειχνε χρήση άλλη από αυτήν που ανοίγει η πύλη.
+ */
+const PACK_YEAR = declarationYear(athensToday());
 
 /** Τα αρχεία του φακέλου με τη σειρά τους, με τα ονόματα που γράφει το zip. */
 const PACK_TREE: { name: string; what: string; depth?: 1 }[] = [
@@ -133,14 +139,7 @@ const FAQ: GuideFaqItem[] = [
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
-    {
-      '@type': 'Organization',
-      '@id': ORG_ID,
-      name: PRODUCT_NAME,
-      url: SITE,
-      email: IDENTITY.supportEmail,
-      logo: { '@type': 'ImageObject', url: siteUrl('/icons/icon-512.png'), width: 512, height: 512 },
-    },
+    organizationNode(),
     {
       '@type': 'WebPage',
       '@id': `${URL}#webpage`,
@@ -149,7 +148,7 @@ const jsonLd = {
       description: DESC,
       inLanguage: 'el',
       isPartOf: { '@id': `${SITE}/#website` },
-      publisher: { '@id': ORG_ID },
+      publisher: ORG_REF,
       audience: { '@type': 'Audience', audienceType: 'Λογιστές και φοροτεχνικοί' },
       about: { '@type': 'Thing', name: 'Ενοίκια, δαπάνες και έντυπο Ε2 πελατών σε Excel για λογιστές' },
     },

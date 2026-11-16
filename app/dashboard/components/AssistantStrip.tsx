@@ -70,7 +70,9 @@ export default function AssistantStrip({ ctx }: { ctx: OpenerContext | null }) {
       }} aria-hidden><AssistantMark size={15} /></div>
 
       <div style={{ flex: 1, minWidth: 220 }}>
-        <p style={{
+        {/* `as-greet`: στον υπολογιστή αφήνει ελεύθερη τη λωρίδα του κουμπιού της
+            Νόας (globals.css), ώστε το κουμπί να μη σκεπάζει το ίδιο της το χαιρετισμό. */}
+        <p className="as-greet" style={{
           fontFamily: T.font.sans, fontSize: 14, lineHeight: 1.55,
           color: 'var(--text-secondary)', margin: 0, maxWidth: '68ch',
         }}>{greeting(ASSISTANT_NAME, ctx, formal)}</p>

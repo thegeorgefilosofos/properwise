@@ -181,6 +181,34 @@ ok(!('partnerCommission' in referral) && !('PARTNER_COMMISSION_RATE' in referral
   ok(/order by public\.plan_rank\(t\.tier\) desc/.test(sync), 'τα δώρα ενώνονται στο καλύτερο πακέτο (έγκριση George 21/10/2026)');
 }
 
+// ── Το δώρο του Συνεργάτη το πιστώνει η βάση με τους ΙΔΙΟΥΣ αριθμούς ──
+// Οι Όροι (app/terms/page.tsx, «Ιδιότητα συνεργάτη») υπόσχονται
+// PARTNER_WELCOME_MONTHS μήνα στο partnerWelcomeTier(πακέτο). Μέχρι τις 10/11/2026
+// δεν το έγραφε κανείς στο referral_rewards. Ο trigger του migration πρέπει να
+// λέει ακριβώς ό,τι ο κώδικας: αν αλλάξει το ένα, η δοκιμή κοκκινίζει.
+{
+  const dir = 'supabase/migrations';
+  const file = readdirSync(dir).find(n => n.includes('to_doro_tou_synergati_me_tin_apoktisi'));
+  ok(!!file, 'δώρο Συνεργάτη: υπάρχει το migration');
+  const sql = file ? readFileSync(`${dir}/${file}`, 'utf8') : '';
+  const body = sql.slice(sql.indexOf('create or replace function private.referral_partner_welcome'));
+  ok(body.includes(`new.user_id, 'months', ${PARTNER_WELCOME_MONTHS},`), 'δώρο Συνεργάτη: οι μήνες είναι PARTNER_WELCOME_MONTHS');
+  const fromPlan = /when coalesce\(v_plan, ''\) in \(([^)]*)\) then '(\w+)' else '(\w+)'/.exec(body);
+  ok(!!fromPlan, 'δώρο Συνεργάτη: το πακέτο κρίνεται από το billing_profiles.plan');
+  if (fromPlan) {
+    const lower = fromPlan[1].split(',').map(x => x.trim().replace(/'/g, ''));
+    for (const plan of ['solo', 'owner', 'agency', 'office', 'free', null]) {
+      const sqlTier = lower.includes(plan ?? '') ? fromPlan[2] : fromPlan[3];
+      ok(sqlTier === partnerWelcomeTier(plan), `δώρο Συνεργάτη: ${plan ?? 'χωρίς πακέτο'} → ${partnerWelcomeTier(plan)} και στη βάση`);
+    }
+  }
+  ok(/reason = 'partner_welcome'/.test(sql) && /on conflict \(user_id\) where reason = 'partner_welcome' do nothing/.test(body),
+    'δώρο Συνεργάτη: μία φορά ανά λογαριασμό');
+  ok(/after insert on public\.referral_partners/.test(sql), 'δώρο Συνεργάτη: πιστώνεται με την απόκτηση της ιδιότητας');
+  ok(/security definer\s+set search_path/.test(body) && /revoke all on function private\.referral_partner_welcome\(\) from public, anon, authenticated/.test(sql),
+    'δώρο Συνεργάτη: security definer με search_path, χωρίς δικαίωμα κλήσης από τον πελάτη');
+}
+
 console.log(`\nreferral/referral.ts — ${p} passed, ${f} failed`);
 if (f > 0) process.exit(1);
 console.log('όλα πέρασαν');

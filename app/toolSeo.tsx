@@ -19,11 +19,16 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import Link from 'next/link';
 import { hy } from '@/components/Hyphen';
-import { ORG_ID, PRODUCT_NAME, SITE } from '@/lib/core/site';
+import { SITE } from '@/lib/core/site';
+import { organizationNode, ORG_REF } from '@/lib/seo/organization';
 import { PUBLIC_TOOLS, TOOLS_HUB } from '@/lib/core/publicTools';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 
-/** Η υπογραφή του περιεχομένου, ορατή στη σελίδα και ως `author` στο σχήμα. */
+/**
+ * Η υπογραφή του περιεχομένου, ορατή στη σελίδα. Στο σχήμα ο συντάκτης είναι ο
+ * οργανισμός (`ORG_REF`, lib/seo/organization.ts): ως 14/11/2026 ήταν δεύτερος
+ * κόμβος `Organization` χωρίς `@id`, δηλαδή άλλη οντότητα από τον εκδότη.
+ */
 const CONTENT_AUTHOR = 'Ομάδα Properwise';
 
 /** Μία ερώτηση με την απάντησή της, όπως την αποδίδει η σελίδα. */
@@ -55,6 +60,7 @@ export function toolJsonLd({ name, url, description, faq }: {
   return {
     '@context': 'https://schema.org',
     '@graph': [
+      organizationNode(),
       {
         '@type': 'WebApplication',
         name,
@@ -64,8 +70,8 @@ export function toolJsonLd({ name, url, description, faq }: {
         inLanguage: 'el',
         description,
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
-        author: { '@type': 'Organization', name: CONTENT_AUTHOR, url: SITE },
-        publisher: { '@type': 'Organization', '@id': ORG_ID, name: PRODUCT_NAME, url: SITE },
+        author: ORG_REF,
+        publisher: ORG_REF,
       },
       toolBreadcrumb(url.slice(SITE.length)),
       {

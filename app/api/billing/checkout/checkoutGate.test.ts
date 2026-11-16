@@ -22,10 +22,14 @@ let pass = 0, fail = 0
 function ok(name: string, cond: boolean) { if (cond) pass++; else { fail++; console.error('✗ ' + name) } }
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const SRC = readFileSync(join(HERE, 'route.ts'), 'utf8')
+// Η ΑΠΟΦΑΣΗ ΜΕΤΑΚΟΜΙΣΕ ΣΤΟ flow.ts (12/11/2026), ώστε να τρέχει και με
+// συμπεριφορά (flow.test.ts). Η route.ts κρατά μόνο ταυτότητα και δεύτερο βήμα
+// και πρέπει να παραδίδει στο flow, όχι να ξαναγράφει δική της απόφαση.
+const SRC = readFileSync(join(HERE, 'flow.ts'), 'utf8')
+const ROUTE = readFileSync(join(HERE, 'route.ts'), 'utf8')
 const PLAN = readFileSync(join(HERE, '..', 'plan', 'route.ts'), 'utf8')
 
-const iGate = SRC.indexOf('checkoutState(process.env)')
+const iGate = SRC.indexOf('checkoutState(env, IDENTITY, mor)')
 const iClosed = SRC.indexOf('return closed()', iGate)
 const iOpen = SRC.indexOf('mor.openCheckout(')
 const iFirstAvailable = SRC.indexOf('available: true')
@@ -35,6 +39,11 @@ ok('με κλειστή συνθήκη επιστρέφει την απάντη�
 ok('η συνθήκη στέκει πριν ζητηθεί σύνδεσμος από τον έμπορο', iGate >= 0 && iOpen > iGate)
 ok('και πριν από κάθε «available: true» (και του probe)', iGate >= 0 && iFirstAvailable > iGate)
 ok('το ταμείο δεν ρωτά πια μόνο τον έμπορο', !/mor\.isLive\(/.test(SRC))
+ok('η διαδρομή παραδίδει στο flow', /return checkoutResponse\(/.test(ROUTE))
+ok('η διαδρομή δεν ανοίγει μόνη της ταμείο', !/openCheckout\(/.test(ROUTE) && !/isLive\(/.test(ROUTE))
+ok('η ταυτότητα και το δεύτερο βήμα πριν από το flow',
+  ROUTE.indexOf('auth.getUser(') >= 0 && ROUTE.indexOf('requireSecondStep(') > ROUTE.indexOf('auth.getUser(')
+  && ROUTE.indexOf('return checkoutResponse(') > ROUTE.indexOf('requireSecondStep('))
 
 const iPlanGate = PLAN.indexOf('checkoutIsLive(process.env)')
 const iChange = PLAN.indexOf('mor.changePlan(')

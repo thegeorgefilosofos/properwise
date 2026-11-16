@@ -896,7 +896,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
             <div className="kpi-row" style={{ ...s.g3, marginBottom:14 }}>
               <div><div style={{ ...labelStyle, marginBottom:8 }}>Εξοφλήθη</div><Toggle on={payF.paid} onChange={v=>setPayF(f=>({...f,paid:v}))} ariaLabel="Εξοφλήθη"/></div>
               {payF.paid&&<DatePicker label="Ημερομηνία πληρωμής" value={payF.paid_date} onChange={v=>setPayF(f=>({...f,paid_date:v}))}/>}
-              <TextInput label="Σημείωση" value={payF.notes} onChange={v=>setPayF(f=>({...f,notes:v}))} placeholder="προαιρετικό"/>
+              <TextInput dictation label="Σημείωση" value={payF.notes} onChange={v=>setPayF(f=>({...f,notes:v}))} placeholder="προαιρετικό"/>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
               <Btn variant="secondary" onClick={()=>setAddOpen(false)}>Ακύρωση</Btn>

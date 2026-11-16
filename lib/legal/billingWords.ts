@@ -62,7 +62,8 @@ import { IDENTITY, sellerIdentityGaps, sellerFieldLabel, type LegalIdentity } fr
 import { TRIAL_DAYS, PLANS } from '@/lib/billing/plans';
 import { SCAN_LIMITS } from '@/lib/billing/aiLimits';
 import { INVITE_LIMITS } from '@/lib/billing/inviteLimits';
-import { PROFESSIONAL_MIN_PLAN } from '@/lib/billing/entitlements';
+import { PROFESSIONAL_MIN_PLAN, FEATURE_MIN_PLAN } from '@/lib/billing/entitlements';
+import { PAST_DUE_GRACE_DAYS } from '@/lib/billing/subscription';
 
 // ── ΜΕΤΑ ΤΗ ΔΟΚΙΜΗ: ΤΟ ΔΩΡΕΑΝ ΠΑΚΕΤΟ, ΟΧΙ ΔΙΑΓΡΑΦΗ ────────────────────────
 // ΑΠΟΦΑΣΗ ΙΔΙΟΚΤΗΤΗ (25.09.2026). Ως τώρα, χωρίς συνδρομή ο λογαριασμός
@@ -292,6 +293,46 @@ export const NO_COMMITMENT = 'Χωρίς δέσμευση ή ποινή αποχ
 export const CANCEL_ANYTIME = 'Ακυρώνεις όποτε θέλεις.';
 
 /**
+ * ΤΙ ΛΕΕΙ Η ΚΑΡΤΑ ΤΗΣ ΣΥΝΔΡΟΜΗΣ ΟΤΑΝ Η ΠΛΗΡΩΜΗ ΔΕΝ ΠΕΡΑΣΕ Ή ΕΠΙΣΤΡΑΦΗΚΕ.
+ *
+ * ΠΗΓΗ: έλεγχος ετοιμότητας πληρωμών 12/11/2026, «Λείπει (κώδικας)» 1 και 2. Η
+ * αποτυχημένη πληρωμή έχει πλέον όριο (`PAST_DUE_GRACE_DAYS`) και η επιστροφή
+ * χρημάτων ή η αμφισβήτηση κλείνουν το πακέτο. Ο πελάτης το διαβάζει στην
+ * κάρτα της συνδρομής, με την ημερομηνία που ισχύει για εκείνον.
+ *
+ * ΗΤΑΝ ΓΡΑΜΜΕΝΗ ΣΤΗΝ ΟΘΟΝΗ. Η κάρτα (Billing.tsx) έλεγε με δικά της λόγια ότι ο
+ * λογαριασμός «παραμένει ανοιχτός όσο ο έμπορος ξαναδοκιμάζει», δηλαδή
+ * υπόσχεση χωρίς όριο, έξω από αυτό το αρχείο. Η οθόνη ζει στον περιηγητή και
+ * δεν εισάγει αυτό το αρχείο: τα παίρνει από το /api/billing/words και βάζει
+ * η ίδια την ημερομηνία στη θέση του `{date}`.
+ *
+ * Οι ημέρες βγαίνουν από τον κώδικα, ποτέ γραμμένες με το χέρι. Ισχύουν με
+ * ταμείο ανοιχτό ή κλειστό: αφορούν συνδρομή που ΥΠΑΡΧΕΙ ήδη.
+ */
+export const SUBSCRIPTION_NOTICES = {
+  pastDue:
+    'Η τελευταία χρέωση δεν ολοκληρώθηκε. Το πακέτο σου μένει ανοιχτό ως τις {date}, όσο ο έμπορος ξαναδοκιμάζει την κάρτα. Ενημέρωσε την κάρτα σου από τη διαχείριση συνδρομής.',
+  pastDueOver:
+    `Η χρέωση δεν ολοκληρώθηκε και οι ${PAST_DUE_GRACE_DAYS} ημέρες αναμονής τελείωσαν στις {date}. Ο λογαριασμός συνεχίζει στο πακέτο «${PLANS.free.name}» χωρίς συνδρομή και τα δεδομένα σου μένουν. Ενημέρωσε την κάρτα σου από τη διαχείριση συνδρομής: μόλις περάσει η πληρωμή, το πακέτο σου ανοίγει ξανά.`,
+  // Η ΣΥΝΔΡΟΜΗ ΣΤΟΝ ΕΜΠΟΡΟ ΔΕΝ ΑΚΥΡΩΝΕΤΑΙ ΑΥΤΟΜΑΤΑ (έλεγχος του PR 558, M2).
+  // Το κείμενο δεν λέει ότι «σταμάτησε» ούτε στέλνει σε νέα αγορά: λέει μόνο
+  // ότι η πρόσβαση έκλεισε και στέλνει στην υποστήριξη, που κλείνει και τη
+  // συνδρομή.
+  refund:
+    `Η πληρωμή σου επιστράφηκε στις {date} και η πρόσβαση στο πακέτο έκλεισε. Ο λογαριασμός συνεχίζει στο πακέτο «${PLANS.free.name}» και τα δεδομένα σου μένουν. Για τη συνδρομή σου γράψε μας από την υποστήριξη.`,
+  dispute:
+    `Η πληρωμή σου αμφισβητήθηκε στην τράπεζα στις {date} και η πρόσβαση στο πακέτο έκλεισε. Ο λογαριασμός συνεχίζει στο πακέτο «${PLANS.free.name}» και τα δεδομένα σου μένουν. Για τη συνδρομή σου γράψε μας από την υποστήριξη.`,
+} as const;
+
+/**
+ * Η ΑΡΝΗΣΗ ΝΕΟΥ ΤΑΜΕΙΟΥ ΜΕΤΑ ΑΠΟ ΕΠΙΣΤΡΟΦΗ Ή ΑΜΦΙΣΒΗΤΗΣΗ (έλεγχος του PR 558, M2).
+ * Η παλιά συνδρομή ζει ακόμη στον έμπορο· μια νέα αγορά θα έστηνε δεύτερη
+ * δίπλα της. Την ακύρωση και την επανέναρξη τις κάνει η υποστήριξη.
+ */
+export const REVOKED_CHECKOUT_REFUSAL =
+  'Η πρόσβαση στο πακέτο έκλεισε μετά από επιστροφή ή αμφισβήτηση πληρωμής. Πριν από νέα αγορά γράψε μας από την υποστήριξη, ώστε να κλείσει πρώτα η προηγούμενη συνδρομή.';
+
+/**
  * Ποιος στέλνει πρόσκληση πελατών με email και με ποια όρια στη δοκιμή.
  *
  * ΗΤΑΝ ΓΡΑΜΜΕΝΗ ΣΤΗΝ ΟΘΟΝΗ. Η κάρτα «Πρόσκληση πελατών» (BulkInvite) έλεγε
@@ -308,6 +349,13 @@ const INVITE_TRIAL = `στη δοκιμή έως ${INVITE_LIMITS.trialPerDay} τ
 export const INVITE_ACCESS = `Για πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω· ${INVITE_TRIAL}.`;
 /** Η άρνηση της βάσης (`plan_required`), με τα ίδια όρια. */
 export const INVITE_PLAN_REFUSAL = `Η πρόσκληση με email ανοίγει στο πακέτο «${PLANS[PROFESSIONAL_MIN_PLAN].name}» και πάνω· ${INVITE_TRIAL}.`;
+
+/**
+ * Από ποιο πακέτο ανοίγει η Προστασία ιδιοκτήτη (απόφαση ιδιοκτήτη 12/11/2026).
+ * Το πακέτο βγαίνει από το FEATURE_MIN_PLAN, που κρίνει και την πρόσβαση· η
+ * οθόνη (ProstasiaEntry) το διαβάζει από το /api/billing/words.
+ */
+export const PROSTASIA_ACCESS = `Η Προστασία ιδιοκτήτη περιλαμβάνεται από το πακέτο «${PLANS[FEATURE_MIN_PLAN.foreclosure_protection].name}» και πάνω.`;
 
 /**
  * Το δικαίωμα του νόμου για τον καταναλωτή, σε μία πρόταση για τα ψιλά του
@@ -423,8 +471,13 @@ const NOT_LIVE: Omit<BillingWords, 'live' | 'saleClosedReason' | 'seller'> = {
     'Τα έσοδά μας θα είναι οι συνδρομές. Σήμερα η χρέωση συνδρομών δεν έχει ενεργοποιηθεί.',
   paymentMethodAsked:
     'Όταν η χρέωση ενεργοποιηθεί, το μέσο πληρωμής θα ζητείται ρητά στο ταμείο και μόνο για συνδρομή, με σαφή αναφορά στο ποσό και στην περίοδο πριν πληρώσεις. Η χρέωση θα γίνεται τη στιγμή της αγοράς.',
+  // ΔΕΝ ΥΠΟΣΧΕΤΑΙ ΚΟΥΜΠΙ ΠΟΥ ΔΕΝ ΥΠΑΡΧΕΙ (έλεγχος 12/11/2026). Ελεγε «το
+  // αλλάζεις όποτε θέλεις… σήμερα δεν κοστίζει τίποτα», ενώ το
+  // app/api/billing/plan/route.ts απαντά 403 σε όποιον δεν έχει συνδρομή και
+  // 503 όσο το ταμείο είναι κλειστό. Η αλλαγή πακέτου υπάρχει μόνο από τη
+  // στιγμή που ανοίγουν οι συνδρομές· ως τότε το λέμε όπως είναι.
   planChange:
-    'Το πακέτο το αλλάζεις όποτε θέλεις μέσα από την εφαρμογή και σήμερα η αλλαγή δεν κοστίζει τίποτα. Όταν ενεργοποιηθεί η χρέωση, η αναβάθμιση θα χρεώνεται αναλογικά, μόνο για τις ημέρες ως την επόμενη ανανέωση. Η υποβάθμιση θα ισχύει από την επόμενη ανανέωση, χωρίς επιστροφή για την περίοδο που έχεις ήδη πληρώσει.',
+    'Οι συνδρομές δεν έχουν ανοίξει ακόμη, οπότε σήμερα δεν αγοράζεις ούτε αλλάζεις πακέτο μέσα από την εφαρμογή· ανοίγουν σύντομα. Από τότε, η αναβάθμιση θα ισχύει αμέσως και θα χρεώνεται αναλογικά, μόνο για τις ημέρες ως την επόμενη ανανέωση. Η υποβάθμιση θα ισχύει από την επόμενη ανανέωση, χωρίς επιστροφή για την περίοδο που έχεις ήδη πληρώσει.',
   subscriptionPlace:
     'Όταν ενεργοποιηθεί η χρέωση, τα παραστατικά, το μέσο πληρωμής και η συνδρομή θα βρίσκονται στη διαχείριση συνδρομής, μέσα από τον Λογαριασμό σου.',
   renewal:
@@ -610,7 +663,7 @@ const NOT_LIVE_EN: Omit<BillingWords, 'live' | 'saleClosedReason' | 'seller'> = 
   paymentMethodAsked:
     'Once billing is switched on, a payment method will be requested explicitly at checkout and only for a subscription, with the amount and the period shown clearly before you pay. The charge will be made at the moment of purchase.',
   planChange:
-    'You can change plans at any time from within the app, and today the change costs nothing. Once billing is switched on, an upgrade will be charged pro rata, only for the days until the next renewal. A downgrade will apply from the next renewal, with no refund for the period you have already paid.',
+    'Subscriptions are not open yet, so today you cannot buy or change a plan in the app; they open soon. From then on, an upgrade will take effect immediately and be charged pro rata, only for the days until the next renewal. A downgrade will apply from the next renewal, with no refund for the period you have already paid.',
   subscriptionPlace:
     'Once billing is switched on, receipts, your payment method and the subscription will be in subscription management, under your Account.',
   renewal:
@@ -668,3 +721,13 @@ export function billingWordsEn(
     } : null,
   };
 }
+
+/**
+ * Η ΓΡΑΜΜΗ ΤΗΣ ΔΟΚΙΜΗΣ ΣΤΗ ΛΙΣΤΑ «ΑΠΟ ΠΟΥ ΞΕΚΙΝΑΣ» (13/11/2026): «Δοκιμή · 24
+ * ημέρες». Ηταν ετικέτα «Δοκιμή» και ένας αριθμός των 28 εικονοστοιχείων, ο
+ * μεγαλύτερος της οθόνης, δίπλα στα πρώτα βήματα του χρήστη. Τώρα μία ήσυχη
+ * γραμμή, γραμμένη εδώ όπως κάθε λέξη για τη δοκιμή. Φτάνει στον πίνακα από
+ * το /api/billing/words· το `{n}` είναι οι ημέρες του `trialState`, ποτέ
+ * γραμμένες με το χέρι.
+ */
+export const TRIAL_LINE = { one: 'Δοκιμή · {n} ημέρα', many: 'Δοκιμή · {n} ημέρες' } as const;

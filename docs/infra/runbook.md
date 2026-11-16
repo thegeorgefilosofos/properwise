@@ -43,13 +43,74 @@ in its home; edge functions pick up the service-role key automatically.
 
 ## Backups & restore
 
-- `Database backup` workflow (`.github/workflows/db-backup.yml`) runs daily at 02:00
-  UTC and on demand: a logical dump (roles + schema + data) uploaded as a private,
-  90-day GitHub artifact — an off-site net on the current plan.
-- **Restore**: download the artifact, then `psql "<connection>" -f schema.sql` then
-  `-f data.sql` (roles first if restoring to a fresh project).
-- ⚠ The artifact contains real customer data — keep the repo private. Move to Supabase
-  **Pro** (daily managed backups + 7-day PITR) before onboarding real customers.
+The repository is **public**, so Actions artifacts and logs are public too. Backups
+therefore never go to artifacts: they live in a private Supabase Storage bucket.
+
+- **Where.** Bucket `db-backups`, private, with no storage policy for `anon` or
+  `authenticated` (only the service role reads it), in the database's region
+  (`eu-central-1`, Frankfurt). One folder per run, `YYYY-MM-DDTHHMMSSZ`: a second
+  run on the same day never writes into a sealed folder. Every file is stored as
+  parts of at most 45 MB (`roles.sql.gpg.part-000`, …), because the free plan
+  accepts up to 50 MB per object. On Sundays (and on manual runs with `files`) all
+  six buckets of the project go in as `files.tar.gpg.part-*`: `lease-documents`,
+  `property-files`, `inventory-docs`, `maintenance-photos`, `inventory-photos`,
+  `avatars`. `manifest.json` is uploaded **last** and lists every part with size
+  and sha256. A folder without a manifest is not a backup.
+- **Who writes.** `Database backup` (`.github/workflows/db-backup.yml`), daily 02:00
+  UTC and on demand, one run at a time (`concurrency: db-backup`), in **two jobs**:
+  - `backup` (database secrets, only `contents: read`): dump; health check (key
+    tables in the schema; no key table with 0 rows where production has rows;
+    every file decrypts back byte for byte; data dump not below half of the last
+    good one); upload; manifest last. Its last step, retention, runs **always**,
+    even if a step before it failed: it deletes folders that reached 30 days but
+    never the last good database backup or the last good files set, and deletes
+    nothing if no manifest can be read.
+  - `artifacts` (always, only `actions: write`, no secrets): deletes leftover
+    `supabase-backup-*` artifacts from the old public setup.
+- **Legitimate shrink.** If data really went down by more than half (bulk delete,
+  cleanup of test accounts), the size check keeps failing. After confirming the
+  cause: **Actions → Database backup → Run workflow** with `allow_shrink` ticked.
+  The log says the override was used. Never tick it to silence a failure you
+  have not explained.
+- **Who checks.** `Backup watchdog` (05:00 UTC) opens an issue if the last sealed
+  run is older than 48 h, a part is missing or has the wrong size, a sha256 of
+  the database parts does not match, any unencrypted `.sql` exists, or the latest
+  files set is incomplete or older than 8 days. `Backup restore drill` (3rd of
+  each month, Postgres 17.6) checks every part against the manifest, decrypts the
+  latest run, restores it into a throwaway Postgres, compares row counts of the
+  key tables and checks the latest files set.
+- **60 days without activity.** GitHub disables scheduled workflows in a public
+  repository after 60 days without repository activity (docs.github.com, Actions,
+  «Disabling and enabling a workflow»). It disables the watchdog
+  too, because it is also scheduled, so **the watchdog does not catch this
+  case.** What does: any push to the repository resets the count; the Actions
+  page shows "This scheduled workflow is disabled" next to `Database backup`. If
+  backups stop and no issue appears, check that page first and press **Enable
+  workflow** on all three backup workflows. An external heartbeat (for example a
+  Sentry cron monitor pinged by `db-backup.yml`) would catch it independently; it
+  is not set up yet.
+- **Keys.** No extra secret: the service-role key is fetched at run time from the
+  Management API with `SUPABASE_ACCESS_TOKEN` (`scripts/backup/service-key.sh`) and
+  masked in the log. Supabase has no read-only storage key, so the drill runs with
+  `VAULT_READONLY=1` and `vault.mjs` refuses anything but download and list. Logs
+  print counts and sizes only, never object paths.
+- **Restore.**
+  1. Get the service-role key (Dashboard → Project Settings → API keys) and run
+     `SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SERVICE_KEY=… node scripts/backup/vault.mjs latest`.
+  2. `node scripts/backup/vault.mjs get-joined <folder> data.sql.gpg data.sql.gpg` (same
+     for `roles`, `schema`, and `files.tar.gpg`). It checks every part's sha256.
+  3. `gpg --decrypt -o data.sql data.sql.gpg` with `BACKUP_PASSPHRASE`.
+  4. `psql "<connection>" -f roles.sql`, then `-f schema.sql`, then
+     `-f data.sql` (roles only on a fresh project).
+  5. Files: decrypt `files.tar.gpg`, untar, and upload per bucket.
+- ⚠ **Same provider.** The backup lives in the same Supabase project as the
+  database. It covers a bad migration or an accidental delete, not the loss of the
+  project or the account. Next step: a second destination with another provider
+  (Cloudflare R2 or AWS S3), which needs an account the owner opens. Supabase
+  **Pro** adds managed daily backups and point-in-time recovery.
+- **Passphrase.** After the move from public artifacts (10/11/2026) the
+  `BACKUP_PASSPHRASE` must be rotated: the old encrypted files were downloadable by
+  anyone. Backups made before the rotation open only with the old phrase.
 
 ## Incident response — leaked secret
 

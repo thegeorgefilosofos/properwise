@@ -212,6 +212,20 @@ npm run db:replay               # migrations, writes and RLS on Postgres 16
 Run `npm run guards` without a pipe: `npm run guards | tail` reports the exit
 code of `tail`.
 
+### Scripts
+
+The main groups in `package.json`:
+
+| Script | What it does |
+|---|---|
+| `dev` · `build` · `start` | Next.js development server, production build and production server. |
+| `check` | `typecheck`, `lint:ratchet`, `test` and `guards` in that order; stops at the first failure. |
+| `typecheck` | `tsc --noEmit`. |
+| `test` | Every `*.test.ts` and the messaging verifiers (`scripts/test.mjs`). |
+| `guards` · `guards:verify` | Every `scripts/guard-*.mjs`, then each guard against its own mutation. |
+| `db:replay` | Migrations, the app's writes and RLS probes on a local Postgres 16 (needs `initdb`, `pg_ctl` and `psql`). |
+| `e2e` · `e2e:*` | Browser suites through `playwright-core` and a local Chromium. Some need `npm run dev` running; others build their own bench first. |
+
 ## CI/CD
 
 | Workflow | When | What |
@@ -219,10 +233,12 @@ code of `tail`.
 | `ci.yml` | every pull request to `main` | Secret scan, dependency audit, lint ratchet, typecheck (app and Deno), guards and their mutations, db-replay, tests, production build, bundle secret scan, then the browser suites. One gate job must be green. |
 | `supabase-deploy.yml` | push touching migrations, functions or their config | Migrations and edge functions: `claude/**` to staging, `main` to production, with a failure alert. |
 | `db-backup.yml` · `backup-watchdog.yml` | daily | Logical dump to a private artifact; a later job raises an alert when the latest one is missing. |
+| `backup-restore-drill.yml` | monthly, or by hand | Downloads the latest sealed backup, checks each part against its manifest, decrypts it, restores it into a throwaway Postgres inside the runner and compares the row counts of the key tables with the dump. |
 | `security-daily.yml` · `weekly-quality.yml` | scheduled | Security sweep and a production quality pass. |
 | `health.yml` | push to `main` | Production health right after a release; between releases the `health-check` edge function runs from pg_cron. |
 | `validity.yml` · `aade-editions.yml` · `elstat-cpi.yml` · `price-freshness.yml` | scheduled | Tax-data validity, ΑΑΔΕ form editions, the rent index, tariff prices. |
 | `db-types.yml` | schema change on `main` | Opens a pull request with regenerated database types. |
+| `grok-gefyra.yml` | the `claude` label on an issue | Claude Code works the issue and opens a pull request, which goes through the same gate; a person merges. Without a key configured it stops at the first step. |
 
 A pull request with a merge conflict runs no CI at all; it looks pending, not
 red. Dependabot keeps npm packages and Actions current through the same gate.
@@ -240,6 +256,12 @@ red. Dependabot keeps npm packages and Actions current through the same gate.
 | [`docs/perf/README.md`](docs/perf/README.md) | How weight and speed are measured |
 | [`docs/facts.md`](docs/facts.md) | Every figure, its function and its screens |
 | [`.claude/skills/fylakas/SKILL.md`](.claude/skills/fylakas/SKILL.md) | How to write a guard |
+
+## Contributing
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): setup, checks, the review and merge process, protected paths and the language policy.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): layers, data flow, auth, billing, calendar sync, Noa, firm accounts and known debt.
+- [`docs/GLOSSARY.md`](docs/GLOSSARY.md): Greek domain and tooling terms in English.
 
 ---
 
