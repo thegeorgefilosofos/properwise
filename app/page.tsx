@@ -690,10 +690,10 @@ export default async function Landing() {
             η τρίτη έσπαγε μόνη της σε δεύτερη σειρά, οπότε τα ψιλά γράμματα
             διαβάζονταν κάτω κάτω αντί για πέρα πέρα. Μένουν οι ίδιες τρεις
             προτάσεις (η δοκιμή με το όριό της, ο ΦΠΑ, η εγγύηση), στη σειρά. */}
-        <p className="fineprint po-just" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: FAINT, margin: '22px 0 0' }}>
+        <p className="fineprint fineprint-cols po-just" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: FAINT, margin: '22px 0 0' }}>
           {TRIAL_OFFER}{billingLive && <> {billingWords().firstCharge}</>}
           {' '}{PRICES_VAT} {NO_COMMITMENT}
-          {' '}{billingWords().moneyBack}
+          <span className="fineprint-col2">{billingWords().moneyBack}</span>
         </p>
         {/* Η ΣΕΛΙΔΑ ΤΩΝ ΠΑΚΕΤΩΝ ΔΕΝ ΕΙΧΕ ΚΑΜΙΑ ΕΙΣΟΔΟ ΑΠΟ ΤΗΝ ΑΡΙΘΜΗΤΙΚΗ ΤΟΥΣ.
             Οι κάρτες δείχνουν πέντε γραμμές η καθεμιά· ο πίνακας γραμμή προς

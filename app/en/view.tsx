@@ -272,10 +272,10 @@ export default async function LandingEn() {
             );
           })}
         </div>
-        <p className="fineprint" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: FAINT, margin: '22px 0 0', textWrap: 'pretty' }}>
+        <p className="fineprint fineprint-cols" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: FAINT, margin: '22px 0 0', textWrap: 'pretty' }}>
           {trialOfferEn(PLAN_COPY_EN[TRIAL_PLAN].name)}{words.live && <> {words.firstCharge}</>}
           {' '}{PRICES_VAT_EN} {NO_COMMITMENT_EN}
-          {' '}{words.moneyBack}
+          <span className="fineprint-col2">{words.moneyBack}</span>
         </p>
         <div style={{ marginTop: 10 }}>
           <Link href={localHref('en', '/paketa')} className="lp-link po-tap" style={{ color: ACCENT, textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>
