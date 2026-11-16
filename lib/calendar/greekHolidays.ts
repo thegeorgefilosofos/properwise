@@ -69,6 +69,29 @@ export function isWeekend(dateStr: string): boolean {
 // Μη εργάσιμη = αργία ή Σαββατοκύριακο.
 export function isNonWorkingDay(dateStr: string): boolean { return isWeekend(dateStr) || isHoliday(dateStr) }
 
+/**
+ * Η ίδια μέρα αν είναι εργάσιμη, αλλιώς η αμέσως επόμενη εργάσιμη.
+ *
+ * Ο κανόνας των φορολογικών προθεσμιών: ΚΦΔ (ν. 5104/2024) άρθρο 7 παρ. 1,
+ * «Εάν η εκπνοή προθεσμίας […] συμπίπτει με επίσημη αργία, Σάββατο ή Κυριακή,
+ * η προθεσμία παρατείνεται μέχρι την αμέσως επόμενη ημέρα κατά την οποία η
+ * Φορολογική Διοίκηση λειτουργεί για το κοινό».
+ *
+ * Ζει εδώ δίπλα στις αργίες και όχι στο φορολογικό ημερολόγιο: τη χρειάζεται
+ * και η δήλωση μίσθωσης (lib/tax/leaseDeclaration.ts), που δεν μπορεί να
+ * εισάγει το ημερολόγιο χωρίς κύκλο (ημερολόγιο → φάκελος → δήλωση μίσθωσης).
+ * Το lib/tax/greekTaxCalendar.ts την επανεξάγει.
+ */
+export function nextWorkingDay(dateStr: string): string {
+  let d = dateStr, guard = 0
+  while (isNonWorkingDay(d) && guard++ < 14) {
+    const [y, m, day] = d.split('-').map(Number)
+    const nd = new Date(Date.UTC(y, m - 1, day + 1))
+    d = iso(nd.getUTCFullYear(), nd.getUTCMonth() + 1, nd.getUTCDate())
+  }
+  return d
+}
+
 // Οι επόμενες αργίες από μια ημερομηνία (για ενημέρωση/συμφραζόμενα).
 export function upcomingHolidays(fromDateStr: string, count = 5): { date: string; name: string }[] {
   const y0 = Number(fromDateStr.slice(0, 4))

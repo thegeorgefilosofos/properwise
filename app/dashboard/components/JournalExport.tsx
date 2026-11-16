@@ -287,7 +287,7 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
       footer={footer} footerInfo={footerInfo}>
       <>
           <div>
-            <div style={{ ...TT.label, marginBottom: 8 }}>ΠΕΡΙΟΔΟΣ</div>
+            <div style={{ ...TT.label, marginBottom: 8 }}>Περίοδος</div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ minWidth: 120 }}>
                 <CustomSelect ariaLabel="Έτος" value={String(year)} onChange={v => setYear(Number(v))}
@@ -301,12 +301,12 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
           </div>
 
           <div>
-            <div style={{ ...TT.label, marginBottom: 8 }}>ΑΚΙΝΗΤΑ</div>
+            <div style={{ ...TT.label, marginBottom: 8 }}>Ακίνητα</div>
             <PropertyPicker items={props} selected={propIds} onChange={setPropIds} loading={loading} />
           </div>
 
           <div>
-            <div style={{ ...TT.label, marginBottom: 8 }}>ΜΟΡΦΗ</div>
+            <div style={{ ...TT.label, marginBottom: 8 }}>Μορφή</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
               {FORMATS.map(f => {
                 const on = format === f.key;
@@ -334,7 +334,7 @@ export default function JournalExport({ open, onClose, userId, supabase }: {
             <div>
               <button onClick={() => setShowBalance(s => !s)} aria-expanded={showBalance} className="acc-toggle acc-row" style={{ marginBottom: showBalance ? 8 : 0 }}>
                 <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)', transform: showBalance ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}><path d="M9 6l6 6-6 6"/></svg>
-                <span style={{ ...TT.label }}>ΙΣΟΖΥΓΙΟ</span>
+                <span style={{ ...TT.label }}>Ισοζύγιο</span>
                 <Badge tone={audit ? (audit.tone === 'positive' ? 'neutral' : audit.tone) : (totals.balanced ? 'neutral' : 'negative')}>{audit ? (audit.tone === 'positive' ? 'Ισοσκελισμένο' : audit.tone === 'warning' ? 'Ισοσκελισμένο · προσοχή' : 'Απαιτεί διόρθωση') : (totals.balanced ? 'Ισοσκελισμένο' : 'Ασυμφωνία')}</Badge>
                 <span style={{ marginLeft: 'auto', fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, fontWeight: 600 }}>{showBalance ? 'Σύμπτυξη' : 'Προβολή'}</span>
               </button>

@@ -45,7 +45,7 @@ import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
 import {
-  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
+  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq, GuideCalcLink,
   RelatedGuides, guideJsonLd, LINK_STYLE, type GuideFaqItem,
 } from '../GuideParts';
 
@@ -208,6 +208,8 @@ export default function Page() {
         <div className="lg-note lg-note-tip" style={{ marginTop: 16 }}>
           {'Η αναλογία φαίνεται ήδη στην προσφορά. Ζήτα από το συνεργείο αναλυτική προσφορά που χωρίζει την εργασία από τα υλικά.'}
         </div>
+
+        <GuideCalcLink href="/ypologismos-ekptosis-anakainisis" action="Υπολόγισε την έκπτωση της ανακαίνισής σου" />
 
         {/* 5. Τι επιβεβαιώνεις */}
         <H2 {...S.confirm} />

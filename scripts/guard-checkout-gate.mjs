@@ -36,7 +36,8 @@ const ALLOWED = [
 ]
 /** Οσοι πρέπει να ρωτούν τη συνθήκη. */
 const MUST_ASK = [
-  'app/api/billing/checkout/route.ts',
+  // Η απόφαση του ταμείου ζει στο flow.ts· η route.ts κρατά μόνο ταυτότητα.
+  'app/api/billing/checkout/flow.ts',
   'app/api/billing/plan/route.ts',
   'lib/legal/billingWords.ts',
   'lib/legal/subprocessors.ts',

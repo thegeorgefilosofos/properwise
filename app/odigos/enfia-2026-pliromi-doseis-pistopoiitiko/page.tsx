@@ -34,6 +34,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { T } from '@/components/tokens';
 import { siteUrl } from '@/lib/core/site';
+import { grDate } from '@/lib/core/format';
 import { athensToday } from '@/lib/core/time';
 import { AADE_DESTINATIONS } from '@/lib/tax/aade';
 import { AADE_CALENDAR_URL, CONFIDENCE_LABEL } from '@/lib/tax/greekTaxCalendar';
@@ -41,10 +42,11 @@ import { PublicHeader, PublicFooter, JsonLd } from '../../PublicChrome';
 import { shareImage } from '../../og/share';
 import { publicMetadata } from '../../publicMetadata';
 import { guideAt } from '../guides';
+import { LAW_5219_PDF } from '../fek';
 import { enfiaInstalments, enfiaIssueBasis, instalmentStatus, obligationOf } from './schedule';
 import {
-  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq,
-  RelatedGuides, guideJsonLd, LINK_STYLE, longDate, dayMonth, dateCells, type GuideFaqItem,
+  GuideMain, GuideUpdated, GuideH2 as H2, GuideToc, GuideSources, GuideCta, GuideFaq, GuideCalcLink,
+  GuideQuickAnswer, RelatedGuides, guideJsonLd, LINK_STYLE, longDate, dayMonth, dateCells, type GuideFaqItem,
 } from '../GuideParts';
 import { enfiaInstalmentRule, enfiaInstalmentDates } from '../enfiaText';
 
@@ -52,14 +54,16 @@ export const revalidate = 86400;
 
 const GUIDE = guideAt('/odigos/enfia-2026-pliromi-doseis-pistopoiitiko');
 const H1 = GUIDE.title;
-const TITLE = H1;
-// Κάτω από 160 χαρακτήρες: τόσα δείχνει η σελίδα αποτελεσμάτων πριν κόψει.
-const DESC =
-  'Πότε λήγει κάθε δόση του ΕΝΦΙΑ 2026, πού πατάς στο myAADE για να πληρώσεις, '
-  + 'πώς βγάζεις πιστοποιητικό ΕΝΦΙΑ και ποιος το οριστικοποιεί.';
 const URL = siteUrl(GUIDE.href);
 
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, type: 'article', image: shareImage('odigos-enfia-2026-pliromi-doseis-pistopoiitiko') });
+// ΤΙΤΛΟΣ ΚΑΙ ΠΕΡΙΓΡΑΦΗ ΜΕ ΤΗ ΧΡΟΝΙΑ ΚΑΙ ΤΟ ΠΛΗΘΟΣ ΤΩΝ ΔΟΣΕΩΝ ΤΟΥ ΟΔΗΓΟΥ
+// (13.11.2026). CTR 0,3% σε θέση 6,7 και 0 κλικ στο «οριστικοποιηση ενφια»
+// (Search Console, τρίμηνο). Ο τίτλος ανοίγει με την πληρωμή και κλείνει με
+// την οριστικοποίηση· η περιγραφή λέει πόσες δόσεις, από τη μηχανή (`N`).
+export function generateMetadata(): Metadata {
+  const title = `Πληρωμή ΕΝΦΙΑ ${YEAR}: δόσεις, πιστοποιητικό, οριστικοποίηση`;
+  return publicMetadata({ title, description: DESC, url: URL, type: 'article', image: shareImage('odigos-enfia-2026-pliromi-doseis-pistopoiitiko') });
+}
 
 // ── ΤΟ ΕΤΟΣ ΚΑΙ ΟΙ ΔΟΣΕΙΣ ΤΟΥ, ΑΠΟ ΤΗ ΜΗΧΑΝΗ ─────────────────────────────────
 /** Ο οδηγός αφορά το εκκαθαριστικό αυτού του έτους, όπως λέει ο τίτλος του. */
@@ -74,6 +78,10 @@ const ISSUED = FIRST_OBL.confidence === 'statutory';
 const BASIS = enfiaIssueBasis(YEAR);
 const AUTOFILE = obligationOf(YEAR, 'income-autofile').date;
 const PORTAL = AADE_DESTINATIONS.enfia;
+// Κάτω από 155 χαρακτήρες: τόσα δείχνει η σελίδα αποτελεσμάτων πριν κόψει.
+const DESC =
+  `ΕΝΦΙΑ ${YEAR} εφάπαξ ή σε έως ${N} δόσεις: πότε λήγει καθεμία, πώς πληρώνεις στο myAADE, `
+  + 'πώς βγάζεις πιστοποιητικό και τι είναι η οριστικοποίηση.';
 /**
  * Τα βήματα του μενού, από το μητρώο. Το τελευταίο βήμα του μητρώου δεν είναι
  * επιλογή μενού: λέει τι βρίσκεις εκεί (εκκαθαριστικό, δόσεις, ταυτότητα
@@ -139,10 +147,14 @@ const EXT = { target: '_blank', rel: 'noopener noreferrer', className: 'lp-link'
 const MITOS_CERT = 'https://mitos.gov.gr/index.php/%CE%94%CE%94:%CE%A0%CE%B9%CF%83%CF%84%CE%BF%CF%80%CE%BF%CE%B9%CE%B7%CF%84%CE%B9%CE%BA%CF%8C_%CE%95%CE%9D.%CE%A6.%CE%99.%CE%91.';
 const GOV_FINALIZE = 'https://www.gov.gr/arxes/anexartete-arkhe-demosion-esodon-aade/anexartete-arkhe-demosion-esodon-aade/egkuroteta-oristikopoiese-pistopoietikou-enphia';
 
+// Ο ΚΩΔΙΚΑΣ ΜΕ ΣΥΝΔΕΣΜΟ ΣΤΟ ΦΕΚ (13/11/2026), από το ../fek.ts όπως στον οδηγό
+// «Πώς υπολογίζεται». Ως τότε ο ν. 5219/2025 ήταν σκέτο κείμενο.
+const CODE_LINK = <a href={LAW_5219_PDF} {...EXT}>ν. 5219/2025 (ΦΕΚ Α΄ 130/18.07.2025)</a>;
+
 const SOURCES: React.ReactNode[] = [
   BASIS
-    ? `Εκκαθαριστικό ΕΝΦΙΑ ${YEAR}: ${BASIS.decision}. Δόσεις και προθεσμίες: ${BASIS.law}, όπως κωδικοποιήθηκε στον ν. 5219/2025 (κάθε δόση ως την τελευταία εργάσιμη του μήνα της).`
-    : `Δόσεις και προθεσμίες ΕΝΦΙΑ: ν. 4223/2013, άρθρο 6, όπως κωδικοποιήθηκε στον ν. 5219/2025. Η έκδοση του εκκαθαριστικού ${YEAR} ανακοινώνεται από την ΑΑΔΕ.`,
+    ? <>{`Εκκαθαριστικό ΕΝΦΙΑ ${YEAR}: ${BASIS.decision}. Δόσεις και προθεσμίες: ${BASIS.law}, όπως κωδικοποιήθηκε στον `}{CODE_LINK}{' (κάθε δόση ως την τελευταία εργάσιμη του μήνα της).'}</>
+    : <>{'Δόσεις και προθεσμίες ΕΝΦΙΑ: ν. 4223/2013, άρθρο 6, όπως κωδικοποιήθηκε στον '}{CODE_LINK}{`. Η έκδοση του εκκαθαριστικού ${YEAR} ανακοινώνεται από την ΑΑΔΕ.`}</>,
   `Πρόσβαση στο εκκαθαριστικό (${ENFIA_PATH.join(', ')}) και πληρωμή με την Ταυτότητα Οφειλής μέσω web banking: Δελτία Τύπου ΑΑΔΕ 15.03.${YEAR} «Αναρτήθηκαν τα εκκαθαριστικά ΕΝΦΙΑ ${YEAR}» και 08.05.${YEAR}.`,
   'Πιστοποιητικό ΕΝΦΙΑ, νομική βάση: άρθρο 60 ν. 5104/2024 (Κώδικας Φορολογικής Διαδικασίας), πρώην άρθρο 54Α ν. 4987/2022 όπως τροποποιήθηκε με το άρθρο 16 ν. 5036/2023. Από 01/06/2023 σε πώληση βεβαιώνει μόνο ότι το ακίνητο περιλαμβάνεται στη δήλωση ΕΝΦΙΑ των πέντε προηγούμενων ετών (έξι, μαζί με το έτος μεταβίβασης, αν εκδίδεται μετά το εκκαθαριστικό της χρονιάς). Έναρξη: Δελτίο Τύπου ΑΑΔΕ 31.05.2023 «Από 1/6 τα νέα πιστοποιητικά ΕΝΦΙΑ».',
   <>
@@ -164,7 +176,7 @@ const S = {
   pay: { id: 'pliromi', over: '2. Πληρωμή', title: 'Πού πατάς για να πληρώσεις' },
   check: { id: 'elegxos', over: '3. Πριν πληρώσεις', title: 'Δες αν το ποσό είναι σωστό' },
   cert: { id: 'pistopoiitiko', over: '4. Πιστοποιητικό', title: 'Πιστοποιητικό ΕΝΦΙΑ για πώληση' },
-  final: { id: 'oristikopoiisi', over: '5. Οριστικοποίηση', title: 'Την κάνει ο συμβολαιογράφος' },
+  final: { id: 'oristikopoiisi', over: '5. Οριστικοποίηση', title: 'Οριστικοποίηση ΕΝΦΙΑ: την κάνει ο συμβολαιογράφος' },
 } as const;
 
 export default function Page() {
@@ -187,6 +199,14 @@ export default function Page() {
           {H1}
         </h1>
         <GuideUpdated guide={GUIDE} />
+        {/* Η ΑΠΑΝΤΗΣΗ ΠΡΙΝ ΑΠΟ ΤΟ ΕΥΡΕΤΗΡΙΟ (13/11/2026). 373 εμφανίσεις με CTR 0,3%
+            (Search Console): η ερώτηση είναι «πότε και πώς πληρώνεται». Πλήθος
+            και ημερομηνίες από το ημερολόγιο (`DATES`), η πύλη από το μητρώο. */}
+        <GuideQuickAnswer>
+          {ISSUED
+            ? `Ο ΕΝΦΙΑ ${YEAR} πληρώνεται εφάπαξ ή σε ${enfiaInstalmentRule(YEAR)} Η πρώτη δόση λήγει στις ${grDate(FIRST)} και η τελευταία στις ${grDate(LAST)}. Πληρώνεις από το web banking της τράπεζάς σου με την Ταυτότητα Οφειλής που γράφει το εκκαθαριστικό στο ${PORTAL.portal}.`
+            : `Ο ΕΝΦΙΑ ${YEAR} θα πληρώνεται εφάπαξ ή σε ${enfiaInstalmentRule(YEAR)} Οι δόσεις αναμένονται από τις ${grDate(FIRST)} έως τις ${grDate(LAST)}. Πληρώνεις από το web banking της τράπεζάς σου με την Ταυτότητα Οφειλής που γράφει το εκκαθαριστικό στο ${PORTAL.portal}.`}
+        </GuideQuickAnswer>
         <GuideToc sections={Object.values(S)} />
 
         <p className="lg-p">
@@ -258,12 +278,12 @@ export default function Page() {
           {'Το εκκαθαριστικό βγαίνει από όσα έχεις δηλώσει στο Ε9. Αν μια αγορά, πώληση ή κληρονομιά δεν δηλώθηκε, το εκκαθαριστικό δεν τη λαμβάνει υπόψη. Γι’ αυτό, πριν πληρώσεις, αξίζει να το συγκρίνεις με μια ανεξάρτητη εκτίμηση.'}
         </p>
         <p className="lg-p">
-          {'Στον '}
-          <Link href="/ypologismos-enfia" className="lp-link" style={LINK_STYLE}>υπολογισμό ΕΝΦΙΑ</Link>
-          {' βάζεις τετραγωνικά, τιμή ζώνης, παλαιότητα και όροφο και βλέπεις μια ενδεικτική εκτίμηση. Αν απέχει πολύ από το εκκαθαριστικό, έλεγξε το Ε9 ή ρώτα τον λογιστή σου. Ο τρόπος υπολογισμού εξηγείται στον οδηγό '}
+          {'Στον υπολογισμό ΕΝΦΙΑ βάζεις τετραγωνικά, τιμή ζώνης, παλαιότητα και όροφο και βλέπεις μια ενδεικτική εκτίμηση. Αν απέχει πολύ από το εκκαθαριστικό, έλεγξε το Ε9 ή ρώτα τον λογιστή σου. Ο τρόπος υπολογισμού εξηγείται στον οδηγό '}
           <Link href="/odigos/pos-ypologizetai-o-enfia" className="lp-link" style={LINK_STYLE}>Πώς υπολογίζεται ο ΕΝΦΙΑ</Link>
           {'.'}
         </p>
+
+        <GuideCalcLink href="/ypologismos-enfia" action="Έλεγξε το ποσό του ΕΝΦΙΑ σου" />
 
         {/* 4. Πιστοποιητικό */}
         <H2 {...S.cert} />

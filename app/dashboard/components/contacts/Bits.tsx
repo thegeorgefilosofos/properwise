@@ -7,6 +7,7 @@ import { X, Copy } from 'lucide-react'
 import { InfoDot } from '../UIComponents'
 import { T, IconBtn } from '@/components/Theme'
 import type { FieldDecision } from '@/lib/property/fields'
+import { Dictation } from '@/components/dictation/MicButton'
 
 // ── Δομικά του ντοσιέ επαφής ──────────────────────────────────────────────
 // ΣΕ MODULE SCOPE: ορισμένα μέσα στο DossierPanel, ξαναγεννιούνταν σε κάθε
@@ -23,7 +24,7 @@ export const DossierRow = ({ icon: Ic, children, onCopy }: { icon: React.Compone
 )
 export const DossierSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '15px 16px', boxShadow: 'var(--elev-1)' }}>
-    <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>{title}</div>
+    <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 12 }}>{title}</div>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{children}</div>
   </div>
 )
@@ -60,7 +61,8 @@ export function Inp({ value, onChange, placeholder, type = 'text', min, ariaLabe
 }
 export function Txt({ value, onChange, placeholder, rows = 4, ariaLabel }: { value: string; onChange: (v: string) => void; placeholder?: string; rows?: number; ariaLabel?: string }) {
   const named = useContext(FieldName);
-  return <textarea value={value} onChange={e => onChange(e.target.value)} aria-label={ariaLabel ?? named} placeholder={placeholder} rows={rows} style={{ ...iStyle, height: 'auto', resize: 'vertical', lineHeight: 1.6 }} onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-dim)' }} onBlur={e => { e.target.style.borderColor = 'var(--border-default)'; e.target.style.boxShadow = 'none' }} />
+  // Οι ελεύθερες σημειώσεις μιας επαφής λέγονται πιο εύκολα απ' όσο γράφονται.
+  return <Dictation multiline value={value} onChange={onChange}><textarea value={value} onChange={e => onChange(e.target.value)} aria-label={ariaLabel ?? named} placeholder={placeholder} rows={rows} style={{ ...iStyle, height: 'auto', resize: 'vertical', lineHeight: 1.6 }} onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-dim)' }} onBlur={e => { e.target.style.borderColor = 'var(--border-default)'; e.target.style.boxShadow = 'none' }} /></Dictation>
 }
 // Πεδίο ΜΕ ΤΟ «ΓΙΑΤΙ» ΤΟΥ, από το μητρώο. Αν το πεδίο δεν αφορά αυτόν τον χρήστη,
 // δεν αποδίδεται καθόλου — δεν κλειδώνεται και δεν εμφανίζεται γκριζαρισμένο.
@@ -88,7 +90,7 @@ export function CField({ d, required, children }: { d?: FieldDecision; required?
   )
 }
 export function FL({ children }: { children: React.ReactNode }) {
-  return <label style={{ display: 'flex', alignItems: 'center', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font.sans }}>{children}</label>
+  return <label style={{ display: 'flex', alignItems: 'center', fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', marginBottom: 8, fontFamily: T.font.sans }}>{children}</label>
 }
 // ΕΔΩ ΗΤΑΝ ΤΟ AddressAutocomplete (52 γραμμές). Έστελνε ΚΑΘΕ πληκτρολόγηση του
 // χρήστη σε τρίτο εξυπηρετητή (nominatim.openstreetmap.org) για να προτείνει
@@ -103,7 +105,7 @@ export function FL({ children }: { children: React.ReactNode }) {
 export function SecHead({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '4px 0 2px' }}>
-      <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>{children}</span>
+      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>{children}</span>
       <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
     </div>
   )

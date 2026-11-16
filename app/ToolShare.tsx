@@ -28,7 +28,7 @@ import { useSearchParams } from 'next/navigation';
 import { readTool, toolQuery, toolLink, type ToolSpec, type ToolValues } from '@/lib/tools/permalink';
 import { SITE_HOST } from '@/lib/core/site';
 import { T, fdLong } from '@/components/tokens';
-import { Btn } from '@/components/Theme';
+import { Btn } from '@/components/ThemeCore';
 import { useLocale } from '@/lib/i18n/useLocale';
 import { fmtFor } from '@/lib/core/format';
 

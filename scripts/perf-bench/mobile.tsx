@@ -99,10 +99,13 @@ import { BOTTOM_NAV } from '@/app/dashboard/components/shell/nav';
 import { T, TT, Modal, Btn, PageTitle, InfoBanner, fieldRow } from '@/components/Theme';
 import { ConfirmHost } from '@/components/ConfirmDialog';
 import { createClient } from '@/lib/supabase/client';
-import MyaadeImport from '@/app/dashboard/components/MyaadeImport';
+import MyaadeImport, { wrongDoc } from '@/app/dashboard/components/MyaadeImport';
 import { CenterState, DoneView, MYAADE_CSS } from '@/app/dashboard/components/MyaadeSteps';
 import { parseEnfiaAct } from '@/lib/myaade/enfiaAct';
 import { fakeAtak } from '@/lib/myaade/fixtures';
+import { fakeE9Lines } from './e9Fixture';
+import { parseE9 } from '@/lib/myaade/e9';
+import { INCOME_TAX_REASON } from '@/lib/myaade/parse';
 import type { CashLine, CashPosition } from '@/lib/home/cash';
 
 declare global {
@@ -160,8 +163,20 @@ const MYAADE_KNOWN = [
 ];
 const MYAADE_OWNERS = [{ id: 'o1', full_name: 'Ελένη Παραδείγματος', afm: null, type: 'owner' }, { id: 'o2', full_name: 'Νίκος Δοκιμής', afm: null, type: 'owner' }];
 
+// ── Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ (09/11/2026) ──────────────────────────────────────
+// Νέος χρήστης, κανένα ακίνητο, κανένας «Ιδιοκτήτης». Συνθετικό Ε9 με τη
+// διάταξη της πραγματικής εκτύπωσης (e9Fixture.ts).
+const bulkDoc = (n: number) => {
+  const r = parseE9(fakeE9Lines(Array.from({ length: n }, (_, i) => ({
+    n: i + 1, floor: String(i % 4), sqm: `${48 + i * 7},${i % 2 ? '50' : '20'}`, built: String(1975 + i),
+    ...(i === 0 ? { street: ['ΟΔΟΣ', 'ΠΑΡΑΔΕΙΓΜΑΤΟΣ', '(ΠΡΩΗΝ ΔΟΚΙΜΗΣ)'] as [string, string, string] } : {}),
+  }))));
+  return r.status === 'ok' ? r.doc : undefined;
+};
+
 const respond: Responder = (call) => {
   if (call.op !== 'select') return { data: null, error: null };
+  if (which.startsWith('bulk') && (call.table === 'user_properties' || call.table === 'clients')) return { data: [], error: null };
   if (which.startsWith('myaade') && call.table === 'user_properties') return { data: MYAADE_KNOWN, error: null };
   if (which.startsWith('myaade') && call.table === 'clients') return { data: MYAADE_OWNERS, error: null };
   if (call.table === 'inbound_messages') return { data: inboundRows, error: null };
@@ -175,6 +190,13 @@ const respond: Responder = (call) => {
 window.__respond = respond;
 // Οι συναρτήσεις της βάσης: για τα γραφεία, οι απαντήσεις του scripts/perf-bench/firms.tsx.
 (window as unknown as { __rpc: (fn: string, args?: unknown) => unknown }).__rpc = (fn: string, args?: unknown) => firmRpc(which, fn, args);
+// Η ΕΝΗΜΕΡΩΣΗ ΤΩΝ ΓΡΑΦΕΙΩΝ (ΑΠ-11). Ο ψεύτικος λογαριασμός δεν έχει ημερομηνία
+// δημιουργίας, οπότε η Επισκόπηση δείχνει τη γενική γραμμή. Εδώ είναι
+// ιδιοκτήτης από πριν από την έκδοση των γραφείων και βλέπει την κάρτα.
+if (which === 'overviewFirmNotice') {
+  const auth = (createClient() as unknown as { auth: { getUser: () => Promise<unknown> } }).auth;
+  auth.getUser = async () => ({ data: { user: { id: 'u1', email: 'dokimi@example.com', created_at: '2026-09-01T09:00:00Z', user_metadata: {} } }, error: null });
+}
 window.__t = {};
 window.__rows = () => document.querySelectorAll('tbody tr').length;
 
@@ -251,6 +273,37 @@ function ModalDemo() {
           </p>
         ))}
       </Modal>
+    </div>
+  );
+}
+
+// ═══ ΠΑΡΑΘΥΡΟ ΜΕΣΑ ΣΕ ΠΑΡΑΘΥΡΟ, ΠΟΥ ΚΛΕΙΝΟΥΝ ΜΑΖΙ (11/11/2026) ═══════════════
+// Η φόρμα ζει πίσω από `{open && <Φόρμα/>}` και ανοίγει μέσα της δεύτερο
+// παράθυρο· το «Αποθήκευση» του δεύτερου κλείνει ΚΑΙ τα δύο με μία αλλαγή
+// κατάστασης, δηλαδή τα δύο κλειδώματα κύλισης φεύγουν στην ίδια δέσμευση. Το
+// e2e-mobile ελέγχει ότι μετά η κύλιση της εφαρμογής γυρίζει (lockScroll στο
+// components/ThemeCore.tsx): κύλιση που μένει κλειδωμένη χωρίς ανοιχτό
+// παράθυρο είναι για τον χρήστη μια εφαρμογή που «κόλλησε».
+function NestedForm({ onDone }: { onDone: () => void }) {
+  const [inner, setInner] = useState(true);
+  return (
+    <Modal open onClose={onDone} title="Νέα δαπάνη">
+      <InfoBanner tone="info">Η φόρμα, με δεύτερο παράθυρο ανοιχτό από πάνω της.</InfoBanner>
+      <Modal open={inner} onClose={() => setInner(false)} size="sm" title="Νέα κατηγορία"
+        footer={<Btn variant="primary" onClick={onDone}>Αποθήκευση</Btn>}>
+        <InfoBanner tone="info">Η αποθήκευση κλείνει και τα δύο παράθυρα.</InfoBanner>
+      </Modal>
+    </Modal>
+  );
+}
+
+function ModalNestedDemo() {
+  const [open, setOpen] = useState(true);
+  return (
+    <div>
+      <PageTitle title="Δύο παράθυρα" sub={open ? 'ανοιχτά' : 'κλειστά'} right={<Btn variant="primary" onClick={() => setOpen(true)}>Άνοιγμα</Btn>} />
+      {Array.from({ length: 30 }, (_, i) => <div key={i} className="card" style={{ minHeight: 80 }}>Κάρτα {i + 1}</div>)}
+      {open && <NestedForm onDone={() => setOpen(false)} />}
     </div>
   );
 }
@@ -414,7 +467,17 @@ const VIEWS: Record<string, () => React.ReactElement> = {
       </CenterState>
     </Modal>
   ),
+  // Η μαζική καταχώρηση: η κάρτα στο «Νέο ακίνητο», το Ε9 με τρία ακίνητα, το
+  // ταβάνι των 20, το όριο του πακέτου και το λάθος έγγραφο. Η κάρτα φαίνεται
+  // πλέον σε κάθε νέα καταχώρηση (10/11/2026)· η σκηνή δείχνει τη μακρύτερη
+  // εκδοχή της, με ακίνητα, ώστε οι σαρωτές να κρίνουν και τη δεύτερη πρόταση.
+  bulkWizard: () => <AddPropertyWizard userId="u1" onClose={() => {}} onSaved={() => {}} onBulkImport={() => {}} hasProperties />,
+  bulkE9: () => <MyaadeImport userId="u1" limit={3} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} initialDoc={bulkDoc(3)} />,
+  bulkMany: () => <MyaadeImport userId="u1" limit={Infinity} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} initialDoc={bulkDoc(23)} />,
+  bulkPlan: () => <MyaadeImport userId="u1" limit={1} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} initialDoc={bulkDoc(3)} />,
+  bulkWrongDoc: () => <MyaadeImport userId="u1" limit={3} onUpgrade={() => {}} onClose={() => {}} onSaved={() => {}} initialFailure={wrongDoc(INCOME_TAX_REASON)} />,
   overview: () => <OverviewTab prop={OVERVIEW_PROPERTY as never} properties={OVERVIEW_PROPERTIES as never} userId="u1" onNavigate={() => {}} tabVisible={() => true} />,
+  overviewFirmNotice: () => <OverviewTab prop={OVERVIEW_PROPERTY as never} properties={OVERVIEW_PROPERTIES as never} userId="u1" onNavigate={() => {}} tabVisible={() => true} />,
   portfolio: () => <PortfolioTab properties={bench.properties} userId="u1" onSelectProperty={() => {}} />,
   cash: () => <CashHero cash={cash} showIncome onNavigate={() => {}} onRecordRent={() => {}} />,
   rent: () => <RentReceived onClose={() => {}} lines={lines} supabase={supabase} propertyId={null} tenantId={null} leaseViaBank today="2026-08-23" onSaved={() => {}} />,
@@ -496,6 +559,13 @@ const VIEWS: Record<string, () => React.ReactElement> = {
   plan: () => <TabPlan propertyId="p0" userId="u1" status="vacant" property={PLAN_PROPERTY} />,
   planReno: () => <TabPlan propertyId="p0" userId="u1" status="renovation" property={PLAN_PROPERTY} />,
   planSale: () => <TabPlan propertyId="p0" userId="u1" status="for_sale" property={PLAN_PROPERTY} />,
+  // Η ΑΜΦΙΣΒΗΤΟΥΜΕΝΗ ΚΑΤΑΣΤΑΣΗ: η ερώτηση «Τι είδους εκκρεμότητα είναι» και η
+  // κάρτα «Αναφορά». Ο ιδιοκτήτης τις φωτογράφισε (14/11/2026) και καμία σκηνή
+  // δεν τις απέδιδε. Για στιγμιότυπα (`?c=planDispute`)· ΔΕΝ είναι ακόμη στο
+  // scripts/lib/scenes.mjs: εκεί θα πρόσθετε στις καστάνιες της Νόας τη δική
+  // της επιφάνεια (2.008 px² στο πρώτο κάδρο, τέσσερα χειριστήρια τηλεφώνου)
+  // και η βάση ανεβαίνει μόνο με απόφαση ανθρώπου.
+  planDispute: () => <TabPlan propertyId="p0" userId="u1" status="disputed" property={PLAN_PROPERTY} />,
   // ═══ ΟΙ ΡΥΘΜΙΣΕΙΣ ΔΕΝ ΕΙΧΑΝ ΠΟΤΕ ΣΚΗΝΗ ══════════════════════════════════════
   // Τα «Στοιχεία τιμολόγησης» είναι η πυκνότερη φόρμα της εφαρμογής (έντεκα
   // πεδία σε τέσσερις στήλες) και η «Επωνυμία στις αναφορές» η μόνη με ανέβασμα
@@ -507,6 +577,7 @@ const VIEWS: Record<string, () => React.ReactElement> = {
   referral: () => <TabReferral userId="u1" plan="solo" profileType="individual" />,
   referralPro: () => <TabReferral userId="u1" plan="agency" profileType="professional" />,
   modal: () => <ModalDemo />,
+  modalNested: () => <ModalNestedDemo />,
   calendarDay: () => <DaySheetDemo />,
   select: () => <SelectDemo />,
 };

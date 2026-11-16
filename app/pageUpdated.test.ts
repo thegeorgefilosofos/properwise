@@ -39,11 +39,12 @@ import { monthGen, monthYearLabel } from '@/lib/core/months';
 import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 import { PRICE_FACTS } from '@/lib/facts/prices';
 import { PURCHASE_SOURCES_CHECKED } from '@/lib/tools/exodaAgoras';
-import { POLICY_VERSION } from '@/lib/legal/identity';
+import { POLICY_DATE } from '@/lib/legal/identity';
 import { CPI_CONFIRMED_AT } from '@/lib/market/cpi';
 import { renderToStaticMarkup as html } from 'react-dom/server';
 import { ToolSources } from './PublicChrome';
 import { E2_GUIDE_CHECKED } from '@/lib/tools/e2Odigos';
+import { MORTGAGE_PAGE_UPDATED } from '@/lib/tools/stegastiko';
 import { regulated } from '@/lib/legal/validity';
 
 // ── ΟΙ ΥΠΟΛΟΓΙΣΤΕΣ: Η ΝΕΟΤΕΡΗ ΑΠΟ ΕΛΕΓΧΟ ΟΡΙΩΝ ΚΑΙ ΑΛΛΑΓΗ ΠΕΡΙΕΧΟΜΕΝΟΥ ──────
@@ -68,14 +69,15 @@ const SOURCED: Partial<Record<DatedPage, { from: string; iso: string | null }>> 
   '/sygkrisi-timologion-revmatos': { from: 'PRICE_FACTS.electricity.checkedAt', iso: PRICE_FACTS.electricity.checkedAt },
   '/anaprosarmogi-enoikiou': { from: 'CPI_CONFIRMED_AT', iso: CPI_CONFIRMED_AT },
   '/exoda-agoras-akinitou': { from: 'PURCHASE_SOURCES_CHECKED', iso: PURCHASE_SOURCES_CHECKED },
+  '/ypologismos-stegastikou-daneiou': { from: 'MORTGAGE_PAGE_UPDATED', iso: MORTGAGE_PAGE_UPDATED },
   '/ypologismos-ekptosis-anakainisis': { from: "regulated('renovation-39b').checkedAt", iso: regulated('renovation-39b').checkedAt },
   '/symplirosi-e2': { from: 'E2_GUIDE_CHECKED', iso: E2_GUIDE_CHECKED },
-  '/trust': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
-  '/privacy': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
-  '/terms': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
+  '/trust': { from: 'POLICY_DATE', iso: POLICY_DATE },
+  '/privacy': { from: 'POLICY_DATE', iso: POLICY_DATE },
+  '/terms': { from: 'POLICY_DATE', iso: POLICY_DATE },
 };
 /** Οι γραμμές με το χέρι: μόνο σελίδες που δεν τυπώνουν ημερομηνία ενημέρωσης. */
-const MANUAL: readonly DatedPage[] = ['/', '/paketa', '/signup', '/logistes', '/ypologismos-stegastikou-daneiou'];
+const MANUAL: readonly DatedPage[] = ['/', '/paketa', '/signup', '/logistes'];
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };

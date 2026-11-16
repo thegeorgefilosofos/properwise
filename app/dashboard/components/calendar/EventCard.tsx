@@ -17,9 +17,11 @@ import { groupSeries, rowCount, type SeriesRow } from '@/lib/calendar/series'
 import { taxKindOfEventSource, taxObligationOfEventSource, CONFIDENCE_LABEL, CONFIDENCE_HINT } from '@/lib/tax/greekTaxCalendar'
 import { WHO_LABEL } from '@/lib/accounting/dossier'
 import { downloadFile } from '@/lib/core/download'
-import { type CalEvent, CATEGORIES, TAX_META, fmt, daysUntil, isOverdue } from './model'
+import { type CalEvent, CATEGORIES, TAX_META, fmt, daysUntil, pastStateOf } from './model'
+import { PAST_LABEL } from '@/lib/calendar/pastState'
 import { Tooltip, StatusDot } from './Bits'
 import { dueTextStart } from '@/lib/facts/deadlines'
+import { cssRect, cssViewW, cssViewH } from '@/lib/core/cssZoom'
 
 // Μετατροπή γεγονότος σε είσοδο για τους συνδέσμους εξωτερικών ημερολογίων.
 function toCalInput(e: CalEvent) {
@@ -47,10 +49,10 @@ function AddToCalendarMenu({ event, onEdit, onDelete, onOpenChange }: { event: C
   // να ΧΩΡΑΕΙ ΠΑΝΤΑ στην οθόνη και να κάνει εσωτερικό scroll αν δεν φτάνει.
   const reposition=()=>{
     if(!btnRef.current)return;
-    const r=btnRef.current.getBoundingClientRect();
+    const r=cssRect(btnRef.current);
     const W=232, M=8, GAP=6, DESIRED=440;
-    const left=Math.max(M, Math.min(r.left, window.innerWidth-W-M));
-    const spaceBelow=window.innerHeight - r.bottom - M;
+    const left=Math.max(M, Math.min(r.left, cssViewW()-W-M));
+    const spaceBelow=cssViewH() - r.bottom - M;
     const spaceAbove=r.top - M;
     const up = spaceBelow < DESIRED && spaceAbove > spaceBelow;
     const avail = up ? spaceAbove : spaceBelow;
@@ -73,14 +75,14 @@ function AddToCalendarMenu({ event, onEdit, onDelete, onOpenChange }: { event: C
       </button>
       {open&&createPortal(
         <div ref={popRef} style={{ position:'fixed',top:pos.top,left:pos.left,transform:pos.up?'translateY(-100%)':'none',width:232,maxHeight:pos.maxH,overflowY:'auto',overscrollBehavior:'contain',background:'var(--bg-elevated)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.popup,boxShadow:'var(--elev-3)',padding:6,zIndex:2000 }}>
-          <div style={{ fontSize: 'var(--fs-xs)',fontWeight:700,letterSpacing:'0.07em',textTransform:'uppercase',color:'var(--text-tertiary)',padding:'6px 12px 4px',fontFamily: T.font.sans }}>Πρόσθεσε σε ημερολόγιο</div>
+          <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3,fontWeight: 600,color:'var(--text-tertiary)',padding:'6px 12px 4px',fontFamily: T.font.sans }}>Πρόσθεσε σε ημερολόγιο</div>
           {row('Google Calendar',()=>openExt(links.google),<Calendar size={15}/>)}
           {row('Outlook',()=>openExt(links.outlook),<Calendar size={15}/>)}
           {row('Office 365',()=>openExt(links.office),<Calendar size={15}/>)}
           {row('Apple / λήψη .ics',()=>downloadEventIcs(event),<Download size={15}/>)}
           {row('Yahoo',()=>openExt(links.yahoo),<Calendar size={15}/>)}
           <div style={{ height:1,background:'var(--border-subtle)',margin:'6px 8px' }}/>
-          <div style={{ fontSize: 'var(--fs-xs)',fontWeight:700,letterSpacing:'0.07em',textTransform:'uppercase',color:'var(--text-tertiary)',padding:'2px 12px 4px',fontFamily: T.font.sans }}>Κοινοποίηση</div>
+          <div style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3,fontWeight: 600,color:'var(--text-tertiary)',padding:'2px 12px 4px',fontFamily: T.font.sans }}>Κοινοποίηση</div>
           {row('WhatsApp',()=>openExt(links.whatsapp),<Share2 size={15}/>)}
           {row('Viber',()=>openExt(links.viber),<Share2 size={15}/>)}
           {(onEdit||onDelete)&&<div style={{ height:1,background:'var(--border-subtle)',margin:'6px 8px' }}/>}
@@ -104,7 +106,11 @@ export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, o
   /** Δεν αλλάζει πια τη γραφή της ημερομηνίας· βλ. το σχόλιο πάνω από την κάρτα. */
   sameMonth?:boolean
 }) {
-  const overdue = isOverdue(event)
+  // Ληξιπρόθεσμο μόνο ό,τι οφείλεται. Η ημέρα λήξης του ΠΕΑ που πέρασε λέει
+  // «Έληξε»· οι υπενθυμίσεις 90 και 30 ημερών που πέρασαν, τίποτα (lib/calendar/pastState.ts).
+  const past    = pastStateOf(event)
+  const overdue = past==='overdue'
+  const pastWord = past&&past!=='passed' ? PAST_LABEL[past] : null
   const done    = event.status==='paid'||event.status==='cancelled'
   const cat     = CATEGORIES[event.category]
   const isAuto  = event.source!=='manual'
@@ -201,9 +207,9 @@ export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, o
         {/* ΤΟ ΕΚΠΡΟΘΕΣΜΟ ΛΕΓΕΤΑΙ ΜΕ ΤΗ ΛΕΞΗ ΤΟΥ. Εγραφε μόνο «πριν 7 ημέρες»,
             που διαβάζεται και ως απλή ημερομηνία. Η λέξη πάνω, η απόσταση από
             κάτω: σε μία σειρά έκοβε τον τίτλο του γεγονότος στα 390. */}
-        {overdue && <span style={{ fontSize:12, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-primary)' }}>Ληξιπρόθεσμο</span>}
+        {pastWord && <span style={{ fontSize:12, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-primary)' }}>{pastWord}</span>}
         <span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', fontWeight:due===0?600:400, color:due===0?'var(--text-primary)':'var(--text-secondary)' }}>
-          {overdue||due===0||due===1?dueTextStart(due):fmt(event.event_date)}{event.event_time?` · ${event.event_time}`:''}
+          {pastWord||due===0||due===1?dueTextStart(due):fmt(event.event_date)}{event.event_time?` · ${event.event_time}`:''}
         </span>
         {!bulkMode&&(
           /* ΚΡΥΒΕΤΑΙ Η ΟΨΗ, ΟΧΙ Η ΕΝΕΡΓΕΙΑ. Με `opacity: 0` από αιώρηση σε
@@ -300,7 +306,7 @@ export function Section({ title, color, events, onToggle, onEdit, onDelete, coll
     <div>
       <button onClick={()=>setOpen(o=>!o)} style={{ display:'flex', alignItems:'center', gap:8, background:'none', border:'none', cursor:'pointer', marginBottom:open?11:0, padding:0 }}>
         <span style={{ width:6, height:6, borderRadius:3, background:color, flexShrink:0, opacity:0.9 }}/>
-        <span style={{ fontSize:12, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-primary)', letterSpacing:'0.06em', textTransform:'uppercase' }}>{title}</span>
+        <span style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, fontFamily: T.font.sans, fontWeight:600, color:'var(--text-primary)' }}>{title}</span>
         <span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', color:'var(--text-tertiary)', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:10, padding:'0 7px', lineHeight:'17px' }}>{shown}</span>
         <ChevronDown size={13} color="var(--text-tertiary)" style={{ transform:open?'rotate(180deg)':'none', transition:'transform 0.2s' }}/>
       </button>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Btn } from '@/components/Theme';
+import { Btn } from '@/components/ThemeCore';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ΕΝΤΥΠΟ ΠΡΟΣ ΑΝΤΙΓΡΑΦΗ, ΟΧΙ ΛΙΣΤΑ ΜΕ ΚΟΥΚΚΙΔΕΣ

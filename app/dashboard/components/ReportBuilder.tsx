@@ -343,7 +343,7 @@ export default function ReportBuilder({ open, onClose, userId, supabase, brandin
       <>
           {presets.length > 0 && (
             <div>
-              <div style={{ ...TT.label, marginBottom: 8 }}>ΑΠΟΘΗΚΕΥΜΕΝΑ ΠΡΟΦΙΛ</div>
+              <div style={{ ...TT.label, marginBottom: 8 }}>Αποθηκευμένα προφίλ</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {presets.map(p => (
                   <span key={p.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--border-default)', borderRadius: T.radius.pill, padding: '4px 6px 4px 12px' }}>
@@ -358,7 +358,7 @@ export default function ReportBuilder({ open, onClose, userId, supabase, brandin
 
           {/* Περίοδος */}
           <div>
-            <div style={{ ...TT.label, marginBottom: 8 }}>ΠΕΡΙΟΔΟΣ</div>
+            <div style={{ ...TT.label, marginBottom: 8 }}>Περίοδος</div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ flex: '0 1 130px', minWidth: 110 }}>
                 <Select ariaLabel="Έτος" value={String(year)} onChange={v => setYear(Number(v))} options={yearsAvail.map(y => ({ value: String(y), label: String(y) }))} />
@@ -371,13 +371,13 @@ export default function ReportBuilder({ open, onClose, userId, supabase, brandin
 
           {/* Ακίνητα */}
           <div>
-            <div style={{ ...TT.label, marginBottom: 8 }}>ΑΚΙΝΗΤΑ</div>
+            <div style={{ ...TT.label, marginBottom: 8 }}>Ακίνητα</div>
             <PropertyPicker items={props} selected={propIds} onChange={setPropIds} loading={loading} />
           </div>
 
           {/* Ενότητες */}
           <div>
-            <div style={{ ...TT.label, marginBottom: 8 }}>ΕΝΟΤΗΤΕΣ</div>
+            <div style={{ ...TT.label, marginBottom: 8 }}>Ενότητες</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))', gap: 8 }}>
               {SECTIONS.map(s => {
                 const on = sections.has(s.key);
@@ -398,7 +398,7 @@ export default function ReportBuilder({ open, onClose, userId, supabase, brandin
 
           {/* Αποθήκευση προφίλ */}
           <div>
-            <div style={{ ...TT.label, marginBottom: 8 }}>ΑΠΟΘΗΚΕΥΣΗ ΩΣ ΠΡΟΦΙΛ (ΠΡΟΑΙΡΕΤΙΚΟ)</div>
+            <div style={{ ...TT.label, marginBottom: 8 }}>Αποθήκευση ως προφίλ (προαιρετικό)</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <input aria-label="Όνομα προεπιλογής" value={presetName} onChange={e => setPresetName(e.target.value)} placeholder="Μηνιαία σύνοψη" style={{ ...field, flex: 1 }} />
               <Btn variant="secondary" onClick={addPreset} disabled={!presetName.trim()}>Αποθήκευση</Btn>

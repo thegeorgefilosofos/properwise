@@ -49,6 +49,7 @@ import { type LegalForm } from '@/lib/accounting/dossier';
 import BillsServices     from './BillsServices';
 import ExpenseSwitchAlert from './ExpenseSwitchAlert';
 import { useLoad } from '@/app/hooks/useLoad';
+import { notifyError } from '@/components/Toast';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Props {
@@ -141,7 +142,7 @@ function ContractTile({ card, active, onOpen }: { card: ContractCard; active: bo
           Ο τίτλος δεν παλεύει ποτέ με τον αριθμό και οι δύο μορφές κάρτας
           διαβάζονται ως ένα πράγμα. ══ */}
       <span style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', lineHeight: 1.35 }}>
           {card.label}
         </span>
         {/* Η ΙΕΡΑΡΧΙΑ ΒΓΑΙΝΕΙ ΑΠΟ ΜΕΓΕΘΟΣ ΚΑΙ ΒΑΡΟΣ, ΟΧΙ ΑΠΟ ΧΡΩΜΑ. Το ποσό
@@ -212,7 +213,11 @@ export default function TabBills({
       // και μπορούσε να μη συμφωνεί με το άθροισμα των γραμμών από κάτω — δύο
       // απαντήσεις στην ίδια ερώτηση, στην ίδια οθόνη.
       setStrip({ recurringPerMonth: totalMonthly(cards) || null, cards });
-    } catch (_) {} finally { setStripLoading(false); }
+    } catch (e) {
+      // Οχι κενή λωρίδα σαν να μην υπάρχουν πάγια: λέμε ότι δεν διαβάστηκαν.
+      console.error('[TabBills] λωρίδα παγίων:', e);
+      notifyError('Τα πάγια δεν φορτώθηκαν. Δοκίμασε ανανέωση.');
+    } finally { setStripLoading(false); }
   }, [propertyId, supabase, userId]);
 
   useEffect(() => {

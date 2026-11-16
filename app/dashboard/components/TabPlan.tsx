@@ -64,10 +64,10 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { T, TT, Btn, ChipToggle, Card, SecHdr, PageTitle, fixedCols, feAuto, pageShell, Bar } from '@/components/Theme';
+import { T, TT, Btn, Card, SecHdr, PageTitle, fixedCols, feAuto, pageShell, Bar } from '@/components/Theme';
 import { hy } from '@/components/Hyphen';
 import { InfoHint, HintedText } from './InfoHint';
-import { SegmentControl, NumberInput, fieldLabelStyle } from './UIComponents';
+import { SegmentControl, NumberInput, CustomSelect, fieldLabelStyle } from './UIComponents';
 import { createClient } from '@/lib/supabase/client';
 import * as checklist from '@/lib/data/checklist';
 import * as planData from '@/lib/data/plan';
@@ -733,10 +733,16 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
           info={<InfoHint label="Τι σημαίνει κάθε είδος">
             <Tip rows={DISPUTE_KINDS.map(k => [k.label, k.hint] as const)} />
           </InfoHint>}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {DISPUTE_KINDS.map(k => (
-              <ChipToggle key={k.key} on={k.key === kind} onClick={() => pickKind(k.key)}>{k.label}</ChipToggle>
-            ))}
+          {/* ΕΞΙ ΠΙΛΟΥΛΕΣ ΣΤΟΙΒΑΓΜΕΝΕΣ ΕΓΙΝΑΝ ΕΝΑΣ ΕΠΙΛΟΓΕΑΣ (14/11/2026). Μία
+              απάντηση από έξι, με λεκτικά τεσσάρων και πέντε λέξεων: στο κινητό
+              έπιαναν έξι σειρές άνισου πλάτους και η κάρτα 650 εικονοστοιχεία.
+              Ο κανόνας της εφαρμογής: μία επιλογή από τέσσερις ή περισσότερες
+              είναι επιλογέας (scripts/guard-choice-chips.mjs). Ίδιες τιμές, ίδια
+              προεπιλογή, ίδιο `pickKind`· τι σημαίνει το καθένα το λέει το ⓘ. */}
+          <div className="choice-select">
+            <CustomSelect ariaLabel="Τι είδους εκκρεμότητα είναι" value={kind}
+              onChange={v => pickKind(v as DisputeKind)}
+              options={DISPUTE_KINDS.map(k => ({ value: k.key, label: k.label }))} />
           </div>
         </Panel>
       )}
@@ -1077,18 +1083,23 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
              δύο απαντήσεις δεξιά: η μία στήλη τελείωνε τριακόσια εικονοστοιχεία
              πριν την άλλη και καμία από τις δύο δεν έφτανε στην άκρη της κάρτας.
              Το πλέγμα δεν διορθώνεται με ρυθμίσεις — αφαιρείται. */
-          <div className="budget-rise" style={{ paddingTop: T.sp.md, marginTop: 2, borderTop: '1px solid var(--border-subtle)' }}>
-            <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', paddingBottom: 6, marginBottom: 2, borderBottom: '1px solid var(--border-subtle)' }}>
-              Οι κανόνες που κοστίζουν χρήματα
-            </div>
+          <div className="budget-rise ls-group">
+            {/* ΜΙΑ ΣΕΙΡΑ ΛΙΣΤΑΣ, ΕΝΑ ΜΕΤΡΟ (14/11/2026). Οι σειρές είχαν μόνο
+                ελάχιστο ύψος 48 και καθόλου γέμισμα: η σειρά μιας γραμμής καθόταν
+                στη μέση των 48, η σειρά δύο και τριών γραμμών ακουμπούσε τις
+                διαχωριστικές πάνω και κάτω. Ο ιδιοκτήτης το φωτογράφισε στο
+                «Προς επιβεβαίωση». Τώρα `.ls-head` και `.ls-row` (globals.css,
+                «ΣΕΙΡΕΣ ΛΙΣΤΑΣ»): ίδιο γέμισμα σε κάθε σειρά, διαχωριστική μόνο
+                ΑΝΑΜΕΣΑ, ίδια απόσταση κάθε υποκεφαλίδας από τη γραμμή της. */}
+            <div className="ls-head">Οι κανόνες που κοστίζουν χρήματα</div>
             {/* ΟΙ ΓΡΑΜΜΕΣ ΤΗΣ ΑΝΑΦΟΡΑΣ ΕΠΛΕΑΝ ΧΩΡΙΣ ΤΙΠΟΤΑ ΝΑ ΤΙΣ ΧΩΡΙΖΕΙ. Επτά
                 τίτλοι ο ένας κάτω από τον άλλον, με μόνο το κενό ανάμεσά τους:
                 στον ίδιο πίνακα, δύο ενότητες πιο πάνω, οι σειρές της σύγκρισης
                 έχουν λεπτή γραμμή. Ιδιο υλικό, δύο ρυθμοί. Η γραμμή μπαίνει
                 ΑΝΑΜΕΣΑ και ποτέ πριν από την πρώτη: εκεί υπάρχει ήδη η γραμμή
                 της υποενότητας. */}
-            {plan.rules.map((r, i) => (
-              <div key={r.id} className="plan-row plan-row-bare" style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
+            {plan.rules.map(r => (
+              <div key={r.id} className="ls-row">
                 <span style={{ minWidth: 0 }}>
                   <RowTitle state="plain" text={r.title} hint={{ label: `Ο κανόνας: ${r.title}`, body: r.body }} />
                 </span>
@@ -1098,11 +1109,9 @@ function PlanScreen<P extends PlanProperty>({ propertyId, userId, status, proper
             {/* ΤΟ ΠΟΡΤΟΚΑΛΙ ΣΗΜΑ ΜΕ ΤΟ «3» ΕΦΥΓΕ. Ένα γυμνό «3» δεν λέει καν
                 τρία τι και ήταν γραμμένο στο χρώμα που η εφαρμογή κρατά για
                 εκκρεμότητες — σε ενότητα που ρητά δεν ζητά καμία ενέργεια. */}
-            <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', paddingBottom: 6, marginTop: T.sp.lg, marginBottom: 2, borderBottom: '1px solid var(--border-subtle)' }}>
-              Προς επιβεβαίωση
-            </div>
-            {plan.verify.map((v, i) => (
-              <div key={v.id} className="plan-row plan-row-bare" style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
+            <div className="ls-head">Προς επιβεβαίωση</div>
+            {plan.verify.map(v => (
+              <div key={v.id} className="ls-row">
                 {/* ΔΕΝ ΕΙΝΑΙ ΤΙΤΛΟΣ, ΕΙΝΑΙ ΕΡΩΤΗΜΑ και γι᾽ αυτό δεν φοράει το
                     βάρος του τίτλου κανόνα από πάνω: μια ερώτηση δύο σειρών σε
                     14/600 διαβάζεται σαν κραυγή. */}

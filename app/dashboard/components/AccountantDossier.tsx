@@ -21,12 +21,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import dynamic from 'next/dynamic'
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback, useId } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { T, TT, Badge, SelectBox, Bar, Btn, ChipToggle } from '@/components/Theme'
-import { ChevronRight, Download } from 'lucide-react'
+import { T, TT, SelectBox, Bar, Btn, ChipToggle } from '@/components/Theme'
+import { ActionMenu, type ActionMenuItem } from '@/components/ActionMenu'
+import { ChevronDown, ChevronRight, Download } from 'lucide-react'
+import { InfoHint } from './InfoHint'
+import { CustomSelect } from './UIComponents'
 import {
-  groupByWho, traps, defaultBookkeeping,
+  groupByWho, traps, defaultBookkeeping, effectiveBookkeeping, returnCounts,
   yearStatusLabel, LEGAL_FORM_LABEL,
   type LegalForm, type BookKeeping, type Requirement,
 } from '@/lib/accounting/dossier'
@@ -38,15 +41,13 @@ import type { FixedAsset } from '@/lib/accounting/fixedAssets'
 import type { VatDeduction } from '@/lib/tax/myData'
 import { failed } from '@/lib/core/dbError';
 import { openRequests, answerRequest, type OpenRequest } from '@/lib/data/accountant';
-import { invitesForMe, answerInvite, inviteSender, type ReceivedInvite } from '@/lib/data/accountantInvites';
-import { confirmDialog } from '@/components/confirmBus';
-import * as accountantLink from '@/lib/data/accountantLink';
-import { notify, notifyError } from '@/components/Toast';
-import { FEATURE_MIN_PLAN } from '@/lib/billing/entitlements';
-import { PLANS } from '@/lib/billing/plans';
 import { aadeTitle } from '@/components/AadeLink';
 import { aadePath, AADE_DESTINATIONS } from '@/lib/tax/aade';
 import MeetingPackCard from './MeetingPackCard';
+import AccountantInvites from './AccountantInvites';
+
+/** Σύντομη ετικέτα που δεν σπάει στη γραμμή: τα κενά της γίνονται αδιάσπαστα. */
+const nb = (s: string) => s.replace(/ /g, '\u00a0')
 
 // Φαίνεται μόνο σε όποιον έχει δώσει πρόσβαση σε γραφείο· φορτώνεται στον περιηγητή.
 const FirmDaySummary = dynamic(() => import('./FirmAccess').then(m => m.FirmDaySummary), { ssr: false })
@@ -125,9 +126,11 @@ export function useAccountantDossier(userId: string, year: number, seed?: Partia
       if (!alive) return
       if (data) {
         const row = data as Record<string, unknown>
+        const form = (row.legal_form as LegalForm) || 'individual'
         setProfileState({
-          form: (row.legal_form as LegalForm) || 'individual',
-          books: (row.bookkeeping as BookKeeping) || 'none',
+          form,
+          // Ο ιδιώτης δεν έχει βιβλία, όποια κι αν είναι η στήλη (lib/accounting/dossier.ts).
+          books: effectiveBookkeeping(form, (row.bookkeeping as BookKeeping) || 'none'),
           hasRenovation: !!row.has_renovation,
           hasLoan: !!row.has_loan,
           ownershipChanged: !!row.ownership_changed,
@@ -198,10 +201,10 @@ export function useAccountantDossier(userId: string, year: number, seed?: Partia
 // ═══ Εικόνα ════════════════════════════════════════════════════════════════
 
 const card: React.CSSProperties = { position: 'relative', background: 'var(--surface-raised)', border: 'none', borderRadius: T.radius.card, padding: T.sp.lg, boxShadow: 'var(--elev-1)' }
-const eyebrow: React.CSSProperties = { fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0 }
+const eyebrow: React.CSSProperties = { fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0 }
 const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFamily: T.font.sans }
 
-/** Μία γραμμή καταλόγου: τι, γιατί, πού και αν μπλοκάρει. */
+/** Μία γραμμή καταλόγου: τι και γιατί· το πού και το από πού πίσω από ένα πάτημα. */
 // ΧΩΡΙΣ `interactive`: ΔΕΝ ΥΠΑΡΧΕΙ ΠΙΑ ΜΗ ΠΑΤΗΣΙΜΗ ΓΡΑΜΜΗ. Η ιδιότητα υπήρχε
 // για τη μία ομάδα που ετοίμαζε το ίδιο το εργαλείο, όπου το τετραγωνάκι ήταν
 // σφραγίδα και όχι επιλογή. Εκείνη η ομάδα δεν αποδίδεται πλέον ως κάρτα, οπότε
@@ -209,54 +212,171 @@ const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFamil
 // ΟΤΑΝ ΚΡΙΝΟΥΝ ΤΑ ΣΤΟΙΧΕΙΑ, ΤΟ ΚΟΥΤΑΚΙ ΔΕΝ ΠΑΤΙΕΤΑΙ ΚΑΙ ΤΟ ΛΕΕΙ. Το ΑΤΑΚ και ο ΑΜΑ
 // είναι γραμμένα (ή όχι) στα στοιχεία κάθε ακινήτου· ένα τσεκ εδώ θα έλεγε
 // «το έχω» ενώ ο λογιστής θα έβλεπε «Λείπει» στον πίνακα των ακινήτων.
-function Row({ r, checked, onToggle, attribute, fromData }: {
+//
+// ΤΟ «ΑΠΑΡΑΙΤΗΤΟ» ΑΝΤΙΣΤΡΑΦΗΚΕ (14/11/2026). Η πιλούλα με κεφαλαία καθόταν σχεδόν
+// σε κάθε γραμμή και στο κινητό έπεφτε μόνη της σε δική της σειρά: ένδειξη που
+// είναι παντού δεν ξεχωρίζει τίποτα. Σημειώνεται πλέον μόνο η εξαίρεση, ως ήσυχο
+// «Μπορεί να περιμένει» στη σειρά του τίτλου. ΟΧΙ «Προαιρετικό»: το μη
+// μπλοκαριστικό σημαίνει «δεν σταματά τη δήλωση», όχι «δεν χρειάζεται». Η
+// δημοσίευση στο ΓΕΜΗ και οι περιοδικές δηλώσεις ΦΠΑ είναι υποχρεωτικές και θα
+// έγραφαν «Προαιρετικό» δίπλα σε «Υποχρεωτική για τα νομικά πρόσωπα». Το πού (διαδρομή myAADE και σύνδεσμος), το
+// για ποιο ακίνητο και τι λείπει από τα στοιχεία ανοίγουν κάτω από τη γραμμή.
+function Row({ r, checked, onToggle, attribute, fromData, inWait = false }: {
   r: Requirement; checked: boolean; onToggle: () => void; attribute: boolean
   fromData?: { missingFor?: string[] }
+  /** Μέσα στο «Μπορούν να περιμένουν»: η ένδειξη το λέει ήδη η κεφαλίδα. */
+  inWait?: boolean
 }) {
+  const [open, setOpen] = useState(false)
+  const detailsId = useId()
+  const hasDetails = !!fromData || (attribute && !!r.forProperties?.length) || !!(r.aade || r.source)
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '11px 0', borderTop: '1px solid var(--border-subtle)' }}>
+    <div className="acd-row">
       {fromData
-        ? <span role="img" aria-label={checked ? 'Υπάρχει στα στοιχεία' : 'Λείπει από τα στοιχεία'}
+        ? <span role="img" aria-label={checked ? 'Υπάρχει στα στοιχεία' : 'Λείπει από τα στοιχεία'} className="acd-row-box"
             style={{ width: 18, height: 18, flexShrink: 0, borderRadius: T.radius.xs, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               border: `1.5px dashed ${checked ? 'var(--accent)' : 'var(--border-control)'}`, background: checked ? 'var(--accent)' : 'transparent', color: 'var(--accent-text)' }}>
             {checked && <svg width={11} height={11} viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2.5 6.3l2.2 2.2L9.5 3.6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></svg>}
           </span>
-        : <SelectBox checked={checked} onChange={onToggle} label={r.title} />}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 14, fontWeight: 600, fontFamily: T.font.sans, lineHeight: 1.35, color: checked ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{r.title}</span>
-          {r.blocking && !checked && <Badge>Απαραίτητο</Badge>}
-        </div>
-        <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-secondary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>{r.why}</p>
-        {/* ΑΠΟ ΠΟΙΟ ΑΚΙΝΗΤΟ. Ο φάκελος είναι ένας για όλο το χαρτοφυλάκιο και ζει
-            στη σελίδα ενός ακινήτου· χωρίς το όνομα, η δήλωση μίσθωσης ενός
-            άλλου διαμερίσματος διαβαζόταν ως δική του. */}
-        {fromData && (
-          <p style={{ fontSize: 'var(--fs-note)', color: checked ? 'var(--text-tertiary)' : 'var(--text-secondary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>
-            {checked
-              ? 'Από τα στοιχεία των ακινήτων σου.'
-              : `Λείπει από τα στοιχεία: ${(fromData.missingFor ?? []).join(', ')}. Συμπλήρωσέ το στα στοιχεία του ακινήτου.`}
-          </p>
-        )}
-        {attribute && r.forProperties && r.forProperties.length > 0 && (
-          <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>Για: {r.forProperties.join(', ')}</p>
-        )}
-        {/* ΤΟ «ΠΟΥ» ΕΓΙΝΕ ΔΡΟΜΟΣ, ΟΧΙ ΟΝΟΜΑ ΠΥΛΗΣ ΚΑΙ ΓΡΑΦΕΤΑΙ ΙΔΙΑ ΠΑΝΤΟΥ. Η
-            διαδρομή του myAADE καθόταν μέσα σε πιλούλα που στο κινητό γινόταν
-            τριώροφη, ενώ δίπλα της το «Πού: e-banking» ήταν σκέτο κείμενο: δύο
-            σχήματα για την ίδια πληροφορία. Τώρα η διαδρομή είναι κείμενο και ο
-            σύνδεσμος μια ενέργεια στο τέλος της. */}
-        {(r.aade || r.source) && (
-          <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '3px 0 0', lineHeight: 1.5, fontFamily: T.font.sans }}>
-            Πού: {r.aade ? aadePath(r.aade) : r.source}
-            {r.aade && (
-              <>{' · '}<a className="po-tap-inline" href={AADE_DESTINATIONS[r.aade].url} target="_blank" rel="noopener noreferrer" title={aadeTitle(r.aade)}
-                style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Άνοιξε στο myAADE</a></>
+        : <span className="acd-row-box"><SelectBox checked={checked} onChange={onToggle} label={r.title} /></span>}
+      <div className="acd-row-text">
+        <p className="acd-row-title" style={{ color: checked ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
+          {r.title}
+          {!r.blocking && !inWait && <span className="acd-row-opt"><span className="acd-row-dot" aria-hidden="true">{' · '}</span>Μπορεί να περιμένει</span>}
+        </p>
+        <p className="acd-row-why">{r.why}</p>
+        {open && (
+          <div id={detailsId} className="acd-row-details">
+            {/* ΑΠΟ ΠΟΙΟ ΑΚΙΝΗΤΟ. Ο φάκελος είναι ένας για όλο το χαρτοφυλάκιο και ζει
+                στη σελίδα ενός ακινήτου· χωρίς το όνομα, η δήλωση μίσθωσης ενός
+                άλλου διαμερίσματος διαβαζόταν ως δική του. */}
+            {fromData && (
+              <p>{checked
+                ? 'Από τα στοιχεία των ακινήτων σου.'
+                : `Λείπει από τα στοιχεία: ${(fromData.missingFor ?? []).join(', ')}. Συμπλήρωσέ το στα στοιχεία του ακινήτου.`}</p>
             )}
-          </p>
+            {attribute && r.forProperties && r.forProperties.length > 0 && <p>Για: {r.forProperties.join(', ')}</p>}
+            {/* ΤΟ «ΠΟΥ» ΕΙΝΑΙ ΔΡΟΜΟΣ ΚΑΙ ΓΡΑΦΕΤΑΙ ΙΔΙΑ ΠΑΝΤΟΥ: η διαδρομή ως κείμενο και
+                ο σύνδεσμος ως ενέργεια στο τέλος της. */}
+            {(r.aade || r.source) && (
+              <p>
+                Πού: {r.aade ? aadePath(r.aade) : r.source}
+                {r.aade && (
+                  // Αδιάσπαστο κενό ΠΡΙΝ από την τελεία: αν ο σύνδεσμος πέσει στην
+                  // επόμενη σειρά, η τελεία μένει στο τέλος της προηγούμενης.
+                  <>{'\u00a0· '}<a className="po-tap-inline" href={AADE_DESTINATIONS[r.aade].url} target="_blank" rel="noopener noreferrer" title={aadeTitle(r.aade)}
+                    style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Άνοιξε στο myAADE</a></>
+                )}
+              </p>
+            )}
+          </div>
         )}
       </div>
+      {/* ΙΔΙΑ ΣΤΗΛΗ ΣΕ ΚΑΘΕ ΓΡΑΜΜΗ. Γραμμή χωρίς λεπτομέρειες κρατά τον χώρο
+          του βέλους κενό, ώστε η δεξιά ακμή του κειμένου να είναι ίδια παντού. */}
+      {!hasDetails && <span className="acd-row-more acd-row-more-empty" aria-hidden="true" />}
+      {hasDetails && (
+        <button type="button" className="acd-row-more acc-toggle" aria-expanded={open} aria-controls={open ? detailsId : undefined}
+          aria-label={`Λεπτομέρειες: ${r.title}`} onClick={() => setOpen(o => !o)}>
+          <ChevronDown size={16} aria-hidden="true" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }} />
+        </button>
+      )}
     </div>
+  )
+}
+
+// ═══ ΟΙ ΟΜΑΔΕΣ ΔΙΠΛΩΝΟΥΝ ΚΑΙ ΘΥΜΟΥΝΤΑΙ ═══════════════════════════════════════
+// Ο ιδιοκτήτης (14/11/2026): «να κάνω minimise το "Το κάνει ο λογιστής", το
+// "Χρειάζεται από εσένα"». Είκοσι γραμμές ανοιχτές η μία κάτω από την άλλη
+// έκαναν την καρτέλα τοίχο. Κάθε ομάδα είναι πλέον μία σειρά: τίτλος, μετρητής,
+// βέλος. Ανοιχτή εξ αρχής μόνο η ομάδα που ζητά ενέργεια από τον χρήστη· η
+// επιλογή του μένει στον περιηγητή του, ανά χρήστη (όχι στη βάση: είναι
+// προτίμηση προβολής, όχι δεδομένο του φακέλου).
+const SECTIONS_KEY = (userId?: string) => `pw:acct-sections:${userId || 'anon'}`
+const SECTION_DEFAULT: Record<string, boolean> = { owner: true, accountant: false, traps: false }
+
+function readSections(userId?: string): Record<string, boolean> {
+  try {
+    const raw = typeof window === 'undefined' ? null : window.localStorage.getItem(SECTIONS_KEY(userId))
+    const saved = raw ? JSON.parse(raw) as Record<string, unknown> : {}
+    const out: Record<string, boolean> = { ...SECTION_DEFAULT }
+    for (const [k, v] of Object.entries(saved)) if (typeof v === 'boolean') out[k] = v
+    return out
+  } catch { return { ...SECTION_DEFAULT } }
+}
+
+function useSections(userId?: string) {
+  // Η ΚΑΡΤΕΛΑ ΜΠΟΡΕΙ ΝΑ ΑΠΟΔΟΘΕΙ ΠΡΙΝ ΦΤΑΣΕΙ Ο ΧΡΗΣΤΗΣ. Το κλειδί είναι ανά
+  // χρήστη· αν το `userId` έρθει μετά την πρώτη απόδοση, ξαναδιαβάζεται το δικό
+  // του κλειδί αντί να μείνει η επιλογή του «anon» (προσαρμογή κατάστασης στην
+  // απόδοση, χωρίς effect).
+  const [state, setState] = useState(() => ({ uid: userId, open: readSections(userId) }))
+  if (state.uid !== userId) setState({ uid: userId, open: readSections(userId) })
+  const toggle = useCallback((key: string) => {
+    setState(prev => {
+      const next = { ...prev.open, [key]: !prev.open[key] }
+      try { window.localStorage.setItem(SECTIONS_KEY(prev.uid), JSON.stringify(next)) } catch { /* ιδιωτικό παράθυρο: μένει για τη συνεδρία */ }
+      return { uid: prev.uid, open: next }
+    })
+  }, [])
+  return [state.uid === userId ? state.open : readSections(userId), toggle] as const
+}
+
+/** Η κάρτα μιας ομάδας: η κεφαλίδα είναι κουμπί, το σώμα φαίνεται όταν ανοίξει. */
+function Section({ title, count, open, onToggle, children }: {
+  title: string; count?: string; open: boolean; onToggle: () => void; children: React.ReactNode
+}) {
+  const bodyId = useId()
+  return (
+    <section className="acd-sec" style={card}>
+      <h2 className="acd-sec-h">
+        <button type="button" className="acd-sec-toggle acc-toggle" aria-expanded={open} aria-controls={bodyId} onClick={onToggle}>
+          <span className="acd-sec-title">{title}</span>
+          {count && <span className="acd-sec-count" style={num}>{count}</span>}
+          <ChevronDown size={18} aria-hidden="true" className="acd-sec-chev" style={{ transform: open ? 'rotate(180deg)' : 'none' }} />
+        </button>
+      </h2>
+      <div id={bodyId} hidden={!open}>{open && children}</div>
+    </section>
+  )
+}
+
+/** Υποομάδα μέσα σε ομάδα: μία σειρά με αριθμό, κλειστή εξ αρχής. */
+function Fold({ label, children }: { label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+  return (
+    <div className="acd-done">
+      <button type="button" className="acd-done-toggle acc-toggle" aria-expanded={open} aria-controls={id} onClick={() => setOpen(o => !o)}>
+        <span>{label}</span>
+        <ChevronDown size={16} aria-hidden="true" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }} />
+      </button>
+      <div id={id} hidden={!open}>{open && children}</div>
+    </div>
+  )
+}
+
+/**
+ * Οι γραμμές μιας ομάδας: ανοιχτά μόνο όσα μπλοκάρουν τη δήλωση και λείπουν.
+ * Από κάτω, κλειστά: «Μπορούν να περιμένουν (n)» (όσα δεν σταματούν τη δήλωση·
+ * το n μετρά όσα μένουν ανοιχτά, τα τσεκαρισμένα κάθονται μέσα στο τέλος) και «Ολοκληρωμένα (n)» (όσα μπλοκάρουν και έγιναν). Το
+ * «Ολοκληρωμένα» είναι έτσι ακριβώς ο αριθμητής του «x/y» της κεφαλίδας.
+ */
+function GroupRows({ items, isDone, render }: {
+  items: readonly Requirement[]; isDone: (id: string) => boolean; render: (r: Requirement, inWait?: boolean) => React.ReactNode
+}) {
+  const left = items.filter(r => r.blocking && !isDone(r.id))
+  const wait = items.filter(r => !r.blocking)
+  const waitOpen = wait.filter(r => !isDone(r.id)).length
+  const done = items.filter(r => r.blocking && isDone(r.id))
+  return (
+    <>
+      {left.map(r => render(r))}
+      {/* Ο αριθμός είναι όσα μένουν ανοιχτά, ίδιος με τη φράση της κεφαλίδας
+          (`waitOpen`, `canWaitPhrase`)· τα τσεκαρισμένα μένουν μέσα, σημειωμένα. */}
+      {wait.length > 0 && <Fold label={waitOpen > 0 ? `Μπορούν να περιμένουν (${waitOpen})` : 'Μπορούν να περιμένουν · όλα έτοιμα'}>{[...wait.filter(r => !isDone(r.id)), ...wait.filter(r => isDone(r.id))].map(r => render(r, true))}</Fold>}
+      {done.length > 0 && <Fold label={`Ολοκληρωμένα (${done.length})`}>{done.map(r => render(r))}</Fold>}
+    </>
   )
 }
 
@@ -292,7 +412,7 @@ export interface DossierExportSource {
 }
 
 export default function AccountantDossier({
-  state, year, properties, exportSource, actions, compact = false, yearData, userId, onEditProperty, canShareLink = true,
+  state, year, properties, exportSource, actions, more = [], compact = false, yearData, userId, onEditProperty, canShareLink = true,
 }: {
   /**
    * Το πακέτο επιτρέπει σύνδεσμο λογιστή (`e2_export`). Χωρίς αυτό, η πρόσκληση
@@ -317,6 +437,13 @@ export default function AccountantDossier({
    * πρώτο και το Excel του ΙΔΙΟΥ φακέλου εννιακόσια εικονοστοιχεία πιο κάτω.
    */
   actions?: React.ReactNode
+  /**
+   * ΟΙ ΔΕΥΤΕΡΕΥΟΥΣΕΣ ΕΞΑΓΩΓΕΣ, ΣΕ ΕΝΑ ΜΕΝΟΥ (14/11/2026). Ηταν τρία κουμπιά με
+   * περίγραμμα, άνισου πλάτους, στοιβαγμένα κάτω από το κύριο: στο κινητό η
+   * κάρτα είχε τέσσερις ενέργειες ίδιου βάρους. Μένει ένα κύριο κουμπί (ο
+   * φάκελος) και ένα «Περισσότερα» για όσα δεν είναι ο φάκελος.
+   */
+  more?: ActionMenuItem[]
   /** Χωρίς καμία κίνηση στη χρονιά: μόνο η κάρτα, ο κατάλογος πίσω από ένα πάτημα. */
   compact?: boolean
   /** Τι κατέγραψε η χρήση: από αυτό κρίνονται οι γραμμές που βγάζει η εφαρμογή. */
@@ -325,6 +452,7 @@ export default function AccountantDossier({
   const { profile, setProfile, have, toggle, error, retry } = state
   const [assumptionsOpen, setAssumptionsOpen] = useState(false)
   const [listOpen, setListOpen] = useState(false)
+  const [sections, toggleSection] = useSections(userId)
   const [downloaded, setDownloaded] = useState(false)
 
   // ══ ΕΝΑΣ ΜΕΤΡΗΤΗΣ, ΙΔΙΟΣ ΜΕ ΤΟ ΑΡΧΕΙΟ ΚΑΙ ΤΗ ΣΥΝΑΝΤΗΣΗ (lib/facts/completeness) ══
@@ -340,9 +468,12 @@ export default function AccountantDossier({
   const reqs = comp.items
   const ready = comp
   const byId = useMemo(() => new Map(comp.items.map(i => [i.id, i])), [comp])
-  const appIds = useMemo(() => comp.items.filter(i => i.by === 'app').map(i => i.id), [comp])
-  const appDone = useMemo(() => comp.items.filter(i => i.by === 'app' && i.done).map(i => i.id), [comp])
-  const appWaiting = appIds.length - appDone.length
+  // ΕΝΑ ΣΥΝΟΛΟ ΝΟΥΜΕΡΩΝ (lib/accounting/dossier.ts, `returnCounts`): μπάρα,
+  // σύνοψη και μετρητές ομάδων μετρούν ό,τι μπλοκάρει τη δήλωση, όπως η φράση
+  // της κεφαλίδας. Τα υπόλοιπα διπλώνουν στο «Μπορούν να περιμένουν».
+  const counts = useMemo(() => returnCounts(comp.items), [comp])
+  const appReturnDone = useMemo(() => comp.items.filter(i => i.by === 'app' && i.blocking && i.done).length, [comp])
+  const appReturnWaiting = counts.byWho.app.remaining
   const groups = useMemo(() => groupByWho(reqs), [reqs])
   const warnings = useMemo(() => traps(reqs), [reqs])
 
@@ -408,7 +539,7 @@ export default function AccountantDossier({
     setTimeout(() => setDownloaded(false), 2600)
   }
 
-  const pct = ready.total > 0 ? Math.round((ready.done / ready.total) * 100) : 0
+  const pct = counts.total > 0 ? Math.round((counts.done / counts.total) * 100) : 0
 
   // Η επικεφαλίδα βγαίνει από τη μηχανή (lib/accounting/dossier.ts), ίδια
   // στην οθόνη και στο αρχείο που κατεβαίνει.
@@ -418,87 +549,59 @@ export default function AccountantDossier({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
       {/* ── Ο αριθμός που ηρεμεί ─────────────────────────────────────────── */}
-      <div style={{ ...card, padding: '20px 22px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 260 }}>
-            {/* Ο ΦΑΚΕΛΟΣ ΕΙΝΑΙ ΟΛΟΥ ΤΟΥ ΧΑΡΤΟΦΥΛΑΚΙΟΥ ΚΑΙ ΤΟ ΛΕΕΙ. Στη σελίδα
-                ενός ακινήτου, το «Λείπουν 6 πράγματα» διαβαζόταν ως δικό του. */}
-            <p style={eyebrow}>Για τον λογιστή · {year}{properties.length > 1 ? ` · ${properties.length} ακίνητα` : ''}</p>
-            <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, letterSpacing: '-0.01em', lineHeight: 1.45, margin: '10px 0 0' }}>
-              {headline}
-            </p>
-          </div>
-          {/* Το flexShrink μετακόμισε σε περιτύλιγμα: το Btn δεν δέχεται style και χωρίς αυτό το λεκτικό στριμώχνεται δίπλα στο μήνυμα */}
-          {/* `act-row` + `act-fill`: στο τηλέφωνο το κουμπί πιάνει όλο το πλάτος,
-              όπως οι δύο ενέργειες της κάρτας από κάτω, ώστε η στοίβα να έχει
-              ίσα πλάτη και ευθεία δεξιά ακμή. */}
-          <div className="act-row" style={{ flexShrink: 0 }}>
-            <Btn variant="secondary" onClick={download} disabled={preparing} className="act-fill">
-              <Download size={14} />{preparing ? 'Ετοιμάζεται' : downloaded ? 'Κατέβηκε' : 'Φάκελος του ακινήτου'}
-            </Btn>
-          </div>
-        </div>
+      {/* ΜΙΑ ΚΑΡΤΑ, ΜΙΑ ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ (14/11/2026). Πριν: κουμπί όλου του πλάτους,
+          πρόοδος, δύο παράγραφοι εξήγησης και τρία κουμπιά με περίγραμμα σε
+          τρία πλάτη. Τώρα: τίτλος, πρόοδος, μία γραμμή με την εξήγηση πίσω από
+          το ⓘ και από κάτω ο φάκελος δίπλα στο «Περισσότερα», ίδιο ύψος. */}
+      <div className="acd-head" style={{ ...card, padding: '20px 22px' }}>
+        {/* Ο ΦΑΚΕΛΟΣ ΕΙΝΑΙ ΟΛΟΥ ΤΟΥ ΧΑΡΤΟΦΥΛΑΚΙΟΥ ΚΑΙ ΤΟ ΛΕΕΙ. Στη σελίδα
+            ενός ακινήτου, το «Λείπουν 6 πράγματα» διαβαζόταν ως δικό του. */}
+        <p style={eyebrow}>Για τον λογιστή · {year}{properties.length > 1 ? ` · ${properties.length}\u00a0ακίνητα` : ''}</p>
+        <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', fontFamily: T.font.sans, letterSpacing: '-0.01em', lineHeight: 1.45, margin: '10px 0 0' }}>
+          {headline}
+        </p>
 
         {/* Πρόοδος: μία λεπτή γραμμή, χωρίς ποσοστά σε μεγάλα γράμματα. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '18px 0 0' }}>
-          <Bar pct={pct} height={4} track="var(--bg-elevated)" label="Πρόοδος φακέλου" style={{ flex: 1 }} />
-          <span style={{ ...num, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{ready.done}/{ready.total}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0 0' }}>
+          <Bar pct={pct} height={4} track="var(--bg-elevated)" label={`Έτοιμα για τη δήλωση: ${counts.done} από ${counts.total}`} style={{ flex: 1 }} />
+          <span style={{ ...num, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }} aria-hidden="true">{counts.done}/{counts.total}</span>
         </div>
 
-        {/* ═══════════════════════════════════════════════════════════════════
-            ΠΟΙΟΣ ΚΑΝΕΙ ΤΙ, ΣΕ ΔΥΟ ΑΡΙΘΜΟΥΣ. ΗΤΑΝ ΤΡΕΙΣ.
-            ─────────────────────────────────────────────────────────────────
-            Ο τρίτος ήταν το «Το ετοιμάζουμε εμείς», που είναι πάντα πλήρες και
-            δεν ζητά τίποτα από κανέναν. Σε κατάλογο εκκρεμοτήτων, μια στήλη που
-            δείχνει πάντα «2 / 2» δεν είναι πληροφορία: είναι το εργαλείο που
-            διαφημίζεται μέσα στη λίστα υποχρεώσεων του χρήστη.
+        {/* ΠΟΙΟΣ ΚΑΝΕΙ ΤΙ: τα έτοιμα ΜΕΤΡΟΥΝ ήδη στο «x / y» από πάνω· όσα
+            περιμένουν δεδομένα λένε τι περιμένουν. Και ΤΙ ΘΑ ΒΡΕΙ ΜΕΣΑ ο
+            λογιστής, πίσω από το ⓘ: η περιγραφή του βιβλίου διαβάζεται μία
+            φορά, δεν χρειάζεται δική της παράγραφο κάθε φορά. Το ⓘ κολλά στην
+            τελευταία λέξη, για να μη μείνει μόνο του σε δική του σειρά. */}
+        {(() => {
+          const summary = [
+            appReturnDone > 0 ? `${appReturnDone === 1 ? `Το ένα από τα ${counts.total} το βγάζουμε` : `Τα ${appReturnDone} από τα ${counts.total} τα βγάζουμε`} ήδη από τα δεδομένα σου.` : '',
+            appReturnWaiting > 0 ? `${appReturnDone > 0
+              ? (appReturnWaiting === 1 ? 'Ένα ακόμη θα βγει' : `Άλλα ${appReturnWaiting} θα βγουν`)
+              : (appReturnWaiting === 1 ? `Το ένα από τα ${counts.total} θα το βγάλουμε` : `Τα ${appReturnWaiting} από τα ${counts.total} θα τα βγάλουμε`)} μόλις καταχωρήσεις έσοδα και έξοδα.` : '',
+          ].filter(Boolean).join(' ') || 'Τι περιέχει ο φάκελος.'
+          const cut = summary.lastIndexOf(' ')
+          return (
+            <p className="acd-head-note">
+              {summary.slice(0, cut + 1)}
+              <span style={{ whiteSpace: 'nowrap' }}>{summary.slice(cut + 1)}{'\u00a0'}<InfoHint label="Τι περιέχει ο φάκελος">
+                Φάκελος του ακινήτου: τα λογιστικά του ανοιχτού ακινήτου σε ένα βιβλίο εργασίας, με τα παραστατικά του αριθμημένα.
+              </InfoHint></span>
+            </p>
+          )
+        })()}
 
-            Και λεγόταν ΤΡΕΙΣ φορές: ετικέτα, αριθμός και ολόκληρη κάρτα από
-            κάτω με δύο τσεκαρισμένες γραμμές που δεν πατιούνται.
+        <div className="acd-head-actions">
+          <Btn variant="primary" onClick={download} disabled={preparing}>
+            <Download size={14} aria-hidden="true" />{preparing ? 'Ετοιμάζεται' : downloaded ? 'Κατέβηκε' : 'Φάκελος του ακινήτου'}
+          </Btn>
+          {/* «⋯» ΚΑΙ ΟΧΙ ΛΕΞΗ: με λεκτικό τα δύο δεν χωρούσαν σε μία σειρά στα 375 και
+              το «Περισσότερα» έπεφτε μόνο του από κάτω. Το όνομα το ακούει ο
+              αναγνώστης οθόνης και το δείχνει το `title`. */}
+          {more.length > 0 && <ActionMenu iconOnly label="Περισσότερα" title="Περισσότερα: άλλες εξαγωγές για τον λογιστή" items={more} align="right" />}
+        </div>
 
-            ΤΟ ΓΕΓΟΝΟΣ ΔΕΝ ΧΑΝΕΤΑΙ, ΓΙΝΕΤΑΙ ΜΙΑ ΓΡΑΜΜΗ. Ο χρήστης χρειάζεται να
-            ξέρει ότι δεν του λείπουν· δεν χρειάζεται να τα μετράει.
-            ═══════════════════════════════════════════════════════════════════ */}
-        {/* ══════════════════════════════════════════════════════════════
-            ΤΟ ΙΔΙΟ ΝΟΥΜΕΡΟ ΔΥΟ ΦΟΡΕΣ ΣΤΗΝ ΙΔΙΑ ΟΘΟΝΗ
-            ──────────────────────────────────────────────────────────────
-            Εδώ κάθονταν δύο μετρητές, «ΧΡΕΙΑΖΕΤΑΙ ΑΠΟ ΕΣΕΝΑ 0 / 10» και «ΤΟ
-            ΕΤΟΙΜΑΖΕΙ Ο ΛΟΓΙΣΤΗΣ», με ΑΚΡΙΒΩΣ την ίδια ετικέτα και τον ίδιο
-            αριθμό που γράφει η κάθε ομάδα λίγο πιο κάτω, μαζί με τη λίστα της.
-            Δύο φορές η ίδια πληροφορία σε απόσταση μιας οθόνης: ο χρήστης τη
-            διαβάζει δεύτερη φορά για να καταλάβει αν είναι άλλη.
-
-            Η σύνοψη ΔΕΝ χάνεται: η κάθε ομάδα λέει το δικό της «x / y» πάνω
-            από τις γραμμές της, δηλαδή ακριβώς εκεί που μπορεί κανείς να
-            κάνει κάτι γι' αυτό. ═════════════════════════════════════ */}
-
-        {appIds.length > 0 && (
-          <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '12px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-            {/* Τα έτοιμα ΜΕΤΡΟΥΝ ήδη στο «x / y» από πάνω· όσα περιμένουν δεδομένα
-                λένε τι περιμένουν, αντί να μετρηθούν ως έτοιμα. */}
-            {appDone.length > 0 && <>{appDone.length === 1 ? `Το ένα από τα ${ready.total} το βγάζουμε` : `Τα ${appDone.length} από τα ${ready.total} τα βγάζουμε`} ήδη από τα δεδομένα σου.</>}
-            {appDone.length > 0 && appWaiting > 0 && ' '}
-            {appWaiting > 0 && <>{appDone.length > 0
-              ? (appWaiting === 1 ? 'Ένα ακόμη θα βγει' : `Άλλα ${appWaiting} θα βγουν`)
-              : (appWaiting === 1 ? `Το ένα από τα ${ready.total} θα το βγάλουμε` : `Τα ${appWaiting} από τα ${ready.total} θα τα βγάλουμε`)} μόλις καταχωρήσεις έσοδα και έξοδα.</>}
-          </p>
-        )}
-
-        {/* ΤΙ ΘΑ ΒΡΕΙ ΜΕΣΑ, ΠΡΙΝ ΤΟ ΚΑΤΕΒΑΣΕΙ.
-            Η γραμμή αυτή υποσχόταν πέντε αριθμημένους υποφακέλους με αρχεία CSV.
-            Ο φάκελος έγινε ένα βιβλίο εργασίας πριν από καιρό και η υπόσχεση
-            έμεινε να λέει ονόματα που δεν υπάρχουν πουθενά. Περιγράφει πλέον τη
-            ΔΟΜΗ και όχι ονόματα: η δομή δεν αλλάζει όταν προστεθεί φύλλο, ενώ ο
-            κατάλογος των φύλλων γράφεται ούτως ή άλλως μέσα στη Σύνοψη, όπου
-            διαβάζεται από το ίδιο το βιβλίο και δεν μπορεί να αποκλίνει.
-
-            ΚΑΙ ΧΩΡΑΕΙ ΣΕ ΜΙΑ ΓΡΑΜΜΗ. Δύο προτάσεις των 180 χαρακτήρων έπιαναν
-            δύο σειρές κάτω από ένα κουμπί που ήδη λέει τι κατεβάζει: ο χρήστης
-            διάβαζε παράγραφο για να μάθει τρία πράγματα. Τρεις όροι μετά την
-            άνω κάτω τελεία λένε τα ίδια τρία σε 87 χαρακτήρες. */}
-        <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '14px 0 0', fontFamily: T.font.sans, lineHeight: 1.6 }}>
-          Φάκελος του ακινήτου: τα λογιστικά του ανοιχτού ακινήτου σε ένα βιβλίο εργασίας, με τα παραστατικά του αριθμημένα.
-        </p>
+        {/* Η κάρτα του συνδέσμου, όταν υπάρχει (TabAccounting). */}
+        {actions && <div className="acd-actions">{actions}</div>}
 
         {/* ── ΤΙ ΣΟΥ ΖΗΤΗΣΕ Ο ΛΟΓΙΣΤΗΣ ────────────────────────────────────
             Η αντίστροφη κατεύθυνση. Μέχρι τώρα η πληροφορία πήγαινε μόνο προς
@@ -508,26 +611,6 @@ export default function AccountantDossier({
         {userId && <AccountantInvites userId={userId} canShare={canShareLink} />}
         <AccountantAsks />
         <FirmDaySummary />
-
-        {/* ΙΣΑ ΠΛΑΤΗ ΣΤΗ ΣΤΟΙΒΑ ΤΟΥ ΤΗΛΕΦΩΝΟΥ. Στα 390 οι ενέργειες τυλίγονται
-            η μία κάτω από την άλλη και η καθεμία κρατούσε το πλάτος του
-            λεκτικού της: «Φάκελος του ακινήτου», «Μόνο το Excel» και «Σύνδεσμος
-            για τον λογιστή» σε τρία διαφορετικά πλάτη, με τρεις δεξιές ακμές.
-            Κάτω από τα 560 κάθε ενέργεια πιάνει όλη τη σειρά, όπως η `.act-row`
-            του globals.css· η σειρά των κουμπιών ανήκει στον καλούντα, γι' αυτό
-            ο κανόνας κοιτά μέσα της από εδώ. */}
-        {actions && (
-          <div className="acd-actions" style={{ margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-            <style>{`
-              @media (max-width: 560px) {
-                .acd-actions > div:not(.acct-link) { flex-direction: column; align-items: stretch !important; }
-                .acd-actions > div > span { display: flex !important; }
-                .acd-actions > div > span > button, .acd-actions > div > button, .acd-actions > div > a { width: 100%; }
-              }
-            `}</style>
-            {actions}
-          </div>
-        )}
 
         {error && (
           <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', margin: '12px 0 0' }}>
@@ -564,45 +647,29 @@ export default function AccountantDossier({
 
       {/* ── Οι ομάδες: πρώτα τα δικά σου ──────────────────────────────────── */}
       {groups.filter(g => g.who !== 'app').map(g => {
-        const done = g.items.filter(r => byId.get(r.id)?.done).length
+        const t = counts.byWho[g.who]
         return (
-          <div key={g.who} style={card}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, paddingBottom: 4 }}>
-              <div style={{ minWidth: 0 }}>
-                <p style={eyebrow}>{g.label}</p>
-                <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '5px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-                  {g.who === 'owner'
-                    ? 'Τα μόνα που ζητούν ενέργεια από εσένα. Σημείωσε ό,τι έχεις ήδη βρει.'
-                    : 'Τα ετοιμάζει ο λογιστής από όσα του δίνεις. Σημείωσε ό,τι έχει ήδη γίνει.'}
-                </p>
-              </div>
-              <span style={{ ...num, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, flexShrink: 0 }}>{done}/{g.items.length}</span>
-            </div>
-            <div style={{ marginTop: 10 }}>
-              {g.items.map(r => (
-                <Row key={r.id} r={r} checked={!!byId.get(r.id)?.done} onToggle={() => toggle(r.id)} attribute={properties.length > 1}
-                  fromData={byId.get(r.id)?.by === 'data' ? { missingFor: byId.get(r.id)?.missingFor } : undefined} />
-              ))}
-            </div>
-          </div>
+          <Section key={g.who} title={g.label} count={t.total > 0 ? `${t.done}/${t.total}` : undefined} open={!!sections[g.who]} onToggle={() => toggleSection(g.who)}>
+            <p className="acd-sec-sub">
+              {g.who === 'owner' ? 'Σημείωσε ό,τι έχεις ήδη βρει.' : 'Τα ετοιμάζει ο λογιστής από όσα του δίνεις. Σημείωσε ό,τι έχει ήδη γίνει.'}
+            </p>
+            <GroupRows items={g.items} isDone={id => !!byId.get(id)?.done} render={(r, inWait) => (
+              <Row key={r.id} r={r} inWait={inWait} checked={!!byId.get(r.id)?.done} onToggle={() => toggle(r.id)} attribute={properties.length > 1}
+                fromData={byId.get(r.id)?.by === 'data' ? { missingFor: byId.get(r.id)?.missingFor } : undefined} />
+            )} />
+          </Section>
         )
       })}
 
       {/* ── Παγίδες: συμβουλή, όχι κατηγορία ──────────────────────────────── */}
       {warnings.length > 0 && (
-        <div style={card}>
-          <p style={eyebrow}>Πριν τον στείλεις</p>
-          <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '5px 0 14px', fontFamily: T.font.sans, lineHeight: 1.5 }}>
+        <Section title="Πριν τον στείλεις" count={String(warnings.length)} open={!!sections.traps} onToggle={() => toggleSection('traps')}>
+          <p className="acd-sec-sub">
             {warnings.length === 1 ? 'Ένα σημείο που κοστίζει όταν πάει στραβά.' : `${warnings.length} σημεία που κοστίζουν όταν πάνε στραβά.`}
           </p>
-          {/* ΤΡΕΙΣ ΣΤΗΛΕΣ, ΣΤΑΘΕΡΑ. Με ελάχιστο 210 το πλέγμα έβγαζε τέσσερις
-              στήλες σε πλατιά οθόνη, δηλαδή έξι σημεία γίνονταν τέσσερα και
-              δύο — και η δεύτερη σειρά έμοιαζε υπόλοιπο. Το ελάχιστο ΕΙΝΑΙ ο
-              μοχλός: 360 δίνει τρεις στήλες σε κάθε οθόνη υπολογιστή. Κρατούν
-              δύο ΓΕΜΑΤΕΣ σειρές, δίνουν στο κείμενο πλάτος να αναπνεύσει αντί
-              να σπάει σε τρεις λέξεις ανά γραμμή και πέφτουν σε μία σε
-              στενή οθόνη. */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: '18px 24px', alignItems: 'start' }}>
+          {/* ΤΡΕΙΣ ΣΤΗΛΕΣ, ΣΤΑΘΕΡΑ. Το ελάχιστο 360 δίνει τρεις στήλες σε κάθε
+              οθόνη υπολογιστή και μία σε στενή. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: '18px 24px', alignItems: 'start', marginTop: 12 }}>
             {warnings.map(t => (
               <div key={t.title} style={{ paddingLeft: 12, borderLeft: '2px solid var(--border-default)' }}>
                 <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', margin: 0, fontFamily: T.font.sans, lineHeight: 1.4 }}>{t.title}</p>
@@ -610,7 +677,7 @@ export default function AccountantDossier({
               </div>
             ))}
           </div>
-        </div>
+        </Section>
       )}
 
       {/* ── Οι παραδοχές: κλειστές, γιατί σπάνια αλλάζουν ─────────────────── */}
@@ -620,8 +687,10 @@ export default function AccountantDossier({
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={eyebrow}>Από τι βγαίνει αυτή η λίστα</p>
             <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '4px 0 0', fontFamily: T.font.sans }}>
-              {LEGAL_FORM_LABEL[profile.form]} · {BOOKS_LABEL[profile.books]}
-              {properties.length > 0 && ` · ${properties.length === 1 ? '1 ακίνητο' : `${properties.length} ακίνητα`}`}
+              {/* Το «·» μένει με ό,τι προηγείται: στα 375 η γραμμή άρχιζε με το «·».
+                  Και κάθε στοιχείο μένει ακέραιο («Χωρίς / βιβλία» έσπαγε στα δύο). */}
+              {nb(LEGAL_FORM_LABEL[profile.form])}{'\u00a0· '}{nb(BOOKS_LABEL[profile.books])}
+              {properties.length > 0 && `\u00a0· ${properties.length === 1 ? '1 ακίνητο' : `${properties.length} ακίνητα`}`}
             </p>
           </div>
         </button>
@@ -630,10 +699,13 @@ export default function AccountantDossier({
           <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <p style={{ fontSize: 'var(--fs-note)', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: T.font.sans }}>Νομική μορφή</p>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {(Object.keys(LEGAL_FORM_LABEL) as LegalForm[]).map(f => (
-                  <ChipToggle key={f} on={profile.form === f} onClick={() => setProfile({ form: f })}>{LEGAL_FORM_LABEL[f]}</ChipToggle>
-                ))}
+              {/* ΤΕΣΣΕΡΙΣ ΜΟΡΦΕΣ, ΜΙΑ ΑΠΑΝΤΗΣΗ: ΕΠΙΛΟΓΕΑΣ (14/11/2026). Ως πιλούλες
+                  τύλιγαν σε δύο σειρές άνισου πλάτους, «Ατομική επιχείρηση» μόνη
+                  της στη δεύτερη. Ίδιες τιμές, ίδιο `setProfile`. */}
+              <div className="choice-select">
+                <CustomSelect ariaLabel="Νομική μορφή" value={profile.form}
+                  onChange={v => setProfile({ form: v as LegalForm })}
+                  options={(Object.keys(LEGAL_FORM_LABEL) as LegalForm[]).map(f => ({ value: f, label: LEGAL_FORM_LABEL[f] }))} />
               </div>
             </div>
 
@@ -700,83 +772,6 @@ export default function AccountantDossier({
 }
 
 /**
- * Ο ΛΟΓΙΣΤΗΣ ΖΗΤΑ ΠΡΟΣΒΑΣΗ ΚΑΙ ΑΠΟΦΑΣΙΖΕΙ Ο ΠΕΛΑΤΗΣ.
- *
- * Η μαζική πρόσκληση του λογιστή φτάνει εδώ ως μία γραμμή ανά λογιστή. Μέχρι το
- * «Αποδοχή» ο λογιστής δεν βλέπει τίποτα· με το «Αποδοχή» βγαίνει (ή ανανεώνεται)
- * ο ίδιος σύνδεσμος που θα έστελνε ο πελάτης με το χέρι και η σύνδεση γράφεται
- * με αυτόν. Ανακαλείται όπως κάθε άλλη, από τις Ρυθμίσεις.
- *
- * ΠΟΙΟΣ ΡΩΤΑ ΕΙΝΑΙ Η ΔΙΕΥΘΥΝΣΗ ΤΟΥ, ΟΧΙ ΤΟ ΟΝΟΜΑ ΠΟΥ ΕΓΡΑΨΕ (20261021120000).
- * Το όνομα το γράφει ελεύθερα ο αποστολέας· η διεύθυνση είναι επιβεβαιωμένη
- * από τον λογαριασμό του. Η οθόνη δεν λέει «ο λογιστής σου»: δεν το ξέρει. Και
- * το «Αποδοχή» ρωτά ξανά, με τη διεύθυνση γραμμένη, πριν ανοίξει ο φάκελος.
- *
- * ΔΕΝ ΚΑΤΑΛΑΜΒΑΝΕΙ ΧΩΡΟ ΟΤΑΝ ΔΕΝ ΕΧΕΙ ΝΑ ΠΕΙ ΤΙΠΟΤΑ, όπως και τα αιτήματα.
- */
-function AccountantInvites({ userId, canShare }: { userId: string; canShare: boolean }) {
-  const supabase = useMemo(() => createClient(), [])
-  const [invites, setInvites] = useState<ReceivedInvite[]>([])
-  const [busy, setBusy] = useState('')
-
-  useEffect(() => { void invitesForMe(supabase).then(setInvites) }, [supabase])
-
-  const answer = useCallback(async (inv: ReceivedInvite, accept: boolean) => {
-    const { who } = inviteSender(inv)
-    if (accept && !await confirmDialog({
-      title: `Να βλέπει ο λογαριασμός ${who} τον φάκελό σου;`,
-      message: `Θα βλέπει, μόνο για ανάγνωση, ό,τι έχει ο φάκελός σου: ΑΦΜ, ακίνητα, μισθωτήρια, ενοίκια, δαπάνες και τα στοιχεία των ενοικιαστών σου.\nΔέξου μόνο αν γνωρίζεις τον αποστολέα. Την πρόσβαση την ανακαλείς όποτε θέλεις από τις Ρυθμίσεις.`,
-      confirmLabel: 'Ναι, δώσε πρόσβαση',
-    })) return
-    setBusy(inv.id)
-    try {
-      if (accept) {
-        // Ο ΣΥΝΔΕΣΜΟΣ ΠΡΩΤΑ. Η σύνδεση γράφεται με τον ζωντανό σύνδεσμο του
-        // πελάτη· η `issue` τον φτιάχνει ή ανανεώνει τη λήξη του υπάρχοντος.
-        const link = await accountantLink.issue(supabase, userId)
-        if (!link?.live) { notifyError('Ο σύνδεσμος για τον λογιστή δεν δημιουργήθηκε'); return }
-      }
-      const r = await answerInvite(supabase, inv.id, accept)
-      if (!r.ok) { notifyError(accept ? 'Η αποδοχή δεν ολοκληρώθηκε' : 'Η απάντηση δεν στάλθηκε'); return }
-      setInvites(xs => xs.filter(x => x.id !== inv.id))
-      if (accept) notify(`Ο λογαριασμός ${who} βλέπει πλέον τον φάκελό σου, μόνο για ανάγνωση`)
-    } finally { setBusy('') }
-  }, [supabase, userId])
-
-  if (invites.length === 0) return null
-
-  return (
-    <div style={{ margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-      <p style={{ fontSize: 'var(--fs-xs)', letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans }}>
-        {invites.length === 1 ? 'Αίτημα πρόσβασης στον φάκελό σου' : `${invites.length} αιτήματα πρόσβασης στον φάκελό σου`}
-      </p>
-      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', margin: '6px 0 0', fontFamily: T.font.sans, lineHeight: 1.5 }}>
-        {'Δέξου μόνο αν γνωρίζεις τον αποστολέα. Η διεύθυνση είναι του λογαριασμού που ρωτά· το όνομα το έγραψε ο ίδιος.'}
-      </p>
-      <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0', display: 'grid', gap: 0 }}>
-        {invites.map(inv => { const { who, claimed } = inviteSender(inv); return (
-          <li key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '9px 0', borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', fontFamily: T.font.sans, lineHeight: 1.5, minWidth: 0, overflowWrap: 'anywhere' }}>
-              {who}
-              <span style={{ color: 'var(--text-tertiary)' }}>{`${claimed ? ` · δηλώνει «${claimed}»` : ''} · ζητά να βλέπει τον φάκελό σου, μόνο για ανάγνωση`}</span>
-              {!canShare && (
-                <span style={{ display: 'block', color: 'var(--text-tertiary)', fontSize: 'var(--fs-xs)' }}>
-                  {`Ο σύνδεσμος για τον λογιστή περιλαμβάνεται από το πακέτο «${PLANS[FEATURE_MIN_PLAN.e2_export].name}» και πάνω.`}
-                </span>
-              )}
-            </span>
-            <span style={{ display: 'flex', gap: 8 }}>
-              <Btn variant="secondary" onClick={() => void answer(inv, true)} disabled={!canShare || busy === inv.id}>Αποδοχή</Btn>
-              <Btn variant="ghost" onClick={() => void answer(inv, false)} disabled={busy === inv.id}>Όχι</Btn>
-            </span>
-          </li>
-        ) })}
-      </ul>
-    </div>
-  )
-}
-
-/**
  * ΟΣΑ ΖΗΤΗΣΕ Ο ΛΟΓΙΣΤΗΣ ΚΑΙ ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΤΑ ΚΛΕΙΝΕΙ.
  *
  * ΔΕΝ ΚΑΤΑΛΑΜΒΑΝΕΙ ΧΩΡΟ ΟΤΑΝ ΔΕΝ ΕΧΕΙ ΝΑ ΠΕΙ ΤΙΠΟΤΑ. Μια ενότητα «Αιτήματα (0)»
@@ -800,7 +795,7 @@ function AccountantAsks() {
 
   return (
     <div style={{ margin: '16px 0 0', paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
-      <p style={{ fontSize: 'var(--fs-xs)', letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans }}>
+      <p style={{ fontWeight: 600, fontSize: 'var(--fs-base)', lineHeight: 1.3, color: 'var(--text-tertiary)', margin: 0, fontFamily: T.font.sans }}>
         {asks.length === 1 ? 'Ο λογιστής σου ζήτησε' : `Ο λογιστής σου ζήτησε ${asks.length} πράγματα`}
       </p>
       <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0', display: 'grid', gap: 0 }}>

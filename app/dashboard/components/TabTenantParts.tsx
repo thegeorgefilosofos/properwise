@@ -44,7 +44,7 @@ export const InfoBlock = ({ title, children, tone }: { title: string; children: 
 export function SectionTitle({ children, info }: { children: React.ReactNode; info?: string }) {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-      <span style={{ fontSize:'11px', letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-secondary)', fontFamily:T.font.sans, fontWeight:700 }}>{children}</span>
+      <span style={{ fontSize: 'var(--fs-base)', lineHeight: 1.3, color:'var(--text-secondary)', fontFamily:T.font.sans, fontWeight: 600 }}>{children}</span>
       {info&&<InfoDot text={info} label={typeof children==='string'?children:undefined}/>}
     </div>
   );
@@ -148,7 +148,7 @@ export function KpiCard({ label, value, color='var(--text-primary)', sub }: { la
     <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.inner, padding:'16px 14px', display:'flex', flexDirection:'column', gap:4 }}>
       <div style={{ fontSize:'18px', fontWeight:700, color, fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', letterSpacing:'-0.5px', lineHeight:1 }}>{value}</div>
       {sub && <div style={{ fontSize:'10px', color:'var(--text-secondary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums', fontWeight:600 }}>{sub}</div>}
-      <div style={{ fontSize:'9px', letterSpacing:'0.12em', textTransform:'uppercase' as const, color:'var(--text-secondary)', fontFamily:T.font.sans, marginTop:2 }}>{label}</div>
+      <div style={{ fontWeight: 600, fontSize: 'var(--fs-sm)', color:'var(--text-secondary)', fontFamily:T.font.sans, marginTop:2 }}>{label}</div>
     </div>
   );
 }

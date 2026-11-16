@@ -117,7 +117,6 @@ export const WHY_EN = {
 };
 
 export const PRICING_HEAD_EN = {
-  over: 'Pricing',
   title: 'What each plan costs',
   sub: 'Every plan includes everything in the one before it.',
   more: 'See everything each plan includes',

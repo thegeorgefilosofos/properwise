@@ -297,7 +297,7 @@ export default function ScrollStory() {
       <div className="story-steps" ref={stepsRef}>
         {ACTS.map((a, i) => (
           <div key={a.key} data-idx={i} className={`story-step${i === active ? ' on' : ''}`}>
-            <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--accent)', margin: '0 0 14px' }}>{a.over}</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)', margin: '0 0 14px' }}>{a.over}</p>
             {/* ═══ Ο ΤΙΤΛΟΣ ΔΕΝ ΣΠΑΕΙ ΣΤΑ ΔΥΟ ══════════════════════════════════
                 «Φωτογραφίζεις, δεν πληκτρολογείς.» είναι ΜΙΑ αντίθεση: κομμένη
                 στη μέση, το δεύτερο μισό πέφτει μόνο του σε δεύτερη σειρά και

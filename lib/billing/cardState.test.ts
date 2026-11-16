@@ -70,6 +70,23 @@ const PAST = '2025-09-12T00:00:00.000Z';
     cardState({ status: 'cancelled', endsAt: '2026-06-15T10:00:00.001Z' }, NOW).tone === 'cancelled-running');
 }
 
+// ── Η ΑΠΟΤΥΧΗΜΕΝΗ ΠΛΗΡΩΜΗ ΚΑΙ Η ΕΠΙΣΤΡΟΦΗ ΧΡΗΜΑΤΩΝ (έλεγχος 12/11/2026) ───
+{
+  const DAY = 86_400_000;
+  const ago = (d: number) => new Date(Date.parse(NOW) - d * DAY).toISOString();
+  const within = cardState({ status: 'past_due', endsAt: null, pastDueSince: ago(1) }, NOW);
+  ok('past_due μέσα στη χάρη: «ξαναδοκιμάζεται»', within.tone === 'retrying');
+  ok('past_due: το ταμείο μένει κλειστό, η λύση είναι η κάρτα', within.running);
+  const over = cardState({ status: 'past_due', endsAt: null, pastDueSince: ago(400) }, NOW);
+  ok('past_due μετά τη χάρη: λέει ότι η πρόσβαση σταμάτησε', over.tone === 'retrying-over');
+  ok('past_due μετά τη χάρη: ούτε τότε δεύτερη συνδρομή', over.running);
+  const revoked = cardState({ status: 'expired', endsAt: ago(2), revokedAt: ago(2) }, NOW);
+  ok('επιστροφή χρημάτων: δικό της πλαίσιο, όχι «έληξε»', revoked.tone === 'revoked');
+  ok('επιστροφή χρημάτων: το ταμείο ανοίγει για νέα αγορά', !revoked.running);
+  const fresh = cardState({ status: 'active', endsAt: null, revokedAt: null }, NOW);
+  ok('χωρίς καταγραφή επιστροφής: ενεργή', fresh.tone === 'active');
+}
+
 console.log(`cardState — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
 console.log('✓ όλα πέρασαν');

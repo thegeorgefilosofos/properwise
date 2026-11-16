@@ -1,7 +1,7 @@
 'use client';
 
 import BrandMark from '@/components/BrandMark';
-import { T } from '@/components/Theme';
+import { T } from '@/components/tokens';
 import { navLabel } from '@/lib/nav/labels';
 import { ASSISTANT_NAME, ASSISTANT_INITIAL } from '@/lib/assistant/identity';
 // ═══════════════════════════════════════════════════════════════════════════
@@ -226,7 +226,7 @@ export function PanelDashboard() {
                   μακρύτερη ετικέτα θέλει 61 στα 11. Χωράει με άνεση, οπότε το
                   μέγεθος γίνεται σταθερό: όποιος διαβάζει από τηλέφωνο βλέπει
                   το ίδιο κείμενο με όποιον διαβάζει από υπολογιστή. */}
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingBottom: 8, lineHeight: 1.3 }}>{l}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', paddingBottom: 8, lineHeight: 1.3 }}>{l}</div>
               <div style={{ fontFamily: T.font.sans, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.025em', fontSize: 'clamp(11px, 3.4cqi, 19px)', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.1, whiteSpace: 'nowrap', alignSelf: 'end' }}>{v}</div>
             </div>
           ))}

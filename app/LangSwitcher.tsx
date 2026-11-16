@@ -140,7 +140,10 @@ function LangPopover({ place, current, hrefOf }: {
     <div ref={box} className={`pw-lang pw-lang-${place}`}>
       <button ref={button} type="button" className="pw-lang-btn"
         aria-haspopup="menu" aria-expanded={open} aria-controls={menuId}
-        aria-label={BUTTON_LABEL[current]}
+        // ΤΟ ΟΝΟΜΑ ΑΡΧΙΖΕΙ ΜΕ ΟΣΑ ΦΑΙΝΟΝΤΑΙ (WCAG 2.5.3, έλεγχος 09/11/2026). Ο
+        // χρήστης φωνητικού ελέγχου λέει «ΕΛ»· με όνομα «Γλώσσα: Ελληνικά» η
+        // εντολή δεν έβρισκε κουμπί.
+        aria-label={`${LOCALE_SHORT[current]} · ${BUTTON_LABEL[current]}`}
         onClick={() => setOpen(o => !o)} onKeyDown={onButtonKey}>
         <Globe />
         <span aria-hidden="true" className="pw-lang-short">{LOCALE_SHORT[current]}</span>

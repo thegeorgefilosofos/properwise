@@ -123,9 +123,14 @@ export function grDateLong(isoDate: string): string {
  *
  * @param annual το ετήσιο ποσό όπως το υπολόγισε το lib/billing/enfia.ts
  * @param year   το έτος του εκκαθαριστικού· οι δόσεις 11 και 12 πέφτουν στο επόμενο
+ * @param count  το πλήθος δόσεων του ΕΚΚΑΘΑΡΙΣΤΙΚΟΥ, όταν το `annual` είναι μόνο
+ *               το μερίδιο ενός ακινήτου (lib/calendar/enfiaTotals.ts). Το
+ *               πλήθος είναι του συνόλου του ΑΦΜ: 27€ ενός ακινήτου από σύνολο
+ *               120€ είναι δώδεκα δόσεις, όχι δύο. Λείπει = από το `annual`.
  */
-export function enfiaInstalments(annual: number, year: number): EnfiaInstalment[] {
-  const n = enfiaInstalmentCount(annual)
+export function enfiaInstalments(annual: number, year: number, count?: number): EnfiaInstalment[] {
+  const given = count != null && Number.isInteger(count) && count >= 1 && count <= ENFIA_INSTALMENTS && annual > 0
+  const n = given ? count : enfiaInstalmentCount(annual)
   if (!n) return []
   const each = centsDown(annual / n)
   const out: EnfiaInstalment[] = []

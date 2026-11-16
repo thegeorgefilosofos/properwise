@@ -71,7 +71,7 @@ button.fb-crumb { display: inline-flex; align-items: center; }
    ανά στήλη. Ήταν σταθερό κουτί 340+ που έμενε άδειο με λίγα αρχεία. */
 .fb-columns {
   display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, .9fr) minmax(0, 1.35fr);
-  border-top: 1px solid var(--border-subtle); min-height: 360px; max-height: 70vh;
+  border-top: 1px solid var(--border-subtle); min-height: 360px; max-height: calc(70vh / var(--zoom, 1));
 }
 .fb-columns[data-preview="true"] { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, .9fr) minmax(0, 1.3fr) minmax(260px, 1.15fr); }
 .fb-col-files { grid-column: 4; }
@@ -79,8 +79,7 @@ button.fb-crumb { display: inline-flex; align-items: center; }
 .fb-col { display: flex; flex-direction: column; gap: 2px; padding: 10px 8px 14px; border-right: 1px solid var(--border-subtle); min-width: 0; overflow-y: auto; }
 .fb-col-files { border-right: none; }
 .fb-col-head {
-  margin: 0 0 4px; padding: 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--text-secondary);
+  margin: 0 0 4px; padding: 0 8px; font-size: var(--fs-base); font-weight: 600; line-height: 1.3; color: var(--text-secondary);
 }
 .fb-row {
   display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 8px; border-radius: 8px;
@@ -288,7 +287,7 @@ button.fb-crumb { display: inline-flex; align-items: center; }
 /* Φύλλο από κάτω (κινητό). */
 .af-sheet-scrim { position: fixed; inset: 0; z-index: 1300; background: var(--scrim-media); display: flex; align-items: flex-end; }
 .af-sheet {
-  width: 100%; max-height: 82dvh; display: flex; flex-direction: column; border-radius: 18px 18px 0 0;
+  width: 100%; max-height: calc(82dvh / var(--zoom, 1)); display: flex; flex-direction: column; border-radius: 18px 18px 0 0;
   background: var(--bg-surface); box-shadow: var(--elev-3); outline: none;
   padding-bottom: env(safe-area-inset-bottom); animation: af-up .22s cubic-bezier(.2,0,0,1);
 }

@@ -32,6 +32,7 @@ import { TRIAL_DAYS } from '@/lib/billing/plans';
 import { RENO_39B_LAW, RENO_39B_KYA } from '@/lib/accounting/renovation39b';
 import { E1_4D2_SOURCE } from '@/lib/accounting/e1Codes';
 import { signupCta } from '@/lib/billing/trialOffer';
+import { withSignupEntry } from '@/lib/analytics/signupEntry';
 import { ASSISTANT_ACC } from '@/lib/assistant/identity';
 import { hy } from '@/components/Hyphen';
 import PublicMenu, { type MenuGroup } from './PublicMenu';
@@ -237,15 +238,17 @@ function splitFoot(links: [string, string][], hub: [string, string] | null, more
 // Η ΣΕΙΡΑ ΤΩΝ ΟΔΗΓΩΝ ΚΑΘΡΕΦΤΙΖΕΙ ΤΟΥΣ ΠΕΝΤΕ ΠΡΩΤΟΥΣ ΥΠΟΛΟΓΙΣΜΟΥΣ: ΕΝΦΙΑ,
 // έκπτωση ανακαίνισης, φορολογία ενοικίων, καθαρή απόδοση, βραχυχρόνια. Η λίστα
 // είναι γραμμένη εδώ επίτηδες: ο κατάλογος των οδηγών δεν μπαίνει στο κέλυφος
-// (~6 KB gzip σε κάθε δημόσια σελίδα) και ο οδηγός ΑΜΑ δεν συνδέεται από κοινά
-// κομμάτια (απόφαση 13/10). Το guides.test ελέγχει ότι κάθε σύνδεσμος εδώ είναι
-// δημοσιευμένος οδηγός.
+// (~6 KB gzip σε κάθε δημόσια σελίδα). Το guides.test ελέγχει ότι κάθε σύνδεσμος
+// εδώ είναι δημοσιευμένος οδηγός. Ο οδηγός ΑΜΑ έμενε έξω από τα κοινά κομμάτια
+// με την απόφαση της 13/10· μπήκε στον κατάλογο στις 27/10/2026 και από
+// 14/11/2026 ακολουθεί τον οδηγό Airbnb στη λίστα, το ίδιο θέμα.
 const FOOT_GUIDES: [string, string][] = [
   ['/odigos/pos-ypologizetai-o-enfia', 'Πώς υπολογίζεται ο ΕΝΦΙΑ'],
   ['/odigos/ekptosi-forou-anakainisis', 'Έκπτωση φόρου για ανακαίνιση'],
   ['/odigos/forologia-enoikion-2026', 'Φορολογία ενοικίων 2026'],
   ['/odigos/kathari-apodosi-akinitou', 'Καθαρή απόδοση ακινήτου'],
   ['/odigos/airbnb-takk-2026', 'Φορολογία Airbnb 2026'],
+  ['/odigos/vraxyxronia-ama-prodiagrafes-2026', 'Βραχυχρόνια: ΑΜΑ και προδιαγραφές'],
   ['/odigos/forologikes-prothesmies-idioktiton', 'Φορολογικές προθεσμίες ιδιοκτήτη'],
   ['/odigos/enfia-2026-pliromi-doseis-pistopoiitiko', 'ΕΝΦΙΑ 2026: πληρωμή και δόσεις'],
   ['/odigos/enoikio-meso-trapezas', 'Ενοίκιο μέσω τράπεζας'],
@@ -654,11 +657,12 @@ export function ToolSources({ kind, checked, updated, locale = 'el' }: {
 // αρχικοποίησή της (ταυτότητα βοηθού, πακέτα χρέωσης) και το λογότυπο. Από τη
 // σελίδα ο περιηγητής παίρνει μόνο το HTML της, στην ίδια θέση.
 /**
- * @param href Πού πηγαίνει το κουμπί της εγγραφής. Προεπιλογή η εγγραφή· ο
+ * @param href Πού πηγαίνει το κουμπί της εγγραφής. Προεπιλογή η εγγραφή με
+ *   `?from=calculator` (lib/analytics/signupEntry.ts)· ο
  *   υπολογιστής που τυλίγει το `ToolCta` μπορεί να τη γράψει από πάνω με τα
  *   πεδία του (`ToolCtaHref`, app/ToolCtaLink.tsx).
  */
-export function ToolCta({ title, body, href = '/signup', locale = 'el' }: { title: string; body: ReactNode; href?: string; locale?: Locale }) {
+export function ToolCta({ title, body, href = withSignupEntry('/signup', 'calculator'), locale = 'el' }: { title: string; body: ReactNode; href?: string; locale?: Locale }) {
   const en = locale === 'en';
   return (
     <div className="po-noprint" style={{

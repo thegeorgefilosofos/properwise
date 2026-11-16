@@ -15,10 +15,9 @@
 // ΤΟ «ΔΙΑΣΤΗΜΑ» ΤΗΣ ΑΡΧΙΚΗΣ, ΓΡΑΜΜΕΝΟ ΜΙΑ ΦΟΡΑ. Το ζωγραφίζουν η σελίδα και η
 // καρφωμένη μπάρα της ιστορίας στο τηλέφωνο (`.story-stick`), που χρειάζεται
 // ΤΟ ΙΔΙΟ φόντο από πάνω της για να μη διαβάζεται ως σκούρα λωρίδα.
-const SPACE = `radial-gradient(1100px 760px at 50% -2%, var(--accent-border), transparent 60%),
-            radial-gradient(900px 720px at 92% 20%, var(--accent-soft), transparent 55%),
-            radial-gradient(820px 640px at 6% 74%, color-mix(in srgb, var(--mkt-accent) 6%, transparent), transparent 60%),
-            linear-gradient(180deg, var(--mkt-space-top) 0%, var(--mkt-space-mid) 52%, var(--mkt-space-bottom) 100%)`;
+// ΧΩΡΙΣ ΤΙΣ ΤΡΕΙΣ ΓΑΛΑΖΙΕΣ ΚΗΛΙΔΕΣ (έλεγχος UX 09/11/2026): λάμψεις που δεν
+// έδειχναν τίποτα, μόνο έριχναν την αντίθεση. Μένει η κάθετη διαβάθμιση.
+const SPACE = `linear-gradient(180deg, var(--mkt-space-top) 0%, var(--mkt-space-mid) 52%, var(--mkt-space-bottom) 100%)`;
 
 export function LandingStyles() {
   return (
@@ -89,12 +88,6 @@ export function LandingStyles() {
         ${/* Το hero δεν έχει δικό του φόντο πια: μοιράζεται το ενιαίο μπλε-μαύρο
            της σελίδας, ώστε να μην υπάρχει καμία ραφή από πάνω μέχρι κάτω. */''}
         .lp-hero { background: transparent; color: var(--text-primary); border-bottom: none; }
-        .lp-hero .lp-aurora::before { opacity: .22; }
-        .lp-hero .lp-aurora::after { opacity: .15; }
-        .lp-final .lp-aurora {
-          -webkit-mask-image: linear-gradient(transparent 0%, transparent 12%, var(--text-primary) 42%);
-          mask-image: linear-gradient(transparent 0%, transparent 12%, var(--text-primary) 42%);
-        }
         ${/* Ticker: αδιάκοπη οριζόντια ροή δυνατοτήτων, παύση στο πέρασμα του κέρσορα. */''}
         ${/* ═══ ΑΤΜΟΣΦΑΙΡΑ ═══════════════════════════════════════════════════════
            ΓΙΑΤΙ ΑΛΛΑΞΕ: το φόντο ήταν δύο θολές κηλίδες πάνω σε επίπεδο σκούρο
@@ -131,88 +124,11 @@ export function LandingStyles() {
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
           opacity: .05; mix-blend-mode: overlay;
         }
-        ${/* 2. Οι αύρες. Τρεις, σε τρεις αποχρώσεις της ΙΔΙΑΣ οικογένειας (γαλάζιο,
-              μία απόχρωση, το accent): το βάθος βγαίνει από μέγεθος, θολούρα και
-              διαφάνεια — όχι από δεύτερο και τρίτο χρώμα εκτός παλέτας. */''}
-        .lp-aurora { position: absolute; inset: -14% -18% auto; height: 118%; z-index: 0; pointer-events: none; }
-        .lp-aurora::before, .lp-aurora::after,
-        .lp-atmos .lp-orb { content: ''; position: absolute; border-radius: 50%; will-change: transform; }
-        .lp-aurora::before { content: ''; width: min(56vw, 720px); aspect-ratio: 1; top: -8%; left: -8%; opacity: .15; filter: blur(100px); background: radial-gradient(circle, var(--accent), transparent 64%); }
-        .lp-aurora::after  { content: ''; width: min(44vw, 560px); aspect-ratio: 1; top: 12%; right: -8%; opacity: .11; filter: blur(80px);  background: radial-gradient(circle, var(--accent), transparent 66%); }
-        .lp-atmos .lp-orb { width: min(70vw, 900px); aspect-ratio: 1; left: 50%; top: 34%; margin-left: -35vw; opacity: .085; filter: blur(130px); background: radial-gradient(circle, var(--accent), transparent 62%); }
-        ${/* ═══ Η ΜΕΤΑΚΙΝΗΣΗ ΚΡΑΤΗΘΗΚΕ, Η ΚΛΙΜΑΚΑ ΕΦΥΓΕ ══════════════════════════
-           ΤΟ «scale» ΕΙΝΑΙ ΠΟΥ ΚΟΣΤΙΖΕΙ, ΟΧΙ Η ΚΙΝΗΣΗ. Μια θολωμένη επιφάνεια
-           που απλώς μετακινείται είναι έτοιμη υφή: ο compositor τη σπρώχνει,
-           χωρίς να ξαναθολώσει τίποτα. Μόλις αλλάξει κλίμακα, η υφή δεν ισχύει
-           πια και το θόλωμα 80 ως 130 pixel ξαναϋπολογίζεται σε κάθε καρέ, σε
-           επιφάνεια ως 900×900.
-
-           Μετρημένο σε επιτραπέζιο με επιβράδυνση ×4: 3,4 fps με κλίμακα. Η
-           αργή μετατόπιση των 34 ως 62 δευτερολέπτων μένει ολόκληρη· αυτό που
-           χάνεται είναι μια διαστολή 16% που κανείς δεν μπορεί να δει σε τόσο
-           αργό ρυθμό. */''}
-        @keyframes lpDrift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(5vw, 4vh, 0); } }
-
-        ${/* ═══ Η ΑΤΜΟΣΦΑΙΡΑ ΚΙΝΕΙΤΑΙ ΜΟΝΟ ΕΚΕΙ ΠΟΥ ΤΟ ΑΝΤΕΧΕΙ Η ΣΥΣΚΕΥΗ ═══════
-           ΜΕΤΡΗΜΕΝΟ, ΣΕ ΠΡΑΓΜΑΤΙΚΟ ΠΕΡΙΗΓΗΤΗ ΜΕ ΕΠΙΒΡΑΔΥΝΣΗ ×4 (μεσαίο Android):
-           η σελίδα έτρεχε στα 11,5 fps σε ηρεμία, με 57 από 58 καρέ χαμένα και
-           μεγαλύτερο κενό 172ms — ΧΩΡΙΣ ο χρήστης να αγγίζει τίποτα. Με
-           «prefers-reduced-motion: reduce» το ίδιο μηχάνημα έδινε 60,4 fps.
-           Δηλαδή όλο το κόστος ήταν η διακόσμηση.
-
-           Η αιτία δεν είναι το πλήθος των animation αλλά ΤΙ κινούν: τρεις αύρες
-           με «filter: blur()» 80 ως 130 pixel, σε επιφάνειες ως 900 pixel, που
-           αλλάζουν κλίμακα. Κάθε καρέ, η GPU ξαναφτιάχνει θολωμένη υφή 900×900.
-           Σε επιτραπέζιο περνά απαρατήρητο· σε τηλέφωνο τρώει τη μισή διάρκεια
-           καρέ πριν σχεδιαστεί μία λέξη.
-
-           ΟΙ ΑΥΡΕΣ ΔΕΝ ΦΕΥΓΟΥΝ, ΣΤΑΜΑΤΑΝΕ. Το χρώμα, το βάθος και η σύνθεση
-           μένουν ακριβώς ίδια σε κάθε συσκευή: αυτό που λείπει στο κινητό είναι
-           η αργή μετακίνηση, που έτσι κι αλλιώς διαρκεί 34 ως 62 δευτερόλεπτα
-           και κανείς δεν την παρακολουθεί κρατώντας το τηλέφωνο.
-
-           Ο επιλογέας είναι «hover: hover», όχι πλάτος οθόνης: κρίνει τη
-           ΣΥΣΚΕΥΗ, όχι το παράθυρο. Ενα στενό παράθυρο σε επιτραπέζιο κρατά την
-           κίνηση, ένα iPad 1180 pixel δεν την παίρνει. */''}
-        ${/* Η ΘΟΛΟΥΡΑ ΤΗΣ ΚΕΦΑΛΙΔΑΣ ΚΟΣΤΙΖΕΙ ΣΕ ΚΑΘΕ ΚΑΡΕ ΚΥΛΙΣΗΣ. Το
-           «backdrop-filter» αναγκάζει τον περιηγητή να ξαναδιαβάσει και να
-           θολώσει ό,τι περνά από κάτω, όσο ο χρήστης σέρνει το δάχτυλο. Στην
-           αφή μένει το ημιδιαφανές φόντο, που δίνει την ίδια αίσθηση βάθους
-           χωρίς κόστος ανά καρέ. */''}
-        @media (hover: hover) {
-          .lp-head { backdrop-filter: saturate(180%) blur(14px); -webkit-backdrop-filter: saturate(180%) blur(14px); }
-        }
-        ${/* ΚΑΙ ΤΟ ΗΜΙΔΙΑΦΑΝΕΣ ΦΟΝΤΟ ΦΕΥΓΕΙ ΜΑΖΙ ΜΕ ΤΟ ΘΟΛΩΜΑ.
-           Το φόντο είναι 78% αδιαφανές. Στον υπολογιστή το υπόλοιπο 22% το
-           κρύβει η θολούρα. Στην αφή δεν υπάρχει θολούρα, οπότε το περιεχόμενο
-           περνούσε από πίσω ΚΑΘΑΡΟ: πιάστηκε σε ταμπλέτα, με τα γράμματα των
-           καρτών τιμολόγησης να διαβάζονται πίσω από το «PROPERWISE». Δεν είναι
-           αίσθηση βάθους, είναι δύο κείμενα το ένα πάνω στο άλλο.
-
-           Χωρίς θολούρα, η κεφαλίδα γίνεται συμπαγής. Μηδέν κόστος ανά καρέ
-           και το περιεχόμενο περνά από κάτω αντί να διαβάζεται μέσα από αυτήν. */''}
+        ${/* ΣΥΜΠΑΓΗΣ ΠΑΝΤΟΥ (έλεγχος UX 09/11/2026). Η θολούρα πίσω από την
+           κεφαλίδα δεν σήμαινε τίποτα και κόστιζε σε κάθε καρέ κύλισης. */''}
+        .lp-head { background: var(--bg-base) !important; }
+        ${/* Στην αφή ο κόκκος δεν αναμειγνύεται: μία φορά, χωρίς κόστος κύλισης. */''}
         @media (hover: none) {
-          .lp-head { background: var(--bg-base) !important; }
-        }
-        @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-          .lp-aurora::before { animation: lpDrift 34s ease-in-out infinite alternate; }
-          .lp-aurora::after  { animation: lpDrift 46s ease-in-out -12s infinite alternate-reverse; }
-          .lp-atmos .lp-orb  { animation: lpDrift 62s ease-in-out -25s infinite alternate; }
-          ${/* Ο ΚΟΚΚΟΣ ΜΕΝΕΙ, Η ΑΝΑΠΝΟΗ ΤΟΥ ΦΕΥΓΕΙ. Το επίπεδο έχει
-             «mix-blend-mode: overlay» και απλώνεται σε «inset: -50%», δηλαδή
-             κάθε βήμα της κίνησης αναγκάζει τον περιηγητή να ξαναναμείξει
-             ολόκληρη τη σελίδα με ό,τι έχει από κάτω, μαζί με τις τρεις
-             θολωμένες αύρες. Οκτώ βήματα σε οκτώ δευτερόλεπτα, για πάντα.
-             Ακίνητος, ο κόκκος κοστίζει μία φορά και φαίνεται ολόιδιος. */''}
-        }
-
-        ${/* Και η θολούρα μικραίνει στην αφή. Το κόστος του blur μεγαλώνει με την
-           ακτίνα: στα 130 pixel μια ακίνητη αύρα εξακολουθεί να κοστίζει σε κάθε
-           επανασύνθεση κύλισης. Στα 56 η εικόνα είναι πρακτικά η ίδια. */''}
-        @media (hover: none) {
-          .lp-aurora::before { filter: blur(44px); }
-          .lp-aurora::after  { filter: blur(36px); }
-          .lp-atmos .lp-orb  { filter: blur(56px); }
           .lp-atmos::after   { mix-blend-mode: normal; opacity: .035; }
         }
 
@@ -376,8 +292,7 @@ export function LandingStyles() {
           font-variant-numeric: tabular-nums;
         }
         .lp-stat-u {
-          margin-top: 8px; font-size: 11px; font-weight: 700;
-          letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent);
+          margin-top: 8px; font-size: 14px; font-weight: 600; color: var(--accent);
         }
         .lp-stat-l {
           margin: 12px 0 0; font-size: 14px; line-height: 1.55; text-wrap: balance;
@@ -686,7 +601,6 @@ export function LandingStyles() {
            ξεχείλιζε δύο εικονοστοιχεία έξω από την οθόνη των 390. */''}
         @media (prefers-reduced-motion: reduce) {
           .lp-rise, .lp-rise-2, .lp-rise-3, .lp-rise-4, .lp-reveal { animation: none !important; }
-          .lp-aurora::before, .lp-aurora::after, .lp-atmos .lp-orb { animation: none !important; }
           .lp-atmos::after { animation: none !important; }
         }
       `}</style>

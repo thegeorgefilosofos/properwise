@@ -189,7 +189,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
   const secHdr = (label: string, sub?: string, link?: { url: string; text: string }) => (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
       <div style={{ flex: '1 1 12em' }}>
-        <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', fontFamily: T.font.sans }}>{label}</div>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</div>
         {sub && <div className="po-subline" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans }}>{sub}</div>}
       </div>
       {link?.url && (
@@ -211,7 +211,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
   const svcHdr = (label: string, active: boolean, onToggle: (v: boolean) => void, cost?: number) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: active ? 16 : 0, paddingBottom: active ? 10 : 0, borderBottom: active ? '1px solid var(--border-subtle)' : 'none' }}>
       <Toggle on={active} onChange={onToggle} ariaLabel={label}/>
-      <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: active ? 'var(--text-primary)' : 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</span>
+      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: active ? 'var(--text-primary)' : 'var(--text-secondary)', fontFamily: T.font.sans }}>{label}</span>
       {active && typeof cost === 'number' && cost > 0 && (
         <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fe(cost)} / μήνα</span>
       )}
@@ -254,7 +254,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: 10, marginBottom: 16 }}>
             {kpis.map(k => (
               <div key={k.label} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '16px 18px' }}>
-                <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 10, fontFamily: T.font.sans }}>{k.label}</div>
+                <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 10, fontFamily: T.font.sans }}>{k.label}</div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{k.value}</div>
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 6 }}>{k.sub}</div>
               </div>
@@ -334,7 +334,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
               : `Συνήθως ${fp(TYPICAL_SHARE.min)} έως ${fp(TYPICAL_SHARE.max)} του λογαριασμού`}
           </div>
         </div>
-        <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 10, fontFamily: T.font.sans }}>
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', marginBottom: 10, fontFamily: T.font.sans }}>
           Ο χρόνος σε μήνες{dimotikaAvg > 0 ? `, μέσος όρος ${fe(dimotikaAvg)}` : ''}
         </div>
         {/* ΙΔΙΑ ΚΛΑΣΗ ΜΕ ΤΑ ΠΕΔΙΑ ΑΠΟ ΚΑΤΩ, ώστε η στήλη κάθε μήνα να πέφτει
@@ -412,7 +412,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
             </div>
             <div style={g2}>
               <NumberInput label="Ώρες ανά επίσκεψη" value={s.cleaningHours} onChange={v => upd({ cleaningHours: v })} suffix="ώρες"/>
-              <TextInput   label="Σημειώσεις"         value={s.cleaningNotes} onChange={v => upd({ cleaningNotes: v })} placeholder="κάθε Τετάρτη"/>
+              <TextInput dictation   label="Σημειώσεις"         value={s.cleaningNotes} onChange={v => upd({ cleaningNotes: v })} placeholder="κάθε Τετάρτη"/>
             </div>
             {cleaningM > 0 && (
               <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: '10px 14px', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, border: '1px solid var(--border-subtle)' }}>
@@ -471,7 +471,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
             </div>
             <div style={g2}>
               <DatePicker label="Τελευταία συντήρηση" value={s.acLastService} onChange={v => upd({ acLastService: v })}/>
-              <TextInput  label="Σημειώσεις"        value={s.acNotes}      onChange={v => upd({ acNotes: v })}      placeholder="Κάθε Απρίλιο"/>
+              <TextInput dictation  label="Σημειώσεις"        value={s.acNotes}      onChange={v => upd({ acNotes: v })}      placeholder="Κάθε Απρίλιο"/>
             </div>
             {s.acServiceCost && s.acUnits && parseFloat(s.acServiceCost) > 0 && (
               <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: '10px 14px', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, border: '1px solid var(--border-subtle)' }}>
@@ -494,7 +494,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
               <NumberInput label="Μηνιαία συντήρηση"  value={s.elevatorMonthly}        onChange={v => upd({ elevatorMonthly: v })}        suffix="€"/>
               <DatePicker  label="Τελευταία συντήρηση"  value={s.elevatorLastInspection} onChange={v => upd({ elevatorLastInspection: v })}/>
             </div>
-            <TextInput label="Σημειώσεις" value={s.elevatorNotes} onChange={v => upd({ elevatorNotes: v })} placeholder="Ετήσιος έλεγχος ΕΛΟΤ…"/>
+            <TextInput dictation label="Σημειώσεις" value={s.elevatorNotes} onChange={v => upd({ elevatorNotes: v })} placeholder="Ετήσιος έλεγχος ΕΛΟΤ…"/>
           </>
         )}
       </div>

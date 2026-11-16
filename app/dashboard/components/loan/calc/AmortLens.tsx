@@ -178,7 +178,7 @@ export function TableLens({
           return (
             <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid var(--border-subtle)'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',marginBottom:10}}>
-                <p style={{fontSize: 'var(--fs-xs)',fontWeight:700,color:'var(--text-secondary)',fontFamily: T.font.sans,textTransform:'uppercase',letterSpacing:'0.06em'}}>Ανά τύπο δανειολήπτη</p>
+                <p style={{fontSize: 'var(--fs-base)', lineHeight: 1.3,fontWeight: 600,color:'var(--text-secondary)',fontFamily: T.font.sans}}>Ανά τύπο δανειολήπτη</p>
                 <span style={{fontSize:12,color:'var(--text-tertiary)',fontFamily: T.font.sans,lineHeight:1.5}}>{BORROWER_PROFILES[borrower].tax_benefits}</span>
               </div>
               <div style={{display:'flex',flexWrap:'wrap',gap:8}}>

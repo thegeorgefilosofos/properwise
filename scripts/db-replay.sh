@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
+# log-guard: synthetic-db — βάση μόνο από τις μεταναστεύσεις και τα probes του
+# αποθετηρίου, χωρίς σύνδεση ή μυστικό της παραγωγής. Τα σφάλματα του psql
+# τυπώνονται επίτηδες (ποια μετανάστευση έσπασε) και δεν έχουν τιμή που να μην
+# είναι ήδη δημόσια στο αποθετήριο (scripts/guard-backup-logs.mjs).
 # ═══════════════════════════════════════════════════════════════════════════
 #  ΤΡΕΧΕΙ ΟΛΕΣ ΤΙΣ ΜΕΤΑΝΑΣΤΕΥΣΕΙΣ ΣΕ ΠΡΑΓΜΑΤΙΚΟ POSTGRES
 # ─────────────────────────────────────────────────────────────────────────
-#  ΤΟ ΚΕΝΟ ΠΟΥ ΚΛΕΙΝΕΙ. Το αποθετήριο έχει σαράντα έξι φύλακες που ΔΙΑΒΑΖΟΥΝ
+#  ΤΟ ΚΕΝΟ ΠΟΥ ΚΛΕΙΝΕΙ. Το αποθετήριο έχει δεκάδες φύλακες που ΔΙΑΒΑΖΟΥΝ
 #  το SQL — ελέγχουν ονόματα στηλών, πολιτικές RLS, search_path, ανάποδες
 #  αναφορές. Κανένας δεν το ΕΚΤΕΛΕΙ. Μια μετανάστευση με συντακτικό λάθος, με
 #  στήλη που δεν υπάρχει ή με συνάρτηση που καλείται πριν οριστεί περνούσε το
@@ -173,6 +177,29 @@ fi
 $PSQL -c "drop database if exists emailprobe" >/dev/null
 eprobes=$(echo "$eout" | grep -c 'probe:' || true)
 
+# ── Ο ANON ΔΕΝ ΑΓΓΙΖΕΙ ΠΙΝΑΚΑ ΧΡΗΣΤΗ ───────────────────────────────────────
+# Πριν από το rls-probe, για τον ίδιο λόγο με το email-activation-probe: εκείνο
+# δίνει σκόπιμα GRANT σε όλους τους πίνακες. Εδώ ελέγχονται τα δικαιώματα όπως
+# τα αφήνουν τα migrations (20261110140000).
+if ! aout=$($PSQL -d posdb -f "$ROOT/scripts/db/anon-grants-probe.sql" 2>&1); then
+  echo "🔴 Ο anon έχει δικαίωμα εκεί που δεν πρέπει:"
+  echo "$aout" | grep -m3 -E 'ERROR|ΕΚΘΕΣΗ' | sed 's/^/    /'
+  exit 1
+fi
+eprobes=$(( eprobes + $(echo "$aout" | grep -c 'probe:' || true) ))
+
+# ── ΠΟΙΟΣ ΒΛΕΠΕΙ ΤΙΣ ΦΩΤΟΓΡΑΦΙΕΣ ΑΠΟΓΡΑΦΗΣ ───────────────────────────────────
+# Σε κλώνο, γιατί γράφει χρήστες, οργανισμό και αντικείμενα αποθήκευσης.
+$PSQL -c "drop database if exists photoprobe" >/dev/null
+$PSQL -c "create database photoprobe template posdb" >/dev/null
+if ! pout=$($PSQL -d photoprobe -f "$ROOT/scripts/db/inventory-photos-probe.sql" 2>&1); then
+  echo "🔴 Οι φωτογραφίες απογραφής δεν φαίνονται σε όποιον πρέπει:"
+  echo "$pout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ' | sed 's/^/    /'
+  exit 1
+fi
+$PSQL -c "drop database if exists photoprobe" >/dev/null
+eprobes=$(( eprobes + $(echo "$pout" | grep -c 'probe:' || true) ))
+
 # ── ΤΑ ΔΟΚΙΜΑΣΤΙΚΑ ΓΡΑΦΕΙΑ ΕΧΟΥΝ ΑΠΟΔΕΧΤΕΙ ΤΟΥΣ ΟΡΟΥΣ ───────────────────────
 # Χωρίς αποδοχή των όρων επεξεργασίας (20261108090000) κανένα γραφείο δεν βλέπει
 # πελάτη. Τα παρακάτω σενάρια ελέγχουν άλλα πράγματα, οπότε εδώ τα γραφεία και
@@ -243,6 +270,20 @@ if ! fuout=$($PSQL -d posdb -f "$ROOT/scripts/db/owner-undo-day-probe.sql" 2>&1)
   exit 1
 fi
 probes=$((probes + $(echo "$fuout" | grep -c 'probe:' || true)))
+# Σειρά διάθεσης και υποστήριξη, όπως τις λένε οι Όροι (20261110134000).
+if ! eaout=$($PSQL -d posdb -f "$ROOT/scripts/db/early-access-probe.sql" 2>&1); then
+  echo "🔴 Η σειρά διάθεσης της εφαρμογής κινητού δεν κρατά:"
+  echo "$eaout" | grep -m3 -E 'ERROR|ΣΕΙΡΑ|ΔΙΠΛΗ|ΧΑΜΕΝΗ|ΣΗΜΕΙΩΣΗ|ΑΤΕΛΕΙΩΤΗ|ΜΟΝΙΜΗ|ΠΑΡΑΒΙΑΣΗ|ΥΠΟΣΤΗΡΙΞΗ|ΚΛΕΙΔΩΜΑ|ΠΡΟΩΘΗΣΗ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$eaout" | grep -c 'probe:' || true)))
+# Η ίδια μετάβαση πάνω σε βάση με το πρώτο της σχέδιο (το staging, 10/11/2026).
+if ! euout=$($PSQL -d posdb -f "$ROOT/scripts/db/early-access-upgrade-probe.sql" 2>&1); then
+  echo "🔴 Η μετάβαση 20261110134000 δεν εφαρμόζεται πάνω από το πρώτο της σχέδιο:"
+  echo "$euout" | grep -m3 -E 'ERROR|ΑΝΑΒΑΘΜΙΣΗ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$euout" | grep -c 'probe:' || true)))
 
 # ── ΔΕΧΕΤΑΙ Η ΒΑΣΗ ΤΙΣ ΓΡΑΜΜΕΣ ΟΠΩΣ ΤΙΣ ΧΤΙΖΕΙ Η ΕΦΑΡΜΟΓΗ; ─────────────────────
 # Το rls-probe γράφει γραμμές με το χέρι. Οι γραμμές της εφαρμογής όμως τις
@@ -284,6 +325,15 @@ if ! pout=$($PSQL -d posdb -f "$ROOT/scripts/db/pay-token-probe.sql" 2>&1); then
 fi
 probes=$((probes + $(echo "$pout" | grep -c 'probe:' || true)))
 
+# ── ΠΕΑ: ΕΚΔΟΣΗ ΟΧΙ ΜΕΤΑ ΤΗ ΛΗΞΗ ΚΑΙ Η ΜΕΤΑΦΟΡΑ ΑΠΟ ΤΟ ΗΜΕΡΟΛΟΓΙΟ ────────────
+# Ξανατρέχει τη μεταφορά πάνω σε δεδομένα δοκιμής (scripts/db/pea-probe.sql).
+if ! peaout=$(cd "$ROOT" && $PSQL -d posdb -f "$ROOT/scripts/db/pea-probe.sql" 2>&1); then
+  echo "🔴 Οι στήλες ΠΕΑ ή η μεταφορά της λήξης δεν κάνουν ό,τι λένε:"
+  echo "$peaout" | grep -m3 -E 'ERROR|ΣΧΗΜΑ|ΜΕΤΑΦΟΡΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$peaout" | grep -c 'probe:' || true)))
+
 # ── ΟΙ ΣΤΗΛΕΣ ΤΟΥ ΔΙΑΚΟΜΙΣΤΗ ΔΕΝ ΓΡΑΦΟΝΤΑΙ ΑΠΟ ΤΟΝ ΠΕΛΑΤΗ ──────────────────
 # Επιβεβαίωση email υπενθυμίσεων, κύκλος χρέωσης, προθεσμία διαγραφής, θέση
 # στην ομάδα, αίτημα και σύνδεση λογιστή: ο `authenticated` τα στέλνει και η
@@ -295,6 +345,17 @@ if ! cout=$($PSQL -d posdb -f "$ROOT/scripts/db/server-columns-probe.sql" 2>&1);
   exit 1
 fi
 probes=$((probes + $(echo "$cout" | grep -c 'probe:' || true)))
+
+# ── Η ΑΠΟΤΥΧΗΜΕΝΗ ΠΛΗΡΩΜΗ ΕΧΕΙ ΟΡΙΟ ΚΑΙ Η ΕΠΙΣΤΡΟΦΗ ΚΛΕΙΝΕΙ ΤΗΝ ΠΡΟΣΒΑΣΗ ──────
+# Οι στήλες χάρης και ανάκλησης (20261112190000) δεν γράφονται από τον πελάτη
+# και η `user_plan_rank` κρίνει τη χάρη χωρίς να περιμένει γεγονός
+# (scripts/db/billing-grace-probe.sql, έλεγχος ετοιμότητας πληρωμών 12/11/2026).
+if ! gout=$($PSQL -d posdb -f "$ROOT/scripts/db/billing-grace-probe.sql" 2>&1); then
+  echo "🔴 Η χάρη της αποτυχημένης πληρωμής ή οι στήλες της δεν κρατούν:"
+  echo "$gout" | grep -m3 -E 'ERROR|ΔΙΑΡΡΟΗ|ΡΟΗ|ΧΑΡΗ|ΣΧΗΜΑ' | sed 's/^/    /'
+  exit 1
+fi
+probes=$((probes + $(echo "$gout" | grep -c 'probe:' || true)))
 
 # ── ΞΕΡΕΙ Η ΥΓΕΙΑ ΤΗΣ ΤΡΟΦΟΔΟΣΙΑΣ ΤΙ ΔΕΝ ΗΡΘΕ; ──────────────────────────────
 # Η `market_feed_health()` έλεγε «εντάξει, 8 από 8» στις 18/10/2026 πάνω σε
@@ -339,6 +400,13 @@ DB_PRO=$(echo "$SRC" | grep -oE "'pro_paid'     then v_target := [0-9]+" | grep 
 TS_TRIAL=$(grep -oE 'TRIAL_DAYS = [0-9]+' "$ROOT/lib/billing/plans.ts" | grep -oE '[0-9]+')
 DB_TRIAL=$(psql -h "$WORK" -U postgres -d posdb -X -A -t -c "select public.trial_days()" | tr -d '[:space:]')
 
+# ΚΑΙ ΟΙ ΗΜΕΡΕΣ ΧΑΡΗΣ ΤΗΣ ΑΠΟΤΥΧΗΜΕΝΗΣ ΠΛΗΡΩΜΗΣ (20261112190000). Η οθόνη λέει
+# «ως τις …» με το `PAST_DUE_GRACE_DAYS`· η βάση κόβει με την
+# `past_due_grace_days()`. Μια απόκλιση σημαίνει ότι η κάρτα υπόσχεται άλλη μέρα
+# από αυτήν που κλείνει το πακέτο.
+TS_GRACE=$(grep -oE 'PAST_DUE_GRACE_DAYS = [0-9]+' "$ROOT/lib/billing/subscription.ts" | grep -oE '[0-9]+')
+DB_GRACE=$(psql -h "$WORK" -U postgres -d posdb -X -A -t -c "select public.past_due_grace_days()" | tr -d '[:space:]')
+
 
 # ΚΑΙ Η ΣΕΙΡΑ ΤΩΝ ΠΑΚΕΤΩΝ. Το `public.plan_rank` κρίνει τι βλέπει ο χρήστης μέσα
 # στη βάση (όρια ακινήτων, κλειδωμένες καρτέλες)· το `PLAN_ORDER` κρίνει τα ίδια
@@ -371,6 +439,7 @@ drift=0
 [ "$TS_VOL" = "$DB_VOL" ] || { echo "✗ στόχος όγκου: εφαρμογή $TS_VOL, βάση ${DB_VOL:-—}"; drift=1; }
 [ "$TS_PRO" = "$DB_PRO" ] || { echo "✗ στόχος συνδρομητών: εφαρμογή $TS_PRO, βάση ${DB_PRO:-—}"; drift=1; }
 [ "$TS_TRIAL" = "$DB_TRIAL" ] || { echo "✗ ημέρες δοκιμής: εφαρμογή $TS_TRIAL, βάση ${DB_TRIAL:-—}"; drift=1; }
+[ "$TS_GRACE" = "$DB_GRACE" ] || { echo "✗ ημέρες χάρης αποτυχημένης πληρωμής: εφαρμογή ${TS_GRACE:-—}, βάση ${DB_GRACE:-—}"; drift=1; }
 [ "$TS_RANKS" = "$DB_RANKS" ] || { echo "✗ σειρά πακέτων: εφαρμογή «$TS_RANKS», βάση «${DB_RANKS:-—}»"; drift=1; }
 [ "$TS_PRICES" = "$DB_PRICES" ] || { echo "✗ τιμές πακέτων: εφαρμογή «$TS_PRICES», βάση «${DB_PRICES:-—}»"; drift=1; }
 [ "$drift" = "0" ] || { echo ""; echo "🔴 Η βάση δίνει άλλα από αυτά που γράφει η οθόνη."; exit 1; }
@@ -382,5 +451,6 @@ echo "   η υγεία της τροφοδοσίας επιτοκίων κρίν
 echo "   το σενάριο του staging γεμίζει λογαριασμό και οι στόχοι του"
 echo "   Προγράμματος Πρόσκλησης συμφωνούν με το"
 echo "   lib/referral/referral.ts ($TS_VOL, $TS_PRO) και η δοκιμή είναι $TS_TRIAL"
-echo "   ημέρες και στα δύο, η σειρά των πακέτων είναι «$TS_RANKS»"
+echo "   ημέρες και στα δύο, η χάρη της αποτυχημένης πληρωμής $TS_GRACE ημέρες"
+echo "   και στα δύο, η σειρά των πακέτων είναι «$TS_RANKS»"
 echo "   και οι τιμές συμφωνούν: «$TS_PRICES»."

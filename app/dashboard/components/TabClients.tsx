@@ -95,7 +95,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
 
   // ── Κοινά inline styles ────────────────────────────────────────────────────
   const inp: React.CSSProperties = { background: 'var(--bg-base)', border: '1px solid var(--border-control)', borderRadius: T.radius.xs, padding: '10px 16px', color: 'var(--text-primary)', fontSize: 14, height: T.h.lg, width: '100%', outline: 'none', boxSizing: 'border-box', fontFamily: T.font.sans };
-  const lbl: React.CSSProperties = { fontSize: 'var(--fs-xs)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)', display: 'block', marginBottom: 8, fontFamily: T.font.sans };
+  const lbl: React.CSSProperties = { fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', display: 'block', marginBottom: 8, fontFamily: T.font.sans };
   const msgLink: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', minHeight: T.h.sm, fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--accent)', textDecoration: 'none', padding: '3px 9px', borderRadius: T.radius.pill, border: '1px solid var(--border-subtle)', background: 'var(--accent-soft)', whiteSpace: 'nowrap' };
   // Chip επικοινωνίας (ίδιο ύφος με msgLink, με inline εικονίδιο).
   const contactChip: React.CSSProperties = { ...msgLink, display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' };
@@ -109,7 +109,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
   // ετικέτα ύψους 10. Παντού αλλού μένει 18, γιατί εκεί χωρίζει δύο ενότητες.
   const secHead = (t: string, top = 18) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: `${top}px 0 10px` }}>
-      <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>{t}</span>
+      <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-secondary)', fontFamily: T.font.sans, whiteSpace: 'nowrap' }}>{t}</span>
       <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
     </div>
   );
@@ -535,7 +535,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                   ['Ηλεκτρονικό ταχυδρομείο', dc.email ? <a href={`mailto:${dc.email}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>{dc.email}</a> : null],
                 ] as [string, React.ReactNode][]).filter(([, v]) => v != null).map(([k, v], i) => (
                   <div key={i}>
-                    <div style={{ fontSize: 'var(--fs-xs)', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 4 }}>{k}</div>
+                    <div style={{ fontWeight: 600, fontSize: 'var(--fs-base)', lineHeight: 1.3, color: 'var(--text-tertiary)', marginBottom: 4 }}>{k}</div>
                     <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)' }}>{v}</div>
                   </div>
                 ))}
@@ -802,7 +802,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                         <TextInput label="Παλαιότερη σημείωση φθοράς" value={stayForm.damage_note} onChange={v => setStayForm(f => ({ ...f, damage_note: v }))} />
                       )}
                       {stayForm.notes.trim() !== '' && (
-                        <TextInput label="Παλαιότερη σημείωση" value={stayForm.notes} onChange={v => setStayForm(f => ({ ...f, notes: v }))} />
+                        <TextInput dictation label="Παλαιότερη σημείωση" value={stayForm.notes} onChange={v => setStayForm(f => ({ ...f, notes: v }))} />
                       )}
                     </div>
                   )}
@@ -900,11 +900,14 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
                 Τώρα: διαλέγεις πρότυπο, το βλέπεις όλο, το στέλνεις. */}
             <div>
               <SecHdr label="Μηνύματα" sub="Έτοιμα πρότυπα για WhatsApp, Viber ή αντιγραφή" />
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                {MSG_TEMPLATES.map(t => (
-                  <ChipToggle key={t.id} on={t.id === msgId}
-                    onClick={() => { setMsgId(t.id); setMsgCopied(false); }}>{t.label}</ChipToggle>
-                ))}
+              {/* ΠΕΝΤΕ ΠΡΟΤΥΠΑ, ΕΝΑ ΤΗ ΦΟΡΑ: ΕΠΙΛΟΓΕΑΣ (14/11/2026). Ως πιλούλες
+                  τύλιγαν σε σειρές άνισου πλάτους πάνω από το κείμενο που
+                  ήταν ο λόγος της ενότητας. Ίδιες τιμές και ίδια προεπιλογή· η
+                  αλλαγή προτύπου μηδενίζει ακόμη το «Αντιγράφηκε». */}
+              <div className="choice-select" style={{ marginBottom: 12 }}>
+                <CustomSelect ariaLabel="Πρότυπο μηνύματος" value={msgId}
+                  onChange={v => { setMsgId(v); setMsgCopied(false); }}
+                  options={MSG_TEMPLATES.map(t => ({ value: t.id, label: t.label }))} />
               </div>
               {(() => {
                 const active = MSG_TEMPLATES.find(t => t.id === msgId) || MSG_TEMPLATES[0];
@@ -1085,7 +1088,7 @@ export default function TabClients({ userId, onSelectProperty }: ClientsProps) {
       {/* Η «μαύρη λίστα» έγινε αυτό: ιδιωτική σημείωση, ΧΩΡΙΣ ετικέτα
           κατηγορίας. Ο διακόπτης `do_not_rent` κατηγοριοποιούσε πρόσωπο
           με νομικό βάρος (GDPR) και τύπωνε «Προσοχή» δίπλα σε όνομα. */}
-      <Textarea label="Ιδιωτική σημείωση" value={form.notes} onChange={v => setForm(f => ({ ...f, notes: v }))} rows={3} placeholder="Ό,τι θέλεις να θυμάσαι για αυτή τη φιλοξενία. Δική σου σημείωση, χωρίς κατηγοριοποίηση." />
+      <Textarea dictation label="Ιδιωτική σημείωση" value={form.notes} onChange={v => setForm(f => ({ ...f, notes: v }))} rows={3} placeholder="Ό,τι θέλεις να θυμάσαι για αυτή τη φιλοξενία. Δική σου σημείωση, χωρίς κατηγοριοποίηση." />
       </Modal>
     </div>
   );

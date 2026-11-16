@@ -36,7 +36,7 @@ export function AmortDonut({principal,interest}:{principal:number;interest:numbe
       <circle cx="68" cy="68" r={R} fill="none" stroke="url(#donutCap)" strokeWidth={sw} strokeLinecap="round"
         strokeDasharray={`${pLen} ${C-pLen}`} transform="rotate(-90 68 68)" filter="url(#donutShadow)"/>
       <text x="68" y="63" textAnchor="middle" style={{fontSize:22,fontWeight:700,fontFamily: T.font.sans,fill:'var(--text-primary)',fontVariantNumeric:'tabular-nums'}}>{fpRate(Math.round(pFrac*100))}</text>
-      <text x="68" y="80" textAnchor="middle" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fill:'var(--text-tertiary)',letterSpacing:'0.04em'}}>ΚΕΦΑΛΑΙΟ</text>
+      <text x="68" y="80" textAnchor="middle" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.sans,fill:'var(--text-tertiary)'}}>Κεφάλαιο</text>
     </svg>
   )
 }

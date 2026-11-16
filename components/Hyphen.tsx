@@ -1,5 +1,5 @@
 import { cloneElement, Fragment, isValidElement, type ReactNode } from 'react';
-import { hyphenate, bindRefs } from '@/lib/core/hyphenate';
+import { hyphenate, bindRefs, bindShortWords } from '@/lib/core/hyphenate';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Ο ΣΥΛΛΑΒΙΣΜΟΣ ΒΓΑΙΝΕΙ ΑΠΟ ΤΙΣ ΤΡΕΙΣ ΝΟΜΙΚΕΣ ΣΕΛΙΔΕΣ ΚΑΙ ΓΙΝΕΤΑΙ ΤΟΥ ΕΡΓΟΥ
@@ -76,12 +76,15 @@ const hasWord = (n: ReactNode): boolean =>
   typeof n === 'string' ? /[\p{L}\p{N}]/u.test(n) : isValidElement(n) || (Array.isArray(n) && n.some(hasWord));
 
 /**
+ * `minWord`: από πόσα γράμματα και πάνω συλλαβίζεται μια λέξη (προεπιλογή του
+ * lib/core/hyphenate.ts). Οι νομικές σελίδες ζητούν περισσότερα (legal-shell.tsx).
+ *
  * `tail`: το κείμενο κλείνει παράγραφο. Η εξωτερική κλήση τυλίγει πάντα ΟΛΟ το
  * περιεχόμενο ενός μπλοκ (`<p>{hy(…)}</p>`, `<main>{hy(…)}</main>`), οπότε η
  * προεπιλογή είναι «ναι»· μέσα στο δέντρο το παίρνει μόνο το τελευταίο παιδί.
  */
-export function hy(node: ReactNode, tail = true): ReactNode {
-  return walk(node, tail, undefined, true);
+export function hy(node: ReactNode, tail = true, minWord?: number): ReactNode {
+  return walk(node, tail, minWord, true);
 }
 
 /**
@@ -102,7 +105,13 @@ export function refsOnly(node: ReactNode): ReactNode {
 }
 
 function walk(node: ReactNode, tail: boolean, minWord: number | undefined, shy: boolean): ReactNode {
-  if (typeof node === 'string') return shy ? hyphenate(bindRefs(node), { keepLast: tail, minWord }) : bindRefs(node);
+  // Και οι μικρές λέξεις κατεβαίνουν με την επόμενη (`bindShortWords`, 14/11/2026):
+  // ΜΟΝΟ εδώ, στην πρόζα. Τίτλοι, κουμπιά και ετικέτες δεν περνούν από το `walk`
+  // (NO_HY), άρα η ζύγισή τους μένει όπως ήταν.
+  if (typeof node === 'string') {
+    const bound = bindRefs(bindShortWords(node));
+    return shy ? hyphenate(bound, { keepLast: tail, minWord }) : bound;
+  }
   if (Array.isArray(node)) {
     let lastWord = -1;
     node.forEach((n, i) => { if (hasWord(n)) lastWord = i; });
@@ -120,7 +129,7 @@ function walk(node: ReactNode, tail: boolean, minWord: number | undefined, shy: 
     const kids = (node.props as { children?: ReactNode }).children;
     const block = typeof node.type === 'string' && BLOCK.has(node.type);
     const bold = typeof node.type === 'string' && BOLD.has(node.type);
-    return kids === undefined ? node : cloneElement(node, undefined, walk(kids, block || tail, bold ? BOLD_MIN_WORD : minWord, shy));
+    return kids === undefined ? node : cloneElement(node, undefined, walk(kids, block || tail, bold ? Math.max(BOLD_MIN_WORD, minWord ?? 0) : minWord, shy));
   }
   return node;
 }

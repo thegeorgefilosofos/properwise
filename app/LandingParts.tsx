@@ -11,6 +11,7 @@ import { T } from '@/components/tokens'
 import { hy } from '@/components/Hyphen'
 import { ASSISTANT_NAME, ASSISTANT_ACC } from '@/lib/assistant/identity'
 import { signupCta, signupCtaEn } from '@/lib/billing/trialOffer'
+import { withSignupEntry } from '@/lib/analytics/signupEntry'
 import type { Locale } from '@/lib/i18n/locale'
 import { localHref } from '@/lib/i18n/paths'
 import { PARTS_EN } from '@/lib/i18n/en/landing'
@@ -152,12 +153,11 @@ export function NoaFeature({ locale = 'el' }: { locale?: Locale } = {}) {
             {en && <div className="nf-terms">{N.disclosure}</div>}
           </div>
           <div className="nf-cta">
-            <Link href={localHref(locale, '/signup?plan=solo&cycle=monthly')} className="lp-cta lp-primary lp-press" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '13px 24px', borderRadius: T.radius.pill }}>{en ? N.cta : <>Δοκίμασε {ASSISTANT_ACC}</>}</Link>
+            <Link href={localHref(locale, withSignupEntry('/signup?plan=solo&cycle=monthly', 'home'))} className="lp-cta lp-primary lp-press" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '13px 24px', borderRadius: T.radius.pill }}>{en ? N.cta : <>Δοκίμασε {ASSISTANT_ACC}</>}</Link>
             <span className="nf-free">{en ? N.noSub : `Ο «${PLANS.free.name}» χωρίς ${ASSISTANT_ACC} δεν θέλει συνδρομή.`}</span>
           </div>
         </div>
         <div className="nf-stage" aria-label={en ? N.stage : `Παραδείγματα ερωτήσεων προς ${ASSISTANT_ACC}`}>
-          <div className="nf-halo" aria-hidden="true" />
           <div className="nf-card">
             <div className="nf-head">
               <span className="nf-avatar" aria-hidden="true">N</span>
@@ -185,11 +185,12 @@ export function NoaFeature({ locale = 'el' }: { locale?: Locale } = {}) {
  */
 const glue = (t: string) => t.replace(/(\d+)\s+(?=\S)/g, '$1\u00A0');
 
-export function SectionHead({ over, title, sub }: { over: string; title: string; sub?: string }) {
+export function SectionHead({ over, title, sub }: { over?: string; title: string; sub?: string }) {
   return (
     <div style={{ marginBottom: 'clamp(24px, 3.4vw, 40px)' }}>
       <hr className="lp-hair" />
-      <div className="lp-eyebrow">{over}</div>
+      {/* Χωρίς ετικέτα όταν θα επαναλάμβανε τον τίτλο (έλεγχος UX 09/11/2026). */}
+      {over && <div className="lp-eyebrow">{over}</div>}
       <h2 style={{ fontSize: 'clamp(25px, 3.4vw, 40px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0, textWrap: 'balance' }}>{title}</h2>
       {/* Ο υπότιτλος παίρνει όλο το πλάτος της στήλης και ΚΑΘΕ κείμενο κόπηκε ώστε
           να χωρά σε μία γραμμή. Δύο γραμμές υπότιτλου κάτω από μονόγραμμο τίτλο
@@ -283,7 +284,7 @@ export function OwnerPlanCard({ billingLive, locale = 'el' }: { billingLive: boo
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }}>{P.includes}</div>
           {[...shared, freeScan].map(line)}
         </div>
-        {cta(localHref(locale, '/signup'), locale === 'en' ? signupCtaEn() : signupCta())}
+        {cta(localHref(locale, withSignupEntry('/signup', 'home')), locale === 'en' ? signupCtaEn() : signupCta())}
       </div>
       <div className="pc-on">
         {price(money(noa.priceMonthly), P.perMonth)}
@@ -298,8 +299,8 @@ export function OwnerPlanCard({ billingLive, locale = 'el' }: { billingLive: boo
               του subgrid που μοιράζονται οι κάρτες. */}
           <div style={{ fontSize: 12, color: FAINT, lineHeight: 1.4, marginTop: 2 }}>{P.trialLine()}</div>
         </div>
-        {cta(localHref(locale, `/signup?plan=solo&cycle=monthly`), locale === 'en' ? signupCtaEn('solo') : signupCta('solo'))}
-        {billingLive && <Link href={localHref(locale, '/signup?plan=solo&cycle=annual')} className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{P.annual(paidMonths)}</Link>}
+        {cta(localHref(locale, withSignupEntry('/signup?plan=solo&cycle=monthly', 'home')), locale === 'en' ? signupCtaEn('solo') : signupCta('solo'))}
+        {billingLive && <Link href={localHref(locale, withSignupEntry('/signup?plan=solo&cycle=annual', 'home'))} className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{P.annual(paidMonths)}</Link>}
       </div>
     </div>
   );
@@ -310,8 +311,8 @@ export function PlanCard({ planId, name, nameColor, sub, price, per, note, annua
   planId: string; name: string; nameColor: string; sub: string; price: string; per: string; note: React.ReactNode; annual?: string; inherits?: string; ai: number; aiDay: number; items: string[]; cta: string; ctaGhost?: boolean; featured: boolean;
 }) {
   return (
-    <div className="lp-card" style={{ position: 'relative', background: PANEL, border: featured ? `1.5px solid color-mix(in srgb, var(--accent) 50%, transparent)` : `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(16px, 1.6vw, 20px)', boxShadow: featured ? '0 24px 60px -30px color-mix(in srgb, var(--accent) 60%, transparent)' : 'none' }}>
-      {featured && <span style={{ position: 'absolute', top: -9, left: 16, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)', background: PANEL, border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: T.radius.pill, padding: '2px 9px', whiteSpace: 'nowrap' }}>{partsFor(locale).recommended}</span>}
+    <div className="lp-card" style={{ position: 'relative', background: PANEL, border: featured ? `1.5px solid color-mix(in srgb, var(--accent) 50%, transparent)` : `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(16px, 1.6vw, 20px)', boxShadow: featured ? '0 24px 60px -30px color-mix(in srgb, var(--shadow-ink) 60%, transparent)' : 'none' }}>
+      {featured && <span style={{ position: 'absolute', top: -9, left: 16, fontSize: 12, fontWeight: 600, color: 'var(--accent)', background: PANEL, border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: T.radius.pill, padding: '2px 9px', whiteSpace: 'nowrap' }}>{partsFor(locale).recommended}</span>}
       {/* Τίτλος, για να πηγαίνει ο αναγνώστης οθόνης από πακέτο σε πακέτο. */}
       <h3 style={{ fontSize: 14, fontWeight: 700, color: nameColor, margin: '0 0 4px' }}>{name}</h3>
       <div style={{ fontSize: 12, color: FAINT, marginBottom: 14, lineHeight: 1.35 }}>{sub}</div>
@@ -383,10 +384,10 @@ export function PlanCard({ planId, name, nameColor, sub, price, per, note, annua
           το --bg-elevated είναι ένα σκαλί πάνω από την κάρτα και το
           --border-default μια γραμμή που φαίνεται. Και τα τέσσερα πιάνουν 44
           εικονοστοιχεία ύψος, όσο ζητά το δάχτυλο. */}
-      <Link href={localHref(locale, `/signup?plan=${planId}&cycle=monthly`)} className={ctaGhost ? 'lp-ghost lp-press' : 'lp-cta lp-primary lp-press'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, textAlign: 'center', background: ctaGhost ? 'var(--bg-elevated)' : undefined, color: ctaGhost ? TEXT : undefined, textDecoration: 'none', fontSize: 13, fontWeight: 700, padding: '10px', borderRadius: T.radius.pill, border: ctaGhost ? '1px solid var(--border-default)' : 'none' }}>{cta}</Link>
+      <Link href={localHref(locale, withSignupEntry(`/signup?plan=${planId}&cycle=monthly`, 'home'))} className={ctaGhost ? 'lp-ghost lp-press' : 'lp-cta lp-primary lp-press'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, textAlign: 'center', background: ctaGhost ? 'var(--bg-elevated)' : undefined, color: ctaGhost ? TEXT : undefined, textDecoration: 'none', fontSize: 13, fontWeight: 700, padding: '10px', borderRadius: T.radius.pill, border: ctaGhost ? '1px solid var(--border-default)' : 'none' }}>{cta}</Link>
       {/* ΣΥΝΔΕΣΜΟΣ ΠΟΥ ΜΟΙΑΖΕΙ ΣΥΝΔΕΣΜΟΣ. Γκρι, δώδεκα εικονοστοιχεία, χωρίς
           υπογράμμιση: διαβαζόταν ως λεζάντα και όχι ως επιλογή. */}
-      {annual && <Link href={localHref(locale, `/signup?plan=${planId}&cycle=annual`)} className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{annual}</Link>}
+      {annual && <Link href={localHref(locale, withSignupEntry(`/signup?plan=${planId}&cycle=annual`, 'home'))} className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{annual}</Link>}
     </div>
   );
 }

@@ -18,7 +18,7 @@
 // #1356c2 (--accent). Οι οθόνες είναι κι αυτές στο φωτεινό θέμα: μαύρο σε
 // λευκό διαβάζεται σε μικρογραφία, οι μαύρες συσκευές ξεχωρίζουν στον ανοιχτό
 // καμβά και η διαφάνεια δεν μοιάζει με τις σκοτεινές που γεμίζουν τη ροή.
-// Τυπογραφία Inter Tight σε τέσσερα μεγέθη: 76 τίτλος, 30 εξήγηση, 22 κείμενο,
+// Τυπογραφία Inter σε τέσσερα μεγέθη: 72 τίτλος, 30 εξήγηση, 22 κείμενο,
 // 16 υποσέλιδο. Περιθώρια 96· ετικέτα κοινού στο 88, τίτλος στο 128, εξήγηση
 // στο 312, σκηνή 440–1182, υποσέλιδο (λογότυπο, «Παράδειγμα…», «n / 6») στο
 // 1232. Ίδιες θέσεις σε κάθε διαφάνεια.
@@ -338,13 +338,18 @@ const C = { canvas: '#f5f7fa', surface: '#ffffff', ink: '#0f1b2e', ink2: '#53607
 const M = 96;
 const STAGE = { top: 440, bottom: 1182 };
 const W_IN = 1080 - 2 * M;
+// Η Inter της εφαρμογής, από το public/fonts μέσα στη σελίδα: καμία κλήση σε
+// τρίτο διακομιστή γραμματοσειρών (το security-check το απαγορεύει).
+const font = n => 'data:font/woff2;base64,' + fs.readFileSync(join(ROOT, 'public/fonts', n)).toString('base64');
 const css = `
+@font-face{font-family:Inter;font-weight:100 900;src:url(${font('inter-greek.woff2')})}
+@font-face{font-family:Inter;font-weight:100 900;src:url(${font('inter-latin.woff2')})}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:1080px;height:1350px;overflow:hidden}
-body{font-family:'Inter Tight',sans-serif;color:${C.ink};-webkit-font-smoothing:antialiased;position:relative;background:${C.canvas}}
+body{font-family:Inter,sans-serif;color:${C.ink};-webkit-font-smoothing:antialiased;position:relative;background:${C.canvas}}
 .bg{position:absolute;inset:0}
 .who{position:absolute;left:${M}px;top:88px;font-size:22px;line-height:24px;font-weight:600;letter-spacing:-.005em;color:${C.accent}}
-h1{position:absolute;left:${M}px;top:128px;width:${W_IN}px;font-size:76px;line-height:80px;font-weight:800;letter-spacing:-.04em;white-space:nowrap}
+h1{position:absolute;left:${M}px;top:128px;width:${W_IN}px;font-size:72px;line-height:78px;font-weight:800;letter-spacing:-.035em;white-space:nowrap}
 h1 span,h1 em{display:block}
 h1 em{font-style:normal;color:${C.accent}}
 .sub{position:absolute;left:${M}px;top:312px;width:${W_IN}px;font-size:30px;line-height:40px;font-weight:500;letter-spacing:-.012em;color:${C.ink2};text-wrap:pretty}
@@ -398,7 +403,6 @@ h1 em{font-style:normal;color:${C.accent}}
 const glow = () => `background:${C.canvas}`;
 
 const page = (n, { who, h1, sub, stage, example = true }) => `<!doctype html><html lang="el"><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&display=block" rel="stylesheet">
 <style>${css}</style></head><body>
 <div class="bg" style="${glow()}"></div>
 <div class="who">${who}</div>
@@ -498,7 +502,7 @@ for (const [i, html] of slides.entries()) {
   await p.evaluate(() => document.fonts.ready);
   const bad = await p.evaluate(({ M, STAGE }) => {
     const out = [];
-    if (!document.fonts.check('800 76px "Inter Tight"', 'Στείλε')) out.push('δεν φορτώθηκε η Inter Tight');
+    if (!document.fonts.check('800 72px Inter', 'Στείλε')) out.push('δεν φορτώθηκε η Inter');
     const h1 = document.querySelector('h1').getBoundingClientRect();
     const sub = document.querySelector('.sub').getBoundingClientRect();
     if (h1.height > 2 * 80 + 1) out.push('ο τίτλος πιάνει πάνω από δύο γραμμές');

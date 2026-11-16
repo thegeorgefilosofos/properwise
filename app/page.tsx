@@ -3,9 +3,11 @@ import Link from 'next/link';
 import { PLANS, TRIAL_DAYS } from '@/lib/billing/plans';
 import { aiLimitsFor } from '@/lib/billing/aiLimits';
 import { TRIAL_OFFER, signupCta } from '@/lib/billing/trialOffer';
+import { withSignupEntry } from '@/lib/analytics/signupEntry';
 import { partnerWelcomeTier } from '@/lib/referral/referral';
 import { fe } from '@/lib/core/format';
-import { SITE, ORG_ID, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE, HOME_TITLE_LINES, SOCIAL_PROFILES } from '@/lib/core/site';
+import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE, HOME_TITLE_LINES } from '@/lib/core/site';
+import { organizationNode, ORG_REF } from '@/lib/seo/organization';
 import { IDENTITY } from '@/lib/legal/identity';
 import { billingWords, PRICES_VAT, NO_COMMITMENT } from '@/lib/legal/billingWords';
 import { createClient } from '@/lib/supabase/server';
@@ -28,6 +30,7 @@ import {
 } from './landingContent'
 import { FaqList, NoaFeature, SectionHead, OwnerPlanCard, PlanCard } from './LandingParts'
 import { LandingStyles } from './LandingStyles'
+import { ToolsAndGuides } from './LandingLinks'
 import { languageAlternates } from '@/lib/i18n/paths'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -176,7 +179,7 @@ export default async function Landing() {
       {/* Το σταθερό στρώμα ατμόσφαιρας: πλέγμα, τρίτη αύρα, κόκκος, βινιέτα.
           Είναι `fixed` ώστε να μην υπάρχει ραφή ανάμεσα στις ενότητες καθώς
           κυλά η σελίδα — αν ήταν ανά ενότητα, κάθε όριο θα φαινόταν. */}
-      <div className="lp-atmos" aria-hidden="true"><div className="lp-orb" /></div>
+      <div className="lp-atmos" aria-hidden="true" />
 
       {/* ── Nav ── */}
       <header className="lp-head" style={{ position: 'sticky', top: 0, zIndex: 50, paddingTop: 'env(safe-area-inset-top, 0px)', background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)', borderBottom: `1px solid ${LINE}` }}>
@@ -187,8 +190,8 @@ export default async function Landing() {
             <BrandLogo />
           </div>
           {/* Οι ίδιοι σύνδεσμοι με κάθε άλλη δημόσια σελίδα (PublicNav): «Τιμές»,
-              «Σύνδεση» και η δοκιμή. Στο κινητό το «Σύνδεση» κονταίνει σε
-              «Είσοδος», δεν σβήνει· ο επιστρέφων χρήστης δεν έχει άλλο δρόμο. */}
+              «Σύνδεση» και η δοκιμή. Στο κινητό το «Σύνδεση» περνά στο μενού, δεν
+              σβήνει· ο επιστρέφων χρήστης δεν έχει άλλο δρόμο. */}
           <PublicNav signedIn={loggedIn && (
             <Link href="/dashboard" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '9px 18px', borderRadius: T.radius.pill, whiteSpace: 'nowrap' }}>Ο πίνακάς σου</Link>
           )} />
@@ -207,7 +210,6 @@ export default async function Landing() {
 
       {/* ── Hero: κινηματογραφικό, πάντα σκοτεινό, με το προϊόν φωτισμένο σαν έκθεμα ── */}
       <section className="lp-hero" style={{ position: 'relative', overflow: 'hidden' }}>
-        <div className="lp-aurora" aria-hidden="true" />
         {/* ΓΙΑΤΙ ΤΟΣΟ ΣΦΙΧΤΟ: το hero κατανάλωνε ΟΛΟ το πρώτο viewport (112px πάνω,
             τίτλος έως 78px, 84px κάτω) και το προϊόν ξεκινούσε στα ~1080px — δηλαδή
             ο επισκέπτης έβλεπε μόνο κείμενο και έπρεπε να κυλήσει για να δει τι
@@ -221,15 +223,16 @@ export default async function Landing() {
               σε accent) και όχι από ξεθώριασμα του brand.
               Και το μέγεθος έπεσε από 78px σε 60px: στα 78 ο τίτλος έσπαγε σε
               τέσσερις γραμμές με κακά σημεία κοπής («…κάνει τα / υπόλοιπα»). */}
-          {/* Η ΑΝΑΚΟΙΝΩΣΗ ΠΑΝΩ ΑΠΟ ΤΟΝ ΤΙΤΛΟ. Η μεγαλύτερη αλλαγή του προϊόντος
-              (25.09.2026) δεν χωράει στα ψιλά κάτω από τα κουμπιά: ο επισκέπτης
-              που ψάχνει «πόσο κοστίζει» τη βλέπει πριν διαβάσει τίποτε άλλο.
-              Ενα σημάδι «Νέο», μία πρόταση, ένας σύνδεσμος στα πακέτα. */}
-          <Link href="#pricing" className="lp-rise lp-news">
-            <span className="lp-news-tag">Νέο</span>
-            <span>Το πακέτο «{PLANS.free.name}» είναι πλέον χωρίς συνδρομή</span>
-            <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-          </Link>
+          {/* ΓΙΑ ΠΟΙΟΝ, ΠΡΙΝ ΑΠΟ ΤΙ (13/11/2026). Εδώ στεκόταν η ανακοίνωση «Νέο:
+              το πακέτο «Ιδιοκτήτης» είναι πλέον χωρίς συνδρομή». Στο κινητό
+              έπιανε δύο γραμμές πάνω από τον τίτλο, μιλούσε με όνομα πακέτου που ο
+              νέος επισκέπτης δεν ξέρει, έστελνε στα πακέτα αντί για την εγγραφή
+              και έλεγε το «χωρίς συνδρομή» που λένε ήδη το κουμπί και τα ✓.
+              Και πουθενά στην πρώτη οθόνη δεν έλεγε σε ποιον απευθύνεται: η
+              «διαχείριση ακινήτων» διαβάζεται και ως εργαλείο μεσίτη ή διαχειριστή
+              πολυκατοικίας. Τη θέση παίρνει η ταμπέλα του κοινού, με το ίδιο
+              σχήμα που έχει κάθε ενότητα της σελίδας (.lp-eyebrow). */}
+          <p className="lp-rise lp-eyebrow lp-eyebrow-hero" style={{ margin: `0 auto ${T.sp.lg}px` }}>Για ιδιοκτήτες και διαχειριστές ακινήτων στην Ελλάδα</p>
           <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.15, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
             {/* Ο ΙΔΙΟΣ ΤΙΤΛΟΣ ΜΕ ΤΗΝ ΚΑΡΤΕΛΑ ΚΑΙ ΤΗΝ ΚΑΡΤΑ ΚΟΙΝΟΠΟΙΗΣΗΣ (HOME_TITLE_LINES,
                 lib/core/site.ts). Δύο γραμμές· από τα 900 και πάνω καμία δεν σπάει. */}
@@ -288,16 +291,25 @@ export default async function Landing() {
           <p className="lp-rise-2 lp-lede" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 28px' }}>
             {/* Η ΝΟΑ ΔΕΝ ΤΗΝ ΕΧΟΥΝ ΟΛΟΙ: γι' αυτό ο υπότιτλος δεν την υπόσχεται.
                 Η δοκιμή της λέγεται στα ✓ από κάτω, η τιμή της στον τιμοκατάλογο. */}
-            <span className="lp-lede-line">Λογαριασμός, μισθωτήριο, απόδειξη: η{'\u00a0'}εφαρμογή τα διαβάζει και τα βάζει στη θέση{'\u00a0'}τους.</span>{' '}
-            <span className="lp-lede-line">Ενοίκια, δαπάνες, φόρος ενοικίων, Ε2 και ΕΝΦΙΑ, έτοιμα πριν σου τα ζητήσει ο λογιστής.</span>
+            {/* ΤΙ ΚΕΡΔΙΖΕΙΣ, ΜΕ ΛΙΓΟΤΕΡΕΣ ΛΕΞΕΙΣ (13/11/2026). Ηταν πέντε γραμμές στα
+                375 και η δεύτερη πρόταση απαριθμούσε πέντε πράγματα πριν πει το
+                όφελος. Τώρα τα τρία που ζητά ο λογιστής και οι δύο προτάσεις
+                έχουν σχεδόν ίσο μήκος, ώστε η πλήρης στοίχιση από τα 720 να μην
+                ανοίγει τα κενά της κοντύτερης. */}
+            <span className="lp-lede-line">Λογαριασμός, μισθωτήριο, απόδειξη: η{'\u00a0'}εφαρμογή τα διαβάζει και συμπληρώνει τα{'\u00a0'}στοιχεία.</span>{' '}
+            <span className="lp-lede-line">Ο φόρος ενοικίων, το Ε2 και ο ΕΝΦΙΑ είναι έτοιμα πριν τα ζητήσει ο{'\u00a0'}λογιστής.</span>
           </p>
           <div className="lp-rise-3 lp-hero-ctas" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             {loggedIn ? (
               <Link href="/dashboard" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }}>Άνοιξε τον πίνακά σου</Link>
-            ) : (<>
-              <Link href="/signup" className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }}>{signupCta()}</Link>
-              <Link href="/login" style={{ background: 'transparent', color: 'var(--text-primary)', textDecoration: 'none', fontSize: 15, fontWeight: 600, padding: '14px 28px', borderRadius: T.radius.pill, border: '1px solid var(--border-strong)', transition: 'border-color .15s, background .15s' }}>Έχω λογαριασμό</Link>
-            </>)}
+            ) : (
+              // ΕΝΑ ΚΟΥΜΠΙ (13/11/2026). Δίπλα του στεκόταν το «Έχω λογαριασμό»,
+              // ίδιου μεγέθους και στο κινητό ίδιου πλάτους: δύο ισοβαρείς
+              // επιλογές ακριβώς εκεί που ο νέος επισκέπτης αποφασίζει. Ο
+              // επιστρέφων έχει τη «Σύνδεση» στην κεφαλίδα και στο μενού
+              // (PublicNav), σε κάθε δημόσια σελίδα.
+              <Link href={withSignupEntry('/signup', 'home')} className="lp-cta lp-primary" style={{ textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }}>{signupCta()}</Link>
+            )}
           </div>
           {/* ΣΤΟΙΧΕΙΑ ΠΟΥ ΔΕΝ ΣΠΑΝΕ ΣΤΗ ΜΕΣΗ. Στα 390 η γραμμή έπεφτε «…· Χωρίς
               / δέσμευση · …»· κάθε στοιχείο κρατιέται ολόκληρο και τυλίγει μόνο
@@ -422,6 +434,13 @@ export default async function Landing() {
       <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
         <SectionHead over="Δες το μόνος σου" title="Πόσο σου αποδίδει πραγματικά;" sub={`Ενδεικτική καθαρή απόδοση, με την ίδια φορολογική κλίμακα ενοικίων ${scaleYear} που τρέχει και μέσα στην εφαρμογή.`} />
         <LandingCalculator cta={signupCta()} />
+      </section>
+
+      {/* ── Εργαλεία και οδηγοί: σύνδεσμοι μέσα στη σελίδα, από τους καταλόγους (LandingLinks.tsx).
+            Χωρίς δική του στάθμη: έρχεται μετά τα διακοσμητικά στη σειρά του DOM (guard-z-layers). ── */}
+      <section className="lp-reveal" style={{ ...wrap, position: 'relative', paddingBottom: GAP }}>
+        <SectionHead title="Εργαλεία και οδηγοί" sub="Υπολογισμοί χωρίς εγγραφή και οδηγοί που εξηγούν τον κανόνα πίσω από κάθε ποσό." />
+        <ToolsAndGuides />
       </section>
 
       {/* ── Security & trust ── */}
@@ -559,7 +578,7 @@ export default async function Landing() {
             με ένα κλικ.</p>
         </div>
         <p style={{ fontSize: 'clamp(17px, 1.9vw, 21px)', lineHeight: 1.45, color: 'var(--text-primary)', letterSpacing: '-0.015em',
-          margin: 'clamp(26px, 3.2vw, 40px) 0 0', textWrap: 'balance' }}>
+          margin: 'clamp(26px, 3.2vw, 40px) 0 0', textWrap: 'pretty' }}>
           Εσύ κρατάς τις αποφάσεις· το PROPERWISE κάνει τα υπόλοιπα.
         </p>
         <div style={{ marginTop: 14, textWrap: 'balance' }}>
@@ -580,7 +599,7 @@ export default async function Landing() {
 
       {/* ── Pricing ── */}
       <section id="pricing" className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
-        <SectionHead over="Τιμολόγηση" title="Τι κοστίζει κάθε πακέτο" sub="Κάθε πακέτο περιλαμβάνει ό,τι έχει το προηγούμενο." />
+        <SectionHead title="Τι κοστίζει κάθε πακέτο" sub="Κάθε πακέτο περιλαμβάνει ό,τι έχει το προηγούμενο." />
         {/* ΜΙΑ ΠΗΓΗ ΓΙΑ ΤΙΣ ΤΙΜΕΣ ΚΑΙ ΤΑ ΧΑΡΑΚΤΗΡΙΣΤΙΚΑ.
             Οι κάρτες ήταν γραμμένες με το χέρι: τιμές, ετήσιες τιμές και λίστες
             χαρακτηριστικά αντιγραμμένα από το lib/billing/plans.ts. Είχαν ήδη
@@ -698,7 +717,7 @@ export default async function Landing() {
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(22px, 2.6vw, 30px)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                 <div style={{ width: 44, height: 44, borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{ic(r.i)}</div>
-                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: ACCENT }}>{r.tag}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: ACCENT }}>{r.tag}</span>
               </div>
               <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{r.t}</h3>
               <p className="po-just" style={{ fontSize: 15, color: MUTED, lineHeight: 1.6, margin: '0 0 18px' }}>{r.d}</p>
@@ -796,7 +815,6 @@ export default async function Landing() {
           τόνου κάτω από την τελευταία ερώτηση. Η `lp-final` σβήνει το σέλας
           προς τα πάνω, ώστε το φως να ανεβαίνει από τη μέση και όχι από τη γραμμή. */}
       <section className="lp-hero lp-reveal lp-final" style={{ position: 'relative', overflow: 'hidden', borderBottom: 'none' }}>
-        <div className="lp-aurora" aria-hidden="true" />
         <div style={{ ...wrap, position: 'relative', zIndex: 1, textAlign: 'center', paddingTop: GAP, paddingBottom: GAP }}>
           <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>Το ακίνητό σου, υπό έλεγχο.</h2>
           {/* ΤΟ ΚΛΕΙΣΙΜΟ ΛΕΕΙ ΤΙ ΚΕΡΔΙΖΕΙΣ, ΟΧΙ ΤΙ ΚΟΣΤΙΖΕΙ (02.10.2026, απόφαση
@@ -808,7 +826,7 @@ export default async function Landing() {
             <span className="lp-lede-line">Κάθε έγγραφο στη θέση του, κάθε προθεσμία στην ώρα της.</span>{' '}
             <span className="lp-lede-line">Και η επόμενη δήλωση θα σε βρει με τον φάκελο ήδη έτοιμο.</span>
           </p>
-          <Link href={loggedIn ? '/dashboard' : '/signup'} className="lp-cta lp-primary lp-final-cta" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : signupCta()}</Link>
+          <Link href={loggedIn ? '/dashboard' : withSignupEntry('/signup', 'home')} className="lp-cta lp-primary lp-final-cta" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : signupCta()}</Link>
         </div>
       </section>
 
@@ -835,20 +853,7 @@ export default async function Landing() {
       <JsonLd data={{
         '@context': 'https://schema.org',
         '@graph': [
-          {
-            '@type': 'Organization',
-            '@id': ORG_ID,
-            name: IDENTITY.tradeName,
-            // Νόμιμες παραλλαγές γραφής της μάρκας (πεζά/κεφαλαία/κενό) ώστε η
-            // Google να τις συνδέει με την ίδια οντότητα. ΟΧΙ ορθογραφικά λάθη:
-            // αυτά διαβάζονται ως spam και η Google ήδη ανέχεται τις παραλλαγές.
-            alternateName: ['Properwise', 'ProperWise', 'Proper Wise'],
-            url: SITE,
-            email: IDENTITY.supportEmail,
-            logo: `${SITE}/icons/icon-192.png`,
-            areaServed: 'GR',
-            sameAs: [...SOCIAL_PROFILES],
-          },
+          organizationNode(),
           // ΤΟ WebSite ΔΕΝΕΙ ΤΟ ΟΝΟΜΑ ΤΗΣ ΜΑΡΚΑΣ ΜΕ ΤΟΝ ΤΟΜΕΑ. Χωρίς αυτό η
           // Google είχε την Organization και την εφαρμογή, αλλά κανένα κόμβο που
           // να λέει «αυτός ο ιστότοπος ΕΙΝΑΙ το PROPERWISE στο properwise.gr» —
@@ -862,7 +867,7 @@ export default async function Landing() {
             url: SITE,
             name: IDENTITY.tradeName,
             inLanguage: 'el',
-            publisher: { '@id': ORG_ID },
+            publisher: ORG_REF,
           },
           {
             '@type': 'SoftwareApplication',
@@ -877,7 +882,7 @@ export default async function Landing() {
             url: SITE,
             inLanguage: 'el',
             description: OG_DESC,
-            publisher: { '@id': ORG_ID },
+            publisher: ORG_REF,
           },
           {
             '@type': 'FAQPage',

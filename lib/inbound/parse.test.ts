@@ -51,7 +51,7 @@ const FWD = [
   'Από: ΔΕΗ <no-reply@example.com>',
   'Ημερομηνία: 12 Αυγούστου 2026',
   'Θέμα: Ο λογαριασμός ρεύματος',
-  'Προς: giorgos@gmail.com',
+  'Προς: giorgos@example.com',
   '',
   'Πληρωτέο ποσό: 87,45€',
   'Ημερομηνία λήξης: 05/09/2026',
@@ -61,7 +61,7 @@ eq(forwardedFrom(FWD).subject, 'Ο λογαριασμός ρεύματος', 'τ
 eq(forwardedFrom('γράψε μου from: το κινητό σου').from, null, 'το «from:» μέσα σε πρόταση ΔΕΝ είναι κεφαλίδα');
 eq(forwardedFrom('From: ΕΥΔΑΠ <a@b.gr>').from, 'ΕΥΔΑΠ <a@b.gr>', 'και στα αγγλικά');
 
-const forwarded = parseInbound(src({ from: 'Γιώργος <giorgos@gmail.com>', subject: 'Προωθ: Ο λογαριασμός ρεύματος', text: FWD }));
+const forwarded = parseInbound(src({ from: 'Γιώργος <giorgos@example.com>', subject: 'Προωθ: Ο λογαριασμός ρεύματος', text: FWD }));
 eq(forwarded.vendor, 'ΔΕΗ', 'Ο ΠΑΡΟΧΟΣ ΔΕΝ ΕΙΝΑΙ Ο ΙΔΙΟΣ Ο ΙΔΙΟΚΤΗΤΗΣ που προώθησε');
 eq(forwarded.amount, 87.45, 'το ποσό του προωθημένου');
 eq(forwarded.dueDate, '2026-09-05', 'η λήξη του προωθημένου');

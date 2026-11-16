@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import * as expenseStore from '@/lib/data/expenses'
 import * as rentStore from '@/lib/data/rent'
 import { Check, ArrowRight, Landmark, SearchX } from 'lucide-react'
-import { readBankCsv, matchTransactions, legacyKeyOf, type BankTxn, type ExpectedRent, type RentMatch, type ExpenseSuggestion } from '@/lib/accounting/bankImport'
+import { readBankCsv, matchTransactions, legacyKeyOf, findKnownKeys, type BankTxn, type ExpectedRent, type RentMatch, type ExpenseSuggestion } from '@/lib/accounting/bankImport'
 import { feAuto, T, ABSENT_DATE, Btn, EmptyState, Modal, Spinner } from '@/components/Theme'
 import { athensToday } from '@/lib/core/time';
 import { grDate } from '@/lib/core/format';
@@ -55,9 +55,11 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
     // αποτυχία του ερωτήματος έδινε `existing = null`, άρα ΚΕΝΟ σύνολο
     // αποτυπωμάτων, άρα κάθε γραμμή του αρχείου περνούσε ως καινούρια. Ο
     // χρήστης δεν έβλεπε λάθος — έβλεπε διπλές κινήσεις στα βιβλία του.
-    const { data: existing, error: dedupErr } = await supabase.from('bank_transactions').select('dedup_hash').eq('user_id',userId)
+    // ΜΟΝΟ ΤΑ ΑΠΟΤΥΠΩΜΑΤΑ ΤΟΥ ΑΡΧΕΙΟΥ, ΣΕ ΟΜΑΔΕΣ. Το ερώτημα διάβαζε όλα τα
+    // αποτυπώματα του χρήστη και το PostgREST έκοβε στις 1.000 γραμμές: οι
+    // παλιότερες κινήσεις ξαναγύριζαν για έλεγχο. Δες `findKnownKeys`.
+    const { seen, error: dedupErr } = await findKnownKeys(txns, keys => supabase.from('bank_transactions').select('dedup_hash').eq('user_id',userId).in('dedup_hash',keys))
     if (dedupErr) { notifyError(failed('Ο έλεγχος για διπλές κινήσεις δεν ολοκληρώθηκε', dedupErr)); return }
-    const seen = new Set((existing||[]).map(r=>r.dedup_hash))
     const fresh = txns.filter(t=>!(seen.has(t.key) || seen.delete(legacyKeyOf(t))))
     setSkipped(txns.length - fresh.length)
     // Αναμενόμενα ενοίκια (ανεξόφλητα) του έτους.
@@ -171,7 +173,7 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
           <EmptyState icon={<SearchX size={20}/>} title="Δεν βρέθηκαν νέες αντιστοιχίσεις" hint={skipped>0?`${skipped} ${skipped===1?'κίνηση είχε':'κινήσεις είχαν'} ήδη εισαχθεί.`:'Καμία νέα κίνηση στο αρχείο.'}/>
         ):(<>
           {rentMatches.length>0&&(<>
-            <p style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-secondary)', margin:'0 0 8px', fontFamily: T.font.sans }}>Ενοίκια που εισπράχθηκαν</p>
+            <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color:'var(--text-secondary)', margin:'0 0 8px', fontFamily: T.font.sans }}>Ενοίκια που εισπράχθηκαν</p>
             <div style={{ display:'flex', flexDirection:'column', gap: 8, marginBottom:16 }}>
               {rentMatches.map((m,i)=>(
                 <div key={i} style={row}>
@@ -186,7 +188,7 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
             </div>
           </>)}
           {expenses.length>0&&(<>
-            <p style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-secondary)', margin:'0 0 8px', fontFamily: T.font.sans }}>Πιθανές δαπάνες</p>
+            <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color:'var(--text-secondary)', margin:'0 0 8px', fontFamily: T.font.sans }}>Πιθανές δαπάνες</p>
             <div style={{ display:'flex', flexDirection:'column', gap: 8 }}>
               {expenses.map((e,i)=>(
                 <div key={i} style={row}>
@@ -205,7 +207,7 @@ export default function BankImport({ propertyId, userId, year, onClose, onDone }
               χρήστης πατήσει «Καταχώρηση»: το dedup της ανάλυσης θα τις έκρυβε
               στην επόμενη εισαγωγή, δηλαδή το ίδιο σφάλμα με άλλο τρόπο. */}
           {unmatched.length>0&&(<>
-            <p style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:'var(--text-secondary)', margin:'16px 0 8px', fontFamily: T.font.sans }}>Κινήσεις χωρίς αντιστοίχιση</p>
+            <p style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color:'var(--text-secondary)', margin:'16px 0 8px', fontFamily: T.font.sans }}>Κινήσεις χωρίς αντιστοίχιση</p>
             <p style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', margin:'0 0 8px', fontFamily: T.font.sans, lineHeight:1.5 }}>Δεν ταιριάζουν σε ανεξόφλητο ενοίκιο του {year} και δεν καταχωρούνται από εδώ. Επανεμφανίζονται σε κάθε εισαγωγή, μέχρι να τακτοποιηθούν.</p>
             <div style={{ display:'flex', flexDirection:'column', gap: 8 }}>
               {unmatched.map((t,i)=>(

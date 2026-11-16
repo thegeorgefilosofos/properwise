@@ -23,6 +23,7 @@
 
 import { isValidAfm } from '../core/greek';
 import { athensToday } from '../core/time'
+import { nextWorkingDay } from '../calendar/greekHolidays'
 import { MYAADE, aadePath } from './aade';
 import { fe } from '../core/format';
 import { navLabel } from '../nav/labels';
@@ -116,12 +117,25 @@ const fmtDate = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso
 const eur = fe;
 
 
-/** Τελευταία ημέρα του ΕΠΟΜΕΝΟΥ μήνα από την έναρξη της μίσθωσης. */
+/**
+ * Τελευταία ημέρα του ΕΠΟΜΕΝΟΥ μήνα από την έναρξη (ή τη λύση) της μίσθωσης,
+ * μετατεθειμένη στην επόμενη εργάσιμη όταν πέφτει σε αργία ή Σαββατοκύριακο.
+ *
+ * ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΚΛΕΙΝΕΙ (12.11.2026). Δεν γινόταν καμία μετάθεση: για μίσθωση
+ * Σεπτεμβρίου 2026 η προθεσμία έβγαινε 31/10/2026, Σάββατο, ενώ έληγε 02/11/2026.
+ *
+ * ΠΗΓΗ. Η δήλωση είναι δήλωση πληροφοριακού χαρακτήρα του ΚΦΔ (ν. 5104/2024,
+ * άρθρα 15Β και 53 παρ. 6Α), άρα ισχύει το άρθρο 7 παρ. 1 του ίδιου Κώδικα:
+ * προθεσμία που εκπνέει σε επίσημη αργία, Σάββατο ή Κυριακή «παρατείνεται μέχρι
+ * την αμέσως επόμενη ημέρα κατά την οποία η Φορολογική Διοίκηση λειτουργεί για
+ * το κοινό». Το ημερολόγιο του taxheaven δείχνει το ίδιο: δηλώσεις μίσθωσης
+ * περιόδου Σεπτεμβρίου 2026 έως 02/11/2026.
+ */
 export function declarationDeadline(leaseStartIso: string): string {
   const y = +leaseStartIso.slice(0, 4), m = +leaseStartIso.slice(5, 7);
   // Ημέρα 0 του μήνα m+2 = τελευταία ημέρα του μήνα m+1.
   const d = new Date(Date.UTC(y, m + 1, 0));
-  return d.toISOString().slice(0, 10);
+  return nextWorkingDay(d.toISOString().slice(0, 10));
 }
 
 function buildDeadline(leaseStart: string | null | undefined, today: string): DeadlineInfo {

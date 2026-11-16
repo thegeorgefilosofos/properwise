@@ -28,16 +28,17 @@ import { syncInstalments } from './rentInstalments';
 import type { Tenant } from './TabTenantTypes';
 import * as expenses from '@/lib/data/expenses';
 import * as calendar from '@/lib/data/calendar';
+import { syncPeaReminders } from '@/lib/calendar/peaSync';
 // Οι ρυθμίσεις ανά ενότητα έχουν ένα σπίτι: lib/data/settings.
 import * as settings from '@/lib/data/settings';
 import {
-  classifyDocType, planDocSave, normalizeScannedDoc, archiveCategoryFor, isDocumentary,
+  classifyDocType, planDocSave, normalizeScannedDoc, archiveCategoryFor, isDocumentary, kindOf,
   SCAN_NUM_KEYS, SCAN_MAX_LINES, PROPERTY_TARGET,
   type ScannedDoc, type ArchivePlan, type DocLine,
 } from '@/lib/billing/documents';
 import { SYSTEM_PROMPT, PHOTO_CATEGORIES, PHOTO_AI_CATEGORIES } from '@/lib/billing/scanPrompt';
 import { atakDigits } from '@/lib/property/atak';
-import { fillOnlyEmpty, stripEmpty } from '@/lib/core/prefill';
+import { fillOnlyEmpty, stripEmpty, isBlank } from '@/lib/core/prefill';
 import { athensToday } from '@/lib/core/time';
 import { saved, savedData } from '@/components/dbWrite';
 import { uploadPath } from '@/lib/core/uploadPath';
@@ -54,6 +55,8 @@ import {
   type MatchCandidate, type MatchResult,
 } from '@/lib/billing/parse';
 import { MSG } from '@/lib/core/dbError';
+import { isPhotoFile } from '@/lib/myaade/accept';
+import { taxProfileOf } from '@/lib/tax/greekTaxCalendar';
 
 // ── Το prompt αναγνώρισης (ΕΝΑ, κοινό) ─────────────────────────────────────
 // Ζει στο lib/billing/scanPrompt.ts, χτισμένο από το ίδιο λεξιλόγιο με τη φόρμα
@@ -460,6 +463,39 @@ export async function scanPhoto(file: File): Promise<ScanFailure & { photo?: { c
   };
 }
 
+// ── Φωτογραφία Ε9 ή πράξης ΕΝΦΙΑ: η μαζική καταχώρηση (09/11/2026) ─────────
+// Τι φωτογραφίες δέχεται: μία λίστα για το `accept` και τον έλεγχο (lib/myaade/accept.ts).
+
+/**
+ * Διαβάζει φωτογραφία εγγράφου με δικό του prompt (lib/myaade/photo.ts) και
+ * επιστρέφει το JSON της απάντησης, ΑΝΕΛΕΓΚΤΟ: τον έλεγχο τον κάνει ο
+ * καλών. Η εικόνα μικραίνει στη συσκευή και μετατρέπεται σε JPEG (έτσι
+ * περνά και το HEIC, όπου ο περιηγητής το ανοίγει). Δεν αποθηκεύεται πουθενά:
+ * φεύγει μόνο μέσα στο αίτημα της σάρωσης και μετρά ως σάρωση.
+ */
+export async function scanPhotoList(file: File, system: string, text: string): Promise<ScanFailure & { reply?: unknown }> {
+  if (file.size > MAX_SCAN_MB * 1024 * 1024) return { error: 'big' };
+  if (!isPhotoFile(file)) return { error: 'format', errorText: 'Διαβάζονται φωτογραφίες JPG, PNG ή HEIC και αρχεία PDF.' };
+  const heic = /hei[cf]/i.test(`${file.type || ''} ${file.name || ''}`);
+  let sent: { base64: string; mime: string } | null = null;
+  for (const [edge, q] of [[SCAN_MAX_EDGE, 0.85], [1600, 0.75], [1200, 0.7]] as const) {
+    const out = await shrinkImage(file, edge, q);
+    if (out && out.base64.length * 0.75 <= SCAN_MAX_SEND_BYTES) { sent = out; break; }
+  }
+  if (!sent) {
+    if (heic) return { error: 'format', errorText: 'Η φωτογραφία HEIC δεν ανοίγει σε αυτόν τον περιηγητή. Αποθήκευσέ τη ως JPG ή ανέβασε το PDF.' };
+    if (file.size > SCAN_MAX_SEND_BYTES) return { error: 'big' };
+    try { sent = await readFile(file); } catch { return { error: 'unreadable' }; }
+  }
+  const r = await ask({
+    model: 'claude-sonnet-5', max_tokens: 1500, system,
+    messages: [{ role: 'user', content: [contentPartOf(sent.base64, sent.mime), { type: 'text', text }] }],
+  });
+  if (r.error) return { error: r.error, errorText: r.errorText };
+  const reply = parseJson<unknown>(r.data);
+  return reply == null ? { error: 'unreadable' } : { reply };
+}
+
 // ── Έγγραφο ή φωτογραφία; Το αποφασίζει το AI, όχι διακόπτης ────────────────
 export interface ScanFileResult extends ScanFailure {
   kind: 'document' | 'photo';
@@ -531,14 +567,31 @@ export async function archiveScannedFile(input: ArchiveInput): Promise<{ ok: boo
     .upload(path, file, { upsert: false, contentType: file.type || undefined });
   if (upErr) return { ok: false, error: upErr.message };
 
-  const base: Record<string, unknown> = {
+  const { error } = await documents.add(supabase, propertyId, userId, archivePayload(input, path));
+  return error ? { ok: false, error: error.message ?? 'insert' } : { ok: true };
+}
+
+/**
+ * Γράφει το ημερολόγιο τις δόσεις φόρου εισοδήματος σε αυτό το ακίνητο; Ναι όταν
+ * νοικιάζεται (ο κανόνας του lib/tax/greekTaxCalendar.ts). Αν το ακίνητο δεν
+ * διαβαστεί, «όχι»: καλύτερα μια διπλή υπενθύμιση από καμία.
+ */
+async function hasIncomeSeries(db: ReturnType<typeof createClient>, propertyId: string, userId: string): Promise<boolean> {
+  const r = await properties.oneWithError<{ status_detail: string | null; rental_mode: string | null }>(db, propertyId, 'status_detail,rental_mode', userId);
+  return !r.error && !!r.row && taxProfileOf(r.row) !== 'owner';
+}
+
+/**
+ * Η γραμμή του Αρχείου (`property_documents`) από το input και τη διαδρομή του
+ * αρχείου. Καθαρή, ώστε η διαδρομή σάρωση → σχέδιο → γραμμή να ελέγχεται σε τεστ.
+ */
+export function archivePayload(input: ArchiveInput, path: string): Record<string, unknown> {
+  const { file, propertyId, userId, kind } = input;
+  return {
     property_id: propertyId, user_id: userId, kind, category: input.category,
     title: (input.title || file.name).slice(0, 200), notes: input.notes ?? null,
     doc_date: input.doc_date || null, file_path: path, file_name: file.name,
     mime: file.type || null, size_bytes: file.size,
-  };
-  const payload: Record<string, unknown> = {
-    ...base,
     supplier: input.supplier ?? null,
     amount: input.amount ?? null,
     provider_afm: input.provider_afm ?? null,
@@ -549,9 +602,6 @@ export async function archiveScannedFile(input: ArchiveInput): Promise<{ ok: boo
     // και θα έσπαγε την καταχώρηση σε βάση χωρίς τη στήλη πριν από τη μετάβαση.
     ...(input.statement_total ? { statement_total: true } : {}),
   };
-
-  const { error } = await documents.add(supabase, propertyId, userId, payload);
-  return error ? { ok: false, error: error.message ?? 'insert' } : { ok: true };
 }
 
 /** Από το σχέδιο αρχειοθέτησης (καθαρή λογική) στο input της βάσης. */
@@ -837,7 +887,10 @@ export async function commitScannedDoc(input: CommitInput): Promise<CommitResult
   const { propertyId, userId, file } = input;
   const today = input.today || athensToday();
   const doc = normalizeScannedDoc(input.doc);
-  const plan = planDocSave(doc, today);
+  // Εκκαθαριστικό φόρου εισοδήματος σε νοικιασμένο ακίνητο: οι δόσεις είναι ήδη
+  // στο ημερολόγιο, χωρίς δεύτερη «1η δόση» (planDocSave, `incomeSeries`).
+  const incomeSeries = kindOf(doc)?.value === 'income_tax' ? await hasIncomeSeries(supabase, propertyId, userId) : false;
+  const plan = planDocSave(doc, today, { incomeSeries });
   // Ονομάζεται `written` και όχι `saved`: το `saved` είναι πια ο βοηθός που
   // ελέγχει αν το γράψιμο πέτυχε και δύο πράγματα δεν μοιράζονται ένα όνομα.
   const written: string[] = [];
@@ -1024,7 +1077,9 @@ export async function commitScannedDoc(input: CommitInput): Promise<CommitResult
 
     // ── 3) Ημερολόγιο → calendar_events. Ενα παλαιότερο ΠΕΑ δεν φέρνει δεύτερη
     // υπενθύμιση λήξης δίπλα στη λήξη του ισχύοντος, ούτε το ίδιο ΠΕΑ δεύτερη φορά.
-    if (plan.calendar && !reconciled) {
+    // Οι υπενθυμίσεις ΠΕΑ (`calendarSync: 'pea'`) ΔΕΝ γράφονται εδώ: γράφονται
+    // μετά το ακίνητο (βήμα 5γ), για να ακολουθούν πάντα τη λήξη που κρατά.
+    if (plan.calendar && !reconciled && plan.calendarSync !== 'pea') {
       if (eventUnknown) fail(CALENDAR);
       else if (!eventOlder && !eventSame) {
         const { error: cErr } = await calendar.insert(supabase,
@@ -1086,26 +1141,58 @@ export async function commitScannedDoc(input: CommitInput): Promise<CommitResult
         }
       }
     }
+    // ── 5α) Στοιχεία ενός χαρτιού (ΠΕΑ) → ΟΛΑ ΜΑΖΙ, μόνο αν λείπουν ΟΛΑ.
+    // Η συμπλήρωση ανά στήλη θα ανακάτευε δύο πιστοποιητικά (lib/billing/documents.ts).
+    if (plan.propertyFillGroup) {
+      const { columns, values } = plan.propertyFillGroup;
+      const cur = await properties.oneWithError<Record<string, unknown>>(supabase, propertyId, columns.join(','), userId);
+      if (cur.error) fail(PROPERTY_TARGET);
+      else if (columns.every(c => isBlank(cur.row?.[c]))) {
+        const { error: pErr } = await properties.update(supabase, propertyId, values, userId);
+        if (pErr) fail(PROPERTY_TARGET); else add(PROPERTY_TARGET);
+      }
+    }
     // ── 5β) Ό,τι ΑΝΑΝΕΩΝΕΤΑΙ (ασφάλιση, κατηγορία ΠΕΑ) γράφεται με αντικατάσταση:
     // η νέα λήξη πρέπει να περάσει, η μη αναγνωρισμένη να μη σβήσει την παλιά.
     // ΚΑΙ ΜΟΝΟ ΑΝ ΤΟ ΧΑΡΤΙ ΕΙΝΑΙ ΝΕΟΤΕΡΟ (`replaceIfNewer`, `replaceIfNewerEvent`):
     // η αρχειοθέτηση του περσινού ασφαλιστηρίου δεν γυρίζει πίσω τη λήξη που
     // διαβάζουν οι προθεσμίες, η Νόα και τα email λήξης.
     const guard = plan.replaceIfNewer;
+    // Τι ήξερε η βάση πριν και αν η αντικατάσταση γράφτηκε: από αυτά κρίνεται
+    // το βήμα 5γ (υπενθυμίσεις ΠΕΑ).
+    let replaced = false, replaceUnknown = false;
+    let before: unknown;
     if (plan.propertyReplace) {
-      const patch = stripEmpty(plan.propertyReplace);
+      const patch: Record<string, unknown> = stripEmpty(plan.propertyReplace);
       if (Object.keys(patch).length) {
+        // Ό,τι ανήκε στο χαρτί που αντικαθίσταται και το νέο δεν το έχει, σβήνει
+        // μαζί του (`propertyClear`): το `stripEmpty` δεν αφήνει να περάσει `null`.
+        for (const c of plan.propertyClear ?? []) if (!(c in patch)) patch[c] = null;
         // Χωρίς ανάγνωση δεν ξέρουμε αν το χαρτί είναι νεότερο: δεν αντικαθιστούμε.
         const cur = guard
           ? await properties.oneWithError<Record<string, unknown>>(supabase, propertyId, guard.column, userId)
           : null;
         const unknown = !!cur?.error || eventUnknown;
         const stale = (!!guard && isOlder(guard.value, cur?.row?.[guard.column])) || eventOlder;
-        if (unknown) fail(PROPERTY_TARGET);
+        before = guard ? cur?.row?.[guard.column] : undefined;
+        if (unknown) { replaceUnknown = true; fail(PROPERTY_TARGET); }
         else if (!stale) {
           const { error: pErr } = await properties.update(supabase, propertyId, patch, userId);
-          if (pErr) fail(PROPERTY_TARGET); else add(PROPERTY_TARGET);
+          if (pErr) fail(PROPERTY_TARGET); else { add(PROPERTY_TARGET); replaced = true; }
         }
+      }
+    }
+    // ── 5γ) Υπενθυμίσεις ΠΕΑ → calendar_events, ΜΕΤΑ το ακίνητο.
+    // Μόνο αν η λήξη γράφτηκε στο ακίνητο ΚΑΙ άλλαξε. Το ίδιο ΠΕΑ δεύτερη φορά
+    // δεν ξαναγράφει τις γραμμές: το `notification_log` σβήνει μαζί τους, οπότε
+    // ένα ήδη σταλμένο email θα ξανάφευγε και μια υπενθύμιση που ο χρήστης
+    // έκλεισε θα γύριζε ανοιχτή. Παλαιότερο χαρτί ή αποτυχία εγγραφής του
+    // ακινήτου: καμία αλλαγή στις υπενθυμίσεις.
+    if (plan.calendar && !reconciled && plan.calendarSync === 'pea') {
+      if (replaceUnknown) fail(CALENDAR);
+      else if (replaced && guard && String(before ?? '').slice(0, 10) !== guard.value) {
+        const { error: cErr } = await syncPeaReminders(supabase, { propertyId, userId }, plan.calendar);
+        if (cErr) fail(CALENDAR); else add(CALENDAR);
       }
     }
 

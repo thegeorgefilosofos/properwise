@@ -32,7 +32,7 @@ import { SITE_HOST } from '@/lib/core/site';
 import { hardNavigate } from '@/lib/core/navigate';
 import { History } from 'lucide-react';
 import {
-  myFirm, saveFirm, invite, setRole, removeMember, accessHistory, reasonText,
+  myFirm, saveFirm, invite, sendInviteEmail, inviteOutcome, setRole, removeMember, accessHistory, reasonText,
   ROLE_LABEL, ROLE_HINT, ROLES, KIND_LABEL, ACTION_LABEL, canManage,
   type Firm, type FirmFields, type FirmKind, type FirmRole, type AccessEntry,
 } from '@/lib/data/firms';
@@ -128,17 +128,21 @@ export default function FirmView() {
     // «Η διεύθυνση είχε ήδη πρόσκληση.», δύο αντιφατικά μηνύματα για μία πράξη.
     if (sending) return;
     setInvErr(''); setSending(true);
-    const r = await invite(supabase, inv.email.trim(), inv.role);
+    const email = inv.email.trim().toLowerCase();
+    const r = await invite(supabase, email, inv.role);
+    if (!r.ok) { setSending(false); setInvErr(reasonText(r.reason)); return; }
+    // ΤΟ EMAIL ΦΕΥΓΕΙ ΜΟΝΟ ΣΕ ΕΚΚΡΕΜΗ ΠΡΟΣΚΛΗΣΗ. Η οθόνη έγραφε «Η πρόσκληση
+    // στάλθηκε.» ενώ δεν έφευγε κανένα μήνυμα. Τώρα το λέει μόνο αν έφυγε.
+    const existing = r.data?.existing === true;
+    const member = existing && !!firm?.members.some(m => m.email.toLowerCase() === email && m.status === 'active');
+    const mail = member ? null : await sendInviteEmail(supabase, email);
     setSending(false);
-    if (!r.ok) { setInvErr(reasonText(r.reason)); return; }
     setInviting(false);
     setInv({ email: '', role: 'accountant' });
-    // ΔΕΝ ΦΕΥΓΕΙ EMAIL (το `firm_invite` γράφει μόνο την πρόσκληση). Ελεγε «Η
-    // πρόσκληση στάλθηκε» και ο Υπεύθυνος περίμενε ότι το μέλος την έλαβε.
-    const who = inv.email.trim();
-    notify(r.data?.existing
-      ? 'Η διεύθυνση είχε ήδη πρόσκληση.'
-      : `Η πρόσκληση καταχωρήθηκε. Για να την αποδεχτεί, το μέλος συνδέεται στο ${SITE_HOST}${PORTAL_HOME} με τη διεύθυνση ${who}.`, { duration: 9000 });
+    // ΤΟ TOAST ΛΕΕΙ ΜΟΝΟ Ο,ΤΙ ΕΓΙΝΕ. «Στάλθηκε email» μόνο όταν η συνάρτηση
+    // απάντησε `sent: true`· αλλιώς η πρόσκληση υπάρχει και το μέλος μπαίνει
+    // στην πύλη με αυτή τη διεύθυνση (lib/data/firms.ts, `inviteOutcome`).
+    notify(inviteOutcome({ existing, member, mail, email, portal: `${SITE_HOST}${PORTAL_HOME}` }), mail === 'sent' || member ? undefined : { duration: 9000 });
     await load();
   };
 

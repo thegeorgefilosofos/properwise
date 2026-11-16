@@ -20,12 +20,16 @@ export const SCENES = [
   'calendar', 'calendarDay', 'clients', 'documents', 'inventory', 'settings', 'settingsPro',
   'billing', 'branding', 'referral', 'referralPro', 'plan', 'planReno', 'planSale',
   'myaade', 'myaadeReview', 'myaadeDone', 'myaadeError',
+  // Η μαζική καταχώρηση από Ε9 ή πράξη ΕΝΦΙΑ (09/11/2026).
+  'bulkWizard', 'bulkE9', 'bulkMany', 'bulkPlan', 'bulkWrongDoc',
   // Τα λογιστικά γραφεία (scripts/perf-bench/firms.tsx).
   'firm', 'firmNew', 'firmInvite', 'firmWorkspace', 'firmWorkspaceAssociate', 'firmWorkspaceInvite',
   'firmEntryDocument', 'firmEntryBill', 'firmEntryTax', 'firmEntryLoan', 'firmEntryRent', 'firmEntryTenant', 'firmOwner',
   'firmSecondStep', 'firmOwnerDay', 'firmOwnerLink', 'firmOwnerUndo', 'firmOwnerRevoke', 'firmClientGone', 'firmClientSecondStep',
   // Η άδεια λίστα, το γραφείο χωρίς ιστορικό και το «Ζήτησέ το» (RequestSheet.tsx).
   'firmWorkspaceEmpty', 'firmQuiet', 'firmAsk', 'firmAskChannels', 'firmAskSent', 'firmBulkPick', 'firmAccount',
+  // Η Επισκόπηση με την ενημέρωση των γραφείων (ΑΠ-11, lib/legal/policyNotice.ts).
+  'overviewFirmNotice',
 ];
 
 // ═══ ΟΙ ΣΚΗΝΕΣ ΤΗΣ ΠΥΛΗΣ ΤΟΥ ΛΟΓΙΣΤΗ ════════════════════════════════════════

@@ -14,7 +14,7 @@
 // Οι μετρητές λένε πόσα θα μείνουν αν πατήσεις την επιλογή (facets.ts).
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useId, useRef, useState } from 'react';
-import { fn } from '@/components/Theme';
+import { fn, lockScroll } from '@/components/Theme';
 
 export interface FilterOption { value: string; count: number; selected: boolean }
 export interface FilterFacet { key: string; label: string; options: FilterOption[] }
@@ -114,14 +114,21 @@ function Sheet({ facets, onToggle, onClear, resultCount, onClose }: Props & { on
   const [openKey, setOpenKey] = useState<string | null>(facets[0]?.key ?? null);
   const panel = useRef<HTMLDivElement | null>(null);
   const titleId = useId();
+  // ΜΙΑ ΦΟΡΑ ΣΤΟ ΑΝΟΙΓΜΑ, ΟΧΙ ΣΕ ΚΑΘΕ ΕΠΙΛΟΓΗ (11/11/2026). Το `onClose` έρχεται
+  // ως καινούρια συνάρτηση σε κάθε απόδοση, οπότε κάθε πάτημα φίλτρου ξανάτρεχε
+  // το effect: η εστίαση πηδούσε από την επιλογή στο φύλλο και η κύλιση
+  // ξεκλείδωνε και ξανακλείδωνε. Και κλείδωνε μόνο το `body`· στον πίνακα
+  // κυλά η `.app-content`, που έμενε να κυλά πίσω από το φύλλο. Το κοινό
+  // `lockScroll` κλειδώνει και τα δύο και μετρά μαζί με τα υπόλοιπα παράθυρα.
+  const close = useRef(onClose);
+  useEffect(() => { close.current = onClose; });
   useEffect(() => {
-    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') close.current(); };
     document.addEventListener('keydown', key);
     panel.current?.focus();
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.removeEventListener('keydown', key); document.body.style.overflow = prev; };
-  }, [onClose]);
+    const unlock = lockScroll();
+    return () => { document.removeEventListener('keydown', key); unlock(); };
+  }, []);
   const anyActive = facets.some(f => f.options.some(o => o.selected));
   return (
     <div className="af-sheet-scrim" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>

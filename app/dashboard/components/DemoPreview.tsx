@@ -71,7 +71,7 @@ export default function DemoPreview({ open, onClose, onAddProperty }: {
 
       {/* ── Η ΚΑΤΑΣΤΑΣΗ ──────────────────────────────────────────────────── */}
       <div>
-        <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', marginBottom: 10 }}>ΑΠΟ ΤΟ ΕΝΟΙΚΙΟ ΣΤΟ ΤΑΜΕΙΟ</div>
+        <div style={{ ...TT.label, fontSize: 'var(--fs-xs)', marginBottom: 10 }}>Από το ενοίκιο στο ταμείο</div>
         <div style={{ border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, overflow: 'hidden' }}>
           {lines.map((l, i) => {
             const strong = l.kind === 'subtotal' || l.kind === 'result';
@@ -134,7 +134,7 @@ export default function DemoPreview({ open, onClose, onAddProperty }: {
               έσπαγε το «1.234,56€» στη μέση. */}
           <div className="po-scroll-x">
             <table className="po-table" style={{ ['--tbl-min' as string]: '340px' }}>
-              <caption>ΟΙ ΔΑΠΑΝΕΣ ΚΑΙ Ο ΛΟΓΑΡΙΑΣΜΟΣ ΤΟΥΣ</caption>
+              <caption>Οι δαπάνες και ο λογαριασμός τους</caption>
               <thead>
                 <tr>
                   <th scope="col">Δαπάνη</th>

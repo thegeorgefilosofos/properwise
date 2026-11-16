@@ -5,8 +5,8 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Το Next του δίνει ολόκληρο το αίτημα: διαδρομή με query string, κεφαλίδες με
 // cookie και την εξαίρεση με το μήνυμά της. Από αυτά ταξιδεύουν μόνο το αρχείο
-// της διαδρομής, η μέθοδος και ο τύπος της εξαίρεσης. Και μόνο για διαδρομές
-// API: απόδοση σελίδας, server action και proxy μένουν έξω για τώρα.
+// της διαδρομής, η μέθοδος και ο τύπος της εξαίρεσης. Για διαδρομές API,
+// απόδοση σελίδας και server action· ο proxy και τα σήματα πλοήγησης μένουν έξω.
 // ═══════════════════════════════════════════════════════════════════════════
 import { onRequestError } from '../../instrumentation'
 
@@ -49,9 +49,27 @@ const valueOf = (body: string) =>
   (JSON.parse(body.split('\n')[2]) as { exception: { values: { value: string }[] } }).exception.values[0].value
 
 async function run() {
-  for (const t of ['render', 'action', 'proxy'] as const) {
-    const sent = await captured(() => onRequestError(new Error(`σελίδα ${t}`), request, ctx(t)) as Promise<void>)
-    ok(`routeType «${t}»: τίποτα δεν φεύγει`, sent.length === 0)
+  {
+    const sent = await captured(() => onRequestError(new Error('proxy'), request, ctx('proxy')) as Promise<void>)
+    ok('routeType «proxy»: τίποτα δεν φεύγει', sent.length === 0)
+  }
+  for (const t of ['render', 'action'] as const) {
+    const sent = await captured(() => onRequestError(new TypeError(`foo@bar.gr ${t}`), request, ctx(t)) as Promise<void>)
+    ok(`routeType «${t}»: φεύγει ένας φάκελος`, sent.length === 1)
+    const b = sent[0] ?? ''
+    ok(`routeType «${t}»: με το είδος και τον τύπο, χωρίς μήνυμα, query ή cookie`,
+      b.includes(t) && b.includes('TypeError') && !b.includes('foo@bar.gr') && !b.includes('a@b.gr') && !b.includes('μυστικό-cookie'))
+  }
+  // Τα σήματα πλοήγησης του Next (redirect, notFound) δεν είναι σφάλματα.
+  for (const digest of ['NEXT_REDIRECT;replace;/login;307;', 'NEXT_HTTP_ERROR_FALLBACK;404', 'DYNAMIC_SERVER_USAGE']) {
+    const e = Object.assign(new Error('nav'), { digest })
+    const sent = await captured(() => onRequestError(e, request, ctx('render')) as Promise<void>)
+    ok(`σήμα πλοήγησης «${digest.split(';')[0]}»: τίποτα δεν φεύγει`, sent.length === 0)
+  }
+  {
+    const e = new Error('aborted'); e.name = 'AbortError'
+    const sent = await captured(() => onRequestError(e, request, ctx('render')) as Promise<void>)
+    ok('διακοπή από τον επισκέπτη: τίποτα δεν φεύγει', sent.length === 0)
   }
 
   const one = await captured(() =>

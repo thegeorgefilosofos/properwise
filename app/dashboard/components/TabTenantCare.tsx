@@ -83,6 +83,11 @@ import {
   filledTenantIds,
 } from './TabTenantParts';
 import { useLoad } from '@/app/hooks/useLoad';
+import { COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
+import { Dictation } from '@/components/dictation/MicButton';
+
+/** Το έτος του ορίου των εμπορικών μισθώσεων, από τη σταθερά (έλεγχος 10/11/2026). */
+const CAP_YEAR = Number(COMMERCIAL_RENT_CAP_2026.from.slice(0, 4));
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Ο ΕΝΟΙΚΙΑΣΤΗΣ: Η ΕΠΙΣΚΟΠΗΣΗ, Η ΕΠΙΚΟΙΝΩΝΙΑ, Ο ΝΟΜΟΣ ΚΑΙ Η ΣΥΝΤΗΡΗΣΗ
@@ -315,8 +320,10 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
             </div>
             <div style={{ marginBottom:14 }}>
               <div style={{ ...labelStyle, marginBottom:8 }}>Σύνοψη επικοινωνίας *</div>
-              <textarea value={form.summary} onChange={e=>setForm(f=>({...f,summary:e.target.value}))} placeholder="Περιγραφή επικοινωνίας…" rows={3}
+              <Dictation multiline value={form.summary} onChange={v=>setForm(f=>({...f,summary:v}))}>
+              <textarea aria-label="Σύνοψη επικοινωνίας" value={form.summary} onChange={e=>setForm(f=>({...f,summary:e.target.value}))} placeholder="Περιγραφή επικοινωνίας…" rows={3}
                 style={{ width:'100%', background:'var(--bg-surface)', border:'1px solid var(--border-default)', borderRadius:T.radius.inner, padding:'10px 14px', color:'var(--text-primary)', fontSize:14, letterSpacing:0, fontFamily:T.font.sans, outline:'none', boxSizing:'border-box' as const, resize:'vertical' as const, lineHeight:1.6 }}/>
+              </Dictation>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
               <Btn variant="secondary" onClick={()=>setShowAdd(false)}>Ακύρωση</Btn>
@@ -523,8 +530,8 @@ export function LegalTaxView({ tenant, propertyCount, rentTax }:{ tenant:Tenant;
                 γραμμές ο ένας, έξι ο άλλος. Οποιος κι αν παιχτεί, το κουτί
                 γεμίζει πέρα πέρα. */}
             <div className="po-just">{hy(isCommercial
-              ?'Στις υφιστάμενες επαγγελματικές μισθώσεις (ΠΔ 34/1995), η αναπροσαρμογή για το 2026 δεν επιτρέπεται να ξεπερνά το 3% επί του μισθώματος του 2025, ακόμη κι αν οι αγοραίες τιμές ανέβηκαν περισσότερο. Το όριο δεν ισχύει σε νέα μίσθωση που υπογράφεις μέσα στο 2026.'
-              :'Σε ενεργή μίσθωση κατοικίας δεν μπορείς να αυξήσεις μονομερώς το ενοίκιο κατά τη διάρκεια της σύμβασης — μόνο αν υπάρχει ρητός όρος αναπροσαρμογής (π.χ. ΔΤΚ ή σταθερό ποσοστό). Νέο, υψηλότερο μίσθωμα μπαίνει μόνο με νέα συμφωνία που αποδέχεται και ο μισθωτής. Για το 2026 δεν ισχύει γενικό κρατικό πλαφόν στα ενοίκια κατοικίας (το όριο 3% αφορά μόνο τις εμπορικές μισθώσεις).')}</div>
+              ?`Στις υφιστάμενες επαγγελματικές μισθώσεις (ΠΔ 34/1995), η αναπροσαρμογή για το ${CAP_YEAR} δεν επιτρέπεται να ξεπερνά το ${fpRate(COMMERCIAL_RENT_CAP_2026.pct)} επί του μισθώματος του ${CAP_YEAR - 1}, ακόμη κι αν οι αγοραίες τιμές ανέβηκαν περισσότερο. Το όριο δεν ισχύει σε νέα μίσθωση που υπογράφεις μέσα στο ${CAP_YEAR}.`
+              :`Σε ενεργή μίσθωση κατοικίας δεν μπορείς να αυξήσεις μονομερώς το ενοίκιο κατά τη διάρκεια της σύμβασης, εκτός αν υπάρχει ρητός όρος αναπροσαρμογής (π.χ. ΔΤΚ ή σταθερό ποσοστό). Νέο, υψηλότερο μίσθωμα μπαίνει μόνο με νέα συμφωνία που αποδέχεται και ο μισθωτής. Για το 2026 δεν ισχύει γενικό κρατικό πλαφόν στα ενοίκια κατοικίας (το όριο ${fpRate(COMMERCIAL_RENT_CAP_2026.pct)} αφορά μόνο τις εμπορικές μισθώσεις).`)}</div>
           </InfoBlock>
           <InfoBlock title="Ελάχιστη διάρκεια και εγγύηση">
             {isCommercial
@@ -646,12 +653,12 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
               <div><div style={{ ...labelStyle, marginBottom:8 }}>Χρέωση στον ενοικιαστή</div><Toggle on={f.charged_to_tenant} onChange={v=>setF(x=>({...x,charged_to_tenant:v}))} ariaLabel="Χρέωση στον ενοικιαστή"/></div>
             </div>
             <div style={{ marginBottom:14 }}>
-              <TextInput label="Περιγραφή *" value={f.description} onChange={v=>setF(x=>({...x,description:v}))} placeholder="Φθορά πάγκου κουζίνας"/>
+              <TextInput dictation label="Περιγραφή *" value={f.description} onChange={v=>setF(x=>({...x,description:v}))} placeholder="Φθορά πάγκου κουζίνας"/>
             </div>
             <div className="kpi-row" style={{ ...s.g3, marginBottom:14 }}>
               <div><div style={{ ...labelStyle, marginBottom:8 }}>Επισκευάστηκε</div><Toggle on={f.repaired} onChange={v=>setF(x=>({...x,repaired:v}))} ariaLabel="Επισκευάστηκε"/></div>
               {f.repaired&&<DatePicker label="Ημερομηνία επισκευής" value={f.repaired_on} onChange={v=>setF(x=>({...x,repaired_on:v}))}/>}
-              <TextInput label="Σημείωση" value={f.notes} onChange={v=>setF(x=>({...x,notes:v}))} placeholder="προαιρετικό"/>
+              <TextInput dictation label="Σημείωση" value={f.notes} onChange={v=>setF(x=>({...x,notes:v}))} placeholder="προαιρετικό"/>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
               <Btn variant="secondary" onClick={()=>{setAddOpen(false);setEditId(null);}}>Ακύρωση</Btn>
@@ -665,7 +672,7 @@ export function DamagesView({ tenant, propertyId, userId, damages, onRefresh }:{
         ):groups.map(g=>(
           <div key={g.label} style={{ marginBottom:T.sp.lg }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-              <span style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-secondary)', fontFamily:T.font.sans }}>{g.label}</span>
+              <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color:'var(--text-secondary)', fontFamily:T.font.sans }}>{g.label}</span>
               <span style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.num, fontVariantNumeric:'tabular-nums' }}>{fmt(g.items.reduce((a,d)=>a+(d.cost||0),0))}</span>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -847,7 +854,7 @@ export function MaintenanceView({ tenant, propertyId, userId, requests, others, 
                       </div>
                       {savedContacts.length>0&&(
                         <div style={{ marginBottom:10 }}>
-                          <div style={{ fontSize: 'var(--fs-xs)', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase' as const, color:'var(--text-tertiary)', fontFamily:T.font.sans, marginBottom:6 }}>Από τις επαφές σου</div>
+                          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color:'var(--text-tertiary)', fontFamily:T.font.sans, marginBottom:6 }}>Από τις επαφές σου</div>
                           <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
                             {savedContacts.slice(0,8).map(c=>(
                               // Μοιάζει με πλακίδιο αλλά δεν κρατά κατάσταση: συμπληρώνει τη
