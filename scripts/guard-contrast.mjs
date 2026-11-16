@@ -72,9 +72,12 @@ for (const ink of ['--mkt-text-primary', '--mkt-text-secondary', '--mkt-text-ter
   for (const s of ['--mkt-bg-base', '--mkt-bg-surface', '--mkt-bg-elevated']) MKT.push({ ink, on: s, min: 4.5, why: 'κείμενο της βιτρίνας' })
 MKT.push({ ink: '--mkt-accent-text', on: '--mkt-accent', min: 4.5, why: 'κουμπί της βιτρίνας' })
 
-const { main, contrast: hc } = readPalettes()
+const { main, contrast: hc, manual } = readPalettes()
 const SPACES = [{ name: 'βασικό', theme: main }]
 if (hc) SPACES.push({ name: 'αυξημένη αντίθεση', theme: hc })
+// Η «Υψηλή αντίθεση» των Ρυθμίσεων υπόσχεται WCAG AAA: κείμενο 7:1 αντί 4,5:1.
+// Τα μη κειμενικά (όρια, δαχτυλίδι, γραφήματα) μένουν 3:1, όσο ζητά το πρότυπο.
+if (manual) SPACES.push({ name: 'υψηλή αντίθεση (ρύθμιση)', theme: manual, textMin: 7 })
 
 const fails = []
 const unresolved = []
@@ -99,7 +102,8 @@ function measure(space, mode, map, p) {
   if (r < p.min) fails.push({ space, mode, ...p, ink2: toHex(inkSolid), on2: toHex(bg), r })
 }
 
-for (const space of SPACES) for (const mode of ['light', 'dark']) for (const p of PAIRS) measure(space.name, mode, space.theme[mode], p)
+for (const space of SPACES) for (const mode of ['light', 'dark']) for (const p of PAIRS)
+  measure(space.name, mode, space.theme[mode], space.textMin && p.min >= 4.5 ? { ...p, min: space.textMin } : p)
 for (const p of MKT) measure('βιτρίνα', 'dark', main.dark, p)
 
 // ── ΟΤΙ Ο ΦΥΛΑΚΑΣ ΔΙΑΒΑΣΕ ΔΥΟ ΔΙΑΦΟΡΕΤΙΚΑ ΘΕΜΑΤΑ ────────────────────────────

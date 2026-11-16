@@ -1600,7 +1600,7 @@ function DraftCard({ d, onToggle, onPatch, onPatchDoc, onAnswer, onArchiveOnly, 
               </div>
             )}
             {formInfo && <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{formInfo}</div>}
-            <Textarea label="Σημειώσεις" value={doc.notes || ''} onChange={t => onPatchDoc({ notes: t })} placeholder="Προαιρετικά"/>
+            <Textarea dictation label="Σημειώσεις" value={doc.notes || ''} onChange={t => onPatchDoc({ notes: t })} placeholder="Προαιρετικά"/>
           </>) : (
             // Χωρίς ανάγνωση μένει μία επιλογή: σε ποιο ράφι του Φακέλου μπαίνει.
             <CustomSelect label="Κατηγορία (φάκελος)" value={d.category} onChange={c => onPatch({ category: c })}

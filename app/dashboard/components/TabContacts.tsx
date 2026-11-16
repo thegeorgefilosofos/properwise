@@ -40,6 +40,7 @@ import { contactRouteGrid, ContactActionTile, ContactDossier } from './contacts/
 import {
   ContactCard, CONTACT_ACTIONS_W, CONTACT_ROW_MIN, CompactRow, GroupDivider, AlphaRail,
 } from './contacts/ContactCard'
+import { Dictation } from '@/components/dictation/MicButton'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function TabContacts({ propertyId, userId, embedded, profileType = 'individual', properties = [] }: TabContactsProps) {
@@ -516,9 +517,13 @@ export default function TabContacts({ propertyId, userId, embedded, profileType 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         {showTool('search', contacts.length) && (
         <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
-          <Search size={14} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
-          {/* Το γέμισμα κρατά το κείμενο έξω από το εικονίδιο: ξεκινά στα 13 με πλάτος 14. */}
-          <input value={search} aria-label="Αναζήτηση επαφής" onChange={e => setSearch(e.target.value)} placeholder="Όνομα, τηλέφωνο, email, ΑΦΜ ή IBAN" style={{ ...iStyle, paddingLeft: 38 }} onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-dim)' }} onBlur={e => { e.target.style.borderColor = 'var(--border-default)'; e.target.style.boxShadow = 'none' }} />
+          {/* Το γέμισμα κρατά το κείμενο έξω από το εικονίδιο: ξεκινά στα 13 με πλάτος 14.
+              Το εικονίδιο ζει μέσα στο περιτύλιγμα της υπαγόρευσης, ώστε να μένει
+              στο κέντρο του πεδίου και όταν από κάτω γραφτεί μήνυμα σφάλματος. */}
+          <Dictation value={search} onChange={setSearch}>
+            <Search size={14} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+            <input value={search} aria-label="Αναζήτηση επαφής" onChange={e => setSearch(e.target.value)} placeholder="Όνομα, τηλέφωνο, email, ΑΦΜ ή IBAN" style={{ ...iStyle, paddingLeft: 38 }} onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-dim)' }} onBlur={e => { e.target.style.borderColor = 'var(--border-default)'; e.target.style.boxShadow = 'none' }} />
+          </Dictation>
         </div>
         )}
         {allTags.length > 0 && (
