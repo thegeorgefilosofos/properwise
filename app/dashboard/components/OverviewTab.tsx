@@ -49,6 +49,7 @@ import { FIRST_MONTH_BANK_RECEIPT, FIRST_YEAR_BANK_RECEIPT } from '@/lib/billing
 import { fpRate, grDateOf } from '@/lib/core/format'
 import AthensNow from './AthensNow'
 import CashHero from './CashHero'
+import { SpeakAmount } from '@/components/SpeakAmount'
 import RentReceived, { receivableLines } from './RentReceived'
 import AgendaPanel from './AgendaPanel'
 import { CalendarQuickAdd } from './calendar/CalendarQuickAdd'
@@ -926,7 +927,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             // ΕΤΟΣ ΠΟΥ ΔΕΝ ΕΧΕΙ ΕΚΔΟΘΕΙ ΣΤΟ ΗΜΕΡΟΛΟΓΙΟ (κριτική σχεδίασης r7): κανένα ποσό,
             // ούτε το περσινό που γράφτηκε· μόνο ο μήνας, «ΕΝΦΙΑ 2027 / Μάρτιος 2027».
             ? <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-primary)',marginTop:4}}>{enfiaNext!.next!.date}</div>
-            : <div style={{fontFamily:T.font.num,fontSize:enfiaPaidOff ? TT.kpi.fontSize : 'clamp(28px,7vw,40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
+            : <div style={{fontFamily:T.font.num,fontSize:enfiaPaidOff ? TT.kpi.fontSize : 'clamp(28px,calc(7vw / var(--zoom, 1)),40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
             ? <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-secondary)',letterSpacing:0}}>Δεν φορτώθηκε</span>
             : fmtEur(taxHero ? estTax : enfiaHero ? enfiaPaid : heroValue)}</div>}
           {taxHero && !rentMissing && !moneyGap && (
@@ -1184,7 +1185,23 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           χρησιμοποιείται πουθενά αλλού στην εφαρμογή και δεν διαβάζεται με μια
           ματιά. Είναι όλα το ίδιο πράγμα — αριθμός με ετικέτα — και πλέον
           δείχνουν έτσι. */}
-      <SecHdr label={`Η χρονιά ${year}`} sub="Πού καταλήγει με ό,τι ξέρουμε σήμερα" />
+      {/* «ΑΚΟΥΣΕ» ΤΗΝ ΑΛΥΣΙΔΑ ΤΗΣ ΧΡΟΝΙΑΣ, ΔΙΠΛΑ ΣΤΟΝ ΤΙΤΛΟ. Ως ενέργεια δεξιά, στα
+          375 το κουμπί των 44 έπεφτε σε δική του σειρά και άνοιγε κενό ανάμεσα
+          στον τίτλο και τον υπότιτλο. Τα ίδια τέσσερα ποσά με τα πλακίδια
+          από κάτω, από τις ίδιες μεταβλητές, διαβασμένα ολογράφως. Φαίνεται μόνο
+          με την «Ανάγνωση ποσών» των Ρυθμίσεων και μόνο όπου υπάρχουν έσοδα:
+          χωρίς αυτά δεν υπάρχει φόρος ούτε καθαρό να ακουστεί. */}
+      <SecHdr label={`Η χρονιά ${year}`} sub="Πού καταλήγει με ό,τι ξέρουμε σήμερα"
+        info={!moneyGap && isLet(prop) ? (
+          <span className="sec-hdr-act">
+          <SpeakAmount variant="icon" title={`Η χρονιά ${year}`} label="τα ποσά της χρονιάς" figures={[
+            { label: 'Έσοδα έτους', amount: annualRent },
+            { label: EXPENSE_LABELS.total, amount: yExp.total },
+            { label: portfolioTax.count > 1 ? 'Μερίδιο φόρου' : 'Φόρος ενοικίου', amount: estTax },
+            { label: 'Καθαρό έτους', amount: annualRent - costs.total - estTax },
+          ]} />
+          </span>
+        ) : undefined} />
       {moneyGap ? (
         <EmptyState icon={<FileText size={20}/>} title="Τα ποσά της χρονιάς περιμένουν" hint="Δεν φορτώθηκαν όλες οι καταχωρήσεις. Με μισές, τα σύνολα δεν θα ήταν αληθινά."/>
       ) : (() => {

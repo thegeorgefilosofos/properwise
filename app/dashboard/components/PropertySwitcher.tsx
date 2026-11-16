@@ -137,7 +137,7 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
 
   const panel: React.CSSProperties = {
     position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 100,
-    width: 320, maxWidth: 'calc(100vw - 32px)',
+    width: 320, maxWidth: 'calc(calc(100vw / var(--zoom, 1)) - 32px)',
     background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
     borderRadius: T.radius.popup, boxShadow: 'var(--shadow-lg)', overflow: 'hidden',
   };
@@ -188,7 +188,7 @@ export default function PropertySwitcher({ items, activeId, onSelect, onAdd, can
           <div ref={listRef} id={listId} role="listbox" aria-label="Ακίνητα"
             tabIndex={searchable ? -1 : 0}
             aria-activedescendant={searchable ? undefined : activeOptionId}
-            style={{ maxHeight: 'min(340px, calc(100vh - 180px))', overflowY: 'auto', overscrollBehavior: 'contain', padding: 4, outline: 'none' }}>
+            style={{ maxHeight: 'min(340px, calc(calc(100vh / var(--zoom, 1)) - 180px))', overflowY: 'auto', overscrollBehavior: 'contain', padding: 4, outline: 'none' }}>
             {shown.length === 0 ? (
               <p style={{ margin: 0, padding: '14px 12px', fontFamily: T.font.sans, fontSize: 'var(--fs-base)', color: 'var(--text-tertiary)' }}>
                 Κανένα ακίνητο δεν ταιριάζει.

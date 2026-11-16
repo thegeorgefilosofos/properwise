@@ -19,6 +19,7 @@
 import { type ReactNode, type CSSProperties, type MouseEvent, type PointerEvent, type Ref, useState, useEffect, useRef, useSyncExternalStore, useId } from 'react';
 import { T, TT } from './tokens';
 import { backdropDismiss } from '@/lib/ui/dismiss';
+import { cssZoom } from '@/lib/core/cssZoom';
 
 // ═══ useOverlayShell — η συμπεριφορά κάθε επικάλυψης, μία φορά ════════════
 // Escape, εστίαση μέσα και επιστροφή μετά, κλείδωμα κύλισης φόντου. Ήταν
@@ -359,10 +360,14 @@ function useKeyboardInset(open: boolean, ref: { current: HTMLElement | null }) {
     if (!open || !vv || !el) return;
     const sync = () => {
       const zoomed = vv.scale > 1.01;
-      const kb = zoomed ? 0 : Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      // Το `visualViewport` μετρά σε εικονοστοιχεία οθόνης, οι μεταβλητές
+      // γράφονται μέσα στη ρίζα με «Μέγεθος κειμένου» (`zoom`): διαιρούνται, αλλιώς
+      // στο «Πολύ μεγάλο» το φύλλο έβγαινε 25% ψηλότερο από το ορατό.
+      const z = cssZoom();
+      const kb = zoomed ? 0 : Math.max(0, Math.round((window.innerHeight - vv.height - vv.offsetTop) / z));
       el.style.setProperty('--kb', `${kb}px`);
       if (zoomed) el.style.removeProperty('--vvh');
-      else el.style.setProperty('--vvh', `${Math.round(vv.height)}px`);
+      else el.style.setProperty('--vvh', `${Math.round(vv.height / z)}px`);
     };
     sync();
     vv.addEventListener('resize', sync);
