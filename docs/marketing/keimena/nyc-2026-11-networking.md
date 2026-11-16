@@ -1,13 +1,13 @@
-# New York, ώς την πρώτη Δεκεμβρίου: αναρτήσεις γνωριμίας (αγγλικά)
+# New York: αναρτήσεις γνωριμίας (αγγλικά)
 
-Πρώτο πρόσωπο, από τον ιδρυτή. Κανένα ψηφίο: η ημερομηνία γράφεται ολογράφως.
+Πρώτο πρόσωπο, από τον ιδρυτή. Κανένα ψηφίο και καμία ημερομηνία αναχώρησης (απόφαση ιδιοκτήτη).
 Η περιγραφή του προϊόντος είναι αυτή της αγγλικής αρχικής σελίδας (`LANDING_EN.description`).
 
 ---
 
 ## LinkedIn
 
-I'm in New York until the first of December, and I'd like to meet people who work in real estate, proptech, startups and venture capital.
+I'm in New York, and I'd like to meet people who work in real estate, proptech, startups and venture capital.
 
 I'm building PROPERWISE in Greece. It's an app for people who own property there: income, expenses, tenants, tax and deadlines in one place. You snap a bill and it files itself. Rental tax, form E2 and ENFIA (the annual property tax) are ready before your accountant asks.
 
@@ -26,7 +26,7 @@ If that's you, or you know someone I should talk to, send me a message. A coffee
 
 ## Instagram / Facebook
 
-New York until the first of December 🗽
+Now in New York 🗽
 
 I'm building PROPERWISE, an app for people who own property in Greece. It brings rent, expenses, tenants, tax and deadlines into one place.
 
@@ -38,7 +38,7 @@ Message me. Coffee is on me.
 
 ## X
 
-In NYC until the first of December. Building PROPERWISE, an app for people who own property in Greece: rent, expenses, tax, deadlines in one place.
+Now in NYC. Building PROPERWISE, an app for people who own property in Greece: rent, expenses, tax, deadlines in one place.
 
 Looking to meet Greek Americans with property back home, real estate investors, proptech founders and VCs. DMs open.
 
