@@ -6,7 +6,8 @@ import { TRIAL_OFFER, signupCta } from '@/lib/billing/trialOffer';
 import { withSignupEntry } from '@/lib/analytics/signupEntry';
 import { partnerWelcomeTier } from '@/lib/referral/referral';
 import { fe } from '@/lib/core/format';
-import { SITE, ORG_ID, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE, HOME_TITLE_LINES, SOCIAL_PROFILES } from '@/lib/core/site';
+import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE, HOME_TITLE_LINES } from '@/lib/core/site';
+import { organizationNode, ORG_REF } from '@/lib/seo/organization';
 import { IDENTITY } from '@/lib/legal/identity';
 import { billingWords, PRICES_VAT, NO_COMMITMENT } from '@/lib/legal/billingWords';
 import { createClient } from '@/lib/supabase/server';
@@ -29,6 +30,7 @@ import {
 } from './landingContent'
 import { FaqList, NoaFeature, SectionHead, OwnerPlanCard, PlanCard } from './LandingParts'
 import { LandingStyles } from './LandingStyles'
+import { ToolsAndGuides } from './LandingLinks'
 import { languageAlternates } from '@/lib/i18n/paths'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -432,6 +434,13 @@ export default async function Landing() {
       <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
         <SectionHead over="Δες το μόνος σου" title="Πόσο σου αποδίδει πραγματικά;" sub={`Ενδεικτική καθαρή απόδοση, με την ίδια φορολογική κλίμακα ενοικίων ${scaleYear} που τρέχει και μέσα στην εφαρμογή.`} />
         <LandingCalculator cta={signupCta()} />
+      </section>
+
+      {/* ── Εργαλεία και οδηγοί: σύνδεσμοι μέσα στη σελίδα, από τους καταλόγους (LandingLinks.tsx).
+            Χωρίς δική του στάθμη: έρχεται μετά τα διακοσμητικά στη σειρά του DOM (guard-z-layers). ── */}
+      <section className="lp-reveal" style={{ ...wrap, position: 'relative', paddingBottom: GAP }}>
+        <SectionHead title="Εργαλεία και οδηγοί" sub="Υπολογισμοί χωρίς εγγραφή και οδηγοί που εξηγούν τον κανόνα πίσω από κάθε ποσό." />
+        <ToolsAndGuides />
       </section>
 
       {/* ── Security & trust ── */}
@@ -844,20 +853,7 @@ export default async function Landing() {
       <JsonLd data={{
         '@context': 'https://schema.org',
         '@graph': [
-          {
-            '@type': 'Organization',
-            '@id': ORG_ID,
-            name: IDENTITY.tradeName,
-            // Νόμιμες παραλλαγές γραφής της μάρκας (πεζά/κεφαλαία/κενό) ώστε η
-            // Google να τις συνδέει με την ίδια οντότητα. ΟΧΙ ορθογραφικά λάθη:
-            // αυτά διαβάζονται ως spam και η Google ήδη ανέχεται τις παραλλαγές.
-            alternateName: ['Properwise', 'ProperWise', 'Proper Wise'],
-            url: SITE,
-            email: IDENTITY.supportEmail,
-            logo: `${SITE}/icons/icon-192.png`,
-            areaServed: 'GR',
-            sameAs: [...SOCIAL_PROFILES],
-          },
+          organizationNode(),
           // ΤΟ WebSite ΔΕΝΕΙ ΤΟ ΟΝΟΜΑ ΤΗΣ ΜΑΡΚΑΣ ΜΕ ΤΟΝ ΤΟΜΕΑ. Χωρίς αυτό η
           // Google είχε την Organization και την εφαρμογή, αλλά κανένα κόμβο που
           // να λέει «αυτός ο ιστότοπος ΕΙΝΑΙ το PROPERWISE στο properwise.gr» —
@@ -871,7 +867,7 @@ export default async function Landing() {
             url: SITE,
             name: IDENTITY.tradeName,
             inLanguage: 'el',
-            publisher: { '@id': ORG_ID },
+            publisher: ORG_REF,
           },
           {
             '@type': 'SoftwareApplication',
@@ -886,7 +882,7 @@ export default async function Landing() {
             url: SITE,
             inLanguage: 'el',
             description: OG_DESC,
-            publisher: { '@id': ORG_ID },
+            publisher: ORG_REF,
           },
           {
             '@type': 'FAQPage',

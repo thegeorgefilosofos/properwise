@@ -126,7 +126,9 @@ const nextConfig: NextConfig = {
   // `anchorOf` του τίτλου της (app/legal-shell.tsx).
   async redirects() {
     return [
-      { source: "/calculators", destination: "/ypologismos-forou-enoikion", statusCode: 301 },
+      // Ο κόμβος των εργαλείων υπάρχει από 27/10/2026 (/ergaleia): η αγγλική
+      // λέξη οδηγεί σε όλους τους υπολογισμούς, όχι μόνο στον φόρο ενοικίων.
+      { source: "/calculators", destination: "/ergaleia", statusCode: 301 },
       { source: "/pricing", destination: "/paketa", statusCode: 301 },
       { source: "/cookies", destination: "/privacy#cookies-kai-synafeis-technologies", statusCode: 301 },
       // ΚΑΙ ΤΑ ΕΛΛΗΝΙΚΑ ΣΥΝΤΟΜΑ (12.10.2026). Ο έλεγχος αγοράς της ημέρας
