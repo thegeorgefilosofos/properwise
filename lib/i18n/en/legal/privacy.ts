@@ -144,6 +144,10 @@ export function privacySectionsEn(): LegalSection[] {
       'AI answers are supportive and indicative. No automated decisions producing legal effects for you, within the meaning of Article 22 GDPR, are made; every action stays under your control and you can correct it.',
       `Each subscription includes a set number of questions to Noa per day and per month, in line with the subscription; the no-subscription plan does not include them, while accounts on trial and a partner with no months without charge in force have a lower limit. Document scans are counted separately: ${SCAN_LIMITS.free} a month on the no-subscription plan, ${TRIAL_SCANS_PER_MONTH} a month on the trial and for a partner with no months without charge in force, with no monthly limit on paid subscriptions. Months without charge from the referral programme and the prize-draw gift have the limits of their plan. When the limit runs out, the app tells you and questions renew in the next cycle. Depending on the question, a different model from the same provider is used: the choice concerns speed and cost, not which data is transferred.`,
     ] },
+    { h: 'Voice input (dictation and Noa)', p: [
+      'Voice input is optional and starts only when you press the microphone. Speech-to-text is performed by your browser, with its own speech recognition service. In Chrome the audio is usually sent to Google and in Edge to Microsoft. In Safari the conversion often happens on the device or at Apple.',
+      'PROPERWISE never receives, records or stores audio. It receives only the text that appears in the field and stores it only if you save it. In Noa the text is sent as a question as soon as you stop speaking, like a question you type (see “Artificial intelligence (AI)”). Reading aloud (of Noa’s answers and of amounts) is done by the browser and sends nothing to us.',
+    ] },
     { h: 'Recipients and processors', part: 'C. Where it goes, how long it stays, how it is protected', p: [
       'We do not sell your data. We share it only with the providers below, and the role of each is stated. A processor acts only on our behalf and on our instructions. An independent controller decides for itself about the data it receives, and its own privacy policy applies to that data.',
     ], list: [
@@ -151,6 +155,7 @@ export function privacySectionsEn(): LegalSection[] {
       `Planned but not active today, meaning they process no data: ${plannedSubprocessors().map(subprocessorNameEn).join(', ')}.`,
       'No external service for QR codes: every QR (payment link, contact card, inventory label) is generated locally on your device.',
       'Leaked-password check (Have I Been Pwned): when you set or change a password, your browser computes the password’s SHA-1 locally and sends api.pwnedpasswords.com only its first five characters, with a padded response. The service does not receive your password, email or account; like any server, it sees the IP address the request comes from.',
+      'Voice input: speech recognition is a feature of your browser, not our subprocessor. The browser vendor (e.g. Google for Chrome, Microsoft for Edge) processes the audio on its own responsibility, under the browser’s terms. You can choose not to use the microphone: everything also works with the keyboard.',
     ], after: [
       'Before we add a new provider, we notify you by email.',
     ], note: 'The same list appears on the “About us” page. We may also disclose data where required by law, a competent authority or a court.' },
