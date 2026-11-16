@@ -1569,7 +1569,12 @@ function TextInputView({ label, labelInfo, ariaLabel, id, value, onChange, place
         border: `1px solid ${fieldBorderColor(focused)}`,
         boxShadow: fieldRing(focused),
         borderRadius: FIELD_RADIUS,
-        overflow: 'hidden',
+        // ΤΟ ΜΙΚΡΟΦΩΝΟ ΔΕΝ ΚΟΒΕΤΑΙ. Ο στόχος του είναι 44 και το κουτί 44 με
+        // περίγραμμα (40 με ποντίκι): το `overflow: hidden` έκοβε 1 ως 3
+        // εικονοστοιχεία πάνω και κάτω (e2e-rendered). Το κόψιμο υπάρχει μόνο για
+        // τις γωνίες του προθέματος και του επιθέματος· χωρίς αυτά δεν χρειάζεται,
+        // και ο ορατός κύκλος των 32 μένει έτσι κι αλλιώς μέσα στο κουτί.
+        overflow: mic?.button && !prefix && !suffix ? 'visible' : 'hidden',
         transition: 'border-color 0.15s, box-shadow 0.15s',
         opacity: disabled ? 0.5 : 1,
         height: FIELD_HEIGHT,

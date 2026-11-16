@@ -367,7 +367,7 @@ function ItemsTab({items,photoUrls,kwhPrice,onAdd,onEdit,onDelete,onRepair,onQR,
             390 κάθε φίλτρο έπιανε άλλο πλάτος σε δική του γραμμή και η δεξιά άκρη
             πήγαινε ζιγκ ζαγκ. Με `flex: 1 1 <βάση>` η βάση κρατά το κείμενο να
             χωράει και κάθε γραμμή που προκύπτει από τύλιγμα γεμίζει ίσα. */}
-        <div style={{flex:'2 1 210px',minWidth:0}}><TextInput dictation ariaLabel="Αναζήτηση αντικειμένου" value={search} onChange={setSearch} placeholder="Αντικείμενο ή μάρκα" aria-label="Αναζήτηση απογραφής"/></div>
+        <div style={{flex:'2 1 210px',minWidth:0}}><TextInput ariaLabel="Αναζήτηση αντικειμένου" value={search} onChange={setSearch} placeholder="Αντικείμενο ή μάρκα" aria-label="Αναζήτηση απογραφής"/></div>
         {/* ΤΑ ΠΛΑΤΗ ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΟ ΚΕΙΜΕΝΟ ΚΑΙ ΤΟ ΚΕΙΜΕΝΟ ΕΙΝΑΙ ΕΛΛΗΝΙΚΟ.
             Το «Όλες οι κατηγορίες» και το «Όλα τα δωμάτια» είναι οι ΠΡΟΕΠΙΛΟΓΕΣ,
             δηλαδή αυτό που βλέπει ο χρήστης πριν αγγίξει τίποτα — και δεν
