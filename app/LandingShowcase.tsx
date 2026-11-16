@@ -69,6 +69,10 @@ export default function LandingShowcase() {
         }
         ${/* Μέσα στο σκοτεινό hero το mockup κρατά μόνο τη σκιά του. Η γαλάζια
            λάμψη των 140 εικονοστοιχείων έφυγε (έλεγχος UX 09/11/2026). */''}
+        .ls-more { display: inline-flex; align-items: center; gap: 6px; min-height: 48px; padding: 0 12px; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; border-radius: 10px; }
+        .ls-more svg { transition: transform .2s ease; }
+        .ls-more:hover svg { transform: translateY(2px); }
+        .ls-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         .lp-hero .ls-mockup { box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow-ink) 50%, transparent), 0 24px 48px -12px color-mix(in srgb, var(--shadow-ink) 60%, transparent) !important; border-color: rgba(255,255,255,.14); }
       `}</style>
       <div ref={tiltRef} onMouseMove={onTilt} onMouseLeave={resetTilt} style={{ transition: 'transform 0.35s cubic-bezier(0.2, 0, 0, 1)', willChange: 'transform' }}>
@@ -92,18 +96,16 @@ export default function LandingShowcase() {
             <span style={{ width: 11, height: 11, borderRadius: '50%', background: 'var(--border-strong)', flexShrink: 0 }} />
             <span style={{ width: 11, height: 11, borderRadius: '50%', background: 'var(--border-strong)', flexShrink: 0 }} />
             <span style={{ width: 11, height: 11, borderRadius: '50%', background: 'var(--border-strong)', flexShrink: 0 }} />
-            {/* ΣΥΝΔΕΣΜΟΣ, ΟΧΙ ΓΥΜΝΗ ΔΙΕΥΘΥΝΣΗ (28/10/2026). Η μπάρα έγραφε
-                «properwise.gr/scan»: διεύθυνση που δεν ανοίγει πουθενά, σε
-                κείμενο που μοιάζει με σύνδεσμο. Τώρα λέει τι θα δεις και πάει
-                εκεί, στο «Πώς λειτουργεί» πιο κάτω. Ο στόχος αφής είναι 48 (το πλαίσιο
-                γέρνει και μικραίνει ελάχιστα, οπότε 44 μετριούνται 43,8) με
-                αρνητικό περιθώριο, οπότε η μπάρα κρατά το ύψος της. */}
-            <a href="#pos-leitourgei" className="ls-url" style={{ margin: '-10px auto', minWidth: 0, minHeight: 48, display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-              <span style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.chip, padding: '5px 14px', fontSize: 13, color: 'var(--text-secondary)' }}>
-                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Δες πώς λειτουργεί</span>
-                <svg aria-hidden="true" width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 5v14M6 13l6 6 6-6" /></svg>
-              </span>
-            </a>
+            {/* ΤΙΤΛΟΣ ΠΑΡΑΘΥΡΟΥ, ΟΧΙ ΚΟΥΜΠΙ (16/11/2026). Η μπάρα είχε το «Δες πώς
+                λειτουργεί ↓» ως χάπι στη θέση της διεύθυνσης (28/10/2026): ένα
+                κουμπί μέσα σε ψεύτικο παράθυρο διαβαζόταν ως μέρος της εικόνας,
+                όχι ως κάτι που πατιέται· ζύγιζε επίσης όσο το κουμπί του hero. Η
+                μπάρα κρατά πια τίτλο παραθύρου σε απλό κείμενο, κεντραρισμένο
+                ως προς όλο το πλάτος (το διάκενο δεξιά ισοζυγίζει τις κουκκίδες).
+                Ο σύνδεσμος βγήκε κάτω από το παράθυρο. Η μπάρα δεν μένει
+                κενή: ο λόγος του 28/10 για το κινητό ισχύει ακόμη. */}
+            <span style={{ flex: 1, minWidth: 0, textAlign: 'center', fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Σάρωση λογαριασμού</span>
+            <span aria-hidden="true" style={{ width: 49, flexShrink: 0 }} />
           </div>
 
           {/* Η σκηνή: μία πράξη, αυτή που υπόσχεται ο τίτλος από πάνω. */}
@@ -113,6 +115,16 @@ export default function LandingShowcase() {
             </div>
           </div>
         </div>
+      </div>
+      {/* Ο ΣΥΝΔΕΣΜΟΣ ΚΑΤΩ ΑΠΟ ΤΗ ΣΚΗΝΗ, ΟΧΙ ΜΕΣΑ ΤΗΣ. Κείμενο με βέλος, στο
+          χρώμα της έμφασης, κεντραρισμένο στον άξονα του hero: λέει «υπάρχει
+          κι άλλο από κάτω» αφού ο επισκέπτης έχει δει το παράδειγμα. Στόχος
+          αφής 48, όπως κάθε σύνδεσμος της σελίδας. */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+        <a href="#pos-leitourgei" className="ls-more">
+          Δες πώς λειτουργεί
+          <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M6 13l6 6 6-6" /></svg>
+        </a>
       </div>
     </div>
   );

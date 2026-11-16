@@ -133,7 +133,11 @@ function navFor(locale: Locale) {
 }
 
 export function PublicNav({ signedIn, current, locale = 'el' }: { signedIn?: ReactNode; current?: 'paketa' | 'odigos'; locale?: Locale }) {
-  const link = { color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '8px 10px', whiteSpace: 'nowrap' } as const;
+  // ΙΔΙΟ ΥΨΟΣ ΜΕ ΤΟ ΚΟΥΜΠΙ ΚΑΙ ΤΗ ΓΛΩΣΣΑ (16/11/2026). Με «8px 10px» οι σύνδεσμοι
+  // είχαν 37 ύψος δίπλα στα 44 του κουμπιού και του επιλογέα γλώσσας: ίδιο
+  // κέντρο, αλλά τρία ύψη στην ίδια σειρά και στόχος αφής κάτω από 44. Το
+  // κείμενο μένει όπου ήταν· μεγαλώνει μόνο η περιοχή που πατιέται.
+  const link = { color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 14, fontWeight: 600, padding: '0 10px', minHeight: 44, display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' } as const;
   const t = navFor(locale);
   const pages: [string, string][] = [t.guides, t.pricing, t.about].filter((x): x is [string, string] => !!x);
   if (!signedIn && t.login) pages.push(t.login);
