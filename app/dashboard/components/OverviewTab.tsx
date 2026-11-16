@@ -56,7 +56,7 @@ import AssistantStrip from './AssistantStrip'
 import ForecastCard from './ForecastCard'
 import { forecast12, type IncomeTaxStatement } from '@/lib/home/forecast12'
 import { cashPosition } from '@/lib/home/cash'
-import { buildAgenda, attachAmounts, type SetupLike as SetupStep } from '@/lib/home/agenda'
+import { buildAgenda, attachAmounts, withCondition, type SetupLike as SetupStep } from '@/lib/home/agenda'
 import {
   readFailures, moneyIncomplete, failedSentence, trustedStep, trustedInsight, trustedObligation,
   LEASE_DECL_AREA, TAX_DEADLINES_AREA,
@@ -624,6 +624,10 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
   const enfiaHeroYear = enfiaBase ? (enfiaBase.year === year ? enfiaNow : enfiaYear(enfiaSettings, enfiaBase.year, enfiaFacts)) : null;
   const enfiaNext = enfiaBase && enfiaHeroYear && enfiaHeroYear !== enfiaNow ? enfiaDeadline(readStatus(prop), todayAthens, enfiaHeroYear.annual) ?? enfiaBase : enfiaBase;
   const enfiaHero = !!enfiaHeroYear && enfiaHeroYear.annual > 0;
+  // Εκκαθαριστικό που δεν έχει γραφτεί ως εκδοθέν: χωρίς ποσό (κριτική σχεδίασης r7).
+  const enfiaUnissued = enfiaHero && !!enfiaNext && !enfiaNext.issued && !!enfiaNext.next;
+  // Οι δόσεις του τελείωσαν: το επόμενο προηγείται, το ποσό χαμηλώνει.
+  const enfiaPaidOff = enfiaHero && !!enfiaNext?.paidOff && !!enfiaNext.next;
   const enfiaPaid = enfiaHeroYear?.annual ?? 0;
   // ΧΩΡΙΣ ΠΟΣΟ, Ο ΕΝΦΙΑ ΛΕΕΙ ΤΙ ΛΕΙΠΕΙ (κριτική σχεδίασης r5), όπως το «Λείπει το
   // μίσθωμα»: όχι «Δαπάνες 0,00€» σε κάποιον που μόλις πέρασε το βήμα «ΕΝΦΙΑ».
@@ -858,7 +862,9 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       // Το ημερολόγιο χωρίς σύνολο υποθέτει δώδεκα δόσεις. Οταν η κορυφή γράφει
       // «8η και τελευταία δόση · 30/10/2026» για 85€, η ατζέντα δεν λέει από κάτω
       // «ΕΝΦΙΑ, 9η δόση σε 14 ημέρες».
-      .filter(it => !(enfiaHero && enfiaOutsidePlan(it.key, enfiaNext)));
+      .filter(it => !(enfiaHero && enfiaOutsidePlan(it.key, enfiaNext)))
+      // Η δόση του φόρου εισοδήματος λέει σε ποιον αφορά, με τη φράση του ημερολογίου (r7).
+      .map(it => withCondition(it, obligations));
   // Πέντε στην αρχική. Η πλήρης λίστα ζει στις «Εκκρεμότητες» — και η οθόνη το λέει.
   // Το ποσό της δόσης ΕΝΦΙΑ από τις ίδιες γραμμές με την κάρτα των 12 μηνών.
   const agenda = attachAmounts(agendaAll.slice(0, 5), forecast.months.flatMap(m => m.lines));
@@ -916,7 +922,11 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
                 <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-primary)'}}>Λείπει το μίσθωμα</span>
                 <Btn variant="secondary" onClick={()=>onNavigate('edit-rent')}>Πρόσθεσε μίσθωμα</Btn>
               </div>
-            : <div style={{fontFamily:T.font.num,fontSize:'clamp(28px,7vw,40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
+            : enfiaUnissued
+            // ΕΤΟΣ ΠΟΥ ΔΕΝ ΕΧΕΙ ΕΚΔΟΘΕΙ ΣΤΟ ΗΜΕΡΟΛΟΓΙΟ (κριτική σχεδίασης r7): κανένα ποσό,
+            // ούτε το περσινό που γράφτηκε· μόνο ο μήνας, «ΕΝΦΙΑ 2027 / Μάρτιος 2027».
+            ? <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-primary)',marginTop:4}}>{enfiaNext!.next!.date}</div>
+            : <div style={{fontFamily:T.font.num,fontSize:enfiaPaidOff ? TT.kpi.fontSize : 'clamp(28px,7vw,40px)',fontWeight:700,letterSpacing:'-0.02em',color:'var(--text-primary)',fontVariantNumeric:'tabular-nums',lineHeight:1.15}}>{moneyGap
             ? <span style={{fontFamily:T.font.sans,fontSize:'var(--fs-md)',fontWeight:600,color:'var(--text-secondary)',letterSpacing:0}}>Δεν φορτώθηκε</span>
             : fmtEur(taxHero ? estTax : enfiaHero ? enfiaPaid : heroValue)}</div>}
           {taxHero && !rentMissing && !moneyGap && (
@@ -928,14 +938,14 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               υποσημείωση. ΟΧΙ ΣΤΗΝ ΠΡΩΤΗ ΕΠΙΣΚΟΠΗΣΗ (κριτική σχεδίασης r3): ο
               φόρος της κορυφής είναι εκτίμηση της χρονιάς, όχι ποσό «ως σήμερα»·
               η ώρα ήταν τέταρτη γραμμή χωρίς λόγο. */}
+          {/* ΕΞΟΦΛΗΜΕΝΟ: ΠΡΩΤΑ ΤΟ ΕΠΟΜΕΝΟ (κριτική σχεδίασης r7). «ΕΝΦΙΑ 2027 · Μάρτιος 2027»
+              χωρίς ποσό· από κάτω σβηστή η δόση που πέρασε. */}
+          {enfiaPaidOff && !moneyGap && (
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext!.next!.title} · ${enfiaNext!.next!.date}`}</div>
+          )}
           {enfiaHero && enfiaNext?.row && !moneyGap && (
             // «9η δόση 26,66€ · 30/11/2026»: η δόση και το ποσό της, χωρίς δεύτερο «ΕΝΦΙΑ».
-            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext.row.title} · ${enfiaNext.row.date}`}</div>
-          )}
-          {/* ΤΟ ΕΠΟΜΕΝΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟ, ΧΩΡΙΣ ΠΟΣΟ (κριτική σχεδίασης r6): όταν οι δόσεις
-              του έτους τελείωσαν, «ΕΝΦΙΑ 2027 · Μάρτιος 2027». Το ποσό του δεν είναι γνωστό. */}
-          {enfiaHero && enfiaNext?.next && !moneyGap && (
-            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-tertiary)',marginTop:2,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext.next.title} · ${enfiaNext.next.date}`}</div>
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:enfiaPaidOff ? 'var(--text-tertiary)' : 'var(--text-secondary)',marginTop:enfiaPaidOff ? 2 : 4,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext.row.title} · ${enfiaNext.row.date}`}</div>
           )}
           {!firstHero && <AthensNow style={{fontFamily:T.font.sans,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,minHeight:15}}/>}
           {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.

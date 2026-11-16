@@ -165,6 +165,11 @@ export interface EnfiaPlan {
    * του ίδιου έτους δεν είναι εδώ: 85€ δεν έχουν 9η δόση.
    */
   ids: string[];
+  /**
+   * Το έτος είναι γραμμένο ως εκδοθέν στο ημερολόγιο (ENFIA_ISSUED). Αλλιώς δεν
+   * υπάρχει ούτε ποσό ούτε δόση: μόνο «ΕΝΦΙΑ {έτος} · {Μήνας έτος}» (`next`).
+   */
+  issued: boolean;
 }
 
 /** Το κλειδί ατζέντας μιας δόσης ΕΝΦΙΑ που δεν ανήκει στο εκκαθαριστικό (`tax:enfia-instalment-2026-9` για 85€). */
@@ -238,19 +243,38 @@ export function enfiaDeadline(status: PropertyStatus, today: string, annual?: nu
   const total = typeof annual === 'number' && annual > 0 ? annual : 0;
   const count = enfiaInstalmentCount(total);
   const issueOf = (year: number) => greekPropertyTaxObligations(year, profile).find(x => x.kind === 'enfia-issue');
+  const issued = (year: number) => issueOf(year)?.confidence === 'statutory';
   const issueY = issueOf(y);
-  const year = issueY && issueY.date <= today ? y : y - 1;
-  if (!count) return { year, row: null, paidOff: false, next: null, count: 0, each: 0, last: 0, ids: [] };
-  const due = greekPropertyTaxObligations(year, profile, { enfiaInstalments: { [year]: count } })
+  const bill = issueY && issueY.date <= today ? y : y - 1;
+  const dueOf = (year: number) => greekPropertyTaxObligations(year, profile, { enfiaInstalments: { [year]: count } })
     .filter(x => ENFIA_DUE.has(x.kind)).sort((a, b) => a.date.localeCompare(b.date));
+  // ΕΤΟΣ ΧΩΡΙΣ ΕΚΔΟΣΗ ΣΤΟ ΗΜΕΡΟΛΟΓΙΟ (κριτική σχεδίασης r7). Από την ανάρτηση της
+  // ΑΑΔΕ τον Μάρτιο ως την ημέρα που το έτος γραφτεί στο ENFIA_ISSUED, ούτε οι
+  // ημερομηνίες ούτε το πλήθος των δόσεων του είναι γνωστά στον κώδικα: το
+  // ημερολόγιο βγάζει μόνο την 1η και τη 12η. Ως τώρα η γραμμή έγραφε τότε
+  // «Τελευταία δόση 10,00€ · Φεβρουάριος 2028» για 60€, δόση που δεν υπάρχει.
+  // Μένει το προηγούμενο εκκαθαριστικό, αν έχει ακόμη δόση· αλλιώς μόνο το
+  // έτος και ο μήνας, χωρίς ποσό και χωρίς αριθμό δόσης.
+  const year = !issued(bill) && count && issued(bill - 1) && dueOf(bill - 1).some(x => x.date >= today) ? bill - 1 : bill;
+  if (!issued(year)) {
+    const first = greekPropertyTaxObligations(year, profile).find(x => x.kind === 'enfia-first');
+    const next = first ? { id: first.id, title: `ΕΝΦΙΑ ${year}`, date: deadlineDate(first) } : null;
+    return { year, row: null, paidOff: false, next, count: 0, each: 0, last: 0, ids: [], issued: false };
+  }
+  if (!count) return { year, row: null, paidOff: false, next: null, count: 0, each: 0, last: 0, ids: [], issued: true };
+  const due = dueOf(year);
   const plan = enfiaInstalments(total, year, count);
   const each = plan[0]?.amount ?? 0, last = plan[plan.length - 1]?.amount ?? 0;
   const upcoming = due.find(x => x.date >= today);
+  const paidOff = !upcoming;
   const o = upcoming ?? due[due.length - 1];
   const inst = o ? plan[instalmentNo(o, plan.length) - 1] : undefined;
-  const row = o && inst ? { id: o.id, title: `${enfiaShort(o.title)} ${fe(inst.amount)}`, date: deadlineDate(o) } : null;
-  const paidOff = !upcoming;
+  // ΕΞΟΦΛΗΜΕΝΟ: η περασμένη δόση χωρίς ποσό, ως ημερομηνία που πέρασε (r7). Ο
+  // τίτλος της μίας δόσης είναι του ημερολογίου, ποτέ «1η δόση».
+  const row = !o || !inst ? null
+    : paidOff ? { id: o.id, title: plan.length === 1 ? enfiaShort(o.title) : 'Τελευταία δόση', date: deadlineDate(o) }
+    : { id: o.id, title: `${enfiaShort(o.title)} ${fe(inst.amount)}`, date: deadlineDate(o) };
   const nextFirst = paidOff ? greekPropertyTaxObligations(year + 1, profile).find(x => x.kind === 'enfia-first') : undefined;
   const next = nextFirst ? { id: nextFirst.id, title: `ΕΝΦΙΑ ${year + 1}`, date: deadlineDate(nextFirst) } : null;
-  return { year, row, paidOff, next, count: plan.length, each, last, ids: due.map(x => x.id) };
+  return { year, row, paidOff, next, count: plan.length, each, last, ids: due.map(x => x.id), issued: true };
 }

@@ -136,8 +136,12 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
                       πρώτη οθόνη: για προθεσμία 204 ημερών ο τίτλος και ο
                       αριθμός τα λένε όλα. Μένει όπου επείγει (εκπρόθεσμο) ή όπου
                       δεν υπάρχει ημερομηνία — εκεί η σημείωση ΕΙΝΑΙ η οδηγία. */}
-                  {it.note && (d.overdue || d.value == null) && (
+                  {it.note && (d.overdue || d.value == null) ? (
                     <span className="agenda-note">{it.note}</span>
+                  ) : it.condition && (
+                    // Η ΠΡΟΫΠΟΘΕΣΗ ΤΟΥ ΗΜΕΡΟΛΟΓΙΟΥ (κριτική σχεδίασης r7): η δόση φόρου
+                    // εισοδήματος δεν αφορά όλους και η γραμμή δεν το κρύβει.
+                    <span className="agenda-note">{it.condition}</span>
                   )}
                 </div>
 
@@ -352,6 +356,9 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
              ώστε τα κομμάτια τους να πάρουν θέση στο πλέγμα της γραμμής. Οι
              αποστάσεις είναι περιθώρια και όχι row-gap: ό,τι λείπει από μια
              γραμμή (ποσό, εξήγηση, ενέργεια) δεν αφήνει κενό πίσω του. */
+          /* ΤΟ ΠΛΗΘΟΣ ΚΑΤΩ ΑΠΟ ΤΟΝ ΤΙΤΛΟ (κριτική σχεδίασης r7). Στη δεξιά άκρη
+             καθόταν κάτω από το κουμπί της Νόας στην πρώτη οθόνη («1 θέμα» στα 375). */
+          .agenda-head { flex-direction: column; align-items: flex-start; }
           .agenda-row {
             grid-template-columns: minmax(0, 1fr) auto;
             grid-template-areas: "when when" "title amt" "note note" "go go";

@@ -8270,6 +8270,8 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
   font-size: var(--fs-base); font-weight: 400; letter-spacing: 0; line-height: 1.4; color: var(--text-tertiary);
 }
 .wiz-tax-amount[data-empty] + .wiz-tax-note:empty { display: none; }
+/* Η δόση που πέρασε (εξοφλημένο εκκαθαριστικό): σβηστή, κάτω από το επόμενο (κριτική σχεδίασης r7). */
+.wiz-tax-row[data-past], .wiz-tax-row[data-past] .wiz-tax-date { color: var(--text-tertiary); }
 .wiz-tax-row[data-empty] { color: var(--text-tertiary); }
 .wiz-tax-note { margin-top: 4px; min-height: calc(var(--fs-xs) * 1.4); font-size: var(--fs-xs); line-height: 1.4; color: var(--text-secondary); }
 .wiz-tax-row {
