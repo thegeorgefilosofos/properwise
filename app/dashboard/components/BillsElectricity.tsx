@@ -22,6 +22,7 @@ import { canRecommend, freshness, RAAEY_COMPARE, RAAEY_NAME } from '@/lib/energy
 import { MONTHS_SHORT } from '@/lib/core/months';
 import { AsOfNote } from '@/components/AsOfNote';
 import { PRICE_FACTS } from '@/lib/facts/prices';
+import { notifyError } from '@/components/Toast';
 
 /**
  * Η ΤΙΜΗ ΤΗΣ ΚΙΛΟΒΑΤΩΡΑΣ ΣΤΡΟΓΓΥΛΟΠΟΙΟΥΝΤΑΝ ΣΕ ΔΥΟ ΔΕΚΑΔΙΚΑ ΚΑΙ ΕΞΑΦΑΝΙΖΕ ΤΗ
@@ -244,7 +245,7 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
       try {
         const d = await settings.section<{ insCustomEarthquake?: unknown; insCustomFlood?: unknown }>(supabase, propertyId, 'insurance', userId);
         if (d) setInsData({ eq: !!d.insCustomEarthquake, fl: !!d.insCustomFlood });
-      } catch (_) {}
+      } catch (e) { console.error('[BillsElectricity] ρυθμίσεις ασφάλισης:', e); }
     })();
   }, [propertyId, supabase, userId]);
 
@@ -255,7 +256,10 @@ export default function BillsElectricity({ propertyId, userId, onNavigateTab }: 
       try {
         const data = await billStore.kwhHistory<{ kwh: number | null; created_at: string }>(supabase, propertyId, 'kwh,created_at', userId);
         setBillsKwh((data ?? []).map(b => Number((b as { kwh?: number }).kwh)).filter(n => Number.isFinite(n) && n > 0));
-      } catch (_) {}
+      } catch (e) {
+        console.error('[BillsElectricity] κιλοβατώρες:', e);
+        notifyError('Οι κιλοβατώρες από τους λογαριασμούς σου δεν φορτώθηκαν. Δοκίμασε ανανέωση.');
+      }
     })();
   }, [propertyId, supabase, userId]);
 

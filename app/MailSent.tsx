@@ -24,7 +24,7 @@
 //     της αντίγραφο, με άλλο τίτλο και άλλες αποστάσεις.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { ReactNode } from 'react';
-import { T } from '@/components/Theme';
+import { T } from '@/components/tokens';
 import { hy } from '@/components/Hyphen';
 
 const PARA = { fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0 } as const;

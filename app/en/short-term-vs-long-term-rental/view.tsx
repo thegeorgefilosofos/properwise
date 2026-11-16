@@ -9,6 +9,10 @@ import { publicMetadata } from '../../publicMetadata';
 import { shareImage } from '../../og/share';
 import { PAGE_UPDATED, limitsChecked } from '../../pageUpdated';
 import { ShortVsLongCalculator } from '../../vraxyxronia-i-makroxronia/ShortVsLongCalculator';
+import { REGULATORY_UPDATES_2026 } from '@/lib/accounting/updates2026';
+
+// Ο κανόνας ΑΜΑ διαβάζεται εδώ στον server και περνά στον υπολογιστή ως δεδομένα.
+const AMA_RULE = REGULATORY_UPDATES_2026.find(u => u.id === 'ama-red-zones');
 import { ToolPageEn } from '../ToolPageEn';
 import ShortEn from './en';
 
@@ -28,7 +32,7 @@ export default function Page() {
       h1={D.h1} lede={D.lede} lawYear={athensParts().year}
       sources={{ kind: 'short', checked: limitsChecked(EL), updated: PAGE_UPDATED[EL] }} faq={faq}>
       <Suspense fallback={<div style={{ minHeight: 420 }} aria-hidden/>}>
-        <ShortEn><ShortVsLongCalculator today={athensToday()} cta={<ToolCta locale="en" title={D.ctaTitle} body={D.ctaBody} />}/></ShortEn>
+        <ShortEn><ShortVsLongCalculator today={athensToday()} amaRule={AMA_RULE} cta={<ToolCta locale="en" title={D.ctaTitle} body={D.ctaBody} />}/></ShortEn>
       </Suspense>
     </ToolPageEn>
   );

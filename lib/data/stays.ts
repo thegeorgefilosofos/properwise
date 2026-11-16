@@ -75,8 +75,7 @@ const active = <Q extends { is: (c: string, v: null) => Q }>(q: Q): Q => q.is('c
  * όπως τη μετρά και ο υπολογισμός φόρου.
  */
 function ofPropertyQuery(db: Db, propertyId: string, columns: string, userId?: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  opts: { from?: string; to?: string } = {}): any {
+  opts: { from?: string; to?: string } = {}) {
   let q = active(db.from(TABLE).select(columns).eq('property_id', String(propertyId)));
   if (userId) q = q.eq('user_id', userId);
   if (opts.from) q = q.gte('check_in', opts.from);

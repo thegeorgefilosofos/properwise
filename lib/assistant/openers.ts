@@ -45,6 +45,11 @@ export interface OpenerContext {
   overdueRent?: number | null;
   /** Έχει καταχωρημένο δάνειο. */
   hasLoan?: boolean;
+  /**
+   * Ο ΕΝΦΙΑ που ΕΓΡΑΨΕ ο ιδιοκτήτης (εκκαθαριστικό), σε ευρώ. Όχι η εκτίμηση:
+   * εκείνη δεν είναι στοιχείο που καταχώρησε.
+   */
+  enfia?: number | null;
   /** Βραχυχρόνια μίσθωση. */
   isShortTerm?: boolean;
   /** Πλήθος ακινήτων του χρήστη. */
@@ -206,6 +211,9 @@ export function greeting(assistantName: string = ASSISTANT_NAME, ctx: OpenerCont
   if (has(ctx.monthlyRent)) knows.push('τα ενοίκια');
   if (has(ctx.expensesYtd)) knows.push('τις δαπάνες');
   if (ctx.hasLoan) knows.push('το δάνειο');
+  // Ο ΕΝΦΙΑ ΜΕΤΡΑ ΩΣ ΣΤΟΙΧΕΙΟ (κριτική σχεδίασης r6): ακίνητο σε ιδιοχρησία με
+  // ΕΝΦΙΑ 320€ άκουγε «Μόλις καταχωρήσεις τα πρώτα στοιχεία…».
+  if (has(ctx.enfia)) knows.push('τον ΕΝΦΙΑ');
   if ((ctx.openTasks ?? 0) > 0) knows.push('τις εκκρεμότητες');
 
   if (knows.length === 0) {

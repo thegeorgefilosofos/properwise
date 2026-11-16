@@ -14,7 +14,7 @@ import {
   aiLimitsFor, remainingLine, dailyExhaustedMessage, monthlyExhaustedMessage,
   poolExhaustedMessage, COST_PER_REQUEST_USD, COST_PER_REQUEST_EUR, FREE_BUDGET_USD,
   FREE_POOL_PER_MONTH, FREE_TESTERS_PER_MONTH, dailyLimitsByRank, PLAN_RANK_ORDER, SCAN_LIMITS,
-  MAX_PER_MINUTE, AI_SHARE, monthlyQuestionBudget, roundQuestions, limitFromBudget, TRIAL_LIMITS, effectiveAiLimits,
+  MAX_PER_MINUTE, AI_SHARE, monthlyQuestionBudget, roundQuestions, limitFromBudget, TRIAL_LIMITS, effectiveAiLimits, giftPlan, drawsFromPool,
   hasAssistant, assistantLockedMessage, scansExhaustedMessage,
   TRIAL_SCANS_PER_MONTH, scanPoolExhaustedMessage,
 } from './aiLimits'
@@ -319,6 +319,40 @@ const FREE_USERS_TARGET = 10
   // Ο δωρεάν λογαριασμός είναι ΗΔΗ κάτω από το δοκιμαστικό: το least δεν τον αγγίζει.
   ok('ο λογαριασμός χωρίς συνδρομή μένει στο δικό του, μικρότερο πακέτο',
      effectiveAiLimits('free', false).perMonth === aiLimitsFor('free').perMonth)
+}
+
+// ── ΤΟ ΔΩΡΟ ΠΑΙΡΝΕΙ ΤΑ ΟΡΙΑ ΤΟΥ ΠΑΚΕΤΟΥ ΤΟΥ (12/11/2026, 20261112170000) ──
+// Ο νικητής της κλήρωσης («έναν χρόνο συνδρομής “Επαγγελματίας”», Όροι §13) και
+// όποιος κερδίζει μήνες από συστάσεις (§10) έχουν `plan = 'free'` και το δώρο
+// στο `comp_plan`. Ο μετρητής τούς έκοβε στο πακέτο της δοκιμής.
+{
+  const gift = effectiveAiLimits('agency', false, false, 'agency')
+  ok('το δώρο «agency» παίρνει ακέραια τα όρια του «agency»',
+     gift.perMonth === aiLimitsFor('agency').perMonth && gift.perDay === aiLimitsFor('agency').perDay)
+  ok('και όχι το πακέτο της δοκιμής', gift.perMonth > TRIAL_LIMITS.perMonth)
+  for (const id of PLAN_ORDER) {
+    if (id === 'free') continue
+    const g = effectiveAiLimits(id, false, false, id)
+    ok(`${id}: το δώρο ίσο με τον πληρώνοντα του ίδιου πακέτου`,
+       g.perMonth === effectiveAiLimits(id, true).perMonth && g.perDay === effectiveAiLimits(id, true).perDay)
+    ok(`${id}: το δώρο εκτός κοινής δεξαμενής`, !drawsFromPool(false, id))
+  }
+  // Το δώρο δεν δανείζεται ψηλότερο βαθμό που έχει ο λογαριασμός για άλλον λόγο.
+  const small = effectiveAiLimits('agency', false, false, 'solo')
+  ok('δώρο «solo» σε Συνεργάτη: τα όρια του «solo», όχι του «agency»',
+     small.perMonth === aiLimitsFor('solo').perMonth && small.perDay === aiLimitsFor('solo').perDay)
+  // «free» ή άγνωστο ως δώρο δεν είναι δώρο: η δοκιμή μένει ως ήταν.
+  for (const c of ['free', 'xyz', null] as const) {
+    const t = effectiveAiLimits('owner', false, false, c)
+    ok(`δώρο ${c}: η δοκιμή μένει στο δοκιμαστικό πακέτο`, t.perMonth === TRIAL_LIMITS.perMonth && drawsFromPool(false, c))
+  }
+  ok('η δοκιμή χωρίς δώρο χρεώνεται στη δεξαμενή', drawsFromPool(false))
+  ok('ο πληρώνων όχι', !drawsFromPool(true) && !drawsFromPool(true, 'agency'))
+  // Ο δοκιμαστής κόβεται τελευταίος, με ή χωρίς δώρο.
+  const t = effectiveAiLimits('office', false, true, 'office')
+  ok('ο δοκιμαστής με δώρο κόβεται ακόμη στο δικό του ταβάνι',
+     t.perMonth === TESTER_LIMITS.perMonth && t.perDay <= TESTER_LIMITS.perDay)
+  ok('giftPlan: μόνο βαθμός από 1 και πάνω', giftPlan('agency') === 'agency' && giftPlan('free') === null && giftPlan(undefined) === null)
 }
 
 // ── Η ΑΠΟΦΑΣΗ ΤΗΣ 25/09/2026: 30, 60, 150, 500 ─────────────────────────────

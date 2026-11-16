@@ -32,6 +32,7 @@ import sitemap from './sitemap';
 import { PAGE_UPDATED, type DatedPage } from './pageUpdated';
 import { GUIDES, LISTED_GUIDES, GUIDES_UPDATED } from './odigos/guides';
 import { TOOLS_UPDATED } from './pageUpdated';
+import { XARTIS_PATH, XARTIS_UPDATED } from './siteCatalog';
 import { SITE } from '@/lib/core/site';
 import { PROTHESMIES_PATH, PROTHESMIES_UPDATED } from '@/lib/seo/prothesmies';
 import { athensToday } from '@/lib/core/time';
@@ -39,11 +40,12 @@ import { monthGen, monthYearLabel } from '@/lib/core/months';
 import { taxLimitAsOf } from '@/lib/facts/taxLimits';
 import { PRICE_FACTS } from '@/lib/facts/prices';
 import { PURCHASE_SOURCES_CHECKED } from '@/lib/tools/exodaAgoras';
-import { POLICY_VERSION } from '@/lib/legal/identity';
+import { POLICY_DATE } from '@/lib/legal/identity';
 import { CPI_CONFIRMED_AT } from '@/lib/market/cpi';
 import { renderToStaticMarkup as html } from 'react-dom/server';
 import { ToolSources } from './PublicChrome';
 import { E2_GUIDE_CHECKED } from '@/lib/tools/e2Odigos';
+import { MORTGAGE_PAGE_UPDATED } from '@/lib/tools/stegastiko';
 import { regulated } from '@/lib/legal/validity';
 
 // ── ΟΙ ΥΠΟΛΟΓΙΣΤΕΣ: Η ΝΕΟΤΕΡΗ ΑΠΟ ΕΛΕΓΧΟ ΟΡΙΩΝ ΚΑΙ ΑΛΛΑΓΗ ΠΕΡΙΕΧΟΜΕΝΟΥ ──────
@@ -68,14 +70,15 @@ const SOURCED: Partial<Record<DatedPage, { from: string; iso: string | null }>> 
   '/sygkrisi-timologion-revmatos': { from: 'PRICE_FACTS.electricity.checkedAt', iso: PRICE_FACTS.electricity.checkedAt },
   '/anaprosarmogi-enoikiou': { from: 'CPI_CONFIRMED_AT', iso: CPI_CONFIRMED_AT },
   '/exoda-agoras-akinitou': { from: 'PURCHASE_SOURCES_CHECKED', iso: PURCHASE_SOURCES_CHECKED },
+  '/ypologismos-stegastikou-daneiou': { from: 'MORTGAGE_PAGE_UPDATED', iso: MORTGAGE_PAGE_UPDATED },
   '/ypologismos-ekptosis-anakainisis': { from: "regulated('renovation-39b').checkedAt", iso: regulated('renovation-39b').checkedAt },
   '/symplirosi-e2': { from: 'E2_GUIDE_CHECKED', iso: E2_GUIDE_CHECKED },
-  '/trust': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
-  '/privacy': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
-  '/terms': { from: 'POLICY_VERSION', iso: POLICY_VERSION },
+  '/trust': { from: 'POLICY_DATE', iso: POLICY_DATE },
+  '/privacy': { from: 'POLICY_DATE', iso: POLICY_DATE },
+  '/terms': { from: 'POLICY_DATE', iso: POLICY_DATE },
 };
 /** Οι γραμμές με το χέρι: μόνο σελίδες που δεν τυπώνουν ημερομηνία ενημέρωσης. */
-const MANUAL: readonly DatedPage[] = ['/', '/paketa', '/signup', '/logistes', '/ypologismos-stegastikou-daneiou'];
+const MANUAL: readonly DatedPage[] = ['/', '/paketa', '/signup', '/logistes'];
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
@@ -110,7 +113,7 @@ function visibleDates(html: string): string[] {
 /** Η σελίδα μιας διαδρομής, αποδομένη όπως στον διακομιστή (ή `null` αν θέλει το Next). */
 /** Το αρχείο της σελίδας· οι μήνες των προθεσμιών είναι μία δυναμική διαδρομή. */
 const pageOf = (path: string): string =>
-  path === '/' ? 'app/page.tsx' : /^\/prothesmies\/\d{4}-\d{2}$/.test(path) ? 'app/prothesmies/[mina]/page.tsx' : `app${path}/page.tsx`;
+  path === '/' ? 'app/page.tsx' : path === XARTIS_PATH ? 'app/xartis/view.tsx' : /^\/prothesmies\/\d{4}-\d{2}$/.test(path) ? 'app/prothesmies/[mina]/page.tsx' : `app${path}/page.tsx`;
 
 async function render(path: string): Promise<string | null> {
   const file = './' + pageOf(path).slice(4).replace(/\.tsx$/, '');
@@ -145,7 +148,7 @@ async function main() {
     // ── 1. ΜΙΑ ΠΗΓΗ ───────────────────────────────────────────────────────
     const fromRegistry = (PAGE_UPDATED as Record<string, string>)[path];
     const expected = fromRegistry ?? guideBy.get(SITE + path) ?? (path === '/odigos' ? GUIDES_UPDATED : path === '/ergaleia' ? TOOLS_UPDATED
-      : path.startsWith(PROTHESMIES_PATH) ? PROTHESMIES_UPDATED : undefined);
+      : path.startsWith(PROTHESMIES_PATH) ? PROTHESMIES_UPDATED : path === XARTIS_PATH ? XARTIS_UPDATED : undefined);
     ok(`${path}: ο χάρτης παίρνει την ημερομηνία από το pageUpdated.ts ή το guides.ts`, expected !== undefined && lm === expected);
 
     // ── 2. ΚΑΜΙΑ ΜΕΛΛΟΝΤΙΚΗ ─────────────────────────────────────────────────

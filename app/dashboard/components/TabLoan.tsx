@@ -28,7 +28,7 @@ import { LoanGuide } from './loan/LoanGuide'
 // χρησιμοποιούνταν ποτέ — ένα νεκρό καλώδιο που έδινε την εντύπωση ότι ο
 // Υπολογιστής ξέρει το ενοίκιο, ενώ αυτός υπολόγιζε «4% της αξίας». Πλέον ο
 // Υπολογιστής διαβάζει ο ίδιος το πραγματικό ενοίκιο (rent_config) από τη βάση.
-export default function TabLoan({propertyId,userId,propertyValue,propertySqm,propertyYearBuilt,profileType='individual'}:LoanProps) {
+export default function TabLoan({propertyId,userId,propertyValue,propertySqm,propertyYearBuilt,profileType='individual',plan='free'}:LoanProps) {
   const {
     initValue, initAmount, FIXED_TERM_COLUMNS, openSec, setOpenSec, profile, calcRef,
     scrollToCalc, calcLens, setCalcLens, lensRef, calcOpen, setCalcOpen, openCalcDocs, applyBank,
@@ -592,7 +592,7 @@ export default function TabLoan({propertyId,userId,propertyValue,propertySqm,pro
           σου» και «Οδηγός» δεν συγχέονται: το ένα έχει τα ΝΟΥΜΕΡΑ σου, το
           άλλο ό,τι ισχύει για όλους. ═══════════════════════════════════ */}
       {openSec==='guide' && (<LoanGuide
-                               advType={advType} openCalcDocs={openCalcDocs} market={market} profile={profile}
+                               advType={advType} openCalcDocs={openCalcDocs} market={market} profile={profile} plan={plan} userId={userId}
                              />)}
 
     </div>

@@ -7,7 +7,7 @@
 // διατύπωση, το lib/i18n/en/legal/common.test.ts κοκκινίζει.
 // ═══════════════════════════════════════════════════════════════════════════
 import { IDENTITY, type LegalIdentity } from '@/lib/legal/identity';
-import { PUSH_SERVICES, type Subprocessor, type SubprocessorRole } from '@/lib/legal/subprocessors';
+import { BACKUP_RETENTION_DAYS, PUSH_SERVICES, type Subprocessor, type SubprocessorRole } from '@/lib/legal/subprocessors';
 import { billingWordsEn } from '@/lib/legal/billingWords';
 import { inboundDomain } from '@/lib/inbound/address';
 
@@ -27,7 +27,7 @@ const ROLE_EN: Record<SubprocessorRole, string> = {
 export const SUBPROCESSOR_EN: Record<string, { name?: string; where: string; purpose: string; entity?: string }> = {
   Supabase: {
     where: 'European Union, Frankfurt', entity: 'Supabase Pte. Ltd (Singapore)',
-    purpose: 'The database, authentication and the files you upload. The Service’s system of record.',
+    purpose: 'The database, authentication, the files you upload and their encrypted backup. The Service’s system of record.',
   },
   Vercel: {
     where: 'United States, global network',
@@ -43,7 +43,7 @@ export const SUBPROCESSOR_EN: Record<string, { name?: string; where: string; pur
   },
   GitHub: {
     where: 'United States',
-    purpose: 'The code and the encrypted database backup.',
+    purpose: 'The code and the decryption key of the backup, in GitHub Secrets.',
   },
   Google: {
     where: 'United States',
@@ -52,6 +52,10 @@ export const SUBPROCESSOR_EN: Record<string, { name?: string; where: string; pur
   Sentry: {
     where: 'United States or European Union',
     purpose: 'Recording app errors.',
+  },
+  Cloudflare: {
+    where: 'United States',
+    purpose: 'Check against automated accounts (Turnstile) on the sign-up, sign-in and password reset pages. According to Cloudflare, the check processes the IP address, the TLS fingerprint, the browser’s User-Agent header and the site key together with its origin. It does not receive your email or password. To improve its own detection, Cloudflare states that it acts as an independent controller, on the basis of its legitimate interest. The safeguard for the transfer outside the EEA has not yet been recorded.',
   },
   mobile: {
     name: 'Mobile messaging (Viber / WhatsApp / Apple Messages)',
@@ -83,7 +87,7 @@ export function subprocessorLineEn(s: Subprocessor): string {
   const c = copyOf(s);
   let purpose = c?.purpose ?? s.purpose;
   // Οι ίδιες προσθήκες που κάνει το μητρώο ανάλογα με το περιβάλλον.
-  if (s.name === 'Sentry' && !s.active) purpose += ' It is switched on only if a key is set, and none is set today.';
+  if ((s.name === 'Sentry' || s.name === 'Cloudflare') && !s.active) purpose += ' It is switched on only if a key is set, and none is set today.';
   if (s.name === PUSH_SERVICES && !s.active) purpose += ' Not switched on.';
   if (s.name === 'Resend' && inboundDomain(process.env.NEXT_PUBLIC_INBOUND_DOMAIN) !== '') purpose += ' Receiving email: what you forward to your account’s receiving address, so that it can be suggested as expenses; and what you send to our contact addresses.';
   if (s.role === 'mixed') purpose += ` ${billingWordsEn().merchantRow}`;
@@ -93,7 +97,7 @@ export function subprocessorLineEn(s: Subprocessor): string {
 
 /** Η κατάσταση των εγγυήσεων των διαβιβάσεων (TRANSFER_SAFEGUARDS), στα αγγλικά. */
 export const TRANSFER_SAFEGUARDS_EN =
-  'Data processing agreements containing the Standard Contractual Clauses (SCCs) of Article 46 GDPR were signed with Supabase, Resend and Anthropic on 23 Sep 2026. A data processing agreement has also been signed with GitHub, where the encrypted backup is kept; the backup key is kept with the same provider. With Vercel, which hosts the app, no data processing agreement has been signed yet: the hosting plan in use today does not provide for one. It is pending, together with the move to a professional hosting plan. Signing in with Google takes place with Google as an independent controller.';
+  `Data processing agreements containing the Standard Contractual Clauses (SCCs) of Article 46 GDPR were signed with Supabase, Resend and Anthropic on 23 Sep 2026. A data processing agreement has also been signed with GitHub, where the decryption key of the backup is kept, in GitHub Secrets. The encrypted backup itself is kept in a private Supabase storage space, in Frankfurt like the database. Retention is ${BACKUP_RETENTION_DAYS} days, with the exceptions set out in the Privacy Policy. With Vercel, which hosts the app, no data processing agreement has been signed yet: the hosting plan in use today does not provide for one. It is pending, together with the move to a professional hosting plan. Signing in with Google takes place with Google as an independent controller.`;
 
 /**
  * Ο πάροχος ως γραμμή του πίνακα του «About us» (/en/trust): όνομα, νομικό
@@ -103,7 +107,7 @@ export const TRANSFER_SAFEGUARDS_EN =
 export function subprocessorRowEn(s: Subprocessor): { name: string; entity: string | null; what: string; where: string; planned: boolean } {
   const c = copyOf(s);
   let what = c?.purpose ?? s.purpose;
-  if (s.name === 'Sentry' && !s.active) what += ' It is switched on only if a key is set, and none is set today.';
+  if ((s.name === 'Sentry' || s.name === 'Cloudflare') && !s.active) what += ' It is switched on only if a key is set, and none is set today.';
   if (s.name === PUSH_SERVICES && !s.active) what += ' Not switched on.';
   if (s.name === 'Resend' && inboundDomain(process.env.NEXT_PUBLIC_INBOUND_DOMAIN) !== '') what += ' Receiving email: what you forward to your account’s receiving address, so that it can be suggested as expenses; and what you send to our contact addresses.';
   if (s.role === 'mixed') what += ` ${billingWordsEn().merchantRow}`;

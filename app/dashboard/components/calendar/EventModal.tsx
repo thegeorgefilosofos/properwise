@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect, useRef, useMemo, useId } from 'react'
 import { createPortal } from 'react-dom'
-import { T, Btn, ChipToggle, Modal, fe, localDay, pressable } from '@/components/Theme'
+import { T, Btn, Modal, fe, localDay, pressable } from '@/components/Theme'
 import { fixedCols } from '@/components/tokens'
 import { AlertTriangle, FileText, Zap, ChevronDown, Clock, Info, CalendarPlus } from 'lucide-react'
 import { DatePicker, CustomSelect, NumberInput } from '../UIComponents'
@@ -17,6 +17,8 @@ import {
   type EventCategory, type EventPriority, type EventStatus, type FormState, CATEGORIES,
   PRIORITIES, STATUSES, RECURRING_OPTIONS,
 } from './model'
+import { Dictation } from '@/components/dictation/MicButton'
+import { cssRect } from '@/lib/core/cssZoom'
 
 // Καθαρός επιλογέας ώρας — αντικαθιστά το άσχημο native <input type="time">.
 // Κουμπί με ώρα → portal λίστα ανά 15΄ (κλιπ-άτρωτη, ίδια αισθητική με το app).
@@ -26,7 +28,7 @@ function TimeField({ value, onChange, ariaLabel }: { value:string; onChange:(v:s
   const ref=useRef<HTMLButtonElement>(null)
   const listRef=useRef<HTMLDivElement>(null)
   const times=useMemo(()=>{ const t:string[]=[]; for(let h=0;h<24;h++)for(const m of [0,15,30,45])t.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`); return t },[])
-  const openMenu=()=>{ const r=ref.current?.getBoundingClientRect(); if(r)setRect({left:r.left,top:r.bottom+6,width:Math.max(r.width,132)}); setOpen(o=>!o) }
+  const openMenu=()=>{ const r=cssRect(ref.current); if(r)setRect({left:r.left,top:r.bottom+6,width:Math.max(r.width,132)}); setOpen(o=>!o) }
   useEffect(()=>{ if(!open)return; const close=(e:MouseEvent)=>{ if(!ref.current?.contains(e.target as Node)&&!listRef.current?.contains(e.target as Node))setOpen(false) }; const esc=(e:KeyboardEvent)=>{ if(e.key==='Escape'){e.stopPropagation();setOpen(false)} }; document.addEventListener('mousedown',close); document.addEventListener('keydown',esc,true); return ()=>{ document.removeEventListener('mousedown',close); document.removeEventListener('keydown',esc,true) } },[open])
   useEffect(()=>{ if(open&&listRef.current){ let idx=times.indexOf(value); if(idx<0)idx=36; const el=listRef.current.children[idx+1] as HTMLElement; el?.scrollIntoView({block:'center'}) } },[open,value,times])
   return (
@@ -209,23 +211,14 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
           <input id={fid('attachment')} inputMode="url" style={fld} placeholder="https://…" value={form.attachment_url} onChange={e=>setForm(f=>({...f,attachment_url:e.target.value}))} onFocus={focus} onBlur={blur}/>
         </div>
         {/* Κατάσταση */}
+        {/* ΤΕΣΣΕΡΙΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΜΙΑ ΑΠΑΝΤΗΣΗ: ΕΠΙΛΟΓΕΑΣ, ΟΠΩΣ Η ΚΑΤΗΓΟΡΙΑ ΚΑΙ Η
+            ΠΡΟΤΕΡΑΙΟΤΗΤΑ ΑΠΟ ΠΑΝΩ (14/11/2026). Ως τσιπάκια ήταν το μόνο πεδίο
+            της φόρμας με άλλο χειριστήριο για την ίδια δουλειά και έπιανε δύο
+            σειρές. Ίδιες τιμές, ίδια προεπιλογή. Η επιλογή δείχνει ΕΠΙΛΟΓΗ, όχι
+            ετυμηγορία: καμία κουκκίδα σημασιολογικού χρώματος στις επιλογές. */}
         <div>
-          <span id={fid('status')} style={lbl}>Κατάσταση</span>
-          {/* ΤΕΣΣΕΡΑ ΤΣΙΠΑΚΙΑ ΠΟΥ ΕΒΓΑΙΝΑΝ 3+1. Το «Ακυρώθηκε» έπεφτε μόνο του σε
-              δεύτερη γραμμή με τρύπα δεξιά, σε ταμπλέτα και σε κινητό. Η σειρά
-              απλώνεται τώρα ολόκληρη — μία επιλογή δεν διαβάζεται ως υποσύνολο
-              άλλης επειδή έτυχε να τυλιχτεί. */}
-          <div role="group" aria-labelledby={fid('status')} className="po-ctlrow ctl-2up">
-            {/* Η επιλεγμένη κατάσταση βαφόταν με το ΣΗΜΑΣΙΟΛΟΓΙΚΟ χρώμα της:
-                πορτοκαλί το «Εκκρεμεί», πράσινο το «Πληρώθηκε», κόκκινο το
-                «Ακυρώθηκε». Δηλαδή η φόρμα έβγαζε ετυμηγορία για μια επιλογή
-                που μόλις έκανε ο χρήστης και το «Εκκρεμεί» —η προεπιλογή
-                κάθε νέου γεγονότος— άνοιγε πάντα με προειδοποιητικό χρώμα.
-                Η επιλογή δείχνει ΕΠΙΛΟΓΗ, με το χρώμα της επιλογής. */}
-            {Object.entries(STATUSES).map(([k,v])=>(
-              <ChipToggle key={k} on={form.status===k} onClick={()=>setForm(f=>({...f,status:k as EventStatus}))}>{v.label}</ChipToggle>
-            ))}
-          </div>
+          <CustomSelect label="Κατάσταση" value={form.status} onChange={v=>setForm(f=>({...f,status:v as EventStatus}))}
+            options={Object.entries(STATUSES).map(([k,v])=>({ value: k, label: v.label }))}/>
         </div>
         {/* Επανάληψη */}
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:'12px 14px' }}>
@@ -248,7 +241,9 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
         {/* Σημειώσεις */}
         <div>
           <label htmlFor={fid('notes')} style={lbl}>Σημειώσεις</label>
-          <textarea id={fid('notes')} style={{...fld, height:'auto', minHeight:60, padding:'10px 14px', resize:'vertical'}} placeholder="Οδηγίες, αριθμός λογαριασμού…" value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} onFocus={focus} onBlur={blur}/>
+          <Dictation multiline value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))}>
+            <textarea id={fid('notes')} style={{...fld, height:'auto', minHeight:60, padding:'10px 14px', resize:'vertical'}} placeholder="Οδηγίες, αριθμός λογαριασμού…" value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} onFocus={focus} onBlur={blur}/>
+          </Dictation>
         </div>
       </>)}
     </Modal>

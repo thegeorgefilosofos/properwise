@@ -61,6 +61,31 @@ async function main() {
   eq('χωρίς κανένα πρόβλημα',  r4.problems, []);
   eq('με κοινή στιγμή λήψης',  r4.fresh.ecb_rate?.fetchedAt, NOW);
 
+  // ── Η ΔΕΥΤΕΡΗ ΠΡΟΣΠΑΘΕΙΑ (10/11/2026: τέσσερις σειρές «Signal timed out») ──
+  // Λήξη χρόνου την πρώτη φορά, απάντηση τη δεύτερη: η τιμή ΕΡΧΕΤΑΙ.
+  const tries = new Map<string, number>();
+  const slowOnce = async (url: string) => {
+    const n = (tries.get(url) ?? 0) + 1; tries.set(url, n);
+    if (n === 1) throw new Error('Signal timed out');
+    return ok(2.15, '2026-08-31');
+  };
+  const r5 = await fetchLatest(NOW, slowOnce as never);
+  eq('αργή πηγή: όλες ήρθαν με τη δεύτερη', Object.keys(r5.fresh).length, ECB_SERIES.length);
+  eq('αργή πηγή: κανένα πρόβλημα',          r5.problems, []);
+
+  // Σε 404 δεν ξαναρωτάμε: η λάθος σειρά δεν διορθώνεται με επανάληψη.
+  let calls404 = 0;
+  const notFound = async () => { calls404++; return bad(404); };
+  await fetchLatest(NOW, notFound as never);
+  eq('σε 404 μία κλήση ανά υποψήφια σειρά', calls404, ECB_SERIES.reduce((n, s) => n + s.candidates.length, 0));
+
+  // Σε 503 ξαναρωτάμε μία φορά και το λέμε.
+  let calls503 = 0;
+  const down = async () => { calls503++; return bad(503); };
+  const r6 = await fetchLatest(NOW, down as never);
+  eq('σε 503 δύο κλήσεις ανά υποψήφια σειρά', calls503, 2 * ECB_SERIES.reduce((n, s) => n + s.candidates.length, 0));
+  eq('και ο λόγος λέει ότι ξαναδοκιμάσαμε', r6.problems.every(p => /δεύτερη προσπάθεια/.test(p)), true);
+
   if (fail.length) { console.error(`\n✗ ecb πέρασμα: ${fail.length} αποτυχίες\n`); for (const f of fail) console.error('  ' + f); process.exit(1); }
   console.log(`✓ ecb πέρασμα: ${pass} έλεγχοι πέρασαν`);
 }

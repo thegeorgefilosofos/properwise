@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { T } from '@/components/tokens';
-import { ORG_ID, PRODUCT_NAME, SITE, siteUrl } from '@/lib/core/site';
+import { siteUrl } from '@/lib/core/site';
+import { organizationNode, ORG_REF } from '@/lib/seo/organization';
 import { breadcrumbJsonLd, HOME_CRUMB_EN } from '@/lib/seo/breadcrumbs';
 import { TOOL_SHELL_EN } from '@/lib/i18n/en/tools/shell';
 import { PublicHeader, PublicFooter, JsonLd, SectionHead, ToolLede, ToolSources, WRAP, WRAP_PAD } from '../PublicChrome';
@@ -30,10 +31,11 @@ export function ToolPageEn({ path, name, label, description, h1, lede, lawYear, 
       <JsonLd data={{
         '@context': 'https://schema.org',
         '@graph': [
+          organizationNode(),
           {
             '@type': 'WebApplication', name, url, applicationCategory: 'FinanceApplication', operatingSystem: 'Web',
             inLanguage: 'en', description, offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
-            publisher: { '@type': 'Organization', '@id': ORG_ID, name: PRODUCT_NAME, url: SITE },
+            publisher: ORG_REF,
           },
           breadcrumbJsonLd([{ name: 'Tools', path: '/en/tools' }, { name: label, path }], HOME_CRUMB_EN),
           { '@type': 'FAQPage', inLanguage: 'en', mainEntity: allFaq.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) },

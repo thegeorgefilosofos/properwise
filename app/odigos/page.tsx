@@ -23,6 +23,7 @@ import { LISTED_GUIDES, type GuideTopic } from './guides';
 import { TOPICS, topicAnchor } from '@/lib/core/topics';
 import { PUBLIC_TOOLS, TOOLS_HUB } from '@/lib/core/publicTools';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
+import { FEED_PATH } from '@/lib/seo/feed';
 
 // Ο ΚΟΜΒΟΣ ΔΕΝ ΕΙΝΑΙ ΜΟΝΟ ΦΟΡΟΙ (απόφαση ιδιοκτήτη 20/10/2026): έχει πια στεγαστικό,
 // μισθώσεις και βραχυχρόνια. 55 χαρακτήρες, ο τίτλος είναι απόλυτος (publicMetadata).
@@ -92,7 +93,13 @@ const GROUPS = TOPICS
 /** «1 οδηγός», «4 οδηγοί»: το πλήθος από τον κατάλογο. */
 const countLabel = (n: number) => `${n} ${n === 1 ? 'οδηγός' : 'οδηγοί'}`;
 
-export const metadata: Metadata = publicMetadata({ title: TITLE, description: DESC, url: URL, image: shareImage('odigos') });
+const BASE_META = publicMetadata({ title: TITLE, description: DESC, url: URL, image: shareImage('odigos') });
+// Η ΡΟΗ RSS ΤΩΝ ΟΔΗΓΩΝ (lib/seo/feed.ts), δηλωμένη στο <head> ώστε ο αναγνώστης
+// ροών να τη βρίσκει από τη διεύθυνση του κόμβου.
+export const metadata: Metadata = {
+  ...BASE_META,
+  alternates: { ...BASE_META.alternates, types: { 'application/rss+xml': [{ url: siteUrl(FEED_PATH), title: 'PROPERWISE: Οδηγοί' }] } },
+};
 
 // Η διαδρομή «Αρχική › Οδηγοί» μπαίνει στο ίδιο `@graph`, από την κοινή
 // συνάρτηση (lib/seo/breadcrumbs.ts) που διαβάζουν και οι οδηγοί του κόμβου.

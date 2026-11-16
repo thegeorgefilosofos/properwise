@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
---  ΤΟ ΚΑΘΑΡΙΣΜΑ ΤΩΝ ΠΙΝΑΚΩΝ ΚΑΤΑΓΡΑΦΗΣ (20261110151000)
+--  ΤΟ ΚΑΘΑΡΙΣΜΑ ΤΩΝ ΠΙΝΑΚΩΝ ΚΑΤΑΓΡΑΦΗΣ (20261116172000)
 -- ─────────────────────────────────────────────────────────────────────────
 --  Σε συναλλαγή που αναιρείται πάντα. Γραμμές λίγο πριν και λίγο μετά από κάθε
 --  όριο· η private.prune_logs() σβήνει ΜΟΝΟ ό,τι πρέπει:
@@ -8,10 +8,9 @@
 --     91 ημερών χάνει περιεχόμενο και όνομα αλλά μένει (το dedup_key της)·
 --     κλειδί μίας φοράς 500 ημερών μένει· κλειδί περιόδου 500 ημερών σβήνει·
 --   · notification_log: 14 μηνών σβήνει, εκτός από την πρώτη γραμμή του
---     χρήστη και την όχληση γεγονότος που είναι ακόμη pending. (Η εξαίρεση
---     της απλήρωτης δόσης δεν δοκιμάζεται εδώ: το event_id έχει ξένο κλειδί
---     προς το calendar_events, οπότε γραμμή `rent_overdue` με id δόσης δεν
---     γράφεται σήμερα καθόλου.)
+--     χρήστη, την όχληση γεγονότος που είναι ακόμη pending και την όχληση
+--     δόσης (rent_payment_id, `rent_overdue:<αρ.>`, 20261110131500) που είναι
+--     ακόμη απλήρωτη.
 -- ═══════════════════════════════════════════════════════════════════════════
 reset role;
 begin;
@@ -21,6 +20,8 @@ declare
   p uuid := 'f5000000-0000-4000-8000-00000000f001';
   ev_open uuid := 'f5000000-0000-4000-8000-0000000e0001';
   ev_done uuid := 'f5000000-0000-4000-8000-0000000e0002';
+  rp_open uuid;
+  rp_paid uuid;
   n int;
   res jsonb;
 begin
@@ -29,6 +30,10 @@ begin
   insert into public.calendar_events(id, user_id, property_id, title, event_date, status) values
     (ev_open, u, p, 'ανοιχτό', current_date - 500, 'pending'),
     (ev_done, u, p, 'κλειστό', current_date - 500, 'done');
+  insert into public.rent_payments(property_id, user_id, payment_date, amount, status, paid)
+    values (p, u, current_date - 450, 400, 'pending', false) returning id into rp_open;
+  insert into public.rent_payments(property_id, user_id, payment_date, amount, status, paid)
+    values (p, u, current_date - 450, 400, 'paid', true) returning id into rp_paid;
 
   -- health_checks
   insert into public.health_checks(ran_at, ok, kind, base) values
@@ -51,6 +56,9 @@ begin
     (u, ev_open, 'overdue',      now() - interval '14 months'),   -- γεγονός ανοιχτό: μένει
     (u, ev_done, 'overdue',      now() - interval '14 months'),   -- γεγονός κλειστό: σβήνει
     (u, ev_done, 'today',        now() - interval '2 months');    -- πρόσφατη: μένει
+  insert into public.notification_log(user_id, rent_payment_id, reminder_type, created_at) values
+    (u, rp_open, 'rent_overdue:1', now() - interval '14 months'), -- δόση απλήρωτη: μένει
+    (u, rp_paid, 'rent_overdue:1', now() - interval '14 months'); -- δόση πληρωμένη: σβήνει
 
   res := private.prune_logs();
 
@@ -76,7 +84,11 @@ begin
   raise notice 'probe: η ουρά κρατά το dedup και σβήνει το περιεχόμενο στις 90 ημέρες';
 
   select count(*) into n from public.notification_log where user_id = u;
-  if n <> 3 then raise exception 'ΔΙΑΤΗΡΗΣΗ: notification_log κράτησε % γραμμές αντί για 3', n; end if;
+  if n <> 4 then raise exception 'ΔΙΑΤΗΡΗΣΗ: notification_log κράτησε % γραμμές αντί για 4', n; end if;
+  if not exists (select 1 from public.notification_log where rent_payment_id = rp_open) then
+    raise exception 'ΔΙΑΤΗΡΗΣΗ: σβήστηκε όχληση απλήρωτης δόσης (η κλιμάκωση θα ξεκινούσε από την αρχή)'; end if;
+  if exists (select 1 from public.notification_log where rent_payment_id = rp_paid) then
+    raise exception 'ΔΙΑΤΗΡΗΣΗ: η όχληση πληρωμένης δόσης 14 μηνών δεν σβήστηκε'; end if;
   if not exists (select 1 from public.notification_log where user_id = u and reminder_type = 'overdue' and event_id = ev_open) then
     raise exception 'ΔΙΑΤΗΡΗΣΗ: σβήστηκε όχληση ανοιχτού γεγονότος'; end if;
   if not exists (select 1 from public.notification_log where user_id = u and reminder_type = '7days') then

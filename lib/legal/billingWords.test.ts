@@ -5,12 +5,14 @@
 // πληρωμής και πέντε επιφάνειες συνέχισαν να γράφουν «η χρέωση δεν έχει
 // ενεργοποιηθεί». Ο έλεγχος δεν ρωτά «τι λέει η σελίδα» — ρωτά αν οι δύο
 // καταστάσεις είναι όντως δύο και αν διαλέγονται από τη ΣΩΣΤΗ συνθήκη.
+import { readFileSync } from 'node:fs'
 import { merchant } from '../billing/merchant'
 import { subprocessors, subprocessors as subprocessors0, activeSubprocessors, plannedSubprocessors } from './subprocessors'
 import { MERCHANT_NAMES, KNOWN_MERCHANTS, merchantId, PROVIDER_ENV } from './merchant'
 import { TRIAL_DAYS, PLANS } from '../billing/plans'
 import { checkoutIsLive as gateIsLive, checkoutIsLive as gateIsLive0, checkoutState as checkoutState0 } from './checkout'
-import { billingWords, billingWords as billingWords0, INVITE_ACCESS, INVITE_PLAN_REFUSAL } from './billingWords'
+import { billingWords, billingWords as billingWords0, billingWordsEn, INVITE_ACCESS, INVITE_PLAN_REFUSAL, SUBSCRIPTION_NOTICES, REVOKED_CHECKOUT_REFUSAL } from './billingWords'
+import { PAST_DUE_GRACE_DAYS } from '../billing/subscription'
 import { INVITE_LIMITS } from '../billing/inviteLimits'
 import type { MerchantPort } from '../billing/merchant'
 import { IDENTITY, sellerIdentityGaps, sellerIdentityComplete, type LegalIdentity } from './identity'
@@ -53,6 +55,8 @@ const DARK = {}
 const LIVE_2 = {
   CREEM_API_KEY: 'κλειδί',
   CREEM_PRODUCTS: PRODUCTS,
+  // Χωρίς μυστικό webhook το ταμείο μένει κλειστό (έλεγχος του PR 558, M3).
+  CREEM_WEBHOOK_SECRET: 'μυστικό',
 }
 
 // ── Η ΣΥΝΘΗΚΗ ─────────────────────────────────────────────────────────────
@@ -64,6 +68,7 @@ ok('χωρίς ρύθμιση, δεν είναι', !checkoutIsLive(DARK))
 ok('χωρίς χάρτη προϊόντων δεν μετράει ως ζωντανό ταμείο',
   !checkoutIsLive({ ...LIVE, CREEM_PRODUCTS: '' }))
 ok('χωρίς κλειδί API δεν μετράει', !checkoutIsLive({ ...LIVE, CREEM_API_KEY: '' }))
+ok('χωρίς μυστικό webhook δεν μετράει', !checkoutIsLive({ ...LIVE, CREEM_WEBHOOK_SECRET: '' }))
 ok('χάρτης με ζεύγος που λείπει δεν μετράει',
   !checkoutIsLive({ ...LIVE, CREEM_PRODUCTS: PRODUCTS.replace(',p8:office:annual', '') }))
 
@@ -237,7 +242,21 @@ ok('χάρτης με ζεύγος που λείπει δεν μετράει',
   // στον ενεστώτα δίπλα σε παράγραφο που έλεγε ότι σήμερα δεν χρεώνεται τίποτα.
   for (const k of ['subscriptionPlace', 'renewal'] as const)
     ok(`χωρίς ταμείο, το «${k}» μιλά για όταν ενεργοποιηθεί η χρέωση`, dark[k].startsWith('Όταν ενεργοποιηθεί'))
-  ok('χωρίς ταμείο, η αλλαγή πακέτου δεν κοστίζει σήμερα', dark.planChange.includes('σήμερα η αλλαγή δεν κοστίζει'))
+  // ΚΑΙ ΔΕΝ ΥΠΟΣΧΕΤΑΙ ΑΛΛΑΓΗ ΠΟΥ Η ΔΙΑΔΡΟΜΗ ΑΡΝΕΙΤΑΙ (12/11/2026). Το
+  // app/api/billing/plan/route.ts απαντά 403 χωρίς συνδρομή και 503 με κλειστό
+  // ταμείο: το «το αλλάζεις όποτε θέλεις… σήμερα δεν κοστίζει» ήταν ψευδές.
+  ok('χωρίς ταμείο, η αλλαγή πακέτου λέει ότι οι συνδρομές δεν έχουν ανοίξει',
+    dark.planChange.startsWith('Οι συνδρομές δεν έχουν ανοίξει ακόμη') && dark.planChange.includes('δεν αγοράζεις ούτε αλλάζεις πακέτο'))
+  ok('χωρίς ταμείο, καμία υπόσχεση αλλαγής πακέτου σήμερα',
+    !/αλλάζεις όποτε θέλεις|σήμερα η αλλαγή δεν κοστίζει/.test(dark.planChange))
+  const darkEn = billingWordsEn(DARK, SELLER)
+  ok('και στα αγγλικά: καμία αλλαγή πακέτου σήμερα',
+    darkEn.planChange.startsWith('Subscriptions are not open yet') && !/change plans at any time|costs nothing/.test(darkEn.planChange))
+  // Η ΔΙΑΔΡΟΜΗ ΚΡΑΤΑ ΑΚΟΜΗ ΤΗΝ ΑΡΝΗΣΗ: αν ανοίξει ποτέ η αλλαγή χωρίς ταμείο,
+  // η πρόταση από πάνω γίνεται ψευδής ανάποδα και ο έλεγχος κοκκινίζει.
+  const planRoute = readFileSync('app/api/billing/plan/route.ts', 'utf8')
+  ok('η αλλαγή πακέτου χωρίς συνδρομή απαντά 403', /if \(!subscriptionId\)[\s\S]{0,200}status: 403/.test(planRoute))
+  ok('η αλλαγή πακέτου με κλειστό ταμείο απαντά 503', /if \(!checkoutIsLive\(process\.env\)\)[\s\S]{0,300}status: 503/.test(planRoute))
   // ΚΑΙ Η ΥΠΑΝΑΧΩΡΗΣΗ ΔΕΝ ΠΕΡΙΓΡΑΦΕΙ ΠΕΡΙΠΤΩΣΗ ΠΟΥ ΔΕΝ ΥΠΑΡΧΕΙ: σε συνδρομή
   // «πλήρης εκτέλεση εντός 14 ημερών» δεν συμβαίνει ποτέ.
   ok('η υπαναχώρηση δεν μιλά για πλήρη εκτέλεση', !live.withdrawal.includes('πλήρη εκτέλεση') && !dark.withdrawal.includes('πλήρη εκτέλεση'))
@@ -348,6 +367,20 @@ ok('χάρτης με ζεύγος που λείπει δεν μετράει',
     ok(`πρόσκληση (${name}): χωρίς κόμμα πριν από το «και»`, !/,\s*και\s/.test(line))
   }
 }
+
+// ── Η ΚΑΡΤΑ ΤΗΣ ΣΥΝΔΡΟΜΗΣ ΜΕΤΑ ΑΠΟ ΕΠΙΣΤΡΟΦΗ Ή ΑΜΦΙΣΒΗΤΗΣΗ (έλεγχος του PR 558, M2) ──
+// Η συνδρομή στον Creem ΔΕΝ ακυρώνεται: το κείμενο δεν επιτρέπεται να λέει
+// ότι σταμάτησε ούτε να στέλνει σε νέα αγορά. Λέει ότι η πρόσβαση έκλεισε και
+// στέλνει στην υποστήριξη.
+for (const [name, text] of [['refund', SUBSCRIPTION_NOTICES.refund], ['dispute', SUBSCRIPTION_NOTICES.dispute]] as const) {
+  ok(`${name}: λέει ότι η πρόσβαση έκλεισε`, /πρόσβαση/.test(text) && /έκλεισε/.test(text))
+  ok(`${name}: δεν λέει ότι η συνδρομή σταμάτησε`, !/σταμάτησε|ακυρώθηκε|έληξε/.test(text))
+  ok(`${name}: δεν στέλνει σε νέα αγορά`, !/διάλεξε πακέτο|αγόρασε|νέα συνδρομή/.test(text))
+  ok(`${name}: στέλνει στην υποστήριξη`, /υποστήριξη/.test(text))
+  ok(`${name}: έχει θέση για ημερομηνία`, text.includes('{date}'))
+}
+ok('η άρνηση νέου ταμείου στέλνει στην υποστήριξη', /υποστήριξη/.test(REVOKED_CHECKOUT_REFUSAL))
+ok('η χάρη λέγεται με τις ημέρες του κώδικα', SUBSCRIPTION_NOTICES.pastDueOver.includes(`${PAST_DUE_GRACE_DAYS} ημέρες`))
 
 console.log(fail === 0 ? `✓ billingWords: ${pass} έλεγχοι πέρασαν` : `✗ billingWords: ${fail} απέτυχαν από ${pass + fail}`)
 if (fail > 0) process.exit(1)

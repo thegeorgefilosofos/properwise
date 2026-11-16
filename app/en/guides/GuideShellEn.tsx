@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { T } from '@/components/tokens';
-import { ORG_ID, PRODUCT_NAME, SITE, siteUrl } from '@/lib/core/site';
+import { siteUrl } from '@/lib/core/site';
+import { organizationNode, ORG_REF } from '@/lib/seo/organization';
 import { fmtFor } from '@/lib/core/format';
 import { breadcrumbJsonLd, HOME_CRUMB_EN } from '@/lib/seo/breadcrumbs';
 import { GUIDE_SHELL_EN as S, enGuides } from '@/lib/i18n/en/guides';
@@ -36,10 +37,11 @@ export function GuideShellEn({ el, path, h1, description, about, intro, sections
       <JsonLd data={{
         '@context': 'https://schema.org',
         '@graph': [
+          organizationNode(),
           {
             '@type': 'Article', headline: h1, description, inLanguage: 'en',
             datePublished: guide.published, dateModified: guide.updated, mainEntityOfPage: siteUrl(path),
-            author: { '@id': ORG_ID }, publisher: { '@type': 'Organization', '@id': ORG_ID, name: PRODUCT_NAME, url: SITE },
+            author: ORG_REF, publisher: ORG_REF,
             about: { '@type': 'Thing', name: about },
           },
           breadcrumbJsonLd([{ name: 'Guides', path: '/en/guides' }, { name: h1, path }], HOME_CRUMB_EN),

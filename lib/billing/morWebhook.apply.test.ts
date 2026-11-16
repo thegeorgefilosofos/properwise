@@ -16,9 +16,10 @@
 // ειδοποιήσεων. Η ώρα δίνεται σταθερή, ώστε το «ισχύει ακόμη» να μην
 // εξαρτάται από τη μέρα που τρέχει η σουίτα.
 // ═══════════════════════════════════════════════════════════════════════════
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { applyMerchantEvent, type MerchantEventDeps } from './morWebhook';
-import type { MerchantAlert } from './merchantAlert';
+import type { MerchantEventDeps } from './morWebhook';
+// Η ψεύτικη βάση, ο αποστολέας και η ρύθμιση ζουν στο morWebhook.testkit.ts,
+// κοινά με τη σουίτα της μηχανής καταστάσεων (morWebhook.lifecycle.test.ts).
+import { ENV, fakeDb, fakeAlerts, profile, subEvent, moneyEvent, runWebhook } from './morWebhook.testkit';
 
 let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
@@ -29,16 +30,6 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.er
 const logged: string[] = [];
 console.info = (...parts: unknown[]) => { logged.push(parts.map(String).join(' ')); };
 
-// ── Η ΡΥΘΜΙΣΗ: ΟΛΟΚΛΗΡΟΣ Ο ΧΑΡΤΗΣ, ΤΕΣΣΕΡΑ ΠΑΚΕΤΑ ΣΕ ΔΥΟ ΚΥΚΛΟΥΣ ────────
-const FULL = 'prod_a:solo:monthly,prod_b:solo:annual,prod_c:owner:monthly,prod_d:owner:annual,'
-  + 'prod_e:agency:monthly,prod_f:agency:annual,prod_g:office:monthly,prod_h:office:annual';
-const ENV = {
-  MERCHANT_PROVIDER: 'creem',
-  CREEM_API_KEY: 'k',
-  CREEM_PRODUCTS: FULL,
-  CREEM_WEBHOOK_SECRET: 's',
-};
-
 const NOW = '2026-09-27T12:00:00.000Z';
 const FUTURE = '2026-11-01T00:00:00.000Z';
 const PAST = '2026-09-01T00:00:00.000Z';
@@ -47,103 +38,12 @@ const AT = Date.parse('2026-09-27T11:00:00.000Z');
 const AT_ISO = new Date(AT).toISOString();
 
 /** Ενα γεγονός στο σχήμα που στέλνει όντως ο πάροχος. */
-const event = (over: Record<string, unknown> = {}, name = 'subscription.active', createdAt: number = AT) => JSON.stringify({
-  id: 'evt_1',
-  eventType: name,
-  created_at: createdAt,
-  object: {
-    id: 'sub_1',
-    object: 'subscription',
-    product: { id: 'prod_a', name: 'Solo' },
-    customer: { id: 'cust_1', email: 'a@b.gr' },
-    status: 'active',
-    current_period_end_date: FUTURE,
-    updated_at: '2026-09-27T10:00:00.000Z',
-    metadata: { user_id: 'u1' },
-    ...over,
-  },
-});
-
-// ── Η ΨΕΥΤΙΚΗ ΒΑΣΗ ────────────────────────────────────────────────────────
-type Row = Record<string, unknown>;
-interface FakeDb {
-  db: SupabaseClient;
-  rows: Row[];
-  upserts: { row: Row; opts: unknown }[];
-  rpcs: { fn: string; args: Record<string, unknown> }[];
-  reads: string[];
-  /** Πόσες φορές ζητήθηκε πελάτης. Μηδέν σημαίνει «δεν άγγιξε τη βάση». */
-  opened: number;
-}
-
-/**
- * Μια βάση με μία πίνακα, που απαντά στις αναγνώσεις από τις γραμμές της και
- * θυμάται κάθε εγγραφή. Τα `fail*` ρίχνουν σφάλμα στο αντίστοιχο σημείο.
- */
-function fakeDb(rows: Row[] = [], fail: { lookup?: boolean; upsert?: boolean; rpc?: boolean } = {}): FakeDb & { factory: () => SupabaseClient } {
-  const state: FakeDb = { db: null as unknown as SupabaseClient, rows, upserts: [], rpcs: [], reads: [], opened: 0 };
-  const from = (table: string) => ({
-    select(cols: string) {
-      return {
-        eq(col: string, val: unknown) {
-          return {
-            async maybeSingle() {
-              state.reads.push(`${table}:${cols}:${col}=${String(val)}`);
-              if (fail.lookup && col === 'mor_subscription_id') return { data: null, error: { message: 'κάτω' } };
-              const hit = state.rows.find(r => r[col] === val) ?? null;
-              if (!hit) return { data: null, error: null };
-              const picked: Row = {};
-              for (const c of cols.split(',').map(s => s.trim())) picked[c] = hit[c] ?? null;
-              return { data: picked, error: null };
-            },
-          };
-        },
-      };
-    },
-    async upsert(row: Row, opts: unknown) {
-      state.upserts.push({ row, opts });
-      if (fail.upsert) return { error: { message: 'δεν γράφτηκε' } };
-      const at = state.rows.findIndex(r => r.user_id === row.user_id);
-      if (at >= 0) state.rows[at] = { ...state.rows[at], ...row }; else state.rows.push({ ...row });
-      return { error: null };
-    },
-  });
-  state.db = {
-    from,
-    async rpc(fn: string, args: Record<string, unknown>) {
-      state.rpcs.push({ fn, args });
-      return { error: fail.rpc ? { message: 'η μέτρηση απέτυχε' } : null };
-    },
-  } as unknown as SupabaseClient;
-  return { ...state, get rows() { return state.rows; }, get upserts() { return state.upserts; },
-    get rpcs() { return state.rpcs; }, get reads() { return state.reads; }, get opened() { return state.opened; },
-    factory: () => { state.opened++; return state.db; } };
-}
-
-/** Ενας αποστολέας ειδοποιήσεων που θυμάται τι του ζητήθηκε. */
-function fakeAlerts(result: boolean | 'throw' = true) {
-  const sent: MerchantAlert[] = [];
-  const sendAlert = async (a: MerchantAlert) => {
-    sent.push(a);
-    if (result === 'throw') throw new Error('το δίκτυο έπεσε');
-    return result;
-  };
-  return { sent, sendAlert };
-}
+const event = (over: Record<string, unknown> = {}, name = 'subscription.active', createdAt: number = AT) =>
+  subEvent(over, name, createdAt, FUTURE);
 
 /** Μία κλήση του webhook, με τα ψεύτικα στη θέση του δικτύου. */
-async function run(raw: string, db: ReturnType<typeof fakeDb>, alerts = fakeAlerts(), extra: MerchantEventDeps = {}) {
-  const res = await applyMerchantEvent(raw, {
-    env: ENV, db: db.factory, sendAlert: alerts.sendAlert, now: () => NOW, ...extra,
-  });
-  return { status: res.status, body: await res.json() as Record<string, unknown> };
-}
-
-/** Η γραμμή ενός λογαριασμού που υπάρχει ήδη (τη γεννά η σκανδάλη της βάσης). */
-const profile = (over: Row = {}): Row => ({
-  user_id: 'u1', plan: 'free', subscription_status: null, mor_subscription_id: null,
-  mor_ends_at: null, mor_event_at: null, trial_used_at: null, profile_type: null, ...over,
-});
+const run = (raw: string, db: ReturnType<typeof fakeDb>, alerts = fakeAlerts(), extra: MerchantEventDeps = {}) =>
+  runWebhook(raw, db, alerts, NOW, extra);
 
 async function main() {
   // ── 1. ΕΝΕΡΓΗ ΣΥΝΔΡΟΜΗ: ΤΟ ΠΑΚΕΤΟ ΚΑΙ ΤΑ mor_* ΓΡΑΦΟΝΤΑΙ ─────────────────
@@ -320,21 +220,24 @@ async function main() {
     ok('η αναζήτηση που απέτυχε ζητά επανάληψη: 502', r.status === 502 && r.body.error === 'lookup_failed');
   }
 
-  // ── 8. ΕΠΙΣΤΡΟΦΗ ΧΡΗΜΑΤΩΝ: ΕΙΔΟΠΟΙΗΣΗ, ΟΧΙ ΑΛΛΑΓΗ ΠΡΟΣΒΑΣΗΣ ──────────────
+  // ── 8. ΕΠΙΣΤΡΟΦΗ ΧΡΗΜΑΤΩΝ: Η ΠΡΟΣΒΑΣΗ ΤΕΛΕΙΩΝΕΙ ΚΑΙ ΦΤΑΝΕΙ ΣΕ ΑΝΘΡΩΠΟ ────
+  // Ως τις 12/11/2026 έφευγε μόνο ειδοποίηση και ο πελάτης που πήρε πίσω τα
+  // χρήματά του κρατούσε το πακέτο ώσπου να ακυρώσει κάποιος με το χέρι
+  // (έλεγχος ετοιμότητας πληρωμών 12/11/2026, «Λείπει (κώδικας)» 1). Η πλήρης
+  // μηχανή (αμφισβήτηση, σειρά, επανάληψη) στο morWebhook.lifecycle.test.ts.
   {
-    const db = fakeDb([profile({ plan: 'solo', mor_subscription_id: 'sub_9', subscription_status: 'active' })]);
+    const db = fakeDb([profile({ plan: 'solo', mor_subscription_id: 'sub_9', subscription_status: 'active', mor_last_transaction_id: 'tran_1' })]);
     const alerts = fakeAlerts();
-    const raw = JSON.stringify({
-      id: 'evt_r', eventType: 'refund.created', created_at: AT,
-      object: { id: 'ref_1', refund_amount: 499, refund_currency: 'eur', subscription: { id: 'sub_9' }, customer: { email: 'a@b.gr' } },
-    });
+    const raw = moneyEvent('refund', AT, { subscription: { id: 'sub_9' } });
     const r = await run(raw, db, alerts);
     ok('επιστροφή: 200 ok με «alerted»', r.status === 200 && r.body.ok === true && r.body.alerted === true);
     ok('επιστροφή: μία ειδοποίηση για τη συνδρομή', alerts.sent.length === 1 && alerts.sent[0].text.includes('sub_9'));
-    ok('επιστροφή: η βάση δεν αγγίζεται', db.opened === 0 && db.upserts.length === 0 && db.rows[0].plan === 'solo');
+    ok('επιστροφή: το πακέτο γυρίζει στο δωρεάν', db.revokes === 1 && db.rows[0].plan === 'free');
+    ok('επιστροφή: η κατάσταση καταγράφεται', db.rows[0].subscription_status === 'expired'
+       && db.rows[0].mor_revoked_reason === 'refund' && db.rows[0].mor_revoked_at === AT_ISO);
     const failing = fakeAlerts(false);
     const r2 = await run(raw, fakeDb(), failing);
-    ok('επιστροφή χωρίς αποστολή: πάλι 200, με alerted false', r2.status === 200 && r2.body.alerted === false);
+    ok('επιστροφή για άγνωστη συνδρομή χωρίς αποστολή: πάλι 200, με alerted false', r2.status === 200 && r2.body.alerted === false);
   }
 
   // ── 9. Ο,ΤΙ ΔΕΝ ΕΙΝΑΙ ΣΥΝΔΡΟΜΗ, Ο,ΤΙ ΔΕΝ ΔΙΑΒΑΖΕΤΑΙ, Ο,ΤΙ ΕΙΝΑΙ ΔΙΚΗ ΜΑΣ ΒΛΑΒΗ

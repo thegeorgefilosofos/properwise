@@ -1,8 +1,7 @@
 'use client'
 import { navLabel } from '@/lib/nav/labels';
-import { useState, useEffect, useRef, useMemo, useSyncExternalStore } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { deviceNotifyOn, NOTIFY_EVENT } from '@/lib/push/client'
 import { createClient } from '@/lib/supabase/client'
 import * as stayStore from '@/lib/data/stays';
 import * as expenses from '@/lib/data/expenses'
@@ -45,8 +44,8 @@ import { DatePicker } from './UIComponents'
 import { expandRecurring } from '@/lib/calendar/recurrence'
 import { findConflicts } from '@/lib/calendar/availability'
 import { parseICS } from '@/lib/calendar/icsImport'
-import { dueReminders, notifyBody } from '@/lib/calendar/notify'
 import { toStaySpan, type StaySpan } from '@/lib/calendar/stayBars'
+import { PAST_LABEL } from '@/lib/calendar/pastState'
 import {
   taxKindOfEventSource,
   TAX_EVENT_CATEGORY,
@@ -63,7 +62,7 @@ import {
   type EventCategory, type EventStatus, type ViewMode, type CalEvent,
   type FormState, CATEGORIES, STATUSES, canonicalCategory,
   EMPTY_FORM, fmt, fmtShort,
-  athensNow, daysUntil, isOverdue, isThisWeek, isThisMonth, isExpiring, todayStr, addDaysStr,
+  athensNow, daysUntil, isOverdue, isPastNotice, pastStateOf, isThisWeek, isThisMonth, isExpiring, todayStr, addDaysStr,
 } from './calendar/model'
 import { EventCard, Section } from './calendar/EventCard'
 import { usePointerDrag, DaySheet, MonthView } from './calendar/MonthView'
@@ -71,14 +70,8 @@ import { AutoPullPanel } from './calendar/AutoPullPanel'
 import { EventModal, ScopeModal } from './calendar/EventModal'
 import { SubscribeModal } from './calendar/SubscribeModal'
 import { CalendarQuickAdd } from './calendar/CalendarQuickAdd'
-import { dueTextStart } from '@/lib/facts/deadlines'
-
-// Οποιος αλλάξει τον διακόπτη σε ΑΛΛΗ καρτέλα ή σε άλλη οθόνη, φτάνει εδώ.
-function subscribeNotify(onChange: () => void): () => void {
-  window.addEventListener(NOTIFY_EVENT, onChange)
-  window.addEventListener('storage', onChange)
-  return () => { window.removeEventListener(NOTIFY_EVENT, onChange); window.removeEventListener('storage', onChange) }
-}
+import { dueTextStart, incomeInstalmentsAfter } from '@/lib/facts/deadlines'
+import { cssRect, cssViewW, cssViewH } from '@/lib/core/cssZoom'
 
 export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenTasks }: {
   propertyId:string; userId:string;
@@ -121,17 +114,9 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   const [menuCoords,setMenuCoords]=useState<{top:number;left:number;up:boolean}>({top:0,left:0,up:false})
   // Θέση του μενού «⋯»: portal + fixed, δεξιά-στοιχισμένο στο κουμπί αλλά πάντα
   // πλήρως ορατό (clamp στα άκρα της οθόνης), προς τα κάτω· πάνω μόνο αν δεν χωράει.
-  const positionMenu=()=>{ const el=menuBtnRef.current; if(!el)return; const r=el.getBoundingClientRect(); const W=248, PANEL_H=392, M=8; const below=window.innerHeight-r.bottom-M; const up=below<PANEL_H && r.top-M>below; const left=Math.max(M,Math.min(r.right-W,window.innerWidth-W-M)); setMenuCoords({top:up?r.top-6:r.bottom+6,left,up}) }
+  const positionMenu=()=>{ const el=menuBtnRef.current; if(!el)return; const r=cssRect(el); const W=248, PANEL_H=392, M=8; const below=cssViewH()-r.bottom-M; const up=below<PANEL_H && r.top-M>below; const left=Math.max(M,Math.min(r.right-W,cssViewW()-W-M)); setMenuCoords({top:up?r.top-6:r.bottom+6,left,up}) }
   const importRef=useRef<HTMLInputElement>(null)
-  // Ο ΔΙΑΚΟΠΤΗΣ ΕΙΝΑΙ ΤΟΥ ΠΕΡΙΗΓΗΤΗ, ΟΧΙ ΤΗΣ REACT. Ηταν `useState(false)` και
-  // `if(deviceNotifyOn())setNotifyOn(true)` μέσα στο effect που στήνει τον
-  // ακροατή: σύγχρονη γραφή κατάστασης, δηλαδή δεύτερη απόδοση σε κάθε φόρτωση
-  // του ημερολογίου. Το `useSyncExternalStore` δίνει ΞΕΧΩΡΙΣΤΗ απάντηση στον
-  // διακομιστή («όχι», γιατί εκεί δεν υπάρχουν ειδοποιήσεις), οπότε δεν υπάρχει
-  // ούτε ασυμφωνία ενυδάτωσης ούτε δεύτερη απόδοση.
-  const notifyOn = useSyncExternalStore(subscribeNotify, deviceNotifyOn, () => false)
   const [stays,setStays]=useState<StaySpan[]>([])
-  const notifiedRef=useRef<Set<string>>(new Set())
   // Ενιαίο drag (ποντίκι + αφή) — μετακίνηση γεγονότος με σύρσιμο στο πλέγμα του μήνα.
   const drag=usePointerDrag((id,date,time)=>moveEvent(id,date,time))
   // Εισαγωγή γεγονότων από αρχείο .ics (Google/Apple/Outlook export).
@@ -165,25 +150,10 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   }
   useEffect(()=>{ if(!showMenu)return; positionMenu(); const h=(ev:MouseEvent)=>{ const t=ev.target as Node; if((menuRef.current?.contains(t))||(menuPopRef.current?.contains(t)))return; setShowMenu(false) }; const rp=()=>positionMenu(); document.addEventListener('mousedown',h); window.addEventListener('scroll',rp,true); window.addEventListener('resize',rp); return ()=>{document.removeEventListener('mousedown',h); window.removeEventListener('scroll',rp,true); window.removeEventListener('resize',rp)} },[showMenu])
 
-  // ΟΙ ΕΙΔΟΠΟΙΗΣΕΙΣ ΣΥΣΚΕΥΗΣ ΕΧΟΥΝ ΕΝΑΝ ΔΙΑΚΟΠΤΗ ΚΑΙ ΔΕΝ ΕΙΝΑΙ ΕΔΩ. Ζει στις
-  // Ρυθμίσεις → Ειδοποιήσεις (DeviceNotifications.tsx) και ανάβει ΚΑΙ την πρωινή
-  // ειδοποίηση με την εφαρμογή κλειστή ΚΑΙ αυτή εδώ την τοπική, ~10' πριν από
-  // κάθε ραντεβού, όσο η εφαρμογή είναι ανοιχτή. Το ημερολόγιο ΑΚΟΥΕΙ: όποιος
-  // αλλάξει τον διακόπτη σε άλλη καρτέλα δεν χρειάζεται να ανανεώσει σελίδα.
-  useEffect(()=>{
-    if(!notifyOn||typeof Notification==='undefined')return
-    const tick=()=>{
-      if(Notification.permission!=='granted')return
-      const due=dueReminders(events.filter(e=>!e._virtual),athensNow(),10,notifiedRef.current)
-      for(const e of due){
-        notifiedRef.current.add(e.id)
-        try{ new Notification(e.title,{ body:notifyBody(e,athensNow()), tag:`cal_${e.id}` }) }catch{}
-      }
-    }
-    tick()
-    const iv=setInterval(tick,60000)
-    return ()=>clearInterval(iv)
-  },[notifyOn,events])
+  // Η ΤΟΠΙΚΗ ΕΙΔΟΠΟΙΗΣΗ ~10' ΠΡΙΝ ΑΠΟ ΚΑΘΕ ΡΑΝΤΕΒΟΥ ΔΕΝ ΖΕΙ ΠΙΑ ΕΔΩ (10/11/2026).
+  // Μέσα στο ημερολόγιο χτυπούσε μόνο με ανοιχτή αυτή την καρτέλα, μόνο για το
+  // επιλεγμένο ακίνητο και ποτέ για εμφάνιση σειράς. Τώρα τη στήνει η σελίδα του
+  // πίνακα για όλα τα ακίνητα (useAppointmentReminders).
   useEffect(()=>{
     load()
     // Ζωντανό: κάθε αλλαγή στα γεγονότα (π.χ. συμφωνία πληρωμής, sync υποχρεώσεων
@@ -251,6 +221,9 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   }),[events,filterCat,filterStatus,searchQ,dateFrom,dateTo])
 
   const overdue=filtered.filter(isOverdue)
+  // Η υπενθύμιση ΠΕΑ που πέρασε δεν είναι ληξιπρόθεσμη, αλλά δεν χάνεται κιόλας:
+  // το «Έληξε» είναι πληροφορία για την επόμενη μίσθωση (lib/calendar/pastState.ts).
+  const pastNotices=filtered.filter(isPastNotice)
   const thisWeek=filtered.filter(isThisWeek)
   const thisMonth=filtered.filter(isThisMonth)
   const expiring=filtered.filter(isExpiring)
@@ -332,25 +305,34 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
   async function applyEditScope(scope:'this'|'following'|'all'){
     if(!editingEvent)return; setSaving(true)
     const base=editingEvent; const occ=editOccDate||base.event_date; const payload=buildPayload()
+    // ΤΟ ΠΑΡΑΘΥΡΟ ΜΕΝΕΙ ΑΝΟΙΧΤΟ ΟΤΑΝ ΔΕΝ ΓΡΑΦΤΗΚΕ ΤΙΠΟΤΑ, όπως στο saveEvent.
+    // Εκλεινε πάντα και ο χρήστης έχανε ό,τι διόρθωσε. `wrote` γίνεται true
+    // μόλις περάσει το πρώτο βήμα: από εκεί και πέρα η βάση άλλαξε και μια
+    // δεύτερη προσπάθεια θα έγραφε διπλό, οπότε κλείνει και ξαναφορτώνει.
+    let wrote=false
     try{
       if(scope==='all'){
-        await saved('Η σειρά δεν ενημερώθηκε', calendar.update(supabase,base.id,calendar.editPatch(payload)))
+        wrote=await saved('Η σειρά δεν ενημερώθηκε', calendar.update(supabase,base.id,calendar.editPatch(payload)))
       }else if(scope==='this'){
         // Απόσπαση μόνο αυτής: νέο μεμονωμένο με τις αλλαγές + εξαίρεση της ημέρας από τη σειρά.
         // Η ΣΕΙΡΑ ΤΩΝ ΔΥΟ ΕΧΕΙ ΣΗΜΑΣΙΑ: αν μπει η εξαίρεση χωρίς να έχει
         // δημιουργηθεί το μεμονωμένο, η εμφάνιση εξαφανίζεται εντελώς.
-        if(await saved('Η εξαίρεση της ημέρας δεν αποθηκεύτηκε', calendar.insert(supabase,[{...payload,event_date:occ,recurring:false,recurring_interval:null,recurrence_until:null,recurrence_count:null}]))){
+        wrote=await saved('Η εξαίρεση της ημέρας δεν αποθηκεύτηκε', calendar.insert(supabase,[{...payload,event_date:occ,recurring:false,recurring_interval:null,recurrence_until:null,recurrence_count:null}]))
+        if(wrote){
           const ex=Array.from(new Set([...(base.recurrence_exdates||[]),occ]))
           await saved('Η ημέρα δεν αφαιρέθηκε από τη σειρά', calendar.update(supabase,base.id,{recurrence_exdates:ex}))
         }
       }else{
         // Αυτό και τα επόμενα: κόψε τη σειρά την προηγούμενη μέρα + νέα σειρά από την occ.
-        if(await saved('Η σειρά δεν κόπηκε στη σωστή ημερομηνία', calendar.update(supabase,base.id,{recurrence_until:addDaysStr(occ,-1),recurrence_count:null}))){
+        wrote=await saved('Η σειρά δεν κόπηκε στη σωστή ημερομηνία', calendar.update(supabase,base.id,{recurrence_until:addDaysStr(occ,-1),recurrence_count:null}))
+        if(wrote){
           await saved('Η νέα σειρά δεν δημιουργήθηκε', calendar.insert(supabase,[{...payload,event_date:occ,recurrence_exdates:((base.recurrence_exdates||[]) as string[]).filter(d=>d>=occ)}]))
         }
       }
-    }catch{}
-    await load(); setScopePrompt(false); setShowModal(false); setEditOccDate(null); setSaving(false)
+    }catch{ notifyError('Το γεγονός δεν αποθηκεύτηκε. Δοκίμασε ξανά.') }
+    setScopePrompt(false); setSaving(false)
+    if(!wrote) return
+    await load(); setShowModal(false); setEditOccDate(null)
   }
 
   async function toggleStatus(e:CalEvent){
@@ -366,6 +348,14 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
     const ns:EventStatus=e.status==='paid'?'pending':'paid'
     if(!await saved('Η κατάσταση δεν αποθηκεύτηκε', calendar.update(supabase,e.id,{status:ns}))) return
     if(ns==='paid') void track(supabase, PRODUCT_EVENTS.paid_marked, paidProps('app'))
+    // ΕΦΑΠΑΞ ΕΞΟΦΛΗΣΗ ΤΟΥ ΦΟΡΟΥ ΕΙΣΟΔΗΜΑΤΟΣ: ρωτά, δεν υποθέτει. Οι δόσεις των
+    // άλλων ακινήτων του ίδιου φορολογούμενου κλείνουν από τον συγχρονισμό.
+    const rest=ns==='paid'?incomeInstalmentsAfter(events,e):[]
+    if(rest.length&&await confirmDialog({title:'Εξοφλήθηκε όλος ο φόρος;',message:`Αν πλήρωσες εφάπαξ, κλείνουν και οι υπόλοιπες δόσεις της ίδιας δήλωσης (${rest.length}). Αν πληρώνεις σε δόσεις, άφησέ τες ανοιχτές.`,confirmLabel:'Κλείσιμο υπόλοιπων',cancelLabel:'Πληρώνω σε δόσεις'})
+      &&await saved('Οι υπόλοιπες δόσεις δεν έκλεισαν', calendar.updateMany(supabase,rest.map(r=>r.id),{status:'paid'}))){
+      const ids=new Set(rest.map(r=>r.id))
+      setEvents(prev=>prev.map(ev=>ids.has(ev.id)?{...ev,status:'paid' as EventStatus}:ev))
+    }
     // ΑΝΑΙΡΕΣΗ ΤΟΥ «ΠΛΗΡΩΣΑ» ΑΠΟ ΤΗΝ ΕΦΑΡΜΟΓΗ: αν η πληρωμή είχε γραφτεί και ως
     // δαπάνη από την υπενθύμιση (lib/reminders/payLink.ts), ρωτά πριν τη σβήσει.
     if(ns==='pending'&&await expenses.hasDedup(supabase,userId,payDedupHash(e.id))
@@ -638,7 +628,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
         <div ref={menuRef} style={{ position:'relative' }}>
           <button ref={menuBtnRef} aria-label="Περισσότερα" aria-haspopup="menu" aria-expanded={showMenu} title="Περισσότερα" onClick={()=>setShowMenu(m=>!m)} style={{ width:T.h.lg, height:T.h.lg, borderRadius:'50%', border:'1px solid '+(showMenu?'var(--border-default)':'var(--border-subtle)'), background:showMenu?'var(--bg-elevated)':'var(--bg-surface)', cursor:'pointer', color:'var(--text-secondary)', display:'flex', alignItems:'center', justifyContent:'center' }}><MoreHorizontal size={18}/></button>
           {showMenu&&createPortal(
-            <div ref={menuPopRef} role="menu" style={{ position:'fixed', top:menuCoords.top, left:menuCoords.left, transform:menuCoords.up?'translateY(-100%)':'none', width:248, maxHeight:'min(392px, 80vh)', overflowY:'auto', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius: T.radius.popup, boxShadow:'var(--elev-3)', padding:6, zIndex:3000 }}>
+            <div ref={menuPopRef} role="menu" style={{ position:'fixed', top:menuCoords.top, left:menuCoords.left, transform:menuCoords.up?'translateY(-100%)':'none', width:248, maxHeight:'min(392px, calc(80vh / var(--zoom, 1)))', overflowY:'auto', background:'var(--bg-elevated)', border:'1px solid var(--border-subtle)', borderRadius: T.radius.popup, boxShadow:'var(--elev-3)', padding:6, zIndex:3000 }}>
               {([
                 {label: bulkMode?'Τέλος επιλογής':'Μαζική επιλογή', icon:<CheckSquare size={15}/>, on:()=>{setBulkMode(b=>!b);setSelectedIds(new Set());setShowMenu(false)}},
                 {label: showFilters?'Απόκρυψη φίλτρων':'Φίλτρα', icon:<Filter size={15}/>, on:()=>{setShowFilters(f=>!f);setShowMenu(false)}},
@@ -650,7 +640,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
                   // Καθαρός, φιλτραρίσιμος πίνακας: κάθε πεδίο σε δικό του κελί, αριθμοί
                   // ως αριθμοί (2 δεκαδικά), στήλες Έτος/Μήνας/Προθεσμία για φιλτράρισμα,
                   // και ξεχωριστά φύλλα «Εκπρόθεσμα»/«Επερχόμενα».
-                  const prothesmia=(e:CalEvent)=> (e.status==='paid'||e.status==='cancelled')?'Ολοκληρωμένο':isOverdue(e)?'Ληξιπρόθεσμο':'Εντός προθεσμίας'
+                  const prothesmia=(e:CalEvent)=>{ if(e.status==='paid'||e.status==='cancelled') return 'Ολοκληρωμένο'; const p=pastStateOf(e); return p?PAST_LABEL[p]:'Εντός προθεσμίας' }
                   const cols:XlsxCol[]=[
                     {header:'Ημερομηνία',kind:'date',width:13},
                     {header:'Ημέρα',width:11},
@@ -829,6 +819,7 @@ export default function TabCalendar({ propertyId, userId, openTasks = 0, onOpenT
       {!loading&&viewMode==='agenda'&&(
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
           {overdue.length>0&&<Section title="Ληξιπρόθεσμα" color="var(--negative)" events={overdue} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
+          {pastNotices.length>0&&<Section title="Περασμένες υπενθυμίσεις" color="var(--text-secondary)" events={pastNotices} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} desc bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {thisWeek.length>0&&<Section title="Επόμενες 7 ημέρες" color="var(--accent)" events={thisWeek} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {thisMonth.length>0&&<Section title="Σε 8 ως 30 ημέρες" color="var(--text-secondary)" events={thisMonth} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}
           {later.length>0&&<Section title="Αργότερα" color="var(--text-secondary)" events={later} onToggle={toggleStatus} onEdit={openEdit} onDelete={deleteEvent} bulkMode={bulkMode} selectedIds={selectedIds} onSelect={toggleSelect}/>}

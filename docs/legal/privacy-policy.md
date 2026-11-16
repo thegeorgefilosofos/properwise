@@ -74,6 +74,15 @@
 **Τα στοιχεία κάρτας τηρούνται αποκλειστικά από τη Creem**, που ενεργεί ως
 merchant of record· δεν περνούν ποτέ από τους δικούς μας διακομιστές.
 
+**2.8 Φωνητική εισαγωγή (υπαγόρευση και Νόα):** Η φωνή είναι προαιρετική και ενεργοποιείται μόνο όταν
+πατήσετε το μικρόφωνο. Τη μετατροπή της φωνής σε κείμενο την κάνει ο περιηγητής σας, με τη δική του
+υπηρεσία αναγνώρισης ομιλίας. Στο Chrome ο ήχος στέλνεται συνήθως στη Google και στο Edge στη Microsoft.
+Στο Safari η μετατροπή γίνεται συχνά στη συσκευή ή στην Apple. Το PROPERWISE δεν λαμβάνει, δεν
+καταγράφει και δεν αποθηκεύει ήχο. Λαμβάνει μόνο το κείμενο που εμφανίζεται στο πεδίο και το
+αποθηκεύει μόνο αν το αποθηκεύσετε εσείς. Στη Νόα το κείμενο στέλνεται ως ερώτηση μόλις σταματήσετε
+να μιλάτε, όπως μια ερώτηση που πληκτρολογείτε (§2.6). Η ανάγνωση φωναχτά (των απαντήσεων της Νόας
+και των ποσών) γίνεται από τον περιηγητή και δεν στέλνει τίποτα σε εμάς.
+
 ---
 
 ## 3. Σκοποί & νομικές βάσεις (άρθρο 6 ΓΚΠΔ)
@@ -109,18 +118,29 @@ merchant of record· δεν περνούν ποτέ από τους δικούς
 
 | Υπεργολάβος | Σκοπός | Τοποθεσία | Διαβίβαση |
 |---|---|---|---|
-| **Supabase Pte. Ltd** (Σιγκαπούρη) | Βάση/auth/αποθήκευση/edge functions | **ΕΕ — Frankfurt** | Δεδομένα στην ΕΕ· **SCCs** (Module 2/3) με τον αντισυμβαλλόμενο στη Σιγκαπούρη |
+| **Supabase Pte. Ltd** (Σιγκαπούρη) | Βάση/auth/αποθήκευση/edge functions/κρυπτογραφημένα backups | **ΕΕ, Frankfurt** | Δεδομένα στην ΕΕ· **SCCs** (Module 2/3) με τον αντισυμβαλλόμενο στη Σιγκαπούρη |
 | **Plus Five Five, Inc.** (Resend) | Email | ΗΠΑ | **SCCs** |
 | **Vercel Inc.** | Φιλοξενία και παράδοση της εφαρμογής, μέτρηση επισκεψιμότητας χωρίς cookies | ΗΠΑ, παγκόσμιο δίκτυο | Σύμβαση επεξεργασίας: εκκρεμεί |
 | **Google LLC** | Σύνδεση με Google, εφόσον την επιλέξετε | ΗΠΑ | Αυτοτελής υπεύθυνος επεξεργασίας |
+| **Cloudflare, Inc.** (Turnstile) | Έλεγχος κατά αυτοματοποιημένων λογαριασμών στην εγγραφή, τη σύνδεση και την επαναφορά κωδικού. Κατά την Cloudflare: διεύθυνση IP, αποτύπωμα TLS, User-Agent, κλειδί ιστοτόπου και προέλευση. Ενεργός μόνο με κλειδί (προσθήκη 10/11/2026). Νομική βάση: έννομο συμφέρον για την ασφάλεια (άρθρο 6§1στ) | ΗΠΑ | Εγγύηση διαβίβασης: δεν έχει καταγραφεί ακόμη |
 | **Anthropic Ireland, Ltd** (για πελάτες ΕΟΧ) | Βοηθός AI (χωρίς εκπαίδευση μοντέλων) | ΗΠΑ | **SCCs** |
-| **GitHub, Inc.** | Κώδικας/CI/κρυπτογραφημένα backups | ΗΠΑ | **SCCs** |
-| **Creem** | Χρέωση συνδρομών (merchant of record) | ΗΠΑ/ΕΕ | **SCCs** |
+| **GitHub, Inc.** | Κώδικας/CI/κλειδί αποκρυπτογράφησης των backups (GitHub Secrets) | ΗΠΑ | **SCCs** |
+| **Creem** | Χρέωση συνδρομών (merchant of record) | ΗΠΑ/ΕΕ | Μηχανισμός διαβίβασης: δεν έχει καταγραφεί (`docs/compliance/subprocessors.md`) |
 | Πάροχοι μηνυμάτων *(σχεδιαζόμενο)* | Ειδοποιήσεις | Διάφορες | **SCCs** πριν την ενεργοποίηση |
 
-Το **σύστημα καταγραφής παραμένει στην ΕΕ**. Οι υπεργολάβοι εκτός ΕΟΧ λειτουργούν βάσει
-**Τυποποιημένων Συμβατικών Ρητρών (SCCs)** + εκτίμησης επιπτώσεων (TIA). Δεν **πωλούμε**
-δεδομένα.
+Έλεγχος κωδικού για διαρροές (Have I Been Pwned, προσθήκη 10/11/2026): ο περιηγητής στέλνει στο
+`api.pwnedpasswords.com` μόνο τους πέντε πρώτους χαρακτήρες του SHA-1 του κωδικού, με padding. Η υπηρεσία
+δεν λαμβάνει κωδικό, email ή λογαριασμό· βλέπει τη διεύθυνση IP του αιτήματος.
+
+Φωνητική εισαγωγή (προσθήκη 14/11/2026): η αναγνώριση ομιλίας είναι λειτουργία του περιηγητή σας και
+όχι δικός μας υπεργολάβος. Ο πάροχος του περιηγητή (π.χ. Google για το Chrome, Microsoft για το Edge)
+επεξεργάζεται τον ήχο με δική του ευθύνη, σύμφωνα με τους όρους του περιηγητή. Μπορείτε να μη χρησιμοποιείτε
+το μικρόφωνο: όλα γίνονται και με πληκτρολόγιο.
+
+Το **σύστημα καταγραφής παραμένει στην ΕΕ**. Η εγγύηση κάθε διαβίβασης εκτός ΕΟΧ γράφεται
+ανά πάροχο στον πίνακα. Όπου γράφει «εκκρεμεί» ή «δεν έχει καταγραφεί», καταγεγραμμένη εγγύηση
+δεν υπάρχει ακόμη (διόρθωση 10/11/2026: η φράση έλεγε ότι όλοι λειτουργούν με SCCs). Δεν
+**πωλούμε** δεδομένα.
 
 ---
 
@@ -209,7 +229,10 @@ phone, ΑΦΜ. (2) Property/financial/tax: ΑΤΑΚ, objective value, ΕΝΦΙΑ
 bank imports, Ε2 figures, documents. (3) Tenant/guest (customer-entered): name, ΑΦΜ,
 phone, email, ID, lease terms, stay history — **customer is controller**. (4) Email/
 notifications. (5) Lifecycle/marketing. (6) AI context — no special-category data, no
-third-party phone/ΑΦΜ, not used for training. (7) Billing — card data held solely by Creem (merchant of record).
+third-party phone/ΑΦΜ, not used for training. (7) Billing — card data held solely by Creem (merchant of record). (8) Voice input (added 14/11/2026): optional, starts only when you press the
+microphone. Speech-to-text is performed by your browser's own speech service (in Chrome usually Google, in
+Edge Microsoft). PROPERWISE never receives or stores audio, only the resulting text, and only if you save it;
+in Noa the text is sent as a question as soon as you stop speaking.
 
 **3. Legal bases (Art. 6).** Service **6(1)(b)**; security **6(1)(f)**; records
 **6(1)(b)**; tax **6(1)(c)**; transactional email **6(1)(b)**; marketing **6(1)(a)**/
@@ -219,14 +242,16 @@ third-party phone/ΑΦΜ, not used for training. (7) Billing — card data held 
 (`docs/legal/dpa.md`).
 
 **5. Subprocessors/transfers.** Supabase Pte. Ltd (data in EU/Frankfurt; SCCs with the Singapore counterparty), Resend (Plus Five
-Five, Inc.)/Anthropic/GitHub/Creem (US/SCCs), Vercel (hosting, US; DPA pending), Google
-(sign-in, independent controller). System of record in the EU. We do not sell personal
+Five, Inc.)/Anthropic/GitHub (US/SCCs), Creem (US/EU; transfer mechanism not recorded), Vercel (hosting, US; DPA pending), Google
+(sign-in, independent controller), Cloudflare, Inc. (Turnstile bot check on sign-up, sign-in
+and password reset; per Cloudflare: IP address, TLS fingerprint, User-Agent, sitekey and origin;
+legitimate interest in security; active only with a key; transfer safeguard not yet recorded). Leaked-password check (Have I Been Pwned): the browser sends api.pwnedpasswords.com only the first five characters of the password's SHA-1, with padding; the service sees the request's IP address, not the password, email or account. Voice input: speech recognition is a feature of your browser, not our subprocessor; the browser vendor processes the audio under its own terms. System of record in the EU. We do not sell personal
 data.
 
 **6. Retention.** Account: its life; deleted from the database immediately on
 deletion. No automatic deletion for lack of a subscription (the account continues on
 the free plan). Tax: Greek statutory. Backups: 30-day
-encrypted. Deletion effective across the estate within 30 days.
+encrypted, in a private Supabase storage space (Frankfurt); key in GitHub Secrets. Deletion effective across the estate within 30 days.
 
 **7. Rights (15–22).** Export (`export_my_data`), Delete (`delete_my_account`), in-app
 rectification, per-message opt-out, restriction, withdraw consent. Via Settings → Data

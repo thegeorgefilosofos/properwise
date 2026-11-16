@@ -31,6 +31,7 @@ import type {
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventoryStore from '@/lib/data/inventory'
 import * as accountantLink from '@/lib/data/accountantLink'
+import { MFA_REQUIRED } from '@/lib/auth/mfa'
 import type { LoanView } from '@/lib/loans/shape'
 import type { TaxStay } from '@/lib/tax/shortTermTax'
 import { saved } from '@/components/dbWrite'
@@ -679,7 +680,10 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
       const gross = ownerShareOfAmount(rmode==='individual_shortterm' ? pShort.grossRevenue : Math.max(0, pRentAccrued - pRelief), pPct)
       // Για το ανοιχτό ακίνητο, ο ΕΝΦΙΑ της Κατάστασης: αλλιώς η ενοποίηση θα
       // μετρούσε άλλο ποσό από τη γραμμή που βλέπει ο χρήστης δίπλα της.
-      const pEnfia = p.id===propertyId ? enfia : ownerShareOfAmount(resolveEnfia({ propertyEnfia:p.enfia }).annual, pPct)
+      // Το `enfia` της καρτέλας είναι ΗΔΗ το μερίδιο (εκκαθαριστικό ή φόρος της
+      // γραμμής της πράξης, lib/myaade/commit.ts): δεύτερο κόψιμο στο ποσοστό θα
+      // το μίκραινε δύο φορές, όπως ήδη δεν κόβεται για το ανοιχτό ακίνητο.
+      const pEnfia = p.id===propertyId ? enfia : resolveEnfia({ propertyEnfia:p.enfia }).annual
       const input:StatementInput = { regime:rmode, grossIncome:gross, enfia: pEnfia, presumptiveRate: presumptiveDeductionRateForYear(year, pViaBank, rmode==='individual_shortterm' ? pShort.nightsByMonth : rentByMonth(allRent.filter(r=>r.property_id===p.id), year)),
         // Ο ίδιος κανόνας του μεριδίου με τα ακαθάριστα κι τον ΕΝΦΙΑ από πάνω:
         // τέλος υπολογισμένο στο 100% δίπλα σε έσοδα 33% δεν ισοσκελίζει.
@@ -1033,6 +1037,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
       // lib/data/accountantLink.ts. Εδώ ήταν γραμμένες δεύτερη φορά και η
       // εκδοχή των Ρυθμίσεων είχε ήδη αποκλίνει.
       const link = await accountantLink.issue(supabase, userId)
+      if(link === MFA_REQUIRED){ notifyError(accountantLink.MFA_LINK_SAY); return }
       if(!link){ notifyError('Ο σύνδεσμος για τον λογιστή δεν δημιουργήθηκε'); return }
       setAcctLink(link.url)
       setAcctUntil(accountantLink.expiryLabel(link))
@@ -1055,6 +1060,7 @@ export function useAccounting({ propertyId, userId, profileType='individual', le
     try{
       const link = await accountantLink.rotate(supabase, userId)
       if(link === 'insecure'){ notifyError('Ο περιηγητής δεν μπορεί να παραγάγει ασφαλή σύνδεσμο. Δοκίμασε από ασφαλή σύνδεση (https).'); return }
+      if(link === MFA_REQUIRED){ notifyError(accountantLink.MFA_LINK_SAY); return }
       if(!link){ notifyError('Ο σύνδεσμος δεν ανακλήθηκε'); return }
       setAcctLink(link.url)
       setAcctUntil(accountantLink.expiryLabel(link))

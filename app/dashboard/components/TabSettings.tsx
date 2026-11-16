@@ -16,6 +16,7 @@ import * as properties from '@/lib/data/properties';
 import * as settings from '@/lib/data/settings';
 // Το προφίλ χρέωσης έχει ένα σπίτι: lib/data/billing.
 import * as billing from '@/lib/data/billing';
+import { nameDaysLeft, nameLockedError, NAME_LOCKED_TEXT } from './nameLock';
 import NotificationSettings from './NotificationSettings';
 import { CustomSelect, Toggle } from './UIComponents';
 import { T, TT, Card, SecHdr, Btn, LinkBtn, PageTitle, fdLong, fn, settingsField, ABSENT, pageShell, Bar } from '@/components/Theme';
@@ -27,24 +28,26 @@ import ReportBranding from './ReportBranding';
 import { ThemeToggle } from './ThemeToggle';
 import SettingsRoadmap from './SettingsRoadmap';
 import Feedback from './Feedback';
+import SupportForm from './SupportForm';
 import PlanComparison from './PlanComparison';
 import SecuritySettings from './SecuritySettings';
 import InboundAddress from './InboundAddress';
 import CalendarFeedRow from './CalendarFeedRow';
 import ActivityLog from './ActivityLog';
 import OrgTeam from './OrgTeam';
-import { exportAllData } from '@/lib/dataExport';
+import { exportAllData, FILES_NOT_IN_EXPORT } from '@/lib/dataExport';
 import * as accountantLink from '@/lib/data/accountantLink';
 import { confirmDialog } from '@/components/confirmBus';
 import { PLANS, PLAN_ORDER, normalizePlan, type PlanId } from '@/lib/billing/plans';
 import { hasVerifiedFactor } from '@/lib/auth/mfa';
 
-import { effectivePlan, livePlan, activeComp, planAtLeast, propertyLimit, trialState, isOpenEnded } from '@/lib/billing/entitlements';
+import { PLAN_COLUMNS, planFieldsFromRow, type PlanProfileRow } from '@/lib/billing/planRefresh';
+import { effectivePlan, activeComp, planAtLeast, propertyLimit, trialState, isOpenEnded } from '@/lib/billing/entitlements';
 import { athensToday } from '@/lib/core/time';
 import { notifyError } from '@/components/Toast';
 import { SAY, failed } from '@/lib/core/dbError';
 import { useLoad } from '@/app/hooks/useLoad';
-import { useRememberedFlag } from '@/components/useRememberedFlag';
+import { AccessibilitySettings } from './AccessibilitySettings';
 import { useBillingWords } from './useBillingWords';
 
 // Φαίνεται μόνο σε όποιον έχει δώσει πρόσβαση σε γραφείο· φορτώνεται στον περιηγητή.
@@ -331,7 +334,7 @@ function DeleteAccount() {
 
   return (
     <SetRow title="Διαγραφή λογαριασμού"
-      desc="Διαγράφει οριστικά τον λογαριασμό και όλα τα δεδομένα σου: ακίνητα, ενοικιαστές, πελάτες, δαπάνες, λογαριασμούς, έγγραφα και αρχεία. Η ενέργεια δεν αναιρείται. Αν θέλεις αντίγραφο, προηγείται η εξαγωγή δεδομένων παραπάνω.">
+      desc={`Διαγράφει οριστικά τον λογαριασμό και όλα τα δεδομένα σου: ακίνητα, ενοικιαστές, πελάτες, δαπάνες, λογαριασμούς, έγγραφα και αρχεία. Η ενέργεια δεν αναιρείται. Αν θέλεις αντίγραφο, κάνε πρώτα την εξαγωγή δεδομένων παραπάνω. ${FILES_NOT_IN_EXPORT}`}>
       {has2fa && !leftover && (
         // Μόνο για όποιον έχει δεύτερο παράγοντα: η διαγραφή θα τον ζητήσει,
         // οπότε ας μην τον ξαφνιάσει τη στιγμή της οριστικής πράξης.
@@ -469,7 +472,7 @@ function ProfileCard({ userId, email }: { userId: string; email: string }) {
 
   // Το ρολόι διαβάζεται ΜΙΑ φορά, στην προσάρτηση — όχι σε κάθε απόδοση.
   const [nowMs] = useState(() => Date.now());
-  const daysLeft = changedAt ? Math.max(0, 30 - Math.floor((nowMs - new Date(changedAt).getTime()) / 86400000)) : 0;
+  const daysLeft = nameDaysLeft(changedAt, nowMs);
   const nameLocked = daysLeft > 0;
 
   const saveEmail = async (v: string) => {
@@ -479,10 +482,12 @@ function ProfileCard({ userId, email }: { userId: string; email: string }) {
       : { ok: true, text: 'Σου στείλαμε σύνδεσμο επιβεβαίωσης στη νέα διεύθυνση.' };
   };
   const saveName = async (v: string) => {
-    const nowIso = new Date().toISOString();
-    const { error } = await billing.save(supabase, userId, { full_name: v, full_name_changed_at: nowIso });
-    if (error) return { ok: false, text: failed('Το όνομα δεν αποθηκεύτηκε', error) };
-    setName(v); setChangedAt(nowIso);
+    // ΤΗ ΣΦΡΑΓΙΔΑ ΤΗ ΓΡΑΦΕΙ Η ΒΑΣΗ (20261110131000, lock_full_name_change). Ως
+    // τις 10/11/2026 τη γραφε αυτή η οθόνη, οπότε ο κανόνας «μία φορά τον μήνα»
+    // παρακαμπτόταν με απευθείας κλήση. Τώρα η βάση αρνείται με `full_name_locked`.
+    const { error } = await billing.save(supabase, userId, { full_name: v });
+    if (error) return { ok: false, text: nameLockedError(error) ? NAME_LOCKED_TEXT : failed('Το όνομα δεν αποθηκεύτηκε', error) };
+    setName(v); if (name.trim()) setChangedAt(new Date().toISOString());
     return null;
   };
 
@@ -496,7 +501,7 @@ function ProfileCard({ userId, email }: { userId: string; email: string }) {
           placeholder="Το όνομά σου" locked={nameLocked} onSave={saveName}
           hint={nameLocked
             ? `Το όνομα αλλάζει μία φορά τον μήνα. Ξανά σε ${daysLeft} ${daysLeft === 1 ? 'ημέρα' : 'ημέρες'}.`
-            : 'Το όνομα αλλάζει μία φορά τον μήνα.'} />
+            : NAME_LOCKED_TEXT} />
       </SetList>
     </Card>
   );
@@ -509,7 +514,13 @@ function ProfileCard({ userId, email }: { userId: string; email: string }) {
 // `declaredType` είναι αυτό που ΕΠΕΛΕΞΕ ο χρήστης. Ο επιλογέας δούλευε με το
 // πρώτο: δηλωμένος «Επαγγελματίας» χωρίς το πακέτο έβλεπε επιλεγμένο τον
 // «Ιδιώτη» και το πάτημά του δεν αποθήκευε τίποτα, γιατί «ήταν ήδη εκεί».
-export default function TabSettings({ propertyId, userId, profileType = 'individual', declaredType, onProfileChange }: { propertyId: string; userId: string; profileType?: ProfileType; declaredType?: ProfileType; onProfileChange?: (v: ProfileType) => void }) {
+export default function TabSettings({ propertyId, userId, profileType = 'individual', declaredType, onProfileChange, releaseFrom, onPlanChanged, planVersion = 0 }: {
+  propertyId: string; userId: string; profileType?: ProfileType; declaredType?: ProfileType; onProfileChange?: (v: ProfileType) => void; releaseFrom?: PlanId;
+  /** Το πακέτο άλλαξε από εδώ (δοκιμαστής, αλλαγή πακέτου): ο πίνακας ξαναδιαβάζει το δικό του. */
+  onPlanChanged?: () => void;
+  /** Ανεβαίνει κάθε φορά που ο πίνακας ξαναδιάβασε το πακέτο: οι Ρυθμίσεις ξαναδιαβάζουν το δικό τους. */
+  planVersion?: number;
+}) {
   const chosenType: ProfileType = declaredType ?? profileType;
   const supabase = createClient();
 
@@ -555,12 +566,6 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   const [sheetNote, setSheetNote] = useState('');
   const [exportErr, setExportErr] = useState('');
   const [exportOk, setExportOk] = useState('');
-  // ΟΙ ΔΥΟ ΠΡΟΤΙΜΗΣΕΙΣ ΠΡΟΣΒΑΣΙΜΟΤΗΤΑΣ ΖΟΥΝ ΣΤΟΝ ΠΕΡΙΗΓΗΤΗ, ΟΧΙ ΣΤΗ REACT. Ηταν
-  // «ξεκινάω με ψέμα και το διορθώνω σε effect»: ο χρήστης που είχε ζητήσει
-  // λιγότερη κίνηση έβλεπε τον διακόπτη σβηστό για μία απόδοση, σε ΑΚΡΙΒΩΣ
-  // εκείνη την οθόνη που του υπόσχεται ότι τον θυμάται.
-  const [reduceMotion, setReduceMotion] = useRememberedFlag('po_reduce_motion');
-  const [largeText, setLargeText] = useRememberedFlag('po_large_text');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -569,10 +574,27 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
     });
   }, [supabase.auth]);
 
+  // ── ΤΟ ΠΑΚΕΤΟ ΞΑΝΑΔΙΑΒΑΖΕΤΑΙ, ΔΕΝ ΜΑΝΤΕΥΕΤΑΙ ────────────────────────────
+  // Διαβαζόταν μία φορά στο άνοιγμα της καρτέλας. Μετά από αλλαγή πακέτου ή
+  // επιστροφή από το ταμείο η σύγκριση και το όριο έδειχναν το παλιό ως την
+  // επόμενη ανανέωση. Οι στήλες και η ανάγνωσή τους ζουν στο
+  // lib/billing/planRefresh.ts: εδώ έλειπαν οι θέσεις από προσκλήσεις.
+  const loadPlan = useCallback(() => {
+    billing.profile<PlanProfileRow>(supabase, userId, PLAN_COLUMNS)
+      .then(data => {
+        if (!data) return;
+        const f = planFieldsFromRow(data);
+        setPlan(f.plan); setCompPlan(f.compPlan); setCompUntil(f.compUntil); setTrialUsedAt(f.trialUsedAt);
+        setHoldPlan(f.holdPlan); setHoldUntil(f.holdUntil); setBonusProps(f.bonusProperties); setBonusUntil(f.bonusUntil);
+      });
+  }, [supabase, userId]);
+  useEffect(() => { loadPlan(); }, [loadPlan, planVersion]);
+  /** Η κάρτα χρέωσης άλλαξε το πακέτο: ο πίνακας ξαναδιαβάζει και ανεβάζει το `planVersion`. */
+  const planChanged = useCallback(() => {
+    if (onPlanChanged) onPlanChanged(); else loadPlan();
+  }, [onPlanChanged, loadPlan]);
+
   useEffect(() => {
-    billing.profile<{ plan: string | null; comp_plan: string | null; comp_until: string | null; trial_used_at: string | null; hold_plan: string | null; hold_until: string | null; bonus_properties: number | null; bonus_properties_until: string | null; subscription_status: string | null; mor_ends_at: string | null }>(
-      supabase, userId, 'plan, comp_plan, comp_until, trial_used_at, hold_plan, hold_until, subscription_status, mor_ends_at')
-      .then(data => { if (data) { setPlan(livePlan(data)); setCompPlan(data.comp_plan || null); setCompUntil(data.comp_until || null); setTrialUsedAt(data.trial_used_at || null); setHoldPlan(data.hold_plan || null); setHoldUntil(data.hold_until || null); setBonusProps(data.bonus_properties ?? null); setBonusUntil(data.bonus_properties_until || null); } });
     supabase.from('referral_partners').select('user_id').eq('user_id', userId).maybeSingle()
       .then(({ data }) => setPartner(!!data));
     properties.count(supabase, userId).then(setPropertyCount);
@@ -743,13 +765,6 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
     // καμία ένδειξη δεν επιβεβαιώνει τίποτα — και σε αίτημα φορητότητας
     // δεδομένων ο χρήστης έχει κάθε λόγο να θέλει να ξέρει ότι πήρε τα πάντα.
     setExportOk(`Κατέβηκαν ${fn(res.rows ?? 0)} εγγραφές από ${fn(res.tables ?? 0)} πίνακες.`);
-  };
-
-  // Η γραφή στον localStorage γίνεται πλέον από το `useRememberedFlag`. Εδώ μένει
-  // μόνο η κλάση στο <html>, που είναι το ορατό αποτέλεσμα.
-  const setA11y = (cls: string, v: boolean, setter: (b: boolean) => void) => {
-    setter(v);
-    try { document.documentElement.classList.toggle(cls, v); } catch { /* ignore */ }
   };
 
   // Ο ΤΡΟΠΟΣ ΧΡΗΣΗΣ ΔΕΝ ΛΕΓΕΤΑΙ ΟΠΩΣ ΤΟ ΠΑΚΕΤΟ. Η κάρτα «Επαγγελματίας»
@@ -952,7 +967,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
       {showManage && (
         <div ref={manageRef} style={{ scrollMarginTop: 16 }}>
           <PlanComparison profileType={chosenType} currentPlan={effPlan} paidPlan={normalizePlan(plan)} onUpgrade={choosePlan} />
-          <div ref={billingRef} style={{ scrollMarginTop: 16 }}><Billing userId={userId} wantPlan={wantPlan} wantCycle={wantCycle} /></div>
+          <div ref={billingRef} style={{ scrollMarginTop: 16 }}><Billing userId={userId} wantPlan={wantPlan} wantCycle={wantCycle} onPlanChanged={planChanged} refreshKey={planVersion} /></div>
         </div>
       )}
 
@@ -975,7 +990,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
         <NotificationSettings userId={userId} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Εμφάνιση και γλώσσα" hint="Θέμα, κείμενο, προθεσμίες" delay="170ms">
+      <CollapsibleSection title="Εμφάνιση και γλώσσα" hint="Θέμα και προθεσμίες" delay="170ms">
         <SetList>
           <SetRow title="Θέμα" desc="Σκοτεινό ή φωτεινό, για την εφαρμογή. Το site, η σύνδεση και το ταμείο μένουν σκοτεινά." control={<ThemeToggle />} />
           {/* Η ΡΥΘΜΙΣΗ «ΔΕΚΑΔΙΚΑ ΣΤΑ ΠΟΣΑ» ΕΦΥΓΕ ΚΑΙ ΔΕΝ ΕΛΕΙΨΕ ΣΕ ΚΑΝΕΝΑΝ.
@@ -997,10 +1012,9 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
                   { value: '365', label: 'Ολόκληρο έτος (365 ημέρες)' },
                 ]} />
             </div>} />
-          <SetRow title="Μειωμένη κίνηση" desc="Περιορίζει τα εφέ κίνησης σε όλη την εφαρμογή, για πιο ήρεμη εμπειρία."
-            control={<Toggle on={reduceMotion} onChange={v => setA11y('a11y-reduce-motion', v, setReduceMotion)} ariaLabel="Μειωμένη κίνηση" />} />
-          <SetRow title="Μεγαλύτερο κείμενο" desc="Ήπια μεγέθυνση της διεπαφής για πιο άνετη ανάγνωση."
-            control={<Toggle on={largeText} onChange={v => setA11y('a11y-large-text', v, setLargeText)} ariaLabel="Μεγαλύτερο κείμενο" />} />
+          {/* Η ΚΙΝΗΣΗ ΚΑΙ ΤΟ ΜΕΓΕΘΟΣ ΚΕΙΜΕΝΟΥ ΠΗΓΑΝ ΣΤΗΝ «ΠΡΟΣΒΑΣΙΜΟΤΗΤΑ» από κάτω,
+              μαζί με την υψηλή αντίθεση και την ανάγνωση ποσών. Οποιος τα
+              ψάχνει, ψάχνει αυτή τη λέξη. */}
           {/* ── ΤΟ «ΑΠΛΟΠΟΙΗΜΕΝΟ ΜΕΝΟΥ» ΕΦΥΓΕ ΑΠΟ ΕΔΩ ────────────────────────
               Η ίδια προτίμηση ρυθμιζόταν σε δύο σημεία, με δύο ονόματα και
               ΑΝΤΙΣΤΡΟΦΗ πολικότητα: στην πλαϊνή μπάρα ως «Όλες οι καρτέλες» /
@@ -1016,6 +1030,10 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
             <SaveNote state={prefsState} />
           </div>
         </SetList>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Προσβασιμότητα" hint="Κείμενο, αντίθεση, κίνηση, φωνή" delay="185ms">
+        <AccessibilitySettings />
       </CollapsibleSection>
 
       <CollapsibleSection title="Ασφάλεια" hint="Κωδικός και επαλήθευση δύο βημάτων" delay="200ms">
@@ -1036,7 +1054,7 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
               ΜΕΣΑ, το ημερολόγιο βγάζει τις προθεσμίες ΕΞΩ, εκεί που ο
               ιδιοκτήτης κοιτάζει ήδη κάθε μέρα. */}
           <CalendarFeedRow userId={userId} />
-          <SetRow title="Εξαγωγή όλων των δεδομένων" desc="Κάθε εγγραφή που σε αφορά, σε ένα αρχείο JSON: η μορφή που ζητά το δικαίωμα φορητότητας, για μεταφορά σε άλλη υπηρεσία. Για ανάγνωση, κάθε καρτέλα έχει δική της εξαγωγή Excel."
+          <SetRow title="Εξαγωγή όλων των δεδομένων" desc={`Κάθε εγγραφή που σε αφορά, σε ένα αρχείο JSON: η μορφή που ζητά το δικαίωμα φορητότητας, για μεταφορά σε άλλη υπηρεσία. ${FILES_NOT_IN_EXPORT} Για ανάγνωση, κάθε καρτέλα έχει δική της εξαγωγή Excel.`}
             control={<Btn variant="secondary" onClick={exportAll} disabled={exporting}>{exporting ? 'Εξαγωγή…' : 'Εξαγωγή όλων'}</Btn>}>
             {exportErr && <div style={{ ...TT.bodySm, color: 'var(--negative)' }}>{exportErr}</div>}
             {exportOk && <div style={{ ...TT.bodySm }}>{exportOk}</div>}
@@ -1066,7 +1084,13 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           Στο τέλος, όχι επειδή μετρούν λιγότερο, αλλά επειδή δεν είναι
           ρυθμίσεις: κοιτούν μπροστά, ενώ όλα τα παραπάνω ρυθμίζουν το τώρα. */}
       <Card className="acc-section" style={{ animationDelay: '290ms' }}>
-        <SettingsRoadmap userId={userId} />
+        <SettingsRoadmap userId={userId} releaseFrom={releaseFrom} />
+      </Card>
+
+      {/* ΥΠΟΣΤΗΡΙΞΗ ΜΕ ΑΠΟΣΤΟΛΕΑ ΤΗ ΣΥΝΕΔΡΙΑ: η προτεραιότητα του πακέτου
+          είναι εγγυημένη εδώ, όχι στο email (app/api/support). */}
+      <Card className="acc-section" style={{ animationDelay: '305ms' }}>
+        <SupportForm plan={releaseFrom} />
       </Card>
 
       <div className="acc-section" style={{ animationDelay: '320ms', marginBottom: T.sp.lg }}>
