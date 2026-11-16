@@ -1,6 +1,6 @@
 // npx tsx lib/accounting/dossier.test.ts
 import {
-  requirementsFor, readiness, groupByWho, traps, defaultBookkeeping,
+  canWaitPhrase, requirementsFor, readiness, groupByWho, traps, defaultBookkeeping,
   statusForAccountant, statusesOf, WHO_LABEL, missingAfmGroups,
   statusesForYear, yearStatusLabel, returnCounts,
   type DossierContext, type Requirement, type LegalForm,
@@ -96,7 +96,7 @@ const ids = (rs: readonly Requirement[]): string[] => rs.map(r => r.id);
   const mine = r.filter(x => x.who === 'owner').map(x => x.id);
   const rd = readiness(r, mine);
   eq('τίποτα δικό του δεν λείπει', rd.yours, 0);
-  ok('το μήνυμα τον ηρεμεί', rd.message.includes('Δεν χρειάζεται κάτι από εσένα') || rd.message.includes('κανένα δεν σε αφορά'));
+  ok('το μήνυμα τον ηρεμεί', (rd.message.includes('Δεν χρειάζεται κάτι από εσένα') || rd.message.startsWith('Η δήλωση έχει ό,τι χρειάζεται.')) && !/δικ[όά] σου/.test(rd.message));
 }
 
 // ═══ ΙΔΙΟΧΡΗΣΙΑ ═══════════════════════════════════════════════════════════
@@ -329,8 +329,10 @@ eq('καταστάσεις από γραμμές βάσης', statusesOf([{ stat
   // δικά σου/ και ΔΕΝ έπιανε τίποτα: το όριο λέξης δεν αναγνωρίζεται δίπλα σε
   // ελληνικό γράμμα, οπότε ο έλεγχος περνούσε ακόμη και με το σφάλμα μέσα.
   // Επαληθεύτηκε επαναφέροντας το σφάλμα — γι' αυτό ελέγχεται η φράση αυτούσια.
-  const singularOk = 'ένα είναι δικό σου';
-  const pluralWrong = 'ένα είναι δικά σου';
+  // Η φράση άλλαξε (16/11/2026, «Μπορεί να περιμένει ένα δικό σου»)· ο κανόνας
+  // της συμφωνίας αριθμού μένει ο ίδιος.
+  const singularOk = 'Μπορεί να περιμένει ένα δικό σου';
+  const pluralWrong = 'ένα δικά σου';
   // Κάθε δυνατός συνδυασμός καταστάσεων και προφίλ, ώστε να περάσουν όλοι οι κλάδοι.
   const cases: DossierContext[] = [
     ctx({ statuses: ['rent_long'] }), ctx({ statuses: ['rent_short'] }),
@@ -565,6 +567,44 @@ eq('καταστάσεις από γραμμές βάσης', statusesOf([{ stat
     }
     ok(`${tag}: κάθε γραμμή μετρά μία φορά`, c.total + c.canWait === reqs.length);
   }
+}
+
+// ═══ ΟΤΑΝ ΔΕΝ ΜΕΝΕΙ ΤΙΠΟΤΑ ΜΠΛΟΚΑΡΙΣΤΙΚΟ ═════════════════════════════════
+// Η κεφαλίδα έλεγε «Λείπουν 6, από τα οποία 4 δικά σου» ενώ η μπάρα και οι
+// ομάδες ήταν γεμάτες. Τώρα: «Η δήλωση έχει ό,τι χρειάζεται.» και, αν μένουν,
+// οι ΙΔΙΟΙ αριθμοί με το «Μπορούν να περιμένουν (n)» κάθε ομάδας. Ελέγχεται
+// σε κάθε μορφή, σε ιδιώτη με ένα ακίνητο, σε εταιρεία και σε ιδιώτη χωρίς
+// ακίνητο, με όλα, μερικά ή κανένα από όσα μπορούν να περιμένουν.
+{
+  const prop = (name: string, status: PropertyStatus) => ({ name, status });
+  const cases: { tag: string; c: DossierContext }[] = [
+    { tag: 'ιδιώτης, ένα ακίνητο', c: ctx({ statuses: ['rent_long'], properties: [prop('Διαμέρισμα', 'rent_long')] }) },
+    { tag: 'εταιρεία', c: ctx({ form: 'company', books: 'double_entry', statuses: ['rent_long', 'disputed'], properties: [prop('Α', 'rent_long'), prop('Β', 'disputed')], hasLoan: true }) },
+    { tag: 'ιδιώτης, χωρίς ακίνητο', c: ctx({ statuses: [], properties: [] }) },
+    { tag: 'ατομική', c: ctx({ form: 'sole_trader', books: 'single_entry', statuses: ['rent_short'], properties: [prop('Γ', 'rent_short')] }) },
+    { tag: 'ΟΕ/ΕΕ διπλογραφικά', c: ctx({ form: 'partnership', books: 'double_entry', statuses: ['vacant'], properties: [prop('Δ', 'vacant')], ownershipChanged: true }) },
+  ];
+  for (const { tag, c } of cases) {
+    const reqs = requirementsFor(c);
+    const blocking = reqs.filter(r => r.blocking).map(r => r.id);
+    const wait = reqs.filter(r => !r.blocking).map(r => r.id);
+    for (const [how, have] of [['κανένα από όσα περιμένουν', blocking], ['τα μισά', [...blocking, ...wait.filter((_, i) => i % 2 === 0)]], ['όλα', [...blocking, ...wait]]] as const) {
+      const r = readiness(reqs, have);
+      const n = returnCounts(reqs.map(q => ({ ...q, done: have.includes(q.id) })));
+      const t = `${tag}, ${how}`;
+      ok(`${t}: η μπάρα και οι ομάδες γεμάτες`, n.remaining === 0 && n.byWho.owner.remaining === 0 && n.byWho.accountant.remaining === 0);
+      ok(`${t}: ποτέ «Λείπουν» με γεμάτη μπάρα («${r.message}»)`, !/Λείπ/.test(r.message));
+      const nothingLeft = r.blocking.length + r.pending.length === 0;
+      ok(`${t}: «${r.message}»`, nothingLeft
+        ? r.message.includes('πλήρης')
+        : r.message === `Η δήλωση έχει ό,τι χρειάζεται.${canWaitPhrase(n.byWho.owner.waitOpen, n.byWho.accountant.waitOpen)}`);
+      ok(`${t}: χωρίς κόμμα πριν από το «και»`, !new RegExp(',\\s+' + 'και(?=\\s)').test(r.message));
+    }
+  }
+  eq('φράση: δύο ομάδες', canWaitPhrase(3, 2), ' Μπορούν να περιμένουν 3 δικά σου και 2 του λογιστή.');
+  eq('φράση: ένα δικό σου', canWaitPhrase(1, 0), ' Μπορεί να περιμένει ένα δικό σου.');
+  eq('φράση: ένα του λογιστή', canWaitPhrase(0, 1), ' Μπορεί να περιμένει ένα του λογιστή.');
+  eq('φράση: κανένα', canWaitPhrase(0, 0), '');
 }
 
 console.log(fail === 0 ? `✓ dossier: ${pass} έλεγχοι πέρασαν` : `✗ dossier: ${fail} απέτυχαν από ${pass + fail}`);

@@ -454,6 +454,7 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
             στα 320, οπότε γίνονται μία γραμμή επιλογής: η σειρά των επιλογών
             μένει η σειρά προτεραιότητας, το ποσό κάθε δρόμου γράφεται κάτω
             από το όνομά του και η κουκκίδα λέει ποιο ποσό είναι σε χρήση. */}
+        <div className="enfia-route-select">
         <CustomSelect ariaLabel="Από πού βγαίνει" value={activeRoute} onChange={v => setRoute(v as Route)}
           options={ROUTES.map(r => ({
             value: r,
@@ -463,6 +464,7 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
               : 'Χωρίς ποσό ακόμη',
             ...(inUse.source === r ? { dot: 'var(--accent)' } : {}),
           }))}/>
+        </div>
         <div style={{ ...TT.bodySm, color: 'var(--text-secondary)', marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
           {ROUTE_HELP[activeRoute]}
           {/* Η ΜΟΝΗ ΠΡΟΤΑΣΗ ΠΟΥ ΧΡΕΙΑΖΕΤΑΙ Η ΙΕΡΑΡΧΙΑ ΚΑΙ ΜΟΝΟ ΟΤΑΝ ΧΡΕΙΑΖΕΤΑΙ.

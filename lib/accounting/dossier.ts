@@ -610,6 +610,19 @@ export interface Readiness {
 }
 
 /**
+ * «Μπορούν να περιμένουν 3 δικά σου και 2 του λογιστή.» Κενό όταν δεν μένει
+ * κανένα. Ο αριθμός αλλάζει ΟΛΟΚΛΗΡΗ τη φράση, όχι μόνο τη λέξη.
+ */
+export function canWaitPhrase(owner: number, accountant: number): string {
+  const total = owner + accountant;
+  if (total === 0) return '';
+  const part = (n: number, mine: boolean) => (n === 1 ? (mine ? 'ένα δικό σου' : 'ένα του λογιστή') : `${n} ${mine ? 'δικά σου' : 'του λογιστή'}`);
+  const parts = [owner > 0 ? part(owner, true) : '', accountant > 0 ? part(accountant, false) : ''].filter(Boolean);
+  const verb = total === 1 ? 'Μπορεί να περιμένει' : 'Μπορούν να περιμένουν';
+  return ` ${verb} ${parts.join(' και ')}.`;
+}
+
+/**
  * Η ετοιμότητα, με το νούμερο που ηρεμεί.
  *
  * Το «7 από 11» δεν λέει τίποτα μόνο του. Το «λείπουν 4 και μόνο τα 2 είναι
@@ -629,11 +642,14 @@ export function readiness(reqs: readonly Requirement[], haveIds: readonly string
   if (missing.length === 0) {
     message = 'Ο φάκελος είναι πλήρης. Μπορείς να τον στείλεις στον λογιστή σου.';
   } else if (blocking.length === 0) {
-    message = yours === 0
-      ? `Λείπουν ${pending.length}, κανένα δεν σε αφορά. Τα ετοιμάζουμε εμείς ή ο λογιστής.`
-      // ΣΥΜΦΩΝΙΑ ΑΡΙΘΜΟΥ. Το «δικά σου» ήταν έξω από το ερώτημα, οπότε ο ενικός
-      // έβγαζε «ένα είναι δικά σου». Ο αριθμός αλλάζει ΟΛΟΚΛΗΡΗ τη φράση.
-      : `Λείπουν ${missing.length}, από τα οποία ${yours === 1 ? 'ένα είναι δικό σου' : `${yours} είναι δικά σου`}.`;
+    // Η ΔΗΛΩΣΗ ΚΑΛΥΠΤΕΤΑΙ ΚΑΙ ΤΟ ΛΕΕΙ (16/11/2026). Ελεγε «Λείπουν 6, από τα
+    // οποία 4 δικά σου» ενώ η μπάρα και οι ομάδες έδειχναν γεμάτες: μετρούσε
+    // και όσα δεν σταματούν τη δήλωση. Τώρα οι αριθμοί είναι ΑΚΡΙΒΩΣ όσοι
+    // γράφει το «Μπορούν να περιμένουν (n)» της κάθε ομάδας (`waitOpen` του
+    // `returnCounts`). Οσα βγάζει η εφαρμογή δεν έχουν ομάδα στην οθόνη και
+    // δεν μετριούνται εδώ.
+    const c = returnCounts(reqs.map(r => ({ ...r, done: have.has(r.id) })));
+    message = `Η δήλωση έχει ό,τι χρειάζεται.${canWaitPhrase(c.byWho.owner.waitOpen, c.byWho.accountant.waitOpen)}`;
   } else {
     // ΠΡΟΣΟΧΗ ΣΤΟ ΥΠΟΣΥΝΟΛΟ. Η φράση λέει «Χ λείπουν και τα Υ είναι δικά σου»,
     // άρα το Υ ΠΡΕΠΕΙ να είναι υποσύνολο του Χ. Το γενικό `yours` μετράει όλα τα
@@ -666,7 +682,13 @@ export function readiness(reqs: readonly Requirement[], haveIds: readonly string
 }
 
 /** Τα νούμερα της δήλωσης, ανά υπεύθυνο. */
-export interface ReturnTally { total: number; done: number; remaining: number; canWait: number }
+export interface ReturnTally {
+  total: number; done: number; remaining: number;
+  /** Ολες οι γραμμές που δεν μπλοκάρουν, τσεκαρισμένες ή όχι. */
+  canWait: number;
+  /** Από αυτές, όσες μένουν ανοιχτές: ο αριθμός του «Μπορούν να περιμένουν (n)». */
+  waitOpen: number;
+}
 export interface ReturnCounts extends ReturnTally { byWho: Record<Who, ReturnTally> }
 
 /**
@@ -687,7 +709,8 @@ export function returnCounts(items: readonly CountedItem[]): ReturnCounts {
   const tally = (xs: readonly CountedItem[]): ReturnTally => {
     const b = xs.filter(x => x.blocking);
     const done = b.filter(x => x.done).length;
-    return { total: b.length, done, remaining: b.length - done, canWait: xs.length - b.length };
+    const wait = xs.filter(x => !x.blocking);
+    return { total: b.length, done, remaining: b.length - done, canWait: wait.length, waitOpen: wait.filter(x => !x.done).length };
   };
   const of = (who: Who) => tally(items.filter(x => x.who === who));
   return { ...tally(items), byWho: { app: of('app'), owner: of('owner'), accountant: of('accountant') } };

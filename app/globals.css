@@ -8203,3 +8203,7 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
    σταματούν στους ~70 χαρακτήρες· το βέλος μένει στη δεξιά ακμή. */
 .acd-row-text > p, .acd-row-details { max-width: 68ch; }
 .acd-sec-sub { max-width: calc(68ch + 30px); }
+/* Ο επιλογέας «Από πού βγαίνει» του ΕΝΦΙΑ: όλο το πλάτος στο τηλέφωνο, όχι
+   πάνω από 440 στην οθόνη γραφείου, όπου μια γραμμή επιλογής 1.800 πλάτους
+   διαβαζόταν ως πεδίο κειμένου. */
+.enfia-route-select { max-width: 440px; }

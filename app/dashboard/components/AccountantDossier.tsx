@@ -302,15 +302,20 @@ function readSections(userId?: string): Record<string, boolean> {
 }
 
 function useSections(userId?: string) {
-  const [open, setOpen] = useState<Record<string, boolean>>(() => readSections(userId))
+  // Η ΚΑΡΤΕΛΑ ΜΠΟΡΕΙ ΝΑ ΑΠΟΔΟΘΕΙ ΠΡΙΝ ΦΤΑΣΕΙ Ο ΧΡΗΣΤΗΣ. Το κλειδί είναι ανά
+  // χρήστη· αν το `userId` έρθει μετά την πρώτη απόδοση, ξαναδιαβάζεται το δικό
+  // του κλειδί αντί να μείνει η επιλογή του «anon» (προσαρμογή κατάστασης στην
+  // απόδοση, χωρίς effect).
+  const [state, setState] = useState(() => ({ uid: userId, open: readSections(userId) }))
+  if (state.uid !== userId) setState({ uid: userId, open: readSections(userId) })
   const toggle = useCallback((key: string) => {
-    setOpen(prev => {
-      const next = { ...prev, [key]: !prev[key] }
-      try { window.localStorage.setItem(SECTIONS_KEY(userId), JSON.stringify(next)) } catch { /* ιδιωτικό παράθυρο: μένει για τη συνεδρία */ }
-      return next
+    setState(prev => {
+      const next = { ...prev.open, [key]: !prev.open[key] }
+      try { window.localStorage.setItem(SECTIONS_KEY(prev.uid), JSON.stringify(next)) } catch { /* ιδιωτικό παράθυρο: μένει για τη συνεδρία */ }
+      return { uid: prev.uid, open: next }
     })
-  }, [userId])
-  return [open, toggle] as const
+  }, [])
+  return [state.uid === userId ? state.open : readSections(userId), toggle] as const
 }
 
 /** Η κάρτα μιας ομάδας: η κεφαλίδα είναι κουμπί, το σώμα φαίνεται όταν ανοίξει. */
@@ -349,8 +354,8 @@ function Fold({ label, children }: { label: string; children: React.ReactNode })
 
 /**
  * Οι γραμμές μιας ομάδας: ανοιχτά μόνο όσα μπλοκάρουν τη δήλωση και λείπουν.
- * Από κάτω, κλειστά: «Μπορούν να περιμένουν (n)» (όσα δεν σταματούν τη δήλωση,
- * τσεκαρισμένα ή όχι) και «Ολοκληρωμένα (n)» (όσα μπλοκάρουν και έγιναν). Το
+ * Από κάτω, κλειστά: «Μπορούν να περιμένουν (n)» (όσα δεν σταματούν τη δήλωση·
+ * το n μετρά όσα μένουν ανοιχτά, τα τσεκαρισμένα κάθονται μέσα στο τέλος) και «Ολοκληρωμένα (n)» (όσα μπλοκάρουν και έγιναν). Το
  * «Ολοκληρωμένα» είναι έτσι ακριβώς ο αριθμητής του «x/y» της κεφαλίδας.
  */
 function GroupRows({ items, isDone, render }: {
@@ -358,11 +363,14 @@ function GroupRows({ items, isDone, render }: {
 }) {
   const left = items.filter(r => r.blocking && !isDone(r.id))
   const wait = items.filter(r => !r.blocking)
+  const waitOpen = wait.filter(r => !isDone(r.id)).length
   const done = items.filter(r => r.blocking && isDone(r.id))
   return (
     <>
       {left.map(r => render(r))}
-      {wait.length > 0 && <Fold label={`Μπορούν να περιμένουν (${wait.length})`}>{wait.map(r => render(r, true))}</Fold>}
+      {/* Ο αριθμός είναι όσα μένουν ανοιχτά, ίδιος με τη φράση της κεφαλίδας
+          (`waitOpen`, `canWaitPhrase`)· τα τσεκαρισμένα μένουν μέσα, σημειωμένα. */}
+      {wait.length > 0 && <Fold label={waitOpen > 0 ? `Μπορούν να περιμένουν (${waitOpen})` : 'Μπορούν να περιμένουν · όλα έτοιμα'}>{[...wait.filter(r => !isDone(r.id)), ...wait.filter(r => isDone(r.id))].map(r => render(r, true))}</Fold>}
       {done.length > 0 && <Fold label={`Ολοκληρωμένα (${done.length})`}>{done.map(r => render(r))}</Fold>}
     </>
   )
