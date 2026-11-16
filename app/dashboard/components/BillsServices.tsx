@@ -412,7 +412,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
             </div>
             <div style={g2}>
               <NumberInput label="Ώρες ανά επίσκεψη" value={s.cleaningHours} onChange={v => upd({ cleaningHours: v })} suffix="ώρες"/>
-              <TextInput   label="Σημειώσεις"         value={s.cleaningNotes} onChange={v => upd({ cleaningNotes: v })} placeholder="κάθε Τετάρτη"/>
+              <TextInput dictation   label="Σημειώσεις"         value={s.cleaningNotes} onChange={v => upd({ cleaningNotes: v })} placeholder="κάθε Τετάρτη"/>
             </div>
             {cleaningM > 0 && (
               <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: '10px 14px', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, border: '1px solid var(--border-subtle)' }}>
@@ -471,7 +471,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
             </div>
             <div style={g2}>
               <DatePicker label="Τελευταία συντήρηση" value={s.acLastService} onChange={v => upd({ acLastService: v })}/>
-              <TextInput  label="Σημειώσεις"        value={s.acNotes}      onChange={v => upd({ acNotes: v })}      placeholder="Κάθε Απρίλιο"/>
+              <TextInput dictation  label="Σημειώσεις"        value={s.acNotes}      onChange={v => upd({ acNotes: v })}      placeholder="Κάθε Απρίλιο"/>
             </div>
             {s.acServiceCost && s.acUnits && parseFloat(s.acServiceCost) > 0 && (
               <div style={{ background: 'var(--bg-elevated)', borderRadius: T.radius.inner, padding: '10px 14px', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontFamily: T.font.sans, border: '1px solid var(--border-subtle)' }}>
@@ -494,7 +494,7 @@ export default function BillsServices({ propertyId, userId = '' }: Props) {
               <NumberInput label="Μηνιαία συντήρηση"  value={s.elevatorMonthly}        onChange={v => upd({ elevatorMonthly: v })}        suffix="€"/>
               <DatePicker  label="Τελευταία συντήρηση"  value={s.elevatorLastInspection} onChange={v => upd({ elevatorLastInspection: v })}/>
             </div>
-            <TextInput label="Σημειώσεις" value={s.elevatorNotes} onChange={v => upd({ elevatorNotes: v })} placeholder="Ετήσιος έλεγχος ΕΛΟΤ…"/>
+            <TextInput dictation label="Σημειώσεις" value={s.elevatorNotes} onChange={v => upd({ elevatorNotes: v })} placeholder="Ετήσιος έλεγχος ΕΛΟΤ…"/>
           </>
         )}
       </div>

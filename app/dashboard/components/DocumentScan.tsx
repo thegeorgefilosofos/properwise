@@ -861,7 +861,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   358 εικονοστοιχεία πιο κάτω μόλις φόρτωνε (μετρημένο στα 1280:
                   κορυφή 132 → 490). Το `auto 210 / 297` κρατά σελίδα Α4 μέχρι τότε
                   και μετά παίρνει τις αναλογίες της ίδιας της εικόνας. */}
-              <RuntimeImg src={fileUrl} alt="" style={{ display: 'block', width: '100%', aspectRatio: 'auto 210 / 297', maxHeight: 'calc(92dvh - 190px)', objectFit: 'contain', objectPosition: 'top' }} />
+              <RuntimeImg src={fileUrl} alt="" style={{ display: 'block', width: '100%', aspectRatio: 'auto 210 / 297', maxHeight: 'calc(calc(92dvh / var(--zoom, 1)) - 190px)', objectFit: 'contain', objectPosition: 'top' }} />
             </a>
             <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm, minWidth: 0 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -1044,7 +1044,7 @@ export default function DocumentScan({ propertyId, userId = '', onSaved, onBusyC
                   {form.note && <div style={{ ...TT.caption, marginTop: -T.sp.sm }}>{form.note}</div>}
 
                   {/* ── Γ. Σημειώσεις ── */}
-                  <Textarea label="Σημειώσεις" autoGrow rows={2} placeholder="Ό,τι άλλο γράφει το έγγραφο"
+                  <Textarea dictation label="Σημειώσεις" autoGrow rows={2} placeholder="Ό,τι άλλο γράφει το έγγραφο"
                     value={edited.notes || ''} onChange={val => setEdited(p => (p ? { ...p, notes: val } : p))} />
 
                   {/* ── Δ. Δικά σου πεδία: γράφονται στη σημείωση του Φακέλου ως «Όνομα: Τιμή» ── */}
