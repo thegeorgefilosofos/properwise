@@ -268,6 +268,24 @@ export function LandingStyles() {
         :where(.lp-root main p, .lp-root main li) { text-wrap: pretty; }
         :where(.lp-root main a.po-tap) { text-wrap: balance; }
 
+        ${/* ΑΝΑΛΟΓΙΚΑ ΨΗΦΙΑ ΣΤΟ ΚΕΙΜΕΝΟ, ΣΤΟΙΧΙΣΜΕΝΑ ΣΤΑ ΠΟΣΑ (16/11/2026). Το
+           body δίνει «tabular-nums» σε όλη την εφαρμογή, για να στοιχίζονται
+           τα ποσά στις στήλες. Μέσα σε πρόταση όμως το ψηφίο σταθερού πλάτους
+           ανοίγει τρύπες: το «(10)» διαβαζόταν «(1 0)», το «2026» αραιό και το
+           «30-day» με κενό πριν από το ενωτικό, οπότε οι τίτλοι με αριθμούς
+           («Φορολογία Airbnb 2026», «Όλοι οι οδηγοί (11)») έμοιαζαν γραμμένοι
+           με άλλη γραμματοσειρά δίπλα στον τίτλο της σελίδας. Το κείμενο της
+           βιτρίνας παίρνει αναλογικά ψηφία· κάθε ποσό που αλλάζει ή στοιχίζεται
+           (αριθμομηχανή, τιμές, πίνακας λογαριασμού, ζώνη μετρήσεων) κρατά
+           ρητά το «tabular-nums» του και νικά.
+           ΓΙΑΤΙ ΚΑΙ «font-feature-settings: normal». Ο συμπιεστής του CSS γράφει
+           το «font-variant-numeric: tabular-nums» του body ως
+           «font-feature-settings: "tnum"», που κληρονομείται και ΥΠΕΡΙΣΧΥΕΙ κάθε
+           «font-variant-numeric»: χωρίς το «normal» η αλλαγή δεν πιάνει. Τα
+           ενσωματωμένα «fontVariantNumeric: 'tabular-nums'» των ποσών δεν
+           συμπιέζονται και δουλεύουν κανονικά πάνω στο «normal». */''}
+        .lp-root :where(h1, h2, h3, p, li, summary, a, .lp-eyebrow) { font-feature-settings: normal; font-variant-numeric: proportional-nums; }
+
 
         ${/* ═══ Η ΖΩΝΗ ΜΕΤΡΗΣΕΩΝ: ΤΟ ΙΔΙΟ ΙΔΙΩΜΑ, ΤΡΕΙΣ ΣΕΙΡΕΣ ══════════════
            Το κενό ενός εικονοστοιχείου ΕΙΝΑΙ η γραμμή του πλέγματος: το φόντο
@@ -492,8 +510,20 @@ export function LandingStyles() {
            μισό τηλέφωνο. Τέσσερα κελιά στοιβάζονται χωρίς κόστος. Γράφεται
            ΜΕΤΑ το «δύο στήλες» του 1024 και κρατά κι αυτός το !important,
            αλλιώς εκείνο νικά. */''}
+        ${/* ΚΑΙ ΣΤΗ ΜΙΑ ΣΤΗΛΗ, ΚΑΘΕ ΚΕΛΙ ΓΙΝΕΤΑΙ ΣΕΙΡΑ (16/11/2026). Στοιβαγμένα
+           με τον αριθμό από πάνω, τα τέσσερα κελιά έπιαναν 1.100 εικονοστοιχεία
+           στα 390, μιάμιση οθόνη για τέσσερα νούμερα. Ο αριθμός πάει αριστερά
+           σε σταθερή στήλη (οι τέσσερις αριθμοί στοιχίζονται σε μία κάθετη),
+           η μονάδα και η λεζάντα δεξιά του. */''}
         @media (max-width: 440px) {
-          .lp-stats { grid-template-columns: 1fr !important; }
+          .lp-stats { grid-template-columns: 1fr !important; grid-template-rows: none; }
+          .lp-stats > .lp-stat {
+            grid-row: auto; grid-template-columns: 52px minmax(0, 1fr); grid-template-rows: auto auto;
+            column-gap: 14px; padding: 16px 18px;
+          }
+          .lp-stat-n { grid-row: 1 / span 2; align-self: center; }
+          .lp-stat-u { margin-top: 0; }
+          .lp-stat-l { margin-top: 2px; }
         }
 
         ${/* ── ΚΙΝΗΤΟ ΚΑΙ ΜΙΚΡΗ ΤΑΜΠΛΕΤΑ ──────────────────────────────────── */''}

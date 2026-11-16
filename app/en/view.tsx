@@ -110,12 +110,12 @@ export default async function LandingEn() {
             <span className="lp-h1-line">{LANDING_EN.titleLines[0]}</span>{' '}
             <span className="lp-h1-line lp-h1-accent">{LANDING_EN.titleLines[1]}</span>
           </h1>
-          {/* ΑΡΙΣΤΕΡΗ ΣΤΟΙΧΙΣΗ ΤΟΥ ΑΓΓΛΙΚΟΥ, ΙΣΟΡΡΟΠΗΜΕΝΕΣ ΓΡΑΜΜΕΣ. Η ελληνική
-              στοιχίζει δύο ισομήκεις προτάσεις πέρα πέρα (.lp-lede-line)· οι
-              αγγλικές δεν είναι ισομήκεις και η πρώτη άνοιγε κενά ανάμεσα στις
-              λέξεις. Μία παράγραφος με `balance`, όπως γράφει η Apple. */}
-          <p className="lp-rise-2" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 28px', maxWidth: 720, textWrap: 'pretty' }}>
-            {LANDING_EN.lede[0]}{' '}{LANDING_EN.lede[1]}
+          {/* ΙΔΙΟ ΣΧΗΜΑ ΜΕ ΤΗΝ ΕΛΛΗΝΙΚΗ (.lp-lede, 16/11/2026): μία πρόταση ανά
+              γραμμή, κεντραρισμένη με το φυσικό της κενό· όπου δεν χωρά, δύο
+              ζυγισμένες γραμμές. Καμία πλήρης στοίχιση σε καμία γλώσσα. */}
+          <p className="lp-rise-2 lp-lede" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 28px' }}>
+            <span className="lp-lede-line">{LANDING_EN.lede[0]}</span>{' '}
+            <span className="lp-lede-line">{LANDING_EN.lede[1]}</span>
           </p>
           <div className="lp-rise-3 lp-hero-ctas" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             {loggedIn ? dashboard('lp-cta lp-primary', { textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }, LANDING_EN.dashboard) : (<>
