@@ -425,6 +425,7 @@ export interface Personal extends Ctx {
   accountantEmail?: string;  // η διεύθυνσή του, για να τον αναγνωρίσει ο πελάτης
   token?: string;            // διακριτικό μίας χρήσης (κλήρωση αξιολόγησης: /doro/<token>)
   expiresOn?: string;        // λήξη του συνδέσμου, dd/mm/yyyy ώρα Αθήνας
+  acceptDays?: number;       // ημέρες ισχύος του συνδέσμου (από τη βάση, PRIZE_ACCEPT_DAYS)
   // Συνδρομή / σχέσεις / benchmarking
   cardLast4?: string;        // τελευταία ψηφία κάρτας
   marketRent?: number;       // μέσο ενοίκιο αγοράς, σε EUR
