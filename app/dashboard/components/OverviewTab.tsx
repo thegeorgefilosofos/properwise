@@ -18,7 +18,7 @@ import * as documentStore from '@/lib/data/documents'
 // Η απογραφή έχει ένα σπίτι: lib/data/inventory.
 import * as inventory from '@/lib/data/inventory'
 import { readStatus, statusLabel as statusLabelOf, isShortTerm, isLet } from '@/lib/property/status'
-import { enfiaDeadline } from '@/lib/onboarding/firstTax'
+import { enfiaDeadline, enfiaOutsidePlan } from '@/lib/onboarding/firstTax'
 import { taxpayerScope } from '@/lib/facts/taxpayer'
 import { ownershipPctOf } from '@/lib/accounting/taxpayerIncome'
 import { type StayAmountLike } from '@/lib/clients/stayAmounts'
@@ -727,6 +727,8 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
     openTasks: openChk,
     overdueRent: cash.owedToMe.overdue || undefined,
     hasLoan: loans.length > 0,
+    // Μόνο ο ΕΝΦΙΑ που γράφτηκε (εκκαθαριστικό ή καρτέλα), όχι η εκτίμηση.
+    enfia: enfiaNow.declaredFrom ? enfiaNow.annual || undefined : undefined,
     isShortTerm: isShortTerm(prop),
     propertyCount: properties.length || undefined,
   };
@@ -851,7 +853,12 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
       .filter(it => it.key !== 'bills')
       // ── ΟΣΑ ΖΗΤΑ ΗΔΗ Η ΛΙΣΤΑ «ΑΠΟ ΠΟΥ ΞΕΚΙΝΑΣ» (κριτική σχεδίασης r5) ──────
       // Δύο λίστες στην ίδια οθόνη ζητούσαν τα ίδια δύο πράγματα με άλλα λόγια.
-      .filter(it => !agendaExclude?.includes(it.key));
+      .filter(it => !agendaExclude?.includes(it.key))
+      // ── ΟΙ ΔΟΣΕΙΣ ΤΟΥ ΕΚΚΑΘΑΡΙΣΤΙΚΟΥ ΤΗΣ ΚΟΡΥΦΗΣ (κριτική σχεδίασης r6) ──────
+      // Το ημερολόγιο χωρίς σύνολο υποθέτει δώδεκα δόσεις. Οταν η κορυφή γράφει
+      // «8η και τελευταία δόση · 30/10/2026» για 85€, η ατζέντα δεν λέει από κάτω
+      // «ΕΝΦΙΑ, 9η δόση σε 14 ημέρες».
+      .filter(it => !(enfiaHero && enfiaOutsidePlan(it.key, enfiaNext)));
   // Πέντε στην αρχική. Η πλήρης λίστα ζει στις «Εκκρεμότητες» — και η οθόνη το λέει.
   // Το ποσό της δόσης ΕΝΦΙΑ από τις ίδιες γραμμές με την κάρτα των 12 μηνών.
   const agenda = attachAmounts(agendaAll.slice(0, 5), forecast.months.flatMap(m => m.lines));
@@ -894,7 +901,13 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-note)',color:'var(--text-secondary)'}}>{taxHero ? `Φόρος ενοικίων ${year}` : enfiaHero || enfiaMissing ? `ΕΝΦΙΑ ${enfiaNext?.year ?? year}` : heroIsNet ? `Καθαρό ${year}, με ό,τι ξέρουμε σήμερα` : `Δαπάνες ${year}`}</div>
           {enfiaMissing
             ? <div style={{marginTop:4}}>
-                <LinkBtn className="po-tap-inline" onClick={()=>onNavigate('edit-enfia')}>Γράψε τον ΕΝΦΙΑ του εκκαθαριστικού</LinkBtn>
+                {/* ΕΝΕΡΓΕΙΑ ΣΤΗ ΘΕΣΗ ΤΟΥ ΠΟΣΟΥ, ΟΧΙ ΣΥΝΔΕΣΜΟΣ ΜΕΣΑ ΣΕ ΠΡΟΤΑΣΗ (κριτική σχεδίασης r6):
+                    χρώμα τόνου χωρίς υπογράμμιση, όπως το «Όλοι οι τύποι» του οδηγού, με
+                    βέλος που λέει «πατιέται» χωρίς το χρώμα και στόχο 44. */}
+                <LinkBtn className="ov-hero-action" onClick={()=>onNavigate('edit-enfia')}>
+                  <span>Γράψε τον ΕΝΦΙΑ του εκκαθαριστικού</span>
+                  <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </LinkBtn>
               </div>
             : rentMissing
             // ΜΙΣΘΩΣΗ ΧΩΡΙΣ ΠΟΣΟ ΔΕΝ ΔΕΙΧΝΕΙ ΜΗΔΕΝ ΣΑΝ ΝΑ ΗΤΑΝ ΦΟΡΟΣ: λέει τι λείπει
@@ -918,6 +931,11 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
           {enfiaHero && enfiaNext?.row && !moneyGap && (
             // «9η δόση 26,66€ · 30/11/2026»: η δόση και το ποσό της, χωρίς δεύτερο «ΕΝΦΙΑ».
             <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext.row.title} · ${enfiaNext.row.date}`}</div>
+          )}
+          {/* ΤΟ ΕΠΟΜΕΝΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟ, ΧΩΡΙΣ ΠΟΣΟ (κριτική σχεδίασης r6): όταν οι δόσεις
+              του έτους τελείωσαν, «ΕΝΦΙΑ 2027 · Μάρτιος 2027». Το ποσό του δεν είναι γνωστό. */}
+          {enfiaHero && enfiaNext?.next && !moneyGap && (
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-tertiary)',marginTop:2,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext.next.title} · ${enfiaNext.next.date}`}</div>
           )}
           {!firstHero && <AthensNow style={{fontFamily:T.font.sans,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,minHeight:15}}/>}
           {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.

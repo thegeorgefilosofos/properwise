@@ -138,15 +138,62 @@ export function taxDeadlineRow(status: PropertyStatus, incomeYear: number): TaxD
 
 const ENFIA_DUE = new Set<TaxObligation['kind']>(['enfia-first', 'enfia-instalment', 'enfia-last']);
 
-/** Ο ΕΝΦΙΑ του έτους που πληρώνεται και η επόμενη δόση του, όταν το ποσό είναι γνωστό. */
+/** Ο ΕΝΦΙΑ του εκκαθαριστικού που πληρώνεται και η επόμενη δόση του, όταν το ποσό είναι γνωστό. */
 export interface EnfiaPlan {
+  /** Το έτος του εκκαθαριστικού που έγραψε ο χρήστης. */
   year: number;
-  /** Η επόμενη δόση· `null` χωρίς ποσό, γιατί χωρίς ποσό δεν ξέρουμε πόσες δόσεις υπάρχουν. */
+  /**
+   * Η επόμενη δόση του `year`· όταν δεν μένει καμία (`paidOff`), η τελευταία
+   * του. `null` χωρίς ποσό, γιατί χωρίς ποσό δεν ξέρουμε πόσες δόσεις υπάρχουν.
+   */
   row: TaxDeadlineRow | null;
+  /** Η προθεσμία της τελευταίας δόσης του `year` έχει περάσει. */
+  paidOff: boolean;
+  /**
+   * Μόνο με `paidOff`: το επόμενο εκκαθαριστικό, ΧΩΡΙΣ ποσό και χωρίς αριθμό
+   * δόσης («ΕΝΦΙΑ 2027 · Μάρτιος 2027»). Ούτε το ποσό ούτε το πλήθος του είναι
+   * γνωστά πριν εκδοθεί.
+   */
+  next: TaxDeadlineRow | null;
   /** Πόσες δόσεις, το ποσό των πρώτων και της τελευταίας· 0 χωρίς ποσό. */
   count: number;
   each: number;
   last: number;
+  /**
+   * Τα κλειδιά του ημερολογίου για τις δόσεις αυτού του εκκαθαριστικού
+   * (`enfia-instalment-2026-6`…)· κενό χωρίς ποσό. Η ατζέντα κρύβει όσες δόσεις
+   * του ίδιου έτους δεν είναι εδώ: 85€ δεν έχουν 9η δόση.
+   */
+  ids: string[];
+}
+
+/** Το κλειδί ατζέντας μιας δόσης ΕΝΦΙΑ που δεν ανήκει στο εκκαθαριστικό (`tax:enfia-instalment-2026-9` για 85€). */
+export function enfiaOutsidePlan(key: string, plan: Pick<EnfiaPlan, 'year' | 'ids'> | null | undefined): boolean {
+  if (!plan || !plan.ids.length) return false;
+  const m = /^tax:(enfia-(?:first|instalment|last)-(\d{4})(?:-\d+)?)$/.exec(key);
+  return !!m && Number(m[2]) === plan.year && !plan.ids.includes(m[1]);
+}
+
+/**
+ * Η ΔΙΑΙΡΕΣΗ ΣΕ ΚΟΜΜΑΤΙΑ ΠΟΥ ΑΘΡΟΙΖΟΝΤΑΙ ΣΤΟ ΣΥΝΟΛΟ (κριτική σχεδίασης r6). Η
+ * πρόταση «12 δόσεις των 26,66€, η τελευταία 26,74€» έλεγε δώδεκα των 26,66 και
+ * μετά τη διέψευδε: 12 × 26,66 = 319,92. Τα κομμάτια εδώ είναι ξένα μεταξύ
+ * τους: 11 των 26,66 και μία των 26,74, δηλαδή 320.
+ */
+export function enfiaSplitParts(p: Pick<EnfiaPlan, 'count' | 'each' | 'last'>): { n: number; amount: number }[] {
+  if (p.count <= 0) return [];
+  if (p.count === 1) return [{ n: 1, amount: p.last }];
+  return p.last === p.each ? [{ n: p.count, amount: p.each }] : [{ n: p.count - 1, amount: p.each }, { n: 1, amount: p.last }];
+}
+
+/** «11 δόσεις των 26,66€ και μία των 26,74€.», «12 δόσεις των 10,00€.», «Σε μία δόση.» */
+export function enfiaSplitText(p: Pick<EnfiaPlan, 'count' | 'each' | 'last'>): string {
+  const parts = enfiaSplitParts(p);
+  if (!parts.length) return '';
+  if (p.count === 1) return 'Σε μία δόση.';
+  const many = (n: number, a: number) => n === 1 ? `μία δόση των ${fe(a)}` : `${n}\u00a0δόσεις των ${fe(a)}`;
+  const [first, second] = parts;
+  return second ? `${many(first.n, first.amount)} και μία των ${fe(second.amount)}.` : `${many(first.n, first.amount)}.`;
 }
 
 /** «ΕΝΦΙΑ, 9η δόση» → «9η δόση»: ο τίτλος της κάρτας λέει ήδη «ΕΝΦΙΑ». */
@@ -160,19 +207,26 @@ const instalmentNo = (o: TaxObligation, count: number): number =>
   o.kind === 'enfia-first' ? 1 : o.kind === 'enfia-last' ? count : Number(o.id.split('-').pop());
 
 /**
- * Ο ΕΝΦΙΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΠΟΥ ΔΕΝ ΝΟΙΚΙΑΖΕΤΑΙ (κριτική σχεδίασης r4 και r5). Για
+ * Ο ΕΝΦΙΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΠΟΥ ΔΕΝ ΝΟΙΚΙΑΖΕΤΑΙ (κριτική σχεδίασης r4, r5 και r6). Για
  * ιδιοχρησία ή κενό, ο φόρος που υπάρχει είναι ο ΕΝΦΙΑ.
  *
- * ΤΟ ΕΤΟΣ: του ΕΝΦΙΑ που πληρώνεται τώρα. Οι δόσεις του έτους Υ τρέχουν ως τον
- * Φεβρουάριο του Υ+1, οπότε τον Ιανουάριο του 2027 η επόμενη δόση είναι ακόμη
- * του ΕΝΦΙΑ 2026. Αν δεν μένει καμία δόση του τρέχοντος έτους, του επόμενου.
+ * ΤΟ ΕΤΟΣ: του εκκαθαριστικού που έχει ο χρήστης στο χέρι, δηλαδή του
+ * τελευταίου που εκδόθηκε. Από την έκδοση του Υ (μέσα Μαρτίου) είναι το Υ·
+ * πριν από αυτήν, το Υ−1, του οποίου οι δόσεις τρέχουν ως τον Φεβρουάριο.
+ *
+ * ΟΧΙ ΣΤΟ ΕΠΟΜΕΝΟ ΕΤΟΣ ΜΕ ΤΟ ΙΔΙΟ ΠΟΣΟ (r6). Ως τώρα, όταν δεν έμενε δόση του
+ * τρέχοντος έτους, η γραμμή πήγαινε στο επόμενο με το ΠΟΣΟ ΠΟΥ ΕΓΡΑΨΕ Ο
+ * ΧΡΗΣΤΗΣ: 85€ τον Νοέμβριο του 2026 έβγαιναν «ΕΝΦΙΑ 2027 · 1η δόση 10,62€».
+ * Το εκκαθαριστικό του 2027 δεν έχει εκδοθεί· ούτε το ποσό του ούτε το πλήθος
+ * των δόσεων του είναι γνωστά. Συνέβαινε σε κάθε σύνολο κάτω από 90€. Τώρα το
+ * έτος μένει του εκκαθαριστικού, η γραμμή δείχνει την τελευταία του δόση
+ * (`paidOff`) και το επόμενο εκκαθαριστικό βγαίνει μόνο ως μήνας, χωρίς ποσό.
  *
  * ΟΙ ΔΟΣΕΙΣ: από το ποσό (r5). Ο νόμος θέλει τουλάχιστον 10€ τη δόση
  * (`enfiaInstalmentCount`, lib/tools/enfiaSchedule.ts), οπότε 60€ είναι έξι
- * δόσεις ως τον Αύγουστο. Χωρίς το πλήθος το ημερολόγιο υποθέτει δώδεκα και η
- * γραμμή έλεγε «9η δόση 30/11/2026», πληρωμή που δεν υπάρχει. Το πλήθος
- * περνά στο ημερολόγιο (`enfiaInstalments`), όπως το περνούν η ατζέντα και ο
- * συγχρονισμός. Χωρίς ποσό δεν βγαίνει γραμμή δόσης καθόλου.
+ * δόσεις ως τον Αύγουστο. Το πλήθος περνά στο ημερολόγιο, όπως το περνούν η
+ * ατζέντα και ο συγχρονισμός. Με μία δόση ο τίτλος είναι του ημερολογίου
+ * («Πληρωμή σε μία δόση»), ποτέ «1η δόση». Χωρίς ποσό δεν βγαίνει γραμμή.
  *
  * ΤΟ ΠΟΣΟ ΤΗΣ ΔΟΣΗΣ: από την ίδια `enfiaInstalments` με την ατζέντα (οι πρώτες
  * κόβονται προς τα κάτω στο λεπτό, η τελευταία παίρνει τη διαφορά).
@@ -183,16 +237,20 @@ export function enfiaDeadline(status: PropertyStatus, today: string, annual?: nu
   const profile = taxProfileOfStatus(status);
   const total = typeof annual === 'number' && annual > 0 ? annual : 0;
   const count = enfiaInstalmentCount(total);
-  for (const year of [y - 1, y, y + 1]) {
-    const opts = count ? { enfiaInstalments: { [year]: count } } : {};
-    const o = greekPropertyTaxObligations(year, profile, opts).find(x => ENFIA_DUE.has(x.kind) && x.date >= today);
-    if (!o) continue;
-    if (!count) return { year, row: null, count: 0, each: 0, last: 0 };
-    const plan = enfiaInstalments(total, year, count);
-    const inst = plan[instalmentNo(o, plan.length) - 1];
-    const each = plan[0]?.amount ?? 0, last = plan[plan.length - 1]?.amount ?? 0;
-    const row = inst ? { id: o.id, title: `${enfiaShort(o.title)} ${fe(inst.amount)}`, date: deadlineDate(o) } : null;
-    return { year, row, count: plan.length, each, last };
-  }
-  return null;
+  const issueOf = (year: number) => greekPropertyTaxObligations(year, profile).find(x => x.kind === 'enfia-issue');
+  const issueY = issueOf(y);
+  const year = issueY && issueY.date <= today ? y : y - 1;
+  if (!count) return { year, row: null, paidOff: false, next: null, count: 0, each: 0, last: 0, ids: [] };
+  const due = greekPropertyTaxObligations(year, profile, { enfiaInstalments: { [year]: count } })
+    .filter(x => ENFIA_DUE.has(x.kind)).sort((a, b) => a.date.localeCompare(b.date));
+  const plan = enfiaInstalments(total, year, count);
+  const each = plan[0]?.amount ?? 0, last = plan[plan.length - 1]?.amount ?? 0;
+  const upcoming = due.find(x => x.date >= today);
+  const o = upcoming ?? due[due.length - 1];
+  const inst = o ? plan[instalmentNo(o, plan.length) - 1] : undefined;
+  const row = o && inst ? { id: o.id, title: `${enfiaShort(o.title)} ${fe(inst.amount)}`, date: deadlineDate(o) } : null;
+  const paidOff = !upcoming;
+  const nextFirst = paidOff ? greekPropertyTaxObligations(year + 1, profile).find(x => x.kind === 'enfia-first') : undefined;
+  const next = nextFirst ? { id: nextFirst.id, title: `ΕΝΦΙΑ ${year + 1}`, date: deadlineDate(nextFirst) } : null;
+  return { year, row, paidOff, next, count: plan.length, each, last, ids: due.map(x => x.id) };
 }

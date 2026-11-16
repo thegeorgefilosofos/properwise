@@ -26,7 +26,7 @@ import { PEA_CLASSES } from '@/lib/property/pea';
 import { cleanPeaNumber, isoDay, peaReminderDrafts, PEA_NUMBER_MAX, PEA_REMINDER_DAYS } from '@/lib/property/peaExpiry';
 import { syncPeaReminders } from '@/lib/calendar/peaSync';
 import { athensToday } from '@/lib/core/time';
-import { firstTaxOf, taxDeadlineRow, enfiaDeadline } from '@/lib/onboarding/firstTax';
+import { firstTaxOf, taxDeadlineRow, enfiaDeadline, enfiaSplitText } from '@/lib/onboarding/firstTax';
 import { stepLabels, PRIMARY_TYPES, MORE_TYPES, PRIMARY_STATUSES, MORE_STATUSES, typeNeedsMore, statusNeedsMore, defaultPropertyName } from '@/lib/onboarding/steps';
 import type { EnfiaWizardInitial } from '@/lib/tools/enfiaCarry';
 import { draftKey, readDraft, writeDraft, clearDraft, sameDraft, restoreDraft } from '@/lib/ui/dismiss';
@@ -173,7 +173,10 @@ const inputStyle: React.CSSProperties = {
   // Ύψος από την κοινή κλίμακα: ήταν καρφωμένο 40 σε ~25 πεδία του οδηγού, άρα
   // δεν ακολουθούσε το 44 που ζητά ο δείκτης-δάχτυλο (globals.css, pointer: coarse).
   width: '100%', padding: '10px 16px', height: T.h.lg, borderRadius: T.radius.xs,
-  border: '1px solid var(--border-default)', background: 'var(--bg-surface)',
+  // ΤΟ ΟΡΙΟ ΤΟΥ ΠΕΔΙΟΥ, ΟΧΙ ΤΗΣ ΚΑΡΤΑΣ (κριτική σχεδίασης r6). Οι ημερομηνίες και οι
+  // επιλογείς φορούσαν ήδη το --border-control (WCAG 1.4.11, 3:1)· τα πεδία κειμένου
+  // το αχνό --border-default των καρτών, οπότε δίπλα δίπλα διέφεραν.
+  border: '1px solid var(--border-control)', background: 'var(--bg-surface)',
   color: 'var(--text-primary)', fontSize: 14, fontFamily: T.font.sans,
   letterSpacing: 0, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s, box-shadow 0.15s',
 };
@@ -186,7 +189,7 @@ const labelStyle: React.CSSProperties = {
 // Όροφοι (ελληνική ονοματολογία): κείμενο, όχι αριθμός.
 const FLOOR_OPTS = ['Υπόγειο', 'Ημιυπόγειο', 'Ισόγειο', 'Υπερυψωμένο ισόγειο', 'Ημιώροφος', '1ος', '2ος', '3ος', '4ος', '5ος', '6ος', '7ος και άνω', 'Δώμα / Ρετιρέ'];
 const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-dim)'; };
-const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.target.style.borderColor = 'var(--border-default)'; e.target.style.boxShadow = 'none'; };
+const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.target.style.borderColor = 'var(--border-control)'; e.target.style.boxShadow = 'none'; };
 
 
 // ── Η ΕΤΙΚΕΤΑ ΔΙΝΕΙ ΤΟ ΟΝΟΜΑ, ΔΕΝ ΚΑΘΕΤΑΙ ΑΠΛΩΣ ΑΠΟ ΠΑΝΩ ────────────────────
@@ -293,6 +296,13 @@ const row = (id: string, span: 'auto' | 'full', node: React.ReactNode, label?: s
   ({ id, span, node, label, group });
 /** Οι επαφές μέσα στο ίδιο «Περισσότερα» με τα στοιχεία του ακινήτου, με δικό τους υπότιτλο. */
 const CONTACTS = 'Επαφές';
+/**
+ * ΓΡΑΜΜΕΣ ΠΟΥ ΕΙΝΑΙ ΟΜΑΔΑ ΠΕΔΙΩΝ, ΟΧΙ ΠΕΔΙΟ (κριτική σχεδίασης r6). Το «Στοιχεία
+ * ΠΕΑ» γραφόταν με την έντονη ετικέτα πεδίου, πάνω από τρεις ετικέτες ίδιου
+ * βάρους, μέσα στον υπότιτλο «Ακίνητο» που ήταν μικρός και αχνός: το παιδί
+ * ξεπερνούσε τον γονιό. Τώρα κάθε ομάδα γράφει το όνομά της όπως οι υπότιτλοι.
+ */
+const CLUSTERS = new Set(['prop.pea_cert', 'prop.providers', 'prop.manager', 'prop.insurance']);
 
 /**
  * Το σώμα ενός βήματος: ό,τι χρειάζεται τώρα και από κάτω ένα κουμπί για ό,τι
@@ -334,11 +344,16 @@ function StepBody({ rows, place, after, moreTitle = 'Περισσότερα στ
   const order = new Map(PROPERTY_FIELDS.map((f, i) => [f.id, i]));
   const more = rows.filter(r => place(r.id) === 'more')
     .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-  const cell = (r: FormRow) => (
-    <div key={r.id} style={r.span === 'full' ? { gridColumn: '1 / -1' } : undefined}>
-      <Field label={r.label ?? labelOf(r.id)}>{r.node}</Field>
-    </div>
-  );
+  const cell = (r: FormRow) => {
+    const label = r.label ?? labelOf(r.id);
+    return (
+      <div key={r.id} style={r.span === 'full' ? { gridColumn: '1 / -1' } : undefined}>
+        {CLUSTERS.has(r.id)
+          ? <div role="group" aria-label={label}><div className="wiz-more-head" aria-hidden="true">{label}</div>{r.node}</div>
+          : <Field label={r.label ?? labelOf(r.id)}>{r.node}</Field>}
+      </div>
+    );
+  };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {core.length > 0 && <div style={grid2}>{core.map(cell)}</div>}
@@ -688,11 +703,9 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // Η ΚΑΡΤΑ ΤΟΥ ΕΝΦΙΑ ΛΕΕΙ ΚΑΤΙ ΠΟΥ Ο ΧΡΗΣΤΗΣ ΔΕΝ ΕΓΡΑΨΕ (κριτική σχεδίασης r5): τη
   // διαίρεση σε δόσεις, από την ίδια `enfiaInstalments` με την ατζέντα. Η
   // οδηγία «Όπως γράφει το εκκαθαριστικό.» πήγε κάτω από το πεδίο, όπως στο μίσθωμα.
-  const enfiaSplit = enfiaInfo && enfiaInfo.count > 0
-    ? (enfiaInfo.count === 1 ? 'Σε μία δόση.'
-      : enfiaInfo.last === enfiaInfo.each ? `${enfiaInfo.count}\u00a0δόσεις των ${fe(enfiaInfo.each)}.`
-      : `${enfiaInfo.count}\u00a0δόσεις των ${fe(enfiaInfo.each)}, η τελευταία ${fe(enfiaInfo.last)}.`)
-    : '';
+  // Η ΔΙΑΙΡΕΣΗ ΑΘΡΟΙΖΕΤΑΙ (r6): «11 δόσεις των 26,66€ και μία των 26,74€», όχι
+  // «12 δόσεις των 26,66€, η τελευταία 26,74€» (12 × 26,66 = 319,92).
+  const enfiaSplit = enfiaInfo ? enfiaSplitText(enfiaInfo) : '';
   const taxNote = !draftTax || !taxShown ? '' : draftTax.rented ? `Ενδεικτικά, για έσοδα ${fe(draftTax.annual)} τον χρόνο.` : enfiaSplit;
   const rentTaxPreview = draftTax && (
     <section className="wiz-tax" aria-labelledby={taxLabelId}>
@@ -713,6 +726,14 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
         // ΧΩΡΙΣ ΠΟΣΟ, ΚΑΜΙΑ ΔΟΣΗ (κριτική σχεδίασης r5): το πλήθος βγαίνει από το
         // ποσό, οπότε η γραμμή λέει μόνο αυτό. Κρατά και τη θέση της γραμμής.
         <div className="wiz-tax-row" data-empty="">Οι δόσεις βγαίνουν από το ποσό.</div>
+      )}
+      {/* ΤΟ ΕΠΟΜΕΝΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΧΩΡΙΣ ΠΟΣΟ (r6): όταν οι δόσεις του έτους τελείωσαν,
+          μόνο ο μήνας του επόμενου. Ούτε ποσό ούτε πλήθος δόσεων πριν εκδοθεί. */}
+      {!draftTax.rented && taxShown && enfiaInfo?.next && (
+        <div className="wiz-tax-row">
+          <span style={{ minWidth: 0 }}>{enfiaInfo.next.title}</span>
+          <span className="wiz-tax-date">{enfiaInfo.next.date}</span>
+        </div>
       )}
     </section>
   );
@@ -1258,7 +1279,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               row('prop.bedrooms', 'auto',
                 <input style={numInputStyle} type="number" min={0} value={bedrooms} onChange={e => setBedrooms(e.target.value)} onFocus={onFocus} onBlur={onBlur} />),
               row('prop.postal_code', 'auto',
-                <input style={inputStyle} value={postalCode} onChange={e => setPostalCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))} inputMode="numeric" placeholder="10000" onFocus={onFocus} onBlur={onBlur} />),
+                <input style={inputStyle} value={postalCode} onChange={e => setPostalCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))} inputMode="numeric" placeholder="π.χ. 10431" onFocus={onFocus} onBlur={onBlur} />),
               row('prop.floor', 'auto',
                 <CustomSelect ariaLabel="Όροφος" value={floor} onChange={setFloor} placeholder="Επίλεξε" options={FLOOR_OPTS.map(f => ({ value: f, label: f }))} />),
               row('prop.year_built', 'auto',
