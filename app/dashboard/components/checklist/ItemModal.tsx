@@ -10,6 +10,7 @@ import { DatePicker, CustomSelect } from '../UIComponents'
 import { FL, Inp, Sel, SubTaskEditor, CommentsEditor, iStyle } from './Bits'
 import { mkEmpty, fmtDate } from './calc'
 import { CATEGORIES, PRIORITIES, STATUSES, RECURRING_OPTIONS, ITEM_TAGS, type ChecklistItem, type Contact, type Priority, type Recurring, type Status } from './model'
+import { Dictation } from '@/components/dictation/MicButton'
 
 // ─── ItemModal ────────────────────────────────────────────────────────────────
 export function ItemModal({ item, contacts, onSave, onClose, onScan }: {
@@ -43,7 +44,7 @@ export function ItemModal({ item, contacts, onSave, onClose, onScan }: {
         <Btn variant="secondary" onClick={onClose}>Ακύρωση</Btn>
         <Btn variant="primary" disabled={!canSave} onClick={() => { if (canSave) onSave(form) }}>{item ? 'Αποθήκευση' : 'Προσθήκη εκκρεμότητας'}</Btn>
       </>}>
-      <div><FL>Περιγραφή *</FL><Inp ariaLabel="Περιγραφή" value={form.description} onChange={v => setForm(f => ({ ...f, description: v }))} placeholder="Συντήρηση καλοριφέρ" /></div>
+      <div><FL>Περιγραφή *</FL><Dictation value={form.description} onChange={v => setForm(f => ({ ...f, description: v }))}><Inp ariaLabel="Περιγραφή" value={form.description} onChange={v => setForm(f => ({ ...f, description: v }))} placeholder="Συντήρηση καλοριφέρ" /></Dictation></div>
       {/* ═══ ΔΥΟ ΣΕΙΡΕΣ ΤΩΝ ΤΡΙΩΝ, ΟΧΙ ΤΕΣΣΕΡΙΣ ΤΩΝ ΔΥΟ ══════════════════════
           Τα επτά πεδία κάθονταν σε τέσσερα ξεχωριστά πλέγματα των δύο, οπότε η
           φόρμα έβγαινε 2-2-2-1: τέσσερις σειρές, με την τελευταία μισή άδεια
@@ -126,7 +127,9 @@ export function ItemModal({ item, contacts, onSave, onClose, onScan }: {
         <SubTaskEditor subtasks={form.subtasks} onChange={sub => setForm(f => ({ ...f, subtasks: sub }))} />
       </div>
       <div><FL>Σημείωση</FL>
-        <textarea value={form.note} aria-label="Σημείωση" onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Επιπλέον πληροφορίες…" rows={3} style={{ ...iStyle, height: 'auto', padding: '10px 14px', resize: 'vertical', lineHeight: 1.5 }} onFocus={e => (e.target.style.borderColor = 'var(--accent)')} onBlur={e => (e.target.style.borderColor = 'var(--border-default)')} />
+        <Dictation multiline value={form.note} onChange={v => setForm(f => ({ ...f, note: v }))}>
+          <textarea value={form.note} aria-label="Σημείωση" onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Επιπλέον πληροφορίες…" rows={3} style={{ ...iStyle, height: 'auto', padding: '10px 14px', resize: 'vertical', lineHeight: 1.5 }} onFocus={e => (e.target.style.borderColor = 'var(--accent)')} onBlur={e => (e.target.style.borderColor = 'var(--border-default)')} />
+        </Dictation>
       </div>
       <div><FL>Ιστορικό ({form.comments.length})</FL>
         <CommentsEditor comments={form.comments} onChange={c => setForm(f => ({ ...f, comments: c }))} />

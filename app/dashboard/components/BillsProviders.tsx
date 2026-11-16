@@ -692,7 +692,7 @@ export default function BillsProviders({ propertyId, userId = '', only }: Props)
                   </div>
                 ))}
               </div>
-              <TextInput label="Σημειώσεις πακέτου" value={s.phoneNotes} onChange={v => upd({ phoneNotes: v })} placeholder="100 λεπτά διεθνή, αποκλείονται premium…"/>
+              <TextInput dictation label="Σημειώσεις πακέτου" value={s.phoneNotes} onChange={v => upd({ phoneNotes: v })} placeholder="100 λεπτά διεθνή, αποκλείονται premium…"/>
             </div>
           )}
 
