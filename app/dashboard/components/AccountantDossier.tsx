@@ -28,7 +28,7 @@ import { ActionMenu, type ActionMenuItem } from '@/components/ActionMenu'
 import { ChevronDown, ChevronRight, Download } from 'lucide-react'
 import { InfoHint } from './InfoHint'
 import {
-  groupByWho, traps, defaultBookkeeping, effectiveBookkeeping,
+  groupByWho, traps, defaultBookkeeping, effectiveBookkeeping, returnCounts,
   yearStatusLabel, LEGAL_FORM_LABEL,
   type LegalForm, type BookKeeping, type Requirement,
 } from '@/lib/accounting/dossier'
@@ -217,9 +217,11 @@ const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFamil
 // δημοσίευση στο ΓΕΜΗ και οι περιοδικές δηλώσεις ΦΠΑ είναι υποχρεωτικές και θα
 // έγραφαν «Προαιρετικό» δίπλα σε «Υποχρεωτική για τα νομικά πρόσωπα». Το πού (διαδρομή myAADE και σύνδεσμος), το
 // για ποιο ακίνητο και τι λείπει από τα στοιχεία ανοίγουν κάτω από τη γραμμή.
-function Row({ r, checked, onToggle, attribute, fromData }: {
+function Row({ r, checked, onToggle, attribute, fromData, inWait = false }: {
   r: Requirement; checked: boolean; onToggle: () => void; attribute: boolean
   fromData?: { missingFor?: string[] }
+  /** Μέσα στο «Μπορούν να περιμένουν»: η ένδειξη το λέει ήδη η κεφαλίδα. */
+  inWait?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const detailsId = useId()
@@ -236,7 +238,7 @@ function Row({ r, checked, onToggle, attribute, fromData }: {
       <div className="acd-row-text">
         <p className="acd-row-title" style={{ color: checked ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
           {r.title}
-          {!r.blocking && <span className="acd-row-opt"><span className="acd-row-dot" aria-hidden="true">{' · '}</span>Μπορεί να περιμένει</span>}
+          {!r.blocking && !inWait && <span className="acd-row-opt"><span className="acd-row-dot" aria-hidden="true">{' · '}</span>Μπορεί να περιμένει</span>}
         </p>
         <p className="acd-row-why">{r.why}</p>
         {open && (
@@ -256,7 +258,9 @@ function Row({ r, checked, onToggle, attribute, fromData }: {
               <p>
                 Πού: {r.aade ? aadePath(r.aade) : r.source}
                 {r.aade && (
-                  <>{' · '}<a className="po-tap-inline" href={AADE_DESTINATIONS[r.aade].url} target="_blank" rel="noopener noreferrer" title={aadeTitle(r.aade)}
+                  // Αδιάσπαστο κενό ΠΡΙΝ από την τελεία: αν ο σύνδεσμος πέσει στην
+                  // επόμενη σειρά, η τελεία μένει στο τέλος της προηγούμενης.
+                  <>{'\u00a0· '}<a className="po-tap-inline" href={AADE_DESTINATIONS[r.aade].url} target="_blank" rel="noopener noreferrer" title={aadeTitle(r.aade)}
                     style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>Άνοιξε στο myAADE</a></>
                 )}
               </p>
@@ -264,6 +268,9 @@ function Row({ r, checked, onToggle, attribute, fromData }: {
           </div>
         )}
       </div>
+      {/* ΙΔΙΑ ΣΤΗΛΗ ΣΕ ΚΑΘΕ ΓΡΑΜΜΗ. Γραμμή χωρίς λεπτομέρειες κρατά τον χώρο
+          του βέλους κενό, ώστε η δεξιά ακμή του κειμένου να είναι ίδια παντού. */}
+      {!hasDetails && <span className="acd-row-more acd-row-more-empty" aria-hidden="true" />}
       {hasDetails && (
         <button type="button" className="acd-row-more acc-toggle" aria-expanded={open} aria-controls={open ? detailsId : undefined}
           aria-label={`Λεπτομέρειες: ${r.title}`} onClick={() => setOpen(o => !o)}>
@@ -325,30 +332,38 @@ function Section({ title, count, open, onToggle, children }: {
   )
 }
 
+/** Υποομάδα μέσα σε ομάδα: μία σειρά με αριθμό, κλειστή εξ αρχής. */
+function Fold({ label, children }: { label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+  return (
+    <div className="acd-done">
+      <button type="button" className="acd-done-toggle acc-toggle" aria-expanded={open} aria-controls={id} onClick={() => setOpen(o => !o)}>
+        <span>{label}</span>
+        <ChevronDown size={16} aria-hidden="true" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }} />
+      </button>
+      <div id={id} hidden={!open}>{open && children}</div>
+    </div>
+  )
+}
+
 /**
- * Οι γραμμές μιας ομάδας: πρώτα όσα μένουν, τα ολοκληρωμένα διπλωμένα από κάτω.
- * Ενα τσεκαρισμένο κουτάκι δεν ζητά τίποτα πια· δεν χρειάζεται να το
- * προσπερνά το μάτι κάθε φορά που ανοίγει η ομάδα.
+ * Οι γραμμές μιας ομάδας: ανοιχτά μόνο όσα μπλοκάρουν τη δήλωση και λείπουν.
+ * Από κάτω, κλειστά: «Μπορούν να περιμένουν (n)» (όσα δεν σταματούν τη δήλωση,
+ * τσεκαρισμένα ή όχι) και «Ολοκληρωμένα (n)» (όσα μπλοκάρουν και έγιναν). Το
+ * «Ολοκληρωμένα» είναι έτσι ακριβώς ο αριθμητής του «x/y» της κεφαλίδας.
  */
 function GroupRows({ items, isDone, render }: {
-  items: readonly Requirement[]; isDone: (id: string) => boolean; render: (r: Requirement) => React.ReactNode
+  items: readonly Requirement[]; isDone: (id: string) => boolean; render: (r: Requirement, inWait?: boolean) => React.ReactNode
 }) {
-  const [doneOpen, setDoneOpen] = useState(false)
-  const doneId = useId()
-  const left = items.filter(r => !isDone(r.id))
-  const done = items.filter(r => isDone(r.id))
+  const left = items.filter(r => r.blocking && !isDone(r.id))
+  const wait = items.filter(r => !r.blocking)
+  const done = items.filter(r => r.blocking && isDone(r.id))
   return (
     <>
-      {left.map(render)}
-      {done.length > 0 && (
-        <div className="acd-done">
-          <button type="button" className="acd-done-toggle acc-toggle" aria-expanded={doneOpen} aria-controls={doneId} onClick={() => setDoneOpen(o => !o)}>
-            <span>Ολοκληρωμένα ({done.length})</span>
-            <ChevronDown size={16} aria-hidden="true" style={{ transform: doneOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }} />
-          </button>
-          <div id={doneId} hidden={!doneOpen}>{doneOpen && done.map(render)}</div>
-        </div>
-      )}
+      {left.map(r => render(r))}
+      {wait.length > 0 && <Fold label={`Μπορούν να περιμένουν (${wait.length})`}>{wait.map(r => render(r, true))}</Fold>}
+      {done.length > 0 && <Fold label={`Ολοκληρωμένα (${done.length})`}>{done.map(r => render(r))}</Fold>}
     </>
   )
 }
@@ -441,9 +456,12 @@ export default function AccountantDossier({
   const reqs = comp.items
   const ready = comp
   const byId = useMemo(() => new Map(comp.items.map(i => [i.id, i])), [comp])
-  const appIds = useMemo(() => comp.items.filter(i => i.by === 'app').map(i => i.id), [comp])
-  const appDone = useMemo(() => comp.items.filter(i => i.by === 'app' && i.done).map(i => i.id), [comp])
-  const appWaiting = appIds.length - appDone.length
+  // ΕΝΑ ΣΥΝΟΛΟ ΝΟΥΜΕΡΩΝ (lib/accounting/dossier.ts, `returnCounts`): μπάρα,
+  // σύνοψη και μετρητές ομάδων μετρούν ό,τι μπλοκάρει τη δήλωση, όπως η φράση
+  // της κεφαλίδας. Τα υπόλοιπα διπλώνουν στο «Μπορούν να περιμένουν».
+  const counts = useMemo(() => returnCounts(comp.items), [comp])
+  const appReturnDone = useMemo(() => comp.items.filter(i => i.by === 'app' && i.blocking && i.done).length, [comp])
+  const appReturnWaiting = counts.byWho.app.remaining
   const groups = useMemo(() => groupByWho(reqs), [reqs])
   const warnings = useMemo(() => traps(reqs), [reqs])
 
@@ -509,7 +527,7 @@ export default function AccountantDossier({
     setTimeout(() => setDownloaded(false), 2600)
   }
 
-  const pct = ready.total > 0 ? Math.round((ready.done / ready.total) * 100) : 0
+  const pct = counts.total > 0 ? Math.round((counts.done / counts.total) * 100) : 0
 
   // Η επικεφαλίδα βγαίνει από τη μηχανή (lib/accounting/dossier.ts), ίδια
   // στην οθόνη και στο αρχείο που κατεβαίνει.
@@ -533,8 +551,8 @@ export default function AccountantDossier({
 
         {/* Πρόοδος: μία λεπτή γραμμή, χωρίς ποσοστά σε μεγάλα γράμματα. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0 0' }}>
-          <Bar pct={pct} height={4} track="var(--bg-elevated)" label="Πρόοδος φακέλου" style={{ flex: 1 }} />
-          <span style={{ ...num, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{ready.done}/{ready.total}</span>
+          <Bar pct={pct} height={4} track="var(--bg-elevated)" label={`Έτοιμα για τη δήλωση: ${counts.done} από ${counts.total}`} style={{ flex: 1 }} />
+          <span style={{ ...num, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }} aria-hidden="true">{counts.done}/{counts.total}</span>
         </div>
 
         {/* ΠΟΙΟΣ ΚΑΝΕΙ ΤΙ: τα έτοιμα ΜΕΤΡΟΥΝ ήδη στο «x / y» από πάνω· όσα
@@ -544,10 +562,10 @@ export default function AccountantDossier({
             τελευταία λέξη, για να μη μείνει μόνο του σε δική του σειρά. */}
         {(() => {
           const summary = [
-            appDone.length > 0 ? `${appDone.length === 1 ? `Το ένα από τα ${ready.total} το βγάζουμε` : `Τα ${appDone.length} από τα ${ready.total} τα βγάζουμε`} ήδη από τα δεδομένα σου.` : '',
-            appWaiting > 0 ? `${appDone.length > 0
-              ? (appWaiting === 1 ? 'Ένα ακόμη θα βγει' : `Άλλα ${appWaiting} θα βγουν`)
-              : (appWaiting === 1 ? `Το ένα από τα ${ready.total} θα το βγάλουμε` : `Τα ${appWaiting} από τα ${ready.total} θα τα βγάλουμε`)} μόλις καταχωρήσεις έσοδα και έξοδα.` : '',
+            appReturnDone > 0 ? `${appReturnDone === 1 ? `Το ένα από τα ${counts.total} το βγάζουμε` : `Τα ${appReturnDone} από τα ${counts.total} τα βγάζουμε`} ήδη από τα δεδομένα σου.` : '',
+            appReturnWaiting > 0 ? `${appReturnDone > 0
+              ? (appReturnWaiting === 1 ? 'Ένα ακόμη θα βγει' : `Άλλα ${appReturnWaiting} θα βγουν`)
+              : (appReturnWaiting === 1 ? `Το ένα από τα ${counts.total} θα το βγάλουμε` : `Τα ${appReturnWaiting} από τα ${counts.total} θα τα βγάλουμε`)} μόλις καταχωρήσεις έσοδα και έξοδα.` : '',
           ].filter(Boolean).join(' ') || 'Τι περιέχει ο φάκελος.'
           const cut = summary.lastIndexOf(' ')
           return (
@@ -617,14 +635,14 @@ export default function AccountantDossier({
 
       {/* ── Οι ομάδες: πρώτα τα δικά σου ──────────────────────────────────── */}
       {groups.filter(g => g.who !== 'app').map(g => {
-        const done = g.items.filter(r => byId.get(r.id)?.done).length
+        const t = counts.byWho[g.who]
         return (
-          <Section key={g.who} title={g.label} count={`${done}/${g.items.length}`} open={!!sections[g.who]} onToggle={() => toggleSection(g.who)}>
+          <Section key={g.who} title={g.label} count={t.total > 0 ? `${t.done}/${t.total}` : undefined} open={!!sections[g.who]} onToggle={() => toggleSection(g.who)}>
             <p className="acd-sec-sub">
               {g.who === 'owner' ? 'Σημείωσε ό,τι έχεις ήδη βρει.' : 'Τα ετοιμάζει ο λογιστής από όσα του δίνεις. Σημείωσε ό,τι έχει ήδη γίνει.'}
             </p>
-            <GroupRows items={g.items} isDone={id => !!byId.get(id)?.done} render={r => (
-              <Row key={r.id} r={r} checked={!!byId.get(r.id)?.done} onToggle={() => toggle(r.id)} attribute={properties.length > 1}
+            <GroupRows items={g.items} isDone={id => !!byId.get(id)?.done} render={(r, inWait) => (
+              <Row key={r.id} r={r} inWait={inWait} checked={!!byId.get(r.id)?.done} onToggle={() => toggle(r.id)} attribute={properties.length > 1}
                 fromData={byId.get(r.id)?.by === 'data' ? { missingFor: byId.get(r.id)?.missingFor } : undefined} />
             )} />
           </Section>

@@ -2,7 +2,7 @@
 import {
   requirementsFor, readiness, groupByWho, traps, defaultBookkeeping,
   statusForAccountant, statusesOf, WHO_LABEL, missingAfmGroups,
-  statusesForYear, yearStatusLabel,
+  statusesForYear, yearStatusLabel, returnCounts,
   type DossierContext, type Requirement, type LegalForm,
 } from './dossier';
 import { filePapers, type DossierPaper } from './dossierFiles';
@@ -538,6 +538,33 @@ eq('καταστάσεις από γραμμές βάσης', statusesOf([{ stat
   eq('χωρίς κινήσεις: μόνο το σήμερα', statusesForYear('rent_long', {}), ['rent_long']);
   eq('η εκμίσθωση δεν διπλασιάζεται', statusesForYear('rent_long', { rentPeriods: 12 }), ['rent_long']);
   eq('χωρίς ιστορικό η ετικέτα μένει ίδια', yearStatusLabel({ name: 'Α', status: 'rent_long' }), 'Εκμίσθωση');
+}
+
+// ═══ ΤΑ ΝΟΥΜΕΡΑ ΤΗΣ ΟΘΟΝΗΣ ΣΥΜΦΩΝΟΥΝ ΜΕΤΑΞΥ ΤΟΥΣ ═══════════════════════════
+// Η κεφαλίδα (`readiness`), η μπάρα και ο μετρητής της ομάδας «Χρειάζεται από
+// εσένα» βγαίνουν από το ίδιο `returnCounts`. Το «Χ στοιχεία» της φράσης είναι
+// το `remaining`, το «τα Υ από εσένα» είναι το `remaining` της ομάδας και
+// πάντα `remaining = total − done`. Δοκιμάζεται σε κάθε μορφή, με και χωρίς τικ.
+{
+  const forms: [LegalForm, 'none' | 'single_entry' | 'double_entry'][] = [['individual', 'none'], ['sole_trader', 'single_entry'], ['partnership', 'double_entry'], ['company', 'double_entry']];
+  const statusSets: PropertyStatus[][] = [['rent_long'], ['rent_short', 'disputed'], ['vacant'], ['rent_long', 'rent_short', 'renovation']];
+  for (const [form, books] of forms) for (const statuses of statusSets) for (const tickEvery of [0, 2, 3]) {
+    const reqs = requirementsFor(ctx({ form, books, statuses, hasLoan: true }));
+    const have = tickEvery ? reqs.filter((_, i) => i % tickEvery === 0).map(r => r.id) : [];
+    const r = readiness(reqs, have);
+    const c = returnCounts(reqs.map(q => ({ ...q, done: have.includes(q.id) })));
+    const tag = `${form}/${statuses.join('+')}/τικ ανά ${tickEvery}`;
+    ok(`${tag}: υπόλοιπα = σύνολο − έτοιμα`, c.remaining === c.total - c.done && c.byWho.owner.remaining === c.byWho.owner.total - c.byWho.owner.done);
+    ok(`${tag}: η κεφαλίδα μετρά ό,τι η μπάρα`, c.remaining === r.blocking.length);
+    ok(`${tag}: «από εσένα» = υπόλοιπα της ομάδας`, c.byWho.owner.remaining === r.blocking.filter(q => q.who === 'owner').length);
+    const m = /χρειάζεται ακόμη (?:ένα στοιχείο|(\d+) στοιχεία), (?:(?:όλα )?από εσένα|το ένα από εσένα|τα (\d+) από εσένα)/.exec(r.message);
+    if (m) {
+      const need = m[1] ? Number(m[1]) : 1;
+      const mine = m[2] ? Number(m[2]) : (/όλα από εσένα|^.*, από εσένα/.test(r.message) ? need : 1);
+      ok(`${tag}: «${r.message}» ↔ ${c.remaining} και ${c.byWho.owner.remaining}`, need === c.remaining && mine === c.byWho.owner.remaining);
+    }
+    ok(`${tag}: κάθε γραμμή μετρά μία φορά`, c.total + c.canWait === reqs.length);
+  }
 }
 
 console.log(fail === 0 ? `✓ dossier: ${pass} έλεγχοι πέρασαν` : `✗ dossier: ${fail} απέτυχαν από ${pass + fail}`);

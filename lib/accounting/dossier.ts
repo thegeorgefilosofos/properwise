@@ -665,6 +665,34 @@ export function readiness(reqs: readonly Requirement[], haveIds: readonly string
   return { total: reqs.length, done, blocking, pending, yours, message };
 }
 
+/** Τα νούμερα της δήλωσης, ανά υπεύθυνο. */
+export interface ReturnTally { total: number; done: number; remaining: number; canWait: number }
+export interface ReturnCounts extends ReturnTally { byWho: Record<Who, ReturnTally> }
+
+/**
+ * ΕΝΑ ΣΥΝΟΛΟ ΝΟΥΜΕΡΩΝ ΓΙΑ ΟΛΗ ΤΗΝ ΟΘΟΝΗ (14/11/2026).
+ *
+ * Η κεφαλίδα έλεγε «χρειάζεται ακόμη 9 στοιχεία, τα 4 από εσένα» (όσα
+ * ΜΠΛΟΚΑΡΟΥΝ τη δήλωση), η μπάρα «3/18» (όλα) και η ομάδα «0/9» (όλα τα δικά
+ * σου). Τρία νούμερα για την ίδια ερώτηση: ο χρήστης τα διάβαζε ως αντίφαση.
+ *
+ * Μετρά μόνο όσα μπλοκάρουν, όπως η φράση του `readiness`: `remaining` είναι
+ * ακριβώς το «Χ στοιχεία» της κεφαλίδας και `byWho.owner.remaining` το «τα Υ
+ * από εσένα». Τα υπόλοιπα (`canWait`) δεν μπαίνουν σε κανένα κλάσμα· η οθόνη
+ * τα διπλώνει χωριστά, με τον αριθμό τους.
+ */
+export type CountedItem = Pick<Requirement, 'who' | 'blocking'> & { done: boolean };
+
+export function returnCounts(items: readonly CountedItem[]): ReturnCounts {
+  const tally = (xs: readonly CountedItem[]): ReturnTally => {
+    const b = xs.filter(x => x.blocking);
+    const done = b.filter(x => x.done).length;
+    return { total: b.length, done, remaining: b.length - done, canWait: xs.length - b.length };
+  };
+  const of = (who: Who) => tally(items.filter(x => x.who === who));
+  return { ...tally(items), byWho: { app: of('app'), owner: of('owner'), accountant: of('accountant') } };
+}
+
 /** Ομαδοποίηση για την οθόνη: τρεις στήλες, μία ανά υπεύθυνο. */
 export function groupByWho(reqs: readonly Requirement[]): { who: Who; label: string; items: Requirement[] }[] {
   const order: Who[] = ['owner', 'app', 'accountant'];

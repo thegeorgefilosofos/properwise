@@ -7999,3 +7999,11 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
   .acd-row-opt { display: block; margin-top: 1px; }
   .acd-row-dot { display: none; }
 }
+/* Η κενή θέση του βέλους σε γραμμή χωρίς λεπτομέρειες: ίδιο πλάτος, τίποτα πατήσιμο. */
+.acd-row-more-empty, .acd-row-more-empty:hover { background: none; cursor: default; pointer-events: none; }
+/* ΜΕΤΡΟ ΑΝΑΓΝΩΣΗΣ ΣΤΗΝ ΟΘΟΝΗ ΓΡΑΦΕΙΟΥ. Στα 1280 η αιτία μιας γραμμής απλωνόταν
+   σε 1.800 εικονοστοιχεία: το μάτι χάνει τη σειρά του και το τέλος της έπεφτε
+   στη γωνία όπου πλέει το «Ν» της Νόας. Τίτλος, αιτία και λεπτομέρειες
+   σταματούν στους ~70 χαρακτήρες· το βέλος μένει στη δεξιά ακμή. */
+.acd-row-text > p, .acd-row-details { max-width: 68ch; }
+.acd-sec-sub { max-width: calc(68ch + 30px); }
