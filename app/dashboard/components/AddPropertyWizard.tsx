@@ -705,7 +705,9 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // οδηγία «Όπως γράφει το εκκαθαριστικό.» πήγε κάτω από το πεδίο, όπως στο μίσθωμα.
   // Η ΔΙΑΙΡΕΣΗ ΑΘΡΟΙΖΕΤΑΙ (r6): «11 δόσεις των 26,66€ και μία των 26,74€», όχι
   // «12 δόσεις των 26,66€, η τελευταία 26,74€» (12 × 26,66 = 319,92).
-  const enfiaSplit = enfiaInfo ? enfiaSplitText(enfiaInfo) : '';
+  // ΜΙΑ ΔΟΣΗ, ΚΑΜΙΑ ΔΙΑΙΡΕΣΗ (κριτική σχεδίασης r9): η γραμμή από κάτω λέει ήδη
+  // «Πληρωμή σε μία δόση»· το «Σε μία δόση.» ήταν η ίδια πρόταση δεύτερη φορά.
+  const enfiaSplit = enfiaInfo && enfiaInfo.count > 1 ? enfiaSplitText(enfiaInfo) : '';
   const taxNote = !draftTax || !taxShown ? '' : draftTax.rented ? `Ενδεικτικά, για έσοδα ${fe(draftTax.annual)} τον χρόνο.` : enfiaSplit;
   const rentTaxPreview = draftTax && (
     <section className="wiz-tax" aria-labelledby={taxLabelId}>
