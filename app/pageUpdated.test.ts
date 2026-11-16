@@ -106,9 +106,6 @@ function visibleDates(html: string): string[] {
   const DATE = `(\\d{2}/\\d{2}/\\d{4}|\\d{1,2} ${MONTH} \\d{4}|${MONTH} \\d{4})`;
   for (const m of text.matchAll(new RegExp(`Τελευταία ενημέρωση(?: [α-ωά-ώ]+)?:? ${DATE}`, 'g'))) out.push(m[1]);
   for (const m of text.matchAll(/Έκδοση (\d{2}\/\d{2}\/\d{4})/g)) out.push(m[1]);
-  // Οι νομικές σελίδες γράφουν «Ισχύει από 12/11/2026» στη γραμμή της έκδοσης
-  // (14/11/2026): ίδιος έλεγχος. Μόνο εκεί· η φράση υπάρχει και σε κείμενο κανόνων.
-  for (const m of html.matchAll(/class="lg-version"[^>]*>Ισχύει από (\d{2}\/\d{2}\/\d{4})</g)) out.push(m[1]);
   return out;
 }
 

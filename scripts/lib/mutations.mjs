@@ -386,6 +386,8 @@ export const MUTATIONS = {
     { file: 'app/globals.css', from: '.tx-glue { white-space: nowrap; }', to: '.tx-glue { white-space: nowrap; }\n.lg-body .lg-p { text-wrap-style: balance; }' },
     { file: 'app/globals.css', from: '.tx-glue { white-space: nowrap; }', to: '.tx-glue { white-space: nowrap; }\n:where(p, li) { text-wrap: balance; }' },
     { add: 'components/__mut__.tsx', content: tsx("    <p style={{ fontSize: 15, textWrap: 'balance' }}>Μια παράγραφος σώματος που ζυγίζεται σαν τίτλος.</p>") },
+    // η ίδια παράγραφος γραμμένη σε τρεις γραμμές
+    { add: 'components/__mut__.tsx', content: tsx("    <p\n      style={{ fontSize: 15,\n        textWrap: 'balance' }}>\n      Μια παράγραφος σώματος που ζυγίζεται σαν τίτλος.\n    </p>") },
   ] },
   // Πιλούλες μίας επιλογής με τέσσερις ή περισσότερες επιλογές: πίνακας επιτόπου,
   // σταθερά από άλλο αρχείο και πιλούλες γραμμένες μία μία.
@@ -394,6 +396,8 @@ export const MUTATIONS = {
     { add: 'components/__mut__.tsx', content: "import { useState } from 'react'\nimport { ChipToggle } from '@/components/Theme'\nimport { DISPUTE_KINDS } from '@/lib/property/plan'\nexport default function M() {\n  const [v, setV] = useState('unknown')\n  return (\n    <div>\n      {DISPUTE_KINDS.map(k => (\n        <ChipToggle key={k.key} on={k.key === v} onClick={() => setV(k.key)}>{k.label}</ChipToggle>\n      ))}\n    </div>\n  )\n}\n" },
     { add: 'components/__mut__.tsx', content: "import { useState } from 'react'\nimport { ChipToggle } from '@/components/Theme'\nexport default function M() {\n  const [m, setM] = useState('a')\n  return (\n    <div>\n      <ChipToggle on={m === 'a'} onClick={() => setM('a')}>Α</ChipToggle>\n      <ChipToggle on={m === 'b'} onClick={() => setM('b')}>Β</ChipToggle>\n      <ChipToggle on={m === 'c'} onClick={() => setM('c')}>Γ</ChipToggle>\n      <ChipToggle on={m === 'd'} onClick={() => setM('d')}>Δ</ChipToggle>\n    </div>\n  )\n}\n" },
     { file: 'app/dashboard/components/BillsInsurance.tsx', from: '{/* chip-group: φίλτρο. Φιλτράρει', to: '{/* Φιλτράρει' },
+    // η πιλούλα γραμμένη σε πολλές γραμμές: το `on` σε δική του
+    { add: 'components/__mut__.tsx', content: "import { useState } from 'react'\nimport { ChipToggle } from '@/components/Theme'\nexport default function M() {\n  const [v, setV] = useState('a')\n  return (\n    <div>\n      {([['a', 'Α'], ['b', 'Β'], ['c', 'Γ'], ['d', 'Δ']] as const).map(([k, l]) => (\n        <ChipToggle\n          key={k}\n          on={v === k}\n          onClick={() => setV(k)}>\n          {l}\n        </ChipToggle>\n      ))}\n    </div>\n  )\n}\n" },
   ] },
   'justify-hyphen': { every: [
     { add: 'components/__mut__.tsx', content: tsx("    <p style={{ textAlign: 'justify', textWrap: 'pretty' }}>Ενα κείμενο που στοιχίζεται πέρα ως πέρα χωρίς να σπάει λέξη.</p>") },

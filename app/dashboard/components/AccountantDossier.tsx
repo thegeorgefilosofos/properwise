@@ -44,6 +44,9 @@ import { aadePath, AADE_DESTINATIONS } from '@/lib/tax/aade';
 import MeetingPackCard from './MeetingPackCard';
 import AccountantInvites from './AccountantInvites';
 
+/** Σύντομη ετικέτα που δεν σπάει στη γραμμή: τα κενά της γίνονται αδιάσπαστα. */
+const nb = (s: string) => s.replace(/ /g, '\u00a0')
+
 // Φαίνεται μόνο σε όποιον έχει δώσει πρόσβαση σε γραφείο· φορτώνεται στον περιηγητή.
 const FirmDaySummary = dynamic(() => import('./FirmAccess').then(m => m.FirmDaySummary), { ssr: false })
 
@@ -627,8 +630,9 @@ export default function AccountantDossier({
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={eyebrow}>Από τι βγαίνει αυτή η λίστα</p>
             <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '4px 0 0', fontFamily: T.font.sans }}>
-              {/* Το «·» μένει με ό,τι προηγείται: στα 375 η γραμμή άρχιζε με το «·». */}
-              {LEGAL_FORM_LABEL[profile.form]}{'\u00a0· '}{BOOKS_LABEL[profile.books]}
+              {/* Το «·» μένει με ό,τι προηγείται: στα 375 η γραμμή άρχιζε με το «·».
+                  Και κάθε στοιχείο μένει ακέραιο («Χωρίς / βιβλία» έσπαγε στα δύο). */}
+              {nb(LEGAL_FORM_LABEL[profile.form])}{'\u00a0· '}{nb(BOOKS_LABEL[profile.books])}
               {properties.length > 0 && `\u00a0· ${properties.length === 1 ? '1 ακίνητο' : `${properties.length} ακίνητα`}`}
             </p>
           </div>

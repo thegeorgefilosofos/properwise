@@ -15,7 +15,7 @@
 // επιλογή: κουτάκια ή πιλούλες σε πλέγμα ίσων κελιών.
 //
 // ΤΙ ΕΛΕΓΧΕΤΑΙ, ΑΚΡΙΒΩΣ. Στα .tsx του app/** και του components/**, κάθε
-// `<ChipToggle … on={Α === Β}>`: η ισότητα στο `on` είναι η υπογραφή της ΜΙΑΣ
+// `<ChipToggle … on={Α === Β}>`, όσες γραμμές κι αν πιάνει η ετικέτα: η ισότητα στο `on` είναι η υπογραφή της ΜΙΑΣ
 // επιλογής (η πολλαπλή γράφει `includes`/`has`). Μετρώ τις επιλογές με δύο
 // τρόπους, στατικούς και τους δύο:
 //   1. Η πιλούλα μέσα σε `.map(`: η πηγή της είναι πίνακας γραμμένος επιτόπου
@@ -42,6 +42,7 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { projectFiles } from './lib/git-files.mjs'
+import { openTags } from './lib/jsx-tag.mjs'
 
 const MAX = 3
 const SKIP = /^app\/dashboard\/components\/(AddPropertyWizard|BillsBudget)\.tsx$|^app\/dashboard\/components\/budget\/|^components\/dictation\/|\.test\.tsx?$/
@@ -99,13 +100,14 @@ for (const f of files) {
   const lines = src.split('\n')
   const exempt = (i) => lines.slice(Math.max(0, i - 8), i + 1).some(l => /chip-group:\s*(πλοήγηση|φίλτρο)/.test(l))
   const sides = new Map()
-  lines.forEach((line, i) => {
-    if (!line.includes('<ChipToggle')) return
-    const on = /\bon=\{\s*([^}]*?)\s*\}/.exec(line)
-    if (!on) return
+  // Η ΕΤΙΚΕΤΑ ΟΛΟΚΛΗΡΗ, ΟΧΙ Η ΓΡΑΜΜΗ: `<ChipToggle` στη μία και `on={v === k}`
+  // σε επόμενη (scripts/lib/jsx-tag.mjs).
+  for (const { tag, line: i } of openTags(src, 'ChipToggle')) {
+    const on = /\bon=\{\s*([^}]*?)\s*\}/.exec(tag)
+    if (!on) continue
     const eq = /^(.+?)\s*===\s*(.+)$/.exec(on[1])
-    if (!eq) return
-    if (exempt(i)) return
+    if (!eq) continue
+    if (exempt(i)) continue
     // 1. Μέσα σε `.map(`: η πηγή στις οκτώ γραμμές από πάνω.
     let size = null, how = ''
     for (let j = i; j >= Math.max(0, i - 8) && size == null; j--) {
@@ -130,13 +132,13 @@ for (const f of files) {
     }
     if (size != null) {
       if (size > MAX) provlimata.push({ arxeio: f, grammi: i + 1, ti: `${size} επιλογές (${how}), on={${on[1]}}` })
-      return
+      continue
     }
     // 2. Πιλούλες μία μία με το ίδιο αριστερό σκέλος.
     const left = eq[1].trim().replace(/^!/, '')
     if (!sides.has(left)) sides.set(left, [])
     sides.get(left).push(i + 1)
-  })
+  }
   for (const [left, at] of sides) {
     if (at.length > MAX) provlimata.push({ arxeio: f, grammi: at[0], ti: `${at.length} πιλούλες με on={${left} === …}` })
   }

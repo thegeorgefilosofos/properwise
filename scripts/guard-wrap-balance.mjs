@@ -6,11 +6,13 @@
 // γραμμής σε κείμενο σώματος: «ζύγιση, στοίχιση, αλλαγή γραμμής· και αυτό
 // ισχύει γενικά σε όλη την εφαρμογή». Το `balance` κόβει ΚΑΘΕ γραμμή στο ίδιο
 // μήκος: σε τίτλο δύο γραμμών είναι σωστό, σε παράγραφο αφήνει κενό δεξιά σε
-// όλες και η στήλη μοιάζει στενότερη απ' ό,τι είναι. Η σάρωση βρήκε πέντε
+// όλες και η στήλη μοιάζει στενότερη απ' ό,τι είναι. Η σάρωση βρήκε επτά
 // σημεία που το έδιναν σε κείμενο σώματος: το `.lp-lede` στο app/globals.css
-// και τέσσερα `<p>` με `textWrap: 'balance'` γραμμένο στο χέρι (app/en/view.tsx
-// δύο φορές, PropertyAssistant, η κενή κατάσταση του πίνακα). Διορθώθηκαν όλα·
-// ο φύλακας κρατά το μηδέν.
+// και έξι `<p>` με `textWrap: 'balance'` γραμμένο στο χέρι (app/en/view.tsx
+// τρεις φορές, η πρόταση κλεισίματος του app/page.tsx, PropertyAssistant, η
+// κενή κατάσταση του πίνακα). Τα δύο τελευταία που βρέθηκαν ήταν γραμμένα σε
+// δύο γραμμές και η πρώτη γραφή του φύλακα, γραμμή γραμμή, δεν τα έβλεπε.
+// Διορθώθηκαν όλα· ο φύλακας κρατά το μηδέν.
 //
 // ΤΙ ΕΛΕΓΧΕΤΑΙ, ΑΚΡΙΒΩΣ.
 //   · app/**/*.css: κάθε κανόνας με `text-wrap: balance` ή `text-wrap-style:
@@ -21,12 +23,14 @@
 //     `-copy`). Ο,τι άλλο (τίτλοι, ετικέτες, σύνδεσμοι, κουμπιά, κεφαλίδες
 //     πίνακα) κρατά το `balance`: εκεί ανήκει.
 //   · app/** και components/** .tsx: ένα `<p>`, `<li>`, `<dd>` ή `<blockquote>`
-//     με `textWrap: 'balance'` στην ίδια γραμμή. Οι γραμμές σχολίων εξαιρούνται.
+//     με `textWrap: 'balance'` οπουδήποτε στην ετικέτα ανοίγματός του, όσες
+//     γραμμές κι αν πιάνει. Οι γραμμές σχολίων εξαιρούνται.
 //     Το `TT.label`/`TT.h*` πάνω σε `<p>` ΔΕΝ μετρά: είναι ετικέτα που έτυχε να
 //     γραφτεί με `<p>`· η κλίμακα (components/tokens.ts) το ξέρει.
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
 import { projectFiles } from './lib/git-files.mjs'
+import { openTags } from './lib/jsx-tag.mjs'
 
 const BODY_EL = /^(p|li|dd|blockquote|body|main|article)$/
 const BODY_CLASS = /\.(?:[\w-]*-)?(?:p|prose|body|text|lede|desc|para|copy)(?![\w-])/
@@ -86,14 +90,14 @@ for (const f of cssFiles) {
 }
 
 const tsxFiles = projectFiles("'app/**/*.tsx' 'components/**/*.tsx'").filter(f => !/\.test\.tsx?$/.test(f))
-const TSX_RE = /<(p|li|dd|blockquote)\b[^>]*textWrap\s*:\s*['"]balance['"]/
+// Η ΕΤΙΚΕΤΑ ΟΛΟΚΛΗΡΗ, ΟΧΙ Η ΓΡΑΜΜΗ: `<p` στη μία γραμμή και το `style={{`
+// με το `textWrap: 'balance'` σε επόμενη (scripts/lib/jsx-tag.mjs).
+const BALANCE_RE = /textWrap\s*:\s*['"]balance['"]/
 for (const f of tsxFiles) {
-  readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
-    const t = line.trim()
-    if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('{/*')) return
-    const m = TSX_RE.exec(line)
-    if (m) provlimata.push({ arxeio: f, grammi: i + 1, ti: line.slice(m.index, m.index + 60).trim() })
-  })
+  const src = readFileSync(f, 'utf8')
+  for (const { tag, line } of openTags(src, 'p|li|dd|blockquote')) {
+    if (BALANCE_RE.test(tag)) provlimata.push({ arxeio: f, grammi: line + 1, ti: tag.replace(/\s+/g, ' ').slice(0, 60) })
+  }
 }
 
 if (provlimata.length) {

@@ -222,7 +222,7 @@ export default async function LandingEn() {
           {WHY_EN.body.map(p => <p key={p}>{p}</p>)}
         </div>
         <p style={{ fontSize: 'clamp(17px, 1.9vw, 21px)', lineHeight: 1.45, color: 'var(--text-primary)', letterSpacing: '-0.015em',
-          margin: 'clamp(26px, 3.2vw, 40px) 0 0', textWrap: 'balance' }}>
+          margin: 'clamp(26px, 3.2vw, 40px) 0 0', textWrap: 'pretty' }}>
           {WHY_EN.close}
         </p>
         {localHref('en', '/trust') !== '/trust' && (

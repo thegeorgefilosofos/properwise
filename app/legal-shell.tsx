@@ -499,13 +499,14 @@ export function LegalShell({ title, updated, version, intro, sections, disclaime
       meta={en ? U.updated(updated) : `Τελευταία ενημέρωση: ${updated}`}
       // Η ΕΚΔΟΣΗ ΔΙΑΒΑΖΕΤΑΙ ΩΣ ΗΜΕΡΟΜΗΝΙΑ ΚΑΙ ΑΥΞΟΝ: «12/11/2026 (2)» για τη
       // δεύτερη έκδοση της ίδιας μέρας (lib/legal/identity.ts).
-      // «ΙΣΧΥΕΙ ΑΠΟ», ΧΩΡΙΣ ΤΟ ΔΕΥΤΕΡΟ ΣΤΟΙΧΕΙΟ (14/11/2026). Η γραμμή έγραφε
+      // Η ΕΚΔΟΣΗ, ΧΩΡΙΣ ΤΟ ΔΕΥΤΕΡΟ ΣΤΟΙΧΕΙΟ (14/11/2026). Η γραμμή έγραφε
       // «Έκδοση 12/11/2026 (2) · Τελευταία ενημέρωση: Νοέμβριος 2026»: δύο
-      // ημερομηνίες για το ίδιο πράγμα και ένα «(2)» που δεν εξηγεί τίποτα στον
-      // επισκέπτη. Η «Τελευταία ενημέρωση» μένει στη σειρά των αδελφών σελίδων·
-      // η πλήρης έκδοση μένει στο `data-version`. Η συγκατάθεση διαβάζει το
-      // `POLICY_VERSION` (lib/legal/identity.ts), ποτέ αυτό το κείμενο.
-      version={version ? (en ? U.version(versionDate(version), updated, versionSuffix(version)) : `Ισχύει από ${grDate(versionDate(version))}`) : undefined}
+      // ημερομηνίες για το ίδιο πράγμα στην πρώτη οθόνη. Μένει η πλήρης έκδοση,
+      // με το αύξον της ίδιας μέρας: αυτή υπόσχεται το κείμενο ότι αλλάζει σε
+      // κάθε αλλαγή. Ημερομηνία ισχύος δεν αποθηκεύεται χωριστά, άρα δεν
+      // γράφεται. Η «Τελευταία ενημέρωση» μένει στη σειρά των αδελφών σελίδων.
+      // Ιδια γραμμή στα αγγλικά (`versionOnly`).
+      version={version ? (en ? U.versionOnly(versionDate(version), versionSuffix(version)) : `Έκδοση ${grDate(versionDate(version))}${versionSuffix(version)}`) : undefined}
       versionId={version}
       blocks={sections.map(s => ({
         id: s.id,

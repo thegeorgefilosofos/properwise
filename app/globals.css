@@ -7998,13 +7998,17 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
    λέξεις, μετρημένο στα 1.280 σε ~4.300 κενά: p90 11,7 και p99 16,9 έναντι
    8,2 και 11,2 πριν, δηλαδή ποτάμια λευκού. Οι οδηγοί πέρασαν ήδη στην
    αριστερή στοίχιση στις 07.10.2026 για τον ίδιο λόγο· οι νομικές σελίδες
-   ακολουθούν, με τον ίδιο συλλαβισμό του περιηγητή. Η εξειδίκευση ξεπερνά
-   το `text-wrap: wrap !important` του κανόνα στοίχισης πιο πάνω. */
+   ακολουθούν. ΧΩΡΙΣ συλλαβισμό: σε γραμμή 75 χαρακτήρων με ριγμένη δεξιά άκρη
+   δεν χρειάζεται. Μετρημένο στα 1.280: με `auto` έσπαγε μία γραμμή στις
+   τέσσερις (έλεγχος του #581), με `manual` (μόνο τα μαλακά ενωτικά των λέξεων
+   από δέκα γράμματα) ακόμη 18% στην Πολιτική και 27% στους Όρους, γιατί το
+   `pretty` προτιμά την τομή. Με `none`, 0%. Η εξειδίκευση ξεπερνά το
+   `text-wrap: wrap !important` του κανόνα στοίχισης πιο πάνω. */
 @media (min-width: 641px) {
   :root body .lg-body :is(.lg-p, .lg-ul li, .lg-just, .lg-note),
   :root body .lg-head .lg-lede > p:first-child {
     text-align: start; text-wrap: pretty !important;
-    hyphens: auto; -webkit-hyphens: auto; hyphenate-limit-chars: 10 4 4;
+    hyphens: none; -webkit-hyphens: none;
   }
 }
 .lg-body .lg-ul { gap: 14px; }
