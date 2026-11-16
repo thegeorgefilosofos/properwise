@@ -23,6 +23,7 @@ import { fe, feWhole, grDate } from '@/lib/core/format';
 import { billingWords } from '@/lib/legal/billingWords';
 import { IDENTITY } from '@/lib/legal/identity';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
+import { longDateEn } from '@/lib/i18n/en/dates';
 import { siteCatalog, type MapEntry, type MapGroup, type MapGroupId } from '@/app/siteCatalog';
 
 const properties = (n: number) => !Number.isFinite(n) ? 'απεριόριστα ακίνητα' : n === 1 ? 'ένα ακίνητο' : `έως ${n} ακίνητα`;
@@ -36,8 +37,8 @@ function line(e: MapEntry): string {
   return `- [${e.label}](${abs(e.path)}) (ενημέρωση ${grDate(e.updated)})${extra ? `: ${extra}` : ''}`;
 }
 
-/** Η ίδια γραμμή για την αγγλική σελίδα. */
-const lineEn = (e: MapEntry): string[] => e.en ? [`- [${e.en.label}](${abs(e.en.path)}) (updated ${grDate(e.updated)})`] : [];
+/** Η ίδια γραμμή για την αγγλική σελίδα, με αγγλική γραφή ημερομηνίας («14 November 2026»). */
+const lineEn = (e: MapEntry): string[] => e.en ? [`- [${e.en.label}](${abs(e.en.path)}) (updated ${longDateEn(e.updated)})`] : [];
 
 export function llmsText(): string {
   const notice = billingWords().pricingNotice;

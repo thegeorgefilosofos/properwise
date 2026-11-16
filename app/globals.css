@@ -5610,7 +5610,7 @@ body:has(.po-tool-page) .po-cookie {
 /* ΣΤΟ ΤΗΛΕΦΩΝΟ ΔΥΟ ΙΣΕΣ ΣΤΗΛΕΣ: τα έξι κουμπιά σε ελεύθερη ροή έπεφταν σε
    τέσσερις άνισες σειρές. Το όνομα αριστερά, το πλήθος δεξιά, όπως οι λίστες. */
 @media (max-width: 560px) {
-  .xm-jump { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .xm-jump { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; }
   .xm-chip { justify-content: space-between; border-radius: 10px; line-height: 1.3; }
 }
 .xm-root {
