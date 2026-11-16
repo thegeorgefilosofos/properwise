@@ -1,0 +1,24 @@
+/* ΟΜΑΔΑ */
+
+  Ομάδα Properwise
+  Επικοινωνία: support@properwise.gr
+  Ασφάλεια: security@properwise.gr
+  Ιστότοπος: properwise.gr
+  Τόπος: Ελλάδα
+
+/* ΙΣΤΟΤΟΠΟΣ */
+
+  Τελευταία ενημέρωση: 14/11/2026
+  Γλώσσες: Ελληνικά, English
+  Λογισμικό: Next.js 16, React 19, TypeScript 5, Supabase (PostgreSQL)
+  Πρότυπα: HTML, CSS, WAI-ARIA, schema.org, RSS 2.0
+
+/* ΠΑΡΟΧΟΙ */
+
+  Οι πάροχοι και πού επεξεργάζονται δεδομένα: https://properwise.gr/privacy
+
+/* ΓΙΑ ΤΙΣ ΜΗΧΑΝΕΣ */
+
+  Χάρτης ιστότοπου: https://properwise.gr/xartis
+  Για εργαλεία AI: https://properwise.gr/llms.txt
+  Ασφάλεια: https://properwise.gr/.well-known/security.txt

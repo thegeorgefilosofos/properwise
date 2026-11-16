@@ -563,6 +563,7 @@ export function useAssistant({ propertyId, userId, propContext, allProperties = 
       openTasks: openTasks.length,
       overdueRent: openRentNow.reduce((sum, r) => sum + (r.amount || 0), 0) || undefined,
       hasLoan: loanRows.length > 0,
+      enfia: ef.declaredFrom ? ef.annual || undefined : undefined,
       isShortTerm: propStays.length > 0,
       propertyCount: allProperties.length || undefined,
     });

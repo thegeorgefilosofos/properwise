@@ -10,6 +10,7 @@ import { athensToday, isoYear, isoMonth } from '@/lib/core/time';
 import { MONTHS_SHORT, DAY_NAMES_MIN } from '@/lib/core/months';
 import { fn } from '@/lib/core/format';
 import { hy } from '@/components/Hyphen';
+import { GlueTail } from '@/components/TextGlue';
 import { useMicField, type MicField } from '@/components/dictation/MicButton';
 import { cssRect, cssViewW, cssViewH } from '@/lib/core/cssZoom';
 
@@ -320,12 +321,10 @@ export function LabelDot({ text, label }: { text: string; label?: string }) {
 // ετικέτα έπιανε 44 εικονοστοιχεία αντί για 20. Η ένδειξη (κουκκίδα, «λείπει»)
 // κολλά στην τελευταία λέξη. Ανεπαίσθητο κουτί, όχι flex: το κενό πριν από το
 // «λείπει» είναι χαρακτήρας και ένα flex θα το έσβηνε.
-const LABEL_TAIL: React.CSSProperties = { whiteSpace: 'nowrap' };
 function labelWithInfo(label: string | undefined, info: ReactNode): ReactNode {
   const node = infoNode(info, label);
   if (!label || node == null || node === false) return <>{label}{node}</>;
-  const cut = label.lastIndexOf(' ') + 1;
-  return <>{label.slice(0, cut)}<span style={LABEL_TAIL}>{label.slice(cut)}{node}</span></>;
+  return <GlueTail text={label}>{node}</GlueTail>;
 }
 
 // ─── Number Input ─────────────────────────────────────────────────────────────
@@ -906,7 +905,7 @@ export function CustomSelect({
           {selected?.dot && <div style={{ width: 8, height: 8, borderRadius: '50%', background: selected.dot, flexShrink: 0 }}/>}
           {selected?.color && <div style={{ width: 10, height: 10, borderRadius: 3, background: selected.color, flexShrink: 0 }}/>}
           {/* `po-field-value`: 16 στην αφή, όπως κάθε <input> δίπλα του (globals.css). */}
-          <span className="po-elide po-field-value" style={{
+          <span className="po-elide po-field-value" data-empty={selected ? undefined : ''} style={{
             fontFamily: T.font.sans,
             fontSize: tool ? 16 : 14,
             letterSpacing: tool ? 0 : '0.25px',
