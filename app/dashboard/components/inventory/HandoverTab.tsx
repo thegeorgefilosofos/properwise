@@ -240,7 +240,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
         <div><label htmlFor={nameId} style={labelStyle}>Ονοματεπώνυμο *</label><TextInput id={nameId} value={tenantName} onChange={setTenantName} placeholder="Παράδειγμα: Ιωάννης Παπαδόπουλος"/></div>
         <div><label htmlFor={phoneId} style={labelStyle}>Τηλέφωνο</label><TextInput id={phoneId} value={tenantPhone} onChange={setTenantPhone} placeholder="6912345678"/></div>
         <div><label style={labelStyle}>Ημερομηνία</label><DatePicker value={handoverDate} onChange={setHandoverDate}/></div>
-        <div><label htmlFor={notesId} style={labelStyle}>Σημειώσεις</label><TextInput id={notesId} value={notes} onChange={setNotes} placeholder="Γενικές παρατηρήσεις…"/></div>
+        <div><label htmlFor={notesId} style={labelStyle}>Σημειώσεις</label><TextInput dictation id={notesId} value={notes} onChange={setNotes} placeholder="Γενικές παρατηρήσεις…"/></div>
       </div>
       <div>
         <SectionLabel label="Κατάσταση αντικειμένων" right={<span style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans}}>{items.length} αντικείμενα</span>}/>
@@ -266,7 +266,7 @@ export function HandoverTab({items,handovers,propertyId,userId,onSaved,seed}:{it
                 <p style={{fontSize: 'var(--fs-xs)',color:'var(--text-tertiary)',fontFamily:T.font.sans,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{inventoryLabel(item.category)}{item.room?` · ${inventoryLabel(item.room)}`:''}</p>
               </div>
               <CustomSelect ariaLabel={`Κατάσταση: ${item.name}`} value={itemConds[item.id]?.condition||item.condition} onChange={v=>setItemConds(p=>({...p,[item.id]:{...p[item.id],condition:v}}))} options={CONDITIONS.map(c=>({value:c,label:conditionLabel(c)}))}/>
-              <TextInput ariaLabel={`Παρατηρήσεις: ${item.name}`} value={itemConds[item.id]?.notes||''} onChange={v=>setItemConds(p=>({...p,[item.id]:{...p[item.id],notes:v}}))} placeholder="μικρή γρατζουνιά στην πόρτα"/>
+              <TextInput dictation ariaLabel={`Παρατηρήσεις: ${item.name}`} value={itemConds[item.id]?.notes||''} onChange={v=>setItemConds(p=>({...p,[item.id]:{...p[item.id],notes:v}}))} placeholder="μικρή γρατζουνιά στην πόρτα"/>
             </div>
           ))}
         </div>

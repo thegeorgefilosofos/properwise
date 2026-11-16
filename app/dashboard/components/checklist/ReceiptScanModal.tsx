@@ -24,6 +24,7 @@ import { athensToday } from '@/lib/core/time'
 import { navLabel } from '@/lib/nav/labels'
 import { serializeNote, carryOver } from './calc'
 import type { ChecklistItem, ItemReceipt } from './model'
+import { Dictation } from '@/components/dictation/MicButton'
 
 const supabase = createSupabaseClient()
 
@@ -232,7 +233,7 @@ export function ReceiptScanModal({ item, propertyId, userId, onClose, onSaved }:
             <div><FL>Ημερομηνία *</FL><DatePicker value={date} onChange={setDate} /></div>
           </div>
           <div><FL>Πάροχος</FL><Inp ariaLabel="Πάροχος" value={provider} onChange={setProvider} placeholder="Παράδειγμα: Υδραυλικές Εργασίες ΕΠΕ" /></div>
-          <div><FL>Περιγραφή δαπάνης</FL><Inp ariaLabel="Περιγραφή δαπάνης" value={desc} onChange={setDesc} placeholder="Περιγραφή" /></div>
+          <div><FL>Περιγραφή δαπάνης</FL><Dictation value={desc} onChange={setDesc}><Inp ariaLabel="Περιγραφή δαπάνης" value={desc} onChange={setDesc} placeholder="Περιγραφή" /></Dictation></div>
           <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, margin: 0, lineHeight: 1.5 }}>
             Καταχωρείται ως <strong style={{ color: 'var(--text-secondary)' }}>{expenseCategoryFor(item.category).cat}</strong>, πληρωμένη, με το αρχείο συνημμένο στην καρτέλα «{navLabel('documents')}».
           </p>
