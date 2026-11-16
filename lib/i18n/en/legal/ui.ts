@@ -17,6 +17,8 @@ export const LEGAL_UI_EN = {
   pages: ['About us', 'Privacy Policy', 'Terms of use'] as const,
   updated: (when: string) => `Last updated: ${when}`,
   version: (iso: string, when: string, suffix = '') => `Version ${fmtFor('en').date(iso)}${suffix} · Last updated: ${when}`,
+  // Η γραμμή της κορυφής στην Πολιτική και στους Όρους: μόνο η έκδοση, όπως στα ελληνικά (legal-shell.tsx).
+  versionOnly: (iso: string, suffix = '') => `Version ${fmtFor('en').date(iso)}${suffix}`,
   notice: 'This translation is provided for convenience. The Greek version is the legally binding text.',
   greekLink: 'Read the Greek version',
 };

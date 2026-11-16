@@ -27,6 +27,7 @@ import { T, TT, SelectBox, Bar, Btn, ChipToggle } from '@/components/Theme'
 import { ActionMenu, type ActionMenuItem } from '@/components/ActionMenu'
 import { ChevronDown, ChevronRight, Download } from 'lucide-react'
 import { InfoHint } from './InfoHint'
+import { CustomSelect } from './UIComponents'
 import {
   groupByWho, traps, defaultBookkeeping, effectiveBookkeeping, returnCounts,
   yearStatusLabel, LEGAL_FORM_LABEL,
@@ -44,6 +45,9 @@ import { aadeTitle } from '@/components/AadeLink';
 import { aadePath, AADE_DESTINATIONS } from '@/lib/tax/aade';
 import MeetingPackCard from './MeetingPackCard';
 import AccountantInvites from './AccountantInvites';
+
+/** Σύντομη ετικέτα που δεν σπάει στη γραμμή: τα κενά της γίνονται αδιάσπαστα. */
+const nb = (s: string) => s.replace(/ /g, '\u00a0')
 
 // Φαίνεται μόνο σε όποιον έχει δώσει πρόσβαση σε γραφείο· φορτώνεται στον περιηγητή.
 const FirmDaySummary = dynamic(() => import('./FirmAccess').then(m => m.FirmDaySummary), { ssr: false })
@@ -683,8 +687,10 @@ export default function AccountantDossier({
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={eyebrow}>Από τι βγαίνει αυτή η λίστα</p>
             <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', margin: '4px 0 0', fontFamily: T.font.sans }}>
-              {LEGAL_FORM_LABEL[profile.form]} · {BOOKS_LABEL[profile.books]}
-              {properties.length > 0 && ` · ${properties.length === 1 ? '1 ακίνητο' : `${properties.length} ακίνητα`}`}
+              {/* Το «·» μένει με ό,τι προηγείται: στα 375 η γραμμή άρχιζε με το «·».
+                  Και κάθε στοιχείο μένει ακέραιο («Χωρίς / βιβλία» έσπαγε στα δύο). */}
+              {nb(LEGAL_FORM_LABEL[profile.form])}{'\u00a0· '}{nb(BOOKS_LABEL[profile.books])}
+              {properties.length > 0 && `\u00a0· ${properties.length === 1 ? '1 ακίνητο' : `${properties.length} ακίνητα`}`}
             </p>
           </div>
         </button>
@@ -693,10 +699,13 @@ export default function AccountantDossier({
           <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <p style={{ fontSize: 'var(--fs-note)', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px', fontFamily: T.font.sans }}>Νομική μορφή</p>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {(Object.keys(LEGAL_FORM_LABEL) as LegalForm[]).map(f => (
-                  <ChipToggle key={f} on={profile.form === f} onClick={() => setProfile({ form: f })}>{LEGAL_FORM_LABEL[f]}</ChipToggle>
-                ))}
+              {/* ΤΕΣΣΕΡΙΣ ΜΟΡΦΕΣ, ΜΙΑ ΑΠΑΝΤΗΣΗ: ΕΠΙΛΟΓΕΑΣ (14/11/2026). Ως πιλούλες
+                  τύλιγαν σε δύο σειρές άνισου πλάτους, «Ατομική επιχείρηση» μόνη
+                  της στη δεύτερη. Ίδιες τιμές, ίδιο `setProfile`. */}
+              <div className="choice-select">
+                <CustomSelect ariaLabel="Νομική μορφή" value={profile.form}
+                  onChange={v => setProfile({ form: v as LegalForm })}
+                  options={(Object.keys(LEGAL_FORM_LABEL) as LegalForm[]).map(f => ({ value: f, label: LEGAL_FORM_LABEL[f] }))} />
               </div>
             </div>
 

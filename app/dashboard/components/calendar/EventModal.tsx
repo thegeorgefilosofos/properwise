@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect, useRef, useMemo, useId } from 'react'
 import { createPortal } from 'react-dom'
-import { T, Btn, ChipToggle, Modal, fe, localDay, pressable } from '@/components/Theme'
+import { T, Btn, Modal, fe, localDay, pressable } from '@/components/Theme'
 import { fixedCols } from '@/components/tokens'
 import { AlertTriangle, FileText, Zap, ChevronDown, Clock, Info, CalendarPlus } from 'lucide-react'
 import { DatePicker, CustomSelect, NumberInput } from '../UIComponents'
@@ -211,23 +211,14 @@ export function EventModal({ form, setForm, onSave, onClose, editing, saving, co
           <input id={fid('attachment')} inputMode="url" style={fld} placeholder="https://…" value={form.attachment_url} onChange={e=>setForm(f=>({...f,attachment_url:e.target.value}))} onFocus={focus} onBlur={blur}/>
         </div>
         {/* Κατάσταση */}
+        {/* ΤΕΣΣΕΡΙΣ ΚΑΤΑΣΤΑΣΕΙΣ, ΜΙΑ ΑΠΑΝΤΗΣΗ: ΕΠΙΛΟΓΕΑΣ, ΟΠΩΣ Η ΚΑΤΗΓΟΡΙΑ ΚΑΙ Η
+            ΠΡΟΤΕΡΑΙΟΤΗΤΑ ΑΠΟ ΠΑΝΩ (14/11/2026). Ως τσιπάκια ήταν το μόνο πεδίο
+            της φόρμας με άλλο χειριστήριο για την ίδια δουλειά και έπιανε δύο
+            σειρές. Ίδιες τιμές, ίδια προεπιλογή. Η επιλογή δείχνει ΕΠΙΛΟΓΗ, όχι
+            ετυμηγορία: καμία κουκκίδα σημασιολογικού χρώματος στις επιλογές. */}
         <div>
-          <span id={fid('status')} style={lbl}>Κατάσταση</span>
-          {/* ΤΕΣΣΕΡΑ ΤΣΙΠΑΚΙΑ ΠΟΥ ΕΒΓΑΙΝΑΝ 3+1. Το «Ακυρώθηκε» έπεφτε μόνο του σε
-              δεύτερη γραμμή με τρύπα δεξιά, σε ταμπλέτα και σε κινητό. Η σειρά
-              απλώνεται τώρα ολόκληρη — μία επιλογή δεν διαβάζεται ως υποσύνολο
-              άλλης επειδή έτυχε να τυλιχτεί. */}
-          <div role="group" aria-labelledby={fid('status')} className="po-ctlrow ctl-2up">
-            {/* Η επιλεγμένη κατάσταση βαφόταν με το ΣΗΜΑΣΙΟΛΟΓΙΚΟ χρώμα της:
-                πορτοκαλί το «Εκκρεμεί», πράσινο το «Πληρώθηκε», κόκκινο το
-                «Ακυρώθηκε». Δηλαδή η φόρμα έβγαζε ετυμηγορία για μια επιλογή
-                που μόλις έκανε ο χρήστης και το «Εκκρεμεί» —η προεπιλογή
-                κάθε νέου γεγονότος— άνοιγε πάντα με προειδοποιητικό χρώμα.
-                Η επιλογή δείχνει ΕΠΙΛΟΓΗ, με το χρώμα της επιλογής. */}
-            {Object.entries(STATUSES).map(([k,v])=>(
-              <ChipToggle key={k} on={form.status===k} onClick={()=>setForm(f=>({...f,status:k as EventStatus}))}>{v.label}</ChipToggle>
-            ))}
-          </div>
+          <CustomSelect label="Κατάσταση" value={form.status} onChange={v=>setForm(f=>({...f,status:v as EventStatus}))}
+            options={Object.entries(STATUSES).map(([k,v])=>({ value: k, label: v.label }))}/>
         </div>
         {/* Επανάληψη */}
         <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:'12px 14px' }}>

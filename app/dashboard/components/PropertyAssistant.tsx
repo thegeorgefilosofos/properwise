@@ -120,13 +120,19 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
   // Το σήμα δεν το επινοούμε: κάθε παράθυρο δηλώνει `aria-modal="true"` — και
   // όσα δεν το δήλωναν, τώρα το δηλώνουν. Όσο υπάρχει ένα ανοιχτό, ο βοηθός
   // αποσύρεται. Μόλις κλείσει, επιστρέφει.
+  //
+  // ΜΙΑ ΕΞΑΙΡΕΣΗ: ΤΟ ΒΗΜΑ ΤΗΣ ΠΕΡΙΗΓΗΣΗΣ ΠΟΥ ΔΕΙΧΝΕΙ ΑΥΤΟ ΤΟ ΚΟΥΜΠΙ
+  // (ProductTour.tsx, `data-keeps-fab`). Στα άλλα βήματα το κουμπί αποσύρεται
+  // όπως σε κάθε παράθυρο, ώστε να μη σκεπάζει την κάρτα· στο δικό του μένει,
+  // αλλιώς η περιήγηση θα φώτιζε το κενό. Το χαρακτηριστικό αλλάζει από βήμα
+  // σε βήμα, γι' αυτό το παρακολουθεί και ο παρατηρητής.
   const [overlayOpen, setOverlayOpen] = useState(false);
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    const check = () => setOverlayOpen(!!document.querySelector('[aria-modal="true"]'));
+    const check = () => setOverlayOpen(!!document.querySelector('[aria-modal="true"]:not([data-keeps-fab])'));
     check();
     const mo = new MutationObserver(check);
-    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-modal'] });
+    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-modal', 'data-keeps-fab'] });
     return () => mo.disconnect();
   }, []);
   const fabBox = () => {
@@ -555,7 +561,7 @@ export default function PropertyAssistant({ propertyId, userId, propContext, all
                   πρώτη ερώτηση το υπόλοιπο θα ήταν μαντεψιά. */}
               {/* ΜΙΑ ΠΡΟΤΑΣΗ ΑΝΑ ΓΡΑΜΜΗ. Ως ενιαίο κείμενο έσπαγε σε τρεις
                   κεντραρισμένες γραμμές στη μέση της φράσης. */}
-              <p style={{ ...TT.caption, color: 'var(--text-tertiary)', textAlign: 'center', margin: '8px 14px 0', textWrap: 'balance' }}>
+              <p style={{ ...TT.caption, color: 'var(--text-tertiary)', textAlign: 'center', margin: '8px 14px 0', textWrap: 'pretty' }}>
                 {aiDisclosureLines(prefs.formal).map((l, i) => <span key={i} style={{ display: 'block' }}>{l}</span>)}
               </p>
               {remainingLine(quota, prefs.formal) && (
