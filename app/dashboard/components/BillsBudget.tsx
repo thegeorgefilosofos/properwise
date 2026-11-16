@@ -331,22 +331,28 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
     // οθόνης. Η πρόβλεψη δεν φαίνεται αλλού, οπότε κρατά τη λέξη της.
     const status = !over && r.projectedOver ? 'προβλεπόμενη υπέρβαση' : '';
     return (
-      <li key={r.key}>
-        <button type="button" className="bud-cat" aria-haspopup="dialog" onClick={() => setSheetKey(r.key)}>
-          <span className="bud-cat-name">{r.label}</span>
-          <span className="bud-cat-amt bud-num">
-            <span style={{ color: over ? 'var(--negative)' : r.actual > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', fontWeight: r.actual > 0 ? 600 : 400 }}>{feAuto(r.actual)}</span>
-            {r.target != null && <span style={{ color: 'var(--text-tertiary)' }}> / {feAuto(r.target)}</span>}
-            {over && <span className="sr-only">, υπέρβαση {feAuto(r.actual - (r.target ?? 0))}</span>}
-          </span>
-          <span className="bud-cat-chev" aria-hidden="true"><Chevron size={16} /></span>
-          <span className="bud-cat-line">
-            {p
-              ? <span className="bud-bar" aria-hidden="true"><span style={{ width: `${p.bar}%`, background: over ? 'var(--negative)' : BAR_FILL }} /></span>
-              : <span style={{ ...TT.caption }}>χωρίς στόχο</span>}
-          </span>
-          {status && <span className="bud-cat-status" style={{ color: 'var(--text-tertiary)' }}>{status}</span>}
-        </button>
+      // ΤΟ ΚΟΥΜΠΙ ΕΙΝΑΙ ΤΟ ΟΝΟΜΑ, Η ΕΠΙΦΑΝΕΙΑ ΕΙΝΑΙ ΟΛΗ Η ΣΕΙΡΑ. Ως κουμπί σε όλη
+      // τη σειρά, ο αναγνώστης οθόνης διάβαζε «Υπηρεσίες και ΕΝΦΙΑ12,95€χωρίς
+      // στόχο» σε μία λέξη και η δεξιά άκρη κάθε σειράς περνούσε κάτω από τη
+      // Νόα στην κύλιση (e2e-noa-cover). Τώρα το όνομα του κουμπιού είναι η
+      // κατηγορία, τα ποσά είναι η περιγραφή του και το ::after απλώνει το
+      // πάτημα σε όλη τη σειρά όπως πριν.
+      <li key={r.key} className="bud-cat">
+        <button type="button" className="bud-cat-name" aria-haspopup="dialog" aria-describedby={`bud-amt-${r.key}`} onClick={() => setSheetKey(r.key)}>{r.label}</button>
+        <span id={`bud-amt-${r.key}`} className="bud-cat-amt bud-num">
+          <span style={{ color: over ? 'var(--negative)' : r.actual > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', fontWeight: r.actual > 0 ? 600 : 400 }}>{feAuto(r.actual)}</span>
+          {r.target != null && <span style={{ color: 'var(--text-tertiary)' }}> / {feAuto(r.target)}</span>}
+          {over && <span className="sr-only">, υπέρβαση {feAuto(r.actual - (r.target ?? 0))}</span>}
+          {!p && <span className="sr-only">, χωρίς στόχο</span>}
+          {status && <span className="sr-only">, {status}</span>}
+        </span>
+        <span className="bud-cat-chev" aria-hidden="true"><Chevron size={16} /></span>
+        <span className="bud-cat-line" aria-hidden="true">
+          {p
+            ? <span className="bud-bar"><span style={{ width: `${p.bar}%`, background: over ? 'var(--negative)' : BAR_FILL }} /></span>
+            : <span style={{ ...TT.caption }}>χωρίς στόχο</span>}
+        </span>
+        {status && <span className="bud-cat-status" aria-hidden="true" style={{ color: 'var(--text-tertiary)' }}>{status}</span>}
       </li>
     );
   };
@@ -364,13 +370,16 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
         )}
       </ul>
       {active.length === 0 && !showIdle && <p style={{ ...TT.bodySm, margin: 0 }}>Καμία κίνηση αυτόν τον μήνα.</p>}
+      {/* Η ΚΥΡΙΑ ΕΝΕΡΓΕΙΑ ΠΡΩΤΗ, ΑΡΙΣΤΕΡΑ. Στο τηλέφωνο η κάτω δεξιά γωνία ανήκει
+          στο πλωτό κουμπί της Νόας: δεξιά στοιχισμένο, το «+ Νέα κατηγορία»
+          καθόταν από κάτω του (e2e-noa-cover). Στον υπολογιστή η σειρά αντιστρέφεται. */}
       <div className="bud-cats-foot">
+        <button type="button" className="bud-textbtn bud-textbtn-accent" onClick={() => setAddOpen(true)}>+ Νέα κατηγορία</button>
         {idle.length > 0 && (
           <button type="button" className="bud-textbtn" onClick={() => setShowIdle(v => !v)} aria-expanded={showIdle}>
             {showIdle ? 'Λιγότερες κατηγορίες' : `Δείξε ${idle.length} χωρίς κινήσεις`}
           </button>
         )}
-        <button type="button" className="bud-textbtn bud-textbtn-accent" onClick={() => setAddOpen(true)}>+ Νέα κατηγορία</button>
       </div>
     </Card>
   );
@@ -611,7 +620,10 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const proCard = isPro && invReturns && (
     <Card gap={false}>
       <CardHead title="Απόδοση επένδυσης" info={`Καθαρό προ δόσης: έσοδα μείον λειτουργικές δαπάνες, χωρίς τη δόση. Ταμειακή ροή: αυτό μείον τη δόση. Καθαρή απόδοση: καθαρό προ δόσης / ${invReturns.onPurchase ? 'τιμή αγοράς' : 'τρέχουσα αξία'}, πριν από τον φόρο. Απόδοση ιδίων κεφαλαίων: ταμειακή ροή / ίδια κεφάλαια. Ενδεικτικά, σε ετήσια βάση.`} />
-      <KPIGrid nested items={[
+      {/* ΔΥΟ ΣΤΗΛΕΣ: στον υπολογιστή η κάρτα ζει στη στενή δεξιά στήλη και τέσσερα
+          πλακίδια στη σειρά έσπαγαν τις ετικέτες σε δύο γραμμές, με τα νούμερα
+          σε διαφορετικό ύψος (e2e-tile-row, budgetPro στα 1280). */}
+      <KPIGrid nested columns={2} items={[
         { label: 'Καθαρό προ δόσης', value: feSigned(invReturns.noi) },
         { label: 'Ταμειακή ροή', value: feSigned(invReturns.preTaxCashFlow) },
         { label: YIELD_SHORT_LABELS.net_pre_tax, value: fpSigned(invReturns.capRatePct), fact: invReturns.onPurchase ? undefined : 'yield-net-recorded',
@@ -663,13 +675,16 @@ export default function BillsBudget({ propertyId, userId = '', profileType = 'in
   const moreSummary = (() => { const w = present.map(([, l]) => l); const t = listOf(w); return t.charAt(0).toUpperCase() + t.slice(1); })();
   const more = (
     <div className="bud-col">
-      <button type="button" className="bud-more" aria-expanded={moreOpen} aria-controls="bud-more-body" onClick={() => toggleCollapse('more')}>
-        <span style={{ minWidth: 0 }}>
-          <span style={{ ...TT.label, color: 'var(--text-primary)', display: 'block' }}>Περισσότερα</span>
-          <span style={{ ...TT.caption, display: 'block' }}>{moreSummary}</span>
-        </span>
-        <Chevron dir={moreOpen ? 'down' : 'right'} />
-      </button>
+      {/* ΚΟΥΜΠΙ ΣΤΟ ΜΕΓΕΘΟΣ ΤΗΣ ΛΕΞΗΣ, Ο ΥΠΟΤΙΤΛΟΣ ΑΠΟ ΚΑΤΩ. Ως κάρτα σε όλο το
+          πλάτος, το «Περισσότερα» ήταν το τελευταίο πράγμα της στήλης και στο
+          τηλέφωνο περνούσε ολόκληρο κάτω από τη Νόα στην κύλιση (e2e-noa-cover). */}
+      <div className="bud-more-head">
+        <button type="button" className="bud-more" aria-expanded={moreOpen} aria-controls="bud-more-body" aria-describedby="bud-more-sum" onClick={() => toggleCollapse('more')}>
+          <span>Περισσότερα</span>
+          <Chevron dir={moreOpen ? 'down' : 'right'} />
+        </button>
+        <p id="bud-more-sum" className="bud-more-sum">{moreSummary}</p>
+      </div>
       {moreOpen && <div id="bud-more-body" className="bud-col">{moreItems.map((x, i) => <div key={i}>{x}</div>)}</div>}
     </div>
   );
@@ -757,7 +772,7 @@ function BudgetStyles() {
       .bud-month { grid-area: month; }
       .bud-head > .bud-new { grid-area: new; justify-self: end; white-space: nowrap; }
       @media (min-width: 1024px) {
-        .bud-head { grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "title month . new"; column-gap: ${T.sp.lg}px; }
+        .bud-head { grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "title month . new"; gap: ${T.sp.lg}px; }
       }
       .bud-m-short { display: none; }
       @media (max-width: 360px) { .bud-m-long { display: none; } .bud-m-short { display: inline; } }
@@ -781,7 +796,7 @@ function BudgetStyles() {
       .bud-hero-top { display: flex; align-items: center; justify-content: space-between; gap: ${T.sp.md}px; margin-bottom: ${T.sp.sm}px; min-height: 22px; }
       .bud-hero-top .bud-textbtn { margin: -12px 0; }
             .bud-hero-fig { display: flex; align-items: baseline; gap: ${T.sp.sm}px; flex-wrap: wrap; }
-      .bud-big { font-family: ${T.font.num}; font-variant-numeric: tabular-nums; font-size: 32px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+      .bud-big { font-family: ${T.font.num}; font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
       .bud-bar { display: block; height: 4px; border-radius: ${T.radius.hair}px; background: var(--bg-overlay); overflow: hidden; width: 100%; }
       .bud-bar > span { display: block; height: 100%; border-radius: inherit; transition: width 0.5s ease; }
       .bud-bar-lg { height: 8px; border-radius: ${T.radius.pill}px; margin: ${T.sp.md}px 0 ${T.sp.sm}px; }
@@ -792,7 +807,7 @@ function BudgetStyles() {
       .bud-cash-sub { grid-column: 1 / -1; grid-row: 2; }
       .bud-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
       .bud-cats, .bud-list, .bud-items { list-style: none; margin: 0; padding: 0; }
-      .bud-cat { display: grid; grid-template-columns: minmax(0, 1fr) auto 16px; grid-template-rows: auto 16px auto; column-gap: ${T.sp.md}px; row-gap: 6px; align-items: center; width: calc(100% + 16px); margin: 0 -8px; padding: 10px 8px; min-height: 56px; border: 0; border-radius: ${T.radius.inner}px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background 0.15s; }
+      .bud-cat { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto 16px; grid-template-rows: auto 16px auto; column-gap: ${T.sp.md}px; row-gap: 6px; align-items: center; width: calc(100% + 16px); margin: 0 -8px; padding: 10px 8px; min-height: 56px; border-radius: ${T.radius.inner}px; cursor: pointer; transition: background 0.15s; }
       .bud-cats > li + li { border-top: 1px solid var(--border-subtle); }
       .bud-row { display: grid; grid-template-columns: 6px minmax(0, 1fr) auto 16px; column-gap: ${T.sp.md}px; align-items: center; width: calc(100% + 16px); margin: 0 -8px; padding: 10px 8px; min-height: 52px; border: 0; border-radius: ${T.radius.inner}px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background 0.15s; }
       .bud-row:hover { background: var(--bg-elevated); }
@@ -801,14 +816,15 @@ function BudgetStyles() {
       .bud-row-chev { color: var(--text-tertiary); display: inline-flex; }
       .bud-row-amt { font-size: var(--fs-base); font-weight: 600; text-align: right; white-space: nowrap; }
       .bud-cat:hover { background: var(--bg-elevated); }
-      .bud-cat:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-      .bud-cat-name { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-base); font-weight: 500; }
+      .bud-cat:has(.bud-cat-name:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+      .bud-cat-name { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-size: var(--fs-base); font-weight: 500; text-align: left; cursor: pointer; }
+      .bud-cat-name::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
+      .bud-cat-name:focus-visible { outline: none; }
       .bud-cat-amt { grid-column: 2; grid-row: 1; white-space: nowrap; font-size: var(--fs-base); text-align: right; }
       .bud-cat-chev { grid-column: 3; grid-row: 1 / -1; color: var(--text-tertiary); display: inline-flex; }
       .bud-cat-line { grid-column: 1 / span 2; grid-row: 2; display: flex; align-items: center; min-width: 0; height: 16px; }
       .bud-cat-status { grid-column: 1 / span 2; grid-row: 3; font-size: var(--fs-xs); font-weight: 600; line-height: 1.45; margin-top: -2px; }
-      .bud-cats-foot { display: flex; justify-content: space-between; align-items: center; gap: ${T.sp.sm}px ${T.sp.lg}px; flex-wrap: wrap; margin-top: ${T.sp.xs}px; padding-top: ${T.sp.md}px; border-top: 1px solid var(--border-subtle); }
-      .bud-cats-foot > :only-child { margin-left: auto; }
+      .bud-cats-foot { display: flex; justify-content: flex-start; align-items: center; gap: ${T.sp.xs}px ${T.sp.lg}px; flex-wrap: wrap; margin-top: ${T.sp.xs}px; padding-top: ${T.sp.md}px; border-top: 1px solid var(--border-subtle); }
       .bud-list > li + li, .bud-items > li + li { border-top: 1px solid var(--border-subtle); }
       .bud-list-row { display: flex; align-items: center; justify-content: space-between; gap: ${T.sp.md}px; padding: 10px 0; min-height: 56px; }
       .bud-week-row { display: grid; grid-template-columns: minmax(0, 140px) minmax(0, 1fr) 96px; gap: ${T.sp.md}px; align-items: center; padding: 10px 0; }
@@ -818,13 +834,15 @@ function BudgetStyles() {
       .bud-item-excl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: ${T.sp.sm}px ${T.sp.md}px; margin-top: ${T.sp.sm}px; padding: ${T.sp.md}px; border-radius: ${T.radius.inner}px; background: var(--bg-elevated); }
       @media (max-width: 420px) { .bud-item-excl { grid-template-columns: minmax(0, 1fr); } }
       .bud-note { display: flex; align-items: center; gap: ${T.sp.md}px; flex-wrap: wrap; padding: ${T.sp.md}px ${T.sp.lg}px; border-radius: ${T.radius.card}px; border: 1px solid var(--border-subtle); background: var(--bg-elevated); }
-      .bud-more { display: flex; align-items: center; justify-content: space-between; gap: ${T.sp.md}px; width: 100%; min-height: 64px; padding: ${T.sp.md}px ${T.sp.lg}px; border-radius: ${T.radius.card}px; border: 1px solid var(--border-raised); background: var(--surface-raised); box-shadow: var(--highlight-inset), var(--elev-1); color: var(--text-tertiary); font: inherit; text-align: left; cursor: pointer; transition: background 0.15s; }
-      .bud-more:hover { background: var(--bg-elevated); }
+      @media (min-width: 1024px) { .bud-cats-foot { flex-direction: row-reverse; justify-content: space-between; } }
+      .bud-more-head { display: grid; justify-items: start; gap: 2px; }
+      .bud-more { display: inline-flex; align-items: center; gap: ${T.sp.sm}px; min-height: 44px; padding: 0; border: 0; background: none; color: var(--text-primary); font: inherit; font-size: var(--fs-md); font-weight: 600; cursor: pointer; transition: color 0.15s; }
+      .bud-more:hover { color: var(--accent); }
+      .bud-more-sum { margin: 0; font-size: var(--fs-note); color: var(--text-tertiary); }
       .bud-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       .bud-setting { width: 100%; display: flex; align-items: center; gap: ${T.sp.md}px; padding: ${T.sp.md}px; border-radius: ${T.radius.inner}px; border: 1px solid var(--border-subtle); background: var(--bg-elevated); color: inherit; font: inherit; text-align: left; cursor: pointer; }
       .bud-setting:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       .bud-assume { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: ${T.sp.md}px; margin-top: ${T.sp.md}px; padding-top: ${T.sp.md}px; border-top: 1px solid var(--border-subtle); }
-      @media (max-width: 560px) { .bud-big { font-size: 28px; } }
       /* ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ Η ΓΡΑΜΜΗ ΚΑΤΗΓΟΡΙΑΣ ΣΦΙΓΓΕΙ ΣΤΑ 64: οι δέκα κατηγορίες
          χωρούν σε οθόνη 800 χωρίς κύλιση πριν από τις πρώτες επτά. */
       @media (min-width: 1024px) { .bud-cat { padding-top: 8px; padding-bottom: 8px; } }

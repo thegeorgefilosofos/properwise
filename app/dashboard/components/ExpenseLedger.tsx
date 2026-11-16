@@ -643,6 +643,13 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
         @media (max-width: 620px) {
           .ledger-spacer { display: none; }
           .ledger-search { flex-basis: 100% !important; max-width: none !important; }
+          /* ΠΡΩΤΑ Η ΑΝΑΖΗΤΗΣΗ, ΜΕΤΑ ΤΟ ΚΟΥΜΠΙ (16/11/2026). Σε δεύτερη σειρά, σε όλο
+             το πλάτος, η αναζήτηση καθόταν στη μέση της κύλισης ολόκληρη κάτω από
+             τη Νόα (e2e-noa-cover, 48×36 στα 360), αφού τα φίλτρα της λίστας
+             μπήκαν από πάνω. Πάνω από το κουμπί, το πεδίο μένει δίπλα στα φίλτρα
+             που επίσης στενεύουν τη λίστα και το κουμπί, στοιχισμένο αριστερά,
+             δεν φτάνει ποτέ στη γωνία του «Ν». */
+          .ledger-search { order: -1; }
         }
         @media (max-width: 360px) {
           .exp-row { padding-left: 9px; padding-right: 9px; }
