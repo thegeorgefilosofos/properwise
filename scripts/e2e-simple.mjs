@@ -178,7 +178,7 @@ for (const [k, caps] of Object.entries(CAP)) {
   const more = await page.$('[role="dialog"] [data-more]')
   if (more) { await more.click(); await page.waitForTimeout(60) }
   await page.getByLabel('Μέσο μηνιαίο έσοδο', { exact: true }).fill('1400')
-  await page.getByLabel('Εμπορική αξία (€)').fill('200000')
+  await page.getByLabel('Εμπορική αξία', { exact: true }).fill('200000')
   await page.waitForTimeout(120)
   // ΤΟ ΚΕΙΜΕΝΟ ΔΕΝ ΙΣΟΠΕΔΩΝΕΤΑΙ. Η παλιά γραφή ήταν «16.800,00\u00A0€» και ο
   // ισχυρισμός έσβηνε πρώτα το αδιάσπαστο κενό — δηλαδή δεχόταν ΚΑΙ τις δύο

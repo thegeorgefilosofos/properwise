@@ -19,6 +19,7 @@ import { APP_URL } from '../_shared/site.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { eur } from '../_shared/format.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
+import { allPages } from '../_shared/pages.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL   = Deno.env.get('SUPABASE_URL')!
@@ -104,7 +105,10 @@ Deno.serve(async (req) => {
   // γύριζε `undefined`, το `|| []` το έκανε κενό — και η εργασία απαντούσε 200
   // «no_users»: καμία μηνιαία κατάσταση σε κανέναν ιδιοκτήτη, με πράσινο
   // τρέξιμο στον πίνακα. Ιδιο σφάλμα με την αποστολή υπενθυμίσεων, ίδια λύση.
-  const { data: allowedRows, error: allowedErr } = await supabase.rpc('reminder_recipients')
+  // ΣΕ ΣΕΛΙΔΕΣ (έλεγχος κλίμακας 10/11/2026): σε ΕΝΑ αίτημα το PostgREST κόβει
+  // στις 1.000 και ο ιδιοκτήτης 1.001 δεν έπαιρνε ποτέ μηνιαία κατάσταση.
+  const { rows: allowedRows, error: allowedErr } = await allPages<{ user_id: string; email: string | null }>(
+    (from, to) => supabase.rpc('reminder_recipients').order('user_id', { ascending: true }).range(from, to))
   if (allowedErr) {
     console.error('[monthly-statements] οι επιτρεπτοί παραλήπτες δεν διαβάστηκαν:', allowedErr)
     return json({ error: 'reminder_recipients unreadable', detail: allowedErr.message }, 500)

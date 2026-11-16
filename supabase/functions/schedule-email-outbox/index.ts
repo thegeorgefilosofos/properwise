@@ -94,6 +94,11 @@ Deno.serve(async (req) => {
   const weekAgoISO = new Date(Date.now() - 7 * 864e5).toISOString()
   const dayStartISO = startOfAthensDayISO()
 
+  // ΜΙΑ ΤΙΜΗ ΚΑΤΩ ΑΠΟ ΤΟ ΟΡΙΟ ΤΟΥ ΔΙΑΚΟΜΙΣΤΗ (1.000). Το παλιό `.limit(2000)`
+  // κοβόταν σιωπηλά στις 1.000 (έλεγχος κλίμακας 10/11/2026). Οσα μένουν
+  // εκτός σχεδιάζονται στην επόμενη εκτέλεση: είναι ακόμη `send_window` null.
+  const BATCH = 900
+
   // Only FRESH, non-transactional rows that are due: send_window IS NULL means the
   // scheduler has not planned them yet. Transactional bypasses the scheduler and the
   // drain sends it immediately.
@@ -101,9 +106,18 @@ Deno.serve(async (req) => {
     .from('email_outbox')
     .select('id,copy_id,to_email,to_name,category,params,scheduled_for')
     .eq('status', 'pending').is('send_window', null).neq('category', 'transactional')
-    .lte('scheduled_for', nowISO).order('scheduled_for', { ascending: true }).limit(2000)
+    .lte('scheduled_for', nowISO).order('scheduled_for', { ascending: true }).order('id', { ascending: true }).limit(BATCH)
   if (error) return json({ error: error.message }, 500)
   if (!pending?.length) return json({ recipients: 0, scheduled: 0, digests: 0 })
+  // ΓΕΜΑΤΗ ΠΑΡΤΙΔΑ: ο τελευταίος παραλήπτης μπορεί να έχει κι άλλες γραμμές
+  // που έμειναν εκτός. Δεν σχεδιάζεται μισός· περνά ολόκληρος στην επόμενη
+  // εκτέλεση, ώστε η σύνοψη και ο προϋπολογισμός του να βλέπουν όλες του τις
+  // γραμμές. (Αν όλη η παρτίδα ανήκει σε έναν, σχεδιάζεται όπως είναι.)
+  if (pending.length === BATCH) {
+    const last = pending[pending.length - 1].to_email
+    const trimmed = pending.filter(r => r.to_email !== last)
+    if (trimmed.length) pending.splice(0, pending.length, ...trimmed)
+  }
 
   const byRecipient = new Map<string, typeof pending>()
   for (const r of pending) { if (!byRecipient.has(r.to_email)) byRecipient.set(r.to_email, []); byRecipient.get(r.to_email)!.push(r) }
