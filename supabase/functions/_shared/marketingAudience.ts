@@ -40,12 +40,14 @@ export function audience(users: { id: string; email: string }[], prefs: PrefRow[
 // Το ελάχιστο σχήμα του πελάτη που χρειάζεται εδώ, χωρίς `any`.
 type Err = { message: string } | null
 interface Chain extends PromiseLike<{ data: unknown; error: Err }> {
-  select(cols: string): Chain
   order(col: string, o: { ascending: boolean }): Chain
   range(from: number, to: number): Chain
 }
 interface Db {
-  from(table: string): Chain & { upsert(rows: unknown[], o: { onConflict: string; ignoreDuplicates: boolean }): PromiseLike<{ error: Err }> }
+  from(table: string): {
+    select(cols: string): Chain
+    upsert(rows: unknown[], o: { onConflict: string; ignoreDuplicates: boolean }): PromiseLike<{ error: Err }>
+  }
 }
 
 /** Εξασφαλίζει γραμμή προτιμήσεων ανά χρήστη, σε παρτίδες. Η υπάρχουσα δεν αγγίζεται. */
