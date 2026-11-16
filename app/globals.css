@@ -8915,3 +8915,73 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
    καρτέλα είναι 24. Το περιθώριο του τίτλου εδώ συμπληρώνει το κενό, δεν το
    διπλασιάζει. */
 .cal-root > .page-head { margin-bottom: 8px !important; }
+
+/* ═══ .ledger-kpis · ΟΙ ΤΡΕΙΣ ΑΡΙΘΜΟΙ ΤΩΝ ΔΑΠΑΝΩΝ ΩΣ ΛΩΡΙΔΑ ΣΤΟ ΤΗΛΕΦΩΝΟ ═══════
+   Παιδιά του `Stat`: ετικέτα, τιμή (ή σκαλωσιά όσο φορτώνει), υπότιτλος. Στο
+   στενό σκαλί κάθε `Stat` γίνεται γραμμή δύο στηλών με το ποσό δεξιά, σε
+   στοίχιση αριθμών και λεπτή γραμμή ανάμεσα. Το κάτω περίγραμμα το κρατά
+   ήδη το δοχείο. */
+@media (max-width: 560px) {
+  .ledger-kpis { display: flex !important; flex-direction: column; align-items: stretch !important; gap: 0 !important; padding-top: 0 !important; }
+  /* `width: 100%`: το `.kpi-plain` είναι δοχείο `inline-size`, οπότε δεν
+     παίρνει πλάτος από το περιεχόμενό του· χωρίς ρητό πλάτος έπεφτε στο μηδέν
+     και ετικέτα και ποσό έπεφταν το ένα πάνω στο άλλο. Το ποσό παίρνει ΕΝΑ
+     μέγεθος: ο κανόνας `cqi` μετρά εδώ ολόκληρη τη γραμμή και έδινε τρία
+     μεγέθη σε τρεις διαδοχικές γραμμές. */
+  .ledger-kpis > .kpi-plain {
+    width: 100%; box-sizing: border-box;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center;
+    padding: 10px 0;
+  }
+  .ledger-kpis > .kpi-plain + .kpi-plain { border-top: 1px solid var(--border-subtle); }
+  .ledger-kpis > .kpi-plain > :nth-child(1) { grid-column: 1; grid-row: 1; margin-bottom: 0 !important; }
+  .ledger-kpis > .kpi-plain > :nth-child(2) { grid-column: 2; grid-row: 1 / span 2; font-size: 20px !important; margin: 0; text-align: right; }
+  .ledger-kpis > .kpi-plain > :nth-child(3) { grid-column: 1; grid-row: 2; margin-top: 2px !important; }
+}
+
+/* ═══ .tn-sum · Η ΣΥΝΟΨΗ ΤΩΝ ΜΙΣΘΩΣΕΩΝ (TabTenant.tsx, TenantSummary) ═════════
+   Ενας κύριος αριθμός και γραμμές με εικονίδιο, όπως ο Προϋπολογισμός. Μόνο
+   tokens: επιφάνεια κάρτας, απαλό accent για τα εικονίδια, το χρώμα κινδύνου
+   σε απαλό φόντο για την οφειλή. Στον υπολογιστή ο αριθμός αριστερά και οι
+   γραμμές δεξιά, σε μία σειρά. */
+.tn-sum {
+  display: grid; gap: 16px; padding: 20px; margin-bottom: 16px;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: 14px; box-shadow: var(--shadow-sm);
+}
+.tn-sum-label { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); font-weight: 600; color: var(--text-secondary); }
+.tn-sum-label svg { color: var(--accent); flex-shrink: 0; }
+.tn-sum-big {
+  margin-top: 8px; font-size: 32px; line-height: 1.1; font-weight: 700; letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums; color: var(--text-primary);
+}
+.tn-sum-sub { margin-top: 4px; font-size: var(--fs-sm); color: var(--text-tertiary); }
+.tn-sum-rows { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.tn-sum-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 12px; background: var(--bg-elevated);
+}
+.tn-sum-ico {
+  width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-soft); color: var(--accent);
+}
+.tn-sum-name { display: flex; flex-direction: column; min-width: 0; font-size: var(--fs-md); font-weight: 500; color: var(--text-primary); }
+.tn-sum-name small { margin-top: 2px; font-size: var(--fs-sm); font-weight: 400; color: var(--text-tertiary); }
+.tn-sum-val { font-size: var(--fs-md); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); white-space: nowrap; }
+.tn-sum-row[data-tone="negative"] { background: var(--negative-dim); }
+.tn-sum-row[data-tone="negative"] .tn-sum-ico { background: var(--negative-soft); color: var(--negative); }
+.tn-sum-row[data-tone="negative"] .tn-sum-val,
+.tn-sum-row[data-tone="negative"] .tn-sum-name small { color: var(--negative); }
+@media (min-width: 900px) {
+  .tn-sum { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); align-items: center; gap: 32px; padding: 24px; }
+  .tn-sum-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+}
+
+/* Το επιλεγμένο κομμάτι ΚΑΘΕ τμηματικού επιλογέα (Ενοικιαστές, Αρχείο,
+   Ημερολόγιο) και η εστίαση της αναζήτησης παίρνουν το accent: ήταν γκρι
+   επιφάνεια με μπλε γράμματα, σχεδόν αόρατη στο σκούρο θέμα. */
+.po-chip[data-shape="seg"][aria-pressed="true"] {
+  background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+.po-search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }

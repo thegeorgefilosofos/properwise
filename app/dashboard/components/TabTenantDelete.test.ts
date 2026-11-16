@@ -116,11 +116,13 @@ async function run() {
   ok('η delTenant δεν ψάχνει μόνη της στον χώρο αποθήκευσης', !del.includes('.list('))
   ok('ζητά επιβεβαίωση πριν από οτιδήποτε', del.indexOf('confirmDialog(') >= 0 && del.indexOf('confirmDialog(') < del.indexOf('purgeTenant('))
 
-  const btn = SRC.slice(SRC.indexOf('onClick={()=>delTenant(t)}') - 300, SRC.indexOf('onClick={()=>delTenant(t)}') + 200)
-  ok('το κουμπί έχει λεκτικό «Διαγραφή ενοικιαστή»', btn.includes('label={`Διαγραφή ενοικιαστή'))
-  ok('το κουμπί έχει τόνο κινδύνου', btn.includes('tone="danger"'))
-  ok('το κουμπί δείχνει κάδο', btn.includes('<Trash2'))
-  ok('το κουμπί δεν δείχνει πια «×»', !btn.includes('M18 6 6 18'))
+  // Η διαγραφή ζει πλέον στο «⋯» της κάρτας (ActionMenu), όχι σε κάδο στη γωνία.
+  const at = SRC.indexOf('onClick:()=>delTenant(t)')
+  const btn = at >= 0 ? SRC.slice(at - 300, at + 200) : ''
+  ok('η ενέργεια έχει λεκτικό «Διαγραφή ενοικιαστή»', btn.includes('label:`Διαγραφή ενοικιαστή'))
+  ok('η ενέργεια έχει τόνο κινδύνου', btn.includes('danger:true'))
+  ok('η ενέργεια δείχνει κάδο', btn.includes('<Trash2'))
+  ok('η ενέργεια δεν δείχνει «×»', !btn.includes('M18 6 6 18'))
 
   // ── 3. Η ΜΕΤΑΝΑΣΤΕΥΣΗ ─────────────────────────────────────────────────────
   const code = MIG.split('\n').filter(l => !l.trim().startsWith('--')).join('\n')

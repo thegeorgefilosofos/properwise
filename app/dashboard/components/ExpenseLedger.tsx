@@ -678,7 +678,13 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
 
           Με το ιδίωμα των δεικτών γίνονται 2+1, με το τρίτο απλωμένο σε όλο το
           πλάτος: δύο σειρές αντί για τρεις, χωρίς ορφανό και χωρίς τρύπα. */}
-      <div {...fixedCols(3, T.sp.lg, 'start', 'kpi-row')} style={{
+      {/* ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΕΛΙΚΑ ΛΩΡΙΔΑ, ΟΧΙ 2+1 (16.11.2026). Το πλατύ τρίτο
+          έμοιαζε πιο σημαντικό από τα άλλα δύο και οι υπότιτλοι («4 απλήρωτοι
+          λογαριασμοί, 2 ληξιπρόθεσμες») έσπαγαν σε τρεις σειρές σε μισό πλάτος.
+          Κάτω από τα 560 οι τρεις αριθμοί γίνονται τρεις γραμμές: ετικέτα και
+          υπότιτλος αριστερά, ποσό δεξιά, όπως μια περίληψη λογαριασμού. Ο
+          κανόνας ζει στην `.ledger-kpis` του globals.css. */}
+      <div {...fixedCols(3, T.sp.lg, 'start', 'kpi-row ledger-kpis')} style={{
         ...fixedCols(3, T.sp.lg, 'start').style,
         padding: `${T.sp.md}px 0 ${T.sp.lg}px`,
         borderBottom: '1px solid var(--border-subtle)', marginBottom: T.sp.lg,
