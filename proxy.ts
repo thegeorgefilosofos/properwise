@@ -200,6 +200,10 @@ export async function proxy(request: NextRequest) {
     // Η περιγραφή του site για τα εργαλεία AI (lib/seo/llms.ts). Το matcher
     // την προσπερνά ήδη· εδώ δηλώνεται για τον φύλακα των δημόσιων διαδρομών.
     "/llms.txt",
+    // Τα αρχεία για όσους ξέρουν πού να κοιτάξουν (16/11/2026): η ομάδα και τα
+    // εργαλεία (app/humans.txt) και ο χάρτης ιστότοπου για τον άνθρωπο. Το
+    // matcher προσπερνά το humans.txt και τη ροή των οδηγών (/odigos/feed.xml).
+    "/humans.txt", "/xartis",
     // ΟΔΗΓΟΣ-ΠΥΛΩΝΑΣ. Δωρεάν περιεχόμενο που εξηγεί τη φορολογία ενοικίων 2026
     // και δένει με τον υπολογιστή· απαντά ΠΡΙΝ την εγγραφή, όπως τα εργαλεία.
     // Οι ίδιοι οι οδηγοί περνούν με πρόθεμα, πιο κάτω.
@@ -412,6 +416,6 @@ export const config = {
     // ανώνυμα οι μηχανές για να επαληθεύσουν τον τομέα, όπως το αρχείο του
     // Search Console. Στατικό αρχείο για μηχανές: δεν θέλει ούτε συνεδρία ούτε
     // κεφαλίδες. Το lib/seo/indexnow.test.ts ελέγχει ότι μένει έξω από εδώ.
-    "/((?!_next/static|_next/image|\\.well-known/|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|llms\\.txt|(?:.*/)?opengraph-image|og/|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|[0-9a-f]+\\.txt$|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|\\.well-known/|favicon.ico|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|llms\\.txt|humans\\.txt|odigos/feed\\.xml|(?:.*/)?opengraph-image|og/|icon\\.svg|icons/|fonts/|google[0-9a-f]+\\.html|[0-9a-f]+\\.txt$|health$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -32,6 +32,7 @@ import sitemap from './sitemap';
 import { PAGE_UPDATED, type DatedPage } from './pageUpdated';
 import { GUIDES, LISTED_GUIDES, GUIDES_UPDATED } from './odigos/guides';
 import { TOOLS_UPDATED } from './pageUpdated';
+import { XARTIS_PATH, XARTIS_UPDATED } from './siteCatalog';
 import { SITE } from '@/lib/core/site';
 import { PROTHESMIES_PATH, PROTHESMIES_UPDATED } from '@/lib/seo/prothesmies';
 import { athensToday } from '@/lib/core/time';
@@ -147,7 +148,7 @@ async function main() {
     // ── 1. ΜΙΑ ΠΗΓΗ ───────────────────────────────────────────────────────
     const fromRegistry = (PAGE_UPDATED as Record<string, string>)[path];
     const expected = fromRegistry ?? guideBy.get(SITE + path) ?? (path === '/odigos' ? GUIDES_UPDATED : path === '/ergaleia' ? TOOLS_UPDATED
-      : path.startsWith(PROTHESMIES_PATH) ? PROTHESMIES_UPDATED : undefined);
+      : path.startsWith(PROTHESMIES_PATH) ? PROTHESMIES_UPDATED : path === XARTIS_PATH ? XARTIS_UPDATED : undefined);
     ok(`${path}: ο χάρτης παίρνει την ημερομηνία από το pageUpdated.ts ή το guides.ts`, expected !== undefined && lm === expected);
 
     // ── 2. ΚΑΜΙΑ ΜΕΛΛΟΝΤΙΚΗ ─────────────────────────────────────────────────
