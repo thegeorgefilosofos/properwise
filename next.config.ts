@@ -108,6 +108,10 @@ const nextConfig: NextConfig = {
     // προεπισκόπηση (app-page-turbo.runtime.prod.js), οπότε η έλλειψη του αρθρώματος
     // δεν ρίχνει σελίδα. Η εξοικονόμηση κάλυψε τις δύο νέες συναρτήσεις της
     // υπαναχώρησης (/ypanaxorisi, /api/withdrawal), περίπου 4,8 MB.
+    // Από το Next 16.4.4 το try-get-preview-data φορτώνει το fast-jwt στη θέση
+    // του jsonwebtoken (ίδια χρήση, ίδιο try/catch). Η εξαίρεση ακολουθεί το νέο
+    // όνομα: 131.737 bytes × 83 = 10,9 MB ανά ανάπτυξη (16/11/2026, 16.4.5:
+    // 200,0 → 189,0 MB).
     //
     // ΚΑΙ ΟΙ ΔΥΟ ΑΔΕΙΕΣ ΤΟΥ @vercel/og (2 × 16.725 bytes, 05/11/2026). Τα LICENSE
     // του og και του satori ανέβαιναν μαζί με τις συναρτήσεις των εικόνων
@@ -122,7 +126,7 @@ const nextConfig: NextConfig = {
     // WebSocket. Ο Node 22 το έχει ενσωματωμένο (.nvmrc, CI: 22) και ο κώδικας
     // του διακομιστή δεν ανοίγει ποτέ WebSocket (το realtime ζει στον περιηγητή).
     // Αν το έργο γυρίσει ποτέ σε Node κάτω από 22, η εξαίρεση φεύγει.
-    '**/*': ['node_modules/@img/**', 'node_modules/sharp/**', 'node_modules/react/cjs/react.development.js', 'node_modules/next/dist/compiled/jsonwebtoken/**', 'node_modules/next/dist/compiled/@vercel/og/**/LICENSE', 'node_modules/next/dist/compiled/ws/**'],
+    '**/*': ['node_modules/@img/**', 'node_modules/sharp/**', 'node_modules/react/cjs/react.development.js', 'node_modules/next/dist/compiled/fast-jwt/**', 'node_modules/next/dist/compiled/@vercel/og/**/LICENSE', 'node_modules/next/dist/compiled/ws/**'],
   },
   // ── ΟΙ ΔΙΕΥΘΥΝΣΕΙΣ ΠΟΥ ΠΛΗΚΤΡΟΛΟΓΕΙ Ο ΚΟΣΜΟΣ ─────────────────────────────
   // Τα αγγλικά ονόματα που δοκιμάζει όποιος ψάχνει τιμές, εργαλεία ή cookies.
