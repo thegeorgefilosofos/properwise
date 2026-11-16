@@ -265,6 +265,7 @@ function footFor(locale: Locale) {
     return {
       home: '/en', about: e.about, db: e.db,
       privacy: enLinks([e.privacy])[0] ?? null,
+      siteMap: enLinks([e.siteMap])[0] ?? null,
       social: e.social,
       cols: [
         { label: e.product, links: enLinks([['/', e.home], ['/signup', signupCtaEn()], ['/paketa', e.pricing], ['/logistes', e.accountants], ['/#faq', e.faq]]) },
@@ -282,6 +283,9 @@ function footFor(locale: Locale) {
     about: ['Έξοδα, φόροι και προθεσμίες ακινήτων στην Ελλάδα.', 'Για ιδιοκτήτες και επαγγελματίες.'],
     db: 'Βάση δεδομένων στην ΕΕ (Φρανκφούρτη)',
     privacy: ['/privacy', 'Πολιτική απορρήτου'] as [string, string] | null,
+    // Ο ΧΑΡΤΗΣ ΙΣΤΟΤΟΠΟΥ (16/11/2026): ήσυχος, στη γραμμή του απορρήτου, όπου τον
+    // ψάχνει όποιος ξέρει ότι υπάρχει. Οι στήλες από πάνω μένουν για τις σελίδες.
+    siteMap: ['/xartis', 'Χάρτης ιστότοπου'] as [string, string] | null,
     social: (net: string, newTab: boolean) => newTab ? `Το PROPERWISE στο ${net} (ανοίγει σε νέα καρτέλα)` : `Το PROPERWISE στο ${net}`,
     cols: [
       { label: 'Προϊόν', links: [['/', 'Αρχική'], ['/signup', signupCta()], ['/paketa', 'Πακέτα και τιμές'], ['/logistes', 'Για λογιστές'], ['/#faq', 'Συχνές ερωτήσεις']] as [string, string][] },
@@ -384,6 +388,10 @@ export function PublicFooter({ locale = 'el' }: { locale?: Locale } = {}) {
             {f.privacy && <>
             <span className="po-foot-sep" aria-hidden="true"> · </span>
             <Link href={f.privacy[0]} className="lp-link" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}>{f.privacy[1]}</Link>
+            </>}
+            {f.siteMap && <>
+            <span className="po-foot-sep" aria-hidden="true"> · </span>
+            <Link href={f.siteMap[0]} className="lp-link" style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}>{f.siteMap[1]}</Link>
             </>}
           </span>
           {/* ΤΑ ΣΗΜΑΤΑ ΣΤΟ ΤΕΛΟΣ ΤΗΣ ΤΕΛΕΥΤΑΙΑΣ ΓΡΑΜΜΗΣ, ΟΠΟΥ ΤΑ ΨΑΧΝΕΙ ΤΟ ΜΑΤΙ. Εκεί

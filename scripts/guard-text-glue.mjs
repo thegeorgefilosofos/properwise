@@ -68,6 +68,25 @@ const kanones = [
 ]
 const leipoun = kanones.filter(k => !k.re.test(css))
 
+// 3. ΟΙ ΜΙΚΡΕΣ ΛΕΞΕΙΣ ΚΑΤΕΒΑΙΝΟΥΝ ΜΕ ΤΗΝ ΕΠΟΜΕΝΗ (14/11/2026). Στην Πολιτική
+// απορρήτου στα 375, 179 από 488 γραμμές τελείωναν σε «και», «σε», «στο»,
+// «του». Η πρόζα περνά από το `walk` του components/Hyphen.tsx (`hy()` και
+// `refsOnly()`: νομικές σελίδες, οδηγοί, δημόσιες παράγραφοι) και εκεί το
+// `bindShortWords` (lib/core/hyphenate.ts) κάνει αδιάσπαστο το κενό μετά από
+// κάθε μικρή λέξη. Αν σβηστεί η κλήση ή λείψει λέξη από τη λίστα, η εικόνα
+// χαλά σε όλες τις σελίδες μαζί και το κείμενο μένει σωστό: κανένας άλλος
+// έλεγχος δεν το βλέπει.
+const MIKRES = ['και', 'σε', 'στο', 'στη', 'στην', 'στον', 'την', 'τον', 'του', 'της', 'τη', 'τα', 'οι', 'με', 'για', 'ή', 'ο', 'η', 'το', 'να', 'θα', 'δεν', 'από']
+const hyphenSrc = readFileSync('components/Hyphen.tsx', 'utf8')
+const libSrc = readFileSync('lib/core/hyphenate.ts', 'utf8')
+const lista = (/export const SHORT_WORDS = \[([\s\S]*?)\]/.exec(libSrc) || [])[1] || ''
+const stiLista = new Set([...lista.matchAll(/'([^']+)'/g)].map(m => m[1]))
+if (!/bindRefs\(bindShortWords\(node\)\)/.test(hyphenSrc)) {
+  leipoun.push({ ti: 'το components/Hyphen.tsx δεν περνά την πρόζα από το `bindShortWords` (`bindRefs(bindShortWords(node))` στο `walk`)' })
+}
+const xoris = MIKRES.filter(w => !stiLista.has(w))
+if (xoris.length) leipoun.push({ ti: `από το SHORT_WORDS του lib/core/hyphenate.ts λείπουν: ${xoris.map(w => `«${w}»`).join(', ')}` })
+
 if (provlimata.length || leipoun.length) {
   if (provlimata.length) {
     console.error(`\n✗ ${provlimata.length} αριθμοί χωρισμένοι από τη μονάδα τους με απλό κενό:\n`)
@@ -77,9 +96,14 @@ if (provlimata.length || leipoun.length) {
     console.error(`  «{n} ημέρες», «\${n} τ.μ.». Στο τερματικό φαίνεται ίδιο· ο περιηγητής δεν σπάει εκεί.\n`)
   }
   for (const k of leipoun) {
-    console.error(`\n✗ Λείπει από το app/globals.css ${k.ti}.`)
-    console.error(`  ΤΙ ΝΑ ΚΑΝΕΙΣ: ξαναβάλ' τον (βλ. «ΚΑΙ ΟΙ ΤΙΤΛΟΙ ΠΟΥ ΔΕΝ ΕΙΝΑΙ <h>» στο ίδιο αρχείο).\n`)
+    if (k.re) {
+      console.error(`\n✗ Λείπει από το app/globals.css ${k.ti}.`)
+      console.error(`  ΤΙ ΝΑ ΚΑΝΕΙΣ: ξαναβάλ' τον (βλ. «ΚΑΙ ΟΙ ΤΙΤΛΟΙ ΠΟΥ ΔΕΝ ΕΙΝΑΙ <h>» στο ίδιο αρχείο).\n`)
+    } else {
+      console.error(`\n✗ ${k.ti}.`)
+      console.error(`  ΤΙ ΝΑ ΚΑΝΕΙΣ: ξαναβάλ' το (βλ. «ΟΙ ΜΙΚΡΕΣ ΛΕΞΕΙΣ ΔΕΝ ΜΕΝΟΥΝ ΣΤΟ ΤΕΛΟΣ ΤΗΣ ΓΡΑΜΜΗΣ» στο lib/core/hyphenate.ts).\n`)
+    }
   }
   process.exit(1)
 }
-console.log(`✓ κανένας αριθμός χωρίς τη μονάδα του σε ${files.length} αρχεία · οι κανόνες ζύγισης τίτλων και παραγράφων στη θέση τους`)
+console.log(`✓ κανένας αριθμός χωρίς τη μονάδα του σε ${files.length} αρχεία · οι κανόνες ζύγισης τίτλων και παραγράφων στη θέση τους · οι μικρές λέξεις δεμένες στην πρόζα`)

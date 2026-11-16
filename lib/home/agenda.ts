@@ -58,6 +58,12 @@ export interface AgendaItem {
    * μηχανή με την πρόβλεψη). `estimate`: δεν βγήκε από εκκαθαριστικό.
    */
   amount?: { value: number; estimate: boolean };
+  /**
+   * Η προϋπόθεση της προθεσμίας, όπως τη γράφει το ημερολόγιο, όταν η γραμμή
+   * δεν ισχύει για όλους (κριτική σχεδίασης r7): η δόση του φόρου εισοδήματος
+   * «Αφορά μόνο όσους…». Φαίνεται πάντα, όχι μόνο όπως η σημείωση.
+   */
+  condition?: string;
 }
 
 /** Ό,τι παράγει το `computeInsights`, στο ελάχιστο που χρειάζεται εδώ. */
@@ -410,4 +416,18 @@ export function dueParts(daysLeft: number | null): DueParts {
 export function itemDue(it: Pick<AgendaItem, 'daysLeft' | 'pastDue'>): DueParts {
   if (it.daysLeft == null && it.pastDue) return { value: null, unit: '', word: 'τώρα', overdue: true };
   return dueParts(it.daysLeft);
+}
+
+/**
+ * Η ΠΡΟΫΠΟΘΕΣΗ ΑΠΟ ΤΗ ΣΗΜΕΙΩΣΗ ΤΟΥ ΗΜΕΡΟΛΟΓΙΟΥ, ΧΩΡΙΣ ΝΕΟ ΚΕΙΜΕΝΟ (κριτική σχεδίασης
+ * r7). Η δόση του φόρου εισοδήματος αφορά ολόκληρη τη δήλωση του ιδιοκτήτη και η
+ * εφαρμογή δεν ξέρει αν υπάρχει· η γραμμή μένει, με την πρόταση «Αφορά μόνο…» που
+ * γράφει ήδη το ημερολόγιο (lib/tax/greekTaxCalendar.ts).
+ */
+export function withCondition(it: AgendaItem, source: readonly { id: string; note: string }[]): AgendaItem {
+  if (!/^tax:income-instalment-/.test(it.key)) return it;
+  // Η σημείωση της γραμμής είναι κομμένη (`shortNote`)· η προϋπόθεση διαβάζεται από την πλήρη.
+  const full = source.find(o => `tax:${o.id}` === it.key)?.note ?? it.note;
+  const m = /Αφορά μόνο[^·.]*/.exec(full);
+  return m ? { ...it, condition: `${m[0].trim()}.` } : it;
 }
