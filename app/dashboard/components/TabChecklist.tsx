@@ -26,7 +26,7 @@ import {
   obligationDrafts, pendingDrafts, isGeneratedRef, isTaxTaskRef, enfiaTasksPaidByBills,
 } from '@/lib/checklist/obligationTasks'
 import { taxProfileOf, type PropertyTaxProfile } from '@/lib/tax/greekTaxCalendar'
-import { HAS_BUSINESS } from '@/lib/accounting/dossier'
+import { HAS_BUSINESS, effectiveBookkeeping, type LegalForm, type BookKeeping } from '@/lib/accounting/dossier'
 import type { FieldContext } from '@/lib/property/fields'
 import type { StatusRow } from '@/lib/property/status'
 import type { ChecklistItemsRow } from '@/lib/supabase/tables'
@@ -278,7 +278,8 @@ export default function TabChecklist({ propertyId, userId, embedded, profileType
   const fieldCtx: FieldContext = useMemo(() => ({
     status: propertyStatus(statusRow),
     business: HAS_BUSINESS.has(legalForm),
-    doubleEntry: bookkeeping === 'double_entry',
+    // Ο ιδιώτης δεν τηρεί βιβλία, όποια κι αν είναι η στήλη (lib/accounting/dossier.ts).
+    doubleEntry: effectiveBookkeeping(legalForm as LegalForm, bookkeeping as BookKeeping) === 'double_entry',
     propertyCount,
     hasLoan: loanPayment > 0,
   }), [statusRow, legalForm, bookkeeping, propertyCount, loanPayment])
