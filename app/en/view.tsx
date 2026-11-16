@@ -10,7 +10,8 @@ import { TRIAL_PLAN } from '@/lib/billing/entitlements';
 import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { fmtFor } from '@/lib/core/format';
 import { athensParts } from '@/lib/core/time';
-import { SITE, ORG_ID, SOCIAL_PROFILES, siteUrl } from '@/lib/core/site';
+import { SITE, siteUrl } from '@/lib/core/site';
+import { organizationNode, ORG_REF } from '@/lib/seo/organization';
 import { IDENTITY } from '@/lib/legal/identity';
 import { billingWordsEn, PRICES_VAT_EN, NO_COMMITMENT_EN } from '@/lib/legal/billingWords';
 import { createClient } from '@/lib/supabase/server';
@@ -318,16 +319,7 @@ export default async function LandingEn() {
       <JsonLd data={{
         '@context': 'https://schema.org',
         '@graph': [
-          {
-            '@type': 'Organization',
-            '@id': ORG_ID,
-            name: IDENTITY.tradeName,
-            url: SITE,
-            email: IDENTITY.supportEmail,
-            logo: `${SITE}/icons/icon-192.png`,
-            areaServed: 'GR',
-            sameAs: [...SOCIAL_PROFILES],
-          },
+          organizationNode(),
           {
             '@type': 'WebPage',
             '@id': `${siteUrl(PATH)}#webpage`,
@@ -344,7 +336,7 @@ export default async function LandingEn() {
             url: siteUrl(PATH),
             inLanguage: 'el',
             description: LANDING_EN.description,
-            publisher: { '@id': ORG_ID },
+            publisher: ORG_REF,
           },
           {
             '@type': 'FAQPage',
