@@ -454,7 +454,7 @@ export default function EnfiaPanel({ propertyId, userId, year, enfia }: {
             στα 320, οπότε γίνονται μία γραμμή επιλογής: η σειρά των επιλογών
             μένει η σειρά προτεραιότητας, το ποσό κάθε δρόμου γράφεται κάτω
             από το όνομά του και η κουκκίδα λέει ποιο ποσό είναι σε χρήση. */}
-        <div className="enfia-route-select">
+        <div className="choice-select">
         <CustomSelect ariaLabel="Από πού βγαίνει" value={activeRoute} onChange={v => setRoute(v as Route)}
           options={ROUTES.map(r => ({
             value: r,

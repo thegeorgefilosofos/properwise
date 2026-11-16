@@ -578,7 +578,7 @@ export default async function Landing() {
             με ένα κλικ.</p>
         </div>
         <p style={{ fontSize: 'clamp(17px, 1.9vw, 21px)', lineHeight: 1.45, color: 'var(--text-primary)', letterSpacing: '-0.015em',
-          margin: 'clamp(26px, 3.2vw, 40px) 0 0', textWrap: 'balance' }}>
+          margin: 'clamp(26px, 3.2vw, 40px) 0 0', textWrap: 'pretty' }}>
           Εσύ κρατάς τις αποφάσεις· το PROPERWISE κάνει τα υπόλοιπα.
         </p>
         <div style={{ marginTop: 14, textWrap: 'balance' }}>

@@ -559,6 +559,13 @@ const VIEWS: Record<string, () => React.ReactElement> = {
   plan: () => <TabPlan propertyId="p0" userId="u1" status="vacant" property={PLAN_PROPERTY} />,
   planReno: () => <TabPlan propertyId="p0" userId="u1" status="renovation" property={PLAN_PROPERTY} />,
   planSale: () => <TabPlan propertyId="p0" userId="u1" status="for_sale" property={PLAN_PROPERTY} />,
+  // Η ΑΜΦΙΣΒΗΤΟΥΜΕΝΗ ΚΑΤΑΣΤΑΣΗ: η ερώτηση «Τι είδους εκκρεμότητα είναι» και η
+  // κάρτα «Αναφορά». Ο ιδιοκτήτης τις φωτογράφισε (14/11/2026) και καμία σκηνή
+  // δεν τις απέδιδε. Για στιγμιότυπα (`?c=planDispute`)· ΔΕΝ είναι ακόμη στο
+  // scripts/lib/scenes.mjs: εκεί θα πρόσθετε στις καστάνιες της Νόας τη δική
+  // της επιφάνεια (2.008 px² στο πρώτο κάδρο, τέσσερα χειριστήρια τηλεφώνου)
+  // και η βάση ανεβαίνει μόνο με απόφαση ανθρώπου.
+  planDispute: () => <TabPlan propertyId="p0" userId="u1" status="disputed" property={PLAN_PROPERTY} />,
   // ═══ ΟΙ ΡΥΘΜΙΣΕΙΣ ΔΕΝ ΕΙΧΑΝ ΠΟΤΕ ΣΚΗΝΗ ══════════════════════════════════════
   // Τα «Στοιχεία τιμολόγησης» είναι η πυκνότερη φόρμα της εφαρμογής (έντεκα
   // πεδία σε τέσσερις στήλες) και η «Επωνυμία στις αναφορές» η μόνη με ανέβασμα

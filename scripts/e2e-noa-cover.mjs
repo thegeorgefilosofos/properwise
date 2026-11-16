@@ -123,7 +123,27 @@ const PROBE = (where) => {
       controls.push(`${where}: χειριστήριο «${name.slice(0, 26)}» ${Math.round(w)}×${Math.round(h)}`)
     }
   }
-  return { hits: out, controls, frame }
+  // ═══ Η ΓΩΝΙΑ ΤΗΣ ΚΑΡΤΑΣ ΣΤΟ ΤΕΛΟΣ ΤΗΣ ΚΥΛΙΣΗΣ (14/11/2026) ═══════════════
+  // Ο ιδιοκτήτης φωτογράφισε το «Ν» πάνω στην κάτω δεξιά γωνία της κάρτας
+  // «Αναφορά». Ο έλεγχος μετρούσε μόνο κείμενο και χειριστήρια, οπότε μια
+  // στρογγυλεμένη γωνία με περίγραμμα και τίποτα μέσα της δεν μετρούσε ποτέ.
+  // Στο ΤΕΛΟΣ της κύλισης το κάτω γέμισμα της στήλης υπάρχει ακριβώς γι' αυτό:
+  // καμία γωνία κουτιού (ακτίνα 8 και πάνω, με περίγραμμα ή φόντο) κάτω από
+  // το κουμπί. Σε κορυφή και μέση το κουμπί πλέει, όπως και πριν.
+  const corners = []
+  if (where === 'τέλος') for (const el of document.querySelectorAll('.app-content *')) {
+    if (el.closest('.pa-fab, .pa-fab-wrap, .pa-panel')) continue
+    const cs = getComputedStyle(el)
+    const rad = parseFloat(cs.borderBottomRightRadius) || 0
+    if (rad < 8) continue
+    const boxed = parseFloat(cs.borderBottomWidth) > 0 || (cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent')
+    if (!boxed || !el.checkVisibility?.()) continue
+    const r = el.getBoundingClientRect()
+    if (r.width < 120 || r.bottom > clip) continue
+    const [w, h] = meet({ left: r.right - rad, right: r.right, top: r.bottom - rad, bottom: r.bottom })
+    if (w > 2 && h > 2) corners.push(`${where}: γωνία κουτιού ${Math.round(r.width)}×${Math.round(r.height)} κάτω από το κουμπί`)
+  }
+  return { hits: out, controls, frame, corners }
 }
 
 const browser = await chromium.launch({ executablePath: chromePath(), args: ['--no-sandbox'] })
@@ -186,7 +206,7 @@ const swept = await sweep(browser, {
     const lane = frames.filter(([, r]) => r.frame.gap > 1).map(([w, r]) => `${w}: άδεια ζώνη ${r.frame.gap}px ανάμεσα στη στήλη και την πλοήγηση`)
     const maxes = new Set(frames.map(([, r]) => r.frame.max))
     const jump = maxes.size > 1 ? [`το μέγιστο της κύλισης αλλάζει με την κύλιση: ${frames.map(([w, r]) => `${w} ${r.frame.max}`).join(' · ')}`] : []
-    return { hits: all.flatMap(r => r.hits || []), controls: all.flatMap(r => r.controls || []), stuck, column: [...lane, ...jump] }
+    return { hits: all.flatMap(r => r.hits || []), controls: all.flatMap(r => r.controls || []), corners: end.corners || [], stuck, column: [...lane, ...jump] }
   },
   onError: (e) => ({ broke: String(e.message).slice(0, 60) }),
 })
@@ -201,6 +221,7 @@ const findings = swept.flatMap(({ scene, width, value }) =>
               : (value.hits || []).map(h => `${scene}@${width}  ${h}`))
 const isPhone = (f) => Number(f.match(/@(\d+)/)?.[1]) <= PHONE_MAX
 const column = swept.flatMap(({ scene, width, value }) => (value.column || []).map(c => `${scene}@${width}  ${c}`))
+const corners = swept.flatMap(({ scene, width, value }) => (value.corners || []).map(c => `${scene}@${width}  ${c}`))
 const allControls = swept.flatMap(({ scene, width, value }) => (value.controls || []).map(h => `${scene}@${width}  ${h}`))
 // Χειριστήρια: μηδέν στο ΤΕΛΟΣ της κύλισης, σε κάθε πλάτος — εκεί το γέμισμα
 // υπάρχει ακριβώς γι' αυτό. Σε κορυφή και μέση το κουμπί πλέει σε γωνία πάνω
@@ -259,9 +280,9 @@ const areaOf = (f) => { const m = f.match(/(\d+)×(\d+)$/); return m ? Number(m[
 const phoneControlArea = phoneControls.reduce((n, f) => n + areaOf(f), 0)
 const ctlCeiling = Math.round(BASE.maxPhoneControlArea * (1 + TOLERANCE))
 const ctlWorse = phoneControls.length > BASE.maxPhoneControls || phoneControlArea > ctlCeiling
-if (stuck.length || atEnd.length || column.length || controls.length || broken.length || topArea > areaCeiling || ctlWorse) {
-  console.error(`\n✗ Το κουμπί της Νόας: ${stuck.length} θέσεις όπου δεν φάνηκε σε ηρεμία (όριο 0), ${atEnd.length} τομές με κείμενο στο τέλος της κύλισης (όριο 0), ${controls.length} χειριστήρια από κάτω του στο τέλος (όριο 0), ${column.length} παραβάσεις της στήλης στο τηλέφωνο (όριο 0), ${topArea} px² κρυμμένα στο πρώτο κάδρο σε ${atTop.length} σημεία (όριο ${BASE.maxTopArea} px² + 1% ανοχή = ${areaCeiling}), ${phoneControls.length} χειριστήρια σε κορυφή/μέση στο τηλέφωνο (όριο ${BASE.maxPhoneControls}) με ${phoneControlArea} px² (όριο ${BASE.maxPhoneControlArea} + 1% = ${ctlCeiling}), ${broken.length} σκηνές δεν φόρτωσαν:\n`)
-  for (const f of [...stuck, ...column, ...atEnd, ...broken, ...controls, ...atTop, ...(ctlWorse ? phoneControls : [])]) console.error('  ' + f)
+if (stuck.length || atEnd.length || corners.length || column.length || controls.length || broken.length || topArea > areaCeiling || ctlWorse) {
+  console.error(`\n✗ Το κουμπί της Νόας: ${stuck.length} θέσεις όπου δεν φάνηκε σε ηρεμία (όριο 0), ${atEnd.length} τομές με κείμενο στο τέλος της κύλισης (όριο 0), ${controls.length} χειριστήρια από κάτω του στο τέλος (όριο 0), ${corners.length} γωνίες κουτιών από κάτω του στο τέλος (όριο 0), ${column.length} παραβάσεις της στήλης στο τηλέφωνο (όριο 0), ${topArea} px² κρυμμένα στο πρώτο κάδρο σε ${atTop.length} σημεία (όριο ${BASE.maxTopArea} px² + 1% ανοχή = ${areaCeiling}), ${phoneControls.length} χειριστήρια σε κορυφή/μέση στο τηλέφωνο (όριο ${BASE.maxPhoneControls}) με ${phoneControlArea} px² (όριο ${BASE.maxPhoneControlArea} + 1% = ${ctlCeiling}), ${broken.length} σκηνές δεν φόρτωσαν:\n`)
+  for (const f of [...stuck, ...column, ...atEnd, ...corners, ...broken, ...controls, ...atTop, ...(ctlWorse ? phoneControls : [])]) console.error('  ' + f)
   console.error(`
   Στο τέλος της κύλισης δεν επιτρέπεται τομή: το .app-content κρατά κάτω
   γέμισμα με το ύψος του κουμπιού (--fab-lane) ακριβώς γι' αυτό. Στο τηλέφωνο
