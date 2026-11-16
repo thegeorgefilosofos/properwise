@@ -106,7 +106,7 @@ export default async function LandingEn() {
             <span>{LANDING_EN.news.text}</span>
             <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </Link>
-          <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.15, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
+          <h1 className="lp-rise lp-h1-en" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.15, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
             <span className="lp-h1-line">{LANDING_EN.titleLines[0]}</span>{' '}
             <span className="lp-h1-line lp-h1-accent">{LANDING_EN.titleLines[1]}</span>
           </h1>
