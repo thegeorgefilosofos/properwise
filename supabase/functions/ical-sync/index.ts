@@ -17,6 +17,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.118.0'
 import { authorizeCron, cronDenial } from '../_shared/auth.ts'
 import { reportEdgeError } from '../_shared/report.ts'
+import { allPages } from '../_shared/pages.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -442,13 +443,16 @@ Deno.serve(async (req) => {
       // ΑΠΟΤΥΧΙΑ ΕΔΩ ΣΗΜΑΙΝΕ «ΚΑΜΙΑ ΕΝΕΡΓΗ ΡΟΗ» ΚΑΙ ΑΠΑΝΤΟΥΣΕ ok. Ο συγχρονισμός
       // όλων των ημερολογίων δεν γινόταν, καμία κράτηση δεν έμπαινε, καμία
       // ακύρωση δεν περνούσε — και το προγραμματισμένο τρέξιμο ήταν πράσινο.
-      const { data: feeds, error: feedsErr } = await admin.from('ical_feeds').select('*').eq('active', true)
+      // ΣΕ ΣΕΛΙΔΕΣ (έλεγχος κλίμακας 10/11/2026): πάνω από 1.000 ενεργές ροές, οι
+      // υπόλοιπες δεν συγχρονίζονταν ποτέ, πάντα οι ίδιες.
+      const { rows: allFeeds, error: feedsErr } = await allPages<Feed>(
+        (from, to) => admin.from('ical_feeds').select('*').eq('active', true).order('id', { ascending: true }).range(from, to))
       if (feedsErr) {
         console.error('[ical-sync] οι ροές δεν διαβάστηκαν:', feedsErr)
         return json({ error: 'ical_feeds unreadable', detail: feedsErr.message }, 500)
       }
       const results = []
-      for (const f of (feeds || []) as Feed[]) results.push(await syncFeed(f))
+      for (const f of allFeeds) results.push(await syncFeed(f))
       return json({ ok: true, feeds: results.length, results })
     }
 
