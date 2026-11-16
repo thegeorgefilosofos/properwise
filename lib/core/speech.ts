@@ -37,6 +37,8 @@ export interface SpeechRecognizer {
   maxAlternatives: number;
   start(): void;
   stop(): void;
+  /** Κλείνει χωρίς να περιμένει το τελευταίο αποτέλεσμα. Δεν το έχουν όλοι οι περιηγητές. */
+  abort?(): void;
   onresult: (e: SpeechEvent) => void;
   onerror: (e: SpeechErrorEvent) => void;
   onend: () => void;

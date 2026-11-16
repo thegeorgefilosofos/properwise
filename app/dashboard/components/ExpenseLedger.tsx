@@ -58,6 +58,7 @@ import { athensToday, athensMonth, daysUntil } from '@/lib/core/time';
 import { matchesLedgerFilter, isOverdue, isPendingNotOverdue, type LedgerFilter } from '@/lib/expenses/attention';
 import { monthYearLabel, monthGen } from '@/lib/core/months';
 import { afmDigits, isValidAfm, parseAmount } from '@/lib/core/greek';
+import { Dictation } from '@/components/dictation/MicButton';
 
 interface Props {
   propertyId: string;
@@ -1335,8 +1336,10 @@ function EditExpense({ row, userId, counts, onCountsChange, onClose, onSaved }: 
       <div className="exp-edit">
         <label className="exp-edit-wide" style={{ minWidth: 0 }}>
           <span style={LAB}>Περιγραφή</span>
-          <input value={what} onChange={e => setWhat(e.target.value)} style={FIELD}
-            placeholder="λογαριασμός ΔΕΗ, υδραυλικός" />
+          <Dictation value={what} onChange={setWhat}>
+            <input aria-label="Περιγραφή" value={what} onChange={e => setWhat(e.target.value)} style={FIELD}
+              placeholder="λογαριασμός ΔΕΗ, υδραυλικός" />
+          </Dictation>
         </label>
         {/* Ίδια γεωμετρία με την καταχώρηση: το ευρώ μέσα στο πεδίο, δεξιά. */}
         <label style={{ minWidth: 0, position: 'relative' }}>
@@ -1554,8 +1557,10 @@ function QuickAdd({ propertyId, userId, seed, onDone }: { propertyId: string; us
       <div className="exp-edit">
         <label className="exp-edit-wide" style={{ minWidth: 0 }}>
           <span style={LAB}>Περιγραφή</span>
-          <input ref={first} value={what} onChange={e => setWhat(e.target.value)} style={FIELD}
-            placeholder="λογαριασμός ΔΕΗ, υδραυλικός" />
+          <Dictation value={what} onChange={setWhat}>
+            <input ref={first} aria-label="Περιγραφή" value={what} onChange={e => setWhat(e.target.value)} style={FIELD}
+              placeholder="λογαριασμός ΔΕΗ, υδραυλικός" />
+          </Dictation>
         </label>
         {/* Το ευρώ ζει ΜΕΣΑ στο πεδίο, δεξιά, όπως σε κάθε άλλο ποσό της
             εφαρμογής. Χωρίς αυτό, ένα κενό κουτί δίπλα στη λέξη «Πόσο;» δεν

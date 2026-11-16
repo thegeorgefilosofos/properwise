@@ -4,6 +4,7 @@ import { InfoGlyph, INFO_GLYPH, INFO_TOOLTIP_STYLE } from './UIComponents'
 import { useState, useRef, useCallback, useId, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { hy } from '@/components/Hyphen'
+import { cssRect, cssViewH } from '@/lib/core/cssZoom'
 
 // Μικρό, ενιαίο ⓘ με premium popover που εμφανίζεται στο hover/focus. Portal →
 // δεν κόβεται από overflow. Θεματικό (light/dark). Χρήση με μέτρο: μόνο εκεί που
@@ -42,8 +43,8 @@ export function InfoHint({ children, label = 'Περισσότερα' }: { child
   const show = useCallback(() => {
     const el = ref.current
     if (!el) return
-    const r = el.getBoundingClientRect()
-    const roomBelow = window.innerHeight - r.bottom - 16
+    const r = cssRect(el)
+    const roomBelow = cssViewH() - r.bottom - 16
     const roomAbove = r.top - 16
     const place = roomBelow >= roomAbove ? 'bottom' : 'top'
     const top = place === 'bottom' ? r.bottom + 8 : r.top - 8
@@ -151,7 +152,7 @@ export function InfoHint({ children, label = 'Περισσότερα' }: { child
           style={{
             position: 'fixed', top: pos.top, left: pos.left,
             transform: `translate(-50%, ${pos.place === 'bottom' ? '0' : '-100%'})`,
-            width: 280, maxWidth: 'calc(100vw - 16px)',
+            width: 280, maxWidth: 'calc(calc(100vw / var(--zoom, 1)) - 16px)',
             // Το κουτί του InfoDot, αυτούσιο: ίδιο φόντο, περίγραμμα, ακτίνα, μέτρο.
             ...INFO_TOOLTIP_STYLE, zIndex: Z.tooltip, pointerEvents: 'none',
           }}
