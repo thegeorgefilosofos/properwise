@@ -114,7 +114,15 @@ const nextConfig: NextConfig = {
     // κοινοποίησης· κείμενο που δεν διαβάζει κανείς κατά την εκτέλεση (το og
     // φορτώνει μόνο .js, .wasm και γραμματοσειρές). Η εξοικονόμηση κάλυψε την
     // αλλαγή στα κομμάτια του πελάτη από τη διόρθωση της αναπροσαρμογής (#484).
-    '**/*': ['node_modules/@img/**', 'node_modules/sharp/**', 'node_modules/react/cjs/react.development.js', 'node_modules/next/dist/compiled/jsonwebtoken/**', 'node_modules/next/dist/compiled/@vercel/og/**/LICENSE'],
+    //
+    // ΚΑΙ ΤΟ ws ΤΟΥ NEXT (46.035 bytes × 83 = 3,8 MB ανά ανάπτυξη, 16/11/2026,
+    // μέτρηση σε χτίσιμο του main b71286c: 192,7 → 188,9 MB). Το φορτώνει ΜΟΝΟ
+    // το next/dist/server/node-environment-baseline.js, μέσα σε getter του
+    // `globalThis.WebSocket` που ορίζεται μόνο όταν ο Node ΔΕΝ έχει δικό του
+    // WebSocket. Ο Node 22 το έχει ενσωματωμένο (.nvmrc, CI: 22) και ο κώδικας
+    // του διακομιστή δεν ανοίγει ποτέ WebSocket (το realtime ζει στον περιηγητή).
+    // Αν το έργο γυρίσει ποτέ σε Node κάτω από 22, η εξαίρεση φεύγει.
+    '**/*': ['node_modules/@img/**', 'node_modules/sharp/**', 'node_modules/react/cjs/react.development.js', 'node_modules/next/dist/compiled/jsonwebtoken/**', 'node_modules/next/dist/compiled/@vercel/og/**/LICENSE', 'node_modules/next/dist/compiled/ws/**'],
   },
   // ── ΟΙ ΔΙΕΥΘΥΝΣΕΙΣ ΠΟΥ ΠΛΗΚΤΡΟΛΟΓΕΙ Ο ΚΟΣΜΟΣ ─────────────────────────────
   // Τα αγγλικά ονόματα που δοκιμάζει όποιος ψάχνει τιμές, εργαλεία ή cookies.
