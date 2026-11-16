@@ -7,7 +7,7 @@
 // ξανά όταν αλλάξει, όχι σε κάθε χτίσιμο. Ο οδηγός εκτός καταλόγου δεν μπαίνει.
 //
 // ΣΤΑΤΙΚΟ ΑΡΧΕΙΟ, ΟΧΙ ΔΙΑΔΡΟΜΗ: γράφεται στο public/odigos/feed.xml με
-// `npm run machine-files`, για τον ίδιο λόγο με το lib/seo/humans.ts.
+// `npx tsx scripts/machine-files.ts`, για τον ίδιο λόγο με το lib/seo/humans.ts.
 // ═══════════════════════════════════════════════════════════════════════════
 import { siteUrl } from '@/lib/core/site';
 import { LISTED_GUIDES, GUIDES_UPDATED } from '@/app/odigos/guides';

@@ -6,7 +6,7 @@ import { PUBLIC_TOOLS, TOOLS_HUB } from '@/lib/core/publicTools'
 import { PROTHESMIES_PATH, PROTHESMIES_UPDATED, monthPath, upcomingMonths } from '@/lib/seo/prothesmies'
 import { athensToday } from '@/lib/core/time'
 import { languageAlternates } from '@/lib/i18n/paths'
-import { XARTIS_UPDATED } from './siteCatalog'
+import { XARTIS_UPDATED } from './xartisUpdated'
 
 // Οι μήνες των προθεσμιών αλλάζουν με την ημερομηνία: ο χάρτης ξαναχτίζεται
 // κάθε 24 ώρες, όπως οι σελίδες των μηνών, ώστε να μη δείχνει μήνα που έγινε noindex.
@@ -76,7 +76,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { ...at('/privacy'), changeFrequency: 'yearly', priority: 0.3 },
     { ...at('/terms'), changeFrequency: 'yearly', priority: 0.3 },
     // Ο χάρτης για τον άνθρωπο (16/11/2026): οι ίδιες σελίδες σε ομάδες, από
-    // τις ίδιες πηγές (app/siteCatalog.ts). Ημερομηνία η νεότερη όσων δείχνει.
+    // τις ίδιες πηγές (app/siteCatalog.ts). Ημερομηνία η νεότερη όσων δείχνει
+    // (app/xartisUpdated.ts).
     { url: `${base}/xartis`, lastModified: XARTIS_UPDATED, changeFrequency: 'weekly', priority: 0.3 },
   ]
   // ── ΚΑΙ ΟΙ ΑΓΓΛΙΚΕΣ, ΖΕΥΓΑΡΙΑ ΜΕ ΤΙΣ ΕΛΛΗΝΙΚΕΣ (lib/i18n/paths.ts) ─────────

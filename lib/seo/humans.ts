@@ -11,14 +11,14 @@
 //
 // ΣΤΑΤΙΚΟ ΑΡΧΕΙΟ, ΟΧΙ ΔΙΑΔΡΟΜΗ (16/11/2026). Κάθε διαδρομή του app/ ανεβαίνει ως
 // δική της συνάρτηση (~6 MB, docs/perf/server.json). Το κείμενο γράφεται στο
-// public/humans.txt με `npm run machine-files` και το app/siteCatalog.test.ts
+// public/humans.txt με `npx tsx scripts/machine-files.ts` και το app/siteCatalog.test.ts
 // κοκκινίζει όταν το αρχείο μείνει πίσω από τον κώδικα.
 // ═══════════════════════════════════════════════════════════════════════════
 import pkg from '@/package.json';
 import { SITE_HOST, siteUrl } from '@/lib/core/site';
 import { grDate } from '@/lib/core/format';
 import { IDENTITY } from '@/lib/legal/identity';
-import { XARTIS_UPDATED } from '@/app/siteCatalog';
+import { XARTIS_UPDATED } from '@/app/xartisUpdated';
 
 /** Η κύρια έκδοση μιας εξάρτησης, από το εύρος του package.json («^16.4.3» → «16»). */
 const major = (range: string | undefined): string => /\d+/.exec(range ?? '')?.[0] ?? '';

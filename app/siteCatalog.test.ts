@@ -85,6 +85,8 @@ for (const e of catalogEntries(siteCatalog())) {
   if (!e.deadlines) ok(`${e.path}: η σελίδα γράφει ${grDate(e.updated)}`, el.includes(`dateTime="${e.updated}"`) && el.includes(grDate(e.updated)));
 }
 ok(`η ημερομηνία του χάρτη (${XARTIS_UPDATED}) δεν είναι μελλοντική`, XARTIS_UPDATED <= athensToday());
+const newest = catalogEntries(siteCatalog()).filter(e => e.path !== XARTIS_PATH).map(e => e.updated).sort().at(-1);
+ok(`η ημερομηνία του χάρτη είναι η νεότερη του καταλόγου (${XARTIS_UPDATED} = ${newest})`, XARTIS_UPDATED === newest);
 
 // ── 4. Η ΡΟΗ ────────────────────────────────────────────────────────────────
 const feed = guidesFeed();
@@ -112,7 +114,7 @@ ok('security.txt: Canonical', /^Canonical: https:\/\/\S+\/\.well-known\/security
 // Στατικά στο public/ για να μην ανεβαίνει δική τους συνάρτηση (docs/perf/server.json).
 for (const [file, made] of [['public/humans.txt', humans], ['public/odigos/feed.xml', feed]] as const) {
   const onDisk = (() => { try { return readFileSync(file, 'utf8'); } catch { return ''; } })();
-  ok(`${file}: ίδιο με τον κώδικα (αν όχι: npm run machine-files)`, onDisk === made);
+  ok(`${file}: ίδιο με τον κώδικα (αν όχι: npx tsx scripts/machine-files.ts)`, onDisk === made);
 }
 
 // Κανένα από τα νέα αρχεία δεν κλείνεται από το robots.

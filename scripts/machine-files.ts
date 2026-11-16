@@ -5,7 +5,7 @@
 // lib/seo/feed.ts) το φυλάει το app/siteCatalog.test.ts. Στατικά και όχι
 // διαδρομές του app/, γιατί κάθε διαδρομή ανεβαίνει ως δική της συνάρτηση
 // (scripts/server-weight.mjs, docs/perf/server.json).
-//   npm run machine-files
+//   npx tsx scripts/machine-files.ts
 // ═══════════════════════════════════════════════════════════════════════════
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { humansText } from '../lib/seo/humans';

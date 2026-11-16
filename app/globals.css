@@ -5588,12 +5588,7 @@ body:has(.po-tool-page) .po-cookie {
   font-size: 13px; line-height: 1.5; color: var(--text-secondary);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-/* ═══ Ο ΧΑΡΤΗΣ ΙΣΤΟΤΟΠΟΥ (/xartis, /en/sitemap · app/xartis/SiteMapView.tsx) ═══
-   Λίστες, όχι κάρτες-σύνδεσμοι: κάθε σειρά έχει το όνομα αριστερά και την
-   ημερομηνία δεξιά, στο ίδιο πλάτος ψηφίων (tabular), ώστε οι ημερομηνίες να
-   στοιχίζονται σε στήλη. Εργαλεία και οδηγοί δίπλα δίπλα από τα 900, οι μήνες
-   σε στήλες χρονολογικά (πάνω προς τα κάτω), τα τρία μικρά μπλοκ σε μία σειρά.
-   Κάτω από τα 900 όλα σε μία στήλη, χωρίς ελάχιστο πλάτος που να ξεχειλίζει. */
+/* Ο χάρτης ιστότοπου (app/xartis/SiteMapView.tsx). */
 .xm-jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 0; }
 .xm-chip {
   display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 14px;
@@ -5602,8 +5597,6 @@ body:has(.po-tool-page) .po-cookie {
 }
 .xm-chip-n { font-size: 12px; font-weight: 600; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 @media (pointer: coarse) { .xm-chip { min-height: 44px; } }
-/* ΣΤΟ ΤΗΛΕΦΩΝΟ ΔΥΟ ΙΣΕΣ ΣΤΗΛΕΣ: τα έξι κουμπιά σε ελεύθερη ροή έπεφταν σε
-   τέσσερις άνισες σειρές. Το όνομα αριστερά, το πλήθος δεξιά, όπως οι λίστες. */
 @media (max-width: 560px) {
   .xm-jump { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; }
   .xm-chip { justify-content: space-between; border-radius: 10px; line-height: 1.3; }

@@ -34,7 +34,7 @@ import * as power from '../electricity-tariffs/view';
 import * as deadlines from '../tax-deadlines/view';
 import * as siteMap from '../sitemap/view';
 import * as siteMapEl from '../../xartis/view';
-import { XARTIS_INTERNAL } from '../../siteCatalog';
+import { XARTIS_INTERNAL } from '../../siteCatalogCore';
 import * as login from '../login/view';
 import * as loginFrame from '../login/frame';
 import * as signup from '../signup/view';

@@ -7,8 +7,13 @@
 // ΟΙ ΙΔΙΕΣ ΔΙΕΥΘΥΝΣΕΙΣ ΜΕ ΤΟ sitemap.xml (16/11/2026). Οι ενότητες και οι
 // σύνδεσμοι βγαίνουν από τον χάρτη για τον άνθρωπο (app/siteCatalog.ts), που
 // διαβάζει τις πηγές του app/sitemap.ts· το app/siteCatalog.test.ts βάζει τις
-// διευθύνσεις αυτού του αρχείου δίπλα στο sitemap(). Δίπλα σε κάθε σελίδα η
-// ημερομηνία ενημέρωσής της, ώστε το μοντέλο να ξέρει πόσο φρέσκια είναι.
+// διευθύνσεις αυτού του αρχείου δίπλα στο sitemap().
+//
+// ΧΩΡΙΣ ΗΜΕΡΟΜΗΝΙΕΣ ΑΝΑ ΣΕΛΙΔΑ (16/11/2026). Ο σκελετός του καταλόγου
+// (app/siteCatalogCore.ts) και όχι ο κατάλογος με τις ημερομηνίες: εκείνος
+// τραβά τα μητρώα του app/pageUpdated.ts και η συνάρτηση του /llms.txt
+// ζύγιζε 112 KB παραπάνω, πάνω από το όριο του docs/perf/server.json. Η
+// ημερομηνία κάθε σελίδας είναι γραμμένη στη σελίδα και στο /sitemap.xml.
 //
 // ΚΑΝΕΝΑ ΚΕΙΜΕΝΟ ΓΡΑΜΜΕΝΟ ΔΕΥΤΕΡΗ ΦΟΡΑ. Εργαλεία από το lib/core/publicTools,
 // οδηγοί από το app/odigos/guides, πακέτα και τιμές από τα PLANS, η επιφύλαξη
@@ -19,30 +24,30 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { SITE, SITE_HOST, siteUrl } from '@/lib/core/site';
 import { PLANS, PLAN_ORDER, TRIAL_DAYS } from '@/lib/billing/plans';
-import { fe, feWhole, grDate } from '@/lib/core/format';
+import { fe, feWhole } from '@/lib/core/format';
 import { billingWords } from '@/lib/legal/billingWords';
 import { IDENTITY } from '@/lib/legal/identity';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
-import { longDateEn } from '@/lib/i18n/en/dates';
-import { siteCatalog, type MapEntry, type MapGroup, type MapGroupId } from '@/app/siteCatalog';
+import { athensToday } from '@/lib/core/time';
+import { buildCatalog, type MapEntry, type MapGroup, type MapGroupId } from '@/app/siteCatalogCore';
 
 const properties = (n: number) => !Number.isFinite(n) ? 'απεριόριστα ακίνητα' : n === 1 ? 'ένα ακίνητο' : `έως ${n} ακίνητα`;
 
 /** Η διεύθυνση μιας διαδρομής· η αρχική χωρίς κάθετο, όπως στον χάρτη. */
 const abs = (path: string): string => (path === '/' ? SITE : siteUrl(path));
 
-/** Μία γραμμή σελίδας: σύνδεσμος, ημερομηνία και, όπου υπάρχει, η περιγραφή του καταλόγου. */
+/** Μία γραμμή σελίδας: σύνδεσμος και, όπου υπάρχει, η περιγραφή του καταλόγου. */
 function line(e: MapEntry): string {
   const extra = e.desc ?? (e.deadlines !== undefined ? `${e.deadlines} ${e.deadlines === 1 ? 'προθεσμία' : 'προθεσμίες'}` : null);
-  return `- [${e.label}](${abs(e.path)}) (ενημέρωση ${grDate(e.updated)})${extra ? `: ${extra}` : ''}`;
+  return `- [${e.label}](${abs(e.path)})${extra ? `: ${extra}` : ''}`;
 }
 
-/** Η ίδια γραμμή για την αγγλική σελίδα, με αγγλική γραφή ημερομηνίας («14 November 2026»). */
-const lineEn = (e: MapEntry): string[] => e.en ? [`- [${e.en.label}](${abs(e.en.path)}) (updated ${longDateEn(e.updated)})`] : [];
+/** Η ίδια γραμμή για την αγγλική σελίδα. */
+const lineEn = (e: MapEntry): string[] => e.en ? [`- [${e.en.label}](${abs(e.en.path)})`] : [];
 
 export function llmsText(): string {
   const notice = billingWords().pricingNotice;
-  const groups = siteCatalog();
+  const groups = buildCatalog(athensToday(), () => '');
   const group = (id: MapGroupId): MapGroup => groups.find(g => g.id === id)!;
   const section = (id: MapGroupId, after: string[] = []): string[] => {
     const g = group(id);
@@ -88,7 +93,7 @@ export function llmsText(): string {
     '## Πώς να μας αναφέρετε',
     '',
     `- Όνομα: PROPERWISE (${SITE_HOST}), ελληνική εφαρμογή διαχείρισης ακινήτων.`,
-    '- Αναφέρετε τη συγκεκριμένη σελίδα με τη διεύθυνσή της και την ημερομηνία ενημέρωσης που γράφει.',
+    '- Αναφέρετε τη συγκεκριμένη σελίδα με τη διεύθυνσή της και την ημερομηνία ενημέρωσης που γράφει η ίδια.',
     '- Τα ποσά των υπολογιστών είναι ενδεικτικά και όχι επίσημο έγγραφο. Η νομική βάση κάθε συντελεστή (ΦΕΚ, νόμος ή απόφαση της ΑΑΔΕ) είναι γραμμένη στη σελίδα.',
     `- Για διόρθωση ή ερώτηση: ${IDENTITY.supportEmail}`,
     '',
