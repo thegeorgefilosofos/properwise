@@ -717,17 +717,8 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
         </div>
         <div className="wiz-tax-note">{taxNote}</div>
       </div>
-      {/* ΤΟ ΕΠΟΜΕΝΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΠΡΩΤΟ, ΧΩΡΙΣ ΠΟΣΟ (r6, r7): όταν οι δόσεις του έτους
-          τελείωσαν ή όταν το έτος δεν έχει ακόμη εκδοθεί στο ημερολόγιο, μόνο έτος
-          και μήνας. Ούτε ποσό ούτε πλήθος δόσεων πριν εκδοθεί. */}
-      {!draftTax.rented && taxShown && enfiaInfo?.next && (
-        <div className="wiz-tax-row">
-          <span style={{ minWidth: 0 }}>{enfiaInfo.next.title}</span>
-          <span className="wiz-tax-date">{enfiaInfo.next.date}</span>
-        </div>
-      )}
       {draftRow ? (
-        // Η ΔΟΣΗ ΠΟΥ ΠΕΡΑΣΕ ΔΙΑΒΑΖΕΤΑΙ ΠΕΡΑΣΜΕΝΗ (r7): σβηστή ημερομηνία, κάτω από το επόμενο.
+        // Η ΔΟΣΗ ΤΟΥ ΙΔΙΟΥ ΕΤΟΥΣ ΚΑΤΩ ΑΠΟ ΤΟ ΠΟΣΟ ΤΟΥ (r7, r8): όταν πέρασε, σβηστή.
         <div className="wiz-tax-row" data-past={enfiaInfo?.paidOff ? '' : undefined}>
           <span style={{ minWidth: 0 }}>{draftRow.title}</span>
           <span className="wiz-tax-date">{draftRow.date}</span>
@@ -736,6 +727,15 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
         // ΧΩΡΙΣ ΠΟΣΟ, ΚΑΜΙΑ ΔΟΣΗ (κριτική σχεδίασης r5): το πλήθος βγαίνει από το
         // ποσό, οπότε η γραμμή λέει μόνο αυτό. Κρατά και τη θέση της γραμμής.
         <div className="wiz-tax-row" data-empty="">Οι δόσεις βγαίνουν από το ποσό.</div>
+      )}
+      {/* ΤΟ ΕΠΟΜΕΝΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΣΤΟ ΤΕΛΟΣ, ΧΩΡΙΣ ΠΟΣΟ (r6, r7, r8): όταν οι δόσεις του έτους
+          τελείωσαν ή όταν το έτος δεν έχει ακόμη εκδοθεί στο ημερολόγιο, μόνο έτος
+          και μήνας. Ούτε ποσό ούτε πλήθος δόσεων πριν εκδοθεί. */}
+      {!draftTax.rented && taxShown && enfiaInfo?.next && (
+        <div className="wiz-tax-row">
+          <span style={{ minWidth: 0 }}>{enfiaInfo.next.title}</span>
+          <span className="wiz-tax-date">{enfiaInfo.next.date}</span>
+        </div>
       )}
     </section>
   );

@@ -257,9 +257,17 @@ export function enfiaDeadline(status: PropertyStatus, today: string, annual?: nu
   // έτος και ο μήνας, χωρίς ποσό και χωρίς αριθμό δόσης.
   const year = !issued(bill) && count && issued(bill - 1) && dueOf(bill - 1).some(x => x.date >= today) ? bill - 1 : bill;
   if (!issued(year)) {
-    const first = greekPropertyTaxObligations(year, profile).find(x => x.kind === 'enfia-first');
-    const next = first ? { id: first.id, title: `ΕΝΦΙΑ ${year}`, date: deadlineDate(first) } : null;
-    return { year, row: null, paidOff: false, next, count: 0, each: 0, last: 0, ids: [], issued: false };
+    // ΠΕΡΣΙΝΟΣ ΜΗΝΑΣ ΠΟΥ ΠΕΡΑΣΕ, ΤΟ ΕΠΟΜΕΝΟ ΕΤΟΣ (κριτική σχεδίασης r8). Την 1/2/2026 η
+    // γραμμή έγραφε «ΕΝΦΙΑ 2025 · Μάρτιος 2025», μήνα του περασμένου χρόνου· τώρα
+    // «ΕΝΦΙΑ 2026 · Μάρτιος 2026». Μέσα στο ίδιο έτος (Απρίλιος 2027) μένει
+    // «ΕΝΦΙΑ 2027 · Μάρτιος 2027»: εκείνο είναι το εκκαθαριστικό που πληρώνεται.
+    // Και στις δύο περιπτώσεις χωρίς ποσό: το ποσό που γράφτηκε δεν ανήκει εκεί.
+    const firstOf = (yr: number) => greekPropertyTaxObligations(yr, profile).find(x => x.kind === 'enfia-first');
+    const shown = year < y && (firstOf(year)?.date ?? today) < today ? year + 1 : year;
+    const first = firstOf(shown);
+    // Μόνο ο μήνας: το εκκαθαριστικό που ξέρει ο χρήστης δεν είναι αυτό.
+    const next = first ? { id: first.id, title: `ΕΝΦΙΑ ${shown}`, date: monthYearLabel(first.date.slice(0, 7)) } : null;
+    return { year: shown, row: null, paidOff: false, next, count: 0, each: 0, last: 0, ids: [], issued: false };
   }
   if (!count) return { year, row: null, paidOff: false, next: null, count: 0, each: 0, last: 0, ids: [], issued: true };
   const due = dueOf(year);

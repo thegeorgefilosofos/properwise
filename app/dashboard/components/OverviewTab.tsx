@@ -939,14 +939,15 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
               υποσημείωση. ΟΧΙ ΣΤΗΝ ΠΡΩΤΗ ΕΠΙΣΚΟΠΗΣΗ (κριτική σχεδίασης r3): ο
               φόρος της κορυφής είναι εκτίμηση της χρονιάς, όχι ποσό «ως σήμερα»·
               η ώρα ήταν τέταρτη γραμμή χωρίς λόγο. */}
-          {/* ΕΞΟΦΛΗΜΕΝΟ: ΠΡΩΤΑ ΤΟ ΕΠΟΜΕΝΟ (κριτική σχεδίασης r7). «ΕΝΦΙΑ 2027 · Μάρτιος 2027»
-              χωρίς ποσό· από κάτω σβηστή η δόση που πέρασε. */}
-          {enfiaPaidOff && !moneyGap && (
-            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext!.next!.title} · ${enfiaNext!.next!.date}`}</div>
-          )}
           {enfiaHero && enfiaNext?.row && !moneyGap && (
             // «9η δόση 26,66€ · 30/11/2026»: η δόση και το ποσό της, χωρίς δεύτερο «ΕΝΦΙΑ».
-            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:enfiaPaidOff ? 'var(--text-tertiary)' : 'var(--text-secondary)',marginTop:enfiaPaidOff ? 2 : 4,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext.row.title} · ${enfiaNext.row.date}`}</div>
+            // Εξοφλημένο (r7, r8): σβηστή, αμέσως κάτω από το ποσό του ίδιου έτους.
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:enfiaPaidOff ? 'var(--text-tertiary)' : 'var(--text-secondary)',marginTop:4,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext.row.title} · ${enfiaNext.row.date}`}</div>
+          )}
+          {/* ΤΟ ΕΠΟΜΕΝΟ ΕΚΚΑΘΑΡΙΣΤΙΚΟ ΣΤΟ ΤΕΛΟΣ, ΧΩΡΙΣ ΠΟΣΟ (κριτική σχεδίασης r8):
+              «ΕΝΦΙΑ 2027 · Μάρτιος 2027». Η σειρά δεν πηγαινοέρχεται ανάμεσα σε δύο έτη. */}
+          {enfiaPaidOff && !moneyGap && (
+            <div style={{fontFamily:T.font.sans,fontSize:'var(--fs-sm)',color:'var(--text-secondary)',marginTop:2,fontVariantNumeric:'tabular-nums'}}>{`${enfiaNext!.next!.title} · ${enfiaNext!.next!.date}`}</div>
           )}
           {!firstHero && <AthensNow style={{fontFamily:T.font.sans,fontSize:'var(--fs-xs)',color:'var(--text-tertiary)',marginTop:4,minHeight:15}}/>}
           {/* Η ΤΑΥΤΟΤΗΤΑ ΤΟΥ ΑΚΙΝΗΤΟΥ ΛΕΓΕΤΑΙ ΜΙΑ ΦΟΡΑ ΚΑΙ ΤΗ ΛΕΕΙ Η ΜΠΑΡΑ.
