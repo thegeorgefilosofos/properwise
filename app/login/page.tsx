@@ -377,7 +377,7 @@ export default function LoginPage() {
         <OrDivider word={A ? A.or : undefined} />
         </>)}
 
-        <form onSubmit={factorId ? verifySecondStep : handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <form method="post" onSubmit={factorId ? verifySecondStep : handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {factorId ? (
             <div>
               <label htmlFor="login-mfa-code" className="po-field-label">{L ? L.code : 'Εξαψήφιος κωδικός'}</label>
