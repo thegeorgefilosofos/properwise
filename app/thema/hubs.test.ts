@@ -29,7 +29,22 @@ let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
 
 const RULE_IDS = new Set(REGULATED.map(r => r.id));
-const text = (html: string) => html.replace(/<script\b[\s\S]*?<\/script\s*>/gi, ' ').split(/<[^>]+>/).join(' ').replace(/&#x27;|&#39;/g, '\'').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+/** Βγάζει τα <script> (JSON-LD) με απλή σάρωση, όχι με regexp: εδώ το HTML
+ *  είναι δικό μας από renderToStaticMarkup και ο σκοπός είναι μόνο το ορατό κείμενο. */
+const noScripts = (html: string) => {
+  let out = '', i = 0;
+  const low = html.toLowerCase();
+  for (;;) {
+    const a = low.indexOf('<script', i);
+    if (a < 0) return out + html.slice(i);
+    const b = low.indexOf('</script', a);
+    const c = b < 0 ? -1 : low.indexOf('>', b);
+    out += html.slice(i, a) + ' ';
+    if (c < 0) return out;
+    i = c + 1;
+  }
+};
+const text = (html: string) => noScripts(html).split(/<[^>]+>/).join(' ').replace(/&#x27;|&#39;/g, '\'').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 
 /** Οι κανόνες του ιδιοκτήτη για το ελληνικό κείμενο, στο ορατό κείμενο μιας σελίδας. */
 function greek(name: string, t: string) {
