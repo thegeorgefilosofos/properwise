@@ -17,7 +17,7 @@ import * as checklist from '@/lib/data/checklist';
 import * as expenses from '@/lib/data/expenses'
 import * as tenantStore from '@/lib/data/tenants'
 import { CustomSelect, BulkActionBar } from './UIComponents';
-import { T, PageTitle, KPIGrid, Badge, Btn, ExportButton, EmptyState, InfoBanner, SecHdr, SelectBox, SkeletonKPIs, Skeleton, fe, fp, fixedCols, ABSENT_SHORT, Modal, TT, Stat, RecordCard, StatStrip } from '@/components/Theme';
+import { T, PageTitle, Badge, Btn, ExportButton, EmptyState, InfoBanner, SecHdr, SelectBox, SkeletonKPIs, Skeleton, fe, fp, fixedCols, ABSENT_SHORT, Modal, TT, Stat, RecordCard, StatStrip } from '@/components/Theme';
 import { statusLabel, BY_KEY, type StatusRow } from '@/lib/property/status';
 import { propertyTypeLabel } from '@/lib/property/types';
 import { yearOccupancy } from '@/lib/clients/reports';
@@ -37,7 +37,8 @@ import { TASK_CATEGORIES, TASK_PRIORITIES } from '@/lib/checklist/taxonomy';
 import type { ClientStaysRow, BillsRow, ExpensesRow, TenantsRow, ChecklistItemsRow, RentPaymentsRow, UserPropertiesRow, ClientsRow } from '@/lib/supabase/tables';
 import { issueDocument } from '@/lib/documents/issue';
 import { generateReportPdf, pEur, pSigned, type PdfReportModel, type PdfSection } from '@/lib/pdf/pdfReport';
-import { ShieldCheck, Building2 } from 'lucide-react';
+import { ShieldCheck, Building2, TrendingUp, Wallet, Receipt, CalendarCheck, ListTodo, FileText, Download } from 'lucide-react';
+import { ActionMenu } from '@/components/ActionMenu';
 import { notifyOk, notifyError } from '@/components/Toast';
 import { failed, MSG } from '@/lib/core/dbError';
 import RentReceived from './RentReceived';
@@ -566,31 +567,26 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
 
   return (
     <div className="pf-head">
-      {/* ΣΤΟ ΤΗΛΕΦΩΝΟ ΟΙ ΕΝΕΡΓΕΙΕΣ ΣΕ ΜΙΑ ΣΤΗΛΗ. Το κοινό πλέγμα δύο στηλών της
-          `.act-row` έκοβε το «Είσπραξη ενοικίων · 2» και το «Καταστάσεις
-          ιδιοκτήτη» σε δύο σειρές το καθένα, σε μισό πλάτος.
-          09/11/2026: ο κανόνας ήταν γραμμένος για πλέγμα και η `.act-row` είναι
-          flex από τις 29/10, οπότε δεν έπιανε: στα 360 τα τρία κουμπιά έμεναν
-          στην ίδια σειρά, όπου το καθένα έσπαγε σε δύο γραμμές. */}
-      <style>{`@media (max-width: 480px) { .pf-head .act-row > * { flex: 1 1 100%; } }`}</style>
+      {/* ═══ ΔΥΟ ΚΟΥΜΠΙΑ, ΟΧΙ ΤΡΙΑ ΣΕ ΣΤΗΛΗ (17/11/2026) ═══════════════════════
+          Στο τηλέφωνο οι τρεις ενέργειες έπεφταν σε τρεις σειρές πλήρους
+          πλάτους: 150 εικονοστοιχεία κουμπιών πριν από τον πρώτο αριθμό. Οι
+          δύο σπάνιες (καταστάσεις ιδιοκτήτη, Excel) μπαίνουν στο «Περισσότερα»,
+          όπως στις Επαφές· η είσπραξη μένει η μία μπλε ενέργεια. */}
       <PageTitle title="Χαρτοφυλάκιο" sub={`${properties.length} ${properties.length === 1 ? 'ακίνητο' : 'ακίνητα'} · έσοδα και εκκρεμότητες ${year}`}
         right={<>
+          <ActionMenu label="Περισσότερα" items={[
+            { key: 'statements', label: 'Καταστάσεις ιδιοκτήτη', description: 'Έσοδα, δαπάνες και καθαρό ανά ιδιοκτήτη, σε PDF ή Excel.', icon: <FileText size={15} aria-hidden="true" />, onClick: openStatements },
+            { key: 'xlsx', label: 'Εξαγωγή σε Excel', description: 'Ο πίνακας των ακινήτων, για υπολογιστικό φύλλο.', icon: <Download size={15} aria-hidden="true" />, onClick: exportCsv },
+          ]} />
           {/* ΤΟ ΚΟΥΜΠΙ ΥΠΑΡΧΕΙ ΜΟΝΟ ΟΤΑΝ ΕΧΕΙ ΤΙ ΝΑ ΓΡΑΨΕΙ. Χωρίς δόση που να
               μπορεί να καταχωρηθεί σήμερα, θα ήταν ψεύτικη υπόσχεση — και το
               πλήθος λέγεται πάνω του, ώστε να ξέρει ο ιδιοκτήτης τι θα δει
-              πριν το πατήσει. */}
+              πριν το πατήσει. Το πλήθος δένεται με την τελευταία λέξη. */}
           {collectable.length > 0 && (
-            // Το πλήθος δένεται με την τελευταία λέξη: στα 390 το κουμπί έσπαγε
-            // σε «Είσπραξη ενοικίων ·» και ένα «2» μόνο του στη δεύτερη γραμμή.
             <Btn variant="primary" onClick={() => setCollecting(true)}>
               {`Είσπραξη ενοικίων\u00a0·\u00a0${collectable.length}`}
             </Btn>
           )}
-          {/* Ισότιμη ενέργεια με την Εξαγωγή δίπλα της, όχι απορριπτική: χωρίς
-              περίγραμμα διαβαζόταν ως τίτλος και όχι ως κουμπί. Το «ghost»
-              μένει για τα «Ακύρωση» και «Άλλη φορά». */}
-          <Btn variant="secondary" onClick={openStatements}>Καταστάσεις ιδιοκτήτη</Btn>
-          <ExportButton onClick={exportCsv} />
         </>} />
 
       {/* ΤΟ ΠΑΡΑΘΥΡΟ ΠΡΟΣΑΡΤΑΤΑΙ ΟΤΑΝ ΑΝΟΙΓΕΙ, ώστε η ημερομηνία και ο τρόπος
@@ -609,35 +605,46 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
         />
       )}
 
-      {/* ═══ ΤΕΣΣΕΡΑ ΧΡΩΜΑΤΑ ΣΕ ΠΕΝΤΕ ΠΛΑΚΙΔΙΑ ══════════════════════════════
-          Τα έσοδα ήταν πράσινα ακόμη και στο μηδέν, το καθαρό κόκκινο, οι
-          εκκρεμότητες πορτοκαλί, η ταξινομημένη στήλη μπλε. Σε χαρτοφυλάκιο δύο
-          ακινήτων, τέσσερα σημασιολογικά χρώματα σε μία ματιά — και κανένα δεν
-          ξεχωρίζει, γιατί όλα φωνάζουν. Η ιεραρχία βγαίνει από μέγεθος, βάρος
-          και θέση· το πρόσημο το λέει ήδη το ίδιο το ποσό. */}
-      {/* ΤΟ ΠΛΗΘΟΣ ΤΩΝ ΑΚΙΝΗΤΩΝ ΤΟ ΛΕΕΙ Ο ΥΠΟΤΙΤΛΟΣ. Ως πέμπτο πλακίδιο
-          επαναλάμβανε την κεφαλίδα και στα 820 άφηνε σειρά 3+2. */}
-      <KPIGrid items={[
-        // «ΩΣ ΣΗΜΕΡΑ», ΓΙΑΤΙ ΛΙΓΟ ΠΙΟ ΚΑΤΩ ΥΠΑΡΧΟΥΝ «ΕΤΗΣΙΑ ΕΣΟΔΑ». Το ένα είναι
-        // ό,τι μπήκε ως σήμερα, το άλλο ο ρυθμός σε ετήσια βάση: δύο ποσά με
-        // την ίδια λέξη και η διαφορά μόνο σε ψιλό υπότιτλο.
-        { label: `Έσοδα ${year} ως σήμερα`, value: eur(totalRevenue),
-          sub: estimatedRows.length ? `${estimatedRows.length} ${estimatedRows.length === 1 ? 'ακίνητο' : 'ακίνητα'} με εκτίμηση` : undefined },
-        { label: `Καθαρό ${year} ως σήμερα`, value: eur(totalRevenue - totalExpenses), sub: `δαπάνες ως σήμερα ${eur(totalExpenses)}` },
-        // Πληρότητα χωρίς καμία βραχυχρόνια δεν είναι μηδέν, είναι ερώτημα χωρίς
-        // αντικείμενο. Το πλακίδιο δεν εμφανίζεται καθόλου.
-        ...(avgOcc != null ? [{ label: 'Μέση πληρότητα', value: fp(avgOcc),
-          sub: `${shortRows.length} ${shortRows.length === 1 ? 'βραχυχρόνια' : 'βραχυχρόνια'}` }] : []),
-        // ΔΥΟ ΓΕΓΟΝΟΤΑ ΔΕΝ ΧΩΡΑΝΕ ΣΕ ΕΝΑΝ ΑΡΙΘΜΟ. Το «14 · 756,00€» είναι πλήθος
-        // ΚΑΙ ποσό κολλημένα με μια τελεία: δεκατρείς χαρακτήρες εκεί που τα
-        // διπλανά πλακίδια έχουν έντεκα. Επειδή το μέγεθος του αριθμού βγαίνει
-        // από το μακρύτερο της σειράς, αυτό το ένα πλακίδιο κατέβαζε ΚΑΙ ΤΑ
-        // ΠΕΝΤΕ από τα 18 στα 15,2 — μετρημένο σε Galaxy A, 360×800. Το πλήθος
-        // είναι ο αριθμός, το ποσό είναι η εξήγηση: ακριβώς η διάκριση που
-        // κάνουν ήδη τα «Έσοδα» και το «Καθαρό» δίπλα του.
-        { label: 'Εκκρεμότητες', value: String(totalPending),
-          sub: totalOwed > 0 ? `${eur(totalOwed)} ανοιχτά` : undefined },
-      ]} />
+      {/* ═══ ΜΙΑ ΣΥΝΟΨΗ ΑΝΤΙ ΓΙΑ ΤΕΣΣΕΡΑ ΙΣΑ ΓΚΡΙ ΠΛΑΚΙΔΙΑ (17/11/2026) ════════
+          Τέσσερις ισότιμοι αριθμοί δεν έλεγαν ποιος μετράει. Τώρα, όπως στους
+          Ενοικιαστές και στον Προϋπολογισμό: το καθαρό είναι ο κύριος αριθμός
+          και τα υπόλοιπα γραμμές με εικονίδιο. Χρώμα μόνο όπου υπάρχει
+          κατάσταση: οι εκκρεμότητες παίρνουν τον τόνο προσοχής όταν υπάρχουν
+          ανοιχτά ποσά. Η πληρότητα δεν εμφανίζεται χωρίς βραχυχρόνια. */}
+      <section className="tn-sum pf-sum" aria-label="Σύνοψη χαρτοφυλακίου">
+        <div className="tn-sum-hero">
+          <div className="tn-sum-label"><TrendingUp size={15} aria-hidden="true" />{`Καθαρό ${year} ως σήμερα`}</div>
+          <div className="tn-sum-big">{eur(totalRevenue - totalExpenses)}</div>
+        </div>
+        <div className="tn-sum-rows">
+          {/* «ΩΣ ΣΗΜΕΡΑ», ΓΙΑΤΙ ΛΙΓΟ ΠΙΟ ΚΑΤΩ ΥΠΑΡΧΟΥΝ «ΕΤΗΣΙΑ ΕΣΟΔΑ»: το ένα είναι
+              ό,τι μπήκε ως σήμερα, το άλλο ο ρυθμός σε ετήσια βάση. */}
+          <div className="tn-sum-row">
+            <span className="tn-sum-ico"><Wallet size={15} aria-hidden="true" /></span>
+            <span className="tn-sum-name">Έσοδα</span>
+            <span className="pf-sum-line"><span className="tn-sum-val">{eur(totalRevenue)}</span><small className={'pf-sum-note' + (estimatedRows.length ? '' : ' pf-opt')}>{estimatedRows.length ? `${estimatedRows.length} ${estimatedRows.length === 1 ? 'ακίνητο' : 'ακίνητα'} με εκτίμηση` : 'εισπράξεις και διαμονές'}</small></span>
+          </div>
+          <div className="tn-sum-row">
+            <span className="tn-sum-ico"><Receipt size={15} aria-hidden="true" /></span>
+            <span className="tn-sum-name">Δαπάνες</span>
+            <span className="pf-sum-line"><span className="tn-sum-val">{eur(totalExpenses)}</span><small className="pf-sum-note pf-opt">ως σήμερα</small></span>
+          </div>
+          {avgOcc != null && (
+            <div className="tn-sum-row" title={`Μέση πληρότητα, ${shortRows.length} βραχυχρόνια`}>
+              <span className="tn-sum-ico"><CalendarCheck size={15} aria-hidden="true" /></span>
+              <span className="tn-sum-name">Πληρότητα</span>
+              <span className="pf-sum-line"><span className="tn-sum-val">{fp(avgOcc)}</span><small className="pf-sum-note pf-opt">{`μέση, ${shortRows.length} βραχυχρόνια`}</small></span>
+            </div>
+          )}
+          {/* ΤΟ ΠΛΗΘΟΣ ΕΙΝΑΙ Ο ΑΡΙΘΜΟΣ, ΤΟ ΠΟΣΟ Η ΕΞΗΓΗΣΗ: «14 · 756,00€» σε ένα
+              κελί ήταν δύο γεγονότα κολλημένα με μια τελεία. */}
+          <div className="tn-sum-row" data-tone={totalOwed > 0 ? 'warning' : undefined}>
+            <span className="tn-sum-ico"><ListTodo size={15} aria-hidden="true" /></span>
+            <span className="tn-sum-name">Εκκρεμότητες</span>
+            <span className="pf-sum-line"><span className="tn-sum-val">{totalPending}</span><small className={'pf-sum-note' + (totalOwed > 0 ? '' : ' pf-opt')}>{totalOwed > 0 ? <>{eur(totalOwed)}<span className="pf-sum-more"> ανοιχτά</span></> : 'κανένα ανοιχτό ποσό'}</small></span>
+          </div>
+        </div>
+      </section>
 
       {/* Συγκεντρωτική απόδοση χαρτοφυλακίου (σταθμισμένη με την αξία) */}
       {agg.valuedCount > 0 && ((() => {
@@ -742,8 +749,9 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
                         // διαφορά στο τι θα κάνει ο ιδιοκτήτης σήμερα το πρωί.
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}
                               title={r.owed > 0 ? `${r.pending} εκκρεμή, από τα οποία ${fe(r.owed)} σε απλήρωτους λογαριασμούς` : `${r.pending} εκκρεμή`}>
-                          <span style={{ display: 'inline-flex', minWidth: 22, height: 22, borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', fontSize: 12, fontWeight: 700, alignItems: 'center', justifyContent: 'center', padding: '0 7px' }}>{r.pending}</span>
-                          {r.owed > 0 && <span style={{ fontFamily: T.font.num, fontSize: 12, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fe(r.owed)}</span>}
+                          {/* Τόνος προσοχής μόνο όταν υπάρχει ανοιχτό ποσό (.pf-pending). */}
+                          <span className="pf-pending" data-tone={r.owed > 0 ? 'warning' : undefined}>{r.pending}</span>
+                          {r.owed > 0 && <span style={{ fontFamily: T.font.num, fontSize: 12, color: 'var(--warning-on-container)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fe(r.owed)}</span>}
                         </span>
                       )
                       : <span style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-tertiary)' }}>Καμία</span>}
@@ -778,14 +786,16 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
             {/* ΟΙ ΔΥΟ ΣΤΗΛΕΣ ΠΟΥ ΕΛΕΙΠΑΝ ΑΠΟ ΤΗΝ ΚΑΡΤΑ. Ο πίνακας του υπολογιστή
                 έχει «Εκκρεμότητες» και «Πληρότητα»· στο τηλέφωνο η κάρτα έδειχνε
                 μόνο τα τρία ποσά και τίποτα δεν έλεγε ότι πατιέται. */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, ...TT.caption }}>
-              <span style={{ flex: 1, minWidth: 0 }}>
-                {[
-                  r.pending > 0
-                    ? `${r.pending} ${r.pending === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}${r.owed > 0 ? ` · ${eur(r.owed)}` : ''}`
-                    : 'Καμία εκκρεμότητα',
-                  r.occupancy != null ? `Πληρότητα ${fp(r.occupancy)}` : null,
-                ].filter(Boolean).join(' · ')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, ...TT.caption }}>
+              <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                {r.pending > 0
+                  ? <span className="pf-pending-chip" data-tone={r.owed > 0 ? 'warning' : undefined}
+                      title={`${r.pending} ${r.pending === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}${r.owed > 0 ? `, ${eur(r.owed)} ανοιχτά` : ''}`}>
+                      <ListTodo size={13} aria-hidden="true" />
+                      {`${r.pending}${r.owed > 0 ? ` · ${eur(r.owed)}` : ''}`}
+                    </span>
+                  : <span>Καμία εκκρεμότητα</span>}
+                {r.occupancy != null && <span>{`Πληρότητα ${fp(r.occupancy)}`}</span>}
               </span>
               <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6" /></svg>
             </div>

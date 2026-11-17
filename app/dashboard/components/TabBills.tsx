@@ -30,6 +30,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Zap, Flame, Droplet, Wifi, ShieldCheck, Building2, Repeat, Landmark, Plus, type LucideIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import * as expenseStore from '@/lib/data/expenses'
 import * as billStore from '@/lib/data/bills'
@@ -90,98 +91,59 @@ interface StripData {
 
 // ─── Η κάρτα ενός συμβολαίου ──────────────────────────────────────────────────
 /**
- * ΕΝΑ ΣΧΗΜΑ, ΕΠΤΑ ΠΕΡΙΠΤΩΣΕΙΣ. Η γνωστή και η άγνωστη κατηγορία έχουν το ΙΔΙΟ
- * περίγραμμα και το ίδιο ύψος: αλλιώς το πλέγμα «χοροπηδά» ανάλογα με το τι
- * έχει καταχωρήσει ο χρήστης και η οθόνη μοιάζει διαφορετική σε κάθε ακίνητο.
+ * ΕΝΑ ΕΙΚΟΝΙΔΙΟ ΑΝΑ ΚΑΤΗΓΟΡΙΑ (17/11/2026). Οκτώ γκρι κουτιά με τίτλο ήταν
+ * οκτώ ίδια ορθογώνια: το μάτι έπρεπε να διαβάσει λέξεις για να βρει το νερό.
+ * Το εικονίδιο βρίσκει την κατηγορία πριν από τη λέξη.
+ */
+const KIND_ICON: Record<ContractKind, LucideIcon> = {
+  electricity: Zap, gas: Flame, water: Droplet, internet: Wifi,
+  insurance: ShieldCheck, common: Building2, subscriptions: Repeat, services: Landmark,
+};
+
+/**
+ * ΕΝΑ ΣΧΗΜΑ, ΔΥΟ ΚΑΤΑΣΤΑΣΕΙΣ. Η γνωστή και η άγνωστη κατηγορία έχουν το ΙΔΙΟ
+ * ύψος και την ίδια στοίβα (εικονίδιο, τίτλος, ποσό, γραμμή περιγραφής): αλλιώς
+ * το πλέγμα «χοροπηδά» ανάλογα με το τι έχει καταχωρήσει ο χρήστης.
+ *
+ * Η ΓΝΩΣΤΗ ΕΙΝΑΙ ΚΑΡΤΑ, Η ΑΓΝΩΣΤΗ ΘΕΣΗ (17/11/2026). Ηταν και οι δύο ίδιο γκρι
+ * κουτί, οπότε ό,τι πληρώνεις και ό,τι λείπει διαβάζονταν ίδια. Τώρα η γνωστή
+ * κάθεται σε επιφάνεια κάρτας με εικονίδιο στο απαλό χρώμα του PROPERWISE και η
+ * άγνωστη σε διακεκομμένο περίγραμμα, με ουδέτερο εικονίδιο και «+».
  *
  * ΤΟ ΑΓΝΩΣΤΟ ΔΕΝ ΓΡΑΦΕΤΑΙ ΜΗΔΕΝ. Ένα «0,00€» στο αέριο σημαίνει «δεν πληρώνω
  * αέριο», ενώ η αλήθεια είναι «δεν ξέρω ακόμη». Η κενή κάρτα λέει τι λείπει και
- * πώς μπαίνει — με τον δρόμο που δεν απαιτεί πληκτρολόγηση.
+ * πώς μπαίνει.
  */
 function ContractTile({ card, active, onOpen }: { card: ContractCard; active: boolean; onOpen: () => void }) {
-  const [hover, setHover] = useState(false);
-  const raised = hover || active;
-  // Ο ΚΥΚΛΟΣ ΛΕΓΕΤΑΙ ΟΤΑΝ ΔΕΝ ΕΙΝΑΙ Ο ΑΥΤΟΝΟΗΤΟΣ. Το ποσό της κάρτας είναι ΑΝΑ
-  // ΜΗΝΑ: ένα ασφάλιστρο 240€ τον χρόνο γράφεται 20,00€. Χωρίς τον κύκλο
-  // δίπλα, ο ιδιοκτήτης θα έψαχνε χρέωση 20€ που δεν υπάρχει πουθενά. Το
-  // «κάθε μήνα» παραλείπεται εδώ γιατί το ίδιο το ποσό το γράφει πια δίπλα του.
-  // Η διατύπωση έρχεται από το lib/expenses/expected.ts, μία φορά.
   const period = card.everyMonths === 1 ? '' : cadenceLabel(card.everyMonths);
   const meta = card.known
     ? [card.provider, period, `από ${card.occurrences} ${card.occurrences === 1 ? 'λογαριασμό' : 'λογαριασμούς'}`].filter(Boolean).join(' · ')
     : CONTRACT_EMPTY_HINT[card.kind];
+  const Icon = KIND_ICON[card.kind];
 
   return (
-    <button type="button" onClick={onOpen}
-      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      aria-pressed={active}
-      style={{
-        textAlign: 'left', width: '100%', cursor: 'pointer', display: 'flex',
-        flexDirection: 'column', justifyContent: 'space-between', gap: 10, minHeight: 92,
-        padding: '14px 16px', borderRadius: T.radius.card, fontFamily: T.font.sans,
-        background: raised ? 'var(--bg-surface)' : 'var(--bg-elevated)',
-        border: `1px solid ${active ? 'var(--border-default)' : 'var(--border-subtle)'}`,
-        boxShadow: raised ? 'var(--elev-1)' : 'none',
-        transition: `background .15s ${T.ease.standard}, border-color .15s, box-shadow .15s, transform .15s`,
-        transform: hover && !active ? 'translateY(-1px)' : 'none',
-      }}>
-      {/* ══ Ο ΤΙΤΛΟΣ ΚΑΙ ΤΟ ΠΟΣΟ ΕΠΑΨΑΝ ΝΑ ΜΟΙΡΑΖΟΝΤΑΙ ΓΡΑΜΜΗ ═══════════════
-          Ηταν `justify-content: space-between` σε μία σειρά: τίτλος αριστερά,
-          ποσό δεξιά. Οσο ο τίτλος ήταν κοντός δούλευε· «ΣΤΑΘΕΡΟ ΚΑΙ INTERNET»
-          όμως δεν χωρά δίπλα σε «4,98€» και τυλιγόταν γύρω του, με το «INTERNET»
-          να πέφτει κάτω από το «ΣΤΑΘΕΡΟ ΚΑΙ» και το ποσό να κρέμεται στα δεξιά.
-          Δίπλα του, οι κάρτες χωρίς ποσό είχαν τον τίτλο μόνο του σε ολόκληρη
-          γραμμή: οκτώ κάρτες, δύο διαφορετικές γεωμετρίες.
-
-          Τώρα κάθε κάρτα έχει την ίδια στοίβα, με ή χωρίς ποσό:
-
-              ΕΤΙΚΕΤΑ            ← πάντα μόνη της, σε όλο το πλάτος
-              45,68€ τον μήνα   ← το μοναδικό μεγάλο νούμερο
-              κάθε δίμηνο · 4    ← στο κάτω μέρος, ίδια θέση παντού
-
-          Ο τίτλος δεν παλεύει ποτέ με τον αριθμό και οι δύο μορφές κάρτας
-          διαβάζονται ως ένα πράγμα. ══ */}
-      <span style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-secondary)', lineHeight: 1.35 }}>
-          {card.label}
+    <button type="button" onClick={onOpen} aria-pressed={active}
+      className="ct-tile" data-known={card.known ? '' : undefined}>
+      <span className="ct-tile-top">
+        <span className="ct-tile-ico"><Icon size={17} aria-hidden="true" /></span>
+        <span className="ct-tile-label">{card.label}</span>
+        {!card.known && <Plus size={16} aria-hidden="true" className="ct-tile-add" />}
+      </span>
+      {/* Ο τίτλος δεν μοιράζεται ποτέ γραμμή με το ποσό: «Σταθερό και
+          internet» δεν χωρά δίπλα σε «4,98€» και τυλιγόταν γύρω του. Το ποσό
+          είναι ΑΝΑ ΜΗΝΑ και το λέει, αλλιώς «34,50€» πάνω από «κάθε δίμηνο»
+          διαβαζόταν ως το ποσό του διμήνου. */}
+      {card.monthly !== null && (
+        <span className="ct-tile-amount">
+          <span className="ct-tile-num">{fe(card.monthly)}</span>
+          <span className="ct-tile-unit">τον μήνα</span>
         </span>
-        {/* Η ΙΕΡΑΡΧΙΑ ΒΓΑΙΝΕΙ ΑΠΟ ΜΕΓΕΘΟΣ ΚΑΙ ΒΑΡΟΣ, ΟΧΙ ΑΠΟ ΧΡΩΜΑ. Το ποσό
-            είναι το μόνο μεγάλο νούμερο της κάρτας· ό,τι δεν γνωρίζουμε μένει
-            στο μέγεθος του κειμένου, όχι σε κόκκινο. */}
-        {card.monthly !== null && (
-          /* ═══ ΤΟ «ΤΟΝ ΜΗΝΑ» ΔΕΝ ΕΙΝΑΙ ΠΕΡΙΤΤΟ ΚΑΙ ΤΟ ΕΔΕΙΞΕ Η ΙΔΙΑ Η ΚΑΡΤΑ ═══
-             Το ποσό είναι ΑΝΑ ΜΗΝΑ και από κάτω του γράφεται «κάθε δίμηνο · από 4
-             λογαριασμούς». Δύο γραμμές, η μία με νούμερο και η άλλη με περίοδο: ο
-             αναγνώστης διαβάζει «34,50€ κάθε δίμηνο», δηλαδή το μισό από την
-             αλήθεια.
-
-             ΤΟ ΝΟΥΜΕΡΟ ΤΗΣ ΚΕΦΑΛΙΔΑΣ ΕΙΝΑΙ ΤΟ ΑΘΡΟΙΣΜΑ ΤΟΥΣ. Χωρίς τη μονάδα, το
-             «75,00€ τον μήνα» φαινόταν να μην προκύπτει από πουθενά: 34,50 και
-             40,50 «κάθε δίμηνο» δίνουν 37,50 τον μήνα, όχι 75. Με τη μονάδα, η
-             πρόσθεση γίνεται με το μάτι. */
-          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap' }}>
-            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em', lineHeight: 1.1 }}>
-              {fe(card.monthly)}
-            </span>
-            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>τον μήνα</span>
-          </span>
-        )}
-      </span>
-      {/* ΤΟ ΚΟΥΜΠΙ ΜΕΣΑ ΣΤΟ ΚΟΥΜΠΙ ΕΦΥΓΕ. Κάτω από κάθε κάρτα στεκόταν μια
-          γραμμή «Άνοιγμα» ή «Σύγκριση και λεπτομέρειες», βαμμένη σαν σύνδεσμος
-          — μέσα σε ένα <button> που είναι ΟΛΟΚΛΗΡΟ πατήσιμο. Οκτώ κάρτες, οκτώ
-          ψεύτικοι σύνδεσμοι που δεν πρόσθεταν ούτε προορισμό ούτε ενέργεια: το
-          μόνο που έκαναν ήταν να λένε δεύτερη φορά αυτό που λέει ήδη ο δείκτης
-          του ποντικιού και η ίδια η κάρτα. Ο τίτλος, το ποσό και ο πάροχος
-          μένουν· ο θόρυβος όχι. */}
-      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
-        {meta}
-      </span>
+      )}
+      <span className="ct-tile-meta">{meta}</span>
     </button>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
 export default function TabBills({
   propertyId, userId, legalForm = 'individual',
 }: Props) {
@@ -270,7 +232,12 @@ export default function TabBills({
           {showSkeleton
             ? <Skeleton w={110} h={24} r={T.radius.pill} />
             : strip.recurringPerMonth !== null && strip.recurringPerMonth > 0 && (
-              <span title="Το άθροισμα των καρτών από κάτω. Κάθε κατηγορία μετριέται από το ιστορικό της με διάμεσο και ο διμηνιαίος λογαριασμός μοιράζεται στους μήνες του. Κατηγορία χωρίς αρκετό ιστορικό δεν μπαίνει στο άθροισμα." style={{ padding: '4px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{fe(strip.recurringPerMonth)} τον μήνα</span>
+              <span className="ct-total" title="Το άθροισμα των καρτών από κάτω. Κάθε κατηγορία μετριέται από το ιστορικό της με διάμεσο και ο διμηνιαίος λογαριασμός μοιράζεται στους μήνες του. Κατηγορία χωρίς αρκετό ιστορικό δεν μπαίνει στο άθροισμα.">
+                <Repeat size={14} aria-hidden="true" />
+                <span>Πάγια</span>
+                <strong>{fe(strip.recurringPerMonth)}</strong>
+                <span>τον μήνα</span>
+              </span>
             )}
         </div>
         ) : undefined} />
@@ -294,7 +261,7 @@ export default function TabBills({
           δύο δίνουν 2+2+2+2: καμία σειρά μισή, σε κανένα πλάτος. */}
       <div ref={toolsRef} {...fixedCols(4, 10, 'stretch')}>
         {showSkeleton
-          ? [0, 1, 2, 3, 4, 5, 6, 7].map(i => <Skeleton key={i} h={92} r={T.radius.card} />)
+          ? [0, 1, 2, 3, 4, 5, 6, 7].map(i => <Skeleton key={i} h={128} r={T.radius.card} />)
           : strip.cards.map(c => (
             <ContractTile key={c.kind} card={c} active={tool === c.kind}
               onOpen={() => openTool(c.kind)} />
