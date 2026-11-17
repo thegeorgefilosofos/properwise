@@ -57,6 +57,27 @@ function shouldAskNotify(): boolean {
   return true;
 }
 
+// ══ ΤΟ ΚΟΜΜΑΤΙ ΤΗΣ ΒΑΣΗΣ ΔΕΝ ΑΝΕΒΑΙΝΕΙ ΜΕ ΚΑΘΕ ΣΕΛΙΔΑ ΣΤΟΝ ΔΙΑΚΟΜΙΣΤΗ ══════
+// Το `import()` πιο κάτω καλείται μόνο από πάτημα κουμπιού, άρα ΠΟΤΕ στον
+// διακομιστή. Ο Turbopack όμως το έβαζε στο γράφημα SSR του layout κι έτσι το
+// ίχνος ΚΑΘΕ σελίδας κουβαλούσε τον πελάτη `@supabase/supabase-js` (226 KB) που
+// δεν εκτελείται εκεί ποτέ: 50 σελίδες × 226 KB = 11,3 MB ανά ανάπτυξη. Μένει
+// μόνο στις 8 που τον εισάγουν στατικά (/dashboard, /accountant/…, /portal/…
+// κ.ά.). Μέτρηση 17/11/2026, `node scripts/server-weight.mjs` σε χτίσιμο
+// Turbopack: 189,2 → 180,6 MB από εδώ, 179,5 MB μαζί με το lib/supabase/lazy.ts.
+//
+// ΓΙΑΤΙ ΔΟΥΛΕΥΕΙ. Στο χτίσιμο του διακομιστή το `typeof window` γίνεται
+// σταθερά "undefined" και ο κλάδος κόβεται ΠΡΙΝ φτιαχτούν τα κομμάτια· το
+// `import()` δεν υπάρχει πια στο γράφημα. Στον περιηγητή η συνθήκη είναι πάντα
+// αληθής και ο κώδικας τρέχει όπως πριν. Πρέπει να μείνει ΚΛΑΔΟΣ (`if`): ένα
+// `return` νωρίτερα δεν κόβει τις εισαγωγές από κάτω του.
+function loadPush() {
+  if (typeof window !== 'undefined') {
+    return Promise.all([import('@/lib/push/enable'), import('@/lib/supabase/lazy')]);
+  }
+  return Promise.reject(new Error('Οι ειδοποιήσεις ενεργοποιούνται μόνο στον περιηγητή.'));
+}
+
 /** Είπε «όχι» τις τελευταίες 60 ημέρες; */
 function dismissedRecently(): boolean {
   try {
@@ -144,9 +165,7 @@ export default function PwaProvider() {
       // Η άδεια ζητιέται ΜΕΣΑ στο πάτημα: το Safari αρνείται όποια ζήτηση δεν
       // ξεκινά από χειρονομία. Ο κώδικας φορτώνεται μόνο τώρα.
       setBusy(true); setNote('');
-      const [{ enableDevicePush, ENABLE_REASONS }, { authClient }] = await Promise.all([
-        import('@/lib/push/enable'), import('@/lib/supabase/lazy'),
-      ]);
+      const [{ enableDevicePush, ENABLE_REASONS }, { authClient }] = await loadPush();
       const outcome = await enableDevicePush(await authClient());
       setBusy(false);
       if (outcome.ok) { setMode(null); return; }

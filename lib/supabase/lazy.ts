@@ -40,8 +40,15 @@ type Client = ReturnType<typeof createClient>;
  * σημείο κλήσης — άλλο πρόβλημα, όχι λύση.
  */
 export async function authClient(): Promise<Client> {
-  const { createClient } = await import('./client');
-  return createClient();
+  // ΚΛΑΔΟΣ ΜΟΝΟ ΓΙΑ ΤΟΝ ΠΕΡΙΗΓΗΤΗ, ΟΠΩΣ ΣΤΟ app/PwaProvider.tsx. Στον διακομιστή
+  // η συνθήκη διπλώνει σε ψευδή και το κομμάτι του πελάτη (226 KB) φεύγει από
+  // το ίχνος των σελίδων που το φορτώνουν μόνο από εδώ (/login, /signup,
+  // /reset-password, /tameio, /en). Στον περιηγητή τίποτα δεν αλλάζει.
+  if (typeof window !== 'undefined') {
+    const { createClient } = await import('./client');
+    return createClient();
+  }
+  throw new Error('Ο πελάτης της βάσης φορτώνεται μόνο στον περιηγητή.');
 }
 
 // ═══ ΧΩΡΙΣ COOKIE ΣΥΝΕΔΡΙΑΣ, ΚΑΝΕΝΑ ΦΟΡΤΩΜΑ ═════════════════════════════════
