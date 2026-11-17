@@ -13,7 +13,7 @@ import { emailShell, eyebrow, h, note, dataTable, listUnsubscribeHeaders } from 
 import { EMAIL_LIGHT as C } from '../_shared/emailPalette.ts'
 import { audience, batchKey, ensurePrefs, readPrefs } from '../_shared/marketingAudience.ts'
 ;
-import { createClient } from 'npm:@supabase/supabase-js@2.118.0'
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0'
 import { APP_URL } from '../_shared/site.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
 import { pct } from '../_shared/format.ts'

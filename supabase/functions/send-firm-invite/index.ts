@@ -24,7 +24,7 @@
 // η πλατφόρμα.
 // ─────────────────────────────────────────────────────────────────────────
 
-import { createClient } from 'npm:@supabase/supabase-js@2.118.0'
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 import { firmInviteEmail, firmInviteVerdict, type MyFirmRow } from '../_shared/firmInvite.ts'
 
