@@ -532,18 +532,20 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
            εικονίδιο σε απαλό accent, ουδέτερο κείμενο. */
         .exp-note {
           display: flex; align-items: flex-start; gap: 12px; margin-bottom: ${T.sp.lg}px;
-          padding: 14px 16px; border-radius: ${T.radius.card}px;
+          padding: 12px 14px; border-radius: ${T.radius.card}px;
           background: var(--bg-surface); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-sm);
         }
         .exp-note-ico {
-          flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
           background: var(--accent-soft); color: var(--accent);
         }
-        .exp-note > div { padding-top: 6px; }
+        .exp-note > div { padding-top: 3px; }
         .exp-meta > :not(.exp-date-inline) ~ .exp-due { flex-basis: 100%; }
         @media (max-width: 560px) { .exp-due { flex-basis: 100%; } }
         /* Η ράγα των φίλτρων έχει το πλάτος του περιεχομένου της στον
            υπολογιστή· στο τηλέφωνο όλο το πλάτος, με ίσα κομμάτια. */
+        /* Το πεδίο κάθεται δίπλα στο «Νέα δαπάνη» (T.h.md): ίδιο ύψος. */
+        .ledger-search .po-search-input { height: var(--h-md); }
         .ledger-rail { width: fit-content; max-width: 100%; }
         @media (max-width: 600px) { .ledger-rail { width: 100%; } }
         /* Στο τηλέφωνο, όταν υπάρχει το κουμπί της Νόας, η ράγα σταματά πριν από
@@ -595,7 +597,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
              συντήρηση» να χωρά σε μία σειρά. */
           .exp-row {
             grid-template-columns: 32px minmax(0, 1fr) auto 44px; column-gap: 10px; row-gap: 2px;
-            align-items: start; padding: 10px 4px 10px 10px;
+            align-items: start; padding: 7px 4px 7px 10px;
           }
           .exp-date { display: none; }
           .exp-date-inline { display: inline; }
@@ -607,7 +609,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           .exp-meta { grid-column: 2 / 4; grid-row: 2; margin-top: 0 !important; }
           .exp-amount { grid-column: 3; grid-row: 1; justify-self: end; line-height: 1.5; }
           .exp-more-cell { grid-column: 4; grid-row: 1 / span 2; align-self: center; justify-content: center; }
-          .exp-pay { grid-column: 2 / 4; grid-row: 3; justify-content: flex-start; margin-top: 8px; }
+          .exp-pay { grid-column: 2 / 4; grid-row: 3; justify-content: flex-start; margin-top: 6px; }
           .exp-pay:empty { display: none; }
         }
         /* ΚΑΤΩ ΑΠΟ ΤΑ 360 Ο ΤΙΤΛΟΣ ΤΥΛΙΓΕΤΑΙ ΑΝΤΙ ΝΑ ΚΟΠΕΙ. Με τη γραμματοσειρά
@@ -731,7 +733,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
       {!loading && !filter && missing.length > 0 && (
         <div className="exp-note">
           {/* Εικονίδιο σε απαλό accent αντί για γκρι τελεία (17/11/2026): παρατήρηση, όχι προειδοποίηση. */}
-          <span className="exp-note-ico"><CalendarClock size={16} aria-hidden="true" /></span>
+          <span className="exp-note-ico"><CalendarClock size={15} aria-hidden="true" /></span>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 600 }}>
               {missing.length === 1 ? 'Ένα πάγιο δεν έχει καταχωρηθεί ακόμη' : `${missing.length} πάγια δεν έχουν καταχωρηθεί ακόμη`}
@@ -774,7 +776,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           χρώμα προειδοποίησης. Μια αύξηση δεν είναι σφάλμα του χρήστη. */}
       {!loading && !filter && changed.length > 0 && (
         <div className="exp-note">
-          <span className="exp-note-ico"><TrendingUp size={16} aria-hidden="true" /></span>
+          <span className="exp-note-ico"><TrendingUp size={15} aria-hidden="true" /></span>
           <div style={{ minWidth: 0 }}>
             <div style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 600 }}>
               {changed.length === 1 ? 'Μία χρέωση άλλαξε ποσό' : `${changed.length} χρεώσεις άλλαξαν ποσό`}

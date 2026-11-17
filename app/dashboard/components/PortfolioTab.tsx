@@ -621,27 +621,27 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
               ό,τι μπήκε ως σήμερα, το άλλο ο ρυθμός σε ετήσια βάση. */}
           <div className="tn-sum-row">
             <span className="tn-sum-ico"><Wallet size={15} aria-hidden="true" /></span>
-            <span className="tn-sum-name">Έσοδα<small>{estimatedRows.length ? `${estimatedRows.length} ${estimatedRows.length === 1 ? 'ακίνητο' : 'ακίνητα'} με εκτίμηση` : 'εισπράξεις και διαμονές'}</small></span>
-            <span className="tn-sum-val">{eur(totalRevenue)}</span>
+            <span className="tn-sum-name">Έσοδα</span>
+            <span className="pf-sum-line"><span className="tn-sum-val">{eur(totalRevenue)}</span><small className={'pf-sum-note' + (estimatedRows.length ? '' : ' pf-opt')}>{estimatedRows.length ? `${estimatedRows.length} ${estimatedRows.length === 1 ? 'ακίνητο' : 'ακίνητα'} με εκτίμηση` : 'εισπράξεις και διαμονές'}</small></span>
           </div>
           <div className="tn-sum-row">
             <span className="tn-sum-ico"><Receipt size={15} aria-hidden="true" /></span>
-            <span className="tn-sum-name">Δαπάνες<small>ως σήμερα</small></span>
-            <span className="tn-sum-val">{eur(totalExpenses)}</span>
+            <span className="tn-sum-name">Δαπάνες</span>
+            <span className="pf-sum-line"><span className="tn-sum-val">{eur(totalExpenses)}</span><small className="pf-sum-note pf-opt">ως σήμερα</small></span>
           </div>
           {avgOcc != null && (
-            <div className="tn-sum-row">
+            <div className="tn-sum-row" title={`Μέση πληρότητα, ${shortRows.length} βραχυχρόνια`}>
               <span className="tn-sum-ico"><CalendarCheck size={15} aria-hidden="true" /></span>
-              <span className="tn-sum-name">Μέση πληρότητα<small>{`${shortRows.length} βραχυχρόνια`}</small></span>
-              <span className="tn-sum-val">{fp(avgOcc)}</span>
+              <span className="tn-sum-name">Πληρότητα</span>
+              <span className="pf-sum-line"><span className="tn-sum-val">{fp(avgOcc)}</span><small className="pf-sum-note pf-opt">{`μέση, ${shortRows.length} βραχυχρόνια`}</small></span>
             </div>
           )}
           {/* ΤΟ ΠΛΗΘΟΣ ΕΙΝΑΙ Ο ΑΡΙΘΜΟΣ, ΤΟ ΠΟΣΟ Η ΕΞΗΓΗΣΗ: «14 · 756,00€» σε ένα
               κελί ήταν δύο γεγονότα κολλημένα με μια τελεία. */}
           <div className="tn-sum-row" data-tone={totalOwed > 0 ? 'warning' : undefined}>
             <span className="tn-sum-ico"><ListTodo size={15} aria-hidden="true" /></span>
-            <span className="tn-sum-name">Εκκρεμότητες<small>{totalOwed > 0 ? `${eur(totalOwed)} ανοιχτά` : 'κανένα ανοιχτό ποσό'}</small></span>
-            <span className="tn-sum-val">{totalPending}</span>
+            <span className="tn-sum-name">Εκκρεμότητες</span>
+            <span className="pf-sum-line"><span className="tn-sum-val">{totalPending}</span><small className={'pf-sum-note' + (totalOwed > 0 ? '' : ' pf-opt')}>{totalOwed > 0 ? <>{eur(totalOwed)}<span className="pf-sum-more"> ανοιχτά</span></> : 'κανένα ανοιχτό ποσό'}</small></span>
           </div>
         </div>
       </section>
@@ -789,9 +789,10 @@ export default function PortfolioTab({ properties, userId, onSelectProperty }: P
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, ...TT.caption }}>
               <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 {r.pending > 0
-                  ? <span className="pf-pending-chip" data-tone={r.owed > 0 ? 'warning' : undefined}>
+                  ? <span className="pf-pending-chip" data-tone={r.owed > 0 ? 'warning' : undefined}
+                      title={`${r.pending} ${r.pending === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}${r.owed > 0 ? `, ${eur(r.owed)} ανοιχτά` : ''}`}>
                       <ListTodo size={13} aria-hidden="true" />
-                      {`${r.pending} ${r.pending === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}${r.owed > 0 ? ` · ${eur(r.owed)}` : ''}`}
+                      {`${r.pending}${r.owed > 0 ? ` · ${eur(r.owed)}` : ''}`}
                     </span>
                   : <span>Καμία εκκρεμότητα</span>}
                 {r.occupancy != null && <span>{`Πληρότητα ${fp(r.occupancy)}`}</span>}

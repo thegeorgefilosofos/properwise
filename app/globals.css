@@ -9061,10 +9061,36 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 .tn-sum-row[data-tone="warning"] .tn-sum-name small { color: var(--warning-on-container); }
 
 /* ═══ .pf-sum · Η ΣΥΝΟΨΗ ΤΟΥ ΧΑΡΤΟΦΥΛΑΚΙΟΥ (PortfolioTab) ═══════════════════
-   Ιδια κάρτα με τους Ενοικιαστές. Τέσσερις γραμμές αντί για τρεις, οπότε στον
-   υπολογιστή μπαίνουν 2+2 (με `auto-fit` έβγαιναν 3+1). Στο τηλέφωνο, όσο
-   χωράει, δύο στήλες συμπαγών γραμμών· στα στενά μία. */
-@media (min-width: 600px) { .pf-sum .tn-sum-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+   Ιδια κάρτα με τους Ενοικιαστές, αλλά τα κελιά είναι στοίβες (όνομα πάνω,
+   ποσό κάτω) ώστε να χωρούν δύο ανά σειρά στο τηλέφωνο και τέσσερα σε μία
+   σειρά στον υπολογιστή: η σύνοψη δεν είναι ψηλότερη από τα τέσσερα πλακίδια
+   που αντικατέστησε (scripts/e2e-vertical.mjs). Οι δευτερεύουσες εξηγήσεις
+   (`.pf-opt`) φεύγουν όπου δεν χωρούν· όσες λένε κατάσταση μένουν. */
+.pf-sum .tn-sum-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pf-sum .tn-sum-row {
+  grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 12px; row-gap: 2px;
+  align-items: center; padding: 10px 12px;
+}
+.pf-sum .tn-sum-ico { grid-row: 1 / span 2; width: 28px; height: 28px; border-radius: 8px; }
+.pf-sum .tn-sum-name { grid-column: 2; grid-row: 1; font-size: var(--fs-sm); color: var(--text-secondary); }
+.pf-sum-line { grid-column: 2; grid-row: 2; display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 6px; min-width: 0; }
+.pf-sum .tn-sum-val { font-size: var(--fs-md); }
+.pf-sum-note { font-size: var(--fs-xs); color: var(--text-tertiary); }
+.pf-sum-note.pf-opt { display: none; }
+.pf-sum .tn-sum-row { align-content: center; }
+@media (max-width: 420px) { .pf-sum-more { display: none; } .pf-sum-note { white-space: nowrap; } }
+.pf-sum .tn-sum-row[data-tone="warning"] .pf-sum-note { color: var(--warning-on-container); }
+.pf-sum .tn-sum-big { margin-top: 4px; }
+@media (max-width: 899px) {
+  .pf-sum { gap: 12px; padding: 20px; }
+  .pf-sum .tn-sum-rows { gap: 10px; }
+  .pf-sum .tn-sum-row { padding: 12px; }
+}
+@media (min-width: 900px) {
+  .pf-sum { grid-template-columns: minmax(0, 0.8fr) minmax(0, 3fr); padding: 14px 20px; gap: 24px; }
+  .pf-sum .tn-sum-row { padding: 8px 12px; }
+  .pf-sum .tn-sum-rows { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+}
 .pf-pending {
   display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 7px;
   border-radius: 10px; box-sizing: border-box; background: var(--bg-elevated); border: 1px solid var(--border-default);
@@ -9125,6 +9151,10 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 .ct-tile-unit { font-size: var(--fs-xs); color: var(--text-tertiary); }
 .ct-tile-meta { margin-top: auto; font-size: var(--fs-xs); line-height: 1.5; color: var(--text-tertiary); }
 /* Το άθροισμα των παγίων στην κεφαλίδα: απαλό accent με εικονίδιο. */
+@media (max-width: 600px) {
+  .ct-tile { min-height: 0; padding: 10px 14px; gap: 8px; }
+  .ct-tile-ico { width: 28px; height: 28px; border-radius: 8px; }
+}
 .ct-total {
   display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 100px;
   background: var(--accent-soft); border: 1px solid var(--accent-border); color: var(--accent);
