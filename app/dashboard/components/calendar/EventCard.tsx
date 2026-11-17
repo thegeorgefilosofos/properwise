@@ -201,7 +201,14 @@ export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, o
           </div>
         )}
       </div>
-      <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap: 4, flexShrink:0 }}>
+      {/* ═══ ΤΟ «⋯» ΔΙΠΛΑ ΣΤΗΝ ΗΜΕΡΟΜΗΝΙΑ, ΟΧΙ ΚΑΤΩ ΑΠΟ ΑΥΤΗΝ (16.11.2026) ════
+          Ζούσε τρίτο στη στήλη της ημερομηνίας. Σε αφή το δάπεδο των 44 το
+          ψήλωνε και η κάρτα αποκτούσε μια σειρά μόνο γι' αυτό: 44 κενά κάτω
+          από τίτλο και κατηγορία, με το κουμπί μόνο του στη γωνία. Τώρα
+          κάθεται δεξιά από την ημερομηνία, στην ίδια σειρά και τα αρνητικά
+          περιθώρια κρατούν τη ζώνη αφής χωρίς να μεγαλώνουν την κάρτα. */}
+      <div style={{ display:'flex', alignItems:'flex-start', gap: 4, flexShrink:0 }}>
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap: 4, paddingTop: 2 }}>
         {/* Το βάρος κάνει τη δουλειά που έκανε το χρώμα: εκπρόθεσμο και σημερινό
             διαβάζονται πιο έντονα, τα υπόλοιπα υποχωρούν. */}
         {/* ΤΟ ΕΚΠΡΟΘΕΣΜΟ ΛΕΓΕΤΑΙ ΜΕ ΤΗ ΛΕΞΗ ΤΟΥ. Εγραφε μόνο «πριν 7 ημέρες»,
@@ -211,12 +218,13 @@ export function EventCard({ event, onToggleStatus, onEdit, onDelete, selected, o
         <span style={{ fontSize:12, fontFamily: T.font.sans, fontVariantNumeric:'tabular-nums', fontWeight:due===0?600:400, color:due===0?'var(--text-primary)':'var(--text-secondary)' }}>
           {pastWord||due===0||due===1?dueTextStart(due):fmt(event.event_date)}{event.event_time?` · ${event.event_time}`:''}
         </span>
+      </div>
         {!bulkMode&&(
           /* ΚΡΥΒΕΤΑΙ Η ΟΨΗ, ΟΧΙ Η ΕΝΕΡΓΕΙΑ. Με `opacity: 0` από αιώρηση σε
              JavaScript το κουμπί έπαιρνε Tab και έμενε αόρατο· στην αφή δεν
              φαινόταν ποτέ. Ο κανόνας ζει στην `.cal-ev-act` (globals.css):
              αιώρηση, εστίαση πληκτρολογίου, ανοιχτό μενού, πάντα σε αφή. */
-          <div className="cal-ev-act" data-open={menuOpen||undefined} style={{ display:'flex', gap:2, alignItems:'center' }}>
+          <div className="cal-ev-act" data-open={menuOpen||undefined} style={{ display:'flex', gap:2, alignItems:'center', margin:'-8px -8px -8px 0' }}>
             <AddToCalendarMenu event={event} onEdit={isAuto?undefined:onEdit} onDelete={onDelete} onOpenChange={setMenuOpen}/>
           </div>
         )}

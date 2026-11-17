@@ -33,7 +33,6 @@ import {
 import {
   T,
   PageTitle,
-  KPIGrid,
   InfoBanner,
   Badge,
   Btn,
@@ -49,7 +48,6 @@ import {
   IconBtn,
   ChipToggle,
   fixedCols,
-  type KPIItem,
   TT,
   RecordCard,
   StatStrip,
@@ -57,8 +55,13 @@ import {
 import {
   Users,
   SearchX,
+  Search,
   ChevronRight,
   Trash2,
+  Wallet,
+  AlertTriangle,
+  ShieldCheck,
+  History,
 } from 'lucide-react';
 import {
   notify,
@@ -130,6 +133,7 @@ import { usePropertyRentTax } from './usePropertyRentTax';
 import { useLoad, type LoadTurn } from '@/app/hooks/useLoad';
 import { plural } from '@/lib/core/greek';
 import { ActionMenu } from '@/components/ActionMenu';
+import { avatar } from './clients/Bits';
 import { navLabel } from '@/lib/nav/labels';
 import { cleanDigits } from '@/lib/property/powerSupply';
 
@@ -337,18 +341,15 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   const currentTenants=useMemo(()=>tenants.filter(t=>!isPastTenant(t)),[tenants]);
   const pastTenants=useMemo(()=>tenants.filter(isPastTenant),[tenants]);
 
-  const kpis=useMemo<KPIItem[]>(()=>{
-    const currentRent=currentTenants.reduce((a,t)=>a+(t.monthly_rent||0),0);
-    const arrears=[...overdueByTenant.values()].reduce((a,e)=>a+e.amount,0);
-    const arrearsCount=[...overdueByTenant.values()].reduce((a,e)=>a+e.count,0);
-    const depositHeld=currentTenants.filter(t=>!t.deposit_returned).reduce((a,t)=>a+(t.deposit_amount||0),0);
-    return [
-      { label:'Τρέχον μηνιαίο ενοίκιο', value:fe(currentRent), tone:'neutral' },
-      { label:'Ληξιπρόθεσμη οφειλή', value:fe(arrears), tone:arrears>0?'negative':'neutral', sub:arrearsCount>0?`${fn(arrearsCount)} ${arrearsCount===1?'δόση':'δόσεις'}`:'καμία οφειλή' },
-      { label:'Εγγύηση σε κατοχή', value:fe(depositHeld), tone:'neutral' },
-      { label:'Προηγούμενοι ενοικιαστές', value:fn(pastTenants.length), tone:'neutral' },
-    ];
-  },[currentTenants,pastTenants,overdueByTenant]);
+  // Τα νούμερα της σύνοψης. Τα γράφει η `TenantSummary` πιο κάτω.
+  const summary=useMemo(()=>({
+    rent:currentTenants.reduce((a,t)=>a+(t.monthly_rent||0),0),
+    leases:currentTenants.length,
+    arrears:[...overdueByTenant.values()].reduce((a,e)=>a+e.amount,0),
+    arrearsCount:[...overdueByTenant.values()].reduce((a,e)=>a+e.count,0),
+    deposits:currentTenants.filter(t=>!t.deposit_returned).reduce((a,t)=>a+(t.deposit_amount||0),0),
+    past:pastTenants.length,
+  }),[currentTenants,pastTenants,overdueByTenant]);
 
   const filtered=useMemo(()=>{
     const q=search.trim().toLowerCase();
@@ -695,31 +696,31 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
           <Btn variant="primary" onClick={openAdd}>Νέος ενοικιαστής</Btn>
         </div>:undefined}/>
 
-      <KPIGrid items={kpis}/>
+      {tenants.length>0&&<TenantSummary {...summary}/>}
 
-      <div style={{ display:'flex', gap:10, flexWrap:'wrap' as const, alignItems:'center', marginBottom:16 }}>
-        {/* ΤΟ ΚΕΙΜΕΝΟ ΔΕΝ ΧΩΡΟΥΣΕ ΚΑΙ ΚΟΒΟΤΑΝ ΣΤΗ ΜΕΣΗ ΛΕΞΗΣ: ο χρήστης διάβαζε
-            «Αναζήτηση ονόματος, ΑΦΜ, τηλεφύ». Ένα πεδίο που δεν μπορεί να δείξει
-            ούτε τη δική του οδηγία δεν εμπνέει εμπιστοσύνη για τα υπόλοιπα.
-            Η υπόδειξη λέει τώρα μόνο ΤΙ ψάχνεται — που είναι και η χρήσιμη
-            πληροφορία — και το «Αναζήτηση» μετακόμισε στην ετικέτα για τον
-            αναγνώστη οθόνης, όπου ανήκει. */}
-        <input value={search} onChange={e=>setSearch(e.target.value)}
-          className="po-field field-wide" aria-label="Αναζήτηση ενοικιαστή" placeholder="Όνομα, ΑΦΜ ή τηλέφωνο"
-          style={{ background:'var(--bg-base)', border:'1px solid var(--border-control)', borderRadius:10, padding:'10px 14px', color:'var(--text-primary)', fontSize:14, height:T.h.lg, maxWidth:280, flex:'1 1 220px', outline:'none', boxSizing:'border-box', fontFamily:T.font.sans }}/>
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
-          {/* «Όλοι», «Τρέχων», «Προηγούμενοι»: δύο πληθυντικοί και ένας ενικός, σε
-              τρία διπλανά κουμπιά που φιλτράρουν ΛΙΣΤΑ. Το «Τρέχων» είναι σωστό
-              στη σήμανση ΕΝΟΣ ενοικιαστή — και εκεί μένει· εδώ μετρά πόσοι. */}
+      {/* ═══ ΑΝΑΖΗΤΗΣΗ ΚΑΙ ΦΙΛΤΡΟ, ΟΠΩΣ ΣΤΟ ΑΡΧΕΙΟ (16.11.2026) ═══════════════
+          Ηταν πεδίο χωρίς εικονίδιο με γωνίες 10 και, δίπλα, τρία ανεξάρτητα
+          πλακίδια με δικό τους περίγραμμα το καθένα. Στα 390 τα πλακίδια
+          έπεφταν σε δεύτερη σειρά με πλάτη 54, 86 και 108 και ογδόντα κενά
+          δεξιά: τρία κουμπιά που έμοιαζαν τρία άσχετα πράγματα, ενώ είναι ΜΙΑ
+          ερώτηση με τρεις απαντήσεις. Τώρα: ίδιο πεδίο με το Αρχείο (εικονίδιο,
+          σχήμα χαπιού) και τμηματικός επιλογέας σε ράγα, που στο τηλέφωνο
+          πιάνει όλο το πλάτος με τρία ίσα κομμάτια. Η υπόδειξη λέει ΤΙ
+          ψάχνεται· το «Αναζήτηση» ζει στην ετικέτα του αναγνώστη οθόνης. */}
+      {tenants.length>0&&<div className="po-tools">
+        <div className="po-search">
+          <Search size={15} aria-hidden="true" className="po-search-icon"/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} type="search"
+            className="po-search-input" aria-label="Αναζήτηση ενοικιαστή" placeholder="Όνομα, ΑΦΜ ή τηλέφωνο"/>
+        </div>
+        {/* «Όλοι», «Τρέχοντες», «Προηγούμενοι»: πληθυντικοί, γιατί φιλτράρουν
+            ΛΙΣΤΑ. Το «Τρέχων» μένει στη σήμανση ΕΝΟΣ ενοικιαστή. */}
+        <div role="group" aria-label="Ποιοι ενοικιαστές φαίνονται" className="po-rail">
           {([['all','Όλοι'],['current','Τρέχοντες'],['past','Προηγούμενοι']] as [typeof segment,string][]).map(([v,l])=>(
-            // shape «chip»: τα τρία φίλτρα κάθονται ελεύθερα στη γραμμή εργαλείων,
-            // χωρίς ράγα γύρω τους, οπότε το καθένα κρατά δικό του περίγραμμα.
-            // size «lg»: δίπλα τους κάθεται το πεδίο αναζήτησης με ύψος T.h.lg
-            // — το προεπιλεγμένο T.h.sm άφηνε τη σειρά 40 δίπλα σε 32.
-            <ChipToggle key={v} size="lg" on={segment===v} onClick={()=>setSegment(v)}>{l}</ChipToggle>
+            <ChipToggle key={v} shape="seg" on={segment===v} onClick={()=>setSegment(v)}>{l}</ChipToggle>
           ))}
         </div>
-      </div>
+      </div>}
 
       {tenants.length===0?(
         <EmptyState icon={<Users size={20}/>} title="Κανένας ενοικιαστής ακόμη" hint="Πρόσθεσε τον ενοικιαστή του ακινήτου για πλήρη παρακολούθηση μίσθωσης, ενοικίων, εγγύησης, φθορών και ανανέωσης." action={<div className="act-center" style={{ display:'flex', gap:8, flexWrap:'wrap' as const, justifyContent:'center' }}><Btn variant="primary" onClick={openAdd}>Νέος ενοικιαστής</Btn><Btn variant="secondary" onClick={()=>setLeaseOpen(true)}>Σύνταξη μισθωτηρίου</Btn></div>}/>
@@ -728,13 +729,18 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
           {filtered.length===0?(
             <EmptyState icon={<SearchX size={20}/>} title="Δεν βρέθηκαν ενοικιαστές" hint="Άλλαξε φίλτρο ή αναζήτηση."/>
           ):(
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap:14 }}>
+            // `auto-fill`, ΟΧΙ `auto-fit`: με έναν ενοικιαστή η κάρτα τεντωνόταν σε
+            // όλα τα 1.392 της σειράς και τα τρία ποσά της λωρίδας απείχαν 450
+            // το ένα από το άλλο. Τώρα κρατά πλάτος κάρτας και η σειρά γεμίζει
+            // όσο προστίθενται ενοικιαστές. `data-list`: εγγραφές του χρήστη.
+            <div data-list style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(100%, 360px), 1fr))', gap:14 }}>
               {filtered.map(t=>{
                 const od=overdueByTenant.get(t.id);
                 const d=daysLeft(t.lease_end);
                 return (
                   <RecordCard key={t.id} onOpen={()=>{setOpenId(t.id);setDossierTab('overview');}}
                     openLabel={`Άνοιγμα καρτέλας: ${t.full_name}`}
+                    lead={avatar(t.full_name, 42)}
                     tone={od?'negative':undefined}
                     title={t.full_name}
                     sub={<>
@@ -750,18 +756,27 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                       // ανοίγματος· χωρίς αυτό, η διαγραφή θα άνοιγε ΚΑΙ το ντοσιέ. Το
                       // `IconBtn` δέχεται ενέργεια χωρίς συμβάν, οπότε το φρένο ζει έξω του.
                       <div onClick={e=>e.stopPropagation()} style={{ display:'flex' }}>
-                        {/* ΚΑΔΟΣ, ΟΧΙ «×». Το «×» στη γωνία μιας κάρτας διαβάζεται «κλείσιμο»,
-                            όχι οριστική διαγραφή με πληρωμές και μισθωτήριο. Ο τόνος `danger`
-                            τον βάφει κόκκινο, όπως κάθε κάδο της `.po-ico`· το `label` λέει ΠΟΙΟΣ φεύγει. */}
-                        <IconBtn label={`Διαγραφή ενοικιαστή: ${t.full_name}`} title="Διαγραφή ενοικιαστή" tone="danger" onClick={()=>delTenant(t)}>
-                          <Trash2 size={16} aria-hidden="true"/>
-                        </IconBtn>
+                        {/* ΣΤΟ «⋯», ΟΧΙ ΚΟΚΚΙΝΟΣ ΚΑΔΟΣ ΣΤΗ ΓΩΝΙΑ (16.11.2026). Ο κάδος ήταν
+                            το μόνο χρώμα της κάρτας εκτός από την οφειλή: το πιο
+                            ορατό πράγμα σε κάθε ενοικιαστή ήταν η μη αναστρέψιμη
+                            ενέργεια. Οπως στους Πελάτες και στην Απογραφή, οι
+                            σπάνιες ενέργειες ζουν σε ήσυχο μενού· η διαγραφή μένει
+                            κόκκινη ΜΕΣΑ του με κάδο και με το όνομα στο λεκτικό
+                            και ζητά επιβεβαίωση όπως πριν. */}
+                        <ActionMenu iconOnly label={`Ενέργειες για ${t.full_name}`} items={[
+                          { key:'del', label:`Διαγραφή ενοικιαστή`, description:t.full_name, danger:true, icon:<Trash2 size={15} aria-hidden="true"/>, onClick:()=>delTenant(t) },
+                        ]}/>
                       </div>
                     }>
+                    {/* ΜΙΑ ΛΕΞΗ ΑΝΑ ΚΕΛΙ. «Μηνιαίο ενοίκιο» και «Ληξιπρόθεσμη οφειλή»
+                        έσπαγαν σε δύο σειρές στα 390 ΚΑΙ στην κάρτα των 455 του
+                        υπολογιστή και τα ποσά της ίδιας λωρίδας έπεφταν σε δύο
+                        ύψη. Το «μηνιαίο» το λέει ήδη ο δείκτης στην κορυφή· το
+                        «Ληξιπρόθεσμα» είναι η λέξη της καρτέλας Πληρωμών. */}
                     <StatStrip items={[
-                      { label:'Μηνιαίο ενοίκιο', value:fmt(t.monthly_rent), strong:true },
+                      { label:'Ενοίκιο', value:fmt(t.monthly_rent), strong:true },
                       { label:'Εγγύηση', value:fmt(t.deposit_amount) },
-                      { label:'Ληξιπρόθεσμη οφειλή', value:fmt(od?od.amount:0), tone:od?'negative':undefined },
+                      { label:'Ληξιπρόθεσμα', value:fmt(od?od.amount:0), tone:od?'negative':undefined },
                     ]} />
                     {/* ΤΟ ΡΑΝΤΕΒΟΥ ΤΗΣ ΑΝΑΠΡΟΣΑΡΜΟΓΗΣ ΛΕΓΕΤΑΙ. Το «Μηνιαίο ενοίκιο» από
                         πάνω δείχνει το ποσό που ΙΣΧΥΕΙ σήμερα· χωρίς αυτή τη γραμμή, η
@@ -1274,5 +1289,51 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       {/* Προσαρτάται μόνο ανοιχτό: κάθε άνοιγμα ξεκινά καθαρό (βλ. LeaseModal). */}
       {leaseOpen && <LeaseModal open onClose={()=>setLeaseOpen(false)} onSaved={()=>void refresh()} userId={userId} supabase={supabase} branding={branding} propertyId={propertyId} />}
     </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Η ΣΥΝΟΨΗ ΤΩΝ ΜΙΣΘΩΣΕΩΝ, ΜΙΑ ΚΑΡΤΑ ΑΝΤΙ ΓΙΑ ΤΕΣΣΕΡΑ ΠΛΑΚΙΔΙΑ (16.11.2026)
+// ─────────────────────────────────────────────────────────────────────────
+// Ηταν τέσσερα ίσα πλακίδια, ίδιο γκρι, ίδιο βάρος: το ενοίκιο, η οφειλή, οι
+// εγγυήσεις και ένα «Προηγούμενοι 0». Στα 390 έπιαναν δύο σειρές και μισή
+// οθόνη και τίποτα δεν έλεγε ποιο από τα τέσσερα θέλει κίνηση. Τώρα, όπως στον
+// Προϋπολογισμό: ΕΝΑΣ κύριος αριθμός (τι μπαίνει κάθε μήνα) και από κάτω
+// γραμμές με εικονίδιο, όπου η οφειλή φοράει το χρώμα κινδύνου σε απαλό φόντο
+// μόνο όταν υπάρχει. Οι προηγούμενοι ενοικιαστές εμφανίζονται μόνο όταν
+// υπάρχουν: ένα μηδέν εκεί δεν απαντά σε καμία ερώτηση. Ολα τα χρώματα είναι
+// τα tokens του θέματος (globals.css, `.tn-sum`), σε φωτεινό και σκούρο.
+// ═══════════════════════════════════════════════════════════════════════════
+function TenantSummary({ rent, leases, arrears, arrearsCount, deposits, past }: {
+  rent:number; leases:number; arrears:number; arrearsCount:number; deposits:number; past:number;
+}) {
+  return (
+    <section className="tn-sum" aria-label="Σύνοψη μισθώσεων">
+      <div className="tn-sum-hero">
+        <div className="tn-sum-label"><Wallet size={15} aria-hidden="true"/>Μηνιαίο ενοίκιο</div>
+        <div className="tn-sum-big">{fe(rent)}</div>
+        <div className="tn-sum-sub">{fn(leases)} {leases===1?'ενεργή μίσθωση':'ενεργές μισθώσεις'}</div>
+      </div>
+      <div className="tn-sum-rows">
+        <div className="tn-sum-row" data-tone={arrears>0?'negative':undefined}>
+          <span className="tn-sum-ico"><AlertTriangle size={15} aria-hidden="true"/></span>
+          <span className="tn-sum-name">Ληξιπρόθεσμα<small>{arrearsCount>0?`${fn(arrearsCount)} ${arrearsCount===1?'δόση':'δόσεις'}`:'καμία οφειλή'}</small></span>
+          <span className="tn-sum-val">{fe(arrears)}</span>
+        </div>
+        <div className="tn-sum-row">
+          <span className="tn-sum-ico"><ShieldCheck size={15} aria-hidden="true"/></span>
+          <span className="tn-sum-name">Εγγυήσεις σε κατοχή</span>
+          <span className="tn-sum-val">{fe(deposits)}</span>
+        </div>
+        {past>0&&(
+          <div className="tn-sum-row">
+            <span className="tn-sum-ico"><History size={15} aria-hidden="true"/></span>
+            <span className="tn-sum-name">Προηγούμενοι ενοικιαστές</span>
+            <span className="tn-sum-val">{fn(past)}</span>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

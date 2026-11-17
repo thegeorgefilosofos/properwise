@@ -165,7 +165,7 @@ export function FolderBrowser<F extends BrowserFile>(props: FolderBrowserProps<F
         <FolderIcon size={40}/>
         <p className="fb-empty-title">Κανένα αρχείο εδώ</p>
         <p className="fb-empty-hint">Ό,τι καταχωρείς μπαίνει μόνο του στον φάκελο του είδους και του παρόχου του, με το κοινό όνομα.</p>
-        <Btn variant="primary" onClick={props.onUpload}>Καταχώρηση αρχείου</Btn>
+        <Btn variant="primary" onClick={props.onUpload}>Νέο αρχείο</Btn>
       </div>
     );
   }

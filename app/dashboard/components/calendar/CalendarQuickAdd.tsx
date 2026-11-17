@@ -52,18 +52,22 @@ export function CalendarQuickAdd({ userId, framed = false }: {
   if (!first || !row?.token || feedStore.feedConnected(row)) return null
 
   const box = framed
-    ? { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.inner, padding: '10px 16px' }
+    ? { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: T.radius.card, padding: '12px 16px' }
     : { borderTop: '1px solid var(--border-subtle)', padding: '12px 18px' }
 
   return (
     <div style={{ ...box, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 220px', minWidth: 0 }}>
-        <CalendarPlus size={15} color="var(--accent)" aria-hidden="true" style={{ flexShrink: 0 }} />
+      {/* Το εικονίδιο στην ΠΡΩΤΗ σειρά της πρότασης: στο τηλέφωνο η πρόταση
+          πιάνει τρεις σειρές και, κεντραρισμένο, κρεμόταν στη μέση της. */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flex: '1 1 220px', minWidth: 0 }}>
+        <CalendarPlus size={15} color="var(--accent)" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
         <p style={{ margin: 0, fontSize: 'var(--fs-note)', lineHeight: 1.5, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
           Βάλε τις προθεσμίες στο ημερολόγιο του κινητού σου. Μία φορά, μετά ενημερώνεται μόνο του.
         </p>
       </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      {/* `.act-row`: στο τηλέφωνο τα δύο κουμπιά μοιράζονται ίσα τη σειρά,
+          αντί για 103 και 172 στοιχισμένα αριστερά με κενό δεξιά. */}
+      <div className="act-row" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <Btn href={feedStore.feedGoogleUrl(row.token)} newTab><Calendar size={15} />Google</Btn>
         <Btn href={feedStore.feedSubscribeUrl(row.token)}><CalendarDays size={15} />Apple / Outlook</Btn>
       </div>
