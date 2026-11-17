@@ -24,6 +24,7 @@ import type { ReactNode } from 'react';
 import { T, fe, Btn } from '@/components/Theme';
 import { cashSideNote, type CashPosition, type CashSide } from '@/lib/home/cash';
 import { navLabel } from '@/lib/nav/labels';
+import { ArrowDownLeft, ArrowUpRight, Wallet } from 'lucide-react';
 
 function Side({ label, side, kind, onOpen, actionLabel, action, compact }: {
   label: string; side: CashSide; kind: 'in' | 'out';
@@ -59,23 +60,28 @@ function Side({ label, side, kind, onOpen, actionLabel, action, compact }: {
       type="button"
       onClick={onOpen}
       title={actionLabel}
+      className="cash-btn"
       style={compact ? {
         display: 'flex', flexDirection: 'row', gap: 10, alignItems: 'center',
         width: '100%', minWidth: 0, minHeight: T.h.lg, padding: '0 18px',
         background: 'transparent', border: 'none', borderRadius: T.radius.inner,
-        textAlign: 'left', cursor: 'pointer', transition: 'background 0.15s',
+        textAlign: 'left', cursor: 'pointer',
       } : {
         display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start',
         width: '100%', minWidth: 0, padding: action ? '18px 20px 12px' : '18px 20px',
         background: 'transparent', border: 'none', borderRadius: T.radius.inner,
-        textAlign: 'left', cursor: 'pointer', transition: 'background 0.15s',
+        textAlign: 'left', cursor: 'pointer',
       }}
-      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
     >
-      <span style={{
-        fontFamily: T.font.sans, fontSize: 'var(--fs-base)', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-tertiary)',
-      }}>{label}</span>
+      {/* ΕΙΚΟΝΙΔΙΟ ΣΤΗΝ ΕΤΙΚΕΤΑ (17/11/2026), όπως στις συνόψεις των άλλων
+          καρτελών: η κατεύθυνση του χρήματος (μπαίνει, βγαίνει) με μια ματιά.
+          Το accent είναι ταυτότητα, όχι ετυμηγορία· το ποσό μένει ουδέτερο. */}
+      <span className="cash-label">
+        <span className="cash-ico" aria-hidden="true">
+          {compact ? <Wallet size={14} /> : kind === 'in' ? <ArrowDownLeft size={14} /> : <ArrowUpRight size={14} />}
+        </span>
+        {label}
+      </span>
       {/* Ο αριθμός κλιμακώνεται με το πλάτος του ΠΛΑΙΣΙΟΥ (container query), ώστε
           σε στενή οθόνη να μη σπάει σε δεύτερη γραμμή ούτε να ξεχειλίζει.
 
@@ -97,9 +103,10 @@ function Side({ label, side, kind, onOpen, actionLabel, action, compact }: {
           maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>{fe(side.total)}</span>
       )}
-      <span style={{
-        fontFamily: T.font.sans, fontSize: compact ? 'var(--fs-md)' : 12,
-        color: 'var(--text-secondary)', lineHeight: 1.45,
+      {/* Ο ΤΟΝΟΣ ΠΡΟΣΟΧΗΣ ΜΟΝΟ ΣΤΗ ΣΗΜΕΙΩΣΗ ΚΑΙ ΜΟΝΟ ΟΤΑΝ ΚΑΤΙ ΕΧΕΙ ΛΗΞΕΙ. Το
+          ποσό δεν βάφεται (βλ. πάνω)· η ληξιπρόθεσμη γραμμή είναι κατάσταση. */}
+      <span className="cash-note" data-tone={side.overdueCount > 0 ? 'warning' : undefined} style={{
+        fontFamily: T.font.sans, fontSize: compact ? 'var(--fs-md)' : 12, lineHeight: 1.45,
       }}>{note}</span>
     </button>
     {action && <div style={{ padding: '0 20px 18px' }}>{action}</div>}

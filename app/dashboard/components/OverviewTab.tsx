@@ -30,9 +30,22 @@ import { mergeLedger } from '@/lib/expenses/ledger'
 import { contractOverview } from '@/lib/contracts/overview'
 import { useAppPreferences } from './useAppPreferences'
 import {
-  T, TT, Btn, LinkBtn, SkeletonKPIs, Skeleton, EmptyState, KPIGrid, SecHdr, InfoBanner, fp, feOr, fd, type KPIItem,
+  T, TT, Btn, LinkBtn, SkeletonKPIs, Skeleton, EmptyState, SecHdr, InfoBanner, fp, feOr, fd, type KPIItem,
 } from '@/components/Theme'
-import { FileText } from 'lucide-react'
+import { FileText, Wallet, Receipt, Landmark, TrendingUp, Building2, Percent, Banknote, Coins } from 'lucide-react'
+
+/** Το εικονίδιο κάθε ποσού της χρονιάς, από την ετικέτα του. */
+function yearIcon(label: string, size: number) {
+  const I = label.startsWith('Έσοδα') ? Wallet
+    : label.startsWith('Καθαρό') ? TrendingUp
+    : /φόρου|Φόρος/.test(label) ? Landmark
+    : label.startsWith('Αξία') ? Building2
+    : label.startsWith('Δόση') ? Banknote
+    : label.startsWith('Εισπράξεις') ? Coins
+    : /απόδοση/i.test(label) ? Percent
+    : Receipt;
+  return <I size={size} aria-hidden="true" />;
+}
 import {
   resolveRent, resolveValue, computeYields, propertyDetailsComplete,
 } from '@/lib/billing/propertyFacts'
@@ -1112,7 +1125,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             Τα ίδια ζεύγη σε ΔΥΟ στήλες πέφτουν στις επτά σειρές και ζυγίζουν με
             το διπλανό — η ίδια πληροφορία, χωρίς το κενό. */}
         <div className="card">
-          <h3 className="section-label"><span className="section-dot"/> Στοιχεία ακινήτου</h3>
+          <h3 className="section-label"><Building2 size={15} aria-hidden="true" className="section-ico" />Στοιχεία ακινήτου</h3>
           {/* ═══ ΤΟ ΤΕΛΕΥΤΑΙΟ ΣΤΟΙΧΕΙΟ ΕΜΕΝΕ ΜΟΝΟ ΤΟΥ, ΜΕ ΤΡΥΠΑ ΔΙΠΛΑ ΤΟΥ ══════
               ΤΟ ΠΡΩΤΟ ΕΥΡΗΜΑ ΤΗΣ ΠΡΩΤΗΣ ΣΑΡΩΣΗΣ ΑΥΤΗΣ ΤΗΣ ΟΘΟΝΗΣ. Μετρημένο σε
               768 και 820: έντεκα στοιχεία σε δύο στήλες δίνουν 2+2+2+2+2+1 και
@@ -1153,7 +1166,7 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
             των δεκατριών στοιχείων δίπλα της: τρεις γραμμές λογαριασμών και από
             κάτω διακόσια εικονοστοιχεία άδειας κάρτας. */}
         <div className="card" style={{alignSelf:'start'}}>
-          <h3 className="section-label"><span className="section-dot"/> Λογαριασμοί ανά μήνα</h3>
+          <h3 className="section-label"><Receipt size={15} aria-hidden="true" className="section-ico" />Λογαριασμοί ανά μήνα</h3>
           {ledgerGap
             ? <EmptyState icon={<FileText size={20}/>} title="Δεν φορτώθηκαν οι λογαριασμοί" hint="Πάτησε «Δοκίμασε ξανά» στην ειδοποίηση πιο πάνω."/>
             : billAverages.length===0
@@ -1356,14 +1369,43 @@ export function OverviewTab({ prop, properties, userId, onNavigate, tabVisible, 
         // διαφορετικό όνομα και σε απόσταση ενός scroll.
         return (
           <>
-            {/* Το πλήθος στηλών ακολουθεί το πλήθος των πλακιδίων. Με σταθερό
-                τέσσερα, το ακίνητο χωρίς έσοδα άπλωνε ένα ή δύο πλακίδια σε
-                τέσσερις θέσεις και άφηνε τη μισή σειρά κενή. */}
-            <KPIGrid columns={Math.min(4, Math.max(2, items.length))} items={items} />
-            {/* ΤΡΙΑ ΠΛΑΚΙΔΙΑ ΣΕ ΤΡΕΙΣ ΣΤΗΛΕΣ, ΕΝΑ ΣΕ ΟΛΟ ΤΟ ΠΛΑΤΟΣ. Με `Math.max(2, …)`
-                ένα μόνο πλακίδιο (π.χ. η απόδοση, χωρίς δάνειο και διαμονές)
-                έπιανε τη μισή σειρά με τρύπα ίσου πλάτους δίπλα του. */}
-            {extra.length > 0 && <KPIGrid columns={Math.min(4, extra.length)} items={extra} />}
+            {/* ═══ ΜΙΑ ΣΥΝΟΨΗ ΑΝΤΙ ΓΙΑ ΕΠΤΑ ΙΣΑ ΓΚΡΙ ΠΛΑΚΙΔΙΑ (17/11/2026) ══════════
+                Δύο πλέγματα με έως επτά ισότιμα πλακίδια δεν έλεγαν ποιο ποσό
+                είναι το συμπέρασμα. Τώρα, όπως στο Χαρτοφυλάκιο και στους
+                Ενοικιαστές (.tn-sum): το καθαρό της χρονιάς είναι ο κύριος
+                αριθμός και τα υπόλοιπα κελιά με εικονίδιο. Χωρίς έσοδα κύριος
+                αριθμός είναι οι δαπάνες. Τα ίδια ποσά, οι ίδιες εξηγήσεις
+                (`title`) και τα ίδια `data-fact` για τον έλεγχο ίδιου αριθμού. */}
+            {(() => {
+              const all = [...items, ...extra];
+              const hero = income ? all.find(k => k.label === 'Καθαρό έτους') ?? all[0] : all[0];
+              const rows = all.filter(k => k !== hero);
+              const factAttrs = (k: KPIItem) => ({ 'data-fact': k.fact, 'data-fact-value': k.fact ? k.value : undefined });
+              const hidden = (k: KPIItem) => k.facts && Object.entries(k.facts).map(([n, v]) => <span key={n} hidden data-fact={n} data-fact-value={v} />);
+              return (
+                <section className="tn-sum ov-year" aria-label={`Η χρονιά ${year}`}>
+                  <div className="tn-sum-hero" title={hero.title} {...factAttrs(hero)}>
+                    {hidden(hero)}
+                    <div className="tn-sum-label">{yearIcon(hero.label, 15)}{hero.label}</div>
+                    <div className="tn-sum-big">{hero.value}</div>
+                    {hero.sub && <div className="tn-sum-sub">{hero.sub}</div>}
+                  </div>
+                  {rows.length > 0 && (
+                    <div className="tn-sum-rows" data-n={rows.length}>
+                      {rows.map(k => (
+                        <div key={k.label} className="tn-sum-row" title={k.title} {...factAttrs(k)}>
+                          {hidden(k)}
+                          <span className="tn-sum-ico">{yearIcon(k.label, 15)}</span>
+                          <span className="tn-sum-name">{k.label}</span>
+                          <span className="tn-sum-val">{k.value}</span>
+                          {k.sub && <small className="ov-year-note">{k.sub}</small>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              );
+            })()}
             {/* Ο ΦΟΡΟΣ ΤΟΥ ΧΑΡΤΟΦΥΛΑΚΙΟΥ ΜΕΝΕΙ ΣΗΜΕΙΩΣΗ, ΚΑΤΩ ΑΠΟ ΤΑ ΠΛΕΓΜΑΤΑ. Είναι
                 εξήγηση του «Μερίδιο φόρου», όχι μέγεθος: διαβάζεται αφού δεις τα
                 νούμερα, όχι ανάμεσά τους. */}

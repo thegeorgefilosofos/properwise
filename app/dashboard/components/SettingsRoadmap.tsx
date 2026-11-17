@@ -23,6 +23,7 @@ import { hy } from '@/components/Hyphen';
 import { canPrompt, runPrompt, onHomeScreen, INSTALL_EVENT } from '@/lib/pwa/install';
 import { notify, notifyError } from '@/components/Toast';
 import { BANK_LINK_TITLE, BANK_LINK_TAGLINE } from '@/lib/bank/link';
+import { Landmark } from 'lucide-react';
 
 type ChipTone = 'accent' | 'neutral';
 
@@ -284,18 +285,20 @@ export default function SettingsRoadmap({ userId, releaseFrom = 'free' }: { user
               className="acc-section acc-choice rm-item"
               aria-expanded={isOpen}
               onClick={() => toggle(i)}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'var(--highlight-inset), var(--elev-1)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.boxShadow = 'none'; }}
               style={{
                 display: 'flex', flexDirection: 'column',
-                width: '100%', minHeight: 168, textAlign: 'left', cursor: 'pointer',
-                background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                width: '100%', textAlign: 'left', cursor: 'pointer',
+                background: 'var(--bg-surface)',
                 borderRadius: T.radius.inner, padding: '12px 14px', fontFamily: T.font.sans,
                 animationDelay: `${120 + i * 55}ms`,
               }}
             >
-              {/* Chip πρώτο, ενιαία θέση σε όλα τα κελιά (ιεραρχία/τυποποίηση) */}
-              <div style={{ marginBottom: 8 }}>
+              {/* Chip πρώτο, ενιαία θέση σε όλα τα κελιά (ιεραρχία/τυποποίηση).
+                  Εικονίδιο δίπλα του, ουδέτερο: η λειτουργία δεν υπάρχει ακόμη.
+                  Χωρίς ελάχιστο ύψος: με ένα μόνο κελί σε όλο το
+                  πλάτος, τα 168 άφηναν μισή κάρτα κενή στον υπολογιστή. */}
+              <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="rm-item-ico" aria-hidden="true"><Landmark size={14} /></span>
                 <Chip tone={it.tone}>{it.chip}</Chip>
               </div>
 
