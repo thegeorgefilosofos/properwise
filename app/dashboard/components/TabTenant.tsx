@@ -740,7 +740,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                 return (
                   <RecordCard key={t.id} onOpen={()=>{setOpenId(t.id);setDossierTab('overview');}}
                     openLabel={`Άνοιγμα καρτέλας: ${t.full_name}`}
-                    lead={avatar(t.full_name, 40)}
+                    lead={avatar(t.full_name, 42)}
                     tone={od?'negative':undefined}
                     title={t.full_name}
                     sub={<>

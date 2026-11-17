@@ -9030,7 +9030,7 @@ details[open] > summary > .lp-foot-i::after { transform: rotate(0deg); }
 .tn-sum-label { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); font-weight: 600; color: var(--text-secondary); }
 .tn-sum-label svg { color: var(--accent); flex-shrink: 0; }
 .tn-sum-big {
-  margin-top: 8px; font-size: 32px; line-height: 1.1; font-weight: 700; letter-spacing: -0.025em;
+  margin-top: 8px; font-size: 28px; line-height: 1.1; font-weight: 700; letter-spacing: -0.025em;
   font-variant-numeric: tabular-nums; color: var(--text-primary);
 }
 .tn-sum-sub { margin-top: 4px; font-size: var(--fs-sm); color: var(--text-tertiary); }
