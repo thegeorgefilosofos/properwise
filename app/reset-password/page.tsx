@@ -211,7 +211,7 @@ export default function ResetPasswordPage() {
               </div>
             )}
             <p style={subs}>{R ? R.intro : 'Δώσε το email σου και θα σου στείλουμε έναν σύνδεσμο για να ορίσεις νέο κωδικό.'}</p>
-            <form onSubmit={sendReset} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <form method="post" onSubmit={sendReset} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label htmlFor="rp-email" style={label}>{A ? A.email : 'Ηλεκτρονικό ταχυδρομείο'}</label>
                 <input id="rp-email" name="email" autoComplete="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder={A ? A.emailPlaceholder : 'onoma@email.com'} style={field}
@@ -259,7 +259,7 @@ export default function ResetPasswordPage() {
             <BackLink home locale={locale} />
             <h1 style={h2s}>{R ? R.updateTitle : 'Όρισε νέο κωδικό'}</h1>
             <p style={subs}>{R ? R.updateIntro : `Διάλεξε έναν ισχυρό κωδικό, ${PASSWORD_MIN_LABEL.toLowerCase()}.`}</p>
-            <form onSubmit={updatePassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <form method="post" onSubmit={updatePassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label htmlFor="rp-password" style={label}>{R ? R.newPassword : 'Νέος κωδικός'}</label>
                 <div style={{ position: 'relative' }}>
