@@ -47,6 +47,7 @@ import { athensToday } from '@/lib/core/time';
 import { notifyError } from '@/components/Toast';
 import { SAY, failed } from '@/lib/core/dbError';
 import { useLoad } from '@/app/hooks/useLoad';
+import { Users, Bell, Palette, Accessibility, ShieldCheck, History, Database, Mail, UserRound, BadgeCheck } from 'lucide-react';
 import { AccessibilitySettings } from './AccessibilitySettings';
 import { useBillingWords } from './useBillingWords';
 
@@ -101,37 +102,29 @@ const divider = { borderTop: '1px solid var(--border-subtle)', paddingTop: 16, m
  * έπρεπε να το ανοίξει. Τρεις λέξεις δίπλα στον τίτλο λύνουν έξι ανοίγματα και
  * σβήνουν μόλις η ενότητα ανοίξει, γιατί τότε το λέει το ίδιο το περιεχόμενο.
  */
-function CollapsibleSection({ title, hint, defaultOpen = false, delay, children }: { title: string; hint?: string; defaultOpen?: boolean; delay?: string; children: React.ReactNode }) {
+function CollapsibleSection({ title, hint, icon, defaultOpen = false, children }: { title: string; hint?: string; icon: React.ReactNode; defaultOpen?: boolean; children: React.ReactNode }) {
   const [open, setOpen] = useState(defaultOpen);
   const panelId = useId();
+  // ═══ ΜΙΑ ΛΙΣΤΑ, ΟΧΙ ΕΞΙ ΚΑΡΤΕΣ (17/11/2026) ═══════════════════════════════
+  // Κάθε ενότητα ήταν δική της κάρτα με 16 κενό από κάτω· στο τηλέφωνο η
+  // υπόδειξη έπεφτε άλλοτε δίπλα και άλλοτε κάτω από τον τίτλο, ανάλογα με το
+  // μήκος της. Τώρα είναι γραμμές μιας ομάδας (`.set-group`), όπως στις
+  // ρυθμίσεις του τηλεφώνου: εικονίδιο στο απαλό accent, τίτλος, υπόδειξη
+  // πάντα από κάτω, βελάκι δεξιά. Το βελάκι δεν τυλίγεται ποτέ.
   return (
-    <Card className="acc-section" style={{ animationDelay: delay }}>
-      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-controls={panelId} className="po-sec-toggle"
-        style={{ appearance: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: open ? '1px solid var(--border-subtle)' : 'none', background: 'transparent', width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: 0, textAlign: 'left', marginBottom: open ? 16 : 0, paddingBottom: open ? 10 : 0 }}>
-        {/* ΤΟ ΒΕΛΑΚΙ ΔΕΝ ΤΥΛΙΓΕΤΑΙ ΠΟΤΕ. Ηταν τρίτο αδέλφι μέσα στην ίδια
-            σειρά με `flex-wrap`, οπότε στα 390 έπεφτε μόνο του κάτω από το
-            «Εμφάνιση και γλώσσα». Τίτλος και υπόδειξη ζουν τώρα σε δικό τους
-            μπλοκ που τυλίγει όσο χρειάζεται· το βελάκι στέκεται δεξιά του. */}
-        <span style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: 4, columnGap: 10 }}>
-        <span style={{ ...TT.label, flex: '999 1 auto', minWidth: 0 }}>{title}</span>
-        {/* ═══ Η ΥΠΟΣΗΜΕΙΩΣΗ ΠΑΕΙ ΣΕ ΔΕΥΤΕΡΗ ΓΡΑΜΜΗ ΑΝΤΙ ΝΑ ΚΟΠΕΙ ══════════════
-            Με τη γραμματοσειρά στα 12 σε δάχτυλο, το «Κωδικός και επαλήθευση δύο
-            βημάτων» δίπλα στο «Ασφάλεια» θέλει 4 εικονοστοιχεία παραπάνω απ' όσα
-            υπάρχουν στα 320· το «Εισαγωγή, εξαγωγή, λογιστής, διαγραφή»
-            δεκαεπτά. Εβγαινε «Κωδικός και επαλήθευση δύο…», δηλαδή μια πρόταση
-            που σταματά στη μέση.
-            Σε οθόνη 320 ο τίτλος και η περιγραφή του ΔΕΝ χωρούν στην ίδια σειρά,
-            όσο κι αν το θέλουμε. Τυλίγεται — τίτλος πάνω, περιγραφή από κάτω,
-            που είναι έτσι κι αλλιώς το φυσικό σχήμα. Οπου χωράει, τίποτα δεν
-            αλλάζει: το `flex-wrap` δεν τυλίγει ό,τι χωράει. */}
-        {hint && !open && <span style={{ ...TT.caption, minWidth: 0, flex: '1 1 auto', overflowWrap: 'anywhere' }}>{hint}</span>}
+    <div className="set-item" data-open={open || undefined}>
+      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-controls={panelId} className="po-sec-toggle set-item-btn">
+        <span className="set-item-ico" aria-hidden="true">{icon}</span>
+        <span className="set-item-text">
+          <span className="set-item-title">{title}</span>
+          {hint && !open && <span className="set-item-hint">{hint}</span>}
         </span>
-        <svg aria-hidden="true" focusable="false" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: 'transform 0.2s cubic-bezier(0.2,0,0,1)', transform: open ? 'rotate(180deg)' : 'none' }}>
+        <svg aria-hidden="true" focusable="false" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="set-item-chev">
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
-      <div id={panelId} hidden={!open}>{open && children}</div>
-    </Card>
+      <div id={panelId} hidden={!open} className="set-item-panel">{open && children}</div>
+    </div>
   );
 }
 
@@ -399,8 +392,8 @@ function DeleteAccount() {
  * στην επεξεργασία και η άλλη «Όνομα ή επωνυμία». Τέσσερις μικρές αποκλίσεις σε
  * δύο διαδοχικές γραμμές της ίδιας κάρτας. Τώρα μία φορά, με τα ίδια λόγια.
  */
-function IdentityRow({ label, value, empty, type = 'text', placeholder, locked = false, hint, onSave }: {
-  label: string; value: string; empty: string;
+function IdentityRow({ label, value, empty, type = 'text', placeholder, locked = false, hint, icon, onSave }: {
+  label: string; value: string; empty: string; icon: React.ReactNode;
   type?: 'text' | 'email'; placeholder: string;
   locked?: boolean; hint?: string;
   onSave: (v: string) => Promise<{ ok: boolean; text: string } | null>;
@@ -423,7 +416,9 @@ function IdentityRow({ label, value, empty, type = 'text', placeholder, locked =
     <div>
       {!edit ? (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: T.sp.lg }}>
-          <div style={{ minWidth: 0 }}>
+          {/* Το εικονίδιο της γραμμής, όπως στις ενότητες από κάτω (.set-item-ico). */}
+          <span className="set-item-ico" aria-hidden="true">{icon}</span>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ ...TT.bodySm }}>{label}</div>
             <div style={{ ...TT.body, fontWeight: 600, color: value ? 'var(--text-primary)' : 'var(--text-tertiary)', marginTop: 2, overflowWrap: 'anywhere' }}>{value || empty}</div>
           </div>
@@ -445,7 +440,7 @@ function IdentityRow({ label, value, empty, type = 'text', placeholder, locked =
         </div>
       )}
       {msg && <div style={{ ...TT.bodySm, marginTop: 8, color: msg.ok ? 'var(--text-secondary)' : 'var(--negative)' }}>{msg.text}</div>}
-      {hint && <div style={{ ...TT.caption, marginTop: 6 }}>{hint}</div>}
+      {hint && <div style={{ ...TT.caption, marginTop: 6, paddingLeft: edit ? 0 : 32 + T.sp.lg }}>{hint}</div>}
     </div>
   );
 }
@@ -496,9 +491,9 @@ function ProfileCard({ userId, email }: { userId: string; email: string }) {
       <SecHdr label="Προφίλ" />
       <SetList>
         <IdentityRow label="Ηλεκτρονικό ταχυδρομείο" value={email} empty={ABSENT}
-          type="email" placeholder="ονομα@email.com" onSave={saveEmail} />
+          type="email" placeholder="ονομα@email.com" icon={<Mail size={16} />} onSave={saveEmail} />
         <IdentityRow label="Όνομα ή επωνυμία" value={name} empty={ABSENT}
-          placeholder="Το όνομά σου" locked={nameLocked} onSave={saveName}
+          placeholder="Το όνομά σου" locked={nameLocked} icon={<UserRound size={16} />} onSave={saveName}
           hint={nameLocked
             ? `Το όνομα αλλάζει μία φορά τον μήνα. Ξανά σε ${daysLeft} ${daysLeft === 1 ? 'ημέρα' : 'ημέρες'}.`
             : NAME_LOCKED_TEXT} />
@@ -725,7 +720,6 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
   const atLimit = propLimit !== Infinity && (propertyCount ?? 0) >= propLimit;
   const nearLimit = propLimit !== Infinity && !atLimit && propLimit > 1 && (propertyCount ?? 0) >= propLimit - 1;
   const planMeta = PLANS[effPlan];
-  const isProPlan = effPlan === 'agency';
   const proEligible = planAtLeast(effPlan, 'agency');
 
   // ── Η ΕΞΑΓΩΓΗ ΡΥΘΜΙΣΕΩΝ ΗΤΑΝ ΧΩΜΑΤΕΡΗ ΤΗΣ ΒΑΣΗΣ ────────────────────────
@@ -805,11 +799,16 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
         {/* Τρέχον πλάνο */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid var(--border-subtle)', borderRadius: T.radius.pill, padding: '4px 12px' }}>
-              <span className={isProPlan ? 'acc-live-dot accent' : 'acc-live-dot'} style={{ width: 6, height: 6, background: isProPlan ? 'var(--accent)' : 'var(--positive)' }} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans }}>Πακέτο {planMeta.name}</span>
+            {/* ΤΟ ΠΑΚΕΤΟ ΕΙΝΑΙ Ο ΤΙΤΛΟΣ ΤΗΣ ΚΑΡΤΑΣ, ΟΧΙ ΕΝΑ ΣΗΜΑΤΑΚΙ (17/11/2026).
+                Ηταν χάπι 12 με τελεία, μικρότερο από το κουμπί δίπλα του. Τώρα
+                εικονίδιο στο απαλό accent, όνομα και από κάτω η περιγραφή. */}
+            <div className="set-plan">
+              <span className="set-item-ico" aria-hidden="true"><BadgeCheck size={16} /></span>
+              <span style={{ minWidth: 0 }}>
+                <span className="set-plan-name">Πακέτο {planMeta.name}</span>
+                <span className="set-plan-tag">{planMeta.tagline}</span>
+              </span>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: T.font.sans, marginTop: 8, lineHeight: 1.5 }}>{planMeta.tagline}</div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Btn variant={showManage ? 'secondary' : 'primary'} onClick={() => showManage ? setShowManage(false) : openManage()}>
@@ -979,18 +978,19 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           κινητού που δεν έχει βγει ακόμη.
           Πρώτα ό,τι ρυθμίζεται, μετά ό,τι έρχεται και ό,τι μας λες. */}
 
+      <Card className="acc-section set-group" style={{ animationDelay: '140ms', padding: 0 }}>
       {/* ── ΟΡΓΑΝΙΣΜΟΣ & ΟΜΑΔΑ (Επαγγελματίας ή μέλος ομάδας) ───────────── */}
       {(profileType === 'professional' || inOrg) && (
-        <CollapsibleSection title="Οργανισμός και ομάδα" hint="Μέλη και δικαιώματα" delay="110ms">
+        <CollapsibleSection title="Οργανισμός και ομάδα" hint="Μέλη και δικαιώματα" icon={<Users size={16} />}>
           <OrgTeam userId={userId} />
         </CollapsibleSection>
       )}
 
-      <CollapsibleSection title="Ειδοποιήσεις" hint="Υπενθυμίσεις και μηνύματα" delay="140ms">
+      <CollapsibleSection title="Ειδοποιήσεις" hint="Υπενθυμίσεις και μηνύματα" icon={<Bell size={16} />}>
         <NotificationSettings userId={userId} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Εμφάνιση και γλώσσα" hint="Θέμα και προθεσμίες" delay="170ms">
+      <CollapsibleSection title="Εμφάνιση και γλώσσα" hint="Θέμα και προθεσμίες" icon={<Palette size={16} />}>
         <SetList>
           <SetRow title="Θέμα" desc="Σκοτεινό ή φωτεινό, για την εφαρμογή. Το site, η σύνδεση και το ταμείο μένουν σκοτεινά." control={<ThemeToggle />} />
           {/* Η ΡΥΘΜΙΣΗ «ΔΕΚΑΔΙΚΑ ΣΤΑ ΠΟΣΑ» ΕΦΥΓΕ ΚΑΙ ΔΕΝ ΕΛΕΙΨΕ ΣΕ ΚΑΝΕΝΑΝ.
@@ -1032,19 +1032,19 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
         </SetList>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Προσβασιμότητα" hint="Κείμενο, αντίθεση, κίνηση, φωνή" delay="185ms">
+      <CollapsibleSection title="Προσβασιμότητα" hint="Κείμενο, αντίθεση, κίνηση, φωνή" icon={<Accessibility size={16} />}>
         <AccessibilitySettings />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ασφάλεια" hint="Κωδικός και επαλήθευση δύο βημάτων" delay="200ms">
+      <CollapsibleSection title="Ασφάλεια" hint="Κωδικός και επαλήθευση δύο βημάτων" icon={<ShieldCheck size={16} />}>
         <SecuritySettings />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Δραστηριότητα" hint="Το ιστορικό των ενεργειών σου" delay="230ms">
+      <CollapsibleSection title="Δραστηριότητα" hint="Το ιστορικό των ενεργειών σου" icon={<History size={16} />}>
         <ActivityLog />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Δεδομένα και απόρρητο" hint="Εισαγωγή, εξαγωγή, λογιστής, διαγραφή" delay="260ms">
+      <CollapsibleSection title="Δεδομένα και απόρρητο" hint="Εισαγωγή, εξαγωγή, λογιστής, διαγραφή" icon={<Database size={16} />}>
         <SetList>
           {/* Η ΕΙΣΑΓΩΓΗ ΠΡΩΤΗ. Ολα τα υπόλοιπα εδώ βγάζουν δεδομένα προς τα έξω
               ή τα κλείνουν· αυτό είναι το μόνο που τα φέρνει μέσα και είναι το
@@ -1079,6 +1079,8 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           <DeleteAccount />
         </SetList>
       </CollapsibleSection>
+
+      </Card>
 
       {/* ── ΤΙ ΕΡΧΕΤΑΙ ΚΑΙ ΜΕΤΑ Η ΓΝΩΜΗ ΣΟΥ ─────────────────────────────
           Στο τέλος, όχι επειδή μετρούν λιγότερο, αλλά επειδή δεν είναι

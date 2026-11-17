@@ -29,6 +29,7 @@ import type { Forecast, ForecastGap, ForecastLine, ForecastMonth } from '@/lib/h
 import { track, PRODUCT_EVENTS, forecastProps } from '@/lib/analytics/events';
 import type { createClient } from '@/lib/supabase/client';
 import { niceTicks } from './LoanShared';
+import { CalendarRange } from 'lucide-react';
 
 type SupaClient = ReturnType<typeof createClient>;
 
@@ -157,7 +158,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
           ούτε περιθώριο ούτε γραμματοσειρά και κολλούσε στην αριστερή άκρη. Ο
           πάγκος δεν το έβλεπε: εκεί το <style jsx> αποδίδεται καθολικό. */}
       <div className="fc-head">
-        <h2 className="fc-title">Οι επόμενοι 12 μήνες</h2>
+        <h2 className="fc-title"><CalendarRange size={15} aria-hidden="true" className="section-ico" />Οι επόμενοι 12 μήνες</h2>
         <span className="fc-sub">Από μισθώσεις, δόσεις και λογαριασμούς που ήδη υπάρχουν</span>
       </div>
       {isEmpty ? (
@@ -361,7 +362,7 @@ export default function ForecastCard({ forecast, propertyId, onNavigate, tabVisi
     gap: 4px 12px; padding: 14px 18px 12px; border-bottom: 1px solid var(--border-subtle);
   }
   .fc-title {
-    margin: 0; font-family: ${T.font.sans}; font-size: var(--fs-base); font-weight: 600; line-height: 1.3; color: var(--text-secondary);
+    margin: 0; display: inline-flex; align-items: center; gap: 8px; font-family: ${T.font.sans}; font-size: var(--fs-base); font-weight: 600; line-height: 1.3; color: var(--text-secondary);
   }
   .fc-sub { font-family: ${T.font.sans}; font-size: 12px; color: var(--text-tertiary); min-width: 0; }
   .fc-body { padding: 16px 18px 12px; }

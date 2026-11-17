@@ -8,6 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState } from 'react';
 import { T, Btn } from '@/components/Theme';
+import { LifeBuoy } from 'lucide-react';
 import { notify } from '@/components/Toast';
 import { PLANS, PLAN_ORDER, type PlanId } from '@/lib/billing/plans';
 import { PRIORITY_FROM } from '@/lib/inbound/priority';
@@ -53,10 +54,15 @@ export default function SupportForm({ plan = 'free' }: { plan?: PlanId }) {
 
   return (
     <div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, letterSpacing: '-0.01em' }}>
-        Υποστήριξη
+      {/* Ιδια κεφαλίδα με το «Κάνε το PROPERWISE καλύτερο» από κάτω: εικονίδιο
+          στο απαλό accent και τίτλος, ώστε οι δύο κάρτες να διαβάζονται ζευγάρι. */}
+      <div className="set-head">
+        <span className="set-head-ico" aria-hidden="true"><LifeBuoy size={15} /></span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: T.font.sans, letterSpacing: '-0.01em' }}>
+          Υποστήριξη
+        </span>
       </div>
-      <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: '6px 0 0' }}>
+      <p style={{ fontSize: 'var(--fs-note)', color: 'var(--text-tertiary)', fontFamily: T.font.sans, lineHeight: 1.5, margin: '8px 0 0' }}>
         Η απάντηση έρχεται στο email του λογαριασμού σου.
         {priority && ` Με το «${PLANS[plan].name}» τα μηνύματα από εδώ απαντώνται κατά προτεραιότητα.`}
       </p>

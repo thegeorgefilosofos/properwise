@@ -41,6 +41,7 @@
 
 import type { ReactNode } from 'react';
 import { T, fe } from '@/components/Theme';
+import { ListChecks } from 'lucide-react';
 import { itemDue, overdueCount, type AgendaItem } from '@/lib/home/agenda';
 
 export default function AgendaPanel({ items, total, onNavigate, incomplete = false, footer }: {
@@ -70,7 +71,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           πάνω, κάρτα από κάτω) έσπαγαν τη συνοχή και πρόσθεταν 26px κενό. */}
       <div className="agenda-head">
         {/* Τίτλος ενότητας για τον αναγνώστη οθόνης· η εμφάνιση μένει ίδια. */}
-        <h2 className="agenda-title">Τι χρειάζεται τώρα</h2>
+        <h2 className="agenda-title"><ListChecks size={15} aria-hidden="true" className="section-ico" />Τι χρειάζεται τώρα</h2>
         {items.length > 0 && (
           <span className="agenda-count">
             {late > 0
@@ -221,7 +222,7 @@ export default function AgendaPanel({ items, total, onNavigate, incomplete = fal
           flex-wrap: wrap;
         }
         .agenda-title {
-          margin: 0;
+          margin: 0; display: inline-flex; align-items: center; gap: 8px;
           font-family: ${T.font.sans}; font-size: var(--fs-base); font-weight: 600; line-height: 1.3; color: var(--text-secondary);
         }
         .agenda-count {
