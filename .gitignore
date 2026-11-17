@@ -92,6 +92,10 @@ docs/marketing/shorts/out/**/*
 !docs/marketing/shorts/out/**/
 !docs/marketing/shorts/out/*/texts.md
 
+# Το καμάρι (.claude/skills/kamari): στο git μένουν τα κείμενα κάθε φακέλου. Ο
+# work/ (καρέ, μίγμα, φύλλα ελέγχου) ξαναβγαίνει από το film.html του φακέλου.
+docs/marketing/kamari/*/work/
+
 # 13/11/2026, απόφαση ιδιοκτήτη: οι εικόνες, τα PDF και τα βίντεο του μάρκετινγκ
 # ζουν έξω από το αποθετήριο. Στο git μένουν τα κείμενα (keimena/, README) και τα
 # scripts που τα παράγουν (scripts/marketing/, scripts/brand/store.ts,
