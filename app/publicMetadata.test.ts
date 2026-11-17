@@ -159,5 +159,11 @@ function ogFiles(dir: string): string[] {
 const extraOg = ogFiles('app');
 ok(`καμία κάρτα κοινοποίησης ως opengraph-image.tsx, ούτε στη ρίζα (βρέθηκαν: ${extraOg.join(', ') || 'καμία'})`, extraOg.length === 0);
 
+// Μακρύς τίτλος: χωρίς σήμα, για να μην τον κόψει η Google.
+{
+  const long = 'Υπολογισμός ΕΝΦΙΑ 2026 για διαμέρισμα, μονοκατοικία και οικόπεδο σε ένα λεπτό';
+  const lm = publicMetadata({ title: long, description: 'd', url: `${SITE}/x`, type: 'article' });
+  ok('μακρύς τίτλος μένει χωρίς σήμα', JSON.stringify(lm.title) === JSON.stringify({ absolute: long }));
+}
 console.log(`publicMetadata: ✓ ${passed} · ✗ ${failed}`);
 if (failed) { for (const f of fails) console.log('  ✗ ' + f); process.exit(1); }
