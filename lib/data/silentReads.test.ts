@@ -30,7 +30,7 @@ const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.er
 /** Ψεύτικη αλυσίδα PostgREST: κάθε φίλτρο επιστρέφει τον εαυτό της. */
 function fakeDb(answer: { data: unknown; error: unknown }) {
   const chain: Record<string, unknown> = {};
-  for (const m of ['select', 'eq', 'neq', 'gte', 'lte', 'or', 'order', 'limit', 'in', 'is']) {
+  for (const m of ['select', 'eq', 'neq', 'gte', 'lte', 'or', 'order', 'limit', 'range', 'in', 'is']) {
     chain[m] = () => chain;
   }
   chain.then = (res: (v: unknown) => unknown) => Promise.resolve(answer).then(res);

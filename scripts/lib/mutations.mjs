@@ -26,6 +26,8 @@ const MUT_WF = '.github/workflows/__mut_backup_logs__.yml'
 const wfRun = (body) => `name: m\non: workflow_dispatch\njobs:\n  m:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n${body.split('\n').map(l => `          ${l}`).join('\n')}\n`
 
 export const MUTATIONS = {
+  // Το `.limit(2000)` του προγραμματιστή της ουράς, ξαναφερμένο: ο διακομιστής το κόβει στις 1.000.
+  'server-row-cap': { add: 'lib/__mut__.ts', content: "export const q = (db: any) => db.from('email_outbox').select('id').limit(2000)\n" },
   // Προστασία ιδιοκτήτη (12/11/2026): κάθε κανόνας του φύλακα, χωριστά.
   'enforcement-rules': { every: [
     // απόσπασμα «διορθωμένο» με το χέρι: δεν βρίσκεται πια στο στιγμιότυπο
@@ -601,7 +603,7 @@ export const MUTATIONS = {
   // ανύπαρκτο αρχείο συνεχίζει να λέει «ελεγμένο».
   // Ο κατάλογος που ξέμεινε πίσω: ένα μήνυμα λιγότερο στο δεσμευμένο έγγραφο
   // από όσα υπάρχουν στον κώδικα. Ακριβώς ό,τι έγινε με το «106 emails».
-  'message-catalog': { file: 'docs/KATALOGOS-MINYMATON.md', from: '| **ΣΥΝΟΛΟ** | **119** | |', to: '| **ΣΥΝΟΛΟ** | **106** | |' },
+  'message-catalog': { file: 'docs/KATALOGOS-MINYMATON.md', from: '| **ΣΥΝΟΛΟ** | **120** | |', to: '| **ΣΥΝΟΛΟ** | **106** | |' },
 
   // Το πράσινο πάνω στο κόκκινο: η απάντηση του γραψίματος πετιέται και η
   // επιτυχία ανακοινώνεται ούτως ή άλλως.
@@ -910,7 +912,7 @@ export const MUTATIONS = {
   // το SECRET_PATH. Και τα δύο σκέλη: το `plirosa` σβήνεται από τη λίστα· μια
   // νέα σελίδα [token] μπαίνει κάτω από δημόσιο φάκελο.
   'secret-path-analytics': { every: [
-    { file: 'lib/analytics/pageUrl.ts', from: '|epivevaiosi-email|plirosa|auth)', to: '|epivevaiosi-email|auth)' },
+    { file: 'lib/analytics/pageUrl.ts', from: '|epivevaiosi-email|plirosa|doro|auth)', to: '|epivevaiosi-email|doro|auth)' },
     { add: 'app/odigos/[token]/page.tsx', content: tsx('    <p>κλειδί</p>') },
   ] },
 

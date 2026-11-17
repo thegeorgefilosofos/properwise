@@ -35,7 +35,12 @@ import { ledgerSource } from '@/lib/data/ledgerSource'
 import ExpenseCompare from './ExpenseCompare';
 import type { Spend } from '@/lib/expenses/compare';
 import { T, TT, fe, fn, Btn, LinkBtn, Card, EmptyState, Modal, Skeleton, fixedCols, ABSENT_DATE, Stat, ChipToggle } from '@/components/Theme';
-import { ChevronRight } from 'lucide-react';
+import {
+  ChevronRight, Search, Check, CalendarClock, TrendingUp, Pencil, Trash2, Receipt, Zap, Droplet, Flame, Thermometer, Wifi, Building2, ShieldCheck,
+  Lock, Repeat, Wrench, Plug, Sparkles, Sprout, ArrowUpDown, Snowflake, Waves, Bug, Hammer, Landmark, Scale,
+  Ruler, Handshake, Percent, PaintRoller, Refrigerator, Armchair, type LucideIcon,
+} from 'lucide-react';
+import { ActionMenu } from '@/components/ActionMenu';
 import { notify, notifyError } from '@/components/toastBus';
 import { confirmDialog } from '@/components/ConfirmDialog';
 import { saved } from '@/components/dbWrite';
@@ -490,27 +495,72 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
            με ημερομηνία μένουν στοιχισμένες στα 54 και μόνο η σπάνια εξαίρεση
            ανοίγει όσο χρειάζεται. */
         .exp-row {
-          display: grid; grid-template-columns: minmax(54px, auto) 1fr auto auto; gap: 14px; align-items: center;
-          padding: 13px 14px; border-radius: ${T.radius.inner}px;
+          display: grid; grid-template-columns: minmax(54px, auto) 32px minmax(0, 1fr) auto auto 36px; gap: 14px; align-items: center;
+          padding: 12px 14px; border-radius: ${T.radius.inner}px;
           border: 1px solid transparent; background: transparent;
-          transition: background .15s, border-color .15s, transform .15s;
+          transition: background .15s, border-color .15s;
         }
         @media (hover: hover) {
-          .exp-row:hover {
-            background: var(--bg-elevated); border-color: var(--border-subtle);
-            transform: translateY(-1px);
-          }
+          .exp-row:hover { background: var(--bg-elevated); border-color: var(--border-subtle); }
         }
         .exp-row:focus-within { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
-        /* ΤΟ ΚΕΝΟ ΕΦΥΓΕ ΑΠΟ ΤΟ ΕΝΣΩΜΑΤΩΜΕΝΟ ΣΤΥΛ ΚΑΙ ΗΡΘΕ ΕΔΩ. Οσο γραφόταν
-           «gap: 10» πάνω στο στοιχείο, ο κανόνας του κινητού που το κατεβάζει
-           στα 4 δεν είχε καμία ελπίδα: το ενσωματωμένο στυλ κερδίζει κάθε
-           κανόνα φύλλου. Τα τρία κουμπιά μοιράζονταν 216 αντί για 228 και το
-           «Επεξεργασία», που θέλει 78, έπαιρνε 72. */
-        .exp-actions { gap: 10px; }
-        .exp-act { opacity: 0; transition: opacity .15s; }
-        .exp-row:hover .exp-act, .exp-row:focus-within .exp-act { opacity: 1; }
-        @media (hover: none) { .exp-act { opacity: 1; } }
+        /* Το εικονίδιο της κατηγορίας: απαλό accent, ή τόνος προσοχής όταν η
+           γραμμή έχει λήξει. */
+        .exp-ico {
+          width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+          background: var(--accent-soft); color: var(--accent);
+        }
+        .exp-row[data-late] .exp-ico { background: var(--warning-soft); color: var(--warning); }
+        .exp-due { color: var(--text-tertiary); font-weight: 600; }
+        .exp-due[data-late] { color: var(--warning-on-container); }
+        .exp-date-inline { display: none; }
+        .exp-meta:not(:has(> :not(.exp-date-inline))) { display: none !important; }
+        /* «Πληρώθηκε»: η μία ενέργεια της γραμμής, σε απαλό accent, ύψος 32
+           (στο δάχτυλο 44 με το δάπεδο αφής της εφαρμογής). */
+        .exp-pay { display: flex; justify-content: flex-end; }
+        .exp-pay-btn {
+          display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; box-sizing: border-box;
+          border-radius: 100px; border: 1px solid var(--accent-border); background: var(--accent-soft); color: var(--accent);
+          font-family: inherit; font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; cursor: pointer;
+          transition: background .15s, border-color .15s;
+        }
+        .exp-pay-btn:hover:not(:disabled) { border-color: var(--accent); }
+        .exp-pay-btn:disabled { opacity: .6; cursor: default; }
+        .exp-pay-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .exp-more-cell { display: flex; justify-content: flex-end; }
+        /* Οι δύο παρατηρήσεις («τι λείπει», «τι άλλαξε ποσό»): επιφάνεια κάρτας,
+           εικονίδιο σε απαλό accent, ουδέτερο κείμενο. */
+        .exp-note {
+          display: flex; align-items: flex-start; gap: 12px; margin-bottom: ${T.sp.lg}px;
+          padding: 12px 14px; border-radius: ${T.radius.card}px;
+          background: var(--bg-surface); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-sm);
+        }
+        .exp-note-ico {
+          flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+          background: var(--accent-soft); color: var(--accent);
+        }
+        .exp-note > div { padding-top: 3px; }
+        .exp-meta > :not(.exp-date-inline) ~ .exp-due { flex-basis: 100%; }
+        @media (max-width: 560px) { .exp-due { flex-basis: 100%; } }
+        /* Η ράγα των φίλτρων έχει το πλάτος του περιεχομένου της στον
+           υπολογιστή· στο τηλέφωνο όλο το πλάτος, με ίσα κομμάτια. */
+        /* Το πεδίο κάθεται δίπλα στο «Νέα δαπάνη» (T.h.md): ίδιο ύψος. */
+        .ledger-search .po-search-input { height: var(--h-md); }
+        .ledger-rail { width: fit-content; max-width: 100%; }
+        @media (max-width: 600px) { .ledger-rail { width: 100%; } }
+        /* Στο τηλέφωνο, όταν υπάρχει το κουμπί της Νόας, η ράγα σταματά πριν από
+           τη λωρίδα του (όπως οι μήνες του Αρχείου, «.ad-months»): αλλιώς το
+           τελευταίο φίλτρο έπεφτε κάτω από το «Ν» στη μέση της κύλισης. Τα
+           κομμάτια παίρνουν πλάτος από το λεκτικό τους. */
+        @media (max-width: 768px) {
+          :root:has(.pa-fab-wrap) .ledger-rail { width: calc(100% - var(--fab-lane, 64px) + 16px); }
+          :root:has(.pa-fab-wrap) .ledger-rail > .po-chip { flex: 1 1 auto; }
+        }
+        /* Το «⋯» φαίνεται στην αιώρηση ή την εστίαση με ποντίκι, πάντα στο δάχτυλο. */
+        @media (hover: hover) {
+          .exp-more-cell { opacity: 0; transition: opacity .15s; }
+          .exp-row:hover .exp-more-cell, .exp-row:focus-within .exp-more-cell { opacity: 1; }
+        }
         /* Η κεφαλίδα μήνα μένει ορατή όσο κυλάς μέσα του: σε λίστα εκατό
            γραμμών, χωρίς αυτό χάνεις σε ποιον μήνα βρίσκεσαι. */
         /* Χωρίς γεμάτη μπάντα: μια τρίχα κάτω και τίποτα άλλο. Η γεμισμένη
@@ -523,6 +573,10 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           background: var(--bg-surface); border-bottom: 1px solid var(--border-subtle);
         }
         .exp-month:first-child { margin-top: 0; }
+        /* Το σύνολο του μήνα στην ίδια κάθετη με τα ποσά των γραμμών: δεξιά
+           τους κάθεται η στήλη του «⋯» (36 και κενό 14). */
+        .exp-month { padding-right: 64px; }
+        @media (max-width: 560px) { .exp-month { padding-right: 58px; } }
         /* ΤΟ «ΠΕΡΙΣΣΟΤΕΡΑ» ΚΑΘΕΤΑΙ ΚΑΤΩ ΔΕΞΙΑ, ΟΠΟΥ ΤΕΛΕΙΩΝΕΙ Η ΑΝΑΓΝΩΣΗ.
            Δεν παίρνει όλο το πλάτος: δεν είναι ενότητα που ανοίγει πάνω από
            περιεχόμενο, είναι η συνέχεια της λίστας που μόλις διάβασες. Μια
@@ -532,76 +586,32 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           display: flex; justify-content: flex-end;
           padding: 4px 10px 2px; border-top: 1px solid var(--border-subtle);
         }
-        /* ΣΕ ΣΤΕΝΗ ΟΘΟΝΗ: ΗΜΕΡΟΜΗΝΙΑ, ΤΙΤΛΟΣ ΚΑΙ ΠΟΣΟ ΣΤΗΝ ΠΡΩΤΗ ΣΕΙΡΑ.
-           Τα κουμπιά κατεβαίνουν ολόκληρα από κάτω και τυλίγονται: τρία κουμπιά
-           με «white-space: nowrap» δεν χωρούν ποτέ δίπλα σε ποσό σε 375 pixel
-           και η προσπάθεια να χωρέσουν έσπρωχνε τα λεφτά εκτός οθόνης. */
+        /* ΣΕ ΣΤΕΝΗ ΟΘΟΝΗ: ΕΙΚΟΝΙΔΙΟ, ΤΙΤΛΟΣ, ΠΟΣΟ ΚΑΙ «⋯» ΣΤΗΝ ΠΡΩΤΗ ΣΕΙΡΑ.
+           Η ημερομηνία μπαίνει στη γραμμή περιγραφής κάτω από τον τίτλο και το
+           «Πληρώθηκε», όπου υπάρχει, κάθεται κάτω από τον τίτλο, στοιχισμένο
+           μαζί του. Το ποσό δεν φεύγει ποτέ από την πρώτη σειρά. */
         @media (max-width: 560px) {
-          /* Η ΣΤΗΛΗ ΤΗΣ ΗΜΕΡΟΜΗΝΙΑΣ ΠΑΙΡΝΕΙ ΤΟ ΠΛΑΤΟΣ ΤΗΣ ΑΠΟ ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ.
-             Καρφωμένη στα 46 pixel, το «Χωρίς ημερομηνία» των γραμμών χωρίς
-             ημέρα ξεχείλιζε πάνω στον τίτλο και τα δύο κείμενα τυπώνονταν το
-             ένα πάνω στο άλλο. Με «auto», μια κανονική ημερομηνία μένει στενή
-             και μόνο η εξαίρεση παίρνει τον χώρο που χρειάζεται. */
-          .exp-row { grid-template-columns: auto minmax(0, 1fr) auto; row-gap: 8px; column-gap: 10px; align-items: start; }
-          .exp-row > :first-child { line-height: 1.35; }
-          .exp-amount { grid-column: 3; grid-row: 1; justify-self: end; }
-          /* ── ΤΡΕΙΣ ΕΝΕΡΓΕΙΕΣ, ΕΝΑ ΒΑΡΟΣ, ΜΙΑ ΣΕΙΡΑ ────────────────────────────
-             ΤΟ ΠΡΟΒΛΗΜΑ ΗΤΑΝ ΔΙΠΛΟ. Πρώτον, τα τρία κουμπιά είχαν ΤΡΙΑ
-             διαφορετικά βάρη στην ίδια σειρά: το «Πληρώθηκε» με περίγραμμα, τα
-             άλλα δύο χωρίς, δηλαδή τρεις προτάσεις για το πόσο σημαντικό είναι
-             το καθένα, δίπλα δίπλα. Δεύτερον, με αυτά τα περιθώρια δεν χωρούσαν
-             σε μία σειρά και το τρίτο έπεφτε μόνο του από κάτω.
-
-             ΣΕ ΣΤΕΝΗ ΟΘΟΝΗ ΓΙΝΟΝΤΑΙ ΕΝΑ ΙΔΙΩΜΑ: ίδιο ύψος, ίδιο περίγραμμα
-             (κανένα), ίδια απόσταση, μοιρασμένα ίσα σε όλο το πλάτος. Η
-             σημασία δηλώνεται με ΧΡΩΜΑ, όχι με κουτί: η κύρια ενέργεια παίρνει
-             τον τόνο, οι άλλες δύο μένουν ουδέτερες. Ο στόχος αφής παραμένει
-             44 pixel, γιατί το ύψος έρχεται από την κοινή κλίμακα. */
-          .exp-actions {
-            grid-column: 1 / -1; grid-row: 2;
-            /* ΜΟΙΡΑΣΜΑ ΜΕ FLEX, ΟΧΙ ΜΕ auto-fit. Το «repeat(auto-fit, minmax(0,1fr))»
-               δεν έχει οριστικό ελάχιστο, οπότε ο περιηγητής δεν μπορεί να
-               υπολογίσει πλήθος στηλών και τα κουμπιά έβγαιναν πάλι 31 pixel
-               έξω. Το flex με «flex: 1 1 0» δεν χρειάζεται να ξέρει πόσα είναι:
-               μοιράζει ίσα ό,τι υπάρχει, δύο ή τρία. */
-            display: flex; gap: 4px; margin-top: 2px;
-            border-top: 1px solid var(--border-subtle); padding-top: 6px;
+          /* Ο τίτλος και η γραμμή περιγραφής γίνονται κελιά του πλέγματος
+             («display: contents»): ο τίτλος μοιράζεται τη σειρά με το ποσό, η
+             περιγραφή απλώνεται και κάτω από αυτό, ώστε «28/08 · Επισκευές και
+             συντήρηση» να χωρά σε μία σειρά. */
+          .exp-row {
+            grid-template-columns: 32px minmax(0, 1fr) auto 44px; column-gap: 10px; row-gap: 2px;
+            align-items: start; padding: 7px 4px 7px 10px;
           }
-          .exp-actions > .exp-act { flex: 1 1 0; min-width: 0; }
-          /* ΤΟ inline STYLE ΤΟΥ COMPONENT ΝΙΚΑΕΙ ΤΟ ΦΥΛΛΟ ΣΤΥΛ. Το Btn γράφει
-             «padding: 9px 18px» inline, οπότε χωρίς «!important» τα 18 pixel
-             έμεναν και τα τρία κουμπιά ξαναξεχείλιζαν κατά 31 pixel. */
-          .exp-actions .po-btn {
-            width: 100%; min-width: 0;
-            padding-left: 3px !important; padding-right: 3px !important;
-            border-color: transparent !important; background: transparent !important;
-            font-weight: 600;
-          }
-          /* Η ΙΕΡΑΡΧΙΑ ΜΕΝΕΙ, ΑΛΛΑΞΕ ΜΟΝΟ ΠΩΣ ΛΕΓΕΤΑΙ. Το «Πληρώθηκε» είναι η
-             ενέργεια της γραμμής, τα άλλα δύο είναι συντήρηση. Στο πλάτος του
-             τηλεφώνου το κουτί γύρω του έσπρωχνε τα άλλα δύο σε δεύτερη σειρά
-             και έδινε τρία διαφορετικά βάρη στην ίδια σειρά· ο τόνος λέει το
-             ίδιο πράγμα χωρίς να πάρει ούτε ένα pixel. */
-          .exp-actions .po-btn[data-variant="secondary"] { color: var(--accent) !important; }
+          .exp-date { display: none; }
+          .exp-date-inline { display: inline; }
+          .exp-meta > .exp-date-inline + span:not(.exp-due)::before { content: '·'; margin-right: 6px; }
+          .exp-meta:not(:has(> :not(.exp-date-inline))) { display: flex !important; }
+          .exp-main { display: contents; }
+          .exp-ico { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
+          .exp-title { grid-column: 2; grid-row: 1; }
+          .exp-meta { grid-column: 2 / 4; grid-row: 2; margin-top: 0 !important; }
+          .exp-amount { grid-column: 3; grid-row: 1; justify-self: end; line-height: 1.5; }
+          .exp-more-cell { grid-column: 4; grid-row: 1 / span 2; align-self: center; justify-content: center; }
+          .exp-pay { grid-column: 2 / 4; grid-row: 3; justify-content: flex-start; margin-top: 6px; }
+          .exp-pay:empty { display: none; }
         }
-        /* ΣΕ ΣΤΕΝΟ ΠΑΡΑΘΥΡΟ ΜΕ ΠΟΝΤΙΚΙ Η ΣΕΙΡΑ ΤΩΝ ΚΟΥΜΠΙΩΝ ΔΕΝ ΚΡΑΤΑ ΘΕΣΗ ΚΡΥΦΗ.
-           Με ποντίκι οι ενέργειες φαίνονται μόνο στην αιώρηση ή την εστίαση·
-           η δεύτερη σειρά όμως έμενε στη διάταξη, με τρίχα, γέμισμα και κενό
-           πλέγματος: περίπου 40 εικονοστοιχεία άδεια κάτω από ΚΑΘΕ γραμμή. Ο
-           χώρος ανοίγει τώρα μαζί με τα κουμπιά. Δεν γίνεται «display: none»:
-           τα κουμπιά πρέπει να μένουν προσβάσιμα με Tab· η εστίαση είναι
-           αυτή που ανοίγει τη σειρά. Σειρά χωρίς καμία ενέργεια δεν ζωγραφίζεται
-           ποτέ. */
-        @media (max-width: 560px) {
-          .exp-actions:empty { display: none !important; }
-        }
-        @media (max-width: 560px) and (hover: hover) {
-          .exp-row:not(:hover):not(:focus-within) { row-gap: 0; }
-          .exp-row:not(:hover):not(:focus-within) .exp-actions {
-            max-height: 0; overflow: hidden; margin-top: 0; padding-top: 0; border-top-color: transparent;
-          }
-        }
-
         /* ΚΑΤΩ ΑΠΟ ΤΑ 360 Ο ΤΙΤΛΟΣ ΤΥΛΙΓΕΤΑΙ ΑΝΤΙ ΝΑ ΚΟΠΕΙ. Με τη γραμματοσειρά
            του σώματος στα 14 σε δάχτυλο, η «Συντήρηση καυστήρα» θέλει 152
            εικονοστοιχεία και η στήλη δίνει 137 στα 320: έβγαινε «Συντήρηση
@@ -624,19 +634,6 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
             -webkit-line-clamp: 2;
           }
         }
-        /* ═══ ΣΤΑ 320 ΤΟ «ΕΠΕΞΕΡΓΑΣΙΑ» ΘΕΛΕΙ ΕΝΑ ΣΗΜΕΙΟ ΛΙΓΟΤΕΡΟ ══════════════
-           ΜΕΤΡΗΜΕΝΟ: η γραμμή δίνει 236 στα τρία κουμπιά, δηλαδή 76 στο καθένα
-           μείον τέσσερα κενά· η λέξη «Επεξεργασία» στα 12 θέλει 74 και με το
-           γέμισμα 80. Λείπουν τέσσερα εικονοστοιχεία και η λέξη κοβόταν.
-
-           Στα 11 θέλει 70 και με το γέμισμα 76. Μαζεύονται και τα δύο κενά που
-           του τα έτρωγαν: το διάστημα ανάμεσα στα κουμπιά από 4 σε 2 και το
-           περιθώριο της ίδιας της γραμμής από 14 σε 9. Η γραμμή δίνει τότε 246
-           και το κάθε κουμπί 81, δηλαδή πέντε παραπάνω από όσα ζητά.
-           Τα 11 είναι το κάτω όριο που
-           τηρεί η εφαρμογή παντού, όχι εξαίρεση γι' αυτή τη γραμμή· ο κανόνας
-           ισχύει μόνο κάτω από τα 360, δηλαδή στα τηλέφωνα όπου πράγματι δεν
-           χωράει· σε Galaxy A των 360 τα κουμπιά μένουν στα 12. */
         /* ΣΤΟ ΤΗΛΕΦΩΝΟ Η ΑΝΑΖΗΤΗΣΗ ΠΙΑΝΕΙ ΤΟ ΠΛΑΤΟΣ ΤΩΝ ΚΑΡΤΩΝ. Ο διαχωριστής
            που τη σπρώχνει δεξιά στον υπολογιστή, μαζί με το ταβάνι των 320,
            άφηνε στα 390 μια λωρίδα 46 εικονοστοιχείων αριστερά της. */
@@ -652,9 +649,7 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           .ledger-search { order: -1; }
         }
         @media (max-width: 360px) {
-          .exp-row { padding-left: 9px; padding-right: 9px; }
-          .exp-actions { gap: 2px; }
-          .exp-actions .po-btn { font-size: 11px !important; }
+          .exp-row { padding-left: 6px; padding-right: 4px; column-gap: 10px; }
         }
       `}</style>
 
@@ -678,7 +673,13 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
 
           Με το ιδίωμα των δεικτών γίνονται 2+1, με το τρίτο απλωμένο σε όλο το
           πλάτος: δύο σειρές αντί για τρεις, χωρίς ορφανό και χωρίς τρύπα. */}
-      <div {...fixedCols(3, T.sp.lg, 'start', 'kpi-row')} style={{
+      {/* ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΕΛΙΚΑ ΛΩΡΙΔΑ, ΟΧΙ 2+1 (16.11.2026). Το πλατύ τρίτο
+          έμοιαζε πιο σημαντικό από τα άλλα δύο και οι υπότιτλοι («4 απλήρωτοι
+          λογαριασμοί, 2 ληξιπρόθεσμες») έσπαγαν σε τρεις σειρές σε μισό πλάτος.
+          Κάτω από τα 560 οι τρεις αριθμοί γίνονται τρεις γραμμές: ετικέτα και
+          υπότιτλος αριστερά, ποσό δεξιά, όπως μια περίληψη λογαριασμού. Ο
+          κανόνας ζει στην `.ledger-kpis` του globals.css. */}
+      <div {...fixedCols(3, T.sp.lg, 'start', 'kpi-row ledger-kpis')} style={{
         ...fixedCols(3, T.sp.lg, 'start').style,
         padding: `${T.sp.md}px 0 ${T.sp.lg}px`,
         borderBottom: '1px solid var(--border-subtle)', marginBottom: T.sp.lg,
@@ -710,11 +711,11 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           Το ληξιπρόθεσμο ήταν μία κίτρινη γραμμή βαθιά στη λίστα, χωρίς τρόπο
           να το βρεις. Πλακίδια μόνο όταν υπάρχει κάτι απλήρωτο. */}
       {(unpaid.length > 0 || filter) && (
-        <div role="group" aria-label="Φίλτρο δαπανών" style={{ display: 'flex', gap: T.sp.sm, flexWrap: 'wrap', alignItems: 'center', marginBottom: T.sp.lg }}>
-          <ChipToggle on={!filter} onClick={() => setFilter(null)}>Όλες</ChipToggle>
-          {(overdueN > 0 || filter?.kind === 'overdue') && <ChipToggle on={filter?.kind === 'overdue'} onClick={() => setFilter(filter?.kind === 'overdue' ? null : { kind: 'overdue' })}>{`Ληξιπρόθεσμες ${overdueN}`}</ChipToggle>}
-          {(pendingN > 0 || filter?.kind === 'pending') && <ChipToggle on={filter?.kind === 'pending'} onClick={() => setFilter(filter?.kind === 'pending' ? null : { kind: 'pending' })}>{`Εκκρεμούν ${pendingN}`}</ChipToggle>}
-          {filter?.kind === 'buckets' && <ChipToggle on onClick={() => setFilter(null)} title="Καθαρισμός φίλτρου">{`Σε υπέρβαση: ${filter.label}`}</ChipToggle>}
+        <div role="group" aria-label="Φίλτρο δαπανών" className="po-rail ledger-rail" style={{ marginBottom: T.sp.lg }}>
+          <ChipToggle shape="seg" on={!filter} onClick={() => setFilter(null)}>Όλες</ChipToggle>
+          {(overdueN > 0 || filter?.kind === 'overdue') && <ChipToggle shape="seg" on={filter?.kind === 'overdue'} onClick={() => setFilter(filter?.kind === 'overdue' ? null : { kind: 'overdue' })}>{`Ληξιπρόθεσμες ${overdueN}`}</ChipToggle>}
+          {(pendingN > 0 || filter?.kind === 'pending') && <ChipToggle shape="seg" on={filter?.kind === 'pending'} onClick={() => setFilter(filter?.kind === 'pending' ? null : { kind: 'pending' })}>{`Εκκρεμούν ${pendingN}`}</ChipToggle>}
+          {filter?.kind === 'buckets' && <ChipToggle shape="seg" on onClick={() => setFilter(null)} title="Καθαρισμός φίλτρου">{`Σε υπέρβαση: ${filter.label}`}</ChipToggle>}
         </div>
       )}
 
@@ -730,12 +731,9 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           ο χρήστης να ξέρει τι ψάχνει. Χωρίς χρώμα προειδοποίησης — ένας
           λογαριασμός που άργησε τρεις μέρες δεν είναι πρόβλημα. */}
       {!loading && !filter && missing.length > 0 && (
-        <div style={{
-          display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: T.sp.lg,
-          padding: '12px 14px', borderRadius: T.radius.inner,
-          background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
-        }}>
-          <span style={{ flexShrink: 0, width: 5, height: 5, borderRadius: '50%', background: 'var(--text-tertiary)', marginTop: 8 }} />
+        <div className="exp-note">
+          {/* Εικονίδιο σε απαλό accent αντί για γκρι τελεία (17/11/2026): παρατήρηση, όχι προειδοποίηση. */}
+          <span className="exp-note-ico"><CalendarClock size={15} aria-hidden="true" /></span>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 600 }}>
               {missing.length === 1 ? 'Ένα πάγιο δεν έχει καταχωρηθεί ακόμη' : `${missing.length} πάγια δεν έχουν καταχωρηθεί ακόμη`}
@@ -777,12 +775,8 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           Ίδιο σχήμα με τη γραμμή «τι λείπει» από πάνω: μία παρατήρηση, χωρίς
           χρώμα προειδοποίησης. Μια αύξηση δεν είναι σφάλμα του χρήστη. */}
       {!loading && !filter && changed.length > 0 && (
-        <div style={{
-          display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: T.sp.lg,
-          padding: '12px 14px', borderRadius: T.radius.inner,
-          background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
-        }}>
-          <span style={{ flexShrink: 0, width: 5, height: 5, borderRadius: '50%', background: 'var(--text-tertiary)', marginTop: 8 }} />
+        <div className="exp-note">
+          <span className="exp-note-ico"><TrendingUp size={15} aria-hidden="true" /></span>
           <div style={{ minWidth: 0 }}>
             <div style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 600 }}>
               {changed.length === 1 ? 'Μία χρέωση άλλαξε ποσό' : `${changed.length} χρεώσεις άλλαξαν ποσό`}
@@ -823,37 +817,17 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
           <Btn variant={adding ? 'ghost' : onScan ? 'secondary' : 'primary'} onClick={() => { setSeed(undefined); setAdding(v => !v); }}>{adding ? 'Ακύρωση' : 'Νέα δαπάνη'}</Btn>
         )}
         <div className="ledger-spacer" style={{ flex: 1 }} />
-        {/* Ίδιο ύψος και ίδιο σχήμα με τα κουμπιά δίπλα του. Πριν ήταν ψηλότερο
-            και πιο στρογγυλό και η σειρά έμοιαζε στοιχισμένη κατά λάθος. */}
-        <input
-          value={q} onChange={ev => setQ(ev.target.value)}
-          /* Η υπόδειξη λέει ΤΙ ψάχνεται, όπως στις άλλες οθόνες· το «Αναζήτηση»
-             ανήκει στην ετικέτα του αναγνώστη οθόνης, όπου και είναι.
-
-             ΓΙΑΤΙ ΕΠΕΣΕ ΣΕ ΔΥΟ ΛΕΞΕΙΣ. Το «Περιγραφή, κατηγορία ή πάροχος»
-             μετρήθηκε 271 εικονοστοιχεία σε κουτί 262 στα 320, σε WebKit —
-             δηλαδή κομμένο σε κάθε iPhone, σε τρεις οθόνες. Ο Chromium το
-             χωρούσε οριακά και δεν το ανέφερε ποτέ.
-             Η αναζήτηση εξακολουθεί να πιάνει ΚΑΙ την κατηγορία· η υπόδειξη
-             ονομάζει τα δύο που ψάχνει ο κόσμος. Μια υπόδειξη κομμένη στη μέση
-             δεν διδάσκει την τρίτη δυνατότητα, την κρύβει. */
-          placeholder="Περιγραφή ή πάροχος"
-          className="po-field ledger-search" aria-label="Αναζήτηση δαπανών"
-          style={{
-            /* ΤΟ ΣΤΑΘΕΡΟ ΠΛΑΤΟΣ ΕΚΟΒΕ ΤΗΝ ΥΠΟΔΕΙΞΗ ΣΤΟ ΚΙΝΗΤΟ. Στα 190 χωρούσαν
-               είκοσι χαρακτήρες και η υπόδειξη έχει τριάντα: ο χρήστης διάβαζε
-               «Περιγραφή, κατηγορ…» και δεν μάθαινε ποτέ ότι ψάχνει και πάροχο.
-               Με βάση 300 και δυνατότητα ανάπτυξης, το πεδίο πέφτει μόνο του σε
-               δεύτερη σειρά όταν δεν χωρά δίπλα στο κουμπί και εκεί παίρνει
-               ολόκληρο το πλάτος. Στον υπολογιστή τίποτα δεν αλλάζει: εκεί
-               χωρούσε ήδη και ο διαχωριστής το σπρώχνει δεξιά όπως πριν. */
-            flex: '1 1 300px', maxWidth: 320,
-            height: T.h.md, padding: '0 14px', boxSizing: 'border-box',
-            borderRadius: T.radius.btn, border: '1px solid var(--border-control)',
-            background: 'var(--bg-surface)', color: 'var(--text-primary)',
-            fontSize: 'var(--fs-base)', fontFamily: T.font.sans, outline: 'none',
-          }}
-        />
+        {/* ΤΟ ΠΕΔΙΟ ΤΩΝ ΑΛΛΩΝ ΛΙΣΤΩΝ (17/11/2026): εικονίδιο, σχήμα χαπιού,
+            εστίαση στο accent, όπως στους Ενοικιαστές και στο Αρχείο (`.po-search`).
+            Η υπόδειξη λέει ΤΙ ψάχνεται· το «Αναζήτηση» ζει στην ετικέτα του
+            αναγνώστη οθόνης. Δύο λέξεις, γιατί το «Περιγραφή, κατηγορία ή
+            πάροχος» κοβόταν σε κάθε iPhone στα 320· η αναζήτηση πιάνει και την
+            κατηγορία. */}
+        <div className="po-search ledger-search">
+          <Search size={15} aria-hidden="true" className="po-search-icon" />
+          <input type="search" value={q} onChange={ev => setQ(ev.target.value)}
+            placeholder="Περιγραφή ή πάροχος" className="po-search-input" aria-label="Αναζήτηση δαπανών" />
+        </div>
       </div>}
 
 
@@ -1049,116 +1023,98 @@ export default function ExpenseLedger({ propertyId, userId, onScan, openAddNonce
 const bare = (s: string): string =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 
+/**
+ * ΕΝΑ ΕΙΚΟΝΙΔΙΟ ΑΝΑ ΚΑΤΗΓΟΡΙΑ (17/11/2026). Η λίστα ήταν ημερομηνία, λέξη και
+ * ποσό, ίδια σε κάθε γραμμή: για να βρεις τα κοινόχρηστα διάβαζες λέξεις. Το
+ * εικονίδιο κάθεται σε απαλό accent· η ληξιπρόθεσμη γραμμή παίρνει τον τόνο
+ * προσοχής, που είναι η μόνη κατάσταση της λίστας που ζητά κίνηση.
+ */
+const CAT_ICON: Record<string, LucideIcon> = {
+  electricity: Zap, water: Droplet, gas: Flame, heating: Thermometer, internet: Wifi,
+  common: Building2, insurance: ShieldCheck, security: Lock, subscription: Repeat,
+  plumber: Wrench, electrician: Plug, cleaning: Sparkles, garden: Sprout, elevator: ArrowUpDown,
+  ac_service: Snowflake, pool: Waves, pest: Bug, repair: Hammer,
+  enfia: Landmark, municipal: Landmark, notary: Scale, engineer: Ruler, broker_fee: Handshake,
+  platform_fee: Percent, renovation: PaintRoller, appliance: Refrigerator, furniture: Armchair,
+};
+
+/** Το εικονίδιο ως στοιχείο, όχι ως συστατικό που διαλέγεται στην απόδοση. */
+function catIcon(slug: string | null): ReactNode {
+  const Icon = (slug && CAT_ICON[slug]) || Receipt;
+  return <Icon size={16} aria-hidden="true" />;
+}
+
 function Row({ e, busy, counts, onPaid, onEdit, onDelete }: { e: LedgerEntry; busy: boolean; counts: boolean; onPaid: () => void; onEdit: (() => void) | null; onDelete: (() => void) | null }) {
   const cat = categoryLabel(e.category);
   const due = e.due ? dueText(e.due) : null;
-  // «Δόση δανείου» με από κάτω «Δόση Δανείου» δεν είναι δεύτερη πληροφορία,
-  // είναι η ίδια δύο φορές με άλλα κεφαλαία. Η δεύτερη γραμμή υπάρχει μόνο όταν
-  // λέει κάτι που δεν λέει ήδη ο τίτλος.
   const name = entryName(e);
   const showCat = cat && bare(cat) !== bare(name);
-  // ═══ Η ΕΞΑΙΡΕΣΗ ΦΑΙΝΕΤΑΙ ΕΚΕΙ ΠΟΥ ΕΙΝΑΙ Η ΔΑΠΑΝΗ ══════════════════════════
-  // Ηταν αόρατη: η γραμμή έδειχνε ολόκληρο το ποσό ενώ τα σύνολα από πάνω δεν
-  // το μετρούσαν· ο μόνος τρόπος να δεις τι είχες εξαιρέσει ήταν άλλη
-  // καρτέλα, στον τρέχοντα μήνα. Μία λέξη στη δεύτερη σειρά και το ποσό
-  // διαγραμμένο: η αριθμητική της κεφαλίδας διαβάζεται χωρίς εξήγηση.
   const meta = [showCat ? cat : '', e.recurring ? 'πάγιο' : '', counts ? '' : 'εκτός στατιστικών'].filter(Boolean).join(' · ');
+  const slug = resolveCategory(e.category);
+  const date = shortDate(e.date);
 
   return (
-    <div className="exp-row">
-      <span style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>
-        {shortDate(e.date)}
+    <div className="exp-row" data-late={due?.late ? '' : undefined}>
+      <span className="exp-date" style={{ ...TT.caption, fontVariantNumeric: 'tabular-nums' }}>
+        {date}
       </span>
-      <span style={{ minWidth: 0 }}>
-        {/* ΣΕ ΠΟΛΥ ΣΤΕΝΗ ΟΘΟΝΗ Ο ΤΙΤΛΟΣ ΤΥΛΙΓΕΤΑΙ ΑΝΤΙ ΝΑ ΚΟΠΕΙ. Με τη γραμματοσειρά
-            του σώματος στα 14 σε δάχτυλο, η «Συντήρηση καυστήρα» θέλει 152
-            εικονοστοιχεία και η στήλη δίνει 137 στα 320: έβγαινε «Συντήρηση
-            καυστή…». Μια ετικέτα με αποσιωπητικά δεν είναι ετικέτα — και το
-            ξέρουμε, γι' αυτό ο σαρωτής σταμάτησε να τη συγχωρεί.
-            Δεύτερη γραμμή σε δύο οθόνες στις έντεκα κοστίζει λιγότερο από μια
-            δαπάνη που δεν διαβάζεται. Πάνω από τα 360 τίποτα δεν αλλάζει. */}
+      <span className="exp-ico">{catIcon(slug)}</span>
+      <span className="exp-main" style={{ minWidth: 0 }}>
+        {/* ΣΕ ΠΟΛΥ ΣΤΕΝΗ ΟΘΟΝΗ Ο ΤΙΤΛΟΣ ΤΥΛΙΓΕΤΑΙ ΑΝΤΙ ΝΑ ΚΟΠΕΙ: μια ετικέτα με
+            αποσιωπητικά δεν είναι ετικέτα. Πάνω από τα 360 τίποτα δεν αλλάζει. */}
         <span className="exp-title" style={{ ...TT.body, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {name}
         </span>
-        {(meta || due) && (
-          <span style={{ ...TT.caption, display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
-            {meta && <span>{meta}</span>}
-            {/* Η ΠΡΟΘΕΣΜΙΑ ΕΙΝΑΙ ΥΠΕΝΘΥΜΙΣΗ, ΟΧΙ ΣΦΑΛΜΑ. Το ληξιπρόθεσμο κρατά
-                τόνο επειδή είναι εξαίρεση και ζητά κίνηση· η επερχόμενη
-                προθεσμία δεν ζητά τίποτα ακόμη και μένει ουδέτερη. */}
-            {due && (
-              // ΔΙΚΗ ΤΗΣ ΣΕΙΡΑ, ΧΩΡΙΣ ΤΕΛΕΙΑ: η τελεία ανάμεσα έμενε ορφανή στην
-              // άκρη της γραμμής μόλις η προθεσμία τύλιγε («Ρεύμα · πάγιο ·»).
-              <span style={{ color: due.late ? 'var(--warning)' : 'var(--text-tertiary)', fontWeight: 600, flexBasis: meta ? '100%' : undefined }}>
-                {due.text.charAt(0).toUpperCase() + due.text.slice(1)}
-              </span>
-            )}
-          </span>
-        )}
+        <span className="exp-meta" style={{ ...TT.caption, display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
+          {/* Στο τηλέφωνο η στήλη της ημερομηνίας φεύγει και η ημερομηνία
+              μπαίνει εδώ, πρώτη στη γραμμή περιγραφής. */}
+          <span className="exp-date-inline" style={{ fontVariantNumeric: 'tabular-nums' }}>{date}</span>
+          {meta && <span>{meta}</span>}
+          {/* Η ΠΡΟΘΕΣΜΙΑ ΕΙΝΑΙ ΥΠΕΝΘΥΜΙΣΗ, ΟΧΙ ΣΦΑΛΜΑ. Το ληξιπρόθεσμο κρατά
+              τόνο επειδή είναι εξαίρεση και ζητά κίνηση· η επερχόμενη
+              προθεσμία δεν ζητά τίποτα ακόμη και μένει ουδέτερη. */}
+          {due && (
+            <span className="exp-due" data-late={due.late ? '' : undefined}>
+              {due.text.charAt(0).toUpperCase() + due.text.slice(1)}
+            </span>
+          )}
+        </span>
       </span>
-      <span className="exp-actions" style={{ display: 'flex', alignItems: 'center' }}>
-        {/* ΜΟΝΟ ΟΠΟΥ ΥΠΑΡΧΕΙ ΚΑΤΙ ΝΑ ΑΛΛΑΞΕΙ. Η γραμμή του απλήρωτου
-            λογαριασμού δεν είναι δαπάνη ακόμη: ζει σε άλλον πίνακα, με άλλα
-            πεδία. Κουμπί που θα άνοιγε φόρμα δαπάνης πάνω της θα υποσχόταν
-            επεξεργασία που δεν γίνεται. */}
-        {onEdit && (
-          <span className="exp-act">
-            <Btn variant="ghost" onClick={onEdit}>Επεξεργασία</Btn>
-          </span>
-        )}
-        {!e.paid && (
-          <span className="exp-act">
-            <Btn variant="secondary" onClick={onPaid} disabled={busy}>
-              {busy ? 'Γίνεται…' : 'Πληρώθηκε'}
-            </Btn>
-          </span>
-        )}
-        {/* ── Η ΔΙΑΓΡΑΦΗ ΣΤΗ ΓΡΑΜΜΗ, ΜΕ ΕΝΑ ΠΑΤΗΜΑ ────────────────────────
-            Ζούσε μέσα στο παράθυρο επεξεργασίας: για να σβήσει μια λάθος
-            καταχώρηση ο χρήστης έπρεπε πρώτα να ανοίξει φόρμα που δεν ήθελε να
-            συμπληρώσει. Δύο πατήματα και μια οθόνη, για την πιο κοινή
-            διόρθωση.
-
-            ΤΟ ΛΑΘΟΣ ΠΑΤΗΜΑ ΤΟ ΦΥΛΑΕΙ Η ΕΡΩΤΗΣΗ, ΟΧΙ Η ΑΠΟΣΤΑΣΗ. Η
-            επιβεβαίωση ονομάζει ποσό και ημερομηνία· η ενέργεια δεν χρειάζεται
-            να είναι θαμμένη για να είναι ασφαλής. Και στέκει ΤΕΛΕΥΤΑΙΑ,
-            τριτεύουσα, να εμφανίζεται μαζί με τις άλλες ενέργειες της γραμμής
-            (αιώρηση ή εστίαση· σε αφή είναι πάντα ορατές). */}
-        {onDelete && (
-          <span className="exp-act">
-            <Btn variant="ghost" onClick={onDelete}>Διαγραφή</Btn>
-          </span>
-        )}
-      </span>
-      {/* ── ΤΟ ΠΟΣΟ ΕΙΝΑΙ ΔΙΚΟ ΤΟΥ ΚΕΛΙ, ΟΧΙ ΟΥΡΑ ΤΩΝ ΚΟΥΜΠΙΩΝ ────────────────
-          ΤΟ ΜΕΤΡΗΜΕΝΟ ΣΦΑΛΜΑ. Ζούσε ΜΕΣΑ στο ίδιο span με τα τρία κουμπιά και
-          σε στενή οθόνη όλο αυτό το μπλοκ έπεφτε σε δεύτερη σειρά με
-          `justify-self: start`. Το ελάχιστο πλάτος του ήταν 407 pixel σταθερά,
-          σε γραμμή 317: στα 375 το ποσό έβγαινε **136 pixel εκτός οθόνης** και
-          το «Διαγραφή» κοβόταν στη μέση. Στα 320 το ποσό έφευγε 189 pixel.
-
-          Και δεν φαινόταν σε κανέναν έλεγχο: το `.app-content` έχει
-          `overflow-y: auto`, άρα το `overflow-x` γίνεται σιωπηλά `auto` και
-          κρύβει τη ροή. Το `documentElement.scrollWidth` έμενε 375 σε κάθε
-          πλάτος, δηλαδή ένας έλεγχος «ξεχειλίζει η σελίδα;» έλεγε όχι ενώ τα
-          λεφτά ήταν αόρατα.
-
-          Τώρα το ποσό κρατά τη ΔΙΚΗ του θέση στην πρώτη σειρά, δίπλα στην
-          ημερομηνία και τον τίτλο και τα κουμπιά κατεβαίνουν από κάτω. Ο,τι
-          κι αν γίνει με το πλάτος, το ποσό φαίνεται πρώτο.
-
-          Το ποσό είναι ποσό, όχι κρίση: ήταν κόκκινο σε ΚΑΘΕ ανεξόφλητη γραμμή,
-          δηλαδή στις περισσότερες, μόνιμα. */}
+      {/* ΜΙΑ ΟΡΑΤΗ ΕΝΕΡΓΕΙΑ ΑΝΑ ΓΡΑΜΜΗ, ΟΙ ΑΛΛΕΣ ΣΤΟ «⋯» (17/11/2026). Στο
+          τηλέφωνο κάθε γραμμή είχε από κάτω μια δεύτερη σειρά με «Επεξεργασία»
+          και «Διαγραφή» σε γράμματα: δεκαεπτά γραμμές, δεκαεπτά σειρές
+          κουμπιών και η λίστα διπλάσια σε ύψος. Η επεξεργασία και η διαγραφή
+          είναι σπάνιες· ζουν στο «⋯», όπως στους Ενοικιαστές και στους Πελάτες.
+          Η διαγραφή μένει κόκκινη μέσα στο μενού και ζητά επιβεβαίωση όπως
+          πριν. Το «Πληρώθηκε» είναι η ενέργεια της γραμμής και μένει ορατό,
+          μόνο όπου κάτι είναι απλήρωτο. Ο απλήρωτος λογαριασμός δεν είναι
+          δαπάνη ακόμη, οπότε δεν έχει «⋯»: δεν υπάρχει φόρμα δαπάνης να ανοίξει. */}
+      {!e.paid ? (
+        <span className="exp-pay">
+          <button type="button" className="exp-pay-btn" onClick={onPaid} disabled={busy}>
+            <Check size={14} aria-hidden="true" />{busy ? 'Γίνεται…' : 'Πληρώθηκε'}
+          </button>
+        </span>
+      ) : <span className="exp-pay" aria-hidden="true" />}
+      {/* ── ΤΟ ΠΟΣΟ ΕΙΝΑΙ ΔΙΚΟ ΤΟΥ ΚΕΛΙ ─────────────────────────────────────
+          Ζούσε μέσα στο ίδιο span με τα κουμπιά και στα 375 έβγαινε 136
+          εικονοστοιχεία εκτός οθόνης. Κρατά τη δική του θέση στην πρώτη σειρά
+          σε κάθε πλάτος. Το ποσό είναι ποσό, όχι κρίση: δεν βάφεται. */}
       <span className="exp-amount" style={{ fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: counts ? 'var(--text-primary)' : 'var(--text-tertiary)', textDecoration: counts ? 'none' : 'line-through', textDecorationColor: 'var(--border-default)', whiteSpace: 'nowrap' }}>
         {fe(e.amount)}
+      </span>
+      <span className="exp-more-cell">
+        {(onEdit || onDelete) && (
+          <ActionMenu iconOnly label={`Ενέργειες για ${name}, ${fe(e.amount)}`} items={[
+            ...(onEdit ? [{ key: 'edit', label: 'Επεξεργασία', icon: <Pencil size={15} aria-hidden="true" />, onClick: onEdit }] : []),
+            ...(onDelete ? [{ key: 'del', label: 'Διαγραφή δαπάνης', description: `${name} · ${fe(e.amount)}`, danger: true, icon: <Trash2 size={15} aria-hidden="true" />, onClick: onDelete }] : []),
+          ]} />
+        )}
       </span>
     </div>
   );
 }
 
-// ── ΤΑ ΔΥΟ ΠΕΔΙΑ ΤΗΣ ΦΟΡΜΑΣ, ΓΡΑΜΜΕΝΑ ΜΙΑ ΦΟΡΑ ─────────────────────────────
-// Η γεωμετρία ζούσε μέσα στη QuickAdd. Με δεύτερη φόρμα δίπλα (η επεξεργασία)
-// θα αντιγραφόταν και δύο αντίγραφα ενός στυλ αποκλίνουν στην πρώτη διόρθωση.
 const FIELD: React.CSSProperties = {
   height: T.h.lg, padding: '0 14px', borderRadius: T.radius.inner,
   border: '1px solid var(--border-default)', background: 'var(--bg-surface)',

@@ -6,6 +6,7 @@ const NOINDEX_PATHS = [
   "/portal/:path*", "/checkin/:path*", "/accountant/:path*", "/unsubscribe/:path*",
   "/plirosa/:path*", "/verify/:path*", "/verify", "/epivevaiosi-email/:path*",
   "/reset-password", "/en/reset-password", "/imerologio/:path*", "/tameio/:path*", "/tameio",
+  "/doro/:path*",
 ];
 
 // ── Security headers ─────────────────────────────────────────────────────────
@@ -108,6 +109,10 @@ const nextConfig: NextConfig = {
     // προεπισκόπηση (app-page-turbo.runtime.prod.js), οπότε η έλλειψη του αρθρώματος
     // δεν ρίχνει σελίδα. Η εξοικονόμηση κάλυψε τις δύο νέες συναρτήσεις της
     // υπαναχώρησης (/ypanaxorisi, /api/withdrawal), περίπου 4,8 MB.
+    // Από το Next 16.4.4 το try-get-preview-data φορτώνει το fast-jwt στη θέση
+    // του jsonwebtoken (ίδια χρήση, ίδιο try/catch). Η εξαίρεση ακολουθεί το νέο
+    // όνομα: 131.737 bytes × 83 = 10,9 MB ανά ανάπτυξη (16/11/2026, 16.4.5:
+    // 200,0 → 189,0 MB).
     //
     // ΚΑΙ ΟΙ ΔΥΟ ΑΔΕΙΕΣ ΤΟΥ @vercel/og (2 × 16.725 bytes, 05/11/2026). Τα LICENSE
     // του og και του satori ανέβαιναν μαζί με τις συναρτήσεις των εικόνων
@@ -122,7 +127,21 @@ const nextConfig: NextConfig = {
     // WebSocket. Ο Node 22 το έχει ενσωματωμένο (.nvmrc, CI: 22) και ο κώδικας
     // του διακομιστή δεν ανοίγει ποτέ WebSocket (το realtime ζει στον περιηγητή).
     // Αν το έργο γυρίσει ποτέ σε Node κάτω από 22, η εξαίρεση φεύγει.
-    '**/*': ['node_modules/@img/**', 'node_modules/sharp/**', 'node_modules/react/cjs/react.development.js', 'node_modules/next/dist/compiled/jsonwebtoken/**', 'node_modules/next/dist/compiled/@vercel/og/**/LICENSE', 'node_modules/next/dist/compiled/ws/**'],
+    //
+    // ΚΑΙ ΤΟ hash.js ΤΟΥ NEXT (8.590 bytes × 85 = 0,73 MB ανά ανάπτυξη, 16/11/2026).
+    // Από όσα ανεβαίνουν, ΜΟΝΟ το next/dist/server/lib/route-cache-key.js το
+    // ζητά, μέσα στον κλάδο `NEXT_RUNTIME === 'edge'`· στον Node το ίδιο
+    // κλειδί βγαίνει από το `createHash` του `crypto`. Οι runtime του next
+    // κουβαλούν δικό τους, ενσωματωμένο shared/lib/hash.js. Καμία διαδρομή δεν
+    // τρέχει σε edge (grep `runtime` σε app/).
+    //
+    // ΚΑΙ ΤΟ index.edge.js ΤΟΥ @vercel/og (738.910 bytes, μόνο στο /og/[slug]).
+    // Το next/og διαλέγει `NEXT_RUNTIME === 'edge' ? index.edge.js : index.node.js`
+    // και το χτίσιμο λύνει τη συνθήκη: το κομμάτι του /og φορτώνει μόνο το
+    // index.node.js, το index.edge.js δεν το ονομάζει κανένα αρχείο που τρέχει
+    // (μόνο ένα .map). Οι δύο μαζί κάλυψαν τις δύο νέες συναρτήσεις της κλήρωσης
+    // (/doro/[token], /api/doro): 190,4 → 188,9 MB στο χτίσιμο του CI (Turbopack).
+    '**/*': ['node_modules/@img/**', 'node_modules/sharp/**', 'node_modules/react/cjs/react.development.js', 'node_modules/next/dist/compiled/fast-jwt/**', 'node_modules/next/dist/compiled/@vercel/og/**/LICENSE', 'node_modules/next/dist/compiled/ws/**', 'node_modules/next/dist/compiled/hash.js/**', 'node_modules/next/dist/compiled/@vercel/og/index.edge.js'],
   },
   // ── ΟΙ ΔΙΕΥΘΥΝΣΕΙΣ ΠΟΥ ΠΛΗΚΤΡΟΛΟΓΕΙ Ο ΚΟΣΜΟΣ ─────────────────────────────
   // Τα αγγλικά ονόματα που δοκιμάζει όποιος ψάχνει τιμές, εργαλεία ή cookies.

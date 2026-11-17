@@ -134,6 +134,7 @@ interface WizardForm {
   settings: PropertySettings;
 }
 const WIZARD_DRAFT = 'property_wizard';
+const STATUS_MISSING = 'Διάλεξε κατάσταση για να συνεχίσεις.';
 
 // ── Εικονίδια ανά τύπο ακινήτου (inline SVG, currentColor) ──────────────────
 function TypeIcon({ type }: { type: string }) {
@@ -181,10 +182,30 @@ const inputStyle: React.CSSProperties = {
   letterSpacing: 0, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s, box-shadow 0.15s',
 };
 const numInputStyle: React.CSSProperties = { ...inputStyle, fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' };
+/**
+ * ΚΑΘΕ ΠΟΣΟ ΜΕ ΤΟ «€» ΜΕΣΑ ΣΤΟ ΠΕΔΙΟ (κριτική σχεδίασης r10). Το μίσθωμα και ο
+ * ΕΝΦΙΑ το είχαν ως κατάληξη από το r2· η εμπορική, η αντικειμενική και η τιμή
+ * αγοράς, στο ίδιο ανοιχτό κουτί από κάτω τους, το έγραφαν ακόμη στην ετικέτα
+ * («Εμπορική αξία (€)»). Δύο γραφές της ίδιας μονάδας σε μία οθόνη. Το ίδιο και
+ * το «%» του ποσοστού. Το πρώτο ντόπιο <input> παίρνει το id της ετικέτας
+ * (`nameControl` κατεβαίνει στο <div>).
+ */
+const suffixInputStyle: React.CSSProperties = { ...numInputStyle, paddingRight: 36 };
+// Συνάρτηση και όχι component: το `nameControl` κατεβαίνει μόνο σε ντόπιο <div>.
+const suffixed = (unit: string, input: React.ReactElement) =>
+  <div className="wiz-suffix">{input}<span aria-hidden>{unit}</span></div>;
 const fieldCell: React.CSSProperties = { display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' };
 const labelStyle: React.CSSProperties = {
   ...TT.label, display: 'flex', alignItems: 'flex-end', minHeight: 28, lineHeight: 1.3, marginBottom: 6,
 };
+/**
+ * Ο τίτλος μιας ΟΜΑΔΑΣ επιλογών (Τύπος ακινήτου, Κατάσταση), όχι ετικέτα πεδίου
+ * σε πλέγμα (κριτική σχεδίασης r10). Το ελάχιστο ύψος 28 του `labelStyle`
+ * υπάρχει για να στοιχίζονται δίγραμμες ετικέτες δίπλα δίπλα· εδώ δεν έχει
+ * γείτονα και πρόσθετε 10 αόρατα πάνω από το κείμενο, οπότε το πρώτο ερώτημα
+ * καθόταν 42 κάτω από τη ράγα και το δεύτερο 35 κάτω από το πρώτο.
+ */
+const groupLabelStyle: React.CSSProperties = { ...TT.label, lineHeight: 1.3, margin: 0 };
 
 // Όροφοι (ελληνική ονοματολογία): κείμενο, όχι αριθμός.
 const FLOOR_OPTS = ['Υπόγειο', 'Ημιυπόγειο', 'Ισόγειο', 'Υπερυψωμένο ισόγειο', 'Ημιώροφος', '1ος', '2ος', '3ος', '4ος', '5ος', '6ος', '7ος και άνω', 'Δώμα / Ρετιρέ'];
@@ -760,7 +781,17 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // Οι ομάδες επιλογών του πρώτου βήματος ονομάζονται από τον τίτλο τους.
   const typeGroupId = useId();
   const statusGroupId = useId();
+  const statusErrId = useId();
+  // Η κατάσταση που λείπει λέγεται κάτω από τις επιλογές της, όχι στο τέλος της
+  // οθόνης (κριτική σχεδίασης r10): στα 390 το κουτί του σφάλματος καθόταν
+  // κάτω από την τελευταία κάρτα και ο χρήστης δεν έβλεπε ποια ερώτηση έμεινε.
+  const statusMissing = page === 'type' && error === STATUS_MISSING;
   const nameId = useId();
+  // Οι οδηγίες κάτω από τα πεδία ακούγονται μαζί με το πεδίο (r10): ήταν σκέτο
+  // κείμενο από κάτω, οπότε ο αναγνώστης οθόνης έλεγε μόνο «Μηνιαίο μίσθωμα».
+  const rentHintId = useId();
+  const enfiaHintId = useId();
+  const amaHintId = useId();
 
   // ═══ Η «ΣΥΝΕΧΕΙΑ» ΛΕΕΙ ΤΙ ΛΕΙΠΕΙ, ΔΕΝ ΣΒΗΝΕΙ ═══════════════════════════════
   // Ηταν `disabled={!canNext}`. Στα 390 η υπόδειξη «Διάλεξε μία» της
@@ -769,7 +800,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
   // λείπει και φέρνει στο βλέμμα το σημείο που το ζητά.
   const next = () => {
     if (canNext) { goStep(s => s + 1); return; }
-    setError('Διάλεξε κατάσταση για να συνεχίσεις.');
+    setError(STATUS_MISSING);
     document.getElementById(statusGroupId)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   };
 
@@ -1118,7 +1149,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
 
       {/* STEP 1, Τύπος & Κατάσταση */}
       {page === 'type' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
           <div>
             {/* ΕΝΑ ΜΟΤΙΒΟ ΓΙΑ «ΔΕΙΞΕ ΚΙ ΑΛΛΑ», ΣΤΟΥΣ ΤΥΠΟΥΣ ΚΑΙ ΣΤΙΣ ΚΑΤΑΣΤΑΣΕΙΣ
                 (κριτική σχεδίασης r2). Κουμπί κειμένου στη γραμμή της ετικέτας,
@@ -1126,7 +1157,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
                 κλείνει. Ηταν «Άλλο…» που αποκάλυπτε πλακίδιο με το ίδιο όνομα
                 («Άλλο») και χανόταν χωρίς τρόπο να ξανακλείσει. */}
             <div className="wiz-group-head">
-              <div id={typeGroupId} style={labelStyle}>Τύπος ακινήτου</div>
+              <div id={typeGroupId} style={groupLabelStyle}>Τύπος ακινήτου</div>
               <button type="button" className="wiz-more-link" aria-expanded={moreTypes} onClick={() => setMoreTypes(o => !o)}>
                 {moreTypes ? 'Λιγότεροι' : 'Όλοι οι τύποι'}
               </button>
@@ -1157,7 +1188,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
 
           <div>
             <div className="wiz-group-head">
-              <div id={statusGroupId} style={labelStyle}>Κατάσταση</div>
+              <div id={statusGroupId} style={groupLabelStyle}>Κατάσταση</div>
               <button type="button" className="wiz-more-link" aria-expanded={moreStatuses} onClick={() => setMoreStatuses(o => !o)}>
                 {moreStatuses ? 'Λιγότερες' : 'Όλες οι καταστάσεις'}
               </button>
@@ -1167,7 +1198,8 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
                 τους· οι τρεις σπάνιες έρχονται από κάτω ως ίδιες γραμμές, όχι ως
                 πεδίο λίστας ανάμεσα σε κάρτες επιλογής (ήταν CustomSelect, άλλο
                 ύψος, άλλο βάρος, άλλο χρώμα). Δύο στήλες στο παράθυρο, μία στο τηλέφωνο. */}
-            <div role="group" aria-labelledby={statusGroupId} className="wiz-statuses">
+            <div role="group" aria-labelledby={statusGroupId} className="wiz-statuses"
+              aria-describedby={statusMissing ? statusErrId : undefined} data-invalid={statusMissing ? '' : undefined}>
               {[...PRIMARY_STATUSES, ...MORE_STATUSES.filter(k => moreStatuses || k === statusKey)].map(key => {
                 const st = BY_KEY[key];
                 const sel = statusKey === key;
@@ -1177,10 +1209,19 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
                       <span style={{ fontSize: 'var(--fs-base)', fontWeight: 500, color: 'var(--text-primary)' }}>{st.label}</span>
                       <span style={{ fontSize: 'var(--fs-xs)', lineHeight: 1.4, color: 'var(--text-tertiary)' }}>{st.hint}</span>
                     </span>
+                    <span className="wiz-radio" aria-hidden="true">
+                      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                    </span>
                   </ChipToggle>
                 );
               })}
             </div>
+            {statusMissing && (
+              <p id={statusErrId} role="alert" className="wiz-field-error">
+                <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+                {STATUS_MISSING}
+              </p>
+            )}
           </div>
           {/* Η ΜΑΖΙΚΗ ΚΑΤΑΧΩΡΗΣΗ ΜΕΤΑ ΤΙΣ ΔΥΟ ΕΡΩΤΗΣΕΙΣ, ΣΕ ΚΑΘΕ ΠΛΑΤΟΣ (κριτική
               σχεδίασης r3). Στο παράθυρο ήταν ακόμη πρώτη και η βαρύτερη γραμμή
@@ -1210,10 +1251,10 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
                   // Το «μόνο ψηφία» το λέει ήδη το πληκτρολόγιο που ανοίγει
                   // (inputMode numeric) και ο έλεγχος που απορρίπτει γράμματα· η
                   // πηγή δεν λέγεται πουθενά αλλού και μένει.
-                  inputMode="numeric" placeholder="Από το myAADE"
+                  inputMode="numeric" placeholder="Από το myAADE" aria-describedby={amaHintId}
                   onFocus={onFocus} onBlur={onBlur} />
               </Field>
-              <div style={{ fontFamily: T.font.sans, fontSize: 12, color: amaLengthLooksUnusual(ama) ? 'var(--warning)' : 'var(--text-secondary)', marginTop: 6, lineHeight: 1.6 }}>
+              <div id={amaHintId} style={{ fontFamily: T.font.sans, fontSize: 12, color: amaLengthLooksUnusual(ama) ? 'var(--warning)' : 'var(--text-secondary)', marginTop: 6, lineHeight: 1.6 }}>
                 {amaLengthLooksUnusual(ama)
                   ? `Ο αριθμός έχει ${ama.length} ψηφία, που είναι ασυνήθιστο. Έλεγξέ τον στο myAADE πριν συνεχίσεις.`
                   // Η υποχρέωση αφορά κάθε αγγελία, σε όποιον ιστότοπο. Ο αριθμός
@@ -1370,28 +1411,29 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               <div className="wiz-suffix">
                 <input style={{ ...numInputStyle, paddingRight: 36 }} type="number" min={0} inputMode="decimal" value={rent} onChange={e => setRent(e.target.value)} onFocus={onFocus} onBlur={onBlur}
                   autoFocus={(!isEdit && !enfiaStep) || (focusRent && !focusEnfia)}
+                  aria-describedby={airbnb || leased ? rentHintId : undefined}
                   onKeyDown={e => { if (e.key === 'Enter' && !isEdit) { e.preventDefault(); void save(); } }} />
                 <span aria-hidden>€</span>
               </div>
               {airbnb && (
-                <div style={{ ...TT.caption, marginTop: 6 }}>
+                <div id={rentHintId} style={{ ...TT.caption, marginTop: 6 }}>
                   Τιμή ανά νύχτα επί τις νύχτες του μήνα, κατά μέσο όρο.
                 </div>
               )}
               {leased && (
-                <div style={{ ...TT.caption, marginTop: 6 }}>
+                <div id={rentHintId} style={{ ...TT.caption, marginTop: 6 }}>
                   Όπως γράφει το μισθωτήριο.
                 </div>
               )}
             </>, rentLabel),
             row('prop.obj_value', 'auto', <>
-              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={objValue} onChange={e => setObjValue(e.target.value)} onFocus={onFocus} onBlur={onBlur} />
+              {suffixed('€', <input style={suffixInputStyle} type="number" min={0} inputMode="decimal" value={objValue} onChange={e => setObjValue(e.target.value)} onFocus={onFocus} onBlur={onBlur} />)}
               {/* Ο ΕΝΦΙΑ κόβει μόνος του το ποσοστό ιδιοκτησίας: η αξία του
                   μεριδίου εδώ θα το έκοβε δεύτερη φορά. */}
-              <div style={{ fontFamily: T.font.sans, fontSize: 12, color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.6 }}>
+              <div style={{ ...TT.caption, marginTop: 6 }}>
                 {OBJ_VALUE_WHOLE}
               </div>
-            </>, 'Αντικειμενική αξία (€)'),
+            </>, 'Αντικειμενική αξία'),
             row('prop.co_owners', 'full', <>
               <input style={numInputStyle} type="number" inputMode="numeric" min={1} max={99} value={coOwners.length}
                 onChange={e => setCoOwnerCount(parseInt(e.target.value, 10))} onFocus={onFocus} onBlur={onBlur} />
@@ -1404,22 +1446,23 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
               </div>
             </>, 'Αριθμός συνιδιοκτητών'),
             row('prop.value', 'auto',
-              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={value} onChange={e => setValue(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'Εμπορική αξία (€)'),
+              suffixed('€', <input style={suffixInputStyle} type="number" min={0} inputMode="decimal" value={value} onChange={e => setValue(e.target.value)} onFocus={onFocus} onBlur={onBlur} />), 'Εμπορική αξία'),
             row('prop.purchase_price', 'auto',
-              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} onFocus={onFocus} onBlur={onBlur} />, 'Τιμή αγοράς (€)'),
+              suffixed('€', <input style={suffixInputStyle} type="number" min={0} inputMode="decimal" value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} onFocus={onFocus} onBlur={onBlur} />), 'Τιμή αγοράς'),
             row('prop.purchase_date', 'auto',
               <DatePicker value={purchaseDate} onChange={setPurchaseDate} />),
             row('prop.enfia', enfiaStep ? 'full' : 'auto', <>
               <div className="wiz-suffix">
                 <input style={{ ...numInputStyle, paddingRight: 36 }} type="number" min={0} inputMode="decimal" value={enfia} onChange={e => setEnfia(e.target.value)} onFocus={onFocus} onBlur={onBlur}
                   autoFocus={enfiaStep || focusEnfia}
+                  aria-describedby={enfiaStep ? enfiaHintId : undefined}
                   onKeyDown={e => { if (e.key === 'Enter' && enfiaStep) { e.preventDefault(); void save(); } }} />
                 <span aria-hidden>€</span>
               </div>
-              {enfiaStep && <div style={{ ...TT.caption, marginTop: 6 }}>Όπως γράφει το εκκαθαριστικό.</div>}
+              {enfiaStep && <div id={enfiaHintId} style={{ ...TT.caption, marginTop: 6 }}>Όπως γράφει το εκκαθαριστικό.</div>}
             </>, 'ΕΝΦΙΑ που πληρώνεις τον χρόνο'),
             row('prop.ownership', 'auto',
-              <input style={numInputStyle} type="number" min={0} inputMode="decimal" value={ownership} onChange={e => setOwnership(e.target.value)} max={100} onFocus={onFocus} onBlur={onBlur} />, 'Ποσοστό ιδιοκτησίας (%)'),
+              suffixed('%', <input style={suffixInputStyle} type="number" min={0} inputMode="decimal" value={ownership} onChange={e => setOwnership(e.target.value)} max={100} onFocus={onFocus} onBlur={onBlur} />), 'Ποσοστό ιδιοκτησίας'),
           ]}
           after={<>{rentTaxPreview}{grossYield != null && (
             <div style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', borderRadius: T.radius.card, padding: 16 }}>
@@ -1438,7 +1481,7 @@ export default function AddPropertyWizard({ userId, onClose, onSaved, existing, 
           (όριο πακέτου, δίκτυο), το κουμπί γύριζε πίσω και δεν εμφανιζόταν
           τίποτα. Ο χρήστης νόμιζε ότι αποθηκεύτηκε. Τώρα φαίνεται σε κάθε βήμα
           και ανακοινώνεται. */}
-      {error && (
+      {error && !statusMissing && (
         <div role="alert" style={{ marginTop: 16, background: 'var(--negative-soft)', border: '1px solid var(--negative-border)', borderRadius: 10, padding: '10px 14px', fontFamily: T.font.sans, fontSize: 'var(--fs-base)', color: 'var(--negative)' }}>{error}</div>
       )}
     </Modal>

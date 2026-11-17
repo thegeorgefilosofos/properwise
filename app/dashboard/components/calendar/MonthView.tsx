@@ -497,7 +497,16 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
               <div aria-hidden="true" style={{ position:'absolute', left:0, right:0, top:CELL_PAD+DAY_HEAD_H+weekHolH, height:railH, pointerEvents:'none' }}>
                 {segments.filter(g=>g.lane<MAX_LANES).map(g=>{
                   const cc=channelColor(g.stay.channel)
-                  const L=g.openLeft?0:BAR_INSET, R=g.openRight?0:BAR_INSET
+                  // ═══ Η ΣΥΝΕΧΕΙΑ ΣΤΑΜΑΤΑ ΣΤΟ ΓΕΜΙΣΜΑ ΤΟΥ ΚΕΛΙΟΥ, ΟΧΙ ΣΤΗΝ ΑΚΡΗ ═══
+                  // Μπάρα που συνεχίζει από την προηγούμενη εβδομάδα (ή στην
+                  // επόμενη) ξεκινούσε στο μηδέν της στήλης. Στο τηλέφωνο το
+                  // πλέγμα ακουμπά τις άκρες της οθόνης (`.cal-bleed`), οπότε το
+                  // «Κράτηση» κολλούσε στο τζάμι, 12 αριστερότερα από τον αριθμό
+                  // της ημέρας από πάνω του. Στις άκρες του πλέγματος η μπάρα
+                  // κρατά το γέμισμα του κελιού· η επίπεδη γωνία λέει ακόμη ότι
+                  // συνεχίζει. Ανάμεσα σε εβδομάδες μέσα στη σειρά δεν αλλάζει.
+                  const L=g.openLeft?(g.startCol===0?CELL_PAD:0):BAR_INSET
+                  const R=g.openRight?(g.startCol+g.span===7?CELL_PAD:0):BAR_INSET
                   // ═══ Η ΕΤΙΚΕΤΑ ΤΗΣ ΜΠΑΡΑΣ ΧΩΡΑΕΙ Ή ΔΕΝ ΓΡΑΦΕΤΑΙ ═════════════
                   // «Κράτηση · 4 ν.» κοβόταν στα 320 και στα 390: μπάρα δύο
                   // ημερών στο τέλος της εβδομάδας, με το «ν.» να ακουμπά την
@@ -505,7 +514,7 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
                   // («4 νύχτες») και ΜΟΝΟ όταν χωρούν δίπλα στο όνομα — μετρημένες
                   // στη γραμματοσειρά της μπάρας, όπως οι αργίες. Αλλιώς μένει το
                   // όνομα· οι νύχτες λέγονται στην επεξήγηση της μπάρας.
-                  const barInner=gridW*(g.span/7)-L-R-(g.openRight?4:8)-(g.openLeft?4:9)-(g.openLeft?0:14)
+                  const barInner=gridW*(g.span/7)-L-R-(g.openRight?4:8)-(g.openLeft&&g.startCol>0?4:9)-(g.openLeft?0:14)
                   const nightsTxt=!g.openLeft&&g.nights!==null&&g.nights>1?` · ${g.nights} νύχτες`:''
                   const barFont='600 11px '+T.font.sans
                   const barLabel=nightsTxt&&gridW>0&&textWidth(g.stay.guest+nightsTxt,barFont)<=barInner?g.stay.guest+nightsTxt:g.stay.guest
@@ -519,7 +528,7 @@ export function MonthView({ events, currentDate, selectedDate, onDayClick, onDay
                       <Tooltip fill text={g.nights === null
                         ? `${g.stay.guest} · ${cc.label}\nΆφιξη ${grDate(g.stay.start)} · χωρίς καταχωρημένη αναχώρηση${g.stay.total?`\n${fe(g.stay.total)}`:''}`
                         : `${g.stay.guest} · ${cc.label}\n${grDate(g.stay.start)} έως ${grDate(g.stay.end)} · ${g.nights} ${g.nights===1?'νύχτα':'νύχτες'}${g.stay.total?`\n${fe(g.stay.total)}`:''}`}>
-                        <div onClick={e=>e.stopPropagation()} style={{ width:'100%', height:BAR_H, boxSizing:'border-box', display:'flex', alignItems:'center', gap:4, padding:`0 ${g.openRight?4:8}px 0 ${g.openLeft?4:9}px`, background:cc.solid, color:'var(--on-tone)', fontSize: 'var(--fs-xs)', fontWeight:600, fontFamily: T.font.sans, letterSpacing:'0.1px', borderTopLeftRadius:g.openLeft?2:BAR_H/2, borderBottomLeftRadius:g.openLeft?2:BAR_H/2, borderTopRightRadius:g.openRight?2:BAR_H/2, borderBottomRightRadius:g.openRight?2:BAR_H/2, overflow:'hidden', whiteSpace:'nowrap', cursor:'default' }}>
+                        <div onClick={e=>e.stopPropagation()} style={{ width:'100%', height:BAR_H, boxSizing:'border-box', display:'flex', alignItems:'center', gap:4, padding:`0 ${g.openRight?4:8}px 0 ${g.openLeft&&g.startCol>0?4:9}px`, background:cc.solid, color:'var(--on-tone)', fontSize: 'var(--fs-xs)', fontWeight:600, fontFamily: T.font.sans, letterSpacing:'0.1px', borderTopLeftRadius:g.openLeft?2:BAR_H/2, borderBottomLeftRadius:g.openLeft?2:BAR_H/2, borderTopRightRadius:g.openRight?2:BAR_H/2, borderBottomRightRadius:g.openRight?2:BAR_H/2, overflow:'hidden', whiteSpace:'nowrap', cursor:'default' }}>
                           {!g.openLeft&&<User size={10} style={{ flexShrink:0, opacity:0.9 }}/>}
                           <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{barLabel}</span>
                         </div>

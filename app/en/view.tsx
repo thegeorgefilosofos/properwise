@@ -106,16 +106,16 @@ export default async function LandingEn() {
             <span>{LANDING_EN.news.text}</span>
             <svg aria-hidden="true" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </Link>
-          <h1 className="lp-rise" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.15, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
+          <h1 className="lp-rise lp-h1-en" style={{ fontSize: 'clamp(32px, 5.2vw, 60px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.15, margin: '0 auto 20px', maxWidth: 1120, color: 'var(--text-primary)', textWrap: 'balance' }}>
             <span className="lp-h1-line">{LANDING_EN.titleLines[0]}</span>{' '}
             <span className="lp-h1-line lp-h1-accent">{LANDING_EN.titleLines[1]}</span>
           </h1>
-          {/* ΑΡΙΣΤΕΡΗ ΣΤΟΙΧΙΣΗ ΤΟΥ ΑΓΓΛΙΚΟΥ, ΙΣΟΡΡΟΠΗΜΕΝΕΣ ΓΡΑΜΜΕΣ. Η ελληνική
-              στοιχίζει δύο ισομήκεις προτάσεις πέρα πέρα (.lp-lede-line)· οι
-              αγγλικές δεν είναι ισομήκεις και η πρώτη άνοιγε κενά ανάμεσα στις
-              λέξεις. Μία παράγραφος με `balance`, όπως γράφει η Apple. */}
-          <p className="lp-rise-2" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 28px', maxWidth: 720, textWrap: 'pretty' }}>
-            {LANDING_EN.lede[0]}{' '}{LANDING_EN.lede[1]}
+          {/* ΙΔΙΟ ΣΧΗΜΑ ΜΕ ΤΗΝ ΕΛΛΗΝΙΚΗ (.lp-lede, 16/11/2026): μία πρόταση ανά
+              γραμμή, κεντραρισμένη με το φυσικό της κενό· όπου δεν χωρά, δύο
+              ζυγισμένες γραμμές. Καμία πλήρης στοίχιση σε καμία γλώσσα. */}
+          <p className="lp-rise-2 lp-lede" data-nohy="" style={{ fontSize: 'clamp(15px, 1.75vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 28px' }}>
+            <span className="lp-lede-line">{LANDING_EN.lede[0]}</span>{' '}
+            <span className="lp-lede-line">{LANDING_EN.lede[1]}</span>
           </p>
           <div className="lp-rise-3 lp-hero-ctas" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             {loggedIn ? dashboard('lp-cta lp-primary', { textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 28px', borderRadius: T.radius.pill }, LANDING_EN.dashboard) : (<>
@@ -272,10 +272,10 @@ export default async function LandingEn() {
             );
           })}
         </div>
-        <p className="fineprint" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: FAINT, margin: '22px 0 0', textWrap: 'pretty' }}>
+        <p className="fineprint fineprint-cols" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: FAINT, margin: '22px 0 0', textWrap: 'pretty' }}>
           {trialOfferEn(PLAN_COPY_EN[TRIAL_PLAN].name)}{words.live && <> {words.firstCharge}</>}
           {' '}{PRICES_VAT_EN} {NO_COMMITMENT_EN}
-          {' '}{words.moneyBack}
+          <span className="fineprint-col2">{words.moneyBack}</span>
         </p>
         <div style={{ marginTop: 10 }}>
           <Link href={localHref('en', '/paketa')} className="lp-link po-tap" style={{ color: ACCENT, textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>
