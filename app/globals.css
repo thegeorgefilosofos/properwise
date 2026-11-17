@@ -7693,7 +7693,7 @@ tr.po-row-more { display: none; }
 .nf-does span { font-size: 14px; line-height: 1.5; color: var(--text-secondary); }
 .nf-offer {
   display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 18px; row-gap: 6px;
-  margin-top: 28px; padding: 16px 20px; border-radius: 16px; background: var(--bg-surface);
+  margin-top: 20px; padding: 16px 20px; border-radius: 16px; background: var(--bg-surface);
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
 }
 /* Η ΤΙΜΗ ΑΝΑΔΙΠΛΩΝΕΤΑΙ ΑΝΑΜΕΣΑ ΣΤΑ ΚΟΜΜΑΤΙΑ ΤΗΣ, ΠΟΤΕ ΜΕΣΑ ΤΟΥΣ (27/10/2026).
@@ -7705,7 +7705,7 @@ tr.po-row-more { display: none; }
 .nf-amount { font-size: clamp(30px, calc(3.4vw / var(--zoom, 1)), 38px); font-weight: 700; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; color: var(--text-primary); line-height: 1; }
 .nf-per { font-size: 15px; color: var(--text-secondary); }
 .nf-terms { font-size: 14px; color: var(--text-secondary); line-height: 1.45; text-wrap: pretty; }
-.nf-cta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px; margin-top: 20px; }
+.nf-cta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px; margin-top: 16px; }
 .nf-free { font-size: 13px; color: var(--text-tertiary); }
 
 .nf-stage { position: relative; }

@@ -243,7 +243,7 @@ export function LandingStyles() {
            από τη μέση και πάνω, οπότε στο μάτι σταματούσε στα δύο τρίτα, ενώ
            ο τίτλος, οι κάρτες και τα ψιλά από κάτω της φτάνουν ως την άκρη. */''}
         .lp-hair {
-          height: 1px; border: 0; margin: 0 0 clamp(18px, 2.4vw, 28px);
+          height: 1px; border: 0; margin: 0 0 clamp(16px, 1.6vw, 20px);
           background: var(--border-subtle);
         }
         ${/* ═══ ΖΥΓΙΣΗ ΚΕΙΜΕΝΟΥ: ΔΥΟ ΡΟΛΟΙ, ΔΥΟ ΣΥΜΠΕΡΙΦΟΡΕΣ ══════════════════
@@ -295,26 +295,13 @@ export function LandingStyles() {
            συμπιέζονται και δουλεύουν κανονικά πάνω στο «normal». */''}
         .lp-root :where(h1, h2, h3, p, li, summary, a, .lp-eyebrow) { font-feature-settings: normal; font-variant-numeric: proportional-nums; }
 
-        ${/* ΤΑ ΨΙΛΑ ΓΡΑΜΜΑΤΑ ΣΕ ΜΕΤΡΟ ΑΝΑΓΝΩΣΗΣ (16/11/2026). Τα σχόλια της
-           page.tsx εξηγούν γιατί τα ψιλά γράμματα άνοιξαν σε όλο το πλάτος (στα
-           620 έμοιαζαν μισοτελειωμένα). Στα 1440 όμως η γραμμή έφτανε τους 170
-           χαρακτήρες σε μέγεθος 15: το μάτι έχανε την αρχή της επόμενης·
-           σε ψιλά γράμματα αυτό σημαίνει ότι δεν διαβάζονται. Οι κάρτες μένουν
-           σε όλο το πλάτος· μόνο το μπλοκ κειμένου σταματά στους 70 χαρακτήρες,
-           στοιχισμένο αριστερά στον ίδιο άξονα με τις κάρτες, όπου η κενή δεξιά
-           πλευρά διαβάζεται ως περιθώριο σελίδας και όχι ως κομμένη στήλη. */''}
-        .lp-root .fineprint { max-width: 70ch; }
-        ${/* Η ΜΑΚΡΙΑ ΕΠΙΦΥΛΑΞΗ ΤΩΝ ΤΙΜΩΝ ΓΕΜΙΖΕΙ ΤΟ ΠΛΑΤΟΣ ΣΕ ΔΥΟ ΣΤΗΛΕΣ. Στους
-           70 χαρακτήρες έμενε στενή στήλη με άδειο το δεξί μισό κάτω από τις
-           τέσσερις κάρτες. Δύο στήλες των ~34em κρατούν τη γραμμή αναγνώσιμη
-           και το μπλοκ στο ίδιο πλάτος με τις κάρτες· στο κινητό μένει μία.
-           Η δεύτερη στήλη ξεκινά από το δικαίωμα υπαναχώρησης, όχι στη μέση
-           μιας πρότασης. */''}
+        ${/* ΤΑ ΨΙΛΑ ΓΡΑΜΜΑΤΑ ΣΕ ΟΛΟ ΤΟ ΠΛΑΤΟΣ (17/11/2026). Δοκιμάστηκαν μέτρο
+           70 χαρακτήρων και μετά δύο στήλες: και τα δύο άφηναν κενό δεξιά ή δύο
+           στενές στήλες κάτω από τις κάρτες. Απόφαση ιδιοκτήτη: το κείμενο πάει
+           πέρα πέρα, στο ίδιο πλάτος με τις κάρτες, όπως κάθε άλλο μπλοκ της
+           σελίδας. Το δικαίωμα υπαναχώρησης ξεκινά δική του παράγραφο. */''}
+        .lp-root .fineprint { max-width: none; columns: 1; }
         .lp-root .fineprint-col2 { display: block; margin-top: .6em; }
-        @media (min-width: 960px) {
-          .lp-root .fineprint-cols { max-width: none; columns: 2; column-gap: 48px; }
-          .lp-root .fineprint-col2 { break-before: column; margin-top: 0; }
-        }
 
 
         ${/* ═══ Η ΖΩΝΗ ΜΕΤΡΗΣΕΩΝ: ΤΟ ΙΔΙΟ ΙΔΙΩΜΑ, ΤΡΕΙΣ ΣΕΙΡΕΣ ══════════════
@@ -332,7 +319,7 @@ export function LandingStyles() {
         }
         .lp-stats > .lp-stat {
           grid-row: span 3; display: grid; grid-template-rows: subgrid; gap: 0;
-          padding: clamp(20px, 2.4vw, 26px) clamp(18px, 1.9vw, 24px);
+          padding: clamp(16px, 1.6vw, 20px) clamp(16px, 1.6vw, 20px);
         }
         .lp-stat-n {
           font-size: clamp(30px, 3.2vw, 38px); font-weight: 700;
@@ -343,7 +330,7 @@ export function LandingStyles() {
           margin-top: 8px; font-size: 14px; font-weight: 600; color: var(--accent);
         }
         .lp-stat-l {
-          margin: 12px 0 0; font-size: 14px; line-height: 1.55; text-wrap: balance;
+          margin: 8px 0 0; font-size: 14px; line-height: 1.55; text-wrap: balance;
           color: var(--text-secondary);
         }
 
@@ -373,6 +360,25 @@ export function LandingStyles() {
           grid-template-rows: auto auto; grid-auto-flow: column;
           column-gap: clamp(24px, 3vw, 44px); row-gap: clamp(20px, 2.2vw, 26px);
         }
+        ${/* Χωρίς εισαγωγή από πάνω, το πλέγμα είναι το πρώτο παιδί της κάρτας: η
+           γραμμή και το κενό που το χώριζαν από την εισαγωγή δεν χωρίζουν πια τίποτα. */''}
+        ${/* ΖΩΝΗ ΔΥΟ ΣΤΗΛΩΝ: Η ΚΕΦΑΛΙΔΑ ΑΡΙΣΤΕΡΑ, ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ ΔΕΞΙΑ (17/11/2026).
+           Στην Ασφάλεια και στις Συχνές ερωτήσεις η κεφαλίδα έπιανε όλο το πλάτος
+           πάνω από ένα περιεχόμενο που δεν το χρειαζόταν: 150 εικονοστοιχεία
+           ύψους ανά ενότητα για τρεις γραμμές κειμένου. Από τα 1.024 και πάνω η
+           κεφαλίδα κάθεται αριστερά και μένει καρφωμένη όσο κυλά το περιεχόμενο·
+           η λεπτή γραμμή από πάνω κρατά όλο το πλάτος, όπως σε κάθε ενότητα. Από
+           κάτω, όλα στοιβάζονται όπως πριν. */''}
+        @media (min-width: 1024px) {
+          .lp-final-band { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 48px; align-items: center; text-align: left !important; }
+          .lp-final-band > h2 { grid-column: 1; margin: 0 0 12px !important; max-width: none !important; }
+          .lp-final-band > p { grid-column: 1; margin: 0 !important; max-width: none !important; text-align: left; }
+          .lp-final-band > a { grid-column: 2; grid-row: 1 / span 2; }
+          .lp-band { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: clamp(32px, 4vw, 64px); align-items: start; }
+          .lp-band > .lp-band-head { position: sticky; top: 96px; }
+          .lp-band > .lp-band-head > div { margin-bottom: 0 !important; }
+        }
+        .lp-sec > .lp-sec-grid:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
         .lp-sec-item { display: grid; grid-template-columns: 34px 1fr; column-gap: 13px; align-items: start; }
         .lp-sec-ico {
           width: 34px; height: 34px; border-radius: 12px;
@@ -380,8 +386,8 @@ export function LandingStyles() {
           display: flex; align-items: center; justify-content: center;
         }
         .lp-sec-fine {
-          margin: clamp(22px, 2.4vw, 28px) 0 0;
-          padding-top: clamp(18px, 2vw, 22px);
+          margin: clamp(16px, 1.8vw, 20px) 0 0;
+          padding-top: 16px;
           border-top: 1px solid var(--border-subtle);
           font-size: var(--fs-base); line-height: 1.6; color: var(--text-tertiary);
         }
@@ -398,6 +404,18 @@ export function LandingStyles() {
            οι έξι κάρτες διαβάζονταν σαν έξι ξεχωριστά κουτιά αντί για πλέγμα. */''}
         .lp-feat { grid-template-rows: auto auto 1fr; }
         .lp-feat > .lp-card { grid-row: span 3; display: grid; grid-template-rows: subgrid; gap: 0; }
+        ${/* ΤΟ ΕΙΚΟΝΙΔΙΟ ΔΙΠΛΑ ΣΤΟΝ ΤΙΤΛΟ, ΟΧΙ ΠΑΝΩ ΤΟΥ (17/11/2026). Πάνω από τον
+           τίτλο έτρωγε μία σειρά 54 εικονοστοιχείων σε κάθε κάρτα, δηλαδή 108 στις
+           δύο σειρές, για ένα σύμβολο που δεν λέει τίποτα χωρίς τον τίτλο του.
+           Δίπλα του διαβάζεται ως ταμπέλα του· η λεζάντα κρατά όλο το πλάτος της
+           κάρτας, οπότε μένει στις δύο γραμμές. Κάτω από τα 860 ισχύει η λίστα. */''}
+        @media (min-width: 861px) {
+          .lp-feat { grid-template-rows: auto 1fr; }
+          .lp-feat > .lp-card { grid-row: span 2; grid-template-columns: 38px minmax(0, 1fr); column-gap: 12px; }
+          .lp-feat > .lp-card > div:first-child { grid-row: 1; grid-column: 1; margin-bottom: 0 !important; }
+          .lp-feat > .lp-card > h3 { grid-row: 1; grid-column: 2; align-self: center; margin: 0 !important; }
+          .lp-feat > .lp-card > p { grid-column: 1 / -1; margin-top: 12px !important; }
+        }
         .lp-duo { grid-template-rows: auto auto auto 1fr; }
         .lp-duo > .lp-card { grid-row: span 4; display: grid; grid-template-rows: subgrid; gap: 0; }
         ${/* ΚΑΙ ΟΙ ΚΑΡΤΕΣ ΤΟΥ ΤΙΜΟΚΑΤΑΛΟΓΟΥ. Στοιχίζονταν με δύο ελάχιστα ύψη στο
@@ -505,6 +523,20 @@ export function LandingStyles() {
           border: 1px solid var(--border-subtle); border-radius: 14px; overflow: hidden;
         }
         .lp-works > div { background: var(--bg-surface); padding: 18px 18px 17px; }
+        ${/* Η ΣΥΜΒΑΤΟΤΗΤΑ ΣΕ ΔΥΟ ΟΜΑΔΕΣ ΠΟΥ ΔΙΑΒΑΖΟΝΤΑΙ ΩΣ ΕΝΑ ΠΛΕΓΜΑ (17/11/2026).
+           Η δεύτερη ομάδα ζει σε στοιχείο details και ανοίγει με «Δες όλα». Μόλις ανοίξει
+           το κουμπί φεύγει, η κάτω γωνία της πρώτης ομάδας και η πάνω της δεύτερης
+           ισιώνουν και η γραμμή ανάμεσα είναι το κάτω όριο της πρώτης. */''}
+        .lp-works-head { margin: 32px 0 16px; }
+        .lp-works-foot { display: flex; flex-wrap: wrap; align-items: center; column-gap: 24px; margin-top: 4px; }
+        .lp-works-more[open] { flex-basis: 100%; }
+        .lp-works-acc { display: inline-flex; align-items: center; min-height: 44px; }
+        .lp-works-more > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; min-height: 44px; }
+        .lp-works-more > summary::-webkit-details-marker { display: none; }
+        .lp-works-more[open] > summary { display: none; }
+        .lp-works-foot:has(> .lp-works-more[open]) { margin-top: 0; }
+        .lp-works-more[open] > .lp-works-tail { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+        .lp-works:has(+ .lp-works-foot > .lp-works-more[open]) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
         ${/* ΜΙΑ ΣΤΗΛΗ ΣΤΟ ΤΗΛΕΦΩΝΟ. Δύο στήλες των 175 έσπαγαν το «SoftOne, Epsilon,
            QuickBooks, Xero» σε δύο σειρές και τη λεζάντα του σε πέντε. Η γραμμή
            ανάμεσα στα κελιά είναι ήδη το φόντο του πλέγματος, οπότε μένει. */''}
@@ -651,8 +683,22 @@ export function LandingStyles() {
             overflow: hidden;
           }
         }
+        ${/* ΟΙ ΕΞΙ ΔΥΝΑΤΟΤΗΤΕΣ ΣΤΟ ΤΗΛΕΦΩΝΟ: ΚΑΡΟΥΖΕΛ, ΟΠΩΣ ΤΑ ΠΑΚΕΤΑ (17/11/2026).
+           Σε μία στήλη ήταν έξι κάρτες η μία κάτω από την άλλη, 820 εικονοστοιχεία.
+           Οριζόντια με snap πιάνουν το ύψος μίας κάρτας· η επόμενη κόβεται στο
+           χείλος της οθόνης και λέει μόνη της ότι υπάρχει συνέχεια. Ίδιο
+           περιτύλιγμα με το καρουζέλ των πακέτων: ίδιο gutter, ίδιο snap. */''}
         @media (max-width: 600px) {
-          .lp-feat { grid-template-columns: 1fr !important; }
+          .lp-feat {
+            grid-template-columns: none !important; grid-template-rows: none;
+            grid-auto-flow: column; grid-auto-columns: min(84vw, 320px);
+            overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
+            scroll-padding-inline: var(--pub-gutter);
+            margin-inline: calc(-1 * var(--pub-gutter)); padding-inline: var(--pub-gutter);
+            padding-bottom: 6px; scrollbar-width: none;
+          }
+          .lp-feat::-webkit-scrollbar { display: none; }
+          .lp-feat > .lp-card { grid-row: auto; grid-template-rows: auto auto; scroll-snap-align: center; }
         }
 
         ${/* Οι .lp-hide-xs και .lp-only-xs ΕΦΥΓΑΝ ΣΤΟ globals.css. Ζούσαν εδώ,

@@ -72,6 +72,7 @@ export const WORKS_EN = {
   over: 'Compatibility',
   title: 'Keep everything that already works',
   sub: 'Export your data whenever you like, in the format your accountant expects.',
+  more: (n: number) => `See all (${n})`,
   items: [
     { t: 'myAADE', d: 'the Greek tax authority’s portal: lease declarations, checked for completeness' },
     { t: 'Form E2', d: 'the rental income schedule: codes mapped, ready for your accountant' },
@@ -94,7 +95,6 @@ export const SECURITY_EN = {
   over: 'Security',
   title: 'Your data belongs to you',
   sub: 'Encrypted connections, per-user isolation and a database in the European Union.',
-  lede: 'Bills, contracts and details about your property or your clients are some of the most sensitive data there is. We protect them accordingly.',
   items: [
     { t: 'Encrypted connection', d: 'Your connection to the app always runs over TLS, on every device and network.', i: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4' },
     { t: 'Per-user isolation', d: 'You see only your own data. Access goes only to the people you choose.', i: 'M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z' },
@@ -103,19 +103,6 @@ export const SECURITY_EN = {
   ],
   fine: 'Which providers process data outside the EU, and under which contracts, is set out on',
   fineLink: 'our About page',
-};
-
-export const WHY_EN = {
-  over: 'Why it exists',
-  title: 'Nobody bought property to do bookkeeping',
-  body: [
-    'Greece’s property tax rules change every year, and the deadlines keep multiplying.',
-    'Form E2, ENFIA, short-term rental declarations, the standard deduction, building service charges, long-term rent reviews: each has its own deadline, and the responsibility is always yours.',
-    'That is why we built PROPERWISE. It keeps track of every property’s costs, tax obligations and deadlines, under the rules of the year you are filing for.',
-    'Tax is worked out from your own figures, deadlines go into your device’s calendar, and every receipt is filed from a single photo. Your accountant’s file downloads in one click.',
-  ],
-  close: 'You make the decisions. PROPERWISE does the rest.',
-  about: 'Who we are and where your data lives',
 };
 
 export const PRICING_HEAD_EN = {
