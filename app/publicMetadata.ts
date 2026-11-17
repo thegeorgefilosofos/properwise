@@ -25,6 +25,9 @@ import { elPathFor, languageAlternates } from '@/lib/i18n/paths';
  * σελίδας. Ο τίτλος είναι απόλυτος: είναι γραμμένος για τη σελίδα αποτελεσμάτων
  * και δεν αντέχει τρίτο τμήμα από το πρότυπο της ρίζας.
  */
+/** Πάνω από τόσους χαρακτήρες η Google συνήθως κόβει τον τίτλο στα αποτελέσματα. */
+export const TITLE_MAX = 65;
+
 export function publicMetadata({ title, description, url, type = 'website', image }: {
   title: string; description: string; url: string; type?: 'website' | 'article';
   /**
@@ -47,8 +50,21 @@ export function publicMetadata({ title, description, url, type = 'website', imag
   // ΤΟ ΖΕΥΓΟΣ ΤΗΣ ΣΕΛΙΔΑΣ ΣΤΗΝ ΑΛΛΗ ΓΛΩΣΣΑ (hreflang), ίδιο και στις δύο
   // πλευρές, με x-default τα ελληνικά. Σελίδα χωρίς ζεύγος: τίποτα.
   const languages = path ? languageAlternates(path) : null;
+  // ΤΟ ΣΗΜΑ ΣΤΟ ΤΕΛΟΣ ΚΑΘΕ ΤΙΤΛΟΥ, ΜΙΑ ΦΟΡΑ (17/11/2026). Οι δεκαεννέα υπολογιστές
+  // και οδηγοί και οι αγγλικές τους έβγαιναν στη Google χωρίς «PROPERWISE»,
+  // ενώ η αρχική, τα πακέτα και τα νομικά το είχαν. Οποιος έψαχνε «properwise
+  // ΕΝΦΙΑ» δεν έβρισκε το όνομα στον τίτλο της σελίδας που ψάχνει. Η λέξη-κλειδί
+  // μένει μπροστά· αν η Google κόψει τον τίτλο, κόβει το σήμα, όχι το θέμα. Τίτλος
+  // που ήδη λέει το όνομα (π.χ. ο χάρτης) μένει όπως είναι. Η κάρτα κοινοποίησης
+  // κρατά τον σύντομο τίτλο: το όνομα το λέει ήδη το `og:site_name`.
+  // ΜΟΝΟ ΟΤΑΝ ΧΩΡΑΕΙ. Με το σήμα παντού 49 τίτλοι ξεπερνούσαν τους 65
+  // χαρακτήρες και η Google θα τους έκοβε ή θα τους ξανάγραφε. Ο μακρύς τίτλος
+  // μένει όπως είναι: το όνομα του site το δείχνει ήδη το WebSite (name,
+  // alternateName) πάνω από το αποτέλεσμα.
+  const branded = `${title} · ${PRODUCT_NAME}`;
+  const fullTitle = title.includes(PRODUCT_NAME) || branded.length > TITLE_MAX ? title : branded;
   return {
-    title: { absolute: title },
+    title: { absolute: fullTitle },
     description,
     ...(hidden && { robots: { index: false, follow: true } }),
     alternates: { canonical: url, ...(languages && { languages }) },

@@ -27,7 +27,7 @@ import { billingWords } from '@/lib/legal/billingWords';
 import { LegalLayout, MailLink, type LegalBlock } from '../legal-shell';
 import Link from 'next/link';
 import { siteUrl, SITE } from '@/lib/core/site';
-import { organizationNode, ORG_REF } from '@/lib/seo/organization';
+import { BRAND_ABOUT, organizationNode, ORG_REF } from '@/lib/seo/organization';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { JsonLd } from '../PublicChrome';
 import { shareImage } from '../og/share';
@@ -257,6 +257,11 @@ export default function TrustPage() {
       h: 'Τα στοιχεία μας',
       body: (
         <>
+          {/* ΠΡΩΤΑ ΤΙ ΕΙΝΑΙ (17/11/2026). Η σελίδα «Ποιοι είμαστε» ξεκινούσε από τον
+              φορέα και τα δεδομένα, χωρίς να λέει πουθενά τι είναι το PROPERWISE.
+              Η πρόταση είναι η ίδια με το `description` του οργανισμού στο σχήμα
+              (BRAND_ABOUT, lib/seo/organization.ts). */}
+          <p className="lg-p">{BRAND_ABOUT.el}</p>
           {/* Ο ΦΟΡΕΑΣ ΜΠΟΡΕΙ ΝΑ ΕΙΝΑΙ ΦΥΣΙΚΟ ΠΡΟΣΩΠΟ, ΟΧΙ ΜΟΝΟ ΕΤΑΙΡΕΙΑ. Και η
               σημείωση λέει μόνο τι εκκρεμεί: την κατάσταση της χρέωσης τη λένε
               ήδη το «Τι δεν κάνουμε ποτέ» (`howWeArePaid`, `cardData`) και η

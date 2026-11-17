@@ -6,7 +6,7 @@ import { DISCLOSURE } from '@/lib/legal/disclosure';
 import { subprocessors, ANTHROPIC_CONTRACT, BACKUP_RETENTION_DAYS } from '@/lib/legal/subprocessors';
 import { billingWordsEn } from '@/lib/legal/billingWords';
 import { siteUrl, SITE } from '@/lib/core/site';
-import { organizationNode, ORG_REF } from '@/lib/seo/organization';
+import { BRAND_ABOUT, organizationNode, ORG_REF } from '@/lib/seo/organization';
 import { breadcrumbJsonLd, HOME_CRUMB_EN } from '@/lib/seo/breadcrumbs';
 import { subprocessorRowEn, TRANSFER_SAFEGUARDS_EN, identityPendingEn } from '@/lib/i18n/en/legal/common';
 import { LEGAL_UI_EN, monthYearEn } from '@/lib/i18n/en/legal/ui';
@@ -112,6 +112,8 @@ export default function TrustPageEn() {
       h: 'Our details',
       body: (
         <>
+          {/* Πρώτα τι είναι: η ίδια πρόταση με την ελληνική σελίδα (BRAND_ABOUT). */}
+          <p className="lg-p">{BRAND_ABOUT.en}</p>
           <DataTable caption="Operator details" rows={known.map(r => ({ label: r.label, value: r.value as string }))} />
           {pending.length > 0 && (
             <p className="lg-note">

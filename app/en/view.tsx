@@ -10,9 +10,8 @@ import { TRIAL_PLAN } from '@/lib/billing/entitlements';
 import { FIRST_YEAR_NEW_BRACKETS } from '@/lib/billing/greekTax';
 import { fmtFor } from '@/lib/core/format';
 import { athensParts } from '@/lib/core/time';
-import { SITE, siteUrl } from '@/lib/core/site';
-import { organizationNode, ORG_REF } from '@/lib/seo/organization';
-import { IDENTITY } from '@/lib/legal/identity';
+import { siteUrl } from '@/lib/core/site';
+import { appNode, organizationNode, websiteNode, WEBSITE_ID } from '@/lib/seo/organization';
 import { billingWordsEn, PRICES_VAT_EN, NO_COMMITMENT_EN } from '@/lib/legal/billingWords';
 import { createClient } from '@/lib/supabase/server';
 import { localHref } from '@/lib/i18n/paths';
@@ -73,7 +72,7 @@ export default async function LandingEn() {
   const year = athensParts().year;
   const money = fmtFor('en').fe;
   const faq = faqEn();
-  const visible = 5;
+  const visible = 6;
   const signup = localHref('en', withSignupEntry('/signup', 'home'));
   // Ο ΠΙΝΑΚΑΣ ΕΙΝΑΙ ΕΛΛΗΝΙΚΟΣ: πλήρης πλοήγηση (σκέτο <a>), ώστε η ρίζα να
   // ξαναγράψει το `<html lang>`.
@@ -326,18 +325,10 @@ export default async function LandingEn() {
             url: siteUrl(PATH),
             name: LANDING_EN.title,
             inLanguage: 'en',
-            isPartOf: { '@id': `${SITE}/#website` },
+            isPartOf: { '@id': WEBSITE_ID },
           },
-          {
-            '@type': 'SoftwareApplication',
-            name: IDENTITY.tradeName,
-            applicationCategory: 'BusinessApplication',
-            operatingSystem: 'Web',
-            url: siteUrl(PATH),
-            inLanguage: 'el',
-            description: LANDING_EN.description,
-            publisher: ORG_REF,
-          },
+          websiteNode(),
+          appNode(LANDING_EN.description),
           {
             '@type': 'FAQPage',
             inLanguage: 'en',

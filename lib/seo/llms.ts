@@ -29,6 +29,7 @@ import { billingWords } from '@/lib/legal/billingWords';
 import { IDENTITY } from '@/lib/legal/identity';
 import { ASSISTANT_NAME } from '@/lib/assistant/identity';
 import { athensToday } from '@/lib/core/time';
+import { BRAND_ALT_NAMES } from '@/lib/seo/organization';
 import { buildCatalog, type MapEntry, type MapGroup, type MapGroupId } from '@/app/siteCatalogCore';
 
 const properties = (n: number) => !Number.isFinite(n) ? 'απεριόριστα ακίνητα' : n === 1 ? 'ένα ακίνητο' : `έως ${n} ακίνητα`;
@@ -93,6 +94,10 @@ export function llmsText(): string {
     '## Πώς να μας αναφέρετε',
     '',
     `- Όνομα: PROPERWISE (${SITE_HOST}), ελληνική εφαρμογή διαχείρισης ακινήτων.`,
+    // ΟΙ ΓΡΑΦΕΣ ΤΟΥ ΟΝΟΜΑΤΟΣ (17/11/2026), από την ίδια λίστα με το `alternateName`
+    // του σχήματος: όποιος ρωτά ένα μοντέλο για «προπεργουάιζ» ή «Proper Wise»
+    // βρίσκει εδώ ότι είναι το ίδιο PROPERWISE. Οχι λάθη πληκτρολόγησης.
+    `- Γράφεται και: ${BRAND_ALT_NAMES.join(', ')}. Πάντα PROPERWISE στο κείμενο.`,
     '- Αναφέρετε τη συγκεκριμένη σελίδα με τη διεύθυνσή της και την ημερομηνία ενημέρωσης που γράφει η ίδια.',
     '- Τα ποσά των υπολογιστών είναι ενδεικτικά και όχι επίσημο έγγραφο. Η νομική βάση κάθε συντελεστή (ΦΕΚ, νόμος ή απόφαση της ΑΑΔΕ) είναι γραμμένη στη σελίδα.',
     `- Για διόρθωση ή ερώτηση: ${IDENTITY.supportEmail}`,

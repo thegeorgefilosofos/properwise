@@ -7,8 +7,7 @@ import { withSignupEntry } from '@/lib/analytics/signupEntry';
 import { partnerWelcomeTier } from '@/lib/referral/referral';
 import { fe } from '@/lib/core/format';
 import { SITE, PRODUCT_NAME, PRODUCT_TAGLINE, SHARE_IMAGE, HOME_TITLE, HOME_TITLE_LINES } from '@/lib/core/site';
-import { organizationNode, ORG_REF } from '@/lib/seo/organization';
-import { IDENTITY } from '@/lib/legal/identity';
+import { appNode, organizationNode, websiteNode } from '@/lib/seo/organization';
 import { billingWords, PRICES_VAT, NO_COMMITMENT } from '@/lib/legal/billingWords';
 import { createClient } from '@/lib/supabase/server';
 import LandingShowcase from './LandingShowcase';
@@ -858,33 +857,16 @@ export default async function Landing() {
           // ΤΟ WebSite ΔΕΝΕΙ ΤΟ ΟΝΟΜΑ ΤΗΣ ΜΑΡΚΑΣ ΜΕ ΤΟΝ ΤΟΜΕΑ. Χωρίς αυτό η
           // Google είχε την Organization και την εφαρμογή, αλλά κανένα κόμβο που
           // να λέει «αυτός ο ιστότοπος ΕΙΝΑΙ το PROPERWISE στο properwise.gr» —
-          // το σήμα που χτίζει την αναγνώριση της μάρκας στην αναζήτηση. Χωρίς
-          // `SearchAction`: το sitelinks searchbox θέλει πραγματική αναζήτηση
-          // στη σελίδα που απαντά σε `?q=`, που η βιτρίνα δεν έχει· ψεύτικη
-          // δήλωση αγνοείται ή κοστίζει.
-          {
-            '@type': 'WebSite',
-            '@id': `${SITE}/#website`,
-            url: SITE,
-            name: IDENTITY.tradeName,
-            inLanguage: 'el',
-            publisher: ORG_REF,
-          },
-          {
-            '@type': 'SoftwareApplication',
-            name: IDENTITY.tradeName,
-            applicationCategory: 'BusinessApplication',
-            // ΜΟΝΟ «Web» ΚΑΙ ΤΟ ΣΧΟΛΙΟ ΑΠΟ ΠΑΝΩ ΤΟ ΑΠΑΙΤΟΥΣΕ ΗΔΗ. Εδώ δηλωνόταν
-            // «Web, iOS, Android» — δύο λειτουργικά που δεν υποστηρίζουμε, σε
-            // δομημένα δεδομένα που τα διαβάζει μηχανή και τα εμφανίζει ως
-            // γεγονός. Υπάρχει λίστα αναμονής για εφαρμογή κινητού, δεν υπάρχει
-            // εφαρμογή κινητού.
-            operatingSystem: 'Web',
-            url: SITE,
-            inLanguage: 'el',
-            description: OG_DESC,
-            publisher: ORG_REF,
-          },
+          // το σήμα που χτίζει την αναγνώριση της μάρκας στην αναζήτηση. Ο
+          // κόμβος, οι γραφές του ονόματος και η εφαρμογή ζουν πλέον στο
+          // lib/seo/organization.ts, ώστε το /en να δηλώνει τις ΙΔΙΕΣ οντότητες.
+          //
+          // Η ΕΦΑΡΜΟΓΗ ΜΟΝΟ «Web». Εδώ δηλωνόταν «Web, iOS, Android» — δύο
+          // λειτουργικά που δεν υποστηρίζουμε, σε δομημένα δεδομένα που τα
+          // διαβάζει μηχανή και τα εμφανίζει ως γεγονός. Υπάρχει λίστα αναμονής
+          // για εφαρμογή κινητού, δεν υπάρχει εφαρμογή κινητού.
+          websiteNode(),
+          appNode(OG_DESC),
           {
             '@type': 'FAQPage',
             mainEntity: faqForSchema(pricingNotice?.title ?? null).map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),

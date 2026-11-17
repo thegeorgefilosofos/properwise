@@ -17,6 +17,8 @@ import { billingWordsEn } from '@/lib/legal/billingWords';
 import { ASSISTANT_NAME_EN as NOA, AI_DISCLOSURE_EN } from '@/lib/i18n/en/noa';
 import { fmtFor } from '@/lib/core/format';
 import { PLAN_COPY_EN } from './plans';
+import { BRAND_ABOUT } from '@/lib/seo/organization';
+import { PRODUCT_NAME } from '@/lib/core/site';
 
 const f = fmtFor('en');
 const name = (id: keyof typeof PLAN_COPY_EN) => PLAN_COPY_EN[id].name;
@@ -144,6 +146,8 @@ export const FAQ_PRICE_Q_EN = 'How much does it cost?';
 export function faqEn() {
   const w = billingWordsEn();
   return [
+    // Πρώτα τι είναι: η ίδια πρόταση με το `description` του οργανισμού (app/landingContent.ts).
+    { q: `What is ${PRODUCT_NAME}?`, a: BRAND_ABOUT.en },
     { q: FAQ_PRICE_Q_EN, a: `“${name('free')}” has no subscription for one property and includes every tax tool. With ${NOA} it costs ${f.fe(PLANS.solo.priceMonthly)} a month or ${f.fe(PLANS.solo.priceAnnual)} a year. The larger plans go up to ${f.fe(PLANS.office.priceMonthly)} a month for unlimited properties. Teams with roles start on the “${name(firstPlanWith(TEAM_LINE))}” plan. Paying annually saves you up to ${monthsSaved} months and lowers the monthly cost.` },
     { q: 'Who is it for?', a: 'Anyone who owns property in Greece, from an individual with one apartment to a real estate office managing portfolios for clients. It covers homes, commercial space, storage units and land, on long-term or short-term lets.' },
     { q: 'How does photo scanning work?', a: `Photograph a bill, lease, insurance policy or ENFIA statement. The app reads the amount, provider and due date and files them under the right property. You see what it understood first and fix it with a tap: nothing is saved without you. Without a subscription you get ${SCAN_LIMITS.free} scans a month, ${TRIAL_SCANS_PER_MONTH} during the trial and unlimited scans with a subscription.` },

@@ -14,6 +14,8 @@ import { fe } from '@/lib/core/format'
 import { billingWords } from '@/lib/legal/billingWords'
 import { ASSISTANT_NAME, ASSISTANT_ACC, ASSISTANT_TO } from '@/lib/assistant/identity'
 import { PRO_PAID_TARGET, STREAK_TARGET_MONTHS } from '@/lib/referral/referral'
+import { BRAND_ABOUT } from '@/lib/seo/organization'
+import { PRODUCT_NAME } from '@/lib/core/site'
 
 // ΟΙ ΕΞΙ ΠΕΡΙΓΡΑΦΕΣ ΧΩΡΑΝΕ ΟΛΟΚΛΗΡΕΣ ΚΑΙ ΣΤΟ ΤΗΛΕΦΩΝΟ. Ήταν 98 ως 114 χαρακτήρες
 // και η κάρτα του κινητού τις κόβει στις τρεις γραμμές: τρεις από τις έξι
@@ -76,7 +78,7 @@ export const featuresFor = (year: number) => [
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Πόσες φαίνονται χωρίς πάτημα. Οι υπόλοιπες ζουν πίσω από ένα «Περισσότερες». */
-export const FAQ_VISIBLE = 5;
+export const FAQ_VISIBLE = 6;
 
 // ΟΙ «ΜΗΝΕΣ ΔΩΡΟ» ΒΓΑΙΝΟΥΝ ΑΠΟ ΤΟΝ ΤΙΜΟΚΑΤΑΛΟΓΟ, ΔΕΝ ΓΡΑΦΟΝΤΑΙ ΣΤΟ ΧΕΡΙ.
 // Η ετήσια τιμή κάθε πακέτου είναι ήδη γραμμένη στο lib/billing/plans.ts, άρα
@@ -107,6 +109,11 @@ const monthsSaved = PLAN_ORDER
 export const FAQ_PRICE_Q = 'Πόσο κοστίζει;';
 
 export const FAQ = [
+  // ΠΡΩΤΑ ΤΙ ΕΙΝΑΙ (17/11/2026). Καμία σελίδα δεν το έλεγε σε μία πρόταση, ούτε
+  // στον άνθρωπο που έφτασε από αναζήτηση ούτε στη μηχανή. Η απάντηση είναι η
+  // ίδια με το `description` του οργανισμού (BRAND_ABOUT, lib/seo/organization.ts)
+  // και το FAQ_VISIBLE ανέβηκε κατά ένα, ώστε να μην κρυφτεί καμία από τις πέντε.
+  { q: `Τι είναι το ${PRODUCT_NAME};`, a: BRAND_ABOUT.el },
   // Η ΟΜΑΔΑ ΔΕΝ ΕΙΝΑΙ ΠΡΟΝΟΜΙΟ ΤΟΥ ΑΚΡΙΒΟΤΕΡΟΥ. Η απάντηση έγραφε «απεριόριστα
   // ακίνητα και χρήστες» δίπλα στην ακριβότερη τιμή, ενώ η ομάδα με ρόλους
   // ανοίγει ένα σκαλί νωρίτερα. Το πακέτο διαβάζεται από τη γραμμή του plans.ts.
