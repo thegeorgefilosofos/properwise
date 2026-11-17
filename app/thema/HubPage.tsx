@@ -1,11 +1,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Ο ΚΟΜΒΟΣ ΘΕΜΑΤΟΣ: /thema/<θέμα> (17/11/2026)
 // ─────────────────────────────────────────────────────────────────────────
-// Μία σελίδα ανά ερώτημα, με την ίδια σύνθεση με τους δύο κόμβους (/odigos,
-// /ergaleia) και τις ίδιες κάρτες (app/HubParts.tsx):
+// Μία σελίδα ανά ερώτημα, στο πλάτος της αρχικής (1140):
 //
-//   διαδρομή · H1 · σύντομη απάντηση · οδηγοί · υπολογιστές · [προθεσμίες] ·
-//   νομική βάση από το μητρώο ισχύος · συχνές ερωτήσεις
+//   διαδρομή · [H1 · σύντομη απάντηση · εισαγωγή | σύνοψη · άλλα θέματα] ·
+//   οδηγοί και υπολογιστές · νομική βάση | ερωτήσεις
+//   (ΕΝΦΙΑ: νομική βάση και ερωτήσεις | προθεσμίες)
+//
+// Η κορυφή είναι δύο στήλες από τα 1024: αριστερά το κείμενο, δεξιά η σύνοψη
+// με τους αριθμούς του θέματος και οι σύνδεσμοι στα άλλα θέματα και στη
+// μεθοδολογία. Οι κάρτες και οι ερωτήσεις είναι πλέγματα (app/thema/parts.tsx).
 //
 // ΚΑΝΕΝΑΣ ΑΡΙΘΜΟΣ ΓΡΑΜΜΕΝΟΣ ΜΕ ΤΟ ΧΕΡΙ. Κλίμακα, έκπτωση, τέλος, δόσεις και
 // ημερομηνίες έρχονται από τις σταθερές και τις συναρτήσεις που υπολογίζουν
@@ -32,6 +36,8 @@ import {
 import { PRESUMPTIVE_DEDUCTION_RATE } from '@/lib/billing/presumptive';
 import { taxLimitAsOf, type TaxLimitGroup } from '@/lib/facts/taxLimits';
 import { ENFIA_WEALTH_REDUCTION } from '@/lib/billing/enfia';
+import { greekPropertyTaxObligations } from '@/lib/tax/greekTaxCalendar';
+import { ENFIA_INSTALMENTS, ENFIA_MIN_INSTALMENT } from '@/lib/tools/enfiaSchedule';
 import { CLIMATE_LEVY_AREA_SQM } from '@/lib/billing/climateLevyCategories';
 import { ATHENS_STR_FREEZE as ATHENS, THESS_STR_FREEZE as THESS } from '@/lib/market/greekMarket';
 import { AADE_DESTINATIONS } from '@/lib/tax/aade';
@@ -39,15 +45,15 @@ import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
 import { PROTHESMIES_PATH, upcomingMonths } from '@/lib/seo/prothesmies';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { organizationNode, ORG_REF } from '@/lib/seo/organization';
-import { PublicHeader, PublicFooter, JsonLd, WRAP, WRAP_PAD, READING } from '../PublicChrome';
-import { HubCards, HubLink, type HubItem } from '../HubParts';
-import { GuideQuickAnswer, GuideFaq, type GuideFaqItem } from '../odigos/GuideParts';
+import { PublicHeader, PublicFooter, JsonLd, WRAP, WRAP_PAD } from '../PublicChrome';
+import { HubLink } from '../HubParts';
+import { GuideQuickAnswer } from '../odigos/GuideParts';
 import { LISTED_GUIDES } from '../odigos/guides';
 import { enfiaInstalmentRule, enfiaInstalmentDates } from '../odigos/enfiaText';
 import { STR_MAX_PROPERTIES, STR_BUSINESS_PROPERTIES, STR_BUSINESS_PROPERTIES_OR_MORE } from '../odigos/strText';
 import { MonthDeadlines } from '../prothesmies/MonthDeadlines';
-import { RuleTable } from './RuleTable';
-import { Crumbs, Section, Byline } from './parts';
+import { RuleList } from './RuleList';
+import { Crumbs, Section, Byline, TwoCol, FactCard, LinkBox, CardGrid, FaqGrid, Fold, rulesMeta, type CardItem, type Fact, type FaqItem } from './parts';
 import { ruleRows } from './rules';
 import { hubUpdated } from './hubDates';
 import { HUBS, hubPath, METHOD_PATH, METHOD_LABEL, type TopicHub } from './hubs';
@@ -78,6 +84,13 @@ const ENFIA_YEAR = 2026;
 const WEALTH_MAX = fpRate(ENFIA_WEALTH_REDUCTION[0].pct);
 const WEALTH_LAST = ENFIA_WEALTH_REDUCTION.filter(r => r.pct > 0).at(-1)!;
 const ENFIA_PORTAL = AADE_DESTINATIONS.enfia.portal;
+/** Η πρώτη και η τελευταία δόση του εκκαθαριστικού, από το φορολογικό ημερολόγιο (όπως το enfiaText). */
+const ENFIA_ENDS = (() => {
+  const obl = greekPropertyTaxObligations(ENFIA_YEAR, 'owner');
+  const first = obl.find(o => o.kind === 'enfia-first')!;
+  const last = obl.find(o => o.kind === 'enfia-last')!;
+  return { first: first.date, last: last.date, issued: first.confidence === 'statutory' && last.confidence === 'statutory' };
+})();
 
 /** Ο σύνδεσμος που στέκεται μόνος του σε γραμμή: 44 ύψος στην αφή (`po-tap`). */
 const TAP_LINK = { color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 } as const;
@@ -101,9 +114,13 @@ interface HubCopy {
   answer: string;
   /** Η παράγραφος κάτω από την απάντηση: τι βρίσκεις εδώ. */
   lede: ReactNode;
-  guidesLede: string;
-  toolsLede: string;
-  faq: GuideFaqItem[];
+  /** Η σύνοψη της πλαϊνής στήλης: οι αριθμοί του θέματος, από τη μηχανή. */
+  facts: Fact[];
+  /** Μια κλίμακα στην κορυφή της σύνοψης, σε μία σειρά, όπου το θέμα την έχει. */
+  scale?: Fact[];
+  /** Μία γραμμή κάτω από τη σύνοψη, όπου υπάρχει επιφύλαξη. */
+  factsNote?: string;
+  faq: FaqItem[];
   /** Οι προθεσμίες του επόμενου μήνα με προθεσμία, όπου το θέμα τις έχει. */
   deadlines?: true;
   /**
@@ -124,9 +141,16 @@ const COPY: Record<string, HubCopy> = {
       βγάζει το ποσό στα δικά σου νούμερα. Η <HubLink href={METHOD_PATH}>μεθοδολογία</HubLink> λέει από πού έρχεται
       κάθε αριθμός.
     </>,
-    guidesLede: 'Η κλίμακα και τα παραδείγματά της, γιατί η τράπεζα κρίνει την έκπτωση, πότε η δαπάνη ανακαίνισης μειώνει τον φόρο και πού σταματά η αναπροσαρμογή.',
-    toolsLede: 'Ο φόρος στο δικό σου ενοίκιο, οι στήλες του Ε2, το νέο μίσθωμα, η μείωση για ανακαίνιση και τι μένει καθαρό. Χωρίς εγγραφή.',
     limits: 'rent',
+    scale: RENTAL_TAX_BRACKETS_2026.map(b => ({
+      k: b.to === Infinity ? `άνω των ${feWhole(b.from)}` : `έως ${feWhole(b.to)}`,
+      v: fpRate(b.rate * 100),
+    })),
+    facts: [
+      { k: 'Τεκμαρτή έκπτωση', v: DEDUCTION },
+      { k: 'Τράπεζα για την έκπτωση από', v: BANK_FROM },
+      { k: `Φόρος για ${feWhole(RENT_MONTHLY)} τον μήνα`, v: fe(RENT_EX.tax) },
+    ],
     faq: [
       {
         q: 'Με ποια κλίμακα φορολογούνται τα ενοίκια το 2026;',
@@ -166,10 +190,17 @@ const COPY: Record<string, HubCopy> = {
       <HubLink href={PROTHESMIES_PATH}>προθεσμίες</HubLink> και η <HubLink href={METHOD_PATH}>μεθοδολογία</HubLink> λέει
       από πού έρχεται κάθε αριθμός.
     </>,
-    guidesLede: 'Πώς βγαίνει το ποσό από τα στοιχεία του ακινήτου, πότε λήγει κάθε δόση, πώς εκδίδεται το πιστοποιητικό και ποιες προθεσμίες έχει η χρονιά, με την επίσημη πηγή τους.',
-    toolsLede: 'Ο ΕΝΦΙΑ του δικού σου ακινήτου από τα τετραγωνικά, την τιμή ζώνης, τον όροφο και την παλαιότητα. Χωρίς εγγραφή.',
     deadlines: true,
     limits: 'enfia',
+    facts: [
+      { k: 'Δόσεις', v: `έως ${ENFIA_INSTALMENTS}` },
+      { k: 'Ελάχιστη δόση', v: feWhole(ENFIA_MIN_INSTALMENT) },
+      { k: `Πρώτη δόση ${ENFIA_YEAR}`, v: grDate(ENFIA_ENDS.first) },
+      { k: 'Τελευταία δόση', v: grDate(ENFIA_ENDS.last) },
+      { k: 'Μείωση κύριου φόρου', v: `έως ${WEALTH_MAX}` },
+      { k: 'Για περιουσία έως', v: feWhole(WEALTH_LAST.limit) },
+    ],
+    factsNote: ENFIA_ENDS.issued ? undefined : 'Αναμενόμενες ημερομηνίες· τις ακριβείς τις γράφει το εκκαθαριστικό.',
     faq: [
       {
         q: 'Πώς υπολογίζεται ο ΕΝΦΙΑ;',
@@ -209,9 +240,16 @@ const COPY: Record<string, HubCopy> = {
       μακροχρόνια, ο υπολογιστής τις βάζει δίπλα δίπλα στα δικά σου ποσά. Η{' '}
       <HubLink href={METHOD_PATH}>μεθοδολογία</HubLink> λέει από πού έρχεται κάθε αριθμός.
     </>,
-    guidesLede: 'Το τέλος ανθεκτικότητας και ο φόρος με παραδείγματα σε ευρώ, η αναστολή νέων εγγραφών, γιατί ο ΑΜΑ δεν μεταβιβάζεται και οι προδιαγραφές ασφαλείας.',
-    toolsLede: 'Τα καθαρά της βραχυχρόνιας δίπλα στη μακροχρόνια με τέλος ανθεκτικότητας και προμήθεια, μαζί με τον φόρο στην κλίμακα των ενοικίων. Χωρίς εγγραφή.',
     limits: 'short',
+    facts: [
+      { k: 'Κλίμακα ενοικίων με', v: STR_MAX_PROPERTIES },
+      { k: 'Τεκμαρτή έκπτωση', v: DEDUCTION },
+      { k: 'Νέοι ΑΜΑ, κέντρο Αθήνας', v: `όχι ως ${grDate(ATHENS.to)}` },
+    ],
+    scale: [
+      { k: `τέλος ανά βράδυ, έως ${SQM} τ.μ.`, v: `${eur(LEVY.small.low)} έως ${eur(LEVY.small.high)}` },
+      { k: `τέλος ανά βράδυ, άνω των ${SQM} τ.μ.`, v: `${eur(LEVY.large.low)} έως ${eur(LEVY.large.high)}` },
+    ],
     faq: [
       {
         q: 'Χρειάζομαι ΑΜΑ για να νοικιάσω σε Airbnb;',
@@ -252,20 +290,20 @@ export function hubCopy(h: TopicHub): HubCopy {
 }
 
 /** Οι κάρτες των οδηγών του κόμβου, από τον κατάλογο (οδηγός εκτός καταλόγου σπάει το χτίσιμο). */
-function guideCards(h: TopicHub): HubItem[] {
+function guideCards(h: TopicHub): CardItem[] {
   return h.guides.map(href => {
     const g = LISTED_GUIDES.find(x => x.href === href);
     if (!g) throw new Error(`${hubPath(h)}: ο ${href} δεν είναι οδηγός του καταλόγου`);
-    return { href: g.href, kicker: g.kicker, title: g.title, desc: g.desc };
+    return { href: g.href, title: g.title, desc: g.desc, kind: 'guide' as const, cta: 'Διάβασε τον οδηγό' };
   });
 }
 
 /** Οι κάρτες των υπολογιστών του κόμβου, από το PUBLIC_TOOLS. */
-function toolCards(h: TopicHub): HubItem[] {
+function toolCards(h: TopicHub): CardItem[] {
   return h.tools.map(href => {
     const t = PUBLIC_TOOLS.find(x => x.href === href);
     if (!t) throw new Error(`${hubPath(h)}: ο ${href} δεν είναι δημόσιος υπολογιστής`);
-    return { href: t.href, kicker: 'Υπολογιστής', title: t.label, desc: t.desc };
+    return { href: t.href, title: t.label, desc: t.desc, kind: 'tool' as const, cta: 'Άνοιξε τον υπολογισμό' };
   });
 }
 
@@ -318,66 +356,72 @@ export function HubPage({ hub }: { hub: TopicHub }) {
   // Ο πρώτος μήνας με προθεσμία από σήμερα (lib/seo/prothesmies.ts): ο ίδιος που ανοίγει ως σελίδα.
   const month = c.deadlines ? upcomingMonths(athensToday())[0] : undefined;
 
+  const aside = <>
+    <FactCard title="Με μια ματιά" scale={c.scale} facts={c.facts} note={c.factsNote} />
+    <LinkBox title="Συνέχισε με" links={[
+      ...others.map(h => ({ href: hubPath(h), label: h.label })),
+      { href: METHOD_PATH, label: METHOD_LABEL },
+    ]} />
+  </>;
+
+  const legal = (
+    <Section id="nomiki-vasi" over="Νομική βάση" title="Από πού βγαίνουν οι κανόνες">
+      {/* Κλειστή, όπως το μητρώο της μεθοδολογίας: η γραμμή λέει πόσοι κανόνες και πόσοι ελεγμένοι. */}
+      <div className="th-folds">
+        <Fold title="Οι κανόνες και οι πηγές τους" meta={rulesMeta(rules)}>
+          <RuleList label={`Νομική βάση: ${hub.label}`} rows={rules} />
+        </Fold>
+      </div>
+      <p style={{ margin: `${T.sp.md}px 0 0`, fontSize: 13, lineHeight: 1.6, color: 'var(--text-tertiary)', textWrap: 'pretty' }}>
+        {'Τα ποσά είναι ενδεικτικά και δεν αντικαθιστούν το εκκαθαριστικό της ΑΑΔΕ ή τον λογιστή σου. '}
+        <Link href={METHOD_PATH} className="lp-link po-tap-inline" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{METHOD_LABEL}</Link>
+      </p>
+    </Section>
+  );
+
   return (
     <div className="po-tool-page" data-mode="dark" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
       <JsonLd data={hubJsonLd(hub)} />
       <PublicHeader current="odigos" />
 
       {/* `data-nohy`: κανένα μαλακό ενωτικό, όπως στους δύο κόμβους και στους οδηγούς. */}
-      <main data-nohy="" style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
+      <main data-nohy="" style={{ ...WRAP, padding: `clamp(24px,3.4vw,40px) ${WRAP_PAD} clamp(40px,5vw,56px)` }}>
         <Crumbs trail={[{ href: '/odigos', label: 'Οδηγοί' }]} current={hub.label} />
-        <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: T.weight.bold, letterSpacing: '-0.035em',
-          lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance', maxWidth: 880 }}>
-          {hub.title}
-        </h1>
-        <Byline updated={updated} checked={taxLimitAsOf(c.limits).checkedAt} anchor={{ href: '#nomiki-vasi', label: 'Νομική βάση' }} />
-
-        <div style={{ maxWidth: READING }}>
+        <TwoCol asideLabel={`Σύνοψη: ${hub.label}`} aside={aside} main={<>
+          <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: T.weight.bold, letterSpacing: '-0.035em',
+            lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
+            {hub.title}
+          </h1>
+          <Byline updated={updated} checked={taxLimitAsOf(c.limits).checkedAt} anchor={{ href: '#nomiki-vasi', label: 'Νομική βάση' }} />
           <GuideQuickAnswer>{c.answer}</GuideQuickAnswer>
           <p style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--text-secondary)', margin: 0, textWrap: 'pretty' }}>{c.lede}</p>
-        </div>
+        </>} />
 
-        <Section id="odigoi" over={guidesLabel(guides.length)} title="Οι οδηγοί του θέματος" lede={c.guidesLede}>
-          <HubCards items={guides} cta="Διάβασε τον οδηγό" />
+        <Section id="odigoi" over={`${guidesLabel(guides.length)} · ${toolsLabel(tools.length)}`} title="Οδηγοί και υπολογιστές">
+          <CardGrid items={[...guides, ...tools]} />
         </Section>
 
-        <Section id="ypologistes" over={toolsLabel(tools.length)} title="Υπολόγισε στα δικά σου ποσά" lede={c.toolsLede}>
-          <HubCards items={tools} cta="Άνοιξε τον υπολογισμό" />
-        </Section>
-
-        {month && (
-          <Section id="prothesmies" over="Προθεσμίες" title="Τι λήγει στη συνέχεια"
-            lede="Οι επόμενες προθεσμίες του ιδιοκτήτη από το φορολογικό ημερολόγιο της εφαρμογής, με την επίσημη πηγή της καθεμιάς.">
-            <MonthDeadlines month={month} heading="h3" linkTitle />
-            <p style={{ margin: `${T.sp.lg}px 0 0`, fontSize: 15 }}>
-              <Link href={PROTHESMIES_PATH} className="lp-link po-tap" style={TAP_LINK}>Όλες οι προθεσμίες, μήνα με μήνα</Link>
-            </p>
-          </Section>
-        )}
-
-        <Section id="nomiki-vasi" over="Νομική βάση" title="Από πού βγαίνουν οι κανόνες"
-          lede="Κάθε κανόνας του θέματος με την επίσημη πηγή του και την ημέρα που τον έλεγξε άνθρωπος στο κείμενο του νόμου ή της ΑΑΔΕ. Οι ίδιες τιμές υπολογίζουν και στην εφαρμογή.">
-          <div style={{ maxWidth: READING }}>
-            <RuleTable caption={`Νομική βάση: ${hub.label}`} rows={rules} />
-            <p style={{ margin: `${T.sp.md}px 0 0`, fontSize: 14, lineHeight: 1.6, color: 'var(--text-tertiary)', textWrap: 'pretty' }}>
-              Τα ποσά είναι ενδεικτικά και δεν αντικαθιστούν το εκκαθαριστικό της ΑΑΔΕ ή τον λογιστή σου.
-            </p>
-            <p style={{ margin: `${T.sp.xs}px 0 0`, fontSize: 15 }}>
-              <Link href={METHOD_PATH} className="lp-link po-tap" style={TAP_LINK}>{METHOD_LABEL}</Link>
-            </p>
+        {month ? <>
+          {/* ΕΝΦΙΑ: αριστερά νομική βάση και ερωτήσεις, δεξιά οι προθεσμίες του μήνα. */}
+          <div className="th-split">
+            <div>
+              {legal}
+              <FaqGrid id="syxnes-erotiseis" title={hub.label} faq={c.faq} />
+            </div>
+            <Section id="prothesmies" over="Προθεσμίες" title="Τι λήγει στη συνέχεια">
+              <MonthDeadlines month={month} heading="h3" linkTitle flush />
+              <p style={{ margin: `${T.sp.sm}px 0 0`, fontSize: 15 }}>
+                <Link href={PROTHESMIES_PATH} className="lp-link po-tap" style={TAP_LINK}>Όλες οι προθεσμίες, μήνα με μήνα</Link>
+              </p>
+            </Section>
           </div>
-        </Section>
-
-        <div style={{ maxWidth: READING }}>
-          <GuideFaq title={hub.label} faq={c.faq} />
-        </div>
-
-        <Section id="alla-themata" over="Άλλα θέματα" title="Συνέχισε με">
-          <HubCards items={[
-            ...others.map(h => ({ href: hubPath(h), kicker: 'Θέμα', title: h.label, desc: h.desc })),
-            { href: '/odigos', kicker: 'Όλοι οι οδηγοί', title: 'Οδηγοί για ιδιοκτήτες', desc: 'Κάθε οδηγός, ανά θέμα, με ημερομηνία ενημέρωσης και πηγές.' },
-          ]} cta="Άνοιξε" />
-        </Section>
+        </> : (
+          // Νομική βάση και ερωτήσεις δίπλα δίπλα από τα 1024: δύο στήλες μίας λίστας.
+          <div className="th-split">
+            {legal}
+            <FaqGrid id="syxnes-erotiseis" title={hub.label} faq={c.faq} />
+          </div>
+        )}
       </main>
 
       <PublicFooter />

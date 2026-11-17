@@ -9,7 +9,12 @@
 //
 // ΤΟ ΜΗΤΡΩΟ ΕΙΝΑΙ ΖΩΝΤΑΝΟ. Ο πίνακας διαβάζει το lib/legal/validity.ts τη
 // στιγμή της απόδοσης: νέος κανόνας ή νέος έλεγχος φαίνεται εδώ χωρίς αλλαγή
-// της σελίδας. Ό,τι διάβασε μόνο εργαλείο γράφεται ως τέτοιο.
+// της σελίδας. Ό,τι διάβασε μόνο εργαλείο γράφεται ως τέτοιο. Ομαδοποιείται
+// ανά περιοχή (`ruleGroups`, app/thema/rules.ts) και κάθε περιοχή ανοίγει
+// μόνη της· η πρώτη είναι ανοιχτή.
+//
+// ΙΔΙΑ ΔΙΑΤΑΞΗ ΜΕ ΤΟΥΣ ΚΟΜΒΟΥΣ ΘΕΜΑΤΟΣ (app/thema/parts.tsx): κορυφή σε δύο
+// στήλες με σύνοψη του μητρώου δεξιά, μετά το μητρώο και δύο στήλες κειμένου.
 //
 // ΧΩΡΙΣ ΔΙΚΗ ΤΗΣ ΣΥΝΑΡΤΗΣΗ, όπως το /xartis: το next.config.ts την ξαναγράφει
 // στο `METHOD_INTERNAL` του διανομέα του /en (app/thema/hubs.ts).
@@ -21,15 +26,15 @@ import { IDENTITY } from '@/lib/legal/identity';
 import { RECHECK_MONTHS, WARN_DAYS } from '@/lib/legal/validity';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { organizationNode, ORG_REF } from '@/lib/seo/organization';
-import { PublicHeader, PublicFooter, JsonLd, WRAP, WRAP_PAD, READING } from '../PublicChrome';
-import { HubCards, HubLink } from '../HubParts';
+import { PublicHeader, PublicFooter, JsonLd, WRAP, WRAP_PAD } from '../PublicChrome';
+import { HubLink } from '../HubParts';
 import { LINK_STYLE } from '../linkStyle';
 import { publicMetadata } from '../publicMetadata';
 import { shareImage } from '../og/share';
 import { RENT_SCALE } from '../thema/HubPage';
-import { RuleTable } from '../thema/RuleTable';
-import { allRuleRows } from '../thema/rules';
-import { Crumbs, Section, Byline, AUTHOR } from '../thema/parts';
+import { RuleList } from '../thema/RuleList';
+import { allRuleRows, ruleGroups } from '../thema/rules';
+import { Crumbs, Section, Byline, AUTHOR, TwoCol, FactCard, LinkBox, Fold, rulesMeta } from '../thema/parts';
 import { METHOD_UPDATED } from '../thema/hubDates';
 import { HUBS, hubPath, METHOD_PATH, METHOD_LABEL } from '../thema/hubs';
 
@@ -71,27 +76,39 @@ export default function Page() {
     ],
   };
 
+  const groups = ruleGroups();
+  const aside = <>
+    <FactCard title="Το μητρώο με μια ματιά" facts={[
+      { k: 'Κανόνες στο μητρώο', v: String(rows.length) },
+      { k: 'Με έλεγχο από άνθρωπο', v: String(human) },
+      { k: 'Μόνο ανάγνωση εργαλείου', v: String(rows.length - human) },
+      { k: 'Ειδοποίηση πριν από τη λήξη', v: days(WARN_DAYS) },
+      { k: 'Επανέλεγχος το αργότερο σε', v: months(RECHECK_MONTHS) },
+    ]} note="Τα πλήθη διαβάζονται από το μητρώο τη στιγμή που ανοίγει η σελίδα." />
+    <LinkBox title="Οι κανόνες στην πράξη" links={[
+      ...HUBS.map(h => ({ href: hubPath(h), label: h.label })),
+      { href: '/odigos', label: 'Όλοι οι οδηγοί' },
+      { href: '/trust', label: 'Ποιοι είμαστε' },
+    ]} />
+  </>;
+
   return (
     <div className="po-tool-page" data-mode="dark" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: T.font.sans }}>
       <JsonLd data={jsonLd} />
       <PublicHeader />
-      <main data-nohy="" style={{ ...WRAP, padding: `clamp(28px,4vw,44px) ${WRAP_PAD} clamp(56px,7vw,88px)` }}>
+      <main data-nohy="" style={{ ...WRAP, padding: `clamp(24px,3.4vw,40px) ${WRAP_PAD} clamp(48px,6vw,80px)` }}>
         <Crumbs trail={[]} current={METHOD_LABEL} />
-        <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: T.weight.bold, letterSpacing: '-0.035em',
-          lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance', maxWidth: 880 }}>
-          {TITLE}
-        </h1>
-        <Byline updated={METHOD_UPDATED} anchor={{ href: '#mitroo', label: 'Το μητρώο' }} />
-
-        <div style={{ maxWidth: READING }}>
+        <TwoCol asideLabel="Σύνοψη του μητρώου" aside={aside} main={<>
+          <h1 style={{ fontSize: 'clamp(28px,4.4vw,42px)', fontWeight: T.weight.bold, letterSpacing: '-0.035em',
+            lineHeight: 1.1, margin: '0 0 14px', textWrap: 'balance' }}>
+            {TITLE}
+          </h1>
+          <Byline updated={METHOD_UPDATED} anchor={{ href: '#mitroo', label: 'Το μητρώο' }} />
           <p style={{ ...P, fontSize: 18, color: 'var(--text-primary)' }}>
             Κάθε αριθμός που διαβάζεις στο PROPERWISE βγαίνει από τον ίδιο κώδικα που υπολογίζει στην εφαρμογή και κάθε
             κανόνας έχει γραμμένη δίπλα του την επίσημη πηγή του και, όπου τον έχει ελέγξει άνθρωπος, την ημέρα του ελέγχου.
           </p>
-        </div>
-
-        <Section id="mia-pigi" over="Η μηχανή" title="Μία πηγή για κάθε αριθμό">
-          <div style={{ maxWidth: READING }}>
+          <Section id="mia-pigi" over="Η μηχανή" title="Μία πηγή για κάθε αριθμό">
             <p style={P}>
               Κάθε συντελεστής, όριο, τέλος και προθεσμία ζει μία φορά στη μηχανή της εφαρμογής: η κλίμακα των ενοικίων, οι
               συντελεστές του ΕΝΦΙΑ, το τέλος ανθεκτικότητας, οι δόσεις και οι ημερομηνίες του φορολογικού ημερολογίου. Οι
@@ -106,59 +123,59 @@ export default function Page() {
               έλεγχοι τρέχουν σε κάθε αλλαγή του κώδικα και τη σταματούν όταν ένα ψηφίο δεν βγαίνει από τη μηχανή ή όταν μια
               σελίδα γράφει άλλη ημερομηνία από τον χάρτη του ιστότοπου.
             </p>
-          </div>
-        </Section>
+          </Section>
+        </>} />
 
         <Section id="mitroo" over="Το μητρώο ισχύος" title="Ως πότε ισχύει κάθε κανόνας και ποιος τον έλεγξε"
           lede={`Οι κλίμακες, τα όρια και τα τέλη ισχύουν για ορισμένο διάστημα. Για κάθε ρυθμιζόμενο μέγεθος η εφαρμογή κρατά ως πότε ισχύει, πού ζει στη μηχανή, την επίσημη πηγή του (ΦΕΚ, νόμο ή απόφαση της ΑΑΔΕ) και την ημέρα που το έλεγξε άνθρωπος. Αυτόματος έλεγχος ειδοποιεί ${days(WARN_DAYS)} πριν λήξει ένας κανόνας και όταν περάσουν ${months(RECHECK_MONTHS)} χωρίς ανθρώπινο έλεγχο.`}>
-          <div style={{ maxWidth: READING }}>
-            <RuleTable caption={`Το μητρώο ισχύος: ${rows.length} κανόνες, οι ${human} με έλεγχο από άνθρωπο`} rows={rows} />
+          <div className="th-folds">
+            {groups.map((g, i) => (
+              <Fold key={g.title} title={g.title} open={i === 0} meta={rulesMeta(g.rows)}>
+                <RuleList label={`Το μητρώο ισχύος: ${g.title}`} rows={g.rows} />
+              </Fold>
+            ))}
           </div>
         </Section>
 
-        <Section id="imerominies" over="Οι ημερομηνίες" title="Τι σημαίνει κάθε ημερομηνία">
-          <ul className="lg-ul" style={{ maxWidth: READING, margin: 0 }}>
-            <li style={{ ...P, margin: `0 0 ${T.sp.md}px` }}>
-              <strong style={{ color: 'var(--text-primary)' }}>Τελευταία ενημέρωση.</strong> Η τελευταία ουσιαστική αλλαγή στο
-              κείμενο ή στους αριθμούς της σελίδας. Είναι η ίδια ημερομηνία που διαβάζουν οι μηχανές αναζήτησης στον χάρτη του
-              ιστότοπου και δεν αλλάζει για διορθώσεις ύφους.
-            </li>
-            <li style={{ ...P, margin: `0 0 ${T.sp.md}px` }}>
-              <strong style={{ color: 'var(--text-primary)' }}>Έλεγχος.</strong> Η ημέρα που άνθρωπος άνοιξε την επίσημη πηγή
-              και επιβεβαίωσε τον κανόνα. Όταν τον έχει διαβάσει μόνο εργαλείο, η σελίδα γράφει «Χωρίς ανθρώπινο έλεγχο» και
-              την ημέρα της ανάγνωσης.
-            </li>
-            <li style={{ ...P, margin: 0 }}>
-              Καμία από τις δύο δεν είναι έλεγχος από δικηγόρο ή λογιστή. Δεν έχει γίνει τέτοιος έλεγχος και η σελίδα δεν το
-              υπονοεί.
-            </li>
-          </ul>
-        </Section>
+        <div className="th-split">
+          <Section id="imerominies" over="Οι ημερομηνίες" title="Τι σημαίνει κάθε ημερομηνία">
+            <ul className="lg-ul" style={{ margin: 0 }}>
+              <li style={{ ...P, margin: `0 0 ${T.sp.md}px` }}>
+                <strong style={{ color: 'var(--text-primary)' }}>Τελευταία ενημέρωση.</strong> Η τελευταία ουσιαστική αλλαγή στο
+                κείμενο ή στους αριθμούς της σελίδας. Είναι η ίδια ημερομηνία που διαβάζουν οι μηχανές αναζήτησης στον χάρτη του
+                ιστότοπου και δεν αλλάζει για διορθώσεις ύφους.
+              </li>
+              <li style={{ ...P, margin: `0 0 ${T.sp.md}px` }}>
+                <strong style={{ color: 'var(--text-primary)' }}>Έλεγχος.</strong> Η ημέρα που άνθρωπος άνοιξε την επίσημη πηγή
+                και επιβεβαίωσε τον κανόνα. Όταν τον έχει διαβάσει μόνο εργαλείο, η σελίδα γράφει «Χωρίς ανθρώπινο έλεγχο» και
+                την ημέρα της ανάγνωσης.
+              </li>
+              <li style={{ ...P, margin: 0 }}>
+                Καμία από τις δύο δεν είναι έλεγχος από δικηγόρο ή λογιστή. Δεν έχει γίνει τέτοιος έλεγχος και η σελίδα δεν το
+                υπονοεί.
+              </li>
+            </ul>
+          </Section>
 
-        <Section id="ti-den-einai" over="Τα όρια" title="Τι δεν είναι οι υπολογισμοί">
-          <div style={{ maxWidth: READING }}>
-            <p style={{ ...P, margin: 0 }}>
-              Τα ποσά είναι ενδεικτικά. Επίσημο έγγραφο είναι το εκκαθαριστικό της ΑΑΔΕ και τη δήλωση την κρίνει ο λογιστής
-              σου. Όπου ο νόμος αφήνει περιθώριο ή μια ημερομηνία δεν έχει ανακοινωθεί ακόμη, η σελίδα το λέει και δείχνει
-              την επίσημη πηγή αντί για εκτίμηση χωρίς σημείωση.
-            </p>
+          <div>
+            <Section id="ti-den-einai" over="Τα όρια" title="Τι δεν είναι οι υπολογισμοί">
+              <p style={{ ...P, margin: 0 }}>
+                Τα ποσά είναι ενδεικτικά. Επίσημο έγγραφο είναι το εκκαθαριστικό της ΑΑΔΕ και τη δήλωση την κρίνει ο λογιστής
+                σου. Όπου ο νόμος αφήνει περιθώριο ή μια ημερομηνία δεν έχει ανακοινωθεί ακόμη, η σελίδα το λέει και δείχνει
+                την επίσημη πηγή αντί για εκτίμηση χωρίς σημείωση.
+              </p>
+            </Section>
+
+            <Section id="diorthoseis" over="Ποιος γράφει" title="Υπογραφή και διορθώσεις">
+              <p style={{ ...P, margin: 0 }}>
+                {`Τους οδηγούς, τους υπολογιστές και αυτή τη σελίδα τους γράφει η ${AUTHOR}. Αν βρεις λάθος σε αριθμό ή σε πηγή, γράψε στο `}
+                <a href={`mailto:${IDENTITY.supportEmail}`} className="lp-link" style={LINK_STYLE}>{IDENTITY.supportEmail}</a>
+                {' με τη διεύθυνση της σελίδας. Η διόρθωση αλλάζει και την ημερομηνία ενημέρωσής της. Για την ομάδα και για το πού φυλάσσονται τα δεδομένα σου, δες το '}
+                <HubLink href="/trust">Ποιοι είμαστε</HubLink>.
+              </p>
+            </Section>
           </div>
-        </Section>
-
-        <Section id="diorthoseis" over="Ποιος γράφει" title="Υπογραφή και διορθώσεις">
-          <div style={{ maxWidth: READING }}>
-            <p style={{ ...P, margin: 0 }}>
-              {`Τους οδηγούς, τους υπολογιστές και αυτή τη σελίδα τους γράφει η ${AUTHOR}. Αν βρεις λάθος σε αριθμό ή σε πηγή, γράψε στο `}
-              <a href={`mailto:${IDENTITY.supportEmail}`} className="lp-link" style={LINK_STYLE}>{IDENTITY.supportEmail}</a>
-              {' με τη διεύθυνση της σελίδας. Η διόρθωση αλλάζει και την ημερομηνία ενημέρωσής της. Για την ομάδα και για το πού φυλάσσονται τα δεδομένα σου, δες το '}
-              <HubLink href="/trust">Ποιοι είμαστε</HubLink>.
-            </p>
-          </div>
-        </Section>
-
-        <Section id="themata" over="Θέματα" title="Οι κανόνες στην πράξη">
-          <HubCards items={HUBS.map(h => ({ href: hubPath(h), kicker: 'Θέμα', title: h.label, desc: h.desc }))} cta="Άνοιξε το θέμα" />
-        </Section>
+        </div>
       </main>
       <PublicFooter />
     </div>

@@ -76,3 +76,35 @@ export function distinctSources(rows: readonly RuleRow[]): { source: string; hre
   }
   return out;
 }
+
+/**
+ * ΤΟ ΜΗΤΡΩΟ ΑΝΑ ΠΕΡΙΟΧΗ, για τη μεθοδολογία: τριάντα και πλέον κανόνες σε μία
+ * στήλη ήταν η μισή σελίδα. Η σειρά των περιοχών είναι η σειρά της οθόνης.
+ * Κανόνας που δεν ανήκει σε περιοχή δεν χάνεται: πέφτει στους «Άλλους
+ * κανόνες», ώστε νέα εγγραφή του μητρώου να φαίνεται χωρίς αλλαγή εδώ.
+ */
+const AREAS: readonly { title: string; ids: readonly string[] }[] = [
+  { title: 'Φόρος εισοδήματος', ids: ['rental-brackets', 'presumptive-deduction', 'vacant-rental-exemption', 'renovation-39b', 'income-tax-instalments', 'deposit-interest-withholding', 'business-brackets', 'self-employed-min-income', 'advance-tax', 'depreciation-rates'] },
+  { title: 'ΕΝΦΙΑ', ids: ['enfia-coefficients', 'enfia-thresholds', 'enfia-relief-criteria', 'enfia-instalments'] },
+  { title: 'Βραχυχρόνια μίσθωση', ids: ['str-registry', 'str-freeze', 'climate-levy', 'municipal-accommodation-tax'] },
+  { title: 'Μισθώσεις', ids: ['lease-declaration', 'rent-adjustment-cap', 'cpi-index'] },
+  { title: 'Αγορά, δάνεια και προγράμματα', ids: ['loan-programs', 'loan-program-income-limits', 'spiti-mou-3', 'transfer-tax', 'vat-rates', 'new-build-vat-suspension', 'capital-gains-suspension'] },
+  { title: 'Προστασία ιδιοκτήτη', ids: ['enforcement-kpold-5221', 'enforcement-sources', 'debt-120-doseis', 'servicer-5354', 'bilateral-63a'] },
+];
+
+/** Όλο το μητρώο σε περιοχές, κάθε κανόνας μία φορά, με τη σειρά των περιοχών. */
+export function ruleGroups(): { title: string; rows: RuleRow[] }[] {
+  const all = allRuleRows();
+  const placed = new Set<string>();
+  const groups = AREAS.map(a => ({
+    title: a.title,
+    rows: a.ids.flatMap(id => {
+      const r = all.find(x => x.id === id);
+      if (!r || placed.has(id)) return [];
+      placed.add(id);
+      return [r];
+    }),
+  })).filter(g => g.rows.length > 0);
+  const rest = all.filter(r => !placed.has(r.id));
+  return rest.length ? [...groups, { title: 'Άλλοι κανόνες', rows: rest }] : groups;
+}
