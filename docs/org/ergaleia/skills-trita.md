@@ -41,6 +41,30 @@
 
 Αδεια και των δύο: MIT. Το κείμενό της είναι στο `LICENSE` κάθε φακέλου.
 
+## Τι διασκευάστηκε (17/11/2026)
+
+Οκτώ skills του `obra/superpowers`, στο commit `22f0b463e7a5e579904dd6211a520321035526f7`
+(v7.0.2), ξαναγράφτηκαν στα ελληνικά με τους κανόνες του έργου. Δεν είναι αυτούσια:
+κράτησαν τη μέθοδο, πήραν τους δικούς μας κανόνες (εντολές χωρίς σωλήνα, όχι rebase
+ή force-push, guards πριν από push, καστάνιες μόνο προς τα κάτω, πηγή για
+προστατευμένες διαδρομές, όχι `pkill`, έως τρεις-τέσσερις πράκτορες). Πηγή, αλλαγές
+και πλήρες κείμενο άδειας στο `references/proeleusi.md` κάθε φακέλου.
+
+| Skill | Πηγή στο superpowers |
+|---|---|
+| `sxedio` | `writing-plans` |
+| `kokkini-dokimi` | `test-driven-development` |
+| `paradosi` | `finishing-a-development-branch` |
+| `anathesi` | `subagent-driven-development` |
+| `parallila` | `dispatching-parallel-agents`, `using-git-worktrees` |
+| `axiologisi` | `requesting-code-review` |
+| `dexiotita` | `writing-skills` |
+| `skepsi` | `brainstorming`, χωρίς τον οπτικό σύντροφο |
+
+Τα τρία αυτούσια (`systematic-debugging`, `verification-before-completion`,
+`receiving-code-review`) συγκρίθηκαν με το νέο commit: το κείμενό τους δεν άλλαξε,
+οπότε μένουν ως έχουν.
+
 Η κεφαλίδα κάθε `SKILL.md` λέει ότι υπερισχύουν το `AGENTS.md`, το `CLAUDE.md` και
 τα δικά μας skills. Στα skills marketing προσθέτει τους κανόνες μας που
 συγκρούονται με γενικές συμβουλές τους: αριθμοί φόρου, ΕΝΦΙΑ, προθεσμιών και
@@ -98,18 +122,14 @@
   σε `<EXTREMELY_IMPORTANT>`. Εκείνο λέει ότι αν υπάρχει «1% πιθανότητα» να ταιριάζει
   ένα skill, η χρήση του είναι υποχρεωτική πριν από κάθε απάντηση ή ερώτηση και ότι
   πριν από plan mode προηγείται brainstorming. Επιβάλλει ξένη ροή σε κάθε αίτημα.
-- **`brainstorming`**: «You MUST use this before any creative work» και τοπικός
-  διακομιστής Node (`scripts/server.cjs`) για οπτικό σύντροφο. Ο διακομιστής φορτώνει
-  λογότυπο από `primeradiant.com` με την έκδοση του superpowers (το README το
-  ονομάζει telemetry, απενεργοποιείται με `SUPERPOWERS_DISABLE_TELEMETRY`).
-- **`test-driven-development`**, **`writing-skills`**: «Write code before the test?
-  Delete it. Start over.» Δεν ταιριάζει σε κείμενα, migrations ή αλλαγές με πηγή ΦΕΚ.
-- **`finishing-a-development-branch`**: προτείνει push και άνοιγμα PR. Εδώ αυτά
-  τα αποφασίζει ο ιδιοκτήτης.
-- **`subagent-driven-development`**, **`executing-plans`**, **`writing-plans`**,
-  **`using-git-worktrees`**, **`requesting-code-review`**: δική τους ροή με scripts
-  (`sdd-workspace`, `task-brief`, `task-start`) και `rm -rf` του χώρου εργασίας.
-  Εχουμε ήδη ροή worktree και αξιολόγηση από το Codex.
+- **`brainstorming`, ο οπτικός σύντροφος** (`visual-companion.md`, `scripts/server.cjs`):
+  τοπικός διακομιστής Node που φορτώνει λογότυπο από `primeradiant.com` με την έκδοση
+  του superpowers (το README το ονομάζει telemetry). Το υπόλοιπο `brainstorming`
+  διασκευάστηκε ως `skepsi`, χωρίς το «You MUST use this before any creative work».
+- **`executing-plans`**: καλύπτεται από `sxedio`, `anathesi` και `parallila`· τα scripts
+  του (`task-start`, `task-done`) δεν χρειάζονται.
+- **Τα scripts** των `subagent-driven-development` και `executing-plans` (`sdd-workspace`,
+  `task-brief`, `review-package`, `sdd-repo`) και το `rm -rf` του χώρου εργασίας τους.
 - **`diagnosing-superpowers`**: αφορά μόνο το ίδιο το superpowers.
 
 ### coreyhaines31/marketingskills (τα υπόλοιπα 43)
