@@ -1185,7 +1185,7 @@ function MonthGroups({ groups, a }: { groups: readonly { key: string; label: str
   return (
     // `data-list`: οι μήνες είναι εγγραφές του χρήστη, όχι πλακίδια που όρισε ο
     // σχεδιαστής (δες τον έλεγχο ορφανών στο e2e-layout).
-    <div className="card" data-list style={{ display: 'flex', flexDirection: 'column', rowGap: T.sp.xs }}>
+    <div className="card ad-months" data-list style={{ display: 'flex', flexDirection: 'column', rowGap: T.sp.xs }}>
       {groups.map(({ key: m, label, items: its }, i) => {
         const closed = isShut(m, i);
         return (
