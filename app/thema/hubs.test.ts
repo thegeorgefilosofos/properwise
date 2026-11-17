@@ -29,7 +29,7 @@ let pass = 0, fail = 0;
 const ok = (n: string, c: boolean) => { if (c) pass++; else { fail++; console.error('✗ ' + n); } };
 
 const RULE_IDS = new Set(REGULATED.map(r => r.id));
-const text = (html: string) => html.replace(/<script\b[\s\S]*?<\/script>/g, ' ').split(/<[^>]+>/).join(' ').replace(/&#x27;|&#39;/g, '\'').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+const text = (html: string) => html.replace(/<script\b[\s\S]*?<\/script\s*>/gi, ' ').split(/<[^>]+>/).join(' ').replace(/&#x27;|&#39;/g, '\'').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 
 /** Οι κανόνες του ιδιοκτήτη για το ελληνικό κείμενο, στο ορατό κείμενο μιας σελίδας. */
 function greek(name: string, t: string) {
@@ -92,7 +92,7 @@ for (const g of LISTED_GUIDES) {
   const html = renderToStaticMarkup(createElement(GuideUpdated, { guide: g }));
   const rows = ruleRows(g.rules);
   const checked = oldestCheck(rows);
-  ok(`${g.href}: «Νομική βάση» στην κεφαλίδα`, html.includes('Νομική βάση: ') && rows.every(r => html.includes(r.source.replace(/ /g, ' '))));
+  ok(`${g.href}: «Νομική βάση» στην κεφαλίδα`, html.includes('Νομική βάση: ') && rows.every(r => html.includes(r.source)));
   if (checked) ok(`${g.href}: «Έλεγχος κανόνων» ${grDate(checked)}`, html.includes(`dateTime="${checked}"`) && html.includes(grDate(checked)));
   for (const hub of hubsOfGuide(g.href).slice(0, 1)) ok(`${g.href}: σύνδεσμος στο θέμα του`, html.includes(`href="${hubPath(hub)}"`));
   ok(`${g.href}: σύνδεσμος στη μεθοδολογία`, html.includes(`href="${METHOD_PATH}"`));
