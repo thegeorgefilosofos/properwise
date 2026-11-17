@@ -603,7 +603,7 @@ export const MUTATIONS = {
   // ανύπαρκτο αρχείο συνεχίζει να λέει «ελεγμένο».
   // Ο κατάλογος που ξέμεινε πίσω: ένα μήνυμα λιγότερο στο δεσμευμένο έγγραφο
   // από όσα υπάρχουν στον κώδικα. Ακριβώς ό,τι έγινε με το «106 emails».
-  'message-catalog': { file: 'docs/KATALOGOS-MINYMATON.md', from: '| **ΣΥΝΟΛΟ** | **119** | |', to: '| **ΣΥΝΟΛΟ** | **106** | |' },
+  'message-catalog': { file: 'docs/KATALOGOS-MINYMATON.md', from: '| **ΣΥΝΟΛΟ** | **120** | |', to: '| **ΣΥΝΟΛΟ** | **106** | |' },
 
   // Το πράσινο πάνω στο κόκκινο: η απάντηση του γραψίματος πετιέται και η
   // επιτυχία ανακοινώνεται ούτως ή άλλως.
@@ -912,7 +912,7 @@ export const MUTATIONS = {
   // το SECRET_PATH. Και τα δύο σκέλη: το `plirosa` σβήνεται από τη λίστα· μια
   // νέα σελίδα [token] μπαίνει κάτω από δημόσιο φάκελο.
   'secret-path-analytics': { every: [
-    { file: 'lib/analytics/pageUrl.ts', from: '|epivevaiosi-email|plirosa|auth)', to: '|epivevaiosi-email|auth)' },
+    { file: 'lib/analytics/pageUrl.ts', from: '|epivevaiosi-email|plirosa|doro|auth)', to: '|epivevaiosi-email|doro|auth)' },
     { add: 'app/odigos/[token]/page.tsx', content: tsx('    <p>κλειδί</p>') },
   ] },
 

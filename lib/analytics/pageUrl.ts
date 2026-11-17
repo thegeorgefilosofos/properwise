@@ -30,7 +30,7 @@ const UTM_MAX = 100;
  * scripts/guard-secret-path-analytics.mjs.
  */
 export const SECRET_PATH =
-  /^\/(portal|accountant|checkin|verify|imerologio|unsubscribe|reset-password|epivevaiosi-email|plirosa|auth)\//;
+  /^\/(portal|accountant|checkin|verify|imerologio|unsubscribe|reset-password|epivevaiosi-email|plirosa|doro|auth)\//;
 
 /**
  * Η διεύθυνση για τη μέτρηση: origin, μονοπάτι και μόνο τα utm. `null` όταν η
