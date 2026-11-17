@@ -928,7 +928,7 @@ export default function SignupPage() {
                 <OrDivider word={A ? A.or : undefined} />
               </>}
 
-              <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <form method="post" onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {firm && <>
                   <div>
                     <label htmlFor="su-firm" className="po-field-label">Επωνυμία γραφείου</label>
