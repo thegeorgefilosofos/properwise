@@ -30,6 +30,13 @@ catch { console.error('Λείπει το playwright-core. Τρέξε: npm i -D p
 const { chromium } = pkg
 import { applyMode, MODE } from './lib/bench-mode.mjs'
 import { SEED_CONSENT } from './lib/consent.mjs'
+import { readFileSync } from 'node:fs'
+
+// ΠΟΣΕΣ ΕΡΩΤΗΣΕΙΣ ΦΑΙΝΟΝΤΑΙ ΚΛΕΙΣΤΕΣ: από το FAQ_VISIBLE της σελίδας, όχι
+// γραμμένο εδώ. Ηταν «5» και στις δύο πλευρές· όταν μπήκε πρώτη η ερώτηση «Τι
+// είναι το PROPERWISE;» (17/11/2026) ο αριθμός άλλαξε μόνο στη σελίδα.
+const FAQ_VISIBLE = Number(/export const FAQ_VISIBLE = (\d+)/.exec(readFileSync('app/landingContent.ts', 'utf8'))?.[1])
+if (!Number.isInteger(FAQ_VISIBLE)) throw new Error('Δεν βρέθηκε το FAQ_VISIBLE στο app/landingContent.ts')
 
 const BASE = process.env.E2E_BASE || 'http://localhost:3100'
 const EXE = process.env.CHROME || chromePath()
@@ -236,7 +243,7 @@ for (const [w, h, label] of [[1440, 900, 'υπολογιστής 1440'], [820, 1
   // απαντούν «έντεκα ορατές» σε λίστα που δείχνει πέντε.
   const shut = await p.evaluate(() => [...document.querySelectorAll('#faq details.lp-faq:not(.lp-faq-more)')]
     .filter(n => n.checkVisibility({ contentVisibilityAuto: true, visibilityProperty: true })).length)
-  ok(`κλείνοντας επιστρέφουν οι 5 ερωτήσεις (${label})`, shut === 5, `έμειναν ${shut}`)
+  ok(`κλείνοντας επιστρέφουν οι ${FAQ_VISIBLE} ερωτήσεις (${label})`, shut === FAQ_VISIBLE, `έμειναν ${shut}`)
 
   await p.close()
 }

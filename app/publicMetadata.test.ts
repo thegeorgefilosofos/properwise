@@ -36,7 +36,10 @@ const tw = m.twitter as { images?: unknown[] } | undefined;
 ok('το openGraph έχει την εικόνα κοινοποίησης', !!og?.images?.includes(SHARE_IMAGE));
 ok('η κάρτα X έχει την ίδια εικόνα', !!tw?.images?.includes(SHARE_IMAGE));
 ok('ο τύπος περνά όπως δόθηκε', og?.type === 'article');
-ok('ο τίτλος είναι απόλυτος', JSON.stringify(m.title) === JSON.stringify({ absolute: 'Τίτλος' }));
+ok('ο τίτλος είναι απόλυτος, με το σήμα μία φορά στο τέλος', JSON.stringify(m.title) === JSON.stringify({ absolute: 'Τίτλος · PROPERWISE' }));
+ok('η κάρτα κοινοποίησης κρατά τον σύντομο τίτλο', (m.openGraph as { title?: string } | undefined)?.title === 'Τίτλος');
+const withBrand = publicMetadata({ title: 'Χάρτης: όλες οι σελίδες του PROPERWISE', description: 'Περιγραφή', url: `${SITE}/dokimi` });
+ok('τίτλος που λέει ήδη το όνομα δεν το παίρνει δεύτερη φορά', JSON.stringify(withBrand.title) === JSON.stringify({ absolute: 'Χάρτης: όλες οι σελίδες του PROPERWISE' }));
 ok('η εικόνα είναι η κάρτα «home» της κοινής διαδρομής', SHARE_IMAGE.url === '/og/home' && !!SHARE_CARDS['home'] && existsSync('app/og/[slug]/route.tsx'));
 
 // ── (β) ΚΑΝΕΝΑ `openGraph` ΜΕ ΤΟ ΧΕΡΙ ───────────────────────────────────────

@@ -4,6 +4,7 @@ import { PUBLIC_TOOLS } from '../core/publicTools'
 import { GUIDES, LISTED_GUIDES } from '../../app/odigos/guides'
 import { PLANS, PLAN_ORDER } from '../billing/plans'
 import { siteUrl } from '../core/site'
+import { BRAND_ALT_NAMES } from './organization'
 
 let pass = 0, fail = 0
 const ok = (name: string, cond: boolean) => { if (cond) pass++; else { fail++; console.error('✗ ' + name) } }
@@ -25,6 +26,8 @@ ok('η σελίδα των λογιστών', t.includes(siteUrl('/logistes')))
 ok('χωρίς «βοηθό» για τη Νόα', !/βοηθ/i.test(t))
 ok('χωρίς «&» ή «→»', !/[&→]/.test(t))
 ok('χωρίς κόμμα πριν από «και»', !/,\s*(και|κι)(?!\p{L})/u.test(t))
+// ΟΙ ΓΡΑΦΕΣ ΤΟΥ ΟΝΟΜΑΤΟΣ από την ίδια λίστα με το `alternateName` του σχήματος.
+ok('οι γραφές του ονόματος, όλες', BRAND_ALT_NAMES.every(n => t.includes(n)))
 
 console.log(fail ? `✗ llms: ${fail} απέτυχαν από ${pass + fail}` : `✓ llms: ${pass} έλεγχοι πέρασαν`)
 if (fail) process.exit(1)
