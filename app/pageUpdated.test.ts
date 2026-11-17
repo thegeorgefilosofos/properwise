@@ -47,6 +47,9 @@ import { ToolSources } from './PublicChrome';
 import { E2_GUIDE_CHECKED } from '@/lib/tools/e2Odigos';
 import { MORTGAGE_PAGE_UPDATED } from '@/lib/tools/stegastiko';
 import { regulated } from '@/lib/legal/validity';
+import { HUBS, hubPath, METHOD_PATH } from './thema/hubs';
+import { hubUpdated, METHOD_UPDATED } from './thema/hubDates';
+import { HubPage } from './thema/HubPage';
 
 // ── ΟΙ ΥΠΟΛΟΓΙΣΤΕΣ: Η ΝΕΟΤΕΡΗ ΑΠΟ ΕΛΕΓΧΟ ΟΡΙΩΝ ΚΑΙ ΑΛΛΑΓΗ ΠΕΡΙΕΧΟΜΕΝΟΥ ──────
 // Το #401 (18/10/2026) άλλαξε H1, παραδείγματα και FAQ στις σελίδες ΕΝΦΙΑ και
@@ -112,10 +115,17 @@ function visibleDates(html: string): string[] {
 
 /** Η σελίδα μιας διαδρομής, αποδομένη όπως στον διακομιστή (ή `null` αν θέλει το Next). */
 /** Το αρχείο της σελίδας· οι μήνες των προθεσμιών είναι μία δυναμική διαδρομή. */
+// Οι κόμβοι θέματος και η μεθοδολογία αποδίδονται από τον διανομέα του /en
+// (next.config.ts): `view.tsx`, όπως ο χάρτης.
+const HUB_BY_PATH = new Map(HUBS.map(h => [hubPath(h), h]));
 const pageOf = (path: string): string =>
-  path === '/' ? 'app/page.tsx' : path === XARTIS_PATH ? 'app/xartis/view.tsx' : /^\/prothesmies\/\d{4}-\d{2}$/.test(path) ? 'app/prothesmies/[mina]/page.tsx' : `app${path}/page.tsx`;
+  path === '/' ? 'app/page.tsx' : path === XARTIS_PATH ? 'app/xartis/view.tsx' : path === METHOD_PATH ? 'app/methodologia/view.tsx'
+    : HUB_BY_PATH.has(path) ? 'app/thema/[thema]/view.tsx'
+    : /^\/prothesmies\/\d{4}-\d{2}$/.test(path) ? 'app/prothesmies/[mina]/page.tsx' : `app${path}/page.tsx`;
 
 async function render(path: string): Promise<string | null> {
+  const hub = HUB_BY_PATH.get(path);
+  if (hub) return renderToStaticMarkup(createElement(HubPage, { hub }));
   const file = './' + pageOf(path).slice(4).replace(/\.tsx$/, '');
   const src = readFileSync(pageOf(path), 'utf8');
   const mod = await import(file) as { default: (p?: object) => ReactElement | Promise<ReactElement> };
@@ -148,7 +158,8 @@ async function main() {
     // ── 1. ΜΙΑ ΠΗΓΗ ───────────────────────────────────────────────────────
     const fromRegistry = (PAGE_UPDATED as Record<string, string>)[path];
     const expected = fromRegistry ?? guideBy.get(SITE + path) ?? (path === '/odigos' ? GUIDES_UPDATED : path === '/ergaleia' ? TOOLS_UPDATED
-      : path.startsWith(PROTHESMIES_PATH) ? PROTHESMIES_UPDATED : path === XARTIS_PATH ? XARTIS_UPDATED : undefined);
+      : path.startsWith(PROTHESMIES_PATH) ? PROTHESMIES_UPDATED : path === XARTIS_PATH ? XARTIS_UPDATED
+      : path === METHOD_PATH ? METHOD_UPDATED : HUB_BY_PATH.has(path) ? hubUpdated(HUB_BY_PATH.get(path)!) : undefined);
     ok(`${path}: ο χάρτης παίρνει την ημερομηνία από το pageUpdated.ts ή το guides.ts`, expected !== undefined && lm === expected);
 
     // ── 2. ΚΑΜΙΑ ΜΕΛΛΟΝΤΙΚΗ ─────────────────────────────────────────────────

@@ -22,6 +22,7 @@ import { enPathFor } from '@/lib/i18n/paths';
 import { enToolLabel } from '@/lib/i18n/en/tools';
 import { enGuides } from '@/lib/i18n/en/guides';
 import { LISTED_GUIDES } from './odigos/guides';
+import { HUBS, hubPath, METHOD_PATH, METHOD_LABEL } from './thema/hubs';
 
 /** Η διαδρομή της σελίδας του χάρτη και της αγγλικής της (lib/i18n/paths.ts). */
 export const XARTIS_PATH = '/xartis';
@@ -67,6 +68,7 @@ const NAMED = {
   '/privacy': ['Πολιτική απορρήτου', 'Privacy policy'],
   '/terms': ['Όροι χρήσης', 'Terms of use'],
   [XARTIS_PATH]: ['Χάρτης ιστότοπου', 'Site map'],
+  [METHOD_PATH]: [METHOD_LABEL, 'How we calculate'],
 } as const satisfies Record<string, readonly [string, string]>;
 type Named = keyof typeof NAMED;
 
@@ -100,6 +102,10 @@ function contentGroups(today: string, dateOf: DateOf): MapGroup[] {
       id: 'odigoi', title: 'Οδηγοί', titleEn: 'Guides',
       entries: [
         named('/odigos', dateOf, true),
+        // ΟΙ ΚΟΜΒΟΙ ΘΕΜΑΤΟΣ (17/11/2026), αμέσως μετά τον κόμβο των οδηγών: κάθε
+        // ένας μαζεύει οδηγούς και υπολογιστές ενός ερωτήματος (app/thema/hubs.ts).
+        // Μόνο ελληνικοί, όπως οι μήνες των προθεσμιών.
+        ...HUBS.map(h => ({ path: hubPath(h), label: h.label, desc: h.desc, updated: dateOf(hubPath(h)), en: null })),
         ...LISTED_GUIDES.map(g => {
           const en = EN_GUIDE.get(g.href);
           return { path: g.href, label: g.title, desc: g.desc, updated: dateOf(g.href), en: en ? { path: en.href, label: en.title } : null };
@@ -120,7 +126,8 @@ function contentGroups(today: string, dateOf: DateOf): MapGroup[] {
     },
     {
       id: 'nomika', title: 'Νομικά και εμπιστοσύνη', titleEn: 'Legal and trust',
-      entries: [named('/trust', dateOf), named('/privacy', dateOf), named('/terms', dateOf)],
+      // Η μεθοδολογία δίπλα στο «Ποιοι είμαστε»: πώς βγαίνουν οι αριθμοί και από πού.
+      entries: [named('/trust', dateOf), named(METHOD_PATH, dateOf), named('/privacy', dateOf), named('/terms', dateOf)],
     },
   ];
 }

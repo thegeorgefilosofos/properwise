@@ -35,6 +35,9 @@ import * as deadlines from '../tax-deadlines/view';
 import * as siteMap from '../sitemap/view';
 import * as siteMapEl from '../../xartis/view';
 import { XARTIS_INTERNAL } from '../../siteCatalogCore';
+import * as method from '../../methodologia/view';
+import { hubView } from '../../thema/[thema]/view';
+import { HUBS, hubInternal, METHOD_INTERNAL } from '../../thema/hubs';
 import * as login from '../login/view';
 import * as loginFrame from '../login/frame';
 import * as signup from '../signup/view';
@@ -103,6 +106,10 @@ const PAGES = new Map<string, { view: View; frame?: Frame }>([
   ['/en/sitemap', { view: siteMap }],
   // Ο ΕΛΛΗΝΙΚΟΣ ΧΑΡΤΗΣ, ΞΑΝΑΓΡΑΜΜΕΝΟΣ ΕΔΩ (next.config.ts): μία συνάρτηση λιγότερη.
   [XARTIS_INTERNAL, { view: siteMapEl }],
+  // ΟΙ ΚΟΜΒΟΙ ΘΕΜΑΤΟΣ ΚΑΙ Η ΜΕΘΟΔΟΛΟΓΙΑ (17/11/2026), με τον ίδιο τρόπο: ελληνικές
+  // σελίδες χωρίς δική τους συνάρτηση, ένας κόμβος για κάθε γραμμή του καταλόγου.
+  [METHOD_INTERNAL, { view: method }],
+  ...HUBS.map(h => [hubInternal(h), { view: hubView(h) }] as const),
   ['/en/login', { view: login, frame: loginFrame }],
   ['/en/signup', { view: signup, frame: signupFrame }],
   ['/en/reset-password', { view: reset, frame: resetFrame }],

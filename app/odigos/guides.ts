@@ -61,6 +61,14 @@ export type Guide = {
    */
   topic: GuideTopic;
   /**
+   * Η ΝΟΜΙΚΗ ΒΑΣΗ ΣΤΗΝ ΚΕΦΑΛΙΔΑ (17/11/2026). Οι κανόνες του οδηγού στο μητρώο
+   * ισχύος (lib/legal/validity.ts). Από εκεί η κεφαλίδα (`GuideUpdated`) γράφει
+   * την πηγή (ΦΕΚ, ΑΑΔΕ) και τον παλαιότερο ανθρώπινο έλεγχό τους, χωρίς να
+   * γράψει τίποτα με το χέρι. Υποχρεωτικό, ώστε νέος οδηγός να το δηλώσει· το
+   * guides.test.ts ελέγχει ότι κάθε id υπάρχει στο μητρώο.
+   */
+  rules: readonly string[];
+  /**
    * ΟΔΗΓΟΣ ΕΚΤΟΣ ΚΑΤΑΛΟΓΟΥ, με την αιτία του. Η σελίδα του απαντά σε όποιον
    * έχει τη διεύθυνση, αλλά καμία άλλη σελίδα δεν τον δείχνει: ούτε ο κόμβος
    * /odigos, ούτε οι «Σχετικοί οδηγοί», ούτε το εργαλείο του, ούτε το /llms.txt.
@@ -88,6 +96,7 @@ export const GUIDES: readonly Guide[] = [
     updated: '2026-10-20',
     tools: ['/ypologismos-forou-enoikion', '/symplirosi-e2', '/kathari-apodosi'],
     topic: 'enoikia',
+    rules: ['rental-brackets', 'presumptive-deduction', 'vacant-rental-exemption'],
   },
   {
     href: '/odigos/airbnb-takk-2026',
@@ -101,6 +110,7 @@ export const GUIDES: readonly Guide[] = [
     updated: '2026-10-20',
     tools: ['/vraxyxronia-i-makroxronia'],
     topic: 'enoikia',
+    rules: ['climate-levy', 'municipal-accommodation-tax', 'str-registry', 'rental-brackets'],
   },
   {
     href: '/odigos/vraxyxronia-ama-prodiagrafes-2026',
@@ -122,6 +132,7 @@ export const GUIDES: readonly Guide[] = [
     updated: '2026-11-12',
     tools: ['/vraxyxronia-i-makroxronia'],
     topic: 'enoikia',
+    rules: ['str-registry', 'str-freeze', 'climate-levy'],
   },
   {
     href: '/odigos/pos-ypologizetai-o-enfia',
@@ -136,6 +147,7 @@ export const GUIDES: readonly Guide[] = [
     updated: '2026-11-13',
     tools: ['/ypologismos-enfia'],
     topic: 'enfia',
+    rules: ['enfia-coefficients', 'enfia-thresholds', 'enfia-relief-criteria'],
   },
   {
     href: '/odigos/kathari-apodosi-akinitou',
@@ -147,6 +159,7 @@ export const GUIDES: readonly Guide[] = [
     updated: '2026-10-20',
     tools: ['/kathari-apodosi', '/ypologismos-stegastikou-daneiou', '/exoda-agoras-akinitou', '/sygkrisi-timologion-revmatos'],
     topic: 'agora',
+    rules: ['rental-brackets', 'presumptive-deduction', 'enfia-coefficients'],
   },
   // ── Δεύτερο κύμα (27.09.2026). Κάθε οδηγός γράφεται από δεδομένα που ήδη
   // τρέχουν στην εφαρμογή, με τη νομική βάση τους: lib/tax/greekTaxCalendar.ts
@@ -161,6 +174,7 @@ export const GUIDES: readonly Guide[] = [
     updated: '2026-10-20',
     tools: ['/ypologismos-enfia', '/ypologismos-forou-enoikion', '/vraxyxronia-i-makroxronia'],
     topic: 'enfia',
+    rules: ['enfia-instalments', 'income-tax-instalments', 'lease-declaration', 'str-registry'],
   },
   {
     href: '/odigos/enoikio-meso-trapezas',
@@ -175,6 +189,7 @@ export const GUIDES: readonly Guide[] = [
     updated: '2026-10-20',
     tools: ['/ypologismos-forou-enoikion'],
     topic: 'enoikia',
+    rules: ['presumptive-deduction', 'rental-brackets'],
   },
   {
     href: '/odigos/plafon-3-emporikes-misthoseis-2026',
@@ -187,6 +202,7 @@ export const GUIDES: readonly Guide[] = [
     updated: '2026-10-20',
     tools: ['/anaprosarmogi-enoikiou', '/kathari-apodosi'],
     topic: 'enoikia',
+    rules: ['rent-adjustment-cap', 'cpi-index'],
   },
   {
     href: '/odigos/ekptosi-forou-anakainisis',
@@ -198,6 +214,7 @@ export const GUIDES: readonly Guide[] = [
     updated: '2026-10-20',
     tools: ['/ypologismos-ekptosis-anakainisis', '/ypologismos-forou-enoikion', '/kathari-apodosi'],
     topic: 'enfia',
+    rules: ['renovation-39b'],
   },
   // ── Τρίτο κύμα (03.10.2026). Από τα ερωτήματα αναζήτησης: ο κόσμος ψάχνει τι
   // ΚΑΝΕΙ με τον ΕΝΦΙΑ (πληρωμή, πιστοποιητικό, οριστικοποίηση), όχι πώς
@@ -213,6 +230,7 @@ export const GUIDES: readonly Guide[] = [
     updated: '2026-11-13',
     tools: ['/ypologismos-enfia'],
     topic: 'enfia',
+    rules: ['enfia-instalments'],
   },
   // ── Τέταρτο κύμα (19.10.2026). Μετά τη ΔΕΘ ο κόσμος ψάχνει «Σπίτι μου 3». Τα
   // όρια του Ι, του ΙΙ και ό,τι είναι επίσημο για το ΙΙΙ από το
@@ -227,6 +245,7 @@ export const GUIDES: readonly Guide[] = [
     updated: '2026-10-20',
     tools: ['/ypologismos-stegastikou-daneiou', '/exoda-agoras-akinitou'],
     topic: 'agora',
+    rules: ['loan-program-income-limits', 'spiti-mou-3'],
   },
 ];
 

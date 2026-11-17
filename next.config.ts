@@ -156,7 +156,14 @@ const nextConfig: NextConfig = {
   // `XARTIS_INTERNAL` στο app/siteCatalog.ts). Η διεύθυνση στον περιηγητή μένει
   // /xartis και ο διαμεσολαβητής τρέχει πάνω της: γλώσσα, nonce, canonical.
   async rewrites() {
-    return [{ source: "/xartis", destination: "/en/_xartis" }];
+    return [
+      { source: "/xartis", destination: "/en/_xartis" },
+      // ΟΙ ΚΟΜΒΟΙ ΘΕΜΑΤΟΣ ΚΑΙ Η ΜΕΘΟΔΟΛΟΓΙΑ (17/11/2026), με τον ίδιο τρόπο:
+      // τέσσερις σελίδες, καμία νέα συνάρτηση (`HUB_INTERNAL`, `METHOD_INTERNAL`
+      // στο app/thema/hubs.ts). Slug που δεν είναι στον κατάλογο δίνει 404.
+      { source: "/thema/:slug", destination: "/en/_thema/:slug" },
+      { source: "/methodologia", destination: "/en/_methodologia" },
+    ];
   },
   async redirects() {
     return [

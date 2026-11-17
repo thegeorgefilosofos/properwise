@@ -28,6 +28,8 @@ export const PUBLIC = [
   '/', '/signup', '/login', '/reset-password', '/trust', '/privacy', '/terms',
   '/paketa', '/ypologismos-enfia', '/ypologismos-forou-enoikion',
   '/kathari-apodosi', '/vraxyxronia-i-makroxronia', '/sygkrisi-timologion-revmatos', '/logistes',
+  // Οι κόμβοι θέματος και η μεθοδολογία (17/11/2026, app/thema/hubs.ts).
+  '/thema/forologia-enoikion', '/thema/enfia', '/thema/vraxyxronia-misthosi', '/methodologia',
   ...EN_PUBLIC,
 ];
 
