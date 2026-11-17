@@ -849,7 +849,19 @@ function inflateText(k) {
 }
 
 const PICK_W = process.env.E2E_WIDTHS ? process.env.E2E_WIDTHS.split(',').map(Number) : null
-const RUN_DEVICES = PICK_W ? DEVICES.filter(d => PICK_W.includes(d.w)) : DEVICES
+const PICKED = PICK_W ? DEVICES.filter(d => PICK_W.includes(d.w)) : DEVICES
+// ═══ ΜΙΣΕΣ ΣΥΣΚΕΥΕΣ ΣΕ ΚΑΘΕ JOB ═════════════════════════════════════════════
+// Το φωτεινό πέρασμα του CI τρέχει σε δύο παράλληλα jobs και η διάταξη είναι
+// το μισό του χρόνου του (20΄50΄΄ από 38΄ στην εκτέλεση 44019811181). Με
+// `E2E_SHARD=1/2` και `E2E_SHARD=2/2` κάθε job παίρνει τη μία από τις δύο
+// εναλλάξ μισές της λίστας, άρα οι δύο μαζί καλύπτουν ΟΛΕΣ τις συσκευές και
+// καμία δεν μετριέται δύο φορές. Νέα συσκευή στη λίστα μπαίνει μόνη της.
+const SHARD = (process.env.E2E_SHARD || '1/1').split('/').map(Number)
+if (!(SHARD[1] >= 1 && SHARD[0] >= 1 && SHARD[0] <= SHARD[1])) {
+  console.error(`✗ E2E_SHARD=${process.env.E2E_SHARD}: θέλει k/n με 1 ≤ k ≤ n`)
+  process.exit(2)
+}
+const RUN_DEVICES = PICKED.filter((_, i) => i % SHARD[1] === SHARD[0] - 1)
 
 const TOUCH = (w) => w < 1100 || w === 1280
 // ═══ ΤΑ ΠΑΡΑΘΥΡΑ ΠΟΥ ΑΝΟΙΓΟΥΝ ΜΕ ΚΟΥΜΠΙ ═════════════════════════════════════
@@ -1042,7 +1054,7 @@ async function scanDevice(dev, out) {
 // συσκευή, παίρνει την επόμενη αδιάθετη. Ετσι μια αργή συσκευή δεν κρατά
 // άπραγη μια θέση, όπως θα γινόταν με μοίρασμα σε ίσα κομμάτια από την αρχή.
 const LANES = Math.max(1, Math.min(Number(process.env.E2E_LANES || cpus().length), 4, RUN_DEVICES.length))
-console.log(`  ${RUN_DEVICES.length} συσκευές σε ${LANES} παράλληλες θέσεις · μηχανή ${engineLabel()} · θέμα ${MODE === 'light' ? 'φωτεινό' : 'σκούρο'}`)
+console.log(`  ${RUN_DEVICES.length} συσκευές${SHARD[1] > 1 ? ` (μέρος ${SHARD[0]}/${SHARD[1]} από ${PICKED.length})` : ''} σε ${LANES} παράλληλες θέσεις · μηχανή ${engineLabel()} · θέμα ${MODE === 'light' ? 'φωτεινό' : 'σκούρο'}`)
 let next = 0
 await Promise.all(Array.from({ length: LANES }, async () => {
   for (;;) {
