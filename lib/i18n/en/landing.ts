@@ -31,8 +31,8 @@ export const LANDING_EN = {
   skip: 'Skip to content',
   news: { tag: 'New', text: `The “${name('free')}” plan now needs no subscription` },
   lede: [
-    'Bills, leases, receipts: the app reads them and files them where they belong.',
-    'Rent, expenses, rental tax, form E2 and ENFIA, Greece’s annual property tax, ready before your accountant asks.',
+    'Snap a bill or lease and the app fills in the details.',
+    'Rental tax, form E2 and ENFIA ready before your accountant asks.',
   ] as const,
   dashboard: 'Open your dashboard',
   haveAccount: 'I have an account',
@@ -44,10 +44,10 @@ export const LANDING_EN = {
 export const HOW_EN = {
   over: 'How it works',
   title: 'Three steps to a property in order',
-  sub: 'You take the photo and ask. The app handles everything in between.',
+  sub: 'The app handles everything in between.',
   steps: [
-    { t: 'Snap a document', d: 'Photograph a bill, lease or tax notice. The app reads the amount, provider and due date and files it under the right property. Nothing is saved until you confirm.' },
-    { t: 'Stay ahead of deadlines', d: 'Payments, renewals and tax deadlines go into your device’s calendar, with a reminder before each one.' },
+    { t: 'Snap a document', d: 'Photograph a bill, lease or tax notice. It is filed under the right property once you confirm.' },
+    { t: 'Stay ahead of deadlines', d: 'Payments, renewals and tax deadlines in your calendar, with reminders.' },
     { t: 'Hand over a clean file', d: 'Your accountant’s file, form E2 included, downloads in one click.' },
   ],
 };
@@ -64,14 +64,14 @@ export const featuresEn = (year: number) => [
 export const FEATURES_HEAD_EN = (year: number) => ({
   over: 'Features',
   title: 'Designed for the Greek property market',
-  sub: `ENFIA, building service charges, lease declarations, the ${year} rental tax brackets. All under Greek law and on its deadlines.`,
+  sub: `ENFIA, form E2, lease declarations and the ${year} rental tax brackets, with their deadlines.`,
 });
 
 const fromPlan = (min: keyof typeof FEATURE_MIN_PLAN) => `, from “${PLAN_COPY_EN[FEATURE_MIN_PLAN[min]].name}”`;
 export const WORKS_EN = {
   over: 'Compatibility',
   title: 'Keep everything that already works',
-  sub: 'Export your data whenever you like, in the format your accountant expects.',
+  sub: 'Export anytime, in the format your accountant expects.',
   more: (n: number) => `See all (${n})`,
   items: [
     { t: 'myAADE', d: 'the Greek tax authority’s portal: lease declarations, checked for completeness' },
@@ -88,18 +88,17 @@ export const WORKS_EN = {
 export const CALC_HEAD_EN = (year: number) => ({
   over: 'See for yourself',
   title: 'What does your property really earn?',
-  sub: `An indicative net yield, using the same ${year} rental tax brackets that run inside the app.`,
+  sub: `Indicative, using the app’s ${year} rental tax brackets.`,
 });
 
 export const SECURITY_EN = {
   over: 'Security',
   title: 'Your data belongs to you',
-  sub: 'Encrypted connections, per-user isolation and a database in the European Union.',
   items: [
-    { t: 'Encrypted connection', d: 'Your connection to the app always runs over TLS, on every device and network.', i: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4' },
-    { t: 'Per-user isolation', d: 'You see only your own data. Access goes only to the people you choose.', i: 'M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z' },
+    { t: 'Encrypted connection', d: 'Always over TLS, on every device and network.', i: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4' },
+    { t: 'Per-user isolation', d: 'Only you see your data, plus the people you choose.', i: 'M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z' },
     { t: 'No model training', d: 'Our AI provider is contractually bound not to train models on your data.', i: 'M12 2v4M12 18v4M2 12h4M18 12h4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z' },
-    { t: 'Database in the EU', d: 'Your database, sign-in and files are hosted in Frankfurt.', i: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20M2 12h20M12 2c3 3 3 17 0 20M12 2c-3 3-3 17 0 20' },
+    { t: 'Database in the EU', d: 'Database, sign-in and files hosted in Frankfurt.', i: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20M2 12h20M12 2c3 3 3 17 0 20M12 2c-3 3-3 17 0 20' },
   ],
   fine: 'Which providers process data outside the EU, and under which contracts, is set out on',
   fineLink: 'our About page',
@@ -107,21 +106,19 @@ export const SECURITY_EN = {
 
 export const PRICING_HEAD_EN = {
   title: 'What each plan costs',
-  sub: 'Every plan includes everything in the one before it.',
   more: 'See everything each plan includes',
 };
 
 export const FAQ_HEAD_EN = {
   over: 'FAQ',
   title: 'What owners ask before they start',
-  sub: 'Limits and charges, before you begin.',
   more: 'More questions',
   less: 'Fewer questions',
 };
 
 export const FINAL_EN = {
   title: 'Your property, under control.',
-  lines: ['Every document in its place, every deadline on time.', 'Your next tax return will find your file ready.'] as const,
+  lines: ['Every document in its place, every deadline on time.'] as const,
 };
 
 const monthsSaved = PLAN_ORDER
@@ -135,17 +132,17 @@ export function faqEn() {
   return [
     // Πρώτα τι είναι: η ίδια πρόταση με το `description` του οργανισμού (app/landingContent.ts).
     { q: `What is ${PRODUCT_NAME}?`, a: BRAND_ABOUT.en },
-    { q: FAQ_PRICE_Q_EN, a: `“${name('free')}” has no subscription for one property and includes every tax tool. With ${NOA} it costs ${f.fe(PLANS.solo.priceMonthly)} a month or ${f.fe(PLANS.solo.priceAnnual)} a year. The larger plans go up to ${f.fe(PLANS.office.priceMonthly)} a month for unlimited properties. Teams with roles start on the “${name(firstPlanWith(TEAM_LINE))}” plan. Paying annually saves you up to ${monthsSaved} months and lowers the monthly cost.` },
-    { q: 'Who is it for?', a: 'Anyone who owns property in Greece, from an individual with one apartment to a real estate office managing portfolios for clients. It covers homes, commercial space, storage units and land, on long-term or short-term lets.' },
-    { q: 'How does photo scanning work?', a: `Photograph a bill, lease, insurance policy or ENFIA statement. The app reads the amount, provider and due date and files them under the right property. You see what it understood first and fix it with a tap: nothing is saved without you. Without a subscription you get ${SCAN_LIMITS.free} scans a month, ${TRIAL_SCANS_PER_MONTH} during the trial and unlimited scans with a subscription.` },
-    { q: 'Does it replace my accountant?', a: 'No, it supports them. It keeps your obligations and deadlines current all year, so you reach your accountant with your figures ready to export instead of hunting for them in June. The app’s calculations are indicative, not binding.' },
-    { q: 'Is my data safe?', a: 'Your connection is always encrypted, and every account is isolated at the database level: you see your own data and only what you choose to share. Our AI provider is contractually bound not to train models on your documents. The database and files are hosted in Frankfurt; anything that leaves the EU is listed on our About page.' },
-    { q: `What language does ${NOA} speak?`, a: `Greek. ${NOA} reads and writes Greek, and in Chrome or Safari you can also ask by voice and hear the answers. ${NOA} sees your own properties, expenses and deadlines, and refers legal and accounting questions to the right professional. ${AI_DISCLOSURE_EN}` },
-    { q: `How many questions can I ask ${NOA}?`, a: `${NOA} is not included in the no-subscription “${name('free')}” plan. On the other plans only the number of questions changes: from ${aiLimitsFor('solo').perMonth} a month (${name('solo')}) to ${aiLimitsFor('office').perMonth} (${name('office')}), renewed on the 1st of each month. Each day you can use up to about a third of your monthly allowance, from ${aiLimitsFor('solo').perDay} to ${aiLimitsFor('office').perDay} questions.` },
+    { q: FAQ_PRICE_Q_EN, a: `“${name('free')}” has no subscription for one property and includes every tax tool. With ${NOA} it costs ${f.fe(PLANS.solo.priceMonthly)} a month or ${f.fe(PLANS.solo.priceAnnual)} a year. Up to ${f.fe(PLANS.office.priceMonthly)} a month for unlimited properties, with team roles from “${name(firstPlanWith(TEAM_LINE))}”. Paying annually saves up to ${monthsSaved} months.` },
+    { q: 'Who is it for?', a: 'Property owners in Greece, from one apartment to an agency managing client portfolios. Homes, commercial space, storage and land, on long-term or short-term lets.' },
+    { q: 'How does photo scanning work?', a: `Photograph a bill, lease, insurance policy or ENFIA statement. The app reads amount, provider and due date; nothing is saved until you approve. ${SCAN_LIMITS.free} scans a month without a subscription, ${TRIAL_SCANS_PER_MONTH} during the trial, unlimited with a subscription.` },
+    { q: 'Does it replace my accountant?', a: 'No, it supports them: you arrive with your figures ready instead of hunting for them in June. The app’s calculations are indicative, not binding.' },
+    { q: 'Is my data safe?', a: 'Encrypted connections and per-account isolation in the database. Our AI provider is contractually bound not to train models on your documents. Database and files are hosted in Frankfurt; anything that leaves the EU is listed on our About page.' },
+    { q: `What language does ${NOA} speak?`, a: `Greek, in writing or, in Chrome and Safari, by voice. ${NOA} sees your properties, expenses and deadlines and refers legal and accounting questions to a professional. ${AI_DISCLOSURE_EN}` },
+    { q: `How many questions can I ask ${NOA}?`, a: `${NOA} is not included in the no-subscription “${name('free')}” plan. From ${aiLimitsFor('solo').perMonth} questions a month (${name('solo')}) to ${aiLimitsFor('office').perMonth} (${name('office')}), renewed on the 1st, with a daily limit from ${aiLimitsFor('solo').perDay} to ${aiLimitsFor('office').perDay}.` },
     { q: 'What happens when the trial ends?', a: w.afterTrialShort },
     { q: 'What happens to my data if I stop?', a: w.lapsedRetentionShort },
-    { q: 'Does it work on mobile?', a: 'Yes. It adapts to phone, tablet and computer, and scanning works best with your phone or tablet camera. You can also add it to your home screen like an app.' },
-    { q: 'How quickly can I start?', a: 'Sign-up takes less than a minute, with Google or email. Add your first property with a few basic details, and its picture fills in with every document you add. If you would like to see how it works first, there is demo data.' },
+    { q: 'Does it work on mobile?', a: 'Yes, on phone, tablet and computer. Add it to your home screen like an app.' },
+    { q: 'How quickly can I start?', a: 'Sign-up takes under a minute, with Google or email. Your first property needs a few details, and there is demo data to explore.' },
   ];
 }
 

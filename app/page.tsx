@@ -296,8 +296,8 @@ export default async function Landing() {
                 375 και η δεύτερη πρόταση απαριθμούσε πέντε πράγματα πριν πει το
                 όφελος. Τώρα τα τρία που ζητά ο λογιστής, σε δύο προτάσεις
                 σχεδόν ίσου μήκους. */}
-            <span className="lp-lede-line">Λογαριασμός, μισθωτήριο, απόδειξη: η{'\u00a0'}εφαρμογή τα διαβάζει και συμπληρώνει τα{'\u00a0'}στοιχεία.</span>{' '}
-            <span className="lp-lede-line">Ο φόρος ενοικίων, το Ε2 και ο ΕΝΦΙΑ είναι έτοιμα πριν τα ζητήσει ο{'\u00a0'}λογιστής.</span>
+            <span className="lp-lede-line">Φωτογραφίζεις λογαριασμό ή μισθωτήριο και η εφαρμογή συμπληρώνει τα{'\u00a0'}στοιχεία.</span>{' '}
+            <span className="lp-lede-line">Φόρος ενοικίων, Ε2 και ΕΝΦΙΑ έτοιμα πριν τα ζητήσει ο{'\u00a0'}λογιστής.</span>
           </p>
           <div className="lp-rise-3 lp-hero-ctas" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             {loggedIn ? (
@@ -368,7 +368,7 @@ export default async function Landing() {
       {/* ── Scrollytelling: το προϊόν μένει sticky και αλλάζει πράξη όσο διαβάζεις.
              ΠΡΟΣΟΧΗ: χωρίς lp-reveal εδώ (transform στον πρόγονο σπάει το sticky). */}
       <section id="pos-leitourgei" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP, scrollMarginTop: 72 }}>
-        <SectionHead over="Πώς λειτουργεί" title="Τρεις κινήσεις και το ακίνητο μπαίνει σε τάξη" sub="Φωτογραφίζεις και ρωτάς. Τα ενδιάμεσα τα κάνει η εφαρμογή." />
+        <SectionHead over="Πώς λειτουργεί" title="Τρεις κινήσεις και το ακίνητο μπαίνει σε τάξη" sub="Τα ενδιάμεσα τα κάνει η εφαρμογή." />
         <ScrollStory />
       </section>
 
@@ -378,7 +378,7 @@ export default async function Landing() {
             διεθνές εργαλείο διαχείρισης: ότι ξέρει την ελληνική πραγματικότητα.
             Το «Ό,τι χρειάζεται το ακίνητό σου» ήταν αληθές και εντελώς άχρωμο,
             γιατί το ίδιο ακριβώς θα έγραφε και ο κάθε ανταγωνιστής. */}
-        <SectionHead over="Δυνατότητες" title="Σχεδιασμένο για την ελληνική αγορά ακινήτων" sub={`ΕΝΦΙΑ, κοινόχρηστα, δήλωση μίσθωσης, κλίμακα ενοικίων ${scaleYear}. Όλα με τους κανόνες και τις προθεσμίες του ελληνικού δικαίου.`} />
+        <SectionHead over="Δυνατότητες" title="Σχεδιασμένο για την ελληνική αγορά ακινήτων" sub={`ΕΝΦΙΑ, Ε2, δήλωση μίσθωσης και κλίμακα ενοικίων ${scaleYear}, με τις προθεσμίες τους.`} />
         {/* ΡΗΤΑ ΤΡΕΙΣ ΣΤΗΛΕΣ ΓΙΑ ΕΞΙ ΚΑΡΤΕΣ. Με επτά κάρτες και auto-fit, η έβδομη
             έμενε ΜΟΝΗ ΤΗΣ σε τρίτη σειρά, με δύο κενά δίπλα της. Ένα ορφανό κελί
             είναι το πιο ορατό λάθος διάταξης που υπάρχει: δεν χρειάζεται να ξέρεις
@@ -413,7 +413,7 @@ export default async function Landing() {
                και μένουν μέσα στο έγγραφο, για τις μηχανές και τους αναγνώστες. */}
         <div className="lp-works-head">
           <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: TEXT }}>Δεν αφήνεις πίσω τίποτα από όσα ήδη δουλεύουν</h3>
-          <p data-nohy="" style={{ fontSize: 15, color: MUTED, lineHeight: 1.55, margin: '4px 0 0', textWrap: 'pretty' }}>Τα δεδομένα σου εξάγονται όποτε θέλεις, στη μορφή που περιμένει ο λογιστής σου.</p>
+          <p data-nohy="" style={{ fontSize: 15, color: MUTED, lineHeight: 1.55, margin: '4px 0 0', textWrap: 'pretty' }}>Εξαγωγή όποτε θέλεις, στη μορφή του λογιστή σου.</p>
         </div>
         <div className="lp-works">
           {WORKS_WITH.slice(0, WORKS_FIRST).map(w => <WorksCell key={w.t} w={w} />)}
@@ -437,7 +437,7 @@ export default async function Landing() {
 
       {/* ── Ζωντανό εργαλείο απόδοσης: αξία επιτόπου, με τον αληθινό μας μηχανισμό ── */}
       <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
-        <SectionHead over="Δες το μόνος σου" title="Πόσο σου αποδίδει πραγματικά;" sub={`Ενδεικτική καθαρή απόδοση, με την ίδια φορολογική κλίμακα ενοικίων ${scaleYear} που τρέχει και μέσα στην εφαρμογή.`} />
+        <SectionHead over="Δες το μόνος σου" title="Πόσο σου αποδίδει πραγματικά;" sub={`Ενδεικτικά, με την κλίμακα ενοικίων ${scaleYear} της εφαρμογής.`} />
         <LandingCalculator cta={signupCta()} />
         {/* ── Εργαλεία και οδηγοί: σύνδεσμοι μέσα στη σελίδα, από τους καταλόγους (LandingLinks.tsx).
               ΜΕΣΑ ΣΤΗΝ ΙΔΙΑ ΕΝΟΤΗΤΑ ΜΕ ΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (17/11/2026). Ήταν χωριστή
@@ -481,7 +481,7 @@ export default async function Landing() {
         {/* Η ΜΟΝΗ ΚΕΦΑΛΙΔΑ ΧΩΡΙΣ ΥΠΟΤΙΤΛΟ ΚΑΙ Η ΚΑΡΤΑ ΑΝΕΒΑΙΝΕ ΚΑΤΩ ΑΠΟ ΤΟΝ ΤΙΤΛΟ
             ΧΩΡΙΣ ΤΟ ΣΚΑΛΙ ΠΟΥ ΕΧΟΥΝ ΟΙ ΑΛΛΕΣ ΕΝΝΕΑ. Ο υπότιτλος λέει μόνο ό,τι
             ισχυρίζονται ήδη οι τέσσερις εγγυήσεις από κάτω. */}
-        <SectionHead over="Ασφάλεια" title="Τα δεδομένα σού ανήκουν" sub="Κρυπτογραφημένη σύνδεση, απομόνωση ανά χρήστη και βάση δεδομένων στην Ευρωπαϊκή Ένωση." />
+        <SectionHead over="Ασφάλεια" title="Τα δεδομένα σού ανήκουν" />
         <div className="lp-sec" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 28px)' }}>
           {/* Η ΕΙΣΑΓΩΓΗ ΕΦΥΓΕ (17/11/2026). Έλεγε «λογαριασμοί, συμβόλαια… είναι
               από τα πιο ευαίσθητα δεδομένα, γι' αυτό τα φυλάμε ανάλογα», δηλαδή
@@ -536,7 +536,7 @@ export default async function Landing() {
 
       {/* ── Pricing ── */}
       <section id="pricing" className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
-        <SectionHead title="Τι κοστίζει κάθε πακέτο" sub="Κάθε πακέτο περιλαμβάνει ό,τι έχει το προηγούμενο." />
+        <SectionHead title="Τι κοστίζει κάθε πακέτο" />
         {/* ΜΙΑ ΠΗΓΗ ΓΙΑ ΤΙΣ ΤΙΜΕΣ ΚΑΙ ΤΑ ΧΑΡΑΚΤΗΡΙΣΤΙΚΑ.
             Οι κάρτες ήταν γραμμένες με το χέρι: τιμές, ετήσιες τιμές και λίστες
             χαρακτηριστικά αντιγραμμένα από το lib/billing/plans.ts. Είχαν ήδη
@@ -626,7 +626,7 @@ export default async function Landing() {
             η τρίτη έσπαγε μόνη της σε δεύτερη σειρά, οπότε τα ψιλά γράμματα
             διαβάζονταν κάτω κάτω αντί για πέρα πέρα. Μένουν οι ίδιες τρεις
             προτάσεις (η δοκιμή με το όριό της, ο ΦΠΑ, η εγγύηση), στη σειρά. */}
-        <p className="fineprint fineprint-cols po-just" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: FAINT, margin: '22px 0 0' }}>
+        <p className="fineprint fineprint-cols po-just" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: MUTED, margin: '20px 0 0' }}>
           {TRIAL_OFFER}{billingLive && <> {billingWords().firstCharge}</>}
           {' '}{PRICES_VAT} {NO_COMMITMENT}
           <span className="fineprint-col2">{billingWords().moneyBack}</span>
@@ -673,7 +673,7 @@ export default async function Landing() {
             μετά δύο στήλες και ήταν χειρότερο: μία παράγραφος κομμένη στη μέση
             της οθόνης, με το μάτι να γυρίζει πάνω. Η επιφύλαξη διαβάζεται μία
             φορά και από πάνω προς τα κάτω, όπως κάθε άλλο κείμενο εδώ. */}
-        <p className="fineprint po-just" style={{ fontSize: 'var(--fs-base)', color: FAINT, margin: '22px 0 0' }}>
+        <p className="fineprint po-just" style={{ fontSize: 'var(--fs-base)', color: MUTED, margin: '20px 0 0' }}>
           {/* ΤΟ ΔΩΡΟ ΤΟΥ ΣΥΝΕΡΓΑΤΗ ΔΕΝ ΕΙΝΑΙ ΕΝΑ ΠΑΚΕΤΟ, ΕΙΝΑΙ ΕΝΑ ΣΚΑΛΙ ΠΑΝΩ.
               Γραφόταν σταθερά «Επαγγελματίας+», μετά διορθώθηκε σε ό,τι έδινε
               το PARTNER_WELCOME και ήταν πάλι λάθος: σταθερό δώρο σημαίνει ότι
@@ -708,7 +708,7 @@ export default async function Landing() {
       <section id="faq" className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: 0 }}>
         <hr className="lp-hair" />
         <div className="lp-band">
-        <div className="lp-band-head"><SectionHead hair={false} over="Συχνές ερωτήσεις" title="Ό,τι ρωτούν οι ιδιοκτήτες πριν ξεκινήσουν" sub="Τα όρια και οι χρεώσεις, πριν ξεκινήσεις." /></div>
+        <div className="lp-band-head"><SectionHead hair={false} over="Συχνές ερωτήσεις" title="Ό,τι ρωτούν οι ιδιοκτήτες πριν ξεκινήσουν" /></div>
         <div>
         {/* ═══ ΠΕΝΤΕ ΦΑΙΝΟΝΤΑΙ, ΟΙ ΥΠΟΛΟΙΠΕΣ ΑΝΟΙΓΟΥΝ ══════════════════════════
             Έντεκα ερωτήσεις η μία κάτω από την άλλη δεν διαβάζονται: σαρώνονται
@@ -769,8 +769,7 @@ export default async function Landing() {
               στοίχιση. Η τιμή και η δοκιμή ζουν στα ✓ του hero και στον
               τιμοκατάλογο. */}
           <p className="lp-lede" data-nohy="" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 30px' }}>
-            <span className="lp-lede-line">Κάθε έγγραφο στη θέση του, κάθε προθεσμία στην ώρα της.</span>{' '}
-            <span className="lp-lede-line">Και η επόμενη δήλωση θα σε βρει με τον φάκελο ήδη έτοιμο.</span>
+            <span className="lp-lede-line">Κάθε έγγραφο στη θέση του, κάθε προθεσμία στην ώρα της.</span>
           </p>
           <Link href={loggedIn ? '/dashboard' : withSignupEntry('/signup', 'home')} className="lp-cta lp-primary lp-final-cta" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : signupCta()}</Link>
         </div>

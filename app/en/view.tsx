@@ -195,7 +195,7 @@ export default async function LandingEn() {
       </section>
 
       <section className="lp-reveal" style={{ ...wrap, ...LAYER, paddingBottom: GAP }}>
-        <SectionHead over={SECURITY_EN.over} title={SECURITY_EN.title} sub={SECURITY_EN.sub} />
+        <SectionHead over={SECURITY_EN.over} title={SECURITY_EN.title} />
         <div className="lp-sec" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 28px)' }}>
           <div className="lp-sec-grid">
             {SECURITY_EN.items.map(s => (
@@ -224,7 +224,7 @@ export default async function LandingEn() {
       <NoaFeature locale="en" />
 
       <section id="pricing" className="lp-reveal" style={{ ...wrap, ...LAYER, paddingBottom: GAP }}>
-        <SectionHead title={PRICING_HEAD_EN.title} sub={PRICING_HEAD_EN.sub} />
+        <SectionHead title={PRICING_HEAD_EN.title} />
         {words.pricingNotice && (
           <div role="note" style={{ padding: '14px 16px', marginBottom: 16, borderRadius: T.radius.popup, background: PANEL, border: '1px solid color-mix(in srgb, var(--accent) 35%, transparent)', fontSize: 14, lineHeight: 1.55, color: MUTED }}>
             <strong style={{ color: TEXT, fontWeight: 700 }}>{words.pricingNotice.title}</strong>{' '}{words.pricingNotice.body}
@@ -259,7 +259,7 @@ export default async function LandingEn() {
             );
           })}
         </div>
-        <p className="fineprint fineprint-cols" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: FAINT, margin: '22px 0 0', textWrap: 'pretty' }}>
+        <p className="fineprint fineprint-cols" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: MUTED, margin: '22px 0 0', textWrap: 'pretty' }}>
           {trialOfferEn(PLAN_COPY_EN[TRIAL_PLAN].name)}{words.live && <> {words.firstCharge}</>}
           {' '}{PRICES_VAT_EN} {NO_COMMITMENT_EN}
           <span className="fineprint-col2">{words.moneyBack}</span>
@@ -274,7 +274,7 @@ export default async function LandingEn() {
       <section id="faq" className="lp-reveal" style={{ ...wrap, ...LAYER, paddingBottom: 0 }}>
         <hr className="lp-hair" />
         <div className="lp-band">
-        <div className="lp-band-head"><SectionHead hair={false} over={FAQ_HEAD_EN.over} title={FAQ_HEAD_EN.title} sub={FAQ_HEAD_EN.sub} /></div>
+        <div className="lp-band-head"><SectionHead hair={false} over={FAQ_HEAD_EN.over} title={FAQ_HEAD_EN.title} /></div>
         <div>
         <div style={{ borderBottom: `1px solid ${LINE}` }}>
           <FaqList list={faq.slice(0, visible)} firstOpen />
@@ -297,7 +297,7 @@ export default async function LandingEn() {
         <div className="lp-final-band" style={{ ...wrap, ...LAYER, textAlign: 'center', paddingTop: GAP, paddingBottom: GAP }}>
           <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>{FINAL_EN.title}</h2>
           <p data-nohy="" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 30px', maxWidth: 640, textWrap: 'pretty' }}>
-            {FINAL_EN.lines[0]}{' '}{FINAL_EN.lines[1]}
+            {FINAL_EN.lines.join(' ')}
           </p>
           {loggedIn
             ? dashboard('lp-cta lp-primary lp-final-cta', { display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }, LANDING_EN.dashboard)

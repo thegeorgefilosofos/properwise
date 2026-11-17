@@ -122,9 +122,9 @@ export function NoaFeature({ locale = 'el' }: { locale?: Locale } = {}) {
   const noa = PLANS.solo, ai = aiLimitsFor('solo');
   const en = locale === 'en', P = partsFor(locale), N = PARTS_EN.noa, money = fmtFor(locale).fe;
   const does = [
-    ...(en ? N.does : [{ t: 'Ρωτάς όπως μιλάς', d: 'Γραπτά ή με τη φωνή σου, στα ελληνικά.' },
-    { t: 'Απαντά με τα δικά σου', d: 'Βασίζεται στις καταχωρήσεις σου, όχι σε γενικές συμβουλές.' },
-    { t: 'Σε πάει εκεί που πρέπει', d: 'Ανοίγει την οθόνη που χρειάζεσαι για το επόμενο βήμα.' },
+    ...(en ? N.does : [{ t: 'Ρωτάς όπως μιλάς', d: 'Γραπτά ή με τη φωνή σου.' },
+    { t: 'Απαντά με τα δικά σου', d: 'Από τις καταχωρήσεις σου, όχι γενικές συμβουλές.' },
+    { t: 'Σε πάει εκεί που πρέπει', d: 'Ανοίγει την οθόνη του επόμενου βήματος.' },
   ]),
   ];
   return (
@@ -137,7 +137,7 @@ export function NoaFeature({ locale = 'el' }: { locale?: Locale } = {}) {
             <span className="nf-mono" aria-hidden="true">N</span>
             {en ? N.title : <>Γνώρισε {ASSISTANT_ACC}.</>}
           </h2>
-          <p className="nf-lead po-just">{hy(en ? N.lead : 'Ρωτάς για το ακίνητό σου στα ελληνικά και απαντά με τα δικά σου νούμερα. Ό,τι θα ρωτούσες τον λογιστή, πριν τον πάρεις τηλέφωνο.')}</p>
+          <p className="nf-lead po-just">{hy(en ? N.lead : 'Ρωτάς στα ελληνικά, απαντά με τα δικά σου νούμερα.')}</p>
           <ul className="nf-does">
             {does.map(x => (
               <li key={x.t}><strong>{x.t}</strong><span>{hy(x.d)}</span></li>
@@ -415,7 +415,7 @@ export function WorksCell({ w }: { w: { t: string; d: string } }) {
   return (
     <div>
       <div className="lp-works-t" style={{ fontSize: 15, fontWeight: 700, color: TEXT, letterSpacing: '-0.01em', marginBottom: 4 }}>{w.t}</div>
-      <div className="lp-even lp-works-d" style={{ fontSize: 14, color: FAINT, lineHeight: 1.5 }}>{w.d}</div>
+      <div className="lp-even lp-works-d" style={{ fontSize: 14, color: MUTED, lineHeight: 1.5 }}>{w.d}</div>
     </div>
   );
 }
