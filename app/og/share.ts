@@ -22,6 +22,7 @@ import { PUBLIC_TOOLS, TOOLS_HUB } from '@/lib/core/publicTools';
 import { COMMERCIAL_RENT_CAP_2026 } from '@/lib/documents/rentAdjustment';
 import { TRANSFER_TAX_RATE } from '@/lib/accounting/transfer';
 import { EN_SHARE_CARDS } from './shareEn';
+import { HUBS, hubPath, METHOD_PATH, METHOD_LABEL } from '../thema/hubs';
 
 export type ShareCard = {
   /** Οδηγός, υπολογιστής ή σελίδα που μιλά σε ένα κοινό (π.χ. /logistes). */
@@ -102,6 +103,16 @@ export const SHARE_CARDS: Record<string, ShareCard> = {
     chips: ['ΕΝΦΙΑ', 'Βραχυχρόνια μίσθωση', 'Δηλώσεις', 'Με την επίσημη πηγή'], path: '/prothesmies' },
   'trust': { kind: 'page', over: 'Εμπιστοσύνη', title: 'Ποιοι είμαστε και τι γίνεται με τα δεδομένα σου',
     chips: ['Πού φυλάσσονται', 'Ποιος τα βλέπει', 'Τι δεν κάνουμε ποτέ'], path: '/trust' },
+  // ΟΙ ΚΟΜΒΟΙ ΘΕΜΑΤΟΣ ΚΑΙ Η ΜΕΘΟΔΟΛΟΓΙΑ (17/11/2026, app/thema/hubs.ts). Τα
+  // γεγονότα είναι πλήθη από τον κατάλογο, κανένα ποσό: η πλατφόρμα κρατά την
+  // εικόνα εβδομάδες.
+  ...Object.fromEntries(HUBS.map(h => [`thema-${h.slug}`, {
+    kind: 'guide' as const, over: 'Θέμα', title: h.title,
+    chips: [`${h.guides.length} ${h.guides.length === 1 ? 'οδηγός' : 'οδηγοί'}`, `${h.tools.length} ${h.tools.length === 1 ? 'υπολογιστής' : 'υπολογιστές'}`, 'Με τη νομική βάση'],
+    path: hubPath(h),
+  }])),
+  'methodologia': { kind: 'page', over: METHOD_LABEL, title: 'Από πού βγαίνει κάθε αριθμός του PROPERWISE',
+    chips: ['Μία πηγή για κάθε κανόνα', 'Μητρώο ισχύος', 'Έλεγχος από άνθρωπο'], path: METHOD_PATH },
   // ΚΑΙ ΟΙ ΑΓΓΛΙΚΕΣ (app/og/shareEn.ts), με κλειδί «en-…».
   ...EN_SHARE_CARDS,
   ...Object.fromEntries(GUIDES.map(g => [guideSlug(g), {

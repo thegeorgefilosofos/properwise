@@ -79,6 +79,12 @@ export async function proxy(request: NextRequest) {
     url.pathname = "/xartis";
     return NextResponse.redirect(url, 308);
   }
+  // Το ίδιο για τους κόμβους θέματος και τη μεθοδολογία (app/thema/hubs.ts).
+  if (pagePath === "/en/_methodologia" || pagePath.startsWith("/en/_thema/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = pagePath === "/en/_methodologia" ? "/methodologia" : pagePath.replace("/en/_thema/", "/thema/");
+    return NextResponse.redirect(url, 308);
+  }
   const chosen = request.cookies.get(LOCALE_COOKIE)?.value;
   // Οι σελίδες παραλήπτη (πύλη ενοικιαστή, «Πλήρωσα», επαλήθευση…) κρατούν
   // τη διεύθυνσή τους και παίρνουν τη γλώσσα από τον επισκέπτη
@@ -211,6 +217,9 @@ export async function proxy(request: NextRequest) {
     // εργαλεία (public/humans.txt) και ο χάρτης ιστότοπου για τον άνθρωπο. Το
     // matcher προσπερνά το humans.txt και τη ροή των οδηγών (/odigos/feed.xml).
     "/humans.txt", "/xartis",
+    // Πώς βγαίνουν οι αριθμοί (17/11/2026): η μεθοδολογία με το μητρώο ισχύος,
+    // αποδομένη από τον διανομέα του /en όπως ο χάρτης (next.config.ts).
+    "/methodologia",
     // ΟΔΗΓΟΣ-ΠΥΛΩΝΑΣ. Δωρεάν περιεχόμενο που εξηγεί τη φορολογία ενοικίων 2026
     // και δένει με τον υπολογιστή· απαντά ΠΡΙΝ την εγγραφή, όπως τα εργαλεία.
     // Οι ίδιοι οι οδηγοί περνούν με πρόθεμα, πιο κάτω.
@@ -285,6 +294,8 @@ export async function proxy(request: NextRequest) {
     // εξ ορισμού δημόσιο περιεχόμενο· ο κανόνας γίνεται πρόθεμα.
     || pathname.startsWith("/odigos/")
     || pathname.startsWith("/prothesmies/")
+    // Οι κόμβοι θέματος (17/11/2026, app/thema/hubs.ts): δημόσιοι όπως οι οδηγοί που μαζεύουν.
+    || pathname.startsWith("/thema/")
     || pathname.startsWith("/en/")
     // Η διπλή συναίνεση της διεύθυνσης υπενθυμίσεων φτάνει σε ΤΡΙΤΟ πρόσωπο που
     // δεν έχει λογαριασμό. Χωρίς αυτή τη γραμμή ο σύνδεσμος επιβεβαίωσης

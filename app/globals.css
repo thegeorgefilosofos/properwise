@@ -5729,6 +5729,91 @@ body:has(.po-tool-page) .po-cookie {
   }
 }
 
+/* ═══ ΟΙ ΚΟΜΒΟΙ ΘΕΜΑΤΟΣ ΚΑΙ Η ΜΕΘΟΔΟΛΟΓΙΑ ΣΤΟ ΠΛΑΤΟΣ ΤΗΣ ΑΡΧΙΚΗΣ (17/11/2026) ═══
+   Το περιεχόμενο καθόταν σε μία στήλη 720 και στα 1440 η δεξιά μισή οθόνη
+   έμενε άδεια· οι σελίδες είχαν διπλάσιο μήκος. Η κορυφή γίνεται δύο στήλες
+   από τα 1024 (κείμενο, πλαϊνή 340 που μένει ορατή), οι κάρτες πλέγμα 3/2/1,
+   οι ερωτήσεις και η νομική βάση δύο στήλες. Κανένα νέο χρώμα: μόνο tokens
+   και color-mix του --accent, όπως η κάρτα `.og-card`. app/thema/parts.tsx. */
+.th-hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
+.th-aside { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (min-width: 1024px) {
+  .th-hero { grid-template-columns: minmax(0, 1fr) 340px; gap: 48px; }
+  .th-aside { position: sticky; top: 88px; }
+}
+.th-box { padding: 16px 20px; border-radius: 14px; border: 1px solid var(--border-subtle); background: var(--bg-surface); }
+.th-box-accent { border-color: color-mix(in srgb, var(--accent) 35%, transparent); background: color-mix(in srgb, var(--accent) 6%, var(--bg-surface)); }
+.th-facts { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; }
+.th-facts > dt, .th-facts > dd { padding: 8px 0; border-top: 1px solid var(--border-subtle); font-size: 14px; line-height: 1.4; }
+.th-facts > dt:first-of-type, .th-facts > dd:first-of-type { border-top: 0; }
+.th-facts > dt { color: var(--text-secondary); }
+.th-facts > dd { margin: 0; text-align: right; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.th-links { list-style: none; margin: 0; padding: 0; }
+.th-links > li + li { border-top: 1px solid var(--border-subtle); }
+.th-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; }
+.th-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+.th-grid > li { display: flex; min-width: 0; }
+@media (min-width: 641px) {
+  .th-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .th-grid[data-n="1"] { grid-template-columns: minmax(0, 1fr); }
+}
+@media (min-width: 641px) and (max-width: 1023px) {
+  .th-grid > li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+@media (min-width: 1024px) {
+  .th-grid[data-n="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .th-grid[data-n="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.th-card {
+  flex: 1 1 auto; min-width: 0; padding: 20px; border-radius: 14px; border: 1px solid var(--border-subtle);
+  background: var(--bg-surface); text-decoration: none;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 12px; row-gap: 6px;
+}
+.th-card-icon { grid-column: 1; grid-row: 1; color: var(--accent); margin-top: 1px; }
+.th-card-title { grid-column: 2; grid-row: 1; margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; letter-spacing: -0.01em; color: var(--text-primary); text-wrap: pretty; }
+/* Η ΠΕΡΙΓΡΑΦΗ ΣΕ ΔΥΟ ΓΡΑΜΜΕΣ, ώστε κάθε κάρτα της σειράς να έχει το ίδιο ύψος.
+   Το κείμενο μένει ολόκληρο στη σελίδα· ο οδηγός το λέει ολόκληρο. */
+.th-card-desc {
+  grid-column: 2; grid-row: 2; font-size: 14px; line-height: 1.5; color: var(--text-secondary);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+}
+.th-card-cta { grid-column: 2; grid-row: 3; align-self: end; padding-top: 4px; font-size: 13px; font-weight: 600; color: var(--accent); }
+.th-card-chev { display: none; }
+/* ΣΤΟ ΚΙΝΗΤΟ Η ΕΝΕΡΓΕΙΑ ΓΙΝΕΤΑΙ ΒΕΛΟΣ ΔΕΞΙΑ: ίδιο σήμα, μισό ύψος κάρτας. */
+@media (max-width: 640px) {
+  .th-card { padding: 14px 16px; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto; row-gap: 4px; }
+  .th-card-cta { display: none; }
+  .th-card-chev { display: block; grid-column: 3; grid-row: 1 / span 2; align-self: center; color: var(--accent); }
+  .th-card-desc { -webkit-line-clamp: 1; line-clamp: 1; }
+}
+.th-head > p { margin: -6px 0 clamp(18px, 2.4vw, 24px); }
+@media (min-width: 1024px) {
+  .th-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 48px; align-items: end; }
+  .th-head > p { margin: 0 0 clamp(18px, 2.4vw, 26px); }
+  .th-hero .th-head, .th-split .th-head { display: block; }
+  .th-hero .th-head > p, .th-split .th-head > p { margin: -6px 0 clamp(18px, 2.4vw, 24px); }
+}
+.th-scale { margin: 0 0 8px; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+.th-scale > div { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 2px; padding: 8px; border-radius: 10px; background: var(--bg-elevated); text-align: center; min-width: 0; }
+.th-scale dd { margin: 0; font-size: 18px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.th-scale dt { font-size: 13px; line-height: 1.3; color: var(--text-secondary); }
+@media (max-width: 1023px) {
+  .th-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; }
+  .th-links > li + li { border-top: 0; }
+}
+.th-faq { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 32px; align-items: start; border-top: 1px solid var(--border-subtle); }
+@media (min-width: 1024px) { .th-faq { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.th-faq > details.lp-faq { border-top: 0; border-bottom: 1px solid var(--border-subtle); }
+.th-rules { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 32px; border-top: 1px solid var(--border-subtle); }
+@media (min-width: 720px) { .th-rules { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.th-rules > li { padding: 12px 0; border-bottom: 1px solid var(--border-subtle); min-width: 0; }
+.th-split { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 48px; align-items: start; }
+@media (min-width: 1024px) {
+  .th-split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .th-split .th-rules, .th-split .th-faq { grid-template-columns: minmax(0, 1fr); }
+}
+.th-folds { border-bottom: 1px solid var(--border-subtle); }
+
 /* ═══ ΜΙΑ ΠΑΛΕΤΑ ΑΠΟ ΤΗΝ ΑΡΧΙΚΗ ΣΤΑ ΠΑΚΕΤΑ ΚΑΙ ΣΤΑ ΝΟΜΙΚΑ ═══════════════════
    Η αρχική μιλά πάντα την παλέτα της βιτρίνας (`--mkt-*`, ναυτικό μπλε), ενώ
    το /paketa, το /trust και τα νομικά μιλούσαν του προϊόντος: γκρι στο

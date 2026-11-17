@@ -8,7 +8,7 @@
 
 /* ΙΣΤΟΤΟΠΟΣ */
 
-  Τελευταία ενημέρωση: 14/11/2026
+  Τελευταία ενημέρωση: 17/11/2026
   Γλώσσες: Ελληνικά, English
   Λογισμικό: Next.js 16, React 19, TypeScript 5, Supabase (PostgreSQL)
   Πρότυπα: HTML, CSS, WAI-ARIA, schema.org, RSS 2.0

@@ -7,6 +7,8 @@ import { PROTHESMIES_PATH, PROTHESMIES_UPDATED, monthPath, upcomingMonths } from
 import { athensToday } from '@/lib/core/time'
 import { languageAlternates } from '@/lib/i18n/paths'
 import { XARTIS_UPDATED } from './xartisUpdated'
+import { HUBS, hubPath, METHOD_PATH } from './thema/hubs'
+import { hubUpdated, METHOD_UPDATED } from './thema/hubDates'
 
 // Οι μήνες των προθεσμιών αλλάζουν με την ημερομηνία: ο χάρτης ξαναχτίζεται
 // κάθε 24 ώρες, όπως οι σελίδες των μηνών, ώστε να μη δείχνει μήνα που έγινε noindex.
@@ -48,6 +50,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // από το υποσέλιδο κάθε δημόσιας σελίδας. Η ημερομηνία του είναι η πιο
     // πρόσφατη των οδηγών του, αφού αυτούς δείχνει.
     { url: `${base}/odigos`, lastModified: GUIDES_UPDATED, changeFrequency: 'monthly', priority: 0.7 },
+    // Οι κόμβοι θέματος (17/11/2026): ένα ερώτημα, όλοι οι οδηγοί και οι
+    // υπολογιστές του (app/thema/hubs.ts). Ημερομηνία η νεότερη από το κείμενό
+    // τους και τα μέλη τους (app/thema/hubDates.ts).
+    ...HUBS.map(h => ({ url: base + hubPath(h), lastModified: hubUpdated(h), changeFrequency: 'monthly' as const, priority: 0.8 })),
     // Οι προθεσμίες: ο κόμβος και οι δώδεκα επόμενοι μήνες με προθεσμία (lib/seo/prothesmies.ts).
     { url: base + PROTHESMIES_PATH, lastModified: PROTHESMIES_UPDATED, changeFrequency: 'daily', priority: 0.7 },
     ...upcomingMonths(athensToday()).map(m => ({ url: base + monthPath(m), lastModified: PROTHESMIES_UPDATED, changeFrequency: 'monthly' as const, priority: 0.6 })),
@@ -73,6 +79,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // φόρμα εισόδου δεν είναι απάντηση σε καμία αναζήτηση — όποιος ψάχνει το
     // όνομα πρέπει να φτάνει στην αρχική.
     { ...at('/trust'), changeFrequency: 'monthly', priority: 0.6 },
+    // Πώς βγαίνουν οι αριθμοί: η μηχανή, το μητρώο ισχύος και οι πηγές του.
+    { url: base + METHOD_PATH, lastModified: METHOD_UPDATED, changeFrequency: 'monthly', priority: 0.5 },
     { ...at('/privacy'), changeFrequency: 'yearly', priority: 0.3 },
     { ...at('/terms'), changeFrequency: 'yearly', priority: 0.3 },
     // Ο χάρτης για τον άνθρωπο (16/11/2026): οι ίδιες σελίδες σε ομάδες, από

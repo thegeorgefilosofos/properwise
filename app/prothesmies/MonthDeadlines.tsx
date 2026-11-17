@@ -13,14 +13,16 @@ import { deadlinesOfMonth, monthLabel, monthPath, type MonthDeadline } from '@/l
 export const isEnfiaInstalment = (d: MonthDeadline) => /^enfia-(first|instalment|last)$/.test(d.obligation.kind);
 
 /** Οι προθεσμίες ενός μήνα ως πίνακας που στοιβάζεται κάτω από τα 480. */
-export function MonthDeadlines({ month, heading = 'h2', linkTitle = false }: {
+export function MonthDeadlines({ month, heading = 'h2', linkTitle = false, flush = false }: {
   month: string; heading?: 'h2' | 'h3'; linkTitle?: boolean;
+  /** Χωρίς απόσταση από πάνω: όταν μπαίνει ακριβώς κάτω από τίτλο ενότητας (κόμβος ΕΝΦΙΑ). */
+  flush?: boolean;
 }) {
   const rows = deadlinesOfMonth(month);
   const H = heading;
   const label = monthLabel(month);
   return (
-    <section aria-labelledby={`m-${month}`} style={{ marginTop: 'clamp(28px,4vw,40px)' }}>
+    <section aria-labelledby={`m-${month}`} style={{ marginTop: flush ? 0 : 'clamp(28px,4vw,40px)' }}>
       <H id={`m-${month}`} style={{ fontSize: 'clamp(20px,2.4vw,24px)', fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 12px' }}>
         {linkTitle
           ? <Link href={monthPath(month)} className="lp-link" style={{ color: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', minHeight: 44 }}>{label}</Link>

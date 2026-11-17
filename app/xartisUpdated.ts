@@ -11,5 +11,7 @@
 import { PROTHESMIES_UPDATED } from '@/lib/seo/prothesmies';
 import { GUIDES_UPDATED } from './odigos/guides';
 import { PAGE_UPDATED, TOOLS_UPDATED } from './pageUpdated';
+import { HUBS } from './thema/hubs';
+import { hubUpdated, METHOD_UPDATED } from './thema/hubDates';
 
-export const XARTIS_UPDATED: string = [...Object.values(PAGE_UPDATED), TOOLS_UPDATED, GUIDES_UPDATED, PROTHESMIES_UPDATED].sort().at(-1)!;
+export const XARTIS_UPDATED: string = [...Object.values(PAGE_UPDATED), TOOLS_UPDATED, GUIDES_UPDATED, PROTHESMIES_UPDATED, METHOD_UPDATED, ...HUBS.map(hubUpdated)].sort().at(-1)!;

@@ -25,6 +25,8 @@ import { refsOnly } from '@/components/Hyphen';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { LISTED_GUIDES, guideShareImageUrl, relatedGuides, type Guide } from './guides';
 import { PUBLIC_TOOLS } from '@/lib/core/publicTools';
+import { ruleRows, oldestCheck, distinctSources } from '../thema/rules';
+import { hubsOfGuide, hubPath, METHOD_PATH, METHOD_LABEL } from '../thema/hubs';
 
 const HUB = { href: '/odigos', label: 'Οδηγοί' } as const;
 
@@ -116,7 +118,7 @@ export function GuideUpdated({ guide }: { guide: Guide }) {
     <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 4px' }}>
       Κείμενο: {GUIDE_AUTHOR}
     </p>
-    <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 18px' }}>
+    <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 4px' }}>
       Τελευταία ενημέρωση: <time dateTime={guide.updated}>{grDate(guide.updated)}</time>
       {/* Η ημέρα ελέγχου των πηγών, μόνο όταν ο οδηγός τη δηλώνει. */}
       {guide.checkedAt && <>
@@ -129,7 +131,41 @@ export function GuideUpdated({ guide }: { guide: Guide }) {
       {/* Μία λέξη που δεν σπάει: το «Νομική / βάση και πηγές» κοβόταν στα 390. */}
       <a href={`#${SOURCES_SECTION.id}`} className="lp-link" style={{ ...LINK_STYLE, whiteSpace: 'nowrap' }}>Πηγές</a>
     </p>
+    <GuideBasis guide={guide} />
     </>
+  );
+}
+
+/**
+ * Η ΝΟΜΙΚΗ ΒΑΣΗ ΚΑΙ Ο ΕΛΕΓΧΟΣ ΤΗΣ, ΣΤΗΝ ΚΕΦΑΛΙΔΑ (17/11/2026). Οι πηγές ζούσαν
+ * μόνο στο τέλος του οδηγού και κανένα σημείο δεν έλεγε πότε κοίταξε άνθρωπος
+ * τους κανόνες του. Τώρα η κεφαλίδα γράφει τις επίσημες πηγές των κανόνων του
+ * (`rules`, guides.ts) και τον ΠΑΛΑΙΟΤΕΡΟ ανθρώπινο έλεγχό τους στο μητρώο
+ * ισχύος: τόσο φρέσκος είναι ο οδηγός όσο ο πιο παλιός του κανόνας. Χωρίς
+ * ανθρώπινο έλεγχο δεν γράφεται ημερομηνία. Μετά, το θέμα του και η μεθοδολογία.
+ */
+function GuideBasis({ guide }: { guide: Guide }) {
+  const rows = ruleRows(guide.rules);
+  const sources = distinctSources(rows);
+  const checked = oldestCheck(rows);
+  const hub = hubsOfGuide(guide.href)[0];
+  const dot = '\u00a0· ';
+  return (
+    <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-tertiary)', margin: '0 0 18px' }}>
+      {sources.length > 0 && <>
+        {'Νομική βάση: '}
+        {sources.map((x, i) => (
+          <span key={x.source}>
+            {i > 0 && ', '}
+            <a href={x.href} target="_blank" rel="noopener noreferrer" className="lp-link" style={{ ...LINK_STYLE, whiteSpace: 'nowrap' }}>{x.source}</a>
+          </span>
+        ))}
+      </>}
+      {checked && <>{dot}<span style={{ whiteSpace: 'nowrap' }}>Έλεγχος κανόνων: <time dateTime={checked}>{grDate(checked)}</time></span></>}
+      {hub && <>{dot}<Link href={hubPath(hub)} className="lp-link" style={{ ...LINK_STYLE, whiteSpace: 'nowrap' }}>{`Θέμα: ${hub.label}`}</Link></>}
+      {dot}
+      <Link href={METHOD_PATH} className="lp-link" style={{ ...LINK_STYLE, whiteSpace: 'nowrap' }}>{METHOD_LABEL}</Link>
+    </p>
   );
 }
 
@@ -448,6 +484,8 @@ export function guideJsonLd({ guide, headline, description, about, faq }: {
         author: ORG_REF,
         publisher: ORG_REF,
         about: { '@type': 'Thing', name: about },
+        // Οι επίσημες πηγές των κανόνων του (μητρώο ισχύος), όπως τις γράφει η κεφαλίδα.
+        citation: distinctSources(ruleRows(guide.rules)).map(x => x.href),
       },
       // Η διαδρομή από την κοινή συνάρτηση (lib/seo/breadcrumbs.ts), όπως στους
       // υπολογιστές και στο /logistes.

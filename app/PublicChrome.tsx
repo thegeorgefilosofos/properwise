@@ -295,7 +295,7 @@ function footFor(locale: Locale) {
       { label: 'Προϊόν', links: [['/', 'Αρχική'], ['/signup', signupCta()], ['/paketa', 'Πακέτα και τιμές'], ['/logistes', 'Για λογιστές'], ['/#faq', 'Συχνές ερωτήσεις']] as [string, string][] },
       { label: 'Υπολογισμοί', ...splitFoot(PUBLIC_TOOLS.map(t => [t.href, t.label] as [string, string]), [TOOLS_HUB.href, 'Όλα τα εργαλεία'], 'Επιπλέον εργαλεία') },
       { label: 'Οδηγοί', ...splitFoot(FOOT_GUIDES, ['/odigos', 'Όλοι οι οδηγοί'], 'Επιπλέον οδηγοί') },
-      { label: 'Εμπιστοσύνη', links: [['/trust', 'Ποιοι είμαστε'], ['/privacy', 'Απόρρητο'], ['/terms', 'Όροι χρήσης'], ['/ypanaxorisi', 'Υπαναχώρηση από τη σύμβαση εδώ'], ['/trust#epikoinonia', 'Επικοινωνία']] as [string, string][] },
+      { label: 'Εμπιστοσύνη', links: [['/trust', 'Ποιοι είμαστε'], ['/methodologia', 'Πώς υπολογίζουμε'], ['/privacy', 'Απόρρητο'], ['/terms', 'Όροι χρήσης'], ['/ypanaxorisi', 'Υπαναχώρηση από τη σύμβαση εδώ'], ['/trust#epikoinonia', 'Επικοινωνία']] as [string, string][] },
     ],
   };
 }

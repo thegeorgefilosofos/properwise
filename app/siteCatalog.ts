@@ -12,11 +12,14 @@ import { LISTED_GUIDES, GUIDES_UPDATED } from './odigos/guides';
 import { PAGE_UPDATED, TOOLS_UPDATED } from './pageUpdated';
 import { XARTIS_UPDATED } from './xartisUpdated';
 import { buildCatalog, XARTIS_PATH, type MapGroup } from './siteCatalogCore';
+import { HUBS, hubPath, METHOD_PATH } from './thema/hubs';
+import { hubUpdated, METHOD_UPDATED } from './thema/hubDates';
 
 export { XARTIS_UPDATED };
 export { XARTIS_PATH, XARTIS_INTERNAL, catalogEntries, catalogCounts, type MapEntry, type MapGroup, type MapGroupId } from './siteCatalogCore';
 
 const GUIDE_DATE = new Map(LISTED_GUIDES.map(g => [g.href, g.updated]));
+const HUB_DATE = new Map(HUBS.map(h => [hubPath(h), hubUpdated(h)]));
 
 /** Η ημερομηνία κάθε σελίδας του χάρτη. Σελίδα χωρίς πηγή σπάει το χτίσιμο. */
 function dateOf(path: string): string {
@@ -24,6 +27,9 @@ function dateOf(path: string): string {
   if (path === '/odigos') return GUIDES_UPDATED;
   if (path === PROTHESMIES_PATH || path.startsWith(`${PROTHESMIES_PATH}/`)) return PROTHESMIES_UPDATED;
   if (path === XARTIS_PATH) return XARTIS_UPDATED;
+  if (path === METHOD_PATH) return METHOD_UPDATED;
+  const hub = HUB_DATE.get(path);
+  if (hub) return hub;
   const d = GUIDE_DATE.get(path) ?? (PAGE_UPDATED as Record<string, string>)[path];
   if (!d) throw new Error(`${path}: χωρίς ημερομηνία στο app/pageUpdated.ts`);
   return d;
