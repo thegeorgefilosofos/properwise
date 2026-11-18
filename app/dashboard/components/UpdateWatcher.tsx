@@ -18,6 +18,7 @@
 
 import { useEffect } from 'react'
 import { notify } from '@/components/Toast'
+import { useAppEn } from '@/lib/i18n/appEn'
 import { decideUpdate, POLL_MS, MIN_GAP_MS } from '@/lib/pwa/update'
 
 const MINE = process.env.NEXT_PUBLIC_BUILD_SHA ?? 'dev'
@@ -35,6 +36,7 @@ async function reloadFresh() {
 }
 
 export default function UpdateWatcher() {
+  const E = useAppEn('shell')
   useEffect(() => {
     if (MINE === 'dev') return
     let lastCheck = 0
@@ -53,9 +55,9 @@ export default function UpdateWatcher() {
       if (action === 'reload') { void reloadFresh(); return }
       if (action === 'offer' && live && offered !== live) {
         offered = live
-        notify('Υπάρχει νέα έκδοση του PROPERWISE.', {
+        notify(E ? E.update.text : 'Υπάρχει νέα έκδοση του PROPERWISE.', {
           duration: 0,
-          action: { label: 'Ανανέωση', onClick: () => { void reloadFresh() } },
+          action: { label: E ? E.update.action : 'Ανανέωση', onClick: () => { void reloadFresh() } },
         })
       }
     }
@@ -72,6 +74,6 @@ export default function UpdateWatcher() {
       document.removeEventListener('visibilitychange', onVisibility)
       window.clearInterval(timer)
     }
-  }, [])
+  }, [E])
   return null
 }
