@@ -56,11 +56,11 @@ const PATH = '/en';
 // Η ΣΤΑΘΜΗ ΤΩΝ ΕΝΟΤΗΤΩΝ ΠΑΝΩ ΑΠΟ ΤΗΝ ΑΤΜΟΣΦΑΙΡΑ, γραμμένη μία φορά.
 const LAYER = { position: 'relative', zIndex: 1 } as const;
 // Η ΞΕΝΑΓΗΣΗ: ένα αρχείο, δύο αναγνώστες (το <video> και το VideoObject).
-// Η διάρκεια είναι του ίδιου του αρχείου (66,7″ σε ISO 8601).
+// Η διάρκεια είναι του ίδιου του αρχείου (82″ σε ISO 8601).
 const TOUR = {
   src: '/video/properwise-tour-en.mp4',
   poster: '/video/properwise-tour-en-poster.webp',
-  duration: 'PT1M7S',
+  duration: 'PT1M22S',
   uploaded: '2026-11-17',
 } as const;
 export const metadata: Metadata = publicMetadata({
