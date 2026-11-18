@@ -12,7 +12,7 @@
 //     πάνω στην απάντηση της `my_firm()` με το JWT του καλούντος·
 //   · `firmInviteEmail`: το μήνυμα, στο κοινό κέλυφος όλων των email.
 // ═══════════════════════════════════════════════════════════════════════════
-import { emailShell, eyebrow, h, p, button, note } from './emailTemplates.ts'
+import { emailShell, eyebrow, h, p, button, note, type Lang } from './emailTemplates.ts'
 import { esc } from './emailCopy/kit.ts'
 import { appUrl } from './site.ts'
 import { ROLE_LABEL, type FirmRole } from '../../../lib/data/firmRoles.ts'
@@ -77,9 +77,15 @@ export function firmInviteVerdict(firm: MyFirmRow | null | undefined, email: str
  * ΑΠΟΣΤΟΛΕΑΣ ΕΙΝΑΙ Η ΕΠΙΒΕΒΑΙΩΜΕΝΗ ΔΙΕΥΘΥΝΣΗ. Το όνομα που έχει δηλώσει ο
  * Υπεύθυνος φαίνεται δίπλα της, ποτέ στη θέση της, όπως στην πρόσκληση πελάτη (emailCopy/lifecycle.ts).
  */
+/** Οι ρόλοι του γραφείου στα αγγλικά, με τα κλειδιά του ROLE_LABEL. */
+export const ROLE_LABEL_EN: Record<FirmRole, string> = {
+  manager: 'Office manager', accountant: 'Accountant', associate: 'Associate',
+}
+
 export function firmInviteEmail(o: {
   firmName: string; role: FirmRole; inviterEmail: string; inviterName?: string | null; inviteeEmail: string
-}): { subject: string; html: string } {
+}, lang: Lang = 'el'): { subject: string; html: string } {
+  if (lang === 'en') return firmInviteEmailEn(o)
   const firm = o.firmName.trim()
   const who = o.inviterEmail
     ? `Ο λογαριασμός <b>${esc(o.inviterEmail)}</b>${o.inviterName && o.inviterName !== o.inviterEmail ? ` (${esc(o.inviterName)})` : ''}`
@@ -97,6 +103,34 @@ export function firmInviteEmail(o: {
       + p('Η πύλη του λογιστή είναι ο χώρος του γραφείου στο PROPERWISE, όπου το γραφείο βλέπει τους πελάτες που του έδωσαν πρόσβαση στον φάκελό τους.')
       + button('Σύνδεση στην πύλη', appUrl(FIRM_INVITE_ENTRY))
       + note(`Μπες ή δημιούργησε λογαριασμό με αυτή τη διεύθυνση, <b>${esc(o.inviteeEmail)}</b>: η πρόσκληση σε περιμένει μόνο σε αυτήν.`),
+  })
+  return { subject, html }
+}
+
+/**
+ * Το ίδιο μήνυμα στα αγγλικά, όταν ο Υπεύθυνος που προσκαλεί έχει διαλέξει
+ * αγγλικά για τα μηνύματά του: ο παραλήπτης δεν έχει ακόμη λογαριασμό.
+ */
+function firmInviteEmailEn(o: {
+  firmName: string; role: FirmRole; inviterEmail: string; inviterName?: string | null; inviteeEmail: string
+}): { subject: string; html: string } {
+  const firm = o.firmName.trim()
+  const who = o.inviterEmail
+    ? `The account <b>${esc(o.inviterEmail)}</b>${o.inviterName && o.inviterName !== o.inviterEmail ? ` (${esc(o.inviterName)})` : ''}`
+    : 'The manager of an office'
+  const team = firm ? `the “${esc(firm)}” team` : 'an office’s team'
+  const role = ROLE_LABEL_EN[o.role] ?? ROLE_LABEL_EN.accountant
+  const subject = firm ? `“${firm}” invites you to PROPERWISE` : 'An invitation to an office on PROPERWISE'
+  const html = emailShell({
+    preheader: firm ? `An invitation from “${firm}” with the role ${role}.` : `An invitation to an office with the role ${role}.`,
+    footerNote: 'You received this message because the manager of an office on PROPERWISE added this address to its members. If you weren’t expecting it, ignore it. · properwise.gr',
+    lang: 'en',
+    bodyHtml: eyebrow('Office invitation')
+      + h(firm ? `An invitation from “${esc(firm)}”` : 'An invitation to an office')
+      + p(`${who} invited you to join ${team} on PROPERWISE with the role <b>${esc(role)}</b>.`)
+      + p('The accountant portal is the office’s space on PROPERWISE, where the office sees the clients who gave it access to their file.')
+      + button('Sign in to the portal', appUrl(FIRM_INVITE_ENTRY))
+      + note(`Sign in or create an account with this address, <b>${esc(o.inviteeEmail)}</b>: the invitation is waiting for you only there.`),
   })
   return { subject, html }
 }

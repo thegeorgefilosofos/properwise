@@ -441,7 +441,7 @@ export interface Personal extends Ctx {
   sharePct?: number;         // ποσοστό συνιδιοκτησίας
   // Ενοποιημένα (digests): όταν πολλά μηνύματα της ίδιας μέρας συγχωνεύονται σε ένα,
   // ο scheduler περνά εδώ τη λίστα των θεμάτων (τίτλος + σύντομη λεπτομέρεια).
-  digestItems?: Array<{ title: string; detail?: string }>;
+  digestItems?: Array<{ title: string; detail?: string; copyId?: string }>;
   // Φύλο παραλήπτη/ενοικιαστή (από το όνομα, βλ. gender.ts) ώστε το κείμενο να
   // απευθύνεται σωστά· 'unknown' → ουδέτερη, πάντα ασφαλής διατύπωση.
   gender?: 'male' | 'female' | 'unknown';
@@ -656,8 +656,16 @@ export function clientMessageBody(text: string): string {
 }
 
 /** Ολόκληρο το μήνυμα, στο κοινό κέλυφος, με τον αποστολέα στο υποσέλιδο. */
-export function clientMessageEmail(opts: { text: string; senderEmail?: string | null }): string {
+export function clientMessageEmail(opts: { text: string; senderEmail?: string | null; lang?: Lang }): string {
   const who = (opts.senderEmail || '').trim();
+  // Η ΓΛΩΣΣΑ ΤΟΥ ΑΠΟΣΤΟΛΕΑ, ΟΧΙ ΤΟΥ ΠΑΡΑΛΗΠΤΗ. Το σώμα το γράφει ο ίδιος ο
+  // λογαριασμός, στη γλώσσα του· στα αγγλικά αλλάζει μόνο ό,τι προσθέτουμε εμείς.
+  if (opts.lang === 'en') {
+    const note = who
+      ? `This message was sent by the account ${esc(who)} via PROPERWISE. If you reply, your reply goes to them.`
+      : 'This message was sent by a PROPERWISE user.';
+    return emailShell({ bodyHtml: clientMessageBody(opts.text), footerNote: note, lang: 'en' });
+  }
   const footerNote = who
     ? `Το μήνυμα το έστειλε ο λογαριασμός ${esc(who)} μέσω PROPERWISE. Αν απαντήσεις, η απάντηση πηγαίνει σε αυτόν.`
     : 'Το μήνυμα το έστειλε χρήστης του PROPERWISE.';

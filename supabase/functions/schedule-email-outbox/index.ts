@@ -148,7 +148,8 @@ Deno.serve(async (req) => {
       // Digest inserts — one row the drain will send; members get skipped.
       for (const dg of digests) {
         const members = rows.filter(r => dg.memberIds.includes(r.id))
-        const digestItems = members.map(m => ({ title: titleOf(m.copy_id) }))
+        // Και το αναγνωριστικό: στα αγγλικά ο τίτλος ξαναγράφεται από αυτό (send-lifecycle-email).
+        const digestItems = members.map(m => ({ title: titleOf(m.copy_id), copyId: m.copy_id }))
         const day = dayStartISO.slice(0, 10)
         const { error: dErr } = await supabase.from('email_outbox').insert({
           copy_id: dg.copyId, to_email: email, to_name: members[0]?.to_name ?? null,

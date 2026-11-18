@@ -12,12 +12,12 @@
 // Deploy: supabase functions deploy send-monthly-statements  (verify_jwt=false)
 // Χρειάζεται RESEND_API_KEY (υπάρχει) + προαιρετικά RESEND_FROM (branded αποστολέας).
 // ─────────────────────────────────────────────────────────────────────────
-import { emailShell, eyebrow, grUp, h, p, button, dataTable } from '../_shared/emailTemplates.ts';
-import { EMAIL_LIGHT as C, EMAIL_TONE, type EmailTone } from '../_shared/emailPalette.ts';
+// Το email ζει στο _shared/statementEmail.ts, σε δύο γλώσσες· η γλώσσα κάθε
+// ιδιοκτήτη από τη «Γλώσσα μηνυμάτων και email» του Λογαριασμού.
+import { statementHtml, statementSubject, statementWords, periodLabelOf } from '../_shared/statementEmail.ts'
+import { msgLangReader } from '../_shared/msgLang.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0'
-import { APP_URL } from '../_shared/site.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
-import { eur } from '../_shared/format.ts'
 import { senderFrom, REPLY_TO } from '../_shared/sender.mjs'
 import { allPages } from '../_shared/pages.ts'
 
@@ -29,7 +29,6 @@ const FROM_EMAIL     = senderFrom(Deno.env.get('RESEND_FROM'))
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } })
-const MONTHS = ['Ιανουαρίου', 'Φεβρουαρίου', 'Μαρτίου', 'Απριλίου', 'Μαΐου', 'Ιουνίου', 'Ιουλίου', 'Αυγούστου', 'Σεπτεμβρίου', 'Οκτωβρίου', 'Νοεμβρίου', 'Δεκεμβρίου']
 
 // Εξουσιοδότηση cron (zero-config): service-role bearer, ή x-cron-secret env, ή το
 // κοινό μυστικό του πίνακα cron_secrets (το στέλνει το pg_cron).
@@ -39,47 +38,6 @@ async function authorized(req: Request): Promise<CronAuth> {
 
 interface Rent { property_id: string | null; tenant_id: string | null; amount: number | null; paid: boolean | null }
 
-function statementHtml(ownerRows: { primary: string; secondary: string; expected: number; paid: number }[], expected: number, collected: number, periodLabel: string): string {
-  const outstanding = Math.max(0, expected - collected)
-  const rows = ownerRows.map(r => {
-    // ΚΑΜΙΑ ΠΑΥΛΑ ΣΕ ΘΕΣΗ ΤΙΜΗΣ. Οταν δεν αναμένεται μίσθωμα, η κατάσταση δεν
-    // είναι άγνωστη: είναι «δεν οφείλεται τίποτα». Η παύλα το έκρυβε πίσω από
-    // ένα σημάδι που ο αναγνώστης οθόνης διαβάζει ως «παύλα».
-    // Η κατάσταση αφορά τον ΠΡΟΗΓΟΥΜΕΝΟ μήνα και φεύγει την 1η του επόμενου:
-    // ό,τι δεν πληρώθηκε έχει ήδη λήξει. Ελεγε «Εκκρεμεί» (λέξη για κάτι που
-    // δεν έχει λήξει ακόμη) και το έβαφε κόκκινο· τώρα λέξη και τόνος συμφωνούν.
-    const status = r.expected === 0 ? 'Χωρίς μίσθωμα' : r.paid >= r.expected ? 'Πλήρης' : r.paid > 0 ? 'Μερική' : 'Ληξιπρόθεσμο'
-    // ΤΟ ΛΕΞΙΛΟΓΙΟ ΤΗΣ ΕΦΑΡΜΟΓΗΣ (lib/core/status.ts): πληρωμένο θετικό, μερικό
-    // προσοχή, ληξιπρόθεσμο αρνητικό, χωρίς οφειλή ουδέτερο. Ηταν τέσσερα
-    // χρώματα του Google και τα δύο έκοβαν το 4,5:1 (#b8860b 3,25 · #80868b 3,68).
-    const tone: EmailTone = r.expected === 0 ? 'neutral' : r.paid >= r.expected ? 'positive' : r.paid > 0 ? 'warning' : 'negative'
-    const t = EMAIL_TONE[tone]
-    return `<tr>
-      <td class="rule-b" style="padding:11px 0;border-bottom:1px solid ${C.rule};">
-        <span class="ink" style="display:block;font-size:13px;color:${C.ink};font-weight:500;">${r.primary}</span>
-        <span class="fa" style="display:block;font-size:12px;color:${C.mute};">${r.secondary}</span>
-      </td>
-      <td class="rule-b tx" style="padding:11px 0;border-bottom:1px solid ${C.rule};text-align:right;font-size:13px;color:${C.text};">${eur(r.paid)} / ${eur(r.expected)}</td>
-      <td class="rule-b" style="padding:11px 0;border-bottom:1px solid ${C.rule};text-align:right;font-size:12px;font-weight:700;color:${t.color};"><span class="${t.cls}">${status}</span></td>
-    </tr>`
-  }).join('')
-  // ΤΟ ΔΑΠΕΔΟ ΤΩΝ 11px ΙΣΧΥΕΙ ΚΑΙ ΕΔΩ ΚΑΙ ΤΑ ΚΕΦΑΛΑΙΑ ΔΕΝ ΚΡΑΤΟΥΝ ΤΟΝΟ. Ηταν
-  // 10 εικονοστοιχεία, το μικρότερο κείμενο ολόκληρου του προϊόντος, σε email
-  // που ανοίγει σχεδόν πάντα σε τηλέφωνο. Και το «uppercase» πάνω σε ωμό
-  // ελληνικό έγραφε «ΑΚΊΝΗΤΟ» και «ΚΑΤΆΣΤΑΣΗ».
-  const head = `<tr>${['Ακίνητο / Ενοικιαστής', 'Εισπρ. / Αναμ.', 'Κατάσταση'].map((t, i) =>
-    `<td class="fa rule-b" style="padding:0 0 7px;${i ? 'text-align:right;' : ''}font-size:11px;color:${C.mute};letter-spacing:.06em;font-weight:700;border-bottom:1px solid ${C.rule};">${grUp(t)}</td>`).join('')}</tr>`
-  const total = `<tr><td class="ink" style="padding:13px 0 0;font-size:14px;font-weight:700;color:${C.ink};">Σύνολο</td><td class="ink" style="padding:13px 0 0;text-align:right;font-size:14px;font-weight:700;color:${C.ink};">${eur(collected)} / ${eur(expected)}</td><td></td></tr>`
-  return emailShell({
-    preheader: `Εισπράχθηκαν ${eur(collected)} από ${eur(expected)} τον ${periodLabel}.`,
-    footerNote: 'Ενημερωτική κατάσταση με βάση τα δεδομένα σου. Δεν αποτελεί επίσημο λογιστικό ή φορολογικό έγγραφο. · properwise.gr',
-    bodyHtml: eyebrow('Μηνιαία κατάσταση')
-      + h(`Εισπράξεις ${periodLabel}`)
-      + p(`Εισπράχθηκαν <b class="ink" style="color:${C.ink};">${eur(collected)}</b> από ${eur(expected)}${outstanding > 0 ? ` · ανείσπρακτα <b class="neg" style="color:${C.negative};">${eur(outstanding)}</b>` : ''}.`)
-      + dataTable(head + rows + total)
-      + button('Άνοιγμα στο PROPERWISE', `${APP_URL}/dashboard`),
-  })
-}
 
 Deno.serve(async (req) => {
   const auth = await authorized(req)
@@ -90,7 +48,7 @@ Deno.serve(async (req) => {
   const now = new Date()
   let py = now.getUTCFullYear(), pm = now.getUTCMonth() // getUTCMonth: 0-11 → ο προηγούμενος μήνας (1-based) είναι ίδιος αριθμός
   if (pm === 0) { py -= 1; pm = 12 }
-  const periodLabel = `${MONTHS[pm - 1]} ${py}`
+  const periodLabel = periodLabelOf(py, pm)
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
 
   // ── ΣΕ ΠΟΙΑ ΔΙΕΥΘΥΝΣΗ ΕΠΙΤΡΕΠΕΤΑΙ ΝΑ ΣΤΑΛΕΙ, ΤΟ ΛΕΕΙ Η ΒΑΣΗ ──────────────
@@ -123,6 +81,7 @@ Deno.serve(async (req) => {
   // που τα ενοίκιά του δεν διαβάστηκαν μετριούνταν και οι δύο ως `skipped`:
   // το ένα είναι φυσιολογικό, το άλλο είναι κατάσταση που δεν έφυγε ποτέ.
   let sent = 0, skipped = 0, failed = 0, unreadable = 0
+  const langOf = msgLangReader(supabase)
   for (const pref of prefs as { user_id: string; reminder_email: string | null }[]) {
     if (!pref.reminder_email) { skipped++; continue }
 
@@ -161,10 +120,13 @@ Deno.serve(async (req) => {
       for (const t of data || []) tenMap[t.id] = t.full_name
     }
 
+    const lang = await langOf(pref.user_id)
+    const words = statementWords(lang)
+    const label = periodLabelOf(py, pm, lang)
     const rows = rents.map(r => {
       const prop = r.property_id ? propMap[r.property_id] : null
       const ten = r.tenant_id ? tenMap[r.tenant_id] : null
-      return { primary: prop || ten || 'Ενοίκιο', secondary: [prop && ten ? ten : null].filter(Boolean).join(' · ') || 'Μίσθωμα', expected: Number(r.amount) || 0, paid: r.paid ? (Number(r.amount) || 0) : 0 }
+      return { primary: prop || ten || words.rent, secondary: [prop && ten ? ten : null].filter(Boolean).join(' · ') || words.lease, expected: Number(r.amount) || 0, paid: r.paid ? (Number(r.amount) || 0) : 0 }
     })
     const expected = rows.reduce((s, r) => s + r.expected, 0)
     const collected = rows.reduce((s, r) => s + r.paid, 0)
@@ -172,7 +134,7 @@ Deno.serve(async (req) => {
     try {
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST', headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: FROM_EMAIL, reply_to: REPLY_TO, to: pref.reminder_email, subject: `PROPERWISE · Μηνιαία κατάσταση ${periodLabel}`, html: statementHtml(rows, expected, collected, periodLabel) }),
+        body: JSON.stringify({ from: FROM_EMAIL, reply_to: REPLY_TO, to: pref.reminder_email, subject: statementSubject(label, lang), html: statementHtml(rows, expected, collected, label, lang) }),
       })
       if (res.ok) {
         sent++

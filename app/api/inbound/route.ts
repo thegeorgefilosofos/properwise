@@ -33,7 +33,7 @@ import { readReceivedEvent } from '@/lib/inbound/event';
 import { tokenFromRecipients, INBOUND_DOMAIN, DOMAIN_ENV } from '@/lib/inbound/address';
 import { fetchBody, KEY_ENV } from '@/lib/inbound/fetchBody';
 import { supportRecipientKind, senderAddress, isAutomatedSender } from '@/lib/inbound/support';
-import { handleReplyAck } from '@/lib/inbound/replyAck';
+import { handleReplyAck, ackLangOf } from '@/lib/inbound/replyAck';
 import { supportPriority, forwardSubject } from '@/lib/inbound/priority';
 import { forwardOne, type ClaimedRow } from '@/lib/support/forwarder';
 import { forwardDeps } from '@/lib/support/forwardDeps';
@@ -165,7 +165,7 @@ export async function POST(request: Request) {
 
     // Δημόσια διεύθυνσή μας (το `kind` είναι εδώ βέβαιο): αυτόματη επιβεβαίωση,
     // που φεύγει ΑΠΟ την ίδια διεύθυνση που γράφτηκε (support/privacy/security).
-    const outcome = await handleReplyAck(db, event.from, process.env[KEY_ENV], { kind });
+    const outcome = await handleReplyAck(db, event.from, process.env[KEY_ENV], { kind, lang: ackLangOf(event.subject) });
     for (const line of outcome.logs) log(line);
     return NextResponse.json(outcome.body, { status: outcome.status });
   }

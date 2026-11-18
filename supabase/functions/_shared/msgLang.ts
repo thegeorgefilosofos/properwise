@@ -34,3 +34,26 @@ export function msgLangReader(db: AdminReader): (userId: string) => Promise<Lang
     return lang
   }
 }
+
+/**
+ * Η γλώσσα του λογαριασμού με αυτή τη διεύθυνση, για τους αποστολείς που
+ * ξέρουν μόνο το email του παραλήπτη (send-lifecycle-email, από την ουρά).
+ * Ρωτά τον διαχειριστή ταυτότητας με το κλειδί υπηρεσίας και κρατά ΜΟΝΟ την
+ * ακριβή αντιστοιχία (το `filter` ψάχνει και μέρος της διεύθυνσης). Χωρίς
+ * λογαριασμό ή με αποτυχία: `null`, και ο καλών αποφασίζει.
+ */
+export async function msgLangByEmail(
+  supabaseUrl: string, serviceKey: string, email: string, fetcher: typeof fetch = fetch,
+): Promise<Lang | null> {
+  const want = String(email || '').trim().toLowerCase()
+  if (!want || !supabaseUrl || !serviceKey) return null
+  try {
+    const res = await fetcher(`${supabaseUrl}/auth/v1/admin/users?filter=${encodeURIComponent(want)}&per_page=50`, {
+      headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey },
+    })
+    if (!res.ok) return null
+    const body = await res.json() as { users?: { email?: string | null; user_metadata?: Record<string, unknown> | null }[] }
+    const user = (body.users || []).find(u => String(u.email || '').trim().toLowerCase() === want)
+    return user ? msgLocale(user.user_metadata) : null
+  } catch { return null }
+}
