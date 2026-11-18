@@ -176,11 +176,15 @@ export async function purgeTenant(io: {
   deleteRows: () => PromiseLike<{ data: unknown; error: DbErr }>;
   /** Σβήσιμο από το `lease-documents`. Καλείται ΜΟΝΟ μετά την επιτυχία. */
   removeFiles: (paths: string[]) => PromiseLike<{ error: DbErr }>;
-}, /** Τα μηνύματα άρνησης· στα αγγλικά από το λεξικό. */ refused: Record<string, string> = PURGE_REFUSED): Promise<TenantPurge> {
+}, /** Τα μηνύματα στα αγγλικά· χωρίς αυτά, τα ελληνικά. */ en?: {
+  refused: Record<string, string>; failed: (what: string, e: unknown) => string;
+  notDeleted: string; nothingDeleted: string; filesLeft: string;
+}): Promise<TenantPurge> {
   const { data, error } = await io.deleteRows();
   if (error) {
     const known = Object.keys(PURGE_REFUSED).find(k => error.message?.includes(k));
-    return { ok: false, error: known ? (refused[known] ?? PURGE_REFUSED[known]) : `${failed('Ο ενοικιαστής δεν διαγράφηκε', error)} Δεν διαγράφηκε τίποτα.` };
+    if (en) return { ok: false, error: known ? (en.refused[known] ?? PURGE_REFUSED[known]) : `${en.failed(en.notDeleted, error)} ${en.nothingDeleted}` };
+    return { ok: false, error: known ? PURGE_REFUSED[known] : `${failed('Ο ενοικιαστής δεν διαγράφηκε', error)} Δεν διαγράφηκε τίποτα.` };
   }
   const r = (data && typeof data === 'object' ? data : {}) as { paths?: unknown; payments?: unknown; damages?: unknown };
   const paths = Array.isArray(r.paths) ? r.paths.filter((p): p is string => typeof p === 'string' && p.length > 0) : [];
@@ -188,9 +192,9 @@ export async function purgeTenant(io: {
   if (paths.length) {
     try {
       const { error: rmErr } = await io.removeFiles(paths);
-      if (rmErr) filesError = failed('Ο ενοικιαστής διαγράφηκε, αλλά το μισθωτήριο δεν σβήστηκε από τα αρχεία', rmErr);
+      if (rmErr) filesError = en ? en.failed(en.filesLeft, rmErr) : failed('Ο ενοικιαστής διαγράφηκε, αλλά το μισθωτήριο δεν σβήστηκε από τα αρχεία', rmErr);
     } catch (e) {
-      filesError = failed('Ο ενοικιαστής διαγράφηκε, αλλά το μισθωτήριο δεν σβήστηκε από τα αρχεία', e);
+      filesError = en ? en.failed(en.filesLeft, e) : failed('Ο ενοικιαστής διαγράφηκε, αλλά το μισθωτήριο δεν σβήστηκε από τα αρχεία', e);
     }
   }
   return { ok: true, payments: Number(r.payments) || 0, damages: Number(r.damages) || 0, files: paths.length, filesError };
@@ -204,6 +208,10 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
   // Τα αγγλικά της καρτέλας και του κελύφους, ή `null` στα ελληνικά.
   const E=useAppEn('tenants');
   const S=useAppEn('shell');
+  const X=useAppEn('errors');
+  /** Γραφή στη βάση με το σφάλμα στη γλώσσα της οθόνης. */
+  const sv=(el:string,k:string,q:Parameters<typeof saved>[1])=>saved(el,q,X&&E?(e:unknown)=>X.failed(E.err[k]??el,e):undefined);
+  const fail=(el:string,k:string,e:unknown)=>X&&E?X.failed(E.err[k]??el,e):failed(el,e);
   /** Ημερομηνία πίνακα· η απουσία της στα αγγλικά. */
   const fD=(d:string|null)=>E&&!d?E.noDate:fmtD(d);
   /** Ονομα και «γιατί» ενός πεδίου του μητρώου. */
@@ -489,11 +497,11 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
       const safe=file.name.replace(/[^\w.\-]+/g,'_');
       const path=`${userId}/${propertyId}/document/${Date.now()}_${safe}`;
       const{error:upErr}=await supabase.storage.from('property-files').upload(path,file,{upsert:false,contentType:file.type||undefined});
-      if(upErr){ setError(failed('Το αρχείο δεν ανέβηκε', upErr)); setDocBusy(false); return; }
+      if(upErr){ setError(fail('Το αρχείο δεν ανέβηκε','fileNotUploaded', upErr)); setDocBusy(false); return; }
       const label=tag==='id'?'Έγγραφο ταυτοποίησης':'Μισθωτήριο / έγγραφο';
       const title=`${label} · ${form.full_name.trim()||file.name}`.slice(0,200);
       const ins=await documents.add(supabase,propertyId,userId,{kind:'document',category:'tenant',supplier:editId?('tenant:'+editId):null,title,doc_date:todayISO(),file_path:path,file_name:file.name,mime:file.type||null,size_bytes:file.size});
-      if(ins.error){ setError(failed('Το έγγραφο δεν καταχωρήθηκε', ins.error)); setDocBusy(false); return; }
+      if(ins.error){ setError(fail('Το έγγραφο δεν καταχωρήθηκε','docNotFiled', ins.error)); setDocBusy(false); return; }
       if(ins.id) setFormDocs(prev=>[...prev,{id:ins.id as string,file_name:file.name,tag}]);
       notifyOk(E?E.toast.docUploaded:'Το έγγραφο ανέβηκε');
     }catch{ setError(E?E.toast.docFailed:'Το έγγραφο δεν ανέβηκε. Δοκίμασε ξανά.'); }
@@ -575,7 +583,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     // της φόρμας ή την ανανέωση — αλλιώς η καρτέλα θα «κολλούσε» με το ρελ. να γυρίζει.
     const savedTenant=(savedRow||null) as unknown as (TenantScheduleInput&{rent_due_day?:number|null})|null;
     if(savedTenant?.id && !editId && formDocs.length){
-      await saved('Τα έγγραφα δεν συνδέθηκαν με τον ενοικιαστή',
+      await sv('Τα έγγραφα δεν συνδέθηκαν με τον ενοικιαστή','docsNotLinked',
         documents.update(supabase,formDocs.map(d=>d.id),{supplier:'tenant:'+savedTenant.id}));
     }
     if(savedTenant?.id) await syncTenantSchedule(supabase,savedTenant,propertyId,userId,'save',{rentDueDay:dueDay});
@@ -599,7 +607,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
 
   const markMovedOut=async(t:Tenant)=>{
     if(!(await (E?confirmDialog(E.ask(E.toast.moveOut(t.full_name))):confirmDialog(`Σήμανση αποχώρησης για «${t.full_name}»; Θα μεταφερθεί στους προηγούμενους ενοικιαστές.`)))) return;
-    if(!await saved('Η αποχώρηση δεν καταχωρήθηκε', tenantStore.markPast(supabase,t.id,todayISO()))) return;
+    if(!await sv('Η αποχώρηση δεν καταχωρήθηκε','moveOutNotRecorded', tenantStore.markPast(supabase,t.id,todayISO()))) return;
     notify(E?E.toast.movedOut:'Ο ενοικιαστής μεταφέρθηκε στο ιστορικό'); void refresh();
   };
   const delTenant=async(t:Tenant)=>{
@@ -610,7 +618,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     const res=await purgeTenant({
       deleteRows:()=>supabase.rpc('delete_tenant',{p_tenant_id:t.id}),
       removeFiles:paths=>supabase.storage.from('lease-documents').remove(paths),
-    }, E?.toast.purge);
+    }, E&&X?{ refused:E.toast.purge, failed:X.failed, notDeleted:E.toast.notDeleted, nothingDeleted:E.toast.nothingDeleted, filesLeft:E.toast.filesLeft }:undefined);
     if(!res.ok){notifyError(res.error);return;}
     if(openId===t.id) setOpenId(null);
     if(res.filesError) notifyError(res.filesError);
@@ -629,10 +637,10 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
     const path=leaseDocKey(userId,t.id,file.name);
     const prev=leaseDocPath(userId,t);
     const{error:upErr}=await supabase.storage.from('lease-documents').upload(path,file,{upsert:false,contentType:file.type||undefined});
-    if(upErr){setError(failed('Το αρχείο δεν ανέβηκε', upErr));setUploading(false);return;}
+    if(upErr){setError(fail('Το αρχείο δεν ανέβηκε','fileNotUploaded', upErr));setUploading(false);return;}
     // Το αρχείο ανέβηκε ήδη. Αν δεν καταγραφεί το όνομά του, ο ενοικιαστής δεν
     // έχει συμβόλαιο πουθενά στην οθόνη — και το αρχείο υπάρχει, αόρατο.
-    if(!await saved('Το συμβόλαιο ανέβηκε, αλλά δεν συνδέθηκε με τον ενοικιαστή',tenantStore.update(supabase,t.id,{lease_doc_name:file.name,lease_doc_url:path}))){setUploading(false);return;}
+    if(!await sv('Το συμβόλαιο ανέβηκε, αλλά δεν συνδέθηκε με τον ενοικιαστή','leaseNotLinked',tenantStore.update(supabase,t.id,{lease_doc_name:file.name,lease_doc_url:path}))){setUploading(false);return;}
     // Το προηγούμενο PDF δεν το δείχνει πια καμία γραμμή. Πριν το έσβηνε το
     // `upsert` (ίδιο όνομα, ίδιο κλειδί)· τώρα κάθε ανέβασμα έχει δικό του.
     if(prev && prev!==path) await supabase.storage.from('lease-documents').remove([prev]);
@@ -950,7 +958,7 @@ export default function TabTenant({ propertyId, userId, onStartHandover, plan='f
                         <div style={{ fontSize: 'var(--fs-base)', fontWeight:600, color:'var(--text-primary)', fontFamily:T.font.sans, overflow:'hidden', textOverflow:'ellipsis' }}>{dc.lease_doc_name}</div>
                         <div style={{ fontSize: 'var(--fs-xs)', color:'var(--text-tertiary)', fontFamily:T.font.sans }}>{E?E.dossier.uploaded:'Ανεβασμένο συμβόλαιο'}</div>
                       </div>
-                      <button style={s.btnDng} onClick={async()=>{const docPath=leaseDocPath(userId,dc);if(!docPath)return;await supabase.storage.from('lease-documents').remove([docPath]);if(!await saved('Το συμβόλαιο δεν αποσυνδέθηκε',tenantStore.update(supabase,dc.id,{lease_doc_url:null,lease_doc_name:null})))return;notify(E?E.toast.pdfDeleted:'PDF διαγράφηκε');void refresh();}}>{E?E.dossier.remove:'Διαγραφή'}</button>
+                      <button style={s.btnDng} onClick={async()=>{const docPath=leaseDocPath(userId,dc);if(!docPath)return;await supabase.storage.from('lease-documents').remove([docPath]);if(!await sv('Το συμβόλαιο δεν αποσυνδέθηκε','leaseNotUnlinked',tenantStore.update(supabase,dc.id,{lease_doc_url:null,lease_doc_name:null})))return;notify(E?E.toast.pdfDeleted:'PDF διαγράφηκε');void refresh();}}>{E?E.dossier.remove:'Διαγραφή'}</button>
                     </div>
                     {/* Το κάτω περιθώριο είναι θέση μέσα στη στήλη, όχι όψη του κουμπιού. */}
                     <div style={{ marginBottom:10 }}><Btn variant="primary" onClick={()=>openLeaseDoc(dc)}>{E?E.dossier.openPdf:'Άνοιγμα PDF'}</Btn></div>

@@ -100,6 +100,9 @@ export default function RentReceived({
   const E = useAppEn('tenants');
   const W = E?.received;
   const S = useAppEn('shell');
+  const X = useAppEn('errors');
+  /** Γραφή στη βάση με το σφάλμα στη γλώσσα της οθόνης. */
+  const sv = (el: string, k: string, q: Parameters<typeof saved>[1]) => saved(el, q, X && E ? (e: unknown) => X.failed(E.err[k] ?? el, e) : undefined);
   const waitEn = useLocale() === 'en' && !W;
 
   const ids = new Set(openLines.map(l => l.rent?.id ?? ''));
@@ -132,7 +135,7 @@ export default function RentReceived({
     for (const l of selected) {
       const ref = l.rent;
       if (!ref) continue;
-      const ok = await saved('Η είσπραξη δεν καταχωρήθηκε',
+      const ok = await sv('Η είσπραξη δεν καταχωρήθηκε','receiptNotRecorded',
         rentStore.markPaid(supabase, ref.id, l.due, paidDate, method));
       if (!ok) continue;
       done++;

@@ -480,7 +480,10 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
   // ενοικιαστής και ο λογιστής, όχι η οθόνη.
   const E=useAppEn('tenants');
   const W=E?.pay;
-  const S=useAppEn('shell');
+  const X=useAppEn('errors');
+  /** Γραφή στη βάση με το σφάλμα στη γλώσσα της οθόνης. */
+  const sv=(el:string,k:string,q:Parameters<typeof saved>[1])=>saved(el,q,X&&E?(e:unknown)=>X.failed(E.err[k]??el,e):undefined);
+  const fail=(el:string,k:string,e:unknown)=>X&&E?X.failed(E.err[k]??el,e):failed(el,e);
   /** Ο τρόπος πληρωμής στη βάση μένει ελληνικός· η οθόνη τον λέει στη γλώσσα της. */
   const methodLabel=(m:string|null)=>{ if(!m) return E?E.notSet:ABSENT; const i=PAY_METHODS.indexOf(m as PayMethod); return E&&i>=0?E.payMethods[i]:m; };
   const methodOptions=PAY_METHODS.map(m=>({value:m,label:methodLabel(m)}));
@@ -538,9 +541,9 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     // notifyOk('Δημιουργήθηκαν N δόσεις') ακολουθούσε αμέσως μετά. Ο ιδιοκτήτης
     // δεν είχε κανέναν τρόπο να μάθει ότι ο πίνακας έμενε κενός — και μαζί του
     // η Πύλη ενοικιαστή, η οφειλή και το Ε2.
-    if(error) { notifyError(failed('Οι δόσεις δεν δημιουργήθηκαν', error)); return false; }
+    if(error) { notifyError(X&&E?X.failed(E.err.installmentsNotCreated,error):failed('Οι δόσεις δεν δημιουργήθηκαν', error)); return false; }
     return true;
-  },[tenant,propertyId,userId,supabase]);
+  },[tenant,propertyId,userId,supabase,X,E]);
 
   // Lazy: όταν ανοίγει η προβολή και λείπουν δόσεις, δημιούργησέ τες μία φορά.
   const didLazy=React.useRef(false);
@@ -584,7 +587,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     const ids=staleUnpaid.map(p=>p.id); if(!ids.length) return;
     setBusy(true);
     // Ενημερώνει μόνο τις συγκεκριμένες εκκρεμείς δόσεις (όχι δηλωμένες/χειροκίνητες εκτός λίστας).
-    const okSync=await saved('Οι δόσεις δεν ενημερώθηκαν', rentStore.updateMany(supabase,ids,{amount:targetAmt,base_rent:baseRent,services_charge:svcCharge}));
+    const okSync=await sv('Οι δόσεις δεν ενημερώθηκαν','installmentsNotUpdated', rentStore.updateMany(supabase,ids,{amount:targetAmt,base_rent:baseRent,services_charge:svcCharge}));
     setBusy(false); if(!okSync) return;
     onRefresh(); notifyOk(W?W.synced:'Οι εκκρεμείς δόσεις ενημερώθηκαν');
   };
@@ -594,11 +597,11 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     // πληρώθηκε, η δόση μένει ανοιχτή και το ξαναβλέπει μήνες μετά στη δήλωση.
     // Οι ημέρες καθυστέρησης υπολογίζονταν εδώ, με τον ίδιο τύπο γραμμένο και
     // δέκα γραμμές πιο κάτω. Ο τύπος ζει τώρα στο στρώμα, μία φορά.
-    if(!await saved('Η πληρωμή δεν καταχωρήθηκε', rentStore.markPaid(supabase,p.id,p.due_date,paidDate,method,{receipt_url:receipt||null,receipt_doc_id:docId??p.receipt_doc_id??null}))) return;
+    if(!await sv('Η πληρωμή δεν καταχωρήθηκε','paymentNotRecorded', rentStore.markPaid(supabase,p.id,p.due_date,paidDate,method,{receipt_url:receipt||null,receipt_doc_id:docId??p.receipt_doc_id??null}))) return;
     await setRentDueOccurrencePaid(supabase,tenant.id,propertyId,p.period_year,p.period_month,true);
     onRefresh(); notifyOk(W?W.markedPaid:'Καταχωρήθηκε ως πληρωμένο');
   };
-  const doUnpay=async(p:RentPayment)=>{ if(!await saved('Η αναίρεση δεν αποθηκεύτηκε', rentStore.markUnpaid(supabase,p.id))) return; await setRentDueOccurrencePaid(supabase,tenant.id,propertyId,p.period_year,p.period_month,false); onRefresh(); };
+  const doUnpay=async(p:RentPayment)=>{ if(!await sv('Η αναίρεση δεν αποθηκεύτηκε','undoNotSaved', rentStore.markUnpaid(supabase,p.id))) return; await setRentDueOccurrencePaid(supabase,tenant.id,propertyId,p.period_year,p.period_month,false); onRefresh(); };
 
   const savePay=async()=>{
     // Ήταν ΠΡΑΣΙΝΟ ενώ πρόκειται για σφάλμα επικύρωσης — το παλιό banner είχε έναν
@@ -617,7 +620,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
     });
     // Ίδιο σφάλμα, δεύτερο σημείο: η καταχώρηση πληρωμής απορριπτόταν και το
     // «Πληρωμή καταχωρήθηκε» εμφανιζόταν ούτως ή άλλως.
-    if(payErr){ setBusy(false); notifyError(failed('Η πληρωμή δεν καταχωρήθηκε', payErr)); return; }
+    if(payErr){ setBusy(false); notifyError(fail('Η πληρωμή δεν καταχωρήθηκε','paymentNotRecorded', payErr)); return; }
     await setRentDueOccurrencePaid(supabase,tenant.id,propertyId,payF.period_year,payF.period_month,payF.paid);
     setBusy(false);setAddOpen(false);setPayF({period_month:new Date().getMonth()+1,period_year:new Date().getFullYear(),amount:'',method:'Τραπεζική κατάθεση',paid:true,paid_date:todayISO(),notes:''});
     onRefresh();notifyOk(W?W.recorded:'Η πληρωμή καταχωρήθηκε');
@@ -840,7 +843,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
       {/* KPI strip */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap:10, marginBottom:16 }}>
         <KpiCard label={W?W.received:'Εισπραχθέντα'} value={fmt(received)} color="var(--text-primary)"/>
-        <KpiCard label={W?W.overdue:'Ληξιπρόθεσμα'} value={fmt(arrearsTotal)} sub={W?W.installments(overdue.length):`${fn(overdue.length)} ${overdue.length===1?'δόση':'δόσεις'}`} color={arrearsTotal>0?'var(--negative)':'var(--text-primary)'}/>
+        <KpiCard label={W?W.overdue:'Ληξιπρόθεσμα'} value={fmt(arrearsTotal)} sub={W?W.installments(overdue.length):`${fn(overdue.length)} ${overdue.length===1?'δόση':'δόσεις'}`} color={arrearsTotal>0?'var(--negative)':'var(--text-primary)'}/>
         <KpiCard label={W?W.pending:'Εκκρεμείς'} value={String(open.length)} color="var(--text-primary)"/>
         <KpiCard label={W?W.count:'Δόσεις'} value={`${payments.filter(p=>p.paid).length}/${payments.length}`} color="var(--text-primary)"/>
       </div>
@@ -970,7 +973,7 @@ export function PaymentsView({ tenant, propertyId, userId, payments, onRefresh, 
                           ΤΗΛΕΦΩΝΟ. Οποιος ιδιοκτήτης είχε μόνο το email του μισθωτή
                           του δεν είχε ΚΑΝΕΝΑΝ τρόπο να στείλει υπενθύμιση από εδώ. */}
                       {tenant.email&&(p.paid||canCollect)&&<a href={`mailto:${tenant.email}?subject=${encodeURIComponent(rentSubject(periodGen(p)))}&body=${encodeURIComponent(p.paid?receiptText(p):reminderText(p))}`} style={{ ...s.btnGhost, padding:'6px 10px', fontSize: 'var(--fs-xs)', textDecoration:'none' }}>{W?W.email:'Ηλεκτρονικό ταχυδρομείο'}</a>}
-                      <button style={s.btnDng} onClick={async()=>{if(!(await (E&&W?confirmDialog(E.ask(W.delAsk,W.del,true)):confirmDialog('Διαγραφή πληρωμής;',{tone:'negative',confirmLabel:'Διαγραφή'}))))return;if(await saved('Η πληρωμή δεν διαγράφηκε',rentStore.remove(supabase,p.id)))onRefresh();}}>{W?W.del:'Διαγραφή'}</button>
+                      <button style={s.btnDng} onClick={async()=>{if(!(await (E&&W?confirmDialog(E.ask(W.delAsk,W.del,true)):confirmDialog('Διαγραφή πληρωμής;',{tone:'negative',confirmLabel:'Διαγραφή'}))))return;if(await sv('Η πληρωμή δεν διαγράφηκε','paymentNotDeleted',rentStore.remove(supabase,p.id)))onRefresh();}}>{W?W.del:'Διαγραφή'}</button>
                     </div>
                   </td>
                 </tr>
@@ -1113,6 +1116,9 @@ export function DepositView({ tenant, payments, damages, onReturned }:{ tenant:T
   // Τα αγγλικά της εγγύησης, ή `null` στα ελληνικά. Ο τρόπος μένει ελληνικός στη βάση.
   const E=useAppEn('tenants');
   const W=E?.deposit;
+  const X=useAppEn('errors');
+  /** Γραφή στη βάση με το σφάλμα στη γλώσσα της οθόνης. */
+  const sv=(el:string,k:string,q:Parameters<typeof saved>[1])=>saved(el,q,X&&E?(e:unknown)=>X.failed(E.err[k]??el,e):undefined);
   const methodIdx=(PAY_METHODS as readonly string[]).indexOf(tenant.deposit_method||'');
   const methodLabel=E?(tenant.deposit_method?(methodIdx>=0?E.payMethods[methodIdx]:tenant.deposit_method):E.notSet):tenant.deposit_method||ABSENT;
   const fD=(d:string|null)=>E&&!d?E.noDate:fmtD(d);
@@ -1128,7 +1134,7 @@ export function DepositView({ tenant, payments, damages, onReturned }:{ tenant:T
         {!tenant.deposit_returned&&deposit>0&&(
           <div style={{ marginTop:14 }}>
             <Btn variant="secondary" field
-              onClick={async()=>{await saved('Η επιστροφή εγγύησης δεν καταχωρήθηκε', tenantStore.update(supabase,tenant.id,{deposit_returned:true,deposit_return_date:todayISO()}));onReturned();}}>
+              onClick={async()=>{await sv('Η επιστροφή εγγύησης δεν καταχωρήθηκε','depositNotRecorded', tenantStore.update(supabase,tenant.id,{deposit_returned:true,deposit_return_date:todayISO()}));onReturned();}}>
               {W.markReturned}
             </Btn>
           </div>
@@ -1162,7 +1168,7 @@ export function DepositView({ tenant, payments, damages, onReturned }:{ tenant:T
         {!tenant.deposit_returned&&deposit>0&&(
           <div style={{ marginTop:14 }}>
             <Btn variant="secondary" field
-              onClick={async()=>{await saved('Η επιστροφή εγγύησης δεν καταχωρήθηκε', tenantStore.update(supabase,tenant.id,{deposit_returned:true,deposit_return_date:todayISO()}));onReturned();}}>
+              onClick={async()=>{await sv('Η επιστροφή εγγύησης δεν καταχωρήθηκε','depositNotRecorded', tenantStore.update(supabase,tenant.id,{deposit_returned:true,deposit_return_date:todayISO()}));onReturned();}}>
               Σήμανση ως επιστραμμένη
             </Btn>
           </div>

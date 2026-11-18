@@ -141,7 +141,7 @@ export function DashboardView({ tenant, payments, propertyCount }:{ tenant:Tenan
         <KpiCard label={W?W.base:'Βασικό ενοίκιο'} value={fmt(tenant.monthly_rent)} color="var(--text-primary)"/>
         <KpiCard label={W?W.total:'Σύνολο μηνιαίως'} value={fmt(totalTenant)} color="var(--text-primary)"/>
         <KpiCard label={W?W.ownerCosts:'Κόστη ιδιοκτήτη'} value={fmt(ownerCosts)} color="var(--text-primary)"/>
-        <KpiCard label={W?W.leaseEnd:'Λήξη μίσθωσης'} value={E&&W?(d==null?E.noDate:d<0?W.ended:E.days(d)):d==null?ABSENT_DATE:d<0?'Έληξε':`${d} ημέρες`} color={st?.color||'var(--text-primary)'}/>
+        <KpiCard label={W?W.leaseEnd:'Λήξη μίσθωσης'} value={E&&W?(d==null?E.noDate:d<0?W.ended:E.days(d)):d==null?ABSENT_DATE:d<0?'Έληξε':`${d} ημέρες`} color={st?.color||'var(--text-primary)'}/>
         <KpiCard label={W?W.open:'Εκκρεμή ποσά'} value={fmt(unpaidAmt)} color={unpaidAmt>0?'var(--negative)':'var(--text-primary)'}/>
         <KpiCard label={W?W.deposit:'Εγγύηση'} value={fmt(tenant.deposit_amount)} color={tenant.deposit_returned?'var(--positive)':'var(--accent)'}/>
       </div>
@@ -173,13 +173,13 @@ export function DashboardView({ tenant, payments, propertyCount }:{ tenant:Tenan
       </div>
 
       <div style={{ background:'var(--bg-surface)', border:'1px solid var(--border-subtle)', borderRadius:T.radius.card, padding:24, marginBottom:16 }}>
-        <SectionTitle>{W?W.history:'Ιστορικό πληρωμών, τελευταίοι 12 μήνες'}</SectionTitle>
+        <SectionTitle>{W?W.history:'Ιστορικό πληρωμών, τελευταίοι 12 μήνες'}</SectionTitle>
         <PaymentBars payments={payments}/>
         {payments.length>0&&(
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap:10, marginTop:20 }}>
             <KpiCard label={W?W.payments:'Πληρωμές'} value={`${paidPay.length}/${payments.length}`} color="var(--text-primary)"/>
             <KpiCard label={W?W.rate:'Ποσοστό εξόφλησης'} value={`${fp(((paidPay.length/payments.length)*100))}`} color="var(--text-primary)"/>
-            <KpiCard label={W?W.avgLate:'Μέση καθυστέρηση'} value={W?(avgLate>0?W.avgDays(fn(avgLate)):W.noDelay):avgLate>0?`${fn(avgLate)} ημέρες`:'Χωρίς'} color={avgLate>7?'var(--warning)':'var(--positive)'}/>
+            <KpiCard label={W?W.avgLate:'Μέση καθυστέρηση'} value={W?(avgLate>0?W.avgDays(fn(avgLate)):W.noDelay):avgLate>0?`${fn(avgLate)} ημέρες`:'Χωρίς'} color={avgLate>7?'var(--warning)':'var(--positive)'}/>
             <KpiCard label={W?W.received:'Εισπραχθέντα σύνολο'} value={fmt(totalReceived)} color="var(--text-primary)"/>
           </div>
         )}
