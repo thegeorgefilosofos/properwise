@@ -29,6 +29,7 @@ import { fe } from '@/lib/core/format';
 import { isClosedStatus, taskNoteOf } from '@/lib/facts/deadlines';
 import type { FeedItem } from './feed';
 import { oneTaxCopy } from './taxOnce';
+import { taxEventTitleEn } from '@/lib/i18n/taxTitleEn';
 
 export interface DeadlineProperty { id: string; name?: string | null }
 
@@ -66,6 +67,13 @@ export interface DeadlineSources {
   /** Το παράθυρο, «YYYY-MM-DD» και τα δύο. */
   from: string;
   to: string;
+  /**
+   * Η γλώσσα των τίτλων, μόνο για την ειδοποίηση συσκευής (lib/push/message.ts).
+   * Στα αγγλικά οι φορολογικές προθεσμίες παίρνουν τίτλο από το είδος τους και
+   * χάνουν τις ελληνικές σημειώσεις του ημερολογίου· ό,τι έγραψε ο χρήστης
+   * μένει όπως το έγραψε. Χωρίς αυτό (ημερολόγιο ICS), όλα όπως πριν.
+   */
+  lang?: 'el' | 'en';
 }
 
 // ── ΤΙ ΔΕΝ ΤΑΞΙΔΕΥΕΙ (05.10.2026) ─────────────────────────────────────────
@@ -174,9 +182,10 @@ export function deadlineItems(s: DeadlineSources): FeedItem[] {
   // Το UID ταυτίζει το γεγονός στο ημερολόγιο του χρήστη. Μια αλλαγή εδώ δεν
   // μετονομάζει τίποτα: δημιουργεί διπλότυπα σε κάθε συνδρομητή, γιατί το
   // πρόγραμμα ημερολογίου βλέπει καινούρια γεγονότα και κρατά και τα παλιά.
+    const en = s.lang === 'en' ? taxEventTitleEn(src, e.title) : null;
     push(`event-${e.id}@properwise`, day(e.event_date),
-      text(e.title) + (shared.has(src) ? '' : at(e.property_id)),
-      [money(e.amount), text(e.notes)].filter(Boolean).join(' · '));
+      (en ?? text(e.title)) + (shared.has(src) ? '' : at(e.property_id)),
+      [money(e.amount), en ? '' : text(e.notes)].filter(Boolean).join(' · '));
   }
 
   for (const t of s.tasks) {
@@ -196,7 +205,7 @@ export function deadlineItems(s: DeadlineSources): FeedItem[] {
   for (const r of s.rent) {
     if (r.paid) continue;
     push(`rent-${r.id}@properwise`, day(r.due_date),
-      `Ενοίκιο${at(r.property_id)}`, money(r.amount));
+      `${s.lang === 'en' ? 'Rent' : 'Ενοίκιο'}${at(r.property_id)}`, money(r.amount));
   }
 
   // Σταθερή σειρά: ημερομηνία και μετά uid ώστε δύο εκτελέσεις να δίνουν

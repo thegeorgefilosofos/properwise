@@ -98,6 +98,24 @@ for (const m of [
   ok(!alreadySentToday('χαλασμένη ώρα', TODAY, dayOf), 'ώρα που δεν διαβάζεται δεν σταματά την ειδοποίηση');
 }
 
+// ── Στα αγγλικά (msg_locale = en): ίδια σειρά, ίδια ποσά, αγγλικές λέξεις ──
+{
+  const GREEK = /[\p{Script=Greek}]/u;
+  const one = dailyPush([it('a', TODAY, 'Water bill', '87,45€')], TODAY, 'en')!;
+  eq(one.body, 'Due today, 87,45€', 'EN: το σώμα λέει ΠΟΤΕ και ΠΟΣΟ, ποσό σε ελληνική μορφή');
+  eq(one.lang, 'en', 'EN: το μήνυμα λέει τη γλώσσα του στον service worker');
+  eq(dailyPush([it('a', '2026-09-06', 'Rent')], TODAY, 'en')!.body, 'Due tomorrow', 'EN: το αύριο');
+  eq(dailyPush([it('a', '2026-09-04', 'Rent')], TODAY, 'en')!.body, 'The deadline passed yesterday', 'EN: το χθες');
+  eq(dailyPush([it('a', '2026-09-01', 'Rent')], TODAY, 'en')!.body, 'The deadline passed 4 days ago', 'EN: οι μέρες');
+  const many = dailyPush([
+    it('b', '2026-09-06', 'Rent'), it('a', TODAY, 'Power'), it('c', '2026-09-02', 'Insurance'), it('d', TODAY, 'Water'),
+  ], TODAY, 'en')!;
+  eq(many.title, '4 deadlines', 'EN: ο τίτλος μετράει');
+  eq(many.body, 'Insurance overdue · Power today · Water today · and 1 more', 'EN: ίδια σειρά, αγγλικές λέξεις');
+  ok(!GREEK.test(`${many.title} ${many.body} ${one.body}`), 'EN: κανένα ελληνικό γράμμα');
+  eq(dailyPush([it('a', TODAY, 'ΔΕΗ')], TODAY)!.lang, undefined, 'ελληνικά: το μήνυμα μένει όπως ήταν, χωρίς πεδίο γλώσσας');
+}
+
 console.log(`\npush/message.ts — ${p} passed, ${f} failed`);
 if (f > 0) process.exit(1);
 console.log('όλα πέρασαν');

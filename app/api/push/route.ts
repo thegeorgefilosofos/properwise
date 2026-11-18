@@ -58,6 +58,7 @@ import { endpointHost } from '@/lib/push/subscription';
 import { athensToday, athensDatePlus } from '@/lib/core/time';
 import { reportRoute, codeOf } from '@/lib/observability/route';
 import { syncAllTaxDeadlines } from '@/lib/calendar/taxSync';
+import { msgLocale } from '@/lib/i18n/locale';
 
 /**
  * Πόσο πίσω κοιτά η ειδοποίηση.
@@ -131,6 +132,12 @@ export async function POST(request: Request) {
     skipped += subs.length - due.length;
     if (!due.length) continue;
 
+    // Η ΓΛΩΣΣΑ ΤΟΥ ΜΗΝΥΜΑΤΟΣ: η «Γλώσσα μηνυμάτων και email» του Λογαριασμού
+    // (lib/i18n/locale.ts, msgLocale). Αποτυχία ανάγνωσης δίνει ελληνικά: μια
+    // ειδοποίηση που έφυγε στα ελληνικά είναι λιγότερο κακό από μία που δεν έφυγε.
+    const lang = await db.auth.admin.getUserById(userId)
+      .then(r => (r.error ? 'el' as const : msgLocale(r.data.user?.user_metadata)), () => 'el' as const);
+
     const [props, eventRead, tasks, unpaidBills, dues] = await Promise.all([
       properties.list<DeadlineProperty>(db, userId, { columns: 'id,name' }),
       // ΚΑΙ ΟΙ ΣΕΙΡΕΣ ΠΟΥ ΞΕΚΙΝΗΣΑΝ ΠΡΙΝ ΑΠΟ ΤΟ ΕΥΡΟΣ (10/11/2026). Ως τότε η
@@ -157,8 +164,9 @@ export async function POST(request: Request) {
       .filter(e => !onceOnDay(e) || e.event_date === today)
       .filter(e => !isIncomeInstalmentSource(e.source));
     const msg = dailyPush(
-      deadlineItems({ properties: props, events, tasks, bills: unpaidBills, rent: dues, from, to }),
+      deadlineItems({ properties: props, events, tasks, bills: unpaidBills, rent: dues, from, to, lang }),
       today,
+      lang,
     );
     if (!msg) { quiet += due.length; continue; }
     // «ΠΛΗΡΩΣΑ» ΣΤΗΝ ΕΙΔΟΠΟΙΗΣΗ: μόνο όταν λέει ΕΝΑ γεγονός ημερολογίου. Ενα
@@ -166,7 +174,7 @@ export async function POST(request: Request) {
     const eventId = eventIdOfUid(msg.uid);
     const payable = !!eventId && events.some(e => e.id === eventId && payableReminder(e));
     const pay = payable && eventId ? await mintPayToken(db, userId, eventId, 'push', new Date()) : null;
-    const out = { title: msg.title, body: msg.body, url: msg.url, ...(pay ? { pay } : {}) };
+    const out = { title: msg.title, body: msg.body, url: msg.url, ...(pay ? { pay } : {}), ...(msg.lang ? { lang: msg.lang } : {}) };
 
     for (const sub of due) {
       const outcome = await sendPush(sub, out, keys);

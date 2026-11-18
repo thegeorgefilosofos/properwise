@@ -52,6 +52,7 @@ import { AccessibilitySettings } from './AccessibilitySettings';
 import { useBillingWords } from './useBillingWords';
 import { useAppEn } from '@/lib/i18n/appEn';
 import LanguageSetting from './LanguageSetting';
+import MsgLanguageSetting from './MsgLanguageSetting';
 
 // Φαίνεται μόνο σε όποιον έχει δώσει πρόσβαση σε γραφείο· φορτώνεται στον περιηγητή.
 const FirmAccess = dynamic(() => import('./FirmAccess').then(m => m.FirmAccess), { ssr: false });
@@ -1002,6 +1003,9 @@ export default function TabSettings({ propertyId, userId, profileType = 'individ
           {/* Η ΓΛΩΣΣΑ ΗΤΑΝ ΣΤΟΝ ΤΙΤΛΟ ΤΗΣ ΕΝΟΤΗΤΑΣ ΚΑΙ ΠΟΥΘΕΝΑ ΑΛΛΟΥ. Τώρα είναι η
               πρώτη της γραμμή (LanguageSetting.tsx). */}
           <LanguageSetting />
+          {/* Η γλώσσα των email και των ειδοποιήσεων, χωριστά από της εφαρμογής
+              (MsgLanguageSetting.tsx, user_metadata.msg_locale). */}
+          <MsgLanguageSetting />
           <SetRow title={E ? E.theme.title : 'Θέμα'} desc={E ? E.theme.desc : 'Σκοτεινό ή φωτεινό, για την εφαρμογή. Το site, η σύνδεση και το ταμείο μένουν σκοτεινά.'} control={<ThemeToggle />} />
           {/* Η ΡΥΘΜΙΣΗ «ΔΕΚΑΔΙΚΑ ΣΤΑ ΠΟΣΑ» ΕΦΥΓΕ ΚΑΙ ΔΕΝ ΕΛΕΙΨΕ ΣΕ ΚΑΝΕΝΑΝ.
               Δεν τη διάβαζε ΟΥΤΕ ΕΝΑ σημείο της εφαρμογής: ο χρήστης άλλαζε την

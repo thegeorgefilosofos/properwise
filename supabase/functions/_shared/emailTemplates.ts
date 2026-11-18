@@ -17,6 +17,14 @@ import { APP_URL } from './site.ts';
 import { EMAIL_LIGHT as L, EMAIL_DARK as D, EMAIL_TONE, type EmailTone } from './emailPalette.ts';
 export type Plan = 'free' | 'individual' | 'professional';
 
+// ═══ ΔΥΟ ΓΛΩΣΣΕΣ, ΕΝΑ ΚΕΛΥΦΟΣ ════════════════════════════════════════════
+// Ο χρήστης διαλέγει στον Λογαριασμό τη γλώσσα των μηνυμάτων του
+// (`user_metadata.msg_locale`, lib/i18n/locale.ts → msgLocale). Κάθε πρότυπο
+// δέχεται `lang` και, χωρίς αυτό, γράφει ελληνικά ΙΔΙΑ ΩΣ ΤΟ BYTE με πριν
+// (messageLang.test.ts). Τα αγγλικά λένε τα ίδια γεγονότα με τους ίδιους
+// αριθμούς, σε ελληνική μορφή ποσού και ημερομηνίας («1.234,50€», «02/11/2026»).
+export type Lang = 'el' | 'en';
+
 // ═══ ΜΙΑ ΠΑΛΕΤΑ, ΔΥΟ ΘΕΜΑΤΑ ═══════════════════════════════════════════════
 // Τα ονόματα είναι τα ίδια με τις κλάσεις που τυπώνει το κέλυφος: ό,τι γράφει
 // `color:${INK}` παίρνει `class="ink"` — και η σκοτεινή εκδοχή του ορίζεται ΜΙΑ
@@ -46,6 +54,19 @@ const WIDTH = 560;
 
 const esc = (v: unknown): string =>
   String(v ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] || c));
+
+// ═══ ΤΙΜΗ ΜΕΣΑ ΣΕ ΙΔΙΟΤΗΤΑ: ΕΝΑΣ ΔΙΑΦΥΓΕΑΣ, ΜΙΑ ΣΑΡΩΣΗ ════════════════════
+// Το `esc` φτάνει για κείμενο, όχι για `href="…"`: ένα εισαγωγικό στην τιμή
+// έκλεινε την ιδιότητα και άνοιγε νέα (CodeQL, «incomplete HTML attribute
+// sanitization»). Εδώ όλα τα ειδικά σημεία σε ΕΝΑ πέρασμα, με τον ίδιο πίνακα.
+const ATTR: Record<string, string> = { '&': '&amp;', '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;' };
+const escAttr = (v: unknown): string => String(v ?? '').replace(/[&"'<>]/g, c => ATTR[c] || c);
+
+/** Σύνδεσμος απεγγραφής μόνο `https:` ή `mailto:`· οτιδήποτε άλλο δεν γίνεται σύνδεσμος. */
+const safeLink = (v: unknown): string => {
+  const u = String(v ?? '').trim();
+  return /^(https:\/\/|mailto:)/i.test(u) ? escAttr(u) : '';
+};
 
 // ═══ ΕΛΛΗΝΙΚΑ ΚΕΦΑΛΑΙΑ ΧΩΡΙΣ ΤΟΝΟ, ΜΕ ΤΗΝ ΙΔΙΑ ΤΕΧΝΙΚΗ ΜΕ ΤΗΝ ΕΦΑΡΜΟΓΗ ══════
 // ΤΟ ΣΦΑΛΜΑ, ΜΕΤΡΗΜΕΝΟ. Η προηγούμενη γραφή έκανε ΠΡΩΤΑ `toUpperCase()` και
@@ -135,8 +156,8 @@ export const bullets = (items: string[]): string =>
 // Outlook· όλοι οι υπόλοιποι βλέπουν το <a> από κάτω.
 export const button = (label: string, url: string): string =>
   `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 6px;"><tr><td>`
-  + `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${esc(url)}" style="height:46px;v-text-anchor:middle;width:220px;" arcsize="18%" stroke="f" fillcolor="${ACCENT}"><w:anchorlock/><center style="color:${L.onAccent};font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${esc(label)}</center></v:roundrect><![endif]-->`
-  + `<!--[if !mso]><!--><a class="btn" href="${esc(url)}" style="display:inline-block;background:${ACCENT};color:${L.onAccent};text-decoration:none;padding:13px 26px;border-radius:8px;font-weight:600;font-size:15px;mso-line-height-rule:exactly;line-height:20px;">${esc(label)}</a><!--<![endif]-->`
+  + `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escAttr(url)}" style="height:46px;v-text-anchor:middle;width:220px;" arcsize="18%" stroke="f" fillcolor="${ACCENT}"><w:anchorlock/><center style="color:${L.onAccent};font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${esc(label)}</center></v:roundrect><![endif]-->`
+  + `<!--[if !mso]><!--><a class="btn" href="${escAttr(url)}" style="display:inline-block;background:${ACCENT};color:${L.onAccent};text-decoration:none;padding:13px 26px;border-radius:8px;font-weight:600;font-size:15px;mso-line-height-rule:exactly;line-height:20px;">${esc(label)}</a><!--<![endif]-->`
   + `</td></tr></table>`;
 // Δύο ισότιμες πράξεις δίπλα δίπλα (π.χ. App Store · Google Play). Ξεχωριστή
 // από το `button` γιατί το VML δεν στοιχίζει δύο roundrect σε μία σειρά χωρίς
@@ -144,15 +165,15 @@ export const button = (label: string, url: string): string =>
 export const buttonPair = (a: { label: string; url: string }, b: { label: string; url: string }): string => {
   const cell = (x: { label: string; url: string }, pad: string) =>
     `<td style="padding:${pad};">`
-    + `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${esc(x.url)}" style="height:46px;v-text-anchor:middle;width:150px;" arcsize="18%" stroke="f" fillcolor="${INK}"><w:anchorlock/><center style="color:${L.page};font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${esc(x.label)}</center></v:roundrect><![endif]-->`
-    + `<!--[if !mso]><!--><a class="btn2" href="${esc(x.url)}" style="display:inline-block;background:${INK};color:${L.page};text-decoration:none;padding:13px 22px;border-radius:8px;font-weight:600;font-size:15px;mso-line-height-rule:exactly;line-height:20px;">${esc(x.label)}</a><!--<![endif]-->`
+    + `<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escAttr(x.url)}" style="height:46px;v-text-anchor:middle;width:150px;" arcsize="18%" stroke="f" fillcolor="${INK}"><w:anchorlock/><center style="color:${L.page};font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${esc(x.label)}</center></v:roundrect><![endif]-->`
+    + `<!--[if !mso]><!--><a class="btn2" href="${escAttr(x.url)}" style="display:inline-block;background:${INK};color:${L.page};text-decoration:none;padding:13px 22px;border-radius:8px;font-weight:600;font-size:15px;mso-line-height-rule:exactly;line-height:20px;">${esc(x.label)}</a><!--<![endif]-->`
     + `</td>`;
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 6px;"><tr>${cell(a, '0 10px 0 0')}${cell(b, '0')}</tr></table>`;
 };
 
 // Δευτερεύουσα διαδρομή: κείμενο-σύνδεσμος κάτω από την κύρια πράξη.
 export const linkLine = (label: string, url: string): string =>
-  `<p style="margin:14px 0 0;"><a class="lnk" href="${esc(url)}" style="font-size:14px;color:${ACCENT};text-decoration:none;font-weight:600;">${esc(label)}</a></p>`;
+  `<p style="margin:14px 0 0;"><a class="lnk" href="${escAttr(url)}" style="font-size:14px;color:${ACCENT};text-decoration:none;font-weight:600;">${esc(label)}</a></p>`;
 
 export const note = (html: string): string =>
   `<p class="mu" style="margin:16px 0 0;font-size:13px;color:${MUTE};mso-line-height-rule:exactly;line-height:21px;">${html}</p>`;
@@ -198,9 +219,9 @@ export const heroStat = (value: string, label: string): string =>
   + `</td></tr></table>`;
 // Μόνο το μικρό όνομα (πιο ζεστό): «Μαρία Παπαδοπούλου» → «Μαρία».
 export const firstNameOf = (name?: string): string => (name || '').trim().split(/\s+/)[0] || '';
-export const greeting = (name?: string): string => {
+export const greeting = (name?: string, lang: Lang = 'el'): string => {
   const f = firstNameOf(name);
-  return p(`Γεια σου${f ? ` <b>${esc(f)}</b>` : ''},`);
+  return p(`${lang === 'en' ? 'Hi' : 'Γεια σου'}${f ? ` <b>${esc(f)}</b>` : ''},`);
 };
 
 /**
@@ -236,8 +257,9 @@ export const emailHeader = (): string =>
 // alt=«PROPERWISE» μένει ως εφεδρεία όταν ο παραλήπτης μπλοκάρει τις εικόνες.
 // ── Το ΜΟΝΑΔΙΚΟ branded κέλυφος ──────────────────────────────────────────────
 export function emailShell(opts: {
-  bodyHtml: string; preheader?: string; unsubUrl?: string; footerNote?: string; hero?: string; width?: number;
+  bodyHtml: string; preheader?: string; unsubUrl?: string; footerNote?: string; hero?: string; width?: number; lang?: Lang;
 }): string {
+  const en = opts.lang === 'en';
   const w = opts.width || WIDTH;
   // ΤΟ ΠΡΟΘΕΜΑ ΕΙΝΑΙ Η ΔΕΥΤΕΡΗ ΓΡΑΜΜΗ ΣΤΗ ΛΙΣΤΑ ΚΑΙ ΗΤΑΝ ΑΓΕΜΙΣΤΗ. Χωρίς
   // γέμισμα, ο πελάτης αλληλογραφίας τραβά ό,τι βρει μετά — δηλαδή τη λέξη
@@ -250,11 +272,12 @@ export function emailShell(opts: {
   // φτάνει στο lib/legal/identity.ts. Κενή, δεν τυπώνεται τίποτα επινοημένο·
   // το send-lifecycle-email κρατά τότε πίσω τα προωθητικά.
   const who = senderIdentity();
-  const foot = opts.unsubUrl
-    ? `Λαμβάνεις αυτό το email ως χρήστης του PROPERWISE.${who ? ` ${esc(who)}.` : ''} <a class="lnk" href="${esc(opts.unsubUrl)}" style="color:${MUTE};text-decoration:underline;">Απεγγραφή</a>`
+  const unsub = safeLink(opts.unsubUrl);
+  const foot = unsub
+    ? `${en ? 'You’re receiving this email as a PROPERWISE user.' : 'Λαμβάνεις αυτό το email ως χρήστης του PROPERWISE.'}${who ? ` ${esc(who)}.` : ''} <a class="lnk" href="${unsub}" style="color:${MUTE};text-decoration:underline;">${en ? 'Unsubscribe' : 'Απεγγραφή'}</a>`
     : (opts.footerNote || 'properwise.gr');
   return `<!DOCTYPE html>
-<html lang="el" dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<html lang="${en ? 'en' : 'el'}" dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -617,8 +640,6 @@ export function seasonalCampaignEmail(c: Ctx & { season: Season; toPlan?: Plan |
 // παραλήπτης να μη διαβάζει μήνυμα τρίτου ως μήνυμα του PROPERWISE.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Διαφυγή για τιμή ιδιότητας: και τα εισαγωγικά, όχι μόνο τα `&<>`. */
-const escAttr = (v: unknown): string => esc(v).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 /** Σύνδεσμος μόνο `https://`· τα εισαγωγικά κόβουν, ώστε να μη σπάει το `href`. */
 const HTTPS_URL = /https:\/\/[^\s<>"']+/g;
