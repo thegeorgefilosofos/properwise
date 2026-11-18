@@ -351,61 +351,47 @@ export const grDateOf = (year: number, month: number, day = 1): string =>
   `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ΟΙ ΑΓΓΛΙΚΕΣ ΣΕΛΙΔΕΣ (/en) ΓΡΑΦΟΥΝ ΤΟΥΣ ΑΡΙΘΜΟΥΣ ΟΠΩΣ Ο ΑΓΓΛΟΦΩΝΟΣ ΑΝΑΓΝΩΣΤΗΣ
+// ΟΙ ΑΓΓΛΙΚΕΣ ΣΕΛΙΔΕΣ ΓΡΑΦΟΥΝ ΤΟΥΣ ΑΡΙΘΜΟΥΣ ΟΠΩΣ ΤΑ ΕΛΛΗΝΙΚΑ (απόφαση ιδιοκτήτη, 18.11.2026)
 // ─────────────────────────────────────────────────────────────────────────
-// «1.234,50€» διαβάζεται από Αμερικανό ως χίλια διακόσια τριάντα τέσσερα
-// ΚΑΙ πενήντα εκατοστά ή ως ένα κόμμα δύο — δηλαδή λάθος. Στα αγγλικά το
-// σύμβολο μπαίνει μπροστά και οι χιλιάδες χωρίζονται με κόμμα: «€1,234.50»,
-// «12%», «2 Nov 2026».
+// Ως τις 18.11.2026 οι αγγλικές σελίδες έγραφαν «€1,234.50» και «2 Nov 2026».
+// Ο ιδιοκτήτης θέλει το σύμβολο ΜΕΤΑ το ποσό παντού: «1.234,50€», «12,00%»,
+// «02/11/2026». Ετσι η αγγλική αρχική, οι υπολογιστές, οι οδηγοί, η εφαρμογή
+// στα αγγλικά και το βίντεο του προϊόντος («1.453,50€») δείχνουν το ίδιο ποσό
+// με την ίδια μορφή και ταιριάζουν με τα έγγραφα της ΑΑΔΕ και του λογιστή που
+// ο αναγνώστης θα κρατήσει στο χέρι.
 //
-// ΤΑ ΕΛΛΗΝΙΚΑ ΔΕΝ ΑΓΓΙΖΟΝΤΑΙ. Το `fmtFor('el')` επιστρέφει ΑΚΡΙΒΩΣ τις ίδιες
-// συναρτήσεις με πάνω (fe, fn, fpRate…), όχι αντίγραφα· το format.test.ts το
-// ελέγχει με ταυτότητα αναφοράς. Η στρογγυλοποίηση είναι η ίδια (`rd`), οπότε
-// το ίδιο ποσό βγάζει τα ίδια ψηφία και στις δύο γλώσσες.
+// Ο ΜΗΝΑΣ ΜΕ ΛΕΞΕΙΣ ΜΕΝΕΙ ΑΓΓΛΙΚΟΣ: «30 November 2026» μέσα σε πρόταση
+// (lib/i18n/en/dates.ts). Μόνο οι αριθμοί και η σύντομη ημερομηνία ακολουθούν
+// την ελληνική γραφή.
+//
+// Το `fmtFor` μένει ως σημείο εισόδου: κάθε σελίδα ρωτά τη γλώσσα της, ώστε
+// μια μελλοντική αλλαγή να γίνει πάλι σε ΕΝΑ σημείο.
 // ═══════════════════════════════════════════════════════════════════════════
-const LOCALE_EN = 'en-US';
-const MINUS = '−';
-const enAbs = (v: number, opts: { minimumFractionDigits?: number; maximumFractionDigits?: number }) => nf(LOCALE_EN, opts).format(Math.abs(v));
-const enSigned = (v: number, body: string) => (v < 0 ? `${MINUS}${body}` : body);
-
-const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
 /** Οι μορφοποιητές μιας γλώσσας. Ιδιο σχήμα και ίδια σημασία ανά πεδίο. */
 export interface Formatters {
-  /** Ποσό με δύο δεκαδικά: «1.234,50€» · «€1,234.50». */
+  /** Ποσό με δύο δεκαδικά: «1.234,50€». */
   fe: (n: number) => string;
-  /** Ποσό χωρίς δεκαδικά: «1.235€» · «€1,235». */
+  /** Ποσό χωρίς δεκαδικά: «1.235€». */
   feWhole: (n: number) => string;
   /** Ποσό με πρόσημο «−» για το αρνητικό. */
   feSigned: (n: number | null | undefined) => string;
-  /** Τιμή μονάδας, έως πέντε δεκαδικά: «0,12345€» · «€0.12345». */
+  /** Τιμή μονάδας, έως πέντε δεκαδικά: «0,12345€». */
   feRate: (n: number) => string;
   /** Αριθμός με `d` δεκαδικά. */
   fn: (n: number, d?: number) => string;
-  /** Ποσοστό με δύο δεκαδικά: «12,00%» · «12.00%». */
+  /** Ποσοστό με δύο δεκαδικά: «12,00%». */
   fp: (n: number) => string;
-  /** Συντελεστής, έως δύο δεκαδικά: «22%», «0,5%» · «22%», «0.5%». */
+  /** Συντελεστής, έως δύο δεκαδικά: «22%», «0,5%». */
   fpRate: (n: number) => string;
-  /** Ημερομηνία από ISO: «02/11/2026» · «2 Nov 2026». */
+  /** Ημερομηνία από ISO: «02/11/2026». */
   date: (iso: string | null | undefined) => string;
 }
 
 const EL_FORMATTERS: Formatters = { fe, feWhole, feSigned, feRate, fn, fp, fpRate, date: grDate };
 
-const enFe = (n: number) => { const v = rd(n, 2); return enSigned(v, `€${enAbs(v, MONEY)}`); };
-const EN_FORMATTERS: Formatters = {
-  fe: enFe,
-  feWhole: (n) => { const v = rd(n, 0); return enSigned(v, `€${enAbs(v, { maximumFractionDigits: 0 })}`); },
-  feSigned: (n) => enFe(finite(n) || 0),
-  feRate: (n) => { const v = rd(n, 5); return enSigned(v, `€${enAbs(v, { minimumFractionDigits: 2, maximumFractionDigits: 5 })}`); },
-  fn: (n, d = 0) => nf(LOCALE_EN, { minimumFractionDigits: d, maximumFractionDigits: d }).format(rd(n, d)),
-  fp: (n) => `${nf(LOCALE_EN, MONEY).format(rd(n, 2))}%`,
-  fpRate: (n) => `${nf(LOCALE_EN, { maximumFractionDigits: 2 }).format(rd(n, 2))}%`,
-  date: (iso) => {
-    const m = iso ? ISO_DATE_HEAD.exec(iso) : null;
-    return m ? `${Number(m[3])} ${EN_MONTHS[Number(m[2]) - 1]} ${m[1]}` : (iso ?? '');
-  },
-};
+/** Οι αγγλικές σελίδες: οι ίδιοι μορφοποιητές με τα ελληνικά (βλ. πάνω). */
+const EN_FORMATTERS: Formatters = EL_FORMATTERS;
 
-/** Οι μορφοποιητές της γλώσσας της σελίδας. Τα ελληνικά: οι ίδιοι με πάνω. */
+/** Οι μορφοποιητές της γλώσσας της σελίδας. Σήμερα ίδιοι και στις δύο γλώσσες. */
 export const fmtFor = (locale: 'el' | 'en'): Formatters => (locale === 'en' ? EN_FORMATTERS : EL_FORMATTERS);
