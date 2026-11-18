@@ -15,9 +15,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireSecondStep } from '@/lib/auth/secondStep';
-import { billingWords, INVITE_ACCESS, INVITE_PLAN_REFUSAL, PROSTASIA_ACCESS, SUBSCRIPTION_NOTICES, TRIAL_LINE } from '@/lib/legal/billingWords';
+import { billingWords, INVITE_ACCESS, INVITE_PLAN_REFUSAL, PROSTASIA_ACCESS, SUBSCRIPTION_NOTICES, TRIAL_LINE, TRIAL_LINE_EN } from '@/lib/legal/billingWords';
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Απαιτείται σύνδεση.' }, { status: 401 });
@@ -37,7 +37,8 @@ export async function GET() {
       // Από ποιο πακέτο ανοίγει η Προστασία ιδιοκτήτη (ProstasiaEntry).
       prostasiaAccess: PROSTASIA_ACCESS,
       // Η γραμμή της δοκιμής στη λίστα «Από πού ξεκινάς» (StartPanel).
-      trialLine: TRIAL_LINE,
+      // Στα αγγλικά (`?lang=en`, η εφαρμογή στα αγγλικά) το δίδυμό της από το ίδιο αρχείο.
+      trialLine: new URL(request.url).searchParams.get('lang') === 'en' ? TRIAL_LINE_EN : TRIAL_LINE,
     },
     { headers: { 'Cache-Control': 'private, max-age=300' } },
   );

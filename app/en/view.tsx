@@ -17,7 +17,7 @@ import { createClient } from '@/lib/supabase/server';
 import { localHref } from '@/lib/i18n/paths';
 import { PLAN_COPY_EN } from '@/lib/i18n/en/plans';
 import {
-  LANDING_EN, HOW_EN, featuresEn, FEATURES_HEAD_EN, WORKS_EN, CALC_HEAD_EN, SECURITY_EN, WHY_EN,
+  LANDING_EN, HOW_EN, featuresEn, FEATURES_HEAD_EN, WORKS_EN, CALC_HEAD_EN, SECURITY_EN,
   PRICING_HEAD_EN, FAQ_HEAD_EN, FINAL_EN, FAQ_PRICE_Q_EN, faqEn, PARTS_EN, TOUR_EN,
 } from '@/lib/i18n/en/landing';
 import { statsEn } from '@/lib/i18n/en/landingStats';
@@ -32,7 +32,7 @@ import { publicMetadata } from '../publicMetadata';
 import { shareImage } from '../og/share';
 import { ACCENT, PANEL, TEXT, MUTED, FAINT, LINE, GAP, CARD_GAP, wrap, ic } from '../landingKit';
 import { LANDING_PLANS, FEATURED_PLAN } from '../landingContent';
-import { FaqList, NoaFeature, SectionHead, OwnerPlanCard, PlanCard } from '../LandingParts';
+import { FaqList, NoaFeature, SectionHead, OwnerPlanCard, PlanCard, WorksCell, WORKS_FIRST } from '../LandingParts';
 import { LandingStyles } from '../LandingStyles';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -185,7 +185,7 @@ export default async function LandingEn() {
 
       <section className="lp-reveal" style={{ ...wrap, ...LAYER, paddingBottom: GAP }}>
         <SectionHead {...FEATURES_HEAD_EN(FIRST_YEAR_NEW_BRACKETS)} />
-        <div className="lp-feat" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: CARD_GAP }}>
+        <div className="lp-feat po-scroll-x" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: CARD_GAP }}>
           {featuresEn(year).map(f => (
             <div key={f.t} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 24px)' }}>
               <div style={{ width: 38, aspectRatio: '1', borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: T.sp.lg }}>{ic(f.i)}</div>
@@ -194,17 +194,22 @@ export default async function LandingEn() {
             </div>
           ))}
         </div>
-      </section>
-
-      <section className="lp-reveal" style={{ ...wrap, ...LAYER, paddingBottom: GAP }}>
-        <SectionHead over={WORKS_EN.over} title={WORKS_EN.title} sub={WORKS_EN.sub} />
+        {/* Η ΣΥΜΒΑΤΟΤΗΤΑ ΜΕΣΑ ΣΤΙΣ ΔΥΝΑΤΟΤΗΤΕΣ, όπως στην ελληνική αρχική
+            (app/page.tsx): ίδιο μήνυμα, μία κεφαλίδα, τα τέσσερα πρώτα ορατά. */}
+        <div className="lp-works-head">
+          <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: TEXT }}>{WORKS_EN.title}</h3>
+          <p data-nohy="" style={{ fontSize: 15, color: MUTED, lineHeight: 1.55, margin: '4px 0 0', textWrap: 'pretty' }}>{WORKS_EN.sub}</p>
+        </div>
         <div className="lp-works">
-          {WORKS_EN.items.map(w => (
-            <div key={w.t}>
-              <div className="lp-works-t" style={{ fontSize: 15, fontWeight: 700, color: TEXT, letterSpacing: '-0.01em', marginBottom: 4 }}>{w.t}</div>
-              <div className="lp-works-d" style={{ fontSize: 14, color: FAINT, lineHeight: 1.5 }}>{w.d}</div>
+          {WORKS_EN.items.slice(0, WORKS_FIRST).map(w => <WorksCell key={w.t} w={w} />)}
+        </div>
+        <div className="lp-works-foot">
+          <details className="lp-works-more">
+            <summary className="lp-link po-tap" style={{ color: ACCENT, fontSize: 15, fontWeight: 600 }}>{WORKS_EN.more(WORKS_EN.items.length)}</summary>
+            <div className="lp-works lp-works-tail">
+              {WORKS_EN.items.slice(WORKS_FIRST).map(w => <WorksCell key={w.t} w={w} />)}
             </div>
-          ))}
+          </details>
         </div>
       </section>
 
@@ -214,9 +219,8 @@ export default async function LandingEn() {
       </section>
 
       <section className="lp-reveal" style={{ ...wrap, ...LAYER, paddingBottom: GAP }}>
-        <SectionHead over={SECURITY_EN.over} title={SECURITY_EN.title} sub={SECURITY_EN.sub} />
-        <div className="lp-sec" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(24px, 3vw, 38px)' }}>
-          <p className="lp-sec-lede">{SECURITY_EN.lede}</p>
+        <SectionHead over={SECURITY_EN.over} title={SECURITY_EN.title} />
+        <div className="lp-sec" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 28px)' }}>
           <div className="lp-sec-grid">
             {SECURITY_EN.items.map(s => (
               <div key={s.t} className="lp-sec-item">
@@ -239,28 +243,12 @@ export default async function LandingEn() {
         </div>
       </section>
 
-      <section className="lp-reveal" style={{ ...wrap, ...LAYER, paddingBottom: GAP }}>
-        <SectionHead over={WHY_EN.over} title={WHY_EN.title} />
-        <div className="lp-why">
-          {WHY_EN.body.map(p => <p key={p}>{p}</p>)}
-        </div>
-        <p style={{ fontSize: 'clamp(17px, 1.9vw, 21px)', lineHeight: 1.45, color: 'var(--text-primary)', letterSpacing: '-0.015em',
-          margin: 'clamp(26px, 3.2vw, 40px) 0 0', textWrap: 'pretty' }}>
-          {WHY_EN.close}
-        </p>
-        {localHref('en', '/trust') !== '/trust' && (
-          <div style={{ marginTop: 14, textWrap: 'balance' }}>
-            <Link href={localHref('en', '/trust')} className="lp-link po-tap" style={{ color: ACCENT, textDecoration: 'none', fontSize: 15, fontWeight: 600 }}>
-              {WHY_EN.about}
-            </Link>
-          </div>
-        )}
-      </section>
-
+      {/* «Why it exists» έφυγε όπως και στην ελληνική αρχική: έλεγε ξανά τις
+          Δυνατότητες και το «How it works». */}
       <NoaFeature locale="en" />
 
       <section id="pricing" className="lp-reveal" style={{ ...wrap, ...LAYER, paddingBottom: GAP }}>
-        <SectionHead title={PRICING_HEAD_EN.title} sub={PRICING_HEAD_EN.sub} />
+        <SectionHead title={PRICING_HEAD_EN.title} />
         {words.pricingNotice && (
           <div role="note" style={{ padding: '14px 16px', marginBottom: 16, borderRadius: T.radius.popup, background: PANEL, border: '1px solid color-mix(in srgb, var(--accent) 35%, transparent)', fontSize: 14, lineHeight: 1.55, color: MUTED }}>
             <strong style={{ color: TEXT, fontWeight: 700 }}>{words.pricingNotice.title}</strong>{' '}{words.pricingNotice.body}
@@ -295,7 +283,7 @@ export default async function LandingEn() {
             );
           })}
         </div>
-        <p className="fineprint fineprint-cols" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: FAINT, margin: '22px 0 0', textWrap: 'pretty' }}>
+        <p className="fineprint fineprint-cols" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: MUTED, margin: '22px 0 0', textWrap: 'pretty' }}>
           {trialOfferEn(PLAN_COPY_EN[TRIAL_PLAN].name)}{words.live && <> {words.firstCharge}</>}
           {' '}{PRICES_VAT_EN} {NO_COMMITMENT_EN}
           <span className="fineprint-col2">{words.moneyBack}</span>
@@ -308,9 +296,12 @@ export default async function LandingEn() {
       </section>
 
       <section id="faq" className="lp-reveal" style={{ ...wrap, ...LAYER, paddingBottom: 0 }}>
-        <SectionHead over={FAQ_HEAD_EN.over} title={FAQ_HEAD_EN.title} sub={FAQ_HEAD_EN.sub} />
+        <hr className="lp-hair" />
+        <div className="lp-band">
+        <div className="lp-band-head"><SectionHead hair={false} over={FAQ_HEAD_EN.over} title={FAQ_HEAD_EN.title} /></div>
+        <div>
         <div style={{ borderBottom: `1px solid ${LINE}` }}>
-          <FaqList list={faq.slice(0, visible)} />
+          <FaqList list={faq.slice(0, visible)} firstOpen />
         </div>
         <FaqMore>
           <summary style={{ cursor: 'pointer', listStyle: 'none', fontSize: 14, fontWeight: 600, color: ACCENT, alignItems: 'center', gap: 8 }}>
@@ -322,13 +313,15 @@ export default async function LandingEn() {
             <FaqList list={faq.slice(visible)} />
           </div>
         </FaqMore>
+        </div>
+        </div>
       </section>
 
       <section className="lp-hero lp-reveal lp-final" style={{ position: 'relative', overflow: 'hidden', borderBottom: 'none' }}>
-        <div style={{ ...wrap, ...LAYER, textAlign: 'center', paddingTop: GAP, paddingBottom: GAP }}>
+        <div className="lp-final-band" style={{ ...wrap, ...LAYER, textAlign: 'center', paddingTop: GAP, paddingBottom: GAP }}>
           <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>{FINAL_EN.title}</h2>
           <p data-nohy="" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 30px', maxWidth: 640, textWrap: 'pretty' }}>
-            {FINAL_EN.lines[0]}{' '}{FINAL_EN.lines[1]}
+            {FINAL_EN.lines.join(' ')}
           </p>
           {loggedIn
             ? dashboard('lp-cta lp-primary lp-final-cta', { display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }, LANDING_EN.dashboard)

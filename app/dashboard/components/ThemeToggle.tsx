@@ -24,17 +24,19 @@
 // γιατί είναι σχεδιαστική απόφαση και όχι εικασία.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useTheme } from '@/app/ThemeProvider'
+import { useAppEn } from '@/lib/i18n/appEn'
 
 export function ThemeToggle() {
   const { mode, toggleMode } = useTheme()
   const dark = mode === 'dark'
+  const E = useAppEn('settings')?.theme
 
   return (
     <button
       onClick={toggleMode}
       className="mode-btn"
-      title={dark ? 'Εναλλαγή σε φωτεινό θέμα' : 'Εναλλαγή σε σκοτεινό θέμα'}
-      aria-label="Εναλλαγή θέματος"
+      title={E ? (dark ? E.toLight : E.toDark) : dark ? 'Εναλλαγή σε φωτεινό θέμα' : 'Εναλλαγή σε σκοτεινό θέμα'}
+      aria-label={E ? E.toggle : 'Εναλλαγή θέματος'}
       aria-pressed={dark}
     >
       {dark

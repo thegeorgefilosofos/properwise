@@ -4,12 +4,11 @@ import { PanelFX, PanelScan, PanelAssistant, PanelDashboard } from './ShowcasePa
 import { ASSISTANT_NAME } from '@/lib/assistant/identity'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ScrollStory, το scrollytelling της landing: το προϊόν μένει καρφωμένο
-// (sticky) στα αριστερά και αλλάζει «πράξη» καθώς ο επισκέπτης διαβάζει τα
-// βήματα δεξιά. Σάρωση → Βοηθός → Έλεγχος. Το ενεργό βήμα ορίζεται με
-// IntersectionObserver σε ζώνη γύρω από το κέντρο της οθόνης, ώστε η αλλαγή
-// να γίνεται εκεί που κοιτάει το μάτι. Σε στενές οθόνες η στήλη sticky
-// κρύβεται και κάθε βήμα δείχνει το δικό του πάνελ inline.
+// ScrollStory, το «Πώς λειτουργεί» της landing: το προϊόν αριστερά, τρία
+// βήματα δεξιά (Σάρωση → Νόα → Έλεγχος). Από 17/11/2026 στον υπολογιστή τα
+// βήματα είναι ακορντεόν: ανοιχτό ένα, το πάτημα σε άλλο ανοίγει εκείνο και
+// αλλάζει το πάνελ. Κάτω από τα 900 τα βήματα σύρονται πλάγια κάτω από το
+// πάνελ και το ενεργό βγαίνει από την οριζόντια θέση.
 // ΠΡΟΣΟΧΗ: κανένας πρόγονος αυτού του δέντρου δεν πρέπει να έχει transform ή
 // overflow (πέρα από clip στο ριζικό div), αλλιώς σπάει το position: sticky.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -43,8 +42,8 @@ const ACTS = [
     over: '01 · Σάρωση',
     nav: 'φωτογραφίζεις λογαριασμό ή μισθωτήριο και συμπληρώνεται μόνο του',
     h: 'Φωτογραφίζεις, δεν πληκτρολογείς.',
-    p: 'Λογαριασμός, μισθωτήριο ή ασφαλιστήριο, σε φωτογραφία ή PDF: συμπληρώνεται ό,τι θα πληκτρολογούσες.',
-    b: ['Το ποσό καταλήγει εκεί που ανήκει, στις δαπάνες ή στο ενοίκιο', 'Η λήξη μπαίνει αυτόματα στις υπενθυμίσεις', 'Το έγγραφο αρχειοθετείται στο σωστό ακίνητο'],
+    p: 'Φωτογραφία ή PDF: συμπληρώνεται ό,τι θα πληκτρολογούσες.',
+    b: ['Το ποσό πάει στις δαπάνες ή στο ενοίκιο', 'Η λήξη μπαίνει στις υπενθυμίσεις', 'Το έγγραφο μπαίνει στο σωστό ακίνητο'],
     Panel: PanelLease,
   },
   {
@@ -55,8 +54,8 @@ const ACTS = [
     // λένε «Νόα» και η αρχική δεν το έλεγε πουθενά. Με άρθρο, όπως το θέλει
     // η πρόταση (lib/assistant/identity.ts, απόφαση της 07/10/2026).
     h: `Η ${ASSISTANT_NAME} μιλάει ελληνικά.`,
-    p: 'Ρωτάς όπως θα ρωτούσες έναν σύμβουλο και η απάντηση βγαίνει από τα δικά σου δεδομένα, όχι από εγχειρίδια.',
-    b: ['Καταλαβαίνει ΕΝΦΙΑ, κοινόχρηστα και τιμολόγια ρεύματος', 'Σε πάει κατευθείαν στην οθόνη που χρειάζεσαι', 'Σε παραπέμπει σε επαγγελματία όταν χρειάζεται'],
+    p: 'Απαντά από τα δικά σου δεδομένα, όχι από εγχειρίδια.',
+    b: ['Ξέρει ΕΝΦΙΑ, κοινόχρηστα και τιμολόγια ρεύματος', 'Σε πάει στην οθόνη που χρειάζεσαι', 'Σε παραπέμπει σε επαγγελματία όταν χρειάζεται'],
     Panel: PanelAssistant,
   },
   {
@@ -67,8 +66,8 @@ const ACTS = [
     // Το σχήμα είναι δυνατό μία φορά και μανιέρα την έκτη. Κρατήθηκε εκεί που το
     // αξίζει (η αντίθεση πληκτρολογώ/φωτογραφίζω) και άλλαξε παντού αλλού.
     h: 'Ό,τι κατέγραψες, σε μία εικόνα.',
-    p: 'Την ίδια στιγμή, χωρίς να ετοιμάσεις τίποτα και χωρίς να περιμένεις το τέλος του μήνα.',
-    b: ['Καθαρή απόδοση και ταμειακή ροή ανά ακίνητο', 'Σύγκριση παρόχων με την πραγματική σου κατανάλωση', 'Πρόταση εξοικονόμησης μόνο όταν υπάρχει λόγος'],
+    p: 'Αμέσως, χωρίς να περιμένεις το τέλος του μήνα.',
+    b: ['Καθαρή απόδοση και ταμειακή ροή ανά ακίνητο', 'Σύγκριση παρόχων με την κατανάλωσή σου', 'Πρόταση εξοικονόμησης μόνο όταν αξίζει'],
     Panel: PanelDashboard,
   },
 ]
@@ -77,35 +76,41 @@ export default function ScrollStory() {
   const [active, setActive] = useState(0)
   const stepsRef = useRef<HTMLDivElement>(null)
 
+  // ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΑ ΒΗΜΑΤΑ ΕΙΝΑΙ ΣΕΙΡΑ ΠΟΥ ΣΥΡΕΤΑΙ ΠΛΑΓΙΑ (17/11/2026). Η
+  // ενότητα έπιανε 1.660 στα 390: το πάνελ από πάνω και τρία βήματα στη σειρά
+  // από κάτω. Τώρα τα τρία βήματα κάθονται δίπλα δίπλα και κυλούν οριζόντια με
+  // snap, όπως οι κάρτες των πακέτων· το ύψος είναι ενός βήματος. Το ενεργό
+  // βήμα βγαίνει από την οριζόντια θέση και όχι από το μέσο της οθόνης.
+  const narrow = () => window.matchMedia('(max-width: 600px)').matches
+
   useEffect(() => {
     const root = stepsRef.current
     if (!root) return
     const steps = Array.from(root.querySelectorAll<HTMLElement>('[data-idx]'))
-    // Σε κάθε διέλευση ορίου, το ενεργό βήμα υπολογίζεται από τη γεωμετρία (ποιο
-    // βήμα βρίσκεται στο μέσο της οθόνης) και όχι μόνο από το entry του event.
-    // Έτσι η κατάσταση αυτοδιορθώνεται και στην ανάποδη κύλιση, χωρίς κολλήματα.
-    const io = new IntersectionObserver(
-      () => {
-        const mid = window.innerHeight / 2
-        let best = 0
-        let bestDist = Infinity
-        steps.forEach((s, i) => {
-          const r = s.getBoundingClientRect()
-          const d = r.top <= mid && r.bottom >= mid ? -1 : Math.abs(r.top + r.height / 2 - mid)
-          if (d < bestDist) { bestDist = d; best = i }
-        })
-        setActive(best)
-      },
-      { rootMargin: '-45% 0px -45% 0px', threshold: 0 }
-    )
-    steps.forEach(s => io.observe(s))
-    return () => io.disconnect()
+    // ΧΩΡΙΣ ΠΑΡΑΤΗΡΗΤΗ ΚΥΛΙΣΗΣ ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (17/11/2026). Το ενεργό βήμα
+    // άλλαζε όταν περνούσε από το μέσο της οθόνης, γιατί κάθε βήμα ήταν 58vh.
+    // Τώρα τα τρία χωρούν μαζί δίπλα στο πάνελ και ανοίγουν με πάτημα: ένα
+    // βήμα που ανοίγει μόνο του ενώ κυλάς θα κουνούσε τη σελίδα κάτω από το μάτι.
+    const onSlide = () => {
+      if (!narrow() || steps.length < 2) return
+      const pitch = steps[1].offsetLeft - steps[0].offsetLeft
+      if (pitch > 0) setActive(Math.min(steps.length - 1, Math.round(root.scrollLeft / pitch)))
+    }
+    root.addEventListener('scroll', onSlide, { passive: true })
+    return () => root.removeEventListener('scroll', onSlide)
   }, [])
 
   const goTo = (i: number) => {
     setActive(i)
     const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    stepsRef.current?.querySelector<HTMLElement>(`[data-idx="${i}"]`)?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'center' })
+    const root = stepsRef.current
+    const step = root?.querySelector<HTMLElement>(`[data-idx="${i}"]`)
+    const first = root?.querySelector<HTMLElement>('[data-idx="0"]')
+    if (!root || !step || !first || !narrow()) return
+    // Στο τηλέφωνο το βήμα έρχεται από το πλάι, χωρίς να κουνηθεί η σελίδα.
+    root.scrollTo({ left: step.offsetLeft - first.offsetLeft, behavior: smooth ? 'smooth' : 'auto' })
+    // Στον υπολογιστή τα τρία βήματα είναι ήδη στην οθόνη: το πάτημα ανοίγει το
+    // βήμα και αλλάζει το πάνελ, χωρίς να κουνήσει τη σελίδα.
   }
 
   // ═══ ΤΟ ΠΑΝΕΛ ΤΟΥ ΠΙΝΑΚΑ ΚΟΒΟΤΑΝ ΜΕΣΑ ΣΤΟ ΠΛΑΙΣΙΟ ══════════════════════════
@@ -166,11 +171,26 @@ export default function ScrollStory() {
         .story-dot.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
         .story-dot:hover { color: var(--text-primary); }
         .story-steps { display: flex; flex-direction: column; }
-        ${/* 58vh και όχι 72vh: τρία βήματα × 72vh = 216vh διαδρομής, δηλαδή η
-           ενότητα μόνη της έπιανε το 25% ολόκληρης της σελίδας. Στα 58vh η
-           κάθε πράξη προλαβαίνει ακόμη να διαβαστεί και να «κλειδώσει» πριν
-           αλλάξει η επόμενη — κάτω από ~50vh η εναλλαγή γίνεται νευρική. */''}
-        .story-step { min-height: 58vh; display: flex; flex-direction: column; justify-content: center; opacity: .35; transition: opacity .45s cubic-bezier(.2,0,0,1); }
+        @media (min-width: 601px) { .story-grid .story-steps { overflow: visible; } }
+        ${/* ΤΑ ΒΗΜΑΤΑ ΠΙΑΝΟΥΝ ΟΣΟ ΤΟ ΚΕΙΜΕΝΟ ΤΟΥΣ (17/11/2026). Ήταν 58vh το καθένα,
+           δηλαδή 1.830 εικονοστοιχεία στα 1.440, το 17% ολόκληρης της σελίδας για
+           τρεις παραγράφους, με μισή οθόνη κενό ανάμεσά τους. Τώρα τα τρία στέκουν
+           μαζί δίπλα στο πάνελ, όσο ψηλά είναι και εκείνο· το ενεργό φωτίζεται
+           καθώς η ενότητα περνά από το μέσο της οθόνης και τα κουμπιά του ραγιού
+           το αλλάζουν με ένα πάτημα. */''}
+.story-step { display: flex; flex-direction: column; justify-content: center; padding: clamp(12px, 1.4vw, 20px) 0; opacity: .55; transition: opacity .45s cubic-bezier(.2,0,0,1); }
+        .story-step + .story-step { border-top: 1px solid var(--border-subtle); }
+        .story-tab { display: block; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-align: left; cursor: pointer; }
+        .story-over { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 600; letter-spacing: 0; color: var(--accent); }
+        @media (min-width: 901px) {
+          .story-grid { align-items: center; }
+          .story-rail { display: none; }
+          .story-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .35s cubic-bezier(.2,0,0,1); }
+          .story-more > div { min-height: 0; overflow: hidden; }
+          .story-step:not(.on) .story-more > div { visibility: hidden; }
+          .story-step.on .story-more { grid-template-rows: 1fr; }
+          .story-step:not(.on):hover { opacity: .8; }
+        }
         .story-step.on { opacity: 1; }
         .story-h { font-size: clamp(18px, 2vw, 23px); }
         ${/* ═══ ΣΤΟ ΤΗΛΕΦΩΝΟ ΤΟ ΚΑΡΦΩΜΕΝΟ ΠΑΝΕΛ ΔΕΝ ΣΒΗΝΕΙ, ΓΥΡΙΖΕΙ ΠΑΝΩ ══════
@@ -192,7 +212,7 @@ export default function ScrollStory() {
         @media (max-width: 900px) {
           .story-grid { grid-template-columns: 1fr; gap: 20px; }
           .story-h { font-size: 20px; }
-          .story-stick { top: 64px; z-index: 1; padding-bottom: 8px; }
+          .story-stick { position: static; padding-bottom: 0; }
           ${/* ΤΟ ΥΨΟΣ ΤΟ ΔΙΝΕΙ ΤΟ ΠΕΡΙΕΧΟΜΕΝΟ, ΟΧΙ ΕΝΑΣ ΑΡΙΘΜΟΣ. Πρώτη προσπάθεια
              ήταν σταθερό «clamp(240px, 38vh, 330px)» και ο σαρωτής βρήκε αμέσως
              έξι κομμένα: τα πάνελ σχεδιάστηκαν για πλαίσιο 400-500 και στα 330
@@ -205,29 +225,26 @@ export default function ScrollStory() {
           .story-panel { position: static; display: none; opacity: 1; transform: none; }
           .story-panel.on { display: flex; }
           .story-rail { margin-top: 12px; }
-          .story-step { min-height: 0; opacity: 1; padding: 8px 0 28px; }
-          ${/* ΤΟ ΚΕΙΜΕΝΟ ΚΟΒΟΤΑΝ ΣΤΗ ΜΕΣΗ ΤΗΣ ΓΡΑΜΜΗΣ ΚΑΤΩ ΑΠΟ ΤΗ ΜΠΑΡΑ.
-             ΦΩΤΟΓΡΑΦΗΘΗΚΕ ΣΕ ΤΑΜΠΛΕΤΑ: κάτω από το «01 · Σάρωση / 02 · Βοηθός /
-             03 · Έλεγχος» φαινόταν μισή αράδα, κομμένη οριζόντια στα μισά
-             γράμματα· από κάτω η επόμενη ολόκληρη. Το φόντο της κολλητής
-             μπάρας είναι αδιαφανές, οπότε ό,τι περνά από κάτω σταματά απότομα
-             σε μια ευθεία που δεν είναι πουθενά σχεδιασμένη.
-
-             Δεν λύνεται με περισσότερο περιθώριο: όποιο κι αν είναι, το κόψιμο
-             απλώς μετακομίζει. Λύνεται με ΣΒΗΣΙΜΟ — το κείμενο χάνεται σταδιακά
-             μπαίνοντας κάτω από τη μπάρα, όπως σε κάθε καλοφτιαγμένη κολλητή
-             κεφαλίδα. Οκτώ εικονοστοιχεία αρκούν· περισσότερα θαμπώνουν
-             περιεχόμενο που είναι ακόμη ορατό. */''}
-          .story-stick::after {
-            content: '';
-            position: absolute;
-            left: 0; right: 0; top: 100%;
-            height: 36px;
-            -webkit-mask-image: linear-gradient(var(--text-primary) 0%, color-mix(in srgb, var(--text-primary) 85%, transparent) 30%, transparent 100%);
-            mask-image: linear-gradient(var(--text-primary) 0%, color-mix(in srgb, var(--text-primary) 85%, transparent) 30%, transparent 100%);
-            pointer-events: none;
+          .story-step { min-height: 0; opacity: 1; padding: 8px 0 20px; justify-content: flex-start; }
+          ${/* ΠΛΑΓΙΑ ΜΟΝΟ ΣΤΟ ΤΗΛΕΦΩΝΟ (18/11/2026). Ως τα 900 ήταν καρουζέλ και
+             στο iPad κάθετα τα τρία βήματα των 700 κυλούσαν πλάγια χωρίς λόγο:
+             χωρούν το ένα κάτω από το άλλο. Από τα 601 ως τα 900 στοιβάζονται.
+             Ο κυλιόμενος δηλώνεται με .po-scroll-x, όπως κάθε σκόπιμη οριζόντια
+             κύλιση (e2e-mobile) και στα πλατιά πλάτη ξαναγίνεται ορατός. */''}
+          @media (max-width: 600px) {
+            .story-grid .story-steps {
+              display: grid; grid-auto-flow: column; grid-auto-columns: 86%; gap: 20px;
+              overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
+              scrollbar-width: none;
+            }
+            .story-steps::-webkit-scrollbar { display: none; }
+            .story-step { padding: 4px 0 0; scroll-snap-align: start; }
+            .story-step + .story-step { border-top: 0; }
           }
-          .story-stick { position: sticky; }
+          ${/* ΤΟ ΠΑΝΕΛ ΔΕΝ ΚΑΡΦΩΝΕΤΑΙ ΠΙΑ ΣΤΟ ΤΗΛΕΦΩΝΟ. Καρφωνόταν για να το αλλάζει
+             το κείμενο που κυλούσε από κάτω· τώρα τα βήματα κυλούν πλάγια ακριβώς
+             κάτω του, οπότε δεν υπάρχει κάτι να περάσει από κάτω του ούτε σβήσιμο
+             να κρύψει κομμένη γραμμή. */''}
         }
         ${/* ΣΕ ΧΑΜΗΛΟ ΠΑΡΑΘΥΡΟ ΤΟ ΚΑΡΦΩΜΕΝΟ ΠΛΑΙΣΙΟ ΤΡΩΕΙ ΟΛΗ ΤΗΝ ΟΘΟΝΗ. Τηλέφωνο
            πλάγια είναι 390 εικονοστοιχεία ύψος: ένα πάνελ 360 δεν αφήνει τίποτα
@@ -238,7 +255,8 @@ export default function ScrollStory() {
         }
         @media (prefers-reduced-motion: reduce) {
           .story-panel { transition: none; }
-          .story-step { transition: none; opacity: 1; }
+          .story-step { transition: none; }
+          .story-more { transition: none; }
         }
       `}</style>
 
@@ -294,10 +312,9 @@ export default function ScrollStory() {
       </div>
 
       {/* Δεξιά: τα βήματα της αφήγησης */}
-      <div className="story-steps" ref={stepsRef}>
+      <div className="story-steps po-scroll-x" ref={stepsRef} role="region" aria-label="Οι τρεις κινήσεις" tabIndex={0}>
         {ACTS.map((a, i) => (
           <div key={a.key} data-idx={i} className={`story-step${i === active ? ' on' : ''}`}>
-            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)', margin: '0 0 14px' }}>{a.over}</p>
             {/* ═══ Ο ΤΙΤΛΟΣ ΔΕΝ ΣΠΑΕΙ ΣΤΑ ΔΥΟ ══════════════════════════════════
                 «Φωτογραφίζεις, δεν πληκτρολογείς.» είναι ΜΙΑ αντίθεση: κομμένη
                 στη μέση, το δεύτερο μισό πέφτει μόνο του σε δεύτερη σειρά και
@@ -323,8 +340,19 @@ export default function ScrollStory() {
                 της μίας σειράς αφορά τη στήλη των 460 του υπολογιστή· κάτω από τα
                 900 η στήλη πιάνει όλο το πλάτος, οπότε ο τίτλος παίρνει σταθερά 20
                 (κανόνας .story-h, μαζί με το υπόλοιπο φύλλο). */}
-            <h3 className="story-h" style={{ fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.15, color: 'var(--text-primary)', margin: '0 0 14px', maxWidth: 460 }}>{a.h}</h3>
-            <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.7, margin: '0 0 20px', maxWidth: 460 }}>{a.p}</p>
+            {/* Η ΚΕΦΑΛΙΔΑ ΤΟΥ ΒΗΜΑΤΟΣ ΕΙΝΑΙ ΚΟΥΜΠΙ (17/11/2026). Στον υπολογιστή τα
+                ανενεργά βήματα δείχνουν μόνο ταμπέλα και τίτλο και το πάτημα
+                ανοίγει το βήμα και αλλάζει το πάνελ· στο τηλέφωνο φέρνει το βήμα
+                από το πλάι. Το κουμπί ζει ΜΕΣΑ στον τίτλο, όπως σε κάθε ακορντεόν:
+                ο αναγνώστης οθόνης ακούει και την κεφαλίδα και το ανοιχτό/κλειστό. */}
+            <h3 className="story-h" style={{ fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.15, color: 'var(--text-primary)', margin: 0, maxWidth: 460 }}>
+              <button type="button" className="story-tab" aria-expanded={i === active} aria-controls={`story-more-${a.key}`} onClick={() => goTo(i)}>
+                <span className="story-over">{a.over}</span>
+                <span>{a.h}</span>
+              </button>
+            </h3>
+            <div className="story-more" id={`story-more-${a.key}`}><div>
+            <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.7, margin: '12px 0 16px', maxWidth: 460 }}>{a.p}</p>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {a.b.map((t, j) => (
                 <li key={j} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
@@ -333,6 +361,7 @@ export default function ScrollStory() {
                 </li>
               ))}
             </ul>
+            </div></div>
           </div>
         ))}
       </div>

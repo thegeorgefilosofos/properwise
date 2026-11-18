@@ -27,7 +27,7 @@ import { ACCENT, PANEL, TEXT, MUTED, FAINT, LINE, GAP, CARD_GAP, wrap, ic, check
 import {
   featuresFor, FAQ_VISIBLE, FAQ, faqForSchema, WORKS_WITH, SECURITY, REFERRAL, LANDING_PLANS, FEATURED_PLAN,
 } from './landingContent'
-import { FaqList, NoaFeature, SectionHead, OwnerPlanCard, PlanCard } from './LandingParts'
+import { FaqList, NoaFeature, SectionHead, OwnerPlanCard, PlanCard, WorksCell, WORKS_FIRST } from './LandingParts'
 import { LandingStyles } from './LandingStyles'
 import { ToolsAndGuides } from './LandingLinks'
 import { languageAlternates } from '@/lib/i18n/paths'
@@ -215,7 +215,7 @@ export default async function Landing() {
             τίτλος έως 78px, 84px κάτω) και το προϊόν ξεκινούσε στα ~1080px — δηλαδή
             ο επισκέπτης έβλεπε μόνο κείμενο και έπρεπε να κυλήσει για να δει τι
             αγοράζει. Κάθε κορυφαίο προϊόν δείχνει το προϊόν ΜΕΣΑ στην πρώτη οθόνη. */}
-        <div style={{ ...wrap, position: 'relative', zIndex: 1, paddingTop: 'clamp(40px, 5.5vw, 68px)', paddingBottom: GAP, textAlign: 'center' }}>
+        <div style={{ ...wrap, position: 'relative', zIndex: 1, paddingTop: 'clamp(32px, 4vw, 56px)', paddingBottom: GAP, textAlign: 'center' }}>
           {/* ΤΟ ΧΕΙΡΟΤΕΡΟ ΣΦΑΛΜΑ ΠΟΥ ΔΙΟΡΘΩΘΗΚΕ ΕΔΩ: η δεύτερη σειρά — αυτή που
               περιέχει το ΟΝΟΜΑ ΤΟΥ ΠΡΟΪΟΝΤΟΣ — ήταν rgba(255,255,255,.52), δηλαδή
               το πιο αχνό στοιχείο ολόκληρης της σελίδας. Δεν διαβαζόταν ως
@@ -296,8 +296,8 @@ export default async function Landing() {
                 375 και η δεύτερη πρόταση απαριθμούσε πέντε πράγματα πριν πει το
                 όφελος. Τώρα τα τρία που ζητά ο λογιστής, σε δύο προτάσεις
                 σχεδόν ίσου μήκους. */}
-            <span className="lp-lede-line">Λογαριασμός, μισθωτήριο, απόδειξη: η{'\u00a0'}εφαρμογή τα διαβάζει και συμπληρώνει τα{'\u00a0'}στοιχεία.</span>{' '}
-            <span className="lp-lede-line">Ο φόρος ενοικίων, το Ε2 και ο ΕΝΦΙΑ είναι έτοιμα πριν τα ζητήσει ο{'\u00a0'}λογιστής.</span>
+            <span className="lp-lede-line">Φωτογραφίζεις λογαριασμό ή μισθωτήριο και η εφαρμογή συμπληρώνει τα{'\u00a0'}στοιχεία.</span>{' '}
+            <span className="lp-lede-line">Φόρος ενοικίων, Ε2 και ΕΝΦΙΑ έτοιμα πριν τα ζητήσει ο{'\u00a0'}λογιστής.</span>
           </p>
           <div className="lp-rise-3 lp-hero-ctas" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             {loggedIn ? (
@@ -368,7 +368,7 @@ export default async function Landing() {
       {/* ── Scrollytelling: το προϊόν μένει sticky και αλλάζει πράξη όσο διαβάζεις.
              ΠΡΟΣΟΧΗ: χωρίς lp-reveal εδώ (transform στον πρόγονο σπάει το sticky). */}
       <section id="pos-leitourgei" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP, scrollMarginTop: 72 }}>
-        <SectionHead over="Πώς λειτουργεί" title="Τρεις κινήσεις και το ακίνητο μπαίνει σε τάξη" sub="Φωτογραφίζεις και ρωτάς. Τα ενδιάμεσα τα κάνει η εφαρμογή." />
+        <SectionHead over="Πώς λειτουργεί" title="Τρεις κινήσεις και το ακίνητο μπαίνει σε τάξη" sub="Τα ενδιάμεσα τα κάνει η εφαρμογή." />
         <ScrollStory />
       </section>
 
@@ -378,13 +378,13 @@ export default async function Landing() {
             διεθνές εργαλείο διαχείρισης: ότι ξέρει την ελληνική πραγματικότητα.
             Το «Ό,τι χρειάζεται το ακίνητό σου» ήταν αληθές και εντελώς άχρωμο,
             γιατί το ίδιο ακριβώς θα έγραφε και ο κάθε ανταγωνιστής. */}
-        <SectionHead over="Δυνατότητες" title="Σχεδιασμένο για την ελληνική αγορά ακινήτων" sub={`ΕΝΦΙΑ, κοινόχρηστα, δήλωση μίσθωσης, κλίμακα ενοικίων ${scaleYear}. Όλα με τους κανόνες και τις προθεσμίες του ελληνικού δικαίου.`} />
+        <SectionHead over="Δυνατότητες" title="Σχεδιασμένο για την ελληνική αγορά ακινήτων" sub={`ΕΝΦΙΑ, Ε2, δήλωση μίσθωσης και κλίμακα ενοικίων ${scaleYear}, με τις προθεσμίες τους.`} />
         {/* ΡΗΤΑ ΤΡΕΙΣ ΣΤΗΛΕΣ ΓΙΑ ΕΞΙ ΚΑΡΤΕΣ. Με επτά κάρτες και auto-fit, η έβδομη
             έμενε ΜΟΝΗ ΤΗΣ σε τρίτη σειρά, με δύο κενά δίπλα της. Ένα ορφανό κελί
             είναι το πιο ορατό λάθος διάταξης που υπάρχει: δεν χρειάζεται να ξέρεις
             τίποτα από σχεδιασμό για να το προσέξεις. Έξι κάρτες κλείνουν σε τέλειο
             3×2 και η ενότητα διαβάζεται ως ένα σχήμα, όχι ως λίστα που ξέμεινε. */}
-        <div className="lp-feat" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: CARD_GAP }}>
+        <div className="lp-feat po-scroll-x" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: CARD_GAP }}>
           {features.map((f, i) => (
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 24px)' }}>
               <div style={{ width: 38, height: 38, borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: T.sp.lg }}>{ic(f.i)}</div>
@@ -397,34 +397,39 @@ export default async function Landing() {
             </div>
           ))}
         </div>
-      </section>
+        {/* ── Συμβατότητα, μέσα στις Δυνατότητες ──────────────────────────────
+               ΓΙΑΤΙ ΜΠΑΙΝΕΙ: η σελίδα εξηγούσε τι κάνει το προϊόν, ποτέ όμως τι
+               ΔΕΝ θα χρειαστεί να εγκαταλείψει ο ιδιοκτήτης για να το
+               χρησιμοποιήσει («έχω ήδη λογιστή, έχω ήδη Excel»). Καμία λέξη εδώ
+               δεν είναι πρόθεση: κάθε γραμμή αντιστοιχεί σε λειτουργία που υπάρχει.
 
-      {/* ── Συμβατότητα ────────────────────────────────────────────────────────
-             ΓΙΑΤΙ ΜΠΑΙΝΕΙ ΑΥΤΗ Η ΕΝΟΤΗΤΑ: η σελίδα εξηγούσε τι κάνει το προϊόν,
-             ποτέ όμως τι ΔΕΝ θα χρειαστεί να εγκαταλείψει ο ιδιοκτήτης για να το
-             χρησιμοποιήσει. Αυτή είναι η πραγματική αντίρρηση: «έχω ήδη λογιστή,
-             έχω ήδη Excel, έχω ήδη τις κρατήσεις μου κάπου». Δέκα ονόματα που
-             μπορεί να ελέγξει απαντούν καλύτερα από δέκα επίθετα.
+               ΕΓΙΝΕ ΜΙΑ ΕΝΟΤΗΤΑ ΜΕ ΤΙΣ ΔΥΝΑΤΟΤΗΤΕΣ (17/11/2026). Ήταν δική της
+               ενότητα με δική της κεφαλίδα και έλεγε το ίδιο μήνυμα με την από
+               πάνω: φτιαγμένο για την ελληνική αγορά (myAADE, Ε2, ελληνικά λογιστικά
+               προγράμματα). Μία κεφαλίδα, δύο πλέγματα.
 
-             Καμία λέξη εδώ δεν είναι πρόθεση: κάθε γραμμή αντιστοιχεί σε
-             λειτουργία που ήδη υπάρχει στον κώδικα. Ένα ψεύτικο όνομα σε τέτοιο
-             πλέγμα δεν είναι μάρκετινγκ, είναι λόγος ακύρωσης συνδρομής. */}
-      <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
-        <SectionHead over="Συμβατότητα" title="Δεν αφήνεις πίσω τίποτα από όσα ήδη δουλεύουν" sub="Τα δεδομένα σου εξάγονται όποτε θέλεις, στη μορφή που περιμένει ο λογιστής σου." />
-        <div className="lp-works">
-          {WORKS_WITH.map((w, i) => (
-            <div key={i}>
-              <div className="lp-works-t" style={{ fontSize: 15, fontWeight: 700, color: TEXT, letterSpacing: '-0.01em', marginBottom: 4 }}>{w.t}</div>
-              <div className="lp-even lp-works-d" style={{ fontSize: 14, color: FAINT, lineHeight: 1.5 }}>{w.d}</div>
-            </div>
-          ))}
+               ΦΑΙΝΟΝΤΑΙ ΤΑ ΤΕΣΣΕΡΑ ΠΡΩΤΑ. Στο τηλέφωνο τα οκτώ κελιά σε μία στήλη
+               ήταν 900 εικονοστοιχεία. Τα υπόλοιπα τέσσερα ανοίγουν με «Δες όλα»
+               και μένουν μέσα στο έγγραφο, για τις μηχανές και τους αναγνώστες. */}
+        <div className="lp-works-head">
+          <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: TEXT }}>Δεν αφήνεις πίσω τίποτα από όσα ήδη δουλεύουν</h3>
+          <p data-nohy="" style={{ fontSize: 15, color: MUTED, lineHeight: 1.55, margin: '4px 0 0', textWrap: 'pretty' }}>Εξαγωγή όποτε θέλεις, στη μορφή του λογιστή σου.</p>
         </div>
-        {/* Ο ΛΟΓΙΣΤΗΣ ΑΝΑΦΕΡΕΤΑΙ ΤΡΕΙΣ ΦΟΡΕΣ ΣΕ ΑΥΤΗ ΤΗΝ ΕΝΟΤΗΤΑ ΚΑΙ ΔΕΝ ΕΙΧΕ ΠΟΥ
-            ΝΑ ΠΑΕΙ. Ο ιδιοκτήτης που αναρωτιέται «τι θα δει ο λογιστής μου» και ο
-            λογιστής που έφτασε εδώ βρίσκουν τη σελίδα του, με το ίδιο σχήμα
-            συνδέσμου όπως το «Ποιοι είμαστε» πιο κάτω. */}
-        <div style={{ marginTop: 16, textWrap: 'balance' }}>
-          <Link href="/logistes" className="lp-link po-tap" style={{ color: ACCENT, textDecoration: 'none', fontSize: 15, fontWeight: 600 }}>
+        <div className="lp-works">
+          {WORKS_WITH.slice(0, WORKS_FIRST).map(w => <WorksCell key={w.t} w={w} />)}
+        </div>
+        {/* Ο ΛΟΓΙΣΤΗΣ ΑΝΑΦΕΡΕΤΑΙ ΤΡΕΙΣ ΦΟΡΕΣ ΣΕ ΑΥΤΟ ΤΟ ΠΛΕΓΜΑ ΚΑΙ ΔΕΝ ΕΙΧΕ ΠΟΥ
+            ΝΑ ΠΑΕΙ: ο ιδιοκτήτης που αναρωτιέται «τι θα δει ο λογιστής μου» και ο
+            λογιστής που έφτασε εδώ βρίσκουν τη σελίδα του. Στην ίδια σειρά με το
+            «Δες όλα»: δύο σύνδεσμοι κάτω από το ίδιο πλέγμα δεν θέλουν δύο σειρές. */}
+        <div className="lp-works-foot">
+          <details className="lp-works-more">
+            <summary className="lp-link po-tap" style={{ color: ACCENT, fontSize: 15, fontWeight: 600 }}>Δες όλα ({WORKS_WITH.length})</summary>
+            <div className="lp-works lp-works-tail">
+              {WORKS_WITH.slice(WORKS_FIRST).map(w => <WorksCell key={w.t} w={w} />)}
+            </div>
+          </details>
+          <Link href="/logistes" className="lp-link po-tap lp-works-acc" style={{ color: ACCENT, textDecoration: 'none', fontSize: 15, fontWeight: 600, textWrap: 'balance' }}>
             Για λογιστές: τι βλέπει ο λογιστής σου από τον φάκελο
           </Link>
         </div>
@@ -432,15 +437,15 @@ export default async function Landing() {
 
       {/* ── Ζωντανό εργαλείο απόδοσης: αξία επιτόπου, με τον αληθινό μας μηχανισμό ── */}
       <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
-        <SectionHead over="Δες το μόνος σου" title="Πόσο σου αποδίδει πραγματικά;" sub={`Ενδεικτική καθαρή απόδοση, με την ίδια φορολογική κλίμακα ενοικίων ${scaleYear} που τρέχει και μέσα στην εφαρμογή.`} />
+        <SectionHead over="Δες το μόνος σου" title="Πόσο σου αποδίδει πραγματικά;" sub={`Ενδεικτικά, με την κλίμακα ενοικίων ${scaleYear} της εφαρμογής.`} />
         <LandingCalculator cta={signupCta()} />
-      </section>
-
-      {/* ── Εργαλεία και οδηγοί: σύνδεσμοι μέσα στη σελίδα, από τους καταλόγους (LandingLinks.tsx).
-            Χωρίς δική του στάθμη: έρχεται μετά τα διακοσμητικά στη σειρά του DOM (guard-z-layers). ── */}
-      <section className="lp-reveal" style={{ ...wrap, position: 'relative', paddingBottom: GAP }}>
-        <SectionHead title="Εργαλεία και οδηγοί" sub="Υπολογισμοί χωρίς εγγραφή και οδηγοί που εξηγούν τον κανόνα πίσω από κάθε ποσό." />
-        <ToolsAndGuides />
+        {/* ── Εργαλεία και οδηγοί: σύνδεσμοι μέσα στη σελίδα, από τους καταλόγους (LandingLinks.tsx).
+              ΜΕΣΑ ΣΤΗΝ ΙΔΙΑ ΕΝΟΤΗΤΑ ΜΕ ΤΟΝ ΥΠΟΛΟΓΙΣΤΗ (17/11/2026). Ήταν χωριστή
+              ενότητα με δική της κεφαλίδα και έλεγε το ίδιο με την από πάνω: «δες
+              το μόνος σου, χωρίς εγγραφή». Ο υπολογιστής είναι ο ένας από αυτούς
+              τους υπολογισμούς· οι υπόλοιποι στέκονται ακριβώς από κάτω του, με
+              τους τίτλους «Υπολογισμοί» και «Οδηγοί» των δύο στηλών για κεφαλίδα. ── */}
+        <div style={{ marginTop: CARD_GAP }}><ToolsAndGuides /></div>
       </section>
 
       {/* ── Security & trust ── */}
@@ -476,15 +481,12 @@ export default async function Landing() {
         {/* Η ΜΟΝΗ ΚΕΦΑΛΙΔΑ ΧΩΡΙΣ ΥΠΟΤΙΤΛΟ ΚΑΙ Η ΚΑΡΤΑ ΑΝΕΒΑΙΝΕ ΚΑΤΩ ΑΠΟ ΤΟΝ ΤΙΤΛΟ
             ΧΩΡΙΣ ΤΟ ΣΚΑΛΙ ΠΟΥ ΕΧΟΥΝ ΟΙ ΑΛΛΕΣ ΕΝΝΕΑ. Ο υπότιτλος λέει μόνο ό,τι
             ισχυρίζονται ήδη οι τέσσερις εγγυήσεις από κάτω. */}
-        <SectionHead over="Ασφάλεια" title="Τα δεδομένα σού ανήκουν" sub="Κρυπτογραφημένη σύνδεση, απομόνωση ανά χρήστη και βάση δεδομένων στην Ευρωπαϊκή Ένωση." />
-        <div className="lp-sec" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(24px, 3vw, 38px)' }}>
-          {/* ΤΟ ΚΕΙΜΕΝΟ ΕΙΝΑΙ ΤΩΡΑ ΕΙΣΑΓΩΓΗ, ΟΧΙ ΛΕΖΑΝΤΑ ΣΤΗΛΗΣ ΚΑΙ ΠΑΙΡΝΕΙ
-              ΤΟ ΜΕΓΕΘΟΣ ΤΟΥ ΡΟΛΟΥ ΤΟΥ. Η άνω τελεία μετά το «σου» ένωνε δύο
-              ολοκληρωμένες προτάσεις με σημείο που δηλώνει επεξήγηση: η δεύτερη
-              δεν επεξηγεί την πρώτη, τη συνεχίζει. Δύο περίοδοι, καθαρά. */}
-          <p className="lp-sec-lede po-just">
-            Λογαριασμοί, συμβόλαια και στοιχεία του ακινήτου ή των{'\u00A0'}πελατών σου είναι από τα πιο ευαίσθητα δεδομένα που υπάρχουν. Γι’ αυτό τα φυλάμε ανάλογα.
-          </p>
+        <SectionHead over="Ασφάλεια" title="Τα δεδομένα σού ανήκουν" />
+        <div className="lp-sec" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 28px)' }}>
+          {/* Η ΕΙΣΑΓΩΓΗ ΕΦΥΓΕ (17/11/2026). Έλεγε «λογαριασμοί, συμβόλαια… είναι
+              από τα πιο ευαίσθητα δεδομένα, γι' αυτό τα φυλάμε ανάλογα», δηλαδή
+              ό,τι λέει ήδη ο υπότιτλος από πάνω και οι τέσσερις εγγυήσεις από
+              κάτω. Η κάρτα ξεκινά κατευθείαν από τις εγγυήσεις. */}
           {/* Δύο και δύο. Οι τίτλοι δεν αναδιπλώνονται ποτέ σε μισή στήλη και
               οι τέσσερις λεζάντες πιάνουν από δύο γραμμές, οπότε τα δύο ζευγάρια
               κάθονται σε δύο ίσες σειρές. */}
@@ -517,77 +519,12 @@ export default async function Landing() {
         </div>
       </section>
 
-      {/* ── Γιατί υπάρχει ───────────────────────────────────────────────────
-             ΓΙΑΤΙ ΜΠΑΙΝΕΙ ΕΔΩ, ΑΚΡΙΒΩΣ ΠΡΙΝ ΤΗΝ ΤΙΜΗ: μέχρι αυτό το σημείο η
-             σελίδα έχει αποδείξει ΤΙ κάνει. Δεν έχει πει ποτέ ΓΙΑΤΙ. Ένας
-             επισκέπτης που θα δει τιμή σε δέκα δευτερόλεπτα θέλει πρώτα να
-             καταλάβει ότι απέναντί του υπάρχει κάποιος που ξέρει το πρόβλημα.
-
-             ΓΙΑΤΙ ΧΩΡΙΣ ΚΑΡΤΑ ΚΑΙ ΧΩΡΙΣ ΠΛΑΙΣΙΟ: όλη η σελίδα είναι κάρτες και
-             πλέγματα. Μια φωνή μέσα σε κάρτα γίνεται άλλη μια δυνατότητα. Γυμνό
-             κείμενο, σε μεγαλύτερο μέγεθος και με αέρα γύρω του, διαβάζεται ως
-             κάποιος που μιλάει.
-
-             ΤΙ ΔΕΝ ΛΕΕΙ: δεν επικαλείται βιογραφία, ιδρυτές ή ιστορίες που δεν
-             μπορεί να επαληθεύσει ο αναγνώστης. Περιγράφει ένα πρόβλημα που
-             αναγνωρίζει όποιος έχει ακίνητο στην Ελλάδα και σταματά εκεί. */}
-      <section className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
-        {/* ═══ ΤΡΙΑ ΠΡΑΓΜΑΤΑ ΔΙΟΡΘΩΘΗΚΑΝ ΕΔΩ ΚΑΙ ΤΑ ΤΡΙΑ ΦΑΙΝΟΝΤΑΝ ══════════
-            ΤΟ ΜΕΓΕΘΟΣ. Ο τίτλος ήταν 30 εικονοστοιχεία σε βάρος 450, ενώ κάθε
-            άλλη ενότητα της σελίδας έχει 40 σε βάρος 700. Δίπλα στο «Τέσσερα
-            πακέτα» από κάτω του διαβαζόταν ως ΥΠΟΤΙΤΛΟΣ εκείνου, όχι ως δικός
-            του τίτλος. Τώρα χρησιμοποιεί το `SectionHead`, όπως όλες: μία
-            κεφαλίδα ενότητας σε όλη τη σελίδα, καμία τοπική εκδοχή.
-
-            ΤΟ ΜΗΚΟΣ. Τέσσερις παράγραφοι των πενήντα λέξεων, με τις δύο στήλες
-            να τελειώνουν σε άνισο ύψος. Κόπηκαν στο μισό: μία ιδέα ανά
-            παράγραφο, δύο παράγραφοι ανά στήλη, ίδιο βάρος αριστερά και δεξιά.
-            Ο βοηθός δεν αναφέρεται πια εδώ — έχει δική του γραμμή πάνω από τον
-            τιμοκατάλογο και δεν λέγεται δύο φορές.
-
-            ΤΟ ΚΛΕΙΣΙΜΟ. Ήταν η τελευταία πρόταση της δεξιάς στήλης, δηλαδή
-            θαμμένη. Στέκεται μόνη της, σε όλο το πλάτος: είναι η υπόσχεση της
-            ενότητας, όχι υποσημείωση. */}
-        <SectionHead over="Γιατί υπάρχει" title="Κανείς δεν απέκτησε ακίνητο για να κάνει λογιστική" />
-        {/* ═══ ΤΕΣΣΕΡΙΣ ΠΑΡΑΓΡΑΦΟΙ, ΠΕΡΑ ΠΕΡΑ, ΧΩΡΙΣ ΣΤΗΛΕΣ ══════════════════════
-            ΓΙΑΤΙ ΕΦΥΓΑΝ ΟΙ ΣΤΗΛΕΣ. Δοκιμάστηκαν τρεις φορές και τις τρεις έβγαλαν
-            το ίδιο πρόβλημα: δύο κείμενα δίπλα δίπλα ΠΡΕΠΕΙ να τελειώνουν στην
-            ίδια γραμμή για να φαίνονται σχεδιασμένα και αυτό δεν ελέγχεται από
-            το πλήθος των χαρακτήρων — η τελευταία γραμμή κάθε παραγράφου
-            στρογγυλοποιεί προς τα πάνω, οπότε η μία στήλη έβγαινε πάντα μία
-            γραμμή μακρύτερη. Σε στήλη μισού πλάτους η στοίχιση «πέρα πέρα»
-            άνοιγε και ποτάμια λευκού ανάμεσα στις λέξεις.
-
-            ΤΩΡΑ. Τέσσερις σύντομες παράγραφοι στο πλήρες μέτρο της ενότητας,
-            όσο και ο τίτλος από πάνω. Καμία δεν έχει απέναντί της κάτι να
-            ζυγιστεί, οπότε δεν υπάρχει τίποτα να ξεστοιχιστεί — και η δεξιά άκρη
-            μένει ελεύθερη, ώστε να μην ανοίγουν ποτάμια λευκού πουθενά. */}
-        <div className="lp-why">
-          {/* Η ΣΤΟΙΧΙΣΗ ΠΕΡΑ ΠΕΡΑ ΕΙΧΕ ΞΑΝΑΜΠΕΙ ΑΠΟ ΤΟ JSX, ενώ ο κανόνας του
-              .lp-why εξηγεί γιατί έφυγε. Και η τρίτη παράγραφος υποσχόταν «τα
-              πάντα… νομικά, πλήρως ενημερωμένα»: νομικές συμβουλές δεν δίνουμε
-              (οι συχνές ερωτήσεις παραπέμπουν σε επαγγελματία). Λέει πλέον τι
-              κρατά η εφαρμογή και με ποιους κανόνες. */}
-          <p>Το φορολογικό πλαίσιο των ακινήτων αλλάζει κάθε χρόνο και οι προθεσμίες πληθαίνουν.</p>
-          <p>Ε2, ΕΝΦΙΑ, δήλωση βραχυχρόνιας μίσθωσης, τεκμαρτή έκπτωση, κοινόχρηστα, αναπροσαρμογή
-            μακροχρόνιου μισθώματος: καθένα με τη δική του προθεσμία και η ευθύνη πάντα πάνω σου.</p>
-          <p>Γι’ αυτό φτιάξαμε το PROPERWISE. Κρατά τα έξοδα, τις φορολογικές υποχρεώσεις και τις
-            προθεσμίες κάθε ακινήτου, με τους κανόνες του έτους που δηλώνεις.</p>
-          <p>Ο φόρος βγαίνει από τα δικά σου ποσά, οι προθεσμίες μπαίνουν στο ημερολόγιο της συσκευής
-            σου και κάθε παραστατικό καταχωρείται με μία φωτογραφία. Ο φάκελος του λογιστή κατεβαίνει
-            με ένα κλικ.</p>
-        </div>
-        <p style={{ fontSize: 'clamp(17px, 1.9vw, 21px)', lineHeight: 1.45, color: 'var(--text-primary)', letterSpacing: '-0.015em',
-          margin: 'clamp(26px, 3.2vw, 40px) 0 0', textWrap: 'pretty' }}>
-          Εσύ κρατάς τις αποφάσεις· το PROPERWISE κάνει τα υπόλοιπα.
-        </p>
-        <div style={{ marginTop: 14, textWrap: 'balance' }}>
-          <Link href="/trust" className="lp-link po-tap" style={{ color: ACCENT, textDecoration: 'none', fontSize: 15, fontWeight: 600 }}>
-            Ποιοι είμαστε και πού βρίσκονται τα δεδομένα σου
-          </Link>
-        </div>
-      </section>
-
+      {/* ── «ΓΙΑΤΙ ΥΠΑΡΧΕΙ» ΕΦΥΓΕ ΩΣ ΧΩΡΙΣΤΗ ΕΝΟΤΗΤΑ (17/11/2026) ─────────────
+             Τέσσερις παράγραφοι και 670 εικονοστοιχεία στα 1.440 που έλεγαν ξανά
+             τα ίδια με τις Δυνατότητες («ΕΝΦΙΑ, Ε2, δήλωση μίσθωσης, καθένα με
+             τη δική του προθεσμία») και με το «Πώς λειτουργεί» (φωτογραφία,
+             ημερολόγιο, φάκελος λογιστή). Το «Ποιοι είμαστε» ζει στα ψιλά της
+             Ασφάλειας ακριβώς από πάνω και στο υποσέλιδο. */}
       {/* ── ΣΕ ΠΟΙΟΝ ΑΠΕΥΘΥΝΕΤΑΙ, ΑΚΡΙΒΩΣ ΠΡΙΝ ΤΗΝ ΤΙΜΗ ─────────────────────
              Ήταν τρίτη ενότητα της σελίδας, πέντε ενότητες μακριά από τον
              τιμοκατάλογο — και οι δύο έδειχναν τα ΙΔΙΑ τέσσερα πακέτα. Ο
@@ -599,7 +536,7 @@ export default async function Landing() {
 
       {/* ── Pricing ── */}
       <section id="pricing" className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: GAP }}>
-        <SectionHead title="Τι κοστίζει κάθε πακέτο" sub="Κάθε πακέτο περιλαμβάνει ό,τι έχει το προηγούμενο." />
+        <SectionHead title="Τι κοστίζει κάθε πακέτο" />
         {/* ΜΙΑ ΠΗΓΗ ΓΙΑ ΤΙΣ ΤΙΜΕΣ ΚΑΙ ΤΑ ΧΑΡΑΚΤΗΡΙΣΤΙΚΑ.
             Οι κάρτες ήταν γραμμένες με το χέρι: τιμές, ετήσιες τιμές και λίστες
             χαρακτηριστικά αντιγραμμένα από το lib/billing/plans.ts. Είχαν ήδη
@@ -689,7 +626,7 @@ export default async function Landing() {
             η τρίτη έσπαγε μόνη της σε δεύτερη σειρά, οπότε τα ψιλά γράμματα
             διαβάζονταν κάτω κάτω αντί για πέρα πέρα. Μένουν οι ίδιες τρεις
             προτάσεις (η δοκιμή με το όριό της, ο ΦΠΑ, η εγγύηση), στη σειρά. */}
-        <p className="fineprint fineprint-cols po-just" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: FAINT, margin: '22px 0 0' }}>
+        <p className="fineprint fineprint-cols po-just" style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: MUTED, margin: '20px 0 0' }}>
           {TRIAL_OFFER}{billingLive && <> {billingWords().firstCharge}</>}
           {' '}{PRICES_VAT} {NO_COMMITMENT}
           <span className="fineprint-col2">{billingWords().moneyBack}</span>
@@ -736,7 +673,7 @@ export default async function Landing() {
             μετά δύο στήλες και ήταν χειρότερο: μία παράγραφος κομμένη στη μέση
             της οθόνης, με το μάτι να γυρίζει πάνω. Η επιφύλαξη διαβάζεται μία
             φορά και από πάνω προς τα κάτω, όπως κάθε άλλο κείμενο εδώ. */}
-        <p className="fineprint po-just" style={{ fontSize: 'var(--fs-base)', color: FAINT, margin: '22px 0 0' }}>
+        <p className="fineprint po-just" style={{ fontSize: 'var(--fs-base)', color: MUTED, margin: '20px 0 0' }}>
           {/* ΤΟ ΔΩΡΟ ΤΟΥ ΣΥΝΕΡΓΑΤΗ ΔΕΝ ΕΙΝΑΙ ΕΝΑ ΠΑΚΕΤΟ, ΕΙΝΑΙ ΕΝΑ ΣΚΑΛΙ ΠΑΝΩ.
               Γραφόταν σταθερά «Επαγγελματίας+», μετά διορθώθηκε σε ό,τι έδινε
               το PARTNER_WELCOME και ήταν πάλι λάθος: σταθερό δώρο σημαίνει ότι
@@ -769,7 +706,10 @@ export default async function Landing() {
 
       {/* ── FAQ: ίδια κεφαλίδα με κάθε άλλη ενότητα, ερωτήσεις σε όλο το πλάτος ── */}
       <section id="faq" className="lp-reveal" style={{ ...wrap, position: 'relative', zIndex: 1, paddingBottom: 0 }}>
-        <SectionHead over="Συχνές ερωτήσεις" title="Ό,τι ρωτούν οι ιδιοκτήτες πριν ξεκινήσουν" sub="Τα όρια και οι χρεώσεις, πριν ξεκινήσεις." />
+        <hr className="lp-hair" />
+        <div className="lp-band">
+        <div className="lp-band-head"><SectionHead hair={false} over="Συχνές ερωτήσεις" title="Ό,τι ρωτούν οι ιδιοκτήτες πριν ξεκινήσουν" /></div>
+        <div>
         {/* ═══ ΠΕΝΤΕ ΦΑΙΝΟΝΤΑΙ, ΟΙ ΥΠΟΛΟΙΠΕΣ ΑΝΟΙΓΟΥΝ ══════════════════════════
             Έντεκα ερωτήσεις η μία κάτω από την άλλη δεν διαβάζονται: σαρώνονται
             και προσπερνιούνται. Και είναι η ΤΕΛΕΥΤΑΙΑ ενότητα πριν το κλείσιμο,
@@ -782,7 +722,7 @@ export default async function Landing() {
             ΜΕΣΑ στο έγγραφο, οπότε οι μηχανές αναζήτησης τις διαβάζουν κανονικά.
             Το δομημένο σχήμα από κάτω τις δηλώνει ούτως ή άλλως και τις ένδεκα. */}
         <div style={{ borderBottom: `1px solid ${LINE}` }}>
-          <FaqList list={FAQ.slice(0, FAQ_VISIBLE)} />
+          <FaqList list={FAQ.slice(0, FAQ_VISIBLE)} firstOpen />
         </div>
         <FaqMore>
           {/* ΤΟ «display» ΕΦΥΓΕ ΑΠΟ ΤΟ ΕΝΣΩΜΑΤΟ ΣΤΥΛ ΚΑΙ ΑΥΤΟ ΗΤΑΝ ΟΛΟ ΤΟ ΣΦΑΛΜΑ.
@@ -807,6 +747,8 @@ export default async function Landing() {
             <FaqList list={FAQ.slice(FAQ_VISIBLE)} />
           </div>
         </FaqMore>
+        </div>
+        </div>
       </section>
 
       {/* ── Final CTA: σκοτεινό κλείσιμο, καθρέφτης του hero ── */}
@@ -815,7 +757,11 @@ export default async function Landing() {
           τόνου κάτω από την τελευταία ερώτηση. Η `lp-final` σβήνει το σέλας
           προς τα πάνω, ώστε το φως να ανεβαίνει από τη μέση και όχι από τη γραμμή. */}
       <section className="lp-hero lp-reveal lp-final" style={{ position: 'relative', overflow: 'hidden', borderBottom: 'none' }}>
-        <div style={{ ...wrap, position: 'relative', zIndex: 1, textAlign: 'center', paddingTop: GAP, paddingBottom: GAP }}>
+        {/* ΣΤΟΝ ΥΠΟΛΟΓΙΣΤΗ ΜΙΑ ΖΩΝΗ, ΟΧΙ ΣΤΟΙΒΑ (17/11/2026): ο τίτλος και οι δύο
+            γραμμές αριστερά, το κουμπί δεξιά στο ύψος τους, όπως κλείνουν οι
+            σελίδες προϊόντων που διαβάζονται με μία ματιά. Κάτω από τα 1.024
+            μένει κεντραρισμένο, καθρέφτης του hero (.lp-final-band). */}
+        <div className="lp-final-band" style={{ ...wrap, position: 'relative', zIndex: 1, textAlign: 'center', paddingTop: GAP, paddingBottom: GAP }}>
           <h2 style={{ fontSize: 'clamp(28px, 4.6vw, 46px)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1.1, margin: '0 auto 16px', maxWidth: 720, color: 'var(--text-primary)', textWrap: 'balance' }}>Το ακίνητό σου, υπό έλεγχο.</h2>
           {/* ΤΟ ΚΛΕΙΣΙΜΟ ΛΕΕΙ ΤΙ ΚΕΡΔΙΖΕΙΣ, ΟΧΙ ΤΙ ΚΟΣΤΙΖΕΙ (02.10.2026, απόφαση
               ιδιοκτήτη). Ίδια λογική και ίδια διάταξη με τον υπότιτλο του hero
@@ -823,8 +769,7 @@ export default async function Landing() {
               στοίχιση. Η τιμή και η δοκιμή ζουν στα ✓ του hero και στον
               τιμοκατάλογο. */}
           <p className="lp-lede" data-nohy="" style={{ fontSize: 'clamp(14px, 1.8vw, 17px)', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 auto 30px' }}>
-            <span className="lp-lede-line">Κάθε έγγραφο στη θέση του, κάθε προθεσμία στην ώρα της.</span>{' '}
-            <span className="lp-lede-line">Και η επόμενη δήλωση θα σε βρει με τον φάκελο ήδη έτοιμο.</span>
+            <span className="lp-lede-line">Κάθε έγγραφο στη θέση του, κάθε προθεσμία στην ώρα της.</span>
           </p>
           <Link href={loggedIn ? '/dashboard' : withSignupEntry('/signup', 'home')} className="lp-cta lp-primary lp-final-cta" style={{ display: 'inline-block', textDecoration: 'none', fontSize: 15, fontWeight: 700, padding: '14px 30px', borderRadius: T.radius.pill }}>{loggedIn ? 'Άνοιξε τον πίνακά σου' : signupCta()}</Link>
         </div>

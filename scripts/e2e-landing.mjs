@@ -190,7 +190,12 @@ for (const [w, h, label] of [[1440, 900, 'υπολογιστής 1440'], [820, 1
   // κενό που άφησε το κείμενο που μόλις έφυγε, χωρίς σημείο αναφοράς στην
   // οθόνη. Προσομοιώνουμε ακριβώς αυτό: σκρολάρουμε στην τελευταία ερώτηση
   // πριν κλείσουμε.
-  await p.locator('#faq details.lp-faq:not(.lp-faq-more)').last().scrollIntoViewIfNeeded()
+  // ΣΤΗΝ ΚΟΡΥΦΗ ΤΗΣ ΟΘΟΝΗΣ, ΟΧΙ «ΑΝ ΧΡΕΙΑΖΕΤΑΙ» (17/11/2026). Με τη σελίδα
+  // πιο κοντή η ανοιχτή λίστα χωρά σχεδόν ολόκληρη στα 820×1180: η τελευταία
+  // ερώτηση ήταν ήδη ορατή, το scrollIntoViewIfNeeded δεν κουνούσε τίποτα και η
+  // κορυφή της ενότητας έμενε στα −20, δηλαδή ο έλεγχος δεν δοκίμαζε κύλιση.
+  // Ο αναγνώστης που διαβάζει την τελευταία ερώτηση την έχει ψηλά στην οθόνη.
+  await p.locator('#faq details.lp-faq:not(.lp-faq-more)').last().evaluate(el => el.scrollIntoView({ block: 'start' }))
   const beforeShut = await p.evaluate(() => {
     const r = document.getElementById('faq').getBoundingClientRect()
     return { scrollY: window.scrollY, faqTop: Math.round(r.top) }
@@ -416,8 +421,11 @@ for (const w of [1280, 1440, 1920]) {
     const n = el => { const lh = parseFloat(getComputedStyle(el).lineHeight) || 20; return Math.round(el.getBoundingClientRect().height / lh) }
     const txt = el => el.textContent.replace(/\u00ad/g, '').slice(0, 30)
     const bad = []
-    document.querySelectorAll('.lp-works-t').forEach(el => { if (n(el) > 1) bad.push(`τίτλος «${txt(el)}» ${n(el)} γραμμές`) })
-    document.querySelectorAll('.lp-works-d').forEach(el => { if (n(el) > 2) bad.push(`λεζάντα «${txt(el)}» ${n(el)} γραμμές`) })
+    // Τα κελιά πίσω από το κλειστό «Δες όλα» δεν φαίνονται και δεν μετριούνται·
+    // μετρά μόνο ό,τι βλέπει ο επισκέπτης.
+    const seen = el => el.checkVisibility({ contentVisibilityAuto: true })
+    document.querySelectorAll('.lp-works-t').forEach(el => { if (seen(el) && n(el) > 1) bad.push(`τίτλος «${txt(el)}» ${n(el)} γραμμές`) })
+    document.querySelectorAll('.lp-works-d').forEach(el => { if (seen(el) && n(el) > 2) bad.push(`λεζάντα «${txt(el)}» ${n(el)} γραμμές`) })
     document.querySelectorAll('.lp-feat-d').forEach(el => { if (n(el) > 2) bad.push(`δυνατότητα «${txt(el)}» ${n(el)} γραμμές`) })
     return { bad, count: document.querySelectorAll('.lp-works-t').length + document.querySelectorAll('.lp-feat-d').length }
   })
@@ -466,6 +474,28 @@ for (const path of ['/', '/ypologismos-enfia']) for (const [w, h] of [[320, 568]
   ok(`ο τελευταίος σύνδεσμος φτάνεται με κύλιση: ${at}`, m.lastIn)
   ok(`κανένας σύνδεσμος κομμένος: ${at}`, m.cut.length === 0, m.cut.join(' · '))
   ok(`χωρίς οριζόντια κύλιση με ανοιχτό μενού: ${at}`, m.page <= m.vw, `${m.page} > ${m.vw}`)
+  await p.close()
+}
+
+// ═══ Η ΑΡΧΙΚΗ ΔΕΝ ΞΑΝΑΜΑΚΡΑΙΝΕΙ ════════════════════════════════════════════
+// ΤΙ ΜΕΤΡΗΘΗΚΕ (17/11/2026). Η σελίδα ήταν 10.640 ύψος στα 1.440 και 13.631 στα
+// 390: δώδεκα ενότητες με κενό 80, μια ιστορία τριών βημάτων των 58vh, δύο
+// ενότητες που έλεγαν το μήνυμα της διπλανής τους. Μετά τη σύμπτυξη ήταν 7.433
+// και 10.405 (−30% και −24%). Το ταβάνι κρατά λίγο περιθώριο για μια γραμμή
+// κειμένου παραπάνω· όχι για νέα ενότητα. Μετά το πέρασμα κειμένου της ίδιας
+// μέρας («όχι πολλά λόγια, μόνο ουσία») έπεσε σε 7.306 και 9.887 και το ταβάνι
+// κατέβηκε μαζί. Όποιος προσθέσει ενότητα, βγάζει ή
+// συμπτύσσει μια άλλη ή ανεβάζει το ταβάνι εδώ, με σημείωση γιατί.
+const HEIGHT_CEILING = { 1440: 7500, 390: 10100 }
+for (const [w, h] of [[1440, 900], [390, 844]]) {
+  const p = await newPage({ viewport: { width: w, height: h } })
+  await p.goto(BASE + '/', { waitUntil: 'networkidle' })
+  await p.evaluate(async () => {
+    for (let y = 0; y < document.body.scrollHeight; y += 600) { window.scrollTo(0, y); await new Promise(r => setTimeout(r, 30)) }
+    window.scrollTo(0, 0)
+  })
+  const tall = await p.evaluate(() => document.documentElement.scrollHeight)
+  ok(`η αρχική δεν ξεπερνά τα ${HEIGHT_CEILING[w]} ύψος στα ${w}`, tall <= HEIGHT_CEILING[w], `${tall}`)
   await p.close()
 }
 

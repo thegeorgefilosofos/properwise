@@ -22,6 +22,7 @@ import { createClient } from '@/lib/supabase/client'
 import * as feedStore from '@/lib/data/calendarFeed'
 import { T, Btn } from '@/components/Theme'
 import { Calendar, CalendarDays, CalendarPlus } from 'lucide-react'
+import { useAppEn } from '@/lib/i18n/appEn'
 
 // ═══ ΜΙΑ ΦΟΡΑ ΑΝΑ ΟΘΟΝΗ ════════════════════════════════════════════════════
 // Ο ιδιοκτήτης είδε την ίδια πρόταση δύο φορές στην Επισκόπηση (21/10/2026),
@@ -37,6 +38,7 @@ export function CalendarQuickAdd({ userId, framed = false }: {
 }) {
   const [row, setRow] = useState<feedStore.FeedRow | null>(null)
   const [first, setFirst] = useState(false)
+  const en = useAppEn('overview')?.calendarFeed
 
   useEffect(() => {
     let live = true
@@ -62,7 +64,7 @@ export function CalendarQuickAdd({ userId, framed = false }: {
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flex: '1 1 220px', minWidth: 0 }}>
         <CalendarPlus size={15} color="var(--accent)" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
         <p style={{ margin: 0, fontSize: 'var(--fs-note)', lineHeight: 1.5, color: 'var(--text-secondary)', fontFamily: T.font.sans }}>
-          Βάλε τις προθεσμίες στο ημερολόγιο του κινητού σου. Μία φορά, μετά ενημερώνεται μόνο του.
+          {en ?? 'Βάλε τις προθεσμίες στο ημερολόγιο του κινητού σου. Μία φορά, μετά ενημερώνεται μόνο του.'}
         </p>
       </div>
       {/* `.act-row`: στο τηλέφωνο τα δύο κουμπιά μοιράζονται ίσα τη σειρά,

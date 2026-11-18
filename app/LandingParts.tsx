@@ -26,12 +26,16 @@ import { FaqPlus } from './FaqPlus'
  *  Η ΓΡΑΜΜΗ ΖΕΙ ΣΤΟ CSS, ΟΧΙ ΕΔΩ. Ήταν inline και το inline δεν αναιρείται από
  *  φύλλο στυλ: στη ραφή των δύο ομάδων έπεφταν δύο γραμμές η μία πάνω στην
  *  άλλη και δεν υπήρχε τρόπος να σβήσει η μία χωρίς `!important`. */
-export function FaqList({ list }: { list: { q: string; a: string }[] }) {
+/*  ΑΚΟΡΝΤΕΟΝ ΜΕ ΑΝΟΙΧΤΗ ΤΗΝ ΠΡΩΤΗ (17/11/2026). Οι ερωτήσεις μοιράζονται
+ *  `name`, οπότε ο περιηγητής κρατά ανοιχτή μία κάθε φορά: ανοίγεις άλλη και η
+ *  προηγούμενη κλείνει, χωρίς JavaScript. Η πρώτη («Τι είναι…») φτάνει ανοιχτή,
+ *  ώστε ο επισκέπτης να βλέπει αμέσως ότι οι γραμμές ανοίγουν και τι απαντούν. */
+export function FaqList({ list, firstOpen = false }: { list: { q: string; a: string }[]; firstOpen?: boolean }) {
   return (
     <>
-      {list.map((f) => (
-        <details key={f.q} className="lp-faq">
-          <summary style={{ cursor: 'pointer', listStyle: 'none', padding: '19px 0', fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+      {list.map((f, i) => (
+        <details key={f.q} className="lp-faq" name="lp-faq" open={firstOpen && i === 0}>
+          <summary style={{ cursor: 'pointer', listStyle: 'none', padding: '16px 0', fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
             {f.q}<FaqPlus style={{ color: ACCENT }} />
           </summary>
           {/* ΠΕΡΑ-ΠΕΡΑ, ΓΙΑΤΙ ΕΙΝΑΙ ΔΥΟ ΓΡΑΜΜΕΣ.
@@ -118,9 +122,9 @@ export function NoaFeature({ locale = 'el' }: { locale?: Locale } = {}) {
   const noa = PLANS.solo, ai = aiLimitsFor('solo');
   const en = locale === 'en', P = partsFor(locale), N = PARTS_EN.noa, money = fmtFor(locale).fe;
   const does = [
-    ...(en ? N.does : [{ t: 'Ρωτάς όπως μιλάς', d: 'Γραπτά ή με τη φωνή σου, στα ελληνικά.' },
-    { t: 'Απαντά με τα δικά σου', d: 'Βασίζεται στις καταχωρήσεις σου, όχι σε γενικές συμβουλές.' },
-    { t: 'Σε πάει εκεί που πρέπει', d: 'Ανοίγει την οθόνη που χρειάζεσαι για το επόμενο βήμα.' },
+    ...(en ? N.does : [{ t: 'Ρωτάς όπως μιλάς', d: 'Γραπτά ή με τη φωνή σου.' },
+    { t: 'Απαντά με τα δικά σου', d: 'Από τις καταχωρήσεις σου, όχι γενικές συμβουλές.' },
+    { t: 'Σε πάει εκεί που πρέπει', d: 'Ανοίγει την οθόνη του επόμενου βήματος.' },
   ]),
   ];
   return (
@@ -133,12 +137,35 @@ export function NoaFeature({ locale = 'el' }: { locale?: Locale } = {}) {
             <span className="nf-mono" aria-hidden="true">N</span>
             {en ? N.title : <>Γνώρισε {ASSISTANT_ACC}.</>}
           </h2>
-          <p className="nf-lead po-just">{hy(en ? N.lead : 'Ρωτάς για το ακίνητό σου στα ελληνικά και απαντά με τα δικά σου νούμερα. Ό,τι θα ρωτούσες τον λογιστή, πριν τον πάρεις τηλέφωνο.')}</p>
+          <p className="nf-lead po-just">{hy(en ? N.lead : 'Ρωτάς στα ελληνικά, απαντά με τα δικά σου νούμερα.')}</p>
           <ul className="nf-does">
             {does.map(x => (
               <li key={x.t}><strong>{x.t}</strong><span>{hy(x.d)}</span></li>
             ))}
           </ul>
+        </div>
+        {/* Η ΤΙΜΗ ΚΑΙ ΤΟ ΚΟΥΜΠΙ ΚΑΤΩ ΑΠΟ ΤΗΝ ΚΑΡΤΑ, ΣΤΗ ΔΕΞΙΑ ΣΤΗΛΗ (17/11/2026).
+            Στην αριστερή στήλη κάτω από τη λίστα έκαναν την ενότητα 640 ψηλή ενώ
+            η κάρτα δεξιά τελείωνε στα 360: μισή ενότητα κενή στη μία πλευρά. Τώρα
+            οι δύο στήλες τελειώνουν σχεδόν μαζί· στο τηλέφωνο η σειρά είναι
+            κείμενο, κάρτα, τιμή, κουμπί. */}
+        <div className="nf-side">
+        <div className="nf-stage" aria-label={en ? N.stage : `Παραδείγματα ερωτήσεων προς ${ASSISTANT_ACC}`}>
+          <div className="nf-card">
+            <div className="nf-head">
+              <span className="nf-avatar" aria-hidden="true">N</span>
+              <span><strong>{en ? N.name : ASSISTANT_NAME}</strong><small>{en ? N.sub : 'Για τα ακίνητά σου'}</small></span>
+            </div>
+            <ul className="nf-asks">
+              {(en ? N.asks : NOA_ASKS).map(q => <li key={q}>{q}</li>)}
+            </ul>
+            <div className="nf-input" aria-hidden="true">
+              <span>{en ? N.input : 'Ρώτα κάτι για το ακίνητό σου…'}</span>
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v4" /></svg>
+            </div>
+          </div>
+          {en && <p style={{ position: 'relative', margin: '12px 0 0', fontSize: 12, color: FAINT, textAlign: 'center' }}>{N.asksNote}</p>}
+        </div>
           <div className="nf-offer">
             <div className="nf-price">
               <span className="nf-amount">{money(noa.priceMonthly)}<span className="nf-per" style={{ marginLeft: 2, letterSpacing: 0, fontWeight: 400 }}>{P.perMonth}</span></span>
@@ -157,22 +184,6 @@ export function NoaFeature({ locale = 'el' }: { locale?: Locale } = {}) {
             <span className="nf-free">{en ? N.noSub : `Ο «${PLANS.free.name}» χωρίς ${ASSISTANT_ACC} δεν θέλει συνδρομή.`}</span>
           </div>
         </div>
-        <div className="nf-stage" aria-label={en ? N.stage : `Παραδείγματα ερωτήσεων προς ${ASSISTANT_ACC}`}>
-          <div className="nf-card">
-            <div className="nf-head">
-              <span className="nf-avatar" aria-hidden="true">N</span>
-              <span><strong>{en ? N.name : ASSISTANT_NAME}</strong><small>{en ? N.sub : 'Για τα ακίνητά σου'}</small></span>
-            </div>
-            <ul className="nf-asks">
-              {(en ? N.asks : NOA_ASKS).map(q => <li key={q}>{q}</li>)}
-            </ul>
-            <div className="nf-input" aria-hidden="true">
-              <span>{en ? N.input : 'Ρώτα κάτι για το ακίνητό σου…'}</span>
-              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 17v4" /></svg>
-            </div>
-          </div>
-          {en && <p style={{ position: 'relative', margin: '12px 0 0', fontSize: 12, color: FAINT, textAlign: 'center' }}>{N.asksNote}</p>}
-        </div>
       </div>
     </section>
   );
@@ -185,10 +196,12 @@ export function NoaFeature({ locale = 'el' }: { locale?: Locale } = {}) {
  */
 const glue = (t: string) => t.replace(/(\d+)\s+(?=\S)/g, '$1\u00A0');
 
-export function SectionHead({ over, title, sub }: { over?: string; title: string; sub?: string }) {
+/** `hair={false}` όταν η λεπτή γραμμή μπαίνει έξω, σε όλο το πλάτος της ζώνης
+ *  δύο στηλών (.lp-band) και η κεφαλίδα κάθεται μόνο στην αριστερή στήλη. */
+export function SectionHead({ over, title, sub, hair = true }: { over?: string; title: string; sub?: string; hair?: boolean }) {
   return (
-    <div style={{ marginBottom: 'clamp(24px, 3.4vw, 40px)' }}>
-      <hr className="lp-hair" />
+    <div style={{ marginBottom: `clamp(${T.sp.xl}px, 2.4vw, ${T.sp.section}px)` }}>
+      {hair && <hr className="lp-hair" />}
       {/* Χωρίς ετικέτα όταν θα επαναλάμβανε τον τίτλο (έλεγχος UX 09/11/2026). */}
       {over && <div className="lp-eyebrow">{over}</div>}
       <h2 style={{ fontSize: 'clamp(25px, 3.4vw, 40px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0, textWrap: 'balance' }}>{title}</h2>
@@ -388,6 +401,21 @@ export function PlanCard({ planId, name, nameColor, sub, price, per, note, annua
       {/* ΣΥΝΔΕΣΜΟΣ ΠΟΥ ΜΟΙΑΖΕΙ ΣΥΝΔΕΣΜΟΣ. Γκρι, δώδεκα εικονοστοιχεία, χωρίς
           υπογράμμιση: διαβαζόταν ως λεζάντα και όχι ως επιλογή. */}
       {annual && <Link href={localHref(locale, withSignupEntry(`/signup?plan=${planId}&cycle=annual`, 'home'))} className="lp-link" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 44, marginTop: 2, color: TEXT, textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{annual}</Link>}
+    </div>
+  );
+}
+
+/** Πόσα κελιά της Συμβατότητας φαίνονται στο τηλέφωνο πριν το «Δες όλα». Τα
+ *  οκτώ διαιρούνται με το τέσσερα: στον υπολογιστή η πρώτη ομάδα είναι ακριβώς
+ *  η πρώτη σειρά του πλέγματος και η δεύτερη η δεύτερη. */
+export const WORKS_FIRST = 4
+
+/** Ένα κελί της Συμβατότητας, ίδιο στις δύο γλώσσες και στις δύο ομάδες. */
+export function WorksCell({ w }: { w: { t: string; d: string } }) {
+  return (
+    <div>
+      <div className="lp-works-t" style={{ fontSize: 15, fontWeight: 700, color: TEXT, letterSpacing: '-0.01em', marginBottom: 4 }}>{w.t}</div>
+      <div className="lp-even lp-works-d" style={{ fontSize: 14, color: MUTED, lineHeight: 1.5 }}>{w.d}</div>
     </div>
   );
 }

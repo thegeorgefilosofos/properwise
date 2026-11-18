@@ -29,6 +29,7 @@ import { writeStatus, type PropertyStatus } from '@/lib/property/status'
 import type { OwnerContext } from '@/lib/property/visibility'
 import { LEGAL_FORMS, type LegalForm } from '@/lib/accounting/dossier'
 import { confirmDialog, confirmDiscard } from '@/components/ConfirmDialog'
+import { useAppEn } from '@/lib/i18n/appEn'
 import { notify, notifyError, notifyOk } from '@/components/Toast'
 import { PLAN_COLUMNS, CHECKOUT_RETURN_SAY, planFieldsFromRow, planReadApplies, pollUntil, subscriptionArrived, takeCheckoutReturn, type PlanProfileRow } from '@/lib/billing/planRefresh'
 import { clearHistory as clearAssistantHistory } from '../assistantPersona'
@@ -51,6 +52,8 @@ import { tourDoneLocally, markTourDoneLocally } from '@/lib/onboarding/tourDone'
 const KBD_NEVER_CHANGES = () => () => {};
 
 export function useDashboard() {
+  // Το αγγλικό λεξικό του κελύφους, ή `null` στα ελληνικά (lib/i18n/appEn.tsx).
+  const E = useAppEn('shell')
   const supabase = createClient();
   // Ο χρήστης έρχεται από `supabase.auth.getUser()` — έχει δικό του τύπο. Με
   // `any` κανένα από τα ~30 σημεία που διαβάζουν `user.id`/`user.email`/
@@ -682,14 +685,16 @@ export function useDashboard() {
     // διάλογος έλεγε τα ίδια λόγια και στις δύο περιπτώσεις, σαν να ήταν δικό
     // του. Δεν αφαιρούμε το δικαίωμα που έδωσε ο ιδιοκτήτης· λέμε τι είναι.
     const mine = (properties.find(x => x.id === pid)?.user_id ?? user.id) === user.id;
-    const ok = await confirmDialog(
+    const ok = await (E ? confirmDialog(E.confirmDelete(name, mine), {
+      tone: 'negative', title: E.dialog.confirmTitle, confirmLabel: E.confirmDeleteLabel, cancelLabel: E.dialog.cancel,
+    }) : confirmDialog(
       `Οριστική διαγραφή του ακινήτου «${name}»;\n\n`+
       `Θα διαγραφούν όλα τα συνδεδεμένα στοιχεία του (έσοδα, δαπάνες, λογαριασμοί, `+
       `ενοικιαστής, δάνεια, απογραφή, έγγραφα, διαμονές), μαζί με το ιστορικό `+
       `της συνομιλίας με τη Νόα γι’ αυτό. Η ενέργεια δεν αναιρείται.`+
       (mine ? `` : `\n\nΤο ακίνητο δεν είναι δικό σου: ανήκει στον ιδιοκτήτη που σε πρόσθεσε στην ομάδα. Η διαγραφή γράφεται στο ημερολόγιό του με το όνομά σου.`),
       { tone: 'negative', confirmLabel: 'Οριστική διαγραφή' }
-    );
+    ));
     if (!ok) return;
     // ── Η ΓΡΑΜΜΗ ΕΛΕΓΧΟΥ ΓΡΑΦΕΤΑΙ ΠΡΙΝ, ΟΧΙ ΜΕΤΑ ────────────────────────
     // Μετά τη διαγραφή το ακίνητο δεν υπάρχει και η log_activity δεν μπορεί
@@ -744,7 +749,8 @@ export function useDashboard() {
   const closeQuickAdd = () => setQuickAddOpen(false);
   const requestCloseQuickAdd = async () => {
     if (scanBusy) return;
-    if (scanDirty && !(await confirmDiscard('Η σάρωση έγινε και τα στοιχεία της δεν έχουν καταχωρηθεί.'))) return;
+    if (scanDirty && !(await confirmDiscard(E ? E.unsavedScan : 'Η σάρωση έγινε και τα στοιχεία της δεν έχουν καταχωρηθεί.',
+      E ? { title: E.dialog.discardTitle, confirmLabel: E.dialog.discardConfirm, cancelLabel: E.dialog.discardCancel } : undefined))) return;
     closeQuickAdd();
   };
 
@@ -772,7 +778,10 @@ export function useDashboard() {
     // ΟΙ ΜΗ ΚΑΤΑΧΩΡΗΜΕΝΕΣ ΣΑΡΩΣΕΙΣ ΡΩΤΟΥΝ ΕΔΩ, ΟΣΟ ΥΠΑΡΧΕΙ ΑΚΟΜΗ ΣΥΝΕΔΡΙΑ. Μετά
     // το `endSession` τίποτα δεν επιτρέπεται να σταματήσει την έξοδο: το
     // `hardNavigate` σβήνει τα προσχέδια και τον φύλακα ανανέωσης πριν φύγει.
-    if (anyKeptUnsaved() && !(await confirmDialog({
+    if (anyKeptUnsaved() && !(await confirmDialog(E ? {
+      title: E.signOutConfirm.title, message: E.signOutConfirm.message(E.nav.documents),
+      confirmLabel: E.signOutConfirm.confirm, cancelLabel: E.signOutConfirm.cancel, tone: 'negative',
+    } : {
       title: 'Να γίνει αποσύνδεση;',
       message: `Στην καρτέλα «${navLabel('documents')}» υπάρχουν σαρώσεις που δεν έχουν καταχωρηθεί. Με την αποσύνδεση χάνονται.`,
       confirmLabel: 'Αποσύνδεση χωρίς καταχώρηση', cancelLabel: 'Συνέχεια', tone: 'negative',

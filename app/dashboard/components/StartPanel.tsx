@@ -20,6 +20,7 @@
 import { T, TT, Btn, IconBtn } from '@/components/Theme';
 import { daysLabel, stepsLabel, type StartPanelState } from '@/lib/home/start';
 import { useBillingWords } from './useBillingWords';
+import { useAppEn } from '@/lib/i18n/appEn';
 
 /** «Έγιναν 2 από τα 3 βήματα.» — για τον αναγνώστη οθόνης. */
 const doneLine = (done: number, total: number): string =>
@@ -52,6 +53,8 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
   // Η γραμμή της δοκιμής, στις λέξεις του lib/legal/billingWords.ts. Χωρίς
   // απάντηση του διακομιστή δεν λέγεται τίποτα για τη δοκιμή.
   const words = useBillingWords();
+  // Τα αγγλικά της λίστας, ή `null` στα ελληνικά (lib/i18n/appEn.tsx).
+  const P = useAppEn('overview')?.start;
   if (!state.visible) return null;
   const days = Math.max(0, Math.round(state.daysLeft));
   const trialLine = words?.trialLine ? (days === 1 ? words.trialLine.one : words.trialLine.many).replace('{n}', String(days)) : null;
@@ -68,11 +71,11 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
   // Μία γραμμή, με τα δύο μεγέθη που ενδιαφέρουν: πόσα μένουν και πόσος καιρός.
   if (collapsed) return (
     <div style={{ ...shell, display: 'flex', alignItems: 'center', gap: T.sp.md, padding: '12px 16px', flexWrap: 'wrap' }}>
-      <span style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 700 }}>Από πού ξεκινάς</span>
+      <span style={{ ...TT.bodySm, color: 'var(--text-primary)', fontWeight: 700 }}>{P ? P.title : 'Από πού ξεκινάς'}</span>
       <span style={{ ...TT.caption, flex: 1, minWidth: 0 }}>
-        {stepsLabel(state.open)}, απομένουν <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{daysLabel(state.daysLeft)}</span>
+        {P ? P.left(state.open, state.daysLeft) : <>{stepsLabel(state.open)}, απομένουν <span style={{ fontFamily: T.font.num, fontVariantNumeric: 'tabular-nums' }}>{daysLabel(state.daysLeft)}</span></>}
       </span>
-      <Btn variant="ghost" onClick={() => onToggle(false)}>Άνοιγμα</Btn>
+      <Btn variant="ghost" onClick={() => onToggle(false)}>{P ? P.open : 'Άνοιγμα'}</Btn>
     </div>
   );
 
@@ -87,8 +90,8 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
           στόχος αφής είναι το κουτί του `IconBtn`, το αρνητικό περιθώριο
           κρατά τη γραμμή στο ύψος του τίτλου. */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: T.sp.md }}>
-        <div style={{ ...TT.h2 }}>Από πού ξεκινάς</div>
-        <IconBtn label="Σύμπτυξη" size="md" expanded onClick={() => onToggle(true)} style={{ margin: '-8px -8px -8px 0' }}>
+        <div style={{ ...TT.h2 }}>{P ? P.title : 'Από πού ξεκινάς'}</div>
+        <IconBtn label={P ? P.collapse : 'Σύμπτυξη'} size="md" expanded onClick={() => onToggle(true)} style={{ margin: '-8px -8px -8px 0' }}>
           <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6" /></svg>
         </IconBtn>
       </div>
@@ -96,9 +99,11 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
 
       {/* Το τσεκάρισμα ακούγεται κιόλας: τα βήματα ξαναμετρώνται όταν ο χρήστης
           γυρίζει στην Επισκόπηση (useDashboard, `refreshStartSignals`). */}
-      <p role="status" className="sr-only">{doneLine(state.steps.length - state.open, state.steps.length)}</p>
+      <p role="status" className="sr-only">{P ? P.done(state.steps.length - state.open, state.steps.length) : doneLine(state.steps.length - state.open, state.steps.length)}</p>
       <ul style={{ listStyle: 'none', margin: '16px 0 0', padding: 0 }}>
-        {state.steps.map((s, i) => {
+        {state.steps.map((s0, i) => {
+          const t = P?.steps[s0.key];
+          const s = t ? { ...s0, title: t[0], hint: t[1], cta: t[2] } : s0;
           // ΜΟΝΟ ΕΝΑ ΒΗΜΑ ΕΙΝΑΙ «ΤΩΡΑ»: το πρώτο ανοιχτό. Δύο ταυτόχρονα
           // τονισμένα βήματα δεν είναι ιεραρχία, είναι δύο κουμπιά που
           // διεκδικούν το ίδιο κλικ.
@@ -154,13 +159,13 @@ export default function StartPanel({ state, collapsed, onToggle, onNavigate, onP
         <div style={{ display: 'flex', alignItems: 'center', gap: T.sp.sm, marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
           {/* ΤΟ ΠΑΡΑΔΕΙΓΜΑ ΦΕΥΓΕΙ ΜΟΛΙΣ ΥΠΑΡΧΕΙ ΑΛΗΘΙΝΟ ΑΚΙΝΗΤΟ. Ο χρήστης βλέπει πια
               τα δικά του ποσά· ένα φανταστικό ακίνητο δίπλα τους μπερδεύει. */}
-          {!state.hasProperty && <Btn variant="secondary" onClick={onPreview}>Δες ένα παράδειγμα</Btn>}
-          {onTour && <Btn variant="secondary" onClick={onTour}>Σύντομη περιήγηση</Btn>}
+          {!state.hasProperty && <Btn variant="secondary" onClick={onPreview}>{P ? P.example : 'Δες ένα παράδειγμα'}</Btn>}
+          {onTour && <Btn variant="secondary" onClick={onTour}>{P ? P.tour : 'Σύντομη περιήγηση'}</Btn>}
         </div>
       )}
       {!state.hasProperty && (
         <div style={{ ...TT.caption, marginTop: 10 }}>
-          Το παράδειγμα είναι ένα ακίνητο με μία ολόκληρη χρονιά στο PROPERWISE, για να δεις τι κάνει η εφαρμογή.
+          {P ? P.exampleNote : 'Το παράδειγμα είναι ένα ακίνητο με μία ολόκληρη χρονιά στο PROPERWISE, για να δεις τι κάνει η εφαρμογή.'}
         </div>
       )}
     </div>

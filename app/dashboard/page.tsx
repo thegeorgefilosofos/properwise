@@ -47,6 +47,9 @@ import { planBriefing } from './components/assistantPersona';
 import UpgradeModal from './components/UpgradeModal';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
+import { useAppEn } from '@/lib/i18n/appEn';
+import { useLocale } from '@/lib/i18n/useLocale';
+import { useAccountLocale } from './components/shell/useAccountLocale';
 import { MYAADE_OPEN_EVENT, type MyaadeOpenDetail, type BulkFromScan } from './components/myaadeOpen';
 import { useAppointmentReminders } from './components/useAppointmentReminders';
 import FeatureLock, { LockBadge } from './components/FeatureLock';
@@ -138,9 +141,21 @@ export default function Dashboard() {
   // «ΔΕΚΑ ΛΕΠΤΑ ΠΡΙΝ ΑΠΟ ΚΑΘΕ ΡΑΝΤΕΒΟΥ»: σε κάθε καρτέλα, για όλα τα ακίνητα.
   useAppointmentReminders(user?.id);
 
-  if (loading || !user) return (
+  // ── Η ΓΛΩΣΣΑ ΤΗΣ ΕΦΑΡΜΟΓΗΣ (lib/i18n/appEn.tsx) ─────────────────────────
+  // `E` είναι το αγγλικό λεξικό του κελύφους, ή `null` στα ελληνικά: τότε κάθε
+  // κείμενο παρακάτω είναι το ελληνικό που ήταν, χωρίς καμία αλλαγή. Στα
+  // αγγλικά η σελίδα περιμένει το λεξικό μαζί με τα δεδομένα, ώστε να μη δείξει
+  // ούτε ένα καρέ ελληνικά.
+  const E = useAppEn('shell');
+  // Η Επισκόπηση είναι η πρώτη οθόνη: το λεξικό της κατεβαίνει μαζί με του κελύφους.
+  const EO = useAppEn('overview');
+  const locale = useLocale();
+  useAccountLocale(user, locale);
+  const tabName = (id: string) => (E ? E.nav[id] ?? id : navLabel(id));
+
+  if (loading || !user || (locale === 'en' && (!E || !EO))) return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'calc(100vh / var(--zoom, 1))',background:'var(--bg-base)'}}>
-      <Spinner size={48} label="Φόρτωση…" />
+      <Spinner size={48} label={E ? E.loading : 'Φόρτωση…'} />
     </div>
   );
 
@@ -152,9 +167,9 @@ export default function Dashboard() {
   const userInitials = nameWords.length
     ? (nameWords[0][0] + (nameWords.length > 1 ? nameWords[nameWords.length - 1][0] : '')).toUpperCase()
     : (user?.email?.[0] ?? '·').toUpperCase();
-  const userLabel = fullName || 'Λογαριασμός';
+  const userLabel = fullName || (E ? E.account : 'Λογαριασμός');
   const statusColor = selected ? STATUS_COLORS[readStatus(selected)] : 'var(--text-secondary)';
-  const statusLabel = selected ? statusLabelOf(selected) : '';
+  const statusLabel = selected ? (E ? E.status[readStatus(selected)][0] : statusLabelOf(selected)) : '';
   // Η `getBadge` έφυγε: απαντούσε μόνο για `inventory` και `checklist`, που δεν
   // είναι καρτέλες του μενού. Τα δύο πλήθη τα διαβάζει απευθείας η κάτω μπάρα.
 
@@ -223,7 +238,7 @@ export default function Dashboard() {
   // Επισκόπηση πουθενά. Αλυσίδα, όχι βρόχος.
   const PARENT_TAB: Record<string, string> = { inventory: 'documents' };
   const backTab = PARENT_TAB[navSafe] ?? 'overview';
-  const backLabel = navLabel(backTab);
+  const backLabel = tabName(backTab);
 
   // ── ΑΛΛΑΓΗ ΑΚΙΝΗΤΟΥ ΧΩΡΙΣ ΝΑ ΧΑΝΕΤΑΙ Η ΘΕΣΗ ────────────────────────────────
   //
@@ -243,17 +258,17 @@ export default function Dashboard() {
   const switchProperty = (p: Property) => {
     setSelected(p);
     setSidebarOpen(false);
-    setAnnounce(`Ενεργό ακίνητο: ${p.name}`);
+    setAnnounce(E ? E.activeProperty(p.name) : `Ενεργό ακίνητο: ${p.name}`);
   };
 
   // Εντολές command palette: μετάβαση σε tab, εναλλαγή ακινήτου, γρήγορες ενέργειες
   const cmdItems: CommandItem[] = [
     ...NAV_ITEMS.filter(item => isTabPurchasable(effProfileType, item.id) && navVisible(item.id)).map(item => ({
-      id: `nav-${item.id}`, label: item.label, hint: 'Μετάβαση', group: 'Πλοήγηση',
+      id: `nav-${item.id}`, label: E ? tabName(item.id) : item.label, hint: E ? E.cmdk.goHint : 'Μετάβαση', group: E ? E.cmdk.navGroup : 'Πλοήγηση',
       keywords: item.id, action: () => { if (selected) setNav(item.id); },
     })),
     ...properties.map(p => ({
-      id: `prop-${p.id}`, label: p.name, hint: 'Ακίνητο', group: 'Ακίνητα',
+      id: `prop-${p.id}`, label: p.name, hint: E ? E.cmdk.propertyHint : 'Ακίνητο', group: E ? E.cmdk.propertiesGroup : 'Ακίνητα',
       keywords: `${p.address||''} ${propertyTypeLabel(p.prop_type)}`,
       // Η καρτέλα ΔΕΝ μηδενίζεται στην αλλαγή ακινήτου — δες switchProperty.
       action: () => switchProperty(p),
@@ -261,14 +276,17 @@ export default function Dashboard() {
     // Η ΝΟΑ ΕΛΕΙΠΕ ΑΠΟ ΤΗΝ ΠΑΛΕΤΑ ΕΝΤΟΛΩΝ. Ο μόνος δρόμος ήταν το πλωτό κουμπί,
     // δηλαδή το ποντίκι — και μπαίνει πρώτη, γιατί είναι ο συντομότερος δρόμος
     // προς οτιδήποτε άλλο στη λίστα.
-    { id: 'act-ask', label: `Ρώτα τη ${ASSISTANT_NAME}`, hint: 'Ενέργεια', keywords: 'noa βοηθός assistant ρώτα σάρωσε',
+    { id: 'act-ask', label: E ? E.cmdk.ask : `Ρώτα τη ${ASSISTANT_NAME}`, hint: E ? E.cmdk.actionHint : 'Ενέργεια', keywords: 'noa βοηθός assistant ρώτα σάρωσε',
       action: () => askAssistant() },
-    { id: 'act-add', label: 'Προσθήκη ακινήτου', hint: 'Ενέργεια', keywords: 'new property add', action: () => tryAddProperty() },
+    { id: 'act-add', label: E ? E.cmdk.add : 'Προσθήκη ακινήτου', hint: E ? E.cmdk.actionHint : 'Ενέργεια', keywords: 'new property add', action: () => tryAddProperty() },
     // ΧΩΡΙΣ ΕΛΕΓΧΟ ΟΡΙΟΥ, ΕΠΙΤΗΔΕΣ: στο όριο του πακέτου ο οδηγός δεν ανοίγει,
     // αλλά η εισαγωγή μένει χρήσιμη (ταιριάζει τα υπάρχοντα, φέρνει τις δόσεις
     // ΕΝΦΙΑ) και δείχνει η ίδια ποια νέα είναι «Εκτός πακέτου».
-    { id: 'act-bulk', label: 'Μαζική καταχώρηση από Ε9 ή ΕΝΦΙΑ', hint: 'Ενέργεια', keywords: 'e9 ε9 enfia ενφια μαζική εισαγωγή πράξη εκκαθαριστικό myaade pdf φωτογραφία bulk import', action: () => openMyaade() },
-    { id: 'act-signout', label: 'Αποσύνδεση', hint: 'Ενέργεια', keywords: 'logout sign out exit', action: () => signOut() },
+    { id: 'act-bulk', label: 'Μαζική καταχώρηση από Ε9 ή ΕΝΦΙΑ', hint: 'Ενέργεια', keywords: 'e9 ε9 enfia ενφια μαζική εισαγωγή πράξη εκκαθαριστικό myaade pdf φωτογραφία bulk import', action: () => openMyaade(), ...(E ? { label: E.cmdk.bulk, hint: E.cmdk.actionHint } : {}) },
+    // Ο ΔΡΟΜΟΣ ΠΙΣΩ ΣΤΑ ΕΛΛΗΝΙΚΑ ΜΕΝΕΙ ΠΑΝΤΑ ΣΤΗΝ ΑΝΑΖΗΤΗΣΗ, γραμμένος ελληνικά: όποιος
+    // άλλαξε γλώσσα κατά λάθος δεν χρειάζεται να βρει τη ρύθμιση σε ξένη γλώσσα.
+    ...(E ? [{ id: 'act-lang', label: E.cmdk.language, hint: E.cmdk.actionHint, keywords: 'language greek ellinika', action: () => setNav('settings') }] : []),
+    { id: 'act-signout', label: E ? E.cmdk.signOut : 'Αποσύνδεση', hint: E ? E.cmdk.actionHint : 'Ενέργεια', keywords: 'logout sign out exit', action: () => signOut() },
   ];
 
   return (
@@ -296,7 +314,7 @@ export default function Dashboard() {
             Το `aria-label` λέει τον προορισμό και όχι το όνομα του προϊόντος:
             ένας αναγνώστης οθόνης που ανακοινώνει «PROPERWISE, κουμπί» δεν
             πληροφορεί κανέναν για το τι θα συμβεί. */}
-        <button type="button" className="sidebar-logo" aria-label={`Πήγαινε στην ${navLabel('overview')}`}
+        <button type="button" className="sidebar-logo" aria-label={E ? E.goTo(tabName('overview')) : `Πήγαινε στην ${navLabel('overview')}`}
           onClick={()=>{ setNav('overview'); setSidebarOpen(false); }}>
           <BrandLogo size={22} />
         </button>
@@ -309,14 +327,14 @@ export default function Dashboard() {
           onClick={()=>{ setQuickAddOpen(true); setSidebarOpen(false); }}
           className="quick-add-btn"
           disabled={!selected&&!scanNoProperty}
-          title={selected ? 'Φωτογράφισε ή ανέβασε οποιοδήποτε έγγραφο: λογαριασμό, απόδειξη πληρωμής, μισθωτήριο, ασφαλιστήριο' : scanNoProperty ? 'Πολλά ακίνητα μαζί από το Ε9 ή την πράξη ΕΝΦΙΑ' : 'Πρόσθεσε πρώτα ένα ακίνητο'}>
+          title={E ? (selected ? E.scanTitle.property : scanNoProperty ? E.scanTitle.bulk : E.scanTitle.none) : selected ? 'Φωτογράφισε ή ανέβασε οποιοδήποτε έγγραφο: λογαριασμό, απόδειξη πληρωμής, μισθωτήριο, ασφαλιστήριο' : scanNoProperty ? 'Πολλά ακίνητα μαζί από το Ε9 ή την πράξη ΕΝΦΙΑ' : 'Πρόσθεσε πρώτα ένα ακίνητο'}>
           <span className="quick-add-icon" aria-hidden>
             <svg aria-hidden="true" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
               <circle cx="12" cy="13" r="4"/>
             </svg>
           </span>
-          <span className="quick-add-label">Σάρωσε έγγραφο</span>
+          <span className="quick-add-label">{E ? E.scanLabel : 'Σάρωσε έγγραφο'}</span>
         </button>
 
         {/* Η ΛΙΣΤΑ ΑΚΙΝΗΤΩΝ ΕΦΥΓΕ ΑΠΟ ΕΔΩ, ΣΤΗΝ ΠΑΝΩ ΜΠΑΡΑ.
@@ -369,9 +387,9 @@ export default function Dashboard() {
                 <button key={id} data-nav={id} className={`sidebar-item ${nav===id?'active':''}`} onClick={()=>{setNav(id);setSidebarOpen(false);}} disabled={!selected}
                   aria-current={nav===id ? 'page' : undefined}
                   style={d.visible ? undefined : { opacity: 0.45 }}
-                  title={d.visible ? (locked ? 'Διαθέσιμο σε ανώτερο πακέτο' : undefined) : d.reason}>
+                  title={d.visible ? (locked ? (E ? E.lockedTab : 'Διαθέσιμο σε ανώτερο πακέτο') : undefined) : d.reason}>
                   <span className="sidebar-item-icon" aria-hidden>{ic(NAV_ICON[id]||'')}</span>
-                  <span className="sidebar-item-label">{id==='referral' && effProfileType==='professional' ? 'Πρόγραμμα συνεργατών' : NAV_LABEL[id]}</span>
+                  <span className="sidebar-item-label">{id==='referral' && effProfileType==='professional' ? (E ? E.partnerProgram : 'Πρόγραμμα συνεργατών') : E ? tabName(id) : NAV_LABEL[id]}</span>
                   {d.visible && locked && <LockBadge/>}
                 </button>
               );})}
@@ -395,9 +413,9 @@ export default function Dashboard() {
               if (hiddenTabCount(candidates, { ...disclosure, showAll: false }) === 0) return null;
               return (
                 <button type="button" onClick={() => setNavShowAllPref(false)} className="sidebar-item" style={{ color: 'var(--text-tertiary)' }}
-                  title="Κρύβει ξανά όσες καρτέλες δεν χρειάζεσαι αυτή τη στιγμή. Δεν χάνεται τίποτα: επανέρχονται με ένα κλικ.">
+                  title={E ? E.fewerTabsTitle : 'Κρύβει ξανά όσες καρτέλες δεν χρειάζεσαι αυτή τη στιγμή. Δεν χάνεται τίποτα: επανέρχονται με ένα κλικ.'}>
                   <span className="sidebar-item-icon" aria-hidden>{ic('M4 6h16|M4 12h10|M4 18h6')}</span>
-                  <span className="sidebar-item-label">Λιγότερες καρτέλες</span>
+                  <span className="sidebar-item-label">{E ? E.fewerTabs : 'Λιγότερες καρτέλες'}</span>
                 </button>
               );
             }
@@ -405,9 +423,9 @@ export default function Dashboard() {
             if (hidden === 0) return null;
             return (
               <button type="button" onClick={showAllTabs} className="sidebar-item" style={{ color: 'var(--text-tertiary)' }}
-                title="Η εφαρμογή δείχνει πρώτα όσα χρειάζεσαι τώρα. Οι υπόλοιπες καρτέλες εμφανίζονται μόλις αποκτήσουν νόημα, ή τώρα με ένα κλικ.">
+                title={E ? E.allTabsTitle : 'Η εφαρμογή δείχνει πρώτα όσα χρειάζεσαι τώρα. Οι υπόλοιπες καρτέλες εμφανίζονται μόλις αποκτήσουν νόημα, ή τώρα με ένα κλικ.'}>
                 <span className="sidebar-item-icon" aria-hidden>{ic('M4 6h16|M4 12h16|M4 18h16')}</span>
-                <span className="sidebar-item-label">Όλες οι καρτέλες</span>
+                <span className="sidebar-item-label">{E ? E.allTabs : 'Όλες οι καρτέλες'}</span>
                 <span style={{ marginLeft: 'auto', fontFamily: T.font.sans, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>+{hidden}</span>
               </button>
             );
@@ -420,11 +438,11 @@ export default function Dashboard() {
             έξω. Η γραμμή πάει τώρα στον Λογαριασμό· η αποσύνδεση έχει δικό της
             κουμπί, με δικό της όνομα και δικό της στόχο αφής. */}
         <div className="sidebar-footer">
-          <button className="user-row" onClick={()=>{setNav('settings');setSidebarOpen(false);}} title="Λογαριασμός και ρυθμίσεις">
+          <button className="user-row" onClick={()=>{setNav('settings');setSidebarOpen(false);}} title={E ? E.accountTitle : 'Λογαριασμός και ρυθμίσεις'}>
             <span className="user-avatar" aria-hidden>{userInitials}</span>
             <span className="user-name po-elide">{userLabel}</span>
           </button>
-          <button className="sign-out-btn" onClick={signOut} aria-label="Αποσύνδεση" title="Αποσύνδεση">
+          <button className="sign-out-btn" onClick={signOut} aria-label={E ? E.signOut : 'Αποσύνδεση'} title={E ? E.signOut : 'Αποσύνδεση'}>
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
           </button>
         </div>
@@ -441,12 +459,12 @@ export default function Dashboard() {
               χαθεί η προειδοποίηση, ο αριθμός όμως δεν λέγεται και το μήνυμα
               λέει τι δεν έγινε και τι να κάνει ο χρήστης. */}
           <button className="nav-toggle" onClick={()=>setSidebarOpen(v=>!v)}
-            aria-label={pendingUnknown
+            aria-label={E ? (pendingUnknown ? E.menuUnknown : pendingCount > 0 ? E.menuPending(pendingCount) : E.menu) : pendingUnknown
               ? 'Μενού, οι εκκρεμότητες δεν ελέγχθηκαν: ανανέωσε τη σελίδα'
               : pendingCount > 0
                 ? `Μενού, ${pendingCount} ${pendingCount === 1 ? 'εκκρεμότητα' : 'εκκρεμότητες'}`
                 : 'Μενού'}
-            title={pendingUnknown ? 'Οι εκκρεμότητες δεν ελέγχθηκαν. Ανανέωσε τη σελίδα.' : undefined}
+            title={pendingUnknown ? (E ? E.pendingUnknownTitle : 'Οι εκκρεμότητες δεν ελέγχθηκαν. Ανανέωσε τη σελίδα.') : undefined}
             style={{ position: 'relative' }}>
             {(pendingCount > 0 || pendingUnknown) && <span className="bottom-nav-badge"/>}
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
@@ -475,7 +493,7 @@ export default function Dashboard() {
                       κάνει και τη δουλειά. Δύο κουμπιά, δύο ερωτήσεις που δεν
                       μπερδεύονται: «ποιο ακίνητο» και «σε τι κατάσταση είναι». */}
                   <PropertySwitcher
-                    items={properties.map(p => ({ id: p.id, name: p.name, status: statusLabelOf(p), address: p.address }))}
+                    items={properties.map(p => ({ id: p.id, name: p.name, status: E ? E.status[readStatus(p)][0] : statusLabelOf(p), address: p.address }))}
                     activeId={selected.id}
                     onSelect={(id)=>{ const p = properties.find(x=>x.id===id); if (p) switchProperty(p); }}
                     onAdd={()=>tryAddProperty()}
@@ -486,7 +504,7 @@ export default function Dashboard() {
                       δέχεται — και την κλάση `topbar-status`, που κάνει το ψαλίδισμα
                       της ετικέτας σε στενή οθόνη. */}
                   <div className="topbar-status-wrap" style={{position:'relative',minWidth:0}}>
-                    <button onClick={()=>setStatusDropdown(v=>!v)} className="topbar-status" title="Κατάσταση ακινήτου και εργαλεία (επεξεργασία, διαγραφή)" aria-haspopup="menu" aria-expanded={statusDropdown} style={{display:'flex',alignItems:'center',gap: 8,minHeight:T.h.sm,padding:'0 10px 0 12px',borderRadius: T.radius.chip,border:'1px solid var(--border-default)',background:statusDropdown?'var(--bg-hover)':'transparent',cursor:'pointer',fontFamily: T.font.sans,fontSize:12,fontWeight:500,color:'var(--text-primary)',transition:'background 0.15s'}} onMouseEnter={e=>{if(!statusDropdown)e.currentTarget.style.background='var(--bg-hover)'}} onMouseLeave={e=>{if(!statusDropdown)e.currentTarget.style.background='transparent'}}>
+                    <button onClick={()=>setStatusDropdown(v=>!v)} className="topbar-status" title={E ? E.statusTitle : 'Κατάσταση ακινήτου και εργαλεία (επεξεργασία, διαγραφή)'} aria-haspopup="menu" aria-expanded={statusDropdown} style={{display:'flex',alignItems:'center',gap: 8,minHeight:T.h.sm,padding:'0 10px 0 12px',borderRadius: T.radius.chip,border:'1px solid var(--border-default)',background:statusDropdown?'var(--bg-hover)':'transparent',cursor:'pointer',fontFamily: T.font.sans,fontSize:12,fontWeight:500,color:'var(--text-primary)',transition:'background 0.15s'}} onMouseEnter={e=>{if(!statusDropdown)e.currentTarget.style.background='var(--bg-hover)'}} onMouseLeave={e=>{if(!statusDropdown)e.currentTarget.style.background='transparent'}}>
                       <div style={{width:6,height:6,borderRadius:'50%',background:statusColor,flexShrink:0}}/>
                       {/* ΤΟ ΨΑΛΙΔΙ ΘΕΛΕΙ ΣΤΟΙΧΕΙΟ ΓΙΑ ΝΑ ΠΙΑΣΕΙ. Η ετικέτα ήταν
                           γυμνό κείμενο ανάμεσα σε δύο στοιχεία, οπότε το
@@ -503,7 +521,7 @@ export default function Dashboard() {
                           πληκτρολόγιο κλείνει με Escape. */}
                       <div aria-hidden onClick={()=>setStatusDropdown(false)} style={{position:'fixed',inset:0,zIndex:99}}/>
                       <div role="menu" style={{position:'absolute',top:'calc(100% + 8px)',left:0,maxHeight:'min(440px, calc(calc(100vh / var(--zoom, 1)) - 96px))',overflowY:'auto',overscrollBehavior:'contain',background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius:10,padding:'6px 0',zIndex:100,minWidth:224,boxShadow:'var(--shadow-lg)'}}>
-                        <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)', lineHeight: 1.3,fontWeight:600,color:'var(--text-tertiary)',padding:'6px 16px 4px'}}>Κατάσταση</div>
+                        <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)', lineHeight: 1.3,fontWeight:600,color:'var(--text-tertiary)',padding:'6px 16px 4px'}}>{E ? E.statusHead : 'Κατάσταση'}</div>
                         {STATUSES.map(({ key: k, label: v, hint }) => {
                           const active = readStatus(selected)===k;
                           return (
@@ -514,22 +532,22 @@ export default function Dashboard() {
                                   εμφανίζονται, οπότε η επιλογή πρέπει να είναι
                                   συνειδητή και όχι μαντεψιά. */}
                               <span style={{flex:1,minWidth:0}}>
-                                <span style={{display:'block'}}>{v}</span>
-                                <span className="po-subline" style={{display:'block',fontSize:12,color:'var(--text-tertiary)',fontWeight:400,lineHeight:1.4}}>{hint}</span>
+                                <span style={{display:'block'}}>{E ? E.status[k][0] : v}</span>
+                                <span className="po-subline" style={{display:'block',fontSize:12,color:'var(--text-tertiary)',fontWeight:400,lineHeight:1.4}}>{E ? E.status[k][1] : hint}</span>
                               </span>
                               {active && <svg aria-hidden="true" width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>}
                             </button>
                           );
                         })}
                         <div style={{height:1,background:'var(--border-subtle)',margin:'6px 12px'}}/>
-                        <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)', lineHeight: 1.3,fontWeight:600,color:'var(--text-tertiary)',padding:'6px 16px 4px'}}>Εργαλεία ακινήτου</div>
+                        <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)', lineHeight: 1.3,fontWeight:600,color:'var(--text-tertiary)',padding:'6px 16px 4px'}}>{E ? E.toolsHead : 'Εργαλεία ακινήτου'}</div>
                         <button className="po-hov-fill" role="menuitem" onClick={()=>{setStatusDropdown(false);setEditProperty(selected);}} style={{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'9px 16px',border:'none',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,color:'var(--text-primary)',textAlign:'left'}} >
                           <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                          Επεξεργασία στοιχείων
+                          {E ? E.editDetails : 'Επεξεργασία στοιχείων'}
                         </button>
                         <button className="po-hov-fill" role="menuitem" onClick={deleteProperty} style={{ '--hov-fill': 'var(--negative-dim)',display:'flex',alignItems:'center',gap:12,width:'100%',padding:'9px 16px',border:'none',cursor:'pointer',fontFamily: T.font.sans,fontSize:14,color:'var(--negative)',textAlign:'left'}} >
                           <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6M14 11v6"/></svg>
-                          Διαγραφή ακινήτου
+                          {E ? E.deleteProperty : 'Διαγραφή ακινήτου'}
                         </button>
                       </div>
                       </>
@@ -570,24 +588,24 @@ export default function Dashboard() {
                   `topbar-search` είναι που το κάνει 44 κεντραρισμένο στο κινητό·
                   σε υπολογιστή δείχνει και το πλακίδιο του ⌘K, άρα δεν είναι
                   ούτε καθαρό εικονοκούμπι. */}
-              <button onClick={()=>setCmdkOpen(true)} className="topbar-search po-hov-fill" title={`Αναζήτηση και γρήγορες ενέργειες (${kbdHint})`} aria-label="Αναζήτηση" style={{display:'flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 10px 0 12px',borderRadius: T.radius.pill,border:'1px solid var(--border-default)',color:'var(--text-secondary)',cursor:'pointer',flexShrink:0}} >
+              <button onClick={()=>setCmdkOpen(true)} className="topbar-search po-hov-fill" title={E ? E.searchTitle(kbdHint) : `Αναζήτηση και γρήγορες ενέργειες (${kbdHint})`} aria-label={E ? E.search : 'Αναζήτηση'} style={{display:'flex',alignItems:'center',gap:8,height:T.h.md,padding:'0 10px 0 12px',borderRadius: T.radius.pill,border:'1px solid var(--border-default)',color:'var(--text-secondary)',cursor:'pointer',flexShrink:0}} >
                 <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
                 <span className="desktop-only" style={{fontSize: 'var(--fs-xs)',fontFamily: T.font.mono,color:'var(--text-tertiary)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.xs,padding:'1px 5px'}}>{kbdHint}</span>
               </button>
             </>
           ) : (
-            <><div style={{flex:1,fontFamily: T.font.sans,fontSize:14,color:'var(--text-secondary)'}}>Κανένα ακίνητο ακόμη</div></>
+            <><div style={{flex:1,fontFamily: T.font.sans,fontSize:14,color:'var(--text-secondary)'}}>{E ? E.noPropertyYet : 'Κανένα ακίνητο ακόμη'}</div></>
           )}
         </header>
 
         {!selected && loadError ? (
           <div className="app-content" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{maxWidth:460,width:'100%',textAlign:'center'}}>
-              <h1 style={{fontFamily: T.font.sans,fontSize:22,fontWeight:700,color:'var(--text-primary)',margin:'0 0 10px'}}>Τα ακίνητά σου δεν φορτώθηκαν</h1>
+              <h1 style={{fontFamily: T.font.sans,fontSize:22,fontWeight:700,color:'var(--text-primary)',margin:'0 0 10px'}}>{E ? E.loadFailed.title : 'Τα ακίνητά σου δεν φορτώθηκαν'}</h1>
               <p style={{fontFamily: T.font.sans,fontSize:14,color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 20px',maxWidth:400}}>
-                Τα δεδομένα σου είναι ασφαλή. Συνήθως φταίει η σύνδεση.
+                {E ? E.loadFailed.body : 'Τα δεδομένα σου είναι ασφαλή. Συνήθως φταίει η σύνδεση.'}
               </p>
-              <Btn variant="primary" onClick={()=>{ if(user) fetchProperties(user.id); }}>Δοκίμασε ξανά</Btn>
+              <Btn variant="primary" onClick={()=>{ if(user) fetchProperties(user.id); }}>{E ? E.loadFailed.retry : 'Δοκίμασε ξανά'}</Btn>
             </div>
           </div>
         ) : !selected ? (
@@ -602,8 +620,8 @@ export default function Dashboard() {
               <div style={{width:80,height:80,borderRadius: T.radius.modal,background:'var(--accent-dim)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 22px',color:'var(--accent)'}}>
                 <BrandMark size={52} />
               </div>
-              <h1 style={{fontFamily: T.font.sans,fontSize:28,fontWeight:700,letterSpacing:'-0.025em',color:'var(--text-primary)',margin:'0 0 10px',textWrap:'balance'}}>Ξεκίνα από ένα ακίνητο</h1>
-              <p style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 28px',maxWidth:600,textWrap:'pretty'}}>Φτάνουν ο τύπος, η κατάσταση και ένα όνομα, π.χ. «Διαμέρισμα στο κέντρο». Τα υπόλοιπα τα συμπληρώνεις όποτε θέλεις.</p>
+              <h1 style={{fontFamily: T.font.sans,fontSize:28,fontWeight:700,letterSpacing:'-0.025em',color:'var(--text-primary)',margin:'0 0 10px',textWrap:'balance'}}>{E ? E.empty.title : 'Ξεκίνα από ένα ακίνητο'}</h1>
+              <p style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',color:'var(--text-secondary)',lineHeight:1.6,margin:'0 auto 28px',maxWidth:600,textWrap:'pretty'}}>{E ? E.empty.body : 'Φτάνουν ο τύπος, η κατάσταση και ένα όνομα, π.χ. «Διαμέρισμα στο κέντρο». Τα υπόλοιπα τα συμπληρώνεις όποτε θέλεις.'}</p>
               <ol style={{listStyle:'none',padding:0,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,170px),1fr))',gap:12,margin:'0 0 30px',textAlign:'left'}}>
                 {[
                   // ΙΔΙΟ ΜΕ ΤΟΝ ΟΔΗΓΟ ΚΑΙ ΜΕ ΤΗΝ ΠΡΟΤΑΣΗ ΑΠΟ ΠΑΝΩ (20.10.2026). Ελεγε
@@ -613,7 +631,7 @@ export default function Dashboard() {
                   {t:'Τα βασικά',d:'Τύπος, κατάσταση και ένα όνομα.'},
                   {t:'Ένας λογαριασμός',d:'Τον φωτογραφίζεις, ελέγχεις τα ποσά και καταχωρείται στο ακίνητο.'},
                   {t:'Ο ΕΝΦΙΑ σου',d:'Ενδεικτικά, μαζί με ό,τι λείπει για τον λογιστή.'},
-                ].map((f,i)=>(
+                ].map((f,i)=>(E ? { t: E.empty.steps[i][0], d: E.empty.steps[i][1] } : f)).map((f,i)=>(
                   <li key={i} style={{background:'var(--bg-surface)',border:'1px solid var(--border-subtle)',borderRadius: T.radius.popup,padding:'16px 16px 18px'}}>
                     <div style={{fontFamily: T.font.num,fontVariantNumeric:'tabular-nums',fontSize: 'var(--fs-xs)',fontWeight:600,color:'var(--accent)',marginBottom:10}}>{i+1}</div>
                     <div style={{fontFamily: T.font.sans,fontSize: 'var(--fs-base)',fontWeight:700,color:'var(--text-primary)',marginBottom:4}}>{f.t}</div>
@@ -630,9 +648,11 @@ export default function Dashboard() {
                   κανένα (3 από 8 λογαριασμούς) δεν μπορούσε να δει τι θα πάρει
                   πριν δώσει οτιδήποτε. Δευτερεύον, δίπλα στην κύρια ενέργεια. */}
               <div style={{display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap'}}>
-                <Btn variant="primary" onClick={() => tryAddProperty('empty')}>Πρόσθεσε το ακίνητό σου</Btn>
-                <Btn variant="secondary" onClick={() => openMyaade()}>Από Ε9 ή ΕΝΦΙΑ</Btn>
-                <Btn variant="secondary" onClick={() => setShowPreview(true)}>Δες ένα παράδειγμα</Btn>
+                <Btn variant="primary" onClick={() => tryAddProperty('empty')}>{E ? E.empty.add : 'Πρόσθεσε το ακίνητό σου'}</Btn>
+                {E
+                  ? <Btn variant="secondary" onClick={() => openMyaade()}>{E.empty.fromE9}</Btn>
+                  : <Btn variant="secondary" onClick={() => openMyaade()}>Από Ε9 ή ΕΝΦΙΑ</Btn>}
+                <Btn variant="secondary" onClick={() => setShowPreview(true)}>{E ? E.empty.example : 'Δες ένα παράδειγμα'}</Btn>
               </div>
               {user && <div style={{textAlign:'left'}}><AccountantInvites userId={user.id} canShare={hasFeature(ent,'e2_export')} /></div>}
             </div>
@@ -665,7 +685,7 @@ export default function Dashboard() {
                 // στο αριστερό όριο του κειμένου της σελίδας· το `Btn` γράφει
                 // «9px 18px» και θα το έσπρωχνε δεκαοκτώ μέσα, δηλαδή το «Πίσω»
                 // θα έπαυε να στοιχίζεται με τον τίτλο από κάτω του.
-                <button onClick={()=>setNav(backTab)} title={`Πίσω: ${backLabel}`} aria-label={`Πίσω: ${backLabel}`}
+                <button onClick={()=>setNav(backTab)} title={E ? E.back(backLabel) : `Πίσω: ${backLabel}`} aria-label={E ? E.back(backLabel) : `Πίσω: ${backLabel}`}
                   style={{display:'inline-flex',alignItems:'center',gap:6,marginBottom:14,padding:'4px 4px 4px 0',border:'none',background:'transparent',color:'var(--text-tertiary)',fontFamily: T.font.sans,fontSize: 'var(--fs-base)',fontWeight:600,cursor:'pointer'}}
                   onMouseEnter={e=>e.currentTarget.style.color='var(--text-primary)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-tertiary)'}>
                   <svg aria-hidden="true" width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
@@ -854,7 +874,7 @@ export default function Dashboard() {
 
       {/* Κάτω μπάρα πλοήγησης, μόνο σε κινητό (≤768px, μέσω CSS) */}
       {selected && (
-        <nav className="bottom-nav" aria-label="Κύρια πλοήγηση">
+        <nav className="bottom-nav" aria-label={E ? E.mainNav : 'Κύρια πλοήγηση'}>
           {BOTTOM_NAV.map(item => {
             const isActive = nav === item.id;
             const onTap = () => setNav(item.id);
@@ -866,7 +886,7 @@ export default function Dashboard() {
               <button key={item.id} data-tour-nav={item.id} className={`bottom-nav-item ${isActive?'active':''}`} onClick={onTap}
                 aria-current={isActive ? 'page' : undefined}>
                 {item.icon}
-                <span>{item.label}</span>
+                <span>{E ? tabName(item.id) : item.label}</span>
               </button>
             );
           })}
@@ -959,7 +979,7 @@ export default function Dashboard() {
           `selected` είναι ακόμη κενό και το DocumentScan κρατά το ακίνητο από το
           πρώτο του άνοιγμα. */}
       <Modal open={!!(quickAddOpen&&user&&(selected||scanNoProperty))} onClose={requestCloseQuickAdd} size="lg"
-        title="Σάρωση εγγράφου">
+        title={E ? E.scanModal : 'Σάρωση εγγράφου'}>
         {/* ΤΟ ΚΛΕΙΔΙ ΔΕΝ ΑΛΛΑΖΕΙ ΜΕ ΤΟ ΑΚΙΝΗΤΟ (έλεγχος PR 547). Ηταν `selected?.id`:
             κάθε αλλαγή του επιλεγμένου ακινήτου όσο το παράθυρο ήταν ανοιχτό (π.χ.
             η επαναφόρτωση μετά από καταχώρηση) ξαναέστηνε τη σάρωση και έσβηνε τον
