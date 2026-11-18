@@ -14,6 +14,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { createHash } from 'node:crypto'
 import { FIXTURES } from './messageFixtures.ts'
+import { emailShell, button } from './emailTemplates.ts'
 
 let pass = 0, fail = 0
 const ok = (name: string, cond: boolean) => { if (cond) pass++; else { fail++; console.error('✗ ' + name) } }
@@ -103,6 +104,11 @@ ok('η φορολογική προθεσμία παίρνει τίτλο από 
 ok('ο τίτλος του χρήστη μένει όπως τον έγραψε', r3.en!().includes('Boiler service'))
 const d2 = FIXTURES.find(f => f.name === 'dunning-2')!.en!()
 ok('η όχληση λέει τη σειρά της', d2.includes('Second reminder') && d2.includes('notice no. 2') && d2.includes('1.650,50€'))
+
+// ── Τιμή σε ιδιότητα: κανένα εισαγωγικό δεν σπάει το href (CodeQL) ─────
+const evil = emailShell({ bodyHtml: button('x', 'https://a.example/"onmouseover="x'), unsubUrl: 'https://a.example/u"><script>' })
+ok('το εισαγωγικό στο href διαφεύγεται', !evil.includes('"onmouseover') && evil.includes('&quot;onmouseover') && !evil.includes('<script>'))
+ok('απεγγραφή μόνο https/mailto', !emailShell({ bodyHtml: '', unsubUrl: 'javascript:alert(1)' }).includes('javascript:'))
 
 console.log(`messageLang: ${pass} ✓ · ${fail} ✗`)
 if (fail) process.exit(1)
