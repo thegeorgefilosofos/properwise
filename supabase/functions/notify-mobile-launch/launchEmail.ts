@@ -35,4 +35,3 @@ export function launchEmail(urls: { ios: string; android: string; app: string },
   })
   return { subject, html }
 }
-
