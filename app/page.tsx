@@ -384,7 +384,7 @@ export default async function Landing() {
             είναι το πιο ορατό λάθος διάταξης που υπάρχει: δεν χρειάζεται να ξέρεις
             τίποτα από σχεδιασμό για να το προσέξεις. Έξι κάρτες κλείνουν σε τέλειο
             3×2 και η ενότητα διαβάζεται ως ένα σχήμα, όχι ως λίστα που ξέμεινε. */}
-        <div className="lp-feat" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: CARD_GAP }}>
+        <div className="lp-feat po-scroll-x" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: CARD_GAP }}>
           {features.map((f, i) => (
             <div key={i} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 24px)' }}>
               <div style={{ width: 38, height: 38, borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: T.sp.lg }}>{ic(f.i)}</div>

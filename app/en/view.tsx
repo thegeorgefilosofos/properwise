@@ -161,7 +161,7 @@ export default async function LandingEn() {
 
       <section className="lp-reveal" style={{ ...wrap, ...LAYER, paddingBottom: GAP }}>
         <SectionHead {...FEATURES_HEAD_EN(FIRST_YEAR_NEW_BRACKETS)} />
-        <div className="lp-feat" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: CARD_GAP }}>
+        <div className="lp-feat po-scroll-x" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: CARD_GAP }}>
           {featuresEn(year).map(f => (
             <div key={f.t} className="lp-card" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: T.radius.card, padding: 'clamp(20px, 2.2vw, 24px)' }}>
               <div style={{ width: 38, aspectRatio: '1', borderRadius: T.radius.popup, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: T.sp.lg }}>{ic(f.i)}</div>

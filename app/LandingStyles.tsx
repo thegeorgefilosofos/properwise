@@ -706,6 +706,10 @@ export function LandingStyles() {
           .lp-feat::-webkit-scrollbar { display: none; }
           .lp-feat > .lp-card { grid-row: auto; grid-template-rows: auto auto; scroll-snap-align: center; }
         }
+        ${/* Το πλέγμα φέρει .po-scroll-x, τη δήλωση κάθε σκόπιμης οριζόντιας
+           κύλισης (e2e-mobile). Πάνω από τα 600 δεν κυλά: ορατή υπερχείλιση, ώστε
+           η σκιά και το ανασήκωμα της κάρτας στην αιώρηση να μην κόβονται. */''}
+        @media (min-width: 601px) { .lp-root .lp-feat { overflow: visible; } }
 
         ${/* Οι .lp-hide-xs και .lp-only-xs ΕΦΥΓΑΝ ΣΤΟ globals.css. Ζούσαν εδώ,
            δηλαδή υπήρχαν μόνο στην αρχική: η κεφαλίδα κάθε άλλης δημόσιας

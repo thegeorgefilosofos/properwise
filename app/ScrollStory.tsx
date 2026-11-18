@@ -81,7 +81,7 @@ export default function ScrollStory() {
   // από κάτω. Τώρα τα τρία βήματα κάθονται δίπλα δίπλα και κυλούν οριζόντια με
   // snap, όπως οι κάρτες των πακέτων· το ύψος είναι ενός βήματος. Το ενεργό
   // βήμα βγαίνει από την οριζόντια θέση και όχι από το μέσο της οθόνης.
-  const narrow = () => window.matchMedia('(max-width: 900px)').matches
+  const narrow = () => window.matchMedia('(max-width: 600px)').matches
 
   useEffect(() => {
     const root = stepsRef.current
@@ -171,6 +171,7 @@ export default function ScrollStory() {
         .story-dot.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
         .story-dot:hover { color: var(--text-primary); }
         .story-steps { display: flex; flex-direction: column; }
+        @media (min-width: 601px) { .story-grid .story-steps { overflow: visible; } }
         ${/* ΤΑ ΒΗΜΑΤΑ ΠΙΑΝΟΥΝ ΟΣΟ ΤΟ ΚΕΙΜΕΝΟ ΤΟΥΣ (17/11/2026). Ήταν 58vh το καθένα,
            δηλαδή 1.830 εικονοστοιχεία στα 1.440, το 17% ολόκληρης της σελίδας για
            τρεις παραγράφους, με μισή οθόνη κενό ανάμεσά τους. Τώρα τα τρία στέκουν
@@ -224,14 +225,22 @@ export default function ScrollStory() {
           .story-panel { position: static; display: none; opacity: 1; transform: none; }
           .story-panel.on { display: flex; }
           .story-rail { margin-top: 12px; }
-          .story-steps {
-            display: grid; grid-auto-flow: column; grid-auto-columns: 86%; gap: 20px;
-            overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
-            scrollbar-width: none;
+          .story-step { min-height: 0; opacity: 1; padding: 8px 0 20px; justify-content: flex-start; }
+          ${/* ΠΛΑΓΙΑ ΜΟΝΟ ΣΤΟ ΤΗΛΕΦΩΝΟ (18/11/2026). Ως τα 900 ήταν καρουζέλ και
+             στο iPad κάθετα τα τρία βήματα των 700 κυλούσαν πλάγια χωρίς λόγο:
+             χωρούν το ένα κάτω από το άλλο. Από τα 601 ως τα 900 στοιβάζονται.
+             Ο κυλιόμενος δηλώνεται με .po-scroll-x, όπως κάθε σκόπιμη οριζόντια
+             κύλιση (e2e-mobile) και στα πλατιά πλάτη ξαναγίνεται ορατός. */''}
+          @media (max-width: 600px) {
+            .story-grid .story-steps {
+              display: grid; grid-auto-flow: column; grid-auto-columns: 86%; gap: 20px;
+              overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
+              scrollbar-width: none;
+            }
+            .story-steps::-webkit-scrollbar { display: none; }
+            .story-step { padding: 4px 0 0; scroll-snap-align: start; }
+            .story-step + .story-step { border-top: 0; }
           }
-          .story-steps::-webkit-scrollbar { display: none; }
-          .story-step { min-height: 0; opacity: 1; padding: 4px 0 0; justify-content: flex-start; scroll-snap-align: start; }
-          .story-step + .story-step { border-top: 0; }
           ${/* ΤΟ ΠΑΝΕΛ ΔΕΝ ΚΑΡΦΩΝΕΤΑΙ ΠΙΑ ΣΤΟ ΤΗΛΕΦΩΝΟ. Καρφωνόταν για να το αλλάζει
              το κείμενο που κυλούσε από κάτω· τώρα τα βήματα κυλούν πλάγια ακριβώς
              κάτω του, οπότε δεν υπάρχει κάτι να περάσει από κάτω του ούτε σβήσιμο
@@ -303,7 +312,7 @@ export default function ScrollStory() {
       </div>
 
       {/* Δεξιά: τα βήματα της αφήγησης */}
-      <div className="story-steps" ref={stepsRef} role="region" aria-label="Οι τρεις κινήσεις" tabIndex={0}>
+      <div className="story-steps po-scroll-x" ref={stepsRef} role="region" aria-label="Οι τρεις κινήσεις" tabIndex={0}>
         {ACTS.map((a, i) => (
           <div key={a.key} data-idx={i} className={`story-step${i === active ? ' on' : ''}`}>
             {/* ═══ Ο ΤΙΤΛΟΣ ΔΕΝ ΣΠΑΕΙ ΣΤΑ ΔΥΟ ══════════════════════════════════
