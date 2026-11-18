@@ -16,7 +16,25 @@
 //
 // ΤΙ ΚΑΝΕΙΣ ΜΕ ΤΑ ΑΡΧΕΙΑ. Supabase → Authentication → Emails → κάθε πρότυπο,
 // επικόλληση. Οι μεταβλητές `{{ .ConfirmationURL }}` και `{{ .NewEmail }}`
-// είναι της Supabase και μένουν αυτούσιες.
+// είναι της Supabase και μένουν αυτούσιες. Τα βήματα, ένα ένα, στο
+// supabase/auth-templates/OWNER-STEPS.md.
+//
+// ΔΥΟ ΓΛΩΣΣΕΣ ΣΕ ΕΝΑ ΠΡΟΤΥΠΟ. Η Supabase δίνει στο πρότυπο τα μεταδεδομένα
+// του χρήστη ως `.Data` και δέχεται τη γλώσσα προτύπων της Go. Κάθε αρχείο
+// είναι λοιπόν ΔΥΟ ολόκληρα έγγραφα και μια επιλογή μπροστά τους:
+//
+//   1. η «Γλώσσα μηνυμάτων και email» του Λογαριασμού (`msg_locale`), αν
+//      υπάρχει·
+//   2. αλλιώς η γλώσσα της εφαρμογής (`app_locale`), που γράφει ήδη η αγγλική
+//      εγγραφή (/en/signup). Γι' αυτό η επιβεβαίωση εγγραφής, που φεύγει πριν
+//      υπάρξει οποιαδήποτε άλλη επιλογή, βγαίνει στα αγγλικά σε όποιον γράφτηκε
+//      από το /en·
+//   3. αλλιώς ελληνικά.
+//
+// Ο ίδιος κανόνας με το `msgLocale` του lib/i18n/locale.ts. Το ελληνικό έγγραφο
+// είναι ΙΔΙΟ ως το byte με ό,τι έβγαζε η γεννήτρια πριν από τα αγγλικά
+// (supabase/functions/_shared/authTemplates.test.ts). Το `if` σε κλειδί που λείπει δίνει ψευδές
+// χωρίς σφάλμα, οπότε ο χρήστης χωρίς μεταδεδομένα παίρνει τα ελληνικά.
 // ═══════════════════════════════════════════════════════════════════════════
 import { writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -24,7 +42,18 @@ import { emailShell, h, p, button, note, heroStat } from '../supabase/functions/
 
 const OUT = 'supabase/auth-templates'
 
-const TEMPLATES: Record<string, { subject: string; preheader: string; body: string }> = {
+type Tpl = { subject: string; preheader: string; body: string }
+
+/** Η επιλογή γλώσσας μπροστά από τα δύο έγγραφα. Βλ. την κεφαλίδα. */
+export const LANG_PICK =
+  '{{ $en := false }}'
+  + '{{ if .Data.app_locale }}{{ if eq .Data.app_locale "en" }}{{ $en = true }}{{ end }}{{ end }}'
+  + '{{ if .Data.msg_locale }}{{ $en = eq .Data.msg_locale "en" }}{{ end }}'
+
+/** Ολόκληρο το πρότυπο: η επιλογή, το αγγλικό έγγραφο, το ελληνικό. */
+export const bilingual = (en: string, el: string): string => `${LANG_PICK}{{ if $en }}${en}{{ else }}${el}{{ end }}`
+
+const TEMPLATES: Record<string, Tpl> = {
   'confirm-signup.html': {
     subject: 'Επιβεβαίωσε τη διεύθυνσή σου',
     preheader: 'Ένα πάτημα και ο λογαριασμός σου είναι έτοιμος.',
@@ -85,6 +114,77 @@ const TEMPLATES: Record<string, { subject: string; preheader: string; body: stri
   },
 }
 
+/** Τα ίδια πρότυπα στα αγγλικά: ίδια σειρά, ίδια μεταβλητή της Supabase σε κάθε κουμπί. */
+const TEMPLATES_EN: Record<string, Tpl> = {
+  'confirm-signup.html': {
+    subject: 'Confirm your address',
+    preheader: 'One tap and your account is ready.',
+    body:
+      h('Welcome to PROPERWISE')
+      + p('One tap and your account is ready.')
+      + button('Confirm your address', '{{ .ConfirmationURL }}')
+      + note('If you didn’t sign up, ignore this email. Without confirmation no account is created.'),
+  },
+  'reset-password.html': {
+    subject: 'Reset your password',
+    preheader: 'Set a new password with one tap.',
+    body:
+      h('Password reset')
+      + p('You asked to change your password. The link can be used once.')
+      + button('Set a new password', '{{ .ConfirmationURL }}')
+      + note('If you didn’t ask for this, you don’t need to do anything: your password stays as it is.'),
+  },
+  'change-email.html': {
+    subject: 'Confirm your new address',
+    preheader: 'The change completes with one tap.',
+    body:
+      h('Change of address')
+      + p('You asked to change your account’s address to <b>{{ .NewEmail }}</b>.')
+      + button('Confirm the new address', '{{ .ConfirmationURL }}')
+      + note('Until it is confirmed, the account carries on with your old address.'),
+  },
+  'invite.html': {
+    subject: 'Invitation to PROPERWISE',
+    preheader: 'Create your account with one tap.',
+    body:
+      h('You’ve been invited to PROPERWISE')
+      + p('Someone invited you to create an account on PROPERWISE. One tap and you’re in.')
+      + button('Create your account', '{{ .ConfirmationURL }}')
+      + note('If you weren’t expecting this invitation, ignore it: no account is created without you.'),
+  },
+  'magic-link.html': {
+    subject: 'Your sign-in link',
+    preheader: 'Sign in with one tap, no password.',
+    body:
+      h('Sign in to PROPERWISE')
+      + p('You asked for a sign-in link. It is valid for a short time and can be used once.')
+      + button('Sign in', '{{ .ConfirmationURL }}')
+      + note('If you didn’t ask for it, ignore it: nobody gets in without this link.'),
+  },
+  'reauthentication.html': {
+    subject: 'Your verification code',
+    preheader: 'The code to complete your action.',
+    body:
+      h('Confirm it’s you')
+      + p('To complete a sensitive action, enter the code below:')
+      + heroStat('{{ .Token }}', 'verification code')
+      + note('If you didn’t ask for it, ignore it and your account stays safe. The code expires in a few minutes.'),
+  },
+}
+
+/** Το ελληνικό έγγραφο ενός προτύπου, όπως το έβγαζε πάντα η γεννήτρια. */
+export const greekDoc = (file: string): string => {
+  const t = TEMPLATES[file]
+  return emailShell({ bodyHtml: t.body, preheader: t.preheader })
+}
+/** Το αγγλικό έγγραφο ενός προτύπου. */
+export const englishDoc = (file: string): string => {
+  const t = TEMPLATES_EN[file]
+  return emailShell({ bodyHtml: t.body, preheader: t.preheader, lang: 'en' })
+}
+export const TEMPLATE_FILES = Object.keys(TEMPLATES)
+export const subjectsOf = (file: string): { el: string; en: string } => ({ el: TEMPLATES[file].subject, en: TEMPLATES_EN[file].subject })
+
 /**
  * ΜΕ `--check` ΔΕΝ ΓΡΑΦΕΙ, ΣΥΓΚΡΙΝΕΙ. Ετσι ο φύλακας δεν χρειάζεται δεύτερο
  * αντίγραφο της λογικής και τα αρχεία στο αποθετήριο δεν μπορούν να
@@ -101,13 +201,20 @@ const emit = (file: string, content: string) => {
   if (on !== content) stale.push(path)
 }
 
-for (const [file, t] of Object.entries(TEMPLATES)) {
-  emit(file, emailShell({ bodyHtml: t.body, preheader: t.preheader }) + '\n')
-  lines.push(`${file.padEnd(22)} ${t.subject}`)
+// ΩΣ ΣΕΝΑΡΙΟ ΤΡΕΧΕΙ, ΩΣ ΕΙΣΑΓΩΓΗ ΟΧΙ: ο έλεγχος εισάγει τα έγγραφα χωρίς να γράψει αρχεία.
+const MAIN = /build-auth-templates\.ts$/.test(process.argv[1] ?? '')
+if (MAIN) {
+for (const file of TEMPLATE_FILES) {
+  if (!TEMPLATES_EN[file]) throw new Error(`λείπει το αγγλικό ${file}`)
+  emit(file, bilingual(englishDoc(file), greekDoc(file)) + '\n')
+  const subj = subjectsOf(file)
+  lines.push(`${file.padEnd(22)} ${bilingual(subj.en, subj.el)}`)
 }
 emit('THEMATA.txt',
   'Το θέμα (subject) που συνοδεύει κάθε πρότυπο στο Supabase.\n'
-  + 'Παράγονται από το scripts/build-auth-templates.ts. Μην τα γράψεις με το χέρι.\n\n'
+  + 'Παράγονται από το scripts/build-auth-templates.ts. Μην τα γράψεις με το χέρι.\n'
+  + 'Κάθε θέμα έχει και τις δύο γλώσσες: η Supabase διαλέγει με τον ίδιο κανόνα με το σώμα\n'
+  + '(OWNER-STEPS.md). Επικόλλησε ολόκληρη τη γραμμή μετά το όνομα του αρχείου.\n\n'
   + lines.join('\n') + '\n')
 
 if (CHECK && stale.length) {
@@ -126,3 +233,4 @@ if (CHECK && stale.length) {
 console.log(CHECK
   ? `✓ ${lines.length} πρότυπα ταυτότητας συμφωνούν με το κέλυφος`
   : `✓ ${lines.length} πρότυπα ταυτότητας στο ${OUT}`)
+}
