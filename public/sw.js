@@ -186,6 +186,15 @@ self.addEventListener('message', (event) => {
 
 const NOTIFY_TAG = 'pos-daily';
 
+// ΟΙ ΛΕΞΕΙΣ ΤΟΥ ΙΔΙΟΥ ΤΟΥ SERVICE WORKER, ΣΤΙΣ ΔΥΟ ΓΛΩΣΣΕΣ. Τίτλο και σώμα τα
+// γράφει ο διακομιστής στη γλώσσα του χρήστη (lib/push/message.ts)· εδώ μένουν
+// μόνο το κουμπί και η επιβεβαίωσή του. Το `lang: 'en'` έρχεται με το μήνυμα,
+// όταν ο χρήστης διάλεξε αγγλικά στη «Γλώσσα μηνυμάτων και email».
+const WORDS = {
+  el: { paid: 'Πλήρωσα', marked: 'Σημειώθηκε ως πληρωμένη', expense: 'Καταχωρήθηκε και στις δαπάνες του ακινήτου.', stopped: 'Οι υπενθυμίσεις της σταματούν.' },
+  en: { paid: 'I paid', marked: 'Marked as paid', expense: 'It was also added to the property’s expenses.', stopped: 'Its reminders stop.' },
+};
+
 self.addEventListener('push', (event) => {
   // ΧΩΡΙΣ ΠΕΡΙΕΧΟΜΕΝΟ, ΤΙΠΟΤΑ. Μια ειδοποίηση «PROPERWISE» χωρίς να λέει τι,
   // ξοδεύει την προσοχή που θα χρειαστεί η επόμενη.
@@ -197,20 +206,22 @@ self.addEventListener('push', (event) => {
   // στέλνει και διακριτικό (`pay`). Οι περιηγητές που δείχνουν κουμπιά το
   // δείχνουν· οι άλλοι αγνοούν το `actions` και το πάτημα ανοίγει τη σελίδα του.
   const pay = typeof msg.pay === 'string' && /^[A-Za-z0-9_-]{43}$/.test(msg.pay) ? msg.pay : null;
+  const lang = msg.lang === 'en' ? 'en' : 'el';
   event.waitUntil(self.registration.showNotification(msg.title, {
     body: msg.body,
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
     tag: NOTIFY_TAG,
     renotify: true,
-    actions: pay ? [{ action: 'plirosa', title: 'Πλήρωσα' }] : [],
-    data: { url: typeof msg.url === 'string' ? msg.url : '/dashboard', pay },
+    actions: pay ? [{ action: 'plirosa', title: WORDS[lang].paid }] : [],
+    data: { url: typeof msg.url === 'string' ? msg.url : '/dashboard', pay, lang },
   }));
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const pay = event.notification.data && event.notification.data.pay;
+  const w = WORDS[(event.notification.data && event.notification.data.lang) === 'en' ? 'en' : 'el'];
   // Το κουμπί «Πλήρωσα»: POST από το ίδιο origin και μια σύντομη επιβεβαίωση.
   // Αν αποτύχει, ανοίγει η σελίδα του διακριτικού, όπου ο χρήστης το ξαναδοκιμάζει.
   if (event.action === 'plirosa' && pay) {
@@ -218,7 +229,7 @@ self.addEventListener('notificationclick', (event) => {
       fetch('/api/plirosa', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: pay, action: 'pay' }) })
         .then((r) => r.json().catch(() => ({ ok: false })))
         .then((out) => out && out.ok
-          ? self.registration.showNotification('Σημειώθηκε ως πληρωμένη', { body: out.expense ? 'Καταχωρήθηκε και στις δαπάνες του ακινήτου.' : 'Οι υπενθυμίσεις της σταματούν.', icon: '/icons/icon-192.png', tag: NOTIFY_TAG })
+          ? self.registration.showNotification(w.marked, { body: out.expense ? w.expense : w.stopped, icon: '/icons/icon-192.png', tag: NOTIFY_TAG })
           : self.clients.openWindow('/plirosa/' + pay))
         .catch(() => self.clients.openWindow('/plirosa/' + pay))
     );

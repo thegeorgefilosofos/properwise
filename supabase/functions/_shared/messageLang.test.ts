@@ -65,5 +65,43 @@ if (process.argv.includes('--print')) {
 
 for (const f of FIXTURES) ok(`ελληνικά ίδια: ${f.name}`, EL_SHA[f.name] === sha(f.el()))
 
+// ── Τα αγγλικά: ορατό κείμενο χωρίς ελληνικό γράμμα ──────────────────────
+// Ορατό = ό,τι μένει χωρίς <style>, σχόλια (υποθετικά του Outlook) και ετικέτες.
+// Σάρωση με θέσεις, όχι με regex που κόβει ετικέτες (CodeQL).
+const GREEK = /[\p{Script=Greek}]/u
+const cut = (html: string, open: string, close: string) => {
+  let res = '', i = 0
+  for (;;) {
+    const a = html.indexOf(open, i)
+    if (a < 0) return res + html.slice(i)
+    const b = html.indexOf(close, a + open.length)
+    res += html.slice(i, a) + ' '
+    if (b < 0) return res
+    i = b + close.length
+  }
+}
+const visible = (html: string) => cut(cut(cut(html, '<style', '</style>'), '<!--', '-->'), '<', '>')
+/** Κύρια ονόματα που μένουν ελληνικά και εξηγούνται δίπλα τους. Κανένα ακόμη στα πρότυπα αυτά. */
+const GLOSSED: string[] = []
+const english = FIXTURES.filter(f => f.en)
+ok('υπάρχουν αγγλικά πρότυπα', english.length >= 14)
+for (const f of english) {
+  const en = f.en!()
+  let text = visible(en)
+  for (const g of GLOSSED) text = text.split(g).join('')
+  const m = GREEK.exec(text)
+  ok(`αγγλικά χωρίς ελληνικό γράμμα: ${f.name}${m ? ` («${text.slice(Math.max(0, m.index - 30), m.index + 30).trim()}»)` : ''}`, !m)
+  ok(`αγγλικά διαφέρουν: ${f.name}`, en !== f.el())
+  if (en.includes('<html')) ok(`<html lang="en">: ${f.name}`, en.includes('<html lang="en"'))
+}
+
+// ── Τα γεγονότα μένουν ίδια: ποσά και ημερομηνίες σε ελληνική μορφή ───────
+const r3 = FIXTURES.find(f => f.name === 'reminder-7days-3')!
+ok('ίδια ποσά και στις δύο γλώσσες', ['123,45€', '1.234,50€', '1.357,95€', '30/11/2026', '01/12/2026'].every(x => r3.el().includes(x) && r3.en!().includes(x)))
+ok('η φορολογική προθεσμία παίρνει τίτλο από το είδος της', r3.en!().includes('ENFIA: 4th installment'))
+ok('ο τίτλος του χρήστη μένει όπως τον έγραψε', r3.en!().includes('Boiler service'))
+const d2 = FIXTURES.find(f => f.name === 'dunning-2')!.en!()
+ok('η όχληση λέει τη σειρά της', d2.includes('Second reminder') && d2.includes('notice no. 2') && d2.includes('1.650,50€'))
+
 console.log(`messageLang: ${pass} ✓ · ${fail} ✗`)
 if (fail) process.exit(1)

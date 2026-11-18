@@ -24,6 +24,7 @@
 
 import type { FeedItem } from '@/lib/calendar/feed';
 import { daysFromToday } from '@/lib/home/cash';
+import type { Locale } from '@/lib/i18n/locale';
 
 export interface PushMessage {
   title: string;
@@ -38,6 +39,11 @@ export interface PushMessage {
   uid?: string;
   /** Το διακριτικό «Πλήρωσα» (lib/reminders/payLink.ts), όταν υπάρχει. */
   pay?: string;
+  /**
+   * Η γλώσσα του μηνύματος, μόνο όταν είναι αγγλικά. Τη διαβάζει ο service
+   * worker (public/sw.js) για το κουμπί «Πλήρωσα» και την επιβεβαίωσή του.
+   */
+  lang?: 'en';
 }
 
 /** Το γεγονός ημερολογίου πίσω από ένα `uid` της ροής, ή `null`. */
@@ -65,16 +71,34 @@ const clip = (s: string, n: number): string =>
 /** Πού πάει το πάτημα. Μία διαδρομή, γιατί μία είναι η οθόνη που απαντά. */
 export const PUSH_URL = '/dashboard';
 
-/** Η ολόκληρη φράση του χρόνου, για το σώμα ενός μηνύματος με ΕΝΑ θέμα. */
-const whenPhrase = (days: number): string =>
-  days === 0 ? 'Λήγει σήμερα'
-    : days === 1 ? 'Λήγει αύριο'
-    : days === -1 ? 'Η προθεσμία πέρασε χθες'
-    : `Η προθεσμία πέρασε εδώ και ${Math.abs(days)} ημέρες`;
-
-/** Η σύντομη μορφή, για όταν χωρούν πολλά θέματα σε μία γραμμή. */
-const whenShort = (days: number): string =>
-  days === 0 ? 'σήμερα' : days === 1 ? 'αύριο' : 'ληξιπρόθεσμο';
+/**
+ * Οι λέξεις της ειδοποίησης, ανά γλώσσα (`user_metadata.msg_locale`, lib/i18n/locale.ts).
+ * Οι τίτλοι των θεμάτων έρχονται ήδη στη γλώσσα του χρήστη (lib/calendar/deadlines.ts).
+ */
+const WORDS = {
+  el: {
+    /** Η ολόκληρη φράση του χρόνου, για το σώμα ενός μηνύματος με ΕΝΑ θέμα. */
+    when: (days: number): string =>
+      days === 0 ? 'Λήγει σήμερα'
+        : days === 1 ? 'Λήγει αύριο'
+        : days === -1 ? 'Η προθεσμία πέρασε χθες'
+        : `Η προθεσμία πέρασε εδώ και ${Math.abs(days)} ημέρες`,
+    /** Η σύντομη μορφή, για όταν χωρούν πολλά θέματα σε μία γραμμή. */
+    short: (days: number): string => days === 0 ? 'σήμερα' : days === 1 ? 'αύριο' : 'ληξιπρόθεσμο',
+    many: (n: number) => `${n} προθεσμίες`,
+    rest: (n: number) => ` · και άλλες ${n}`,
+  },
+  en: {
+    when: (days: number): string =>
+      days === 0 ? 'Due today'
+        : days === 1 ? 'Due tomorrow'
+        : days === -1 ? 'The deadline passed yesterday'
+        : `The deadline passed ${Math.abs(days)} days ago`,
+    short: (days: number): string => days === 0 ? 'today' : days === 1 ? 'tomorrow' : 'overdue',
+    many: (n: number) => `${n} deadlines`,
+    rest: (n: number) => ` · and ${n} more`,
+  },
+};
 
 /**
  * Εχει ήδη πάρει η συσκευή τη σημερινή ειδοποίηση;
@@ -104,7 +128,8 @@ export function alreadySentToday(
  * @param items Οι προθεσμίες, όπως τις δίνει το ημερολόγιο.
  * @param today Η σημερινή ημέρα σε ελληνική ώρα, «YYYY-MM-DD».
  */
-export function dailyPush(items: readonly FeedItem[], today: string): PushMessage | null {
+export function dailyPush(items: readonly FeedItem[], today: string, lang: Locale = 'el'): PushMessage | null {
+  const w = WORDS[lang];
   const near = items
     .map(it => ({ it, days: daysFromToday(it.date, today) }))
     .filter((x): x is { it: FeedItem; days: number } => x.days !== null && x.days <= HORIZON_DAYS)
@@ -118,17 +143,19 @@ export function dailyPush(items: readonly FeedItem[], today: string): PushMessag
     const note = (it.note || '').trim();
     return {
       title: clip(it.title, MAX_TITLE),
-      body: clip(`${whenPhrase(days)}${note ? `, ${note}` : ''}`, MAX_BODY),
+      body: clip(`${w.when(days)}${note ? `, ${note}` : ''}`, MAX_BODY),
       url: PUSH_URL,
       uid: it.uid,
+      ...(lang === 'en' ? { lang } : {}),
     };
   }
 
-  const named = near.slice(0, MAX_NAMED).map(x => `${x.it.title} ${whenShort(x.days)}`);
+  const named = near.slice(0, MAX_NAMED).map(x => `${x.it.title} ${w.short(x.days)}`);
   const rest = near.length - named.length;
   return {
-    title: `${near.length} προθεσμίες`,
-    body: clip(named.join(' · ') + (rest > 0 ? ` · και άλλες ${rest}` : ''), MAX_BODY),
+    title: w.many(near.length),
+    body: clip(named.join(' · ') + (rest > 0 ? w.rest(rest) : ''), MAX_BODY),
     url: PUSH_URL,
+    ...(lang === 'en' ? { lang } : {}),
   };
 }

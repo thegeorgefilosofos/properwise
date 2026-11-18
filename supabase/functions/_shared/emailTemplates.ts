@@ -17,6 +17,14 @@ import { APP_URL } from './site.ts';
 import { EMAIL_LIGHT as L, EMAIL_DARK as D, EMAIL_TONE, type EmailTone } from './emailPalette.ts';
 export type Plan = 'free' | 'individual' | 'professional';
 
+// ═══ ΔΥΟ ΓΛΩΣΣΕΣ, ΕΝΑ ΚΕΛΥΦΟΣ ════════════════════════════════════════════
+// Ο χρήστης διαλέγει στον Λογαριασμό τη γλώσσα των μηνυμάτων του
+// (`user_metadata.msg_locale`, lib/i18n/locale.ts → msgLocale). Κάθε πρότυπο
+// δέχεται `lang` και, χωρίς αυτό, γράφει ελληνικά ΙΔΙΑ ΩΣ ΤΟ BYTE με πριν
+// (messageLang.test.ts). Τα αγγλικά λένε τα ίδια γεγονότα με τους ίδιους
+// αριθμούς, σε ελληνική μορφή ποσού και ημερομηνίας («1.234,50€», «02/11/2026»).
+export type Lang = 'el' | 'en';
+
 // ═══ ΜΙΑ ΠΑΛΕΤΑ, ΔΥΟ ΘΕΜΑΤΑ ═══════════════════════════════════════════════
 // Τα ονόματα είναι τα ίδια με τις κλάσεις που τυπώνει το κέλυφος: ό,τι γράφει
 // `color:${INK}` παίρνει `class="ink"` — και η σκοτεινή εκδοχή του ορίζεται ΜΙΑ
@@ -198,9 +206,9 @@ export const heroStat = (value: string, label: string): string =>
   + `</td></tr></table>`;
 // Μόνο το μικρό όνομα (πιο ζεστό): «Μαρία Παπαδοπούλου» → «Μαρία».
 export const firstNameOf = (name?: string): string => (name || '').trim().split(/\s+/)[0] || '';
-export const greeting = (name?: string): string => {
+export const greeting = (name?: string, lang: Lang = 'el'): string => {
   const f = firstNameOf(name);
-  return p(`Γεια σου${f ? ` <b>${esc(f)}</b>` : ''},`);
+  return p(`${lang === 'en' ? 'Hi' : 'Γεια σου'}${f ? ` <b>${esc(f)}</b>` : ''},`);
 };
 
 /**
@@ -236,8 +244,9 @@ export const emailHeader = (): string =>
 // alt=«PROPERWISE» μένει ως εφεδρεία όταν ο παραλήπτης μπλοκάρει τις εικόνες.
 // ── Το ΜΟΝΑΔΙΚΟ branded κέλυφος ──────────────────────────────────────────────
 export function emailShell(opts: {
-  bodyHtml: string; preheader?: string; unsubUrl?: string; footerNote?: string; hero?: string; width?: number;
+  bodyHtml: string; preheader?: string; unsubUrl?: string; footerNote?: string; hero?: string; width?: number; lang?: Lang;
 }): string {
+  const en = opts.lang === 'en';
   const w = opts.width || WIDTH;
   // ΤΟ ΠΡΟΘΕΜΑ ΕΙΝΑΙ Η ΔΕΥΤΕΡΗ ΓΡΑΜΜΗ ΣΤΗ ΛΙΣΤΑ ΚΑΙ ΗΤΑΝ ΑΓΕΜΙΣΤΗ. Χωρίς
   // γέμισμα, ο πελάτης αλληλογραφίας τραβά ό,τι βρει μετά — δηλαδή τη λέξη
@@ -251,10 +260,10 @@ export function emailShell(opts: {
   // το send-lifecycle-email κρατά τότε πίσω τα προωθητικά.
   const who = senderIdentity();
   const foot = opts.unsubUrl
-    ? `Λαμβάνεις αυτό το email ως χρήστης του PROPERWISE.${who ? ` ${esc(who)}.` : ''} <a class="lnk" href="${esc(opts.unsubUrl)}" style="color:${MUTE};text-decoration:underline;">Απεγγραφή</a>`
+    ? `${en ? 'You’re receiving this email as a PROPERWISE user.' : 'Λαμβάνεις αυτό το email ως χρήστης του PROPERWISE.'}${who ? ` ${esc(who)}.` : ''} <a class="lnk" href="${esc(opts.unsubUrl)}" style="color:${MUTE};text-decoration:underline;">${en ? 'Unsubscribe' : 'Απεγγραφή'}</a>`
     : (opts.footerNote || 'properwise.gr');
   return `<!DOCTYPE html>
-<html lang="el" dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<html lang="${en ? 'en' : 'el'}" dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">

@@ -7,7 +7,7 @@
 // μας κείμενο.
 // ═══════════════════════════════════════════════════════════════════════════
 import type { CalendarEventsRow, RentPaymentsRow } from '../../../lib/supabase/tables.ts'
-import { buildEmail, buildDunningEmail } from './reminderEmail.ts'
+import { buildEmail, buildDunningEmail, noticeLabelOf } from './reminderEmail.ts'
 import {
   emailShell, welcomeEmail, planUpgradedEmail, planDowngradedEmail, newPropertyEmail, feedbackRequestEmail,
   mobileLaunchEmail, referralInviteEmail, upsellEmail, legislationUpdateEmail, seasonalCampaignEmail,
@@ -41,17 +41,21 @@ const TODAY = new Date('2026-11-18T00:00:00Z')
 export const FIXTURES: Fixture[] = [
   // ── Κέλυφος ───────────────────────────────────────────────────────────
   { name: 'shell-default', el: () => emailShell({ bodyHtml: p('x') }) },
-  { name: 'shell-unsub', el: () => emailShell({ bodyHtml: p('x'), preheader: 'pre', unsubUrl: 'https://properwise.gr/unsubscribe/t' }) },
+  { name: 'shell-unsub', el: () => emailShell({ bodyHtml: p('x'), preheader: 'pre', unsubUrl: 'https://properwise.gr/unsubscribe/t' }),
+    en: () => emailShell({ bodyHtml: p('x'), preheader: 'pre', unsubUrl: 'https://properwise.gr/unsubscribe/t', lang: 'en' }) },
   { name: 'shell-footer', el: () => emailShell({ bodyHtml: p('x'), footerNote: 'note', width: 480 }) },
   // ── Υπενθυμίσεις προθεσμιών ───────────────────────────────────────────
   ...(['7days', '3days', '1day', 'today', 'overdue'] as const).flatMap(t => [
-    { name: `reminder-${t}-1`, el: () => out(buildEmail(EVENTS.slice(0, 1), t, PAY)) },
-    { name: `reminder-${t}-3`, el: () => out(buildEmail(EVENTS, t)) },
+    { name: `reminder-${t}-1`, el: () => out(buildEmail(EVENTS.slice(0, 1), t, PAY)), en: () => out(buildEmail(EVENTS.slice(0, 1), t, PAY, 'en')) },
+    { name: `reminder-${t}-3`, el: () => out(buildEmail(EVENTS, t)), en: () => out(buildEmail(EVENTS, t, new Map(), 'en')) },
   ]),
   // ── Όχληση ενοικίου ───────────────────────────────────────────────────
-  { name: 'dunning-1', el: () => out(buildDunningEmail(RENT.slice(0, 1), TENANTS, PROPS, TODAY, 'Υπενθύμιση', 1)) },
-  { name: 'dunning-2', el: () => out(buildDunningEmail(RENT, TENANTS, PROPS, TODAY, 'Δεύτερη υπενθύμιση', 2)) },
-  { name: 'dunning-3', el: () => out(buildDunningEmail(RENT, TENANTS, PROPS, TODAY, 'Τελική υπόμνηση', 3)) },
+  { name: 'dunning-1', el: () => out(buildDunningEmail(RENT.slice(0, 1), TENANTS, PROPS, TODAY, 'Υπενθύμιση', 1)),
+    en: () => out(buildDunningEmail(RENT.slice(0, 1), TENANTS, PROPS, TODAY, noticeLabelOf(1, 'en'), 1, 'en')) },
+  { name: 'dunning-2', el: () => out(buildDunningEmail(RENT, TENANTS, PROPS, TODAY, 'Δεύτερη υπενθύμιση', 2)),
+    en: () => out(buildDunningEmail(RENT, TENANTS, PROPS, TODAY, noticeLabelOf(2, 'en'), 2, 'en')) },
+  { name: 'dunning-3', el: () => out(buildDunningEmail(RENT, TENANTS, PROPS, TODAY, 'Τελική υπόμνηση', 3)),
+    en: () => out(buildDunningEmail(RENT, TENANTS, PROPS, TODAY, noticeLabelOf(3, 'en'), 3, 'en')) },
   // ── Πρότυπα του emailTemplates.ts ─────────────────────────────────────
   ...(['free', 'individual', 'professional'] as const).map(plan =>
     ({ name: `welcome-${plan}`, el: () => out(welcomeEmail({ name: 'Maria Papadopoulou', plan })) })),

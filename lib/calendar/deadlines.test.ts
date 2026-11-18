@@ -26,6 +26,17 @@ eq(titles(full).join('|'), 'Ενοίκιο|ΔΕΗ|Αλλαγή κλειδαρι�
 eq(uids(full).join('|'), 'rent-r1@properwise|bill-b1@properwise|task-t1@properwise|event-e1@properwise', 'κάθε πηγή έχει δικό της πρόθεμα');
 ok(deadlineItems(full)[1].note === '87,45€', 'το ποσό μπαίνει ως σημείωση, με δύο δεκαδικά');
 
+// ── Στα αγγλικά (ειδοποίηση συσκευής): μόνο ό,τι γράφει το ίδιο το προϊόν ──
+{
+  const tax = { id: 'e9', property_id: 'p1', title: 'ΕΝΦΙΑ, 4η δόση', event_date: '2026-11-30', amount: 123.45, notes: 'Ελληνική σημείωση', source: 'tax:enfia-instalment-2026-4' };
+  const en = deadlineItems({ ...full, events: [...full.events, tax], lang: 'en' });
+  eq(en.map(i => i.title).join('|'), 'Rent|ΔΕΗ|Αλλαγή κλειδαριάς|Συντήρηση καυστήρα|ENFIA: 4th installment',
+    'EN: ενοίκιο και φόρος στα αγγλικά, ό,τι έγραψε ο χρήστης όπως το έγραψε');
+  eq(en[4].note, '123,45€', 'EN: η ελληνική σημείωση του φόρου φεύγει, το ποσό μένει σε ελληνική μορφή');
+  eq(JSON.stringify(deadlineItems({ ...full, lang: 'el' })), JSON.stringify(deadlineItems(full)), 'ελληνικά: ίδια με χωρίς γλώσσα');
+  eq(deadlineItems({ ...full, events: [tax] }).find(i => i.uid === 'event-e9@properwise')?.title, 'ΕΝΦΙΑ, 4η δόση', 'ελληνικά: ο τίτλος του ημερολογίου');
+}
+
 // ── Ο,τι τελείωσε δεν ταξιδεύει ────────────────────────────────────────────
 eq(deadlineItems({ ...full, bills: [{ ...full.bills[0], paid: true }] }).length, 3,
   'Ο ΠΛΗΡΩΜΕΝΟΣ ΛΟΓΑΡΙΑΣΜΟΣ ΔΕΝ ΕΙΝΑΙ ΥΠΕΝΘΥΜΙΣΗ');

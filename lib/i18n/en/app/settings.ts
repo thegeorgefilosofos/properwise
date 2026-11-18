@@ -24,6 +24,11 @@ export const SETTINGS_EN = {
     saving: 'Switching…',
     failed: 'The language didn’t change. Try again.',
   },
+  msgLanguage: {
+    title: 'Language for emails and notifications',
+    desc: 'Deadline reminders by email and notifications on your devices. Documents for AADE and your accountant stay in Greek.',
+    failed: 'The language for emails and notifications didn’t change. Try again.',
+  },
   currency: 'Currency: euro (€)',
   theme: {
     title: 'Theme',

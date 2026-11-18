@@ -1,4 +1,6 @@
-import { buildEmail, buildDunningEmail, type TenantName, type PropertyName } from '../_shared/reminderEmail.ts';
+import { buildEmail, buildDunningEmail, noticeLabelOf, type TenantName, type PropertyName } from '../_shared/reminderEmail.ts';
+// Η γλώσσα κάθε ιδιοκτήτη: η επιλογή «Γλώσσα μηνυμάτων και email» του Λογαριασμού.
+import { msgLangReader } from '../_shared/msgLang.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0'
 import { APP_URL } from '../_shared/site.ts'
 import { authorizeCron, cronDenial, type CronAuth } from '../_shared/auth.ts'
@@ -191,6 +193,8 @@ Deno.serve(async (req) => {
     //      ιδιοκτήτη («Ανοιγμα PROPERWISE»), δεν διαβάζεται από τρίτον.
 
     let totalSent = 0
+    /** Η γλώσσα των μηνυμάτων κάθε ιδιοκτήτη, μία ανάγνωση ανά άνθρωπο. */
+    const langOf = msgLangReader(supabase)
     /** Πόσοι παραλήπτες πηδήχτηκαν επειδή μια ανάγνωση απέτυχε. Μπαίνει στην απάντηση. */
     let skipped = 0
 
@@ -256,7 +260,7 @@ Deno.serve(async (req) => {
         if (!sent) { skipped++; continue }
         const toSend = matching.filter(e => { const k = reminderKey(e, check.type); return !sent.has(`${k.event_id}|${k.reminder_type}`) })
         if (!toSend.length) continue
-        const { subject, html } = buildEmail(toSend, check.type, await payLinks(pref.user_id, payable(toSend)))
+        const { subject, html } = buildEmail(toSend, check.type, await payLinks(pref.user_id, payable(toSend)), await langOf(pref.user_id))
         const ok = await sendEmail(to, subject, html)
         if (ok) {
           await supabase.from('notification_log').insert(logRows(toSend, check.type))
@@ -275,7 +279,7 @@ Deno.serve(async (req) => {
         const sentODIds = new Set(((sentOD||[]) as Pick<NotificationLogRow,'event_id'>[]).map(l=>l.event_id))
         const toSendOD  = overdue.filter(e => !sentODIds.has(e.id))
         if (toSendOD.length) {
-          const { subject, html } = buildEmail(toSendOD, 'overdue', await payLinks(pref.user_id, toSendOD.filter(payableReminder)))
+          const { subject, html } = buildEmail(toSendOD, 'overdue', await payLinks(pref.user_id, toSendOD.filter(payableReminder)), await langOf(pref.user_id))
           const ok = await sendEmail(to, subject, html)
           if (ok) {
             await supabase.from('notification_log').insert(toSendOD.map(e => ({ user_id: pref.user_id, event_id: e.id, reminder_type: 'overdue' })))
@@ -360,7 +364,8 @@ Deno.serve(async (req) => {
       // Escalation: notice number αυτού του send = priorCount + 1 ανά δόση· χρησιμοποιούμε
       // το MAX μεταξύ των eligible δόσεων για τον τόνο του subject.
       const noticeNumber = Math.max(...toNotify.map(r => (priorCount[r.id] || 0) + 1))
-      const noticeLabel = noticeNumber >= 3 ? 'Τελική υπόμνηση' : noticeNumber === 2 ? 'Δεύτερη υπενθύμιση' : 'Υπενθύμιση'
+      const lang = await langOf(pref.user_id)
+      const noticeLabel = noticeLabelOf(noticeNumber, lang)
 
       // Batched name lookups (κανένα N+1)· skip τα .in() όταν η λίστα ids είναι κενή.
       const tenantIds = [...new Set(toNotify.map(r => r.tenant_id).filter((v): v is string => v != null))]
@@ -391,7 +396,7 @@ Deno.serve(async (req) => {
         reminder_type: `rent_overdue:${(priorCount[r.id] || 0) + 1}`, created_at: new Date().toISOString(),
       }))).select('id')
       if (claimErr) { console.error('[send-reminders] μητρώο οχλήσεων:', claimErr); skipped++; continue }
-      const { subject, html } = buildDunningEmail(toNotify, tenantMap, propMap, today, noticeLabel, noticeNumber)
+      const { subject, html } = buildDunningEmail(toNotify, tenantMap, propMap, today, noticeLabel, noticeNumber, lang)
       const ok = await sendEmail(to, subject, html)
       if (ok) dunningSent++
       else {

@@ -9,6 +9,7 @@
 import type { MonthDeadline } from '@/lib/seo/prothesmies';
 import type { TaxObligation } from '@/lib/tax/greekTaxCalendar';
 import { parseMonthKey } from '@/lib/seo/prothesmies';
+import { taxTitleEn } from './taxTitle';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as const;
 
@@ -18,36 +19,11 @@ export const monthLabelEn = (key: string): string => {
   return p ? `${MONTHS[p.month - 1]} ${p.year}` : key;
 };
 
-const ordinal = (n: number): string => {
-  const t = n % 100;
-  if (t >= 11 && t <= 13) return `${n}th`;
-  return `${n}${({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`;
-};
-
 /** Ο τίτλος της υποχρέωσης του μήνα, από το είδος της. */
 export const deadlineTitleEn = (d: MonthDeadline): string => obligationTitleEn(d.obligation);
 
 /** Ο τίτλος μιας υποχρέωσης του ημερολογίου, από το είδος της (όχι από το ελληνικό `title`). */
-export function obligationTitleEn(o: TaxObligation): string {
-  switch (o.kind) {
-    case 'enfia-issue': return o.confidence === 'statutory' ? 'ENFIA: assessment notice issued' : 'ENFIA: assessment notice issued (expected)';
-    case 'enfia-first': return 'ENFIA: 1st installment';
-    case 'enfia-instalment': {
-      const k = Number(o.id.split('-').pop());
-      return Number.isFinite(k) ? `ENFIA: ${ordinal(k)} installment` : 'ENFIA: installment';
-    }
-    case 'enfia-last': return 'ENFIA: last installment';
-    case 'e9': return 'Form E9: check or report changes to your properties';
-    case 'income-autofile': return 'Check the pre-filled tax return before it is filed automatically';
-    case 'income-decl': return 'Income tax return (forms E1 and E2 for property)';
-    case 'income-instalment': {
-      const k = Number(o.id.split('-').pop());
-      return Number.isFinite(k) ? `Income tax: ${ordinal(k)} installment` : 'Income tax: installment';
-    }
-    case 'str-registry': return 'Short-term rental stays: monthly filing (AADE registry)';
-    case 'str-climate-fee': return 'Climate crisis resilience fee: payment';
-  }
-}
+export const obligationTitleEn = (o: TaxObligation): string => taxTitleEn(o);
 
 export const DEADLINES_EN = {
   hub: 'Tax deadlines for property owners in Greece',
