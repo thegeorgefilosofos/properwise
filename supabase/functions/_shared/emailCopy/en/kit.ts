@@ -8,6 +8,7 @@
 // συγκρίνει ο έλεγχος emailCopyEn.test.ts). Η Νόα λέγεται με το όνομά της.
 // ═══════════════════════════════════════════════════════════════════════════
 import { emailShell, greeting, p } from '../../emailTemplates.ts'
+import { pctRate } from '../../format.ts'
 
 /** Το κέλυφος, στα αγγλικά. */
 export const shell = (o: Parameters<typeof emailShell>[0]): string => emailShell({ ...o, lang: 'en' })
@@ -15,6 +16,9 @@ export const shell = (o: Parameters<typeof emailShell>[0]): string => emailShell
 export const hi = (c: { name?: string }): string => greeting(c.name, 'en')
 /** «1 property», «3 properties». Αριθμός με ελληνική γραφή, όπως παντού. */
 export const plural = (n: number, one: string, many: string) => `${n.toLocaleString('el-GR')} ${n === 1 ? one : many}`
+
+/** «20%», «12,5%»: το ποσοστό με τον μορφοποιητή, όπως στα ελληνικά. */
+export const percent = (n: number): string => pctRate(n)
 
 /** Τα ονόματα των πακέτων, όπως στο lib/i18n/en/plans.ts (το ελέγχει ο έλεγχος). */
 export const PACKAGE_NAME_EN = {

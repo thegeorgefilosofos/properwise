@@ -10,7 +10,7 @@ import {
 } from '../../emailTemplates.ts'
 import { esc } from '../kit.ts'
 import { APP_URL } from '../../site.ts'
-import { shell, hi, PACKAGE_NAME_EN } from './kit.ts'
+import { shell, hi, PACKAGE_NAME_EN, percent } from './kit.ts'
 
 type Out = { subject: string; html: string }
 const app = (c: Ctx) => c.appUrl || APP_URL
@@ -111,15 +111,15 @@ export function upsellEmail(c: Ctx & { toPlan?: Plan | PackageId; discountPct?: 
   const disc = code && c.discountPct && c.discountPct > 0 ? c.discountPct : 0
   const seasonLine = c.seasonLabel ? ` <b>${esc(c.seasonLabel)}</b>` : ''
   const body = eyebrow(disc ? `Offer${seasonLine ? ' ·' : ''}${seasonLine}` : 'Upgrade')
-    + h(disc ? `${disc}% off the ${name} plan` : `What the ${name} plan adds`)
+    + h(disc ? `${percent(disc)} off the ${name} plan` : `What the ${name} plan adds`)
     + hi(c)
     + p(`If PROPERWISE is useful to you in the trial, here is what <b>${name}</b> adds:`)
     + bullets(packagePerks(pkg))
     + (disc ? p(`Enter the code <b>${esc(code)}</b> at checkout and the discount is applied to the charge.`) : '')
     + button('See Subscription', `${app(c)}/dashboard?tab=settings`)
     + note('Subscription is in your Account. If it isn’t relevant to you now, you don’t need to do anything.')
-  const subj = disc ? `${disc}% off${c.seasonLabel ? ` · ${c.seasonLabel}` : ''} PROPERWISE` : `What the ${name} plan adds`
-  return { subject: subj, html: shell({ bodyHtml: body, preheader: disc ? `${disc}% off ${name} with a code.` : `What ${name} adds.` }) }
+  const subj = disc ? `${percent(disc)} off${c.seasonLabel ? ` · ${c.seasonLabel}` : ''} PROPERWISE` : `What the ${name} plan adds`
+  return { subject: subj, html: shell({ bodyHtml: body, preheader: disc ? `${percent(disc)} off ${name} with a code.` : `What ${name} adds.` }) }
 }
 
 export function legislationUpdateEmail(c: Ctx & { headline: string; summaryHtml: string }): Out {

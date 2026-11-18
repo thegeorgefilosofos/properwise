@@ -40,7 +40,7 @@ export function msgLangReader(db: AdminReader): (userId: string) => Promise<Lang
  * ξέρουν μόνο το email του παραλήπτη (send-lifecycle-email, από την ουρά).
  * Ρωτά τον διαχειριστή ταυτότητας με το κλειδί υπηρεσίας και κρατά ΜΟΝΟ την
  * ακριβή αντιστοιχία (το `filter` ψάχνει και μέρος της διεύθυνσης). Χωρίς
- * λογαριασμό ή με αποτυχία: `null`, και ο καλών αποφασίζει.
+ * λογαριασμό ή με αποτυχία: `null` και ο καλών αποφασίζει.
  */
 export async function msgLangByEmail(
   supabaseUrl: string, serviceKey: string, email: string, fetcher: typeof fetch = fetch,

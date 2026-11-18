@@ -118,7 +118,7 @@ export function confirmEmailHtml(link: string, owner: string, lang: Lang = 'el')
 
 // ── Το πλαίσιο του ενημερωτικού ─────────────────────────────────────────
 // Ο τίτλος και το σώμα κάθε ανακοίνωσης (product_updates) τα γράφει άνθρωπος,
-// στα ελληνικά, και φεύγουν όπως γράφτηκαν. Στα αγγλικά αλλάζει μόνο ό,τι
+// στα ελληνικά και φεύγουν όπως γράφτηκαν. Στα αγγλικά αλλάζει μόνο ό,τι
 // γράφουμε εμείς γύρω τους.
 const escN = (v: unknown) => String(v ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] || c))
 export interface ProductUpdate { id: string; title: string; body_html: string; cta_label?: string; cta_url?: string }

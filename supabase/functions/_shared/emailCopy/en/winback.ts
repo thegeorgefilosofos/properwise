@@ -1,7 +1,7 @@
 import { eyebrow, h, p, button, note, heroStat } from '../../emailTemplates.ts'
 import { eur } from '../../format.ts'
 import { dash, esc, has, offer, type CopyFn } from '../kit.ts'
-import { shell, hi, NOTE, codeLine } from './kit.ts'
+import { shell, hi, NOTE, codeLine, percent } from './kit.ts'
 
 // ── Win-back (twin of ../winback.ts) ───────────────────────────────────────
 export const WINBACK: Record<string, CopyFn> = {
@@ -37,15 +37,15 @@ export const WINBACK: Record<string, CopyFn> = {
   winback_offer: (c) => {
     const o = offer(c)
     if (!o) return null
-    return { subject: `A reason to come back: ${o.pct}% off`, html: shell({
+    return { subject: `A reason to come back: ${percent(o.pct)} off`, html: shell({
       preheader: 'Start again with the full PROPERWISE.',
       unsubUrl: c.unsubUrl,
-      hero: heroStat(`${o.pct}%`, 'discount'),
+      hero: heroStat(`${percent(o.pct)}`, 'discount'),
       bodyHtml: eyebrow('Welcome back') + h('A gift for your return') + hi(c)
-        + p(`We know daily life moves fast. If you want to put your properties back in order, we are keeping a <b>${o.pct}%</b> discount on the upgrade for you.`)
+        + p(`We know daily life moves fast. If you want to put your properties back in order, we are keeping a <b>${percent(o.pct)}</b> discount on the upgrade for you.`)
         + codeLine(o)
         + p('Your account is ready, with everything you left in its place.')
-        + button(`Claim the ${o.pct}%`, dash(c))
+        + button(`Claim the ${percent(o.pct)}`, dash(c))
         + note(NOTE.cancel),
     }) }
   },
