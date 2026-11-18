@@ -247,7 +247,6 @@ export function CommView({ tenant, propertyId, userId }:{ tenant:Tenant; propert
     if(error){ setLogs([]);setLogsErr(fail('Το ιστορικό επικοινωνίας δεν διαβάστηκε','commNotRead',error));setLoadedFor(tenant.id);return; }
     setLogsErr('');setLogs(data||[]);setLoadedFor(tenant.id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[tenant.id,E,X]);
 
   useLoad(loadLogs);
