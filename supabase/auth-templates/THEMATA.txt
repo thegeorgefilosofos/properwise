@@ -1,9 +1,11 @@
 Το θέμα (subject) που συνοδεύει κάθε πρότυπο στο Supabase.
 Παράγονται από το scripts/build-auth-templates.ts. Μην τα γράψεις με το χέρι.
+Κάθε θέμα έχει και τις δύο γλώσσες: η Supabase διαλέγει με τον ίδιο κανόνα με το σώμα
+(OWNER-STEPS.md). Επικόλλησε ολόκληρη τη γραμμή μετά το όνομα του αρχείου.
 
-confirm-signup.html    Επιβεβαίωσε τη διεύθυνσή σου
-reset-password.html    Επαναφορά κωδικού
-change-email.html      Επιβεβαίωσε τη νέα σου διεύθυνση
-invite.html            Πρόσκληση στο PROPERWISE
-magic-link.html        Ο σύνδεσμος σύνδεσής σου
-reauthentication.html  Ο κωδικός επιβεβαίωσής σου
+confirm-signup.html    {{ $en := false }}{{ if .Data.app_locale }}{{ if eq .Data.app_locale "en" }}{{ $en = true }}{{ end }}{{ end }}{{ if .Data.msg_locale }}{{ $en = eq .Data.msg_locale "en" }}{{ end }}{{ if $en }}Confirm your address{{ else }}Επιβεβαίωσε τη διεύθυνσή σου{{ end }}
+reset-password.html    {{ $en := false }}{{ if .Data.app_locale }}{{ if eq .Data.app_locale "en" }}{{ $en = true }}{{ end }}{{ end }}{{ if .Data.msg_locale }}{{ $en = eq .Data.msg_locale "en" }}{{ end }}{{ if $en }}Reset your password{{ else }}Επαναφορά κωδικού{{ end }}
+change-email.html      {{ $en := false }}{{ if .Data.app_locale }}{{ if eq .Data.app_locale "en" }}{{ $en = true }}{{ end }}{{ end }}{{ if .Data.msg_locale }}{{ $en = eq .Data.msg_locale "en" }}{{ end }}{{ if $en }}Confirm your new address{{ else }}Επιβεβαίωσε τη νέα σου διεύθυνση{{ end }}
+invite.html            {{ $en := false }}{{ if .Data.app_locale }}{{ if eq .Data.app_locale "en" }}{{ $en = true }}{{ end }}{{ end }}{{ if .Data.msg_locale }}{{ $en = eq .Data.msg_locale "en" }}{{ end }}{{ if $en }}Invitation to PROPERWISE{{ else }}Πρόσκληση στο PROPERWISE{{ end }}
+magic-link.html        {{ $en := false }}{{ if .Data.app_locale }}{{ if eq .Data.app_locale "en" }}{{ $en = true }}{{ end }}{{ end }}{{ if .Data.msg_locale }}{{ $en = eq .Data.msg_locale "en" }}{{ end }}{{ if $en }}Your sign-in link{{ else }}Ο σύνδεσμος σύνδεσής σου{{ end }}
+reauthentication.html  {{ $en := false }}{{ if .Data.app_locale }}{{ if eq .Data.app_locale "en" }}{{ $en = true }}{{ end }}{{ end }}{{ if .Data.msg_locale }}{{ $en = eq .Data.msg_locale "en" }}{{ end }}{{ if $en }}Your verification code{{ else }}Ο κωδικός επιβεβαίωσής σου{{ end }}
